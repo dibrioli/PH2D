@@ -193,14 +193,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.text" => "Text",
         "panel.vector.mode.connect" => "Connect",
         // ⭐ A seccao MORPH STATES (plano 32 W4/W7/W8) -- seccao PROPRIA desde 25/08.
-        "panel.vector.morph.arrows" => "Transitions",
+        "panel.vector.morph.arrows" => "Shapes",
         "panel.vector.morph.current" => "Now showing:",
         // ⭐ O realce da transicao VIVA. ⛔ ASCII: a fonte da casa nao cobre U+2190..U+21FF.
         "panel.vector.morph.live_mark" => ">",
         // ⭐ A face de CRIACAO: o botao, e as duas frases do que falta para ele existir.
         "panel.vector.morph.make" => "Make Morph States",
-        "panel.vector.morph.make.shapes" => "shapes ->",
-        "panel.vector.morph.make.transitions" => "transitions",
+        "panel.vector.morph.make.shapes" => "shapes, one key each",
         "panel.vector.morph.need_shapes" => "Select two or more shapes to make a state machine.",
         "panel.vector.morph.too_many" => "Too many shapes for one state machine. The most is",
         // ⭐⭐ O MODO em que o teclado e' da maquina (Enio, 25/08: sem ele o `Z` morfa E edita).
@@ -210,7 +209,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.vector.morph.when" => "When",
         "panel.vector.morph.when.none" => "\u{2014}",
-        "panel.vector.morph.beyond" => "more transitions not shown here",
+        "panel.vector.morph.beyond" => "more shapes not shown here",
+        // ⭐ O rotulo da linha da tecla. «When» dizia *quando* a passagem corre; sob o modelo
+        // por-forma a pergunta e' outra -- *o que me traz AQUI* -- e o rotulo tem de a fazer.
+        "panel.vector.morph.reached_by" => "Key",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",

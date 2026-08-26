@@ -47,19 +47,19 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
 /// **REGISTA os widgets das SETAS do Morph** (plano 32 W4) — o pool inteiro, de antemão.
 ///
 /// ⚠️ **De antemão e não por linha viva**, ao contrário da janela do Input Map: aqui o teto é o
-/// próprio `MAX_MORPH_ARROWS`, e um pool fixo é o que o resto deste painel faz. ⛔ Sem isto, cada
+/// próprio `MAX_MORPH_STATES`, e um pool fixo é o que o resto deste painel faz. ⛔ Sem isto, cada
 /// controlo nasce **morto sob o ponteiro** — o defeito que esta linha já pagou três vezes.
 pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
     // O botão que CRIA o conjunto: ele é o único controlo da seção quando não há máquina nenhuma.
     button(store, ids::VECTOR_MORPH_STATES_MAKE);
     // ⭐⭐ O interruptor da PRÉ-VISUALIZAÇÃO — o modo em que o teclado é da máquina.
     button(store, ids::VECTOR_MORPH_PREVIEW);
-    for row in 0..ids::MAX_MORPH_ARROWS {
+    for row in 0..ids::MAX_MORPH_STATES {
         // A CONDIÇÃO é um menu, e um menu não é um botão: registá-lo como botão faria o clique
         // acender o chip e nunca abrir a lista. (A cicatriz da swatch do painel de tokens, e a
         // dos dois números do Input Map.)
         store.register(
-            ids::morph_arrow_when_id(row),
+            ids::morph_shape_key_id(row),
             ph2d_editor_core::interaction::InteractiveState::Dropdown {
                 state: ph2d_editor_core::widget::DropdownState::Normal,
                 open: false,
@@ -67,7 +67,7 @@ pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
             },
         );
         for a in 0..ids::MAX_MORPH_ACTIONS {
-            button(store, ids::morph_arrow_when_option_id(row, a));
+            button(store, ids::morph_shape_key_option_id(row, a));
         }
     }
 }

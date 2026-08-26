@@ -44,21 +44,40 @@ use serde::{Deserialize, Serialize};
 /// (`sources: [u64; 2]`).
 pub type ShapeId = u64;
 
-/// **UMA SETA** — de que forma, para que forma, sob que condição, e a que ritmo.
+/// ⭐⭐ **UM ESTADO** — que forma, o que leva ATÉ ela, e a que ritmo.
+///
+/// # ⛔⛔ A acção pertence ao DESTINO, não à passagem (W10)
+///
+/// Enio, 2026-08-25: *"em vez de um evento para cada transição, melhor seria um evento por shape.
+/// Ou seja: se a seta para cima leva ao retângulo azul, independente de que forma estiver ativa no
+/// momento, a seta para cima vai levar ao retângulo azul."*
+///
+/// ⚠️ **É uma mudança de MODELO, não de painel.** Até aqui a máquina guardava `n(n-1)` arestas, uma
+/// por par ordenado, cada uma com a sua condição — e o artista tinha de escrever a mesma tecla em
+/// `n-1` sítios para que ela significasse sempre a mesma coisa. Aqui a lista tem **`n`** entradas,
+/// uma por forma, e a tecla **é** o nome daquela forma.
+///
+/// ⭐ O que isso apaga: a possibilidade de a mesma tecla levar a sítios diferentes conforme o
+/// estado. ⚠️ **É deliberado, e é o pedido:** *"independente de que forma estiver ativa"*. Uma
+/// máquina em que a mesma tecla faz coisas diferentes conforme onde se está é exactamente a teia
+/// que a pesquisa (doc 31) descreve como o medo do Animator do Unity.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct MorphEdge {
-    pub from: ShapeId,
-    pub to: ShapeId,
-    /// **O NOME da acção que a dispara.** Vazio = a seta **nunca** dispara sozinha; ela só é
-    /// percorrida por quem a pedir pelo índice (a pré-visualização do painel).
+pub struct MorphState {
+    /// A forma deste estado.
+    pub shape: ShapeId,
+    /// **O NOME da acção que LEVA a esta forma**, de onde quer que a máquina esteja. Vazio = a
+    /// forma é **inalcançável por tecla**; ela só é visitada por quem a pedir pelo índice (a
+    /// pré-visualização do painel).
     ///
     /// ⚠️ **Vazio-nunca-casa é load-bearing**, e a lição é emprestada da
-    /// [`ph2d_ui_state::SignalBinding`]: a seta nasce sem condição quando o artista a desenha, e
-    /// sem esta guarda **toda seta recém-desenhada dispararia** no dia em que alguém publicasse
-    /// uma acção de nome vazio. O modo de falha não é um erro — é a forma a saltar sem ninguém ter
-    /// pedido.
+    /// [`ph2d_ui_state::SignalBinding`]: o estado nasce sem condição, e sem esta guarda **toda
+    /// forma sem tecla seria alcançada** no dia em que alguém publicasse uma acção de nome vazio.
+    /// O modo de falha não é um erro — é a forma a saltar sem ninguém ter pedido.
     pub when: String,
-    /// Segundos, quando o motor é a curva. Ignorado se [`Self::spring`] estiver presente.
+    /// Segundos para CHEGAR aqui, quando o motor é a curva. Ignorado se [`Self::spring`] existir.
+    ///
+    /// ⚠️ **O ritmo também é do DESTINO**, e pela mesma razão que a tecla: *quanto tempo demora a
+    /// virar isto* é uma propriedade da forma, não do sítio de onde se vem.
     pub duration_s: f64,
     pub easing: Easing,
     /// **A MOLA, quando o artista a escolhe.** `None` = o par duração+curva.
@@ -68,14 +87,13 @@ pub struct MorphEdge {
     pub spring: Option<Spring>,
 }
 
-impl MorphEdge {
-    /// Uma seta nova entre duas formas — **sem condição**, que é como ela nasce quando o artista a
-    /// desenha no canvas. Ele nomeia a acção depois, no painel.
+impl MorphState {
+    /// Um estado novo sobre `shape` — **sem condição**, que é como ele nasce quando o conjunto é
+    /// criado. O artista nomeia a acção depois, no painel.
     #[must_use]
-    pub fn new(from: ShapeId, to: ShapeId) -> Self {
+    pub fn new(shape: ShapeId) -> Self {
         Self {
-            from,
-            to,
+            shape,
             when: String::new(),
             duration_s: DEFAULT_DURATION_S,
             easing: DEFAULT_EASING,
@@ -83,7 +101,7 @@ impl MorphEdge {
         }
     }
 
-    /// **Esta seta responde a `action`?** ⛔ Uma seta sem condição não responde a nada.
+    /// **Esta forma responde a `action`?** ⛔ Um estado sem condição não responde a nada.
     #[must_use]
     pub fn matches(&self, action: &str) -> bool {
         !self.when.is_empty() && self.when == action
@@ -107,43 +125,47 @@ pub const DEFAULT_EASING: Easing = Easing {
     mode: EasingMode::Out,
 };
 
-/// **O GRAFO AUTORADO** — o que o artista desenhou no canvas.
+/// **A MÁQUINA AUTORADA** — que formas o objecto pode vestir, e o que leva a cada uma.
+///
+/// ⚠️ **Uma LISTA de estados, e não um grafo de arestas** (W10). As passagens continuam a existir
+/// — de qualquer estado para qualquer outro —, mas deixam de ser **guardadas**: elas são a
+/// consequência de haver `n` formas, e guardá-las obrigava o artista a escrever a mesma tecla
+/// `n-1` vezes para ela significar sempre a mesma coisa.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MorphGraph {
-    /// A forma em que a máquina nasce.
-    pub start: ShapeId,
-    pub edges: Vec<MorphEdge>,
+    /// As formas, na ordem em que o artista as escolheu. **A primeira é onde a máquina nasce.**
+    pub states: Vec<MorphState>,
 }
 
 impl MorphGraph {
-    /// **As setas que partem de `from`** — e é a ÚNICA porta pela qual se pergunta isso.
+    /// **A forma em que a máquina nasce** — a primeira da lista.
     ///
-    /// ⭐ **A correcção nº 1 que a pesquisa trouxe** ([doc 31](../../../docs/Vector%20Module/31_pesquisa_maquinas_de_estado.md)):
-    /// o *State Tree* do Unreal só considera as transições do estado **corrente**, e é isso que
-    /// impede o grafo de virar a teia que os utilizadores do Animator do Unity descrevem. Um
-    /// varrimento global de `edges` seria a versão errada — e é a que se escreve por acidente.
-    pub fn from(&self, from: ShapeId) -> impl Iterator<Item = (usize, &MorphEdge)> {
-        self.edges
-            .iter()
-            .enumerate()
-            .filter(move |(_, e)| e.from == from)
+    /// ⚠️ **DERIVADA, e não um campo ao lado.** Um `start: ShapeId` guardado podia apontar para uma
+    /// forma que a lista não tem — e é o tipo de discordância que passa MUDA por uma fusão, porque
+    /// nada no git sabe o que o número significa (`CLAUDE.md` §5.0).
+    #[must_use]
+    pub fn start(&self) -> Option<ShapeId> {
+        self.states.first().map(|s| s.shape)
     }
 
-    /// **Toda forma que o grafo nomeia**, em ordem de primeira aparição, com o `start` à frente.
+    /// **O estado que `action` alcança**, com o índice dele. ⛔ **É a ÚNICA porta** pela qual se
+    /// pergunta isso — uma segunda varredura noutro sítio daria uma resposta diferente no dia em
+    /// que duas formas partilhassem a tecla.
     ///
-    /// ⚠️ É o que o canvas percorre para desenhar as setas, e o que o painel lista. Derivar em vez
-    /// de guardar uma lista de estados é o que impede o grafo de ter um estado que nenhuma seta
-    /// alcança **e** uma seta para um estado que a lista não tem.
+    /// ⚠️ **A PRIMEIRA que casa ganha**, e a ordem é a da lista, que é a ordem em que o artista
+    /// escolheu as formas — a única ordem que ele pode ver e mudar.
+    #[must_use]
+    pub fn reached_by(&self, action: &str) -> Option<(usize, &MorphState)> {
+        self.states
+            .iter()
+            .enumerate()
+            .find(|(_, s)| s.matches(action))
+    }
+
+    /// **Toda forma que a máquina nomeia**, na ordem da lista.
+    #[must_use]
     pub fn shapes(&self) -> Vec<ShapeId> {
-        let mut out = vec![self.start];
-        for e in &self.edges {
-            for id in [e.from, e.to] {
-                if !out.contains(&id) {
-                    out.push(id);
-                }
-            }
-        }
-        out
+        self.states.iter().map(|s| s.shape).collect()
     }
 }
 
@@ -169,8 +191,8 @@ struct Flight {
 /// **A MÁQUINA** — onde ela está, para onde vai, e que par de formas a cena mostra agora.
 ///
 /// ⚠️ **Ela não é documento e não pode ser serializada:** é *onde a forma está agora*, e o ficheiro
-/// guarda *quais são as setas*. Gravá-la faria um projecto reabrir a meio de uma transição. Mesma
-/// lei, palavra por palavra, das `UiMachines` da ponte de estados de UI.
+/// guarda *que formas existem e o que leva a cada uma*. Gravá-la faria um projecto reabrir a meio
+/// de uma transição. Mesma lei, palavra por palavra, das `UiMachines` da ponte de estados de UI.
 #[derive(Clone, Debug)]
 pub struct MorphMachine {
     /// **Onde o VOO EM CURSO aterra** — e, em repouso, onde a máquina está.
@@ -213,9 +235,13 @@ impl MorphMachine {
     /// Uma máquina parada na forma inicial de `graph`.
     #[must_use]
     pub fn new(graph: &MorphGraph) -> Self {
+        // ⚠️ **`unwrap_or_default` e não um pânico:** uma lista vazia é uma máquina INERTE (o
+        // `reached_by` não acha nada e o `travel` recusa), e recusar aqui obrigaria todo chamador a
+        // tratar um caso que o produto não consegue produzir — o `morph_set` nunca cria menos de 2.
+        let start = graph.start().unwrap_or_default();
         Self {
-            current: graph.start,
-            pair: (graph.start, graph.start),
+            current: start,
+            pair: (start, start),
             t: 0.0,
             flight: None,
             pending: None,
@@ -250,76 +276,91 @@ impl MorphMachine {
         self.flight.is_some()
     }
 
-    /// **As acções que fazem alguma coisa DAQUI** — sem repetições, na ordem das setas.
+    /// **As acções que fazem alguma coisa DAQUI** — sem repetições, na ordem da lista.
     ///
     /// ⭐ **A correcção nº 2 da pesquisa** ([doc 31](../../../docs/Vector%20Module/31_pesquisa_maquinas_de_estado.md)):
     /// o medo que os utilizadores descrevem do Animator não é o grafo, é *não saber quem lê o meu
     /// input*. Esta função existe para a UI poder responder isso na tela — sem ela, a mesma
     /// pergunta seria respondida por um `for` escrito no painel, que é a segunda implementação.
+    ///
+    /// ⚠️ **Sob o modelo por-forma (W10) são TODAS menos a de onde já se está** — e é essa a
+    /// resposta certa: a tecla que leva à forma corrente não faz nada, e listá-la seria prometer um
+    /// efeito que não acontece.
     pub fn live_actions<'a>(&self, graph: &'a MorphGraph) -> Vec<&'a str> {
         let mut out: Vec<&str> = Vec::new();
-        for (_, e) in graph.from(self.current) {
-            if !e.when.is_empty() && !out.contains(&e.when.as_str()) {
-                out.push(&e.when);
+        for s in &graph.states {
+            if !s.when.is_empty() && s.shape != self.current && !out.contains(&s.when.as_str()) {
+                out.push(&s.when);
             }
         }
         out
     }
 
-    /// **A acção `action` aconteceu.** Devolve `true` se alguma seta a consumiu.
+    /// **A acção `action` aconteceu.** Devolve `true` se algum estado a consumiu.
     ///
-    /// ⚠️ **Só as setas do estado CORRENTE** — ver [`MorphGraph::from`]. E a **primeira** que casa
-    /// ganha: a ordem das setas é a ordem em que o artista as desenhou, que é a única ordem que ele
-    /// pode ver e mudar.
+    /// ⭐ **Sob o modelo por-forma (W10) a acção vale de QUALQUER estado** — é o pedido do Enio,
+    /// palavra por palavra: *"independente de que forma estiver ativa no momento"*.
+    ///
+    /// ⛔ **Menos uma: a tecla da forma em que já se está NÃO faz nada.** Ela seria uma transição
+    /// de uma forma para ela própria — nem sequer é exprimível (o `VecMorph` guardaria `(X, X)` e o
+    /// `t` andaria sobre um caminho de comprimento zero), e o artista leria um estremecimento sem
+    /// causa. *Chegar onde já se está não é chegar.*
     pub fn fire(&mut self, graph: &MorphGraph, action: &str) -> bool {
-        let Some((ix, _)) = graph.from(self.current).find(|(_, e)| e.matches(action)) else {
+        let Some((ix, st)) = graph.reached_by(action) else {
             return false;
         };
-        self.take_edge(graph, ix);
-        true
-    }
-
-    /// **Percorre a seta `ix` sem perguntar pela condição** — a porta da pré-visualização do
-    /// painel e do botão *Show*.
-    ///
-    /// ⚠️ Ela existe porque o artista tem de poder **ver** a seta que acabou de desenhar antes de
-    /// lhe dar nome; sem isto, uma seta sem condição seria indemonstrável.
-    pub fn travel(&mut self, graph: &MorphGraph, ix: usize) -> bool {
-        let Some(e) = graph.edges.get(ix) else {
-            return false;
-        };
-        if e.from != self.current {
+        if st.shape == self.current {
             return false;
         }
-        self.take_edge(graph, ix);
+        self.take(graph, ix);
         true
     }
 
-    fn take_edge(&mut self, graph: &MorphGraph, ix: usize) {
+    /// **Vai para o estado `ix` sem perguntar pela condição** — a porta da pré-visualização do
+    /// painel e do botão *Show*.
+    ///
+    /// ⚠️ Ela existe porque o artista tem de poder **ver** a forma antes de lhe dar tecla; sem
+    /// isto, um estado sem condição seria indemonstrável.
+    pub fn travel(&mut self, graph: &MorphGraph, ix: usize) -> bool {
+        let Some(st) = graph.states.get(ix) else {
+            return false;
+        };
+        if st.shape == self.current {
+            return false;
+        }
+        self.take(graph, ix);
+        true
+    }
+
+    fn take(&mut self, graph: &MorphGraph, ix: usize) {
         if self.flight.is_some() {
             // ⚠️ **A fila, e o `current` NÃO se mexe** — ver o doc dele.
             self.pending = Some(ix);
             return;
         }
-        self.launch(&graph.edges[ix]);
+        self.launch(&graph.states[ix]);
     }
 
     /// ⚠️ **O `current` salta AQUI**, no lançamento — é o único sítio.
-    fn launch(&mut self, e: &MorphEdge) {
-        self.current = e.to;
-        self.pair = (e.from, e.to);
+    ///
+    /// ⚠️ **O `from` é o estado CORRENTE**, e não um campo do destino: sob o modelo por-forma a
+    /// passagem não é guardada — ela é *de onde estou* para *onde a tecla leva*.
+    fn launch(&mut self, st: &MorphState) {
+        let from = self.current;
+        self.current = st.shape;
+        self.pair = (from, st.shape);
         self.t = 0.0;
         self.flight = Some(Flight {
-            pair: (e.from, e.to),
+            pair: (from, st.shape),
             elapsed: 0.0,
-            drive: match e.spring {
+            drive: match st.spring {
                 Some(spring) => Drive::Spring {
                     spring,
                     state: SpringState::at_rest(),
                 },
                 None => Drive::Curve {
-                    duration: e.duration_s.max(0.0),
-                    easing: e.easing,
+                    duration: st.duration_s.max(0.0),
+                    easing: st.easing,
                 },
             },
         });
@@ -360,14 +401,15 @@ impl MorphMachine {
             // O pedido que esperava a chegada — ver o doc de `pending`.
             //
             // ⚠️ **E ele é RECONFERIDO contra onde a máquina de facto chegou.** O artista pode ter
-            // apagado ou repontado a seta durante o voo (a pré-visualização corre enquanto ele
-            // edita), e uma seta cujo `from` já não é o estado corrente poria o par a saltar um
-            // estado. *Um índice guardado é uma afirmação sobre uma lista que pode ter mudado.*
+            // apagado ou repontado um estado durante o voo (a pré-visualização corre enquanto ele
+            // edita), e um índice que já não existe — ou que aponta para a forma em que se acabou
+            // de chegar — faria o par saltar um estado ou estremecer sobre si próprio.
+            // *Um índice guardado é uma afirmação sobre uma lista que pode ter mudado.*
             if let Some(ix) = self.pending.take()
-                && let Some(e) = graph.edges.get(ix)
-                && e.from == self.current
+                && let Some(st) = graph.states.get(ix)
+                && st.shape != self.current
             {
-                self.launch(e);
+                self.launch(st);
             }
         } else {
             self.flight = Some(f);

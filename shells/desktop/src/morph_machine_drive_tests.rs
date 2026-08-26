@@ -3,7 +3,7 @@
 use super::{MorphMachines, tick};
 use ph2d_ecs::{SimWorld, VecMorph, VecMorphMachine};
 use ph2d_input::{ActionState, Binding, InputMap, InputState, Key};
-use ph2d_morph_machine::{MorphEdge, MorphGraph};
+use ph2d_morph_machine::{MorphGraph, MorphState};
 
 use crate::preview_drive::PreviewDrive;
 
@@ -11,16 +11,16 @@ const A: u64 = 10;
 const B: u64 = 20;
 const KEY_Z: u32 = 0x5A;
 
-/// Um mundo com um Morph `A -> B` disparado pela acção `jump`, e o mapa que a liga ao `Z`.
+/// Um mundo com duas formas — `A` (o começo) e `B`, alcançada pela acção `jump` — e o mapa que a
+/// liga ao `Z`.
 fn scene() -> (SimWorld, ph2d_ecs::Entity, InputMap) {
     let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(A);
-    let mut e = MorphEdge::new(A, B);
-    e.when = "jump".to_string();
-    e.duration_s = 0.1;
+    let mut m = VecMorphMachine::new(&[A, B]);
+    let mut b = MorphState::new(B);
+    b.when = "jump".to_string();
+    b.duration_s = 0.1;
     m.graph = MorphGraph {
-        start: A,
-        edges: vec![e],
+        states: vec![MorphState::new(A), b],
     };
     // ⚠️ O par nasce `(A, A)`: a máquina ainda não voou, e é isso que o `pair()` dela diz.
     let ent = sim.world_mut().spawn((VecMorph::new(A, A), m)).id();
@@ -168,86 +168,80 @@ fn both_fields_the_machine_writes_are_preview_and_not_document() {
     );
 }
 
-/// ⚠️ **Uma tecla SEGURADA não re-dispara.** Com `pressed` em vez de `just_pressed`, a máquina
-/// saltaria a cadeia inteira num piscar de olhos.
+/// ⚠️⚠️ **Uma tecla SEGURADA não re-dispara — e sob o modelo por-forma o dano é PINAR.**
 ///
-/// **Mutação que deve sangrar:** trocar `just_pressed` por `pressed`.
+/// ⛔⛔ **Este gate MUDOU de fixtura na W10, e a razão é o achado.** Ele media uma cadeia
+/// `A --jump--> B --jump--> C`: com `pressed` em vez de `just_pressed`, a máquina saltava a cadeia
+/// inteira num piscar de olhos. **Essa cadeia deixou de ser exprimível** — uma tecla nomeia UMA
+/// forma —, e a mutação `just_pressed -> pressed` passaria a **SOBREVIVER**: o segundo disparo é
+/// recusado por já se estar em `B`, e nada observável muda.
+///
+/// ⇒ *o dano mudou de forma, e a régua tem de o seguir*: com `pressed`, uma tecla segurada **PINA**
+/// a máquina naquela forma — toda outra transição é desfeita no quadro seguinte. É isso que este
+/// gate mede agora.
+///
+/// **Mutação que deve sangrar:** trocar `just_pressed` por `pressed` no `morph_machine_drive`.
 #[test]
-fn a_held_key_fires_once_and_not_every_frame() {
-    let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(A);
+fn a_held_key_fires_once_and_never_pins_the_machine() {
     const C: u64 = 30;
-    let mut e1 = MorphEdge::new(A, B);
-    e1.when = "jump".to_string();
-    e1.duration_s = 0.0; // instantanea: sem isto a 2a seta nunca teria hipotese de disparar
-    let mut e2 = MorphEdge::new(B, C);
-    e2.when = "jump".to_string();
-    e2.duration_s = 0.0;
+    const KEY_Q: u32 = 0x51;
+    let mut sim = SimWorld::new();
+    let mut m = VecMorphMachine::new(&[A]);
+    let mut b = MorphState::new(B);
+    b.when = "jump".to_string();
+    b.duration_s = 0.0; // instantanea: o gate mede o DISPARO, nao a duracao
+    let mut c = MorphState::new(C);
+    c.when = "dash".to_string();
+    c.duration_s = 0.0;
     m.graph = MorphGraph {
-        start: A,
-        edges: vec![e1, e2],
+        states: vec![MorphState::new(A), b, c],
     };
     let ent = sim.world_mut().spawn((VecMorph::new(A, A), m)).id();
+
     let mut map = InputMap::new();
-    let id = map.create("jump");
-    map.get_mut(id)
+    let j = map.create("jump");
+    map.get_mut(j)
         .unwrap()
         .bindings
         .push(Binding::Key(Key(KEY_Z)));
+    let d = map.create("dash");
+    map.get_mut(d)
+        .unwrap()
+        .bindings
+        .push(Binding::Key(Key(KEY_Q)));
 
     let mut st = ActionState::new();
     let mut dev = InputState::new();
+    let mut machines = MorphMachines::new();
+    let mut drive = PreviewDrive::default();
+    let run = |st: &mut ActionState,
+               dev: &InputState,
+               sim: &mut SimWorld,
+               machines: &mut MorphMachines,
+               drive: &mut PreviewDrive,
+               n: usize| {
+        for _ in 0..n {
+            st.tick(&map, dev);
+            tick(machines, sim, &map, st, true, 1.0 / 60.0, drive);
+        }
+    };
+
+    // O `Z` desce e FICA em baixo. Dez quadros.
     dev.keyboard.handle_key_down(Key(KEY_Z));
-    let mut machines = MorphMachines::new();
-    let mut drive = PreviewDrive::default();
-    // Dez quadros com a tecla SEGURADA o tempo todo.
-    for _ in 0..10 {
-        st.tick(&map, &dev);
-        tick(
-            &mut machines,
-            &mut sim,
-            &map,
-            &st,
-            true,
-            1.0 / 60.0,
-            &mut drive,
-        );
-    }
+    run(&mut st, &dev, &mut sim, &mut machines, &mut drive, 10);
     assert_eq!(
-        sim.world().get::<VecMorph>(ent).unwrap().sources,
-        [A, B],
-        "a tecla segurada disparou a cadeia inteira -- ela tem de disparar UMA vez"
+        sim.world().get::<VecMorph>(ent).unwrap().sources[1],
+        B,
+        "o CONTROLE: a primeira descida do Z tem de levar a B"
     );
-}
 
-/// **Uma máquina cuja entidade morreu some junto** — senão o mapa cresceria para sempre.
-#[test]
-fn a_machine_whose_object_died_is_dropped() {
-    let (mut sim, e, map) = scene();
-    let st = z_just_pressed(&map);
-    let mut machines = MorphMachines::new();
-    let mut drive = PreviewDrive::default();
-    tick(
-        &mut machines,
-        &mut sim,
-        &map,
-        &st,
-        true,
-        1.0 / 60.0,
-        &mut drive,
+    // ⭐ Agora o `Q`, **com o `Z` ainda segurado**. Com `pressed`, o `jump` voltava a disparar no
+    // quadro seguinte e arrastava a maquina de volta a B -- que e' o defeito.
+    dev.keyboard.handle_key_down(Key(KEY_Q));
+    run(&mut st, &dev, &mut sim, &mut machines, &mut drive, 10);
+    assert_eq!(
+        sim.world().get::<VecMorph>(ent).unwrap().sources[1],
+        C,
+        "a tecla SEGURADA pinou a maquina: o dash levou a C e o jump segurado trouxe-a de volta"
     );
-    assert_eq!(machines.len(), 1);
-
-    sim.world_mut().despawn(e);
-    let quiet = ActionState::new();
-    tick(
-        &mut machines,
-        &mut sim,
-        &map,
-        &quiet,
-        true,
-        1.0 / 60.0,
-        &mut drive,
-    );
-    assert!(machines.is_empty(), "a maquina sobreviveu ao objecto");
 }

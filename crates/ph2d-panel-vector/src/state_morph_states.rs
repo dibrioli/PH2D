@@ -8,17 +8,21 @@
 use ph2d_editor_core::zones::Rect;
 use std::cell::{Cell, RefCell};
 
-/// Uma linha da lista — **uma seta**.
+/// Uma linha da lista — **uma FORMA**, e o que leva até ela.
+///
+/// ⭐⭐ **Era uma seta (`de` → `para`) até 2026-08-25** (W10). Enio: *"em vez de um evento para cada
+/// transição, melhor seria um evento por shape"* ⇒ a linha deixou de ter um `from`, porque a tecla
+/// vale **de qualquer forma**. A lista encolheu de `n(n-1)` para `n`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MorphArrowRow {
-    /// O nome da forma de onde ela parte. ⚠️ **Nome e não id**: o artista escolheu formas, e um
-    /// número não lhe diz qual delas é. Sem `Name` no documento, a shell cai num rótulo genérico —
-    /// o nome é dado do documento, nunca copy de UI.
-    pub from: String,
+pub struct MorphShapeRow {
+    /// O nome da forma. ⚠️ **Nome e não id**: o artista escolheu formas, e um número não lhe diz
+    /// qual delas é. Sem `Name` no documento, a shell cai num rótulo derivado do id — o nome é dado
+    /// do documento, nunca copy de UI.
     pub to: String,
-    /// A acção que a dispara. **Vazio = sem condição** — a seta só corre pela pré-visualização.
+    /// A acção que LEVA a esta forma, de onde quer que a máquina esteja. **Vazio = inalcançável por
+    /// tecla** — a forma só é visitada pela pré-visualização.
     pub when: String,
-    /// **Esta é a seta que a cena está a percorrer AGORA.**
+    /// **Esta é a forma que a cena mostra AGORA.**
     pub live: bool,
 }
 
@@ -29,7 +33,7 @@ pub struct MorphStatesState {
     ///
     /// ⚠️ **Vazio NÃO é "não há máquina"**: é *"há um Morph e ele ainda não tem setas"*, e as duas
     /// pintam faces diferentes — a segunda diz **como** desenhar a primeira.
-    pub rows: Vec<MorphArrowRow>,
+    pub rows: Vec<MorphShapeRow>,
     /// **As acções do Input Map**, para o menu da condição.
     ///
     /// ⭐ Publicadas, nunca lidas pelo painel: elas são conteúdo autorado do projecto, e uma
@@ -61,15 +65,15 @@ thread_local! {
     /// ⚠️ **Mora AQUI, e não com os irmãos**, porque o `state.rs` bateu no teto de 600 LOC no dia
     /// em que este slot lá entrou — e o corte por ASSUNTO já era o certo: este slot fala de setas,
     /// e é neste ficheiro que as setas vivem.
-    static PENDING_WHEN_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
+    static PENDING_KEY_DD: Cell<Option<(usize, Rect)>> = const { Cell::new(None) };
 }
 
-pub(crate) fn set_pending_morph_when_dd(row_rect: Option<(usize, Rect)>) {
-    PENDING_WHEN_DD.with(|c| c.set(row_rect));
+pub(crate) fn set_pending_morph_key_dd(row_rect: Option<(usize, Rect)>) {
+    PENDING_KEY_DD.with(|c| c.set(row_rect));
 }
 
-pub(crate) fn take_pending_morph_when_dd() -> Option<(usize, Rect)> {
-    PENDING_WHEN_DD.with(|c| c.take())
+pub(crate) fn take_pending_morph_key_dd() -> Option<(usize, Rect)> {
+    PENDING_KEY_DD.with(|c| c.take())
 }
 
 /// Publica o estado da seleção (shell → painel). `None` = a seleção não é um Morph.

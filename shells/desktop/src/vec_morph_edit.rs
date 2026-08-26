@@ -6,7 +6,7 @@
 //! pintar divergiria da que HONRA o clique.
 
 use ph2d_ecs::{Entity, Name, SimWorld, VecMorph, VecMorphMachine};
-use ph2d_panel_vector::state::{MorphArrowRow, MorphStatesState};
+use ph2d_panel_vector::state::{MorphShapeRow, MorphStatesState};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
@@ -16,7 +16,7 @@ use crate::vec_entities::VecEntityMap;
 /// ⚠️ Uma tabela e não uma cadeia de `if`: o verbo seguinte entra numa linha, e quem esquecer a
 /// linha vê o botão morto **no gate de costura** — em vez de o ver a cair no `None` em silêncio.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ArrowCmd {
+pub(crate) enum MorphCmd {
     /// **Fazer o conjunto** com as formas da seleção (plano 32 W8).
     MakeSet,
     /// Pôr a condição da seta `row` na acção `action` — **`0` é o «—»**, sem condição.
@@ -30,15 +30,15 @@ pub(crate) enum ArrowCmd {
 
 /// **O comando que um `NodeId` pede**, ou `None` se ele não é de uma seta.
 #[must_use]
-pub(crate) fn arrow_cmd_for_id(id: ph2d_editor::NodeId) -> Option<ArrowCmd> {
+pub(crate) fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
     use ph2d_editor::ids as i;
     if id == i::VECTOR_MORPH_STATES_MAKE {
-        return Some(ArrowCmd::MakeSet);
+        return Some(MorphCmd::MakeSet);
     }
-    for row in 0..i::MAX_MORPH_ARROWS {
+    for row in 0..i::MAX_MORPH_STATES {
         for action in 0..i::MAX_MORPH_ACTIONS {
-            if id == i::morph_arrow_when_option_id(row, action) {
-                return Some(ArrowCmd::SetWhen { row, action });
+            if id == i::morph_shape_key_option_id(row, action) {
+                return Some(MorphCmd::SetWhen { row, action });
             }
         }
     }
@@ -124,14 +124,15 @@ pub(crate) fn publish(
         .world()
         .get::<VecMorph>(e)
         .map(|v| (v.sources[0], v.sources[1]));
+    // ⭐⭐ **UMA LINHA POR FORMA** (W10) — e a `live` é *a forma que a cena mostra AGORA*, que é o
+    // destino do último voo (`sources[1]`), nunca o par.
     let rows = graph.as_ref().map_or_else(Vec::new, |g| {
-        g.edges
+        g.states
             .iter()
-            .map(|edge| MorphArrowRow {
-                from: shape_name(sim, map, scene, edge.from),
-                to: shape_name(sim, map, scene, edge.to),
-                when: edge.when.clone(),
-                live: live == Some((edge.from, edge.to)),
+            .map(|st| MorphShapeRow {
+                to: shape_name(sim, map, scene, st.shape),
+                when: st.when.clone(),
+                live: live.is_some_and(|(_, to)| to == st.shape),
             })
             .collect()
     });
@@ -155,7 +156,7 @@ pub(crate) fn publish(
 /// ⚠️ **`actions` é a MESMA lista que o menu mostrou**, passada de fora: resolvê-la aqui a partir
 /// do mapa seria uma segunda leitura, e as duas divergiriam no quadro em que o artista criasse uma
 /// acção — o índice escolhido apontaria para outro nome.
-pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: ArrowCmd, actions: &[String]) -> bool {
+pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: MorphCmd, actions: &[String]) -> bool {
     let Some(mut m) = sim.world_mut().get_mut::<VecMorphMachine>(morph) else {
         return false;
     };
@@ -164,9 +165,9 @@ pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: ArrowCmd, actions: &
         // cena vetorial — nada disso cabe numa função que só tem o componente de um objecto que
         // ainda não existe. Ele é servido pelo [`crate::morph_set`], e este braço é a prova de que
         // a tabela é exaustiva.
-        ArrowCmd::MakeSet => false,
-        ArrowCmd::SetWhen { row, action } => {
-            let Some(e) = m.graph.edges.get_mut(row) else {
+        MorphCmd::MakeSet => false,
+        MorphCmd::SetWhen { row, action } => {
+            let Some(e) = m.graph.states.get_mut(row) else {
                 return false;
             };
             // ⚠️ **O índice `0` é o «—»** — tirar a condição tem de ser um gesto, senão o artista

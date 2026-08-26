@@ -35,7 +35,7 @@
 //! o trabalho do arrasto.
 
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine, Visibility};
-use ph2d_morph_machine::{MorphEdge, MorphGraph};
+use ph2d_morph_machine::{MorphGraph, MorphState};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
 use crate::vec_entities::VecEntityMap;
@@ -94,29 +94,33 @@ pub(crate) fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) ->
     out
 }
 
-/// ⭐ **O GRAFO COMPLETO DIRIGIDO** sobre `shapes` — *"todas as morphs possíveis entre todas as
-/// formas (tanto de ida como de volta)"*.
+/// ⭐⭐ **A LISTA DE ESTADOS** sobre `shapes` — uma entrada por forma, **sem tecla nenhuma**.
 ///
-/// `n(n-1)` arestas, todas **sem condição**: uma passagem que existe e nunca acontece até o artista
-/// lhe dar uma acção. ⚠️ É esta a razão de não haver lixeira na lista — desligar é tirar a
-/// condição, e o conjunto de arestas é uma função pura das formas.
+/// # ⛔⛔ Isto era o GRAFO COMPLETO, e a W10 apagou-o
 ///
-/// ⚠️ **A ordem das arestas é determinística** (`from` externo, `to` interno, ambos na ordem dos
-/// membros): a lista do painel indexa por posição, e uma ordem que dependesse de iteração de mapa
-/// faria o menu de uma linha escrever a condição noutra depois de um undo.
+/// Até 2026-08-25 esta função devolvia `n(n-1)` arestas, uma por par ordenado — *"todas as morphs
+/// possíveis, de ida e de volta"*. Enio, no smoke seguinte:
+///
+/// > *"em vez de um evento para cada transição, melhor seria um evento por shape (…) se a seta para
+/// > cima leva ao retângulo azul, independente de que forma estiver ativa no momento, a seta para
+/// > cima vai levar ao retângulo azul (…) assim reduzimos o número de transições no painel para o
+/// > número de formas envolvidas."*
+///
+/// ⚠️ **As passagens não desapareceram — deixaram de ser GUARDADAS.** De qualquer forma continua a
+/// dar para ir a qualquer outra; o que era guardado `n(n-1)` vezes é a **condição**, e ela pertence
+/// ao destino. Guardá-la por par obrigava o artista a escrever a mesma tecla `n-1` vezes para ela
+/// significar sempre a mesma coisa — e nada impedia que as `n-1` discordassem.
+///
+/// ⭐ **A lista encolhe de `n(n-1)` para `n`:** com 9 formas, de **72** linhas no painel para
+/// **9**.
+///
+/// ⚠️ **A ordem é a dos membros, e a primeira é onde a máquina nasce** (o `start` é derivado —
+/// [`MorphGraph::start`]). A lista do painel indexa por posição, então uma ordem que dependesse de
+/// iteração de mapa faria o menu de uma linha escrever a tecla noutra depois de um undo.
 #[must_use]
-pub(crate) fn complete_digraph(shapes: &[VecPathId]) -> MorphGraph {
-    let mut edges = Vec::with_capacity(shapes.len().saturating_mul(shapes.len().saturating_sub(1)));
-    for &from in shapes {
-        for &to in shapes {
-            if from != to {
-                edges.push(MorphEdge::new(from, to));
-            }
-        }
-    }
+pub(crate) fn states_for(shapes: &[VecPathId]) -> MorphGraph {
     MorphGraph {
-        start: shapes.first().copied().unwrap_or_default(),
-        edges,
+        states: shapes.iter().map(|&s| MorphState::new(s)).collect(),
     }
 }
 
@@ -171,7 +175,7 @@ pub(crate) fn upkeep(
         return;
     }
     let start = p.members[0];
-    let graph = complete_digraph(&p.members);
+    let graph = states_for(&p.members);
     let members: Vec<Entity> = p
         .members
         .iter()

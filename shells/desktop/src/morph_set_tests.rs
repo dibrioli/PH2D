@@ -1,7 +1,7 @@
 //! Os gates do CONJUNTO de estados (plano 32 W8) — a **lei** do grafo, e a **costura** que a
 //! aplica ao mundo.
 
-use super::{complete_digraph, create, eligible, upkeep};
+use super::{create, eligible, states_for, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine, Visibility};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
@@ -25,80 +25,74 @@ fn world(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
     (sim, scene, map, ids)
 }
 
-/// ⭐ **TODAS as morphs possíveis, de ida E de volta** — `n(n-1)`, sem laço e sem repetida.
+/// ⭐⭐⭐ **UMA ENTRADA POR FORMA, e a tecla pertence ao DESTINO** — a lei da W10.
 ///
-/// **Mutação que deve sangrar:** trocar `from != to` por `true` — nasceriam `n` laços (uma forma
-/// que transita para si própria), e a lista mostraria linhas `S0 -> S0` que nunca fazem nada.
+/// Enio, 2026-08-25: *"em vez de um evento para cada transição, melhor seria um evento por shape
+/// (…) assim reduzimos o número de transições no painel para o número de formas envolvidas."*
 ///
-/// **Segunda mutação:** emitir só `from < to` — metade das setas, e o artista que fosse de `S0`
-/// para `S1` **nunca mais voltaria**.
+/// **Mutação que deve sangrar:** o `states_for` voltar a emitir um par ordenado por passagem — a
+/// lista cresce para `n(n-1)` e o artista escreve a mesma tecla `n-1` vezes.
 #[test]
-fn the_graph_covers_every_ordered_pair_in_both_directions() {
+fn the_list_has_one_entry_per_shape_and_nothing_more() {
     for n in 2..=6usize {
         let shapes: Vec<VecPathId> = (1..=n as u64).collect();
-        let g = complete_digraph(&shapes);
+        let g = states_for(&shapes);
         assert_eq!(
-            g.edges.len(),
-            n * (n - 1),
-            "com {n} formas o grafo completo tem n(n-1) arestas"
+            g.states.len(),
+            n,
+            "com {n} formas a lista tem {n} entradas -- uma por forma, nao uma por passagem"
         );
-        for &a in &shapes {
-            for &b in &shapes {
-                if a == b {
-                    assert!(
-                        !g.edges.iter().any(|e| e.from == a && e.to == b),
-                        "um laco {a}->{a} e' uma transicao que nunca faz nada"
-                    );
-                } else {
-                    assert_eq!(
-                        g.edges.iter().filter(|e| e.from == a && e.to == b).count(),
-                        1,
-                        "a passagem {a}->{b} tem de existir EXACTAMENTE uma vez"
-                    );
-                }
-            }
-        }
+        assert_eq!(
+            g.shapes(),
+            shapes,
+            "e na ordem em que o artista as escolheu"
+        );
     }
+    // ⭐ O CONTROLE que dá o número: com 9 formas (o tecto), a lista tem **9** linhas e nao 72.
+    assert_eq!(states_for(&(1..=9).collect::<Vec<u64>>()).states.len(), 9);
 }
 
-/// **A primeira forma da seleção é o estado inicial.**
+/// **A primeira forma escolhida é onde a máquina nasce — e o `start` é DERIVADO.**
 ///
-/// **Mutação que deve sangrar:** `shapes.last()` — o conjunto nasceria a mostrar a última forma
-/// escolhida, e o artista que escolheu da esquerda para a direita veria a da direita.
+/// **Mutação que deve sangrar:** o `start()` devolver `states.last()` — o conjunto nasceria a
+/// mostrar a última forma escolhida, e o artista que escolheu da esquerda para a direita veria a
+/// da direita.
 #[test]
 fn the_first_shape_chosen_is_the_start() {
-    let g = complete_digraph(&[7, 3, 9]);
-    assert_eq!(g.start, 7);
-    // O CONTROLE: sem formas nenhumas não há `start` inventado nem pânico.
-    assert_eq!(complete_digraph(&[]).edges.len(), 0);
+    let g = states_for(&[7, 3, 9]);
+    assert_eq!(g.start(), Some(7));
+    // O CONTROLE: sem formas nenhumas nao ha' `start` inventado nem panico.
+    assert_eq!(states_for(&[]).start(), None);
 }
 
-/// ⭐ **A ORDEM das arestas é determinística** — a lista do painel indexa por POSIÇÃO.
+/// ⭐ **A ORDEM da lista é determinística** — o painel indexa por POSIÇÃO.
 ///
-/// ⚠️ Sem isto o menu «When» da linha 3 escreveria a condição noutra transição depois de um undo, e
-/// o artista não teria como saber. É a mesma razão do `BTreeMap` da física.
+/// ⚠️ Sem isto o menu «When» da linha 3 escreveria a tecla noutra forma depois de um undo, e o
+/// artista não teria como saber. É a mesma razão do `BTreeMap` da física.
 #[test]
-fn the_edge_order_is_stable_so_a_row_index_means_one_thing() {
-    let a = complete_digraph(&[10, 20, 30]);
-    let b = complete_digraph(&[10, 20, 30]);
-    let key = |g: &ph2d_morph_machine::MorphGraph| -> Vec<(u64, u64)> {
-        g.edges.iter().map(|e| (e.from, e.to)).collect()
-    };
-    assert_eq!(key(&a), key(&b));
-    // E a ordem é a dos MEMBROS, não a dos ids: começar por 30 muda a lista.
-    assert_ne!(key(&a), key(&complete_digraph(&[30, 20, 10])));
+fn the_state_order_is_stable_so_a_row_index_means_one_thing() {
+    assert_eq!(states_for(&[10, 20, 30]).shapes(), vec![10, 20, 30]);
+    assert_ne!(
+        states_for(&[10, 20, 30]).shapes(),
+        states_for(&[30, 20, 10]).shapes(),
+        "a ordem e' a dos MEMBROS, nunca a dos ids"
+    );
 }
 
-/// ⭐ **Toda transição nasce SEM condição** — existe e nunca acontece.
+/// ⭐ **Toda forma nasce SEM tecla** — alcançável só pela pré-visualização.
 ///
-/// ⚠️ É a metade que torna o grafo completo seguro: se cada aresta nascesse com uma acção, um
-/// conjunto de 9 formas nasceria com 72 regras a disparar todas na primeira tecla.
+/// ⚠️ É a metade que torna a lista segura: se cada forma nascesse com uma acção, um conjunto de 9
+/// nasceria com 9 regras a disparar todas na primeira tecla.
 #[test]
-fn every_transition_is_born_silent() {
-    let g = complete_digraph(&[1, 2, 3]);
+fn every_state_is_born_silent() {
+    let g = states_for(&[1, 2, 3]);
     assert!(
-        g.edges.iter().all(|e| e.when.is_empty()),
-        "uma seta com condicao de fabrica dispara sem ninguem a ter pedido"
+        g.states.iter().all(|s| s.when.is_empty()),
+        "uma forma com tecla de fabrica seria alcancada sem ninguem a ter pedido"
+    );
+    assert!(
+        g.reached_by("jump").is_none(),
+        "e nenhuma acao pode alcancar coisa nenhuma"
     );
 }
 
@@ -154,10 +148,9 @@ fn the_set_owns_the_shapes_hides_them_and_shows_the_start() {
             .get::<VecMorphMachine>(host)
             .expect("e tem maquina")
             .graph
-            .edges
-            .len(),
-        6,
-        "tres formas => 3x2 transicoes"
+            .shapes(),
+        ids,
+        "tres formas => TRES estados, na ordem em que foram escolhidas (W10)"
     );
     assert!(
         sim.world().get::<Visibility>(host).is_none(),

@@ -1,8 +1,8 @@
 //! Os gates da costura das setas — **a lei**, que não precisa de janela, e o **fio**, que só se lê.
 
-use super::{ArrowCmd, apply, arrow_cmd_for_id, morph_of_selection, publish};
+use super::{MorphCmd, apply, morph_cmd_for_id, morph_of_selection, publish};
 use ph2d_ecs::{Name, SimWorld, VecMorph, VecMorphMachine};
-use ph2d_morph_machine::{MorphEdge, MorphGraph};
+use ph2d_morph_machine::{MorphGraph, MorphState};
 
 const A: u64 = 10;
 const B: u64 = 20;
@@ -13,12 +13,11 @@ fn actions() -> Vec<String> {
 
 fn world() -> (SimWorld, ph2d_ecs::Entity) {
     let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(A);
-    let mut jump = MorphEdge::new(A, B);
-    jump.when = "jump".to_string();
+    let mut m = VecMorphMachine::new(&[A]);
+    let mut b = MorphState::new(B);
+    b.when = "jump".to_string();
     m.graph = MorphGraph {
-        start: A,
-        edges: vec![jump, MorphEdge::new(B, A)],
+        states: vec![MorphState::new(A), b],
     };
     let e = sim.world_mut().spawn((VecMorph::new(A, B), m)).id();
     (sim, e)
@@ -33,19 +32,19 @@ fn every_arrow_row_resolves_to_its_own_command() {
     use ph2d_editor::ids as i;
     // ⭐ O botão que FAZ o conjunto (W8) — ele é o único controlo da seção sem máquina nenhuma.
     assert_eq!(
-        arrow_cmd_for_id(i::VECTOR_MORPH_STATES_MAKE),
-        Some(ArrowCmd::MakeSet)
+        morph_cmd_for_id(i::VECTOR_MORPH_STATES_MAKE),
+        Some(MorphCmd::MakeSet)
     );
-    for row in 0..i::MAX_MORPH_ARROWS {
+    for row in 0..i::MAX_MORPH_STATES {
         assert_eq!(
-            arrow_cmd_for_id(i::morph_arrow_when_option_id(row, 3)),
-            Some(ArrowCmd::SetWhen { row, action: 3 }),
+            morph_cmd_for_id(i::morph_shape_key_option_id(row, 3)),
+            Some(MorphCmd::SetWhen { row, action: 3 }),
             "a opcao 3 da linha {row} nao resolve"
         );
     }
     // O CONTROLE: um id que não é da seção tem de devolver `None`, senão a tabela engoliria
     // cliques alheios.
-    assert_eq!(arrow_cmd_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
+    assert_eq!(morph_cmd_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
 }
 
 /// ⭐ **A CONDIÇÃO é escolhida pelo ÍNDICE do menu, e o `0` é o «—».**
@@ -58,23 +57,23 @@ fn the_first_option_clears_the_condition_and_the_rest_pick_an_action() {
     assert!(apply(
         &mut sim,
         e,
-        ArrowCmd::SetWhen { row: 1, action: 2 },
+        MorphCmd::SetWhen { row: 1, action: 2 },
         &actions()
     ));
     assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.edges[1].when,
+        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
         "dash"
     );
     assert!(apply(
         &mut sim,
         e,
-        ArrowCmd::SetWhen { row: 1, action: 0 },
+        MorphCmd::SetWhen { row: 1, action: 0 },
         &actions()
     ));
     assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.edges[1].when,
+        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
         "",
-        "o «—» tem de LIMPAR a condicao"
+        "o «—» tem de LIMPAR a tecla da forma"
     );
 }
 
@@ -87,44 +86,44 @@ fn an_index_beyond_the_published_list_refuses() {
     assert!(!apply(
         &mut sim,
         e,
-        ArrowCmd::SetWhen { row: 0, action: 99 },
+        MorphCmd::SetWhen { row: 1, action: 99 },
         &actions()
     ));
     assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.edges[0].when,
+        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
         "jump",
-        "a condicao antiga tem de ficar intacta"
+        "a tecla antiga tem de ficar intacta"
     );
 }
 
-/// ⛔ **NÃO HÁ como apagar uma transição, e a ausência é a lei da W8.**
+/// ⛔ **NÃO HÁ como apagar uma linha, e a ausência é a lei.**
 ///
-/// O grafo é o completo dirigido sobre as formas do conjunto — **derivado**, não autorado. Apagar
-/// uma aresta seria apagar uma passagem que a próxima derivação repõe; *desligar é tirar a
-/// condição*, e uma seta sem condição existe e nunca acontece.
+/// A lista **É** o conjunto de formas do objecto. Apagar uma linha seria tirar uma forma do
+/// conjunto — outro gesto, que ainda não existe. *Desligar uma forma é tirar-lhe a tecla* (o «—»
+/// do menu), e uma forma sem tecla existe e nunca é alcançada.
 ///
 /// ⚠️ **Este gate mede a AUSÊNCIA pelo lado que o artista alcança:** nenhum id da seção resolve
 /// para outra coisa que não `MakeSet` ou `SetWhen`. Um verbo destrutivo que voltasse a ser
 /// alcançável sangraria aqui.
 #[test]
-fn no_id_in_the_section_asks_to_destroy_an_edge() {
+fn no_id_in_the_section_asks_to_destroy_a_state() {
     use ph2d_editor::ids as i;
     let mut seen = 0usize;
-    for row in 0..i::MAX_MORPH_ARROWS {
+    for row in 0..i::MAX_MORPH_STATES {
         for a in 0..i::MAX_MORPH_ACTIONS {
-            let cmd = arrow_cmd_for_id(i::morph_arrow_when_option_id(row, a));
-            assert!(matches!(cmd, Some(ArrowCmd::SetWhen { .. })));
+            let cmd = morph_cmd_for_id(i::morph_shape_key_option_id(row, a));
+            assert!(matches!(cmd, Some(MorphCmd::SetWhen { .. })));
             seen += 1;
         }
     }
     // O CONTROLE POSITIVO: o laço de facto correu sobre o pool inteiro.
-    assert_eq!(seen, i::MAX_MORPH_ARROWS * i::MAX_MORPH_ACTIONS);
-    // E o grafo continua intacto depois de o único verbo de seta correr.
+    assert_eq!(seen, i::MAX_MORPH_STATES * i::MAX_MORPH_ACTIONS);
+    // E a lista continua intacta depois de o único verbo dela correr.
     let (mut sim, e) = world();
     assert!(apply(
         &mut sim,
         e,
-        ArrowCmd::SetWhen { row: 0, action: 0 },
+        MorphCmd::SetWhen { row: 1, action: 0 },
         &actions()
     ));
     assert_eq!(
@@ -132,10 +131,10 @@ fn no_id_in_the_section_asks_to_destroy_an_edge() {
             .get::<VecMorphMachine>(e)
             .unwrap()
             .graph
-            .edges
+            .states
             .len(),
         2,
-        "tirar a condicao NAO tira a seta"
+        "tirar a tecla NAO tira a forma da lista"
     );
 }
 
@@ -226,7 +225,7 @@ fn the_arrow_click_reaches_the_world() {
     let shell = include_str!("render_loop/mod.rs");
     for (needle, what) in [
         (
-            "crate::vec_morph_edit::arrow_cmd_for_id(*id)",
+            "crate::vec_morph_edit::morph_cmd_for_id(*id)",
             "RESOLVER o id do clique",
         ),
         (
@@ -251,7 +250,7 @@ fn the_arrow_click_reaches_the_world() {
     // existente. Sem esta linha o botão pinta, acende e o clique morre no `else if` do irmão.
     for (needle, what) in [
         (
-            "pending_morph_arrow == Some(crate::vec_morph_edit::ArrowCmd::MakeSet)",
+            "pending_morph_arrow == Some(crate::vec_morph_edit::MorphCmd::MakeSet)",
             "reconhecer o pedido de FAZER o conjunto",
         ),
         (
@@ -352,7 +351,7 @@ fn the_arrow_click_reaches_the_world() {
             "o interruptor da pre-visualizacao",
         ),
         (
-            "morph_arrow_when_option_id(r, a)",
+            "morph_shape_key_option_id(r, a)",
             "a opcao do menu da condicao",
         ),
     ] {

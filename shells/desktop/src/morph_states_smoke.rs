@@ -140,7 +140,7 @@ fn announce(app: &crate::App) {
          Shift+clique na verde e na amarela."
     );
     eprintln!(
-        "  2. No painel, abra a seccao **Morph States**. Ela diz «3 shapes -> 6 transitions» e \
+        "  2. No painel, abra a seccao **Morph States**. Ela diz «3 shapes, one key each» e \
          traz o botao **Make Morph States**. Carregue nele."
     );
     eprintln!(
@@ -150,8 +150,8 @@ fn announce(app: &crate::App) {
     eprintln!(
         "  3. O que tem de acontecer, tudo de uma vez: na arvore nasce **Morph States 3**, com as \
          tres formas por baixo dele; **no canvas fica UMA forma so'** (a azul, que era a primeira \
-         escolhida) **no MEIO de onde as tres estavam**; e o painel passa a listar **6** \
-         transicoes -- ida e volta entre todas."
+         escolhida) **no MEIO de onde as tres estavam**; e o painel lista **TRES** linhas, uma \
+         por forma -- nao seis, nao doze."
     );
     eprintln!(
         "     (!) Se continuar a ver as tres formas espalhadas, PARE: as outras duas deviam ter \
@@ -163,8 +163,9 @@ fn announce(app: &crate::App) {
          Se precisar de varios Ctrl+Z, PARE. Depois **Ctrl+Shift+Z** para refazer e continuar."
     );
     eprintln!(
-        "  5. Na lista, cada linha tem um menu **When**. Ponha **jump** em **Wide -> Tall**, em \
-         **Tall -> Thin** e em **Thin -> Wide**. Deixe as outras tres no tracinho."
+        "  5. Cada linha e' uma FORMA, e tem um menu **Key**: a tecla que LEVA aquela forma, \
+         venha-se de onde se vier. Ponha **jump** na linha **Tall** e **dash** na linha **Thin**. \
+         Deixe a **Wide** no tracinho."
     );
     eprintln!(
         "     (!) O menu so' oferece accoes que existem no projecto -- e' de proposito, e e' por \
@@ -175,12 +176,13 @@ fn announce(app: &crate::App) {
          aparece «Preview on -- the keyboard drives the machine. Esc exits.»"
     );
     eprintln!(
-        "  7. Agora carregue em **{jump}**: a forma vira a seguinte. Outra vez: vira a terceira. \
-         E outra vez: volta a' primeira."
+        "  7. Agora carregue em **{jump}**: vira a **Tall**. Carregue em **{dash}**: vira a \
+         **Thin**. E **{jump}** outra vez: volta a' Tall -- a MESMA tecla leva sempre a' MESMA \
+         forma, venha-se de onde se vier. E' esta a mudanca."
     );
     eprintln!(
-        "     (!) SEGURE a tecla em vez de a bater: ela tem de disparar **uma** vez, nao percorrer \
-         a cadeia inteira num piscar de olhos."
+        "     (!) SEGURE o **{jump}** e carregue no **{dash}**: tem de ir para a Thin e FICAR la'. \
+         Se voltar sozinha para a Tall, PARE -- a tecla segurada esta' a pinar a maquina."
     );
     eprintln!(
         "  8. O CONTROLE QUE IMPORTA: com o **Preview** ligado, carregue nas **setas do teclado**. \
@@ -201,8 +203,7 @@ fn announce(app: &crate::App) {
          sitio NOVO, nao no antigo."
     );
     eprintln!(
-        " 12. Volte ao painel e ponha **dash** ({dash}) numa das transicoes que ficou no \
-         tracinho, saindo da forma em que voce' esta'. Com o Preview ligado, as duas teclas passam \
-         a levar a sitios diferentes a partir da mesma forma."
+        " 12. O ULTIMO: com o Preview ligado e estando na **Tall**, carregue em **{jump}** (que \
+         e' a tecla da Tall). Nada pode mexer-se -- chegar onde ja' se esta' nao e' chegar."
     );
 }

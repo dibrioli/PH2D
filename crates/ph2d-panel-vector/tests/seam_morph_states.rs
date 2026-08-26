@@ -21,7 +21,7 @@ use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_vector::state::{
-    MorphArrowRow, MorphStatesState, UiStatesState, VectorPanelState, set_morph_states_state,
+    MorphShapeRow, MorphStatesState, UiStatesState, VectorPanelState, set_morph_states_state,
     set_ui_states_state,
 };
 use ph2d_panel_vector::{VectorPanel, ids};
@@ -56,21 +56,19 @@ fn clear() {
 fn machine() -> MorphStatesState {
     MorphStatesState {
         rows: vec![
-            MorphArrowRow {
-                from: "Wide".into(),
-                to: "Tall".into(),
-                when: "jump".into(),
-                live: true,
-            },
-            MorphArrowRow {
-                from: "Tall".into(),
+            MorphShapeRow {
                 to: "Wide".into(),
                 when: String::new(),
+                live: true,
+            },
+            MorphShapeRow {
+                to: "Tall".into(),
+                when: "jump".into(),
                 live: false,
             },
         ],
         actions: vec!["jump".into(), "dash".into()],
-        current: Some("Tall".into()),
+        current: Some("Wide".into()),
         can_make: 0,
         preview: false,
     }
@@ -229,16 +227,16 @@ fn the_condition_menu_of_every_row_is_alive() {
     set_morph_states_state(Some(machine()));
     for row in 0..machine().rows.len() {
         assert!(
-            painted(ids::morph_arrow_when_id(row)).is_some(),
+            painted(ids::morph_shape_key_id(row)).is_some(),
             "o chip «When» da transicao {row} nao foi pintado"
         );
     }
     // E a opção dentro do menu chega ao bus — ela é o que de facto escreve no mundo.
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut ps = VectorPanelState;
-    let opt = ids::morph_arrow_when_option_id(0, 1);
+    let opt = ids::morph_shape_key_option_id(0, 1);
     let chip = host
-        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::morph_arrow_when_id(0))
+        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::morph_shape_key_id(0))
         .expect("o chip existe");
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
     let evs = host.dispatch_pointer_event(pointer(

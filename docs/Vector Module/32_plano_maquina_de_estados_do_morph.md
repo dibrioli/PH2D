@@ -499,3 +499,123 @@ Os outros mediam **componentes**; nenhum media o que sai no canvas — e o par d
 igual deixaria o path **vazio**: o artista carregava no botão, as formas escolhidas desapareciam
 (ficam ocultas) e **nada** aparecia no lugar delas. *Contar o trabalho FEITO não é contar o trabalho
 ENTREGUE.*
+
+---
+
+## §7 — ⭐⭐⭐ W10: a tecla pertence à FORMA, e a lista encolhe de `n(n-1)` para `n`
+
+> Enio, 2026-08-25:
+>
+> > *"em vez de um evento para cada transição, melhor seria um evento por shape. Ou seja: se a seta
+> > para cima leva ao retângulo azul, independente de que forma estiver ativa no momento, a seta
+> > para cima vai levar ao retângulo azul, ou seja: todas as transições que levam ao retângulo azul
+> > tem o mesmo evento gatilho na máquina de estados. assim reduzimos o número de transições no
+> > painel para o número de formas envolvidas."*
+
+### §7.1 — O que mudou, e por que é MODELO e não painel
+
+| | W8/W9 | **W10** |
+|---|---|---|
+| o que se guarda | `n(n-1)` **arestas** (`from`, `to`, `when`, ritmo) | `n` **estados** (`shape`, `when`, ritmo) |
+| a quem pertence a condição | à **passagem** | ao **destino** |
+| linhas no painel com 9 formas | **72** | **9** |
+| a mesma tecla, escrita quantas vezes | `n-1` | **1** |
+
+⚠️ **As passagens não desapareceram — deixaram de ser GUARDADAS.** De qualquer forma continua a dar
+para ir a qualquer outra: isso é consequência de haver `n` formas, e guardá-lo obrigava o artista a
+escrever a mesma tecla `n-1` vezes **sem nada a impedir que as `n-1` discordassem**.
+
+⭐ **O `start` também deixou de ser um campo** — ele é `states.first()`. Um `start: ShapeId` guardado
+podia apontar para uma forma que a lista não tem, e essa discordância passa **muda** por uma fusão
+(`CLAUDE.md` §5.0: *o git não sabe o que o número significa*).
+
+⛔ **O que isto apaga, e é deliberado:** a possibilidade de a mesma tecla levar a sítios diferentes
+conforme o estado. É literalmente o pedido (*"independente de que forma estiver ativa"*), e é
+também a teia que a [pesquisa 31](31_pesquisa_maquinas_de_estado.md) descreve como o medo do
+Animator do Unity.
+
+⛔ **Uma lei NOVA que o modelo obriga:** *chegar onde já se está não é chegar.* A tecla da forma
+corrente **não faz nada** — ela seria uma transição de uma forma para ela própria, que nem sequer é
+exprimível (o `VecMorph` guardaria `(X, X)` e o `t` andaria sobre um caminho de comprimento zero) e
+que o artista leria como um estremecimento sem causa.
+
+### §7.2 — ⚠️ O formato quebra, e **só agora** isso é de graça
+
+`VecMorphMachine` viaja como `ComponentBlob`, e um blob que não descodifica **aborta o carregamento
+inteiro** (`snapshot_to_world` propaga com `?`). ⇒ mudar a forma do componente parte todo
+`.ph2dproj` que contenha um.
+
+⭐ **Medido antes de mexer:** o componente nasceu **nesta linha**, hoje, nunca foi integrado e não
+existe ficheiro nenhum que o contenha (`git log main -- vec_morph_machine.rs` é vazio; não há
+`.ph2dproj` no repo). *A janela em que uma mudança de modelo custa zero é exactamente esta, e ela
+fecha na integração.*
+
+### §7.3 — ⚠️ O TECTO era 9 e passou a 118, pela MESMA regra
+
+O `9` da W8 não era sobre formas — era sobre o **relógio de pintura** de `n(n-1)` linhas a
+`0,0104 ms` cada, sob a regra *«esta seção sozinha nunca custa mais do que TODO o resto do painel
+junto»*. Com `n` linhas, a mesma sonda e a mesma regra (painel sem a seção: `0,726 ms`):
+
+| formas = linhas | painel | delta da seção | % de 16,7 ms |
+|---:|---:|---:|---:|
+| 9 | `0,824 ms` | `0,085 ms` | 4,93 % |
+| 64 | `1,128 ms` | `0,389 ms` | 6,75 % |
+| **118** | **`1,457 ms`** | **`0,731 ms`** | **8,73 %** |
+| 122 | `1,492 ms` | `0,765 ms` | 8,93 % |
+
+⇒ **118**, e o antigo `9` custa hoje **um nono** do que custava. *Quem move o número que tornava
+algo inalcançável tem de reconferir a nota* — e aqui o que se moveu não foi o tecto, foi o
+**expoente**.
+
+⛔ A constante `MAX_MORPH_ARROWS` **morreu**: *quantas formas* e *quantas linhas* passaram a ser o
+mesmo número, e duas constantes para uma pergunta divergem.
+
+### §7.4 — ⭐ Um gate que a mudança de modelo teria deixado verde sobre nada
+
+`a_held_key_fires_once_and_not_every_frame` media uma **cadeia** `A --jump--> B --jump--> C`: com
+`pressed` em vez de `just_pressed`, a máquina saltava a cadeia inteira num quadro.
+
+**Essa cadeia deixou de ser exprimível** (uma tecla nomeia UMA forma) ⇒ a mutação
+`just_pressed → pressed` passaria a **SOBREVIVER**: o segundo disparo é recusado por já se estar em
+`B`, e nada observável muda.
+
+⇒ *o dano mudou de forma, e a régua tem de o seguir.* Com `pressed`, uma tecla segurada **PINA** a
+máquina naquela forma — toda outra transição é desfeita no quadro seguinte. O gate passou a
+`a_held_key_fires_once_and_never_pins_the_machine` e mede isso: segura `jump`, carrega `dash`, e a
+máquina **fica** em C.
+
+⚠️ **É o mesmo mecanismo do achado da W9** (o `select_many` sem gate), do outro lado: ali uma
+afirmação sem gate; aqui um gate cujo alvo o modelo dissolveu. *Uma mudança de modelo tem de
+re-perguntar o que cada gate ainda mede.*
+
+### §7.5 — As provas de mutação da W10 (6, todas sangraram)
+
+| mutação | gate |
+|---|---|
+| a acção deixa de valer de qualquer estado | `the_same_action_reaches_the_same_shape_from_anywhere` |
+| a tecla da forma corrente volta a re-disparar | `the_key_of_the_shape_you_are_already_on_does_nothing` |
+| o `start` vira a **última** forma | `the_shapes_are_the_list_and_the_start_is_the_first` |
+| `live_actions` promete a tecla de onde já se está | `live_actions_names_only_what_does_something_from_here` |
+| a lista deixa de ter uma entrada por forma | `the_list_has_one_entry_per_shape_and_nothing_more` |
+| a tecla segurada **pina** a máquina | `a_held_key_fires_once_and_never_pins_the_machine` |
+
+### §7.6 — ⚠️ E os NOMES foram renomeados, porque passaram a mentir
+
+O modelo deixou de ter arestas e os símbolos continuavam a dizer `arrow`. A casa tem lei sobre isto
+([`feedback_stale_comment_and_dead_code_lie`](../../project-memory/feedback_stale_comment_and_dead_code_lie.md)):
+*um nome que mente é um defeito* — e o próximo agente grepa por `arrow` e acha uma lista de FORMAS.
+
+| era | é | ×  |
+|---|---|---:|
+| `ArrowCmd` | `MorphCmd` | 19 |
+| `MorphArrowRow` | `MorphShapeRow` | 10 |
+| `morph_arrow_when_option_id` | `morph_shape_key_option_id` | 11 |
+| `morph_arrow_when_id` | `morph_shape_key_id` | 7 |
+| `arrow_cmd_for_id` | `morph_cmd_for_id` | 8 |
+| `arrow_head_row` / `arrow_when_row` | `shape_name_row` / `shape_key_row` | 4 |
+| `VECTOR_MORPH_ARROWS_LABEL` | `VECTOR_MORPH_SHAPES_LABEL` | 1 |
+
+⚠️ **Renomear os ids muda o `NodeId`** (eles são hash da string) — o `node_id_collisions` re-confere,
+e nada externo os alcança. ⚠️ E cada troca correu com **`assert` de contagem**: um `replace` que não
+casa é no-op **silencioso**, e o script imprime sucesso na mesma
+([memória](../../project-memory/feedback_python_replace_silent_noop_after_fmt.md)).

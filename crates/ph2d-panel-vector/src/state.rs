@@ -124,9 +124,9 @@ pub(crate) use pending_dd::{
 /// está a percorrer.
 #[path = "state_morph_states.rs"]
 mod morph_states_state;
-pub use morph_states_state::{MorphArrowRow, MorphStatesState, set_morph_states_state};
+pub use morph_states_state::{MorphShapeRow, MorphStatesState, set_morph_states_state};
 pub(crate) use morph_states_state::{
-    morph_states_state, set_pending_morph_when_dd, take_pending_morph_when_dd,
+    morph_states_state, set_pending_morph_key_dd, take_pending_morph_key_dd,
 };
 
 /// **COM QUE TINTA a forma aparece** — o tipo de preenchimento, o ângulo do gradiente, os dois

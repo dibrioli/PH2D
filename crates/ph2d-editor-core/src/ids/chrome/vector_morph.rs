@@ -40,36 +40,40 @@ pub const VECTOR_MORPH_PREVIEW: NodeId = hash_node_id("vector.morph.preview");
 /// **QUANTAS FORMAS um conjunto de estados aceita** — e o recurso é o **relógio de pintura do
 /// painel**, medido.
 ///
-/// ⚠️ **O número que manda é este, e não o de setas:** o artista escolhe FORMAS, e o grafo é o
-/// completo dirigido sobre elas ⇒ [`MAX_MORPH_ARROWS`] é **derivado**, nunca escrito à mão. Um par
-/// de constantes independentes seria duas respostas à mesma pergunta.
+/// ⚠️ **Ele é também o tamanho do POOL de linhas**: desde a W10 a lista tem **uma entrada por
+/// forma**, então *quantas formas* e *quantas linhas* passaram a ser o mesmo número. ⛔ A constante
+/// `MAX_MORPH_ARROWS` que vivia aqui **morreu** — duas constantes para uma pergunta divergem.
 ///
-/// # A medição (2026-08-25, `MockPanelHost` a pintar o painel Vector inteiro, release)
+/// # ⭐⭐ Este número era **9**, e a W10 dissolveu o que o segurava
 ///
-/// O painel **sem** esta seção custa `0,746 ms`. Cada linha de seta acrescenta `0,0104 ms`, linear:
+/// O tecto anterior saiu de a lista ser o **grafo completo**: `n(n-1)` linhas, `0,0104 ms` cada.
+/// A regra era *«esta seção sozinha nunca custa mais do que TODO o resto do painel junto»*, e ela
+/// cruzava em `n = 9` (72 linhas, `0,752 ms` contra `0,746 ms`).
 ///
-/// | formas | setas `n(n-1)` | painel | delta da seção | % de um quadro de 16,7 ms |
-/// |---:|---:|---:|---:|---:|
-/// | 7 | 42 | `1,181 ms` | `0,435 ms` | 7,07 % |
-/// | 8 | 56 | `1,330 ms` | `0,584 ms` | 7,97 % |
-/// | **9** | **72** | **`1,497 ms`** | **`0,752 ms`** | **8,97 %** |
-/// | 10 | 90 | `1,699 ms` | `0,954 ms` | 10,18 % |
-/// | 11 | 110 | `1,899 ms` | `1,154 ms` | 11,37 % |
+/// A W10 pôs a tecla no **destino** ⇒ a lista passou a ter `n` linhas. A MESMA regra, com a MESMA
+/// sonda, mede agora (2026-08-25, `MockPanelHost` a pintar o painel Vector inteiro, release; o
+/// painel **sem** esta seção custa `0,726 ms`):
 ///
-/// ⇒ **9 é o último `n` em que esta seção sozinha não custa mais do que TODO o resto do painel
-/// junto** (`0,752` contra `0,746`). Em 10 ela passa a custar mais que todas as outras seções
-/// somadas, e o painel inteiro existe para responder a mais perguntas do que esta.
+/// | formas = linhas | painel | delta da seção | % de um quadro de 16,7 ms |
+/// |---:|---:|---:|---:|
+/// | 9 | `0,824 ms` | `0,085 ms` | 4,93 % |
+/// | 32 | `0,953 ms` | `0,215 ms` | 5,71 % |
+/// | 64 | `1,128 ms` | `0,389 ms` | 6,75 % |
+/// | 114 | `1,430 ms` | `0,704 ms` | 8,56 % |
+/// | **118** | **`1,457 ms`** | **`0,731 ms`** | **8,73 %** |
+/// | 122 | `1,492 ms` | `0,765 ms` | 8,93 % |
 ///
-/// ⛔ **O pool de ids NÃO é o recurso** — foi a primeira hipótese e a medição refutou-a: registar
-/// 132 linhas × 25 widgets custa `0,293 ms` **uma vez**, no `populate`, e nunca por quadro.
+/// ⇒ **118 é o último `n` que a regra aceita** — e o antigo `9` custa hoje `0,085 ms`, **um nono**
+/// do que custava. *Quem move o número que tornava algo inalcançável tem de reconferir a nota*
+/// (`CLAUDE.md` §0.0), e o que se move aqui não é o tecto: é o **expoente**.
+///
+/// ⛔ **O pool de ids NÃO é o recurso** — medido: `118 × 25 = 2 950` widgets custam `~0,29 ms`
+/// **uma vez**, no `populate`, e nunca por quadro.
 ///
 /// ⛔ **A régua não fica como gate.** Ela divide dois relógios, que é exactamente a família de
-/// flakes sob fan-out do `CLAUDE.md` §5.0 — a tabela acima é o registo, e re-medir é rodar a sonda.
-pub const MAX_MORPH_STATES: usize = 9;
-
-/// **Quantas setas a seção mostra** — `n(n-1)`, o grafo completo dirigido sobre
-/// [`MAX_MORPH_STATES`] formas. **Derivado**, e é isso que impede as duas de divergirem.
-pub const MAX_MORPH_ARROWS: usize = MAX_MORPH_STATES * (MAX_MORPH_STATES - 1);
+/// flakes sob fan-out do `CLAUDE.md` §5.0 — as tabelas acima são o registo, e re-medir é rodar a
+/// sonda.
+pub const MAX_MORPH_STATES: usize = 118;
 
 /// **Quantas acções o menu da condição oferece.** É o pool de ids do popover.
 ///
@@ -79,7 +83,7 @@ pub const MAX_MORPH_ACTIONS: usize = 24;
 
 /// O chip da CONDIÇÃO da seta `row` — abre o menu das acções do Input Map.
 #[must_use]
-pub fn morph_arrow_when_id(row: usize) -> NodeId {
+pub fn morph_shape_key_id(row: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.morph.arrow.when.{row}"))
 }
 
@@ -89,9 +93,9 @@ pub fn morph_arrow_when_id(row: usize) -> NodeId {
 /// gesto — e, desde a W8, é **a única maneira de desligar uma transição**. O grafo é completo por
 /// construção, então uma seta sem acção é uma passagem que existe e **nunca acontece**.
 #[must_use]
-pub fn morph_arrow_when_option_id(row: usize, action: usize) -> NodeId {
+pub fn morph_shape_key_option_id(row: usize, action: usize) -> NodeId {
     fnv_node_id_runtime(&format!("vector.morph.arrow.when.{row}.{action}"))
 }
 
 /// O cabeçalho da sub-lista das setas, dentro da seção.
-pub const VECTOR_MORPH_ARROWS_LABEL: NodeId = hash_node_id("vector.morph.arrows.label");
+pub const VECTOR_MORPH_SHAPES_LABEL: NodeId = hash_node_id("vector.morph.arrows.label");

@@ -3050,7 +3050,7 @@ impl crate::App {
             // **A BOOLEANA VIVA** (plano UI/UX W1): o Apply consolida o que o produtor cozinhou
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
-            let mut pending_morph_arrow: Option<crate::vec_morph_edit::ArrowCmd> = None;
+            let mut pending_morph_arrow: Option<crate::vec_morph_edit::MorphCmd> = None;
             let mut pending_morph_preview_toggle = false;
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
@@ -3515,10 +3515,10 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_MORPH_PREVIEW {
                                 // ⭐⭐ **O MODO em que o teclado é da máquina** (plano 32 W9). Ele
                                 // NÃO é um verbo de seta — não toca o grafo —, então tem rota
-                                // própria em vez de um variant no `ArrowCmd`, cujo assunto é *o que
+                                // própria em vez de um variant no `MorphCmd`, cujo assunto é *o que
                                 // muda no documento*. É a mesma separação do irmão das poses.
                                 pending_morph_preview_toggle = true;
-                            } else if let Some(cmd) = crate::vec_morph_edit::arrow_cmd_for_id(*id) {
+                            } else if let Some(cmd) = crate::vec_morph_edit::morph_cmd_for_id(*id) {
                                 // ⭐ A seção MORPH STATES (plano 32 W4/W8): fazer o conjunto, ou
                                 // escolher a acção que dispara uma transição. As duas mexem no
                                 // MUNDO, então o clique é da shell — o painel só mostra.
@@ -8611,7 +8611,7 @@ impl crate::App {
                 // com todas as transições ligadas. ⚠️ **Porta própria e não o `apply`**: ele age
                 // sobre o componente de um Morph que aqui ainda **não existe**, e é o `sync` do
                 // quadro seguinte que faz nascer a entidade — daí o pendente.
-                if pending_morph_arrow == Some(crate::vec_morph_edit::ArrowCmd::MakeSet) {
+                if pending_morph_arrow == Some(crate::vec_morph_edit::MorphCmd::MakeSet) {
                     if let Some(p) = crate::morph_set::create(
                         sim,
                         vec_scene,

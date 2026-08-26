@@ -25,13 +25,23 @@
 //! - **sem máquina**, com 2+ formas escolhidas: o botão que as transforma no conjunto;
 //! - **com máquina**: as `n(n-1)` transições, cada uma com a acção que a dispara.
 //!
-//! ⛔ **Não há gesto de desenhar seta, e não há lixeira.** O grafo é o completo dirigido sobre as
-//! formas do conjunto — **derivado**, não autorado —, então acrescentar ou apagar uma seta seria
-//! mexer numa resposta que a derivação repõe. *Desligar uma transição é tirar-lhe a condição.*
+//! # ⭐⭐⭐ E a tecla pertence à FORMA (W10)
 //!
-//! # Duas linhas por seta, e a segunda é a que evita a mentira
+//! Enio, no smoke seguinte: *"em vez de um evento para cada transição, melhor seria um evento por
+//! shape (…) se a seta para cima leva ao retângulo azul, independente de que forma estiver ativa no
+//! momento, a seta para cima vai levar ao retângulo azul (…) assim reduzimos o número de transições
+//! no painel para o número de formas envolvidas."*
 //!
-//! A primeira diz **de onde para onde**; a segunda traz a **condição**. É o mesmo corte do
+//! ⇒ a lista tem **uma linha por FORMA**, e não uma por passagem: de `n(n-1)` para `n`. Com 9
+//! formas, de **72** linhas para **9**.
+//!
+//! ⛔ **Não há gesto de acrescentar linha, e não há lixeira.** A lista **É** o conjunto de formas do
+//! objecto — tirar uma seria tirar uma forma do conjunto, que é outro gesto e ainda não existe.
+//! *Desligar uma forma é tirar-lhe a tecla*, e uma forma sem tecla existe e nunca é alcançada.
+//!
+//! # Duas linhas por forma, e a segunda é a que evita a mentira
+//!
+//! A primeira diz **que forma é**; a segunda traz a **tecla que leva até ela**. É o mesmo corte do
 //! `paint_signals`, e pela mesma razão: espremer as duas numa linha só daria um chip de meia dúzia
 //! de caracteres, e o artista não conseguiria ler a acção que escolheu.
 //!
@@ -70,11 +80,11 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        self.morph_arrow_rows(&s, y)
+        self.morph_shape_rows(&s, y)
     }
 
-    /// **As setas desta máquina** — ou a face que oferece o botão que a cria.
-    fn morph_arrow_rows(&mut self, s: &MorphStatesState, y: f32) -> f32 {
+    /// **As formas desta máquina** — ou a face que oferece o botão que a cria.
+    fn morph_shape_rows(&mut self, s: &MorphStatesState, y: f32) -> f32 {
         // ⭐ **A FACE DE CRIAÇÃO vem PRIMEIRO quando não há máquina**, e ela é a seção inteira: sem
         // conjunto não há transição nenhuma de que falar, e um cabeçalho «Transitions» por cima de
         // nada leria como avaria.
@@ -96,14 +106,15 @@ impl BodyCtx<'_> {
             y = self.label_line(&format!("{} {cur}", tr("panel.vector.morph.current")), y);
         }
 
-        let shown = s.rows.len().min(ids::MAX_MORPH_ARROWS);
+        let shown = s.rows.len().min(ids::MAX_MORPH_STATES);
         for (i, row) in s.rows.iter().enumerate().take(shown) {
-            y = self.arrow_head_row(row, y);
-            y = self.arrow_when_row(i, row, &s.actions, y);
+            y = self.shape_name_row(row, y);
+            y = self.shape_key_row(i, row, &s.actions, y);
         }
         // ⚠️ **Acima do tecto a lista DIZ o que ficou de fora**, em vez de o esconder: o grafo
-        // continua a funcionar (a máquina percorre todas as setas), e é o painel que não as mostra.
-        // Um corte silencioso far-lhe-ia procurar uma seta que ele tem a certeza de ter desenhado.
+        // continua a funcionar (a máquina alcança todas as formas), e é o painel que não as
+        // mostra. Um corte silencioso far-lhe-ia procurar uma forma que ele tem a certeza de ter
+        // escolhido.
         if s.rows.len() > shown {
             y = self.label_line(
                 &format!(
@@ -170,18 +181,11 @@ impl BodyCtx<'_> {
                 y,
             );
         }
-        // ⚠️ A conta das transições é a MESMA lei do produto (`n(n-1)`), dita antes do clique: o
-        // botão promete um número, e é esse número que a lista vai mostrar.
+        // ⚠️ **A promessa é a MESMA lei do produto, dita antes do clique** — e desde a W10 ela é
+        // *«uma tecla por forma»*, não uma contagem de passagens. O botão promete `n` linhas, e é
+        // `n` linhas que a lista mostra. ⛔ A conta `n(n-1)` que vivia aqui morreu com o modelo.
         let n = s.can_make;
-        let y = self.label_line(
-            &format!(
-                "{n} {} {} {}",
-                tr("panel.vector.morph.make.shapes"),
-                n * (n - 1),
-                tr("panel.vector.morph.make.transitions")
-            ),
-            y,
-        );
+        let y = self.label_line(&format!("{n} {}", tr("panel.vector.morph.make.shapes")), y);
         self.action_button(
             ids::VECTOR_MORPH_STATES_MAKE,
             tr("panel.vector.morph.make"),
@@ -189,41 +193,45 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// A linha de CIMA: `de -> para`, e o realce de quem está a correr AGORA.
+    /// A linha de CIMA: **o nome da forma**, e o realce de quem está na tela AGORA.
     ///
-    /// ⛔ **Não há lixeira, e a ausência é a lei da W8:** o grafo é o COMPLETO dirigido sobre as
-    /// formas do conjunto, gerado — não autorado. Apagar uma linha seria apagar uma passagem que a
-    /// próxima derivação repõe. *Desligar uma transição é tirar-lhe a condição* (o «—» do menu
-    /// abaixo), e uma seta sem condição existe e nunca acontece.
-    fn arrow_head_row(&mut self, row: &state::MorphArrowRow, y: f32) -> f32 {
+    /// ⭐⭐ **Era `de -> para` até 2026-08-25** (W10): a tecla pertence ao DESTINO, então a linha
+    /// deixou de precisar da origem — ela vale de qualquer forma. É isso que encolhe a lista de
+    /// `n(n-1)` para `n`.
+    ///
+    /// ⛔ **Não há lixeira, e a ausência é a lei:** a lista É o conjunto de formas do objecto.
+    /// Apagar uma linha seria tirar uma forma do conjunto, que é outro gesto (e ele ainda não
+    /// existe). *Desligar uma forma é tirar-lhe a tecla* — o «—» do menu abaixo —, e uma forma sem
+    /// tecla existe e nunca é alcançada.
+    fn shape_name_row(&mut self, row: &state::MorphShapeRow, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
-        // ⛔ **`->` em ASCII, e não a seta tipográfica.** A fonte da casa não cobre o bloco de
-        // setas do Unicode (U+2190..U+21FF) e o glifo sairia como uma caixa vazia — há gate a
-        // varrer isto (`no_tofu_glyphs`), e ele já mordeu três vezes neste repo.
-        let text = format!("{} -> {}", row.from, row.to);
-        // ⭐ **A seta VIVA diz-se pelo texto**, porque é a única linha da lista que descreve o
-        // presente e não uma regra. Sem marca nenhuma, uma lista de `n(n-1)` linhas não responde à
-        // pergunta que o artista faz enquanto toca: *qual delas está a acontecer?*
+        // ⭐ **A forma VIVA diz-se pelo texto**, porque é a única linha da lista que descreve o
+        // presente e não uma regra. Sem marca nenhuma, a lista não responde à pergunta que o
+        // artista faz enquanto toca: *em qual delas estou?*
+        //
+        // ⛔ **ASCII**, e não uma seta tipográfica: a fonte da casa não cobre o bloco de setas do
+        // Unicode (U+2190..U+21FF) e o glifo sairia como uma caixa vazia — há gate a varrer isto
+        // (`no_tofu_glyphs`), e ele já mordeu três vezes neste repo.
         let shown = if row.live {
-            format!("{} {text}", tr("panel.vector.morph.live_mark"))
+            format!("{} {}", tr("panel.vector.morph.live_mark"), row.to)
         } else {
-            text
+            row.to.clone()
         };
         self.label_line_in(&shown, Rect::new(self.inner_x, y, self.inner_w, self.row_h));
         y + self.row_h + gap
     }
 
     /// A linha de BAIXO: a CONDIÇÃO, num menu das acções do Input Map.
-    fn arrow_when_row(
+    fn shape_key_row(
         &mut self,
         i: usize,
-        row: &state::MorphArrowRow,
+        row: &state::MorphShapeRow,
         actions: &[String],
         y: f32,
     ) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_line_in(
-            tr("panel.vector.morph.when"),
+            tr("panel.vector.morph.reached_by"),
             Rect::new(self.inner_x, y, LABEL_COL_W, self.row_h),
         );
         let chip = Rect::new(
@@ -232,7 +240,7 @@ impl BodyCtx<'_> {
             (self.inner_w - LABEL_COL_W - gap).max(1.0),
             self.row_h,
         );
-        let id = ids::morph_arrow_when_id(i);
+        let id = ids::morph_shape_key_id(i);
         let open = matches!(
             self.store.get(id),
             Some(InteractiveState::Dropdown { open: true, .. })
@@ -252,17 +260,17 @@ impl BodyCtx<'_> {
         self.hit_index.register(id, chip);
         if open {
             let _ = actions;
-            state::set_pending_morph_when_dd(Some((i, chip)));
+            state::set_pending_morph_key_dd(Some((i, chip)));
         }
         y + self.row_h + gap
     }
 }
 
-/// **O menu das acções do Input Map** para a condição da seta `row` — pintado no passe DIFERIDO,
+/// **O menu das acções do Input Map** para a tecla da forma `row` — pintado no passe DIFERIDO,
 /// por cima de todas as seções. Espelho exacto do `paint_filters_blend::paint_blend_popover`.
 ///
-/// ⚠️ **A opção `0` é o «—»** (sem condição): tirar a condição tem de ser um gesto, senão o artista
-/// só poderia apagar a seta inteira para se arrepender.
+/// ⚠️ **A opção `0` é o «—»** (sem tecla): tirá-la tem de ser um gesto, e desde a W10 é **a única
+/// maneira de desligar uma forma** — a lista não tem lixeira, porque ela É o conjunto de formas.
 ///
 /// ⚠️ **As acções saem da lista PUBLICADA**, nunca de uma leitura do painel: elas são conteúdo
 /// autorado do projecto, e uma segunda leitura aqui envelheceria no dia em que ele criasse uma.
@@ -279,10 +287,10 @@ pub(crate) fn paint_when_popover(
     let Some(s) = state::morph_states_state() else {
         return;
     };
-    let Some(arrow) = s.rows.get(row) else {
+    let Some(shape_row) = s.rows.get(row) else {
         return;
     };
-    let id = ids::morph_arrow_when_id(row);
+    let id = ids::morph_shape_key_id(row);
     // O «—» à frente, e depois as acções — ATÉ ao pool de ids que o `populate` registou.
     let mut labels: Vec<&str> = vec![tr("panel.vector.morph.when.none")];
     labels.extend(
@@ -291,11 +299,14 @@ pub(crate) fn paint_when_popover(
             .map(String::as_str)
             .take(ids::MAX_MORPH_ACTIONS - 1),
     );
-    let sel = labels.iter().position(|l| *l == arrow.when).unwrap_or(0);
+    let sel = labels
+        .iter()
+        .position(|l| *l == shape_row.when)
+        .unwrap_or(0);
     let options: Vec<DropdownOption<usize>> = labels
         .iter()
         .enumerate()
-        .map(|(i, l)| DropdownOption::new(ids::morph_arrow_when_option_id(row, i), i, *l))
+        .map(|(i, l)| DropdownOption::new(ids::morph_shape_key_option_id(row, i), i, *l))
         .collect();
     let dd = Dropdown::new(id, "", options).selected(sel).open(true);
 
@@ -333,7 +344,7 @@ pub(crate) fn paint_when_popover(
         let bot = (r.y + r.h).min(panel.y + panel.h);
         if bot - top >= 1.0 {
             hit_index.register(
-                ids::morph_arrow_when_option_id(row, i),
+                ids::morph_shape_key_option_id(row, i),
                 Rect::new(r.x, top, r.w, bot - top),
             );
         }

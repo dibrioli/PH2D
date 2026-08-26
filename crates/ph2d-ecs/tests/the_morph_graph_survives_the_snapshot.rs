@@ -15,7 +15,7 @@ use ph2d_ecs::scene::{
     ComponentRegistry, ComponentSnapshot, extract_component_snapshot, register_ecs_components,
 };
 use ph2d_ecs::{VecMorph, VecMorphMachine};
-use ph2d_morph_machine::{MorphEdge, MorphGraph};
+use ph2d_morph_machine::{MorphGraph, MorphState};
 
 fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::default();
@@ -24,21 +24,20 @@ fn registry() -> ComponentRegistry {
 }
 
 fn authored() -> VecMorphMachine {
-    let mut m = VecMorphMachine::new(10);
-    let mut jump = MorphEdge::new(10, 20);
+    let mut m = VecMorphMachine::new(&[10]);
+    let mut jump = MorphState::new(20);
     jump.when = "jump".to_string();
     jump.duration_s = 0.4;
-    let mut dash = MorphEdge::new(20, 30);
+    let mut dash = MorphState::new(30);
     dash.when = "dash".to_string();
     dash.spring = Some(Default::default());
     m.graph = MorphGraph {
-        start: 10,
-        edges: vec![jump, dash],
+        states: vec![MorphState::new(10), jump, dash],
     };
     m
 }
 
-/// **O que o artista desenhou volta inteiro** — as setas, as condições e o ritmo de cada uma.
+/// **O que o artista autorou volta inteiro** — as formas, as teclas e o ritmo de cada uma.
 ///
 /// **Mutação que deve sangrar:** tirar o `reg.register::<VecMorphMachine>` do registo — o snapshot
 /// DESCARTA o componente em silêncio e o undo/save perdem o grafo.
@@ -61,7 +60,7 @@ fn the_arrows_and_their_conditions_come_back() {
     assert_eq!(
         back.get::<VecMorphMachine>(e2),
         Some(&authored()),
-        "as setas nao sobreviveram ao snapshot"
+        "a maquina nao sobreviveu ao snapshot"
     );
     assert_eq!(
         back.get::<VecMorph>(e2).map(|m| m.sources),
@@ -89,8 +88,8 @@ fn a_morph_without_arrows_comes_back_without_them() {
     );
     assert!(
         back.get::<VecMorphMachine>(e2).is_none(),
-        "uma maquina nasceu do nada -- um ficheiro antigo passaria a abrir com um grafo que \
-         ninguem desenhou, e o `start` dele seria uma forma que nao existe"
+        "uma maquina nasceu do nada -- um ficheiro antigo passaria a abrir com estados que \
+         ninguem escolheu, e o primeiro deles seria uma forma que nao existe"
     );
 }
 

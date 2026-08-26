@@ -83,7 +83,7 @@
 - [Pintar/despachar: MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) · [lista à mão + predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md)
 - [Fileira condicional: CHAVE, não índice](feedback_a_conditional_row_turns_every_index_based_dispatch_into_a_silent_bug.md) · [«acabou» lê igual a «pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md)
 - [Seed dono do VALOR, dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) · [desigualdade ≠ oráculo](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md)
-- [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
+- [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [mudar o modelo re-pergunta o que cada gate mede](feedback_a_model_change_must_re_ask_what_every_gate_still_measures.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
 - [FEITO ≠ ENTREGUE — sonda no consumidor](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) · [2 falhas refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md)
 - [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md)
 - [Restore com mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) · [metade nova torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md)

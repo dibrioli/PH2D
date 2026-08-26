@@ -41,17 +41,21 @@ pub struct VecMorphMachine {
 impl SimComponent for VecMorphMachine {}
 
 impl VecMorphMachine {
-    /// Uma máquina nova que nasce na forma `start`, **sem setas**.
+    /// Uma máquina nova sobre as formas `shapes`, **sem tecla nenhuma atribuída**.
     ///
-    /// ⚠️ **Sem setas é o estado honesto de nascimento**, e não um vazio a corrigir: o artista
-    /// acabou de dizer *"esta forma é o começo"* e ainda não desenhou para onde ir. A máquina
-    /// mostra a forma inicial e fica parada — que é exactamente o que ele pediu até agora.
+    /// A **primeira** é onde ela nasce (o `start` é derivado da lista — ver [`MorphGraph::start`]).
+    ///
+    /// ⚠️ **Sem teclas é o estado honesto de nascimento**, e não um vazio a corrigir: o artista
+    /// acabou de dizer *"estas são as formas"* e ainda não disse o que leva a cada uma. A máquina
+    /// mostra a primeira e fica parada — que é exactamente o que ele pediu até agora.
     #[must_use]
-    pub fn new(start: u64) -> Self {
+    pub fn new(shapes: &[u64]) -> Self {
         Self {
             graph: MorphGraph {
-                start,
-                edges: Vec::new(),
+                states: shapes
+                    .iter()
+                    .map(|&s| ph2d_morph_machine::MorphState::new(s))
+                    .collect(),
             },
         }
     }

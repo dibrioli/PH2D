@@ -489,3 +489,77 @@ fn a_dead_isolation_is_not_announced() {
         );
     });
 }
+
+/// ⭐⭐⭐ **A HIERARQUIA DIZ QUAL LINHA ESTÁ ISOLADA** (2026-08-25).
+///
+/// ⚠️ O painel do MODEL já o dizia desde a W44 — mas a Hierarquia, que é onde o artista olha quando
+/// pergunta *"por que só isto aparece?"*, não dizia nada. ⛔ *Um estado que esconde trabalho e não
+/// se anuncia onde a ausência se vê é uma armadilha, não uma feature.*
+///
+/// ⚠️ **As duas metades**: o selo aparece na linha certa **e** cai quando a peça inteira volta. Sem
+/// a segunda, um selo pousado acusaria um isolamento que já não existe.
+#[test]
+fn the_hierarchy_says_which_row_is_isolated() {
+    armed(|| {
+        let (mut sim, root) = scene();
+        let group = inner_group(&sim, root);
+        assert!(crate::field3d_smoke::toggle_isolate(Some(group.to_bits())));
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[root],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        let badges = crate::field3d_scene::link_badges();
+        assert_eq!(
+            badges.get(&group.to_bits()).copied(),
+            Some(crate::field3d_scene::panel::ISOLATE_BADGE),
+            "a linha isolada tem de o dizer na Hierarquia"
+        );
+        assert_eq!(
+            badges.len(),
+            1,
+            "e só ela — selar as outras seria dizer que TODAS estão isoladas: {badges:?}"
+        );
+
+        crate::field3d_smoke::forget_isolation();
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[root],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert!(
+            crate::field3d_scene::link_badges().is_empty(),
+            "com a peça inteira de volta o selo tem de cair — senão ele acusa um isolamento que \
+             já não existe"
+        );
+    });
+}
+
+/// ⭐⭐ **UM SELO PENDURADO NUMA ENTIDADE MORTA NÃO SE PINTA** — a irmã da lei do anúncio.
+///
+/// ⚠️ Os bits morrem num undo e o mundo novo realoca-os. Um selo resolvido por bits mortos marcaria
+/// uma linha que já não é aquela — ou, pior, a de outro nó que os herdou. ⇒ o selo pergunta à
+/// **travessia**, exactamente como o [`crate::field3d_scene::panel`] faz para o nome.
+#[test]
+fn a_badge_pinned_to_a_dead_object_is_not_painted() {
+    armed(|| {
+        let (mut sim, root) = scene();
+        // Uns bits que ninguém tem: o isolamento fica pendurado no nada.
+        assert!(crate::field3d_smoke::toggle_isolate(Some(u64::MAX)));
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[root],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert!(
+            crate::field3d_scene::link_badges().is_empty(),
+            "um isolamento pendurado numa entidade morta não pode selar linha nenhuma"
+        );
+    });
+}

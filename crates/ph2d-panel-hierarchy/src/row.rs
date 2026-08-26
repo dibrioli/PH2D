@@ -38,6 +38,10 @@ fn badge_tone(badge: &str) -> TagTone {
         // ⭐ **O vínculo ao desenho** (W57): a forma muda quando a curva muda. `Success` porque é
         // uma capacidade a mais, nunca um aviso — o oposto de uma forma que perdeu a fonte.
         "LNK" => TagTone::Success,
+        // ⭐⭐ **O ISOLAMENTO** (2026-08-25): esta linha é a única que está a ser desenhada, e as
+        // outras estão escondidas por causa dela. `Warn` porque é um **estado da vista** que
+        // explica uma ausência — o artista que não o vê conclui que perdeu a peça.
+        "ISO" => TagTone::Warn,
         "INT" | "EXC" => TagTone::Accent,
         // A BASE não tem verbo e a RECEITA é do grupo inteiro: nenhum dos dois é escolha daquela
         // linha, e o neutro é o que os separa dos que são.

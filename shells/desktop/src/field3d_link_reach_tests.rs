@@ -236,3 +236,51 @@ fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
          nenhuma entre uma extrusão viva e uma fotografia dela"
     );
 }
+
+/// ⭐⭐⭐ **UM NÓ ISOLADO QUE SEGUE UM DESENHO MOSTRA `ISO`, NÃO `LNK`** — a precedência, e ela é a
+/// decisão que carrega a wave do selo de isolamento (2026-08-25).
+///
+/// ⛔ **O campo do selo é UM por linha**, e o comentário do merge no `render_loop` afirmava que *"as
+/// duas famílias nunca caem na mesma entidade"* — verdade enquanto as famílias eram forma vetorial e
+/// nó do modelador. ⚠️ **Estas duas caem**: um nó isolado pode seguir um desenho, e sem uma regra
+/// escrita quem ganhava era a ordem de inserção no mapa — *uma decisão de produto tomada por um
+/// `extend`*.
+///
+/// ⭐ Ganha o `ISO`, e a razão não é gosto: *o `LNK` é uma propriedade daquele nó; o `ISO` é um
+/// estado da VISTA que explica por que todo o resto desapareceu.* Quando as duas competem, a
+/// pergunta que o artista tem é a segunda.
+#[test]
+fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
+    crate::field3d_smoke::forget_isolation();
+    let (mut sim, sel) = a_drawn_shape();
+    crate::field3d_smoke::set_armed_by_panel(true);
+    link(sim.world_mut(), sel[0], 7);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    // O controle: sem isolamento, o mesmo nó usa o selo do vínculo.
+    assert_eq!(
+        link_badges().get(&sel[0].to_bits()).copied(),
+        Some(LINK_BADGE),
+        "a fixtura só prova a precedência se o nó de facto usasse o outro selo"
+    );
+
+    assert!(crate::field3d_smoke::toggle_isolate(Some(sel[0].to_bits())));
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    assert_eq!(
+        link_badges().get(&sel[0].to_bits()).copied(),
+        Some(crate::field3d_scene::panel::ISOLATE_BADGE),
+        "com as duas famílias na mesma linha, quem tem de aparecer é o estado da VISTA"
+    );
+    crate::field3d_smoke::forget_isolation();
+}

@@ -79,7 +79,7 @@ pub(crate) fn publish_snapshot(
         .collect();
     // ⭐⭐ **O selo do vínculo sai desta MESMA travessia** (W57) — ver [`link_badges`].
     LINK_BADGES.with(|c| {
-        *c.borrow_mut() = all
+        let mut m: std::collections::BTreeMap<u64, &'static str> = all
             .iter()
             .filter(|(e, _)| {
                 world
@@ -88,6 +88,17 @@ pub(crate) fn publish_snapshot(
             })
             .map(|(e, _)| (e.to_bits(), LINK_BADGE))
             .collect();
+        // ⭐⭐⭐ **E O SELO DO ISOLAMENTO** (2026-08-25) — ver [`ISOLATE_BADGE`] para a precedência.
+        //
+        // ⚠️ **A pergunta é feita à travessia, não ao mundo**: um isolamento pendurado numa entidade
+        // morta (o undo respawna tudo com bits novos) selaria uma linha que já não é aquela — é a
+        // mesma cerca que o [`isolated_name`] documenta, e por isso as duas leem a MESMA lista.
+        if let Some(bits) = crate::field3d_smoke::isolated()
+            && all.iter().any(|(e, _)| e.to_bits() == bits)
+        {
+            m.insert(bits, ISOLATE_BADGE);
+        }
+        *c.borrow_mut() = m;
     });
     ph2d_panel_model3d::publish(ph2d_panel_model3d::ModelSnapshot {
         modes,
@@ -399,6 +410,26 @@ thread_local! {
     static LINK_BADGES: std::cell::RefCell<std::collections::BTreeMap<u64, &'static str>> =
         const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
+
+/// ⭐⭐⭐ **O código do selo do ISOLAMENTO**, e ele **GANHA do vínculo na mesma linha.**
+///
+/// # ⚠️ O buraco que ele fecha
+///
+/// O painel do MODEL já dizia *"Isolated: X"* desde a W44 — mas a Hierarquia, que é onde o artista
+/// olha quando pergunta *"por que só isto aparece?"*, não dizia nada. ⛔ *Um estado que esconde
+/// trabalho e não se anuncia onde a ausência se vê é uma armadilha, não uma feature.*
+///
+/// # ⛔ A precedência, e por que ela não é um empate
+///
+/// O campo do selo é **um por linha**, e o comentário do merge no `render_loop` afirmava que *"as
+/// duas famílias nunca caem na mesma entidade"* — verdade enquanto as famílias eram forma vetorial
+/// e nó do modelador. ⚠️ **`ISO` e `LNK` caem**: um nó isolado pode seguir um desenho.
+///
+/// ⇒ **`ISO` ganha**, e a razão não é gosto: *o `LNK` é uma propriedade daquele nó, e o `ISO` é um
+/// estado da VISTA que explica por que todo o resto desapareceu.* Quando as duas competem, a
+/// pergunta que o artista tem é a segunda. ⚠️ E o `LNK` daquela linha não se perde de vista: ele
+/// volta assim que o isolamento cair, e o gesto que o tira está na mesma fileira.
+pub(crate) const ISOLATE_BADGE: &str = "ISO";
 
 /// O código do selo do vínculo. ⚠️ **Novo, e não um dos que a tabela de tons já tinha**: reusar
 /// `PRF` (que existe lá com outro dono) faria duas famílias partilharem um tom, e mudar o tom de uma

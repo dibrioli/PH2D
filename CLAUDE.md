@@ -658,7 +658,13 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de 16,7) — a
   escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se consegue
   demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já diz, W36) ·
-  nada mostra na Hierarquia que há um **isolamento** em curso.
+  ✅ **a Hierarquia diz qual linha está ISOLADA** (selo `ISO`, 2026-08-25) — o painel do MODEL já o
+  dizia desde a W44, mas a Hierarquia é onde se olha ao perguntar *"por que só isto aparece?"*.
+  ⛔ **E a decisão que carrega a wave é a PRECEDÊNCIA**: o campo do selo é **um por linha**, e o
+  comentário do merge afirmava que *"as duas famílias nunca caem na mesma entidade"* — `ISO` e `LNK`
+  **caem** (um nó isolado pode seguir um desenho), e sem regra escrita quem ganhava era a ordem de
+  inserção no mapa, *uma decisão de produto tomada por um `extend`*. Ganha o `ISO`: **o `LNK` é uma
+  propriedade do nó, o `ISO` é um estado da VISTA que explica por que o resto desapareceu.**
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova

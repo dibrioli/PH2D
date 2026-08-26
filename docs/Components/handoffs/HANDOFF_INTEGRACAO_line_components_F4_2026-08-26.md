@@ -1,4 +1,4 @@
-# Handoff de integração — `line/components`, 2026-08-26 (**F4.1..F4.5**: o mestre é inerte, instanciar/duplicar copiam de verdade, editar a receita muda as instâncias, e a excepção do artista sobrevive)
+# Handoff de integração — `line/components`, 2026-08-26 (**F4.1..F4.5 + os três reports do smoke**: o mestre é inerte, instanciar/duplicar copiam de verdade, editar a receita muda as instâncias, a excepção do artista sobrevive — e o objeto vazio passa a ser agarrável)
 
 > DIRETRIZ §1.5.9. Sucessor do
 > [handoff de 25/08](HANDOFF_INTEGRACAO_line_components_F1_F2_F3_2026-08-25.md) (F1+F2+F3).
@@ -16,7 +16,7 @@
 | Worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-components` |
 | Base | `main @ 0f5ce8040` |
 | Governança | [ADR-0164](../../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) · [ADR-0166](../../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) |
-| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) · **F4.5** (os verbos, com gesto) |
+| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) · **F4.5** (os verbos, com gesto) · **os três reports do smoke de 26/08** (§9) |
 
 ---
 
@@ -33,6 +33,10 @@
 | pôr outra cópia da receita | só pelo smoke | ✅ *Instantiate* no menu |
 | promover a excepção a padrão | não existia | ✅ *Apply to Master* — as outras cópias recebem-na |
 | soltar uma cópia da receita | não existia | ✅ *Detach from Master* |
+| pegar um **objeto vazio** ou um **grupo** no canvas | **impossível** — nenhum gizmo | ✅ caixa = união dos filhos visíveis, ou o marcador do vazio; o conjunto move-se como um objeto só |
+| ver onde está um objeto sem geometria | invisível | ✅ um **anel** no objeto selecionado |
+| *Revert to Master* numa peça que o artista moveu | a peça **teletransportava-se** | ✅ devolve o conteúdo e **mantém a posição** |
+| pintar a sprite de uma cópia | as irmãs ficavam como estavam | ✅ os pixels sobem à receita e **todas** mudam |
 
 ⚠️ **O que ainda NÃO existe:** o `VecInstance` subsumido (F4.6) e a lane do `physics_ecs_c9` com
 mestre+instância (F4.7). E a UI que **mostra** quais campos estão overridados — hoje o artista sabe
@@ -139,8 +143,8 @@ pelo comportamento e pelos verbos, não por um sinal na tela.
 
 | | |
 |---|---|
-| `cargo test -p ph2d-host-desktop --bins` | ✅ **3658** passaram · 0 falharam · 245 ignorados |
-| `cargo test -p ph2d-host-desktop --tests` | ✅ (⚠️ o censo de dois lados apanhou o `ObjectInstance` sem descritor — **ele fez o trabalho dele**) |
+| `cargo test -p ph2d-host-desktop --bins` | ✅ **4318** passaram · 0 falharam · 251 ignorados (re-corrido depois da §9) |
+| `cargo test -p ph2d-host-desktop --tests` | ✅ **3680** (⚠️ o censo de dois lados apanhou o `ObjectInstance` sem descritor — **ele fez o trabalho dele**) |
 | `typos` | ✅ |
 | `ph2d-ecs` · `-component-desc` · `-render` · `-script` · `-physics-ecs` · `-panel-inspector` · `-panel-hierarchy` · `-editor-core` | ✅ todos verdes |
 | `cargo check --workspace --all-targets` | ✅ |
@@ -263,3 +267,121 @@ inteiro porque o artista pediu um braço seria apagar trabalho que ele não mand
 - ⚠️ **O integrador tem de apagar do `CLAUDE.md` §5 a frase «o `physics_ecs_c9` está POR
   RE-CAPTURAR»** — ela é um fantasma medido em 25/08 (os três hashes C9 comparam-se **entre si**,
   não contra baseline gravado) e continua no roteador porque o §5 se edita na integração.
+
+---
+
+## §9 ⭐⭐⭐ Os TRÊS reports do smoke do Enio (2026-08-26), e o que cada um custou
+
+> *«Pintei uma sprite de uma instância e as outras não mudaram. O Objeto vazio criado na hierarquia
+> é invisível e ao agregar filhos e selecionar o objeto (o pai) não se consegue transformar o
+> conjunto como um objeto só. […] Outra coisa: revert to master modifica a posição global do objeto
+> e isso não é uma boa idéia, melhor o objeto ficar onde está.»*
+
+⚠️ **Os três foram MEDIDOS por sonda antes de qualquer cura** (dois `#[test]` temporários que
+imprimiam os overrides capturados e a pose antes/depois). Sem isso, dois deles teriam sido curados
+no sítio errado: a queixa da pose parecia ser sobre a RAIZ da instância (é sobre uma PEÇA — a raiz
+já era imune) e a da pintura parecia um bug do sync (era o modelo a funcionar).
+
+### §9.1 O objeto vazio e o grupo — [`group_gizmo_view.rs`](../../../shells/desktop/src/group_gizmo_view.rs)
+
+`snapshots::build_view` respondia `None` para toda entidade sem geometria própria (*«grupo/outro:
+sem gizmo próprio»*), e **sem `GizmoView` não há caixa, alças nem hit-rect**. O objeto que o botão
+`Add` da Hierarquia acaba de criar (F3: `Transform` + `Name` e mais nada) era o único do app que o
+artista não podia pegar.
+
+As duas respostas, com a lei do container do envelope (ADR-0129 Fatia 3) generalizada:
+
+- **com filhos visíveis** ⇒ a caixa é a **UNIÃO** deles, no espaço **LOCAL do pai**. O drag escreve
+  só o `Transform` do pai e os filhos seguem por parentesco — *como um objeto só*, sem cisalhar;
+- **sem nenhum** ⇒ o marcador do vazio, meia-extensão **derivada** do `HANDLE_SIZE_PX` (duas alças
+  ⇒ quatro de largura, a menor em que a quina e o meio da aresta não se sobrepõem).
+
+⚠️ **Três coisas que uma leitura rápida entende ao contrário:**
+
+1. **A união é medida no espaço do PAI, não no mundo.** `gizmo_view_from` aplica a pose do pai à
+   caixa que recebe; uma caixa já em mundo seria transformada **duas vezes** e o gizmo derivaria do
+   objeto a cada grau de rotação (gate `the_box_is_measured_in_the_parents_frame`).
+2. **São os QUATRO cantos de cada filho**, não o par (mín, máx): sob rotação a caixa do filho não é
+   eixo-alinhada no espaço do pai (gate com um quadrado a 45°, que mede `√2/2`).
+3. ⛔ **Quem já tem gizmo próprio NÃO ganha caixa** (`publishes_its_own_handles`): junta e roldana
+   são **pontos** com dots agarráveis — uma caixa por cima regista `Translate` no hit-index e
+   **engole o clique neles** —, e uma peça de modelagem 3D tem o gizmo do MODEL e nem usa o
+   `Transform` da casa (usa o `FieldPose`), pelo que a caixa sairia na origem do mundo. ⚠️ **É uma
+   LISTA e ela envelhece**: uma família nova com alças próprias que não venha aqui nasce com duas
+   caixas sobre o mesmo objeto.
+
+⚠️ **Filho ESCONDIDO não entra, e a sub-árvore dele também não** — e isto não é asseio: a receita
+de um componente é escondida de propósito (F4.5), e uma caixa que a envolvesse mediria um objeto que
+não está na tela.
+
+E o **anel** ([`render_loop/empty_object_overlay.rs`](../../../shells/desktop/src/render_loop/empty_object_overlay.rs)):
+um objeto sem geometria não emite `RenderInstance` nenhuma. ⚠️ A pergunta *«está vazio?»* é feita
+**uma** vez (`box_of` — a mesma que dimensiona a caixa), e o raio é **medido na tela** pela câmera,
+nunca `raio × zoom` escrito à mão, que seria a segunda régua.
+
+⚠️ **Duas costuras não são alcançáveis de um teste** (o closure de `build_view` pede `HeroScreen` +
+`PresentWorld` + câmera; o passe de pintura pede uma superfície) ⇒
+[`tests/an_empty_object_is_reachable.rs`](../../../shells/desktop/tests/an_empty_object_is_reachable.rs)
+varre a FONTE dos dois fios, e o negativo dele proíbe o `return None` antigo de voltar ao lado do novo.
+
+### §9.2 O *Revert* deixa a POSE onde está — [`instance_sync.rs`](../../../shells/desktop/src/instance_sync.rs)
+
+Medido: arrastar uma peça captura um override de `Transform`, e o revert punha-a de volta na pose da
+receita. **Decisão do Enio:** o verbo devolve tudo **menos** a pose. É a lei que a raiz já tinha
+(`ROOT_IS_ITS_OWN`) descida um nível: *onde uma coisa está é do artista que a largou lá*.
+
+⚠️ **A pose CONTINUA a ser um override** — sem ele o passe seguinte reescrevia por cima do arrasto,
+que é pior. E a receita continua a poder mandar: quando o **mestre** mexe a peça dele, o empate
+resolve-se a favor dele e a instância segue.
+
+⇒ o resultado tem **dois** números (`Reverted { count, poses_kept }`) e o toast tem **quatro**
+respostas. *Um `0` de «não havia nada» e um `0` de «só havia a posição, e ela fica» são coisas
+diferentes para quem acabou de mover a peça.*
+
+### §9.3 Os PIXELS são da receita — [`hero_intents/texture_rebind.rs`](../../../shells/desktop/src/hero_intents/texture_rebind.rs)
+
+Medido: pintar mudava `Sprite` + `SpritePixels` na **cópia**, o sync lia *«só a instância mexeu»* e
+capturava um override — **modelo correto, resultado errado**. A edição de pixels passa a subir até à
+receita (`write_through_targets`), e o passe leva-a a todas as instâncias. Duas razões:
+
+1. **Uma imagem é um ASSET, não uma propriedade.** Em todo motor 2D pintar a textura muda quem a
+   usa; o que é per-objeto é *qual* imagem ele usa, não o **conteúdo** dela. O `tint`, a pose e a
+   máscara continuam a ser da cópia — a fronteira é entre *os pixels* e *os botões*.
+2. **A receita está ESCONDIDA** (F4.5), então pintá-la não é alcançável por gesto nenhum. Sem esta
+   subida, os pixels de um componente eram a única coisa do app **sem forma de ser editada**.
+
+⚠️ **Não vira override, e é por construção:** ao escrever no mestre, o passe seguinte lê *«o mestre
+mexeu-se»*; a cópia pintada já tem os bytes, logo `want == have` e ela não é reescrita. **O ponto
+fixo do sync fica intacto**, e há gate sobre os dois factos (`painting_one_copy_reaches_the_others`
+afirma o resultado visível **e** que o conjunto de overrides ficou vazio **e** que o passe seguinte
+escreve `0`).
+
+⛔ **FRONTEIRA nomeada:** para pintar UMA cópia diferente das outras, *Detach from Master* primeiro.
+*Uma cópia que ainda segue a receita não tem pixels próprios — é isso que ser cópia é.*
+
+⚠️ A subida entra no **funil** que as oito ferramentas de imagem já atravessam
+(`rebind_to_individual`), e não num sítio de chamada: as invariantes de re-alojamento continuam
+escritas uma vez só. A guarda é *«sem entidade repetida»* e **não** um tecto de saltos — um elo
+corrompido daria laço infinito dentro de um commit de ferramenta, e um número máximo transformaria
+isso numa contagem que ninguém sabe explicar.
+
+⚠️ **Uma guarda DECORATIVA foi retirada no caminho** (`&& get::<Sprite>(up).is_some()` na subida):
+nenhuma mutação a matava, porque o corpo já desiste sozinho numa entidade sem sprite. *Uma
+afirmação que mutação nenhuma mata é uma afirmação sobre nada.*
+
+### §9.4 Prova de mutação
+
+**11 mutações, 11 mortas** — marcador colapsado · tecto da alça · dois cantos em vez de quatro ·
+guarda de `Visibility` · guarda de alças próprias · `FieldNode` fora da lista · caixa medida em
+mundo · revert a voltar a mexer na pose · pintura sem subir (nos dois gates que a afirmam) · cadeia
+a ignorar o *Detach*.
+
+### §9.5 ⚠️ O que o integrador tem de saber
+
+- **Nada fora de `shells/desktop/` foi tocado** por esta fatia — a superfície de colisão do §5 não
+  muda.
+- ⚠️ **`render_loop::sheet_grid_overlay` passou de `mod` a `pub(crate) mod`** e
+  `vec_gizmo_view::gizmo_view_from` de privada a `pub(crate)` — duas linhas, e são o que impede a
+  união de reimplementar a caixa de um sprite e a de uma forma vetorial.
+- ⚠️ **`revert_all_overrides` mudou de assinatura** (`Option<usize>` → `Option<Reverted>`): quem a
+  chamar noutra linha não compila, o que é o comportamento certo.

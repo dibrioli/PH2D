@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ⬜ |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ (+ os 3 reports do smoke de 26/08); faltam F4.6–F4.7 |
 | F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
@@ -683,6 +683,24 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   `WouldNestInItself`), não um `None`: *duas recusas que devolvem o mesmo `None` produzem o mesmo
   aviso inútil*. ⛔ E não é um tecto de profundidade — um limite numérico transformaria um erro de
   autoria numa contagem.
+
+**⭐⭐⭐ O que o SMOKE do Enio devolveu (2026-08-26) — três reports, e o plano não previa nenhum**
+(mecanismo, gates e mutações no [handoff §9](handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)):
+
+- ⚠️⚠️ **Um objeto VAZIO não era agarrável por gesto nenhum** — `build_view` respondia `None` para
+  toda entidade sem geometria própria, e o objeto que a F3 aprendeu a criar era o único do app sem
+  gizmo. Hoje: caixa = **união dos filhos visíveis** (no espaço LOCAL do pai, pelos QUATRO cantos de
+  cada um), ou o **marcador do vazio** com meia-extensão derivada do `HANDLE_SIZE_PX`. ⛔ Junta,
+  roldana e peça de modelagem 3D ficam de fora — elas já têm alças, e uma caixa por cima engole o
+  clique nelas.
+- ⚠️ **O *Revert to Master* teletransportava a peça.** Decisão do Enio: ele devolve tudo **menos a
+  pose**. A pose continua a ser override (senão o passe seguinte reescrevia por cima do arrasto) —
+  é a lei do `ROOT_IS_ITS_OWN` descida um nível.
+- ⚠️⚠️ **Pintar uma cópia não chegava às irmãs — e isso mudou o modelo.** Os PIXELS são um **asset**
+  e sobem até à receita; o `tint`, a pose e a máscara continuam a ser da cópia. Duas razões: em todo
+  motor 2D pintar a textura muda quem a usa, e a receita está **escondida**, pelo que pintá-la não
+  era alcançável por gesto nenhum. ⛔ Fronteira nomeada: *Detach from Master* primeiro, para pintar
+  uma cópia sozinha. ⚠️ Não vira override, por construção — o ponto fixo do sync fica intacto.
 
 ---
 

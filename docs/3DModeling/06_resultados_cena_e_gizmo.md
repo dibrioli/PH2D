@@ -5760,6 +5760,11 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐ **W80 (§81): a caça às listas que se dizem exaustivas — a segunda estava na lei mais cara do
+  módulo.** O gate que a W53 escreveu para impedir *«uma família de features completa e invisível»*
+  percorria uma **lista literal**: uma primitiva nova ficava sem botão e ele ficava **verde**. ⭐ A
+  corrente fecha-se agora no compilador (`PrimitiveKind`), e a mutação achou a metade que faltava —
+  **duas famílias a partilhar um botão** passavam.
 - ⭐⭐ **W79 (§80): o espelho passa a ter TRÊS botões** (`Mirror X/Y/Z`, pedido do Enio) — e a cerca
   que dizia *«roda o nó»* era falsa: o modificador age **antes** da pose, então rodar exigiria um nó
   intermédio. Variantes **append-only** ⇒ zero migração. ⛔ E **duas mutações sobreviveram** aos
@@ -6898,3 +6903,49 @@ importador que oferecia 4 extensões e roteava 11.)
 **Provas de mutação — 4/4 mataram** (o `MirrorY` a espelhar em X · o `MirrorZ` a não dobrar · a caixa
 a ignorar o eixo · os eixos novos a não remapear); e a quinta — apagar os dois botões do painel — é
 **erro de compilação**, porque `ALL` tem tamanho fixo.
+
+## §81 — W80: a caça às listas que se dizem exaustivas — e a segunda estava na lei mais cara do módulo (26/08)
+
+A W79 encontrou um gate cujo doc prometia *«um `Unary` novo é erro de compilação aqui»* sobre uma
+lista **escrita à mão**. O padrão tem nome e vale a pena varrer: *uma lista literal ao lado de um
+`enum`, com uma contagem no fim que só a defende de si mesma.*
+
+### §81.1 — ⛔ A segunda estava no gate que a W53 escreveu
+
+`every_primitive_the_engine_can_make_has_a_button` promete, no doc: *«uma primitiva nova aparece aqui
+**sozinha**, no dia em que nascer»*. ⛔ **Não aparecia** — o gate percorria uma lista literal, com o
+comentário a admiti-lo (*«uma de cada, construída à mão: é a enumeração que o `Primitive` não
+oferece»*), e a contagem `SHAPES.len() == all.len() + 2` fechava o círculo sobre a própria lista.
+
+⚠️ **E este é o gate mais caro do módulo:** ele existe porque a W53 descobriu que o `Extrude` e o
+`Revolve` viviam no motor **desde a W3** sem nenhum botão a alcançá-los — *uma família de features
+inteira, completa e invisível*. O gate escrito para impedir a repetição **não a impedia**.
+
+### §81.2 — ⭐ A corrente que fecha, e ela é a do `UnaryKind`
+
+`ph2d_field::PrimitiveKind` + `Primitive::kind()`:
+
+*um `Primitive` novo* → **erro de compilação** no `kind()` → *obriga uma variante em `PrimitiveKind`*
+→ **`ALL` é um array de tamanho fixo** → não compila sem ela → *o gate percorre-a e exige o botão*.
+
+⚠️ A enumeração já existia para os **modificadores** (`UnaryKind`) e não existia para as **formas** —
+e era justamente nas formas que o buraco tinha custado uma família inteira.
+
+### §81.3 — E a mutação achou a metade que faltava
+
+| mutação | veredito |
+|---|---|
+| o painel perde o botão do `Torus` | ⭐ **MATA** — era o que o gate antigo deixava passar |
+| duas famílias com a **mesma chave** | ⛔ **sobreviveu** na 1.ª versão |
+
+A segunda passava porque `ends_with` encontrava o botão **da outra**: o `Revolve` keyed como `"box"`
+achava o botão do `Box` e o gate dizia que estava tudo alcançável. ⇒ o gate passou a exigir um botão
+**próprio** por família (índices distintos). *Duas formas a partilhar um botão é uma delas
+inalcançável — e é o mesmo defeito, com outra roupa.*
+
+### §81.4 — O resto da varredura
+
+As outras promessas de *«erro de compilação»* do módulo foram conferidas e **cumprem-se**: a do
+`field3d_view::View::of` (destructuring sem `..`), a do `field3d_export_job` (`Send + 'static`), e a
+do `UnaryKind::ALL` (array de tamanho fixo). ⚠️ E o `ExportLevel`/`MeshFormat` já derivam os
+seletores do `ALL` deles.

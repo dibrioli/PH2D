@@ -125,6 +125,74 @@ pub enum Primitive {
     Revolve { profile: Profile },
 }
 
+/// ⭐⭐⭐ **A FAMÍLIA de uma primitiva, sem os números dela** (2026-08-26) — a lista que um gate pode
+/// percorrer.
+///
+/// # ⛔ Por que ela nasceu
+///
+/// O gate `every_primitive_the_engine_can_make_has_a_button` promete, no próprio doc, que *«uma
+/// primitiva nova aparece aqui **sozinha**, no dia em que nascer»*. ⚠️ **Não aparecia:** ele
+/// percorria uma lista **escrita à mão** (*«uma de cada, construída à mão: é a enumeração que o
+/// `Primitive` não oferece»*), e a contagem no fim só defendia a lista **de si mesma**. Um
+/// `Primitive` novo compilava, o painel não lhe dava botão, e o gate ficava **verde** — que é
+/// exactamente o defeito que a W53 pagou com uma **família de features inteira, completa e
+/// invisível** (o `Extrude`/`Revolve` existiam desde a W3 sem nenhum botão a alcançá-los).
+///
+/// ⭐ **A corrente que fecha o buraco:** um `Primitive` novo é erro de compilação em
+/// [`Primitive::kind`] ⇒ obriga uma variante nova aqui ⇒ [`PrimitiveKind::ALL`] é um array de
+/// tamanho fixo, e não compila sem ela. *É a mesma corrente do [`crate::UnaryKind`], e ela existia
+/// para os modificadores enquanto as formas ficavam com uma lista à mão.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PrimitiveKind {
+    Box,
+    Sphere,
+    Cylinder,
+    Torus,
+    Extrude,
+    Revolve,
+}
+
+impl PrimitiveKind {
+    /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
+    pub const ALL: [PrimitiveKind; 6] = [
+        PrimitiveKind::Box,
+        PrimitiveKind::Sphere,
+        PrimitiveKind::Cylinder,
+        PrimitiveKind::Torus,
+        PrimitiveKind::Extrude,
+        PrimitiveKind::Revolve,
+    ];
+
+    /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
+    #[must_use]
+    pub fn key(self) -> &'static str {
+        match self {
+            PrimitiveKind::Box => "box",
+            PrimitiveKind::Sphere => "sphere",
+            PrimitiveKind::Cylinder => "cylinder",
+            PrimitiveKind::Torus => "torus",
+            PrimitiveKind::Extrude => "extrude",
+            PrimitiveKind::Revolve => "revolve",
+        }
+    }
+}
+
+impl Primitive {
+    /// A família desta forma. ⚠️ **O `match` é exaustivo, e é ele que fecha a corrente** — ver
+    /// [`PrimitiveKind`].
+    #[must_use]
+    pub fn kind(&self) -> PrimitiveKind {
+        match self {
+            Primitive::Box { .. } => PrimitiveKind::Box,
+            Primitive::Sphere { .. } => PrimitiveKind::Sphere,
+            Primitive::Cylinder { .. } => PrimitiveKind::Cylinder,
+            Primitive::Torus { .. } => PrimitiveKind::Torus,
+            Primitive::Extrude { .. } => PrimitiveKind::Extrude,
+            Primitive::Revolve { .. } => PrimitiveKind::Revolve,
+        }
+    }
+}
+
 /// O **caráter** do arredondamento de uma operação.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Blend {

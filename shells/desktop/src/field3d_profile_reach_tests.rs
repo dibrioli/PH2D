@@ -23,59 +23,41 @@
 #[test]
 fn every_primitive_the_engine_can_make_has_a_button() {
     use crate::field3d_scene::panel::SHAPES;
-    // Uma de cada, construída à mão: é a enumeração que o `Primitive` não oferece.
-    let all = [
-        (
-            "box",
-            ph2d_field::Primitive::Box {
-                half: [0.1; 3],
-                round: 0.0,
-            },
-        ),
-        ("sphere", ph2d_field::Primitive::Sphere { radius: 0.1 }),
-        (
-            "cylinder",
-            ph2d_field::Primitive::Cylinder {
-                radius: 0.1,
-                half_height: 0.1,
-                round: 0.0,
-            },
-        ),
-        (
-            "torus",
-            ph2d_field::Primitive::Torus {
-                major: 0.2,
-                minor: 0.05,
-            },
-        ),
-        (
-            "extrude",
-            ph2d_field::Primitive::Extrude {
-                profile: a_square(),
-                half_height: 0.1,
-                round: 0.0,
-            },
-        ),
-        (
-            "revolve",
-            ph2d_field::Primitive::Revolve {
-                profile: a_square(),
-            },
-        ),
-    ];
-    for (key, _) in &all {
+    use ph2d_field::PrimitiveKind;
+    // ⭐⭐⭐ **DERIVADA, e não escrita à mão** (2026-08-26).
+    //
+    // ⛔ Até aqui esta lista era literal — *«uma de cada, construída à mão: é a enumeração que o
+    // `Primitive` não oferece»* — e a contagem no fim só a defendia **de si mesma**. O doc deste
+    // gate promete que *«uma primitiva nova aparece aqui sozinha»* e isso era **falso**: um
+    // `Primitive` novo compilava, ficava sem botão, e este gate ficava **verde**. Hoje a enumeração
+    // existe ([`PrimitiveKind`]) e a corrente fecha no compilador.
+    let mut seen: Vec<usize> = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let slot = SHAPES.iter().position(|s| s.ends_with(k.key()));
         assert!(
-            SHAPES.iter().any(|s| s.ends_with(key)),
-            "o motor sabe fazer «{key}» e o painel não oferece botão nenhum para ela — é uma \
-             feature completa e invisível"
+            slot.is_some(),
+            "o motor sabe fazer «{}» e o painel não oferece botão nenhum para ela — é uma feature \
+             completa e invisível, que é o defeito que a W53 pagou",
+            k.key()
         );
+        // ⛔ **E um botão PRÓPRIO.** Sem esta metade, duas famílias com a mesma chave passavam: a
+        // segunda encontrava o botão da primeira e o gate dizia que estava tudo alcançável — uma
+        // prova de mutação mostrou-o.
+        let slot = slot.expect("acabou de ser afirmado");
+        assert!(
+            !seen.contains(&slot),
+            "«{}» aponta para o mesmo botão de outra família (slot {slot}) — duas formas a partilhar \
+             um botão é uma delas inalcançável",
+            k.key()
+        );
+        seen.push(slot);
     }
     // …e o controle: o painel não promete o que o motor não tem.
     assert_eq!(
         SHAPES.len(),
-        all.len() + 2,
+        PrimitiveKind::ALL.len() + 2,
         "o painel oferece formas a mais ou a menos — além das {} primitivas, só as DUAS esculturas",
-        all.len()
+        PrimitiveKind::ALL.len()
     );
 }
 
@@ -119,13 +101,4 @@ fn the_four_derived_slots_are_distinct_and_in_range() {
     assert!(SHAPES[REVOLVE_SLOT].ends_with("revolve"));
     assert!(SHAPES[SCULPT_SLOT].ends_with("sculpt"));
     assert!(SHAPES[SCULPT_SCENE_SLOT].ends_with("sculpt_scene"));
-}
-
-fn a_square() -> ph2d_field::Profile {
-    ph2d_field::Profile::new(
-        vec![vec![[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]]],
-        ph2d_field::FillRule::NonZero,
-        1.0e-3,
-    )
-    .expect("um quadrado é um perfil")
 }

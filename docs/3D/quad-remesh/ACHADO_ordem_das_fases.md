@@ -992,3 +992,67 @@ Um `cargo build` substitui o ficheiro **no sítio**, e o laço de shell resolve 
 cada iteração ⇒ as quatro primeiras peças mediram uma lei e as restantes outra. *Uma tabela
 assim não é de um programa: é de todos os que existiram durante ela.*
 ⇒ A varredura acima corre contra uma **cópia congelada**.
+
+## §22 — ⭐⭐⭐⭐ A `sculpt_004` do artista: o ALINHAMENTO AO RELEVO é que parte a orelha
+
+**Smoke de 2026-08-26, e o veredito dele foi *«melhor resultado até agora e com grande salto
+de qualidade»*** — com **uma** ponta má: a única cuja malha de entrada era complicada.
+
+### §22.1 — A entrada está LIMPA, logo o defeito é NOSSO
+
+`0` bordo, `0` não-manifold, `0` faces repetidas, `0` vértices coincidentes. ⇒ nada das curas
+de entrada de hoje se aplica.
+
+### §22.2 — ⛔⛔ E MALHA MAIS FINA NÃO CURA — medido em 6× de densidade
+
+| escala | quads | dobras no contínuo | enviesamento p50 |
+|---|---|---|---|
+| `1,0` | `666` | **`142`** | `23,5°` |
+| `0,6` | `1 827` | **`142`** | `24,7°` |
+| `0,4` | `4 243` | **`142`** | `23,7°` |
+
+⭐ As dobras **não se movem uma unidade** num intervalo de `6×`. *Arrastar o `Detail` não é a
+resposta, e o artista precisava de o saber.* O layout dá só **16 patches** (a `t003` dá `31`),
+um deles de **valência 12, `χ = −1` e não-disco** — a área complicada virou **um patch
+monstro**, e a limpeza parou porque **piorava a topologia**.
+
+### §22.3 — ⭐⭐⭐ A causa: o termo que segue o RELEVO
+
+| peça | alinhado (`0,03`) | liso (`0,0`) |
+|---|---|---|
+| ⛔ **`sculpt_004`** | `23,5°` · `43` faces `>60°` · `14` bordo | ⭐⭐ **`7,8°` · `3` · `4`** |
+| `sculpt_eared` | `7,8°` | ⭐ `5,1°` |
+| `sculpt_hooked` | `6,6°` · `1` não-manifold | ⭐ `6,4°` · `0` |
+| `sculpt_ridged` | p99 `31,4°` | ⭐ p99 `22,0°` |
+| `sculpt_t002` | `6,7°` | ⭐ `5,5°` |
+| ⭐ `sculpt_t003` | **`6,6°` · `4` bordo** | `7,9°` · `6` bordo |
+
+⭐⭐ **O liso ganha em 5 de 6 e o alinhado em 1** — e **nenhum ganha sempre**.
+
+⚠️ **E o termo não entrega o que foi acrescentado para entregar:** medido no mesmo dia com a
+régua `follows_relief` (§19), ele compra **`0,4°`** (`22,1° → 21,7°`, ambos ao lado dos
+`22,5°` que significam «não olhou»). *O `0,03` foi escolhido em Agosto pelo campo do oráculo,
+quando esta régua não existia.*
+
+### §22.4 — A cura: **as duas correm, e a medição escolhe**
+
+⛔⛔ O irmão desta cadeia já tinha duas tentativas — mas **cai para a lisa só quando a
+alinhada RECUSA**. ⚠️ *Uma rede que dispara na recusa não apanha o layout que **fecha e sai
+péssimo***, e foi exactamente isso que a orelha mostrou.
+
+**A ordem do critério: furos → faces `>60°` → enviesamento mediano.** Os furos vêm primeiro
+porque são o que o artista **vê** — foi a queixa dele três vezes seguidas. *Uma ordem que
+pusesse o enviesamento à frente escolheria a peça mais bonita com um buraco na ponta.*
+Gate + **3 provas de mutação** (trocar a ordem, tirar o `>60`, afrouxar a comparação).
+
+⚠️ **E o `aligned` do relatório tinha DOIS SENTIDOS**, o que fazia o log **mentir**: na
+extracção ele carregava a *exactidão do arredondamento*, e o texto imprimia *«o alinhado nao
+fechou»* sempre que uma translação saísse fraccionária. Hoje `aligned` diz **qual campo
+produziu a malha**, e o novo `measured` distingue *«o liso saiu MELHOR»* (produto) de *«o
+alinhado não fechou»* (defeito). ⛔ *Os dois liam-se igual.*
+
+⭐ **O preço, medido:** uma passagem custa `4 475 ms` na `sculpt_004`, logo o botão passa de
+~4,5 s a **~9 s**. ⛔ A saída barata (sair cedo quando a 1.ª tentativa já tem `0` furos e `0`
+faces `>60°`) foi considerada e **não tomada**: ela perderia a melhoria da mediana onde ela
+existe (`sculpt_eared`, `7,8° → 5,1°`). *É uma troca de qualidade por espera, e a escolha é do
+dono do produto.*

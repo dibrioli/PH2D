@@ -213,7 +213,11 @@ impl Sculpt3dScene {
             shape: r.shape,
             folded: r.folded,
             aligned,
-        };
+                    // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
+            // tentativa alinhada e só cai para a lisa se ela **RECUSAR** — nunca por
+            // medição. Quem escolhe pela medição é a cadeia da extracção.
+            measured: false,
+};
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
         // A malha é OUTRA: o traço em voo fala de vértices que não existem mais.
@@ -430,10 +434,14 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
         // layout dele não fecha — e a queda é invisível em todas as
         // outras colunas desta linha. ⛔ Sem esta palavra, uma
         // regressão do alinhamento lê-se como uma corrida boa.
-        if r.aligned {
-            String::new()
-        } else {
-            String::from(" -- ⚠️ campo SO'-SUAVIDADE (o alinhado nao fechou)")
+        // ⚠️ **E o MOTIVO importa:** com a escolha por medição, `aligned == false` quer
+        // dizer *«o liso saiu melhor»* — um facto do produto —, e sem medição quer dizer
+        // *«o alinhado não fechou»* — um defeito. ⛔ *Os dois liam-se igual.*
+        match (r.aligned, r.measured) {
+            (true, true) => String::from(" -- campo alinhado ao relevo (medido, venceu)"),
+            (true, false) => String::new(),
+            (false, true) => String::from(" -- campo SO'-SUAVIDADE (medido: saiu MELHOR)"),
+            (false, false) => String::from(" -- ⚠️ campo SO'-SUAVIDADE (o alinhado nao fechou)"),
         },
         // ⭐⭐⭐ **A FORMA POR-FACE, e ela vai SEMPRE na linha.** Ver
         // `QuadRemeshReport::shape`: em 2026-08-22 esta linha inteira

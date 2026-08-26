@@ -400,6 +400,9 @@ fn the_report_carries_the_shape_of_every_quad() {
         edge_max_span: f32::NAN,
         shape: r.shape,
         aligned: true,
+        // ⚠️ Esta sonda mede o **texto** da linha, não a escolha — `false` põe-na no ramo
+        // histórico do `retopo_line`, que é o que ela sempre exerceu.
+        measured: false,
         folded: 0,
     };
     let text = crate::sculpt3d::history::retopo_global::retopo_line(&line);

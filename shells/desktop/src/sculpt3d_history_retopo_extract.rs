@@ -119,74 +119,155 @@ impl Sculpt3dScene {
             let (fe, _) = ph2d_mesh::feature_edges(&work, &fd, ph2d_mesh::FEATURE_EDGE_MIN_COS);
             dual.constrain(&work, &fe);
         }
-        let (field, _) = ph2d_crossfield::solve_miq(&dual);
-        let layout = ph2d_trace::trace_patches(&work, &dual, &field);
-        let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
-        let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
-
-        // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
-        // pedir à `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
-        let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, &dual, &field)
-            .into_iter()
-            .enumerate()
-            .filter(|(_, k)| *k != 0)
-            .filter_map(|(v, _)| u32::try_from(v).ok())
-            .collect();
-
-        // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
-        // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
-        // `PH2D_GRIDMAP_WELD=0` volta ao penalizado, para bissecar.
-        let welded = ph2d_gridmap::welded_enabled();
-        let opts = ph2d_gridmap::RoundOptions::default();
-        let (map, round) = if welded {
-            ph2d_gridmap::round_welded(&work, &cut, &combed, target, opts, &singular)
-        } else {
-            ph2d_gridmap::round_to_integers(&work, &cut, &combed, target, opts, &singular)
-        };
-
-        // ── A extracção das isolinhas.
-        let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
-        let cm = ph2d_quadextract::CornerMap {
-            pos: work.positions(),
-            tris: &tris,
-            uv: &uv,
-        };
-        let (mut out, e) = ph2d_quadextract::extract(&cm, None).map_err(RemeshRefusal::Extract)?;
-        if out.faces().is_empty() {
-            return Err(RemeshRefusal::TooCoarseToResolve);
-        }
-
-        // ⭐⭐⭐ **O ACABAMENTO — e este caminho não o tinha.**
+        // ⭐⭐⭐ **AS DUAS CORREM, E A MEDIÇÃO ESCOLHE — o alinhamento ao relevo deixou de
+        // ser uma aposta única.**
         //
-        // ⛔⛔ O irmão dele, o `ph2d_quadfill::fill`, corre [`ph2d_quadfill::SMOOTHING_ROUNDS`]
-        // passos de Laplaciano tangencial com reprojeção **desde sempre**; a extracção
-        // entregava a malha **crua**. *Dois caminhos para o mesmo botão, e só um com
-        // acabamento.*
+        // ⛔⛔ Até 2026-08-26 este caminho corria **só** o campo alinhado
+        // ([`ph2d_crossfield::ALIGN_WEIGHT`], `0,03`), e o irmão dele caía para o liso apenas
+        // quando o alinhado **RECUSAVA**. ⚠️ *Uma rede que dispara na recusa não apanha o
+        // layout que fecha e sai péssimo* — e foi exactamente isso que a `sculpt_004` do
+        // artista mostrou (a orelha, a única ponta cuja malha de entrada era complicada):
         //
-        // ⚠️ **A superfície é a `reference` — a escultura — e nunca a `work`.** É a mesma lei
-        // que o doc do `fill` escreve com o defeito de 2026-08-21 ao lado: reprojectar sobre a
-        // remalhada somaria os dois erros.
-        //
-        // Medido 2026-08-26 na `sculpt_t003` do artista, na densidade fina:
-        //
-        // | régua | cru | **com acabamento** |
+        // | peça | alinhado (`0,03`) | liso (`0,0`) |
         // |---|---|---|
-        // | distância à ESCULTURA p95 | `0,106 %` | ⭐ **`0,000 %`** |
-        // | enviesamento p99 · `>60°` | `39,3°` · `18` | ⭐ **`29,1°` · `1`** |
-        // | aspecto p99 · `>4×` | `2,05` · `7` | ⭐ **`1,63` · `0`** |
+        // | ⛔ `sculpt_004` | `23,5°` · `43` faces `>60°` · `14` bordo | ⭐ **`7,8°` · `3` · `4`** |
+        // | `sculpt_eared` | `7,8°` | ⭐ `5,1°` |
+        // | `sculpt_hooked` | `6,6°` · `1` não-manifold | ⭐ `6,4°` · `0` |
+        // | `sculpt_ridged` | p99 `31,4°` | ⭐ p99 `22,0°` |
+        // | `sculpt_t002` | `6,7°` | ⭐ `5,5°` |
+        // | ⭐ `sculpt_t003` | **`6,6°` · `4` bordo** | `7,9°` · `6` bordo |
         //
-        // ⚠️ **Ele NÃO alisa a superfície, e isso é o achado:** a rugosidade fica onde estava
-        // (`14,2° ⇒ 14,3°`) porque a reprojecção repõe os vértices na peça. *A aspereza que o
-        // artista vê é a da escultura dele — a grade fina RESOLVE-A, a cadeia não a inventa.*
-        // ⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` —
-        // **6 %**, na densidade mais fina medida (melhor de 3, `6 979` contra `7 404 ms`).
-        // ⚠️ `PH2D_EXTRACT_FINISH=0` desliga, para bissecar.
-        if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
-            ph2d_quadfill::smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS);
-        }
-        let out = out;
+        // ⭐⭐ **O liso ganha em 5 de 6 e o alinhado em 1** — e nenhum ganha sempre. ⇒ *a
+        // escolha não é uma constante: é uma medição por peça.*
+        //
+        // ⚠️ **E o termo do relevo não entrega o que foi acrescentado para entregar:** medido
+        // no mesmo dia com a régua `follows_relief`, ele compra **`0,4°`** (`22,1° → 21,7°`,
+        // ambos ao lado dos `22,5°` que significam «não olhou»). *O número foi escolhido em
+        // Agosto pelo campo do oráculo, quando esta régua não existia.*
+        //
+        // ⚠️ **A ORDEM do critério é: furos, depois faces `>60°`, depois o enviesamento
+        // mediano.** Os furos vêm primeiro porque são o que o artista **vê** — foi a queixa
+        // dele três vezes seguidas.
+        let attempt = |w: f32| -> Result<
+            (
+                ph2d_mesh::Mesh,
+                ph2d_quadextract::ExtractReport,
+                f32,
+                ph2d_quadfill::QuadShape,
+            ),
+            RemeshRefusal,
+        > {
+            let (field, _) = if (w - ph2d_crossfield::ALIGN_WEIGHT).abs() < f32::EPSILON {
+                ph2d_crossfield::solve_miq(&dual)
+            } else {
+                ph2d_crossfield::solve_miq_aligned(
+                        &dual,
+                        ph2d_crossfield::Rounding::default(),
+                        w,
+                    )
+            };
+            let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+            let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
+            let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
 
-        let shape = ph2d_quadfill::quad_shape(&out);
+            // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
+            // pedir à `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
+            let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, &dual, &field)
+                .into_iter()
+                .enumerate()
+                .filter(|(_, k)| *k != 0)
+                .filter_map(|(v, _)| u32::try_from(v).ok())
+                .collect();
+
+            // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
+            // ⭐ O G3 soldado é o default DENTRO deste caminho (que já shipa desligado);
+            // `PH2D_GRIDMAP_WELD=0` volta ao penalizado, para bissecar.
+            let welded = ph2d_gridmap::welded_enabled();
+            let opts = ph2d_gridmap::RoundOptions::default();
+            let (map, round) = if welded {
+                ph2d_gridmap::round_welded(&work, &cut, &combed, target, opts, &singular)
+            } else {
+                ph2d_gridmap::round_to_integers(&work, &cut, &combed, target, opts, &singular)
+            };
+
+            // ── A extracção das isolinhas.
+            let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
+            let cm = ph2d_quadextract::CornerMap {
+                pos: work.positions(),
+                tris: &tris,
+                uv: &uv,
+            };
+            let (mut out, e) = ph2d_quadextract::extract(&cm, None).map_err(RemeshRefusal::Extract)?;
+            if out.faces().is_empty() {
+                return Err(RemeshRefusal::TooCoarseToResolve);
+            }
+
+            // ⭐⭐⭐ **O ACABAMENTO — e este caminho não o tinha.**
+            //
+            // ⛔⛔ O irmão dele, o `ph2d_quadfill::fill`, corre [`ph2d_quadfill::SMOOTHING_ROUNDS`]
+            // passos de Laplaciano tangencial com reprojeção **desde sempre**; a extracção
+            // entregava a malha **crua**. *Dois caminhos para o mesmo botão, e só um com
+            // acabamento.*
+            //
+            // ⚠️ **A superfície é a `reference` — a escultura — e nunca a `work`.** É a mesma lei
+            // que o doc do `fill` escreve com o defeito de 2026-08-21 ao lado: reprojectar sobre a
+            // remalhada somaria os dois erros.
+            //
+            // Medido 2026-08-26 na `sculpt_t003` do artista, na densidade fina:
+            //
+            // | régua | cru | **com acabamento** |
+            // |---|---|---|
+            // | distância à ESCULTURA p95 | `0,106 %` | ⭐ **`0,000 %`** |
+            // | enviesamento p99 · `>60°` | `39,3°` · `18` | ⭐ **`29,1°` · `1`** |
+            // | aspecto p99 · `>4×` | `2,05` · `7` | ⭐ **`1,63` · `0`** |
+            //
+            // ⚠️ **Ele NÃO alisa a superfície, e isso é o achado:** a rugosidade fica onde estava
+            // (`14,2° ⇒ 14,3°`) porque a reprojecção repõe os vértices na peça. *A aspereza que o
+            // artista vê é a da escultura dele — a grade fina RESOLVE-A, a cadeia não a inventa.*
+            // ⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` —
+            // **6 %**, na densidade mais fina medida (melhor de 3, `6 979` contra `7 404 ms`).
+            // ⚠️ `PH2D_EXTRACT_FINISH=0` desliga, para bissecar.
+            if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
+                ph2d_quadfill::smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS);
+            }
+            let out = out;
+
+            let shape = ph2d_quadfill::quad_shape(&out);
+            Ok((out, e, round.shift_frac_max, shape))
+        };
+
+        // ⭐ **O PREÇO, MEDIDO:** a cadeia corre duas vezes. Na `sculpt_004` uma passagem
+        // custa **`4 475 ms`** (melhor de 2), logo o botão passa de ~4,5 s a **~9 s**. O F1 é
+        // partilhado; o que duplica é campo + traçado + mapa + extracção.
+        //
+        // ⛔ **A saída barata foi considerada e NÃO tomada:** sair cedo quando a primeira
+        // tentativa já é perfeita nas duas chaves da frente (`0` furos e `0` faces `>60°`)
+        // manteria o caso comum a `1×` — mas mede-se que ela **perderia** a melhoria da
+        // mediana onde ela existe (na `sculpt_eared`, `7,8° → 5,1°`, com as duas chaves da
+        // frente a zero nas duas tentativas). ⇒ *é uma troca de qualidade por espera, e a
+        // escolha é do dono do produto* — o número está aqui para ele a poder fazer.
+        let aligned = attempt(ph2d_crossfield::ALIGN_WEIGHT);
+        let smooth = attempt(0.0);
+        let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
+            (Ok(a), Ok(b)) => {
+                if worse(
+                    &a.0,
+                    a.3.skew_over_60,
+                    a.3.skew_p50,
+                    &b.0,
+                    b.3.skew_over_60,
+                    b.3.skew_p50,
+                ) {
+                    (false, b)
+                } else {
+                    (true, a)
+                }
+            }
+            (Ok(a), Err(_)) => (true, a),
+            (Err(_), Ok(b)) => (false, b),
+            (Err(e), Err(_)) => return Err(e),
+        };
+
         let (edge_median, edge_max) = edges(&out);
         let report = QuadRemeshReport {
             verts: out.vert_count(),
@@ -205,7 +286,14 @@ impl Sculpt3dScene {
             // por construção, e o que ela não pode é inventar grade onde o mapa se
             // enrola sobre si próprio.
             folded: e.folded_faces,
-            aligned: round.shift_frac_max == 0.0,
+            // ⭐⭐⭐ **`aligned` diz QUAL CAMPO produziu esta malha** — é o sentido que o
+            // `retopo_line` lhe dá. ⛔ Até 2026-08-26 este caminho punha aqui a
+            // **exactidão do arredondamento** (`shift_frac_max == 0.0`), que é outra
+            // grandeza: o log imprimia *«o alinhado nao fechou»* sempre que uma translação
+            // saísse fraccionária. *Dois sentidos no mesmo campo, e o texto do log
+            // escolhido pelo primeiro.*
+            aligned: relief_won,
+            measured: true,
         };
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
@@ -274,6 +362,33 @@ fn edges(mesh: &Mesh) -> (f32, f32) {
 }
 
 /// Arestas com uma face só — a assinatura da casca aberta.
+/// ⭐⭐⭐ **A ORDEM DA ESCOLHA entre duas tentativas — `true` se `a` é PIOR que `b`.**
+///
+/// **Furos, depois faces `>60°`, depois o enviesamento mediano.** ⚠️ Os furos vêm primeiro
+/// porque são o que o artista **vê** — foi a queixa dele três vezes seguidas
+/// (*«furos nas pontas»*). *Uma ordem que pusesse o enviesamento à frente escolheria a peça
+/// mais bonita com um buraco na ponta.*
+///
+/// ⚠️ **O desempate final é por `total_cmp`** e não por `<`: um `NaN` numa das medianas
+/// tornaria a comparação não-reflexiva e a escolha dependeria da ordem dos argumentos.
+fn worse(
+    a_mesh: &Mesh,
+    a_over60: usize,
+    a_skew: f32,
+    b_mesh: &Mesh,
+    b_over60: usize,
+    b_skew: f32,
+) -> bool {
+    let (a_holes, b_holes) = (boundary_edges(a_mesh), boundary_edges(b_mesh));
+    if a_holes != b_holes {
+        return a_holes > b_holes;
+    }
+    if a_over60 != b_over60 {
+        return a_over60 > b_over60;
+    }
+    a_skew.total_cmp(&b_skew) == core::cmp::Ordering::Greater
+}
+
 fn boundary_edges(mesh: &Mesh) -> usize {
     use std::collections::BTreeMap;
     let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
@@ -347,6 +462,52 @@ mod tests {
                 "PH2D_RETOPO_EXTRACT={value:?} tinha de dar {want}"
             );
         }
+    }
+
+    /// ⭐⭐⭐ **A ORDEM DO CRITÉRIO: furos primeiro, e ela é a decisão de produto.**
+    ///
+    /// ⛔⛔ Uma ordem que pusesse o enviesamento à frente escolheria *a peça mais bonita com
+    /// um buraco na ponta* — e «furos nas pontas» foi a queixa do artista **três vezes
+    /// seguidas**. ⚠️ *Nada no tipo impede trocar a ordem: são três números da mesma peça.*
+    #[test]
+    fn a_escolha_poe_os_furos_a_frente_do_enviesamento() {
+        // Uma peça FECHADA e uma com bordo — o cubo de quads da casa, e um quad solto.
+        let fechada = ph2d_mesh::shapes::cube(1.0);
+        let furada = ph2d_mesh::Mesh::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]],
+            vec![ph2d_mesh::Face::quad(0, 1, 2, 3)],
+        )
+        .expect("a fixtura e' construida aqui");
+        assert_eq!(
+            super::boundary_edges(&fechada),
+            0,
+            "⛔ a fixtura fechada tem de FECHAR, senao o gate compara duas peças furadas"
+        );
+        assert_eq!(
+            super::boundary_edges(&furada),
+            4,
+            "⛔ a fixtura furada tem de CONTER o fenomeno"
+        );
+
+        // A furada e' PIOR mesmo com enviesamento perfeito contra uma fechada horrivel.
+        assert!(
+            super::worse(&furada, 0, 0.0, &fechada, 999, 89.0),
+            "⛔ os FUROS tem de vir antes do enviesamento"
+        );
+        // Empatados nos furos, decide a contagem de faces >60.
+        assert!(
+            super::worse(&fechada, 10, 0.0, &fechada, 2, 89.0),
+            "⛔ empatados nos furos, decide o >60"
+        );
+        // Empatados nos dois, decide a mediana.
+        assert!(
+            super::worse(&fechada, 3, 9.0, &fechada, 3, 8.0),
+            "⛔ empatados nos dois, decide a mediana"
+        );
+        assert!(
+            !super::worse(&fechada, 3, 8.0, &fechada, 3, 8.0),
+            "⛔ iguais nao podem ser PIORES -- a comparacao tem de ser estrita"
+        );
     }
 
     /// ⭐⭐⭐ **O CAMINHO DA EXTRACÇÃO TEM ACABAMENTO — e ele pousa na ESCULTURA.**

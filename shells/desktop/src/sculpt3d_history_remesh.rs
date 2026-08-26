@@ -123,6 +123,17 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// ⚠️ **`false` no backend LOCAL**, e não é *"não sei"*: aquele motor não tem
     /// campo cruzado com termo de alinhamento nenhum, então a resposta é um facto.
     pub aligned: bool,
+    /// ⭐⭐⭐ **A escolha foi por MEDIÇÃO, e não por recusa.**
+    ///
+    /// ⛔⛔ **Sem esta coluna o [`Self::aligned`] tem dois sentidos e o log MENTE.** Desde
+    /// 2026-08-26 a cadeia da extracção corre **as duas** tentativas (alinhada e lisa) e fica
+    /// com a melhor — furos, depois faces `>60°`, depois o enviesamento mediano. O irmão dela
+    /// só cai para a lisa quando a alinhada **RECUSA**.
+    ///
+    /// ⇒ com `aligned == false`, *«o alinhado não fechou»* e *«o liso saiu melhor»* são
+    /// **factos diferentes** e leriam-se igual. ⚠️ *Um log que descreve a recusa quando houve
+    /// uma escolha manda o leitor procurar um defeito que não existe.*
+    pub measured: bool,
 }
 
 impl Sculpt3dScene {
@@ -229,6 +240,7 @@ impl Sculpt3dScene {
             // ⚠️ **`false` é um FACTO aqui**, não um *"não sei"*: este motor não tem
             // campo cruzado nenhum, logo não tem termo de alinhamento para ligar.
             aligned: false,
+            measured: false,
             // ⭐ **A MESMA régua do outro backend, e é por isso que ela é medida
             // aqui e não estimada.** Sem esta linha o motor local aparecia como
             // *"não dobra"* por não ter quem contasse — que é o mesmo defeito do

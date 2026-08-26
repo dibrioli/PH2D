@@ -630,41 +630,30 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   interrompido deixa **meio arquivo com o nome certo** — daí a gravação por temporário + `rename`,
   com o temporário **na pasta do destino** (o `rename` só é atómico dentro do mesmo sistema de
   arquivos). *Uma cura pode abrir a porta que outra fechava.*
-  **Aberto:** ⏳ **decisão do Enio, já com os números:** o nível de exportação **não alcança** a
-  densidade da cadeia (ela dá ~2 500 quads em qualquer nível) — manter a razão `célula/alvo` preserva
-  a qualidade (`6,2°`) e custa **`48 894 ms` por 3,7× os quads**, e mais um degrau seria minutos ·
-  ⏸️ **o custo que sobra é 71 % do `ph2d-gridmap`** (`3 322` dos `4 677 ms` da cadeia estão no G3/G5,
-  medido em `max`) — crate de outra linha ·
-  ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`, *"len is 74, index 130"*):
-  um alvo **grosso** sobre uma `uv_sphere(48,32)` — a `line/quadextract` é a dona · ✅ **o «traçado 2,4× mais caro» estava errado por 4× e o suspeito era inocente** (doc §57): o
-  anti-serrilhado custa **22–34 %**, não 140 %, e contra a W3 (`24,1 ms`, antes de o AA existir) o
-  traçado de hoje **sem AA** está em `29,0 ms` — **1,2×**. ⚠️ *A nota envelheceu porque as waves de
-  perf a desmentiram (W56e `2,5×` · W56f `1,10×` · W59 `1,21×`) e ninguém a reconferiu — e quem as
-  moveu foi esta linha.* ⛔ **RECUSA MEDIDA:** especializar a segunda passagem por ladrilho, como a
-  primária faz, é **neutro a pior** e foi revertido — a montagem da fita amortiza-se por **4 096**
-  raios na primária e por **~256** na de borda, e é essa razão de **16×** que come o ganho. ⏸️ Sobra
-  **reaproveitar** as fitas já montadas (remove a montagem em vez de a diluir; paga memória e um
-  cache) — tecto: parte dos 26 % do quadro **assente**, que a W24 já tirou do caminho interativo ·
-  ⚠️ **e a régua estava errada antes da resposta**: subtrair dois relógios de ~30 ms medidos em
-  corridas separadas deu `+34 %` e `+22 %` para o MESMO código — as duas configurações têm de correr
-  no mesmo processo, por mediana (a lição já estava escrita na porta irmã `trace_stepped_for_test`) ·
-  o teto de `Resolution` (16) foi derivado com o custo
-  **antigo** e a tabela dele foi medida a `load ≈ 4,7` · ⏸️ ladrilhar em `(u, v)` contra o
-  **paralelogramo** em vez da AABB (o único eixo que não multiplica a montagem de JIT) · a
-  composição de dois `Exact` encadeados e o gradiente de uma **escultura** ficam no passo curto sem
-  ninguém os ter medido · ⏸️ um laço que **SUBTRAI** (pede decisão: aqui `Shift` e `Ctrl` são a
-  mesma tecla) · vários `VecPath` **separados** numa peça só · religar uma escultura que mudou de
-  sítio (pede UI) · ⛔ o vínculo à escultura **viva** do módulo 3D
-  foi **medido e recusado** (voxelizar custa 229–389 ms a 128³ contra um quadro de 16,7) — a
-  escultura entra da cena **sem disco** e não se atualiza sozinha · ⏸️ o `Mirror` não se consegue
-  demonstrar (adiado pelo Enio) · a exportação não diz **onde** a peça está (o tamanho já diz, W36) ·
-  ✅ **a Hierarquia diz qual linha está ISOLADA** (selo `ISO`, 2026-08-25) — o painel do MODEL já o
-  dizia desde a W44, mas a Hierarquia é onde se olha ao perguntar *"por que só isto aparece?"*.
-  ⛔ **E a decisão que carrega a wave é a PRECEDÊNCIA**: o campo do selo é **um por linha**, e o
-  comentário do merge afirmava que *"as duas famílias nunca caem na mesma entidade"* — `ISO` e `LNK`
-  **caem** (um nó isolado pode seguir um desenho), e sem regra escrita quem ganhava era a ordem de
-  inserção no mapa, *uma decisão de produto tomada por um `extend`*. Ganha o `ISO`: **o `LNK` é uma
-  propriedade do nó, o `ISO` é um estado da VISTA que explica por que o resto desapareceu.**
+  ⭐ **E duas ausências que prendiam sem avisar fecharam (25/08):** a **Hierarquia** diz qual linha
+  está isolada (selo `ISO`) — ⚠️ e a decisão foi a **PRECEDÊNCIA**, porque o selo é **um por linha** e
+  `ISO`/`LNK` **caem na mesma**: ganha o `ISO`, que é um estado da **VISTA** a explicar por que o
+  resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
+  a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
+  **Aberto:** ⏳ **decisão sua, com o preço medido:** o nível de exportação **não alcança** a densidade
+  da cadeia (~2 500 quads em qualquer nível) — manter a razão preserva a qualidade e custa
+  **`48 894 ms` por 3,7× os quads** · ⏳ **subir o `Resolution` acima de 16** precisa de um contorno de
+  curvatura **VARIÁVEL** para ser medido, e é decisão sua (a perna do relógio caiu na W60; o que
+  segura o número é o olho) · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) ·
+  ⏸️ vários `VecPath` **separados** numa peça só · ⏸️ religar uma escultura que mudou de sítio (pede
+  UI) · ⏸️ o `Mirror` não se consegue demonstrar (adiado por si) · ⏸️ a composição de dois `Exact`
+  encadeados e o gradiente de uma **escultura** seguem por medir · ⏸️ **reaproveitar as fitas já
+  montadas** na segunda passagem do traçado (tecto: parte dos 26 % do quadro **assente**) ·
+  ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`): alvo **grosso** sobre uma
+  `uv_sphere(48,32)` — a `line/quadextract` é a dona.
+  ⛔ **RECUSAS MEDIDAS — não as reconstrua** (mecanismo no doc §57 e §65): especializar a **segunda
+  passagem** do traçado por ladrilho é **neutro a pior** (a montagem amortiza-se por 4 096 raios na
+  primária e ~256 na de borda) · o vínculo à escultura **viva** custa 229–389 ms a 128³ contra um
+  quadro de 16,7 · a grade **fina** para a cadeia de quads é 107× o preço para a mesma resposta, e
+  piora a fidelidade.
+  ⚠️ **Quatro itens desta lista estavam FECHADOS ou desactualizados** quando a auditei em 25/08 (o
+  traçado «2,4×» · o teto de `Resolution` · o paralelogramo · o sítio da peça). *O §5 só se edita na
+  integração, então ele acumula trabalho já pago — audite a lista antes de pegar um item dela.*
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova

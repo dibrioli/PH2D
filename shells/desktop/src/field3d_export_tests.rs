@@ -271,3 +271,54 @@ fn the_export_writes_all_or_nothing() {
     assert_eq!(left, vec!["peca.obj".to_string()], "sobrou lixo: {left:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// ⭐⭐ **A EXPORTAÇÃO DIZ ONDE A PEÇA ESTÁ — e só quando a pergunta existe.**
+///
+/// ⚠️ A malha sai em **mundo**, então uma peça modelada longe da origem aterra fora do
+/// enquadramento inicial do outro programa: o artista abre o arquivo, vê o vazio, e conclui que a
+/// exportação falhou. ⛔ **E a metade que carrega a lei é a do SILÊNCIO**: dizer
+/// `(0,00, 0,00, 0,00)` em toda exportação centrada é ruído sobre uma exportação que correu bem.
+///
+/// ⭐ **O limiar é DERIVADO**: fala quando a **origem está fora da caixa da peça** — que é
+/// exactamente a condição em que *"onde é que isto está?"* deixa de ter resposta óbvia. Nada de
+/// épsilon: o recurso é a própria caixa.
+#[test]
+fn the_export_says_where_the_piece_is_only_when_the_question_exists() {
+    let depth = crate::field3d_export::ExportLevel::Draft.depth();
+
+    // Centrada: a origem está DENTRO da peça, e o outro programa enquadra-a sozinho.
+    let home = mesh_of(&one(Primitive::Sphere { radius: 0.4 }), depth);
+    assert!(!home.positions().is_empty(), "a fixtura tem de ter peça");
+    assert_eq!(
+        super::piece_origin_note(&home),
+        "",
+        "uma peça na origem não pode gastar a mensagem a dizer que está na origem"
+    );
+
+    // Deslocada para fora da própria caixa: agora a pergunta existe.
+    let away = mesh_of(
+        &FieldDoc::new(
+            vec![leaf(Primitive::Sphere { radius: 0.15 }, 2.5)],
+            NodeId(0),
+        )
+        .expect("uma forma longe"),
+        depth,
+    );
+    let note = super::piece_origin_note(&away);
+    assert!(
+        note.contains("at ("),
+        "uma peça fora do enquadramento tem de dizer onde está, e disse {note:?}"
+    );
+    assert!(
+        note.contains("2.5") || note.contains("2.4") || note.contains("2.6"),
+        "e o sítio tem de ser o DELA (x ≈ 2,5), não um número qualquer: {note:?}"
+    );
+
+    // ⚠️ **A metade da malha VAZIA**: um centro tirado de uma caixa invertida seria um sítio
+    // inventado.
+    assert_eq!(
+        super::piece_origin_note(&ph2d_mesh::Mesh::default()),
+        "",
+        "uma malha vazia não tem sítio"
+    );
+}

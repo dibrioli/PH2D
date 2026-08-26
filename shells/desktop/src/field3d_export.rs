@@ -124,6 +124,44 @@ fn piece_size(mesh: &ph2d_mesh::Mesh) -> [f32; 3] {
     ]
 }
 
+/// ⭐⭐ **ONDE a peça está — e ela só o diz quando a pergunta EXISTE.**
+///
+/// # ⚠️ O buraco
+///
+/// A malha sai em **mundo** (a pose já está cozida no campo, ver [`cook`]), então uma peça modelada
+/// longe da origem aterra longe da origem no outro programa — **fora do enquadramento inicial**. O
+/// artista abre o arquivo, vê o vazio, e conclui que a exportação falhou. O toast dizia o **tamanho**
+/// desde a W36 e nunca disse o **sítio**.
+///
+/// # ⭐ E o limiar é DERIVADO, não escolhido
+///
+/// Dizer `(0,00, 0,00, 0,00)` em toda exportação centrada é ruído — a mesma lei do sufixo da
+/// retopologia, três linhas acima: *silencioso quando não muda nada*. ⇒ ela fala quando **a origem
+/// está FORA da caixa da peça**, que é exactamente a condição em que *"onde é que isto está?"* deixa
+/// de ter resposta óbvia: com a origem dentro, o outro programa enquadra a peça sozinho.
+///
+/// ⚠️ **Nada de épsilon nem de número mágico:** o recurso é a **própria caixa da peça**. Uma peça de
+/// `0,9` centrada em `0,05` está na origem; uma em `5,0` não está — e a régua é a mesma nas duas.
+///
+/// ⚠️ Uma malha **vazia** cala-se: o [`ph2d_mesh::Aabb::EMPTY`] é invertido de propósito, e um
+/// centro tirado dele seria um sítio inventado.
+fn piece_origin_note(mesh: &ph2d_mesh::Mesh) -> String {
+    if mesh.positions().is_empty() {
+        return String::new();
+    }
+    let b = mesh.bounds();
+    let inside = (0..3).all(|k| b.min[k] <= 0.0 && 0.0 <= b.max[k]);
+    if inside {
+        return String::new();
+    }
+    let c = [
+        f32::midpoint(b.min[0], b.max[0]),
+        f32::midpoint(b.min[1], b.max[1]),
+        f32::midpoint(b.min[2], b.max[2]),
+    ];
+    format!(" · at ({:.2}, {:.2}, {:.2})", c[0], c[1], c[2])
+}
+
 #[cfg(test)]
 #[path = "field3d_export_tests.rs"]
 mod tests;
@@ -394,9 +432,10 @@ fn export_to_file(
             // programa, e a única que o toast não respondia. É a caixa da MALHA, não a do
             // andaime: ver [`piece_size`].
             let [sx, sy, sz] = piece_size(&mesh);
+            let sitio = piece_origin_note(&mesh);
             format!(
                 "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
-                 {} KB in {ms:.0} ms -- {name} ({}){quality}",
+                 {} KB in {ms:.0} ms -- {name} ({}){sitio}{quality}",
                 size / 1024,
                 crate::sculpt3d::lost_by(fmt)
             )

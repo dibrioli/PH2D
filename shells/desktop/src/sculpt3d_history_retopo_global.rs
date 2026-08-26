@@ -121,7 +121,40 @@ impl Sculpt3dScene {
         );
 
         // ── F2. O campo cruzado com decisão inteira global.
-        let dual = ph2d_crossfield::Dual::build(&work);
+        let mut dual = ph2d_crossfield::Dual::build(&work);
+
+        // ⭐⭐⭐ **O BORDO É UMA LINHA DE FEIÇÃO, e é a única EXACTA.**
+        //
+        // ⛔⛔ Uma aresta de bordo é feição **por definição** — a superfície acaba ali e
+        // nenhuma linha de grade a pode atravessar. É o único sítio da lei da feição sem
+        // parâmetro nenhum: sem limiar, sem curvatura, sem janela.
+        //
+        // ⭐ **Medido 2026-08-26, e é a maior alavanca desta cadeia até hoje.** As DUAS
+        // peças com bordo eram as duas piores do corpus, e ninguém tinha perguntado se o
+        // campo as via:
+        //
+        // | peça | enviesamento p50 · p99 · >60° | aspecto p99 · >4× | χ |
+        // |---|---|---|---|
+        // | `sculpt_punctured` sem | ⛔ `23,1°` · `84,8°` · `85` | ⛔ `11,60` · `93` | `1` |
+        // | `sculpt_punctured` **com** | ⭐ **`5,7°`** · `29,6°` · `1` | ⭐ `1,67` · `0` | `1` |
+        // | `sculpt_t002` sem | ⛔ `12,9°` · `62,9°` · `22` | ⛔ `4,75` · `24` | ⛔ `−2` |
+        // | `sculpt_t002` **com** | ⭐ **`7,1°`** · `37,5°` · `1` | ⭐ `1,72` · `0` | ⭐ `1` |
+        //
+        // ⭐⭐ A `sculpt_punctured` passa a ficar **abaixo** da barra do oráculo
+        // (`4,8–7,1°`), e a `t002` — a peça de que o Enio se queixou com *«furos nas
+        // pontas»* — passa a ter `0` órfãs, `0` células colapsadas e `χ = 1`, que é o valor
+        // **certo** para uma casca com um buraco. As dobras do mapa contínuo caem de `38`
+        // para **`0`**.
+        //
+        // ⚠️ **Inerte em peça fechada por CONSTRUÇÃO** — sem bordo a lista sai vazia —, e
+        // medido: as outras **12** peças do corpus saem byte-idênticas. Há gate
+        // (`a_closed_piece_offers_no_boundary_feature`).
+        // ⚠️ `PH2D_BOUNDARY_FEATURE=0` desliga, para bissecar.
+        if std::env::var("PH2D_BOUNDARY_FEATURE").as_deref() != Ok("0") {
+            let (edges, _loops) = ph2d_mesh::boundary_feature_edges(&work);
+            dual.constrain(&work, &edges);
+        }
+        let dual = dual;
 
         // ⭐⭐ **DUAS TENTATIVAS, e a ordem é a lei do produto.** A primeira corre o
         // campo **alinhado ao relevo** (`ALIGN_WEIGHT`, hoje `0,03`), que é o que o

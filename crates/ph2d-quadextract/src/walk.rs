@@ -105,6 +105,10 @@ pub(crate) struct WalkStats {
     /// pendente ⇒ célula abandonada ⇒ aresta de bordo.
     pub orphan_radius_p50: f32,
     /// O `p99` do raio normalizado de toda a peça — a régua da linha de cima.
+    /// ⚠️ **É o p99, NÃO o máximo** — e o rótulo do instrumento dizia *«a peça vai até»*,
+    /// que se lê como o máximo. Em 2026-08-26 isso fez uma célula colapsada a `1,54×` ser
+    /// lida como *«um nó FORA da peça»* quando ela está no **1% mais externo**, que é a
+    /// ponta. *Uma coluna cujo nome promete outra estatística lê-se ao contrário.*
     pub piece_radius_p99: f32,
     /// ⛔ Traços que estouraram o tecto de passos.
     pub runaway: usize,

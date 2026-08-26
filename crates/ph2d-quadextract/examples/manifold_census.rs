@@ -223,7 +223,29 @@ fn main() {
                 }
             }
         }
-        println!("  BORDO: {loops} lacos, perimetro {length:.4} (em raios medios: {:.4})", length / rmean);
+        // ⭐ **A viragem média do rebordo** — quanto ele SERRILHA. Um círculo de `n` lados
+        // vira `360/n`; um rebordo aberto a pincel vira muito mais. ⚠️ *É esta grandeza que
+        // decide se preservar o rebordo exacto preserva também o defeito.*
+        let (mut turn, mut tn) = (0.0f32, 0usize);
+        for (&v, ns) in &nxt {
+            if ns.len() != 2 {
+                continue;
+            }
+            let p = pos[v as usize];
+            let d = |w: u32| {
+                let u = sub(pos[w as usize], p);
+                let l = norm(u).max(1.0e-20);
+                [u[0] / l, u[1] / l, u[2] / l]
+            };
+            turn += 180.0 - dot(d(ns[0]), d(ns[1])).clamp(-1.0, 1.0).acos().to_degrees();
+            tn += 1;
+        }
+        println!(
+            "  BORDO: {loops} lacos, perimetro {length:.4} (em raios medios: {:.4}) \
+             · viragem media {:.1}°",
+            length / rmean,
+            turn / tn.max(1) as f32
+        );
     }
 
     let dup_groups = by_pos.values().filter(|g| g.len() > 1).count();

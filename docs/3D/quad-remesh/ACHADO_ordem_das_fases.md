@@ -494,3 +494,223 @@ outra operação — não uma afinação destas.
 
 ⚠️ **A partição fica construída, gateada e desligada** (`ph2d_remesh_iso::MANIFOLD_REPAIR`,
 `PH2D_MANIFOLD_REPAIR` reabre), porque quando a solda existir ela é o controlo dela.
+
+---
+
+## §13 — ⭐⭐⭐ A CURA: não era aleta nenhuma — a sonda mediu, e era uma FOLHA DE ESPESSURA ZERO
+
+**2026-08-26.** O §12 fechou com quatro reparações construídas e as quatro **piores que o
+defeito**. ⚠️ **As quatro foram desenhadas a partir do NOME** — *«uma aleta»*, *«duas
+folhas»*, *«um beliscão»* — e **nenhuma** a partir da estrutura medida. A quinta inverteu a
+ordem: primeiro a sonda, depois a cura.
+
+### §13.1 — O instrumento
+
+[`manifold_census`](../../../crates/ph2d-quadextract/examples/manifold_census.rs), e a tabela
+que ele existe para responder — *cada linha escolhe uma cura diferente*:
+
+| o que a aresta é | como se lê na sonda | a cura que isso escolhe |
+|---|---|---|
+| uma **aleta** | 3 faces, uma com diedro ~0 | deitar a face fora |
+| duas **folhas coladas** | 4 faces, dois pares | soldar |
+| uma face **repetida** | mesmo conjunto de vértices | deduplicar |
+| um **beliscão** | vértices coincidentes à volta | soldar por posição |
+
+### §13.2 — A resposta, e a coluna que decidiu tudo
+
+```
+sculpt_t001: bordo 0 · NAO-MANIFOLD 4
+  vertices COINCIDENTES: 0 grupos
+  faces REPETIDAS: 4 conjuntos (4 copias a mais)
+     · destas, 0 com a MESMA orientacao, 4 com orientacao OPOSTA
+```
+
+⭐⭐⭐ **A coluna da orientação é a que impede a cura errada.** Cópias com a **mesma**
+orientação são lixo — a segunda não acrescenta superfície, e deduplicar é correcto. Com
+orientação **oposta** são um par `(triângulo, espelho)`: uma **bolsa de volume zero**.
+Apagar *uma* das duas tira metade de uma superfície fechada — ⇒ **é por isso que as quatro
+tentativas do §12 abriram a peça.** Apagar **as duas** não tira superfície nenhuma.
+
+⚠️ *Sem esta coluna, «4 faces repetidas» leva-se para as duas curas opostas com a mesma
+confiança.*
+
+### §13.3 — A cura guarda-se a si própria
+
+[`ph2d_mesh::drop_doubled_faces`] mede o **bordo** antes e depois e **desfaz-se** se ele
+subir. *A régua da recusa é a mesma que reprovou as outras quatro, e agora corre **dentro**
+da cura em vez de depois dela.* Há gate a provar que a recusa dispara
+(`the_cure_refuses_itself_when_it_would_tear_the_surface`).
+
+### §13.4 — O que ela fez à cadeia inteira (`sculpt_t001`)
+
+| régua | sem | **com** |
+|---|---|---|
+| não-manifold na porta | `2 ⇒ 2` | ⭐ **`0 ⇒ 0`** |
+| patches fora de valência 3..6 | ⛔ `3` | ⭐ **`0`** |
+| não-discos · degenerados sobreviventes | ⛔ `5` · `4` | ⭐ **`0` · `0`** |
+| dobras no contínuo | `14` | ⭐ **`0`** |
+| **transições inexactas** | ⛔ `8` | ⭐⭐⭐ **`0`** |
+| resíduo de translação máx | `4,8e-1` | ⭐ **`9,5e-7`** |
+| órfãs | `10` | **`2`** |
+| **bordo da saída (os furos)** | ⛔ `8` | ⭐⭐ **`4`** |
+| enviesamento p50 · >60° | `7,3°` · `5` | **`7,1°` · `3`** |
+| aspecto p99 · >4× | `2,04` · `1` | **`1,91` · `0`** |
+
+⭐ **Inércia provada no corpus REAL:** 11 das 12 peças saem **byte-idênticas**; só a `t001`
+muda, e só para melhor. Por isso ela **shipa ligada**
+(`ph2d_remesh_iso::DOUBLED_REPAIR = true`, `PH2D_DOUBLED_REPAIR=0` bissecta).
+
+## §14 — ⛔⛔ UMA AFIRMAÇÃO MINHA REFUTADA: o remalhe NÃO cria não-manifold
+
+O doc do `MANIFOLD_REPAIR` dizia *«o remalhe cria não-manifold sozinho — `4 ⇒ 0` na porta e
+`2` outra vez depois do laço»*, e foi **essa frase** que pôs a reparação no fim do passe.
+
+⭐ **O controlo nunca tinha sido corrido.** Medido em **onze** peças limpas do corpus, o
+remalhe cria **zero** (`0 ⇒ 0` em todas). O `4 ⇒ 2` era da `t001`, que **entra** com `4`:
+ele **propaga**, não cria.
+
+⚠️ *Eu tinha comparado dois números da MESMA peça partida sem nunca olhar uma peça limpa.*
+⇒ a chamada gémea depois do laço foi **retirada**; o único motivo dela era esta frase.
+
+## §15 — ⭐⭐ A RÉGUA DO BORDO É O PERÍMETRO, nunca a contagem de arestas
+
+A mesma varredura acusou o F1 de **alargar buracos** (`sculpt_punctured`: `38 → 107` arestas
+de bordo). ⛔ **A contagem de arestas é função do PASSO** e não mede buraco nenhum: com a
+régua certa — **laços + perímetro** — a mesma peça anda `5,6463 → 5,7390`, **+1,6 %**.
+
+⭐ E com a régua certa o alargamento **real** aparece noutro sítio: a `t002` do Enio vai de
+`0,6046` a `0,7841`, **+30 %**, porque o buraco dela é pequeno demais para o passo do
+remalhe. *Um laço continua um laço nas duas.*
+
+## §16 — ⭐⭐⭐⭐ O BORDO É UMA LINHA DE FEIÇÃO — e era a maior alavanca da cadeia
+
+### §16.1 — O retrato das três peças do artista
+
+| peça | entrada: bordo · não-manifold | pós-F1 | veredito do Enio |
+|---|---|---|---|
+| `t001` | `0` · ⛔ **`4`** | `0` · `2` | furos |
+| `t002` | ⛔ **`8`** · `0` | `10` · `0` | *«furos nas pontas»* |
+| `t003` | **`0` · `0`** | **`0` · `0`** | ⭐ *«melhor resultado até agora»* |
+
+⭐⭐ **A peça que chega limpa é a que ele gostou** — a correlação é perfeita nas três.
+
+### §16.2 — A pergunta que ninguém tinha feito
+
+A `t001` curada tem **`0`** dobras no mapa contínuo; a `t002` tem **`38`**. A diferença entre
+as duas é **o buraco** — e o *paper* é explícito desde o §2 deste doc: uma linha de feição
+restringe o campo, e **um bordo é feição por definição**. A maquinaria de restrição existia
+desde a Obra B. ⚠️ *Nunca lhe tinha sido dado o bordo.*
+
+⭐ [`ph2d_mesh::boundary_feature_edges`] é a única feição **exacta** da cadeia: sem limiar,
+sem curvatura, sem janela — cinco coeficientes a menos que a irmã dela.
+⚠️ **A direcção é a tangente do LAÇO, não a da aresta** (a poligonal serrilha em torno da
+curva verdadeira), pela **mesma** lei de média-de-eixo que a `feature_edges` já usava.
+
+### §16.3 — O resultado
+
+| peça | régua | sem | **com** |
+|---|---|---|---|
+| `sculpt_punctured` | enviesamento p50 · p99 · >60° | ⛔ `23,1°` · `84,8°` · `85` | ⭐⭐⭐ **`5,7°`** · `29,6°` · `1` |
+| | aspecto p50 · p99 · >4× | ⛔ `1,68` · `11,60` · `93` | ⭐ **`1,11`** · `1,67` · `0` |
+| | área spread · quads | ⛔ `11,40` · `468` | ⭐ **`1,24`** · `1890` |
+| `sculpt_t002` | dobras contínuo · domínio | ⛔ `38` · `35` | ⭐ **`0` · `0`** |
+| | anel das células | `(2,4)(4,1413)(5,5)(6,3)(8,2)` | ⭐⭐ **`(4, 1839)`** |
+| | órfãs · células colapsadas | `8` · `6` | ⭐⭐⭐ **`0` · `0`** |
+| | `χ` · bordo · não-manifold | ⛔ `−2` · `31` · `1` | ⭐ **`1`** · `14` · **`0`** |
+| | enviesamento p50 · >60° | ⛔ `12,9°` · `22` | ⭐⭐⭐ **`7,1°`** · `1` |
+
+*(a barra do oráculo: enviesamento p50 `4,8–7,1` · aspecto p50 `1,08–1,22` · >60°: `0–4`)*
+
+⭐⭐⭐ **A `sculpt_punctured` passa a ficar ABAIXO da barra do oráculo**, e a `t002` — a peça
+da queixa — **dentro** dela, com `χ = 1`, que é o valor **certo** para uma casca com um
+buraco.
+
+### §16.4 — Por que pode ficar ligado
+
+⚠️ **Inerte em peça fechada por construção** (sem bordo, a lista sai vazia), e **medido**:
+as outras **12** peças do corpus saem **byte-idênticas**.
+
+⛔⛔ **E o que isto diz do processo é maior que o ganho:** as **duas** peças com bordo eram as
+**duas piores do corpus inteiro**, há meses, e a causa era uma pergunta que nenhuma régua
+fazia. *Um defeito que nenhuma sonda pergunta não aparece em nenhum relatório verde.*
+
+## §17 — ⛔⛔⛔ A LEI DO REBORDO: construída, MEDIDA e REJEITADA — e ela reprecifica um «defeito»
+
+O §15 mediu que o buraco da `t002` crescia **+30 %** em perímetro ao atravessar o F1. O
+mecanismo estava à vista assim que se olhou para `relax_and_project`: **ele não tinha
+tratamento de bordo nenhum.** Um vértice do rebordo era
+
+1. alisado na direcção da média dos vizinhos — que são quase todos **interiores**, logo
+   puxam-no para dentro da peça; e
+2. projectado na **superfície** de referência, que perto de um rebordo aberto **continua
+   para lá dele** — então ele desliza para onde a peça é mais larga.
+
+### §17.1 — A lei, e ela CUMPRE o que promete
+
+Um vértice de bordo é alisado **ao longo do rebordo** (só os vizinhos de bordo contam) e
+projectado na **poligonal** da referência, nunca na superfície. E o peso do alisamento é
+**zero** — ver a tabela em [`ph2d_remesh_iso::BORDER_LAMBDA`]:
+
+| `λ` | `sculpt_punctured` (entrada `5,6463`) | `sculpt_t002` (entrada `0,6046`) |
+|---|---|---|
+| **sem lei nenhuma** | `5,7390` (⛔ +1,6 %) | `0,7841` (⛔ **+30 %**) |
+| ⭐ **`0,0`** | ⭐ **`5,6463`** — exacto | ⭐ **`0,6046`** — exacto |
+| `0,1` | `5,4124` (⛔ −4,1 %) | `0,5387` (⛔ −10,9 %) |
+| `0,5` | `5,2566` (⛔ −6,9 %) | `0,5199` (⛔ −14,0 %) |
+
+⭐ **Alisar uma poligonal encurta-a por construção** — é fluxo de encurtamento de curva. O
+sinal do erro muda com a lei; a magnitude não desaparece sozinha.
+⭐⭐ **E o rebordo continua a ser REAMOSTRADO** (`38 → 104` arestas na `punctured`) com o
+perímetro exacto, porque as divisões caem **sobre** a poligonal.
+
+### §17.1-bis — ⛔⛔⛔ E o PRODUTO fica pior, em todas as colunas
+
+| `sculpt_t002` | perímetro | `χ` · não-manif. | enviesamento p50 · >60° | aspecto p99 · >4× |
+|---|---|---|---|---|
+| ⭐ **sem a lei** | `0,7841` (+30 %) | **`1` · `0`** | ⭐ **`7,1°` · `1`** | ⭐ **`1,72` · `0`** |
+| ⛔ `λ = 0` (rebordo exacto) | ⭐ `0,6046` exacto | `1` · ⛔ `1` | ⛔ `9,9°` · `22` | ⛔ `3,25` · `13` |
+| `λ = 0,1` | `0,5387` | ⛔ `0` · `0` | `6,2°` · `2` | `1,83` · `0` |
+| `λ = 0,5` | `0,5199` | ⛔ `−2` · `0` | `8,5°` · `6` | `2,01` · `1` |
+
+| `sculpt_punctured` | enviesamento p50 · >60° | aspecto p99 · >4× |
+|---|---|---|
+| ⭐ **sem a lei** | ⭐ **`5,7°` · `1`** | ⭐ **`1,67` · `0`** |
+| ⛔ `λ = 0` | ⛔ **`24,3°` · `72`** | ⛔ **`14,49` · `87`** |
+
+⭐⭐⭐ **O mecanismo, e ele reprecifica o «defeito» do §15.** O rebordo de um buraco esculpido
+**SERRILHA** — viragem média `43,7°` na `punctured` e `53,6°` na `t002`, contra os `10°` de um
+círculo de 36 lados. Preservá-lo **exactamente** preserva o serrilhado, e desde o §16 o bordo
+é uma **linha de feição**: o campo cruzado passa a ser forçado a segui-lo, e os patches saem
+do que essa zig-zag pede.
+
+⇒ *A Laplaciana interior a arrastar o rebordo — os `+30 %` que o §15 chamou de defeito —
+estava a **pagar** por uma coisa que ninguém tinha precificado: **um rebordo LISO**. Tirar o
+defeito tirou o pagamento.*
+
+⚠️ **A cura seguinte não é esta afinada:** é alisar o rebordo **e repor o comprimento dele**,
+que é outra operação. ⚠️ E note-se que o §15 e o §16 são **do mesmo dia**: foi o §16 —
+tornar o bordo uma feição — que **criou** o preço que o §17 mede. *Quem move o número que
+tornava uma nota verdadeira tem de reconferir a nota* (CLAUDE.md §0.0).
+
+### §17.2 — ⛔⛔ A primeira fixtura do gate era um TUBO, e as três mutações sobreviveram
+
+O primeiro gate usava um cilindro sem tampas. O rebordo dele é um **círculo plano** sobre
+uma superfície que passa exactamente por ele: alisar um polígono regular de 48 lados
+encolhe-o `0,2 %` por passo, e a projecção de superfície devolve-o ao mesmo sítio. ⇒ **as
+três leis eram indistinguíveis ali**, e o gate passava com qualquer uma.
+
+A fixtura que contém o fenómeno é **um buraco de rebordo SERRILHADO numa superfície curva**
+— e ela **prova que o contém**, com a régua da *viragem média do rebordo* (`148,7°` contra
+os `10°` de um círculo de 36 lados). ⚠️ *É esta grandeza que decide se uma fixtura de bordo
+tem o que medir.*
+
+| mutação | resultado |
+|---|---|
+| `λ = 0,5` (o rebordo volta a ser alisado) | ⭐ **morre** (`2,3145 ⇒ 0,5831`, −75 %) |
+| a lei do rebordo não existe | ⭐ **morre** (`2,3145 ⇒ 1,2531`, +53 %) |
+| sem a projecção na poligonal | ⚠️ **sobrevive** na fixtura — vale `+0,36 %` na `t002` e `+0,09 %` na `punctured`, medido no corpus |
+| sem o salto da projecção de superfície | ⛔ **inerte por PROVA** — o rebordo é subconjunto da superfície, logo o pé dele nela é ele próprio; a linha foi **removida** |
+
+⚠️ **A barra do gate saiu de `1 %` para `0,1 %`**, porque a primeira era **cem vezes mais
+frouxa que o que o código entrega** (`0,000 %` na fixtura, exacto nas duas peças reais).
+*Uma barra escolhida à mão mede a folga de quem a escolheu.*

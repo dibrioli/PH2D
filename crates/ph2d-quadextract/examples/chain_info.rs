@@ -146,6 +146,23 @@ fn main() {
     // da grade, e a detecção corre antes do F2 porque é ela que o restringe.
     let h = median_edge(&mesh) * scale;
     let mut dual = ph2d_crossfield::Dual::build(&mesh);
+    // ⭐⭐⭐ **O BORDO COMO FEIÇÃO** — a única feição EXACTA, sem limiar nenhum.
+    //
+    // ⚠️ Separado do bloco da curvatura de propósito: aquele tem cinco coeficientes e pode
+    // marcar a mais; este não tem nenhum. *Misturá-los faria a varredura de um responder
+    // pelo outro.* ⭐ **LIGADO por omissão** (`PH2D_BOUNDARY_FEATURE=0` bissecta): inerte em
+    // peça fechada por construção, e as duas com bordo eram as duas piores do corpus.
+    if std::env::var("PH2D_BOUNDARY_FEATURE").as_deref() != Ok("0") {
+        let (be, loops) = ph2d_mesh::boundary_feature_edges(&mesh);
+        let cr = dual.constrain(&mesh, &be);
+        println!(
+            "  BORDO como feicao: {loops} lacos ⇒ {} arestas ⇒ {} faces fixas, {} conflitos",
+            be.len(),
+            cr.faces,
+            cr.conflicts
+        );
+    }
+
     // ⭐⭐ **AS LINHAS DE FEIÇÃO** (obra B, `SPEC_restricoes_por_eliminacao.md` §3) — o 1.º
     // dos três consumidores. ⛔ Nasce DESLIGADA: a régua desta obra é «a peça ficou melhor»,
     // e enquanto a tabela não estiver escrita ela não entra no caminho de ninguém.
@@ -521,7 +538,7 @@ fn main() {
             println!(
                 "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira ({} com NO' la' / ⭐ {} sobre uma ARESTA) + \
                  {} sem saida do triangulo ({} achatado / {} com a ORIGEM FORA / {} so' \
-                 pelo lado de ENTRADA) = {} · raio {:.2}x (a peca vai ate' {:.2}x) · \
+                 pelo lado de ENTRADA) = {} · raio {:.2}x (o p99 da peca e' {:.2}x) · \
                  ⭐ FALHA POR {:.3} CELULAS num triangulo de {:.3}",
                 e.orphan_no_partner,
                 e.orphan_no_partner_node_exists,
@@ -540,7 +557,7 @@ fn main() {
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(
                 "  ⭐⭐ celulas COLAPSADAS (bigono/monogono) {} · triangulos {} | \
-                 ONDE as falhas moram: raio {:.2}x (a peca vai ate' {:.2}x)",
+                 ONDE as falhas moram: raio {:.2}x (o p99 da peca e' {:.2}x)",
                 e.degenerate_cells, e.triangles, e.cells_failed_radius_p50, e.node_radius_p99
             );
             println!(

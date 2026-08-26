@@ -117,3 +117,94 @@ fn a_smooth_sphere_yields_no_feature_edge_at_all() {
         "a lista tem de vir ordenada e sem repeticao"
     );
 }
+
+/// Um tubo ABERTO — o cilindro da casa sem as duas tampas.
+///
+/// ⚠️ Fixtura com resposta CONHECIDA: os dois laços de bordo são círculos em `y = ±h`, e
+/// toda tangente deles é perpendicular ao eixo. *Uma fixtura sem resposta conhecida só sabe
+/// dizer que o código não entrou em pânico.*
+fn open_tube(segments: usize) -> crate::Mesh {
+    let full = shapes::cylinder(segments, 1.0, 2.0);
+    let faces: Vec<crate::Face> = full
+        .faces()
+        .iter()
+        .filter(|f| !f.verts().iter().any(|&v| v < 2))
+        .copied()
+        .collect();
+    crate::Mesh::from_parts(full.positions().to_vec(), faces).expect("o tubo e' construido aqui")
+}
+
+/// ⭐⭐⭐ **O BORDO É ACHADO, CONTADO E A TANGENTE CORRE À VOLTA DELE.**
+#[test]
+fn an_open_tube_has_two_boundary_loops_and_the_tangent_runs_around_them() {
+    const SEG: usize = 24;
+    let mesh = open_tube(SEG);
+    let (edges, loops) = crate::boundary_feature_edges(&mesh);
+    assert_eq!(loops, 2, "⛔ um tubo aberto tem DOIS lacos de bordo");
+    assert_eq!(edges.len(), 2 * SEG, "⛔ um segmento de bordo por sector");
+    let worst = edges
+        .iter()
+        .map(|e| e.dir[1].abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 0.02,
+        "⛔ a tangente do bordo tem de correr A' VOLTA do tubo, nao ao longo dele: {worst}"
+    );
+}
+
+/// ⭐⭐ **INÉRCIA: uma peça fechada não oferece feição de bordo nenhuma.**
+///
+/// ⛔ É este gate que deixa a restrição ficar LIGADA sem tocar em peça fechada nenhuma.
+#[test]
+fn a_closed_piece_offers_no_boundary_feature() {
+    let mut mesh = shapes::uv_sphere(12, 18, 1.0);
+    mesh.triangulate();
+    let (edges, loops) = crate::boundary_feature_edges(&mesh);
+    assert_eq!(loops, 0);
+    assert!(edges.is_empty(), "⛔ uma esfera nao tem bordo");
+}
+
+/// ⭐⭐⭐ **A TANGENTE ALISA O SERRILHADO — e a aresta crua NÃO.**
+///
+/// ⛔⛔ **Sem este gate, `dir` podia ser a direcção crua da aresta e os outros dois gates
+/// passariam na mesma** (num círculo perfeito a aresta já é tangente). A fixtura mete o
+/// serrilhado de propósito: vértices alternados do bordo sobem e descem, que é o que uma
+/// triangulação faz à volta de um buraco de verdade.
+///
+/// ⚠️ **A régua é a COMPARAÇÃO com a aresta crua**, não um limiar absoluto: um limiar
+/// escolhido à mão mediria a amplitude que eu pus na fixtura.
+#[test]
+fn the_tangent_smooths_the_zigzag_that_the_raw_edge_keeps() {
+    const SEG: usize = 24;
+    let tube = open_tube(SEG);
+    let mut pos = tube.positions().to_vec();
+    // O serrilhado: só o anel de cima, alternando.
+    for (i, p) in pos.iter_mut().enumerate() {
+        if p[1] > 0.5 && i % 2 == 0 {
+            p[1] -= 0.25;
+        }
+    }
+    let mesh = crate::Mesh::from_parts(pos, tube.faces().to_vec()).expect("fixtura");
+    let (edges, _) = crate::boundary_feature_edges(&mesh);
+
+    let p = mesh.positions();
+    let raw = edges
+        .iter()
+        .map(|e| {
+            let (a, b) = (p[e.verts[0] as usize], p[e.verts[1] as usize]);
+            let d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            let l = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+            (d[1] / l).abs()
+        })
+        .fold(0.0f32, f32::max);
+    let smooth = edges.iter().map(|e| e.dir[1].abs()).fold(0.0f32, f32::max);
+    eprintln!("bordo serrilhado: aresta crua {raw:.4} · tangente alisada {smooth:.4}");
+    assert!(
+        raw > 0.3,
+        "⛔ a fixtura tem de CONTER o serrilhado: {raw}"
+    );
+    assert!(
+        smooth < raw * 0.5,
+        "⛔ a tangente tem de alisar o serrilhado, e nao herda-lo: {smooth} contra {raw}"
+    );
+}

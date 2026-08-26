@@ -175,3 +175,109 @@ pub fn feature_edges(
 #[cfg(test)]
 #[path = "feature_edges_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **O BORDO É UMA LINHA DE FEIÇÃO — e é a única EXACTA.**
+///
+/// # ⛔⛔ Por que ela existe
+///
+/// A [`feature_edges`] infere feição da **curvatura**, com cinco coeficientes e um limiar;
+/// ela pode marcar a mais ou a menos. Uma aresta de **bordo** não precisa de nada disso: ela
+/// é feição **por definição** — a superfície acaba ali, e nenhuma grade a pode atravessar.
+/// *É o único sítio onde a lei da feição não tem parâmetro nenhum.*
+///
+/// Medido 2026-08-26 nas peças do artista: a `t002` entra com um buraco (`1` laço, perímetro
+/// `0,60`) e o mapa dela sai com **38 dobras no contínuo**, contra **`0`** na `t001` (fechada,
+/// depois de curada). A peça que ele chamou *«melhor resultado até agora»* — a `t003` — é a
+/// **única das três que chega sem bordo e sem aresta ambígua**.
+///
+/// # ⚠️ A direcção é a TANGENTE DO LAÇO, não a da aresta
+///
+/// Numa triangulação, a poligonal do bordo **serrilha** em torno da curva verdadeira. ⇒ a
+/// tangente de cada vértice de bordo é a média-de-eixo das suas duas arestas de bordo, e a
+/// da aresta é a média-de-eixo das duas pontas — **a mesma lei** que a [`feature_edges`]
+/// aplica às direcções de curvatura. *Uma lei escrita duas vezes de maneiras diferentes é
+/// duas leis.*
+///
+/// ⚠️ **Um vértice de bordo com mais de duas arestas de bordo** (o pinçamento onde dois
+/// buracos se tocam) recebe a média de todas — não há laço para seguir ali, e recusar seria
+/// deixar sem restrição precisamente o sítio mais frágil.
+///
+/// A saída é ordenada e sem repetição, como a da [`feature_edges`], e pelo mesmo motivo
+/// (HR-5: a ordem entra na ordem de restrição das faces).
+#[must_use]
+pub fn boundary_feature_edges(mesh: &Mesh) -> (Vec<FeatureEdge>, usize) {
+    let pos = mesh.positions();
+    let mut count: BTreeMap<[u32; 2], usize> = BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *count
+                .entry(if a < b { [a, b] } else { [b, a] })
+                .or_default() += 1;
+        }
+    }
+    let border: Vec<[u32; 2]> = count
+        .into_iter()
+        .filter(|(_, n)| *n == 1)
+        .map(|(e, _)| e)
+        .collect();
+    if border.is_empty() {
+        return (Vec::new(), 0);
+    }
+
+    let unit_of = |e: &[u32; 2]| {
+        let d = sub(pos[e[1] as usize], pos[e[0] as usize]);
+        let l = dot(d, d).sqrt();
+        (l > 1.0e-20).then(|| [d[0] / l, d[1] / l, d[2] / l])
+    };
+
+    // A tangente de cada vértice do bordo — média-de-eixo das arestas de bordo que o tocam.
+    let mut tangent: BTreeMap<u32, [f32; 3]> = BTreeMap::new();
+    for e in &border {
+        let Some(u) = unit_of(e) else { continue };
+        for &v in e {
+            tangent
+                .entry(v)
+                .and_modify(|t| *t = axis_mean(*t, u))
+                .or_insert(u);
+        }
+    }
+
+    let mut loops = 0usize;
+    {
+        // Quantos laços de bordo há — a régua que diz se o remalhe preservou o buraco.
+        let mut nxt: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+        for e in &border {
+            nxt.entry(e[0]).or_default().push(e[1]);
+            nxt.entry(e[1]).or_default().push(e[0]);
+        }
+        let mut seen: BTreeSet<u32> = BTreeSet::new();
+        for &v in nxt.keys() {
+            if !seen.insert(v) {
+                continue;
+            }
+            loops += 1;
+            let mut stack = vec![v];
+            while let Some(u) = stack.pop() {
+                for &w in nxt.get(&u).into_iter().flatten() {
+                    if seen.insert(w) {
+                        stack.push(w);
+                    }
+                }
+            }
+        }
+    }
+
+    let out: Vec<FeatureEdge> = border
+        .iter()
+        .filter_map(|e| {
+            let (ta, tb) = (tangent.get(&e[0])?, tangent.get(&e[1])?);
+            Some(FeatureEdge {
+                verts: *e,
+                dir: axis_mean(*ta, *tb),
+            })
+        })
+        .collect();
+    (out, loops)
+}

@@ -88,7 +88,9 @@ pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, 
 pub use extract::{Extract, extract_masked};
 pub use face::{Face, TRI};
 pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
-pub use feature_edges::{FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, feature_edges};
+pub use feature_edges::{
+    FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, boundary_feature_edges, feature_edges,
+};
 pub use holes::{HoleFill, fill_holes};
 pub use manifold::{
     DoubledReport, ManifoldReport, border_edges, drop_doubled_faces, drop_extra_faces,

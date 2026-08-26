@@ -242,3 +242,248 @@ fn the_genus_survives() {
         assert_eq!(chi, want, "{name}: o remesh mudou o GENERO da superficie");
     }
 }
+
+/// Os laços de bordo e o perímetro de uma malha — a régua honesta do buraco.
+///
+/// ⛔⛔ **NÃO a contagem de arestas de bordo**: ela é função do passo, e um remalhe que
+/// reamostra a mesma curva mais fino sobe-a sem tocar no buraco. Medido 2026-08-26 na
+/// `sculpt_punctured`: `38 → 104` arestas com o perímetro **exacto**.
+fn border(mesh: &ph2d_mesh::Mesh) -> (usize, f32) {
+    let mut n: std::collections::BTreeMap<(u32, u32), usize> = std::collections::BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
+        }
+    }
+    let pos = mesh.positions();
+    let edges: Vec<(u32, u32)> = n
+        .into_iter()
+        .filter(|(_, c)| *c == 1)
+        .map(|(e, _)| e)
+        .collect();
+    let mut length = 0.0f32;
+    let mut nxt: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+    for &(a, b) in &edges {
+        let (p, q) = (pos[a as usize], pos[b as usize]);
+        let d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]];
+        length += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+        nxt.entry(a).or_default().push(b);
+        nxt.entry(b).or_default().push(a);
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    let mut loops = 0usize;
+    for &v in nxt.keys() {
+        if !seen.insert(v) {
+            continue;
+        }
+        loops += 1;
+        let mut stack = vec![v];
+        while let Some(u) = stack.pop() {
+            for &w in nxt.get(&u).into_iter().flatten() {
+                if seen.insert(w) {
+                    stack.push(w);
+                }
+            }
+        }
+    }
+    (loops, length)
+}
+
+/// **Quanto o rebordo VIRA** de aresta para aresta, em graus — a medida do serrilhado.
+///
+/// Um círculo de `n` lados vira `360/n` (10° com 36 lados); um rebordo aberto a pincel vira
+/// muito mais. ⚠️ *É esta grandeza que decide se uma fixtura de bordo tem o que medir.*
+fn mean_rim_turn(mesh: &ph2d_mesh::Mesh) -> f32 {
+    let mut n: std::collections::BTreeMap<(u32, u32), usize> = std::collections::BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
+        }
+    }
+    let mut nbr: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+    for ((a, b), c) in n {
+        if c == 1 {
+            nbr.entry(a).or_default().push(b);
+            nbr.entry(b).or_default().push(a);
+        }
+    }
+    let pos = mesh.positions();
+    let (mut sum, mut count) = (0.0f32, 0usize);
+    for (&v, ns) in &nbr {
+        if ns.len() != 2 {
+            continue;
+        }
+        let p = pos[v as usize];
+        let dir = |w: u32| {
+            let q = pos[w as usize];
+            let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+            let l = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt().max(1.0e-20);
+            [d[0] / l, d[1] / l, d[2] / l]
+        };
+        let (a, b) = (dir(ns[0]), dir(ns[1]));
+        let c = a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2])).clamp(-1.0, 1.0);
+        // O ângulo INTERNO é `acos(c)`; a viragem é o que falta para a recta.
+        sum += 180.0 - c.acos().to_degrees();
+        count += 1;
+    }
+    sum / count.max(1) as f32
+}
+
+/// ⭐⭐⭐ **UMA ESFERA COM UM BURACO PEQUENO NO POLO** — e a fixtura anterior era um
+/// **tubo**, que não continha o fenómeno.
+///
+/// ⛔⛔ **As três provas de mutação sobreviveram ao tubo** (2026-08-26). O rebordo dele é um
+/// **círculo plano** numa superfície que passa exactamente por ele: alisar ao longo de um
+/// polígono regular de 48 lados encolhe-o `0,2 %` por passo, e projectar na superfície
+/// devolve-o ao mesmo sítio. *As três leis do rebordo eram indistinguíveis ali, e o gate
+/// passava com qualquer uma delas.*
+///
+/// ⇒ Esta é a forma da queixa do artista: **um buraco pequeno numa superfície CURVA**, onde
+/// os vizinhos de um vértice do rebordo são quase todos **interiores** (a Laplaciana puxa-o
+/// para dentro) e a superfície de referência **continua para lá do rebordo** (a projecção
+/// deixa-o deslizar). É a `sculpt_t002`, em miniatura.
+fn sphere_with_a_small_hole(rings: usize, segments: usize) -> ph2d_mesh::Mesh {
+    let mut full = ph2d_mesh::shapes::uv_sphere(rings, segments, 1.0);
+    full.triangulate();
+    // O vértice mais alto — o polo. Tirar o leque dele abre um buraco de `segments` lados.
+    let pole = full
+        .positions()
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1[1].total_cmp(&b.1[1]))
+        .map(|(i, _)| u32::try_from(i).unwrap_or(0))
+        .unwrap_or(0);
+    let faces: Vec<ph2d_mesh::Face> = full
+        .faces()
+        .iter()
+        .filter(|f| !f.verts().contains(&pole))
+        .copied()
+        .collect();
+    // ⭐⭐ **O rebordo é IRREGULAR, e isso é metade do fenómeno.** Um buraco aberto por um
+    // pincel não tem rebordo de compasso; e ⚠️ **num rebordo liso o alisamento não tem o que
+    // encolher**, então uma fixtura de rebordo circular deixa a lei do `λ` indistinguível de
+    // qualquer outra. *Foi o que aconteceu com a primeira fixtura, um tubo.*
+    let rim: Vec<u32> = {
+        let mut n: std::collections::BTreeMap<(u32, u32), usize> =
+            std::collections::BTreeMap::new();
+        for f in &faces {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
+            }
+        }
+        let mut out: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+        for ((a, b), c) in n {
+            if c == 1 {
+                out.insert(a);
+                out.insert(b);
+            }
+        }
+        out.into_iter().collect()
+    };
+    let mut positions = full.positions().to_vec();
+    for (k, &v) in rim.iter().enumerate() {
+        // Alternado ao longo da esfera: para o polo e de volta. Fica no raio 1.
+        let s = if k % 2 == 0 { 1.9f32 } else { 1.0 };
+        let p = positions[v as usize];
+        let r = p[0].mul_add(p[0], p[2] * p[2]).sqrt().max(1.0e-9);
+        let (nr, ny) = ((r / s).min(1.0), 0.0f32);
+        let _ = ny;
+        let y = (1.0 - nr * nr).max(0.0).sqrt() * p[1].signum();
+        positions[v as usize] = [p[0] / r * nr, y, p[2] / r * nr];
+    }
+    ph2d_mesh::Mesh::from_parts(positions, faces).expect("a fixtura e' construida aqui")
+}
+
+/// ⭐⭐ **A LEI DO REBORDO ESTÁ DESLIGADA — e a régua dela VIVE.**
+///
+/// ⛔⛔ Ela foi construída, medida e **rejeitada** (ver [`super::BORDER_LAW`]): entrega o
+/// perímetro exacto e faz o produto **pior em todas as colunas**, porque um rebordo esculpido
+/// serrilha e o bordo é uma linha de feição. ⚠️ *Um gate que só afirmasse «está desligada»
+/// aprovaria a lei ter sido apagada; este mede-a com ela ligada.*
+#[test]
+fn the_rim_law_is_off_and_the_ruler_is_alive() {
+    // ⚠️ `const { }` como a casa faz nos manifestos: a asserção **é** sobre uma constante,
+    // e é isso que se quer afirmar. ⛔ Ligar a `BORDER_LAW` passa a ser erro de COMPILAÇÃO
+    // até alguém apagar esta linha e ler a tabela dela.
+    const {
+        assert!(!super::BORDER_LAW);
+    };
+    let mut mesh = sphere_with_a_small_hole(24, 36);
+    let (loops0, len0) = border(&mesh);
+    remesh_isotropic(&mut mesh, ALPHA);
+    let (loops1, len1) = border(&mesh);
+    eprintln!("desligada: {loops0} lacos / {len0:.4} ⇒ {loops1} lacos / {len1:.4}");
+    assert_eq!(loops1, 1, "⛔ o buraco tem de continuar a ser UM buraco");
+    assert!(
+        (len1 - len0).abs() / len0 > 0.05,
+        "⛔ com a lei DESLIGADA o rebordo tem de ANDAR -- se nao anda, a regua morreu"
+    );
+}
+
+/// ⭐⭐⭐ **A LEI, quando ligada, PRESERVA O REBORDO — os laços E o perímetro.**
+///
+/// ⛔⛔ Até 2026-08-26 este passe não sabia o que era um bordo: alisava o rebordo na direcção
+/// dos vizinhos **interiores** e projectava-o na **superfície** de referência. Medido na
+/// `sculpt_t002` do artista, o perímetro do buraco crescia **30 %** — e nenhuma régua o via,
+/// porque a contagem de arestas de bordo é função do passo.
+///
+/// ⚠️ **As DUAS metades são precisas.** Sem a do perímetro, um rebordo que encolhe passa;
+/// sem a dos laços, um rebordo que se parte em dois passa.
+#[test]
+fn the_remesh_keeps_the_rim_where_the_artist_put_it() {
+    let mut mesh = sphere_with_a_small_hole(24, 36);
+    let (loops0, len0) = border(&mesh);
+    assert_eq!(loops0, 1, "a fixtura tem de ter UM laco");
+    let step = target_edge(&mesh, ALPHA);
+    // ⭐⭐⭐ **A FIXTURA PROVA QUE CONTÉM O FENÓMENO** — e a régua é o quanto o rebordo
+    // SERRILHA, porque é isso que o alisamento tem para encolher.
+    //
+    // ⛔⛔ A primeira fixtura desta linha era um **tubo**: rebordo circular, plano, sobre uma
+    // superfície que passa por ele. **As três provas de mutação sobreviveram** — com ou sem
+    // lei, o perímetro andava `0,04 %`. *Uma fixtura sem o fenómeno aprova qualquer lei.*
+    let turn = mean_rim_turn(&mesh);
+    eprintln!(
+        "fixtura: perimetro {len0:.4} · passo {step:.4} · razao {:.1} · viragem media {turn:.1}°",
+        len0 / step
+    );
+    assert!(
+        turn > 60.0,
+        "⛔ a fixtura tem de ter rebordo SERRILHADO, senao a lei do alisamento e' \
+         indistinguivel: viragem media {turn:.1}°"
+    );
+
+    super::remesh_with(&mut mesh, ALPHA, true);
+    let (loops1, len1) = border(&mesh);
+    eprintln!("rebordo: {loops0} lacos / {len0:.4} ⇒ {loops1} lacos / {len1:.4}");
+    assert_eq!(loops1, 1, "⛔ o remalhe partiu ou fechou o laco de bordo");
+    // ⚠️ **A barra é a que a lei ENTREGA, não uma folga escolhida à mão.** Com a lei, esta
+    // fixtura sai a `0,000 %` e a `sculpt_t002` do artista sai **exacta** (`0,6046` ⇒
+    // `0,6046`). Uma barra de `1 %` — a primeira que escrevi — é cem vezes mais frouxa que
+    // o código, e deixaria passar uma regressão inteira.
+    let drift = (len1 - len0).abs() / len0;
+    assert!(
+        drift < 0.001,
+        "⛔ o perimetro do rebordo andou {:.1}% ({len0:.4} ⇒ {len1:.4})",
+        drift * 100.0
+    );
+}
+
+/// ⭐⭐ **INÉRCIA: numa peça fechada a lei do rebordo não existe.**
+#[test]
+fn a_closed_piece_has_no_rim_to_keep() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    assert_eq!(border(&mesh), (0, 0.0), "a esfera nao tem bordo");
+    remesh_isotropic(&mut mesh, ALPHA);
+    assert_eq!(
+        border(&mesh),
+        (0, 0.0),
+        "⛔ o remalhe ABRIU uma peca fechada"
+    );
+}

@@ -63,25 +63,63 @@ pub(crate) fn open_palette_if_asked(
     if world.get_entity(entity).is_err() {
         return;
     }
+    // ⚠️ **A paleta abre com o *Show all* DESLIGADO**, sempre: o inaplicável é contexto, e um
+    // artista que a abre para pôr um componente quer ver o que serve. O estado da caixa não
+    // sobrevive ao fecho de propósito.
+    hero.store
+        .open_command_palette(model_for(sim, registry, bits, false));
+    *target = Some(bits);
+}
+
+/// O modelo da paleta para `bits`, com a caixa no estado `show_all`.
+///
+/// ⚠️ **Uma porta só**, chamada ao abrir **e** ao virar a caixa: duas construções do modelo seriam
+/// duas respostas a *"o que este objeto pode receber?"*, e a que o artista vê depois de clicar na
+/// caixa seria a que envelhece.
+fn model_for(
+    sim: &SimWorld,
+    registry: &ComponentRegistry,
+    bits: u64,
+    show_all: bool,
+) -> ph2d_editor::widget::command_palette::PaletteModel {
+    let world = sim.world();
+    let entity = ph2d_ecs::Entity::from_bits(bits);
     let kind = kind_of(world, entity);
     let present = present_on(world, entity, registry);
-    // ⚠️ **O que o registo sabe CONSTRUIR** — sem `insert_default` a paleta não tem valor
-    // inicial, e um item que aceita o clique e não anexa nada é o defeito que o `+` existe para
-    // não ter. É o registo que responde, não uma lista à mão.
+    // ⚠️ **O que o registo sabe CONSTRUIR** — sem `insert_default` a paleta não tem valor inicial, e
+    // um item que aceita o clique e não anexa nada é o defeito que o `+` existe para não ter. É o
+    // registo que responde, não uma lista à mão.
     let can_build = |name: &str| {
         registry
             .get_by_id(ph2d_ecs::scene::stable_type_id(name))
             .is_some_and(|e| e.insert_default.is_some())
     };
+    crate::component_palette::build(kind, &present, &can_build, show_all)
+}
+
+/// ⭐ **A caixa *Show all* foi virada ⇒ reconstrói o modelo** (ADR-0166 / F3).
+///
+/// ⚠️ **O widget vira o estado dele e AVISA; quem reconstrói é quem abriu** — o `command_palette` é
+/// genérico e não sabe o que *"mostrar tudo"* significa, exatamente como não sabe o que um item
+/// significa. É a mesma costura do `command_pick`, um controlo mais acima.
+///
+/// ⚠️ **A busca sobrevive** (`set_command_palette_model`, e não `open_command_palette`): ligar a
+/// caixa depois de escrever «rigid» não pode apagar o que foi escrito.
+pub(crate) fn refresh_palette_on_toggle(
+    hero: &mut HeroScreen,
+    sim: &SimWorld,
+    registry: &ComponentRegistry,
+    target: Option<u64>,
+) {
+    if !hero.store.take_command_palette_toggled() {
+        return;
+    }
+    let Some(bits) = target else {
+        return;
+    };
+    let show_all = hero.store.command_palette_toggle_on();
     hero.store
-        .open_command_palette(crate::component_palette::build(
-            kind, &present, &can_build,
-            // ⏳ O *Show all* é uma caixa do modal que ainda não existe; até lá a paleta mostra
-            // **só o aplicável**, que é o comportamento correto por omissão. O inaplicável
-            // continua a ter a sua rota escrita e testada (`component_palette_tests`).
-            false,
-        ));
-    *target = Some(bits);
+        .set_command_palette_model(model_for(sim, registry, bits, show_all));
 }
 
 /// **Drena o pick da paleta** e devolve `(entidade, nome canónico)`.
@@ -137,6 +175,30 @@ pub(crate) fn attach_by_name(
     entity_bits: u64,
     name: &str,
 ) -> Result<(), String> {
+    // ⭐ **A CASCATA primeiro** (ADR-0166 / F3): o que este componente não funciona sem.
+    //
+    // ⚠️ **Antes dele, e não depois** — o seed de um dependente pode ler o que a dependência traz
+    // (o `PlatformPlayer` mede o `Collider` para saber a que altura pairar). Na ordem inversa ele
+    // leria um mundo sem collider e nasceria tangente.
+    //
+    // ⚠️ **A recursão termina** porque `attach_one` é no-op sobre o que já está lá, e o gate
+    // `the_require_graph_has_no_cycles` afirma que o grafo é acíclico — um ciclo no catálogo faria
+    // isto recorrer para sempre em vez de falhar alto.
+    if let Some(desc) = ph2d_component_desc::desc_for(name) {
+        for dep in desc.requires {
+            attach_by_name(sim, registry, entity_bits, dep)?;
+        }
+    }
+    attach_one(sim, registry, entity_bits, name)
+}
+
+/// Anexa **um** componente (sem a cascata), e é no-op quando ele já está lá.
+fn attach_one(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    entity_bits: u64,
+    name: &str,
+) -> Result<(), String> {
     let entity =
         ph2d_ecs::Entity::try_from_bits(entity_bits).ok_or_else(|| "No such entity".to_string())?;
     let type_id = ph2d_ecs::scene::stable_type_id(name);
@@ -149,6 +211,12 @@ pub(crate) fn attach_by_name(
     let insert = entry
         .insert_default
         .ok_or_else(|| format!("{name} has no default to attach"))?;
+    // ⚠️ **Já lá está ⇒ NO-OP.** É o que faz a cascata terminar e o que impede que anexar
+    // *Platform Player* num corpo que já existe rebaixe esse corpo ao ponto neutro — o `insert` do
+    // bevy substitui, não funde.
+    if matches!((entry.serialize)(sim.world(), entity), Ok(Some(_))) {
+        return Ok(());
+    }
     insert(sim.world_mut(), entity).map_err(|e| format!("Attach failed: {e}"))?;
     // ⭐ **E o SEED, se este componente tiver um** (ADR-0166 / F3 · a emenda medida na F0).
     //
@@ -158,3 +226,8 @@ pub(crate) fn attach_by_name(
     crate::component_seed::seed_after_attach(sim, entity_bits, name);
     Ok(())
 }
+
+/// ⭐ A SEQUÊNCIA — ver [`crate::component_attach_tests`].
+#[cfg(test)]
+#[path = "component_attach_tests.rs"]
+mod tests;

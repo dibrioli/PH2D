@@ -60,6 +60,19 @@ pub struct ComponentDesc {
     pub attach: Attach,
     /// Os campos descritos, em ordem de `field_id` crescente. Vazio = ainda não descrito.
     pub fields: &'static [FieldDesc],
+    /// ⭐ **O que este componente NÃO FUNCIONA SEM** — nomes canónicos, anexados em cascata
+    /// (ADR-0166 / F3). O equivalente do `[RequireComponent]` do Unity e do `#[require]` do Bevy.
+    ///
+    /// ⚠️ **A cascata é MOSTRADA antes de ser aplicada**, e essa é a correção da crítica medida ao
+    /// Bevy ([discussão #16570](https://github.com/bevyengine/bevy/discussions/16570), doc 02
+    /// §1.4): *«não vejo o que vem junto»*. A dependência automática cura o erro de setup e **cria**
+    /// um problema de visibilidade — e num editor a UI é o sítio barato de o resolver. Aqui ela
+    /// viaja no **rótulo do item da paleta**, pela mesma porta que a razão do inaplicável.
+    ///
+    /// ⛔ **Só o que é ESTRUTURAL entra**, nunca o que é boa prática: a barra é *o componente é
+    /// inerte sem aquele*. A ponte da física consulta `(RigidBody, Collider, Transform)` — um corpo
+    /// sem collider nunca é simulado, e isso é uma query, não uma opinião.
+    pub requires: &'static [&'static str],
 }
 
 impl ComponentDesc {
@@ -82,6 +95,31 @@ impl ComponentDesc {
             category,
             attach: Attach::Authored { applies_to },
             fields,
+            requires: &[],
+        }
+    }
+
+    /// **Um componente autorado que não funciona sem outros** — ver [`ComponentDesc::requires`].
+    ///
+    /// ⚠️ **Construtor à parte, e não um argumento a mais no [`Self::authored`]:** aquele é chamado
+    /// ~90 vezes, e acrescentar-lhe um `&[]` em todas elas seria ruído em 90 sítios para servir
+    /// dois. *A excepção paga o preço dela.*
+    #[must_use]
+    pub const fn authored_requiring(
+        canonical_name: &'static str,
+        display_name: &'static str,
+        category: ComponentCategory,
+        applies_to: ObjectKinds,
+        fields: &'static [FieldDesc],
+        requires: &'static [&'static str],
+    ) -> Self {
+        Self {
+            canonical_name,
+            display_name,
+            category,
+            attach: Attach::Authored { applies_to },
+            fields,
+            requires,
         }
     }
 
@@ -101,6 +139,7 @@ impl ComponentDesc {
             category,
             attach: Attach::Intrinsic,
             fields,
+            requires: &[],
         }
     }
 
@@ -122,6 +161,7 @@ impl ComponentDesc {
             category,
             attach: Attach::Machinery,
             fields: &[],
+            requires: &[],
         }
     }
 

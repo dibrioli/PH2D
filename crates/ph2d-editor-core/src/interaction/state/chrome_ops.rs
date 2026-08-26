@@ -342,6 +342,47 @@ impl WidgetStore {
         self.command_palette_query.clear();
     }
 
+    /// ⭐ **Substitui o modelo da paleta MANTENDO a busca** (ADR-0166 / F3).
+    ///
+    /// ⚠️ **A diferença para [`Self::open_command_palette`] é a única razão de existir:** aquele
+    /// limpa a query, porque abrir é começar de novo. Aqui a paleta **já está aberta** e só mudou de
+    /// conteúdo — apagar o que o artista escreveu ao ligar a caixa seria um controlo que desfaz o
+    /// trabalho do controlo do lado.
+    pub fn set_command_palette_model(
+        &mut self,
+        model: crate::widget::command_palette::PaletteModel,
+    ) {
+        if self.command_palette.is_some() {
+            self.command_palette = Some(model);
+        }
+    }
+
+    /// **Vira a caixa da banda** e devolve o estado novo (`None` quando não há caixa nenhuma).
+    /// Chamado pelo handler de chrome; quem abriu a paleta lê o sinal com
+    /// [`Self::take_command_palette_toggled`] e reconstrói o modelo.
+    pub fn flip_command_palette_toggle(&mut self) -> Option<bool> {
+        let t = self.command_palette.as_mut()?.toggle.as_mut()?;
+        t.on = !t.on;
+        self.command_palette_toggled = true;
+        Some(t.on)
+    }
+
+    /// Toma o sinal da caixa, limpando-o — para o modelo ser reconstruído exatamente uma vez.
+    #[must_use]
+    pub fn take_command_palette_toggled(&mut self) -> bool {
+        std::mem::take(&mut self.command_palette_toggled)
+    }
+
+    /// A caixa da banda está ligada? `false` quando não há caixa (o caso dos outros dois
+    /// consumidores da paleta).
+    #[must_use]
+    pub fn command_palette_toggle_on(&self) -> bool {
+        self.command_palette
+            .as_ref()
+            .and_then(|m| m.toggle.as_ref())
+            .is_some_and(|t| t.on)
+    }
+
     /// The live search text typed into the open palette (empty = no filter). The widget reads this to
     /// filter the model + highlight; the shell reads it to compute the `Enter` top-match.
     #[must_use]

@@ -142,6 +142,7 @@ fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
     let mut store = WidgetStore::with_capacity(8);
     store.open_command_palette(PaletteModel {
         title: "Add Node".into(),
+        toggle: None,
         groups: vec![PaletteGroup {
             title: "Source".into(),
             color: ColorToken::NodeCatSource,

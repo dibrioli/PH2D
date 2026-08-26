@@ -306,13 +306,22 @@ pub(crate) fn seed_attached_player(sim: &mut SimWorld, entity_bits: u64) {
 ///
 /// ⚠️ **Isto era o `PlayerFieldEdit::Add`, e ele MORREU na F3:** o botão «Make Platform Player»
 /// vivia dentro da §14, que hoje só se pinta **com** o componente lá — a porta ficaria fechada
-/// sobre a própria chave. Quem anexa é o `+` do cabeçalho, que chama o [`seed_attached_player`].
+/// sobre a própria chave. Quem anexa é o `+` do cabeçalho.
+///
+/// ⚠️ **Ele atravessa a PORTA DE PRODUÇÃO** (`component_attach::attach_by_name`), e não um
+/// `insert` à mão: um atalho de teste que constrói o componente por outro caminho é a segunda porta
+/// que diverge — e o que os 27 gates da §14 têm de medir é o gesto que o artista faz. O que ele
+/// poupa é só o registo, que de outro modo cada um dos 27 montaria.
+#[cfg(test)]
 pub(crate) fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
-    let entity = Entity::from_bits(entity_bits);
-    sim.world_mut()
-        .entity_mut(entity)
-        .insert(PlatformPlayer::default());
-    seed_attached_player(sim, entity_bits);
+    let reg = crate::init::build_component_registry();
+    crate::component_attach::attach_by_name(
+        sim,
+        &reg,
+        entity_bits,
+        "ph2d::physics::PlatformPlayer",
+    )
+    .unwrap_or_else(|m| panic!("a porta de anexar recusou o player: {m}"));
 }
 
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.

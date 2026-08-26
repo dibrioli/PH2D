@@ -130,7 +130,7 @@ pub(crate) mod inspector_presence_probe;
 /// Eles vivem nos módulos DONOS das leis (a caixa que casa com o desenho · a altura que paira), e
 /// esta linha é só o endereço por onde a tabela de seeds lhes chega.
 pub(crate) use inspector_physics_apply::seed_attached_collider;
-pub(crate) use inspector_player::{attach_player, seed_attached_player};
+pub(crate) use inspector_player::seed_attached_player;
 mod inspector_physics_area;
 #[cfg(test)]
 mod inspector_physics_gesture_surface_tests;
@@ -9957,6 +9957,14 @@ impl crate::App {
                 component_registry,
                 add_component_for,
                 component_palette_target,
+            );
+            // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
+            // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
+            crate::component_attach::refresh_palette_on_toggle(
+                hero,
+                sim,
+                component_registry,
+                *component_palette_target,
             );
             // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
             // `AppGfx` em vez de num local deste laço.

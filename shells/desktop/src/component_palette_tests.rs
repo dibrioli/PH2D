@@ -174,3 +174,94 @@ fn every_group_is_named_and_tinted() {
         );
     }
 }
+
+/// ⭐ **A CASCATA É MOSTRADA ANTES DE SER APLICADA** — a correção da crítica medida ao Bevy
+/// (discussão #16570, doc 02 §1.4: *«não vejo o que vem junto»*).
+///
+/// ⚠️ **E ela é FECHADA:** *Platform Player* traz `RigidBody`, que traz `Collider`. Mostrar só o
+/// primeiro salto seria a mesma queixa um nível abaixo — o artista clicava esperando um componente
+/// e recebia três.
+#[test]
+fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
+    let m = build(ObjectKind::Image, &[], &buildable, false);
+    let body = labels(&m)
+        .into_iter()
+        .find(|l| l.starts_with("Rigid Body"))
+        .expect("o Rigid Body tem de estar na paleta");
+    assert!(
+        body.contains("brings Collider"),
+        "o rotulo tem de dizer o que vem junto: {body:?}"
+    );
+    let player = labels(&m)
+        .into_iter()
+        .find(|l| l.starts_with("Platform Player"))
+        .expect("o Platform Player tem de estar na paleta");
+    assert!(
+        player.contains("Rigid Body") && player.contains("Collider"),
+        "a cascata tem de ser FECHADA (transitiva): {player:?}"
+    );
+}
+
+/// ⚠️ **E quem NÃO tem cascata não ganha texto nenhum** — a metade de ausência. Um rótulo que diz
+/// *"brings"* sobre nada seria ruído em ~90 itens.
+#[test]
+fn a_component_with_no_requirement_says_nothing_extra() {
+    let m = build(ObjectKind::Image, &[], &buildable, false);
+    let nine = labels(&m)
+        .into_iter()
+        .find(|l| l.starts_with("9-Slice"))
+        .expect("o 9-Slice");
+    assert_eq!(nine, "9-Slice", "um item sem cascata tem o rotulo limpo");
+}
+
+/// ⛔ **O grafo de dependências é ACÍCLICO** — e isto não é higiene: a cascata do `attach_by_name`
+/// é recursiva, então um ciclo no catálogo faria o `+` recorrer para sempre em vez de falhar alto.
+#[test]
+fn the_require_graph_has_no_cycles() {
+    fn walk(name: &'static str, path: &mut Vec<&'static str>) {
+        assert!(
+            !path.contains(&name),
+            "ciclo no `requires` do catalogo: {path:?} -> {name}"
+        );
+        let Some(d) = ph2d_component_desc::desc_for(name) else {
+            return;
+        };
+        path.push(name);
+        for dep in d.requires {
+            walk(dep, path);
+        }
+        path.pop();
+    }
+    let mut seen = 0usize;
+    for d in ph2d_component_desc::all() {
+        if !d.requires.is_empty() {
+            seen += 1;
+        }
+        walk(d.canonical_name, &mut Vec::new());
+    }
+    assert!(
+        seen >= 2,
+        "o gate ficou verde por nao haver `requires` nenhum ({seen})"
+    );
+}
+
+/// ⚠️ **Toda dependência declarada NOMEIA um componente que existe e se constrói.**
+///
+/// Um nome canónico errado no `requires` não falha a compilação — a cascata simplesmente salta-o em
+/// silêncio, e o artista anexa o dependente sem a dependência. É a mesma classe da chave por string
+/// que o próprio descritor avisa.
+#[test]
+fn every_declared_requirement_names_a_real_component() {
+    for d in ph2d_component_desc::all() {
+        for dep in d.requires {
+            let target = ph2d_component_desc::desc_for(dep).unwrap_or_else(|| {
+                panic!("{} exige {dep}, que nao tem descritor", d.canonical_name)
+            });
+            assert!(
+                !matches!(target.attach, ph2d_component_desc::Attach::Intrinsic),
+                "{} exige {dep}, que e' Intrinsic — a cascata nao o consegue construir",
+                d.canonical_name
+            );
+        }
+    }
+}

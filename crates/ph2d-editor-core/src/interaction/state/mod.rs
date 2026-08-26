@@ -375,6 +375,12 @@ pub struct WidgetStore {
     /// widget filters the model by it, and `Enter` picks the top match. Cleared on open/close so a fresh
     /// palette never inherits the last query.
     pub(super) command_palette_query: String,
+    /// ⭐ **A caixa da banda foi clicada** (ADR-0166 / F3), à espera de quem a abriu.
+    ///
+    /// ⚠️ **É um sinal, não o estado.** O widget não sabe o que *"mostrar tudo"* significa — quem
+    /// abriu a paleta é que sabe, e é ele que reconstrói o modelo. É a mesma lei do `command_pick`:
+    /// o editor-core nunca aprende o que um item quer dizer.
+    pub(super) command_palette_toggled: bool,
     /// Section-header id → highlighter color index (0..4 for the 5
     /// canonical colors; missing entry == "no outline"). Painted by
     /// the inspector as a colored stroke around the section block.

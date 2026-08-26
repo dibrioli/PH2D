@@ -16,6 +16,7 @@ fn item(label: &'static str) -> PaletteItem {
 fn model() -> PaletteModel {
     PaletteModel {
         title: "Add Node".into(),
+        toggle: None,
         groups: vec![
             PaletteGroup {
                 title: "Source".into(),
@@ -157,5 +158,71 @@ fn the_entrance_actually_moves_the_drawing() {
         drawn(0.0),
         drawn(1.0),
         "a cascata nao desenha nada de diferente — a wave inteira e um no-op"
+    );
+}
+
+/// ⭐ **A caixa da banda REGISTA o hit** (ADR-0166 / F3), e só quando o modelo tem uma.
+///
+/// ⚠️ As duas metades: um controlo pintado e **não registado** fica morto sob o dedo — e um report
+/// disso lê-se exactamente igual a *"o botão nunca apareceu"*. A metade de ausência garante que os
+/// outros dois consumidores da paleta (a biblioteca de nós, o `Ctrl+K`) não ganham um id órfão no
+/// índice, que continuaria clicável.
+#[test]
+fn the_band_toggle_registers_its_hit_only_when_the_model_has_one() {
+    use crate::interaction::HitIndex;
+    use ph2d_text::TextSystem;
+    use ph2d_vector::VectorScene;
+
+    fn painted(m: &PaletteModel) -> bool {
+        let mut scene = VectorScene::new();
+        let mut ts = TextSystem::new();
+        let mut hits = HitIndex::new();
+        let motion = crate::motion::UiMotion::default();
+        paint(
+            &mut scene,
+            &mut ts,
+            ph2d_tokens::Theme::default(),
+            &mut hits,
+            m,
+            "",
+            Rect::new(0.0, 0.0, 1600.0, 900.0),
+            &motion,
+        );
+        hits.rect_for(CMD_PALETTE_SHOW_ALL).is_some()
+    }
+
+    assert!(!painted(&model()), "sem caixa no modelo, sem id no indice");
+    let mut with = model();
+    with.toggle = Some(PaletteToggle {
+        label: "Show all".into(),
+        on: false,
+    });
+    assert!(
+        painted(&with),
+        "a caixa foi pintada e nao registada — morta sob o dedo"
+    );
+    // ⚠️ E LIGADA continua clicável: um controlo que só aceita o clique no estado em que já está
+    // seria uma porta de sentido único.
+    let mut on = model();
+    on.toggle = Some(PaletteToggle {
+        label: "Show all".into(),
+        on: true,
+    });
+    assert!(painted(&on), "ligada, ela tem de continuar clicavel");
+}
+
+/// ⚠️ **A caixa ATRAVESSA o filtro de busca.** Ela é da BANDA, não do conteúdo — escrever no campo
+/// de busca não pode apagar o controlo que mostra mais resultados.
+#[test]
+fn the_band_toggle_survives_the_search_filter() {
+    let mut m = model();
+    m.toggle = Some(PaletteToggle {
+        label: "Show all".into(),
+        on: true,
+    });
+    let f = filter_model(&m, "wind");
+    assert_eq!(
+        f.toggle, m.toggle,
+        "o filtro comeu a caixa da banda: escrever na busca apagaria o controlo"
     );
 }

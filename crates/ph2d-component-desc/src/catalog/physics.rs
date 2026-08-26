@@ -27,6 +27,27 @@ const fn p(canonical_name: &'static str, display_name: &'static str) -> D {
     D::authored(canonical_name, display_name, C::Physics, O::ANY, &[])
 }
 
+/// Irmã do [`p`], para quem **não funciona sem outro componente** — ver [`D::requires`].
+///
+/// ⚠️ **Duas entradas em toda a família, e as duas são a MESMA query.** A ponte consulta
+/// `(Entity, &RigidBody, &Collider, &Transform)`: um corpo sem collider nunca entra no solver, e um
+/// player é uma lei que corre sobre um corpo. ⛔ A barra é *inerte sem aquele*, nunca boa prática —
+/// as zonas, os joints e os markers ficam de fora de propósito.
+const fn pr(
+    canonical_name: &'static str,
+    display_name: &'static str,
+    requires: &'static [&'static str],
+) -> D {
+    D::authored_requiring(
+        canonical_name,
+        display_name,
+        C::Physics,
+        O::ANY,
+        &[],
+        requires,
+    )
+}
+
 /// Ordenado por `canonical_name` (gate `the_catalog_is_sorted_and_unique`).
 pub const DESCS: &[D] = &[
     p("ph2d::physics::AreaBuoyancy", "Buoyancy Zone"),
@@ -63,12 +84,20 @@ pub const DESCS: &[D] = &[
     // entram aqui como `RefKind::Object`. Sem isso, a junta de uma instância prende os
     // corpos do mestre — o gate `the_instance_joint_binds_the_instances_own_bodies` (F4).
     p("ph2d::physics::PhysicsJoint", "Joint"),
-    p("ph2d::physics::PlatformPlayer", "Platform Player"),
+    pr(
+        "ph2d::physics::PlatformPlayer",
+        "Platform Player",
+        &["ph2d::physics::RigidBody"],
+    ),
     p("ph2d::physics::PlayerMode", "Player Mode"),
     p("ph2d::physics::PlayerSignals", "Player Signals"),
     // ⚠️ `rope`/`body` idem — mesma migração, mesma razão.
     p("ph2d::physics::PulleyWheel", "Pulley Wheel"),
-    p("ph2d::physics::RigidBody", "Rigid Body"),
+    pr(
+        "ph2d::physics::RigidBody",
+        "Rigid Body",
+        &["ph2d::physics::Collider"],
+    ),
     p("ph2d::physics::RopeStops", "Rope Stops"),
     p("ph2d::physics::SignalOnHit", "Signal on Hit"),
     p("ph2d::physics::SignalOnLeave", "Signal on Leave"),

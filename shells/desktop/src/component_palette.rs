@@ -103,18 +103,48 @@ fn applies_to(desc: &ComponentDesc) -> Option<ObjectKinds> {
     }
 }
 
+/// ⭐ **O que vem JUNTO com este componente, escrito para o artista ler ANTES de clicar.**
+///
+/// ⚠️ Esta é a correção da crítica medida ao Bevy (discussão #16570, doc 02 §1.4): *«não vejo o que
+/// vem junto»*. A dependência automática cura o erro de setup e **cria** um problema de
+/// visibilidade — e num editor a UI é o sítio barato de o resolver. Vazio quando não há cascata.
+///
+/// ⚠️ **Diz os nomes de EXIBIÇÃO, e a lista é FECHADA** (transitiva): anexar *Platform Player*
+/// traz `RigidBody`, que traz `Collider` — e o artista tem de ver os dois, não o primeiro.
+fn brings_along(desc: &ComponentDesc) -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = Vec::new();
+    let mut stack: Vec<&'static str> = desc.requires.to_vec();
+    while let Some(name) = stack.pop() {
+        let Some(d) = ph2d_component_desc::desc_for(name) else {
+            continue;
+        };
+        if out.contains(&d.display_name) {
+            continue;
+        }
+        out.push(d.display_name);
+        stack.extend_from_slice(d.requires);
+    }
+    out
+}
+
 /// Um item da paleta, com o rótulo já pronto.
 fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
+    // ⚠️ **A razão E a cascata viajam no RÓTULO**, e não em campos novos do widget genérico: o
+    // `PaletteItem` é do `ph2d-editor-core` e serve três consumidores; acrescentar-lhe um
+    // `disabled_reason` + um `brings` faria os outros dois carregar dois campos que não usam. O
+    // esmaecido pertence ao widget; o *porquê* e o *o-que-vem-junto* pertencem a quem construiu o
+    // modelo. E é a MESMA porta, o que é o ponto: um só sítio para tudo o que o item explica.
+    let mut label = desc.display_name.to_string();
+    let brings = brings_along(desc);
+    if !brings.is_empty() {
+        label.push_str("  \u{2014}  brings ");
+        label.push_str(&brings.join(", "));
+    }
+    if !applicable {
+        label.push_str("  \u{2014}  not for this object type");
+    }
     PaletteItem {
-        // ⚠️ **A razão viaja no RÓTULO**, e não num campo novo do widget genérico: o
-        // `PaletteItem` é do `ph2d-editor-core` e serve três consumidores; acrescentar-lhe um
-        // `disabled_reason` faria os outros dois carregar um campo que não usam. O esmaecido
-        // pertence ao widget; o *porquê* pertence a quem construiu o modelo.
-        label: if applicable {
-            desc.display_name.to_string()
-        } else {
-            format!("{}  —  not for this object type", desc.display_name)
-        },
+        label,
         id: item_id(desc.canonical_name),
     }
 }
@@ -174,6 +204,13 @@ pub(crate) fn build(
     PaletteModel {
         title: "Add Component".to_string(),
         groups,
+        // ⭐ **A caixa *Show all*** (ADR-0166 / F3) — o que revela o inaplicável, esmaecido e com a
+        // razão. ⚠️ Ela é do MODELO e não do widget: o estado vive na shell (`AppGfx`), e um
+        // clique nela reabre a paleta com o modelo reconstruído.
+        toggle: Some(ph2d_editor::widget::command_palette::PaletteToggle {
+            label: "Show all".to_string(),
+            on: show_all,
+        }),
     }
 }
 

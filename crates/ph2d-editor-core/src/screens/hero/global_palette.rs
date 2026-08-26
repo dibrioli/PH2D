@@ -190,6 +190,8 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     PaletteModel {
         title: GLOBAL_PALETTE_TITLE.into(),
         groups,
+        // O `Ctrl+K` não tem caixa nenhuma — ver `PaletteModel::toggle`.
+        toggle: None,
     }
 }
 

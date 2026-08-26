@@ -31,27 +31,40 @@
 
 use ph2d_ecs::SimWorld;
 
-/// Os nomes canónicos que semeiam. ⚠️ **É a lista que o gate percorre** — ver
-/// `component_seed_tests`: tudo o que não está aqui tem de anexar **inerte**.
-pub(crate) const SEEDED: &[&str] = &["ph2d::physics::Collider", "ph2d::physics::PlatformPlayer"];
+/// ⭐ **A TABELA** `nome canónico → quem sabe semear`.
+///
+/// ⚠️ **É uma tabela e não um `match`, e a razão é medida:** o gate precisa de percorrer *quem
+/// semeia* para afirmar que **todo o resto anexa inerte**, e uma lista de nomes escrita ao lado de
+/// um `match` seriam **duas respostas à mesma pergunta** — a que o gate lê envelheceria em silêncio
+/// no dia em que alguém acrescentasse um braço sem a lista. Aqui os dois leem a mesma linha.
+pub(crate) const SEEDS: &[(&str, fn(&mut SimWorld, u64))] = &[
+    (
+        "ph2d::physics::Collider",
+        crate::render_loop::seed_attached_collider,
+    ),
+    (
+        "ph2d::physics::PlatformPlayer",
+        crate::render_loop::seed_attached_player,
+    ),
+];
 
 /// Corre o seed de `canonical_name`, se ele tiver um. Silenciosamente no-op para todo o resto —
 /// que é a resposta certa: *anexar é inerte*.
 pub(crate) fn seed_after_attach(sim: &mut SimWorld, entity_bits: u64, canonical_name: &str) {
-    match canonical_name {
-        "ph2d::physics::Collider" => {
-            crate::render_loop::seed_attached_collider(sim, entity_bits);
-        }
-        "ph2d::physics::PlatformPlayer" => {
-            crate::render_loop::seed_attached_player(sim, entity_bits);
-        }
-        _ => {}
+    if let Some((_, seed)) = SEEDS.iter().find(|(n, _)| *n == canonical_name) {
+        seed(sim, entity_bits);
     }
+}
+
+/// Semeia? — derivado da [`SEEDS`], nunca de uma segunda lista.
+#[cfg(test)]
+fn seeds(canonical_name: &str) -> bool {
+    SEEDS.iter().any(|(n, _)| *n == canonical_name)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{SEEDED, seed_after_attach};
+    use super::{SEEDS, seed_after_attach, seeds};
     use ph2d_ecs::{SimWorld, Transform};
 
     fn registry() -> ph2d_ecs::scene::ComponentRegistry {
@@ -63,7 +76,7 @@ mod tests {
     /// A metade que o plano exige (*"anexar é inerte: bytes do componente == default"*), medida
     /// pela porta de produção e não por um `insert` à mão.
     ///
-    /// ⚠️ **A lista `SEEDED` é a única excepção, e ela é curta de propósito:** um seed é um valor
+    /// ⚠️ **A tabela [`SEEDS`] é a única excepção, e ela é curta de propósito:** um seed é um valor
     /// que o `Default` do tipo **não pode** conhecer porque depende da entidade. Tudo o resto tem
     /// de sair do registo exactamente como o tipo o define — senão o `+` passa a ser um gesto que
     /// muda a cena, e a promessa *"acrescentar uma seção não mexe no teu trabalho"* cai.
@@ -73,7 +86,7 @@ mod tests {
         let mut checked = 0usize;
         for d in ph2d_component_desc::all() {
             if !matches!(d.attach, ph2d_component_desc::Attach::Authored { .. })
-                || SEEDED.contains(&d.canonical_name)
+                || seeds(d.canonical_name)
             {
                 continue;
             }
@@ -99,7 +112,7 @@ mod tests {
             let after = (entry.serialize)(sim.world(), e).expect("serializa");
             assert_eq!(
                 before, after,
-                "anexar {} deixou de ser inerte — se isso e' intencional, o nome tem de entrar no SEEDED com o porque",
+                "anexar {} deixou de ser inerte — se isso e' intencional, o nome tem de entrar na tabela SEEDS com o porque",
                 d.canonical_name
             );
             checked += 1;
@@ -219,12 +232,79 @@ mod tests {
         );
     }
 
+    /// ⭐ **A CASCATA chega ao mundo, e o PLAYER nasce completo** (ADR-0166 / F3).
+    ///
+    /// ⚠️ **É o gate que fecha o buraco que a poda abriria:** sem `requires`, anexar um
+    /// `PlatformPlayer` a um objeto sem corpo punha o componente lá e a §14 **não aparecia** — o
+    /// artista escolhia na paleta e nada acontecia, que é a doença que esta fase cura.
+    ///
+    /// ⚠️ E a ordem importa: as dependências entram ANTES, senão o seed do player mediria um mundo
+    /// sem `Collider` e ele nasceria tangente.
+    #[test]
+    fn attaching_a_player_brings_the_body_and_the_collider() {
+        let reg = registry();
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                ph2d_ecs::Name::new("Hero"),
+                ph2d_render::Sprite::atlas(0, [1.0, 2.0], [1.0; 4]),
+            ))
+            .id();
+        crate::component_attach::attach_by_name(
+            &mut sim,
+            &reg,
+            e.to_bits(),
+            "ph2d::physics::PlatformPlayer",
+        )
+        .expect("anexa");
+        assert!(
+            sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some(),
+            "a cascata tem de trazer o corpo"
+        );
+        assert!(
+            sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some(),
+            "e o collider, que vem por transitividade"
+        );
+        // ⭐ E a §14 aparece — que e' a razao de tudo isto existir.
+        assert!(
+            crate::render_loop::inspector_presence_probe::player(&sim, e.to_bits()),
+            "o artista anexou o player e a seccao nao apareceu"
+        );
+    }
+
+    /// ⚠️ **A cascata NÃO rebaixa o que já existe.** O `insert` do bevy substitui, não funde: sem o
+    /// no-op sobre o presente, anexar *Platform Player* num corpo `Static` já autorado devolvia-o
+    /// ao `Default` — apagando trabalho em silêncio, na porta que existe para não o fazer.
+    #[test]
+    fn the_cascade_never_downgrades_what_is_already_there() {
+        let reg = registry();
+        let mut sim = SimWorld::new();
+        let authored = ph2d_physics_ecs::RigidBody {
+            kind: ph2d_physics_ecs::BodyKind::Static,
+        };
+        let e = sim.world_mut().spawn((Transform::IDENTITY, authored)).id();
+        crate::component_attach::attach_by_name(
+            &mut sim,
+            &reg,
+            e.to_bits(),
+            "ph2d::physics::PlatformPlayer",
+        )
+        .expect("anexa");
+        assert_eq!(
+            sim.world().get::<ph2d_physics_ecs::RigidBody>(e).copied(),
+            Some(authored),
+            "a cascata reescreveu o corpo que o artista tinha autorado"
+        );
+    }
+
     /// ⚠️ **Correr o seed duas vezes não move nada** — ele é idempotente por construção (`max` /
     /// «só na forma ainda neutra»), e é isso que o torna seguro numa porta que alguém pode repetir.
     #[test]
     fn seeding_twice_changes_nothing() {
         let reg = registry();
-        for name in SEEDED {
+        for (name, _) in SEEDS {
             let mut sim = SimWorld::new();
             let e = sim
                 .world_mut()

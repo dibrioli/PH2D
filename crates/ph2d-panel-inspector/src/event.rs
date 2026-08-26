@@ -52,19 +52,67 @@ pub(crate) fn apply_event(
     EventOutcome::from_bool(apply_event_impl(host, ev))
 }
 
-fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    // ⭐ **O `+` do cabeçalho** (ADR-0166 / F3): um PEDIDO, não uma edição. O painel não sabe que
-    // componentes existem nem o que este objeto já tem — quem sabe é a shell, e ela é que abre a
-    // paleta. ⚠️ Sem `entity` selecionada não há a quem anexar: o clique é **recusado**, e não
-    // aceite em silêncio (DIRETIVA §2).
-    if ev == WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
-        // ⚠️ O `entity_bits` sai do **Transform**, que é a base de todo objeto (ADR-0166: a
-        // seção-base é `Transform` + `Name`). Sem ele não há objeto selecionado.
-        let Some(bits) = crate::state::current_inspector_transform().map(|t| t.entity_bits) else {
-            return false;
+/// ⭐ **O `+` do cabeçalho** (ADR-0166 / F3): um PEDIDO, não uma edição. O painel não sabe que
+/// componentes existem nem o que este objeto já tem — quem sabe é a shell, e ela é que abre a
+/// paleta.
+///
+/// ⚠️ **Sem entidade selecionada o clique é RECUSADO**, e não aceite em silêncio (DIRETIVA §2). O
+/// `entity_bits` sai do **`Transform`**, que é a base de todo objeto (ADR-0166: a seção-base é
+/// `Transform` + `Name`) — sem ele não há objeto nenhum sob o Inspector.
+///
+/// ⚠️ **Função irmã, e não um braço da mãe:** as 14 linhas dela levaram o `apply_event_impl` de 292
+/// para 306 contra um teto de 200 cuja tolerância **só desce** — o precedente é o `visibility_toggle`
+/// (função irmã no mesmo ficheiro, que está com folga sob o teto de 600 do ARQUIVO).
+fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if ev != WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
+        return false;
+    }
+    let Some(bits) = crate::state::current_inspector_transform().map(|t| t.entity_bits) else {
+        return false;
+    };
+    host.bus_mut()
+        .push(EditorAction::InspectorAddComponentRequested { entity_bits: bits });
+    true
+}
+
+/// **A GRELHA da folha** — as três caixas `Columns` / `Rows` / `Frame` da §4.
+///
+/// ⚠️ **Uma lei só, três ids:** os três números descrevem o mesmo pool de células (desde o corte da
+/// F1 eles vivem no `SpriteGrid`, não na `Sprite`), e um `n` negativo ou não-finito vira `0` na
+/// porta — a caixa de texto aceita digitar o que quiser.
+///
+/// ⚠️ **Saiu do [`apply_event_impl`] em 2026-08-25 pela catraca**, quando o `+` do cabeçalho
+/// (ADR-0166 / F3) o levou a 295 contra uma tolerância de 292 que **só desce**. Levar só o braço
+/// novo devolveria o número a 292 exactos, e *ficar no mesmo sítio não é encolher* — a mesma lição
+/// que o par de PRECISÃO, o par de sliders e o cluster da REGIÃO já pagaram nesta família.
+fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if let WidgetEvent::ValueChanged(id) = ev
+        && matches!(
+            id,
+            ids::INSP_SPRITE_HFRAMES | ids::INSP_SPRITE_VFRAMES | ids::INSP_SPRITE_FRAME
+        )
+        && let Some(info) = state::current_inspector_sprite()
+    {
+        let raw = host.store().number_value(id).unwrap_or(0.0);
+        let n = raw.round().max(0.0) as u32;
+        let edit = if id == ids::INSP_SPRITE_HFRAMES {
+            SpriteFieldEdit::Hframes(n)
+        } else if id == ids::INSP_SPRITE_VFRAMES {
+            SpriteFieldEdit::Vframes(n)
+        } else {
+            SpriteFieldEdit::Frame(n)
         };
-        host.bus_mut()
-            .push(EditorAction::InspectorAddComponentRequested { entity_bits: bits });
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: info.entity_bits,
+            edit,
+        });
+        return true;
+    }
+    false
+}
+
+fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if add_component_click(host, ev) {
         return true;
     }
     if section_color_click(host, ev) {
@@ -312,26 +360,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     // W2 Sprite Sheet — HFrames / VFrames / Frame committed. Integer
     // fields; rounded from the NumberInput's f64. Clamps (>=1, in-grid)
     // land at the commit boundary (apply_sprite_field).
-    if let WidgetEvent::ValueChanged(id) = ev
-        && matches!(
-            id,
-            ids::INSP_SPRITE_HFRAMES | ids::INSP_SPRITE_VFRAMES | ids::INSP_SPRITE_FRAME
-        )
-        && let Some(info) = state::current_inspector_sprite()
-    {
-        let raw = host.store().number_value(id).unwrap_or(0.0);
-        let n = raw.round().max(0.0) as u32;
-        let edit = if id == ids::INSP_SPRITE_HFRAMES {
-            SpriteFieldEdit::Hframes(n)
-        } else if id == ids::INSP_SPRITE_VFRAMES {
-            SpriteFieldEdit::Vframes(n)
-        } else {
-            SpriteFieldEdit::Frame(n)
-        };
-        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
-            entity_bits: info.entity_bits,
-            edit,
-        });
+    if sheet_grid_changed(host, ev) {
         return true;
     }
     // **A REGIÃO e a ORIGEM** — sub-rect, Centered e Offset — moram no irmão

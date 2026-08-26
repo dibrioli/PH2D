@@ -28,6 +28,13 @@ use std::path::{Path, PathBuf};
 /// new tools/panels DO; resist the urge).
 const BENIGN_SET_MODE: &[(&str, &str)] = &[
     (
+        "set_command_palette_model",
+        "substitui o MODELO de uma paleta já aberta (ADR-0166 / F3, a caixa *Show all*). Não há \
+         estado derivado: o pintor lê o modelo fresco a cada frame, e a busca + o pick pendente \
+         ficam INTOCADOS de propósito — é precisamente a diferença dele para o \
+         `open_command_palette`, que os limpa porque abrir é começar de novo",
+    ),
+    (
         "set_current_envelope_mode",
         "publica o GESTO do envelope (Perspective/Mesh/Pins) no painel Vector. Não é um dono de \
          modo: o dono é o `ph2d_ecs::VecEnvelope::kind`, e o shell reescreve esta célula a CADA \

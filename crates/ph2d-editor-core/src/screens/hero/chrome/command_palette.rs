@@ -59,6 +59,13 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             hero.store.close_command_palette();
             true
         }
+        // ⭐ **A caixa da banda** (ADR-0166 / F3): vira o estado e AVISA quem abriu — a paleta
+        // fica aberta, e é quem a abriu que reconstrói o modelo (só ele sabe o que a caixa quer
+        // dizer). Fechar aqui seria um controlo que sai do ecrã ao ser usado.
+        WidgetEvent::Click(id) if id == command_palette::CMD_PALETTE_SHOW_ALL => {
+            hero.store.flip_command_palette_toggle();
+            true
+        }
         // A click on the card's dead space: consume so it never falls through the scrim to close.
         WidgetEvent::Click(id) if id == CMD_PALETTE_CARD => true,
         // A click on an item: record the pick (the shell routes it) and close.
@@ -93,6 +100,7 @@ mod tests {
     fn model() -> PaletteModel {
         PaletteModel {
             title: "Add Node".into(),
+            toggle: None,
             groups: vec![PaletteGroup {
                 title: "Source".into(),
                 color: ColorToken::NodeCatSource,
@@ -231,6 +239,40 @@ mod tests {
         assert!(
             t0.abs() < 0.001,
             "o cartao 0 nasceu em {t0} — ele nao ENTRA, ele aparece"
+        );
+    }
+
+    /// ⭐ **A caixa da banda vira o estado e a paleta FICA ABERTA** (ADR-0166 / F3).
+    ///
+    /// ⚠️ **As duas metades importam.** Fechar aqui seria um controlo que sai do ecrã ao ser usado
+    /// — o artista liga *Show all* e a paleta desaparece. E o sinal tem de chegar a quem abriu: o
+    /// widget não sabe o que «mostrar tudo» quer dizer, exactamente como não sabe o que um item
+    /// significa.
+    #[test]
+    fn the_band_toggle_flips_and_keeps_the_palette_open() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        let mut m = model();
+        m.toggle = Some(crate::widget::command_palette::PaletteToggle {
+            label: "Show all".into(),
+            on: false,
+        });
+        hero.store.open_command_palette(m);
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(crate::widget::command_palette::CMD_PALETTE_SHOW_ALL)
+        ));
+        assert!(
+            hero.store.command_palette_open(),
+            "a caixa fechou a paleta — o controlo sai do ecra ao ser usado"
+        );
+        assert!(hero.store.command_palette_toggle_on(), "a caixa nao virou");
+        assert!(
+            hero.store.take_command_palette_toggled(),
+            "o sinal nao chegou a quem abriu a paleta"
+        );
+        assert!(
+            !hero.store.take_command_palette_toggled(),
+            "o sinal tem de ser consumido UMA vez — senao o modelo reconstroi-se todo o quadro"
         );
     }
 }

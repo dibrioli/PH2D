@@ -34,6 +34,12 @@ use layout::arrange;
 mod cascade;
 pub use cascade::cascade_id;
 
+/// **A BANDA do cabeçalho** — título, busca, contagem, a caixa *Show all* e o X. A 4ª
+/// responsabilidade, e o irmão que a F3 (ADR-0166) obrigou a existir: a caixa levaria este ficheiro
+/// para lá dos 500 LOC dos primitivos, e *ficar no mesmo sítio não é encolher*.
+mod header;
+pub use header::{CMD_PALETTE_SHOW_ALL, PaletteToggle};
+
 /// The close-X in the header.
 pub const CMD_PALETTE_CLOSE: NodeId = hash_node_id("command_palette.close");
 /// The full-viewport scrim barrier — a click here (outside the card) closes the palette.
@@ -96,6 +102,11 @@ pub struct PaletteGroup {
 pub struct PaletteModel {
     pub title: String,
     pub groups: Vec<PaletteGroup>,
+    /// ⭐ **A caixa da banda** — `None` para quem não tem nenhuma (ADR-0166 / F3). Ver
+    /// [`PaletteToggle`]: acrescentar o campo é um erro de compilação nos três construtores, e é
+    /// isso que se quer — um campo novo que se preenchesse sozinho seria a feature a desaparecer
+    /// em silêncio no consumidor que ninguém reviu.
+    pub toggle: Option<PaletteToggle>,
 }
 
 impl PaletteModel {
@@ -181,6 +192,9 @@ fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
     PaletteModel {
         title: model.title.clone(),
         groups,
+        // ⚠️ A caixa ATRAVESSA o filtro: ela é da banda, não do conteúdo — filtrar por texto não a
+        // pode desligar, senão escrever no campo de busca apagava o controlo que a mostra.
+        toggle: model.toggle.clone(),
     }
 }
 
@@ -266,96 +280,13 @@ pub fn paint(
     stroke_rounded_rect(scene, card, radius, 1.0, resolve(ColorToken::Border, theme));
     hit_index.register(CMD_PALETTE_CARD, card);
 
-    // ── Header band: title left, search box in the middle, count centre-right, close-X right. ──
+    // ── A banda do cabeçalho — título, busca, contagem, a caixa *Show all* e o X de fechar. Ela
+    //    saiu para o irmão `header.rs` quando a caixa da F3 (ADR-0166) a levaria a passar o teto de
+    //    500 LOC deste ficheiro: o corte é por responsabilidade — aqui fica o CARTÃO, lá a BANDA.
     let header_y = card_y + pad;
-    let title_w = ts.prefix_width(&model.title, font).min(content_w * 0.35); // LITERAL-PX-OK: FRAÇÃO da banda que o título pode tomar antes de ceder ao campo de busca
-    paint_text(
-        ts,
-        scene,
-        &model.title,
-        content_x,
-        header_y + (HEADER_H - font) * 0.5,
-        font,
-        title_w,
-        resolve(ColorToken::Text1, theme),
-    );
-    let count_str = format!("{} nodes", model.item_count());
-    let count_w = ts.prefix_width(&count_str, TypeToken::Sm.px());
-    let close_x = card_x + card_w - CLOSE_W - pad;
-    let count_x = close_x - count_w - Spacing::Sm.px();
-    paint_text(
-        ts,
-        scene,
-        &count_str,
-        count_x,
-        header_y + (HEADER_H - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
-        count_w,
-        resolve(ColorToken::Text2, theme),
-    );
-
-    // ── Search box: a Bg3 rounded field showing the typed query (or a "Search" placeholder), the app's
-    //    keyboard feeds it while the palette is open (a full-screen modal captures the keys). ──
-    let sm = TypeToken::Sm.px();
-    let search_h = (HEADER_H - Spacing::Sm.px()).max(PILL_H);
-    let sb_x = content_x + title_w + Spacing::Md.px();
-    let sb_w = (count_x - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
-    let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
-    fill_rounded_rect(scene, sb, Radius::Sm.px(), resolve(ColorToken::Bg3, theme));
-    stroke_rounded_rect(
-        scene,
-        sb,
-        Radius::Sm.px(),
-        1.0,
-        resolve(ColorToken::Border, theme),
-    );
-    let (search_text, search_color) = if query.is_empty() {
-        ("Search", resolve(ColorToken::Text2, theme))
-    } else {
-        (query, resolve(ColorToken::Text1, theme))
-    };
-    let text_y = sb.y + (sb.h - sm) * 0.5;
-    paint_text(
-        ts,
-        scene,
-        search_text,
-        sb.x + Spacing::Sm.px(),
-        text_y,
-        sm,
-        sb.w - Spacing::Sm.px() * 2.0,
-        search_color,
-    );
-    // Caret at the end of the typed text (only while there IS a query — the placeholder needs none).
-    if !query.is_empty() {
-        let caret_x = (sb.x + Spacing::Sm.px() + ts.prefix_width(query, sm))
-            .min(sb.x + sb.w - Spacing::Xs.px());
-        fill_rounded_rect(
-            scene,
-            Rect::new(
-                caret_x,
-                sb.y + Spacing::Xs.px(),
-                1.5, // LITERAL-PX-OK: espessura do traço do X de fechar
-                sb.h - Spacing::Xs.px() * 2.0,
-            ), // LITERAL-PX-OK: 1.5px text caret
-            0.0,
-            resolve(ColorToken::Text1, theme),
-        );
-    }
-    let close_rect = Rect::new(
-        close_x,
-        header_y + (HEADER_H - CLOSE_W) * 0.5,
-        CLOSE_W,
-        CLOSE_W,
-    );
-    paint_text(
-        ts,
-        scene,
-        "X",
-        close_rect.x + CLOSE_W * 0.3, // LITERAL-PX-OK: o X recua 30% para dentro do quadrado (fração, não medida)
-        close_rect.y + (CLOSE_W - font) * 0.5,
-        font,
-        CLOSE_W,
-        resolve(ColorToken::Text1, theme),
+    let close_rect = header::paint_header(
+        scene, ts, theme, hit_index, model, query, card_x, card_w, content_x, content_w, header_y,
+        pad, font,
     );
 
     // ── Content: paint the measured category cards at the card's content origin — or a "No matches"

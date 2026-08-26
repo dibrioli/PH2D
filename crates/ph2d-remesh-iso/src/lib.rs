@@ -110,11 +110,18 @@ pub const MAX_ROUNDS: usize = 24;
 /// medições dizem que **esta cadeia tolera pior um BURACO do que uma aresta ambígua**: com o
 /// defeito, `8` de bordo; sem ele mas com um rasgo, `148`.
 ///
-/// ⚠️ **E o remalhe CRIA não-manifold sozinho** — `4 ⇒ 0` na porta e **`2` outra vez** depois
-/// do laço. *Reparar a malha que entra não é reparar a malha que sai.*
+/// ⛔⛔ **UMA AFIRMAÇÃO DESTE DOC FOI REFUTADA EM 2026-08-26, e era a que escolhia o sítio
+/// da cura.** Ela dizia *«o remalhe cria não-manifold sozinho — `4 ⇒ 0` na porta e `2` outra
+/// vez depois do laço»*. ⚠️ **O controlo nunca tinha sido corrido:** medido em **onze** peças
+/// limpas do corpus, o remalhe cria **zero** (`0 ⇒ 0` em todas). O `4 ⇒ 2` era da `t001`, que
+/// **entra** com `4` — o remalhe **propaga**, não cria.
 ///
-/// ⇒ **A cura que falta mantém a peça FECHADA**: soldar as duas folhas (colapsar a aresta
-/// ambígua) em vez de as separar. É outra operação, e é a obra seguinte.
+/// ⚠️ *Eu tinha comparado dois números da MESMA peça partida sem nunca olhar uma peça limpa.*
+/// ⇒ é por isso que a [`DOUBLED_REPAIR`] corre **à entrada** e a chamada gémea depois do laço
+/// foi **retirada**: o único motivo dela era esta frase.
+///
+/// ⇒ **A cura que faltava não era soldar** — ver [`DOUBLED_REPAIR`]: a estrutura medida não
+/// era uma aleta nem duas folhas, era um par `(triângulo, espelho)`.
 pub const MANIFOLD_REPAIR: u8 = 0;
 
 /// ⭐⭐⭐ **REMOVER AS FOLHAS DE ESPESSURA ZERO À ENTRADA — LIGADO.**
@@ -165,8 +172,6 @@ pub struct Report {
     pub manifold: ph2d_mesh::ManifoldReport,
     /// ⭐⭐⭐ **As folhas de espessura zero removidas à ENTRADA** — ver [`DOUBLED_REPAIR`].
     pub doubled_door: ph2d_mesh::DoubledReport,
-    /// ⭐ E as removidas **depois** do laço, se o modo as pedir.
-    pub doubled_after: ph2d_mesh::DoubledReport,
 }
 
 /// **O ALVO DE ARESTA desta malha** — `ALPHA × diagonal da caixa`.
@@ -296,15 +301,6 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
         ph2d_mesh::fill_holes(mesh);
     }
 
-    // ⭐ **E outra vez no fim** — porque o remalhe cria não-manifold sozinho (`4 ⇒ 0` na
-    // porta e `2` outra vez depois do laço, medido). ⚠️ *Se o que ele cria também for uma
-    // folha dupla, esta chamada apanha-o; se não for, ela é inerte e a medição diz que a
-    // causa é outra.* A recusa vive dentro da própria operação.
-    let doubled_after = if doubled_repair_on() {
-        ph2d_mesh::drop_doubled_faces(mesh)
-    } else {
-        ph2d_mesh::DoubledReport::default()
-    };
 
     // ⚠️ **A superfície de referência é uma CÓPIA do estado de entrada**, tirada
     // depois do `triangulate` e antes da primeira edição. Reprojetar contra a
@@ -319,7 +315,6 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
         flips,
         manifold,
         doubled_door,
-        doubled_after,
     }
 }
 

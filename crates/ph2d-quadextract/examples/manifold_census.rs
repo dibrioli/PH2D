@@ -145,7 +145,19 @@ fn ring_components(mesh: &ph2d_mesh::Mesh, ef: &BTreeMap<(u32, u32), Vec<u32>>, 
 fn main() {
     let mut args = std::env::args().skip(1);
     let name = args.next().unwrap_or_else(|| String::from("esfera"));
-    let mesh = load(&name);
+    // ⭐⭐⭐ **`f1` mede a malha DEPOIS do remalhe** — a pergunta *«quem cria o defeito, o
+    // ficheiro ou nós?»*. ⚠️ Sem este modo a sonda só sabe acusar o ficheiro.
+    let after_f1 = args.next().is_some_and(|a| a == "f1");
+    let mut mesh = load(&name);
+    if after_f1 {
+        // ⛔ Com a cura DESLIGADA, senão a sonda mede a cura em vez do remalhe.
+        // SAFETY-ish: é um exemplo, e a variável só governa este processo.
+        unsafe { std::env::set_var("PH2D_DOUBLED_REPAIR", "0") };
+        ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+        mesh.triangulate();
+        println!("[depois do F1]");
+    }
+    let mesh = mesh;
     let pos = mesh.positions();
     let ef = edge_faces(&mesh);
 
@@ -179,6 +191,41 @@ fn main() {
         #[allow(clippy::cast_possible_truncation)]
         by_pos.entry(q).or_default().push(i as u32);
     }
+    // ⭐⭐⭐ **O BORDO MEDE-SE PELO COMPRIMENTO E PELOS LAÇOS, nunca pela contagem de
+    // arestas.** ⚠️ *Que número imprimiria a resposta contrária?* Um remalhe que reamostra
+    // a mesma curva a um passo mais fino sobe a contagem sem tocar no buraco — `38 → 107`
+    // lê-se como «alargou» e pode ser «cortou mais fino». O que não pode mudar é **quantos
+    // buracos há** e **que perímetro têm**.
+    {
+        let mut nxt: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+        let mut length = 0.0f32;
+        for (&(x, y), who) in &ef {
+            if who.len() != 1 {
+                continue;
+            }
+            length += norm(sub(pos[x as usize], pos[y as usize]));
+            nxt.entry(x).or_default().push(y);
+            nxt.entry(y).or_default().push(x);
+        }
+        let mut seen: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+        let mut loops = 0usize;
+        for &v in nxt.keys() {
+            if !seen.insert(v) {
+                continue;
+            }
+            loops += 1;
+            let mut stack = vec![v];
+            while let Some(u) = stack.pop() {
+                for &w in nxt.get(&u).into_iter().flatten() {
+                    if seen.insert(w) {
+                        stack.push(w);
+                    }
+                }
+            }
+        }
+        println!("  BORDO: {loops} lacos, perimetro {length:.4} (em raios medios: {:.4})", length / rmean);
+    }
+
     let dup_groups = by_pos.values().filter(|g| g.len() > 1).count();
     let dup_verts: usize = by_pos.values().filter(|g| g.len() > 1).map(Vec::len).sum();
     println!("  vertices COINCIDENTES: {dup_groups} grupos, {dup_verts} vertices");

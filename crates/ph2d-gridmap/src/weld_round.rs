@@ -57,8 +57,12 @@ pub fn welded_enabled() -> bool {
 /// sistema dos fechos. As outras translações são escritas por substituição, e caem em
 /// inteiros porque os pivôs da eliminação têm `|det| = 1` — *a integralidade é uma
 /// propriedade da eliminação, não uma verificação no fim.*
-#[must_use]
-#[allow(clippy::too_many_lines)]
+///
+/// ⚠️ **Os atributos desta função vivem colados à assinatura e não aqui:** em 2026-08-24 uma
+/// constante nova entrou **entre** o doc e a `fn`, e os `#[must_use]`/`#[allow]` reataram-se
+/// **em silêncio** ao `const`. O clippy só o disse como *«`must_use` não pode ser usado em
+/// constantes»*, que não se lê como *«a função perdeu os atributos»*.
+/// *Um atributo separado do seu item por um doc-comment muda de dono sem erro nenhum.*
 /// ⛔⛔⛔ **FALSE — a 2.ª tentativa foi construída, MEDIDA e REJEITADA, e ela CUMPRE o que
 /// promete.**
 ///
@@ -115,6 +119,8 @@ fn read(r: &WeldRelaxer<'_>, map: &GridMap, t: Target) -> [f32; 2] {
     }
 }
 
+#[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn round_welded(
     mesh: &Mesh,
     cut: &CutMesh,

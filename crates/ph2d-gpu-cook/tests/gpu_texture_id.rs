@@ -29,6 +29,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::graph::{Edge, Graph};
 use ph2d_render::GpuTexRun;
+use ph2d_render::SinkStyle;
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -194,7 +195,7 @@ fn the_device_carries_the_real_texture_id_and_the_run_partition_matches() {
         },
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .expect("gpu cook");
 

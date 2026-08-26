@@ -73,6 +73,20 @@ pub const fn filter_tag_magnifies_by_point(filter_tag: u8) -> bool {
     matches!(filter_tag, 1 | 3 | 5)
 }
 
+/// O maior tag de filtro que `ph2d_ecs::FilterMode::from_tag` sabe distinguir.
+///
+/// ⚠️ **Existe para quem OFERECE filtros num menu.** Um consumidor que clampasse
+/// por um literal próprio ou ofereceria um modo que o `from_tag` devolve como
+/// `Inherit` (item de menu morto), ou pararia antes do último (modo inalcançável)
+/// — e nenhum dos dois dá erro. O número não é auto-evidente: ele é
+/// **verificado** por [`the_filter_tag_ceiling_is_the_last_distinct_mode`], que
+/// afirma que este tag é concreto e que o seguinte já cai no fallback.
+pub const FILTER_TAG_MAX: u8 = 6;
+
+/// O maior tag de repetição que `ph2d_ecs::RepeatMode::from_tag` distingue.
+/// Mesmo papel do [`FILTER_TAG_MAX`], com o mesmo gate ao lado.
+pub const REPEAT_TAG_MAX: u8 = 3;
+
 /// Build a sprite sampler from a packed `RenderInstance::sampling` key
 /// (Sprite Inspector v2 W3.T3.11): `filter_tag (low byte) | repeat_tag
 /// << 8`, where the tags are the `ph2d_ecs::FilterMode`/`RepeatMode`
@@ -119,6 +133,32 @@ pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **O TETO DOS TAGS É O ÚLTIMO MODO CONCRETO** — derivado do `from_tag`, que
+    /// é a lei, e não escrito ao lado dela.
+    ///
+    /// ⚠️ Falsificado nos DOIS sentidos: um modo novo no `ph2d-ecs` sem mexer aqui
+    /// deixa o teto baixo (e o menu de quem o lê fica sem o modo novo), e um teto
+    /// alto demais oferece um tag que o `from_tag` devolve como `Inherit`.
+    #[test]
+    fn the_filter_tag_ceiling_is_the_last_distinct_mode() {
+        use ph2d_ecs::{FilterMode, RepeatMode};
+        assert_ne!(
+            FilterMode::from_tag(FILTER_TAG_MAX),
+            FilterMode::Inherit,
+            "FILTER_TAG_MAX tem de ser um modo CONCRETO"
+        );
+        assert_eq!(
+            FilterMode::from_tag(FILTER_TAG_MAX + 1),
+            FilterMode::Inherit,
+            "o tag seguinte ja' tem de cair no fallback — senao o teto esta' baixo"
+        );
+        assert_ne!(RepeatMode::from_tag(REPEAT_TAG_MAX), RepeatMode::Inherit);
+        assert_eq!(
+            RepeatMode::from_tag(REPEAT_TAG_MAX + 1),
+            RepeatMode::Inherit
+        );
+    }
 
     #[test]
     fn pixel_art_maps_to_nearest() {

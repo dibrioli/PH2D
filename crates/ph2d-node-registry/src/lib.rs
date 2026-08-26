@@ -109,6 +109,20 @@ pub struct NodeRegistry {
     /// side-channel shape; a node opts in with a slice of [`LutSpec`]s the
     /// sequencer fills from that text param before its kernel pass.
     luts: BTreeMap<NodeTypeId, &'static [LutSpec]>,
+    /// **Os tipos que NÃO são para o artista** (doc 89, folha 17) — fixturas de teste e
+    /// templates de fan-out que existem no registo porque o motor precisa deles, e que a
+    /// paleta não deve oferecer.
+    ///
+    /// ⚠️ **É opt-in, e a direcção da omissão é a decisão.** A alternativa medida era
+    /// derivar a resposta da AUSÊNCIA de um [`NodeUiManifest`] — e a medição refutou-a:
+    /// dos 130 tipos, três não tinham um, e o terceiro era o `pulse.signal`, um nó de
+    /// artista a que alguém simplesmente não deu nome. *«Não tem metadados de UI» quer
+    /// dizer «é fixtura» e também «alguém esqueceu», e as duas leem igual.* Com um opt-in
+    /// explícito, esquecer põe o nó na paleta com o nome cru — **visível**; com a regra
+    /// derivada, esquecer fá-lo-ia **desaparecer em silêncio**, que é o pior dos dois.
+    ///
+    /// Side-metadata como todos os outros canais: fora do `NodeManifest` congelado (§6).
+    fixtures: std::collections::BTreeSet<NodeTypeId>,
     /// ADR-0155 — per-type semantic [`Coupling`]s (produces/consumes/requires/
     /// generates a stream column), keyed the same way and kept OUT of the frozen
     /// `NodeManifest` like every other side channel. Opt-in and default-empty: a
@@ -198,6 +212,20 @@ impl NodeRegistry {
     /// The UI metadata for `id`, if registered (M1.R1).
     pub fn ui_manifest(&self, id: NodeTypeId) -> Option<&NodeUiManifest> {
         self.ui.get(&id)
+    }
+
+    /// **Declarar que este tipo não é para o artista** (doc 89, folha 17): uma fixtura de
+    /// teste ou um template de fan-out. A paleta filtra-o; tudo o resto (o cook, o
+    /// carregamento de um documento que o contenha, os gates) continua igual — ele é um
+    /// nó a sério, só não é um nó OFERECIDO.
+    pub fn register_fixture(&mut self, id: NodeTypeId) {
+        self.fixtures.insert(id);
+    }
+
+    /// `true` se `id` se declarou fixtura ([`Self::register_fixture`]).
+    #[must_use]
+    pub fn is_fixture(&self, id: NodeTypeId) -> bool {
+        self.fixtures.contains(&id)
     }
 
     /// Register a node type's param UI hints (M1.P1). Additive; last write wins.

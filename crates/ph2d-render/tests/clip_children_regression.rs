@@ -184,6 +184,7 @@ fn instance(
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group,
         clip_meta,
+        sub_order: 0,
     }
 }
 

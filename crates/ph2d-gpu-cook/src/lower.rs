@@ -22,16 +22,18 @@
 //! crate's own `render_instance_pod_size_v4` gate.
 
 use crate::codegen::WORKGROUP_SIZE;
+use ph2d_render::SinkStyle;
 
-/// `RenderInstance` is 184 bytes = 46 32-bit words.
-pub const INSTANCE_WORDS: u32 = 46;
+/// `RenderInstance` is 188 bytes = 47 32-bit words (ADR-0070-amendment-8 added
+/// the CPU-only `sub_order`, word 46).
+pub const INSTANCE_WORDS: u32 = 47;
 
-/// The six stream columns the lowering reads, in binding order. Presence of
+/// The stream columns the lowering reads, in binding order. Presence of
 /// each (bit `i` of the pipeline-cache signature) selects between a storage
 /// binding and the default. `texture_id` is a `Scalar` column like `rot` — it
 /// is read as `f32` and truncated to `u32`, mirroring the CPU lowering's
 /// `scalar_at(tex, i, 0.0) as u32`.
-pub const LOWER_COLUMNS: [&str; 7] = [
+pub const LOWER_COLUMNS: [&str; 8] = [
     "P",
     "size",
     "rot",
@@ -42,21 +44,46 @@ pub const LOWER_COLUMNS: [&str; 7] = [
     // `rot`; ausente ⇒ `0`, que quer dizer *o modo do sink* e é o que esta geradora
     // escrevia como constante antes da coluna existir ⇒ byte-idêntico.
     "blend",
+    // doc 89, folha 17 — o SUB-UV (o *SubImage* do Sprite Renderer do Niagara).
+    // `[escala_u, escala_v, desloc_u, desloc_v]`, RELATIVO ao ladrilho da linha, que é
+    // exactamente o `uv_xform`. Ausente ⇒ a identidade que esta geradora cravava.
+    "uv_cell",
 ];
 
 /// Generate the lowering module for a concrete column set. Binding 0 = the
 /// uniforms, binding 1 = the instance output; then one `read` binding per
 /// present column, in [`LOWER_COLUMNS`] order.
 ///
-/// `blend` is the sink's `BlendMode` tag (doc 89, folha 17), packed into the
-/// instance's `flip_uv` bits 5-7 by the SAME function the CPU lowering uses. It
-/// is a **codegen constant**, not a uniform: it is one number for the whole sink,
-/// it cannot change within a dispatch, and it joins [`lower_signature`] so the
-/// pipeline cache keys on it — a uniform would have cost a binding and a write
-/// per frame to say something the source can simply spell. Tag 0 emits the
-/// literal `0u` this generator wrote before the param existed ⇒ byte-identical.
-pub fn lower_module(present: [bool; 7], blend: u8) -> String {
-    let blend_bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
+/// `style` is the sink's [`SinkStyle`] (doc 89, folha 17) — blend, pivô, filtro e
+/// ordem —, aplicado pelas MESMAS funções que o lowering da CPU usa. Ele é uma
+/// **constante de codegen**, não um uniform: é um valor para o sink inteiro, não
+/// pode mudar dentro de um dispatch, e entra na [`lower_signature`] para o cache de
+/// pipelines chavear nele — um uniform teria custado um binding e uma escrita por
+/// quadro para dizer o que a fonte simplesmente soletra. O [`SinkStyle::PLAIN`]
+/// emite os literais que esta geradora escrevia antes dos params existirem ⇒
+/// byte-idêntico.
+///
+/// ⚠️ **O PIVÔ é a excepção que não é constante**: ele é uma fracção do `size` de
+/// cada linha, então o que a fonte soletra é a FRACÇÃO e a multiplicação é feita
+/// no shader, ao lado do `read_size` — exactamente como o `anchor_for` da CPU.
+pub fn lower_module(present: [bool; 8], style: SinkStyle) -> String {
+    let blend_bits = style.flip_uv();
+    // ⚠️ **Um pivô ZERO emite a palavra CRAVADA, não `s.x * 0.0`.** Não é micro-optimização:
+    // com um `size` degenerado (`inf`/`NaN` vindo de um `value.*`) a multiplicação propaga o
+    // não-finito para o `anchor` e a CPU escrevia `0` — a paridade partiria no caso de canto,
+    // que é onde ela é mais difícil de diagnosticar.
+    let anchor_lines = if style.pivot == [0.0, 0.0] {
+        "\x20   instances[base + 17u] = 0u;\n\x20   instances[base + 18u] = 0u;\n".to_string()
+    } else {
+        format!(
+            "\x20   wf(base + 17u, s.x * {px:?});\n\x20   wf(base + 18u, s.y * {py:?});\n",
+            px = style.pivot[0],
+            py = style.pivot[1],
+        )
+    };
+    let sampling = style.sampling;
+    // A ordem das LINHAS é o índice da invocação; senão a palavra cravada de sempre.
+    let sub_order = if style.stream_order { "i" } else { "0u" };
     // O teto e o deslocamento vêm do RENDERER, nunca de literais: um `6`/`5` cravados aqui
     // continuariam a compilar no dia em que um sétimo modo nascesse.
     let top = ph2d_render::pipeline::BLEND_PIPELINE_COUNT;
@@ -80,6 +107,7 @@ pub fn lower_module(present: [bool; 7], blend: u8) -> String {
         "vec4<f32>",
         "f32",
         "f32",
+        "vec4<f32>",
     ];
     let mut slot = 2u32;
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
@@ -102,6 +130,7 @@ pub fn lower_module(present: [bool; 7], blend: u8) -> String {
         "params.default_uv",             // uv_rect (caller-supplied)
         "0.0",                           // texture_id (absent → atlas 0)
         "0.0",                           // blend (absent → 0 = o modo do SINK)
+        "vec4<f32>(1.0, 1.0, 0.0, 0.0)", // uv_cell (absent → IDENTITY_UV_XFORM)
     ];
     for (i, col) in LOWER_COLUMNS.iter().enumerate() {
         if present[i] {
@@ -155,10 +184,11 @@ pub fn lower_module(present: [bool; 7], blend: u8) -> String {
         \x20   wf(base + 13u, sn);\n\
         \x20   wf(base + 14u, -sn);\n\
         \x20   wf(base + 15u, cs);\n\
-        \x20   // premultiplied (16) + anchor (17-18): zero.\n\
+        \x20   // premultiplied (16): zero. anchor (17-18): o PIVÔ, em metros —\n\
+        \x20   // a fracção é constante de codegen e a multiplicação pelo `size`\n\
+        \x20   // desta linha é feita aqui, como o `SinkStyle::anchor_for` da CPU.\n\
         \x20   instances[base + 16u] = 0u;\n\
-        \x20   instances[base + 17u] = 0u;\n\
-        \x20   instances[base + 18u] = 0u;\n\
+        {anchor_lines}\
         \x20   // per_corner_tint (19-34): identity white.\n\
         \x20   for (var k = base + 19u; k < base + 35u; k = k + 1u) {{\n\
         \x20       wf(k, 1.0);\n\
@@ -175,34 +205,63 @@ pub fn lower_module(present: [bool; 7], blend: u8) -> String {
         \x20       bb = ((min(u32(round(bt)), {top}u) - 1u) & 7u) << {shift}u;\n\
         \x20   }}\n\
         \x20   instances[base + 36u] = bb;\n\
-        \x20   wf(base + 37u, 1.0);\n\
-        \x20   wf(base + 38u, 1.0);\n\
-        \x20   instances[base + 39u] = 0u;\n\
-        \x20   instances[base + 40u] = 0u;\n\
+        \x20   // uv_xform (37-40) = a coluna `uv_cell`; ausente ⇒ a identidade.\n\
+        \x20   let uc = read_uv_cell(i);\n\
+        \x20   wf(base + 37u, uc.x);\n\
+        \x20   wf(base + 38u, uc.y);\n\
+        \x20   wf(base + 39u, uc.z);\n\
+        \x20   wf(base + 40u, uc.w);\n\
         \x20   // texture_id (41): the object's tile/individual handle, from the\n\
         \x20   // stream column (absent → 0 = atlas). `u32(f32)` truncates toward\n\
         \x20   // zero, exactly like the CPU lowering's `scalar_at(..) as u32`.\n\
-        \x20   // z_order · sampling · clip_group · clip_meta (42-45): the CPU's.\n\
+        \x20   // z_order (42) · clip_group/clip_meta (44-45): the CPU's zeros.\n\
+        \x20   // sampling (43) = a chave do sink · sub_order (46) = a ordem das\n\
+        \x20   // LINHAS quando o sink a pede, senão `0` (o desempate por textura).\n\
         \x20   instances[base + 41u] = u32(read_texture_id(i));\n\
         \x20   instances[base + 42u] = 0u;\n\
-        \x20   instances[base + 43u] = 0u;\n\
+        \x20   instances[base + 43u] = {sampling}u;\n\
         \x20   instances[base + 44u] = 0u;\n\
         \x20   instances[base + 45u] = 0u;\n\
+        \x20   instances[base + 46u] = {sub_order};\n\
         }}\n"
     ));
     src
 }
 
 /// Pipeline-cache signature for a lowering column set (bit per column) **and the
-/// blend tag** — the two things [`lower_module`] bakes into its source. The tag
-/// rides above the column bits, so a document that only changes its sink's blend
-/// gets its own cached pipeline instead of silently reusing the previous mode's.
-pub fn lower_signature(present: [bool; 7], blend: u8) -> u64 {
+/// whole [`SinkStyle`]** — the two things [`lower_module`] bakes into its source.
+/// The style rides above the column bits, so a document that only changes its
+/// sink's blend (ou pivô, ou filtro, ou ordem) gets its own cached pipeline
+/// instead of silently reusing the previous one's source.
+///
+/// ⚠️ **O pivô é um `f32` e entra pelos BITS dele** (`to_bits`), não por um
+/// arredondamento: dois pivôs que diferem no último dígito geram fontes WGSL
+/// diferentes, e uma assinatura que os confundisse serviria a pipeline errada. É
+/// por isso que a assinatura é um hash e não uma concatenação de campos — não há
+/// bits que cheguem para os quatro em `u64`.
+#[must_use]
+pub fn lower_signature(present: [bool; 8], style: SinkStyle) -> u64 {
     let cols = present
         .iter()
         .enumerate()
         .fold(0u64, |sig, (i, &p)| sig | ((p as u64) << i));
-    cols | (u64::from(blend) << LOWER_COLUMNS.len())
+    // FNV-1a sobre os campos do estilo, misturado acima dos bits das colunas.
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |w: u64| {
+        h ^= w;
+        h = h.wrapping_mul(0x100_0000_01b3);
+    };
+    eat(u64::from(style.blend));
+    eat(u64::from(style.pivot[0].to_bits()));
+    eat(u64::from(style.pivot[1].to_bits()));
+    eat(u64::from(style.sampling));
+    eat(u64::from(style.stream_order));
+    // ⚠️ O estilo PLAIN tem de dar EXACTAMENTE os bits das colunas, senão toda
+    // pipeline já em cache se invalida na primeira corrida depois desta wave.
+    if style.is_plain() {
+        return cols;
+    }
+    cols | (h << LOWER_COLUMNS.len())
 }
 
 #[cfg(test)]
@@ -222,7 +281,7 @@ mod tests {
 
     #[test]
     fn absent_columns_read_the_cpu_defaults() {
-        let src = lower_module([false; 7], 0);
+        let src = lower_module([false; 8], SinkStyle::PLAIN);
         assert!(src.contains("return vec2<f32>(0.0, 0.0);")); // P
         assert!(src.contains("return params.default_size;"));
         assert!(src.contains("return params.default_uv;"));
@@ -236,9 +295,9 @@ mod tests {
     /// tile handle only reaches the device if the lowering reads the column.
     #[test]
     fn the_lowering_carries_texture_id() {
-        let mut present = [false; 7];
+        let mut present = [false; 8];
         present[5] = true; // texture_id present
-        let src = lower_module(present, 0);
+        let src = lower_module(present, SinkStyle::PLAIN);
         // The column is bound and read as f32 (like `rot`), truncated to u32.
         assert!(src.contains("var<storage, read> in_texture_id: array<f32>;"));
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { return in_texture_id[i]; }"));
@@ -251,7 +310,7 @@ mod tests {
     /// graph is byte-identical — the reader falls back to `0.0`, truncating to 0.
     #[test]
     fn absent_texture_id_is_the_atlas() {
-        let src = lower_module([false; 7], 0);
+        let src = lower_module([false; 8], SinkStyle::PLAIN);
         assert!(src.contains("fn read_texture_id(i: u32) -> f32 { _ = i; return 0.0; }"));
         assert!(src.contains("instances[base + 41u] = u32(read_texture_id(i));"));
     }
@@ -262,7 +321,7 @@ mod tests {
     /// byte-identical instance.
     #[test]
     fn the_neutral_blend_emits_the_zero_word_it_always_did() {
-        let src = lower_module([false; 7], 0);
+        let src = lower_module([false; 8], SinkStyle::PLAIN);
         // ⚠️ A palavra deixou de ser um literal e passou a ser um `if` sobre a coluna
         // `blend` (doc 89 folha 07). O que continua a valer é a CONSTANTE de que ele parte:
         // sem coluna, o `read_blend` é `0.0`, o ramo nunca corre, e o que sai é este `0u`.
@@ -285,7 +344,13 @@ mod tests {
     fn an_authored_blend_is_baked_into_the_generated_source() {
         for blend in 1..BLEND_PIPELINE_COUNT as u8 {
             let bits = ph2d_render::RenderInstance::pack_blend_bits(blend);
-            let src = lower_module([false; 7], blend);
+            let src = lower_module(
+                [false; 8],
+                SinkStyle {
+                    blend,
+                    ..SinkStyle::PLAIN
+                },
+            );
             assert!(
                 src.contains(&format!("var bb = {bits}u;")),
                 "blend {blend} did not reach word 36 of the generated source"
@@ -301,9 +366,9 @@ mod tests {
     /// vê a feature funcionar e depois parar sem mexer em nada"*.
     #[test]
     fn the_blend_column_reaches_word_36_on_the_device_route() {
-        let mut present = [false; 7];
+        let mut present = [false; 8];
         present[6] = true; // a coluna `blend`
-        let src = lower_module(present, 0);
+        let src = lower_module(present, SinkStyle::PLAIN);
         assert!(src.contains("var<storage, read> in_blend: array<f32>;"));
         assert!(src.contains("fn read_blend(i: u32) -> f32 { return in_blend[i]; }"));
         assert!(
@@ -325,10 +390,18 @@ mod tests {
     /// so moving the tag's shift does not falsify a correct generator.
     #[test]
     fn two_blends_never_share_one_pipeline_cache_key() {
-        for mask in 0u8..64 {
+        for mask in 0u16..256 {
             let present = std::array::from_fn(|i| mask & (1 << i) != 0);
             let sigs: Vec<u64> = (0..BLEND_PIPELINE_COUNT as u8)
-                .map(|b| lower_signature(present, b))
+                .map(|blend| {
+                    lower_signature(
+                        present,
+                        SinkStyle {
+                            blend,
+                            ..SinkStyle::PLAIN
+                        },
+                    )
+                })
                 .collect();
             let mut sorted = sigs.clone();
             sorted.sort_unstable();
@@ -336,13 +409,141 @@ mod tests {
             assert_eq!(
                 sorted.len(),
                 sigs.len(),
-                "mask {mask:06b}: two blends collide on one cache key"
+                "mask {mask:08b}: two blends collide on one cache key"
             );
         }
         // And the column bits still separate column sets at a FIXED blend — the
         // tag must not have eaten the bits it rides above.
-        let a = lower_signature([false; 7], 0);
-        let b = lower_signature([true; 7], 0);
+        let a = lower_signature([false; 8], SinkStyle::PLAIN);
+        let b = lower_signature([true; 8], SinkStyle::PLAIN);
         assert_ne!(a, b, "the column bits stopped separating column sets");
+    }
+
+    /// ⭐ **O ESTILO NEUTRO NÃO MOVE A ASSINATURA** — a metade que faz esta wave
+    /// custar zero a quem já shipou.
+    ///
+    /// ⚠️ A assinatura é a chave do cache de pipelines. Se o `PLAIN` passasse a
+    /// hashear, toda combinação de colunas ganharia uma chave NOVA e a primeira
+    /// corrida depois desta wave recompilaria todos os módulos — sem uma linha de
+    /// erro, e visível só como um engasgo.
+    #[test]
+    fn the_plain_style_keeps_the_signature_every_document_already_had() {
+        for mask in 0u16..256 {
+            let present = std::array::from_fn(|i| mask & (1 << i) != 0);
+            let cols = present
+                .iter()
+                .enumerate()
+                .fold(0u64, |sig, (i, &p)| sig | ((u64::from(p)) << i));
+            assert_eq!(
+                lower_signature(present, SinkStyle::PLAIN),
+                cols,
+                "mask {mask:08b}: o estilo neutro moveu a chave do cache"
+            );
+        }
+    }
+
+    /// ⭐⭐ **CADA CAMPO DO ESTILO É VISÍVEL NA FONTE, E CADA UM SEPARA A CHAVE.**
+    ///
+    /// ⚠️ **É a metade que nenhuma varredura de naga vê**, e a folha 17 já a
+    /// nomeou uma vez: uma geradora que ignorasse um campo emite WGSL válido, e o
+    /// artista veria o knob funcionar na CPU e parar no device *sem mexer em nada*.
+    /// A régua é a mesma para os quatro — a fonte MUDA, e a chave também.
+    #[test]
+    fn every_style_field_changes_both_the_source_and_the_cache_key() {
+        let plain = lower_module([false; 8], SinkStyle::PLAIN);
+        let key = lower_signature([false; 8], SinkStyle::PLAIN);
+        for (what, style) in [
+            (
+                "blend",
+                SinkStyle {
+                    blend: 2,
+                    ..SinkStyle::PLAIN
+                },
+            ),
+            (
+                "pivot",
+                SinkStyle {
+                    pivot: [0.5, 0.0],
+                    ..SinkStyle::PLAIN
+                },
+            ),
+            (
+                "sampling",
+                SinkStyle {
+                    sampling: ph2d_render::RenderInstance::pack_sampling(1, 0),
+                    ..SinkStyle::PLAIN
+                },
+            ),
+            (
+                "stream_order",
+                SinkStyle {
+                    stream_order: true,
+                    ..SinkStyle::PLAIN
+                },
+            ),
+        ] {
+            assert_ne!(
+                lower_module([false; 8], style),
+                plain,
+                "{what}: a fonte gerada nao mudou — o campo nao alcanca o device"
+            );
+            assert_ne!(
+                lower_signature([false; 8], style),
+                key,
+                "{what}: a chave do cache nao mudou — o device reusa a pipeline errada"
+            );
+        }
+    }
+
+    /// **A ordem das LINHAS é o índice da invocação, e o de sempre é a palavra
+    /// cravada.** Word 46 é o `sub_order` (ADR-0070-amendment-8).
+    #[test]
+    fn the_stream_order_writes_the_invocation_index_into_word_46() {
+        assert!(lower_module([false; 8], SinkStyle::PLAIN).contains("instances[base + 46u] = 0u;"));
+        assert!(
+            lower_module(
+                [false; 8],
+                SinkStyle {
+                    stream_order: true,
+                    ..SinkStyle::PLAIN
+                }
+            )
+            .contains("instances[base + 46u] = i;")
+        );
+    }
+
+    /// **A COLUNA `uv_cell` CHEGA ÀS PALAVRAS 37-40** — o sub-UV na rota do device.
+    #[test]
+    fn the_uv_cell_column_reaches_the_uv_xform_words() {
+        let mut present = [false; 8];
+        present[7] = true;
+        let src = lower_module(present, SinkStyle::PLAIN);
+        assert!(src.contains("var<storage, read> in_uv_cell: array<vec4<f32>>;"));
+        assert!(src.contains("let uc = read_uv_cell(i);"));
+        assert!(src.contains("wf(base + 37u, uc.x);"));
+        // Ausente ⇒ a identidade que esta geradora cravava.
+        let plain = lower_module([false; 8], SinkStyle::PLAIN);
+        assert!(plain.contains(
+            "fn read_uv_cell(i: u32) -> vec4<f32> { _ = i; return vec4<f32>(1.0, 1.0, 0.0, 0.0); }"
+        ));
+    }
+
+    /// **Um pivô ZERO emite a palavra CRAVADA**, não uma multiplicação por `0.0`.
+    /// ⚠️ Com um `size` não-finito as duas não dão o mesmo número, e é a paridade
+    /// que apanharia — no caso de canto, que é o pior sítio para a descobrir.
+    #[test]
+    fn a_zero_pivot_writes_the_hardcoded_word_not_a_multiply_by_zero() {
+        let plain = lower_module([false; 8], SinkStyle::PLAIN);
+        assert!(plain.contains("instances[base + 17u] = 0u;"));
+        assert!(!plain.contains("wf(base + 17u,"));
+        let moved = lower_module(
+            [false; 8],
+            SinkStyle {
+                pivot: [0.5, -0.25],
+                ..SinkStyle::PLAIN
+            },
+        );
+        assert!(moved.contains("wf(base + 17u, s.x * 0.5);"));
+        assert!(moved.contains("wf(base + 18u, s.y * -0.25);"));
     }
 }

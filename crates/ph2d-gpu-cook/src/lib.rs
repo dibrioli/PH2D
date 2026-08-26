@@ -240,11 +240,12 @@ impl GpuCook {
         clock: CookClock,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
-        // The sink's blend tag — a lowering decision the HOST owns, like the two
-        // defaults above. It comes from the one door, `sink_blend_tag`; the why
-        // is written there (this crate keeps `ph2d-eval-motion` a DEV dep on
-        // purpose, so it cannot ask that door itself).
-        blend: u8,
+        // The sink's STYLE — lowering decisions the HOST owns, like the two
+        // defaults above. It comes from the one door, `sink_style`; the why is
+        // written there (this crate keeps `ph2d-eval-motion` a DEV dep on
+        // purpose, so it cannot ask that door itself — daí o tipo viver no
+        // `ph2d-render`, que é de quem os quatro campos são).
+        style: ph2d_render::SinkStyle,
     ) -> Result<u32, GpuCookError> {
         let CookClock { playhead, tick } = clock;
         let want: BTreeSet<NodeId> = plan.boundaries.iter().map(|(n, _)| *n).collect();
@@ -639,7 +640,7 @@ impl GpuCook {
             &sink_stream,
             default_uv_rect,
             default_size,
-            blend,
+            style,
         );
         gpu.queue.submit(Some(encoder.finish()));
 

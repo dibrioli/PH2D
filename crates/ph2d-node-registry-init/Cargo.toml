@@ -67,6 +67,7 @@ ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
+ph2d-node-motion-sub-uv = { path = "../ph2d-node-motion-sub-uv" }
 ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 ph2d-node-motion-path = { path = "../ph2d-node-motion-path" }
 ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }

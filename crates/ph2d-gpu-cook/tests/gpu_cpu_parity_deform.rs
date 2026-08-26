@@ -36,6 +36,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
+use ph2d_render::SinkStyle;
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -154,7 +155,7 @@ fn cook_gpu(gpu: &GpuContext, reg: &NodeRegistry, g: &Graph, out: NodeId) -> Vec
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .expect("gpu cook");
     ph2d_gpu_cook::read_instances(gpu, gc.instances().expect("cooked"))

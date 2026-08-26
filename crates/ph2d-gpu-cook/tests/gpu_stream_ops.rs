@@ -15,6 +15,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
+use ph2d_render::SinkStyle;
 
 fn try_headless_gpu() -> Option<GpuContext> {
     use std::sync::OnceLock;
@@ -160,7 +161,7 @@ fn parity_over_ticks(
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
         assert_eq!(
@@ -338,7 +339,7 @@ fn the_spawn_births_the_same_ids_from_the_same_template_rows() {
                 CookClock::at(playhead),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let gpu_out = read_instances(&gpu, gc.instances().expect("cooked"));
@@ -415,7 +416,7 @@ fn the_spawn_births_the_same_survivors_on_both_sides() {
                 CookClock::at(playhead),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let gpu_out = read_instances(&gpu, gc.instances().expect("cooked"));
@@ -629,7 +630,7 @@ fn the_compaction_seam_cost_probe() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             if t > 10 {
@@ -708,7 +709,7 @@ fn a_gpu_loop_wrap_replays_at_most_a_stride_under_a_squeezed_budget() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
         }

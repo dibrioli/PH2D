@@ -62,6 +62,7 @@ fn base() -> RenderInstance {
         sampling: RenderInstance::SAMPLING_DEFAULT,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta: 0,
+        sub_order: 0,
     }
 }
 

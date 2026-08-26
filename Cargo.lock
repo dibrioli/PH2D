@@ -6759,6 +6759,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-node-motion-sub-uv"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
 name = "ph2d-node-motion-time-remap"
 version = "0.0.0"
 dependencies = [
@@ -6997,6 +7005,7 @@ dependencies = [
  "ph2d-node-motion-stagger",
  "ph2d-node-motion-step",
  "ph2d-node-motion-strobe",
+ "ph2d-node-motion-sub-uv",
  "ph2d-node-motion-time-remap",
  "ph2d-node-motion-tint",
  "ph2d-node-motion-trail",

@@ -38,7 +38,7 @@ impl GpuInstances {
 impl GpuCook {
     /// Encode the final lowering pass into the persistent instance buffer.
     // The lowering seam: device + encoder + slot + stream + the three host-side
-    // lowering decisions (uv rect, size, blend). Bundling them into a struct would
+    // lowering decisions (uv rect, size, style). Bundling them into a struct would
     // buy a name and cost a second place to keep in step with `cook`'s signature.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn encode_lowering(
@@ -49,7 +49,7 @@ impl GpuCook {
         stream: &GpuStream,
         default_uv_rect: [f32; 4],
         default_size: [f32; 2],
-        blend: u8,
+        style: ph2d_render::SinkStyle,
     ) {
         let count = stream.count;
         self.ensure_instance_capacity(gpu, count.max(1));
@@ -59,15 +59,15 @@ impl GpuCook {
             return;
         }
 
-        let present: [bool; 7] = std::array::from_fn(|i| {
+        let present: [bool; 8] = std::array::from_fn(|i| {
             stream
                 .cols
                 .get(lower::LOWER_COLUMNS[i])
                 .is_some_and(|c| c.dim == expected_lower_dim(i))
         });
-        let sig = lower::lower_signature(present, blend);
+        let sig = lower::lower_signature(present, style);
         self.lower_pipelines.entry(sig).or_insert_with(|| {
-            let src = lower::lower_module(present, blend);
+            let src = lower::lower_module(present, style);
             CachedPipeline {
                 pipeline: create_pipeline(gpu, &src, "ph2d-gpu-cook lowering"),
             }
@@ -182,6 +182,6 @@ fn expected_lower_dim(i: usize) -> ph2d_nodegraph::port::Dim {
     match i {
         0 | 1 => Dim::Vec2,       // P, size
         2 | 5 | 6 => Dim::Scalar, // rot, texture_id, blend
-        _ => Dim::Vec4,           // tint, uv_rect
+        _ => Dim::Vec4,           // tint, uv_rect, uv_cell
     }
 }

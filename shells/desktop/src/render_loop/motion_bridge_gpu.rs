@@ -213,12 +213,12 @@ pub(super) fn cook_gpu(
         &motion.registry,
         motion.sinks[0],
     );
-    // Como este sink compõe (doc 89, folha 17). Lido da porta ÚNICA — a MESMA que o
-    // pump da CPU pergunta no laço de sinks —, e resolvido AQUI, ao lado do sink que
-    // o plano escolheu: um segundo leitor teria liberdade de arredondar diferente, e
-    // as duas rotas compositariam o mesmo documento de maneiras diferentes, que
-    // nenhum gate que olha para uma rota consegue ver.
-    let blend = ph2d_eval_motion::sink_blend_tag(&motion.doc.graph, motion.sinks[0]);
+    // Como este sink DESENHA (doc 89, folha 17): blend · pivô · filtro · ordem. Lido da
+    // porta ÚNICA — a MESMA que o pump da CPU pergunta no laço de sinks —, e resolvido
+    // AQUI, ao lado do sink que o plano escolheu: um segundo leitor teria liberdade de
+    // arredondar diferente, e as duas rotas desenhariam o mesmo documento de maneiras
+    // diferentes, que nenhum gate que olha para uma rota consegue ver.
+    let blend = ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0]);
     // The count-changing cerca (this wave): an OBJECT graph whose GPU suffix
     // reorders / changes count would mis-bind the texture-run partition — the
     // boundary `texture_id` column aligns with the sink ONLY when the suffix is

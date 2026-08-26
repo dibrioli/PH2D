@@ -11,6 +11,7 @@
 
 use crate::{Column, Graph, NodeId, OpResolver, PAR_THRESHOLD, RenderInstance, Stream};
 use ph2d_nodegraph::cook::{Cook, CookError};
+use ph2d_render::SinkStyle;
 use rayon::prelude::*;
 
 /// Lower a cooked instance stream **into `out`** (one instance per element),
@@ -51,11 +52,11 @@ pub fn lower_to_instances_into(
     stream: &Stream,
     default_uv_rect: [f32; 4],
     default_size: [f32; 2],
-    blend: u8,
+    style: SinkStyle,
     out: &mut Vec<RenderInstance>,
 ) {
     out.clear();
-    lower_to_instances_onto(stream, default_uv_rect, default_size, blend, out);
+    lower_to_instances_onto(stream, default_uv_rect, default_size, style, out);
 }
 
 /// Like [`lower_to_instances_into`] but **appends** — `out` keeps whatever it
@@ -66,7 +67,7 @@ pub fn lower_to_instances_onto(
     stream: &Stream,
     default_uv_rect: [f32; 4],
     default_size: [f32; 2],
-    blend: u8,
+    style: SinkStyle,
     out: &mut Vec<RenderInstance>,
 ) {
     let n = stream.count();
@@ -90,7 +91,7 @@ pub fn lower_to_instances_onto(
     // number for the whole sink, not a per-element gather. Tag 0 (`Mix`) packs to
     // `0`, which is what this lowering hardcoded before the param existed ⇒ the
     // default is byte-identical.
-    let flip_uv = RenderInstance::pack_blend_bits(blend);
+    let flip_uv = style.flip_uv();
     // doc 89, folha 07 (o *Echo Operator* do AE): a coluna `blend` deixa cada LINHA
     // escolher como compõe, e não só o sink inteiro. É o que faz um rastro de LUZ — os
     // ecos somam-se em vez de se taparem.
@@ -105,6 +106,22 @@ pub fn lower_to_instances_onto(
     // comum (é um número para o sink inteiro), que é a razão por que ele foi tirado do
     // `make` quando o param do sink nasceu.
     let blend_col = stream.get("blend");
+    // doc 89, folha 17 (o *SubImage* do Sprite Renderer do Niagara): a coluna `uv_cell`
+    // escolhe QUE PEDAÇO da textura cada linha mostra — `[escala_u, escala_v, desloc_u,
+    // desloc_v]`, que é exactamente o `uv_xform` que o shader já aplica DENTRO do sub-rect
+    // da própria sprite.
+    //
+    // ⚠️ **Ela é RELATIVA, e é por isso que existe uma coluna nova em vez de se reusar a
+    // `uv_rect`.** A `uv_rect` é o rectângulo ABSOLUTO no atlas, e quem o escreve
+    // (`source.object`) é o único que sabe qual é o ladrilho do objecto; um nó de flipbook
+    // a montante não sabe, e a shell fornece o ladrilho só no momento do lowering. Uma
+    // fracção compõe com o ladrilho que a linha tiver — venha da coluna ou do default.
+    //
+    // Ausente ⇒ `IDENTITY_UV_XFORM`, que é o que este lowering cravava ⇒ byte-idêntico.
+    let uv_cell = stream.get("uv_cell");
+    // O `sampling` e o `sub_order` são do SINK inteiro (não há gather): içados aqui pela
+    // mesma razão que o `flip_uv`.
+    let sampling = style.sampling;
     out.reserve(n);
     // Each instance is a pure function of its own index (a five-column gather +
     // one `sin_cos`); no cross-element dependency. Above the threshold
@@ -129,7 +146,12 @@ pub fn lower_to_instances_onto(
             tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
             basis: [cos_r, sin_r, -sin_r, cos_r],
             premultiplied: 0.0,
-            anchor: [0.0, 0.0],
+            // doc 89, folha 17: o PIVÔ. A conversão fracção→metros vive numa função
+            // só (`SinkStyle::anchor_for`) porque as duas rotas têm de a fazer igual,
+            // e ela multiplica pelo tamanho DESTA linha — um stream tem um `size` por
+            // elemento, e um pivô em metros deslocaria as peças pequenas de outra
+            // maneira que as grandes.
+            anchor: style.anchor_for(vec2_at(size, i, default_size)),
             // Sprite-Inspector-v2 v4 ABI fields: a Motion node stream has no
             // per-corner/opacity authoring surface, so those take their identity
             // values (white gradient, full opacity). `flip_uv` DOES have one now
@@ -143,11 +165,19 @@ pub fn lower_to_instances_onto(
             // motion node's instances share `z_order = 0`. Renderer's
             // tiebreaker (`texture_id`) groups them into one run.
             z_order: 0,
-            sampling: 0,
-            uv_xform: RenderInstance::IDENTITY_UV_XFORM,
+            sampling,
+            uv_xform: vec4_at(uv_cell, i, RenderInstance::IDENTITY_UV_XFORM),
             // Node-graph emit has no hierarchy → no clip silhouette.
             clip_group: RenderInstance::CLIP_GROUP_NONE,
             clip_meta: 0,
+            // doc 89, folha 17: a SUB-ORDEM. `Texture` (o de sempre) deixa tudo a `0`
+            // e o desempate volta a ser o `texture_id`; `Stream` diz que a ordem das
+            // LINHAS é a ordem de desenho, e é o índice que a exprime.
+            //
+            // ⚠️ Ele é o índice na FILEIRA, não o índice no buffer: vários sinks
+            // compõem no mesmo `out`, e um contador global faria o 2.º sink desenhar
+            // sempre por cima do 1.º — que não é o que `Stream` quer dizer.
+            sub_order: if style.stream_order { i as u32 } else { 0 },
         }
     };
     // doc 86 gave `texture_id`; ADR-0154 gives its sibling `geometry_id`. A row
@@ -234,9 +264,15 @@ pub fn lower_to_vector_instances_onto(stream: &Stream, out: &mut Vec<VectorInsta
 /// supplies a real tile via [`lower_to_instances_into`]'s `default_uv_rect`).
 pub fn lower_to_instances(stream: &Stream) -> Vec<RenderInstance> {
     let mut out = Vec::new();
-    // No graph, no sink: this headless helper has nothing to ask, so it lowers in
-    // `Mix` — the mode every caller of it got before the param existed.
-    lower_to_instances_into(stream, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 0, &mut out);
+    // No graph, no sink: this headless helper has nothing to ask, so it lowers
+    // PLAIN — the style every caller of it got before the params existed.
+    lower_to_instances_into(
+        stream,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle::PLAIN,
+        &mut out,
+    );
     out
 }
 
@@ -302,7 +338,7 @@ pub fn evaluate_motion_into(
             default_size,
             // This helper COOKS a target, so the target IS the sink — it gets the
             // same answer the pump's loop gets, from the same door.
-            crate::sink_blend_tag(graph, target),
+            crate::sink_style(graph, target),
             out,
         ),
         None => out.clear(),

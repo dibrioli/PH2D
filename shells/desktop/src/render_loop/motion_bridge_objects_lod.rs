@@ -109,5 +109,6 @@ pub(crate) fn vector_instance_as_tile(vi: &VectorInstance, texture_id: u32) -> R
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta: 0,
+        sub_order: 0,
     }
 }

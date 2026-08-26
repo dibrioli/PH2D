@@ -1,5 +1,5 @@
-//! **Arch-gate do modo de composição do sink** (doc 89, folha 17) — o `blend` do
-//! `motion.output`.
+//! **Arch-gate do ESTILO do sink** (doc 89, folha 17) — o `blend`, o `pivot`, o
+//! `filter` e o `sort` do `motion.output`.
 //!
 //! A shell é o ÚNICO lugar que enxerga as três peças ao mesmo tempo: o nó que
 //! DECLARA o param, o substrato que o LÊ, e as duas rotas de render que o
@@ -75,7 +75,7 @@ fn every_blend_the_renderer_can_draw_has_a_name_and_no_more() {
 #[test]
 fn the_gpu_route_reads_the_tag_from_the_one_door() {
     assert!(
-        GPU_BRIDGE.contains("ph2d_eval_motion::sink_blend_tag(&motion.doc.graph, motion.sinks[0])"),
+        GPU_BRIDGE.contains("ph2d_eval_motion::sink_style(&motion.doc.graph, motion.sinks[0])"),
         "a ponte da GPU deixou de perguntar à porta única — o mesmo documento \
          passa a compositar diferente conforme o `PH2D_GPU_COOK`"
     );
@@ -180,4 +180,109 @@ fn no_node_offers_a_mode_the_renderer_cannot_draw() {
             "{who}: os modos (fora o `Sink`) tem de ser exactamente os pipelines"
         );
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// **O RESTO DO ESTILO** (doc 89, folha 17): pivô · filtro · ordem.
+//
+// As mesmas TRÊS maneiras de partir a wave com a suíte verde valem para cada um
+// deles, e a shell continua a ser o único sítio que vê as duas folhas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// **AS DUAS FOLHAS NOMEIAM OS MESMOS QUATRO PARAMS.**
+///
+/// ⚠️ Um renome de um lado só deixa o knob **inerte** — sem erro, sem warning, e
+/// com os gates de unidade dos dois lados verdes porque cada um usa a sua
+/// constante. É o modo de falha que este ficheiro inteiro existe para apanhar.
+#[test]
+fn the_node_and_the_substrate_agree_on_every_style_param_name() {
+    for (node, substrate) in [
+        (
+            ph2d_node_motion_output::PIVOT_X_PARAM,
+            ph2d_eval_motion::SINK_PIVOT_X_PARAM,
+        ),
+        (
+            ph2d_node_motion_output::PIVOT_Y_PARAM,
+            ph2d_eval_motion::SINK_PIVOT_Y_PARAM,
+        ),
+        (
+            ph2d_node_motion_output::FILTER_PARAM,
+            ph2d_eval_motion::SINK_FILTER_PARAM,
+        ),
+        (
+            ph2d_node_motion_output::SORT_PARAM,
+            ph2d_eval_motion::SINK_SORT_PARAM,
+        ),
+    ] {
+        assert_eq!(node, substrate, "o no e o substrato divergiram num param");
+    }
+}
+
+/// **OS QUATRO PARAMS QUE O NÓ PINTA EXISTEM NO MANIFESTO DELE.**
+///
+/// Um `ParamUiHint` para um param que o `NodeManifest` não declara faz o
+/// `validate` recusar o GRAFO INTEIRO — foi o que derrubou três demos na
+/// integração do `motion.color_ramp`.
+#[test]
+fn the_manifest_declares_every_param_the_hints_paint() {
+    let declared = |name: &str| {
+        ph2d_node_motion_output::MANIFEST
+            .params
+            .iter()
+            .any(|p| p.name == name)
+    };
+    for name in [
+        ph2d_node_motion_output::BLEND_PARAM,
+        ph2d_node_motion_output::PIVOT_X_PARAM,
+        ph2d_node_motion_output::PIVOT_Y_PARAM,
+        ph2d_node_motion_output::FILTER_PARAM,
+        ph2d_node_motion_output::SORT_PARAM,
+    ] {
+        assert!(declared(name), "o manifesto nao declara `{name}`");
+    }
+}
+
+/// ⭐ **OS RÓTULOS DE FILTRO COBREM EXACTAMENTE OS MODOS QUE O RENDERER SABE
+/// AMOSTRAR** — o mesmo censo do `blend`, sobre a outra lista.
+///
+/// ⚠️ **O teto é DERIVADO** do `FILTER_TAG_MAX`, que por sua vez é verificado
+/// contra o `FilterMode::from_tag` no `ph2d-render`. Menos rótulos que tags deixa
+/// um modo inalcançável pelo menu; mais rótulos oferece um item que o `sink_style`
+/// clampa de volta — um item de menu morto, e nenhum dos dois dá erro.
+#[test]
+fn every_filter_the_renderer_can_bind_has_a_name_and_no_more() {
+    assert_eq!(
+        ph2d_node_motion_output::FILTER_LABELS.len(),
+        usize::from(ph2d_render::image_filter::FILTER_TAG_MAX) + 1,
+        "os rotulos de filtro e os tags que o renderer distingue discordam"
+    );
+}
+
+/// **O LIMITE DO PIVÔ É O MESMO NOS DOIS LADOS.**
+///
+/// ⚠️ O nó publica-o para desenhar o slider e o substrato clampa por ele. Se
+/// divergissem, o slider iria até um valor que a porta corta — um pedaço de curso
+/// **morto** na ponta, que é exactamente o report *«difícil de ajustar»*.
+#[test]
+fn the_pivot_slider_ends_where_the_door_clamps() {
+    assert_eq!(
+        ph2d_node_motion_output::PIVOT_LIMIT,
+        ph2d_eval_motion::SINK_PIVOT_LIMIT
+    );
+}
+
+/// ⭐⭐ **A ROTA DA GPU RECEBE O ESTILO INTEIRO, EM TODA CHAMADA DE COOK.**
+///
+/// A contagem é DERIVADA das chamadas, não escrita à mão — senão uma rota nova
+/// nasce descoberta e composita `PLAIN` em silêncio.
+#[test]
+fn every_gpu_cook_call_receives_the_style() {
+    let calls = GPU_BRIDGE.matches("motion.default_size,").count();
+    let handed = GPU_BRIDGE.matches("blend,").count();
+    assert!(calls > 0, "nenhuma chamada de cook encontrada — gate cego");
+    assert_eq!(
+        handed, calls,
+        "{handed} de {calls} chamadas de cook recebem o estilo — a que falta \
+         desenha PLAIN em silencio"
+    );
 }

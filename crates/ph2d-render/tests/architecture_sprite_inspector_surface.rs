@@ -37,10 +37,10 @@ fn sprite_struct_field_count() -> usize {
     13
 }
 
-/// Exactly the 16 v4 `RenderInstance` fields (11 GPU vertex attrs —
-/// per_corner_tint spans 4, + uv_xform from amendment-6 — + 5 CPU-only:
-/// texture_id / z_order / sampling / clip_group / clip_meta).
-/// Destructure enforces it; `16` is for the message.
+/// Exactly the 17 v4 `RenderInstance` fields (11 GPU vertex attrs —
+/// per_corner_tint spans 4, + uv_xform from amendment-6 — + 6 CPU-only:
+/// texture_id / z_order / sampling / clip_group / clip_meta / sub_order).
+/// Destructure enforces it; `17` is for the message.
 fn render_instance_field_count() -> usize {
     use bytemuck::Zeroable;
     let RenderInstance {
@@ -60,8 +60,9 @@ fn render_instance_field_count() -> usize {
         uv_xform: _,
         clip_group: _,
         clip_meta: _,
+        sub_order: _,
     } = RenderInstance::zeroed();
-    16
+    17
 }
 
 #[test]
@@ -79,10 +80,11 @@ fn sprite_struct_field_count_capped() {
 fn render_instance_field_count_capped() {
     assert_eq!(
         render_instance_field_count(),
-        16,
-        "RenderInstance v4 field count must be exactly 16 (amendment-7 added CPU-only \
-         `clip_group: u32` + `clip_meta: u32` for ClipChildren stencil grouping; \
-         amendment-5 added CPU-only `sampling: u32`; amendment-6 added GPU \
+        17,
+        "RenderInstance v4 field count must be exactly 17 (amendment-8 added CPU-only \
+         `sub_order: u32`, the sub-rank INSIDE a `z_order` slice — doc 89 folha 17; \
+         amendment-7 added CPU-only `clip_group: u32` + `clip_meta: u32` for ClipChildren \
+         stencil grouping; amendment-5 added CPU-only `sampling: u32`; amendment-6 added GPU \
          `uv_xform: [f32;4]`). flip_uv is a packed flags word (amendment-3/-6: bits3-4 = \
          repeat) — pack new per-instance GPU bools into its reserved bits before adding a \
          vertex attribute. New CPU-only metadata goes in the tail like clip_group/clip_meta."
@@ -93,8 +95,9 @@ fn render_instance_field_count_capped() {
 fn render_instance_pod_size_capped() {
     assert_eq!(
         std::mem::size_of::<RenderInstance>(),
-        184,
-        "RenderInstance ABI is 184 bytes (amendment-7: +CPU-only `clip_group` + `clip_meta`, \
+        188,
+        "RenderInstance ABI is 188 bytes (amendment-8: +CPU-only `sub_order`, +4 B, GPU \
+         vertex layout unchanged; amendment-7: +CPU-only `clip_group` + `clip_meta`, \
          GPU vertex layout unchanged at 164 B / 12 attrs; amendment-6: +GPU `uv_xform`; \
          amendment-5: +CPU-only `sampling`). A bump requires ADR-0070-amendment-N + a \
          re-bench of sprites_upload_144b_vs_72b."

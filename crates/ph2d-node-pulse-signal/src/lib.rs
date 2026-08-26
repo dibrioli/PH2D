@@ -129,6 +129,21 @@ pub fn fired_rows(stream: &Stream) -> usize {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(PulseSignal))?;
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ **ELE NÃO TINHA NOME NA PALETA** (achado do censo da folha 17, 2026-08-25): dos
+    // 130 tipos, TRÊS não registavam `NodeUiManifest`, e sem ele a paleta cai no nome CRU
+    // do tipo (`pulse.signal`) na categoria cinzenta de omissão. Os outros dois eram
+    // fixturas; este é um nó de artista a que ninguém deu nome.
+    //
+    // `Output` porque é isso que ele É — a saída do grafo para o resto do app —, e `Rect`
+    // porque ele **deixa o pulso passar** (o `Circle` é do terminal, `motion.output`).
+    reg.register_ui(
+        MANIFEST.id,
+        ph2d_node_registry::NodeUiManifest {
+            display_name: "Signal",
+            category: ph2d_node_registry::NodeUiCategory::Output,
+            silhouette: ph2d_node_registry::NodeSilhouette::Rect,
+        },
+    );
     Ok(())
 }
 

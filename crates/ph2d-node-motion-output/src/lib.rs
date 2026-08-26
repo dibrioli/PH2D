@@ -18,12 +18,27 @@
 //! a sprite's blend rides in, so the renderer keys its draw runs on it with no ABI
 //! cost (`RenderInstance::pack_blend_bits`, `flip_uv` bits 5-7).
 //!
-//! ⚠️ **The param is read by the LOWERING, not by `eval`.** On the device this node
-//! is `GpuKernel::PASSTHROUGH` — the sequencer emits no pass for it — so a column
-//! written here would never reach the device lowering. The tag travels as an
-//! argument of both lowerings instead (`ph2d_eval_motion::sink_blend_tag` is the
-//! one door), and `Mix` (the default) is `flip_uv = 0`, i.e. byte-identical to
-//! every frame this app has ever drawn.
+//! ⚠️ **The params are read by the LOWERING, not by `eval`.** On the device this
+//! node is `GpuKernel::PASSTHROUGH` — the sequencer emits no pass for it — so a
+//! column written here would never reach the device lowering. They travel as an
+//! argument of both lowerings instead (`ph2d_eval_motion::sink_style` is the one
+//! door), and the DEFAULTS are exactly what the two lowerings hardcoded before
+//! any of them existed, i.e. byte-identical to every frame this app has drawn.
+//!
+//! **`pivot` · `filter` · `sort` — o resto do estilo do sink** (doc 89, folha 17,
+//! e a mesma citação decidiu os quatro):
+//!
+//! - **`pivot_x`/`pivot_y`** — o *Pivot Offset* do Sprite Renderer do Niagara e a
+//!   âncora por-cópia da Cavalry. ⚠️ **A unidade é a FRACÇÃO do tamanho do próprio
+//!   elemento**, não metros: num stream cada linha tem o seu `size`, e um pivô em
+//!   metros deslocaria as peças pequenas de outra maneira que as grandes. `0` =
+//!   centrado. É em torno dele que o `rot` da linha gira.
+//! - **`filter`** — o sampler que Niagara põe no Material e a Cavalry na camada.
+//!   Importa em **pixel-art**: sem ele o único controlo é o default do projecto.
+//! - **`sort`** — o `SortMode` do Sprite Renderer do Niagara. `Texture` (o de
+//!   sempre) agrupa por textura e é o que forma runs de desenho; `Stream` diz que
+//!   **a ordem das linhas é a ordem de desenho**, que é o que um `motion.sort` a
+//!   montante autorou e que a mídia MISTA derrotava.
 
 use ph2d_node_registry::{NodeRegistry, RegistryError};
 use ph2d_nodegraph::attr::Stream;
@@ -55,6 +70,49 @@ pub const BLEND_LABELS: [&str; 6] = [
     "Premultiplied",
 ];
 
+/// O pivô do elemento, em **fracção do tamanho dele**. Dois params porque a UI
+/// desta casa pinta um número por linha; a porta que os junta num `[f32; 2]` é o
+/// `sink_style`.
+pub const PIVOT_X_PARAM: &str = "pivot_x";
+/// O irmão em `y` de [`PIVOT_X_PARAM`].
+pub const PIVOT_Y_PARAM: &str = "pivot_y";
+
+/// Quão longe do centro o pivô pode ir, em fracções do tamanho.
+///
+/// ⚠️ **O recurso que este número nomeia é a MOLDURA DE CULL, não a aritmética.**
+/// `±1` põe o `world_pos` numa aresta a UM tamanho inteiro de distância do quad —
+/// já fora dele —, e o renderer decide o que desenhar pelo `world_pos`. Mais longe
+/// que isso e a peça começa a poder desaparecer por estar «fora» num sítio onde se
+/// vê. Medido: a `±1` a peça e o pivô ainda se tocam.
+pub const PIVOT_LIMIT: f32 = 1.0;
+
+/// O filtro de textura deste sink.
+pub const FILTER_PARAM: &str = "filter";
+
+/// Os modos de filtro, na ordem dos tags de `ph2d_ecs::FilterMode`.
+///
+/// ⚠️ **Copiados à mão, porque um nó é FOLHA e não alcança o `ph2d-ecs`** — a mesma
+/// situação do `BLEND_LABELS`, e a mesma cura: um gate na shell (o único sítio que
+/// vê os dois) conta os tags que o `from_tag` distingue e exige esta lista do
+/// mesmo tamanho. Menos rótulos ⇒ um modo inalcançável; mais ⇒ um item de menu que
+/// o `sink_style` clampa de volta.
+pub const FILTER_LABELS: [&str; 7] = [
+    "Project",
+    "Nearest",
+    "Linear",
+    "Nearest Mip",
+    "Linear Mip",
+    "Nearest Aniso",
+    "Linear Aniso",
+];
+
+/// Como este sink ordena as linhas para desenhar.
+pub const SORT_PARAM: &str = "sort";
+
+/// ⚠️ **`Texture` é o de sempre, e é o RÁPIDO.** `Stream` honra a ordem das linhas
+/// e paga em draw calls — a conta é o próprio pedido (ver `SinkStyle::stream_order`).
+pub const SORT_LABELS: [&str; 2] = ["Texture", "Stream"];
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.output"),
@@ -69,12 +127,36 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     }],
     effect: Effect::Pure,
     clock: Clock::Frame,
-    params: &[ParamSpec {
-        // The `BlendMode` tag this sink draws with. Default 0 = `Mix`, which is
-        // the `flip_uv: 0` both lowerings hardcoded before this param existed.
-        name: BLEND_PARAM,
-        default: 0.0,
-    }],
+    params: &[
+        ParamSpec {
+            // The `BlendMode` tag this sink draws with. Default 0 = `Mix`, which is
+            // the `flip_uv: 0` both lowerings hardcoded before this param existed.
+            name: BLEND_PARAM,
+            default: 0.0,
+        },
+        // ⚠️ Os quatro que se seguem sao APENDIDOS, e a ordem e' o contrato: um
+        // `.ph2dproj` guarda overrides por NOME, mas o painel pinta por indice, e
+        // reordenar esta lista trocaria as linhas de um documento ja' gravado.
+        ParamSpec {
+            name: PIVOT_X_PARAM,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: PIVOT_Y_PARAM,
+            default: 0.0,
+        },
+        ParamSpec {
+            // `0` = `FilterMode::Inherit` = o `sampling: 0` que os dois lowerings
+            // cravavam: o sampler default do projecto.
+            name: FILTER_PARAM,
+            default: 0.0,
+        },
+        ParamSpec {
+            // `0` = `Texture` = o `sub_order: 0` de sempre.
+            name: SORT_PARAM,
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -82,16 +164,56 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 /// The blend row. `Enum` (not a slider) because a tag is a NAME, not a quantity —
 /// a slider between `Subtract` and `Multiply` has no midpoint to mean anything.
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: BLEND_PARAM,
-    label: "Blend",
-    min: 0.0,
-    max: (BLEND_LABELS.len() - 1) as f32,
-    step: 1.0,
-    widget: ParamWidget::Enum {
-        labels: &BLEND_LABELS,
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: BLEND_PARAM,
+        label: "Blend",
+        min: 0.0,
+        max: (BLEND_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &BLEND_LABELS,
+        },
     },
-}];
+    // ⚠️ O pivo' e' um SLIDER e nao um enum: aqui o meio-caminho quer dizer
+    // alguma coisa (um pivo' a 0,25 do centro), ao contrario de um tag.
+    ParamUiHint {
+        param: PIVOT_X_PARAM,
+        label: "Pivot X",
+        min: -PIVOT_LIMIT,
+        max: PIVOT_LIMIT,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: PIVOT_Y_PARAM,
+        label: "Pivot Y",
+        min: -PIVOT_LIMIT,
+        max: PIVOT_LIMIT,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: FILTER_PARAM,
+        label: "Filter",
+        min: 0.0,
+        max: (FILTER_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &FILTER_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: SORT_PARAM,
+        label: "Sort",
+        min: 0.0,
+        max: (SORT_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &SORT_LABELS,
+        },
+    },
+];
 
 struct MotionOutput;
 

@@ -21,6 +21,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
+use ph2d_render::SinkStyle;
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
@@ -124,7 +125,7 @@ fn gpu_cook_stages(
         },
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .expect("gpu cook");
     read_instances(gpu, gc.instances().expect("cooked"))
@@ -223,7 +224,7 @@ fn how_far_does_the_packing_scale() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -380,7 +381,7 @@ fn breath_ms(gpu: &GpuContext, reg: &NodeRegistry, side: f32, spread: f32) -> f6
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
-            0,
+            SinkStyle::PLAIN,
         )
         .expect("gpu cook");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

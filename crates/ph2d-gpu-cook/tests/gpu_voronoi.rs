@@ -27,6 +27,7 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::gpu::GpuAlgorithm;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_render::RenderInstance;
+use ph2d_render::SinkStyle;
 use std::time::Instant;
 
 fn try_headless_gpu() -> Option<GpuContext> {
@@ -117,7 +118,7 @@ fn gpu_frame(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) -> Ve
         CookClock::at(0.0),
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .expect("gpu cook");
     read_instances(gpu, gc.instances().expect("cooked"))
@@ -544,7 +545,7 @@ fn how_far_does_the_lloyd_scale() {
                 CookClock::at(0.0),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

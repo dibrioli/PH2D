@@ -24,6 +24,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_render::SinkStyle;
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
@@ -231,7 +232,7 @@ fn drive_and_compare(gpu: &GpuContext, reg: &NodeRegistry, case: &Case, at: f64)
         CookClock::at(at),
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .unwrap_or_else(|e| panic!("{}: gpu cook {e:?}", case.label));
 
@@ -349,7 +350,7 @@ fn the_device_stops_making_twins_too() {
                 CookClock::at(PLAYHEAD),
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .unwrap();
             gc.read_column_vec2(&gpu, node, "P")

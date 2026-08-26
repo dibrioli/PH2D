@@ -39,8 +39,16 @@ pub(crate) fn collect_sorted_instances(
 /// sampling, clip, blend)` runs, and a second sort with different keys would
 /// batch differently and silently mis-draw.
 ///
-pub(crate) fn sort_render_order(scratch: &mut [RenderInstance]) {
-    // Sort by (clip anchor, z_order, texture_id, sampling).
+pub fn sort_render_order(scratch: &mut [RenderInstance]) {
+    // Sort by (clip anchor, z_order, sub_order, texture_id, sampling).
+    //
+    // `sub_order` (ADR-0070-amendment-8) entra ENTRE o `z_order` e o
+    // `texture_id`, e a cena inteira o deixa a `0` ⇒ a ordenação de toda
+    // sprite extraída é byte-idêntica. Ele existe para o único produtor que
+    // emite `n` linhas na MESMA fatia de z — um sink de Motion —, cuja ordem de
+    // linhas era derrotada pelo desempate por textura assim que o grafo tinha
+    // mídia mista. Ver o doc-comment do campo: a grandeza que faltava não era
+    // «mais fundo», era «mais à frente dentro do mesmo fundo».
     //
     // z_order is the extract-time sequential counter from
     // `propagate_transforms`'s DFS so the render order matches the Hierarchy
@@ -68,6 +76,12 @@ pub(crate) fn sort_render_order(scratch: &mut [RenderInstance]) {
         } else {
             i.z_order
         };
-        (clip_anchor, i.z_order, i.texture_id, i.sampling)
+        (
+            clip_anchor,
+            i.z_order,
+            i.sub_order,
+            i.texture_id,
+            i.sampling,
+        )
     });
 }

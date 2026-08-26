@@ -74,6 +74,8 @@
 //! `#[ignore]`: precisa de adapter real. Numa máquina de dev / na lane de GPU:
 //!   cargo test -p ph2d-gpu-cook --test gpu_cpu_parity_arith --release -- --ignored --nocapture
 
+use ph2d_render::SinkStyle;
+
 use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::CookClock;
 use ph2d_node_registry::NodeRegistry;
@@ -735,7 +737,7 @@ fn cook_on_both(
         CookClock::at(PLAYHEAD),
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .unwrap_or_else(|e| panic!("{label}: gpu cook {e:?}"));
 

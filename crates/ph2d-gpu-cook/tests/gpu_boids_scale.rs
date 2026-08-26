@@ -23,6 +23,7 @@ use ph2d_gpu::GpuContext;
 use ph2d_gpu_cook::{CookClock, GpuCook, plan};
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_render::SinkStyle;
 use std::time::Instant;
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
@@ -99,7 +100,7 @@ fn time_step_ms(gpu: &GpuContext, g: &Graph, reg: &NodeRegistry, out: NodeId) ->
             },
             DEFAULT_UV,
             DEFAULT_SIZE,
-            0,
+            SinkStyle::PLAIN,
         )
         .expect("gpu cook");
         let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -247,7 +248,7 @@ fn how_far_does_the_flock_scale() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect_err("12,58 M instances must refuse, not panic");
         assert!(
@@ -362,7 +363,7 @@ fn does_the_flock_stutter_as_it_gathers() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -425,7 +426,7 @@ fn what_boid_count_leaves_headroom() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -509,7 +510,7 @@ fn where_does_the_flock_settle() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
@@ -615,7 +616,7 @@ fn does_an_orbiting_target_bound_the_gather() {
                 },
                 DEFAULT_UV,
                 DEFAULT_SIZE,
-                0,
+                SinkStyle::PLAIN,
             )
             .expect("gpu cook");
             let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());

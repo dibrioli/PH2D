@@ -69,6 +69,7 @@ pub mod premul;
 pub mod preview_premul;
 pub mod registry;
 pub mod renderer;
+pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
 /// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
@@ -87,6 +88,9 @@ pub use atlas::{
     FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY,
 };
 pub use camera::{Camera2d, CameraUniform};
+pub use sink_style::SinkStyle;
+// A ordem canonica de desenho e' uma LEI do produto, e quem escreve linhas que
+// dependem dela (o lowering de Motion) tem de a poder MEDIR sem uma GPU.
 pub use compositor::Compositor;
 pub use compressed_pipeline::{
     COMPRESSED_TEXTURE_CACHE_BUDGET_MB, CompressedTexturePipeline, CompressedUploadError,
@@ -126,6 +130,7 @@ pub use preview_premul::PreviewPremul;
 pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
+pub use sprite_collect::sort_render_order;
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
 // `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the

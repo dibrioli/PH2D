@@ -150,6 +150,7 @@ fn instance(texture_id: u32, z: u32, blend_tag: u8) -> RenderInstance {
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta: 0,
+        sub_order: 0,
     }
 }
 

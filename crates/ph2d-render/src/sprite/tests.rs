@@ -19,6 +19,7 @@ fn render_instance_is_pod_compatible() {
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta: 0,
+        sub_order: 0,
     };
     let bytes: &[u8] = bytemuck::bytes_of(&inst);
     assert_eq!(bytes.len(), std::mem::size_of::<RenderInstance>());
@@ -30,7 +31,9 @@ fn render_instance_is_pod_compatible() {
     // CPU-only = 176 bytes. ADR-0070-amendment-7 adds the CPU-only
     // `clip_group: u32` + `clip_meta: u32` (+8 → 184 B); the GPU
     // vertex layout (164 B / 12 attrs) is unchanged.
-    assert_eq!(bytes.len(), 184);
+    // ADR-0070-amendment-8 adds the CPU-only `sub_order: u32` (+4 → 188 B),
+    // again with the GPU vertex layout untouched.
+    assert_eq!(bytes.len(), 188);
 }
 
 #[test]

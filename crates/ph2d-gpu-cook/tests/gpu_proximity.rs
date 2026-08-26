@@ -24,6 +24,7 @@ use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_render::SinkStyle;
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
@@ -155,7 +156,7 @@ fn gpu_columns(
         },
         DEFAULT_UV,
         DEFAULT_SIZE,
-        0,
+        SinkStyle::PLAIN,
     )
     .expect("gpu cook");
     let get = |name: &str| {

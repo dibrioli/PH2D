@@ -594,6 +594,12 @@ pub(super) fn run(
                         // stamped in the post-walk pass below, like z_order
                         // itself (ADR-0070-amendment-7). Placeholder here.
                         clip_group: RenderInstance::CLIP_GROUP_NONE,
+                        // ADR-0070-amendment-8: a cena tem UM lugar por objecto na
+                        // hierarquia, então o `z_order` já a ordena por inteiro e a
+                        // sub-ordem não tem quem a autore aqui. Ela existe para o único
+                        // produtor que emite N linhas na MESMA fatia de z — um sink de
+                        // Motion. `0` ⇒ o desempate por textura, byte-idêntico.
+                        sub_order: 0,
                         clip_meta: 0,
                     };
                     // **9-SLICE** (spec Sprite 03 §3.5): um sprite fatiado desenha-se como até

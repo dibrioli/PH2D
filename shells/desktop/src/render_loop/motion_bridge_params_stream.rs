@@ -147,7 +147,17 @@ pub(super) fn source_options(motion: &MotionState) -> Vec<String> {
 /// `every_non_scalar_column_is_reachable_or_deliberately_hidden` cruza esta lista com os
 /// chips do `value.attribute`, e uma denylist que só existisse dentro de um corpo de função
 /// obrigaria o gate a manter uma segunda cópia — que é a forma que diverge.
-pub(super) const INTERNAL: &[&str] = &["v", "falloff", "accel", "sim_d", "sim_t", "weight"];
+pub(super) const INTERNAL: &[&str] = &[
+    "v", "falloff", "accel", "sim_d", "sim_t", "weight",
+    // ⚠️ **`uv_cell` (doc 89, folha 17) — escondida com MOTIVO, não por conveniência.**
+    // Ela é um TRANSFORM de UV (`[escala_u, escala_v, desloc_u, desloc_v]`), e o número em
+    // que o artista pensa — *que célula é esta?* — **não está lá dentro**: o `z` é
+    // `coluna / colunas`, uma fracção, e a grelha não é recuperável de uma linha só. Um chip
+    // chamado «Cell» que devolvesse `0,25` seria um rótulo a prometer o que o modelo não
+    // entrega. Quem quiser conduzir a célula liga um `value.*` à **porta** `cell` do
+    // `motion.sub_uv`, que fala em índices.
+    "uv_cell",
+];
 
 fn keep_extra_columns<'a>(
     names: impl Iterator<Item = &'a str>,

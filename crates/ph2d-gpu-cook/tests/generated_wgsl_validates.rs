@@ -9,6 +9,8 @@
 //! functions, dropped writes), and the absent variants are exactly the ones a
 //! smoke test with a full stream never compiles.
 
+use ph2d_render::SinkStyle;
+
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::gpu::KernelResolver;
 
@@ -158,21 +160,37 @@ fn every_registered_kernel_validates_across_the_whole_presence_space() {
 }
 
 #[test]
-fn the_lowering_validates_for_all_128_column_subsets_and_every_blend() {
-    // SETE colunas (`blend` juntou-se ao `texture_id`, doc 89 folha 07), então 128
-    // subconjuntos — o bit 6 é a coluna `blend`. O tag do sink (folha 17) continua a ser uma
-    // CONSTANTE DE CODEGEN, então ele é parte da fonte que o naga tem de aceitar: um tag que
-    // produzisse WGSL malformado só apareceria na primeira vez que um artista escolhesse
-    // aquele modo, num device, sem mensagem nenhuma.
+fn the_lowering_validates_for_all_256_column_subsets_and_every_style() {
+    // OITO colunas (`uv_cell` juntou-se ao `blend`, doc 89 folha 17), então 256
+    // subconjuntos — o bit 6 é a coluna `blend` e o 7 é a `uv_cell`. O ESTILO do sink
+    // (folha 17) continua a ser uma CONSTANTE DE CODEGEN, então ele é parte da fonte que o
+    // naga tem de aceitar: um estilo que produzisse WGSL malformado só apareceria na
+    // primeira vez que um artista escolhesse aquele valor, num device, sem mensagem nenhuma.
     //
-    // ⚠️ **O produto cartesiano é de propósito.** A palavra do `flip_uv` passou a ser um
-    // `if` sobre a coluna E a constante do sink; as duas metades só se encontram em
+    // ⚠️ **O produto cartesiano é de propósito.** A palavra do `flip_uv` é um `if` sobre a
+    // coluna E a constante do sink; as duas metades só se encontram em
     // `present[6] && blend > 0`, que é exactamente uma casa deste laço.
-    for mask in 0u8..128 {
+    //
+    // ⚠️ **E o PIVÔ entra com um valor NEGATIVO e um positivo**: ele é soletrado como
+    // literal `f32` na fonte, e `-0.25` sem parênteses num sítio errado é precisamente o
+    // tipo de WGSL que compila na cabeça de quem escreve e não no naga.
+    let styles = [
+        SinkStyle::PLAIN,
+        SinkStyle {
+            pivot: [0.5, -0.25],
+            sampling: ph2d_render::RenderInstance::pack_sampling(1, 0),
+            stream_order: true,
+            ..SinkStyle::PLAIN
+        },
+    ];
+    for mask in 0u16..256 {
         let present = std::array::from_fn(|i| mask & (1 << i) != 0);
         for blend in 0..ph2d_render::pipeline::BLEND_PIPELINE_COUNT as u8 {
-            let src = ph2d_gpu_cook::lower::lower_module(present, blend);
-            validate(&format!("lowering mask {mask:06b} blend {blend}"), &src);
+            for base in styles {
+                let style = SinkStyle { blend, ..base };
+                let src = ph2d_gpu_cook::lower::lower_module(present, style);
+                validate(&format!("lowering mask {mask:08b} style {style:?}"), &src);
+            }
         }
     }
 }

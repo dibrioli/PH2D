@@ -26,6 +26,7 @@ use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, ParamSpec, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 use ph2d_render::RenderInstance;
+use ph2d_render::SinkStyle;
 
 const DEFAULT_UV: [f32; 4] = [0.25, 0.25, 0.75, 0.75];
 const DEFAULT_SIZE: [f32; 2] = [0.4, 0.4];
@@ -246,7 +247,7 @@ fn the_grid_neighbour_kernel_matches_the_cpu_all_pairs() {
             CookClock::at(PLAYHEAD),
             DEFAULT_UV,
             DEFAULT_SIZE,
-            0,
+            SinkStyle::PLAIN,
         )
         .expect("gpu cook");
     assert_eq!(n as usize, cpu.len());

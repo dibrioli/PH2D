@@ -6,6 +6,7 @@
 
 use crate::lower::{lower_to_instances_onto, lower_to_vector_instances_onto};
 use crate::{Column, RenderInstance, Stream, VectorInstance};
+use ph2d_render::SinkStyle;
 
 const UV: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const SZ: [f32; 2] = [1.0, 1.0];
@@ -17,7 +18,7 @@ const SZ: [f32; 2] = [1.0, 1.0];
 fn a_stream_without_geometry_id_is_all_sprites_and_no_vectors() {
     let s = Stream::new(3).with("P", Column::Vec2(vec![[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]]));
     let mut sprites: Vec<RenderInstance> = Vec::new();
-    lower_to_instances_onto(&s, UV, SZ, 0, &mut sprites);
+    lower_to_instances_onto(&s, UV, SZ, SinkStyle::PLAIN, &mut sprites);
     assert_eq!(sprites.len(), 3, "every row is a sprite");
     let mut vectors: Vec<VectorInstance> = Vec::new();
     lower_to_vector_instances_onto(&s, &mut vectors);
@@ -38,7 +39,7 @@ fn geometry_id_splits_sprites_from_vectors() {
         .with("geometry_id", Column::Scalar(vec![0.0, 5.0, 0.0, 3.0]));
 
     let mut sprites: Vec<RenderInstance> = Vec::new();
-    lower_to_instances_onto(&s, UV, SZ, 0, &mut sprites);
+    lower_to_instances_onto(&s, UV, SZ, SinkStyle::PLAIN, &mut sprites);
     assert_eq!(sprites.len(), 2, "the two id-0 rows are sprites");
     assert_eq!(sprites[0].world_pos, [0.0, 0.0]);
     assert_eq!(sprites[1].world_pos, [2.0, 0.0]);
@@ -61,7 +62,7 @@ fn a_shape_row_is_not_also_a_sprite() {
         .with("P", Column::Vec2(vec![[7.0, 8.0]]))
         .with("geometry_id", Column::Scalar(vec![9.0]));
     let mut sprites: Vec<RenderInstance> = Vec::new();
-    lower_to_instances_onto(&s, UV, SZ, 0, &mut sprites);
+    lower_to_instances_onto(&s, UV, SZ, SinkStyle::PLAIN, &mut sprites);
     assert!(sprites.is_empty(), "a shape row is not a sprite");
     let mut vectors: Vec<VectorInstance> = Vec::new();
     lower_to_vector_instances_onto(&s, &mut vectors);
@@ -84,7 +85,16 @@ fn a_blend_column_overrides_per_row_and_zero_means_the_sinks_mode() {
         .with("P", Column::Vec2(vec![[0.0, 0.0]; 3]))
         .with("blend", Column::Scalar(vec![0.0, 1.0, 5.0]));
     let mut out = Vec::new();
-    lower_to_instances_onto(&s, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 1, &mut out);
+    lower_to_instances_onto(
+        &s,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle {
+            blend: 1,
+            ..SinkStyle::PLAIN
+        },
+        &mut out,
+    );
     assert_eq!(out.len(), 3);
     let sink = RenderInstance::pack_blend_bits(1);
     assert_eq!(out[0].flip_uv, sink, "0 na coluna = o modo do SINK");
@@ -101,7 +111,16 @@ fn a_blend_column_overrides_per_row_and_zero_means_the_sinks_mode() {
 fn a_stream_without_the_column_lowers_exactly_as_before() {
     let s = Stream::new(2).with("P", Column::Vec2(vec![[0.0, 0.0]; 2]));
     let mut out = Vec::new();
-    lower_to_instances_onto(&s, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 3, &mut out);
+    lower_to_instances_onto(
+        &s,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle {
+            blend: 3,
+            ..SinkStyle::PLAIN
+        },
+        &mut out,
+    );
     let sink = RenderInstance::pack_blend_bits(3);
     assert!(out.iter().all(|i| i.flip_uv == sink));
 }
@@ -117,7 +136,16 @@ fn a_wild_column_value_is_clamped_to_the_renderers_pipelines() {
         .with("P", Column::Vec2(vec![[0.0, 0.0]; 3]))
         .with("blend", Column::Scalar(vec![999.0, -4.0, f32::NAN]));
     let mut out = Vec::new();
-    lower_to_instances_onto(&s, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 2, &mut out);
+    lower_to_instances_onto(
+        &s,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle {
+            blend: 2,
+            ..SinkStyle::PLAIN
+        },
+        &mut out,
+    );
     #[expect(clippy::cast_possible_truncation, reason = "o teto cabe num u8")]
     let last = RenderInstance::pack_blend_bits((top as u8) - 1);
     let sink = RenderInstance::pack_blend_bits(2);

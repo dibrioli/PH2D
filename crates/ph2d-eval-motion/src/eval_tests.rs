@@ -7,6 +7,7 @@ use ph2d_nodegraph::cook::EvalCtx;
 use ph2d_nodegraph::effect::Effect;
 use ph2d_nodegraph::node::{LoweringKind, NodeManifest, NodeOp, NodeTypeId, PortSpec};
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
+use ph2d_render::SinkStyle;
 
 const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::Frame);
 
@@ -59,7 +60,13 @@ fn lower_into_matches_fresh_and_reuses_capacity() {
     let s = Stream::new(3).with("P", Column::Vec2(vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]));
     let fresh = lower_to_instances(&s);
     let mut buf = Vec::new();
-    lower_to_instances_into(&s, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 0, &mut buf);
+    lower_to_instances_into(
+        &s,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle::PLAIN,
+        &mut buf,
+    );
     // Same lowered geometry (RenderInstance is not PartialEq → compare fields).
     assert_eq!(buf.len(), fresh.len());
     for (a, b) in buf.iter().zip(&fresh) {
@@ -72,7 +79,13 @@ fn lower_into_matches_fresh_and_reuses_capacity() {
     // retaining capacity (the zero-alloc steady-state property, M0.T11/T12).
     let cap_before = buf.capacity();
     let s2 = Stream::new(1).with("P", Column::Vec2(vec![[9.0, 9.0]]));
-    lower_to_instances_into(&s2, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 0, &mut buf);
+    lower_to_instances_into(
+        &s2,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle::PLAIN,
+        &mut buf,
+    );
     assert_eq!(buf.len(), 1);
     assert_eq!(buf[0].world_pos, [9.0, 9.0]);
     assert!(
@@ -96,7 +109,13 @@ fn uv_rect_and_size_columns_override_the_defaults_else_fall_back() {
         .with("size", Column::Vec2(vec![[3.0, 3.0], [3.0, 3.0]]));
     let mut out = Vec::new();
     // …even when the caller supplies different defaults.
-    lower_to_instances_into(&s, [0.0, 0.0, 1.0, 1.0], [1.0, 1.0], 0, &mut out);
+    lower_to_instances_into(
+        &s,
+        [0.0, 0.0, 1.0, 1.0],
+        [1.0, 1.0],
+        SinkStyle::PLAIN,
+        &mut out,
+    );
     assert_eq!(out[0].atlas_uv, rect);
     assert_eq!(out[1].atlas_uv, rect);
     assert_eq!(out[0].size, [3.0, 3.0]);
@@ -107,7 +126,7 @@ fn uv_rect_and_size_columns_override_the_defaults_else_fall_back() {
     let tile = [0.0, 0.0, 0.0078125, 0.0078125];
     let dot = [0.5, 0.5];
     let s2 = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
-    lower_to_instances_into(&s2, tile, dot, 0, &mut out);
+    lower_to_instances_into(&s2, tile, dot, SinkStyle::PLAIN, &mut out);
     assert_eq!(out[0].atlas_uv, tile);
     assert_eq!(out[0].size, dot);
 }

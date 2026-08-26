@@ -145,6 +145,7 @@ fn instance(texture_id: u32, size: [f32; 2], z: u32, clip_meta: u32) -> RenderIn
         uv_xform: RenderInstance::IDENTITY_UV_XFORM,
         clip_group: RenderInstance::CLIP_GROUP_NONE,
         clip_meta,
+        sub_order: 0,
     }
 }
 

@@ -67,6 +67,12 @@ pub(super) fn build_catalog(
     use ph2d_panel_motion_graph::NodeChoice;
     let mut v: Vec<NodeChoice> = registry
         .manifests()
+        // ⚠️ **As FIXTURAS não são oferecidas** (doc 89, folha 17): o `debug.const` (o "1º
+        // nó" do W1.T3) e o `debug.wave` (o template de fan-out) existem para o motor e
+        // apareciam na paleta com o nome cru do tipo. Quem responde é o REGISTO, por
+        // opt-in — uma lista escrita aqui seria a segunda resposta à mesma pergunta, e a
+        // que envelhece é sempre a que o artista vê.
+        .filter(|m| !registry.is_fixture(m.id))
         .map(|m| {
             let ui = registry.ui_manifest(m.id);
             NodeChoice {
@@ -210,5 +216,38 @@ fn palette_subgroup_of(
             _ => "Data & Adapters",
         }),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_catalog;
+
+    /// ⭐ **A PALETA NÃO OFERECE FIXTURA** — medido no CATÁLOGO, não no registo.
+    ///
+    /// ⚠️ **É a metade que o gate do censo não vê.** O censo
+    /// (`every_offered_node_has_a_name_and_every_fixture_has_none`) afirma que os dois
+    /// `debug.*` se DECLARAM fixturas; este afirma que o catálogo **honra** a declaração.
+    /// Tirar o `.filter(...)` daqui deixaria o censo verde e devolveria os dois nós à
+    /// tecla `A` — *declarar e ser honrado são duas coisas, e só a segunda é o produto.*
+    #[test]
+    fn the_palette_never_offers_a_fixture() {
+        let mut reg = ph2d_node_registry::NodeRegistry::new();
+        ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registram");
+        let cat = build_catalog(&reg);
+        assert!(!cat.is_empty(), "CONTROLE: o catalogo nao esta' vazio");
+        for nc in &cat {
+            assert!(
+                !nc.type_name.starts_with("debug."),
+                "o catalogo oferece `{}` — o filtro de fixturas caiu",
+                nc.type_name
+            );
+        }
+        // E o REGISTO tem-nos: o catálogo é que os esconde, não o registo que os perdeu.
+        assert_eq!(
+            reg.manifests().count() - cat.len(),
+            2,
+            "exactamente as duas fixturas ficam de fora"
+        );
     }
 }

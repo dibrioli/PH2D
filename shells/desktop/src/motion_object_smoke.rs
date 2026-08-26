@@ -42,6 +42,11 @@ mod pose;
 
 #[path = "motion_object_smoke_times.rs"]
 pub(crate) mod times;
+
+/// O modo `=9` — o ESTILO DO SINK (doc 89, folha 17). Irmão pelo mesmo corte: ele traz
+/// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
+#[path = "motion_object_smoke_sink.rs"]
+pub(crate) mod sink;
 use times::{build_two_times_graph, spawn_flip_walk_named};
 
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.
@@ -299,7 +304,8 @@ fn find_group(sim: &mut ph2d_ecs::SimWorld, name: &str) -> Option<ph2d_ecs::Enti
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
-/// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto.
+/// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto · `9` o
+/// ESTILO DO SINK (doc 89 folha 17).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -341,6 +347,21 @@ impl crate::App {
             2 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 gfx.vec_scene.push_path(star_shape());
+            }
+            // =9 — o ESTILO DO SINK: a MESMA dança de duas fases do `=2` (a estrela
+            // vectorial é a arte com texels a sério), mais um sprite que é a SEGUNDA
+            // textura — sem duas texturas, a fileira da ordem não tem o que mostrar.
+            9 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                gfx.vec_scene.push_path(star_shape());
+                sink::spawn_chip(&mut gfx.sim);
+            }
+            9 if f == 6 => {
+                let map = self.vec_entities.clone();
+                let gfx = self.gfx.as_mut().expect("gfx");
+                if name_vector_entity(&mut gfx.sim, &map) {
+                    sink::run(gfx);
+                }
             }
             2 if f == 6 => {
                 let map = self.vec_entities.clone();

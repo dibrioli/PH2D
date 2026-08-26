@@ -153,6 +153,26 @@ pub struct RenderInstance {
     /// [`Self::clip_cutoff`] / [`Self::with_mask_role`] /
     /// [`Self::mask_role`] — never hand-pack.
     pub clip_meta: u32,
+    /// **A sub-ordem DENTRO da fatia de `z_order`** (CPU-side; NOT a vertex
+    /// attribute) — ADR-0070-amendment-8, doc 89 folha 17.
+    ///
+    /// `0` para tudo o que a cena extrai, e a ordenação fica **byte-idêntica**:
+    /// ela entra na chave logo a seguir ao [`Self::z_order`], então um bloco
+    /// inteiro a `0` desempata exactamente como desempatava.
+    ///
+    /// ⚠️ **A razão de existir é uma pergunta que o `z_order` não sabe
+    /// responder.** Um stream de Motion emite `n` linhas com o MESMO `z_order`
+    /// (ele não tem um lugar na hierarquia), e a chave seguinte é o
+    /// `texture_id`: com mídia MISTA — dois objectos de texturas diferentes —
+    /// as linhas **reagrupam por textura** e a ordem que o `motion.sort` autorou
+    /// é derrotada. Dar-lhes `z_order = i` resolveria a ordem e **partiria o
+    /// bloco pelo espaço de ranks da CENA** (o `z_order` da cena é um contador
+    /// de DFS denso), fazendo o grafo interpenetrar as sprites da hierarquia.
+    ///
+    /// *A grandeza que faltava não era «mais fundo», era «mais à frente
+    /// DENTRO do mesmo fundo».* É isso que este campo é, e é por isso que ele
+    /// mora entre o `z_order` e o `texture_id` na chave de ordenação.
+    pub sub_order: u32,
 }
 
 impl PresentComponent for RenderInstance {}

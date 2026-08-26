@@ -348,6 +348,7 @@ mod tests {
             uv_xform: RenderInstance::IDENTITY_UV_XFORM,
             clip_group: RenderInstance::CLIP_GROUP_NONE,
             clip_meta: 0,
+            sub_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()
@@ -383,6 +384,7 @@ mod tests {
             uv_xform: RenderInstance::IDENTITY_UV_XFORM,
             clip_group: RenderInstance::CLIP_GROUP_NONE,
             clip_meta: 0,
+            sub_order: 0,
         };
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));
         sim_entity.to_bits()
@@ -545,6 +547,7 @@ mod tests {
             uv_xform: RenderInstance::IDENTITY_UV_XFORM,
             clip_group: RenderInstance::CLIP_GROUP_NONE,
             clip_meta: 0,
+            sub_order: 0,
         };
         ri.world_pos = [0.0, 0.0];
         present.world_mut().spawn((SimRef(sim_entity), gt, ri));

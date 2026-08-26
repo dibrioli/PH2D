@@ -42,7 +42,15 @@ impl NodeOp for DebugConst {
 /// Register this node with the runtime registry. Called (via codegen) from
 /// `ph2d-node-registry-init::register_all_nodes`.
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
-    reg.register(Box::new(DebugConst))
+    reg.register(Box::new(DebugConst))?;
+    // ⚠️ **FIXTURA, não item de catálogo** (doc 89, folha 17). Este é o "1º nó" do
+    // W1.T3 — ele existe para o motor ter um produtor trivial em teste, e aparecia na
+    // paleta do artista como `debug.const`/Utility. A capacidade *«uma constante»* já
+    // existe por duas cadeias de UM nó (`value.pattern` com `steps = 1`, `value.map_range`
+    // com `out_lo == out_hi`), então o que faltava não era um nó: era ele deixar de ser
+    // OFERECIDO.
+    reg.register_fixture(MANIFEST.id);
+    Ok(())
 }
 
 #[cfg(test)]

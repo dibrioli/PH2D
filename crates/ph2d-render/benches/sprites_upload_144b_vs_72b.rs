@@ -96,6 +96,7 @@ fn build_v4(n: usize) -> Vec<RenderInstance> {
                 uv_xform: RenderInstance::IDENTITY_UV_XFORM,
                 clip_group: RenderInstance::CLIP_GROUP_NONE,
                 clip_meta: 0,
+                sub_order: 0,
             }
         })
         .collect()
@@ -123,7 +124,14 @@ fn build_v3(n: usize) -> Vec<RenderInstanceV3Baseline> {
 fn bench_upload(c: &mut Criterion) {
     // Sanity-pin the strides the comparison rests on, so a future ABI
     // edit that changes them makes the bench's premise visibly wrong.
-    assert_eq!(std::mem::size_of::<RenderInstance>(), 176);
+    //
+    // ⚠️ **ACHADO 2026-08-25 (ADR-0070-amendment-8): esta linha estava a `176`
+    // e a struct media `184` desde a amendment-7** — ou seja, este bench
+    // ABORTAVA na 1.ª instrução e ninguém notou, porque um bench não corre no
+    // `nextest` nem no CI. *A cerca que existe para tornar uma premissa velha
+    // VISÍVEL só é visível se alguém a correr.* Quem mexer na ABI corre
+    // `cargo bench -p ph2d-render --bench sprites_upload_144b_vs_72b`.
+    assert_eq!(std::mem::size_of::<RenderInstance>(), 188);
     assert_eq!(std::mem::size_of::<RenderInstanceV3Baseline>(), 72);
 
     let mut group = c.benchmark_group("sprites_upload");

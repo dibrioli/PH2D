@@ -86,6 +86,11 @@ impl NodeOp for DebugWave {
 pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register(Box::new(DebugWave))?;
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
+    // ⚠️ **FIXTURA, não item de catálogo** (doc 89, folha 17): este nó é o TEMPLATE
+    // canónico de fan-out (`DIRETRIZ.md`, `examples-fan-out.md`), e o `gain` dele existe
+    // para o template DEMONSTRAR um param — não para o artista o rodar. Nenhuma
+    // referência tem um equivalente, porque ele não é uma feature.
+    reg.register_fixture(MANIFEST.id);
     Ok(())
 }
 

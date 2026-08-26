@@ -51,8 +51,11 @@ use ph2d_render::RenderInstance;
 mod checkpoint;
 pub use checkpoint::{CPU_RING_BYTES, CheckpointRing, RECENT_DENSE};
 
-mod sink_blend;
-pub use sink_blend::{SINK_BLEND_PARAM, sink_blend_tag};
+mod sink_style;
+pub use sink_style::{
+    SINK_BLEND_PARAM, SINK_FILTER_PARAM, SINK_PIVOT_LIMIT, SINK_PIVOT_X_PARAM, SINK_PIVOT_Y_PARAM,
+    SINK_SORT_PARAM, sink_blend_tag, sink_style,
+};
 
 mod lower;
 pub use lower::{
@@ -335,7 +338,7 @@ impl MotionCookPump {
                                     // Per SINK, not per document: two Output nodes
                                     // may draw the same document in two modes, and
                                     // each lowers with its own tag.
-                                    sink_blend_tag(graph, sink),
+                                    sink_style(graph, sink),
                                     &mut self.instances,
                                 );
                                 lower_to_vector_instances_onto(stream, &mut self.vector_instances);

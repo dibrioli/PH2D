@@ -145,6 +145,8 @@ pub struct ExtractReport {
     /// A **mediana** do mesmo resíduo. ⚠️ Um máximo de meia célula com mediana `0` é
     /// *uma* costura má; com mediana `0,03` é o mapa inteiro a não fechar.
     pub shift_residual_p50: f64,
+    /// ⭐⭐⭐ Quantas transições ficaram fraccionárias — a contagem, não o extremo.
+    pub shift_fractional: usize,
     /// ⛔ Transições que não se deixaram reler **exactamente** dos valores saneados.
     pub inexact_transitions: usize,
     // ── saneamento
@@ -189,6 +191,11 @@ pub struct ExtractReport {
     pub orphan_no_partner: usize,
     /// ⛔⛔ A metade que não achou por onde sair do triângulo (carta dobrada).
     pub orphan_no_exit: usize,
+    /// ⭐⭐⭐ Das «sem parceira», quantas chegaram a um ponto que **tem nó** — falta-lhe só
+    /// a cardinal de volta.
+    pub orphan_no_partner_node_exists: usize,
+    /// ⭐⭐⭐ Das «sem parceira», quantas caíram sobre uma **aresta** do triângulo.
+    pub orphan_no_partner_on_edge: usize,
     /// ⛔⛔⛔ Destas, quantas morreram num triângulo de área ZERO no domínio.
     pub orphan_no_exit_flat: usize,
     /// ⛔⛔ Destas, quantas tinham a origem já **fora** do triângulo.
@@ -294,6 +301,7 @@ pub fn extract(
         rot_residual: ing.rot_residual,
         shift_residual: ing.shift_residual,
         shift_residual_p50: ing.shift_residual_p50,
+        shift_fractional: ing.shift_fractional,
         inexact_transitions: san.inexact_transitions,
         pinned_fixed: san.pinned_fixed,
         pinned_integer: san.pinned_integer,
@@ -311,6 +319,8 @@ pub fn extract(
         pending_boundary: ws.boundary,
         orphan: ws.orphan,
         orphan_no_partner: ws.orphan_no_partner,
+        orphan_no_partner_node_exists: ws.orphan_no_partner_node_exists,
+        orphan_no_partner_on_edge: ws.orphan_no_partner_on_edge,
         orphan_no_exit: ws.orphan_no_exit,
         orphan_no_exit_flat: ws.orphan_no_exit_flat,
         orphan_no_exit_o_outside: ws.orphan_no_exit_o_outside,

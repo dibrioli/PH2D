@@ -52,6 +52,9 @@ pub(crate) struct IngestStats {
     /// mediana `0,03` é o mapa inteiro a não fechar. *Um extremo global não distingue
     /// as duas, e foi a mediana que nomeou qual delas a cadeia da casa tem.*
     pub shift_residual_p50: f64,
+    /// ⭐⭐⭐ **Quantas transições ficaram FRACCIONÁRIAS** (`> 1e-3` de célula) — a
+    /// contagem, não o extremo. Ver [`derive_transitions`].
+    pub shift_fractional: usize,
     /// ⭐⭐⭐ **O pior resíduo da TRANSLAÇÃO**, em células. ⛔ A extracção **assume**
     /// que ele é zero: um mapa cuja translação de costura não seja inteira tem as
     /// duas grades desalinhadas, e o saneamento só arredonda o erro para dentro.
@@ -250,10 +253,11 @@ pub(crate) fn ingest(map: &CornerMap) -> Result<(Topo, IngestStats), ExtractErro
         verts: verts as usize,
         one,
     };
-    let (xf, rot_res, sh_res, sh_p50) = derive_transitions(&topo, map, one);
+    let (xf, rot_res, sh_res, sh_p50, sh_frac) = derive_transitions(&topo, map, one);
     st.rot_residual = rot_res;
     st.shift_residual = sh_res;
     st.shift_residual_p50 = sh_p50;
+    st.shift_fractional = sh_frac;
     topo.xf = xf;
     Ok((topo, st))
 }
@@ -302,7 +306,11 @@ pub(crate) fn build_twins(tris: &[[u32; 3]]) -> (Twins, usize) {
 ///
 /// ⚠️ **A rotação sai da razão dos dois vetores de aresta** e não de um ângulo
 /// absoluto: é a razão que é invariante à moldura de cada carta.
-fn derive_transitions(topo: &Topo, map: &CornerMap, one: i64) -> (Vec<[Xf; 3]>, f64, f64, f64) {
+fn derive_transitions(
+    topo: &Topo,
+    map: &CornerMap,
+    one: i64,
+) -> (Vec<[Xf; 3]>, f64, f64, f64, usize) {
     let mut xf = vec![[Xf::IDENTITY; 3]; topo.tris.len()];
     let mut rot_res = 0.0f64;
     let mut sh_res = 0.0f64;
@@ -342,7 +350,13 @@ fn derive_transitions(topo: &Topo, map: &CornerMap, one: i64) -> (Vec<[Xf; 3]>, 
     } else {
         all[all.len() / 2]
     };
-    (xf, rot_res, sh_res, p50)
+    // ⭐⭐⭐ **QUANTAS transições são de facto fraccionárias** — não o pior, a CONTAGEM.
+    //
+    // ⚠️ **O `max` sozinho não escolhe uma cura:** `0,48` pode ser um sítio único (e aí a
+    // pergunta é *qual*) ou metade da peça (e aí é sistémico). *Um extremo diz que existe;
+    // só a contagem diz o tamanho.*
+    let fractional = all.iter().filter(|r| **r > 1.0e-3).count();
+    (xf, rot_res, sh_res, p50, fractional)
 }
 
 /// A rotação de quarto de volta que melhor leva `d1` a `d2`, e o resíduo dela.

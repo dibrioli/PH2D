@@ -366,9 +366,11 @@ fn main() {
         Ok((out, e)) => {
             let shape = ph2d_quadfill::quad_shape(&out);
             println!(
-                "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
+                "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} · ⭐ {} \
+                 FRACCIONARIAS | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
                 e.shift_residual_p50,
                 e.shift_residual,
+                e.shift_fractional,
                 e.vertex_nodes + e.edge_nodes + e.face_nodes,
                 e.vertex_nodes,
                 e.edge_nodes,
@@ -423,11 +425,13 @@ fn main() {
                 e.collapsed_edges, e.late_collapsed, e.dead_faces, e.degenerate_faces
             );
             println!(
-                "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira + \
+                "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira ({} com NO' la' / ⭐ {} sobre uma ARESTA) + \
                  {} sem saida do triangulo ({} achatado / {} com a ORIGEM FORA / {} so' \
                  pelo lado de ENTRADA) = {} · raio {:.2}x (a peca vai ate' {:.2}x) · \
                  ⭐ FALHA POR {:.3} CELULAS num triangulo de {:.3}",
                 e.orphan_no_partner,
+                e.orphan_no_partner_node_exists,
+                e.orphan_no_partner_on_edge,
                 e.orphan_no_exit,
                 e.orphan_no_exit_flat,
                 e.orphan_no_exit_o_outside,

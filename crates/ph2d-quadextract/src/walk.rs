@@ -55,6 +55,19 @@ pub(crate) struct WalkStats {
     /// do triângulo em que o traço entrou. *Um contador que dá 100 % não separa nada, e a
     /// leitura de que «a origem estar fora é a avaria» estava errada.* Fica como controlo.
     pub orphan_no_exit_o_outside: usize,
+    /// ⭐⭐⭐ **Das órfãs «sem parceira», quantas chegaram a um ponto que TEM nó** — e
+    /// portanto ao qual só falta a cardinal de volta (leque colapsado, §6.4).
+    ///
+    /// ⚠️ A diferença para o total de «sem parceira» são as que chegaram a um ponto **sem
+    /// nó nenhum**. *As duas leem-se igual no relatório antigo e pedem curas opostas:
+    /// construir o nó, ou fazê-lo emitir a saída.*
+    pub orphan_no_partner_node_exists: usize,
+    /// ⭐⭐⭐ **Das órfãs «sem parceira», quantas caíram sobre uma ARESTA do triângulo.**
+    ///
+    /// ⚠️ Um nó de aresta nasce **uma vez por aresta**, no lado canónico, e fica registado
+    /// com a face desse lado. *Quem chega pela outra face procura com a chave dele e não
+    /// acha — o nó existe, a chave é que é de outra pessoa.*
+    pub orphan_no_partner_on_edge: usize,
     /// ⭐ **O DIÂMETRO do triângulo em que a órfã morreu**, em células — a régua com que
     /// a linha de baixo se lê.
     ///
@@ -138,6 +151,16 @@ pub(crate) fn trace_all(topo: &Topo, ports: &mut Ports) -> WalkStats {
             Outcome::Boundary => st.boundary += 1,
             Outcome::Orphan(no_exit, f, o_outside, entry_only, miss, tri) => {
                 st.orphan += 1;
+                if !no_exit && entry_only {
+                    // ⚠️ No ramo «sem parceira» o 4.º campo carrega **outra** pergunta:
+                    // *o alvo caiu sobre uma aresta?* Ver o sítio onde ele é escrito.
+                    st.orphan_no_partner_on_edge += 1;
+                }
+                if !no_exit && o_outside {
+                    // ⚠️ No ramo «sem parceira» o 3.º campo carrega **outra** pergunta:
+                    // *havia nó naquele ponto?* Ver o sítio onde ele é escrito.
+                    st.orphan_no_partner_node_exists += 1;
+                }
                 if no_exit {
                     st.orphan_no_exit += 1;
                     if face_sign(topo, f) == 0 {
@@ -242,7 +265,29 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
             let key = (face as u32, t[0], t[1], opposite(dir));
             return match ports.by_key.get(&key) {
                 Some(&j) if j != id => Outcome::Linked(j, acc),
-                _ => Outcome::Orphan(false, face, false, false, 0.0, 0.0),
+                // ⭐⭐⭐ **AS DUAS AVARIAS QUE «SEM PARCEIRA» ESCONDE**, e elas pedem curas
+                // opostas: ou **não há nó nenhum** naquele ponto de grade (o traço chegou a
+                // um sítio que ninguém marcou), ou **há nó e falta-lhe a cardinal de
+                // volta** — o leque colapsado do §6.4. *Um contador só não escolhe entre
+                // «construir o nó» e «emitir a saída».*
+                _ => {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let node_here =
+                        (0..4u8).any(|d| ports.by_key.contains_key(&(face as u32, t[0], t[1], d)));
+                    // ⭐⭐⭐ **ESTÁ O ALVO SOBRE UMA ARESTA do triângulo?**
+                    //
+                    // ⚠️ **A hipótese que isto testa:** um nó de aresta nasce **uma vez
+                    // por aresta**, no lado *canónico* ([`crate::nodes::is_canonical`]), e
+                    // fica registado com a FACE desse lado. Um traço que chegue ao mesmo
+                    // ponto pela face **do outro lado** procura `(face, ponto, direcção)`
+                    // com a *sua* face — e não acha nada. *O nó existe; a chave é que é
+                    // de outra pessoa.*
+                    let [a, b, c] = topo.uv[face];
+                    let on_edge = crate::exact::orient(a, b, t) == 0
+                        || crate::exact::orient(b, c, t) == 0
+                        || crate::exact::orient(c, a, t) == 0;
+                    Outcome::Orphan(false, face, node_here, on_edge, 0.0, 0.0)
+                }
             };
         }
         let Some(k) = exit_side(topo, face, entry, o, t) else {

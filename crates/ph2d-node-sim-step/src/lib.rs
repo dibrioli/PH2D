@@ -126,6 +126,14 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "min_speed",
             default: 0.0,
         },
+        // ── O ESTADO ANGULAR (doc 89, folha 13) ─────────────────────────────────
+        // APENDADO. `1` = sem arrasto angular, exactamente como o `damping` linear — e a
+        // metade angular inteira só corre quando a coluna `spin` EXISTE, então um estado
+        // que nunca a autorou é bit-idêntico ao de antes deste param. Ver [`ANGULAR`].
+        ParamSpec {
+            name: ANGULAR,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -223,6 +231,18 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         }\n\
         write_P(i, st_out_q);\n\
         write_vel(i, st_out_v);\n\
+        // A METADE ANGULAR -- `spin_step` termo a termo. ⚠️ Guardada pelo `HAS_spin`: sem\n\
+        // a coluna nao ha' escrita nenhuma, e o quadro sai bit-identico ao de antes deste\n\
+        // param. Escrever aqui incondicionalmente CUNHARIA `spin`/`rot` em todo estado.\n\
+        if (HAS_spin) {\n\
+        \x20   let st_s0 = read_spin(i);\n\
+        \x20   let st_s = st_s0 * (1.0 - (1.0 - params.angular_damping) * st_dt);\n\
+        \x20   let st_r = read_rot(i) + st_s * st_dt;\n\
+        \x20   if (abs(st_s) <= STEP_F32_MAX && abs(st_r) <= STEP_F32_MAX) {\n\
+        \x20       write_spin(i, st_s);\n\
+        \x20       write_rot(i, st_r);\n\
+        \x20   }\n\
+        }\n\
         // The step owns the clock, so the step owns the ageing (doc 50).\n\
         write_age(i, read_age(i) + st_dt);\n\
         write_sim_t(i, params.playhead);\n",
@@ -273,6 +293,24 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             identity: [0.0; 4],
             port: 0,
         },
+        // **O ESTADO ANGULAR** (doc 89 folha 13). Ausente ⇒ `HAS_spin` falso ⇒ a metade
+        // angular nem corre, e é isso que mantém um estado sem giro byte a byte.
+        ColumnBinding {
+            column: "spin",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
+        // O ângulo que o `spin` move. Ausente = `0°`, que é o que a `identity` diz e o que a
+        // CPU assume — as duas metades leem a mesma ausência da mesma maneira.
+        ColumnBinding {
+            column: "rot",
+            dim: Dim::Scalar,
+            access: ColumnAccess::ReadWrite,
+            identity: [0.0; 4],
+            port: 0,
+        },
         // Transient: eaten here so every tick starts from zero acceleration —
         // without this the same force would re-apply forever, one tick out of date.
         ColumnBinding {
@@ -292,7 +330,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
             port: 0,
         },
     ],
-    params: &["damping", "max_speed", "min_speed"],
+    params: &["damping", "max_speed", "min_speed", ANGULAR],
     count_law: None,
     variant_by_param: None,
     applicable: None,
@@ -314,13 +352,52 @@ fn scalar_col(s: &Stream, name: &str, n: usize, default: f32) -> Option<Vec<f32>
 }
 
 /// One step of the whole zone's state, as a pure function — the node.
-fn step(state: &Stream, playhead: f32, damping: f32, min_speed: f32, max_speed: f32) -> Stream {
+/// O nome do param do arrasto angular, e o da coluna que ele amortece.
+const ANGULAR: &str = "angular_damping";
+/// **A VELOCIDADE ANGULAR**, em GRAUS por segundo — a mesma unidade do `rot` que ela move.
+///
+/// ⚠️ **Quem a AUTORA já existe:** o `motion.drive` tem o canal `Custom…`, que escreve
+/// qualquer coluna pelo nome. `drive(Custom, "spin", Set)` é o *POP Spin* (cada peça gira à
+/// sua taxa) e `drive(Custom, "spin", Add)` é o *POP Torque* (um empurrão angular que se
+/// acumula). *Não era preciso um canal novo — era preciso alguém INTEGRAR o que ele escreve.*
+const SPIN: &str = "spin";
+/// O ângulo que a coluna [`SPIN`] move.
+const ROT: &str = "rot";
+
+/// **A METADE ANGULAR DO PASSO** — a única porta, portada termo a termo para o kernel.
+///
+/// `spin *= keep; rot += spin · dt`, com `keep = 1 − (1 − angular_damping)·dt`: a MESMA forma
+/// de primeira ordem do amortecimento linear, e pelo mesmo motivo (HR-5, sem transcendentes).
+/// A ordem é a semi-implícita do irmão linear — amortece primeiro, integra com o valor NOVO.
+///
+/// ⚠️ **Em `angular_damping = 1` o factor é exactamente `1,0`**, então uma peça que gira sem
+/// arrasto gira com os mesmos bits que giraria sem este param existir.
+fn spin_step(spin: f32, rot: f32, dt: f32, angular_damping: f32) -> (f32, f32) {
+    let s = spin * (1.0 - (1.0 - angular_damping) * dt);
+    (s, rot + s * dt)
+}
+
+fn step(
+    state: &Stream,
+    playhead: f32,
+    damping: f32,
+    min_speed: f32,
+    max_speed: f32,
+    angular_damping: f32,
+) -> Stream {
     let n = state.count();
     let mut out = Stream::new(n);
     // Everything the sim does not own rides through untouched — `id` above all, so a kill node
     // downstream can tell the survivors apart next tick. `accel` is consumed.
+    // ⚠️ **A metade angular só existe se alguém autorou `spin`** — sem a coluna, nada aqui
+    // muda e a saída é a de sempre, bit a bit. É isso que torna o param novo inerte por
+    // omissão em vez de «neutro por um valor».
+    let spin_prev = scalar_col(state, SPIN, n, 0.0);
+    let spinning = spin_prev.is_some();
     for (name, col) in state.columns() {
-        if !matches!(name.as_str(), "accel" | "P" | "vel" | "sim_t" | "age") {
+        let owned = matches!(name.as_str(), "accel" | "P" | "vel" | "sim_t" | "age")
+            || (spinning && matches!(name.as_str(), SPIN | ROT));
+        if !owned {
             out.set(name.clone(), col.clone());
         }
     }
@@ -370,6 +447,27 @@ fn step(state: &Stream, playhead: f32, damping: f32, min_speed: f32, max_speed: 
         })
         .collect();
 
+    if let Some(spin0) = spin_prev {
+        let rot0 = scalar_col(state, ROT, n, 0.0).unwrap_or_else(|| vec![0.0; n]);
+        let mut spin = spin0;
+        let mut rot = rot0;
+        for i in 0..n {
+            let dt = t_prev
+                .as_ref()
+                .map(|t| (playhead - t[i]).clamp(0.0, MAX_DT)) // CLAMP-OK: const bounds
+                .unwrap_or(0.0);
+            let (s, r) = spin_step(spin[i], rot[i], dt, angular_damping);
+            // A mesma rede do irmão linear: uma peça que divergiu repõe-se em vez de
+            // envenenar a zona inteira com `NaN`.
+            if s.is_finite() && r.is_finite() {
+                spin[i] = s;
+                rot[i] = r;
+            }
+        }
+        out.set(SPIN, Column::Scalar(spin));
+        out.set(ROT, Column::Scalar(rot));
+    }
+
     out.set("P", Column::Vec2(p));
     out.set("vel", Column::Vec2(vel));
     out.set("age", Column::Scalar(age));
@@ -395,6 +493,7 @@ impl NodeOp for SimStep {
             damping,
             ctx.param("min_speed"),
             ctx.param("max_speed"),
+            ctx.param(ANGULAR),
         );
         ctx.emit(out);
     }
@@ -430,6 +529,23 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "damping",
         label: "Damping",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    // **O ARRASTO ANGULAR** (doc 89, folha 13). A MESMA faixa e a MESMA escada do irmão
+    // linear, e pelo mesmo motivo: `1` é sem arrasto e `0` é o mais forte que a lei de
+    // primeira ordem consegue. ⚠️ **Um teto acima de `1` INJETARIA giro** — `keep` passaria de
+    // 1 —, que é o defeito que o doc do `damping` mede e nomeia logo acima.
+    //
+    // ⚠️ **Sem este hint o param existiria e não seria DESENHADO**, e foi assim que ele nasceu:
+    // três gates apanharam-no de uma vez (`every_param_spec_carries_a_hint_or_is_folded_into_a_swatch`,
+    // `every_scalar_row_comes_from_a_declared_hint`, `every_declared_param_is_drawn_by_some_widget`).
+    // *A rede do knob morto desta casa funciona, e ela é uma rede de TRÊS.*
+    ParamUiHint {
+        param: ANGULAR,
+        label: "Angular Damping",
         min: 0.0,
         max: 1.0,
         step: 0.01,
@@ -488,3 +604,7 @@ static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "spin_tests.rs"]
+mod spin_tests;

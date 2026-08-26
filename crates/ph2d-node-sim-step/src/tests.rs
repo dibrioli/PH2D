@@ -17,7 +17,7 @@ fn registry() -> NodeRegistry {
 /// premissa herdada em silêncio INVERTE de sentido no dia em que o default se move, e continua
 /// verde testando o oposto. Os gates que de fato MEDEM um limite chamam [`step`] direto.
 fn unlimited(state: &Stream, playhead: f32, damping: f32) -> Stream {
-    step(state, playhead, damping, 0.0, 0.0)
+    step(state, playhead, damping, 0.0, 0.0, 1.0)
 }
 
 /// O limite de velocidade tem gates próprios — mesmo assunto, arquivo irmão (e `tests.rs` cruzaria

@@ -32,7 +32,7 @@ fn off_is_off_to_the_bit() {
     }
     let s = moving([0.0, 0.0], [2.0, -3.0], 0.0);
     assert_eq!(
-        vel(&step(&s, 0.02, 1.0, 0.0, 0.0)),
+        vel(&step(&s, 0.02, 1.0, 0.0, 0.0, 1.0)),
         vel(&unlimited(&s, 0.02, 1.0))
     );
 }
@@ -66,7 +66,7 @@ fn the_ceiling_caps_the_speed_and_keeps_the_direction() {
 fn the_ceiling_caps_the_distance_walked_this_tick() {
     let dt = 0.02f32;
     let fast = moving([0.0, 0.0], [100.0, 0.0], 0.0);
-    let capped = step(&fast, dt, 1.0, 0.0, 10.0);
+    let capped = step(&fast, dt, 1.0, 0.0, 10.0, 1.0);
     let free = unlimited(&fast, dt, 1.0);
     let px = |s: &Stream| match s.get("P") {
         Some(Column::Vec2(v)) => v[0][0],
@@ -137,7 +137,7 @@ fn probe_natural_speeds() {
         let mut peak = 0.0f32;
         for k in 1..=240 {
             let t = k as f32 / 60.0;
-            let stepped = step(&s, t, 1.0, 0.0, 0.0);
+            let stepped = step(&s, t, 1.0, 0.0, 0.0, 1.0);
             peak = peak.max(speed(vel(&stepped)));
             s = stepped
                 .with("accel", Column::Vec2(vec![[0.0, -g]]))

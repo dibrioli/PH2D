@@ -44,3 +44,33 @@ estado uma busca vazia lê-se como confirmação em vez de como o que é. *O [[f
 3. A reversão na primária é **cirúrgica e nesta ordem**: `reset --soft HEAD~1` → `restore --staged <arquivo>` → `checkout -- <arquivo>`. O `--hard` apagaria o trabalho alheio que a primária quase sempre tem.
 
 ⚠️ **Refinamento (2026-08-25, 5.ª e 6.ª escorregadas — as duas com `python3` de path RELATIVO, a regra que o refinamento de 2026-07-29 já escrevia):** o tell de hoje **não** foi *"failed to create directory"* e sim **`File exists (os error 17)`** sobre o `target/debug` do primário — porque **outra worktree estava a construir no mesmo `target` naquele instante**. *A mesma causa dá mensagens diferentes conforme o que a outra linha está a fazer;* o que não muda é o **caminho** na mensagem: se ele diz `/PH2D/target` e não `/PH2D/Worktrees/…/target`, é CWD, seja qual for o erro. ⭐ E a reversão foi limpa nas duas vezes pela mesma receita: `git status --porcelain` no primário (só os MEUS ficheiros), `git diff --stat` + `git diff | grep '^+'` (**zero adições alheias**, e uma delas era pura remoção — 58 linhas, 0 inserções), então `git checkout --`. ⛔ Continua a valer que isto só é seguro **depois** de o diff provar que nada alheio está naquele ficheiro.
+---
+
+## ⭐⭐⭐ Adenda 2026-08-26 — a escorregadela é SILENCIOSA para EDIÇÕES, e só o `cargo` a denuncia
+
+A meio de um bloco, três ficheiros de uma linha em Modo L foram editados **na árvore
+primária**. O que os escreveu foi um `python3` com caminhos RELATIVOS: ele resolveu-os a
+partir da cwd escorregada, **escreveu com êxito** e imprimiu «3 edições aplicadas».
+
+⛔ **Nada no caminho da edição pode falhar.** O ficheiro existe nas duas árvores, o
+conteúdo casa nas duas, e o `assert` de contagem — que é a rede desta casa contra o
+`replace` que não casa — **passa**, porque ele mede o texto, não o sítio.
+
+⭐ **Quem denunciou foi o `cargo`**, e por acidente: `failed to create directory
+/…/PH2D/target/debug`. Isto é sorte de configuração, não uma rede: num dia em que aquele
+`target/` exista e seja gravável, a corrida compila a árvore ERRADA e passa.
+
+**How to apply:**
+1. ⭐⭐ **Todo comando que ESCREVE começa com o `cd` da worktree** — não só os que correm
+   cargo. A regra escrita cobria «comandos»; o que morde é a EDIÇÃO, porque ela é a única
+   que não tem sintoma.
+2. ⭐ **A verificação é `git status --porcelain` nas DUAS árvores**, e ela custa uma
+   chamada: a primária tem de mostrar só o que já lá estava. Depois de qualquer bloco de
+   edição por script, vale o preço.
+3. ⚠️ **A recuperação tem uma ordem:** copie primeiro os ficheiros da árvore errada para a
+   certa, **confirme que o diff na errada é só seu** (`git diff` + procurar as suas marcas),
+   e só então `git checkout -- <os caminhos exactos>`. Nunca um `checkout` de árvore
+   inteira: a primária tinha ficheiros modificados de OUTRA sessão, e um `--` sem caminhos
+   tê-los-ia levado.
+4. ⛔ **Não confie no `pwd` de uma chamada anterior.** A cwd persiste entre chamadas *até
+   deixar de persistir*, e a escorregadela não avisa.

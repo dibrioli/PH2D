@@ -406,6 +406,34 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("100") => {
+            let sinks =
+                gpu_spin_demo::build_gpu_spin_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[spin-demo] AS PECAS GIRAM, E O GIRO PODE PARAR: duas fileiras de {} pecas,
+  cada uma com a SUA taxa de giro (de parada ate' {} graus por segundo).
+  ⚠️ PRECISA DE PLAY -- o que a cena mostra e' um movimento.
+
+  EM CIMA   sem arrasto angular          -- cada uma gira a` sua taxa, para sempre
+  EM BAIXO  com arrasto angular ({})   -- as MESMAS taxas, e todas VAO TRAVANDO
+
+  QUER MEXER? Clique numa peca e procure «Angular Damping» no painel do «Simulation Step».
+  1 = sem arrasto (gira para sempre) · mais baixo = trava mais depressa.
+  (i) Quem escreve o giro e' o no' «Drive» com o canal «Custom…» apontado a` coluna `spin`.
+      Nao foi preciso um canal novo -- faltava alguem INTEGRAR o que ele ja' escrevia.
+
+  (i) A de baixo NAO para de vez: o arrasto e' exponencial, entao o giro fica cada vez
+      mais lento e nunca chega a zero. Aos 4 s ela esta' a 3% da velocidade inicial.
+
+  DEU ERRADO se: as duas fileiras sairem iguais; se a de cima travar; se a de baixo NAO
+  ficar visivelmente mais lenta que a de cima; se a primeira peca de qualquer fileira nao
+  ficar PARADA (a rampa comeca em zero); ou se as pecas girarem todas a` mesma taxa.",
+                gpu_spin_demo::COLS as u32,
+                gpu_spin_demo::TOP_SPIN,
+                gpu_spin_demo::DRAG,
+            );
+            sinks
+        }
         Some("99") => {
             let sinks =
                 gpu_bounce_demo::build_gpu_bounce_demo_document(doc, registry).unwrap_or_default();

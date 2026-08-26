@@ -115,6 +115,9 @@ mod gpu_spawn_pulse_demo;
 /// nenhuma cadeia do catálogo escreve `vel` por elemento, e um atrator forte é onde isso dói.
 #[path = "motion_state_gpu_speed_demo.rs"]
 mod gpu_speed_demo;
+/// A cena `=100` — as pecas giram, e o giro pode parar (folha 13, estado angular).
+#[path = "motion_state_gpu_spin_demo.rs"]
+mod gpu_spin_demo;
 /// The Lloyd/JFA scene (ADR-0139), its own file for the same reason: it answers
 /// "does a node whose cook is a multi-pass ALGORITHM run on the device?".
 #[path = "motion_state_gpu_voronoi_demo.rs"]

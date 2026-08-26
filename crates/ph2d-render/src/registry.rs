@@ -55,7 +55,8 @@ mod tests {
         // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 73 ⇒ aqui 74.
         // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) — ver a nota do `ph2d-ecs`.
         // + 1 do ELO (InstanceOf, ADR-0164 F4.2, 2026-08-26) — idem.
-        assert_eq!(reg.len(), 76);
+        // + 1 dos OVERRIDES (ObjectInstance, ADR-0164 F4.4, 2026-08-26) — idem.
+        assert_eq!(reg.len(), 77);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

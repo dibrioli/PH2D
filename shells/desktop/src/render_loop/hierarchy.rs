@@ -90,6 +90,8 @@ pub(super) fn dispatch(
     // ⭐ O botão `Add` do cabeçalho da Hierarquia (ADR-0166 / F3). Ver o bloco de `add_root`.
     add_root: bool,
     reset_transform_row: Option<NodeId>,
+    // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
+    revert_to_master_row: Option<NodeId>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -113,6 +115,9 @@ pub(super) fn dispatch(
     // ⭐ O registo de componentes (ADR-0164 / F4.2) — a row **Duplicate** copia bytes de tipos que
     // esta shell não conhece, e a vtable dele é a única porta que sabe fazê-lo.
     registry: &ph2d_ecs::scene::ComponentRegistry,
+    // ⭐ O eco do mestre (ADR-0164 / F4.4) — o *Revert* tem de o esquecer naquela chave, senão o
+    // override renasce no quadro seguinte. Ver `instance_sync::revert_override`.
+    echo: &mut crate::instance_sync::MasterEcho,
 ) -> bool {
     let mut title_dirty = false;
 
@@ -304,6 +309,31 @@ pub(super) fn dispatch(
     //
     // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
     // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
+    // ⭐ **DEVOLVER a instância à receita** (ADR-0164 / F4.4) — o inverso do override.
+    //
+    // ⚠️ **Ele responde mesmo quando não se aplica.** A tabela deste menu é PLANA (ela não sabe o
+    // que a linha é), então o item aparece em toda linha; um item que come o clique em silêncio é
+    // pior que um ausente, e por isso o caminho negativo tem um aviso com o motivo.
+    if let Some(row) = revert_to_master_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+    {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        match crate::instance_sync::revert_all_overrides(sim, echo, entity) {
+            None => {
+                toasts.push(Toast::warning("Not an instance — nothing to revert"));
+            }
+            Some(0) => {
+                toasts.push(Toast::info("This instance has no overrides"));
+            }
+            Some(n) => {
+                toasts.push(Toast::success(format!(
+                    "Reverted {n} override(s) to master"
+                )));
+                title_dirty = true;
+            }
+        }
+    }
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);
         hero.gizmo.replace_selection(Some(bits));

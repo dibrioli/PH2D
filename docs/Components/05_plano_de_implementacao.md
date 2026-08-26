@@ -562,7 +562,7 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 | F4.1 | O mestre existe e é **INERTE** — a condição (a) da refutação 1 | ✅ 2026-08-25 |
 | F4.2 | **Instanciar**: cópia profunda + remap de identidade e de referências | ✅ 2026-08-26 — smoke-gate **1** |
 | F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
-| F4.4 | Override por campo capturado por diff (`ObjectInstance`) | ⬜ |
+| F4.4 | Override **por componente** (`ObjectInstance`) — ⚠️ *por campo* foi refutado | ✅ 2026-08-26 |
 | F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ⬜ |
 | F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | ⬜ |
 | F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
@@ -621,6 +621,39 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   ninguém deu; *depois do quadro* porque é aí que as edições do Inspector chegam ao mundo
   (`apply_editor_commands` corre no fim do laço) — pô-lo antes faria as instâncias andarem **um
   quadro atrás do mestre**.
+**O que a F4.4 mediu e o plano não dizia:**
+- ⛔⛔⛔ **«Override capturado por DIFF» é impossível, e a refutação é de uma linha:** um diff só diz
+  *«estão diferentes»*. Se o mestre mudou, `mestre != instância`; se a instância mudou, **também**.
+  Ler o diff como *«a instância mexeu-se»* transformaria cada edição da receita num override em
+  todas as instâncias (a difusão pararia no gesto que a pediu); lê-lo ao contrário desfaria toda
+  edição do artista no quadro seguinte. ⇒ o passe guarda **o eco do mestre** (o que a receita tinha
+  no passe anterior), e aí as duas perguntas separam-se. ⚠️ **O eco custa o MESTRE, não as
+  instâncias** — mil cópias partilham uma entrada.
+- ⛔ **E o instrumento óbvio — o change tick — é CEGO à operação que mais dói:** a refutação 3 já o
+  tinha medido (*«remover componente não muda tick de ninguém»*), e tirar um componente da receita
+  é exatamente o que tem de chegar às instâncias.
+- ⛔ **A granularidade é o COMPONENTE, não o campo** — e a refutação 3 já o dizia: *«sem
+  `patch_field` por tipo, "campo tocado bloqueia propagação" vira "**componente** tocado bloqueia
+  propagação"»*. Consequência a dizer em voz alta: mexer na posição de uma peça da instância
+  congela também a **escala** e a **rotação** dela, porque as três vivem no mesmo `Transform`.
+- ⭐⭐ **`ObjectInstance` é um CONJUNTO, não um mapa de bytes** — o plano copiava o Unity, onde os
+  bytes são obrigatórios porque a instância **não é uma entidade real**. Aqui ela é (é a tese do
+  ADR-0164): o valor já vive no componente da peça e viaja no ficheiro pela porta de sempre.
+  Guardá-lo outra vez criaria duas fontes para o mesmo número. *A representação apaga o caso
+  especial.*
+- ⛔ **DECLARADO: um componente que carrega REFERÊNCIA propaga mas nunca CAPTURA override.** Medido:
+  o solver **escreve dentro do `PhysicsJoint`** (semeia `local_a`/`local_b`, vira o `anchored`), e
+  de fora isso é indistinguível de uma edição do artista — a 1.ª versão dava a toda instância com
+  junta um override no primeiro tique, deixando-a surda à receita para sempre. ⇒ editar a junta de
+  uma instância vale **até o mestre mexer na dele**.
+- ⚠️ **O REVERT não é «tirar a chave»** — um gate disse-o: no passe seguinte a peça ainda difere e o
+  mestre não mexeu, que é a assinatura de *«a instância mexeu-se»*, e o override renascia. O verbo
+  era um **no-op visível**. ⇒ o revert **apaga o eco daquela chave**, e o passe cai na regra do 1.º
+  encontro (*o mestre ganha*), que já estava escrita. *A saída não precisou de uma regra nova:
+  precisou de esquecer.*
+- ⚠️ **O EMPATE está declarado: os dois mudam no mesmo passe ⇒ a RECEITA ganha**, e não fica
+  override. Editar o molde é uma difusão deliberada.
+
 - ⚠️ **A recusa de ciclo é no GESTO e devolve uma RAZÃO** (`Refusal::NotAMaster` ·
   `WouldNestInItself`), não um `None`: *duas recusas que devolvem o mesmo `None` produzem o mesmo
   aviso inútil*. ⛔ E não é um tecto de profundidade — um limite numérico transformaria um erro de

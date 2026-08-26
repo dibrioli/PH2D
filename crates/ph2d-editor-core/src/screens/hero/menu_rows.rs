@@ -242,6 +242,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 None,
             ),
             (ids::CTX_MENU_HIER_RESET_TRANSFORM, "Reset Transform", None),
+            // ⚠️ Numa linha que NÃO é instância ele responde com um aviso, e não com nada: a
+            // tabela deste menu é plana (não sabe o que a linha é), e um item que come o clique
+            // em silêncio é pior que um ausente.
+            (
+                ids::CTX_MENU_HIER_REVERT_TO_MASTER,
+                "Revert to Master",
+                None,
+            ),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
         // Painter Falloff curve point handle (Blender per-point handle types).

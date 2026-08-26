@@ -49,6 +49,57 @@ pub struct InstanceOf {
     pub master: u64,
 }
 
+/// **A chave de um OVERRIDE** — *"nesta peça, este componente é da instância"* (ADR-0164 / F4.4).
+///
+/// # ⚠️ Não há `field_id`, e a ausência é MEDIDA
+///
+/// O plano pedia a chave `(peça, type_id, field_id)`, e a
+/// [refutação 3](https://github.com/dibrioli/PH2D/blob/main/docs/Components/pesquisa/instancias_2026-08-21/refutacao_3_override_aninhado.md)
+/// já tinha achado o furo: *«`(type_id, field)` não significa nada hoje para os 91 tipos — a vtable
+/// do registo é **blob inteiro** postcard. Sem `patch_field` por tipo, "campo tocado bloqueia
+/// propagação" vira "**componente** tocado bloqueia propagação"»*.
+///
+/// ⇒ a granularidade é o COMPONENTE, e a consequência tem de ser dita: mexer na posição de uma
+/// peça da instância congela também a **escala** e a **rotação** dela contra o mestre, porque as
+/// três vivem no mesmo `Transform`. Comprar o campo custa um acessor tipado por componente — os
+/// mesmos 107 sítios que a F0 mediu e recusou.
+///
+/// # A `peça` é a do MESTRE
+///
+/// É o `StableId` da peça de que a da instância nasceu. Renomear, reordenar e reparentear **dentro**
+/// do mestre não tocam a chave, porque o id é opaco — a propriedade que o `VecInstance.sub` já
+/// paga no vetor.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct OverrideKey {
+    /// `StableId` da peça **do mestre**.
+    pub piece: u64,
+    /// O `ComponentTypeId` do registo.
+    pub type_id: u64,
+}
+
+/// **Os overrides de uma instância**, guardados na RAIZ dela (ADR-0164 / F4.4).
+///
+/// # ⚠️ É um CONJUNTO, e não um mapa de bytes — e isto refuta o plano
+///
+/// O plano pedia `BTreeMap<OverrideKey, Bytes>`, copiando o modelo do Unity. Lá os bytes são
+/// obrigatórios porque **a instância não é uma entidade real** até ser instanciada: a lista de
+/// modificações é a única cópia do valor.
+///
+/// ⭐ **Aqui a instância É uma entidade real** — é a tese do próprio ADR-0164. O valor já vive no
+/// componente da peça, viaja no ficheiro e no undo pela porta de sempre, e guardá-lo outra vez
+/// criaria **duas fontes para o mesmo número**, que discordam no dia em que uma delas for escrita
+/// sozinha. *A representação apaga o caso especial.*
+///
+/// ⇒ o que falta guardar é só a PERGUNTA *«este componente é da instância?»*, e isso é um conjunto.
+///
+/// ⚠️ **Incluindo a AUSÊNCIA:** um componente que o artista tirou da instância é um override —
+/// a chave diz *«este componente é assunto da instância»*, e não *«a instância tem outro valor»*.
+#[derive(Component, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ObjectInstance {
+    /// Ordenado por construção (HR-5): a serialização tem de ser determinística.
+    pub overrides: std::collections::BTreeSet<OverrideKey>,
+}
+
 /// O que uma cópia profunda produziu — e o mapa que o remap consome.
 #[derive(Clone, Debug)]
 pub struct DeepCopy {

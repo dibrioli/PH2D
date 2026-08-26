@@ -874,6 +874,7 @@ impl App {
             player_readout_log: None,
             physics_smoke_done: false,
             instance_smoke_done: false,
+            instance_echo: Default::default(),
             show_colliders: true,
             onion_ghosts: Vec::new(),
             emissive_instances: Vec::new(),

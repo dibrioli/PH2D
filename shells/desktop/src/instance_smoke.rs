@@ -183,5 +183,15 @@ impl crate::App {
             "[instance smoke 1] agora escolha 'Ragdoll > Arm' (o de CIMA, a receita) e mude a cor \
              em 'Color & Tint': os tres bracos de baixo mudam com ele"
         );
+        // ⭐ E a terceira metade é o OVERRIDE (F4.4): a excepção que o artista faz numa cópia tem
+        // de sobreviver à edição seguinte da receita. Sem a instrução, ele nunca a descobre.
+        println!(
+            "[instance smoke 1] e a EXCEPCAO: pinte o 'Arm' de UMA das copias de baixo, depois \
+             pinte o da receita outra vez — a que voce tocou fica com a cor dela"
+        );
+        println!(
+            "[instance smoke 1] para desfazer a excepcao: botao direito na linha da copia -> \
+             'Revert to Master'"
+        );
     }
 }

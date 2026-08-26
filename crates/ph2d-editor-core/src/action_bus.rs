@@ -241,6 +241,10 @@ pub enum EditorAction {
     /// → Reset Transform menu entry.
     HierResetTransform { row: ph2d_a11y::NodeId },
 
+    /// ⭐ **Devolver a instância à receita** (ADR-0164 / F4.4) — apaga TODAS as excepções desta
+    /// cópia. Payload: a `NodeId` da linha. Levantada pelo botão direito → *Revert to Master*.
+    HierRevertToMaster { row: ph2d_a11y::NodeId },
+
     /// Spawn a new child entity (identity transform, name "Child")
     /// under the hierarchy row. Payload: the parent row's `NodeId`.
     /// Raised by the row's right-click → Add Child menu entry.

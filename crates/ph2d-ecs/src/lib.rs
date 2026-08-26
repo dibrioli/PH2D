@@ -100,7 +100,9 @@ pub use baked_form::BakedForm;
 pub use blend::BlendMode;
 pub use emissive::{EMISSIVE_MAX, EMISSIVE_OFF, SpriteEmissive};
 pub use flip_object_ref::FlipObjectRef;
-pub use instantiate::{DeepCopy, InstanceOf, deep_copy_subtree, remap_instance_of};
+pub use instantiate::{
+    DeepCopy, InstanceOf, ObjectInstance, OverrideKey, deep_copy_subtree, remap_instance_of,
+};
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
 pub use master::{MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of};
 pub use name::{Name, stable_name_id};

@@ -152,7 +152,9 @@ fn register_ecs_components_populates_registry() {
     //   e um valor derivado no arquivo envenena o undo.
     // + 1 do ELO da instancia (InstanceOf, ADR-0164 F4.2, 2026-08-26) -- de que mestre esta
     //   raiz nasceu, pelo StableId dele.
-    assert_eq!(reg.len(), 76);
+    // + 1 dos OVERRIDES (ObjectInstance, ADR-0164 F4.4, 2026-08-26) -- o conjunto de
+    //   `(peca, componente)` que a instancia possui contra o mestre.
+    assert_eq!(reg.len(), 77);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

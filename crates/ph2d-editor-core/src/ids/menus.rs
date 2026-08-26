@@ -191,6 +191,9 @@ pub const CTX_MENU_HIER_USE_AS_GRANULATION: NodeId =
 pub const CTX_MENU_HIER_DUPLICATE: NodeId = hash_node_id("ctx_menu_hier_duplicate");
 pub const CTX_MENU_HIER_DELETE: NodeId = hash_node_id("ctx_menu_hier_delete");
 pub const CTX_MENU_HIER_RESET_TRANSFORM: NodeId = hash_node_id("ctx_menu_hier_reset_transform");
+/// ⭐ **Devolver uma INSTÂNCIA à receita** (ADR-0164 / F4.4) — apaga as excepções que o artista
+/// fez nesta cópia, e o sync volta a propagar o mestre no quadro seguinte.
+pub const CTX_MENU_HIER_REVERT_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_revert_to_master");
 pub const CTX_MENU_HIER_ADD_CHILD: NodeId = hash_node_id("ctx_menu_hier_add_child");
 /// M14.7 polish: per-row "Rename..." entry. Opens inline rename
 /// mode (the row's name turns into a TextInput).

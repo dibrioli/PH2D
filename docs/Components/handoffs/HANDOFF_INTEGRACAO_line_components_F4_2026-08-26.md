@@ -1,8 +1,8 @@
-# Handoff de integração — `line/components`, 2026-08-26 (**F4.1 + F4.2 + F4.3**: o mestre é inerte, instanciar/duplicar copiam de verdade, e editar a receita muda as instâncias)
+# Handoff de integração — `line/components`, 2026-08-26 (**F4.1..F4.4**: o mestre é inerte, instanciar/duplicar copiam de verdade, editar a receita muda as instâncias, e a excepção do artista sobrevive)
 
 > DIRETRIZ §1.5.9. Sucessor do
 > [handoff de 25/08](HANDOFF_INTEGRACAO_line_components_F1_F2_F3_2026-08-25.md) (F1+F2+F3).
-> ⚠️ **A fase F4 NÃO está fechada** — este handoff cobre as três primeiras fatias dela, que são
+> ⚠️ **A fase F4 NÃO está fechada** — este handoff cobre as quatro primeiras fatias dela, que são
 > mergeáveis isoladamente. O estado das sete fatias está no
 > [plano vivo §F4](../05_plano_de_implementacao.md).
 
@@ -16,7 +16,7 @@
 | Worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-components` |
 | Base | `main @ 0f5ce8040` |
 | Governança | [ADR-0164](../../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) · [ADR-0166](../../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) |
-| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) |
+| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) |
 
 ---
 
@@ -28,6 +28,7 @@
 | duplicar um corpo com junta | a cópia ficava **solta** (a junta nomeava o original) | ✅ a junta da cópia prende **os corpos dela** |
 | um objeto marcado como receita | simulava como qualquer outro | ✅ **não cai** — receita não é objeto de cena |
 | editar uma peça da receita | não existia | ✅ **todas as instâncias mudam** no mesmo quadro |
+| editar uma peça de UMA cópia | não existia | ✅ vira **excepção**: a receita já não a leva |
 
 ⚠️ **O que ainda NÃO existe:** o gesto *«criar componente»* e o botão *«Instanciar»*. A porta
 `instantiate::instantiate_master` existe, é testada e é alcançada **pelo smoke**; pô-la num menu é
@@ -70,6 +71,11 @@ a fatia **F4.5**.
    propósito): sem esse desvio o passe reescrevia a junta todo o quadro. Ver §4.
 10. **`instantiate_master` devolve `Result<_, Refusal>`**, não `Option`. Duas recusas que devolvem
    o mesmo `None` produzem o mesmo aviso inútil; a mensagem mora no gesto (F4.5).
+11. **`ObjectInstance` é um CONJUNTO de chaves, não um mapa de bytes** — o valor já vive no
+   componente da peça, que é uma entidade real. Ver §4.
+12. **O item *Revert to Master* aparece em TODA linha da Hierarquia** (a tabela do menu é plana) e
+   **responde** quando não se aplica. As três respostas do verbo são distinguíveis de propósito:
+   *não é instância* · *é, e não tinha excepção* · *devolveu n*.
 
 ---
 
@@ -107,14 +113,16 @@ a fatia **F4.5**.
 
 | O quê | Valor | Onde |
 |---|---|---|
-| Registro `ph2d-ecs` | 73 → 74 (`MasterRoot`) → **75** (`InstanceOf`) | `scene/registry.rs` + `registry_tests.rs:~150` |
-| Espelhos render/script | 74 → 75 → **76** cada | `ph2d-render/src/registry.rs`, `ph2d-script/src/registry.rs` |
+| Registro `ph2d-ecs` | 73 → 74 (`MasterRoot`) → 75 (`InstanceOf`) → **76** (`ObjectInstance`) | `scene/registry.rs` + `registry_tests.rs:~150` |
+| Espelhos render/script | 74 → 75 → 76 → **77** cada | `ph2d-render/src/registry.rs`, `ph2d-script/src/registry.rs` |
 | Variante nova de enum | `FieldKind::Ref` — **apendada no fim** | `ph2d-component-desc/src/lib.rs` |
 | Campo novo no `ComponentDesc` | `owned_document: bool` + o construtor `D::owned_bridge` | idem + `catalog/bridges.rs` (os 4) |
 | Campos declarados `is_ref` | `PhysicsJoint.body_a`(1)/`body_b`(2) · `PulleyWheel.rope`(1)/`body`(7) · `InstanceOf.master`(1) | `catalog/physics.rs`, `catalog/core.rs` |
 | Env de smoke nova | `PH2D_INSTANCE_SMOKE=1` | `shells/desktop/src/instance_smoke.rs` + `init.rs` (cena vazia) |
 | Assinatura mudada | `render_loop::hierarchy::dispatch` ganhou `registry: &ComponentRegistry` no fim | 1 sítio de chamada |
 | Módulos novos (isolados) | `ph2d-ecs/src/instantiate.rs` · `ph2d-physics-ecs/src/ref_remap.rs` · `shells/desktop/src/{instantiate,instance_refs,instance_smoke,instance_sync}.rs` | append-only, irmãos |
+| **Id de widget novo** | `CTX_MENU_HIER_REVERT_TO_MASTER` | `ids/menus.rs` + o gate `node_id_collisions` |
+| **Ação do barramento nova** | `EditorAction::HierRevertToMaster { row }` | `action_bus.rs` + `panel-hierarchy/src/event.rs` + o dreno |
 | Porta nova na ponte | `PhysicsBridge::document_owns_pose` (a condição (b) da refutação 1) | `bridge/pose_owner.rs`, ao lado do `player_liveness` |
 | Passe novo no epílogo do quadro | `App::sync_instances()` entre o render loop e o `post_frame_undo` | `main.rs` — **a posição é lei**, ver o handoff §4 |
 | `PROJECT_SCHEMA` | **não se mexe** — os dois componentes novos entram pelo `ComponentBlob`, que é a razão de o snapshot v2 existir | — |
@@ -127,12 +135,18 @@ a fatia **F4.5**.
 
 | | |
 |---|---|
-| `cargo test -p ph2d-host-desktop --bins` | ✅ **3649** passaram · 0 falharam · 245 ignorados |
+| `cargo test -p ph2d-host-desktop --bins` | ✅ **3658** passaram · 0 falharam · 245 ignorados |
+| `cargo test -p ph2d-host-desktop --tests` | ✅ (⚠️ o censo de dois lados apanhou o `ObjectInstance` sem descritor — **ele fez o trabalho dele**) |
 | `typos` | ✅ |
-| `ph2d-ecs` · `-component-desc` · `-render` · `-script` · `-physics-ecs` · `-panel-inspector` | ✅ todos verdes |
+| `ph2d-ecs` · `-component-desc` · `-render` · `-script` · `-physics-ecs` · `-panel-inspector` · `-panel-hierarchy` · `-editor-core` | ✅ todos verdes |
 | `cargo check --workspace --all-targets` | ✅ |
 | `cargo fmt --all` | ✅ |
 | `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | ✅ |
+
+⚠️ **Uma flake CONHECIDA apareceu no fecho** e não é desta linha:
+`flip_smooth::resample_measurement::precisao::orcamento::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke`
+— membro nomeado da família de flakes sob fan-out no `CLAUDE.md` §5.0. **Verde 3/3 sozinha**, e o
+diff não tem uma linha de Flip.
 
 ⚠️⚠️ **E esse clippy apanhou CINCO erros latentes das fatias ANTERIORES desta linha** — três em
 ficheiros que ela criou (`scene/incremental.rs` da F2, `component_seed.rs` da F3,
@@ -161,6 +175,12 @@ correram `cargo clippy -p <crates>` **sem `-D warnings`** e leram o exit code `0
 | **sync**: sem o `document_owns_pose` | ⛔ RED em **dois** — o corpo teleporta |
 | **sync**: sem o religamento | ⛔ RED — a junta larga o rig da instância |
 | **sync**: sem a rota dos que carregam referência | ⛔ RED — 3 escritas por quadro com o mundo parado |
+| **override**: o override deixa de segurar | ⛔ RED — a receita apaga a edição do artista |
+| **override**: nunca capturar | ⛔ RED em **quatro** |
+| **override**: sem o eco do mestre | ⛔ RED em **cinco** — tudo vira override |
+| **override**: o revert não esquece o eco | ⛔ RED — o override renasce no quadro seguinte |
+| **override**: o conjunto nunca chega ao mundo | ⛔ RED em **quatro** |
+| **override**: os que carregam referência voltam a capturar | ⛔ RED em **sete** |
 | sem a recusa de ciclo | ⛔ RED — a instância aterra dentro da própria receita |
 
 ⚠️ **Uma mutação SOBREVIVEU e foi refeita:** duplicar a inserção do `InstanceOf` (em vez de a
@@ -177,7 +197,12 @@ Ver a mensagem da linha. `PH2D_INSTANCE_SMOKE=1`, em três partes:
 2. o **Duplicate** da Hierarquia sobre um deles (F4.2 — antes desta fatia devolvia uma linha vazia);
 3. escolher `Ragdoll > Arm` (o de CIMA, a receita) e mudar a cor em *Color & Tint* — **os três
    braços de baixo mudam com ele** (F4.3). ⚠️ A própria cena imprime esta instrução: sem ela o
-   artista vê três pêndulos e não descobre sozinho que a receita é editável.
+   artista vê três pêndulos e não descobre sozinho que a receita é editável;
+4. pintar o `Arm` de **uma** das cópias e depois repintar o da receita — **a que ele tocou fica com
+   a cor dela** (F4.4);
+5. botão direito na linha da cópia → **Revert to Master** — ela volta a ouvir a receita. ⚠️ Numa
+   linha que não é instância o item **responde com um aviso**: a tabela deste menu é plana, e um
+   item que come o clique em silêncio é pior que um ausente.
 
 ---
 

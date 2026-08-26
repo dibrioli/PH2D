@@ -708,6 +708,10 @@ pub(crate) struct App {
     pub(crate) physics_smoke_done: bool,
     /// Latch de `PH2D_INSTANCE_SMOKE` (o ragdoll instanciado 3×, ADR-0164 F4).
     pub(crate) instance_smoke_done: bool,
+    /// **O eco do mestre** (ADR-0164 / F4.4) — o que a receita tinha no passe anterior, que é
+    /// como o sync sabe QUEM se mexeu. Cache de sessão: perdê-la só custa não atribuir um
+    /// override no primeiro passe seguinte, e nunca um valor errado.
+    pub(crate) instance_echo: crate::instance_sync::MasterEcho,
     /// Draw collider outlines over the canvas. **Default ON**, like Unity's
     /// scene gizmos: a collider is invisible, and an invisible thing you are
     /// authoring cannot be judged. Costs nothing and shows nothing in a scene

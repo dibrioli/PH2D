@@ -403,6 +403,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_EXPORT_IMAGE,
         ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
+        ids::CTX_MENU_HIER_REVERT_TO_MASTER,
         ids::CTX_MENU_HIER_DELETE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,

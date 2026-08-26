@@ -170,6 +170,14 @@ pub const DESCS: &[D] = &[
     // (é derivado), e o censo de dois lados proíbe um descritor que nomeie um tipo fora do registo.
     D::intrinsic("ph2d::ecs::MasterRoot", "Master", C::Instancing, &[]),
     D::intrinsic("ph2d::ecs::Name", "Name", C::Identity, NAME),
+    // ⭐ **As EXCEPÇÕES de uma instância** (ADR-0164 / F4.4) — o conjunto de `(peça, componente)`
+    // que a cópia possui contra a receita.
+    //
+    // ⚠️ **`Machinery`, e não `Intrinsic`:** os outros dois da família chegam por um GESTO do
+    // artista (*criar componente*, *instanciar*); este é **mantido pelo passe de sync**, que o
+    // escreve sozinho quando o artista mexe numa peça. Oferecê-lo em qualquer porta daria um
+    // conjunto de chaves que ninguém sabe preencher à mão.
+    D::machinery("ph2d::ecs::ObjectInstance", "Overrides", C::Instancing),
     D::authored(
         "ph2d::ecs::OnScreenEnabler",
         "On-Screen Enabler",

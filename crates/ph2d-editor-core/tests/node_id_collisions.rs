@@ -345,6 +345,10 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
         "CTX_MENU_HIER_RESET_TRANSFORM",
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
     ),
+    (
+        "CTX_MENU_HIER_REVERT_TO_MASTER",
+        ids::CTX_MENU_HIER_REVERT_TO_MASTER,
+    ),
     ("CTX_MENU_HIER_ADD_CHILD", ids::CTX_MENU_HIER_ADD_CHILD),
     ("CTX_MENU_HIER_RENAME", ids::CTX_MENU_HIER_RENAME),
     // Project chip scene list

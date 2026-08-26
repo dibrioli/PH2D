@@ -46,6 +46,7 @@ fn try_context_menu_row(
     if !(id == ids::CTX_MENU_HIER_DUPLICATE
         || id == ids::CTX_MENU_HIER_ADD_CHILD
         || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
+        || id == ids::CTX_MENU_HIER_REVERT_TO_MASTER
         || id == ids::CTX_MENU_HIER_DELETE
         || id == ids::CTX_MENU_HIER_RENAME
         || id == ids::CTX_MENU_HIER_MERGE_SPRITES
@@ -81,6 +82,9 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierDuplicate { row });
         } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
             host.bus_mut().push(EditorAction::HierAddChild { row });
+        } else if id == ids::CTX_MENU_HIER_REVERT_TO_MASTER {
+            host.bus_mut()
+                .push(EditorAction::HierRevertToMaster { row });
         } else if id == ids::CTX_MENU_HIER_RESET_TRANSFORM {
             host.bus_mut()
                 .push(EditorAction::HierResetTransform { row });

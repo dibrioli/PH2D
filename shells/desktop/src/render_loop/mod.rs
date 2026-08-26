@@ -2981,6 +2981,8 @@ impl crate::App {
             // Sem payload: ele não sai de uma linha, e por isso não tem pai (ver `HierAddRoot`).
             let mut add_root = false;
             let mut reset_transform_row: Option<NodeId> = None;
+            // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
+            let mut revert_to_master_row: Option<NodeId> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
             // Carries the clicked row's `NodeId` (the merged sprite
@@ -4049,6 +4051,9 @@ impl crate::App {
                     }
                     EditorAction::HierResetTransform { row } => {
                         reset_transform_row.get_or_insert(row);
+                    }
+                    EditorAction::HierRevertToMaster { row } => {
+                        revert_to_master_row.get_or_insert(row);
                     }
                     EditorAction::HierDelete { row } => {
                         delete_row.get_or_insert(row);
@@ -9846,6 +9851,7 @@ impl crate::App {
                 add_child_row,
                 add_root,
                 reset_transform_row,
+                revert_to_master_row,
                 delete_row,
                 hierarchy_row_click,
                 hierarchy_select_intent,
@@ -9863,6 +9869,7 @@ impl crate::App {
                 &mut self.vec_pen,
                 &mut duplicate_made,
                 component_registry,
+                &mut self.instance_echo,
             ) {
                 self.title_dirty = true;
             }

@@ -199,3 +199,61 @@ fn one_shape_or_too_many_refuses_without_littering_the_scene() {
     assert!(create(&sim, &mut scene, &map, &ids, 3).is_some());
     assert_eq!(scene.paths().len(), before + 1);
 }
+
+/// ⭐⭐ **A PERGUNTA QUE OS OUTROS GATES NÃO FAZEM: o conjunto de facto DESENHA alguma coisa?**
+///
+/// ⚠️ Os gates acima medem os **componentes** — que o `VecMorph` existe, com que fontes e que `t`.
+/// Nenhum deles mede o que sai no canvas, e a lei do repo é essa: *contar o trabalho FEITO não é
+/// contar o trabalho ENTREGUE*. Aqui o par é **degenerado** (`[start, start]`), e um plano de
+/// correspondência que recusasse um par igual deixaria o path **vazio**: o artista carregaria no
+/// botão, as três formas desapareciam (ficam ocultas) e **nada** apareceria no lugar delas.
+///
+/// **Mutação que deve sangrar:** o `recook` deixar de correr sobre o par degenerado (por exemplo,
+/// um `if a == b { continue }` no `morph_live`) — o conjunto nasceria invisível.
+#[test]
+fn the_new_set_actually_draws_the_start_shape() {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    // Duas formas BEM diferentes, para o `at(0)` não poder passar por acaso.
+    let a = scene.push_path(ph2d_vec_scene::rectangle([-2.0, -0.5], [2.0, 0.5]));
+    let b = scene.push_path(ph2d_vec_scene::rectangle([-0.4, -2.0], [0.4, 2.0]));
+    sync(&mut sim, &mut scene, &mut map);
+    let want = scene
+        .paths()
+        .iter()
+        .find(|p| p.id == a)
+        .unwrap()
+        .verts
+        .clone();
+    assert!(
+        !want.is_empty(),
+        "o CONTROLE: a forma de partida tem geometria"
+    );
+
+    let mut pending = create(&sim, &mut scene, &map, &[a, b], 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+
+    let host_id = scene.paths().last().unwrap().id;
+    let xf = crate::vec_transform::build(&sim, &map);
+    let mut plans = crate::morph_live::MorphPlans::new();
+    crate::morph_live::recook(&mut sim, &mut scene, &map, &xf, &mut plans);
+
+    let drawn = &scene
+        .paths()
+        .iter()
+        .find(|p| p.id == host_id)
+        .unwrap()
+        .verts;
+    assert!(
+        !drawn.is_empty(),
+        "⛔ o conjunto nasceu INVISIVEL: as formas ficam ocultas e nada aparece no lugar delas"
+    );
+    // ⭐ E o que ele desenha é a forma de PARTIDA, não uma mistura: o par é `[start, start]`.
+    assert_eq!(
+        drawn.len(),
+        want.len(),
+        "o conjunto tem de desenhar a forma inicial, e nao uma mistura dela com a outra"
+    );
+}

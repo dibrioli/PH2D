@@ -4170,3 +4170,117 @@ fn profile_edges(doc: &FieldDoc) -> usize {
         })
         .sum()
 }
+
+/// ⭐⭐⭐ **AS QUATRO FITAS DE UMA ESPECIALIZAÇÃO — e três delas ninguém lê** (W70).
+///
+/// A W68 mediu que o traçado é **quase só montagem** (`132` árvores por quadro a `640×360`, a
+/// `0,33–0,54 ms` cada) e a W69 tirou-lhe o eixo do TETO. Sobra a base — e esta sonda parte-a nas
+/// peças de que ela é feita, porque *atacar uma soma sem a repartir é escolher a metade errada com
+/// 50 % de hipótese*.
+///
+/// # O que se paga hoje, por especialização
+///
+/// 1. a **árvore** (`compile_at`) — percorre a arena e especializa o perfil na região;
+/// 2. a fita **float** (`Engine::from` + `ez_float_slice_tape`) — a que a marcha avalia;
+/// 3. a fita **grad** (`ez_grad_slice_tape`) — construída por [`hybrid::Hybrid::from_parts`]
+///    **sempre**;
+/// 4. e depois **`fork()`**, que a marcha chama no lote e que reconstrói **as duas** outra vez.
+///
+/// ⚠️ **O consumidor da fita de gradiente é UM, e não é o traçado:** `Hybrid::gradients` só é
+/// chamado pela extração de malha (`extract.rs`), na exportação. A normal do traçado sai de
+/// **diferenças centrais na fita float** (`march::normals_into`, seis amostras por acerto).
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::measure_the_four_tapes_of_one_specialisation --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_four_tapes_of_one_specialisation() {
+    use fidget::shape::EzShape;
+    use ph2d_field::{FillRule, Profile};
+    use std::time::Instant;
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | árvore | float | grad | from_tree | fork | 132x(from+fork)");
+    for n in [168usize, 336, 672] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let rc = RegionCompiler::new(&doc);
+        // Uma região de ladrilho: uma fatia fina atravessando a peça.
+        let (lo, hi) = ([-0.7f32, -0.2, -0.7], [0.7f32, 0.2, 0.7]);
+        let corners = probe_box_corners(lo, hi);
+        let tree_ms = med((0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let tr = rc.compile_at(&doc, lo, hi, &corners);
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(tr);
+                ms
+            })
+            .collect());
+        let tree = rc.compile_at(&doc, lo, hi, &corners);
+        let float_ms = med((0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let shape = Engine::from(tree.clone());
+                let pair = (Engine::new_float_slice_eval(), shape.ez_float_slice_tape());
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(pair);
+                ms
+            })
+            .collect());
+        let grad_ms = med((0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let shape = Engine::from(tree.clone());
+                let pair = (Engine::new_grad_slice_eval(), shape.ez_grad_slice_tape());
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(pair);
+                ms
+            })
+            .collect());
+        let from_ms = med((0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let h = hybrid::Hybrid::from_tree(tree.clone());
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(h);
+                ms
+            })
+            .collect());
+        let base = hybrid::Hybrid::from_tree(tree.clone());
+        let fork_ms = med((0..9)
+            .map(|_| {
+                let t = Instant::now();
+                let f = base.fork();
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(f);
+                ms
+            })
+            .collect());
+        println!(
+            "{n:7} | {tree_ms:6.3} | {float_ms:5.3} | {grad_ms:4.3} | {from_ms:9.3} | {fork_ms:4.3} | {:15.1}",
+            (from_ms + fork_ms) * 132.0
+        );
+    }
+}

@@ -5735,6 +5735,88 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 
 ## §13 — Aberto
 
+> ⚠️ **Esta lista parou na W56 durante catorze waves** (auditada em 2026-08-26). O que se seguiu
+> viveu só em mensagens de commit — e *uma lista de aberto que envelhece manda reconstruir o que já
+> está pago*, que foi exactamente o que aconteceu com quatro itens dela em 25/08.
+
+### §13.0 — O que está ABERTO agora (o resto desta seção é o histórico por wave)
+
+| O quê | Estado | Onde |
+|---|---|---|
+| ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
+| ⏸️ **Reaproveitar a fita entre QUADROS de uma órbita** · **especializar em espaço LOCAL** | as duas direcções que sobram, com o preço nomeado | §71.6 |
+| ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
+| ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
+| ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
+| ⏸️ Vários `VecPath` **separados** numa peça só · religar uma escultura que mudou de sítio | pede UI | §54, §40 |
+| ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
+| ⏸️ A composição de dois `Exact` encadeados e o gradiente de uma **escultura** | por medir | §59 |
+| ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
+| ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
+
+- ⭐⭐⭐ **W70 (§71): a montagem de fitas era o quadro inteiro — e três em cada quatro fitas não
+  eram avaliadas por ninguém.** Por região especializada pagavam-se **quatro** compilações (árvore ·
+  fita float · fita de **gradiente**, que só a exportação consome · e um **`fork`** que recompilava
+  as duas) e o traçado avalia **uma**. ⭐ `1,65×` a 168 arestas e `1,92×` a 672, com as fitas de
+  gradiente a caírem de `293` para **zero** por quadro. ⛔ E a terceira cura — a 2.ª passagem — foi
+  construída duas vezes, medida e **revertida**.
+- ⭐⭐⭐ **W69: a CURA do report de fps — o contorno também ENGROSSA enquanto a mão mexe.** A lei que
+  o módulo já ship (*grosso a mexer, nítido ao assentar*) aplicada onde o custo estava. Medido a
+  `640×360`: `168` arestas `55,3 → 52,1 ms` · `472` `133,4 → 54,6` · `940` **`266,1 → 53,7`**
+  (**4,96×**) ⇒ ⭐ **o custo de movimento passou a ser CONSTANTE** (~`53 ms`) qualquer que seja o
+  nível, e o teto de `Resolution` voltou a **64** com o recurso certo (o quadro **assente**).
+  ⚠️ Ela **DECIMA, não recoze** — recozer exigiria a curva de origem, que vive na cena vetorial —, e
+  tem três metades que a impedem de mentir: ao parar volta inteiro · um **furo pequeno fica intacto**
+  (⛔ um furo de 6 lados desligava a cura para a peça inteira, e foi uma **prova de mutação** que o
+  mostrou) · o laço compara o documento **real**. ⏸️ Fica a base, que é a W70
+- ⛔⛔ **W68 (§70): a lentidão que o Enio viu é PRÉ-EXISTENTE, e o teto só a tornou visível.** O
+  traçado paga **`0,22 ms` por aresta, CEGO AOS PIXELS** (4× menos pixels ⇒ `1,3×` menos tempo) —
+  assinatura de **montar**, não de marchar. ⛔ Mesmo na resolução de omissão o piso é `39 ms` contra
+  um orçamento de `16,7`. ⚠️ **A minha nota da W67 media o relógio ERRADO** (o quadro assente, pago
+  uma vez, em vez do de movimento, pago sempre). Quatro hipóteses refutadas por medição: o
+  recozimento (`23 µs`) · o preview mais grosso (tem **piso**, e volta a subir depois de `D≈6`) · o
+  teto sozinho · a montagem **base** (`Hybrid::new`) — ⏸️ e o suspeito que ficou (a especialização
+  por ladrilho) foi **ilibado** na W70: sem ela o traçado vai de `58` para `565 ms`
+- ✅ **W67 (§70): as duas decisões do Enio, e elas deram respostas OPOSTAS.** O teto de `Resolution`
+  sobe **16 → 64** (a régua que faltava é um contorno de curvatura **variável**; `θ ≈ √(8·tol/R)`
+  confirma-se em quatro pontos ⇒ *dobrar o nível divide o salto de normal por `√2`*) · e a **escada
+  de densidade dos quads é RECUSADA por medição**: `Fine` `49 691 ms` com **42 arestas de bordo**,
+  `Max` **`27 min 29 s`** com `316` bordo e `6` não-manifold — *o limite não é o tempo, é a
+  TOPOLOGIA da extracção*. ⛔ A 1.ª medição atravessou a própria trava (o `clamp` da
+  `tolerance_ratio_for`) e leu «o achatamento saturou»
+- ✅ **W66: a exportação diz ONDE a peça está** (só quando a origem cai fora da caixa dela — uma peça
+  centrada continua calada), e a auditoria do roteador do módulo achou **quatro** itens que já
+  estavam fechados ou desactualizados
+- ✅ **W65: a Hierarquia diz qual linha está ISOLADA** (selo `ISO`). ⚠️ A decisão foi a
+  **PRECEDÊNCIA** — o selo é um por linha e `ISO`/`LNK` caem na mesma: ganha o `ISO`, que é um estado
+  da **VISTA** a explicar por que o resto desapareceu, contra uma propriedade do nó
+- ⛔ **W64 (§69): a nota do «traçado 2,4× mais caro» estava errada por 4×, e o suspeito era
+  inocente.** O anti-serrilhado custa **22–34 %** (não `2,4×`), e especializar a **segunda passagem**
+  por ladrilho é **neutro a pior** — *a especialização paga-se por AMORTIZAÇÃO*: `4 096` raios por
+  ladrilho na primária contra `~256` na de borda. **Revertido**
+- ✅ **W63: a exportação SAI da thread que desenha** — *«o linux fica cinza»*: a 12 s o loop não
+  responde ao ping do compositor e o KDE oferece **forçar o encerramento**. ⚠️ **Declarar o
+  congelamento cura a MENSAGEM e não cura o congelamento** — são dois observadores. Bancada com uma
+  de cada vez, recusa do segundo em alto, e um sentinela que a liberta no `Drop`. ⭐ E tirar o
+  trabalho da thread **abriu a porta que o congelamento fechava** (fechar o app a meio deixava meio
+  arquivo com o nome certo) ⇒ gravação por temporário + `rename`, **na pasta do destino**
+- ⭐⭐⭐ **W62: a exportação caiu de 8 min 17 s para 6,4 s (77×), e o arquivo que sai é o MESMO.**
+  *O alvo da cadeia de quads sai da CAIXA, nunca da densidade* (`target_edge = alpha · diagonal`) —
+  a grade fina era mastigada pela fase zero e **deitada fora depois de paga**. ⛔ E não é só preço:
+  nas profundidades 7-8 a fidelidade medida no campo *piora* e a esfera é **destruída** (`55,5°`)
+- ✅ **W61b (§68): a exportação passa pela cadeia de quads** — e ela **bate o oráculo** na esfera
+- ✅ **W61 (§67): o PLACAR da malha extraída** contra o estado da arte — topologia e geometria no
+  nível, a **forma da face** não
+- ✅ **W60 (§66): reconferir a nota que o custo tornava inalcançável** — e o eixo do zoom **não
+  existe**
+- ✅ **W59 (§65): a região do corte é o CASCO, não a caixa dele** — `1,21×` menos arestas
+- ✅ **W58/58b/58c/58d (§61-§64): a selecção múltipla nasce no CANVAS** — `Shift`+clique **alterna**,
+  `Shift`+arrasto **SOMA** (e a assimetria é a lei), apanhando também o que está tapado. ⚠️ «não
+  seleciona mais de 2» não era um teto: era a **pergunta**
+- ✅ **W57 (§60): o vínculo desenho→peça VÊ-SE e SOLTA-SE** (selo `LNK`, `Unlink` / `Link Drawing`)
+- ✅ **W56e/W56f (§58, §59): a PROFUNDIDADE** (`SLABS = 2`, medido) e **o passo da marcha é do
+  DOCUMENTO**, não uma constante
+
 - 🔶 **W56 (§57): o perfil deixa de ser uma FITA e passa a ser uma CONSULTA — o ALICERCE está posto,
   o produto ainda não o vê.** ⭐ O gatilho que o `04_resultados_perfis` §7 deixou armado em 19/08
   disparou — e **quem o disparou foi a W55** (168 arestas por omissão, 664 no teto do knob). ⛔ **E a
@@ -5993,7 +6075,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 - ✅ **perspectiva FECHOU** na W15 (§16) — entrou num sítio, como a nota previa, e revelou que o
   raio era construído em dois. `Numpad5` alterna as lentes
 
-## §57 — ⛔⛔ A nota do «traçado 2,4× mais caro» estava errada por 4×, e o suspeito era inocente
+## §69 — ⛔⛔ A nota do «traçado 2,4× mais caro» estava errada por 4×, e o suspeito era inocente
 
 O §55.3 deixou em aberto *"o traçado ficou ~2,4× mais caro desde a W3 e ninguém o reconferiu — o
 suspeito nomeado é o **anti-serrilhado adaptativo**"*. Medido hoje (`measure_the_edge_pass_share`,
@@ -6064,7 +6146,7 @@ ladrilhos × 2 fatias de fita vivas ao mesmo tempo) e um cache com tempo de vida
 desde a W24 já não é o preço interativo. *Medir antes de construir vale para a segunda tentativa
 também.*
 
-## §58 — As duas decisões do Enio (26/08): o teto SOBE, a escada de densidade é RECUSADA por medição
+## §70 — As duas decisões do Enio (26/08): o teto SOBE, a escada de densidade é RECUSADA por medição
 
 ### §58.1 — ⭐⭐⭐ `MAX_PROFILE_RESOLUTION` 16 → 64
 
@@ -6119,3 +6201,144 @@ uma forma que nem a bancada em segundo plano resolve.
 ⇒ **A decisão do Enio está certa como produto e bloqueada pelo motor.** O achado é para quem possui
 a extracção (`line/quadextract`, a mesma dos dois `panic!` já nomeados): *a densidade fina tem de
 FECHAR a peça antes de o botão fazer sentido*. Quando fechar, esta tabela é o que se reconfere.
+
+## §71 — W70: três em cada quatro fitas do quadro não eram avaliadas por ninguém (26/08)
+
+**De onde vem.** A W69 curou o quadro de MOVIMENTO tirando-lhe o eixo do teto de detalhe, e nomeou o
+que sobrava: *«mesmo agora o movimento custa ~53 ms contra um orçamento de 16,7 — a pré-visualização
+nunca alcançou 60 Hz numa peça de perfil, em nível NENHUM»*. A W68 já tinha medido o **mecanismo**:
+o traçado paga `0,22 ms` **por aresta do contorno**, e esse custo é **cego aos pixels** (4× menos
+pixels ⇒ `1,3×` menos tempo) — assinatura de **montar**, não de marchar.
+
+⚠️ **A W68 acusou a especialização por ladrilho e estava errada.** Sem ela o traçado a `640×360` vai
+de `58` para `565 ms` (10×) e o `TILE = 64` já está no óptimo. A pergunta certa não era **quantas**
+fitas se montam — era **o que cada montagem monta**.
+
+### §71.1 — A soma partida nas partes de que é feita
+
+`ph2d_field_eval::tests::measure_the_four_tapes_of_one_specialisation`, máquina a `load < 5`:
+
+| arestas | árvore (`compile_at`) | fita **float** | fita **grad** | `from_tree` hoje | `fork` hoje |
+|---:|---:|---:|---:|---:|---:|
+| 168 | `0,107` | `1,309` | `1,427` | `1,311` | `1,304` |
+| 336 | `0,211` | `2,248` | `2,441` | `2,245` | `2,250` |
+| 672 | `0,415` | `4,508` | `4,883` | `4,510` | `4,589` |
+
+**Antes da wave, `from_tree` era `float + grad`** — e a marcha chamava `fork()` logo a seguir, que
+recompilava o par outra vez. ⇒ **quatro compilações por região especializada, e o traçado avalia
+UMA.** A árvore, que é a parte que *pensa*, custa `4 %` da conta; o resto é a `fidget` a emitir
+código de máquina.
+
+⭐⭐⭐ **E o consumidor da fita de gradiente é UM, e não é o traçado:** `Hybrid::gradients` tem um
+único chamador em toda a árvore — a extração de malha (`extract.rs`), na **exportação**. A normal do
+traçado sai de **seis amostras na fita float** (`march::normals_into`, diferença central).
+*Uma fita que ninguém avalia não aparece em gate nenhum: a imagem é byte-idêntica, só o relógio
+muda.*
+
+### §71.2 — Duas ausências (a cura não acrescenta nada — retira)
+
+**(a) A fita de gradiente nasce vazia e monta-se no primeiro pedido.** ⚠️ A subtileza é que
+`grad.is_none()` **deixou de significar** *«este documento não tem gradiente exacto»* e passou a
+significar *«ainda não foi pedido, ou não há»* — a pergunta antiga vive agora em
+`Hybrid::grad_is_exact`, e a distinção está **dentro de `gradients`**, o único sítio onde ela
+importa. A extração continua com o gradiente **exacto**, e paga a fita uma vez, como pagava.
+
+**(b) Quem monta a própria fita não a forka.** O `shape_of(k)` devolve um `Hybrid` acabado de
+construir **para aquela fatia**, que mais ninguém vê. *Um `fork` é para partilhar o que é de outro;
+o que já é nosso avalia-se directamente.* ⚠️ O caminho **não** especializado continua a forkar, e
+tem de continuar: ali o `scene.shape` é partilhado pelas threads do lote (a condição do ADR-0109).
+
+⚠️ **Uma terceira ausência foi construída e REVERTIDA por medição** — a segunda passagem. Ver
+§71.4: ela é o sítio onde a intuição aponta e a medição não confirma.
+
+### §71.3 — O que (a) e (b) compram
+
+A/B **intercalado** (`A,B,A,B,A,B`, mediana de 3 rondas × mediana de 7 traçados), quadro do produto
+a `640×360` **com** anti-serrilhado, `load < 5`:
+
+| arestas | antes | depois | ganho | fitas float | fitas de gradiente |
+|---:|---:|---:|---:|---:|---:|
+| 168 | `69,0 ms` | **`41,8 ms`** | **`1,65×`** | `293 → 161` | `293 → 0` |
+| 672 | `274,8 ms` | **`142,9 ms`** | **`1,92×`** | `293 → 161` | `293 → 0` |
+
+⚠️ **O A/B faz-se trocando o CÓDIGO, não um interruptor** — as duas leis são ausências, e um
+interruptor para as ligar de volta seria produto a carregar a versão lenta para sempre. Quem alterna
+é o arnês de mutação, e a alternância é intercalada para a deriva da máquina não se colar a um lado.
+
+### §71.4 — ⛔ A segunda passagem: duas curas construídas, medidas e REVERTIDAS
+
+O anti-serrilhado marcha uma vez por lote de `EDGE_CHUNK = 64` pixels de borda, e cada marcha
+**forkava** a árvore partilhada ⇒ uma fita por lote.
+
+⛔ **A cura óbvia — `map_init` da rayon — é NEUTRA, e foi medida:** `0,99×` e `1,02×`, com a contagem
+de fitas a não se mexer (`161 → 161`). ⭐ **O mecanismo:** a rayon parte um `par_chunks` até **uma
+tarefa por lote**, e o `init` corre uma vez por *tarefa* — ou seja, uma vez por lote, que é
+exactamente o que se queria evitar. *Reaproveitar por tarefa não compra nada enquanto a tarefa for
+do tamanho do lote.*
+
+⇒ segunda tentativa: a tarefa passa a ser `pixels / threads` (e o `EDGE_CHUNK` volta a ser só o
+tamanho do lote que a marcha avalia de uma vez). Ela **funciona** — corta as fitas de `1000` para
+`950` a `1920×1080` — e **também não move o relógio**:
+
+| tamanho | arestas | com fork por lote | com avaliador por tarefa | ganho | fitas |
+|---|---:|---:|---:|---:|---:|
+| `640×360` | 168 | `42,4 ms` | `43,5 ms` | `0,97×` | `161 → 161` |
+| `640×360` | 672 | `151,9 ms` | `153,7 ms` | `0,99×` | `161 → 161` |
+| `1920×1080` | 168 | `170,3 ms` | `172,9 ms` | `0,98×` | `1000 → 950` |
+| `1920×1080` | 672 | `554,0 ms` | `547,6 ms` | `1,01×` | `1000 → 950` |
+
+⭐ **E a tabela explica-se sozinha:** a `1920×1080` o quadro especializa **917** regiões. As dezenas
+de fitas da passagem de borda são **ruído ao lado disso** — *o alvo estava certo (a montagem) e o
+sítio estava errado*. ⇒ **REVERTIDO**, com as duas recusas escritas no doc do `EDGE_CHUNK`, que é
+onde a próxima pessoa a ter esta ideia vai olhar. E o gate saiu com o código: *um gate que defende
+código revertido é um gate a defender nada.*
+
+### §71.5 — Os gates, e o teto que deixava passar o defeito
+
+- `a_frame_pays_one_tape_per_region_and_no_gradient_tape_at_all` — o quadro compila **uma** fita por
+  região (mais a base, mais no máximo uma por ladrilho para a rota não especializada) e **zero**
+  fitas de gradiente; e a segunda passagem inteira cabe num avaliador só;
+- `the_gradient_tape_is_still_there_for_whoever_asks_and_is_built_once` — a outra metade: adiar só é
+  correcto se ela ainda acontecer quando alguém a pede, **uma vez**.
+
+⛔ **Eles vivem em dois binários de teste, não em `src/tests.rs`.** Os contadores (`FLOAT_TAPES`,
+`GRAD_TAPES`) são do **processo** e o `cargo test` corre a suíte em paralelo: o primeiro gate exige
+**zero** fitas de gradiente enquanto o segundo constrói uma. ⚠️ Um cadeado **não** resolveria —
+teria de ser tomado por *todos* os testes que traçam, incluindo os que ainda não existem. *Um
+contador global só é legível onde ninguém mais escreve nele.*
+
+⛔⛔ **E o primeiro teto da segunda passagem PASSAVA COM A MUTAÇÃO POSTA.** Ele dizia
+`fitas ≤ regiões + ladrilhos + 2`, e a folga dos ladrilhos (**60**) era maior que os lotes de borda
+(**28**) — a rota não especializada existe, mas naquela fixtura nunca dispara. *A folga que se põe
+«por segurança» é exactamente o tamanho do defeito que o gate deixa de ver.* A cura é medir a
+**DIFERENÇA** entre dois traçados (com e sem anti-serrilhado), e ambos **seriais**: em paralelo quem
+decide quantos avaliadores nascem é o escalonador da rayon — *um gate sobre uma contagem só é um
+gate se a contagem for do produto.*
+
+⛔ **O balde tem de estar cheio:** o gate afirma `regiões > 0`, que a peça foi desenhada, e que há
+mais de quatro lotes de borda, **antes** de aplicar qualquer teto.
+
+**Provas de mutação — 4/4 mataram** (controlo verde antes do vermelho):
+
+| # | mutação | gate que a apanhou |
+|---|---|---|
+| M1 | a fita de gradiente volta a nascer com a float | `a_frame_pays_one_tape_per_region…` |
+| M2 | a marcha volta a forkar a fita que montou | `a_frame_pays_one_tape_per_region…` |
+| M3 | a fita de gradiente nunca se monta | `the_gradient_tape_is_still_there…` |
+| M4 | ela monta-se em **cada** pedido | `the_gradient_tape_is_still_there…` |
+
+### §71.6 — O que fica, e o que isto NÃO é
+
+⛔ **Isto não reabre a recusa da W64** (§69). Lá o que foi medido e rejeitado foi **especializar** a
+segunda passagem por ladrilho — construir uma árvore *própria* para a região da borda, que não se
+amortiza (`4 096` raios por ladrilho na primária contra `~256` na de borda). Aqui não se constrói
+árvore nenhuma: pergunta-se **quantas vezes se compila a fita que já existe**. *São duas perguntas
+diferentes sobre a mesma passagem.*
+
+⛔ **E a base continua acima do orçamento.** O quadro de movimento a `640×360` custa hoje
+**`41,8 ms`** contra os `16,7` de um quadro de 60 Hz — `2,5×` acima, contra os `4,1×` de ontem. *A
+pré-visualização continua a não alcançar 60 Hz numa peça de perfil*, e o que sobra tem agora um
+nome: são as `132` fitas que **são** avaliadas. Cortar essa conta é outra obra — as duas direcções
+com preço nomeado são **reaproveitar a fita entre quadros de uma órbita** (o documento não muda; a
+região é que se mexe com a câmera) e **especializar em espaço LOCAL**, onde a região não depende da
+câmera.

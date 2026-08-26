@@ -124,6 +124,23 @@ type Tapes = (
     >,
 );
 
+/// ⭐⭐ **Quantas fitas FLOAT foram compiladas** — o instrumento da lei *«uma fita monta-se uma vez
+/// por quem a avalia»* (W70).
+///
+/// ⚠️ **Ele existe porque a montagem é o quadro inteiro** e era invisível: `132` especializações
+/// num traçado a `640×360`, cada uma a compilar uma fita — e a marcha **forkava** a que acabara de
+/// construir, dobrando a conta sem que gate nenhum pudesse vê-lo (a imagem é idêntica; só o relógio
+/// muda). *Um custo que nenhuma sonda conta é um custo que nenhuma mutação mata.*
+#[doc(hidden)]
+pub static FLOAT_TAPES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// ⭐⭐⭐ **Quantas fitas de GRADIENTE foram compiladas** — ver [`Hybrid::grad`].
+///
+/// ⚠️ A lei que ele defende é *«o traçado não compila fita de gradiente nenhuma»*: o consumidor
+/// dela é a **extração**, e a normal do traçado sai por diferença central na fita float.
+#[doc(hidden)]
+pub static GRAD_TAPES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 /// ⭐ **O documento pronto a avaliar em lote** — a porta única do traçado e da extração.
 pub struct Hybrid {
     plan: Plan,
@@ -131,12 +148,24 @@ pub struct Hybrid {
     trees: Vec<Tree>,
     tapes: Vec<Tapes>,
     sampled: Vec<SampledLeaf>,
-    /// ⭐ **A fita de GRADIENTE, só quando o documento é uma árvore só.**
+    /// ⭐ **A fita de GRADIENTE, só quando o documento é uma árvore só — e só quando alguém a pede.**
     ///
     /// ⚠️ Um campo amostrado **não tem gradiente analítico** — ele é uma grade. Quando há escultura,
     /// a normal sai por diferença central, e isso tem um preço nomeado: numa **quina viva** a
     /// diferença central devolve a média dos dois lados em vez de um deles, e o QEF deixa de a
     /// prender. É a razão de o caminho exato não ser abandonado quando ele existe.
+    ///
+    /// ⭐⭐⭐ **Ela é PREGUIÇOSA desde a W70, e o motivo é uma contagem de consumidores:**
+    /// `Hybrid::gradients` tem **um** chamador em toda a árvore — a extração de malha
+    /// (`extract.rs`), que corre na **exportação**. O traçado nunca lhe toca: a normal dele sai de
+    /// **seis amostras na fita float** (`march::normals_into`). Construí-la sempre custava
+    /// `1,47 ms` por especialização (a fita float custa `1,37`), e o traçado especializa **132**
+    /// árvores num quadro a `640×360` ⇒ *metade da montagem de um quadro era uma fita que ninguém
+    /// avaliava*.
+    ///
+    /// ⚠️ **`None` deixou de significar «não há gradiente exato»** — passou a significar *«ainda
+    /// não foi pedido, ou não há»*. Quem decide é [`Hybrid::grad_is_exact`], e a distinção vive
+    /// dentro de `gradients`, que é o único sítio onde ela importa.
     grad: Option<GradTapes>,
     /// Um buffer por folha, reaproveitado entre lotes.
     leaves: Vec<Vec<f32>>,
@@ -159,7 +188,7 @@ impl Hybrid {
     /// ⭐⭐ **Um avaliador a partir de uma ÁRVORE já compilada** — a porta da especialização por
     /// região (W56, [`crate::compile_in_region`]).
     ///
-    /// ⚠️ **Ela preserva o gradiente exacto**, e não por sorte: o `grad` nasce de
+    /// ⚠️ **Ela preserva o gradiente exacto**, e não por sorte: o `grad` só é possível com
     /// `sampled.is_empty() && trees.len() == 1`, que é exactamente a forma que esta porta produz.
     /// Era essa a propriedade que a rota da folha nativa perdia, e é a razão de a especialização ter
     /// ficado **dentro** da árvore.
@@ -183,23 +212,26 @@ impl Hybrid {
         let mut tapes = Vec::with_capacity(trees.len());
         for t in &trees {
             let shape = Engine::from(t.clone());
+            FLOAT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             tapes.push((Engine::new_float_slice_eval(), shape.ez_float_slice_tape()));
         }
-        // Só o caso puro — uma árvore, nenhuma escultura — tem gradiente exato.
-        let grad = (sampled.is_empty() && trees.len() == 1).then(|| {
-            let shape = Engine::from(trees[0].clone());
-            (Engine::new_grad_slice_eval(), shape.ez_grad_slice_tape())
-        });
         let n = tapes.len() + sampled.len();
         Self {
             plan,
             trees,
             tapes,
             sampled,
-            grad,
+            // ⭐⭐⭐ **A fita de gradiente NASCE VAZIA** (W70) — ver [`Hybrid::grad`].
+            grad: None,
             leaves: vec![Vec::new(); n],
             out: Vec::new(),
         }
+    }
+
+    /// **O documento é uma árvore só?** — a condição de existir gradiente exato, perguntada onde ela
+    /// é usada em vez de decidida na construção.
+    fn grad_is_exact(&self) -> bool {
+        self.sampled.is_empty() && self.trees.len() == 1
     }
 
     /// ⭐ **O gradiente em cada ponto** — exato quando o documento é uma árvore só, por diferença
@@ -218,6 +250,13 @@ impl Hybrid {
         out: &mut Vec<[f32; 3]>,
     ) -> Result<(), MeshError> {
         out.clear();
+        // ⭐⭐⭐ **A fita de gradiente monta-se AQUI, no primeiro pedido** (W70) — e é o único sítio
+        // onde `grad.is_none()` ainda não quer dizer *«este documento não tem gradiente exato»*.
+        if self.grad.is_none() && self.grad_is_exact() {
+            let shape = Engine::from(self.trees[0].clone());
+            GRAD_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.grad = Some((Engine::new_grad_slice_eval(), shape.ez_grad_slice_tape()));
+        }
         if let Some((eval, tape)) = &mut self.grad {
             let (gx, gy, gz) = dual_inputs(xs, ys, zs);
             let g = eval

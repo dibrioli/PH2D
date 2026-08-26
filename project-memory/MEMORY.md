@@ -67,6 +67,7 @@
 - [Melhor propriedade, pior produto](feedback_a_better_instrument_can_make_the_product_worse_and_that_is_the_finding.md) · [correlação perfeita ainda é N amostras](feedback_a_perfect_correlation_across_the_whole_corpus_is_still_n_samples.md)
 - [N fontes: comparação CRUZADA](feedback_n_sources_need_the_cross_check_not_n_self_checks.md)
 - [Ofício de gate (32)](reference_topic_gate_discipline.md)
+- [Folga num teto = tamanho do ponto cego; meça a DIFERENÇA](feedback_a_slack_term_in_a_ceiling_is_the_size_of_the_blind_spot.md) · [defeito só de CUSTO: contador no produto, lido num binário só](feedback_a_cost_only_defect_is_invisible_to_every_output_gate.md)
 - [Fixtura de AMOSTRAS prova o que amostrou — gateie a PROPRIEDADE](feedback_a_sampled_fixture_proves_what_it_sampled_gate_the_property_where_it_is_defined.md) — exponha o interno por `probe_*` e afirme a desigualdade; e o controle não pode pedir que o caso comum seja o pior caso
 - [Invariante no próprio domínio: cego à fronteira](feedback_an_invariant_evaluated_inside_its_own_domain_says_nothing_about_the_boundary.md) · [superset ganha a dedup](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md)
 - [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)

@@ -16,6 +16,19 @@ use rayon::prelude::*;
 ///
 /// *Um número de paralelismo dimensionado por uma intuição sobre overhead, e não pela contagem de
 /// lotes que ele produz, é um `for` sequencial com um `par_` na frente.*
+///
+/// # ⛔⛔ DUAS RECUSAS MEDIDAS sobre esta passagem — não as reconstrua
+///
+/// 1. **Especializar a árvore por ladrilho aqui é neutro a pior** (W64): `29,0 → 36,4 ms` a 64
+///    arestas. *A especialização paga-se por AMORTIZAÇÃO* — a marcha primária dilui a montagem por
+///    `4 096` raios de ladrilho, esta por `~256`.
+/// 2. **Reaproveitar o avaliador entre lotes é neutro** (W70): medido `0,97×`–`1,01×` a `640×360` e
+///    a `1920×1080`, nas duas formas — o `map_init` da rayon (que **não** compra nada: ela parte um
+///    `par_chunks` até *uma tarefa por lote*, e o `init` corre uma vez por tarefa) e a tarefa
+///    dimensionada por `pixels / threads` (que corta as fitas de `1000` para `950` a `1920×1080` e
+///    **não** move o relógio). ⚠️ *O quadro tem `917` regiões especializadas nesse tamanho: as
+///    dezenas de fitas desta passagem são ruído ao lado delas.* A cura que **pagou** foi noutro
+///    sítio — ver `Hybrid::grad` e a marcha por fatias.
 const EDGE_CHUNK: usize = 64;
 
 pub(crate) fn resample_edges(

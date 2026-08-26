@@ -174,6 +174,10 @@ pub(crate) fn cancels_the_inflight(
 #[path = "field3d_preview_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "field3d_preview_cost_tests.rs"]
+mod cost_tests;
+
 /// ⭐⭐⭐ **O CONTORNO TAMBÉM ENGROSSA ENQUANTO A MÃO MEXE** (2026-08-26).
 ///
 /// # ⛔ O buraco que ela fecha, com o número

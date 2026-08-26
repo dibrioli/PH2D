@@ -2713,7 +2713,7 @@ fn the_hull_contains_every_ray_of_its_own_tile() {
                             continue;
                         };
                         // ⚠️ **A pose é a identidade**, então a caixa de mundo é a local e os pontos
-                        // passam directos — é a mesma conta que `compile_at` faz com `Affine`.
+                        // passam directamente — é a mesma conta que `compile_at` faz com `Affine`.
                         let hull = ph2d_field_eval::probe_hull_uv(
                             &r.pts,
                             [r.lo[0], r.lo[1]],
@@ -3055,6 +3055,74 @@ fn measure_the_tile_that_fits_a_small_image() {
                     crate::SPECIALISED.load(Ordering::Relaxed)
                 );
             }
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O QUE O ORÇAMENTO DE FITAS COMPRA** — a sonda A/B da W70.
+///
+/// Ela mede o **quadro do produto** (`trace`, com anti-serrilhado, a `640×360` — o tamanho do
+/// preview em movimento) e imprime, ao lado do relógio, as duas contagens que explicam o número:
+/// quantas regiões foram especializadas e quantas **fitas** isso custou.
+///
+/// ⚠️ **O A/B faz-se trocando o código**, não um interruptor: as duas leis da W70 são ausências (a
+/// fita de gradiente que não se monta, o `fork` que não se faz), e um interruptor para as ligar de
+/// volta seria produto a carregar a versão lenta para sempre. Quem alterna é o arnês de mutação, e
+/// a comparação é **intercalada** (A,B,A,B) para a deriva da máquina não se colar a um dos lados.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_what_the_tape_budget_buys --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_tape_budget_buys() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use ph2d_field_eval::hybrid::{FLOAT_TAPES, GRAD_TAPES};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!("tamanho | arestas | ms (mediana de 7) | regiões | fitas float | fitas grad");
+    for (w, h) in [(640u32, 360u32), (1920, 1080)] {
+        for n in [168usize, 672] {
+            let contour: Vec<[f32; 2]> = (0..n)
+                .map(|i| {
+                    let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                    [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+                })
+                .collect();
+            let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+            let doc = FieldDoc::new(
+                vec![ph2d_field_eval::leaf(
+                    Primitive::Extrude {
+                        profile,
+                        half_height: 0.4,
+                        round: 0.06,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("extrusão");
+            let _ = crate::trace(&doc, &reg, &cam, w, h);
+            SPECIALISED.store(0, Ordering::Relaxed);
+            FLOAT_TAPES.store(0, Ordering::Relaxed);
+            GRAD_TAPES.store(0, Ordering::Relaxed);
+            let mut ms: Vec<f64> = (0..7)
+                .map(|_| {
+                    let t = std::time::Instant::now();
+                    let _ = crate::trace(&doc, &reg, &cam, w, h);
+                    t.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect();
+            ms.sort_by(f64::total_cmp);
+            println!(
+                "{w:4}x{h:4} | {n:7} | {:17.1} | {:7} | {:11} | {:10}",
+                ms[3],
+                SPECIALISED.load(Ordering::Relaxed) / 7,
+                FLOAT_TAPES.load(Ordering::Relaxed) / 7,
+                GRAD_TAPES.load(Ordering::Relaxed) / 7,
+            );
         }
     }
 }

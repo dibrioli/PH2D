@@ -635,7 +635,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `ISO`/`LNK` **caem na mesma**: ganha o `ISO`, que é um estado da **VISTA** a explicar por que o
   resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
   a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
-  ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §58):
+  ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §70):
   ✅ **o teto de `Resolution` sobe 16 → 64** — a régua que faltava é um contorno de curvatura
   **VARIÁVEL** (elipse `4:1`, ponta `16×` mais curva que o lado), e a lei `θ ≈ √(8·tol/R)` confirma-se
   em quatro pontos: **dobrar o nível divide o salto de normal por `√2`**, logo *cada duplicação deixa
@@ -682,7 +682,7 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   montadas** na segunda passagem do traçado (tecto: parte dos 26 % do quadro **assente**) ·
   ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`): alvo **grosso** sobre uma
   `uv_sphere(48,32)` — a `line/quadextract` é a dona.
-  ⛔ **RECUSAS MEDIDAS — não as reconstrua** (mecanismo no doc §57 e §65): especializar a **segunda
+  ⛔ **RECUSAS MEDIDAS — não as reconstrua** (mecanismo no doc §69 e §65): especializar a **segunda
   passagem** do traçado por ladrilho é **neutro a pior** (a montagem amortiza-se por 4 096 raios na
   primária e ~256 na de borda) · o vínculo à escultura **viva** custa 229–389 ms a 128³ contra um
   quadro de 16,7 · a grade **fina** para a cadeia de quads é 107× o preço para a mesma resposta, e

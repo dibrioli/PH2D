@@ -144,18 +144,20 @@ pub(crate) fn march_slabs(
         }
         // ⚠️ **Só agora** se monta a árvore — a montagem é 96% JIT (medido: 2 334 µs de 2 430 por
         // ladrilho a 168 arestas) e é ela que paga o preço de `N`.
-        let owned;
-        let shape = match shape_of(k) {
-            Some(s) => {
-                owned = s;
-                &owned
-            }
-            None => scene.shape,
-        };
         // Um avaliador POR LOTE: a `fidget` precisa de estado mutável para avaliar, e partilhá-lo
-        // entre threads exigiria trava. Criar o próprio é barato e mantém a escrita disjunta, que é
-        // a condição do ADR-0109.
-        let mut eval = shape.fork();
+        // entre threads exigiria trava. Criar o próprio mantém a escrita disjunta, que é a condição
+        // do ADR-0109.
+        //
+        // ⭐⭐⭐ **Mas a fita ESPECIALIZADA já é nossa, e forká-la era montá-la duas vezes** (W70).
+        // O `shape_of(k)` devolve um `Hybrid` acabado de construir para esta fatia, que ninguém
+        // mais vê; o `fork` dele compilava **outra** fita idêntica (medido: `2,89 ms` contra os
+        // `2,85` da construção) e deitava a primeira fora. *Um `fork` é para partilhar o que é de
+        // outro; o que já é nosso avalia-se directamente.* Só o caminho não especializado forka —
+        // ali o `scene.shape` **é** partilhado entre as threads do lote.
+        let mut eval = match shape_of(k) {
+            Some(s) => s,
+            None => scene.shape.fork(),
+        };
         landed.clear();
         for _ in 0..MAX_STEPS {
             if cur.is_empty() {

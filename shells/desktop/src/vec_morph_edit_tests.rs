@@ -320,6 +320,17 @@ fn the_arrow_click_reaches_the_world() {
             "crate::morph_machine_drive::drives(self.morph_preview, self.ui_state_live),\n                self.fixed_step.fixed_dt(),",
             "DIRIGIR a maquina pelo MODO, e nao pelo playhead -- e LARGAR enquanto os States agem",
         ),
+        // ⭐⭐⭐ **E a RECONCILIAÇÃO corre FORA do modo** (W11g): a lista de estados é derivada dos
+        // filhos, mas o par que a cena desenha é guardado — e o ⊘ corre com a pré-visualização
+        // desligada. ⛔ Sem esta chamada o conjunto continua a cozer a forma que saiu, e o painel
+        // continua a nomeá-la: é o 3.º report do Enio.
+        (
+            "crate::morph_machine_drive::reconcile(",
+            // ⚠️ A agulha e' o NOME da porta e nao a chamada inteira: o `cargo fmt` quebra a
+            // chamada em cinco linhas assim que ela passa da largura, e uma agulha multi-linha
+            // fica refem da formatacao em vez de medir a fiacao.
+            "RECONCILIAR o par desenhado com a lista de estados, todo quadro",
+        ),
     ] {
         assert!(
             shell.contains(needle),

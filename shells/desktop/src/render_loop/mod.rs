@@ -8034,6 +8034,16 @@ impl crate::App {
             // ⛔ **O playhead deixou de ser a porta**, e a troca é a cura de um report do Enio
             // (2026-08-25): o Play **não tranca o teclado do editor**, então com ele a andar as
             // setas do teclado morfavam a forma *e* moviam as formas. Este modo tranca.
+            // ⭐⭐⭐ **A RECONCILIAÇÃO, todo quadro e FORA do modo** (W11g, 3.º report do Enio): a
+            // lista de estados é derivada dos filhos, mas o par que a cena DESENHA é guardado —
+            // e o ⊘ (que corre fora da pré-visualização) podia deixá-lo a nomear a forma que
+            // acabou de sair. ⚠️ **Antes do `tick`**, para a máquina renascer semeada pelo mundo
+            // já arrumado.
+            crate::morph_machine_drive::reconcile(
+                &mut self.morph_machines,
+                sim,
+                &self.vec_entities,
+            );
             crate::morph_machine_drive::tick(
                 &mut self.morph_machines,
                 sim,

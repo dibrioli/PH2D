@@ -1025,3 +1025,65 @@ contar o trabalho ENTREGUE.*
 **Cinco mutações, todas sangram:** `is_set_member` sempre `false` · `is_set_member` a ignorar o
 `ChildOf` · o `disconnect` a voltar a remover o `Visibility` · o `disconnect_row` a ignorar a
 fronteira · a fronteira lida **depois** de desconectar.
+
+---
+
+## §13 — ⭐⭐⭐ W11g: o RESQUÍCIO do ⊘ (3.º report) — *a lista é derivada, o par desenhado é guardado*
+
+> Enio, 2026-08-26: *"desconectar muda correctamente na hierarquia e painel, mas deixa a imagem de
+> resquício no canvas e o nome de resquício no painel"*
+
+### §13.1 — Um mecanismo, dois resquícios
+
+MEDIDO com sonda: um conjunto a mostrar a forma `0`, o artista carrega no ⊘ **dessa** forma, e o
+`VecMorph::sources` fica em **`[0, 0]`** com a lista já em `[1, 2, 3]`.
+
+| o que o Enio viu | quem o produz |
+|---|---|
+| *"imagem de resquício no canvas"* | o `morph_live::recook` continua a cozer a forma que saiu ⇒ ela aparece **duas vezes**: solta no sítio dela, e **clonada** dentro do conjunto |
+| *"nome de resquício no painel"* | o `vec_morph_edit::publish` lê `sources[1]` para o readout ⇒ o painel **nomeia** a forma que já não é estado |
+
+⚠️ **É a MESMA família da W11f, um valor depois.** A W11 tornou a **lista** derivada e deixou dois
+valores **guardados** sem quem os acompanhasse: a **visibilidade** (curada ontem) e o **par
+desenhado** (hoje). ⛔ Um terceiro candidato fica coberto pela mesma varredura: uma forma **apagada**
+também sai dos `Children`.
+
+### §13.2 — A lei
+
+⇒ `morph_machine_drive::reconcile`, **todo quadro e FORA do modo** (o ⊘ corre com a
+pré-visualização desligada): se um lado do par não é membro, o par **colapsa** num que seja; se
+nenhum, no primeiro estado.
+
+⭐ **E a máquina viva é LARGADA junto**, em vez de corrigida — ela renasce **semeada pelo mundo**
+que a varredura acabou de arrumar (a cura da W11d). ⚠️ Escrita **directa**, não pelo ledger: é a
+consequência documental de um gesto do artista, e o `post_frame_undo` regista-a **junto** com ele.
+
+### §13.3 — ⛔⛔ Duas mutações SOBREVIVERAM, e são de espécies opostas
+
+1. **Um buraco real:** apagar o `machines.remove(&bits)` deixava a suíte inteira verde — **nenhum
+   gate corria o `tick` DEPOIS da varredura**, e sem ele o resquício **volta no quadro seguinte**,
+   só dentro do modo de pré-visualização (que é onde o ▶ acabou de pôr o artista). ⇒
+   `the_ghost_does_not_come_back_on_the_next_tick`.
+2. **Uma afirmação sobre NADA:** eu documentei que *"o destino tem precedência sobre a origem"*.
+   A guarda anterior já sai cedo quando os dois são membros ⇒ **no máximo um** passa o `find`, e
+   trocar a ordem **não muda uma única resposta**. A cura foi **apagar a afirmação**, não inventar
+   um gate para ela.
+
+⚠️ **É a 5.ª ocorrência do padrão nesta linha**, e a medição refinou-o: o dano vive **um passo à
+frente** do que o gate da feature olha — noutro subsistema, ou **no quadro seguinte**. Registado em
+`project-memory/feedback_i_write_the_right_guard_and_do_not_gate_it.md`.
+
+### §13.4 — Gates
+
+| Gate | O que afirma |
+|---|---|
+| `disconnecting_the_shown_shape_leaves_no_ghost` | depois do ⊘ o par nomeia **membros**, e colapsa numa forma só |
+| `the_reconcile_keeps_what_the_canvas_shows` | tirar uma forma **invisível** não muda o que se vê |
+| `the_ghost_does_not_come_back_on_the_next_tick` | a máquina viva não repõe a forma que saiu |
+| `the_arrow_click_reaches_the_world` (censo) | passa a exigir a chamada do `reconcile` na shell |
+
+⚠️ A agulha do censo é o **nome da porta** e não a chamada inteira: o `cargo fmt` quebra-a em cinco
+linhas assim que ela passa da largura, e uma agulha multi-linha fica refém da formatação em vez de
+medir a fiação.
+
+**Três mutações, todas sangram.**

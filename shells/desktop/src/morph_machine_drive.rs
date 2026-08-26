@@ -233,6 +233,96 @@ pub(crate) fn play(
     open(machines, sim, host, &graph).travel(&graph, row)
 }
 
+/// ⭐⭐⭐ **O PAR DESENHADO TEM DE NOMEAR MEMBROS** — a reconciliação, todo quadro (plano 32 W11g).
+///
+/// Enio, 2026-08-26, 3.º report: *"desconectar muda correctamente na hierarquia e painel, mas deixa
+/// a imagem de resquício no canvas e o nome de resquício no painel"*.
+///
+/// # ⛔⛔ O mecanismo, medido
+///
+/// A lista de estados é **derivada** dos filhos (W11) — mas o par que a cena DESENHA
+/// (`VecMorph::sources`) é **guardado**, e nada o reconciliava. Medido: um conjunto a mostrar a
+/// forma `0`, o artista carrega no ⊘ dessa forma, e o `sources` fica em **`[0, 0]`** com a lista já
+/// em `[1, 2, 3]`. ⇒ **dois** resquícios, um mecanismo:
+///
+/// - o `morph_live::recook` continua a cozer a forma que saiu ⇒ ela aparece **duas vezes** no
+///   canvas (solta, no sítio dela, e clonada dentro do conjunto);
+/// - o `vec_morph_edit::publish` lê `sources[1]` para o readout ⇒ o painel **nomeia** a forma que
+///   já não é estado.
+///
+/// ⚠️ **É a MESMA família da W11f**, um valor depois: *a lista passou a ser derivada e dois valores
+/// guardados não a acompanharam* — a visibilidade ontem, o par hoje. ⛔ O terceiro candidato está
+/// coberto pela mesma varredura: uma forma **apagada** também sai dos `Children`.
+///
+/// # A lei
+///
+/// ⇒ **se um lado do par não é membro, o par colapsa num que seja** — preferindo o **destino**
+/// (é o que a cena mostra), depois a origem, depois o primeiro estado. *Uma forma desenhada tem de
+/// ser um estado; um estado que saiu não desenha.*
+///
+/// ⭐ **E a máquina viva é LARGADA junto**, em vez de corrigida: ela renasce **semeada pelo mundo**
+/// ([`open`]) — que a varredura acabou de arrumar. Sem isso, o `tick` seguinte reescreveria a forma
+/// que saiu, porque o `current` dela ainda a nomeia. *A cura da W11d é o que torna esta barata.*
+///
+/// ⛔⛔ **Esta metade sobreviveu a uma mutação** (2026-08-26): nenhum gate corria o `tick` DEPOIS da
+/// varredura, então apagar o `machines.remove` deixava a suíte inteira verde — e o resquício
+/// voltava no quadro seguinte, **só dentro do modo de pré-visualização**, que é onde o artista
+/// acabou de estar (o ▶ liga-o). Hoje há
+/// `the_ghost_does_not_come_back_on_the_next_tick`.
+///
+/// ⚠️ **Escrita DIRECTA, não pelo ledger:** isto não é pré-visualização — é a consequência
+/// documental de um gesto do artista (o ⊘), e o `post_frame_undo` regista-a **junto** com ele.
+///
+/// Devolve quantos conjuntos foram arrumados (diagnóstico e gate).
+pub(crate) fn reconcile(
+    machines: &mut MorphMachines,
+    sim: &mut SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+) -> usize {
+    let hosts: Vec<u64> = sim
+        .world_mut()
+        .query::<(Entity, &VecMorphMachine)>()
+        .iter(sim.world())
+        .map(|(e, _)| e.to_bits())
+        .collect();
+    let mut fixed = 0;
+    for bits in hosts {
+        let e = Entity::from_bits(bits);
+        let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
+        let Some(m) = sim.world().get::<VecMorph>(e) else {
+            continue;
+        };
+        let (a, b) = (m.sources[0], m.sources[1]);
+        if shapes.contains(&a) && shapes.contains(&b) {
+            continue;
+        }
+        // ⚠️ **O que SOBREVIVE dos dois é o que fica** — e a ordem entre eles é **indiferente**,
+        // medido: a guarda acima já saiu cedo quando os dois são membros, então no máximo **um**
+        // deles passa este `find`. ⛔ A 1.ª redacção afirmava que o destino tinha precedência
+        // *"porque é ele que a cena mostra"* — verdade sobre o produto, e **uma afirmação sobre
+        // nada** aqui: trocar a ordem não muda uma única resposta, e a mutação que a trocou
+        // sobreviveu à suíte inteira. *Uma afirmação que mutação nenhuma mata é uma afirmação
+        // sobre nada.*
+        //
+        // ⇒ o que resta a dizer é o caso em que **nenhum** sobrevive: aí é o primeiro estado, que
+        // é onde uma máquina nova nasceria de qualquer modo.
+        let Some(keep) = [b, a]
+            .into_iter()
+            .find(|s| shapes.contains(s))
+            .or_else(|| shapes.first().copied())
+        else {
+            continue; // conjunto sem estado nenhum: o `disconnect_row` dissolve na fronteira
+        };
+        if let Some(mut m) = sim.world_mut().get_mut::<VecMorph>(e) {
+            m.sources = [keep, keep];
+            m.t = 0.0;
+        }
+        machines.remove(&bits);
+        fixed += 1;
+    }
+    fixed
+}
+
 /// ⭐⭐⭐ **QUEM MANDA NA FORMA QUANDO OS DOIS MOTORES ESTÃO LIGADOS** (plano 32 W11e).
 ///
 /// Enio, 2026-08-26, 2.º report: *"Ao ligar o preview Default não segurou wide e está em tall. No

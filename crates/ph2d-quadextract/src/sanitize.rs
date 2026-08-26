@@ -46,6 +46,13 @@ pub(crate) struct SanitizeStats {
     /// ⛔ Arestas interiores cuja transição não se deixou reler **exactamente** dos
     /// valores saneados. Zero é o único resultado bom.
     pub inexact_transitions: usize,
+    /// ⛔⛔⛔ **Recursos de transição que NÃO aproximam** — a imagem de `a1` cai a mais de
+    /// meia célula de `a2`. `> 0` é vermelho: uma transição dessas manda o traçado para
+    /// outra parte da peça, e era exactamente o que a identidade fazia.
+    ///
+    /// ⭐ Medido 2026-08-25 na peça do artista: **`4`** com o recurso antigo, **`1`** com o
+    /// novo. Nas peças do corpus sem o defeito: `0` nos dois.
+    pub far_fallbacks: usize,
     /// A distribuição de valências, indexada por valência (`0..=15`).
     pub valence: [usize; 16],
     /// ⭐ Quantas vezes o ângulo e a **holonomia** discordaram sobre a valência, e a
@@ -105,7 +112,9 @@ pub(crate) fn sanitize(topo: &mut Topo, valence_hint: Option<&[u8]>) -> Sanitize
         }
     }
     st.late_collapsed = late_collapse(topo);
-    st.inexact_transitions = rederive_exact(topo);
+    let (bad, far) = rederive_exact(topo);
+    st.inexact_transitions = bad;
+    st.far_fallbacks = far;
     st
 }
 
@@ -281,8 +290,9 @@ fn late_collapse(topo: &mut Topo) -> usize {
 /// vértices da aresta ao mesmo tempo. Uma que não dê nomeia o sítio exacto onde o
 /// mapa não é de grade inteira — e é ela, e não um `assert` de compilação, que
 /// separa um mapa saneado de um mapa quase saneado.
-fn rederive_exact(topo: &mut Topo) -> usize {
+fn rederive_exact(topo: &mut Topo) -> (usize, usize) {
     let mut bad = 0usize;
+    let mut far = 0usize;
     let n = topo.tris.len();
     let mut out = vec![[Xf::IDENTITY; 3]; n];
     // ⚠️ Mesma razão do irmão em [`crate::ingest`]: o `k` indexa o canto `k` e o
@@ -317,11 +327,41 @@ fn rederive_exact(topo: &mut Topo) -> usize {
                 Some(x) => out[f][k] = x,
                 None => {
                     bad += 1;
-                    out[f][k] = topo.xf[f][k];
+                    // ⛔⛔⛔ **O RECURSO ERA `topo.xf[f][k]`, E ISSO PODE SER A IDENTIDADE.**
+                    //
+                    // Ele lia o valor derivado no [`crate::ingest`]. ⚠️ **Mas a
+                    // [`late_collapse`] renumera as faces e repõe o `xf` inteiro a
+                    // `IDENTITY`** antes desta função correr — e ela corre logo acima.
+                    // Nas peças em que ela mexe, este ramo devolvia **a identidade** para
+                    // uma aresta que precisa de rotação e translação. *Uma transição
+                    // identidade entre duas cartas que não coincidem manda o traçado para
+                    // outra parte da peça, e nenhum gate de integralidade a apanha.*
+                    //
+                    // ⭐ O recurso passa a ser a **melhor transição disponível**, com a
+                    // mesma lei do ingest — mas calculada sobre o `uv` **de agora**, que a
+                    // propagação desta fase já corrigiu. *Um recurso que é a identidade é
+                    // uma mentira; um que é a melhor aproximação é uma aproximação.*
+                    let (r, _) = crate::ingest::best_rotation(d1, d2);
+                    let rot = Xf::rot(r, a1);
+                    let (t, _) =
+                        crate::ingest::round_to_cells([a2[0] - rot[0], a2[1] - rot[1]], topo.one);
+                    out[f][k] = Xf { r, t };
                 }
+            }
+            // ⭐⭐⭐ **O RECURSO TEM DE APROXIMAR, e isto mede-o.**
+            //
+            // Uma transição correcta leva `a1` a `a2`; um recurso honesto leva-o a menos de
+            // **meia célula** — é o que o arredondamento a células pode custar. ⚠️ *A
+            // identidade não tem essa propriedade, e é assim que ela se apanha* sem depender
+            // de a peça exibir a combinação rara que a produzia.
+            let img = out[f][k].apply(a1);
+            let d = [(img[0] - a2[0]) as f64, (img[1] - a2[1]) as f64];
+            let half = topo.one as f64 * 0.5;
+            if d[0].mul_add(d[0], d[1] * d[1]) > half * half {
+                far += 1;
             }
         }
     }
     topo.xf = out;
-    bad
+    (bad, far)
 }

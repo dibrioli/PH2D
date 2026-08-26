@@ -378,11 +378,12 @@ fn main() {
             let shape = ph2d_quadfill::quad_shape(&out);
             println!(
                 "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} · ⭐ {} \
-                 FRACCIONARIAS (desencontro de comprimento {:.3e} · rotacao {:.3e}) | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
+                 FRACCIONARIAS (⭐ {} lados < 1/100 de celula, {} < 1/10 · rotacao {:.3e}) | {} nos ({} vertice, {} aresta, {} face) | {} dobras",
                 e.shift_residual_p50,
                 e.shift_residual,
                 e.shift_fractional,
-                e.seam_length_gap,
+                e.tiny_edges,
+                e.short_edges,
                 e.rot_residual,
                 e.vertex_nodes + e.edge_nodes + e.face_nodes,
                 e.vertex_nodes,
@@ -434,8 +435,14 @@ fn main() {
             }
             println!(
                 "  ⭐⭐ SANEAMENTO: {} arestas colapsadas + {} tardias · {} faces MORTAS · \
-                 {} triangulos degenerados no dominio",
-                e.collapsed_edges, e.late_collapsed, e.dead_faces, e.degenerate_faces
+                 {} triangulos degenerados no dominio · ⛔⛔ {} TRANSICOES INEXACTAS \
+                 (⛔ {} delas SEM APROXIMAR)",
+                e.collapsed_edges,
+                e.late_collapsed,
+                e.dead_faces,
+                e.degenerate_faces,
+                e.inexact_transitions,
+                e.far_fallbacks
             );
             println!(
                 "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira ({} com NO' la' / ⭐ {} sobre uma ARESTA) + \

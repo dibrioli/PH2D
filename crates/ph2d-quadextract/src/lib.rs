@@ -149,8 +149,15 @@ pub struct ExtractReport {
     pub shift_fractional: usize,
     /// ⭐⭐⭐ O pior desencontro relativo de comprimento nas transições fraccionárias.
     pub seam_length_gap: f64,
+    /// ⭐⭐⭐ Lados cuja imagem é mais curta que `1/100` de célula.
+    pub tiny_edges: usize,
+    /// Lados mais curtos que `1/10` de célula.
+    pub short_edges: usize,
     /// ⛔ Transições que não se deixaram reler **exactamente** dos valores saneados.
     pub inexact_transitions: usize,
+    /// ⛔⛔⛔ Recursos de transição que **não aproximam** — ver
+    /// [`crate::sanitize::SanitizeReport::far_fallbacks`]. `> 0` é vermelho.
+    pub far_fallbacks: usize,
     // ── saneamento
     /// Vértices pregados no ponto fixo de uma holonomia com rotação.
     pub pinned_fixed: usize,
@@ -305,7 +312,10 @@ pub fn extract(
         shift_residual_p50: ing.shift_residual_p50,
         shift_fractional: ing.shift_fractional,
         seam_length_gap: ing.seam_length_gap,
+        tiny_edges: ing.tiny_edges,
+        short_edges: ing.short_edges,
         inexact_transitions: san.inexact_transitions,
+        far_fallbacks: san.far_fallbacks,
         pinned_fixed: san.pinned_fixed,
         pinned_integer: san.pinned_integer,
         open_fans: san.open_fans,

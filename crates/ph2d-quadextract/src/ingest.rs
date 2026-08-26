@@ -59,6 +59,11 @@ pub(crate) struct IngestStats {
     /// aresta, entre as transições fraccionárias. Uma rotação preserva comprimento ⇒ um
     /// valor não-nulo aqui diz que o defeito é do MAPA, não da translação.
     pub seam_length_gap: f64,
+    /// ⭐⭐⭐ **Lados cuja imagem no domínio é mais curta que `1/100` de célula** — o que as
+    /// duas leis de colapso, sendo de igualdade EXACTA, não apanham.
+    pub tiny_edges: usize,
+    /// Lados mais curtos que `1/10` de célula.
+    pub short_edges: usize,
     /// ⭐⭐⭐ **O pior resíduo da TRANSLAÇÃO**, em células. ⛔ A extracção **assume**
     /// que ele é zero: um mapa cuja translação de costura não seja inteira tem as
     /// duas grades desalinhadas, e o saneamento só arredonda o erro para dentro.
@@ -257,12 +262,15 @@ pub(crate) fn ingest(map: &CornerMap) -> Result<(Topo, IngestStats), ExtractErro
         verts: verts as usize,
         one,
     };
-    let (xf, rot_res, sh_res, sh_p50, sh_frac, len_gap) = derive_transitions(&topo, map, one);
+    let (xf, rot_res, sh_res, sh_p50, sh_frac, len_gap, tiny, short) =
+        derive_transitions(&topo, map, one);
     st.rot_residual = rot_res;
     st.shift_residual = sh_res;
     st.shift_residual_p50 = sh_p50;
     st.shift_fractional = sh_frac;
     st.seam_length_gap = len_gap;
+    st.tiny_edges = tiny;
+    st.short_edges = short;
     topo.xf = xf;
     Ok((topo, st))
 }
@@ -315,13 +323,15 @@ fn derive_transitions(
     topo: &Topo,
     map: &CornerMap,
     one: i64,
-) -> (Vec<[Xf; 3]>, f64, f64, f64, usize, f64) {
+) -> (Vec<[Xf; 3]>, f64, f64, f64, usize, f64, usize, usize) {
     let mut xf = vec![[Xf::IDENTITY; 3]; topo.tris.len()];
     let mut rot_res = 0.0f64;
     let mut sh_res = 0.0f64;
     let mut all: Vec<f64> = Vec::new();
     let mut len_gap = 0.0f64;
     let mut len_gaps: Vec<f64> = Vec::new();
+    let mut tiny = 0usize;
+    let mut short = 0usize;
     let _ = map;
     // ⚠️ Os índices percorrem QUATRO tabelas paralelas (`twin`, `uv`, `xf` e os
     // cantos rodados), e nenhuma delas se deixa iterar junto das outras: o `k` de uma
@@ -341,6 +351,21 @@ fn derive_transitions(
             let b2 = topo.uv[g][j];
             let d1 = [b1[0] - a1[0], b1[1] - a1[1]];
             let d2 = [b2[0] - a2[0], b2[1] - a2[1]];
+            // ⭐⭐⭐ **QUÃO CURTA é a imagem desta aresta, em células.**
+            //
+            // ⛔⛔ **As duas leis de colapso desta crate testam IGUALDADE EXACTA**
+            // (`raw[f][k] == raw[f][k+1]` e o irmão em [`crate::sanitize`]), e a grade de
+            // truncagem é **muito mais fina que uma célula** — ela existe para a aritmética
+            // exacta. ⇒ uma aresta de `0,0024` de célula **não é zero** e sobrevive, apesar
+            // de ser degenerada para todo efeito prático: nenhuma rotação está definida
+            // sobre ela, e a transição sai com o que calhar.
+            let cells = ((d1[0] as f64).hypot(d1[1] as f64)) / one as f64;
+            if cells < 1.0e-2 {
+                tiny += 1;
+            }
+            if cells < 1.0e-1 {
+                short += 1;
+            }
             let (r, rr) = best_rotation(d1, d2);
             rot_res = rot_res.max(rr);
             let rot = Xf::rot(r, a1);
@@ -360,6 +385,17 @@ fn derive_transitions(
                 let l2 = ((d2[0] as f64).hypot(d2[1] as f64)) / one as f64;
                 len_gap = len_gap.max((l1 - l2).abs() / l1.max(1.0e-12));
                 len_gaps.push((l1 - l2).abs() / l1.max(1.0e-12));
+                // ⚠️ **Uma amostra concreta vale mais que a estatística aqui**: as oito são
+                // poucas e específicas, e o que decide a cura é *o que elas são*, não a
+                // distribuição delas. Sai por env para não poluir o caminho normal.
+                if std::env::var("PH2D_DUMP_FRAC").as_deref() == Ok("1") {
+                    let vs = (topo.tris[f], topo.tris[g]);
+                    eprintln!(
+                        "  [frac] face {f} lado {k} <-> face {g} lado {j} | rot {r} res {rr:.4} \
+                         | |d1| {l1:.4} |d2| {l2:.4} celulas | resto {tr:.4} \
+                         | verts {vs:?}"
+                    );
+                }
             }
             xf[f][k] = Xf { r, t: ti };
         }
@@ -377,7 +413,7 @@ fn derive_transitions(
     // só a contagem diz o tamanho.*
     let fractional = all.iter().filter(|r| **r > 1.0e-3).count();
     let _ = len_gaps;
-    (xf, rot_res, sh_res, p50, fractional, len_gap)
+    (xf, rot_res, sh_res, p50, fractional, len_gap, tiny, short)
 }
 
 /// A rotação de quarto de volta que melhor leva `d1` a `d2`, e o resíduo dela.
@@ -385,7 +421,7 @@ fn derive_transitions(
 /// ⚠️ **O resíduo é medido em quartos de volta** e não em radianos: é a grandeza em
 /// que o arredondamento decide, e reportá-la noutra unidade obrigaria quem lê a
 /// converter para saber se está perto de meio passo.
-fn best_rotation(d1: P, d2: P) -> (u8, f64) {
+pub(crate) fn best_rotation(d1: P, d2: P) -> (u8, f64) {
     #[allow(clippy::cast_precision_loss)]
     let (x1, y1) = (d1[0] as f64, d1[1] as f64);
     #[allow(clippy::cast_precision_loss)]
@@ -406,7 +442,7 @@ fn best_rotation(d1: P, d2: P) -> (u8, f64) {
 
 /// Arredonda uma translação para o múltiplo de célula mais próximo, devolvendo o
 /// resíduo em células.
-fn round_to_cells(t: P, one: i64) -> (P, f64) {
+pub(crate) fn round_to_cells(t: P, one: i64) -> (P, f64) {
     let mut out = [0i64; 2];
     let mut worst = 0.0f64;
     for i in 0..2 {

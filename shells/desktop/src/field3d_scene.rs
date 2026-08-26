@@ -356,6 +356,20 @@ pub(crate) fn sync_scene_and_birth(
             created = Some(e.to_bits());
         }
     }
+    // ⭐⭐⭐ **A CHAVE NOVA da escultura religada** (W76) — o terceiro salto do pedido.
+    //
+    // ⚠️ **Escrever a chave é o que faz a cura DURAR:** ela é o que o `ProjectFile` guarda e o que o
+    // `resolve_missing` vai ler na próxima abertura. Registar o campo novo sob a chave velha faria a
+    // peça abrir hoje e falhar outra vez amanhã.
+    //
+    // ⚠️ E é por isso que ela entra como **edição do documento**: o undo regista por diff, então
+    // religar desfaz-se com Ctrl+Z como qualquer outra decisão do artista.
+    if let Some((bits, key)) = crate::field3d_smoke::take_relinked() {
+        let e = bevy_ecs::entity::Entity::from_bits(bits);
+        if let Some(mut node) = world.get_mut::<ph2d_field_ecs::FieldNode>(e) {
+            node.shape = ph2d_field::NodeShape::Sampled { key };
+        }
+    }
     if let Some(key) = crate::field3d_smoke::take_pending_sculpt() {
         let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
         if let Ok(e) = ph2d_field_ecs::add_sampled(world, parent, &key, cam.target) {
@@ -467,7 +481,11 @@ mod intents;
 
 #[path = "field3d_scene_panel.rs"]
 mod panel;
-pub(crate) use panel::{link_badges, new_shape_size, op_at, publish_snapshot, shape_at};
+
+#[path = "field3d_scene_acts.rs"]
+mod acts;
+pub(crate) use acts::link_badges;
+pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};
 
 /// **Onde uma forma nova entra** — perto do que está selecionado.
 ///

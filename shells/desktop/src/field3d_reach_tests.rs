@@ -202,7 +202,7 @@ const ROWS: &[Row] = &[
         intent: |slot| ModelIntent::Act { slot },
         // ⚠️ **Derivado do `ACTS`**, nunca um literal: a W38 acrescentou o *Isolate* no fim, e um
         // `2` escrito à mão deixaria o botão novo fora da varredura — verde a medir menos.
-        slots: crate::field3d_scene::panel::ACTS.len(),
+        slots: crate::field3d_scene::acts::ACTS.len(),
     },
 ];
 

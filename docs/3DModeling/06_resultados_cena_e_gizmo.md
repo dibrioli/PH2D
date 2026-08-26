@@ -5752,13 +5752,16 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
 | ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
 | ✅ Vários `VecPath` separados | ⭐ era um defeito MUDO, curado: uma peça por forma, todas ligadas | §75 |
-| ⏸️ Religar uma escultura que mudou de sítio | pede UI | §40 |
+| ✅ Religar uma escultura que mudou de sítio | ⭐ `Relink Sculpture…`, com a chave nova escrita no nó | §77 |
 | ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
 | ✅ A composição de dois `Exact` encadeados | ⛔ **medida: eles COMPÕEM** — a cerca estava errada e a marcha furava | §76 |
 | ⏸️ O gradiente de uma **escultura** (campo interpolado de grelha) | conta um nível, sem medição própria | §76.3 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐ **W76 (§77): a escultura que perdeu o arquivo pode ser RELIGADA** — o aviso da W23 era um beco
+  (a única cura era pôr o arquivo de volta no caminho exacto). O verbo aparece **só a quem perdeu**,
+  a chave **nova** é escrita no nó (senão a peça abre hoje e falha amanhã), e a **pose fica**.
 - ⭐⭐⭐ **W75 (§76): a cerca do passo da marcha estava ERRADA — e a cena 1 do smoke marchava acima
   do seguro desde que existe.** Arredondamentos exactos **encadeados** compõem o factor (`1,96` a
   três níveis contra o `√2` que o passo supunha), e ⭐ **um nó de `n` filhos já é uma corrente de
@@ -6665,3 +6668,57 @@ se perde* — a mesma lição que o `CLAUDE.md` §2 mede em 797 corridas que dev
 
 **Provas de mutação — 3/3 mataram:** a lei velha (qualquer exacto ⇒ `1/√2`) · a profundidade a
 ignorar o que está por baixo · um nó de N filhos a contar `1`.
+
+## §77 — W76: a escultura que perdeu o arquivo pode ser RELIGADA (26/08)
+
+O aviso existia desde a W23 — reabrir um projeto cuja malha mudou de sítio diz *«Sculpture bunny.obj
+is missing»* e a peça abre sem ela. ⛔ **E era um beco:** a única cura era pôr o arquivo de volta no
+caminho **exacto**. *Um aviso que nomeia o problema e não oferece o gesto manda o artista consertar o
+disco.*
+
+### §77.1 — O verbo, e a quem ele aparece
+
+`Relink Sculpture…` entra na fileira de acções — a mesma que já carrega `Unlink` e `Link Drawing`, e
+pela mesma lei (uma fileira que não é fixa, com o slot a resolver-se em **chave** e não em número).
+
+⚠️ **Ele aparece só a quem PERDEU o arquivo**, e a pergunta é feita ao **registo** — a mesma resposta
+parcial que o `field3d_reload::missing_keys` lê. Oferecê-lo a uma escultura que está lá seria um
+verbo sem o que consertar.
+
+⚠️ **E uma chave `scene:` fica de fora**: ela nomeia a escultura **viva** da cena, que não veio de
+arquivo nenhum — pedir um `.obj` para a substituir seria mandar o artista procurar o que nunca
+existiu. Quem a repõe é o `+ Sculpt from scene`, e o `resolve_missing` já lho pede sozinho.
+
+### §77.2 — ⭐ A chave NOVA é o caminho novo, e é isso que faz a cura durar
+
+Registar o arquivo novo sob a chave **velha** faria a peça abrir hoje e falhar outra vez amanhã: a
+chave é o que o `ProjectFile` guarda e o que a próxima abertura vai ler. ⇒ ela é **reescrita no nó**,
+o que também a torna um passo de **undo** — como tem de ser: é uma decisão do artista sobre o
+documento.
+
+⚠️ **A escala fica como está**, ao contrário da importação: a peça já tem a pose que o artista lhe
+deu, e um arquivo novo que a re-enquadrasse desfazia esse trabalho. *Religar troca a fonte, não a
+colocação.*
+
+### §77.3 — Três saltos, e o do meio não é alcançável
+
+*o verbo pede* (a fileira, com o mundo emprestado) → *o app escolhe o arquivo* (um diálogo nativo) →
+*a ponte com a cena escreve a chave* (quem tem o `&mut World`). É a forma que a importação já tinha,
+com um salto a mais porque o alvo é um nó que já existe.
+
+⚠️ **O salto do meio não tem gate** — um diálogo nativo precisa de um app. O que os gates provam são
+os dois que sobram: que o verbo **pede com a entidade certa** e que a resposta **reescreve a chave**.
+
+**Provas de mutação — 3/3 mataram:** religar nunca é oferecido · a escultura viva da cena também o
+oferece · a chave nova não é escrita no nó.
+
+### §77.4 — E o teto de LOC cortou o painel por ASSUNTO
+
+`field3d_scene_panel.rs` passou os `600` do HR-18. O corte é por responsabilidade, e a fronteira já
+existia por dentro: o irmão monta o **retrato** que o painel lê; o
+[`field3d_scene_acts.rs`](../../shells/desktop/src/field3d_scene_acts.rs) responde às duas perguntas
+que dependem de **quem está escolhido** — *que verbos este objecto oferece?* e *que selo ele veste?*.
+
+⚠️ **E o armazenamento dos selos ganhou uma PORTA de escrita** (`publish_badges`): o produtor ficou
+no irmão e o estado mudou de casa, e um `thread_local` visível de fora seria a fronteira a não dizer
+nada. *Quem escreve chama uma função; o estado não sai de casa.*

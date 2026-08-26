@@ -514,7 +514,7 @@ fn the_hierarchy_says_which_row_is_isolated() {
         let badges = crate::field3d_scene::link_badges();
         assert_eq!(
             badges.get(&group.to_bits()).copied(),
-            Some(crate::field3d_scene::panel::ISOLATE_BADGE),
+            Some(crate::field3d_scene::acts::ISOLATE_BADGE),
             "a linha isolada tem de o dizer na Hierarquia"
         );
         assert_eq!(

@@ -10,7 +10,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
 use ph2d_field_ecs::FieldProfileSource;
 
-use crate::field3d_scene::panel::{ACT_LINK, ACT_UNLINK, LINK_BADGE, acts_for, link_badges};
+use crate::field3d_scene::acts::{ACT_LINK, ACT_UNLINK, LINK_BADGE, acts_for, link_badges};
 
 fn a_square() -> Profile {
     Profile::new(
@@ -279,8 +279,138 @@ fn an_isolated_linked_node_shows_the_isolation_not_the_link() {
     );
     assert_eq!(
         link_badges().get(&sel[0].to_bits()).copied(),
-        Some(crate::field3d_scene::panel::ISOLATE_BADGE),
+        Some(crate::field3d_scene::acts::ISOLATE_BADGE),
         "com as duas famílias na mesma linha, quem tem de aparecer é o estado da VISTA"
     );
     crate::field3d_smoke::forget_isolation();
+}
+
+/// Uma peça com uma **escultura** cujo campo o registo não conhece — o estado em que um projeto
+/// abre quando a malha mudou de sítio.
+fn a_lost_sculpture(key: &str) -> (SimWorld, Vec<Entity>) {
+    use ph2d_field::{Blend, Node, NodeKind, NodeShape, Op};
+    let mut sim = SimWorld::new();
+    crate::field3d_scene::sync_scene(
+        &mut sim,
+        Some(
+            &FieldDoc::new(
+                vec![
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Sampled {
+                            key: key.to_string(),
+                        },
+                    ),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op: Op::Union(Blend::Sharp),
+                            children: vec![NodeId(0)],
+                        },
+                    ),
+                ],
+                NodeId(1),
+            )
+            .expect("a peça"),
+        ),
+        0.0,
+    );
+    let world = sim.world_mut();
+    let mut q = world.query::<(Entity, &ph2d_field_ecs::FieldObject)>();
+    let root = q.iter(world).next().map(|(e, _)| e).expect("a peça");
+    let leaf = ph2d_field_ecs::walk(sim.world(), root)
+        .into_iter()
+        .map(|(e, _)| e)
+        .find(|&e| {
+            matches!(
+                sim.world()
+                    .get::<ph2d_field_ecs::FieldNode>(e)
+                    .map(|n| &n.shape),
+                Some(NodeShape::Sampled { .. })
+            )
+        })
+        .expect("a escultura");
+    (sim, vec![leaf])
+}
+
+/// ⭐⭐⭐ **RELIGAR aparece só para a escultura que PERDEU o arquivo** (W76).
+///
+/// ⚠️ **As três metades são o gate.** Só *«aparece quando falta»* e o verbo estaria sempre lá, a
+/// oferecer conserto a quem não está partido; só *«não aparece quando está lá»* e ele não apareceria
+/// nunca. E a terceira é a chave **`scene:`**: ela nomeia a escultura **viva** da cena, que não veio
+/// de arquivo nenhum — pedir um `.obj` para a substituir seria mandar o artista procurar o que nunca
+/// existiu.
+#[test]
+fn relink_is_offered_only_to_a_sculpture_that_lost_its_file() {
+    use crate::field3d_scene::acts::ACT_RELINK;
+
+    let (sim, sel) = a_lost_sculpture("/tmp/uma-malha-que-nao-existe.obj");
+    assert!(
+        acts_for(sim.world(), &sel).contains(&ACT_RELINK),
+        "a escultura sem arquivo TEM de oferecer o conserto"
+    );
+
+    // Com o campo no registo, não há o que religar. ⚠️ Uma esfera analítica chega: o que se mede
+    // é a **presença** da chave, e voxelizar uma malha aqui seria pagar 200 ms para responder
+    // «sim».
+    struct Ball;
+    impl ph2d_field_eval::hybrid::Sampled for Ball {
+        fn at(&self, p: [f32; 3]) -> f32 {
+            (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt() - 0.2
+        }
+        fn bounding_radius(&self) -> f32 {
+            0.2
+        }
+    }
+    crate::field3d_smoke::register_sampled(
+        "/tmp/uma-malha-que-nao-existe.obj",
+        std::sync::Arc::new(Ball),
+    );
+    let (sim, sel) = a_lost_sculpture("/tmp/uma-malha-que-nao-existe.obj");
+    assert!(
+        !acts_for(sim.world(), &sel).contains(&ACT_RELINK),
+        "uma escultura que está lá não tem o que consertar"
+    );
+
+    // ⚠️ E a escultura VIVA da cena nunca o oferece, mesmo ausente do registo.
+    let (sim, sel) = a_lost_sculpture(crate::field3d_import::SCENE_KEY);
+    assert!(
+        !acts_for(sim.world(), &sel).contains(&ACT_RELINK),
+        "uma chave `scene:` não é um arquivo — quem a repõe é o `+ Sculpt from scene`"
+    );
+}
+
+/// ⭐⭐ **E o pedido atravessa até à CHAVE do nó** (W76) — os saltos que um teste alcança.
+///
+/// ⚠️ **O salto do meio não é alcançável**: escolher o arquivo é um diálogo nativo, e ele precisa de
+/// um app. O que este gate prova são os dois que sobram — que o verbo **pede** com a entidade certa,
+/// e que a resposta **reescreve a chave** —, e é a reescrita que faz a cura durar: ela é o que o
+/// arquivo do projeto guarda e o que a próxima abertura vai ler.
+#[test]
+fn the_relink_answer_rewrites_the_key_on_the_node() {
+    use ph2d_field::NodeShape;
+    let _ = crate::field3d_smoke::take_relink_request();
+    let _ = crate::field3d_smoke::take_relinked();
+
+    let (mut sim, sel) = a_lost_sculpture("/tmp/a-que-sumiu.obj");
+    let e = sel[0];
+    crate::field3d_smoke::ask_relink_sculpt(e.to_bits());
+    assert_eq!(
+        crate::field3d_smoke::take_relink_request(),
+        Some(e.to_bits()),
+        "o verbo pede pela entidade escolhida"
+    );
+
+    crate::field3d_smoke::ask_relinked(e.to_bits(), "/tmp/a-nova.obj".to_string());
+    crate::field3d_scene::sync_scene(&mut sim, None, 0.0);
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_field_ecs::FieldNode>(e)
+            .map(|n| match &n.shape {
+                NodeShape::Sampled { key } => key.clone(),
+                _ => "não é escultura".to_string(),
+            }),
+        Some("/tmp/a-nova.obj".to_string()),
+        "a chave nova tem de ficar NO NÓ — senão a peça abre hoje e falha outra vez amanhã"
+    );
 }

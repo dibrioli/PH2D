@@ -302,6 +302,38 @@ thread_local! {
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
+/// ⭐⭐⭐ **O pedido de RELIGAR uma escultura** (W76) — o nó que perdeu o arquivo.
+///
+/// ⚠️ Ele atravessa por aqui pela razão dos irmãos, e por uma a mais: quem abre um **diálogo** é o
+/// app, e quem tem o `&mut World` para escrever a chave nova é a ponte com a cena. São **três**
+/// saltos — o verbo pede, o app escolhe o arquivo, a ponte escreve —, e cada um só sabe fazer o
+/// seu.
+pub(crate) fn take_relink_request() -> Option<u64> {
+    RELINK_REQ.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_relink_sculpt(entity: u64) {
+    RELINK_REQ.with(|c| c.set(Some(entity)));
+}
+
+thread_local! {
+    static RELINK_REQ: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// ⭐⭐ **A escultura já escolhida, à espera de virar a chave nova** — a volta do pedido.
+pub(crate) fn take_relinked() -> Option<(u64, String)> {
+    RELINKED.with(|c| c.borrow_mut().take())
+}
+
+pub(crate) fn ask_relinked(entity: u64, key: String) {
+    RELINKED.with(|c| *c.borrow_mut() = Some((entity, key)));
+}
+
+thread_local! {
+    static RELINKED: std::cell::RefCell<Option<(u64, String)>> =
+        const { std::cell::RefCell::new(None) };
+}
+
 /// ⭐ **O pedido de trazer a escultura DA CENA** (W39) — tirado uma vez, como os irmãos.
 ///
 /// ⚠️ Ele atravessa por aqui e não é servido na hora pela razão de sempre: quem tem a escultura

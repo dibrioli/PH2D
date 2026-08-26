@@ -9409,6 +9409,11 @@ impl crate::App {
             if crate::field3d_smoke::take_import_request() {
                 crate::field3d_import::field3d_import(toasts);
             }
+            // ⭐⭐⭐ **E o de RELIGAR** (W76), pela mesma porta e pelo mesmo motivo: escolher o
+            // arquivo é um diálogo, e um diálogo não corre com o mundo emprestado.
+            if let Some(e) = crate::field3d_smoke::take_relink_request() {
+                crate::field3d_import::field3d_relink(e, toasts);
+            }
             // ⭐⭐ **O PERFIL DESENHADO VIRA PEÇA** (W53) — o fluxo do MoI, que o motor tem medido e
             // gateado desde a W3 e que **nenhum botão alcançava**.
             //

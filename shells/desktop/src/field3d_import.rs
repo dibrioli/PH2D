@@ -148,15 +148,7 @@ pub(crate) fn field3d_import(toasts: &mut ph2d_editor::ToastQueue) {
     let say =
         |toasts: &mut ph2d_editor::ToastQueue, m: String| toasts.push(ph2d_editor::Toast::info(m));
 
-    // ⚠️ **UM FILTRO POR FORMATO**, a mesma lição do export: com um filtro único o diálogo nativo
-    // completa o nome com a primeira extensão da lista.
-    let mut dialog = rfd::FileDialog::new();
-    for f in MeshFormat::ALL {
-        dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
-    }
-    // ⚠️ **Pela PORTA** (`crate::modal`), pela razão escrita no irmão do export: o diálogo congela
-    // o loop, e sem declarar isso a mensagem escrita a seguir vive um quadro só.
-    let Some(path) = crate::modal::pick_file(dialog) else {
+    let Some(path) = pick_mesh_file() else {
         return;
     };
 
@@ -184,6 +176,66 @@ pub(crate) fn field3d_import(toasts: &mut ph2d_editor::ToastQueue) {
         toasts,
         format!("Imported {name}: {tris} tris -> field in {ms:.0} ms (detail {cell:.4})"),
     );
+}
+
+/// **O diálogo de malha, numa porta só** — dois verbos pedem o mesmo arquivo.
+///
+/// ⚠️ **UM FILTRO POR FORMATO**, a mesma lição do export: com um filtro único o diálogo nativo
+/// completa o nome com a primeira extensão da lista.
+///
+/// ⚠️ **Pela PORTA** (`crate::modal`), pela razão escrita no irmão do export: o diálogo congela o
+/// loop, e sem declarar isso a mensagem escrita a seguir vive um quadro só.
+fn pick_mesh_file() -> Option<std::path::PathBuf> {
+    let mut dialog = rfd::FileDialog::new();
+    for f in MeshFormat::ALL {
+        dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
+    }
+    crate::modal::pick_file(dialog)
+}
+
+/// ⭐⭐⭐ **RELIGAR a escultura que perdeu o arquivo** (W76) — o segundo salto do pedido.
+///
+/// # ⛔ O beco que ela fecha
+///
+/// Reabrir um projeto cuja malha mudou de sítio diz *«Sculpture bunny.obj is missing»* desde a W23,
+/// e a peça abre sem ela. ⚠️ **A única cura era pôr o arquivo de volta no caminho EXACTO** — o app
+/// não fazia essa pergunta por asset nenhum. *Um aviso que nomeia o problema e não oferece o gesto
+/// manda o artista consertar o disco.*
+///
+/// # ⚠️ A chave nova é o CAMINHO NOVO, e é isso que faz a cura durar
+///
+/// Registar o arquivo novo sob a chave **velha** faria a peça abrir hoje e falhar outra vez amanhã:
+/// a chave é o que o `ProjectFile` guarda e o que o `resolve_missing` vai ler na próxima abertura.
+/// ⇒ ela é **reescrita no nó**, o que também a torna um passo de undo — como tem de ser: é uma
+/// decisão do artista sobre o documento.
+pub(crate) fn field3d_relink(entity: u64, toasts: &mut ph2d_editor::ToastQueue) {
+    let Some(path) = pick_mesh_file() else {
+        return;
+    };
+    let name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("?")
+        .to_string();
+    let loaded = match field_from_file(&path) {
+        Ok(l) => l,
+        Err(e) => {
+            toasts.push(ph2d_editor::Toast::info(format!(
+                "Could not relink to {name}: {e}"
+            )));
+            return;
+        }
+    };
+    let (tris, ms) = (loaded.tris, loaded.millis);
+    let key = path.to_string_lossy().to_string();
+    crate::field3d_smoke::register_sampled(&key, std::sync::Arc::new(loaded.field));
+    crate::field3d_smoke::ask_relinked(entity, key);
+    // ⚠️ **A ESCALA fica como está**, ao contrário da importação: a peça já tem a pose que o artista
+    // lhe deu, e um arquivo novo que a re-enquadrasse desfazia esse trabalho. *Religar troca a
+    // fonte, não a colocação.*
+    toasts.push(ph2d_editor::Toast::info(format!(
+        "Relinked to {name}: {tris} tris -> field in {ms:.0} ms"
+    )));
 }
 
 /// A escala que põe uma peça de extensão `extent` no enquadramento.

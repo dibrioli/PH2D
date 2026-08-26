@@ -82,16 +82,16 @@ pub(super) fn apply(
             // nenhum** — a mesma lista, uma porta só (`panel::acts_for`).
             ph2d_panel_model3d::ModelIntent::Act { slot } => {
                 if let Some(&one) = selection.first() {
-                    match super::panel::acts_for(world, selection).get(slot).copied() {
-                        Some(super::panel::ACT_DUPLICATE) => created = duplicate_node(world, one),
+                    match super::acts::acts_for(world, selection).get(slot).copied() {
+                        Some(super::acts::ACT_DUPLICATE) => created = duplicate_node(world, one),
                         // ⚠️ O que foi apagado não pode continuar selecionado: o gizmo ficaria
                         // aceso sobre uma entidade que já não existe.
-                        Some(super::panel::ACT_DELETE) if ph2d_field_ecs::remove(world, one) => {
+                        Some(super::acts::ACT_DELETE) if ph2d_field_ecs::remove(world, one) => {
                             cleared = true;
                         }
                         // ⭐ **ISOLAR** (W38) — estado de VISTA, não do documento: não muda o
                         // mundo, não entra no undo, e por isso não mexe em `created`/`cleared`.
-                        Some(super::panel::ACT_ISOLATE) => {
+                        Some(super::acts::ACT_ISOLATE) => {
                             let on = crate::field3d_smoke::toggle_isolate(Some(one.to_bits()));
                             crate::field3d_notice::say(if on {
                                 "Isolated: showing only this object".into()
@@ -105,7 +105,7 @@ pub(super) fn apply(
                         // desfazível de graça: o `FieldProfileSource` viaja no retrato do mundo, e
                         // o undo regista por DIFF. Uma cópia da geometria «para não perder» seria
                         // um segundo dono da forma.
-                        Some(super::panel::ACT_UNLINK) => {
+                        Some(super::acts::ACT_UNLINK) => {
                             world
                                 .entity_mut(one)
                                 .remove::<ph2d_field_ecs::FieldProfileSource>();
@@ -119,7 +119,7 @@ pub(super) fn apply(
                         // vínculo antigo faria um desenho novo nascer com a finura de outro, e o
                         // número que o artista vê no painel deixaria de dizer o que ele escolheu
                         // para aquele desenho.
-                        Some(super::panel::ACT_LINK) => {
+                        Some(super::acts::ACT_LINK) => {
                             if let Some(path) = crate::field3d_smoke::profile_pick() {
                                 world
                                     .entity_mut(one)
@@ -131,6 +131,12 @@ pub(super) fn apply(
                                     "Linked: this shape now follows the selected drawing".into(),
                                 );
                             }
+                        }
+                        // ⭐⭐⭐ **RELIGAR a escultura que perdeu o arquivo** (W76) — aqui só se
+                        // **pede**: escolher o arquivo é um diálogo, e um diálogo não corre com o
+                        // mundo emprestado.
+                        Some(super::acts::ACT_RELINK) => {
+                            crate::field3d_smoke::ask_relink_sculpt(one.to_bits());
                         }
                         _ => {}
                     }

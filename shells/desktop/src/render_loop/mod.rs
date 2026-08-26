@@ -8037,8 +8037,8 @@ impl crate::App {
             crate::morph_machine_drive::tick(
                 &mut self.morph_machines,
                 sim,
-                &hero.input_map,
-                &self.input_actions,
+                &self.vec_entities,
+                &ph2d_input::Input::new(&hero.input_map, &self.input_actions),
                 self.morph_preview,
                 self.fixed_step.fixed_dt(),
                 &mut self.preview_drive,
@@ -8650,7 +8650,7 @@ impl crate::App {
                         .iter()
                         .map(|a| a.name.clone())
                         .collect();
-                    crate::vec_morph_edit::apply(sim, e, cmd, &actions);
+                    crate::vec_morph_edit::apply(sim, &self.vec_entities, e, cmd, &actions);
                 }
                 if pending_bool_apply
                     && let Some(g) = group

@@ -1,5 +1,9 @@
 //! **AS SETAS ATRAVESSAM O ARQUIVO** — e sem mexer no `PROJECT_SCHEMA`.
 //!
+//! ⚠️ **O que viaja é a TABELA DE TECLAS, não a lista de formas** (W11): a lista são os `Children`,
+//! e a hierarquia já atravessa o arquivo por si. O que este componente deve ao ficheiro é só *o que
+//! o artista autorou sobre cada forma*.
+//!
 //! ⚠️ **A afirmação que este gate corrige.** O plano 32 §3 dizia *"o grafo é conteúdo autorado ⇒
 //! `PROJECT_SCHEMA` sobe"*. **Não sobe**, e o mecanismo é o `ComponentBlob`: ele é chaveado por
 //! `blake3(nome canónico)`, não por posição. Um ficheiro gravado antes desta wave simplesmente
@@ -15,7 +19,7 @@ use ph2d_ecs::scene::{
     ComponentRegistry, ComponentSnapshot, extract_component_snapshot, register_ecs_components,
 };
 use ph2d_ecs::{VecMorph, VecMorphMachine};
-use ph2d_morph_machine::{MorphGraph, MorphState};
+use ph2d_morph_machine::MorphKey;
 
 fn registry() -> ComponentRegistry {
     let mut reg = ComponentRegistry::default();
@@ -24,16 +28,23 @@ fn registry() -> ComponentRegistry {
 }
 
 fn authored() -> VecMorphMachine {
-    let mut m = VecMorphMachine::new(&[10]);
-    let mut jump = MorphState::new(20);
-    jump.when = "jump".to_string();
-    jump.duration_s = 0.4;
-    let mut dash = MorphState::new(30);
-    dash.when = "dash".to_string();
-    dash.spring = Some(Default::default());
-    m.graph = MorphGraph {
-        states: vec![MorphState::new(10), jump, dash],
-    };
+    let mut m = VecMorphMachine::new();
+    m.keys.insert(
+        20,
+        MorphKey {
+            when: "jump".to_string(),
+            duration_s: 0.4,
+            ..MorphKey::default()
+        },
+    );
+    m.keys.insert(
+        30,
+        MorphKey {
+            when: "dash".to_string(),
+            spring: Some(Default::default()),
+            ..MorphKey::default()
+        },
+    );
     m
 }
 
@@ -60,7 +71,7 @@ fn the_arrows_and_their_conditions_come_back() {
     assert_eq!(
         back.get::<VecMorphMachine>(e2),
         Some(&authored()),
-        "a maquina nao sobreviveu ao snapshot"
+        "as teclas nao sobreviveram ao snapshot"
     );
     assert_eq!(
         back.get::<VecMorph>(e2).map(|m| m.sources),

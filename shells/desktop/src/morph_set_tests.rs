@@ -1,7 +1,7 @@
 //! Os gates do CONJUNTO de estados (plano 32 W8) — a **lei** do grafo, e a **costura** que a
 //! aplica ao mundo.
 
-use super::{create, eligible, states_for, upkeep};
+use super::{create, eligible, graph_of, upkeep};
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine, Visibility};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
@@ -25,74 +25,120 @@ fn world(n: usize) -> (SimWorld, VecScene, VecEntityMap, Vec<VecPathId>) {
     (sim, scene, map, ids)
 }
 
-/// ⭐⭐⭐ **UMA ENTRADA POR FORMA, e a tecla pertence ao DESTINO** — a lei da W10.
+/// ⭐⭐⭐ **A LISTA SÃO OS FILHOS, e uma forma arrastada para dentro ENTRA** — a lei da W11.
 ///
-/// Enio, 2026-08-25: *"em vez de um evento para cada transição, melhor seria um evento por shape
-/// (…) assim reduzimos o número de transições no painel para o número de formas envolvidas."*
+/// Enio, 2026-08-26: *"sendo uma forma que previamente não participava do Morph states, se for
+/// arrastada na hierarquia e se tornar filha de um objeto Morph State, automaticamente passa a
+/// fazer parte do sistema."*
 ///
-/// **Mutação que deve sangrar:** o `states_for` voltar a emitir um par ordenado por passagem — a
-/// lista cresce para `n(n-1)` e o artista escreve a mesma tecla `n-1` vezes.
+/// ⚠️ **Este gate é a feature INTEIRA, e repare no que ele NÃO faz:** não chama função nenhuma de
+/// «entrar». Ele só reparenta — que é o que a Hierarquia faz — e volta a perguntar. *Arrastar para
+/// dentro é entrar porque a lista É a hierarquia.*
+///
+/// **Mutação que deve sangrar:** o `graph_of` voltar a ler uma lista guardada no componente.
 #[test]
-fn the_list_has_one_entry_per_shape_and_nothing_more() {
-    for n in 2..=6usize {
-        let shapes: Vec<VecPathId> = (1..=n as u64).collect();
-        let g = states_for(&shapes);
-        assert_eq!(
-            g.states.len(),
-            n,
-            "com {n} formas a lista tem {n} entradas -- uma por forma, nao uma por passagem"
-        );
-        assert_eq!(
-            g.shapes(),
-            shapes,
-            "e na ordem em que o artista as escolheu"
-        );
-    }
-    // ⭐ O CONTROLE que dá o número: com 9 formas (o tecto), a lista tem **9** linhas e nao 72.
-    assert_eq!(states_for(&(1..=9).collect::<Vec<u64>>()).states.len(), 9);
-}
+fn a_shape_dragged_into_the_set_joins_it_with_no_code_reacting() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids[..2], 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    assert_eq!(
+        graph_of(&sim, &map, host).shapes(),
+        ids[..2].to_vec(),
+        "o CONTROLE: o conjunto nasce com as DUAS que foram escolhidas"
+    );
 
-/// **A primeira forma escolhida é onde a máquina nasce — e o `start` é DERIVADO.**
-///
-/// **Mutação que deve sangrar:** o `start()` devolver `states.last()` — o conjunto nasceria a
-/// mostrar a última forma escolhida, e o artista que escolheu da esquerda para a direita veria a
-/// da direita.
-#[test]
-fn the_first_shape_chosen_is_the_start() {
-    let g = states_for(&[7, 3, 9]);
-    assert_eq!(g.start(), Some(7));
-    // O CONTROLE: sem formas nenhumas nao ha' `start` inventado nem panico.
-    assert_eq!(states_for(&[]).start(), None);
-}
+    // ⭐ O GESTO: a terceira forma vira filha. Nada mais.
+    let third = Entity::from_bits(map[&ids[2]]);
+    crate::vec_transform::reparent_keeping_world(&mut sim, third, host);
 
-/// ⭐ **A ORDEM da lista é determinística** — o painel indexa por POSIÇÃO.
-///
-/// ⚠️ Sem isto o menu «When» da linha 3 escreveria a tecla noutra forma depois de um undo, e o
-/// artista não teria como saber. É a mesma razão do `BTreeMap` da física.
-#[test]
-fn the_state_order_is_stable_so_a_row_index_means_one_thing() {
-    assert_eq!(states_for(&[10, 20, 30]).shapes(), vec![10, 20, 30]);
-    assert_ne!(
-        states_for(&[10, 20, 30]).shapes(),
-        states_for(&[30, 20, 10]).shapes(),
-        "a ordem e' a dos MEMBROS, nunca a dos ids"
+    assert_eq!(
+        graph_of(&sim, &map, host).shapes(),
+        ids,
+        "arrastar para dentro TEM de fazer entrar -- a lista sao os filhos"
+    );
+    // ⭐ E ela entra **sem tecla**, com os valores de partida: ninguém escreveu nada por ela.
+    let g = graph_of(&sim, &map, host);
+    assert!(
+        g.states.last().unwrap().when.is_empty(),
+        "a forma nova entra MUDA -- uma tecla de fabrica dispararia sem ninguem pedir"
+    );
+    assert!(
+        (g.states.last().unwrap().duration_s - ph2d_morph_machine::DEFAULT_DURATION_S).abs() < 1e-9,
+        "e com o ritmo de partida"
     );
 }
 
-/// ⭐ **Toda forma nasce SEM tecla** — alcançável só pela pré-visualização.
-///
-/// ⚠️ É a metade que torna a lista segura: se cada forma nascesse com uma acção, um conjunto de 9
-/// nasceria com 9 regras a disparar todas na primeira tecla.
+/// ⭐ **E arrastar para FORA sai** — a outra metade, e é ela que dá o *Desconectar* de graça.
 #[test]
-fn every_state_is_born_silent() {
-    let g = states_for(&[1, 2, 3]);
-    assert!(
-        g.states.iter().all(|s| s.when.is_empty()),
-        "uma forma com tecla de fabrica seria alcancada sem ninguem a ter pedido"
+fn a_shape_dragged_out_of_the_set_leaves_it() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    assert_eq!(graph_of(&sim, &map, host).shapes().len(), 3);
+
+    // O GESTO inverso: o filho do meio deixa de ser filho.
+    let mid = Entity::from_bits(map[&ids[1]]);
+    sim.world_mut().entity_mut(mid).remove::<ChildOf>();
+
+    assert_eq!(
+        graph_of(&sim, &map, host).shapes(),
+        vec![ids[0], ids[2]],
+        "sair da hierarquia TEM de sair da lista"
     );
-    assert!(
-        g.reached_by("jump").is_none(),
-        "e nenhuma acao pode alcancar coisa nenhuma"
+}
+
+/// **A primeira forma é onde a máquina nasce — e é o primeiro FILHO.**
+///
+/// **Mutação que deve sangrar:** o `start()` devolver `states.last()`.
+#[test]
+fn the_first_child_is_the_start() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    assert_eq!(graph_of(&sim, &map, host).start(), Some(ids[0]));
+}
+
+/// ⭐ **A TECLA SOBREVIVE a sair e voltar a entrar.**
+///
+/// ⚠️ As chaves são indexadas por forma e **não** são varridas quando um filho sai: perder o
+/// trabalho do artista por um gesto reversível seria a pior leitura possível de *"desconectar"*.
+///
+/// **Mutação que deve sangrar:** o `graph_of` (ou um futuro *Disconnect*) apagar a chave ao sair.
+#[test]
+fn the_key_survives_leaving_and_coming_back() {
+    let (mut sim, mut scene, mut map, ids) = world(2);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    // O artista dá uma tecla à segunda forma.
+    sim.world_mut()
+        .get_mut::<VecMorphMachine>(host)
+        .unwrap()
+        .keys
+        .insert(
+            ids[1],
+            ph2d_morph_machine::MorphKey {
+                when: "jump".into(),
+                ..Default::default()
+            },
+        );
+    let kid = Entity::from_bits(map[&ids[1]]);
+    sim.world_mut().entity_mut(kid).remove::<ChildOf>();
+    assert_eq!(graph_of(&sim, &map, host).shapes(), vec![ids[0]]);
+
+    crate::vec_transform::reparent_keeping_world(&mut sim, kid, host);
+    let g = graph_of(&sim, &map, host);
+    assert_eq!(
+        g.states.iter().find(|st| st.shape == ids[1]).unwrap().when,
+        "jump",
+        "a tecla tem de VOLTAR com a forma -- desconectar nao pode destruir autoria"
     );
 }
 
@@ -144,13 +190,9 @@ fn the_set_owns_the_shapes_hides_them_and_shows_the_start() {
         "ele tem de mostrar EXACTAMENTE o estado inicial"
     );
     assert_eq!(
-        sim.world()
-            .get::<VecMorphMachine>(host)
-            .expect("e tem maquina")
-            .graph
-            .shapes(),
+        graph_of(&sim, &map, host).shapes(),
         ids,
-        "tres formas => TRES estados, na ordem em que foram escolhidas (W10)"
+        "tres formas => TRES estados, na ordem dos FILHOS (W11)"
     );
     assert!(
         sim.world().get::<Visibility>(host).is_none(),
@@ -547,4 +589,47 @@ fn a_shape_that_already_belongs_to_a_set_is_never_offered_to_another() {
         vec![solta],
         "a forma solta tem de continuar elegivel -- senao a exclusao apanhou o mundo inteiro"
     );
+}
+
+/// ⛔⛔ **UM CONJUNTO DENTRO DE OUTRO: o de fora NÃO governa o de dentro.**
+///
+/// ⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU** (2026-08-26): a exclusão existia no
+/// `graph_of` e **nenhuma fixtura tinha um Morph como filho**, então apagá-la deixava a suíte
+/// inteira verde. *Uma exclusão sem fixtura que a exerça é um comentário.*
+///
+/// O dano: a geometria de um Morph é **reescrita a cada quadro** pelo `morph_live`. Se ele entrasse
+/// na lista do conjunto de fora, este interpolaria para uma forma que muda debaixo dele — e o
+/// resultado seria uma forma a tremer sem que nada na tela explicasse.
+///
+/// **Mutação que deve sangrar:** tirar o `if w.get::<VecMorph>(child).is_some() { return None }`.
+#[test]
+fn a_morph_child_never_becomes_a_state_of_the_outer_set() {
+    let (mut sim, mut scene, mut map, ids) = world(2);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let inner = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+
+    // Um SEGUNDO conjunto, e o primeiro passa a ser filho dele.
+    let more: Vec<VecPathId> = (0..2)
+        .map(|i| {
+            let x = 20.0 + f64::from(i) * 5.0;
+            scene.push_path(ph2d_vec_scene::rectangle([x, -1.0], [x + 2.0, 1.0]))
+        })
+        .collect();
+    sync(&mut sim, &mut scene, &mut map);
+    let mut p2 = create(&sim, &mut scene, &map, &more, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut p2);
+    let outer = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    crate::vec_transform::reparent_keeping_world(&mut sim, inner, outer);
+
+    let shapes = graph_of(&sim, &map, outer).shapes();
+    assert_eq!(
+        shapes, more,
+        "o conjunto de FORA passou a governar o de dentro -- a geometria dele e' reescrita a cada \
+         quadro, e a forma tremeria sem explicacao"
+    );
+    // O CONTROLE: o de DENTRO continua intacto, com os filhos dele.
+    assert_eq!(graph_of(&sim, &map, inner).shapes(), ids);
 }

@@ -44,6 +44,47 @@ use serde::{Deserialize, Serialize};
 /// (`sources: [u64; 2]`).
 pub type ShapeId = u64;
 
+/// ⭐⭐⭐ **A CHAVE de uma forma** — o que o artista autora *sobre* ela: a tecla que a alcança e o
+/// ritmo com que se chega.
+///
+/// # ⛔⛔ Porque ela NÃO tem a forma dentro (W11)
+///
+/// Enio, 2026-08-26: *"sendo uma forma que previamente não participava do Morph states, se for
+/// arrastada na hierarquia e se tornar filha de um objeto Morph State, automaticamente passa a
+/// fazer parte do sistema."*
+///
+/// ⇒ **a LISTA de formas deixou de ser autorada: ela são os FILHOS.** Guardar as duas coisas
+/// (uma lista própria *e* a hierarquia) seria ter duas respostas para *«que formas estão neste
+/// conjunto»* — e o arrastar-para-dentro torna a discordância um **gesto do artista**, portanto
+/// obrigatória de resolver. É a lei que o módulo 3D Modeling já paga: *a hierarquia da cena É o
+/// documento.*
+///
+/// ⇒ o que sobra de autorado é **isto**, indexado por `ShapeId`. Uma forma sem chave usa os
+/// valores de partida — e é assim que um filho arrastado para dentro **já funciona** sem que
+/// ninguém escreva nada por ele.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MorphKey {
+    /// **O NOME da acção que LEVA a esta forma**, de onde quer que a máquina esteja. Vazio = a
+    /// forma é **inalcançável por tecla**.
+    pub when: String,
+    /// Segundos para CHEGAR aqui, quando o motor é a curva. Ignorado se [`Self::spring`] existir.
+    pub duration_s: f64,
+    pub easing: Easing,
+    /// **A MOLA, quando o artista a escolhe.** `None` = o par duração+curva.
+    pub spring: Option<Spring>,
+}
+
+impl Default for MorphKey {
+    fn default() -> Self {
+        Self {
+            when: String::new(),
+            duration_s: DEFAULT_DURATION_S,
+            easing: DEFAULT_EASING,
+            spring: None,
+        }
+    }
+}
+
 /// ⭐⭐ **UM ESTADO** — que forma, o que leva ATÉ ela, e a que ritmo.
 ///
 /// # ⛔⛔ A acção pertence ao DESTINO, não à passagem (W10)
@@ -105,6 +146,32 @@ impl MorphState {
     #[must_use]
     pub fn matches(&self, action: &str) -> bool {
         !self.when.is_empty() && self.when == action
+    }
+
+    /// ⭐ **O estado DERIVADO** de uma forma mais a chave que o artista lhe deu (W11).
+    ///
+    /// ⚠️ É a única porta pela qual um `MorphState` nasce de dados autorados — construí-lo à mão
+    /// noutro sítio seria a segunda lei de *«o que é uma forma sem chave»*.
+    #[must_use]
+    pub fn with_key(shape: ShapeId, key: &MorphKey) -> Self {
+        Self {
+            shape,
+            when: key.when.clone(),
+            duration_s: key.duration_s,
+            easing: key.easing,
+            spring: key.spring,
+        }
+    }
+
+    /// A chave deste estado — o que dele é **autorado**, sem a forma.
+    #[must_use]
+    pub fn key(&self) -> MorphKey {
+        MorphKey {
+            when: self.when.clone(),
+            duration_s: self.duration_s,
+            easing: self.easing,
+            spring: self.spring,
+        }
     }
 }
 

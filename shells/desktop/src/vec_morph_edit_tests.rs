@@ -1,26 +1,55 @@
 //! Os gates da costura das setas — **a lei**, que não precisa de janela, e o **fio**, que só se lê.
 
 use super::{MorphCmd, apply, morph_cmd_for_id, morph_of_selection, publish};
-use ph2d_ecs::{Name, SimWorld, VecMorph, VecMorphMachine};
-use ph2d_morph_machine::{MorphGraph, MorphState};
+use ph2d_ecs::{Entity, Name, SimWorld, VecMorph, VecMorphMachine};
+use ph2d_morph_machine::MorphKey;
+use ph2d_vec_scene::{VecPathId, VecScene};
 
-const A: u64 = 10;
-const B: u64 = 20;
+use crate::vec_entities::{VecEntityMap, sync};
 
 fn actions() -> Vec<String> {
     vec!["jump".to_string(), "dash".to_string()]
 }
 
-fn world() -> (SimWorld, ph2d_ecs::Entity) {
-    let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(&[A]);
-    let mut b = MorphState::new(B);
-    b.when = "jump".to_string();
-    m.graph = MorphGraph {
-        states: vec![MorphState::new(A), b],
-    };
-    let e = sim.world_mut().spawn((VecMorph::new(A, B), m)).id();
-    (sim, e)
+/// **Um conjunto de DUAS formas, montado pela porta real**, com a 2.ª a responder ao `jump`.
+///
+/// ⚠️ **Deixou de poder ser fabricado à mão na W11**: a lista são os FILHOS, e um harness que os
+/// dispensasse testaria um mundo que o produto não sabe produzir.
+fn world() -> (SimWorld, VecEntityMap, Entity, Vec<VecPathId>) {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let ids: Vec<VecPathId> = (0..2)
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let x = i as f64 * 5.0;
+            scene.push_path(ph2d_vec_scene::rectangle([x, -1.0], [x + 2.0, 1.0]))
+        })
+        .collect();
+    sync(&mut sim, &mut scene, &mut map);
+    let mut pending = crate::morph_set::create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    crate::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
+    let host = Entity::from_bits(map[&scene.paths().last().unwrap().id]);
+    sim.world_mut()
+        .get_mut::<VecMorphMachine>(host)
+        .unwrap()
+        .keys
+        .insert(
+            ids[1],
+            MorphKey {
+                when: "jump".into(),
+                ..Default::default()
+            },
+        );
+    (sim, map, host, ids)
+}
+
+/// A tecla da forma `row` deste conjunto.
+fn key_at(sim: &SimWorld, map: &VecEntityMap, host: Entity, row: usize) -> String {
+    crate::morph_set::graph_of(sim, map, host).states[row]
+        .when
+        .clone()
 }
 
 /// **Cada id de linha resolve para o comando dela** — a tabela, e não uma cadeia de `if`.
@@ -53,25 +82,25 @@ fn every_arrow_row_resolves_to_its_own_command() {
 /// pôr `jump`, e o artista não teria gesto nenhum para a limpar.
 #[test]
 fn the_first_option_clears_the_condition_and_the_rest_pick_an_action() {
-    let (mut sim, e) = world();
+    let (mut sim, map, e, ids) = world();
+    let _ = &ids;
     assert!(apply(
         &mut sim,
+        &map,
         e,
         MorphCmd::SetWhen { row: 1, action: 2 },
         &actions()
     ));
-    assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
-        "dash"
-    );
+    assert_eq!(key_at(&sim, &map, e, 1), "dash");
     assert!(apply(
         &mut sim,
+        &map,
         e,
         MorphCmd::SetWhen { row: 1, action: 0 },
         &actions()
     ));
     assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
+        key_at(&sim, &map, e, 1),
         "",
         "o «—» tem de LIMPAR a tecla da forma"
     );
@@ -82,15 +111,17 @@ fn the_first_option_clears_the_condition_and_the_rest_pick_an_action() {
 /// ⚠️ Ele é alcançável: o mapa pode mudar entre o menu abrir e o clique chegar.
 #[test]
 fn an_index_beyond_the_published_list_refuses() {
-    let (mut sim, e) = world();
+    let (mut sim, map, e, ids) = world();
+    let _ = &ids;
     assert!(!apply(
         &mut sim,
+        &map,
         e,
         MorphCmd::SetWhen { row: 1, action: 99 },
         &actions()
     ));
     assert_eq!(
-        sim.world().get::<VecMorphMachine>(e).unwrap().graph.states[1].when,
+        key_at(&sim, &map, e, 1),
         "jump",
         "a tecla antiga tem de ficar intacta"
     );
@@ -119,20 +150,17 @@ fn no_id_in_the_section_asks_to_destroy_a_state() {
     // O CONTROLE POSITIVO: o laço de facto correu sobre o pool inteiro.
     assert_eq!(seen, i::MAX_MORPH_STATES * i::MAX_MORPH_ACTIONS);
     // E a lista continua intacta depois de o único verbo dela correr.
-    let (mut sim, e) = world();
+    let (mut sim, map, e, ids) = world();
+    let _ = &ids;
     assert!(apply(
         &mut sim,
+        &map,
         e,
         MorphCmd::SetWhen { row: 1, action: 0 },
         &actions()
     ));
     assert_eq!(
-        sim.world()
-            .get::<VecMorphMachine>(e)
-            .unwrap()
-            .graph
-            .states
-            .len(),
+        crate::morph_set::graph_of(&sim, &map, e).states.len(),
         2,
         "tirar a tecla NAO tira a forma da lista"
     );
@@ -144,7 +172,7 @@ fn no_id_in_the_section_asks_to_destroy_a_state() {
 /// mostraria as setas de um objecto enquanto o clique escreveria noutro.
 #[test]
 fn the_morph_is_found_anywhere_in_the_selection() {
-    let (mut sim, e) = world();
+    let (mut sim, _map, e, _ids) = world();
     let other = sim.world_mut().spawn(Name("um grupo".to_string())).id();
     // O MAPA `forma -> entidade`, que é a porta pela qual a seleção do vetor se resolve.
     let mut map = crate::vec_entities::VecEntityMap::default();
@@ -176,7 +204,7 @@ fn the_morph_is_found_anywhere_in_the_selection() {
 /// obrigou a medir em vez de supor. *Uma fixtura que não contém o fenómeno aprova a cura errada.*
 #[test]
 fn a_shape_id_is_never_read_as_entity_bits() {
-    let (sim, _e) = world();
+    let (sim, _map, _e, _ids) = world();
     let empty = crate::vec_entities::VecEntityMap::default();
     // ⭐ O `0` PRIMEIRO: e' o id da primeira forma de toda cena, e e' o que mata o processo.
     assert_eq!(morph_of_selection(&sim, &empty, &[0]), None);
@@ -194,7 +222,7 @@ fn a_shape_id_is_never_read_as_entity_bits() {
 #[test]
 fn a_morph_without_a_machine_publishes_the_empty_face() {
     let mut sim = SimWorld::new();
-    let e = sim.world_mut().spawn(VecMorph::new(A, B)).id();
+    let e = sim.world_mut().spawn(VecMorph::new(10, 20)).id();
     let scene = ph2d_vec_scene::VecScene::new();
     let mut map = crate::vec_entities::VecEntityMap::default();
     map.insert(7, e.to_bits());
@@ -229,7 +257,7 @@ fn the_arrow_click_reaches_the_world() {
             "RESOLVER o id do clique",
         ),
         (
-            "crate::vec_morph_edit::apply(sim, e, cmd, &actions)",
+            "crate::vec_morph_edit::apply(sim, &self.vec_entities, e, cmd, &actions)",
             "APLICAR ao mundo",
         ),
         (
@@ -299,6 +327,14 @@ fn the_arrow_click_reaches_the_world() {
     assert!(
         !shell.contains("self.playhead.is_playing(),\n                self.fixed_step.fixed_dt(),"),
         "o playhead voltou a dirigir a maquina -- o conflito de atalhos volta com ele"
+    );
+    // ⭐⭐ **A DERIVAÇÃO chega ao MOTOR** (W11) — e ela vive no `morph_machine_drive`, não aqui.
+    // Sem esta linha, arrastar uma forma para dentro do conjunto na Hierarquia não a faria
+    // participar: o motor continuaria a percorrer uma lista que ninguém actualiza.
+    assert!(
+        include_str!("morph_machine_drive.rs")
+            .contains("crate::morph_set::graph_of(sim, map_paths, Entity::from_bits(b))"),
+        "o motor deixou de DERIVAR o grafo dos filhos -- arrastar para dentro deixa de entrar"
     );
     let modal = include_str!("input_dispatch/keyboard_modal.rs");
     for (needle, what) in [

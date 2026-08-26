@@ -41,7 +41,7 @@
 use std::collections::BTreeMap;
 
 use ph2d_ecs::{Entity, SimWorld, VecMorph, VecMorphMachine};
-use ph2d_input::{ActionState, Input, InputMap};
+use ph2d_input::Input;
 use ph2d_morph_machine::MorphMachine;
 
 use crate::preview_drive::{Driven, PreviewDrive};
@@ -65,8 +65,12 @@ pub(crate) type MorphMachines = BTreeMap<u64, MorphMachine>;
 pub(crate) fn tick(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
-    map: &InputMap,
-    actions: &ActionState,
+    map_paths: &crate::vec_entities::VecEntityMap,
+    // ⚠️ **O par `InputMap` + `ActionState` viaja JUNTO**, e não como dois argumentos: eles só
+    // existem para construir o `Input`, e separá-los deixaria um chamador livre para passar o
+    // estado de um mapa com o mapa de outro. (Também é o que traz a assinatura de volta ao teto
+    // de 7 do clippy — a cura certa era a que já estava certa por outra razão.)
+    input: &Input<'_>,
     active: bool,
     dt: f64,
     drive: &mut PreviewDrive,
@@ -78,17 +82,28 @@ pub(crate) fn tick(
         machines.clear();
         return 0;
     }
-    let hosts: Vec<(u64, ph2d_morph_machine::MorphGraph)> = sim
+    // ⭐ **O grafo é DERIVADO dos filhos, a cada quadro** (W11) — `morph_set::graph_of`. É por
+    // isso que arrastar uma forma para dentro do conjunto na Hierarquia a faz participar sem que
+    // uma linha de código reaja ao gesto: no quadro seguinte ela simplesmente **está na lista**.
+    let bits: Vec<u64> = sim
         .world_mut()
         .query::<(Entity, &VecMorphMachine)>()
         .iter(sim.world())
-        .map(|(e, m)| (e.to_bits(), m.graph.clone()))
+        .map(|(e, _)| e.to_bits())
+        .collect();
+    let hosts: Vec<(u64, ph2d_morph_machine::MorphGraph)> = bits
+        .into_iter()
+        .map(|b| {
+            (
+                b,
+                crate::morph_set::graph_of(sim, map_paths, Entity::from_bits(b)),
+            )
+        })
         .collect();
     // Uma máquina cuja entidade morreu (ou perdeu as setas) some junto — senão ela sobreviveria ao
     // objecto e o mapa cresceria para sempre. Mesma varredura das `UiMachines`.
     machines.retain(|k, _| hosts.iter().any(|(h, _)| h == k));
 
-    let input = Input::new(map, actions);
     let mut ran = 0;
     for (bits, graph) in hosts {
         let e = Entity::from_bits(bits);

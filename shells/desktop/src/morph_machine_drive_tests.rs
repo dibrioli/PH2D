@@ -3,44 +3,100 @@
 use super::{MorphMachines, tick};
 use ph2d_ecs::{SimWorld, VecMorph, VecMorphMachine};
 use ph2d_input::{ActionState, Binding, InputMap, InputState, Key};
-use ph2d_morph_machine::{MorphGraph, MorphState};
+use ph2d_morph_machine::MorphKey;
+use ph2d_vec_scene::{VecPathId, VecScene};
 
 use crate::preview_drive::PreviewDrive;
+use crate::vec_entities::{VecEntityMap, sync};
 
-const A: u64 = 10;
-const B: u64 = 20;
 const KEY_Z: u32 = 0x5A;
 
-/// Um mundo com duas formas — `A` (o começo) e `B`, alcançada pela acção `jump` — e o mapa que a
-/// liga ao `Z`.
-fn scene() -> (SimWorld, ph2d_ecs::Entity, InputMap) {
-    let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(&[A, B]);
-    let mut b = MorphState::new(B);
-    b.when = "jump".to_string();
-    b.duration_s = 0.1;
-    m.graph = MorphGraph {
-        states: vec![MorphState::new(A), b],
-    };
-    // ⚠️ O par nasce `(A, A)`: a máquina ainda não voou, e é isso que o `pair()` dela diz.
-    let ent = sim.world_mut().spawn((VecMorph::new(A, A), m)).id();
+/// **O mundo de teste, montado pela PORTA REAL do produto** (`morph_set::create` + `upkeep`).
+///
+/// ⚠️ **Ele deixou de poder ser fabricado à mão na W11.** Antes bastava pendurar um
+/// `VecMorphMachine` com a lista lá dentro; hoje a lista **são os filhos**, e um harness que os
+/// dispensasse estaria a testar um mundo que o produto não sabe produzir — *uma fixtura que não
+/// contém o fenómeno aprova a cura errada*.
+///
+/// Devolve `(sim, scene, map de paths, host, formas, InputMap)`. As `keys` são atribuídas por
+/// `named`.
+fn world(named: &[(usize, &str, f64)]) -> Bench {
+    let mut sim = SimWorld::default();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let shapes: Vec<VecPathId> = (0..2 + named.iter().map(|n| n.0).max().unwrap_or(0))
+        .map(|i| {
+            #[allow(clippy::cast_precision_loss)]
+            let x = i as f64 * 5.0;
+            scene.push_path(ph2d_vec_scene::rectangle([x, -1.0], [x + 2.0, 1.0]))
+        })
+        .collect();
+    sync(&mut sim, &mut scene, &mut map);
+    let mut pending = crate::morph_set::create(&sim, &mut scene, &map, &shapes, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    crate::morph_set::upkeep(&mut sim, &scene, &map, &mut pending);
+    let host_id = scene.paths().last().unwrap().id;
+    let host = ph2d_ecs::Entity::from_bits(map[&host_id]);
 
-    let mut map = InputMap::new();
-    let id = map.create("jump");
-    map.get_mut(id)
-        .unwrap()
-        .bindings
-        .push(Binding::Key(Key(KEY_Z)));
-    (sim, ent, map)
+    let mut input = InputMap::new();
+    if let Some(mut m) = sim.world_mut().get_mut::<VecMorphMachine>(host) {
+        for &(ix, action, dur) in named {
+            m.keys.insert(
+                shapes[ix],
+                MorphKey {
+                    when: action.to_string(),
+                    duration_s: dur,
+                    ..MorphKey::default()
+                },
+            );
+        }
+    }
+    for &(_, action, _) in named {
+        if input.id(action).is_none() {
+            input.create(action);
+        }
+    }
+    Bench {
+        sim,
+        map,
+        host,
+        shapes,
+        input,
+    }
 }
 
-/// Um `ActionState` com o `Z` carregado NESTE tique (e solto no anterior) — é isso que faz o
+struct Bench {
+    sim: SimWorld,
+    map: VecEntityMap,
+    host: ph2d_ecs::Entity,
+    shapes: Vec<VecPathId>,
+    input: InputMap,
+}
+
+impl Bench {
+    /// Liga `action` à tecla `code`.
+    fn bind(&mut self, action: &str, code: u32) {
+        let id = self.input.id(action).expect("a accao existe");
+        self.input
+            .get_mut(id)
+            .unwrap()
+            .bindings
+            .push(Binding::Key(Key(code)));
+    }
+
+    /// O destino que a cena mostra agora (`VecMorph::sources[1]`).
+    fn showing(&self) -> VecPathId {
+        self.sim.world().get::<VecMorph>(self.host).unwrap().sources[1]
+    }
+}
+
+/// Um `ActionState` com uma tecla carregada NESTE tique (e solta no anterior) — é isso que faz o
 /// `just_pressed` responder.
-fn z_just_pressed(map: &InputMap) -> ActionState {
+fn just_pressed(map: &InputMap, code: u32) -> ActionState {
     let mut st = ActionState::new();
     let mut dev = InputState::new();
     st.tick(map, &dev); // o tique de ANTES: a tecla ainda nao foi carregada
-    dev.keyboard.handle_key_down(Key(KEY_Z));
+    dev.keyboard.handle_key_down(Key(code));
     st.tick(map, &dev);
     st
 }
@@ -51,78 +107,80 @@ fn z_just_pressed(map: &InputMap) -> ActionState {
 /// faz nada, que é a feature inteira.
 #[test]
 fn the_bound_key_moves_the_morph_from_one_shape_to_the_other() {
-    let (mut sim, e, map) = scene();
-    let st = z_just_pressed(&map);
+    let mut b = world(&[(1, "jump", 0.1)]);
+    b.bind("jump", KEY_Z);
+    let st = just_pressed(&b.input, KEY_Z);
     let mut machines = MorphMachines::new();
     let mut drive = PreviewDrive::default();
 
     let ran = tick(
         &mut machines,
-        &mut sim,
-        &map,
-        &st,
+        &mut b.sim,
+        &b.map,
+        &ph2d_input::Input::new(&b.input, &st),
         true,
         1.0 / 60.0,
         &mut drive,
     );
     assert_eq!(ran, 1, "a maquina tem de correr");
     assert_eq!(
-        sim.world().get::<VecMorph>(e).unwrap().sources,
-        [A, B],
-        "o par tem de ser o da seta que disparou"
+        b.sim.world().get::<VecMorph>(b.host).unwrap().sources,
+        [b.shapes[0], b.shapes[1]],
+        "o par tem de ser o da transicao que disparou"
     );
-    // Andar ate' ao fim: a forma chega em B.
+    // Andar ate' ao fim: a forma chega na segunda.
     let quiet = ActionState::new();
     for _ in 0..30 {
         tick(
             &mut machines,
-            &mut sim,
-            &map,
-            &quiet,
+            &mut b.sim,
+            &b.map,
+            &ph2d_input::Input::new(&b.input, &quiet),
             true,
             1.0 / 60.0,
             &mut drive,
         );
     }
-    let m = sim.world().get::<VecMorph>(e).unwrap();
+    let m = b.sim.world().get::<VecMorph>(b.host).unwrap();
     assert_eq!(
         (m.sources, m.t),
-        ([A, B], 1.0),
+        ([b.shapes[0], b.shapes[1]], 1.0),
         "chegou, e o par NAO trocou"
     );
 }
 
 /// ⛔⛔ **FORA DO MODO a máquina não corre, e a tecla não faz NADA.**
 ///
-/// ⚠️ Não é conservadorismo: a condição de uma seta é uma tecla, e a escutar durante a edição
-/// carregar em `Z` morfava a forma **e** fazia o que o `Z` faz no editor — os dois, sem que nada na
-/// tela explicasse.
+/// ⚠️ Não é conservadorismo: a condição é uma tecla, e a escutar durante a edição carregar em `Z`
+/// morfava a forma **e** fazia o que o `Z` faz no editor — os dois, sem que nada na tela
+/// explicasse.
 ///
 /// ⚠️ **O «modo» deixou de ser o playhead na W9** (Enio, 2026-08-25): o transporte a andar **não**
-/// tranca o teclado do editor, então com ele o conflito ficava exactamente onde estava. Hoje a
-/// porta é o interruptor `Preview` da seção, que toma o teclado.
+/// tranca o teclado do editor. Hoje a porta é o interruptor `Preview` da seção, que o toma.
 ///
 /// **Mutação que deve sangrar:** largar a guarda do `active`.
 #[test]
 fn outside_the_mode_the_key_does_nothing() {
-    let (mut sim, e, map) = scene();
-    let st = z_just_pressed(&map);
+    let mut b = world(&[(1, "jump", 0.1)]);
+    b.bind("jump", KEY_Z);
+    let st = just_pressed(&b.input, KEY_Z);
     let mut machines = MorphMachines::new();
     let mut drive = PreviewDrive::default();
+    let start = b.shapes[0];
 
     let ran = tick(
         &mut machines,
-        &mut sim,
-        &map,
-        &st,
+        &mut b.sim,
+        &b.map,
+        &ph2d_input::Input::new(&b.input, &st),
         false,
         1.0 / 60.0,
         &mut drive,
     );
     assert_eq!(ran, 0);
     assert_eq!(
-        sim.world().get::<VecMorph>(e).unwrap().sources,
-        [A, A],
+        b.sim.world().get::<VecMorph>(b.host).unwrap().sources,
+        [start, start],
         "o par autorado tem de ficar INTACTO"
     );
     assert!(machines.is_empty(), "e as maquinas sao LARGADAS");
@@ -137,33 +195,35 @@ fn outside_the_mode_the_key_does_nothing() {
 /// **Mutação que deve sangrar:** não registar o par no ledger.
 #[test]
 fn both_fields_the_machine_writes_are_preview_and_not_document() {
-    let (mut sim, e, map) = scene();
-    let st = z_just_pressed(&map);
+    let mut b = world(&[(1, "jump", 0.1)]);
+    b.bind("jump", KEY_Z);
+    let st = just_pressed(&b.input, KEY_Z);
     let mut machines = MorphMachines::new();
     let mut drive = PreviewDrive::default();
+    let (s0, s1) = (b.shapes[0], b.shapes[1]);
     tick(
         &mut machines,
-        &mut sim,
-        &map,
-        &st,
+        &mut b.sim,
+        &b.map,
+        &ph2d_input::Input::new(&b.input, &st),
         true,
         1.0 / 60.0,
         &mut drive,
     );
 
     // A captura repõe o AUTORADO — é o que a fotografia do undo vê.
-    let live = drive.substitute_authored(&mut sim);
-    let m = sim.world().get::<VecMorph>(e).unwrap();
+    let live = drive.substitute_authored(&mut b.sim);
+    let m = b.sim.world().get::<VecMorph>(b.host).unwrap();
     assert_eq!(
         (m.sources, m.t),
-        ([A, A], 0.5),
+        ([s0, s0], 0.0),
         "durante a fotografia o mundo tem de mostrar o que o ARTISTA desenhou"
     );
     // …e a cena volta a mostrar o que o motor escreveu.
-    PreviewDrive::restore_live(&mut sim, &live);
+    PreviewDrive::restore_live(&mut b.sim, &live);
     assert_eq!(
-        sim.world().get::<VecMorph>(e).unwrap().sources,
-        [A, B],
+        b.sim.world().get::<VecMorph>(b.host).unwrap().sources,
+        [s0, s1],
         "e depois da fotografia a cena volta ao que o motor mostrava"
     );
 }
@@ -177,71 +237,61 @@ fn both_fields_the_machine_writes_are_preview_and_not_document() {
 /// recusado por já se estar em `B`, e nada observável muda.
 ///
 /// ⇒ *o dano mudou de forma, e a régua tem de o seguir*: com `pressed`, uma tecla segurada **PINA**
-/// a máquina naquela forma — toda outra transição é desfeita no quadro seguinte. É isso que este
-/// gate mede agora.
+/// a máquina naquela forma — toda outra transição é desfeita no quadro seguinte.
 ///
 /// **Mutação que deve sangrar:** trocar `just_pressed` por `pressed` no `morph_machine_drive`.
 #[test]
 fn a_held_key_fires_once_and_never_pins_the_machine() {
-    const C: u64 = 30;
     const KEY_Q: u32 = 0x51;
-    let mut sim = SimWorld::new();
-    let mut m = VecMorphMachine::new(&[A]);
-    let mut b = MorphState::new(B);
-    b.when = "jump".to_string();
-    b.duration_s = 0.0; // instantanea: o gate mede o DISPARO, nao a duracao
-    let mut c = MorphState::new(C);
-    c.when = "dash".to_string();
-    c.duration_s = 0.0;
-    m.graph = MorphGraph {
-        states: vec![MorphState::new(A), b, c],
-    };
-    let ent = sim.world_mut().spawn((VecMorph::new(A, A), m)).id();
-
-    let mut map = InputMap::new();
-    let j = map.create("jump");
-    map.get_mut(j)
-        .unwrap()
-        .bindings
-        .push(Binding::Key(Key(KEY_Z)));
-    let d = map.create("dash");
-    map.get_mut(d)
-        .unwrap()
-        .bindings
-        .push(Binding::Key(Key(KEY_Q)));
+    let mut b = world(&[(1, "jump", 0.0), (2, "dash", 0.0)]);
+    b.bind("jump", KEY_Z);
+    b.bind("dash", KEY_Q);
+    let (s1, s2) = (b.shapes[1], b.shapes[2]);
 
     let mut st = ActionState::new();
     let mut dev = InputState::new();
     let mut machines = MorphMachines::new();
     let mut drive = PreviewDrive::default();
-    let run = |st: &mut ActionState,
-               dev: &InputState,
-               sim: &mut SimWorld,
-               machines: &mut MorphMachines,
-               drive: &mut PreviewDrive,
-               n: usize| {
-        for _ in 0..n {
-            st.tick(&map, dev);
-            tick(machines, sim, &map, st, true, 1.0 / 60.0, drive);
-        }
-    };
 
     // O `Z` desce e FICA em baixo. Dez quadros.
     dev.keyboard.handle_key_down(Key(KEY_Z));
-    run(&mut st, &dev, &mut sim, &mut machines, &mut drive, 10);
+    for _ in 0..10 {
+        st.tick(&b.input, &dev);
+        tick(
+            &mut machines,
+            &mut b.sim,
+            &b.map,
+            &ph2d_input::Input::new(&b.input, &st),
+            true,
+            1.0 / 60.0,
+            &mut drive,
+        );
+    }
     assert_eq!(
-        sim.world().get::<VecMorph>(ent).unwrap().sources[1],
-        B,
-        "o CONTROLE: a primeira descida do Z tem de levar a B"
+        b.showing(),
+        s1,
+        "o CONTROLE: a primeira descida do Z tem de levar a' segunda forma"
     );
 
     // ⭐ Agora o `Q`, **com o `Z` ainda segurado**. Com `pressed`, o `jump` voltava a disparar no
-    // quadro seguinte e arrastava a maquina de volta a B -- que e' o defeito.
+    // quadro seguinte e arrastava a maquina de volta -- que e' o defeito.
     dev.keyboard.handle_key_down(Key(KEY_Q));
-    run(&mut st, &dev, &mut sim, &mut machines, &mut drive, 10);
+    for _ in 0..10 {
+        st.tick(&b.input, &dev);
+        tick(
+            &mut machines,
+            &mut b.sim,
+            &b.map,
+            &ph2d_input::Input::new(&b.input, &st),
+            true,
+            1.0 / 60.0,
+            &mut drive,
+        );
+    }
     assert_eq!(
-        sim.world().get::<VecMorph>(ent).unwrap().sources[1],
-        C,
-        "a tecla SEGURADA pinou a maquina: o dash levou a C e o jump segurado trouxe-a de volta"
+        b.showing(),
+        s2,
+        "a tecla SEGURADA pinou a maquina: o dash levou a' terceira e o jump segurado trouxe-a de \
+         volta"
     );
 }

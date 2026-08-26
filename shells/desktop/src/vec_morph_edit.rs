@@ -116,10 +116,12 @@ pub(crate) fn publish(
     // ⚠️ **Um Morph SEM máquina publica a face VAZIA, e não `None`.** As duas coisas pintam faces
     // diferentes: `None` = *"a seleção não é um Morph"* (a seção nem fala de setas); vazio =
     // *"é um Morph e ainda não tem setas"*, e essa face diz COMO desenhar a primeira.
+    // ⭐ **DERIVADO dos filhos** (W11) — a mesma porta que o motor usa, e é isso que impede o
+    // painel de listar uma forma que a máquina não percorre.
     let graph = sim
         .world()
         .get::<VecMorphMachine>(e)
-        .map(|m| m.graph.clone());
+        .map(|_| crate::morph_set::graph_of(sim, map, e));
     let live = sim
         .world()
         .get::<VecMorph>(e)
@@ -151,15 +153,18 @@ pub(crate) fn publish(
     })
 }
 
-/// **Aplica um comando de seta ao mundo.** Devolve `true` se alguma coisa mudou.
+/// **Aplica um comando ao mundo.** Devolve `true` se alguma coisa mudou.
 ///
 /// ⚠️ **`actions` é a MESMA lista que o menu mostrou**, passada de fora: resolvê-la aqui a partir
 /// do mapa seria uma segunda leitura, e as duas divergiriam no quadro em que o artista criasse uma
 /// acção — o índice escolhido apontaria para outro nome.
-pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: MorphCmd, actions: &[String]) -> bool {
-    let Some(mut m) = sim.world_mut().get_mut::<VecMorphMachine>(morph) else {
-        return false;
-    };
+pub(crate) fn apply(
+    sim: &mut SimWorld,
+    map: &VecEntityMap,
+    morph: Entity,
+    cmd: MorphCmd,
+    actions: &[String],
+) -> bool {
     match cmd {
         // ⚠️ **O `MakeSet` não vive aqui:** ele cria uma ENTIDADE, reparenta formas e escreve na
         // cena vetorial — nada disso cabe numa função que só tem o componente de um objecto que
@@ -167,11 +172,18 @@ pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: MorphCmd, actions: &
         // a tabela é exaustiva.
         MorphCmd::MakeSet => false,
         MorphCmd::SetWhen { row, action } => {
-            let Some(e) = m.graph.states.get_mut(row) else {
+            // ⭐⭐ **A linha resolve-se contra o grafo DERIVADO, e a escrita vai para a TABELA**
+            // (W11): a lista de formas é dos FILHOS, e só a tecla é autorada. Resolver `row` contra
+            // uma lista guardada seria ler uma resposta que a hierarquia pode já ter mudado.
+            let Some(shape) = crate::morph_set::graph_of(sim, map, morph)
+                .states
+                .get(row)
+                .map(|st| st.shape)
+            else {
                 return false;
             };
-            // ⚠️ **O índice `0` é o «—»** — tirar a condição tem de ser um gesto, senão o artista
-            // só poderia apagar a seta inteira para se arrepender.
+            // ⚠️ **O índice `0` é o «—»** — tirar a tecla tem de ser um gesto, e desde a W10 é a
+            // única maneira de desligar uma forma (a lista não tem lixeira: ela É o conjunto).
             let want = if action == 0 {
                 String::new()
             } else {
@@ -182,10 +194,15 @@ pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: MorphCmd, actions: &
                     None => return false,
                 }
             };
-            if e.when == want {
+            let Some(mut m) = sim.world_mut().get_mut::<VecMorphMachine>(morph) else {
+                return false;
+            };
+            let mut key = m.key_of(shape);
+            if key.when == want {
                 return false;
             }
-            e.when = want;
+            key.when = want;
+            m.keys.insert(shape, key);
             true
         }
     }

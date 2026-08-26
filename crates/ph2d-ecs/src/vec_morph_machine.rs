@@ -19,7 +19,9 @@
 //! honesta de que ninguém desenhou seta nenhuma.
 
 use bevy_ecs::prelude::Component;
-use ph2d_morph_machine::MorphGraph;
+use std::collections::BTreeMap;
+
+use ph2d_morph_machine::MorphKey;
 use serde::{Deserialize, Serialize};
 
 use crate::SimComponent;
@@ -33,30 +35,63 @@ use crate::SimComponent;
 /// catálogo (`g(...)`, o mesmo do `VecMorph`): ele chega com o **gesto** de desenhar a primeira
 /// seta, e **não** pela paleta do Inspector. Uma máquina anexada a frio nasceria com `start = 0` —
 /// uma forma que não existe —, que é estado inalcançável a fingir-se de vazio.
-#[derive(Component, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VecMorphMachine {
-    pub graph: MorphGraph,
+    /// ⭐⭐⭐ **A tecla e o ritmo de cada forma, indexados por `VecPathId`.**
+    ///
+    /// # ⛔⛔ A LISTA de formas NÃO mora aqui — ela são os FILHOS (W11)
+    ///
+    /// Enio, 2026-08-26: *"sendo uma forma que previamente não participava do Morph states, se
+    /// for arrastada na hierarquia e se tornar filha de um objeto Morph State, automaticamente
+    /// passa a fazer parte do sistema."*
+    ///
+    /// Até 2026-08-25 este componente guardava a lista (`graph.states`) **e** o
+    /// `morph_set::upkeep` escrevia `ChildOf` — duas respostas para *«que formas estão neste
+    /// conjunto»*, que já podiam discordar (apagar um filho deixava a lista a nomear uma forma
+    /// inexistente). O arrastar-para-dentro torna a discordância um **gesto**, e a cura não é
+    /// reconciliar: é **não a poder exprimir**.
+    ///
+    /// ⇒ o grafo é **DERIVADO** dos `Children` a cada quadro (`morph_set::graph_of`), como o
+    /// `FieldDoc` do módulo 3D Modeling é cozido da hierarquia. Arrastar para dentro **é** entrar;
+    /// arrastar para fora **é** sair. Nenhum código reage ao gesto porque não há gesto a que
+    /// reagir.
+    ///
+    /// ⚠️ **Uma forma sem entrada usa os valores de partida** ([`MorphKey::default`]) — é assim
+    /// que um filho recém-arrastado já participa sem que ninguém escreva nada por ele.
+    ///
+    /// ⚠️ **`BTreeMap`, nunca `HashMap`** — a espinha do determinismo deste repo, e aqui ela é
+    /// load-bearing duas vezes: a ordem entra no `deterministic_hash` e no diff do undo.
+    ///
+    /// ⚠️ **As chaves de formas que saíram FICAM.** Arrastar uma forma para fora e voltar a
+    /// arrastá-la para dentro devolve-lhe a tecla que ela tinha — perder o trabalho do artista
+    /// por um gesto reversível seria a pior leitura possível de *"desconectar"*.
+    pub keys: BTreeMap<u64, MorphKey>,
 }
 
 impl SimComponent for VecMorphMachine {}
 
 impl VecMorphMachine {
-    /// Uma máquina nova sobre as formas `shapes`, **sem tecla nenhuma atribuída**.
+    /// Uma máquina nova **sem tecla nenhuma atribuída**.
     ///
-    /// A **primeira** é onde ela nasce (o `start` é derivado da lista — ver [`MorphGraph::start`]).
+    /// ⚠️ **Ela não recebe as formas, e a ausência é o desenho:** as formas são os FILHOS, e quem
+    /// os pendura é o [`crate::ChildOf`]. Passá-las aqui recriaria a segunda lista que a W11
+    /// apagou.
     ///
-    /// ⚠️ **Sem teclas é o estado honesto de nascimento**, e não um vazio a corrigir: o artista
-    /// acabou de dizer *"estas são as formas"* e ainda não disse o que leva a cada uma. A máquina
-    /// mostra a primeira e fica parada — que é exactamente o que ele pediu até agora.
+    /// ⚠️ **Sem teclas é o estado honesto de nascimento**: o artista acabou de dizer *"estas são
+    /// as formas"* e ainda não disse o que leva a cada uma. A máquina mostra a primeira e fica
+    /// parada — que é exactamente o que ele pediu até agora.
     #[must_use]
-    pub fn new(shapes: &[u64]) -> Self {
-        Self {
-            graph: MorphGraph {
-                states: shapes
-                    .iter()
-                    .map(|&s| ph2d_morph_machine::MorphState::new(s))
-                    .collect(),
-            },
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// A chave desta forma, ou os valores de partida — **a única porta**.
+    ///
+    /// ⚠️ Um `keys.get(&id).cloned().unwrap_or_default()` escrito à mão noutro sítio seria a
+    /// segunda lei de *«o que é uma forma sem chave»*, e as duas divergiriam no dia em que o
+    /// default mudasse.
+    #[must_use]
+    pub fn key_of(&self, shape: u64) -> MorphKey {
+        self.keys.get(&shape).cloned().unwrap_or_default()
     }
 }

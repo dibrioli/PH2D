@@ -94,34 +94,53 @@ pub(crate) fn eligible(sim: &SimWorld, map: &VecEntityMap, sel: &[VecPathId]) ->
     out
 }
 
-/// ⭐⭐ **A LISTA DE ESTADOS** sobre `shapes` — uma entrada por forma, **sem tecla nenhuma**.
+/// ⭐⭐⭐ **O GRAFO, DERIVADO DOS FILHOS** — a lei da W11.
 ///
-/// # ⛔⛔ Isto era o GRAFO COMPLETO, e a W10 apagou-o
+/// Enio, 2026-08-26: *"sendo uma forma que previamente não participava do Morph states, se for
+/// arrastada na hierarquia e se tornar filha de um objeto Morph State, automaticamente passa a
+/// fazer parte do sistema."*
 ///
-/// Até 2026-08-25 esta função devolvia `n(n-1)` arestas, uma por par ordenado — *"todas as morphs
-/// possíveis, de ida e de volta"*. Enio, no smoke seguinte:
+/// ⇒ **arrastar para dentro É entrar, e nenhum código reage ao gesto** — não há gesto a que
+/// reagir. A lista de formas é `Children(host)` filtrado ao que a cena sabe desenhar, e a tecla de
+/// cada uma sai da tabela do componente (uma forma sem entrada usa os valores de partida).
 ///
-/// > *"em vez de um evento para cada transição, melhor seria um evento por shape (…) se a seta para
-/// > cima leva ao retângulo azul, independente de que forma estiver ativa no momento, a seta para
-/// > cima vai levar ao retângulo azul (…) assim reduzimos o número de transições no painel para o
-/// > número de formas envolvidas."*
+/// É a lei que o módulo 3D Modeling já paga (`CLAUDE.md` §5.1): *a hierarquia da cena É o
+/// documento, e o resto é cozido dela a cada quadro.*
 ///
-/// ⚠️ **As passagens não desapareceram — deixaram de ser GUARDADAS.** De qualquer forma continua a
-/// dar para ir a qualquer outra; o que era guardado `n(n-1)` vezes é a **condição**, e ela pertence
-/// ao destino. Guardá-la por par obrigava o artista a escrever a mesma tecla `n-1` vezes para ela
-/// significar sempre a mesma coisa — e nada impedia que as `n-1` discordassem.
+/// ⚠️ **A ORDEM é a dos `Children`**, que é a ordem de inserção (= a de z), e o **primeiro é onde
+/// a máquina nasce**. Reordenar irmãos na Hierarquia muda o estado inicial — e é a resposta certa:
+/// o artista vê a ordem e pode mexer nela.
 ///
-/// ⭐ **A lista encolhe de `n(n-1)` para `n`:** com 9 formas, de **72** linhas no painel para
-/// **9**.
+/// ⛔ **Um filho sem `VecPathRef` não entra** (um sprite, um grupo vazio): a máquina interpola
+/// FORMAS, e um estado que não tem geometria não é interpolável. Ele fica na árvore, visível, e
+/// simplesmente não participa.
 ///
-/// ⚠️ **A ordem é a dos membros, e a primeira é onde a máquina nasce** (o `start` é derivado —
-/// [`MorphGraph::start`]). A lista do painel indexa por posição, então uma ordem que dependesse de
-/// iteração de mapa faria o menu de uma linha escrever a tecla noutra depois de um undo.
+/// ⛔ **Um filho que é ele próprio um Morph não entra** — a geometria dele é reescrita a cada
+/// quadro por baixo da máquina de fora.
 #[must_use]
-pub(crate) fn states_for(shapes: &[VecPathId]) -> MorphGraph {
-    MorphGraph {
-        states: shapes.iter().map(|&s| MorphState::new(s)).collect(),
-    }
+pub(crate) fn graph_of(sim: &SimWorld, map: &VecEntityMap, host: Entity) -> MorphGraph {
+    let w = sim.world();
+    let Some(machine) = w.get::<VecMorphMachine>(host) else {
+        return MorphGraph::default();
+    };
+    let Some(kids) = w.get::<ph2d_ecs::Children>(host) else {
+        return MorphGraph::default();
+    };
+    let states = kids
+        .iter()
+        .filter_map(|&child| {
+            if w.get::<VecMorph>(child).is_some() {
+                return None;
+            }
+            // A forma é o `VecPathId` que o mapa conhece — a mesma porta que todo o resto usa.
+            let id = map
+                .iter()
+                .find(|&(_, &b)| b == child.to_bits())
+                .map(|(&k, _)| k)?;
+            Some(MorphState::with_key(id, &machine.key_of(id)))
+        })
+        .collect();
+    MorphGraph { states }
 }
 
 /// **Cria o conjunto**: põe o path novo na cena e devolve o pendente. `None` se a seleção não dá
@@ -175,7 +194,6 @@ pub(crate) fn upkeep(
         return;
     }
     let start = p.members[0];
-    let graph = states_for(&p.members);
     let members: Vec<Entity> = p
         .members
         .iter()
@@ -204,7 +222,9 @@ pub(crate) fn upkeep(
                 sources: [start, start],
                 t: 0.0,
             },
-            VecMorphMachine { graph },
+            // ⭐ **A máquina nasce VAZIA de teclas** — e sem lista nenhuma: as formas são os
+            // filhos que este mesmo `upkeep` pendura logo abaixo (W11).
+            VecMorphMachine::new(),
             Name::new(name),
             // ⭐⭐ **O conjunto tem POSE, e é isso que o torna arrastável** (plano 32 W9).
             //

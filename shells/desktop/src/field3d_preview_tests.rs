@@ -121,9 +121,10 @@ fn a_settled_view_refines_to_full_exactly_once() {
     let doc = crate::field3d_smoke::scene(1);
     let coarse = (FULL.0 / 3, FULL.1 / 3);
 
+    // ⭐ **O 1.º degrau é ALISAR no mesmo tamanho** (W73) — ver a escada em [`next_trace`].
     assert_eq!(
         next_trace(
-            Some((&cam, coarse.0, coarse.1, &doc)),
+            Some((&cam, coarse.0, coarse.1, &doc, true)),
             &cam,
             &doc,
             FULL,
@@ -131,12 +132,26 @@ fn a_settled_view_refines_to_full_exactly_once() {
             true,
             16
         ),
-        Some(FULL),
-        "nada mudou e o que está na tela é grosso: refina"
+        Some((coarse.0, coarse.1, false)),
+        "parou: o primeiro degrau devolve a peça LISA no tamanho que já está na tela"
+    );
+    // ⭐ **E só o 2.º sobe para o cheio.**
+    assert_eq!(
+        next_trace(
+            Some((&cam, coarse.0, coarse.1, &doc, false)),
+            &cam,
+            &doc,
+            FULL,
+            None,
+            true,
+            16
+        ),
+        Some((FULL.0, FULL.1, false)),
+        "já alisou e ainda é grosso em pixels: agora sim, o cheio"
     );
     assert_eq!(
         next_trace(
-            Some((&cam, FULL.0, FULL.1, &doc)),
+            Some((&cam, FULL.0, FULL.1, &doc, false)),
             &cam,
             &doc,
             FULL,
@@ -167,7 +182,7 @@ fn movement_asks_for_coarse_and_never_below_the_floor() {
         millis: 10_000.0,
     };
     let asked = next_trace(
-        Some((&cam, FULL.0, FULL.1, &doc)),
+        Some((&cam, FULL.0, FULL.1, &doc, false)),
         &moved,
         &doc,
         FULL,
@@ -178,8 +193,12 @@ fn movement_asks_for_coarse_and_never_below_the_floor() {
     .expect("mexeu: tem de traçar");
     assert_eq!(
         asked,
-        (FULL.0 / MAX_PREVIEW_DIVISOR, FULL.1 / MAX_PREVIEW_DIVISOR),
-        "nem com 10 s por quadro o preview desce abaixo do piso"
+        (
+            FULL.0 / MAX_PREVIEW_DIVISOR,
+            FULL.1 / MAX_PREVIEW_DIVISOR,
+            true
+        ),
+        "nem com 10 s por quadro o preview desce abaixo do piso — e o traçado é de MOVIMENTO"
     );
     assert!(
         asked.0 < FULL.0,
@@ -245,7 +264,7 @@ fn a_cheap_piece_is_never_softened() {
     crate::field3d_input::law::orbit(&mut moved, 10.0, 0.0);
     assert_eq!(
         next_trace(
-            Some((&cam, FULL.0, FULL.1, &doc)),
+            Some((&cam, FULL.0, FULL.1, &doc, false)),
             &moved,
             &doc,
             FULL,
@@ -253,8 +272,8 @@ fn a_cheap_piece_is_never_softened() {
             true,
             16
         ),
-        Some(FULL),
-        "mexer numa peça barata continua a traçar CHEIO"
+        Some((FULL.0, FULL.1, true)),
+        "mexer numa peça barata continua a traçar CHEIO — e continua a ser um traçado de MOVIMENTO"
     );
 }
 
@@ -410,24 +429,51 @@ fn the_contour_only_coarsens_while_the_hand_is_moving() {
     );
 }
 
-/// ⭐⭐⭐ **O quadro de MOVIMENTO não paga o anti-serrilhado, e o assente paga** (W71).
+/// ⭐⭐⭐ **UMA bandeira responde aos dois cortes do quadro de movimento** (W71+W73).
 ///
-/// ⚠️ **As duas metades são o gate.** Só a primeira e a lei seria *«nunca há anti-serrilhado»* — o
-/// artista veria a peça serrilhada para sempre, que é o oposto do que a segunda passagem existe
-/// para dar. Só a segunda e ela não corta nada.
+/// O contorno grosso e o anti-serrilhado desligado são a **mesma** lei — *grosso a mexer, nítido ao
+/// assentar* —, e desde a W73 é a mesma bandeira que responde às duas: o `bool` que [`next_trace`]
+/// devolve com o tamanho.
+///
+/// ⚠️ **As três metades são o gate.** Só *«o movimento é grosso»* e a lei seria *«nunca há
+/// anti-serrilhado»* — o artista veria a peça serrilhada para sempre. Só *«o assente é fino»* e ela
+/// não corta nada. E sem o **degrau do meio** o alisamento só chegaria no fim, que é exactamente o
+/// report que a W73 curou.
 #[test]
-fn the_moving_frame_does_not_pay_for_the_antialias() {
-    let full = (1920u32, 1080u32);
+fn one_flag_answers_both_cuts_of_the_moving_frame() {
+    let cam = Orbit::default();
+    let doc = crate::field3d_smoke::scene(1);
+    let mut moved = cam;
+    crate::field3d_input::law::orbit(&mut moved, 10.0, 0.0);
+    let small = (FULL.0 / 3, FULL.1 / 3);
+
+    let (_, _, moving) = next_trace(
+        Some((&cam, small.0, small.1, &doc, true)),
+        &moved,
+        &doc,
+        FULL,
+        None,
+        true,
+        16,
+    )
+    .expect("mexeu: tem de traçar");
     assert!(
-        wants_antialias(full, full),
-        "o quadro assente é o que FICA na tela — é ele que tem de vir liso"
+        moving,
+        "um traçado de movimento é GROSSO — contorno e borda"
     );
+
+    let (w, h, settling) = next_trace(
+        Some((&cam, small.0, small.1, &doc, true)),
+        &cam,
+        &doc,
+        FULL,
+        None,
+        true,
+        16,
+    )
+    .expect("parou: tem de alisar");
     assert!(
-        !wants_antialias((640, 360), full),
-        "o quadro de movimento não paga a segunda passagem (1,30x-1,40x do quadro)"
+        !settling && (w, h) == small,
+        "o degrau que alisa é FINO e no MESMO tamanho — {w}x{h}"
     );
-    // ⚠️ **E a peça barata:** quando o laço já pede o tamanho cheio *enquanto* a mão mexe, a
-    // resposta certa é **ligado** — a pergunta é o tamanho, não o gesto, e é por isso que ela não
-    // tem uma segunda fonte.
-    assert!(wants_antialias((800, 600), (800, 600)));
 }

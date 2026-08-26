@@ -59,7 +59,10 @@ pub(crate) struct Smoke {
     ///
     /// *Um cache que não conhece uma das entradas não é um cache — é um congelador.* E o sintoma
     /// culpava o controle, que estava certo.
-    pub(super) requested: Option<(Orbit, u32, u32, FieldDoc)>,
+    /// ⚠️ **O `bool` é *«este traçado é de MOVIMENTO»*** (W73) — e ele é o que torna o assentar uma
+    /// escada: sem essa memória, o degrau que alisa e o que aumenta são indistinguíveis, porque os
+    /// dois pedem o mesmo `(câmera, tamanho, documento)`.
+    pub(super) requested: Option<(Orbit, u32, u32, FieldDoc, bool)>,
     /// Quanto custou o último traçado — o número que o painel mostra, porque quem mexe num raio
     /// é quem paga o traçado seguinte.
     pub(crate) last_trace_ms: f32,

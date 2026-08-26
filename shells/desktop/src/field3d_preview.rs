@@ -120,25 +120,45 @@ pub(crate) fn preview_size(
 /// ⚠️ **A área ter mudado de tamanho cai no terceiro caso** e é o comportamento certo: o quadro
 /// anterior é esticado enquanto o novo não chega, e o novo sai nítido.
 pub(crate) fn next_trace(
-    requested: Option<(&Orbit, u32, u32, &FieldDoc)>,
+    requested: Option<(&Orbit, u32, u32, &FieldDoc, bool)>,
     cam: &Orbit,
     doc: &FieldDoc,
     full: (u32, u32),
     measured: Option<Measured>,
     has_frame: bool,
     min: u32,
-) -> Option<(u32, u32)> {
-    let Some((rcam, rw, rh, rdoc)) = requested else {
-        return Some(full);
+) -> Option<(u32, u32, bool)> {
+    let Some((rcam, rw, rh, rdoc, rcoarse)) = requested else {
+        return Some((full.0, full.1, false));
     };
     if !has_frame {
-        return Some(full);
+        return Some((full.0, full.1, false));
     }
     if rcam != cam || rdoc != doc {
-        return Some(preview_size(full, measured, PREVIEW_BUDGET_MS, min));
+        let (w, h) = preview_size(full, measured, PREVIEW_BUDGET_MS, min);
+        return Some((w, h, true));
     }
-    // Assentou. Só há trabalho se o que está na tela ainda não é o tamanho cheio.
-    ((rw, rh) != full).then_some(full)
+    // ⭐⭐⭐ **ASSENTOU — e o primeiro degrau é ALISAR, não aumentar** (W73).
+    //
+    // ⛔ **O report do Enio:** *«ao parar ficou mais lento para alisar (500 ms)»*. O que ele espera
+    // ao parar é a peça **lisa** — e a W72 mudou onde o alisamento vive: ele deixou de estar no
+    // quadro de movimento e passou a existir só no assente, que corre no tamanho **cheio** e custa
+    // `~500 ms` num contorno denso. *Uma cura pode mudar o sítio de uma espera em vez de a cortar.*
+    //
+    // ⇒ o assentar passa a ser uma **escada de dois degraus**: primeiro o MESMO tamanho, agora com
+    // o contorno inteiro e o anti-serrilhado (`131 ms` a `640×360` com 672 arestas), e só depois o
+    // tamanho cheio (`504 ms`). *O que ele espera chega `3,8×` mais cedo, e o degrau caro deixa de
+    // estar no caminho dele.*
+    //
+    // ⚠️ **O preço está nomeado:** o total sobe `~26 %`, porque o degrau do meio é trabalho a mais.
+    // É a troca clássica do refinamento progressivo — **latência percebida contra trabalho total**
+    // —, e aqui ela é decidida pelo que a mão faz a seguir: se ela voltar a mexer, o degrau caro
+    // nunca chega a correr (`cancels_the_inflight`), e o trabalho a mais foi zero.
+    if rcoarse {
+        return Some((rw, rh, false));
+    }
+    // Só há mais trabalho se o que está na tela ainda não é o tamanho cheio.
+    ((rw, rh) != full).then_some((full.0, full.1, false))
 }
 
 /// ⭐ **Vale a pena ABANDONAR o traçado que está em voo?** (W32)
@@ -168,34 +188,6 @@ pub(crate) fn cancels_the_inflight(
     inflight == full
         // …e o que se pede agora é mais grosso (a mão voltou a mexer).
         && (asked.0 < full.0 || asked.1 < full.1)
-}
-
-/// ⭐⭐⭐ **O quadro de MOVIMENTO não paga o anti-serrilhado** (W71) — a mesma lei que engrossa o
-/// contorno, aplicada à segunda passagem.
-///
-/// # O número
-///
-/// A segunda passagem re-marcha a silhueta **quatro vezes** e custa **`1,30×`–`1,40×` do quadro**,
-/// medido a `640×360` em cinco densidades de contorno
-/// (`ph2d_field_render::tests::measure_the_two_knobs_of_the_moving_frame`):
-///
-/// | arestas | 48 | 64 | 96 | 128 | 168 |
-/// |---|---:|---:|---:|---:|---:|
-/// | com | `14,6` | `17,5` | `22,3` | `28,8` | `35,7` |
-/// | sem | `10,9` | `12,5` | `17,1` | `20,6` | `26,7` |
-///
-/// ⭐ E ele é o **melhor** dos dois botões para se cortar a mexer: tirar arestas muda a **forma** da
-/// peça (uma curva fica facetada), tirar o anti-serrilhado muda só a **borda de um pixel** — numa
-/// imagem que está a mover-se, e que volta inteira mal a mão pare.
-///
-/// # ⚠️ Porque a pergunta é o TAMANHO e não «a mão está a mexer»
-///
-/// O laço já responde a isso: um traçado do tamanho cheio **é** o refinamento que corre depois de a
-/// cena assentar (ver [`next_trace`]). Perguntar outra coisa seria uma segunda fonte para o mesmo
-/// facto — e as duas divergiriam no caso em que a peça é barata e o preview já pede o tamanho
-/// cheio **enquanto** a mão mexe, onde a resposta certa é justamente *«ligado»*.
-pub(crate) fn wants_antialias(asked: (u32, u32), full: (u32, u32)) -> bool {
-    asked == full
 }
 
 #[cfg(test)]

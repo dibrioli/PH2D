@@ -5747,6 +5747,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **tecto MEDIDO de `20 %`** — a montagem deixou de ser a maioria | §72.1 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; `8,7` amostras/pixel, custo **por aresta tocada** | ⛔ sobre-relaxação está fora (a contagem de passos já é mínima) | §73 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
+| ⏸️ O 2.º degrau do assentar custa `504 ms` numa peça densa | a escada tirou-o do caminho; o número fica | §74.2 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
 | ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
 | ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
@@ -5756,6 +5757,11 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐ **W73 (§74): «ao parar ficou mais lento para alisar» — o assentar vira uma ESCADA.** O
+  traçado assente nunca mudou; o que mudou foi **onde o alisamento vive**. Dois degraus: primeiro o
+  **mesmo tamanho** com o contorno inteiro e o anti-serrilhado (`131 ms`), depois o cheio (`504`) ⇒
+  o que ele espera chega **`3,8×` mais cedo**. ⚠️ E a `wants_antialias` da W72 **morreu com um dia**:
+  ela perguntava pelo tamanho, e o degrau que alisa pede o mesmo tamanho do de movimento.
 - ⭐ **W72 (§73): o quadro de movimento também não paga o anti-serrilhado** — `35,7 → 26,7 ms`
   (`1,34×`), e o corte muda a **borda de um pixel** em vez da forma. ⭐ E a marcha foi medida antes:
   `8,7` amostras por pixel ⇒ **a sobre-relaxação não tem de onde tirar**; o custo é *por aresta
@@ -6474,3 +6480,52 @@ sempre ligado).
 ⛔ **E o que isto NÃO é:** a segunda passagem continua a correr no quadro assente, que é o que fica
 na tela. *Cortar nos dois seria trocar a razão de existir do módulo — a quina afiada — por
 milissegundos.*
+
+## §74 — W73: «ao parar ficou mais lento para alisar» — o assentar vira uma ESCADA (26/08)
+
+**Report do Enio, sobre a W72:** *«ao parar ficou mais lento para alisar (500 ms)»*.
+
+### §74.1 — ⛔ O mecanismo é meu, e ele não é «mais lento»: é **noutro sítio**
+
+O traçado assente **não** mudou com a W72 — ele sempre correu no tamanho cheio e sempre custou o que
+custa (`504 ms` a `1920×1080` com 672 arestas). O que mudou foi **onde o alisamento vive**: até à
+W72 o quadro de movimento já vinha com anti-serrilhado, e ao parar só faltavam *pixels*; depois
+dela, o que falta ao parar é **o alisamento inteiro** — e ele só chega no fim do degrau mais caro
+que existe.
+
+⚠️ *Uma cura pode mudar o SÍTIO de uma espera em vez de a cortar* — e o sítio novo era justamente
+aquele em que o artista está a olhar para a peça à espera de a ver lisa.
+
+### §74.2 — ⭐ A cura: dois degraus, e o barato primeiro
+
+O assentar deixa de ser um salto e passa a ser uma **escada**:
+
+| degrau | o que corre | custo medido (672 arestas) | o que o artista vê |
+|---|---|---|---|
+| movimento | tamanho do preview · contorno grosso · **sem** AA | `26,7 ms` | responde à mão |
+| **1.º ao parar** | **mesmo tamanho** · contorno inteiro · **com** AA | **`131 ms`** | ⭐ a peça **lisa** e com a forma certa |
+| 2.º | tamanho cheio · contorno inteiro · com AA | `504 ms` | os pixels nítidos |
+
+⭐ **O que ele espera chega `3,8×` mais cedo**, e o degrau caro deixa de estar no caminho dele.
+
+⚠️ **O preço está nomeado:** o total sobe `~26 %` (o degrau do meio é trabalho a mais). É a troca
+clássica do refinamento progressivo — **latência percebida contra trabalho total** — e aqui ela é
+decidida pelo que a mão faz a seguir: se ela voltar a mexer, o degrau caro **nunca chega a correr**
+(`cancels_the_inflight`), e o trabalho a mais foi zero.
+
+### §74.3 — ⚠️ Uma bandeira, dois cortes — e a `wants_antialias` MORREU com um dia
+
+A W72 tinha perguntado *«o tamanho pedido é o cheio?»* para decidir o anti-serrilhado. ⛔ **Essa
+pergunta não sabe exprimir a escada:** o degrau que alisa pede **o mesmo tamanho** do de movimento, e
+os dois seriam indistinguíveis. ⇒ a resposta passa a **viajar com o pedido**: `next_trace` devolve
+`(largura, altura, é_de_movimento)`, e o contorno grosso e o anti-serrilhado desligado lêem **a
+mesma** bandeira.
+
+⭐ *Duas perguntas para o mesmo facto é uma delas a envelhecer* — e esta envelheceu em **24 horas**,
+o que é o argumento mais curto que este módulo já teve para a lei da fonte única.
+
+⚠️ **A memória entra no estado** (`Smoke::requested` ganha o `bool`): sem ela o degrau que alisa e o
+que aumenta são indistinguíveis, porque os dois pedem o mesmo `(câmera, tamanho, documento)`.
+
+**Provas de mutação — 3/3 mataram:** saltar o degrau que alisa · o traçado de movimento sair fino ·
+o degrau do meio continuar grosso.

@@ -107,7 +107,10 @@ pub(crate) fn draw(
         // o que está na tela ainda é grosso, sai o **cheio**. Uma cena parada e já nítida custa
         // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
         let ask = crate::field3d_preview::next_trace(
-            smoke.requested.as_ref().map(|(c, w, h, d)| (c, *w, *h, d)),
+            smoke
+                .requested
+                .as_ref()
+                .map(|(c, w, h, d, k)| (c, *w, *h, d, *k)),
             &smoke.cam,
             &doc,
             (tw, th),
@@ -120,8 +123,8 @@ pub(crate) fn draw(
         // esperar (até **121 ms** medidos). ⛔ O contrário nunca: um traçado de movimento corre até
         // ao fim, senão numa órbita contínua ele seria cancelado a cada quadro e a imagem
         // **congelava**. Ver `field3d_preview::cancels_the_inflight`.
-        if let (Some(job), Some(asked)) = (&smoke.inflight, ask)
-            && crate::field3d_preview::cancels_the_inflight(job.size, asked, (tw, th))
+        if let (Some(job), Some((aw, ah, _))) = (&smoke.inflight, ask)
+            && crate::field3d_preview::cancels_the_inflight(job.size, (aw, ah), (tw, th))
         {
             job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             smoke.inflight = None;
@@ -129,20 +132,24 @@ pub(crate) fn draw(
         // ⚠️ O `(tw, th)` de dentro do `if let` é o tamanho PEDIDO e **sombreia** o cheio; este
         // guarda o cheio para a lei do contorno grosso o poder comparar.
         let full_size = (tw, th);
-        if let (None, Some((tw, th))) = (&smoke.inflight, ask) {
+        if let (None, Some((tw, th, coarse))) = (&smoke.inflight, ask) {
             // ⚠️ **O comparado é o documento REAL.** Guardar aqui o engrossado faria a cena parecer
             // mudada em toda alternância entre grosso e fino, e o laço re-traçaria para sempre.
-            smoke.requested = Some((smoke.cam, tw, th, doc.clone()));
+            smoke.requested = Some((smoke.cam, tw, th, doc.clone(), coarse));
             // ⭐⭐⭐ **E o que vai para o traçador leva o contorno GROSSO enquanto a mão mexe**
             // (2026-08-26) — a mesma lei que já baixava os pixels, aplicada onde o custo estava: o
             // traçado paga `0,22 ms` por **aresta do contorno**, e esse custo é **cego aos pixels**.
             // Ver [`crate::field3d_preview::coarse_doc`].
-            let doc = crate::field3d_preview::coarse_doc(&doc, (tw, th), full_size)
-                .unwrap_or_else(|| doc.clone());
-            // ⭐⭐⭐ **E não paga o anti-serrilhado enquanto mexe** (W71) — `1,30×`–`1,40×` do
-            // quadro, e é o corte que muda a BORDA em vez da FORMA. Ver
-            // [`crate::field3d_preview::wants_antialias`].
-            let antialias = crate::field3d_preview::wants_antialias((tw, th), full_size);
+            // ⭐ E os dois cortes do quadro de movimento saem da MESMA bandeira (W73): o contorno
+            // grosso e o anti-serrilhado desligado são a mesma lei — *grosso a mexer, nítido ao
+            // assentar* —, e uma segunda pergunta para o mesmo facto podia divergir dela.
+            let doc = if coarse {
+                crate::field3d_preview::coarse_doc(&doc, (tw, th), full_size)
+                    .unwrap_or_else(|| doc.clone())
+            } else {
+                doc.clone()
+            };
+            let antialias = !coarse;
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);

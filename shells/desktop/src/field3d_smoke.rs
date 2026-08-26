@@ -488,7 +488,8 @@ mod trace_tests {
         let cam = Orbit::default();
         let doc = scene(1);
         let full = (640u32, 480u32);
-        let asked = (&cam, full.0, full.1, &doc);
+        // ⚠️ `false` = *o último traçado NÃO foi de movimento*; ver a escada em `next_trace` (W73).
+        let asked = (&cam, full.0, full.1, &doc, false);
 
         assert_eq!(
             next_trace(Some(asked), &cam, &doc, full, None, true, MIN_TRACE),
@@ -512,13 +513,13 @@ mod trace_tests {
         );
         assert_eq!(
             next_trace(Some(asked), &cam, &doc, (800, 480), None, true, MIN_TRACE),
-            Some((800, 480)),
+            Some((800, 480, false)),
             "a área mudou de tamanho: o traçado novo sai NÍTIDO, não grosso"
         );
         // Sem quadro nenhum, traça — mesmo com tudo igual.
         assert_eq!(
             next_trace(Some(asked), &cam, &doc, full, None, false, MIN_TRACE),
-            Some(full),
+            Some((full.0, full.1, false)),
             "sem quadro nenhum traça, e traça CHEIO: o primeiro traçado é a medição"
         );
     }

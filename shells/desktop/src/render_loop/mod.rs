@@ -2986,6 +2986,9 @@ impl crate::App {
             let mut reset_transform_row: Option<NodeId> = None;
             // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
             let mut revert_to_master_row: Option<NodeId> = None;
+            // ⭐ Os outros verbos de instância (ADR-0164 / F4.5) — UM slot, porque eles são
+            // exclusivos por construção: o menu fecha ao primeiro clique.
+            let mut instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
             // Carries the clicked row's `NodeId` (the merged sprite
@@ -4057,6 +4060,18 @@ impl crate::App {
                     }
                     EditorAction::HierRevertToMaster { row } => {
                         revert_to_master_row.get_or_insert(row);
+                    }
+                    EditorAction::HierMakeComponent { row } => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Make));
+                    }
+                    EditorAction::HierInstantiate { row } => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
+                    }
+                    EditorAction::HierDetach { row } => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Detach));
+                    }
+                    EditorAction::HierApplyToMaster { row } => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Apply));
                     }
                     EditorAction::HierDelete { row } => {
                         delete_row.get_or_insert(row);
@@ -9855,6 +9870,7 @@ impl crate::App {
                 add_root,
                 reset_transform_row,
                 revert_to_master_row,
+                instance_verb_row,
                 delete_row,
                 hierarchy_row_click,
                 hierarchy_select_intent,

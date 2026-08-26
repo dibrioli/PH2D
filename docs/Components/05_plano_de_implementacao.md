@@ -563,7 +563,7 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 | F4.2 | **Instanciar**: cópia profunda + remap de identidade e de referências | ✅ 2026-08-26 — smoke-gate **1** |
 | F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
 | F4.4 | Override **por componente** (`ObjectInstance`) — ⚠️ *por campo* foi refutado | ✅ 2026-08-26 |
-| F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ⬜ |
+| F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ✅ 2026-08-26 |
 | F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | ⬜ |
 | F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
 
@@ -653,6 +653,31 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   precisou de esquecer.*
 - ⚠️ **O EMPATE está declarado: os dois mudam no mesmo passe ⇒ a RECEITA ganha**, e não fica
   override. Editar o molde é uma difusão deliberada.
+
+**O que a F4.5 mediu e o plano não dizia:**
+- ⭐ **O *Redefinir* da tabela do doc 04 já existia** — é o *Revert to Master* que a F4.4 entregou.
+  A F4.5 fecha os outros três: **Make Component** · **Instantiate** · **Detach from Master** ·
+  **Apply to Master**, os quatro no menu de botão-direito da Hierarquia.
+- ⚠️⚠️ **O *Criar componente* esconde a RECEITA, e isso forçou uma linha nova na lei do sync.**
+  Sem esconder, o artista faz o gesto e vê **dois objetos empilhados** — um que cai e outro que não
+  —, que se lê como defeito (o Unity põe o prefab *asset* fora da cena pela mesma razão). ⇒ a
+  `Visibility` entrou no `ROOT_IS_ITS_OWN`: sem essa metade o `hidden` da receita **propagava** e
+  toda instância nascia invisível — o gesto apagaria da tela o objeto que o artista acabou de
+  transformar em componente. ⛔ É da RAIZ e não do tipo: esconder uma PEÇA dentro da receita é
+  autoria, e propaga.
+- ⚠️ **O *Destacar* solta a instância INTEIRA**, mesmo clicando numa peça. Uma instância com metade
+  das peças ligadas não é nada que se saiba nomear — o sync propagaria a metade que ficou, e o
+  artista veria um objeto que obedece pela metade. *O Unity também não tem meia-instância.*
+- ⚠️ **A ordem do *Aplicar* é escrever no mestre e SÓ ENTÃO limpar a chave.** Ao contrário, o passe
+  que corre no meio veria a instância sem excepção e diferente da receita, e achataria a edição que
+  o gesto existe para promover.
+- ⚠️ **Uma linha minha estava MORTA e só a mutação o disse:** o verbo reescrevia o `Transform` da
+  receita na instância *«porque a pose é `InstanceLocal` e o sync nunca a traria»* — verdade sobre o
+  sync e **irrelevante**, porque a cópia profunda leva o `Transform` verbatim: a instância **nasce**
+  no lugar. ⛔ A `Visibility` é o caso contrário e por isso fica (a cópia é feita **depois** de a
+  receita ser escondida). *Duas linhas vizinhas, uma paga e outra não — e só a mutação as separa.*
+- ⛔ **`Make Component` recusa uma subárvore DENTRO de uma instância** — fazer dela receita partiria
+  o elo da cópia que a contém. É a fronteira da F5, nomeada em vez de descoberta.
 
 - ⚠️ **A recusa de ciclo é no GESTO e devolve uma RAZÃO** (`Refusal::NotAMaster` ·
   `WouldNestInItself`), não um `None`: *duas recusas que devolvem o mesmo `None` produzem o mesmo

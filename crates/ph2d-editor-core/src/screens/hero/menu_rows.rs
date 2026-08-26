@@ -245,11 +245,18 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // ⚠️ Numa linha que NÃO é instância ele responde com um aviso, e não com nada: a
             // tabela deste menu é plana (não sabe o que a linha é), e um item que come o clique
             // em silêncio é pior que um ausente.
+            // ⭐ **A família da INSTÂNCIA** (ADR-0164 / F4.5), na ordem do gesto: criar a receita ·
+            // pôr outra cópia · promover a excepção · devolvê-la · cortar o vínculo.
+            // ⚠️ Todos respondem numa linha a que não se aplicam — a tabela é plana.
+            (ids::CTX_MENU_HIER_MAKE_COMPONENT, "Make Component", None),
+            (ids::CTX_MENU_HIER_INSTANTIATE, "Instantiate", None),
+            (ids::CTX_MENU_HIER_APPLY_TO_MASTER, "Apply to Master", None),
             (
                 ids::CTX_MENU_HIER_REVERT_TO_MASTER,
                 "Revert to Master",
                 None,
             ),
+            (ids::CTX_MENU_HIER_DETACH, "Detach from Master", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
         // Painter Falloff curve point handle (Blender per-point handle types).

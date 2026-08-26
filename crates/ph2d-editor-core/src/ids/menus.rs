@@ -194,6 +194,14 @@ pub const CTX_MENU_HIER_RESET_TRANSFORM: NodeId = hash_node_id("ctx_menu_hier_re
 /// ⭐ **Devolver uma INSTÂNCIA à receita** (ADR-0164 / F4.4) — apaga as excepções que o artista
 /// fez nesta cópia, e o sync volta a propagar o mestre no quadro seguinte.
 pub const CTX_MENU_HIER_REVERT_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_revert_to_master");
+/// ⭐ **A seleção vira RECEITA** (ADR-0164 / F4.5) — e uma instância fica no lugar dela.
+pub const CTX_MENU_HIER_MAKE_COMPONENT: NodeId = hash_node_id("ctx_menu_hier_make_component");
+/// ⭐ **Instanciar** a receita escolhida (ADR-0164 / F4.5).
+pub const CTX_MENU_HIER_INSTANTIATE: NodeId = hash_node_id("ctx_menu_hier_instantiate");
+/// ⭐ **Destacar** — a instância deixa de seguir a receita (ADR-0164 / F4.5).
+pub const CTX_MENU_HIER_DETACH: NodeId = hash_node_id("ctx_menu_hier_detach");
+/// ⭐ **Aplicar ao mestre** — a excepção vira o padrão (ADR-0164 / F4.5).
+pub const CTX_MENU_HIER_APPLY_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_apply_to_master");
 pub const CTX_MENU_HIER_ADD_CHILD: NodeId = hash_node_id("ctx_menu_hier_add_child");
 /// M14.7 polish: per-row "Rename..." entry. Opens inline rename
 /// mode (the row's name turns into a TextInput).

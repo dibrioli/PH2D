@@ -92,6 +92,13 @@ const ROOT_IS_ITS_OWN: &[&str] = &[
     "ph2d::ecs::Name",
     "ph2d::ecs::RootOrder",
     "ph2d::ecs::SiblingOrder",
+    // ⚠️⚠️ **A `Visibility` entrou na F4.5, e é o *Criar componente* que a exige:** a receita fica
+    // ESCONDIDA (senão o artista vê dois objetos empilhados, um que cai e outro que não). Sem esta
+    // linha o `hidden` dela propagava e **toda instância nascia invisível** — o gesto apagaria da
+    // tela o objeto que o artista acabou de transformar em componente.
+    //
+    // ⛔ É da RAIZ, e não do tipo: esconder uma PEÇA dentro da receita é autoria, e propaga.
+    "ph2d::ecs::Visibility",
 ];
 
 /// O componente cuja escrita depende de quem possui a pose.

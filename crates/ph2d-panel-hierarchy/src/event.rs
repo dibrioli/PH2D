@@ -47,6 +47,10 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_ADD_CHILD
         || id == ids::CTX_MENU_HIER_RESET_TRANSFORM
         || id == ids::CTX_MENU_HIER_REVERT_TO_MASTER
+        || id == ids::CTX_MENU_HIER_MAKE_COMPONENT
+        || id == ids::CTX_MENU_HIER_INSTANTIATE
+        || id == ids::CTX_MENU_HIER_DETACH
+        || id == ids::CTX_MENU_HIER_APPLY_TO_MASTER
         || id == ids::CTX_MENU_HIER_DELETE
         || id == ids::CTX_MENU_HIER_RENAME
         || id == ids::CTX_MENU_HIER_MERGE_SPRITES
@@ -82,6 +86,14 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierDuplicate { row });
         } else if id == ids::CTX_MENU_HIER_ADD_CHILD {
             host.bus_mut().push(EditorAction::HierAddChild { row });
+        } else if id == ids::CTX_MENU_HIER_MAKE_COMPONENT {
+            host.bus_mut().push(EditorAction::HierMakeComponent { row });
+        } else if id == ids::CTX_MENU_HIER_INSTANTIATE {
+            host.bus_mut().push(EditorAction::HierInstantiate { row });
+        } else if id == ids::CTX_MENU_HIER_DETACH {
+            host.bus_mut().push(EditorAction::HierDetach { row });
+        } else if id == ids::CTX_MENU_HIER_APPLY_TO_MASTER {
+            host.bus_mut().push(EditorAction::HierApplyToMaster { row });
         } else if id == ids::CTX_MENU_HIER_REVERT_TO_MASTER {
             host.bus_mut()
                 .push(EditorAction::HierRevertToMaster { row });

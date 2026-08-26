@@ -245,6 +245,18 @@ pub enum EditorAction {
     /// cópia. Payload: a `NodeId` da linha. Levantada pelo botão direito → *Revert to Master*.
     HierRevertToMaster { row: ph2d_a11y::NodeId },
 
+    /// ⭐ **A seleção vira RECEITA** e uma instância fica no lugar dela (ADR-0164 / F4.5).
+    HierMakeComponent { row: ph2d_a11y::NodeId },
+
+    /// ⭐ **Instanciar** a receita desta linha (ADR-0164 / F4.5).
+    HierInstantiate { row: ph2d_a11y::NodeId },
+
+    /// ⭐ **Destacar** — a instância deixa de seguir a receita (ADR-0164 / F4.5).
+    HierDetach { row: ph2d_a11y::NodeId },
+
+    /// ⭐ **Aplicar ao mestre** — a excepção vira o padrão (ADR-0164 / F4.5).
+    HierApplyToMaster { row: ph2d_a11y::NodeId },
+
     /// Spawn a new child entity (identity transform, name "Child")
     /// under the hierarchy row. Payload: the parent row's `NodeId`.
     /// Raised by the row's right-click → Add Child menu entry.

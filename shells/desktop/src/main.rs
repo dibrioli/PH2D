@@ -260,6 +260,8 @@ mod instance_refs;
 mod instance_smoke;
 /// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
 mod instance_sync;
+/// ⭐ **Os VERBOS de instância** (ADR-0164 / F4.5) — criar componente, destacar, aplicar ao mestre.
+mod instance_verbs;
 /// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
 mod instantiate;
 mod integration;

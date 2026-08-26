@@ -1,8 +1,8 @@
-# Handoff de integração — `line/components`, 2026-08-26 (**F4.1..F4.4**: o mestre é inerte, instanciar/duplicar copiam de verdade, editar a receita muda as instâncias, e a excepção do artista sobrevive)
+# Handoff de integração — `line/components`, 2026-08-26 (**F4.1..F4.5**: o mestre é inerte, instanciar/duplicar copiam de verdade, editar a receita muda as instâncias, e a excepção do artista sobrevive)
 
 > DIRETRIZ §1.5.9. Sucessor do
 > [handoff de 25/08](HANDOFF_INTEGRACAO_line_components_F1_F2_F3_2026-08-25.md) (F1+F2+F3).
-> ⚠️ **A fase F4 NÃO está fechada** — este handoff cobre as quatro primeiras fatias dela, que são
+> ⚠️ **A fase F4 NÃO está fechada** — este handoff cobre as cinco primeiras fatias dela, que são
 > mergeáveis isoladamente. O estado das sete fatias está no
 > [plano vivo §F4](../05_plano_de_implementacao.md).
 
@@ -16,7 +16,7 @@
 | Worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-components` |
 | Base | `main @ 0f5ce8040` |
 | Governança | [ADR-0164](../../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) · [ADR-0166](../../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) |
-| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) |
+| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) · **F4.5** (os verbos, com gesto) |
 
 ---
 
@@ -29,10 +29,14 @@
 | um objeto marcado como receita | simulava como qualquer outro | ✅ **não cai** — receita não é objeto de cena |
 | editar uma peça da receita | não existia | ✅ **todas as instâncias mudam** no mesmo quadro |
 | editar uma peça de UMA cópia | não existia | ✅ vira **excepção**: a receita já não a leva |
+| transformar um objeto em componente | não existia | ✅ *Make Component* — a receita esconde-se e uma cópia fica no lugar |
+| pôr outra cópia da receita | só pelo smoke | ✅ *Instantiate* no menu |
+| promover a excepção a padrão | não existia | ✅ *Apply to Master* — as outras cópias recebem-na |
+| soltar uma cópia da receita | não existia | ✅ *Detach from Master* |
 
-⚠️ **O que ainda NÃO existe:** o gesto *«criar componente»* e o botão *«Instanciar»*. A porta
-`instantiate::instantiate_master` existe, é testada e é alcançada **pelo smoke**; pô-la num menu é
-a fatia **F4.5**.
+⚠️ **O que ainda NÃO existe:** o `VecInstance` subsumido (F4.6) e a lane do `physics_ecs_c9` com
+mestre+instância (F4.7). E a UI que **mostra** quais campos estão overridados — hoje o artista sabe
+pelo comportamento e pelos verbos, não por um sinal na tela.
 
 ---
 

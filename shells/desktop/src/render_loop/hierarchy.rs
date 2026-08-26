@@ -92,6 +92,8 @@ pub(super) fn dispatch(
     reset_transform_row: Option<NodeId>,
     // ⭐ *Revert to Master* (ADR-0164 / F4.4) — a linha cuja instância volta à receita.
     revert_to_master_row: Option<NodeId>,
+    // ⭐ Os outros verbos de instância (ADR-0164 / F4.5).
+    instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -316,6 +318,15 @@ pub(super) fn dispatch(
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
         && crate::instance_sync::drain_revert_to_master(sim, echo, entity_bits, toasts)
+    {
+        title_dirty = true;
+    }
+    // ⭐ **Os outros verbos de instância** (ADR-0164 / F4.5) — o dreno mora com eles, pela razão
+    // do *Revert*: é sobre INSTÂNCIAS, e não sobre a mecânica das linhas.
+    if let Some((row, verb)) = instance_verb_row
+        && let Some(live) = hero_live.as_ref()
+        && let Some(entity_bits) = live.bridge.entity_for(row)
+        && crate::instance_verbs::drain(verb, sim, registry, echo, entity_bits, toasts)
     {
         title_dirty = true;
     }
@@ -548,47 +559,8 @@ pub(super) fn dispatch(
     title_dirty
 }
 
-/// O gate do **roteamento** de `Duplicate` — ver [`DuplicateKind`].
-///
-/// ⚠️ Ele existe por uma prova de mutação que **passou**: os gates do módulo 3D chamavam a porta de
-/// duplicar diretamente, então apagar o braço daqui não reprovava nada. *A costura não-testada é a
-/// causa nº 1 da `DIRETIVA_IMPLEMENTACAO` §1*, e este arquivo era onde ela estava.
+/// ⚠️ Os gates do ROTEAMENTO vivem no irmão, pelo teto de 600 LOC — o corte é por assunto
+/// (o dreno das intenções aqui, a prova de que cada tipo vai para a porta certa lá).
 #[cfg(test)]
-mod duplicate_routing {
-    use super::{DuplicateKind, duplicate_kind};
-
-    /// ⭐ **Cada tipo de entidade vai para quem sabe duplicá-la.**
-    #[test]
-    fn a_field_node_never_goes_to_the_generic_arm() {
-        let mut sim = ph2d_ecs::SimWorld::new();
-        let world = sim.world_mut();
-
-        // Um nó de modelagem 3D, criado pela porta de produção.
-        let root = ph2d_field_ecs::spawn_doc(world, &crate::field3d_smoke::scene(1), "Model");
-        assert_eq!(
-            duplicate_kind(world, root),
-            DuplicateKind::Field,
-            "um nó de campo no braço genérico sai como um sósia sem geometria"
-        );
-
-        // Uma entidade comum continua a ir para o braço genérico — senão o roteamento passaria a
-        // reclamar tudo, e o gate acima ficaria verde por reclamar de mais.
-        let plain = world
-            .spawn((
-                ph2d_ecs::Name::new("Sprite"),
-                ph2d_ecs::Transform::default(),
-            ))
-            .id();
-        assert_eq!(duplicate_kind(world, plain), DuplicateKind::Entity);
-
-        // E um path vetorial vai para o dono da geometria dele.
-        let path = world
-            .spawn((
-                ph2d_ecs::Name::new("Path"),
-                ph2d_ecs::Transform::default(),
-                ph2d_ecs::VecPathRef(7),
-            ))
-            .id();
-        assert_eq!(duplicate_kind(world, path), DuplicateKind::VecPath);
-    }
-}
+#[path = "hierarchy_duplicate_routing_tests.rs"]
+mod duplicate_routing;

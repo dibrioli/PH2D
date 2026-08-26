@@ -183,7 +183,10 @@ fn only_a_master_can_be_instantiated() {
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new("Crate")))
         .id();
-    assert!(instantiate_master(&mut sim, &r, plain, None).is_none());
+    assert_eq!(
+        instantiate_master(&mut sim, &r, plain, None),
+        Err(super::Refusal::NotAMaster)
+    );
 }
 
 /// ⚠️ **Uma referência para FORA do mestre continua a apontar para fora.**
@@ -372,4 +375,38 @@ fn the_duplicate_lands_beside_its_source() {
         Some(host),
         "a copia saiu de baixo do pai da fonte"
     );
+}
+
+/// ⛔⛔ **Instanciar DENTRO do próprio mestre é recusado** — senão a receita passa a conter uma
+/// instância de si mesma, o sync propaga o mestre para dentro do mestre (que cresce a cada
+/// quadro), e a cópia profunda seguinte copia a cópia.
+///
+/// ⚠️ **A recusa é no GESTO, e não um tecto de profundidade**: um limite numérico transformaria um
+/// erro de autoria numa contagem, e o artista veria a árvore crescer até um número que ninguém lhe
+/// explicou.
+///
+/// ⚠️ E as duas recusas são **distinguíveis**, para que o gesto (F4.5) possa dizer frases
+/// diferentes — *duas recusas que devolvem o mesmo `None` produzem o mesmo aviso inútil*.
+#[test]
+fn instantiating_inside_the_master_itself_is_refused() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let master = spawn_master(&mut sim);
+    let inside = piece(&sim, master, "Arm");
+    assert_eq!(
+        super::instantiate_master(&mut sim, &r, master, Some(inside)),
+        Err(super::Refusal::WouldNestInItself),
+        "a instancia aterrou DENTRO da propria receita"
+    );
+    // A própria raiz do mestre é o caso de bordo do mesmo laço.
+    assert_eq!(
+        super::instantiate_master(&mut sim, &r, master, Some(master)),
+        Err(super::Refusal::WouldNestInItself)
+    );
+    // E o controle positivo: FORA do mestre continua a funcionar.
+    let host = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Host")))
+        .id();
+    assert!(super::instantiate_master(&mut sim, &r, master, Some(host)).is_ok());
 }

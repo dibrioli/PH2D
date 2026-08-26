@@ -561,7 +561,7 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 |---|---|---|
 | F4.1 | O mestre existe e é **INERTE** — a condição (a) da refutação 1 | ✅ 2026-08-25 |
 | F4.2 | **Instanciar**: cópia profunda + remap de identidade e de referências | ✅ 2026-08-26 — smoke-gate **1** |
-| F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem topológica, `pose_owner`) | ⬜ smoke-gate 2 |
+| F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
 | F4.4 | Override por campo capturado por diff (`ObjectInstance`) | ⬜ |
 | F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ⬜ |
 | F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | ⬜ |
@@ -584,6 +584,11 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   `the_instance_points_at_the_master_not_at_itself` (mutação mata).
 - ⚠️ **A cópia profunda tem de perder `RootOrder`/`SiblingOrder` da raiz** — dois irmãos com a
   mesma ordem é o empate que a casa não tem. As peças **mantêm** os delas (é a receita).
+- ⭐⭐⭐ **A correspondência peça↔peça é DURÁVEL, e por isso o `InstanceOf` está em TODA peça**, não
+  só na raiz (F4.3). Emparelhar por posição na árvore era o caminho barato e **errado**: no dia em
+  que o mestre ganha uma peça no meio, os índices deslizam e cada peça recebe os bytes da vizinha,
+  em silêncio. ⚠️ A raiz deixa de precisar de um segundo componente — ela é *a peça cujo `master` é
+  um `MasterRoot`*.
 - ⭐⭐ **E ela NÃO pode levar o id de um documento POSSUÍDO.** Copiar bytes verbatim é a coisa certa
   para 100 dos 104 tipos e a **errada** para os quatro de `catalog/bridges.rs` (`PaintedDoc` ·
   `VecPathRef` · `BakedForm` · `FlipObjectRef`): o id é opaco, então a cópia ficaria a escrever no
@@ -592,6 +597,34 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   componentes e nenhum era ponte), e a profunda tinha de o decidir de propósito. ⇒ `ComponentDesc
   .owned_document`, com o gate `the_bridges_are_the_owned_documents` a prender a família à flag.
   ⛔ **Não é `Attach::Machinery`**, que é 17 tipos e treze deles copiam-se muito bem.
+
+**O que a F4.3 mediu e o plano não dizia:**
+- ⭐⭐⭐ **A LEI que a prova de mutação achou: *o que não PROPAGA não se REMAPEIA*.** O sync
+  remapeava tudo, e o `InstanceOf.master` da raiz **é** a identidade do mestre — logo uma chave do
+  mapa. O 1.º passe reescrevia-o para a identidade da **própria instância**; do 2.º quadro em
+  diante a instância dizia-se instância de si mesma, o sync deixava de a encontrar, e **nada mais
+  propagava**. ⚠️ **Todos os gates estavam verdes**: nenhum corria o passe DUAS vezes antes de
+  medir. A régua que faltava é `the_link_survives_a_sync_so_the_next_edit_still_arrives`.
+- ⭐⭐ **Para quem carrega REFERÊNCIA, a comparação por bytes não é decidível na propagação.** A
+  junta do mestre nomeia os corpos do mestre e a da instância nomeia os dela **de propósito**:
+  comparar dá *«diferente»* para sempre, e o passe reescrevia a junta todo o quadro (medido: 3
+  escritas por quadro, uma por instância, com o mundo parado). ⇒ esses escrevem-se, **religam-se**,
+  e só então se pergunta se mudou — e o passe volta a ser ponto fixo.
+- ⛔ **DECLARADO: a pose de repouso de uma peça DINÂMICA não propaga.** O dono do `Transform` de um
+  corpo dinâmico é o solver **sempre** (a resposta sai do `BodyKind`, que não sabe se a cena está
+  tocando), então mover o braço da receita não move o das instâncias, nem depois de um Reset. É a
+  condição (b) da refutação à letra, e a irmã da limitação que o plano já declara para a config de
+  física. Gate com o nome inteiro:
+  `the_rest_pose_of_a_simulated_piece_does_not_propagate_and_that_is_declared`.
+- ⚠️ **O passe corre no EPÍLOGO do quadro** (`main.rs`, entre o render loop e o `post_frame_undo`),
+  e as duas metades são a razão: *antes da captura* senão a escrita vira um passo de undo que
+  ninguém deu; *depois do quadro* porque é aí que as edições do Inspector chegam ao mundo
+  (`apply_editor_commands` corre no fim do laço) — pô-lo antes faria as instâncias andarem **um
+  quadro atrás do mestre**.
+- ⚠️ **A recusa de ciclo é no GESTO e devolve uma RAZÃO** (`Refusal::NotAMaster` ·
+  `WouldNestInItself`), não um `None`: *duas recusas que devolvem o mesmo `None` produzem o mesmo
+  aviso inútil*. ⛔ E não é um tecto de profundidade — um limite numérico transformaria um erro de
+  autoria numa contagem.
 
 ---
 

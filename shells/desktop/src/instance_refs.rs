@@ -49,8 +49,42 @@ pub(crate) fn remap_object_refs(
     entities: &[Entity],
     by_id: &BTreeMap<u64, u64>,
 ) -> usize {
+    remap_object_refs_except(world, entities, by_id, &[])
+}
+
+/// **Este componente guarda referências a objeto?** — a pergunta que o sync faz antes de comparar
+/// bytes.
+///
+/// ⚠️ Para quem carrega referência, `bytes(mestre) == bytes(instância)` **não** é a pergunta certa:
+/// os dois lados nomeiam corpos diferentes de propósito, então a igualdade é *falsa* mesmo quando
+/// nada mudou. Ver o sync, onde essa distinção vira duas rotas.
+#[must_use]
+pub(crate) fn carries_object_ref(canonical_name: &str) -> bool {
+    REMAPPERS.iter().any(|(n, _)| *n == canonical_name)
+}
+
+/// ⭐⭐ **O mesmo, saltando os componentes nomeados** — e a lei que o exige é uma só:
+///
+/// > **O que não PROPAGA não se REMAPEIA.**
+///
+/// O remap existe para reescrever referências que acabaram de chegar **do mestre**. Uma referência
+/// que o passe não trouxe não é uma referência ao mestre, e reescrevê-la é corrupção.
+///
+/// ⚠️ **Isto foi MEDIDO, não previsto** (F4.3): o sync remapeava tudo, e o `InstanceOf.master` da
+/// raiz de uma instância É a identidade do mestre — logo uma chave do mapa. O primeiro passe
+/// reescrevia-o para a identidade da **própria instância**, e a partir do segundo quadro a
+/// instância dizia-se instância de si mesma: o sync deixava de a encontrar e **nada mais
+/// propagava**. Calado, e com todos os gates verdes — porque nenhum deles corria o passe DUAS
+/// vezes antes de medir. *A mutação que sobreviveu foi o que o revelou.*
+pub(crate) fn remap_object_refs_except(
+    world: &mut World,
+    entities: &[Entity],
+    by_id: &BTreeMap<u64, u64>,
+    skip: &[&str],
+) -> usize {
     REMAPPERS
         .iter()
+        .filter(|(name, _)| !skip.contains(name))
         .map(|(_, f)| f(world, entities, by_id))
         .sum()
 }

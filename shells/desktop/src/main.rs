@@ -258,6 +258,8 @@ mod inspector_presence_tests;
 mod instance_live;
 mod instance_refs;
 mod instance_smoke;
+/// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
+mod instance_sync;
 /// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
 mod instantiate;
 mod integration;
@@ -1161,6 +1163,10 @@ impl App {
         // Depois do frame (estado já reconciliado pelo `sync`, `self` livre do borrow
         // do render loop): drena um Ctrl+Z/Y pendente e registra a ação do frame na
         // fila de undo global, por diff de estado (ver `undo::post_frame_undo`).
+        // ⭐ **O SYNC das instâncias** (ADR-0164 / F4.3) — aqui, e a posição é lei: DEPOIS do
+        // quadro (as edições do Inspector já chegaram ao mundo) e ANTES da captura (senão a
+        // escrita do sync vira um passo de undo que ninguém deu). Ver o doc da função.
+        self.sync_instances();
         self.post_frame_undo();
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.

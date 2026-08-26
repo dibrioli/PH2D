@@ -110,7 +110,7 @@ pub(crate) fn spawn_ragdoll_scene(
     let master = spawn_master(sim);
     let mut roots = Vec::new();
     for x in INSTANCE_X {
-        let Some(inst) = crate::instantiate::instantiate_master(sim, registry, master, None) else {
+        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None) else {
             continue;
         };
         sim.world_mut()
@@ -175,6 +175,13 @@ impl crate::App {
             "[instance smoke 1] os {} bracos tem de BALANCAR cada um no eixo dele; \
              braco no chao = a junta prendeu no mestre",
             roots.len()
+        );
+        // ⭐ **A segunda metade do smoke é o SYNC** (F4.3) — e ela precisa de um gesto, então a
+        // cena diz qual. Sem esta linha o artista vê três pêndulos e não descobre sozinho que
+        // editar a receita muda os três.
+        println!(
+            "[instance smoke 1] agora escolha 'Ragdoll > Arm' (o de CIMA, a receita) e mude a cor \
+             em 'Color & Tint': os tres bracos de baixo mudam com ele"
         );
     }
 }

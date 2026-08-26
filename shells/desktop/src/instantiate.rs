@@ -15,29 +15,60 @@
 use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId};
 
+/// **Por que uma instanciação foi recusada** — e não um `None`, porque as razões pedem frases
+/// diferentes ao artista.
+///
+/// ⚠️ A mensagem mora no **gesto** (F4.5), não aqui: esta porta responde o FATO, e quem tem UI
+/// escolhe as palavras. *Duas recusas que devolvem o mesmo `None` produzem o mesmo aviso inútil.*
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Refusal {
+    /// A subárvore escolhida não é uma receita.
+    NotAMaster,
+    /// A instância aterraria **dentro do próprio mestre** — ver [`instantiate_master`].
+    WouldNestInItself,
+}
+
 /// **Instancia o mestre `master_root`**, devolvendo a raiz da instância.
 ///
 /// `parent` diz onde ela aterra (`None` = raiz da cena).
 ///
-/// Devolve `None` quando `master_root` não é um mestre — e a recusa é deliberada: pôr um
-/// [`InstanceOf`] a apontar para uma subárvore que não é receita daria ao sync (F4.3) um mestre
-/// que o artista edita como um objeto qualquer, e cada edição da cena seria propagada como se
-/// fosse autoria de biblioteca.
+/// ⛔ **Recusa** (ver [`Refusal`]):
+///
+/// - `master_root` não é um mestre. Pôr um [`InstanceOf`] a apontar para uma subárvore que não é
+///   receita daria ao sync (F4.3) um mestre que o artista edita como um objeto qualquer, e cada
+///   edição da cena seria propagada como se fosse autoria de biblioteca.
+/// - o destino está **dentro do próprio mestre**. Isso poria a receita a conter uma instância de
+///   si mesma: o sync propagaria o mestre para dentro do mestre — que cresce a cada quadro — e a
+///   cópia profunda seguinte copiaria a cópia. ⚠️ *A recusa é no GESTO e não um tecto de
+///   profundidade*: um limite numérico transformaria um erro de autoria numa contagem, e o artista
+///   veria a árvore crescer até um número que ninguém lhe explicou.
 pub(crate) fn instantiate_master(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     master_root: Entity,
     parent: Option<Entity>,
-) -> Option<Entity> {
-    sim.world().get::<MasterRoot>(master_root)?;
+) -> Result<Entity, Refusal> {
+    if sim.world().get::<MasterRoot>(master_root).is_none() {
+        return Err(Refusal::NotAMaster);
+    }
+    if let Some(p) = parent
+        && is_self_or_descendant(sim, p, master_root)
+    {
+        return Err(Refusal::WouldNestInItself);
+    }
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    let master_id = sim.world().get::<StableId>(master_root)?.0;
+    let Some(master_id) = sim.world().get::<StableId>(master_root).map(|s| s.0) else {
+        return Err(Refusal::NotAMaster);
+    };
     let base = sim
         .world()
         .get::<Name>(master_root)
         .map_or_else(|| "Instance".to_string(), |n| n.0.clone());
 
-    let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, master_root, parent).ok()?;
+    let Ok(copy) = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, master_root, parent)
+    else {
+        return Err(Refusal::NotAMaster);
+    };
     let pieces = copy.copies();
 
     // ⚠️⚠️ **A ORDEM destes dois passos é load-bearing, e o erro é silencioso.**
@@ -50,6 +81,23 @@ pub(crate) fn instantiate_master(
     //
     // ⇒ remapear primeiro, ligar depois. Gate: `the_instance_points_at_the_master_not_at_itself`.
     crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+
+    // ⭐⭐ **CADA PEÇA guarda de que peça do mestre nasceu** (F4.3), e não só a raiz.
+    //
+    // É esta a correspondência DURÁVEL de que o sync vive: ela sobrevive ao save, ao undo e —
+    // sobretudo — a **o mestre ganhar ou perder uma peça**, que é o momento em que emparelhar por
+    // posição na árvore (o caminho óbvio e barato) passa a emparelhar peças erradas em silêncio.
+    //
+    // ⚠️ A raiz é o caso particular: ela é a peça cujo `master` é um [`MasterRoot`], e é assim que
+    // *«esta entidade é a raiz de uma instância»* se responde sem um segundo componente.
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<ph2d_ecs::StableId>(src).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(dst)
+            .insert(InstanceOf { master: id });
+    }
 
     let unique = crate::name_unique::unique_name(sim, &base);
     let mut root = sim.world_mut().entity_mut(copy.root);
@@ -64,7 +112,25 @@ pub(crate) fn instantiate_master(
     // As peças da cópia deixam de ser peças de mestre no mesmo quadro em que nascem — sem isto
     // elas só voltariam a simular no próximo passe da ponte.
     ph2d_ecs::assign_master_pieces(sim.world_mut());
-    Some(copy.root)
+    Ok(copy.root)
+}
+
+/// **`candidate` é o próprio `root` ou está debaixo dele?** — a pergunta do ciclo.
+///
+/// Sobe por `ChildOf`, que é `O(profundidade)` e corre uma vez por gesto. ⚠️ Sem guarda de ciclo
+/// na travessia **de propósito**: a hierarquia da casa não tem ciclos (o reparent recusa-os), e
+/// inventar aqui uma segunda defesa esconderia a primeira se ela algum dia partisse.
+fn is_self_or_descendant(sim: &SimWorld, candidate: Entity, root: Entity) -> bool {
+    let mut e = candidate;
+    loop {
+        if e == root {
+            return true;
+        }
+        match sim.world().get::<ph2d_ecs::ChildOf>(e) {
+            Some(c) => e = c.0,
+            None => return false,
+        }
+    }
 }
 
 /// ⭐ **DUPLICAR** — a mesma cópia profunda, **sem** elo ao original.

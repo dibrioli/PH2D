@@ -190,6 +190,33 @@ impl crate::PhysicsBridge {
     /// mesma preferência do [`pose_owner`], e o recuo existe porque o painel
     /// pergunta no MESMO quadro em que o artista clica *Add*: sem ele a seção
     /// piscaria inerte por um quadro, no gesto que a acabou de criar.
+    /// ⭐ **O DOCUMENTO pode escrever a pose desta entidade?** — a porta que a condição (b) da
+    /// [refutação 1] exige, e a razão de ela ser UMA.
+    ///
+    /// O sync mestre→instância (ADR-0164 / F4.3) propaga o `Transform` de uma peça **exceto**
+    /// quando o dono dela é o solver ou o player: escrever na célula que o runtime possui punha
+    /// dois autores no mesmo campo, e por tique o readback marcaria a diferença como se o artista
+    /// a tivesse feito — um override espúrio por quadro, ou um corpo teleportado.
+    ///
+    /// ⚠️ **Re-derivar isto do lado de fora seria a segunda resposta.** A pergunta *«quem escreve
+    /// a pose?»* tem um dono ([`pose_owner`]) e ele lê o `kind` do corpo **CONSTRUÍDO** — um
+    /// `RigidBody` acabado de anexar e ainda não reconciliado responde diferente do componente.
+    ///
+    /// Uma entidade sem corpo nenhum é do documento: não há reclamante.
+    ///
+    /// [refutação 1]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/pesquisa/instancias_2026-08-21/refutacao_1_sync_determinismo.md
+    #[must_use]
+    pub fn document_owns_pose(&self, world: &World, entity: Entity) -> bool {
+        let Some(kind) = self.bodies.get(&entity).map(|b| b.kind).or_else(|| {
+            world
+                .get::<crate::components::RigidBody>(entity)
+                .map(|b| b.kind)
+        }) else {
+            return true;
+        };
+        pose_owner(world, entity, kind).driven_by_scene()
+    }
+
     #[must_use]
     pub fn player_liveness(&self, world: &World, entity: Entity) -> PlayerLiveness {
         let Some(kind) = self.bodies.get(&entity).map(|b| b.kind).or_else(|| {

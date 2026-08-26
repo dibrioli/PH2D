@@ -96,6 +96,12 @@ pub struct PatchLayout {
     /// recusava com `Broken`, três fases depois, nomeando a fase errada. O relatório
     /// já contava `non_disk`; o que faltava era **quem** para se poder curar.
     pub loops_per_patch: Vec<usize>,
+    /// ⭐⭐⭐ **AS FRONTEIRAS de cada patch, em vértices** — e não só a contagem delas.
+    ///
+    /// ⛔⛔ **O layout calculava-as e deitava-as fora**, guardando apenas o `len()`. ⚠️ *A
+    /// contagem diz que o patch é um anel; só os laços dizem POR ONDE o cortar* — e a
+    /// reparação por corte precisa exactamente disto (2026-08-25).
+    pub loops: Vec<Vec<Vec<u32>>>,
     /// ⭐⭐ **A CARACTERÍSTICA DE EULER da região de faces de cada patch** —
     /// `V − E + F` sobre as faces que ele contém. **Um disco dá `1`.**
     ///
@@ -359,6 +365,7 @@ pub fn decompose_with(
         arc_tau,
         arc_edges,
         loops_per_patch,
+        loops,
         chi,
         mesh_chi: crate::topology::mesh_euler(faces),
         report,
@@ -453,6 +460,103 @@ pub fn dissolve(walls: &mut Walls, layout: &PatchLayout, victims: &[usize]) -> b
         }
     }
     removed
+}
+
+/// ⭐⭐⭐ **ABRE OS ANÉIS — a reparação por CORTE, que é a metade que faltava.**
+///
+/// Um patch com **duas ou mais fronteiras** é um anel: ele não é um disco, e a fase seguinte
+/// não o consegue parametrizar. ⭐ A cura publicada é **cortar** entre duas fronteiras dele,
+/// não fundir com o vizinho.
+///
+/// # ⛔⛔ Por que a [`dissolve`] não serve, e está medido
+///
+/// A `dissolve` cura a **lasca** — um patch de poucos lados, que de facto é *uma parede a
+/// MAIS*. ⚠️ **Um anel é o contrário: uma parede a MENOS**, e fundi-lo com o vizinho só o
+/// torna maior e mais complexo. Medido em 2026-08-25 na peça do artista (`chain_info` com
+/// `PH2D_CLEANUP_FORCE=1`): forçar a fusão por cima da guarda leva as transições inexactas
+/// de `8` a `4` **e** o bordo de `8` a `10`, com o enviesamento de `7,3°` a `7,6°`. *A cura
+/// certa para o defeito errado paga em geometria o que ganha em topologia.*
+///
+/// ⚠️ **E não há ponte traçada para honrar:** o modo `decompose_with(cut_open)` devolve
+/// `(1, 5)` contra os `(1, 5)` do normal nesta peça — *o caminho tem de ser CONSTRUÍDO*.
+///
+/// Devolve `false` quando não havia anel nenhum ou nenhum caminho — o sinal de paragem.
+#[must_use]
+pub fn open_rings(mesh: &ph2d_mesh::Mesh, walls: &mut Walls, layout: &PatchLayout) -> bool {
+    let mut cut = false;
+    for (p, loops) in layout.loops.iter().enumerate() {
+        if loops.len() < 2 {
+            continue;
+        }
+        let faces: Vec<u32> = layout
+            .face_patch
+            .iter()
+            .enumerate()
+            .filter(|(_, q)| **q as usize == p)
+            .filter_map(|(f, _)| u32::try_from(f).ok())
+            .collect();
+        let from: BTreeSet<u32> = loops[0].iter().copied().collect();
+        let to: BTreeSet<u32> = loops[1].iter().copied().collect();
+        // ⚠️ **O caminho anda pelas faces DESTE patch e mais nenhuma** — um corte que
+        // saísse dele partiria um vizinho que ninguém pediu para partir.
+        let Some(chain) = path_inside(mesh, &faces, &from, &to) else {
+            continue;
+        };
+        for w in chain.windows(2) {
+            let (a, b) = (w[0].min(w[1]), w[0].max(w[1]));
+            if walls.edges.insert((a, b)) {
+                *walls.degree.entry(a).or_default() += 1;
+                *walls.degree.entry(b).or_default() += 1;
+                cut = true;
+            }
+        }
+    }
+    cut
+}
+
+/// O caminho mais curto (em nº de arestas) de `from` a `to`, andando **só** por arestas das
+/// faces dadas.
+///
+/// ⚠️ **Devolve a cadeia inteira, pontas incluídas** — é ela que vira parede.
+fn path_inside(
+    mesh: &ph2d_mesh::Mesh,
+    faces: &[u32],
+    from: &BTreeSet<u32>,
+    to: &BTreeSet<u32>,
+) -> Option<Vec<u32>> {
+    let mut adj: BTreeMap<u32, BTreeSet<u32>> = BTreeMap::new();
+    for &f in faces {
+        let v = mesh.faces()[f as usize].verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            adj.entry(a).or_default().insert(b);
+            adj.entry(b).or_default().insert(a);
+        }
+    }
+    let mut prev: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut seen: BTreeSet<u32> = from.iter().copied().collect();
+    let mut queue: VecDeque<u32> = from.iter().copied().collect();
+    let mut hit = None;
+    while let Some(x) = queue.pop_front() {
+        if to.contains(&x) && !from.contains(&x) {
+            hit = Some(x);
+            break;
+        }
+        for &y in adj.get(&x).into_iter().flatten() {
+            if seen.insert(y) {
+                prev.insert(y, x);
+                queue.push_back(y);
+            }
+        }
+    }
+    let mut cur = hit?;
+    let mut chain = vec![cur];
+    while let Some(&q) = prev.get(&cur) {
+        chain.push(q);
+        cur = q;
+    }
+    chain.reverse();
+    (chain.len() >= 2).then_some(chain)
 }
 
 /// **INUNDAÇÃO** — faces vizinhas por uma aresta que não é parede são o mesmo

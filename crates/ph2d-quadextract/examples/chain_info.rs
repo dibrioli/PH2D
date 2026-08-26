@@ -200,7 +200,7 @@ fn main() {
             .sum();
         println!(
             "  ⭐⭐⭐ CONDICOES DO PATCH: valencia {:?} · ⛔ {} fora de 3..6 · {} NAO-DISCO \
-             · χ dos patches {:?} · ⛔ {} degenerados SOBREVIVERAM a' limpeza ({} dissolvidos em {} rondas, parou por {}) · poda: {} tocos",
+             · χ dos patches {:?} · ⛔ {} degenerados SOBREVIVERAM a' limpeza ({} dissolvidos em {} rondas, parou por {}) · poda: {} tocos · ⭐ {} rondas de CORTE",
             r.valence,
             fora,
             r.non_disk,
@@ -225,7 +225,8 @@ fn main() {
                 2 => "⛔ a ronda PIORAVA a topologia",
                 _ => "⛔ o tecto de rondas",
             },
-            r.pruned
+            r.pruned,
+            r.opened_rings
         );
     }
     // ⭐ **O RETRATO de cada patch degenerado**, e não o total: lados · laços de fronteira ·

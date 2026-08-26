@@ -137,6 +137,9 @@ pub struct TraceReport {
     /// que custa mais do que vale, ou um laço que não converge. *Um contador de rondas diz
     /// que parou; só a razão diz onde mexer.*
     pub cleanup_stop: u8,
+    /// ⭐⭐⭐ **Quantas rondas de ABERTURA POR CORTE foram adoptadas** — ver
+    /// [`patches::open_rings`].
+    pub opened_rings: usize,
     /// ⚠️ **Quantos vértices têm o anel ABERTO** — não-manifold ou de borda.
     ///
     /// ⭐ Ele está aqui para separar *"o traçado é mau"* de *"a malha que
@@ -204,6 +207,16 @@ pub fn trace_patches_with(
     // `0` a que uma dissolução chegava. *Um critério que aceita empates deixa a cura
     // barata expulsar a cura certa.*
     let bridged = patches::decompose_with(mesh, &walls, base.clone(), true);
+    // ⚠️ **A sonda da guarda da PONTE.** A `health` é um PAR — distância topológica **e**
+    // contagem de degenerados — e esta comparação lê só o primeiro. *Uma ponte que cure
+    // quatro patches degenerados e empate na distância é recusada por um empate.*
+    if std::env::var("PH2D_BRIDGE_LOG").as_deref() == Ok("1") {
+        eprintln!(
+            "  [ponte] sem {:?} · com {:?}",
+            health(&out),
+            health(&bridged)
+        );
+    }
     if health(&bridged).0 < health(&out).0 {
         out = bridged;
     }
@@ -259,6 +272,58 @@ pub fn trace_patches_with(
     out.report.dissolved = dissolved;
     out.report.rounds = rounds;
     out.report.cleanup_stop = stop;
+
+    // ⭐⭐⭐ **A ABERTURA POR CORTE — a metade que faltava** (ver [`patches::open_rings`]).
+    //
+    // ⚠️ **Ela corre DEPOIS da fusão e não em vez dela**: as duas curam defeitos opostos —
+    // a lasca é *uma parede a mais* e o anel é *uma parede a menos*. ⛔ Correr o corte
+    // primeiro daria-lhe um layout com lascas dentro, e a guarda julgaria contra um estado
+    // que a fusão ainda ia mudar (a mesma razão pela qual a poda corre por último).
+    //
+    // ⚠️⚠️ **A guarda lê o PAR inteiro, e a da fusão lê só o primeiro.** A `health` é
+    // `(distância topológica, degenerados)`, e a fusão compara `.0` — *um corte que cure
+    // quatro anéis e empate na distância seria recusado por um empate*. Aqui a melhoria
+    // tem de ser estrita **no par**, o que aceita «mesma distância, menos degenerados» e
+    // continua a recusar «menos degenerados, pior topologia».
+    let mut opened = 0usize;
+    for _ in 0..MAX_OPEN_ROUNDS {
+        if !OPEN_RINGS {
+            break;
+        }
+        if out.loops.iter().all(|l| l.len() < 2) {
+            break;
+        }
+        let before = health(&out);
+        let mut trial = walls.clone();
+        let cut_ok = patches::open_rings(mesh, &mut trial, &out);
+        if std::env::var("PH2D_BRIDGE_LOG").as_deref() == Ok("1") {
+            let rings = out.loops.iter().filter(|l| l.len() >= 2).count();
+            eprintln!(
+                "  [corte] {rings} aneis · cortou {cut_ok} · paredes {} -> {}",
+                walls.edges.len(),
+                trial.edges.len()
+            );
+        }
+        if !cut_ok {
+            break;
+        }
+        let mut next_report = base.clone();
+        next_report.dissolved = dissolved;
+        next_report.rounds = rounds;
+        next_report.cleanup_stop = stop;
+        let next = patches::decompose(mesh, &trial, next_report);
+        let after = health(&next);
+        if std::env::var("PH2D_BRIDGE_LOG").as_deref() == Ok("1") {
+            eprintln!("  [corte] saude {before:?} -> {after:?}");
+        }
+        if after >= before {
+            break;
+        }
+        walls = trial;
+        opened += 1;
+        out = next;
+    }
+    out.report.opened_rings = opened;
 
     // ⭐⭐⭐ **A PODA DOS TOCOS** — ver [`prune`]. Ela corre **depois** da limpeza de
     // propósito: a limpeza cura patches **degenerados** (uma lasca é uma parede a
@@ -325,6 +390,44 @@ const _MEASURED_AND_REJECTED_STALE_CAP: () = ();
 /// patológico de duas lascas se recriarem uma à outra, e quem o atinge sai com
 /// degenerados ainda na lista — que o F4 recusa, alto e claro.
 const MAX_CLEANUP_ROUNDS: usize = 32;
+
+/// Quantas rondas de abertura por corte, no máximo.
+///
+/// ⚠️ **O critério de paragem é a guarda** (a saúde tem de melhorar estritamente no par),
+/// que termina sozinha; isto é a rede contra um corte que oscile.
+const MAX_OPEN_ROUNDS: usize = 16;
+
+/// ⛔⛔⛔ **FALSE — a reparação por CORTE foi construída, MEDIDA e REJEITADA, e ela corrige
+/// a leitura que a motivou.**
+///
+/// A leitura era: *«quatro dos cinco patches maus têm 2–3 fronteiras ⇒ são anéis, e a cura
+/// publicada de um anel é cortar entre as fronteiras»*. O corte foi construído
+/// ([`patches::open_rings`]) e a medição diz outra coisa.
+///
+/// # ⛔ A tabela (peça do artista, 2026-08-25)
+///
+/// | | valor |
+/// |---|---|
+/// | anéis encontrados | `4` |
+/// | ⛔ **paredes acrescentadas** | **`4`** — ou seja **UMA aresta por anel** |
+/// | saúde `(distância, degenerados)` | `(1, 5)` ⇒ ⛔ **`(2, 6)`** |
+///
+/// # ⭐⭐⭐ O mecanismo, e ele corrige o diagnóstico
+///
+/// ⚠️ **Um caminho de UMA aresta entre as duas fronteiras significa que elas se TOCAM.**
+/// Estes patches não são anéis gordos com um buraco no meio: são patches **ESTRANGULADOS**,
+/// cujas duas fronteiras passam a um triângulo uma da outra. ⇒ *cortar ali não abre nada —
+/// acrescenta um toco*, e o toco cria mais um patch degenerado: `5` ⇒ `6`, e a distância
+/// topológica sobe de `1` para `2`.
+///
+/// ⇒ **É uma TERCEIRA espécie**, e nenhuma das duas curas serve: a lasca é *uma parede a
+/// mais* (funde-se), o anel gordo é *uma parede a menos* (corta-se), e o estrangulado é
+/// *uma parede no sítio errado*. ⛔ **A contagem de fronteiras não distingue o anel gordo do
+/// estrangulado** — só a **distância entre elas** distingue, e nenhuma régua a media.
+///
+/// ⚠️ **Fica desligado com a maquinaria construída**, porque o que falta é a régua da
+/// distância, e não o corte: quando ela existir, `open_rings` é o consumidor dela.
+const OPEN_RINGS: bool = false;
 
 impl PatchLayout {
     /// **GRADUA a densidade por um campo de TAMANHO por vértice.**

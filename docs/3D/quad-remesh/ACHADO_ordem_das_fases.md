@@ -253,3 +253,44 @@ ela foi medida contra o preenchimento por patch, que já não é o caminho que s
 (`PH2D_PRUNE_STEMS=1`) e ela remove **`0` tocos** nesta peça: a saída é **byte-idêntica**.
 ⭐ *A recusa pode estar obsoleta e ainda assim não ser a cura* — reabrir uma recusa é barato,
 e concluir dela sem medir é que não.
+
+
+---
+
+## §8 — ⛔⛔ A reparação por CORTE foi construída e REJEITADA — e corrige o §7
+
+O §7 leu *«quatro dos cinco têm 2–3 fronteiras ⇒ são anéis, e a cura de um anel é cortar»*.
+O corte foi construído ([`ph2d_trace::patches::open_rings`]) e a medição diz outra coisa.
+
+| | valor |
+|---|---|
+| anéis encontrados | `4` |
+| ⛔ **paredes acrescentadas** | **`4`** — ou seja **UMA aresta por anel** |
+| saúde `(distância, degenerados)` | `(1, 5)` ⇒ ⛔ **`(2, 6)`** |
+
+### ⭐⭐⭐ O mecanismo
+
+⚠️ **Um caminho de UMA aresta entre as duas fronteiras significa que elas se TOCAM.** Estes
+patches não são anéis gordos com um buraco no meio: são **ESTRANGULADOS**, com as duas
+fronteiras a passar a um triângulo uma da outra. ⇒ *cortar ali não abre nada — acrescenta um
+toco*, e o toco produz mais um degenerado.
+
+⇒ **É uma TERCEIRA espécie**, e nenhuma das duas curas serve:
+
+| espécie | o que é | cura |
+|---|---|---|
+| lasca | uma parede **a mais** | fundir (`dissolve`) — ✅ existe |
+| anel gordo | uma parede **a menos** | cortar (`open_rings`) — ✅ existe, desligado |
+| ⛔ **estrangulado** | uma parede **no sítio errado** | ⛔ **não existe** |
+
+⛔⛔ **A contagem de fronteiras não distingue o anel gordo do estrangulado** — só a
+**distância entre elas** distingue, e nenhuma régua desta linha a media. *É a mesma forma de
+erro do §6: um contador que junta duas avarias com curas opostas.*
+
+⇒ **A obra seguinte é a RÉGUA**, não mais uma cura: medir a distância entre as fronteiras de
+cada patch multi-loop, e só então escolher entre cortar (longe) e outra coisa (perto). Quando
+ela existir, o `open_rings` é o consumidor dela — por isso ele fica construído e desligado.
+
+⚠️ **E a leitura do §7 que este bloco corrige não era descuido de medição: era uma inferência
+do NOME.** *«Duas fronteiras» chama-se anel na topologia, e o nome trouxe consigo a cura do
+anel.*

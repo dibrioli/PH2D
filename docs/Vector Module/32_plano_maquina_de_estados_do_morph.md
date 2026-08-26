@@ -956,3 +956,72 @@ e o `at` voltar a calar-se no meio.
 ⚠️ **O censo da costura apanhou a mudança sozinho** — ele exigia a agulha antiga na chamada do
 `tick`, e ficou vermelho no momento em que a fiação mudou. *É o único gate desta linha que olha para
 a shell, e foi o único que reagiu.*
+
+---
+
+## §12 — ⭐⭐⭐ W11f: a PERTENÇA — o que a W11 entregou pela metade
+
+> Enio, 2026-08-26, depois do smoke OK: *"Veja o que falta na fila de implementações"*.
+
+A conferência da fila **mediu** o F3 (*arrastar na hierarquia faz entrar*) e o F2 (*Desconectar*), e
+achou **três** coisas que o §8.3 tinha deixado como pergunta aberta e ninguém respondeu.
+
+### §12.1 — ⛔⛔ A ocultação não acompanhava o arrasto — nos DOIS sentidos
+
+A W11 fez a **lista** de estados ser os filhos, mas a **ocultação** continuou a ser uma escrita do
+`upkeep` (um `Visibility::hidden()` guardado no momento da criação). Medido, com a sonda a reproduzir
+o gesto que a Hierarquia faz (`ChildOf` e mais nada):
+
+| gesto | a lista | o canvas (antes) |
+|---|---|---|
+| arrastar para **DENTRO** | entra (3 → 4 estados) | ⛔ **continua visível**, desenhada por cima do conjunto |
+| arrastar para **FORA** | sai (4 → 3 estados) | ⛔ **continua escondida** — a forma **desaparece** |
+
+⚠️ A segunda é a pior, e o doc do `disconnect` **já a nomeava** como *"a pior saída possível"* — para
+o botão ⊘. O gesto de arrasto chegava lá pela porta que ninguém tinha olhado.
+⚠️ E o **passo 14 do smoke afirmava** que a de dentro sumia do canvas. *Um passo de smoke que
+descreve o que devia acontecer aprova o defeito.*
+
+**A cura:** `morph_set::is_set_member` — *o meu pai tem máquina, logo eu sou um estado, logo eu não
+me desenho* —, consultada pelo `vec_entities::visible_chain`, que é a **porta única** que o canvas lê
+(um chamador, medido). A ocultação passa a ser **derivada**, como a lista já era.
+
+⭐ Com isso os dois gestos ficam **de graça e simétricos**, e não há estado guardado que possa
+discordar da árvore. ⛔ **O olho do artista sobrevive:** a derivação só ACRESCENTA uma razão para
+esconder, e o `disconnect` deixou de fazer `remove::<Visibility>()` — que **destruía** a escolha de
+quem tivesse escondido a forma antes de ela entrar.
+
+### §12.2 — ⛔ Um conjunto esvaziado desenhava um FANTASMA
+
+Medido: com o ⊘ a tirar as formas uma a uma, o conjunto ficava com **zero** estados e mantinha o
+`VecMorph` que o `upkeep` lhe deu — o `sources` continuava a nomear a **primeira forma**, que já
+tinha saído. ⇒ o artista desconecta as três e fica com um objecto que **desenha uma cópia da
+primeira**, sem saber o que é nem como o apagar.
+
+⇒ **a fronteira é a do `create`** (`MIN_STATES = 2`, agora com **dois leitores** e uma constante só):
+sair dela **dissolve**, exactamente como o `ungroup` faz com o último filho. *Um objecto deixa de ser
+uma relação quando fica com um lado só.* É a resposta à pergunta 2 do §8.3.
+
+⚠️ **A contagem lê-se ANTES de desconectar** — depois a lista já encolheu e a fronteira leria-se ao
+contrário (há mutação a prová-lo).
+⭐ E os dois verbos que apagam o conjunto (`Dissolve` sempre; `Disconnect` na fronteira) passam a
+sair pela **mesma porta** no despacho: cada um a remover o path por si seriam duas respostas a *"o
+que é apagar um conjunto"*.
+
+### §12.3 — ⚠️ E TRÊS gates mediam o componente, não o que o canvas vê
+
+Eles liam `Visibility` **directamente**, e por isso nenhum via o defeito. A sonda mudou-se para
+`view_state().hidden` — a resposta que o canvas de facto consome. *Contar o trabalho FEITO não é
+contar o trabalho ENTREGUE.*
+
+### §12.4 — Gates e mutações
+
+| Gate | Onde |
+|---|---|
+| `dragging_into_the_set_hides_and_dragging_out_shows` | `morph_set_membership_tests.rs` |
+| `the_artists_own_eye_survives_joining_and_leaving_the_set` | idem |
+| `disconnecting_the_last_but_one_dissolves_the_set` | idem |
+
+**Cinco mutações, todas sangram:** `is_set_member` sempre `false` · `is_set_member` a ignorar o
+`ChildOf` · o `disconnect` a voltar a remover o `Visibility` · o `disconnect_row` a ignorar a
+fronteira · a fronteira lida **depois** de desconectar.

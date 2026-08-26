@@ -15,8 +15,21 @@
 |---|---|---|---|
 | **1** | ⭐ **O Input Map** — entradas nomeadas, à la Godot | **[30 — PLANO](30_plano_input_map.md)** | ✅ **FECHADO** e integrado ao `main` em 2026-08-24 |
 | **2** | **A máquina de estados do Morph** | **[32 — PLANO](32_plano_maquina_de_estados_do_morph.md)** (pesquisa: [31](31_pesquisa_maquinas_de_estado.md)) | ✅ **W1–W8 feitas.** ⚠️ **O desenho MUDOU em 25/08 e o §5 do plano 32 é a fonte:** um botão faz o conjunto e gera o **grafo completo dirigido**; as setas são **virtuais** (⛔ o desenho no canvas e o gesto de arrasto foram **retirados**); seção **própria** *Morph States* |
-| **2-bis** | ⏳ **Morph States: desfazer tudo · Show/Clear por forma · arrastar-para-dentro** | **[32 §8](32_plano_maquina_de_estados_do_morph.md)** | **em FILA por decisão do Enio (26/08): *"hoje não implementaremos"*.** ⚠️ O §8.2 mostra que os três são **um**: o arrastar-para-dentro obriga a lista de estados a ser **derivada dos FILHOS**, e isso é uma 2ª mudança de formato — ⛔ **de graça só enquanto a linha não integrar** |
-| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | fila, sem plano |
+| **2-bis** | **Morph States: desfazer tudo · Play/Desconectar por forma · arrastar-para-dentro · compatibilidade com States** | **[32 §8–§12](32_plano_maquina_de_estados_do_morph.md)** | ✅ **FECHADO em 26/08** (W11a–W11f), com **dois smokes do Enio** e as três respostas do §8.3 medidas (o `start`, a fronteira dos 2, e a ocultação derivada) |
+| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | ⏳ **É O QUE FALTA NA FILA — e continua SEM PLANO.** As 5 perguntas do §F2 abaixo não foram respondidas |
+
+## ⏳ O que sobra da fila (conferido 2026-08-26)
+
+⭐ **Um item: a F2 (Texture pattern).** Tudo o resto da fila fechou.
+
+⚠️ **E o que fica ABERTO dentro do item 2, com o motivo — não é trabalho pendente, é bloqueio ou
+decisão de produto:**
+
+| | estado |
+|---|---|
+| *"funcional no runtime do game"* (o pedido original) | ⛔ **BLOQUEADO no `shells/game`/R1**, adiado por decisão do Enio. É o **mesmo** bloqueio dos contextos do Input Map, e não um preço desta feature — a lei já vive numa crate-folha e corre no modo de pré-visualização hoje |
+| interromper um morfo a meio **salta** em vez de desmorfar | ⚠️ **NOMEADO, não curado** ([§11.3](32_plano_maquina_de_estados_do_morph.md)): uma pose carrega **uma** forma, e o par vivo `(A, B, t)` não cabe nela. Curá-lo é **modelo novo** — decisão do Enio |
+| as **setas** desenhadas no canvas e o arrasto forma→forma | ⛔ **RETIRADOS por decisão do Enio** em 25/08 (*"as setas são virtuais e ninguém jamais vê"*) — ⚠️ não reconstruir sem ler o [§5](32_plano_maquina_de_estados_do_morph.md) |
 
 ⭐⭐ **Por que o input map vem primeiro, e não é só ordem preferida:** a pesquisa de máquinas de
 estado (doc 31) mostrou que as entradas da State Machine da **Rive** são exactamente **três** —

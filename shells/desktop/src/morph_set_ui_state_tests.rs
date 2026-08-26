@@ -345,13 +345,11 @@ fn disconnecting_a_shape_takes_it_out_of_the_recorded_states() {
     // ⚠️ **Pela porta do PRODUTO** (`disconnect_row`), e nao chamando as duas metades a' mao: um
     // gate que as chamasse provaria que elas funcionam, nao que o ⊘ as chama -- que e' o defeito.
     let host = Entity::from_bits(map[&host_id]);
-    assert!(crate::morph_set::disconnect_row(
-        &mut sim,
-        &map,
-        &mut states,
-        host,
-        1
-    ));
+    assert_eq!(
+        crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 1),
+        None,
+        "com tres formas o ⊘ tira uma e NAO dissolve o conjunto"
+    );
     assert!(
         !states
             .role(host_id, ph2d_ui_state::StateRole::Default)

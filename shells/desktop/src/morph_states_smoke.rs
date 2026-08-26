@@ -226,7 +226,9 @@ fn announce(app: &crate::App) {
         " 15. **O botao ⊘ de uma linha** (Desconectar): a forma sai do conjunto e volta a \
          aparecer no canvas, solta. (!) Se ela sumir em vez de aparecer, PARE. (!) Depois volte ao \
          passo 19 e passe o rato: a forma que voce' soltou nao pode SALTAR para o meio do \
-         conjunto -- ela ja' nao faz parte da animacao."
+         conjunto -- ela ja' nao faz parte da animacao. (!) E carregue no ⊘ ate' sobrar UMA: o \
+         conjunto tem de DESAPARECER da arvore e as formas ficarem todas soltas -- um conjunto com \
+         uma forma so' nao e' um conjunto."
     );
     eprintln!(
         " 16. **Undo Morph States**, no fim da seccao: desfaz tudo. As tres formas voltam soltas e \

@@ -34,7 +34,7 @@
 //! arrasto a acrescentar à mão, a lista deixaria de ser derivável e a próxima derivação apagaria
 //! o trabalho do arrasto.
 
-use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine, Visibility};
+use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine};
 use ph2d_morph_machine::{MorphGraph, MorphState};
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene};
 
@@ -54,6 +54,14 @@ pub(crate) struct MorphSetPending {
     /// As formas-membro, na ordem de z — **a primeira é o estado inicial**.
     pub(crate) members: Vec<VecPathId>,
 }
+
+/// ⭐ **O MÍNIMO de formas que fazem um conjunto.**
+///
+/// ⚠️ **Não é um teto medido, é a DEFINIÇÃO**: um morph é a forma entre **duas** outras, então com
+/// uma só não há entre nenhum. O número tem **dois** leitores — o [`create`], que recusa abaixo
+/// dele, e o [`disconnect_row`], que **dissolve** ao chegar a ele. ⛔ Escrito à mão nos dois, a
+/// fronteira dissolveria num sítio e recusaria noutro no dia em que alguém mudasse um.
+pub(crate) const MIN_STATES: usize = 2;
 
 /// **AS FORMAS DA SELEÇÃO QUE PODEM VIRAR ESTADOS.**
 ///
@@ -153,7 +161,7 @@ pub(crate) fn create(
     max_states: usize,
 ) -> Option<MorphSetPending> {
     let members = eligible(sim, map, sel);
-    if members.len() < 2 || members.len() > max_states {
+    if members.len() < MIN_STATES || members.len() > max_states {
         return None;
     }
     let path = scene.push_path(VecPath::default());
@@ -237,10 +245,10 @@ pub(crate) fn upkeep(
     }
     for m in members {
         if let Ok(mut e) = sim.world_mut().get_entity_mut(m) {
-            // ⚠️ **Esconder E reparentar, nesta ordem, na mesma escrita.** O `visible_chain` lê o
-            // próprio E os ancestrais, então esconder o membro é o suficiente — e esconder o PAI
-            // apagaria o conjunto inteiro, que é o objecto que se quer ver.
-            e.insert((Visibility::hidden(), ChildOf(host)));
+            // ⚠️ **Só reparentar.** A ocultação é **DERIVADA** de ser filho de um conjunto
+            // ([`is_set_member`]) — guardá-la aqui era a metade que não acompanhava o arrasto na
+            // Hierarquia, nos DOIS sentidos (W11f).
+            e.insert(ChildOf(host));
             // ⛔ O `RootOrder` sai: ele só vale para raízes, e um membro deixou de o ser. É o
             // mesmo par de operações do `vec_entities::group_entities`, e a razão é a mesma.
             e.remove::<ph2d_ecs::RootOrder>();
@@ -342,9 +350,11 @@ fn align(
 /// # ⚠️ As DUAS coisas que ele desfaz, e nenhuma a mais
 ///
 /// 1. o `ChildOf` — e é só isso que a tira da lista (a lista são os filhos, W11);
-/// 2. o `Visibility::hidden()` que o `upkeep` lhe pôs — sem isto ela voltaria a ser solta e
-///    **invisível**, que é a pior saída possível: o artista carrega em *Desconectar* e a forma
-///    **desaparece**.
+/// 2. a pose de MUNDO, para ela sair onde estava.
+///
+/// ⛔ **Ele NÃO mexe no `Visibility`** desde a W11f: a ocultação de um membro é **derivada**
+/// ([`is_set_member`]), então sair do conjunto já a torna visível. Removê-la aqui destruiria o olho
+/// da Hierarquia de quem tivesse escondido a forma **antes** de ela entrar.
 ///
 /// ⛔ **A tecla dela FICA na tabela**, de propósito: voltar a arrastá-la para dentro devolve-lha.
 /// Perder autoria por um gesto reversível seria pior do que não ter o gesto.
@@ -361,7 +371,6 @@ pub(crate) fn disconnect(sim: &mut SimWorld, map: &VecEntityMap, shape: VecPathI
         return false;
     };
     em.remove::<ChildOf>();
-    em.remove::<Visibility>();
     em.insert(world);
     true
 }
@@ -398,22 +407,71 @@ pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> 
 ///    estado grava a sub-árvore com a pose **LOCAL** de cada filho, então a pose antiga faria o
 ///    `install` do próximo Show atirar a forma solta para a origem do conjunto.
 ///
-/// Devolve `true` se a linha existia.
+/// ⛔⛔ **E a TERCEIRA metade: tirar a penúltima DISSOLVE o conjunto** (W11f).
+///
+/// A pergunta estava aberta no §8.3 deste plano (*"um conjunto com uma forma ainda é um
+/// conjunto?"*) e a medição respondeu-a: **não, e deixá-lo é pior do que um objecto inerte.** Um
+/// conjunto esvaziado pelo ⊘ mantém o `VecMorph` que o [`upkeep`] lhe deu, e o `sources` continua a
+/// nomear a **primeira forma** — que já saiu. ⇒ o artista desconecta as três, e fica com um
+/// **fantasma** com o desenho da primeira, que ele não sabe o que é nem como apagar.
+///
+/// ⇒ **a fronteira é a do [`create`]**, que recusa abaixo de **2**: sair dela dissolve, exactamente
+/// como o `ungroup` faz com o último filho. *Um objecto deixa de ser uma relação quando fica com um
+/// lado só.*
+///
+/// Devolve o path do conjunto **se ele tiver de ser removido da cena** (o chamador tem-na à mão),
+/// tal como o [`dissolve`].
 pub(crate) fn disconnect_row(
     sim: &mut SimWorld,
     map: &VecEntityMap,
     states: &mut ph2d_ui_state::StateSets,
     host: Entity,
     row: usize,
-) -> bool {
-    let Some(&shape) = graph_of(sim, map, host).shapes().get(row) else {
-        return false;
-    };
+) -> Option<VecPathId> {
+    let shapes = graph_of(sim, map, host).shapes();
+    let shape = *shapes.get(row)?;
+    // ⚠️ **A decisão vem ANTES da escrita**, e com a contagem de agora: depois de desconectar, a
+    // lista já encolheu e a fronteira leria-se ao contrário.
+    if shapes.len() <= MIN_STATES {
+        return dissolve(sim, map, host);
+    }
     disconnect(sim, map, shape);
     if let Some(h) = path_of(map, host) {
         crate::vec_ui_state_edit::forget_object_in_all_states(states, h, shape);
     }
-    true
+    None
+}
+
+/// ⭐⭐⭐ **SER MEMBRO É ESTAR ESCONDIDO — e isso é DERIVADO, nunca guardado** (plano 32 W11f).
+///
+/// # ⛔⛔ O que estava errado, medido em 2026-08-26
+///
+/// A W11 fez a lista de estados ser **os filhos**, mas a ocultação continuou a ser uma escrita do
+/// [`upkeep`] — um `Visibility::hidden()` guardado no momento da criação. As duas metades ficaram
+/// desalinhadas, e o gesto do Enio (*"arrastar na hierarquia"*) apanha **as duas pontas**:
+///
+/// | gesto | a lista | o canvas (antes) |
+/// |---|---|---|
+/// | arrastar para DENTRO | entra (3 -> 4 estados) | ⛔ **continua visível**, desenhada por cima do conjunto |
+/// | arrastar para FORA | sai (4 -> 3 estados) | ⛔ **continua escondida** — a forma **desaparece** |
+///
+/// ⚠️ A segunda é a pior das duas, e o doc do [`disconnect`] já a nomeava como *"a pior saída
+/// possível"* — para o botão ⊘. O gesto de arrasto chegava lá pela porta que ninguém tinha olhado.
+///
+/// # A lei
+///
+/// ⇒ **é a hierarquia que responde**, como responde à lista: *o meu pai tem máquina, logo eu sou um
+/// estado, logo eu não me desenho*. É a lei que o módulo 3D Modeling já paga (`CLAUDE.md` §5.1: *«a
+/// hierarquia da cena É o documento»*) e que a §8.2 deste plano previu — só que ela foi aplicada à
+/// lista e **não** à ocultação.
+///
+/// ⭐ Com isto os dois gestos ficam de graça e **simétricos**, e não há estado guardado que possa
+/// discordar da árvore. ⛔ O `Visibility` do artista (o olho da Hierarquia) fica **intacto**: esta
+/// função só ACRESCENTA uma razão para esconder, e sair do conjunto devolve a razão dele.
+#[must_use]
+pub(crate) fn is_set_member(w: &ph2d_ecs::World, e: Entity) -> bool {
+    w.get::<ChildOf>(e)
+        .is_some_and(|c| w.get::<VecMorphMachine>(c.parent()).is_some())
 }
 
 /// **O `VecPathId` desta entidade** — a busca inversa do [`VecEntityMap`].

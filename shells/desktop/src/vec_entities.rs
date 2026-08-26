@@ -203,6 +203,14 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
         if w.get::<Visibility>(e).is_some_and(|v| v.hidden) {
             return false;
         }
+        // ⭐⭐ **Ser MEMBRO de um conjunto de Morph States esconde, e isso é DERIVADO** (plano 32
+        // W11f): a lista de estados são os filhos, então a ocultação tem de sair da MESMA pergunta
+        // — senão arrastar na Hierarquia move uma metade e deixa a outra para trás, nos dois
+        // sentidos. ⚠️ Ela ACRESCENTA uma razão para esconder; o `Visibility` do artista fica
+        // intacto e volta a valer sozinho quando a forma sai.
+        if crate::morph_set::is_set_member(w, e) {
+            return false;
+        }
         cur = w.get::<ChildOf>(e).map(|c| c.parent());
     }
     true

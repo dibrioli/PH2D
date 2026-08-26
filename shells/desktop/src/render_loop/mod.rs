@@ -8670,7 +8670,11 @@ impl crate::App {
                     // ⚠️ **Cada braço deriva o que precisa DENTRO da porta dele** — a lista de
                     // formas era derivada aqui e passada aos três, e era ela que convidava a
                     // escrever a lógica de cada verbo neste `match` (onde nenhum gate a alcança).
-                    match cmd {
+                    // ⚠️ **Os dois verbos que APAGAM o conjunto saem pela MESMA porta** — o
+                    // `Dissolve` sempre, e o `Disconnect` quando tira a penúltima forma (abaixo de
+                    // `MIN_STATES` um conjunto deixa de ser uma relação). Cada um a remover o path
+                    // por si seriam duas respostas a *"o que é apagar um conjunto"*.
+                    let removed = match cmd {
                         // ⭐ **PLAY: liga a pré-visualização se estiver desligada.** A máquina só
                         // anda dentro do modo (é ele que tem o relógio), e um Play que não tocasse
                         // nada seria um botão morto com nome de verbo.
@@ -8687,10 +8691,11 @@ impl crate::App {
                                 host,
                                 row,
                             );
+                            None
                         }
-                        // ⚠️ **Pela porta**, e não pelas duas metades aqui: a segunda — a forma
-                        // solta LEVAR as poses dela — não é alcançável de um teste escrita neste
-                        // braço, e foi assim que ela ficou por escrever uma wave inteira.
+                        // ⚠️ **Pela porta**, e não pelas metades aqui: a segunda — a forma solta
+                        // LEVAR as poses dela — não é alcançável de um teste escrita neste braço, e
+                        // foi assim que ela ficou por escrever uma wave inteira.
                         crate::vec_morph_edit::MorphCmd::Disconnect { row } => {
                             crate::morph_set::disconnect_row(
                                 sim,
@@ -8698,17 +8703,16 @@ impl crate::App {
                                 ui_states,
                                 host,
                                 row,
-                            );
+                            )
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {
-                            if let Some(path) =
-                                crate::morph_set::dissolve(sim, &self.vec_entities, host)
-                            {
-                                vec_scene.remove_path(path);
-                                self.vec_pen.clear();
-                            }
+                            crate::morph_set::dissolve(sim, &self.vec_entities, host)
                         }
-                        _ => {}
+                        _ => None,
+                    };
+                    if let Some(path) = removed {
+                        vec_scene.remove_path(path);
+                        self.vec_pen.clear();
                     }
                     self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
                 }

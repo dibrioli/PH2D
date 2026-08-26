@@ -7,15 +7,31 @@
 
 use super::super::{create, disconnect, dissolve, eligible, graph_of, upkeep};
 use super::world;
-use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform, VecMorph, VecMorphMachine, Visibility};
+use ph2d_ecs::{ChildOf, Entity, SimWorld, Transform, VecMorph, VecMorphMachine};
 use ph2d_vec_scene::{VecPathId, VecScene};
 
 use crate::vec_entities::{VecEntityMap, sync};
 
+/// ⭐⭐ **A resposta que o CANVAS lê** — `view_state().hidden`, e não o componente guardado.
+///
+/// ⛔⛔ Três gates desta folha mediam `Visibility` **directamente**, e por isso não viam o defeito
+/// da W11f: a ocultação de um membro deixou de ser guardada e passou a ser **derivada** de ser
+/// filho de um conjunto. *Contar o trabalho FEITO não é contar o trabalho ENTREGUE* — a sonda tem
+/// de estar no consumidor.
+fn hidden_on_canvas(sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> bool {
+    crate::vec_entities::view_state(sim, map)
+        .hidden
+        .contains(&id)
+}
+
 /// ⭐⭐ **A COSTURA: o botão faz o objecto, ele fica com os filhos, e SÓ ELE aparece.**
 ///
-/// **Mutação que deve sangrar (1):** tirar o `Visibility::hidden()` — as nove formas ficariam
+/// **Mutação que deve sangrar (1):** o `is_set_member` devolver `false` — as nove formas ficariam
 /// empilhadas por cima do conjunto, que é a foto que o Enio nunca quer ver.
+///
+/// ⚠️ **A sonda é `view_state().hidden`**, e não o componente: desde a W11f a ocultação de um
+/// membro é **derivada**, e um gate que olhasse para o `Visibility` guardado leria `None` sobre uma
+/// forma que o canvas não desenha.
 ///
 /// **Mutação que deve sangrar (2):** esconder o HOST em vez dos membros — o `visible_chain` lê os
 /// ancestrais, então o conjunto inteiro sumiria do canvas.
@@ -49,7 +65,7 @@ fn the_set_owns_the_shapes_hides_them_and_shows_the_start() {
         "tres formas => TRES estados, na ordem dos FILHOS (W11)"
     );
     assert!(
-        sim.world().get::<Visibility>(host).is_none(),
+        !hidden_on_canvas(&sim, &map, scene.paths().last().unwrap().id),
         "o CONTROLE: o conjunto NAO se esconde -- e' ele que se ve'"
     );
     for id in &ids {
@@ -60,7 +76,7 @@ fn the_set_owns_the_shapes_hides_them_and_shows_the_start() {
             "a forma {id} tem de ser FILHA do conjunto"
         );
         assert!(
-            sim.world().get::<Visibility>(e).is_some_and(|v| v.hidden),
+            hidden_on_canvas(&sim, &map, *id),
             "a forma {id} tem de ficar oculta -- so' o estado actual aparece"
         );
     }
@@ -366,9 +382,9 @@ fn converting_the_set_to_curves_takes_the_machine_with_it() {
 ///
 /// Enio, 2026-08-26: *"no lugar de clear melhor um botão de desconectar."*
 ///
-/// **Mutação que deve sangrar (1):** não remover o `Visibility` — a forma sai do conjunto e fica
-/// **invisível**: o artista carrega em *Desconectar* e a forma **desaparece**, que é a pior saída
-/// possível de um gesto cujo nome promete o contrário.
+/// **Mutação que deve sangrar (1):** o `is_set_member` ignorar o `ChildOf` — a forma sai do
+/// conjunto e continua **invisível**: o artista carrega em *Desconectar* e a forma **desaparece**,
+/// que é a pior saída possível de um gesto cujo nome promete o contrário.
 ///
 /// **Mutação que deve sangrar (2):** não remover o `ChildOf` — ela continua na lista.
 #[test]
@@ -381,7 +397,7 @@ fn disconnecting_gives_the_shape_back_loose_and_visible() {
     let kid = Entity::from_bits(map[&ids[1]]);
     // O CONTROLE: antes, ela é filha E está escondida.
     assert!(sim.world().get::<ChildOf>(kid).is_some());
-    assert!(sim.world().get::<Visibility>(kid).is_some_and(|v| v.hidden));
+    assert!(hidden_on_canvas(&sim, &map, ids[1]));
 
     assert!(disconnect(&mut sim, &map, ids[1]));
 
@@ -390,7 +406,7 @@ fn disconnecting_gives_the_shape_back_loose_and_visible() {
         "desconectar tem de a tirar da hierarquia -- e' isso que a tira da lista"
     );
     assert!(
-        !sim.world().get::<Visibility>(kid).is_some_and(|v| v.hidden),
+        !hidden_on_canvas(&sim, &map, ids[1]),
         "⛔ ela saiu INVISIVEL: o artista carrega em «Desconectar» e a forma DESAPARECE"
     );
     assert_eq!(
@@ -430,7 +446,7 @@ fn dissolving_gives_every_shape_back_and_names_the_host_to_remove() {
             "a forma {id} continua presa ao conjunto"
         );
         assert!(
-            !sim.world().get::<Visibility>(e).is_some_and(|v| v.hidden),
+            !hidden_on_canvas(&sim, &map, *id),
             "a forma {id} ficou ESCONDIDA -- desfazer tem de devolver o mundo, nao um parecido"
         );
     }
@@ -543,3 +559,10 @@ fn a_morph_child_never_becomes_a_state_of_the_outer_set() {
 /// ⭐⭐⭐ **O conjunto dentro de uma animação de STATES** — irmão por assunto (W11c).
 #[path = "morph_set_ui_state_tests.rs"]
 mod ui_state_tests;
+
+/// ⭐⭐ **A PERTENÇA e o que ela ESCONDE** — irmão por LOC (HR-18), e o corte é por assunto: aqui em
+/// cima *o que o conjunto faz às formas quando o artista usa os BOTÕES*; ali, *o que a HIERARQUIA
+/// responde* — arrastar para dentro, arrastar para fora, e o olho do artista por baixo de tudo.
+#[cfg(test)]
+#[path = "morph_set_membership_tests.rs"]
+mod membership_tests;

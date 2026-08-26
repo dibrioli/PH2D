@@ -295,8 +295,19 @@ fn main() {
         r.solve.angle_p50
     );
     println!(
-        "  ⭐⭐ ENDURECIMENTO LOCAL: {} passagens · triangulos VIRADOS {} ⇒ {}",
-        r.stiffen_passes, r.folded_before, r.folded_after
+        "  ⭐⭐ DOBRAS: {} no continuo (endurecimento: {} passagens, {} ⇒ {}) · \
+         ⭐⭐⭐ o ARREDONDAMENTO leva-as de {} para {}, e {} de {} pregos criaram alguma \
+         · 2a tentativa: {} correram, ⭐ {} ganharam",
+        r.folded_after,
+        r.stiffen_passes,
+        r.folded_before,
+        r.folded_after,
+        r.folded_before_rounding,
+        r.folded_after_rounding,
+        r.pins_that_folded,
+        r.pinned,
+        r.second_tries,
+        r.second_tries_won
     );
     println!(
         "  REGUAS do mapa: alinhamento p50 {:.3} p95 {:.3} | angulo p50 {:.1}° p95 {:.1}° | ESCALA p50 {:.3} p95 {:.3} | {} triangulos, {} saltados, {} pares",

@@ -59,6 +59,45 @@ pub fn welded_enabled() -> bool {
 /// propriedade da eliminação, não uma verificação no fim.*
 #[must_use]
 #[allow(clippy::too_many_lines)]
+/// ⛔⛔⛔ **FALSE — a 2.ª tentativa foi construída, MEDIDA e REJEITADA, e ela CUMPRE o que
+/// promete.**
+///
+/// A ideia: o guloso escolhe sempre o inteiro **mais próximo**; quando essa escolha dobra o
+/// mapa, experimentar o inteiro do **outro lado** e ficar com o que dobrar menos.
+///
+/// # ⭐ Ela FUNCIONA — e é por isso que a rejeição é interessante
+///
+/// | | sem | ⛔ **com** |
+/// |---|---|---|
+/// | dobras que o arredondamento acrescenta | `14` ⇒ `20` | ⭐ `14` ⇒ **`14`** |
+/// | 2.ª tentativa ganhou | — | **10 de 15** |
+/// | **passo pior** | `0,4737` | ⛔ **`0,9768`** |
+/// | soma dos passos | `24,812` | ⛔ `28,222` |
+/// | ⛔ **arestas de bordo** | **`10`** | ⛔ **`16`** |
+/// | `χ` | **`1`** | ⛔ **`0`** |
+/// | órfãs | `11` | `13` |
+///
+/// ⭐⭐⭐ **Ela apaga TODAS as dobras que o arredondamento cria — e os furos PIORAM.**
+///
+/// # ⛔⛔ As duas coisas que isto derruba
+///
+/// 1. ⚠️ **«Dobra» e «furo» não são o mesmo defeito.** A inferência que motivou esta wave
+///    — *«seis das vinte dobras vêm do arredondamento, logo tirá-las cura os furos»* — é
+///    uma premissa **falsa**, e só uma medição a podia derrubar: as órfãs «sem saída»
+///    até **sobem** (`2` ⇒ `4`) com zero dobras novas.
+/// 2. ⭐⭐ **O «menor erro primeiro» do guloso não é decoração — é o que mantém o mapa
+///    inteiro perto do contínuo.** O passo pior **duplica** (`0,47` ⇒ `0,98`), porque
+///    escolher o inteiro de lá é andar quase uma célula inteira em vez de meia. *Comprar um
+///    mapa sem dobras com um passo do dobro paga mais do que poupa.*
+///
+/// ⚠️ **Inerte com `false`**, e há gate (`the_second_try_is_off_and_the_ruler_is_alive`).
+/// `PH2D_RETRY_FOLD` não a reabre — ela só desliga; para a reabrir muda-se esta constante.
+const RETRY_ON_FOLD: bool = false;
+
+fn retry_on_fold() -> bool {
+    std::env::var("PH2D_RETRY_FOLD").as_deref() != Ok("0") && RETRY_ON_FOLD
+}
+
 /// O que a escada gulosa prega — uma livre do sistema reduzido, ou uma **classe solta**.
 ///
 /// ⚠️ **Os dois casos partilham a escada de propósito**: a ordem «menor erro primeiro» só
@@ -187,6 +226,8 @@ pub fn round_welded(
         .count();
 
     // ── A ESCADA GULOSA: a de menor erro primeiro, e actualizar a seguir.
+    let mut folded_seen = a.folded(&map).len();
+    rep.folded_before_rounding = folded_seen;
     while !free.is_empty() {
         let (best, _) = free
             .iter()
@@ -199,41 +240,88 @@ pub fn round_welded(
                 if d < acc.1 { (k, d) } else { acc }
             });
         let (tgt, ax) = free.swap_remove(best);
-        let mut v = read(&r, &map, tgt);
-        let step = (v[ax] - v[ax].round()).abs();
-        rep.worst_step = rep.worst_step.max(step);
-        rep.sum_step += step;
+        let v0 = read(&r, &map, tgt);
+        let x = v0[ax];
+        let nearest = x.round();
         rep.pinned += 1;
-        v[ax] = v[ax].round();
+        // ⚠️ **Pregar é congelar a VARIÁVEL, não o valor** — as duas tentativas abaixo
+        // escrevem valores diferentes na mesma incógnita, então congelar uma vez chega.
         match tgt {
-            Target::Free(i) => {
-                r.write_free(&mut map, i, v);
-                r.freeze_free(i, ax);
-            }
-            Target::Class(c) => {
-                r.write_class(&mut map, c, v);
-                r.freeze_class(c, ax);
-            }
+            Target::Free(i) => r.freeze_free(i, ax),
+            Target::Class(c) => r.freeze_class(c, ax),
         }
-
-        // ── §5.1 degrau 1: Gauss–Seidel LOCAL sobre as CLASSES, semeado onde se mexeu.
         let seeds = match tgt {
             Target::Free(i) => r.classes_of_free(i),
             #[allow(clippy::cast_possible_truncation)]
             Target::Class(c) => vec![c as u32],
         };
-        let (visits, converged) = drain(&r, &mut map, seeds, opts.local_tol, opts.local_cap);
+
+        // ⭐⭐⭐ **A SEGUNDA HIPÓTESE, e só quando a primeira DOBRA.**
+        //
+        // ⛔⛔ O guloso escolhia sempre o inteiro **mais próximo**, e a medição diz que
+        // `14` dos `128` pregos da peça do artista **criam uma dobra** (a enrugada: `0` de
+        // `48`). ⇒ *não é o custo espalhado de todos os pregos, é um punhado de pregos
+        // maus* — e um punhado tem cura barata: **experimentar o inteiro do outro lado**.
+        //
+        // ⚠️ **Só se paga onde dói:** a 2.ª tentativa corre apenas quando a 1.ª aumentou a
+        // contagem de dobras, logo o custo é `11 %` de uma relaxação extra, não `100 %`.
+        let attempt =
+            |map: &mut GridMap, r: &WeldRelaxer<'_>, value: f32| -> (usize, usize, bool) {
+                let mut v = v0;
+                v[ax] = value;
+                match tgt {
+                    Target::Free(i) => r.write_free(map, i, v),
+                    Target::Class(c) => r.write_class(map, c, v),
+                }
+                let (visits, converged) =
+                    drain(r, map, seeds.clone(), opts.local_tol, opts.local_cap);
+                if !converged {
+                    for _ in 0..opts.sweeps {
+                        if r.sweep(map) < opts.local_tol {
+                            break;
+                        }
+                    }
+                }
+                (a.folded(map).len(), visits, converged)
+            };
+
+        // ⚠️ O retrato só se paga quando há quem o use — com a 2.ª tentativa desligada
+        // esta linha é um `None` e o laço é o de sempre, alocação a alocação.
+        let snapshot = retry_on_fold().then(|| map.clone());
+        let (mut folds, mut visits, mut converged) = attempt(&mut map, &r, nearest);
+        let mut taken = nearest;
+        if let Some(snapshot) = snapshot.filter(|_| folds > folded_seen) {
+            // O inteiro do OUTRO lado: se `x` está acima do mais próximo, é o de cima.
+            let other = nearest + (x - nearest).signum();
+            let mut alt = snapshot;
+            let (f2, v2, c2) = attempt(&mut alt, &r, other);
+            rep.second_tries += 1;
+            if f2 < folds {
+                rep.second_tries_won += 1;
+                map = alt;
+                folds = f2;
+                visits = v2;
+                converged = c2;
+                taken = other;
+            }
+        }
+        // ⚠️ **O passo registado é o que de facto se andou**, e não o do mais próximo:
+        // escolher o outro inteiro custa mais, e esconder isso falsearia a régua.
+        let step = (x - taken).abs();
+        rep.worst_step = rep.worst_step.max(step);
+        rep.sum_step += step;
         rep.visits += visits;
         if converged {
             rep.level1 += 1;
         } else {
             rep.level2 += 1;
-            for _ in 0..opts.sweeps {
-                if r.sweep(&mut map) < opts.local_tol {
-                    break;
-                }
-            }
         }
+        if folds > folded_seen {
+            rep.pins_that_folded += 1;
+        }
+        folded_seen = folds;
+        rep.folded_after_rounding = folds;
+
         // ── ⭐⭐⭐ **E A PARTE CONTÍNUA ABSORVE**: as livres ainda por pregar relaxam-se
         // sobre o mapa que acabou de se mexer.
         for &(j, _) in &free {

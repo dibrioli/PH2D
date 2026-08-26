@@ -246,6 +246,19 @@ pub struct RoundReport {
     pub folded_after: usize,
     /// Quantas passagens de endurecimento local correram.
     pub stiffen_passes: usize,
+    /// ⭐⭐ Triângulos virados **antes** de a escada gulosa pregar o primeiro inteiro.
+    pub folded_before_rounding: usize,
+    /// ⭐⭐⭐ Triângulos virados **depois** de a escada acabar.
+    pub folded_after_rounding: usize,
+    /// ⭐⭐⭐ **Quantos PREGOS aumentaram a contagem de dobras.**
+    ///
+    /// ⚠️ *É a coluna que separa «um punhado de pregos maus» de «o custo espalhado de
+    /// todos» — e as duas pedem curas diferentes.*
+    pub pins_that_folded: usize,
+    /// ⭐ Quantas vezes a 2.ª tentativa (o inteiro do outro lado) correu.
+    pub second_tries: usize,
+    /// ⭐⭐⭐ Quantas vezes ela **ganhou** — dobrou menos que o inteiro mais próximo.
+    pub second_tries_won: usize,
     /// ⚠️ **O CASO DE CANTO, e ele tem nome:** as singularidades esgotaram-se e ainda
     /// sobravam costuras por arredondar — acontece em peças com **alça**, e o nosso
     /// corpus tem um toro. ⛔ Terminar ali deixaria o mapa *quase* inteiro, que é pior

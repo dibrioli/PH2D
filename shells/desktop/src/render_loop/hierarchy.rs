@@ -87,6 +87,8 @@ pub(super) fn dispatch(
     reparent_intent: Option<HierReparentIntent>,
     duplicate_row: Option<NodeId>,
     add_child_row: Option<NodeId>,
+    // ⭐ O botão `Add` do cabeçalho da Hierarquia (ADR-0166 / F3). Ver o bloco de `add_root`.
+    add_root: bool,
     reset_transform_row: Option<NodeId>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
@@ -299,6 +301,25 @@ pub(super) fn dispatch(
             ph2d_ecs::ChildOf(parent),
         ));
         toasts.push(Toast::success("Added child entity"));
+        title_dirty = true;
+    }
+    // ⭐ **O objeto VAZIO na raiz** (ADR-0166 / F3) — o primeiro passo do smoke desta fase.
+    //
+    // ⚠️ **`Transform` + `Name`, e mais NADA.** É esta a base de que a F3 fala: o Inspector passa a
+    // mostrar o que o objeto TEM, então um objeto acabado de nascer mostra duas seções, não doze. A
+    // tentação de lhe dar um `Sprite` "para se ver alguma coisa" é exatamente o que a fase apaga.
+    //
+    // ⚠️ **`assign_missing_root_order` a seguir, não depois:** uma raiz sem `RootOrder` colate em
+    // `u32::MAX` e o desempate cai no `Entity::to_bits()`, que muda a cada respawn do undo — foi
+    // esse o defeito que fez a captura deixar de ser ponto fixo (BUGS #15). O `StableId` vem pela
+    // mesma porta, e por isso os dois assigners andam em par (precedente: `inspector_joint_create`).
+    //
+    // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
+    // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
+    if add_root {
+        let bits = super::hierarchy_add_root::spawn_empty_root(sim);
+        hero.gizmo.replace_selection(Some(bits));
+        toasts.push(Toast::success("Added empty object"));
         title_dirty = true;
     }
     if let Some(row) = reset_transform_row

@@ -40,6 +40,31 @@ use crate::theme::parse_theme_env;
 use crate::winit_host::{LoggingHandler, WinitHost};
 use crate::{AppGfx, HeroLive, SPRITE_COUNT};
 
+/// ⭐ **O registo de componentes do produto** — as quatro famílias que o app conhece.
+///
+/// ⚠️ **É função com nome porque o censo da F3 tem de perguntar ao MESMO registo que o app usa**
+/// (ADR-0166): *"todo componente que a paleta oferece, o registo sabe construir"* é uma afirmação
+/// sobre este objeto, e um segundo `ComponentRegistry::new()` montado à mão dentro do teste seria
+/// uma segunda lista a envelhecer — o gate ficaria verde sobre um registo que ninguém executa.
+///
+/// ⚠️ Um componente que falte aqui é **descartado em silêncio** pelo `WorldSnapshot` (undo + save),
+/// e o sintoma é o objeto perder a feature ao desfazer.
+pub(crate) fn build_component_registry() -> ComponentRegistry {
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    // M14.C audit fix #8: register Sprite alongside the ecs components so the Strategy switch can
+    // flow through `EditorCommand::SetComponent` instead of direct world mutation.
+    ph2d_render::register_render_components(&mut reg);
+    // ADR-0131 W1: RigidBody/Collider — without this the WorldSnapshot (undo + save) silently
+    // drops them.
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    // ADR-0161 — o objeto de modelagem 3D. Sem esta linha o WorldSnapshot descarta o componente EM
+    // SILENCIO, e o sintoma é o objeto sumir ao desfazer. `field3d_snapshot_tests` prova os dois
+    // lados disso.
+    ph2d_field_ecs::register_field_components(&mut reg);
+    reg
+}
+
 /// Build the editor's initial state. Called once from
 /// [`ApplicationHandler::resumed`] on the first frame; never re-runs.
 ///
@@ -502,23 +527,7 @@ pub(crate) fn build_initial_state(
         next_painted_doc: 1, // 0 fica livre como "nenhum"
         next_baked_form: 1,  // idem: 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),
-        component_registry: {
-            let mut reg = ComponentRegistry::new();
-            register_ecs_components(&mut reg);
-            // M14.C audit fix #8: register Sprite alongside the
-            // ecs components so the Strategy switch can flow
-            // through `EditorCommand::SetComponent` instead of
-            // direct world mutation.
-            ph2d_render::register_render_components(&mut reg);
-            // ADR-0131 W1: RigidBody/Collider — without this the
-            // WorldSnapshot (undo + save) silently drops them.
-            ph2d_physics_ecs::register_physics_components(&mut reg);
-            // ADR-0161 — o objeto de modelagem 3D. Sem esta linha o WorldSnapshot
-            // descarta o componente EM SILENCIO, e o sintoma e o objeto sumir ao
-            // desfazer. `field3d_snapshot_tests` prova os dois lados disso.
-            ph2d_field_ecs::register_field_components(&mut reg);
-            reg
-        },
+        component_registry: build_component_registry(),
         editor_queue: EditorCommandQueue::new(),
         transform_type_id: stable_type_id("ph2d::ecs::Transform"),
         visibility_type_id: stable_type_id("ph2d::ecs::Visibility"),

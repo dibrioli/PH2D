@@ -59,3 +59,32 @@ fn lock_companion_click_emits_hier_toggle_lock() {
         "lock click never reached the bus as HierToggleLock {{ row: {row:?} }} — the Hierarchy panel→shell seam is dead. Drained: {actions:?}"
     );
 }
+
+/// ⭐ **O botão `Add` do cabeçalho emite `HierAddRoot`** (ADR-0166 / F3).
+///
+/// ⚠️ Ele era pintado (`paint.rs`) e registado (`populate.rs`) **desde a Fase C.2**, e nada no
+/// repo consumia o clique — as duas primeiras perguntas da costura respondiam *sim* e o objeto
+/// nunca nascia. *Um botão morto sob o dedo e um botão ausente dão o mesmo report.*
+///
+/// (Mutação: apagar o braço do `event.rs` ⇒ RED, e o `Ignored` diz exactamente o que aconteceu.)
+#[test]
+fn the_add_button_emits_hier_add_root() {
+    let mut host = MockPanelHost::with_panel::<HierarchyPanel>();
+    let mut panel_state = HierarchyState::default();
+
+    let outcome = host.apply_panel_event::<HierarchyPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::HIERARCHY_ADD),
+    );
+
+    assert_eq!(
+        outcome,
+        EventOutcome::Consumed,
+        "o botao Add do cabecalho voltou a ser inerte — o braco do event.rs sumiu"
+    );
+    let actions = host.drained_actions();
+    assert!(
+        actions.contains(&EditorAction::HierAddRoot),
+        "o clique no Add nunca chegou ao barramento. Drenado: {actions:?}"
+    );
+}

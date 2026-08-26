@@ -192,3 +192,8 @@ pub(crate) fn name_of_pick(id: NodeId) -> Option<&'static str> {
 #[cfg(test)]
 #[path = "component_palette_tests.rs"]
 mod tests;
+
+/// ⭐ O censo de alcance nos dois sentidos — ver [`crate::component_reach_tests`].
+#[cfg(test)]
+#[path = "component_reach_tests.rs"]
+mod reach_tests;

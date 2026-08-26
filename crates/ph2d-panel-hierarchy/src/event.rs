@@ -136,6 +136,14 @@ pub(crate) fn apply_event(
         return EventOutcome::Consumed;
     }
     if let WidgetEvent::Click(id) = ev {
+        // ⭐ **O botão `Add` do cabeçalho** (ADR-0166 / F3) — um objeto VAZIO na raiz.
+        //
+        // ⚠️ Ele é pintado e registado desde a Fase C.2 e **nunca teve consumidor**: até esta
+        // linha, clicar nele não fazia nada. É o primeiro passo do smoke da F3.
+        if id == ids::HIERARCHY_ADD {
+            host.bus_mut().push(EditorAction::HierAddRoot);
+            return EventOutcome::Consumed;
+        }
         // M14.6A — eye-toggle companion id.
         if let Some(row_id) = ids::hier_eye_companion_to_row(id) {
             host.bus_mut()

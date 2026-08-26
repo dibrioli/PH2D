@@ -246,6 +246,16 @@ pub enum EditorAction {
     /// Raised by the row's right-click → Add Child menu entry.
     HierAddChild { row: ph2d_a11y::NodeId },
 
+    /// ⭐ **Um objeto VAZIO na raiz** — o botão **Add** do cabeçalho da Hierarquia (ADR-0166 / F3).
+    ///
+    /// ⚠️ **Sem payload, e é isso que o distingue do [`Self::HierAddChild`]:** aquele nasce de uma
+    /// LINHA (o pai), este de um botão que não pertence a linha nenhuma. Dar-lhe um `row` seria
+    /// inventar um pai para o objeto que o artista pediu **sem** pai.
+    ///
+    /// ⚠️ O botão existia, era pintado e registado desde a Fase C.2 — e **nada o consumia**. Um
+    /// botão morto sob o dedo e um botão ausente dão o mesmo report; este é o primeiro dos dois.
+    HierAddRoot,
+
     /// Composite the current multi-selection (≥ 2 sprites) into one new Individual-texture sprite at
     /// the union bbox, then despawn the originals. Payload: the right-clicked row's `NodeId` (visual
     /// anchor — the merge inherits its parent / z). Drain toasts when < 2 sprites are selected (no-op).

@@ -43,6 +43,7 @@ mod gizmo_prune;
 /// **O número do arrasto de gizmo** — quem o publica (a lei mora no `editor-core`).
 mod gizmo_readout;
 mod hierarchy;
+mod hierarchy_add_root;
 mod image_edit;
 mod inspector_commits;
 #[cfg(test)]
@@ -2966,6 +2967,9 @@ impl crate::App {
             // we can fork the copy onto its own texture (independent object) post-dispatch.
             let mut duplicate_made: Option<(u64, u64)> = None;
             let mut add_child_row: Option<NodeId> = None;
+            // ⭐ **O `Add` do cabeçalho da Hierarquia** (ADR-0166 / F3) — um objeto vazio na raiz.
+            // Sem payload: ele não sai de uma linha, e por isso não tem pai (ver `HierAddRoot`).
+            let mut add_root = false;
             let mut reset_transform_row: Option<NodeId> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
@@ -4029,6 +4033,9 @@ impl crate::App {
                     }
                     EditorAction::HierAddChild { row } => {
                         add_child_row.get_or_insert(row);
+                    }
+                    EditorAction::HierAddRoot => {
+                        add_root = true;
                     }
                     EditorAction::HierResetTransform { row } => {
                         reset_transform_row.get_or_insert(row);
@@ -9827,6 +9834,7 @@ impl crate::App {
                 reparent_intent,
                 duplicate_row,
                 add_child_row,
+                add_root,
                 reset_transform_row,
                 delete_row,
                 hierarchy_row_click,

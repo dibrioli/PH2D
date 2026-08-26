@@ -619,3 +619,66 @@ O modelo deixou de ter arestas e os símbolos continuavam a dizer `arrow`. A cas
 e nada externo os alcança. ⚠️ E cada troca correu com **`assert` de contagem**: um `replace` que não
 casa é no-op **silencioso**, e o script imprime sucesso na mesma
 ([memória](../../project-memory/feedback_python_replace_silent_noop_after_fmt.md)).
+
+---
+
+## §8 — ⏳ A FILA (Enio, 2026-08-26 — **pedido para ficar em fila, NÃO implementado**)
+
+> *"Precisamos de um botão para desfazer tudo em morph states, e precisamos de botões Show e clear
+> como na seção states, para cada uma das formas envolvidas. e precisamos que sendo uma forma que
+> previamente não participava do Morph states, se for arrastada na hierarquia e se tornar filha de
+> um objeto Morph State, automaticamente passa a fazer parte do sistema.
+> Mas coloque tudo isso na fila de implementações. Pois hoje não implementaremos"*
+
+### §8.1 — Os três itens
+
+| # | O quê | Estado do substrato |
+|---|---|---|
+| **F1** | **Desfazer tudo** — um botão que dissolve o conjunto: o objecto pai some, as formas voltam **soltas e visíveis**, onde estavam | o inverso exacto do `morph_set::upkeep`; o `vec_entities::ungroup_entities` é o vizinho a ler (⚠️ ele recusa um *pai com geometria*, e o conjunto **tem** `VecPathRef` — não serve como está) |
+| **F2** | **Show / Clear por forma**, como a seção *States* | ⭐ **O `Show` já tem motor:** `MorphMachine::travel(graph, ix)` existe desde a W1, com gate, e **não tem consumidor nenhum** (medido 26/08). Falta o botão. ⚠️ O `Clear` é o gesto que eu próprio nomeei como **ausente** num doc-comment da W10: *"tirar uma forma do conjunto, que é outro gesto e ainda não existe"* |
+| **F3** | **Arrastar na Hierarquia para dentro de um Morph States ⇒ a forma entra no sistema** | a porta é `hero_intents::drain_reparent` (`render_loop/hierarchy.rs`), que já corre; falta quem reaja a ela |
+
+### §8.2 — ⭐⭐⭐ O ACHADO: os três são UM, e o F3 decide o modelo dos outros dois
+
+Hoje há **duas representações de «que formas estão neste conjunto»**:
+
+1. `VecMorphMachine.graph.states` — a lista **autorada**;
+2. `Children(host)` — o facto da **hierarquia**, escrito pelo `morph_set::upkeep`.
+
+⚠️ **Elas já podem discordar** (apagar um filho deixa a lista a nomear uma forma que não existe, e o
+painel mostra `#id`). O F3 torna a discordância **um gesto do artista**, e portanto obrigatória de
+resolver — não dá para ter «arrastar para dentro faz entrar» com a lista a ser a fonte.
+
+⇒ **A cura provável é a lei que o módulo 3D Modeling já paga** (`CLAUDE.md` §5.1: *«a hierarquia da
+cena É o documento — o `FieldDoc` é cozido dela a cada quadro»*):
+
+> **os FILHOS são a lista de estados; a tecla é side-metadata indexada por `ShapeId`.**
+
+O que isso arruma de uma vez:
+
+- **F3** passa a ser de graça — reparentar **é** entrar, sem código de reacção;
+- **F2 `Clear`** vira *reparentar para fora* (e o botão é um atalho para o gesto que já existe);
+- **F1** vira *reparentar todos para fora* + apagar o pai — e deixa de precisar do `ungroup_entities`;
+- a discordância deixa de ser exprimível, em vez de ser reconciliada.
+
+⚠️ **O que é preciso decidir antes de escrever uma linha:** a tecla e o ritmo passam a viver numa
+**tabela por `ShapeId`** (uma forma sem entrada usa os valores de partida). Isso é uma **segunda
+mudança de formato** do `VecMorphMachine`.
+
+⛔⛔ **E ela só é de graça enquanto a linha não integrar.** Um blob que não descodifica **aborta o
+carregamento inteiro** (`snapshot_to_world` propaga com `?`, ver §7.2) — hoje não existe ficheiro
+nenhum com este componente, e depois da integração passa a existir. *A janela é esta.*
+
+### §8.3 — Perguntas abertas que a implementação tem de responder
+
+1. **O `start`.** Se os filhos são a lista, o estado inicial é o **primeiro filho** — e a ordem de
+   irmãos é dado (`SiblingOrder`). Arrastar para reordenar passa a mudar onde a máquina nasce: é
+   isso que se quer, ou o `start` é uma marca explícita?
+2. **O `Clear` da última forma.** Um conjunto com **uma** forma ainda é um conjunto? (O `create`
+   recusa abaixo de 2.) Ou o `Clear` da penúltima dissolve-o, como o `ungroup` faz?
+3. **Uma forma arrastada para dentro fica OCULTA?** O `upkeep` esconde os membros; um filho novo tem
+   de receber o mesmo tratamento — e sair pelo `Clear` tem de o **des**esconder, senão a forma
+   volta a ser solta e invisível, que é a pior das saídas.
+4. **O `Show` durante a edição.** O `travel` mexe no `VecMorph` (par + `t`), que é **pré-visualização**
+   e passa pelo ledger — ⚠️ mas fora do modo `Preview` não há quem faça o tempo andar (o
+   `morph_machine_drive::tick` só corre no modo). ⇒ o `Show` ou liga o modo, ou salta instantâneo.

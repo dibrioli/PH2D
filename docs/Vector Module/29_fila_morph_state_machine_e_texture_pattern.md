@@ -15,7 +15,8 @@
 |---|---|---|---|
 | **1** | ⭐ **O Input Map** — entradas nomeadas, à la Godot | **[30 — PLANO](30_plano_input_map.md)** | ✅ **FECHADO** e integrado ao `main` em 2026-08-24 |
 | **2** | **A máquina de estados do Morph** | **[32 — PLANO](32_plano_maquina_de_estados_do_morph.md)** (pesquisa: [31](31_pesquisa_maquinas_de_estado.md)) | ✅ **W1–W8 feitas.** ⚠️ **O desenho MUDOU em 25/08 e o §5 do plano 32 é a fonte:** um botão faz o conjunto e gera o **grafo completo dirigido**; as setas são **virtuais** (⛔ o desenho no canvas e o gesto de arrasto foram **retirados**); seção **própria** *Morph States* |
-| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | **é a próxima**, sem plano |
+| **2-bis** | ⏳ **Morph States: desfazer tudo · Show/Clear por forma · arrastar-para-dentro** | **[32 §8](32_plano_maquina_de_estados_do_morph.md)** | **em FILA por decisão do Enio (26/08): *"hoje não implementaremos"*.** ⚠️ O §8.2 mostra que os três são **um**: o arrastar-para-dentro obriga a lista de estados a ser **derivada dos FILHOS**, e isso é uma 2ª mudança de formato — ⛔ **de graça só enquanto a linha não integrar** |
+| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | fila, sem plano |
 
 ⭐⭐ **Por que o input map vem primeiro, e não é só ordem preferida:** a pesquisa de máquinas de
 estado (doc 31) mostrou que as entradas da State Machine da **Rive** são exactamente **três** —

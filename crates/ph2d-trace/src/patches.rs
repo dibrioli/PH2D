@@ -426,9 +426,21 @@ pub fn dissolve(walls: &mut Walls, layout: &PatchLayout, victims: &[usize]) -> b
             .cloned();
         let arcs: Vec<u32> = match target {
             Some(side) => side.into_iter().map(|(a, _)| a).collect(),
-            // ⚠️ Sem lados nenhuns não há o que escolher: a fronteira inteira sai.
-            // É o patch cuja fronteira não tinha um único canto — uma faixa
-            // fechada, que não é disco e não tem lados por definição.
+            // ⛔⛔ **ESTE RAMO É MORTO, e o comentário dizia o contrário.** Ele só é
+            // alcançado quando `side_arcs[p]` está **vazio** (o `min_by` de um iterador
+            // vazio é `None`) — e o filtro logo abaixo pergunta a esse **mesmo** vector
+            // vazio quais arcos ele contém, logo o `any` é sempre `false` e a lista sai
+            // vazia. ⚠️ *A intenção escrita era «a fronteira inteira sai»; o que o código
+            // faz é não tirar nada.*
+            //
+            // ⚠️ **Medido 2026-08-25: não é ele que trava a limpeza.** Na peça do artista
+            // existe exactamente um patch de `0` lados, e mesmo assim a `dissolve` devolve
+            // `true` (os outros quatro degenerados removem parede) — quem trava é a guarda
+            // de topologia, uma linha acima do laço que chama isto
+            // (`TraceReport::cleanup_stop == 2`). ⛔ Curar este ramo **não** cura a peça, e
+            // é por isso que ele fica aqui NOMEADO em vez de remendado a caminho de outra
+            // coisa. *Um defeito verdadeiro que não é o defeito em mãos merece um nome, não
+            // um desvio.*
             None => (0..layout.arc_edges.len())
                 .map(|i| u32::try_from(i).unwrap_or(0))
                 .filter(|&i| layout.side_arcs[p].iter().flatten().any(|&(j, _)| j == i))

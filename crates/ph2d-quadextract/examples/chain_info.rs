@@ -185,6 +185,36 @@ fn main() {
         .filter_map(|(v, _)| u32::try_from(v).ok())
         .collect();
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    // ⭐⭐⭐ **AS CONDIÇÕES DE VALIDADE DO PATCH** (o achado da ordem das fases, §2.3):
+    // disco · valência `3`–`6` · convexidade. ⚠️ **As duas primeiras já eram MEDIDAS pelo
+    // traçado** (`TraceReport::valence`, `non_disk`) e por um método do layout
+    // (`degenerate()`), e **nenhum instrumento as imprimia** — a terceira ainda não existe.
+    // *É o terceiro contador vermelho, num dia só, que ninguém estava a ler.*
+    {
+        let r = &layout.report;
+        let fora: usize = r
+            .valence
+            .iter()
+            .filter(|(k, _)| **k < 3 || **k > 6)
+            .map(|(_, n)| *n)
+            .sum();
+        println!(
+            "  ⭐⭐⭐ CONDICOES DO PATCH: valencia {:?} · ⛔ {} fora de 3..6 · {} NAO-DISCO \
+             · ⛔ {} degenerados SOBREVIVERAM a' limpeza ({} dissolvidos em {} rondas, parou por {})",
+            r.valence,
+            fora,
+            r.non_disk,
+            layout.degenerate().len(),
+            r.dissolved,
+            r.rounds,
+            match r.cleanup_stop {
+                0 => "nada a fazer",
+                1 => "⛔ a DISSOLUCAO nao removeu parede nenhuma",
+                2 => "⛔ a ronda PIORAVA a topologia",
+                _ => "⛔ o tecto de rondas",
+            }
+        );
+    }
     let (cut, cr) = ph2d_gridmap::cut_along_patches(&mesh, &layout);
     let (combed, comb) = ph2d_gridmap::comb_patches(&mesh, &layout, &cut);
     println!(

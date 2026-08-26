@@ -157,3 +157,47 @@ Ela é a única que **casa com tudo o que foi medido em 2026-08-25**:
 — disco · valência `3`–`6` · convexidade — são verificáveis **antes** de o patch sair, e o
 traçado insere caminhos até todas valerem. *É a diferença entre uma cadeia que repara e uma
 que não produz o defeito.*
+
+
+---
+
+## §6 — ⭐⭐⭐ A obra E, medida: NÓS FUNDIMOS, ELES CORTAM
+
+O censo das três condições, no corpus (o `chain_info` passa a imprimi-lo):
+
+| peça | valência | ⛔ fora de `3..6` | ⛔ não-disco | ⛔ degenerados que SOBREVIVEM |
+|---|---|---|---|---|
+| ⛔ **do artista** | `{0:1, 2:1, 3:13, 4:18, 5:2, 8:1}` | **3** | **5** | **5** |
+| com gancho | `{3:12, 4:18, 5:4}` | `0` | `0` | `0` |
+| com orelha | `{3:8, 4:8, 5:1, 6:1}` | `0` | `0` | `0` |
+| com cristas | `{3:13, 4:5, 5:3}` | `0` | `0` | `0` |
+| enrugada | `{3:8, 4:10}` | `0` | `0` | `0` |
+
+⭐ **Separação total, pela terceira vez no dia:** a peça do artista é a única que viola as
+condições e a única com furos. Um patch com **zero** lados, um com `2`, um com `8`.
+
+### ⛔ E a limpeza que existe PARA nisto, na primeira ronda
+
+O contador novo `TraceReport::cleanup_stop` diz porquê: **`2` — «a ronda PIORAVA a
+topologia»**. A dissolução de facto remove paredes; o resultado é topologicamente pior, e a
+guarda estrita (que existe por uma medição de 22/08 no toro) recusa.
+
+⭐⭐⭐ **É aqui que o desenho do alvo diverge, e a direcção é oposta:**
+
+| | reparação |
+|---|---|
+| ⛔ **nós** | **FUNDIMOS** — dissolvemos a parede entre o patch mau e o vizinho |
+| ⭐ **o alvo** | **CORTA** — insere mais caminhos até as três condições valerem |
+
+⚠️ **Fundir só pode tornar os patches maiores e mais complexos** — é exactamente por isso que
+a guarda vê a topologia piorar e desiste. *A nossa cura empurra na direcção do defeito, pela
+segunda vez neste módulo* (a primeira foi o endurecimento local, `weld_solve::STIFFEN_PASSES`).
+
+⇒ **A obra E é: reparar por CORTE, não por fusão.** O `dissolve` fica como está — ele não
+está errado para uma lasca, que de facto é *uma parede a mais*; o que falta é o outro lado,
+para o patch que é *uma parede a MENOS*.
+
+⚠️ **E um defeito verdadeiro que NÃO é este** ficou nomeado no sítio: o ramo `None` da
+`patches::dissolve` (o patch de zero lados) é **morto** — ele filtra os arcos perguntando ao
+`side_arcs[p]` que já está vazio, e o comentário prometia *«a fronteira inteira sai»*. ⛔ Curá-lo
+não cura a peça (a guarda é que trava), e por isso ele está **nomeado e não remendado**.

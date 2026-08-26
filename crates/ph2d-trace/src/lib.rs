@@ -129,6 +129,14 @@ pub struct TraceReport {
     pub pruned: usize,
     /// Quantas rondas de limpeza correram.
     pub rounds: usize,
+    /// ⭐⭐⭐ **POR QUE a limpeza parou** — `0` nada a fazer · `1` a dissolução não removeu
+    /// parede nenhuma · `2` a ronda piorava a topologia · `3` o tecto de rondas.
+    ///
+    /// ⚠️ **Sem isto, `0 rondas` com degenerados vivos não distingue três avarias
+    /// diferentes**, e elas pedem curas opostas: uma dissolução que não dissolve, uma cura
+    /// que custa mais do que vale, ou um laço que não converge. *Um contador de rondas diz
+    /// que parou; só a razão diz onde mexer.*
+    pub cleanup_stop: u8,
     /// ⚠️ **Quantos vértices têm o anel ABERTO** — não-manifold ou de borda.
     ///
     /// ⭐ Ele está aqui para separar *"o traçado é mau"* de *"a malha que
@@ -205,11 +213,14 @@ pub fn trace_patches_with(
     // existe só para o caso de duas lascas se curarem uma à outra em ciclo.
     let mut dissolved = 0usize;
     let mut rounds = 0usize;
+    let mut stop = 0u8;
     for _ in 0..MAX_CLEANUP_ROUNDS {
         let victims = out.degenerate();
         if victims.is_empty() {
+            stop = 0;
             break;
         }
+        stop = 3;
         let before = health(&out);
         // ⭐ **A ronda corre sobre uma CÓPIA e só é adoptada se passar.** Dissolver
         // no original e desfazer depois deixaria uma janela em que `walls` está
@@ -217,6 +228,7 @@ pub fn trace_patches_with(
         // *Assim a recusa não tem nada para desfazer.*
         let mut trial = walls.clone();
         if !patches::dissolve(&mut trial, &out, &victims) {
+            stop = 1;
             break;
         }
         let mut next_report = base.clone();
@@ -231,6 +243,7 @@ pub fn trace_patches_with(
         // defeito ao mesmo tempo que o agravava, e a cadeia devolvia uma malha de
         // género errado com 100 % de quads e zero arestas de bordo.
         if after.0 > before.0 {
+            stop = 2;
             break;
         }
         walls = trial;
@@ -240,6 +253,7 @@ pub fn trace_patches_with(
     }
     out.report.dissolved = dissolved;
     out.report.rounds = rounds;
+    out.report.cleanup_stop = stop;
 
     // ⭐⭐⭐ **A PODA DOS TOCOS** — ver [`prune`]. Ela corre **depois** da limpeza de
     // propósito: a limpeza cura patches **degenerados** (uma lasca é uma parede a

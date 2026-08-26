@@ -294,3 +294,53 @@ ela existir, o `open_rings` é o consumidor dela — por isso ele fica construí
 ⚠️ **E a leitura do §7 que este bloco corrige não era descuido de medição: era uma inferência
 do NOME.** *«Duas fronteiras» chama-se anel na topologia, e o nome trouxe consigo a cura do
 anel.*
+
+
+---
+
+## §9 — ⭐⭐⭐ A RÉGUA DO VÃO, e o que ela mata
+
+A régua ([`ph2d_trace::patches::ring_gaps`]) mede o **vão** entre as duas fronteiras de cada
+patch multi-fronteira, em arestas. Ela é o que o §8 pedia — e o que ela devolve fecha a
+espécie inteira.
+
+| peça | patch | lados | fronteiras | vão | faces |
+|---|---|---|---|---|---|
+| do artista | 10 | 4 | 2 | `2` | 16 |
+| do artista | 21 | 3 | 3 | `2` | 8 |
+| do artista | 24 | 8 | 3 | ⛔ `1` | 13 |
+| do artista | 33 | 2 | 2 | ⛔ `1` | 7 |
+| ⭐ **furada** | **2** | **16** | **6** | `4` | ⭐ **1 011** |
+| furada | 14 · 19 · 21 | 10 · 2 · 2 | 4 · 2 · 2 | ⛔ `1` | 38 · 6 · 2 |
+
+### ⛔⛔⛔ NÃO EXISTE UM ANEL GORDO NO CORPUS INTEIRO
+
+O maior patch multi-fronteira tem **1 011 faces** e as duas fronteiras dele passam a
+**4 arestas** uma da outra. ⇒ **o vão nunca cresce com o patch**, e a espécie «anel gordo»
+— aquela para a qual o corte é a cura publicada — **não tem um único exemplar aqui**.
+
+⚠️ **E a porta do vão não resgata o corte:** com `MIN_RING_GAP = 2` a barrar o
+estrangulamento, a peça do artista continua a piorar (`(1,5)` ⇒ `(2,6)`) e a furada
+**empata** (`(5,6)` ⇒ `(5,6)`). *Uma cura que empata no melhor caso e piora no resto não é
+uma cura.*
+
+### ⇒ A espécie certa, e a obra que ela pede
+
+⭐⭐ **O defeito é o ESTRANGULAMENTO, e ele não é «uma parede a mais» nem «uma parede a
+menos» — é uma parede NO SÍTIO ERRADO.** Não se cura acrescentando nem tirando: cura-se
+**movendo-a**, que é re-traçar aquela região do layout.
+
+⇒ Isso é uma obra maior que todas as deste doc, e é a primeira que toca o traçado em si em
+vez das reparações à volta dele. ⚠️ **E é onde o desenho do alvo de facto difere**: ele nunca
+chega a emitir a parede naquele sítio, porque as três condições de validade governam a
+**inserção** dos caminhos, e não uma reparação posterior.
+
+### ⭐ O que fica vivo desta jornada
+
+| peça | estado |
+|---|---|
+| `patches::ring_gaps` | ⭐ **viva no instrumento** — é ela que nomeia a espécie |
+| `PatchLayout::loops` | ⭐ viva — o layout calculava e deitava fora |
+| `patches::open_rings` + `MIN_RING_GAP` | construídas, **desligadas**, com a tabela |
+| `TraceReport::cleanup_stop` · `opened_rings` · `pruned` | ⭐ vivas — três «porquês» que não existiam |
+| `PH2D_CLEANUP_FORCE` · `PH2D_PRUNE_STEMS` · `PH2D_OPEN_RINGS` · `PH2D_BRIDGE_LOG` | sondas, desligadas |

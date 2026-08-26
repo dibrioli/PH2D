@@ -502,6 +502,12 @@ pub fn open_rings(mesh: &ph2d_mesh::Mesh, walls: &mut Walls, layout: &PatchLayou
         let Some(chain) = path_inside(mesh, &faces, &from, &to) else {
             continue;
         };
+        // ⛔⛔ **O VÃO É A PORTA.** Um caminho de uma aresta diz que as duas fronteiras se
+        // TOCAM — o patch está estrangulado, e cortar ali acrescenta um toco em vez de
+        // abrir um anel (medido: `(1,5)` ⇒ `(2,6)`). ⭐ Só um vão a sério é um anel.
+        if chain.len() - 1 < MIN_RING_GAP {
+            continue;
+        }
         for w in chain.windows(2) {
             let (a, b) = (w[0].min(w[1]), w[0].max(w[1]));
             if walls.edges.insert((a, b)) {
@@ -512,6 +518,51 @@ pub fn open_rings(mesh: &ph2d_mesh::Mesh, walls: &mut Walls, layout: &PatchLayou
         }
     }
     cut
+}
+
+/// ⭐⭐⭐ **O VÃO MÍNIMO para um patch multi-fronteira ser tratado como ANEL.**
+///
+/// ⛔ Abaixo dele o patch está **estrangulado** e o corte é a cura errada — ver a tabela em
+/// [`crate::OPEN_RINGS`]. O número sai da [`ring_gaps`], e ⚠️ **`0` reabre a experiência
+/// que foi rejeitada**.
+pub const MIN_RING_GAP: usize = 2;
+
+/// ⭐⭐⭐ **A RÉGUA QUE FALTAVA: a que DISTÂNCIA as duas fronteiras de um patch passam uma
+/// da outra**, em arestas.
+///
+/// ⛔⛔ **A contagem de fronteiras junta duas avarias com curas opostas** (medido
+/// 2026-08-25): um **anel gordo** tem um buraco no meio e cura-se **cortando**; um patch
+/// **ESTRANGULADO** tem as duas fronteiras a um triângulo uma da outra, e cortar ali só
+/// acrescenta um toco. *«Duas fronteiras» chama-se anel na topologia, e o nome trouxe
+/// consigo a cura errada.*
+///
+/// Devolve, por patch multi-fronteira: `(patch, lados, fronteiras, VÃO em arestas, faces)`.
+/// ⚠️ O vão `1` é o estrangulamento; é ele que a `open_rings` **não** deve tocar.
+#[must_use]
+pub fn ring_gaps(
+    mesh: &ph2d_mesh::Mesh,
+    layout: &PatchLayout,
+) -> Vec<(usize, usize, usize, usize, usize)> {
+    let mut out = Vec::new();
+    for (p, loops) in layout.loops.iter().enumerate() {
+        if loops.len() < 2 {
+            continue;
+        }
+        let faces: Vec<u32> = layout
+            .face_patch
+            .iter()
+            .enumerate()
+            .filter(|(_, q)| **q as usize == p)
+            .filter_map(|(f, _)| u32::try_from(f).ok())
+            .collect();
+        let from: BTreeSet<u32> = loops[0].iter().copied().collect();
+        let to: BTreeSet<u32> = loops[1].iter().copied().collect();
+        // ⚠️ **O vão é o número de ARESTAS do caminho**, que é `len - 1`: uma cadeia de
+        // dois vértices é uma aresta, e é o estrangulamento.
+        let gap = path_inside(mesh, &faces, &from, &to).map_or(0, |c| c.len() - 1);
+        out.push((p, layout.side_arcs[p].len(), loops.len(), gap, faces.len()));
+    }
+    out
 }
 
 /// O caminho mais curto (em nº de arestas) de `from` a `to`, andando **só** por arestas das

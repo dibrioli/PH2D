@@ -287,7 +287,7 @@ pub fn trace_patches_with(
     // continua a recusar «menos degenerados, pior topologia».
     let mut opened = 0usize;
     for _ in 0..MAX_OPEN_ROUNDS {
-        if !OPEN_RINGS {
+        if !open_rings_enabled() {
             break;
         }
         if out.loops.iter().all(|l| l.len() < 2) {
@@ -425,9 +425,40 @@ const MAX_OPEN_ROUNDS: usize = 16;
 /// *uma parede no sítio errado*. ⛔ **A contagem de fronteiras não distingue o anel gordo do
 /// estrangulado** — só a **distância entre elas** distingue, e nenhuma régua a media.
 ///
-/// ⚠️ **Fica desligado com a maquinaria construída**, porque o que falta é a régua da
-/// distância, e não o corte: quando ela existir, `open_rings` é o consumidor dela.
+/// # ⛔⛔⛔ E a RÉGUA foi construída — e mostrou que o corte NÃO TEM CASO neste corpus
+///
+/// A [`patches::ring_gaps`] mede o **vão** entre as duas fronteiras, e a
+/// [`patches::MIN_RING_GAP`] passou a barrar o estrangulado. Com a porta de pé:
+///
+/// | peça | patch | lados | fronteiras | vão | faces | saúde antes ⇒ depois |
+/// |---|---|---|---|---|---|---|
+/// | do artista | 10 | 4 | 2 | `2` | **16** | `(1,5)` ⇒ ⛔ `(2,6)` |
+/// | do artista | 21 | 3 | 3 | `2` | **8** | — |
+/// | do artista | 24 · 33 | 8 · 2 | 3 · 2 | ⛔ `1` | 13 · 7 | *barrados pela porta* |
+/// | furada | 2 | 16 | 6 | `4` | ⭐ **1011** | `(5,6)` ⇒ `(5,6)` — **empate** |
+/// | furada | 14 · 19 · 21 | 10 · 2 · 2 | 4 · 2 · 2 | ⛔ `1` | 38 · 6 · 2 | *barrados* |
+///
+/// ⭐⭐⭐ **NÃO EXISTE UM ANEL GORDO NO CORPUS INTEIRO.** O maior patch multi-fronteira tem
+/// **1 011 faces** e as duas fronteiras dele passam a **4 arestas** uma da outra — ele
+/// também está estrangulado, só que em grande. ⇒ *o vão nunca cresce com o patch*, e é isso
+/// que diz que a espécie «anel gordo» é uma hipótese sem exemplar aqui.
+///
+/// ⚠️ **A porta do vão não resgata o corte:** com ela, a peça do artista continua a piorar
+/// (`(1,5)` ⇒ `(2,6)`) e a furada **empata**. *Uma cura que empata no melhor caso e piora
+/// no resto não é uma cura.*
+///
+/// ⇒ **O defeito é o ESTRANGULAMENTO**, e ele não se cura acrescentando nem tirando uma
+/// parede: cura-se **movendo-a**, que é re-traçar aquela região. Fica como a obra seguinte,
+/// e é maior que esta.
+///
+/// ⚠️ **Fica desligado com a maquinaria construída** — `PH2D_OPEN_RINGS=1` reabre a
+/// experiência sem recompilar, e a régua [`patches::ring_gaps`] fica **viva no
+/// instrumento**, porque é ela que nomeia a espécie.
 const OPEN_RINGS: bool = false;
+
+fn open_rings_enabled() -> bool {
+    std::env::var("PH2D_OPEN_RINGS").as_deref() == Ok("1") || OPEN_RINGS
+}
 
 impl PatchLayout {
     /// **GRADUA a densidade por um campo de TAMANHO por vértice.**

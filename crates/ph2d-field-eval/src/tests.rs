@@ -3744,3 +3744,297 @@ fn the_chain_is_adopted_on_the_piece_the_grid_skews() {
         "saiu aresta não-manifold"
     );
 }
+
+/// ⭐ **QUANTO CUSTA EXPORTAR, por nível** — a sonda que o report do Enio pediu (2026-08-25:
+/// *"o tempo de exportação numa malha de 1mi de faces é alto"*).
+///
+/// Ela imprime, por nível de exportação, o custo da extracção e o de **cada fase** da cadeia de
+/// quads, mais o veredito. ⚠️ **As fases vêm do [`ph2d_quadchain::ChainTiming`]**, que a própria
+/// cadeia preenche — repetir a sequência aqui seria uma segunda cópia da ordem.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::measure_the_export_cost_by_level --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_export_cost_by_level() {
+    let reg = hybrid::Registry::new();
+    let doc = FieldDoc::new(
+        vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+        NodeId(0),
+    )
+    .expect("a peça");
+    println!(
+        "prof | quads in | extrair ms | F1 remesh | F2 campo | F3 traço | G1/G2 corte | G3/G5 mapa | extrair | TOTAL cadeia | veredito"
+    );
+    for depth in [6u8, 7, 8, 9] {
+        let t0 = std::time::Instant::now();
+        let Ok(mesh) = extract::extract(&doc, &reg, depth) else {
+            println!("{depth}: a extração recusou");
+            continue;
+        };
+        let ex = t0.elapsed().as_secs_f32() * 1000.0;
+        let faces = mesh.faces().len();
+        let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+        let t1 = std::time::Instant::now();
+        let (_, verdict) = ph2d_quadchain::quads_or_keep(&mesh, target);
+        let wall = t1.elapsed().as_secs_f32() * 1000.0;
+        let ms = match &verdict {
+            ph2d_quadchain::Verdict::Adopted(r) => r.ms,
+            _ => ph2d_quadchain::ChainTiming::default(),
+        };
+        println!(
+            "{depth:>4} | {faces:>8} | {ex:>10.0} | {:>9.0} | {:>8.0} | {:>8.0} | {:>11.0} | {:>10.0} | {:>7.0} | {wall:>12.0} | {}",
+            ms.remesh,
+            ms.field,
+            ms.trace,
+            ms.cut,
+            ms.map,
+            ms.extract,
+            match &verdict {
+                ph2d_quadchain::Verdict::Adopted(r) =>
+                    format!("adoptada ({:.1}°, {} quads)", r.shape.skew_p50, r.quads),
+                ph2d_quadchain::Verdict::Rejected {
+                    boundary,
+                    non_manifold,
+                } => format!("recusada (bordo {boundary}, ≠2 {non_manifold})"),
+                ph2d_quadchain::Verdict::NoGain { before, after } =>
+                    format!("sem ganho ({before:.1}° -> {after:.1}°)"),
+                ph2d_quadchain::Verdict::Refused(e) => format!("recusou: {e:?}"),
+                ph2d_quadchain::Verdict::Panicked => "ESTOUROU".into(),
+            }
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A GRADE QUE ALIMENTA A CADEIA NÃO PRECISA DE SER A QUE O ARTISTA PEDIU** — a sonda que
+/// decidiu a cura do report do Enio (2026-08-25, *"o tempo de exportação numa malha de 1mi de faces
+/// é alto"*).
+///
+/// # ⚠️ O mecanismo, e ele é uma linha de código de outra crate
+///
+/// `ph2d_remesh_iso::target_edge(mesh, alpha) = alpha · diagonal_da_caixa` — ele **não olha para a
+/// densidade da malha**, só para a caixa dela. ⇒ a cadeia remalha para o **mesmo** alvo venha a
+/// entrada de que profundidade vier, e tudo o que a grade fina traz a mais é **deitado fora pelo
+/// F1**, depois de pago.
+///
+/// A sonda mede as três colunas que a decisão precisa: o **relógio**, a **forma** da face e a
+/// **fidelidade** — esta última pelo campo, que é exacto (`|f|` no vértice de saída, em frações da
+/// diagonal da peça). ⚠️ *Sem a coluna da fidelidade isto seria «mais barato e igualmente bonito»
+/// sobre uma peça que encolheu.*
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::measure_what_the_chain_gains_from_a_finer_grid --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_chain_gains_from_a_finer_grid() {
+    use ph2d_field::{Blend, Node, NodeKind, Op};
+    let reg = hybrid::Registry::new();
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "esfera",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "duas caixas com filete",
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Box {
+                            half: [0.30, 0.12, 0.12],
+                            round: 0.0,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    leaf(
+                        Primitive::Box {
+                            half: [0.12, 0.30, 0.12],
+                            round: 0.0,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op: Op::Union(Blend::Organic { k: 0.06 }),
+                            children: vec![NodeId(0), NodeId(1)],
+                        },
+                    ),
+                ],
+                NodeId(2),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "toro",
+            FieldDoc::new(
+                vec![leaf(
+                    Primitive::Torus {
+                        major: 0.35,
+                        minor: 0.13,
+                    },
+                    Xform::IDENTITY,
+                )],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!(
+        "peça | prof | faces in | extrair ms | F1 ms | cadeia ms | quads out | skew p50 | |f| médio | |f| máx  (em % da diagonal)"
+    );
+    for (name, doc) in &cases {
+        for depth in [6u8, 7, 8] {
+            let t0 = std::time::Instant::now();
+            let Ok(mesh) = extract::extract(doc, &reg, depth) else {
+                println!("{name} @{depth}: a extração recusou");
+                continue;
+            };
+            let ex = t0.elapsed().as_secs_f32() * 1000.0;
+            let b = mesh.bounds();
+            let diag = ((b.max[0] - b.min[0]).powi(2)
+                + (b.max[1] - b.min[1]).powi(2)
+                + (b.max[2] - b.min[2]).powi(2))
+            .sqrt();
+            let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+            match ph2d_quadchain::quads_from_mesh(&mesh, target) {
+                Ok((out, r)) => {
+                    // ⭐ A fidelidade sai do CAMPO, que é exacto — nenhuma malha é o oráculo aqui.
+                    let mut h = hybrid::Hybrid::new(doc, &reg);
+                    let (xs, ys, zs): (Vec<f32>, Vec<f32>, Vec<f32>) = out.positions().iter().fold(
+                        (Vec::new(), Vec::new(), Vec::new()),
+                        |(mut a, mut b, mut c), p| {
+                            a.push(p[0]);
+                            b.push(p[1]);
+                            c.push(p[2]);
+                            (a, b, c)
+                        },
+                    );
+                    let vals = h.eval(&xs, &ys, &zs).expect("o campo avalia");
+                    let n = vals.len().max(1) as f32;
+                    let mean = vals.iter().map(|v| v.abs()).sum::<f32>() / n;
+                    let max = vals.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
+                    println!(
+                        "{name:>22} | {depth:>4} | {:>8} | {ex:>10.0} | {:>5.0} | {:>9.0} | {:>9} | {:>8.1} | {:>8.3} | {:>7.3}",
+                        mesh.faces().len(),
+                        r.ms.remesh,
+                        r.ms.total(),
+                        out.faces().len(),
+                        r.shape.skew_p50,
+                        100.0 * mean / diag,
+                        100.0 * max / diag,
+                    );
+                }
+                Err(e) => println!("{name} @{depth}: a cadeia recusou: {e:?}"),
+            }
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A ESCADA QUE MANTÉM A RAZÃO** — se a grade fina estraga a cadeia, o nível de detalhe tem
+/// de subir os DOIS números juntos.
+///
+/// A sonda irmã (`measure_what_the_chain_gains_from_a_finer_grid`) mediu que subir só a grade é pior
+/// em todas as colunas. Esta mede a alternativa: subir a grade **e** a densidade que se pede à
+/// cadeia, mantendo `célula ≈ alvo / 2`. ⚠️ *Se a qualidade se mantiver, o nível de detalhe da
+/// exportação passa a significar alguma coisa para a cadeia; se não, a cadeia tem uma densidade só e
+/// isso é um facto de produto a reportar.*
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::measure_the_ladder_that_keeps_the_ratio --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_ladder_that_keeps_the_ratio() {
+    use ph2d_field::{Blend, Node, NodeKind, Op};
+    let reg = hybrid::Registry::new();
+    let cases: Vec<(&str, FieldDoc)> = vec![
+        (
+            "esfera",
+            FieldDoc::new(
+                vec![leaf(Primitive::Sphere { radius: 0.45 }, Xform::IDENTITY)],
+                NodeId(0),
+            )
+            .expect("a peça"),
+        ),
+        (
+            "duas caixas com filete",
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Box {
+                            half: [0.30, 0.12, 0.12],
+                            round: 0.0,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    leaf(
+                        Primitive::Box {
+                            half: [0.12, 0.30, 0.12],
+                            round: 0.0,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    Node::new(
+                        Xform::IDENTITY,
+                        NodeKind::Combine {
+                            op: Op::Union(Blend::Organic { k: 0.06 }),
+                            children: vec![NodeId(0), NodeId(1)],
+                        },
+                    ),
+                ],
+                NodeId(2),
+            )
+            .expect("a peça"),
+        ),
+    ];
+    println!("peça | prof | alpha | célula/alvo | cadeia ms | quads out | skew p50 | |f| máx %");
+    for (name, doc) in &cases {
+        for (depth, alpha) in [(6u8, 0.02f32), (7, 0.01), (8, 0.005), (9, 0.0025)] {
+            let Ok(mesh) = extract::extract(doc, &reg, depth) else {
+                println!("{name} @{depth}: a extração recusou");
+                continue;
+            };
+            let b = mesh.bounds();
+            let diag = ((b.max[0] - b.min[0]).powi(2)
+                + (b.max[1] - b.min[1]).powi(2)
+                + (b.max[2] - b.min[2]).powi(2))
+            .sqrt();
+            let target = ph2d_remesh_iso::target_edge(&mesh, alpha);
+            let cell = extract::cell_size(doc, &reg, depth) as f32;
+            match ph2d_quadchain::quads_from_mesh(&mesh, target) {
+                Ok((out, r)) => {
+                    let mut h = hybrid::Hybrid::new(doc, &reg);
+                    let (xs, ys, zs): (Vec<f32>, Vec<f32>, Vec<f32>) = out.positions().iter().fold(
+                        (Vec::new(), Vec::new(), Vec::new()),
+                        |(mut a, mut b, mut c), p| {
+                            a.push(p[0]);
+                            b.push(p[1]);
+                            c.push(p[2]);
+                            (a, b, c)
+                        },
+                    );
+                    let vals = h.eval(&xs, &ys, &zs).expect("o campo avalia");
+                    let max = vals.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
+                    println!(
+                        "{name:>22} | {depth:>4} | {alpha:>5.4} | {:>11.2} | {:>9.0} | {:>9} | {:>8.1} | {:>8.3}",
+                        cell / target,
+                        r.ms.total(),
+                        out.faces().len(),
+                        r.shape.skew_p50,
+                        100.0 * max / diag,
+                    );
+                }
+                Err(e) => println!("{name} @{depth} a={alpha}: a cadeia recusou: {e:?}"),
+            }
+        }
+    }
+}

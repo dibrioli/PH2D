@@ -602,7 +602,27 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `Shift`+arrasto **soma**, apanhando também **o que está tapado** — as formas nascem empilhadas no
   alvo da câmera). ⚠️ **Um desenho com contorno interior já virava peça com FURO** — a composição do
   `VecPath` exprimia-o desde a v6 do formato, e o que faltava era o gate.
-  **Aberto:** ⏸️ o traçado ficou **~2,4× mais caro** desde a W3 e ninguém o reconferiu (suspeito
+  ⭐⭐⭐ **A EXPORTAÇÃO CAIU DE 8 min 17 s PARA 6,4 s — 77× — E A MENSAGEM VOLTOU** (W62, dois
+  reports do Enio em 24-25/08; o arquivo que sai é **o mesmo**, e os três níveis saem hoje
+  **idênticos até à última casa**: `1,0794725` de aspecto, `6,417694°`, 2 539 quads). ⭐ *O alvo da cadeia de quads sai da CAIXA, nunca da
+  densidade* (`target_edge = alpha · diagonal`) — então a grade fina era mastigada pela fase zero e
+  **deitada fora depois de paga**: `1 120 158` faces custavam **`495 244 ms`** (97 % só no F1) para a
+  **MESMA** resposta (`6,4°`, 2 436 quads) que a grade do `Draft` dá em **`4 613 ms`**. ⛔ E não é só
+  preço: nas profundidades 7-8 a fidelidade medida **no campo** *piora* (`0,043 %` → `0,087 %` →
+  `11,3 %` da diagonal) e a esfera é **destruída** (`55,5°`). ⇒ a cadeia come a grade do `Draft`
+  (`meshes_for`) e a malha do NÍVEL fica se o veto recusar (`quads_or_keep_from`), e a fase zero
+  passou a honrar o alvo que lhe dão (`phase_zero` — ela ignorava-o, e os números coincidiam **por
+  acidente** com o único chamador de então). ⚠️ **E *"a mensagem não aparece"* era o mecanismo de
+  22/08 com outra causa:** o relógio do chrome desconta o congelamento **declarado**, e quem
+  congelava era uma **conta**, não um diálogo — `crate::modal::stalling` é a mesma porta, e cozer,
+  serializar e gravar passam agora os três por ela.
+  **Aberto:** ⏳ **decisão do Enio, já com os números:** o nível de exportação **não alcança** a
+  densidade da cadeia (ela dá ~2 500 quads em qualquer nível) — manter a razão `célula/alvo` preserva
+  a qualidade (`6,2°`) e custa **`48 894 ms` por 3,7× os quads**, e mais um degrau seria minutos ·
+  ⏸️ **o custo que sobra é 71 % do `ph2d-gridmap`** (`3 322` dos `4 677 ms` da cadeia estão no G3/G5,
+  medido em `max`) — crate de outra linha ·
+  ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`, *"len is 74, index 130"*):
+  um alvo **grosso** sobre uma `uv_sphere(48,32)` — a `line/quadextract` é a dona · ⏸️ o traçado ficou **~2,4× mais caro** desde a W3 e ninguém o reconferiu (suspeito
   nomeado: o anti-serrilhado adaptativo) · o teto de `Resolution` (16) foi derivado com o custo
   **antigo** e a tabela dele foi medida a `load ≈ 4,7` · ⏸️ ladrilhar em `(u, v)` contra o
   **paralelogramo** em vez da AABB (o único eixo que não multiplica a montagem de JIT) · a

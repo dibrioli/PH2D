@@ -138,3 +138,83 @@ fn a_hole_vetoes_before_any_shape_gain_is_considered() {
         assert_eq!(kept.face_count(), open.face_count());
     }
 }
+
+/// ⭐⭐ **A FASE ZERO REMALHA PARA O ALVO QUE LHE DERAM** — e este gate existe porque ela não o
+/// fazia.
+///
+/// Até 2026-08-25 ela passava `ph2d_remesh_iso::ALPHA` **fixo** enquanto o resto da cadeia
+/// quantizava para o `target_edge` do argumento. ⚠️ Com o único chamador de então os dois números
+/// coincidiam **por acidente** — ele passava exactamente `target_edge(mesh, ALPHA)` —, e por isso
+/// nenhum gate o via: *um parâmetro que metade da função ignora só mente para o SEGUNDO chamador.*
+///
+/// ⭐ A régua é a **área**: com o dobro do lado cabem ~4× menos triângulos na mesma superfície.
+///
+/// ⚠️ **Ela mede a FASE ZERO e não a saída da cadeia, e isso é uma correcção.** A primeira redacção
+/// media os quads finais — e reprovava a **estourar dentro do `ph2d-gridmap`**
+/// (`solve.rs:336`, *"index out of bounds: the len is 74 but the index is 130"*, com um alvo grosso
+/// sobre esta mesma esfera). ⛔ Uma régua que atravessa um estouro de outra crate não mede a lei que
+/// se quer: mede a travessia inteira. Defeito nomeado no handoff, com este reprodutor.
+#[test]
+fn the_phase_zero_remeshes_to_the_target_it_was_given() {
+    let mesh = uv_sphere(48, 32, 0.45);
+    let base = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
+    let fine = ph2d_quadchain::phase_zero(&mesh, base);
+    let coarse = ph2d_quadchain::phase_zero(&mesh, base * 2.0);
+    let (nf, nc) = (fine.faces().len(), coarse.faces().len());
+    assert!(
+        nf > 2 * nc,
+        "dobrar o alvo tem de dar bem menos triângulos: {nf} contra {nc} — se forem parecidos, a \
+         fase zero está a remalhar para uma escala própria e a ignorar o argumento"
+    );
+    // ⚠️ **A metade JUSTA**: sem ela, uma fase zero que devolvesse a malha vazia para todo alvo
+    // grosso passaria. As duas saídas têm de continuar a ser malhas da mesma peça.
+    assert!(
+        nc > 100,
+        "o alvo grosso ainda tem de dar uma peça, não um resto: {nc} triângulos"
+    );
+    for m in [&fine, &coarse] {
+        let r = m
+            .positions()
+            .iter()
+            .map(|p| (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt())
+            .fold(0.0f32, f32::max);
+        assert!(
+            (r - 0.45).abs() < 0.05,
+            "a remalha tem de ficar sobre a esfera de raio 0,45; o vértice mais longe está a {r}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **QUANDO A CADEIA PERDE, VOLTA A MALHA QUE O ARTISTA PEDIU — não a que a cadeia comeu.**
+///
+/// ⚠️ As duas não são a mesma desde 2026-08-25: a cadeia é alimentada por uma grade grossa (medido:
+/// a fina custa 107× e dá a mesma resposta), enquanto quem sai no arquivo é a malha do nível que o
+/// artista escolheu. ⛔ **A mutação que este gate mata é devolver o `feed`** — ela compila, passa
+/// todo o resto, e entrega uma malha 16× mais grossa a quem pediu detalhe. *Um veto que devolve a
+/// entrada errada é pior que um veto que não existe: ele parece ter protegido alguma coisa.*
+#[test]
+fn when_the_chain_loses_the_mesh_the_artist_asked_for_comes_back() {
+    // O cubo é o caso onde a cadeia perde por medição — a grade dual já é a resposta certa.
+    let feed = subdivided_cube(6, 0.4);
+    let keep = subdivided_cube(24, 0.4);
+    assert!(
+        keep.faces().len() > feed.faces().len() * 4,
+        "a fixtura só prova alguma coisa se as duas malhas forem distinguíveis: {} contra {}",
+        keep.faces().len(),
+        feed.faces().len()
+    );
+    let target = ph2d_remesh_iso::target_edge(&feed, ph2d_remesh_iso::ALPHA);
+    let (out, verdict) = ph2d_quadchain::quads_or_keep_from(&feed, &keep, target);
+    assert!(
+        !matches!(verdict, Verdict::Adopted(_)),
+        "o cubo é o caso em que a cadeia perde; se ela passou a ganhar, esta fixtura deixou de \
+         medir o que mede: {verdict:?}"
+    );
+    assert_eq!(
+        out.faces().len(),
+        keep.faces().len(),
+        "com a cadeia recusada tem de voltar a malha do NÍVEL ({} faces), e voltou uma de {}",
+        keep.faces().len(),
+        out.faces().len()
+    );
+}

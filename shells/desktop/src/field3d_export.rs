@@ -71,6 +71,9 @@ impl ExportLevel {
     ///
     /// Daí os três: **6** é instantâneo e já é uma malha sã, **7** é o dobro do detalhe ainda
     /// instantâneo, e **9** é onde se aceita esperar uma batida e meia por tudo o que a peça tem.
+    ///
+    /// ⚠️ **Esta tabela é só a EXTRAÇÃO.** Desde 2026-08-25 a exportação corre também a cadeia de
+    /// quads, que custa ~4,6 s e **não** depende deste nível — ver [`meshes_for`].
     /// ⛔ A prof. 10 quadruplicaria para ~1,9 M quads e ~6 s — e a peça já não muda de forma.
     pub(crate) fn depth(self) -> u8 {
         match self {
@@ -125,6 +128,136 @@ fn piece_size(mesh: &ph2d_mesh::Mesh) -> [f32; 3] {
 #[path = "field3d_export_tests.rs"]
 mod tests;
 
+/// ⭐⭐⭐ **A CADEIA DE QUADS ALINHADOS** (W61b) — a exportação oferece o que há de melhor, e
+/// só o adopta quando ele é de facto melhor.
+///
+/// ⛔ **Medido** (`ph2d_field_eval::tests::the_scorecard_of_the_extracted_mesh` e a irmã): a
+/// extração por *Dual Contouring* já entrega topologia **perfeita** (`0` não-manifold, `0`
+/// bordo) e geometria quase exacta (`|f|` médio de `~0,005` célula), mas a **forma da face**
+/// sai a `25–27°` de enviesamento contra os `4,8–7,1°` do oráculo de produção. ⭐ A cadeia
+/// leva a esfera a **`1,08` de aspecto e `6,4°`** — a classe do oráculo.
+///
+/// ⚠️ **E ela NÃO é «sempre»:** numa peça de faces planas a grade dual já é a resposta certa
+/// (o quad pousa na face e sai a `0°`), e a cadeia piora. Quem decide é o veto de
+/// [`ph2d_quadchain::quads_or_keep_from`], que nunca devolve uma malha pior nem uma peça
+/// aberta.
+///
+/// ⭐⭐⭐ **A GRADE QUE ALIMENTA A CADEIA É A DO `Draft`, E ISSO É UMA MEDIÇÃO.**
+///
+/// ⚠️ **Não é uma economia: é a resposta certa.** O `ph2d_remesh_iso::target_edge` é
+/// `alpha · diagonal_da_caixa` — ele **não olha para a densidade da malha**. ⇒ a cadeia
+/// remalha para o mesmo alvo venha a entrada de que profundidade vier, e tudo o que a grade
+/// fina traz a mais é deitado fora pelo F1, **depois de pago**:
+///
+/// | prof | quads que entram | F1 ms | cadeia ms | o que sai |
+/// |---|---|---|---|---|
+/// | **6** | 17 550 | **632** | ⭐ **4 613** | 6,4° · 2 539 quads |
+/// | 7 | 69 966 | 4 513 | 8 193 | 6,3° · 2 471 quads |
+/// | 8 | 280 062 | — | 47 454 | ⛔ 55,5° (o veto recusa) |
+/// | 9 | 1 120 158 | ⛔ **482 451** | ⛔ **495 244** | 6,4° · 2 436 quads |
+///
+/// ⭐ **Oito minutos e quinze segundos, 107× o preço, para a MESMA resposta a uma casa
+/// decimal** — e 97 % disso é a fase zero a mastigar um milhão de faces até 2 436 quads.
+/// ⛔ E não é só preço: nas profundidades 7 e 8 a fidelidade (medida no CAMPO, que é exacto)
+/// **piora**, e na 8 a peça é destruída. *Uma grade mais fina não é mais informação para a
+/// cadeia: é ruído que ela tem de mastigar e depois segue mal.*
+///
+/// ⭐⭐ **Medido de ponta a ponta pelo caminho do produto** (`measure_the_export_wall_clock`,
+/// release, esfera): `Draft` **4 686 ms** · `Fine` **4 648 ms** · `Max` **6 435 ms** — contra os
+/// `495 244 + 1 400 ms` que o `Max` pagava. **77×**, e os três saem **idênticos até à última
+/// casa** (`1,0794725` de aspecto, `6,417694°`, 2 539 quads), porque comem a mesma grade.
+///
+/// ⚠️ **O que sobra do custo é do `ph2d-gridmap`**: no `Max` o G3/G5 é `3 322` dos `4 677 ms` da
+/// cadeia — 71 %. A crate é da `line/quadextract`.
+///
+/// ⚠️ **A coincidência com o `Draft` não é coincidência**: `2^6 = 64` subdivisões da peça e
+/// um `ALPHA` de 2 % da diagonal são a MESMA escala, os dois relativos ao bordo da peça
+/// (W33). Por isso a razão `célula/alvo` fica em `0,47` e não deriva com o tamanho da peça.
+/// Sonda: `ph2d_field_eval::tests::measure_what_the_chain_gains_from_a_finer_grid`.
+///
+/// # Errors
+/// A extração pode recusar; ver [`ph2d_field_eval::MeshError`].
+///
+/// Devolve `(a grade que alimenta a cadeia, a malha do nível pedido)`. O primeiro é `None` quando
+/// os dois coincidem — no nível `Draft` não há segunda extração a fazer.
+fn meshes_for(
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    level: ExportLevel,
+) -> Result<(Option<ph2d_mesh::Mesh>, ph2d_mesh::Mesh), ph2d_field_eval::MeshError> {
+    let mesh = ph2d_field_eval::extract::extract(doc, reg, level.depth())?;
+    let feed = if level.depth() == ExportLevel::Draft.depth() {
+        None
+    } else {
+        Some(ph2d_field_eval::extract::extract(
+            doc,
+            reg,
+            ExportLevel::Draft.depth(),
+        )?)
+    };
+    Ok((feed, mesh))
+}
+
+/// ⭐ **SERIALIZAR TAMBÉM CONGELA, e por isso também declara.**
+///
+/// ⚠️ Um OBJ de 934 k triângulos são dezenas de MB de texto, e a gravação em disco vem a seguir.
+/// *Metade do congelamento declarada é uma mensagem que morre metade das vezes* — ver
+/// [`cook`] para o mecanismo inteiro.
+///
+/// ⚠️ **É uma função pela mesma razão que a [`cook`] é:** o gate
+/// `the_serialisation_declares_the_freeze_it_causes` corre o produto, e um bloco dentro da função
+/// que abre o diálogo não seria alcançável de teste nenhum.
+///
+/// ⚠️ **A pose é a identidade, e isso não é um esquecimento.** O documento cozido já tem toda a
+/// cadeia de poses dentro do campo (`cook` compõe, `place` aplica), então a malha sai em MUNDO.
+/// Uma pose aqui aplicaria a transformação duas vezes.
+pub(crate) fn bytes_of(fmt: MeshFormat, mesh: &ph2d_mesh::Mesh) -> Vec<u8> {
+    crate::modal::stalling(|| {
+        fmt.write(&[ExportPiece {
+            name: None,
+            mesh,
+            pose: ph2d_mesh::Pose::IDENTITY,
+        }])
+    })
+}
+
+/// ⭐⭐ **A METADE PESADA da exportação — e ela DECLARA o que congelou.**
+///
+/// # ⚠️ O report do Enio: *"a mensagem não aparece"* (2026-08-25)
+///
+/// O mesmo sintoma de 2026-08-22, pelo **mesmo mecanismo**, com outra causa. Ali quem congelava o
+/// loop era o diálogo nativo; aqui é esta conta — numa peça de um milhão de faces ela leva minutos.
+/// O quadro seguinte cobra o congelamento inteiro ao relógio do chrome, e o toast escrito no fim
+/// morre antes de ser visto. ⚠️ **Da cadeira, isso lê-se como *"o botão não faz nada"*.**
+///
+/// ⭐ A cura não é um TTL maior nem um segundo relógio: é a lei que a porta dos modais já escreveu
+/// — *quem congela o loop declara quanto* ([`crate::modal::stalling`]). *O relógio do chrome não
+/// distingue «parado por um diálogo» de «parado por uma conta»: para a tela, os dois são o mesmo
+/// nada.*
+///
+/// # ⚠️ Por que ela é uma FUNÇÃO e não um bloco
+///
+/// O [`field3d_export`] abre um diálogo nativo e **não é alcançável de um teste**. Esta metade é
+/// pura, então o gate `the_export_declares_the_freeze_it_causes` corre o **produto** — e não um
+/// censo de texto a procurar o nome da porta, que passaria verde sobre uma chamada morta.
+pub(crate) fn cook(
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    level: ExportLevel,
+) -> Result<(ph2d_mesh::Mesh, ph2d_quadchain::Verdict), ph2d_field_eval::MeshError> {
+    crate::modal::stalling(|| {
+        let (feed, mesh) = meshes_for(doc, reg, level)?;
+        let feed = feed.as_ref().unwrap_or(&mesh);
+        // ⚠️ **O alvo sai da malha que ENTRA na cadeia** — é a mesma caixa, e é ela que a fase
+        // zero usa para reproduzir este número. Tirá-lo da outra seria pedir uma escala e remalhar
+        // noutra.
+        let target = ph2d_remesh_iso::target_edge(feed, ph2d_remesh_iso::ALPHA);
+        // ⚠️ **Come uma malha, outra fica se ela perder**: quando o veto recusa, o artista tem de
+        // levar a malha do nível que ele pediu, não a grade grossa que alimentou a cadeia.
+        Ok(ph2d_quadchain::quads_or_keep_from(feed, &mesh, target))
+    })
+}
+
 /// ⚠️ **Recebe os TOASTS, e não o `App`.** Ela é chamada de dentro do quadro, onde o `gfx` já está
 /// emprestado — e pedir `&mut self` ali é um empréstimo duplo. Pedir só o que se usa é o que a
 /// deixa chamável de onde ela precisa de ser chamada.
@@ -173,55 +306,37 @@ pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::Toast
 
         let t0 = std::time::Instant::now();
         let reg = crate::field3d_smoke::sampled_registry();
-        let mesh = match ph2d_field_eval::extract::extract(&doc, &reg, level.depth()) {
-            Ok(m) => m,
+        let (mesh, verdict) = match cook(&doc, &reg, level) {
+            Ok(pair) => pair,
             Err(e) => {
                 say(toasts, format!("Meshing failed: {e:?}"));
                 return;
             }
         };
-        // ⭐⭐⭐ **A CADEIA DE QUADS ALINHADOS** (W61b) — a exportação passa a oferecer o que há de
-        // melhor, e só o adopta quando ele é de facto melhor.
-        //
-        // ⛔ **Medido** (`ph2d_field_eval::tests::the_scorecard_of_the_extracted_mesh` e a irmã): a
-        // extração por *Dual Contouring* já entrega topologia **perfeita** (`0` não-manifold, `0`
-        // bordo) e geometria quase exacta (`|f|` médio de `~0,005` célula), mas a **forma da face**
-        // sai a `25–27°` de enviesamento contra os `4,8–7,1°` do oráculo de produção. ⭐ A cadeia
-        // leva a esfera a **`1,08` de aspecto e `6,4°`** — a classe do oráculo.
-        //
-        // ⚠️ **E ela NÃO é «sempre»:** numa peça de faces planas a grade dual já é a resposta certa
-        // (o quad pousa na face e sai a `0°`), e a cadeia piora. Quem decide é o veto de
-        // [`ph2d_quadchain::quads_or_keep`], que nunca devolve uma malha pior nem uma peça aberta.
-        let target = ph2d_remesh_iso::target_edge(&mesh, ph2d_remesh_iso::ALPHA);
-        let (mesh, verdict) = ph2d_quadchain::quads_or_keep(&mesh, target);
+        // ⚠️ **EM INGLÊS, como todo o resto do que o artista lê** — a primeira redação desta
+        // linha saiu em português e passou por todo o portão, porque nenhum deles lê um `format!`.
         let quality = match &verdict {
             ph2d_quadchain::Verdict::Adopted(r) => {
-                format!(
-                    " · quads alinhados ({:.1}° de enviesamento)",
-                    r.shape.skew_p50
-                )
+                format!(" · retopology: {:.1}° skew", r.shape.skew_p50)
             }
             // ⚠️ **Silencioso quando não muda nada.** Um aviso a dizer *"a melhoria opcional não se
             // aplicou"* seria ruído sobre uma exportação que correu bem.
             _ => String::new(),
         };
-        let ms = t0.elapsed().as_secs_f64() * 1000.0;
-        // ⚠️ **A pose é a identidade, e isso não é um esquecimento.** O documento cozido já tem
-        // toda a cadeia de poses dentro do campo (`cook` compõe, `place` aplica), então a malha sai
-        // em MUNDO. Uma pose aqui aplicaria a transformação duas vezes.
         // ⚠️ **Quads e triângulos são contagens DIFERENTES, e o toast diz as duas.** A saída deste
         // extrator é uma grade de quads (`extract`), e `faces().len()` conta quads; um STL só sabe
         // triângulos, então o número que o artista vê no Blender é o dobro. Dizer "tris" sobre uma
         // contagem de quads era uma etiqueta a prometer o que o modelo não entrega.
         let quads = mesh.faces().len();
         let tris: usize = mesh.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
-        let bytes = fmt.write(&[ExportPiece {
-            name: None,
-            mesh: &mesh,
-            pose: ph2d_mesh::Pose::IDENTITY,
-        }]);
+        let bytes = bytes_of(fmt, &mesh);
         let size = bytes.len();
-        match std::fs::write(&path, bytes) {
+        let wrote = crate::modal::stalling(|| std::fs::write(&path, bytes));
+        // ⚠️ **O relógio pára DEPOIS de gravar, e isso é uma correcção.** Ele parava antes de
+        // serializar — e o artista compara o número com a espera dele, não com a metade que a
+        // função escolheu contar.
+        let ms = t0.elapsed().as_secs_f64() * 1000.0;
+        match wrote {
             Ok(()) => {
                 let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
                 // ⭐ O que saiu de FACTO — triângulos e KB —, não o que o nível prometia.

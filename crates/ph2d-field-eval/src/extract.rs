@@ -318,10 +318,6 @@ fn crossings_of(
     (start, out.len())
 }
 
-/// ⭐ **A extração**: documento → malha em quads, na profundidade pedida.
-///
-/// # Errors
-/// Ver [`MeshError`]. A malha sai **vazia** (e não em erro) quando o nível zero não cruza a caixa.
 /// ⭐ **A aresta da célula desta extração** — o que a grade de facto vai usar.
 ///
 /// ⚠️ Ela é **perguntada, nunca copiada**: desde a W33 a caixa sai da peça, então uma segunda cópia
@@ -339,6 +335,10 @@ pub fn cell_size(doc: &ph2d_field::FieldDoc, reg: &crate::hybrid::Registry, dept
     .step
 }
 
+/// ⭐ **A extração**: documento → malha em quads, na profundidade pedida.
+///
+/// # Errors
+/// Ver [`MeshError`]. A malha sai **vazia** (e não em erro) quando o nível zero não cruza a caixa.
 pub fn extract(
     doc: &ph2d_field::FieldDoc,
     reg: &crate::hybrid::Registry,

@@ -53,9 +53,41 @@ pub enum ChainError {
     TooCoarse,
 }
 
+/// ⭐ **Quanto custou cada fase**, em milissegundos — a cadeia mede-se a si própria.
+///
+/// ⚠️ **Ela existe porque o custo desta cadeia é um FACTO DE PRODUTO, não um detalhe.** Medido: numa
+/// peça de um milhão de faces a cadeia congela o loop por minutos, e quem a chama tem de poder dizer
+/// *onde* o tempo foi sem re-executar os sete passos numa sonda à parte. ⛔ Uma sonda que repete a
+/// sequência é uma **segunda cópia da ordem** — exactamente o que esta crate existe para não ter.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ChainTiming {
+    /// F1 — remalhar isotropicamente + triangular.
+    pub remesh: f32,
+    /// F2 — o campo cruzado (`Dual::build` + `solve_miq`).
+    pub field: f32,
+    /// F3 — o traçado dos patches.
+    pub trace: f32,
+    /// G1/G2 — corte e penteado.
+    pub cut: f32,
+    /// G3/G5 — o mapa de grade e o arredondamento.
+    pub map: f32,
+    /// A extracção das isolinhas inteiras.
+    pub extract: f32,
+}
+
+impl ChainTiming {
+    /// O total, que é o que quem espera sente.
+    #[must_use]
+    pub fn total(self) -> f32 {
+        self.remesh + self.field + self.trace + self.cut + self.map + self.extract
+    }
+}
+
 /// O que a cadeia tem a dizer sobre o que produziu.
 #[derive(Clone, Debug)]
 pub struct ChainReport {
+    /// Quanto cada fase custou — ver [`ChainTiming`].
+    pub ms: ChainTiming,
     pub quads: usize,
     pub non_quads: usize,
     pub verts: usize,
@@ -81,27 +113,37 @@ pub fn quads_from_mesh(
     reference: &Mesh,
     target_edge: f32,
 ) -> Result<(Mesh, ChainReport), ChainError> {
-    // ── F1. ⛔ **A fase zero, e ela não se salta**: com a triangulação crua a mesma cadeia dá o
-    // dobro do enviesamento (medido).
-    let mut work = reference.clone();
-    ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
-    work.triangulate();
+    let mut ms = ChainTiming::default();
+    let mut clock = std::time::Instant::now();
+    let mut lap = |slot: &mut f32| {
+        *slot = clock.elapsed().as_secs_f32() * 1000.0;
+        clock = std::time::Instant::now();
+    };
+
+    // ── F1 — ver [`phase_zero`].
+    let work = phase_zero(reference, target_edge);
+    lap(&mut ms.remesh);
 
     // ── F2 (campo cruzado) + F3 (traçado dos patches) + G1/G2 (corte e penteado).
     let dual = ph2d_crossfield::Dual::build(&work);
     let (field, _) = ph2d_crossfield::solve_miq(&dual);
-    let layout = ph2d_trace::trace_patches(&work, &dual, &field);
-    let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
-    let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
-
     // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e pedir à
-    // `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
+    // `ph2d-gridmap` que o re-derive seria reconstruir o que já existe. ⚠️ Por isso ela é contada
+    // no relógio do CAMPO: um `lap` posto onde a variável é usada em vez de onde ela é calculada
+    // faz a coluna acusar a fase errada.
     let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, &dual, &field)
         .into_iter()
         .enumerate()
         .filter(|(_, k)| *k != 0)
         .filter_map(|(v, _)| u32::try_from(v).ok())
         .collect();
+    lap(&mut ms.field);
+
+    let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+    lap(&mut ms.trace);
+    let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
+    let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
+    lap(&mut ms.cut);
 
     // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
     let opts = ph2d_gridmap::RoundOptions::default();
@@ -110,6 +152,8 @@ pub fn quads_from_mesh(
     } else {
         ph2d_gridmap::round_to_integers(&work, &cut, &combed, target_edge, opts, &singular)
     };
+
+    lap(&mut ms.map);
 
     // ── A extracção das isolinhas inteiras.
     let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
@@ -122,8 +166,10 @@ pub fn quads_from_mesh(
     if out.faces().is_empty() {
         return Err(ChainError::TooCoarse);
     }
+    lap(&mut ms.extract);
     let shape = ph2d_quadfill::quad_shape(&out);
     let report = ChainReport {
+        ms,
         quads: e.quads,
         non_quads: out.face_count() - e.quads,
         verts: out.vert_count(),
@@ -191,15 +237,53 @@ pub enum Verdict {
 /// Nunca — a recusa da cadeia vira [`Verdict::Refused`] e a malha de entrada volta intacta.
 #[must_use]
 pub fn quads_or_keep(reference: &Mesh, target_edge: f32) -> (Mesh, Verdict) {
-    let before = ph2d_quadfill::quad_shape(reference);
-    let (bound_in, non_in) = edge_census(reference);
+    quads_or_keep_from(reference, reference, target_edge)
+}
+
+/// ⭐⭐⭐ **A CADEIA COME UMA MALHA E OUTRA FICA SE ELA PERDER** — e as duas não têm de ser a mesma.
+///
+/// `feed` é a malha que entra na cadeia; `keep` é a que sai no arquivo quando o veto recusa, e é
+/// contra ela que a melhoria se mede. [`quads_or_keep`] é o caso `feed == keep`.
+///
+/// # ⛔⛔ Por que a mais FINA não é a melhor entrada — medido 2026-08-25
+///
+/// A fase zero remalha para `target_edge` **venha a entrada de que densidade vier**, então tudo o
+/// que uma grade mais fina traz a mais é deitado fora pelo F1 — depois de pago. E não é só preço:
+///
+/// | peça | grade | cadeia ms | quads | enviesamento | `\|f\|` máx (% da diagonal) |
+/// |---|---|---|---|---|---|
+/// | esfera | 6 | **4 612** | 2 539 | **6,4°** | **0,043** |
+/// | esfera | 7 | 9 983 | 2 471 | 6,3° | 0,087 |
+/// | esfera | 8 | 41 058 | ⛔ 320 | ⛔ **55,5°** | ⛔ **11,274** |
+/// | duas caixas com filete | 6 | **10 191** | 2 920 | ⭐ **5,3°** | **0,699** |
+/// | duas caixas com filete | 7 | 9 125 | 2 897 | 7,6° | 0,766 |
+/// | duas caixas com filete | 8 | 16 429 | 2 971 | 8,0° | 0,812 |
+/// | toro | 6 | **3 957** | 2 149 | 9,0° | **0,099** |
+/// | toro | 7 | 5 033 | 2 196 | ⭐ 4,6° | 0,108 |
+/// | toro | 8 | 22 373 | ⛔ 841 | 7,7° | ⛔ **6,400** |
+///
+/// ⭐ **A grade mais fina não é mais informação: é ruído que a cadeia tem de mastigar e depois
+/// segue mal.** A fidelidade — medida no CAMPO, que é exacto — **piora** em todas as peças, e na
+/// esfera e no toro a profundidade 8 destrói a peça. *Uma entrada 16× maior compra uma resposta
+/// pior por 4 a 9× o preço.*
+///
+/// # Errors
+/// Nunca — ver [`quads_or_keep`].
+#[must_use]
+pub fn quads_or_keep_from(feed: &Mesh, keep: &Mesh, target_edge: f32) -> (Mesh, Verdict) {
+    let before = ph2d_quadfill::quad_shape(keep);
+    // ⚠️ **A pré-condição é sobre quem ENTRA e o veto é sobre quem FICA** — são perguntas
+    // diferentes: a primeira é «isto faz a cadeia estourar?», a segunda é «a troca piora o que o
+    // artista ia levar?».
+    let (bound_in, non_in) = edge_census(feed);
+    let (bound_keep, non_keep) = edge_census(keep);
     // ⛔ **A CADEIA É PARA PEÇA FECHADA, e a pré-condição não é zelo: sem ela ela ESTOURA.**
     // Medido: uma calote (uma esfera sem as últimas fileiras) faz o `ph2d-gridmap` entrar em
     // `panic!` no `solve.rs`. ⚠️ Um `Result` não a salva — um `panic` de uma crate a jusante derruba
     // quem a chamou. *Uma porta que não pode recusar tem de saber não entrar.*
     if bound_in > 0 || non_in > 0 {
         return (
-            reference.clone(),
+            keep.clone(),
             Verdict::Rejected {
                 boundary: bound_in,
                 non_manifold: non_in,
@@ -222,18 +306,18 @@ pub fn quads_or_keep(reference: &Mesh, target_edge: f32) -> (Mesh, Verdict) {
     // arquivo (`line/quadextract`); tocá-lo daqui seria colisão de mesmo-símbolo. Ele está nomeado
     // no handoff, com a fixtura que o reproduz.
     let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        quads_from_mesh(reference, target_edge)
+        quads_from_mesh(feed, target_edge)
     }));
     let Ok(ran) = ran else {
-        return (reference.clone(), Verdict::Panicked);
+        return (keep.clone(), Verdict::Panicked);
     };
     match ran {
-        Err(e) => (reference.clone(), Verdict::Refused(e)),
+        Err(e) => (keep.clone(), Verdict::Refused(e)),
         Ok((out, r)) => {
             let (bound_out, non_out) = edge_census(&out);
-            if bound_out > bound_in || non_out > non_in {
+            if bound_out > bound_keep || non_out > non_keep {
                 return (
-                    reference.clone(),
+                    keep.clone(),
                     Verdict::Rejected {
                         boundary: bound_out,
                         non_manifold: non_out,
@@ -242,7 +326,7 @@ pub fn quads_or_keep(reference: &Mesh, target_edge: f32) -> (Mesh, Verdict) {
             }
             if r.shape.skew_p50 >= before.skew_p50 {
                 return (
-                    reference.clone(),
+                    keep.clone(),
                     Verdict::NoGain {
                         before: before.skew_p50,
                         after: r.shape.skew_p50,
@@ -251,6 +335,53 @@ pub fn quads_or_keep(reference: &Mesh, target_edge: f32) -> (Mesh, Verdict) {
             }
             (out, Verdict::Adopted(Box::new(r)))
         }
+    }
+}
+
+/// ⛔ **A FASE ZERO — e ela não se salta.** Remalha isotropicamente para `target_edge` e triangula.
+///
+/// Sem ela, com a triangulação crua, a mesma cadeia dá **o dobro** do enviesamento final (medido).
+///
+/// # ⚠️ Ela remalha para o alvo que lhe DERAM, e isso é uma correcção de 2026-08-25
+///
+/// Até essa data o F1 passava `ph2d_remesh_iso::ALPHA` **fixo** enquanto o resto da cadeia
+/// quantizava para o `target_edge` do argumento. Com o único chamador de então os dois números
+/// coincidiam **por acidente** — ele passava exactamente `target_edge(mesh, ALPHA)` —, e o primeiro
+/// chamador a pedir outra densidade teria a fase zero a remalhar para uma escala e o mapa a
+/// quantizar para outra. *Um parâmetro que metade da função ignora só mente para o SEGUNDO
+/// chamador.*
+///
+/// ⚠️ **Ela é pública porque é a PORTA por onde o gate a alcança.** O gate que prova esta lei não
+/// pode medi-la pela saída da cadeia inteira: a jusante, um alvo grosso faz o `ph2d-gridmap` entrar
+/// em `panic!` (`solve.rs:336`, defeito nomeado no handoff), e uma régua que atravessa um estouro
+/// não é uma régua. *Medir a fase zero na fase zero é o que separa gatear a lei de gatear a
+/// travessia inteira.*
+#[must_use]
+pub fn phase_zero(reference: &Mesh, target_edge: f32) -> Mesh {
+    let mut work = reference.clone();
+    ph2d_remesh_iso::remesh_isotropic(&mut work, alpha_for(reference, target_edge));
+    work.triangulate();
+    work
+}
+
+/// ⭐ **O `alpha` que reproduz `target` nesta malha** — o `ph2d_remesh_iso::target_edge` é
+/// `alpha · diagonal_da_caixa`, então inverter é dividir.
+///
+/// ⚠️ **A caixa é a da malha de ENTRADA e isso é load-bearing**: o `remesh_isotropic` recalcula o
+/// alvo sobre a malha que recebe, e ela é um clone desta — triangular não move a caixa. Uma
+/// diagonal degenerada (malha vazia ou um ponto) cai no `ALPHA` da casa em vez de dividir por zero.
+fn alpha_for(mesh: &Mesh, target: f32) -> f32 {
+    let b = mesh.bounds();
+    let d = [
+        b.max[0] - b.min[0],
+        b.max[1] - b.min[1],
+        b.max[2] - b.min[2],
+    ];
+    let diag = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+    if diag.is_finite() && diag > 1.0e-6 {
+        target / diag
+    } else {
+        ph2d_remesh_iso::ALPHA
     }
 }
 

@@ -82,6 +82,14 @@ pub(crate) fn chrome_dt(wall_dt: f64, stalled_s: f64) -> f64 {
 /// porta — a única coisa que de facto liga o diálogo ao relógio — não era exercida por nenhum. Um
 /// `rfd::FileDialog` não abre num teste, mas *"o que passa por aqui é cronometrado"* abre. ⭐ **O
 /// que sobra sem gate é uma linha por porta**, e ela não tem lógica nenhuma.
+///
+/// ⭐⭐ **E o congelamento não é privilégio do DIÁLOGO** (2026-08-25, report do Enio: *"a mensagem
+/// não aparece"* sobre uma exportação de um milhão de faces). A lei desta porta sempre foi *quem
+/// congela o loop declara quanto* — e um diálogo nativo e uma conta de minutos congelam do mesmo
+/// jeito. ⇒ [`stalling`] é esta mesma função, alcançável por quem calcula.
+///
+/// ⚠️ *O relógio do chrome não distingue «parado por um diálogo» de «parado por uma conta»: para a
+/// tela, os dois são o mesmo nada.*
 fn timed<T>(f: impl FnOnce() -> T) -> T {
     let t0 = Instant::now();
     let out = f();
@@ -97,6 +105,17 @@ pub(crate) fn save_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
 /// A porta de **abrir**, pela mesma razão.
 pub(crate) fn pick_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
     timed(|| dialog.pick_file())
+}
+
+/// ⭐⭐ **A porta de quem congela o loop a CALCULAR** — a mesma lei de [`timed`], para trabalho que
+/// não é diálogo nenhum.
+///
+/// ⚠️ **Ela existe porque a exportação do módulo 3D passou a demorar minutos** e a mensagem que ela
+/// escreve no fim voltou a viver um quadro só — o sintoma exacto que a porta dos diálogos curou em
+/// 2026-08-22, pelo mesmo mecanismo, com outra causa. ⛔ Um trabalho pesado que **não** declare
+/// volta a matar a própria mensagem, e o defeito lê-se como *"o botão não faz nada"*.
+pub(crate) fn stalling<T>(f: impl FnOnce() -> T) -> T {
+    timed(f)
 }
 
 #[cfg(test)]

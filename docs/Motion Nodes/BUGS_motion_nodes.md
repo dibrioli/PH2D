@@ -828,7 +828,7 @@ razão inteira mata **duas** de uma vez, porque deixa o Rust e a GPU a discordar
 
 ---
 
-## Bug #8 — o pan arrastava a cena `t` vezes menos que o rato, e a REGRA que o proibia estava escrita há um mês
+## Bug #8 — o pan arrastava a cena `t` vezes menos que o rato (e NÃO era isto que o Enio via)
 
 **Report do Enio, 2026-08-25:** *«no modo motion a imagem de referência sofre um drift no pan
 com o mouse»*.
@@ -890,3 +890,75 @@ não muda — a metade que impede a cura de virar *«divide sempre por `t`»*). 
 outros pertencem a ferramentas que não dividem o centro e estão certos **por circunstância,
 não por construção** — o dia em que outra tool dividir o centro, eles ficam errados de uma
 vez. A fronteira é essa, e está escrita aqui em vez de descoberta outra vez.
+
+⚠️⚠️ **E este bug NÃO era o que o Enio via.** Ele foi achado a caminho, é real, e a cura
+é a certa — mas o refinamento dele (*«acontece para Object e Chip, não para Star»*) diz
+outra coisa: um pan errado arrastaria as TRÊS juntas. Ver o **Bug #9**.
+
+---
+
+## Bug #9 — a imagem andava `0,095 %` mais que o cursor e o traço andava exacto: `h · t` não é inteiro
+
+**Refinamento do Enio, 2026-08-25:** *«o drift acontece para Object e Chip, não para
+Star»*. `Object` é um Flip **assado numa tile** e `Chip` é um sprite — os dois desenhados
+pelo passe das SPRITES; `Star` é um vector **vivo**, desenhado pelo Vello. ⇒ o defeito
+separa as duas ROTAS DE DESENHO, e por isso **não podia ser a câmera**.
+
+### ⭐ Três hipóteses, e as DUAS primeiras morreram por medição
+
+| # | hipótese | como morreu |
+|---|---|---|
+| 1 | as duas rotas projectam com janelas diferentes | **sonda**: `Δpx = 0,000` em ~60 quadros de arrasto, com o centro a andar de `(0,0)` a `(−2,9, −5,6)`. Uma divergência de escala cresceria com a distância ao centro |
+| 2 | um quadro de ATRASO entre as rotas (a cena Vello é montada na CPU com o mundo→tela já aplicado; a sprite recebe a câmera num uniform) | **sonda**: `Δcam = 0,0000` em todos os quadros |
+| 3 | o COZIMENTO recebe algo dependente da câmera | **sonda**: o `world_pos` das instâncias é **constante** durante o arrasto inteiro (22 sprites, 10 linhas vectoriais, os mesmos números em todos os quadros) |
+
+⚠️ **A segunda corrida da sonda ilibou a geometria inteira** — câmera, projecção e mundo.
+E foi isso que forçou a olhar para o único número que ninguém tinha lido: **o tamanho do
+sub-retângulo**.
+
+### A causa, nos números dos PRÓPRIOS logs do Enio
+
+O default do split é `t = 0,55`, e `h · t` quase nunca é inteiro:
+
+| janela do log | `h · t` | o que o log dizia («cena») |
+|---|---|---|
+| `1022` | **562,1** | `562` |
+| `768` | **422,4** | `422` |
+
+E a fracção era servida de duas maneiras, **na mesma função**:
+
+- `set_viewport(x, y, w, h)` do passe de sprites recebe o `f32` **cru** (`422,4`);
+- `set_scissor_rect(...)`, na linha seguinte, faz `as u32` (`422`);
+- `scene_camera_window` → o Vello **e o pan** fazem `as u32` (`422`).
+
+⇒ o conteúdo **raster** é desenhado com `422,4 / height_world` pixels por unidade de mundo
+e o **vectorial** com `422 / height_world`: uma diferença de escala de **0,095 %**.
+
+⭐ **Parado, isso é sub-pixel. Num PAN, isso é um movimento:** a imagem anda `0,095 %` mais
+do que o cursor e o traço anda **exacto**, então os dois separam-se enquanto se arrasta e
+voltam a juntar-se quando se volta. Medido nos dois tamanhos dele: **`0,18 px` por 1000 px
+de arrasto a `1022`, e `0,95 px` a `768`** — *quanto MENOR a janela, pior*.
+
+### A cura
+
+O sub-retângulo é uma **contagem de pixels**, e passa a sair **inteiro da porta que o
+define** (`CenterSplit::scene_viewport`, com `floor` — e `floor` e não `round` porque o
+`scene_window_wh` faz `as u32` sobre o mesmo número, e as duas conversões têm de dar o
+mesmo inteiro).
+
+⚠️ **O `as u32` já existia em dois consumidores e não bastou:** enquanto a porta devolvesse
+a fracção, quem a usasse crua discordava de quem a truncasse. *Um valor que É pixels não
+pode sair fraccionário da porta que o define.*
+
+**Gates:** `the_scene_subrect_is_a_whole_number_of_pixels` (sobre os tamanhos dos logs
+dele, `t` de `T_MIN` a `T_MAX`, e as duas orientações; com o controlo de que `None` não
+devolve rectângulo) · `rounding_the_subrect_never_moves_the_divider_by_more_than_a_pixel`
+(a cura não pode mover a divisória). **1 mutação, morta.**
+
+### ⚠️ O que este bug ensinou sobre a SONDA
+
+A 1.ª versão da sonda mediu `Δpx = 0,000` **sobre o defeito**: ela calculava a rota das
+sprites a partir da mesma janela **truncada** que a rota vectorial usa, em vez do
+`[x, y, w, h]` que o `set_viewport` de facto leva. *Uma sonda que alimenta as duas rotas
+com o mesmo número não pode vê-las discordar* — ela mediu a minha suposição, não o produto.
+Corrigida: ela recebe o rectângulo real e imprime o `Δtrunc` ao lado.

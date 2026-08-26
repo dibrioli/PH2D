@@ -116,7 +116,7 @@ pub(crate) fn frame(
     window: WindowSize,
     scene: WindowSize,
     motion_active: bool,
-    has_scene_viewport: bool,
+    viewport: Option<[f32; 4]>,
     split_is_split: bool,
 ) {
     if !on() {
@@ -124,11 +124,20 @@ pub(crate) fn frame(
     }
     let (w, h) = (window.width as f32, window.height as f32);
     let (sw, sh) = (scene.width as f32, scene.height as f32);
-    let sp = sprite_px(cam, sw, sh);
+    // ⚠️⚠️ **O viewport REAL, não a minha suposição dele.** A 1.ª versão desta sonda
+    // calculava a rota das sprites a partir da MESMA janela truncada que a rota vectorial
+    // usa — e por isso mediu `Δpx = 0` sobre um defeito de `0,4 px` de altura de viewport.
+    // *Uma sonda que alimenta as duas rotas com o mesmo número não pode ver as duas
+    // discordarem.* Agora ela recebe o `[x, y, w, h]` que o `set_viewport` de facto leva.
+    let (rw, rh) = viewport.map_or((sw, sh), |r| (r[2], r[3]));
+    let sp = sprite_px(cam, rw, rh);
+    // E o mesmo ponto pela janela TRUNCADA — a diferença entre os dois é o defeito.
+    let sp_trunc = sprite_px(cam, sw, sh);
     let ve = vector_px(cam, sw, sh);
     // O que o pan aplica hoje, e o que ele aplicaria com a janela cheia.
     let per_px_scene = cam.height_world / sh.max(1.0);
     let per_px_window = cam.height_world / h.max(1.0);
+    let per_px_viewport = cam.height_world / rh.max(1.0);
     // ⚠️ **A CÂMERA DAS DUAS ROTAS, lado a lado.** Um `Δcam` diferente de zero enquanto se
     // arrasta É o defeito: as sprites estariam a ser desenhadas com a câmera de outro
     // instante que o vector.
@@ -145,9 +154,10 @@ pub(crate) fn frame(
     eprintln!(
         "[pan.diag] centro sprite ({:.4}, {:.4}) vello ({:.4}, {:.4}) Δcam ({:.4}, {:.4}) \
          | altura {:.3} | janela {w:.0}x{h:.0} cena {sw:.0}x{sh:.0} \
-         | motion={motion_active} viewport={has_scene_viewport} split={split_is_split} \
+         | motion={motion_active} split={split_is_split} \
          | origem: sprite ({:.2}, {:.2}) vector ({:.2}, {:.2}) Δpx ({:.3}, {:.3}) \
-         | mundo/px cena {per_px_scene:.5} janela {per_px_window:.5} \
+         | viewport {rw:.1}x{rh:.1} (trunc {sw:.0}x{sh:.0}) Δtrunc ({:.3}, {:.3}) \
+         | mundo/px viewport {per_px_viewport:.6} cena {per_px_scene:.6} janela {per_px_window:.6} \
          | MUNDO sprite[0] ({:.4}, {:.4}) de {ns} · vector[0] ({:.4}, {:.4}) de {nv}",
         cam.center[0],
         cam.center[1],
@@ -162,6 +172,8 @@ pub(crate) fn frame(
         ve.1,
         sp.0 - ve.0,
         sp.1 - ve.1,
+        sp.0 - sp_trunc.0,
+        sp.1 - sp_trunc.1,
         sw_pos[0],
         sw_pos[1],
         vw_pos[0],

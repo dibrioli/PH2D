@@ -94,11 +94,40 @@ impl CenterSplit {
     /// ancorado em `(0,0)`, o chrome só precisa das DIMS: `view_proj_for_subrect(w,h)` é
     /// idêntico a `view_proj(WindowSize{w,h})`, então passar `[r[2], r[3]]` como a janela
     /// do `world_to_screen`/`screen_to_world` casa o chrome com o `set_viewport` da cena.
+    ///
+    /// ⚠️⚠️ **O SUB-RETÂNGULO É UMA CONTAGEM DE PIXELS, e por isso ele sai INTEIRO daqui**
+    /// (report do Enio, 2026-08-25: *«no modo motion a imagem de referência sofre um drift
+    /// no pan com o mouse»*, refinado para *«acontece para Object e Chip, não para Star»*).
+    ///
+    /// `h · t` quase nunca é inteiro — `768 · 0,55 = 422,4`, `1022 · 0,55 = 562,1` —, e a
+    /// fracção fazia esta função dar **duas respostas à mesma pergunta**:
+    ///
+    /// | quem pergunta | o que recebia |
+    /// |---|---|
+    /// | `set_viewport` do passe de sprites | **422,4** (o `f32` cru) |
+    /// | `set_scissor_rect`, ao lado dele | 422 (`as u32`) |
+    /// | `scene_camera_window` → o Vello e o pan | 422 (`as u32`) |
+    ///
+    /// ⇒ o conteúdo RASTER era desenhado com `422,4/10` pixels por unidade de mundo e o
+    /// VECTORIAL com `422/10` — uma diferença de escala de **0,095 %**. Estática ela é
+    /// sub-pixel; **num pan ela é um movimento**: a imagem anda `0,095 %` mais que o cursor
+    /// e o traço anda exacto, então as duas separam-se enquanto se arrasta e voltam a juntar-se
+    /// quando se volta. Foi exactamente o que o Enio viu, e é por isso que a `Star` (vectorial)
+    /// não derivava. Medido nos dois tamanhos de janela dos logs dele: `0,18 px` por 1000 px
+    /// de arrasto a 1022, e `0,95 px` a 768 — *quanto MENOR a janela, pior*.
+    ///
+    /// ⚠️ **A cura é o arredondamento estar AQUI e não em cada consumidor.** Um `as u32` no
+    /// `scene_camera_window` já existia e não bastou: enquanto a porta devolvesse a fracção,
+    /// quem a usasse crua discordava de quem a truncasse. *Um valor que é pixels não pode
+    /// sair fraccionário da porta que o define.*
     #[must_use]
     pub fn scene_viewport(self, w: f32, h: f32) -> Option<[f32; 4]> {
+        // `floor`, e não `round`: o `scene_window_wh` faz `as u32` (que trunca) sobre este
+        // mesmo número, e as duas conversões TÊM de dar o mesmo inteiro. Arredondar aqui e
+        // truncar lá reintroduziria a divergência num degrau diferente.
         match self {
-            Self::Horizontal { t } => Some([0.0, 0.0, w, h * t]),
-            Self::Vertical { t } => Some([0.0, 0.0, w * t, h]),
+            Self::Horizontal { t } => Some([0.0, 0.0, w, (h * t).floor().max(1.0)]),
+            Self::Vertical { t } => Some([0.0, 0.0, (w * t).floor().max(1.0), h]),
             Self::None => None,
         }
     }
@@ -449,191 +478,5 @@ impl HeroLayout {
 }
 
 #[cfg(test)]
-mod split_tests {
-    use super::*;
-
-    fn vp() -> Rect {
-        Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)
-    }
-
-    fn approx(a: f32, b: f32) -> bool {
-        (a - b).abs() < 0.5
-    }
-
-    /// **A região de popover é a banda de CHROME** — começa abaixo da barra de topo, acaba acima
-    /// do HUD, e é a MESMA em que os painéis docados vivem.
-    ///
-    /// As três metades importam por motivos diferentes: *abaixo da barra* é o que tira a lista de
-    /// cima dos botões dela; *acima do HUD* é o que a mantém dentro da janela pela outra ponta; e
-    /// *a mesma dos painéis* é o que garante que um popover aterra onde o painel dele está, em vez
-    /// de num sítio que só a janela conhece. Devolver a viewport satisfaz zero das três.
-    #[test]
-    fn the_popover_region_is_the_chrome_band_not_the_window() {
-        let l = HeroLayout::for_viewport(vp());
-        let r = l.popover_region();
-        assert!(
-            r.y >= l.top_bar.y + l.top_bar.h,
-            "a regiao invade a barra de topo (region.y={} vs fim da barra={})",
-            r.y,
-            l.top_bar.y + l.top_bar.h
-        );
-        assert!(
-            r.y + r.h <= l.viewport.y + l.viewport.h,
-            "a regiao passa da borda de baixo da janela"
-        );
-        assert!(
-            r.y + r.h < l.viewport.y + l.viewport.h,
-            "a regiao encosta na borda de baixo — a mesma faixa de janela, do outro lado"
-        );
-        // É a banda dos painéis docados: um popover nasce onde o painel dele vive.
-        assert!(approx(r.y, l.inspector.y), "topo != topo do inspector");
-        assert!(
-            approx(r.y + r.h, l.inspector.y + l.inspector.h),
-            "base != base do inspector"
-        );
-        // E na horizontal ele PODE transbordar para o canvas — a largura é a da janela.
-        assert!(approx(r.x, l.viewport.x) && approx(r.w, l.viewport.w));
-    }
-
-    #[test]
-    fn no_split_scene_is_full_canvas_and_graph_is_empty() {
-        let l = HeroLayout::for_viewport(vp());
-        assert_eq!(l.center_viewport, l.canvas);
-        assert_eq!(l.motion_graph.w, 0.0);
-        assert_eq!(l.motion_graph.h, 0.0);
-    }
-
-    #[test]
-    fn horizontal_split_scene_on_top_graph_below_partition_the_band() {
-        let l = HeroLayout::for_viewport_split(
-            vp(),
-            false,
-            rail_w(),
-            CenterSplit::Horizontal { t: 0.55 },
-        );
-        // Scene sits above the graph; both share the band's x/width.
-        assert!(l.center_viewport.y < l.motion_graph.y);
-        assert!(approx(l.center_viewport.x, l.motion_graph.x));
-        assert!(approx(l.center_viewport.w, l.motion_graph.w));
-        // They tile the band with no gap/overlap at the divider.
-        assert!(approx(
-            l.center_viewport.y + l.center_viewport.h,
-            l.motion_graph.y
-        ));
-        // Scene gets ~55 % of the band height.
-        let band = l.center_viewport.h + l.motion_graph.h;
-        assert!(approx(l.center_viewport.h / band, 0.55));
-    }
-
-    #[test]
-    fn vertical_split_scene_on_left_graph_on_right() {
-        let l =
-            HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::Vertical { t: 0.5 });
-        assert!(l.center_viewport.x < l.motion_graph.x);
-        assert!(approx(l.center_viewport.y, l.motion_graph.y));
-        assert!(approx(l.center_viewport.h, l.motion_graph.h));
-        assert!(approx(
-            l.center_viewport.x + l.center_viewport.w,
-            l.motion_graph.x
-        ));
-    }
-
-    /// The seam is still a seam: **nothing is carved until somebody asks** (the shell asks only
-    /// when the Motion tool AND the timeline are both on screen).
-    #[test]
-    fn timeline_slot_is_zero_height_until_it_is_docked_into() {
-        let l = HeroLayout::for_viewport_split(
-            vp(),
-            false,
-            rail_w(),
-            CenterSplit::Horizontal { t: 0.6 },
-        );
-        assert_eq!(l.motion_timeline_slot.h, 0.0);
-        assert!(approx(
-            l.motion_timeline_slot.y,
-            l.motion_graph.y + l.motion_graph.h
-        ));
-    }
-
-    /// **The dock takes the band from the GRAPH, and the timeline lands in it** (W4.T4).
-    ///
-    /// The bug it fixes is that the two used to occupy the SAME pixels — `motion_graph` ran to the
-    /// chrome and `timeline` was the bottom strip — so the timeline painted over the graph. After
-    /// docking they must not overlap, and the graph must be exactly the shorter one.
-    #[test]
-    fn docking_the_timeline_takes_the_band_from_the_graph() {
-        let split = CenterSplit::Horizontal { t: 0.6 };
-        let before = HeroLayout::for_viewport_split(vp(), false, rail_w(), split);
-        let mut l = HeroLayout::for_viewport_split(vp(), false, rail_w(), split);
-        assert!(
-            before.timeline.y < before.motion_graph.y + before.motion_graph.h,
-            "the whole point: before the dock, the timeline lay ON the graph"
-        );
-
-        l.dock_timeline_into_motion();
-        let band = l.motion_timeline_slot;
-        assert!(band.h > 0.0, "the band exists");
-        assert!(
-            approx(l.motion_graph.h + band.h, before.motion_graph.h),
-            "the band came OUT of the graph: {} + {} != {}",
-            l.motion_graph.h,
-            band.h,
-            before.motion_graph.h
-        );
-        assert!(
-            approx(band.y, l.motion_graph.y + l.motion_graph.h),
-            "and it sits directly under it"
-        );
-        assert_eq!(l.timeline, band, "the timeline IS the band now");
-        assert!(
-            l.timeline.y >= l.motion_graph.y + l.motion_graph.h - 0.01,
-            "they no longer overlap - that was the bug"
-        );
-    }
-
-    /// Without a split there is no Motion workspace to dock into, and the call is inert: the
-    /// timeline keeps the bottom dock it has everywhere else.
-    #[test]
-    fn docking_without_a_motion_split_changes_nothing() {
-        let mut l = HeroLayout::for_viewport_split(vp(), false, rail_w(), CenterSplit::None);
-        let before = l.timeline;
-        l.dock_timeline_into_motion();
-        assert_eq!(l.timeline, before);
-        assert_eq!(l.motion_timeline_slot.h, 0.0);
-    }
-
-    /// A short window must not let the dock eat its host: the band is capped at a fraction of the
-    /// graph, so the node editor never becomes a sliver.
-    #[test]
-    fn the_dock_never_eats_the_graph() {
-        let short = Rect::new(0.0, 0.0, 1200.0, 420.0);
-        let mut l = HeroLayout::for_viewport_split(
-            short,
-            false,
-            rail_w(),
-            CenterSplit::Horizontal { t: 0.6 },
-        );
-        l.dock_timeline_into_motion();
-        assert!(
-            l.motion_graph.h > 0.0,
-            "the graph survived: {}",
-            l.motion_graph.h
-        );
-        assert!(
-            l.motion_timeline_slot.h <= l.motion_graph.h,
-            "the band ({}) must not be bigger than what is left of the graph ({})",
-            l.motion_timeline_slot.h,
-            l.motion_graph.h
-        );
-    }
-
-    #[test]
-    fn divider_fraction_clamps() {
-        assert_eq!(CenterSplit::clamp_t(0.9), CenterSplit::T_MAX);
-        assert_eq!(CenterSplit::clamp_t(0.1), CenterSplit::T_MIN);
-        // Orientation switch preserves the fraction.
-        let h = CenterSplit::Horizontal { t: 0.4 };
-        assert_eq!(h.to_vertical(), CenterSplit::Vertical { t: 0.4 });
-        assert!((h.to_vertical().t() - 0.4).abs() < 1e-6);
-    }
-}
+#[path = "layout_tests.rs"]
+mod split_tests;

@@ -190,7 +190,7 @@ impl crate::App {
                         window_size,
                     ),
                     motion_active,
-                    scene_viewport.is_some(),
+                    scene_viewport,
                     hero_screen
                         .as_ref()
                         .is_some_and(|hs| hs.view.center_split.is_split()),

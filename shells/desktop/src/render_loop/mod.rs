@@ -1121,6 +1121,8 @@ impl crate::App {
             // é exaustivo de propósito: um campo novo tem de ser CONSIDERADO aqui, não ignorado
             // por um `..` que nunca mais ninguém relê.
             undo_capture_cache: _,
+            // O alvo do `+` do Inspector (F3) — usado no fim deste mesmo quadro, ver abaixo.
+            component_palette_target,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;
@@ -3250,6 +3252,8 @@ impl crate::App {
             let mut slice_edits: Vec<(u64, ph2d_editor::SliceFieldEdit)> = Vec::new();
             let mut anchor_edits: Vec<(u64, ph2d_editor::AnchorFieldEdit)> = Vec::new();
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
+            // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
+            let mut add_component_for: Option<u64> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4265,6 +4269,13 @@ impl crate::App {
                     EditorAction::InspectorAnimEdit { entity_bits, edit } => {
                         anim_edits.push((entity_bits, edit));
                     }
+                    // ⭐ **O `+` do Inspector** (ADR-0166 / F3) — o painel PEDE e a shell abre,
+                    // porque só ela sabe o tipo do objeto, o que ele já tem, e o que o registo
+                    // sabe construir.
+                    EditorAction::InspectorAddComponentRequested { entity_bits } => {
+                        add_component_for = Some(entity_bits);
+                    }
+
                     // §11 Physics Body. Fans out over a BulkSelect like its
                     // siblings — "make all of these physical" is the gesture
                     // an artist actually performs.
@@ -9920,6 +9931,25 @@ impl crate::App {
             ) {
                 self.title_dirty = true;
             }
+            // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
+            // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
+            // biblioteca do Motion é irmã do `motion_bridge`.
+            crate::component_attach::open_palette_if_asked(
+                hero,
+                sim,
+                component_registry,
+                add_component_for,
+                component_palette_target,
+            );
+            // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
+            // `AppGfx` em vez de num local deste laço.
+            let picked = crate::component_attach::route_pick(hero, component_palette_target);
+            crate::component_attach::attach_picked(
+                picked.as_ref(),
+                sim,
+                component_registry,
+                toasts,
+            );
             // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):
             // ela precisa do `atlas_asset_map` e do `next_import_cell` em modo MUTÁVEL — a volta
             // ao atlas ocupa uma célula nova —, e o `dispatch` acima recebe o mapa por leitura.

@@ -228,6 +228,13 @@ pub(crate) struct AppGfx {
     /// ⚠️ Quem a esquece é o RESTORE (`apply_project`): o undo repõe um mundo que ela não viu
     /// nascer, e continuar a comparar contra ela daria linhas limpas sobre bytes diferentes.
     pub(crate) undo_capture_cache: ph2d_ecs::scene::incremental::CaptureCache,
+    /// ⭐ **A quem o `+` do Inspector abriu a paleta** (ADR-0166 / F3).
+    ///
+    /// ⚠️ Ele vive entre QUADROS: o clique abre, o artista escolhe um ou dez quadros depois, e o
+    /// pick tem de saber a quem anexar. Re-derivar da seleção no momento do pick funcionaria hoje
+    /// (o modal tem scrim), mas *"a seleção não pode mudar"* é um invariante que ninguém impõe —
+    /// e o precedente da casa é guardar o contexto (a biblioteca do Motion guarda o `library_open`).
+    pub(crate) component_palette_target: Option<u64>,
     /// M14.1 — pre-allocated DFS worklist for `propagate_transforms`.
     /// Capacity sized to `WorklistBuf::DEFAULT_CAPACITY` (8 192
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3

@@ -28,15 +28,18 @@ pub(crate) fn paint_panel_head(
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &mut HitIndex,
+    store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> f32 {
     // Canonical panel title — reserve right slot for the X close
     // button (UI canon post-2026-05-24: every panel except Hierarchy
     // carries close X; vide `docs/UI_Padrao/components/panel_chrome.md`).
     let title_y = rect.y + PANEL_TITLE_BASELINE;
+    // ⚠️ **A reserva é a do PAR** (close + add), e não a do close sozinho: o título tem de parar
+    // antes dos DOIS, senão ele passa por baixo do `+`. É a mesma reserva que a Hierarquia usa.
     let title_size = paint_panel_title(
         rect,
         "Inspector",
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_CLOSE_RESERVE,
+        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_ADD_RESERVE,
         scene,
         text_system,
         theme,
@@ -49,6 +52,23 @@ pub(crate) fn paint_panel_head(
         scene,
         theme,
     );
+    // ⭐ **O `+` — a UMA porta de anexar um componente** (ADR-0166 / F3). Ele fica à esquerda do
+    // X, com a mesma geometria e o mesmo look de ícone-fantasma do `Add` da Hierarquia (é o
+    // precedente literal desta casa para um par close+add num cabeçalho).
+    let add_size = 30.0_f32; // LITERAL-PX-OK: quadrado do botão de cabeçalho — o mesmo da Hierarquia
+    let add_rect = Rect::new(
+        // ⚠️ Deslocado do X pela largura dele: os dois partilham a reserva do par.
+        rect.x + rect.w - PANEL_HEAD_PAD - add_size - Spacing::Xl.px(),
+        title_y - 2.0,
+        add_size,
+        add_size,
+    );
+    hit_index.register(ids::INSP_ADD_COMPONENT, add_rect);
+    let add_btn = ph2d_editor_core::widget::Button::new(ids::INSP_ADD_COMPONENT, "Add Component")
+        .icon_only(ph2d_editor_core::icons::IconId::Add)
+        .visual(store.button_visual(ids::INSP_ADD_COMPONENT));
+    ph2d_editor_core::widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
+
     let sprite_for_header = current_inspector_sprite();
     let subtitle_owned;
     let subtitle: &str = match sprite_for_header.as_ref() {

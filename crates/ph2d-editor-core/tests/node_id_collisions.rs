@@ -205,6 +205,10 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("INSP_LIVE_PHYSICS_SECTION", ids::INSP_LIVE_PHYSICS_SECTION),
     ("INSP_LIVE_PHYSICS_COLOR", ids::INSP_LIVE_PHYSICS_COLOR),
     ("INSP_PHYS_ADD", ids::INSP_PHYS_ADD),
+    // ⭐ O `+` do cabeçalho (ADR-0166 / F3). ⚠️ Esta lista é escrita À MÃO: um id que não entre
+    // aqui **não é conferido**, e uma colisão de hash passa muda — que é a razão de este gate
+    // existir.
+    ("INSP_ADD_COMPONENT", ids::INSP_ADD_COMPONENT),
     ("INSP_PHYS_REMOVE", ids::INSP_PHYS_REMOVE),
     ("INSP_PHYS_BAKE", ids::INSP_PHYS_BAKE),
     ("INSP_PHYS_KIND[0]", ids::INSP_PHYS_KIND[0]),

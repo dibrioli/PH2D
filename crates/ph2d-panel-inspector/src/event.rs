@@ -53,6 +53,20 @@ pub(crate) fn apply_event(
 }
 
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    // ⭐ **O `+` do cabeçalho** (ADR-0166 / F3): um PEDIDO, não uma edição. O painel não sabe que
+    // componentes existem nem o que este objeto já tem — quem sabe é a shell, e ela é que abre a
+    // paleta. ⚠️ Sem `entity` selecionada não há a quem anexar: o clique é **recusado**, e não
+    // aceite em silêncio (DIRETIVA §2).
+    if ev == WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
+        // ⚠️ O `entity_bits` sai do **Transform**, que é a base de todo objeto (ADR-0166: a
+        // seção-base é `Transform` + `Name`). Sem ele não há objeto selecionado.
+        let Some(bits) = crate::state::current_inspector_transform().map(|t| t.entity_bits) else {
+            return false;
+        };
+        host.bus_mut()
+            .push(EditorAction::InspectorAddComponentRequested { entity_bits: bits });
+        return true;
+    }
     if section_color_click(host, ev) {
         return true;
     }

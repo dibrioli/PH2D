@@ -113,7 +113,7 @@ fn paint_inspector(
 
     // O cabeçalho — título, subtítulo, fechar e o divisor. Ver `paint_head`.
     let content_top =
-        crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index);
+        crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index, store);
 
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);

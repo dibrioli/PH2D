@@ -500,6 +500,15 @@ pub enum EditorAction {
         edit: crate::screens::hero::PhysicsFieldEdit,
     },
 
+    /// ⭐ **O `+` do Inspector foi carregado** — abra a paleta de componentes para este objeto
+    /// (ADR-0166 / plano F3).
+    ///
+    /// ⚠️ **Um PEDIDO, não uma edição.** O painel não sabe que componentes existem (o catálogo
+    /// vive numa crate-folha e o registo vive na shell), e a paleta precisa dos dois para saber o
+    /// que oferecer: o TIPO do objeto, o que ele já tem, e o que o registo sabe construir. Quem
+    /// tem essas três respostas é a shell — o painel só diz *quem* perguntou.
+    InspectorAddComponentRequested { entity_bits: u64 },
+
     /// Inspector → shell channel for a §12 Physics Joint field (W3). The
     /// `entity_bits` are the JOINT object's, not a body's — a joint is an
     /// entity, and this section describes it.

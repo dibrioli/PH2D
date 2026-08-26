@@ -16,6 +16,15 @@ use ph2d_editor_core::widget::{
 };
 
 pub fn populate(store: &mut WidgetStore) {
+    // ⭐ O `+` do cabeçalho — a UMA porta de anexar um componente (ADR-0166 / F3).
+    // ⚠️ Sem esta linha o botão PINTA e não recebe estado: ele fica morto sob o ponteiro, que é
+    // o defeito que a costura da booleana do vetor pagou duas vezes ([27 §8] do Vector Module).
+    store.register(
+        ids::INSP_ADD_COMPONENT,
+        ph2d_editor_core::interaction::InteractiveState::Button {
+            state: ph2d_editor_core::widget::ButtonState::Normal,
+        },
+    );
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);

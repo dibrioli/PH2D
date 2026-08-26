@@ -84,6 +84,8 @@ mod canvas_zoom;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
+/// As duas pontas do `+` (F3): abrir a paleta para quem pediu, e anexar o que ela escolheu.
+mod component_attach;
 /// ⭐ A paleta de COMPONENTES que o `+` do Inspector abre (ADR-0166 / F3) — o MODELO, não um
 /// modal novo: o widget é o `command_palette`, que já é genérico.
 mod component_palette;

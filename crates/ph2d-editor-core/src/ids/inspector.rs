@@ -161,6 +161,17 @@ pub const INSP_ORDER_AXIS_X: NodeId = hash_node_id("insp_order_axis_x");
 pub const INSP_ORDER_AXIS_Y: NodeId = hash_node_id("insp_order_axis_y");
 
 // ─── §11 Physics Body (ADR-0131 D8) ───────────────────────────────────
+/// ⭐ **O `+` do cabeçalho do Inspector** — abre a paleta de componentes (ADR-0166 / F3).
+///
+/// ⚠️ **UMA porta, e ela SUBSUME as cinco de hoje** (`INSP_PLAYER_ADD` · `INSP_ANCHOR_ADD` ·
+/// `INSP_ANIM_ADD` · `INSP_PHYS_ADD` + o botão de anexar da §5 9-Slice). Duas respostas a *"como
+/// se adiciona um componente?"* é a divergência que esta fase existe para apagar.
+///
+/// ⚠️ Um botão por-seção pode sobreviver como **atalho da seção já visível** — o que não
+/// sobrevive é ser a ÚNICA rota. E as que SEMEIAM um valor do contexto vivo (a massa que o corpo
+/// tem agora) fazem algo que o `+` genérico não pode fazer: ver a nota do `Attach::Intrinsic`.
+pub const INSP_ADD_COMPONENT: NodeId = hash_node_id("insp_add_component");
+
 /// §11 Physics Body — collapsible section header.
 pub const INSP_LIVE_PHYSICS_SECTION: NodeId = hash_node_id("insp_live_physics_section");
 /// §11 Physics Body — section accent color dot.

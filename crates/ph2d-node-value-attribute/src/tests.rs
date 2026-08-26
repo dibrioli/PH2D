@@ -466,3 +466,83 @@ fn the_cartesian_lanes_of_vel_and_size_are_reachable_by_name() {
         "CONTROLE: se a lane desse a magnitude, a entrada nova nao compraria nada"
     );
 }
+
+/// ⭐⭐ **A FRACÇÃO DE VIDA** (doc 89, folha 15) — o índice que quase toda curva de partícula
+/// quer, e que custava três nós com a vida digitada à mão.
+#[test]
+fn the_life_fraction_is_age_over_life() {
+    let s = Stream::new(4)
+        .with("age", Column::Scalar(vec![0.0, 0.5, 1.0, 2.0]))
+        .with("life", Column::Scalar(vec![2.0, 2.0, 2.0, 2.0]));
+    assert_eq!(
+        field(&s, "age", MODE_LIFE_FRACTION),
+        vec![0.0, 0.25, 0.5, 1.0]
+    );
+}
+
+/// ⚠️ **As DUAS fronteiras declaradas**, e cada uma tem um motivo: uma vida de zero não tem
+/// fracção nenhuma (e `age/0` seria `inf` a viajar pelo cozido), e quem sobreviveu à própria
+/// vida lê `1` — a extrapolação é decisão da curva, não deste nó.
+#[test]
+fn a_zero_life_reads_zero_and_an_overdue_element_reads_one() {
+    let s = Stream::new(3)
+        .with("age", Column::Scalar(vec![5.0, 3.0, 1.0]))
+        .with("life", Column::Scalar(vec![0.0, 2.0, -1.0]));
+    assert_eq!(field(&s, "age", MODE_LIFE_FRACTION), vec![0.0, 1.0, 0.0]);
+}
+
+/// Sem `age` (ou sem `life`) a resposta é a falha ORDINÁRIA do módulo — zeros no comprimento
+/// cheio, exactamente como um nome mal digitado. Este ramo não muda a lei da casa.
+#[test]
+fn a_missing_column_falls_back_to_the_modules_ordinary_miss() {
+    let only_age = Stream::new(2).with("age", Column::Scalar(vec![1.0, 2.0]));
+    assert_eq!(field(&only_age, "age", MODE_LIFE_FRACTION), vec![0.0, 0.0]);
+    let empty = Stream::new(2);
+    assert_eq!(field(&empty, "age", MODE_LIFE_FRACTION), vec![0.0, 0.0]);
+}
+
+/// ⭐ **AS TRÊS IDENTIDADES chegam pelo picker**, e a `Index` tem um motivo próprio: a rota
+/// alternativa (`value.instance_field(Index)`) **minta** um valor novo pela posição na lista,
+/// enquanto este canal LÊ o que a peça traz. As duas divergem depois de um `motion.sort`.
+#[test]
+fn the_three_identities_are_offered_and_read_their_own_columns() {
+    let s = Stream::new(3)
+        .with("Index", Column::Scalar(vec![7.0, 8.0, 9.0]))
+        .with("Count", Column::Scalar(vec![3.0, 3.0, 3.0]))
+        .with("id", Column::Scalar(vec![41.0, 42.0, 43.0]));
+    for (label, want) in [
+        ("Index", vec![7.0, 8.0, 9.0]),
+        ("Count", vec![3.0, 3.0, 3.0]),
+        ("Id", vec![41.0, 42.0, 43.0]),
+    ] {
+        let ch = READ_CHANNELS
+            .iter()
+            .find(|c| c.label == label)
+            .unwrap_or_else(|| panic!("o picker oferece o canal {label}"));
+        assert_eq!(field(&s, ch.column, ch.mode), want, "o canal `{label}`");
+    }
+    // E a fracção de vida também está na lista, com o modo que a implica.
+    let lf = READ_CHANNELS
+        .iter()
+        .find(|c| c.label == "Life Fraction")
+        .expect("o picker oferece a fraccao de vida");
+    assert_eq!(
+        (lf.column, lf.mode),
+        ("age", MODE_LIFE_FRACTION),
+        "a coluna nomeada e' a `age`; o divisor e' implicado pelo MODO"
+    );
+}
+
+/// ⚠️ **O degrau novo não move os que shipam** — a mesma afirmação que o `MODE_ANGLE` fez
+/// quando nasceu. Um `mode` renumerado re-aponta em silêncio todo documento salvo.
+#[test]
+fn the_life_fraction_rung_does_not_move_the_rungs_that_ship() {
+    assert_eq!(MODE_LIFE_FRACTION, -2);
+    assert_eq!(MODE_ANGLE, -1);
+    assert_eq!(MODE_LENGTH, 1);
+    assert_eq!(MODE_COMPONENT_BASE, 2);
+    // E uma coluna escalar lida no modo novo NÃO devolve a coluna verbatim (a mentira quieta
+    // que o `MODE_ANGLE` também teve de excluir).
+    let s = Stream::new(2).with("age", Column::Scalar(vec![3.0, 4.0]));
+    assert_ne!(field(&s, "age", MODE_LIFE_FRACTION), vec![3.0, 4.0]);
+}

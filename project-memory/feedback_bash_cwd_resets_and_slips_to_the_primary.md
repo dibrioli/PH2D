@@ -74,3 +74,32 @@ conteúdo casa nas duas, e o `assert` de contagem — que é a rede desta casa c
    tê-los-ia levado.
 4. ⛔ **Não confie no `pwd` de uma chamada anterior.** A cwd persiste entre chamadas *até
    deixar de persistir*, e a escorregadela não avisa.
+5. ⭐⭐⭐ **Todo script que EDITA começa com um `assert` da própria árvore.** É a única rede que
+   não depende de eu me lembrar:
+   ```python
+   assert os.getcwd().endswith("Worktrees/line-<módulo>"), os.getcwd()
+   ```
+   e, quando o ficheiro tem uma marca da linha, um segundo `assert` sobre o CONTEÚDO — foi
+   ele que apanhou a segunda escorregadela.
+
+## ⛔⛔ E a receita de recuperação acima está INCOMPLETA — ela destruiu trabalho
+
+Na segunda ocorrência (mesma jornada, 2026-08-26) eu segui os meus próprios passos e
+**revertí um commit da minha linha**. O passo «copie da árvore errada para a certa» só é
+seguro quando o ficheiro é **idêntico** nas duas — e o primário está em `main`, que **não
+tem** os commits da linha. O ficheiro que copiei era `main` + a minha edição nova, e ao
+pousá-lo na worktree apaguei **36 linhas** de uma célula que a mesma linha tinha fechado
+dias antes. Os testes disseram-no na hora (`o picker oferece o canal Velocity X`), mas só
+porque havia gate; sem ele, a regressão viajava no commit.
+
+⭐ **A receita CERTA, e a ordem importa:**
+1. `git -C <primário> diff --stat -- <caminhos>` — confirme que o diff lá é só o seu.
+2. **NÃO copie.** Guarde o diff (`git -C <primário> diff -- <caminhos> > /tmp/x.patch`) ou,
+   melhor, **descarte-o e reaplique a edição na árvore certa** — o script que a fez ainda
+   está no seu contexto e correr outra vez custa nada.
+3. `git -C <primário> checkout -- <os caminhos EXACTOS>`.
+4. Na worktree, `git checkout -- <caminho>` **antes** de reaplicar, se já lá tiver posto a
+   cópia envenenada.
+
+⚠️ *A pergunta que resolve isto numa linha: «este ficheiro é o mesmo nas duas árvores?» Se a
+linha alguma vez lhe tocou, a resposta é não, e copiar é um `revert` silencioso.*

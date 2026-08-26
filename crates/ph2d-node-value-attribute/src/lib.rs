@@ -117,6 +117,28 @@ pub const MODE_COMPONENT_BASE: i32 = 2;
 /// não pode girar.
 pub const MODE_ANGLE: i32 = -1;
 
+/// **A FRACÇÃO DE VIDA** — `age / life`, em `[0, 1]` (doc 89, folha 15).
+///
+/// A referência chama-lhe `Particles.NormalizedAge` e a pesquisa ranqueia-a como o **3.º maior
+/// roubo de UX** do Niagara: *"curva-sobre-vida sem fios"*. Ela é o índice que quase toda curva
+/// de partícula quer, e até aqui custava três nós (`Age → map_range(0..vida) → curva`) **com a
+/// vida digitada à mão** no `map_range` — um número que já existia na coluna ao lado.
+///
+/// ## ⚠️ É o ÚNICO modo cujo divisor é uma SEGUNDA coluna
+///
+/// O `ReadChannel` nomeia UMA coluna (`age`); o divisor (`life`) é implicado pelo MODO. É uma
+/// excepção declarada, e ela paga-se: um canal que pedisse as duas colunas no picker faria o
+/// artista escolher duas vezes a mesma pergunta, e a segunda escolha só teria uma resposta certa.
+///
+/// ## As duas fronteiras, e por que são estas
+///
+/// - **`life <= 0` responde `0`.** Um elemento sem tempo de vida declarado não tem fracção
+///   nenhuma, e `age/0` seria `inf` a viajar pelo cozido até alguém o ver como um tamanho.
+/// - **O resultado é CLAMPADO em `[0, 1]`.** Um elemento que sobreviveu à própria vida lê `1`,
+///   não `1,4`: isto é um índice de curva, e uma curva amostrada fora do domínio devolve o que a
+///   extrapolação dela decidir — uma decisão que pertence à curva, não a este nó.
+pub const MODE_LIFE_FRACTION: i32 = -2;
+
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("value.attribute"),
     name: "value.attribute",
@@ -163,6 +185,27 @@ fn component(c: &Column, k: usize, n: usize) -> Vec<f32> {
 /// The named column as a length-N field. Missing / mistyped → zeros (see the module docs).
 fn field(s: &Stream, name: &str, mode: i32) -> Vec<f32> {
     let n = s.count();
+    // A FRACÇÃO DE VIDA lê DUAS colunas, então entra antes do `match` que despacha por uma
+    // (ver [`MODE_LIFE_FRACTION`]). Um elemento sem `age` lê `0`, que é a mesma falha ordinária
+    // que um nome mal digitado dá — a lei do módulo não muda por causa deste ramo.
+    if mode == MODE_LIFE_FRACTION {
+        let col = |k: &str| match s.get(k) {
+            Some(Column::Scalar(v)) if v.len() == n => v.clone(),
+            _ => vec![0.0; n],
+        };
+        let (age, life) = (col(name), col("life"));
+        return age
+            .iter()
+            .zip(&life)
+            .map(|(a, l)| {
+                if *l > 0.0 {
+                    (a / l).clamp(0.0, 1.0) // CLAMP-OK: um índice de curva vive em [0,1]
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+    }
     match (s.get(name), mode) {
         // The component rung goes FIRST so the two arms below stay textually what they were:
         // modes 0 and 1 are byte-identical to the day before this rung existed.
@@ -425,6 +468,34 @@ pub const READ_CHANNELS: &[ReadChannel] = &[
         label: "Overlap",
         column: "overlap",
         mode: 0,
+    },
+    // ⚠️ **AS TRÊS IDENTIDADES** (doc 89, folha 15): `Index`, `Count` e `id` são colunas que
+    // metade da biblioteca escreve e que este picker não oferecia — alcançá-las exigia digitar
+    // o nome no `Custom…`, e o `Index` tinha ainda a rota alternativa do
+    // `value.instance_field(Index)`, que **MINTA** um valor novo em vez de LER o que a peça
+    // traz. *As duas respostas divergem no instante em que alguém põe um `motion.sort` no meio.*
+    ReadChannel {
+        label: "Index",
+        column: "Index",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Count",
+        column: "Count",
+        mode: 0,
+    },
+    ReadChannel {
+        label: "Id",
+        column: "id",
+        mode: 0,
+    },
+    // ⚠️ **E a FRACÇÃO DE VIDA** — ver [`MODE_LIFE_FRACTION`]. A coluna nomeada é a `age`; o
+    // divisor (`life`) é implicado pelo modo, e é a única entrada desta lista em que isso
+    // acontece.
+    ReadChannel {
+        label: "Life Fraction",
+        column: "age",
+        mode: MODE_LIFE_FRACTION,
     },
 ];
 

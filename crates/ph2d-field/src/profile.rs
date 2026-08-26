@@ -120,8 +120,7 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// | 1 | 112 | 8,84° | 2,09° | 43,6 ms |
 /// | 8 | 320 | 3,11° | 0,73° | 109,6 ms |
 /// | ~~16~~ | 448 | 2,21° | 0,52° | 145,1 ms |
-/// | 32 | 636 | 1,55° | 0,37° | 216,6 ms |
-/// | **64** | **896** | **1,11°** | **0,26°** | **303,2 ms** |
+/// | **32** | **636** | **1,55°** | **0,37°** | **216,6 ms** |
 /// | 128 | 1 268 | 0,78° | 0,19° | 483,4 ms |
 ///
 /// ⭐ **A lei é `θ ≈ √(8·tol/R)`** (a sagitta de um arco), e a tabela confirma-a em quatro pontos:
@@ -131,13 +130,62 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// ⭐⭐ **E o que o nível compra, na língua de quem desenha:** como `θ ∝ 1/√R`, cada duplicação do
 /// teto deixa o artista desenhar um canto **duas vezes mais apertado** antes de ele facetar. Com a
 /// barra de `3°` que as fotos do Enio fixaram, o limite era uma elipse de **~5,5:1** no `16`; no
-/// **`64`** é **~22:1**. *O teto nunca foi sobre «detalhe»: é sobre que forma se pode desenhar.*
+/// **`32`** é **~11:1**. *O teto nunca foi sobre «detalhe»: é sobre que forma se pode desenhar.*
 ///
-/// ⚠️ **Não há joelho onde parar, e é por isso que o número é o RELÓGIO.** Cada degrau custa `×√2`
-/// e compra `×2` — a razão benefício/preço **melhora** ao subir. ⇒ o limite é o absoluto: a regra de
-/// **meio segundo** que este módulo já usa. O `128` cabe (`483 ms`) e é o **último** que cabe; o
-/// `64` fica a `303 ms`, e a folga é para uma cena com **mais de uma peça** — ⚠️ isso é uma premissa
-/// declarada, não uma medição, e é o que separa o `64` do `128`.
+/// ⚠️ **Não há joelho onde parar** — cada degrau custa `×√2` e compra `×2`, e a razão
+/// benefício/preço **melhora** ao subir. ⇒ o limite é um **recurso absoluto**, e a 1.ª redacção
+/// desta nota nomeou o **errado**.
+///
+/// ⛔⛔ **O recurso NÃO é o quadro assente: é a PRÉ-VISUALIZAÇÃO** (corrigido no mesmo dia, pelo
+/// report do Enio *"queda de fps e lentidão com resoluções altas"*). O traçado assente paga-se
+/// **uma vez**, quando a câmera pára; o traçado de movimento paga-se **em cada quadro em que a mão
+/// mexe**, e é esse que o artista sente. Ele corre noutra thread e tem orçamento próprio de
+/// `16,7 ms`, alcançado por baixar a resolução da imagem
+/// ([`crate::field3d_preview`], divisor até `MAX_PREVIEW_DIVISOR`).
+///
+/// Medido (círculo, 640×480, release) contra o divisor **máximo que a casa mediu como seguro**
+/// (`D = 8`, deriva de silhueta `0,15 %`):
+///
+/// | nível | arestas | traçado cheio | a D=8 | cabe nos 16,7 ms? |
+/// |---:|---:|---:|---:|:--|
+/// | 16 | 664 | 486 ms | 7,6 ms | ✅ |
+/// | **32** | **940** | **700 ms** | **10,9 ms** | ✅ |
+/// | 64 | 1 328 | 1 091 ms | 17,0 ms | ⛔ **não** |
+///
+/// ⛔⛔ **E o divisor NÃO é a cura — a medição matou-a.** O custo do traçado **para de cair** por
+/// volta de `D=6` e depois **sobe** (medido: `D=1` 299,5 · `D=3` 75,2 · `D=6` **43,8** · `D=8`
+/// 46,6 ms). Há um **piso** que a resolução da imagem não toca:
+///
+/// | nível | arestas | traçado `D=1` | **piso (`D=6`)** | por aresta |
+/// |---:|---:|---:|---:|---:|
+/// | 1 | 168 | 214 ms | **39,3 ms** | 0,23 ms |
+/// | 8 | 472 | 523 ms | 103,7 ms | 0,22 ms |
+/// | 16 | 664 | 761 ms | 144,3 ms | 0,22 ms |
+/// | **32** | **940** | 1 090 ms | **212,5 ms** | 0,23 ms |
+/// | 64 | 1 332 | 1 825 ms | 338,5 ms | 0,25 ms |
+///
+/// ⭐⭐⭐ **`0,22 ms por aresta`, constante, e cego aos pixels** — de `D=3` para `D=6` são 4× menos
+/// pixels e o tempo cai `1,3×`. *Isso não é marchar raios: é MONTAR.* E a montagem corre em **todo
+/// traçado**, enquanto o documento não muda entre dois quadros de uma órbita.
+///
+/// ⛔ **E o defeito é PRÉ-EXISTENTE, não desta wave:** mesmo na resolução de **omissão** (168
+/// arestas) o piso é `39 ms` contra um orçamento de `16,7`. *A pré-visualização nunca alcançou o
+/// alvo dela numa peça de perfil* — a lei dela foi calibrada com **cilindros**, que não têm contorno
+/// cozido. O teto alto não criou a lentidão: tornou-a impossível de ignorar.
+///
+/// ⚠️ **A montagem BASE está ilibada** (`Hybrid::new`: `4,3 ms` a 168 arestas, `23,3 ms` a 1 344) —
+/// o suspeito que fica é a **especialização por ladrilho**, uma compilação por ladrilho × fatia em
+/// cada traçado. ⏸️ É a obra seguinte, e a sonda que a decide é
+/// `ph2d_field_eval::tests::measure_building_the_tape_against_marching_it`.
+///
+/// ⇒ **o teto fica em `32`**, e o motivo é honesto: ele **dobra** o que o artista pode desenhar
+/// (canto de `~5,5:1` para `~11:1`) e o preço é um preview `5×` mais lento **numa peça que já
+/// estava acima do orçamento**. O `64` dobraria de novo e ficaria `8,6×` — e a troca deixa de ser
+/// razoável antes de a nitidez deixar de compensar.
+///
+/// ⚠️ E o quadro **assente** continua confortável em qualquer destes níveis (`217 ms` no `32`
+/// contra a regra de meio segundo) — *era ele que a 1.ª redacção media, e por isso ela deixou passar
+/// um teto que o artista sentia como lentidão.*
 ///
 /// ⛔ **A 1.ª medição desta wave passou pela porta do produto e mediu a PRÓPRIA TRAVA:** a
 /// [`ph2d_field_profile::tolerance_ratio_for`] clampa neste número, então os níveis `32`, `64` e
@@ -145,7 +193,7 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// *"o achatamento saturou"*. *Uma sonda que atravessa o limite que quer medir mede o limite.* A
 /// cura foi partir a lei em duas: o **span** continua a ser o do produto
 /// ([`ph2d_field_profile::span_of`]), o **teto** é o que a sonda contorna.
-pub const MAX_PROFILE_RESOLUTION: u32 = 64;
+pub const MAX_PROFILE_RESOLUTION: u32 = 32;
 
 /// Como os contornos de um perfil se combinam.
 ///

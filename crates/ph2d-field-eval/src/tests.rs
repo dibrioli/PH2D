@@ -4038,3 +4038,93 @@ fn measure_the_ladder_that_keeps_the_ratio() {
         }
     }
 }
+
+/// ⭐⭐⭐ **QUANTO CUSTA MONTAR A ÁRVORE, contra marchá-la** — a sonda que decide se o traçado deve
+/// guardar a fita entre quadros.
+///
+/// # ⛔ O que a levou a existir
+///
+/// Report do Enio (2026-08-26): *"queda de fps e lentidão com resoluções altas"*. Três hipóteses
+/// foram medidas e refutadas — o recozimento do contorno por quadro (`23 µs`), a pré-visualização
+/// mais grossa (o custo tem um **piso**), e o teto de detalhe. O que sobrou: o custo do traçado é
+/// **quase fixo na área** (de `D=3` para `D=6` são 4× menos pixels e o tempo só cai `1,3×`) e
+/// **linear nas arestas** do contorno. Isso é a assinatura de **montagem**, não de marcha.
+///
+/// ⚠️ **E o documento NÃO muda enquanto a câmera orbita** — só a pose da vista. Se a montagem
+/// domina, o traçado está a recompilar uma árvore idêntica em cada quadro.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --release -- --exact \
+///     tests::measure_building_the_tape_against_marching_it --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_building_the_tape_against_marching_it() {
+    use ph2d_field::{FillRule, Profile};
+    let reg = hybrid::Registry::new();
+    println!("arestas | montar (Hybrid::new) | avaliar 100k pontos");
+    for n in [168usize, 336, 672, 1344] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+
+        let _ = hybrid::Hybrid::new(&doc, &reg);
+        let mut build: Vec<f64> = (0..5)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                let h = hybrid::Hybrid::new(&doc, &reg);
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(h);
+                ms
+            })
+            .collect();
+        build.sort_by(f64::total_cmp);
+
+        let mut h = hybrid::Hybrid::new(&doc, &reg);
+        let pts: Vec<f32> = (0..100_000).map(|i| (i as f32) * 1.0e-5 - 0.5).collect();
+        let _ = h.eval(&pts, &pts, &pts).expect("avalia");
+        let mut march: Vec<f64> = (0..5)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                let _ = h.eval(&pts, &pts, &pts).expect("avalia");
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect();
+        march.sort_by(f64::total_cmp);
+        println!(
+            "{:7} | {:19.2} | {:19.2}",
+            profile_edges(&doc),
+            build[2],
+            march[2]
+        );
+    }
+}
+
+/// As arestas do perfil que este documento tem — para a sonda dizer o número que importa.
+fn profile_edges(doc: &FieldDoc) -> usize {
+    doc.nodes()
+        .iter()
+        .filter_map(|n| match &n.kind {
+            ph2d_field::NodeKind::Leaf(
+                Primitive::Extrude { profile, .. } | Primitive::Revolve { profile },
+            ) => Some(profile.segment_count()),
+            _ => None,
+        })
+        .sum()
+}

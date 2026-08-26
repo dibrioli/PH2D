@@ -30,3 +30,4 @@ metadata:
 - [[feedback_a_rule_copied_to_a_second_site_may_lose_its_premise]] — ablacione um braço por vez; o outro sítio pode ser o controle positivo
 - [[feedback_a_flattening_curve_may_need_more_points]] — curva de 4 pontos que achata pode ser uma de 6 que nao; nao declare 2o mecanismo cedo
 - [[feedback_a_defect_count_without_provenance_names_the_wrong_phase]] — N defeitos sem PROVENIENCIA culpa a fase errada; a decomposicao e' o plano de trabalho
+- [[feedback_two_meanings_behind_one_primitive_only_the_parameter_name_guards]] — `VecPathId` e bits de entidade sao ambos `u64`: o compilador nao separa, e um gate escrito da ASSINATURA fica verde sobre o panico

@@ -120,10 +120,42 @@ fn deleting_removes_that_row_and_only_that_row() {
 fn the_morph_is_found_anywhere_in_the_selection() {
     let (mut sim, e) = world();
     let other = sim.world_mut().spawn(Name("um grupo".to_string())).id();
-    let sel = vec![other.to_bits(), e.to_bits()];
-    assert_eq!(morph_of_selection(&sim, &sel), Some(e));
+    // O MAPA `forma -> entidade`, que é a porta pela qual a seleção do vetor se resolve.
+    let mut map = crate::vec_entities::VecEntityMap::default();
+    map.insert(1, other.to_bits());
+    map.insert(2, e.to_bits());
+    assert_eq!(morph_of_selection(&sim, &map, &[1, 2]), Some(e));
     // O CONTROLE: sem morph nenhum, `None`.
-    assert_eq!(morph_of_selection(&sim, &[other.to_bits()]), None);
+    assert_eq!(morph_of_selection(&sim, &map, &[1]), None);
+}
+
+/// ⛔⛔⛔ **UM ID DE FORMA NUNCA É LIDO COMO BITS DE ENTIDADE — e o `0` é o que MATA o processo.**
+///
+/// ⚠️ **É a regressão do pânico do smoke de 2026-08-25** (`PH2D_BUILD_SMOKE=74`, quadro 1639,
+/// *"Attempted to initialize invalid bits as an entity"*), e o mecanismo está **medido**:
+///
+/// | `Entity::from_bits(v)` | resultado |
+/// |---|---|
+/// | `0` | ⛔ **PÂNICO** (`bevy_ecs/entity/mod.rs:580`) |
+/// | `1` | `PLACEHOLDER` |
+/// | `2`, `3`, `4` | uma entidade de **lixo** (`4294967293v0`), que nunca tem componente nenhum |
+///
+/// ⇒ o defeito tinha **duas caras**: com ids pequenos a seção simplesmente **nunca achava o
+/// morph** (silêncio), e com o id **`0`** o app **morria**. ⭐ E o `0` não é um caso de canto: o
+/// `VecScene` deriva `Default`, então `next_id` nasce em `0` e a **primeira forma da cena** tem
+/// id `0`. Clicar nela era o gesto que matava.
+///
+/// ⛔⛔ **E a primeira versão deste gate NÃO apanhava nada:** ela alimentava `[1, 2, 3]`, que
+/// decodificam para lixo mas **não entram em pânico** — a mutação sobreviveu, e foi isso que me
+/// obrigou a medir em vez de supor. *Uma fixtura que não contém o fenómeno aprova a cura errada.*
+#[test]
+fn a_shape_id_is_never_read_as_entity_bits() {
+    let (sim, _e) = world();
+    let empty = crate::vec_entities::VecEntityMap::default();
+    // ⭐ O `0` PRIMEIRO: e' o id da primeira forma de toda cena, e e' o que mata o processo.
+    assert_eq!(morph_of_selection(&sim, &empty, &[0]), None);
+    // E os pequenos, que nao matam -- eles achavam a entidade ERRADA, em silencio.
+    assert_eq!(morph_of_selection(&sim, &empty, &[0, 1, 2, 3]), None);
 }
 
 /// ⭐⭐ **Um Morph SEM máquina publica a face VAZIA — e nunca `None`.**
@@ -138,9 +170,10 @@ fn a_morph_without_a_machine_publishes_the_empty_face() {
     let mut sim = SimWorld::new();
     let e = sim.world_mut().spawn(VecMorph::new(A, B)).id();
     let scene = ph2d_vec_scene::VecScene::new();
-    let map = crate::vec_entities::VecEntityMap::default();
-    let s = publish(&sim, &scene, &map, &[e.to_bits()], actions())
-        .expect("um Morph SEM maquina ainda publica");
+    let mut map = crate::vec_entities::VecEntityMap::default();
+    map.insert(7, e.to_bits());
+    let s =
+        publish(&sim, &scene, &map, &[7], actions()).expect("um Morph SEM maquina ainda publica");
     assert!(s.rows.is_empty(), "e a lista de setas vem vazia");
     assert_eq!(
         s.actions,
@@ -168,6 +201,10 @@ fn the_arrow_click_reaches_the_world() {
         (
             "crate::vec_morph_edit::apply(sim, e, cmd, &actions)",
             "APLICAR ao mundo",
+        ),
+        (
+            "morph_of_selection(sim, &self.vec_entities, &sel)",
+            "RESOLVER a seleccao pelo MAPA, e nunca como bits de entidade",
         ),
         (
             "set_morph_states_state(crate::vec_morph_edit::publish(",

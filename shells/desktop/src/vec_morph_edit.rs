@@ -42,13 +42,31 @@ pub(crate) fn arrow_cmd_for_id(id: ph2d_editor::NodeId) -> Option<ArrowCmd> {
 
 /// **O objecto de Morph da seleção**, se houver um.
 ///
-/// ⚠️ **Percorre a seleção INTEIRA à procura de um `VecMorph`**, e não `sel.first()`: tocar num
+/// ⚠️ **Percorre a seleção INTEIRA à procura de um `VecMorph`**, e não `selected.first()`: tocar num
 /// morph pode trazer o grupo, e o primeiro operando seria um qualquer — a seção mostraria as setas
-/// de um objecto e o clique escreveria noutro. É a lição, palavra por palavra, do `host_of_selection`.
+/// de um objecto e o clique escreveria noutro. É a lição, palavra por palavra, do
+/// `host_of_selection`.
+///
+/// ⛔⛔ **A seleção do vetor é uma lista de `VecPathId`, NUNCA de bits de entidade — e esta função
+/// tratou-a como bits durante uma wave inteira.** O `VecPathId` é um alias de `u64` e o
+/// `Entity::to_bits()` também devolve `u64`, então **o compilador não tinha como ajudar**: o código
+/// compilou, os gates ficaram verdes, e o app **entrou em pânico no quadro 1639** do smoke do
+/// Enio (`Attempted to initialize invalid bits as an entity` — o id `1` de um path não é uma
+/// entidade válida).
+///
+/// ⚠️ **O que teria evitado isto era a CONVENÇÃO da casa**, e ela está a dois ficheiros de
+/// distância: o `host_of_selection` declara `selected: &[VecPathId]` e resolve pelo mapa. *Quando
+/// dois significados partilham um tipo primitivo, o nome do parâmetro é a única barreira que
+/// resta* — e eu escrevi `sel: &[u64]`.
 #[must_use]
-pub(crate) fn morph_of_selection(sim: &SimWorld, sel: &[u64]) -> Option<Entity> {
-    sel.iter()
-        .map(|&b| Entity::from_bits(b))
+pub(crate) fn morph_of_selection(
+    sim: &SimWorld,
+    map: &VecEntityMap,
+    selected: &[VecPathId],
+) -> Option<Entity> {
+    selected
+        .iter()
+        .filter_map(|id| map.get(id).map(|&bits| Entity::from_bits(bits)))
         .find(|&e| sim.world().get::<VecMorph>(e).is_some())
 }
 
@@ -75,7 +93,7 @@ pub(crate) fn publish(
     sel: &[u64],
     actions: Vec<String>,
 ) -> Option<MorphStatesState> {
-    let e = morph_of_selection(sim, sel)?;
+    let e = morph_of_selection(sim, map, sel)?;
     // ⚠️ **Um Morph SEM máquina publica a face VAZIA, e não `None`.** As duas coisas pintam faces
     // diferentes: `None` = *"a seleção não é um Morph"* (a seção nem fala de setas); vazio =
     // *"é um Morph e ainda não tem setas"*, e essa face diz COMO desenhar a primeira.

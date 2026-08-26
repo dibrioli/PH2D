@@ -8584,7 +8584,8 @@ impl crate::App {
                 // são as MESMAS que o menu mostrou (as do Input Map do projecto): resolver o
                 // índice contra uma segunda leitura poria o nome escolhido a apontar para outro.
                 if let Some(cmd) = pending_morph_arrow
-                    && let Some(e) = crate::vec_morph_edit::morph_of_selection(sim, &sel)
+                    && let Some(e) =
+                        crate::vec_morph_edit::morph_of_selection(sim, &self.vec_entities, &sel)
                 {
                     let actions: Vec<String> = hero
                         .input_map

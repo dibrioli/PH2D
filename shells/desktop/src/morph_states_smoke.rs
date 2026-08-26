@@ -1,4 +1,12 @@
-//! **A cena da MÁQUINA DE ESTADOS DO MORPH** — `PH2D_BUILD_SMOKE=74` (plano 32 W6).
+//! **A cena da MÁQUINA DE ESTADOS DO MORPH** — `PH2D_BUILD_SMOKE=75` (plano 32 W6).
+//!
+//! ⚠️ **Ela nasceu em `=74` e mudou para `=75` no dia em que nasceu.** O `74` já era da
+//! `ui_states_bool_smoke`, e o roteador é uma lista de `if`: **o primeiro vence**, então esta cena
+//! teria ficado **inalcançável em silêncio**. Eu escolhi o número lendo o MAIOR `if level ==` do
+//! ficheiro — e o dono do 74 está **acima** dele, na ordem do texto. *O número da próxima cena
+//! CONTA-SE varrendo o ficheiro inteiro, nunca lendo o fim dele* — e quem o contou foi o gate
+//! `no_two_smoke_scenes_claim_the_same_level`, que existe exactamente por isto ter acontecido
+//! antes (a cena dos tokens, 2026-08-02).
 //!
 //! # O que a cena arma, e o que ela deixa para o artista
 //!

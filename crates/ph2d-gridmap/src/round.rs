@@ -90,6 +90,37 @@ pub struct RoundOptions {
     pub local_cap: usize,
     /// Varreduras globais do degrau 2.
     pub sweeps: usize,
+    /// ⭐⭐⭐ **PREGAR TAMBÉM OS SINGULARES QUE O CORTE NÃO DUPLICOU.**
+    ///
+    /// ⛔⛔ **A cadeia causal que isto ataca está medida ponta a ponta** (2026-08-25, com o
+    /// report do artista na mão): um vértice singular com **uma cópia só** não tem fecho no
+    /// grafo de cópias ⇒ nunca é pregado num inteiro ⇒ a imagem dele fica fraccionária ⇒ as
+    /// transições de carta à volta dele ficam fraccionárias (resíduo `0,47` de célula contra
+    /// `1e-7` nas peças limpas) ⇒ o extractor **arredonda-as para células inteiras** ⇒ o
+    /// traçado da isolinha cai `3,000` células ao lado num triângulo de `1,440` ⇒ órfã ⇒
+    /// célula abandonada ⇒ **aresta de bordo, na ponta**.
+    ///
+    /// ⭐ No corpus, toda peça com **zero** singulares soltos tem **zero** furos.
+    ///
+    /// # ⭐⭐⭐ A TABELA QUE O LIGOU (2026-08-25, `chain_info` sobre o corpus)
+    ///
+    /// | peça | soltos pregados | ⭐ bordo | `χ` | enviesamento p50 | `>60°` |
+    /// |---|---|---|---|---|---|
+    /// | ⭐ **do artista** | 14 | ⭐ **`14` ⇒ `10`** | `1` ⇒ `1` | `7,4°` ⇒ **`7,3°`** | `4` ⇒ `5` |
+    /// | com gancho | 4 | `0` ⇒ `0` | `2` ⇒ `2` | `7,5°` ⇒ **`7,4°`** | `9` ⇒ **`8`** |
+    /// | ⭐ com orelha | **`0`** | *inerte* | *inerte* | *inerte* | *inerte* |
+    /// | ⭐ com cristas | **`0`** | *inerte* | *inerte* | *inerte* | *inerte* |
+    /// | ⭐ enrugada | **`0`** | *inerte* | *inerte* | *inerte* | *inerte* |
+    ///
+    /// ⭐⭐⭐ **Três das cinco peças pregam ZERO e saem byte-idênticas** — a cura é inerte
+    /// exactamente onde não há nada a curar, e não piora nenhuma coluna em peça nenhuma.
+    /// *É por isso que ela shipa LIGADA: não é uma troca com dois sinais, é um degrau.*
+    ///
+    /// ⚠️ **E não é a cura inteira:** sobram `10` arestas de bordo. O que ela mata é a
+    /// órfã «sem saída do triângulo» (`8` ⇒ `2`); o que cresce em troca é a «sem parceira»
+    /// (`3` ⇒ `9`), que é outro mecanismo — um nó pregado num ponto de grade emite o leque
+    /// de outra maneira ([`ph2d_quadextract::ExtractReport::collapsed_fans`], §6.4).
+    pub pin_lone_singularities: bool,
     /// ⭐⭐⭐ **A MODALIDADE DAS SINGULARIDADES**: pregar as **imagens dos vértices
     /// singulares** em pontos inteiros, antes de tocar nas translações.
     ///
@@ -114,6 +145,7 @@ impl Default for RoundOptions {
             local_cap: LOCAL_CAP,
             sweeps: SWEEPS,
             pin_singularities: true,
+            pin_lone_singularities: true,
         }
     }
 }
@@ -204,6 +236,9 @@ pub struct RoundReport {
     /// ⭐ Medido em 2026-08-25 no corpus: as peças com `0` aqui têm **zero** órfãs e zero
     /// arestas de bordo; a peça do artista tem `8` aqui, `11` órfãs e `14` de bordo.
     pub singular_absent: usize,
+    /// ⭐⭐⭐ **Vértices singulares SOLTOS que passaram a ser pregados** — os que o corte
+    /// não duplicou, logo sem fecho a representá-los. Ver [`RoundOptions::pin_lone_singularities`].
+    pub singular_loose_pinned: usize,
     /// ⚠️ **O CASO DE CANTO, e ele tem nome:** as singularidades esgotaram-se e ainda
     /// sobravam costuras por arredondar — acontece em peças com **alça**, e o nosso
     /// corpus tem um toro. ⛔ Terminar ali deixaria o mapa *quase* inteiro, que é pior

@@ -209,6 +209,7 @@ fn main() {
     let base_opts = ph2d_gridmap::RoundOptions::default();
     let opts = ph2d_gridmap::RoundOptions {
         pin_singularities: pin,
+        pin_lone_singularities: std::env::var("PH2D_PIN_LONE").as_deref() == Ok("1"),
         welded_rounds: num("PH2D_G3_ROUNDS", base_opts.welded_rounds),
         sweeps: num("PH2D_G3_SWEEPS", base_opts.sweeps),
         ..base_opts
@@ -257,7 +258,7 @@ fn main() {
         );
     }
     println!(
-        "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, ⛔ {} AUSENTES DO CORTE, {} copias, {} ambiguas) ⇒ {} inteiros \
+        "  G3+G5 ({:.1} s): {} costuras de arvore + {} de CICLO + {} singularidades (de {}, ⛔ {} AUSENTES DO CORTE, ⭐ {} SOLTOS pregados, {} copias, {} ambiguas) ⇒ {} inteiros \
          | degrau1 {} degrau2 {} | {} visitas | passo pior {:.4} soma {:.3} | passou-as-costuras {}",
         t.elapsed().as_secs_f64(),
         r.tree_seams,
@@ -265,6 +266,7 @@ fn main() {
         r.singular_pinned,
         singular.len(),
         r.singular_absent,
+        r.singular_loose_pinned,
         r.singular_copies,
         r.ambiguous_seams,
         r.pinned,

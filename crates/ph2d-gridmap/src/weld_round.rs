@@ -59,13 +59,30 @@ pub fn welded_enabled() -> bool {
 /// propriedade da eliminação, não uma verificação no fim.*
 #[must_use]
 #[allow(clippy::too_many_lines)]
+/// O que a escada gulosa prega — uma livre do sistema reduzido, ou uma **classe solta**.
+///
+/// ⚠️ **Os dois casos partilham a escada de propósito**: a ordem «menor erro primeiro» só
+/// significa alguma coisa se todos os candidatos competirem na mesma fila.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Target {
+    Free(usize),
+    Class(usize),
+}
+
+fn read(r: &WeldRelaxer<'_>, map: &GridMap, t: Target) -> [f32; 2] {
+    match t {
+        Target::Free(i) => r.read_free(map, i),
+        Target::Class(c) => r.read_class(map, c),
+    }
+}
+
 pub fn round_welded(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
     h: f32,
     opts: RoundOptions,
-    _singular: &[u32],
+    singular: &[u32],
 ) -> (GridMap, RoundReport) {
     let (mut map, before) = solve_welded(mesh, cut, combed, h, opts.welded_rounds);
     let (w, _) = weld(cut, combed);
@@ -107,14 +124,52 @@ pub fn round_welded(
     //
     // ⚠️ *Uma afirmação de que dois números batem, verificada só onde eles batem, é a
     // forma mais cara de nota errada: ela fecha a pergunta.*
-    let mut free: Vec<(usize, usize)> = Vec::new();
+    let mut free: Vec<(Target, usize)> = Vec::new();
     for i in 0..r.sys.free().len() {
         if !opts.pin_singularities && matches!(r.sys.free()[i], Var::Class(_)) {
             continue;
         }
-        free.push((i, 0));
-        free.push((i, 1));
+        free.push((Target::Free(i), 0));
+        free.push((Target::Free(i), 1));
     }
+
+    // ⭐⭐⭐ **OS SINGULARES SOLTOS** — os que o corte NÃO duplicou, e que por isso não
+    // têm fecho nenhum a representá-los. Ver a tabela acima: são eles que deixam a imagem
+    // fraccionária e, no fim da cadeia, o furo na ponta.
+    //
+    // ⚠️ **Entram na MESMA escada gulosa**, e não num passe à parte: a escada escolhe
+    // sempre o menor erro primeiro, e um segundo passe depois dela pregaria estes sobre um
+    // mapa que as costuras já moveram. *Duas escadas sobre a mesma energia é o defeito que
+    // a obra A mediu nos dois subsistemas.*
+    let mut loose: Vec<usize> = Vec::new();
+    if opts.pin_singularities && opts.pin_lone_singularities {
+        let wanted: std::collections::BTreeSet<u32> = singular.iter().copied().collect();
+        let mut seen: std::collections::BTreeSet<usize> = std::collections::BTreeSet::new();
+        for (p, origin) in cut.origin.iter().enumerate() {
+            for (l, &g) in origin.iter().enumerate() {
+                if !wanted.contains(&g) {
+                    continue;
+                }
+                let Some((c, _)) = w.of(p, l) else { continue };
+                // ⚠️ **UMA CÓPIA SÓ, e a restrição não é conservadorismo: é o que foi
+                // MEDIDO.** A coluna «SINGULARES contra o CORTE» conta `6` vértices com
+                // uma cópia na peça do artista; sem esta linha o critério `class_is_loose`
+                // apanhava **19** — classes que o sistema dos fechos não escreve mas que
+                // têm cópias e, por isso, já têm quem lhes imponha coerência.
+                // ⛔ Medido: pregar as 19 curava o defeito alvo (órfãs «sem saída» de `8`
+                // para `2`) e fazia explodir o outro (`sem parceira` de `3` para `18`).
+                // *Uma cura mais larga que a medição que a motivou é outra experiência.*
+                if w.members_pub(c).count() == 1 && r.class_is_loose(c) && seen.insert(c) {
+                    loose.push(c);
+                }
+            }
+        }
+        for &c in &loose {
+            free.push((Target::Class(c), 0));
+            free.push((Target::Class(c), 1));
+        }
+    }
+    rep.singular_loose_pinned = loose.len();
     rep.singular_pinned = r
         .sys
         .free()
@@ -133,25 +188,37 @@ pub fn round_welded(
         let (best, _) = free
             .iter()
             .enumerate()
-            .map(|(k, &(i, ax))| {
-                let x = r.read_free(&map, i)[ax];
+            .map(|(k, &(tgt, ax))| {
+                let x = read(&r, &map, tgt)[ax];
                 (k, (x - x.round()).abs())
             })
             .fold((0usize, f32::INFINITY), |acc, (k, d)| {
                 if d < acc.1 { (k, d) } else { acc }
             });
-        let (i, ax) = free.swap_remove(best);
-        let mut v = r.read_free(&map, i);
+        let (tgt, ax) = free.swap_remove(best);
+        let mut v = read(&r, &map, tgt);
         let step = (v[ax] - v[ax].round()).abs();
         rep.worst_step = rep.worst_step.max(step);
         rep.sum_step += step;
         rep.pinned += 1;
         v[ax] = v[ax].round();
-        r.write_free(&mut map, i, v);
-        r.freeze_free(i, ax);
+        match tgt {
+            Target::Free(i) => {
+                r.write_free(&mut map, i, v);
+                r.freeze_free(i, ax);
+            }
+            Target::Class(c) => {
+                r.write_class(&mut map, c, v);
+                r.freeze_class(c, ax);
+            }
+        }
 
         // ── §5.1 degrau 1: Gauss–Seidel LOCAL sobre as CLASSES, semeado onde se mexeu.
-        let seeds = r.classes_of_free(i);
+        let seeds = match tgt {
+            Target::Free(i) => r.classes_of_free(i),
+            #[allow(clippy::cast_possible_truncation)]
+            Target::Class(c) => vec![c as u32],
+        };
         let (visits, converged) = drain(&r, &mut map, seeds, opts.local_tol, opts.local_cap);
         rep.visits += visits;
         if converged {
@@ -167,7 +234,14 @@ pub fn round_welded(
         // ── ⭐⭐⭐ **E A PARTE CONTÍNUA ABSORVE**: as livres ainda por pregar relaxam-se
         // sobre o mapa que acabou de se mexer.
         for &(j, _) in &free {
-            r.relax_free(&mut map, j);
+            match j {
+                Target::Free(i) => {
+                    r.relax_free(&mut map, i);
+                }
+                Target::Class(c) => {
+                    r.relax_class(&mut map, c);
+                }
+            }
         }
     }
 

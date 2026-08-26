@@ -190,6 +190,35 @@ impl<'a> WeldRelaxer<'a> {
         d[0].abs().max(d[1].abs())
     }
 
+    /// ⭐⭐⭐ **PODE ESTA CLASSE SER PREGADA À MÃO?** — só as que ninguém já escreve.
+    ///
+    /// ⛔ Uma classe **dependente** é escrita por substituição a partir das livres, e
+    /// pregá-la seria uma segunda lei sobre a mesma variável; uma que **é** livre já entra
+    /// na escada gulosa pelo outro caminho. *O conjunto que sobra são exactamente os
+    /// vértices que o sistema dos fechos não tem como tocar.*
+    pub(crate) fn class_is_loose(&self, class: usize) -> bool {
+        !self.sys.is_dependent_class(class)
+            && self.free_index_class(class).is_none()
+            && self.den.get(class).copied().unwrap_or(0.0) > 0.0
+    }
+
+    /// O valor de uma classe no mapa.
+    pub(crate) fn read_class(&self, map: &GridMap, class: usize) -> [f32; 2] {
+        self.w.value_pub(map, class)
+    }
+
+    /// Escreve o valor de uma classe — e as cópias dela derivam.
+    pub(crate) fn write_class(&self, map: &mut GridMap, class: usize, y: [f32; 2]) {
+        self.w.set(map, class, y);
+    }
+
+    /// Prega um eixo de uma classe: a [`Self::relax_class`] deixa de lhe tocar.
+    pub(crate) fn freeze_class(&mut self, class: usize, ax: usize) {
+        if let Some(f) = self.frozen.get_mut(class) {
+            f[ax] = true;
+        }
+    }
+
     fn free_index_class(&self, class: usize) -> Option<usize> {
         u32::try_from(class)
             .ok()

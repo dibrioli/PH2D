@@ -406,6 +406,30 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("99") => {
+            let sinks =
+                gpu_bounce_demo::build_gpu_bounce_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[bounce-demo] NEM TODA BATIDA DEVOLVE O MESMO: duas fileiras de {} discos IGUAIS,
+  caindo no MESMO chao (y = {}) com a MESMA quicada autorada ({}).
+  ⚠️ PRECISA DE PLAY -- o que se compara e' a ALTURA a que cada disco volta.
+
+  ESQUERDA  Restitution Randomness = 0  -- todos voltam a` mesma altura (o que sempre foi)
+  DIREITA   Restitution Randomness = 1  -- cada um volta a` sua
+
+  QUER MEXER? Clique num disco e procure a seccao «Response» no painel do «Collider».
+  (i) O painel tem agora TRES titulos: Shape (onde esta' o obstaculo) · Particle Size
+      (de que tamanho e' o que bate nele) · Response (o que acontece na batida).
+
+  DEU ERRADO se: as duas fileiras sairem iguais; se a da ESQUERDA nao ficar ALINHADA a
+  cada quicada; se a da DIREITA tiver algum disco a voltar MAIS ALTO que os da esquerda
+  (a lei so' TIRA); ou se algum disco atravessar o chao.",
+                gpu_bounce_demo::COLS as u32,
+                gpu_bounce_demo::FLOOR,
+                gpu_bounce_demo::RESTITUTION,
+            );
+            sinks
+        }
         _ => Vec::new(),
     }
 }

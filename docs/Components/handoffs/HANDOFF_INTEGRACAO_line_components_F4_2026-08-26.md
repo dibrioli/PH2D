@@ -148,6 +148,42 @@ a fatia **F4.5**.
 — membro nomeado da família de flakes sob fan-out no `CLAUDE.md` §5.0. **Verde 3/3 sozinha**, e o
 diff não tem uma linha de Flip.
 
+⚠️⚠️ **E o gate de LOC apanhou SEIS ficheiros acima do teto de 600, todos desta linha** —
+`instance_sync_tests` (870) e `render_loop/hierarchy` (613) da F4.3/F4.4; e **quatro latentes das
+fatias anteriores**, que nunca correram `--tests`: `render_loop/inspector_commits` (632, `main` tem
+539), `render_loop/inspector_physics_apply` (624), `input_dispatch/painter_canvas_input` (609) e
+`timeline_persist_tests` (613). **Todos cortados por ASSUNTO, nenhum por allowlist**, e cada corte
+leva no cabeçalho de que lado está:
+
+| ficheiro | corte | irmão |
+|---|---|---|
+| `instance_sync_tests` | a propagação × a **excepção** | `instance_override_tests` (novo) |
+| `render_loop/hierarchy` | a mecânica das linhas × o verbo de **instância** | o dreno foi para `instance_sync` |
+| `inspector_commits` | as outras famílias × a família da **Sprite** | `inspector_commits_sprite` (já existia) |
+| `inspector_physics_apply` | o que uma EDIÇÃO faz × o que a CRIAÇÃO **semeia** | `inspector_physics_seed` (novo) |
+| `painter_canvas_input` | a entrega do ponteiro × o menu de alça da **curva** | `painter_curve_input` (novo) |
+| `timeline_persist_tests` | o que atravessa o FICHEIRO × o que a shell **publica** | `timeline_publish_tests` (novo) |
+
+⚠️ *A causa é a mesma dos latentes de clippy: os fechos anteriores não correram o gate INTEIRO.*
+
+⛔⛔ **E um SÉTIMO latente, do mesmo fecho em falta, com uma lição própria:**
+`the_position_commit_reseats_the_anchor_through_the_door` — um gate que lê os **3000 bytes** a
+seguir à captura do pivot de um joint à procura da porta `set_joint_anchor_world`. A **F3** enfiou
+as 27 linhas do `+` do Inspector **entre a captura e o dreno**, e a porta saiu da janela
+(`2 555 → 3 864` bytes). ⚠️ **A lei não se partiu** — o pivot continua a chegar à porta —, mas *a
+janela É a lei aqui*, e o próprio ficheiro já o diz em dois sítios: **«a cura é tirar o intruso do
+meio, não alargar a janela»**, porque ela é a forma de exigir que a captura e o dreno de uma
+intenção fiquem **à vista um do outro**. O bloco do `+` mudou-se para depois do dreno, com a nota
+ao lado — e a distância voltou aos `2 555`. *Um gate cuja régua é a distância só dói quando alguém
+escreve no meio; foi por isso que ele foi escrito assim.*
+
+⛔ **E um OITAVO, que é o melhor dos oito:** `the_duplicate_row_asks_for_a_vec_path_before_it_spawns`
+tem um **controle positivo** — ele procura o marco do caminho genérico para provar que está a ler o
+ficheiro certo. A F4.2 trocou esse caminho (o `spawn_empty()` da cópia rasa virou a porta
+`duplicate_subtree`), e o controle disparou com a frase exata: *«este gate mede o arquivo errado»*.
+⚠️ **Ele fez o trabalho dele**, e a cura é mover o marco — não apagar o controle. *Um gate sem
+controle positivo teria continuado verde a medir nada.*
+
 ⚠️⚠️ **E esse clippy apanhou CINCO erros latentes das fatias ANTERIORES desta linha** — três em
 ficheiros que ela criou (`scene/incremental.rs` da F2, `component_seed.rs` da F3,
 `project_migrate_sprite.rs` da F1.6) e dois em ficheiros que ela modificou (`sim_extract.rs`,
@@ -200,9 +236,18 @@ Ver a mensagem da linha. `PH2D_INSTANCE_SMOKE=1`, em três partes:
    artista vê três pêndulos e não descobre sozinho que a receita é editável;
 4. pintar o `Arm` de **uma** das cópias e depois repintar o da receita — **a que ele tocou fica com
    a cor dela** (F4.4);
-5. botão direito na linha da cópia → **Revert to Master** — ela volta a ouvir a receita. ⚠️ Numa
-   linha que não é instância o item **responde com um aviso**: a tabela deste menu é plana, e um
-   item que come o clique em silêncio é pior que um ausente.
+5. botão direito **na peça que ele pintou** → **Revert to Master** — ela volta a ouvir a receita.
+   ⚠️ Numa linha fora de qualquer instância o item **responde com um aviso**: a tabela deste menu é
+   plana, e um item que come o clique em silêncio é pior que um ausente.
+
+⛔⛔ **O REPORT do Enio (mesmo dia) e a cura:** a 1.ª versão do verbo exigia a **RAIZ** da instância
+e respondia *«Not an instance»* na peça — tecnicamente certa e **inutilmente** certa. Para pintar o
+braço de uma cópia o artista tem de selecionar a linha do **braço**, e é lá que a mão dele está
+quando ele quer desfazer. *Um aviso que diz o que a coisa NÃO é, sem dizer o que fazer, é um botão
+mudo com legenda.* ⇒ o verbo aceita qualquer peça, **sobe por `ChildOf`** (nunca pelo elo — o
+`InstanceOf` de uma peça aponta para a peça do MESTRE, e subir por ele sairia da instância) e o
+**escopo é o que se clicou**: numa peça, só a excepção dela; na raiz, todas. ⚠️ *Devolver o rig
+inteiro porque o artista pediu um braço seria apagar trabalho que ele não mandou apagar.*
 
 ---
 

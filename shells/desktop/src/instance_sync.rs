@@ -363,41 +363,116 @@ pub(crate) fn revert_override(
     true
 }
 
-/// ⭐ **Devolve TODA a instância à receita** — o verbo que o menu da Hierarquia chama.
+/// ⭐ **Devolve à receita o que a MÃO do artista aponta** — o verbo que o menu da Hierarquia chama.
 ///
-/// `None` quando a entidade não é a raiz de uma instância (o menu é plano e o item aparece em toda
-/// linha — ver o dreno); `Some(n)` com quantas excepções foram apagadas.
+/// `None` quando a entidade não pertence a instância nenhuma; `Some(n)` com quantas excepções
+/// foram apagadas.
 ///
-/// ⚠️ **A pergunta é «é a RAIZ de uma instância?»**, e a resposta é o `ObjectInstance`: as peças
-/// não o têm, e uma instância sem excepção nenhuma tem-no vazio ou não o tem — os dois casos
-/// respondem `Some(0)`, que é *«nada a devolver»* e não *«não se aplica»*.
+/// # ⚠️ Ele aceita QUALQUER peça, e não só a raiz — o report do Enio (2026-08-26)
+///
+/// A 1.ª versão exigia a raiz e respondia *«Not an instance»* na peça. Estava tecnicamente certa e
+/// **inutilmente** certa: para pintar o braço de uma cópia o artista tem de selecionar a linha do
+/// **braço**, e é lá que a mão dele está quando ele quer desfazer. *Um aviso que diz o que a coisa
+/// NÃO é, sem dizer o que fazer, é um botão mudo com legenda.*
+///
+/// # O ESCOPO é o que se clicou
+///
+/// - numa **peça** ⇒ só as excepções daquela peça;
+/// - na **raiz** ⇒ todas as da instância.
+///
+/// ⚠️ *Devolver o rig inteiro porque o artista pediu um braço seria apagar trabalho que ele não
+/// mandou apagar* — e o Ctrl+Z existe, mas um verbo que faz mais do que diz não se desculpa com ele.
 pub(crate) fn revert_all_overrides(
     sim: &mut SimWorld,
     echo: &mut MasterEcho,
-    instance_root: Entity,
+    clicked: Entity,
 ) -> Option<usize> {
-    // A raiz de uma instância é a peça cujo mestre é um `MasterRoot` — a mesma pergunta do passe.
-    let link = sim.world().get::<InstanceOf>(instance_root).copied()?;
-    let master = {
-        let mut q = sim.world_mut().query::<(Entity, &StableId)>();
-        q.iter(sim.world())
-            .find(|(_, s)| s.0 == link.master)
-            .map(|(e, _)| e)?
-    };
-    sim.world().get::<MasterRoot>(master)?;
-
+    let (root, scope) = instance_root_of(sim, clicked)?;
     let keys: Vec<ph2d_ecs::OverrideKey> = sim
         .world()
-        .get::<ObjectInstance>(instance_root)
-        .map(|o| o.overrides.iter().copied().collect())
+        .get::<ObjectInstance>(root)
+        .map(|o| {
+            o.overrides
+                .iter()
+                .copied()
+                .filter(|k| scope.is_none_or(|piece| k.piece == piece))
+                .collect()
+        })
         .unwrap_or_default();
     let mut n = 0;
     for key in keys {
-        if revert_override(sim, echo, instance_root, key) {
+        if revert_override(sim, echo, root, key) {
             n += 1;
         }
     }
     Some(n)
+}
+
+/// **A raiz da instância a que esta entidade pertence, e o escopo do gesto.**
+///
+/// Devolve `(raiz, Some(peça do mestre))` quando se clicou numa PEÇA, e `(raiz, None)` quando se
+/// clicou na própria raiz — `None` aí significa *«sem filtro»*, ou seja a instância inteira.
+///
+/// ⚠️ **Sobe por `ChildOf`, e não pelo elo:** o `InstanceOf` de uma peça aponta para a peça do
+/// MESTRE, não para a raiz da instância. Subir por ele saía da instância e ia parar à receita.
+fn instance_root_of(sim: &mut SimWorld, clicked: Entity) -> Option<(Entity, Option<u64>)> {
+    let by_id: BTreeMap<u64, Entity> = {
+        let mut q = sim.world_mut().query::<(Entity, &StableId)>();
+        q.iter(sim.world()).map(|(e, s)| (s.0, e)).collect()
+    };
+    let is_root = |e: Entity, w: &ph2d_ecs::World| {
+        w.get::<InstanceOf>(e)
+            .and_then(|l| by_id.get(&l.master))
+            .is_some_and(|&m| w.get::<MasterRoot>(m).is_some())
+    };
+    let clicked_piece = sim.world().get::<InstanceOf>(clicked).map(|l| l.master)?;
+    let mut e = clicked;
+    loop {
+        if is_root(e, sim.world()) {
+            let scope = (e != clicked).then_some(clicked_piece);
+            return Some((e, scope));
+        }
+        e = sim.world().get::<ph2d_ecs::ChildOf>(e)?.0;
+    }
+}
+
+/// ⭐ **O dreno do gesto *Revert to Master*** — resolve a entidade e responde ao artista.
+///
+/// Devolve `true` quando alguma coisa mudou.
+///
+/// ⚠️ **Mora aqui e não no dreno da Hierarquia** porque é sobre INSTÂNCIAS, e não sobre a mecânica
+/// das linhas — e porque aquele ficheiro estava no teto de 600 LOC. *O corte é por assunto.*
+///
+/// ⚠️ **Ele responde mesmo quando não se aplica.** A tabela daquele menu é PLANA (ela não sabe o
+/// que a linha é), então o item aparece em toda linha; um item que come o clique em silêncio é
+/// pior que um ausente.
+pub(crate) fn drain_revert_to_master(
+    sim: &mut SimWorld,
+    echo: &mut MasterEcho,
+    entity_bits: u64,
+    toasts: &mut ph2d_editor::ToastQueue,
+) -> bool {
+    use ph2d_editor::Toast;
+    match revert_all_overrides(sim, echo, Entity::from_bits(entity_bits)) {
+        // ⚠️ *«Não pertence a instância nenhuma»* e *«pertence, e não havia excepção»* são coisas
+        // diferentes, e a segunda não é um erro: o artista clicou no sítio certo.
+        None => {
+            toasts.push(Toast::warning(
+                "Not part of an instance — nothing to revert",
+            ));
+            false
+        }
+        Some(0) => {
+            toasts.push(Toast::info("Nothing overridden here"));
+            false
+        }
+        Some(n) => {
+            toasts.push(Toast::success(format!(
+                "Reverted {n} override(s) to master"
+            )));
+            true
+        }
+    }
 }
 
 impl crate::App {
@@ -428,3 +503,9 @@ impl crate::App {
 #[cfg(test)]
 #[path = "instance_sync_tests.rs"]
 mod tests;
+
+/// ⚠️ Irmão de [`tests`] pelo teto de 600 LOC da shell — o corte é por ASSUNTO (a propagação lá,
+/// a excepção aqui), e o cabeçalho de cada um diz de que lado está.
+#[cfg(test)]
+#[path = "instance_override_tests.rs"]
+mod override_tests;

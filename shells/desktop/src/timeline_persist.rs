@@ -333,3 +333,9 @@ pub(crate) fn install_from_project(bytes: &[u8]) -> Result<TimelineState, String
 #[cfg(test)]
 #[path = "timeline_persist_tests.rs"]
 mod tests;
+
+/// ⚠️ Irmão de [`tests`] pelo teto de 600 LOC da shell — o corte é por ASSUNTO (o que atravessa o
+/// FICHEIRO lá, o que a shell PUBLICA ao painel aqui).
+#[cfg(test)]
+#[path = "timeline_publish_tests.rs"]
+mod publish_tests;

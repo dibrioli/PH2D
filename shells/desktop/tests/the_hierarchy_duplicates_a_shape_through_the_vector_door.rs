@@ -12,16 +12,21 @@
 
 const SRC: &str = include_str!("../src/render_loop/hierarchy.rs");
 
-/// **A pergunta é feita ANTES do spawn.** Um `spawn_empty` que corresse primeiro já teria criado
-/// a entidade-fantasma que o gate existe para impedir.
+/// **A pergunta é feita ANTES de a cópia nascer.** Um caminho genérico que corresse primeiro já
+/// teria criado a entidade-fantasma que o gate existe para impedir.
+///
+/// ⚠️ **O CONTROLE mudou de marco em 2026-08-26, e a mudança é o registo de um facto:** o braço
+/// genérico deixou de ser um `spawn_empty()` (a cópia RASA de quatro componentes) e passou a ser a
+/// porta `duplicate_subtree` da F4.2 — a cópia PROFUNDA. O controle apanhou-o e disse a frase
+/// certa (*«este gate mede o arquivo errado»*); mover o marco é honrá-lo, não afrouxá-lo.
 #[test]
 fn the_duplicate_row_asks_for_a_vec_path_before_it_spawns() {
     let asks = SRC
         .find("get::<ph2d_ecs::VecPathRef>")
         .expect("o drain nao pergunta se a row e' uma forma vetorial");
-    let spawns = SRC.find("spawn_empty()").expect(
-        "CONTROLE: o caminho do sprite deixou de spawnar — este gate mede o arquivo errado",
-    );
+    let spawns = SRC
+        .find("duplicate_subtree(")
+        .expect("CONTROLE: o caminho generico deixou de copiar — este gate mede o arquivo errado");
     assert!(
         asks < spawns,
         "o spawn corre ANTES da pergunta: uma forma vetorial ganharia um sosia sem geometria"

@@ -309,30 +309,15 @@ pub(super) fn dispatch(
     //
     // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
     // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
-    // ⭐ **DEVOLVER a instância à receita** (ADR-0164 / F4.4) — o inverso do override.
-    //
-    // ⚠️ **Ele responde mesmo quando não se aplica.** A tabela deste menu é PLANA (ela não sabe o
-    // que a linha é), então o item aparece em toda linha; um item que come o clique em silêncio é
-    // pior que um ausente, e por isso o caminho negativo tem um aviso com o motivo.
+    // ⭐ **DEVOLVER à receita** (ADR-0164 / F4.4) — o dreno mora em `instance_sync`, com o verbo:
+    // ele é sobre INSTÂNCIAS, e não sobre a mecânica da Hierarquia. (E este ficheiro estava no
+    // teto de 600 LOC — *o corte é por assunto*.)
     if let Some(row) = revert_to_master_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
+        && crate::instance_sync::drain_revert_to_master(sim, echo, entity_bits, toasts)
     {
-        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
-        match crate::instance_sync::revert_all_overrides(sim, echo, entity) {
-            None => {
-                toasts.push(Toast::warning("Not an instance — nothing to revert"));
-            }
-            Some(0) => {
-                toasts.push(Toast::info("This instance has no overrides"));
-            }
-            Some(n) => {
-                toasts.push(Toast::success(format!(
-                    "Reverted {n} override(s) to master"
-                )));
-                title_dirty = true;
-            }
-        }
+        title_dirty = true;
     }
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);

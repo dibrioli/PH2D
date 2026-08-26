@@ -129,7 +129,7 @@ pub(crate) mod inspector_presence_probe;
 /// ⭐ **Os DOIS seeds da paleta de componentes** (ADR-0166 / F3) — ver [`crate::component_seed`].
 /// Eles vivem nos módulos DONOS das leis (a caixa que casa com o desenho · a altura que paira), e
 /// esta linha é só o endereço por onde a tabela de seeds lhes chega.
-pub(crate) use inspector_physics_apply::seed_attached_collider;
+pub(crate) use inspector_physics_seed::seed_attached_collider;
 pub(crate) use inspector_player::seed_attached_player;
 mod inspector_physics_area;
 #[cfg(test)]
@@ -139,6 +139,9 @@ mod inspector_physics_gesture_tests;
 #[cfg(test)]
 mod inspector_physics_gesture_zone_tests;
 mod inspector_physics_markers;
+/// ⭐ O que ANEXAR um componente de física semeia (ADR-0166 / F3) — irmão do `_apply` pelo teto
+/// de LOC, cortado por assunto.
+mod inspector_physics_seed;
 mod inspector_physics_surface;
 #[cfg(test)]
 // ⚠️ `pub(crate)`: a porta `apply` (um edit do §11 aplicado ao ECS) é o caminho
@@ -9957,33 +9960,6 @@ impl crate::App {
             ) {
                 self.title_dirty = true;
             }
-            // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
-            // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
-            // biblioteca do Motion é irmã do `motion_bridge`.
-            crate::component_attach::open_palette_if_asked(
-                hero,
-                sim,
-                component_registry,
-                add_component_for,
-                component_palette_target,
-            );
-            // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
-            // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
-            crate::component_attach::refresh_palette_on_toggle(
-                hero,
-                sim,
-                component_registry,
-                *component_palette_target,
-            );
-            // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
-            // `AppGfx` em vez de num local deste laço.
-            let picked = crate::component_attach::route_pick(hero, component_palette_target);
-            crate::component_attach::attach_picked(
-                picked.as_ref(),
-                sim,
-                component_registry,
-                toasts,
-            );
             // A troca de ESTRATÉGIA de origem sai por uma porta própria (irmã, pelo teto de LOC):
             // ela precisa do `atlas_asset_map` e do `next_import_cell` em modo MUTÁVEL — a volta
             // ao atlas ocupa uma célula nova —, e o `dispatch` acima recebe o mapa por leitura.
@@ -10024,6 +10000,40 @@ impl crate::App {
                 // UM eixo, então não há segunda metade a perder como no joint).
                 ph2d_physics_ecs::reseat_mounted_axle(sim.world_mut(), e);
             }
+            // ⚠️ **E fica DEPOIS do dreno do pivot do joint, pela razão que os dois blocos abaixo
+            // já têm escrita:** ele esteve NO MEIO do par `let joint_pivot_commit = …` →
+            // `if let Some(…) = joint_pivot_commit`, e o gate
+            // `the_position_commit_reseats_the_anchor_through_the_door` reprovou — ele lê os 3000
+            // bytes a seguir à captura à procura da porta, e 27 linhas alheias empurraram-na para
+            // fora da janela. *A janela é a forma de o gate exigir que a captura e o dreno de uma
+            // intenção fiquem à vista um do outro; a cura é tirar o intruso, nunca alargá-la.*
+            // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
+            // pediu, e anexar o que ela escolheu. Irmã por assunto (`component_attach`), como a
+            // biblioteca do Motion é irmã do `motion_bridge`.
+            crate::component_attach::open_palette_if_asked(
+                hero,
+                sim,
+                component_registry,
+                add_component_for,
+                component_palette_target,
+            );
+            // ⭐ **A caixa *Show all*** — o widget vira o estado dele e avisa; quem reconstrói o
+            // modelo é quem abriu a paleta (só ele sabe o que «mostrar tudo» quer dizer).
+            crate::component_attach::refresh_palette_on_toggle(
+                hero,
+                sim,
+                component_registry,
+                *component_palette_target,
+            );
+            // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
+            // `AppGfx` em vez de num local deste laço.
+            let picked = crate::component_attach::route_pick(hero, component_palette_target);
+            crate::component_attach::attach_picked(
+                picked.as_ref(),
+                sim,
+                component_registry,
+                toasts,
+            );
             // A troca de PRECISÃO sai por uma porta própria (plano `docs/Sprite_projeto/18` W5).
             //
             // ⚠️ **E fica DEPOIS do dreno do pivot do joint pela MESMA razão que o bloco abaixo**,

@@ -70,6 +70,9 @@ mod keyboard_painter; // a cadeia do Delete do Painter: ancora -> figura -> fall
 mod keyboard_timeline;
 pub(crate) mod painter_canvas_input;
 mod painter_canvas_mods;
+/// ⭐ O menu de alça de um ponto da CURVA no canvas — irmão do `painter_canvas_input` pelo teto
+/// de LOC, cortado por assunto.
+mod painter_curve_input;
 pub(crate) mod painter_falloff_input;
 mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;

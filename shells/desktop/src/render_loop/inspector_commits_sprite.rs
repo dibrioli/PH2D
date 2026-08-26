@@ -211,3 +211,107 @@ pub(super) fn clamp_frame(grid: &mut SpriteGrid) {
 
 // §7 ordering commit handler lives in the sibling `inspector_ordering`
 // module (HR-18 LOC + separation): `apply_ordering_edit`.
+
+/// Os nomes canónicos que este commit pode gravar (ADR-0164 F1 passo 6). ⚠️ **Literais e não
+/// `type_name`**: o registo é indexado pelo nome CANÓNICO, que é dado à mão no `register_*` e não
+/// derivado do tipo Rust — renomear o módulo não pode mudar o que o arquivo diz.
+const SPRITE_TYPE: &str = "ph2d::render::Sprite";
+const GRID_TYPE: &str = "ph2d::ecs::SpriteGrid";
+const REGION_TYPE: &str = "ph2d::ecs::SpriteRegion";
+const CORNER_TINT_TYPE: &str = "ph2d::ecs::SpriteCornerTint";
+
+/// ⭐ **A família da SPRITE do commit do Inspector** — devolve `true` se o título ficou sujo.
+///
+/// ⚠️ Vive aqui e não em [`super::inspector_commits`] porque é aqui que mora o que uma sprite
+/// editável É (o [`SpriteEditables`], os quatro componentes em que ela foi cortada na F1.6) — e
+/// porque aquele ficheiro estava no teto de 600 LOC. *O corte é por assunto.*
+pub(super) fn apply_sprite_edits(
+    sprite_edits: &[(u64, ph2d_editor::screens::hero::SpriteFieldEdit)],
+    sim: &mut ph2d_ecs::SimWorld,
+    editor_queue: &ph2d_ecs::scene::EditorCommandQueue,
+    component_registry: &ph2d_ecs::scene::ComponentRegistry,
+    sprite_type_id: u64,
+    toasts: &mut ph2d_editor::ToastQueue,
+) -> bool {
+    use ph2d_ecs::scene::{EditorCommand, apply_editor_commands};
+    use ph2d_editor::Toast;
+    use ph2d_render::Sprite;
+    let mut dirty = false;
+    // W2 Sprite Inspector v2: drain editable Sprite field edits (flip,
+    // region, sprite-sheet, tint channels, opacity, …). For each, read
+    // the entity's current Sprite, apply the one field (clamped), and
+    // commit the whole struct through the SAME SetComponent path as
+    // Transform. Grouped per-entity isn't necessary — applying edits
+    // sequentially re-reads the just-written Sprite each iteration.
+    for &(entity_bits, edit) in sprite_edits {
+        let entity = ph2d_ecs::Entity::from_bits(entity_bits);
+        let Some(mut editables) = SpriteEditables::read(sim.world(), entity) else {
+            continue;
+        };
+        // `Sprite.premultiplied` is `#[serde(skip)]` — a runtime hint set
+        // by BG-Removal Apply, NOT on the wire. The SetComponent round
+        // trip (postcard → from_bytes) would reset it to `false` and
+        // silently reintroduce the straight-alpha edge fringe. Capture
+        // the live flag and re-assert it after the commit (audit F1).
+        let was_premultiplied = editables.sprite.premultiplied;
+        let target = apply_sprite_field(&mut editables, edit);
+        // ⚠️ **Retirar um componente não passa pelo `SetComponent`** (ADR-0164 F1 passo 6):
+        // desligar a região é uma AUSÊNCIA, e o comando que grava bytes não sabe exprimi-la.
+        // O `remove` é direto no mundo, e o passo de undo nasce do diff do quadro como sempre.
+        if target == SpriteEditTarget::RegionRemoved {
+            sim.world_mut()
+                .entity_mut(entity)
+                .remove::<ph2d_ecs::SpriteRegion>();
+            continue;
+        }
+        let encoded = match target {
+            SpriteEditTarget::Sprite => {
+                postcard::to_allocvec(&editables.sprite).map(|d| (SPRITE_TYPE, d))
+            }
+            SpriteEditTarget::Grid => {
+                postcard::to_allocvec(&editables.grid).map(|d| (GRID_TYPE, d))
+            }
+            SpriteEditTarget::Region => {
+                postcard::to_allocvec(&editables.region.expect("o alvo Region garante-a"))
+                    .map(|d| (REGION_TYPE, d))
+            }
+            SpriteEditTarget::CornerTint => {
+                postcard::to_allocvec(&editables.corner_tint).map(|d| (CORNER_TINT_TYPE, d))
+            }
+            SpriteEditTarget::RegionRemoved => unreachable!(),
+        };
+        match encoded {
+            Ok((type_name, data)) => {
+                let type_id = if type_name == SPRITE_TYPE {
+                    sprite_type_id
+                } else {
+                    ph2d_ecs::scene::stable_type_id(type_name)
+                };
+                let push_res = editor_queue.push(EditorCommand::SetComponent {
+                    entity: entity_bits,
+                    type_id,
+                    data,
+                });
+                if let Err(e) = push_res {
+                    toasts.push(Toast::error(format!("Editor queue full: {e}")));
+                    dirty = true;
+                } else if let Err(e) =
+                    apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
+                {
+                    toasts.push(Toast::error(format!("Sprite commit failed: {e}")));
+                    dirty = true;
+                } else if was_premultiplied
+                    && let Some(mut s) = sim.world_mut().get_mut::<Sprite>(entity)
+                {
+                    // Re-assert the serde(skip) runtime hint the wire dropped.
+                    s.premultiplied = true;
+                }
+            }
+            Err(e) => {
+                toasts.push(Toast::error(format!("Sprite encode failed: {e}")));
+                dirty = true;
+            }
+        }
+    }
+    dirty
+}

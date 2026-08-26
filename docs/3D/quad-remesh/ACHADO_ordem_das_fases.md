@@ -397,3 +397,56 @@ mexe.
 **Achar por que a travessia perde a fronteira num patch pequeno.** É a primeira desta
 sequência que é um **bug nosso com endereço**, e não uma escolha de arquitectura: tudo o que
 está a jusante consome o que ela devolve.
+
+
+---
+
+## §11 — ⭐⭐⭐ A RAIZ DA RAIZ: a escultura entra NÃO-MANIFOLD, e é na PONTA
+
+O §10 disse que a travessia de fronteira morre. Ela morre **por uma razão**, e a razão está
+na entrada.
+
+| peça | `χ` da entrada | ⛔ **arestas não-manifold** | onde elas moram |
+|---|---|---|---|
+| ⛔ **do artista** | ⛔ **4** | ⛔ **2** | ⭐ **raio `1,30×` — a PONTA** |
+| com gancho | `2` | `0` | — |
+| enrugada | `2` | `0` | — |
+| furada | `1` | `0` | (tem bordo por construção) |
+
+E ao longo do passo zero:
+
+| | `χ` | ⛔ não-manifold |
+|---|---|---|
+| entrada triangulada | `6` | ⛔ **`4`** |
+| ⭐ depois do F1 | ⭐ **`2`** | ⛔ **`2`** |
+
+⇒ **O F1 cura o `χ` e deixa DUAS arestas não-manifold vivas.**
+
+### ⭐⭐⭐ O mecanismo, e ele fecha a sequência inteira
+
+O layout percorre a fronteira dos patches pivotando num mapa de meias-arestas —
+`(a, b) → face`, **uma face por aresta dirigida**. ⛔ **Numa aresta não-manifold há três ou
+mais faces a reclamar a mesma aresta dirigida, e o mapa guarda uma.** ⇒ o pivô entra na face
+errada ou não acha nenhuma, a travessia **morre**, e o pedaço parcial sai como se fosse um
+laço — os `[1, 1, 1]` do §10.
+
+⇒ **A cascata, do princípio ao fim:**
+
+> 2 arestas não-manifold **na ponta** ⇒ o mapa de meias-arestas é inconsistente ali ⇒ a
+> travessia de fronteira morre ⇒ laços de um vértice ⇒ patches classificados como
+> degenerados sem o serem ⇒ a limpeza persegue fantasmas e a guarda recusa (correctamente)
+> ⇒ o mapa recebe uma descrição do layout que não é o layout ⇒ região degenerada ⇒ transições
+> inexactas ⇒ **furo na ponta**.
+
+⭐⭐ **E isto fecha o círculo com o primeiro report do artista**, de 2026-08-24: *«furos nas
+pontas»*. As arestas não-manifold estão a raio `1,30×`; os furos estão a raio `1,29×`. **É o
+mesmo sítio.**
+
+### ⇒ As duas obras que isto abre
+
+| # | obra | nota |
+|---|---|---|
+| **1** | ⭐ **reparar o não-manifold na porta** (partir a aresta, duplicando o vértice) | é o que a cadeia precisa, e ⚠️ **não existe nada em `ph2d-mesh` que o faça** — há `fill_holes` e `merge`, e mais nada |
+| **2** | ⚠️ **por que a escultura sai não-manifold do nosso próprio módulo de escultura** | é um nível acima, e é decisão do dono do produto se vale a pena — a cadeia tem de ser robusta a malha importada de qualquer forma |
+
+⚠️ **A obra 1 não depende da 2**, e é a que desbloqueia tudo o que este documento descreve.

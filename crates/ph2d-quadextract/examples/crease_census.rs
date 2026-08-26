@@ -66,6 +66,31 @@ fn dihedrals(mesh: &ph2d_mesh::Mesh) -> Vec<f32> {
 /// muda a contagem de arestas, então comparar contagens absolutas compararia duas malhas de
 /// tamanhos diferentes. *Uma cauda que encolhe porque a malha encolheu não é uma cauda que
 /// se perdeu.*
+/// ⭐⭐⭐ **A TOPOLOGIA da malha: `χ`, bordo e NÃO-MANIFOLD.**
+///
+/// ⛔ **Uma aresta não-manifold parte o mapa de meias-arestas** (`(a,b) -> face`, uma face
+/// por aresta dirigida): com três faces a reclamar a mesma, o mapa guarda uma e as outras
+/// desaparecem. ⚠️ *É esse mapa que a travessia de fronteira do layout usa para pivotar* —
+/// e é por isso que esta coluna pertence ao mesmo censo que os vincos.
+fn topology(rotulo: &str, mesh: &ph2d_mesh::Mesh) {
+    let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
+        }
+    }
+    let bordo = n.values().filter(|c| **c == 1).count();
+    let nm = n.values().filter(|c| **c >= 3).count();
+    #[allow(clippy::cast_possible_wrap)]
+    let chi = mesh.vert_count() as i64 - n.len() as i64 + mesh.face_count() as i64;
+    println!(
+        "  {rotulo:<10} topologia: χ = {chi} (fechada da' 2) · {bordo} de bordo · \
+         ⛔ {nm} NAO-MANIFOLD"
+    );
+}
+
 fn report(rotulo: &str, mesh: &ph2d_mesh::Mesh) {
     let mut d = dihedrals(mesh);
     d.sort_by(f32::total_cmp);
@@ -154,10 +179,12 @@ fn main() {
         println!("{name}");
         report("ANTES", &mesh);
         resolution("ANTES", &mesh);
+        topology("ANTES", &mesh);
         let mut work = mesh.clone();
         ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
         work.triangulate();
         report("DEPOIS", &work);
         resolution("DEPOIS", &work);
+        topology("DEPOIS", &work);
     }
 }

@@ -122,6 +122,15 @@ mod inspector_player_tests;
 mod clock_forward;
 pub(crate) mod inspector_physics;
 mod inspector_physics_apply;
+/// ⭐ **A sonda de PRESENÇA** das seções do Inspector — a lei da F3 é uma varredura só, e ela
+/// precisa de perguntar aos oito builders pela mesma porta. Ver [`crate::inspector_presence_tests`].
+#[cfg(test)]
+pub(crate) mod inspector_presence_probe;
+/// ⭐ **Os DOIS seeds da paleta de componentes** (ADR-0166 / F3) — ver [`crate::component_seed`].
+/// Eles vivem nos módulos DONOS das leis (a caixa que casa com o desenho · a altura que paira), e
+/// esta linha é só o endereço por onde a tabela de seeds lhes chega.
+pub(crate) use inspector_physics_apply::seed_attached_collider;
+pub(crate) use inspector_player::{attach_player, seed_attached_player};
 mod inspector_physics_area;
 #[cfg(test)]
 mod inspector_physics_gesture_surface_tests;

@@ -9,7 +9,7 @@
 //! clique chega ao barramento, o gate da ponte prova que o marcador vira SINAL,
 //! e sem este nada prova que o barramento e o marcador se encontram.
 
-use super::inspector_player::{apply_player_edit, build_player_info};
+use super::inspector_player::{apply_player_edit, attach_player, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
@@ -65,7 +65,7 @@ fn body() -> (SimWorld, u64) {
 #[test]
 fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
     let (mut sim, bits) = body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     let e = ph2d_ecs::Entity::from_bits(bits);
 
     assert!(
@@ -102,7 +102,7 @@ fn the_emit_signals_verb_attaches_and_detaches_the_marker() {
 #[test]
 fn the_live_readout_carries_what_the_law_published() {
     let (mut sim, bits) = body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     assert!(
         build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some_and(|i| i.live.is_none()),

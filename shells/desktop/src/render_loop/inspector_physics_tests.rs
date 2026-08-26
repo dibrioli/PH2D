@@ -92,11 +92,11 @@ fn removing_a_body_detaches_both_components() {
     );
     assert!(sim.world().get::<Collider>(e).is_none(), "Collider stayed");
 
-    let info = build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-        .expect("still inspectable");
+    // ⚠️ **E a §11 FECHA** (ADR-0166 / F3): ela seguia toda entidade com `Transform` e mostrava uma
+    // face vazia; hoje segue os componentes dela. A rota de volta é o `+` do cabeçalho.
     assert!(
-        !info.has_body,
-        "the panel would still show the body rows for an entity with no body"
+        build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0).is_none(),
+        "sem corpo nem collider a §11 tem de sumir"
     );
 }
 
@@ -158,11 +158,12 @@ fn switching_shape_keeps_the_footprint() {
 #[test]
 fn the_snapshot_reflects_what_was_written() {
     let (mut sim, e) = sprite_scene();
-    let empty = build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0)
-        .expect("plain sprite is inspectable");
+    // ⚠️ **A §11 não existe sobre um sprite pelado** (ADR-0166 / F3) — este gate afirmava o
+    // contrário («a plain sprite is inspectable, or the Add button is never offered»), porque o
+    // botão *Add Physics Body* vivia numa face vazia que era a única rota. Hoje a rota é o `+`.
     assert!(
-        !empty.has_body,
-        "a plain sprite must report has_body = false, or the Add button is never offered"
+        build_physics_info(sim.world(), e.to_bits(), 0, 0, 0, false, 0, (0.0, 5.0), 0).is_none(),
+        "um sprite pelado nao tem §11"
     );
 
     apply(&mut sim, e, PhysicsFieldEdit::Add);

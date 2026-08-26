@@ -73,6 +73,24 @@ pub(crate) fn build_physics_info(
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
     let col = world.get::<Collider>(entity);
+    // ⭐ **A §11 aparece com UM DOS SEUS COMPONENTES — ou com um GESTO que só ela oferece**
+    // (ADR-0166 / F3).
+    //
+    // ⚠️ **O `Collider` sozinho conta, e não é generosidade:** um `Collider` **sem** `RigidBody` é
+    // uma PEÇA de um corpo ancestral (W-PartFace), e a seção tem uma face inteira para ela. Gatear
+    // só no corpo apagaria a autoria de toda peça composta.
+    //
+    // ⚠️ **O `rig_parts` também não é folga: é uma medição.** O gesto canónico do *Rig* é *marcar o
+    // TRONCO do personagem e clicar*, e o tronco costuma ser um nó de organização **sem corpo nem
+    // collider** (`joint_rig::plan` aceita como peça quem tem `Sprite` **ou** corpo). Gatear só nos
+    // componentes tornaria o Rig inalcançável precisamente no caso para que ele existe — e ele é um
+    // gesto sobre uma SUBÁRVORE, que a paleta de componentes não sabe exprimir.
+    //
+    // ⚠️ O `join_count` não precisa de estar aqui: ele exige `RigidBody` + `Collider` em **toda** a
+    // seleção, logo o primário já tem os dois e o primeiro ramo responde.
+    if rb.is_none() && col.is_none() && rig_parts == 0 {
+        return None;
+    }
     // Optional per-body gravity multiplier (W8); absent = the neutral 1.0.
     let gravity_scale = world
         .get::<GravityScale>(entity)

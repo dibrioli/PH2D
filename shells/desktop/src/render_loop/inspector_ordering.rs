@@ -65,6 +65,38 @@ fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> Ordering
     )
 }
 
+/// ⭐ **A §7 aparece se, e só se, o objeto tiver ALGUM componente de ordenação** (ADR-0166 / F3).
+///
+/// ⚠️ **A lista é a dos componentes que a seção EDITA** — a mesma que o [`ordering_fields`] lê e a
+/// [`apply_ordering_edit`] escreve. Uma lista mais curta esconderia uma seção com autoria dentro;
+/// uma mais longa (o `ClipChildren`, que é da mesma família e a §7 não toca) abriria a seção sobre
+/// um componente que ela não mostra.
+///
+/// ⚠️ Antes da F3 esta seção era publicada para **toda** entidade com `Transform`, e o Inspector de
+/// um objeto vazio mostrava doze seções de zeros. *Ausência de autoria não é «zeros».*
+pub(super) fn has_any_ordering(world: &World, entity: Entity) -> bool {
+    world.get::<ZIndexOverride>(entity).is_some()
+        || world.get::<ZAsRelative>(entity).is_some()
+        || world.get::<ShowBehindParent>(entity).is_some()
+        || world.get::<SortingLayer>(entity).is_some()
+        || world.get::<OrderInLayer>(entity).is_some()
+        || world.get::<YSort>(entity).is_some()
+        || world.get::<SortingGroup>(entity).is_some()
+        || world.get::<TopLevel>(entity).is_some()
+}
+
+/// Ver [`has_any_ordering`] — a §9 Sampling, com a lista dela.
+pub(super) fn has_any_sampling(world: &World, entity: Entity) -> bool {
+    world.get::<TextureFilter>(entity).is_some()
+        || world.get::<TextureRepeat>(entity).is_some()
+        || world.get::<UvTransform>(entity).is_some()
+}
+
+/// Ver [`has_any_ordering`] — a §10 Material & Blend tem **um** componente só.
+pub(super) fn has_any_blend(world: &World, entity: Entity) -> bool {
+    world.get::<ph2d_ecs::BlendMode>(entity).is_some()
+}
+
 /// BulkSelect (T2.0) for §7: which ordering fields diverge across the
 /// `selected` entities vs the `primary` tuple.
 #[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
@@ -102,6 +134,9 @@ pub(super) fn build_ordering_info(
 ) -> Option<InspectorOrderingInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    if !has_any_ordering(world, entity) {
+        return None;
+    }
     let default_layer = world
         .get_resource::<SortingLayers>()
         .map_or(2, |l| l.default_index());
@@ -304,6 +339,9 @@ pub(super) fn build_sampling_info(
 ) -> Option<InspectorSamplingInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    if !has_any_sampling(world, entity) {
+        return None;
+    }
     let (filter_tag, repeat_tag) = sampling_fields(world, entity);
     let uvt = world
         .get::<UvTransform>(entity)
@@ -405,6 +443,9 @@ pub(super) fn build_blend_info(
 ) -> Option<InspectorBlendInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    if !has_any_blend(world, entity) {
+        return None;
+    }
     let blend_tag = world
         .get::<ph2d_ecs::BlendMode>(entity)
         .map_or(0, |b| b.tag());

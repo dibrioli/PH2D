@@ -42,13 +42,11 @@ pub(crate) type PlayerRow = (&'static str, ph2d_a11y::NodeId, &'static str);
 mod table;
 pub(crate) use table::{PLAYER_CARDS, player_row_count};
 
-/// As dicas dos cinco BOTÕES da seção — a mesma lei das rows, num lugar onde não
+/// As dicas dos QUATRO BOTÕES da seção — a mesma lei das rows, num lugar onde não
 /// cabe uma tupla de row.
-pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 5] = [
-    (
-        ids::INSP_PLAYER_ADD,
-        "Turn this body into a walking, jumping character.",
-    ),
+///
+/// ⚠️ **Eram cinco até a F3** (ADR-0166): o `INSP_PLAYER_ADD` saiu com a face vazia que o continha.
+pub(crate) const PLAYER_BUTTON_TIPS: [(ph2d_a11y::NodeId, &str); 4] = [
     (
         ids::INSP_PLAYER_FIT,
         "Set Float Height from the collider, so he really hovers.",
@@ -108,17 +106,17 @@ pub(crate) fn paint_player_section(
 
     let mut yy = y + header_h;
 
-    // A FACE VAZIA — um botão, e é ele que faz o comportamento existir.
+    // ⛔ **A FACE VAZIA MORREU na F3** (ADR-0166). Ela era um botão «Make Platform Player» sobre um
+    // `has_player == false` — e era a ÚNICA rota para a feature, e é por isso que só podia ser
+    // apagada DEPOIS de o `+` do cabeçalho existir e o censo (`component_reach_tests`) o provar.
+    //
+    // ⚠️ **O que fica é uma GUARDA, não uma face.** Hoje a seção inteira não se pinta sem o
+    // componente (a shell não publica o info), então `has_player` é sempre `true` aqui — mas o
+    // painel é chrome e não pode DEPENDER disso: sem esta linha, um info com `has_player = false`
+    // pinta a seção inteira de knobs sobre um player que não existe. (Foi o que aconteceu quando a
+    // face saiu, e os dois gates do `seam_player` foram quem o disse.)
     if !info.has_player {
-        let rect = Rect::new(x, yy, w, h);
-        let btn = Button::new(ids::INSP_PLAYER_ADD, "Make Platform Player")
-            .kind(ButtonKind::Default)
-            .visual(store.button_visual(ids::INSP_PLAYER_ADD));
-        paint_button(&btn, rect, scene, text_system, theme);
-        hit_index.register(ids::INSP_PLAYER_ADD, rect);
-        // ⚠️ **Fecha o escopo ANTES de sair** — um `return` cru saltaria o `finish` e deixaria o
-        //    recorte pendurado na cena (o `Drop` do `SectionFold` grita em debug por isto).
-        return fold.finish(store, scene, hit_index, yy + h + Spacing::Sm.px());
+        return fold.finish(store, scene, hit_index, yy);
     }
 
     // **COMO ele é movido** (W-KinMove) — a primeira coisa da seção, porque toda

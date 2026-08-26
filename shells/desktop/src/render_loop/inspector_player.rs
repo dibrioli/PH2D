@@ -193,8 +193,23 @@ pub(crate) fn build_player_info(
 /// componente continua fora, e por física: ele é dirigido pela CENA (um bake,
 /// uma curva), e criar um player ali daria um personagem que a ponte não dirige
 /// (o `pose_owner` responderia `Scene`).
-fn player_section_applies(kind: BodyKind, has_player: bool) -> bool {
-    kind == BodyKind::Dynamic || (kind == BodyKind::Kinematic && has_player)
+/// ⭐ **A §14 aparece se, e só se, o componente estiver lá** (ADR-0166 / F3).
+///
+/// ⚠️ **Isto MUDOU na F3, e a mudança é a fase inteira em miniatura.** Até aqui a resposta era
+/// *"`true` para todo corpo Dynamic, COM OU SEM o componente"* — a *face vazia*, cujo botão «+ Add
+/// Platform Player» era a **única** rota para a feature. Apagá-la antes de a porta nova existir
+/// tornaria o player inalcançável; por isso a ordem da F3 é **porta primeiro, poda depois**, com o
+/// censo (`component_reach_tests`) verde entre as duas.
+///
+/// ⚠️ **E o `BodyKind` DEIXOU de mandar, o que é uma reversão deliberada.** A regra antiga também
+/// dizia *"e o corpo não pode ser `Static`"*, porque a mola do player é um impulso e um impulso não
+/// move massa infinita — mas isso era o critério de **OFERECER O BOTÃO**, e o botão mudou-se para a
+/// paleta. Mantê-lo aqui produziria o pior estado dos dois mundos: o artista anexa o componente
+/// pelo `+` e **nada aparece**. *Um componente presente e invisível lê-se como defeito*, que é
+/// exatamente a doença que a F3 existe para curar. A física continua verdadeira; ela é assunto da
+/// §11, onde o tipo do corpo se muda.
+fn player_section_applies(_kind: BodyKind, has_player: bool) -> bool {
+    has_player
 }
 
 /// Uma `float_height` que de fato FLUTUA sobre esta forma.
@@ -256,6 +271,50 @@ fn round_count(v: f32) -> u32 {
     n as u32
 }
 
+/// ⭐ **O que ANEXAR um `PlatformPlayer` faz além de inserir o ponto neutro** (ADR-0166 / F3, e é a
+/// emenda que a F0 mediu: *nem toda porta por-seção é redundante com o `+` — as que **SEMEIAM do
+/// valor vivo** fazem algo que a paleta genérica não pode fazer*).
+///
+/// ⚠️ **Ele nasce PAIRANDO, não tangente.** O ponto de partida do modelo é `0,5`, e a cápsula
+/// canónica precisa de mais que isso só para sair do chão — um personagem novo que não flutua é a
+/// primeira impressão errada, num app cuja tese é que ele paira. O `insert_default` do registo é
+/// type-erased e **não pode** saber isto: a altura certa depende do `Collider` da entidade.
+///
+/// ⚠️ **Idempotente e conservador:** ele só SOBE (`max`), então correr duas vezes não move nada e
+/// um `float_height` autorado alto nunca é rebaixado.
+pub(crate) fn seed_attached_player(sim: &mut SimWorld, entity_bits: u64) {
+    let entity = Entity::from_bits(entity_bits);
+    let shape = sim.world().get::<Collider>(entity).map(|c| c.shape);
+    let Some(mut p) = sim.world().get::<PlatformPlayer>(entity).copied() else {
+        return;
+    };
+    let Some(fit) = fitted_float(shape, p.max_slope_deg) else {
+        return;
+    };
+    if fit <= p.float_height {
+        return;
+    }
+    p.float_height = fit;
+    sim.world_mut().entity_mut(entity).insert(p);
+}
+
+/// **O gesto INTEIRO de anexar um player** — o ponto neutro do tipo, e depois o seed.
+///
+/// ⚠️ **`PlatformPlayer::default()`, nunca campo a campo.** A 1.ª versão montava o componente a
+/// partir do `PlayerConfig::STARTING_POINT` — uma SEGUNDA porta para a tradução que o `Default` já
+/// faz —, e ela apodreceu na 1.ª wave que acrescentou campos.
+///
+/// ⚠️ **Isto era o `PlayerFieldEdit::Add`, e ele MORREU na F3:** o botão «Make Platform Player»
+/// vivia dentro da §14, que hoje só se pinta **com** o componente lá — a porta ficaria fechada
+/// sobre a própria chave. Quem anexa é o `+` do cabeçalho, que chama o [`seed_attached_player`].
+pub(crate) fn attach_player(sim: &mut SimWorld, entity_bits: u64) {
+    let entity = Entity::from_bits(entity_bits);
+    sim.world_mut()
+        .entity_mut(entity)
+        .insert(PlatformPlayer::default());
+    seed_attached_player(sim, entity_bits);
+}
+
 /// **Aplica uma edição da §14.** Sem fan-out — a seção descreve UM personagem.
 pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: PlayerFieldEdit) {
     let entity = Entity::from_bits(entity_bits);
@@ -269,24 +328,6 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
     let shape = sim.world().get::<Collider>(entity).map(|c| c.shape);
 
     match edit {
-        PlayerFieldEdit::Add => {
-            // ⚠️ **`default()`, nunca campo a campo.** A 1ª versão montava o
-            // componente aqui a partir do `PlayerConfig::STARTING_POINT` — uma
-            // SEGUNDA porta para a tradução que o `Default` já faz —, e ela
-            // apodreceu na primeira wave que acrescentou campos (a W4, o pulo):
-            // o compilador pegou, mas se o `PlatformPlayer` tivesse `..default()`
-            // no meio o componente novo teria nascido com sete zeros.
-            let mut p = PlatformPlayer::default();
-            // ⚠️ **Ele nasce PAIRANDO, não tangente.** O ponto de partida do
-            // modelo é `0,5`, e a cápsula canônica precisa de mais que isso só
-            // para sair do chão — um personagem novo que não flutua é a primeira
-            // impressão errada, e o app sabe a resposta.
-            if let Some(fit) = fitted_float(shape, p.max_slope_deg) {
-                p.float_height = p.float_height.max(fit);
-            }
-            sim.world_mut().entity_mut(entity).insert(p);
-            return;
-        }
         // ⚠️ **UM gesto, DOIS campos** — ver `ids::INSP_PLAYER_MODE`. O
         // `PlayerMode` decide a LEI e quem escreve a pose; o `RigidBody.kind`
         // decide o que o corpo É no rapier. Pedir os dois ao artista, em duas
@@ -366,8 +407,7 @@ pub(crate) fn apply_player_edit(sim: &mut SimWorld, entity_bits: u64, edit: Play
         // fan-out por entidade, como faz com o `Join` da §11. Ele está nomeado
         // neste braço em vez de num `_` justamente para o dia em que alguém mover
         // a interceptação: o braço fica INERTE e visível, e não engole o verbo.
-        PlayerFieldEdit::Add
-        | PlayerFieldEdit::Remove
+        PlayerFieldEdit::Remove
         | PlayerFieldEdit::ClearRun
         | PlayerFieldEdit::RestoreRun
         | PlayerFieldEdit::EmitSignals(_) => {}

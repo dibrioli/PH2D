@@ -93,6 +93,7 @@ mod component_palette;
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod component_pieces_smoke;
 mod component_resize_smoke;
+mod component_seed;
 mod component_smoke;
 /// O gesto que cria um conector (Down numa forma, Up noutra).
 mod connector_gesture;
@@ -250,6 +251,10 @@ mod input_drop;
 mod input_handlers;
 mod input_log;
 mod input_map_drag;
+/// ⭐ **A lei da F3 num sítio só** — o Inspector mostra o que o objeto TEM (ADR-0166).
+#[cfg(test)]
+#[path = "inspector_presence_tests.rs"]
+mod inspector_presence_tests;
 mod instance_live;
 mod integration;
 mod joint_anchor_drag;

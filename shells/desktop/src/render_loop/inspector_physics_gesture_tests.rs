@@ -28,6 +28,18 @@ use super::inspector_physics::build_physics_info;
 /// dezesseis chamadas em multi-linha e o arquivo passou o cap de 600 LOC
 /// (555 → 653) **sem uma linha de teste nova**. Uma porta só, um lugar para o
 /// oitavo argumento.
+/// ⭐ **Anexa um componente pela PORTA de produção** — a mesma que o `+` do Inspector usa
+/// (ADR-0166 / F3), *com o seed*.
+///
+/// ⚠️ Existe porque a face vazia da §11 morreu: os gestos que começavam por *"clique em Add
+/// Physics Body"* passam a começar por *"escolha Rigid Body na paleta"*, e encená-los com um
+/// `world.insert()` à mão mediria a encenação em vez da porta.
+pub(super) fn attach(sim: &mut ph2d_ecs::SimWorld, e: ph2d_ecs::Entity, name: &str) {
+    let reg = crate::init::build_component_registry();
+    crate::component_attach::attach_by_name(sim, &reg, e.to_bits(), name)
+        .unwrap_or_else(|m| panic!("a porta de anexar recusou {name}: {m}"));
+}
+
 pub(super) fn snapshot(
     sim: &ph2d_ecs::SimWorld,
     e: ph2d_ecs::Entity,

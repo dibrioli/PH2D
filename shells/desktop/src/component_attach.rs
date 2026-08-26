@@ -120,24 +120,41 @@ pub(crate) fn attach_picked(
     let Some((bits, name)) = picks else {
         return;
     };
-    {
-        let Some(entity) = ph2d_ecs::Entity::try_from_bits(*bits) else {
-            return;
-        };
-        let type_id = ph2d_ecs::scene::stable_type_id(name);
-        let Some(entry) = registry.get_by_id(type_id) else {
-            toasts.push(Toast::error(format!("Unknown component: {name}")));
-            return;
-        };
-        let Some(insert) = entry.insert_default else {
-            // ⚠️ Inalcançável pela paleta (ela só oferece o que se constrói), e por isso mesmo
-            // vale um toast em vez de um `return` mudo: chegar aqui significa que a paleta e o
-            // registo discordam, e isso é um defeito de programa.
-            toasts.push(Toast::error(format!("{name} has no default to attach")));
-            return;
-        };
-        if let Err(e) = insert(sim.world_mut(), entity) {
-            toasts.push(Toast::error(format!("Attach failed: {e}")));
-        }
+    if let Err(msg) = attach_by_name(sim, registry, *bits, name) {
+        toasts.push(Toast::error(msg));
     }
+}
+
+/// ⭐ **A PORTA de anexar um componente pelo nome canónico** — o ponto neutro do tipo, e depois o
+/// seed. Devolve a mensagem de erro quando não dá.
+///
+/// ⚠️ **É `pub(crate)` de propósito:** os gates que provam *"o gesto inteiro chega a algum lugar"*
+/// têm de atravessar **esta** função, e não encenar um `world.insert()` à mão — foi assim que a
+/// autoria de física por gestos passou a ser medida depois de a face vazia da §11 morrer.
+pub(crate) fn attach_by_name(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    entity_bits: u64,
+    name: &str,
+) -> Result<(), String> {
+    let entity =
+        ph2d_ecs::Entity::try_from_bits(entity_bits).ok_or_else(|| "No such entity".to_string())?;
+    let type_id = ph2d_ecs::scene::stable_type_id(name);
+    let entry = registry
+        .get_by_id(type_id)
+        .ok_or_else(|| format!("Unknown component: {name}"))?;
+    // ⚠️ Inalcançável pela paleta (ela só oferece o que se constrói), e por isso mesmo vale uma
+    // mensagem em vez de um `return` mudo: chegar aqui significa que a paleta e o registo
+    // discordam, e isso é um defeito de programa.
+    let insert = entry
+        .insert_default
+        .ok_or_else(|| format!("{name} has no default to attach"))?;
+    insert(sim.world_mut(), entity).map_err(|e| format!("Attach failed: {e}"))?;
+    // ⭐ **E o SEED, se este componente tiver um** (ADR-0166 / F3 · a emenda medida na F0).
+    //
+    // ⚠️ **Depois do `insert_default`, nunca em vez dele:** o valor gravado continua a ser *o ponto
+    // neutro do tipo, corrigido pelo contexto*. Uma construção alternativa aqui seria a segunda
+    // porta que apodrece quando o tipo ganha campos. Ver [`crate::component_seed`].
+    crate::component_seed::seed_after_attach(sim, entity_bits, name);
+    Ok(())
 }

@@ -19,7 +19,7 @@ use ph2d_physics_ecs::{
 };
 use ph2d_render::Sprite;
 
-use super::inspector_physics_gesture_tests::snapshot;
+use super::inspector_physics_gesture_tests::{attach, snapshot};
 /// **Uma zona de ÁGUA é autorável só com gestos da UI** — o caminho de cliques inteiro,
 /// do sprite pelado ao objeto que boia.
 ///
@@ -44,15 +44,29 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
             Sprite::atlas(0, [2.0, 3.0], [0.3, 0.5, 0.9, 0.3]),
         ))
         .id();
+    // ⚠️ **O 1.º passo mudou de PORTA na F3** (ADR-0166): a §11 já não se pinta sobre um sprite
+    // pelado — a face vazia dela era a única rota, e hoje a rota é o `+` do cabeçalho.
     assert!(
-        !snapshot(&sim, pool).has_body,
-        "num sprite pelado a seção mostra a face VAZIA — é ela que oferece o Add"
+        super::inspector_physics::build_physics_info(
+            sim.world(),
+            pool.to_bits(),
+            0,
+            0,
+            0,
+            false,
+            0,
+            (0.0, 5.0),
+            0
+        )
+        .is_none(),
+        "um sprite pelado nao tem §11 — a poda da F3"
     );
 
-    // 1. Add Physics Body. ⚠️ O collider nasce CASADO com o sprite (1.00 x 1.50 = metade
-    //    de 2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do
-    //    tamanho que desenhou.
-    apply(&mut sim, pool, PhysicsFieldEdit::Add);
+    // 1. O `+` → **Rigid Body**. ⚠️ O collider nasce CASADO com o sprite (1.00 x 1.50 = metade de
+    //    2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do tamanho que
+    //    desenhou — e agora isso é o *seed* que a paleta corre, não um braço do botão que morreu.
+    attach(&mut sim, pool, "ph2d::physics::RigidBody");
+    attach(&mut sim, pool, "ph2d::physics::Collider");
     let i = snapshot(&sim, pool);
     assert_eq!(
         (i.half_x, i.half_y),

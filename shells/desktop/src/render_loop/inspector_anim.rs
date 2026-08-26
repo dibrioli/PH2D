@@ -128,6 +128,19 @@ pub(super) fn build_anim_info(
     // ⚠️ **Só uma SPRITE tem animação de frames**, porque o pool é a grelha dela. Numa entidade
     // sem `Sprite`, a seção inteira não se pinta — em vez de oferecer knobs sobre um pool vazio.
     world.get::<ph2d_render::Sprite>(entity)?;
+    // ⭐ **E a §11 aparece com UM DOS SEUS DOIS componentes** (ADR-0166 / F3) — ver a nota gémea na
+    // [`super::inspector_slice::build_slice_info`]. O «+ Add Animation» era a única rota; hoje é o
+    // `+` do cabeçalho.
+    //
+    // ⚠️ **O `SpriteAnimator` conta, e um gate foi quem o disse.** A seção tem duas metades e elas
+    // são coisas diferentes: a **biblioteca** (`SpriteAnimations`, os intervalos nomeados) e o
+    // **transporte** (`SpriteAnimator`, a cabeça de leitura). Gatear só na biblioteca esconderia a
+    // seção de uma sprite que já tem tocador — e o «Add Player» vive lá dentro.
+    if world.get::<SpriteAnimations>(entity).is_none()
+        && world.get::<SpriteAnimator>(entity).is_none()
+    {
+        return None;
+    }
     let cells = cells_of(world, entity);
     let lib = world.get::<SpriteAnimations>(entity);
     let rows: Vec<InspectorAnimRow> = lib

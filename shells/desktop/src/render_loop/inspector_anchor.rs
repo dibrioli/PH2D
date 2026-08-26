@@ -36,6 +36,19 @@ pub(super) fn build_anchor_info(
 ) -> Option<InspectorAnchorInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    // ⭐ **A §12 aparece com UM DOS SEUS DOIS componentes** (ADR-0166 / F3) — ver a nota gémea na
+    // [`super::inspector_slice::build_slice_info`]. O «+ Add Anchor» era a única rota; hoje é o `+`
+    // do cabeçalho.
+    //
+    // ⚠️ **O `AnchorMount` conta, e um gate foi quem o disse.** A seção tem DUAS metades e elas
+    // pertencem a lados opostos da montagem: o `NamedAnchorList` é *"que âncoras EU ofereço"*, e o
+    // `AnchorMount` é *"em que âncora do meu PAI eu ando"* (a linha «Rides Parent Anchor»). Um
+    // passageiro não tem lista nenhuma — gatear só nela apagaria a UI de quem monta.
+    if world.get::<NamedAnchorList>(entity).is_none()
+        && world.get::<ph2d_ecs::AnchorMount>(entity).is_none()
+    {
+        return None;
+    }
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
     let list = world.get::<NamedAnchorList>(entity);
     // **Quem monta nas âncoras DESTA entidade** — uma passagem pelos filhos, e depois a contagem

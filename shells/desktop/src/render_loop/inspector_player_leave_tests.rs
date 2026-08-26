@@ -10,7 +10,7 @@
 //! da LEI (`ph2d_physics_ecs::tests::platform_leave`) prova que aquela config
 //! muda o que o pulo entrega. Sem o do meio nada liga os outros dois.
 
-use super::inspector_player::{apply_player_edit, build_player_info};
+use super::inspector_player::{apply_player_edit, attach_player, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
@@ -69,7 +69,7 @@ fn dynamic_body() -> (SimWorld, u64) {
 #[test]
 fn the_chosen_policy_reaches_the_config_and_the_row_shows_it_back() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     // ⚠️ **Lido de volta pela INVERSA** (`of_law`), e não pela mesma `law()` que o
     // fold usa: comparar `config().jump.platform_lift == lift.law()` seria o
@@ -129,7 +129,7 @@ fn the_chosen_policy_reaches_the_config_and_the_row_shows_it_back() {
 #[test]
 fn a_tag_no_variant_claims_leaves_the_authored_policy_alone() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::PlatformLift(1));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::PlatformLift(9));
 

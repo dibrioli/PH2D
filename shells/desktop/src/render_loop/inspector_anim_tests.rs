@@ -70,12 +70,17 @@ fn the_whole_authoring_path_lands_in_the_scene() {
     let reg = registry();
     let e = sprite(&mut sim, 8);
 
-    let before = info(&sim, e);
-    assert!(!before.player_present, "sem tocador de partida");
-    assert_eq!(before.cells, 8, "o pool e' a grelha");
+    // ⚠️ **A §11 não existe sobre uma sprite SEM biblioteca nem tocador** (ADR-0166 / F3): a seção
+    // segue os componentes dela, e a rota para o primeiro é o `+` do cabeçalho.
+    assert!(
+        build_anim_info(sim.world(), e.to_bits(), 1).is_none(),
+        "uma sprite pelada nao tem §11 Animation"
+    );
 
     edit(&mut sim, e, &reg, AnimFieldEdit::AddPlayer);
-    assert!(info(&sim, e).player_present);
+    let before = info(&sim, e);
+    assert!(before.player_present);
+    assert_eq!(before.cells, 8, "o pool e' a grelha");
 
     edit(&mut sim, e, &reg, AnimFieldEdit::Add);
     let i = info(&sim, e);

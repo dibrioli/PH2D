@@ -227,27 +227,20 @@ fn expect(actions: &[EditorAction], edit: PlayerFieldEdit, what: &str) {
     );
 }
 
-/// **A FACE VAZIA é um botão, e ele CHEGA.**
+/// ⛔ **A FACE VAZIA MORREU na F3** (ADR-0166), e o que a substitui tem gate no lado da shell
+/// (`inspector_player_tests::attaching_the_player_opens_the_section_at_the_laws_starting_point`).
 ///
-/// O gate mais importante do arquivo: é este gesto que faz o comportamento
-/// existir, e sem ele o componente é inalcançável no produto.
-#[test]
-fn the_empty_face_offers_the_one_gesture_that_creates_a_player() {
-    expect(
-        &click_real(empty(), ids::INSP_PLAYER_ADD),
-        PlayerFieldEdit::Add,
-        "Make Platform Player",
-    );
-}
-
-/// ⚠️ **A face vazia NÃO oferece os knobs** — nem o Remove, nem o ajuste.
+/// Ela era um botão «Make Platform Player» sobre um `has_player == false` — *o gesto que fazia o
+/// comportamento existir*, e a **única** rota para ele. Hoje a seção inteira não se pinta sem o
+/// componente, então aquele ecrã era inalcançável; quem anexa é o `+` do cabeçalho do Inspector.
 ///
-/// A metade de AUSÊNCIA: um controle que edita o que ainda não existe é o botão
-/// morto que esta linha varre a cada wave.
+/// ⚠️ **O que sobra aqui é a metade de AUSÊNCIA**, e ela ficou mais forte: com `has_player = false`
+/// o painel não pode pintar controle NENHUM — nem o botão que o criava.
 #[test]
-fn the_empty_face_offers_nothing_else() {
+fn the_dead_empty_face_paints_nothing_at_all() {
     let rects = painted(empty());
     for id in [
+        ids::INSP_PLAYER_ADD,
         ids::INSP_PLAYER_REMOVE,
         ids::INSP_PLAYER_FIT,
         ids::INSP_PLAYER_FLOAT,
@@ -256,7 +249,7 @@ fn the_empty_face_offers_nothing_else() {
     ] {
         assert!(
             !rects.iter().any(|(n, _)| *n == id),
-            "a face vazia pintou {id:?}, que edita um player que nao existe"
+            "a §14 pintou {id:?} sobre um player que nao existe"
         );
     }
 }
@@ -1377,7 +1370,7 @@ fn the_live_readout_takes_room_only_where_there_is_a_player() {
     );
     assert!(
         mode_y(&empty_face).is_none(),
-        "a face VAZIA oferece um botão e nada mais"
+        "sem player o painel nao pinta nada — a guarda da F3 (a face vazia morreu)"
     );
 
     // E o chip da saída fica ACIMA dos nove cards — o readout e o interruptor são

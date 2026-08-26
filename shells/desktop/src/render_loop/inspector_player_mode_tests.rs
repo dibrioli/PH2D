@@ -16,7 +16,7 @@ use super::*;
 fn switching_the_mode_writes_both_halves_and_the_section_survives_the_trip() {
     use ph2d_physics_ecs::PlayerMode;
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     // Ida: o componente E o corpo.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
@@ -127,7 +127,7 @@ fn authoring_the_push_reaches_the_crate() {
             .id();
         let bits = hero.to_bits();
         // O gesto do artista, pela porta do Inspector e nada mais.
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+        attach_player(&mut sim, bits);
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(push));
@@ -176,7 +176,7 @@ fn authoring_the_push_reaches_the_crate() {
 #[test]
 fn a_negative_push_is_refused_not_inverted() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::ReactionPush(-2.0));
     let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!((info.reaction_push).abs() < 1.0e-6, "{info:?}");
@@ -240,7 +240,7 @@ fn choosing_pure_turns_the_world_into_scenery() {
             ))
             .id();
         let bits = hero.to_bits();
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+        attach_player(&mut sim, bits);
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.9));
         apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(mode_tag));
 
@@ -327,7 +327,7 @@ fn choosing_pure_turns_the_world_into_scenery() {
 #[test]
 fn the_reaction_fractions_are_fractions_in_the_text_box_too() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     let e = ph2d_ecs::Entity::from_bits(bits);
 
     for (edit, read) in [

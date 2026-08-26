@@ -9,7 +9,7 @@
 //! (`ph2d_platformer::walk::brake_tests`) prova que aquela config encurta a
 //! paragem. Sem o do meio nada liga os outros dois.
 
-use super::inspector_player::{apply_player_edit, build_player_info};
+use super::inspector_player::{apply_player_edit, attach_player, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
@@ -63,7 +63,7 @@ fn dynamic_body() -> (SimWorld, u64) {
 #[test]
 fn a_typed_brake_reaches_the_config_the_bridge_reads() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     let brake_of = |sim: &SimWorld| {
         sim.world()
@@ -104,7 +104,7 @@ fn a_typed_brake_reaches_the_config_the_bridge_reads() {
 #[test]
 fn a_negative_brake_is_clamped_at_the_boundary_so_the_row_never_lies() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::BrakeScale(-1.0));
 
     let info =

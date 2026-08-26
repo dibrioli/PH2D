@@ -46,6 +46,11 @@ pub(super) fn build_slice_info(
 ) -> Option<InspectorSliceInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    // ⭐ **A §5 aparece se, e só se, o componente estiver lá** (ADR-0166 / F3). A *face vazia* —
+    // publicar com `present: false` para mostrar o «+ Add 9-Slice» — era a ÚNICA rota para a
+    // feature, e por isso não podia ser apagada antes de existir outra. Hoje a rota é o `+` do
+    // cabeçalho, e o censo (`component_reach_tests`) prova que ela alcança este componente.
+    world.get::<SliceNine>(entity)?;
     let (present, s) = slice_of(world, entity);
     let mut mixed = InspectorSliceMixed::default();
     if selected.len() > 1 {

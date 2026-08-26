@@ -8,7 +8,7 @@
 //! quase entrou num roteiro de smoke: geometricamente correto, e destruía o
 //! tronco.
 
-use super::inspector_player::{apply_player_edit, build_player_info};
+use super::inspector_player::{apply_player_edit, attach_player, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
@@ -43,18 +43,23 @@ const CAPSULE: ColliderShape = ColliderShape::Capsule {
     radius: 0.2,
 };
 
-/// **O gesto inteiro:** um corpo Dynamic vê a face vazia, o clique cria o
-/// player, e os números vêm do ponto de partida da LEI.
+/// **O gesto inteiro:** um corpo Dynamic **não tem** a §14, anexar o componente fá-la aparecer, e
+/// os números vêm do ponto de partida da LEI.
+///
+/// ⚠️ **A primeira metade INVERTEU na F3** (ADR-0166). Este gate afirmava *"todo corpo Dynamic tem
+/// a §14"* — a **face vazia**, cujo botão «Make Platform Player» era a única rota para a feature.
+/// Hoje a seção segue o componente, e a rota é o `+` do cabeçalho.
 #[test]
-fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
+fn attaching_the_player_opens_the_section_at_the_laws_starting_point() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    let before = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
-        .expect("todo corpo Dynamic tem a §14");
-    assert!(!before.has_player, "ele ainda nao e' um player");
+    assert!(
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
+        "um corpo SEM o componente nao pode ter a §14 — era a face vazia da pre-F3"
+    );
 
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
-    let after =
-        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).expect("a secao continua viva");
+    attach_player(&mut sim, bits);
+    let after = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
+        .expect("com o componente a seccao aparece");
     assert!(after.has_player);
     assert_eq!(after.speed, 6.0, "a velocidade do ponto de partida");
     assert_eq!(after.max_slope_deg, 45.0);
@@ -69,7 +74,7 @@ fn the_empty_face_becomes_a_player_with_the_laws_starting_point() {
 #[test]
 fn a_new_player_floats_over_its_own_collider() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
         info.min_float_known,
@@ -87,7 +92,7 @@ fn a_new_player_floats_over_its_own_collider() {
 #[test]
 fn fit_to_collider_raises_a_short_float_height() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.2));
     let short = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(
@@ -105,40 +110,53 @@ fn fit_to_collider_raises_a_short_float_height() {
     );
 }
 
-/// ⚠️ **Um corpo que não é Dynamic não tem a §14, e a recusa é dupla.**
+/// ⚠️ **A §14 segue o COMPONENTE, e não o tipo do corpo** — e isto é uma REVERSÃO medida da F3.
 ///
-/// A mola é um impulso, e um impulso não move massa infinita. O pintor não a
-/// oferece (o info é `None`) **e** o barramento não a honra — porque uma recusa
-/// que mora só no laço de pintura não é recusa: os ids vivem no store a sessão
-/// inteira, e um clique roteado por outra coisa chegaria aqui.
+/// Até aqui a regra era *"Dynamic, com ou sem o componente; e nunca um Static"*, porque a mola é um
+/// impulso e um impulso não move massa infinita. Aquela era a condição de **OFERECER O BOTÃO**, e o
+/// botão mudou-se para a paleta: mantê-la produziria o pior dos dois mundos — o artista anexa o
+/// componente pelo `+` e **nada aparece**. *Um componente presente e invisível lê-se como defeito.*
+///
+/// A física continua verdadeira; ela é assunto da §11, que é onde o tipo do corpo se muda.
+///
+/// (Mutação: pôr `kind != Static` de volta na `player_section_applies` ⇒ o `Static` reprova.)
 #[test]
-fn a_static_body_gets_neither_the_section_nor_the_write() {
-    for kind in [BodyKind::Static, BodyKind::Kinematic] {
+fn the_section_follows_the_component_not_the_body_kind() {
+    for kind in [BodyKind::Static, BodyKind::Kinematic, BodyKind::Dynamic] {
         let (mut sim, bits) = body(kind, CAPSULE);
         assert!(
             build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
-            "{kind:?} nao pode receber a secao"
+            "sem o componente nao ha' §14, nem num {kind:?}"
         );
-        apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+        attach_player(&mut sim, bits);
         assert!(
             sim.world()
                 .get::<PlatformPlayer>(ph2d_ecs::Entity::from_bits(bits))
-                .is_none(),
-            "{kind:?} nao pode receber o componente nem por um clique roteado"
+                .is_some(),
+            "a porta da paleta anexa em qualquer corpo — {kind:?}"
+        );
+        assert!(
+            build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some(),
+            "com o componente a §14 aparece — mesmo num {kind:?}"
         );
     }
 }
 
-/// **Remover devolve o corpo a um corpo comum** — e a seção continua viva, com a
-/// face vazia, para que ele possa voltar a ser um player.
+/// **Remover devolve o corpo a um corpo comum — e FECHA a seção.**
+///
+/// ⚠️ **A segunda metade inverteu na F3:** ela dizia *"a seção continua viva, com a face vazia,
+/// para que ele possa voltar a ser um player"*. A rota de volta é agora o `+` do cabeçalho, e uma
+/// seção vazia sobre um componente ausente é exatamente o que a fase apaga.
 #[test]
-fn remove_gives_the_body_back_and_keeps_the_door_open() {
+fn removing_the_behaviour_closes_the_section() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
+    assert!(build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_some());
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Remove);
-    let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG)
-        .expect("a secao NAO some com o componente");
-    assert!(!info.has_player);
+    assert!(
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
+        "sem o componente a §14 tem de sumir"
+    );
 }
 
 /// ⚠️ **O amortecimento é clampado no TETO MEDIDO da lei** — acima dele o boost
@@ -150,7 +168,7 @@ fn remove_gives_the_body_back_and_keeps_the_door_open() {
 #[test]
 fn the_damping_is_clamped_to_the_measured_ceiling() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::SpringDamping(5.0));
     let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert_eq!(
@@ -168,13 +186,14 @@ fn the_damping_is_clamped_to_the_measured_ceiling() {
 /// ausência dele.
 #[test]
 fn a_box_reports_no_known_floor() {
-    let (sim, bits) = body(
+    let (mut sim, bits) = body(
         BodyKind::Dynamic,
         ColliderShape::Cuboid {
             half_x: 0.3,
             half_y: 0.5,
         },
     );
+    attach_player(&mut sim, bits);
     let info = build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).unwrap();
     assert!(!info.min_float_known);
 }
@@ -188,7 +207,7 @@ fn a_box_reports_no_known_floor() {
 #[test]
 fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CornerReach(0.2));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::LiftMomentum(0.8));
@@ -223,7 +242,7 @@ fn the_two_w10_assists_land_on_the_component_and_are_clamped() {
 #[test]
 fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     // Uma perna de pé BEM acima do que o piso pede — a premissa que separa as
     // duas respostas possíveis.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(1.50));
@@ -257,7 +276,7 @@ fn fitting_the_crouch_seeds_it_from_the_floor_not_from_the_standing_leg() {
 #[test]
 fn a_fitted_crouch_never_rises_above_the_standing_leg() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     // Uma perna deliberadamente MAIS CURTA que o piso da forma.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::FloatHeight(0.20));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.10));
@@ -301,7 +320,7 @@ fn the_player_section_is_no_home_for_a_document_wide_run() {
     // 2. E o personagem foi APAGADO, que é o caso que fecha o argumento: a
     //    corrida sobrevive a ele (está no arquivo), a seção não.
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     assert!(
         build_player_info(&sim, bits, 4.0, 0.0, None, SPRUNG).is_some(),
         "o controle: enquanto o player existe a §14 mostra a corrida"
@@ -341,7 +360,7 @@ mod mode;
 #[test]
 fn removing_the_behaviour_gives_a_plain_dynamic_body_back() {
     let (mut sim, bits) = body(BodyKind::Dynamic, CAPSULE);
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::Mode(1));
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::EmitSignals(true));
     let e = ph2d_ecs::Entity::from_bits(bits);
@@ -371,8 +390,9 @@ fn removing_the_behaviour_gives_a_plain_dynamic_body_back() {
         "⚠️ o corpo tem de VOLTAR a cair -- Kinematic sem player e' dirigido pela \
          CENA, e a §14 nao e' oferecida ali: o artista fica PRESO"
     );
-    // E a porta de volta continua aberta — a face vazia sobrevive ao Remove.
-    let info =
-        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).expect("a secao NAO some com o kind");
-    assert!(!info.has_player);
+    // ⚠️ **E a seção FECHA** (F3): a porta de volta é o `+` do cabeçalho, não uma face vazia.
+    assert!(
+        build_player_info(&sim, bits, 0.0, 0.0, None, SPRUNG).is_none(),
+        "sem o componente a §14 tem de sumir"
+    );
 }

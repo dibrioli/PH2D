@@ -10,7 +10,7 @@
 //! config faz o personagem parar na quina. Sem o do meio nada liga os outros
 //! dois.
 
-use super::inspector_player::{apply_player_edit, build_player_info};
+use super::inspector_player::{apply_player_edit, attach_player, build_player_info};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor::PlayerFieldEdit;
@@ -66,7 +66,7 @@ fn dynamic_body() -> (SimWorld, u64) {
 #[test]
 fn the_walk_off_chip_reaches_the_config_and_the_row_reads_it_back() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
 
     let cfg_allows = |sim: &SimWorld| {
         sim.world()
@@ -108,7 +108,7 @@ fn the_walk_off_chip_reaches_the_config_and_the_row_reads_it_back() {
 #[test]
 fn the_crouching_chip_reaches_the_law_and_only_tightens() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     // O agachar tem de estar AUTORADO, senao a `walk_for` devolve a config de
     // pe' e este gate ficaria verde sobre um numero que a lei nunca le'.
     apply_player_edit(&mut sim, bits, PlayerFieldEdit::CrouchHeight(0.25));
@@ -146,7 +146,7 @@ fn the_crouching_chip_reaches_the_law_and_only_tightens() {
 #[test]
 fn the_crouch_armed_flag_comes_from_the_law() {
     let (mut sim, bits) = dynamic_body();
-    apply_player_edit(&mut sim, bits, PlayerFieldEdit::Add);
+    attach_player(&mut sim, bits);
     let armed = |sim: &SimWorld| {
         build_player_info(sim, bits, 0.0, 0.0, None, SPRUNG)
             .expect("a §14 monta a info")

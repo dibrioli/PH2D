@@ -1090,3 +1090,59 @@ fecha, como o desenho promete.
 ⚠️ **E uma leitura de `11 319 ms` foi descartada como CARGA**, não como custo: a máquina
 estava em `load 12–14`, e a regra da casa diz que nenhum relógio vale acima de `~5`
 (CLAUDE.md §5). *Uma corrida só não separa ruído de custo — foram precisas três.*
+
+## §23 — ⭐⭐⭐⭐ O NÍVEL SEGUINTE tem nome e número: **LOOPS FECHADOS**
+
+**2026-08-26, depois do 3.º smoke.** O artista: *«resultado de alta qualidade. sem investir
+nos edge loops, eu diria que chegamos ao pro. para onde vamos agora para alcançar o nível
+deus?»* ⇒ por palavras dele, os **edge loops** são o que separa este módulo do nível seguinte
+— e eles eram a **única** das quatro queixas **sem régua nenhuma**.
+
+### §23.1 — A régua, e o que ela mede
+
+[`loop_census`](../../../crates/ph2d-quadextract/examples/loop_census.rs): um loop atravessa
+um vértice tomando a aresta **oposta**, o que só está definido num vértice de **valência 4**.
+⇒ **um loop morre numa singularidade**, que é exactamente o que *«área de transição de
+topologia»* quer dizer.
+
+### §23.2 — ⛔ E a hipótese óbvia foi REFUTADA na primeira medição
+
+**Os nossos loops não são curtos.** Normalizados pelo tamanho da malha eles são iguais ou
+**mais longos** que os do oráculo (`sculpt_eared`: mediana **`344`** arestas em `2 013` quads
+contra **`114`** em `4 658`). *A queixa não é sobre comprimento.*
+
+### §23.3 — ⭐⭐⭐ O que salta é outra coluna, e o corpus inteiro concorda
+
+| peça | oráculo: quads · loops · **fechados** | nosso: quads · loops · **fechados** |
+|---|---|---|
+| `cube` | `4816` · `94` · **`82`** | `3915` · `25` · ⛔ **`0`** |
+| `sculpt_eared` | `4658` · `64` · **`44`** | `2013` · `12` · ⛔ **`0`** |
+| `sculpt_hooked` | `4262` · `70` · **`46`** | `1420` · `35` · `8` |
+| `sculpt_punctured` | `4266` · `143` · `17` | `1890` · `101` · ⛔ **`0`** |
+| `sculpt_ridged` | `4109` · `38` · `10` | `2115` · `33` · ⭐ **`13`** |
+| `sculpt_wrinkled` | `4696` · `74` · **`62`** | `2021` · `19` · `7` |
+| `sphere_noisy` | `29865` · `2698` · `0` | `2104` · `16` · ⭐ `4` |
+| `sphere_shuffled` | `4428` · `67` · **`55`** | `2078` · `12` · ⛔ **`0`** |
+| `sphere_uv_96x144` | `3352` · `38` · **`26`** | `2152` · `12` · ⛔ **`0`** |
+| `torus_64x32` | `5538` · `181` · **`181`** | `807` · `102` · `24` |
+
+⭐⭐⭐ **Em 6 de 10 peças temos ZERO loops fechados** onde o oráculo tem `26`–`82`.
+⚠️ **Duas excepções, e elas são a metade honesta:** no `sculpt_ridged` fazemos **mais** (`13`
+contra `10`), e no `sphere_noisy` a corrida do oráculo é degenerada (`29 865` quads, mediana
+`7`, `2 698` loops, **`0`** fechados) — *a barra não é o oráculo em toda peça; é o oráculo
+quando ele funciona.*
+
+⇒ **Nós fazemos poucos loops LONGOS e ABERTOS; ele faz muitos MÉDIOS e FECHADOS.** Um loop
+fechado é um **anel que dá a volta na forma** — é o que um modelador quer dizer com «edge
+loop» à volta de um braço, de um chifre, de um olho. Os nossos correm e **morrem numa
+singularidade** em vez de voltarem.
+
+### §23.4 — ⭐⭐ E a direcção CONVERGE com o §19, por dois caminhos independentes
+
+Um anel fecha quando as singularidades estão arranjadas para que um circuito de vértices de
+valência 4 volte a si próprio. **Isso é decidido pelo LAYOUT/QUANTIZAÇÃO** — a mesma fase que
+o §19.4 nomeou como o único suspeito que sobra depois de o campo e o substrato terem sido
+ilibados por varredura.
+
+⇒ *Duas perguntas diferentes — «por que a grade não segue o relevo?» e «por que os anéis não
+fecham?» — apontam para a mesma fase.* É por aí que se vai.

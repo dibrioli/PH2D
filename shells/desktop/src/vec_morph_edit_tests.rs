@@ -286,3 +286,47 @@ fn the_arrow_click_reaches_the_world() {
         );
     }
 }
+
+/// ⭐⭐ **UMA SELEÇÃO DE FORMAS SOLTAS PUBLICA A FACE QUE TRAZ O BOTÃO** (plano 32 W8).
+///
+/// ⚠️ **É a costura que torna a feature alcançável de todo.** Os gates do painel provam que o botão
+/// está vivo *quando a shell publica `can_make`*; este prova que ela publica. Sem ele os dois lados
+/// ficariam verdes sobre uma seção que **nunca aparece** — o artista escolhe três formas e o painel
+/// não menciona estados.
+///
+/// **Mutação que deve sangrar:** o `publish` voltar ao `?` (devolver `None` sem Morph na seleção) —
+/// a única porta para a máquina de estados só se abriria depois de a máquina existir.
+#[test]
+fn a_plain_multi_selection_publishes_the_face_that_offers_the_button() {
+    let mut sim = SimWorld::new();
+    let mut scene = ph2d_vec_scene::VecScene::new();
+    let mut map = crate::vec_entities::VecEntityMap::default();
+    let ids: Vec<u64> = (0..3)
+        .map(|_| scene.push_path(ph2d_vec_scene::VecPath::default()))
+        .collect();
+    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
+
+    let s = publish(&sim, &scene, &map, &ids, actions())
+        .expect("tres formas soltas TEM de publicar -- e' a unica porta para a feature");
+    assert_eq!(
+        s.can_make, 3,
+        "a contagem e' o que a face usa para prometer 3x2"
+    );
+    assert!(
+        s.rows.is_empty(),
+        "ainda nao ha' maquina, entao nao ha' transicoes"
+    );
+    assert_eq!(
+        s.actions,
+        actions(),
+        "as accoes vem sempre -- o menu precisa delas"
+    );
+
+    // ⛔ E UMA forma só **não** publica: a seção não pode aparecer onde não há nada a oferecer.
+    assert!(
+        publish(&sim, &scene, &map, &ids[..1], actions()).is_none(),
+        "com UMA forma a seccao tem de sumir inteira"
+    );
+    // O CONTROLE da seleção vazia, que é o estado normal do app.
+    assert!(publish(&sim, &scene, &map, &[], actions()).is_none());
+}

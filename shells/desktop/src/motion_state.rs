@@ -78,6 +78,9 @@ pub(crate) use conferencia_mods::*;
 /// A cena `=99` — nem toda batida devolve o mesmo (folha 13, `restitution_randomness`).
 #[path = "motion_state_gpu_bounce_demo.rs"]
 mod gpu_bounce_demo;
+/// A cena `=101` — um obstaculo com quinas (folha 13, a caixa solida).
+#[path = "motion_state_gpu_box_demo.rs"]
+mod gpu_box_demo;
 /// A cena da MARCA DO IMPACTO (doc 89, folha 13), arquivo próprio pela mesma razão: ela
 /// responde *"um nó a jusante consegue saber que houve uma COLISÃO?"* — o passo mexe em `P` e
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.

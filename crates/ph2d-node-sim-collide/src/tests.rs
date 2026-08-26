@@ -38,6 +38,7 @@ fn collide_pt(
         (RADIUS_POINT, 0.0, 0.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     )
 }
 
@@ -339,6 +340,7 @@ fn a_point_sinks_by_half_its_height_and_a_disc_rests_on_top() {
             part,
             flat(),
             (0.0, 0),
+            [0.0, 0.0],
         );
         read(&out).0[1]
     };
@@ -412,6 +414,7 @@ fn the_point_mode_is_the_collider_that_shipped_before_it() {
             (RADIUS_POINT, 1.3, 2.5),
             flat(),
             (0.0, 0),
+            [0.0, 0.0],
         );
         assert_eq!(read(&want), read(&got), "shape {shape}");
     }
@@ -434,6 +437,7 @@ fn the_disc_grows_by_the_radius_and_the_bowl_shrinks_by_it() {
         (RADIUS_FIXED, 0.5, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     assert!(
         (read(&disc).0[1] - 2.5).abs() < 1e-6,
@@ -453,6 +457,7 @@ fn the_disc_grows_by_the_radius_and_the_bowl_shrinks_by_it() {
         (RADIUS_FIXED, 0.5, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     assert!(
         (read(&bowl).0[1] - 1.5).abs() < 1e-6,
@@ -478,6 +483,7 @@ fn a_particle_too_big_for_its_bowl_collapses_to_the_centre() {
         (RADIUS_FIXED, 4.0, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     let (p, _) = read(&out);
     assert!(
@@ -515,6 +521,7 @@ fn three_sizes_rest_their_bottom_edges_on_the_same_line() {
         (RADIUS_SIZE, 0.0, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     let Some(Column::Vec2(p)) = out.get("P") else {
         panic!("no `P`")
@@ -552,6 +559,7 @@ fn an_absent_size_column_is_the_unit_quad_the_renderer_draws() {
         (RADIUS_SIZE, 0.0, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     assert_eq!(
         read(&out).0[1],
@@ -577,6 +585,7 @@ fn a_resting_sized_particle_does_not_jitter_either() {
         (RADIUS_SIZE, 0.0, 1.0),
         flat(),
         (0.0, 0),
+        [0.0, 0.0],
     );
     assert_eq!(
         read(&on),

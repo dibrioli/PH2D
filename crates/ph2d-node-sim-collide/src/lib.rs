@@ -122,6 +122,18 @@ pub const SHAPE_PLANE: i32 = 0;
 pub const SHAPE_DISC: i32 = 1;
 /// A bowl: the world is everything INSIDE it (a container to rattle around in).
 pub const SHAPE_BOWL: i32 = 2;
+/// **A CAIXA SÓLIDA** (doc 89, folha 13). O mundo é tudo o que está FORA dela — a irmã
+/// rectangular do [`SHAPE_DISC`], com a inclinação que o `angle` já dava ao plano.
+///
+/// ⚠️ **MEDIDO antes de a construir** (`measure_collider_shapes`): encadear quatro planos
+/// **não** dá isto. Ele dá o CONTRÁRIO — as 121 peças de uma grelha ficam todas DENTRO do
+/// rectângulo, porque encadear colisores é uma **conjunção** de respostas (cada um empurra
+/// para o seu lado do mundo) e não a união que a célula supunha. *Um contentor e um obstáculo
+/// são operações diferentes, e a palavra «união» descrevia a errada.*
+///
+/// ⚠️ **APENDADA, nunca inserida:** o `shape` é um param que o documento GUARDA, e renumerar
+/// re-aponta em silêncio toda cena salva.
+pub const SHAPE_BOX: i32 = 3;
 
 /// **A point** — the collider as it was before the radius existed. The default, so a document
 /// that never touches this control collides exactly what it collided yesterday.
@@ -223,6 +235,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // floor this node always had, bit for bit.
         // **A ALEATORIEDADE DA RESTITUIÇÃO** (doc 89 folha 13). `0` = a restituição
         // autorada para toda a gente, bit-idêntico ao que sempre saiu. Ver [`RANDOMNESS`].
+        // **A CAIXA** (doc 89 folha 13). Extensões INTEIRAS, não metades: o artista pensa
+        // em «esta caixa tem 2 de largura», e a metade é conta de quem implementa. Ver
+        // [`SHAPE_BOX`]. Gateados à forma que os lê — noutra forma seriam knobs mortos.
+        ParamSpec {
+            name: BOX_W,
+            default: 2.0,
+        },
+        ParamSpec {
+            name: BOX_H,
+            default: 1.0,
+        },
         ParamSpec {
             name: RANDOMNESS,
             default: 0.0,
@@ -297,6 +320,7 @@ pub fn plane_normal(angle_deg: f32) -> [f32; 2] {
 /// `plane_n` is the plane's normal (from [`plane_normal`]); the Disc and the Bowl ignore it,
 /// because a circle turned is the same circle.
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn contact(
     shape: i32,
     p: [f32; 2],
@@ -305,6 +329,7 @@ fn contact(
     radius: f32,
     r: f32,
     plane_n: [f32; 2],
+    half: [f32; 2],
 ) -> Option<([f32; 2], f32)> {
     match shape {
         SHAPE_DISC | SHAPE_BOWL => {
@@ -330,6 +355,7 @@ fn contact(
                 (dist > inner).then_some(([-n[0], -n[1]], dist - inner))
             }
         }
+        SHAPE_BOX => box_contact(p, c, half, r, plane_n),
         // The plane: the world is the side its normal points to, so "out" IS the normal — and
         // what touches it is the element's near face, `sd − r`. At `angle = 0` the normal is
         // `(0, 1)` to the bit, `sd` is `p[1]`, and this is the floor test verbatim.
@@ -421,6 +447,61 @@ fn element_restitution(rest: f32, randomness: f32, seed: u32, key: u32) -> f32 {
     rest * (1.0 - randomness * hash::rand01(seed, key))
 }
 
+/// A LARGURA e a ALTURA da caixa, inteiras (ver [`SHAPE_BOX`]).
+const BOX_W: &str = "box_width";
+const BOX_H: &str = "box_height";
+
+/// **O CONTACTO COM A CAIXA SÓLIDA** — a única porta, portada termo a termo para o kernel.
+///
+/// `half` são as MEIAS extensões (a porta divide as inteiras uma vez, aqui em cima). O teste
+/// é o do rectângulo arredondado: leva a peça ao referencial da caixa, acha o ponto mais
+/// próximo DENTRO dela e mede.
+///
+/// ⚠️ **Os dois ramos são geometricamente diferentes e ambos necessários:**
+/// - **fora** — a distância ao ponto mais próximo decide, e a normal é a direcção dela. É
+///   isto que arredonda as quinas: uma peça na diagonal de um canto sai pela diagonal, não
+///   por uma das faces.
+/// - **dentro** — não há direcção «para fora» única, então sai pelo eixo de MENOR
+///   penetração. Sem este ramo uma peça que nasceu dentro da caixa ficaria presa, e é o
+///   mesmo problema que o centro exacto de um disco tem (e que o `[0, 1]` de lá resolve).
+///
+/// ⚠️ A caixa **CRESCE** pelo raio da peça, como o disco: o centro de uma peça de raio `r`
+/// nunca pode estar a menos de `r` da superfície.
+fn box_contact(
+    p: [f32; 2],
+    c: [f32; 2],
+    half: [f32; 2],
+    r: f32,
+    n: [f32; 2],
+) -> Option<([f32; 2], f32)> {
+    // `n` é a normal do plano — `(−sin, cos)` do `angle` —, então o co-seno e o seno saem
+    // dela sem recalcular trigonometria (e sem uma segunda resposta a «que ângulo é este?»).
+    let (cos, sin) = (n[1], -n[0]);
+    let (dx, dy) = (p[0] - c[0], p[1] - c[1]);
+    let (lx, ly) = (dx * cos + dy * sin, -dx * sin + dy * cos);
+    let (hw, hh) = (half[0].max(0.0), half[1].max(0.0));
+    let (qx, qy) = (lx.clamp(-hw, hw), ly.clamp(-hh, hh)); // CLAMP-OK: extensões da caixa
+    let (ex, ey) = (lx - qx, ly - qy);
+    let d2 = ex * ex + ey * ey;
+    let to_world = |v: [f32; 2]| [v[0] * cos - v[1] * sin, v[0] * sin + v[1] * cos];
+    if d2 > f32::EPSILON * f32::EPSILON {
+        let d = d2.sqrt();
+        if d >= r {
+            return None;
+        }
+        return Some((to_world([ex / d, ey / d]), r - d));
+    }
+    // Dentro: o eixo de menor penetração ganha. `signum` de zero é `1`, e o eixo exacto do
+    // centro de uma caixa tem o mesmo empate que o centro de um disco — qualquer saída serve.
+    let (px, py) = (hw - lx.abs(), hh - ly.abs());
+    let nl = if px < py {
+        [if lx < 0.0 { -1.0 } else { 1.0 }, 0.0]
+    } else {
+        [0.0, if ly < 0.0 { -1.0 } else { 1.0 }]
+    };
+    Some((to_world(nl), px.min(py) + r))
+}
+
 /// The whole node: resolve each element's contact, respond, write `P` and `vel` back.
 #[allow(clippy::too_many_arguments)]
 fn collide(
@@ -434,6 +515,8 @@ fn collide(
     part: (i32, f32, f32),
     plane_n: [f32; 2],
     rnd: (f32, u32),
+    // As MEIAS extensões da caixa — a porta divide as inteiras uma vez, no `eval`.
+    half: [f32; 2],
 ) -> Stream {
     let n = s.count();
     let mut out = Stream::new(n);
@@ -459,7 +542,7 @@ fn collide(
     let (randomness, seed) = rnd;
     for i in 0..n {
         let r = particle_radius(mode, fixed, scale, size[i]);
-        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r, plane_n) {
+        if let Some((normal, depth)) = contact(shape, p[i], height, c, radius, r, plane_n, half) {
             let (mut pi, mut vi) = (p[i], v[i]);
             #[expect(clippy::cast_sign_loss, reason = "uma identidade e' um inteiro >= 0")]
             #[expect(clippy::cast_possible_truncation, reason = "idem")]
@@ -507,6 +590,13 @@ impl NodeOp for SimCollide {
         );
         // Once per eval: it is a param, so every element shares it.
         let plane_n = plane_normal(ctx.param("angle"));
+        // ⚠️ **A metade calcula-se UMA vez**, aqui: o param é a extensão INTEIRA (é assim que
+        // o artista pensa) e a lei quer a metade. Dividir dentro do laço seria a mesma conta
+        // `n` vezes, e dividir em dois sítios seria a forma clássica de eles divergirem.
+        let half = [
+            (ctx.param(BOX_W) * 0.5).max(0.0),
+            (ctx.param(BOX_H) * 0.5).max(0.0),
+        ];
         let randomness = ctx.param(RANDOMNESS).clamp(0.0, 1.0); // CLAMP-OK: const bounds
         #[expect(clippy::cast_sign_loss, reason = "a seed is a bit pattern")]
         #[expect(clippy::cast_possible_truncation, reason = "idem")]
@@ -522,6 +612,7 @@ impl NodeOp for SimCollide {
             part,
             plane_n,
             (randomness, seed),
+            half,
         );
         ctx.emit(out);
     }
@@ -560,3 +651,7 @@ mod hash;
 #[cfg(test)]
 #[path = "randomness_tests.rs"]
 mod randomness_tests;
+
+#[cfg(test)]
+#[path = "box_tests.rs"]
+mod box_tests;

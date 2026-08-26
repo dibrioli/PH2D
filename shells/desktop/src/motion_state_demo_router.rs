@@ -406,6 +406,30 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("101") => {
+            let sinks =
+                gpu_box_demo::build_gpu_box_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[box-demo] UM OBSTACULO COM QUINAS: a mesma chuva de {} pecas dos dois lados,
+  caindo sobre obstaculos do MESMO tamanho.
+  ⚠️ PRECISA DE PLAY.
+
+  ESQUERDA  Disc  -- o obstaculo que ja' existia: tudo escorrega por uma curva
+  DIREITA   Box   -- o novo, inclinado {} graus: ha' um telhado plano e duas QUINAS
+
+  QUER MEXER? Clique no obstaculo da direita e procure a seccao «Shape» no painel do
+  «Collider»: «Box Width», «Box Height» e «Angle». O disco da esquerda tem «Radius» ({}).
+  (i) Encadear varios obstaculos NAO da' isto: quatro planos em fila prendem as pecas
+      DENTRO de um rectangulo (um contentor), que e' a operacao contraria.
+
+  DEU ERRADO se: os dois lados acabarem com o mesmo monte; se alguma peca ficar PRESA
+  dentro da caixa; se a caixa nao parecer inclinada; ou se alguma peca sumir.",
+                gpu_box_demo::COLS as u32,
+                gpu_box_demo::TILT,
+                gpu_box_demo::DISC_R,
+            );
+            sinks
+        }
         Some("100") => {
             let sinks =
                 gpu_spin_demo::build_gpu_spin_demo_document(doc, registry).unwrap_or_default();

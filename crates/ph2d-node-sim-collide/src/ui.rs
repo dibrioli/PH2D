@@ -14,10 +14,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         param: "shape",
         label: "Shape",
         min: 0.0,
-        max: 2.0,
+        max: 3.0,
         step: 1.0,
         widget: ParamWidget::Enum {
-            labels: &["Plane", "Disc", "Bowl"],
+            // ⚠️ **`Box` é APENDADA**: o `shape` é um param que o documento guarda, e
+            // renumerar re-aponta em silêncio toda cena salva.
+            labels: &["Plane", "Disc", "Bowl", "Box"],
         },
     },
     ParamUiHint {
@@ -115,6 +117,24 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
     // **A ALEATORIEDADE DA RESTITUIÇÃO** (doc 89 folha 13). ⚠️ O teto é `1` porque a lei só
     // TIRA: em `1` a partícula mais azarada não devolve nada, e não há nada abaixo de «não
     // devolve nada». Um teto maior seria um número que o produto não consegue honrar.
+    // **A CAIXA** (doc 89 folha 13). Extensões INTEIRAS — o artista pensa em «esta caixa tem
+    // 2 de largura», e a metade é conta de quem implementa (feita uma vez, no `eval`).
+    ParamUiHint {
+        param: "box_width",
+        label: "Box Width",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "box_height",
+        label: "Box Height",
+        min: 0.0,
+        max: 20.0,
+        step: 0.1,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "restitution_randomness",
         label: "Restitution Randomness",
@@ -170,6 +190,14 @@ pub(crate) static PARAM_UNITS: &[ParamUnitDecl] = &[
         unit: ParamUnit::Length,
     },
     ParamUnitDecl {
+        param: "box_width",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "box_height",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
         param: "particle_radius",
         unit: ParamUnit::Length,
     },
@@ -198,25 +226,42 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
     },
     // ⚠️ The tilt is gated by GEOMETRY, not by taste: a disc and a bowl are rotationally
     // symmetric, so an angle on them is provably a knob that changes nothing.
+    //
+    // ⚠️ **E a CAIXA entra aqui pela mesma lei, ao contrário do disco:** um rectângulo não é
+    // rotacionalmente simétrico, então o `angle` nela é um controlo real. Foi por isso que a
+    // célula da caixa dizia *"depois do ângulo"* — a pré-condição dela era este param existir,
+    // e ele já existia havia dias sem ninguém reconferir a nota.
     ph2d_node_registry::ParamGate {
         param: "angle",
         when: "shape",
-        values: &[SHAPE_PLANE],
+        values: &[SHAPE_PLANE, SHAPE_BOX],
     },
     ph2d_node_registry::ParamGate {
         param: "center_x",
         when: "shape",
-        values: &[SHAPE_DISC, SHAPE_BOWL],
+        values: &[SHAPE_DISC, SHAPE_BOWL, SHAPE_BOX],
     },
     ph2d_node_registry::ParamGate {
         param: "center_y",
         when: "shape",
-        values: &[SHAPE_DISC, SHAPE_BOWL],
+        values: &[SHAPE_DISC, SHAPE_BOWL, SHAPE_BOX],
     },
     ph2d_node_registry::ParamGate {
         param: "radius",
         when: "shape",
         values: &[SHAPE_DISC, SHAPE_BOWL],
+    },
+    // As extensões só existem na forma que as lê — noutra seriam knobs mortos, que é o que
+    // os quatro `ParamGate` acima já curaram uma vez neste nó.
+    ph2d_node_registry::ParamGate {
+        param: "box_width",
+        when: "shape",
+        values: &[SHAPE_BOX],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "box_height",
+        when: "shape",
+        values: &[SHAPE_BOX],
     },
     ph2d_node_registry::ParamGate {
         param: "particle_radius",
@@ -256,6 +301,8 @@ pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("radius", "Shape"),
     ParamGroup::new("height", "Shape"),
     ParamGroup::new("angle", "Shape"),
+    ParamGroup::new("box_width", "Shape"),
+    ParamGroup::new("box_height", "Shape"),
     // QUEM bate nele — o raio da partícula, e de onde ele sai.
     ParamGroup::new("radius_from", "Particle Size"),
     ParamGroup::new("particle_radius", "Particle Size"),

@@ -69,6 +69,33 @@ pub(super) const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20       let sc_inner = max(sc_radius - sc_r, 0.0);\n\
         \x20       if (sc_dist > sc_inner) { sc_hit = true; sc_n = -sc_dir; sc_depth = sc_dist - sc_inner; }\n\
         \x20   }\n\
+        } else if (sc_shape == SC_BOX) {\n\
+        \x20   // A CAIXA SOLIDA -- `box_contact` termo a termo. O co-seno e o seno saem da\n\
+        \x20   // normal do plano (`(-sin, cos)`), sem recalcular trigonometria: duas\n\
+        \x20   // respostas a \"que angulo e' este?\" e' como elas divergem.\n\
+        \x20   let sc_co = sc_pn.y;\n\
+        \x20   let sc_si = 0.0 - sc_pn.x;\n\
+        \x20   let sc_d = sc_p - sc_c;\n\
+        \x20   let sc_l = vec2<f32>(sc_d.x * sc_co + sc_d.y * sc_si, (0.0 - sc_d.x) * sc_si + sc_d.y * sc_co);\n\
+        \x20   let sc_hw = max(params.box_width * 0.5, 0.0);\n\
+        \x20   let sc_hh = max(params.box_height * 0.5, 0.0);\n\
+        \x20   let sc_q = vec2<f32>(clamp(sc_l.x, 0.0 - sc_hw, sc_hw), clamp(sc_l.y, 0.0 - sc_hh, sc_hh));\n\
+        \x20   let sc_e = sc_l - sc_q;\n\
+        \x20   let sc_d2 = sc_e.x * sc_e.x + sc_e.y * sc_e.y;\n\
+        \x20   var sc_nl = vec2<f32>(0.0, 1.0);\n\
+        \x20   if (sc_d2 > SC_EPS * SC_EPS) {\n\
+        \x20       let sc_dd = sqrt(sc_d2);\n\
+        \x20       if (sc_dd < sc_r) { sc_hit = true; sc_nl = sc_e / sc_dd; sc_depth = sc_r - sc_dd; }\n\
+        \x20   } else {\n\
+        \x20       // Dentro: sai pelo eixo de MENOR penetracao.\n\
+        \x20       let sc_px = sc_hw - abs(sc_l.x);\n\
+        \x20       let sc_py = sc_hh - abs(sc_l.y);\n\
+        \x20       sc_hit = true;\n\
+        \x20       if (sc_px < sc_py) { sc_nl = vec2<f32>(select(1.0, -1.0, sc_l.x < 0.0), 0.0); }\n\
+        \x20       else { sc_nl = vec2<f32>(0.0, select(1.0, -1.0, sc_l.y < 0.0)); }\n\
+        \x20       sc_depth = min(sc_px, sc_py) + sc_r;\n\
+        \x20   }\n\
+        \x20   if (sc_hit) { sc_n = vec2<f32>(sc_nl.x * sc_co - sc_nl.y * sc_si, sc_nl.x * sc_si + sc_nl.y * sc_co); }\n\
         } else {\n\
         \x20   // The plane: the world is the side the normal points to, so out IS the\n\
         \x20   // normal — and what touches it is the element's near face, `sd - r`.\n\
@@ -114,6 +141,7 @@ pub(super) const GPU_KERNEL: GpuKernel = GpuKernel {
         \x20   return f32(h >> 8u) / 16777216.0;\n\
         }\n\
         const SC_DISC: i32 = 1;\n\
+        const SC_BOX: i32 = 3;\n\
         const SC_BOWL: i32 = 2;\n\
         const SC_R_FIXED: i32 = 1;\n\
         const SC_R_SIZE: i32 = 2;\n\
@@ -196,6 +224,8 @@ pub(super) const GPU_KERNEL: GpuKernel = GpuKernel {
         "angle",
         RANDOMNESS,
         SEED,
+        BOX_W,
+        BOX_H,
     ],
     count_law: None,
     variant_by_param: None,

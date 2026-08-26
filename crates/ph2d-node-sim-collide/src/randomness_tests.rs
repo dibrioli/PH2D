@@ -31,6 +31,7 @@ fn bounced(s: &Stream, randomness: f32, seed: u32) -> Vec<f32> {
         (RADIUS_POINT, 0.0, 0.0),
         plane_normal(0.0),
         (randomness, seed),
+        [0.0, 0.0],
     );
     match out.get("vel") {
         Some(Column::Vec2(v)) => v.iter().map(|q| q[1]).collect(),

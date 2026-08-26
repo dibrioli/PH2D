@@ -23,6 +23,7 @@ fn settle(p: [f32; 2], v: [f32; 2], angle: f32, offset: f32, fr: f32) -> ([f32; 
         (RADIUS_POINT, 0.0, 0.0),
         plane_normal(angle),
         (0.0, 0),
+        [0.0, 0.0],
     );
     read(&out)
 }
@@ -127,6 +128,7 @@ fn a_particle_slides_down_a_ramp_and_stands_still_on_a_floor() {
                 (RADIUS_POINT, 0.0, 0.0),
                 plane_normal(angle),
                 (0.0, 0),
+                [0.0, 0.0],
             );
             let (np, nv) = read(&out);
             (p, v) = (np, nv);
@@ -229,6 +231,7 @@ fn the_tilt_composes_with_the_particle_radius() {
             part,
             n,
             (0.0, 0),
+            [0.0, 0.0],
         );
         let p = read(&out).0;
         p[0] * n[0] + p[1] * n[1]
@@ -262,6 +265,7 @@ fn a_disc_and_a_bowl_are_blind_to_the_tilt() {
                 (RADIUS_POINT, 0.0, 0.0),
                 plane_normal(angle),
                 (0.0, 0),
+                [0.0, 0.0],
             );
             read(&out)
         };
@@ -274,9 +278,13 @@ fn a_disc_and_a_bowl_are_blind_to_the_tilt() {
         .filter(|g| g.param == "angle")
         .map(|g| (g.when, g.values))
         .collect();
+    // ⚠️ **A CAIXA entrou nesta lista em 2026-08-26, e o gate estava certo em disparar.** A
+    // lei não é *"o tilt é do plano"* — é *"o tilt é oferecido onde é LIDO"*, e um rectângulo
+    // não é rotacionalmente simétrico, ao contrário do disco e da taça. O disco e a taça
+    // continuam cegos a ele, que é o que as duas voltas do laço acima medem.
     assert_eq!(
         gated,
-        vec![("shape", &[SHAPE_PLANE][..])],
+        vec![("shape", &[SHAPE_PLANE, SHAPE_BOX][..])],
         "the tilt is offered only where it is read"
     );
 }
@@ -301,6 +309,7 @@ fn probe_ramp_symmetry() {
                 (RADIUS_POINT, 0.0, 0.0),
                 n,
                 (0.0, 0),
+                [0.0, 0.0],
             );
             let (np, nv) = read(&out);
             (p, v) = (np, nv);

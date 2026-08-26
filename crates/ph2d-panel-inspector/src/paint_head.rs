@@ -55,19 +55,27 @@ pub(crate) fn paint_panel_head(
     // ⭐ **O `+` — a UMA porta de anexar um componente** (ADR-0166 / F3). Ele fica à esquerda do
     // X, com a mesma geometria e o mesmo look de ícone-fantasma do `Add` da Hierarquia (é o
     // precedente literal desta casa para um par close+add num cabeçalho).
-    let add_size = 30.0_f32; // LITERAL-PX-OK: quadrado do botão de cabeçalho — o mesmo da Hierarquia
-    let add_rect = Rect::new(
-        // ⚠️ Deslocado do X pela largura dele: os dois partilham a reserva do par.
-        rect.x + rect.w - PANEL_HEAD_PAD - add_size - Spacing::Xl.px(),
-        title_y - 2.0,
-        add_size,
-        add_size,
-    );
-    hit_index.register(ids::INSP_ADD_COMPONENT, add_rect);
-    let add_btn = ph2d_editor_core::widget::Button::new(ids::INSP_ADD_COMPONENT, "Add Component")
-        .icon_only(ph2d_editor_core::icons::IconId::Add)
-        .visual(store.button_visual(ids::INSP_ADD_COMPONENT));
-    ph2d_editor_core::widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
+    //
+    // ⚠️ **SÓ com um objeto sob o Inspector.** Sem seleção não há a quem anexar, e o `apply_event`
+    // recusa o clique — mas um botão que se PINTA e não faz nada é o defeito que esta fase inteira
+    // existe para apagar. *Um controlo morto sob o dedo e um ausente dão o mesmo report*, e a
+    // resposta certa é ele não estar lá. A pergunta é a mesma que o handler faz: há `Transform`?
+    if crate::state::current_inspector_transform().is_some() {
+        let add_size = 30.0_f32; // LITERAL-PX-OK: quadrado do botão de cabeçalho — o mesmo da Hierarquia
+        let add_rect = Rect::new(
+            // ⚠️ Deslocado do X pela largura dele: os dois partilham a reserva do par.
+            rect.x + rect.w - PANEL_HEAD_PAD - add_size - Spacing::Xl.px(),
+            title_y - 2.0,
+            add_size,
+            add_size,
+        );
+        hit_index.register(ids::INSP_ADD_COMPONENT, add_rect);
+        let add_btn =
+            ph2d_editor_core::widget::Button::new(ids::INSP_ADD_COMPONENT, "Add Component")
+                .icon_only(ph2d_editor_core::icons::IconId::Add)
+                .visual(store.button_visual(ids::INSP_ADD_COMPONENT));
+        ph2d_editor_core::widget::paint_button(&add_btn, add_rect, scene, text_system, theme);
+    }
 
     let sprite_for_header = current_inspector_sprite();
     let subtitle_owned;

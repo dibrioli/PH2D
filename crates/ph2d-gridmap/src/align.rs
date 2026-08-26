@@ -70,6 +70,35 @@
 //! que alguma linha de grade a percorre de facto. *Quem mede a realização é o censo de
 //! anéis na malha de saída; esta régua mede o que o mapa permite.*
 //!
+//! ⛔⛔ **E o reticulado NÃO explica o espiral — medido em 8 peças:** o `cube` tem o
+//! melhor período possível (`2`) e **zero** anéis fechados; a `wrinkled` tem o pior
+//! (`0`) e tem **sete**. *`L` agrega todas as voltas, incluindo as que linha de grade
+//! nenhuma percorre* — uma ponte que abre um anel envenena o subgrupo inteiro. Tabela:
+//! `ACHADO_ordem_das_fases` §23.11.
+//!
+//! # ⭐⭐⭐ OS CICLOS QUE RODAM — e o invariante deles é o PONTO FIXO
+//!
+//! Por peça há `12` a `32` voltas com `K ≠ 0`, e numa esfera são **quase todas**: uma
+//! volta que não encerra cone nenhum é rara. Ali `T` é grandeza de calibre e não se lê;
+//! o que se lê é o **ponto fixo** de `w ↦ R^K·w + T`:
+//!
+//! ```text
+//!     w* = (I − R^K)⁻¹ · T
+//! ```
+//!
+//! ⭐ **Ele é o sítio onde o cone está, na carta.** E a distância dele à grade inteira é
+//! invariante ao calibre — mudar a origem daquela carta desloca `w*` de um **inteiro**.
+//!
+//! ⛔⛔⛔ **E o denominador é `2`, sempre:** `det(I − R^K)` vale `2` para um quarto de
+//! volta e `4` para meia, e as inversas trazem `½` em todas as entradas. ⇒ *um ponto
+//! fixo genérico cai em MEIO-INTEIRO* — que é exactamente a meia célula que o
+//! [`crate::weld_flat`] já nomeava ao contar `det = 2` nos seus pivôs.
+//!
+//! ⚠️ Um vértice de valência `3` da malha de saída **é** um vértice de grade: a
+//! extracção tem de o pôr num inteiro. Se o mapa o quer a meia célula, alguém encaixa —
+//! e um encaixe de meia célula é um rasgo. *Esta coluna é o que verifica, de ponta a
+//! ponta, se o `singular_pinned` do G5 de facto chegou lá.*
+//!
 //! ⚠️ **Ciclos que rodam (`K ≠ 0`) são contados à parte e não entram na estatística:**
 //! ali `T` depende do calibre e o que é invariante é o **ponto fixo** — a posição do
 //! cone. *Misturá-los daria uma mediana de duas grandezas diferentes.*
@@ -147,11 +176,45 @@ pub struct Alignment {
     pub u_period: i64,
     /// ⭐⭐⭐ **O PERÍODO DA FAMÍLIA `v`** — o gerador de `L ∩ (ℤ×{0})`, em células.
     pub v_period: i64,
+    /// ⭐⭐⭐ **CONES NA GRADE** — voltas que rodam cujo ponto fixo cai num ponto inteiro.
+    pub cone_on_lattice: usize,
+    /// ⛔⛔ **CONES A MEIA CÉLULA** — o ponto fixo cai em meio-inteiro num eixo ao menos.
+    ///
+    /// ⚠️ *A extracção tem de os encaixar num inteiro, e meia célula de encaixe é um
+    /// rasgo.*
+    pub cone_half: usize,
+    /// A distância mediana do ponto fixo à grade inteira, em células.
+    pub cone_frac_p50: f32,
+    /// A pior.
+    pub cone_frac_max: f32,
     /// O maior `|T|` (norma `∞`) — o **comprimento** da maior volta, em células.
     ///
     /// ⚠️ Está aqui como **escala**, não como defeito: uma deriva de `2` numa volta de
     /// `100` células e outra numa de `4` não são o mesmo defeito.
     pub span_max: f32,
+}
+
+/// A distância de um número ao inteiro mais próximo, em `[0, ½]`.
+fn dist_to_int(x: f32) -> f32 {
+    (x - x.round()).abs()
+}
+
+/// ⭐⭐⭐ **O PONTO FIXO de `w ↦ R^K·w + g`**, para `K ≠ 0` (mod 4).
+///
+/// ⚠️ **As inversas escrevem-se à mão, e o `½` está à vista de propósito:** é ele o
+/// mecanismo do meio-inteiro. *Chamar um solver genérico esconderia exactamente o número
+/// que esta função existe para mostrar.*
+fn solve_fixed(k: i32, g: [f32; 2]) -> [f32; 2] {
+    match k.rem_euclid(4) {
+        // `I − R` = [[1,1],[−1,1]], `det = 2`.
+        1 => [0.5 * (g[0] - g[1]), 0.5 * (g[0] + g[1])],
+        // `I − R²` = `2·I`, `det = 4`.
+        2 => [0.5 * g[0], 0.5 * g[1]],
+        // `I − R³` = [[1,−1],[1,1]], `det = 2`.
+        3 => [0.5 * (g[0] + g[1]), 0.5 * (g[1] - g[0])],
+        // ⛔ Sem rotação não há ponto fixo — quem chama já o filtrou.
+        _ => [0.0, 0.0],
+    }
 }
 
 /// O máximo divisor comum, sempre `≥ 0`.
@@ -293,6 +356,7 @@ pub fn measure_alignment(cut: &CutMesh, combed: &Combed, map: &GridMap) -> Align
     // ── Um ciclo independente por aresta fora da árvore.
     let mut jumps: Vec<f32> = Vec::new();
     let mut holonomies: Vec<[i64; 2]> = Vec::new();
+    let mut cones: Vec<f32> = Vec::new();
     for (i, e) in edges.iter().enumerate() {
         if tree[i] {
             continue;
@@ -304,8 +368,22 @@ pub fn measure_alignment(cut: &CutMesh, combed: &Combed, map: &GridMap) -> Align
             continue;
         };
         out.cycles += 1;
-        if (ka + e.k - kb).rem_euclid(4) != 0 {
+        let dk = (ka + e.k - kb).rem_euclid(4);
+        if dk != 0 {
             out.turning_cycles += 1;
+            // ⭐ O ponto fixo, na carta do lado `b`: `w* = (I − R^K)⁻¹·(R^k·C_a + t − R^K·C_b)`.
+            let r = turn2(ca, e.k);
+            let rb = turn2(cb, dk);
+            let g = [r[0] + e.t[0] - rb[0], r[1] + e.t[1] - rb[1]];
+            let w = solve_fixed(dk, g);
+            let f = [dist_to_int(w[0]), dist_to_int(w[1])];
+            let d = f[0].max(f[1]);
+            if d <= INT_TOL {
+                out.cone_on_lattice += 1;
+            } else if (d - 0.5).abs() <= INT_TOL {
+                out.cone_half += 1;
+            }
+            cones.push(d);
             continue;
         }
         out.flat_cycles += 1;
@@ -330,6 +408,9 @@ pub fn measure_alignment(cut: &CutMesh, combed: &Combed, map: &GridMap) -> Align
         #[allow(clippy::cast_possible_truncation)]
         holonomies.push([d[0].round() as i64, d[1].round() as i64]);
     }
+    cones.sort_by(f32::total_cmp);
+    out.cone_frac_p50 = cones.get(cones.len() / 2).copied().unwrap_or(0.0);
+    out.cone_frac_max = cones.last().copied().unwrap_or(0.0);
     // ⭐⭐⭐ O reticulado — a leitura que não depende da árvore que escolhi.
     {
         let (p, q, r) = lattice(&holonomies);

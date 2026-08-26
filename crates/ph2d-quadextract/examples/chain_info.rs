@@ -613,6 +613,12 @@ fn main() {
             "  ⭐⭐⭐ RETICULADO das holonomias (nao depende da arvore): ordem {} | PERIODO da familia u: {} celulas · da familia v: {} — ⛔ 0 com ordem >= 1 = essa familia NAO PODE fechar em volta nenhuma",
             al.lattice_rank, al.u_period, al.v_period
         );
+        // ⭐⭐⭐ Os ciclos que RODAM: ali o invariante é o PONTO FIXO — onde o cone está
+        // na carta — e o denominador da inversa é `2`.
+        println!(
+            "  ⭐⭐⭐ CONES (ponto fixo dos {} ciclos que rodam): ⭐ {} num ponto INTEIRO · ⛔ {} a MEIA CELULA · distancia a' grade p50 {:.3} max {:.3}",
+            al.turning_cycles, al.cone_on_lattice, al.cone_half, al.cone_frac_p50, al.cone_frac_max
+        );
     }
 
     let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);

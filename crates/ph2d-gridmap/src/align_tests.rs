@@ -260,3 +260,47 @@ fn no_cycle_means_a_trivial_lattice() {
     assert_eq!(a.u_period, 0);
     assert_eq!(a.v_period, 0);
 }
+
+/// ⭐⭐⭐ **O PONTO FIXO É VERIFICADO PELA PRÓPRIA DEFINIÇÃO**, não pela minha álgebra:
+/// `R^K·w* + g` tem de dar `w*`.
+///
+/// ⚠️ *Uma inversa `2×2` escrita à mão é o sítio clássico onde um sinal troca e tudo
+/// continua a compilar.* Este gate não lê as entradas da matriz — ele fecha o laço.
+#[test]
+fn the_fixed_point_is_fixed() {
+    for k in 1..=3 {
+        for g in [[0.0, 0.0], [1.0, 0.0], [3.0, -7.0], [-2.0, 5.0]] {
+            let w = super::solve_fixed(k, g);
+            let back = crate::solve::turn2(w, k);
+            let got = [back[0] + g[0], back[1] + g[1]];
+            assert!(
+                (got[0] - w[0]).abs() < 1e-5 && (got[1] - w[1]).abs() < 1e-5,
+                "k={k} g={g:?}: R^k·w+g = {got:?} != w = {w:?}"
+            );
+        }
+    }
+}
+
+/// ⛔⛔⛔ **O DENOMINADOR É `2`, e é o mecanismo do meio-inteiro.**
+///
+/// Com `g` inteiro e soma ÍMPAR, um quarto de volta põe o cone a **meia célula** — e a
+/// extracção tem de o encaixar num inteiro. *Este gate fixa o número que a régua existe
+/// para mostrar.*
+#[test]
+fn a_quarter_turn_puts_the_cone_at_a_half_cell() {
+    let w = super::solve_fixed(1, [1.0, 0.0]);
+    assert!((super::dist_to_int(w[0]) - 0.5).abs() < 1e-6, "w = {w:?}");
+    // ⭐ E com soma PAR ele cai num inteiro — é o que separa «sempre meio» de «meio
+    // quando a paridade não bate».
+    let even = super::solve_fixed(1, [1.0, 1.0]);
+    assert!(super::dist_to_int(even[0]) < 1e-6 && super::dist_to_int(even[1]) < 1e-6);
+}
+
+/// ⭐ Meia volta divide por `2` em cada eixo: um `g` ímpar num eixo dá meia célula nesse
+/// eixo.
+#[test]
+fn a_half_turn_halves_each_axis() {
+    let w = super::solve_fixed(2, [3.0, 4.0]);
+    assert!((super::dist_to_int(w[0]) - 0.5).abs() < 1e-6);
+    assert!(super::dist_to_int(w[1]) < 1e-6);
+}

@@ -116,16 +116,28 @@ fechou»*.
 3. ⭐ **As 2 órfãs que sobram na `t003`** — caem num canto de leque com holonomia ≠ identidade,
    onde o resgate **recusa de propósito** (§21.1). A cura pede desambiguar a saída certa, não
    escolher uma rota.
-4. ⏳ A 4.ª queixa (edge loops nas transições), ainda sem régua.
+4. ⭐⭐⭐ **A 4.ª queixa (edge loops) TEM RÉGUA — e a régua mudou a morada.**
+   [`ph2d_gridmap::align`](../../../crates/ph2d-gridmap/src/align.rs), 16 gates,
+   três colunas invariantes de calibre (deriva por ciclo · reticulado das holonomias ·
+   ponto fixo dos cones). ⛔ **As três NÃO prevêem o espiral**, cada uma com o seu
+   contra-exemplo medido em 8 peças — `ACHADO_ordem_das_fases` §23.11 e §23.12.
+   ⇒ ⭐ *a estrutura INTEIRA do mapa está correcta*, e a morada do §23.10 (**G3/G5**)
+   é a errada: o mapa traz o espiral pela GEOMETRIA, não pela topologia das transições.
+   **⛔ Não mexer no G3/G5** — a fase que sobra é onde as singularidades são colocadas
+   (F2/F3), que é o item 1 desta lista.
+   ⭐ E a 3.ª coluna achou um defeito que nunca foi medido: **`19` de `152`** ciclos que
+   rodam põem um cone a **meia célula**, que a extracção tem de encaixar num inteiro —
+   *o sintoma dele é o buraco, não o espiral*, e nenhum gate de integralidade o via.
 
 ## §6 — Ficheiros
 
 `ph2d-mesh`: `manifold.rs` (+`_tests`), `feature_edges.rs` (+`_tests`), `lib.rs` ·
 `ph2d-remesh-iso`: `lib.rs`, `lib_tests.rs` · `ph2d-quadfill`: `finish.rs`, `lib.rs` ·
 `ph2d-quadextract`: `walk.rs`, `lib.rs`, `tests/gates_fixtures.rs`,
-`examples/{chain_info,manifold_census}.rs` · `ph2d-gridmap`: `weld_round.rs` ·
+`examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
+`ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§21.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.12.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

@@ -1330,3 +1330,59 @@ que soma sobre voltas que ninguém percorre responde a uma pergunta que ninguém
 
 ⚠️ **Nada disto tocou no produto:** a régua é um instrumento, o `chain_info` imprime-a, e
 a saída do botão `Quad Retopology` é byte-idêntica.
+
+### §23.12 — ⛔⛔⛔ Os CONES a meia célula: a 3.ª coluna, o 3.º contra-exemplo, e o que ela achou
+
+Os `12`–`32` ciclos que **rodam** por peça ficaram fora da §23.11 por o `T` deles ser de
+calibre. O invariante deles é o **ponto fixo** de `w ↦ R^K·w + T`, que é o sítio onde o
+cone está na carta — e a distância dele à grade é invariante (mudar a origem da carta
+desloca-o de um inteiro).
+
+⭐⭐⭐ **E o denominador é `2`, sempre:** `det(I − R^K)` vale `2` num quarto de volta e `4`
+em meia. ⇒ *um ponto fixo genérico cai em MEIO-INTEIRO* — a mesma meia célula que o
+[`weld_flat`](../../../crates/ph2d-gridmap/src/weld_flat.rs) já nomeava ao contar
+`det = 2` nos pivôs. ⚠️ Um vértice de valência `3` **é** um vértice de grade: se o mapa o
+quer a meia célula, a extracção encaixa — e meia célula de encaixe é um rasgo.
+
+| peça | cones a **meia célula** | de | loops (fechados) | voltas p50 |
+|---|---|---|---|---|
+| `sculpt_eared` | **`4`** | `17` | `12` (`0`) | `3,8×` |
+| `sphere_shuffled` | **`6`** | `16` | `12` (`0`) | `1,8×` |
+| `cube` | **`4`** | `32` | `25` (`0`) | `2,5×` |
+| `sculpt_ridged` | **`3`** | `23` | `33` (**`13`**) | `0,8×` |
+| `sculpt_wrinkled` | **`2`** | `15` | `19` (**`7`**) | `0,9×` |
+| `sphere_uv_96x144` | **`0`** | `17` | `12` (**`0`**) | `2,8×` |
+| `sculpt_hooked` | `0` | `32` | `35` (`8`) | `0,8×` |
+| `torus_64x32` | `0` | `12` | `102` (`24`) | `0,1×` |
+
+⛔ **Contra-exemplo nos dois sentidos:** a `sphere_uv` tem **zero** meias células e **zero**
+anéis fechados; a `ridged` tem **três** e tem **treze**. *A meia célula não prevê o espiral.*
+
+#### ⭐ Mas a coluna não sai vazia — ela achou um defeito que nunca foi medido
+
+**`19` de `152`** ciclos que rodam, no corpus inteiro, põem um cone a **meia célula** — e
+a extracção **tem** de os encaixar num inteiro. ⚠️ *É um rasgo por construção, e nenhum
+gate desta cadeia o via*: os gates de integralidade olham as **translações**
+(`shift_frac_max`, que é `0`), e um ponto fixo a `½` passa em todos eles. **O sintoma
+dele é o buraco, não o espiral** — e é a lista onde a próxima caça aos furos começa.
+
+#### ⛔⛔⛔ E o veredito das três colunas juntas corrige a §23.10
+
+Três grandezas invariantes de calibre, todas medidas em 8 peças:
+
+| coluna | o que diz do nosso mapa | prevê o espiral? |
+|---|---|---|
+| **deriva** por ciclo plano | `0` na mediana em todas as peças | ⛔ não |
+| **reticulado** `L` | `0` holonomias fraccionárias em **todas** | ⛔ não (o `cube` refuta) |
+| **ponto fixo** dos cones | inteiro em `133` de `152` | ⛔ não (a `sphere_uv` refuta) |
+
+⇒ ⭐⭐⭐ **A estrutura INTEIRA do mapa está essencialmente correcta**, e isso corrige o que
+a §23.10 deixou implícito. Ela concluiu, com prova, que *«o espiral vem do mapa»* — e
+estava certa; mas a morada que se leu a seguir (**G3/G5**, o andar das transições) é a
+**errada**. ⚠️ *O mapa traz o espiral pela GEOMETRIA — por onde as isolinhas correm —, não
+pela topologia das suas transições.* As transições estão inteiras, os cones estão na
+grade, e as voltas não derivam.
+
+⇒ A próxima janela **não** deve mexer no G3/G5. A morada que sobra é onde as
+singularidades são **colocadas** — o F2/F3 — e essa é a única fase da cadeia que nenhuma
+régua desta jornada tocou.

@@ -140,6 +140,7 @@ pub(crate) fn tiled_trace(
                 &bounds,
                 k,
             )?;
+            SPECIALISED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Some(ph2d_field_eval::hybrid::Hybrid::from_tree(
                 rc.compile_at(doc, r.lo, r.hi, &r.pts),
             ))
@@ -359,3 +360,14 @@ pub(crate) struct Region {
     /// Os oito cantos do tubo, **crus** — a folga é somada por `ph2d_field_eval::hull_uv`.
     pub(crate) pts: Vec<[f32; 3]>,
 }
+
+/// ⭐ **Quantas ÁRVORES o traçado especializou** — o contador que uma sonda lê.
+///
+/// ⚠️ **Ele existe porque a contagem foi ADIVINHADA e a adivinha estava errada.** Uma sonda mediu
+/// `60` especializações por quadro (a contagem de ladrilhos a `D=6`) e concluiu que a montagem
+/// custava `245 ms`; o produto compila **preguiçosamente**, e só as fatias que algum raio alcança.
+/// *Uma sonda que assume a contagem mede a sua própria suposição.*
+///
+/// ⚠️ Um incremento atómico por especialização é ruído ao lado dos milissegundos que ela custa.
+#[doc(hidden)]
+pub static SPECIALISED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);

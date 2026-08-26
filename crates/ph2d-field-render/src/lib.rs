@@ -96,6 +96,8 @@ use tiles::{SLABS, TILE, tiled_trace};
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
 pub use shade::Matcap;
 pub use shade::shade;
+#[doc(hidden)]
+pub use tiles::SPECIALISED;
 
 /// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.
 ///

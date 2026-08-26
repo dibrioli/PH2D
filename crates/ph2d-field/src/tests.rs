@@ -1119,3 +1119,122 @@ fn composing_and_undoing_a_pose_round_trip() {
         "uma escala de pai nula tem de sair finita, e saiu {out:?}"
     );
 }
+
+/// ⭐⭐⭐ **O CONTORNO ENGROSSADO É O MESMO CONTORNO, MAIS BARATO** — as duas metades da lei.
+///
+/// ⚠️ O traçado custa `0,22 ms` por **aresta**, cego aos pixels — e é por isso que a
+/// pré-visualização precisa de baixar as arestas, não só a resolução da tela.
+#[test]
+fn coarsening_a_contour_drops_edges_without_losing_the_shape() {
+    let n = 512usize;
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.5 * a.cos()) as f32, (0.5 * a.sin()) as f32]
+        })
+        .collect();
+    let fino = super::Profile::new(vec![contour], super::FillRule::NonZero, 1e-4).expect("perfil");
+
+    let grosso = super::coarsen(&fino, 168);
+    assert!(
+        grosso.segment_count() <= 168,
+        "o tecto tem de ser respeitado, e saíram {} arestas",
+        grosso.segment_count()
+    );
+    // ⚠️ **A metade que prende a FORMA**: um contorno que encolhe e deixa de ser a peça seria uma
+    // pré-visualização a mentir. A caixa é a régua mais grosseira que existe, e serve: um decimador
+    // que cortasse metade da figura move-a de imediato.
+    let (a0, a1) = fino.bounds();
+    let (b0, b1) = grosso.bounds();
+    for k in 0..2 {
+        assert!(
+            (a0[k] - b0[k]).abs() < 0.02 && (a1[k] - b1[k]).abs() < 0.02,
+            "a caixa mudou: {a0:?}..{a1:?} contra {b0:?}..{b1:?}"
+        );
+    }
+    // ⚠️ **A tolerância declarada SOBE**: ela é o erro contra a curva de origem, e a polilinha
+    // decimada erra mais. Mentir aqui envenenaria quem a usa para escolher uma grade.
+    assert!(
+        grosso.tolerance() > fino.tolerance(),
+        "a tolerância tem de subir com a decimação: {} contra {}",
+        grosso.tolerance(),
+        fino.tolerance()
+    );
+}
+
+/// ⭐ **ELA NUNCA INVENTA PONTOS, e nunca parte uma peça pequena** — a metade da recusa.
+///
+/// ⛔ Sem isto, um furo de poucos lados seria decimado abaixo do triângulo e **desapareceria** — a
+/// peça sairia sem o buraco, que é uma pré-visualização a mostrar outra coisa.
+#[test]
+fn coarsening_refuses_to_shrink_what_is_already_small() {
+    let quad: Vec<[f32; 2]> = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]];
+    let p = super::Profile::new(vec![quad], super::FillRule::NonZero, 1e-4).expect("perfil");
+    let mesmo = super::coarsen(&p, 168);
+    assert_eq!(
+        mesmo.segment_count(),
+        p.segment_count(),
+        "um contorno menor que o tecto tem de sair intacto"
+    );
+    let ainda = super::coarsen(&p, 3);
+    assert_eq!(
+        ainda.segment_count(),
+        4,
+        "um quadrado pedido a 3 arestas não pode virar um triângulo — ele fica INTEIRO"
+    );
+}
+
+/// ⭐⭐⭐ **UM FURO PEQUENO NÃO DESLIGA O ENGROSSAMENTO DA PEÇA INTEIRA** — e este gate existe
+/// porque uma prova de mutação recusou o anterior.
+///
+/// # ⛔ O que a mutação mostrou
+///
+/// Tirar a guarda dos contornos pequenos **sobrevivia** ao gate que eu tinha: um quadrado de 4
+/// pontos cai na rede do `len() < 3` de qualquer forma, e o resultado é o mesmo. *A guarda não
+/// existe para o quadrado.*
+///
+/// ⚠️ **Ela existe para o FURO num contorno grande.** O passo da decimação é o mesmo para todos os
+/// contornos — um furo e a borda de fora têm de encolher **juntos**, senão o furo escapa da peça que
+/// o continha. ⇒ com uma borda de 512 pontos o passo é `4`, e um furo de `6` pontos decimado a `4`
+/// dá **2** — abaixo do triângulo. Sem a guarda, a lei **desiste do perfil inteiro** e a peça deixa
+/// de engrossar: *um furo de 6 lados desligava a cura para toda a peça.*
+#[test]
+fn a_small_hole_does_not_switch_off_the_coarsening_of_the_whole_piece() {
+    let n = 512usize;
+    let fora: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.5 * a.cos()) as f32, (0.5 * a.sin()) as f32]
+        })
+        .collect();
+    let furo: Vec<[f32; 2]> = (0..6)
+        .map(|i| {
+            let a = std::f64::consts::TAU * f64::from(i) / 6.0;
+            [(0.08 * a.cos()) as f32, (0.08 * a.sin()) as f32]
+        })
+        .collect();
+    let p = super::Profile::new(vec![fora, furo], super::FillRule::EvenOdd, 1e-4).expect("perfil");
+    assert_eq!(
+        p.contours().len(),
+        2,
+        "a fixtura tem de ter os dois contornos"
+    );
+
+    let grosso = super::coarsen(&p, 168);
+    assert!(
+        grosso.segment_count() < p.segment_count(),
+        "a peça tem de engrossar apesar do furo pequeno: {} contra {}",
+        grosso.segment_count(),
+        p.segment_count()
+    );
+    assert_eq!(
+        grosso.contours().len(),
+        2,
+        "e o furo tem de continuar lá — uma peça que perde o buraco é outra peça"
+    );
+    assert_eq!(
+        grosso.contours()[1].len(),
+        6,
+        "o furo pequeno fica INTEIRO: decimá-lo levá-lo-ia abaixo do triângulo"
+    );
+}

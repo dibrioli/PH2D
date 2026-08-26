@@ -636,10 +636,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
   a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
   ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §58):
-  ✅ **o teto de `Resolution` sobe 16 → 32** — a régua que faltava é um contorno de curvatura
+  ✅ **o teto de `Resolution` sobe 16 → 64** — a régua que faltava é um contorno de curvatura
   **VARIÁVEL** (elipse `4:1`, ponta `16×` mais curva que o lado), e a lei `θ ≈ √(8·tol/R)` confirma-se
   em quatro pontos: **dobrar o nível divide o salto de normal por `√2`**, logo *cada duplicação deixa
-  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~11:1`** no 32). ⛔ *A 1.ª medição
+  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~22:1`** no 64). ⛔ *A 1.ª medição
   atravessou a própria trava (o `clamp` da `tolerance_ratio_for`) e leu «o achatamento saturou» — a
   cura foi partir a lei em duas, com o `span_of` público e o teto contornado de propósito* ·
   ⛔⛔⛔ **E o report seguinte do Enio (*«queda de fps e lentidão com resoluções altas»*) achou um
@@ -655,6 +655,20 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   a ESPECIALIZAÇÃO POR LADRILHO**, uma compilação por ladrilho × fatia em **cada** traçado, enquanto
   o documento não muda entre dois quadros de uma órbita. Sonda:
   `ph2d_field_eval::tests::measure_building_the_tape_against_marching_it` ·
+  ⭐⭐⭐ **E A CURA EXISTE (26/08): o contorno também ENGROSSA enquanto a mão mexe** — a lei que o
+  módulo já ship (*grosso a mexer, nítido ao assentar*), aplicada onde o custo estava. Medido, traçado
+  de movimento a `640×360`: `168` arestas `55,3 → 52,1 ms` (1,06×) · `472` `133,4 → 54,6` (2,44×) ·
+  `940` **`266,1 → 53,7`** (⭐ **4,96×**). ⭐⭐ **O custo de movimento passou a ser CONSTANTE (~53 ms)
+  qualquer que seja o nível** — antes crescia em linha recta ⇒ *subir o `Resolution` deixou de ter
+  preço em movimento*, e o teto voltou a `64` com o recurso certo (o quadro **assente**, `303 ms`).
+  ⚠️ **Ela DECIMA, não recoze** (recozer exigiria a curva de origem, que vive na cena vetorial), e
+  tem três metades que a impedem de mentir: ao **parar** volta inteiro · um **furo pequeno fica
+  intacto** (senão a lei desiste do perfil todo — *um furo de 6 lados desligava a cura para a peça
+  inteira*, e foi uma **prova de mutação** que o mostrou) · o laço compara o documento **real**.
+  ⛔ **A base fica:** mesmo agora o movimento custa `~53 ms` contra `16,7` — a pré-visualização nunca
+  alcançou `60 Hz` numa peça de perfil, em nível nenhum. ⚠️ E a especialização por ladrilho **está
+  ilibada**: sem ela o traçado vai de `58` para **`565 ms`** (10×), e o `TILE=64` já está no óptimo —
+  *o custo é trabalho real, não desperdício* ·
   ⛔⛔ **RECUSA MEDIDA: os níveis de exportação NÃO podem mandar na densidade dos quads.** A escada
   foi **implementada inteira** e medida pelo produto: `Draft` 4 717 ms ✅ · `Fine` **49 691 ms** com
   **42 arestas de bordo** ⛔ · `Max` **1 648 579 ms (27 min 29 s)** com **316 bordo e 6 não-manifold**

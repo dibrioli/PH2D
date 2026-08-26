@@ -4062,7 +4062,7 @@ fn measure_the_ladder_that_keeps_the_ratio() {
 fn measure_building_the_tape_against_marching_it() {
     use ph2d_field::{FillRule, Profile};
     let reg = hybrid::Registry::new();
-    println!("arestas | montar (Hybrid::new) | avaliar 100k pontos");
+    println!("arestas | Hybrid::new | RegionCompiler::new | 60x compile_at | avaliar 100k pontos");
     for n in [168usize, 336, 672, 1344] {
         let contour: Vec<[f32; 2]> = (0..n)
             .map(|i| {
@@ -4096,6 +4096,46 @@ fn measure_building_the_tape_against_marching_it() {
             .collect();
         build.sort_by(f64::total_cmp);
 
+        // ⭐ **O ÍNDICE DO PERFIL** — uma BVH sobre as arestas, construída UMA VEZ POR TRAÇADO
+        // dentro do `RegionCompiler::new`. Candidato ao custo fixo, e ainda por medir.
+        let _ = RegionCompiler::new(&doc);
+        let mut index: Vec<f64> = (0..5)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                let rc = RegionCompiler::new(&doc);
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                drop(rc);
+                ms
+            })
+            .collect();
+        index.sort_by(f64::total_cmp);
+
+        // ⭐⭐ **A ESPECIALIZAÇÃO POR LADRILHO** — `60` é a contagem de um quadro a `D=6`
+        // (`320×180`, ladrilhos de 64, até 4 regiões de fatia cada). É esta que sobra depois de a
+        // montagem base ter sido ilibada.
+        let rc = RegionCompiler::new(&doc);
+        let corners = [
+            [-0.7f32, -0.7, -0.7],
+            [0.7, -0.7, -0.7],
+            [-0.7, 0.7, -0.7],
+            [0.7, 0.7, 0.7],
+        ];
+        let one_tile = || {
+            let tree = rc.compile_at(&doc, [-0.7; 3], [0.7; 3], &corners);
+            drop(hybrid::Hybrid::from_tree(tree));
+        };
+        one_tile();
+        let mut tiles: Vec<f64> = (0..3)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                for _ in 0..60 {
+                    one_tile();
+                }
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect();
+        tiles.sort_by(f64::total_cmp);
+
         let mut h = hybrid::Hybrid::new(&doc, &reg);
         let pts: Vec<f32> = (0..100_000).map(|i| (i as f32) * 1.0e-5 - 0.5).collect();
         let _ = h.eval(&pts, &pts, &pts).expect("avalia");
@@ -4108,9 +4148,11 @@ fn measure_building_the_tape_against_marching_it() {
             .collect();
         march.sort_by(f64::total_cmp);
         println!(
-            "{:7} | {:19.2} | {:19.2}",
+            "{:7} | {:11.2} | {:19.2} | {:14.2} | {:19.2}",
             profile_edges(&doc),
             build[2],
+            index[2],
+            tiles[1],
             march[2]
         );
     }

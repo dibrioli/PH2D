@@ -173,3 +173,69 @@ pub(crate) fn cancels_the_inflight(
 #[cfg(test)]
 #[path = "field3d_preview_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **O CONTORNO TAMBÉM ENGROSSA ENQUANTO A MÃO MEXE** (2026-08-26).
+///
+/// # ⛔ O buraco que ela fecha, com o número
+///
+/// A lei deste módulo baixava a **resolução da tela** e deixava as **arestas do contorno**
+/// intactas. Medido: o traçado custa **`0,22 ms` por aresta** e esse custo é **cego aos pixels** —
+/// de `D=3` para `D=6` são 4× menos pixels e o tempo cai `1,3×`. ⇒ subir o `Resolution` custava fps
+/// enquanto a mão mexia, que foi o report do Enio.
+///
+/// | arestas | traçado `D=1` | piso (`D=6`) |
+/// |---:|---:|---:|
+/// | 168 | 214 ms | 39,3 ms |
+/// | 940 | 1 090 ms | 212,5 ms |
+///
+/// ⭐ ⇒ *grosso a mexer, nítido ao assentar* — **aplicado ao contorno**, que é onde o custo estava.
+/// O que o artista pediu em detalhe aparece quando ele **pára**, que é quando ele olha.
+///
+/// # ⚠️ O tecto é a resolução de OMISSÃO, e não um número novo
+///
+/// Enquanto a mão mexe, a peça é traçada com o contorno que ela teria **antes** de alguém tocar no
+/// `Resolution` — [`ph2d_field::DEFAULT_PROFILE_RESOLUTION`], `168` arestas no círculo medido.
+/// *Subir o knob deixa de ter preço em movimento; ele passa a ser inteiramente sobre o que se vê ao
+/// parar.*
+///
+/// ⚠️ **A substituição é SÓ no que vai para o traçador.** O documento que o laço compara
+/// ([`next_trace`]) continua a ser o real — trocar o comparado faria a cena parecer mudada a cada
+/// alternância entre grosso e fino, e o laço re-traçaria para sempre.
+pub(crate) fn coarse_doc(doc: &FieldDoc, asked: (u32, u32), full: (u32, u32)) -> Option<FieldDoc> {
+    if asked == full {
+        return None;
+    }
+    let mut mexeu = false;
+    let nodes: Vec<ph2d_field::Node> = doc
+        .nodes()
+        .iter()
+        .map(|node| {
+            let mut node = node.clone();
+            if let ph2d_field::NodeKind::Leaf(
+                ph2d_field::Primitive::Extrude { profile, .. }
+                | ph2d_field::Primitive::Revolve { profile },
+            ) = &mut node.kind
+            {
+                let thin = ph2d_field::coarsen(profile, PREVIEW_MAX_EDGES);
+                if thin.segment_count() < profile.segment_count() {
+                    *profile = thin;
+                    mexeu = true;
+                }
+            }
+            node
+        })
+        .collect();
+    if !mexeu {
+        return None;
+    }
+    // ⚠️ Uma raiz que o `FieldDoc::new` recuse devolve `None` — a pré-visualização volta ao
+    // documento real, que é a resposta segura. *Um preview que não nasce não pode partir a peça.*
+    FieldDoc::new(nodes, doc.root()).ok()
+}
+
+/// **Quantas arestas o contorno leva enquanto a mão mexe.**
+///
+/// ⚠️ Não é um número novo: é o que o contorno tem na resolução de **omissão** (medido, `168` no
+/// círculo do doc do [`ph2d_field::MAX_PROFILE_RESOLUTION`]) — *o preview é exactamente tão nítido
+/// como era antes de o knob existir.*
+pub(crate) const PREVIEW_MAX_EDGES: usize = 168;

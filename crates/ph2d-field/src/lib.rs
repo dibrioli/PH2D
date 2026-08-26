@@ -36,7 +36,7 @@ pub mod xform;
 pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 pub use profile::{
-    DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError,
+    DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
 };
 pub use radius::{Bound, bounding_radius, characteristic_size, round_limit, set_shape_radius};
 pub use xform::Xform;

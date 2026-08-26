@@ -2935,3 +2935,126 @@ fn measure_the_edge_pass_share() {
         );
     }
 }
+
+/// ⭐⭐⭐ **QUANTAS ÁRVORES UM QUADRO ESPECIALIZA, e quanto isso pesa** — a sonda que decide a cura
+/// do report do Enio (*"queda de fps e lentidão com resoluções altas"*).
+///
+/// # ⛔ A contagem tinha sido ADIVINHADA
+///
+/// Uma sonda anterior forçou `60` especializações (a contagem de **ladrilhos** a `D=6`) e leu
+/// `245 ms`. O produto compila **preguiçosamente** — só as fatias que algum raio alcança — então
+/// aquele número é um **tecto**, não o custo. *Uma sonda que assume a contagem mede a sua própria
+/// suposição.* Aqui a contagem vem do [`crate::SPECIALISED`], que o produto incrementa.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::measure_how_many_trees_a_frame_specialises --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_how_many_trees_a_frame_specialises() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!("arestas | divisor | tamanho | árvores | ms | ms/árvore");
+    for n in [168usize, 672] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        for d in [1u32, 3, 6] {
+            let (w, h) = (1920 / d, 1080 / d);
+            let _ = crate::trace(&doc, &reg, &cam, w, h);
+            crate::SPECIALISED.store(0, Ordering::Relaxed);
+            let t = std::time::Instant::now();
+            let _ = crate::trace(&doc, &reg, &cam, w, h);
+            let ms = t.elapsed().as_secs_f64() * 1000.0;
+            let trees = crate::SPECIALISED.load(Ordering::Relaxed);
+            println!(
+                "{n:7} | {d:7} | {w:4}x{h:4} | {trees:7} | {ms:8.1} | {:9.2}",
+                ms / (trees.max(1)) as f64
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O LADRILHO CERTO PARA UMA IMAGEM PEQUENA** — a sonda que a cura do preview precisa.
+///
+/// # ⛔ O `TILE = 64` foi escolhido a RESOLUÇÃO CHEIA
+///
+/// Medido aqui: um traçado a `1920×1080` especializa **917** árvores e um a `640×360` especializa
+/// **132**, a `0,33–0,54 ms` cada — ou seja **o traçado é quase só montagem**, e marchar os raios é
+/// barato ao lado dela.
+///
+/// ⚠️ **A especialização paga-se por AMORTIZAÇÃO** (a mesma lei que a cadeia de quads mediu no mesmo
+/// dia, noutro subsistema): o custo é por **região**, e o que o dilui são os **raios** que caem
+/// nela. Numa imagem 9× menor há 9× menos raios por ladrilho a pagar a mesma montagem — e o `64`
+/// nunca foi medido nesse regime.
+///
+/// ⚠️ **Ela usa a porta que já existe** ([`crate::trace_tiled_for_test`]), então mede o **produto**
+/// com outro parâmetro, e não uma reconstrução dele.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --release -- --exact \
+///     tests::measure_the_tile_that_fits_a_small_image --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_tile_that_fits_a_small_image() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let contour: Vec<[f32; 2]> = (0..168)
+        .map(|i| {
+            let a = std::f64::consts::TAU * f64::from(i) / 168.0;
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile,
+                half_height: 0.4,
+                round: 0.06,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    println!("tamanho | tile | slabs | árvores | ms");
+    for d in [1u32, 3, 6] {
+        let (w, h) = (1920 / d, 1080 / d);
+        for tile in [64usize, 128, 256, 512, 4096] {
+            for slabs in [1usize, 2] {
+                let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
+                crate::SPECIALISED.store(0, Ordering::Relaxed);
+                let t = std::time::Instant::now();
+                let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
+                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                println!(
+                    "{w:4}x{h:4} | {tile:4} | {slabs:5} | {:7} | {ms:8.1}",
+                    crate::SPECIALISED.load(Ordering::Relaxed)
+                );
+            }
+        }
+    }
+}

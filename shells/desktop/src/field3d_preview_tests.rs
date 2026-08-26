@@ -454,3 +454,151 @@ fn measure_a_fine_profile_at_every_divisor() {
         println!("{d:7} | {w:4}x{h:4} | {:8.1}", v[1]);
     }
 }
+
+/// ⭐⭐⭐ **O CONTORNO SÓ ENGROSSA ENQUANTO A MÃO MEXE** — as duas metades, e a segunda é a que
+/// carrega a lei.
+///
+/// ⚠️ Um preview que engrossasse **sempre** entregaria ao artista uma peça que nunca fica nítida —
+/// exactamente o oposto do que o `Resolution` existe para dar. *A nitidez que se pede aparece ao
+/// PARAR, e é aí que ela tem de estar inteira.*
+#[test]
+fn the_contour_only_coarsens_while_the_hand_is_moving() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let n = 940usize;
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.5 * a.cos()) as f32, (0.5 * a.sin()) as f32]
+        })
+        .collect();
+    let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+    let doc = FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(Primitive::Extrude {
+                profile,
+                half_height: 0.4,
+                round: 0.06,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    let full = (1920u32, 1080u32);
+
+    // ⚠️ **ASSENTOU** — o pedido é o tamanho cheio, e aí o contorno tem de vir INTEIRO.
+    assert!(
+        super::coarse_doc(&doc, full, full).is_none(),
+        "com a cena assente o traçado tem de receber o contorno inteiro — senão o Resolution nunca \
+         se vê"
+    );
+
+    // ⚠️ **A MEXER** — o pedido é menor, e o contorno engrossa até ao tecto do preview.
+    let grosso = super::coarse_doc(&doc, (640, 360), full).expect("a mexer, ele engrossa");
+    let arestas = |d: &FieldDoc| -> usize {
+        d.nodes()
+            .iter()
+            .filter_map(|node| match &node.kind {
+                ph2d_field::NodeKind::Leaf(
+                    Primitive::Extrude { profile, .. } | Primitive::Revolve { profile },
+                ) => Some(profile.segment_count()),
+                _ => None,
+            })
+            .sum()
+    };
+    assert!(
+        arestas(&grosso) <= super::PREVIEW_MAX_EDGES,
+        "o contorno de movimento tem de caber no tecto: {} arestas",
+        arestas(&grosso)
+    );
+    assert!(
+        arestas(&grosso) * 3 < arestas(&doc),
+        "e o corte tem de ser grande o suficiente para pagar: {} contra {}",
+        arestas(&grosso),
+        arestas(&doc)
+    );
+
+    // ⚠️ **E uma peça JÁ leve não paga clone nenhum** — `None` é o caminho de quem não tem o
+    // problema, que é a esmagadora maioria das peças.
+    let leve = FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("esfera");
+    assert!(
+        super::coarse_doc(&leve, (640, 360), full).is_none(),
+        "uma peça sem contorno não tem o que engrossar, e não pode pagar uma cópia por isso"
+    );
+}
+
+/// ⭐⭐⭐ **QUANTO A CURA COMPRA** — o traçado de movimento, com e sem o contorno engrossado.
+///
+/// ⚠️ **As duas configurações no MESMO processo, por mediana** — a lição que a W64 pagou: subtrair
+/// dois relógios de corridas separadas dá a soma dos dois ruídos.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release --bin ph2d-host-desktop -- \
+///     --ignored --nocapture measure_what_the_coarse_contour_buys
+/// ```
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_what_the_coarse_contour_buys() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let cam = ph2d_field_render::Orbit::default();
+    let full = (1920u32, 1080u32);
+    let median = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!("arestas | pedido | sem a cura | com a cura | ganho");
+    for n in [168usize, 472, 940] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.5 * a.cos()) as f32, (0.5 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let asked = (640u32, 360u32);
+        let grosso = super::coarse_doc(&doc, asked, full).unwrap_or_else(|| doc.clone());
+        for d in [&doc, &grosso] {
+            let _ = ph2d_field_render::trace(d, &reg, &cam, asked.0, asked.1);
+        }
+        let mut sem = Vec::new();
+        let mut com = Vec::new();
+        for _ in 0..5 {
+            let t = std::time::Instant::now();
+            let _ = ph2d_field_render::trace(&doc, &reg, &cam, asked.0, asked.1);
+            sem.push(t.elapsed().as_secs_f64() * 1000.0);
+            let t = std::time::Instant::now();
+            let _ = ph2d_field_render::trace(&grosso, &reg, &cam, asked.0, asked.1);
+            com.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        let (a, b) = (median(sem), median(com));
+        println!(
+            "{n:7} | {}x{} | {a:10.1} | {b:10.1} | {:5.2}x",
+            asked.0,
+            asked.1,
+            a / b
+        );
+    }
+}

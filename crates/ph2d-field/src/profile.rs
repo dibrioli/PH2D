@@ -130,7 +130,7 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// ⭐⭐ **E o que o nível compra, na língua de quem desenha:** como `θ ∝ 1/√R`, cada duplicação do
 /// teto deixa o artista desenhar um canto **duas vezes mais apertado** antes de ele facetar. Com a
 /// barra de `3°` que as fotos do Enio fixaram, o limite era uma elipse de **~5,5:1** no `16`; no
-/// **`32`** é **~11:1**. *O teto nunca foi sobre «detalhe»: é sobre que forma se pode desenhar.*
+/// **`64`** é **~22:1**. *O teto nunca foi sobre «detalhe»: é sobre que forma se pode desenhar.*
 ///
 /// ⚠️ **Não há joelho onde parar** — cada degrau custa `×√2` e compra `×2`, e a razão
 /// benefício/preço **melhora** ao subir. ⇒ o limite é um **recurso absoluto**, e a 1.ª redacção
@@ -178,10 +178,30 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// cada traçado. ⏸️ É a obra seguinte, e a sonda que a decide é
 /// `ph2d_field_eval::tests::measure_building_the_tape_against_marching_it`.
 ///
-/// ⇒ **o teto fica em `32`**, e o motivo é honesto: ele **dobra** o que o artista pode desenhar
-/// (canto de `~5,5:1` para `~11:1`) e o preço é um preview `5×` mais lento **numa peça que já
-/// estava acima do orçamento**. O `64` dobraria de novo e ficaria `8,6×` — e a troca deixa de ser
-/// razoável antes de a nitidez deixar de compensar.
+/// ⭐⭐⭐ **E A RAZÃO DO `32` DISSOLVEU NO MESMO DIA, porque a cura chegou.** O preview passou a
+/// **engrossar o contorno** enquanto a mão mexe ([`crate::coarsen`] +
+/// `field3d_preview::coarse_doc`) — a mesma lei que já baixava os pixels, aplicada onde o custo
+/// estava. Medido, traçado de movimento a `640×360`:
+///
+/// | arestas | sem a cura | com a cura | ganho |
+/// |---:|---:|---:|---:|
+/// | 168 (omissão) | 55,3 ms | 52,1 ms | 1,06× |
+/// | 472 | 133,4 ms | 54,6 ms | **2,44×** |
+/// | 940 | 266,1 ms | **53,7 ms** | ⭐ **4,96×** |
+///
+/// ⭐ **O custo de movimento passou a ser CONSTANTE (~53 ms) qualquer que seja o nível** — antes
+/// crescia em linha recta. *Subir este knob deixou de ter preço em movimento.*
+///
+/// ⇒ **o teto volta a `64`**, e agora o recurso que manda é de novo o **quadro assente** (`303 ms`
+/// contra a regra de meio segundo) — só que desta vez isso é **verdade**, e não a leitura do relógio
+/// errado que a 1.ª redacção fez. ⚠️ **O número mexeu-se três vezes em dois dias** (`16 → 64 → 32 →
+/// 64`) e cada passo estava certo com o que se sabia: o 1.º media o relógio errado, o 2.º media o
+/// certo **sem a cura**, e o 3.º é o mesmo relógio **com ela**. *Uma constante que se move é uma
+/// medição a acontecer; o que não pode mover-se em silêncio é a razão.*
+///
+/// ⛔ **E o defeito PRÉ-EXISTENTE fica:** mesmo agora o movimento custa `~53 ms` contra um orçamento
+/// de `16,7` — a pré-visualização continua a não alcançar `60 Hz` numa peça de perfil, em **qualquer**
+/// nível. A cura tirou a contribuição do TETO; a base é outra obra.
 ///
 /// ⚠️ E o quadro **assente** continua confortável em qualquer destes níveis (`217 ms` no `32`
 /// contra a regra de meio segundo) — *era ele que a 1.ª redacção media, e por isso ela deixou passar
@@ -193,7 +213,7 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// *"o achatamento saturou"*. *Uma sonda que atravessa o limite que quer medir mede o limite.* A
 /// cura foi partir a lei em duas: o **span** continua a ser o do produto
 /// ([`ph2d_field_profile::span_of`]), o **teto** é o que a sonda contorna.
-pub const MAX_PROFILE_RESOLUTION: u32 = 32;
+pub const MAX_PROFILE_RESOLUTION: u32 = 64;
 
 /// Como os contornos de um perfil se combinam.
 ///
@@ -371,4 +391,59 @@ fn contour_bounds(c: &[[f32; 2]]) -> ([f32; 2], [f32; 2]) {
         }
     }
     (min, max)
+}
+
+/// ⭐⭐⭐ **O MESMO CONTORNO, MAIS GROSSO — para a pré-visualização.**
+///
+/// # ⚠️ Por que ela existe
+///
+/// O traçado custa **`0,22 ms` por aresta do contorno**, medido, e esse custo é **cego aos pixels**:
+/// numa imagem 4× menor ele cai `1,3×`. ⇒ a pré-visualização, que baixa a **resolução da tela** para
+/// caber no orçamento de um quadro, **não baixava as arestas** — e subir o `Resolution` custava fps
+/// enquanto a mão mexia (report do Enio, 2026-08-26).
+///
+/// ⭐ Esta é a **mesma lei que o módulo já ship**, aplicada onde faltava: *grosso a mexer, nítido ao
+/// assentar*. O que o artista pediu em detalhe aparece quando ele **pára**, que é quando ele olha.
+///
+/// # ⚠️ Ela DECIMA, não recoze — e a diferença é o que a torna possível
+///
+/// Recozer exigiria a curva de origem, que vive na cena vetorial e **não** no documento. O que há
+/// aqui é a polilinha já achatada, e um contorno achatado por **tolerância** tem os pontos densos
+/// onde a curvatura é alta — então tirar um em cada `k` preserva o carácter da forma em vez de a
+/// achatar por igual.
+///
+/// ⚠️ **Um contorno decimado pode auto-intersectar-se** numa feição fina, e é por isso que o
+/// resultado passa pelo [`Profile::new`]: se ele recusar, volta o original. *Uma pré-visualização
+/// que estraga a peça é pior do que uma lenta.*
+///
+/// ⛔ E ela **nunca sobe**: um `max_edges` maior do que o contorno devolve o próprio contorno, sem
+/// inventar pontos que a curva não tem.
+#[must_use]
+pub fn coarsen(profile: &Profile, max_edges: usize) -> Profile {
+    let total = profile.segment_count();
+    if total <= max_edges || max_edges < 3 {
+        return profile.clone();
+    }
+    // ⚠️ O passo é o mesmo para todos os contornos: um furo e a borda de fora têm de encolher
+    // JUNTOS, senão o furo escapa da peça que o continha.
+    let step = total.div_ceil(max_edges).max(2);
+    let thinner: Vec<Vec<[f32; 2]>> = profile
+        .contours()
+        .iter()
+        .map(|c| {
+            // ⚠️ Um contorno que já é pequeno fica INTEIRO: decimá-lo levá-lo-ia abaixo do triângulo,
+            // e um furo de três lados é melhor do que um furo que desapareceu.
+            if c.len() <= 8 {
+                return c.clone();
+            }
+            c.iter().step_by(step).copied().collect::<Vec<[f32; 2]>>()
+        })
+        .collect();
+    if thinner.iter().any(|c| c.len() < 3) {
+        return profile.clone();
+    }
+    // ⚠️ A tolerância declarada sobe com o passo: ela é o erro contra a curva de origem, e a
+    // polilinha decimada erra mais. Mentir aqui envenenaria quem a usa para escolher uma grade.
+    let tol = profile.tolerance() * step as f32;
+    Profile::new(thinner, profile.fill(), tol).unwrap_or_else(|_| profile.clone())
 }

@@ -126,8 +126,19 @@ pub(crate) fn draw(
             job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             smoke.inflight = None;
         }
+        // ⚠️ O `(tw, th)` de dentro do `if let` é o tamanho PEDIDO e **sombreia** o cheio; este
+        // guarda o cheio para a lei do contorno grosso o poder comparar.
+        let full_size = (tw, th);
         if let (None, Some((tw, th))) = (&smoke.inflight, ask) {
+            // ⚠️ **O comparado é o documento REAL.** Guardar aqui o engrossado faria a cena parecer
+            // mudada em toda alternância entre grosso e fino, e o laço re-traçaria para sempre.
             smoke.requested = Some((smoke.cam, tw, th, doc.clone()));
+            // ⭐⭐⭐ **E o que vai para o traçador leva o contorno GROSSO enquanto a mão mexe**
+            // (2026-08-26) — a mesma lei que já baixava os pixels, aplicada onde o custo estava: o
+            // traçado paga `0,22 ms` por **aresta do contorno**, e esse custo é **cego aos pixels**.
+            // Ver [`crate::field3d_preview::coarse_doc`].
+            let doc = crate::field3d_preview::coarse_doc(&doc, (tw, th), full_size)
+                .unwrap_or_else(|| doc.clone());
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;
             let matcap = Arc::clone(&smoke.matcap);

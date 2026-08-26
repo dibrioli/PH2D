@@ -23,9 +23,24 @@
 //! ⚠️ **O spike lia a coluna de ticks da tabela; esta implementação NÃO PODE** — a `ph2d-ecs` tem
 //! `#![forbid(unsafe_code)]` na primeira linha, e `Table::get_changed_ticks_slice_for` devolve
 //! `&[UnsafeCell<Tick>]`. A forma segura é `EntityRef::get_change_ticks_by_id` restringida à
-//! interseção memorizada por archetype. **Se a barra não for cumprida, o número medido é o
-//! resultado** — e a decisão (relaxar a barra ou isolar o scan numa crate que permita `unsafe`,
-//! como o precedente do Opus no ADR-0116) é do Enio, com a tabela na mão.
+//! interseção memorizada por archetype.
+//!
+//! # ⭐⭐ MEDIDO (2026-08-25, `load 2,75`, três corridas seguidas): a versão SEGURA **bate** o spike
+//!
+//! | cenário | run 1 | run 2 | run 3 | barra | spike (com `unsafe`) |
+//! |---|---:|---:|---:|---:|---:|
+//! | nada mudou | `0,189` | `0,188` | `0,189` | 0,300 | 0,269 |
+//! | 10 % mudou | `0,613` | `0,619` | `0,587` | 1,000 | 0,953 |
+//!
+//! ⇒ **a pergunta *"isolar o scan numa crate que permita `unsafe`?"* (o precedente do Opus,
+//! ADR-0116) NÃO precisa de ser feita** — a cerca da crate não custou nada, e o que fechou a
+//! diferença não foi acesso mais cru: foi **tirar buscas de mapa do caminho comum** (4 → 0 por
+//! entidade; ver o cabeçalho do `incremental.rs`). *O algoritmo pagou o que o acesso não precisou
+//! de pagar.*
+//!
+//! ⚠️ **A variação entre corridas é de ±0,001 ms parado** — é isso que distingue uma medição de
+//! uma leitura: a mesma implementação a `load 3,4` deu `0,290`, e a `load 17` deu `0,627`. O
+//! número só vale com a máquina calma, e é por isso que o teste imprime o `load`.
 
 use ph2d_ecs::scene::incremental::{CaptureCache, capture_incremental};
 use ph2d_ecs::scene::registry::{ComponentRegistry, register_ecs_components};

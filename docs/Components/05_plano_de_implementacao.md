@@ -21,7 +21,7 @@
 |---|---|---|
 | F0 | O descritor de componente (+ `category`/`applies_to`) + `insert_default` — o inspector aprende a derivar | ✅ 2026-08-24 |
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
-| F2 | O undo vira incremental (protocolo das 6 condições) | ⬜ |
+| F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ⬜ |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | ⬜ |
 | F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
@@ -311,10 +311,24 @@ fase, com a matriz 3-OS verde no fechamento.
 
 **Objetivo:** a captura custa o tamanho da edição, não do mundo; a pilha guarda deltas.
 
-**Pronto quando:** bench `#[ignore]` em `crates/ph2d-ecs` (máquina calma) imprime e cumpre:
-**≤ 0,3 ms** @10 k parado · **≤ 1,0 ms** @10 % sujo · baseline de referência na tabela do bench
-(medido 2026-08-21: 0,269 / 0,953 ms; hoje: 23,8 ms). E os três gates de correção passam com prova
-de mutação.
+**Pronto quando:** ✅ **CUMPRIDO** — bench `#[ignore]` em `crates/ph2d-ecs`, `load 2,75`, três
+corridas seguidas:
+
+| cenário | run 1 | run 2 | run 3 | barra | spike 21/08 | hoje (sem incremental) |
+|---|---:|---:|---:|---:|---:|---:|
+| nada mudou | **0,189** | 0,188 | 0,189 | 0,300 | 0,269 | 23,8 |
+| 10 % mudou | **0,613** | 0,619 | 0,587 | 1,000 | 0,953 | — |
+
+⭐⭐ **A versão SEGURA bateu o spike**, e isso responde uma pergunta que esta fase teve de abrir:
+a `ph2d-ecs` tem `#![forbid(unsafe_code)]`, e o caminho rápido do bevy (ler a coluna de ticks da
+tabela) devolve `&[UnsafeCell<Tick>]` — inalcançável aqui. ⇒ **a cerca escolheu o algoritmo**, e a
+pergunta *"isolar o scan numa crate que permita `unsafe`?"* (o precedente do Opus, ADR-0116)
+**não precisa de ser feita**. O que fechou a diferença não foi acesso mais cru: foi **tirar as
+buscas de mapa do caminho comum** — quatro por entidade na 1.ª versão, **zero** hoje (a cache guia
+e o mundo responde).
+
+⚠️ **A variação entre corridas é ±0,001 ms parado**, e é isso que distingue a medição da leitura:
+a MESMA implementação deu `0,290` a `load 3,4` e `0,627` a `load 17`.
 
 **O protocolo é o do doc 04 §2.7 — as SEIS condições são lei** (cada uma nasceu de uma refutação;
 [refutacao_2](pesquisa/instancias_2026-08-21/refutacao_2_captura_incremental.md)):

@@ -35,7 +35,11 @@
 //! É isso que separa este scan do ingénuo: o ingénuo pergunta pelos ~73 tipos a cada entidade;
 //! este pergunta só pelos que o archetype de facto tem (tipicamente 4–8).
 //!
-//! *A cerca da crate não foi contornada — ela escolheu o algoritmo, e o número está no bench.*
+//! *A cerca da crate não foi contornada — ela escolheu o algoritmo.* ⭐ **E o algoritmo ganhou:**
+//! medido, a varredura segura custa `0,189 ms` a 10 k entidades paradas, contra `0,269 ms` do
+//! spike que lia a coluna crua. O que fechou a diferença não foi acesso mais cru — foi tirar as
+//! **buscas de mapa** do caminho comum (quatro por entidade na 1.ª versão, **zero** hoje: a cache
+//! guia e o mundo responde). Tabela e método em `tests/measure_incremental_capture.rs`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

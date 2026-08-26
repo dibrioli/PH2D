@@ -450,3 +450,47 @@ mesmo sítio.**
 | **2** | ⚠️ **por que a escultura sai não-manifold do nosso próprio módulo de escultura** | é um nível acima, e é decisão do dono do produto se vale a pena — a cadeia tem de ser robusta a malha importada de qualquer forma |
 
 ⚠️ **A obra 1 não depende da 2**, e é a que desbloqueia tudo o que este documento descreve.
+
+
+---
+
+## §12 — ⭐⭐⭐ A RAIZ CONFIRMADA — e as QUATRO reparações que a curam e pioram a peça
+
+O §11 nomeou a raiz. Esta secção **prova a ligação causal** e mede quatro curas.
+
+### ⭐⭐ A prova: partir os vértices leva as transições inexactas de `8` a `ZERO`
+
+Não é correlação — é o interruptor. `PH2D_MANIFOLD_REPAIR=1` e o número que perseguimos o dia
+inteiro desaparece.
+
+### ⛔ E as quatro variantes, todas piores que não reparar
+
+| variante | bordo da saída | `χ` | transições inexactas | enviesamento | `>60°` |
+|---|---|---|---|---|---|
+| ⭐ **não reparar** | **`8`** | **`1`** | ⛔ `8` | **`7,3°`** | **`5`** |
+| partir ANTES do remalhe | ⛔ `148` | ⛔ `−16` | ⭐ `0` | ⛔ `13,7°` | ⛔ `63` |
+| partir + fechar buracos | ⛔ **saída VAZIA** | — | `0` | — | — |
+| partir DEPOIS do remalhe | `8` | `0` | ⛔ `12` | ⛔ `9,1°` | ⛔ `11` |
+| deitar a aleta fora | `8` | `1` | ⛔ `10` | ⛔ `8,3°` | ⛔ `11` |
+
+### ⭐⭐⭐ O mecanismo comum, e ele fecha a família
+
+⚠️ **Todas as quatro ABREM a superfície.** Partir uma aresta ambígua numa peça fechada
+separa-a **por construção**; deitar a aleta fora deixa o buraco onde ela estava. E a medição
+diz o que ninguém tinha perguntado:
+
+> ⭐⭐ **Esta cadeia tolera pior um BURACO do que uma aresta ambígua.**
+> Com o defeito: `8` arestas de bordo na saída. Sem o defeito mas com um rasgo: `148`.
+
+⚠️ **E o remalhe CRIA não-manifold sozinho:** `4 ⇒ 0` na porta e **`2` outra vez** depois do
+laço. *Reparar a malha que entra não é reparar a malha que sai* — e quem a cadeia consome é a
+que sai.
+
+### ⇒ A obra seguinte, agora com forma
+
+**Uma cura que mantenha a peça FECHADA**: **soldar** as duas folhas na aresta ambígua
+(colapsá-la) em vez de as separar. É a única direcção que a tabela acima não fechou, e é
+outra operação — não uma afinação destas.
+
+⚠️ **A partição fica construída, gateada e desligada** (`ph2d_remesh_iso::MANIFOLD_REPAIR`,
+`PH2D_MANIFOLD_REPAIR` reabre), porque quando a solda existir ela é o controlo dela.

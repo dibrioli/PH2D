@@ -127,7 +127,14 @@ fn main() {
     );
 
     // ── ⛔⛔ FASE ZERO. Sem ela a mesma cadeia dá `10-12°`, e o defeito e' a entrada.
-    ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+    let f1 = ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+    println!(
+        "  ⭐⭐⭐ MANIFOLD na porta: {} arestas mas ⇒ {} · {} vertices partidos, {} copias",
+        f1.manifold.bad_edges_before,
+        f1.manifold.bad_edges_after,
+        f1.manifold.split_verts,
+        f1.manifold.copies
+    );
     mesh.triangulate();
     let (a50, a99) = aspect(&mesh);
     println!(

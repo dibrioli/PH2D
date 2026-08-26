@@ -80,6 +80,53 @@ const COLLAPSE_FACTOR: f32 = 4.0 / 5.0;
 /// comando do artista e uma malha patológica que oscilasse travaria a janela.
 pub const MAX_ROUNDS: usize = 24;
 
+/// ⛔⛔⛔ **ZERO — a reparação não-manifold foi construída em QUATRO formas, MEDIDA, e as
+/// quatro são PIORES que não reparar.**
+///
+/// `0` não repara (mede e reporta) · `1` parte os vértices · `2` deita fora a aleta.
+/// `PH2D_MANIFOLD_REPAIR` sobrepõe-se, para reabrir a experiência sem recompilar.
+///
+/// # ⭐⭐⭐ A raiz ESTÁ confirmada — é o «como» que falha
+///
+/// A escultura do artista entra com **2 arestas não-manifold a raio `1,30×`** (a ponta), e
+/// os furos da saída moram a `1,29×` — *o mesmo sítio*
+/// (`docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §11). ⭐ **Partir os vértices leva as
+/// transições inexactas de `8` a `0`**: a ligação causal deixou de ser hipótese.
+///
+/// # ⛔ A tabela das quatro
+///
+/// | variante | bordo da saída | `χ` | transições inexactas | enviesamento | `>60°` |
+/// |---|---|---|---|---|---|
+/// | ⭐ **não reparar** | **`8`** | **`1`** | ⛔ `8` | **`7,3°`** | **`5`** |
+/// | partir ANTES do remalhe | ⛔ `148` | ⛔ `−16` | ⭐ `0` | ⛔ `13,7°` | ⛔ `63` |
+/// | partir + fechar buracos | ⛔ **saída VAZIA** | — | `0` | — | — |
+/// | partir DEPOIS do remalhe | `8` | `0` | ⛔ `12` | ⛔ `9,1°` | ⛔ `11` |
+/// | deitar a aleta fora | `8` | `1` | ⛔ `10` | ⛔ `8,3°` | ⛔ `11` |
+///
+/// # ⭐⭐ O mecanismo comum, e ele fecha a família
+///
+/// ⚠️ **Todas as quatro ABREM a superfície.** Partir uma aresta ambígua numa peça fechada
+/// separa-a por construção; deitar a aleta fora deixa o buraco onde ela estava. E as
+/// medições dizem que **esta cadeia tolera pior um BURACO do que uma aresta ambígua**: com o
+/// defeito, `8` de bordo; sem ele mas com um rasgo, `148`.
+///
+/// ⚠️ **E o remalhe CRIA não-manifold sozinho** — `4 ⇒ 0` na porta e **`2` outra vez** depois
+/// do laço. *Reparar a malha que entra não é reparar a malha que sai.*
+///
+/// ⇒ **A cura que falta mantém a peça FECHADA**: soldar as duas folhas (colapsar a aresta
+/// ambígua) em vez de as separar. É outra operação, e é a obra seguinte.
+pub const MANIFOLD_REPAIR: u8 = 0;
+
+/// Se a variante `1` fecha os buracos que abriu. ⛔ Medido: leva a saída a **vazia**.
+const FILL_AFTER_SPLIT: bool = false;
+
+fn repair_mode() -> u8 {
+    std::env::var("PH2D_MANIFOLD_REPAIR")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(MANIFOLD_REPAIR)
+}
+
 /// O que o passe fez.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Report {
@@ -91,6 +138,9 @@ pub struct Report {
     pub rounds: usize,
     /// Quantas trocas de aresta (flips) o passe fez ao todo.
     pub flips: usize,
+    /// ⭐⭐⭐ **A reparação não-manifold da porta** — ⚠️ `bad_edges_after > 0` é vermelho:
+    /// a cadeia inteira a jusante assume duas faces por aresta.
+    pub manifold: ph2d_mesh::ManifoldReport,
 }
 
 /// **O ALVO DE ARESTA desta malha** — `ALPHA × diagonal da caixa`.
@@ -123,11 +173,6 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
     let verts_before = mesh.vert_count();
     mesh.triangulate();
 
-    // ⚠️ **A superfície de referência é uma CÓPIA do estado de entrada**, tirada
-    // depois do `triangulate` e antes da primeira edição. Reprojetar contra a
-    // malha que está a ser editada seria pedir a uma superfície que se corrigisse
-    // contra si mesma — o alisamento então encolhe sem nada a segurá-lo, que é o
-    // mecanismo já medido e registrado na recusa 13 do ADR-0160.
     let reference = mesh.clone();
     let target = target_edge(mesh, alpha);
 
@@ -175,11 +220,57 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
         last = now;
     }
 
+    // ⭐⭐⭐ **A REPARAÇÃO NÃO-MANIFOLD, e ela vem DEPOIS do remalhe.**
+    //
+    // ⛔⛔ **Uma aresta reclamada por três faces mente para todo o resto do motor.** O mapa
+    // de meias-arestas que o layout percorre é `(a, b) → face`, **uma** face por aresta
+    // dirigida, e com três a reclamar a mesma ele guarda uma: a travessia de fronteira
+    // entra na face errada ou morre. Medido 2026-08-25 na escultura do artista: **2 arestas
+    // não-manifold a raio `1,30×`** — a ponta — e os furos da saída a raio `1,29×`. *O mesmo
+    // sítio.* Ver `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §11.
+    //
+    // ⚠️⚠️ **DEPOIS e não antes, e a medição obrigou:** reparar à entrada não pega, porque
+    // **o próprio remalhe cria arestas não-manifold** — medido na peça do artista, `4 ⇒ 0` na
+    // porta e **`2` outra vez** depois do laço. *Reparar a malha que entra não é reparar a
+    // malha que sai*, e quem a cadeia consome é a que sai.
+    //
+    // ⚠️ **Aqui e não no chamador**, porque este é o passe por onde **toda** a cadeia entra
+    // — e uma reparação que dependa de alguém se lembrar de a chamar é uma reparação que um
+    // dos chamadores não faz.
+    let manifold = match repair_mode() {
+        1 => ph2d_mesh::split_non_manifold(mesh),
+        2 => ph2d_mesh::drop_extra_faces(mesh),
+        _ => ph2d_mesh::ManifoldReport {
+            bad_edges_before: ph2d_mesh::non_manifold_edges(mesh),
+            bad_edges_after: ph2d_mesh::non_manifold_edges(mesh),
+            ..ph2d_mesh::ManifoldReport::default()
+        },
+    };
+    // ⭐⭐⭐ **E FECHAR o que a partição abriu.**
+    //
+    // ⛔⛔ **Partir uma aresta ambígua RASGA a superfície**, e um rasgo é pior que o defeito
+    // que ele cura: medido 2026-08-25 na peça do artista, partir sem fechar leva as arestas
+    // de bordo da saída de `8` para **`148`** e o `χ` de `1` para **`−16`**. ⚠️ *A cura
+    // certa aplicada sem a metade que a completa é uma cura pior que a doença.*
+    //
+    // ⚠️ **Só corre se houve partição** — numa malha limpa nada foi aberto, e chamar o
+    // fechador ali seria dar-lhe uma malha para julgar que ele não tem de julgar.
+    if manifold.copies > 0 && repair_mode() == 1 && FILL_AFTER_SPLIT {
+        ph2d_mesh::fill_holes(mesh);
+    }
+
+    // ⚠️ **A superfície de referência é uma CÓPIA do estado de entrada**, tirada
+    // depois do `triangulate` e antes da primeira edição. Reprojetar contra a
+    // malha que está a ser editada seria pedir a uma superfície que se corrigisse
+    // contra si mesma — o alisamento então encolhe sem nada a segurá-lo, que é o
+    // mecanismo já medido e registrado na recusa 13 do ADR-0160.
+
     Report {
         verts_before,
         verts_after: mesh.vert_count(),
         rounds,
         flips,
+        manifold,
     }
 }
 

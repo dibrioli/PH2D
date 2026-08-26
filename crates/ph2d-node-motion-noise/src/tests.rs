@@ -7,6 +7,7 @@
 //! cortá-lo por tamanho seria cortar prova.
 
 use super::*;
+use crate::noise::Basis;
 use ph2d_nodegraph::cook::{Cook, OpResolver};
 use ph2d_nodegraph::graph::{Graph, NodeId as GNodeId};
 
@@ -604,7 +605,7 @@ fn measure_natural_range() {
             let (mut lo, mut hi) = (f32::INFINITY, f32::NEG_INFINITY);
             for a in -300..300 {
                 for b in -300..300 {
-                    let v = fbm(a as f32 * 0.031, b as f32 * 0.029, 7, spec);
+                    let v = fbm(a as f32 * 0.031, b as f32 * 0.029, 7, spec, Basis::GRADIENT);
                     lo = lo.min(v);
                     hi = hi.max(v);
                 }

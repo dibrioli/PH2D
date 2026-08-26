@@ -37,6 +37,14 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
         when: "uniform",
         values: &[0],
     },
+    // ⚠️ **A MÉTRICA só existe na base CELULAR** — nas outras não há distância nenhuma a
+    // medir, e um knob pintado que não é lido é o defeito que a caça aos knobs mortos
+    // (doc 90) desta linha existiu para apagar.
+    ParamGate {
+        param: "metric",
+        when: "base",
+        values: &[2],
+    },
     // ⚠️ **A FAIXA e a AMPLITUDE são a MESMA saída em duas réguas**, então mostrar as
     // duas seria pior que um botão morto: três números na tela a discordar sobre a
     // mesma grandeza, sem nada a dizer qual manda. É verbatim a decisão que o
@@ -68,6 +76,11 @@ pub(crate) static PARAM_GATES: &[ParamGate] = &[
 /// ruído ele é.
 pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     // A FORMA do campo.
+    // ⚠️ **A `base` e a `metric` moram aqui** e não soltas no topo: elas são a forma do
+    // campo tanto quanto a escala e as oitavas. Soltas, elas cresciam a altura do corpo do
+    // painel — ver a nota do `Space` abaixo.
+    ParamGroup::new("base", "Field"),
+    ParamGroup::new("metric", "Field"),
     ParamGroup::new("scale", "Field"),
     ParamGroup::new("octaves", "Field"),
     ParamGroup::new("roughness", "Field"),
@@ -76,12 +89,51 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("speed", "Timing"),
     ParamGroup::new("loop_len", "Timing"),
     // O ESPAÇO em que ele é amostrado — a seção nova (folha 06 linha 20).
-    ParamGroup::new("rotation", "Space"),
-    ParamGroup::new("uniform", "Space"),
-    ParamGroup::new("scale_y", "Space"),
+    //
+    // ⭐⭐ **NASCE FECHADA desde 2026-08-25, e a razão é uma REGRA e não conforto.** Ao
+    // ganhar a `base` este nó passou a desenhar **673 px** num corpo de `664`, e o gate
+    // `the_dock_overflow_is_named_not_discovered` reprovou. A regra escrita no §5 do
+    // `CLAUDE.md` diz o que fazer: *um SEGUNDO nome na lista de excepções significa que a
+    // resposta virou secções recolhíveis* — e a máquina do `.folded()` foi construída por
+    // esta mesma linha, três blocos antes, exactamente para isto.
+    //
+    // ⚠️ **O `Space` é a candidata certa** entre as três: a anisotropia do campo é o
+    // controlo mais avançado do nó (a `Field` e o `Timing` são o que se toca sempre), e ela
+    // é a secção mais nova. Fechada, o corpo desce ~2 fileiras e o inspector volta a abrir
+    // sem precisar da roda.
+    ParamGroup::new("rotation", "Space").folded(),
+    ParamGroup::new("uniform", "Space").folded(),
+    ParamGroup::new("scale_y", "Space").folded(),
 ];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⭐ **A BASE do ruído** (doc 89, folha 06 linha 21). ⚠️ Ela NÃO é o `type`: o `type`
+    // escolhe a rectificação por oitava, a base escolhe o ruído em si.
+    ParamUiHint {
+        param: "base",
+        label: "Base",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Gradient", "Value", "Cellular"],
+        },
+    },
+    // ⚠️ **O vocabulário é o do `motion.voronoi`, literalmente** — um censo no
+    // `registry-init` afirma que as duas listas são a mesma.
+    ParamUiHint {
+        param: "metric",
+        // ⚠️ **`Distance` e nao `Metric`** — o `motion.voronoi` ja shipava esse rotulo para a
+        // mesma pergunta, e o censo `metric_vocabulary` apanhou a divergencia no primeiro
+        // dia. *O que ja shipou ganha:* mudar o outro mexeria num nome que o artista aprendeu.
+        label: "Distance",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Euclidean", "Manhattan", "Chebyshev"],
+        },
+    },
     // ⚠️ A faixa começa em 1: lacunarity < 1 faz as oitavas ficarem mais GRANDES
     // que a base — o campo perde a leitura fractal e vira um borrão de baixa
     // frequência. `2` é o universal, e `1,5..3` é onde a mão trabalha.

@@ -471,6 +471,9 @@ pub(super) use utilidade::{
 mod gates;
 pub(super) use gates::gate_family;
 
+/// O anuncio da cena `=97` — a base do ruido (folha 06 linha 21).
+#[path = "motion_state_demo_conferencia_base.rs"]
+mod base;
 /// O anuncio da cena `=86` — a fronteira curva (folha 04, o P1).
 #[path = "motion_state_demo_conferencia_bezier.rs"]
 mod bezier;
@@ -513,6 +516,7 @@ mod value;
 /// O anuncio da cena `=94` — a forma desenhada e a variacao por elemento.
 #[path = "motion_state_demo_conferencia_vary.rs"]
 mod vary;
+pub(super) use base::base_family;
 pub(super) use bezier::bezier_family;
 pub(super) use body::body_family;
 pub(super) use born::born_family;

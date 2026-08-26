@@ -150,6 +150,10 @@ pub(crate) mod conferencia_demos_forces;
 #[path = "motion_state_conferencia_demos_value.rs"]
 pub(crate) mod conferencia_demos_value;
 
+/// A cena da BASE DO RUIDO (`=97`) — tres ruidos e tres formas de celula (folha 06).
+#[path = "motion_state_conferencia_demos_base.rs"]
+pub(crate) mod conferencia_demos_base;
+
 /// A cena do CAMPO QUE ERA UM NUMERO (`=83`) — as duas portas lidas por `.first()` e a
 /// altura da onda que so' sabia engordar. ⚠️ Oraculo: a figura VARIA ao longo de si mesma.
 #[path = "motion_state_conferencia_demos_campo.rs"]

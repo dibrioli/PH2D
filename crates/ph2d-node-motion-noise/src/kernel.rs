@@ -28,6 +28,12 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "rotation",
     "uniform",
     "scale_y",
+    // ⚠️ **A BASE e a MÉTRICA — apendadas.** Esta lista NÃO é derivada do manifesto (o
+    // comentário abaixo já o dizia), então um param novo que não entre aqui deixa o kernel
+    // a ler `params.<x>` inexistente — ou, pior, a calcular o ruído ANTIGO em silêncio
+    // enquanto a CPU calcula o novo.
+    "base",
+    "metric",
     // A FAIXA — a régua alternativa da mesma saída. `range_mode = 0` devolve a
     // expressão que estava aqui antes. ⚠️ Esta lista não é derivada do manifesto.
     "range_mode",
@@ -54,7 +60,10 @@ const NS_TIME: ColumnBinding = ColumnBinding {
 /// significa que toda lei nova do ruído tinha de ser escrita três vezes e podia divergir em
 /// duas. Os variants existem pela COLUNA que cada um escreve; a aritmética é a MESMA nos três,
 /// então ela mora num lugar (o padrão que o `motion.oscillator` já usa).
-const NS_LIB: &str = "\
+/// ⚠️ `pub(crate)` porque um GATE o lê: o
+/// `the_gpu_kernel_mirrors_the_measured_cellular_peaks` do `noise.rs` cruza os picos
+/// medidos em Rust com os literais desta string.
+pub(crate) const NS_LIB: &str = "\
         fn ns_time(i: u32) -> f32 {\n\
             // A porta `time` DESLIGADA e' o relogio global -- ver o binding NS_TIME.\n\
             if (HAS_time_v) { return read_time_v(i); }\n\
@@ -113,12 +122,14 @@ const NS_LIB: &str = "\
             }\n\
             let sa = ns_fbm(p.x,\n\
             \x20   p.y + ta * params.speed,\n\
-            \x20   seed, oct, params.roughness, ty, params.lacunarity);\n\
+            \x20   seed, oct, params.roughness, ty, params.lacunarity,\n\
+            \x20   i32(ns_round(params.base)), i32(ns_round(params.metric)));\n\
             var s = sa;\n\
             if (w != 0.0) {\n\
             \x20   let sb = ns_fbm(p.x,\n\
             \x20       p.y + tb * params.speed,\n\
-            \x20       seed, oct, params.roughness, ty, params.lacunarity);\n\
+            \x20       seed, oct, params.roughness, ty, params.lacunarity,\n\
+            \x20       i32(ns_round(params.base)), i32(ns_round(params.metric)));\n\
             \x20   s = sa + (sb - sa) * w;\n\
             }\n\
             // A FAIXA: o gemeo de `ph2d_fbm::gain_offset_for_range`, com a\n\
@@ -179,7 +190,57 @@ const NS_LIB: &str = "\
             let nx1 = n01 + u * (n11 - n01);\n\
             return (nx0 + v * (nx1 - nx0)) * NS_NORM;\n\
         }\n\
-        fn ns_fbm(x0: f32, y0: f32, seed: i32, octaves: i32, roughness: f32, ty: i32, lac: f32) -> f32 {\n\
+        // ⭐ AS BASES NOVAS (doc 89, folha 06 linha 21) -- espelho literal do `noise.rs`.\n\
+        fn ns_hash_unit(h: u32) -> f32 {\n\
+            return f32(h >> 8u) / 8388607.5 - 1.0;\n\
+        }\n\
+        fn ns_value_noise(x: f32, y: f32, seed: i32) -> f32 {\n\
+            let x0 = floor(x);\n\
+            let y0 = floor(y);\n\
+            let ix = i32(x0);\n\
+            let iy = i32(y0);\n\
+            let u = ns_fade(x - x0);\n\
+            let v = ns_fade(y - y0);\n\
+            let c00 = ns_hash_unit(ns_hash(ix, iy, seed));\n\
+            let c10 = ns_hash_unit(ns_hash(ix + 1, iy, seed));\n\
+            let c01 = ns_hash_unit(ns_hash(ix, iy + 1, seed));\n\
+            let c11 = ns_hash_unit(ns_hash(ix + 1, iy + 1, seed));\n\
+            let nx0 = c00 + u * (c10 - c00);\n\
+            let nx1 = c01 + u * (c11 - c01);\n\
+            return nx0 + v * (nx1 - nx0);\n\
+        }\n\
+        fn ns_metric(dx: f32, dy: f32, m: i32) -> f32 {\n\
+            if (m == 1) { return abs(dx) + abs(dy); }\n\
+            if (m == 2) { return max(abs(dx), abs(dy)); }\n\
+            return sqrt(dx * dx + dy * dy);\n\
+        }\n\
+        fn ns_cellular(x: f32, y: f32, seed: i32, m: i32) -> f32 {\n\
+            let x0 = floor(x);\n\
+            let y0 = floor(y);\n\
+            let ix = i32(x0);\n\
+            let iy = i32(y0);\n\
+            let fx = x - x0;\n\
+            let fy = y - y0;\n\
+            var best = 1e30;\n\
+            for (var gy = -1; gy <= 1; gy = gy + 1) {\n\
+                for (var gx = -1; gx <= 1; gx = gx + 1) {\n\
+                    let h = ns_hash(ix + gx, iy + gy, seed);\n\
+                    let px = f32(h & 0xffffu) / 65536.0;\n\
+                    let py = f32((h >> 16u) & 0xffffu) / 65536.0;\n\
+                    best = min(best, ns_metric(f32(gx) + px - fx, f32(gy) + py - fy, m));\n\
+                }\n\
+            }\n\
+            // NS_CELL_PEAK: os picos MEDIDOS por metrica -- ver `CELL_PEAK` no `noise.rs`.\n\
+            var norm = 1.17;\n\
+            if (m == 1) { norm = 1.65; } else if (m == 2) { norm = 0.98; }\n\
+            return clamp(1.0 - 2.0 * (best / norm), -1.0, 1.0);\n\
+        }\n\
+        fn ns_base(x: f32, y: f32, seed: i32, base: i32, m: i32) -> f32 {\n\
+            if (base == 1) { return ns_value_noise(x, y, seed); }\n\
+            if (base == 2) { return ns_cellular(x, y, seed, m); }\n\
+            return ns_grad_noise(x, y, seed);\n\
+        }\n\
+        fn ns_fbm(x0: f32, y0: f32, seed: i32, octaves: i32, roughness: f32, ty: i32, lac: f32, base: i32, metric: i32) -> f32 {\n\
             let gain = clamp(roughness, 0.0, 1.0);\n\
             var x = x0;\n\
             var y = y0;\n\
@@ -189,7 +250,7 @@ const NS_LIB: &str = "\
             for (var o = 0; o < octaves; o = o + 1) {\n\
                 // Per-octave seed offset: octaves must be independent fields,\n\
                 // not scaled copies of one (which would beat visibly).\n\
-                let n = ns_grad_noise(x, y, seed + o * 1013);\n\
+                let n = ns_base(x, y, seed + o * 1013, base, metric);\n\
                 var shaped = n;\n\
                 if (ty == 1) {\n\
                     shaped = abs(n);\n\

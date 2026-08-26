@@ -188,6 +188,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "rotation",
             default: 0.0,
         },
+        // **A BASE do ruído** (doc 89, folha 06 linha 21) — ver [`noise::Basis`]. `0` é o
+        // ruído de gradiente que este nó sempre foi, ao bit.
+        ParamSpec {
+            name: "base",
+            default: 0.0,
+        },
+        // A métrica da base celular — o MESMO vocabulário do `motion.voronoi`, e um censo
+        // no `registry-init` afirma-o. Ignorada nas outras bases (há `ParamGate`).
+        ParamSpec {
+            name: "metric",
+            default: 0.0,
+        },
         // Escala NÃO-uniforme (AE *Fractal Noise* → Scale Width/Height). O trio é o
         // do `motion.scale` (`amount`/`uniform`/`amount_y`), que é o precedente vivo
         // deste módulo: com `uniform ≠ 0` o `scale_y` **não é lido**, e o `ParamGate`
@@ -241,6 +253,7 @@ impl NodeOp for MotionNoise {
         let ty = NoiseType::from_index(ctx.param("type"));
         let speed = ctx.param("speed");
         let seed = ctx.param("seed").round() as i32;
+        let basis = noise::Basis::from_params(ctx.param("base"), ctx.param("metric"));
         // A FAIXA: a régua alternativa. Desligada, o nó é a expressão de sempre.
         let by_range = ctx.param("range_mode") >= 0.5;
         let (gain, dc) =
@@ -292,7 +305,7 @@ impl NodeOp for MotionNoise {
                         // com o espaço faria o `rotation` mudar a DIREÇÃO da rolagem — um
                         // knob a mexer no que o outro promete.
                         let (sx, sy) = space.at(px, py);
-                        let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec);
+                        let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec, basis);
                         // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
                         let s = if w == 0.0 {
                             sample(t_a)

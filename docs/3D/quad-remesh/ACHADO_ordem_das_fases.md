@@ -1056,3 +1056,37 @@ alinhado não fechou»* (defeito). ⛔ *Os dois liam-se igual.*
 faces `>60°`) foi considerada e **não tomada**: ela perderia a melhoria da mediana onde ela
 existe (`sculpt_eared`, `7,8° → 5,1°`). *É uma troca de qualidade por espera, e a escolha é do
 dono do produto.*
+
+### §22.5 — ⭐⭐ A TERCEIRA tentativa, e ela corre SÓ SE AINDA HÁ FURO
+
+As linhas de feição por curvatura **custam bordo** na maioria das peças (`sculpt_t001`
+`4 → 14`, `sculpt_t002` `14 → 18`, `sculpt_hooked` `0 → 4`) — é por isso que não são um
+default. ⚠️ **Mas na `sculpt_004` do artista elas levam o bordo a `0`** (`4 → 0`, com o
+enviesamento em `9,6°`).
+
+| `sculpt_004` | bordo | faces `>60°` | enviesamento p50 |
+|---|---|---|---|
+| alinhado `0,03` | ⛔ `14` | ⛔ `43` | ⛔ `23,5°` |
+| liso `0,0` | `4` | `3` | `7,8°` |
+| ⭐ **feição ligada** | ⭐⭐ **`0`** | `5` | `9,6°` |
+
+⇒ A condição **não é um limiar escolhido à mão**: é *«a chave da frente do critério ainda não
+está satisfeita»*. Peça que já fecha não paga nada; peça que ainda tem furo paga mais uma
+passagem — **exactamente onde a queixa do artista vive**.
+⚠️ **E é segura por construção:** entra pelo mesmo `worse`, logo *só vence onde é melhor*.
+
+### §22.6 — A verificação PONTA-A-PONTA, na cadeia do produto
+
+`the_button_delivers_the_global_chain` (`#[ignore]` + GPU) corre o botão de verdade:
+
+| | duas tentativas | **com a terceira** |
+|---|---|---|
+| saída | `1459` quads · `0` não-quads · `8` irregulares · **bordo `0`** | ⭐ **idêntica** |
+| tempo | `8 609 ms` | `8 688 / 8 450 / 8 411 ms` |
+
+⭐⭐ **A malha sai a mesma e o tempo não muda** — a terceira **não corre** numa peça que já
+fecha, como o desenho promete.
+
+⚠️ **E uma leitura de `11 319 ms` foi descartada como CARGA**, não como custo: a máquina
+estava em `load 12–14`, e a regra da casa diz que nenhum relógio vale acima de `~5`
+(CLAUDE.md §5). *Uma corrida só não separa ruído de custo — foram precisas três.*

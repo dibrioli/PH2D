@@ -109,7 +109,12 @@ impl Sculpt3dScene {
         // ⛔ **e triplica as faces com canto pior que 60°** (`4` para `12`). ⚠️ *É a MESMA
         // regressão que a obra A deixou, com a mesma cura publicada por nomear (`local
         // stiffening`, §5.4).* ⇒ o artista pode vê-la; o produto ainda não a assume.
-        if super::retopo_extract::features_requested() {
+        // ⇒ desde 2026-08-26 ela deixou de ser um interruptor e passou a ser um **MODO de
+        // tentativa**: a 3.ª candidata, corrida **só quando as duas primeiras ainda deixam
+        // furo**. `PH2D_FEATURE_EDGES=1` força-a na primeira.
+        let dual = dual;
+        let with_features = |d: &ph2d_crossfield::Dual| {
+            let mut d = d.clone();
             // ⚠️ **O `h` é o `target`**, e não uma medida da malha: a lei da feição mede-se
             // em múltiplos do **passo alvo da grade**, que é exactamente o número que o G3
             // recebe três blocos abaixo. *Medi-lo outra vez daria duas respostas à mesma
@@ -117,8 +122,9 @@ impl Sculpt3dScene {
             let (fd, _) =
                 ph2d_mesh::feature_dirs(&work, target, ph2d_mesh::FeatureOptions::default());
             let (fe, _) = ph2d_mesh::feature_edges(&work, &fd, ph2d_mesh::FEATURE_EDGE_MIN_COS);
-            dual.constrain(&work, &fe);
-        }
+            d.constrain(&work, &fe);
+            d
+        };
         // ⭐⭐⭐ **AS DUAS CORREM, E A MEDIÇÃO ESCOLHE — o alinhamento ao relevo deixou de
         // ser uma aposta única.**
         //
@@ -148,7 +154,7 @@ impl Sculpt3dScene {
         // ⚠️ **A ORDEM do critério é: furos, depois faces `>60°`, depois o enviesamento
         // mediano.** Os furos vêm primeiro porque são o que o artista **vê** — foi a queixa
         // dele três vezes seguidas.
-        let attempt = |w: f32| -> Result<
+        let attempt = |w: f32, features: bool| -> Result<
             (
                 ph2d_mesh::Mesh,
                 ph2d_quadextract::ExtractReport,
@@ -157,22 +163,26 @@ impl Sculpt3dScene {
             ),
             RemeshRefusal,
         > {
+            let owned;
+            let dual: &ph2d_crossfield::Dual =
+                if features || super::retopo_extract::features_requested() {
+                    owned = with_features(&dual);
+                    &owned
+                } else {
+                    &dual
+                };
             let (field, _) = if (w - ph2d_crossfield::ALIGN_WEIGHT).abs() < f32::EPSILON {
-                ph2d_crossfield::solve_miq(&dual)
+                ph2d_crossfield::solve_miq(dual)
             } else {
-                ph2d_crossfield::solve_miq_aligned(
-                        &dual,
-                        ph2d_crossfield::Rounding::default(),
-                        w,
-                    )
+                ph2d_crossfield::solve_miq_aligned(dual, ph2d_crossfield::Rounding::default(), w)
             };
-            let layout = ph2d_trace::trace_patches(&work, &dual, &field);
+            let layout = ph2d_trace::trace_patches(&work, dual, &field);
             let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
             let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
 
             // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
             // pedir à `ph2d-gridmap` que o re-derive seria reconstruir o que já existe.
-            let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, &dual, &field)
+            let singular: Vec<u32> = ph2d_crossfield::vertex_index(&work, dual, &field)
                 .into_iter()
                 .enumerate()
                 .filter(|(_, k)| *k != 0)
@@ -246,8 +256,8 @@ impl Sculpt3dScene {
         // mediana onde ela existe (na `sculpt_eared`, `7,8° → 5,1°`, com as duas chaves da
         // frente a zero nas duas tentativas). ⇒ *é uma troca de qualidade por espera, e a
         // escolha é do dono do produto* — o número está aqui para ele a poder fazer.
-        let aligned = attempt(ph2d_crossfield::ALIGN_WEIGHT);
-        let smooth = attempt(0.0);
+        let aligned = attempt(ph2d_crossfield::ALIGN_WEIGHT, false);
+        let smooth = attempt(0.0, false);
         let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
             (Ok(a), Ok(b)) => {
                 if worse(
@@ -266,6 +276,35 @@ impl Sculpt3dScene {
             (Ok(a), Err(_)) => (true, a),
             (Err(_), Ok(b)) => (false, b),
             (Err(e), Err(_)) => return Err(e),
+        };
+
+        // ⭐⭐⭐ **A TERCEIRA TENTATIVA — e ela corre SÓ SE AINDA HÁ FURO.**
+        //
+        // ⛔⛔ As linhas de feição por curvatura **custam bordo** na maioria das peças
+        // (`sculpt_t001` `4 → 14`, `sculpt_t002` `14 → 18`, `sculpt_hooked` `0 → 4`), e é por
+        // isso que elas não são um default. ⚠️ *Mas na `sculpt_004` do artista elas levam o
+        // bordo a **ZERO*** (`4 → 0`, com o enviesamento em `9,6°`).
+        //
+        // ⇒ A condição **não é um limiar escolhido à mão**: é *«a chave da frente do critério
+        // ainda não está satisfeita»*. Uma peça que já fecha não paga nada; uma que ainda tem
+        // furo paga mais uma passagem — que é exactamente onde a queixa do artista vive.
+        //
+        // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
+        // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
+        // escolhida.*
+        let (relief_won, (out, e, _shift_frac_max, shape)) = if boundary_edges(&out) > 0
+            && let Ok(f) = attempt(ph2d_crossfield::ALIGN_WEIGHT, true)
+            && worse(
+                &out,
+                shape.skew_over_60,
+                shape.skew_p50,
+                &f.0,
+                f.3.skew_over_60,
+                f.3.skew_p50,
+            ) {
+            (relief_won, f)
+        } else {
+            (relief_won, (out, e, _shift_frac_max, shape))
         };
 
         let (edge_median, edge_max) = edges(&out);

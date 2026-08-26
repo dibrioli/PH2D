@@ -146,6 +146,7 @@ fn the_channel_exists_whatever_the_radius_mode_is() {
             0.0,
             part,
             flat(),
+            (0.0, 0),
         );
         assert_eq!(hits(&out).len(), 1, "modo {}: a coluna existe", part.0);
     }

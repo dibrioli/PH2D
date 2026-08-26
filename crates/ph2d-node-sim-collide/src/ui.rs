@@ -5,6 +5,7 @@
 //! um consumidor, [`crate::register`].
 
 use super::*;
+use ph2d_node_registry::ParamGroup;
 
 /// Param UI hints. `shape` is a NAMED enum — a float slider would make the artist decode
 /// "2" into Bowl, which is exactly the decode the segmented selector exists to abolish.
@@ -111,7 +112,36 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // **A ALEATORIEDADE DA RESTITUIÇÃO** (doc 89 folha 13). ⚠️ O teto é `1` porque a lei só
+    // TIRA: em `1` a partícula mais azarada não devolve nada, e não há nada abaixo de «não
+    // devolve nada». Um teto maior seria um número que o produto não consegue honrar.
+    ParamUiHint {
+        param: "restitution_randomness",
+        label: "Restitution Randomness",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "seed",
+        label: "Seed",
+        min: 0.0,
+        max: 999.0,
+        step: 1.0,
+        widget: ParamWidget::Seed,
+    },
 ];
+
+/// A semente pertence à grandeza que a lê: com `restitution_randomness = 0` o cook nunca a
+/// abre, e um knob que o cook não abre é um controlo morto (a mesma lei do `seed` do
+/// `motion.duplicator`, aqui sobre um LIMIAR em vez de um enum).
+pub(crate) static PARAM_GATES_ABOVE: &[ph2d_node_registry::ParamGateAbove] =
+    &[ph2d_node_registry::ParamGateAbove {
+        param: "seed",
+        when: "restitution_randomness",
+        above: 0.0,
+    }];
 
 /// **What each of this node's numbers IS** (doc 88, Wave A) — never how it is
 /// shown. A `Length` is stored in world METRES and the panel resolves the face
@@ -198,4 +228,41 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: "radius_from",
         values: &[RADIUS_SIZE],
     },
+];
+
+/// **AS SEÇÕES DESTE NÓ** (doc 88 B3, doc 89 folha 13 — a célula *"nenhuma `ParamSection`
+/// num nó de onze params"*).
+///
+/// ⚠️ **O corte é por PERGUNTA, não por tipo de dado.** Uma parede de onze sliders obriga o
+/// artista a ler todos para achar um; três títulos transformam-na em três perguntas que ele
+/// já tem na cabeça: *onde está o obstáculo* · *de que tamanho é a coisa que bate nele* ·
+/// *o que acontece na batida*.
+///
+/// ⚠️ **A célula propunha DUAS** (Forma × Resposta) e a leitura dos params pediu três: o trio
+/// `radius_from`/`particle_radius`/`size_scale` não responde nem a *onde* nem a *o que
+/// acontece* — ele responde *quem bate*, e enfiá-lo em qualquer uma das outras duas faria a
+/// secção mentir sobre o que contém.
+///
+/// ⚠️ **Nenhuma nasce fechada.** Uma secção dobrada por omissão esconde um param que já
+/// existia, e o `folded()` é para o que o artista raramente toca — aqui ele toca em todos.
+///
+/// A aleatoriedade e a semente vivem em **Response**: elas dizem *o que acontece na batida*,
+/// tal como a restituição que modulam.
+pub(super) static PARAM_GROUPS: &[ParamGroup] = &[
+    // ONDE está o obstáculo.
+    ParamGroup::new("shape", "Shape"),
+    ParamGroup::new("center_x", "Shape"),
+    ParamGroup::new("center_y", "Shape"),
+    ParamGroup::new("radius", "Shape"),
+    ParamGroup::new("height", "Shape"),
+    ParamGroup::new("angle", "Shape"),
+    // QUEM bate nele — o raio da partícula, e de onde ele sai.
+    ParamGroup::new("radius_from", "Particle Size"),
+    ParamGroup::new("particle_radius", "Particle Size"),
+    ParamGroup::new("size_scale", "Particle Size"),
+    // O QUE acontece na batida.
+    ParamGroup::new("restitution", "Response"),
+    ParamGroup::new("friction", "Response"),
+    ParamGroup::new("restitution_randomness", "Response"),
+    ParamGroup::new("seed", "Response"),
 ];

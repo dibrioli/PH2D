@@ -22,6 +22,7 @@ fn settle(p: [f32; 2], v: [f32; 2], angle: f32, offset: f32, fr: f32) -> ([f32; 
         fr,
         (RADIUS_POINT, 0.0, 0.0),
         plane_normal(angle),
+        (0.0, 0),
     );
     read(&out)
 }
@@ -125,6 +126,7 @@ fn a_particle_slides_down_a_ramp_and_stands_still_on_a_floor() {
                 0.05,
                 (RADIUS_POINT, 0.0, 0.0),
                 plane_normal(angle),
+                (0.0, 0),
             );
             let (np, nv) = read(&out);
             (p, v) = (np, nv);
@@ -226,6 +228,7 @@ fn the_tilt_composes_with_the_particle_radius() {
             0.0,
             part,
             n,
+            (0.0, 0),
         );
         let p = read(&out).0;
         p[0] * n[0] + p[1] * n[1]
@@ -258,6 +261,7 @@ fn a_disc_and_a_bowl_are_blind_to_the_tilt() {
                 0.2,
                 (RADIUS_POINT, 0.0, 0.0),
                 plane_normal(angle),
+                (0.0, 0),
             );
             read(&out)
         };
@@ -296,6 +300,7 @@ fn probe_ramp_symmetry() {
                 0.05,
                 (RADIUS_POINT, 0.0, 0.0),
                 n,
+                (0.0, 0),
             );
             let (np, nv) = read(&out);
             (p, v) = (np, nv);

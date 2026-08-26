@@ -5754,10 +5754,16 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ Vários `VecPath` separados | ⭐ era um defeito MUDO, curado: uma peça por forma, todas ligadas | §75 |
 | ⏸️ Religar uma escultura que mudou de sítio | pede UI | §40 |
 | ⏸️ O `Mirror` não se consegue demonstrar | adiado pelo Enio | §19 |
-| ⏸️ A composição de dois `Exact` encadeados e o gradiente de uma **escultura** | por medir | §59 |
+| ✅ A composição de dois `Exact` encadeados | ⛔ **medida: eles COMPÕEM** — a cerca estava errada e a marcha furava | §76 |
+| ⏸️ O gradiente de uma **escultura** (campo interpolado de grelha) | conta um nível, sem medição própria | §76.3 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W75 (§76): a cerca do passo da marcha estava ERRADA — e a cena 1 do smoke marchava acima
+  do seguro desde que existe.** Arredondamentos exactos **encadeados** compõem o factor (`1,96` a
+  três níveis contra o `√2` que o passo supunha), e ⭐ **um nó de `n` filhos já é uma corrente de
+  `n − 1`** (o lowering dobra aos pares) — que é a forma da cena 1. O passo passa a ser `1/√2^k`;
+  preço medido: `1,01×`/`1,06×`/`1,23×` a um, dois e três níveis.
 - ⭐⭐ **W74 (§75): com duas formas escolhidas, a segunda desaparecia em silêncio.** Duas perdas
   em série (a função cozia só a primeira; a caixa de correio era um slot que a segunda apagava).
   ⭐ Uma peça **por forma**, cada uma ligada ao seu desenho — e não uma peça com todas, porque o
@@ -6576,3 +6582,86 @@ um slot · a recusa deixa de ser dita.
 ⚠️ **O gate tem três metades**, e a do meio é a que apanha o laço mal escrito: que nascem `N`, que
 **cada uma aponta para um desenho diferente**, e que a mensagem conta. Duas peças a apontar para o
 mesmo contorno passariam nas outras duas.
+
+## §76 — W75: a cerca do passo da marcha estava ERRADA, e a cena 1 do smoke marchava acima do seguro (26/08)
+
+O `safe_march_step` carregava, escrita no próprio doc, uma cerca por medir: *«⛔ Não se compõe um
+limite por nó: encadear misturas pode compor os factores, e essa pergunta **não foi medida**»*.
+
+⚠️ **A consequência de ela estar errada não é lentidão — é a peça FURAR.** A marcha anda `d · s` e só
+é segura enquanto `s · ‖∇f‖ ≤ 1`; acima disso o passo é maior que a distância até à superfície, o
+raio atravessa-a, e o sintoma é pixel de fundo no meio da peça.
+
+### §76.1 — ⛔ Eles compõem, e a tabela é esta
+
+`the_table_of_the_gradient_of_a_composition` (grelha de `40³` sobre `[-1, 1]³`):
+
+| composição | `‖∇f‖` | `passo × ‖∇f‖` com o `1/√2` de ontem |
+|---|---:|---:|
+| `Union Exact 0,05` × 2 encadeados | `1,4142` | `1,00` |
+| `Union Exact 0,2` × 2 | `1,5076` | **`1,07`** ⛔ |
+| `Union Exact 0,5` × 2 | `1,6873` | **`1,19`** ⛔ |
+| `Union Exact 0,2` × 3 | `1,7778` | **`1,26`** ⛔ |
+| `Union Exact 0,5` × 3 | `1,9588` | **`1,39`** ⛔ |
+| `Difference Exact` sobre `Union Exact` | `1,4142` | `1,00` |
+| qualquer **modificador** sobre `Union Exact` | `1,4142` (o `Taper` **desce** a `0,8333`) | `1,00` |
+
+⭐ **O que compõe é o exacto que recebe um campo JÁ INFLADO no ramo que ele arredonda** — a
+`Difference` lê o segundo operando pelo lado de fora, e um modificador lê o campo sem o voltar a
+arredondar. ⇒ o expoente conta **níveis encadeados**, não nós inflantes soltos.
+
+### §76.2 — ⭐⭐⭐ E o nó de N FILHOS é uma corrente disfarçada — a cena 1 do smoke
+
+O `combine_trees` dobra os filhos **da esquerda para a direita**: um `Union Exact` com `n` filhos são
+**`n − 1`** arredondamentos encadeados **dentro de um nó só**.
+
+| um nó, `Exact 0,2` | `‖∇f‖` |
+|---|---:|
+| 3 filhos | `1,5411` ⛔ |
+| 4 filhos | `1,7321` ⛔ |
+| 5 filhos | `1,9585` ⛔ |
+
+⛔⛔ **É exactamente a forma da cena 1 do smoke** — três cilindros numa união exacta de raio `0,12` —,
+o que quer dizer que a cena que o Enio abre desde o primeiro dia marchava **acima do passo seguro**.
+⚠️ *Uma fixtura de dois filhos não vê a corrente que o lowering constrói*, e foi por isso que a
+primeira redacção desta wave — que contava **um** nível por nó — ainda estava errada.
+
+### §76.3 — A lei nova, e por que a barra é a PROVÁVEL e não a medida
+
+`passo = 1/√2^k`, com `k` = o maior número de níveis inflantes num caminho raiz→folha
+(`ph2d_field_eval::inflation_depth`), e um nó de `n` filhos a contar `n − 1`.
+
+⚠️ **A barra é `√2` por nível porque isso se PROVA** (o arredondamento exacto de dois campos
+`L`-Lipschitz é `√2·L`), e as medições ficam **abaixo** dela (`1,96` contra `2,83` a `k = 3`). *Um
+teto de segurança prova-se, não se ajusta a um corpus* — apertá-lo até à medição seria transformar
+«as peças que eu testei» em «as peças que existem».
+
+⚠️ **Uma escultura conta um nível e continua sem medição própria** (o campo dela é interpolado de uma
+grelha). Ela já era classificada como inflante; nada mudou para ela.
+
+### §76.4 — O preço, medido
+
+`measure_what_the_safe_step_costs` (mesmo processo, `640×360`, mediana de 3 × 5):
+
+| níveis | passo seguro | com ele | com o `1/√2` inseguro | a segurança custa |
+|---:|---:|---:|---:|---:|
+| 1 | `0,7071` | `6,3 ms` | `6,2 ms` | `1,01×` |
+| 2 | `0,5000` | `7,1 ms` | `6,7 ms` | `1,06×` |
+| 3 | `0,3536` | `9,2 ms` | `7,5 ms` | `1,23×` |
+
+⭐ **`6 %` na forma da cena 1.** Muito menos do que a razão dos passos (`1,41×`) faria esperar — a
+marcha está presa à caixa da peça, e a maioria dos raios acerta cedo.
+
+### §76.5 — E as duas lições de método
+
+⚠️ **A cerca vivia num doc-comment e nenhum gate a atravessava.** O
+`the_step_times_the_worst_gradient_never_exceeds_one` varria construtores **soltos** e por isso
+passava havia meses. ⇒ as composições entraram **dentro** dele (`composition_cases`, partilhada com
+a sonda), e não numa tabela à parte: *uma cerca que nenhum gate atravessa é uma nota, não uma cerca.*
+
+⚠️ **E uma mutação leu-se como SOBREVIVENTE por um filtro mal escrito** (`-- --exact A --exact B`
+corre só um teste). Contra a suíte inteira ela morre em **dois** gates. *O filtro é onde a resposta
+se perde* — a mesma lição que o `CLAUDE.md` §2 mede em 797 corridas que devolveram nada.
+
+**Provas de mutação — 3/3 mataram:** a lei velha (qualquer exacto ⇒ `1/√2`) · a profundidade a
+ignorar o que está por baixo · um nó de N filhos a contar `1`.

@@ -471,19 +471,79 @@ fn box_corners(lo: [f32; 3], hi: [f32; 3]) -> Vec<[f32; 3]> {
 /// o gradiente da interpolação.
 #[must_use]
 pub fn safe_march_step(doc: &FieldDoc) -> f32 {
-    let inflates = doc.nodes().iter().any(|n| match &n.kind {
-        NodeKind::Sampled { .. } => true,
-        NodeKind::Combine { op, .. } => match op.blend() {
-            Blend::Exact { radius } => radius != 0.0,
-            Blend::Sharp | Blend::Organic { .. } => false,
-        },
-        NodeKind::Leaf(_) => false,
-    });
-    if inflates {
-        std::f32::consts::FRAC_1_SQRT_2
-    } else {
-        1.0
+    // `√2` por nível, e o expoente é a PROFUNDIDADE — ver [`inflation_depth`].
+    2.0f32.powf(-0.5 * inflation_depth(doc) as f32)
+}
+
+/// ⭐⭐⭐ **QUANTOS NÍVEIS INFLANTES há no pior caminho raiz→folha** (W75) — o expoente do passo.
+///
+/// # ⛔ A cerca que estava aqui era FALSA, e o preço dela era a peça furar
+///
+/// Até 2026-08-26 este módulo perguntava *«há **algum** arredondamento exacto?»* e respondia com o
+/// mesmo `1/√2` para todos os casos, com uma nota a dizer que compor os factores *«não foi
+/// medido»*. **Foi medido, e eles compõem** (`the_table_of_the_gradient_of_a_composition`):
+///
+/// | composição | `‖∇f‖` | `passo × ‖∇f‖` com `1/√2` |
+/// |---|---:|---:|
+/// | `Union Exact 0,05` × 2 | `1,4142` | `1,00` |
+/// | `Union Exact 0,2` × 2 | `1,5076` | **`1,07`** ⛔ |
+/// | `Union Exact 0,5` × 2 | `1,6873` | **`1,19`** ⛔ |
+/// | `Union Exact 0,2` × 3 | `1,7778` | **`1,26`** ⛔ |
+/// | `Union Exact 0,5` × 3 | `1,9588` | **`1,39`** ⛔ |
+///
+/// ⚠️ Acima de `1` o passo é **maior que a distância até à superfície**: o raio atravessa-a, e o
+/// sintoma é pixel de fundo no meio da peça. *Errar a classificação de um construtor não fica lento
+/// — fura.*
+///
+/// # O que NÃO compõe, e também foi medido
+///
+/// Um arredondamento exacto por **baixo** de qualquer modificador fica em `1,4142` — `Shell`,
+/// `Offset`, `Mirror`, `Radial`, `Array` (e o `Taper` **desce**, a `0,8333`). E uma `Difference`
+/// exacta sobre uma `Union` exacta também fica em `1,4142`: ⭐ *o que compõe é o exacto que recebe um
+/// campo **já inflado** no ramo que ele arredonda*, e a diferença lê o segundo operando pelo lado de
+/// fora. ⇒ a profundidade conta **níveis de mistura encadeados**, não nós inflantes soltos.
+///
+/// # A barra é `√2` por nível, e é a PROVÁVEL, não a medida
+///
+/// O arredondamento exacto de dois campos `L`-Lipschitz é `√2·L` no pior caso, e encadear `k` deles
+/// dá `√2^k`. As medições ficam **abaixo** disso (`1,96` contra `2,83` a `k = 3`) — e é assim que
+/// tem de ser: *um teto de segurança prova-se, não se ajusta a um corpus*. Apertá-lo até à medição
+/// seria transformar «as peças que eu testei» em «as peças que existem».
+///
+/// ⚠️ **Uma escultura conta como um nível** e continua sem medição própria: o campo dela é
+/// interpolado de uma grelha, e ninguém mediu o gradiente da interpolação. Ela era classificada como
+/// inflante antes desta wave e continua a sê-lo.
+#[must_use]
+pub fn inflation_depth(doc: &FieldDoc) -> u32 {
+    // A arena tem os filhos ANTES dos pais, então uma passagem para a frente basta.
+    let mut depth = vec![0u32; doc.nodes().len()];
+    for (i, node) in doc.nodes().iter().enumerate() {
+        let below = match &node.kind {
+            NodeKind::Combine { children, .. } => children
+                .iter()
+                .map(|c| depth.get(c.0 as usize).copied().unwrap_or(0))
+                .max()
+                .unwrap_or(0),
+            NodeKind::Leaf(_) | NodeKind::Sampled { .. } => 0,
+        };
+        let here = match &node.kind {
+            NodeKind::Sampled { .. } => 1,
+            // ⭐⭐⭐ **`n` filhos são `n − 1` arredondamentos** — o `combine_trees` dobra da esquerda
+            // para a direita, então um nó só já é uma **corrente**. ⛔ Medido: uma união exacta com
+            // 3 filhos lê `‖∇f‖ = 1,5411` e com 5 lê `1,9585`, os dois acima do `√2` de um nível — e
+            // é essa a forma da **cena 1 do smoke** (três cilindros num nó). *Uma fixtura de dois
+            // filhos não vê a corrente que o lowering constrói.*
+            NodeKind::Combine { op, children } => match op.blend() {
+                Blend::Exact { radius } if radius != 0.0 => {
+                    u32::try_from(children.len().saturating_sub(1)).unwrap_or(u32::MAX)
+                }
+                Blend::Exact { .. } | Blend::Sharp | Blend::Organic { .. } => 0,
+            },
+            NodeKind::Leaf(_) => 0,
+        };
+        depth[i] = below + here;
     }
+    depth.get(doc.root().0 as usize).copied().unwrap_or(0)
 }
 
 /// ⭐⭐ **O compilador de regiões, com os índices já construídos** (W56).

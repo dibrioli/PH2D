@@ -3387,3 +3387,94 @@ fn measure_the_two_knobs_of_the_moving_frame() {
         println!("{n:7} | {a:19.1} | {b:5.1} | {:16.2}x", a / b);
     }
 }
+
+/// ⭐⭐⭐ **O QUE A SEGURANÇA DO PASSO CUSTA** (W75) — o preço de não furar a peça.
+///
+/// A W75 mediu que arredondamentos exactos **encadeados** compõem o factor de inflação do gradiente
+/// (`1,4142` a um nível, `1,69` a dois, `1,96` a três), e o passo da marcha passou a ser
+/// `1/√2^k`. ⚠️ **Isto é mais lento**, e o quanto é o que esta sonda mede — no MESMO processo, com
+/// a porta que já existe para forçar o passo (`trace_stepped_for_test`).
+///
+/// *Um teto de segurança não se negocia com o relógio; mas o preço dele diz-se.*
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_what_the_safe_step_costs --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_safe_step_costs() {
+    use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let bx = |h: [f32; 3], at: Xform| {
+        ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: h,
+                round: 0.0,
+            },
+            at,
+        )
+    };
+    let chain = |levels: usize, r: f32| -> FieldDoc {
+        let mut nodes = vec![
+            bx([0.5, 0.25, 0.25], Xform::at(-0.25, 0.0, 0.0)),
+            bx([0.25, 0.5, 0.25], Xform::at(0.25, 0.0, 0.0)),
+            Node::new(
+                Xform::IDENTITY,
+                NodeKind::Combine {
+                    op: Op::Union(Blend::Exact { radius: r }),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+            ),
+        ];
+        let mut root = 2u32;
+        for k in 1..levels {
+            let leafi = u32::try_from(nodes.len()).expect("arena pequena");
+            nodes.push(bx(
+                [0.3, 0.3, 0.3],
+                Xform::at(0.0, 0.2 * k as f32, 0.15 * k as f32),
+            ));
+            nodes.push(Node::new(
+                Xform::IDENTITY,
+                NodeKind::Combine {
+                    op: Op::Union(Blend::Exact { radius: r }),
+                    children: vec![NodeId(root), NodeId(leafi)],
+                },
+            ));
+            root = leafi + 1;
+        }
+        FieldDoc::new(nodes, NodeId(root)).expect("a peça")
+    };
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!(
+        "níveis | passo seguro | ms com ele | ms com 1/√2 (INSEGURO) | o que a segurança custa"
+    );
+    for levels in [1usize, 2, 3] {
+        let doc = chain(levels, 0.2);
+        let safe = ph2d_field_eval::safe_march_step(&doc);
+        let mut a = Vec::new();
+        let mut b = Vec::new();
+        for _ in 0..3 {
+            for (step, out) in [(safe, &mut a), (std::f32::consts::FRAC_1_SQRT_2, &mut b)] {
+                let _ = crate::trace_stepped_for_test(&doc, &reg, &cam, 640, 360, step);
+                let runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t = std::time::Instant::now();
+                        let _ = crate::trace_stepped_for_test(&doc, &reg, &cam, 640, 360, step);
+                        t.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                out.push(med(runs));
+            }
+        }
+        let (sa, sb) = (med(a), med(b));
+        println!(
+            "{levels:6} | {safe:12.4} | {sa:10.1} | {sb:22.1} | {:22.2}x",
+            sa / sb
+        );
+    }
+}

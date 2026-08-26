@@ -3070,6 +3070,13 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
         ));
     }
 
+    // ⭐⭐⭐ **E as COMPOSIÇÕES** (W75) — a cerca que o `safe_march_step` declarava e não media.
+    //
+    // ⛔ Elas entram aqui e não numa tabela à parte porque foi exactamente isso que deixou o defeito
+    // vivo: a tabela dizia *«não foi medido»* e o gate só varria construtores **soltos**. *Uma cerca
+    // que nenhum gate atravessa é uma nota, não uma cerca.*
+    cases.extend(composition_cases());
+
     // ⚠️ A folga é da DIFERENÇA CENTRAL, não do produto: a sonda mede `‖∇f‖` com `eps = 1e-4` sobre
     // um campo avaliado em `f32`, e o ruído de cancelamento não é zero.
     const SLACK: f64 = 1.02;
@@ -4281,6 +4288,270 @@ fn measure_the_four_tapes_of_one_specialisation() {
         println!(
             "{n:7} | {tree_ms:6.3} | {float_ms:5.3} | {grad_ms:4.3} | {from_ms:9.3} | {fork_ms:4.3} | {:15.1}",
             (from_ms + fork_ms) * 132.0
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O GRADIENTE DE UMA COMPOSIÇÃO** (W75) — a cerca que o [`crate::safe_march_step`] declara
+/// e que **ninguém tinha medido**.
+///
+/// O doc dele diz, à letra: *«⛔ Não se compõe um limite por nó: encadear misturas pode compor os
+/// factores, e essa pergunta **não foi medida**»*. ⚠️ E a consequência de ela estar errada não é
+/// lentidão: **é a peça a FURAR** — a marcha anda `d · s` e só é segura enquanto `s · ‖∇f‖ ≤ 1`,
+/// então um `‖∇f‖` acima de `√2` numa composição torna o passo de hoje **grande demais**.
+///
+/// A tabela abaixo mede exactamente o que a nota deixou por medir: arredondamentos exactos
+/// **encadeados**, e exactos por baixo de cada modificador.
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --profile ci-test -- --exact \
+///     tests::the_table_of_the_gradient_of_a_composition --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_the_gradient_of_a_composition() {
+    let bound = f64::from(std::f32::consts::SQRT_2);
+    println!("composição | ‖∇f‖ | contra √2");
+    for (name, doc) in composition_cases() {
+        let g = worst_gradient(&doc, 1.0, 40);
+        println!(
+            "{name:>34} | {g:.4} | {:.2}x {}",
+            g / bound,
+            if g > bound * 1.02 { "⛔ FURA" } else { "ok" }
+        );
+    }
+}
+
+/// As composições que a cerca do passo declara e não media — usadas pela sonda **e** pelo gate, que
+/// é o que impede a tabela de dizer uma coisa e o gate defender outra.
+fn composition_cases() -> Vec<(String, FieldDoc)> {
+    let bx = |h: [f32; 3], at: Xform| {
+        leaf(
+            Primitive::Box {
+                half: h,
+                round: 0.0,
+            },
+            at,
+        )
+    };
+    let mut out: Vec<(String, FieldDoc)> = Vec::new();
+    for r in [0.05f32, 0.2, 0.5] {
+        let ex = |r: f32| Op::Union(Blend::Exact { radius: r });
+        // Dois exactos ENCADEADOS: o de cima recebe o campo já inflado pelo de baixo.
+        out.push((
+            format!("Union Exact {r} × 2 encadeados"),
+            FieldDoc::new(
+                vec![
+                    bx([0.5, 0.25, 0.25], Xform::at(-0.25, 0.0, 0.0)),
+                    bx([0.25, 0.5, 0.25], Xform::at(0.25, 0.0, 0.0)),
+                    combine(ex(r), vec![NodeId(0), NodeId(1)]),
+                    bx([0.25, 0.25, 0.5], Xform::at(0.0, 0.25, 0.0)),
+                    combine(ex(r), vec![NodeId(2), NodeId(3)]),
+                ],
+                NodeId(4),
+            )
+            .expect("a peça"),
+        ));
+        // TRÊS encadeados — se o factor compõe, é aqui que ele se vê.
+        out.push((
+            format!("Union Exact {r} × 3 encadeados"),
+            FieldDoc::new(
+                vec![
+                    bx([0.5, 0.25, 0.25], Xform::at(-0.25, 0.0, 0.0)),
+                    bx([0.25, 0.5, 0.25], Xform::at(0.25, 0.0, 0.0)),
+                    combine(ex(r), vec![NodeId(0), NodeId(1)]),
+                    bx([0.25, 0.25, 0.5], Xform::at(0.0, 0.25, 0.0)),
+                    combine(ex(r), vec![NodeId(2), NodeId(3)]),
+                    bx([0.3, 0.3, 0.3], Xform::at(0.0, -0.25, 0.15)),
+                    combine(ex(r), vec![NodeId(4), NodeId(5)]),
+                ],
+                NodeId(6),
+            )
+            .expect("a peça"),
+        ));
+        // Uma DIFERENÇA exacta por cima de uma união exacta — as duas famílias que a tabela do
+        // `safe_march_step` mede em separado, agora uma sobre a outra.
+        out.push((
+            format!("Difference Exact {r} sobre Union Exact {r}"),
+            FieldDoc::new(
+                vec![
+                    bx([0.5, 0.25, 0.25], Xform::at(-0.25, 0.0, 0.0)),
+                    bx([0.25, 0.5, 0.25], Xform::at(0.25, 0.0, 0.0)),
+                    combine(ex(r), vec![NodeId(0), NodeId(1)]),
+                    leaf(Primitive::Sphere { radius: 0.35 }, Xform::at(0.1, 0.1, 0.3)),
+                    combine(
+                        Op::Difference(Blend::Exact { radius: r }),
+                        vec![NodeId(2), NodeId(3)],
+                    ),
+                ],
+                NodeId(4),
+            )
+            .expect("a peça"),
+        ));
+    }
+    // ⭐⭐⭐ **E o nó de N FILHOS, que é uma corrente disfarçada** (W75): o `combine_trees` dobra da
+    // esquerda para a direita, então um `Union Exact` com `n` filhos são **`n − 1`** arredondamentos
+    // encadeados **dentro de um nó só** — e é exactamente a forma da cena 1 do smoke (três cilindros
+    // numa união exacta). *Uma fixtura de dois filhos não vê a corrente que o lowering constrói.*
+    for n in [3usize, 4, 5] {
+        let mut nodes: Vec<ph2d_field::Node> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                bx(
+                    [0.35, 0.18, 0.18],
+                    Xform::at(0.3 * a.cos() as f32, 0.3 * a.sin() as f32, 0.0),
+                )
+            })
+            .collect();
+        let kids: Vec<NodeId> = (0..n)
+            .map(|i| NodeId(u32::try_from(i).expect("poucos")))
+            .collect();
+        nodes.push(combine(Op::Union(Blend::Exact { radius: 0.2 }), kids));
+        out.push((
+            format!("Union Exact 0,2 com {n} filhos (UM nó)"),
+            FieldDoc::new(nodes, NodeId(u32::try_from(n).expect("poucos"))).expect("a peça"),
+        ));
+    }
+
+    // E um exacto por BAIXO de cada modificador — o mod recebe um campo que já não é distância.
+    for (mn, m) in [
+        ("Shell 0,05", ph2d_field::Unary::Shell { thickness: 0.05 }),
+        ("Offset 0,1", ph2d_field::Unary::Offset { distance: 0.1 }),
+        ("Taper 1,0", ph2d_field::Unary::Taper { slope: 1.0 }),
+        ("Mirror", ph2d_field::Unary::Mirror),
+        ("Radial 5", ph2d_field::Unary::Radial { count: 5 }),
+        (
+            "Array 0,5",
+            ph2d_field::Unary::Array {
+                count: 3,
+                spacing: 0.5,
+            },
+        ),
+    ] {
+        let mut top = combine(
+            Op::Union(Blend::Exact { radius: 0.2 }),
+            vec![NodeId(0), NodeId(1)],
+        );
+        top.mods.push(m);
+        out.push((
+            format!("{mn} sobre Union Exact 0,2"),
+            FieldDoc::new(
+                vec![
+                    bx([0.5, 0.25, 0.25], Xform::at(-0.25, 0.0, 0.0)),
+                    bx([0.25, 0.5, 0.25], Xform::at(0.25, 0.0, 0.0)),
+                    top,
+                ],
+                NodeId(2),
+            )
+            .expect("a peça"),
+        ));
+    }
+    out
+}
+
+/// ⭐⭐⭐ **A PROFUNDIDADE conta níveis ENCADEADOS, não nós inflantes soltos** (W75).
+///
+/// ⚠️ **A metade que separa as duas leituras é a dos IRMÃOS:** dois arredondamentos exactos em ramos
+/// diferentes não se compõem — o campo que cada um recebe é distância verdadeira —, e contá-los
+/// daria `2` a uma peça que se marcha com segurança a `1/√2`. *Uma contagem e uma profundidade lêem
+/// igual em toda árvore que seja uma corrente, e só divergem onde a árvore se abre.*
+#[test]
+fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
+    let bx = |h: [f32; 3], at: Xform| {
+        leaf(
+            Primitive::Box {
+                half: h,
+                round: 0.0,
+            },
+            at,
+        )
+    };
+    let ex = |r: f32| Op::Union(Blend::Exact { radius: r });
+    let two = || {
+        vec![
+            bx([0.4, 0.2, 0.2], Xform::at(-0.2, 0.0, 0.0)),
+            bx([0.2, 0.4, 0.2], Xform::at(0.2, 0.0, 0.0)),
+        ]
+    };
+
+    let mut n = two();
+    n.push(combine(Op::Union(Blend::Sharp), vec![NodeId(0), NodeId(1)]));
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
+        0,
+        "uma junção viva não infla nada"
+    );
+
+    let mut n = two();
+    n.push(combine(
+        Op::Union(Blend::Organic { k: 0.3 }),
+        vec![NodeId(0), NodeId(1)],
+    ));
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
+        0,
+        "o carácter orgânico não infla — medido na tabela do `safe_march_step`"
+    );
+
+    let mut n = two();
+    n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
+        1,
+        "um exacto é um nível"
+    );
+
+    // ⭐ **Encadeados**: o de cima recebe o campo já inflado.
+    let mut n = two();
+    n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
+    n.push(bx([0.25; 3], Xform::at(0.0, 0.25, 0.0)));
+    n.push(combine(ex(0.2), vec![NodeId(2), NodeId(3)]));
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(4)).expect("peça")),
+        2,
+        "dois exactos na mesma corrente são dois níveis"
+    );
+
+    // ⭐⭐ **IRMÃOS**: dois exactos, nenhum por cima do outro.
+    let mut n = two();
+    n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
+    n.push(bx([0.3, 0.15, 0.15], Xform::at(-0.2, 0.4, 0.0)));
+    n.push(bx([0.15, 0.3, 0.15], Xform::at(0.2, 0.4, 0.0)));
+    n.push(combine(ex(0.2), vec![NodeId(3), NodeId(4)]));
+    n.push(combine(Op::Union(Blend::Sharp), vec![NodeId(2), NodeId(5)]));
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(6)).expect("peça")),
+        1,
+        "dois exactos IRMÃOS não se compõem — cada um recebe distância verdadeira"
+    );
+
+    // ⚠️ E um modificador por cima de um exacto **não** acrescenta nível (medido: `1,4142`).
+    let mut n = two();
+    let mut top = combine(ex(0.2), vec![NodeId(0), NodeId(1)]);
+    top.mods.push(ph2d_field::Unary::Shell { thickness: 0.05 });
+    n.push(top);
+    assert_eq!(
+        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
+        1,
+        "o modificador lê o campo, não o volta a arredondar"
+    );
+
+    // ⭐⭐⭐ **E um nó de N filhos é uma corrente de `n − 1`** — o `combine_trees` dobra aos pares.
+    // ⛔ É a forma da cena 1 do smoke, e ela marchava acima do seguro desde que existe.
+    for n in [2usize, 3, 5] {
+        let mut nodes: Vec<Node> = (0..n)
+            .map(|i| bx([0.3, 0.15, 0.15], Xform::at(0.2 * i as f32, 0.0, 0.0)))
+            .collect();
+        let kids: Vec<NodeId> = (0..n)
+            .map(|i| NodeId(u32::try_from(i).expect("poucos")))
+            .collect();
+        nodes.push(combine(ex(0.2), kids));
+        let root = NodeId(u32::try_from(n).expect("poucos"));
+        assert_eq!(
+            inflation_depth(&FieldDoc::new(nodes, root).expect("peça")),
+            u32::try_from(n - 1).expect("poucos"),
+            "uma união exacta de {n} filhos é uma corrente de {} arredondamentos",
+            n - 1
         );
     }
 }

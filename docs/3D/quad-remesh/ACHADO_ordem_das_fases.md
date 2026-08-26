@@ -1146,3 +1146,51 @@ ilibados por varredura.
 
 ⇒ *Duas perguntas diferentes — «por que a grade não segue o relevo?» e «por que os anéis não
 fecham?» — apontam para a mesma fase.* É por aí que se vai.
+
+### §23.5 — ⛔⛔ DUAS hipóteses sobre as singularidades, as duas REFUTADAS
+
+| hipótese | previsão | ⛔ medido |
+|---|---|---|
+| «os anéis dele fecham porque as singularidades estão **AGRUPADAS**» | oráculo agrupado, nós espalhados | **oráculo `0%` agrupadas em TODAS as peças**; nós `0–33%` |
+| «…porque o **ARRANJO** delas é o dos cantos de um cubo» | oráculo ≈ `70°`, nós irregular | **o NOSSO é o quase-cúbico** (`61 64 65 66 69 69 69 77…`); o dele espalha de `44°` a `94°` |
+
+⚠️ *Duas boas hipóteses a falhar refutam a FAMÍLIA:* **a colocação das singularidades não
+explica os anéis fechados.** Na `sphere_uv_96x144` as duas malhas têm **8** irregulares numa
+esfera lisa, com distâncias parecidas, e ele fecha `26` anéis e nós `0`.
+
+### §23.6 — ⭐⭐⭐⭐ A causa: as nossas linhas de grade **ESPIRALAM**
+
+⭐ **A contagem bate exactamente e é ela que aponta.** Num quad-mesh de esfera cada vértice de
+valência 3 termina **três** pontas de loop; com `8` deles são `24` pontas ⇒ **`12` loops
+abertos, obrigatórios pela topologia**. E é o que as duas têm: nós `12` **no total**, o
+oráculo `12` abertos **mais `26` fechados**.
+
+⇒ A pergunta certa não é *«por que os nossos não fecham?»* — os `12` **não podem** fechar. É
+**«por que esses `12` cobrem a peça INTEIRA?»**
+
+**A régua: quantas voltas um loop dá** (comprimento ÷ circunferência da grade, `≈ 2·√quads`):
+
+| peça | oráculo p50 · p90 | nosso p50 · p90 |
+|---|---|---|
+| `sphere_uv_96x144` | ⭐ **`1,0×` · `1,0×`** | ⛔ **`2,8×` · `10,1×`** |
+| `sculpt_eared` | ⭐ **`0,8×` · `0,9×`** | ⛔ **`3,8×` · `9,0×`** |
+| `sculpt_wrinkled` | ⭐ **`0,8×` · `0,8×`** | `0,9×` · ⛔ **`8,2×`** |
+
+⭐⭐⭐ **O anel dele dá EXACTAMENTE uma volta; o nosso dá três a quatro na mediana e oito a
+dez no p90.** Uma linha que dá quatro voltas sem fechar **volta ao pé de onde partiu,
+deslocada de uma linha, e recomeça** — é um **espiral**.
+
+### §23.7 — O que isso nomeia, e é a obra
+
+Um anel fecha quando a **translação inteira acumulada ao dar a volta** é zero na direcção
+transversa. Se não é, a linha reentra deslocada e espirala. ⇒ **é holonomia do mapa**, e quem
+a decide é a **quantização** (`ph2d-quantize` + as costuras do `ph2d-gridmap`).
+
+⇒ **O alvo é um número:** `VOLTAS p50 → 1,0×`. ⚠️ E ele é *independente* das réguas de forma
+que já batem a barra do oráculo (aspecto e enviesamento) — *uma malha pode ter quads
+perfeitos e espiralar*, que é exactamente o que o artista viu quando chamou o resultado de
+«pro» **excluindo** os loops.
+
+⭐⭐ **E a direcção CONVERGE pela terceira vez** com o §19.4 e o §23.4: campo e substrato
+ilibados por varredura, e agora a holonomia do mapa. *Três perguntas independentes, a mesma
+fase.*

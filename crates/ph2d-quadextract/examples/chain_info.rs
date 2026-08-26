@@ -134,8 +134,30 @@ fn fidelity(raw: &ph2d_mesh::Mesh, f1: &ph2d_mesh::Mesh, out: &ph2d_mesh::Mesh) 
     let (r50, r95, rmax) = dev(raw);
     let (f50, f95, fmax) = dev(f1);
 
+    // ⛔⛔⛔ **ESTA COLUNA É TAUTOLÓGICA DEPOIS DO ACABAMENTO, e o aviso já estava escrito.**
+    //
+    // O doc do [`ph2d_quadfill::detail_lost`] regista que `saída → referência` dá ~zero
+    // **mesmo numa malha destruída** — medido em 2026-08-21: `0,0000` na destruída contra
+    // `0,0015` na boa, *a destruída a pontuar melhor*. E desde 2026-08-26 o acabamento
+    // **pousa** cada vértice na referência, por construção. ⇒ **`0,000` aqui não é uma
+    // vitória: é a definição da operação.**
+    //
+    // ⚠️ Ela FICA porque continua a separar «a saída vive sobre o F1» de «vive sobre a
+    // escultura» — que foi o achado do §18 —, mas ⛔ **a régua de fidelidade a sério é a de
+    // baixo**, e é ela que responde *«todo pedaço que o artista esculpiu tem malha nova por
+    // perto?»*.
     println!(
-        "  ⭐⭐⭐ FIDELIDADE (% da diagonal): contra a ESCULTURA p50 {r50:.3} p95 {r95:.3} max {rmax:.3} | contra o F1 p50 {f50:.3} p95 {f95:.3} max {fmax:.3}"
+        "  ⚠️ SOBRE-O-QUE (tautologica com acabamento): contra a ESCULTURA p50 {r50:.3} p95 {r95:.3} max {rmax:.3} | contra o F1 p50 {f50:.3} p95 {f95:.3} max {fmax:.3}"
+    );
+    let (lost95, lostmax) = ph2d_quadfill::detail_lost(raw, out);
+    let (relief, conf) = ph2d_quadfill::follows_relief(raw, out);
+    println!(
+        "  ⭐⭐⭐ FIDELIDADE a serio (referencia → saida, % da diagonal): DETALHE PERDIDO p95 {:.3} max {:.3}",
+        lost95 * 100.0,
+        lostmax * 100.0
+    );
+    println!(
+        "  ⭐⭐⭐ OBEDECE AO RELEVO: {relief:.1}° (confianca {conf:.2}) — ⚠️ 22,5° = «nao olhou»"
     );
 
     // ⭐⭐⭐ **A RUGOSIDADE DAS TRÊS MALHAS, lado a lado** — e as duas primeiras são o controlo.
@@ -630,10 +652,14 @@ fn main() {
             // aresta máxima de `2,58×` para `5,85×`). *Uma experiência que reescreve a lei em
             // vez de a chamar mede outra coisa.*
             let out = {
+                // ⚠️⚠️ **O DEFAULT É O DO PRODUTO, e não zero.** Em 2026-08-26 esta linha
+                // já pôs uma sonda a medir o comportamento ANTIGO enquanto imprimia como se
+                // fosse o novo (o `pin_lone_singularities` do `chain_info`). *Um instrumento
+                // cujo default diverge do produto responde por outro programa.*
                 let rounds: usize = std::env::var("PH2D_OUT_RELAX")
                     .ok()
                     .and_then(|v| v.parse().ok())
-                    .unwrap_or(0);
+                    .unwrap_or(ph2d_quadfill::SMOOTHING_ROUNDS);
                 let mut m = out;
                 ph2d_quadfill::smooth(&mut m, &raw, rounds);
                 m

@@ -65,6 +65,12 @@ pub struct CaptureReport {
     pub despawned: usize,
     /// Total de linhas no snapshot produzido.
     pub rows: usize,
+    /// Os bytes das linhas que de facto mudaram — o **tamanho da edição**.
+    ///
+    /// ⚠️ É o número que a fase inteira existe para tornar pequeno, e o único que responde à
+    /// pergunta *"quanto custa este passo na pilha?"*. As outras contagens dizem quanto trabalho
+    /// a captura fez; esta diz quanto ela **entregou**.
+    pub delta_bytes: usize,
 }
 
 /// Uma linha cacheada: a linha em si + o que decide se ela está suja.
@@ -94,6 +100,9 @@ pub struct CaptureCache {
     watched: Vec<ComponentId>,
     /// A primeira captura não tem baseline: tudo é spawn, e o `last_capture` ainda não vale.
     primed: bool,
+    /// O relatório da última captura — para o `PH2D_UNDO_LOG` o poder imprimir sem que a
+    /// assinatura da captura tenha de o devolver por 11 sítios de chamada.
+    last_report: CaptureReport,
 }
 
 impl Default for CaptureCache {
@@ -112,7 +121,14 @@ impl CaptureCache {
             per_archetype: BTreeMap::new(),
             watched: Vec::new(),
             primed: false,
+            last_report: CaptureReport::default(),
         }
+    }
+
+    /// O relatório da última captura (diagnóstico — `PH2D_UNDO_LOG=1`).
+    #[must_use]
+    pub fn last_report(&self) -> CaptureReport {
+        self.last_report
     }
 
     /// **Esquece tudo.** O restore do undo repõe um mundo que esta cache não viu nascer, então
@@ -265,12 +281,14 @@ pub fn capture_incremental(
                     c.seen = generation;
                 } else {
                     c.archetype = archetype_id;
+                    report.delta_bytes += row_bytes(&row);
                     c.row = Arc::new(row);
                     c.seen = generation;
                     report.reserialized += 1;
                 }
             }
             None => {
+                report.delta_bytes += row_bytes(&row);
                 cache.rows.insert(
                     id,
                     CachedRow {
@@ -299,6 +317,7 @@ pub fn capture_incremental(
     report.rows = out.entities.len();
 
     // ⚠️⚠️ Condição 5 — UMA vez, por CAPTURA, e é a última coisa que acontece.
+    cache.last_report = report;
     world.clear_trackers();
     // ⚠️⚠️ **`last_change_tick()`, e NÃO `change_tick()`** — a diferença de um é a diferença
     // entre ver as mudanças e não ver nenhuma, e ela custou os quatro gates deste ficheiro.
@@ -311,6 +330,13 @@ pub fn capture_incremental(
     cache.last_capture = world.last_change_tick();
     cache.primed = true;
     Ok(report)
+}
+
+/// Quantos bytes esta linha ocupa no passo — a soma dos blobs. ⚠️ Aproxima o custo de disco,
+/// não o de memória: o `Vec` e o `StableId` à volta não são contados, porque o que a pergunta
+/// *"quanto custa este passo"* quer saber é o payload.
+fn row_bytes(row: &EntitySnapshotRow) -> usize {
+    row.components.iter().map(|b| b.data.len()).sum()
 }
 
 #[cfg(test)]

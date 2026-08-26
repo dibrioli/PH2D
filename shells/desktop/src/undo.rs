@@ -426,6 +426,19 @@ impl crate::App {
         }
         if Self::undo_log_on() {
             let base = self.undo_baseline.as_ref();
+            // ⭐ O que a captura INCREMENTAL fez (F2): quantas linhas o pré-filtro acusou,
+            // quantas de facto mudaram, e **quantos bytes** o passo custa. ⚠️ Um `sujas` muito
+            // maior que `reserializadas` é o falso positivo do `DerefMut` — alguém reescreve o
+            // que já lá estava, e a cura é `set_if_neq` em quem escreve.
+            let cap = self
+                .gfx
+                .as_ref()
+                .map(|g| g.undo_capture_cache.last_report())
+                .unwrap_or_default();
+            eprintln!(
+                "[undo]   captura: sujas={} reserializadas={} nascidas={} mortas={} linhas={} delta={} B",
+                cap.dirty, cap.reserialized, cap.spawned, cap.despawned, cap.rows, cap.delta_bytes
+            );
             eprintln!(
                 "[undo] passo registrado (fila undo={}, {} sob conducao) — diff: world={} vec={} flip={}",
                 self.undo.depth() + 1,

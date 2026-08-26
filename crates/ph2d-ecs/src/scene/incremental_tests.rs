@@ -269,3 +269,75 @@ fn a_reset_forgets_everything_and_the_next_capture_rebuilds() {
     assert_eq!(r.spawned, 3, "tudo volta a ser novo depois de um reset");
     assert_eq!(snap, full(&mut w, &reg));
 }
+
+/// ⭐⭐ **UM RESPAWN COM A MESMA IDENTIDADE E BITS NOVOS** — o caso que dois gates da SHELL
+/// apanharam e que este ficheiro não tinha.
+///
+/// ⚠️ É o caminho mais comum que existe: o restore do undo despawna tudo e respawna, e o sync do
+/// vetor faz o mesmo por quadro. O objeto volta com o MESMO `StableId` e **outros bits**.
+///
+/// A 1.ª versão da varredura em duas passagens perdia-o: a passagem A ia aos bits cacheados (que
+/// já não resolvem) e saltava a linha; a passagem B perguntava *"está na cache?"* e a resposta era
+/// **sim** — a linha velha ainda lá estava —, então ninguém a reconstruía e o `retain` apagava-a.
+/// **O objeto desaparecia do snapshot.** A cura é a passagem B perguntar pela GERAÇÃO.
+///
+/// (Mutação: `rows.get(s).map_or(true, |c| c.seen != generation)` → `!rows.contains_key(s)` ⇒ o
+/// objeto some — RED.)
+#[test]
+fn an_entity_respawned_with_the_same_id_and_new_bits_survives() {
+    let reg = registry();
+    let (mut w, es) = world_with(3);
+    let mut cache = CaptureCache::new();
+    let (_, before) = capture(&mut w, &mut cache, &reg);
+    let id = crate::stable_id_of(&w, es[1]).expect("tem id");
+
+    // O respawn: mesma identidade, bits novos, mesmo conteúdo — é o que o restore faz.
+    let name = w.get::<Name>(es[1]).cloned().expect("tem nome");
+    let order = *w.get::<RootOrder>(es[1]).expect("tem ordem");
+    w.entity_mut(es[1]).despawn();
+    let reborn = w.spawn((Transform::IDENTITY, name, order, id)).id();
+    assert_ne!(reborn, es[1], "um respawn da' bits novos");
+
+    let (r, after) = capture(&mut w, &mut cache, &reg);
+    assert_eq!(
+        after.entities.len(),
+        3,
+        "o objeto renascido TEM de continuar no snapshot"
+    );
+    assert_eq!(r.despawned, 0, "ele nao morreu — mudou de bits");
+    assert_eq!(r.spawned, 0, "…e nao nasceu: a identidade dele ja' existia");
+    assert_eq!(
+        before, after,
+        "o conteudo e' o MESMO, entao a captura tem de ser um PONTO FIXO — um respawn que \
+         devolve o mesmo estado nao pode produzir um passo de undo"
+    );
+    assert_eq!(after, full(&mut w, &reg));
+}
+
+/// ⚠️ **E os bits RECICLADOS não podem fazer uma linha ler outro objeto.** O bevy reusa os bits
+/// de quem morreu; sem a conferência do `StableId` na passagem A, a linha do morto leria o vivo
+/// que herdou os bits — em silêncio.
+#[test]
+fn recycled_bits_never_make_a_row_read_the_wrong_object() {
+    let reg = registry();
+    let (mut w, es) = world_with(2);
+    let mut cache = CaptureCache::new();
+    capture(&mut w, &mut cache, &reg);
+    let dead_id = crate::stable_id_of(&w, es[0]).expect("tem id");
+
+    w.entity_mut(es[0]).despawn();
+    // O bevy tende a reciclar os bits do ultimo morto — quem nascer agora pode herda'-los.
+    let newborn = w
+        .spawn((Transform::IDENTITY, Name::new("intruso"), RootOrder(9)))
+        .id();
+
+    let (_, snap) = capture(&mut w, &mut cache, &reg);
+    let ids: Vec<_> = snap.entities.iter().map(|r| r.id).collect();
+    assert!(
+        !ids.contains(&dead_id),
+        "a identidade do objeto MORTO sobreviveu no snapshot: {ids:?}"
+    );
+    let born_id = crate::stable_id_of(&w, newborn).expect("o novo tem id");
+    assert!(ids.contains(&born_id), "o objeto novo tem de estar la'");
+    assert_eq!(snap, full(&mut w, &reg));
+}

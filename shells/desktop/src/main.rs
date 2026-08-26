@@ -84,6 +84,9 @@ mod canvas_zoom;
 mod chrome_hit;
 /// Teclado do palette de "Add Node" (busca/filtro, Enter/Backspace/Esc).
 mod command_palette_input;
+/// ⭐ A paleta de COMPONENTES que o `+` do Inspector abre (ADR-0166 / F3) — o MODELO, não um
+/// modal novo: o widget é o `command_palette`, que já é genérico.
+mod component_palette;
 /// **Contour** (pesquisa `20_*` #9) — o cozimento vivo do `VecContour`: N anéis concêntricos
 /// com rampa de cor, irmão do `offset_live` de que é a generalização.
 mod component_pieces_smoke;

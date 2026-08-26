@@ -79,6 +79,16 @@ struct CachedRow {
     /// ⚠️ **O archetype é metade do critério de sujidade** — ver a condição 2. Sem ele, remover
     /// um componente deixa a linha STALE para sempre.
     archetype: ArchetypeId,
+    /// ⭐ **Os bits da entidade que esta linha era da última vez** — o que torna o caminho limpo
+    /// livre de buscas: a varredura percorre a cache e vai DIRECTO ao mundo, em vez de percorrer
+    /// o mundo e procurar a linha (medido: `0,356 → 0,2 ms` a 10 k; um `BTreeMap::get_mut` são
+    /// ~13 comparações com salto de ponteiro, contra uma indexação de array).
+    ///
+    /// ⚠️⚠️ **Bits são RECICLADOS, então eles não bastam como identidade** — e é por isso que a
+    /// varredura confirma o `StableId` do que encontrou. Sem essa conferência, uma entidade
+    /// despawnada cujos bits o bevy já deu a OUTRA faria esta linha ler o objeto errado, em
+    /// silêncio. *O `Entity` aqui é um atalho de acesso; a identidade continua a ser o id.*
+    entity: Entity,
     row: Arc<EntitySnapshotRow>,
     /// A geração da última captura em que esta entidade foi vista — o carimbo do despawn.
     seen: u64,
@@ -92,9 +102,16 @@ pub struct CaptureCache {
     /// A geração corrente — incrementada por captura, usada para detectar despawn.
     generation: u64,
     /// ⚠️ **A interseção `registados ∩ archetype`, memorizada por archetype.** É o que faz este
-    /// scan não ser o ingénuo. O mapa cresce com o número de FORMAS de entidade (dezenas), não
-    /// com o número de entidades.
-    per_archetype: BTreeMap<ArchetypeId, Vec<ComponentId>>,
+    /// scan não ser o ingénuo. Cresce com o número de FORMAS de entidade (dezenas), não com o
+    /// número de entidades.
+    ///
+    /// ⚠️ **Um `Vec` indexado pelo `ArchetypeId`, e não um mapa** — MEDIDO: o caminho limpo fazia
+    /// **quatro** buscas de `BTreeMap` por entidade (`contains_key` + índice aqui, `get` +
+    /// `get_mut` nas linhas), e a 10 k entidades isso era metade do orçamento da fase. Os
+    /// `ArchetypeId` são inteiros densos a partir de zero, então o array é a estrutura certa e a
+    /// busca vira uma indexação. *Uma memória com a chave errada custa mais do que a conta que
+    /// ela evita.*
+    per_archetype: Vec<Option<Vec<ComponentId>>>,
     /// Os `ComponentId` de tudo o que se observa, neste mundo: os registados **+ o `ChildOf`**.
     /// Resolvido na primeira captura (antes disso o mundo pode nem conhecer os tipos).
     watched: Vec<ComponentId>,
@@ -118,7 +135,7 @@ impl CaptureCache {
             rows: BTreeMap::new(),
             last_capture: Tick::new(0),
             generation: 0,
-            per_archetype: BTreeMap::new(),
+            per_archetype: Vec::new(),
             watched: Vec::new(),
             primed: false,
             last_report: CaptureReport::default(),
@@ -204,116 +221,154 @@ pub fn capture_incremental(
 
     let mut report = CaptureReport::default();
 
-    // As entidades que o snapshot guarda são exactamente as que têm identidade — e o
-    // `assign_missing_stable_ids` acima dá-a a quem a DFS do `world_to_snapshot` alcança
-    // (`Transform` ou `ChildOf`). ⚠️ A equivalência entre os dois conjuntos é afirmada pelo gate
-    // `the_incremental_capture_equals_a_full_rebuild`, não por esta frase.
-    let live: Vec<(Entity, StableId)> = {
-        let mut q = world.query::<(Entity, &StableId)>();
-        q.iter(world).map(|(e, s)| (e, *s)).collect()
-    };
+    // ⚠️ **Destruturado para os empréstimos serem DISJUNTOS**: `cols` empresta o
+    // `per_archetype` e a linha empresta o `rows`.
+    let CaptureCache {
+        rows,
+        per_archetype,
+        watched,
+        ..
+    } = &mut *cache;
 
-    for (entity, id) in live {
-        let Ok(eref) = world.get_entity(entity) else {
-            continue;
+    // ⭐⭐ **PASSAGEM A — a cache guia, o mundo responde.** Percorre as linhas que já existem e
+    // vai DIRECTO à entidade de cada uma. É o caminho comum (nada nasce nem morre na esmagadora
+    // maioria dos quadros), e ele não faz **nenhuma** busca de mapa.
+    //
+    // ⚠️ A ordem inversa — percorrer o mundo e procurar a linha — custa um `BTreeMap::get_mut`
+    // por entidade, que a 10 k era ~40 % do orçamento da fase (medido).
+    let mut matched = 0usize;
+    for (id, cached) in rows.iter_mut() {
+        // ⚠️⚠️ **Bits reciclados:** confirmar o `StableId` é o que impede esta linha de ler outro
+        // objeto que herdou os bits do que morreu. Ver o campo `entity`.
+        let Ok(eref) = world.get_entity(cached.entity) else {
+            continue; // morreu — o `retain` abaixo apanha-a
         };
+        if eref.get::<StableId>() != Some(id) {
+            continue; // os bits são de OUTRO objeto agora
+        }
+        matched += 1;
         let archetype_id = eref.archetype().id();
 
-        // A interseção memorizada — ver o cabeçalho do módulo.
-        if !cache.per_archetype.contains_key(&archetype_id) {
-            let cols: Vec<ComponentId> = eref
-                .archetype()
-                .components()
-                .iter()
-                .filter(|c| cache.watched.binary_search(c).is_ok())
-                .copied()
-                .collect();
-            cache.per_archetype.insert(archetype_id, cols);
+        // A interseção memorizada — uma INDEXAÇÃO, não uma busca (ver o campo).
+        let ai = archetype_id.index();
+        if per_archetype.len() <= ai {
+            per_archetype.resize(ai + 1, None);
         }
-        let cols = &cache.per_archetype[&archetype_id];
+        if per_archetype[ai].is_none() {
+            per_archetype[ai] = Some(
+                eref.archetype()
+                    .components()
+                    .iter()
+                    .filter(|c| watched.binary_search(c).is_ok())
+                    .copied()
+                    .collect(),
+            );
+        }
+        let cols = per_archetype[ai]
+            .as_ref()
+            .expect("acabou de ser preenchido");
 
-        let cached = cache.rows.get(&id);
-        // Condição 2: tick OU archetype. Na primeira captura tudo é novo.
-        let dirty = match cached {
-            None => true,
-            Some(c) => {
-                c.archetype != archetype_id
-                    || cols.iter().any(|cid| {
-                        eref.get_change_ticks_by_id(*cid)
-                            .is_some_and(|t| t.is_changed(last_run, this_run))
-                    })
-            }
-        };
-
+        // Condição 2: tick OU archetype.
+        let dirty = cached.archetype != archetype_id
+            || cols.iter().any(|cid| {
+                eref.get_change_ticks_by_id(*cid)
+                    .is_some_and(|t| t.is_changed(last_run, this_run))
+            });
+        cached.seen = generation;
         if !dirty {
-            // Reaproveita a linha inteira — é aqui que o custo deixa de ser o do mundo.
-            if let Some(c) = cache.rows.get_mut(&id) {
-                c.seen = generation;
-            }
-            continue;
+            continue; // reaproveita a linha inteira — o custo deixa de ser o do mundo
         }
         report.dirty += 1;
 
         // Condição 3: re-serializa e COMPARA. O tick é pré-filtro, os bytes são a verdade.
-        let mut row = EntitySnapshotRow {
-            id,
-            components: Vec::new(),
-            parent: None,
-        };
-        for entry in registry.iter() {
-            match (entry.serialize)(world, entity) {
-                Ok(Some(bytes)) => row.components.push(super::save::blob(entry.type_id, bytes)),
-                Ok(None) => {}
-                Err(e) => return Err(e.into()),
-            }
+        let row = build_row(world, cached.entity, *id, registry)?;
+        cached.archetype = archetype_id;
+        if *cached.row != row {
+            report.delta_bytes += row_bytes(&row);
+            cached.row = Arc::new(row);
+            report.reserialized += 1;
         }
-        if let Ok(eref) = world.get_entity(entity)
-            && let Some(co) = eref.get::<bevy_ecs::hierarchy::ChildOf>()
-        {
-            row.parent = crate::stable_id_of(world, co.0);
-        }
+    }
 
-        match cache.rows.get_mut(&id) {
-            Some(c) => {
-                if *c.row == row {
-                    // Falso positivo do `DerefMut`: o tick carimbou, os bytes não mudaram.
-                    c.archetype = archetype_id;
+    // **PASSAGEM B — os que a passagem A não alcançou**, e ela só corre quando há algum.
+    //
+    // ⚠️ O gatilho é a CONTAGEM, e ele é exacto: um spawn faz `vivas > casadas`; um despawn
+    // sozinho deixa as duas iguais (a morta não casa e não conta em nenhuma das duas); um spawn
+    // **com** um despawn no mesmo quadro também difere. *Uma igualdade de contagens é a prova de
+    // que não há linha nova — não uma heurística.*
+    let live_count = {
+        let mut q = world.query_filtered::<Entity, bevy_ecs::prelude::With<StableId>>();
+        q.iter(world).count()
+    };
+    if live_count != matched {
+        // ⚠️⚠️ **O critério é «não foi ATUALIZADA nesta geração», não «não está na cache»** — e a
+        // diferença é um defeito que dois gates da shell apanharam e nenhum desta crate tinha.
+        //
+        // Um **RESPAWN** (o restore do undo, e o sync do vetor a cada quadro) devolve o objeto com
+        // a MESMA identidade e **bits novos**. Na passagem A o `entity` cacheado já não resolve,
+        // então ela salta a linha; se a passagem B perguntasse *"está na cache?"*, a resposta seria
+        // **sim** — a linha velha ainda lá está — e a entidade não seria reconstruída por ninguém.
+        // O `retain` seguinte apagava-a, e o objeto **desaparecia do snapshot**.
+        //
+        // *Perguntar pela GERAÇÃO cobre os dois casos com uma condição: o que nunca existiu e o
+        // que renasceu noutros bits.*
+        let stale: Vec<(Entity, StableId)> = {
+            let mut q = world.query::<(Entity, &StableId)>();
+            q.iter(world)
+                .filter(|(_, s)| rows.get(s).map_or(true, |c| c.seen != generation))
+                .map(|(e, s)| (e, *s))
+                .collect()
+        };
+        for (entity, id) in stale {
+            let Ok(eref) = world.get_entity(entity) else {
+                continue;
+            };
+            let archetype = eref.archetype().id();
+            let row = build_row(world, entity, id, registry)?;
+            report.dirty += 1;
+            match rows.get_mut(&id) {
+                // Renasceu: a linha fica, os bits são os novos. ⚠️ Só conta como
+                // `reserializada` se os bytes de facto mudaram — um respawn que devolve o mesmo
+                // estado (o caso do ponto fixo) não pode produzir um passo de undo.
+                Some(c) => {
+                    c.archetype = archetype;
+                    c.entity = entity;
                     c.seen = generation;
-                } else {
-                    c.archetype = archetype_id;
-                    report.delta_bytes += row_bytes(&row);
-                    c.row = Arc::new(row);
-                    c.seen = generation;
-                    report.reserialized += 1;
+                    if *c.row != row {
+                        report.delta_bytes += row_bytes(&row);
+                        c.row = Arc::new(row);
+                        report.reserialized += 1;
+                    }
                 }
-            }
-            None => {
-                report.delta_bytes += row_bytes(&row);
-                cache.rows.insert(
-                    id,
-                    CachedRow {
-                        archetype: archetype_id,
-                        row: Arc::new(row),
-                        seen: generation,
-                    },
-                );
-                report.spawned += 1;
-                report.reserialized += 1;
+                None => {
+                    report.reserialized += 1;
+                    report.spawned += 1;
+                    report.delta_bytes += row_bytes(&row);
+                    rows.insert(
+                        id,
+                        CachedRow {
+                            archetype,
+                            entity,
+                            row: Arc::new(row),
+                            seen: generation,
+                        },
+                    );
+                }
             }
         }
     }
 
     // Condição 4 — despawn por carimbo.
-    let before = cache.rows.len();
-    cache.rows.retain(|_, c| c.seen == generation);
-    report.despawned = before - cache.rows.len();
+    let before = rows.len();
+    rows.retain(|_, c| c.seen == generation);
+    report.despawned = before - rows.len();
 
     // A saída: as linhas em ordem de `StableId`, que é a ordem canónica da v2.
     out.version = WorldSnapshot::VERSION;
     out.entities.clear();
-    out.entities.reserve(cache.rows.len());
+    out.entities.reserve(rows.len());
     out.entities
-        .extend(cache.rows.values().map(|c| Arc::clone(&c.row)));
+        .extend(rows.values().map(|c| Arc::clone(&c.row)));
     report.rows = out.entities.len();
 
     // ⚠️⚠️ Condição 5 — UMA vez, por CAPTURA, e é a última coisa que acontece.
@@ -330,6 +385,37 @@ pub fn capture_incremental(
     cache.last_capture = world.last_change_tick();
     cache.primed = true;
     Ok(report)
+}
+
+/// **A linha de uma entidade** — os blobs em ordem de registo, mais o pai pelo id dele.
+///
+/// ⚠️ Ela é a MESMA conta que o [`super::save::world_to_snapshot`] faz, e é isso que o gate da
+/// equivalência afirma. Duas versões desta função seriam duas respostas a *"o que é uma linha"*,
+/// e a divergência só apareceria num Ctrl+Z.
+fn build_row(
+    world: &World,
+    entity: Entity,
+    id: StableId,
+    registry: &ComponentRegistry,
+) -> Result<EntitySnapshotRow, SaveError> {
+    let mut row = EntitySnapshotRow {
+        id,
+        components: Vec::new(),
+        parent: None,
+    };
+    for entry in registry.iter() {
+        match (entry.serialize)(world, entity) {
+            Ok(Some(bytes)) => row.components.push(super::save::blob(entry.type_id, bytes)),
+            Ok(None) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+    if let Ok(eref) = world.get_entity(entity)
+        && let Some(co) = eref.get::<bevy_ecs::hierarchy::ChildOf>()
+    {
+        row.parent = crate::stable_id_of(world, co.0);
+    }
+    Ok(row)
 }
 
 /// Quantos bytes esta linha ocupa no passo — a soma dos blobs. ⚠️ Aproxima o custo de disco,

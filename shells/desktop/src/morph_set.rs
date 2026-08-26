@@ -438,6 +438,15 @@ pub(crate) fn disconnect_row(
     disconnect(sim, map, shape);
     if let Some(h) = path_of(map, host) {
         crate::vec_ui_state_edit::forget_object_in_all_states(states, h, shape);
+        // ⭐⭐⭐ **E OUTRA FORMA DO CONJUNTO TOMA O LUGAR DELA nas poses** (W11h) — Enio,
+        // 2026-08-26: *"se o usuário desconectar uma shape, coloque outra shape do conjunto em seu
+        // lugar de modo a não quebrar as anims."*
+        //
+        // ⚠️ **São duas coisas diferentes e as duas são precisas:** a de cima tira a pose da forma
+        // que saiu (senão o Show a puxa de volta para dentro do conjunto); esta arruma as poses do
+        // **HOSPEDEIRO** que a nomeavam como *«a forma que eu mostro»*.
+        let rest: Vec<VecPathId> = shapes.into_iter().filter(|s| *s != shape).collect();
+        crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, shape, &rest);
     }
     None
 }

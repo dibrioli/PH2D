@@ -191,6 +191,21 @@ pub(crate) fn apply_ui_steps(
         if sim.world().get::<VecMorphMachine>(e).is_none() {
             continue;
         }
+        // ⛔⛔ **E as duas pontas têm de ser MEMBROS** (W11h). O ⊘ substitui a forma que sai nas
+        // poses (`vec_ui_state_table::replace_morph_shape_in_all_states`), mas ele não é a única
+        // rota: arrastar um membro para FORA na Hierarquia tira-o do conjunto sem passar por lá, e
+        // uma pose gravada antes disso continua a nomeá-lo.
+        //
+        // ⚠️ **O dano de não guardar é COZER UM ESTRANHO:** a forma que saiu ainda existe na cena,
+        // mas o `Transform` dela já é de MUNDO — o `recook` de um conjunto lê as poses **locais**
+        // dos filhos, então o morfo sairia de um sítio que não é o dela nem o do conjunto.
+        //
+        // ⇒ um passo com uma ponta que não é estado é **ignorado**: o conjunto fica na forma em que
+        // está. *Não morfar é uma resposta; morfar a partir de um estranho não é.*
+        let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
+        if !shapes.contains(&st.from) || !shapes.contains(&st.to) {
+            continue;
+        }
         #[allow(clippy::cast_possible_truncation)]
         let t = st.t as f32;
         write_driven(sim, e, drive, Driven::MorphPair([st.from, st.to]));

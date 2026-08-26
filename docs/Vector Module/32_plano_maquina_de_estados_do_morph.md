@@ -1087,3 +1087,68 @@ linhas assim que ela passa da largura, e uma agulha multi-linha fica refém da f
 medir a fiação.
 
 **Três mutações, todas sangram.**
+
+---
+
+## §14 — ⭐⭐⭐ W11h: o ⊘ QUEBRAVA a animação de States (4.º report)
+
+> Enio, 2026-08-26: *"com um morph states com 3 shapes dentro de uma animação de States,
+> desconectei uma shape do morph state e quebrou a animação do state. (…) se o usuário desconectar
+> uma shape, coloque outra shape do conjunto em seu lugar de modo a não quebrar as anims."*
+
+### §14.1 — O que quebrava, medido
+
+A pose do hospedeiro guarda **qual forma o conjunto mostra** (`morph_shape`). Sonda com
+`Default = forma 0` e `Hover = forma 1`, tirando a `0`:
+
+```
+antes:  Default=Some(0)  Hover=Some(1)
+depois: Default=Some(0)  Hover=Some(1)   (membros agora: [1, 2])
+morph_steps(0.5) = [MorphStep { from: 0, to: 1, t: 0.5 }]
+```
+
+⇒ o motor a **cozer a partir de uma forma que saiu do conjunto** — e cujo `Transform` já é de
+MUNDO, não do referencial dele (o `recook` de um conjunto lê as poses **locais** dos filhos). O
+morfo saía de um sítio que não era o dela nem o do conjunto.
+
+⚠️ **A W11g arrumou o MUNDO** (o par desenhado) e **não podia** arrumar isto: a pose é dado
+**autorado**, e reescrevê-lo só é legítimo dentro de um gesto explícito do artista.
+
+### §14.2 — A cura tem DUAS metades, e as duas são precisas
+
+1. **O GESTO substitui** — `vec_ui_state_table::replace_morph_shape_in_all_states`, chamada pelo
+   `disconnect_row`. É o pedido do Enio, palavra por palavra.
+   ⭐ **A substituta é uma que NENHUM outro estado nomeia**: pôr a do `Hover` no `Default` deixaria
+   os dois na mesma forma, e a animação **sobreviveria ao ficheiro para morrer na tela** — o defeito
+   com outro nome. Com três formas há sempre uma livre.
+   ⚠️ **Uma substituição por FORMA, não por estado:** dois estados que nomeavam a mesma forma
+   continuam a nomear a mesma; escolher por estado partiria uma igualdade autorada.
+2. **O CONSUMIDOR blinda** — o `apply_ui_steps` **ignora** um passo cuja ponta não é estado. ⛔ O ⊘
+   não é a única rota: **arrastar um membro para FORA na Hierarquia** tira-o do conjunto sem passar
+   por lá. *Não morfar é uma resposta; morfar a partir de um estranho não é.*
+
+⏳ **NOMEADO, não curado:** a rota do arrasto **não substitui** — ela degrada para *«aquele estado
+não morfa»*. Substituir ali obrigaria a reescrever dado autorado **sem gesto**, numa varredura por
+quadro que o `ProjectState` capturaria (o `StateSets` viaja nele) ⇒ passos de undo espúrios. É
+decisão de produto.
+
+### §14.3 — ⚠️ E um achado ao cortar: um doc-comment tinha ENGOLIDO a função vizinha
+
+A inserção da W11d pôs o `forget_object_in_all_states` **entre o doc-comment e a função** do
+`shift_host_in_all_states` — que ficou sem doc nenhum, com o dela a documentar a outra. (E acima
+havia um **órfão pré-existente**: o doc do `publish`, que se mudou para o `vec_ui_state_host.rs` e
+deixou o texto para trás.)
+
+⇒ as três operações de tabela saíram para `vec_ui_state_table.rs`, com o corte por assunto: *o
+objecto moveu-se · o objecto saiu · a forma que uma pose nomeia deixou de ser um estado*.
+
+### §14.4 — Gates e mutações
+
+| Gate | Onde |
+|---|---|
+| `disconnecting_a_shape_does_not_break_the_states_animation` | `morph_set_states_repair_tests.rs` |
+| `a_step_naming_a_non_member_is_ignored` | idem |
+
+**Quatro mutações, todas sangram:** o `disconnect_row` não substituir · a escolha ignorar o que já
+está em uso · a substituição tocar poses que não nomeavam a forma que saiu · o `apply_ui_steps`
+largar a checagem de pertença.

@@ -457,3 +457,10 @@ fn the_key_machine_lets_go_while_the_ui_states_act() {
         "a maquina voltou e saltou para a forma antiga -- ela tem de nascer onde os States a deixaram"
     );
 }
+
+/// ⭐⭐ **O que acontece à tabela quando o CONJUNTO muda por baixo dela** — irmão por LOC (HR-18),
+/// e o corte é por assunto: aqui em cima *o que os States conseguem fazer com um conjunto*; ali, *o
+/// que os repara quando uma forma sai dele*.
+#[cfg(test)]
+#[path = "morph_set_states_repair_tests.rs"]
+mod repair_tests;

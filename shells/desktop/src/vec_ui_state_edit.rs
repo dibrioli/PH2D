@@ -385,101 +385,13 @@ pub(crate) fn apply(
     }
 }
 
-/// O que o painel mostra para a seleção — `None` = não oferecer a seção.
-///
-/// ⚠️ Ela é oferecida para **qualquer forma única**, com estados ou sem — uma seção que só
-/// existisse onde já há estados tornaria a feature alcançável apenas onde ela já foi usada, ou
-/// seja em lugar nenhum. É a mesma lei da seção de física, cuja face VAZIA é a importante.
-/// **Move o widget inteiro, carregando TODOS os estados** (Enio, 2026-08-07).
-///
-/// Desloca a pose do **HOSPEDEIRO** por `delta` em cada estado gravado dele. Devolve `true` se
-/// alguma pose se moveu.
-///
-/// # ⚠️ Só o HOSPEDEIRO, e é isso que torna a operação correta
-///
-/// As poses dos filhos são **LOCAIS ao hospedeiro** ([`capture`]), então mover o `Transform` dele
-/// já os leva junto na tela. Deslocá-los também moveria tudo **duas vezes** — e destruiria
-/// exactamente o que o artista quer preservar: *a coreografia interna do widget*.
-///
-/// # Por que ela precisa de existir
-///
-/// Um estado grava a sub-árvore, e o hospedeiro está nela sempre que ele próprio é uma forma
-/// desenhada. Então a translação ABSOLUTA dele fica congelada em cada estado, e relocar o widget
-/// deixa de funcionar: mostrar um estado **devolve a forma ao lugar antigo**. ⚠️ Um hospedeiro que
-/// seja um GRUPO puro nunca teve o problema (o `members` não o inclui — ele não tem forma), e é
-/// por isso que o defeito só aparece depois de o artista gravar um estado que move a própria
-/// forma-hospedeiro.
-/// ⛔⛔ **UMA FORMA QUE SAI DA SUB-ÁRVORE LEVA AS POSES DELA** (plano 32 W11d).
-///
-/// Um estado grava a **sub-árvore** ([`members`]), com a pose **LOCAL** de cada filho. Quando o
-/// artista tira um filho de lá — o ⊘ *Desconectar* de um conjunto de Morph States é o gesto que o
-/// faz num clique —, a pose antiga fica na tabela e o `install` do próximo Show **reescreve-lhe o
-/// `Transform`**: a forma solta **salta para a origem do hospedeiro**, no meio de uma animação que
-/// já não é sobre ela.
-///
-/// ⚠️ É o mesmo argumento do `retain_hosts` da [`crate::render_loop::ui_state_bridge`], um nível
-/// abaixo — ali *"uma forma apagada leva os estados dela"*, aqui *"uma forma que sai leva as poses
-/// dela"*.
-///
-/// ⛔ **O Dissolve não passa por aqui**, e não precisa: ele apaga o path do conjunto, e o
-/// `retain_hosts` deixa cair a tabela inteira do hospedeiro no mesmo quadro.
-///
-/// Devolve `true` se alguma pose saiu.
-pub(crate) fn forget_object_in_all_states(
-    states: &mut StateSets,
-    host: VecPathId,
-    id: VecPathId,
-) -> bool {
-    let mut dropped = false;
-    for role in StateRole::ALL {
-        let Some(mut st) = states.role(host, role).cloned() else {
-            continue;
-        };
-        let before = st.objects.len();
-        st.objects.retain(|p| p.id != id);
-        // ⚠️ **A escrita é POR ESTADO e condicional**, a mesma lei da irmã abaixo: re-escrever um
-        // estado que não continha a forma é inócuo hoje e é a forma exacta de um defeito no dia em
-        // que o `set` ganhar um efeito colateral.
-        if st.objects.len() != before {
-            states.set(host, st);
-            dropped = true;
-        }
-    }
-    dropped
-}
-
-pub(crate) fn shift_host_in_all_states(
-    states: &mut StateSets,
-    host: VecPathId,
-    delta: [f64; 2],
-) -> bool {
-    if delta == [0.0, 0.0] {
-        return false;
-    }
-    let mut moved = false;
-    for role in StateRole::ALL {
-        let Some(mut st) = states.role(host, role).cloned() else {
-            continue;
-        };
-        // ⚠️ **A flag é POR ESTADO**, e não do laço: com uma flag acumulada, o primeiro estado
-        // que se move faz TODOS os seguintes serem re-escritos, inclusive os que não contêm o
-        // hospedeiro. É inócuo hoje (re-escrever o mesmo valor), e é a forma exacta de um defeito
-        // que só aparece no dia em que o `set` ganhar um efeito colateral.
-        let mut here = false;
-        for pose in &mut st.objects {
-            if pose.id == host {
-                pose.translation[0] += delta[0];
-                pose.translation[1] += delta[1];
-                here = true;
-            }
-        }
-        if here {
-            states.set(host, st);
-            moved = true;
-        }
-    }
-    moved
-}
+/// **AS OPERAÇÕES SOBRE A TABELA INTEIRA** — irmão por LOC (HR-18), cortado por responsabilidade:
+/// o objecto moveu-se, saiu, ou a forma que uma pose nomeia deixou de ser um estado.
+#[path = "vec_ui_state_table.rs"]
+mod table;
+pub(crate) use table::{
+    forget_object_in_all_states, replace_morph_shape_in_all_states, shift_host_in_all_states,
+};
 
 /// **O gesto de tabela que um id de painel endereça**, se ele endereçar algum.
 ///

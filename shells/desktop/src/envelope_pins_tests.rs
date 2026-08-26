@@ -309,8 +309,6 @@ fn the_pins_survive_an_undo() {
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
     let snap = {
-        let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
-        let mut wl = ph2d_ecs::WorklistBuf::new();
         crate::undo::ProjectState::capture(
             // Nada sob condução nesta cena: o ledger vazio é a captura de sempre.
             &crate::preview_drive::PreviewDrive::default(),
@@ -320,8 +318,7 @@ fn the_pins_survive_an_undo() {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &reg,
-            &mut prop,
-            &mut wl,
+            &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         )
     };
     let (restored_scene, restored_map, _flip, _fm) = snap.restore(&mut sim, &reg);

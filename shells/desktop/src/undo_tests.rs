@@ -29,8 +29,6 @@ fn scene() -> (SimWorld, VecScene) {
 }
 
 fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
-    let mut prop = TransformPropagationState::new(sim.world_mut());
-    let mut wl = WorklistBuf::new();
     ProjectState::capture(
         // Nada sob condução: estes gates são do diff e do restore, não do ledger
         // (`crate::preview_drive` tem os dele).
@@ -41,8 +39,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         reg,
-        &mut prop,
-        &mut wl,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     )
 }
 
@@ -191,8 +188,6 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
     ));
 
     let snap = {
-        let mut prop = TransformPropagationState::new(sim.world_mut());
-        let mut wl = WorklistBuf::new();
         ProjectState::capture(
             &crate::preview_drive::PreviewDrive::default(),
             &mut sim,
@@ -201,8 +196,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &reg,
-            &mut prop,
-            &mut wl,
+            &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         )
     };
 
@@ -216,8 +210,6 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
     assert!(sim.world().get_entity(Entity::from_bits(bits)).is_ok());
 
     // Capturar o mesmo estado 2× = idêntico (sem passo espúrio de undo).
-    let mut prop = TransformPropagationState::new(sim.world_mut());
-    let mut wl = WorklistBuf::new();
     let a = ProjectState::capture(
         &crate::preview_drive::PreviewDrive::default(),
         &mut sim,
@@ -226,8 +218,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &reg,
-        &mut prop,
-        &mut wl,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     );
     let b = ProjectState::capture(
         &crate::preview_drive::PreviewDrive::default(),
@@ -237,8 +228,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &reg,
-        &mut prop,
-        &mut wl,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     );
     assert_eq!(a, b, "flip determinístico -> sem diff espúrio");
 }

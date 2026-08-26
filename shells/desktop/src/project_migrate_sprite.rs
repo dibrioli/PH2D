@@ -79,6 +79,10 @@ pub(crate) fn split_sprite_blobs(world: &mut WorldSnapshot) -> SpriteSplit {
             out.unreadable += 1;
             continue;
         };
+        // ⚠️ **`make_mut` e não `Arc::new` de uma cópia:** as linhas são partilhadas desde a F2,
+        // e esta é a única escrita — a cópia-na-escrita acontece só na linha que de facto muda.
+        // Uma sprite por entidade, e as outras linhas do snapshot ficam partilhadas.
+        let row = std::sync::Arc::make_mut(row);
         row.components[slot].data = sprite_bytes;
         out.sprites += 1;
 

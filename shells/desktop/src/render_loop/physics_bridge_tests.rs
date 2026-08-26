@@ -281,14 +281,11 @@ fn the_tape_records_a_run_not_the_clock() {
 #[test]
 fn a_falling_ball_is_not_an_undo_step() {
     use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
-    use ph2d_ecs::{TransformPropagationState, WorklistBuf};
 
     let mut reg = ComponentRegistry::new();
     register_ecs_components(&mut reg);
     ph2d_render::register_render_components(&mut reg);
     let shot = |sim: &mut SimWorld, drive: &crate::preview_drive::PreviewDrive| {
-        let mut prop = TransformPropagationState::new(sim.world_mut());
-        let mut wl = WorklistBuf::new();
         crate::undo::ProjectState::capture(
             drive,
             sim,
@@ -297,8 +294,7 @@ fn a_falling_ball_is_not_an_undo_step() {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &reg,
-            &mut prop,
-            &mut wl,
+            &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         )
     };
 

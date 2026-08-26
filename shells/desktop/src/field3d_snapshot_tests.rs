@@ -232,8 +232,6 @@ fn a_nested_doc() -> FieldDoc {
 fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stacking() {
     let reg = registry();
     let mut sim = SimWorld::new();
-    let mut prop = TransformPropagationState::new(sim.world_mut());
-    let mut worklist = WorklistBuf::default();
     let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &a_nested_doc(), "peça");
     let before = ph2d_field_ecs::cook(sim.world(), root)
         .expect("não vazia")
@@ -249,8 +247,7 @@ fn the_part_crosses_the_project_file_and_the_load_replaces_it_instead_of_stackin
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         &reg,
-        &mut prop,
-        &mut worklist,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     );
 
     // ⭐ **Os BYTES**: é aqui que um componente que não serializa, ou um `String` de caminho

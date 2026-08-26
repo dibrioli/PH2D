@@ -5,6 +5,9 @@
 //! [`registry::ComponentRegistry`].
 
 pub mod commands;
+/// ⭐ A captura INCREMENTAL do desfazer (ADR-0164 §2.7 / plano F2) — módulo irmão do `save`,
+/// não uma segunda porta: ele reaproveita as linhas que o `world_to_snapshot` produziria.
+pub mod incremental;
 pub mod registry;
 pub mod save;
 pub mod save_v1;

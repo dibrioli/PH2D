@@ -55,7 +55,13 @@ ph2d-symmetry = { path = "../ph2d-symmetry" }
 # serde derives on every SimComponent (HR-14 mitigation while
 # `#[derive(Saveable)]` macro is pending). PrefabDoc/SceneDoc in
 # ph2d-asset (M14.3) consume these via postcard.
-serde = { version = "1", features = ["derive"] }
+# ⚠️ **`rc` está aqui pela F2 (ADR-0164 §2.7):** o `WorldSnapshot` guarda as linhas em
+# `Arc<EntitySnapshotRow>` para a pilha de undo PARTILHAR as que não mudaram (medido: clone de
+# 10 k linhas 0,038 ms contra 0,776 ms, e a pilha de 256 passos cai de ~614 MB para ~12,5 MB).
+# ⚠️ O `rc` do serde serializa um `Arc<T>` **como o `T`** — a partilha NÃO viaja no fio, que é
+# exactamente o que se quer: o formato fica byte-idêntico e o `PROJECT_SCHEMA` não se mexe.
+# Não acrescenta crate nenhuma ao grafo (é uma feature da serde que já cá está).
+serde = { version = "1", features = ["derive", "rc"] }
 # postcard wire format for ComponentBlob serialization in the
 # ComponentRegistry (M14.3a). Same crate as ph2d-asset uses for the
 # cooked Prefab/Scene format — single canonical wire format.

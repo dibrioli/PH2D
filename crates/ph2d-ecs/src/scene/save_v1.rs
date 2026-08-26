@@ -73,10 +73,12 @@ pub fn migrate_v1_to_v2(old: &WorldSnapshotV1) -> WorldSnapshot {
             .entities
             .iter()
             .enumerate()
-            .map(|(i, row)| EntitySnapshotRow {
-                id: StableId(i as u64 + StableId::FIRST),
-                components: row.components.clone(),
-                parent: row.parent.and_then(id_of),
+            .map(|(i, row)| {
+                std::sync::Arc::new(EntitySnapshotRow {
+                    id: StableId(i as u64 + StableId::FIRST),
+                    components: row.components.clone(),
+                    parent: row.parent.and_then(id_of),
+                })
             })
             .collect(),
     }

@@ -1116,6 +1116,11 @@ impl crate::App {
             // Global rigid physics: stepped per frame by `physics_bridge`
             // (ADR-0131 W1) — reads RigidBody/Collider, writes Transform.
             physics,
+            // ⚠️ A cache da captura incremental (F2) **não é do quadro** — ela é lida e escrita
+            // pelo `post_frame_undo`, que corre depois disto. Listada por nome porque este padrão
+            // é exaustivo de propósito: um campo novo tem de ser CONSIDERADO aqui, não ignorado
+            // por um `..` que nunca mais ninguém relê.
+            undo_capture_cache: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

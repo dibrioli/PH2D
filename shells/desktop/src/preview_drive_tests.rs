@@ -12,10 +12,7 @@
 use super::{Driven, PreviewDrive};
 use crate::undo::ProjectState;
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
-use ph2d_ecs::{
-    AnimationTag, Entity, Name, SimWorld, SpriteAnimations, SpriteAnimator, Transform,
-    TransformPropagationState, WorklistBuf,
-};
+use ph2d_ecs::{AnimationTag, Entity, Name, SimWorld, SpriteAnimations, SpriteAnimator, Transform};
 use ph2d_render::{Sprite, register_render_components};
 
 fn registry() -> ComponentRegistry {
@@ -27,8 +24,6 @@ fn registry() -> ComponentRegistry {
 
 /// O que o `post_frame_undo` fotografa — a MESMA porta do produto, com o ledger no 1.º argumento.
 fn capture(drive: &PreviewDrive, sim: &mut SimWorld, reg: &ComponentRegistry) -> ProjectState {
-    let mut prop = TransformPropagationState::new(sim.world_mut());
-    let mut wl = WorklistBuf::new();
     ProjectState::capture(
         drive,
         sim,
@@ -37,8 +32,7 @@ fn capture(drive: &PreviewDrive, sim: &mut SimWorld, reg: &ComponentRegistry) ->
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         reg,
-        &mut prop,
-        &mut wl,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     )
 }
 

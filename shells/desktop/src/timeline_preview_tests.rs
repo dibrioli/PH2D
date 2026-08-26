@@ -15,7 +15,7 @@ use crate::preview_drive::PreviewDrive;
 use crate::undo::ProjectState;
 use ph2d_anim::{AnimValue, Interp, RationalTime};
 use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components};
-use ph2d_ecs::{Name, SimWorld, Transform, TransformPropagationState, WorklistBuf};
+use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_timeline::{PropKind, TimelineDoc};
 
 fn registry() -> ComponentRegistry {
@@ -26,8 +26,6 @@ fn registry() -> ComponentRegistry {
 }
 
 fn capture(drive: &PreviewDrive, sim: &mut SimWorld, reg: &ComponentRegistry) -> ProjectState {
-    let mut prop = TransformPropagationState::new(sim.world_mut());
-    let mut wl = WorklistBuf::new();
     ProjectState::capture(
         drive,
         sim,
@@ -36,8 +34,7 @@ fn capture(drive: &PreviewDrive, sim: &mut SimWorld, reg: &ComponentRegistry) ->
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
         reg,
-        &mut prop,
-        &mut wl,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     )
 }
 

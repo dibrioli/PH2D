@@ -17,8 +17,8 @@
 //! **Escopo (Enio 2026-07-09):** objetos, hierarquia e canvas. NÃO toca painéis —
 //! as configs de painel têm undo próprio, com botões no header (bloco à parte).
 
-use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world, world_to_snapshot};
-use ph2d_ecs::{Entity, SimWorld, Transform, TransformPropagationState, With, WorklistBuf};
+use ph2d_ecs::scene::{ComponentRegistry, WorldSnapshot, snapshot_to_world};
+use ph2d_ecs::{Entity, SimWorld, Transform, With};
 use ph2d_flip::FlipDoc;
 use ph2d_vec_scene::{VecPathId, VecScene};
 
@@ -77,17 +77,28 @@ impl ProjectState {
         guides: &ph2d_guides::GuideSet,
         ui_states: &ph2d_ui_state::StateSets,
         registry: &ComponentRegistry,
-        prop: &mut TransformPropagationState,
-        worklist: &mut WorklistBuf,
+        cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
     ) -> Self {
         // O mundo passa ao estado AUTORADO só durante a fotografia, e volta ao vivo a seguir.
         let live = drive.substitute_authored(sim);
         let mut world = WorldSnapshot::new();
-        // O snapshot só falha se um componente registrado não (de)serializa — um bug
-        // de registro, não estado do usuário. Um estado vazio é o degradado seguro.
-        // A ordem canónica já vem de dentro (por `StableId`, v2) — ver a nota no lugar onde o
-        // `canonicalize` vivia, mais abaixo neste arquivo.
-        let _ = world_to_snapshot(sim.world_mut(), prop, worklist, registry, &mut world);
+        // ⭐ **A captura é INCREMENTAL desde a F2** (ADR-0164 §2.7): ela reaproveita a linha de
+        // quem não mudou, então um passo custa o tamanho da EDIÇÃO e não o do mundo.
+        //
+        // ⚠️ **O `substitute_authored`/`restore_live` à volta CARIMBAM ticks** nas entidades sob
+        // condução — e isso está certo: elas ficam «sujas» no pré-filtro e a **comparação de
+        // bytes** absorve-as, porque o valor AUTORADO não mudou. O preço é ler essas poucas
+        // linhas; o `CaptureReport` mede-o (`dirty − reserialized`), que é precisamente o campo
+        // que existe para tornar este custo visível em vez de suposto.
+        //
+        // O snapshot só falha se um componente registrado não (de)serializa — um bug de registro,
+        // não estado do usuário. Um estado vazio é o degradado seguro.
+        let _ = ph2d_ecs::scene::incremental::capture_incremental(
+            sim.world_mut(),
+            cache,
+            registry,
+            &mut world,
+        );
         crate::preview_drive::PreviewDrive::restore_live(sim, &live);
         Self {
             world,
@@ -241,8 +252,7 @@ impl crate::App {
             &gfx.guides,
             &gfx.ui_states,
             &gfx.component_registry,
-            &mut gfx.prop_state,
-            &mut gfx.worklist,
+            &mut gfx.undo_capture_cache,
         ))
     }
 

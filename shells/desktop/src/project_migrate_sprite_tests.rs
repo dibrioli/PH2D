@@ -38,14 +38,14 @@ fn v4_plain() -> ph2d_render::SpriteV4 {
 /// Um snapshot de uma entidade que carrega este blob de `Sprite`.
 fn world_with(v4: ph2d_render::SpriteV4) -> WorldSnapshot {
     let mut w = WorldSnapshot::new();
-    w.entities.push(EntitySnapshotRow {
+    w.entities.push(std::sync::Arc::new(EntitySnapshotRow {
         id: StableId(1),
         components: vec![ComponentBlob {
             type_id: ph2d_ecs::scene::stable_type_id(SPRITE),
             data: postcard::to_allocvec(&v4).expect("v4 serializa"),
         }],
         parent: None,
-    });
+    }));
     w
 }
 
@@ -138,14 +138,14 @@ fn running_the_split_twice_leaves_the_second_pass_inert() {
 #[test]
 fn a_row_without_a_sprite_is_untouched() {
     let mut w = WorldSnapshot::new();
-    w.entities.push(EntitySnapshotRow {
+    w.entities.push(std::sync::Arc::new(EntitySnapshotRow {
         id: StableId(1),
         components: vec![ComponentBlob {
             type_id: ph2d_ecs::scene::stable_type_id("ph2d::ecs::Name"),
             data: vec![1, 2, 3],
         }],
         parent: None,
-    });
+    }));
     let before = w.entities[0].components.clone();
     let report = split_sprite_blobs(&mut w);
     assert_eq!(report, SpriteSplit::default());

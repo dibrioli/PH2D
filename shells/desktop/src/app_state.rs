@@ -218,6 +218,16 @@ pub(crate) struct AppGfx {
     /// inside the extract phase. The only way to iterate `&World`
     /// from inside `extract!`.
     pub(crate) prop_state: TransformPropagationState,
+    /// ⭐ **A cache da captura incremental do desfazer** (ADR-0164 §2.7 / F2).
+    ///
+    /// ⚠️ **Vive aqui, ao lado do `prop_state`, porque tem a MESMA vida: a do mundo.** Ela guarda
+    /// a linha de snapshot de cada objeto e o tick da última captura — pô-la fora daqui (num
+    /// `static`, ou reconstruída por chamada) faria o desfazer voltar a custar o tamanho do mundo
+    /// a cada quadro, que é exactamente o que esta fase existe para apagar.
+    ///
+    /// ⚠️ Quem a esquece é o RESTORE (`apply_project`): o undo repõe um mundo que ela não viu
+    /// nascer, e continuar a comparar contra ela daria linhas limpas sobre bytes diferentes.
+    pub(crate) undo_capture_cache: ph2d_ecs::scene::incremental::CaptureCache,
     /// M14.1 — pre-allocated DFS worklist for `propagate_transforms`.
     /// Capacity sized to `WorklistBuf::DEFAULT_CAPACITY` (8 192
     /// entities) — comfortably above `SPRITE_COUNT = 1000`. HR-3

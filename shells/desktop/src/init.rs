@@ -489,6 +489,7 @@ pub(crate) fn build_initial_state(
             .map_err(|e| eprintln!("[ph2d] clipboard init failed: {e}"))
             .ok(),
         prop_state,
+        undo_capture_cache: ph2d_ecs::scene::incremental::CaptureCache::new(),
         worklist,
         sort_scratch: ph2d_ecs::sort_key::SortScratch::new(),
         sort_inputs: Vec::new(),

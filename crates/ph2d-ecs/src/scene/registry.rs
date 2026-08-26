@@ -135,6 +135,21 @@ pub struct ComponentTypeEntry {
     /// projete foundational novo para ISOLAMENTO). O preço é a deriva silenciosa, e
     /// quem a paga é o censo de dois lados na shell, que tem o registo COMPLETO.
     pub desc: Option<&'static ph2d_component_desc::ComponentDesc>,
+    /// ⭐ **O `ComponentId` do bevy para este tipo, NESTE mundo** (ADR-0164 F2).
+    ///
+    /// ⚠️ **É uma função e não um valor, porque um `ComponentId` é do MUNDO, não do tipo.**
+    /// Dois `World` diferentes dão ids diferentes ao mesmo `T` (o id é a ordem de registo
+    /// dentro daquele mundo), e o registo é construído **uma vez** e partilhado. Guardar o
+    /// número aqui seria guardar a resposta de um mundo e usá-la noutro — e a colisão passaria
+    /// muda, porque os dois lados são um `usize`.
+    ///
+    /// `None` quando o mundo ainda nunca viu este componente (nenhuma entidade o teve): a
+    /// varredura da captura incremental simplesmente não o observa, o que é a resposta certa.
+    ///
+    /// ⚠️ **A F0 deixou isto de fora de propósito** — *"sem consumidor ainda"* — e é a F2 que o
+    /// acrescenta **junto com a varredura por archetype que o lê**. Um campo sem leitor é uma
+    /// aposta sobre a forma do leitor futuro.
+    pub bevy_component_id: fn(&World) -> Option<bevy_ecs::component::ComponentId>,
 }
 
 /// Manual registry of component types known to the spawn / save
@@ -224,6 +239,7 @@ impl ComponentRegistry {
         let entry = ComponentTypeEntry {
             canonical_name,
             type_id: id,
+            bevy_component_id: |world| world.component_id::<T>(),
             insert_from_bytes: |world, entity, bytes| {
                 let v: T = postcard::from_bytes(bytes).map_err(RegistryError::Decode)?;
                 let mut e = world

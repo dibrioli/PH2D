@@ -50,6 +50,9 @@ struct Frame {
     reg: ComponentRegistry,
     prop: TransformPropagationState,
     worklist: WorklistBuf,
+    /// A cache da captura incremental (F2) — ela tem de SOBREVIVER entre quadros, senão o
+    /// ponto fixo que estes gates medem seria sempre uma primeira captura.
+    undo_cache: ph2d_ecs::scene::incremental::CaptureCache,
 }
 
 impl Frame {
@@ -66,6 +69,7 @@ impl Frame {
             reg,
             prop: TransformPropagationState::new(sim.world_mut()),
             worklist: WorklistBuf::new(),
+            undo_cache: ph2d_ecs::scene::incremental::CaptureCache::new(),
         }
     }
 
@@ -95,8 +99,7 @@ impl Frame {
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
             &self.reg,
-            &mut self.prop,
-            &mut self.worklist,
+            &mut self.undo_cache,
         )
     }
 }

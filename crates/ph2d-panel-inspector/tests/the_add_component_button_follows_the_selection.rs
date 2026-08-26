@@ -1,14 +1,22 @@
-//! ⭐ **O `+` do cabeçalho aparece se, e só se, houver um objeto sob o Inspector** (ADR-0166 / F3).
+//! ⭐ **O `+` do cabeçalho aparece se, e só se, houver um objeto sob o Inspector — e é ELE que
+//! ganha o clique ali** (ADR-0166 / F3).
 //!
-//! ⚠️ **A metade de AUSÊNCIA é a que interessa, e ela foi apanhada a caminho do smoke.** A 1.ª
-//! versão pintava o `+` **sempre**: sem seleção, o handler recusa o clique (não há a quem anexar) e
-//! o botão ficava a ser um controlo que se desenha e não faz nada.
+//! # ⚠️ Este ficheiro já esteve verde sobre um botão MORTO
 //!
-//! *Um controlo morto sob o dedo e um ausente dão o MESMO report*, e é essa a doença que a F3
-//! inteira existe para apagar — reproduzi-la no botão que a cura seria a piada errada. A resposta
-//! certa é ele **não estar lá**, e a pergunta é a mesma que o `apply_event` faz: há `Transform`?
+//! A 1.ª versão perguntava *"o id foi registado no índice?"*, e a resposta era **sim** — o `+` era
+//! registado no `paint_head`, e depois a **alça de arrasto** do painel, registada no fim do quadro,
+//! cobria a banda do título e **ganhava-lhe** no passeio back-to-front do `HitIndex`. O botão
+//! pintava-se, acendia sob o rato, e clicar nele não fazia nada. O Enio apanhou-o no 1.º smoke.
+//!
+//! ⇒ **A pergunta certa não é «foi registado», é «QUEM ganha o clique naquele ponto»** — que é a
+//! mesma lição que a costura da booleana do vetor pagou duas vezes ([27 §8] do Vector Module):
+//! *um `Click` sintético passa com o chip morto; só o gesto real mede a segunda costura*.
+//!
+//! O X (`INSP_CLOSE`) sobrevive à alça porque é **re-registado depois dela** — e a nota que o diz
+//! está no `paint.rs` desde 2026-05-24. O `+` nasceu sem esse re-registo.
 
 use ph2d_editor_core::ids;
+use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_transform};
@@ -31,26 +39,61 @@ fn transform() -> InspectorTransformInfo {
     }
 }
 
-fn painted(sel: Option<InspectorTransformInfo>) -> bool {
+/// Pinta o painel e devolve **quem ganha o clique** no centro do `+`, mais a lista de rects.
+///
+/// ⚠️ O vencedor sai de um `HitIndex` reconstruído **na ordem em que o painel regista**, e
+/// perguntado pelo `hit(x, y)` — o mesmo que o despacho real usa. Contar registos não responde.
+fn winner_at_the_plus(sel: Option<InspectorTransformInfo>) -> (Option<ph2d_a11y::NodeId>, bool) {
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut state = InspectorState::default();
     set_current_inspector_transform(sel);
     let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
     set_current_inspector_transform(None);
-    rects.iter().any(|(n, _)| *n == ids::INSP_ADD_COMPONENT)
+
+    let registered = rects.iter().any(|(n, _)| *n == ids::INSP_ADD_COMPONENT);
+    let Some((_, r)) = rects
+        .iter()
+        .find(|(n, _)| *n == ids::INSP_ADD_COMPONENT)
+        .copied()
+    else {
+        return (None, registered);
+    };
+    let mut hits = HitIndex::new();
+    for (id, rect) in &rects {
+        hits.register(*id, *rect);
+    }
+    (hits.hit(r.x + r.w * 0.5, r.y + r.h * 0.5), registered)
 }
 
-/// As duas metades, num gate só.
+/// ⭐ **Com objeto: o `+` está lá E ganha o clique.**
 ///
-/// (Mutação: tirar o `if …is_some()` do `paint_head` ⇒ a metade de ausência reprova.)
+/// (Mutação: tirar o re-registo do fim do `paint.rs` ⇒ o vencedor passa a ser a alça de arrasto,
+/// e a mensagem NOMEIA quem roubou o clique — que é o que faltava na 1.ª versão deste gate.)
 #[test]
-fn the_plus_is_painted_with_a_selection_and_absent_without_one() {
+fn the_plus_wins_the_click_over_the_drag_handle() {
+    let (winner, registered) = winner_at_the_plus(Some(transform()));
     assert!(
-        painted(Some(transform())),
-        "com um objeto selecionado o + tem de estar la' — senao nao ha' porta nenhuma para anexar"
+        registered,
+        "com um objeto selecionado o + tem de estar la' — senao nao ha' porta para anexar"
     );
+    assert_eq!(
+        winner,
+        Some(ids::INSP_ADD_COMPONENT),
+        "o + esta' pintado e MORTO sob o dedo: quem ganha o clique no centro dele e' {winner:?} \
+         (a alca de arrasto do painel regista-se no fim do quadro e cobre a banda do titulo — o X \
+         sobrevive porque e' RE-REGISTADO depois dela, e o + tem de o ser tambem)"
+    );
+}
+
+/// ⚠️ **E a metade de AUSÊNCIA:** sem seleção não há a quem anexar, o handler recusa o clique, e um
+/// botão que se pinta e não faz nada é o defeito que esta fase inteira existe para apagar. A
+/// resposta certa é ele **não estar lá** — nem pintado, nem no índice.
+#[test]
+fn without_a_selection_the_plus_does_not_exist_at_all() {
+    let (winner, registered) = winner_at_the_plus(None);
     assert!(
-        !painted(None),
-        "sem selecao o + foi pintado, e o clique nele nao faz nada: um controlo morto sob o dedo"
+        !registered,
+        "sem selecao o + foi registado no indice: um alvo clicavel sobre um botao que ninguem pintou"
     );
+    assert_ne!(winner, Some(ids::INSP_ADD_COMPONENT));
 }

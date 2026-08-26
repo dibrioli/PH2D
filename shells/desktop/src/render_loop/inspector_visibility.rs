@@ -78,6 +78,27 @@ fn visibility_fields(world: &World, entity: Entity) -> VisFields {
     )
 }
 
+/// ⭐ **A §8 aparece se, e só se, o objeto tiver ALGUM componente dela** (ADR-0166 / F3).
+///
+/// ⚠️ **Ela ESCAPOU à poda da 1.ª versão, e foi o smoke do Enio que a apanhou:** a lista de seções
+/// do plano não a nomeava, e eu li isso como *"a §8 fica"* — mas o que fica é a caixa **Visible**,
+/// que é chrome ao lado do nome e vale para todo objeto. A **seção** é outra coisa: ela hospeda
+/// cinco componentes opcionais (VISIBILITY LAYER · Clip Children · Mask Interaction · Mask Source ·
+/// On-Screen Enabler), e um objeto acabado de nascer mostrava os cinco a zeros.
+///
+/// *Uma lista de seções escrita num plano não é o censo das que existem* — o censo é o código.
+///
+/// ⛔ O `Visibility` (a caixa) **não entra nesta lista**: ele é publicado por um snapshot próprio
+/// (`build_visibility_info`), e esconder o «Visible» faria o gesto mais comum do app exigir uma
+/// visita à paleta.
+pub(super) fn has_any_visibility(world: &World, entity: Entity) -> bool {
+    world.get::<VisibilityLayer>(entity).is_some()
+        || world.get::<ClipChildren>(entity).is_some()
+        || world.get::<MaskInteraction>(entity).is_some()
+        || world.get::<Mask2D>(entity).is_some()
+        || world.get::<OnScreenEnabler>(entity).is_some()
+}
+
 /// Build the §8 visibility-section snapshot, or `None` when the entity
 /// has no `Transform` (not Inspector-worthy).
 #[allow(clippy::float_cmp)] // exact compare: same stored value = not mixed
@@ -89,6 +110,9 @@ pub(super) fn build_visibility_section_info(
 ) -> Option<InspectorVisibilitySectionInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
+    if !has_any_visibility(world, entity) {
+        return None;
+    }
     let (layer_mask, clip_mode, mask_mode, alpha_cutoff, mask_source, on_screen, rect) =
         visibility_fields(world, entity);
     let mut mixed = InspectorVisibilityMixed::default();

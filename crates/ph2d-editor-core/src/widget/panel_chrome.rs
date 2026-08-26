@@ -23,7 +23,7 @@ use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{
     ColorToken, PANEL_HEAD_PAD_PX, PANEL_RADIUS_PX, PANEL_RESIZE_HANDLE_SIZE_PX, Radius, Spacing,
-    StrokeToken, Theme, TypeToken,
+    Theme, TypeToken,
 };
 use ph2d_vector::VectorScene;
 
@@ -146,6 +146,15 @@ pub fn paint_panel_title(
 #[path = "panel_chrome/menu.rs"]
 mod menu;
 pub use menu::clamp_menu_to_viewport;
+
+/// **Os BOTÕES do cabeçalho** — o X e o `+`, geometria e pintura. Irmão pelo teto de 500 LOC dos
+/// primitivos (o precedente é o `segmented` logo abaixo), e o corte é por responsabilidade: aqui
+/// fica *que forma tem um painel*, lá *o que vive na ponta direita do título dele*.
+mod header_buttons;
+pub use header_buttons::{
+    HEADER_ADD_BUTTON_PX, paint_panel_close_button, panel_close_button_rect,
+    panel_header_add_button_rect,
+};
 
 mod segmented;
 // ⚠️ Re-export PLANO: os chamadores dizem `panel_chrome::paint_segmented_button` em oito crates, e
@@ -342,67 +351,6 @@ pub fn paint_panel_title_color_dot(
             dot.h + hit_pad * 2.0,
         ),
     );
-}
-
-/// Rect of the canonical X close button for a panel — same geometry
-/// `paint_panel_close_button` paints into. Exposed so panels with a
-/// scrollable body can RE-REGISTER the close hit at end-of-frame
-/// (after body widgets register their potentially-scrolled rects)
-/// so the click-block z-order doesn't accidentally bury the close
-/// hit. Without the re-register, a body widget that scrolled into
-/// the title-bar band ends up on top of close in the dispatch's
-/// back-to-front `HitIndex` walk.
-pub fn panel_close_button_rect(panel: Rect) -> Rect {
-    let close_size = Spacing::Xl2.px();
-    Rect::new(
-        panel.x + panel.w - PANEL_HEAD_PAD - close_size,
-        panel.y + PANEL_TITLE_BASELINE - 2.0, // LITERAL-PX-OK: baseline-align with title text
-        close_size,
-        close_size,
-    )
-}
-
-/// Paint the canonical X close button at the top-right of a panel
-/// and register its hit rect against `close_id`. Returns the rect so
-/// callers can position other header affordances relative to it.
-///
-/// **UI canon (post-2026-05-24):** every floating panel EXCEPT
-/// Hierarchy carries this close button. For image-tool panels
-/// (BgRemoval, Padding, Color Equalization, Upscale, Equalize Sizes)
-/// the `close_id` is the SAME id as the panel's existing "Cancel"
-/// button — clicking the X dispatches the same `WidgetEvent::Click`
-/// the bottom Cancel button does, which the panel's `apply_event`
-/// translates to `EditorAction::CancelActiveTool`. No new handler
-/// needed. For visibility-toggle panels (Inspector, Widget Gallery,
-/// Grid Snap) the `close_id` is a panel-specific `*_CLOSE` constant
-/// that the panel's apply_event toggles via
-/// [`PanelHostInternal::set_panel_visible`].
-///
-/// Visually: a hit zone de `Spacing::Xl2` (24 px na escala de fábrica) com o X desenhado dentro
-/// dela — ⚠️ o doc dizia "32×32 com um glifo de 16×16" e o `panel_close_button_rect` sempre usou o
-/// `Spacing::Xl2`; nomear o TOKEN é o que mantém esta frase verdadeira sob uma escala autorada.
-/// Color
-/// `Text2` (matches subtitle weight — affordance reads as chrome,
-/// not a primary action). Sits inside the [`PANEL_HEADER_CLOSE_RESERVE`]
-/// slot the [`panel_drag_handle_rect`] leaves clear on the right
-/// edge of the title band.
-pub fn paint_panel_close_button(
-    panel: Rect,
-    close_id: ph2d_a11y::NodeId,
-    hit_index: &mut crate::interaction::HitIndex,
-    scene: &mut VectorScene,
-    theme: Theme,
-) -> Rect {
-    let close_rect = panel_close_button_rect(panel);
-    hit_index.register(close_id, close_rect);
-    crate::paint::paint_icon(
-        scene,
-        crate::icons::IconId::Close,
-        close_rect,
-        resolve(ColorToken::Text2, theme),
-        StrokeToken::Default.px(),
-    );
-    close_rect
 }
 
 /// Bottom-LEFT resize-gripper corner accent. Mirror of

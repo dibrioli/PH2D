@@ -70,6 +70,9 @@ fn blend(sim: &SimWorld, b: u64) -> bool {
 fn slice(sim: &SimWorld, b: u64) -> bool {
     crate::render_loop::inspector_presence_probe::slice(sim.world(), b)
 }
+fn visibility_section(sim: &SimWorld, b: u64) -> bool {
+    crate::render_loop::inspector_presence_probe::visibility_section(sim.world(), b)
+}
 fn anchors(sim: &SimWorld, b: u64) -> bool {
     crate::render_loop::inspector_presence_probe::anchors(sim.world(), b)
 }
@@ -129,6 +132,36 @@ const CASES: &[Case] = &[
             w.entity_mut(e).insert(ph2d_ecs::BlendMode::default());
         },
         live: blend,
+    },
+    // ⚠️ **A §8 ESCAPOU à 1.ª poda e foi o smoke do Enio que a apanhou** — a lista de seções do
+    // plano não a nomeava. ⛔ A caixa «Visible» NÃO está aqui de propósito: ela é chrome ao lado do
+    // nome, tem snapshot próprio, e vale para todo objeto.
+    Case {
+        section: "§8 Visibility",
+        component: "ClipChildren",
+        base: plain,
+        attach: |w, e| {
+            w.entity_mut(e).insert(ph2d_ecs::ClipChildren::default());
+        },
+        live: visibility_section,
+    },
+    Case {
+        section: "§8 Visibility",
+        component: "OnScreenEnabler",
+        base: plain,
+        attach: |w, e| {
+            w.entity_mut(e).insert(ph2d_ecs::OnScreenEnabler::default());
+        },
+        live: visibility_section,
+    },
+    Case {
+        section: "§8 Visibility",
+        component: "Mask2D",
+        base: sprite,
+        attach: |w, e| {
+            w.entity_mut(e).insert(ph2d_ecs::Mask2D::default());
+        },
+        live: visibility_section,
     },
     Case {
         section: "§5 9-Slice",

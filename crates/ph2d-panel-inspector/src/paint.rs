@@ -374,16 +374,52 @@ fn paint_inspector(
 
     paint_panel_corner_dot(rect, scene, theme);
     ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
+    close_frame_hits(
+        hit_index,
+        rect,
+        drag_handle_rect,
+        resize_handle_rect,
+        resize_handle_bl_rect,
+    );
+}
+
+/// ⭐ **O que se re-regista no FIM do quadro, e porquê** — as alças, o X e o `+`.
+///
+/// ⚠️ **Estes hits têm de vir DEPOIS de tudo**, e a razão é uma só: o `HitIndex` resolve
+/// back-to-front, então quem regista por último ganha. A alça de arrasto cobre a banda do título e
+/// um widget do corpo que rolou para debaixo dela também — sem este bloco, o que o dedo alcança no
+/// cabeçalho é o que rolou para lá, e não o botão que o olho vê.
+///
+/// A nota original é de **2026-05-24** (o padrão foi reportado na Widget Gallery) e cobria só o X.
+/// ⚠️ **O `+` da F3 (ADR-0166) nasceu sem ele e ficou MORTO SOB O DEDO** — pintado, a acender no
+/// hover, e clicável a nada. Foi o 1.º smoke do Enio que o apanhou; o gate que o defende agora
+/// pergunta *quem ganha o clique*, e não *o id foi registado* (que era `true` o tempo todo).
+///
+/// ⚠️ **Saiu do [`paint_inspector`] pela catraca**, que levou o orquestrador a 304 contra uma
+/// tolerância de 292 que **só desce**: o cluster inteiro sai, e não só a linha nova — *ficar no
+/// mesmo sítio não é encolher*.
+fn close_frame_hits(
+    hit_index: &mut ph2d_editor_core::interaction::HitIndex,
+    rect: ph2d_editor_core::zones::Rect,
+    drag_handle_rect: ph2d_editor_core::zones::Rect,
+    resize_handle_rect: ph2d_editor_core::zones::Rect,
+    resize_handle_bl_rect: ph2d_editor_core::zones::Rect,
+) {
     hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
     hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
-    // Re-register close AFTER drag so scrolled body widgets behind
-    // the title can't shadow it (bug pattern reported 2026-05-24
-    // for Widget Gallery; same surface here).
     hit_index.register(
         ids::INSP_CLOSE,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
     );
+    // ⚠️ **Só quando ele é PINTADO** — sem objeto sob o Inspector o botão não existe, e um hit
+    // registado sobre um botão que ninguém desenhou é a metade oposta do mesmo defeito.
+    if crate::state::current_inspector_transform().is_some() {
+        hit_index.register(
+            ids::INSP_ADD_COMPONENT,
+            ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect),
+        );
+    }
 }
 
 /// The section separator, callable from `paint_frame`'s extracted section

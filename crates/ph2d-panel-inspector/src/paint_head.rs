@@ -60,15 +60,12 @@ pub(crate) fn paint_panel_head(
     // recusa o clique — mas um botão que se PINTA e não faz nada é o defeito que esta fase inteira
     // existe para apagar. *Um controlo morto sob o dedo e um ausente dão o mesmo report*, e a
     // resposta certa é ele não estar lá. A pergunta é a mesma que o handler faz: há `Transform`?
+    //
+    // ⚠️ **O rect vem do `panel_chrome`, não daqui.** Ele é re-registado no FIM do quadro (ver
+    // `paint.rs`), depois da alça de arrasto que cobre a banda do título — e dois rects para o
+    // mesmo botão divergiriam no dia em que um fosse ajustado.
     if crate::state::current_inspector_transform().is_some() {
-        let add_size = 30.0_f32; // LITERAL-PX-OK: quadrado do botão de cabeçalho — o mesmo da Hierarquia
-        let add_rect = Rect::new(
-            // ⚠️ Deslocado do X pela largura dele: os dois partilham a reserva do par.
-            rect.x + rect.w - PANEL_HEAD_PAD - add_size - Spacing::Xl.px(),
-            title_y - 2.0,
-            add_size,
-            add_size,
-        );
+        let add_rect = ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect);
         hit_index.register(ids::INSP_ADD_COMPONENT, add_rect);
         let add_btn =
             ph2d_editor_core::widget::Button::new(ids::INSP_ADD_COMPONENT, "Add Component")

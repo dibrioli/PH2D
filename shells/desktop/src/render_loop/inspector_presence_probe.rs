@@ -28,6 +28,10 @@ pub(crate) fn slice(world: &World, bits: u64) -> bool {
     super::inspector_slice::build_slice_info(world, bits, &[], 1).is_some()
 }
 
+pub(crate) fn visibility_section(world: &World, bits: u64) -> bool {
+    super::inspector_visibility::build_visibility_section_info(world, bits, &[], 1).is_some()
+}
+
 pub(crate) fn anchors(world: &World, bits: u64) -> bool {
     super::inspector_anchor::build_anchor_info(world, bits, &[], 1, 100.0).is_some()
 }

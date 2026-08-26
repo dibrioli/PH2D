@@ -41,19 +41,36 @@ pub(crate) const TILE: usize = 64;
 /// região: `128,6` a `N = 1`, `67,2` a `N = 4`, `53,4` a `N = 8`) e **multiplica** o de montar (a
 /// soma sobre as fatias: `1,00×`, `2,09×`, `3,32×`), que é 96% JIT.
 ///
-/// ⭐ **A varredura (640×480, mediana de 5, `ms/pixels ≠ da marcha de linha`):**
+/// ⛔⛔ **O `2` ERA o óptimo enquanto uma região custava o DOBRO — reconferido na W71.**
 ///
-/// | contorno | linha | N=1 | **N=2** | N=3 | N=4 | N=6 | N=8 |
-/// |---|---:|---:|---:|---:|---:|---:|---:|
-/// | círculo 56 | 63 | 38/0 | **34/1** | 41/2 | 44/1 | 57/2 | 68/2 |
-/// | círculo 168 | 147 | 88/0 | **76/0** | 78/0 | 83/0 | 93/0 | 108/0 |
-/// | estrela 168 | 220 | 195/0 | **181/1** | 187/2 | 182/2 | 199/2 | 213/4 |
-/// | círculo 664 | 514 | 328/0 | **265/2** | 276/2 | 264/2 | 306/2 | 330/3 |
+/// A W70 tirou a cada especialização a fita de gradiente que ninguém avalia e o `fork` que
+/// recompilava o par: **metade do preço de montar**. Como repartir *multiplica* o custo de montar e
+/// *divide* o de avaliar, baixar o preço de montar move o vale para **mais** fatias — e move mesmo.
+/// *Quem move o número que sustenta uma nota tem de reconferir a nota* (CLAUDE.md §0.0).
 ///
-/// ⭐ **`2` é o melhor ou empata nas quatro**, e o vale é raso entre 2 e 4 — acima disso a montagem
-/// domina. ⚠️ **E o ganho é `1,08×–1,24×`, não os `5×` que a nota da W56d prometia**: a nota lia o
-/// mecanismo certo (a pegada) e errava o preço, porque a montagem é JIT e cresce com a soma.
-pub(crate) const SLABS: usize = 2;
+/// ⭐ **A varredura nova** (`measure_where_the_frame_goes_and_how_many_slabs_it_wants`, tile `64`,
+/// **intercalada** `N=2,3,4,6` × 3 rondas × mediana de 5, máquina a `load < 5`, quadro inteiro em
+/// ms com anti-serrilhado):
+///
+/// | tamanho | arestas | N=2 | N=3 | **N=4** | N=6 |
+/// |---|---:|---:|---:|---:|---:|
+/// | `640×360` | 168 | `37,6` | `35,0` | **`34,6`** | `35,0` |
+/// | `640×360` | 672 | `131,2` | `126,6` | `116,1` | **`114,9`** |
+/// | `1920×1080` | 168 | `157,9` | `149,0` | `146,7` | **`143,5`** |
+/// | `1920×1080` | 672 | `504,1` | `447,7` | `424,8` | **`415,9`** |
+///
+/// ⭐ **`4` ship porque o caso que o artista SENTE é o primeiro** — o quadro de movimento a
+/// `640×360` na resolução de omissão, onde `4` ganha e `6` já volta a subir. Nos outros três `6` é
+/// melhor por `1 %`–`2 %`, que é a largura do vale. Ganho: `1,09×` no caso do preview e **`1,19×`**
+/// no mais pesado.
+///
+/// ⚠️ **A tabela ANTIGA (W56e) fica registada porque ela não estava errada** — ela media outro
+/// preço: `círculo 168` dava `88/76/78/83/93/108` para `N=1..8`, com `2` a ganhar. *Uma constante
+/// que se move é uma medição a acontecer.*
+///
+/// ⚠️ E o `TILE` **não** se moveu: a varredura por ladrilho a `640×360` com `N=4` dá
+/// `32 → 48,8` · `48 → 37,8` · **`64 → 33,8`** · `96 → 39,9` · `128 → 55,6`.
+pub(crate) const SLABS: usize = 4;
 
 /// ⭐⭐⭐ **A marcha por ladrilho, com uma árvore por região** — ver o `TILE`.
 ///
@@ -141,9 +158,14 @@ pub(crate) fn tiled_trace(
                 k,
             )?;
             SPECIALISED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            Some(ph2d_field_eval::hybrid::Hybrid::from_tree(
-                rc.compile_at(doc, r.lo, r.hi, &r.pts),
-            ))
+            let t0 = std::time::Instant::now();
+            let tape =
+                ph2d_field_eval::hybrid::Hybrid::from_tree(rc.compile_at(doc, r.lo, r.hi, &r.pts));
+            SPECIALISE_NS.fetch_add(
+                u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            Some(tape)
         });
         (idx, hit, normal)
     };
@@ -360,6 +382,19 @@ pub(crate) struct Region {
     /// Os oito cantos do tubo, **crus** — a folga é somada por `ph2d_field_eval::hull_uv`.
     pub(crate) pts: Vec<[f32; 3]>,
 }
+
+/// ⭐⭐⭐ **Quanto TEMPO a especialização custou, em nanossegundos** (W71) — o numerador da fracção
+/// que decide se ainda vale a pena atacar a montagem.
+///
+/// ⚠️ **Ele existe porque a mesma tabela admitia duas leituras que diferem por `3×`.** O A/B da W70
+/// removeu `132` fitas float **e** `293` de gradiente e ganhou `27,2 ms`: dividir por `132` diz que
+/// a montagem que sobra é `79 %` do quadro; dividir por `425` diz `25 %`. As duas mandam em waves
+/// diferentes — *cache entre quadros* contra *atacar a marcha* — e nenhuma delas é uma medição.
+///
+/// ⚠️ Lê-se num traçado **serial**: a soma é de CPU, e só contra um relógio de parede serial é que
+/// ela é uma fracção. Um `Instant::now()` por região custa ~25 ns contra `~1,3 ms` de trabalho.
+#[doc(hidden)]
+pub static SPECIALISE_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// ⭐ **Quantas ÁRVORES o traçado especializou** — o contador que uma sonda lê.
 ///

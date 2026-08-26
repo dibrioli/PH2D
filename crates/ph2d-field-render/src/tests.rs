@@ -1982,6 +1982,10 @@ fn every_sample_lies_inside_the_region_that_built_its_tape() {
 /// cargo test -p ph2d-field-render --release -- --exact \
 ///     tests::the_table_of_how_many_depth_slabs --ignored --nocapture
 /// ```
+/// ⚠️ **RECONFERIDA na W71 e o veredito mudou** — esta varredura escolheu `SLABS = 2` quando uma
+/// região custava o **dobro** (a W70 tirou-lhe a fita de gradiente e o `fork`). A tabela nova, e
+/// intercalada, está em `measure_where_the_frame_goes_and_how_many_slabs_it_wants`; o produto ship
+/// `4`. *Uma varredura envelhece com o custo que ela pesava.*
 #[test]
 #[ignore]
 fn the_table_of_how_many_depth_slabs() {
@@ -3041,18 +3045,25 @@ fn measure_the_tile_that_fits_a_small_image() {
     )
     .expect("extrusão");
     println!("tamanho | tile | slabs | árvores | ms");
-    for d in [1u32, 3, 6] {
+    for d in [3u32] {
         let (w, h) = (1920 / d, 1080 / d);
-        for tile in [64usize, 128, 256, 512, 4096] {
-            for slabs in [1usize, 2] {
+        for tile in [16usize, 24, 32, 48, 64, 96, 128] {
+            for slabs in [1usize, 2, 3, 4] {
                 let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
                 crate::SPECIALISED.store(0, Ordering::Relaxed);
-                let t = std::time::Instant::now();
-                let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
-                let ms = t.elapsed().as_secs_f64() * 1000.0;
+                let mut runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t = std::time::Instant::now();
+                        let _ =
+                            crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
+                        t.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                runs.sort_by(f64::total_cmp);
                 println!(
-                    "{w:4}x{h:4} | {tile:4} | {slabs:5} | {:7} | {ms:8.1}",
-                    crate::SPECIALISED.load(Ordering::Relaxed)
+                    "{w:4}x{h:4} | {tile:4} | {slabs:5} | {:7} | {:8.1}",
+                    crate::SPECIALISED.load(Ordering::Relaxed) / 5,
+                    runs[2]
                 );
             }
         }
@@ -3122,6 +3133,116 @@ fn measure_what_the_tape_budget_buys() {
                 SPECIALISED.load(Ordering::Relaxed) / 7,
                 FLOAT_TAPES.load(Ordering::Relaxed) / 7,
                 GRAD_TAPES.load(Ordering::Relaxed) / 7,
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **PARA ONDE VAI O QUADRO, e quantas fatias ele quer** (W71) — as duas perguntas que a W70
+/// deixou por responder, medidas juntas porque partilham a fixtura.
+///
+/// # 1. A fracção de MONTAGEM
+///
+/// ⛔ **A tabela do A/B da W70 admitia duas leituras que diferem por `3×`:** ela removeu `132` fitas
+/// float **e** `293` de gradiente e ganhou `27,2 ms`. Dividir por `132` diz que a montagem que
+/// sobra é `79 %` do quadro; dividir por `425` diz `25 %`. *Duas divisões da mesma medição não são
+/// uma medição* — e elas mandam em waves opostas (cache entre quadros contra atacar a marcha).
+///
+/// ⚠️ **O traçado é SERIAL aqui**: o [`crate::SPECIALISE_NS`] soma tempo de **CPU**, e só contra um
+/// relógio de parede serial é que essa soma é uma fracção.
+///
+/// # 2. Quantas FATIAS
+///
+/// ⚠️ **O `SLABS = 2` foi escolhido quando uma região custava o DOBRO** (a W70 tirou-lhe a fita de
+/// gradiente e o `fork`). Repartir **divide** o custo de avaliar e **multiplica** o de montar — se
+/// montar ficou metade do preço, o vale move-se para mais fatias. *Quem move o número que sustenta
+/// uma nota tem de reconferir a nota.*
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_where_the_frame_goes_and_how_many_slabs_it_wants --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_where_the_frame_goes_and_how_many_slabs_it_wants() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let piece = |n: usize| -> FieldDoc {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+
+    println!("== 1. onde o quadro serial se gasta (640x360, com AA) ==");
+    println!("arestas | quadro | montagem | fracção | regiões");
+    for n in [168usize, 672] {
+        let doc = piece(n);
+        let _ = crate::trace_with(&doc, &reg, &cam, 640, 360, false, true);
+        SPECIALISED.store(0, Ordering::Relaxed);
+        crate::SPECIALISE_NS.store(0, Ordering::Relaxed);
+        let t = std::time::Instant::now();
+        let _ = crate::trace_with(&doc, &reg, &cam, 640, 360, false, true);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        let asm = crate::SPECIALISE_NS.load(Ordering::Relaxed) as f64 / 1.0e6;
+        println!(
+            "{n:7} | {ms:6.1} | {asm:8.1} | {:6.1}% | {:7}",
+            100.0 * asm / ms,
+            SPECIALISED.load(Ordering::Relaxed)
+        );
+    }
+
+    println!("\n== 2. quantas fatias, intercalado (tile 64, mediana de 3 rondas x 5) ==");
+    let slabs_set = [2usize, 3, 4, 6];
+    for (w, h) in [(640u32, 360u32), (1920, 1080)] {
+        for n in [168usize, 672] {
+            let doc = piece(n);
+            let mut best: Vec<Vec<f64>> = vec![Vec::new(); slabs_set.len()];
+            for _ in 0..3 {
+                for (k, &s) in slabs_set.iter().enumerate() {
+                    let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, 64, s, true);
+                    let runs: Vec<f64> = (0..5)
+                        .map(|_| {
+                            let t = std::time::Instant::now();
+                            let _ =
+                                crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, 64, s, true);
+                            t.elapsed().as_secs_f64() * 1000.0
+                        })
+                        .collect();
+                    best[k].push(med(runs));
+                }
+            }
+            let cols: Vec<f64> = best.into_iter().map(med).collect();
+            let win = cols
+                .iter()
+                .enumerate()
+                .min_by(|a, b| a.1.total_cmp(b.1))
+                .map(|(i, _)| slabs_set[i])
+                .unwrap_or(0);
+            println!(
+                "{w:4}x{h:4} arestas {n:4} | N=2 {:6.1} | N=3 {:6.1} | N=4 {:6.1} | N=6 {:6.1} | melhor {win}",
+                cols[0], cols[1], cols[2], cols[3]
             );
         }
     }

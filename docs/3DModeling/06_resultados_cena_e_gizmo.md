@@ -5744,7 +5744,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⏸️ **Reaproveitar a fita entre QUADROS de uma órbita** · **especializar em espaço LOCAL** | as duas direcções que sobram, com o preço nomeado | §71.6 |
+| ⛔ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **tecto MEDIDO de `20 %`** — a montagem deixou de ser a maioria | §72.1 |
+| ⏳ **A MARCHA** — os outros `80 %` do quadro | o alvo que a medição escolheu | §72.1 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
 | ⏸️ Ladrilhar em `(u, v)` contra o **paralelogramo** em vez da AABB | o único eixo que não multiplica a montagem | §58 |
 | ⏸️ Um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) | pede decisão do Enio | §64 |
@@ -5754,6 +5755,10 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐ **W71 (§72): a montagem é `20 %` do quadro — medida, não dividida** (o produto passou a contar
+  o tempo dela). ⛔ Isso **fecha** as duas direcções que a W70 tinha nomeado e manda o alvo para a
+  **marcha**. ⭐ E o `SLABS` foi de `2` para **`4`**: ele fora escolhido quando montar custava o
+  dobro (`1,09×` no caso do preview, `1,19×` no mais pesado).
 - ⭐⭐⭐ **W70 (§71): a montagem de fitas era o quadro inteiro — e três em cada quatro fitas não
   eram avaliadas por ninguém.** Por região especializada pagavam-se **quatro** compilações (árvore ·
   fita float · fita de **gradiente**, que só a exportação consome · e um **`fork`** que recompilava
@@ -6337,8 +6342,75 @@ diferentes sobre a mesma passagem.*
 
 ⛔ **E a base continua acima do orçamento.** O quadro de movimento a `640×360` custa hoje
 **`41,8 ms`** contra os `16,7` de um quadro de 60 Hz — `2,5×` acima, contra os `4,1×` de ontem. *A
-pré-visualização continua a não alcançar 60 Hz numa peça de perfil*, e o que sobra tem agora um
-nome: são as `132` fitas que **são** avaliadas. Cortar essa conta é outra obra — as duas direcções
-com preço nomeado são **reaproveitar a fita entre quadros de uma órbita** (o documento não muda; a
-região é que se mexe com a câmera) e **especializar em espaço LOCAL**, onde a região não depende da
-câmera.
+pré-visualização continua a não alcançar 60 Hz numa peça de perfil.*
+
+⚠️ **E as duas direcções que esta secção nomeava — reaproveitar a fita entre quadros de uma órbita e
+especializar em espaço LOCAL — têm agora um TECTO MEDIDO, no §72: `20 %`.** Elas atacavam a
+montagem, e a montagem deixou de ser a maioria do quadro quando esta wave a cortou ao meio. *Uma
+direcção nomeada antes de a fracção ser medida é uma aposta com cara de plano.*
+
+## §72 — W71: a montagem é `20 %` do quadro, e a fatia mudou de número (26/08)
+
+Duas perguntas que a W70 deixou abertas, medidas juntas porque partilham a fixtura.
+
+### §72.1 — ⛔ A fracção de montagem: `20 %`, e ela fecha duas direcções
+
+O A/B da W70 admitia **duas divisões** da mesma medição: ela removeu `132` fitas float **e** `293`
+de gradiente e ganhou `27,2 ms`. Dividir por `132` diz que a montagem que sobra é `79 %` do quadro;
+dividir por `425` diz `25 %`. *Duas divisões da mesma medição não são uma medição* — e elas mandam
+em waves opostas.
+
+⇒ o produto passou a **contar o tempo** (`SPECIALISE_NS`, ao lado do `SPECIALISED`), lido num
+traçado **serial** — a soma é de CPU, e só contra um relógio de parede serial é que ela é uma
+fracção:
+
+| arestas | quadro (serial, com AA) | montagem | fracção | regiões |
+|---:|---:|---:|---:|---:|
+| 168 | `436,7 ms` | `87,9 ms` | **`20,1 %`** | 132 |
+| 672 | `1 737,7 ms` | `335,8 ms` | **`19,3 %`** | 132 |
+
+⭐⭐ **A leitura de `79 %` está refutada, e com ela o plano que ela sustentava.** As duas direcções
+que o §71.6 nomeava — *reaproveitar a fita entre quadros de uma órbita* e *especializar em espaço
+LOCAL* — atacam a montagem, logo **nenhuma delas pode comprar mais do que `20 %`**, e as duas são
+obras grandes (a região é a caixa do frustum do ladrilho: ela move-se com a câmera, e o casco que a
+poda são oito pontos em 3D — uma chave de cache que quase nunca acerta). ⇒ **o alvo passa a ser a
+MARCHA**, que são os outros `80 %`.
+
+⚠️ *Uma direcção nomeada antes de a fracção ser medida é uma aposta com cara de plano* — e esta
+custou uma medição a desfazer.
+
+### §72.2 — ⭐ A fatia: `2 → 4`, porque o preço de montar caiu para metade
+
+Repartir o tubo de um ladrilho em fatias de profundidade **divide** o custo de avaliar (cada região
+guarda menos arestas) e **multiplica** o de montar. A W56e mediu `2` como óptimo — com o preço de
+montar que havia então. A W70 cortou esse preço ao meio ⇒ *o vale tinha de se mover, e moveu*.
+
+Varredura **intercalada** (`N = 2,3,4,6` × 3 rondas × mediana de 5, tile `64`, `load < 5`):
+
+| tamanho | arestas | N=2 | N=3 | **N=4** | N=6 |
+|---|---:|---:|---:|---:|---:|
+| `640×360` | 168 | `37,6` | `35,0` | **`34,6`** | `35,0` |
+| `640×360` | 672 | `131,2` | `126,6` | `116,1` | **`114,9`** |
+| `1920×1080` | 168 | `157,9` | `149,0` | `146,7` | **`143,5`** |
+| `1920×1080` | 672 | `504,1` | `447,7` | `424,8` | **`415,9`** |
+
+⭐ **`4` ship porque o caso que o artista SENTE é o primeiro** — o quadro de movimento a `640×360`
+na resolução de omissão, onde `4` ganha e `6` já volta a subir. Nos outros três `6` é melhor por
+`1 %`–`2 %`, que é a largura do vale. Ganho: **`1,09×`** no caso do preview e **`1,19×`** no mais
+pesado.
+
+⚠️ **A tabela antiga fica registada porque ela não estava errada** — ela media outro preço. *Uma
+constante que se move é uma medição a acontecer; o que não pode mover-se em silêncio é a razão.*
+
+⚠️ E o **`TILE` não se moveu**: a varredura por ladrilho com `N = 4` dá `32 → 48,8` · `48 → 37,8` ·
+**`64 → 33,8`** · `96 → 39,9` · `128 → 55,6`. ⭐ E ela mostra o mecanismo de lado: **quanto maior o
+ladrilho, mais fatias ele quer** (a `96` e `128` o ganho de `N=1` para `N=4` é `1,6×`), que é
+exactamente o que a fórmula da região prevê — ela mede `lado + profundidade × |direcção|`.
+
+### §72.3 — ⚠️ E um vermelho que NÃO era desta wave
+
+`an_abandoned_march_returns_nothing_and_returns_fast` reprovou na corrida da suíte e passou **3 de
+3** sozinho. Ele é uma **razão entre dois relógios** (a família que o `CLAUDE.md` §5.0 descreve), a
+máquina estava a `load 16` por causa da própria varredura, e ⭐ **a fixtura dele é uma esfera — que
+não tem perfil, logo nem sequer entra no caminho especializado que esta wave tocou**. *Antes de
+olhar para o commit, corra-o sozinho.*

@@ -108,8 +108,20 @@ fechou»*.
 
 ## §5 — A obra seguinte, por ordem de evidência
 
-1. ⭐⭐⭐ **A quantização/layout** — é a única fase entre um campo comprovadamente alinhado
-   (§19.3) e uma saída que não segue o relevo. As duas alavancas a montante estão fechadas.
+1. ⭐⭐⭐ **O F4 NÃO ESTÁ NA ROTA QUE SHIPA — e o A/B mede-o** (`ACHADO` §23.13). A rota da
+   extracção vai `F1 → F2 → F3 → corte → pente → G3/G5 → extracção`; `ph2d-quantize`
+   **não aparece**. A rota do *fill* chama-o, e é a **única** diferença de fase entre as
+   duas. Com o mesmo F1, o mesmo `h` e o **mesmo campo**
+   ([`fill_chain`](../../../crates/ph2d-quadfill/examples/fill_chain.rs)), as **voltas
+   melhoram nas três peças** medidas: `3,8→1,0` · `0,8→0,3` · `2,8→0,9`, e a contagem de
+   anéis sobe (`12→36`, `35→66`, `12→26`).
+   ⚠️ **O que não melhorou:** na `hooked` os anéis **fechados** caem de `8` para `4`.
+   ⛔ **E a resposta não é trocar de rota** — o *fill* tem enviesamento `27°` contra `6,8°`.
+   ⇒ A obra é **trazer o F4 para dentro da cadeia da extracção**: a restrição *«este arco
+   leva `n` isolinhas»* é **linear** nas mesmas incógnitas que a costura já elimina
+   ([`arc_marks`](../../../crates/ph2d-gridmap/src/marks.rs) já lê onde as isolinhas
+   cruzam um arco), e o precedente medido é a Obra A.
+   ⚠️ *Como termo de energia repetiria, um nível acima, o defeito que a Obra A curou.*
 2. ⭐⭐ **O patch de VALÊNCIA 12 da `sculpt_004`** — o traçado dá `16` patches (a `t003` dá
    `31`) e um deles é não-disco com `χ = −1`; a limpeza parou porque **piorava** a topologia.
    É a instância mais nítida do item 1, e veio da peça do artista.
@@ -133,11 +145,12 @@ fechou»*.
 
 `ph2d-mesh`: `manifold.rs` (+`_tests`), `feature_edges.rs` (+`_tests`), `lib.rs` ·
 `ph2d-remesh-iso`: `lib.rs`, `lib_tests.rs` · `ph2d-quadfill`: `finish.rs`, `lib.rs` ·
+`ph2d-quadfill`: ⭐ `examples/fill_chain.rs` (o A/B do F4) ·
 `ph2d-quadextract`: `walk.rs`, `lib.rs`, `tests/gates_fixtures.rs`,
 `examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
 `ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.12.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.13.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

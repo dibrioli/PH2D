@@ -1386,3 +1386,73 @@ grade, e as voltas não derivam.
 ⇒ A próxima janela **não** deve mexer no G3/G5. A morada que sobra é onde as
 singularidades são **colocadas** — o F2/F3 — e essa é a única fase da cadeia que nenhuma
 régua desta jornada tocou.
+
+### §23.13 — ⭐⭐⭐ A FASE QUE FALTA TEM NOME: o F4 não está na rota que shipa
+
+Depois de sete hipóteses refutadas, a primeira que **sobrevive** — e ela não é uma
+hipótese sobre o algoritmo, é sobre a **lista de fases**.
+
+#### O que a rota do produto atravessa
+
+[`sculpt3d_history_retopo_extract.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_extract.rs)
+(o default desde 25/08) vai:
+
+```text
+F1 remesh-iso → F2 crossfield → F3 trace → G1 corte → G2 pente → G3/G5 mapa → extracção
+```
+
+⛔⛔⛔ **`ph2d-quantize` (o F4) não aparece.** A rota do *fill*
+([`…_retopo_global.rs`](../../../shells/desktop/src/sculpt3d_history_retopo_global.rs))
+chama-o — `quantize_within(&l, Budget::new(…))` — e é a **única** diferença de fase entre
+as duas antes do preenchimento.
+
+⚠️ **E o `lib.rs` da própria `ph2d-gridmap` descreve a intenção contrária:** *«os inteiros
+já existem: o **F4** decide quantos segmentos leva cada arco ⇒ o que falta desta fase é
+LINEAR»*. *Uma intenção escrita no doc de um módulo não é um passo do caminho* — nada
+alimenta o mapa com aquelas contagens, e ele resolve livre.
+
+#### ⭐ O A/B, com UMA variável
+
+[`fill_chain`](../../../crates/ph2d-quadfill/examples/fill_chain.rs) repete a montante do
+`chain_info` passo a passo — mesmo F1 (`ALPHA`), mesmo `h` (aresta mediana pós-F1), mesmo
+campo (`solve_miq`, **não** o alinhado). ⇒ só o F4 difere.
+
+| peça | rota | quads | loops (**fechados**) | ⭐ **voltas p50** · p90 |
+|---|---|---|---|---|
+| `sculpt_eared` | **sem F4** | `2 013` | `12` (`0`) | **`3,8×`** · `9,0×` |
+| `sculpt_eared` | **com F4** | `4 251` | `36` (**`2`**) | **`1,0×`** · `5,3×` |
+| `sculpt_hooked` | sem F4 | `1 420` | `35` (`8`) | **`0,8×`** · `2,5×` |
+| `sculpt_hooked` | com F4 | `1 592` | `66` (`4`) | **`0,3×`** · **`1,2×`** |
+| `sphere_uv_96x144` | sem F4 | `2 152` | `12` (`0`) | **`2,8×`** · `10,1×` |
+| `sphere_uv_96x144` | com F4 | `2 229` | `26` (`0`) | **`0,9×`** · `6,2×` |
+
+⭐⭐⭐ **As voltas melhoram nas TRÊS peças**, na mediana e no `p90`. E a contagem de anéis
+**sobe** nas três (`12→36`, `35→66`, `12→26`): a malha ganha estrutura para além das
+separatrizes obrigatórias.
+
+⚠️ **A densidade é um confundidor, e a medição fecha-o de dois lados:** as duas peças de
+densidade quase igual (`hooked` a `1,12×`, `sphere_uv` a `1,04×`) são as que mais
+melhoram (`0,8→0,3` e `2,8→0,9`); e a **§23.8** já mediu que **mais** quads faz o espiral
+**piorar** nesta cadeia. *Um confundidor que empurra ao contrário do efeito não o explica.*
+
+⛔ **E o que NÃO melhorou, dito por inteiro:** na `hooked` os anéis fechados **caem** de
+`8` para `4` (de `23 %` para `6 %` do total). *A régua das voltas e a contagem de anéis
+discordam nessa peça, e nenhuma das duas é a errada* — a `hooked` com F4 tem muitos anéis
+curtos, poucos deles fechados.
+
+#### ⛔ E a resposta NÃO é trocar de rota
+
+A rota do *fill* é geometricamente **muito pior** — enviesamento `27°` contra os `6,8°` da
+extracção (§4 do `PLAN.md`), que é a razão de a extracção ter passado a default. ⇒ *não é
+«voltar atrás»; é trazer o F4 para dentro da cadeia da extracção.*
+
+⭐ **A forma da obra já existe nesta crate:** o F4 diz quantos segmentos leva cada arco, e
+[`arc_marks`](../../../crates/ph2d-gridmap/src/marks.rs) já sabe ler onde as isolinhas
+inteiras cruzam um arco. A restrição *«este arco leva `n` isolinhas»* é **linear** nas
+mesmas incógnitas que a costura já elimina — é a família do
+[`SPEC_restricoes_por_eliminacao`](../../cleanroom/SPEC_restricoes_por_eliminacao.md), com
+a costura como precedente medido.
+
+⚠️ **A ordem importa:** a costura entrou por eliminação e fechou a peça; a contagem de arco
+é a mesma maquinaria com outro sujeito. *Construí-la como termo de energia repetiria,
+um nível acima, o defeito que a Obra A curou.*

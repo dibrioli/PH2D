@@ -90,7 +90,10 @@ pub use face::{Face, TRI};
 pub use feature_dirs::{FeatureDir, FeatureOptions, FeatureReport, feature_dirs};
 pub use feature_edges::{FEATURE_EDGE_MIN_COS, FeatureEdge, FeatureEdgeReport, feature_edges};
 pub use holes::{HoleFill, fill_holes};
-pub use manifold::{ManifoldReport, drop_extra_faces, non_manifold_edges, split_non_manifold};
+pub use manifold::{
+    DoubledReport, ManifoldReport, border_edges, drop_doubled_faces, drop_extra_faces,
+    non_manifold_edges, split_non_manifold,
+};
 pub use merge::merge;
 pub use mesh::{
     DEFAULT_AO, DEFAULT_COLOR, DEFAULT_MASK, DEFAULT_PREVIEW, Mesh, MeshError, QueryScratch,

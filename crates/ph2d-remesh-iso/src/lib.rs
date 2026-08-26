@@ -117,6 +117,28 @@ pub const MAX_ROUNDS: usize = 24;
 /// ambígua) em vez de as separar. É outra operação, e é a obra seguinte.
 pub const MANIFOLD_REPAIR: u8 = 0;
 
+/// ⭐⭐⭐ **REMOVER AS FOLHAS DE ESPESSURA ZERO À ENTRADA — LIGADO.**
+///
+/// ⛔⛔ **Esta é a quinta reparação, e a primeira que não abre a peça.** As quatro de
+/// 2026-08-25 ([`MANIFOLD_REPAIR`]) foram desenhadas a partir do **nome** do defeito. A
+/// sonda `manifold_census` mediu a estrutura em 2026-08-26 e o nome estava errado: as `4`
+/// arestas ambíguas da escultura do artista são as arestas de **4 pares
+/// `(triângulo, espelho)`** — `0` cópias com a mesma orientação, **`4` com orientação
+/// oposta. *Uma bolsa de volume zero, não uma aleta.*
+///
+/// ⇒ Apagar **as duas** faces de cada par não tira superfície nenhuma, e a medição
+/// confirma-o na peça: `ambíguas 4 → 0`, **`bordo 0 → 0`**.
+///
+/// ⚠️ **À ENTRADA e não no fim**, ao contrário do que a nota de [`MANIFOLD_REPAIR`] concluiu
+/// para a partição: uma folha dupla é um **defeito do ficheiro**, e deixá-la entrar no laço
+/// põe o remalhe a refinar, colapsar e projectar geometria que não existe.
+/// ⚠️ `PH2D_DOUBLED_REPAIR=0` desliga, para bissecar.
+pub const DOUBLED_REPAIR: bool = true;
+
+fn doubled_repair_on() -> bool {
+    std::env::var("PH2D_DOUBLED_REPAIR").map_or(DOUBLED_REPAIR, |v| v != "0")
+}
+
 /// Se a variante `1` fecha os buracos que abriu. ⛔ Medido: leva a saída a **vazia**.
 const FILL_AFTER_SPLIT: bool = false;
 
@@ -141,6 +163,10 @@ pub struct Report {
     /// ⭐⭐⭐ **A reparação não-manifold da porta** — ⚠️ `bad_edges_after > 0` é vermelho:
     /// a cadeia inteira a jusante assume duas faces por aresta.
     pub manifold: ph2d_mesh::ManifoldReport,
+    /// ⭐⭐⭐ **As folhas de espessura zero removidas à ENTRADA** — ver [`DOUBLED_REPAIR`].
+    pub doubled_door: ph2d_mesh::DoubledReport,
+    /// ⭐ E as removidas **depois** do laço, se o modo as pedir.
+    pub doubled_after: ph2d_mesh::DoubledReport,
 }
 
 /// **O ALVO DE ARESTA desta malha** — `ALPHA × diagonal da caixa`.
@@ -172,6 +198,17 @@ pub fn target_edge(mesh: &Mesh, alpha: f32) -> f32 {
 pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
     let verts_before = mesh.vert_count();
     mesh.triangulate();
+
+    // ⭐⭐⭐ **AS FOLHAS DE ESPESSURA ZERO SAEM ANTES DE TUDO** — ver [`DOUBLED_REPAIR`].
+    //
+    // ⚠️ **Antes do `reference.clone()`**, de propósito: a superfície de referência contra
+    // a qual o laço reprojeta não pode conter a bolsa, senão o alisamento passa o passe
+    // inteiro a puxar vértices para uma folha que não é superfície.
+    let doubled_door = if doubled_repair_on() {
+        ph2d_mesh::drop_doubled_faces(mesh)
+    } else {
+        ph2d_mesh::DoubledReport::default()
+    };
 
     let reference = mesh.clone();
     let target = target_edge(mesh, alpha);
@@ -259,6 +296,16 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
         ph2d_mesh::fill_holes(mesh);
     }
 
+    // ⭐ **E outra vez no fim** — porque o remalhe cria não-manifold sozinho (`4 ⇒ 0` na
+    // porta e `2` outra vez depois do laço, medido). ⚠️ *Se o que ele cria também for uma
+    // folha dupla, esta chamada apanha-o; se não for, ela é inerte e a medição diz que a
+    // causa é outra.* A recusa vive dentro da própria operação.
+    let doubled_after = if doubled_repair_on() {
+        ph2d_mesh::drop_doubled_faces(mesh)
+    } else {
+        ph2d_mesh::DoubledReport::default()
+    };
+
     // ⚠️ **A superfície de referência é uma CÓPIA do estado de entrada**, tirada
     // depois do `triangulate` e antes da primeira edição. Reprojetar contra a
     // malha que está a ser editada seria pedir a uma superfície que se corrigisse
@@ -271,6 +318,8 @@ pub fn remesh_isotropic(mesh: &mut Mesh, alpha: f32) -> Report {
         rounds,
         flips,
         manifold,
+        doubled_door,
+        doubled_after,
     }
 }
 

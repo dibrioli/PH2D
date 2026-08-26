@@ -5760,6 +5760,11 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐ **W79 (§80): o espelho passa a ter TRÊS botões** (`Mirror X/Y/Z`, pedido do Enio) — e a cerca
+  que dizia *«roda o nó»* era falsa: o modificador age **antes** da pose, então rodar exigiria um nó
+  intermédio. Variantes **append-only** ⇒ zero migração. ⛔ E **duas mutações sobreviveram** aos
+  primeiros gates, nos dois sítios que **cortam** (a caixa) e **furam** (a pré-imagem) a peça — mais
+  um gate que prometia *«erro de compilação»* sobre uma lista escrita à mão.
 - ⭐ **W78 (§79): a auditoria da lista viva — DUAS entradas eram trabalho já feito.** Ladrilhar em
   `(u, v)` estava feito desde a W59 (o casco), e o **`Mirror`** — que o Enio adiou porque *«não se
   consegue demonstrar»* — **demonstra-se**: o modificador vai na **operação** e dobra um filho fora
@@ -6835,3 +6840,61 @@ precisar de investigação.*
 | ⏸️ o 2.º degrau do assentar (`504 ms`) | ✔ medido hoje (§74.2) |
 | ⏸️ `√3` demonstrável contra o `√2` medido | ✔ escrito hoje (§78.3) |
 | ⛔ os dois `panic` do `ph2d-gridmap` | ✔ dono é a `line/quadextract` |
+
+## §80 — W79: o espelho passa a ter TRÊS botões — e a cerca que dizia «roda o nó» era falsa (26/08)
+
+**Enio, ao ver a demonstração da W78:** *«funciona para x. Melhor 3 botões para x, y e z»*.
+
+### §80.1 — ⛔ A cerca estava escrita, e o argumento dela não se aplicava
+
+O doc do `Unary::Mirror` dizia: *«sem escolha de eixo — quem quer outro **roda o nó**, e uma escolha
+de eixo por modificador seria um terceiro vocabulário de orientação no mesmo módulo»*, por analogia
+com o `Cylinder` (*«outro eixo se obtém pela rotação do nó»*).
+
+⚠️ **A analogia falha, e falha no ponto que decide:** o modificador age no espaço **local**, *antes*
+da pose do nó. Rodar o nó roda a **peça inteira**; para espelhar em Y por rotação seria preciso um nó
+**intermédio** só para rodar, espelhar e desrodar. *Uma equivalência que exige uma terceira entidade
+não é uma equivalência: é um contorno.*
+
+⚠️ E os irmãos de eixo — `Array` (X) e `Radial` (Z) — **ficam como estão**: eles têm número, e uma
+matriz por eixo é outra pergunta (três botões × dois números). O pedido era o espelho.
+
+### §80.2 — ⭐ Variantes NOVAS, e no FIM da lista
+
+`Unary::MirrorY` e `Unary::MirrorZ` são variantes **novas**, acrescentadas no **fim** — e as duas
+coisas são a mesma razão: o documento serializa por **posição**, então um campo `axis` dentro do
+`Mirror` (ou uma variante no meio) mudaria o significado dos bytes de **toda peça já gravada**.
+*Append-only é o que faz uma extensão não ser uma migração.* ⇒ zero mexida no `PROJECT_SCHEMA`, e um
+ficheiro de ontem abre igual.
+
+Os rótulos passam a **`Mirror X` / `Mirror Y` / `Mirror Z`**, e os botões saem do
+`UnaryKind::ALL` — o painel não mudou uma linha.
+
+### §80.3 — ⛔⛔ E duas mutações SOBREVIVERAM, nos dois sítios que cortam ou furam a peça
+
+Os primeiros gates apanhavam o **campo** (o espelho dobra no eixo certo) e deixavam passar:
+
+| mutação | o que ela faz ao produto |
+|---|---|
+| a **caixa** do espelho usa sempre o eixo X | a caixa não alcança a cópia ⇒ a marcha recorta-a e o exportador **corta a peça** |
+| os eixos novos dizem que **não** remapeiam coordenadas | a especialização constrói o perfil sob um domínio dobrado ⇒ **fura a peça** |
+
+⇒ dois gates novos: `the_bounding_box_follows_the_axis_of_the_mirror` (com o **controlo sem espelho**,
+porque a caixa sai de uma **bola** e uma bola cresce nos três eixos — *uma régua que o representante
+não consegue exprimir mede a representação, não o produto*) e a censura, agora **derivada**.
+
+### §80.4 — ⛔⛔ O gate da censura PROMETIA o que não fazia
+
+Ele diz, no próprio doc: *«um `Unary` novo é **erro de compilação** aqui»*. **Não era.** A lista era
+escrita à mão e a contagem no fim (`remaps.len() == 6`) só a defendia **de si mesma**: os dois
+espelhos entraram no documento, o gate ficou **verde**, e a mutação que os classificava como *«não
+remapeia»* sobreviveu.
+
+⇒ a lista passa a ser **derivada** de `UnaryKind::ALL`, com a expectativa num `match` exaustivo — que
+é onde o compilador de facto pára quem acrescenta um modificador. ⚠️ *Uma lista escrita à mão ao lado
+de um enum é duas respostas, e uma contagem só guarda a que se escreveu.* (A mesma família do
+importador que oferecia 4 extensões e roteava 11.)
+
+**Provas de mutação — 4/4 mataram** (o `MirrorY` a espelhar em X · o `MirrorZ` a não dobrar · a caixa
+a ignorar o eixo · os eixos novos a não remapear); e a quinta — apagar os dois botões do painel — é
+**erro de compilação**, porque `ALL` tem tamanho fixo.

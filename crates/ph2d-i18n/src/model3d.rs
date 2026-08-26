@@ -56,7 +56,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Mirror" e "Array" espelham e repetem no **X local** do objeto — quem quer outro eixo
         // roda o objeto, que é a mesma lei do cilindro e do torno. Um seletor de eixo por
         // modificador seria um terceiro vocabulário de orientação no mesmo painel.
-        "panel.model3d.mod.mirror" => "Mirror",
+        "panel.model3d.mod.mirror" => "Mirror X",
+        "panel.model3d.mod.mirror_y" => "Mirror Y",
+        "panel.model3d.mod.mirror_z" => "Mirror Z",
         "panel.model3d.mod.array" => "Array",
         // ⚠️ "Radial" gira em torno do **Z** do objeto — o eixo em que um cilindro aponta, que é o
         // eixo de um flange. Cada modificador nomeia o seu, como as primitivas já fazem.

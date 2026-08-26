@@ -2514,40 +2514,117 @@ fn the_specialised_document_actually_shrinks_the_tree() {
 /// todas as arestas, e a discrepância desaparece no ruído. Uma mutação que aceitasse a matriz
 /// sobreviveu ao gate de concordância (medido), e é este que a mata.
 ///
-/// ⚠️ **O `match` é exaustivo de propósito:** um `Unary` novo é **erro de compilação** aqui, que é o
-/// momento certo para alguém decidir se ele dobra o domínio. *Uma lista de excepções que compila com
-/// um membro a menos é uma peça furada à espera de acontecer.*
+/// # ⛔ E ele PROMETIA mais do que fazia (2026-08-26)
+///
+/// O doc dizia *«um `Unary` novo é **erro de compilação** aqui»*, e não era: a lista era **escrita à
+/// mão**, e a contagem no fim (`remaps.len() == 6`) só a defendia **de si mesma**. Os dois espelhos
+/// novos entraram no documento e este gate ficou **verde** — a mutação que os classificava como *«não
+/// remapeia»* (que **fura a peça**, porque a especialização passaria a construir o perfil sob um
+/// domínio dobrado) **sobreviveu**.
+///
+/// ⇒ a lista passa a ser **derivada** de [`ph2d_field::UnaryKind::ALL`], e a expectativa é um `match`
+/// exaustivo — que é onde o compilador de facto pára quem acrescenta um modificador. *Uma lista
+/// escrita à mão ao lado de um enum é duas respostas, e a contagem só guarda a que se escreveu.*
 #[test]
 fn the_specialisation_gives_up_under_every_modifier_that_remaps_coordinates() {
-    use ph2d_field::Unary;
-    let remaps = [
-        (Unary::Mirror, true),
-        (
-            Unary::Array {
-                count: 3,
-                spacing: 0.5,
-            },
-            true,
-        ),
-        (Unary::Radial { count: 6 }, true),
-        (Unary::Taper { slope: 0.2 }, true),
-        (Unary::Shell { thickness: 0.05 }, false),
-        (Unary::Offset { distance: 0.02 }, false),
-    ];
-    for (m, want) in remaps {
+    use ph2d_field::{Unary, UnaryKind};
+    // ⚠️ **Exaustivo de propósito:** um `UnaryKind` novo é **erro de compilação** aqui, que é o
+    // momento certo para alguém decidir se ele dobra o domínio.
+    let want = |k: UnaryKind| -> bool {
+        match k {
+            UnaryKind::Shell | UnaryKind::Offset => false,
+            UnaryKind::Mirror
+            | UnaryKind::MirrorY
+            | UnaryKind::MirrorZ
+            | UnaryKind::Array
+            | UnaryKind::Radial
+            | UnaryKind::Taper => true,
+        }
+    };
+    for k in UnaryKind::ALL {
+        let m = Unary::born(k, 0.1);
         assert_eq!(
             crate::remaps_coordinates_for_test(&m),
-            want,
+            want(k),
             "{m:?}: a especialização tem de {} debaixo dele",
-            if want { "DESISTIR" } else { "continuar" }
+            if want(k) { "DESISTIR" } else { "continuar" }
         );
     }
-    // …e a contagem, para um `Unary` novo não entrar em silêncio pelo lado errado.
-    assert_eq!(
-        remaps.len(),
-        6,
-        "acrescentou um modificador? decida se ele dobra o domínio e ponha-o nesta lista"
-    );
+}
+
+/// ⭐⭐⭐ **A CAIXA DA PEÇA SEGUE O EIXO DO ESPELHO** (2026-08-26) — a metade que a mutação encontrou.
+///
+/// ⚠️ **Um espelho que dobra em Y com a caixa a crescer em X não fica lento: ele CORTA a peça.** A
+/// caixa é o que a marcha recorta (`Scene::clip`), o que o exportador grada e o que o enquadramento
+/// usa — e o doc do `bounding_radius` já o diz para a escultura: *«errar para baixo corta»*.
+///
+/// ⛔ Sem este gate, escrever `let k = 0` para os três eixos passava — foi uma prova de mutação que
+/// o mostrou, e o gate nasceu dela.
+#[test]
+fn the_bounding_box_follows_the_axis_of_the_mirror() {
+    use ph2d_field::Unary;
+    let reg = hybrid::Registry::new();
+    let off = 0.4f32;
+    for (axis, m) in [
+        (0usize, Unary::Mirror),
+        (1, Unary::MirrorY),
+        (2, Unary::MirrorZ),
+    ] {
+        let mut at = [0.0f32; 3];
+        at[axis] = off;
+        let mut top = combine(Op::Union(Blend::Sharp), vec![NodeId(0)]);
+        top.mods.push(m);
+        let doc = FieldDoc::new(
+            vec![
+                leaf(
+                    Primitive::Box {
+                        half: [0.1; 3],
+                        round: 0.0,
+                    },
+                    Xform::at(at[0], at[1], at[2]),
+                ),
+                top,
+            ],
+            NodeId(1),
+        )
+        .expect("a peça");
+        let ball = crate::bounds::bounding_ball(&doc, &reg).expect("a peça tem caixa");
+        let aabb = crate::bounds::Ball::aabb(ball);
+        assert!(
+            aabb.0[axis] <= -f64::from(off) as f32 + 0.1,
+            "eixo {axis}: a caixa vai só até {} e a cópia espelhada está em {}",
+            aabb.0[axis],
+            -off
+        );
+        // ⛔ **E o CONTROLO é a mesma peça sem espelho**: sem ele a caixa não alcança o outro
+        // lado, e é isso que prova que quem a esticou foi o modificador.
+        //
+        // ⚠️ A metade que tentei primeiro — *«e não cresce nos outros eixos»* — estava **errada por
+        // construção**: a caixa sai de uma **bola**, e uma bola maior cresce nos três. *Uma régua
+        // que o representante não consegue exprimir não mede o produto: mede a representação.*
+        let plain = FieldDoc::new(
+            vec![
+                leaf(
+                    Primitive::Box {
+                        half: [0.1; 3],
+                        round: 0.0,
+                    },
+                    Xform::at(at[0], at[1], at[2]),
+                ),
+                combine(Op::Union(Blend::Sharp), vec![NodeId(0)]),
+            ],
+            NodeId(1),
+        )
+        .expect("a peça");
+        let control = crate::bounds::Ball::aabb(
+            crate::bounds::bounding_ball(&plain, &reg).expect("a peça tem caixa"),
+        );
+        assert!(
+            control.0[axis] > -off,
+            "eixo {axis}: sem espelho a caixa já alcançava {} — o gate não mede o espelho",
+            control.0[axis]
+        );
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -3052,7 +3129,13 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
             modded(bx.clone(), Unary::Offset { distance: d }),
         ));
     }
-    cases.push(("Mirror".into(), modded(bx.clone(), Unary::Mirror)));
+    for (n, m) in [
+        ("Mirror", Unary::Mirror),
+        ("MirrorY", Unary::MirrorY),
+        ("MirrorZ", Unary::MirrorZ),
+    ] {
+        cases.push((n.into(), modded(bx.clone(), m)));
+    }
     for sc in [0.2f32, 0.5, 1.0, 2.0, 4.0] {
         cases.push((
             format!("escala {sc}"),
@@ -4567,44 +4650,72 @@ fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
 /// caixa fora do eixo aparece **dos dois lados**.
 ///
 /// *Este gate é a demonstração, e existe porque a nota afirmava a ausência sem a medir.*
+///
+/// ⭐⭐ **E são TRÊS eixos desde 2026-08-26** (pedido do Enio, depois de o ver a funcionar em X). O
+/// gate percorre-os pelo índice do eixo — três blocos escritos à mão seriam três sítios onde um
+/// índice trocado passa despercebido, que é exactamente o defeito que um espelho de eixo errado é.
 #[test]
 fn a_mirror_on_an_operation_folds_an_off_centre_child() {
-    let off = 0.35f32;
-    let child = leaf(
-        Primitive::Box {
-            half: [0.12, 0.12, 0.12],
-            round: 0.0,
-        },
-        Xform::at(off, 0.0, 0.0),
-    );
-    let plain = FieldDoc::new(
-        vec![
-            child.clone(),
-            combine(Op::Union(Blend::Sharp), vec![NodeId(0)]),
-        ],
-        NodeId(1),
-    )
-    .expect("a peça");
-    let mut top = combine(Op::Union(Blend::Sharp), vec![NodeId(0)]);
-    top.mods.push(ph2d_field::Unary::Mirror);
-    let mirrored = FieldDoc::new(vec![child, top], NodeId(1)).expect("a peça espelhada");
+    for (axis, m) in [
+        (0usize, ph2d_field::Unary::Mirror),
+        (1, ph2d_field::Unary::MirrorY),
+        (2, ph2d_field::Unary::MirrorZ),
+    ] {
+        let off = 0.35f32;
+        let mut at = [0.0f32; 3];
+        at[axis] = off;
+        let child = leaf(
+            Primitive::Box {
+                half: [0.12, 0.12, 0.12],
+                round: 0.0,
+            },
+            Xform::at(at[0], at[1], at[2]),
+        );
+        let plain = FieldDoc::new(
+            vec![
+                child.clone(),
+                combine(Op::Union(Blend::Sharp), vec![NodeId(0)]),
+            ],
+            NodeId(1),
+        )
+        .expect("a peça");
+        let mut top = combine(Op::Union(Blend::Sharp), vec![NodeId(0)]);
+        top.mods.push(m);
+        let mirrored = FieldDoc::new(vec![child, top], NodeId(1)).expect("a peça espelhada");
 
-    let here = [f64::from(off), 0.0, 0.0];
-    let there = [f64::from(-off), 0.0, 0.0];
-    let f = |d: &FieldDoc, p: [f64; 3]| Field::new(d).at(p[0], p[1], p[2]);
+        let mut here = [0.0f64; 3];
+        here[axis] = f64::from(off);
+        let mut there = [0.0f64; 3];
+        there[axis] = f64::from(-off);
+        let f = |d: &FieldDoc, p: [f64; 3]| Field::new(d).at(p[0], p[1], p[2]);
 
-    assert!(f(&plain, here) < 0.0, "a caixa está onde foi posta");
-    assert!(
-        f(&plain, there) > 0.0,
-        "e sem espelho não há nada do outro lado — senão o gate media a peça errada"
-    );
-    assert!(
-        f(&mirrored, there) < 0.0,
-        "⛔ com o espelho na OPERAÇÃO, o outro lado tem de ficar sólido — é a demonstração que a \
+        assert!(f(&plain, here) < 0.0, "a caixa está onde foi posta");
+        assert!(
+            f(&plain, there) > 0.0,
+            "e sem espelho não há nada do outro lado — senão o gate media a peça errada"
+        );
+        assert!(
+            f(&mirrored, there) < 0.0,
+            "⛔ com o espelho na OPERAÇÃO, o outro lado tem de ficar sólido — é a demonstração que a \
          nota dizia não existir"
-    );
-    assert!(
-        (f(&mirrored, there) - f(&plain, here)).abs() < 1.0e-6,
-        "e os dois lados têm o MESMO campo: o espelho é uma dobra, não uma cópia aproximada"
-    );
+        );
+        assert!(
+            (f(&mirrored, there) - f(&plain, here)).abs() < 1.0e-6,
+            "eixo {axis}: os dois lados têm de ter o MESMO campo — o espelho é uma dobra, não uma \
+         cópia aproximada"
+        );
+        // ⛔ **E o eixo é o CERTO**: espelhar em Y não pode fazer aparecer nada em `-x`. Sem esta
+        // metade, os três braços podiam ser o mesmo braço.
+        for other in 0..3 {
+            if other == axis {
+                continue;
+            }
+            let mut elsewhere = [0.0f64; 3];
+            elsewhere[other] = f64::from(-off);
+            assert!(
+                f(&mirrored, elsewhere) > 0.0,
+                "eixo {axis}: apareceu peça em -{other}, que não é o eixo espelhado"
+            );
+        }
+    }
 }

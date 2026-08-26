@@ -131,13 +131,21 @@ fn with_mods(ball: Ball, mods: &[Unary]) -> Ball {
                 radius: b.radius + distance.max(0.0),
                 ..b
             },
-            // O espelho é no plano `x = 0` LOCAL: a cópia está em `-centro.x`.
-            Unary::Mirror => {
-                let mirrored = Ball {
-                    center: [-b.center[0], b.center[1], b.center[2]],
-                    radius: b.radius,
+            // O espelho é num plano do eixo LOCAL: a cópia está com aquela coordenada trocada de
+            // sinal. ⚠️ **Uma função, três eixos** — três braços com a conta escrita à mão seriam
+            // três sítios onde um índice errado dá uma caixa que **corta a peça** em silêncio.
+            Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => {
+                let k = match m {
+                    Unary::Mirror => 0,
+                    Unary::MirrorY => 1,
+                    _ => 2,
                 };
-                b.merge(mirrored)
+                let mut c = b.center;
+                c[k] = -c[k];
+                b.merge(Ball {
+                    center: c,
+                    radius: b.radius,
+                })
             }
             // A matriz linear anda ao longo do X local.
             Unary::Array { count, spacing } => {

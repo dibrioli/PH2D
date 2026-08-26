@@ -55,10 +55,9 @@ pub enum Unary {
     Offset { distance: f32 },
     /// **Espelho** no plano `x = 0` do nó: o que existe de um lado passa a existir dos dois.
     ///
-    /// ⚠️ **Sem número nenhum, e sem escolha de eixo.** O eixo é o **X local**, e quem quer outro
-    /// **roda o nó** — é a mesma lei que o [`crate::Primitive::Cylinder`] já escreve (*"outro eixo
-    /// se obtém pela rotação do nó"*) e que o `Revolve` repete. Uma escolha de eixo por modificador
-    /// seria um terceiro vocabulário de orientação no mesmo módulo.
+    /// ⚠️ **Sem número nenhum** — e o eixo é o **X local**. Os outros dois têm variante própria
+    /// ([`Unary::MirrorY`], [`Unary::MirrorZ`]); ver lá **por que a cerca que dizia «roda o nó»
+    /// caiu**.
     Mirror,
     /// **Matriz linear**: `count` cópias espaçadas de `spacing` ao longo do **X local**.
     ///
@@ -77,6 +76,30 @@ pub enum Unary {
     /// um flange gira em torno do eixo dele. Cada modificador nomeia o seu eixo e diz porquê, que é
     /// o que as primitivas já fazem (o cilindro é Z, o torno é Y, e cada um tem a razão escrita).
     Radial { count: u32 },
+    /// **Espelho** no plano `y = 0` do nó. Ver [`Unary::MirrorZ`] para a razão de existir.
+    MirrorY,
+    /// **Espelho** no plano `z = 0` do nó.
+    ///
+    /// # ⛔ A cerca que estava escrita, e por que ela caiu (2026-08-26)
+    ///
+    /// O doc do [`Unary::Mirror`] dizia: *«sem escolha de eixo — quem quer outro **roda o nó**, e uma
+    /// escolha de eixo por modificador seria um terceiro vocabulário de orientação no mesmo
+    /// módulo»*. ⚠️ **A analogia com o `Cylinder` não se aplica**, e é aí que ela falha: rodar o nó
+    /// roda a **peça**, e o espelho age no espaço **local**, *antes* da pose do nó — para espelhar em
+    /// Y por rotação seria preciso um nó intermédio só para rodar, espelhar e desrodar. *Uma
+    /// equivalência que exige uma terceira entidade não é uma equivalência: é um contorno.*
+    ///
+    /// ⇒ decisão do Enio, 2026-08-26, depois de o ver a funcionar em X: **três botões**.
+    ///
+    /// ⚠️ **Variantes NOVAS, e no fim da lista** — e as duas coisas são a mesma razão: o documento
+    /// serializa por **posição**, então um campo `axis` dentro do `Mirror` (ou uma variante no meio)
+    /// mudaria o significado dos bytes de **toda peça já gravada**. *Append-only é o que faz uma
+    /// extensão não ser uma migração.*
+    ///
+    /// ⚠️ E os irmãos de eixo — [`Unary::Array`] (X) e [`Unary::Radial`] (Z) — **ficam como estão**:
+    /// eles têm número, e uma matriz por eixo é outra pergunta (três botões × dois números). O que
+    /// o Enio pediu foi o espelho.
+    MirrorZ,
 }
 
 /// Quantas cópias uma matriz consegue ter.
@@ -124,7 +147,7 @@ impl Unary {
                 value: distance,
                 span: Span::Free,
             }],
-            Unary::Mirror => Vec::new(),
+            Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => Vec::new(),
             Unary::Array { count, spacing } => vec![
                 crate::Dim {
                     key: "field.mod.count",
@@ -226,6 +249,8 @@ impl Unary {
             },
             UnaryKind::Offset => Unary::Offset { distance: 0.0 },
             UnaryKind::Mirror => Unary::Mirror,
+            UnaryKind::MirrorY => Unary::MirrorY,
+            UnaryKind::MirrorZ => Unary::MirrorZ,
             // ⚠️ **Duas cópias, e o espaçamento é a própria peça.** Uma matriz nasce com o número
             // mínimo que se **vê** ser uma matriz (uma cópia é a peça intacta), e com as duas
             // encostadas — que é onde o artista começa a afastá-las. Um espaçamento menor do que a
@@ -251,6 +276,8 @@ impl Unary {
             Unary::Shell { .. } => UnaryKind::Shell,
             Unary::Offset { .. } => UnaryKind::Offset,
             Unary::Mirror => UnaryKind::Mirror,
+            Unary::MirrorY => UnaryKind::MirrorY,
+            Unary::MirrorZ => UnaryKind::MirrorZ,
             Unary::Array { .. } => UnaryKind::Array,
             Unary::Taper { .. } => UnaryKind::Taper,
             Unary::Radial { .. } => UnaryKind::Radial,
@@ -308,15 +335,19 @@ pub enum UnaryKind {
     Array,
     Radial,
     Taper,
+    MirrorY,
+    MirrorZ,
 }
 
 impl UnaryKind {
     /// ⭐ **A fonte da contagem.** O painel deriva os botões daqui, como já faz com `Mode::ALL` — um
     /// modificador novo acrescenta-se aqui e o painel segue sem uma linha de mudança.
-    pub const ALL: [UnaryKind; 6] = [
+    pub const ALL: [UnaryKind; 8] = [
         UnaryKind::Shell,
         UnaryKind::Offset,
         UnaryKind::Mirror,
+        UnaryKind::MirrorY,
+        UnaryKind::MirrorZ,
         UnaryKind::Array,
         UnaryKind::Radial,
         UnaryKind::Taper,
@@ -329,6 +360,8 @@ impl UnaryKind {
             UnaryKind::Shell => "panel.model3d.mod.shell",
             UnaryKind::Offset => "panel.model3d.mod.offset",
             UnaryKind::Mirror => "panel.model3d.mod.mirror",
+            UnaryKind::MirrorY => "panel.model3d.mod.mirror_y",
+            UnaryKind::MirrorZ => "panel.model3d.mod.mirror_z",
             UnaryKind::Array => "panel.model3d.mod.array",
             UnaryKind::Radial => "panel.model3d.mod.radial",
             UnaryKind::Taper => "panel.model3d.mod.taper",

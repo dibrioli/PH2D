@@ -94,6 +94,10 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary]) -> Tree {
             // o campo continua uma distância exata — não há costura a fechar, que é o mesmo motivo
             // de a booleana e a casca não poderem falhar.
             Unary::Mirror => acc.remap_xyz(Tree::x().abs(), Tree::y(), Tree::z()),
+            // ⭐ Os outros dois eixos, pela MESMA lei — ver [`ph2d_field::Unary::MirrorZ`] para a
+            // cerca que caiu.
+            Unary::MirrorY => acc.remap_xyz(Tree::x(), Tree::y().abs(), Tree::z()),
+            Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
             Unary::Radial { count } => radial(&acc, count),
             Unary::Taper { slope } => taper(&acc, f64::from(slope)),
@@ -679,7 +683,12 @@ pub(crate) fn remaps_coordinates_for_test(m: &Unary) -> bool {
 fn remaps_coordinates(m: &Unary) -> bool {
     match m {
         Unary::Shell { .. } | Unary::Offset { .. } => false,
-        Unary::Mirror | Unary::Array { .. } | Unary::Radial { .. } | Unary::Taper { .. } => true,
+        Unary::Mirror
+        | Unary::MirrorY
+        | Unary::MirrorZ
+        | Unary::Array { .. }
+        | Unary::Radial { .. }
+        | Unary::Taper { .. } => true,
     }
 }
 

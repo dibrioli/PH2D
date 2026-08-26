@@ -122,6 +122,15 @@ fechou»*.
    ([`arc_marks`](../../../crates/ph2d-gridmap/src/marks.rs) já lê onde as isolinhas
    cruzam um arco), e o precedente medido é a Obra A.
    ⚠️ *Como termo de energia repetiria, um nível acima, o defeito que a Obra A curou.*
+   ⭐⭐⭐ **E o §23.14 mede o que a restrição teria de impor, com o número total:**
+   *praticamente NENHUM arco do layout é uma linha de grade do mapa* — `0`–`5 %`
+   concordam com o F4, e `44` de `47`… `90` de `91` **não são isolinhas**, atravessando
+   **~1 célula inteira** na mediana, nas sete peças. ⚠️ Não é defeito de código: o G3
+   resolve alinhado ao **campo** e o layout serve **só para cortar** — *nada nunca pediu
+   que os arcos fossem isolinhas.* ⇒ a obra parte em duas, e a 1.ª **não precisa do F4**:
+   **«este arco é uma isolinha»** (atravessado `= 0`), depois **«leva `n` arestas»**.
+   ⛔ E a `torus_64x32` é um caso de canto nomeado: o F4 **recusa** aquele layout
+   (`Infeasible`).
 2. ⭐⭐ **O patch de VALÊNCIA 12 da `sculpt_004`** — o traçado dá `16` patches (a `t003` dá
    `31`) e um deles é não-disco com `χ = −1`; a limpeza parou porque **piorava** a topologia.
    É a instância mais nítida do item 1, e veio da peça do artista.
@@ -150,7 +159,7 @@ fechou»*.
 `examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
 `ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.13.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.14.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

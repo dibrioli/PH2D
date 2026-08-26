@@ -7828,6 +7828,7 @@ dependencies = [
  "ph2d-gridmap",
  "ph2d-mesh",
  "ph2d-quadfill",
+ "ph2d-quantize",
  "ph2d-remesh-iso",
  "ph2d-trace",
 ]

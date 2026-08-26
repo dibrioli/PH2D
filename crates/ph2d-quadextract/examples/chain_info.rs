@@ -621,6 +621,35 @@ fn main() {
         );
     }
 
+    // ⭐⭐⭐ **O QUE O F4 EXIGIRIA, contra o que o mapa livre fez.** A rota da extracção
+    // não o chama (§23.13); esta coluna mede o tamanho da discordância **antes** de
+    // alguém construir a restrição. ⚠️ *Uma restrição que o mapa já satisfaz não muda
+    // nada, e teria custado uma wave a descobri-lo.*
+    match layout.to_layout(h) {
+        Err(e) => println!("  ⛔ o layout nao passa a porta do F4: {e:?}"),
+        Ok(l) => match ph2d_quantize::quantize_within(&l, ph2d_quantize::Budget::new(256, 512)) {
+            Err(e) => println!("  ⛔ o F4 RECUSOU este layout: {e:?}"),
+            Ok((q, _)) => {
+                let aq = ph2d_gridmap::measure_arc_quantization(&cut, &map, &q.arc);
+                println!(
+                    "  ⭐⭐⭐ O MAPA contra o F4: {} arcos ({} costuras sem arco) ⇒ ⭐ {} CONCORDAM ({:.0}%) \
+                     | discordancia p50 {:.2} max {:.2} soma {:.0} arestas de quad \
+                     | ⛔⛔ {} NAO SAO ISOLINHAS (atravessam p50 {:.2} max {:.2} celulas)",
+                    aq.arcs,
+                    aq.cut_only,
+                    aq.agree,
+                    100.0 * f64::from(aq.agree_fraction()),
+                    aq.diff_p50,
+                    aq.diff_max,
+                    aq.diff_sum,
+                    aq.off_axis,
+                    aq.across_p50,
+                    aq.across_max
+                );
+            }
+        },
+    }
+
     let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
     // ⭐ **CONTROLO INDEPENDENTE da ponte**: contar as dobras aqui, sem passar pela
     // extraccao. Se os dois numeros discordarem, o defeito e' do `corner_map` (uma

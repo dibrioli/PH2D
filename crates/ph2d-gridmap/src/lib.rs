@@ -71,7 +71,7 @@ pub mod weld_round;
 /// ⭐⭐⭐ **G3 SOLDADO** — o mesmo sistema sem o peso da costura — ver o módulo.
 pub mod weld_solve;
 
-pub use align::{Alignment, measure_alignment};
+pub use align::{Alignment, ArcQuant, measure_alignment, measure_arc_quantization};
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};

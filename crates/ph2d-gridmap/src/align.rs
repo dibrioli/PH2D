@@ -431,6 +431,127 @@ pub fn measure_alignment(cut: &CutMesh, combed: &Combed, map: &GridMap) -> Align
     out
 }
 
+/// ⭐⭐⭐ **O QUE O F4 EXIGE CONTRA O QUE O MAPA FEZ.**
+///
+/// # Por que ela existe
+///
+/// A rota da extracção **não chama o F4** (`ACHADO_ordem_das_fases` §23.13): o mapa
+/// resolve livre e a contagem de cada arco é o que calhar. O F4 decide, com óptimo
+/// demonstrado, **quantas arestas de quad leva cada arco** — e o A/B mediu que ligá-lo
+/// melhora as voltas nas três peças.
+///
+/// ⚠️ **Antes de construir a restrição, mede-se a discordância.** *Uma restrição que o
+/// mapa já satisfaz não muda nada, e teria custado uma wave a descobri-lo.*
+///
+/// # As duas metades, e a segunda é a que ninguém olhou
+///
+/// No plano, um arco vai do canto `A` ao canto `B`, e o deslocamento `z(B) − z(A)` diz
+/// duas coisas ao mesmo tempo:
+///
+/// | metade | o que é | o que devia ser |
+/// |---|---|---|
+/// | **ao longo** | o maior componente | ⭐ o número que o F4 pede |
+/// | **atravessado** | o menor | ⛔ **zero** — senão o arco não é uma isolinha |
+///
+/// ⚠️ *A segunda não depende do F4 nenhum:* uma separatriz que atravessa `k` células na
+/// direcção transversal **não é uma linha de grade**, e nenhuma régua desta cadeia a
+/// media.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct ArcQuant {
+    /// Costuras com arco e com contagem pedida — as que entraram.
+    pub arcs: usize,
+    /// ⛔ Costuras SEM arco (cortes que o G1 abriu) — o F4 não tem número para elas.
+    pub cut_only: usize,
+    /// ⭐ Arcos em que o mapa já dá o que o F4 pede.
+    pub agree: usize,
+    /// A discordância mediana, em arestas de quad.
+    pub diff_p50: f32,
+    /// A pior.
+    pub diff_max: f32,
+    /// A soma das discordâncias — quantas arestas de quad a peça inteira desloca.
+    pub diff_sum: f32,
+    /// ⛔⛔ Arcos cujo componente **atravessado** não é zero: eles não são isolinhas.
+    pub off_axis: usize,
+    /// A travessia mediana, em células.
+    pub across_p50: f32,
+    /// A pior.
+    pub across_max: f32,
+}
+
+impl ArcQuant {
+    /// A fracção de arcos em que o mapa já concorda com o F4.
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
+    pub fn agree_fraction(&self) -> f32 {
+        if self.arcs == 0 {
+            return 1.0;
+        }
+        self.agree as f32 / self.arcs as f32
+    }
+}
+
+/// ⭐⭐⭐ **MEDE A DISCORDÂNCIA ENTRE O MAPA E O F4.**
+///
+/// `demand[a]` é quantas arestas de quad o F4 dá ao arco `a` — a mesma indexação de
+/// `PatchLayout`, que é a que a [`crate::cut::Seam::arc`] guarda.
+///
+/// ⚠️ **Ela recebe um `&[u32]` e não o tipo do F4 de propósito:** *a régua pergunta «o
+/// que se exige deste arco», e quem responde não é problema dela* — assim a
+/// `ph2d-gridmap` não ganha uma dependência para uma sonda.
+#[must_use]
+pub fn measure_arc_quantization(cut: &CutMesh, map: &GridMap, demand: &[u32]) -> ArcQuant {
+    let mut out = ArcQuant::default();
+    let mut diffs: Vec<f32> = Vec::new();
+    let mut across: Vec<f32> = Vec::new();
+    for seam in &cut.seams {
+        let Some(arc) = seam.arc else {
+            out.cut_only += 1;
+            continue;
+        };
+        let Some(&want) = demand.get(arc as usize) else {
+            out.cut_only += 1;
+            continue;
+        };
+        // ⚠️ Os extremos são o primeiro e o último local **presentes**: uma posição
+        // `None` é um vértice que nenhuma face daquele lado alcançou, e tratá-la como
+        // zero poria o canto na origem da carta.
+        let side = &seam.side[0];
+        let p = side.patch as usize;
+        let Some(first) = side.local.iter().flatten().next() else {
+            continue;
+        };
+        let Some(last) = side.local.iter().flatten().next_back() else {
+            continue;
+        };
+        let Some(row) = map.uv.get(p) else { continue };
+        let (Some(za), Some(zb)) = (row.get(*first as usize), row.get(*last as usize)) else {
+            continue;
+        };
+        let d = [zb[0] - za[0], zb[1] - za[1]];
+        let along = d[0].abs().max(d[1].abs());
+        let cross = d[0].abs().min(d[1].abs());
+        out.arcs += 1;
+        #[allow(clippy::cast_precision_loss)]
+        let diff = (along - want as f32).abs();
+        if diff <= INT_TOL {
+            out.agree += 1;
+        }
+        if cross > INT_TOL {
+            out.off_axis += 1;
+        }
+        out.diff_sum += diff;
+        diffs.push(diff);
+        across.push(cross);
+    }
+    diffs.sort_by(f32::total_cmp);
+    across.sort_by(f32::total_cmp);
+    out.diff_p50 = diffs.get(diffs.len() / 2).copied().unwrap_or(0.0);
+    out.diff_max = diffs.last().copied().unwrap_or(0.0);
+    out.across_p50 = across.get(across.len() / 2).copied().unwrap_or(0.0);
+    out.across_max = across.last().copied().unwrap_or(0.0);
+    out
+}
+
 #[cfg(test)]
 #[path = "align_tests.rs"]
 mod tests;

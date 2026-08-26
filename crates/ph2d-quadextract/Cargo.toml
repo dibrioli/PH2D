@@ -42,3 +42,6 @@ ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-trace = { path = "../ph2d-trace" }
 ph2d-gridmap = { path = "../ph2d-gridmap" }
+# ⚠️ SO' PARA A SONDA: o F4 nao esta' na rota que shipa (`ACHADO` §23.13), e este
+# instrumento existe para medir QUANTO o mapa livre discorda do que ele exigiria.
+ph2d-quantize = { path = "../ph2d-quantize" }

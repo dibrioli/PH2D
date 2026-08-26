@@ -1456,3 +1456,58 @@ a costura como precedente medido.
 ⚠️ **A ordem importa:** a costura entrou por eliminação e fechou a peça; a contagem de arco
 é a mesma maquinaria com outro sujeito. *Construí-la como termo de energia repetiria,
 um nível acima, o defeito que a Obra A curou.*
+
+### §23.14 — ⭐⭐⭐ O MECANISMO: as separatrizes do F3 **não são linhas de grade** do nosso mapa
+
+A §23.13 disse *que fase falta*. Esta diz **o que exactamente ela imporia**, e o número é
+total.
+
+[`ph2d_gridmap::measure_arc_quantization`](../../../crates/ph2d-gridmap/src/align.rs)
+lê, para cada arco do layout, o deslocamento entre os dois cantos dele no plano — e esse
+deslocamento diz **duas** coisas de uma vez:
+
+| metade | o que é | o que devia ser |
+|---|---|---|
+| **ao longo** | o maior componente | ⭐ a contagem que o F4 pede |
+| **atravessado** | o menor | ⛔ **zero** — senão o arco **não é uma isolinha** |
+
+| peça | arcos | ⭐ concordam | discordância p50 · max · **soma** | ⛔⛔ **não são isolinhas** | atravessam p50 · max |
+|---|---|---|---|---|---|
+| `sculpt_eared` | `47` | **`0`** (0 %) | `1,51` · `29,0` · **`192`** | **`47`** | **`0,96`** · `3,27` |
+| `sculpt_hooked` | `85` | `1` (1 %) | `1,13` · `19,6` · **`203`** | **`85`** | `0,61` · `3,46` |
+| `sculpt_ridged` | `56` | `3` (5 %) | `1,05` · `10,0` · `90` | **`54`** | `0,69` · `4,00` |
+| `sculpt_wrinkled` | `46` | **`0`** (0 %) | `0,86` · `11,6` · `77` | **`46`** | `0,89` · `7,24` |
+| `sphere_uv_96x144` | `44` | **`0`** (0 %) | `0,85` · `11,9` · `92` | **`44`** | `0,75` · `3,63` |
+| `sphere_shuffled` | `48` | **`0`** (0 %) | `0,98` · `13,4` · `109` | **`48`** | `0,70` · `3,36` |
+| `cube` | `91` | **`0`** (0 %) | `1,00` · `17,2` · `199` | **`90`** | `0,70` · `8,81` |
+| `torus_64x32` | — | ⛔ o F4 **recusa** este layout (`Infeasible`) | | | |
+
+⭐⭐⭐ **A leitura, e ela é o mecanismo do espiral:** *praticamente NENHUM arco do layout é
+uma linha de grade do mapa.* Eles atravessam **~1 célula inteira** na mediana. E uma
+separatriz é, por definição, onde a grade **termina** num cone — se ela não é uma
+isolinha, as linhas de grade **não terminam ali**: passam ao lado e continuam. *É a
+descrição exacta de um anel que não fecha.*
+
+#### ⚠️ E isto NÃO é um defeito de código — é a arquitectura, dita por inteiro
+
+O nosso G3 resolve um mapa **global alinhado ao campo**, e o layout do F3 é usado **só
+para CORTAR**. ⇒ *nada nunca pediu que os arcos fossem isolinhas*, e eles não são. A
+`ph2d-gridmap` e a `ph2d-trace` são **duas respostas independentes à mesma pergunta**, e
+elas discordam em **todos** os arcos das sete peças.
+
+⛔ **O que a tabela não prova:** que fechar o desvio cure o espiral. A coluna
+«atravessam» **não** ordena as peças como as voltas (`wrinkled` atravessa `0,89` e faz
+`0,9×`; a `sphere_uv` atravessa `0,75` e faz `2,8×`). *A evidência de que ajuda é o A/B da
+§23.13, não esta correlação* — e dizer o contrário seria ler o número que se queria.
+
+#### ⭐ A obra, com as duas metades separadas
+
+1. ⭐⭐⭐ **«este arco é uma isolinha»** (atravessado `= 0`) — **não depende do F4 nenhum** e
+   é a metade fundamental. Uma restrição linear por arco nas mesmas incógnitas que a
+   costura já elimina.
+2. ⭐ **«este arco leva `n` arestas»** (ao longo `= n`) — essa sim precisa do F4.
+
+⚠️ **A ordem é essa**, e pela mesma razão que a costura veio antes da feição: a segunda é
+a mesma maquinaria com um sujeito a mais, e herdaria qualquer defeito da primeira.
+⛔ Nenhuma das duas entra como **termo de energia** — o precedente medido é a Obra A, onde
+penalizar em vez de eliminar deu `NaN` e `6,4e17`.

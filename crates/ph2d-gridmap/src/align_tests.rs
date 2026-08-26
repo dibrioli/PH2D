@@ -304,3 +304,109 @@ fn a_half_turn_halves_each_axis() {
     assert!((super::dist_to_int(w[0]) - 0.5).abs() < 1e-6);
     assert!(super::dist_to_int(w[1]) < 1e-6);
 }
+
+/// Monta uma costura com arco e um mapa com os `(u, v)` do lado `0`.
+fn arc_setup(
+    arc: Option<u32>,
+    locals: &[Option<u32>],
+    uv: &[[f32; 2]],
+    demand: &[u32],
+) -> super::ArcQuant {
+    let cut = CutMesh {
+        origin: vec![Vec::new()],
+        tris: vec![Vec::new()],
+        tri_face: vec![Vec::new()],
+        seams: vec![Seam {
+            arc,
+            chain: Vec::new(),
+            side: [
+                SeamSide {
+                    patch: 0,
+                    local: locals.to_vec(),
+                },
+                SeamSide {
+                    patch: 0,
+                    local: Vec::new(),
+                },
+            ],
+        }],
+    };
+    let map = GridMap {
+        uv: vec![uv.to_vec()],
+        shift: vec![[0.0, 0.0]],
+    };
+    super::measure_arc_quantization(&cut, &map, demand)
+}
+
+/// ⭐ O mapa já dá o que o F4 pede: `5` células ao longo, zero atravessadas.
+#[test]
+fn an_arc_that_matches_the_demand_agrees() {
+    let q = arc_setup(
+        Some(0),
+        &[Some(0), Some(1)],
+        &[[0.0, 0.0], [5.0, 0.0]],
+        &[5],
+    );
+    assert_eq!(q.arcs, 1);
+    assert_eq!(q.agree, 1);
+    assert_eq!(q.off_axis, 0);
+    assert!(q.diff_max <= super::INT_TOL);
+    assert!((q.agree_fraction() - 1.0).abs() < 1e-6);
+}
+
+/// A discordância conta-se em arestas de quad, e é o número que a restrição teria de
+/// mover.
+#[test]
+fn an_arc_that_disagrees_is_counted() {
+    let q = arc_setup(
+        Some(0),
+        &[Some(0), Some(1)],
+        &[[3.0, 0.0], [6.0, 0.0]],
+        &[5],
+    );
+    assert_eq!(q.agree, 0);
+    assert!((q.diff_max - 2.0).abs() < 1e-5, "diff {}", q.diff_max);
+    assert_eq!(q.off_axis, 0, "ao longo de um eixo, atravessa zero");
+}
+
+/// ⛔⛔ **A METADE QUE NINGUÉM MEDIA:** um arco que atravessa a grade **não é uma
+/// isolinha**, e isso não depende do F4 nenhum.
+#[test]
+fn an_arc_that_is_not_an_isoline_is_counted() {
+    let q = arc_setup(
+        Some(0),
+        &[Some(0), Some(1)],
+        &[[0.0, 0.0], [5.0, 2.0]],
+        &[5],
+    );
+    assert_eq!(q.off_axis, 1);
+    assert!((q.across_max - 2.0).abs() < 1e-5, "atravessa {}", q.across_max);
+    // ⚠️ E ao longo ele CONCORDA — é por isso que a coluna tem de ser separada: uma
+    // régua só de contagem daria este arco por perfeito.
+    assert_eq!(q.agree, 1);
+}
+
+/// ⛔ Um corte que o G1 abriu não tem quantização atrás dele — pedir-lhe um número
+/// seria inventá-lo.
+#[test]
+fn a_seam_without_an_arc_is_not_a_demand() {
+    let q = arc_setup(None, &[Some(0), Some(1)], &[[0.0, 0.0], [5.0, 0.0]], &[5]);
+    assert_eq!(q.arcs, 0);
+    assert_eq!(q.cut_only, 1);
+}
+
+/// ⚠️ Uma posição `None` é um vértice que nenhuma face daquele lado alcançou. *Lê-la
+/// como o índice `0` poria o canto na origem da carta* — e o arco mediria o mapa
+/// inteiro.
+#[test]
+fn a_missing_endpoint_does_not_read_as_the_origin() {
+    let q = arc_setup(
+        Some(0),
+        &[None, Some(1), Some(2), None],
+        &[[99.0, 99.0], [0.0, 0.0], [5.0, 0.0]],
+        &[5],
+    );
+    assert_eq!(q.arcs, 1);
+    assert_eq!(q.agree, 1, "os extremos sao o 1 e o 2, nao o 0");
+    assert_eq!(q.off_axis, 0);
+}

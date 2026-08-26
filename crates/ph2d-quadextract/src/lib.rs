@@ -211,6 +211,8 @@ pub struct ExtractReport {
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
+    /// ⭐⭐⭐ Quantas o resgate pelo **leque** salvou.
+    pub orphan_rescued_in_fan: usize,
     /// ⛔⛔⛔ Destas, quantas morreram num triângulo de área ZERO no domínio.
     pub orphan_no_exit_flat: usize,
     /// ⛔⛔ Destas, quantas tinham a origem já **fora** do triângulo.
@@ -342,6 +344,7 @@ pub fn extract(
         orphan_no_partner_on_edge: ws.orphan_no_partner_on_edge,
         orphan_rescued_across_edge: ws.orphan_rescued_across_edge,
         orphan_on_corner: ws.orphan_on_corner,
+        orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,
         orphan_no_exit_flat: ws.orphan_no_exit_flat,
         orphan_no_exit_o_outside: ws.orphan_no_exit_o_outside,

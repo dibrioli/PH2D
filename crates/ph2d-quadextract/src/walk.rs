@@ -79,6 +79,8 @@ pub(crate) struct WalkStats {
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um
     /// terceiro dono possível, que o resgate por um lado só não alcança.
     pub orphan_on_corner: usize,
+    /// ⭐⭐⭐ **Quantas órfãs o resgate pelo LEQUE salvou** — o nó era de vértice.
+    pub orphan_rescued_in_fan: usize,
     /// ⭐ **O DIÂMETRO do triângulo em que a órfã morreu**, em células — a régua com que
     /// a linha de baixo se lê.
     ///
@@ -289,12 +291,80 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                     #[allow(clippy::cast_possible_truncation)]
                     let node_here =
                         (0..4u8).any(|d| ports.by_key.contains_key(&(face as u32, t[0], t[1], d)));
-                    // ⭐ **Sonda: o alvo caiu num CANTO do triângulo?** Um ponto de grade
-                    // sobre um vértice é um nó do tipo `Site::Vertex`, registado com a face
-                    // canónica do **leque** — que pode não ser esta nem a gémea de um lado
-                    // só. *É a mesma classe de avaria com um terceiro dono possível.*
-                    if topo.uv[face].contains(&t) {
+                    // ⭐⭐⭐ **O RESGATE PELO LEQUE — o TERCEIRO dono.**
+                    //
+                    // ⛔⛔ Um ponto de grade sobre um **vértice** é um nó `Site::Vertex`, e as
+                    // saídas dele estão espalhadas pelo **leque**: cada uma foi emitida com a
+                    // **sua** face, e a chave é `(face, u, v, dir)`. ⇒ quem chega ao canto por
+                    // uma face qualquer do leque procura com a chave dela e não acha.
+                    //
+                    // Medido 2026-08-26 na `sculpt_t003`: as **4** órfãs que sobram ao resgate
+                    // pela face gémea caem **todas num canto** (`num CANTO: 4` de `4`).
+                    //
+                    // ⚠️ **A transição é a do leque** (`to_here`), e a **paridade das
+                    // inversões de sinal** é contada corner a corner — a mesma lei do laço,
+                    // que salta as faces de sinal `0`. *Compor as transições e esquecer o
+                    // sinal procura a cardinal oposta em metade dos leques.*
+                    if let Some(kk) = (0..3).find(|&i| topo.uv[face][i] == t) {
                         st.orphan_on_corner += 1;
+                        let fan = crate::fan::fan_of(topo, crate::fan::Corner::new(face, kk));
+                        // ⛔⛔⛔ **SÓ QUANDO A RESPOSTA NÃO DEPENDE DO CAMINHO.**
+                        //
+                        // Num leque **fechado**, ir de um canto a outro pela ordem do leque ou
+                        // pelo outro lado dá transições que diferem pela **holonomia**. Se ela
+                        // não é a identidade — que é precisamente o que uma **singularidade**
+                        // é — as duas rotas apontam para saídas **diferentes** do mesmo
+                        // vértice, e escolher uma é um palpite.
+                        //
+                        // ⚠️ **Medido 2026-08-26, e foi o `cube` que o disse:** sem esta
+                        // guarda o resgate corria `2` vezes ali e as arestas de bordo iam de
+                        // `4` para **`6`** — *ligar ao par errado abre mais buracos do que
+                        // deixar a órfã em paz*.
+                        //
+                        // ⚠️ Um leque **aberto** (vértice de bordo) não tem ambiguidade: há um
+                        // caminho só.
+                        let unambiguous =
+                            fan.holonomy.is_none_or(|h| h == crate::exact::Xf::IDENTITY);
+                        if let Some(i0) = fan
+                            .corners
+                            .iter()
+                            .position(|c| c.f() == face && c.kk() == kk)
+                        {
+                            let base = fan.to_here[i0].inverse();
+                            for i in 0..fan.corners.len() {
+                                if !unambiguous {
+                                    break;
+                                }
+                                if i == i0 {
+                                    continue;
+                                }
+                                let x = base.then(fan.to_here[i]);
+                                let t2 = x.apply(t);
+                                let mut d2 = x.dir(dir);
+                                // A paridade das inversões ao longo do troço do leque.
+                                let (lo, hi) = (i0.min(i), i0.max(i));
+                                let flips = (lo..hi)
+                                    .filter(|&w| {
+                                        let (a, b) = (
+                                            face_sign(topo, fan.corners[w].f()),
+                                            face_sign(topo, fan.corners[w + 1].f()),
+                                        );
+                                        a != 0 && b != 0 && a != b
+                                    })
+                                    .count();
+                                if flips % 2 == 1 {
+                                    d2 = opposite(d2);
+                                }
+                                #[allow(clippy::cast_possible_truncation)]
+                                let key = (fan.corners[i].f() as u32, t2[0], t2[1], opposite(d2));
+                                if let Some(&j) = ports.by_key.get(&key)
+                                    && j != id
+                                {
+                                    st.orphan_rescued_in_fan += 1;
+                                    return Outcome::Linked(j, acc.then(x));
+                                }
+                            }
+                        }
                     }
                     // ⭐⭐⭐ **O RESGATE: a chave é de OUTRA PESSOA, então pergunta-se a ela.**
                     //

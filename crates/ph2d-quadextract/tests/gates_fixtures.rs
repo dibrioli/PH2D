@@ -242,6 +242,11 @@ fn nenhum_traco_foge_nem_fica_orfao() {
             r.orphan_rescued_across_edge
         );
         assert_eq!(
+            r.orphan_rescued_in_fan, 0,
+            "{name}: o resgate pelo LEQUE correu {} vezes numa peca sem orfas",
+            r.orphan_rescued_in_fan
+        );
+        assert_eq!(
             r.pending_boundary, 0,
             "{name}: uma peca FECHADA nao pode ter saida a morrer no bordo"
         );

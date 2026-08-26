@@ -951,3 +951,44 @@ mata três deles; fazer o interior contar como lado `0` mata o quarto.
 ⚠️ **Nenhuma fixtura deste repositório alcança o resgate** — as duas de referência não têm
 órfã nenhuma, e há asserção a pinar essa **inércia**. *O caso real vive fora da árvore, e
 dizê-lo é mais barato que descobri-lo depois.*
+
+## §21 — ⭐⭐⭐ O RESGATE PELO LEQUE, e a GUARDA que o `cube` escreveu
+
+O §20.2 nomeou a segunda avaria: as órfãs que sobram caem num **canto**, e um ponto de grade
+sobre um vértice é um nó `Site::Vertex` cujas saídas estão espalhadas pelo **leque** — cada
+uma emitida com a **sua** face, e a chave é `(face, u, v, dir)`.
+
+⇒ A cura percorre o leque (`fan_of`), usando `to_here` para a transição de carta a carta.
+
+### §21.1 — ⛔⛔ E ela precisou de uma GUARDA, que a medição escreveu
+
+Num leque **fechado**, ir de um canto a outro pela ordem do leque ou pelo outro lado dá
+transições que diferem pela **holonomia**. Se ela não é a identidade — que é precisamente o
+que uma **singularidade** é — as duas rotas apontam para saídas **diferentes** do mesmo
+vértice, e escolher uma é um palpite.
+
+⚠️ **Foi o `cube` que o disse.** Sem a guarda o resgate corria `2` vezes ali e as arestas de
+bordo iam de `4` para **`6`**: *ligar ao par errado abre mais buracos do que deixar a órfã em
+paz.* Com a guarda (`holonomia == identidade`, ou leque **aberto**, que não tem ambiguidade),
+o `cube` volta a `4` e os resgates bons ficam.
+
+### §21.2 — O corpus inteiro, com o binário CONGELADO
+
+| peça | resgates | bordo antes | **bordo agora** |
+|---|---|---|---|
+| ⭐⭐ `sculpt_t001` | `1` | `4` | ⭐⭐ **`0`** (`χ = 2`, casca FECHADA, **`0` órfãs**) |
+| ⭐ `sculpt_t003` | `1` | `6` | ⭐ **`4`** (órfãs `4 → 2`) |
+| `sculpt_hooked` | `1` | `0` | `0` (neutro) |
+| as outras **11** | `0` | — | ⭐ **byte-idênticas** |
+
+### §21.3 — ⛔⛔ E uma «não-determinismo» que era MÉTODO
+
+Duas corridas da mesma peça deram números diferentes e eu escrevi *«pode ser
+não-determinismo»* — que num módulo cujo contrato é o determinismo (HR-5) é uma acusação
+séria. ⭐ **Três corridas do binário parado saíram idênticas.**
+
+⚠️ A causa: eu **reconstruí o binário enquanto a varredura de 14 peças ainda o invocava**.
+Um `cargo build` substitui o ficheiro **no sítio**, e o laço de shell resolve o caminho a
+cada iteração ⇒ as quatro primeiras peças mediram uma lei e as restantes outra. *Uma tabela
+assim não é de um programa: é de todos os que existiram durante ela.*
+⇒ A varredura acima corre contra uma **cópia congelada**.

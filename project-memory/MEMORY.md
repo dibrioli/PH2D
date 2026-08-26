@@ -55,7 +55,7 @@
 - [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) · [«está em uso?» → config GLOBAL](feedback_in_use_is_answered_by_the_global_config_and_a_probe_can_start_what_it_measures.md)
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) · [laço bash não itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) · [crase em commit executa — -F](feedback_backticks_in_commit_message_are_command_substitution.md)
 - [LOC cap = split p/ irmão](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap FN ≠ cap arquivo](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md)
-- [Gate que varre árvore ≠ filtro de nome](feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter.md) · [fecho filtrado nunca o alcança](feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate.md)
+- [Gate que varre árvore ≠ filtro de nome](feedback_a_tree_scanning_gate_is_never_reached_by_a_name_filter.md) · [a suíte SEM filtro corre antes de dizer VERDE (4×)](feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate.md)
 - [Clippy do fecho: alvo do DIFF](feedback_the_closing_clippy_must_cover_every_crate_the_line_touched.md) · [flake esconde a suíte — leia X/Y](feedback_a_flake_red_hides_the_rest_of_the_suite.md)
 - [Cadência de processo + CI (17)](reference_topic_process_cadence.md)
 

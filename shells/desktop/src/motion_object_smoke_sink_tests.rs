@@ -207,3 +207,56 @@ fn the_filter_row_magnifies_the_same_patch_on_both_sides() {
         "CONTROLE: a fileira do filtro recorta"
     );
 }
+
+/// ⭐⭐⭐ **A ARTE DESTA CENA É RASTER — e é isso, e só isso, que faz os quatro pares
+/// existirem.**
+///
+/// ⚠️ **O gate nasceu de um smoke reprovado** (Enio, 2026-08-25): a 1.ª versão montou a
+/// cena sobre um `source.object` de VECTOR e os quatro pares sairam idênticos. Desde o
+/// ADR-0154 um vector emite `geometry_id` e a linha vai para o passe vectorial, onde não
+/// existe `anchor`, `sampling`, `uv_xform` nem `sub_order` — os params não estavam
+/// «partidos», eles nunca chegavam ao lowering que os lê.
+///
+/// ⚠️ E os CINCO gates que esta cena já tinha ficaram todos verdes: eles mediam o que ela
+/// **AUTORA** (o estilo de cada sink, a forma de cada cadeia), e nenhum media o que ela
+/// **DESENHA**. *Um par pode diferir em tudo o que se autora e sair idêntico na tela.*
+#[test]
+fn the_scene_art_is_a_baked_flip_not_a_live_vector() {
+    // O Flip é o que a membrana ASSA numa tile (`resolve_drawing_leaf`: um filho Flip
+    // carimba pelo `texture_id`, sem rota viva) — logo, linhas de SPRITE.
+    let mut doc = ph2d_flip::FlipDoc::default();
+    super::spawn_flip_art(&mut doc);
+    let objs = doc.objects();
+    assert_eq!(objs.len(), 1, "a cena traz UM objecto de arte");
+    assert_eq!(
+        objs[0].name,
+        super::OBJECT,
+        "e' o nome que os `source.object` procuram"
+    );
+    assert_eq!(
+        objs[0].layers().len(),
+        2,
+        "duas camadas: os quadrantes (fileira 2) e o xadrez do centro (fileira 3)"
+    );
+
+    // E toda fonte da cena aponta para um objecto que ESTA MODULO de facto cria — um
+    // terceiro nome aqui seria uma cadeia a cozinhar vazia, e a fileira dela sairia muda.
+    let (g, _) = scene();
+    let mut names: Vec<String> = g
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == "source.object")
+        .filter_map(|n| {
+            g.node_text_param_overrides(n.id)
+                .and_then(|m| m.get("object"))
+                .cloned()
+        })
+        .collect();
+    names.sort();
+    names.dedup();
+    assert_eq!(
+        names,
+        vec![CHIP.to_string(), super::OBJECT.to_string()],
+        "as fontes da cena e os objectos que ela cria tem de ser a MESMA lista"
+    );
+}

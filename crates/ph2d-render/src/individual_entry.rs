@@ -143,6 +143,8 @@ pub(crate) fn create_entry_empty(
         mip_count,
         format,
         refcount: 1,
+        // Nasce vazia e morre com o entry — ver o doc do campo.
+        sampler_bgs: std::collections::BTreeMap::new(),
     }
 }
 

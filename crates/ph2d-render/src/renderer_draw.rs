@@ -147,12 +147,25 @@ impl SpriteRenderer {
         scene_viewport: Option<[f32; 4]>,
     ) {
         compute_runs(&self.scratch, &mut self.runs);
-        // Ensure an atlas bind group exists for every distinct sampling
-        // used by an atlas run (built lazily; one per filter/repeat pair).
+        // Ensure a bind group exists for every distinct sampling used by a run
+        // (built lazily; one per filter/repeat pair).
+        //
+        // ⚠️ **A metade INDIVIDUAL faltava, e a ausência era um defeito de produto**
+        // (doc 89, folha 17, 2026-08-25): este laço tocava só o átlas, e o `material_bg`
+        // abaixo devolvia para toda textura individual o grupo construído contra o
+        // sampler DEFAULT DO PROJECTO. ⇒ o filtro por-nó do Inspector (§9) estava inerte
+        // em toda textura individual do app — e uma sprite promovida a Individual por um
+        // `commit_edited_texture` perdia o filtro dela em silêncio. O caso que o expôs é
+        // aquele para que o filtro existe: *pixel-art*, que chega por importação e
+        // portanto quase nunca está no átlas partilhado.
         for run in 0..self.runs.len() {
             let r = self.runs[run];
             if r.texture_id == RenderInstance::ATLAS_TEXTURE_ID {
                 self.ensure_atlas_sampler_bg(r.sampling);
+            } else if !RenderInstance::is_cooked_texture_id(r.texture_id) {
+                let bgl = &self.pipeline.material_bgl;
+                self.individual
+                    .ensure_sampler_bg(&self.gpu, bgl, r.texture_id, r.sampling);
             }
         }
         let count = self
@@ -208,9 +221,17 @@ impl SpriteRenderer {
                     .get(&sampling)
                     .or(Some(&self.material_bind_group))
             } else if RenderInstance::is_cooked_texture_id(texture_id) {
+                // ⚠️ **A loja COZIDA continua sem rota de amostragem**, e a fronteira é
+                // nomeada em vez de silenciosa: uma `CookedTexture` é comprimida (KTX2) e
+                // o filtro dela é decidido no cozimento. Quem a quiser por-nó paga a mesma
+                // cache que a individual acabou de ganhar.
                 self.cooked.bind_group(texture_id)
             } else {
-                self.individual.bind_group(texture_id)
+                // A cache por-amostragem foi garantida na varredura de runs acima; um
+                // `sampling` que não chegou lá cai no grupo do default do projecto.
+                self.individual
+                    .bind_group_for(texture_id, sampling)
+                    .or_else(|| self.individual.bind_group(texture_id))
             }
         };
         {

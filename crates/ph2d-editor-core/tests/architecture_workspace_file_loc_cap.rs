@@ -74,7 +74,13 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // possui, o `individual_entry` constrói, o `individual_read` lê de volta — e a tolerância
     // desce com o corte, como este gate manda. Segue acima dos 700 simples: o que resta é o store
     // + as cópias textura-a-textura, e o próximo que lhe tocar corta as cópias.
-    ("ph2d-render/src/individual.rs", 722),
+    // Ratcheted 722 -> 709 em 2026-08-25 (doc 89, folha 17). O QUARTO corte: a cura do filtro
+    // por-nó em textura individual acrescentou-lhe a cache de bind groups por-amostragem e ele
+    // chegou a 796; a responsabilidade inteira — *com que sampler ela é lida* (`set_filter_mode`
+    // + `bind_group_for` + `ensure_sampler_bg`) — saiu para `individual_sampling.rs`. ⚠️ Este
+    // ficheiro foi encontrado 74 acima do tecto **depois** de a wave estar verde nas corridas
+    // dela: o gate vive noutra crate, e um fecho com filtro de nome nunca o alcança.
+    ("ph2d-render/src/individual.rs", 709),
     ("ph2d-render/src/layer_compositor/mod.rs", 934),
     ("ph2d-render/src/renderer.rs", 1000),
     ("ph2d-tool-bgremoval/src/algorithm/chroma/mod.rs", 704),

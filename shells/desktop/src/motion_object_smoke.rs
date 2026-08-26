@@ -263,7 +263,7 @@ fn spawn_flip_object_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
 }
 
 /// Um retângulo Flip FECHADO e PREENCHIDO (espelha `flip_demo::filled_rect`).
-fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStroke {
+pub(super) fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStroke {
     use ph2d_flip::{Fill, FlipStroke, Point};
     let mut s = FlipStroke::new();
     for corner in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
@@ -348,21 +348,22 @@ impl crate::App {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 gfx.vec_scene.push_path(star_shape());
             }
-            // =9 — o ESTILO DO SINK: a MESMA dança de duas fases do `=2` (a estrela
-            // vectorial é a arte com texels a sério), mais um sprite que é a SEGUNDA
-            // textura — sem duas texturas, a fileira da ordem não tem o que mostrar.
+            // =9 — o ESTILO DO SINK: a dança de duas fases do `=3` (a ENTIDADE do
+            // objecto Flip nasce no `flip_entities::sync`, e é nela que o nome mora),
+            // mais um sprite que é a SEGUNDA textura — sem duas texturas, a fileira da
+            // ordem não tem o que mostrar.
+            //
+            // ⚠️ **O objecto é FLIP e não VECTOR, e a 1.ª versão errou nisto** (smoke do
+            // Enio: os quatro pares idênticos). Um `source.object` de vector emite
+            // `geometry_id` desde o ADR-0154 e a linha vai para o passe vectorial, onde
+            // não existe `anchor`, `sampling`, `uv_xform` nem `sub_order` — os params
+            // nunca chegavam ao lowering que os lê. Um Flip ASSA numa tile.
             9 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                gfx.vec_scene.push_path(star_shape());
+                sink::spawn_flip_art(&mut gfx.flip);
                 sink::spawn_chip(&mut gfx.sim);
             }
-            9 if f == 6 => {
-                let map = self.vec_entities.clone();
-                let gfx = self.gfx.as_mut().expect("gfx");
-                if name_vector_entity(&mut gfx.sim, &map) {
-                    sink::run(gfx);
-                }
-            }
+            9 if f == 6 => sink::run(self.gfx.as_mut().expect("gfx")),
             2 if f == 6 => {
                 let map = self.vec_entities.clone();
                 let gfx = self.gfx.as_mut().expect("gfx");
@@ -371,11 +372,18 @@ impl crate::App {
                     gfx.motion.sinks.push(out);
                 }
                 let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                // ⚠️ **Esta mensagem dizia «ASSADA numa tile pela membrana» e estava VELHA
+                // desde o ADR-0154** — o modo `=5`, três braços abaixo, já dizia o
+                // contrário no mesmo ficheiro. Ela custou uma cena inteira (a `=9` nasceu
+                // com uma estrela e os quatro pares sairam identicos, smoke de 2026-08-25).
+                // *Dois modos do mesmo smoke a descreverem comportamentos opostos para a
+                // mesma entrada: o mais novo era o certo, e nada ligava os dois.*
                 eprintln!(
-                    "[motion.obj smoke =2] A ESTRELA vetorial 'Object' foi ASSADA numa tile pela \
-                     membrana e esta carimbada numa grade 4x4 = 16 copias. A arte de CADA copia e a \
-                     estrela (assada uma vez, cacheada por conteudo). Edite a forma com a tool \
-                     Vector e as copias RE-ASSAM (LIVE); renomeie e as copias somem."
+                    "[motion.obj smoke =2] A ESTRELA vetorial 'Object' esta carimbada numa grade \
+                     4x4 = 16 copias, e cada copia e' desenhada VIVA pelo passe vectorial \
+                     (`geometry_id`, ADR-0154) -- CRISP em qualquer zoom, sem tile raster. A tile \
+                     assada so' volta acima de LOD_COUNT = 16.000 copias (smoke =6). Edite a forma \
+                     com a tool Vector e as copias seguem (LIVE); renomeie e as copias somem."
                 );
             }
             // A3 — Flip: o objeto entra no FlipDoc (frame 3); a ENTIDADE dele (Name

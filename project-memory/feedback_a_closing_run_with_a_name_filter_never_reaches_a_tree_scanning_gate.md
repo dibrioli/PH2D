@@ -1,6 +1,6 @@
 ---
 name: feedback-a-closing-run-with-a-name-filter-never-reaches-a-tree-scanning-gate
-description: O fecho de módulo tem de correr a suíte SEM filtro — um `-p <crate>` nunca alcança um gate que VARRE a árvore, e eu shipei um vermelho por isso duas waves seguidas
+description: A suíte SEM filtro corre antes de eu dizer VERDE — um `-p <crate>` nunca alcança um gate que VARRE a árvore, e já aconteceu em QUATRO waves, em duas linhas diferentes
 metadata:
   type: feedback
 ---
@@ -14,10 +14,21 @@ por nove `→` em mensagens de `assert!`; e a W56d deixou `architecture_workspac
 vermelho por dois arquivos que a própria wave escreveu (889/700 e 795/700) — **com a memória
 [[feedback-a-tree-scanning-gate-is-never-reached-by-a-name-filter]] já escrita**.
 
-**Why:** a segunda ocorrência prova que saber a regra não basta: o fecho é o momento em que o filtro
-é mais tentador (a corrida completa é lenta) e o gate mais invisível (ele não fala do meu código).
+⛔⛔ **E de novo na `line/motion-value`, 2026-08-25 — DUAS waves, com esta memória já escrita e a
+apontar o comando exacto.** O bloco das bases de ruído deixou `noise.rs` a **753** e o bloco do
+`value` deixou `value-wrap/lib.rs` a **703**; os dois foram **commitados e reportados ao Enio como
+verdes**, e só apareceram quando uma terceira wave correu a workspace inteira por outro motivo.
 
-**How to apply:** no fecho da linha, **antes** do handoff, corra os gates de árvore **por nome**:
+**Why:** quatro ocorrências em duas linhas provam que saber a regra não basta, e mostram *quando* ela
+falha: o filtro é mais tentador exactamente no fecho (a corrida completa é lenta) e o gate é mais
+invisível (ele não fala do meu código, e mora numa crate que eu não toquei).
+
+⚠️ **E o gatilho não é «no fecho da linha» — é ANTES DE DIZER VERDE.** As quatro vezes o vermelho
+entrou num commit e num relatório ao Enio, muito antes de qualquer fecho: um bloco que se reporta
+como pronto já afirmou que a suíte passa.
+
+**How to apply:** **antes de reportar um bloco como verde** (não só no fecho), corra os gates de
+árvore **por nome**:
 `cargo test -p ph2d-editor-core --test architecture_workspace_file_loc_cap --test no_tofu_glyphs`,
 mais `cargo check --workspace --all-targets`. E ao cortar por LOC, corte para o **irmão por
 responsabilidade** — nunca allowlist ([[feedback-loc-cap-split-not-allowlist-and-fmt-reexpands]]).

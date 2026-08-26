@@ -313,3 +313,63 @@ fn the_uv_cell_column_is_relative_so_it_composes_with_whatever_tile_the_row_has(
         "CONTROLE: os ladrilhos diferem"
     );
 }
+
+/// ⭐⭐⭐ **O ESTILO DO SINK É UM CONCEITO DE LINHA-SPRITE, e uma linha VECTORIAL não
+/// recebe NADA dele.**
+///
+/// ⚠️ **Este gate nasceu de um smoke reprovado** (Enio, 2026-08-25): a cena `=9` foi
+/// montada sobre um `source.object` de VECTOR e os quatro pares sairam idênticos. A metade
+/// da lei que estava escrita era *«um vector resolve para `geometry_id`, um Flip para
+/// `texture_id`»* (gate na shell, desde o ADR-0154). A metade que faltava é a
+/// **consequência**: uma linha com `geometry_id > 0` é **saltada** pelo lowering de
+/// sprites, e a `VectorInstance` que a recebe **não tem onde pôr** o pivô, o filtro, a
+/// célula de UV nem a sub-ordem.
+///
+/// ⇒ Autorar qualquer um dos quatro sobre uma linha vectorial não é «não funcionar»: é
+/// pedir uma coisa a um passe de desenho que não a conhece. *Uma lei com uma metade
+/// escrita é uma lei que se pode obedecer e mesmo assim errar.*
+#[test]
+fn no_field_of_the_sink_style_reaches_a_vector_row() {
+    let style = SinkStyle {
+        blend: 3,
+        pivot: [0.5, -0.5],
+        sampling: RenderInstance::pack_sampling(1, 0),
+        stream_order: true,
+    };
+    let vector_rows = a_stream()
+        .with("geometry_id", Column::Scalar(vec![7.0, 7.0, 7.0]))
+        .with("uv_cell", Column::Vec4(vec![[0.5, 0.5, 0.5, 0.5]; 3]));
+
+    // 1. O lowering de SPRITES não emite nada — nem uma instância onde o estilo caiba.
+    let mut sprites: Vec<RenderInstance> = Vec::new();
+    lower_to_instances_onto(&vector_rows, UV, SZ, style, &mut sprites);
+    assert!(
+        sprites.is_empty(),
+        "uma linha vectorial nao pode virar quad texturado — ela ja' e' desenhada uma vez"
+    );
+
+    // 2. O lowering VECTORIAL emite as linhas — e a struct que as recebe tem CINCO
+    // campos, nenhum deles do estilo. A destruturação é o gate: um campo novo ali obriga
+    // quem o acrescentar a decidir se o estilo passa a alcançá-lo.
+    let mut vectors = Vec::new();
+    crate::lower::lower_to_vector_instances_onto(&vector_rows, &mut vectors);
+    assert_eq!(
+        vectors.len(),
+        3,
+        "CONTROLE: as linhas SAO desenhadas, so' noutro passe"
+    );
+    let ph2d_eval_motion_vector_fields = {
+        let crate::VectorInstance {
+            geometry_id: _,
+            world_pos: _,
+            size: _,
+            basis: _,
+            tint: _,
+        } = vectors[0];
+        5
+    };
+    assert_eq!(
+        ph2d_eval_motion_vector_fields, 5,
+        "a `VectorInstance` cresceu — o estilo do sink passa a alcancar uma linha vectorial?"
+    );
+}

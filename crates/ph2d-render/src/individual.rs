@@ -61,6 +61,29 @@ pub struct IndividualTextureEntry {
     /// [`IndividualTextureStore::release`] removes the entry and the
     /// `wgpu::Texture` handle drops.
     pub refcount: u32,
+    /// **Os bind groups por AMOSTRAGEM** — o gémeo do `atlas_sampler_bgs` do renderer,
+    /// chaveado pela `RenderInstance::sampling` (`filter | repeat << 8`).
+    ///
+    /// ⚠️ **A ausência disto era um defeito de produto, achado em 2026-08-25** (doc 89,
+    /// folha 17): o `material_bg` do `renderer_draw` honrava a `sampling` **só para o
+    /// átlas** e para toda textura individual chamava `bind_group(id)`, que devolve UM
+    /// grupo construído contra o sampler DEFAULT DO PROJECTO. ⇒ o filtro por-nó do
+    /// Inspector (§9) estava **inerte em toda textura individual do app** — e uma sprite
+    /// promovida a Individual por um `commit_edited_texture` perdia o filtro dela **em
+    /// silêncio**. O caso que o expôs é o que o filtro existe para servir: *pixel-art*,
+    /// que chega por importação e portanto quase nunca está no átlas partilhado.
+    ///
+    /// ⚠️ **A cache mora no ENTRY e não no renderer, de propósito**: ela referencia a
+    /// `view` desta textura, então tem de morrer exactamente quando ela morre. No
+    /// renderer, um `release` seguido de um `acquire` que reciclasse o id devolveria um
+    /// grupo a apontar para uma view liberta — e o modo de falha de uma view morta não é
+    /// um erro, é o texel errado.
+    ///
+    /// ⚠️ **`sampling = 0` NÃO entra aqui**: `0` quer dizer *herda o default do projecto*,
+    /// que é precisamente o que o [`Self::bind_group`] já é — e que o
+    /// [`IndividualTextureStore::set_filter_mode`] reconstrói quando esse default muda.
+    /// Um `0` cacheado aqui congelaria o default no valor que ele tinha no 1.º desenho.
+    pub sampler_bgs: std::collections::BTreeMap<u32, wgpu::BindGroup>,
 }
 
 /// Renderer-side cache of individual sprite textures, keyed by a
@@ -230,41 +253,6 @@ impl IndividualTextureStore {
                 &self.mip_gen
             };
             generator.run(gpu, &entry.texture, entry.mip_count);
-        }
-    }
-
-    /// Switch the sampling mode for every individually-owned texture.
-    /// Recreates the store sampler AND rebuilds each entry's bind group
-    /// (the bind group bakes the old sampler in, so it must be
-    /// re-created against the new one). The textures and `texture_id`s
-    /// are untouched — only how they're sampled — so SimWorld sprite
-    /// references stay valid and no pixel data is re-uploaded.
-    pub fn set_filter_mode(
-        &mut self,
-        gpu: &GpuContext,
-        material_bgl: &wgpu::BindGroupLayout,
-        filter: crate::ImageFilterMode,
-    ) {
-        self.sampler = crate::create_sprite_sampler(
-            &gpu.device,
-            filter,
-            "ph2d-render individual texture sampler",
-        );
-        for entry in self.entries.values_mut() {
-            entry.bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("ph2d-render individual bg (refiltered)"),
-                layout: material_bgl,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&entry.view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.sampler),
-                    },
-                ],
-            });
         }
     }
 

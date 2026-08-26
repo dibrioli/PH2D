@@ -67,7 +67,6 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_noise::register(reg)?;
     ph2d_node_motion_orbit::register(reg)?;
     ph2d_node_motion_oscillator::register(reg)?;
-    ph2d_node_motion_sub_uv::register(reg)?;
     ph2d_node_motion_output::register(reg)?;
     ph2d_node_motion_path::register(reg)?;
     ph2d_node_motion_pin_constraint::register(reg)?;
@@ -86,6 +85,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_motion_stagger::register(reg)?;
     ph2d_node_motion_step::register(reg)?;
     ph2d_node_motion_strobe::register(reg)?;
+    ph2d_node_motion_sub_uv::register(reg)?;
     ph2d_node_motion_time_remap::register(reg)?;
     ph2d_node_motion_tint::register(reg)?;
     ph2d_node_motion_trail::register(reg)?;

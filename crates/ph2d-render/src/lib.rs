@@ -49,6 +49,7 @@ pub(crate) mod individual_entry;
 /// **A leitura de volta** de uma textura individual — irmã do [`individual`], que voltou a passar o
 /// tecto de LOC quando o `readback_rgba8` da wave dos 16 bits lá entrou (2026-08-21).
 pub(crate) mod individual_read;
+mod individual_sampling;
 pub mod instance_buffer;
 /// KTX2 → wgpu texture-format mapping (KTX2 Fase 2, W2.T1). See
 /// [`docs/plans/2026-05-texture-compression-waves.md`](../../../docs/plans/2026-05-texture-compression-waves.md).

@@ -67,7 +67,6 @@ ph2d-node-motion-move = { path = "../ph2d-node-motion-move" }
 ph2d-node-motion-noise = { path = "../ph2d-node-motion-noise" }
 ph2d-node-motion-orbit = { path = "../ph2d-node-motion-orbit" }
 ph2d-node-motion-oscillator = { path = "../ph2d-node-motion-oscillator" }
-ph2d-node-motion-sub-uv = { path = "../ph2d-node-motion-sub-uv" }
 ph2d-node-motion-output = { path = "../ph2d-node-motion-output" }
 ph2d-node-motion-path = { path = "../ph2d-node-motion-path" }
 ph2d-node-motion-pin-constraint = { path = "../ph2d-node-motion-pin-constraint" }
@@ -86,6 +85,7 @@ ph2d-node-motion-spring = { path = "../ph2d-node-motion-spring" }
 ph2d-node-motion-stagger = { path = "../ph2d-node-motion-stagger" }
 ph2d-node-motion-step = { path = "../ph2d-node-motion-step" }
 ph2d-node-motion-strobe = { path = "../ph2d-node-motion-strobe" }
+ph2d-node-motion-sub-uv = { path = "../ph2d-node-motion-sub-uv" }
 ph2d-node-motion-time-remap = { path = "../ph2d-node-motion-time-remap" }
 ph2d-node-motion-tint = { path = "../ph2d-node-motion-tint" }
 ph2d-node-motion-trail = { path = "../ph2d-node-motion-trail" }

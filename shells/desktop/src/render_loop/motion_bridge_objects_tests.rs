@@ -2,6 +2,7 @@
 //! `objects` via `#[path]` (so `use super::*` reaches the private `resolve_drawing_leaf`,
 //! `walk_group_transforms`, `entity_is_in_a_named_group`, `LeafInstance`), split off to
 //! keep the parent under the shell LOC cap.
+use ph2d_render::SinkStyle;
 
 use super::*;
 
@@ -122,7 +123,7 @@ fn a_live_vector_object_lowers_to_a_vector_instance_not_a_quad() {
     // lowering — the mutation that reverts the membrane to a raster tile.
     let obj = appearance_vector([2.0, 3.0], [1.0, 1.0, 1.0, 1.0], 5);
     let mut vecs = Vec::new();
-    ph2d_eval_motion::lower_to_vector_instances_onto(&obj, &mut vecs);
+    ph2d_eval_motion::lower_to_vector_instances_onto(&obj, SinkStyle::PLAIN, &mut vecs);
     assert_eq!(vecs.len(), 1, "one live-vector instance");
     assert_eq!(vecs[0].geometry_id, 5, "carrying the live handle");
     assert_eq!(vecs[0].size, [2.0, 3.0]);
@@ -159,7 +160,7 @@ fn a_mixed_media_group_draws_each_child_once() {
     assert_eq!(quads[0].world_pos, [-1.0, 0.0]);
     // Only the vector row lowers to a live path.
     let mut vecs = Vec::new();
-    ph2d_eval_motion::lower_to_vector_instances_onto(&stream, &mut vecs);
+    ph2d_eval_motion::lower_to_vector_instances_onto(&stream, SinkStyle::PLAIN, &mut vecs);
     assert_eq!(vecs.len(), 1, "only the vector lowers to a live path");
     assert_eq!(vecs[0].geometry_id, 5);
     assert_eq!(vecs[0].world_pos, [1.0, 0.0]);
@@ -288,6 +289,7 @@ fn lod_vi(gid: u32, x: f32) -> VectorInstance {
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0],
         tint: [1.0, 1.0, 1.0, 1.0],
+        anchor: [0.0, 0.0],
     }
 }
 
@@ -339,6 +341,7 @@ fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
         size: [2.0, 0.5],
         basis: [0.0, 1.0, -1.0, 0.0], // a 90° rotation — carried, not dropped
         tint: [0.2, 0.4, 0.6, 0.8],
+        anchor: [0.0, 0.0],
     };
     let tile = vector_instance_as_tile(&vi, 42);
     assert_eq!(tile.world_pos, vi.world_pos, "same position");

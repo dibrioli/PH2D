@@ -15,6 +15,7 @@ fn vi(pos: [f32; 2], basis: [f32; 4], size: [f32; 2]) -> VectorInstance {
         size,
         basis,
         tint: [1.0, 1.0, 1.0, 1.0],
+        anchor: [0.0, 0.0],
     }
 }
 

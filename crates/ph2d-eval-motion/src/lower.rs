@@ -220,6 +220,17 @@ pub struct VectorInstance {
     pub size: [f32; 2],
     pub basis: [f32; 4],
     pub tint: [f32; 4],
+    /// **O PIVÔ, em metros locais** — o gémeo exacto do `RenderInstance::anchor`
+    /// (veredito do Enio, 2026-08-25: *«o sistema deve ser compatível com todos os tipos
+    /// de objetos»*).
+    ///
+    /// ⚠️ **Ele entra ANTES do `basis`, como na sprite**: o ponto local `q` da forma vai
+    /// para `P + basis · (anchor + q · size)`. Aplicá-lo depois giraria a peça no centro e
+    /// só a deslocaria — o mesmo desenho para todo ângulo, que é precisamente o que um
+    /// pivô NÃO é. A conversão fracção→metros é a mesma função dos dois lados
+    /// (`SinkStyle::anchor_for`), porque um pivô que diferisse entre as rotas partiria a
+    /// composição de mídia mista sem que gate nenhum de uma rota o visse.
+    pub anchor: [f32; 2],
 }
 
 /// **Stream → VECTOR instances** (ADR-0154) — the sibling of
@@ -230,7 +241,11 @@ pub struct VectorInstance {
 /// sprites ⇒ skipped. **Appends** (the pump clears once), so a graph with no
 /// shapes leaves `out` empty ⇒ byte-identical. Serial: shapes are a handful, and
 /// the cost is the per-shape Vello encode downstream, not this gather.
-pub fn lower_to_vector_instances_onto(stream: &Stream, out: &mut Vec<VectorInstance>) {
+pub fn lower_to_vector_instances_onto(
+    stream: &Stream,
+    style: SinkStyle,
+    out: &mut Vec<VectorInstance>,
+) {
     let Some(geo) = stream.get("geometry_id") else {
         return; // no shapes in this stream
     };
@@ -247,12 +262,16 @@ pub fn lower_to_vector_instances_onto(stream: &Stream, out: &mut Vec<VectorInsta
         // Same degrees→basis edge conversion as the sprite lowering (the `rot`
         // column is the app's one authored-angle unit).
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
+        let sz = vec2_at(size, i, [1.0, 1.0]);
         out.push(VectorInstance {
             geometry_id: id as u32,
             world_pos: vec2_at(p, i, [0.0, 0.0]),
-            size: vec2_at(size, i, [1.0, 1.0]),
+            size: sz,
             basis: [cos_r, sin_r, -sin_r, cos_r],
             tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
+            // ⚠️ A MESMA função que a sprite usa. `StyleReach::VECTOR` declara que esta
+            // rota honra o pivô e a ordem, e NOMEIA por que não honra os outros dois.
+            anchor: style.anchor_for(sz),
         });
     }
 }

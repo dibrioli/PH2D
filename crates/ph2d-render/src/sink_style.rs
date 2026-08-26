@@ -109,6 +109,80 @@ impl SinkStyle {
     }
 }
 
+/// **O que uma ROTA DE DESENHO honra do [`SinkStyle`]** — a declaração que impede um
+/// caminho novo de ignorar um campo em silêncio.
+///
+/// ⚠️ **Ela nasceu de um veredito do Enio** (2026-08-25, depois do smoke da cena `=9`):
+/// *«o sistema deve ser compatível com todos os tipos de objetos como vector e flip e no
+/// futuro 3d»*. O estilo tinha sido construído sobre a rota das SPRITES, e uma linha
+/// vectorial — que é desenhada por outro passe — não recebia nada dele.
+///
+/// ⇒ A resposta honesta não é *«tudo vale em todo o lado»*, porque dois dos quatro campos
+/// **não existem** fora de uma imagem: um vector vivo é rasterizado analiticamente e não
+/// tem texels para amostrar nem UV para recortar. O que a compatibilidade exige é que
+/// cada rota **DIGA** o que honra, e que uma rota nova (3D) não possa nascer sem dizer.
+///
+/// O gate `every_draw_route_answers_the_sink_style` (em `ph2d-render/tests/`) percorre
+/// [`Self::ALL`] e obriga cada entrada a trazer o motivo de cada ausência.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StyleReach {
+    /// O nome da rota, como o produto a chama.
+    pub route: &'static str,
+    /// O PIVÔ — em torno de que ponto a peça gira.
+    pub pivot: bool,
+    /// A AMOSTRAGEM — com que filtro a textura é lida.
+    pub sampling: bool,
+    /// A CÉLULA de UV — que pedaço da imagem a peça mostra.
+    pub uv_cell: bool,
+    /// A ORDEM das linhas.
+    pub order: bool,
+    /// ⚠️ **Por que cada `false` é `false`** — obrigatório, e o gate recusa uma ausência
+    /// sem motivo. *Um campo que não se honra e não se explica lê-se como um bug.*
+    pub why_absent: &'static str,
+}
+
+impl StyleReach {
+    /// **A rota das SPRITES** — quads texturados (`RenderInstance`). Honra os quatro.
+    pub const SPRITE: Self = Self {
+        route: "sprite",
+        pivot: true,
+        sampling: true,
+        uv_cell: true,
+        order: true,
+        why_absent: "",
+    };
+
+    /// **A rota do VECTOR VIVO** (ADR-0154) — uma `VectorInstance` encodada na cena Vello,
+    /// crisp em qualquer zoom.
+    ///
+    /// ⚠️ **A ordem é `true` por CONSTRUÇÃO, não por opção:** o `draw_shared_instances`
+    /// encoda na ordem do iterador e nunca reagrupa por forma (ele cacheia a tesselação
+    /// por handle, o que não reordena nada). Logo a ordem das LINHAS é sempre a ordem de
+    /// desenho aqui — o que o `sort = Stream` pede das sprites, esta rota já faz sempre.
+    pub const VECTOR: Self = Self {
+        route: "vector vivo",
+        pivot: true,
+        sampling: false,
+        uv_cell: false,
+        order: true,
+        why_absent: "um vector vivo e' rasterizado ANALITICAMENTE pelo Vello: ele nao tem \
+                     texels para amostrar (o `filter` nao tem o que escolher) nem UV para \
+                     recortar (o `sub_uv` nao tem o que cortar). Os dois voltam a valer no \
+                     instante em que a forma vira IMAGEM -- acima de `LOD_COUNT` copias ela \
+                     e' assada numa tile e a linha passa a ser uma sprite, que honra os quatro",
+    };
+
+    /// Toda rota de desenho que consome um [`SinkStyle`]. ⚠️ **Uma rota nova (o 3D que o
+    /// Enio nomeou) entra AQUI**, e o gate obriga-a a declarar antes de desenhar.
+    pub const ALL: &'static [Self] = &[Self::SPRITE, Self::VECTOR];
+
+    /// `true` se esta rota honra os quatro campos.
+    #[must_use]
+    pub const fn honours_everything(&self) -> bool {
+        self.pivot && self.sampling && self.uv_cell && self.order
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -21,7 +21,7 @@ fn a_stream_without_geometry_id_is_all_sprites_and_no_vectors() {
     lower_to_instances_onto(&s, UV, SZ, SinkStyle::PLAIN, &mut sprites);
     assert_eq!(sprites.len(), 3, "every row is a sprite");
     let mut vectors: Vec<VectorInstance> = Vec::new();
-    lower_to_vector_instances_onto(&s, &mut vectors);
+    lower_to_vector_instances_onto(&s, SinkStyle::PLAIN, &mut vectors);
     assert!(vectors.is_empty(), "no geometry_id column ⇒ no vectors");
 }
 
@@ -45,7 +45,7 @@ fn geometry_id_splits_sprites_from_vectors() {
     assert_eq!(sprites[1].world_pos, [2.0, 0.0]);
 
     let mut vectors: Vec<VectorInstance> = Vec::new();
-    lower_to_vector_instances_onto(&s, &mut vectors);
+    lower_to_vector_instances_onto(&s, SinkStyle::PLAIN, &mut vectors);
     assert_eq!(vectors.len(), 2, "the two id>0 rows are vectors");
     assert_eq!(vectors[0].geometry_id, 5);
     assert_eq!(vectors[0].world_pos, [1.0, 0.0]);
@@ -65,7 +65,7 @@ fn a_shape_row_is_not_also_a_sprite() {
     lower_to_instances_onto(&s, UV, SZ, SinkStyle::PLAIN, &mut sprites);
     assert!(sprites.is_empty(), "a shape row is not a sprite");
     let mut vectors: Vec<VectorInstance> = Vec::new();
-    lower_to_vector_instances_onto(&s, &mut vectors);
+    lower_to_vector_instances_onto(&s, SinkStyle::PLAIN, &mut vectors);
     assert_eq!(vectors.len(), 1);
     assert_eq!(vectors[0].geometry_id, 9);
 }

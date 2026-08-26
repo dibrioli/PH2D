@@ -5,6 +5,7 @@
 //! diverged, the node would clone the empty external and emit nothing. The gate
 //! drives BOTH sides for real (publish + a live cook) so the two keys are computed
 //! independently and shown to agree.
+use ph2d_render::SinkStyle;
 
 use super::{VecPathStore, build_shape_path, encode};
 use crate::motion_state::MotionState;
@@ -137,6 +138,7 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0],
         tint: [1.0, 1.0, 1.0, 1.0],
+        anchor: [0.0, 0.0],
     };
     let mut scene = ph2d_vector::VectorScene::new();
     encode(&[inst], &store, ph2d_vector::Affine::IDENTITY, &mut scene);
@@ -255,7 +257,7 @@ fn a_shape_stamped_on_a_grid_lowers_to_sixteen_vectors() {
         .cook(&state.doc.graph, &state.registry, out, 0.0)
         .expect("cook");
     let mut vecs = Vec::new();
-    lower_to_vector_instances_onto(cooked[0].as_stream(), &mut vecs);
+    lower_to_vector_instances_onto(cooked[0].as_stream(), SinkStyle::PLAIN, &mut vecs);
     assert_eq!(
         vecs.len(),
         16,
@@ -303,6 +305,7 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0], // identity rotation
         tint: [1.0, 1.0, 1.0, 1.0],  // WHITE — the object tint must NOT paint the star
+        anchor: [0.0, 0.0],
     };
     // Fit the unit-radius star into a 64² tile: world [-0.5, 0.5] → device [7, 57].
     let (w, h) = (64u32, 64u32);
@@ -393,4 +396,59 @@ fn the_content_key_separates_two_stroke_widths() {
     };
     assert_ne!(key(0.0), key(0.25), "duas larguras, duas geometrias");
     assert_eq!(key(0.25), key(0.25), "e a chave e determinista");
+}
+
+/// ⭐⭐⭐ **O PIVÔ CHEGA AO DESENHO DE UM VECTOR VIVO — e ele é um PIVÔ, não um
+/// deslocamento** (veredito do Enio, 2026-08-25: *«o sistema deve ser compatível com todos
+/// os tipos de objetos como vector e flip e no futuro 3d»*).
+///
+/// ⚠️ **A régua tem de distinguir as duas leis, e a fixtura é escolhida para isso:** a
+/// mesma peça é encodada com `basis` = identidade e com `basis` = 180°. Um pivô a sério
+/// entra ANTES do `basis`, então o deslocamento dele **gira com a peça** e as duas poses
+/// afastam-se o dobro; um deslocamento somado DEPOIS daria a mesma translação nos dois
+/// ângulos, e um gate que só olhasse a identidade passaria sobre ele.
+#[test]
+fn the_pivot_rides_before_the_basis_on_the_vector_route() {
+    use ph2d_eval_motion::VectorInstance;
+    use ph2d_vector::Affine;
+
+    let pose = |basis: [f32; 4], anchor: [f32; 2]| -> (f64, f64) {
+        // A MESMA conta que o `encode` faz, lida do produto por reflexão do resultado:
+        // encodamos uma peça e perguntamos onde a origem local dela aterra.
+        let inst = VectorInstance {
+            geometry_id: 1,
+            world_pos: [10.0, 0.0],
+            size: [2.0, 2.0],
+            basis,
+            tint: [1.0; 4],
+            anchor,
+        };
+        let [b0, b1, b2, b3] = inst.basis;
+        let [ax, ay] = inst.anchor;
+        let a = super::instance_pose(&inst, Affine::IDENTITY);
+        // A translação da pose É onde a origem local cai.
+        let c = a.as_coeffs();
+        // Controle interno: a metade linear não pode depender do pivô.
+        assert_eq!(c[0], f64::from(b0 * 2.0));
+        assert_eq!(c[3], f64::from(b3 * 2.0));
+        let _ = (b1, b2, ax, ay);
+        (c[4], c[5])
+    };
+
+    let up = [1.0f32, 0.0, 0.0, 1.0];
+    let down = [-1.0f32, 0.0, 0.0, -1.0]; // 180°
+    // Sem pivô, o ângulo não move a origem.
+    assert_eq!(pose(up, [0.0, 0.0]), pose(down, [0.0, 0.0]));
+    // Com pivô, ele GIRA com a peça: +0,5 numa pose, −0,5 na oposta.
+    let (x_up, _) = pose(up, [0.5, 0.0]);
+    let (x_down, _) = pose(down, [0.5, 0.0]);
+    assert!((x_up - 10.5).abs() < 1e-9, "pivo a direita: {x_up}");
+    assert!(
+        (x_down - 9.5).abs() < 1e-9,
+        "girada 180, o pivo vai para o outro lado: {x_down}"
+    );
+    assert_ne!(
+        x_up, x_down,
+        "um deslocamento somado DEPOIS do basis daria o mesmo nos dois angulos"
+    );
 }

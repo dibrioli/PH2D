@@ -449,25 +449,51 @@ pub(crate) fn encode(
     scene: &mut VectorScene,
 ) {
     ph2d_vec_render::draw_shared_instances(
-        insts.iter().map(|inst| {
+        insts
+            .iter()
+            .map(|inst| (inst.geometry_id, instance_pose(inst, cam), inst.tint)),
+        |handle| store.get(handle),
+        scene,
+    );
+}
+
+/// **A pose de mundo de uma instância vectorial**, com a câmera já aplicada.
+///
+/// ⚠️ Ela é uma função com nome porque a conta vivia DENTRO de um `map` sobre um iterador
+/// consumido pelo `draw_shared_instances`, e medi-la de fora exigiria uma cena Vello e um
+/// raster. *Uma lei que só se pode medir renderizando não é medida.* O gate do pivô chama
+/// esta função — o `encode` chama a MESMA, não há segunda cópia da conta.
+fn instance_pose(inst: &VectorInstance, cam: Affine) -> Affine {
+    {
+        {
             let [b0, b1, b2, b3] = inst.basis;
             let [sx, sy] = inst.size;
             let [px, py] = inst.world_pos;
-            // world pose = translate(P) · R(basis) · scale(size); kurbo Affine coeffs
-            // [a,b,c,d,e,f] = matrix [[a,c,e],[b,d,f]] ⇒ linear = R·S, translation = P.
+            let [ax, ay] = inst.anchor;
+            // world pose = translate(P) · R(basis) · translate(anchor) · scale(size);
+            // kurbo Affine coeffs [a,b,c,d,e,f] = matrix [[a,c,e],[b,d,f]] ⇒ linear = R·S,
+            // translation = P + R·anchor.
+            //
+            // ⚠️ **O PIVÔ ENTRA ENTRE O `basis` E O `size`, e é aí que ele tem de entrar**
+            // (doc 89, folha 17 — o veredito do Enio de 2026-08-25). O ponto local `q` da
+            // forma vai para `P + basis · (anchor + q · size)`, que é EXACTAMENTE o que o
+            // shader da sprite calcula (`local = anchor + quad·size`, depois `basis`).
+            // Somá-lo depois do `basis` faria a peça girar no centro e apenas deslocar-se
+            // — o mesmo desenho para todo ângulo, que é precisamente o que um pivô NÃO é.
+            //
+            // ⚠️ E ele já vem em METROS: a conversão fracção→tamanho vive numa função só
+            // (`SinkStyle::anchor_for`), do lado do lowering, partilhada com a sprite.
             let pose = Affine::new([
                 f64::from(b0 * sx),
                 f64::from(b1 * sx),
                 f64::from(b2 * sy),
                 f64::from(b3 * sy),
-                f64::from(px),
-                f64::from(py),
+                f64::from(px + b0 * ax + b2 * ay),
+                f64::from(py + b1 * ax + b3 * ay),
             ]);
-            (inst.geometry_id, cam * pose, inst.tint)
-        }),
-        |handle| store.get(handle),
-        scene,
-    );
+            cam * pose
+        }
+    }
 }
 
 #[cfg(test)]

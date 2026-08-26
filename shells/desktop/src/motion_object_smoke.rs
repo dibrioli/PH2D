@@ -21,11 +21,9 @@
 //! SELECIONADO. Renomeie o objeto na Hierarchy e o nó para de achá-lo — o nome
 //! É a referência. No modo vetor, **edite a forma** e as cópias re-assam (LIVE).
 
-use ph2d_core::Vec2;
 use ph2d_ecs::{Name, Transform};
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 use ph2d_render::Sprite;
-use ph2d_vec_scene::{Paint, Rgba8, VecPath};
 
 // A cena das DUAS FASES (`=7`, o `time_offset` do doc 89 folha 14) mora num irmão:
 // ela é um ASSUNTO — *o mesmo objeto em dois tempos* — e traz a própria fixture
@@ -39,6 +37,15 @@ use osc::build_stamp_graph_osc;
 
 #[path = "motion_object_smoke_pose.rs"]
 mod pose;
+
+/// **A ARTE E AS ENTIDADES** que os modos partilham — o quarto corte por responsabilidade
+/// (este ficheiro diz *qual modo liga o quê*; o irmão diz *o que existe para ser ligado*).
+#[path = "motion_object_smoke_art.rs"]
+mod art;
+use art::{
+    child_at, find_group, flip_rect, name_vector_entity, name_vector_entity_as, spawn_flip_object,
+    spawn_flip_object_named, spawn_sprite, star_shape,
+};
 
 #[path = "motion_object_smoke_times.rs"]
 pub(crate) mod times;
@@ -179,127 +186,6 @@ fn build_stamp_graph_2dup(graph: &mut Graph, name: &str) -> NodeId {
     out
 }
 
-/// Modo `=1`: um sprite direto (entidade com `Name`, não precisa do `sync`).
-fn spawn_sprite(sim: &mut ph2d_ecs::SimWorld) {
-    sim.world_mut().spawn((
-        Transform::from_translation(Vec2::new(0.0, 0.0)),
-        Sprite::atlas(DEMO_TILE_KEY, [0.8, 0.8], [1.0, 1.0, 1.0, 1.0]),
-        Name::new(OBJECT),
-    ));
-}
-
-/// Modo `=2`: uma estrela FILLED (a arte, inconfundível quando assada numa tile).
-fn star_shape() -> VecPath {
-    let mut p = ph2d_vec_scene::star([0.0, 0.0], 0.5, 0.5, 5, 0.45);
-    p.fill = Some(Paint::solid(Rgba8::new(255, 170, 40, 255)));
-    p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-        Rgba8::new(60, 40, 10, 255),
-        0.02,
-    ));
-    p
-}
-
-/// Modo `=2` frame 6: a entidade da forma já existe (o `sync` do frame a criou),
-/// então ela ganha o **nome** que o `source.object` procura. A única forma da
-/// cena é a nossa.
-fn name_vector_entity(
-    sim: &mut ph2d_ecs::SimWorld,
-    map: &crate::vec_entities::VecEntityMap,
-) -> bool {
-    let Some((_, &bits)) = map.iter().next() else {
-        return false;
-    };
-    let e = ph2d_ecs::Entity::from_bits(bits);
-    match sim.world_mut().get_entity_mut(e) {
-        Ok(mut ent) => {
-            ent.insert(Name(OBJECT.to_string()));
-            true
-        }
-        Err(_) => false,
-    }
-}
-
-/// Modo `=3`: um objeto FLIP de 2 camadas (BG azul + FG laranja), empurrado no
-/// `FlipDoc`. A ENTIDADE dele (com `Name` "Object") é criada pelo
-/// `flip_entities::sync` — que copia o nome do objeto —, então o grafo o acha pelo
-/// nome sem o smoke precisar nomear nada (≠ do vetor). A membrana compõe as DUAS
-/// camadas no frame atual numa tile.
-fn spawn_flip_object(flip: &mut ph2d_flip::FlipDoc) {
-    spawn_flip_object_named(flip, OBJECT);
-}
-
-/// Como `spawn_flip_object`, mas com um nome dado (o filho Flip de um grupo precisa
-/// de um nome distinto do grupo, doc 86 §2 A4).
-fn spawn_flip_object_named(flip: &mut ph2d_flip::FlipDoc, name: &str) {
-    use ph2d_flip::{Hold, KeyKind, Rgba};
-    let oid = flip.push_object(name);
-    let obj = flip.object_mut(oid).expect("objeto Flip recém-criado");
-    obj.fps = 12.0;
-    // BG: um retângulo azul preenchido (o campo).
-    let bg = obj.add_layer("BG");
-    if let Some(d) = obj.insert_frame(bg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d)
-            .expect("desenho BG")
-            .strokes
-            .push(flip_rect(
-                Vec2::new(-0.9, -0.6),
-                Vec2::new(0.9, 0.6),
-                Rgba::new(0.2, 0.5, 0.95, 1.0),
-            ));
-    }
-    // FG: um quadrado laranja menor por cima — a arte que torna a tile assada
-    // INCONFUNDÍVEL (duas camadas compostas, não um quad chapado).
-    let fg = obj.add_layer("FG");
-    if let Some(d) = obj.insert_frame(fg, 0, Hold::Implicit, KeyKind::Keyframe) {
-        obj.drawing_mut(d)
-            .expect("desenho FG")
-            .strokes
-            .push(flip_rect(
-                Vec2::new(-0.35, -0.35),
-                Vec2::new(0.35, 0.35),
-                Rgba::new(0.98, 0.7, 0.15, 1.0),
-            ));
-    }
-}
-
-/// Um retângulo Flip FECHADO e PREENCHIDO (espelha `flip_demo::filled_rect`).
-pub(super) fn flip_rect(min: Vec2, max: Vec2, color: ph2d_flip::Rgba) -> ph2d_flip::FlipStroke {
-    use ph2d_flip::{Fill, FlipStroke, Point};
-    let mut s = FlipStroke::new();
-    for corner in [min, Vec2::new(max.x, min.y), max, Vec2::new(min.x, max.y)] {
-        s.push_point(Point {
-            pos: corner,
-            width: 0.04,
-            opacity: 1.0,
-            color,
-        });
-    }
-    s.closed = true;
-    s.hardness = 1.0;
-    s.fill = Some(Fill {
-        color,
-        opacity: 1.0,
-    });
-    s
-}
-
-/// Um `Transform` LOCAL (relativo ao grupo) numa posição, resto identidade (A4).
-fn child_at(x: f32, y: f32) -> Transform {
-    Transform {
-        translation: Vec2::new(x, y),
-        ..Transform::IDENTITY
-    }
-}
-
-/// Acha a entidade-GRUPO pelo nome (`Name` + `GroupedChildren`), doc 86 §2 A4.
-fn find_group(sim: &mut ph2d_ecs::SimWorld, name: &str) -> Option<ph2d_ecs::Entity> {
-    let mut q = sim
-        .world_mut()
-        .query_filtered::<(ph2d_ecs::Entity, &Name), ph2d_ecs::With<ph2d_ecs::GroupedChildren>>();
-    let world = sim.world();
-    q.iter(world).find(|(_, n)| n.0 == name).map(|(e, _)| e)
-}
-
 /// O frame corrente do roteiro (o hook não pode acrescentar campo em `App`).
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
@@ -362,8 +248,17 @@ impl crate::App {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 sink::spawn_flip_art(&mut gfx.flip);
                 sink::spawn_chip(&mut gfx.sim);
+                // ⚠️ E a ESTRELA VECTORIAL — a fileira do pivô desenha-se por ela, que é a
+                // prova de que o pivô alcança um objecto que NUNCA vira textura.
+                gfx.vec_scene.push_path(star_shape());
             }
-            9 if f == 6 => sink::run(self.gfx.as_mut().expect("gfx")),
+            9 if f == 6 => {
+                let map = self.vec_entities.clone();
+                let gfx = self.gfx.as_mut().expect("gfx");
+                if name_vector_entity_as(&mut gfx.sim, &map, sink::STAR) {
+                    sink::run(gfx);
+                }
+            }
             2 if f == 6 => {
                 let map = self.vec_entities.clone();
                 let gfx = self.gfx.as_mut().expect("gfx");

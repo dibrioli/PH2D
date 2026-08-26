@@ -343,7 +343,11 @@ impl MotionCookPump {
                                     sink_style(graph, sink),
                                     &mut self.instances,
                                 );
-                                lower_to_vector_instances_onto(stream, &mut self.vector_instances);
+                                lower_to_vector_instances_onto(
+                                    stream,
+                                    sink_style(graph, sink),
+                                    &mut self.vector_instances,
+                                );
                             }
                         }
                         Err(e) => self.last_error = Some(e),

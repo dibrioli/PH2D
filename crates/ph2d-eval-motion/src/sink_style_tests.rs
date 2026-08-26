@@ -314,62 +314,108 @@ fn the_uv_cell_column_is_relative_so_it_composes_with_whatever_tile_the_row_has(
     );
 }
 
-/// ⭐⭐⭐ **O ESTILO DO SINK É UM CONCEITO DE LINHA-SPRITE, e uma linha VECTORIAL não
-/// recebe NADA dele.**
+/// ⭐⭐⭐ **CADA ROTA DE DESENHO HONRA O QUE PODE, E DECLARA O QUE NÃO PODE.**
 ///
-/// ⚠️ **Este gate nasceu de um smoke reprovado** (Enio, 2026-08-25): a cena `=9` foi
-/// montada sobre um `source.object` de VECTOR e os quatro pares sairam idênticos. A metade
-/// da lei que estava escrita era *«um vector resolve para `geometry_id`, um Flip para
-/// `texture_id`»* (gate na shell, desde o ADR-0154). A metade que faltava é a
-/// **consequência**: uma linha com `geometry_id > 0` é **saltada** pelo lowering de
-/// sprites, e a `VectorInstance` que a recebe **não tem onde pôr** o pivô, o filtro, a
-/// célula de UV nem a sub-ordem.
+/// ⚠️ **Este gate mudou de sentido por um veredito do Enio** (2026-08-25, depois do smoke
+/// da cena `=9`): *«o sistema deve ser compatível com todos os tipos de objetos como vector
+/// e flip e no futuro 3d»*. A 1.ª redacção dele afirmava que **nenhum** campo do estilo
+/// alcançava uma linha vectorial — verdade na altura, e a coisa errada para ficar verdade.
 ///
-/// ⇒ Autorar qualquer um dos quatro sobre uma linha vectorial não é «não funcionar»: é
-/// pedir uma coisa a um passe de desenho que não a conhece. *Uma lei com uma metade
-/// escrita é uma lei que se pode obedecer e mesmo assim errar.*
+/// A resposta honesta separa os quatro: o **pivô** e a **ordem** são geométricos e valem
+/// para qualquer objecto; o **filtro** e a **célula de UV** só existem onde há imagem — um
+/// vector vivo é rasterizado analiticamente e não tem texels nem UV. ⇒ o pivô passa a
+/// viajar na `VectorInstance`, e a ausência dos outros dois é **declarada** em
+/// [`StyleReach::VECTOR`], com o motivo, em vez de esquecida.
 #[test]
-fn no_field_of_the_sink_style_reaches_a_vector_row() {
+fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
     let style = SinkStyle {
         blend: 3,
-        pivot: [0.5, -0.5],
+        pivot: [0.5, -0.25],
         sampling: RenderInstance::pack_sampling(1, 0),
         stream_order: true,
     };
     let vector_rows = a_stream()
         .with("geometry_id", Column::Scalar(vec![7.0, 7.0, 7.0]))
-        .with("uv_cell", Column::Vec4(vec![[0.5, 0.5, 0.5, 0.5]; 3]));
+        .with(
+            "size",
+            Column::Vec2(vec![[2.0, 4.0], [8.0, 4.0], [1.0, 1.0]]),
+        );
 
-    // 1. O lowering de SPRITES não emite nada — nem uma instância onde o estilo caiba.
+    // A rota das sprites continua a não receber estas linhas — elas já são desenhadas uma
+    // vez, pelo outro passe.
     let mut sprites: Vec<RenderInstance> = Vec::new();
     lower_to_instances_onto(&vector_rows, UV, SZ, style, &mut sprites);
     assert!(
         sprites.is_empty(),
-        "uma linha vectorial nao pode virar quad texturado — ela ja' e' desenhada uma vez"
+        "uma linha vectorial nao vira quad texturado"
     );
 
-    // 2. O lowering VECTORIAL emite as linhas — e a struct que as recebe tem CINCO
-    // campos, nenhum deles do estilo. A destruturação é o gate: um campo novo ali obriga
-    // quem o acrescentar a decidir se o estilo passa a alcançá-lo.
+    // ⭐ O PIVÔ chega, e escala com o tamanho de cada linha — a MESMA lei da sprite.
     let mut vectors = Vec::new();
-    crate::lower::lower_to_vector_instances_onto(&vector_rows, &mut vectors);
-    assert_eq!(
-        vectors.len(),
-        3,
-        "CONTROLE: as linhas SAO desenhadas, so' noutro passe"
+    crate::lower::lower_to_vector_instances_onto(&vector_rows, style, &mut vectors);
+    assert_eq!(vectors.len(), 3, "CONTROLE: as linhas SAO desenhadas");
+    assert_eq!(vectors[0].anchor, [1.0, -1.0]);
+    assert_eq!(vectors[1].anchor, [4.0, -1.0]);
+    assert_ne!(
+        vectors[0].anchor[0], vectors[1].anchor[0],
+        "CONTROLE: duas larguras diferentes dao pivos diferentes"
     );
-    let ph2d_eval_motion_vector_fields = {
+    // E o estilo neutro continua a não mover nada.
+    let mut plain = Vec::new();
+    crate::lower::lower_to_vector_instances_onto(&vector_rows, SinkStyle::PLAIN, &mut plain);
+    assert!(plain.iter().all(|v| v.anchor == [0.0, 0.0]));
+
+    // ⚠️ A struct tem SEIS campos, e a destruturação é o gate: um campo novo aqui obriga
+    // quem o acrescentar a decidir se o estilo passa a alcançá-lo.
+    let fields = {
         let crate::VectorInstance {
             geometry_id: _,
             world_pos: _,
             size: _,
             basis: _,
             tint: _,
+            anchor: _,
         } = vectors[0];
-        5
+        6
     };
     assert_eq!(
-        ph2d_eval_motion_vector_fields, 5,
-        "a `VectorInstance` cresceu — o estilo do sink passa a alcancar uma linha vectorial?"
+        fields, 6,
+        "a `VectorInstance` cresceu — o estilo alcanca o campo novo?"
     );
+}
+
+/// ⭐⭐ **TODA ROTA DE DESENHO RESPONDE AO ESTILO — e uma ausência sem MOTIVO é recusada.**
+///
+/// ⚠️ É o gate que o veredito do Enio pede de facto: o 3D que ele nomeou ainda não existe,
+/// e o que impede que ele nasça ignorando os quatro campos em silêncio é ter de entrar na
+/// [`StyleReach::ALL`] com o que honra e o porquê do resto.
+#[test]
+fn every_draw_route_answers_the_sink_style() {
+    use ph2d_render::StyleReach;
+    assert!(
+        StyleReach::ALL.len() >= 2,
+        "CONTROLE: a lista de rotas nao esta' vazia"
+    );
+    for r in StyleReach::ALL {
+        assert!(!r.route.is_empty(), "uma rota sem nome");
+        if r.honours_everything() {
+            assert!(
+                r.why_absent.is_empty(),
+                "{}: honra tudo e ainda traz um motivo de ausencia",
+                r.route
+            );
+        } else {
+            assert!(
+                r.why_absent.len() > 40,
+                "{}: nao honra algum campo e nao diz porque — um campo que nao se honra \
+                 e nao se explica le-se como um bug",
+                r.route
+            );
+        }
+        // O PIVÔ e a ORDEM são GEOMÉTRICOS: nenhuma rota tem desculpa para não os honrar.
+        assert!(r.pivot, "{}: o pivo' e' geometria, nao textura", r.route);
+        assert!(r.order, "{}: a ordem de desenho e' geometria", r.route);
+    }
+    // E a rota das sprites — a que tem imagem — honra os quatro.
+    assert!(StyleReach::SPRITE.honours_everything());
 }

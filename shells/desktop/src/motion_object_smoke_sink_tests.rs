@@ -208,55 +208,75 @@ fn the_filter_row_magnifies_the_same_patch_on_both_sides() {
     );
 }
 
-/// ⭐⭐⭐ **A ARTE DESTA CENA É RASTER — e é isso, e só isso, que faz os quatro pares
-/// existirem.**
+/// ⭐⭐⭐ **A CENA COBRE AS DUAS ROTAS DE DESENHO** — e a fileira que usa cada uma é a que
+/// aquela rota de facto honra.
 ///
-/// ⚠️ **O gate nasceu de um smoke reprovado** (Enio, 2026-08-25): a 1.ª versão montou a
-/// cena sobre um `source.object` de VECTOR e os quatro pares sairam idênticos. Desde o
-/// ADR-0154 um vector emite `geometry_id` e a linha vai para o passe vectorial, onde não
-/// existe `anchor`, `sampling`, `uv_xform` nem `sub_order` — os params não estavam
-/// «partidos», eles nunca chegavam ao lowering que os lê.
+/// ⚠️ **A 1.ª versão desta cena tinha SÓ um vector e os quatro pares sairam idênticos**
+/// (smoke do Enio, 2026-08-25); a 2.ª tinha SÓ raster e o Enio respondeu *«o sistema deve
+/// ser compatível com todos os tipos de objetos como vector e flip e no futuro 3d»*. As
+/// duas correcções cabem numa frase: **a cena tem de exercitar as duas rotas, e cada campo
+/// tem de ser demonstrado sobre uma rota que o honre.**
 ///
-/// ⚠️ E os CINCO gates que esta cena já tinha ficaram todos verdes: eles mediam o que ela
-/// **AUTORA** (o estilo de cada sink, a forma de cada cadeia), e nenhum media o que ela
-/// **DESENHA**. *Um par pode diferir em tudo o que se autora e sair idêntico na tela.*
+/// - **pivô** (geometria) → a estrela **VECTORIAL**, que nunca vira textura;
+/// - **sub-UV** e **filtro** (imagem) → o **Flip**, que a membrana assa numa tile;
+/// - **ordem** → Flip + sprite, os dois raster, porque a ordem entre passes diferentes não
+///   é exprimível (o vector e a sprite são dois passes, e nada os ordena entre si).
 #[test]
-fn the_scene_art_is_a_baked_flip_not_a_live_vector() {
+fn the_scene_exercises_both_draw_routes() {
     // O Flip é o que a membrana ASSA numa tile (`resolve_drawing_leaf`: um filho Flip
     // carimba pelo `texture_id`, sem rota viva) — logo, linhas de SPRITE.
     let mut doc = ph2d_flip::FlipDoc::default();
     super::spawn_flip_art(&mut doc);
     let objs = doc.objects();
-    assert_eq!(objs.len(), 1, "a cena traz UM objecto de arte");
-    assert_eq!(
-        objs[0].name,
-        super::OBJECT,
-        "e' o nome que os `source.object` procuram"
-    );
+    assert_eq!(objs.len(), 1, "a cena traz UM objecto de arte raster");
+    assert_eq!(objs[0].name, super::OBJECT);
     assert_eq!(
         objs[0].layers().len(),
         2,
         "duas camadas: os quadrantes (fileira 2) e o xadrez do centro (fileira 3)"
     );
 
-    // E toda fonte da cena aponta para um objecto que ESTA MODULO de facto cria — um
-    // terceiro nome aqui seria uma cadeia a cozinhar vazia, e a fileira dela sairia muda.
-    let (g, _) = scene();
-    let mut names: Vec<String> = g
-        .nodes()
-        .iter()
-        .filter(|n| n.type_name == "source.object")
-        .filter_map(|n| {
-            g.node_text_param_overrides(n.id)
-                .and_then(|m| m.get("object"))
-                .cloned()
-        })
-        .collect();
-    names.sort();
-    names.dedup();
-    assert_eq!(
-        names,
-        vec![CHIP.to_string(), super::OBJECT.to_string()],
-        "as fontes da cena e os objectos que ela cria tem de ser a MESMA lista"
-    );
+    // As TRÊS fontes: o Flip (imagem), o sprite (a outra textura) e a estrela (vector).
+    let (g, sinks) = scene();
+    let names_of = |k: usize| -> Vec<String> {
+        let mut ids: Vec<NodeId> = vec![sinks[k]];
+        let mut i = 0;
+        while i < ids.len() {
+            let cur = ids[i];
+            for e in g.edges() {
+                if e.to.0 == cur && !ids.contains(&e.from.0) {
+                    ids.push(e.from.0);
+                }
+            }
+            i += 1;
+        }
+        let mut v: Vec<String> = ids
+            .iter()
+            .filter_map(|id| {
+                g.node_text_param_overrides(*id)
+                    .and_then(|m| m.get("object"))
+                    .cloned()
+            })
+            .collect();
+        v.sort();
+        v.dedup();
+        v
+    };
+    // ⭐ A fileira do PIVÔ desenha-se pela estrela — a rota vectorial.
+    for k in [0, 1] {
+        assert_eq!(
+            names_of(k),
+            vec![super::STAR.to_string()],
+            "a fileira do pivo tem de correr sobre um VECTOR, senao ela mede a mesma \
+             rota das outras tres"
+        );
+    }
+    // ⚠️ E as fileiras de IMAGEM não podem correr sobre o vector: ali os dois campos não
+    // existem, e o par sairia mudo com o produto CERTO.
+    for k in [2, 3, 4, 5] {
+        assert!(
+            !names_of(k).contains(&super::STAR.to_string()),
+            "a fileira {k} e' de imagem — um vector vivo nao tem texels nem UV"
+        );
+    }
 }

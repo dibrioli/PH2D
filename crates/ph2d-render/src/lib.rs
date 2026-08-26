@@ -89,7 +89,7 @@ pub use atlas::{
     FIRST_IMPORT_KEY, TextureAtlas, WHITE_TILE_KEY,
 };
 pub use camera::{Camera2d, CameraUniform};
-pub use sink_style::SinkStyle;
+pub use sink_style::{SinkStyle, StyleReach};
 // A ordem canonica de desenho e' uma LEI do produto, e quem escreve linhas que
 // dependem dela (o lowering de Motion) tem de a poder MEDIR sem uma GPU.
 pub use compositor::Compositor;

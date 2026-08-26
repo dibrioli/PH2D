@@ -1,12 +1,29 @@
 //! **A cena do ESTILO DO SINK** (`PH2D_MOTION_OBJ_SMOKE=9`, doc 89 folha 17) — quatro
 //! pares, e cada par muda **um** param do `motion.output`.
 //!
-//! | fileira | esquerda | direita |
-//! |---|---|---|
-//! | pivô | `Pivot X = 0` — cada cópia gira no PRÓPRIO centro | `Pivot X = 0,5` — o ponto de giro salta para a aresta |
-//! | sub-UV | a arte inteira, quatro vezes | **um QUARTO dela** em cada cópia |
-//! | filtro | `Linear` — o pedaço ampliado sai borrado | **`Nearest`** — sai em blocos duros |
-//! | ordem | `Texture` — os dois materiais REAGRUPAM | **`Stream`** — a ordem das linhas ganha |
+//! | fileira | objecto | esquerda | direita |
+//! |---|---|---|---|
+//! | pivô | **VECTOR vivo** | `Pivot X = 0` — cada cópia gira no PRÓPRIO centro | `Pivot X = 0,5` — o ponto de giro salta para a aresta |
+//! | sub-UV | Flip (imagem) | a arte inteira, quatro vezes | **um QUARTO dela** em cada cópia |
+//! | filtro | Flip (imagem) | `Linear` — o pedaço ampliado sai borrado | **`Nearest`** — blocos duros |
+//! | ordem | Flip + sprite | `Texture` — os dois materiais REAGRUPAM | **`Stream`** — a ordem das linhas ganha |
+//!
+//! ⚠️⚠️ **A 1.ª fileira usa um VECTOR VIVO de propósito** (veredito do Enio, 2026-08-25:
+//! *«o sistema deve ser compatível com todos os tipos de objetos como vector e flip e no
+//! futuro 3d»*). Ela é a prova de que o **pivô** — que é geometria — vale para um objecto
+//! que nunca vira textura, e que é desenhado por outro passe.
+//!
+//! ⇒ A resposta honesta separa os quatro, e a cena mostra a separação: **pivô** e **ordem**
+//! são geométricos e valem para qualquer objecto; **filtro** e **sub-UV** só existem onde
+//! há imagem — um vector vivo é rasterizado analiticamente e não tem texels para amostrar
+//! nem UV para recortar. A ausência é DECLARADA em `ph2d_render::StyleReach::VECTOR`, com
+//! o motivo, e um gate recusa uma rota que não a declare (é o que impede o 3D de nascer a
+//! ignorar os quatro em silêncio).
+//!
+//! ⚠️ **E a ORDEM já é universal sem uma linha nova**: o `draw_shared_instances` encoda na
+//! ordem do iterador e nunca reagrupa por forma, então para um vector a ordem das linhas é
+//! **sempre** a ordem de desenho. O `sort` do sink existe para a rota das sprites, onde o
+//! desempate por textura a derrotava.
 //!
 //! ⚠️ **Esta cena precisa de DOIS objectos com texturas diferentes**, e é por isso que ela
 //! vive aqui e não no roteador de `PH2D_GPU_COOK_DEMO`: os demos daquele roteador
@@ -57,6 +74,8 @@ use ph2d_render::Sprite;
 
 /// O nome do SEGUNDO objecto — o que dá a fileira da ordem a sua outra textura.
 pub(crate) const CHIP: &str = "Chip";
+/// O nome do TERCEIRO — a estrela VECTORIAL da fileira do pivô, que nunca vira textura.
+pub(crate) const STAR: &str = "Star";
 
 /// O `channel` do `motion.oscillator` que escreve `rot` (a escada de `channel_column`).
 const OSC_CHANNEL_ROT: f32 = 2.0;
@@ -132,19 +151,25 @@ fn sink(g: &mut Graph, head: NodeId, row: usize, right: bool, style: &[(&str, f3
     out
 }
 
-/// **Fileira 1 — o PIVÔ.** Cinco cópias, cada uma com a sua rotação (estática: o
-/// `frequency = 0` faz a fase ser só o escalonamento por índice, então o relógio não
-/// mexe nada). Com o pivô ao centro elas giram no lugar; com ele na aresta, o ponto de
-/// giro salta e a fileira abre-se em leque.
+/// **Fileira 1 — o PIVÔ, sobre um VECTOR VIVO.** Cinco cópias, cada uma com a sua rotação
+/// (estática: o `frequency = 0` faz a fase ser só o escalonamento por índice, então o
+/// relógio não mexe nada). Com o pivô ao centro elas giram no lugar; com ele na aresta, o
+/// ponto de giro salta e a fileira abre-se em leque.
+///
+/// ⚠️ **O objecto desta fileira é a ESTRELA vectorial e não o Flip** — ela é a prova de que
+/// o pivô alcança um objecto que nunca vira textura, e que é desenhado pelo passe do Vello
+/// (`StyleReach::VECTOR`). Pôr aqui o Flip mediria a mesma rota das outras três fileiras.
 fn row_pivot(g: &mut Graph, sinks: &mut Vec<NodeId>) {
     for right in [false, true] {
         let dup = stamped(
             g,
-            OBJECT,
+            STAR,
             &[("rows", 1.0), ("cols", 5.0), ("gap_x", STEP)],
             0.0,
         );
-        let small = node(g, "motion.scale", &[("amount", STAMP)], 0.0, 280.0);
+        // A estrela nasce a `1,0` de raio contra os `1,6` do Flip — escala própria, para
+        // as duas fileiras de cima terem o mesmo passo visual.
+        let small = node(g, "motion.scale", &[("amount", STAMP * 1.6)], 0.0, 280.0);
         wire(g, dup, 0, small, 0);
         let dup = small;
         let osc = node(
@@ -360,8 +385,9 @@ pub(super) fn run(gfx: &mut crate::AppGfx) {
     eprintln!(
         "[motion.obj smoke =9] O SINK ganhou o ESTILO DE DESENHO (doc 89 folha 17).
   Quatro fileiras, cada uma com um par -- ESQUERDA = como era, DIREITA = o param novo.
-  1 PIVO   : a esquerda cada estrela gira no proprio centro; a direita o ponto de
-             giro esta' na aresta, e a fileira abre-se em leque.
+  1 PIVO   : sobre a ESTRELA (uma forma vectorial, que nunca vira imagem) -- a
+             esquerda cada uma gira no proprio centro; a direita o ponto de giro
+             esta' na aresta, e a fileira abre-se em leque.
   2 SUB-UV : a esquerda quatro estrelas inteiras; a direita cada copia mostra um
              QUARTO da arte (2x2).
   3 FILTRO : o MESMO pedacinho ampliado -- a esquerda `Linear` (borrado), a direita
@@ -370,8 +396,11 @@ pub(super) fn run(gfx: &mut crate::AppGfx) {
              (um material inteiro por cima do outro), a direita `Stream` (a escada
              da esquerda para a direita, que e' a ordem das linhas).
   > clique num no' Output e mexa em Pivot X / Filter / Sort.
-  (i) No MEIO da tela ficam os dois objectos que a cena carimba (a arte de quatro
-      cores e o quadrado laranja). Eles sao a FONTE, nao uma quinta fileira.
+  (i) No MEIO da tela ficam os TRES objectos que a cena carimba (a arte de quatro
+      cores, o quadrado laranja e a estrela). Eles sao a FONTE, nao uma fileira.
+  (i) O PIVO e a ORDEM valem para qualquer objecto -- eles sao geometria. O FILTRO
+      e o RECORTE so' existem onde ha' IMAGEM: uma forma vectorial e' desenhada
+      analiticamente e nao tem pixeis para amostrar nem imagem para cortar.
   (!) DEU ERRADO se algum par sair igual dos dois lados, ou se alguma fileira sumir."
     );
 }

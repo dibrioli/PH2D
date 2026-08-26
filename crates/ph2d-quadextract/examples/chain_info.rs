@@ -200,10 +200,22 @@ fn main() {
             .sum();
         println!(
             "  ⭐⭐⭐ CONDICOES DO PATCH: valencia {:?} · ⛔ {} fora de 3..6 · {} NAO-DISCO \
-             · ⛔ {} degenerados SOBREVIVERAM a' limpeza ({} dissolvidos em {} rondas, parou por {})",
+             · χ dos patches {:?} · ⛔ {} degenerados SOBREVIVERAM a' limpeza ({} dissolvidos em {} rondas, parou por {}) · poda: {} tocos",
             r.valence,
             fora,
             r.non_disk,
+            {
+                // ⭐ **O χ de cada patch, em histograma.** ⚠️ `1` é disco · `≤ 0` é anel ou
+                // pior · `≥ 2` é PARTIDO — e as duas classes pedem cortes diferentes:
+                // um anel abre-se ligando duas voltas de bordo, um partido não tem caminho
+                // entre as componentes. *Um contador de «não-disco» junta as duas.*
+                let mut h: std::collections::BTreeMap<i64, usize> =
+                    std::collections::BTreeMap::new();
+                for c in &layout.chi {
+                    *h.entry(*c).or_default() += 1;
+                }
+                h
+            },
             layout.degenerate().len(),
             r.dissolved,
             r.rounds,
@@ -212,8 +224,27 @@ fn main() {
                 1 => "⛔ a DISSOLUCAO nao removeu parede nenhuma",
                 2 => "⛔ a ronda PIORAVA a topologia",
                 _ => "⛔ o tecto de rondas",
-            }
+            },
+            r.pruned
         );
+    }
+    // ⭐ **O RETRATO de cada patch degenerado**, e não o total: lados · laços de fronteira ·
+    // `χ`. ⚠️ *«5 degenerados» junta pelo menos duas avarias com curas opostas* — a lasca de
+    // poucos lados cura-se FUNDINDO, e o que tem laços a mais cura-se CORTANDO.
+    {
+        let bad = layout.degenerate();
+        let retrato: Vec<(usize, usize, usize, i64)> = bad
+            .iter()
+            .map(|&p| {
+                (
+                    p,
+                    layout.side_arcs[p].len(),
+                    layout.loops_per_patch.get(p).copied().unwrap_or(1),
+                    layout.chi.get(p).copied().unwrap_or(1),
+                )
+            })
+            .collect();
+        println!("  ⭐ DEGENERADOS (patch, lados, lacos, χ): {retrato:?}");
     }
     let (cut, cr) = ph2d_gridmap::cut_along_patches(&mesh, &layout);
     let (combed, comb) = ph2d_gridmap::comb_patches(&mesh, &layout, &cut);

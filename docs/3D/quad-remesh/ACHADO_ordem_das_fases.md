@@ -201,3 +201,55 @@ para o patch que é *uma parede a MENOS*.
 `patches::dissolve` (o patch de zero lados) é **morto** — ele filtra os arcos perguntando ao
 `side_arcs[p]` que já está vazio, e o comentário prometia *«a fronteira inteira sai»*. ⛔ Curá-lo
 não cura a peça (a guarda é que trava), e por isso ele está **nomeado e não remendado**.
+
+
+---
+
+## §7 — O retrato dos 5, e as DUAS negativas do caminho
+
+⛔ **«5 degenerados» junta pelo menos duas avarias com curas opostas.** O retrato
+(`chain_info`, coluna `DEGENERADOS (patch, lados, laços, χ)`) na peça do artista:
+
+| patch | lados | ⛔ laços de fronteira | `χ` |
+|---|---|---|---|
+| 10 | 4 | **2** | 1 |
+| 15 | ⛔ **0** | ⛔ **0** | 1 |
+| 21 | 3 | **3** | 1 |
+| 24 | ⛔ **8** | **3** | 1 |
+| 33 | **2** | **2** | 1 |
+
+⭐⭐⭐ **Quatro dos cinco têm 2–3 laços de fronteira** — são anéis, e a cura publicada de um
+anel é **CORTAR entre os laços**, não fundir. ⇒ a obra E fica confirmada pelo retrato, e não
+só pelo *paper*. ⚠️ O `patch 15` é outra espécie (`0` lados e `0` laços: uma componente sem
+parede à volta) e o `patch 24` é o único que a régua de valência do alvo (`3..6`) rejeitaria.
+
+⚠️ **O `χ` sai `1` nos cinco, e isso não bate com «2 laços»** — para uma superfície ligada,
+`b = 2` dá `χ = 0`. ⇒ *ou o `χ` desta tabela não é o `χ` do patch, ou o `loops_per_patch`
+conta outra coisa.* **Não o resolvi**, e fica nomeado: a coluna que decide aqui é a dos
+laços, que é a que a máquina de reparação consome.
+
+### ⛔ Negativa 1 — forçar a cura que existe
+
+`PH2D_CLEANUP_FORCE=1` deixa a limpeza passar por cima da guarda de topologia:
+
+| | normal | forçado |
+|---|---|---|
+| ⭐ transições inexactas | `8` | ⭐ **`4`** |
+| ⛔ arestas de bordo | **`8`** | ⛔ `10` |
+| enviesamento p50 | `7,3°` | `7,6°` · `>60` de `5` para `7` |
+
+⭐⭐ **Fundir METADE o defeito de montante e paga na geometria** ⇒ os patches maus **são**
+causa das transições inexactas (a ligação estava por provar), e **fundir é a direcção
+errada** (estava por medir). *As duas metades do §6 ficam medidas com um interruptor.*
+
+⚠️ E o forçado pára na 2.ª ronda por `cleanup_stop == 1` — a `dissolve` devolve `false`, que
+é o ramo morto do `patch 15` a fazer-se sentir. ⭐ *Ele deixou de ser um defeito lateral no
+dia em que a guarda foi levantada.*
+
+### ⛔ Negativa 2 — a poda dos tocos não é isto
+
+`prune::PRUNE_STEMS` está desligada com uma recusa medida — e **a premissa dela dissolveu**:
+ela foi medida contra o preenchimento por patch, que já não é o caminho que shipa. ⇒ liguei-a
+(`PH2D_PRUNE_STEMS=1`) e ela remove **`0` tocos** nesta peça: a saída é **byte-idêntica**.
+⭐ *A recusa pode estar obsoleta e ainda assim não ser a cura* — reabrir uma recusa é barato,
+e concluir dela sem medir é que não.

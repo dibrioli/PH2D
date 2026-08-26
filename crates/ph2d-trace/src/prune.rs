@@ -134,6 +134,18 @@ use crate::walk::Walls;
 /// troca um defeito por outro maior.
 pub const PRUNE_STEMS: bool = false;
 
+/// ⭐⭐⭐ **A SONDA DA RECUSA** — `PH2D_PRUNE_STEMS=1` liga a poda sem recompilar.
+///
+/// ⚠️ **A recusa acima foi medida contra o PREENCHIMENTO POR PATCH** (`ph2d-quadfill`), e
+/// esse já não é o caminho que shipa: desde 2026-08-25 o botão sai pela **extracção**
+/// (`ph2d-quadextract`), que não tessela patch nenhum e por isso não tem o problema do
+/// «patch grande» na mesma forma. ⇒ *a premissa da recusa pode ter dissolvido, e quem move
+/// o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+#[must_use]
+pub fn stems_enabled() -> bool {
+    std::env::var("PH2D_PRUNE_STEMS").as_deref() == Ok("1") || PRUNE_STEMS
+}
+
 /// Quantas rondas de poda, no máximo.
 ///
 /// ⚠️ **Ele NÃO é o critério de paragem** — a guarda 3 (o número de nós desce

@@ -159,7 +159,7 @@ pub struct TraceReport {
 /// [`ph2d_crossfield::Dual`] já exige.
 #[must_use]
 pub fn trace_patches(mesh: &Mesh, dual: &Dual, field: &CrossField) -> PatchLayout {
-    trace_patches_with(mesh, dual, field, prune::PRUNE_STEMS)
+    trace_patches_with(mesh, dual, field, prune::stems_enabled())
 }
 
 /// **A MESMA porta, com a PODA à vista** — ver [`prune`].
@@ -242,7 +242,12 @@ pub fn trace_patches_with(
         // **e** deixava a lista de degenerados vazia — ou seja, ela *escondia* o
         // defeito ao mesmo tempo que o agravava, e a cadeia devolvia uma malha de
         // género errado com 100 % de quads e zero arestas de bordo.
-        if after.0 > before.0 {
+        // ⭐ **A SONDA DA GUARDA.** `PH2D_CLEANUP_FORCE=1` deixa a limpeza continuar mesmo
+        // quando ela piora a topologia — não para shipar, mas para responder à pergunta que
+        // decide se vale a pena construir a reparação por CORTE: *se forçar a cura que
+        // existe já apagar os furos, os patches maus são a causa; se não, são um beco.*
+        // ⛔ Sem esta sonda, a única forma de saber era construir a outra metade primeiro.
+        if after.0 > before.0 && std::env::var("PH2D_CLEANUP_FORCE").as_deref() != Ok("1") {
             stop = 2;
             break;
         }

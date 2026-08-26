@@ -81,10 +81,48 @@ pub const MAX_MORPH_STATES: usize = 118;
 /// o que um projecto real tem (o mapa de fábrica traz **seis**).
 pub const MAX_MORPH_ACTIONS: usize = 24;
 
-/// O chip da CONDIÇÃO da seta `row` — abre o menu das acções do Input Map.
+/// ⭐⭐ **DESFAZER TUDO** — dissolve o conjunto: o objecto some, as formas voltam **soltas e
+/// visíveis**, onde estavam.
+///
+/// ⚠️ **Ele é o inverso EXACTO do [`VECTOR_MORPH_STATES_MAKE`]**, e desde a W11 não precisa de
+/// código próprio de desmontagem: a lista são os filhos, então dissolver é reparentar todos para
+/// fora. *Um botão que desfaz tem de chegar ao mesmo mundo de onde se partiu, e não a um parecido.*
+pub const VECTOR_MORPH_DISSOLVE: NodeId = hash_node_id("vector.morph.dissolve");
+
+/// **PLAY na forma `row`** — vai até ela, animado, para o artista a VER.
+///
+/// ⚠️ **Era o `Show` das poses de UI, e o Enio renomeou-o** (2026-08-26): ali um estado é uma pose
+/// que se **aplica**; aqui é uma forma para onde se **viaja**, e a viagem é o produto.
+///
+/// ⚠️ **Ele LIGA a pré-visualização se estiver desligada** — a máquina só anda dentro do modo (é
+/// ele que tem o relógio), e um Play que não tocasse nada seria um botão morto com nome de verbo.
 #[must_use]
-pub fn morph_shape_key_id(row: usize) -> NodeId {
-    fnv_node_id_runtime(&format!("vector.morph.arrow.when.{row}"))
+pub fn morph_shape_play_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.morph.shape.play.{row}"))
+}
+
+/// **DESCONECTAR a forma `row`** — ela sai do conjunto e volta a ser uma forma solta e visível.
+///
+/// ⚠️ **Era o `Clear`, e o Enio renomeou-o** (2026-08-26) — com razão: `Clear` sugere *apagar*, e
+/// aqui não se apaga nada. A forma continua no documento, com o desenho dela; ela só deixa de ser
+/// um estado. ⭐ **E a tecla dela FICA guardada**: voltar a arrastá-la para dentro devolve-a.
+///
+/// ⚠️ Desde a W11 isto é **exactamente** o gesto de arrastar para fora na Hierarquia — o botão é o
+/// atalho, nunca uma segunda lei.
+#[must_use]
+pub fn morph_shape_disconnect_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.morph.shape.disconnect.{row}"))
+}
+
+/// **O botão que ABRE o modal dos eventos** para a forma `row`.
+///
+/// ⚠️ **Era um dropdown, e o Enio trocou-o** (2026-08-26: *"no lugar do dropdown melhor um botão
+/// que abre um modal com os eventos"*). O menu vivia dentro do scroll da seção e precisava de um
+/// passe diferido só para não ser cortado na borda; um modal não tem esse problema, e mostra a
+/// lista inteira com espaço para o nome de cada acção.
+#[must_use]
+pub fn morph_shape_key_button_id(row: usize) -> NodeId {
+    fnv_node_id_runtime(&format!("vector.morph.shape.keybtn.{row}"))
 }
 
 /// A opção `action` no menu da condição da seta `row`.

@@ -19,12 +19,17 @@ use crate::vec_entities::VecEntityMap;
 pub(crate) enum MorphCmd {
     /// **Fazer o conjunto** com as formas da seleção (plano 32 W8).
     MakeSet,
-    /// Pôr a condição da seta `row` na acção `action` — **`0` é o «—»**, sem condição.
+    /// ⭐ **PLAY na forma `row`** — viaja até ela para o artista a VER.
+    Play { row: usize },
+    /// ⭐ **DESCONECTAR a forma `row`** — ela sai do conjunto e volta a ser solta e visível.
+    Disconnect { row: usize },
+    /// ⭐⭐ **DESFAZER TUDO** — dissolve o conjunto inteiro.
+    Dissolve,
+    /// Pôr a tecla da forma `row` na acção `action` — **`0` é o «—»**, sem tecla.
     ///
-    /// ⛔ **É o ÚNICO verbo que age sobre uma seta**, e a ausência de um `Delete` é a lei da W8: o
-    /// grafo é o completo dirigido sobre as formas do conjunto, **derivado**. Apagar uma linha
-    /// seria apagar uma passagem que a próxima derivação repõe — *desligar uma transição é
-    /// tirar-lhe a condição*, e uma seta sem condição existe e nunca acontece.
+    /// ⛔ **Não há `Delete` de linha**, e a ausência é a lei: a lista **É** o conjunto de formas do
+    /// objecto (os filhos). Tirar uma linha é tirar uma forma — que é o `Disconnect` acima, e não
+    /// um verbo sobre a tecla.
     SetWhen { row: usize, action: usize },
 }
 
@@ -35,7 +40,16 @@ pub(crate) fn morph_cmd_for_id(id: ph2d_editor::NodeId) -> Option<MorphCmd> {
     if id == i::VECTOR_MORPH_STATES_MAKE {
         return Some(MorphCmd::MakeSet);
     }
+    if id == i::VECTOR_MORPH_DISSOLVE {
+        return Some(MorphCmd::Dissolve);
+    }
     for row in 0..i::MAX_MORPH_STATES {
+        if id == i::morph_shape_play_id(row) {
+            return Some(MorphCmd::Play { row });
+        }
+        if id == i::morph_shape_disconnect_id(row) {
+            return Some(MorphCmd::Disconnect { row });
+        }
         for action in 0..i::MAX_MORPH_ACTIONS {
             if id == i::morph_shape_key_option_id(row, action) {
                 return Some(MorphCmd::SetWhen { row, action });
@@ -171,6 +185,10 @@ pub(crate) fn apply(
         // ainda não existe. Ele é servido pelo [`crate::morph_set`], e este braço é a prova de que
         // a tabela é exaustiva.
         MorphCmd::MakeSet => false,
+        // ⚠️ **Os três verbos de MUNDO também não vivem aqui** — eles reparentam, mostram e apagam
+        // entidades, e esta função só tem o componente. São servidos pelo [`crate::morph_set`] e
+        // pelo motor; estes braços são a prova de que a tabela é exaustiva.
+        MorphCmd::Play { .. } | MorphCmd::Disconnect { .. } | MorphCmd::Dissolve => false,
         MorphCmd::SetWhen { row, action } => {
             // ⭐⭐ **A linha resolve-se contra o grafo DERIVADO, e a escrita vai para a TABELA**
             // (W11): a lista de formas é dos FILHOS, e só a tecla é autorada. Resolver `row` contra

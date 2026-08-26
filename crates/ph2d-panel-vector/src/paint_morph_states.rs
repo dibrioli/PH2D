@@ -23,7 +23,7 @@
 //! ⇒ esta seção tem **duas faces**, e nunca uma terceira:
 //!
 //! - **sem máquina**, com 2+ formas escolhidas: o botão que as transforma no conjunto;
-//! - **com máquina**: as `n(n-1)` transições, cada uma com a acção que a dispara.
+//! - **com máquina**: uma linha por FORMA, com os dois verbos e a tecla que a alcança.
 //!
 //! # ⭐⭐⭐ E a tecla pertence à FORMA (W10)
 //!
@@ -50,9 +50,11 @@
 //! palavra na tela a dizer porquê. *Um modelo que aceita o que o painel não mostra produz estado
 //! inalcançável.*
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::{
-    Button, ButtonKind, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+    Button, ButtonKind, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, paint_button,
+    paint_icon_button,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -60,6 +62,9 @@ use ph2d_tokens::Spacing;
 
 use crate::ids;
 use crate::paint_sections::{BodyCtx, LABEL_COL_W};
+
+/// O lado de cada botão de ícone (Play, Desconectar) ao fim da linha da forma.
+const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altura da row
 use crate::state::{self, MorphStatesState};
 
 impl BodyCtx<'_> {
@@ -108,13 +113,20 @@ impl BodyCtx<'_> {
 
         let shown = s.rows.len().min(ids::MAX_MORPH_STATES);
         for (i, row) in s.rows.iter().enumerate().take(shown) {
-            y = self.shape_name_row(row, y);
-            y = self.shape_key_row(i, row, &s.actions, y);
+            y = self.shape_name_row(i, row, y);
+            y = self.shape_key_row(i, row, y);
         }
         // ⚠️ **Acima do tecto a lista DIZ o que ficou de fora**, em vez de o esconder: o grafo
         // continua a funcionar (a máquina alcança todas as formas), e é o painel que não as
         // mostra. Um corte silencioso far-lhe-ia procurar uma forma que ele tem a certeza de ter
         // escolhido.
+        // ⭐⭐ **DESFAZER TUDO** vem no FIM, longe dos verbos por-forma: ele desfaz o conjunto
+        // inteiro, e um botão destrutivo colado aos que não o são convida ao clique errado.
+        y = self.action_button(
+            ids::VECTOR_MORPH_DISSOLVE,
+            tr("panel.vector.morph.dissolve"),
+            y,
+        );
         if s.rows.len() > shown {
             y = self.label_line(
                 &format!(
@@ -193,74 +205,102 @@ impl BodyCtx<'_> {
         )
     }
 
-    /// A linha de CIMA: **o nome da forma**, e o realce de quem está na tela AGORA.
+    /// A linha de CIMA: **o nome da forma**, o realce de quem está na tela, e os DOIS verbos.
     ///
-    /// ⭐⭐ **Era `de -> para` até 2026-08-25** (W10): a tecla pertence ao DESTINO, então a linha
-    /// deixou de precisar da origem — ela vale de qualquer forma. É isso que encolhe a lista de
-    /// `n(n-1)` para `n`.
+    /// ⭐⭐ **`Play` e `Desconectar`** (Enio, 2026-08-26) — eram `Show` e `Clear`, os nomes que a
+    /// seção de poses usa, e ele trocou-os por estes. Os dois nomes novos são mais exactos:
     ///
-    /// ⛔ **Não há lixeira, e a ausência é a lei:** a lista É o conjunto de formas do objecto.
-    /// Apagar uma linha seria tirar uma forma do conjunto, que é outro gesto (e ele ainda não
-    /// existe). *Desligar uma forma é tirar-lhe a tecla* — o «—» do menu abaixo —, e uma forma sem
-    /// tecla existe e nunca é alcançada.
-    fn shape_name_row(&mut self, row: &state::MorphShapeRow, y: f32) -> f32 {
+    /// * ali um estado é uma **pose que se aplica**; aqui é uma **forma para onde se viaja**, e a
+    ///   viagem é o produto — daí `Play`;
+    /// * e `Clear` sugere **apagar**, quando aqui não se apaga nada: a forma continua no documento
+    ///   com o desenho dela, e só deixa de ser um estado — daí `Desconectar`.
+    ///
+    /// *Um rótulo promete o que o modelo entrega.*
+    fn shape_name_row(&mut self, i: usize, row: &state::MorphShapeRow, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
+        let verbs = ICON_W * 2.0 + gap;
+        let label_w = (self.inner_w - verbs - gap).max(0.0);
         // ⭐ **A forma VIVA diz-se pelo texto**, porque é a única linha da lista que descreve o
-        // presente e não uma regra. Sem marca nenhuma, a lista não responde à pergunta que o
-        // artista faz enquanto toca: *em qual delas estou?*
-        //
-        // ⛔ **ASCII**, e não uma seta tipográfica: a fonte da casa não cobre o bloco de setas do
-        // Unicode (U+2190..U+21FF) e o glifo sairia como uma caixa vazia — há gate a varrer isto
-        // (`no_tofu_glyphs`), e ele já mordeu três vezes neste repo.
+        // presente e não uma regra. ⛔ ASCII: a fonte da casa não cobre U+2190..U+21FF.
         let shown = if row.live {
             format!("{} {}", tr("panel.vector.morph.live_mark"), row.to)
         } else {
             row.to.clone()
         };
-        self.label_line_in(&shown, Rect::new(self.inner_x, y, self.inner_w, self.row_h));
+        self.label_line_in(&shown, Rect::new(self.inner_x, y, label_w, self.row_h));
+
+        let mut x = self.inner_x + label_w + gap;
+        for (id, icon) in [
+            (ids::morph_shape_play_id(i), IconId::Play),
+            (ids::morph_shape_disconnect_id(i), IconId::Unlink),
+        ] {
+            let r = Rect::new(x, y, ICON_W, self.row_h);
+            self.hit_index.register(id, r);
+            paint_icon_button(
+                r,
+                IconGlyph::Builtin(icon),
+                IconButtonStyle::Plain,
+                self.store.button_visual(id),
+                self.scene,
+                self.theme,
+            );
+            x += ICON_W + gap;
+        }
         y + self.row_h + gap
     }
 
-    /// A linha de BAIXO: a CONDIÇÃO, num menu das acções do Input Map.
-    fn shape_key_row(
-        &mut self,
-        i: usize,
-        row: &state::MorphShapeRow,
-        actions: &[String],
-        y: f32,
-    ) -> f32 {
+    /// A linha de BAIXO: **a tecla**, num botão que abre o modal dos eventos.
+    ///
+    /// ⭐⭐ **Era um dropdown até 2026-08-26** (Enio: *"no lugar do dropdown melhor um botão que
+    /// abre um modal com os eventos"*). O menu vivia **dentro do scroll** da seção e precisava de
+    /// um passe diferido só para não ser cortado na borda dela; um modal não tem esse problema, e
+    /// mostra a lista inteira com espaço para o nome de cada acção.
+    ///
+    /// ⚠️ **O botão mostra a tecla ACTUAL**, e não um rótulo fixo tipo *"Choose…"*: ele é o
+    /// readout **e** o gesto. Um rótulo fixo obrigaria a abrir o modal para saber o que lá está.
+    fn shape_key_row(&mut self, i: usize, row: &state::MorphShapeRow, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
         self.label_line_in(
             tr("panel.vector.morph.reached_by"),
             Rect::new(self.inner_x, y, LABEL_COL_W, self.row_h),
         );
-        let chip = Rect::new(
-            self.inner_x + LABEL_COL_W + gap,
-            y,
-            (self.inner_w - LABEL_COL_W - gap).max(1.0),
-            self.row_h,
-        );
-        let id = ids::morph_shape_key_id(i);
-        let open = matches!(
-            self.store.get(id),
-            Some(InteractiveState::Dropdown { open: true, .. })
-        );
         // ⚠️ **Vazio mostra o traço, e não uma string vazia.** Uma célula em branco lê-se como um
-        // controlo por carregar; o traço diz *"sem condição, de propósito"*.
+        // controlo por carregar; o traço diz *"sem tecla, de propósito"*.
         let shown = if row.when.is_empty() {
             tr("panel.vector.morph.when.none")
         } else {
             row.when.as_str()
         };
-        let dd = Dropdown::new(id, "", vec![DropdownOption::new(id, (), shown)])
-            .selected(())
-            .open(open)
-            .visual(self.store.dropdown_visual(id));
-        paint_dropdown_chip(&dd, chip, self.scene, self.text_system, self.theme);
-        self.hit_index.register(id, chip);
+        let id = ids::morph_shape_key_button_id(i);
+        let r = Rect::new(
+            self.inner_x + LABEL_COL_W + gap,
+            y,
+            (self.inner_w - LABEL_COL_W - gap).max(1.0),
+            self.row_h,
+        );
+        // ⚠️ **Registado como DROPDOWN, pintado como BOTÃO** — e a assimetria é o desenho.
+        //
+        // O que o Enio pediu foi *"um botão que abre um modal com os eventos"*: o **gesto** é um
+        // botão, e o que ele abre é a lista. O `InteractiveState::Dropdown` é o que faz o dispatch
+        // genérico alternar o `open` (e fechar o dos outros) — registá-lo como `Button` faria o
+        // clique acender e **nunca abrir lista nenhuma**, que é a cicatriz da swatch dos tokens e
+        // dos dois números do Input Map. *O widget que se PINTA e o estado que se REGISTA
+        // respondem a perguntas diferentes.*
+        let open = matches!(
+            self.store.get(id),
+            Some(InteractiveState::Dropdown { open: true, .. })
+        );
+        let btn = Button::new(id, shown)
+            .kind(if open {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(self.store.button_visual(id));
+        paint_button(&btn, r, self.scene, self.text_system, self.theme);
+        self.hit_index.register(id, r);
         if open {
-            let _ = actions;
-            state::set_pending_morph_key_dd(Some((i, chip)));
+            state::set_pending_morph_key_dd(Some((i, r)));
         }
         y + self.row_h + gap
     }
@@ -290,7 +330,7 @@ pub(crate) fn paint_when_popover(
     let Some(shape_row) = s.rows.get(row) else {
         return;
     };
-    let id = ids::morph_shape_key_id(row);
+    let id = ids::morph_shape_key_button_id(row);
     // O «—» à frente, e depois as acções — ATÉ ao pool de ids que o `populate` registou.
     let mut labels: Vec<&str> = vec![tr("panel.vector.morph.when.none")];
     labels.extend(

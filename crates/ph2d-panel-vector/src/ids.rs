@@ -38,8 +38,9 @@ pub use ph2d_editor_core::ids::{
     vector_instance_piece_show_id, vector_variant_option_id,
 };
 pub use ph2d_editor_core::ids::{
-    MAX_MORPH_ACTIONS, MAX_MORPH_STATES, VECTOR_MORPH_PREVIEW, VECTOR_MORPH_STATES_MAKE,
-    VECTOR_SECTION_MORPH_STATES, morph_shape_key_id, morph_shape_key_option_id,
+    MAX_MORPH_ACTIONS, MAX_MORPH_STATES, VECTOR_MORPH_DISSOLVE, VECTOR_MORPH_PREVIEW,
+    VECTOR_MORPH_STATES_MAKE, VECTOR_SECTION_MORPH_STATES, morph_shape_disconnect_id,
+    morph_shape_key_button_id, morph_shape_key_option_id, morph_shape_play_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,

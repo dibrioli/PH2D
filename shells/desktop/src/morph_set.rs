@@ -336,6 +336,64 @@ fn align(
     ph2d_core::Vec2::new(centre[0] as f32, centre[1] as f32)
 }
 
+/// ⭐ **DESCONECTAR uma forma** — ela sai do conjunto e volta a ser solta e **visível**.
+///
+/// Enio, 2026-08-26: *"no lugar de clear melhor um botão de desconectar."* ⚠️ E o nome é o certo:
+/// **não se apaga nada**. A forma continua no documento com o desenho dela; ela só deixa de ser um
+/// estado.
+///
+/// # ⚠️ As DUAS coisas que ele desfaz, e nenhuma a mais
+///
+/// 1. o `ChildOf` — e é só isso que a tira da lista (a lista são os filhos, W11);
+/// 2. o `Visibility::hidden()` que o `upkeep` lhe pôs — sem isto ela voltaria a ser solta e
+///    **invisível**, que é a pior saída possível: o artista carrega em *Desconectar* e a forma
+///    **desaparece**.
+///
+/// ⛔ **A tecla dela FICA na tabela**, de propósito: voltar a arrastá-la para dentro devolve-lha.
+/// Perder autoria por um gesto reversível seria pior do que não ter o gesto.
+///
+/// ⚠️ **A pose de MUNDO é preservada** (`reparent_keeping_world` ao contrário): ela sai onde
+/// estava, e não onde a aritmética do pai a deixaria.
+pub(crate) fn disconnect(sim: &mut SimWorld, map: &VecEntityMap, shape: VecPathId) -> bool {
+    let Some(&bits) = map.get(&shape) else {
+        return false;
+    };
+    let e = Entity::from_bits(bits);
+    let world = crate::vec_transform::world_transform(sim, e);
+    let Ok(mut em) = sim.world_mut().get_entity_mut(e) else {
+        return false;
+    };
+    em.remove::<ChildOf>();
+    em.remove::<Visibility>();
+    em.insert(world);
+    true
+}
+
+/// ⭐⭐ **DISSOLVER o conjunto** — o objecto some, as formas voltam soltas e visíveis, onde estavam.
+///
+/// Enio, 2026-08-26: *"precisamos de um botão para desfazer tudo em morph states."*
+///
+/// ⚠️ **É o inverso EXACTO do [`create`]/[`upkeep`]**, e desde a W11 não precisa de código próprio
+/// de desmontagem: a lista são os filhos, então dissolver é **desconectar todos** e apagar o pai.
+/// *Um botão que desfaz tem de chegar ao mesmo mundo de onde se partiu, e não a um parecido.*
+///
+/// ⛔ **O `ungroup_entities` NÃO serve** — medido: ele recusa um pai **com geometria** (`is_plain_group`),
+/// e o conjunto tem `VecPathRef`. Reutilizá-lo teria sido silenciosamente inerte.
+///
+/// Devolve o path do objecto que deve ser removido da cena (o chamador tem-na à mão), ou `None`.
+pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> Option<VecPathId> {
+    let shapes = graph_of(sim, map, host).shapes();
+    for id in shapes {
+        disconnect(sim, map, id);
+    }
+    // O path do próprio conjunto — o chamador apaga-o da cena, e o `sync` leva a entidade junto.
+    let host_path = map
+        .iter()
+        .find(|&(_, &b)| b == host.to_bits())
+        .map(|(&k, _)| k)?;
+    Some(host_path)
+}
+
 #[cfg(test)]
 #[path = "morph_set_tests.rs"]
 mod tests;

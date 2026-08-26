@@ -630,6 +630,17 @@ casa é no-op **silencioso**, e o script imprime sucesso na mesma
 > um objeto Morph State, automaticamente passa a fazer parte do sistema.
 > Mas coloque tudo isso na fila de implementações. Pois hoje não implementaremos"*
 
+> **⚠️ ESTADO em 2026-08-26, depois do «Siga»:** o Enio **revisou** os três controlos (Play no
+> lugar de Show · Desconectar no lugar de Clear · um **botão que abre a lista** no lugar do
+> dropdown), acrescentou a **compatibilidade com o sistema States**, e mandou seguir.
+>
+> | | estado |
+> |---|---|
+> | **F1** desfazer tudo | ✅ **FEITO** (W11b) |
+> | **F2** Play · Desconectar · botão-que-abre-a-lista | ✅ **FEITO** (W11b) |
+> | **F3** arrastar na hierarquia faz entrar | ✅ **FEITO** (W11a) — e foi ele que decidiu o modelo |
+> | **F4** compatibilidade com o sistema **States** | ⏳ **POR FAZER** — a única coisa que falta; §8.4 |
+
 ### §8.1 — Os três itens
 
 | # | O quê | Estado do substrato |
@@ -682,3 +693,36 @@ nenhum com este componente, e depois da integração passa a existir. *A janela 
 4. **O `Show` durante a edição.** O `travel` mexe no `VecMorph` (par + `t`), que é **pré-visualização**
    e passa pelo ledger — ⚠️ mas fora do modo `Preview` não há quem faça o tempo andar (o
    `morph_machine_drive::tick` só corre no modo). ⇒ o `Show` ou liga o modo, ou salta instantâneo.
+
+### §8.4 — ⏳ F4: a compatibilidade com o sistema **States** (o que falta, já medido)
+
+> Enio, 2026-08-26: *"Assegure-se que esse sistema de states em morph seja integrado e
+> completamente compatível com o sistema de States previamente existente, ou seja, que eu possa
+> usar o state morph nas animações criadas em States."*
+
+⭐ **O padrão já foi construído uma vez neste repo, e tem nome:** `BoolMorph`. Em 23/08 a mesma
+crate aprendeu a fazer uma transição de UI **carregar um morfo de booleana por objecto**
+(`Transition::bool_morphs(t)`), e o desenho é literalmente o molde:
+
+| peça | onde | o que fazer |
+|---|---|---|
+| a pose grava | `ph2d_ui_state::ObjectPose` | **um campo novo**: em que forma o conjunto está |
+| a transição emite | `Transition::bool_morphs` → um irmão | *"este conjunto vai de X para Y, a `t`"* |
+| a shell coze | `render_loop::ui_state_bridge` | escreve `VecMorph::sources`/`t` |
+
+⭐ **O `ObjectPose` já tem a FAMÍLIA certa, e ela está documentada lá dentro:** `width`, `filters`,
+`bool_op` — *canais que não vivem no `VecPath`, então a pose carrega-os por si*. O estado do Morph
+é o **quarto membro exacto** dessa família.
+
+⛔⛔ **O PREÇO, medido antes de começar:** o `StateSets` viaja **directamente no `ProjectFile`**
+(`project_migrate.rs`), não como `ComponentBlob`. ⇒ um campo novo no `ObjectPose` é
+**`PROJECT_SCHEMA` 97 → 98 + um degrau de migração**, em **três sítios** (a constante, a escada, a
+tripla do gate) — e é um número que **soma entre linhas** e colide **mudo** (`CLAUDE.md` §5.0).
+
+⚠️ Diferente do `VecMorphMachine` (§7.2), aqui **não há janela de graça**: o `ph2d-ui-state` já
+shipou e já existem projectos com poses. A migração é obrigatória, não opcional.
+
+⚠️ **A pergunta de produto que a implementação tem de responder primeiro:** gravar uma pose de UI
+sobre um conjunto captura *que forma está a mostrar* — ⇒ pôr o rato num botão pode **morfá-lo**.
+É isso que se quer (é o pedido), mas quem grava o `Default` tem de gravá-lo na forma certa, senão
+todo hover volta à forma errada.

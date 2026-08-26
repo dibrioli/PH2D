@@ -119,6 +119,9 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
 fn is_morph_states_control(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MORPH_STATES_MAKE
         || id == ids::VECTOR_MORPH_PREVIEW
+        || id == ids::VECTOR_MORPH_DISSOLVE
+        || (0..ids::MAX_MORPH_STATES)
+            .any(|r| id == ids::morph_shape_play_id(r) || id == ids::morph_shape_disconnect_id(r))
         || (0..ids::MAX_MORPH_STATES).any(|r| {
             (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_shape_key_option_id(r, a))
         })

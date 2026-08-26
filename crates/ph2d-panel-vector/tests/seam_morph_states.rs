@@ -222,13 +222,13 @@ fn one_shape_offers_no_button_at_all() {
 /// ⚠️ **É o único verbo que age sobre uma seta** desde a W8 (não há lixeira): se ele morrer sob o
 /// ponteiro, o grafo completo fica inteiramente inerte e nada na tela o diz.
 #[test]
-fn the_condition_menu_of_every_row_is_alive() {
+fn the_key_button_of_every_row_opens_the_event_list() {
     clear();
     set_morph_states_state(Some(machine()));
     for row in 0..machine().rows.len() {
         assert!(
-            painted(ids::morph_shape_key_id(row)).is_some(),
-            "o chip «When» da transicao {row} nao foi pintado"
+            painted(ids::morph_shape_key_button_id(row)).is_some(),
+            "o botao da tecla da forma {row} nao foi pintado"
         );
     }
     // E a opção dentro do menu chega ao bus — ela é o que de facto escreve no mundo.
@@ -236,7 +236,7 @@ fn the_condition_menu_of_every_row_is_alive() {
     let mut ps = VectorPanelState;
     let opt = ids::morph_shape_key_option_id(0, 1);
     let chip = host
-        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::morph_shape_key_id(0))
+        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::morph_shape_key_button_id(0))
         .expect("o chip existe");
     host.dispatch_pointer_event(pointer(PointerKind::Down, chip.x + 2.0, chip.y + 2.0, SEC));
     let evs = host.dispatch_pointer_event(pointer(

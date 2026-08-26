@@ -163,9 +163,9 @@ fn announce(app: &crate::App) {
          Se precisar de varios Ctrl+Z, PARE. Depois **Ctrl+Shift+Z** para refazer e continuar."
     );
     eprintln!(
-        "  5. Cada linha e' uma FORMA, e tem um menu **Key**: a tecla que LEVA aquela forma, \
-         venha-se de onde se vier. Ponha **jump** na linha **Tall** e **dash** na linha **Thin**. \
-         Deixe a **Wide** no tracinho."
+        "  5. Cada linha e' uma FORMA. Carregue no botao da coluna **Key** (ele mostra um tracinho \
+         quando nao ha' tecla): abre a lista dos eventos. Ponha **jump** na linha **Tall** e \
+         **dash** na linha **Thin**. Deixe a **Wide** no tracinho."
     );
     eprintln!(
         "     (!) O menu so' oferece accoes que existem no projecto -- e' de proposito, e e' por \
@@ -203,7 +203,28 @@ fn announce(app: &crate::App) {
          sitio NOVO, nao no antigo."
     );
     eprintln!(
-        " 12. O ULTIMO: com o Preview ligado e estando na **Tall**, carregue em **{jump}** (que \
-         e' a tecla da Tall). Nada pode mexer-se -- chegar onde ja' se esta' nao e' chegar."
+        " 12. Com o Preview ligado e estando na **Tall**, carregue em **{jump}** (que e' a tecla \
+         da Tall). Nada pode mexer-se -- chegar onde ja' se esta' nao e' chegar."
+    );
+    eprintln!(
+        " 13. **O BOTAO ▶ de cada linha**: carregue no da **Thin**. A forma viaja ate' la' -- e se \
+         o Preview estivesse desligado, ele LIGA-SE sozinho (a maquina so' anda dentro do modo)."
+    );
+    eprintln!(
+        " 14. **ARRASTE uma forma NOVA para dentro do «Morph States 3» na Hierarquia.** Ela passa \
+         a fazer parte do sistema **sozinha**: aparece na lista, some do canvas, e ja' da' para \
+         lhe dar uma tecla. Arraste-a para FORA e ela sai -- e volta a aparecer."
+    );
+    eprintln!(
+        "     (!) Arraste-a para dentro OUTRA vez: a tecla que voce' tinha dado tem de VOLTAR com \
+         ela. Se vier em branco, PARE -- desconectar nao pode destruir o que voce' escreveu."
+    );
+    eprintln!(
+        " 15. **O botao ⊘ de uma linha** (Desconectar): a forma sai do conjunto e volta a \
+         aparecer no canvas, solta. (!) Se ela sumir em vez de aparecer, PARE."
+    );
+    eprintln!(
+        " 16. **Undo Morph States**, no fim da seccao: desfaz tudo. As tres formas voltam soltas e \
+         visiveis, onde estavam, e o objecto some da arvore."
     );
 }

@@ -199,10 +199,15 @@ fn only_the_listed_gestures_arm_a_sound() {
             // escolhidas e esconde-as, tudo de vez. A mão fez uma coisa grande, e o som confirma-a.
             // ⛔ Nada nas transições em si soa: elas correm **durante a reprodução**, e um som por
             // transição seria o app a comentar o que o motor decidiu.
+            // ⭐ +1 (plano 32 W11b): **os três verbos de mundo do Morph States** (Play ·
+            // Desconectar · Desfazer tudo) partilham UM armamento, e é deliberado: os três são
+            // COMMITs — a mão mexeu no documento de vez. ⛔ E as TRANSIÇÕES continuam mudas: elas
+            // correm durante a reprodução, e um som por transição seria o app a comentar o que o
+            // motor decidiu.
             "src/render_loop/mod.rs",
-            4,
+            5,
             "consolidar a booleana · o interruptor da preview de poses · fazer o conjunto de \
-             Morph States · o interruptor da preview do Morph",
+             Morph States · o interruptor da preview do Morph · os três verbos de mundo dele",
         ),
         (
             "src/input_dispatch.rs",

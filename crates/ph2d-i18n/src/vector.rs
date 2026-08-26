@@ -213,6 +213,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ O rotulo da linha da tecla. «When» dizia *quando* a passagem corre; sob o modelo
         // por-forma a pergunta e' outra -- *o que me traz AQUI* -- e o rotulo tem de a fazer.
         "panel.vector.morph.reached_by" => "Key",
+        // ⭐⭐ Os tres verbos (Enio 26/08): Play no lugar de Show, Desconectar no lugar de Clear.
+        "panel.vector.morph.dissolve" => "Undo Morph States",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",

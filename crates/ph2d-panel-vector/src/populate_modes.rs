@@ -54,18 +54,23 @@ pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MORPH_STATES_MAKE);
     // ⭐⭐ O interruptor da PRÉ-VISUALIZAÇÃO — o modo em que o teclado é da máquina.
     button(store, ids::VECTOR_MORPH_PREVIEW);
+    // ⭐⭐ DESFAZER TUDO — o inverso exacto do botão que faz o conjunto.
+    button(store, ids::VECTOR_MORPH_DISSOLVE);
     for row in 0..ids::MAX_MORPH_STATES {
-        // A CONDIÇÃO é um menu, e um menu não é um botão: registá-lo como botão faria o clique
-        // acender o chip e nunca abrir a lista. (A cicatriz da swatch do painel de tokens, e a
-        // dos dois números do Input Map.)
+        // ⭐ **O BOTÃO que abre a lista dos eventos** (W11b) — **Dropdown** no store, **botão** na
+        // tela. Registá-lo como `Button` faria o clique acender e **nunca abrir lista nenhuma**: é
+        // a cicatriz da swatch do painel de tokens e a dos dois números do Input Map.
         store.register(
-            ids::morph_shape_key_id(row),
+            ids::morph_shape_key_button_id(row),
             ph2d_editor_core::interaction::InteractiveState::Dropdown {
                 state: ph2d_editor_core::widget::DropdownState::Normal,
                 open: false,
                 selected_index: None,
             },
         );
+        // Os DOIS verbos da linha: **Play** (viaja até esta forma) e **Desconectar** (tira-a).
+        button(store, ids::morph_shape_play_id(row));
+        button(store, ids::morph_shape_disconnect_id(row));
         for a in 0..ids::MAX_MORPH_ACTIONS {
             button(store, ids::morph_shape_key_option_id(row, a));
         }

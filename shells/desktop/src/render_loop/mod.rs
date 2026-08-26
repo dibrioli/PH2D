@@ -8637,8 +8637,50 @@ impl crate::App {
                         self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
                     }
                 }
-                // ⭐ **A CONDIÇÃO de uma transição** (plano 32 W4). As acções são as MESMAS que o
-                // menu mostrou (as do Input Map do projecto): resolver o índice contra uma segunda
+                // ⭐⭐ **OS TRÊS VERBOS DE MUNDO** (plano 32 W11b) — Play · Desconectar · Desfazer
+                // tudo. Eles reparentam, mostram e apagam entidades, então **não** cabem no `apply`
+                // (que só tem o componente).
+                else if let Some(cmd) = pending_morph_arrow
+                    && matches!(
+                        cmd,
+                        crate::vec_morph_edit::MorphCmd::Play { .. }
+                            | crate::vec_morph_edit::MorphCmd::Disconnect { .. }
+                            | crate::vec_morph_edit::MorphCmd::Dissolve
+                    )
+                    && let Some(host) =
+                        crate::vec_morph_edit::morph_of_selection(sim, &self.vec_entities, &sel)
+                {
+                    let shapes = crate::morph_set::graph_of(sim, &self.vec_entities, host).shapes();
+                    match cmd {
+                        // ⭐ **PLAY: liga a pré-visualização se estiver desligada.** A máquina só
+                        // anda dentro do modo (é ele que tem o relógio), e um Play que não tocasse
+                        // nada seria um botão morto com nome de verbo.
+                        crate::vec_morph_edit::MorphCmd::Play { row } => {
+                            self.morph_preview = true;
+                            if let Some(m) = self.morph_machines.get_mut(&host.to_bits()) {
+                                let g = crate::morph_set::graph_of(sim, &self.vec_entities, host);
+                                m.travel(&g, row);
+                            }
+                        }
+                        crate::vec_morph_edit::MorphCmd::Disconnect { row } => {
+                            if let Some(&shape) = shapes.get(row) {
+                                crate::morph_set::disconnect(sim, &self.vec_entities, shape);
+                            }
+                        }
+                        crate::vec_morph_edit::MorphCmd::Dissolve => {
+                            if let Some(path) =
+                                crate::morph_set::dissolve(sim, &self.vec_entities, host)
+                            {
+                                vec_scene.remove_path(path);
+                                self.vec_pen.clear();
+                            }
+                        }
+                        _ => {}
+                    }
+                    self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
+                }
+                // ⭐ **A TECLA de uma forma** (plano 32 W4). As acções são as MESMAS que o menu
+                // mostrou (as do Input Map do projecto): resolver o índice contra uma segunda
                 // leitura poria o nome escolhido a apontar para outro.
                 else if let Some(cmd) = pending_morph_arrow
                     && let Some(e) =

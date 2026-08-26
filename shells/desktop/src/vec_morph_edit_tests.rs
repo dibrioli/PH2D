@@ -386,6 +386,12 @@ fn the_arrow_click_reaches_the_world() {
             "ids::VECTOR_MORPH_PREVIEW",
             "o interruptor da pre-visualizacao",
         ),
+        ("ids::VECTOR_MORPH_DISSOLVE", "o botao de desfazer tudo"),
+        ("ids::morph_shape_play_id(r)", "o Play de cada forma"),
+        (
+            "ids::morph_shape_disconnect_id(r)",
+            "o Desconectar de cada forma",
+        ),
         (
             "morph_shape_key_option_id(r, a)",
             "a opcao do menu da condicao",

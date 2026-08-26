@@ -107,7 +107,45 @@ pub const DEFAULT_PROFILE_RESOLUTION: u32 = 1;
 /// ⚠️ **É um limite de RECURSO e não de validade**: um perfil de 940 arestas é perfeitamente
 /// correcto, e o documento aceita-o por outra porta (`Profile::new` com a tolerância à mão). O que
 /// este número fecha é a **faixa do controle**, que é onde um teto pertence.
-pub const MAX_PROFILE_RESOLUTION: u32 = 16;
+///
+/// # ⭐⭐⭐ 16 → 64 (2026-08-26), por decisão do Enio e com a régua que faltava
+///
+/// A W60 concluiu, correctamente, que a régua das bandas **satura**: ela media um **círculo**, e num
+/// círculo todo ponto tem a mesma curvatura. ⇒ a fixtura nova é uma **elipse `4:1`**, cuja ponta é
+/// `16×` mais curva que o lado, e a régua é o **maior salto de normal** — que é o que a luz mostra
+/// (`field3d_profile::tests::the_table_of_the_sharpest_corner`, release, máquina calma):
+///
+/// | nível | arestas | salto MAX | salto mediano | traçado |
+/// |---:|---:|---:|---:|---:|
+/// | 1 | 112 | 8,84° | 2,09° | 43,6 ms |
+/// | 8 | 320 | 3,11° | 0,73° | 109,6 ms |
+/// | ~~16~~ | 448 | 2,21° | 0,52° | 145,1 ms |
+/// | 32 | 636 | 1,55° | 0,37° | 216,6 ms |
+/// | **64** | **896** | **1,11°** | **0,26°** | **303,2 ms** |
+/// | 128 | 1 268 | 0,78° | 0,19° | 483,4 ms |
+///
+/// ⭐ **A lei é `θ ≈ √(8·tol/R)`** (a sagitta de um arco), e a tabela confirma-a em quatro pontos:
+/// dobrar o nível divide o salto por **`√2`** e multiplica as arestas por `√2`. *Um teto escolhido
+/// como se o ganho fosse linear escolhe o número errado.*
+///
+/// ⭐⭐ **E o que o nível compra, na língua de quem desenha:** como `θ ∝ 1/√R`, cada duplicação do
+/// teto deixa o artista desenhar um canto **duas vezes mais apertado** antes de ele facetar. Com a
+/// barra de `3°` que as fotos do Enio fixaram, o limite era uma elipse de **~5,5:1** no `16`; no
+/// **`64`** é **~22:1**. *O teto nunca foi sobre «detalhe»: é sobre que forma se pode desenhar.*
+///
+/// ⚠️ **Não há joelho onde parar, e é por isso que o número é o RELÓGIO.** Cada degrau custa `×√2`
+/// e compra `×2` — a razão benefício/preço **melhora** ao subir. ⇒ o limite é o absoluto: a regra de
+/// **meio segundo** que este módulo já usa. O `128` cabe (`483 ms`) e é o **último** que cabe; o
+/// `64` fica a `303 ms`, e a folga é para uma cena com **mais de uma peça** — ⚠️ isso é uma premissa
+/// declarada, não uma medição, e é o que separa o `64` do `128`.
+///
+/// ⛔ **A 1.ª medição desta wave passou pela porta do produto e mediu a PRÓPRIA TRAVA:** a
+/// [`ph2d_field_profile::tolerance_ratio_for`] clampa neste número, então os níveis `32`, `64` e
+/// `128` recebiam a tolerância do `16` e a tabela saía com `448` arestas quatro vezes — lida como
+/// *"o achatamento saturou"*. *Uma sonda que atravessa o limite que quer medir mede o limite.* A
+/// cura foi partir a lei em duas: o **span** continua a ser o do produto
+/// ([`ph2d_field_profile::span_of`]), o **teto** é o que a sonda contorna.
+pub const MAX_PROFILE_RESOLUTION: u32 = 64;
 
 /// Como os contornos de um perfil se combinam.
 ///

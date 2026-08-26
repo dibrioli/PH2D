@@ -132,6 +132,37 @@ pub fn cook_path(path: &VecPath, tolerance: f64) -> Result<Profile, CookError> {
     Profile::new(contours, fill_rule(path.fill_rule), tolerance as f32).map_err(CookError::Rejected)
 }
 
+/// ⭐ **A ESCALA DO DESENHO** — o lado maior da caixa, e é dela que sai toda tolerância relativa.
+///
+/// ⚠️ **Os HANDLES entram na conta, e não só as âncoras**: uma curva pode sair da caixa das âncoras,
+/// e uma tolerância derivada de uma caixa pequena demais faz o achatamento trabalhar de mais
+/// exatamente onde a curva é mais larga.
+///
+/// ⚠️ **Ela é pública desde 2026-08-25 porque uma SONDA precisava dela sem a trava.** A
+/// [`tolerance_ratio_for`] clampa no [`ph2d_field::MAX_PROFILE_RESOLUTION`], e uma medição que
+/// pergunte *"o que se ganharia se o teto subisse?"* tem de passar ao lado do teto — mas **não** ao
+/// lado da lei do span, senão mede outra coisa. *Uma sonda que atravessa o limite que quer medir
+/// mede o limite.*
+#[must_use]
+pub fn span_of(path: &VecPath) -> f64 {
+    let mut min = [f64::INFINITY; 2];
+    let mut max = [f64::NEG_INFINITY; 2];
+    for c in 0..path.contour_count() {
+        let Some((verts, _)) = path.contour(c) else {
+            continue;
+        };
+        for v in verts {
+            for p in [v.anchor, v.in_handle, v.out_handle] {
+                for k in 0..2 {
+                    min[k] = min[k].min(p[k]);
+                    max[k] = max[k].max(p[k]);
+                }
+            }
+        }
+    }
+    (max[0] - min[0]).max(max[1] - min[1])
+}
+
 /// ⭐⭐ **A TOLERÂNCIA DE UM NÍVEL** (W55) — a lei que traduz o número do artista.
 ///
 /// O nível `1` é o joelho que a tabela do [`TOLERANCE_RATIO`] mediu, e cada nível **divide** a
@@ -158,25 +189,7 @@ pub fn tolerance_ratio_for(level: u32) -> f64 {
 /// Ver [`CookError`].
 pub fn cook_path_at(path: &VecPath, level: u32) -> Result<Profile, CookError> {
     let cooked = path.cooked();
-    let mut min = [f64::INFINITY; 2];
-    let mut max = [f64::NEG_INFINITY; 2];
-    for c in 0..cooked.contour_count() {
-        let Some((verts, _)) = cooked.contour(c) else {
-            continue;
-        };
-        for v in verts {
-            // ⚠️ Os HANDLES entram na conta, e não só as âncoras: uma curva pode sair da caixa das
-            // âncoras, e uma tolerância derivada de uma caixa pequena demais faz o achatamento
-            // trabalhar de mais exatamente onde a curva é mais larga.
-            for p in [v.anchor, v.in_handle, v.out_handle] {
-                for k in 0..2 {
-                    min[k] = min[k].min(p[k]);
-                    max[k] = max[k].max(p[k]);
-                }
-            }
-        }
-    }
-    let span = (max[0] - min[0]).max(max[1] - min[1]);
+    let span = span_of(&cooked);
     let ratio = tolerance_ratio_for(level);
     // Um desenho sem extensão não tem escala de onde tirar tolerância; o `Profile` recusa-o logo a
     // seguir, e um número positivo qualquer chega lá.

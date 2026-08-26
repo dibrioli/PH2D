@@ -6063,3 +6063,59 @@ ladrilhos × 2 fatias de fita vivas ao mesmo tempo) e um cache com tempo de vida
 é **uma parte dos 26 %** do quadro **assente** — que se paga uma vez, quando a câmera pára, e que
 desde a W24 já não é o preço interativo. *Medir antes de construir vale para a segunda tentativa
 também.*
+
+## §58 — As duas decisões do Enio (26/08): o teto SOBE, a escada de densidade é RECUSADA por medição
+
+### §58.1 — ⭐⭐⭐ `MAX_PROFILE_RESOLUTION` 16 → 64
+
+A W60 deixou o teto com **uma perna só** (o olho) e disse que subir precisava de um contorno de
+**curvatura variável** para ser medido. Ele não existia. A fixtura nova é uma **elipse `4:1`**, cuja
+ponta é `16×` mais curva que o lado, e a régua é o **maior salto de normal**
+(`the_table_of_the_sharpest_corner`, release, máquina calma a `load 1,8`):
+
+| nível | arestas | salto MAX | salto mediano | traçado |
+|---:|---:|---:|---:|---:|
+| 1 | 112 | 8,84° | 2,09° | 43,6 ms |
+| 8 | 320 | 3,11° | 0,73° | 109,6 ms |
+| ~~16~~ | 448 | 2,21° | 0,52° | 145,1 ms |
+| 32 | 636 | 1,55° | 0,37° | 216,6 ms |
+| **64** | **896** | **1,11°** | **0,26°** | **303,2 ms** |
+| 128 | 1 268 | 0,78° | 0,19° | 483,4 ms |
+
+⭐ **A lei é `θ ≈ √(8·tol/R)`** e a tabela confirma-a em quatro pontos: dobrar o nível divide o salto
+por `√2`. ⇒ **cada duplicação do teto deixa desenhar um canto duas vezes mais apertado** antes de
+facetar — com a barra de `3°` das fotos, o limite era `~5,5:1` no `16` e é `~22:1` no `64`.
+
+⭐⭐ **Não há joelho, e é por isso que o número é o RELÓGIO**: cada degrau custa `×√2` e compra `×2`,
+então a razão benefício/preço **melhora** ao subir. O `128` cabe na regra de meio segundo (`483 ms`)
+e é o **último** que cabe; o `64` fica a `303 ms`, e a folga é para uma cena com **mais de uma
+peça** — ⚠️ premissa **declarada**, não medida, e é ela que separa o `64` do `128`.
+
+⛔ **A 1.ª medição atravessou a PRÓPRIA TRAVA.** A `tolerance_ratio_for` clampa no
+`MAX_PROFILE_RESOLUTION`, então os níveis acima recebiam a tolerância do `16` e a tabela saía com
+`448` arestas quatro vezes — lida como *"o achatamento saturou"*. *Uma sonda que atravessa o limite
+que quer medir mede o limite.* A cura foi partir a lei em duas: o **span** continua a ser o do
+produto (`span_of`, agora público), o **teto** é o que a sonda contorna, com o motivo ao lado.
+
+### §58.2 — ⛔⛔ RECUSA MEDIDA: os níveis de exportação NÃO podem mandar na densidade dos quads
+
+O Enio decidiu que os três botões deviam escolher a densidade da retopologia. **Implementei a escada
+completa** (`chain_alpha` × `feed_depth`, com a razão `célula/alvo` invariante por construção) e
+medi-a pelo caminho do produto (`measure_the_export_wall_clock`, release, esfera):
+
+| nível | aresta pedida | grade | espera | veredito |
+|---|---:|---:|---:|---|
+| Draft | 2 % | 6 | **4 717 ms** | ✅ adoptada — 2 539 quads, `6,42°`, `0` bordo |
+| Fine | 1 % | 7 | **49 691 ms** | ⛔ **Rejected { boundary: 42 }** |
+| Max | 0,5 % | 8 | ⛔ **1 648 579 ms** (27 min 29 s) | ⛔ **Rejected { boundary: 316, non_manifold: 6 }** |
+
+⛔ **REVERTIDO.** O limite da cadeia **não é o tempo — é a TOPOLOGIA da extracção**: ela fecha a peça
+na densidade grossa e **rasga** na fina, e o veto (correctamente) deita fora o trabalho. Deixar a
+escada no produto seria um botão que gasta meia hora para devolver o que o botão anterior já dava.
+
+⚠️ **E o custo cresce ~33× por degrau de 2×** — `4,7 s → 50 s → 1 649 s` —, o que é super-linear de
+uma forma que nem a bancada em segundo plano resolve.
+
+⇒ **A decisão do Enio está certa como produto e bloqueada pelo motor.** O achado é para quem possui
+a extracção (`line/quadextract`, a mesma dos dois `panic!` já nomeados): *a densidade fina tem de
+FECHAR a peça antes de o botão fazer sentido*. Quando fechar, esta tabela é o que se reconfere.

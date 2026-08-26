@@ -311,3 +311,200 @@ fn the_table_of_where_the_banding_knee_moves_with_zoom() {
         println!("{half:>11.2} | {}", cells.join(" |"));
     }
 }
+
+/// ⭐⭐ **UM CONTORNO DE CURVATURA VARIÁVEL** — a fixtura que a W60 disse ser necessária para medir o
+/// teto e que não existia.
+///
+/// Uma **elipse** de razão `a/b = 4`: a curvatura na ponta do eixo maior é `a/b² = 16×` a do topo do
+/// eixo menor (`b/a²`). ⚠️ *Um círculo não distingue "o teto é baixo" de "a régua não vê" — nele
+/// todo ponto tem a mesma curvatura, e é por isso que a régua das bandas saturou.*
+fn ellipse_path(a: f64, b: f64) -> ph2d_vec_scene::VecPath {
+    use ph2d_vec_scene::{VecPath, VecVertex};
+    let k = 0.552_284_75_f64;
+    let mut verts = Vec::new();
+    for (i, (ax, ay)) in [(a, 0.0), (0.0, b), (-a, 0.0), (0.0, -b)]
+        .into_iter()
+        .enumerate()
+    {
+        let (tx, ty) = [(0.0, k * b), (-k * a, 0.0), (0.0, -k * b), (k * a, 0.0)][i];
+        verts.push(VecVertex {
+            in_handle: [ax - tx, ay - ty],
+            out_handle: [ax + tx, ay + ty],
+            ..VecVertex::corner([ax, ay])
+        });
+    }
+    VecPath {
+        verts,
+        closed: true,
+        ..VecPath::default()
+    }
+}
+
+/// ⭐ **O MAIOR salto de normal do contorno cozido**, em graus — a régua do OLHO (W54: *"a régua da
+/// suavidade é a NORMAL, não a silhueta"*), e a mediana ao lado.
+///
+/// ⚠️ **O máximo é o número que decide**, e a mediana é o controle: numa elipse eles separam-se por
+/// construção (a ponta afiada contra o lado chato), e é essa separação que um círculo não tem.
+fn normal_jumps(prof: &ph2d_field::Profile) -> (f64, f64) {
+    let mut jumps: Vec<f64> = Vec::new();
+    for c in prof.contours() {
+        let n = c.len();
+        if n < 3 {
+            continue;
+        }
+        let dir = |i: usize| {
+            let (p, q) = (c[i], c[(i + 1) % n]);
+            f64::from(q[1] - p[1]).atan2(f64::from(q[0] - p[0]))
+        };
+        for i in 0..n {
+            let d = (dir((i + 1) % n) - dir(i)).abs();
+            let d = if d > std::f64::consts::PI {
+                std::f64::consts::TAU - d
+            } else {
+                d
+            };
+            jumps.push(d.to_degrees());
+        }
+    }
+    if jumps.is_empty() {
+        return (0.0, 0.0);
+    }
+    jumps.sort_by(f64::total_cmp);
+    (jumps[jumps.len() - 1], jumps[jumps.len() / 2])
+}
+
+/// ⭐⭐⭐ **ONDE O TETO DE `Resolution` DE FACTO CAI** — a medição que a W60 deixou por fazer, com a
+/// fixtura que ela nomeou.
+///
+/// A W60 mediu com um **círculo** e concluiu, correctamente, que a régua das bandas satura: nele
+/// todo ponto tem a mesma curvatura. ⇒ aqui a fixtura é uma **elipse `4:1`**, cuja ponta é `16×`
+/// mais curva que o lado — e a régua é o **maior** salto de normal, que é o que o olho apanha.
+///
+/// ⚠️ **A lei é `θ ≈ √(8·tol/R)`** (sagitta de um arco): dobrar o nível divide a tolerância por 2 e
+/// o salto por **`√2`**, não por 2. *Um teto escolhido como se o ganho fosse linear escolhe o número
+/// errado.*
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release -- --exact \
+///     field3d_profile::tests::the_table_of_the_sharpest_corner --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn the_table_of_the_sharpest_corner() {
+    let path = ellipse_path(0.6, 0.15);
+    println!("nivel | arestas | salto MAX | salto mediano | tracado ms");
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    for level in [1u32, 8, 16, 32, 64, 128] {
+        // ⛔⛔ **POR FORA DA TRAVA, de propósito — e a 1.ª redacção desta sonda passava por dentro.**
+        //
+        // A [`ph2d_field_profile::tolerance_ratio_for`] faz `level.clamp(1,
+        // MAX_PROFILE_RESOLUTION)`, então uma sonda que chame `cook_path_at` recebe, nos níveis
+        // 32/64/128, **exactamente a tolerância do 16** — e a tabela sai com as mesmas `448`
+        // arestas e o mesmo salto quatro vezes, lida como *"o achatamento saturou"*. ⚠️ Ele não
+        // saturou: a sonda mediu a própria trava. *Uma sonda que atravessa o limite que quer medir
+        // mede o limite.*
+        //
+        // ⭐ **Mas a lei do SPAN continua a ser a do produto** ([`ph2d_field_profile::span_of`]) —
+        // é o teto que se contorna, não a escala. Contornar as duas mediria outra coisa.
+        let tol = ph2d_field_profile::span_of(&path.cooked()) * ph2d_field_profile::TOLERANCE_RATIO
+            / f64::from(level);
+        let Ok(prof) = ph2d_field_profile::cook_path(&path, tol) else {
+            println!("{level:5} | a cozedura recusou");
+            continue;
+        };
+        let (max, med) = normal_jumps(&prof);
+        let doc = ph2d_field::FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                ph2d_field::Primitive::Extrude {
+                    profile: prof.clone(),
+                    half_height: 0.2,
+                    round: 0.03,
+                },
+                ph2d_field::Xform::IDENTITY,
+            )],
+            ph2d_field::NodeId(0),
+        )
+        .expect("extrusão");
+        // ⚠️ Aquecimento fora da conta, e mediana de 5 — a lição que a W64 pagou.
+        let _ =
+            ph2d_field_render::trace(&doc, &reg, &ph2d_field_render::Orbit::default(), 640, 480);
+        let mut ms: Vec<f64> = (0..5)
+            .map(|_| {
+                let t = std::time::Instant::now();
+                let _ = ph2d_field_render::trace(
+                    &doc,
+                    &reg,
+                    &ph2d_field_render::Orbit::default(),
+                    640,
+                    480,
+                );
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect();
+        ms.sort_by(f64::total_cmp);
+        println!(
+            "{level:5} | {:7} | {max:9.2} | {med:13.2} | {:10.1}",
+            prof.segment_count(),
+            ms[2]
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O TETO ENTREGA UM CANTO AFIADO SEM FACETAR** — a perna do OLHO, presa sem relógio.
+///
+/// ⚠️ **A régua é o maior salto de NORMAL** (W54: *"a régua da suavidade é a NORMAL, não a
+/// silhueta"*) sobre um contorno de **curvatura variável** — uma elipse `4:1`, cuja ponta é `16×`
+/// mais curva que o lado. ⛔ Num **círculo** isto não se mede: lá todo ponto tem a mesma curvatura,
+/// e foi por isso que a régua das bandas da W60 saturou.
+///
+/// ⭐ **Ela é DETERMINÍSTICA** — nenhum relógio, nenhuma razão de tempos: a geometria do achatamento
+/// não depende da carga da máquina, e as mesmas colunas saíram idênticas a `load 1,8` e a `load 20`.
+///
+/// A barra de `3°` é a que as duas fotos do Enio fixaram (registada no doc do
+/// [`ph2d_field_profile::TOLERANCE_RATIO`]) — um oráculo de aparência, declarado como tal.
+#[test]
+fn the_ceiling_draws_a_sharp_corner_without_facets() {
+    const EYE_DEGREES: f64 = 3.0;
+    let path = ellipse_path(0.6, 0.15);
+
+    let at = |level: u32| -> f64 {
+        let prof = ph2d_field_profile::cook_path_at(&path, level).expect("perfil");
+        normal_jumps(&prof).0
+    };
+
+    // ⚠️ **O CONTROLE, e sem ele o gate não prova nada**: na ponta de baixo da escada a fixtura tem
+    // de facto o defeito que o teto existe para curar. Uma elipse que já saísse lisa no nível 1
+    // aprovaria qualquer teto.
+    let coarse = at(1);
+    assert!(
+        coarse > EYE_DEGREES,
+        "a fixtura não contém o defeito: no nível 1 o canto mais afiado salta {coarse:.2}°, abaixo \
+         da barra de {EYE_DEGREES}°"
+    );
+
+    let ceiling = at(ph2d_field::MAX_PROFILE_RESOLUTION);
+    assert!(
+        ceiling < EYE_DEGREES,
+        "no teto ({}) o canto mais afiado ainda salta {ceiling:.2}° — acima da barra de \
+         {EYE_DEGREES}°, e a luz mostra isso",
+        ph2d_field::MAX_PROFILE_RESOLUTION
+    );
+
+    // ⭐⭐ **E o teto tem de COMPRAR alguma coisa sobre o antigo.** Sem esta metade, um teto que
+    // fosse igual ao de ontem passaria — e foi exactamente isso que a 1.ª medição desta wave leu,
+    // porque ela atravessava o clamp e recebia a tolerância do 16 em todos os níveis acima.
+    let old = at(16);
+    assert!(
+        ceiling < old * 0.75,
+        "subir o teto tem de baixar o salto de forma visível: {old:.2}° -> {ceiling:.2}°"
+    );
+
+    // ⚠️ **A LEI, e não só os extremos**: `θ ∝ 1/√nível`. Dobrar o nível divide o salto por `√2`, e
+    // um achatamento que deixasse de a obedecer mudaria o preço de todo degrau do teto.
+    let (a, b) = (at(16), at(32));
+    let razao = a / b;
+    assert!(
+        (razao - std::f64::consts::SQRT_2).abs() < 0.15,
+        "o salto tem de cair por √2 a cada duplicação (a sagitta de um arco), e caiu por {razao:.3}"
+    );
+}

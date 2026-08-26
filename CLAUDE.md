@@ -635,11 +635,23 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `ISO`/`LNK` **caem na mesma**: ganha o `ISO`, que é um estado da **VISTA** a explicar por que o
   resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
   a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
-  **Aberto:** ⏳ **decisão sua, com o preço medido:** o nível de exportação **não alcança** a densidade
-  da cadeia (~2 500 quads em qualquer nível) — manter a razão preserva a qualidade e custa
-  **`48 894 ms` por 3,7× os quads** · ⏳ **subir o `Resolution` acima de 16** precisa de um contorno de
-  curvatura **VARIÁVEL** para ser medido, e é decisão sua (a perna do relógio caiu na W60; o que
-  segura o número é o olho) · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) ·
+  ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §58):
+  ✅ **o teto de `Resolution` sobe 16 → 64** — a régua que faltava é um contorno de curvatura
+  **VARIÁVEL** (elipse `4:1`, ponta `16×` mais curva que o lado), e a lei `θ ≈ √(8·tol/R)` confirma-se
+  em quatro pontos: **dobrar o nível divide o salto de normal por `√2`**, logo *cada duplicação deixa
+  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~22:1`** no 64). ⚠️ **Não há
+  joelho** — cada degrau custa `×√2` e compra `×2` —, então o número é o **relógio**: o `128` é o
+  último que cabe na regra de meio segundo (`483 ms`) e o `64` fica a `303 ms`, com a folga a ser uma
+  **premissa declarada** (uma cena tem mais de uma peça). ⛔ *A 1.ª medição atravessou a própria trava
+  (o `clamp` da `tolerance_ratio_for`) e leu «o achatamento saturou» — a cura foi partir a lei em
+  duas, com o `span_of` público e o teto contornado de propósito* ·
+  ⛔⛔ **RECUSA MEDIDA: os níveis de exportação NÃO podem mandar na densidade dos quads.** A escada
+  foi **implementada inteira** e medida pelo produto: `Draft` 4 717 ms ✅ · `Fine` **49 691 ms** com
+  **42 arestas de bordo** ⛔ · `Max` **1 648 579 ms (27 min 29 s)** com **316 bordo e 6 não-manifold**
+  ⛔. *O limite da cadeia não é o tempo — é a TOPOLOGIA da extracção*, que fecha a peça na densidade
+  grossa e **rasga** na fina; o veto deita fora o trabalho e o artista espera meia hora pelo que o
+  primeiro botão já dava. **REVERTIDO**, e o achado é da `line/quadextract` — a densidade fina tem de
+  FECHAR antes de o botão fazer sentido · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) ·
   ⏸️ vários `VecPath` **separados** numa peça só · ⏸️ religar uma escultura que mudou de sítio (pede
   UI) · ⏸️ o `Mirror` não se consegue demonstrar (adiado por si) · ⏸️ a composição de dois `Exact`
   encadeados e o gradiente de uma **escultura** seguem por medir · ⏸️ **reaproveitar as fitas já

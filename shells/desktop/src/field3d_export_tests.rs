@@ -322,3 +322,39 @@ fn the_export_says_where_the_piece_is_only_when_the_question_exists() {
         "uma malha vazia não tem sítio"
     );
 }
+
+/// ⭐⭐⭐ **QUANTO CUSTA EXPORTAR, pelo caminho do PRODUTO.**
+///
+/// ⚠️ **Ela corre a [`super::cook`]**, não uma reconstrução dela: a sonda irmã em `ph2d-field-eval`
+/// mede a cadeia, e esta mede a **exportação**, que é a cadeia mais a extração do nível pedido mais
+/// o censo de arestas da malha que ficaria. *Uma sonda que salta a costura mede a metade que já se
+/// sabia.*
+///
+/// ⚠️ **Ela foi APAGADA SEM AVISO duas vezes** (nas W63 e W66) por um corte de texto por índice que
+/// engoliu o que estava entre dois marcadores. O arquivo compilava, a suíte ficava verde — *um teste
+/// apagado e um teste a passar leem-se igual num sumário* — e só se deu por falta ao tentar
+/// corrê-la. Recuperada do `afd161ff0`.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --release --bin ph2d-host-desktop -- \
+///     --ignored --nocapture measure_the_export_wall_clock
+/// ```
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_the_export_wall_clock() {
+    use crate::field3d_export::ExportLevel;
+    let reg = crate::field3d_smoke::sampled_registry();
+    let doc = one(Primitive::Sphere { radius: 0.45 });
+    println!("nível | prof | ms | quads que saem | veredito");
+    for level in ExportLevel::ALL {
+        let t0 = std::time::Instant::now();
+        let (mesh, verdict) = super::cook(&doc, &reg, level).expect("cozinha");
+        println!(
+            "{:>6} | {:>4} | {:>7.0} | {:>14} | {verdict:?}",
+            level.key().rsplit('.').next().unwrap_or("?"),
+            level.depth(),
+            t0.elapsed().as_secs_f32() * 1000.0,
+            mesh.faces().len(),
+        );
+    }
+}

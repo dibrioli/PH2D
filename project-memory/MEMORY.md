@@ -42,6 +42,7 @@
 ## Git & colisão multi-agente
 - [Commit collision](feedback_parallel_agent_collision.md) + [scoped commit](feedback_scoped_commit_shared_index.md) — status antes; commit -- <paths>
 - [Perigos de git/edição (12)](reference_topic_git_hazards.md)
+- [Corte por índice entre 2 marcadores apaga o vizinho em silêncio](feedback_an_index_splice_between_two_markers_deletes_the_neighbour_in_silence.md)
 - [Write diz «updated» — leia o verbo](feedback_write_on_an_existing_path_says_updated_not_created.md) · [o symlink da memória escreve no primário](feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree.md)
 
 ## Ship / CI / integração

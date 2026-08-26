@@ -688,7 +688,6 @@ const CHROME_IDS: &[(&str, NodeId)] = &[
     ("VECTOR_MODE_SHAPE", ids::VECTOR_MODE_SHAPE),
     // O 6º pill: o CONECTOR (a linha que gruda em duas formas e as segue).
     ("VECTOR_MODE_CONNECT", ids::VECTOR_MODE_CONNECT),
-    ("VECTOR_MODE_MORPH_LINK", ids::VECTOR_MODE_MORPH_LINK),
     ("VECTOR_SHAPE_GROUP_DD", ids::VECTOR_SHAPE_GROUP_DD),
     // AS ÂNCORAS (plano UI/UX W3). ⚠️ Os ids do AUTO LAYOUT (W2) NÃO estão nesta tabela — ela é
     // mantida à mão e aquela wave não a alimentou, exactamente o apodrecimento que o comentário

@@ -274,9 +274,9 @@ mod mask_smoke;
 mod merge_layers;
 mod modal;
 mod morph_fade_smoke;
-mod morph_link_gesture;
 mod morph_live;
 mod morph_machine_drive;
+mod morph_set;
 mod morph_states_smoke;
 mod motion_autofix_smoke;
 mod motion_autofix_smoke_appropriate;
@@ -959,6 +959,7 @@ impl App {
             vec_connect_sides: crate::connector_live::SideCache::new(),
             vec_blend_pending: None,
             vec_morph_pending: None,
+            vec_morph_set_pending: None,
             vec_envelope_drag: None,
             vec_textpath_handle_drag: false,
             motion_path_drag: None,
@@ -977,9 +978,7 @@ impl App {
             join_kind: 0, // Pin — the default joint kind for "Join Selected Bodies"
             vec_morph_plans: crate::morph_live::MorphPlans::new(),
             vec_blend_overlay: Vec::new(),
-            vec_morph_arrows: Vec::new(),
             morph_machines: Default::default(),
-            morph_link_drag: None,
             vec_blend_spines: crate::blend_live::BlendSpines::new(),
             vec_blend_picks: Vec::new(),
             vec_label_pending: None,

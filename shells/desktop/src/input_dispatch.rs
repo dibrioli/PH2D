@@ -4062,16 +4062,6 @@ impl App {
                         }
                         return;
                     }
-                    // Modo **Setas do Morph** (plano 32 W3b): o mesmo movimento da mão do
-                    // conector, outro produto — uma ARESTA no grafo da máquina, e não uma linha no
-                    // documento. ⛔ Sem um Morph selecionado o gesto é inerte, e é a resposta
-                    // honesta: uma seta é uma aresta no grafo de alguém.
-                    if self.vec_draw_config.mode == ph2d_tool_vector::DrawMode::MorphLink {
-                        if let Some(w) = self.vec_world_at(self.last_pointer) {
-                            self.morph_link_down(w);
-                        }
-                        return;
-                    }
                     // Modo Pick Shapes (Blend): a pressão coleta a forma FECHADA sob o
                     // cursor na ordem de clique (ADR-0128 C2b). Não há pen/shape/gizmo — o
                     // que se escolhe é a LISTA de formas, e o botão Blend a liga. Clicar de
@@ -4395,16 +4385,6 @@ impl App {
                             self.connector_up(w);
                         } else {
                             self.connector_cancel();
-                        }
-                        return;
-                    }
-                    // **Setas do Morph**: o Up fecha a aresta na forma sob o cursor. Consome SÓ
-                    // com gesto vivo — a mesma guarda do irmão acima, e pelo mesmo motivo: sem
-                    // ela, soltar sobre um botão do painel neste modo engoliria o clique.
-                    if self.morph_link_drag.is_some() {
-                        match self.vec_world_at(self.last_pointer) {
-                            Some(w) => self.morph_link_up(w),
-                            None => self.morph_link_cancel(),
                         }
                         return;
                     }

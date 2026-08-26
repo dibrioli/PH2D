@@ -37,6 +37,14 @@ pub struct MorphStatesState {
     pub actions: Vec<String>,
     /// Em que forma a máquina está agora — o readout que diz *"a pré-visualização está a correr"*.
     pub current: Option<String>,
+    /// ⭐ **Quantas formas a seleção tem prontas a virar um conjunto** (plano 32 W8). `0` = não há
+    /// nada a oferecer.
+    ///
+    /// ⚠️ **Uma CONTAGEM, e não um `bool`**, porque a face de criação diz três coisas diferentes
+    /// com ela: *escolha mais formas* (`< 2`) · *escolheu formas a mais* (`> MAX_MORPH_STATES`) ·
+    /// *o botão, prometendo `n(n-1)` transições*. Um `bool` colapsaria as três em duas, e o artista
+    /// que escolheu doze formas leria *"escolha duas ou mais"*.
+    pub can_make: usize,
 }
 
 thread_local! {

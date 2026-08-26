@@ -92,7 +92,6 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
             || x == ids::VECTOR_MODE_SHAPE
             || x == ids::VECTOR_MODE_TEXT
             || x == ids::VECTOR_MODE_CONNECT
-            || x == ids::VECTOR_MODE_MORPH_LINK
             || x == ids::VECTOR_MODE_BUILD
             || x == ids::VECTOR_MODE_PICKBLEND
             || x == ids::VECTOR_MODE_FILLET
@@ -107,9 +106,9 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
     )
 }
 
-/// ⭐ **AS SETAS do Morph** (plano 32 W4) — apagar uma, e escolher a acção que a dispara. As duas
-/// mexem no COMPONENTE (mundo), então o clique atravessa o barramento e é a shell que age; o painel
-/// só mostra.
+/// ⭐ **A seção MORPH STATES** (plano 32 W4/W8) — o botão que faz o conjunto, e a acção que dispara
+/// cada transição. As duas mexem no MUNDO, então o clique atravessa o barramento e é a shell que
+/// age; o painel só mostra.
 ///
 /// ⚠️ **Percorridas pela MESMA porta que as pinta** (`MAX_MORPH_ARROWS` → `morph_arrow_*`): uma
 /// seta a mais entra aqui sozinha. ⛔ Sem isto elas pintariam, acenderiam sob o rato e o Click
@@ -118,10 +117,10 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
 /// ⚠️ **Função própria e não mais um `||` na irmã**: o `forwards_plain_click` bateu no teto de 200
 /// LOC no dia em que este bloco lá entrou, e o corte por assunto já era o certo.
 fn is_morph_arrow_control(id: ph2d_a11y::NodeId) -> bool {
-    (0..ids::MAX_MORPH_ARROWS).any(|r| {
-        id == ids::morph_arrow_delete_id(r)
-            || (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_arrow_when_option_id(r, a))
-    })
+    id == ids::VECTOR_MORPH_STATES_MAKE
+        || (0..ids::MAX_MORPH_ARROWS).any(|r| {
+            (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_arrow_when_option_id(r, a))
+        })
 }
 
 pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {

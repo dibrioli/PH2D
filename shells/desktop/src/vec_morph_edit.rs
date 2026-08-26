@@ -17,9 +17,14 @@ use crate::vec_entities::VecEntityMap;
 /// linha vê o botão morto **no gate de costura** — em vez de o ver a cair no `None` em silêncio.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ArrowCmd {
-    /// Apagar a seta `row`.
-    Delete { row: usize },
+    /// **Fazer o conjunto** com as formas da seleção (plano 32 W8).
+    MakeSet,
     /// Pôr a condição da seta `row` na acção `action` — **`0` é o «—»**, sem condição.
+    ///
+    /// ⛔ **É o ÚNICO verbo que age sobre uma seta**, e a ausência de um `Delete` é a lei da W8: o
+    /// grafo é o completo dirigido sobre as formas do conjunto, **derivado**. Apagar uma linha
+    /// seria apagar uma passagem que a próxima derivação repõe — *desligar uma transição é
+    /// tirar-lhe a condição*, e uma seta sem condição existe e nunca acontece.
     SetWhen { row: usize, action: usize },
 }
 
@@ -27,10 +32,10 @@ pub(crate) enum ArrowCmd {
 #[must_use]
 pub(crate) fn arrow_cmd_for_id(id: ph2d_editor::NodeId) -> Option<ArrowCmd> {
     use ph2d_editor::ids as i;
+    if id == i::VECTOR_MORPH_STATES_MAKE {
+        return Some(ArrowCmd::MakeSet);
+    }
     for row in 0..i::MAX_MORPH_ARROWS {
-        if id == i::morph_arrow_delete_id(row) {
-            return Some(ArrowCmd::Delete { row });
-        }
         for action in 0..i::MAX_MORPH_ACTIONS {
             if id == i::morph_arrow_when_option_id(row, action) {
                 return Some(ArrowCmd::SetWhen { row, action });
@@ -90,10 +95,20 @@ pub(crate) fn publish(
     sim: &SimWorld,
     scene: &VecScene,
     map: &VecEntityMap,
-    sel: &[u64],
+    sel: &[VecPathId],
     actions: Vec<String>,
 ) -> Option<MorphStatesState> {
-    let e = morph_of_selection(sim, map, sel)?;
+    let Some(e) = morph_of_selection(sim, map, sel) else {
+        // ⭐ **Sem Morph na seleção a seção AINDA existe, se houver formas que possam virar um**
+        // (plano 32 W8): é ela que traz o botão que os cria. ⛔ Devolver `None` aqui faria a única
+        // porta para a feature aparecer só depois de a feature existir.
+        let n = crate::morph_set::eligible(sim, map, sel).len();
+        return (n >= 2).then(|| MorphStatesState {
+            can_make: n,
+            actions,
+            ..Default::default()
+        });
+    };
     // ⚠️ **Um Morph SEM máquina publica a face VAZIA, e não `None`.** As duas coisas pintam faces
     // diferentes: `None` = *"a seleção não é um Morph"* (a seção nem fala de setas); vazio =
     // *"é um Morph e ainda não tem setas"*, e essa face diz COMO desenhar a primeira.
@@ -123,6 +138,10 @@ pub(crate) fn publish(
         rows,
         actions,
         current,
+        // ⛔ **Zero: um conjunto já feito não se refaz por cima de si próprio.** Oferecer o botão
+        // aqui daria dois objectos de estados sobre as mesmas formas, e o segundo nasceria a
+        // governar formas que o primeiro já esconde.
+        can_make: 0,
     })
 }
 
@@ -136,13 +155,11 @@ pub(crate) fn apply(sim: &mut SimWorld, morph: Entity, cmd: ArrowCmd, actions: &
         return false;
     };
     match cmd {
-        ArrowCmd::Delete { row } => {
-            if row >= m.graph.edges.len() {
-                return false;
-            }
-            m.graph.edges.remove(row);
-            true
-        }
+        // ⚠️ **O `MakeSet` não vive aqui:** ele cria uma ENTIDADE, reparenta formas e escreve na
+        // cena vetorial — nada disso cabe numa função que só tem o componente de um objecto que
+        // ainda não existe. Ele é servido pelo [`crate::morph_set`], e este braço é a prova de que
+        // a tabela é exaustiva.
+        ArrowCmd::MakeSet => false,
         ArrowCmd::SetWhen { row, action } => {
             let Some(e) = m.graph.edges.get_mut(row) else {
                 return false;

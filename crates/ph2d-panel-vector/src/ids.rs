@@ -10,7 +10,6 @@
 /// O 6º pill de modo: **Connect** — a linha que gruda em duas formas e as segue.
 pub use ph2d_editor_core::ids::VECTOR_MODE_BUILD;
 pub use ph2d_editor_core::ids::VECTOR_MODE_CONNECT;
-pub use ph2d_editor_core::ids::VECTOR_MODE_MORPH_LINK;
 /// O **lápis** — o modo de mão livre, ao lado da caneta na fileira TOOL.
 pub use ph2d_editor_core::ids::VECTOR_MODE_PENCIL;
 /// O 8º pill de modo: **Pick Shapes** (Blend) — coleta as formas na ordem de clique.
@@ -39,8 +38,8 @@ pub use ph2d_editor_core::ids::{
     vector_instance_piece_show_id, vector_variant_option_id,
 };
 pub use ph2d_editor_core::ids::{
-    MAX_MORPH_ACTIONS, MAX_MORPH_ARROWS, morph_arrow_delete_id, morph_arrow_when_id,
-    morph_arrow_when_option_id,
+    MAX_MORPH_ACTIONS, MAX_MORPH_ARROWS, MAX_MORPH_STATES, VECTOR_MORPH_STATES_MAKE,
+    VECTOR_SECTION_MORPH_STATES, morph_arrow_when_id, morph_arrow_when_option_id,
 };
 pub use ph2d_editor_core::ids::{
     MAX_SHAPE_FIELD_SLOTS, vector_shape_choice_id, vector_shape_field_id, vector_shape_group_id,

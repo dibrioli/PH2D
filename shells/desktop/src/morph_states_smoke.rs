@@ -10,10 +10,11 @@
 //!
 //! # O que a cena arma, e o que ela deixa para o artista
 //!
-//! Arma o **material**: três formas bem diferentes umas das outras, e um objecto de Morph entre as
-//! duas primeiras. ⛔ **Nada nasce ligado** — nenhuma seta, nenhuma condição. Quem desenha as setas
-//! e escolhe o que as dispara é o artista, e é **exactamente essa** a costura que a wave existe
-//! para provar. *Um smoke que arma o gesto por baixo do pano pula a costura que devia testar.*
+//! Arma o **material**: três formas bem diferentes umas das outras, soltas. ⛔ **Não há Morph
+//! nenhum, nenhuma máquina, nenhuma condição** — quem carrega no botão que faz o conjunto e quem
+//! escolhe o que dispara cada transição é o artista, e é **exactamente essa** a costura que a wave
+//! existe para provar. *Um smoke que arma o gesto por baixo do pano pula a costura que devia
+//! testar.*
 //!
 //! ⚠️ **As acções são as de FÁBRICA** (`jump` no `Z`, `dash` no `Q`) — nenhuma acção nova é criada.
 //! É deliberado: a lista que o menu da condição mostra é a do **projecto**, e usar a que já lá está
@@ -68,25 +69,8 @@ fn build(app: &mut crate::App) {
         (a, b, c)
     };
     name_shapes(app, [a, b, c]);
-
-    // O MORPH entre as duas primeiras. ⚠️ A dança do `sync` é a do `morph_fade_smoke`: o morph
-    // nasce vazio (a geometria é DERIVADA pelo recook) e só ganha entidade no `sync`.
-    let Some(gfx) = app.gfx.as_mut() else {
-        return;
-    };
-    crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec_entities);
-    let (id, morph) = crate::morph_live::create(&mut gfx.vec_scene, a, b);
-    crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut app.vec_entities);
-    let attached = crate::morph_live::attach(&mut gfx.sim, &app.vec_entities, id, &morph);
-    assert!(attached, "[morph-states-smoke] o morph nao pendurou");
-    if let Some(&bits) = app.vec_entities.get(&id) {
-        gfx.sim
-            .world_mut()
-            .entity_mut(Entity::from_bits(bits))
-            .insert(Name::new("Morpher"));
-    }
-    // ⛔ **E PARA POR AQUI.** Nenhuma seta, nenhuma condição, nenhuma máquina: são elas que o
-    // roteiro manda o artista construir.
+    // ⛔ **E PARA POR AQUI.** Nenhum Morph, nenhuma máquina, nenhuma condição: são elas que o
+    // roteiro manda o artista construir, e é a construção que a wave existe para provar.
 }
 
 /// Dá nome às três formas — o painel mostra o NOME de cada ponta da seta, e `#123` não diz nada.
@@ -143,61 +127,68 @@ fn announce(app: &crate::App) {
 
     eprintln!("[morph-states-smoke] cena montada: {n} formas ({morphs} morph).");
     eprintln!(
-        "[morph-states-smoke] (!) se nao forem 4 formas e 1 morph, PARE: a cena perdeu a \
+        "[morph-states-smoke] (!) se nao forem 3 formas e ZERO morph, PARE: a cena perdeu a \
          premissa e o resto do roteiro nao mede nada."
     );
     eprintln!(
-        "[morph-states-smoke] as tres formas chamam-se **Wide**, **Tall** e **Thin**; o objecto \
-         entre as duas primeiras chama-se **Morpher**."
+        "[morph-states-smoke] as tres formas chamam-se **Wide** (azul), **Tall** (verde) e \
+         **Thin** (amarela)."
     );
     eprintln!("[morph-states-smoke] o roteiro:");
     eprintln!(
-        "  1. Pegue a ferramenta VECTOR e clique no **Morpher** (a forma do meio, entre a azul e \
-         a verde). O painel ganha a seccao **States**, a dizer que ainda nao ha' setas."
+        "  1. Pegue a ferramenta VECTOR e escolha as TRES formas: clique na azul e depois \
+         Shift+clique na verde e na amarela."
     );
     eprintln!(
-        "  2. Na fileira de modos do painel, pegue o pill **States**. Agora arraste **de dentro \
-         da forma AZUL para dentro da VERDE**: nasce uma seta curva, ambar, com ponta."
+        "  2. No painel, abra a seccao **Morph States**. Ela diz «3 shapes -> 6 transitions» e \
+         traz o botao **Make Morph States**. Carregue nele."
     );
     eprintln!(
-        "     (!) Se nada aparecer, PARE. A seta e' desenhada no canvas, entre as duas formas."
+        "     (!) Se a seccao nao aparecer com as tres escolhidas, PARE -- ela e' a unica porta \
+         para esta feature."
     );
     eprintln!(
-        "  3. Arraste tambem **da VERDE para a AMARELA**, e depois **da AMARELA para a AZUL**. \
-         Sao tres setas, e a lista do painel tem tres linhas."
+        "  3. O que tem de acontecer, tudo de uma vez: na arvore nasce **Morph States 3**, com as \
+         tres formas por baixo dele; **no canvas fica UMA forma so'** (a azul, que era a primeira \
+         escolhida); e o painel passa a listar **6** transicoes -- ida e volta entre todas."
     );
     eprintln!(
-        "     (!) Tente arrastar da AZUL para a AZUL: nao pode nascer nada -- uma forma virar ela \
-         mesma nao e' uma transicao."
+        "     (!) Se continuar a ver as tres formas empilhadas, PARE: as outras duas deviam ter \
+         ficado ocultas."
     );
     eprintln!(
-        "  4. Em cada linha do painel ha' um menu **When**. Ponha **jump** nas tres. (O menu so' \
-         oferece accoes que existem no projecto -- e' de proposito.)"
+        "  4. **Ctrl+Z** agora. As tres formas voltam, soltas, como estavam -- **num passo so'**. \
+         Se precisar de varios Ctrl+Z, PARE. Depois **Ctrl+Shift+Z** para refazer e continuar."
     );
     eprintln!(
-        "  5. Aperte **Play** na barra de transporte. Agora carregue em **{jump}**: a forma vira \
-         a seguinte. Carregue outra vez: vira a terceira. E outra vez: volta a' primeira."
+        "  5. Na lista, cada linha tem um menu **When**. Ponha **jump** em **Wide -> Tall**, em \
+         **Tall -> Thin** e em **Thin -> Wide**. Deixe as outras tres no tracinho."
+    );
+    eprintln!(
+        "     (!) O menu so' oferece accoes que existem no projecto -- e' de proposito, e e' por \
+         isso que nao da' para escrever um nome que nao existe."
+    );
+    eprintln!(
+        "  6. Aperte **Play** na barra de transporte. Agora carregue em **{jump}**: a forma vira \
+         a seguinte. Outra vez: vira a terceira. E outra vez: volta a' primeira."
     );
     eprintln!(
         "     (!) SEGURE a tecla em vez de a bater: ela tem de disparar **uma** vez, nao percorrer \
          a cadeia inteira num piscar de olhos."
     );
     eprintln!(
-        "  6. **PARE o transporte.** A forma volta a ser a que voce' desenhou -- e o **Ctrl+Z** \
-         NAO tem nenhum passo das transicoes para desfazer. Se tiver, PARE: o que o motor mostra \
-         e' pre-visualizacao, nunca documento."
+        "  7. **PARE o transporte.** A forma volta a ser a primeira -- e o **Ctrl+Z** NAO tem \
+         nenhum passo das transicoes para desfazer. Se tiver, PARE: o que o motor mostra e' \
+         pre-visualizacao, nunca documento."
     );
     eprintln!(
-        "  7. O CONTROLE: com o transporte PARADO, carregue em **{jump}** outra vez. A forma nao \
+        "  8. O CONTROLE: com o transporte PARADO, carregue em **{jump}** outra vez. A forma nao \
          pode mexer-se. (Se mexer, a maquina esta' a escutar durante a edicao -- e ai' toda tecla \
          faz duas coisas.)"
     );
     eprintln!(
-        "  8. Volte ao painel e ponha **dash** ({dash}) numa das setas. Com o Play ligado, as duas \
-         teclas passam a levar a sitios diferentes a partir da mesma forma."
-    );
-    eprintln!(
-        "  9. Apague uma seta pela lixeira da linha. Ela some do canvas no mesmo quadro -- a lista \
-         e o desenho leem o MESMO grafo."
+        "  9. Volte ao painel e ponha **dash** ({dash}) numa das transicoes que ficou no \
+         tracinho, saindo da forma em que voce' esta'. Com o Play ligado, as duas teclas passam a \
+         levar a sitios diferentes a partir da mesma forma."
     );
 }

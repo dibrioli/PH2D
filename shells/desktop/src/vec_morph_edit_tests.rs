@@ -26,24 +26,24 @@ fn world() -> (SimWorld, ph2d_ecs::Entity) {
 
 /// **Cada id de linha resolve para o comando dela** — a tabela, e não uma cadeia de `if`.
 ///
-/// **Mutação que deve sangrar:** o laço parar na primeira linha (`0..1`) — as setas a partir da
-/// segunda ficariam **mortas sob o ponteiro**, e só a de cima funcionaria.
+/// **Mutação que deve sangrar:** o laço parar na primeira linha (`0..1`) — as transições a partir
+/// da segunda ficariam **mortas sob o ponteiro**, e só a de cima funcionaria.
 #[test]
 fn every_arrow_row_resolves_to_its_own_command() {
     use ph2d_editor::ids as i;
+    // ⭐ O botão que FAZ o conjunto (W8) — ele é o único controlo da seção sem máquina nenhuma.
+    assert_eq!(
+        arrow_cmd_for_id(i::VECTOR_MORPH_STATES_MAKE),
+        Some(ArrowCmd::MakeSet)
+    );
     for row in 0..i::MAX_MORPH_ARROWS {
-        assert_eq!(
-            arrow_cmd_for_id(i::morph_arrow_delete_id(row)),
-            Some(ArrowCmd::Delete { row }),
-            "a lixeira da linha {row} nao resolve"
-        );
         assert_eq!(
             arrow_cmd_for_id(i::morph_arrow_when_option_id(row, 3)),
             Some(ArrowCmd::SetWhen { row, action: 3 }),
             "a opcao 3 da linha {row} nao resolve"
         );
     }
-    // O CONTROLE: um id que não é de seta tem de devolver `None`, senão a tabela engoliria
+    // O CONTROLE: um id que não é da seção tem de devolver `None`, senão a tabela engoliria
     // cliques alheios.
     assert_eq!(arrow_cmd_for_id(ph2d_editor::ids::VECTOR_BOOL_UNION), None);
 }
@@ -97,19 +97,46 @@ fn an_index_beyond_the_published_list_refuses() {
     );
 }
 
-/// **Apagar tira a linha certa, e uma linha que não existe recusa.**
+/// ⛔ **NÃO HÁ como apagar uma transição, e a ausência é a lei da W8.**
+///
+/// O grafo é o completo dirigido sobre as formas do conjunto — **derivado**, não autorado. Apagar
+/// uma aresta seria apagar uma passagem que a próxima derivação repõe; *desligar é tirar a
+/// condição*, e uma seta sem condição existe e nunca acontece.
+///
+/// ⚠️ **Este gate mede a AUSÊNCIA pelo lado que o artista alcança:** nenhum id da seção resolve
+/// para outra coisa que não `MakeSet` ou `SetWhen`. Um verbo destrutivo que voltasse a ser
+/// alcançável sangraria aqui.
 #[test]
-fn deleting_removes_that_row_and_only_that_row() {
+fn no_id_in_the_section_asks_to_destroy_an_edge() {
+    use ph2d_editor::ids as i;
+    let mut seen = 0usize;
+    for row in 0..i::MAX_MORPH_ARROWS {
+        for a in 0..i::MAX_MORPH_ACTIONS {
+            let cmd = arrow_cmd_for_id(i::morph_arrow_when_option_id(row, a));
+            assert!(matches!(cmd, Some(ArrowCmd::SetWhen { .. })));
+            seen += 1;
+        }
+    }
+    // O CONTROLE POSITIVO: o laço de facto correu sobre o pool inteiro.
+    assert_eq!(seen, i::MAX_MORPH_ARROWS * i::MAX_MORPH_ACTIONS);
+    // E o grafo continua intacto depois de o único verbo de seta correr.
     let (mut sim, e) = world();
-    assert!(apply(&mut sim, e, ArrowCmd::Delete { row: 0 }, &actions()));
-    let g = &sim.world().get::<VecMorphMachine>(e).unwrap().graph;
-    assert_eq!(g.edges.len(), 1);
+    assert!(apply(
+        &mut sim,
+        e,
+        ArrowCmd::SetWhen { row: 0, action: 0 },
+        &actions()
+    ));
     assert_eq!(
-        (g.edges[0].from, g.edges[0].to),
-        (B, A),
-        "sobrou a OUTRA seta"
+        sim.world()
+            .get::<VecMorphMachine>(e)
+            .unwrap()
+            .graph
+            .edges
+            .len(),
+        2,
+        "tirar a condicao NAO tira a seta"
     );
-    assert!(!apply(&mut sim, e, ArrowCmd::Delete { row: 9 }, &actions()));
 }
 
 /// ⭐ **O Morph é achado na seleção INTEIRA, nunca no primeiro operando.**
@@ -176,6 +203,10 @@ fn a_morph_without_a_machine_publishes_the_empty_face() {
         publish(&sim, &scene, &map, &[7], actions()).expect("um Morph SEM maquina ainda publica");
     assert!(s.rows.is_empty(), "e a lista de setas vem vazia");
     assert_eq!(
+        s.can_make, 0,
+        "⛔ um conjunto ja' feito nao oferece o botao de o refazer por cima de si proprio"
+    );
+    assert_eq!(
         s.actions,
         actions(),
         "as accoes vem sempre -- o menu precisa delas"
@@ -216,10 +247,42 @@ fn the_arrow_click_reaches_the_world() {
             "a shell perdeu o `{needle}` -- {what}. A lei continua gateada e INALCANCAVEL."
         );
     }
-    // E o painel tem de FORWARDAR o clique, senão ele morre antes de chegar aqui.
+    // ⭐ E o CONJUNTO sai por outra porta, porque ele cria a entidade que o `apply` exigiria já
+    // existente. Sem esta linha o botão pinta, acende e o clique morre no `else if` do irmão.
+    for (needle, what) in [
+        (
+            "pending_morph_arrow == Some(crate::vec_morph_edit::ArrowCmd::MakeSet)",
+            "reconhecer o pedido de FAZER o conjunto",
+        ),
+        (
+            "crate::morph_set::create(",
+            "CRIAR o conjunto (o path novo + o pendente)",
+        ),
+        (
+            "crate::morph_set::upkeep(",
+            "DRENAR o pendente: pendurar a maquina, reparentar e esconder os membros",
+        ),
+    ] {
+        assert!(
+            shell.contains(needle),
+            "a shell perdeu o `{needle}` -- {what}. O botao pinta e nao faz nada."
+        );
+    }
+    // E o painel tem de FORWARDAR os dois cliques, senão eles morrem antes de chegar aqui.
     let panel = include_str!("../../../crates/ph2d-panel-vector/src/event_clicks.rs");
-    assert!(
-        panel.contains("morph_arrow_delete_id(r)"),
-        "o painel deixou de encaminhar o clique da seta: ele acende sob o rato e morre ali"
-    );
+    for (needle, what) in [
+        (
+            "ids::VECTOR_MORPH_STATES_MAKE",
+            "o botao que faz o conjunto",
+        ),
+        (
+            "morph_arrow_when_option_id(r, a)",
+            "a opcao do menu da condicao",
+        ),
+    ] {
+        assert!(
+            panel.contains(needle),
+            "o painel deixou de encaminhar {what}: ele acende sob o rato e morre ali"
+        );
+    }
 }

@@ -16,6 +16,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.shape" => "Shape",
         "panel.vector.section.blend" => "Blend",
         "panel.vector.section.morph" => "Morph",
+        // ⭐ Seccao PROPRIA (plano 32 W7) -- ela era uma sub-lista da seccao States ate' 25/08.
+        "panel.vector.section.morph_states" => "Morph States",
         "panel.vector.section.envelope" => "Envelope",
         "panel.vector.section.textpath" => "Text on Path",
         "panel.vector.section.patternpath" => "Pattern on Path",
@@ -190,19 +192,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.mode.shape" => "Shape",
         "panel.vector.mode.text" => "Text",
         "panel.vector.mode.connect" => "Connect",
-        // O pill das SETAS do Morph (plano 32 W3b) -- curto, ele divide a fileira com 13 irmaos.
-        "panel.vector.mode.morph_link" => "States",
-        // ⭐ AS SETAS do Morph (plano 32 W4) — a sub-lista dentro da seccao States.
-        "panel.vector.morph.arrows" => "Morph arrows",
+        // ⭐ A seccao MORPH STATES (plano 32 W4/W7/W8) -- seccao PROPRIA desde 25/08.
+        "panel.vector.morph.arrows" => "Transitions",
         "panel.vector.morph.current" => "Now showing:",
-        // ⚠️ A face vazia diz o GESTO, e nao so' a ausencia: «nao ha' setas» e «isto esta'
-        // partido» leem-se igual sem uma frase que nomeie o pill e o movimento da mao.
-        "panel.vector.morph.arrows.empty" => {
-            "No arrows yet. Pick States in the mode row, then drag from one shape onto another."
-        }
+        // ⭐ O realce da transicao VIVA. ⛔ ASCII: a fonte da casa nao cobre U+2190..U+21FF.
+        "panel.vector.morph.live_mark" => ">",
+        // ⭐ A face de CRIACAO: o botao, e as duas frases do que falta para ele existir.
+        "panel.vector.morph.make" => "Make Morph States",
+        "panel.vector.morph.make.shapes" => "shapes ->",
+        "panel.vector.morph.make.transitions" => "transitions",
+        "panel.vector.morph.need_shapes" => "Select two or more shapes to make a state machine.",
+        "panel.vector.morph.too_many" => "Too many shapes for one state machine. The most is",
         "panel.vector.morph.when" => "When",
         "panel.vector.morph.when.none" => "\u{2014}",
-        "panel.vector.morph.beyond" => "more arrows not shown here",
+        "panel.vector.morph.beyond" => "more transitions not shown here",
         "panel.vector.mode.fillet" => "Fillet",
         "panel.vector.mode.chamfer" => "Chamfer",
         "panel.vector.mode.width" => "Width",

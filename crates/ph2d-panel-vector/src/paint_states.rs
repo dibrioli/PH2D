@@ -40,14 +40,9 @@ use crate::state;
 impl BodyCtx<'_> {
     /// **A seção STATES** — as poses desta forma e quanto tempo a transição leva.
     pub(crate) fn ui_states_section(&mut self, y: f32) -> f32 {
-        // ⭐ **A seção existe se a seleção tiver UMA das duas coisas**: poses (uma forma de UI) ou
-        // setas (um Morph). É a lei do Inspector — *ele mostra o que o objecto TEM* (ADR-0166) —, e
-        // é o que dispensa uma aba: um objecto raramente é as duas.
-        let poses = state::ui_states_state();
-        let morph = state::morph_states_state();
-        if poses.is_none() && morph.is_none() {
+        let Some(s) = state::ui_states_state() else {
             return y;
-        }
+        };
         let (mut y, collapsed) = self.section_header(
             ids::VECTOR_SECTION_STATES,
             tr("panel.vector.section.states"),
@@ -56,14 +51,6 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        // ⚠️ **As setas vêm PRIMEIRO quando existem**: num Morph elas são o assunto, e as poses de
-        // UI abaixo (se as houver) são o caso raro de um objecto que é as duas coisas.
-        if let Some(m) = morph.as_ref() {
-            y = self.morph_arrow_rows(m, y);
-        }
-        let Some(s) = poses else {
-            return y;
-        };
 
         // ⭐ **A FACE VAZIA: a seleção não tem forma que a governe.**
         //

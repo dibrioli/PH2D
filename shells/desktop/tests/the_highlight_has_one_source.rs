@@ -194,9 +194,14 @@ fn only_the_listed_gestures_arm_a_sound() {
     const ARMED: &[(&str, usize, &str)] = &[
         ("src/radial_input.rs", 1, "escolher no pie menu"),
         (
+            // ⭐ +1 (plano 32 W8): **fazer o conjunto de estados do Morph**. É deliberado e é da
+            // mesma espécie do primeiro — um COMMIT: o clique cria um objecto, reparenta as formas
+            // escolhidas e esconde-as, tudo de vez. A mão fez uma coisa grande, e o som confirma-a.
+            // ⛔ Nada nas transições em si soa: elas correm **durante a reprodução**, e um som por
+            // transição seria o app a comentar o que o motor decidiu.
             "src/render_loop/mod.rs",
-            2,
-            "consolidar a booleana · o interruptor da preview",
+            3,
+            "consolidar a booleana · o interruptor da preview · fazer o conjunto de Morph States",
         ),
         (
             "src/input_dispatch.rs",

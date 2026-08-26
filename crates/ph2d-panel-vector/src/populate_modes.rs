@@ -23,7 +23,6 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
     button(store, ids::VECTOR_MODE_TEXT);
     // Connect (a linha que gruda em duas formas) + Build (Shape Builder).
     button(store, ids::VECTOR_MODE_CONNECT);
-    button(store, ids::VECTOR_MODE_MORPH_LINK);
     button(store, ids::VECTOR_MODE_BUILD);
     // Pick Shapes (Blend): o botão mora na seção BLEND, mas registra-se aqui.
     button(store, ids::VECTOR_MODE_PICKBLEND);
@@ -51,8 +50,9 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
 /// próprio `MAX_MORPH_ARROWS`, e um pool fixo é o que o resto deste painel faz. ⛔ Sem isto, cada
 /// controlo nasce **morto sob o ponteiro** — o defeito que esta linha já pagou três vezes.
 pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
+    // O botão que CRIA o conjunto: ele é o único controlo da seção quando não há máquina nenhuma.
+    button(store, ids::VECTOR_MORPH_STATES_MAKE);
     for row in 0..ids::MAX_MORPH_ARROWS {
-        button(store, ids::morph_arrow_delete_id(row));
         // A CONDIÇÃO é um menu, e um menu não é um botão: registá-lo como botão faria o clique
         // acender o chip e nunca abrir a lista. (A cicatriz da swatch do painel de tokens, e a
         // dos dois números do Input Map.)

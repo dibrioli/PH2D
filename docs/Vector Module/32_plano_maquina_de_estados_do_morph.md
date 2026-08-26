@@ -243,3 +243,127 @@ curva de `Morph` da timeline. Ele guarda **o `t` e só o `t`**. A máquina escre
 pré-visualização entra no undo.
 
 > ⚠️ **Meça cada linha deste plano antes de a honrar.** Escrito em 2026-08-25.
+
+---
+
+## §5 — ⭐⭐ O PIVÔ de 2026-08-25: um botão, o grafo completo, e as setas deixam de se ver
+
+> Enio, depois do smoke:
+>
+> > *"É impressão minha ou vc contaminou ou até mesmo estragou a feature states previamente
+> > implementada? Os states de morph deveriam ter sessão exclusiva. Outra coisa: melhor criar um
+> > modo automático de atribuição: 1) o usuário seleciona todas as peças que estarão envolvidas na
+> > máquina de estados do morph. 2) Com o clique de um único botão um objeto novo surge na
+> > hierarquia tendo como filhos as shapes escolhidas. Todas as setas são atribuídas automaticamente
+> > cobrindo todas as morphs possíveis entre todas as formas (tanto de ida como de volta). As setas
+> > são virtuais e ninguém jamais vê. No canvas uma única shape aparece (a shape do estado atual) e
+> > as demais ficam ocultas. Na seção exclusiva dos estados no painel aparece a opção de atribuição
+> > de inputs para cada uma das morphs possíveis. Restaure ao original o painel e funcionamento da
+> > seção states para criação de animações."*
+
+### §5.1 — A contaminação: o que a W4 fez, e por que o argumento dela era irrelevante
+
+A W4 pôs as transições do Morph **dentro** da seção `States` — a das poses de UI e do Smart Animate.
+O argumento escrito no código era o [ADR-0166](../architecture/decisions/) (*o Inspector mostra o que
+o objecto **TEM***) mais *"um objecto raramente é as duas coisas"*.
+
+⚠️ **Os dois são verdadeiros, e nenhum deles era a pergunta.** O efeito prático foi:
+
+| o que a seção `States` fazia antes | o que passou a fazer |
+|---|---|
+| aparece com uma forma única na seleção | aparece **também** por causa de um Morph |
+| o corpo é sempre poses | o corpo pode ser transições de outra feature |
+
+⇒ *A lei do ADR-0166 diz **o que mostrar**, nunca **onde**.* Duas features com donos diferentes,
+histórias diferentes e gates diferentes debaixo de um cabeçalho só é **uma porta a mais na seção de
+quem chegou primeiro** — e quem chegou primeiro é quem paga a regressão.
+
+⛔⛔ **A causa de fundo é a mesma da auditoria do Input Map, e é o achado que importa:** dos doze
+gates da W4, **nenhum olhava para o que era PINTADO**. Todos mediam o mapa e o estado publicado.
+É por isso que doze verdes conviveram com um cabeçalho alheio a aparecer. O gate novo
+([`seam_morph_states.rs`](../../crates/ph2d-panel-vector/tests/seam_morph_states.rs)) mede a
+**ausência nos dois sentidos** — um morph não pinta o cabeçalho `States`, e poses não pintam o
+`Morph States` —, e a mutação que repõe a forma exacta da W4 sangra com essa mensagem.
+
+**A restauração é literal:** `paint_states.rs` voltou por `git checkout main --` e o
+`git diff main` desse ficheiro é **vazio**.
+
+### §5.2 — O modo automático: `n` formas, `n(n-1)` transições, um passo de undo
+
+O clique em **Make Morph States** faz quatro coisas **no mesmo quadro**:
+
+1. nasce o objecto (um `VecPath` vazio + `VecMorph`, que é o que a cena **desenha**);
+2. as formas escolhidas viram **filhos** dele (`ChildOf`), na ordem de z;
+3. cada uma ganha `Visibility::hidden()` — *no canvas aparece uma forma só*;
+4. o `VecMorphMachine` recebe o **grafo completo dirigido** sobre elas.
+
+⚠️ **Um passo de undo, não quatro.** As quatro escritas caem no mesmo quadro e o `post_frame_undo`
+regista por DIFF. Reparentar num quadro e esconder no seguinte daria dois passos, e o primeiro
+deixaria o artista com `n` formas empilhadas.
+
+⚠️ **`sources = [start, start]` e `t = 0.0`**, e **não** `VecMorph::new` (que nasce a `t = 0,5` de
+propósito, para um morph autorado *se anunciar*). Aqui é o contrário: o conjunto tem de mostrar
+**exactamente** o estado inicial, senão a primeira coisa na tela é uma forma que ninguém desenhou.
+
+⚠️ **A ordem das arestas é determinística** (`from` externo, `to` interno, ambos na ordem dos
+membros). A lista do painel indexa por **posição**: uma ordem que dependesse de iteração de mapa
+faria o menu de uma linha escrever a condição noutra depois de um undo.
+
+⚠️ **Toda transição nasce SEM condição.** É a metade que torna o grafo completo seguro — se cada
+aresta nascesse com uma acção, um conjunto de 9 formas nasceria com 72 regras a disparar todas na
+primeira tecla.
+
+### §5.3 — O TETO, medido: 9 formas
+
+O recurso é o **relógio de pintura do painel**, e o número que manda é o de **formas** (o artista
+escolhe formas; as setas são derivadas). Medido com o `MockPanelHost` a pintar o painel Vector
+inteiro, release, 2026-08-25 — o painel **sem** esta seção custa `0,746 ms`:
+
+| formas | setas `n(n-1)` | painel | delta da seção | % de um quadro de 16,7 ms |
+|---:|---:|---:|---:|---:|
+| 7 | 42 | `1,181 ms` | `0,435 ms` | 7,07 % |
+| 8 | 56 | `1,330 ms` | `0,584 ms` | 7,97 % |
+| **9** | **72** | **`1,497 ms`** | **`0,752 ms`** | **8,97 %** |
+| 10 | 90 | `1,699 ms` | `0,954 ms` | 10,18 % |
+| 11 | 110 | `1,899 ms` | `1,154 ms` | 11,37 % |
+
+Slope linear: **`0,0104 ms` por linha**. ⇒ **9 é o último `n` em que esta seção sozinha não custa
+mais do que TODO o resto do painel junto** (`0,752` contra `0,746`). Em 10 ela passa a custar mais
+que todas as outras seções somadas, e o painel existe para responder a mais perguntas do que esta.
+
+⛔ **O pool de ids NÃO é o recurso** — foi a primeira hipótese e a medição refutou-a: registar 132
+linhas × 25 widgets custa `0,293 ms` **uma vez**, no `populate`, nunca por quadro.
+
+⛔ **A régua não ficou como gate.** Ela divide dois relógios, que é exactamente a família de flakes
+sob fan-out do `CLAUDE.md` §5.0 — a tabela acima é o registo, e re-medir é rodar a sonda.
+
+### §5.4 — ⛔ RECUSAS MEDIDAS desta wave (não reconstrua sem ler)
+
+| o que foi retirado | por quê |
+|---|---|
+| **as setas desenhadas no canvas** (W3a, `morph_arrow_overlay.rs` + gates) | *"as setas são virtuais e ninguém jamais vê"* — decisão directa do dono. E desenhar `n(n-1)` setas entre formas que **já estão escondidas** é ruído sobre uma resposta que ninguém precisa de ler no canvas. |
+| **o modo de arrasto forma→forma** (W3b, `DrawMode::MorphLink` + `morph_link_gesture.rs`, dez sítios) | o grafo passou a ser **completo por construção** ⇒ o arrasto criaria uma aresta **que já existe**. Um gesto cujo produto já está lá é um gesto que não faz nada, e o pill dele competiria com treze irmãos pela fileira. |
+| **a lixeira por linha** (`ArrowCmd::Delete`) | o conjunto de arestas é uma **função pura** das formas. Apagar uma linha seria apagar uma passagem que a próxima derivação repõe. *Desligar uma transição é tirar-lhe a condição* — o «—» do menu —, e uma seta sem condição existe e nunca acontece. |
+
+⚠️ **A razão de fundo é uma só:** *duas portas para a mesma pergunta divergem em silêncio*. Com o
+botão a gerar `n(n-1)` e um arrasto a acrescentar à mão, a lista deixaria de ser derivável e a
+próxima derivação apagaria o trabalho do arrasto.
+
+### §5.5 — As provas de mutação (11, todas sangraram)
+
+Arnês: verde-antes · a mutação **compila** · o gate **correu** (`running 1 test`) · restore por
+escrita.
+
+| mutação | gate que sangrou |
+|---|---|
+| `from != to` passa a aceitar o laço | `the_graph_covers_every_ordered_pair_in_both_directions` |
+| `start` = a **última** forma | `the_first_shape_chosen_is_the_start` |
+| os membros **não** se escondem | `the_set_owns_the_shapes_hides_them_and_shows_the_start` |
+| o conjunto nasce a `t = 0,5` | `the_set_owns_the_shapes_hides_them_and_shows_the_start` |
+| um Morph vira estado de outro conjunto | `a_morph_is_never_a_state_of_another_set` |
+| o teto de formas deixa de valer | `one_shape_or_too_many_refuses_without_littering_the_scene` |
+| ⭐ **a forma EXACTA da W4 de volta** (`ui_states_section` consulta o morph) | `a_morph_machine_never_makes_the_ui_states_section_appear` |
+| a seção do Morph pintada **sempre** | `ui_poses_never_make_the_morph_states_section_appear` |
+| o botão aparece com **uma** forma | `one_shape_offers_no_button_at_all` |
+| o botão sai da allowlist do painel | `the_make_button_is_alive_and_reaches_the_bus` |
+| o botão sai do `populate` (morto sob o ponteiro) | `the_make_button_is_alive_and_reaches_the_bus` |

@@ -78,6 +78,7 @@
 - [Pintar/agarrar: UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) · [hit-test próprio herda a REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) · [blindar o hit-index muda as sondas](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md)
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md)
 - [Declarar cura a MENSAGEM, não o congelamento — o compositor é o 2.º observador](feedback_whoever_freezes_the_loop_declares_it_and_a_computation_freezes_too.md)
+- [Costura de UI (13)](reference_topic_ui_seam_discipline.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [Ler a regra ≠ lado certo dela](feedback_reading_the_rule_is_not_the_same_as_being_on_the_right_side_of_it.md) · [clique ALTERNA, retângulo SOMA](feedback_a_click_toggles_a_marquee_adds_and_the_asymmetry_is_the_law.md)
 - [Pintar/despachar: MESMA fonte](feedback_paint_and_dispatch_must_read_the_same_source.md) · [lista à mão + predicado = duas respostas](feedback_a_hand_written_list_beside_a_predicate_is_two_answers.md)
 - [Fileira condicional: CHAVE, não índice](feedback_a_conditional_row_turns_every_index_based_dispatch_into_a_silent_bug.md) · [«acabou» lê igual a «pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md)

@@ -71,4 +71,7 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_widget::VECTOR_SECTION_WIDGET,
     // OS ESTADOS de UI (plano UI/UX W7): as poses e o tween entre elas.
     super::vector_states::VECTOR_SECTION_STATES,
+    // ⭐ OS ESTADOS do MORPH (plano 32 W7): a máquina que decide em que forma o objecto está.
+    // ⛔ Seção PRÓPRIA, e não uma sub-lista da de cima — ver o módulo `vector_morph`.
+    super::vector_morph::VECTOR_SECTION_MORPH_STATES,
 ];

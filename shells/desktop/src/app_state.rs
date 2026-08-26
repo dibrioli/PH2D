@@ -1133,12 +1133,6 @@ pub(crate) struct App {
     /// `last_pointer`) — arrastar do vazio com a ferramenta Vector activa. `None` = parado; no
     /// release dirige `box_select_with` ou `lasso_select_with`, conforme a forma que ele congelou.
     pub(crate) vec_marquee: Option<crate::vec_marquee::VecMarquee>,
-    /// **A seta do Morph em construção** (modo `DrawMode::MorphLink`, Down..Up).
-    ///
-    /// ⚠️ **Transiente e não documento:** ela vive entre o Down e o Up, e o que sobra do gesto é
-    /// uma aresta no `VecMorphMachine`. Guardá-la no mundo faria um projecto reabrir a meio de um
-    /// arrasto.
-    pub(crate) morph_link_drag: Option<crate::morph_link_gesture::MorphLinkDrag>,
     /// **O conector em construção** (modo `DrawMode::Connect`, Down..Up). O path já está na
     /// cena desde o Down e o componente já está na entidade: o "preview" do arrasto É o
     /// conector de verdade, re-cozido pela MESMA `route` a cada frame — o que se vê é o que
@@ -1168,6 +1162,12 @@ pub(crate) struct App {
     pub(crate) vec_blend_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecBlend)>,
     /// O morph recém-criado, à espera de a entidade dele nascer no `sync` (espelho do blend).
     pub(crate) vec_morph_pending: Option<(ph2d_vec_scene::VecPathId, ph2d_ecs::VecMorph)>,
+    /// ⭐⭐ **O CONJUNTO de estados à espera da entidade dele nascer** (plano 32 W8).
+    ///
+    /// ⚠️ **Slot próprio e não um campo a mais no irmão acima:** o payload é outro — aquele leva um
+    /// componente, este leva também a **lista de quem vai ser reparentado e escondido**. Fundi-los
+    /// obrigaria o `morph_live::upkeep` a saber de reparentar, que não é o assunto dele.
+    pub(crate) vec_morph_set_pending: Option<crate::morph_set::MorphSetPending>,
     /// O canto da gaiola sob arrasto agora (`(bits do CONTAINER do envelope, índice 0..4)`), ou
     /// `None` — o gesto de Fatia 1 (ADR-0129), armado no press de Node e limpo no release. O alvo é a
     /// ENTIDADE (o container não tem path — Fatia 3). Runtime-only: um arrasto vivo não é documento (o
@@ -1278,12 +1278,6 @@ pub(crate) struct App {
     /// `ph2d_vec_render::draw_blend_overlay`. Não está na cena (não é pickável) — é o que torna o
     /// blend UM objeto, e não N. Runtime-only.
     pub(crate) vec_blend_overlay: Vec<ph2d_vec_scene::VecPath>,
-    /// **As máquinas de Morph deste frame, prontas a desenhar** (plano 32 W3a).
-    ///
-    /// ⚠️ **Dois tempos, um frame** — o mesmo desenho do `vec_blend_overlay` logo acima: colhida
-    /// onde o `VecScene` e os afins deste frame estão vivos, consumida onde a câmera existe.
-    /// Guardá-la entre frames faria a seta descrever o mundo do frame anterior.
-    pub(crate) vec_morph_arrows: Vec<crate::render_loop::morph_arrow_overlay::MachineView>,
     /// **As máquinas de Morph VIVAS** (plano 32 W5) — onde cada uma está agora.
     ///
     /// ⚠️ **Runtime-only, e não pode ser outra coisa:** uma máquina é *onde a forma está agora*, e

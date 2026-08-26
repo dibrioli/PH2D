@@ -143,8 +143,6 @@ mod measure_bridge_phases;
 /// O que a FITA de entrada grava hoje — a sonda que abre a wave de persistência.
 #[cfg(test)]
 mod measure_player_tape;
-/// **As setas da máquina de Morph, no canvas** (plano 32 W3a).
-pub(crate) mod morph_arrow_overlay;
 pub(crate) mod motion_bridge;
 /// A trajetória do objeto selecionado no canvas (ADR-0141, Fatia 3).
 pub(crate) mod motion_path_overlay;
@@ -3514,9 +3512,9 @@ impl crate::App {
                                 // MESMA porta que os campos numéricos do Transform.
                                 pending_frame_preset = Some(p);
                             } else if let Some(cmd) = crate::vec_morph_edit::arrow_cmd_for_id(*id) {
-                                // ⭐ Uma SETA do Morph (plano 32 W4): apagar, ou escolher a acção
-                                // que a dispara. O valor mora no COMPONENTE (mundo), então o
-                                // clique é da shell — o painel só mostra.
+                                // ⭐ A seção MORPH STATES (plano 32 W4/W8): fazer o conjunto, ou
+                                // escolher a acção que dispara uma transição. As duas mexem no
+                                // MUNDO, então o clique é da shell — o painel só mostra.
                                 pending_morph_arrow = Some(cmd);
                             } else if *id == ph2d_editor::ids::VECTOR_BOOL_APPLY {
                                 pending_bool_apply = true;
@@ -7886,6 +7884,15 @@ impl crate::App {
                 &self.vec_entities,
                 &mut self.vec_morph_pending,
             );
+            // ⭐⭐ **O CONJUNTO de estados** (plano 32 W8) — mesma posição e mesma razão do irmão
+            // acima, e mais uma: é aqui que os membros são reparentados e escondidos, e as quatro
+            // escritas têm de cair no MESMO quadro para o Ctrl+Z desfazer o conjunto inteiro.
+            crate::morph_set::upkeep(
+                sim,
+                vec_scene,
+                &self.vec_entities,
+                &mut self.vec_morph_set_pending,
+            );
             // **Envelope Objects (ADR-0129 Fatia 3):** SEM `upkeep` — o envelope não cria path
             // nenhum (o container não tem path), então não há entidade nova esperando o `sync`. Tudo
             // (assar + reparentar + pendurar) já aconteceu síncrono no `create`. O `settle` pula os
@@ -8020,11 +8027,6 @@ impl crate::App {
                 &vec_xf,
                 &mut self.vec_morph_plans,
             );
-            // **As SETAS da máquina de Morph** (plano 32 W3a) — colhidas AQUI, onde o `VecScene` e
-            // os afins deste frame estão vivos, e desenhadas onde a câmera existe. Mesmo desenho de
-            // dois tempos do `vec_blend_overlay`.
-            self.vec_morph_arrows =
-                morph_arrow_overlay::gather(sim, vec_scene, &vec_xf, &self.vec_entities);
             // **Envelope Objects (ADR-0129):** a forma de cada filho é a fonte autorada deformada
             // pela gaiola comum — re-cozida aqui, todo frame. Sem xforms nem mapa: a fonte é LOCAL do
             // container e é o `Transform` do container (via `vec_transform::build`) que leva os filhos
@@ -8439,8 +8441,9 @@ impl crate::App {
                 // **OS ESTADOS de UI** (plano UI/UX W7) — que poses esta forma tem, e qual delas a
                 // cena mostra AGORA. O `live` sai da MESMA máquina que escreve o mundo: um
                 // readout derivado noutro lugar diria um papel e a cena mostraria outro.
-                // ⭐ **AS SETAS do Morph** (plano 32 W4) — que arestas a máquina tem, e qual
-                // delas a cena percorre. As acções vêm do Input Map do projecto: elas são o
+                // ⭐ **A seção MORPH STATES** (plano 32 W4/W8) — as transições da máquina e qual
+                // delas a cena percorre; ou, sem máquina, quantas formas a seleção tem prontas a
+                // virar um conjunto. As acções vêm do Input Map do projecto: elas são o
                 // vocabulário das condições, e lê-las no painel seria uma segunda leitura.
                 ph2d_panel_vector::state::set_morph_states_state(crate::vec_morph_edit::publish(
                     sim,
@@ -8580,10 +8583,33 @@ impl crate::App {
                         primary,
                     ),
                 );
-                // ⭐ **A SETA do Morph** (plano 32 W4) — apagar, ou trocar a condição. As acções
-                // são as MESMAS que o menu mostrou (as do Input Map do projecto): resolver o
-                // índice contra uma segunda leitura poria o nome escolhido a apontar para outro.
-                if let Some(cmd) = pending_morph_arrow
+                // ⭐⭐ **FAZER O CONJUNTO** (plano 32 W8) — as formas escolhidas viram um objecto
+                // com todas as transições ligadas. ⚠️ **Porta própria e não o `apply`**: ele age
+                // sobre o componente de um Morph que aqui ainda **não existe**, e é o `sync` do
+                // quadro seguinte que faz nascer a entidade — daí o pendente.
+                if pending_morph_arrow == Some(crate::vec_morph_edit::ArrowCmd::MakeSet) {
+                    if let Some(p) = crate::morph_set::create(
+                        sim,
+                        vec_scene,
+                        &self.vec_entities,
+                        &sel,
+                        ph2d_editor::ids::MAX_MORPH_STATES,
+                    ) {
+                        eprintln!(
+                            "[ph2d-vec] morph states: {} formas, {} transicoes",
+                            p.members.len(),
+                            p.members.len() * (p.members.len() - 1)
+                        );
+                        self.vec_morph_set_pending = Some(p);
+                        // ⭐ **COMMIT** — criar o conjunto muda o documento de vez, e é exactamente
+                        // o gesto que uma confirmação pelo ouvido serve (a lei do D1).
+                        self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
+                    }
+                }
+                // ⭐ **A CONDIÇÃO de uma transição** (plano 32 W4). As acções são as MESMAS que o
+                // menu mostrou (as do Input Map do projecto): resolver o índice contra uma segunda
+                // leitura poria o nome escolhido a apontar para outro.
+                else if let Some(cmd) = pending_morph_arrow
                     && let Some(e) =
                         crate::vec_morph_edit::morph_of_selection(sim, &self.vec_entities, &sel)
                 {
@@ -8866,21 +8892,12 @@ impl crate::App {
             // do `dispatch` (que já pôs as fontes no z da cena, embaixo); o overlay reestabelece a
             // pilha do blend por cima. O interleaving fino contra o resto da cena é da Fase C.
             ph2d_vec_render::draw_blend_overlay(&self.vec_blend_overlay, cam_affine, vector_scene);
-            // **As SETAS da máquina de Morph** (plano 32 W3a) — chrome, em px de ECRÃ, por cima do
-            // desenho: uma seta é a explicação de uma regra, e ela tem de se ler por cima das
-            // formas que liga.
-            morph_arrow_overlay::draw(&self.vec_morph_arrows, camera, window_size, vector_scene);
-            // E a seta EM VOO, enquanto o arrasto dura (plano 32 W3b). ⚠️ Mesmo âmbar, mesmo
-            // traço: *o que se vê durante o arrasto é o que se obtém*.
-            if let Some(d) = self.morph_link_drag {
-                morph_arrow_overlay::preview(
-                    d.from_world,
-                    self.last_pointer,
-                    camera,
-                    window_size,
-                    vector_scene,
-                );
-            }
+            // ⛔ **AS SETAS DO MORPH NÃO SE DESENHAM** (Enio, 2026-08-25: *"as setas são virtuais e
+            // ninguém jamais vê"*). A W3a pintava-as aqui, em âmbar, entre as formas que ligavam.
+            // Elas deixaram de existir como desenho porque deixaram de ser AUTORADAS: o conjunto é
+            // o grafo COMPLETO, gerado por um botão — desenhar `n(n-1)` setas entre formas que já
+            // estão escondidas é ruído sobre uma resposta que ninguém precisa de ler no canvas.
+            // A lista da seção *Morph States* é a superfície, e é lá que a condição se escolhe.
             // **Pick Shapes** (ADR-0128 C2b): realça as formas escolhidas e costura a ORDEM de
             // clique numa polilinha (a prévia do spine). Fora do modo Pick, a lista não vale —
             // limpa, para não vazar escolhas velhas para o próximo blend.

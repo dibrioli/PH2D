@@ -1,31 +1,47 @@
-//! ⭐ **AS SETAS do Morph** (plano 32 W4) — irmã de [`super::paint_states`] e de
-//! [`super::paint_signals`] pelo mesmo corte: ali *que poses esta forma tem* e *o que a faz mudar
-//! de pose*; aqui *entre que formas ela transita, e o que dispara cada passagem*.
+//! ⭐ **A seção MORPH STATES** (plano 32 W4/W7) — *entre que formas este objecto transita, e o que
+//! dispara cada passagem*.
 //!
-//! # Por que ela vive na MESMA seção
+//! # Seção PRÓPRIA — e a W4 tinha-a posto na de outra pessoa
 //!
-//! Enio, 2026-08-24: a máquina *"deverá funcionar à seção states do módulo vector"*. E a lei da
-//! casa concorda: **o Inspector mostra o que o objecto TEM** (ADR-0166). Um objecto raramente é as
-//! duas coisas — uma forma-hospedeiro tem **poses**, um Morph tem **setas** —, então a seção
-//! mostra uma ou outra sem que ninguém tenha de escolher uma aba.
+//! ⛔⛔ Até 2026-08-25 estas linhas eram uma **sub-lista dentro da seção `States`**, a das poses de
+//! UI e do Smart Animate. O argumento era o ADR-0166 (*o Inspector mostra o que o objecto TEM*) mais
+//! *"um objecto raramente é as duas coisas"*. Os dois são verdadeiros e **nenhum deles era a
+//! pergunta**: o efeito prático foi o cabeçalho de uma feature **já entregue** passar a aparecer por
+//! causa de outra — Enio leu como contaminação, e era.
+//!
+//! ⚠️ *A lei diz o que MOSTRAR, nunca ONDE.* Duas features com donos, histórias e gates diferentes
+//! debaixo de um cabeçalho só é uma porta a mais na seção de quem chegou primeiro; e quem chegou
+//! primeiro é quem paga a regressão.
+//!
+//! # UM BOTÃO faz o conjunto, e as setas são GERADAS (W8)
+//!
+//! Enio, 2026-08-25: *"o usuário seleciona todas as peças... com o clique de um único botão um
+//! objeto novo surge na hierarquia tendo como filhos as shapes escolhidas. Todas as setas são
+//! atribuídas automaticamente cobrindo todas as morphs possíveis... As setas são virtuais e ninguém
+//! jamais vê."*
+//!
+//! ⇒ esta seção tem **duas faces**, e nunca uma terceira:
+//!
+//! - **sem máquina**, com 2+ formas escolhidas: o botão que as transforma no conjunto;
+//! - **com máquina**: as `n(n-1)` transições, cada uma com a acção que a dispara.
+//!
+//! ⛔ **Não há gesto de desenhar seta, e não há lixeira.** O grafo é o completo dirigido sobre as
+//! formas do conjunto — **derivado**, não autorado —, então acrescentar ou apagar uma seta seria
+//! mexer numa resposta que a derivação repõe. *Desligar uma transição é tirar-lhe a condição.*
 //!
 //! # Duas linhas por seta, e a segunda é a que evita a mentira
 //!
-//! A primeira diz **de onde para onde** e traz os dois verbos (percorrer, apagar); a segunda traz
-//! a **condição**. É o mesmo corte do `paint_signals`, e pela mesma razão: espremer as duas numa
-//! linha só daria um chip de meia dúzia de caracteres, e o artista não conseguiria ler a acção que
-//! escolheu.
+//! A primeira diz **de onde para onde**; a segunda traz a **condição**. É o mesmo corte do
+//! `paint_signals`, e pela mesma razão: espremer as duas numa linha só daria um chip de meia dúzia
+//! de caracteres, e o artista não conseguiria ler a acção que escolheu.
 //!
 //! ⚠️ **A condição é um MENU das acções do Input Map, nunca um campo de texto.** Um nome digitado à
 //! mão pode não existir, e uma seta que espera uma acção inexistente **nunca dispara** — sem uma
 //! palavra na tela a dizer porquê. *Um modelo que aceita o que o painel não mostra produz estado
 //! inalcançável.*
 
-use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::widget::{
-    Dropdown, DropdownOption, IconButtonStyle, IconGlyph, paint_dropdown_chip, paint_icon_button,
-};
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
@@ -34,12 +50,36 @@ use crate::ids;
 use crate::paint_sections::{BodyCtx, LABEL_COL_W};
 use crate::state::{self, MorphStatesState};
 
-/// O lado de cada botão de ícone ao fim da linha da seta.
-const ICON_W: f32 = 28.0; // LITERAL-PX-OK: um botão de ícone quadrado na altura da row
-
 impl BodyCtx<'_> {
-    /// **As setas desta máquina** — ou a face vazia que diz como desenhar a primeira.
-    pub(crate) fn morph_arrow_rows(&mut self, s: &MorphStatesState, y: f32) -> f32 {
+    /// **A seção MORPH STATES** — o cabeçalho próprio, e some inteira quando a seleção não tem
+    /// máquina nenhuma.
+    ///
+    /// ⚠️ **Ela pergunta só ao `morph_states_state`**, e é isso que a mantém fora do caminho da
+    /// seção de poses: as duas nunca se consultam, então nenhuma pode fazer a outra aparecer.
+    pub(crate) fn morph_states_section(&mut self, y: f32) -> f32 {
+        let Some(s) = state::morph_states_state() else {
+            return y;
+        };
+        let (y, collapsed) = self.section_header(
+            ids::VECTOR_SECTION_MORPH_STATES,
+            tr("panel.vector.section.morph_states"),
+            y,
+        );
+        if collapsed {
+            return y;
+        }
+        self.morph_arrow_rows(&s, y)
+    }
+
+    /// **As setas desta máquina** — ou a face que oferece o botão que a cria.
+    fn morph_arrow_rows(&mut self, s: &MorphStatesState, y: f32) -> f32 {
+        // ⭐ **A FACE DE CRIAÇÃO vem PRIMEIRO quando não há máquina**, e ela é a seção inteira: sem
+        // conjunto não há transição nenhuma de que falar, e um cabeçalho «Transitions» por cima de
+        // nada leria como avaria.
+        if s.rows.is_empty() {
+            return self.morph_make_face(s, y);
+        }
+
         let mut y = self.label_line(tr("panel.vector.morph.arrows"), y);
 
         // ⭐ **O READOUT: em que forma a máquina está AGORA.**
@@ -51,17 +91,9 @@ impl BodyCtx<'_> {
             y = self.label_line(&format!("{} {cur}", tr("panel.vector.morph.current")), y);
         }
 
-        // ⭐ **A FACE VAZIA — e ela diz o GESTO, não só a ausência.**
-        //
-        // ⚠️ Sem esta linha o artista vê um cabeçalho e nada por baixo, e *"não há setas"* e
-        // *"esta janela está partida"* leem-se igual. A frase nomeia o pill e o movimento da mão.
-        if s.rows.is_empty() {
-            return self.label_line(tr("panel.vector.morph.arrows.empty"), y);
-        }
-
         let shown = s.rows.len().min(ids::MAX_MORPH_ARROWS);
         for (i, row) in s.rows.iter().enumerate().take(shown) {
-            y = self.arrow_head_row(i, row, y);
+            y = self.arrow_head_row(row, y);
             y = self.arrow_when_row(i, row, &s.actions, y);
         }
         // ⚠️ **Acima do tecto a lista DIZ o que ficou de fora**, em vez de o esconder: o grafo
@@ -80,35 +112,69 @@ impl BodyCtx<'_> {
         y
     }
 
-    /// A linha de CIMA: `de -> para`, o botão de percorrer e o de apagar.
-    fn arrow_head_row(&mut self, i: usize, row: &state::MorphArrowRow, y: f32) -> f32 {
+    /// ⭐ **A face de CRIAÇÃO** — o botão que transforma a seleção num conjunto de estados, ou a
+    /// frase que diz o que falta para ele existir.
+    ///
+    /// ⚠️ **Três respostas, e as três são diferentes de propósito:** *escolha mais formas* ·
+    /// *escolheu formas a mais* · *aqui está o botão*. Colapsar as duas primeiras numa só faria o
+    /// artista que escolheu doze formas ler *"escolha duas ou mais"* e concluir que o app está
+    /// partido.
+    fn morph_make_face(&mut self, s: &MorphStatesState, y: f32) -> f32 {
+        if s.can_make < 2 {
+            return self.label_line(tr("panel.vector.morph.need_shapes"), y);
+        }
+        if s.can_make > ids::MAX_MORPH_STATES {
+            // ⚠️ **A frase traz o TETO**, e o teto vem da constante — nunca de um número escrito na
+            // tabela de i18n, que envelheceria no dia em que a medição mudasse.
+            return self.label_line(
+                &format!(
+                    "{} {}.",
+                    tr("panel.vector.morph.too_many"),
+                    ids::MAX_MORPH_STATES
+                ),
+                y,
+            );
+        }
+        // ⚠️ A conta das transições é a MESMA lei do produto (`n(n-1)`), dita antes do clique: o
+        // botão promete um número, e é esse número que a lista vai mostrar.
+        let n = s.can_make;
+        let y = self.label_line(
+            &format!(
+                "{n} {} {} {}",
+                tr("panel.vector.morph.make.shapes"),
+                n * (n - 1),
+                tr("panel.vector.morph.make.transitions")
+            ),
+            y,
+        );
+        self.action_button(
+            ids::VECTOR_MORPH_STATES_MAKE,
+            tr("panel.vector.morph.make"),
+            y,
+        )
+    }
+
+    /// A linha de CIMA: `de -> para`, e o realce de quem está a correr AGORA.
+    ///
+    /// ⛔ **Não há lixeira, e a ausência é a lei da W8:** o grafo é o COMPLETO dirigido sobre as
+    /// formas do conjunto, gerado — não autorado. Apagar uma linha seria apagar uma passagem que a
+    /// próxima derivação repõe. *Desligar uma transição é tirar-lhe a condição* (o «—» do menu
+    /// abaixo), e uma seta sem condição existe e nunca acontece.
+    fn arrow_head_row(&mut self, row: &state::MorphArrowRow, y: f32) -> f32 {
         let gap = Spacing::Xs.px();
-        let label_w = (self.inner_w - ICON_W - gap).max(0.0);
         // ⛔ **`->` em ASCII, e não a seta tipográfica.** A fonte da casa não cobre o bloco de
         // setas do Unicode (U+2190..U+21FF) e o glifo sairia como uma caixa vazia — há gate a
         // varrer isto (`no_tofu_glyphs`), e ele já mordeu três vezes neste repo.
-        self.label_line_in(
-            &format!("{} -> {}", row.from, row.to),
-            Rect::new(self.inner_x, y, label_w, self.row_h),
-        );
-
-        // ⛔ **A seta NÃO tem botão de «percorrer» nesta wave, e a ausência é deliberada:** o que
-        // ele faria é pôr a máquina VIVA a andar, e a máquina viva nasce na W5. Um botão pintado
-        // antes disso seria um clique que não faz nada — *é assim que o artista aprende a não
-        // confiar nos botões desta seção*, e é a lei que a própria seção de poses já escreve
-        // ("Show e Clear só existem depois do Rec").
-        let _ = row.live;
-        let del = ids::morph_arrow_delete_id(i);
-        let del_rect = Rect::new(self.inner_x + label_w + gap, y, ICON_W, self.row_h);
-        self.hit_index.register(del, del_rect);
-        paint_icon_button(
-            del_rect,
-            IconGlyph::Builtin(IconId::Trash),
-            IconButtonStyle::Plain,
-            self.store.button_visual(del),
-            self.scene,
-            self.theme,
-        );
+        let text = format!("{} -> {}", row.from, row.to);
+        // ⭐ **A seta VIVA diz-se pelo texto**, porque é a única linha da lista que descreve o
+        // presente e não uma regra. Sem marca nenhuma, uma lista de `n(n-1)` linhas não responde à
+        // pergunta que o artista faz enquanto toca: *qual delas está a acontecer?*
+        let shown = if row.live {
+            format!("{} {text}", tr("panel.vector.morph.live_mark"))
+        } else {
+            text
+        };
+        self.label_line_in(&shown, Rect::new(self.inner_x, y, self.inner_w, self.row_h));
         y + self.row_h + gap
     }
 

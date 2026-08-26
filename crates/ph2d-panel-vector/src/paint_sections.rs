@@ -66,8 +66,9 @@ mod ui_states;
 #[path = "paint_signals.rs"]
 mod ui_signals;
 
-/// ⭐ **AS SETAS do Morph** (plano 32 W4) — irmã das duas acima, na MESMA seção *States*: um
-/// objecto tem poses **ou** setas, e o Inspector mostra o que ele TEM (ADR-0166).
+/// ⭐ **A seção MORPH STATES** (plano 32 W4/W7) — irmã das duas acima por assunto e **seção
+/// própria** por decisão de produto: ela era uma sub-lista da `ui_states` e fazia o cabeçalho de
+/// uma feature já entregue aparecer por causa de outra.
 #[path = "paint_morph_states.rs"]
 pub(crate) mod morph_arrows;
 
@@ -227,6 +228,10 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::expand_section);
         y = self.step(y, |b, y| b.blend_section(snap, y));
         y = self.step(y, |b, y| b.morph_section(y));
+        // ⭐ A MÁQUINA do Morph (plano 32 W7) — logo abaixo da seção que cria o objecto, porque a
+        // ordem é o assunto: ali *o que ele é*, aqui *como ele decide em que forma está*.
+        // ⛔ Seção PRÓPRIA e não uma sub-lista da `ui_states_section`: ver `paint_morph_states`.
+        y = self.step(y, |b, y| b.morph_states_section(y));
         // O Envelope fica junto dos outros deformadores não-destrutivos (Blend/Morph): os três
         // produzem geometria DERIVADA de uma relação viva, e o artista os procura no mesmo lugar.
         y = self.step(y, Self::envelope_section);

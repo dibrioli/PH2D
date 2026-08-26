@@ -135,7 +135,6 @@ fn mode_button_click_switches_tool_mode_through_seam() {
         (ids::VECTOR_MODE_SHAPE, DrawMode::Shape),
         // O 6º pill: o CONECTOR.
         (ids::VECTOR_MODE_CONNECT, DrawMode::Connect),
-        (ids::VECTOR_MODE_MORPH_LINK, DrawMode::MorphLink),
         // **Pick Shapes** (Blend) — coleta formas na ordem de clique. O botão dele mora na seção
         // BLEND (não nesta fileira), mas o id/seam é o mesmo.
         (ids::VECTOR_MODE_PICKBLEND, DrawMode::PickBlend),
@@ -635,7 +634,12 @@ fn every_section_header_is_registered_as_collapsible() {
         // FECHADA. Elas aparecem JUNTAS sobre uma moldura, e só a CLIP sobre uma estrela; foi
         // separá-las que deixou o recorte sair da moldura sem levar consigo os presets de
         // dispositivo e o *Show as Panel*.
-        36,
+        // +1 (plano 32 W7): MORPH_STATES — a máquina do Morph. ⛔ **Seção PRÓPRIA**, e é uma
+        // correção: a W4 pendurara-a dentro da STATES acima, e o cabeçalho de uma feature já
+        // entregue passou a aparecer por causa de outra (Enio, 2026-08-25). ⚠️ **Este número soma
+        // entre linhas e se CONTA, nunca se escolhe** — duas linhas que escrevam o mesmo literal
+        // fundem MUDAS e a contagem fica uma abaixo da lista.
+        37,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

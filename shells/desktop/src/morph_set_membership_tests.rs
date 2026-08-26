@@ -131,11 +131,10 @@ fn disconnecting_the_last_but_one_dissolves_the_set() {
     upkeep(&mut sim, &scene, &map, &mut pending);
     let host_id = scene.paths().last().unwrap().id;
     let host = Entity::from_bits(map[&host_id]);
-    let mut states = ph2d_ui_state::StateSets::default();
 
     // A primeira saida e' normal: tres formas, sobram duas.
     assert_eq!(
-        crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 0),
+        crate::morph_set::disconnect_row(&mut sim, &map, host, 0),
         None,
         "com tres formas o ⊘ nao pode dissolver nada"
     );
@@ -143,7 +142,7 @@ fn disconnecting_the_last_but_one_dissolves_the_set() {
 
     // ⭐ A segunda cruza a fronteira: o conjunto DISSOLVE-SE, e nomeia o path a remover.
     assert_eq!(
-        crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 0),
+        crate::morph_set::disconnect_row(&mut sim, &map, host, 0),
         Some(host_id),
         "⛔ ficou um conjunto com UMA forma -- ele desenha um fantasma da primeira"
     );
@@ -193,9 +192,9 @@ fn disconnecting_the_shown_shape_leaves_no_ghost() {
     // O CONTROLE: o conjunto nasce a mostrar a PRIMEIRA forma -- que e' a que vamos tirar.
     assert_eq!(showing(&sim), [ids[0], ids[0]]);
 
-    crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 0);
+    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
     assert_eq!(
-        crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &map),
+        crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states,),
         1,
         "a varredura tinha de arrumar ESTE conjunto"
     );
@@ -210,7 +209,7 @@ fn disconnecting_the_shown_shape_leaves_no_ghost() {
 
     // ⭐ E ela NAO se mexe mais: uma segunda varredura sobre um conjunto ja' arrumado nao faz nada.
     assert_eq!(
-        crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &map),
+        crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states,),
         0,
         "a varredura tem de ser inerte sobre um conjunto coerente"
     );
@@ -245,8 +244,8 @@ fn the_reconcile_keeps_what_the_canvas_shows() {
         m.t = 1.0;
     }
     // O artista tira a 1a -- a ORIGEM, que nao se ve^.
-    crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 0);
-    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &map);
+    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
+    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
 
     assert_eq!(
         sim.world().get::<ph2d_ecs::VecMorph>(host).unwrap().sources,
@@ -292,8 +291,8 @@ fn the_ghost_does_not_come_back_on_the_next_tick() {
     );
     assert!(!machines.is_empty(), "a fixtura nao criou maquina nenhuma");
 
-    crate::morph_set::disconnect_row(&mut sim, &map, &mut states, host, 0);
-    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &map);
+    crate::morph_set::disconnect_row(&mut sim, &map, host, 0);
+    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
     // ⭐ E agora o quadro SEGUINTE, ainda dentro do modo.
     crate::morph_machine_drive::tick(
         &mut machines,

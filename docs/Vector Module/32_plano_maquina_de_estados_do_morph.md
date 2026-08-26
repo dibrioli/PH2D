@@ -1142,13 +1142,76 @@ deixou o texto para trás.)
 ⇒ as três operações de tabela saíram para `vec_ui_state_table.rs`, com o corte por assunto: *o
 objecto moveu-se · o objecto saiu · a forma que uma pose nomeia deixou de ser um estado*.
 
-### §14.4 — Gates e mutações
+### §14.4 — ⚠️ E a W11i **mudou o dono desta cura** — leia o §15 antes de a honrar
 
-| Gate | Onde |
+A W11h pôs a substituição **dentro do gesto ⊘**, e a §14.2 dizia que a rota do arrasto ficava
+*«nomeada, não curada»*. O Enio respondeu no mesmo dia (5.º report) que **as três rotas** têm de a
+ter, e a cura mudou-se para a **derivação**. ⇒ o `disconnect_row` **já não** arruma a tabela; quem
+arruma é o `morph_machine_drive::reconcile`. **O §15 é a fonte.**
+
+---
+
+## §15 — ⭐⭐⭐ W11i: as TRÊS rotas, e a cura sai do gesto para a DERIVAÇÃO (5.º report)
+
+> Enio, 2026-08-26: *"eu tinha no morph state wide, tall e thin. criei a anim state com wide e thin.
+> Desconectei thin. Na animação tall deveria ter sido colocada no lugar de thin. Isso deve acontecer
+> para quando desconectar do morph state ou quando **deletar** a shape que participa do morph ou se
+> o usuário **mexer na hierarquia** movendo uma das shapes para fora do morph states."*
+
+### §15.1 — ⚠️ Primeiro: o ⊘ JÁ fazia isso, e a sonda mostrou-o com os números dele
+
+```
+[probe] wide=0 tall=1 thin=2
+[probe] antes:  Default=Some(0) Hover=Some(2)
+[probe] a linha do thin e' 2
+[probe] depois: Default=Some(0) Hover=Some(1)   ← o `tall` entrou, como ele esperava
+```
+
+⇒ o pedido real é a **segunda metade** da frase dele: as outras **duas** rotas.
+
+### §15.2 — A lei, e por que o gesto era o sítio errado
+
+A W11h curou **uma** rota porque pôs a substituição dentro do `disconnect_row` — e o ⊘ é a **única
+das três que passa por uma função**. Apagar a forma e arrastá-la para fora na Hierarquia mudam a
+lista **sem passar por lado nenhum**.
+
+⇒ a arrumação sai do gesto e passa para a **derivação**, que é onde a lista já vive
+(`morph_machine_drive::repair_states`, dentro do `reconcile`):
+
+> *se a tabela nomeia o que o conjunto já não tem, ela é arrumada* — e as três rotas ficam cobertas
+> **sem que nenhuma delas tenha código a reagir**.
+
+⭐ **Curar no gesto cura um caminho; curar na derivação cura a pergunta.** É a terceira vez que esta
+linha aprende a mesma coisa: a **lista** (W11), a **visibilidade** (W11f) e agora a **tabela**.
+
+### §15.3 — As duas coisas que ficam desalinhadas, e são diferentes
+
+1. **um OBJECTO que saiu da sub-árvore** — a pose dele fica na tabela e o `install` do próximo Show
+   atira a forma solta para a origem do conjunto ⇒ `forget_object_in_all_states`;
+2. **uma FORMA que a pose do hospedeiro nomeia** e que já não é estado ⇒
+   `replace_morph_shape_in_all_states`, que põe outra do conjunto no lugar.
+
+⚠️ **Só sobre conjuntos de Morph States** (o laço itera `VecMorphMachine`), e é o que a torna
+segura: um widget comum tem poses de objectos que podem legitimamente sair e voltar, e varrer a
+tabela dele seria **apagar autoria**.
+
+⚠️ **Ela corre TARDE no quadro**, depois do despacho dos painéis — as três rotas acontecem ali —,
+para a arrumação entrar na **mesma** fotografia do gesto e o artista desfazer tudo num Ctrl+Z. A
+correr antes, chegaria um quadro atrasada e custaria um **segundo** passo de undo.
+
+### §15.4 — Gates e mutações
+
+| Gate | O que afirma |
 |---|---|
-| `disconnecting_a_shape_does_not_break_the_states_animation` | `morph_set_states_repair_tests.rs` |
-| `a_step_naming_a_non_member_is_ignored` | idem |
+| `every_route_that_removes_a_shape_repairs_the_states_animation` | as **três** rotas, no mesmo laço, com os números do report |
+| `the_pose_of_the_departed_object_goes_with_it` | e a pose do objecto que saiu vai junto — pela rota do **arrasto**, que o gesto nunca cobriu |
+| `a_step_naming_a_non_member_is_ignored` | a blindagem do consumidor (W11h) fica |
 
-**Quatro mutações, todas sangram:** o `disconnect_row` não substituir · a escolha ignorar o que já
-está em uso · a substituição tocar poses que não nomeavam a forma que saiu · o `apply_ui_steps`
-largar a checagem de pertença.
+⚠️ **Um gate MUDOU-SE em vez de morrer:** o `disconnecting_a_shape_takes_it_out_of_the_recorded_states`
+media uma consequência do ⊘; o assunto dele passou a ser da derivação, e ele vive agora como
+`the_pose_of_the_departed_object_goes_with_it` — medindo a rota que o gesto nunca teve. Fica uma
+nota no sítio antigo a dizer para onde foi.
+
+**Quatro mutações, todas sangram.** ⚠️ E uma **sobreviveu com razão**: o `if states.get(h).is_empty()`
+é um **atalho de custo**, não uma lei — com a tabela vazia os laços não fazem nada. O comentário
+passa a dizer isso, *para a próxima leitura não procurar o gate que ele nunca vai ter*.

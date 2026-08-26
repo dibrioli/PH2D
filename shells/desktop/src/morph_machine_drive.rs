@@ -292,7 +292,9 @@ pub(crate) fn play(
 pub(crate) fn reconcile(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
     map: &crate::vec_entities::VecEntityMap,
+    states: &mut ph2d_ui_state::StateSets,
 ) -> usize {
     let hosts: Vec<u64> = sim
         .world_mut()
@@ -304,6 +306,12 @@ pub(crate) fn reconcile(
     for bits in hosts {
         let e = Entity::from_bits(bits);
         let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
+        // ⭐⭐⭐ **AS POSES primeiro** (W11i) — elas são dado AUTORADO, e a repartição é a lei:
+        // aqui arruma-se o que uma tabela de States diz sobre um conjunto que mudou por baixo
+        // dela; abaixo, o par que a cena desenha.
+        if repair_states(sim, scene, map, states, e, &shapes) {
+            fixed += 1;
+        }
         let Some(m) = sim.world().get::<VecMorph>(e) else {
             continue;
         };
@@ -334,6 +342,88 @@ pub(crate) fn reconcile(
         }
         machines.remove(&bits);
         fixed += 1;
+    }
+    fixed
+}
+
+/// ⭐⭐⭐ **A TABELA DE STATES SEGUE O CONJUNTO, venha a mudança por onde vier** (plano 32 W11i).
+///
+/// Enio, 2026-08-26, 5.º report: *"Isso deve acontecer para quando desconectar do morph state ou
+/// quando deletar a shape que participa do morph ou se o usuário mexer na hierarquia movendo uma
+/// das shapes para fora do morph states."*
+///
+/// ⛔⛔ **A W11h curou UMA das três rotas.** Ela pôs a substituição dentro do gesto ⊘ — e o ⊘ é a
+/// única das três que passa por uma função. **Apagar** a forma e **arrastá-la para fora** na
+/// Hierarquia mudam a lista sem passar por lado nenhum, e a tabela ficava a nomear o que já não
+/// existe.
+///
+/// ⇒ a repartição sai do gesto e passa para a **derivação**, que é onde a lista já vive: *se a
+/// tabela nomeia o que o conjunto já não tem, ela é arrumada* — e as três rotas ficam cobertas
+/// **sem que nenhuma delas tenha código a reagir**.
+///
+/// # As duas coisas que ficam desalinhadas, e são diferentes
+///
+/// 1. **um OBJECTO que saiu da sub-árvore** — a pose dele fica na tabela e o `install` do próximo
+///    Show atira a forma solta para a origem do conjunto ⇒ [`crate::vec_ui_state_edit::forget_object_in_all_states`];
+/// 2. **uma FORMA que a pose do hospedeiro nomeia** e que já não é estado ⇒
+///    [`crate::vec_ui_state_edit::replace_morph_shape_in_all_states`], que põe outra do conjunto no
+///    lugar (o pedido do Enio).
+///
+/// ⚠️ **Só sobre conjuntos de Morph States** (o chamador itera `VecMorphMachine`), e é o que a
+/// torna segura: um widget comum tem poses de objectos que podem legitimamente sair e voltar, e
+/// varrer a tabela dele seria apagar autoria.
+///
+/// ⚠️ **Ela corre TARDE no quadro**, depois do despacho dos painéis — assim a arrumação entra na
+/// **mesma** fotografia do gesto que a causou, e o artista desfaz tudo num Ctrl+Z. A correr antes,
+/// ela chegaria um quadro atrasada e custaria um **segundo** passo de undo.
+///
+/// Devolve `true` se arrumou alguma coisa.
+fn repair_states(
+    sim: &SimWorld,
+    scene: &ph2d_vec_scene::VecScene,
+    map: &crate::vec_entities::VecEntityMap,
+    states: &mut ph2d_ui_state::StateSets,
+    host: Entity,
+    shapes: &[ph2d_vec_scene::VecPathId],
+) -> bool {
+    let Some(h) = crate::morph_set::path_of(map, host) else {
+        return false;
+    };
+    // ⚠️ **ATALHO DE CUSTO, e não uma lei** — dito assim de propósito: com a tabela vazia os laços
+    // abaixo não fazem nada, então apagar esta linha **não muda uma única resposta** (a mutação que
+    // a apagou sobreviveu à suíte, e está certo que tenha). O que ela poupa é o `members`, que anda
+    // a sub-árvore e aloca, uma vez por conjunto por quadro. *Não vestir um atalho de lei é o que
+    // impede a próxima leitura de procurar o gate que ele nunca vai ter.*
+    if states.get(h).is_empty() {
+        return false;
+    }
+    let live = crate::vec_ui_state_edit::members(sim, scene, map, h);
+    // ⚠️ **A leitura vem toda ANTES da escrita**: as duas portas abaixo reescrevem papéis
+    // inteiros, e recolher a meio faria a segunda varredura ler uma tabela já mudada.
+    let mut gone_objects: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
+    let mut gone_shapes: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
+    for st in states.get(h) {
+        for p in &st.objects {
+            if !live.contains(&p.id) && !gone_objects.contains(&p.id) {
+                gone_objects.push(p.id);
+            }
+            if let Some(s) = p.morph_shape
+                && !shapes.contains(&s)
+                && !gone_shapes.contains(&s)
+            {
+                gone_shapes.push(s);
+            }
+        }
+    }
+    let mut fixed = false;
+    for id in gone_objects {
+        fixed |= crate::vec_ui_state_edit::forget_object_in_all_states(states, h, id);
+    }
+    // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro estado
+    // nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
+    for s in gone_shapes {
+        fixed |= crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, s, shapes)
+            .is_some();
     }
     fixed
 }

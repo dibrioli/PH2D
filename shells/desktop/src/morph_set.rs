@@ -396,16 +396,18 @@ pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> 
     path_of(map, host)
 }
 
-/// ⭐⭐ **O ⊘ DE UMA LINHA, inteiro** — a porta que o despacho chama (plano 32 W11d).
+/// ⭐⭐ **O ⊘ DE UMA LINHA** — a porta que o despacho chama (plano 32 W11d).
 ///
-/// Ela compõe as **duas** metades que o gesto significa, e existe por isso: escritas como duas
-/// linhas no braço do `match` do laço de render, elas **não são alcançáveis de um teste** — e a
-/// segunda foi esquecida durante uma wave inteira.
+/// Ela resolve a **linha** do painel contra a lista derivada e decide entre desconectar e dissolver
+/// — escrita como duas linhas no braço do `match` do laço de render, ela **não seria alcançável de
+/// um teste**.
 ///
-/// 1. a forma sai do conjunto ([`disconnect`]) e recupera a pose de mundo;
-/// 2. ⛔ **e leva as poses dela** ([`crate::vec_ui_state_edit::forget_object_in_all_states`]): um
-///    estado grava a sub-árvore com a pose **LOCAL** de cada filho, então a pose antiga faria o
-///    `install` do próximo Show atirar a forma solta para a origem do conjunto.
+/// ⛔ **Ela NÃO arruma a tabela de States**, e a ausência é a lei da W11i: o ⊘ é **uma** das três
+/// rotas que tiram uma forma do conjunto (as outras são **apagar** e **arrastar para fora** na
+/// Hierarquia, que não passam por função nenhuma). ⇒ a arrumação mudou-se para a **derivação**
+/// ([`crate::morph_machine_drive::reconcile`]), que corre no mesmo quadro, depois dos gestos, e
+/// cobre as três **sem que nenhuma tenha código a reagir**. *Curar no gesto cura um caminho; curar
+/// na derivação cura a pergunta.*
 ///
 /// ⛔⛔ **E a TERCEIRA metade: tirar a penúltima DISSOLVE o conjunto** (W11f).
 ///
@@ -424,7 +426,6 @@ pub(crate) fn dissolve(sim: &mut SimWorld, map: &VecEntityMap, host: Entity) -> 
 pub(crate) fn disconnect_row(
     sim: &mut SimWorld,
     map: &VecEntityMap,
-    states: &mut ph2d_ui_state::StateSets,
     host: Entity,
     row: usize,
 ) -> Option<VecPathId> {
@@ -436,18 +437,6 @@ pub(crate) fn disconnect_row(
         return dissolve(sim, map, host);
     }
     disconnect(sim, map, shape);
-    if let Some(h) = path_of(map, host) {
-        crate::vec_ui_state_edit::forget_object_in_all_states(states, h, shape);
-        // ⭐⭐⭐ **E OUTRA FORMA DO CONJUNTO TOMA O LUGAR DELA nas poses** (W11h) — Enio,
-        // 2026-08-26: *"se o usuário desconectar uma shape, coloque outra shape do conjunto em seu
-        // lugar de modo a não quebrar as anims."*
-        //
-        // ⚠️ **São duas coisas diferentes e as duas são precisas:** a de cima tira a pose da forma
-        // que saiu (senão o Show a puxa de volta para dentro do conjunto); esta arruma as poses do
-        // **HOSPEDEIRO** que a nomeavam como *«a forma que eu mostro»*.
-        let rest: Vec<VecPathId> = shapes.into_iter().filter(|s| *s != shape).collect();
-        crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, shape, &rest);
-    }
     None
 }
 

@@ -8034,16 +8034,6 @@ impl crate::App {
             // ⛔ **O playhead deixou de ser a porta**, e a troca é a cura de um report do Enio
             // (2026-08-25): o Play **não tranca o teclado do editor**, então com ele a andar as
             // setas do teclado morfavam a forma *e* moviam as formas. Este modo tranca.
-            // ⭐⭐⭐ **A RECONCILIAÇÃO, todo quadro e FORA do modo** (W11g, 3.º report do Enio): a
-            // lista de estados é derivada dos filhos, mas o par que a cena DESENHA é guardado —
-            // e o ⊘ (que corre fora da pré-visualização) podia deixá-lo a nomear a forma que
-            // acabou de sair. ⚠️ **Antes do `tick`**, para a máquina renascer semeada pelo mundo
-            // já arrumado.
-            crate::morph_machine_drive::reconcile(
-                &mut self.morph_machines,
-                sim,
-                &self.vec_entities,
-            );
             crate::morph_machine_drive::tick(
                 &mut self.morph_machines,
                 sim,
@@ -8707,13 +8697,7 @@ impl crate::App {
                         // LEVAR as poses dela — não é alcançável de um teste escrita neste braço, e
                         // foi assim que ela ficou por escrever uma wave inteira.
                         crate::vec_morph_edit::MorphCmd::Disconnect { row } => {
-                            crate::morph_set::disconnect_row(
-                                sim,
-                                &self.vec_entities,
-                                ui_states,
-                                host,
-                                row,
-                            )
+                            crate::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {
                             crate::morph_set::dissolve(sim, &self.vec_entities, host)
@@ -8751,6 +8735,22 @@ impl crate::App {
                     // exactamente o que uma confirmação pelo ouvido serve.
                     self.pending_ui_sound = Some(crate::ui_sound::UiSound::Commit);
                 }
+                // ⭐⭐⭐ **A RECONCILIAÇÃO dos conjuntos de Morph States** (W11g + W11i) — o par que
+                // a cena desenha, a máquina viva, e a tabela de States, todos contra a lista de
+                // membros do quadro.
+                //
+                // ⚠️ **TARDE no quadro, depois do despacho dos painéis, e é uma decisão:** as três
+                // rotas que tiram uma forma do conjunto — o ⊘, **apagar** e **arrastar para fora**
+                // na Hierarquia — acontecem aqui em cima. A arrumação entra assim na **mesma**
+                // fotografia do gesto que a causou, e o artista desfaz tudo num Ctrl+Z; a correr
+                // antes, ela chegaria um quadro atrasada e custaria um **segundo** passo.
+                crate::morph_machine_drive::reconcile(
+                    &mut self.morph_machines,
+                    sim,
+                    vec_scene,
+                    &self.vec_entities,
+                    ui_states,
+                );
             }
             // **O AUTO LAYOUT roda entre a booleana e o alinhamento** (ADR-0153), e as duas
             // metades da ordem são a lei:

@@ -30,9 +30,9 @@ reprovar a matriz 3-OS.
 | | |
 |---|---|
 | branch | `line/components` |
-| HEAD | `963dd0e1bd22bff87733bfd4a22a88bea610ee29` |
+| HEAD | `edec553fd` (⚠️ mais 3 commits depois do fecho — as duas rodadas de smoke, §6-bis) |
 | merge-base com `main` | `0f5ce8040c07742dc1bf7a5a2c5a7e8c2f41b6cb` |
-| commits | **15** |
+| commits | **18** |
 | arquivos tocados | **143** (7 269 inserções, 1 436 remoções) |
 
 Ordem dos commits (linear; ⚠️ **não reordene** — a F2 depende do `StableId` da F1, e a poda da F3
@@ -141,6 +141,37 @@ cargo test -p ph2d-ecs                               ✓
 
 Provas de mutação (controle verde antes, restore com `touch`): tirar o guarda de presença da §7 ⇒ a
 lei RED · tirar o braço do `Collider` da tabela de seeds ⇒ o gate do seed RED.
+
+---
+
+## §6-bis ⭐ As DUAS rodadas de smoke do Enio, e o que elas apanharam
+
+A F3 foi ao smoke duas vezes. **Nenhum dos três defeitos era visível num gate verde** — e os três
+são a mesma família: *um controlo que existe e não se alcança lê-se como ausência*.
+
+| # | O que ele viu | A causa | ⚠️ Porque o gate não viu |
+|---|---|---|---|
+| 1 | o `+` não abria nada | a **alça de arrasto** do painel regista-se no FIM do quadro e cobre a banda do título — no passeio back-to-front ela ganhava ao `+` | o gate perguntava *«o id foi registado?»* e a resposta era **sim**. A pergunta certa é *«quem ganha o clique ali?»* |
+| 2 | doze knobs num objeto novo | a **§8 Visibility** escapou à poda: a lista de seções do plano não a nomeava | *uma lista escrita num plano não é o censo das que existem — o censo é o código* |
+| 3 | a lista saía pela base do ecrã | a paleta **não rolava**, e o arranjo era **posicional** (não olhava altura) | não havia gate nenhum sobre transbordo |
+
+⭐ **O nº 1 é o precedente literal do X de fechar**, cuja nota está no `paint.rs` **desde
+2026-05-24** — *«Re-register close AFTER drag…»*. O `+` nasceu sem ele. Hoje os dois partilham a
+geometria (`panel_chrome::panel_header_add_button_rect`) e o re-registo.
+
+⭐ **E o nº 3 rendeu uma TABELA** (`measure_palette`, viewport do report 1187×953):
+
+| caso | items | lei POSICIONAL | masonry |
+|---|---|---|---|
+| Empty · *Show all* | 75 | **345 px** fora | **217 px** |
+| Image · *Show all* | 75 | **143 px** fora | **99 px** |
+| só aplicável | 46/61 | 0 | 0 |
+
+⇒ **o masonry corta 37% e NÃO resolve** — os 217 px que sobram só a roda alcança. Curar um dos
+dois teria deixado o report meio fechado. ⚠️ E a peça que faltava **já estava construída**: o
+`shortest_slot` tinha o parâmetro `span` e era usado só dentro de um cartão, enquanto o arranjo de
+topo o ignorava. ⚠️ O gate novo achou ainda um **terceiro, latente**: a grade de 4 colunas exigia
+uma categoria «grande» sem razão escrita — sem ela, tudo caía numa **coluna só**.
 
 ---
 

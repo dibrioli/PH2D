@@ -921,7 +921,7 @@ impl App {
             flip_active: false,
             flip_style: None,
             ui_state_live: false,
-            ui_bool_morphs: Vec::new(),
+            ui_cooked: crate::render_loop::ui_state_bridge::Cooked::default(),
             ui_preview: crate::render_loop::ui_preview::UiPreview::default(),
             ui_states_move_all: false,
             ui_states_anchor: None,

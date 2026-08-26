@@ -407,7 +407,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // mesmo literal `96`. O valor certo nao estava em nenhum dos dois lados -- CONTA-SE.
         // ⛔ E a ORDEM dos dois campos e' o formato: `stable_id_counter` antes, `input_map`
         // depois. Troca-los nao da' erro; da' dois campos a ler os bytes um do outro.
-        (97, 13, 14),
+        // PROJECT 97→98 (plano 32 W11c): o `ObjectPose` do `ph2d-ui-state` ganhou `morph_shape`
+        // -- *em que forma o conjunto de Morph States esta' nesta pose*. As poses viajam DENTRO do
+        // `ProjectFile` (o `StateSets`), entao um campo novo nelas move o esquema do projecto.
+        // A `VecScene` e o `FlipDoc` NAO mudaram (a forma e' estado de um COMPONENTE, e o
+        // `VecMorphMachine` viaja como blob chaveado por nome).
+        // ⛔ SEM degrau de migracao, por decisao do Enio (26/08: *"nao ha' projetos salvos"*). Um
+        // v97 e' RECUSADO em voz alta -- que e' o ponto do bump: postcard e' posicional, entao sem
+        // ele o ficheiro antigo seria lido ERRADO em silencio.
+        (98, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

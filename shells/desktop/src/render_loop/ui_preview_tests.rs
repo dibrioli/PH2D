@@ -564,7 +564,7 @@ fn leaving_restores_a_host_that_only_a_signal_moved() {
             &mut scene,
             &map,
             0.05,
-            &mut Vec::new(),
+            &mut crate::render_loop::ui_state_bridge::Cooked::default(),
         );
     }
     assert!(

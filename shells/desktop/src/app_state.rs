@@ -1003,7 +1003,7 @@ pub(crate) struct App {
     /// ⚠️ **Ele é uma FOTOGRAFIA do quadro, não estado:** a ponte limpa-o em toda entrada, então
     /// um recado nunca sobrevive à transição que o produziu. É a mesma disciplina do `plans` do
     /// `BoolLive`.
-    pub(crate) ui_bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
+    pub(crate) ui_cooked: crate::render_loop::ui_state_bridge::Cooked,
     /// **O MODO DE PREVIEW** (plano UI/UX W7r) — a UI desenhada a responder ao rato.
     ///
     /// ⚠️ **Ele não é serializado e não pode ser:** guarda *onde a cena estava quando a preview

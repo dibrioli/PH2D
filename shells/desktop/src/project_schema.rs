@@ -264,4 +264,14 @@
 /// ⚠️ **Não há degrau `96 -> 97`, e a ausência é a decisão:** a v96 nunca existiu fora destas duas
 /// worktrees (nada foi publicado nela), então não há ficheiro v96 no mundo para migrar. Quem
 /// precisar de um um dia, congela o tipo primeiro — como o `ProjectFileV95` foi congelado.
-pub(crate) const PROJECT_SCHEMA: u32 = 97;
+/// ⚠️ **97 → 98 (plano 32 W11c):** o `ObjectPose` do `ph2d-ui-state` ganhou `morph_shape` — *em que
+/// forma o conjunto de Morph States está nesta pose*. As poses viajam **dentro** do `ProjectFile`
+/// (o `StateSets`), então um campo novo nelas move o esquema do projecto.
+///
+/// ⛔ **NÃO há degrau de migração, e a ausência é uma DECISÃO do Enio** (2026-08-26: *"não há
+/// projetos salvos. esse app está em fase inicial de desenvolvimento, podemos fazer o que
+/// quisermos"*). Um ficheiro v97 é **recusado em voz alta** no `project_load` (`"schema {ver} !=
+/// {PROJECT_SCHEMA} — recusado"`), que é o comportamento certo: postcard é posicional e
+/// não-auto-descritivo, então **sem o bump ele leria os bytes errados em silêncio**. *O bump é o
+/// que transforma um mal-entendido silencioso numa recusa legível.*
+pub(crate) const PROJECT_SCHEMA: u32 = 98;

@@ -10,7 +10,7 @@
 
 use crate::pose::{ObjectPose, UiState};
 use crate::role::StateRole;
-use crate::transition::{BoolMorph, Transition};
+use crate::transition::{BoolMorph, MorphStep, Transition};
 use ph2d_anim::Easing;
 use ph2d_spring::{Spring, SpringState};
 
@@ -59,6 +59,10 @@ pub struct Machine {
     /// o que muda quando o verbo troca é o que um GRUPO desenha. Guardá-la aqui é o que faz o
     /// recado ter o mesmo tempo de vida que a transição que o produziu.
     bool_morphs: Vec<BoolMorph>,
+    /// ⭐⭐⭐ **Os conjuntos de Morph States a meio de uma troca de forma** (plano 32 W11c) —
+    /// irmão exacto do [`Self::bool_morphs`], e pela mesma razão: uma pose descreve *um objecto*, e
+    /// *que forma um conjunto mostra a meio caminho* é uma pergunta que o `at` não responde.
+    morph_steps: Vec<MorphStep>,
 }
 
 impl Machine {
@@ -75,6 +79,7 @@ impl Machine {
             live,
             flight: None,
             bool_morphs: Vec::new(),
+            morph_steps: Vec::new(),
         })
     }
 
@@ -172,6 +177,7 @@ impl Machine {
         // O voo abortado leva o recado dele: um morph publicado sobre uma transição que já não
         // existe faria a booleana continuar a cozinhar duas pontas para sempre.
         self.bool_morphs.clear();
+        self.morph_steps.clear();
     }
 
     /// **A pose que a cena tem AGORA.** É o que o shell escreve de volta no mundo.
@@ -188,6 +194,16 @@ impl Machine {
     #[must_use]
     pub fn bool_morphs(&self) -> &[BoolMorph] {
         &self.bool_morphs
+    }
+
+    /// ⭐⭐⭐ **Os conjuntos de Morph States a meio de uma troca de forma, AGORA** (W11c) — o recado
+    /// que a shell entrega a quem coze o morph. Vazio é o caso comum.
+    ///
+    /// ⚠️ Irmão exacto do [`Self::bool_morphs`]: as duas descrevem *onde a cena está*, e nenhuma
+    /// das duas vai para o arquivo.
+    #[must_use]
+    pub fn morph_steps(&self) -> &[MorphStep] {
+        &self.morph_steps
     }
 
     /// **Vai para `target`.** O caminho começa na pose **VIVA**, nunca na autorada.
@@ -354,6 +370,7 @@ impl Machine {
         // (ou noutro quadro) daria um `t` que não é o do desenho, e a booleana morfaria para um
         // ponto do caminho onde a cena não está.
         self.bool_morphs = f.tr.bool_morphs(t);
+        self.morph_steps = f.tr.morph_steps(t);
         Self::overlay(&mut self.live, moved);
     }
 
@@ -370,6 +387,7 @@ impl Machine {
         // ⚠️ **A chegada apaga o recado**, e é o que faz o quadro de chegada custar UM cozimento:
         // a pose instalada já traz o verbo de destino, então não há duas pontas a morfar.
         self.bool_morphs.clear();
+        self.morph_steps.clear();
     }
 
     /// Escreve as poses em movimento por cima das vivas, casando **por id**; quem entra é

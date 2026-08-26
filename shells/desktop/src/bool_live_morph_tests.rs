@@ -335,91 +335,6 @@ fn an_arrival_that_draws_the_same_costs_nothing() {
     );
 }
 
-/// ⭐⭐⭐ **A COMPOSIÇÃO QUE O QUADRO CORRE** — a ponte dos estados publica, a booleana consome, e o
-/// desenho fica entre as duas operações.
-///
-/// ⚠️ **Ele mora aqui de propósito, e nenhuma das duas metades sozinha o mostraria.** Os gates de
-/// cima entregam recados escritos à mão a um cozimento; os da `ph2d-ui-state` provam que a
-/// transição os publica. O que só existe na costura é *o recado chegar* — e esta casa já pagou
-/// essa lição com vinte testes verdes sobre um `draw` cravado em `true`.
-///
-/// A fixture é a da cena `=74`: o grupo booleano pendurado num CHIP, que é o hospedeiro dos
-/// estados — a única disposição em que o artista consegue selecionar um hospedeiro ÚNICO com uma
-/// booleana dentro dele.
-#[test]
-fn the_frame_composes_the_bridge_and_the_cook() {
-    use ph2d_anim::{Easing, EasingFamily, EasingMode};
-    use ph2d_ui_state::{StateRole, StateSets};
-
-    let mut sim = SimWorld::default();
-    let mut scene = VecScene::new();
-    let mut map = VecEntityMap::new();
-    let chip = scene.push_path(rectangle([-2.0, -2.0], [22.0, 22.0]));
-    let outer = scene.push_path(rectangle([0.0, 0.0], [20.0, 20.0]));
-    let inner = scene.push_path(rectangle([6.0, 6.0], [14.0, 14.0]));
-    crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
-    let g = Entity::from_bits(
-        crate::vec_entities::group_entities(&mut sim, &[map[&outer], map[&inner]], "Bool".into())
-            .unwrap(),
-    );
-    sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 });
-    crate::vec_transform::reparent_keeping_world(&mut sim, g, Entity::from_bits(map[&chip]));
-
-    // As duas poses, pela porta do PRODUTO — nunca escrevendo a tabela à mão.
-    let mut states = StateSets::default();
-    let rec = |sim: &mut SimWorld, scene: &mut VecScene, states: &mut StateSets, role| {
-        crate::vec_ui_state_edit::apply(
-            sim,
-            scene,
-            &map,
-            &[chip],
-            states,
-            crate::vec_ui_state_edit::UiStateEdit::Record(role),
-        );
-    };
-    rec(&mut sim, &mut scene, &mut states, StateRole::Default);
-    sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 1 }); // Subtract no Hover
-    rec(&mut sim, &mut scene, &mut states, StateRole::Hover);
-    sim.world_mut().entity_mut(g).insert(VecBoolGroup { op: 0 }); // e a cena volta ao repouso
-
-    // ⚠️ Curva LINEAR: com a de fábrica o `t` de meio caminho é deformado, e a barra passaria a
-    // medir a curva em vez do desenho.
-    states.set_easing(chip, Easing::new(EasingFamily::Linear, EasingMode::InOut));
-    let (duration, _) = states.timing(chip);
-
-    let mut machines = crate::render_loop::ui_state_bridge::UiMachines::new();
-    crate::render_loop::ui_state_bridge::request(&mut machines, &states, chip, StateRole::Hover);
-    let mut morphs = Vec::new();
-    let animating = crate::render_loop::ui_state_bridge::dispatch(
-        &mut machines,
-        &mut states,
-        &mut sim,
-        &mut scene,
-        &map,
-        duration * 0.5,
-        &mut morphs,
-    );
-    assert!(animating, "a ponte não pôs a máquina no ar");
-    assert!(
-        !morphs.is_empty(),
-        "a ponte não publicou recado nenhum: o buraco vai APARECER de uma vez no fim"
-    );
-
-    // ⚠️ A leitura é pelo id do OUTER, e não pelo primeiro caminho da cena: o portador do
-    // resultado é a BASE do grupo, e aqui o primeiro caminho é o CHIP — que não é operando de
-    // nada. Ler o índice 0 media uma entrada VAZIA e dizia *"o buraco é a peça inteira"*.
-    let mut live = LiveGeometry::new();
-    BoolLive::default().recook(&scene, &sim, &map, &VecXforms::new(), &morphs, &mut live);
-    let drawn = live.get(&outer).cloned().unwrap_or_default();
-    let hole = hole_of(&drawn);
-    assert!(
-        (hole - HOLE * 0.25).abs() < TOL,
-        "a meio caminho o desenho mediu {hole:.2} de buraco, esperado {:.2} \
-         (0 = o recado não chegou ao cozimento, {HOLE} = ele saltou)",
-        HOLE * 0.25
-    );
-}
-
 /// ⛔ **UM RECADO DO GRUPO DE DENTRO NÃO MANDA NO GRUPO DE FORA.**
 ///
 /// ⚠️ **A base de um grupo INTERNO é também operando do EXTERNO** — e o `bool_group_op` da pose
@@ -598,3 +513,7 @@ fn the_first_frame_of_a_morph_draws_what_the_start_draws() {
         );
     }
 }
+
+/// ⭐ **A costura ponte + cozimento** — irmã por assunto, cortada pelo teto de 600 LOC.
+#[path = "bool_live_bridge_tests.rs"]
+mod bridge_tests;

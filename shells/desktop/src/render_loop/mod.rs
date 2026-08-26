@@ -5943,7 +5943,7 @@ impl crate::App {
                     vec_scene,
                     &self.vec_entities,
                     ui_state_dt,
-                    &mut self.ui_bool_morphs,
+                    &mut self.ui_cooked,
                 );
             if pending_ui_move_all_toggle {
                 self.ui_states_move_all = !self.ui_states_move_all;
@@ -8043,6 +8043,19 @@ impl crate::App {
                 self.fixed_step.fixed_dt(),
                 &mut self.preview_drive,
             );
+            // ⭐⭐⭐ **O conjunto de estados ANIMADO POR UMA TRANSIÇÃO DE UI** (plano 32 W11c) —
+            // corre depois do `tick` e ANTES do `recook`, que é a única janela em que faz sentido:
+            // ele escreve o par e o `t`, e o `recook` é quem os transforma em geometria.
+            //
+            // ⚠️ **Depois do `tick` de propósito:** se as duas coisas escrevem o mesmo objecto,
+            // quem manda é a transição de UI — ela é o gesto que o artista acabou de fazer, e a
+            // máquina de teclas é o estado de fundo.
+            crate::morph_machine_drive::apply_ui_steps(
+                sim,
+                &self.vec_entities,
+                &self.ui_cooked.morph_steps,
+                &mut self.preview_drive,
+            );
             crate::morph_live::recook(
                 sim,
                 vec_scene,
@@ -8288,7 +8301,7 @@ impl crate::App {
                 sim,
                 &self.vec_entities,
                 &vec_xf,
-                &self.ui_bool_morphs,
+                &self.ui_cooked.bool_morphs,
                 &mut vec_live,
             );
             // **QUEM FOI ABSORVIDO**, publicado no mesmo fôlego em que a absorção acontece. Sem

@@ -539,3 +539,7 @@ fn a_morph_child_never_becomes_a_state_of_the_outer_set() {
     // O CONTROLE: o de DENTRO continua intacto, com os filhos dele.
     assert_eq!(graph_of(&sim, &map, inner).shapes(), ids);
 }
+
+/// ⭐⭐⭐ **O conjunto dentro de uma animação de STATES** — irmão por assunto (W11c).
+#[path = "morph_set_ui_state_tests.rs"]
+mod ui_state_tests;

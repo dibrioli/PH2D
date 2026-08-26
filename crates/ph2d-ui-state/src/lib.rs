@@ -137,7 +137,7 @@ pub use ph2d_spring::{
     DEFAULT_DAMPING, DEFAULT_STIFFNESS, MAX_DAMPING, MAX_STIFFNESS, MIN_DAMPING, MIN_STIFFNESS,
     Spring, SpringState,
 };
-pub use transition::{BoolMorph, Transition};
+pub use transition::{BoolMorph, MorphStep, Transition};
 
 #[cfg(test)]
 #[path = "tests.rs"]
@@ -151,6 +151,12 @@ mod machine_tests;
 #[cfg(test)]
 #[path = "bool_morph_tests.rs"]
 mod bool_morph_tests;
+
+/// ⭐⭐⭐ **O conjunto de Morph States dentro de uma animação de States** (plano 32 W11c) — irmão
+/// exacto do de cima.
+#[cfg(test)]
+#[path = "morph_step_tests.rs"]
+mod morph_step_tests;
 
 #[cfg(test)]
 #[path = "binding_tests.rs"]

@@ -148,6 +148,52 @@ fn write_driven(sim: &mut SimWorld, e: Entity, drive: &mut PreviewDrive, after: 
     }
 }
 
+/// ⭐⭐⭐ **O CONJUNTO DE ESTADOS ANIMADO POR UMA TRANSIÇÃO DE UI** (plano 32 W11c).
+///
+/// Enio, 2026-08-26: *"Assegure-se que esse sistema de states em morph seja integrado e
+/// completamente compatível com o sistema de States previamente existente, ou seja, que eu possa
+/// usar o state morph nas animações criadas em States."*
+///
+/// # A costura, e por que ela é UMA função de dez linhas
+///
+/// O trabalho verdadeiro está feito de outro lado: a pose grava **que forma** (`ObjectPose::
+/// morph_shape`), e a `Transition` diz **de que forma para que forma, e a que altura**
+/// (`morph_steps`). Aqui só se escreve o que isso significa no mundo — o par e o `t` do
+/// [`VecMorph`], exactamente os dois campos que a máquina do Morph já escreve.
+///
+/// ⚠️ **Pelo LEDGER**, como tudo o que um motor escreve: isto é pré-visualização — vê-se, não se
+/// guarda nem se desfaz. Sem ele, passar o rato por um botão registaria um passo de undo.
+///
+/// ⛔ **Só sobre quem TEM máquina.** Um morph autorado à mão tem o `t` conduzido pela timeline;
+/// escrever nele a partir de uma pose mataria a curva dela.
+///
+/// ⚠️ **Ele corre DEPOIS do [`tick`] no quadro**, e a ordem é uma decisão: se as duas coisas
+/// escrevem o mesmo objecto, quem manda é a **transição de UI** — ela é o gesto que o artista
+/// acabou de fazer (um hover), e a máquina de teclas é o estado de fundo.
+pub(crate) fn apply_ui_steps(
+    sim: &mut SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    steps: &[ph2d_ui_state::MorphStep],
+    drive: &mut PreviewDrive,
+) -> usize {
+    let mut n = 0;
+    for st in steps {
+        let Some(&bits) = map.get(&st.id) else {
+            continue;
+        };
+        let e = Entity::from_bits(bits);
+        if sim.world().get::<VecMorphMachine>(e).is_none() {
+            continue;
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let t = st.t as f32;
+        write_driven(sim, e, drive, Driven::MorphPair([st.from, st.to]));
+        write_driven(sim, e, drive, Driven::MorphT(t));
+        n += 1;
+    }
+    n
+}
+
 #[cfg(test)]
 #[path = "morph_machine_drive_tests.rs"]
 mod tests;

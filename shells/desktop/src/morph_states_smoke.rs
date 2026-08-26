@@ -227,4 +227,21 @@ fn announce(app: &crate::App) {
         " 16. **Undo Morph States**, no fim da seccao: desfaz tudo. As tres formas voltam soltas e \
          visiveis, onde estavam, e o objecto some da arvore."
     );
+    eprintln!(
+        " 17. **O MORPH DENTRO DE UMA ANIMACAO DE STATES** (refaca o conjunto se desfez): com o \
+         **Morph States 3** escolhido, abra a seccao **States** (a das poses) e carregue em **Rec** \
+         no papel **Default**."
+    );
+    eprintln!(
+        " 18. Agora use o **Play** de uma das linhas para por o conjunto NOUTRA forma, e carregue \
+         em **Rec** no papel **Hover**. Os dois papeis passam a guardar formas DIFERENTES."
+    );
+    eprintln!(
+        " 19. Na seccao States, ligue o **Preview** (o das poses, nao o do Morph) e passe o rato \
+         por cima da forma: ela **MORFA** de uma para a outra, animada, e volta ao sair."
+    );
+    eprintln!(
+        "     (!) Se ela SALTAR em vez de morfar, PARE. (!) Se nao mexer, PARE -- e' a \
+         compatibilidade que nao esta' a chegar."
+    );
 }

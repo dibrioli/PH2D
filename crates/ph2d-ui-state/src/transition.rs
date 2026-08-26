@@ -50,6 +50,28 @@ pub struct BoolMorph {
     pub t: f64,
 }
 
+/// ⭐⭐⭐ **Um conjunto de Morph States a meio de uma troca de forma** — o recado que esta crate
+/// manda a quem coze o morph (plano 32 W11c).
+///
+/// ⚠️ **Irmão exacto do [`BoolMorph`]**, e a duplicação é deliberada: são dois motores diferentes
+/// do outro lado (a booleana viva e o `morph_live`), e uni-los obrigaria um deles a fingir ser o
+/// outro. O que os torna a MESMA ideia é a forma: *esta crate sabe a única coisa que ninguém mais
+/// sabe — de que estado para que estado, e a que altura do caminho — e entrega isso a quem coze.*
+///
+/// ⚠️ **Ela NÃO é serializada e não pode ser:** é *onde a cena está agora*, e o documento guarda
+/// *onde as poses são*. É a mesma fronteira que mantém a [`super::Machine`] fora do arquivo.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MorphStep {
+    /// O conjunto de estados. É por ele que quem coze descobre **qual objecto** está a mudar.
+    pub id: VecPathId,
+    /// A forma de PARTIDA.
+    pub from: VecPathId,
+    /// A forma de CHEGADA.
+    pub to: VecPathId,
+    /// Onde no caminho, já clampado a `]0, 1[`.
+    pub t: f64,
+}
+
 /// O casamento entre dois estados, computado UMA vez.
 ///
 /// ⚠️ A forma desta API não é gosto: `ph2d_vec_blend::Plan::new` custa **13 079×** um passo, então
@@ -164,6 +186,43 @@ impl Transition {
             .collect()
     }
 
+    /// ⭐⭐⭐ **Os conjuntos de Morph States que TROCAM DE FORMA neste par**, com o `t` (W11c).
+    ///
+    /// ⚠️ **Irmã exacta do [`Self::bool_morphs`]**, e o doc dela vale palavra por palavra: uma pose
+    /// descreve *um objecto*, e esta crate **não pode cozer o morph** — ela não vê ECS, não sabe o
+    /// que é um conjunto e não conhece o motor. Ela sabe *de que forma para que forma, e a que
+    /// altura*, e entrega isso a quem coze.
+    ///
+    /// ⚠️ **As pontas `t = 0` e `t = 1` devolvem VAZIO**, e não é economia: nelas o desenho é
+    /// exactamente uma das duas formas, que é o que o cozimento normal já produz a partir do
+    /// componente. Publicar um passo ali faria o quadro de chegada pagar um casamento para desenhar
+    /// o que já estava na tela.
+    ///
+    /// ⛔ **Um lado sem forma (`None`) não entra.** `None` é *«não me pronuncio»*, e interpolar a
+    /// partir dele obrigaria a inventar uma ponta — o objecto ficaria a saltar para a primeira
+    /// forma da lista no dia em que alguém gravasse uma pose antes de ele ser um conjunto.
+    #[must_use]
+    pub fn morph_steps(&self, t: f64) -> Vec<MorphStep> {
+        let tc = t.clamp(0.0, 1.0);
+        if tc <= 0.0 || tc >= 1.0 {
+            return Vec::new();
+        }
+        self.steps
+            .iter()
+            .filter_map(|s| match s {
+                Step::Moving { from, to, .. } if from.morph_shape != to.morph_shape => {
+                    Some(MorphStep {
+                        id: from.id,
+                        from: from.morph_shape?,
+                        to: to.morph_shape?,
+                        t: tc,
+                    })
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     /// **Quantos casamentos de forma este par custou.** Existe para o gate de custo: um par
     /// só-de-cor tem de responder `0`, e é esse zero que vale 12,79 ms numa cena de vinte objetos.
     #[must_use]
@@ -262,6 +321,21 @@ impl Transition {
                             to.bool_group_op
                         } else {
                             from.bool_group_op
+                        },
+                        // ⚠️ **A FORMA de um conjunto de estados é DISCRETA, e segura na ponta de
+                        // PARTIDA** — exactamente a lei do `bool_op` acima, e pela mesma razão:
+                        // não há meio caminho entre duas formas *nesta lista*, e um `VecPathId`
+                        // interpolado entre dois ids seria o id de uma **terceira forma**, ou de
+                        // nenhuma.
+                        //
+                        // ⭐ Quem desenha o meio é o motor do Morph, e não este lerp: ele recebe
+                        // as duas pontas por [`Transition::morph_steps`] e interpola a GEOMETRIA
+                        // das duas. Segurar aqui não é um degrau — é a metade honesta de uma
+                        // resposta cuja outra metade mora onde o morph de facto acontece.
+                        morph_shape: if tc >= 1.0 {
+                            to.morph_shape
+                        } else {
+                            from.morph_shape
                         },
                     };
                     // ⚠️ E a forma que sai do `Plan` recebe a tinta da POSE, não a que o `Plan`

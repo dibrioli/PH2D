@@ -163,6 +163,24 @@ pub(crate) fn capture(
         // traduzi-la aqui para o verbo efetivo seria congelar, no arquivo, uma herança que o
         // artista ainda pode mudar no grupo.
         pose.bool_op = sim.world().get::<ph2d_ecs::VecBoolOp>(e).map(|v| v.op);
+        // ⭐⭐⭐ **EM QUE FORMA o conjunto de Morph States está** (plano 32 W11c) — o quarto canal
+        // que mora num COMPONENTE e não no `VecPath`, e o que torna um conjunto animável pelo
+        // sistema de States (Enio, 2026-08-26).
+        //
+        // ⚠️ **A forma que a cena MOSTRA é `sources[1]`** — o destino do último voo —, e não
+        // `sources[0]`: `t = 1` no par `(A, B)` já **é** a forma B, e é essa a leitura que o
+        // readout do painel e o motor partilham. Gravar a origem faria o `Hover` capturar a forma
+        // de onde a máquina veio.
+        //
+        // ⛔ **Sem `VecMorphMachine` grava-se `None`**, e não a forma corrente: um morph autorado
+        // à mão (dois operandos, `t` keyado pela timeline) não é um conjunto de estados, e dizer
+        // que ele *está* numa forma faria o `install` prendê-lo lá — matando o `t` que a timeline
+        // conduz.
+        pose.morph_shape = sim
+            .world()
+            .get::<ph2d_ecs::VecMorphMachine>(e)
+            .and(sim.world().get::<ph2d_ecs::VecMorph>(e))
+            .map(|m| m.sources[1]);
     }
     // **E A OPERAÇÃO DO GRUPO acima dela** — o outro canal, e o que faz a receita inteira mudar
     // entre dois estados (as quatro de conjunto **e** as quatro receitas, que não têm decomposição
@@ -263,6 +281,23 @@ pub(crate) fn install(
                 None => {
                     em.remove::<ph2d_ecs::VecBoolOp>();
                 }
+            }
+            // ⭐⭐⭐ **A FORMA do conjunto de Morph States** (W11c) — a chegada põe o par em
+            // `(shape, shape)`, que é a forma exacta.
+            //
+            // ⛔ **`None` NÃO remove nada**, e a diferença do `bool_op` acima é o que ele
+            // significa: ali `None` é *"volta à herança"* (uma decisão); aqui é *"esta pose não se
+            // pronuncia"* — e escrever sobre um conjunto por causa disso poria uma pose antiga a
+            // mandar num objecto que ela nunca conheceu.
+            //
+            // ⚠️ **Só se houver MÁQUINA.** Um morph autorado à mão tem o `t` conduzido pela
+            // timeline; prendê-lo num par degenerado mataria a curva dela.
+            if let Some(shape) = pose.morph_shape
+                && em.get::<ph2d_ecs::VecMorphMachine>().is_some()
+                && let Some(mut m) = em.get_mut::<ph2d_ecs::VecMorph>()
+            {
+                m.sources = [shape, shape];
+                m.t = 0.0;
             }
         }
     }

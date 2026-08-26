@@ -99,6 +99,34 @@ pub struct ObjectPose {
     /// simplesmente não acontece; interpretá-lo como *"remova o `VecBoolGroup`"* faria uma pose
     /// gravada antes da booleana **destruir** a booleana no primeiro Show.
     pub bool_group_op: Option<u8>,
+    /// ⭐⭐⭐ **EM QUE FORMA o conjunto de estados do Morph está, nesta pose** (plano 32 W11c).
+    ///
+    /// `None` = este objecto não é um conjunto de estados, ou a pose não se pronuncia sobre ele.
+    ///
+    /// # A pergunta que ele responde
+    ///
+    /// Enio, 2026-08-26: *"Assegure-se que esse sistema de states em morph seja integrado e
+    /// completamente compatível com o sistema de States previamente existente, ou seja, que eu
+    /// possa usar o state morph nas animações criadas em States."*
+    ///
+    /// ⇒ um botão que veste um conjunto de Morph States pode **mudar de forma no `Hover`**: a pose
+    /// grava *que forma*, e a transição interpola até lá como interpola tudo o resto.
+    ///
+    /// ⚠️ **QUARTO membro da família do [`Self::width`], [`Self::filters`] e [`Self::bool_op`]**, e
+    /// pela razão que os três já documentam: é um canal que **não vive no `VecPath`** — ele é
+    /// estado de um componente ECS —, então a pose tem de o carregar por si. Sem ele, um conjunto
+    /// de estados seria o único objecto do editor incapaz de diferir entre *Default* e *Hover*.
+    ///
+    /// ⚠️ **É a FORMA (`VecPathId`), nunca o índice na lista.** A lista é derivada dos filhos
+    /// (W11a) e muda quando o artista arrasta um para dentro ou para fora — um índice guardado
+    /// passaria a apontar para outra forma **sem que nada mudasse na pose**. *Um índice guardado é
+    /// uma afirmação sobre uma lista que pode ter mudado.*
+    ///
+    /// ⚠️ **`None` aqui significa «não me pronuncio», e não «volta ao início»** — a mesma leitura
+    /// do [`Self::bool_op`], e o oposto do [`Self::fill`] (cujo `None` teve de ganhar um doc a
+    /// dizer que *não* é «herda»). Uma pose gravada sobre um objecto que ainda não era um conjunto
+    /// não pode passar a mandá-lo para a primeira forma no dia em que ele virar um.
+    pub morph_shape: Option<VecPathId>,
 }
 
 impl ObjectPose {
@@ -118,6 +146,7 @@ impl ObjectPose {
             filters: Vec::new(),
             bool_op: None,
             bool_group_op: None,
+            morph_shape: None,
         }
     }
 

@@ -99,9 +99,10 @@ pub(crate) fn dispatch(
     scene: &mut VecScene,
     map: &VecEntityMap,
     dt: f64,
-    morphs: &mut Vec<ph2d_ui_state::BoolMorph>,
+    out: &mut Cooked,
 ) -> bool {
-    morphs.clear();
+    out.bool_morphs.clear();
+    out.morph_steps.clear();
     // **Uma forma apagada leva os estados dela.** Sem isto o documento acumularia poses de
     // objetos que ninguém vê, e elas viajariam no arquivo para sempre.
     //
@@ -129,11 +130,31 @@ pub(crate) fn dispatch(
             // ⚠️ **Colhido dentro do mesmo `if was` que instala a pose**, e não ao lado: o recado
             // descreve o quadro que ACABOU de ser escrito. Colhê-lo de uma máquina que não andou
             // publicaria o `t` do quadro anterior sobre uma cena que já não está lá.
-            morphs.extend_from_slice(m.bool_morphs());
+            out.bool_morphs.extend_from_slice(m.bool_morphs());
+            // ⚠️ **No MESMO `if was`**, e pela razão idêntica: o recado descreve o quadro que
+            // ACABOU de ser escrito.
+            out.morph_steps.extend_from_slice(m.morph_steps());
         }
         animating |= m.is_animating();
     }
     animating
+}
+
+/// ⭐⭐ **OS RECADOS que uma transição de UI manda a quem coze** — os dois canais que a pose não
+/// exprime sozinha.
+///
+/// ⚠️ **Eles viajam JUNTOS, e não como dois argumentos**: são preenchidos no mesmo `if was`, sobre
+/// a mesma máquina e o mesmo quadro. Separá-los deixaria um chamador livre para passar os morfos de
+/// um quadro com os passos de outro — e também é o que traz o `dispatch` de volta ao teto de 7
+/// argumentos do clippy. *A cura certa já estava certa por outra razão.*
+///
+/// ⚠️ **Runtime-only:** descrevem *onde a cena está agora*; o documento guarda *onde as poses são*.
+#[derive(Default)]
+pub(crate) struct Cooked {
+    /// As formas a meio de uma troca de VERBO booleano.
+    pub(crate) bool_morphs: Vec<ph2d_ui_state::BoolMorph>,
+    /// ⭐⭐⭐ Os conjuntos de Morph States a meio de uma troca de FORMA (plano 32 W11c).
+    pub(crate) morph_steps: Vec<ph2d_ui_state::MorphStep>,
 }
 
 /// Que papel a cena mostra para `host` — o índice, para o painel.

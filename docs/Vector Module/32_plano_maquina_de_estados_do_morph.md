@@ -639,7 +639,7 @@ casa é no-op **silencioso**, e o script imprime sucesso na mesma
 > | **F1** desfazer tudo | ✅ **FEITO** (W11b) |
 > | **F2** Play · Desconectar · botão-que-abre-a-lista | ✅ **FEITO** (W11b) |
 > | **F3** arrastar na hierarquia faz entrar | ✅ **FEITO** (W11a) — e foi ele que decidiu o modelo |
-> | **F4** compatibilidade com o sistema **States** | ⏳ **POR FAZER** — a única coisa que falta; §8.4 |
+> | **F4** compatibilidade com o sistema **States** | ✅ **FEITO** (W11c) — §8.4 tem o desenho, §9 o que a implementação achou |
 
 ### §8.1 — Os três itens
 
@@ -726,3 +726,77 @@ shipou e já existem projectos com poses. A migração é obrigatória, não opc
 sobre um conjunto captura *que forma está a mostrar* — ⇒ pôr o rato num botão pode **morfá-lo**.
 É isso que se quer (é o pedido), mas quem grava o `Default` tem de gravá-lo na forma certa, senão
 todo hover volta à forma errada.
+
+
+---
+
+## §9 — ⭐⭐⭐ W11c: o conjunto de Morph States DENTRO de uma animação de States
+
+> Enio, 2026-08-26: *"Assegure-se que esse sistema de states em morph seja integrado e completamente
+> compatível com o sistema de States previamente existente, ou seja, que eu possa usar o state morph
+> nas animações criadas em States."*
+>
+> E, quando eu nomeei o preço: *"não há projetos salvos. esse app está em fase inicial de
+> desenvolvimento, podemos fazer o que quisermos."*
+
+### §9.1 — A costura, e por que ela é pequena
+
+O padrão **já existia com nome** (`BoolMorph`, 23/08). O trabalho foi segui-lo:
+
+| peça | onde | o quê |
+|---|---|---|
+| a pose grava | `ObjectPose::morph_shape: Option<VecPathId>` | em que forma o conjunto está |
+| a transição emite | `Transition::morph_steps(t) -> Vec<MorphStep>` | *de que forma, para que forma, a que altura* |
+| a máquina publica | `Machine::morph_steps()` | o mesmo `if was` do irmão |
+| a shell coze | `morph_machine_drive::apply_ui_steps` | escreve `VecMorph::sources`/`t` **pelo ledger** |
+| a autoria grava | `vec_ui_state_edit::capture` | a forma que a cena **mostra** (`sources[1]`) |
+| a chegada repõe | `vec_ui_state_edit::install` | põe o par em `(shape, shape)` |
+
+⭐ **O `ObjectPose` já tinha a FAMÍLIA certa, documentada lá dentro:** `width`, `filters`,
+`bool_op` — *canais que não vivem no `VecPath`, então a pose carrega-os por si*. O estado do Morph
+é o **quarto membro exacto**, e a única coisa que faltava era alguém escrever a linha.
+
+### §9.2 — As três leis que o campo herdou, e uma que ele não podia herdar
+
+1. **É a FORMA (`VecPathId`), nunca o índice na lista.** A lista é derivada dos filhos (W11a) e muda
+   quando o artista arrasta um para dentro — um índice guardado passaria a apontar para outra forma
+   **sem que nada mudasse na pose**.
+2. **A pose SEGURA na forma de partida até chegar** — a lei do `bool_op`: não há meio caminho entre
+   duas formas *nesta lista*, e um id interpolado seria o de uma **terceira**, ou de nenhuma. Quem
+   desenha o meio é o motor, pelo passo.
+3. **As pontas `t = 0` / `t = 1` publicam VAZIO** — ali o desenho já é uma das duas formas.
+4. ⛔ **E a que ele NÃO herdou:** no `bool_op`, `None` é *«volta à herança»* (uma decisão). Aqui é
+   *«não me pronuncio»*, e o `install` **não escreve nada** — uma pose gravada antes de o objecto
+   ser um conjunto não pode passar a mandá-lo para a primeira forma no dia em que ele virar um.
+
+### §9.3 — ⚠️ O PREÇO, e a decisão do Enio que o dissolveu
+
+As poses viajam **dentro** do `ProjectFile` (o `StateSets`), não como `ComponentBlob` ⇒ um campo
+novo move o **`PROJECT_SCHEMA`**. Medido antes de começar, e nomeado a ele.
+
+Ele respondeu que não há projectos salvos. ⇒ **`97 → 98` sem degrau de migração** — mas o bump
+**fica**, e a razão é o oposto de cerimónia: postcard é posicional e não-auto-descritivo, então
+**sem ele um ficheiro v97 seria lido ERRADO em silêncio**. Com ele, o `project_load` recusa em voz
+alta. *O bump é o que transforma um mal-entendido silencioso numa recusa legível.*
+
+### §9.4 — ⛔⛔ DUAS mutações SOBREVIVERAM, e as duas eram buracos reais
+
+Eu escrevi as duas guardas e **nenhuma tinha gate**:
+
+| mutação que sobreviveu | o dano | gate que a fecha |
+|---|---|---|
+| apagar `self.morph_steps = f.tr.morph_steps(t)` do `advance` | **a compatibilidade inteira ficava MORTA** e nada dizia: os gates do `Transition` provam que a crate *sabe* calcular o passo, e nenhum provava que a máquina o **entrega** | `a_running_machine_publishes_the_morph_steps` |
+| apagar a guarda do `VecMorphMachine` no `install` | uma pose com forma instalada sobre um **morph autorado à mão** prendê-lo-ia num par degenerado, **matando a curva** que a timeline conduz | a 2.ª metade de `a_hand_authored_morph_records_no_shape` |
+
+*Uma afirmação que mutação nenhuma mata é uma afirmação sobre nada* — e a segunda é a mesma classe
+do `select_many` da W9. **Três vezes na mesma linha**: escrevo a guarda certa e não a gateio.
+
+### §9.5 — As provas (5 mutações, todas sangram)
+
+| mutação | gate |
+|---|---|
+| `None` vira o id **zero** (a primeira forma de toda cena) | `a_side_without_a_shape_never_becomes_a_step` |
+| a pose **salta** para o destino a meio | `the_pose_holds_the_start_shape_until_it_arrives` |
+| a pose grava a forma de **onde a máquina veio** (`sources[0]`) | `a_ui_pose_records_which_shape_the_set_is_showing` |
+| a máquina nunca publica passo nenhum | `a_running_machine_publishes_the_morph_steps` |
+| o `install` prende um morph autorado à mão | `a_hand_authored_morph_records_no_shape` |

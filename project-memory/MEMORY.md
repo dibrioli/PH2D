@@ -85,7 +85,7 @@
 - [Seed dono do VALOR, dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) · [desigualdade ≠ oráculo](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md)
 - [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [mudar o modelo re-pergunta o que cada gate mede](feedback_a_model_change_must_re_ask_what_every_gate_still_measures.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
 - [FEITO ≠ ENTREGUE — sonda no consumidor](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) · [2 falhas refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md)
-- [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md)
+- [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md)
 - [Restore com mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) · [metade nova torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md)
 - [Reproduza o resultado alheio antes do seu insumo](feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md)
 - [Oráculo (9)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)

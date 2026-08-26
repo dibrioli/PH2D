@@ -197,6 +197,13 @@ pub struct ExtractReport {
     /// Células fechadas.
     pub cells_closed: usize,
     /// Percursos abandonados numa saída pendente.
+    /// ⭐⭐⭐ **ONDE os percursos falharam**, em raios normalizados — ver
+    /// [`crate::cells::CellStats::failed_radius_p50`].
+    ///
+    /// ⛔ Um total não responde a *«furos nas pontas»*; uma coordenada responde.
+    pub cells_failed_radius_p50: f32,
+    /// A régua da linha de cima: o `p99` do raio normalizado de todos os nós.
+    pub node_radius_p99: f32,
     pub cells_abandoned: usize,
     /// ⛔ Percursos que não fecharam.
     pub cells_unclosed: usize,
@@ -288,6 +295,8 @@ pub fn extract(
         walk_steps: ws.steps,
         walk_flips: ws.flips,
         cells_closed: cs.closed,
+        cells_failed_radius_p50: cs.failed_radius_p50,
+        node_radius_p99: cs.node_radius_p99,
         cells_abandoned: cs.abandoned,
         cells_unclosed: cs.unclosed,
         merged_groups: cs.merged_groups,

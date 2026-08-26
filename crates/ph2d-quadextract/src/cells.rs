@@ -43,6 +43,23 @@ const MAX_SIDES: usize = 64;
 /// O que a extracção de células mediu de si própria.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct CellStats {
+    /// ⭐⭐⭐ **ONDE os percursos falharam**, em **raios normalizados** — a mediana da
+    /// distância ao centro dos nós que abandonaram ou não fecharam, dividida pela mediana
+    /// de todos. `1,0` = no corpo · `1,3` = na ponta.
+    ///
+    /// ⛔⛔ **Ela existe porque o report do artista é sobre POSIÇÃO** (*«furos nas
+    /// pontas»*, 2026-08-25), e toda régua desta crate era um TOTAL: `10 abandonadas` não
+    /// diz se elas estão nas pontas ou espalhadas pelo corpo, e são coisas diferentes com
+    /// curas diferentes. ⚠️ *Um número que não tem coordenada não pode confirmar nem
+    /// desmentir uma frase que tem.*
+    ///
+    /// ⚠️ Sai **resumida e não como lista** porque a [`crate::ExtractReport`] é `Copy` e
+    /// tem dezenas de sítios de construção — *a forma do relatório é um contrato, e alargá-lo
+    /// para um diagnóstico é pagar em toda a workspace o que uma mediana responde.*
+    pub failed_radius_p50: f32,
+    /// O `p99` do raio normalizado de **todos** os nós — a régua com que a linha de cima
+    /// se lê. ⛔ Sem ela, `1,3` não diz se é ponta ou se a peça inteira vai a `3,0`.
+    pub node_radius_p99: f32,
     /// Células fechadas.
     pub closed: usize,
     /// ⚠️ Percursos abandonados por encontrarem uma saída **pendente**.
@@ -118,6 +135,7 @@ pub(crate) fn build(
     st.port_step_folded = folded;
 
     // ── §6.2 Fechar as células, guardando as coordenadas locais.
+    let mut failed: Vec<usize> = Vec::new();
     let mut visited = vec![false; ports.ports.len()];
     let mut cells: Vec<Vec<u32>> = Vec::new();
     let mut uf = Uf::new(nodes.len());
@@ -133,8 +151,39 @@ pub(crate) fn build(
                 merge_by_local(&ring, &mut uf);
                 cells.push(ring.iter().map(|&(n, _)| n).collect());
             }
-            Trip::Abandoned => st.abandoned += 1,
-            Trip::Unclosed => st.unclosed += 1,
+            Trip::Abandoned => {
+                st.abandoned += 1;
+                failed.push(ports.ports[start].node as usize);
+            }
+            Trip::Unclosed => {
+                st.unclosed += 1;
+                failed.push(ports.ports[start].node as usize);
+            }
+        }
+    }
+
+    // ⭐ **ONDE as falhas moram** — ver [`CellStats::failed_radius_p50`].
+    {
+        let c = nodes.iter().fold([0.0f64; 3], |a, n| {
+            [a[0] + n.pos[0], a[1] + n.pos[1], a[2] + n.pos[2]]
+        });
+        let inv = 1.0 / nodes.len().max(1) as f64;
+        let c = [c[0] * inv, c[1] * inv, c[2] * inv];
+        let r = |i: usize| {
+            let p = nodes[i].pos;
+            let d = [p[0] - c[0], p[1] - c[1], p[2] - c[2]];
+            d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+        };
+        let mut all: Vec<f64> = (0..nodes.len()).map(r).collect();
+        all.sort_by(f64::total_cmp);
+        let med = all.get(all.len() / 2).copied().unwrap_or(1.0).max(1.0e-12);
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            st.node_radius_p99 =
+                (all.get(all.len() * 99 / 100).copied().unwrap_or(med) / med) as f32;
+            let mut f: Vec<f64> = failed.iter().map(|&i| r(i) / med).collect();
+            f.sort_by(f64::total_cmp);
+            st.failed_radius_p50 = f.get(f.len() / 2).copied().unwrap_or(0.0) as f32;
         }
     }
 

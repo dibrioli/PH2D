@@ -257,7 +257,7 @@ fn main() {
                 }
             }
             println!(
-                "  degeneradas {} | celulas: {} fechadas {} abandonadas {} nao-fechadas | anel {:?} | cantos {:?} | arestas: {} bordo, {} nao-manifold",
+                "  triangulos degenerados {} | celulas: {} fechadas {} abandonadas {} nao-fechadas | anel {:?} | cantos {:?} | arestas: {} bordo, {} nao-manifold",
                 e.degenerate_faces,
                 e.cells_closed,
                 e.cells_abandoned,
@@ -276,6 +276,25 @@ fn main() {
                     .collect::<Vec<_>>(),
                 cnt.values().filter(|c| **c == 1).count(),
                 cnt.values().filter(|c| **c >= 3).count()
+            );
+            // ⭐ **A peça sai em disco quando se pede**, para o `piece_report` a medir com
+            // as réguas de POSIÇÃO que este instrumento não tem. *Duas perguntas — «a cadeia
+            // fez o quê» e «a peça está como» — e o segundo instrumento precisa da peça.*
+            if let Ok(path) = std::env::var("PH2D_CHAIN_DUMP") {
+                let text = ph2d_mesh::write_obj(&[ph2d_mesh::ExportPiece {
+                    mesh: &out,
+                    name: Some("Piece"),
+                    pose: ph2d_mesh::Pose::default(),
+                }]);
+                std::fs::write(&path, text).unwrap_or_else(|e| panic!("{path}: {e}"));
+                println!("  (peca gravada em {path})");
+            }
+            // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
+            // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
+            println!(
+                "  ⭐⭐ celulas COLAPSADAS (bigono/monogono) {} · triangulos {} | \
+                 ONDE as falhas moram: raio {:.2}x (a peca vai ate' {:.2}x)",
+                e.degenerate_cells, e.triangles, e.cells_failed_radius_p50, e.node_radius_p99
             );
             println!(
                 "  ⭐ SAIDA: {} verts, {} quads, X = {} | ordem limpa {:?} | orfas {} disputadas {} fugidas {}",

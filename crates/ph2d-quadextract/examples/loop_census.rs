@@ -221,8 +221,7 @@ fn main() {
     // ⚠️ E a **contagem** sai ao lado porque as duas leituras se confundem: uma malha com
     // menos irregulares tem-nos mais afastados por construção.
     {
-        let valence: BTreeMap<u32, usize> =
-            at_vert.iter().map(|(v, e)| (*v, e.len())).collect();
+        let valence: BTreeMap<u32, usize> = at_vert.iter().map(|(v, e)| (*v, e.len())).collect();
         let irregular: Vec<u32> = valence
             .iter()
             .filter(|(_, n)| **n != 4)

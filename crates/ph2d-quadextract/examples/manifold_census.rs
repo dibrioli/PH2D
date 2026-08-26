@@ -95,11 +95,7 @@ fn spoke(pos: &[[f32; 3]], a: u32, b: u32, f: &ph2d_mesh::Face) -> [f32; 3] {
         .unwrap_or(a);
     let d = sub(pos[c as usize], pos[a as usize]);
     let t = dot(d, e);
-    let r = [
-        d[0] - t * e[0],
-        d[1] - t * e[1],
-        d[2] - t * e[2],
-    ];
+    let r = [d[0] - t * e[0], d[1] - t * e[1], d[2] - t * e[2]];
     let rl = norm(r).max(1e-20);
     [r[0] / rl, r[1] / rl, r[2] / rl]
 }
@@ -162,9 +158,9 @@ fn main() {
     let ef = edge_faces(&mesh);
 
     // O centro e o raio médio — para dizer ONDE o defeito mora, em unidades da peça.
-    let c = pos.iter().fold([0.0f32; 3], |a, p| {
-        [a[0] + p[0], a[1] + p[1], a[2] + p[2]]
-    });
+    let c = pos
+        .iter()
+        .fold([0.0f32; 3], |a, p| [a[0] + p[0], a[1] + p[1], a[2] + p[2]]);
     let n = pos.len().max(1) as f32;
     let c = [c[0] / n, c[1] / n, c[2] / n];
     let rmean = pos.iter().map(|p| norm(sub(*p, c))).sum::<f32>() / n;
@@ -313,10 +309,7 @@ fn main() {
         let (&(a, b), who) = *entry;
         let ra = norm(sub(pos[a as usize], c)) / rmean;
         let rb = norm(sub(pos[b as usize], c)) / rmean;
-        let faces: Vec<&ph2d_mesh::Face> = who
-            .iter()
-            .map(|&f| &mesh.faces()[f as usize])
-            .collect();
+        let faces: Vec<&ph2d_mesh::Face> = who.iter().map(|&f| &mesh.faces()[f as usize]).collect();
         // Os ângulos em torno da aresta, ordenados — é o retrato do leque.
         let e = sub(pos[b as usize], pos[a as usize]);
         let el = norm(e).max(1e-20);

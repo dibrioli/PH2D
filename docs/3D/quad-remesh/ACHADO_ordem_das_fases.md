@@ -1243,5 +1243,90 @@ sai melhor nela.)*
 `8` fechados na mesma peça. ⇒ **a extracção não impõe o espiral; o mapa é que o traz.** A
 morada estreita-se para o **G3/G5**, que era a previsão — agora com prova.
 
-⚠️ **O que continua por fazer é a régua da §23.9** — quantas células a linha salta ao
+⚠️ **A régua da §23.9 foi construída — e refutou-se a si própria: ver a §23.11.** Ela pedia quantas células a linha salta ao
 atravessar cada costura. *Este experimento diz em que crate ela tem de viver; não a substitui.*
+
+### §23.11 — ⭐ A régua da §23.9 foi CONSTRUÍDA — e ela refuta as duas leituras que a motivavam
+
+[`ph2d_gridmap::measure_alignment`](../../../crates/ph2d-gridmap/src/align.rs), 13 gates.
+
+#### ⛔ A régua que a §23.9 pedia não existe, e a razão é dupla
+
+A §23.9 pediu *«quantas células a linha salta ao atravessar cada costura»*. Essa
+grandeza **não é medível**, e não por falta de instrumento:
+
+1. **É de calibre.** Somar uma constante ao `(u, v)` de um patch muda a translação de
+   *todas* as costuras que lhe tocam sem mudar coisa nenhuma na peça
+   ([`gauge`](../../../crates/ph2d-gridmap/src/gauge.rs) já o provava). *Uma coluna por
+   costura mediria a escolha de origem de cada carta.*
+2. **Depois da soldadura ela é zero por construção.** As duas metades satisfazem
+   `z_b = R^k·z_a + t` **exactamente** — é uma substituição, não um acordo — e o G5 põe
+   `t` em inteiros. ⇒ as isolinhas inteiras de um lado encontram sempre as do outro.
+
+⇒ *A régua que aquela secção pedia só podia imprimir `0`.* O que sobrevive ao calibre é
+a **holonomia de um ciclo**: percorrer uma volta do grafo de patches e compor as
+transições devolve `(R^K, T)`, e com `K = 0` o `T` é invariante.
+
+#### ⛔⛔ Primeira leitura REFUTADA pelo padrão: `T ≠ 0` não é o espiral
+
+A 1.ª redacção contou ciclos com `T ≠ 0`. O corpus saiu **bimodal** — `0` ou enorme
+(`51`, `75`, `103`, `130`) — e um parafuso de geometria daria um contínuo.
+
+⭐ `T` tem duas metades e só uma é defeito. Num tubo a transição é `z ↦ z + (N, 0)`:
+o `N` é o **comprimento** da volta e os anéis fecham na mesma. Num parafuso é `(N, 1)`,
+e o anel que sai de `v = j` volta a `v = j+1`. *O `N` é grande e inofensivo; o `1` é
+pequeno e é o defeito* — uma norma `∞` lê o primeiro e enterra o segundo. A leitura
+certa é **por família**: `a = 0` ⇒ as linhas de `u` fecham; `b = 0` ⇒ as de `v` fecham.
+
+#### ⛔⛔ Segunda leitura REFUTADA pelo toro: contar ciclos depende da ÁRVORE
+
+Com a base `{(N,0), (0,M)}` um toro limpo não tem ciclo a espiralar; com
+`{(N,0), (N,M)}` — a mesma peça, outra árvore de expansão — tem um. *A base é minha; a
+peça não.* E um ciclo diagonal não é defeito: ele só diz que **nenhuma linha de grade dá
+aquela volta**. Gate: `a_diagonal_cycle_does_not_move_the_lattice`.
+
+⇒ A grandeza da peça é o **subgrupo `L ⊂ ℤ²`** gerado por todas as holonomias planas, e
+a pergunta lê-se nele: `L ∩ ({0}×ℤ) ≠ 0` ⇒ as linhas de `u` **podem** fechar. O
+parafuso gera `L = ℤ·(N,1)`, cujas duas intersecções são triviais — é a assinatura
+exacta do espiral, e é o que o gate `the_screw_closes_no_family` fixa.
+
+#### ⛔⛔⛔ E o RETICULADO também não explica o espiral — medido em 8 peças
+
+| peça | ordem de `L` | período (u · v) | loops (fechados) | voltas p50 |
+|---|---|---|---|---|
+| `sculpt_eared` | 1 | **`0` · `0`** | `12` (**`0`**) | `3,8×` |
+| `sculpt_wrinkled` | 1 | **`0` · `0`** | `19` (**`7`**) | `0,9×` |
+| `sphere_uv_96x144` | 1 | **`0` · `0`** | `12` (`0`) | `2,8×` |
+| `sculpt_ridged` | 2 | `928` | `33` (`13`) | `0,8×` |
+| `sculpt_hooked` | 2 | `1 700` | `35` (`8`) | `0,8×` |
+| `sphere_shuffled` | 2 | `2 522` | `12` (`0`) | `1,8×` |
+| `torus_64x32` | 2 | **`2`** | `102` (`24`) | **`0,1×`** |
+| `cube` | 2 | **`2`** | `25` (**`0`**) | `2,5×` |
+
+⛔ **Dois contra-exemplos limpos matam a correlação:** o `cube` tem o **melhor** período
+possível (`2`) e **zero** anéis fechados; a `wrinkled` tem o **pior** (`0`, o parafuso
+puro) e tem **sete**. *O período do reticulado não prevê o censo de anéis.*
+
+⚠️ **Por que ele falha, e é a lição:** `L` agrega **todas** as voltas, incluindo as que
+linha de grade nenhuma percorre. Uma única volta esquisita — uma ponte que abre um anel,
+uma diagonal — envenena o subgrupo inteiro e manda o período a `2 522`. *Um invariante
+que soma sobre voltas que ninguém percorre responde a uma pergunta que ninguém fez.*
+
+#### ⭐ O que FICA, e é pouco mas é sólido
+
+- **A régua existe e é exacta**, com o calibre e a árvore provados por gate. A
+  distinção **comprimento vs deriva** é nova e é o que matou a 1.ª leitura.
+- ⭐ **Só o toro tem ciclos em que UMA família fecha** (`4` deles). Todas as sete peças
+  de topologia de esfera têm **zero** — e o toro é, de longe, a melhor no censo
+  (`0,1×` de voltas, `24` anéis de `102`). ⚠️ **É `n = 1`**, logo é uma pista e não uma
+  prova; mas é a única coluna desta jornada em que a peça boa se separa das outras.
+- ⛔⛔ **A morada estreita-se outra vez, e agora CONTRA os ciclos planos:** por peça há
+  `12` a `31` ciclos planos e **`12` a `32` que RODAM** — e estes últimos ficaram todos
+  de fora desta régua, por o `T` deles ser de calibre. ⚠️ *Numa esfera as voltas que
+  interessam contêm cones quase sempre*, e uma linha que dá a volta a um cone de `90°`
+  volta trocada de família — ela pode fechar ao fim de **quatro** voltas, e nenhuma
+  régua desta linha sabe ler isso. **É aí que a próxima janela tem de olhar**, e o
+  invariante de um ciclo que roda é o **ponto fixo**, não a translação.
+
+⚠️ **Nada disto tocou no produto:** a régua é um instrumento, o `chain_info` imprime-a, e
+a saída do botão `Quad Retopology` é byte-idêntica.

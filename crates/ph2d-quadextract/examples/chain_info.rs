@@ -357,7 +357,9 @@ fn main() {
         .ok()
         .and_then(|v| v.parse::<f32>().ok())
     {
-        Some(w) => ph2d_crossfield::solve_miq_aligned(&dual, ph2d_crossfield::Rounding::default(), w),
+        Some(w) => {
+            ph2d_crossfield::solve_miq_aligned(&dual, ph2d_crossfield::Rounding::default(), w)
+        }
         None => ph2d_crossfield::solve_miq(&dual),
     };
     let singular: Vec<u32> = ph2d_crossfield::vertex_index(&mesh, &dual, &field)
@@ -582,6 +584,37 @@ fn main() {
         r.solve.pairs
     );
 
+    // ⭐⭐⭐ **O SALTO DA GRADE AO DAR UMA VOLTA** — a régua do espiral (§23.9).
+    //
+    // ⚠️ Ela corre **sobre o mapa final**: as translações são o que ela compõe, e o G5
+    // move-as. *Medi-la no contínuo seria medir outro mapa.*
+    {
+        let al = ph2d_gridmap::measure_alignment(&cut, &combed, &map);
+        println!(
+            "  ⭐⭐⭐ ESPIRAL DA GRADE (holonomia de ciclo): {} ciclos planos ⇒ ⛔ {} ESPIRALAM (nenhuma familia fecha), \
+             {} fecham numa familia (o tubo, normal), ⭐ {} fecham nas duas \
+             | DERIVA p50 {:.2} p90 {:.2} max {:.2} soma {:.1} celulas (volta maior: {:.0}) \
+             | {} ciclos que RODAM | ⛔ {} fraccionarios | {} costuras soltas",
+            al.flat_cycles,
+            al.spiral_cycles,
+            al.one_family_cycles,
+            al.closed_cycles,
+            al.drift_p50,
+            al.drift_p90,
+            al.drift_max,
+            al.drift_sum,
+            al.span_max,
+            al.turning_cycles,
+            al.fractional,
+            al.loose
+        );
+        // ⭐⭐⭐ A leitura que NÃO depende da árvore de expansão que a régua escolheu.
+        println!(
+            "  ⭐⭐⭐ RETICULADO das holonomias (nao depende da arvore): ordem {} | PERIODO da familia u: {} celulas · da familia v: {} — ⛔ 0 com ordem >= 1 = essa familia NAO PODE fechar em volta nenhuma",
+            al.lattice_rank, al.u_period, al.v_period
+        );
+    }
+
     let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
     // ⭐ **CONTROLO INDEPENDENTE da ponte**: contar as dobras aqui, sem passar pela
     // extraccao. Se os dois numeros discordarem, o defeito e' do `corner_map` (uma
@@ -642,8 +675,7 @@ fn main() {
                     b.max[1] - b.min[1],
                     b.max[2] - b.min[2],
                 ];
-                let seed =
-                    d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt() * 0.05;
+                let seed = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt() * 0.05;
                 let normals = out.normals().to_vec();
                 let moved: Vec<[f32; 3]> = out
                     .positions()

@@ -51,6 +51,8 @@
 //! é uma fase grande sem nenhum ponto onde a medição possa entrar* — foi assim que
 //! quatro «byte-idêntico ao controlo» custaram meia jornada nesta linha.
 
+/// ⭐⭐⭐ **O SALTO DA GRADE AO DAR UMA VOLTA** — a régua do espiral; ver o módulo.
+pub mod align;
 pub mod comb;
 /// ⭐ A porta do mapa por CANTO, que a extracção consome — ver o módulo.
 pub mod corners;
@@ -69,6 +71,7 @@ pub mod weld_round;
 /// ⭐⭐⭐ **G3 SOLDADO** — o mesmo sistema sem o peso da costura — ver o módulo.
 pub mod weld_solve;
 
+pub use align::{Alignment, measure_alignment};
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};

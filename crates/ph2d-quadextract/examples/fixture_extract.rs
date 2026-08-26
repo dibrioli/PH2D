@@ -25,7 +25,9 @@ fn main() {
     let name = args
         .next()
         .unwrap_or_else(|| panic!("uso: fixture_extract <fixture.mapa.gz> <saida.obj>"));
-    let out_path = args.next().unwrap_or_else(|| String::from("/tmp/fixture.obj"));
+    let out_path = args
+        .next()
+        .unwrap_or_else(|| String::from("/tmp/fixture.obj"));
 
     let m = support::load(&name);
     let (out, e) = ph2d_quadextract::extract(&m.as_map(), None)

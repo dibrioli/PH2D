@@ -74,6 +74,11 @@ pub(crate) struct WalkStats {
     /// numa aresta nesta peça. *A régua é este número contra
     /// [`WalkStats::orphan_no_partner_on_edge`], que é quantas ficaram por salvar.*
     pub orphan_rescued_across_edge: usize,
+    /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
+    ///
+    /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um
+    /// terceiro dono possível, que o resgate por um lado só não alcança.
+    pub orphan_on_corner: usize,
     /// ⭐ **O DIÂMETRO do triângulo em que a órfã morreu**, em células — a régua com que
     /// a linha de baixo se lê.
     ///
@@ -284,6 +289,13 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                     #[allow(clippy::cast_possible_truncation)]
                     let node_here =
                         (0..4u8).any(|d| ports.by_key.contains_key(&(face as u32, t[0], t[1], d)));
+                    // ⭐ **Sonda: o alvo caiu num CANTO do triângulo?** Um ponto de grade
+                    // sobre um vértice é um nó do tipo `Site::Vertex`, registado com a face
+                    // canónica do **leque** — que pode não ser esta nem a gémea de um lado
+                    // só. *É a mesma classe de avaria com um terceiro dono possível.*
+                    if topo.uv[face].contains(&t) {
+                        st.orphan_on_corner += 1;
+                    }
                     // ⭐⭐⭐ **O RESGATE: a chave é de OUTRA PESSOA, então pergunta-se a ela.**
                     //
                     // ⛔⛔ O comentário abaixo nomeia a avaria desde 2026-08-25 e ninguém a

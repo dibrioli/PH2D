@@ -759,7 +759,7 @@ fn main() {
                 "  ⭐⭐⭐ ORFAS (o sintoma mais A MONTANTE de um furo): {} sem parceira ({} com NO' la' / ⭐ {} sobre uma ARESTA) + \
                  {} sem saida do triangulo ({} achatado / {} com a ORIGEM FORA / {} so' \
                  pelo lado de ENTRADA) = {} · raio {:.2}x (o p99 da peca e' {:.2}x) · \
-                 ⭐ FALHA POR {:.3} CELULAS num triangulo de {:.3} · ⭐⭐ RESGATADAS pela face gemea: {}",
+                 ⭐ FALHA POR {:.3} CELULAS num triangulo de {:.3} · ⭐⭐ RESGATADAS pela face gemea: {} · num CANTO: {}",
                 e.orphan_no_partner,
                 e.orphan_no_partner_node_exists,
                 e.orphan_no_partner_on_edge,
@@ -772,7 +772,8 @@ fn main() {
                 e.piece_radius_p99,
                 e.orphan_miss_cells_p50,
                 e.orphan_tri_cells_p50,
-                e.orphan_rescued_across_edge
+                e.orphan_rescued_across_edge,
+                e.orphan_on_corner
             );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.

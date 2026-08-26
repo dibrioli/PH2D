@@ -919,7 +919,16 @@ sintoma, e esta cura só serve a primeira:
 | avaria | sintoma | cura |
 |---|---|---|
 | o nó existe, a chave é da face gémea | `on_edge` **e** `node_exists` | ⭐ **esta** |
-| ⛔ não há nó nenhum naquele ponto | `on_edge` e **não** `node_exists` | por construir |
+| ⛔ o nó é de VÉRTICE, e o dono é o LEQUE | `on_edge` e **`on_corner`** | por construir |
+
+⭐⭐⭐ **E a sonda diz qual é, sem ambiguidade: `num CANTO: 4` de `4`.** As quatro órfãs que
+sobram na `sculpt_t003` caem num **canto** do triângulo, não no meio de uma aresta.
+
+⇒ Um ponto de grade sobre um vértice é um nó `Site::Vertex`, e as saídas dele estão
+espalhadas pelo **leque** — cada uma emitida com a **sua** face
+(`by_key: (face, u, v, dir) → saída`). ⚠️ *É a mesma classe de avaria com um **terceiro**
+dono possível, e um resgate por um lado só nunca lá chega.* **A obra seguinte é percorrer o
+leque**, com a transição acumulada de face em face.
 
 ### §20.3 — ⛔⛔ E o contador MENTIU antes de eu o ler direito
 

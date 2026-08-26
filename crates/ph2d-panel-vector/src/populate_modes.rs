@@ -52,6 +52,8 @@ pub(super) fn mode_buttons(store: &mut WidgetStore) {
 pub(crate) fn populate_morph_arrows(store: &mut WidgetStore) {
     // O botão que CRIA o conjunto: ele é o único controlo da seção quando não há máquina nenhuma.
     button(store, ids::VECTOR_MORPH_STATES_MAKE);
+    // ⭐⭐ O interruptor da PRÉ-VISUALIZAÇÃO — o modo em que o teclado é da máquina.
+    button(store, ids::VECTOR_MORPH_PREVIEW);
     for row in 0..ids::MAX_MORPH_ARROWS {
         // A CONDIÇÃO é um menu, e um menu não é um botão: registá-lo como botão faria o clique
         // acender o chip e nunca abrir a lista. (A cicatriz da swatch do painel de tokens, e a

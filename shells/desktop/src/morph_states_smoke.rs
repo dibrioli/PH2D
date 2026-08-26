@@ -150,11 +150,13 @@ fn announce(app: &crate::App) {
     eprintln!(
         "  3. O que tem de acontecer, tudo de uma vez: na arvore nasce **Morph States 3**, com as \
          tres formas por baixo dele; **no canvas fica UMA forma so'** (a azul, que era a primeira \
-         escolhida); e o painel passa a listar **6** transicoes -- ida e volta entre todas."
+         escolhida) **no MEIO de onde as tres estavam**; e o painel passa a listar **6** \
+         transicoes -- ida e volta entre todas."
     );
     eprintln!(
-        "     (!) Se continuar a ver as tres formas empilhadas, PARE: as outras duas deviam ter \
-         ficado ocultas."
+        "     (!) Se continuar a ver as tres formas espalhadas, PARE: as outras duas deviam ter \
+         ficado ocultas, e as tres deviam ter-se juntado no mesmo ponto -- e' isso que faz a \
+         transicao acontecer EM LUGAR, sem a peca atravessar o ecra."
     );
     eprintln!(
         "  4. **Ctrl+Z** agora. As tres formas voltam, soltas, como estavam -- **num passo so'**. \
@@ -169,26 +171,38 @@ fn announce(app: &crate::App) {
          isso que nao da' para escrever um nome que nao existe."
     );
     eprintln!(
-        "  6. Aperte **Play** na barra de transporte. Agora carregue em **{jump}**: a forma vira \
-         a seguinte. Outra vez: vira a terceira. E outra vez: volta a' primeira."
+        "  6. No TOPO da seccao ha' o botao **Preview**. Carregue nele: ele acende, e por baixo \
+         aparece «Preview on -- the keyboard drives the machine. Esc exits.»"
+    );
+    eprintln!(
+        "  7. Agora carregue em **{jump}**: a forma vira a seguinte. Outra vez: vira a terceira. \
+         E outra vez: volta a' primeira."
     );
     eprintln!(
         "     (!) SEGURE a tecla em vez de a bater: ela tem de disparar **uma** vez, nao percorrer \
          a cadeia inteira num piscar de olhos."
     );
     eprintln!(
-        "  7. **PARE o transporte.** A forma volta a ser a primeira -- e o **Ctrl+Z** NAO tem \
-         nenhum passo das transicoes para desfazer. Se tiver, PARE: o que o motor mostra e' \
-         pre-visualizacao, nunca documento."
+        "  8. O CONTROLE QUE IMPORTA: com o **Preview** ligado, carregue nas **setas do teclado**. \
+         Nada pode mexer-se de sitio. (Era isto que estava errado: as setas morfavam a forma E \
+         moviam as formas ao mesmo tempo.)"
     );
     eprintln!(
-        "  8. O CONTROLE: com o transporte PARADO, carregue em **{jump}** outra vez. A forma nao \
-         pode mexer-se. (Se mexer, a maquina esta' a escutar durante a edicao -- e ai' toda tecla \
-         faz duas coisas.)"
+        "  9. **Esc** (ou o botao **Preview** outra vez) para sair. A forma volta a ser a primeira, \
+         e o **Ctrl+Z** NAO tem nenhum passo das transicoes para desfazer."
     );
     eprintln!(
-        "  9. Volte ao painel e ponha **dash** ({dash}) numa das transicoes que ficou no \
-         tracinho, saindo da forma em que voce' esta'. Com o Play ligado, as duas teclas passam a \
-         levar a sitios diferentes a partir da mesma forma."
+        " 10. Com o Preview DESLIGADO, carregue em **{jump}** outra vez. A forma nao pode mexer-se \
+         -- fora do modo o teclado e' do editor."
+    );
+    eprintln!(
+        " 11. **ARRASTE o objecto** «Morph States 3» pelo canvas, como qualquer forma. Ele anda, e \
+         os estados vao junto: ligue o Preview outra vez e troque de forma -- a nova aparece no \
+         sitio NOVO, nao no antigo."
+    );
+    eprintln!(
+        " 12. Volte ao painel e ponha **dash** ({dash}) numa das transicoes que ficou no \
+         tracinho, saindo da forma em que voce' esta'. Com o Preview ligado, as duas teclas passam \
+         a levar a sitios diferentes a partir da mesma forma."
     );
 }

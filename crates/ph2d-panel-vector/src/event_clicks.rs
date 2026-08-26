@@ -118,6 +118,7 @@ fn is_mode_pill(id: ph2d_a11y::NodeId) -> bool {
 /// LOC no dia em que este bloco lá entrou, e o corte por assunto já era o certo.
 fn is_morph_arrow_control(id: ph2d_a11y::NodeId) -> bool {
     id == ids::VECTOR_MORPH_STATES_MAKE
+        || id == ids::VECTOR_MORPH_PREVIEW
         || (0..ids::MAX_MORPH_ARROWS).any(|r| {
             (0..ids::MAX_MORPH_ACTIONS).any(|a| id == ids::morph_arrow_when_option_id(r, a))
         })

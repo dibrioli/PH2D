@@ -199,8 +199,8 @@ fn a_morph_without_a_machine_publishes_the_empty_face() {
     let scene = ph2d_vec_scene::VecScene::new();
     let mut map = crate::vec_entities::VecEntityMap::default();
     map.insert(7, e.to_bits());
-    let s =
-        publish(&sim, &scene, &map, &[7], actions()).expect("um Morph SEM maquina ainda publica");
+    let s = publish(&sim, &scene, &map, &[7], false, actions())
+        .expect("um Morph SEM maquina ainda publica");
     assert!(s.rows.is_empty(), "e a lista de setas vem vazia");
     assert_eq!(
         s.can_make, 0,
@@ -262,18 +262,94 @@ fn the_arrow_click_reaches_the_world() {
             "crate::morph_set::upkeep(",
             "DRENAR o pendente: pendurar a maquina, reparentar e esconder os membros",
         ),
+        (
+            "self.vec_pen.select_many(&[p.path]);",
+            "SELECCIONAR o conjunto novo -- senao a seleccao fica nos MEMBROS, que acabaram de \
+             ficar ocultos e com dono, e a seccao oferece um SEGUNDO conjunto sobre eles",
+        ),
     ] {
         assert!(
             shell.contains(needle),
             "a shell perdeu o `{needle}` -- {what}. O botao pinta e nao faz nada."
         );
     }
-    // E o painel tem de FORWARDAR os dois cliques, senão eles morrem antes de chegar aqui.
+    // ⭐⭐ **O MODO DE PRÉ-VISUALIZAÇÃO** (W9): o interruptor, o que ele dirige, e — a metade que
+    // dá sentido ao modo — o teclado que ele TOMA. ⛔ Sem a guarda, a tecla morfa a forma **e** faz
+    // o que ela faz no editor: é o report do Enio (*"as setas do teclado movendo as formas"*).
+    for (needle, what) in [
+        (
+            "*id == ph2d_editor::ids::VECTOR_MORPH_PREVIEW",
+            "RECONHECER o clique no interruptor",
+        ),
+        (
+            "self.morph_preview = !self.morph_preview",
+            "LIGAR e DESLIGAR o modo",
+        ),
+        (
+            "self.morph_preview,\n                self.fixed_step.fixed_dt(),",
+            "DIRIGIR a maquina pelo MODO, e nao pelo playhead",
+        ),
+    ] {
+        assert!(
+            shell.contains(needle),
+            "a shell perdeu o `{needle}` -- {what}."
+        );
+    }
+    // ⛔ **E o playhead NÃO pode voltar a ser a porta:** ele não tranca o teclado do editor, que é
+    // exactamente o conflito que este modo existe para curar.
+    assert!(
+        !shell.contains("self.playhead.is_playing(),\n                self.fixed_step.fixed_dt(),"),
+        "o playhead voltou a dirigir a maquina -- o conflito de atalhos volta com ele"
+    );
+    let modal = include_str!("input_dispatch/keyboard_modal.rs");
+    for (needle, what) in [
+        (
+            "if !self.morph_preview || self.modifiers.control_key()",
+            "TOMAR o teclado enquanto o modo corre (e deixar passar os acordes)",
+        ),
+        ("self.morph_preview_leave = true", "o Esc PEDIR a saida"),
+    ] {
+        assert!(
+            modal.contains(needle),
+            "a porta modal perdeu o `{needle}` -- {what}. A tecla faz DUAS coisas."
+        );
+    }
+    // ⚠️⚠️ **A ORDEM na cadeia é metade do desenho, e este é o gate dela.**
+    //
+    // A porta tem de correr **DEPOIS** do retrato dos dispositivos (`input.apply_event`) — barrar
+    // antes mataria a própria acção que a máquina lê, e o modo ficaria **inerte com o teclado
+    // tomado**, que é o pior dos dois mundos — e **ANTES** do primeiro consumidor do editor.
+    let kb = include_str!("input_dispatch/keyboard.rs");
+    let feed = kb
+        .find("self.input.apply_event")
+        .expect("o retrato dos dispositivos sumiu");
+    let gate = kb
+        .find("self.modal_owns_the_keyboard(")
+        .expect("a porta modal deixou de ser chamada -- a tecla volta a fazer duas coisas");
+    let editor = kb
+        .find("crate::flip_peek::key_transition")
+        .expect("o primeiro consumidor do editor sumiu");
+    assert!(
+        feed < gate,
+        "a porta modal corre ANTES do retrato dos dispositivos: a maquina fica MUDA e o teclado \
+         fica tomado ao mesmo tempo"
+    );
+    assert!(
+        gate < editor,
+        "a porta modal corre DEPOIS de um consumidor do editor: a tecla morfa a forma E faz o que \
+         ela faz no editor -- e' o report do Enio de volta"
+    );
+
+    // E o painel tem de FORWARDAR os cliques, senão eles morrem antes de chegar aqui.
     let panel = include_str!("../../../crates/ph2d-panel-vector/src/event_clicks.rs");
     for (needle, what) in [
         (
             "ids::VECTOR_MORPH_STATES_MAKE",
             "o botao que faz o conjunto",
+        ),
+        (
+            "ids::VECTOR_MORPH_PREVIEW",
+            "o interruptor da pre-visualizacao",
         ),
         (
             "morph_arrow_when_option_id(r, a)",
@@ -306,7 +382,7 @@ fn a_plain_multi_selection_publishes_the_face_that_offers_the_button() {
         .collect();
     crate::vec_entities::sync(&mut sim, &mut scene, &mut map);
 
-    let s = publish(&sim, &scene, &map, &ids, actions())
+    let s = publish(&sim, &scene, &map, &ids, false, actions())
         .expect("tres formas soltas TEM de publicar -- e' a unica porta para a feature");
     assert_eq!(
         s.can_make, 3,
@@ -324,9 +400,9 @@ fn a_plain_multi_selection_publishes_the_face_that_offers_the_button() {
 
     // ⛔ E UMA forma só **não** publica: a seção não pode aparecer onde não há nada a oferecer.
     assert!(
-        publish(&sim, &scene, &map, &ids[..1], actions()).is_none(),
+        publish(&sim, &scene, &map, &ids[..1], false, actions()).is_none(),
         "com UMA forma a seccao tem de sumir inteira"
     );
     // O CONTROLE da seleção vazia, que é o estado normal do app.
-    assert!(publish(&sim, &scene, &map, &[], actions()).is_none());
+    assert!(publish(&sim, &scene, &map, &[], false, actions()).is_none());
 }

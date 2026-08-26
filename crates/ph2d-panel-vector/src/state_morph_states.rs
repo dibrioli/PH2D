@@ -45,6 +45,11 @@ pub struct MorphStatesState {
     /// *o botão, prometendo `n(n-1)` transições*. Um `bool` colapsaria as três em duas, e o artista
     /// que escolheu doze formas leria *"escolha duas ou mais"*.
     pub can_make: usize,
+    /// ⭐⭐ **A PRÉ-VISUALIZAÇÃO está ligada** (plano 32 W9) — o modo em que o teclado é da máquina.
+    ///
+    /// ⚠️ Publicado pela shell, como tudo o resto: quem sabe se o modo corre é ela, e uma segunda
+    /// memória disto no painel daria um botão aceso sobre um modo desligado.
+    pub preview: bool,
 }
 
 thread_local! {

@@ -81,6 +81,12 @@ fn drop_relation_hosts(sim: &mut SimWorld, map: &VecEntityMap, selection: &[VecP
         if live && let Ok(mut em) = sim.world_mut().get_entity_mut(e) {
             em.remove::<VecConnector>();
             em.remove::<VecMorph>();
+            // ⛔ **A MÁQUINA sai junto com o morph que ela dirige** (plano 32 W9). Sem esta linha,
+            // converter um conjunto de estados em curvas deixaria um `VecMorphMachine` **órfão**:
+            // a seção continuaria a listar as `n(n-1)` transições, o interruptor `Preview` a
+            // acender — e nenhuma tecla mudaria nada, porque já não há morph a dirigir.
+            // *Um painel que oferece o que o mundo não pode fazer é pior que um painel vazio.*
+            em.remove::<ph2d_ecs::VecMorphMachine>();
             n += 1;
         }
     }

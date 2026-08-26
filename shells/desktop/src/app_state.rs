@@ -1168,6 +1168,18 @@ pub(crate) struct App {
     /// componente, este leva também a **lista de quem vai ser reparentado e escondido**. Fundi-los
     /// obrigaria o `morph_live::upkeep` a saber de reparentar, que não é o assunto dele.
     pub(crate) vec_morph_set_pending: Option<crate::morph_set::MorphSetPending>,
+    /// ⭐⭐ **A PRÉ-VISUALIZAÇÃO da máquina de Morph está ligada** (plano 32 W9) — o modo em que o
+    /// **teclado** é da máquina e não do editor.
+    ///
+    /// ⚠️ **Runtime-only, como a irmã das poses:** é *o modo em que a sessão está*, não um facto do
+    /// documento. Um projecto que reabrisse em pré-visualização abriria com o teclado tomado.
+    ///
+    /// ⛔ **E ela é a ÚNICA porta:** a W5 ligava a máquina ao playhead a andar, e era exactamente
+    /// aí que o conflito de atalhos aparecia (o Play não tranca o teclado do editor).
+    pub(crate) morph_preview: bool,
+    /// **Pedido de SAIR** (o Esc). Espelho do `ui_preview_leave`: o Esc chega no despacho de
+    /// teclado e a saída é executada no quadro, onde o mundo está à mão.
+    pub(crate) morph_preview_leave: bool,
     /// O canto da gaiola sob arrasto agora (`(bits do CONTAINER do envelope, índice 0..4)`), ou
     /// `None` — o gesto de Fatia 1 (ADR-0129), armado no press de Node e limpo no release. O alvo é a
     /// ENTIDADE (o container não tem path — Fatia 3). Runtime-only: um arrasto vivo não é documento (o

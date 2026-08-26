@@ -200,8 +200,9 @@ fn only_the_listed_gestures_arm_a_sound() {
             // ⛔ Nada nas transições em si soa: elas correm **durante a reprodução**, e um som por
             // transição seria o app a comentar o que o motor decidiu.
             "src/render_loop/mod.rs",
-            3,
-            "consolidar a booleana · o interruptor da preview · fazer o conjunto de Morph States",
+            4,
+            "consolidar a booleana · o interruptor da preview de poses · fazer o conjunto de \
+             Morph States · o interruptor da preview do Morph",
         ),
         (
             "src/input_dispatch.rs",

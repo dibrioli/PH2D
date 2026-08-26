@@ -367,3 +367,135 @@ escrita.
 | o botão aparece com **uma** forma | `one_shape_offers_no_button_at_all` |
 | o botão sai da allowlist do painel | `the_make_button_is_alive_and_reaches_the_bus` |
 | o botão sai do `populate` (morto sob o ponteiro) | `the_make_button_is_alive_and_reaches_the_bus` |
+
+---
+
+## §6 — ⭐⭐ W9 (2026-08-25, o 2º smoke): o MODO, o alinhamento e a pose
+
+> Enio, depois de o conjunto funcionar:
+>
+> > *"Funciona corretamente mas precisamos de um modo preview (com botão) como o de states de
+> > animação pois senão temos conflitos de atalhos (como setas do teclado movendo as formas).
+> > Outras coisa: aqui diferente da tool morph, todas as peças participantes são alinhadas numa
+> > mesma posição e o morph states faz o morph numa mesma posição, não desloca a peça de lugar.
+> > O objeto criado como pai (o morph states da hierarchy) tem que ser arrastável no canvas como um
+> > objeto qualquer, embora com a forma da shape ativa no momento, e deve arrastar os filhos junto."*
+
+### §6.1 — ⛔⛔ O playhead era a porta e deixou de ser
+
+A W5 escreveu, com todas as letras:
+
+> *"E o modo já existe: neste editor, «o jogo a correr» é o **playhead a andar** — a mesma porta
+> pela qual o dedo do jogador alcança a física. Uma terceira noção de runtime seria uma terceira
+> coisa para o artista aprender."*
+
+⚠️ **É um argumento bom sobre a coisa errada.** O playhead **não tranca o teclado do editor**: com
+ele a andar, as teclas continuam a chegar a todos os atalhos. ⇒ a mesma tecla morfa a forma **e**
+faz o que ela faz no editor — que é exactamente o que aquela nota dizia estar a evitar. O smoke
+mostrou-o na forma mais visível possível: *as setas do teclado a mover as formas*.
+
+⇒ **A porta é o interruptor `Preview`** da seção, e ele **toma o teclado**:
+
+| onde | o quê |
+|---|---|
+| `input_dispatch/keyboard.rs` | a guarda, **depois** do `input.apply_event` e **antes** de todo atalho |
+| depois | a acção continua a ser alimentada ⇒ a máquina lê; nenhum atalho do editor vê a tecla |
+| a excepção | **Esc** (pede a saída) e os acordes com `Ctrl`/`Super` (`Ctrl+S`, `Ctrl+Z`) |
+
+⚠️ **A posição da guarda é o desenho inteiro.** Barrá-la *antes* do retrato dos dispositivos
+mataria a própria acção que a máquina lê: o modo ficaria inerte **com o teclado tomado** — o pior
+dos dois mundos. Há gate sobre a ordem (`kb.find(apply_event) < kb.find(guarda)`).
+
+⚠️ **A porta de saída é anunciada, e aqui é obrigatório:** este modo come exactamente as teclas com
+que o artista tentaria escapar dele. *Um modo que consome a própria tentativa de sair lê-se como
+travado.*
+
+⛔ **Uma porta, não duas.** Deixar o playhead a dirigir também manteria o conflito vivo na porta que
+não tranca nada. *Um modo cuja entrada não exclui os outros consumidores não é um modo — é mais um
+produtor.* O gate afirma a ausência: o `playhead.is_playing()` não pode voltar àquela chamada.
+
+### §6.2 — O alinhamento: a diferença de PRODUTO entre o Morph e o conjunto
+
+| | o que faz | por quê |
+|---|---|---|
+| **Morph** (a tool) | as fontes ficam **onde foram desenhadas**; a forma viaja entre elas | é um efeito de **transição** — a viagem é o produto |
+| **Morph States** | os estados são **alinhados num ponto só**; a forma muda **em lugar** | é **um objecto** que muda de aparência: a personagem que agacha não salta dois metros por isso |
+
+A conta (`morph_set::align`): para o membro `i` com pose de mundo `translate(t) · M` e centro de
+mundo `c_i`, a pose **local** nova é `translate(t − c_i) · M`; o conjunto nasce em `C` = centro da
+caixa que continha todos. Compondo: `C + c_i − c_i = C`, **o mesmo ponto para todos**.
+
+⚠️ **Só a translação muda** — rotação, escala e cisalhamento sobrevivem. Endireitar um estado ao
+alinhá-lo seria destruir o desenho para o pôr no sítio, e *a diferença entre as formas é o que a
+máquina existe para mostrar*.
+
+⚠️ **A caixa é a da CURVA** (`path_curve_bbox`), com os **quatro** cantos transformados: sob rotação
+a caixa alinhada aos eixos do mundo não é a imagem da caixa local, e dois cantos poriam uma forma
+girada fora do centro.
+
+⚠️ **Mede tudo antes de escrever qualquer coisa** — medir e escrever intercalados fariam o segundo
+membro ser medido contra um mundo que o primeiro já mexeu.
+
+### §6.3 — ⭐⭐⭐ A pose: por que um Morph não se arrasta e um conjunto sim
+
+O mecanismo que torna um Morph comum **não-arrastável** nunca foi uma proibição — é o `recook`:
+
+1. ele coze as fontes em **MUNDO** e escreve isso como geometria do morph;
+2. logo, uma pose por cima levaria o afim **outra vez** ⇒ a forma andaria o dobro;
+3. por isso ele **zera o `Transform`** todo quadro ⇒ arrastar volta ao sítio no quadro seguinte.
+
+⇒ **o conjunto escapa pelo passo 1, não pelo 3.** Ele coze as fontes nas poses **LOCAIS** dos
+filhos — que são filhos DELE —, então o que fica guardado é geometria do referencial do conjunto, e
+o `Transform` aplica-se **uma** vez, como em qualquer forma do documento. O `!is_set` do passo 3 é
+consequência, não causa.
+
+⭐ **E o plano não se refaz ao arrastar:** as poses locais dos filhos não mudam quando o pai anda,
+então `a` e `b` são os mesmos bytes e o cache do `plan_for` acerta. *Arrastar um conjunto de nove
+estados custa o que custa arrastar um rectângulo.* (Há gate: a geometria guardada é byte-idêntica
+antes e depois do arrasto.)
+
+⚠️ **Os filhos vão junto de graça** — eles são `ChildOf(host)`, e a travessia de mundo já compõe.
+
+### §6.4 — As provas de mutação da W9 (7, todas sangraram)
+
+| mutação | gate |
+|---|---|
+| o `align` não corre (as formas ficam lado a lado) | `every_state_is_centred_on_the_set_so_the_morph_never_travels` |
+| alinhar **endireita** o estado (perde rotação/escala/skew) | `aligning_moves_the_position_and_nothing_else` |
+| a pose do conjunto é **zerada** pelo `recook` | `dragging_the_set_carries_the_states_and_the_drawing` |
+| o conjunto volta a cozer em **MUNDO** (afim entra 2×) | `dragging_the_set_carries_the_states_and_the_drawing` |
+| o interruptor sai do `populate` (morto sob o ponteiro) | `the_preview_toggle_is_alive_and_reaches_the_bus` |
+| o interruptor deixa de registar hit-rect **com o modo ligado** | `the_way_out_stays_clickable_while_the_mode_runs` |
+| o interruptor é pintado **sem máquina** | `a_selection_without_a_machine_offers_no_preview_toggle` |
+| a porta modal deixa de ser chamada (a tecla faz duas coisas) | `the_arrow_click_reaches_the_world` |
+| o conjunto novo **não fica seleccionado** | `the_arrow_click_reaches_the_world` |
+| uma forma **com dono** entra num segundo conjunto | `a_shape_that_already_belongs_to_a_set_is_never_offered_to_another` |
+| converter em curvas deixa a máquina **órfã** | `converting_the_set_to_curves_takes_the_machine_with_it` |
+
+### §6.5 — Três buracos que a W9 fechou, e os dois primeiros são a MESMA porta
+
+⛔⛔ **Depois de criar o conjunto, a selecção ficava nos MEMBROS.** Eles acabam de ficar ocultos e
+com dono — e `morph_of_selection` não acha morph neles, então a seção voltava a oferecer
+*"Make Morph States"* **sobre as mesmas formas**, prometendo um segundo conjunto por cima do
+primeiro. Duas curas, porque são duas portas para o mesmo defeito:
+
+1. o objecto novo **fica seleccionado** (`vec_pen.select_many`, a mesma escolha do botão Morph ao
+   lado) — fecha a porta do fluxo normal;
+2. o `eligible` **exclui uma forma cujo pai já tem `VecMorphMachine`** — fecha a porta da
+   Hierarquia, onde um membro oculto continua a ser clicável.
+
+⚠️ ***A primeira mutação SOBREVIVEU***, e foi ela que ensinou o resto: eu tinha escrito o
+`select_many` e **nenhum gate o cobria**. Tirá-lo deixava a suíte inteira verde. *Uma afirmação que
+mutação nenhuma mata é uma afirmação sobre nada* — a agulha entrou no gate de costura depois.
+
+⛔ **E converter um conjunto em curvas deixava a máquina ÓRFÃ:** o `drop_relation_hosts` tirava o
+`VecMorph` e deixava o `VecMorphMachine`. A seção continuava a listar as `n(n-1)` transições e o
+interruptor `Preview` a acender — sobre um objecto que já não tem morph nenhum a dirigir. *Um painel
+que oferece o que o mundo não pode fazer é pior que um painel vazio.*
+
+⚠️ **E um gate que a W8 não tinha, e a lei que ele nomeia:** `the_new_set_actually_draws_the_start_shape`.
+Os outros mediam **componentes**; nenhum media o que sai no canvas — e o par do conjunto é
+**degenerado** por construção (`[start, start]`). Um plano de correspondência que recusasse um par
+igual deixaria o path **vazio**: o artista carregava no botão, as formas escolhidas desapareciam
+(ficam ocultas) e **nada** aparecia no lugar delas. *Contar o trabalho FEITO não é contar o trabalho
+ENTREGUE.*

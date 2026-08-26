@@ -960,6 +960,8 @@ impl App {
             vec_blend_pending: None,
             vec_morph_pending: None,
             vec_morph_set_pending: None,
+            morph_preview: false,
+            morph_preview_leave: false,
             vec_envelope_drag: None,
             vec_textpath_handle_drag: false,
             motion_path_drag: None,

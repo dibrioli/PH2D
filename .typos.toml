@@ -28,10 +28,17 @@ extend-ignore-identifiers-re = [
     # `vectores` — a MESMA família (pt-PT de «vetores»), num doc-comment do `ph2d-mesh`
     # sobre a média de eixos (*«uma média de eixos feita como média de vectores cancela
     # exactamente onde os dois mais concordam»*). O typos quer o inglês `vectors`.
-    # ⚠️ Este é o QUARTO membro (`excepcional`, `PROJECTO`, `factores`, `vectores`): a doença
-    # não é a palavra, é o repo escrever prosa em pt-PT dentro de um linter de inglês — cada
-    # linha nova aqui é uma que o ship só apanha depois de a linha ter fechado.
+    # ⚠️ A doença não é a palavra: é o repo escrever prosa em pt-PT dentro de um linter de
+    # inglês, e cada linha nova aqui é uma que o ship só apanha DEPOIS de a linha ter fechado.
+    # ⛔ Esta nota já disse «o QUARTO membro» e nasceu errada no mesmo rebase: a `line/Vector`
+    # trazia o `participante(s)` abaixo. *Uma contagem escrita à mão numa lista que N linhas
+    # estendem em paralelo envelhece antes de ser lida* — conte a lista, não confie na frase.
     "^vectores$",
+    # `participantes` — português, e é uma CITAÇÃO verbatim do Enio (2026-08-25) sobre a máquina
+    # de estados do Morph: *«todas as peças participantes são alinhadas numa mesma posição»*. O
+    # typos quer o inglês `participants`; trocá-la reescreveria as palavras do dono, que é o que um
+    # comentário de citação existe precisamente para não fazer. Ancorada, singular e plural.
+    "^participante(s)?$",
     # mlua + Luau API surface and types
     "luau",
     "mlua",

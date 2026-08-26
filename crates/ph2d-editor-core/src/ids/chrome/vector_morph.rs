@@ -24,6 +24,19 @@ pub const VECTOR_SECTION_MORPH_STATES: NodeId = hash_node_id("vector.section.mor
 /// governa, com **todas** as transições possíveis já ligadas (plano 32 W8).
 pub const VECTOR_MORPH_STATES_MAKE: NodeId = hash_node_id("vector.morph.states.make");
 
+/// ⭐⭐ **O INTERRUPTOR DA PRÉ-VISUALIZAÇÃO** — o modo em que o teclado é da máquina.
+///
+/// ⚠️ **Ele existe porque a condição de uma transição é uma TECLA** (Enio, 2026-08-25: *"precisamos
+/// de um modo preview (com botão) como o de states de animação pois senão temos conflitos de
+/// atalhos (como setas do teclado movendo as formas)"*). Sem um modo, carregar em `Z` morfa a forma
+/// **e** faz o que o `Z` faz no editor — os dois, sem nada na tela a explicar.
+///
+/// ⛔ **É a ÚNICA porta, e o playhead deixou de ser uma delas.** A W5 ligava a máquina ao
+/// transporte a andar; era exactamente aí que o conflito aparecia, porque o Play não tranca o
+/// teclado do editor. *Duas portas para o mesmo modo divergem, e a que o artista encontra primeiro
+/// é a que não tranca nada.*
+pub const VECTOR_MORPH_PREVIEW: NodeId = hash_node_id("vector.morph.preview");
+
 /// **QUANTAS FORMAS um conjunto de estados aceita** — e o recurso é o **relógio de pintura do
 /// painel**, medido.
 ///

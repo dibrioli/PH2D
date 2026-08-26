@@ -92,15 +92,19 @@ fn the_bound_key_moves_the_morph_from_one_shape_to_the_other() {
     );
 }
 
-/// ⛔⛔ **COM O RELÓGIO PARADO a máquina não corre, e a tecla não faz NADA.**
+/// ⛔⛔ **FORA DO MODO a máquina não corre, e a tecla não faz NADA.**
 ///
 /// ⚠️ Não é conservadorismo: a condição de uma seta é uma tecla, e a escutar durante a edição
 /// carregar em `Z` morfava a forma **e** fazia o que o `Z` faz no editor — os dois, sem que nada na
 /// tela explicasse.
 ///
-/// **Mutação que deve sangrar:** largar a guarda do `playing`.
+/// ⚠️ **O «modo» deixou de ser o playhead na W9** (Enio, 2026-08-25): o transporte a andar **não**
+/// tranca o teclado do editor, então com ele o conflito ficava exactamente onde estava. Hoje a
+/// porta é o interruptor `Preview` da seção, que toma o teclado.
+///
+/// **Mutação que deve sangrar:** largar a guarda do `active`.
 #[test]
-fn with_the_clock_stopped_the_key_does_nothing() {
+fn outside_the_mode_the_key_does_nothing() {
     let (mut sim, e, map) = scene();
     let st = z_just_pressed(&map);
     let mut machines = MorphMachines::new();

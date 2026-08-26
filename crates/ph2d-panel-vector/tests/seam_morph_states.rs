@@ -72,6 +72,15 @@ fn machine() -> MorphStatesState {
         actions: vec!["jump".into(), "dash".into()],
         current: Some("Tall".into()),
         can_make: 0,
+        preview: false,
+    }
+}
+
+/// A mesma máquina, com a pré-visualização LIGADA.
+fn machine_previewing() -> MorphStatesState {
+    MorphStatesState {
+        preview: true,
+        ..machine()
     }
 }
 
@@ -261,6 +270,70 @@ fn the_condition_menu_of_every_row_is_alive() {
             EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == opt
         )),
         "o Click da opcao nao chegou ao bus -- escolher a accao nao escreveria no mundo"
+    );
+    clear();
+}
+
+/// ⭐⭐ **O INTERRUPTOR DA PRÉ-VISUALIZAÇÃO está vivo e o clique chega ao barramento.**
+///
+/// ⚠️ **É a única porta de entrada E de saída do modo que toma o teclado.** Se ele morrer sob o
+/// ponteiro, o artista que entrar (por outro caminho) fica sem botão para sair, e o modo consome
+/// exactamente as teclas com que ele tentaria escapar.
+#[test]
+fn the_preview_toggle_is_alive_and_reaches_the_bus() {
+    clear();
+    set_morph_states_state(Some(machine()));
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut ps = VectorPanelState;
+    let r = host
+        .painted_rect::<VectorPanel>(&mut ps, VIEWPORT, ids::VECTOR_MORPH_PREVIEW)
+        .expect("o botao «Preview» nao foi PINTADO com area clicavel");
+    let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    host.dispatch_pointer_event(pointer(PointerKind::Down, cx, cy, SEC));
+    let evs = host.dispatch_pointer_event(pointer(PointerKind::Up, cx, cy, SEC + SEC / 100));
+    assert!(
+        evs.iter()
+            .any(|e| matches!(e, WidgetEvent::Click(c) if *c == ids::VECTOR_MORPH_PREVIEW)),
+        "o ponteiro sobre o interruptor nao virou Click -- falta o `register` no populate"
+    );
+    for ev in evs {
+        host.apply_panel_event::<VectorPanel>(&mut ps, ev);
+    }
+    assert!(
+        host.drained_actions().into_iter().any(|a| matches!(
+            a,
+            EditorAction::ToolPanelEvent(PanelEvent::Click(c)) if c == ids::VECTOR_MORPH_PREVIEW
+        )),
+        "o Click nao chegou ao bus -- o interruptor acende sob o rato e nao liga modo nenhum"
+    );
+    clear();
+}
+
+/// ⭐ **O interruptor CONTINUA clicável com a preview LIGADA** — ele é a porta de saída.
+///
+/// ⚠️ **Mutação que deve sangrar:** o `morph_preview_row` deixar de registar o hit-rect quando
+/// `on` — o artista entra no modo, o botão fica aceso e **morto**, e as teclas com que ele tentaria
+/// sair são precisamente as que o modo consome.
+#[test]
+fn the_way_out_stays_clickable_while_the_mode_runs() {
+    clear();
+    set_morph_states_state(Some(machine_previewing()));
+    assert!(
+        painted(ids::VECTOR_MORPH_PREVIEW).is_some(),
+        "com a preview LIGADA o interruptor tem de continuar pintado e clicavel"
+    );
+    clear();
+}
+
+/// ⛔ **Sem máquina não há interruptor** — um modo de pré-visualização sobre um objecto sem
+/// transições é um modo que não faz nada, e o artista não teria como o saber.
+#[test]
+fn a_selection_without_a_machine_offers_no_preview_toggle() {
+    clear();
+    set_morph_states_state(Some(can_make(3)));
+    assert!(
+        painted(ids::VECTOR_MORPH_PREVIEW).is_none(),
+        "o interruptor foi pintado sobre uma seleccao que ainda nao tem maquina nenhuma"
     );
     clear();
 }

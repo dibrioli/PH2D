@@ -188,6 +188,14 @@ impl App {
             }
         }
 
+        // ⭐⭐⭐ **UM MODO EM CURSO É DONO DA ENTRADA DELE** — a porta está em
+        // [`super::keyboard_modal`], cortada para lá pelo teto de LOC. Ela corre **depois** do
+        // retrato dos dispositivos (senão o modo ficaria inerte com o teclado tomado) e **antes**
+        // de todo atalho (senão a tecla faria duas coisas).
+        if self.modal_owns_the_keyboard(physical_key, state, repeat) {
+            return;
+        }
+
         if let PhysicalKey::Code(code) = physical_key {
             let (next, consumed) = crate::flip_peek::key_transition(
                 self.flip_peek,

@@ -21,7 +21,7 @@
 
 use std::collections::BTreeMap;
 
-use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecMorph};
+use ph2d_ecs::{Entity, Name, SimWorld, Transform, VecMorph, VecMorphMachine};
 use ph2d_vec_blend::Plan;
 use ph2d_vec_scene::{VecPath, VecPathId, VecScene, VecXforms, bake_xform, xform_of};
 
@@ -94,6 +94,26 @@ fn world(scene: &VecScene, xforms: &VecXforms, id: u64) -> Option<VecPath> {
     Some(p)
 }
 
+/// **A forma-fonte na pose LOCAL dela** — o referencial do conjunto que a contém.
+///
+/// ⚠️ **É a irmã de [`world`], e a diferença é o afim que ela assa:** aquela leva a forma ao MUNDO
+/// (a cadeia inteira de pais); esta assa só o `Transform` do próprio, que — para um membro de um
+/// conjunto de estados — é exactamente a pose relativa ao conjunto, porque o conjunto é o pai dele.
+///
+/// ⛔ Um membro que não seja filho directo do conjunto daria uma pose relativa ao pai ERRADO. Não
+/// pode acontecer: quem os reparenta é o [`crate::morph_set::upkeep`], que os põe directamente
+/// debaixo do conjunto — e há gate sobre isso.
+fn local(scene: &VecScene, sim: &SimWorld, map: &VecEntityMap, id: VecPathId) -> Option<VecPath> {
+    let mut p = scene.paths().iter().find(|p| p.id == id)?.clone();
+    let t = map
+        .get(&id)
+        .map(|&bits| Entity::from_bits(bits))
+        .and_then(|e| sim.world().get::<Transform>(e).copied())
+        .unwrap_or(Transform::IDENTITY);
+    bake_xform(&mut p, &crate::vec_transform::xform_of_transform(t));
+    Some(p)
+}
+
 /// **O re-cook de todo frame.** Para cada entidade com um [`VecMorph`]: resolve as duas fontes no
 /// MUNDO, avalia o plano em `t`, e escreve a forma **em lugar**.
 ///
@@ -124,13 +144,32 @@ pub(crate) fn recook(
         .retain(|id, _| morphs.iter().any(|(m, _, _)| m == id));
 
     for (id, entity, m) in morphs {
+        // ⭐⭐ **UM CONJUNTO DE ESTADOS COZE NO REFERENCIAL DELE, e é isso que o torna ARRASTÁVEL**
+        // (plano 32 W9; Enio, 2026-08-25: *"o objeto criado como pai tem que ser arrastável no
+        // canvas como um objeto qualquer (…) e deve arrastar os filhos junto"*).
+        //
+        // ⚠️ **A diferença é UMA linha e o mecanismo é inteiro.** Um Morph autorado coze as fontes
+        // em **MUNDO** e vive na identidade — se tivesse pose, a geometria de mundo levaria o afim
+        // dele **outra vez** e a forma deslocar-se-ia duas vezes. Um conjunto coze as fontes nas
+        // poses **LOCAIS** dos filhos (que são filhos DELE), então o que fica guardado é geometria
+        // do referencial do conjunto, e o `Transform` dele aplica-se **uma** vez, como em qualquer
+        // forma do documento.
+        //
+        // ⭐ **E o plano não se refaz ao arrastar:** as poses locais dos filhos não mudam quando o
+        // pai anda, então `a` e `b` são os mesmos bytes e o cache do `plan_for` acerta. Arrastar um
+        // conjunto de nove estados custa o que custa arrastar um rectângulo.
+        let is_set = sim.world().get::<VecMorphMachine>(entity).is_some();
+        let src = |sid| {
+            if is_set {
+                local(scene, sim, map, sid)
+            } else {
+                world(scene, xforms, sid)
+            }
+        };
         // Uma fonte sumiu (apagada) ⇒ a forma **CONGELA** onde está. Apagar o morph junto
         // destruiria trabalho; deixá-lo cozer com uma fonte só o faria sumir da tela. Congelar é o
         // que o conector faz com uma ponta perdida, e é o único que preserva o desenho.
-        let (Some(a), Some(b)) = (
-            world(scene, xforms, m.sources[0]),
-            world(scene, xforms, m.sources[1]),
-        ) else {
+        let (Some(a), Some(b)) = (src(m.sources[0]), src(m.sources[1])) else {
             continue;
         };
         let Some(cooked) = plans.plan_for(id, &a, &b).map(|p| p.at(f64::from(m.t))) else {
@@ -141,10 +180,16 @@ pub(crate) fn recook(
         // O morph vive na IDENTIDADE: a geometria acima é MUNDO, e uma pose por cima a
         // deslocaria. É a mesma regra do conector — e é ela que torna o gizmo inócuo sobre ele.
         // Arrastar um morph não quer dizer nada: move-se uma FONTE.
-        if sim
-            .world()
-            .get::<Transform>(entity)
-            .is_some_and(|t| *t != Transform::IDENTITY)
+        //
+        // ⛔ **E é EXACTAMENTE por isto que um conjunto de estados escapa:** ele não é uma forma
+        // derivada de duas fontes que o artista move, é um OBJECTO cujos estados são filhos dele.
+        // Zerar a pose dele faria o arrasto voltar ao sítio no quadro seguinte — que é, palavra por
+        // palavra, o mecanismo que tornava um Morph não-arrastável.
+        if !is_set
+            && sim
+                .world()
+                .get::<Transform>(entity)
+                .is_some_and(|t| *t != Transform::IDENTITY)
             && let Some(mut t) = sim.world_mut().get_mut::<Transform>(entity)
         {
             *t = Transform::IDENTITY;

@@ -203,6 +203,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.morph.make.transitions" => "transitions",
         "panel.vector.morph.need_shapes" => "Select two or more shapes to make a state machine.",
         "panel.vector.morph.too_many" => "Too many shapes for one state machine. The most is",
+        // ⭐⭐ O MODO em que o teclado e' da maquina (Enio, 25/08: sem ele o `Z` morfa E edita).
+        "panel.vector.morph.preview" => "Preview",
+        "panel.vector.morph.preview.on" => {
+            "Preview on \u{2014} the keyboard drives the machine. Esc exits."
+        }
         "panel.vector.morph.when" => "When",
         "panel.vector.morph.when.none" => "\u{2014}",
         "panel.vector.morph.beyond" => "more transitions not shown here",

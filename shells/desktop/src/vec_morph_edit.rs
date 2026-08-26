@@ -96,6 +96,7 @@ pub(crate) fn publish(
     scene: &VecScene,
     map: &VecEntityMap,
     sel: &[VecPathId],
+    preview: bool,
     actions: Vec<String>,
 ) -> Option<MorphStatesState> {
     let Some(e) = morph_of_selection(sim, map, sel) else {
@@ -103,6 +104,9 @@ pub(crate) fn publish(
         // (plano 32 W8): é ela que traz o botão que os cria. ⛔ Devolver `None` aqui faria a única
         // porta para a feature aparecer só depois de a feature existir.
         let n = crate::morph_set::eligible(sim, map, sel).len();
+        // ⛔ **`preview: false` aqui, e não o `preview` recebido.** Sem máquina não há modo a
+        // anunciar — e o botão não é sequer pintado nesta face. Passar o valor real acenderia um
+        // interruptor que não existe.
         return (n >= 2).then(|| MorphStatesState {
             can_make: n,
             actions,
@@ -142,6 +146,7 @@ pub(crate) fn publish(
         // aqui daria dois objectos de estados sobre as mesmas formas, e o segundo nasceria a
         // governar formas que o primeiro já esconde.
         can_make: 0,
+        preview,
     })
 }
 

@@ -60,6 +60,9 @@ mod keyboard_bind_capture;
 mod keyboard_escapes;
 /// ⭐ As teclas do modelador 3D, numa porta só — ver [`keyboard_field3d`].
 mod keyboard_field3d;
+/// ⭐⭐⭐ **Que MODO é dono do teclado neste quadro** — irmão do `keyboard`, cortado dele pelo cap
+/// de LOC. *Um modo em curso é dono da entrada dele.*
+mod keyboard_modal;
 
 /// **Os acordes de ARQUIVO** — irmão do `keyboard`, cortado dele pelo cap de LOC.
 mod keyboard_files;

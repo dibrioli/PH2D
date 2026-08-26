@@ -73,7 +73,7 @@
 - [Folga num teto = tamanho do ponto cego; meça a DIFERENÇA](feedback_a_slack_term_in_a_ceiling_is_the_size_of_the_blind_spot.md) · [defeito só de CUSTO: contador no produto, lido num binário só](feedback_a_cost_only_defect_is_invisible_to_every_output_gate.md)
 - [Fixtura de AMOSTRAS prova o que amostrou — gateie a PROPRIEDADE](feedback_a_sampled_fixture_proves_what_it_sampled_gate_the_property_where_it_is_defined.md) — exponha o interno por `probe_*` e afirme a desigualdade; e o controle não pode pedir que o caso comum seja o pior caso
 - [Invariante no próprio domínio: cego à fronteira](feedback_an_invariant_evaluated_inside_its_own_domain_says_nothing_about_the_boundary.md) · [superset ganha a dedup](feedback_a_superset_mode_must_win_the_dedup_never_lose_it.md)
-- [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md)
+- [Estado autorado & relógios (19)](reference_topic_authored_state_and_clocks.md) · [modo que não exclui ninguém é outro produtor](feedback_a_mode_whose_entry_excludes_nobody_is_just_another_producer.md)
 - [A 4ª pergunta de seam é a SEQUÊNCIA](feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md)
 - [Pintar/agarrar: UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) · [hit-test próprio herda a REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) · [blindar o hit-index muda as sondas](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md)
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md)

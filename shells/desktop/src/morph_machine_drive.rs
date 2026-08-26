@@ -1,6 +1,6 @@
 //! **A MÁQUINA DE MORPH A CORRER** (plano 32 W5) — quem faz a forma virar a outra.
 //!
-//! # ⚠️ Ela só corre com o RELÓGIO ANDANDO, e isso não é conservadorismo
+//! # ⚠️ Ela só corre num MODO, e isso não é conservadorismo
 //!
 //! A condição de uma seta é uma **acção do Input Map**, isto é, uma tecla. Se a máquina escutasse
 //! enquanto o artista edita, carregar em `Z` faria a forma mudar **e** o que quer que o `Z` faça no
@@ -8,9 +8,22 @@
 //! (*"um hover que animasse a forma enquanto o artista trabalha tornaria o editor inutilizável"*)
 //! com outro dispositivo de entrada, e a resposta é a mesma: **um modo**.
 //!
-//! ⭐ **E o modo já existe:** neste editor, *"o jogo a correr"* é o **playhead a andar** — a mesma
-//! porta pela qual o dedo do jogador alcança a física. Uma terceira noção de runtime seria uma
-//! terceira coisa para o artista aprender.
+//! # ⛔⛔ O PLAYHEAD ERA A PORTA E DEIXOU DE SER — e a diferença é uma medição, não um gosto
+//!
+//! A W5 escreveu que *"o modo já existe: neste editor, o jogo a correr é o playhead a andar"*, e
+//! era um argumento bom sobre a coisa errada. **O playhead não tranca o teclado do editor.** Com
+//! ele a andar, as teclas continuam a chegar aos atalhos — então a mesma tecla morfa a forma **e**
+//! faz o que ela faz no editor, que é exactamente o que a nota dizia estar a evitar.
+//!
+//! Enio, 2026-08-25, depois do smoke: *"precisamos de um modo preview (com botão) como o de states
+//! de animação pois senão temos conflitos de atalhos (como setas do teclado movendo as formas)"*.
+//!
+//! ⇒ a porta é o **interruptor `Preview`** da seção *Morph States*, e ele **toma o teclado**
+//! (`input_dispatch::keyboard`, logo depois do retrato dos dispositivos e antes de todo atalho).
+//! ⛔ **Uma porta, não duas:** deixar o playhead a dirigir também manteria o conflito viva na porta
+//! que não tranca nada — e *duas portas para o mesmo modo divergem em silêncio*.
+//!
+//! ⚠️ *Um modo cuja entrada não exclui os outros consumidores não é um modo — é mais um produtor.*
 //!
 //! # ⚠️ O que ela escreve é PRÉ-VISUALIZAÇÃO, e o undo não a vê
 //!
@@ -44,18 +57,21 @@ pub(crate) type MorphMachines = BTreeMap<u64, MorphMachine>;
 
 /// **Um quadro da máquina.** Devolve quantas máquinas correram.
 ///
-/// `playing` é o relógio: falso ⇒ as máquinas são **largadas** e nada é escrito (o ledger devolve o
-/// autorado sozinho, na próxima captura).
+/// `active` é o **modo de pré-visualização**: falso ⇒ as máquinas são **largadas** e nada é escrito
+/// (o ledger devolve o autorado sozinho, na próxima captura).
+///
+/// ⚠️ **O nome é `active` e não `playing` de propósito** — ele deixou de ser o playhead na W9, e um
+/// parâmetro que continuasse a chamar-se `playing` faria a próxima leitura procurar o transporte.
 pub(crate) fn tick(
     machines: &mut MorphMachines,
     sim: &mut SimWorld,
     map: &InputMap,
     actions: &ActionState,
-    playing: bool,
+    active: bool,
     dt: f64,
     drive: &mut PreviewDrive,
 ) -> usize {
-    if !playing {
+    if !active {
         // ⭐ **Largar é a restauração.** Não há «voltar ao estado inicial» aqui: o que o artista vê
         // ao parar é o que ele DESENHOU, e quem o repõe é o ledger — pela mesma porta que já repõe
         // a pose do solver e o relógio da §11.

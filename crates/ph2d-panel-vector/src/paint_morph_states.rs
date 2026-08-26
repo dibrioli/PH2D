@@ -41,7 +41,9 @@
 //! inalcançável.*
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
+use ph2d_editor_core::widget::{
+    Button, ButtonKind, Dropdown, DropdownOption, paint_button, paint_dropdown_chip,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::Spacing;
@@ -80,7 +82,10 @@ impl BodyCtx<'_> {
             return self.morph_make_face(s, y);
         }
 
-        let mut y = self.label_line(tr("panel.vector.morph.arrows"), y);
+        // ⭐⭐ **O INTERRUPTOR DA PRÉ-VISUALIZAÇÃO vem PRIMEIRO**, e a posição é o argumento: ele
+        // é o que decide de quem é o teclado, e essa pergunta antecede qualquer transição da lista.
+        let mut y = self.morph_preview_row(s.preview, y);
+        y = self.label_line(tr("panel.vector.morph.arrows"), y);
 
         // ⭐ **O READOUT: em que forma a máquina está AGORA.**
         //
@@ -108,6 +113,36 @@ impl BodyCtx<'_> {
                 ),
                 y,
             );
+        }
+        y
+    }
+
+    /// ⭐⭐ **O interruptor da PRÉ-VISUALIZAÇÃO**, e — quando ligada — a linha que diz como sair.
+    ///
+    /// ⚠️ **O botão troca de ESTADO, nunca de rótulo** (a mesma escolha do irmão das poses): um
+    /// botão cujo texto alterna entre *"Preview"* e *"Exit"* obriga a ler para saber onde se está,
+    /// enquanto um aceso se lê de relance.
+    ///
+    /// ⚠️ **A porta de saída é ANUNCIADA, e aqui ela é obrigatória:** este modo toma o **teclado**,
+    /// então o artista que não soubesse sair tentaria carregar em teclas — que é exactamente o que
+    /// o modo consome. Um modo que come a própria tentativa de sair lê-se como travado.
+    fn morph_preview_row(&mut self, on: bool, y: f32) -> f32 {
+        let rect = Rect::new(self.inner_x, y, self.inner_w, self.row_h);
+        // ⚠️ O *ligado* é o **KIND**, não o `ButtonState`: aquele descreve o rato (hover, press) e
+        // o kind descreve o que o botão É. Escrever *ligado* no `ButtonState` faria o aceso
+        // desaparecer no instante em que o cursor passasse por cima dele.
+        let btn = Button::new(ids::VECTOR_MORPH_PREVIEW, tr("panel.vector.morph.preview"))
+            .kind(if on {
+                ButtonKind::Accent
+            } else {
+                ButtonKind::Default
+            })
+            .visual(self.store.button_visual(ids::VECTOR_MORPH_PREVIEW));
+        paint_button(&btn, rect, self.scene, self.text_system, self.theme);
+        self.hit_index.register(ids::VECTOR_MORPH_PREVIEW, rect);
+        let y = y + self.row_h + Spacing::Xs.px();
+        if on {
+            return self.label_line(tr("panel.vector.morph.preview.on"), y);
         }
         y
     }

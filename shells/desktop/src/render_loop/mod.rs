@@ -3051,6 +3051,7 @@ impl crate::App {
             // NESTE frame, então ele não pode correr aqui — corre logo depois do `recook`, onde o
             // plano existe. Aqui só se anota o clique.
             let mut pending_morph_arrow: Option<crate::vec_morph_edit::ArrowCmd> = None;
+            let mut pending_morph_preview_toggle = false;
             let mut pending_bool_apply = false;
             // A MOLDURA (plano UI/UX W0): o chip de recorte e o preset de dispositivo.
             let mut pending_frame_clip: Option<bool> = None;
@@ -3511,6 +3512,12 @@ impl crate::App {
                                 // Um preset é uma 2ª forma de PEDIR a edição de W/H — ele cai na
                                 // MESMA porta que os campos numéricos do Transform.
                                 pending_frame_preset = Some(p);
+                            } else if *id == ph2d_editor::ids::VECTOR_MORPH_PREVIEW {
+                                // ⭐⭐ **O MODO em que o teclado é da máquina** (plano 32 W9). Ele
+                                // NÃO é um verbo de seta — não toca o grafo —, então tem rota
+                                // própria em vez de um variant no `ArrowCmd`, cujo assunto é *o que
+                                // muda no documento*. É a mesma separação do irmão das poses.
+                                pending_morph_preview_toggle = true;
                             } else if let Some(cmd) = crate::vec_morph_edit::arrow_cmd_for_id(*id) {
                                 // ⭐ A seção MORPH STATES (plano 32 W4/W8): fazer o conjunto, ou
                                 // escolher a acção que dispara uma transição. As duas mexem no
@@ -5891,6 +5898,19 @@ impl crate::App {
                 // um som ali anunciaria o que o app decidiu em vez de confirmar o que a mão fez.
                 self.pending_ui_sound = Some(crate::ui_sound::UiSound::Toggle);
             }
+            // ⭐⭐ **A PRÉ-VISUALIZAÇÃO da máquina de Morph** (plano 32 W9) — o modo em que o
+            // teclado é da máquina. ⚠️ **Não há `enter`/`leave` a capturar mundo**, ao contrário do
+            // irmão acima: aqui a restauração já é do ledger (`preview_drive`), que repõe o valor
+            // AUTORADO na captura. Ligar e desligar é só o interruptor.
+            if pending_morph_preview_toggle {
+                self.morph_preview = !self.morph_preview;
+                // ⭐ **TOGGLE** (D1), pela mesma razão do irmão: aqui e não no ramo do `leave`, que
+                // também dispara pelo Esc — um som ali anunciaria o que o app decidiu.
+                self.pending_ui_sound = Some(crate::ui_sound::UiSound::Toggle);
+            }
+            if std::mem::take(&mut self.morph_preview_leave) {
+                self.morph_preview = false;
+            }
             if pending_ui_preview_toggle || std::mem::take(&mut self.ui_preview_leave) {
                 if self.ui_preview.is_on() {
                     self.ui_preview
@@ -8007,16 +8027,19 @@ impl crate::App {
             // `recook` logo abaixo transforma-os em forma. ⚠️ **Antes do recook, de propósito**: é
             // a mesma ordem pela qual o `t` da timeline vira movimento.
             //
-            // ⚠️ **Só com o relógio ANDANDO.** A condição de uma seta é uma tecla; a escutar
-            // durante a edição, carregar em `Z` morfava a forma **e** fazia o que o `Z` faz no
-            // editor. Neste app *"o jogo a correr"* é o playhead a andar — a mesma porta pela qual
-            // o dedo do jogador alcança a física.
+            // ⚠️ **Só no MODO DE PRÉ-VISUALIZAÇÃO** (plano 32 W9). A condição de uma seta é uma
+            // tecla; a escutar durante a edição, carregar em `Z` morfa a forma **e** faz o que o
+            // `Z` faz no editor — os dois, sem nada na tela a explicar.
+            //
+            // ⛔ **O playhead deixou de ser a porta**, e a troca é a cura de um report do Enio
+            // (2026-08-25): o Play **não tranca o teclado do editor**, então com ele a andar as
+            // setas do teclado morfavam a forma *e* moviam as formas. Este modo tranca.
             crate::morph_machine_drive::tick(
                 &mut self.morph_machines,
                 sim,
                 &hero.input_map,
                 &self.input_actions,
-                self.playhead.is_playing(),
+                self.morph_preview,
                 self.fixed_step.fixed_dt(),
                 &mut self.preview_drive,
             );
@@ -8450,6 +8473,7 @@ impl crate::App {
                     vec_scene,
                     &self.vec_entities,
                     &sel,
+                    self.morph_preview,
                     hero.input_map
                         .actions()
                         .iter()
@@ -8600,6 +8624,13 @@ impl crate::App {
                             p.members.len(),
                             p.members.len() * (p.members.len() - 1)
                         );
+                        // ⭐⭐ **O OBJECTO NOVO FICA SELECCIONADO** — a mesma escolha do botão
+                        // Morph ao lado, e aqui ela é load-bearing por uma razão a mais: sem isto
+                        // a selecção continuaria a ser as formas-membro, que acabaram de ficar
+                        // **ocultas e filhas do conjunto** — e a seção voltaria a oferecer
+                        // *"Make Morph States"* sobre elas, prometendo um segundo conjunto por
+                        // cima do primeiro.
+                        self.vec_pen.select_many(&[p.path]);
                         self.vec_morph_set_pending = Some(p);
                         // ⭐ **COMMIT** — criar o conjunto muda o documento de vez, e é exactamente
                         // o gesto que uma confirmação pelo ouvido serve (a lei do D1).

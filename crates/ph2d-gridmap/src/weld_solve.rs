@@ -81,6 +81,12 @@ pub struct WeldSolveReport {
     pub rounds: usize,
     /// ⭐ O maior movimento da última ronda — a régua da convergência.
     pub last_move: f32,
+    /// ⭐⭐ **Triângulos VIRADOS depois da 1.ª resolução** — antes de endurecer nada.
+    pub folded_before: usize,
+    /// ⭐⭐⭐ **Triângulos VIRADOS no fim** — a régua do endurecimento local.
+    pub folded_after: usize,
+    /// Quantas passagens de endurecimento correram de facto.
+    pub stiffen_passes: usize,
 }
 
 /// ⭐ **O RELAXADOR SOLDADO** — o sistema reduzido, uma variável de cada vez.
@@ -337,6 +343,83 @@ fn solve2(h: [[f32; 2]; 2], g: [f32; 2], frozen: [bool; 2]) -> Option<[f32; 2]> 
 
 /// ⭐⭐⭐ **RESOLVE O MAPA COM AS COSTURAS ELIMINADAS.**
 #[must_use]
+/// ⭐⭐⭐ **QUANTAS VEZES o endurecimento local corre** (MIQ 2009 §5.4).
+///
+/// A lei publicada: uma parametrização harmónica **não é injectiva** por construção — onde
+/// a superfície comprime, triângulos viram do avesso. A cura é **pesar mais** os triângulos
+/// virados e **resolver outra vez**, repetindo: cada passagem torna aquela região mais
+/// rígida e empurra a distorção para onde há folga.
+///
+/// ⛔ **O número tem de ser MEDIDO** (`CLAUDE.md` §0.0) — ver a tabela em
+/// [`STIFFEN_FACTOR`]. `0` devolve o caminho antigo bit a bit.
+///
+/// ⚠️ **O preço é linear**: cada passagem é uma resolução inteira do contínuo.
+fn stiffen_passes(_rounds: usize) -> usize {
+    std::env::var("PH2D_STIFFEN_PASSES")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(STIFFEN_PASSES)
+}
+
+/// ⛔⛔⛔ **ZERO — o endurecimento local foi CONSTRUÍDO, MEDIDO e REJEITADO.**
+///
+/// A `0` esta função é bit a bit o caminho de sempre, e há gate a afirmá-lo
+/// (`stiffening_at_zero_passes_is_the_old_path`).
+///
+/// # ⛔ A tabela da rejeição (2026-08-25, peça do artista, cadeia inteira)
+///
+/// | passagens | factor | triângulos VIRADOS | bordo | `χ` | enviesamento p50 | `>60°` |
+/// |---|---|---|---|---|---|---|
+/// | ⭐ **`0`** | — | **`14` ⇒ `14`** | **`10`** | **`1`** | `7,3°` | `5` |
+/// | 2 | `2` | ⛔ `14` ⇒ **`15`** | `12` | `1` | `7,8°` | `2` |
+/// | 5 | `2` | ⛔ `14` ⇒ **`18`** | `14` | `0` | `7,8°` | `7` |
+/// | 2 | `4` | ⛔ `14` ⇒ **`19`** | `12` | `1` | `7,4°` | `5` |
+/// | 5 | `4` | ⛔ `14` ⇒ **`23`** | `12` | `1` | `7,0°` | `3` |
+/// | 2 | `10` | ⛔ `14` ⇒ **`19`** | `14` | `1` | `7,4°` | `5` |
+/// | 2 | `0,5` | `14` ⇒ `14` | `10` | `1` | `6,7°` | `4` |
+/// | 2 | `0,25` | `14` ⇒ `14` | ⛔ `18` | ⛔ `0` | `7,3°` | `4` |
+/// | 2 | `0,1` | `14` ⇒ `14` | `12` | `1` | `7,5°` | `6` |
+///
+/// # ⭐⭐⭐ O MECANISMO, e é ele que fecha a família
+///
+/// ⛔ **Endurecer AUMENTA as dobras** — monotonamente no factor e nas passagens. Isso não
+/// é afinação a faltar: é o sinal de que a cura publicada assume **outra energia**.
+///
+/// No *paper* a parametrização é **harmónica**, e pesar mais um triângulo virado força-o a
+/// ser mais rígido, o que o desvira. ⭐⭐ **A nossa energia não é essa: ela é
+/// `Σ area·|∇z − X/h|²`, ou seja «SEGUIR O CAMPO».** Pesar mais um triângulo virado manda-o
+/// obedecer ao campo **com mais força** — exactamente no sítio onde obedecer ao campo é o
+/// que o vira. *A cura empurra na direcção do defeito.*
+///
+/// ⚠️ **E o sinal contrário também não serve:** amolecer (`factor < 1`) deixa a contagem de
+/// dobras **exactamente igual** (`14` ⇒ `14`) e move as outras colunas dentro da banda de
+/// caos que o guloso já tem — medida à parte, `8k/16k/32k/64k` rondas dão `14/14/10/12`
+/// arestas de bordo sobre o **mesmo** mapa. *Uma melhoria menor que a banda de caos do
+/// sistema não é uma melhoria; é uma amostra.*
+///
+/// ⇒ **Duas hipóteses boas da mesma família falharam ⇒ a família está fechada.** A dobra
+/// no domínio não se cura pesando triângulos: ela é uma propriedade do CAMPO que o mapa
+/// está a seguir.
+///
+/// ⭐ **O que fica de valor é a RÉGUA:** [`WeldSolveReport::folded_before`] /
+/// [`WeldSolveReport::folded_after`] medem as dobras no **contínuo**, antes do
+/// arredondamento inteiro — e essa contagem não existia. A sonda independente do
+/// `chain_info` mede-as **depois** (`20`), e as duas juntas dizem quanto o arredondamento
+/// acrescenta.
+pub const STIFFEN_PASSES: usize = 0;
+
+/// ⭐ **POR QUANTO o peso de um triângulo virado é multiplicado, por passagem.**
+///
+/// ⛔ Inerte enquanto [`STIFFEN_PASSES`] for `0` — ver a tabela da rejeição lá.
+pub const STIFFEN_FACTOR: f32 = 2.0;
+
+fn stiffen_factor() -> f32 {
+    std::env::var("PH2D_STIFFEN_FACTOR")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(STIFFEN_FACTOR)
+}
+
 pub fn solve_welded(
     mesh: &Mesh,
     cut: &CutMesh,
@@ -347,8 +430,7 @@ pub fn solve_welded(
     let mut rep = WeldSolveReport::default();
     let (w, wrep) = weld(cut, combed);
     rep.weld = wrep;
-    let a = assemble(mesh, cut, combed, h, &mut rep.solve);
-    let r = WeldRelaxer::new(&a, &w, cut, combed);
+    let mut a = assemble(mesh, cut, combed, h, &mut rep.solve);
     let jumped: Vec<bool> = (0..cut.seams.len())
         .map(|s| combed.jump.get(s).copied().flatten().is_some())
         .collect();
@@ -361,9 +443,26 @@ pub fn solve_welded(
             .collect(),
         shift: vec![[0.0; 2]; cut.seams.len()],
     };
-    for round in 0..rounds {
-        rep.last_move = r.sweep(&mut map);
-        rep.rounds = round + 1;
+    // ⭐⭐⭐ **O ENDURECIMENTO LOCAL** — ver [`STIFFEN_PASSES`].
+    //
+    // ⚠️ **A 1.ª passagem é a de sempre, bit a bit**, e é isso que faz `passes = 0` ser o
+    // caminho antigo: só depois de uma solução existir é que há dobras para endurecer.
+    for pass in 0..=stiffen_passes(rounds) {
+        let r = WeldRelaxer::new(&a, &w, cut, combed);
+        for round in 0..rounds {
+            rep.last_move = r.sweep(&mut map);
+            rep.rounds = round + 1;
+        }
+        let folded = a.folded(&map);
+        rep.folded_after = folded.len();
+        if pass == 0 {
+            rep.folded_before = folded.len();
+        }
+        if folded.is_empty() || pass == stiffen_passes(rounds) {
+            break;
+        }
+        rep.stiffen_passes = pass + 1;
+        a.stiffen(&folded, stiffen_factor());
     }
     measure(&a, cut, combed, &map, h, &mut rep.solve);
     crate::weld::holonomy(&w, &map, &mut rep.weld);

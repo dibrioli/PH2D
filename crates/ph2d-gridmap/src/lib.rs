@@ -79,4 +79,4 @@ pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
 pub use weld_round::{round_welded, welded_enabled};
-pub use weld_solve::{WeldSolveReport, solve_welded};
+pub use weld_solve::{STIFFEN_FACTOR, STIFFEN_PASSES, WeldSolveReport, solve_welded};

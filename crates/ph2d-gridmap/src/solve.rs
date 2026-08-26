@@ -377,6 +377,61 @@ pub(crate) fn assemble(
     }
 }
 
+impl Assembly {
+    /// ⭐⭐⭐ **OS TRIÂNGULOS CUJA IMAGEM ESTÁ VIRADA** — `(patch, índice)`.
+    ///
+    /// ⚠️ **É a mesma lei da sonda independente do `chain_info`** (o sinal da área da
+    /// imagem), e de propósito: as duas medem a mesma coisa por caminhos diferentes, e é
+    /// isso que torna uma delas um controlo da outra.
+    ///
+    /// ⚠️ Dentro de um patch não há transformação de costura a aplicar — os três vértices
+    /// são locais. *É por isso que a dobra se pode ler aqui sem reconstruir o mapa de
+    /// cantos.*
+    pub(crate) fn folded(&self, map: &GridMap) -> Vec<(usize, usize)> {
+        let mut out = Vec::new();
+        for (p, ts) in self.tris.iter().enumerate() {
+            for (i, t) in ts.iter().enumerate() {
+                let z = [
+                    map.uv[p][t.v[0] as usize],
+                    map.uv[p][t.v[1] as usize],
+                    map.uv[p][t.v[2] as usize],
+                ];
+                let d = (z[1][0] - z[0][0]).mul_add(
+                    z[2][1] - z[0][1],
+                    -((z[1][1] - z[0][1]) * (z[2][0] - z[0][0])),
+                );
+                if d < 0.0 {
+                    out.push((p, i));
+                }
+            }
+        }
+        out
+    }
+
+    /// ⭐⭐⭐ **ENDURECE os triângulos dados** — multiplica o peso deles na energia e
+    /// reconstrói o denominador de Poisson.
+    ///
+    /// ⛔ **O denominador TEM de ser refeito**, e não é detalhe: ele é `Σ area·|g|²` por
+    /// vértice e é o divisor de toda relaxação. *Mudar o peso e deixar o denominador para
+    /// trás é resolver um sistema com a matriz de um e o lado direito do outro.*
+    pub(crate) fn stiffen(&mut self, who: &[(usize, usize)], factor: f32) {
+        for &(p, i) in who {
+            self.tris[p][i].area *= factor;
+        }
+        for d in &mut self.denom {
+            d.fill(0.0);
+        }
+        for (p, ts) in self.tris.iter().enumerate() {
+            for t in ts {
+                for k in 0..3 {
+                    let g = t.g[k];
+                    self.denom[p][t.v[k] as usize] += t.area * g[0].mul_add(g[0], g[1] * g[1]);
+                }
+            }
+        }
+    }
+}
+
 /// ⭐⭐ **O NUMERADOR DE POISSON de um vértice** — a soma, sobre os triângulos
 /// incidentes, do que a energia de orientação pede a este vértice.
 ///

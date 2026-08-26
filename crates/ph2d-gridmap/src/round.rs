@@ -239,6 +239,13 @@ pub struct RoundReport {
     /// ⭐⭐⭐ **Vértices singulares SOLTOS que passaram a ser pregados** — os que o corte
     /// não duplicou, logo sem fecho a representá-los. Ver [`RoundOptions::pin_lone_singularities`].
     pub singular_loose_pinned: usize,
+    /// ⭐⭐ Triângulos virados depois da 1.ª resolução do contínuo.
+    pub folded_before: usize,
+    /// ⭐⭐⭐ Triângulos virados no fim do contínuo — ver
+    /// [`ph2d_gridmap::STIFFEN_PASSES`].
+    pub folded_after: usize,
+    /// Quantas passagens de endurecimento local correram.
+    pub stiffen_passes: usize,
     /// ⚠️ **O CASO DE CANTO, e ele tem nome:** as singularidades esgotaram-se e ainda
     /// sobravam costuras por arredondar — acontece em peças com **alça**, e o nosso
     /// corpus tem um toro. ⛔ Terminar ali deixaria o mapa *quase* inteiro, que é pior

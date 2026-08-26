@@ -89,6 +89,9 @@ pub fn round_welded(
     let mut rep = RoundReport {
         seam_before: (before.solve.seam_p50, before.solve.seam_max),
         weld: before.weld,
+        folded_before: before.folded_before,
+        folded_after: before.folded_after,
+        stiffen_passes: before.stiffen_passes,
         ..RoundReport::default()
     };
     let mut solve_rep = SolveReport::default();

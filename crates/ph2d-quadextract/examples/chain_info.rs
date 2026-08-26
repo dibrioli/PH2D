@@ -235,6 +235,7 @@ fn main() {
         }
     );
     println!("  modalidade das singularidades: {pin}");
+
     // ⭐⭐⭐ **QUANTOS singulares o CORTE de facto duplica.** O caminho soldado deriva os
     // vértices singulares dos FECHOS do grafo de cópias — e um vértice que o corte não
     // duplicou não tem cópias, logo não tem fecho, logo **nunca é pregado num inteiro**.
@@ -292,6 +293,10 @@ fn main() {
         r.seam_before.1,
         r.seam_after.1,
         r.solve.angle_p50
+    );
+    println!(
+        "  ⭐⭐ ENDURECIMENTO LOCAL: {} passagens · triangulos VIRADOS {} ⇒ {}",
+        r.stiffen_passes, r.folded_before, r.folded_after
     );
     println!(
         "  REGUAS do mapa: alinhamento p50 {:.3} p95 {:.3} | angulo p50 {:.1}° p95 {:.1}° | ESCALA p50 {:.3} p95 {:.3} | {} triangulos, {} saltados, {} pares",

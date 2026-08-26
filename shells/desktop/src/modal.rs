@@ -86,10 +86,19 @@ pub(crate) fn chrome_dt(wall_dt: f64, stalled_s: f64) -> f64 {
 /// ⭐⭐ **E o congelamento não é privilégio do DIÁLOGO** (2026-08-25, report do Enio: *"a mensagem
 /// não aparece"* sobre uma exportação de um milhão de faces). A lei desta porta sempre foi *quem
 /// congela o loop declara quanto* — e um diálogo nativo e uma conta de minutos congelam do mesmo
-/// jeito. ⇒ [`stalling`] é esta mesma função, alcançável por quem calcula.
+/// jeito. *O relógio do chrome não distingue «parado por um diálogo» de «parado por uma conta»:
+/// para a tela, os dois são o mesmo nada.*
 ///
-/// ⚠️ *O relógio do chrome não distingue «parado por um diálogo» de «parado por uma conta»: para a
-/// tela, os dois são o mesmo nada.*
+/// ⛔⛔ **E DECLARAR CURA A MENSAGEM, NÃO CURA O CONGELAMENTO.** O report seguinte do Enio, no mesmo
+/// dia, foi *"o linux fica cinza"*: com a conta a 12 s o loop não responde ao *ping* do compositor,
+/// o KDE pinta a janela de cinza e oferece *"forçar o encerramento"* — o sistema operativo a dizer
+/// ao artista que o programa morreu, com o trabalho não gravado dentro.
+///
+/// ⇒ ⭐ **Para um CÁLCULO a resposta certa não é declarar: é não bloquear.** O módulo 3D tirou a
+/// exportação da thread que desenha ([`crate::field3d_export_job`]), e com isso não há
+/// congelamento nenhum a declarar. *Um diálogo é uma janela que o compositor sabe que abriu; uma
+/// conta é o programa a não responder.* Esta porta continua a ser a resposta certa **para o
+/// diálogo**, que é o que ela sempre foi.
 fn timed<T>(f: impl FnOnce() -> T) -> T {
     let t0 = Instant::now();
     let out = f();
@@ -105,17 +114,6 @@ pub(crate) fn save_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
 /// A porta de **abrir**, pela mesma razão.
 pub(crate) fn pick_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
     timed(|| dialog.pick_file())
-}
-
-/// ⭐⭐ **A porta de quem congela o loop a CALCULAR** — a mesma lei de [`timed`], para trabalho que
-/// não é diálogo nenhum.
-///
-/// ⚠️ **Ela existe porque a exportação do módulo 3D passou a demorar minutos** e a mensagem que ela
-/// escreve no fim voltou a viver um quadro só — o sintoma exacto que a porta dos diálogos curou em
-/// 2026-08-22, pelo mesmo mecanismo, com outra causa. ⛔ Um trabalho pesado que **não** declare
-/// volta a matar a própria mensagem, e o defeito lê-se como *"o botão não faz nada"*.
-pub(crate) fn stalling<T>(f: impl FnOnce() -> T) -> T {
-    timed(f)
 }
 
 #[cfg(test)]

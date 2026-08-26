@@ -614,8 +614,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   passou a honrar o alvo que lhe dão (`phase_zero` — ela ignorava-o, e os números coincidiam **por
   acidente** com o único chamador de então). ⚠️ **E *"a mensagem não aparece"* era o mecanismo de
   22/08 com outra causa:** o relógio do chrome desconta o congelamento **declarado**, e quem
-  congelava era uma **conta**, não um diálogo — `crate::modal::stalling` é a mesma porta, e cozer,
-  serializar e gravar passam agora os três por ela.
+  congelava era uma **conta**, não um diálogo. ⛔⛔ **E o report SEGUINTE do mesmo dia mostrou que
+  declarar cura a MENSAGEM e não cura o congelamento** (*«o linux fica cinza»*): a 12 s o loop não
+  responde ao *ping* do compositor, o KDE dá a janela por morta e oferece **forçar o encerramento** —
+  e o gesto natural a seguir leva o trabalho não gravado. ⇒ ⭐⭐⭐ **a exportação SAI da thread que
+  desenha** ([`field3d_export_job.rs`](shells/desktop/src/field3d_export_job.rs)): bancada com uma de
+  cada vez, recusa do segundo **em alto**, resposta drenada uma vez por quadro ao lado do pedido, e um
+  sentinela que liberta a bancada no `Drop` (senão o 1.º estouro trancava o botão até ao fim da
+  sessão). ⚠️ **O `Send + 'static` é o gate que o COMPILADOR escreve.** ⚠️ E a declaração foi
+  **retirada** de `cook`/`bytes_of`: do lado de lá o `note_stall` escreve num `thread_local` que
+  ninguém lê — *um no-op silencioso*. A porta do `modal` fica sendo o que sempre foi: a resposta certa
+  para o **diálogo**. ⚠️ Doze segundos de silêncio com o app vivo leem-se como «o botão não fez
+  nada» ⇒ há aviso de início, e ele **não promete prazo**. ⭐ **E tirar o trabalho da thread ABRIU uma
+  porta que o congelamento fechava:** o artista voltou a poder fechar o app a meio, e um `write`
+  interrompido deixa **meio arquivo com o nome certo** — daí a gravação por temporário + `rename`,
+  com o temporário **na pasta do destino** (o `rename` só é atómico dentro do mesmo sistema de
+  arquivos). *Uma cura pode abrir a porta que outra fechava.*
   **Aberto:** ⏳ **decisão do Enio, já com os números:** o nível de exportação **não alcança** a
   densidade da cadeia (ela dá ~2 500 quads em qualquer nível) — manter a razão `célula/alvo` preserva
   a qualidade (`6,2°`) e custa **`48 894 ms` por 3,7× os quads**, e mais um degrau seria minutos ·

@@ -145,79 +145,6 @@ fn an_empty_mesh_reports_zero_instead_of_a_negative_size() {
     );
 }
 
-/// ⭐⭐ **A EXPORTAÇÃO DECLARA O CONGELAMENTO QUE ELA CAUSA** — o report do Enio de 2026-08-25
-/// (*"a mensagem não aparece"*) escrito como gate.
-///
-/// # ⚠️ O mecanismo é o de 2026-08-22, e a causa é outra
-///
-/// O relógio do chrome envelhece os toasts com o `wall_dt` do quadro **menos o congelamento
-/// declarado** (`modal::chrome_dt`). Uma exportação que congela o loop por minutos e **não declara**
-/// faz o quadro seguinte cobrar esses minutos à mensagem que ela acabou de escrever — que morre
-/// antes de ser pintada uma segunda vez. ⚠️ Da cadeira isso lê-se como *"o botão não faz nada"*.
-///
-/// ⛔ **A mutação que este gate mata é exactamente a que reabre o defeito:** tirar o
-/// `crate::modal::stalling` de [`super::cook`]. Sem ele o produto compila, exporta certo, e a
-/// mensagem some.
-///
-/// ⚠️ **Ele corre o PRODUTO**, não um censo de texto: um gate que procurasse o nome da porta no
-/// arquivo passaria verde sobre uma chamada morta ao lado do caminho real.
-#[test]
-fn the_export_declares_the_freeze_it_causes() {
-    let reg = crate::field3d_smoke::sampled_registry();
-    let doc = one(Primitive::Sphere { radius: 0.4 });
-    // O relógio é por thread e partilhado com outros gates: começa limpo.
-    let _ = crate::modal::take_stall();
-    assert!(
-        crate::modal::take_stall() <= 0.0,
-        "o controle: sem ninguém a congelar, não há nada declarado"
-    );
-
-    let (mesh, _) = super::cook(&doc, &reg, super::ExportLevel::Draft).expect("a peça cozinha");
-    let declared = crate::modal::take_stall();
-
-    assert!(
-        !mesh.positions().is_empty(),
-        "a porta não pode comer a malha — sem esta metade, `stalling` podia devolver `default()`"
-    );
-    assert!(
-        declared > 0.0,
-        "a exportação congelou o loop e não declarou nada ({declared} s) — a mensagem que ela \
-         escreve a seguir vai viver um quadro só"
-    );
-}
-
-/// ⭐⭐⭐ **QUANTO CUSTA EXPORTAR, pelo caminho do PRODUTO** — o report do Enio de 2026-08-25
-/// (*"o tempo de exportação numa malha de 1mi de faces é alto"*) medido onde ele o sentiu.
-///
-/// ⚠️ **Ela corre a [`super::cook`]**, não uma reconstrução dela: a sonda irmã em `ph2d-field-eval`
-/// mede a cadeia, e esta mede a **exportação**, que é a cadeia mais a extração do nível pedido mais
-/// o censo de arestas da malha que ficaria. *Uma sonda que salta a costura mede a metade que já se
-/// sabia.*
-///
-/// ```text
-/// cargo test -p ph2d-host-desktop --release -- --exact \
-///     field3d_export::tests::measure_the_export_wall_clock --ignored --nocapture
-/// ```
-#[test]
-#[ignore = "sonda; roda com --ignored --nocapture"]
-fn measure_the_export_wall_clock() {
-    use crate::field3d_export::ExportLevel;
-    let reg = crate::field3d_smoke::sampled_registry();
-    let doc = one(Primitive::Sphere { radius: 0.45 });
-    println!("nível | prof | ms | quads que saem | veredito");
-    for level in ExportLevel::ALL {
-        let t0 = std::time::Instant::now();
-        let (mesh, verdict) = super::cook(&doc, &reg, level).expect("cozinha");
-        println!(
-            "{:>6} | {:>4} | {:>6.0} | {:>14} | {verdict:?}",
-            level.key().rsplit('.').next().unwrap_or("?"),
-            level.depth(),
-            t0.elapsed().as_secs_f32() * 1000.0,
-            mesh.faces().len(),
-        );
-    }
-}
-
 /// ⭐⭐⭐ **A GRADE QUE ALIMENTA A CADEIA É A DO `Draft`, NÃO A DO NÍVEL PEDIDO** — a cura do report
 /// do Enio de 2026-08-25 (*"o tempo de exportação numa malha de 1mi de faces é alto"*).
 ///
@@ -265,29 +192,82 @@ fn the_grid_that_feeds_the_chain_is_the_draft_grid() {
     }
 }
 
-/// ⭐ **SERIALIZAR TAMBÉM DECLARA O CONGELAMENTO** — a outra metade do report do Enio de
-/// 2026-08-25.
+/// ⭐⭐⭐ **O QUADRO DRENA A BANCADA** — sem isto a exportação corre, escreve o arquivo, e a
+/// mensagem fica pousada para sempre.
 ///
-/// ⚠️ **Meio congelamento declarado é uma mensagem que morre metade das vezes.** Cozer a malha e
-/// escrevê-la em texto são duas paradas do loop, e a segunda cresce com a peça: um OBJ de 934 k
-/// triângulos são dezenas de MB. ⛔ A mutação que este gate mata é tirar o `stalling` de
-/// [`super::bytes_of`] — o arquivo continua correcto e a mensagem volta a sumir nas peças grandes.
+/// ⚠️ **Ela substitui dois gates que esta wave escreveu e que a wave seguinte tornou obsoletos.**
+/// Eles mediam que a exportação DECLARAVA o congelamento (`crate::modal::stalling`) — a cura certa
+/// enquanto a conta corria na thread que desenha. ⛔ *Declarar cura a MENSAGEM e não cura o
+/// congelamento*: o Enio voltou no mesmo dia com *"o linux fica cinza"*, que é o compositor a dizer
+/// que o programa morreu. Com a conta fora da thread não há congelamento a declarar, e um
+/// `note_stall` num trabalhador escreveria num `thread_local` que ninguém lê — um no-op silencioso,
+/// que é o defeito que este repo persegue.
+///
+/// ⚠️ **É um censo de texto, e o motivo é o mesmo do irmão** `the_chrome_clock_reads_the_discounted_dt`:
+/// o loop não é alcançável de um teste. O que ele prende é a **costura**, não a lei — a lei tem os
+/// gates dela em `field3d_export_job`.
 #[test]
-fn the_serialisation_declares_the_freeze_it_causes() {
-    let doc = one(Primitive::Sphere { radius: 0.4 });
-    let mesh = mesh_of(&doc, crate::field3d_export::ExportLevel::Draft.depth());
-    let _ = crate::modal::take_stall();
-
-    let bytes = super::bytes_of(ph2d_mesh::MeshFormat::Obj, &mesh);
-    let declared = crate::modal::take_stall();
-
+fn the_frame_drains_the_export_bench() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop/mod.rs"),
+    )
+    .expect("o loop existe");
+    // ⚠️ Comentários fora: a primeira versão do gate irmão reprovou sobre a PROSA que explica a
+    // regra, porque o texto que diz "chame isto" contém, por construção, a agulha.
+    let code: String = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
     assert!(
-        bytes.len() > 1024,
-        "a porta não pode comer os bytes: saíram {}",
-        bytes.len()
+        code.contains("field3d_export_job::take_finished()"),
+        "o quadro tem de tirar a resposta da bancada — sem isto o arquivo é escrito e o artista \
+         nunca sabe"
     );
+    // ⚠️ **A metade JUSTA**: tirar sem mostrar seria o mesmo silêncio com mais passos.
+    let drain = code
+        .find("field3d_export_job::take_finished()")
+        .expect("a agulha está lá");
     assert!(
-        declared > 0.0,
-        "escrever a malha congelou o loop e não declarou nada ({declared} s)"
+        code[drain..drain + 400].contains("toasts.push"),
+        "a resposta tirada tem de ir para os toasts"
     );
+}
+
+/// ⭐⭐ **GRAVA POR INTEIRO OU NÃO GRAVA** — e este gate existe por causa de uma consequência da
+/// wave anterior.
+///
+/// ⚠️ Enquanto a exportação corria na thread que desenha, o artista **não conseguia** fechar o app a
+/// meio dela. Tirá-la de lá devolveu-lhe essa capacidade — e com ela a janela em que um `write` a
+/// meio deixa **meio arquivo com o nome certo**, que abre noutro programa como uma peça partida.
+/// *Uma cura pode abrir a porta que outra fechava.*
+///
+/// ⚠️ **A régua tem DUAS metades**, e a segunda é a que carrega a lei: os bytes certos, **e** o
+/// temporário na pasta do DESTINO. Um temporário no `/tmp` faria o `rename` cair para uma cópia
+/// quando o destino estivesse noutro disco — que é exactamente o que se está a evitar.
+#[test]
+fn the_export_writes_all_or_nothing() {
+    let dir = std::env::temp_dir().join("ph2d-export-atomic-gate");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("a pasta do gate");
+    let target = dir.join("peca.obj");
+
+    // Um arquivo que já existe: é o que um `write` truncado estragaria.
+    std::fs::write(&target, b"o conteudo antigo").expect("semeia");
+    super::write_atomically(&target, b"o conteudo novo").expect("grava");
+    assert_eq!(
+        std::fs::read(&target).expect("le"),
+        b"o conteudo novo",
+        "o destino tem de ficar com os bytes novos, inteiros"
+    );
+
+    // ⚠️ Nada de restos: um temporário deixado para trás semeia a pasta do artista com arquivos
+    // que ninguém sabe apagar.
+    let left: Vec<_> = std::fs::read_dir(&dir)
+        .expect("lista")
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(left, vec!["peca.obj".to_string()], "sobrou lixo: {left:?}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -119,6 +119,7 @@ mod expr_blend_smoke;
 mod extrap_smoke;
 mod falloff_smoke;
 mod field3d_export;
+mod field3d_export_job;
 /// ADR-0161 W51 — a VIAGEM entre vistas: a câmera vai suavemente, com a lei de motion da casa.
 mod field3d_flight;
 mod field3d_gizmo;

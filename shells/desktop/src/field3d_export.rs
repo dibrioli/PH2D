@@ -198,64 +198,54 @@ fn meshes_for(
     Ok((feed, mesh))
 }
 
-/// ⭐ **SERIALIZAR TAMBÉM CONGELA, e por isso também declara.**
+/// **A malha vira os bytes do formato escolhido.**
 ///
-/// ⚠️ Um OBJ de 934 k triângulos são dezenas de MB de texto, e a gravação em disco vem a seguir.
-/// *Metade do congelamento declarada é uma mensagem que morre metade das vezes* — ver
-/// [`cook`] para o mecanismo inteiro.
-///
-/// ⚠️ **É uma função pela mesma razão que a [`cook`] é:** o gate
-/// `the_serialisation_declares_the_freeze_it_causes` corre o produto, e um bloco dentro da função
-/// que abre o diálogo não seria alcançável de teste nenhum.
+/// ⚠️ Um OBJ de 934 k triângulos são dezenas de MB de texto, e a gravação em disco vem a seguir —
+/// as duas correm **fora da thread que desenha** ([`crate::field3d_export_job`]), como o resto da
+/// exportação.
 ///
 /// ⚠️ **A pose é a identidade, e isso não é um esquecimento.** O documento cozido já tem toda a
 /// cadeia de poses dentro do campo (`cook` compõe, `place` aplica), então a malha sai em MUNDO.
 /// Uma pose aqui aplicaria a transformação duas vezes.
 pub(crate) fn bytes_of(fmt: MeshFormat, mesh: &ph2d_mesh::Mesh) -> Vec<u8> {
-    crate::modal::stalling(|| {
-        fmt.write(&[ExportPiece {
-            name: None,
-            mesh,
-            pose: ph2d_mesh::Pose::IDENTITY,
-        }])
-    })
+    fmt.write(&[ExportPiece {
+        name: None,
+        mesh,
+        pose: ph2d_mesh::Pose::IDENTITY,
+    }])
 }
 
-/// ⭐⭐ **A METADE PESADA da exportação — e ela DECLARA o que congelou.**
+/// ⭐⭐ **A METADE PESADA da exportação — a que não pode correr na thread que desenha.**
 ///
-/// # ⚠️ O report do Enio: *"a mensagem não aparece"* (2026-08-25)
+/// # ⚠️ Os DOIS reports do Enio, no mesmo dia, e são duas camadas
 ///
-/// O mesmo sintoma de 2026-08-22, pelo **mesmo mecanismo**, com outra causa. Ali quem congelava o
-/// loop era o diálogo nativo; aqui é esta conta — numa peça de um milhão de faces ela leva minutos.
-/// O quadro seguinte cobra o congelamento inteiro ao relógio do chrome, e o toast escrito no fim
-/// morre antes de ser visto. ⚠️ **Da cadeira, isso lê-se como *"o botão não faz nada"*.**
+/// | report | mecanismo | cura |
+/// |---|---|---|
+/// | *"a mensagem não aparece"* | o quadro seguinte cobrava o congelamento ao relógio do chrome, e o toast morria | declarar o congelamento (`crate::modal`) |
+/// | *"o linux fica cinza"* | com 12 s sem responder, o compositor declara a janela morta | ⭐ **não congelar** ([`crate::field3d_export_job`]) |
 ///
-/// ⭐ A cura não é um TTL maior nem um segundo relógio: é a lei que a porta dos modais já escreveu
-/// — *quem congela o loop declara quanto* ([`crate::modal::stalling`]). *O relógio do chrome não
-/// distingue «parado por um diálogo» de «parado por uma conta»: para a tela, os dois são o mesmo
-/// nada.*
+/// ⛔ **Declarar cura a MENSAGEM e não cura o congelamento** — e a segunda cura torna a primeira
+/// desnecessária *neste caminho*: com a conta fora da thread não há nada a declarar, e um
+/// `note_stall` num trabalhador escreveria num `thread_local` que ninguém lê. A porta do
+/// `crate::modal` continua a ser a resposta certa para o **diálogo**, que é o que ela sempre foi.
 ///
 /// # ⚠️ Por que ela é uma FUNÇÃO e não um bloco
 ///
 /// O [`field3d_export`] abre um diálogo nativo e **não é alcançável de um teste**. Esta metade é
-/// pura, então o gate `the_export_declares_the_freeze_it_causes` corre o **produto** — e não um
-/// censo de texto a procurar o nome da porta, que passaria verde sobre uma chamada morta.
+/// pura — e é ela, e não a que abre o diálogo, que os gates da grade alcançam.
 pub(crate) fn cook(
     doc: &ph2d_field::FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
     level: ExportLevel,
 ) -> Result<(ph2d_mesh::Mesh, ph2d_quadchain::Verdict), ph2d_field_eval::MeshError> {
-    crate::modal::stalling(|| {
-        let (feed, mesh) = meshes_for(doc, reg, level)?;
-        let feed = feed.as_ref().unwrap_or(&mesh);
-        // ⚠️ **O alvo sai da malha que ENTRA na cadeia** — é a mesma caixa, e é ela que a fase
-        // zero usa para reproduzir este número. Tirá-lo da outra seria pedir uma escala e remalhar
-        // noutra.
-        let target = ph2d_remesh_iso::target_edge(feed, ph2d_remesh_iso::ALPHA);
-        // ⚠️ **Come uma malha, outra fica se ela perder**: quando o veto recusa, o artista tem de
-        // levar a malha do nível que ele pediu, não a grade grossa que alimentou a cadeia.
-        Ok(ph2d_quadchain::quads_or_keep_from(feed, &mesh, target))
-    })
+    let (feed, mesh) = meshes_for(doc, reg, level)?;
+    let feed = feed.as_ref().unwrap_or(&mesh);
+    // ⚠️ **O alvo sai da malha que ENTRA na cadeia** — é a mesma caixa, e é ela que a fase zero
+    // usa para reproduzir este número. Tirá-lo da outra seria pedir uma escala e remalhar noutra.
+    let target = ph2d_remesh_iso::target_edge(feed, ph2d_remesh_iso::ALPHA);
+    // ⚠️ **Come uma malha, outra fica se ela perder**: quando o veto recusa, o artista tem de
+    // levar a malha do nível que ele pediu, não a grade grossa que alimentou a cadeia.
+    Ok(ph2d_quadchain::quads_or_keep_from(feed, &mesh, target))
 }
 
 /// ⚠️ **Recebe os TOASTS, e não o `App`.** Ela é chamada de dentro do quadro, onde o `gfx` já está
@@ -264,99 +254,153 @@ pub(crate) fn cook(
 pub(crate) fn field3d_export(level: ExportLevel, toasts: &mut ph2d_editor::ToastQueue) {
     let say =
         |toasts: &mut ph2d_editor::ToastQueue, m: String| toasts.push(ph2d_editor::Toast::info(m));
-    {
-        let Some(doc) = crate::field3d_smoke::with_smoke(|s| s.doc.clone()).flatten() else {
-            say(toasts, "Nothing to export: the part is empty".into());
-            return;
-        };
+    // ⚠️ **Uma de cada vez, e a recusa é EM ALTO** — ver [`crate::field3d_export_job`]. Recusar em
+    // silêncio deixaria o artista a concluir que o botão está partido.
+    if crate::field3d_export_job::is_running() {
+        say(toasts, "An export is already running".into());
+        return;
+    }
+    let Some(doc) = crate::field3d_smoke::with_smoke(|s| s.doc.clone()).flatten() else {
+        say(toasts, "Nothing to export: the part is empty".into());
+        return;
+    };
 
-        // ⚠️ **UM FILTRO POR FORMATO** — a lição que o export da escultura pagou: com um filtro
-        // único listando as três extensões, o diálogo nativo completa o nome com a PRIMEIRA delas e
-        // `volta.ply` sai `volta.ply.obj`.
-        let mut dialog = rfd::FileDialog::new();
-        for f in MeshFormat::ALL {
-            dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
-        }
-        // ⚠️ **Pela PORTA** (`crate::modal`), nunca `dialog.save_file()` direto: o diálogo congela o
-        // loop, e o quadro seguinte cobrava esse congelamento ao relógio do chrome — matando este
-        // mesmo toast antes de ele ser visto. Gate: `every_field3d_modal_goes_through_the_door`.
-        let Some(path) = crate::modal::save_file(
-            dialog.set_file_name(format!("model.{}", MeshFormat::Obj.extension())),
-        ) else {
-            return;
-        };
-        // ⚠️ Uma extensão desconhecida **não vira OBJ em silêncio**: o arquivo abriria como
-        // corrompido noutro programa, apontando para o lugar errado.
-        let Some(fmt) = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .and_then(MeshFormat::from_extension)
-        else {
-            say(
-                toasts,
-                format!(
-                    "Unknown extension: use {}",
-                    MeshFormat::ALL
-                        .map(|f| format!(".{}", f.extension()))
-                        .join(", ")
-                ),
-            );
-            return;
-        };
+    // ⚠️ **UM FILTRO POR FORMATO** — a lição que o export da escultura pagou: com um filtro
+    // único listando as três extensões, o diálogo nativo completa o nome com a PRIMEIRA delas e
+    // `volta.ply` sai `volta.ply.obj`.
+    let mut dialog = rfd::FileDialog::new();
+    for f in MeshFormat::ALL {
+        dialog = dialog.add_filter(f.extension().to_uppercase(), &[f.extension()]);
+    }
+    // ⚠️ **Pela PORTA** (`crate::modal`), nunca `dialog.save_file()` direto: o diálogo congela o
+    // loop, e o quadro seguinte cobrava esse congelamento ao relógio do chrome — matando este
+    // mesmo toast antes de ele ser visto. Gate: `every_field3d_modal_goes_through_the_door`.
+    //
+    // ⚠️ **O diálogo FICA na thread que desenha**, e é a única metade que fica: ele é uma janela do
+    // sistema, e o compositor sabe que o loop está parado por vontade dele. O que não podia ficar é
+    // a CONTA — ver [`crate::field3d_export_job`].
+    let Some(path) = crate::modal::save_file(
+        dialog.set_file_name(format!("model.{}", MeshFormat::Obj.extension())),
+    ) else {
+        return;
+    };
+    // ⚠️ Uma extensão desconhecida **não vira OBJ em silêncio**: o arquivo abriria como
+    // corrompido noutro programa, apontando para o lugar errado.
+    let Some(fmt) = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .and_then(MeshFormat::from_extension)
+    else {
+        say(
+            toasts,
+            format!(
+                "Unknown extension: use {}",
+                MeshFormat::ALL
+                    .map(|f| format!(".{}", f.extension()))
+                    .join(", ")
+            ),
+        );
+        return;
+    };
 
-        let t0 = std::time::Instant::now();
-        let reg = crate::field3d_smoke::sampled_registry();
-        let (mesh, verdict) = match cook(&doc, &reg, level) {
-            Ok(pair) => pair,
-            Err(e) => {
-                say(toasts, format!("Meshing failed: {e:?}"));
-                return;
-            }
-        };
-        // ⚠️ **EM INGLÊS, como todo o resto do que o artista lê** — a primeira redação desta
-        // linha saiu em português e passou por todo o portão, porque nenhum deles lê um `format!`.
-        let quality = match &verdict {
-            ph2d_quadchain::Verdict::Adopted(r) => {
-                format!(" · retopology: {:.1}° skew", r.shape.skew_p50)
-            }
-            // ⚠️ **Silencioso quando não muda nada.** Um aviso a dizer *"a melhoria opcional não se
-            // aplicou"* seria ruído sobre uma exportação que correu bem.
-            _ => String::new(),
-        };
-        // ⚠️ **Quads e triângulos são contagens DIFERENTES, e o toast diz as duas.** A saída deste
-        // extrator é uma grade de quads (`extract`), e `faces().len()` conta quads; um STL só sabe
-        // triângulos, então o número que o artista vê no Blender é o dobro. Dizer "tris" sobre uma
-        // contagem de quads era uma etiqueta a prometer o que o modelo não entrega.
-        let quads = mesh.faces().len();
-        let tris: usize = mesh.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
-        let bytes = bytes_of(fmt, &mesh);
-        let size = bytes.len();
-        let wrote = crate::modal::stalling(|| std::fs::write(&path, bytes));
-        // ⚠️ **O relógio pára DEPOIS de gravar, e isso é uma correcção.** Ele parava antes de
-        // serializar — e o artista compara o número com a espera dele, não com a metade que a
-        // função escolheu contar.
-        let ms = t0.elapsed().as_secs_f64() * 1000.0;
-        match wrote {
-            Ok(()) => {
-                let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
-                // ⭐ O que saiu de FACTO — triângulos e KB —, não o que o nível prometia.
-                // ⭐ **E o TAMANHO** — a primeira pergunta de quem leva o arquivo para outro
-                // programa, e a única que o toast não respondia. É a caixa da MALHA, não a do
-                // andaime: ver [`piece_size`].
-                let [sx, sy, sz] = piece_size(&mesh);
-                say(
-                    toasts,
-                    format!(
-                        "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
-                         {} KB in {ms:.0} ms -- {name} ({}){quality}",
-                        size / 1024,
-                        crate::sculpt3d::lost_by(fmt)
-                    ),
-                );
-            }
-            Err(e) => {
-                say(toasts, format!("Export failed: {e}"));
-            }
+    let reg = crate::field3d_smoke::sampled_registry();
+    // ⭐ **O artista tem de saber que ALGUMA COISA começou.** Doze segundos de silêncio com o app
+    // vivo leem-se como *"o botão não fez nada"* — o mesmo defeito que a janela cinza tinha, com
+    // outra cara. ⛔ E o aviso **não promete um prazo**: ele depende da peça, e um número inventado
+    // seria pior que nenhum.
+    say(toasts, "Exporting... the file is being written".into());
+    if !crate::field3d_export_job::spawn(move || export_to_file(level, &doc, &reg, &path, fmt)) {
+        say(toasts, "Could not start the export".into());
+    }
+}
+
+/// ⭐⭐ **GRAVA POR INTEIRO OU NÃO GRAVA** — arquivo temporário ao lado, depois `rename`.
+///
+/// # ⚠️ Esta função nasceu de uma consequência da wave que a precede
+///
+/// Enquanto a exportação corria na thread que desenha, o artista **não conseguia** fechar o app a
+/// meio dela: o loop estava congelado e o pedido de fechar ficava na fila. Tirar o trabalho da
+/// thread ([`crate::field3d_export_job`]) devolveu-lhe essa capacidade — e com ela a janela de 12 s
+/// em que um `std::fs::write` a meio deixa **meio arquivo** com o nome certo. ⛔ Um OBJ truncado
+/// abre noutro programa como uma peça partida, e nada diz que ele está incompleto.
+///
+/// ⭐ *Uma cura pode abrir a porta que outra fechava — quem move o trabalho tem de reconferir o que
+/// o congelamento estava a proteger.*
+///
+/// ⚠️ **O temporário nasce NA PASTA DO DESTINO**, nunca no `/tmp`: o `rename` só é atómico dentro
+/// do mesmo sistema de arquivos, e um destino noutro disco faria a operação cair para uma cópia —
+/// que é exactamente o que se está a evitar.
+///
+/// ⚠️ E se o `rename` falhar, o temporário é **removido**: deixá-lo seria semear a pasta do artista
+/// com restos que ninguém sabe apagar.
+fn write_atomically(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+    let mut tmp = path.to_path_buf();
+    let stem = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("export");
+    tmp.set_file_name(format!(".{stem}.ph2d-partial"));
+    std::fs::write(&tmp, bytes)?;
+    std::fs::rename(&tmp, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
+}
+
+/// ⭐⭐ **A EXPORTAÇÃO INTEIRA, longe da thread que desenha** — e ela devolve a **mensagem pronta**.
+///
+/// ⚠️ **Montar a frase é trabalho puro** (contagens, caixa da malha, o que o formato perde), e
+/// fazê-lo deste lado deixa o quadro com uma coisa só a fazer: mostrar. *A fronteira mais barata é
+/// a que só carrega texto.*
+fn export_to_file(
+    level: ExportLevel,
+    doc: &ph2d_field::FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    path: &std::path::Path,
+    fmt: MeshFormat,
+) -> String {
+    let t0 = std::time::Instant::now();
+    let (mesh, verdict) = match cook(doc, reg, level) {
+        Ok(pair) => pair,
+        Err(e) => return format!("Meshing failed: {e:?}"),
+    };
+    // ⚠️ **EM INGLÊS, como todo o resto do que o artista lê** — a primeira redação desta
+    // linha saiu em português e passou por todo o portão, porque nenhum deles le um `format!`.
+    let quality = match &verdict {
+        ph2d_quadchain::Verdict::Adopted(r) => {
+            format!(" · retopology: {:.1}° skew", r.shape.skew_p50)
         }
+        // ⚠️ **Silencioso quando não muda nada.** Um aviso a dizer *"a melhoria opcional não se
+        // aplicou"* seria ruído sobre uma exportação que correu bem.
+        _ => String::new(),
+    };
+    // ⚠️ **Quads e triângulos são contagens DIFERENTES, e o toast diz as duas.** A saída deste
+    // extrator é uma grade de quads (`extract`), e `faces().len()` conta quads; um STL só sabe
+    // triângulos, então o número que o artista vê no Blender é o dobro. Dizer "tris" sobre uma
+    // contagem de quads era uma etiqueta a prometer o que o modelo não entrega.
+    let quads = mesh.faces().len();
+    let tris: usize = mesh.faces().iter().map(ph2d_mesh::Face::tri_count).sum();
+    let bytes = bytes_of(fmt, &mesh);
+    let size = bytes.len();
+    let wrote = write_atomically(path, &bytes);
+    // ⚠️ **O relógio pára DEPOIS de gravar, e isso é uma correcção.** Ele parava antes de
+    // serializar — e o artista compara o número com a espera dele, não com a metade que a
+    // função escolheu contar.
+    let ms = t0.elapsed().as_secs_f64() * 1000.0;
+    match wrote {
+        Ok(()) => {
+            let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
+            // ⭐ O que saiu de FACTO — triângulos e KB —, não o que o nível prometia.
+            // ⭐ **E o TAMANHO** — a primeira pergunta de quem leva o arquivo para outro
+            // programa, e a única que o toast não respondia. É a caixa da MALHA, não a do
+            // andaime: ver [`piece_size`].
+            let [sx, sy, sz] = piece_size(&mesh);
+            format!(
+                "Exported {quads} quads = {tris} tris, {sx:.2} x {sy:.2} x {sz:.2}, \
+                 {} KB in {ms:.0} ms -- {name} ({}){quality}",
+                size / 1024,
+                crate::sculpt3d::lost_by(fmt)
+            )
+        }
+        Err(e) => format!("Export failed: {e}"),
     }
 }

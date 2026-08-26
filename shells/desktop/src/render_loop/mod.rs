@@ -9398,6 +9398,13 @@ impl crate::App {
             if let Some(level) = crate::field3d_smoke::take_export_request() {
                 crate::field3d_export::field3d_export(level, toasts);
             }
+            // ⭐⭐⭐ **E a RESPOSTA da bancada** (`crate::field3d_export_job`): desde 2026-08-25 a
+            // exportação corre fora da thread que desenha, e o que volta é a mensagem pronta.
+            // ⚠️ Ela é drenada **aqui**, ao lado do pedido, pela lei das caixas de correio deste
+            // módulo — *uma porta, vários pedintes*.
+            if let Some(done) = crate::field3d_export_job::take_finished() {
+                toasts.push(ph2d_editor::Toast::info(done));
+            }
             // ⭐ **E o de IMPORTAR**, pela mesma porta e pelo mesmo motivo (ADR-0161 W22).
             if crate::field3d_smoke::take_import_request() {
                 crate::field3d_import::field3d_import(toasts);

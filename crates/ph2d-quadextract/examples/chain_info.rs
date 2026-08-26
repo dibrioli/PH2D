@@ -250,7 +250,7 @@ fn main() {
         // outra. ⚠️ `1` é ESTRANGULADO (cortar ali só acrescenta um toco); um vão maior é
         // um anel gordo, e esse corta-se.
         let gaps = ph2d_trace::patches::ring_gaps(&mesh, &layout);
-        println!("  ⭐⭐⭐ VAO das fronteiras (patch, lados, lacos, VAO, faces): {gaps:?}");
+        println!("  ⭐⭐⭐ VAO (patch, lados, VAO, faces, TAMANHOS das fronteiras): {gaps:?}");
     }
     let (cut, cr) = ph2d_gridmap::cut_along_patches(&mesh, &layout);
     let (combed, comb) = ph2d_gridmap::comb_patches(&mesh, &layout, &cut);

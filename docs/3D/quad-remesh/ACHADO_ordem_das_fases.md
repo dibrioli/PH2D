@@ -344,3 +344,56 @@ chega a emitir a parede naquele sítio, porque as três condições de validade 
 | `patches::open_rings` + `MIN_RING_GAP` | construídas, **desligadas**, com a tabela |
 | `TraceReport::cleanup_stop` · `opened_rings` · `pruned` | ⭐ vivas — três «porquês» que não existiam |
 | `PH2D_CLEANUP_FORCE` · `PH2D_PRUNE_STEMS` · `PH2D_OPEN_RINGS` · `PH2D_BRIDGE_LOG` | sondas, desligadas |
+
+
+---
+
+## §10 — ⭐⭐⭐ A RAIZ: a travessia de fronteira PERDE A FRONTEIRA
+
+O §9 pediu que se medisse o vão. Medir os **tamanhos** das fronteiras, na mesma corrida, deu
+a resposta que fecha a sequência inteira.
+
+| peça | patch | faces | ⛔ **tamanhos das «fronteiras»** |
+|---|---|---|---|
+| do artista | 10 | 16 | `[1, 9]` |
+| do artista | 21 | **8** | ⛔ **`[1, 1, 1]`** |
+| do artista | 24 | 13 | `[2, 4, 4]` |
+| do artista | 33 | 7 | ⛔ **`[1, 1]`** |
+| furada | 2 | 1 011 | `[1, 4, 9, 10, 35, 100]` |
+
+⛔⛔⛔ **Uma «fronteira» de UM vértice não é um laço** — um laço precisa de três. E um patch
+de **8 faces** não tem três fronteiras de um vértice: ele tem uma fronteira de muitas
+arestas. ⇒ **a travessia está a perder a fronteira nesses patches**, e o que sai não é uma
+descrição do patch — é destroço.
+
+### ⭐ Isto resolve a contradição que o §7 deixou aberta
+
+O §7 registou: *«o `χ` sai `1` nos cinco, e isso não bate com duas fronteiras»*, e deixou-a
+por resolver. ⭐⭐ **O `χ` estava certo o tempo todo** — eles **são** discos. Quem estava a
+mentir era a contagem de fronteiras, e a linha construiu **duas curas** (o corte, a fusão
+forçada) contra um número inventado.
+
+### ⇒ A cascata inteira, relida
+
+`boundary_loops` falha nestes patches ⇒ o `side_arcs` sai errado (o `patch 15` tem **`0`
+lados**) ⇒ o `degenerate()` acusa discos ⇒ a limpeza tenta curar não-problemas e a guarda
+recusa (correctamente) ⇒ o corte e a fusão forçada atacam a espécie errada ⇒ a jusante o
+mapa recebe uma descrição do layout que não corresponde ao layout ⇒ região degenerada ⇒
+transições inexactas ⇒ **furo**.
+
+⚠️ **E não é uma diferença de desenho com o alvo.** É um defeito nosso, e passou porque
+**nenhum instrumento imprimia nenhum destes números**.
+
+### O que entra já
+
+⭐ [`PatchLayout::real_loops`] — uma peça de menos de três vértices não conta como fronteira.
+Ela tira **um** falso positivo na peça do artista (`5` ⇒ `4` degenerados) e deixa o produto
+**byte-idêntico** (`8` bordo · `χ = 1` · `7,3°`), porque o defeito de fundo continua lá.
+⛔ *Ela corrige a CLASSIFICAÇÃO, não o defeito* — e é por isso que o número de furos não se
+mexe.
+
+### ⇒ A obra seguinte
+
+**Achar por que a travessia perde a fronteira num patch pequeno.** É a primeira desta
+sequência que é um **bug nosso com endereço**, e não uma escolha de arquitectura: tudo o que
+está a jusante consome o que ela devolve.

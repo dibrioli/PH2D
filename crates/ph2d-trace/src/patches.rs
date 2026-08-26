@@ -394,6 +394,30 @@ impl PatchLayout {
     /// não tem cantos que cheguem para a lei do F4 (`L_i = e_{i-1} + e_{i+1}` pede
     /// pelo menos três), e é por isso que o layout inteiro é recusado por causa de
     /// **um** deles.
+    /// ⭐⭐⭐ **QUANTAS FRONTEIRAS A SÉRIO o patch tem** — as de menos de três vértices não
+    /// contam.
+    ///
+    /// ⛔⛔ **A [`Self::loops_per_patch`] conta peças que não são fronteiras.** Medido
+    /// 2026-08-25 na peça do artista: os tamanhos das «fronteiras» dos quatro patches
+    /// multi-fronteira são `[1, 9]`, `[1, 1, 1]`, `[2, 4, 4]` e `[1, 1]` — ⚠️ **uma peça de
+    /// UM vértice não é um laço**, e um laço precisa de três.
+    ///
+    /// ⭐ **É isto que resolve a contradição** que o `χ` denunciava: ele diz `1` (disco) nos
+    /// cinco, e a contagem de fronteiras dizia `2`–`3`. *O `χ` estava certo.* O que a
+    /// travessia produz naquele vértice é o sinal de que o patch **toca em si mesmo num
+    /// ponto** — um facto real, mas que não é «ter duas fronteiras», e que a reparação por
+    /// fusão e a por corte tratam ambas mal.
+    ///
+    /// ⚠️ **A cerca:** isto **não** apaga o defeito, apaga a **classificação errada** dele.
+    /// O patch que toca em si mesmo continua a existir e continua a precisar de uma cura —
+    /// ela é que não é nenhuma das duas que a linha construiu.
+    #[must_use]
+    pub fn real_loops(&self, p: usize) -> usize {
+        self.loops
+            .get(p)
+            .map_or(1, |ls| ls.iter().filter(|l| l.len() >= 3).count())
+    }
+
     #[must_use]
     pub fn degenerate(&self) -> Vec<usize> {
         (0..self.side_arcs.len())
@@ -402,8 +426,7 @@ impl PatchLayout {
                 // Menos de três lados não satisfaz a lei do F4; e **mais de uma
                 // fronteira não é um disco** — os lados das duas iam para a mesma
                 // lista, e o último de uma não encadeava no primeiro da outra.
-                self.side_arcs[p].len() < 3
-                    || self.loops_per_patch.get(p).copied().unwrap_or(1) != 1
+                self.side_arcs[p].len() < 3 || self.real_loops(p) != 1
             })
             .collect()
     }
@@ -536,13 +559,14 @@ pub const MIN_RING_GAP: usize = 2;
 /// acrescenta um toco. *«Duas fronteiras» chama-se anel na topologia, e o nome trouxe
 /// consigo a cura errada.*
 ///
-/// Devolve, por patch multi-fronteira: `(patch, lados, fronteiras, VÃO em arestas, faces)`.
+/// Devolve, por patch multi-fronteira:
+/// `(patch, lados, VÃO em arestas, faces, TAMANHOS das fronteiras)`.
 /// ⚠️ O vão `1` é o estrangulamento; é ele que a `open_rings` **não** deve tocar.
 #[must_use]
 pub fn ring_gaps(
     mesh: &ph2d_mesh::Mesh,
     layout: &PatchLayout,
-) -> Vec<(usize, usize, usize, usize, usize)> {
+) -> Vec<(usize, usize, usize, usize, Vec<usize>)> {
     let mut out = Vec::new();
     for (p, loops) in layout.loops.iter().enumerate() {
         if loops.len() < 2 {
@@ -560,7 +584,13 @@ pub fn ring_gaps(
         // ⚠️ **O vão é o número de ARESTAS do caminho**, que é `len - 1`: uma cadeia de
         // dois vértices é uma aresta, e é o estrangulamento.
         let gap = path_inside(mesh, &faces, &from, &to).map_or(0, |c| c.len() - 1);
-        out.push((p, layout.side_arcs[p].len(), loops.len(), gap, faces.len()));
+        // ⚠️ **Os TAMANHOS das fronteiras, e não só quantas são.** Uma fronteira de três
+        // vértices é um triângulo isolado por uma parede que fechou sobre si mesma; uma de
+        // trinta é uma fronteira a sério. *«Duas fronteiras» não distingue as duas coisas,
+        // e elas não são o mesmo defeito.*
+        let mut sizes: Vec<usize> = loops.iter().map(Vec::len).collect();
+        sizes.sort_unstable();
+        out.push((p, layout.side_arcs[p].len(), gap, faces.len(), sizes));
     }
     out
 }

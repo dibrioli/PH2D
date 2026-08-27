@@ -158,3 +158,43 @@ fn a_shape_without_a_pattern_is_left_alone() {
         Some(Paint::Solid(_))
     ));
 }
+
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"clamp deixa tudo em branco"*.**
+///
+/// O `Clamp` desenha UMA cópia e estica a borda pelo resto. Com a cópia do tamanho de um ladrilho,
+/// no canto, quase toda a forma é borda esticada — um borrão chapado, nunca a imagem. Escolher
+/// `Clamp` passa a **ENQUADRAR** a cópia na forma, cobrindo-a.
+#[test]
+fn switching_to_clamp_frames_the_single_copy_over_the_shape() {
+    let (mut scene, pen, id) = scene_with(fill());
+    let mut h = ph2d_vec_edit::History::default();
+    // A forma mede 10x10; o padrão nasce a 8x2 na origem.
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Mode(2));
+    let p = pattern_of(&scene, id);
+    assert_eq!(p.mode, PatternMode::Clamp);
+    assert_eq!(
+        p.origin,
+        [0.0, 0.0],
+        "a copia tem de nascer no canto da forma"
+    );
+    assert!(
+        p.size[0] >= 10.0 - 1e-9 && p.size[1] >= 10.0 - 1e-9,
+        "a copia nao COBRE a forma de 10x10: {:?}",
+        p.size
+    );
+    assert!(
+        (p.size[0] / p.size[1] - 4.0).abs() < 1e-9,
+        "o aspecto 4:1 da arte nao sobreviveu ao enquadramento: {:?}",
+        p.size
+    );
+    // ⚠️ Controlo: os OUTROS modos não enquadram — enquadrar sempre destruiria o ladrilho que o
+    // artista afinou no instante em que ele espreitasse o Mirror.
+    let (mut scene2, pen2, id2) = scene_with(fill());
+    let mut h2 = ph2d_vec_edit::History::default();
+    apply(&mut scene2, &mut h2, &pen2, TexPatCmd::Mode(1));
+    assert_eq!(
+        pattern_of(&scene2, id2).size,
+        [8.0, 2.0],
+        "o Mirror enquadrou"
+    );
+}

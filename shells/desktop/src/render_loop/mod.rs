@@ -6936,10 +6936,10 @@ impl crate::App {
                     && let Some(source) =
                         crate::texture_pattern_pick::source_for(asset_db, vec_scene, sel)
                 {
-                    let size = crate::texture_pattern_pick::default_size(
+                    let (size, origin) = crate::texture_pattern_pick::default_placement(
                         asset_db, vec_scene, sel, &source,
                     );
-                    pattern = Some((source, size));
+                    pattern = Some((source, size, origin));
                 }
                 crate::input_dispatch::apply_vec_set_fill_kind(
                     vec_scene,
@@ -9112,6 +9112,25 @@ impl crate::App {
             // (`fx_live`) rasteriza a forma isolada num scratch de GPU, lê de volta e borra na CPU,
             // injetando as imagens no z da forma. Roda DEPOIS de `vec_live` porque honra a geometria
             // derivada. Sem `VecFilter` na cena o mapa fica vazio = BYTE-IDÊNTICO ao mundo pré-FX.
+            // ⭐ **OS LADRILHOS DE PADRÃO** (plano 33, W4) — assados AQUI, e a posição é a lei:
+            // ⛔ **ANTES do `fx_live`**, que os consome. O report do Enio (*"filters anula
+            // pattern"*) foi exactamente isto: com o assado depois, a rasterização isolada do FX
+            // desenhava a forma com a cor de recurso, e a imagem de FX **toma o lugar** do desenho.
+            //
+            // Memoizados, porque assar custa (`1,047 ms` para um ladrilho de `536x1072` em colmeia)
+            // e desenhar não custa nada (uma `fill()`).
+            //
+            // ⚠️ O filtro sai da porta ÚNICA da casa (`image_quality_for`), a mesma que o upscale e
+            // a pré-visualização do BgRemoval usam — um padrão de pixel art tem de amostrar como uma
+            // sprite de pixel art, e adivinhá-lo aqui daria duas respostas à mesma pergunta.
+            //
+            // ⚠️ Usa o `asset_db` que JÁ está desestruturado neste escopo: o empréstimo MUTÁVEL do
+            // `gfx` abre muito acima e vive até ao fim do quadro.
+            self.texture_pattern_live.recook(
+                vec_scene,
+                asset_db,
+                ph2d_editor::image_quality_for(hero.project.image_filter),
+            );
             self.fx_live.recook(
                 vec_scene,
                 sim,
@@ -9119,6 +9138,7 @@ impl crate::App {
                 &vec_xf,
                 &vec_live,
                 self.fx_silhouette.live(),
+                self.texture_pattern_live.tiles(),
                 cam_affine,
                 surface.gpu(),
                 surface.format(),
@@ -9219,23 +9239,6 @@ impl crate::App {
                 sim,
             );
             let vec_fx = self.fx_live.images();
-            // ⭐ **OS LADRILHOS DE PADRÃO** (plano 33, W4). Assados aqui, depois do `sync` e antes
-            // do desenho — e memoizados, porque assar custa (`1,047 ms` para um ladrilho de
-            // `536x1072` em colmeia) e desenhar não custa nada (uma `fill()`).
-            //
-            // ⚠️ O filtro sai da porta ÚNICA da casa (`image_quality_for`), a mesma que o upscale e
-            // a pré-visualização do BgRemoval usam — um padrão de pixel art tem de amostrar como
-            // uma sprite de pixel art, e adivinhá-lo aqui daria duas respostas à mesma pergunta.
-            //
-            // ⚠️ Usa o `asset_db` que JÁ está desestruturado neste escopo, e não
-            // `self.gfx.as_ref()` nem `gfx.asset_db`: o empréstimo MUTÁVEL dos dois abre muito
-            // acima e vive até ao fim do quadro. Um reempréstimo partilhado daqui morre quando o
-            // `recook` volta.
-            self.texture_pattern_live.recook(
-                vec_scene,
-                asset_db,
-                ph2d_editor::image_quality_for(hero.project.image_filter),
-            );
             let vec_patterns = self.texture_pattern_live.tiles();
             // As PELES de widget deste frame (plano UI/UX W6.2). Cozidas AQUI, depois do `sync`
             // (senão uma forma recém-marcada ainda não tem entidade) e com a câmera na mão —

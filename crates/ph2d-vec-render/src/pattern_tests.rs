@@ -292,3 +292,112 @@ fn a_motion_instance_of_a_patterned_shape_paints_the_fallback() {
         "a rota de instancia deixou de pintar a fallback - se foi de proposito, actualize esta lei"
     );
 }
+
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"pattern anula stroke"*.**
+///
+/// Uma forma com padrão E traço tem de encodar **os dois** — o preenchimento e o contorno. Se o
+/// padrão comesse o traço, a única saída do artista seria desenhar o contorno como segunda forma.
+#[test]
+fn a_patterned_shape_still_draws_its_stroke() {
+    use ph2d_vec_scene::{
+        Paint, PatternFill, PatternSource, Rgba8, StrokeSpec, VecPath, VecVertex,
+    };
+    let verts = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+        .map(VecVertex::corner)
+        .to_vec();
+    let stroke = Some(StrokeSpec::new(Rgba8::new(10, 10, 10, 255), 0.5));
+    let draw = |fill: Paint, tile: Option<&crate::PatternTile>| {
+        let path = VecPath {
+            verts: verts.clone(),
+            closed: true,
+            fill: Some(fill),
+            stroke,
+            ..VecPath::default()
+        };
+        let mut s = VectorScene::new();
+        crate::draw_path_tiled(&path, Affine::IDENTITY, &mut s, tile);
+        s.inner().encoding().n_paths
+    };
+    let cor = Rgba8::new(200, 30, 30, 255);
+    // CONTROLO: um sólido com traço encoda DOIS caminhos (preenchimento + contorno).
+    let solid = draw(Paint::solid(cor), None);
+    assert_eq!(
+        solid, 2,
+        "o controlo mudou: um solido com traco nao encoda 2"
+    );
+    let pat = || {
+        Paint::Pattern(Box::new(PatternFill::new(
+            PatternSource::Shape(1),
+            [4.0, 4.0],
+            cor,
+        )))
+    };
+    assert_eq!(draw(pat(), None), 2, "sem ladrilho, o traco sumiu");
+    let t = crate::PatternTile {
+        image: tile(),
+        cells: [1, 1],
+        tile_px: [1, 1],
+        quality: ImageQuality::Medium,
+    };
+    assert_eq!(draw(pat(), Some(&t)), 2, "COM ladrilho, o traco sumiu");
+}
+
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"filters anula pattern"*.**
+///
+/// No [`crate::dispatch`] a imagem de FX **toma o lugar** do desenho da forma. A rasterização
+/// isolada que a produz chamava a `draw_path`, que passa `None` de ladrilho — então uma forma com
+/// padrão era rasterizada com a **cor de recurso**, e ligar um filtro apagava o padrão.
+///
+/// ⚠️ O doc-comment da própria função já declarava a lei que isso partia: *"passa pela MESMA
+/// `draw_path` do `dispatch` — desenhar por uma 2ª porta faria o FX divergir do que a forma parece
+/// de verdade"*. A segunda porta apareceu **dentro** da primeira, quando o ladrilho virou um
+/// parâmetro que só o `dispatch` sabia preencher.
+#[test]
+fn the_isolated_rasterisation_honours_the_pattern_tile() {
+    use crate::{VecViewState, VecXforms};
+    use ph2d_vec_scene::{Paint, PatternFill, PatternSource, Rgba8, VecPath, VecScene, VecVertex};
+    let _ = VecViewState::default();
+    let mut scene = VecScene::default();
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(Paint::Pattern(Box::new(PatternFill::new(
+            PatternSource::Shape(1),
+            [4.0, 4.0],
+            Rgba8::new(200, 30, 30, 255),
+        )))),
+        ..VecPath::default()
+    });
+    let run = |tiles: &crate::PatternTiles| {
+        let mut s = VectorScene::new();
+        crate::standalone::draw_path_isolated(
+            &scene,
+            &VecXforms::new(),
+            &crate::LiveGeometry::new(),
+            tiles,
+            id,
+            Affine::IDENTITY,
+            Affine::IDENTITY,
+            &mut s,
+        );
+        s.inner().encoding().draw_data.clone()
+    };
+    let sem = run(&crate::PatternTiles::new());
+    let mut tiles = crate::PatternTiles::new();
+    tiles.insert(
+        id,
+        crate::PatternTile {
+            image: tile(),
+            cells: [1, 1],
+            tile_px: [1, 1],
+            quality: ImageQuality::Medium,
+        },
+    );
+    assert_ne!(
+        sem,
+        run(&tiles),
+        "a rasterizacao isolada ignorou o ladrilho - um filtro apagaria o padrao"
+    );
+}

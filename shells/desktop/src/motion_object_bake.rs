@@ -432,10 +432,15 @@ fn bake_rgba(
     // Encode the one path, translated so its bbox min corner (the top-left under
     // the Y-flipped camera) lands at the tile origin (0,0) = row 0 = screen-top.
     let mut scratch_scene = VectorScene::new();
+    // ⚠️⚠️ **UM OBJECTO DE MOTION ASSADO DE UMA FORMA COM PADRÃO leva a `fallback`, e é DECLARADO.**
+    // Este assado alimenta o oleoduto do Motion, que não tem o mapa de ladrilhos do quadro em mãos —
+    // a MESMA fronteira da rota de instância (`instance.rs`), e pela mesma razão. ⛔ Não é *"não
+    // deu"*: inventar um mapa aqui seria adivinhar de onde ele vem.
     ph2d_vec_render::draw_path_isolated(
         scene,
         xforms,
         live,
+        &ph2d_vec_render::PatternTiles::new(),
         id,
         camera,
         Affine::translate((-x0, -y0)),

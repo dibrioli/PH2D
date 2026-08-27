@@ -81,6 +81,20 @@ pub(crate) fn longer_side(size: [f64; 2]) -> f64 {
     size[0].max(size[1])
 }
 
+/// Reescala o par para COBRIR uma caixa, preservando o aspecto.
+///
+/// ⚠️ **Cobrir, e não caber**: o `max` das duas razões enche a caixa e deixa a arte transbordar; o
+/// `min` deixaria faixa vazia dos dois lados, que num modo chamado *"mostra a imagem uma vez"* lê-se
+/// como um erro de enquadramento.
+fn cover(size: [f64; 2], box_wh: [f64; 2]) -> [f64; 2] {
+    let ok = |v: f64| v.is_finite() && v > 0.0;
+    if !ok(size[0]) || !ok(size[1]) || !ok(box_wh[0]) || !ok(box_wh[1]) {
+        return size;
+    }
+    let s = (box_wh[0] / size[0]).max(box_wh[1] / size[1]);
+    [size[0] * s, size[1] * s]
+}
+
 /// Reescala o par preservando o aspecto, para que o lado maior meça `longer`.
 fn with_longer_side(size: [f64; 2], longer: f64) -> [f64; 2] {
     let cur = longer_side(size);
@@ -107,10 +121,31 @@ pub(crate) fn apply(
     let Some(Paint::Pattern(cur)) = scene.path(sel).and_then(|p| p.fill.as_ref()) else {
         return;
     };
+    let bbox = scene.path_bbox(sel);
     let mut next: PatternFill = (**cur).clone();
     match cmd {
         TexPatCmd::Tile(i) => next.kind = tile_of(i),
-        TexPatCmd::Mode(i) => next.mode = mode_of(i),
+        TexPatCmd::Mode(i) => {
+            next.mode = mode_of(i);
+            // ⛔⛔ **REPORT DO ENIO (2026-08-27): *"clamp deixa tudo em branco"*.**
+            //
+            // O `Clamp` desenha **uma** cópia e estica a borda dela pelo resto. Com a cópia do
+            // tamanho de um ladrilho, no canto, o que o artista vê é quase só borda esticada — um
+            // borrão chapado. ⇒ escolher `Clamp` **ENQUADRA** a cópia na forma: é o que o modo
+            // promete (*"mostra a imagem uma vez"*), e é o que o *Fill* do Figma faz.
+            //
+            // ⚠️ **Enquadra COBRINDO, não cabendo** (o `max` das duas razões): a forma fica toda
+            // pintada, e o aspecto da arte é preservado — a arte transborda em vez de deixar faixa
+            // vazia. E ⚠️ o enquadramento é **AUTORADO uma vez**, não recalculado por quadro: o
+            // `Size` continua um knob vivo, e escalar a forma leva o padrão junto (a pose entra na
+            // geometria do preenchimento pela porta do `transform_fill_geometry`).
+            if next.mode == PatternMode::Clamp
+                && let Some((lo, hi)) = bbox
+            {
+                next.size = cover(next.size, [hi[0] - lo[0], hi[1] - lo[1]]);
+                next.origin = lo;
+            }
+        }
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         TexPatCmd::OffsetDenom(n) => next.offset_denom = n.clamp(1.0, 255.0).round() as u8,
         TexPatCmd::Size(v) => next.size = with_longer_side(next.size, v),

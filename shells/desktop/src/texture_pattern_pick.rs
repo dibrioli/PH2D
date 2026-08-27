@@ -103,20 +103,34 @@ pub(crate) fn pick_source(assets: &AssetDb) -> Option<PatternSource> {
 ///
 /// O lado maior fica em `1/DEFAULT_TILES_ACROSS` do lado MENOR da forma, então uma forma comprida
 /// não recebe um ladrilho gigante.
+///
+/// ⛔⛔ **E O CANTO É O DA FORMA, não a origem do MUNDO** — report do Enio (2026-08-27:
+/// *"clamp deixa tudo em branco"*).
+///
+/// A 1.ª versão nascia em `[0, 0]`. Com `Tile`/`Mirror` isso é invisível (o padrão repete-se por
+/// toda a parte); com **`Clamp`** é catastrófico: o ladrilho fica na origem do mundo, a forma
+/// amostra `uv` a centenas de texels de distância, e o `Extend::Pad` devolve a **borda** da arte
+/// esticada — um borrão chapado, nunca a imagem. Medido na cena de smoke: as seis formas caem em
+/// `uv.x` de **−331 a +331** com o ladrilho a cobrir `0..32`.
+///
+/// ⚠️ **É a metade que faltava da lei que este plano se gabava de honrar.** A §1.2 do
+/// [plano 33](../../docs/Vector%20Module/33_plano_texture_pattern.md) diz que a ancoragem do
+/// Illustrator à origem da régua é *"o erro clássico da categoria"* — eu evitei a metade do
+/// TRANSFORM (o padrão anda com a forma) e reproduzi a metade do NASCIMENTO.
 #[must_use]
-pub(crate) fn default_size(
+pub(crate) fn default_placement(
     assets: &AssetDb,
     scene: &VecScene,
     sel: VecPathId,
     source: &PatternSource,
-) -> [f64; 2] {
+) -> ([f64; 2], [f64; 2]) {
     let (lo, hi) = scene.path_bbox(sel).unwrap_or(([0.0, 0.0], [1.0, 1.0]));
     let target =
         ((hi[0] - lo[0]).abs().min((hi[1] - lo[1]).abs()) / DEFAULT_TILES_ACROSS).max(f64::EPSILON);
     let art = art_dims(assets, source).unwrap_or([1, 1]);
     let (aw, ah) = (f64::from(art[0].max(1)), f64::from(art[1].max(1)));
     let s = target / aw.max(ah);
-    [aw * s, ah * s]
+    ([aw * s, ah * s], lo)
 }
 
 /// As dimensões em pixels da arte de uma fonte (`None` se ela ainda não resolve).
@@ -137,3 +151,7 @@ fn art_dims(assets: &AssetDb, source: &PatternSource) -> Option<[u32; 2]> {
 pub(crate) fn fallback_of(cur: Option<&Paint>) -> Rgba8 {
     cur.map_or(Rgba8::new(255, 255, 255, 255), Paint::primary_color)
 }
+
+#[cfg(test)]
+#[path = "texture_pattern_pick_tests.rs"]
+mod tests;

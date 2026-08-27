@@ -636,7 +636,7 @@ pub(crate) fn apply_vec_set_fill_kind(
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     kind: VecFillKind,
-    pattern: Option<(ph2d_vec_scene::PatternSource, [f64; 2])>,
+    pattern: Option<(ph2d_vec_scene::PatternSource, [f64; 2], [f64; 2])>,
 ) {
     use ph2d_vec_scene::Paint;
     let Some(sel) = pen.selected() else {
@@ -690,12 +690,15 @@ pub(crate) fn apply_vec_set_fill_kind(
             // Já é padrão: preserva a lei inteira (trocar de chip e voltar não perde a arte, nem o
             // reticulado, nem a colocação).
             (Some(p @ Paint::Pattern(_)), _) => p.clone(),
-            (_, Some((source, size))) => {
-                Paint::Pattern(Box::new(ph2d_vec_scene::PatternFill::new(
+            (_, Some((source, size, origin))) => {
+                let mut f = ph2d_vec_scene::PatternFill::new(
                     source,
                     size,
                     crate::texture_pattern_pick::fallback_of(cur.as_ref()),
-                )))
+                );
+                // ⛔ O canto é o da FORMA, não a origem do mundo (ver `default_placement`).
+                f.origin = origin;
+                Paint::Pattern(Box::new(f))
             }
             // ⚠️ Desistiu do diálogo: NÃO mexe no preenchimento.
             (_, None) => return,

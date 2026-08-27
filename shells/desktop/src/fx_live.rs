@@ -119,6 +119,11 @@ impl FxLive {
         xforms: &VecXforms,
         live: &LiveGeometry,
         sil: &LiveGeometry,
+        // ⛔ **REPORT DO ENIO (2026-08-27): *"filters anula pattern"*.** A rasterização isolada
+        // desenha a forma como o `dispatch` a desenharia — e sem o ladrilho ela a desenhava com a
+        // COR DE RECURSO, então ligar um filtro apagava o padrão (a imagem de FX **toma o lugar**
+        // do desenho). ⚠️ Isto obriga o assado dos padrões a correr ANTES daqui.
+        patterns: &ph2d_vec_render::PatternTiles,
         camera: Affine,
         gpu: &GpuContext,
         surface_format: wgpu::TextureFormat,
@@ -164,6 +169,7 @@ impl FxLive {
                     scene,
                     xforms,
                     live,
+                    patterns,
                     sil,
                     camera,
                     &jobs,
@@ -242,6 +248,8 @@ impl FxLive {
         scene: &VecScene,
         xforms: &VecXforms,
         live: &LiveGeometry,
+        // Ver o `recook`: sem o ladrilho a forma sai com a cor de recurso.
+        patterns: &ph2d_vec_render::PatternTiles,
         sil: &LiveGeometry,
         camera: Affine,
         jobs: &[Job],
@@ -269,6 +277,7 @@ impl FxLive {
                 scene,
                 xforms,
                 live,
+                patterns,
                 job.id,
                 camera,
                 Affine::translate((

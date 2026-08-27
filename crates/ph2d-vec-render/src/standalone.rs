@@ -70,20 +70,37 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
 /// exatamente o que a forma É na tela; o `offset` leva o bbox da forma à origem `(0,0)` do scratch.
 /// Passa pela MESMA [`draw_path`] do `dispatch` — desenhar por uma 2ª porta faria o FX divergir do
 /// que a forma parece de verdade.
+///
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"filters anula pattern"*.** O `tile` é obrigatório e não
+/// opcional por isso: sem ele esta função chamava a `draw_path`, que passa `None`, e uma forma com
+/// padrão era rasterizada com a **cor de recurso**. Como no `dispatch` a imagem de FX **toma o
+/// lugar** do desenho, ligar um filtro apagava o padrão.
+///
+/// ⚠️ O doc acima já declarava a lei que isso partia — *"passa pela MESMA `draw_path`"* —, e a
+/// segunda porta apareceu **dentro** da primeira quando o ladrilho virou um parâmetro que só o
+/// `dispatch` sabia preencher. *Um argumento novo com um default é uma porta nova sem nome.*
+#[allow(clippy::too_many_arguments)]
 pub fn draw_path_isolated(
     scene: &VecScene,
     xforms: &VecXforms,
     live: &LiveGeometry,
+    patterns: &crate::PatternTiles,
     id: VecPathId,
     camera: Affine,
     offset: Affine,
     target: &mut VectorScene,
 ) {
+    let tile = patterns.get(&id);
     if let Some(items) = live.get(&id) {
         for item in items {
-            draw_path(item, offset * camera, target);
+            crate::draw_path_tiled(item, offset * camera, target, tile);
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
-        draw_path(path, offset * path_to_screen(xforms, id, camera), target);
+        crate::draw_path_tiled(
+            path,
+            offset * path_to_screen(xforms, id, camera),
+            target,
+            tile,
+        );
     }
 }

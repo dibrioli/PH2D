@@ -443,13 +443,21 @@ barra. O assado (W1) tem orçamento próprio: **8 ms** para um ladrilho de 512×
 | **W3** o dado | ✅ | `VEC_SCENE` **14→15**, `PROJECT_SCHEMA` **99→100**; ⚠️ **RECONTE na integração** |
 | **W4** fonte 1 (imagem) | ✅ | ⛔ instância de Motion pinta a `fallback` (fronteira declarada, com gate) |
 | **W4b** persistência | ✅ | — |
-| **W5** painel | ⚠️ **METADE**: o 5.º chip vive, a fileira reflui, a 4.ª condição está fechada (o chip abre o diálogo) | ⏳ **a secção *Pattern* com os knobs** — Tile type · Offset · Size · Gap · Angle · Repeat. Hoje um padrão nasce e **não se afina** |
+| **W5** painel | ✅ | o 5.º chip + a fileira que reflui + a secção **Pattern** inteira (Source… · Tile · Offset · Size · Gap · Angle · Repeat), com 7/7 mutações mortas |
 | **W6** alças na tela | ⏳ | mover · escalar · rodar, espelhando o `GradHandle` |
 | **W7** fonte 2 (forma) | ⏳ | o modelo do Figma; hoje `PatternSource::Shape` existe no dado e **não resolve** |
 | **W8** smoke | ✅ | `PH2D_BUILD_SMOKE=76` |
 
-⭐ **A ordem seguinte é W5(resto) → W6 → W7**: sem a secção, o artista vê o padrão e não o afina —
-é o maior buraco entre o que existe e um produto.
+⭐ **A ordem seguinte é W6 → W7.** Com a secção fechada, o que falta é *conforto* (afinar na tela em
+vez de por números) e *alcance* (usar uma forma do documento como arte), não capacidade.
+
+⚠️ **E a W5 deixou duas coisas nomeadas:**
+
+- **O Size é UM número** (o lado maior, com o aspecto preservado). Autorar os dois lados é
+  expressável hoje escalando a FORMA de forma não-uniforme — o padrão esmaga com ela —, e um par de
+  campos deixaria o artista esmagar a arte sem querer. ⏸️ Se um smoke pedir, o desenho é um cadeado
+  de aspecto, não dois campos soltos.
+- **O Gap é UM número** para os dois eixos (`gap: [v, v]`). O dado guarda os dois; a UI oferece um.
 
 ⚠️ **Dois achados que mudaram o desenho a meio, e que a próxima janela herda:**
 

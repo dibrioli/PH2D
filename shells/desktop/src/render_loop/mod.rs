@@ -8721,9 +8721,8 @@ impl crate::App {
                                         .vec_entities
                                         .get(&p.id)
                                         .map(|&b| ph2d_ecs::Entity::from_bits(b));
-                                    let (morph, machine, name, pai) = ent.map_or(
-                                        (false, false, String::new(), None),
-                                        |en| {
+                                    let (morph, machine, name, pai) =
+                                        ent.map_or((false, false, String::new(), None), |en| {
                                             let w = sim.world();
                                             (
                                                 w.get::<ph2d_ecs::VecMorph>(en).is_some(),
@@ -8738,8 +8737,7 @@ impl crate::App {
                                                     )
                                                 }),
                                             )
-                                        },
-                                    );
+                                        });
                                     eprintln!(
                                         "[morph]   path {} nome={name:?} morph={morph} \
                                          maquina={machine} pai={pai:?} verts={} e-o-conjunto={}",

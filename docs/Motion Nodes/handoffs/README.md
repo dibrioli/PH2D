@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**49 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**50 handoffs** · **10** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 > ⚠️ **Reconciliado em 2026-08-18, e a diferença era OITO.** O índice parou em 09/08 e
@@ -64,7 +64,10 @@
 | 2026-08-18 |  | [HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_grupo_Q_2026-08-18.md) | integração | GRUPO Q + a PORTA DE TEMPO — os dois eixos, o relógio curvado, o relógio como CAMPO (`=58`/`=59`) |
 | 2026-08-18 | ◆ | [HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md](HANDOFF_INTEGRACAO_line_motion_value_FECHO_2026-08-18.md) | integração | **FECHO DA LINHA** — os 8 itens da DIRETRIZ §1.5.9 medidos; o documento do INTEGRADOR |
 | 2026-08-19 | ◆ | [HANDOFF_CONTINUACAO_line_motion_value_2026-08-19.md](HANDOFF_CONTINUACAO_line_motion_value_2026-08-19.md) | continuação | **O PLANO e as tarefas em aberto** — os quatro grupos seguintes, as dez leis que a linha pagou, e o ritual de cada célula |
+| 2026-08-22 |  | [HANDOFF_INTEGRACAO_line_motion_value_2026-08-22.md](HANDOFF_INTEGRACAO_line_motion_value_2026-08-22.md) | integração | As folhas 02/05/09 e a faixa dos animadores — `min`/`max`, os quatro modos do `motion.drive`…
+| 2026-08-23 |  | [HANDOFF_INTEGRACAO_line_motion_value_BLOCO_Z_2026-08-23.md](HANDOFF_INTEGRACAO_line_motion_value_BLOCO_Z_2026-08-23.md) | integração | O BLOCO Z — os tectos que ninguém tinha medido (doc 91), e o `MAX_DT` dos dois integradores…
 | 2026-08-24 |  | [HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-24.md](HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-24.md) | integração | Fecho da linha: folhas 01–07 e a conferência a 33 P2 / ZERO P1; cenas `=90..=95`; Bug #6 (o mar) curado e Bug #7 aberto |
+| 2026-08-26 |  | [HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-26.md](HANDOFF_INTEGRACAO_line_motion_value_CONFERENCIA_2026-08-26.md) | integração | A conferência dos nós de 22 P2 para 2 — cinco folhas fecharam inteiras (06 · 08 · 13 · 15 · 17)…
 
 ---
 *Índice gerado na arrumação de 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na

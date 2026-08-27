@@ -1215,3 +1215,69 @@ nota no sítio antigo a dizer para onde foi.
 **Quatro mutações, todas sangram.** ⚠️ E uma **sobreviveu com razão**: o `if states.get(h).is_empty()`
 é um **atalho de custo**, não uma lei — com a tabela vazia os laços não fazem nada. O comentário
 passa a dizer isso, *para a próxima leitura não procurar o gate que ele nunca vai ter*.
+
+---
+
+## §16 — ⭐⭐⭐ W11j: o log do Enio NOMEOU a causa — **o conjunto pode ser uma PEÇA de um widget maior**
+
+> Enio, 2026-08-26, com `PH2D_MORPH_LOG=1`:
+>
+> ```text
+> [morph] CLIQUE ⊘ row=2 conjunto=Some(3) chaves-da-tabela=[4] formas=[0, 1, 2]
+> [morph]   path 4 nome="Path 4"          morph=false maquina=false pai=None
+> [morph]   path 3 nome="Morph States 3"  morph=true  maquina=true  pai=Some(4)
+> [morph]   path 0/1/2 = Wide/Tall/Thin                             pai=Some(3)
+> ```
+
+### §16.1 — A causa, em uma frase
+
+O conjunto era **filho** de outra forma, e o `Rec` gravou no **PAI** — que é a lei escrita do
+`host_of_selection` (*"a forma-ancestral mais próxima cuja sub-árvore contém todas"*). ⇒ a pose que
+diz **qual forma o conjunto mostra** vive na tabela do PAI.
+
+⛔ **E a W11i inteira procurava no sítio errado:** `states.get(h)` com `h` = o próprio conjunto,
+saindo no `is_empty()` **sem fazer nada**. Daí os dois sintomas de uma vez: o resquício ficava e a
+substituição não acontecia.
+
+> ⭐ *Um conjunto de Morph States não é necessariamente o dono da animação que o usa: ele pode ser
+> uma PEÇA de um widget maior.*
+
+### §16.2 — ⛔⛔ Por que NENHUM gate podia ver isto
+
+Todas as fixturas punham o conjunto na **raiz**, onde a chave da tabela e o id do conjunto são o
+mesmo **por construção**. *Uma fixtura que não contém o fenómeno aprova a cura errada* — e aqui
+aprovou **quatro waves seguidas** (W11f..W11i), cada uma verde, cada uma a curar a metade que o
+arnês sabia produzir.
+
+⚠️ **E foi o INSTRUMENTO que fechou a distância**, não mais leitura: quatro hipóteses tinham sido
+eliminadas por grep (o undo guarda a tabela junto; o `write_shape` não empurra path novo; o
+`host_of_selection` devolve a própria forma; a chamada é incondicional) e o produto continuava
+vermelho. *Quando N leituras eliminam N hipóteses e o produto continua vermelho, o que falta é um
+FATO.*
+
+### §16.3 — A lei nova
+
+A varredura procura a pose do conjunto em **toda tabela cuja sub-árvore o governe**, e em mais
+nenhuma — e a substituição é **por OBJECTO**, não por hospedeiro (`host` é a chave da tabela;
+`object` é de quem é a pose, e os dois **não** são o mesmo).
+
+### §16.4 — Gates e mutações
+
+| Gate | O que afirma |
+|---|---|
+| `the_set_can_be_a_child_and_the_animation_lives_in_the_parent` | a fixtura que faltava: conjunto filho, tabela no pai |
+| `the_repair_never_touches_a_table_that_does_not_govern_the_set` | *varrer é a metade fácil; saber onde parar é a que protege autoria* |
+
+**Duas mutações, ambas sangram.** ⚠️ E **duas sobreviveram com razão**, e ficam **rotuladas como
+defesa e não como lei**: os dois filtros `p.id == object` — uma forma pertence a **um** conjunto,
+então o dano que eles evitam não é produzível. *Não vestir uma defesa de lei é o que impede a
+próxima leitura de procurar o gate que ela nunca vai ter.*
+
+### §16.5 — ⚠️ E o diagnóstico teve de ser corrigido DUAS vezes antes de servir
+
+1. imprimia **por quadro** (60 linhas/s) ⇒ o Enio respondeu *"há milhares de logs"*, e a linha que
+   importava ficou enterrada. *Um diagnóstico que imprime todo quadro esconde o evento que ele
+   existe para mostrar.*
+2. a versão seguinte nomeou o **sintoma** (`conjunto=3` contra `chaves=[4]`) e não a **causa** —
+   faltava dizer *o que é o 4*. O **inventário da cena** (nome, pai, morph, máquina, por path) foi
+   o que fechou.

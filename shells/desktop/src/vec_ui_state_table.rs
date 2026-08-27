@@ -76,10 +76,17 @@ pub(crate) fn forget_object_in_all_states(
 /// ⚠️ **Uma substituição por FORMA, não por estado:** dois estados que nomeavam a mesma forma
 /// continuam a nomear a mesma. Escolher por estado partiria uma igualdade que o artista autorou.
 ///
+/// ⚠️⚠️ **E por OBJECTO, não por hospedeiro** (achado de 2026-08-26, com o log do Enio): o `host` é
+/// a chave da TABELA e o `object` é de quem é a pose. Eles **não** são o mesmo — um conjunto de
+/// Morph States pode ser **filho** de outra forma, e aí a pose dele vive na tabela do PAI. Sem esta
+/// distinção, um hospedeiro que governasse dois conjuntos leria as formas de um como ocupadas pelo
+/// outro.
+///
 /// Devolve a forma escolhida, ou `None` se nada nomeava a que saiu (ou se não sobrou candidata).
 pub(crate) fn replace_morph_shape_in_all_states(
     states: &mut StateSets,
     host: VecPathId,
+    object: VecPathId,
     gone: VecPathId,
     candidates: &[VecPathId],
 ) -> Option<VecPathId> {
@@ -92,6 +99,13 @@ pub(crate) fn replace_morph_shape_in_all_states(
             continue;
         };
         for p in &st.objects {
+            // ⛔ **Só as poses DESTE objecto.** Um hospedeiro pode governar mais do que um conjunto
+            // de Morph States (a sub-árvore dele é um widget inteiro), e a preferência «uma forma
+            // que ninguém nomeia» leria as formas do vizinho como ocupadas — ou, pior, trocaria a
+            // forma dele.
+            if p.id != object {
+                continue;
+            }
             match p.morph_shape {
                 Some(s) if s == gone => touches = true,
                 Some(s) => named.push(s),
@@ -113,7 +127,10 @@ pub(crate) fn replace_morph_shape_in_all_states(
         };
         let mut here = false;
         for p in &mut st.objects {
-            if p.morph_shape == Some(gone) {
+            // ⛔ O `p.id == object` é **defesa, não lei**: duas poses da mesma tabela só poderiam
+            // nomear a mesma forma se dois conjuntos a partilhassem, e uma forma tem **um** pai.
+            // A mutação que o apagou sobreviveu — e está certo que tenha.
+            if p.id == object && p.morph_shape == Some(gone) {
                 p.morph_shape = Some(to);
                 here = true;
             }

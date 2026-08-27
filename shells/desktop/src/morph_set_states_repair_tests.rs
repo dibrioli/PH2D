@@ -303,3 +303,160 @@ fn after_removing_thin_the_hover_still_morphs_to_tall() {
         m.t
     );
 }
+
+/// ⛔⛔⛔ **O CONJUNTO PODE SER UMA PEÇA DE UM WIDGET MAIOR — e a animação vive no PAI.**
+///
+/// Enio, 2026-08-26, com o log ligado:
+///
+/// ```text
+/// [morph] CLIQUE ⊘ row=2 conjunto=Some(3) chaves-da-tabela=[4] formas=[0, 1, 2]
+/// [morph]   path 3 nome="Morph States 3" morph=true maquina=true pai=Some(4)
+/// ```
+///
+/// ⇒ o conjunto era **filho** de outra forma, e o `Rec` gravou no **PAI** — que é a lei escrita do
+/// `host_of_selection` (*"a forma-ancestral mais próxima cuja sub-árvore contém todas"*). A pose
+/// que diz **qual forma o conjunto mostra** vivia, portanto, na tabela do PAI.
+///
+/// ⛔ **E toda a W11i procurava no sítio errado:** `states.get(h)` com `h` = o próprio conjunto,
+/// saindo no `is_empty()` sem fazer nada. *Um conjunto de Morph States não é necessariamente o dono
+/// da animação que o usa: ele pode ser uma PEÇA de um widget maior.*
+///
+/// ⚠️ **Nenhum gate podia ver isto**, e a razão é a fixtura: todos punham o conjunto na RAIZ, onde
+/// a chave da tabela e o id do conjunto são o mesmo **por construção**. *Uma fixtura que não contém
+/// o fenómeno aprova a cura errada* — e aqui aprovou quatro waves seguidas.
+///
+/// **Mutação que deve sangrar:** o `repair_states` voltar a procurar só em `states.get(h)`.
+#[test]
+fn the_set_can_be_a_child_and_the_animation_lives_in_the_parent() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let set_id = scene.paths().last().unwrap().id;
+
+    // ⭐ A FIXTURA QUE FALTAVA: uma forma PAI, com o conjunto por baixo dela.
+    let parent_id = scene.push_path(ph2d_vec_scene::rectangle([-9.0, -9.0], [-7.0, -7.0]));
+    sync(&mut sim, &mut scene, &mut map);
+    let set = Entity::from_bits(map[&set_id]);
+    let parent = Entity::from_bits(map[&parent_id]);
+    sim.world_mut()
+        .entity_mut(set)
+        .insert(ph2d_ecs::ChildOf(parent));
+
+    // O `Rec` grava no PAI -- e a sub-arvore dele contem o conjunto.
+    let governed = crate::vec_ui_state_edit::members(&sim, &scene, &map, parent_id);
+    assert!(
+        governed.contains(&set_id),
+        "a fixtura perdeu a premissa: o pai tem de governar o conjunto"
+    );
+    let mut states = ph2d_ui_state::StateSets::default();
+    for (role, shape) in [
+        (ph2d_ui_state::StateRole::Default, ids[0]),
+        (ph2d_ui_state::StateRole::Hover, ids[2]),
+    ] {
+        let mut st = ph2d_ui_state::UiState::new(role);
+        st.objects = governed
+            .iter()
+            .map(|&id| crate::vec_ui_state_edit::capture(&sim, &scene, &map, id))
+            .collect();
+        for p in &mut st.objects {
+            if p.id == set_id {
+                p.morph_shape = Some(shape);
+            }
+        }
+        states.set(parent_id, st);
+    }
+    assert_eq!(
+        states.hosts().collect::<Vec<_>>(),
+        vec![parent_id],
+        "a tabela tem de estar sob o PAI -- e' esse o caso que o Enio reportou"
+    );
+
+    // O ⊘ do `thin`, e o quadro a arrumar.
+    let row = crate::morph_set::graph_of(&sim, &map, set)
+        .shapes()
+        .iter()
+        .position(|s| *s == ids[2])
+        .expect("o thin esta' na lista");
+    crate::morph_set::disconnect_row(&mut sim, &map, set, row);
+    let mut machines = crate::morph_machine_drive::MorphMachines::new();
+    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
+
+    let shape_in = |states: &ph2d_ui_state::StateSets, role| {
+        states
+            .role(parent_id, role)
+            .and_then(|st| st.objects.iter().find(|p| p.id == set_id))
+            .and_then(|p| p.morph_shape)
+    };
+    assert_eq!(
+        shape_in(&states, ph2d_ui_state::StateRole::Hover),
+        Some(ids[1]),
+        "⛔ o `tall` tinha de tomar o lugar do `thin` na tabela do PAI"
+    );
+    assert_eq!(
+        shape_in(&states, ph2d_ui_state::StateRole::Default),
+        Some(ids[0]),
+        "o Default nao podia ser tocado"
+    );
+    // E a pose da forma que saiu tambem vai junto -- ela deixou a sub-arvore do PAI.
+    assert!(
+        !states
+            .role(parent_id, ph2d_ui_state::StateRole::Default)
+            .is_some_and(|s| s.objects.iter().any(|p| p.id == ids[2])),
+        "⛔ a pose do `thin` ficou na tabela do pai"
+    );
+}
+
+/// ⛔⛔ **A ARRUMAÇÃO NÃO TOCA A TABELA DE QUEM NÃO GOVERNA O CONJUNTO.**
+///
+/// A varredura procura a pose do conjunto em **toda** tabela — porque ela pode viver na do PAI — e
+/// é por isso que a guarda de posse existe: sem ela, arrumar UM conjunto varreria as tabelas de
+/// **widgets que nada têm com ele**, e apagaria poses de objectos que legitimamente saíram e voltam
+/// à sub-árvore deles. *Varrer é a metade fácil; saber onde parar é a que protege autoria.*
+///
+/// **Mutação que deve sangrar:** largar o `if !live.contains(&h) { continue }`.
+#[test]
+fn the_repair_never_touches_a_table_that_does_not_govern_the_set() {
+    let (mut sim, mut scene, mut map, ids) = world(3);
+    let mut pending = create(&sim, &mut scene, &map, &ids, 9);
+    sync(&mut sim, &mut scene, &mut map);
+    upkeep(&mut sim, &scene, &map, &mut pending);
+    let set_id = scene.paths().last().unwrap().id;
+    let set = Entity::from_bits(map[&set_id]);
+
+    // ⭐ UM WIDGET ALHEIO, com uma pose de um objecto que ja' saiu da sub-arvore DELE.
+    let widget = scene.push_path(ph2d_vec_scene::rectangle([20.0, 20.0], [22.0, 22.0]));
+    let stranger = scene.push_path(ph2d_vec_scene::rectangle([30.0, 30.0], [32.0, 32.0]));
+    sync(&mut sim, &mut scene, &mut map);
+    let mut states = ph2d_ui_state::StateSets::default();
+    let mut st = ph2d_ui_state::UiState::new(ph2d_ui_state::StateRole::Default);
+    st.objects = vec![
+        crate::vec_ui_state_edit::capture(&sim, &scene, &map, widget),
+        crate::vec_ui_state_edit::capture(&sim, &scene, &map, stranger),
+    ];
+    states.set(widget, st);
+    assert_eq!(
+        states
+            .role(widget, ph2d_ui_state::StateRole::Default)
+            .unwrap()
+            .objects
+            .len(),
+        2,
+        "a fixtura tem de conter o fenomeno: uma pose de quem nao esta' na sub-arvore"
+    );
+
+    // Arrumar o CONJUNTO nao pode mexer no widget alheio.
+    crate::morph_set::disconnect_row(&mut sim, &map, set, 0);
+    let mut machines = crate::morph_machine_drive::MorphMachines::new();
+    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
+
+    assert_eq!(
+        states
+            .role(widget, ph2d_ui_state::StateRole::Default)
+            .unwrap()
+            .objects
+            .len(),
+        2,
+        "⛔ a arrumacao de UM conjunto apagou uma pose de um widget que nada tem com ele"
+    );
+}

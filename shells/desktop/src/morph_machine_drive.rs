@@ -402,54 +402,75 @@ fn repair_states(
         }
         return false;
     };
-    // ⚠️ **ATALHO DE CUSTO, e não uma lei** — dito assim de propósito: com a tabela vazia os laços
-    // abaixo não fazem nada, então apagar esta linha **não muda uma única resposta** (a mutação que
-    // a apagou sobreviveu à suíte, e está certo que tenha). O que ela poupa é o `members`, que anda
-    // a sub-árvore e aloca, uma vez por conjunto por quadro. *Não vestir um atalho de lei é o que
-    // impede a próxima leitura de procurar o gate que ele nunca vai ter.*
-    if states.get(h).is_empty() {
-        return false; // o caso normal: um conjunto sem States. **Não** se loga — era o dilúvio.
-    }
-    let live = crate::vec_ui_state_edit::members(sim, scene, map, h);
-    // ⚠️ **A leitura vem toda ANTES da escrita**: as duas portas abaixo reescrevem papéis
-    // inteiros, e recolher a meio faria a segunda varredura ler uma tabela já mudada.
-    let mut gone_objects: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
-    let mut gone_shapes: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
-    for st in states.get(h) {
-        for p in &st.objects {
-            if !live.contains(&p.id) && !gone_objects.contains(&p.id) {
-                gone_objects.push(p.id);
-            }
-            if let Some(s) = p.morph_shape
-                && !shapes.contains(&s)
-                && !gone_shapes.contains(&s)
-            {
-                gone_shapes.push(s);
-            }
-        }
-    }
-    // ⚠️ **O log é um EVENTO, não um relatório por quadro.** A 1.ª versão imprimia sempre que a
-    // tabela não estava vazia — 60 linhas por segundo — e o Enio respondeu *"há milhares de logs"*:
-    // a linha que importava ficou enterrada nas que não importavam. *Um diagnóstico que imprime
-    // todo quadro esconde o evento que ele existe para mostrar.*
-    if log_on() && (!gone_objects.is_empty() || !gone_shapes.is_empty()) {
-        eprintln!(
-            "[morph] REPARO host={h} membros={shapes:?} vivos={live:?} \
-             poses-orfas={gone_objects:?} formas-orfas={gone_shapes:?}"
-        );
-    }
+    // ⛔⛔ **A TABELA PODE ESTAR SOB OUTRO ID, e foi isto que o log do Enio nomeou** (2026-08-26):
+    //
+    //     [morph] CLIQUE ⊘ conjunto=Some(3) chaves-da-tabela=[4]
+    //     [morph]   path 3 nome="Morph States 3" ... pai=Some(4)
+    //
+    // ⇒ o conjunto era **filho** de outra forma, e o `Rec` gravou no **PAI** — que é a lei escrita
+    // do `host_of_selection` (*"a forma-ancestral mais próxima cuja sub-árvore contém todas"*).
+    // A pose que diz **qual forma o conjunto mostra** vive, portanto, na tabela do PAI.
+    //
+    // ⛔ A 1.ª versão procurava `states.get(h)` — a tabela **do próprio conjunto** — e saía no
+    // `is_empty()` sem fazer nada. *Um conjunto de Morph States não é necessariamente o dono da
+    // animação que o usa: ele pode ser uma PEÇA de um widget maior.*
+    //
+    // ⇒ procura-se em **toda** tabela cuja sub-árvore governe este conjunto, e em mais nenhuma:
+    // varrer todas seria mexer em widgets que nada têm com ele.
+    let keys: Vec<ph2d_vec_scene::VecPathId> = states.hosts().collect();
     let mut fixed = false;
-    for id in gone_objects {
-        fixed |= crate::vec_ui_state_edit::forget_object_in_all_states(states, h, id);
-    }
-    // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro estado
-    // nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
-    for s in gone_shapes {
-        let to = crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, s, shapes);
-        if log_on() {
-            eprintln!("[morph] REPARO host={h} substituiu forma {s} por {to:?}");
+    for k in keys {
+        let live = crate::vec_ui_state_edit::members(sim, scene, map, k);
+        if !live.contains(&h) {
+            continue; // esta tabela nao governa este conjunto
         }
-        fixed |= to.is_some();
+        // ⚠️ **A leitura vem toda ANTES da escrita**: as duas portas abaixo reescrevem papéis
+        // inteiros, e recolher a meio faria a segunda varredura ler uma tabela já mudada.
+        let mut gone_objects: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
+        let mut gone_shapes: Vec<ph2d_vec_scene::VecPathId> = Vec::new();
+        for st in states.get(k) {
+            for p in &st.objects {
+                if !live.contains(&p.id) && !gone_objects.contains(&p.id) {
+                    gone_objects.push(p.id);
+                }
+                // ⚠️ **Só a pose DO CONJUNTO.** ⛔ **Defesa, não lei** — dito assim de propósito:
+                // uma forma pertence a **um** conjunto, então nenhuma outra pose desta tabela pode
+                // nomear uma forma que a este falte, e a mutação que apagou o filtro **sobreviveu
+                // à suíte, com razão**. Ele fica porque exprime o alcance da varredura — mas não
+                // se lhe inventa um gate que a realidade não consegue produzir.
+                if p.id == h
+                    && let Some(s) = p.morph_shape
+                    && !shapes.contains(&s)
+                    && !gone_shapes.contains(&s)
+                {
+                    gone_shapes.push(s);
+                }
+            }
+        }
+        // ⚠️ **O log é um EVENTO, não um relatório por quadro.** A 1.ª versão imprimia sempre que a
+        // tabela não estava vazia — 60 linhas por segundo — e o Enio respondeu *"há milhares de
+        // logs"*: a linha que importava ficou enterrada nas que não importavam. *Um diagnóstico que
+        // imprime todo quadro esconde o evento que ele existe para mostrar.*
+        if log_on() && (!gone_objects.is_empty() || !gone_shapes.is_empty()) {
+            eprintln!(
+                "[morph] REPARO tabela={k} conjunto={h} membros={shapes:?} vivos={live:?} \
+                 poses-orfas={gone_objects:?} formas-orfas={gone_shapes:?}"
+            );
+        }
+        for id in gone_objects {
+            fixed |= crate::vec_ui_state_edit::forget_object_in_all_states(states, k, id);
+        }
+        // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro
+        // estado nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
+        for s in gone_shapes {
+            let to = crate::vec_ui_state_edit::replace_morph_shape_in_all_states(
+                states, k, h, s, shapes,
+            );
+            if log_on() {
+                eprintln!("[morph] REPARO tabela={k} substituiu forma {s} por {to:?}");
+            }
+            fixed |= to.is_some();
+        }
     }
     fixed
 }

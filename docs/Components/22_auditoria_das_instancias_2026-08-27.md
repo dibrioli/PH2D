@@ -417,3 +417,47 @@ Uma correção de facto ao achado, à parte: as referências de linha dele estã
 O que sobra de verdadeiro, e é pouco: nenhum gate prende a chamada por quadro (todos os sítios de teste chamam `assign_master_pieces` à mão; o único ficheiro de teste que sequer nomeia `physics_bridge` é `preview_drive_tests.rs`), e a prova de mutação citada — 4 filtros, 23 verdes — não prova «TODA a suíte» (a lei do repo: um filtro por nome nunca alcança um gate que varre a árvore). Isso é uma nota de cobertura honesta sobre um invariante que hoje está correcto, não um defeito. Para o converter em achado faltaria exibir um quadro real em que a arte é emitida sem o passe ter corrido — e os pontos 1-3 mostram que esse quadro não existe.
 
 O que mudaria a minha posição: se alguém demonstrasse um segundo caminho de emissão de `RenderInstance` (ou uma segunda construção de `VecViewState`) alcançável fora de `run_render_frame`, ou um `cfg`/feature que remova o `dispatch` do quadro. Grepei os dois e não existem.
+
+---
+
+## §4 — As curas (2026-08-27, commit `ccf5aae0a`)
+
+> ⚠️ **Sete dos oito eram a MESMA lei escrita pela metade** — *«esta entidade está na cena?»* —, e o
+> que os separa é só quantos leitores cada metade tinha. Isso não se via achado a achado; viu-se
+> quando os oito ficaram lado a lado.
+
+| § | O que se fez | O gate novo | A mutação que o mata |
+|---|---|---|---|
+| 1.5 | A metade «receita» ganhou **porta** (`off_canvas::is_unedited_recipe`); `is_empty_object` chama-a, e os três consumidores (anel · dedo · caixa) vêm atrás | `the_recipe_being_edited_gets_its_ring_its_finger_and_its_box_back` — os três num gate só, porque a pergunta é uma só | voltar a `MasterPiece.is_none()` |
+| 1.6 | `mark` passou a receber `impl IntoIterator<Item = u64>` — a selecção inteira, primária + extras | `a_recipe_selected_as_an_extra_lights_up_too` + arch-gate `the_recipe_mark_is_fed_the_extra_selection_too` | `.take(1)` **logo a seguir** ao `into_iter()` |
+| 1.4 + 1.2 | `duplicate_subtree` recebe um `step` de mundo derivado da tela; a row selecciona a cópia e o toast **nomeia** a regra que ela herdou quando a fonte era receita | `the_duplicate_lands_beside_its_source` (agora com régua de MUNDO) + arch-gate `the_duplicate_row_offsets_the_copy_and_puts_the_gizmo_on_it` | apagar a soma do `step` |
+| 1.3 | `Verb::Place` deriva o pai da receita, como os outros dois chamadores da cópia profunda | `a_placed_instance_lands_where_a_nested_recipe_lives` + o controlo negativo `..._of_a_root_recipe_stays_at_the_root` | voltar a `None` |
+| 1.1 | Recusa nova `VerbRefusal::InsideAMaster` (com braço próprio no `match`, sem `_`); o reparent para dentro de uma receita **fala** | `make_master_refuses_inside_another_component`, com controlo positivo fora da receita | apagar a guarda |
+| 1.8 | O bail de `instance_root_of` saiu; a travessia de ancestrais que o doc prometia passou a correr | o caso do *stowaway* (filho **sem** `InstanceOf`) dentro de `make_master_refuses_a_master_and_a_piece_of_an_instance`, com controlo negativo a afirmar que ele não tem elo | repor o bail |
+| 1.7 | As duas cenas ganharam **PASSO 1** («clique na linha 'Ragdoll'»), e a nota de que a receita é a biblioteca | `the_smoke_scene_shows_its_recipe_only_after_the_row_is_clicked` (atravessa a cena do smoke, que nenhum gate atravessava) + arch-gate sobre o texto | `want.insert(root)` em vez da sub-árvore |
+
+### ⚠️ O que as curas ensinaram, e que a auditoria não sabia
+
+- **DUAS das sete mutações sobreviveram — e as duas ERRADAS eram as mutações, não os gates.**
+  (a) Pôr o `take(1)` **depois** do `filter_map(master_root_of)` é no-op, porque o objeto solto já
+  tinha sido descartado ali: *uma mutação a jusante do filtro não mede o que o filtro recebeu.*
+  (b) Apagar o laço de **desmarcar** não se vê num gate cujo `mark(None)` corre primeiro sobre um
+  mundo limpo — quem o mata é o gate irmão, e é por isso que ele existe.
+- **A cura do §1.4 não podia reutilizar o `cascade`**, e o cético já o tinha dito: aquele conta
+  `instances_of(master) − 1`, e um *Duplicate* de uma sprite não tem mestre para contar. Quem ler
+  «aplica a mesma lei» como copy-paste escreve o defeito de novo com outro sinal.
+- **Três das quatro portas do §1.1 curam-se com o §1.5/§1.6**, e a quarta não — foi a única que
+  precisou de recusa. *Uma lista de quatro portas com o mesmo sintoma pode ter uma causa só e três
+  consequências.*
+- **Dois arch-gates ficaram ancorados no ficheiro errado** quando o assunto se mudou para
+  `hierarchy_duplicate.rs` — e falharam alto, que é o que se lhes pede. Reancorar é honrá-los.
+
+### ⏳ O que NÃO foi curado, e é decisão do Enio
+
+- **Nada na tela diz que uma linha da Hierarquia é uma RECEITA.** Os quatro toasts novos dizem-no
+  *depois* do gesto; um selo na linha di-lo-ia antes. É o buraco de **descoberta** que o §1.1 e o
+  §1.7 nomeiam por trás dos dois, e é UI da Hierarquia, não deste subsistema.
+- **«Mudar uma instância não muda outra» continua a ser por desenho** — editar uma cópia vira
+  excepção dela. ⚠️ Mas a lei oposta já está escrita para a PINTURA (*«o conteúdo de um asset é
+  partilhado»*), e um desenho é um documento como uma textura. A incoerência é de produto, e os
+  dois lados estão escritos.

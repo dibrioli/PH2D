@@ -127,6 +127,9 @@ impl View {
             nav_hot: _,
             nav_press: _,
             has_live_sculpt: _,
+            // ⚠️ **Cache, e não vista** — as fitas compiladas de um quadro. Deitá-las fora ao
+            // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
+            tapes: _,
         } = s;
         Self {
             cam: *cam,

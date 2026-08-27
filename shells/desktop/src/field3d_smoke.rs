@@ -122,6 +122,7 @@ fn boot() -> Option<Smoke> {
         nav_hot: None,
         nav_press: None,
         has_live_sculpt: false,
+        tapes: std::sync::Arc::new(ph2d_field_render::TapeCache::new()),
         matcap: Arc::new(load_matcap()),
         cam: v.cam,
         frame: None,

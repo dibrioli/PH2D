@@ -5744,7 +5744,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⭐⭐⭐ **W82: reaproveitar a fita entre QUADROS** — a alavanca, **medida e desenhada** | compilar custa `~10`–`14 ms` de um quadro de `~24` e **satura às 16 threads**; a fita inflada por `1,25×` serve o quadro seguinte em `84 %`–`93 %` dos casos por `1,18×` no custo de uma amostra ⇒ estimativa **`14 ms`** | §82.9, §82.12 |
+| ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
+| ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -5763,6 +5764,15 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W82 (§83): a cache de fitas entre quadros — e a parede da §82.9 cedeu `1,2×`, não `1,7×`.**
+  Uma fita construída para a região `R` serve toda a sub-região de `R` ⇒ construída para `R`
+  **inflada**, ela serve o quadro seguinte: `84 %`–`93 %` de acerto, `226` compilações por quadro a
+  cair para `16`–`44`. ⛔⛔ **E o defeito mais caro foi meu:** a 1.ª versão carimbava a idade de uso
+  com o cadeado de **escrita** — o acerto era `87 %`, as compilações caíam `7,5×` e o quadro **não
+  mexia** (`0,74×` num caso). *Uma cache que serializa os leitores devolve na trava o que poupou no
+  JIT.* ⛔ E a minha estimativa de `14 ms` estava errada por **dois** motivos medidos: montagem e
+  marcha **sobrepõem-se** (não se somam), e a fita da cache é **mais gorda** (caixa em vez de casco).
+  ⭐ O `INFLATE = 1,25` é um **mínimo medido**: `1,00` e `2,00` os dois **perdem**.
 - ⭐⭐⭐ **W81 (§82): a marcha ganhou um contador — e a NORMAL era um quinto do quadro.** `21,1 %` de
   todas as amostras de campo são a diferença central (seis por acerto), e ela não estava em conta
   nenhuma — o doc dizia que elas *«saem noutro sítio»* e o sítio não existia. ⛔ **O estêncil de
@@ -7311,3 +7321,151 @@ logo ela não cabe no `RegionCompiler`, que nasce e morre com o quadro — ela �
 cresce com cada grau que a câmera roda; (4) a fita compilada é `Arc<Mmap>` na `fidget` ⇒ **cloná-la é
 um bump de contador**, e o avaliador (que é o estado mutável) nasce por uso — *é isso que torna uma
 cache partilhada entre threads possível de todo*.
+
+## §83 — W82: a cache de fitas entre quadros — a cura da parede da §82.9 (27/08)
+
+A W81 mediu a parede: compilar as `242` fitas de um quadro custa `~14 ms` de um quadro de `~24` e
+**satura às 16 threads** (de 16 para 32 o ganho é `1 %`), porque um JIT mapeia memória **executável**
+e `mmap`/`mprotect` são recursos do kernel. ⇒ metade do relógio de um quadro é trabalho que nem
+escala nem muda, refeito inteiro a cada quadro enquanto a mão mexe.
+
+### §83.1 — ⭐⭐⭐ O mecanismo: a cache não tem chave, tem um teste de CONTENÇÃO
+
+A cerca que a W56 escreveu é *«a árvore especializada só vale DENTRO de `[lo, hi]`»* — e ela lê-se ao
+contrário: **uma fita construída para `R` serve toda a sub-região de `R`**. ⇒ construindo a fita para
+`R` **inflada**, ela serve o quadro seguinte sempre que a região nova ainda lá caiba, e a cache não
+precisa de chave nenhuma: ela precisa de uma comparação de caixas.
+
+⭐⭐ **A `f = 1` a cache acerta `9 %`** (§82.12): guardar a região *exacta* não serve de nada. *A
+inflação é o mecanismo, não uma afinação*, e o `INFLATE = 1,25` é o número medido.
+
+### §83.2 — ⚠️ O que ela deixa cair de propósito, e o preço
+
+O caminho sem cache especializa contra o **casco** do tubo do ladrilho (W59), que é mais apertado que
+a caixa. Uma fita guardada tem de valer numa forma que se possa **testar depressa e sem
+ambiguidade** — e essa forma é a **caixa**. ⇒ uma fita da cache guarda mais arestas que a de hoje,
+mesmo antes de a inflar. *A cache troca aresta por compilação.*
+
+### §83.3 — ⭐⭐⭐ O que ela custou: o substrato dizia sim, e o compilador prova-o
+
+A fita da `fidget` é um **`Arc<Mmap>`** por dentro ⇒ **cloná-la é um incremento de contador**; o que
+**não** se partilha é o avaliador (`ShapeBulkEval`), que é o estado mutável, e esse nasce por uso, de
+graça. *Uma fita serve todas as threads; um avaliador serve uma.* A `ph2d_field_eval::hybrid`
+ganha o `RegionTape` (compilar) e o `Hybrid::from_region_tape` (usar sem compilar) — e a afirmação
+não é um comentário: um `const _: () = is_send_sync::<RegionTape>();` **deixa de compilar** se um
+campo futuro lhe tirar o `Send + Sync`.
+
+### §83.4 — ⛔⛔ O defeito que eu mesmo pus lá, e que só o relógio via
+
+A 1.ª versão carimbava a idade de uso (a régua do despejo) tomando o cadeado de **escrita** — `~200`
+acertos por quadro, vindos de 32 threads. Medido:
+
+| | acerto | fitas compiladas | quadro |
+|---|---:|---:|---:|
+| sem cache | — | `225` | `26,0 ms` |
+| **com cache, cadeado de escrita** | **`87 %`** | **`30`** | `26,1 ms` · e num caso **`146,7`** contra `109,0` |
+
+⭐⭐⭐ **O acerto era `87 %`, as compilações caíram `7,5×`… e o quadro não mexeu — num caso ficou
+`0,74×`.** *Uma cache que serializa os leitores dela devolve na trava o que poupou no JIT.* A cura é
+o carimbo ser um **atómico**, que cabe debaixo do cadeado de **leitura** — o que 32 threads tomam ao
+mesmo tempo. ⚠️ E o defeito era **invisível a todo gate de saída**: a imagem, os acertos e as
+compilações estavam todos certos.
+
+### §83.5 — ⭐⭐⭐ A correcção: a cache não muda a imagem, e a barra é o CONTROLO
+
+A fita guardada é construída para outra região (inflada, e caixa em vez de casco) ⇒ **a árvore
+especializada não é a mesma árvore**. A pergunta não é retórica.
+
+Medido sobre um arrasto de 8 quadros, `200×120`:
+
+| régua | cache |
+|---|---|
+| pixels que mudaram de acerto | **`0`** |
+| normal, pior ângulo | `0,056°` |
+
+⚠️ **`0,056°` é o ÚLTIMO BIT, e não uma folga.** A normal sai de uma diferença central com passo
+`1e-4` sobre um valor que ali é quase zero: um ULP de `f32` (`1,2e-7`) sobre uma componente de
+`~2e-4` dá `~0,03°`. E a causa está escrita desde a W56, no gate irmão: *«as duas árvores são
+algebricamente a mesma, mas o `min` corre sobre subconjuntos diferentes: a soma e a raiz caem em
+ordens diferentes e o resultado difere no último bit»*.
+
+⭐⭐⭐ **⇒ a barra do gate não é absoluta: é o CONTROLO.** `the_cache_never_changes_the_image`
+compara, no mesmo arrasto, o desacordo *cache contra especialização* com o desacordo
+*especialização contra a marcha por linha* — e exige que o primeiro **não seja maior**. *Uma barra
+absoluta aqui seria uma afirmação sobre o escalonador do JIT.*
+
+### §83.6 — Gates, mutações, e a margem medida
+
+| gate | mutação que **só ele** mata |
+|---|---|
+| `the_cache_never_changes_the_image` | a contenção afrouxada em `0,2` |
+| `the_cache_dies_with_the_document` | o `begin` deixa de limpar quando o documento muda |
+| `a_drag_stops_recompiling_the_tapes_it_already_has` | a cache guarda tudo e **não serve nada** |
+
+⚠️ **A contenção tem margem, e ela está medida:** afrouxá-la em `0,005`, `0,02` e `0,1` (numa peça
+que mede `~1,2`) é **inerte** — nem a imagem nem as contagens mexem; a `0,2` só o gate da imagem cai;
+a `0,4` caem os dois. *Uma mutação que não muda o produto não prova nada sobre os gates*, e por isso
+o controlo de inércia é obrigatório antes de se declarar um ponto cego.
+
+⚠️ **O contador é o que separa uma cache boa de uma inútil.** O `TAPE_HITS` existe porque *contar o
+trabalho feito não é contar o trabalho poupado*: uma cache que nunca acerta passa em **todos** os
+gates de imagem com nota máxima.
+
+### §83.7 — ⭐⭐⭐ O que ela compra, medido — e a minha estimativa estava ERRADA
+
+`measure_what_the_tape_cache_buys`, `640×360`, 168 arestas, sem anti-serrilhado, arrasto de 12
+quadros, **A/B intercalado** ronda a ronda, mediana de 3×11, o 1.º quadro de cada arrasto descartado
+(ele enche a cache do zero e não representa o regime):
+
+| arrasto | `f` | sem | **com** | ganho | fitas/quadro | acertos |
+|---|---:|---:|---:|---:|---:|---:|
+| `1°` | `1,00` | `28,00` | `29,08` | **`0,96×`** | `193` | `33` |
+| `1°` | `1,10` | `27,51` | `24,31` | `1,13×` | `52` | `173` |
+| `1°` | **`1,25`** | `29,40` | **`23,99`** | **`1,23×`** | `16` | `209` |
+| `1°` | `1,50` | `29,22` | `24,79` | `1,18×` | `5` | `220` |
+| `2°` | `1,00` | `26,45` | `29,55` | **`0,90×`** | `203` | `29` |
+| `2°` | `1,10` | `28,75` | `28,28` | `1,02×` | `130` | `102` |
+| `2°` | **`1,25`** | `26,82` | **`22,67`** | **`1,18×`** | `41` | `190` |
+| `2°` | `1,50` | `27,21` | `24,74` | `1,10×` | `11` | `220` |
+| `4°` | **`1,25`** | `23,20` | **`20,12`** | **`1,15×`** | `44` | `181` |
+| `4°` | `1,50` | `21,96` | `22,47` | `0,98×` | `10` | `216` |
+| `4°` | `2,00` | `23,08` | `26,62` | **`0,87×`** | `2` | `223` |
+
+⭐⭐⭐ **`1,25` ganha nas três velocidades**, e as duas pontas **perdem**: a `1,00` a cache quase não
+acerta e paga a fita mais gorda por nada; a `2,00` ela acerta quase sempre (`223` de `226`) e **ainda
+assim perde `0,87×`**, porque a fita que ela serve guarda arestas a mais. *As duas pontas são a mesma
+conta lida nos dois sentidos, e é isso que faz do `1,25` um mínimo e não um palpite.*
+
+### §83.8 — ⛔ E a minha estimativa da §82.12 estava ERRADA por dois motivos, os dois nomeados
+
+Eu escrevi *«`14 + 10 = 24`, com cache `2,2 + 11,8 = 14 ms`»*. Medido: **`20`–`24 ms`**, um ganho de
+`1,15×`–`1,23×` e não de `1,7×`.
+
+1. ⛔ **`24 = 14 + 10` não é uma decomposição.** A montagem e a marcha **não correm em série**: cada
+   ladrilho monta a sua fita e marcha logo a seguir, nas mesmas 32 threads. Os `~14 ms` da §82.9 são
+   o que `242` compilações custam **sozinhas e todas ao mesmo tempo**; dentro de um quadro elas
+   sobrepõem-se à marcha, e tirá-las não devolve `14 ms` de relógio. *Somar duas medições feitas em
+   regimes diferentes não é uma conta — é duas contas encostadas.*
+2. ⛔ **A fita da cache é mais GORDA, e o preço estava na tabela desde o início.** Ela é construída
+   para a **caixa** (e não para o casco do tubo) e ainda **inflada**: `88,3` arestas por região
+   contra as `67,2` do casco de hoje — **`1,31×`** por amostra. A §82.12 pôs `1,18×` naquela linha
+   porque comparou caixa com caixa; *a coluna estava certa e a comparação era com o número errado*.
+
+⭐ **A prova de que o item 2 é real está na própria tabela:** a `f = 1,00` a cache troca casco por
+caixa **sem** ganhar acerto nenhum, e o quadro fica **`0,90×`–`0,96×`**. Isso é o preço do casco,
+medido sozinho.
+
+### §83.9 — ⇒ O que fica aberto, e ele está nomeado
+
+⏳ **A cache contra o CASCO, e não contra a caixa.** O que ela deixa na mesa é o `1,11×` de
+`74,6 → 67,2` arestas, e a razão de a caixa ter sido escolhida é o **teste**: uma caixa compara-se em
+seis desigualdades, um casco convexo pede um ponto-em-polígono por vértice. ⭐ A saída é um teste em
+**dois níveis** — a caixa rejeita quase tudo, e só os sobreviventes pagam o casco. ⚠️ Com `~1 500`
+fitas guardadas e `242` consultas por quadro, o custo do teste **é** parte do orçamento, e essa é a
+segunda razão para o primeiro nível ser barato.
+
+⏸️ **O custo da consulta em si por medir**: a varredura é **linear** sobre as fitas guardadas
+(`~1 500` entradas × `242` consultas = `~460 k` testes de caixa por quadro). A `f = 1,50` a cache
+guarda `394`–`754` entradas e **não** ganha ao `1,25` com `1 167`–`1 891` — o que sugere que a
+varredura não domina, mas as duas variáveis estão **confundidas** naquela linha (a fita também é mais
+gorda). *Uma comparação em que duas coisas mudam ao mesmo tempo não mede nenhuma das duas.*

@@ -114,15 +114,65 @@ type GradTapes = (
     >,
 );
 
+/// A fita float compilada, **sem** o avaliador — ver [`RegionTape`].
+type FloatTape = fidget::shape::ShapeTape<
+    <<fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval as
+        fidget::eval::BulkEvaluator>::Tape,
+>;
+
 type Tapes = (
     fidget::shape::ShapeBulkEval<
         <fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval,
     >,
-    fidget::shape::ShapeTape<
-        <<fidget::jit::JitFunction as fidget::eval::Function>::FloatSliceEval as
-            fidget::eval::BulkEvaluator>::Tape,
-    >,
+    FloatTape,
 );
+
+/// ⭐⭐⭐ **UMA FITA JÁ COMPILADA, PRONTA A SER PARTILHADA** (W82) — o que uma cache entre quadros
+/// guarda.
+///
+/// # Por que ela existe
+///
+/// ⚠️ **Compilar é a parede do traçado, e ela não escala.** Medido (W81, `docs/3DModeling` §82.9):
+/// as `242` fitas de um quadro de movimento custam `~130 ms` em série e **`~14 ms` a partir de 16
+/// threads — de 16 para 32 o ganho é `1 %`**. Um JIT mapeia memória **executável**, e
+/// `mmap`/`mprotect` são recursos do kernel: a compilação em parte **serializa-se**, e núcleos a
+/// mais não a atravessam. Num quadro de `~24 ms` isso é metade do relógio, repetido inteiro a cada
+/// quadro enquanto a mão mexe.
+///
+/// # ⭐⭐ O que a torna partilhável
+///
+/// A fita da `fidget` é um **`Arc<Mmap>`** por dentro: cloná-la é um incremento de contador. O que
+/// **não** se partilha é o avaliador (`ShapeBulkEval`), que é o estado mutável — e esse nasce por
+/// uso, de graça. ⇒ *uma fita serve todas as threads; um avaliador serve uma.*
+///
+/// ⚠️ **Ela carrega a árvore ao lado da fita** porque o [`Hybrid`] a guarda para o
+/// [`Hybrid::fork`] — e a `Tree` da `fidget` também é um `Arc` por dentro.
+#[derive(Clone)]
+pub struct RegionTape {
+    tree: Tree,
+    tape: FloatTape,
+}
+
+/// ⭐⭐⭐ **A fita atravessa threads, e isto é um GATE — não um comentário.**
+///
+/// Toda a razão de existir da [`RegionTape`] é ser guardada uma vez e usada por todas as threads de
+/// um quadro. Se um campo futuro (um `Rc`, um `Cell`) lhe tirar o `Send + Sync`, a linha abaixo
+/// **deixa de compilar** — e não há como o descobrir mais tarde, num sítio pior.
+const _: () = {
+    const fn is_send_sync<T: Send + Sync>() {}
+    is_send_sync::<RegionTape>();
+};
+
+impl RegionTape {
+    /// **Compila** — é aqui, e só aqui, que o JIT corre para uma região.
+    #[must_use]
+    pub fn compile(tree: Tree) -> Self {
+        let shape = Engine::from(tree.clone());
+        FLOAT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tape = shape.ez_float_slice_tape();
+        Self { tree, tape }
+    }
+}
 
 /// ⭐⭐ **Quantas fitas FLOAT foram compiladas** — o instrumento da lei *«uma fita monta-se uma vez
 /// por quem a avalia»* (W70).
@@ -194,7 +244,30 @@ impl Hybrid {
     /// ficado **dentro** da árvore.
     #[must_use]
     pub fn from_tree(tree: Tree) -> Self {
-        Self::from_parts(Plan::Analytic(0), vec![tree], Vec::new())
+        Self::from_region_tape(&RegionTape::compile(tree))
+    }
+
+    /// ⭐⭐⭐ **Um avaliador sobre uma fita que JÁ ESTÁ COMPILADA** (W82) — a porta da cache entre
+    /// quadros, e a única que não corre o JIT.
+    ///
+    /// ⚠️ **A fita é clonada e o avaliador é novo**, e essa assimetria é o desenho inteiro: a fita é
+    /// um `Arc<Mmap>` (partilhável, imutável) e o avaliador é o estado mutável de uma thread. Ver
+    /// [`RegionTape`].
+    ///
+    /// ⚠️ **A cerca da região viaja com quem chama.** Uma fita especializada só responde certo
+    /// **dentro** da região para que foi construída ([`crate::compile_in_region`]) — esta porta não
+    /// tem como saber qual era, e quem a guarda é quem tem de a comparar.
+    #[must_use]
+    pub fn from_region_tape(t: &RegionTape) -> Self {
+        Self {
+            plan: Plan::Analytic(0),
+            trees: vec![t.tree.clone()],
+            tapes: vec![(Engine::new_float_slice_eval(), t.tape.clone())],
+            sampled: Vec::new(),
+            grad: None,
+            leaves: vec![Vec::new()],
+            out: Vec::new(),
+        }
     }
 
     /// ⭐ **Um avaliador NOVO sobre o mesmo plano** — o que uma marcha paralela precisa.

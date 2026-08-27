@@ -105,6 +105,7 @@ mod camera;
 mod edges;
 mod march;
 mod shade;
+mod tape_cache;
 mod tiles;
 use edges::resample_edges;
 use march::{Scene, march};
@@ -118,6 +119,7 @@ pub use march::{
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::shade;
+pub use tape_cache::{INFLATE, TAPE_HITS, TapeCache};
 pub use tiles::{SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_MAX};
 
 /// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.
@@ -221,6 +223,7 @@ pub fn trace(
 /// contorno sabe se a mão está a mexer. *Uma bandeira nova aqui não acrescenta uma decisão — ela
 /// alcança a que já existe.*
 #[must_use]
+#[allow(clippy::too_many_arguments)]
 pub fn trace_cancellable(
     doc: &FieldDoc,
     reg: &ph2d_field_eval::hybrid::Registry,
@@ -229,8 +232,21 @@ pub fn trace_cancellable(
     height: u32,
     cancel: &std::sync::atomic::AtomicBool,
     antialias: bool,
+    // ⭐⭐⭐ **A cache de fitas entre quadros** (W82) — `None` volta ao traçado que compila tudo,
+    // que é o caminho de bissecção. Ver [`TapeCache`].
+    cache: Option<&TapeCache>,
 ) -> Option<Gbuffer> {
-    let g = trace_inner(doc, reg, cam, width, height, true, antialias, Some(cancel));
+    let g = trace_inner(
+        doc,
+        reg,
+        cam,
+        width,
+        height,
+        true,
+        antialias,
+        Some(cancel),
+        cache,
+    );
     (!cancel.load(std::sync::atomic::Ordering::Relaxed)).then_some(g)
 }
 
@@ -270,7 +286,9 @@ pub fn trace_with(
     parallel: bool,
     antialias: bool,
 ) -> Gbuffer {
-    trace_inner(doc, reg, cam, width, height, parallel, antialias, None)
+    trace_inner(
+        doc, reg, cam, width, height, parallel, antialias, None, None,
+    )
 }
 
 /// O corpo, com a bandeira de cancelamento **opcional** — ver [`trace_cancellable`].
@@ -287,7 +305,14 @@ fn trace_inner(
     parallel: bool,
     antialias: bool,
     cancel: Option<&std::sync::atomic::AtomicBool>,
+    cache: Option<&TapeCache>,
 ) -> Gbuffer {
+    // ⭐ **O quadro abre a cache aqui, e não na porta.** Cada porta pública que a chamasse seria
+    // outra cópia da mesma lei — e a que se esquecesse dela serviria fitas de um documento que já
+    // não existe. *Uma lei escrita em duas portas ainda não é uma lei.*
+    if let Some(c) = cache {
+        c.begin(doc);
+    }
     trace_inner_tiles(
         doc,
         reg,
@@ -300,6 +325,7 @@ fn trace_inner(
         true,
         ph2d_field_eval::safe_march_step(doc),
         NORMAL_STENCIL,
+        cache,
     )
 }
 
@@ -336,7 +362,7 @@ pub fn trace_tiled_for_test(
         stencil: NORMAL_STENCIL,
     };
     Some(tiled_trace(
-        doc, &rc, &scene, plane, bbox, parallel, antialias, None, tile, slabs,
+        doc, &rc, &scene, plane, bbox, parallel, antialias, None, tile, slabs, None,
     ))
 }
 
@@ -367,7 +393,26 @@ pub fn trace_stepped_for_test(
         true,
         step,
         NORMAL_STENCIL,
+        None,
     )
+}
+
+/// ⭐⭐ **A marcha com a CACHE escolhida** — a porta que a sonda da cache dirige.
+///
+/// ⚠️ Pela mesma razão da [`trace_stepped_for_test`]: os dois lados do A/B têm de correr no **mesmo
+/// processo**, porque o que se compara é um arrasto inteiro contra outro arrasto inteiro.
+#[doc(hidden)]
+#[must_use]
+pub fn trace_cached_for_test(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    antialias: bool,
+    cache: Option<&TapeCache>,
+) -> Gbuffer {
+    trace_inner(doc, reg, cam, width, height, true, antialias, None, cache)
 }
 
 /// ⭐ **Quantas fatias de profundidade o produto reparte** — ver [`tiles::SLABS`].
@@ -416,6 +461,7 @@ pub fn trace_stencil_for_test(
         true,
         ph2d_field_eval::safe_march_step(doc),
         stencil,
+        None,
     )
 }
 
@@ -444,6 +490,7 @@ pub fn trace_by_rows_for_test(
         false,
         ph2d_field_eval::safe_march_step(doc),
         NORMAL_STENCIL,
+        None,
     )
 }
 
@@ -460,6 +507,7 @@ fn trace_inner_tiles(
     tiles_allowed: bool,
     step: f32,
     stencil: Stencil,
+    cache: Option<&TapeCache>,
 ) -> Gbuffer {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let basis = cam.basis();
@@ -501,7 +549,7 @@ fn trace_inner_tiles(
         bbox.filter(|_| tiles_allowed && shape.sampled_count() == 0 && rc.is_worth_it())
     {
         return tiled_trace(
-            doc, &rc, &scene, plane, bbox, parallel, antialias, cancel, TILE, SLABS,
+            doc, &rc, &scene, plane, bbox, parallel, antialias, cancel, TILE, SLABS, cache,
         );
     }
 

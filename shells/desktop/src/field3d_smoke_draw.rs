@@ -158,11 +158,21 @@ pub(crate) fn draw(
             // ⚠️ O registo de esculturas atravessa a fronteira da thread como **cópia dos `Arc`** —
             // o `thread_local` que o guarda não existe do outro lado.
             let reg = crate::field3d_smoke::sampled_registry();
+            // ⭐⭐⭐ **As fitas já compiladas atravessam a fronteira da thread** (W82) — ver
+            // [`ph2d_field_render::TapeCache`]. É um `Arc`: o que viaja é o ponteiro.
+            let tapes = std::sync::Arc::clone(&smoke.tapes);
             std::thread::spawn(move || {
                 let t0 = std::time::Instant::now();
                 // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
                 let Some(g) = ph2d_field_render::trace_cancellable(
-                    &doc, &reg, &cam, tw, th, &flag, antialias,
+                    &doc,
+                    &reg,
+                    &cam,
+                    tw,
+                    th,
+                    &flag,
+                    antialias,
+                    Some(&tapes),
                 ) else {
                     return;
                 };

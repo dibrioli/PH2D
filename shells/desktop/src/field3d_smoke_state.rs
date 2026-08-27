@@ -206,6 +206,17 @@ pub(crate) struct Smoke {
     /// tem `AppGfx` nenhum, e dar-lhe um faria o traçado passar a depender do módulo de escultura.
     /// Sem a feature `sculpt3d` ele fica **sempre falso**, e o botão nunca é oferecido.
     pub(crate) has_live_sculpt: bool,
+    /// ⭐⭐⭐ **AS FITAS JÁ COMPILADAS, entre quadros** (W82) — ver
+    /// [`ph2d_field_render::TapeCache`].
+    ///
+    /// ⚠️ **Ela vive AQUI porque tem de sobreviver ao quadro**, e o traçado corre numa thread
+    /// própria: o `Arc` é o que a atravessa. Medido (`docs/3DModeling/06` §82.9): compilar as fitas
+    /// de um quadro custa `~14 ms` de um quadro de `~24`, **satura às 16 threads** (de 16 para 32
+    /// ganha `1 %`) e é refeito inteiro a cada quadro enquanto a mão mexe.
+    ///
+    /// ⚠️ Ela é **cache** e não **vista** (`field3d_view::View::of`): fechar e reabrir o módulo
+    /// pode deitá-la fora sem custo nenhum — a 1.ª mão a mexer volta a enchê-la.
+    pub(crate) tapes: Arc<ph2d_field_render::TapeCache>,
 }
 
 /// **O que um arrasto de gizmo guarda** desde a pegada até soltar.

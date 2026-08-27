@@ -983,7 +983,7 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
 
     let cancel = AtomicBool::new(true);
     let t1 = std::time::Instant::now();
-    let out = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &cancel, true);
+    let out = trace_cancellable(&doc, &Registry::new(), &cam, w, h, &cancel, true, None);
     let cut_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
     assert!(out.is_none(), "uma marcha abandonada não devolve imagem");
@@ -1002,6 +1002,7 @@ fn an_abandoned_march_returns_nothing_and_returns_fast() {
         h,
         &AtomicBool::new(false),
         true,
+        None,
     )
     .expect("sem cancelamento, ela traça");
     assert_eq!(
@@ -3652,6 +3653,281 @@ fn measure_what_the_four_sample_normal_changes() {
             pct(&mut quinas, 0.99),
             pct(&mut quinas, 1.0),
         );
+    }
+}
+
+/// Uma peça de perfil com `n` arestas — a família em que há o que especializar.
+fn cache_piece(n: usize) -> ph2d_field::FieldDoc {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                half_height: 0.4,
+                round: 0.06,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão")
+}
+
+/// ⭐⭐⭐ **A CACHE NÃO MUDA A IMAGEM** (W82) — o gate que decide se ela pode shipar.
+///
+/// ⚠️ **E ela pode mudá-la de duas maneiras diferentes, e as duas são reais:** a fita guardada foi
+/// construída para uma caixa **inflada** (guarda mais arestas) e para uma **caixa** em vez do casco
+/// (guarda mais ainda). ⇒ a árvore especializada não é a mesma árvore.
+///
+/// ⭐ **O que salva a distância é a aritmética:** um `min` sobre um superconjunto de segmentos
+/// escolhe **o mesmo** segmento, e a escolha de um mínimo entre `f32` é exacta. Já o **sinal** sai
+/// de um enrolamento ancorado num canto da região — com outra caixa, outra âncora e outro caminho.
+///
+/// ⇒ *este gate não é uma formalidade: ele é a pergunta em aberto do desenho.* Ele mede um
+/// **arrasto**, e não um quadro, porque é ao longo dele que as fitas envelhecem dentro da cache.
+#[test]
+fn the_cache_never_changes_the_image() {
+    let reg = Registry::new();
+    let doc = cache_piece(168);
+    let cache = crate::TapeCache::new();
+    let (w, h) = (200u32, 120u32);
+    let pior = |a: &crate::Gbuffer, b: &crate::Gbuffer| -> (usize, f64) {
+        let mut pix = 0usize;
+        let mut ang = 0.0f64;
+        for k in 0..(w * h) as usize {
+            if a.hit[k] != b.hit[k] {
+                pix += 1;
+                continue;
+            }
+            if !a.hit[k] {
+                continue;
+            }
+            let (x, y) = (a.normal[k], b.normal[k]);
+            let d = f64::from(x[0] * y[0] + x[1] * y[1] + x[2] * y[2]);
+            ang = ang.max(d.clamp(-1.0, 1.0).acos().to_degrees());
+        }
+        (pix, ang)
+    };
+    let (mut hits, mut cache_pix, mut cache_ang) = (0usize, 0usize, 0.0f64);
+    let (mut ctrl_pix, mut ctrl_ang) = (0usize, 0.0f64);
+    for i in 0..8 {
+        let cam = Orbit {
+            rotation: Orbit::from_yaw_pitch(0.72 + (i as f32) * 2.0f32.to_radians(), 0.52).rotation,
+            ..Orbit::default()
+        };
+        let base = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, true, None);
+        let com = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, true, Some(&cache));
+        // ⭐⭐⭐ **O CONTROLO, e sem ele esta medição não decide nada.** A marcha por LINHA não
+        // especializa nada; a por ladrilho especializa por região. As duas árvores são
+        // algebricamente a mesma e diferem **no último bit** — *a soma e a raiz caem em ordens
+        // diferentes* (a cerca já escrita em
+        // `the_tiled_march_draws_the_same_image_as_the_row_march`). ⇒ o traçado **já tem** um
+        // desacordo, e a pergunta desta wave não é *«a cache muda alguma coisa?»* mas *«a cache
+        // muda MAIS do que a especialização já mudava?»*.
+        //
+        // ⚠️ E um ULP no campo é `~0,05°` na normal, porque ela sai de uma diferença central com
+        // passo `1e-4` sobre um valor que ali é quase zero. *Uma barra absoluta aqui seria uma
+        // afirmação sobre o escalonador do JIT.*
+        let linha = crate::trace_by_rows_for_test(&doc, &reg, &cam, w, h);
+        hits += base.hits();
+        let (p, a) = pior(&base, &com);
+        cache_pix += p;
+        cache_ang = cache_ang.max(a);
+        let (p, a) = pior(&base, &linha);
+        ctrl_pix += p;
+        ctrl_ang = ctrl_ang.max(a);
+    }
+    assert!(
+        hits > 5_000,
+        "o arrasto não desenhou a peça ({hits} acertos)"
+    );
+    // ⛔ **O controlo tem de estar CHEIO.** Se a especialização não discordasse da marcha por linha
+    // em nada, a comparação abaixo aceitaria qualquer coisa — *um zero de «não mediu» e um de
+    // «perfeito» são o mesmo byte*.
+    assert!(
+        ctrl_ang > 0.0,
+        "o controlo não mediu desacordo nenhum — a barra abaixo não estaria a prender nada"
+    );
+    // ⭐⭐⭐ **A máscara é EXACTAMENTE a mesma** — mais duro que o controlo, que tolera falhas de
+    // silhueta. *A cache não move a superfície um pixel.*
+    assert_eq!(
+        cache_pix, 0,
+        "{cache_pix} pixels mudaram de acerto por causa da cache (o controlo mudou {ctrl_pix})"
+    );
+    // ⭐⭐⭐ **E a normal não se mexe mais do que a especialização já a mexia.**
+    assert!(
+        cache_ang <= ctrl_ang,
+        "a cache mexeu a normal {cache_ang:.4}° e a especialização sozinha mexe {ctrl_ang:.4}° — a \
+         cache passou a mudar mais que o último bit, e isso é uma fita servida onde ela não vale"
+    );
+}
+
+/// ⭐⭐⭐ **A CACHE MORRE COM O DOCUMENTO** (W82).
+///
+/// ⚠️ **É o pior modo de falha que uma cache destas tem**, e não é «uma imagem errada»: é uma imagem
+/// **quase certa**. Uma fita da peça de ontem devolve uma distância plausível para a peça de hoje, e
+/// o artista vê uma forma que quase responde ao controle que ele acabou de mexer.
+///
+/// ⚠️ O gate mede-o **na imagem**, e não no contador: um contador a zero prova que a cache esvaziou,
+/// não que o que ela serviu estava certo.
+#[test]
+fn the_cache_dies_with_the_document() {
+    let reg = Registry::new();
+    let cache = crate::TapeCache::new();
+    let cam = Orbit::default();
+    let (w, h) = (200u32, 120u32);
+    let a = cache_piece(168);
+    let b = cache_piece(24);
+    // Enche a cache com a peça `a`…
+    let _ = crate::trace_cached_for_test(&a, &reg, &cam, w, h, true, Some(&cache));
+    assert!(!cache.is_empty(), "a cache não guardou nada com a peça A");
+    // …e pede a peça `b` pela MESMA cache.
+    let com = crate::trace_cached_for_test(&b, &reg, &cam, w, h, true, Some(&cache));
+    let sem = crate::trace_cached_for_test(&b, &reg, &cam, w, h, true, None);
+    assert!(sem.hits() > 2_000, "a peça B não desenhou nada");
+    let dif = (0..(w * h) as usize)
+        .filter(|&k| com.hit[k] != sem.hit[k])
+        .count();
+    assert_eq!(
+        dif, 0,
+        "{dif} pixels da peça B saíram de fitas da peça A — a cache não morreu com o documento"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE A CACHE DE FITAS COMPRA, NUM ARRASTO A SÉRIO** (W82) — o A/B que a decide.
+///
+/// A §82.12 mediu a contenção **região a região**; esta mede o **arrasto**: `N` quadros seguidos com
+/// a câmera a rodar `g` graus por quadro, com e sem cache, no mesmo processo e intercalados.
+///
+/// ⚠️ **O 1.º quadro de cada arrasto é descartado** — ele enche a cache do zero e não representa
+/// nenhum quadro que o artista veja depois do primeiro. O que se compara é o **regime**.
+///
+/// ⚠️ Precisa da máquina a `load < 5` para o ms; as colunas de **contagem** (fitas compiladas,
+/// acertos) valem sempre.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_what_the_tape_cache_buys --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_tape_cache_buys() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let piece = |n: usize| -> FieldDoc {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let (w, h) = (640u32, 360u32);
+    // Um arrasto: 12 quadros, e a 1.ª é deitada fora.
+    let quadros = 12usize;
+    println!(
+        "arestas | graus/quadro |      f | cache | ms/quadro | fitas compiladas | acertos | guardadas"
+    );
+    for n in [168usize, 672] {
+        let doc = piece(n);
+        for (graus, fator) in [
+            (1.0f32, 1.0f32),
+            (1.0, 1.1),
+            (1.0, 1.25),
+            (1.0, 1.5),
+            (2.0, 1.0),
+            (2.0, 1.1),
+            (2.0, 1.25),
+            (2.0, 1.5),
+            (4.0, 1.25),
+            (4.0, 1.5),
+            (4.0, 2.0),
+        ] {
+            // ⚠️ **INTERCALADO**: as duas metades do A/B alternam ronda a ronda, e não uma inteira
+            // depois da outra. Entre duas corridas desta workstation o mesmo passe já deu `11,36` e
+            // `5,50 ms`; medir `sem` durante três segundos e `COM` nos três seguintes mede a
+            // máquina, não a cache.
+            let mut ms: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+            let mut contagem: [(usize, usize, usize); 2] = [(0, 0, 0); 2];
+            let arrasto = |doc: &FieldDoc, c: Option<&crate::TapeCache>, de: usize| -> Vec<f64> {
+                let mut out = Vec::new();
+                for i in 0..quadros {
+                    let cam = Orbit {
+                        rotation: Orbit::from_yaw_pitch(
+                            0.72 + ((de + i) as f32) * graus.to_radians(),
+                            0.52,
+                        )
+                        .rotation,
+                        ..Orbit::default()
+                    };
+                    let t0 = std::time::Instant::now();
+                    let _ = crate::trace_cached_for_test(doc, &reg, &cam, w, h, false, c);
+                    // ⚠️ O 1.º quadro enche a cache do zero e não representa quadro nenhum que o
+                    // artista veja depois do primeiro. O que se compara é o **regime**.
+                    if i > 0 {
+                        out.push(t0.elapsed().as_secs_f64() * 1000.0);
+                    }
+                }
+                out
+            };
+            let caches = [
+                crate::TapeCache::new(),
+                crate::TapeCache::with_inflate(fator),
+            ];
+            // Aquecimento: um arrasto inteiro de cada lado, para o JIT do processo e as caches
+            // chegarem ao regime.
+            for (k, cache) in caches.iter().enumerate() {
+                let _ = arrasto(&doc, (k == 1).then_some(cache), 0);
+            }
+            for ronda in 0..3usize {
+                for (k, cache) in caches.iter().enumerate() {
+                    let c = (k == 1).then_some(cache);
+                    ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
+                    crate::TAPE_HITS.store(0, Ordering::Relaxed);
+                    // ⚠️ O arrasto CONTINUA de onde parou: recomeçá-lo daria à cache um conjunto de
+                    // regiões que ela acabou de ver, e o acerto seria o de um arrasto de
+                    // ida-e-volta em vez do de um arrasto.
+                    ms[k].push(med(arrasto(&doc, c, quadros * (ronda + 1))));
+                    contagem[k] = (
+                        ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed) / quadros,
+                        crate::TAPE_HITS.load(Ordering::Relaxed) / quadros,
+                        cache.len(),
+                    );
+                }
+            }
+            for k in 0..2 {
+                let (fitas, hits, guardadas) = contagem[k];
+                println!(
+                    "{n:7} | {graus:12.0} | {:6.2} | {:5} | {:9.2} | {fitas:16} | {hits:7} | {guardadas:9}",
+                    if k == 1 { fator } else { 0.0 },
+                    if k == 1 { "COM" } else { "sem" },
+                    med(ms[k].clone()),
+                );
+            }
+        }
     }
 }
 

@@ -90,6 +90,7 @@ pub(crate) fn tiled_trace(
     cancel: Option<&std::sync::atomic::AtomicBool>,
     tile: usize,
     slabs: usize,
+    cache: Option<&crate::TapeCache>,
 ) -> Gbuffer {
     let (w, h) = (plane.width() as usize, plane.height() as usize);
     let (out_w, out_h) = (plane.width() as u32, plane.height() as u32);
@@ -158,12 +159,33 @@ pub(crate) fn tiled_trace(
                 &bounds,
                 k,
             )?;
+            // ⭐⭐⭐ **A CACHE ENTRE QUADROS** (W82) — ver [`crate::TapeCache`]. Uma fita
+            // construída para uma caixa serve toda a sub-caixa dela, então a pergunta não é *«qual
+            // é a chave desta região?»* mas *«há alguma fita cuja caixa a contenha?»*.
+            if let Some(c) = cache
+                && let Some(t) = c.get(r.lo, r.hi)
+            {
+                return Some(ph2d_field_eval::hybrid::Hybrid::from_region_tape(&t));
+            }
             SPECIALISED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             SLAB_SPEC[k.min(crate::SLABS_COUNTED - 1)]
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let t0 = std::time::Instant::now();
-            let tape =
-                ph2d_field_eval::hybrid::Hybrid::from_tree(rc.compile_at(doc, r.lo, r.hi, &r.pts));
+            let tape = match cache {
+                // ⚠️ **Com cache a região é a CAIXA INFLADA, e não o casco do tubo.** Duas razões,
+                // e as duas são sobre a cache e não sobre a marcha: a caixa é a forma que se testa
+                // depressa e sem ambiguidade, e a inflação é o que faz a fita sobreviver ao quadro
+                // seguinte (a `f = 1` a cache acerta `9 %`). O preço está medido no doc do módulo.
+                Some(c) => {
+                    let (lo, hi) = crate::tape_cache::inflate(r.lo, r.hi, c.inflate_of());
+                    let t = ph2d_field_eval::hybrid::RegionTape::compile(rc.compile(doc, lo, hi));
+                    c.insert(lo, hi, t.clone());
+                    ph2d_field_eval::hybrid::Hybrid::from_region_tape(&t)
+                }
+                None => ph2d_field_eval::hybrid::Hybrid::from_tree(
+                    rc.compile_at(doc, r.lo, r.hi, &r.pts),
+                ),
+            };
             SPECIALISE_NS.fetch_add(
                 u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX),
                 std::sync::atomic::Ordering::Relaxed,

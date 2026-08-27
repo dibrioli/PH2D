@@ -531,8 +531,26 @@ fn main() {
         r.tie_refused_why[2]
     );
     println!(
+        "  ⭐⭐⭐ GANHO do denominador FINGIDO (H/H_fingida, 1.0 = estava certo): p50 {:.2}x max {:.2}x",
+        r.tie_gain.0, r.tie_gain.1
+    );
+    println!(
         "  ⛔⛔ NAO-FINITOS no mapa continuo: {} no fim · {} logo apos a 1a ronda",
         r.nonfinite.0, r.nonfinite.1
+    );
+    println!(
+        "  ⛔⛔ ESTOUROU na ronda {} (0 = nunca), com movimento {:.3e}",
+        r.nonfinite_round.0, r.nonfinite_round.1
+    );
+    println!(
+        "  ⛔⛔ QUEM estourou: {}",
+        [
+            "classe",
+            "amarra",
+            "livre",
+            "ciclo de arco",
+            "nenhum (ja' vinha torto)"
+        ][r.nonfinite_who.min(4)]
     );
     println!(
         "  ⛔⛔⛔ PREGOS com passo NAO-FINITO: {} | ⭐ EQUACOES DE CICLO (A3) que entraram: {}",

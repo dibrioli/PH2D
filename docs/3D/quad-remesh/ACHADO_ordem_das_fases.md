@@ -1851,3 +1851,95 @@ que é o **sistema escalar único** que o plano A2 nomeava, e que eu contornei *
 por ser mais barato. ⛔ A terceira tentativa de o contornar não deve existir.
 
 ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.21 — ⭐⭐⭐ A causa do `NaN` tem NÚMERO: o denominador da amarra era `39×` pequeno demais
+
+A §23.19 gastou três explicações e a §23.20 uma quarta, todas refutadas. A quinta é a
+certa, e o que a achou não foi uma hipótese nova — foi **o controlo que faltava**.
+
+#### O controlo, primeiro
+
+`PH2D_GRIDMAP_ARCLINE` **desligada**, `esfera-fina`, alvo `2`:
+
+| | não-finitos no contínuo | pregos `NaN` | inteiros | escada | visitas | χ |
+|---|---|---|---|---|---|---|
+| **amarras OFF** | `0` | `0` | `44` | `43 / 1` | `134 703` | **`+2`** |
+| **amarras ON** | `0` | `6` | `28` | **`0 / 28`** | `580 029` | — (recusada) |
+
+⇒ o `NaN` **nasce com as amarras**, e ao lado dele está o sinal que ninguém tinha lido:
+com elas ligadas **nenhum prego converge localmente** (`degrau1 = 0`) e as visitas
+**quadruplicam**. *Não é um passo isolado a estourar: é a varredura a divergir.*
+
+#### A causa, e ela já estava escrita uma função acima
+
+[`relax_tie`] dividia o gradiente do grupo por `Σ den[classe]` — a curvatura de cada
+membro **em isolamento**. Mas por [`attach_ties`] (e pela §23.17) *os cantos dos arcos
+**são** os cones, e um cone é incógnita **LIVRE** do sistema dos fechos*: mexê-lo move
+também **todas as dependentes a jusante**, cuja curvatura não estava naquela soma.
+
+O doc da [`relax_free`], uma função abaixo, diz-o desde que existe:
+
+> *«É minimização exacta ao longo daquela coordenada ⇒ a energia desce sempre, e a
+> varredura assenta. **A versão que fingia denominador escalar divergia.**»*
+
+**Medido** (`H / H_fingida`, por grupo, na `esfera-fina`): **p50 `39,29×` · max `80,98×`**.
+Um Gauss–Seidel com `ω > 2` diverge; a `39` ele voa.
+
+#### ⛔ E a cura correcta NÃO curou a esfera — duas refutações a registar
+
+1. **A Hessiana por cópia** (`u = Σ_x σ_x·J[:,ax_x]`, `H = Σ den·|u|²`) entrou, e a esfera
+   **piorou**: `3 119` não-finitos no contínuo contra `0`, `29` pregos maus contra `6`.
+2. **A folga de posto de [`solve2`] era ABSOLUTA** (`> 1,0e-12`) sobre um sistema normal
+   cuja escala é `Σ den·|J|²` — e é no ramo `1-D` (o que congelar um eixo escolhe) que ela
+   morde, porque ali o divisor deixa de ser o determinante e passa a ser `h[k][k]`.
+   Tornada **relativa ao traço**: controlo **byte-idêntico** (44 inteiros, `526` verts,
+   `524` quads, `χ = 2`, fidelidade `0,201`/`0,358`, rugosidade `8,9°`) e a esfera com
+   amarras **não se moveu um número** (mesma ronda `6134`, mesmos `3 119`). ⇒ **hipótese
+   REFUTADA**; a guarda fica pela razão que sobrevive (um limiar absoluto sobre uma
+   grandeza sem unidade fixa não significa nada), não pela que a motivou.
+
+⚠️ **E `QUEM estourou: livre` não acusa a [`relax_free`]:** as quatro partes da varredura
+correm **em ordem sobre um mapa que já mudou**, então a livre pode ser só a primeira a
+*relatar* `inf`. *Uma coluna que nomeia o primeiro a gritar não nomeia quem bateu.*
+
+#### ⭐⭐⭐ E a régua corrigiu-se DUAS vezes antes de o gate valer alguma coisa
+
+**1.ª redacção — a igualdade.** *«O passo pousa no mínimo da coordenada dele»*, com a barra
+no gradiente depois do passo. Ela **reprovou sobre a cura**: o passo é realizado ao bit
+(`pedido 5,817e-2` = `andado 5,817e-2`) e o gradiente ainda assim só cai `6,277 → 1,984`.
+
+⭐ *A causa é o modelo, não o código:* **o numerador de Poisson de uma cópia depende das
+VIZINHAS**, então mover muitas cópias ao mesmo tempo tem termos cruzados **negativos** que
+nenhuma destas Hessianas conta. A `H` por cópia é `1,46×` a curvatura **efectiva**
+(`107,90` contra `73,80`) ⇒ ela é um **majorante**, e o passo fica **curto**.
+
+⇒ **É isso que a torna segura, e é essa a lei que se gateia:** *um denominador ACIMA da
+curvatura sub-relaxa (lento, convergente); um ABAIXO sobre-relaxa, e a `ω > 2` diverge.*
+**Errar para cima é lento; errar para baixo é `inf`.**
+
+⚠️ A mesma correcção vale para o doc da [`relax_free`] citado acima: ela também move a
+livre **e** todas as dependentes de uma vez, logo *«minimização exacta»* está optimista
+pela mesma razão. A propriedade que a salva é a **desigualdade**, não a exactidão.
+
+**2.ª redacção — a MUTAÇÃO SOBREVIVEU.** A desigualdade escrita contra o `H` que a
+`tie_normal` devolve passa com o denominador fingido de volta: ela media a Hessiana
+**calculada**, e o defeito está em **qual das duas o passo divide**. ⇒ o denominador
+**usado** deriva-se do que se andou (`andado = gradiente / denominador`):
+
+| | denominador usado | curvatura efectiva | gate |
+|---|---|---|---|
+| exacta por cópia | `107,90` | `73,80` | ✅ |
+| **fingida (mutação)** | **`8,10`** | `73,80` | ❌ `9,1×` abaixo |
+
+*Um gate sobre a grandeza que o relatório publica é verde quando o produto usa a outra.*
+
+#### ⇒ O que fica
+
+- ⭐ A causa do `NaN` está **nomeada e medida** (`39×`), e a cura entrou com gate e
+  prova de mutação.
+- ⛔ A esfera **continua a divergir** (ronda `6134`, movimento `inf`) — a sobre-relaxação
+  era **uma** das causas, não a única; e as duas hipóteses acima estão fechadas.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto **byte-idêntico** (controlo
+  conferido número a número).

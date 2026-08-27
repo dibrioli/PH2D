@@ -115,6 +115,12 @@ pub struct RoundReport {
     pub tie_refused: usize,
     /// ⭐ A razão: `[dependente, livre do sistema, pregada]`.
     pub tie_refused_why: [usize; 3],
+    /// ⭐ `H / H_fingida` das amarras — ver [`crate::weld_solve::WeldSolveReport::tie_gain_p50`].
+    pub tie_gain: (f32, f32),
+    /// ⭐ A ronda em que o contínuo estourou (`0` = nunca), e o movimento dela.
+    pub nonfinite_round: (usize, f32),
+    /// ⭐⭐ Qual escritor estourou — ver `WeldSolveReport::nonfinite_who`.
+    pub nonfinite_who: usize,
     /// ⛔ Coordenadas não-finitas no fim do contínuo, e logo após a 1.ª ronda.
     pub nonfinite: (usize, usize),
     /// ⛔⛔⛔ Pregos da escada cujo passo saiu **não-finito** — o valor já estava

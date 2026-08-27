@@ -96,6 +96,18 @@ pub struct WeldSolveReport {
     pub tie_refused: usize,
     /// ⭐ A razão da recusa: `[dependente, livre do sistema, pregada]`.
     pub tie_refused_why: [usize; 3],
+    /// ⭐ `H / H_fingida` das amarras — o **ganho** que a 1.ª redacção aplicava ao passo
+    /// (ver [`WeldRelaxer::tie_gain`]). `1,0` = o denominador escalar estava certo.
+    pub tie_gain_p50: f32,
+    /// O pior ganho de todos os grupos.
+    pub tie_gain_max: f32,
+    /// ⭐ A 1.ª ronda em que o mapa contínuo deixa de ser finito (`0` = nunca).
+    pub nonfinite_round: usize,
+    /// O maior movimento da varredura NESSA ronda.
+    pub nonfinite_move: f32,
+    /// ⭐⭐ Qual escritor estourou: `0` classe · `1` amarra · `2` livre · `3` ciclo de
+    /// arco · `4` nenhum deles (o mapa já vinha torto).
+    pub nonfinite_who: usize,
     /// ⛔⛔⛔ **Coordenadas NÃO-FINITAS no mapa, no fim do contínuo.**
     ///
     /// ⚠️ *Sem esta coluna, «o solver divergiu» e «o solver produziu um mapa são que
@@ -379,6 +391,86 @@ impl<'a> WeldRelaxer<'a> {
         (acc, self.den[class])
     }
 
+    /// ⭐⭐⭐ **O SISTEMA NORMAL DA COORDENADA DE UMA AMARRA** — `(g, H, H_fingida)`.
+    ///
+    /// ⛔⛔⛔ **Medido (2026-08-27): o denominador FINGIDO era o `NaN` da `sphere_uv`.**
+    /// A 1.ª redacção somava `Σ den[classe]` — a curvatura de cada membro **em
+    /// isolamento**. ⚠️ Mas por [`Self::attach_ties`] (e pelo `ACHADO` §23.17) *os cantos
+    /// dos arcos SÃO os cones, e um cone é incógnita LIVRE do sistema dos fechos*: mexê-lo
+    /// move também **todas as dependentes a jusante**, cuja curvatura não estava na soma.
+    /// O passo saía `H/H_fingida` vezes maior que o mínimo ⇒ **ganho > 1**, e uma
+    /// realimentação de ganho > 1 diverge — que é exactamente o que a escada mediu
+    /// (`degrau1 0`, `560 028` visitas, `6` pregos com passo não-finito).
+    ///
+    /// ⚠️ *A [`Self::relax_free`] já traz esta lei escrita uma função abaixo* — «a versão
+    /// que fingia denominador escalar divergia». **Escrevi-a outra vez, e paguei outra vez.**
+    ///
+    /// A coordenada da amarra desloca o membro `x` de `σ_x` por unidade. Por **cópia**, a
+    /// coluna acumulada é `u = Σ_x σ_x · J[:, ax_x]`, e daí `H = Σ den·|u|²`, `g = Σ u·r`.
+    ///
+    /// ⚠️⚠️ **Isto NÃO é a curvatura exacta, e a distinção foi MEDIDA** (gate
+    /// `the_tie_denominator_never_falls_below_the_effective_curvature`): o numerador de
+    /// Poisson de uma cópia depende das **vizinhas**, então mover muitas cópias de uma vez
+    /// tem termos cruzados **negativos** que esta soma ignora. Na fixtura da esfera o `H`
+    /// daqui é `1,46×` a curvatura efectiva ⇒ o passo fica **curto**.
+    ///
+    /// ⭐⭐⭐ **E é exactamente por isso que ele é seguro:** um denominador ACIMA da
+    /// curvatura sub-relaxa (lento, convergente); um ABAIXO sobre-relaxa, e a `ω > 2`
+    /// diverge. *Errar para cima é lento; errar para baixo é `inf`.*
+    ///
+    /// ⚠️ A [`Self::relax_free`] herda a mesma aproximação — o doc dela diz «minimização
+    /// exacta ao longo daquela coordenada» e está optimista pela mesma razão: ela move a
+    /// livre **e** todas as dependentes ao mesmo tempo.
+    ///
+    /// ⚠️ Um membro que **não** é livre é escrito em cheio no quadro da classe: para ele
+    /// a soma de [`Self::class_acc`] já é exacta, e entra igual nas duas Hessianas.
+    pub(crate) fn tie_normal(&self, map: &GridMap, g: usize) -> Option<(f32, f32, f32)> {
+        let (_, rows) = self.ties.get(g)?;
+        let mut cols: std::collections::BTreeMap<u32, [f32; 2]> = std::collections::BTreeMap::new();
+        let (mut num, mut h_plain, mut h_pretend) = (0.0f32, 0.0f32, 0.0f32);
+        for &(x, sigma, _) in rows {
+            let (c, ax) = (x as usize / 2, x as usize % 2);
+            if let Some(i) = self.free_index_class(c) {
+                for &(cp, j) in self.sys.touched(i) {
+                    let e = cols.entry(cp).or_insert([0.0f32; 2]);
+                    e[0] += sigma * j[0][ax];
+                    e[1] += sigma * j[1][ax];
+                }
+                h_pretend += self.den[c];
+            } else {
+                let (acc, d) = self.class_acc(map, c);
+                if d <= 0.0 {
+                    continue;
+                }
+                num += sigma * acc[ax];
+                h_plain += d;
+            }
+        }
+        let mut h_free = 0.0f32;
+        for (&cp, u) in &cols {
+            let (p, l) = self.w.where_is_pub(cp);
+            let (r, d) = self.residual(map, p as usize, l as usize);
+            if d <= 0.0 {
+                continue;
+            }
+            num += u[0].mul_add(r[0], u[1] * r[1]);
+            h_free += d * u[0].mul_add(u[0], u[1] * u[1]);
+        }
+        let (h, hp) = (h_plain + h_free, h_plain + h_pretend);
+        (h > 0.0).then_some((num, h, hp))
+    }
+
+    /// ⭐ **O GANHO que a redacção fingida aplicava** — `H / H_fingida`, por grupo.
+    ///
+    /// É a régua do defeito acima: `1,0` diz que o denominador escalar estava certo
+    /// naquele grupo; acima de `1` diz **quantas vezes** o passo dele era maior que o
+    /// deste. ⚠️ *Não é «quantas vezes estourava o mínimo»* — nenhum dos dois é a
+    /// curvatura exacta (ver [`Self::tie_normal`]); é o rácio entre os dois denominadores.
+    pub(crate) fn tie_gain(&self, map: &GridMap, g: usize) -> Option<f32> {
+        let (_, h, hp) = self.tie_normal(map, g)?;
+        (hp > 0.0).then_some(h / hp)
+    }
+
     /// ⭐⭐⭐ **RELAXA UM GRUPO AMARRADO** — um escalar por todos os membros.
     ///
     /// A lei é a mesma de uma classe, um nível acima: soma-se o resíduo de **todos** os
@@ -388,19 +480,9 @@ impl<'a> WeldRelaxer<'a> {
         let Some((root, rows)) = self.ties.get(g) else {
             return 0.0;
         };
-        let (mut num, mut den) = (0.0f32, 0.0f32);
-        for &(x, sigma, _) in rows {
-            let (c, ax) = (x as usize / 2, x as usize % 2);
-            let (acc, d) = self.class_acc(map, c);
-            if d <= 0.0 {
-                continue;
-            }
-            num += sigma * acc[ax];
-            den += d;
-        }
-        if den <= 0.0 {
+        let Some((num, den, _)) = self.tie_normal(map, g) else {
             return 0.0;
-        }
+        };
         let step = num / den;
         // ⛔⛔⛔ **UM PASSO NÃO-FINITO NÃO SE ESCREVE — CONTA-SE.**
         //
@@ -608,29 +690,67 @@ impl<'a> WeldRelaxer<'a> {
 
     /// Uma varredura global — devolve o maior movimento.
     pub(crate) fn sweep(&self, map: &mut GridMap) -> f32 {
-        let mut worst = 0.0f32;
+        let p = self.sweep_parts(map);
+        p.iter().copied().fold(0.0f32, f32::max)
+    }
+
+    /// ⭐⭐⭐ **A MESMA VARREDURA, COM O MAIOR MOVIMENTO DE CADA ESCRITOR** —
+    /// `[classe, amarra, livre, ciclo de arco]`.
+    ///
+    /// ⚠️ **Um `last_move` só não diz QUEM diverge.** A esfera estourava na ronda `6134`
+    /// com movimento `inf`, e os quatro escritores são candidatos com curas diferentes;
+    /// *bisectar por hipótese custa uma corrida de 8 s por tentativa, e esta coluna
+    /// responde de uma vez.* ⛔ `max` sobre floats ignora `NaN` — por isso quem lê tem de
+    /// perguntar `is_finite`, nunca comparar.
+    pub(crate) fn sweep_parts(&self, map: &mut GridMap) -> [f32; 4] {
+        let mut p = [0.0f32; 4];
         for c in 0..self.w.classes() {
-            worst = worst.max(self.relax_class(map, c));
+            p[0] = p[0].max(self.relax_class(map, c));
         }
         for g in 0..self.ties.len() {
-            worst = worst.max(self.relax_tie(map, g));
+            p[1] = p[1].max(self.relax_tie(map, g));
         }
         for i in 0..self.sys.free().len() {
-            worst = worst.max(self.relax_free(map, i));
+            p[2] = p[2].max(self.relax_free(map, i));
         }
-        worst.max(self.apply_arc_cycles(map))
+        p[3] = self.apply_arc_cycles(map);
+        p
     }
 }
 
+/// ⭐ **A folga do posto de [`solve2`], RELATIVA à escala da própria matriz.**
+///
+/// ⛔⛔⛔ **Medido (2026-08-27): o limiar ABSOLUTO era o `inf` da `sphere_uv`.** O guarda
+/// era `> 1,0e-12` sobre um sistema normal cuja escala é `Σ den·|J|²` — um número que não
+/// tem unidade fixa, e que muda com o tamanho da peça e com `h`. ⇒ uma coluna
+/// **numericamente nula** passava o guarda e devolvia um passo enorme.
+///
+/// ⚠️ **Só aparece com as amarras porque congelar um eixo é o que escolhe o ramo `1-D`**,
+/// em que o divisor deixa de ser o determinante e passa a ser `h[k][k]` sozinho: a matriz
+/// `2×2` inteira pode estar bem condicionada e aquela coluna não. *A esfera derivava até
+/// `inf` na ronda `6134` — devagar, que é a assinatura de um raio espectral pouco acima
+/// de 1, e não de um passo isolado a estourar.*
+const RANK_REL: f32 = 1.0e-6;
+
+/// A porta de teste da [`solve2`] — ela é livre e privada, e o gate da folga de posto
+/// precisa de a chamar directamente.
+#[cfg(test)]
+pub(crate) fn solve2_pub(h: [[f32; 2]; 2], g: [f32; 2], frozen: [bool; 2]) -> Option<[f32; 2]> {
+    solve2(h, g, frozen)
+}
+
 /// Resolve `H·x = g` em `2×2`, honrando as componentes pregadas.
+///
+/// ⚠️ **A escala é o TRAÇO**, e ele é sempre `≥ 0`: as diagonais são somas de `den·|col|²`.
 fn solve2(h: [[f32; 2]; 2], g: [f32; 2], frozen: [bool; 2]) -> Option<[f32; 2]> {
+    let scale = h[0][0] + h[1][1];
     match frozen {
         [true, true] => None,
-        [true, false] => (h[1][1].abs() > 1.0e-12).then(|| [0.0, g[1] / h[1][1]]),
-        [false, true] => (h[0][0].abs() > 1.0e-12).then(|| [g[0] / h[0][0], 0.0]),
+        [true, false] => (h[1][1] > RANK_REL * scale).then(|| [0.0, g[1] / h[1][1]]),
+        [false, true] => (h[0][0] > RANK_REL * scale).then(|| [g[0] / h[0][0], 0.0]),
         [false, false] => {
             let d = h[0][0].mul_add(h[1][1], -(h[0][1] * h[1][0]));
-            (d.abs() > 1.0e-12).then(|| {
+            (d.abs() > RANK_REL * scale * scale).then(|| {
                 [
                     g[0].mul_add(h[1][1], -(h[0][1] * g[1])) / d,
                     h[0][0].mul_add(g[1], -(g[0] * h[1][0])) / d,
@@ -782,6 +902,15 @@ pub fn solve_welded_with(
             rep.tie_refused = refused;
             rep.tie_refused_why = why;
             rep.arc_cycles = r.arc_cycle_count();
+            // ⭐ A régua do defeito que o denominador fingido tinha — ver
+            // [`WeldRelaxer::tie_gain`]. Lê-se sobre o mapa de PARTIDA, que é onde o
+            // passo da 1.ª ronda de facto se calculava.
+            let mut gains: Vec<f32> = (0..g).filter_map(|k| r.tie_gain(&map, k)).collect();
+            gains.sort_by(f32::total_cmp);
+            if !gains.is_empty() {
+                rep.tie_gain_p50 = gains[gains.len() / 2];
+                rep.tie_gain_max = gains[gains.len() - 1];
+            }
         }
         let count_bad = |m: &GridMap| -> usize {
             m.uv.iter()
@@ -794,10 +923,19 @@ pub fn solve_welded_with(
                     .count()
         };
         for round in 0..rounds {
-            rep.last_move = r.sweep(&mut map);
+            let parts = r.sweep_parts(&mut map);
+            rep.last_move = parts.iter().copied().fold(0.0f32, f32::max);
             rep.rounds = round + 1;
             if round == 0 {
                 rep.nonfinite_first = count_bad(&map);
+            }
+            // ⭐ A RONDA EM QUE O CONTÍNUO ESTOURA — *«3119 no fim» e «0 na 1.ª» não
+            // distinguem uma deriva lenta de um rebentamento súbito*, e a cura de cada
+            // uma é outra. ⭐⭐ E o ESCRITOR que a produziu, que é o que escolhe a cura.
+            if rep.nonfinite_round == 0 && count_bad(&map) > 0 {
+                rep.nonfinite_round = round + 1;
+                rep.nonfinite_move = rep.last_move;
+                rep.nonfinite_who = parts.iter().position(|v| !v.is_finite()).unwrap_or(4);
             }
         }
         rep.nonfinite = count_bad(&map);

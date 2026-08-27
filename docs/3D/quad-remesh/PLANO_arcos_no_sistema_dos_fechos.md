@@ -139,3 +139,21 @@ ajuda: as **voltas** melhoram nas três peças medidas (`3,8→1,0` · `0,8→0,
 ⛔ **E o que ele NÃO prova:** na `hooked` os anéis **fechados** caem de `8` para `4`. *A
 régua das voltas e a contagem de anéis discordam nessa peça, e nenhuma das duas é a
 errada* — quem fizer esta wave tem de reportar as duas.
+
+---
+
+## §5 — ⭐ A causa do `NaN` do A2b tem número (2026-08-27)
+
+O denominador da [`relax_tie`] era `Σ den[classe]` — a curvatura de cada membro **em
+isolamento** —, e os membros são os **cones**, que são incógnitas LIVRES do sistema dos
+fechos. **Medido: `H / H_fingida` p50 `39,29×`, max `80,98×`** ⇒ sobre-relaxação a `ω ≈ 39`.
+
+⚠️ **Curado com gate e prova de mutação, e a esfera CONTINUA a divergir** (ronda `6134`) —
+era uma das causas, não a única. Duas hipóteses fecharam por medição no mesmo dia (a
+Hessiana por cópia piora a esfera; a folga de posto de [`solve2`] tornada relativa é
+**inerte**, controlo byte-idêntico).
+
+⭐⭐⭐ E a lei que sobrou é a que vale para toda esta família: *um denominador **acima** da
+curvatura sub-relaxa (lento, convergente); um **abaixo** sobre-relaxa e diverge.* **Errar
+para cima é lento; errar para baixo é `inf`.** Mecanismo, as duas correcções da régua e as
+tabelas: [`ACHADO_ordem_das_fases.md` §23.21](ACHADO_ordem_das_fases.md).

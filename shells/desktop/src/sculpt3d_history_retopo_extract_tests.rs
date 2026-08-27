@@ -4,8 +4,10 @@
 //! ⚠️ **Ele existe por causa do tecto de LOC do shell (HR-18)**, e o corte é o idioma da
 //! casa: o `mod tests` inline vai para o irmão **do assunto**. *O ficheiro do produto
 //! guarda o que o botão faz; este guarda o que se prova sobre ele.*
-
-use super::*;
+//!
+//! ⚠️ **Sem `use super::*`, de propósito:** todo gate aqui chama o irmão pelo prefixo
+//! (`super::extract_from`, `super::boundary_edges`, `super::worse`), então o glob era
+//! morto — e um `unused_imports` é **erro** sob o `-D warnings` do `ship.sh`, não aviso.
 
 /// ⭐⭐⭐ **GATE 11 — o caminho antigo continua byte-idêntico enquanto o
 /// interruptor estiver desligado.**

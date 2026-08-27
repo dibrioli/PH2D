@@ -242,6 +242,8 @@ pub enum FillKind {
     Linear,
     Radial,
     MultiPoint,
+    /// Padrão de textura (plano 33).
+    Pattern,
 }
 
 /// Fill rule of a compound path — which nested contours are holes. Mirror of the

@@ -33,6 +33,15 @@ ph2d-warp-style = { path = "../ph2d-warp-style" }
 # `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente da
 # `ph2d-warp-style` logo acima. Re-exportado por `lib.rs`.
 ph2d-stroke-width = { path = "../ph2d-stroke-width" }
+# A lei de LADRILHO do Texture Pattern (plano 33): `TileKind`/`PatternMode` viajam dentro do
+# `Paint::Pattern` no save, e o assador que os resolve mora do lado do render. Folha ZERO-dep
+# (só serde), mesmo precedente das duas linhas acima.
+ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }
+# QUAL imagem um padrão usa. ⚠️ **Não** a `ph2d-asset`: ela puxa `ph2d-imageio` +
+# `ph2d-imageio-registry-init` + `ph2d-color`, ou seja descodificadores de imagem dentro do modelo
+# puro de documento. O `AssetId` foi extraído para esta folha em 2026-08-27 (plano 33 W3) e a
+# `ph2d-asset` re-exporta-o — `ph2d_asset::AssetId` continua a resolver em todos os 78 ficheiros.
+ph2d-asset-id = { path = "../ph2d-asset-id" }
 # A casa ÚNICA do vocabulário de simetria: `SymmetryKind`/`SymmetrySpec`/`Axis` moram nesta folha
 # porque têm dois donos que não se veem — este crate (o motor, `symmetry::symmetry_paths`) e o
 # `ph2d-ecs` (o componente que o documento guarda). Folha pura (só serde), mesmo precedente das

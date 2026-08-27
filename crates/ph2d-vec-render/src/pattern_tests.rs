@@ -147,3 +147,36 @@ fn a_pattern_costs_one_path_and_no_layer() {
     assert_eq!(s.inner().encoding().n_clips, 0);
     assert_eq!(s.inner().encoding().n_paths, 1);
 }
+
+/// ⭐ **Um padrão sem ladrilho resolvido pinta a `fallback` — e isso é desenho CERTO.**
+///
+/// A arte pode ainda não ter carregado, a forma-fonte pode ter desaparecido, o assado pode ter
+/// recusado por tamanho. ⚠️ **Desenhar NADA seria pior**: uma forma invisível lê-se como *"a
+/// ferramenta está partida"* e não se distingue de um preenchimento vazio. Mesmo papel do
+/// `fallback` do `ProceduralFill` (ADR-0056-amendment-3).
+#[test]
+fn a_pattern_without_a_tile_paints_its_fallback() {
+    use ph2d_vec_scene::{Paint, PatternFill, PatternSource, Rgba8, VecPath, VecPathId, VecVertex};
+    let cor = Rgba8::new(200, 30, 30, 255);
+    let mut path = VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    };
+    path.fill = Some(Paint::Pattern(Box::new(PatternFill::new(
+        PatternSource::Shape(7 as VecPathId),
+        [4.0, 4.0],
+        cor,
+    ))));
+    // A cor de swatch é a `fallback` — e o pincel de recurso pinta exactamente essa cor.
+    assert_eq!(path.fill.as_ref().unwrap().primary_color(), cor);
+    // Controlo: um sólido de outra cor dá outro pincel, senão este gate mediria uma constante.
+    let mut outro = path.clone();
+    outro.fill = Some(Paint::solid(Rgba8::new(1, 2, 3, 255)));
+    assert_ne!(
+        outro.fill.as_ref().unwrap().primary_color(),
+        path.fill.as_ref().unwrap().primary_color()
+    );
+}

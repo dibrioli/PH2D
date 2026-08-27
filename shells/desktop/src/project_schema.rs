@@ -310,4 +310,22 @@
 ///
 /// ⛔ **Sem degrau de migração, e está certo** — é a decisão do Enio de 26/08 (não há projetos
 /// gravados). O número sobe para o load **recusar em voz alta** em vez de ler errado em silêncio.
-pub(crate) const PROJECT_SCHEMA: u32 = 100;
+///
+/// # 101 — o TEXTURE PATTERN (plano 33, W3)
+///
+/// O `Paint` da `ph2d-vec-scene` ganhou a 5ª variante, `Pattern(Box<PatternFill>)`, e o
+/// `VEC_SCENE_SCHEMA_VERSION` subiu **14 -> 15** — logo este número sobe por arrasto, e a **tripla**
+/// de `project_schema_tests` vê este degrau (ao contrário do 99, que vivia dentro de um blob opaco).
+///
+/// ⚠️ **Apendar uma variante é aditivo NUM sentido só.** Um save v100 lido por este binário está
+/// **correcto** — os índices anteriores não se mexeram. O que quebra é o inverso: um v100 com um
+/// padrão, lido por um binário v100, encontra um índice de variante que não conhece e o postcard
+/// falha longe da causa. O bump é o que transforma isso num erro de versão.
+///
+/// ⛔ **Sem degrau de migração, pela mesma decisão do Enio de 26/08** (*"não há projetos salvos"*):
+/// sem um `ProjectFileV100` congelado não há forma honesta de reler aqueles bytes, e um ficheiro
+/// anterior é **recusado em voz alta** no `project_load`. ⚠️ Note que aqui a recusa é
+/// **conservadora e não obrigatória** — um v100 seria lido certo pela regra posicional —, mas
+/// congelar um tipo por uma variante apendada custaria mais do que vale enquanto não houver
+/// projectos gravados.
+pub(crate) const PROJECT_SCHEMA: u32 = 101;

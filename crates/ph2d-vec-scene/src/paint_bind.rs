@@ -150,6 +150,13 @@ fn fade(p: &mut VecPath, a: u8) {
                 scale(&mut pt.color);
             }
         }
+        // ⚠️ **Um padrão não tem cor para escalar — tem OPACIDADE.** Desvanecer aqui a `fallback`
+        // sozinha faria a forma manter o ladrilho a cheio e clarear só o instante em que ele ainda
+        // não resolveu, que é o contrário do que se vê. As duas descem juntas.
+        Some(Paint::Pattern(pat)) => {
+            pat.alpha = (pat.alpha * f32::from(a) / 255.0).clamp(0.0, 1.0);
+            scale(&mut pat.fallback);
+        }
         None => {}
     }
     if let Some(s) = p.stroke.as_mut() {

@@ -685,6 +685,27 @@ fn transform_fill_geometry(
                 p.pos = f(p.pos);
             }
         }
+        // ⭐⭐ **O padrão SONDA o afim, e por isso é o único preenchimento desta casa que conserva a
+        // ORIENTAÇÃO.** As imagens dos dois eixos unitários dizem tudo: o ângulo do eixo x é a
+        // rotação, e o comprimento de cada imagem é a escala NAQUELE eixo. É exacto para qualquer
+        // afim, e melhor do que o `radius_scale` médio que o gradiente radial recebe — não por
+        // esmero, mas porque um radial do peniko **é circular** e não tem onde guardar um ângulo,
+        // enquanto o padrão tem.
+        //
+        // ⚠️ **Um espelho vira uma meia-volta**, e a aproximação é nomeada: `atan2` de um eixo
+        // invertido dá `π`, e o `PatternFill` não tem campo de reflexão onde guardar a diferença.
+        Some(Paint::Pattern(pat)) => {
+            let o = f(pat.origin);
+            let ax = f([pat.origin[0] + 1.0, pat.origin[1]]);
+            let ay = f([pat.origin[0], pat.origin[1] + 1.0]);
+            let (dx, dy) = ([ax[0] - o[0], ax[1] - o[1]], [ay[0] - o[0], ay[1] - o[1]]);
+            pat.angle += dx[1].atan2(dx[0]);
+            pat.size = [
+                pat.size[0] * dx[0].hypot(dx[1]),
+                pat.size[1] * dy[0].hypot(dy[1]),
+            ];
+            pat.origin = o;
+        }
         Some(Paint::Solid(_)) | None => {}
     }
 }

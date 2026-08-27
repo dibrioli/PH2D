@@ -30,7 +30,13 @@ pub use compound::{Contour, FillRule, reverse_contour};
 /// **Como uma forma é PINTADA** — `Rgba8`, os gradientes e o `Paint` que os une. Split de
 /// `lib.rs` pelo teto de LOC; os tipos são re-exportados aqui, então os caminhos não mudam.
 mod paint;
-pub use paint::{GradientPoint, GradientStop, Paint, Rgba8};
+#[cfg(test)]
+#[path = "paint_pattern_tests.rs"]
+mod paint_pattern_tests;
+pub use paint::{GradientPoint, GradientStop, Paint, PatternFill, PatternSource, Rgba8};
+// ⚠️ Re-exportados da folha `ph2d-vec-pattern`: o vocabulário de ladrilho é PARTE do documento, e
+// quem lê um `Paint::Pattern` não deve ter de declarar a folha para o entender.
+pub use ph2d_vec_pattern::{PatternMode, TileKind, TileLaw};
 
 /// **Re-cozimento em lugar** ([`VecPath::replace_cooked`]): a porta única de "esta forma foi
 /// re-gerada dos próprios parâmetros". Irmão de `compound` (os dois só acrescentam métodos
@@ -435,7 +441,12 @@ pub struct VecPath {
 /// v14 chega ao fim dos bytes no campo novo (`Hit the end of buffer`, medido em 2026-08-01) e um
 /// save v14 lido por v13 traz um byte a mais. O número é o que transforma os dois casos num erro
 /// de versão em vez de num postcard a falhar longe da causa.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 14;
+/// v15: [`Paint`] ganhou `Pattern(Box<PatternFill>)` — o *Texture Pattern* (plano 33, W3). Variante
+/// **apendada**, então um save v14 lido por v15 está correcto; o que quebra é o sentido inverso (um
+/// v15 com um padrão, lido por um binário v14, encontra um índice de variante que não conhece), e o
+/// bump é o que transforma isso num erro de versão. ⚠️ O `Box` **não** aparece no wire: o postcard
+/// serializa através dele.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 15;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

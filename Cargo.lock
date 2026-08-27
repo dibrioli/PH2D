@@ -5202,6 +5202,7 @@ dependencies = [
  "blake3",
  "image",
  "notify",
+ "ph2d-asset-id",
  "ph2d-color",
  "ph2d-imageio",
  "ph2d-imageio-registry-init",
@@ -5230,6 +5231,14 @@ dependencies = [
  "serde_json",
  "serde_json5",
  "toml 0.9.12+spec-1.1.0",
+]
+
+[[package]]
+name = "ph2d-asset-id"
+version = "0.0.0"
+dependencies = [
+ "blake3",
+ "serde",
 ]
 
 [[package]]
@@ -8443,8 +8452,10 @@ name = "ph2d-vec-scene"
 version = "0.0.0"
 dependencies = [
  "ph2d-arclen",
+ "ph2d-asset-id",
  "ph2d-stroke-width",
  "ph2d-symmetry",
+ "ph2d-vec-pattern",
  "ph2d-warp-style",
  "postcard",
  "serde",

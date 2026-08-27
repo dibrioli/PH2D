@@ -1,0 +1,27 @@
+[package]
+name = "ph2d-asset-id"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A casa ÚNICA do `AssetId` (blake3 sobre os bytes crus, HR-6).
+#
+# ⚠️ **Porque ele saiu da `ph2d-asset`:** o `Paint::Pattern` da `ph2d-vec-scene` guarda QUAL imagem
+# um padrão usa, e a `ph2d-vec-scene` é uma folha **pura** — o `Cargo.toml` dela declara *"sem
+# vello/kurbo/ph2d-color"*. A `ph2d-asset` puxa `ph2d-imageio` + `ph2d-imageio-registry-init` +
+# `ph2d-color`, ou seja **descodificadores de imagem dentro do modelo puro de documento**.
+#
+# É o MESMO movimento que a `ph2d-arclen` (*"extraído para uma crate-folha ZERO-dep quando o segundo
+# consumidor apareceu"*), a `ph2d-warp-style` e a `ph2d-stroke-width` já fizeram nesta árvore.
+#
+# ⭐ E ele é **invisível**: a `ph2d-asset/src/id.rs` passou a ser um `pub use` desta crate, então
+# `ph2d_asset::AssetId` e `ph2d_asset::id::AssetId` continuam a resolver e **nenhum dos 78 ficheiros
+# que os usam muda uma linha**.
+blake3 = "1"
+serde = { version = "1", features = ["derive"] }

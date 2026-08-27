@@ -603,6 +603,16 @@ fn fill_brush(paint: &Paint, _path: &VecPath) -> Brush {
             let r = (*radius as f32).max(f32::MIN_POSITIVE);
             Brush::Gradient(Gradient::new_radial(c, r).with_stops(stops_of(stops).as_slice()))
         }
+        // ⭐ **Um padrão sem ladrilho resolvido pinta a `fallback`, e isso é DESENHO CERTO, não uma
+        // desistência.** A arte pode ainda não ter carregado, a forma-fonte pode ter desaparecido, o
+        // assado pode ter recusado por tamanho — e em todos esses casos desenhar NADA seria pior: uma
+        // forma invisível lê-se como *"a ferramenta está partida"* e não se distingue de um
+        // preenchimento vazio. É o mesmo papel do `fallback` do `ProceduralFill`
+        // (ADR-0056-amendment-3), pela mesma razão.
+        //
+        // ⚠️ Quando o ladrilho EXISTE, quem desenha é o `pattern::fill_pattern` (a rota de imagem),
+        // e este braço não é alcançado — exactamente como o `MultiPoint` abaixo.
+        Paint::Pattern(p) => Brush::Solid(color(p.fallback)),
         // MultiPoint is handled by `fill_multipoint` (image-clip path), never here.
         Paint::MultiPoint { .. } => Brush::Solid(color(paint.primary_color())),
     }

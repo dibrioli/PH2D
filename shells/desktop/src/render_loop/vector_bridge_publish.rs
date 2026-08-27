@@ -228,6 +228,7 @@ pub(super) fn publish(
                 }
                 Some(Paint::Radial { .. }) => (Some(FillKind::Radial), None),
                 Some(Paint::MultiPoint { .. }) => (Some(FillKind::MultiPoint), None),
+                Some(Paint::Pattern(_)) => (Some(FillKind::Pattern), None),
                 None => (None, None),
             }
         } else {

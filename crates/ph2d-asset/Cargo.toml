@@ -13,6 +13,10 @@ authors.workspace = true
 # Content-addressed identity per HR-6: blake3 over the raw bytes is the
 # canonical AssetId. blake3 is the same hash family the spike used for
 # C9 cross-OS replay determinism, so we get one hash crate, not two.
+# ⚠️ O `AssetId` MUDOU DE CASA (plano 33, W3): ele vive agora na crate-folha `ph2d-asset-id`,
+# porque a `ph2d-vec-scene` (pura) precisa dele e não pode puxar esta. O `src/id.rs` daqui é um
+# `pub use` — `ph2d_asset::AssetId` continua a resolver.
+ph2d-asset-id = { path = "../ph2d-asset-id" }
 blake3 = "1"
 # PNG decode for the M6 visual gate. `default-features = false` +
 # explicit format opt-ins keep the dep slim. M14.4c added webp +

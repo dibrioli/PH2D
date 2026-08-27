@@ -24,7 +24,7 @@
 use crate::codegen::WORKGROUP_SIZE;
 use ph2d_render::SinkStyle;
 
-/// `RenderInstance` is 188 bytes = 47 32-bit words (ADR-0070-amendment-8 added
+/// `RenderInstance` is 188 bytes = 47 32-bit words (ADR-0070-amendment-9 added
 /// the CPU-only `sub_order`, word 46).
 pub const INSTANCE_WORDS: u32 = 47;
 
@@ -496,7 +496,7 @@ mod tests {
     }
 
     /// **A ordem das LINHAS é o índice da invocação, e o de sempre é a palavra
-    /// cravada.** Word 46 é o `sub_order` (ADR-0070-amendment-8).
+    /// cravada.** Word 46 é o `sub_order` (ADR-0070-amendment-9).
     #[test]
     fn the_stream_order_writes_the_invocation_index_into_word_46() {
         assert!(lower_module([false; 8], SinkStyle::PLAIN).contains("instances[base + 46u] = 0u;"));

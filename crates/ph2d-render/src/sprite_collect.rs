@@ -42,7 +42,7 @@ pub(crate) fn collect_sorted_instances(
 pub fn sort_render_order(scratch: &mut [RenderInstance]) {
     // Sort by (clip anchor, z_order, sub_order, texture_id, sampling).
     //
-    // `sub_order` (ADR-0070-amendment-8) entra ENTRE o `z_order` e o
+    // `sub_order` (ADR-0070-amendment-9) entra ENTRE o `z_order` e o
     // `texture_id`, e a cena inteira o deixa a `0` ⇒ a ordenação de toda
     // sprite extraída é byte-idêntica. Ele existe para o único produtor que
     // emite `n` linhas na MESMA fatia de z — um sink de Motion —, cuja ordem de

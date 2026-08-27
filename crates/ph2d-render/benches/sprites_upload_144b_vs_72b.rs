@@ -125,7 +125,7 @@ fn bench_upload(c: &mut Criterion) {
     // Sanity-pin the strides the comparison rests on, so a future ABI
     // edit that changes them makes the bench's premise visibly wrong.
     //
-    // ⚠️ **ACHADO 2026-08-25 (ADR-0070-amendment-8): esta linha estava a `176`
+    // ⚠️ **ACHADO 2026-08-25 (ADR-0070-amendment-9): esta linha estava a `176`
     // e a struct media `184` desde a amendment-7** — ou seja, este bench
     // ABORTAVA na 1.ª instrução e ninguém notou, porque um bench não corre no
     // `nextest` nem no CI. *A cerca que existe para tornar uma premissa velha

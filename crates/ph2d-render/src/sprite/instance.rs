@@ -154,7 +154,7 @@ pub struct RenderInstance {
     /// [`Self::mask_role`] — never hand-pack.
     pub clip_meta: u32,
     /// **A sub-ordem DENTRO da fatia de `z_order`** (CPU-side; NOT a vertex
-    /// attribute) — ADR-0070-amendment-8, doc 89 folha 17.
+    /// attribute) — ADR-0070-amendment-9, doc 89 folha 17.
     ///
     /// `0` para tudo o que a cena extrai, e a ordenação fica **byte-idêntica**:
     /// ela entra na chave logo a seguir ao [`Self::z_order`], então um bloco

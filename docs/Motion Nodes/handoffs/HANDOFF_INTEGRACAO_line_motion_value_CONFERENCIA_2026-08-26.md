@@ -51,7 +51,7 @@ não o tem).
 Cargo.lock
 crates/ph2d-render/src/lib.rs
 crates/ph2d-render/tests/architecture_sprite_inspector_surface.rs
-docs/architecture/decisions/0070-amendment-8.md
+docs/architecture/decisions/0070-amendment-9.md
 docs/architecture/decisions/README.md
 project-memory/MEMORY.md
 project-memory/feedback_bash_cwd_resets_and_slips_to_the_primary.md

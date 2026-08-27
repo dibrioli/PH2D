@@ -56,7 +56,7 @@ pub struct SinkStyle {
     /// **`true` ⇒ a ordem das LINHAS é a ordem de desenho.**
     ///
     /// Traduz-se em `RenderInstance::sub_order = i`, que a chave de ordenação lê
-    /// logo a seguir ao `z_order` (ADR-0070-amendment-8). `false` (o de sempre)
+    /// logo a seguir ao `z_order` (ADR-0070-amendment-9). `false` (o de sempre)
     /// escreve `0` em todas e o desempate volta a ser o `texture_id` — que é o
     /// que agrupa as instâncias em runs de desenho, e portanto o que é RÁPIDO.
     ///

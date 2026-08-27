@@ -4,7 +4,7 @@
 //!
 //! ⚠️ **Este ficheiro deixou de repetir o TOTAL, e a razão é uma reprovação medida
 //! (2026-08-25).** Ele e o `architecture_sprite_inspector_surface` pinavam o MESMO
-//! número — `184` — em dois sítios, e a `ADR-0070-amendment-8` (`+sub_order`) atualizou
+//! número — `184` — em dois sítios, e a `ADR-0070-amendment-9` (`+sub_order`) atualizou
 //! um só: o outro ficou vermelho depois de a wave inteira estar verde nas suas próprias
 //! corridas. *Uma lei escrita em dois sítios ainda não é uma lei.*
 //!

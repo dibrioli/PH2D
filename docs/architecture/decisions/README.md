@@ -77,7 +77,7 @@
 | [0070](0070-amendment-6.md) | Accepted (W3 §9, 2026-05-30) — render shipado + smoke do Enio (TextureRepeat demonst… | amendment-6 — `UvTransform` component + `RenderInstance.uv_xform: [f32;4]` GPU @location(15) (UV tiling/scroll) |
 | [0070](0070-amendment-7.md) | Accepted (W3 Phase 6, 2026-05-30) — ratificado pelo Enio (smoke ClipChildren + Mask I… | amendment-7 — `RenderInstance` CPU-tail `clip_group` + `clip_meta` (ClipChildren + Mask2D stencil grouping) |
 | [0070](0070-amendment-8.md) | Accepted (ADR-0164 F1 passo 6, 2026-08-25) — implementado e verde; … | amendment-8 — `Sprite` v4 → **v5**: sete campos saem para três componentes (20 → 13) |
-| [0070](0070-amendment-8.md) | Accepted (doc 89 folha 17, 2026-08-25) — pendente de smoke do Enio (cena `=98`). | amendment-8 — `RenderInstance` CPU-tail `sub_order` (a sub-ordem DENTRO de uma fatia de `z_order`) |
+| [0070](0070-amendment-9.md) | Accepted (doc 89 folha 17, 2026-08-25) — pendente de smoke do Enio (cena `=98`). | amendment-9 — `RenderInstance` CPU-tail `sub_order` (a sub-ordem DENTRO de uma fatia de `z_order`) |
 | [0070](0070-sprite-schema-v4.md) | Accepted (2026-05-28) — ratificado pelo Enio pós 5 lentes adversariais. | Sprite schema v4 (`Sprite::VERSION` 3→4) + RenderInstance ABI bump |
 | [0071](0071-amendment-1.md) | Accepted (ADR-0164 F1 passo 6, 2026-08-25). | amendment-1 — o 4.º canal de tinta muda de CASA: `per_corner_tint` → `SpriteCornerTint` |
 | [0071](0071-tint-channels-multiplicative.md) | Accepted (2026-05-28) — ratificado pelo Enio pós 5 lentes adversariais. | Tint channels — matemática multiplicativa canônica (4 canais) |
@@ -184,8 +184,7 @@
 
 ---
 
-**171 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
-**170 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**172 ADRs** · **59** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

@@ -632,6 +632,35 @@ fn a_driven_law_param_keeps_the_router_out_of_the_plan_entirely() {
     );
 }
 
+/// **AS PORTAS CANDIDATAS SÃO EXACTAMENTE AS ENTRADAS QUE O NÓ LÊ.**
+///
+/// ⚠️ `CHOICE_PORTS.len()` e `N_INPUTS` eram **dois números independentes** que valiam `4` por
+/// coincidência de dois literais (auditoria de 2026-08-27). O gate que existia
+/// (`a_lazy_router_declares_no_more_choices_than_the_mask_holds`) compara com o `MAX_LAZY_CHOICES`
+/// — o **tecto da máscara**, que é outra pergunta — e um `N_INPUTS = 6` com `in4`/`in5` no
+/// manifesto deixava-o verde.
+///
+/// A direcção perigosa é a lista ficar MAIOR: `needed_*` deriva o `last` de `out.len()` e o
+/// `switch` deriva o dele de `ins.len()`, então o plano marcaria um índice que o `eval` grampeia
+/// para baixo — e o cook saltaria o ramo que o nó de facto lê. *É a mesma classe do `blend`
+/// conduzido: a lei e o executor a contar de fontes diferentes.*
+#[test]
+fn the_choice_ports_are_exactly_the_inputs_the_node_reads() {
+    assert_eq!(
+        crate::CHOICE_PORTS.len(),
+        crate::N_INPUTS,
+        "as portas candidatas e as entradas que o `eval` percorre tem de ser a MESMA contagem"
+    );
+    // E as portas nomeiam-se no manifesto na ordem que o plano indexa.
+    for (k, port) in crate::CHOICE_PORTS.iter().enumerate() {
+        assert_eq!(
+            crate::MANIFEST.inputs[*port as usize].name,
+            format!("in{k}"),
+            "a porta {port} nao e' o ramo {k}"
+        );
+    }
+}
+
 /// **AS DUAS LEIS TÊM DE CONCORDAR COM O QUE O NÓ LÊ, E A PROVA É O VALOR.**
 ///
 /// ⚠️ O gate irmão `the_needed_law_matches_what_the_node_actually_reads` compara `needed_*` com

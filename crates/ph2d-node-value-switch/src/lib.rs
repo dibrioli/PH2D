@@ -183,6 +183,11 @@ pub fn needed_blend(select: f32, out: &mut [bool]) {
 /// sobre a FORMA deste nó. Derivadas do manifesto, nunca escritas duas vezes.
 pub const SELECT_PORT: u16 = 0;
 /// As portas candidatas, na ordem em que [`needed_round`] / [`needed_blend`] as indexam.
+/// ⚠️ **Amarrado ao [`N_INPUTS`] por gate** (`the_choice_ports_are_exactly_the_inputs_the_node
+/// _reads`): eram **dois números independentes** que valiam `4` por coincidência de dois
+/// literais. A direcção perigosa é esta lista ficar MAIOR — o plano marcaria um índice que o
+/// `eval` grampeia para baixo e o cook saltaria o ramo que o nó de facto lê, que é a mesma classe
+/// do defeito do `blend` conduzido.
 pub const CHOICE_PORTS: &[u16] = &[1, 2, 3, 4];
 /// A coluna escalar em que o valor do `select` viaja.
 pub const SELECT_COLUMN: &str = VALUE_COL;

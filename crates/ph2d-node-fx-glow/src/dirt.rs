@@ -97,8 +97,15 @@ pub static GATES: &[ParamGateText] = &[ParamGateText {
 /// é `glow · (tint + dirt·isto) · intensity`, e o teto de RECURSO daquele produto é o do formato
 /// (`Rgba16Float`, 65 504), que já é onde o `clamp` mora — a montante, sobre a entrada do
 /// bright-pass. Pôr aqui um número derivado do formato seria fingir que este knob sozinho
-/// decide a saturação, quando quem a decide é a composição de três. O `4` do slider é o curso
-/// da MÃO (a faixa em que a referência trabalha); o `64` é o alcance da MÁQUINA por digitação.
+/// decide a saturação, quando quem a decide é a composição de três. O curso do slider é o da
+/// MÃO (a faixa em que a referência trabalha); o `64` é o alcance da MÁQUINA por digitação.
+///
+/// ⚠️ **Esta frase dizia «o `4` do slider» e o slider é `8`** (auditoria de 2026-08-27): a prosa
+/// ficou parada na 1.ª versão, e o slider subiu quando a régua por-pixel restrita ao halo o
+/// mediu. O gate que existe — `the_typed_ceiling_is_wider_than_the_hand` — afirma só
+/// `hard.max > hint.max`, verdade para `4` **e** para `8`, então a frase velha era invisível.
+/// ⇒ o número deixa de ser repetido aqui: quem o quer lê o `PARAM_HINTS`, que é a fonte.
+/// *Uma prosa que repete um número de outro sítio é a cópia que envelhece primeiro.*
 pub const HARD_MAX: f32 = 64.0;
 
 #[cfg(test)]

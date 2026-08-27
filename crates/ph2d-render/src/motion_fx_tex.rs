@@ -26,6 +26,13 @@ pub(super) struct Tex {
     ///
     /// ⛔ Não é `wgpu::Texture::global_id()` — essa API saiu do wgpu. Um contador nosso é exacto,
     /// custa um `u64` por textura de tela, e responde à pergunta que o doc já fazia.
+    ///
+    /// ⚠️ Lido **só por gate** — como o `texture` acima, e pela mesma razão: ele existe para ser
+    /// COMPARADO, não para ser usado.
+    #[allow(
+        dead_code,
+        reason = "lido pelos gates de identidade em motion_fx_tests"
+    )]
     pub(super) serial: u64,
 }
 

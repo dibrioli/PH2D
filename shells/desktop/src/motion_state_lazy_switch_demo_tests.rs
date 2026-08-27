@@ -69,7 +69,7 @@ fn measure_lazy_switch_cost() {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
     };
-    println!("\n# cena =107 · SIDE = {SIDE} ⇒ {} pecas", SIDE * SIDE);
+    println!("\n# cena =107 · SIDE = {SIDE} · {} pecas", SIDE * SIDE);
     println!("# mediana de {REPS} cozimentos (1 de aquecimento fora), maquina calma\n");
     println!("{:<12} {:>10}", "modo", "ms/cook");
     for lazy in [true, false] {

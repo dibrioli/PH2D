@@ -177,6 +177,7 @@ pub fn round_welded(
         tie_groups: before.tie_groups,
         tie_refused: before.tie_refused,
         tie_refused_why: before.tie_refused_why,
+        nonfinite: (before.nonfinite, before.nonfinite_first),
         seam_before: (before.solve.seam_p50, before.solve.seam_max),
         weld: before.weld,
         folded_before: before.folded_before,
@@ -225,8 +226,21 @@ pub fn round_welded(
         if !opts.pin_singularities && matches!(r.sys.free()[i], Var::Class(_)) {
             continue;
         }
-        free.push((Target::Free(i), 0));
-        free.push((Target::Free(i), 1));
+        // ⛔⛔⛔ **UM EIXO QUE UMA AMARRA CONDUZ NÃO ENTRA NA FILA DE PREGOS.**
+        //
+        // ⚠️ **Medido (2026-08-27):** com as amarras ligadas, a `sphere_uv` saía com o
+        // mapa a `NaN` — e o contínuo estava **limpo** (`0` não-finitos em todas as
+        // rondas). O `NaN` nascia **aqui**: a escada empurra os **dois** eixos de toda
+        // livre, e um deles já era escrito pela [`WeldRelaxer::relax_tie`].
+        //
+        // ⭐ *O relatório dizia-o e eu não li:* `passo pior 0,0000` com `soma NaN` — um
+        // `max` sobre floats **ignora `NaN` em silêncio** e a soma não. **Toda régua
+        // desta casa que reporta «o pior» tem essa cegueira.**
+        for ax in 0..2 {
+            if !r.free_axis_is_frozen(i, ax) {
+                free.push((Target::Free(i), ax));
+            }
+        }
     }
 
     // ⭐⭐⭐ **OS SINGULARES SOLTOS** — os que o corte NÃO duplicou, e que por isso não
@@ -362,6 +376,15 @@ pub fn round_welded(
         // ⚠️ **O passo registado é o que de facto se andou**, e não o do mais próximo:
         // escolher o outro inteiro custa mais, e esconder isso falsearia a régua.
         let step = (x - taken).abs();
+        // ⛔⛔⛔ **UM PREGO COM PASSO NÃO-FINITO CONTA-SE.**
+        //
+        // ⚠️ **A linha abaixo esconde-o:** `max` sobre floats **ignora `NaN` em
+        // silêncio*, e por isso o relatório dizia `passo pior 0,0000` com `soma NaN` —
+        // as duas grandezas na mesma linha, e só uma a dizer a verdade. *Toda régua
+        // desta casa que reporta «o pior» tem esta cegueira.*
+        if !step.is_finite() {
+            rep.nonfinite_pins += 1;
+        }
         rep.worst_step = rep.worst_step.max(step);
         rep.sum_step += step;
         rep.visits += visits;

@@ -124,6 +124,13 @@ pub struct ScalarTies {
     roots: Vec<u32>,
     /// Por grupo, os escalares dele (a raiz incluída).
     members: Vec<Vec<u32>>,
+    /// ⭐⭐⭐ Os índices das equações que **fecharam ciclo** — na ordem de
+    /// [`arc_equations`], que é a mesma.
+    ///
+    /// ⚠️ **É o que permite cruzar «fecha ciclo» com «tem termo de translação»** — a
+    /// pergunta que decide se o A3 tem pivô. *Sem os índices, a contagem de ciclos e a
+    /// contagem de termos são duas populações que ninguém pode emparelhar.*
+    cycle_eq: Vec<usize>,
     /// O que o portão mediu ao construir isto.
     pub report: ArcLineSystem,
 }
@@ -139,6 +146,12 @@ impl ScalarTies {
     #[must_use]
     pub fn group(&self, g: usize) -> Option<(u32, &[u32])> {
         Some((*self.roots.get(g)?, self.members.get(g)?.as_slice()))
+    }
+
+    /// ⭐ As equações que fecharam ciclo, por índice na ordem de [`arc_equations`].
+    #[must_use]
+    pub fn cycle_equations(&self) -> &[usize] {
+        &self.cycle_eq
     }
 
     /// Como o escalar `x` se escreve a partir da raiz dele: `(raiz, σ, δ)`.
@@ -251,6 +264,7 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
         let (root_b, s_b, d_b) = uf.find(ib);
         if root_a == root_b {
             out.cycles += 1;
+            ties.cycle_eq.push(out.arcs - 1);
             // `Y_A = s_a·Y_r + d_a`, `Y_B = s_b·Y_r + d_b`; a equação exige
             // `Y_B = σ·Y_A + δ`.
             if (s_b - sigma * s_a).abs() > 1.0e-3 {

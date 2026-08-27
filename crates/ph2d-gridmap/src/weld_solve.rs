@@ -96,6 +96,14 @@ pub struct WeldSolveReport {
     pub tie_refused: usize,
     /// ⭐ A razão da recusa: `[dependente, livre do sistema, pregada]`.
     pub tie_refused_why: [usize; 3],
+    /// ⛔⛔⛔ **Coordenadas NÃO-FINITAS no mapa, no fim do contínuo.**
+    ///
+    /// ⚠️ *Sem esta coluna, «o solver divergiu» e «o solver produziu um mapa são que
+    /// alguém estragou depois» leem o mesmo `NaN` no fim da cadeia* — e as duas pedem
+    /// curas em fases diferentes.
+    pub nonfinite: usize,
+    /// A mesma contagem **logo após a 1.ª ronda** — separa «nasceu torto» de «degradou».
+    pub nonfinite_first: usize,
 }
 
 /// Um grupo amarrado: a raiz, e por membro `(escalar, σ, δ)` — ver [`crate::arcline`].
@@ -295,6 +303,20 @@ impl<'a> WeldRelaxer<'a> {
             return 0.0;
         }
         let step = num / den;
+        // ⛔⛔⛔ **UM PASSO NÃO-FINITO NÃO SE ESCREVE — CONTA-SE.**
+        //
+        // ⚠️ **Medido (2026-08-27):** a `sphere_uv` com a restrição activa punha o mapa a
+        // `NaN` **à 4.ª ronda e voltava a são à 16.ª**. *Uma realimentação de ganho > 1
+        // diverge e FICA divergida* — este ia e vinha porque o [`Weld::set`]
+        // **sobrescreve**, e a ronda seguinte lavava o valor. ⇒ não era o subsistema
+        // realimentado da obra A, era **um passo isolado a estourar**.
+        //
+        // ⛔ Escrever `inf` faz a ronda seguinte calcular `inf − inf` e produzir `NaN`, e
+        // aí a peça inteira cai. *Recusar o passo e contá-lo separa «o solver estourou»
+        // de «o solver foi travado», que sem o contador são o mesmo mapa.*
+        if !step.is_finite() {
+            return 0.0;
+        }
         let (rc, rax) = (*root as usize / 2, *root as usize % 2);
         let y_root = self.w.value_pub(map, rc)[rax] + step;
         for &(x, sigma, delta) in rows {
@@ -446,6 +468,17 @@ impl<'a> WeldRelaxer<'a> {
             Var::Shift(s) => map.shift[s as usize],
             Var::Class(c) => self.w.value_pub(map, c as usize),
         }
+    }
+
+    /// ⭐ Esta componente de uma livre já tem dono? (pregada à mão, ou **conduzida por
+    /// uma amarra de arco**.)
+    ///
+    /// ⚠️ **A escada gulosa TEM de perguntar isto.** Ela empurra os **dois** eixos de
+    /// toda livre para a fila de pregos, e um eixo que a [`Self::relax_tie`] conduz já
+    /// tem lei. *Pregar por cima é a segunda lei sobre o mesmo escalar — e o preço
+    /// medido foi um passo `NaN` no meio da escada.*
+    pub(crate) fn free_axis_is_frozen(&self, i: usize, ax: usize) -> bool {
+        self.free_frozen.get(i).is_some_and(|f| f[ax])
     }
 
     /// Prega uma componente de uma incógnita livre.
@@ -643,10 +676,24 @@ pub fn solve_welded_with(
             rep.tie_refused = refused;
             rep.tie_refused_why = why;
         }
+        let count_bad = |m: &GridMap| -> usize {
+            m.uv.iter()
+                .flatten()
+                .filter(|z| !z[0].is_finite() || !z[1].is_finite())
+                .count()
+                + m.shift
+                    .iter()
+                    .filter(|t| !t[0].is_finite() || !t[1].is_finite())
+                    .count()
+        };
         for round in 0..rounds {
             rep.last_move = r.sweep(&mut map);
             rep.rounds = round + 1;
+            if round == 0 {
+                rep.nonfinite_first = count_bad(&map);
+            }
         }
+        rep.nonfinite = count_bad(&map);
         let folded = a.folded(&map);
         rep.folded_after = folded.len();
         if pass == 0 {

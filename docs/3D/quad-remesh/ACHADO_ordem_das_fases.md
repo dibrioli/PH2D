@@ -1747,3 +1747,56 @@ valida no ponto onde a obra a vai usar*, e o mapa restringido é outro mapa.
 
 ⛔ **Nada disto shipa:** `PH2D_GRIDMAP_ARCLINE` continua desligada e o produto é
 byte-idêntico.
+
+### §23.19 — ⛔⛔⛔ A caça ao `NaN` do A2b: TRÊS explicações minhas caíram, e o endereço é a ESCADA
+
+A §23.18 disse que a `sphere_uv` ia a `NaN` com a restrição activa e atribuiu-o à lei da
+Obra A. ⛔ **Estava errado, e mais duas explicações caíram a seguir.** A tabela é o valor:
+
+| a minha explicação | o controlo que a matou |
+|---|---|
+| «é a lei da Obra A — subsistema realimentado» | a **16 rondas** o mapa está **são**. *Uma divergência de ganho > 1 não se cura a correr mais.* |
+| «é o `relax_tie` a dividir por zero» | pus a guarda `!step.is_finite()`; **continuou** |
+| «é o G3 contínuo» | ⭐ **`0` não-finitos no contínuo**, em `2`, `4` e `16` rondas |
+| «é uma divisão pontual» | os valores **explodem** a `6,7e34` antes de virar `NaN` ⇒ é **divergência** |
+
+#### ⭐⭐⭐ O relatório dizia-o, e a régua escondia-o
+
+```text
+passo pior 0,0000   soma NaN
+```
+
+**`max` sobre floats ignora `NaN` em silêncio; `+=` não.** As duas grandezas na mesma
+linha, e só uma a dizer a verdade. ⚠️ *Toda régua desta casa que reporta «o pior» tem esta
+cegueira* — e foi ela que me mandou procurar no sítio errado durante três hipóteses.
+
+⇒ Contadores novos, para não voltar a adivinhar: `WeldSolveReport::nonfinite`
+(coordenadas não-finitas no fim do contínuo **e** após a 1.ª ronda) e
+`RoundReport::nonfinite_pins`. Medido na `sphere_uv`: **`0` no contínuo, `6` pregos de `28`
+chegam com o valor já `NaN`** ⇒ *a explosão nasce DENTRO da escada, entre pregos.*
+
+#### ⭐ Uma cura real, com número
+
+A escada empurrava os **dois** eixos de toda incógnita livre para a fila de pregos —
+incluindo o eixo que uma amarra de arco **conduz**. Duas leis sobre o mesmo escalar.
+`WeldRelaxer::free_axis_is_frozen` tira-o da fila, e o efeito é grande:
+
+| peça | escada | arcos que **não** são isolinha | atravessam p50 |
+|---|---|---|---|
+| `sculpt_eared` | ⭐ `degrau1 33` · `degrau2 0` | `47` → **`28`** | `0,96` → **`0,09`** |
+| `sculpt_hooked` | ⭐ `degrau1 72` · `degrau2 0` | `85` → **`53`** | `0,61` → `0,35` |
+| ⛔ `sphere_uv` | `degrau1 0` · `degrau2 28` | — | ainda `NaN` |
+
+⭐⭐ **A grandeza perseguida cai 10×** na peça do artista (`0,96 → 0,09`).
+
+#### ⛔⛔ E o preço, dito por inteiro
+
+A topologia **parte-se**: `χ = −2` na `eared` e `χ = −7` na `hooked` (devia ser `+2`), com
+órfãs e disputadas de volta. ⇒ *a restrição leva o mapa para fora do que a extracção
+aguenta.*
+
+⚠️ **Não é surpresa, e a §23.18 já o tinha escrito:** o **A3** — os ciclos de arco como
+condição sobre as translações — é **pré-requisito**, e o A2b foi medido sozinho na mesma.
+*A divergência da esfera é o sintoma mais provável dessa condição em falta.*
+
+⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

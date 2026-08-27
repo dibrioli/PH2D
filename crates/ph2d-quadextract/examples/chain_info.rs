@@ -530,6 +530,11 @@ fn main() {
         r.tie_refused_why[1],
         r.tie_refused_why[2]
     );
+    println!(
+        "  ⛔⛔ NAO-FINITOS no mapa continuo: {} no fim · {} logo apos a 1a ronda",
+        r.nonfinite.0, r.nonfinite.1
+    );
+    println!("  ⛔⛔⛔ PREGOS com passo NAO-FINITO: {}", r.nonfinite_pins);
 
     // ⭐⭐⭐ **QUANTOS singulares o CORTE de facto duplica.** O caminho soldado deriva os
     // vértices singulares dos FECHOS do grafo de cópias — e um vértice que o corte não
@@ -706,6 +711,65 @@ fn main() {
     // custaria a wave inteira.*
     {
         let (w, _) = ph2d_gridmap::weld(&cut, &combed);
+        // ⭐⭐⭐ **A PREMISSA DO A3, medida no mapa QUE A OBRA VAI USAR.**
+        //
+        // O A3 quer que as equações de arco que FECHAM CICLO possuam um escalar de
+        // **translação** — é isso que as torna «uma condição sobre as translações» em vez
+        // de uma condição solta. ⚠️ Uma equação sem termo de translação nenhum **não tem
+        // pivô** dessa família, e o desenho do A3 falha nela.
+        //
+        // ⛔⛔ **E ela mede-se AQUI, sobre o mapa vivo desta corrida** — com
+        // `PH2D_GRIDMAP_ARCLINE=1` esse mapa é o **restringido**. *O portão da §23.16 leu
+        // a premissa no mapa LIVRE e disse `0` conflitos; com a restrição activa a esfera
+        // dá `2`. Um portão que valida a premissa num ponto não a valida no ponto onde a
+        // obra a vai usar.*
+        {
+            let eqs = ph2d_gridmap::arc_equations(&cut, &w, &map);
+            let mut sem_shift = 0usize;
+            let mut shifts: Vec<usize> = Vec::new();
+            for e in &eqs {
+                let n = e
+                    .terms
+                    .iter()
+                    .filter(|t| matches!(t.0, ph2d_gridmap::Var::Shift(_)))
+                    .count();
+                if n == 0 {
+                    sem_shift += 1;
+                }
+                shifts.push(n);
+            }
+            // ⭐⭐⭐ **O CRUZAMENTO que decide o desenho:** as equações que FECHAM CICLO
+            // têm termo de translação? Só essas precisam de um pivô dessa família — as
+            // que eliminam já possuem o escalar de uma classe. ⚠️ *Contar as duas
+            // populações em separado não responde à pergunta; emparelhá-las responde.*
+            {
+                let ties = ph2d_gridmap::build_arc_ties(&cut, &w, &map);
+                let (mut com, mut sem) = (0usize, 0usize);
+                for &k in ties.cycle_equations() {
+                    let n = eqs.get(k).map_or(0, |e: &ph2d_gridmap::ArcEquation| {
+                        e.terms
+                            .iter()
+                            .filter(|t| matches!(t.0, ph2d_gridmap::Var::Shift(_)))
+                            .count()
+                    });
+                    if n > 0 { com += 1 } else { sem += 1 }
+                }
+                println!(
+                    "  ⭐⭐⭐ CICLO x TRANSLACAO: das {} equacoes que FECHAM CICLO, ⭐ {} tem pivo de translacao · ⛔ {} NAO TEM (o A3 falha nessas)",
+                    ties.cycle_equations().len(),
+                    com,
+                    sem
+                );
+            }
+            shifts.sort_unstable();
+            println!(
+                "  ⭐⭐⭐ PREMISSA DO A3 (neste mapa): {} equacoes | termos de TRANSLACAO por equacao: p50 {} max {} | ⛔ {} SEM translacao nenhuma (sem pivo dessa familia)",
+                eqs.len(),
+                shifts.get(shifts.len() / 2).copied().unwrap_or(0),
+                shifts.last().copied().unwrap_or(0),
+                sem_shift
+            );
+        }
         let al = ph2d_gridmap::measure_arc_lines(&cut, &w, &map);
         println!(
             "  ⭐⭐⭐ PORTAO DOS ARCOS: {} equacoes sobre {} escalares ⇒ ⭐ {} ELIMINAM · {} fecham ciclo \

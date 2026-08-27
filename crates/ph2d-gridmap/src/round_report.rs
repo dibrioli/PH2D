@@ -115,6 +115,11 @@ pub struct RoundReport {
     pub tie_refused: usize,
     /// ⭐ A razão: `[dependente, livre do sistema, pregada]`.
     pub tie_refused_why: [usize; 3],
+    /// ⛔ Coordenadas não-finitas no fim do contínuo, e logo após a 1.ª ronda.
+    pub nonfinite: (usize, usize),
+    /// ⛔⛔⛔ Pregos da escada cujo passo saiu **não-finito** — o valor já estava
+    /// `NaN` quando o prego chegou.
+    pub nonfinite_pins: usize,
     /// ⭐ O resíduo da costura separado por espécie — **só o caminho soldado**.
     ///
     /// ⚠️ Ele responde ao que [`Self::seam_after`] não distingue: aquele mistura as

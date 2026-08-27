@@ -4,6 +4,14 @@
 //! ser o caminho, pelo re-export, e o estado (`Smoke`, `Grip`, `Drag`) fica onde estava. O corte é
 //! por **assunto** — o irmão guarda o estado e responde perguntas sobre ele; este pinta.
 
+/// ⚠️ **A cache de fitas entre quadros está ligada?** `PH2D_FIELD_TAPE_CACHE=0` desliga-a — a porta
+/// de bissecção da W82. *Um interruptor de bissecção é a diferença entre «piorou» e «piorou por
+/// causa disto».*
+pub(crate) fn tape_cache_enabled() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var("PH2D_FIELD_TAPE_CACHE").as_deref() != Ok("0"))
+}
+
 use super::*;
 
 /// ⭐ **O diagnóstico do laço do preview** (W24): imprime cada traçado com o tamanho que ele teve.
@@ -161,6 +169,10 @@ pub(crate) fn draw(
             // ⭐⭐⭐ **As fitas já compiladas atravessam a fronteira da thread** (W82) — ver
             // [`ph2d_field_render::TapeCache`]. É um `Arc`: o que viaja é o ponteiro.
             let tapes = std::sync::Arc::clone(&smoke.tapes);
+            // ⚠️ **A porta de bissecção** — `PH2D_FIELD_TAPE_CACHE=0` traça sem cache nenhuma, que é
+            // o que o app fazia até à W82. Ela existe porque um report de *«piorou muito»* não diz
+            // **qual** mudança o causou, e duas corridas dizem.
+            let usa_cache = tape_cache_enabled();
             std::thread::spawn(move || {
                 let t0 = std::time::Instant::now();
                 // Abandonado a meio: não se manda nada, e quem esperava já mudou de pedido.
@@ -172,7 +184,7 @@ pub(crate) fn draw(
                     th,
                     &flag,
                     antialias,
-                    Some(&tapes),
+                    usa_cache.then_some(&*tapes),
                 ) else {
                     return;
                 };

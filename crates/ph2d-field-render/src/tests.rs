@@ -3805,6 +3805,87 @@ fn a_cached_tape_is_never_served_to_another_document() {
     );
 }
 
+/// ⛔⛔⛔ **A CACHE FICA MAIS LENTA À MEDIDA QUE ENCHE?** (W84) — o report *«piorou muito»*.
+///
+/// A consulta da [`crate::TapeCache`] é uma **varredura LINEAR** sobre tudo o que ela guarda, e o
+/// número de consultas de um quadro é uma por ladrilho por fatia. ⇒ o custo dela é
+/// `consultas × entradas`, e as **duas** crescem: as consultas com o tamanho da imagem, as entradas
+/// com cada quadro que passa.
+///
+/// ⚠️ **A bancada não podia ver isto**: ela mede 12 quadros e a cache pára nas `~1 200` entradas. Uma
+/// sessão a sério enche-a até ao tecto (`CAPACITY`), e o artista vê a coisa **piorar com o tempo**.
+///
+/// A sonda mede o quadro **em função do que a cache já guarda**.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_the_cache_gets_slower_as_it_fills --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_the_cache_gets_slower_as_it_fills() {
+    let reg = Registry::new();
+    let doc = cache_piece(168);
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    // ⚠️ **Dois tamanhos**: o do preview (poucas consultas) e um cheio (muitas). O custo da
+    // varredura é `consultas × entradas`, então ele tem de aparecer **muito mais** no segundo.
+    for (w, h) in [(640u32, 360u32), (1600, 900)] {
+        let cache = crate::TapeCache::new();
+        println!("--- {w}x{h} ---");
+        println!("quadros já dados | entradas na cache | ms do quadro");
+        let mut passo = 0usize;
+        for bloco in 0..8 {
+            // Enche mais um bocado…
+            for _ in 0..12 {
+                let cam = Orbit {
+                    rotation: Orbit::from_yaw_pitch(
+                        0.72 + (passo as f32) * 2.0f32.to_radians(),
+                        0.52,
+                    )
+                    .rotation,
+                    ..Orbit::default()
+                };
+                passo += 1;
+                let _ = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, false, Some(&cache));
+            }
+            // …e mede um quadro no MESMO sítio, cinco vezes.
+            let cam = Orbit {
+                rotation: Orbit::from_yaw_pitch(0.72 + (passo as f32) * 2.0f32.to_radians(), 0.52)
+                    .rotation,
+                ..Orbit::default()
+            };
+            let _ = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, false, Some(&cache));
+            let ms = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ =
+                        crate::trace_cached_for_test(&doc, &reg, &cam, w, h, false, Some(&cache));
+                    t0.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect());
+            println!("{:16} | {:17} | {ms:12.2}", (bloco + 1) * 12, cache.len());
+        }
+        // E o controlo: o MESMO quadro sem cache nenhuma.
+        let cam = Orbit {
+            rotation: Orbit::from_yaw_pitch(0.72 + (passo as f32) * 2.0f32.to_radians(), 0.52)
+                .rotation,
+            ..Orbit::default()
+        };
+        let _ = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, false, None);
+        let sem = med((0..5)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let _ = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, false, None);
+                t0.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect());
+        println!("{:16} | {:17} | {sem:12.2}   <- SEM CACHE", "—", "—");
+    }
+}
+
 /// ⭐⭐⭐ **O ASSENTAR DE UMA PEÇA NA RESOLUÇÃO NORMAL** (W83) — e ele é outro problema.
 ///
 /// ⚠️ **A `measure_the_stop_and_go_cycle_the_app_really_does` mediu a peça de resolução ALTA**, onde

@@ -163,6 +163,14 @@ const _: () = {
     is_send_sync::<RegionTape>();
 };
 
+/// ⚠️ **A fita é partilhada?** `PH2D_FIELD_SHARE_TAPE=0` volta ao [`Hybrid::fork`] que recompila.
+///
+/// *Um interruptor de bissecção é a diferença entre «piorou» e «piorou por causa disto».*
+fn share_tape() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var("PH2D_FIELD_SHARE_TAPE").as_deref() != Ok("0"))
+}
+
 impl RegionTape {
     /// **Compila** — é aqui, e só aqui, que o JIT corre para uma região.
     #[must_use]
@@ -291,6 +299,12 @@ impl Hybrid {
     /// premissa. *Quem move o número que sustenta uma nota tem de reconferir a nota.*
     #[must_use]
     pub fn fork(&self) -> Self {
+        // ⚠️ **A porta de bissecção** — `PH2D_FIELD_SHARE_TAPE=0` volta a recompilar, que é o que a
+        // W82 fazia. Ela existe porque um report de *«piorou muito»* não diz **qual** mudança o
+        // causou, e duas corridas dizem.
+        if !share_tape() {
+            return Self::from_parts(self.plan.clone(), self.trees.clone(), self.sampled.clone());
+        }
         let n = self.tapes.len() + self.sampled.len();
         Self {
             plan: self.plan.clone(),

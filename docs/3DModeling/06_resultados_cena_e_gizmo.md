@@ -5744,8 +5744,11 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⛔ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **tecto MEDIDO de `20 %`** — a montagem deixou de ser a maioria | §72.1 |
-| ⏳ **A MARCHA** — os outros `80 %` do quadro; `8,7` amostras/pixel, custo **por aresta tocada** | ⛔ sobre-relaxação está fora (a contagem de passos já é mínima) | §73 |
+| ⏳ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | ⭐ **reavaliado PARA CIMA**: o tecto de `20 %` não contava que ele desbloqueia o ladrilho pequeno (e com ele o piso de `1,52×`) | §72.1, §82.5 |
+| ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
+| ⏳ **O PISO de `1,52×`** que o ladrilho de `64` põe debaixo do quadro — `~34 %` do relógio é ócio estrutural | ⚠️ contradiz a varredura de relógio da §72; **só uma máquina calma decide** | §82.5 |
+| ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
+| ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
 | ⏸️ O 2.º degrau do assentar custa `504 ms` numa peça densa | a escada tirou-o do caminho; o número fica | §74.2 |
 | ⛔ Reaproveitar o avaliador na **2.ª passagem** (anti-serrilhado) | construído 2×, medido `0,97×`–`1,01×`, **revertido** | §71.4 |
@@ -5760,6 +5763,15 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W81 (§82): a marcha ganhou um contador — e a NORMAL era um quinto do quadro.** `21,1 %` de
+  todas as amostras de campo são a diferença central (seis por acerto), e ela não estava em conta
+  nenhuma — o doc dizia que elas *«saem noutro sítio»* e o sítio não existia. ⛔ **O estêncil de
+  quatro foi medido e RECUSADO** (grátis em tudo menos numa quina de navalha, onde move a normal
+  `14°`–`35°`). ⭐⭐ **Ladrilhar e fatiar não custam UMA amostra** — `2 121 060` em todos os
+  tamanhos, ao dígito, e eu tinha escrito o contrário. ⭐⭐⭐ E o **ladrilho mais caro** vale `1,52×`
+  a fatia perfeita de todo o quadro: um piso que nenhum escalonador cura, e que a varredura de
+  relógio da §72 contradiz — a reconciliação precisa da máquina calma. ⚠️ **Três hipóteses minhas
+  caíram antes de custarem código.**
 - ⭐⭐ **W80 (§81): a caça às listas que se dizem exaustivas — a segunda estava na lei mais cara do
   módulo.** O gate que a W53 escreveu para impedir *«uma família de features completa e invisível»*
   percorria uma **lista literal**: uma primitiva nova ficava sem botão e ele ficava **verde**. ⭐ A
@@ -6949,3 +6961,197 @@ As outras promessas de *«erro de compilação»* do módulo foram conferidas e 
 `field3d_view::View::of` (destructuring sem `..`), a do `field3d_export_job` (`Send + 'static`), e a
 do `UnaryKind::ALL` (array de tamanho fixo). ⚠️ E o `ExportLevel`/`MeshFormat` já derivam os
 seletores do `ALL` deles.
+
+## §82 — W81: a marcha ganha um contador — e a normal era um quinto do quadro (27/08)
+
+**Pedido do Enio:** o item 1 da lista — a base da pré-visualização (o quadro de movimento em
+`26,7 ms` contra um orçamento de `16,7`).
+
+⚠️ **A máquina esteve a `load 12`–`25` a jornada inteira** (outra linha a correr), e a lei do
+`CLAUDE.md §5.0` diz que nenhuma leitura de relógio vale nada acima de `~5`. ⇒ **esta wave inteira é
+de CONTAGEM**, que é load-independente. As tabelas de ms ficam para uma máquina calma, e a §82.7 diz
+exactamente qual medição falta.
+
+### §82.1 — ⛔ Três hipóteses minhas, refutadas antes de custarem código
+
+| hipótese | como caiu |
+|---|---|
+| *«o `8,7` amostras/pixel da §73 divide por um quadro que é sobretudo fundo»* | ⛔ **falsa** — `209 299` dos `230 400` raios (**91 %**) entram na caixa e marcham. O denominador da §73 estava certo |
+| *«o caminho de recuo (`fork` da árvore inteira, `2,89 ms`) dispara e ninguém o vê»* | ⛔ **falsa** — contador novo, **`0` recuos** num quadro |
+| *«o `TILE` e o [`SLABS`] foram escolhidos num traçado serial»* | ⛔ **falsa** — as duas varreduras chamam `trace_tiled_for_test`, que é **paralelo**. ⚠️ O que sobra de verdade é que as duas mediram **com anti-serrilhado**, e a W72 tirou-o do quadro de movimento |
+
+*Três refutações a custo de leitura são mais baratas que uma wave construída sobre a primeira.*
+
+### §82.2 — ⭐⭐⭐ O instrumento: sete contadores, e o quadro passou a ser legível
+
+Até aqui o quadro tinha **duas** contagens (`SPECIALISED`, `STEP_SAMPLES`) e um cronómetro
+(`SPECIALISE_NS`). A W81 acrescenta o resto:
+
+| contador | o que responde |
+|---|---|
+| `MARCH_RAYS` | quantos raios de facto marcham (o denominador que faltava) |
+| `NORMAL_SAMPLES` | as amostras da **normal** — a parcela que faltava ao numerador |
+| `STEP_HIST` | a **curva de sobrevivência** da marcha (uma média não escolhe entre curas opostas) |
+| `FORKED` | os recuos para a árvore não especializada |
+| `TILE_MAX` | o **ladrilho mais caro** — o chão que o relógio não fura |
+| `SLAB_SAMPLES` · `SLAB_SPEC` | amostras e fitas **por fatia de profundidade** |
+
+Todos custam **um atómico por passo por ladrilho** ou menos — nada por amostra.
+
+### §82.3 — ⭐⭐⭐ O quadro de movimento, contado (`640×360`, 168 arestas, sem anti-serrilhado)
+
+```
+pixels 230 400 · raios que marcham 209 299 · acertos 74 417
+marcha  1 674 558 amostras   (8,0 por raio)
+normal    446 502 amostras   (6 por acerto)  ⇒  21,1 % de TODAS as amostras do quadro
+```
+
+⭐⭐⭐ **A normal é um quinto do trabalho de campo do quadro, e não estava em conta nenhuma.** O doc
+da `STEP_SAMPLES` dizia que as amostras da normal *«saem noutro sítio»* — e o sítio **não existia**.
+⇒ o `147,5 ns/amostra` que a §73 publicou dividia por um numerador a que falta `21 %`.
+
+**A curva de sobrevivência** (amostras dadas ao `k`-ésimo passo):
+
+| passos | 0–3 | 4–7 | 8–15 | 16–31 | 32–63 |
+|---|---:|---:|---:|---:|---:|
+| fracção das amostras | `63,4 %` | `20,2 %` | `11,3 %` | `3,3 %` | `1,8 %` |
+
+**Por fatia de profundidade:**
+
+| fatia | `0` (de fora) | 1 | 2 | 3 | 4 | `5` (de fora) |
+|---|---:|---:|---:|---:|---:|---:|
+| fitas montadas | **12** | 59 | 59 | 52 | 51 | **9** |
+| amostras | **2 651** | 170 024 | 740 815 | 627 331 | 133 410 | **327** |
+| amostras por fita | **220** | 2 881 | 12 556 | 12 064 | 2 615 | **36** |
+
+⚠️ **As duas fatias de FORA custam `8,7 %` de toda a montagem para fazer `0,18 %` da marcha.** O doc
+delas diz que *«custam zero quando ninguém lá chega»* — verdade, e incompleta: quando **um** raio lá
+chega, elas compilam uma fita de JIT inteira, igual à de uma fatia cheia. *Uma fatia preguiçosa é
+barata em média e não é barata em nenhuma unidade.* ⛔ **Não curado**, e o motivo é medido: as três
+saídas (recuar para o `fork`, fundir com a vizinha, encurtar a faixa) custam entre `1,7 %` do quadro
+e uma premissa sobre onde os raios entram — que é exactamente a premissa que a W56e removeu.
+
+### §82.4 — ⭐⭐⭐ Ladrilhar e fatiar não custam UMA amostra — e eu tinha escrito o contrário
+
+A primeira leitura da curva dizia: *«`35 %` das amostras são o passo `0` de uma fatia ⇒ fatiar cobra
+`380 k` primeiros-passos»*. ⛔ **Falso, e a sonda apanhou-o**: o total de amostras é **`2 121 060`
+em todos os tamanhos de ladrilho medidos** — `16`, `32`, `48`, `64`, `96`, `128` —, ao dígito.
+
+⭐ O mecanismo é o que o doc da marcha já dizia sem tirar esta consequência: um raio carregado para a
+fatia seguinte **não é reavaliado na fronteira**, ele retoma no `t` onde estava. ⇒ o número de
+avaliações ao longo de um raio é o número de passos até convergir, e a fronteira de fatia não
+acrescenta nenhum.
+
+⭐⭐ **Isso simplifica o compromisso do [`SLABS`] até ao osso:** as amostras são constantes, logo o
+único eixo é **quantas arestas cada amostra toca** (`128,6` a `N=1`, `67,2` a `N=4`) contra **quantas
+fitas se montam** (`~60` contra `242`). *Uma constante cujo compromisso tem dois termos e não três é
+uma constante que se pode raciocinar em vez de varrer.*
+
+A lei tem gate — `the_tiling_changes_what_a_sample_costs_and_never_how_many_there_are`, em
+[`tests/march_budget.rs`](../../crates/ph2d-field-render/tests/march_budget.rs). ⚠️ Ela é **mais
+forte que a paridade de imagem**: a paridade diz que o raio chega ao mesmo sítio, esta diz que ele
+percorre o **mesmo caminho**.
+
+### §82.5 — ⭐⭐⭐ O PISO que o tamanho do ladrilho põe debaixo do quadro
+
+Um ladrilho é **indivisível**: ele compila a própria fita e marcha os próprios raios, e nenhuma
+thread o parte ao meio. ⇒ `relógio ≥ max(trabalho_total / threads, ladrilho_mais_caro)`.
+
+`measure_the_floor_that_the_tile_size_puts_under_the_frame` (`640×360`, 168 arestas, 32 threads,
+ideal por thread `66 283` amostras):
+
+| lado | ladrilhos | fitas | mais caro | **PISO** |
+|---:|---:|---:|---:|---:|
+| 16 | 920 | 2 933 | 11 518 | **`1,00×`** |
+| 32 | 240 | 849 | 34 710 | **`1,00×`** |
+| 48 | 112 | 406 | 57 522 | **`1,00×`** |
+| **64 (o que ship)** | **60** | **242** | **100 462** | **`1,52×`** |
+| 96 | 28 | 118 | 199 012 | `3,00×` |
+| 128 | 15 | 68 | 302 278 | `4,56×` |
+
+⭐⭐⭐ **O tamanho que ship está uma casa depois do joelho:** o ladrilho mais caro sozinho vale
+`1,52×` a fatia perfeitamente equilibrada de **todo** o trabalho do quadro. ⇒ com este ladrilho,
+`~34 %` do relógio é ócio estrutural, e **nenhum escalonador o cura** — só partir o ladrilho.
+
+⚠️ **E há uma CONTRADIÇÃO nomeada, que só uma máquina calma resolve.** A varredura de relógio da §72
+diz que `48` é **mais lento** que `64` (`37,8` contra `33,8 ms`) — com anti-serrilhado, antes da W72.
+Ou o desequilíbrio em **tempo** é menor que o desequilíbrio em **amostras** (dois ladrilhos com as
+mesmas amostras custam diferente, porque a região de cada um guarda um número diferente de arestas),
+ou as `164` fitas a mais de `48` pagam mais do que o piso rende. ⛔ **Não decido isto com a máquina a
+`load 25`**, e nenhuma das duas leituras é uma medição.
+
+⭐⭐ **O que já se pode dizer, e muda uma prioridade:** a §72.1 pôs um *«tecto MEDIDO de `20 %`»* em
+reaproveitar a fita entre quadros, com a conta *«a montagem é `20 %` do quadro»*. ⚠️ **Essa conta
+está incompleta**: tirar a montagem não vale só os `20 %` dela — vale também **desbloquear um
+ladrilho mais pequeno**, cujo preço hoje é precisamente a montagem, e com ele o piso de `1,52×`. *Os
+dois itens compõem, e o tecto de cada um foi calculado como se o outro não existisse.*
+
+### §82.6 — ⛔ RECUSA MEDIDA: o estêncil de QUATRO amostras para a normal
+
+A normal é `21 %` das amostras e custa **seis** avaliações por acerto (diferença central nos três
+eixos). O estêncil do **tetraedro** custa **quatro** — `1,5×` menos, `7 %` de todas as amostras do
+quadro. `measure_what_the_four_sample_normal_changes` mediu o ângulo entre as duas normais, pixel a
+pixel, em sete peças:
+
+| peça | LISO máx | SILHUETA (n · máx) | VINCO (n · máx) |
+|---|---:|---:|---:|
+| **caixa afiada** (`round = 0`) | `0,028°` | `923` · **`18,05°`** | `1041` · **`21,92°`** |
+| **cilindro afiado** (`round = 0`) | `0,048°` | `777` · **`27,22°`** | `533` · **`35,08°`** |
+| **extrusão quadrada** (quinas do contorno) | `0,458°` | `954` · **`13,75°`** | `260` · **`16,55°`** |
+| caixa com filete | `0,056°` | `862` · `0,048°` | `0` |
+| esfera | `0,048°` | `792` · `0,044°` | `0` |
+| toro | `0,048°` | `1088` · `0,044°` | `0` |
+| extrusão 168 | `0,746°` | `867` · `0,480°` | `0` |
+
+⭐ **A fronteira é exacta, e tem DUAS fontes independentes:** onde a peça tem uma quina de navalha —
+de `round = 0` **ou** de um canto do contorno desenhado — o estêncil de quatro move a normal
+`14°`–`35°`; em tudo o resto ele muda `≤ 0,75°`, que é invisível.
+
+⛔ **RECUSADO.** O mecanismo: numa quina a normal verdadeira **não existe**, e o que a imagem precisa
+ali é da **bissectriz** — a média das duas faces, que é o que faz a aresta ler-se como uma linha e
+não como um degrau. A diferença central devolve-a por **simetria** (cada eixo é sondado nos dois
+sentidos, e sobre a aresta os dois sentidos pertencem a faces opostas); os quatro sentidos do
+tetraedro caem desigualmente nas duas faces e a normal inclina-se para a que apanhou mais.
+*A quina afiada é a razão de existir deste módulo* (§1 do `lib.rs` do traçador).
+
+⛔ **E a cura condicional não se paga:** ligar o estêncil barato só em peças sem quina exigiria um
+predicado sobre o documento que soubesse das **duas** fontes — incluindo os cantos de um contorno
+autorado, que é geometria de outro módulo. O prémio é `7 %` das amostras `≈ 1,5 ms` de `26,7`, e o
+preço é uma heurística no caminho da feature de capa. *Não se põe um palpite a decidir a coisa que o
+módulo existe para acertar.*
+
+⭐ **O que FICA é a lei unificada:** `Stencil` é uma **tabela de deslocamentos**, e o gradiente é
+`Σ dᵢ · f(p + ε·dᵢ)` — a diferença central colapsa nela exactamente (`[g₀−g₁, g₂−g₃, g₄−g₅]`), com o
+caminho que ship **byte-idêntico**. *Um terceiro estêncil passa a ser uma linha de tabela, e a recusa
+fica executável ao lado dela.*
+
+### §82.7 — Gates, mutações, e o que fica aberto
+
+| gate | mutação que **só ele** mata |
+|---|---|
+| `the_shipping_stencil_reads_a_crease_as_the_bisector_of_its_two_faces` | `NORMAL_STENCIL = Tetra4` · o par `−x` da tabela vira `+x` |
+| `on_a_smooth_face_the_two_stencils_agree` | o tetraedro deixa de ser um tetraedro |
+| `the_stencil_never_moves_the_silhouette` | uma guarda de magnitude calibrada num estêncil só |
+| `the_tiling_changes_what_a_sample_costs_and_never_how_many_there_are` | o contador da normal conta **normais** em vez de **amostras** |
+
+⭐ **E um gate antigo apertou:** o teto do `tape_budget` era `regiões + LADRILHOS + 1`, e a folga
+media **`60`** — *uma folga num teto é o tamanho do ponto cego que ele tem*. Com o `FORKED` a contar
+os recuos, o teto passa a `regiões + recuos + 1`, e os recuos são **`0`**. ⚠️ Aquele gate media
+também com `SLABS = 2` desde a W70, enquanto o produto ship `4` desde a W71 — passou a ler
+`slabs_for_test()`. *Um gate que escolhe a configuração mede a configuração que escolheu.*
+
+⚠️ **Uma mutação SOBREVIVEU e não é um ponto cego** — foi conferido: erodir a conservadorismo do
+corte por casco (`dmax × 0,9`) passa a suíte inteira, **e é inerte** — imagem, amostras (`1 674 558`)
+e fitas por fatia saem byte-idênticas. A `0,5` já morde (mata um gate). ⇒ a margem do corte é
+**folgada**, não vigiada de perto; e *uma mutação que não muda o produto não prova nada sobre os
+gates* (o controlo é obrigatório).
+
+**Aberto, na ordem:**
+
+1. ⏳ **A contradição da §82.5** — a varredura de `TILE` × `SLABS` re-corrida no quadro que **hoje**
+   ship (sem anti-serrilhado), **paralela**, e a **curva de escalamento por número de threads**, que
+   é a medição que fecha o piso de `1,52×`. Precisa da máquina a `load < 5`.
+2. ⏳ **Reaproveitar a fita entre quadros** — reavaliado para cima pela §82.5: o tecto de `20 %` foi
+   calculado sem contar que ele **desbloqueia** o ladrilho pequeno.
+3. ⏸️ As duas fatias de fora (`8,7 %` da montagem por `0,18 %` da marcha) — as três saídas medidas e
+   nenhuma se paga.

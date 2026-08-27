@@ -96,7 +96,7 @@ pub(crate) fn tiled_trace(
     let tiles: Vec<(usize, usize)> = (0..h.div_ceil(tile))
         .flat_map(|ty| (0..w.div_ceil(tile)).map(move |tx| (tx, ty)))
         .collect();
-    let one = |&(tx, ty): &(usize, usize)| -> TileResult {
+    let body = |&(tx, ty): &(usize, usize)| -> TileResult {
         let (x0, y0) = (tx * tile, ty * tile);
         let (x1, y1) = ((x0 + tile).min(w), (y0 + tile).min(h));
         let mut idx = Vec::with_capacity((x1 - x0) * (y1 - y0));
@@ -122,6 +122,7 @@ pub(crate) fn tiled_trace(
             sharp: scene.sharp,
             clip: Some(bbox),
             step: scene.step,
+            stencil: scene.stencil,
         };
         // ⭐⭐⭐ **AS FRONTEIRAS DAS FATIAS** (W56e) — e as duas de FORA são o que torna isto
         // correcto sem uma premissa.
@@ -158,6 +159,8 @@ pub(crate) fn tiled_trace(
                 k,
             )?;
             SPECIALISED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            SLAB_SPEC[k.min(crate::SLABS_COUNTED - 1)]
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let t0 = std::time::Instant::now();
             let tape =
                 ph2d_field_eval::hybrid::Hybrid::from_tree(rc.compile_at(doc, r.lo, r.hi, &r.pts));
@@ -168,6 +171,18 @@ pub(crate) fn tiled_trace(
             Some(tape)
         });
         (idx, hit, normal)
+    };
+    // ⭐ **O ladrilho mais caro** — ver [`TILE_MAX`]. Dois carregamentos e um `fetch_max` por
+    // ladrilho, contra os milhares de amostras que ele acabou de dar.
+    let one = |t: &(usize, usize)| -> TileResult {
+        let spent = || {
+            crate::STEP_SAMPLES.load(std::sync::atomic::Ordering::Relaxed)
+                + crate::NORMAL_SAMPLES.load(std::sync::atomic::Ordering::Relaxed)
+        };
+        let before = spent();
+        let r = body(t);
+        TILE_MAX.fetch_max(spent() - before, std::sync::atomic::Ordering::Relaxed);
+        r
     };
     let done: Vec<TileResult> = if parallel {
         tiles.par_iter().map(one).collect()
@@ -406,3 +421,36 @@ pub static SPECIALISE_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::Atom
 /// ⚠️ Um incremento atómico por especialização é ruído ao lado dos milissegundos que ela custa.
 #[doc(hidden)]
 pub static SPECIALISED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// ⭐⭐⭐ **As amostras do LADRILHO MAIS CARO do quadro** (W81) — e ele é o chão do relógio.
+///
+/// ⚠️ **Um ladrilho é a unidade indivisível de trabalho**: ele monta a própria fita e marcha os
+/// próprios raios, e nenhuma thread o pode partir. ⇒ por mais threads que existam, o quadro **não
+/// pode acabar antes** deste ladrilho. Com `T` threads o limite inferior do relógio é
+///
+/// ```text
+/// makespan >= max(total / T, mais_caro)
+/// ```
+///
+/// e a fronteira de cima de um roubo de trabalho é `total / T + mais_caro`.
+///
+/// ⭐⭐ **É a grandeza que uma varredura SERIAL não pode ver**, e as três constantes deste módulo
+/// (`TILE`, [`SLABS`] e a decisão de especializar) foram todas escolhidas em varreduras seriais: ali
+/// só o **trabalho total** conta, e desequilíbrio nenhum existe. *Uma constante escolhida num modelo
+/// de máquina que o produto não corre é um palpite com tabela ao lado.*
+///
+/// ⚠️ **Lê-se num traçado SERIAL**, como a [`SPECIALISE_NS`]: a diferença dos contadores globais em
+/// torno de um ladrilho só é a conta dele quando ninguém mais escreve entretanto. As contagens não
+/// dependem do escalonamento, então o número medido em série **é** o do quadro paralelo.
+#[doc(hidden)]
+pub static TILE_MAX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// ⭐⭐⭐ **Quantas árvores cada FATIA DE PROFUNDIDADE especializou** (W81) — ver
+/// [`crate::SLAB_SAMPLES`], que é o outro lado da mesma pergunta.
+///
+/// ⚠️ **A montagem é `20 %` do quadro e paga-se por FATIA CONSTRUÍDA**, não por amostra. Uma fatia
+/// que compila uma fita para servir vinte raios custa o mesmo que uma que serve vinte mil — e o
+/// [`SPECIALISED`] soma-as todas num número só, que não distingue as duas.
+#[doc(hidden)]
+pub static SLAB_SPEC: [std::sync::atomic::AtomicU64; crate::SLABS_COUNTED] =
+    [const { std::sync::atomic::AtomicU64::new(0) }; crate::SLABS_COUNTED];

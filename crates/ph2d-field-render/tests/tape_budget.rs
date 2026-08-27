@@ -25,7 +25,7 @@
 
 use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
 use ph2d_field_eval::hybrid::{FLOAT_TAPES, GRAD_TAPES, Registry};
-use ph2d_field_render::{Orbit, SPECIALISED, trace_tiled_for_test};
+use ph2d_field_render::{FORKED, Orbit, SPECIALISED, slabs_for_test, trace_tiled_for_test};
 use std::sync::atomic::Ordering;
 
 /// Uma peça de PERFIL — é a família em que a montagem domina, e a única em que há o que
@@ -60,13 +60,15 @@ fn a_frame_pays_one_tape_per_region_and_no_gradient_tape_at_all() {
     let cam = Orbit::default();
 
     SPECIALISED.store(0, Ordering::Relaxed);
+    FORKED.store(0, Ordering::Relaxed);
     FLOAT_TAPES.store(0, Ordering::Relaxed);
     GRAD_TAPES.store(0, Ordering::Relaxed);
     // ⚠️ **Sem anti-serrilhado de propósito.** A segunda passagem monta uma fita por lote de pixels
     // de borda — trabalho legítimo, de outra lei (ela marcha a árvore partilhada), e cuja contagem
     // depende de quantos pixels a silhueta tocou. Deixá-la de fora é o que torna o teto abaixo uma
     // afirmação sobre a MARCHA e não sobre a forma da peça.
-    let g = trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, 2, false).expect("traçado");
+    let g = trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs_for_test(), false, true)
+        .expect("traçado");
     let specialised = SPECIALISED.load(Ordering::Relaxed);
     let float_tapes = FLOAT_TAPES.load(Ordering::Relaxed);
 
@@ -79,15 +81,21 @@ fn a_frame_pays_one_tape_per_region_and_no_gradient_tape_at_all() {
          o teto abaixo não estaria a medir a marcha"
     );
 
-    // ⭐ **Uma fita por região, mais a base, mais no máximo uma por ladrilho.** A rota não
-    // especializada (nenhum raio de canto alcança a peça) marcha a árvore partilhada e forka — é
-    // legítimo, e há no máximo um desses por ladrilho.
-    let tiles = (w as usize).div_ceil(tile) * (h as usize).div_ceil(tile);
-    let ceiling = specialised + tiles + 1;
+    // ⭐⭐⭐ **Uma fita por região, mais a base, mais UMA POR RECUO CONTADO** (apertado na W81).
+    //
+    // ⛔ **A folga era «mais uma por LADRILHO», e ela media `60`** — *uma folga num teto é o tamanho
+    // do ponto cego que ele tem*, e por trás daquele cabia um defeito de vinte e sete fitas. O
+    // recuo (a rota não especializada, que marcha a árvore partilhada e a forka) passou a ter
+    // **contador** ([`FORKED`]), então o teto deixa de ser uma estimativa e passa a ser a conta.
+    //
+    // ⭐ **E o recuo é ZERO neste quadro** — medido na W81. O teto aperta de `specialised + 60 + 1`
+    // para `specialised + 0 + 1`.
+    let forked = FORKED.load(Ordering::Relaxed);
+    let ceiling = specialised + forked + 1;
     assert!(
         float_tapes <= ceiling,
-        "o quadro compilou {float_tapes} fitas float para {specialised} regiões em {tiles} \
-         ladrilhos (teto {ceiling}) — quem monta a própria fita não a pode forkar, senão paga a \
+        "o quadro compilou {float_tapes} fitas float para {specialised} regiões com {forked} \
+         recuos (teto {ceiling}) — quem monta a própria fita não a pode forkar, senão paga a \
          compilação duas vezes para a MESMA imagem"
     );
 

@@ -52,6 +52,23 @@ const NORMAL_EPS: f32 = 1.0e-4;
 /// gradiente. Abaixo daqui, refinar **piora**.
 const PRECISION_FLOOR: f32 = 1.0e-6;
 
+/// ⭐⭐⭐ **O estêncil com que o produto lê a normal** — ver [`Stencil`], e **um** endereço.
+///
+/// ⚠️ **Ele é uma constante, e não um argumento, porque a resposta é do MÓDULO e não de quem
+/// chama:** as seis portas de traçado (o quadro, a re-amostragem da borda, os dois `pick`, as duas
+/// sondas) leem a mesma superfície, e um estêncil por porta faria a silhueta re-amostrada ler a
+/// forma por outra lei que o interior — o defeito seria uma orla de sombreado à volta da peça, que
+/// é precisamente o que o anti-serrilhado existe para não haver.
+const NORMAL_STENCIL: Stencil = Stencil::Central6;
+
+/// ⭐ **Quantas amostras de campo uma normal custa no produto** — **derivado** do
+/// [`NORMAL_STENCIL`], nunca escrito ao lado dele.
+///
+/// ⚠️ Um `6` escrito à mão aqui seria a segunda resposta à mesma pergunta, e a que envelhece: o
+/// gate que a lê passaria a defender o estêncil de ontem no dia em que a constante mudasse.
+#[doc(hidden)]
+pub const NORMAL_STENCIL_WIDTH: usize = NORMAL_STENCIL.offsets().len();
+
 /// As duas tolerâncias da marcha, **derivadas do tamanho do pixel em mundo**.
 ///
 /// # ⭐ Por que elas não são constantes
@@ -94,11 +111,14 @@ use march::{Scene, march};
 use tiles::{SLABS, TILE, tiled_trace};
 
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
-pub use march::STEP_SAMPLES;
+pub use march::{
+    FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST, STEP_SAMPLES,
+    Stencil,
+};
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::shade;
-pub use tiles::{SPECIALISE_NS, SPECIALISED};
+pub use tiles::{SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_MAX};
 
 /// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.
 ///
@@ -279,6 +299,7 @@ fn trace_inner(
         cancel,
         true,
         ph2d_field_eval::safe_march_step(doc),
+        NORMAL_STENCIL,
     )
 }
 
@@ -295,6 +316,7 @@ pub fn trace_tiled_for_test(
     tile: usize,
     slabs: usize,
     antialias: bool,
+    parallel: bool,
 ) -> Option<Gbuffer> {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let rc = ph2d_field_eval::RegionCompiler::new(doc);
@@ -311,9 +333,10 @@ pub fn trace_tiled_for_test(
         sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
         clip: Some(bbox),
         step: ph2d_field_eval::safe_march_step(doc),
+        stencil: NORMAL_STENCIL,
     };
     Some(tiled_trace(
-        doc, &rc, &scene, plane, bbox, true, antialias, None, tile, slabs,
+        doc, &rc, &scene, plane, bbox, parallel, antialias, None, tile, slabs,
     ))
 }
 
@@ -332,7 +355,60 @@ pub fn trace_stepped_for_test(
     height: u32,
     step: f32,
 ) -> Gbuffer {
-    trace_inner_tiles(doc, reg, cam, width, height, true, true, None, true, step)
+    trace_inner_tiles(
+        doc,
+        reg,
+        cam,
+        width,
+        height,
+        true,
+        true,
+        None,
+        true,
+        step,
+        NORMAL_STENCIL,
+    )
+}
+
+/// ⭐ **Quantas fatias de profundidade o produto reparte** — ver [`tiles::SLABS`].
+///
+/// ⚠️ Ela existe porque um binário de teste não alcança um `pub(crate)` e por isso **escolhia um
+/// número**: o `tape_budget` media com `2` desde a W70, e o produto ship `4` desde a W71. *Um gate
+/// que escolhe a configuração mede a configuração que escolheu.*
+#[doc(hidden)]
+#[must_use]
+pub const fn slabs_for_test() -> usize {
+    SLABS
+}
+
+/// ⭐⭐ **A marcha com o ESTÊNCIL escolhido** — a porta que a sonda da normal dirige.
+///
+/// ⚠️ Pela mesma razão da [`trace_stepped_for_test`]: as duas respostas têm de ser medidas no
+/// **mesmo processo**, e a comparação que interessa é entre as duas IMAGENS — o ângulo entre as
+/// normais, pixel a pixel, que não depende do relógio da máquina.
+#[doc(hidden)]
+#[must_use]
+pub fn trace_stencil_for_test(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    stencil: Stencil,
+) -> Gbuffer {
+    trace_inner_tiles(
+        doc,
+        reg,
+        cam,
+        width,
+        height,
+        true,
+        false,
+        None,
+        true,
+        ph2d_field_eval::safe_march_step(doc),
+        stencil,
+    )
 }
 
 /// ⭐ **A MARCHA DE LINHA, forçada** — a porta que o gate de paridade dirige.
@@ -359,6 +435,7 @@ pub fn trace_by_rows_for_test(
         None,
         false,
         ph2d_field_eval::safe_march_step(doc),
+        NORMAL_STENCIL,
     )
 }
 
@@ -374,6 +451,7 @@ fn trace_inner_tiles(
     cancel: Option<&std::sync::atomic::AtomicBool>,
     tiles_allowed: bool,
     step: f32,
+    stencil: Stencil,
 ) -> Gbuffer {
     let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
     let basis = cam.basis();
@@ -390,6 +468,7 @@ fn trace_inner_tiles(
         sharp,
         clip: None,
         step,
+        stencil,
     };
 
     // ⭐⭐⭐ **A MARCHA POR LADRILHO** (W56) — o consumidor da especialização por região.
@@ -503,6 +582,7 @@ pub fn surface_under(
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
         step: ph2d_field_eval::safe_march_step(doc),
+        stencil: NORMAL_STENCIL,
     };
     let (hit, _, point) = march(&scene, &[screen.plane_at(px[0], px[1])]);
     hit[0].then(|| point[0])
@@ -537,6 +617,7 @@ pub fn surfaces_under(
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
         step: ph2d_field_eval::safe_march_step(doc),
+        stencil: NORMAL_STENCIL,
     };
     let pts: Vec<(f32, f32)> = px.iter().map(|p| screen.plane_at(p[0], p[1])).collect();
     let (hit, _, point) = march(&scene, &pts);

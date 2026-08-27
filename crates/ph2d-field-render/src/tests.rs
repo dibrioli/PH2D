@@ -1300,6 +1300,7 @@ fn the_table_of_what_the_tiled_march_buys() {
                         t,
                         crate::tiles::SLABS,
                         true,
+                        true,
                     )
                     .expect("ladrilho")
                     .hit
@@ -2040,13 +2041,14 @@ fn the_table_of_how_many_depth_slabs() {
             let ms = med((0..5)
                 .map(|_| {
                     let t0 = std::time::Instant::now();
-                    let g = crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true)
-                        .expect("ladrilho");
+                    let g =
+                        crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true, true)
+                            .expect("ladrilho");
                     assert!(g.hit.iter().any(|h| *h));
                     t0.elapsed().as_secs_f64() * 1e3
                 })
                 .collect());
-            let g = crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true)
+            let g = crate::trace_tiled_for_test(&doc, &reg, &cam, 640, 480, 64, n, true, true)
                 .expect("ladrilho");
             let diff = (0..g.hit.len())
                 .filter(|k| g.hit[*k] != base.hit[*k])
@@ -3057,13 +3059,15 @@ fn measure_the_tile_that_fits_a_small_image() {
         let (w, h) = (1920 / d, 1080 / d);
         for tile in [16usize, 24, 32, 48, 64, 96, 128] {
             for slabs in [1usize, 2, 3, 4] {
-                let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
+                let _ =
+                    crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true, true);
                 crate::SPECIALISED.store(0, Ordering::Relaxed);
                 let mut runs: Vec<f64> = (0..5)
                     .map(|_| {
                         let t = std::time::Instant::now();
-                        let _ =
-                            crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, true);
+                        let _ = crate::trace_tiled_for_test(
+                            &doc, &reg, &cam, w, h, tile, slabs, true, true,
+                        );
                         t.elapsed().as_secs_f64() * 1000.0
                     })
                     .collect();
@@ -3229,12 +3233,13 @@ fn measure_where_the_frame_goes_and_how_many_slabs_it_wants() {
             let mut best: Vec<Vec<f64>> = vec![Vec::new(); slabs_set.len()];
             for _ in 0..3 {
                 for (k, &s) in slabs_set.iter().enumerate() {
-                    let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, 64, s, true);
+                    let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, 64, s, true, true);
                     let runs: Vec<f64> = (0..5)
                         .map(|_| {
                             let t = std::time::Instant::now();
-                            let _ =
-                                crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, 64, s, true);
+                            let _ = crate::trace_tiled_for_test(
+                                &doc, &reg, &cam, w, h, 64, s, true, true,
+                            );
                             t.elapsed().as_secs_f64() * 1000.0
                         })
                         .collect();
@@ -3312,6 +3317,561 @@ fn measure_the_shape_of_the_march() {
             samples / pixels,
             (ms - asm) * 1.0e6 / samples,
             g.hits()
+        );
+    }
+}
+
+/// A distância com sinal de uma caixa afiada, escrita à mão — o oráculo dos dois gates do estêncil.
+///
+/// ⚠️ **De propósito não passa pelo avaliador**: o que se mede aqui é a lei do **estêncil**, e um
+/// campo de JIT no meio poria a fita a responder por ela.
+fn sharp_box_sd(half: [f32; 3], p: [f32; 3]) -> f32 {
+    let q = [
+        p[0].abs() - half[0],
+        p[1].abs() - half[1],
+        p[2].abs() - half[2],
+    ];
+    let out = [q[0].max(0.0), q[1].max(0.0), q[2].max(0.0)];
+    out[0]
+        .mul_add(out[0], out[1].mul_add(out[1], out[2] * out[2]))
+        .sqrt()
+        + q[0].max(q[1]).max(q[2]).min(0.0)
+}
+
+/// O gradiente que um estêncil lê de `sharp_box_sd` no ponto `p`, já unitário.
+fn stencil_normal(s: crate::Stencil, half: [f32; 3], p: [f32; 3], e: f32) -> [f32; 3] {
+    let mut g = [0.0f32; 3];
+    for d in s.offsets() {
+        let v = sharp_box_sd(
+            half,
+            [
+                d[0].mul_add(e, p[0]),
+                d[1].mul_add(e, p[1]),
+                d[2].mul_add(e, p[2]),
+            ],
+        );
+        for k in 0..3 {
+            g[k] = d[k].mul_add(v, g[k]);
+        }
+    }
+    let len = g[0]
+        .mul_add(g[0], g[1].mul_add(g[1], g[2] * g[2]))
+        .sqrt()
+        .max(f32::MIN_POSITIVE);
+    [g[0] / len, g[1] / len, g[2] / len]
+}
+
+/// ⭐⭐⭐ **A LEI QUE RECUSOU O ESTÊNCIL DE QUATRO** (W81) — e ela mede a **propriedade**, não a
+/// constante.
+///
+/// Numa quina viva a normal verdadeira **não existe** (o gradiente salta de uma face para a outra),
+/// e o que a imagem precisa ali é da **bissectriz** — a média das duas faces, que é o que faz a
+/// aresta ler-se como uma linha e não como um degrau. A diferença central de seis amostras
+/// devolve-a por **simetria**: cada eixo é sondado nos dois sentidos, e sobre a aresta os dois
+/// sentidos pertencem a faces opostas.
+///
+/// ⛔ **O estêncil do tetraedro não tem essa simetria** — os quatro sentidos dele caem
+/// desigualmente nas duas faces, e a normal inclina-se para a que apanhou mais. Medido aqui:
+/// `24,9°` fora da bissectriz, e no traçado a sério **até `35,1°`** num cilindro afiado
+/// (`measure_what_the_four_sample_normal_changes`).
+///
+/// ⚠️ **É por isso que este gate fica vermelho se alguém trocar o [`crate::NORMAL_STENCIL`]** — e o
+/// nome dele diz porquê. *Uma constante guardada por um gate que mede a razão dela não é uma
+/// tautologia: é a razão, executável.*
+#[test]
+fn the_shipping_stencil_reads_a_crease_as_the_bisector_of_its_two_faces() {
+    let half = [0.5f32, 0.4, 0.45];
+    // Exactamente sobre a aresta entre a face `+x` e a face `+y`.
+    let p = [half[0], half[1], 0.0];
+    let e = 1.0e-4f32;
+    let bis = [0.5f32.sqrt(), 0.5f32.sqrt(), 0.0];
+    let off = |s| -> f32 {
+        let n = stencil_normal(s, half, p, e);
+        n[0].mul_add(bis[0], n[1].mul_add(bis[1], n[2] * bis[2]))
+            .clamp(-1.0, 1.0)
+            .acos()
+            .to_degrees()
+    };
+    let shipped = off(crate::NORMAL_STENCIL);
+    assert!(
+        shipped < 0.5,
+        "o estêncil que ship lê a quina a {shipped:.2}° da bissectriz — ver a recusa da W81 no doc \
+         de `crate::Stencil` antes de mexer no `NORMAL_STENCIL`"
+    );
+    let four = off(crate::Stencil::Tetra4);
+    assert!(
+        four > 10.0,
+        "o estêncil de quatro passou a ler a bissectriz ({four:.2}°) — se isto for verdade a recusa \
+         da W81 dissolveu e a tabela dela tem de ser re-medida"
+    );
+}
+
+/// ⭐⭐ **Numa superfície LISA os dois estênceis são o mesmo número** (W81) — a outra metade da
+/// recusa, e sem ela o gate acima aceitaria um estêncil que erra em todo o lado.
+///
+/// ⚠️ *Uma afirmação de segurança precisa da metade justa*: «o de quatro erra na quina» só decide
+/// alguma coisa ao lado de «e acerta fora dela». No meio de uma face a normal é uma função, e as
+/// duas aproximações concordam a menos de `0,01°`.
+#[test]
+fn on_a_smooth_face_the_two_stencils_agree() {
+    let half = [0.5f32, 0.4, 0.45];
+    // No meio da face `+x`, longe de toda a aresta.
+    let p = [half[0], 0.05, -0.07];
+    let e = 1.0e-4f32;
+    let a = stencil_normal(crate::Stencil::Central6, half, p, e);
+    let b = stencil_normal(crate::Stencil::Tetra4, half, p, e);
+    let ang = a[0]
+        .mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+        .clamp(-1.0, 1.0)
+        .acos()
+        .to_degrees();
+    assert!(
+        ang < 0.01,
+        "os dois estênceis divergem {ang:.4}° numa face lisa"
+    );
+}
+
+/// ⭐⭐⭐ **O ESTÊNCIL NÃO MOVE A SILHUETA** (W81) — a cerca que separa as duas metades da marcha.
+///
+/// ⚠️ **A normal é lida DEPOIS de o raio parar**, e a única coisa que ela pode fazer é anular um
+/// acerto cujo gradiente saiu nulo. Um estêncil que mudasse **onde** o raio pára seria um estêncil
+/// dentro da marcha — e o sintoma seria a peça a mudar de tamanho ao trocar de estêncil, que
+/// nenhuma tabela de ângulos veria.
+#[test]
+fn the_stencil_never_moves_the_silhouette() {
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.5, 0.4, 0.45],
+                round: 0.0,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("caixa");
+    let a = crate::trace_stencil_for_test(&doc, &reg, &cam, 320, 180, crate::Stencil::Central6);
+    let b = crate::trace_stencil_for_test(&doc, &reg, &cam, 320, 180, crate::Stencil::Tetra4);
+    let diff = a.hit.iter().zip(&b.hit).filter(|(x, y)| **x != **y).count();
+    assert_eq!(
+        diff, 0,
+        "{diff} pixels mudaram de acerto ao trocar o estêncil"
+    );
+    assert!(
+        a.hits() > 1000,
+        "a peça saiu vazia — a fixtura não mede nada"
+    );
+}
+
+/// ⭐⭐⭐ **O QUE O ESTÊNCIL DE QUATRO MUDA NA IMAGEM** (W81) — a medição que decide a normal.
+///
+/// A normal é **`21 %`** de todas as amostras de campo de um quadro
+/// (`measure_who_the_march_samples_belong_to`) e custa **seis** avaliações por pixel acertado. O
+/// estêncil do tetraedro custa **quatro** — `1,5×` menos —, e a única pergunta que importa é *quanto
+/// a imagem muda*.
+///
+/// ⚠️ **A régua é o ÂNGULO entre as duas normais, e ela é lida em dois grupos.** Numa quina viva a
+/// normal verdadeira **não existe** (o gradiente salta), então uma diferença grande ali não é erro
+/// de nenhum dos dois; o que decide é a superfície **lisa**, onde a normal é uma função e as duas
+/// aproximações têm de concordar. ⇒ um pixel entra em «liso» quando os quatro vizinhos dele
+/// concordam a menos de `25°` ([`crate::EDGE_COS`], a mesma cerca do anti-serrilhado).
+///
+/// ⚠️ Ângulos, não relógio: vale com a máquina sob carga.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_what_the_four_sample_normal_changes --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_the_four_sample_normal_changes() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let disc = |n: usize| -> Primitive {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        Primitive::Extrude {
+            profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+            half_height: 0.4,
+            round: 0.06,
+        }
+    };
+    let pieces: Vec<(&str, Primitive)> = vec![
+        (
+            "caixa afiada",
+            Primitive::Box {
+                half: [0.5, 0.4, 0.45],
+                round: 0.0,
+            },
+        ),
+        (
+            "caixa com filete",
+            Primitive::Box {
+                half: [0.5, 0.4, 0.45],
+                round: 0.08,
+            },
+        ),
+        ("esfera", Primitive::Sphere { radius: 0.6 }),
+        (
+            "toro",
+            Primitive::Torus {
+                major: 0.5,
+                minor: 0.18,
+            },
+        ),
+        ("extrusão 168", disc(168)),
+        (
+            // ⚠️ A fronteira da recusa: um contorno de **quatro** arestas tem quinas verticais a
+            // sério, e elas não vêm de `round` nenhum — *«as arestas verticais são o que o perfil
+            // desenhou»* ([`ph2d_field::Primitive::Extrude`]).
+            "extrusão quadrada",
+            Primitive::Extrude {
+                profile: Profile::new(
+                    vec![vec![[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]],
+                    FillRule::NonZero,
+                    1e-4,
+                )
+                .expect("perfil"),
+                half_height: 0.4,
+                round: 0.06,
+            },
+        ),
+        (
+            "cilindro afiado",
+            Primitive::Cylinder {
+                radius: 0.5,
+                half_height: 0.4,
+                round: 0.0,
+            },
+        ),
+    ];
+    let (w, h) = (640usize, 360usize);
+    println!(
+        "peça                | acertos | amostras 6 | amostras 4 | LISO: médio  p99    máx | SILHUETA:   n     p99     máx | VINCO:    n     p99     máx | >1° liso"
+    );
+    for (name, prim) in pieces {
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(prim, Xform::IDENTITY)],
+            NodeId(0),
+        )
+        .expect("peça");
+        let mut samples = [0u64; 2];
+        let mut g = Vec::new();
+        for (k, s) in [crate::Stencil::Central6, crate::Stencil::Tetra4]
+            .into_iter()
+            .enumerate()
+        {
+            crate::NORMAL_SAMPLES.store(0, Ordering::Relaxed);
+            g.push(crate::trace_stencil_for_test(
+                &doc, &reg, &cam, w as u32, h as u32, s,
+            ));
+            samples[k] = crate::NORMAL_SAMPLES.load(Ordering::Relaxed);
+            // ⚠️ **A conta do contador contra a conta da imagem** — uma normal por acerto, `n`
+            // amostras por normal. Sem isto o `21 %` seria uma divisão sem juiz.
+            assert_eq!(
+                samples[k],
+                g[k].hits() as u64 * s.offsets().len() as u64,
+                "{name}: o contador da normal e os acertos discordam"
+            );
+        }
+        // ⚠️ **Só onde os dois acertaram** — a máscara é a mesma por construção (o estêncil só
+        // toca a normal), e o gate `the_stencil_does_not_move_the_silhouette` prova-o.
+        let ang = |a: [f32; 3], b: [f32; 3]| -> f64 {
+            let d = f64::from(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+            d.clamp(-1.0, 1.0).acos().to_degrees()
+        };
+        // ⚠️ **TRÊS grupos, e não dois.** Um pixel de silhueta e um de vinco interior falham os dois
+        // a mesma pergunta («os vizinhos concordam?») por razões opostas — ali o vizinho **não
+        // existe**, aqui ele existe e discorda —, e a normal deles é consumida de maneiras
+        // diferentes. Somá-los esconde qual dos dois carrega o número grande.
+        let group = |i: usize| -> usize {
+            let (x, y) = (i % w, i / w);
+            if x == 0 || y == 0 || x + 1 == w || y + 1 == h {
+                return 1;
+            }
+            let viz = [i - 1, i + 1, i - w, i + w];
+            if viz.iter().any(|&j| !g[0].hit[j]) {
+                return 1; // silhueta
+            }
+            if viz.iter().all(|&j| {
+                let (a, b) = (g[0].normal[i], g[0].normal[j]);
+                a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= crate::EDGE_COS
+            }) {
+                0 // liso
+            } else {
+                2 // vinco interior
+            }
+        };
+        let (mut lisos, mut quinas) = (Vec::new(), Vec::new());
+        let mut silh: Vec<f64> = Vec::new();
+        let mut hits = 0usize;
+        for i in 0..w * h {
+            if !(g[0].hit[i] && g[1].hit[i]) {
+                continue;
+            }
+            hits += 1;
+            let a = ang(g[0].normal[i], g[1].normal[i]);
+            match group(i) {
+                0 => lisos.push(a),
+                1 => silh.push(a),
+                _ => quinas.push(a),
+            }
+        }
+        let pct = |v: &mut Vec<f64>, q: f64| -> f64 {
+            if v.is_empty() {
+                return 0.0;
+            }
+            v.sort_by(f64::total_cmp);
+            v[((v.len() - 1) as f64 * q) as usize]
+        };
+        let mean = if lisos.is_empty() {
+            0.0
+        } else {
+            lisos.iter().sum::<f64>() / lisos.len() as f64
+        };
+        let acima = lisos.iter().filter(|a| **a > 1.0).count();
+        println!(
+            "{name:19} | {hits:7} | {:10} | {:10} | {mean:6.3} {:6.3} {:6.3} | {:8} {:7.3} {:7.3} | {:6} {:7.3} {:7.3} | {acima:8}",
+            samples[0],
+            samples[1],
+            pct(&mut lisos, 0.99),
+            pct(&mut lisos, 1.0),
+            silh.len(),
+            pct(&mut silh, 0.99),
+            pct(&mut silh, 1.0),
+            quinas.len(),
+            pct(&mut quinas, 0.99),
+            pct(&mut quinas, 1.0),
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PISO QUE O TAMANHO DO LADRILHO PÕE DEBAIXO DO QUADRO** (W81).
+///
+/// ⚠️ **Um ladrilho é indivisível**: ele compila a própria fita e marcha os próprios raios, e nenhuma
+/// thread o pode partir ao meio. ⇒ o quadro **não pode** acabar antes do ladrilho mais caro, por
+/// mais núcleos que a máquina tenha:
+///
+/// ```text
+/// relógio >= max(trabalho_total / threads, ladrilho_mais_caro)
+/// ```
+///
+/// ⭐⭐ **É a grandeza que nenhuma varredura de relógio viu**, porque ela não é um tempo: é uma
+/// razão entre contagens, e lê-se com a máquina sob carga. As varreduras do `TILE` e do
+/// [`crate::tiles::SLABS`] mediram **trabalho total**, e trabalho total não sabe que uma peça dele
+/// não se reparte.
+///
+/// ⚠️ **A régua é a AMOSTRA, que é um minorante do trabalho de um ladrilho** — dois ladrilhos com o
+/// mesmo número de amostras podem custar diferente, porque a região de cada um guarda um número
+/// diferente de arestas. O `piso` abaixo é portanto uma **estimativa por baixo** do desequilíbrio, e
+/// a medição que o fecha é a curva de escalamento por número de threads, que precisa da máquina
+/// calma.
+///
+/// ⚠️ **Serial de propósito**: a diferença dos contadores globais em torno de um ladrilho só é a
+/// conta dele quando ninguém mais escreve entretanto. As contagens não dependem do escalonamento.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_floor_that_the_tile_size_puts_under_the_frame --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_floor_that_the_tile_size_puts_under_the_frame() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let n = 168usize;
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                half_height: 0.4,
+                round: 0.06,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    let threads = rayon::current_num_threads().max(1) as f64;
+    let (w, h) = (640u32, 360u32);
+    println!(
+        "640x360, 168 arestas, {threads:.0} threads — o quadro de MOVIMENTO (sem anti-serrilhado)"
+    );
+    println!("lado | ladrilhos | fitas | amostras | ideal/thread | mais caro | PISO");
+    for tile in [16usize, 32, 48, 64, 96, 128] {
+        crate::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        crate::NORMAL_SAMPLES.store(0, Ordering::Relaxed);
+        crate::SPECIALISED.store(0, Ordering::Relaxed);
+        crate::TILE_MAX.store(0, Ordering::Relaxed);
+        let g = crate::trace_tiled_for_test(
+            &doc,
+            &reg,
+            &cam,
+            w,
+            h,
+            tile,
+            crate::tiles::SLABS,
+            false,
+            false,
+        )
+        .expect("ladrilho");
+        assert!(g.hits() > 1000, "a peça saiu vazia a lado {tile}");
+        let total = (crate::STEP_SAMPLES.load(Ordering::Relaxed)
+            + crate::NORMAL_SAMPLES.load(Ordering::Relaxed)) as f64;
+        let worst = crate::TILE_MAX.load(Ordering::Relaxed) as f64;
+        let ideal = total / threads;
+        println!(
+            "{tile:4} | {:9} | {:5} | {total:8.0} | {ideal:12.0} | {worst:9.0} | {:5.2}x",
+            (w as usize).div_ceil(tile) * (h as usize).div_ceil(tile),
+            crate::SPECIALISED.load(Ordering::Relaxed),
+            worst.max(ideal) / ideal,
+        );
+    }
+}
+
+/// ⭐⭐⭐ **DE QUEM SÃO AS AMOSTRAS DA MARCHA** (W81) — a sonda que reconfere a conclusão da §73.
+///
+/// A §73 dividiu as amostras pelos **pixels** e leu `8,7` por pixel, e daí escreveu que *«a
+/// sobre-relaxação não tem de onde tirar»*. ⚠️ **Um quadro é sobretudo fundo**, e o fundo que não
+/// entra na caixa da peça custa **zero** amostras: ele afunda a média sem participar dela.
+///
+/// Esta sonda traz o denominador que faltava ([`crate::MARCH_RAYS`]), a parcela que faltava ao
+/// numerador ([`crate::NORMAL_SAMPLES`]) e — porque **uma média não escolhe entre duas curas
+/// opostas** — a **curva de sobrevivência** ([`crate::STEP_HIST`]).
+///
+/// ⚠️ **Contagens, não relógio**: ela vale com a máquina sob carga, que é precisamente quando as
+/// tabelas de ms desta seção não valem nada.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_who_the_march_samples_belong_to --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_who_the_march_samples_belong_to() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    println!(
+        "arestas | pixels | acertos | raios | amostras | /pixel | /raio | normais | % normais"
+    );
+    for n in [168usize, 672] {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let doc = FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let (w, h) = (640u32, 360u32);
+        crate::STEP_SAMPLES.store(0, Ordering::Relaxed);
+        crate::MARCH_RAYS.store(0, Ordering::Relaxed);
+        crate::NORMAL_SAMPLES.store(0, Ordering::Relaxed);
+        crate::FORKED.store(0, Ordering::Relaxed);
+        crate::SPECIALISED.store(0, Ordering::Relaxed);
+        crate::TILE_MAX.store(0, Ordering::Relaxed);
+        for b in &crate::STEP_HIST {
+            b.store(0, Ordering::Relaxed);
+        }
+        for b in crate::SLAB_SPEC.iter().chain(crate::SLAB_SAMPLES.iter()) {
+            b.store(0, Ordering::Relaxed);
+        }
+        // ⚠️ **Sem anti-serrilhado**: é o quadro de MOVIMENTO que não alcança o orçamento, e é dele
+        // que a wave fala. A 2.ª passagem re-marcha a silhueta e contaria por cima.
+        let g = crate::trace_with(&doc, &reg, &cam, w, h, false, false);
+        let samples = crate::STEP_SAMPLES.load(Ordering::Relaxed) as f64;
+        let rays = crate::MARCH_RAYS.load(Ordering::Relaxed) as f64;
+        let normals = crate::NORMAL_SAMPLES.load(Ordering::Relaxed) as f64;
+        let pixels = f64::from(w) * f64::from(h);
+        println!(
+            "{n:7} | {pixels:6.0} | {:7} | {rays:5.0} | {samples:8.0} | {:6.1} | {:5.1} | {normals:7.0} | {:8.1}",
+            g.hits(),
+            samples / pixels,
+            samples / rays.max(1.0),
+            100.0 * normals / (samples + normals),
+        );
+        let hist: Vec<u64> = crate::STEP_HIST
+            .iter()
+            .map(|b| b.load(Ordering::Relaxed))
+            .collect();
+        // ⚠️ **A curva e o total são o MESMO número contado de duas maneiras** — se divergirem, a
+        // forma da marcha que esta sonda imprime é a forma de outra coisa.
+        assert_eq!(
+            hist.iter().sum::<u64>() as f64,
+            samples,
+            "a curva de sobrevivência não soma as amostras"
+        );
+        assert_eq!(
+            crate::NORMAL_SAMPLES.load(Ordering::Relaxed),
+            g.hits() as u64 * 6,
+            "o contador da normal e os acertos discordam"
+        );
+        // A curva de sobrevivência, em décimos do total — onde ela cai é a forma da marcha.
+        let acc = |from: usize, to: usize| -> f64 {
+            100.0 * hist[from..to.min(crate::HIST)].iter().sum::<u64>() as f64 / samples
+        };
+        println!(
+            "        passos 0-3 {:5.1}% · 4-7 {:5.1}% · 8-15 {:5.1}% · 16-31 {:5.1}% · 32-63 {:5.1}%",
+            acc(0, 4),
+            acc(4, 8),
+            acc(8, 16),
+            acc(16, 32),
+            acc(32, 64),
+        );
+        println!("        sobreviventes por passo: {:?}", &hist[..24]);
+        println!(
+            "        ladrilhos {} · especializadas {} · RECUOS (fork da árvore inteira) {} · ladrilho mais caro {}",
+            (640usize.div_ceil(64)) * (360usize.div_ceil(64)),
+            crate::SPECIALISED.load(Ordering::Relaxed),
+            crate::FORKED.load(Ordering::Relaxed),
+            crate::TILE_MAX.load(Ordering::Relaxed),
+        );
+        let spec: Vec<u64> = crate::SLAB_SPEC
+            .iter()
+            .map(|b| b.load(Ordering::Relaxed))
+            .collect();
+        let ssam: Vec<u64> = crate::SLAB_SAMPLES
+            .iter()
+            .map(|b| b.load(Ordering::Relaxed))
+            .collect();
+        println!("        por fatia — fitas montadas: {spec:?}");
+        println!("        por fatia — amostras:       {ssam:?}");
+        println!(
+            "        por fatia — amostras por fita: {:?}",
+            spec.iter()
+                .zip(&ssam)
+                .map(|(s, a)| if *s == 0 { 0 } else { a / s })
+                .collect::<Vec<u64>>()
         );
     }
 }

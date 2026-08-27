@@ -17,6 +17,113 @@ use crate::{MAX_STEPS, Orbit, Sharpness, T_MAX, slab};
 #[doc(hidden)]
 pub static STEP_SAMPLES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// ⭐⭐⭐ **Quantos RAIOS a marcha de facto andou** (W81) — o denominador que faltava.
+///
+/// ⚠️ **A §73 dividiu as amostras pelos PIXELS e leu `8,7`**, e daí concluiu que *«a marcha já está
+/// apertada, a sobre-relaxação não tem de onde tirar»*. ⛔ Mas a maior parte de um quadro é **fundo
+/// que nunca entra na caixa da peça** e custa exactamente zero amostras: dividir por ele mistura os
+/// raios que trabalham com os que não existem. *Duas divisões da mesma medição não são duas
+/// medições — só uma delas tem denominador.*
+///
+/// Ele conta os raios que **entraram no recorte** (ver [`Scene::clip`]) — os únicos que dão sequer
+/// um passo.
+#[doc(hidden)]
+pub static MARCH_RAYS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// ⭐⭐ **As amostras da NORMAL** (W81) — seis por acerto, e elas não estavam em conta nenhuma.
+///
+/// ⚠️ A [`STEP_SAMPLES`] diz no doc dela que não as conta *«elas saem noutro sítio»* — e o sítio não
+/// existia. Sem este contador, o `ns/amostra` da §73 divide o quadro inteiro por um numerador ao
+/// qual falta uma parcela, e o preço da diferença central fica invisível.
+#[doc(hidden)]
+pub static NORMAL_SAMPLES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Quantos degraus o histograma da marcha distingue antes de saturar o último balde.
+pub const HIST: usize = 64;
+
+/// Quantas fatias de profundidade os contadores por-fatia distinguem (o último balde satura).
+pub const SLABS_COUNTED: usize = 8;
+
+/// ⭐⭐⭐ **As amostras de cada FATIA DE PROFUNDIDADE** (W81) — o par da [`crate::SLAB_SPEC`].
+///
+/// ⚠️ **As duas fatias de FORA existem sem ninguém as ter pedido**: a `0` vai de `0` a `t_lo` e a
+/// última de `t_hi` a `T_MAX`, e elas estão lá porque a faixa dos quatro raios de canto **não**
+/// contém os raios interiores (ver [`crate::tiles::slab_bounds`]). O doc delas diz que *«custam zero
+/// quando ninguém lá chega»* — ⚠️ mas quando **um** raio lá chega, elas custam uma compilação de JIT
+/// inteira, igual à de uma fatia cheia. *Uma fatia preguiçosa é barata em média e não é barata em
+/// nenhuma unidade.*
+#[doc(hidden)]
+pub static SLAB_SAMPLES: [std::sync::atomic::AtomicU64; SLABS_COUNTED] =
+    [const { std::sync::atomic::AtomicU64::new(0) }; SLABS_COUNTED];
+
+/// ⭐⭐⭐ **A CURVA DE SOBREVIVÊNCIA da marcha** (W81) — `STEP_HIST[k]` são as amostras dadas ao
+/// `k`-ésimo passo (o último balde satura).
+///
+/// ⚠️ **Uma média não escolhe entre duas curas opostas.** `35` amostras por raio podem ser *todo
+/// raio dá 35* (a marcha aproxima-se devagar ⇒ sobre-relaxação) ou *nove em cada dez dão 3 e o
+/// décimo dá 300* (uma cauda de raios rasantes ⇒ outra cura inteira). A forma está aqui, e ela
+/// custa **um atómico por passo por ladrilho** — a mesma ordem do que a [`STEP_SAMPLES`] já paga,
+/// e **nada** por amostra.
+#[doc(hidden)]
+pub static STEP_HIST: [std::sync::atomic::AtomicU64; HIST] =
+    [const { std::sync::atomic::AtomicU64::new(0) }; HIST];
+
+/// ⭐⭐⭐ **Quantas vezes a marcha caiu para a fita NÃO especializada** (W81) — o caminho de recuo.
+///
+/// ⚠️ **Um recuo custa um `fork`, e um `fork` é uma compilação de JIT inteira** — a W70 mediu-a em
+/// `2,89 ms`, que é mais do que um quadro de movimento inteiro. Ele não aparece na
+/// [`crate::SPECIALISE_NS`] (que só cronometra a especialização) nem em gate de imagem nenhum: a
+/// imagem do recuo é a **certa**, porque a árvore completa é a resposta verdadeira em todo o lado.
+/// *É a mesma família do defeito «só de relógio» da W70 — e por isso precisa de um contador.*
+#[doc(hidden)]
+pub static FORKED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// ⭐⭐⭐ **O ESTÊNCIL DA NORMAL** (W81) — quantas amostras de campo uma normal custa.
+///
+/// ⚠️ **Ele existe porque a normal era `21 %` de TODAS as amostras do quadro e não estava em conta
+/// nenhuma** (ver [`NORMAL_SAMPLES`]): seis avaliações por pixel acertado, ao lado das oito que a
+/// marcha inteira daquele raio custou.
+///
+/// ⭐⭐ **As duas leis são a MESMA soma**, e é isso que faz um estêncil ser uma *tabela* e não um
+/// caminho: o gradiente é `Σ dᵢ · f(p + ε·dᵢ)` sobre os deslocamentos. Para a diferença central os
+/// deslocamentos são `±x, ±y, ±z` e a soma colapsa em `[g₀−g₁, g₂−g₃, g₄−g₅]` — **exactamente** o
+/// que o código escrevia à mão. *Um terceiro estêncil passa a ser uma linha de tabela.*
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Stencil {
+    /// A diferença central nos três eixos — **seis** amostras. O que o módulo ship até à W81.
+    Central6,
+    /// ⭐ Os quatro vértices de um tetraedro regular — **quatro** amostras, `1,5×` menos.
+    ///
+    /// ⚠️ As amostras ficam a `ε√3` do ponto (e não a `ε`), porque cada deslocamento tem os três
+    /// eixos a `±1`. A folga da região é `4ε` ⇒ ela cobre-o, e quem o **prova** é o gate
+    /// `every_sample_lies_inside_the_region_that_built_its_tape`, que mede a fronteira a sério.
+    Tetra4,
+}
+
+impl Stencil {
+    /// Os deslocamentos, em unidades de `ε` — e eles são **os dois** papéis: onde amostrar, e com
+    /// que peso somar. Ver o doc do tipo.
+    #[must_use]
+    pub const fn offsets(self) -> &'static [[f32; 3]] {
+        match self {
+            Stencil::Central6 => &[
+                [1.0, 0.0, 0.0],
+                [-1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, -1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [0.0, 0.0, -1.0],
+            ],
+            Stencil::Tetra4 => &[
+                [1.0, -1.0, -1.0],
+                [-1.0, -1.0, 1.0],
+                [-1.0, 1.0, -1.0],
+                [1.0, 1.0, 1.0],
+            ],
+        }
+    }
+}
+
 /// **Tudo o que uma marcha precisa de saber, e que não muda entre lotes.**
 ///
 /// Os quatro viajam sempre juntos — a árvore compilada, a câmera, a base dela e as tolerâncias do
@@ -44,6 +151,13 @@ pub(crate) struct Scene<'a> {
     /// verdadeira, e nele `1,0` é seguro. Medir as duas respostas em processos diferentes não é
     /// medir — a montagem, que não depende disto, mexeu-se `14,4 -> 22,1 ms` entre duas corridas.
     pub(crate) step: f32,
+    /// ⭐⭐ **Com que estêncil a normal é lida** — ver [`Stencil`].
+    ///
+    /// ⚠️ Ele viaja na cena pela mesma razão que o [`Scene::step`]: a pergunta *"quantas amostras
+    /// custa uma normal?"* tem de ser respondida **uma vez por quadro** e ser a mesma nas duas
+    /// marchas (a linha inteira e as quatro amostras de um pixel de borda). Uma segunda fonte
+    /// faria a silhueta re-amostrada ler a normal por outra lei que o interior.
+    pub(crate) stencil: Stencil,
 }
 
 /// **O núcleo**: marcha um lote arbitrário de raios e devolve `(acertou, normal de vista)`.
@@ -132,6 +246,8 @@ pub(crate) fn march_slabs(
         }
     }
 
+    MARCH_RAYS.fetch_add(alive.len() as u64, std::sync::atomic::Ordering::Relaxed);
+
     let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
     let mut landed: Vec<u32> = Vec::new();
     for k in 0..bounds.len() - 1 {
@@ -168,13 +284,20 @@ pub(crate) fn march_slabs(
         // ali o `scene.shape` **é** partilhado entre as threads do lote.
         let mut eval = match shape_of(k) {
             Some(s) => s,
-            None => scene.shape.fork(),
+            None => {
+                FORKED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                scene.shape.fork()
+            }
         };
         landed.clear();
-        for _ in 0..MAX_STEPS {
+        for step in 0..MAX_STEPS {
             if cur.is_empty() {
                 break;
             }
+            STEP_HIST[step.min(HIST - 1)]
+                .fetch_add(cur.len() as u64, std::sync::atomic::Ordering::Relaxed);
+            SLAB_SAMPLES[k.min(SLABS_COUNTED - 1)]
+                .fetch_add(cur.len() as u64, std::sync::atomic::Ordering::Relaxed);
             xs.clear();
             ys.clear();
             zs.clear();
@@ -252,6 +375,11 @@ fn normals_into(
     if idx.is_empty() {
         return;
     }
+    let offs = scene.stencil.offsets();
+    NORMAL_SAMPLES.fetch_add(
+        idx.len() as u64 * offs.len() as u64,
+        std::sync::atomic::Ordering::Relaxed,
+    );
     let (right, up, fwd) = scene.basis;
     for &i in idx {
         let i = i as usize;
@@ -261,30 +389,31 @@ fn normals_into(
             oz[i] + dir[i][2] * t[i],
         ];
     }
-    let mut gx = Vec::with_capacity(idx.len() * 6);
-    let mut gy = Vec::with_capacity(idx.len() * 6);
-    let mut gz = Vec::with_capacity(idx.len() * 6);
+    let mut gx = Vec::with_capacity(idx.len() * offs.len());
+    let mut gy = Vec::with_capacity(idx.len() * offs.len());
+    let mut gz = Vec::with_capacity(idx.len() * offs.len());
     for &i in idx {
         let [px, py, pz] = point[i as usize];
         let e = scene.sharp.normal;
-        for (dx, dy, dz) in [
-            (e, 0.0, 0.0),
-            (-e, 0.0, 0.0),
-            (0.0, e, 0.0),
-            (0.0, -e, 0.0),
-            (0.0, 0.0, e),
-            (0.0, 0.0, -e),
-        ] {
-            gx.push(px + dx);
-            gy.push(py + dy);
-            gz.push(pz + dz);
+        for d in offs {
+            gx.push(d[0].mul_add(e, px));
+            gy.push(d[1].mul_add(e, py));
+            gz.push(d[2].mul_add(e, pz));
         }
     }
     if let Ok(g) = eval.eval(&gx, &gy, &gz) {
         for (k, &i) in idx.iter().enumerate() {
             let i = i as usize;
-            let b = k * 6;
-            let world = [g[b] - g[b + 1], g[b + 2] - g[b + 3], g[b + 4] - g[b + 5]];
+            let b = k * offs.len();
+            // ⭐ **A soma que é as duas leis** — ver [`Stencil`]. Na diferença central os pesos
+            // nulos somam zeros exactos e o resultado é o `[g₀−g₁, …]` de sempre.
+            let mut world = [0.0f32; 3];
+            for (j, d) in offs.iter().enumerate() {
+                let v = g[b + j];
+                world[0] = d[0].mul_add(v, world[0]);
+                world[1] = d[1].mul_add(v, world[1]);
+                world[2] = d[2].mul_add(v, world[2]);
+            }
             let len = (world[0] * world[0] + world[1] * world[1] + world[2] * world[2]).sqrt();
             if len <= 0.0 {
                 hit[i] = false;

@@ -602,93 +602,37 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   `Shift`+arrasto **soma**, apanhando também **o que está tapado** — as formas nascem empilhadas no
   alvo da câmera). ⚠️ **Um desenho com contorno interior já virava peça com FURO** — a composição do
   `VecPath` exprimia-o desde a v6 do formato, e o que faltava era o gate.
-  ⭐⭐⭐ **A EXPORTAÇÃO CAIU DE 8 min 17 s PARA 6,4 s — 77× — E A MENSAGEM VOLTOU** (W62, dois
-  reports do Enio em 24-25/08; o arquivo que sai é **o mesmo**, e os três níveis saem hoje
-  **idênticos até à última casa**: `1,0794725` de aspecto, `6,417694°`, 2 539 quads). ⭐ *O alvo da cadeia de quads sai da CAIXA, nunca da
-  densidade* (`target_edge = alpha · diagonal`) — então a grade fina era mastigada pela fase zero e
-  **deitada fora depois de paga**: `1 120 158` faces custavam **`495 244 ms`** (97 % só no F1) para a
-  **MESMA** resposta (`6,4°`, 2 436 quads) que a grade do `Draft` dá em **`4 613 ms`**. ⛔ E não é só
-  preço: nas profundidades 7-8 a fidelidade medida **no campo** *piora* (`0,043 %` → `0,087 %` →
-  `11,3 %` da diagonal) e a esfera é **destruída** (`55,5°`). ⇒ a cadeia come a grade do `Draft`
-  (`meshes_for`) e a malha do NÍVEL fica se o veto recusar (`quads_or_keep_from`), e a fase zero
-  passou a honrar o alvo que lhe dão (`phase_zero` — ela ignorava-o, e os números coincidiam **por
-  acidente** com o único chamador de então). ⚠️ **E *"a mensagem não aparece"* era o mecanismo de
-  22/08 com outra causa:** o relógio do chrome desconta o congelamento **declarado**, e quem
-  congelava era uma **conta**, não um diálogo. ⛔⛔ **E o report SEGUINTE do mesmo dia mostrou que
-  declarar cura a MENSAGEM e não cura o congelamento** (*«o linux fica cinza»*): a 12 s o loop não
-  responde ao *ping* do compositor, o KDE dá a janela por morta e oferece **forçar o encerramento** —
-  e o gesto natural a seguir leva o trabalho não gravado. ⇒ ⭐⭐⭐ **a exportação SAI da thread que
-  desenha** ([`field3d_export_job.rs`](shells/desktop/src/field3d_export_job.rs)): bancada com uma de
-  cada vez, recusa do segundo **em alto**, resposta drenada uma vez por quadro ao lado do pedido, e um
-  sentinela que liberta a bancada no `Drop` (senão o 1.º estouro trancava o botão até ao fim da
-  sessão). ⚠️ **O `Send + 'static` é o gate que o COMPILADOR escreve.** ⚠️ E a declaração foi
-  **retirada** de `cook`/`bytes_of`: do lado de lá o `note_stall` escreve num `thread_local` que
-  ninguém lê — *um no-op silencioso*. A porta do `modal` fica sendo o que sempre foi: a resposta certa
-  para o **diálogo**. ⚠️ Doze segundos de silêncio com o app vivo leem-se como «o botão não fez
-  nada» ⇒ há aviso de início, e ele **não promete prazo**. ⭐ **E tirar o trabalho da thread ABRIU uma
-  porta que o congelamento fechava:** o artista voltou a poder fechar o app a meio, e um `write`
-  interrompido deixa **meio arquivo com o nome certo** — daí a gravação por temporário + `rename`,
-  com o temporário **na pasta do destino** (o `rename` só é atómico dentro do mesmo sistema de
-  arquivos). *Uma cura pode abrir a porta que outra fechava.*
-  ⭐ **E duas ausências que prendiam sem avisar fecharam (25/08):** a **Hierarquia** diz qual linha
-  está isolada (selo `ISO`) — ⚠️ e a decisão foi a **PRECEDÊNCIA**, porque o selo é **um por linha** e
-  `ISO`/`LNK` **caem na mesma**: ganha o `ISO`, que é um estado da **VISTA** a explicar por que o
-  resto desapareceu, contra uma propriedade do nó; e a **exportação diz ONDE a peça está**, só quando
-  a **origem está fora da caixa dela** — o limiar é derivado, e uma peça centrada continua calada.
-  ⭐⭐⭐ **AS DUAS DECISÕES DO ENIO FORAM EXECUTADAS (26/08), e deram respostas OPOSTAS** (doc §70):
-  ✅ **o teto de `Resolution` sobe 16 → 64** — a régua que faltava é um contorno de curvatura
-  **VARIÁVEL** (elipse `4:1`, ponta `16×` mais curva que o lado), e a lei `θ ≈ √(8·tol/R)` confirma-se
-  em quatro pontos: **dobrar o nível divide o salto de normal por `√2`**, logo *cada duplicação deixa
-  desenhar um canto duas vezes mais apertado* (`~5,5:1` no 16 → **`~22:1`** no 64). ⛔ *A 1.ª medição
-  atravessou a própria trava (o `clamp` da `tolerance_ratio_for`) e leu «o achatamento saturou» — a
-  cura foi partir a lei em duas, com o `span_of` público e o teto contornado de propósito* ·
-  ⛔⛔⛔ **E o report seguinte do Enio (*«queda de fps e lentidão com resoluções altas»*) achou um
-  defeito PRÉ-EXISTENTE muito maior:** o traçado paga **`0,22 ms por aresta`, constante e CEGO AOS
-  PIXELS** — com 4× menos pixels o custo cai `1,3×`, que é a assinatura de **MONTAR**, não de
-  marchar. ⛔ Mesmo na resolução de **omissão** (168 arestas) o piso é **`39 ms`** contra um orçamento
-  de `16,7`: *a pré-visualização nunca alcançou o alvo dela numa peça de perfil* — a lei dela foi
-  calibrada com **cilindros**, que não têm contorno cozido. ⚠️ **A 1.ª nota do teto media o relógio
-  ERRADO** (o quadro **assente**, pago uma vez, em vez do de **movimento**, pago a cada quadro) —
-  e é por isso que o `64` passou. ⚠️ **Quatro hipóteses refutadas por medição**: o recozimento
-  (`23 µs`) · o preview mais grosso (tem **piso**, e volta a **subir** depois de `D≈6`) · o teto
-  sozinho · a montagem **base** (`Hybrid::new`, `4–23 ms`) — **ilibada** ⇒ ⏸️ **o suspeito que fica é
-  a ESPECIALIZAÇÃO POR LADRILHO**, uma compilação por ladrilho × fatia em **cada** traçado, enquanto
-  o documento não muda entre dois quadros de uma órbita. Sonda:
-  `ph2d_field_eval::tests::measure_building_the_tape_against_marching_it` ·
-  ⭐⭐⭐ **E A CURA EXISTE (26/08): o contorno também ENGROSSA enquanto a mão mexe** — a lei que o
-  módulo já ship (*grosso a mexer, nítido ao assentar*), aplicada onde o custo estava. Medido, traçado
-  de movimento a `640×360`: `168` arestas `55,3 → 52,1 ms` (1,06×) · `472` `133,4 → 54,6` (2,44×) ·
-  `940` **`266,1 → 53,7`** (⭐ **4,96×**). ⭐⭐ **O custo de movimento passou a ser CONSTANTE (~53 ms)
-  qualquer que seja o nível** — antes crescia em linha recta ⇒ *subir o `Resolution` deixou de ter
-  preço em movimento*, e o teto voltou a `64` com o recurso certo (o quadro **assente**, `303 ms`).
-  ⚠️ **Ela DECIMA, não recoze** (recozer exigiria a curva de origem, que vive na cena vetorial), e
-  tem três metades que a impedem de mentir: ao **parar** volta inteiro · um **furo pequeno fica
-  intacto** (senão a lei desiste do perfil todo — *um furo de 6 lados desligava a cura para a peça
-  inteira*, e foi uma **prova de mutação** que o mostrou) · o laço compara o documento **real**.
-  ⛔ **A base fica:** mesmo agora o movimento custa `~53 ms` contra `16,7` — a pré-visualização nunca
-  alcançou `60 Hz` numa peça de perfil, em nível nenhum. ⚠️ E a especialização por ladrilho **está
-  ilibada**: sem ela o traçado vai de `58` para **`565 ms`** (10×), e o `TILE=64` já está no óptimo —
-  *o custo é trabalho real, não desperdício* ·
-  ⛔⛔ **RECUSA MEDIDA: os níveis de exportação NÃO podem mandar na densidade dos quads.** A escada
-  foi **implementada inteira** e medida pelo produto: `Draft` 4 717 ms ✅ · `Fine` **49 691 ms** com
-  **42 arestas de bordo** ⛔ · `Max` **1 648 579 ms (27 min 29 s)** com **316 bordo e 6 não-manifold**
-  ⛔. *O limite da cadeia não é o tempo — é a TOPOLOGIA da extracção*, que fecha a peça na densidade
-  grossa e **rasga** na fina; o veto deita fora o trabalho e o artista espera meia hora pelo que o
-  primeiro botão já dava. **REVERTIDO**, e o achado é da `line/quadextract` — a densidade fina tem de
-  FECHAR antes de o botão fazer sentido · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e `Ctrl` são a mesma tecla) ·
-  ⏸️ vários `VecPath` **separados** numa peça só · ⏸️ religar uma escultura que mudou de sítio (pede
-  UI) · ⏸️ o `Mirror` não se consegue demonstrar (adiado por si) · ⏸️ a composição de dois `Exact`
-  encadeados e o gradiente de uma **escultura** seguem por medir · ⏸️ **reaproveitar as fitas já
-  montadas** na segunda passagem do traçado (tecto: parte dos 26 % do quadro **assente**) ·
+  ⭐⭐⭐ **A jornada de 24-26/08 (W59–W80)** — a **exportação caiu de 8 min 17 s para 6,4 s** (77×, arquivo
+  idêntico) e **saiu da thread que desenha**, porque declarar o congelamento curava a mensagem e não
+  o congelamento (a 12 s o KDE dá a janela por morta e oferece forçar o encerramento); a Hierarquia diz
+  qual linha está **isolada** (selo `ISO`, que ganha do `LNK` por ser estado da VISTA) e a exportação
+  diz **onde** a peça está; o `Mirror` passa a ter **três eixos**; duas formas escolhidas viram **duas
+  peças**, cada uma ligada ao seu desenho; e uma escultura que perdeu o ficheiro tem **`Relink
+  Sculpture…`**. ⭐⭐ **O custo de MOVIMENTO virou CONSTANTE (~53 ms em qualquer nível)** — o contorno
+  também engrossa enquanto a mão mexe —, e por isso o teto de `Resolution` fica em **64**, medido com o
+  relógio certo (o quadro **assente**, não o de movimento). ⚠️ **E o passo da marcha estava ERRADO**:
+  arredondamentos exactos **encadeados** compõem o factor, e a cena 1 do smoke marchava acima do seguro
+  desde que existe. Mecanismo, tabelas e provas de mutação: [doc 06 §69–§81](docs/3DModeling/06_resultados_cena_e_gizmo.md)
+  + [handoff de 26/08](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md).
+  **Aberto:** ⛔ **A BASE FICA e nunca foi alcançada:** numa peça de perfil o movimento custa `~53 ms`
+  contra um orçamento de `16,7` — em nível nenhum, e a lei da pré-visualização foi calibrada com
+  **cilindros**, que não têm contorno cozido · ⏸️ **reaproveitar as fitas já montadas** na 2.ª passagem
+  do traçado (tecto: parte dos 26 % do quadro assente) · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e
+  `Ctrl` são a mesma tecla) · ⏸️ vários `VecPath` **separados** numa peça só · ⏸️ religar uma
+  escultura que mudou de sítio (pede UI) · ⏸️ o `Mirror` não se consegue demonstrar (adiado pelo Enio) ·
+  ⏸️ a composição de dois `Exact` encadeados e o gradiente de uma **escultura** seguem por medir ·
   ⛔ **segundo reprodutor do panic do `ph2d-gridmap`** (`solve.rs:336`): alvo **grosso** sobre uma
   `uv_sphere(48,32)` — a `line/quadextract` é a dona.
-  ⛔ **RECUSAS MEDIDAS — não as reconstrua** (mecanismo no doc §69 e §65): especializar a **segunda
-  passagem** do traçado por ladrilho é **neutro a pior** (a montagem amortiza-se por 4 096 raios na
-  primária e ~256 na de borda) · o vínculo à escultura **viva** custa 229–389 ms a 128³ contra um
-  quadro de 16,7 · a grade **fina** para a cadeia de quads é 107× o preço para a mesma resposta, e
-  piora a fidelidade.
-  ⚠️ **Quatro itens desta lista estavam FECHADOS ou desactualizados** quando a auditei em 25/08 (o
-  traçado «2,4×» · o teto de `Resolution` · o paralelogramo · o sítio da peça). *O §5 só se edita na
+  ⛔⛔ **RECUSAS MEDIDAS — não as reconstrua** (mecanismo no doc 06 §65, §69 e §70): **os níveis de
+  exportação NÃO podem mandar na densidade dos quads** — a escada foi implementada inteira e o `Max`
+  custou **27 min 29 s** para sair com `316` arestas de bordo e `6` não-manifold; *o limite da cadeia
+  não é o tempo, é a TOPOLOGIA da extracção*, e **REVERTEU** (a densidade fina tem de FECHAR primeiro —
+  achado da `line/quadextract`) · especializar a **2.ª passagem** do traçado por ladrilho é neutro a pior ·
+  o vínculo à escultura **viva** custa `229–389 ms` a 128³ · a grade **fina** para a cadeia de quads é
+  **107×** o preço para a mesma resposta, e piora a fidelidade · e a especialização por ladrilho está
+  **ilibada** (sem ela o traçado vai de `58` para `565 ms`).
+  ⚠️ **Quatro itens desta lista estavam FECHADOS ou desactualizados** quando a linha os auditou em 25/08
+  (o traçado «2,4×» · o teto de `Resolution` · o paralelogramo · o sítio da peça). *O §5 só se edita na
   integração, então ele acumula trabalho já pago — audite a lista antes de pegar um item dela.*
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).

@@ -16,11 +16,19 @@
 | **1** | ⭐ **O Input Map** — entradas nomeadas, à la Godot | **[30 — PLANO](30_plano_input_map.md)** | ✅ **FECHADO** e integrado ao `main` em 2026-08-24 |
 | **2** | **A máquina de estados do Morph** | **[32 — PLANO](32_plano_maquina_de_estados_do_morph.md)** (pesquisa: [31](31_pesquisa_maquinas_de_estado.md)) | ✅ **W1–W8 feitas.** ⚠️ **O desenho MUDOU em 25/08 e o §5 do plano 32 é a fonte:** um botão faz o conjunto e gera o **grafo completo dirigido**; as setas são **virtuais** (⛔ o desenho no canvas e o gesto de arrasto foram **retirados**); seção **própria** *Morph States* |
 | **2-bis** | **Morph States: desfazer tudo · Play/Desconectar por forma · arrastar-para-dentro · compatibilidade com States** | **[32 §8–§12](32_plano_maquina_de_estados_do_morph.md)** | ✅ **FECHADO em 26/08** (W11a–W11f), com **dois smokes do Enio** e as três respostas do §8.3 medidas (o `start`, a fronteira dos 2, e a ocultação derivada) |
-| **3** | **Texture pattern** no preenchimento vectorial | §F2 **deste** doc | ⏳ **É O QUE FALTA NA FILA — e continua SEM PLANO.** As 5 perguntas do §F2 abaixo não foram respondidas |
+| **3** | **Texture pattern** no preenchimento vectorial | **[33 — PLANO](33_plano_texture_pattern.md)** | ⭐ **PLANO ESCRITO em 2026-08-27.** As 5 perguntas do §F2 estão respondidas **com medição** lá (§0), e três premissas desta folha mudaram de valor — ⛔ leia o 33, não o §F2 abaixo |
 
 ## ⏳ O que sobra da fila (conferido 2026-08-26)
 
-⭐ **Um item: a F2 (Texture pattern).** Tudo o resto da fila fechou.
+⭐ **Um item: a F2 (Texture pattern)** — e desde **2026-08-27** ele tem plano:
+**[33 — PLANO: Texture Pattern](33_plano_texture_pattern.md)**. Tudo o resto da fila fechou.
+
+> ⚠️ **O §F2 abaixo continua aqui como REGISTO, e três das afirmações dele envelheceram** — o
+> plano 33 §0 mede cada uma: a rota de imagem que ele manda reusar (`fill_multipoint`) é a
+> **errada** para um padrão (o Vello ladrilha nativamente, provado ao nível do bit); o vizinho
+> que ele manda medir ([plano 23](23_plano_pattern_along_path.md)) está **inteiro**, W1-W4
+> fechadas; e a vaga *"resource-bound fills (pattern/image)"* reservada no contrato congelado
+> pertence ao motor **VELHO**, retirado pelo ADR-0108.
 
 ⚠️ **E o que fica ABERTO dentro do item 2, com o motivo — não é trabalho pendente, é bloqueio ou
 decisão de produto:**

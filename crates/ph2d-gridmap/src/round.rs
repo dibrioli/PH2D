@@ -279,6 +279,15 @@ pub struct RoundReport {
     pub solve: SolveReport,
     /// ⭐ A estrutura da soldadura — **só o caminho soldado a preenche**.
     pub weld: crate::weld::WeldReport,
+    /// ⭐⭐⭐ Grupos de escalares **amarrados pelos arcos** que entraram de facto.
+    ///
+    /// ⚠️ *Sem esta coluna, «a wave não mudou nada» e «a wave não correu» leem igual* —
+    /// e a 1.ª versão dela custou duas corridas a distinguir.
+    pub tie_groups: usize,
+    /// ⛔⛔ Grupos recusados por algum membro já ter dono.
+    pub tie_refused: usize,
+    /// ⭐ A razão: `[dependente, livre do sistema, pregada]`.
+    pub tie_refused_why: [usize; 3],
     /// ⭐ O resíduo da costura separado por espécie — **só o caminho soldado**.
     ///
     /// ⚠️ Ele responde ao que [`Self::seam_after`] não distingue: aquele mistura as

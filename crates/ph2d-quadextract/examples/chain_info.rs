@@ -519,6 +519,17 @@ fn main() {
         }
     );
     println!("  modalidade das singularidades: {pin}");
+    println!(
+        "  ⭐⭐⭐ AMARRAS DOS ARCOS: ligadas={} | {} grupos entraram · ⛔ {} RECUSADOS \
+         (⛔ {} por a classe ser DEPENDENTE do sistema dos fechos · {} por ela SER uma \
+         incognita LIVRE dele · {} por a componente ja' estar pregada)",
+        ph2d_gridmap::arcline_enabled(),
+        r.tie_groups,
+        r.tie_refused,
+        r.tie_refused_why[0],
+        r.tie_refused_why[1],
+        r.tie_refused_why[2]
+    );
 
     // ⭐⭐⭐ **QUANTOS singulares o CORTE de facto duplica.** O caminho soldado deriva os
     // vértices singulares dos FECHOS do grafo de cópias — e um vértice que o corte não

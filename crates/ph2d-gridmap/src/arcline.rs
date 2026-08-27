@@ -108,18 +108,74 @@ pub struct ArcLineSystem {
     pub offset_max: f32,
 }
 
+/// ⭐⭐⭐ **AS AMARRAS entre escalares** — o que a eliminação de facto produz.
+///
+/// Por escalar `2·classe + eixo`, a raiz do grupo dele e o par `(σ, δ)` que o escreve:
+/// `y = σ · Y_raiz + δ`. Um escalar sozinho é a sua própria raiz com `(1, 0)`.
+///
+/// ⚠️ **É o MESMO objecto que o portão mede.** *Uma tabela construída por um segundo
+/// caminho seria a segunda resposta à mesma pergunta, e a que envelhece é sempre a que o
+/// produto usa.*
+#[derive(Debug, Clone, Default)]
+pub struct ScalarTies {
+    tie: Vec<(u32, f32, f32)>,
+    /// Por grupo com dois ou mais membros, a raiz.
+    roots: Vec<u32>,
+    /// Por grupo, os escalares dele (a raiz incluída).
+    members: Vec<Vec<u32>>,
+    /// O que o portão mediu ao construir isto.
+    pub report: ArcLineSystem,
+}
+
+impl ScalarTies {
+    /// Quantos grupos com dois ou mais membros.
+    #[must_use]
+    pub fn groups(&self) -> usize {
+        self.roots.len()
+    }
+
+    /// A raiz do grupo `g` e os escalares dele.
+    #[must_use]
+    pub fn group(&self, g: usize) -> Option<(u32, &[u32])> {
+        Some((*self.roots.get(g)?, self.members.get(g)?.as_slice()))
+    }
+
+    /// Como o escalar `x` se escreve a partir da raiz dele: `(raiz, σ, δ)`.
+    #[must_use]
+    pub fn of(&self, x: u32) -> (u32, f32, f32) {
+        self.tie.get(x as usize).copied().unwrap_or((x, 1.0, 0.0))
+    }
+
+    /// ⭐ Este escalar é conduzido por outro? (`false` para uma raiz ou um solitário.)
+    #[must_use]
+    pub fn is_driven(&self, x: u32) -> bool {
+        self.of(x).0 != x
+    }
+}
+
 /// ⭐⭐⭐ **MONTA AS EQUAÇÕES E PERGUNTA SE ELAS BATEM.**
 ///
 /// ⚠️ Ela **não resolve nada** e não toca no mapa. *O portão de uma wave mede a premissa
 /// dela; construir o solver antes é construir sobre uma premissa que ninguém leu.*
 #[must_use]
 pub fn measure_arc_lines(cut: &CutMesh, w: &Weld, map: &GridMap) -> ArcLineSystem {
+    build_arc_ties(cut, w, map).report
+}
+
+/// ⭐⭐⭐ **CONSTRÓI AS AMARRAS** — a eliminação escalar dos arcos.
+///
+/// ⚠️ **O eixo atravessado sai do `map` que entra**, que na cadeia é o contínuo **sem**
+/// restrição nenhuma. *É uma leitura da solução livre, e não um dado da peça* — dizer o
+/// contrário faria a escolha parecer independente do ponto de partida.
+#[must_use]
+pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
     let n = w.classes();
     let mut out = ArcLineSystem {
         scalars: 2 * n,
         ..ArcLineSystem::default()
     };
     let mut uf = Signed::new(2 * n);
+    let mut ties = ScalarTies::default();
     let mut offs: Vec<f32> = Vec::new();
 
     for seam in &cut.seams {
@@ -214,7 +270,24 @@ pub fn measure_arc_lines(cut: &CutMesh, w: &Weld, map: &GridMap) -> ArcLineSyste
     offs.sort_by(f32::total_cmp);
     out.offset_p50 = offs.get(offs.len() / 2).copied().unwrap_or(0.0);
     out.offset_max = offs.last().copied().unwrap_or(0.0);
-    out
+
+    // ── A tabela final: cada escalar comprimido até a' raiz dele.
+    #[allow(clippy::cast_possible_truncation)]
+    let total = (2 * n) as u32;
+    ties.tie = (0..total).map(|x| uf.find(x)).collect();
+    let mut by_root: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+    for x in 0..total {
+        by_root.entry(ties.tie[x as usize].0).or_default().push(x);
+    }
+    for (root, members) in by_root {
+        if members.len() < 2 {
+            continue;
+        }
+        ties.roots.push(root);
+        ties.members.push(members);
+    }
+    ties.report = out;
+    ties
 }
 
 #[cfg(test)]

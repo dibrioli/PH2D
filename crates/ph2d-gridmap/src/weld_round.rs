@@ -40,6 +40,16 @@ use crate::weld::{seam_residual, weld};
 use crate::weld_flat::Var;
 use crate::weld_solve::{WeldRelaxer, solve_welded};
 
+/// ⭐⭐⭐ **AS AMARRAS DOS ARCOS** — `PH2D_GRIDMAP_ARCLINE=1` liga-as.
+///
+/// ⛔ **Opt-in, e nasce desligado**: a wave shipa com a tabela da medição ao lado, não
+/// com uma promessa. *A porta vive aqui, ao lado da irmã, pela mesma razão que ela — dois
+/// chamadores leram a mesma env com sentidos opostos em 2026-08-24.*
+#[must_use]
+pub fn arcline_enabled() -> bool {
+    std::env::var("PH2D_GRIDMAP_ARCLINE").ok().as_deref() == Some("1")
+}
+
 /// ⭐ **O INTERRUPTOR, numa porta só:** `PH2D_GRIDMAP_WELD=0` volta ao G3 penalizado.
 ///
 /// ⚠️ **Ele vive aqui e não em cada chamador** porque houve dois — o instrumento e o
@@ -129,9 +139,44 @@ pub fn round_welded(
     opts: RoundOptions,
     singular: &[u32],
 ) -> (GridMap, RoundReport) {
-    let (mut map, before) = solve_welded(mesh, cut, combed, h, opts.welded_rounds);
+    let (mut map, mut before) = solve_welded(mesh, cut, combed, h, opts.welded_rounds);
     let (w, _) = weld(cut, combed);
+    // ⭐⭐⭐ **AS AMARRAS DOS ARCOS — o 2.º passe** (`PH2D_GRIDMAP_ARCLINE=1`).
+    //
+    // O `ACHADO_ordem_das_fases` §23.14 mediu que praticamente nenhum arco do layout sai
+    // uma linha de grade, e a §23.15 fixou a morada no G3 **contínuo**. A restrição entra
+    // aqui, por eliminação escalar — ver [`crate::arcline`].
+    //
+    // ⚠️ **É um segundo passe e não um parâmetro**, e a razão é medida: a restrição
+    // precisa de saber para que lado cada arco corre, e quem o diz é a solução **sem**
+    // ela. *Escolher o eixo antes de haver mapa seria escolhê-lo à sorte.*
+    //
+    // ⛔ **Nasce DESLIGADO.** Sem a env o mapa é byte-idêntico ao de sempre.
+    //
+    // ⛔⛔ **E ELAS TE^M DE FICAR LIGADAS NO ARREDONDAMENTO.** A 1.ª versão desta wave
+    // resolvia o 2.º passe e depois construía o relaxador da escada gulosa **sem** as
+    // amarras — e a escada, que relaxa a cada prego, **desfazia** o que o passe tinha
+    // feito. *Medido: saída byte-idêntica ao controlo, com os grupos todos a entrar.*
+    // ⚠️ *Uma restrição imposta numa fase e não na seguinte não é uma restrição; é um
+    // ponto de partida.*
+    let ties = arcline_enabled().then(|| {
+        let t = crate::arcline::build_arc_ties(cut, &w, &map);
+        let (m2, r2) = crate::weld_solve::solve_welded_with(
+            mesh,
+            cut,
+            combed,
+            h,
+            opts.welded_rounds,
+            Some(&t),
+        );
+        map = m2;
+        before = r2;
+        t
+    });
     let mut rep = RoundReport {
+        tie_groups: before.tie_groups,
+        tie_refused: before.tie_refused,
+        tie_refused_why: before.tie_refused_why,
         seam_before: (before.solve.seam_p50, before.solve.seam_max),
         weld: before.weld,
         folded_before: before.folded_before,
@@ -142,6 +187,9 @@ pub fn round_welded(
     let mut solve_rep = SolveReport::default();
     let a = assemble(mesh, cut, combed, h, &mut solve_rep);
     let mut r = WeldRelaxer::new(&a, &w, cut, combed);
+    if let Some(t) = &ties {
+        r.attach_ties(t);
+    }
 
     // ── ⭐ AS VARIÁVEIS INTEIRAS: as livres do sistema reduzido.
     //

@@ -150,6 +150,19 @@ fechou»*.
    depende das translações ⇒ entram no **mesmo sistema de fechos** do `weld_flat`, sem
    maquinaria nova. ⚠️ `0`–`2` arcos por peça são **ambíguos** (perto de `45°`), e a coluna
    existe para não os confundir com conflitos. *A wave é mais barata que a da costura.*
+   ⛔⛔⛔ **E A WAVE FOI CONSTRUÍDA — na CAMADA ERRADA** (§23.17). As amarras, a relaxação
+   de grupo e o 2.º passe existem, atrás de `PH2D_GRIDMAP_ARCLINE=1`, com gates a provar
+   que entram, que movem o mapa numa esfera analítica, e que **desligadas são inertes bit
+   a bit**. Nas peças reais entram **`0` grupos**, e o contador dá a razão **única**:
+   `11`/`17`/`12` recusados, **`100 %` por a classe SER uma incógnita LIVRE do sistema dos
+   fechos** — *os cantos dos arcos SÃO os cones, que a soldadura da costura já possui.*
+   ⇒ A restrição tem de entrar **DENTRO** do `ClosureSystem`, como terceira espécie de
+   fecho, e não numa segunda camada por cima.
+   ⚠️ **A lei que previa isto já estava escrita no `weld_flat` desde a Obra A** («duas
+   eliminações que leem o que a outra escreve não são duas eliminações») — e não estava no
+   caminho de quem implementa. ⭐ A álgebra, o portão e a relaxação de grupo **migram sem se
+   reescrever**. ⛔ Fica também medida a armadilha: impor a restrição no 2.º passe e **não**
+   na escada gulosa dá saída **byte-idêntica ao controlo com todos os grupos a entrar**.
 2. ⭐⭐ **O patch de VALÊNCIA 12 da `sculpt_004`** — o traçado dá `16` patches (a `t003` dá
    `31`) e um deles é não-disco com `χ = −1`; a limpeza parou porque **piorava** a topologia.
    É a instância mais nítida do item 1, e veio da peça do artista.
@@ -179,7 +192,7 @@ fechou»*.
 `ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral),
 ⭐ `arcline.rs` + `arcline_tests.rs` (o portão da wave dos arcos), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.16.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.17.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

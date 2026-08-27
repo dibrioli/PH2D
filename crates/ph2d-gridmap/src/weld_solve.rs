@@ -87,7 +87,19 @@ pub struct WeldSolveReport {
     pub folded_after: usize,
     /// Quantas passagens de endurecimento correram de facto.
     pub stiffen_passes: usize,
+    /// ⭐⭐⭐ Grupos de escalares **amarrados** pelos arcos que entraram de facto.
+    pub tie_groups: usize,
+    /// ⛔⛔ Grupos **RECUSADOS** — algum membro já tem quem o escreva.
+    ///
+    /// ⚠️ *Recusa-se o grupo INTEIRO, e conta-se.* Aceitar metade seria pôr duas leis
+    /// sobre a mesma variável — o defeito que a obra A mediu nos dois subsistemas.
+    pub tie_refused: usize,
+    /// ⭐ A razão da recusa: `[dependente, livre do sistema, pregada]`.
+    pub tie_refused_why: [usize; 3],
 }
+
+/// Um grupo amarrado: a raiz, e por membro `(escalar, σ, δ)` — ver [`crate::arcline`].
+type TieGroup = (u32, Vec<(u32, f32, f32)>);
 
 /// ⭐ **O RELAXADOR SOLDADO** — o sistema reduzido, uma variável de cada vez.
 pub(crate) struct WeldRelaxer<'a> {
@@ -103,6 +115,20 @@ pub(crate) struct WeldRelaxer<'a> {
     free_frozen: Vec<[bool; 2]>,
     /// Por classe, as classes vizinhas — a fila do degrau local anda por aqui.
     neigh: Vec<Vec<u32>>,
+    /// ⭐⭐⭐ As amarras dos arcos — ver [`crate::arcline`]. Vazio = o caminho de sempre.
+    ties: Vec<TieGroup>,
+    /// Por classe, que componentes são **conduzidas** por uma amarra.
+    ///
+    /// ⚠️ Elas saem da [`Self::relax_class`] pela mesma porta que as pregadas: *quem tem
+    /// quem o escreva não se relaxa sozinho.*
+    driven: Vec<[bool; 2]>,
+    /// Grupos recusados por algum membro já ter dono.
+    refused: usize,
+    /// ⭐ Por que razão: `[dependente, livre do sistema, pregada]`.
+    ///
+    /// ⚠️ *«Recusado» sem a razão manda quem lê adivinhar entre três desenhos
+    /// diferentes* — e só um deles é o que a peça de facto tem.
+    refused_why: [usize; 3],
 }
 
 impl<'a> WeldRelaxer<'a> {
@@ -150,7 +176,111 @@ impl<'a> WeldRelaxer<'a> {
             frozen: vec![[false; 2]; nc],
             free_frozen: vec![[false; 2]; nf],
             neigh,
+            ties: Vec::new(),
+            driven: vec![[false; 2]; nc],
+            refused: 0,
+            refused_why: [0; 3],
         }
+    }
+
+    /// ⭐⭐⭐ **LIGA AS AMARRAS DOS ARCOS.**
+    ///
+    /// ⛔⛔ **Um grupo é aceite INTEIRO ou recusado inteiro.** Se qualquer membro já tem
+    /// quem o escreva — uma classe **dependente** do sistema dos fechos, uma que **é**
+    /// incógnita livre dele, ou uma componente já pregada — o grupo cai fora e é
+    /// **contado** ([`WeldSolveReport::tie_refused`]).
+    ///
+    /// ⚠️ *Aceitar metade de um grupo poria duas leis sobre a mesma variável*, que é
+    /// exactamente o defeito que a obra A mediu ao pôr as duas espécies de fecho em
+    /// subsistemas separados (esfera a `NaN`, toro a `6,4e17`).
+    pub(crate) fn attach_ties(&mut self, ties: &crate::arcline::ScalarTies) {
+        for g in 0..ties.groups() {
+            let Some((root, members)) = ties.group(g) else {
+                continue;
+            };
+            let why = |x: u32| -> Option<usize> {
+                let (c, ax) = (x as usize / 2, x as usize % 2);
+                if c >= self.frozen.len() || self.sys.is_dependent_class(c) {
+                    return Some(0);
+                }
+                if self.free_index_class(c).is_some() {
+                    return Some(1);
+                }
+                self.frozen[c][ax].then_some(2)
+            };
+            if let Some(k) = members.iter().copied().find_map(why) {
+                self.refused += 1;
+                self.refused_why[k] += 1;
+                continue;
+            }
+            let rows: Vec<(u32, f32, f32)> = members
+                .iter()
+                .map(|&x| {
+                    let (_, sigma, delta) = ties.of(x);
+                    (x, sigma, delta)
+                })
+                .collect();
+            for &(x, _, _) in &rows {
+                if x != root {
+                    self.driven[x as usize / 2][x as usize % 2] = true;
+                }
+            }
+            self.ties.push((root, rows));
+        }
+    }
+
+    /// Quantos grupos entraram, quantos foram recusados, e por que razão.
+    pub(crate) fn tie_counts(&self) -> (usize, usize, [usize; 3]) {
+        (self.ties.len(), self.refused, self.refused_why)
+    }
+
+    /// ⭐ O acumulado do resíduo de uma classe, no quadro dela, e o denominador.
+    ///
+    /// ⚠️ **Uma função só, com dois leitores** — a relaxação de uma classe e a de um
+    /// grupo amarrado. *A mesma soma escrita duas vezes seria a segunda a envelhecer.*
+    fn class_acc(&self, map: &GridMap, class: usize) -> ([f32; 2], f32) {
+        let mut acc = [0.0f32; 2];
+        for ((p, l), rot) in self.w.members_pub(class) {
+            let (r, _) = self.residual(map, p as usize, l as usize);
+            let rr = turn2(r, -rot);
+            acc[0] += rr[0];
+            acc[1] += rr[1];
+        }
+        (acc, self.den[class])
+    }
+
+    /// ⭐⭐⭐ **RELAXA UM GRUPO AMARRADO** — um escalar por todos os membros.
+    ///
+    /// A lei é a mesma de uma classe, um nível acima: soma-se o resíduo de **todos** os
+    /// membros (cada um com o sinal que o liga à raiz) sobre a soma dos denominadores
+    /// deles, e escreve-se o grupo inteiro a partir da raiz.
+    pub(crate) fn relax_tie(&self, map: &mut GridMap, g: usize) -> f32 {
+        let Some((root, rows)) = self.ties.get(g) else {
+            return 0.0;
+        };
+        let (mut num, mut den) = (0.0f32, 0.0f32);
+        for &(x, sigma, _) in rows {
+            let (c, ax) = (x as usize / 2, x as usize % 2);
+            let (acc, d) = self.class_acc(map, c);
+            if d <= 0.0 {
+                continue;
+            }
+            num += sigma * acc[ax];
+            den += d;
+        }
+        if den <= 0.0 {
+            return 0.0;
+        }
+        let step = num / den;
+        let (rc, rax) = (*root as usize / 2, *root as usize % 2);
+        let y_root = self.w.value_pub(map, rc)[rax] + step;
+        for &(x, sigma, delta) in rows {
+            let (c, ax) = (x as usize / 2, x as usize % 2);
+            let mut y = self.w.value_pub(map, c);
+            y[ax] = sigma.mul_add(y_root, delta);
+            self.w.set(map, c, y);
+        }
+        step.abs()
     }
 
     /// O resíduo de Poisson de uma cópia: `num − den·z`, e o `den`.
@@ -176,17 +306,15 @@ impl<'a> WeldRelaxer<'a> {
         if den <= 0.0 {
             return 0.0;
         }
-        let f = self.frozen[class];
+        let d0 = self.driven[class];
+        let f = [
+            self.frozen[class][0] || d0[0],
+            self.frozen[class][1] || d0[1],
+        ];
         if f[0] && f[1] {
             return 0.0;
         }
-        let mut acc = [0.0f32; 2];
-        for ((p, l), rot) in self.w.members_pub(class) {
-            let (r, _) = self.residual(map, p as usize, l as usize);
-            let rr = turn2(r, -rot);
-            acc[0] += rr[0];
-            acc[1] += rr[1];
-        }
+        let (acc, _) = self.class_acc(map, class);
         let d = [
             if f[0] { 0.0 } else { acc[0] / den },
             if f[1] { 0.0 } else { acc[1] / den },
@@ -316,6 +444,9 @@ impl<'a> WeldRelaxer<'a> {
         for c in 0..self.w.classes() {
             worst = worst.max(self.relax_class(map, c));
         }
+        for g in 0..self.ties.len() {
+            worst = worst.max(self.relax_tie(map, g));
+        }
         for i in 0..self.sys.free().len() {
             worst = worst.max(self.relax_free(map, i));
         }
@@ -427,6 +558,26 @@ pub fn solve_welded(
     h: f32,
     rounds: usize,
 ) -> (GridMap, WeldSolveReport) {
+    solve_welded_with(mesh, cut, combed, h, rounds, None)
+}
+
+/// ⭐⭐⭐ **O MESMO, com as AMARRAS DOS ARCOS ligadas.**
+///
+/// ⚠️ **A escolha do eixo atravessado de cada arco sai do mapa que gerou as amarras**, que
+/// na cadeia é a solução **livre**. *É por isso que isto é um segundo passe e não um
+/// parâmetro:* a restrição precisa de saber para que lado cada arco corre, e quem o diz é
+/// a solução sem ela.
+///
+/// ⛔ `ties = None` é **byte-idêntico** ao [`solve_welded`] — é o controlo.
+#[must_use]
+pub fn solve_welded_with(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    h: f32,
+    rounds: usize,
+    ties: Option<&crate::arcline::ScalarTies>,
+) -> (GridMap, WeldSolveReport) {
     let mut rep = WeldSolveReport::default();
     let (w, wrep) = weld(cut, combed);
     rep.weld = wrep;
@@ -448,7 +599,14 @@ pub fn solve_welded(
     // ⚠️ **A 1.ª passagem é a de sempre, bit a bit**, e é isso que faz `passes = 0` ser o
     // caminho antigo: só depois de uma solução existir é que há dobras para endurecer.
     for pass in 0..=stiffen_passes(rounds) {
-        let r = WeldRelaxer::new(&a, &w, cut, combed);
+        let mut r = WeldRelaxer::new(&a, &w, cut, combed);
+        if let Some(t) = ties {
+            r.attach_ties(t);
+            let (g, refused, why) = r.tie_counts();
+            rep.tie_groups = g;
+            rep.tie_refused = refused;
+            rep.tie_refused_why = why;
+        }
         for round in 0..rounds {
             rep.last_move = r.sweep(&mut map);
             rep.rounds = round + 1;

@@ -92,3 +92,59 @@ fn no_seams_means_no_equations() {
     assert_eq!(r.sign_conflicts, 0);
     assert_eq!(r.eliminated, 0);
 }
+
+/// ⭐⭐⭐ **O INTERRUPTOR DESLIGADO É INERTE, BIT A BIT.**
+///
+/// ⚠️ *É o controlo da wave inteira.* Sem ele, «a saída mudou» e «a wave fez alguma
+/// coisa» leem-se igual — e a segunda pode ser falsa com a primeira verdadeira.
+#[test]
+fn the_ties_switch_is_inert_when_off() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let h = 0.2;
+    let (a, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (b, _) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, None);
+    assert_eq!(a.shift, b.shift);
+    assert_eq!(a.uv.len(), b.uv.len());
+    for (ra, rb) in a.uv.iter().zip(&b.uv) {
+        assert_eq!(ra, rb, "o mapa mudou com o interruptor DESLIGADO");
+    }
+}
+
+/// ⭐⭐ **E LIGADO ELE MEXE** — a saída deixa de ser a mesma.
+///
+/// ⚠️ Este gate não afirma que ela ficou **melhor**; afirma que a restrição **entrou**.
+/// *Um interruptor que não move nada e um que melhora tudo leem igual num gate de
+/// igualdade, e só um deles é o que se construiu.*
+#[test]
+fn the_ties_change_the_map_when_on() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let h = 0.2;
+    let (base, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    let ties = super::build_arc_ties(&cut, &w, &base);
+    assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
+    let (tied, rep) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties));
+    assert!(
+        rep.tie_groups > 0,
+        "nenhum grupo entrou: {} recusados",
+        rep.tie_refused
+    );
+    let moved = base
+        .uv
+        .iter()
+        .zip(&tied.uv)
+        .any(|(ra, rb)| ra.iter().zip(rb).any(|(a, b)| a != b));
+    assert!(moved, "as amarras nao moveram o mapa");
+}

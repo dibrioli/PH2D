@@ -74,7 +74,7 @@ pub mod weld_round;
 pub mod weld_solve;
 
 pub use align::{Alignment, ArcQuant, measure_alignment, measure_arc_quantization};
-pub use arcline::{ArcLineSystem, measure_arc_lines};
+pub use arcline::{ArcLineSystem, ScalarTies, build_arc_ties, measure_arc_lines};
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
@@ -84,5 +84,7 @@ pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
-pub use weld_round::{round_welded, welded_enabled};
-pub use weld_solve::{STIFFEN_FACTOR, STIFFEN_PASSES, WeldSolveReport, solve_welded};
+pub use weld_round::{arcline_enabled, round_welded, welded_enabled};
+pub use weld_solve::{
+    STIFFEN_FACTOR, STIFFEN_PASSES, WeldSolveReport, solve_welded, solve_welded_with,
+};

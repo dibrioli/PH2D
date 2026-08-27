@@ -1626,3 +1626,60 @@ grafo **parte-se por eixo**, e é isso que mata os ciclos.
 ⛔ **E o que este portão NÃO é:** ele não impõe coisa nenhuma. *A saída do botão continua
 byte-idêntica* — o que ele compra é a certeza de que a wave seguinte assenta numa premissa
 lida, e não numa que se supôs.
+
+### §23.17 — ⛔⛔⛔ A wave foi CONSTRUÍDA, e a medição diz que ela está na CAMADA errada
+
+A restrição dos arcos está implementada de ponta a ponta: as amarras
+([`arcline::build_arc_ties`](../../../crates/ph2d-gridmap/src/arcline.rs)), a relaxação de
+um grupo amarrado ([`weld_solve::relax_tie`](../../../crates/ph2d-gridmap/src/weld_solve.rs))
+e o 2.º passe atrás de `PH2D_GRIDMAP_ARCLINE=1`. Dois gates provam que ela **entra** e que
+**move o mapa** numa esfera analítica, e um terceiro prova que **desligada é inerte, bit a
+bit**.
+
+⛔ **Nas peças reais ela não faz nada — e o contador diz exactamente porquê:**
+
+| peça | grupos entraram | ⛔ recusados | dependente | ⭐ **é incógnita LIVRE** | já pregada |
+|---|---|---|---|---|---|
+| `sculpt_eared` | **`0`** | `11` | `0` | **`11`** | `0` |
+| `sculpt_hooked` | **`0`** | `17` | `0` | **`17`** | `0` |
+| `sphere_uv_96x144` | **`0`** | `12` | `0` | **`12`** | `0` |
+
+⭐⭐⭐ **Uma só razão, em `100 %` dos casos: os cantos dos arcos SÃO as incógnitas livres do
+sistema dos fechos.** Os extremos de uma separatriz são cones, e um cone é precisamente a
+variável que a soldadura da costura já possui.
+
+⇒ **A restrição dos arcos não pode ser uma segunda camada de eliminação por cima da
+primeira.** Ela tem de entrar **dentro** do [`ClosureSystem`], como uma terceira espécie
+de fecho, ao lado do plano e do que roda.
+
+#### ⚠️ E a lei que previa isto já estava escrita — na wave anterior
+
+O [`weld_flat`](../../../crates/ph2d-gridmap/src/weld_flat.rs) diz, desde a Obra A:
+
+> ⭐⭐⭐ **E as duas espécies de fecho entram no MESMO sistema.** Tratá-las em dois
+> subsistemas cria uma realimentação cujo ganho é maior que `1` — a esfera vai a **NaN** e
+> o toro a `6,4e17`, e amortecer não cura. *Duas eliminações que leem o que a outra
+> escreve não são duas eliminações.*
+
+⛔ *Eu construí o segundo subsistema à mesma.* A diferença é que desta vez a guarda
+apanhou-o **antes** de divergir: o grupo é recusado inteiro e **contado**, em vez de
+metade dele passar. ⚠️ **Uma lei escrita no doc do módulo vizinho não está no caminho de
+quem implementa** — e é a segunda vez nesta linha que isso custa uma wave
+([`feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it`]).
+
+#### ⭐ O que fica, e é mais do que uma refutação
+
+- **A álgebra está feita e gateada:** a equação de um arco é
+  `s_B·y_B[j_B] − s_A·y_A[j_A] = c`, com a identidade dos eixos provada por gate que
+  avalia os dois lados, e o portão da §23.16 a dizer que ela é consistente
+  (`0` conflitos, grafo quase floresta).
+- **A relaxação de um grupo está escrita e provada** (soma dos resíduos dos membros com
+  sinal, sobre a soma dos denominadores) — ela migra para dentro do `ClosureSystem` sem se
+  reescrever.
+- ⭐ **E uma armadilha ficou medida:** a 1.ª versão resolvia o 2.º passe e depois construía
+  o relaxador da **escada gulosa sem as amarras** — a escada desfazia tudo, e a saída era
+  byte-idêntica ao controlo **com os grupos todos a entrar**. *Uma restrição imposta numa
+  fase e não na seguinte não é uma restrição; é um ponto de partida.*
+
+⛔ **Shipa DESLIGADO** (`PH2D_GRIDMAP_ARCLINE` ausente ⇒ byte-idêntico), com a tabela desta
+secção ao lado.

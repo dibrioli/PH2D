@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**63 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**64 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -77,6 +77,7 @@
 | 2026-08-22 |  | [HANDOFF_line_Vector_2026-08-22.md](HANDOFF_line_Vector_2026-08-22.md) | sessão | HANDOFF — linha `line/Vector` (2026-08-22) |
 | 2026-08-23 |  | [HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md](HANDOFF_INTEGRACAO_line_Vector_ui_viva_2026-08-23.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · a booleana nos **ESTADOS** + o fecho do estudo de **UI VIVA** (2026-08-23) |
 | 2026-08-24 |  | [HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md](HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **O INPUT MAP** (W1–W7): acções nomeadas à la Godot, janela flutuante, press-to-bind, `PROJECT_SCHEMA` 95→96 (2026-08-24) |
+| 2026-08-26 |  | [HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md](HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **A MÁQUINA DE ESTADOS DO MORPH** (W1–W11j): um botão faz o conjunto, setas virtuais, uma tecla por FORMA, o modo que toma o teclado, e o conjunto anima dentro dos States; `PROJECT_SCHEMA` 97→98 **sem degrau** (2026-08-26) |
 ---
 *Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
 `docs/`.*

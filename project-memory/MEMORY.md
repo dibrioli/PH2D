@@ -33,6 +33,8 @@
 - [Coluna sem rótulo lê-se ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) · [que número a resposta CONTRÁRIA imprimiria?](feedback_ask_what_number_the_opposite_answer_would_print.md)
 - [Cura em fixtura sem o fenômeno](feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless.md) · [«não toque» é afirmação — meça](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md)
 - [Regra fora do caminho não existe](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) · [ferramenta adotada = passo a NOMEIA](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) · [arquivar sem indexar recusas](feedback_archiving_without_indexing_the_refusals_deletes_them.md)
+- [Reconstruir a meio da medição parte a corrida em dois binários](feedback_rebuilding_mid_measurement_splits_the_run_across_two_binaries.md)
+- [Meça a ESTRUTURA do defeito antes de desenhar a cura](feedback_measure_the_defects_structure_before_designing_its_cure.md) · [«a fase X cria Y» pede entrada LIMPA](feedback_a_stage_accused_of_creating_a_defect_needs_a_clean_input_control.md)
 - [Mecanismo certo, cura errada](feedback_a_correct_mechanism_can_prescribe_the_wrong_cure.md) · [preço errado 4×](feedback_a_note_can_name_the_right_mechanism_and_miss_the_price_by_4x.md) · [cerca declarada escolhe a cura](feedback_a_declared_fence_chooses_the_shape_of_its_own_cure.md)
 - [Recusa medida responde UMA pergunta](feedback_a_measured_refusal_answers_one_question_recheck_it_when_yours_is_another.md) · [cerca de Chesterton](feedback_documented_decision_chesterton_fence.md) · [revert: leia o motivo](feedback_a_reverted_attempt_may_differ_only_in_lifetime_read_the_revert_reason.md)
 - [match não guarda a lista de um laço](feedback_an_exhaustive_match_does_not_guard_the_list_a_loop_iterates.md) · [nome de param carrega contrato](feedback_a_house_param_name_carries_a_contract_pick_another_word.md) · [convenção vs inércia](feedback_convention_vs_inertia.md)
@@ -90,6 +92,7 @@
 - [Nada de → em string literal (asserts também)](feedback_no_tofu_arrows_in_string_literals.md)
 - [Registro de painel (5 sites)](reference_topic_panel_registration.md)
 - [Pré-multiplicada inverte o Multiply](feedback_a_premultiplied_source_breaks_the_blend_whose_identity_is_one.md) · [clone + id de ponteiro = CoW; use versão](feedback_a_held_clone_plus_pointer_identity_change_detection_forces_copy_on_write.md)
+- [Atributo separado do item por doc muda de dono](feedback_an_attribute_separated_from_its_item_by_a_doc_comment_changes_owner.md)
 - [Gotchas de código (13)](reference_topic_code_gotchas.md)
 
 ## Arquitetura / norte / perf

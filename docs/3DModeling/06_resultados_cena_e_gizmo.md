@@ -5748,6 +5748,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
 | ⏸️ O contorno **cheio** é `3,39×` no assentar de uma peça de resolução ALTA | numa peça de omissão ele não muda; é o knob `Resolution` do artista | §84.4 |
+| ✅ **O decimador do preview apagava QUINAS** — e quem sobrevivia era uma lotaria de índice | ⭐ decima por **GIRO**: a estrela vai de `134` pontos partidos para **`10` exactos**, imagem idêntica | §85 |
+| ⏸️ Acima de `~336` arestas o contorno muda `≤3/255` no pixel | o `Resolution` alto compra fidelidade real até ali e quase nada depois; ⛔ o tecto **não** se deriva do pixel (o erro é angular) | §85.1 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -5766,6 +5768,15 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W84 (§85): o decimador do preview apagava QUINAS, e quem sobrevivia era uma lotaria.** Ele
+  tirava um em cada `k` vértices — certo para **curvatura**, que é distribuída, e errado para uma
+  **quina**, que é um vértice só com todo o ângulo dentro. Medido numa estrela: com o
+  `PREVIEW_MAX_EDGES = 168` que ship (passo `3`) a normal saltava **`126,8°`**; com passo `2` ou `5`
+  não mudava nada — *as quinas caíam em múltiplos de `40`*. ⭐ A cura é decimar por **GIRO**: `400`
+  pontos passam a **`10`** (as quinas exactas) e a imagem sai **idêntica**. ⭐⭐ E a §85.1 mediu o que
+  o `Resolution` alto compra: a silhueta quase não mexe, a **normal** mexe `∝ 1/n`, e acima de `~336`
+  arestas o pixel muda `≤3` níveis de `255`. ⛔ Isso **refuta** derivar o tecto do tamanho do pixel —
+  o erro que se vê é angular, e um ângulo não encolhe com a resolução da tela.
 - ⭐⭐⭐ **W83 (§84): o que sobrava a compilar no assentar era o ANTI-SERRILHADO — e eram cinco
   linhas.** A 2.ª passagem constrói um avaliador por lote de 64 pixels de borda, e cada um
   **recompilava a árvore inteira**: num assentar a `640×360` isso era `29` das `29` fitas do quadro,
@@ -7607,3 +7618,81 @@ imagem final.*
 
 **Gate:** `the_antialias_pass_compiles_no_tape_of_its_own` (binário próprio), com a mutação que só
 ele mata — o `fork` volta a compilar.
+
+## §85 — W84: o decimador do preview apagava QUINAS, e quem sobrevivia era uma lotaria (27/08)
+
+**Report do Enio (27/08):** *«piorou muito»*, logo depois de eu lhe pedir para subir o `Resolution`.
+E a corrida seguinte dele fechou metade do diagnóstico: **desligar a cache é PIOR** (`PH2D_FIELD_TAPE_CACHE=0`,
+*«mais lento»*) ⇒ a cache ajuda, e o que ele viu não foi ela.
+
+### §85.1 — ⭐ O que o `Resolution` alto de facto compra
+
+`measure_how_many_contour_edges_are_visible` — o contorno decimado contra um de `2048` pontos, e a
+régua final é o **PIXEL sombreado** (níveis de 8 bits), não a normal:
+
+| arestas | pixels que mudam | normal p99 | **pixel p99** | **pixel máx** |
+|---:|---:|---:|---:|---:|
+| `672` | `0,000 %` | `0,266°` | `1` | `1`–`2` |
+| `336` | `0,009 %` | `0,529°` | `1` | `2`–`3` |
+| `168` | `0,015 %` | `1,056°` | `3` | `4` |
+| `84` | `0,067 %` | `2,110°` | `5` | `9`–`10` |
+| `42` | `0,283 %` | `4,218°` | `9` | `19`–`21` |
+
+⭐⭐ **A silhueta quase não mexe; o que mexe é a NORMAL**, e ela escala **exactamente** com `1/n`
+(`4,218 → 2,110 → 1,056 → 0,529 → 0,266`). *A resolução do contorno não é sobre o contorno: é sobre
+a luz.*
+
+⚠️ **E a régua é independente do tamanho da imagem** — os mesmos números a `640×360` e a `1600×900`.
+⇒ ⛔ **a ideia de derivar o tecto do tamanho do pixel está REFUTADA**: o erro que se vê é angular, e
+um ângulo não encolhe com a resolução da tela.
+
+### §85.2 — ⛔⛔ E o decimador apagava QUINAS
+
+O [`ph2d_field::coarsen`] tirava **um em cada `k`** vértices, com esta justificação no doc dele: *«um
+contorno achatado por tolerância tem os pontos densos onde a curvatura é alta — então tirar um em
+cada `k` preserva o carácter da forma»*. ⭐ **Isso é verdade para curvatura**, que é distribuída por
+muitos vértices.
+
+⚠️ **Uma QUINA não é curvatura distribuída: é um vértice só, com todo o ângulo dentro.**
+
+`measure_whether_the_preview_decimation_eats_corners` — uma estrela de 5 pontas, `400` pontos, as
+quinas em múltiplos de `40`:
+
+| tecto | passo | arestas depois | pixels que mudam | normal p99 | **normal máx** |
+|---:|---:|---:|---:|---:|---:|
+| `336` | `2` | `200` | `0` | `0,034°` | `0,048°` |
+| **`168`** | **`3`** | **`134`** | **`509` (`0,87 %`)** | **`28,1°`** | **`126,8°`** |
+| `84` | `5` | `80` | `0` | `0,034°` | `0,048°` |
+
+⭐⭐⭐ **Se uma quina sobrevive depende de o índice dela ser divisível pelo passo.** Com `2` e `5`
+elas vivem; com `3` **três em cada cinco morrem** — e o `PREVIEW_MAX_EDGES` que ship é `168`, que dá
+passo `3`. *Uma forma que sobrevive ou não conforme a aritmética do índice não é uma lei: é um
+acidente.*
+
+### §85.3 — ⭐⭐⭐ A cura: decimar por GIRO, e a quina fica por CONSTRUÇÃO
+
+O orçamento passa a ser de **ângulo**: a curvatura total da peça (sem sinal) repartida pelo número de
+arestas pedido, e um vértice é mantido quando o giro acumulado desde o último chega ao orçamento.
+
+⭐ **Por que o giro é a grandeza certa:** o erro de uma corda que substitui um arco é fixado pelo
+**ângulo** que o arco varre, e o erro que se **vê** é o da normal — que é esse mesmo ângulo (a §85.1
+mediu-o: `∝ 1/n`). ⇒ repartir o giro por igual distribui o erro por igual, e **um vértice que sozinho
+gasta o orçamento — uma quina — é mantido sem uma regra própria a dizê-lo.**
+
+| a estrela, decimada a `168` | antes | **depois** |
+|---|---:|---:|
+| pontos | `134` | **`10`** |
+| pixels que mudam | `509` | **`0`** |
+| normal máx | `126,8°` | **`0,283°`** |
+
+⭐⭐⭐ **`400` pontos passam a `10` — exactamente as quinas — e a imagem sai IDÊNTICA.** Os `390`
+vértices ao longo das arestas rectas não tinham forma nenhuma para preservar, e o decimador antigo
+gastava metade do orçamento neles enquanto perdia a forma que existia.
+
+⚠️ **O tecto passa a ser um ALVO, não uma parede:** uma peça com mais quinas do que o orçamento
+mantém as quinas. *Não há como representar uma forma de duzentas quinas em cento e sessenta arestas
+sem deixar de ser aquela forma*, e a resposta certa é gastar mais e não mentir.
+
+**Gates:** `a_corner_survives_the_coarsening` · `the_coarsening_spends_its_budget_on_turn_not_on_length`,
+com a mutação que os mata (voltar ao passo por índice). Os três gates antigos do `coarsen` ficam
+verdes.

@@ -1238,3 +1238,96 @@ fn a_small_hole_does_not_switch_off_the_coarsening_of_the_whole_piece() {
         "o furo pequeno fica INTEIRO: decimá-lo levá-lo-ia abaixo do triângulo"
     );
 }
+
+/// ⭐⭐⭐ **UMA QUINA SOBREVIVE À DECIMAÇÃO** (W84) — e a versão anterior perdia-a por lotaria.
+///
+/// ⛔ **Medido antes da cura** (`measure_whether_the_preview_decimation_eats_corners`, uma estrela
+/// de 5 pontas com 400 pontos traçada a `640×360`): com o tecto de `168` — o `PREVIEW_MAX_EDGES` que
+/// ship — a normal saltava **`126,8°`** e `0,87 %` dos pixels da peça mudavam. Com `336` e `84` não
+/// mudava nada. ⚠️ *A diferença era só o passo: as quinas caíam em múltiplos de `40`, e `2` e `5`
+/// dividem-no enquanto `3` não.* Uma forma que sobrevive ou não conforme a aritmética do índice não
+/// é uma lei — é um acidente.
+///
+/// ⭐ A decimação por **giro** mantém-na por construção: uma quina gasta o orçamento inteiro num
+/// vértice só.
+#[test]
+fn a_corner_survives_the_coarsening() {
+    const PONTAS: usize = 5;
+    const POR_ARESTA: usize = 40;
+    let mut pontos: Vec<[f32; 2]> = Vec::new();
+    let mut quinas: Vec<[f32; 2]> = Vec::new();
+    for i in 0..PONTAS * 2 {
+        let a0 = std::f64::consts::TAU * (i as f64) / (PONTAS * 2) as f64;
+        let a1 = std::f64::consts::TAU * ((i + 1) as f64) / (PONTAS * 2) as f64;
+        let (r0, r1) = if i % 2 == 0 {
+            (0.65, 0.28)
+        } else {
+            (0.28, 0.65)
+        };
+        let (x0, y0) = ((r0 * a0.cos()) as f32, (r0 * a0.sin()) as f32);
+        quinas.push([x0, y0]);
+        for s in 0..POR_ARESTA {
+            let t = s as f32 / POR_ARESTA as f32;
+            let (x1, y1) = ((r1 * a1.cos()) as f32, (r1 * a1.sin()) as f32);
+            pontos.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
+        }
+    }
+    let cheio = super::Profile::new(vec![pontos], super::FillRule::NonZero, 1e-4).expect("estrela");
+    assert_eq!(cheio.segment_count(), PONTAS * 2 * POR_ARESTA);
+
+    let grosso = super::coarsen(&cheio, 168);
+    // ⛔ **O CONTROLO**: se a decimação não tivesse feito nada, o gate abaixo passaria por ausência.
+    assert!(
+        grosso.segment_count() < cheio.segment_count(),
+        "CONTROLO: a estrela não foi decimada ({} pontos) e o gate não mede nada",
+        grosso.segment_count()
+    );
+    let ficou = &grosso.contours()[0];
+    for q in &quinas {
+        let achou = ficou
+            .iter()
+            .any(|p| (p[0] - q[0]).abs() < 1e-6 && (p[1] - q[1]).abs() < 1e-6);
+        assert!(
+            achou,
+            "a quina {q:?} desapareceu da estrela decimada ({} pontos) — o que fica no lugar dela é \
+             um bisel, e a peça muda de forma enquanto a mão mexe",
+            ficou.len()
+        );
+    }
+}
+
+/// ⭐⭐ **O ORÇAMENTO GASTA-SE EM GIRO, e não em comprimento** (W84).
+///
+/// ⚠️ Uma aresta recta amostrada em cem pontos não tem forma nenhuma para preservar: os noventa e
+/// oito do meio são cópias da mesma direcção. *A decimação por índice gastava metade do orçamento
+/// neles*, e faltava-lhe orçamento onde a forma de facto estava.
+///
+/// A estrela é a fixtura exacta: `400` pontos, e a forma inteira vive em **`10`**.
+#[test]
+fn the_coarsening_spends_its_budget_on_turn_not_on_length() {
+    const POR_ARESTA: usize = 40;
+    let mut pontos: Vec<[f32; 2]> = Vec::new();
+    for i in 0..10 {
+        let a0 = std::f64::consts::TAU * f64::from(i) / 10.0;
+        let a1 = std::f64::consts::TAU * f64::from(i + 1) / 10.0;
+        let (r0, r1) = if i % 2 == 0 {
+            (0.65, 0.28)
+        } else {
+            (0.28, 0.65)
+        };
+        let (x0, y0) = ((r0 * a0.cos()) as f32, (r0 * a0.sin()) as f32);
+        let (x1, y1) = ((r1 * a1.cos()) as f32, (r1 * a1.sin()) as f32);
+        for s in 0..POR_ARESTA {
+            let t = s as f32 / POR_ARESTA as f32;
+            pontos.push([x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]);
+        }
+    }
+    let cheio = super::Profile::new(vec![pontos], super::FillRule::NonZero, 1e-4).expect("estrela");
+    let grosso = super::coarsen(&cheio, 168);
+    assert!(
+        grosso.segment_count() <= 16,
+        "a forma inteira de uma estrela de 10 quinas vive em 10 pontos; saíram {} — o orçamento \
+         está a ser gasto em vértices que não viram nada",
+        grosso.segment_count()
+    );
+}

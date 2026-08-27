@@ -3805,6 +3805,225 @@ fn a_cached_tape_is_never_served_to_another_document() {
     );
 }
 
+/// ⛔⛔ **O DECIMADOR DO PREVIEW APAGA QUINAS?** (W84) — a sonda que o doc dele pede.
+///
+/// O [`ph2d_field::coarsen`] tira **um em cada `k`** vértices, e o doc justifica-o: *«um contorno
+/// achatado por tolerância tem os pontos densos onde a curvatura é alta — então tirar um em cada `k`
+/// preserva o carácter da forma»*. ⭐ Isso é **verdade para curvatura**, que é distribuída.
+///
+/// ⚠️ **Uma QUINA não é curvatura distribuída: é um vértice só, com todo o ângulo dentro.** Tirar um
+/// em cada `k` apaga-a com probabilidade `(k−1)/k`, e o que fica no lugar é um bisel. A guarda
+/// `c.len() <= 8` salva um quadrado simples; ela **não** salva uma forma que tenha quinas **e**
+/// curvas — que é a forma que um artista desenha.
+///
+/// A sonda mede a **imagem** de uma estrela: quinas a sério, e amostras densas nas arestas.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_the_preview_decimation_eats_corners --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_the_preview_decimation_eats_corners() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    // Uma estrela de 5 pontas, com cada aresta amostrada em `POR_ARESTA` pontos: as quinas caem em
+    // múltiplos exactos, que é o que uma polilinha achatada de um desenho faz.
+    const PONTAS: usize = 5;
+    const POR_ARESTA: usize = 40;
+    let mut estrela: Vec<[f32; 2]> = Vec::new();
+    for i in 0..PONTAS * 2 {
+        let a0 = std::f64::consts::TAU * (i as f64) / (PONTAS * 2) as f64;
+        let a1 = std::f64::consts::TAU * ((i + 1) as f64) / (PONTAS * 2) as f64;
+        let (r0, r1) = if i % 2 == 0 {
+            (0.65, 0.28)
+        } else {
+            (0.28, 0.65)
+        };
+        for s in 0..POR_ARESTA {
+            let t = s as f64 / POR_ARESTA as f64;
+            let (x0, y0) = (r0 * a0.cos(), r0 * a0.sin());
+            let (x1, y1) = (r1 * a1.cos(), r1 * a1.sin());
+            estrela.push([(x0 + (x1 - x0) * t) as f32, (y0 + (y1 - y0) * t) as f32]);
+        }
+    }
+    let cheio = Profile::new(vec![estrela], FillRule::NonZero, 1e-4).expect("estrela");
+    let build = |p: Profile| -> FieldDoc {
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile: p,
+                    half_height: 0.4,
+                    round: 0.02,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    let (w, h) = (640u32, 360u32);
+    let base = crate::trace_with(&build(cheio.clone()), &reg, &cam, w, h, true, false);
+    println!(
+        "a estrela tem {} pontos e {} quinas",
+        cheio.segment_count(),
+        PONTAS * 2
+    );
+    println!("teto | arestas depois | pixels que mudam | % da peça | normal p99 | normal máx");
+    for n in [336usize, 168, 84] {
+        let fina = ph2d_field::coarsen(&cheio, n);
+        let g = crate::trace_with(&build(fina.clone()), &reg, &cam, w, h, true, false);
+        let mut mudou = 0usize;
+        let mut angs: Vec<f64> = Vec::new();
+        for k in 0..(w * h) as usize {
+            if base.hit[k] != g.hit[k] {
+                mudou += 1;
+                continue;
+            }
+            if !base.hit[k] {
+                continue;
+            }
+            let (a, b) = (base.normal[k], g.normal[k]);
+            let d = f64::from(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+            angs.push(d.clamp(-1.0, 1.0).acos().to_degrees());
+        }
+        angs.sort_by(f64::total_cmp);
+        println!(
+            "{n:4} | {:14} | {mudou:16} | {:8.3}% | {:10.3} | {:10.3}",
+            fina.segment_count(),
+            100.0 * mudou as f64 / base.hits() as f64,
+            angs[(angs.len() - 1) * 99 / 100],
+            angs[angs.len() - 1],
+        );
+    }
+}
+
+/// ⭐⭐⭐ **QUANTAS ARESTAS DO CONTORNO SE VÊEM?** (W84) — o que o `Resolution` alto de facto compra.
+///
+/// O Enio subiu o `Resolution` (a pedido meu) e a peça ficou muito mais lenta. **Está certo que
+/// fique**: o custo de uma amostra é *linear nas arestas do contorno*, e a §84.4 mediu `3,39×` entre
+/// `168` e `672` no assentar. ⚠️ **A pergunta que ninguém fez é se aquelas arestas se VÊEM.**
+///
+/// ⭐ **A lei que este módulo já usa é a mesma**: a [`crate::Sharpness`] deriva as tolerâncias do
+/// **tamanho do pixel em mundo**, e não de uma constante. A resolução do contorno é a única grandeza
+/// do traçado que ainda não o faz — ela vem do knob do artista, que é sobre a **peça exportada**.
+///
+/// A sonda mede a **imagem**: quantos pixels mudam de acerto, e quanto a normal se mexe, entre o
+/// contorno cheio e um decimado.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_how_many_contour_edges_are_visible --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_how_many_contour_edges_are_visible() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let build = |p: Profile| -> FieldDoc {
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile: p,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    // ⚠️ O contorno de REFERÊNCIA é bem mais fino do que qualquer candidato: comparar dois
+    // decimados mediria a diferença entre eles, e não o erro contra a curva.
+    let fino: Vec<[f32; 2]> = (0..2048)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / 2048.0;
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let referencia = Profile::new(vec![fino], FillRule::NonZero, 1e-6).expect("perfil");
+    // ⭐⭐⭐ **A régua final é o PIXEL, e não a normal.** Um erro de normal só importa se ele mover
+    // a cor: o matcap é uma bola suave, e um grau de desvio anda um cento e oitenta avos dela.
+    // *Uma diferença geométrica que nenhum pixel mostra é trabalho que ninguém vê.*
+    let matcap: Vec<f32> = {
+        let side = 64usize;
+        let mut v = vec![0.0f32; side * side * 3];
+        for y in 0..side {
+            for x in 0..side {
+                // Uma bola difusa com um realce — o molde de um matcap de modelagem.
+                let (u, w) = (
+                    (x as f32 + 0.5) / side as f32 * 2.0 - 1.0,
+                    (y as f32 + 0.5) / side as f32 * 2.0 - 1.0,
+                );
+                let r2 = u * u + w * w;
+                let z = (1.0 - r2).max(0.0).sqrt();
+                let l = (0.35 * u - 0.5 * w + 0.8 * z).max(0.0);
+                let c = 0.12 + 0.75 * l + 0.6 * l.powi(24);
+                for k in 0..3 {
+                    v[(y * side + x) * 3 + k] = c;
+                }
+            }
+        }
+        v
+    };
+    let mc = crate::Matcap {
+        side: 64,
+        rgb_linear: &matcap,
+    };
+    const FUNDO: [u8; 4] = [30, 30, 34, 255];
+    println!(
+        "tamanho | arestas | pixels que mudam | % da peça | normal p99 | normal máx | PIXEL p99 | PIXEL máx"
+    );
+    for (w, h) in [(640u32, 360u32), (1600, 900)] {
+        let base = crate::trace_with(&build(referencia.clone()), &reg, &cam, w, h, true, false);
+        let base_px = crate::shade(&base, &mc, FUNDO);
+        for n in [672usize, 336, 168, 84, 42, 24] {
+            let doc = build(ph2d_field::coarsen(&referencia, n));
+            let g = crate::trace_with(&doc, &reg, &cam, w, h, true, false);
+            let mut mudou = 0usize;
+            let mut angs: Vec<f64> = Vec::new();
+            for k in 0..(w * h) as usize {
+                if base.hit[k] != g.hit[k] {
+                    mudou += 1;
+                    continue;
+                }
+                if !base.hit[k] {
+                    continue;
+                }
+                let (a, b) = (base.normal[k], g.normal[k]);
+                let d = f64::from(a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+                angs.push(d.clamp(-1.0, 1.0).acos().to_degrees());
+            }
+            angs.sort_by(f64::total_cmp);
+            let p99 = angs[(angs.len() - 1) * 99 / 100];
+            // O maior desvio de canal, em níveis de 8 bits, sobre os pixels da peça.
+            let px = crate::shade(&g, &mc, FUNDO);
+            let mut dif: Vec<u32> = Vec::new();
+            for k in 0..(w * h) as usize {
+                if !(base.hit[k] && g.hit[k]) {
+                    continue;
+                }
+                let d = (0..3)
+                    .map(|c| u32::from(base_px[k * 4 + c].abs_diff(px[k * 4 + c])))
+                    .max()
+                    .unwrap_or(0);
+                dif.push(d);
+            }
+            dif.sort_unstable();
+            println!(
+                "{w:4}x{h:4} | {n:7} | {mudou:16} | {:8.3}% | {p99:10.3} | {:10.3} | {:9} | {:9}",
+                100.0 * mudou as f64 / base.hits() as f64,
+                angs[angs.len() - 1],
+                dif[(dif.len() - 1) * 99 / 100],
+                dif[dif.len() - 1],
+            );
+        }
+    }
+}
+
 /// ⛔⛔⛔ **A CACHE FICA MAIS LENTA À MEDIDA QUE ENCHE?** (W84) — o report *«piorou muito»*.
 ///
 /// A consulta da [`crate::TapeCache`] é uma **varredura LINEAR** sobre tudo o que ela guarda, e o

@@ -94,6 +94,29 @@ pub(crate) fn tiled_trace(
 ) -> Gbuffer {
     let (w, h) = (plane.width() as usize, plane.height() as usize);
     let (out_w, out_h) = (plane.width() as u32, plane.height() as u32);
+    // ⛔⛔ **RECUSA MEDIDA (W87): ordenar os ladrilhos CAROS PRIMEIRO é neutro a pior.**
+    //
+    // Um ladrilho é a unidade **indivisível** de trabalho, e o quadro não acaba antes do mais caro.
+    // A §82.5 mediu que o mais caro vale `1,52×` a fatia perfeita, e a §89 mediu a perda de facto:
+    // `32` quadros **independentes** (um por thread, cada um serial) escalam `17,0×` e **um** quadro
+    // repartido pelas mesmas `32` threads escala `11,65×` ⇒ **a decomposição custa `1,47×`**, e o
+    // trabalho existe: está mal repartido.
+    //
+    // ⛔ **Mas pôr os gordos à frente da fila não o cura.** A/B no MESMO processo (`tiles::LPT`):
+    //
+    // | threads | ordem natural | caros primeiro |
+    // |---:|---:|---:|
+    // | 4 | `81,87` | `81,34` |
+    // | 16 | `30,78` | **`32,30`** |
+    // | 32 | `25,62` | **`26,66`** |
+    //
+    // ⚠️ **A régua que eu usei — a PROFUNDIDADE da peça sob o ladrilho (`t_hi − t_lo`) — está
+    // provavelmente ANTI-correlacionada com o custo:** um ladrilho no meio da peça é fundo e os
+    // raios dele **acertam cedo**; o caro é o da **silhueta**, onde eles passam rasantes e dão
+    // dezenas de passos. *Um escalonamento por um palpite de custo escalona pelo palpite.*
+    //
+    // ⏳ Fica aberto: uma régua de custo que sirva (a do quadro anterior, medida, é a candidata) —
+    // e antes dela, saber se é mesmo a ordem que falta.
     let tiles: Vec<(usize, usize)> = (0..h.div_ceil(tile))
         .flat_map(|ty| (0..w.div_ceil(tile)).map(move |tx| (tx, ty)))
         .collect();

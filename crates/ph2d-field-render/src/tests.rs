@@ -4705,6 +4705,108 @@ fn measure_whether_the_cached_frame_scales_better() {
     }
 }
 
+/// ⭐⭐⭐ **O QUE ESTRAGA A ESCALA: A DECOMPOSIÇÃO OU UM RECURSO PARTILHADO?** (W87) — o
+/// discriminador.
+///
+/// A §88.2 mediu que o quadro usa `~30 %` da máquina e que **o JIT não é a causa** (tirá-lo não
+/// mudou a forma da curva). Sobram dois candidatos nomeados, e eles mandam em waves opostas:
+///
+/// | candidato | o que ele diz | a wave que ele pede |
+/// |---|---|---|
+/// | **a decomposição** (desequilíbrio de ladrilhos, sincronização) | o trabalho existe e está mal repartido | repartir melhor |
+/// | **um recurso partilhado** (largura de banda, SMT) | a máquina não tem mais para dar | fazer **menos** trabalho |
+///
+/// ⭐⭐⭐ **O experimento que os separa é clássico:** correr `T` quadros **independentes**, cada um
+/// numa thread e cada um **serial**, contra **um** quadro repartido por `T` threads. O trabalho total
+/// é o mesmo e a decomposição desaparece.
+///
+/// - se os independentes escalam e o repartido não ⇒ **a decomposição**;
+/// - se nenhum dos dois escala ⇒ **o recurso partilhado**.
+///
+/// ⚠️ **Sem cache nos dois braços**, de propósito: uma cache partilhada entre `T` traçados seria uma
+/// terceira variável, e o que se mede aqui é a **marcha**.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_the_loss_is_the_decomposition_or_a_shared_resource --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_the_loss_is_the_decomposition_or_a_shared_resource() {
+    use rayon::prelude::*;
+    let reg = Registry::new();
+    let doc = cache_piece(168);
+    let cam = Orbit::default();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let (w, h) = (640u32, 360u32);
+    let slabs = crate::slabs_for_test();
+    let tile = crate::tile_for_test();
+    // ⚠️ O quadro SERIAL de referência — a mesma porta, com o paralelismo desligado.
+    let serial = || {
+        crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, false, false)
+            .expect("traçado")
+            .hits()
+    };
+    let _ = serial();
+    let um = med((0..5)
+        .map(|_| {
+            let t0 = std::time::Instant::now();
+            let _ = serial();
+            t0.elapsed().as_secs_f64() * 1000.0
+        })
+        .collect());
+    println!("um quadro SERIAL: {um:.2} ms");
+    println!(
+        "threads |  1 quadro repartido | T quadros independentes | ganho repartido | ganho independentes"
+    );
+    for t in [2usize, 4, 8, 16, 32] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(t)
+            .build()
+            .expect("pool");
+        // A: um quadro, repartido por `t` threads.
+        let repartido = pool.install(|| {
+            let _ = crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, false, true);
+            med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ = crate::trace_tiled_for_test(
+                        &doc, &reg, &cam, w, h, tile, slabs, false, true,
+                    );
+                    t0.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect())
+        });
+        // B: `t` quadros INDEPENDENTES, cada um serial. O relógio é o do lote inteiro dividido por
+        // `t` — o tempo por quadro, comparável com o de cima.
+        let independentes = pool.install(|| {
+            let lote = || {
+                (0..t).into_par_iter().for_each(|_| {
+                    let _ = crate::trace_tiled_for_test(
+                        &doc, &reg, &cam, w, h, tile, slabs, false, false,
+                    );
+                });
+            };
+            lote();
+            med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    lote();
+                    t0.elapsed().as_secs_f64() * 1000.0 / t as f64
+                })
+                .collect())
+        });
+        println!(
+            "{t:7} | {repartido:19.2} | {independentes:23.2} | {:15.2}x | {:19.2}x",
+            um / repartido,
+            um / independentes,
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O JIT CONTENDE, OU FOI SÓ MEDIDO NO MEIO DA MARCHA?** (W81) — o controlo da §82.8.2.
 ///
 /// A `measure_where_the_parallel_frame_stops_scaling` mediu que uma fita custa `1,93×` mais CPU a

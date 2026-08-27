@@ -5752,7 +5752,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
 | ⏳ **A MARCHA** — o que sobra do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio) · ⛔ **o perfil como CONSULTA fora**: a fita especializada ganha `2×`–`8×` na região real | §73, §82.1, §87 |
 | ⭐⭐⭐ **O quadro de movimento usa `~30 %` da máquina** — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o ladrilho **não** é a alavanca (`48 ≈ 64`) · ⛔⛔ **e o JIT também não era**: tirá-lo não mudou a forma da curva (§88.2). A causa está por achar | §82.8, §88.2 |
-| ⏳ **A causa da má escala** — dois candidatos nomeados e **nenhum medido**: largura de banda de memória · desequilíbrio de ladrilhos | ⛔ o erro de hoje foi dar por causa o mecanismo que estava à mão | §88.2 |
+| ⏳ **A causa da má escala: a DECOMPOSIÇÃO**, medida em `1,47×` — e ela bate o `1,52×` que a contagem já previa | ⛔ **pôr os caros primeiro NÃO cura** (neutro a pior): a régua da profundidade está anti-correlacionada. Falta uma régua de custo que sirva | §89 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
@@ -5769,6 +5769,14 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⛔⛔ **W87 (§89): a perda de escala é a DECOMPOSIÇÃO — e a minha cura foi medida e recusada.** O
+  discriminador clássico (`T` quadros **independentes**, um por thread e cada um serial, contra **um**
+  repartido por `T`) dá `16,99×` contra `11,65×` a 32 threads ⇒ **a decomposição custa `1,47×`**, e o
+  resto é o chão honesto da máquina. ⭐⭐ E isso bate o **`1,52×`** que a §82.5 já tinha previsto por
+  **contagem** — *o número certo estava na página ao lado, e a §82.8.2 deu a culpa ao JIT porque era o
+  mecanismo que estava à mão.* ⛔⛔ **Ordenar os ladrilhos caros primeiro é neutro a pior**: a régua
+  que usei (a profundidade da peça sob o ladrilho) está anti-correlacionada — o caro é o da
+  **silhueta**, onde os raios passam rasantes, e não o do meio, onde eles acertam cedo.
 - ⛔⛔ **W86 (§88): o ciclo medido de ponta a ponta — e uma atribuição MINHA caiu.** O quadro de
   movimento é hoje **`24 ms` seja qual for o `Resolution`** (era isso o objectivo da W84/W85), e
   continua `1,45×` acima do orçamento. ⛔⛔ **E o JIT NÃO era a causa da má escala:** a curva de
@@ -7881,3 +7889,54 @@ duas curvas**, que correu no mesmo processo e sob a mesma carga.
 físicos os dois) e o **desequilíbrio de ladrilhos** (a §82.5 mediu que o mais caro vale `1,52×` a
 fatia perfeita). ⛔ *Nenhum dos dois está medido, e o erro de hoje foi precisamente dar por causa o
 mecanismo que estava à mão.*
+
+## §89 — W87: a perda é a DECOMPOSIÇÃO — e a minha cura para ela foi medida e recusada (27/08)
+
+A §88.2 refutou o JIT como causa da má escala e deixou dois candidatos, que mandam em waves opostas:
+**a decomposição** (o trabalho existe e está mal repartido ⇒ repartir melhor) ou **um recurso
+partilhado** (a máquina não tem mais para dar ⇒ fazer menos trabalho).
+
+### §89.1 — ⭐⭐⭐ O discriminador, e ele é clássico
+
+Correr `T` quadros **independentes** — um por thread, cada um **serial** — contra **um** quadro
+repartido pelas mesmas `T` threads. O trabalho total é o mesmo e a decomposição desaparece.
+
+`measure_whether_the_loss_is_the_decomposition_or_a_shared_resource` (`640×360`, sem cache nos dois
+braços de propósito — uma cache partilhada seria uma terceira variável):
+
+| threads | 1 quadro repartido | `T` independentes | ganho repartido | **ganho independentes** |
+|---:|---:|---:|---:|---:|
+| 2 | `156,1` | `149,3` | `1,94×` | `2,03×` |
+| 4 | `79,9` | `77,3` | `3,79×` | `3,91×` |
+| 16 | `32,3` | `24,6` | `9,37×` | **`12,31×`** |
+| 32 | `26,0` | `17,8` | `11,65×` | **`16,99×`** |
+
+⭐⭐⭐ **A decomposição custa `1,47×`** (`16,99 / 11,65`), e o resto (`17,0×` de `32`, isto é `53 %`)
+é o chão honesto da máquina — SMT e largura de banda.
+
+⭐⭐ **E a previsão por CONTAGEM já estava escrita:** a §82.5 mediu que o ladrilho mais caro vale
+`1,52×` a fatia perfeitamente equilibrada. `1,47` contra `1,52`. ⚠️ *O número certo estava na página
+ao lado, e a §82.8.2 deu a culpa ao JIT porque era o mecanismo que estava à mão.*
+
+### §89.2 — ⛔⛔ RECUSA MEDIDA: pôr os ladrilhos CAROS PRIMEIRO não cura
+
+Se o mal é um ladrilho gordo a sair tarde da fila, a cura óbvia é ordená-los por custo descendente
+(LPT). Implementado, e o A/B correu no **mesmo processo**:
+
+| threads | ordem natural | caros primeiro |
+|---:|---:|---:|
+| 4 | `81,87` | `81,34` |
+| 16 | `30,78` | **`32,30`** |
+| 32 | `25,62` | **`26,66`** |
+
+⛔ **Neutro a pior.** ⚠️ **A régua que usei está provavelmente ANTI-correlacionada com o custo:** a
+profundidade da peça sob o ladrilho (`t_hi − t_lo`) é máxima no **meio** da peça, onde os raios
+**acertam cedo**; o ladrilho caro é o da **silhueta**, onde eles passam rasantes e dão dezenas de
+passos. *Um escalonamento por um palpite de custo escalona pelo palpite.*
+
+⭐ Revertido. O que fica no lugar é o comentário com a tabela, para a próxima tentativa começar por
+onde esta parou.
+
+⏳ **Aberto:** uma régua de custo que sirva — a candidata é **o custo medido do quadro anterior**, que
+o `TILE_MAX` já sabe recolher — e, antes dela, saber se é mesmo a **ordem** que falta ou a
+**granularidade** (⛔ o tamanho do ladrilho já foi varrido e fechado, §82.10).

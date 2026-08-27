@@ -68,3 +68,11 @@ sua palavra de novo. Nomeie também o que aparece na tela e **não é arte** (um
 onion skin lê como um segundo objeto que ninguém desenhou).
 
 Gateável por arch-gate sobre o fonte da cena — o smoke precisa de janela, mas o texto dele não.
+
+---
+
+⚠️ **E o corolário, pago em 2026-08-26:** um subsistema **sem cena de smoke própria** recebe sempre
+o mesmo report — *«não funcionou»* —, sem o meio caminho que diz onde parou. Os gates podem estar
+todos verdes e a porta certa: eles provam que a **função** faz a coisa certa quando é chamada com
+as entradas certas, e **não** que a cena que o artista monta pelo app chega àquela função nesse
+estado. *Construa a cena junto com a feature, não depois do report.*

@@ -564,7 +564,7 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 | F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
 | F4.4 | Override **por componente** (`ObjectInstance`) — ⚠️ *por campo* foi refutado | ✅ 2026-08-26 |
 | F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ✅ 2026-08-26 |
-| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | 🟨 **a** (documentos clonados) ✅ · **b** (geometria propaga por conteúdo) ✅ · **c** (matar o `InstanceLive` + migração) ⬜ |
+| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | 🟨 **a** (documentos clonados) ✅ · **b** (geometria por conteúdo) ⛔ **gates verdes, SMOKE REPROVOU** — [handoff §14](handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md) · **c** (matar o `InstanceLive` + migração) ⬜ |
 | F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
 
 **O que a F4.1 mediu e o plano não dizia:** ⚠️ **a refutação nomeia CINCO `QueryState` da ponte
@@ -674,6 +674,14 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   de dois lados faz um bridge novo reprovar em vez de nascer mudo.
 - ⚠️ **Um gate meu SOBREVIVEU à mutação:** o do *«clone sem deslocamento»* comparava `subpaths`, e
   `translate_path` mexe nos **vértices**. *Comparar a estrutura não é comparar a geometria.*
+- ⛔⛔ **E a F4.6b REPROVOU no smoke** (*«ao mudo o path, as instâncias não mudaram»*) com os gates
+  todos verdes: eles provam que a **porta** faz a coisa certa, não que a cena que o artista monta
+  chega àquela porta nesse estado. Os quatro suspeitos, por custo de medição, estão no
+  [handoff §14](handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md) — o primeiro é que a
+  **receita vetorial ainda desenha** (o `off_canvas` gateia o extract de *sprites*; um `VecPath` sai
+  pelo renderer vetorial), então mestre e cópia ficam sobrepostos e a edição pode estar a cair na
+  cópia. ⛔ E falta o instrumento: **não há cena de smoke com receita vetorial** — o
+  `PH2D_INSTANCE_SMOKE=1` monta um ragdoll de sprites.
 
 **O que a F4.5 mediu e o plano não dizia:**
 - ⭐ **O *Redefinir* da tabela do doc 04 já existia** — é o *Revert to Master* que a F4.4 entregou.

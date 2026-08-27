@@ -137,6 +137,14 @@ pelo comportamento e pelos verbos, não por um sinal na tela.
 | Porta nova na ponte | `PhysicsBridge::document_owns_pose` (a condição (b) da refutação 1) | `bridge/pose_owner.rs`, ao lado do `player_liveness` |
 | Passe novo no epílogo do quadro | `App::sync_instances()` entre o render loop e o `post_frame_undo` | `main.rs` — **a posição é lei**, ver o handoff §4 |
 | `PROJECT_SCHEMA` | **não se mexe** — os dois componentes novos entram pelo `ComponentBlob`, que é a razão de o snapshot v2 existir | — |
+| **Ids de widget novos** (F4.5) | `CTX_MENU_HIER_MAKE_COMPONENT` · `_INSTANTIATE` · `_APPLY_TO_MASTER` · `_DETACH_FROM_MASTER` | `ids/menus.rs` + o gate `node_id_collisions` |
+| **Ações do barramento novas** (F4.5) | `EditorAction::Hier{MakeComponent,Instantiate,ApplyToMaster,DetachFromMaster}` | `action_bus.rs` + `panel-hierarchy/src/event.rs` + o dreno |
+| Campo novo no `App` | `cycle_pick_selection: Option<u64>` (o ciclo do clique atado à seleção) | `app_state.rs` + `main.rs` |
+| Campo novo no `PickWorld` | `pixels_per_meter: f32` — 3 sítios de construção | `hover_highlight.rs`, `input_dispatch.rs` (×2) |
+| **Assinaturas mudadas** (F4.6) | `OwnedDocs<'_>` entrou em `instantiate_master` · `duplicate_subtree` · `make_master` · `apply_to_master` · `sync_instances` · `instance_verbs::drain`; `hierarchy::dispatch` ganhou `vec_entities` | quem chamar de outra linha **não compila**, que é o desejado |
+| Módulos novos (2ª leva) | `shells/desktop/src/{group_gizmo_view,instance_verbs,instance_docs,instance_sync_docs}.rs` + `render_loop/{empty_object_overlay,off_canvas}.rs` | append-only, irmãos |
+| **Extract** | `sim_extract` deixou de decidir a visibilidade no fio — a porta é `off_canvas::is_off_canvas`, e **uma peça de receita deixou de desenhar** | `render_loop/sim_extract.rs` + `off_canvas.rs` |
+| Porta de pick | `hover_highlight::pick_objects_at` ganhou uma **4.ª fonte** (o anel de um objeto vazio) | o gate `the_object_pick_composite_exists_once` lista as quatro |
 
 ⚠️ **Nenhum contrato congelado (§6 do CLAUDE.md) foi tocado.**
 
@@ -604,3 +612,95 @@ vai esquecer. `PickWorld`-style: quem construir uma chamada nova noutra linha n�
 sobre o mecanismo geral e **materializar no load** os documentos com `VecInstance` (degrau do
 `PROJECT_SCHEMA`). Enquanto ela não vier, os dois modelos coexistem: o antigo continua a servir os
 documentos antigos, e o novo já serve tudo o que se faça pelos verbos gerais.
+
+---
+
+## §14 ⛔⛔⛔ O DEFEITO ABERTO — a F4.6b **não passou no smoke**
+
+> *«Não funcionou. Ao mudo o path, as instâncias não mudaram.»* (Enio, 2026-08-26, sobre o smoke da
+> §13.)
+
+⚠️ **A fatia F4.6b shipa NÃO VALIDADA.** Os gates são verdes headless — o passe propaga o conteúdo,
+mantém o ponto fixo, captura override e o *Apply* funciona (5 mutações, 5 mortas) — e **no app não
+acontece**. *Um gate verde sobre um caminho que o produto não percorre é a mesma classe de defeito
+que a §10.3 pagou: ele mede o mecanismo, não o fim.*
+
+⇒ **nada aqui deve ser lido como «a arte vetorial propaga»**. O que está provado é que a porta
+`instance_sync_docs::sync_one` faz a coisa certa quando é chamada com um mestre, uma instância e um
+documento; o que **não** está provado é que a cena que o artista monta pelo app chega a essa porta
+nesse estado.
+
+### Os suspeitos, por ordem de custo de medição (para quem pegar isto amanhã)
+
+1. ⚠️ **A RECEITA vetorial ainda DESENHA.** A cura da §10.3 (`off_canvas::is_off_canvas`) gateia o
+   **extract de sprites**; um `VecPath` é desenhado pelo renderer vetorial a partir do `VecScene`,
+   e **não passa por ali**. ⇒ o mestre e a instância ficam **sobrepostos** no canvas, e uma edição
+   que pareça ser «no mestre» pode estar a acontecer na cópia por cima dele (aí não propagar é o
+   comportamento correto). **Meça isto primeiro** — é o único suspeito que explica o report inteiro
+   sem nenhum código estar errado.
+2. ⚠️ **A ORDEM dentro do quadro.** `vec_entities::sync` corre em `render_loop/mod.rs:~7544` e o
+   dreno da Hierarquia em `~9611`; `App::sync_instances` corre depois de tudo (`main.rs:1167`).
+   Confirmar que uma edição do pen chega ao `gfx.vec_scene` **antes** do passe, e não num buffer
+   vivo que só é assado ao soltar.
+3. ⚠️ **O `Make Component` pode não ter sido o gesto usado.** O módulo vetorial tem os **verbos
+   antigos** (Create/Place no painel Vector) que produzem `VecComponentMain`/`VecInstance` — o
+   modelo DERIVADO, que propaga por construção e **não** passa por este passe. Os dois coexistem
+   até a F4.6c, e a Hierarquia não distingue as duas espécies na tela.
+4. ⚠️ **A instância pode ter capturado um override de forma no 1.º passe.** Se o clone e o mestre
+   divergirem por um bit no 1.º quadro (um `effects` normalizado, um `fill` re-serializado), o passe
+   lê *«só a instância mexeu»* e congela a peça contra a receita **para sempre**, em silêncio. O
+   sintoma é exactamente o reportado. ⇒ **imprimir `ObjectInstance.overrides` da instância no fim do
+   1.º passe** é a sonda mais barata que existe para isto. ⚠️ Na fixtura headless isto **não**
+   acontece (o clone é byte-idêntico e o passe sai cedo), o que aponta para um passe que só existe
+   no app a reescrever **um** dos dois paths — os cooks vivos do vetor são os candidatos, e a
+   pergunta a fazer-lhes é se algum escreve **de volta** no `VecScene` em vez de produzir a
+   `LiveGeometry` derivada.
+
+### O instrumento que falta
+
+⛔ Não há smoke que monte uma receita **vetorial** — o `PH2D_INSTANCE_SMOKE=1` monta um ragdoll de
+sprites. *Um subsistema sem cena de smoke é um subsistema cujo report chega sempre como «não
+funcionou», sem o meio caminho.* A primeira coisa a construir amanhã é a **cena 2**: mestre vetorial
++ 3 instâncias + a instrução impressa, no molde da cena 1.
+
+---
+
+## §15 Fecho da linha (DIRETRIZ §1.5.9)
+
+**35 commits**, base `main @ 0f5ce8040`, worktree `Worktrees/line-components`, branch
+`line/components`.
+
+### Gate de fecho, corrido sobre o diff acumulado
+
+| | |
+|---|---|
+| `cargo test -p ph2d-host-desktop` (bins + tests) | ✅ **4338** passaram · 0 falharam · 251 ignorados |
+| `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | ✅ |
+| `cargo fmt --all` | ✅ |
+| `typos` (repo inteiro) | ✅ |
+| Provas de mutação desta jornada | **34 mutações, 34 mortas** (11 + 10 + 11 da 1ª..4ª voltas do smoke, + 7 da F4.6a, + 5 da F4.6b — as contagens por bloco estão em cada §) |
+
+⚠️ **Flake conhecida e PRÉ-EXISTENTE** (`CLAUDE.md` §5.0): a família
+`flip_smooth::resample_measurement::precisao::orcamento` reprova sob fan-out e passa sozinha. Se ela
+aparecer na integração, **re-rode sozinha antes de olhar para este diff**.
+
+### O que o integrador tem de fazer
+
+1. `scripts/foundational-integrate.sh` — a linha **tocou foundational** (`ph2d-ecs`,
+   `ph2d-component-desc`, `ph2d-render`, `ph2d-script`, `ph2d-physics-ecs`, `ph2d-editor-core`, os
+   dois painéis). A superfície de colisão está no §5, com os **contadores** que somam entre linhas.
+2. ⚠️ **Apagar do `CLAUDE.md` §5 a frase «o `physics_ecs_c9` está POR RE-CAPTURAR»** — é um fantasma
+   medido em 25/08 (os três hashes C9 comparam-se **entre si**, não contra baseline gravado).
+3. **A linha do §5** (o roteador edita-se na integração, nunca da linha):
+
+   > **Componentes / instâncias** — … ✅ **A F4 fechou até à F4.5 + os documentos possuídos**: o
+   > mestre é inerte, instanciar/duplicar copiam a subárvore inteira (e agora o **documento
+   > vetorial**), editar a receita muda as cópias no mesmo quadro, e os quatro verbos têm gesto na
+   > Hierarquia. ⚠️ **Uma receita não está na cena** (marca derivada `MasterPiece` no extract) — a
+   > `Visibility` **não** desce aos descendentes neste motor, e era nisso que a F4.5 assentava.
+   > ⚠️ **Os PIXELS são um asset**: pintar uma cópia sobe à receita e chega a todas (fronteira:
+   > *Detach* para pintar uma só). ⚠️ **Um objeto vazio tem anel, pega pelo centro, e o primeiro
+   > clique é de quem já está selecionado.** ⛔⛔ **ABERTO: a propagação da GEOMETRIA vetorial não
+   > passou no smoke** (handoff §14) · falta a F4.6c (matar o `InstanceLive` + migração) e a F4.7.
+
+4. ⛔ **Não** integrar nem shipar sem ordem explícita do Enio (§0.7 do `CLAUDE.md`).

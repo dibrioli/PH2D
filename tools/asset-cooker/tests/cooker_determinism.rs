@@ -70,9 +70,19 @@ fn prefab_cook_hash_is_locked() {
     // as a referenced prefab id. Keep them in sync.
     assert_eq!(hex.len(), 64);
     assert_eq!(
-        hex, "c4bc4c27f4d9ad36080860de1e3ce02dbf0c43eb3a15bfa5aa34fd45c5d9b044",
+        hex, "e843aec4ac848f959075e247ef8d8e636c2f9e80e6cca15bafe6255188048cc2",
         "simple_sprite.json5 cook hash changed — update scene fixtures + this assertion"
     );
+    // ⚠️ **RE-TRAVADO na integração de 2026-08-26 (ADR-0164 F1 passo 6, `line/components`):**
+    // o corte da `Sprite` levou-a de **20 campos a 13** (sete saíram para `SpriteGrid` /
+    // `SpriteRegion` / `SpriteCornerTint`), e o cozido serializa o componente **BARE** — logo os
+    // bytes posicionais mudaram e o blake3 com eles. ⛔ **A linha não tocou neste ficheiro**: ela
+    // mudou a forma do componente e o golden ficou pinado à forma antiga; foi o gate da árvore
+    // combinada que o apanhou. O CONTROLO foi medido — este teste **passa no `main`** sem a linha.
+    // ⚠️ São TRÊS sítios (esta asserção + duas referências em `tests/fixtures/scene/two_sprites.json5`),
+    // e o doc acima já o dizia: *"Keep them in sync."*
+    // ⚠️ Irmão ainda ABERTO: o `physics_ecs_c9` continua **por re-capturar** desde o snapshot v2
+    // (`CLAUDE.md` §5) — ele **não** corre na varredura impactada, então nada aqui o cobre.
     // Re-locked for the Transform 2D skew bump (W2.T2.2, ADR-0025-amendment-1):
     // the cooked `Transform` component is serialized BARE (the cooker isn't
     // versioned — accepted greenfield design), so its v1→v2 growth by two

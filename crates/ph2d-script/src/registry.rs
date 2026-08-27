@@ -59,11 +59,14 @@ mod tests {
         // acima pediam depois de este contador ficar 4 atras e depois 2 atras na mesma linha.
         // +1 `AnchorVisibility` (quando as ancoras se desenham, 2026-08-23): ECS 67 ⇒ 68.
         // +2 da §11 Animation (`SpriteAnimations` + `SpriteAnimator`): ECS 69 ⇒ aqui 70.
-        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 73 ⇒ aqui 74.
+        // + 1 da MAQUINA DE ESTADOS do Morph (VecMorphMachine, `line/Vector`,
+        //   2026-08-26) — degrau escrito na INTEGRACAO: aquela linha subiu os tres
+        //   contadores e nao os registou em escada nenhuma.
+        // +3 do corte da Sprite (`SpriteGrid`/`SpriteRegion`/`SpriteCornerTint`): ECS 74 ⇒ aqui 75.
         // + 1 do MESTRE (MasterRoot, ADR-0164 F4.1, 2026-08-25) — ver a nota do `ph2d-ecs`.
         // + 1 do ELO (InstanceOf, ADR-0164 F4.2, 2026-08-26) — idem.
         // + 1 dos OVERRIDES (ObjectInstance, ADR-0164 F4.4, 2026-08-26) — idem.
-        assert_eq!(reg.len(), 77);
+        assert_eq!(reg.len(), 78);
         assert!(reg.get_by_name("ph2d::script::LuauScript").is_some());
     }
 }

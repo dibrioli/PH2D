@@ -320,7 +320,6 @@ pub fn plane_normal(angle_deg: f32) -> [f32; 2] {
 /// `plane_n` is the plane's normal (from [`plane_normal`]); the Disc and the Bowl ignore it,
 /// because a circle turned is the same circle.
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 fn contact(
     shape: i32,
     p: [f32; 2],

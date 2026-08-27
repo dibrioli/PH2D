@@ -75,6 +75,29 @@ pub const CH_XY: i32 = 4;
 /// `measure_axis_decorrelation`, com o controle em `0`.
 pub const AXIS_SEED_OFFSET: i32 = 7919;
 
+/// **O passo de seed entre ELEMENTOS** — o *Use Layer as Seed* da referência
+/// (doc 89, folha 06 · Cavalry).
+///
+/// ⚠️ **O buraco que ele fecha foi MEDIDO, não suposto** (`measure_layer_seed`): o
+/// campo deste nó é espacialmente coerente por construção — o ponto de amostragem é a
+/// posição do elemento —, então **duas peças no MESMO sítio lêem o MESMO número** e
+/// movem-se como uma. Envergadura de oito peças empilhadas: `0,000000` EXACTO, contra
+/// `7,01` das mesmas oito espalhadas. Nenhum knob de hoje as separava: o `seed` é um
+/// **param do nó**, então dois nós dão dois campos e as oito partilham cada um deles.
+///
+/// O número tem a mesma propriedade que o [`AXIS_SEED_OFFSET`]: a pilha de um elemento
+/// ocupa `seed + [0 .. 7091]` (as oitavas) e o segundo eixo soma `7919`, logo um
+/// elemento inteiro cabe em `15010` — e `15013 > 15010` faz os blocos de dois elementos
+/// **não se tocarem**.
+///
+/// ⚠️ **E é ÍMPAR de propósito:** a multiplicação por um ímpar é uma bijecção módulo
+/// `2³²`, então chaves distintas dão produtos distintos **mesmo com o wrap**. O que o
+/// wrap custa é a *disjunção dos blocos*, que vale exactamente até `2³² / 15013 ≈ 286 k`
+/// elementos — acima disso dois elementos podem partilhar campo. ⚠️ **O recurso é o
+/// espaço de seed de 32 bits**, e a consequência é benigna: é o mesmo evento que um
+/// artista vê quando escolhe à mão o mesmo seed duas vezes, e não um erro de cálculo.
+pub const ELEMENT_SEED_STRIDE: i32 = 15013;
+
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
     id: NodeTypeId::of("motion.noise"),
@@ -228,9 +251,57 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "max",
             default: 1.0,
         },
+        // **Cada PEÇA no seu próprio campo** — ver [`ELEMENT_SEED_STRIDE`]. `0` ⇒ o
+        // campo partilhado de sempre, byte-idêntico (o deslocamento é zero, e somar
+        // zero a um `i32` é a identidade).
+        //
+        // ⚠️ **Chama-se `own_field` e NÃO `layer_seed`, e a palavra tem dono.** No
+        // vocabulário da casa um param `seed` ou `*_seed` é uma SEMENTE — um número que
+        // se **re-rola**, nunca se arrasta —, e há um censo a exigir que ele vista o
+        // `ParamWidget::Seed` (`a_seed_wears_the_seed_widget`, no `registry-init`). Este
+        // param é um INTERRUPTOR, então a palavra da referência (*Use Layer as Seed*)
+        // fazia o censo reprovar sobre produto correcto. **A cura é o nome, nunca
+        // afrouxar o gate** — é a mesma lição que o `height_channel` do `motion.wave`
+        // pagou com a palavra `channel`, e que o `solver_substeps` da `motion.verlet_rope`
+        // pagou com `substeps`. ⚠️ O RÓTULO continua a ser o da referência
+        // (**Seed Per Element**): a chave é contrato, o rótulo é side-metadata.
+        ParamSpec {
+            name: "own_field",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **A identidade de cada elemento como CHAVE de seed.**
+///
+/// ⚠️ **A lei é a que o `sim.collide` já escreveu, e a queda importa:** o `id` quando a
+/// coluna existe, a **POSIÇÃO na fila** quando não. Cair em ZERO daria a todos os
+/// elementos o mesmo campo, que é exactamente o defeito que este param existe para
+/// curar — e é MUDO. ⚠️ Uma `motion.grid` não publica `id` nenhum (medido), então a
+/// queda para o índice é o caminho NORMAL deste nó, não a excepção.
+///
+/// Lida **uma vez** por dispatch: um `get` por elemento seria a mesma pergunta `n` vezes.
+fn element_keys(s: &Stream, n: usize) -> Option<Vec<f32>> {
+    match s.get("id") {
+        Some(Column::Scalar(v)) if v.len() == n => Some(v.clone()),
+        _ => None,
+    }
+}
+
+/// O deslocamento de seed do elemento `i` — `0` quando o modo está desligado, e aí o
+/// nó é **byte-idêntico** ao que shipava (somar zero a um `i32` é a identidade).
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "uma identidade e' um inteiro >= 0"
+)]
+fn element_seed(keys: Option<&Vec<f32>>, i: usize, on: bool) -> i32 {
+    if !on {
+        return 0;
+    }
+    let key = keys.map_or(i as i32, |v| v[i].max(0.0).round() as i32);
+    key.wrapping_mul(ELEMENT_SEED_STRIDE)
+}
 
 struct MotionNoise;
 
@@ -290,6 +361,10 @@ impl NodeOp for MotionNoise {
             // is spatially coherent; the playhead scrolls it along Y (the field
             // "flows" through the elements).
             let pos = positions(input, n);
+            // A identidade de cada peça — ver [`element_keys`]. Desligado, o `Option`
+            // nem é consultado dentro do laço.
+            let by_layer = ctx.param("own_field") >= 0.5;
+            let keys = by_layer.then(|| element_keys(input, n)).flatten();
             // ⚠️ **Parametrizada pelo SEED**, e é a única mudança que o canal dos dois
             // eixos exige no cálculo: o segundo eixo é este mesmo campo lido com outro
             // seed. Com `channel != XY` ela é chamada uma vez com o seed do artista ⇒
@@ -305,6 +380,10 @@ impl NodeOp for MotionNoise {
                         // com o espaço faria o `rotation` mudar a DIREÇÃO da rolagem — um
                         // knob a mexer no que o outro promete.
                         let (sx, sy) = space.at(px, py);
+                        // ⚠️ **O seed é POR ELEMENTO** quando o `own_field` está ligado
+                        // — é o único jeito de duas peças no mesmo ponto lerem números
+                        // diferentes, porque o ponto de amostragem é a posição delas.
+                        let seed = seed.wrapping_add(element_seed(keys.as_ref(), i, by_layer));
                         let sample = |tt: f32| fbm(sx, sy + tt * speed, seed, spec, basis);
                         // `w == 0` é o caminho de sempre: a segunda amostra nem é avaliada.
                         let s = if w == 0.0 {
@@ -441,3 +520,7 @@ mod tests;
 #[cfg(test)]
 #[path = "xy_tests.rs"]
 mod xy_tests;
+
+#[cfg(test)]
+#[path = "layer_seed_tests.rs"]
+mod layer_seed_tests;

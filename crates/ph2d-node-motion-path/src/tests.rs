@@ -358,3 +358,191 @@ fn the_align_row_offers_three_modes_and_is_no_longer_a_toggle() {
     assert_eq!(labels.len() as i32 - 1, ALIGN_NORMAL);
     assert!((row.max - ALIGN_NORMAL as f32).abs() < f32::EPSILON);
 }
+
+// ---------------------------------------------------------------------------
+// O RECORTE e o DESVIO (doc 89, folha 06 · célula 46 — Start/End · perpendicular · Side)
+// ---------------------------------------------------------------------------
+
+/// Uma recta de comprimento 10 ao longo de `x` — o oráculo mais fácil de ler: a
+/// posição de arco É a coordenada `x`, e a normal é exactamente `+y`.
+const LINE: [[f32; 2]; 2] = [[0.0, 0.0], [10.0, 0.0]];
+
+/// **DEFAULT = O NÓ DE SEMPRE, AO BIT.** `from = 0`, `to = 1`, `perp = 0` têm de dar
+/// exactamente o mesmo que não os escrever — senão todo documento salvo muda ao abrir.
+#[test]
+fn the_untrimmed_unpushed_walk_is_byte_identical() {
+    let plain = walk(&LINE, "T", &[("count", 5.0), ("align", 0.0)]);
+    let spelled = walk(
+        &LINE,
+        "T",
+        &[
+            ("count", 5.0),
+            ("align", 0.0),
+            ("from", 0.0),
+            ("to", 1.0),
+            ("perp", 0.0),
+        ],
+    );
+    assert_eq!(plain, spelled, "os defaults nao podem mover um bit");
+}
+
+/// ⭐ **O RECORTE anda só na fatia pedida.** Com `from = 0,25` e `to = 0,75` as cinco
+/// cópias vivem em `[2,5 .. 7,5]`, e a primeira pousa EXACTAMENTE no início da fatia.
+#[test]
+fn the_trim_confines_the_set_to_the_slice() {
+    let (pos, _) = walk(
+        &LINE,
+        "T",
+        &[("count", 5.0), ("align", 0.0), ("from", 0.25), ("to", 0.75)],
+    );
+    assert!(
+        (pos[0][0] - 2.5).abs() < 1e-3,
+        "a primeira pousa no comeco da fatia: {}",
+        pos[0][0]
+    );
+    for (i, p) in pos.iter().enumerate() {
+        assert!(
+            (2.5 - 1e-3..=7.5 + 1e-3).contains(&p[0]),
+            "a copia {i} saiu da fatia: {}",
+            p[0]
+        );
+    }
+    // ⚠️ O CONTROLE: sem recorte o conjunto ocupa a curva inteira. Sem isto, um nó que
+    // ignorasse `from`/`to` e sempre juntasse tudo no meio passaria.
+    let (wide, _) = walk(&LINE, "T", &[("count", 5.0), ("align", 0.0)]);
+    assert!(
+        wide[4][0] > 7.5,
+        "o controle tem de ocupar a curva inteira: {}",
+        wide[4][0]
+    );
+}
+
+/// **O `offset` desliza DENTRO da fatia, e dá a volta nela.** É o que a ordem
+/// «enrolar primeiro, recortar depois» compra — a outra ordem faria o conjunto saltar
+/// por cima do recorte, que é o gesto que o recorte existe para negar.
+#[test]
+fn the_offset_wraps_inside_the_trim_never_outside_it() {
+    for off in [0.0, 0.3, 0.7, 0.95] {
+        let (pos, _) = walk(
+            &LINE,
+            "T",
+            &[
+                ("count", 6.0),
+                ("align", 0.0),
+                ("from", 0.4),
+                ("to", 0.6),
+                ("offset", off),
+            ],
+        );
+        for (i, p) in pos.iter().enumerate() {
+            assert!(
+                (4.0 - 1e-3..=6.0 + 1e-3).contains(&p[0]),
+                "offset {off}: a copia {i} saiu da fatia: {}",
+                p[0]
+            );
+        }
+    }
+}
+
+/// **`to < from` anda para TRÁS**, e cai da aritmética em vez de ser um caso especial —
+/// a mesma lei que o `motion.stagger` já shipa ao trocar as pontas.
+#[test]
+fn swapping_the_ends_walks_the_slice_backwards() {
+    let fwd = walk(
+        &LINE,
+        "T",
+        &[("count", 5.0), ("align", 0.0), ("from", 0.2), ("to", 0.8)],
+    )
+    .0;
+    let back = walk(
+        &LINE,
+        "T",
+        &[("count", 5.0), ("align", 0.0), ("from", 0.8), ("to", 0.2)],
+    )
+    .0;
+    assert!(fwd[0][0] < fwd[4][0], "o controle sobe: {fwd:?}");
+    assert!(back[0][0] > back[4][0], "o trocado desce: {back:?}");
+    // E os dois cobrem a MESMA fatia — trocar as pontas não é encolher nada.
+    let span = |v: &[[f32; 2]]| (v[0][0] - v[4][0]).abs();
+    assert!(
+        (span(&fwd) - span(&back)).abs() < 1e-3,
+        "a fatia e' a mesma nos dois sentidos"
+    );
+}
+
+/// ⭐ **O DESVIO PERPENDICULAR, e o SINAL é o LADO** — que é a razão de a célula não
+/// ganhar um quarto controle `Side`: um deslocamento assinado já o diz, e um botão ao
+/// lado seria um segundo jeito de escrever o mesmo sinal.
+#[test]
+fn the_perpendicular_offset_is_signed_and_the_sign_is_the_side() {
+    let flat = walk(&LINE, "T", &[("count", 4.0), ("align", 0.0)]).0;
+    for (perp, sign) in [(0.5f32, 1.0f32), (-0.5, -1.0)] {
+        let (pos, _) = walk(
+            &LINE,
+            "T",
+            &[("count", 4.0), ("align", 0.0), ("perp", perp)],
+        );
+        for (i, p) in pos.iter().enumerate() {
+            // A normal de uma recta `+x` é `+y`, então o desvio inteiro cai em `y`…
+            assert!(
+                (p[1] - sign * 0.5).abs() < 1e-3,
+                "perp {perp}: a copia {i} devia estar em y = {}, esta' em {}",
+                sign * 0.5,
+                p[1]
+            );
+            // …e NADA se move ao longo da curva. Sem esta metade, um desvio que
+            // empurrasse na tangente passaria.
+            assert!(
+                (p[0] - flat[i][0]).abs() < 1e-4,
+                "perp {perp}: a copia {i} escorregou ao longo do arco"
+            );
+        }
+    }
+}
+
+/// **O desvio é uma distância de MUNDO, e não uma escala de um vector qualquer** — a
+/// tangente que o `ph2d_arc_length::at` devolve já é unitária, então dobrar o número
+/// dobra o afastamento, seja qual for o comprimento dos segmentos da curva.
+#[test]
+fn the_push_is_a_world_distance_whatever_the_curve_is_made_of() {
+    // Uma curva com segmentos de comprimentos MUITO diferentes.
+    let ragged = [[0.0, 0.0], [0.2, 0.0], [9.0, 0.0], [10.0, 0.0]];
+    let a = walk(
+        &ragged,
+        "T",
+        &[("count", 6.0), ("align", 0.0), ("perp", 0.5)],
+    )
+    .0;
+    let b = walk(
+        &ragged,
+        "T",
+        &[("count", 6.0), ("align", 0.0), ("perp", 1.0)],
+    )
+    .0;
+    for (i, (p, q)) in a.iter().zip(&b).enumerate() {
+        assert!(
+            (p[1] - 0.5).abs() < 1e-3 && (q[1] - 1.0).abs() < 1e-3,
+            "a copia {i}: {p:?} / {q:?} -- o afastamento tem de ser o numero digitado"
+        );
+    }
+}
+
+/// **O recorte e o alinhamento são ORTOGONAIS.** Recortar não pode mudar para onde a
+/// peça olha — a tangente é da curva, não da fatia.
+#[test]
+fn trimming_does_not_change_where_the_pieces_face() {
+    let full = walk(&LINE, "T", &[("count", 4.0), ("align", 1.0)]).1;
+    let cut = walk(
+        &LINE,
+        "T",
+        &[("count", 4.0), ("align", 1.0), ("from", 0.3), ("to", 0.6)],
+    )
+    .1;
+    assert_eq!(full.len(), 4);
+    for (a, b) in full.iter().zip(&cut) {
+        assert!(
+            (a - b).abs() < 1e-3,
+            "a rotacao mudou com o recorte: {a} vs {b}"
+        );
+    }
+}

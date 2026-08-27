@@ -103,7 +103,7 @@ fn vello_center() -> [f32; 2] {
 ///
 /// Se o `P` de uma instância de sprite mudar enquanto se arrasta e o de uma vectorial não, o
 /// defeito está a MONTANTE do desenho, no que alimenta o cozimento.
-/// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vectores)`.
+/// `(mundo da 1.ª sprite, mundo do 1.º vector, quantas sprites, quantos vetores)`.
 type Sample = ([f32; 2], [f32; 2], usize, usize);
 static SAMPLE: std::sync::Mutex<Option<Sample>> = std::sync::Mutex::new(None);
 

@@ -32,6 +32,7 @@
 - [Painter: 4 causas](feedback_painter_inefficiency_4_causes.md) · [comentário velho mente](feedback_stale_comment_and_dead_code_lie.md) · [«design rejeita X»? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) · [inexactidão que subestima é folga](feedback_not_every_inexactness_is_danger_the_one_that_underestimates_is_slack.md)
 - [Coluna sem rótulo lê-se ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) · [que número a resposta CONTRÁRIA imprimiria?](feedback_ask_what_number_the_opposite_answer_would_print.md)
+- [Varredura com todas as células iguais não escolheu nada](feedback_a_sweep_whose_cells_all_agree_has_not_chosen_anything.md) — e óptimo na BORDA da grade = grade curta demais
 - [Cura em fixtura sem o fenômeno](feedback_a_cure_measured_on_a_fixture_that_lacks_the_phenomenon_reads_as_useless.md) · [«não toque» é afirmação — meça](feedback_a_handoff_can_be_wrong_about_its_own_dirty_file.md)
 - [Regra fora do caminho não existe](feedback_a_rule_only_exists_if_it_is_on_the_path_of_who_executes_it.md) · [ferramenta adotada = passo a NOMEIA](feedback_a_tool_is_adopted_only_when_a_written_step_names_it.md) · [arquivar sem indexar recusas](feedback_archiving_without_indexing_the_refusals_deletes_them.md)
 - [Reconstruir a meio da medição parte a corrida em dois binários](feedback_rebuilding_mid_measurement_splits_the_run_across_two_binaries.md)

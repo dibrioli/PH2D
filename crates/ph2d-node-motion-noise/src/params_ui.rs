@@ -85,6 +85,7 @@ pub(crate) static PARAM_GROUPS: &[ParamGroup] = &[
     ParamGroup::new("octaves", "Field"),
     ParamGroup::new("roughness", "Field"),
     ParamGroup::new("seed", "Field"),
+    ParamGroup::new("own_field", "Field"),
     // Em que relógio ele anda.
     ParamGroup::new("speed", "Timing"),
     ParamGroup::new("loop_len", "Timing"),
@@ -258,6 +259,17 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         max: 100.0,
         step: 1.0,
         widget: ParamWidget::Seed,
+    },
+    // ⚠️ **Mora colado ao `Seed` porque é sobre ELE**: a pergunta que este interruptor
+    // responde é *"um seed para a cena ou um por peça?"*, e um painel que a fizesse
+    // longe do número obrigaria o artista a ligar dois controles com a memória.
+    ParamUiHint {
+        param: "own_field",
+        label: "Seed Per Element",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
     },
     // ── O ESPAÇO ────────────────────────────────────────────────────────────────
     // ⚠️ Uma volta para cada lado, discada em graus inteiros — a mesma régua do

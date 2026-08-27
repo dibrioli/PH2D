@@ -255,6 +255,101 @@ fn name_and_wire_normal(
     outs
 }
 
+/// Quantas peças cada fileira do `=4` põe na curva.
+pub(crate) const TRIM_COUNT: f32 = 20.0;
+/// A fatia que as fileiras de baixo ocupam — a METADE do meio do percurso.
+pub(crate) const TRIM_FROM: f32 = 0.25;
+pub(crate) const TRIM_TO: f32 = 0.75;
+/// O quanto a terceira fileira se afasta da curva, em unidades de mundo.
+pub(crate) const TRIM_PERP: f32 = 0.45;
+
+/// **A cena `=4` — o RECORTE e o DESVIO** (doc 89, folha 06 · célula 46).
+///
+/// Três cadeias sobre a MESMA curva desenhada. A de cima é o controle (o percurso
+/// inteiro); as duas de baixo partilham a linha, para o desvio se ver como um
+/// afastamento e não como mais uma fileira.
+fn name_and_wire_trim(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &crate::vec_entities::VecEntityMap,
+    graph: &mut Graph,
+) -> Vec<NodeId> {
+    let Some((_, &bits)) = map.iter().next() else {
+        return Vec::new();
+    };
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let Ok(mut w) = sim.world_mut().get_entity_mut(e) else {
+        return Vec::new();
+    };
+    w.insert(Name(TRACK.to_string()));
+    let mut outs = Vec::new();
+    // (rótulo, from, to, perp, a linha em que a fileira vive)
+    let rows = [
+        ("O percurso INTEIRO (o controle)", 0.0, 1.0, 0.0, 1.2_f32),
+        ("So' a metade do meio", TRIM_FROM, TRIM_TO, 0.0, -1.2),
+        (
+            "A mesma metade, AO LADO",
+            TRIM_FROM,
+            TRIM_TO,
+            TRIM_PERP,
+            -1.2,
+        ),
+    ];
+    for (k, (label, from, to, perp, dy)) in rows.iter().enumerate() {
+        let path = graph.add_node("motion.path");
+        let scale = graph.add_node("motion.scale");
+        let place = graph.add_node("motion.transform");
+        let out = graph.add_node("motion.output");
+        for (i, n) in [path, scale, place, out].iter().enumerate() {
+            graph.set_pos(
+                *n,
+                Pos {
+                    #[expect(clippy::cast_precision_loss, reason = "indice pequeno")]
+                    x: i as f32 * 190.0,
+                    #[expect(clippy::cast_precision_loss, reason = "indice pequeno")]
+                    y: -220.0 + k as f32 * 200.0,
+                },
+            );
+        }
+        let wired = [(path, scale), (scale, place), (place, out)]
+            .iter()
+            .all(|(a, b)| {
+                graph
+                    .connect(Edge {
+                        from: (*a, 0),
+                        to: (*b, 0),
+                        delayed: false,
+                    })
+                    .is_ok()
+            });
+        if !wired {
+            return outs;
+        }
+        graph.set_text_param(path, "path", TRACK);
+        graph.set_param(path, "count", TRIM_COUNT);
+        graph.set_param(path, "align", 0.0);
+        graph.set_param(path, "from", *from);
+        graph.set_param(path, "to", *to);
+        graph.set_param(path, "perp", *perp);
+        graph.set_param(scale, "amount", 0.16);
+        graph.set_param(place, "offset_y", *dy);
+        graph.set_label(path, *label);
+        outs.push(out);
+    }
+    eprintln!(
+        "[motion.path smoke =4] TRES fileiras sobre a MESMA curva desenhada.\n\
+         \x20 ⚠️ PRECISA DE PLAY? NAO -- a cena e' estatica.\n\n\
+         \x20 EM CIMA   as {TRIM_COUNT:.0} pecas espalham-se pelo percurso INTEIRO (o de sempre)\n\
+         \x20 EM BAIXO  as MESMAS {TRIM_COUNT:.0} pecas so' ocupam a metade do meio -- e a\n\
+         \x20           terceira copia dessa metade corre AO LADO da curva, afastada {TRIM_PERP}\n\n\
+         \x20 QUER MEXER? Clique num no' «Path» e procure «Start», «End» e «Perpendicular».\n\
+         \x20 O sinal do «Perpendicular» escolhe o LADO: ponha-o negativo e a fileira passa\n\
+         \x20 para o outro lado da curva.\n\n\
+         \x20 DEU ERRADO se: as tres fileiras cobrirem o mesmo pedaco da curva; se a fileira\n\
+         \x20 de baixo nao estiver afastada da do meio; ou se alguma peca sumir."
+    );
+    outs
+}
+
 fn name_and_wire_spacing(
     sim: &mut ph2d_ecs::SimWorld,
     map: &crate::vec_entities::VecEntityMap,
@@ -337,7 +432,7 @@ fn name_and_wire_spacing(
 static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// Qual cena? `0`/ausente = nenhuma · `2` = o ESPAÇAMENTO · `3` = a NORMAL (folha 06) ·
-/// qualquer outra = a original.
+/// `4` = o RECORTE e o DESVIO (folha 06, célula 46) · qualquer outra = a original.
 ///
 /// Lido UMA vez (o prólogo do frame não paga um `getenv` por quadro). ⚠️ **O braço `_` mantém
 /// `=1` — e todo valor que não seja `0` nem `2` — na cena que o Enio já smokou:** um modo novo
@@ -348,6 +443,7 @@ fn mode() -> u8 {
         Ok(v) if v == "0" => 0,
         Ok(v) if v == "2" => 2,
         Ok(v) if v == "3" => 3,
+        Ok(v) if v == "4" => 4,
         Ok(_) => 1,
         Err(_) => 0,
     })
@@ -384,6 +480,9 @@ impl crate::App {
                     gfx.motion.sinks.extend(outs);
                 } else if mode == 3 {
                     let outs = name_and_wire_normal(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
+                    gfx.motion.sinks.extend(outs);
+                } else if mode == 4 {
+                    let outs = name_and_wire_trim(&mut gfx.sim, &map, &mut gfx.motion.doc.graph);
                     gfx.motion.sinks.extend(outs);
                 } else if let Some(out) =
                     name_and_wire(&mut gfx.sim, &map, &mut gfx.motion.doc.graph)

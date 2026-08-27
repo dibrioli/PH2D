@@ -39,6 +39,10 @@ pub(crate) const NS_PARAMS: &[&str] = &[
     "range_mode",
     "min",
     "max",
+    // O seed POR ELEMENTO — apendado. `own_field = 0` devolve a expressão que estava
+    // aqui antes. ⚠️ Esta lista não é derivada do manifesto: sem esta linha o kernel lê
+    // um `params.own_field` inexistente.
+    "own_field",
 ];
 
 /// **A PORTA DE TEMPO** — ligada por todo variant, `ReadBroadcast` para herdar a regra
@@ -52,6 +56,20 @@ const NS_TIME: ColumnBinding = ColumnBinding {
     access: ColumnAccess::ReadBroadcast,
     identity: [0.0; 4],
     port: 1,
+};
+
+/// **A IDENTIDADE** — ligada por todo variant, para o `Seed Per Element`.
+///
+/// ⚠️ **A `identity` é inerte de propósito e quem responde é o `HAS_in_id`**: um `id`
+/// ausente tem de cair na POSIÇÃO do elemento, não num zero materializado — zero daria
+/// a toda a fila o mesmo campo, que é exactamente o defeito que o modo cura, e faria-o
+/// em silêncio. É a mesma armadilha que o `sim.collide` nomeia do lado da CPU.
+const NS_ID: ColumnBinding = ColumnBinding {
+    column: "id",
+    dim: Dim::Scalar,
+    access: ColumnAccess::Read,
+    identity: [0.0; 4],
+    port: 0,
 };
 
 /// **A biblioteca WGSL que os TRÊS variants compartilham.**
@@ -98,11 +116,22 @@ pub(crate) const NS_LIB: &str = "\
         fn ns_delta(i: u32) -> f32 {\n\
             return ns_delta_seeded(i, 0);\n\
         }\n\
+        // O deslocamento de seed do ELEMENTO -- o gemeo literal de\n\
+        // `super::ELEMENT_SEED_STRIDE` e da `element_seed` do lib.rs. Desligado\n\
+        // devolve ZERO, e somar zero e' a identidade: o campo de sempre, ao bit.\n\
+        // ⚠️ A coluna `id` AUSENTE cai na POSICAO, nunca em zero -- zero daria a\n\
+        // todo elemento o mesmo campo, que e' o defeito que este modo cura.\n\
+        fn ns_element_seed(i: u32) -> i32 {\n\
+            if (params.own_field < 0.5) { return 0; }\n\
+            var key = i32(i);\n\
+            if (HAS_in_id) { key = i32(read_in_id(i)); }\n\
+            return key * 15013;\n\
+        }\n\
         // O campo com o seed DESLOCADO -- o segundo eixo do canal `Position XY`.\n\
         // Com `seed_off = 0` ele e' o `ns_delta` de sempre, linha a linha.\n\
         fn ns_delta_seeded(i: u32, seed_off: i32) -> f32 {\n\
             let p = ns_space(read_in_P(i));\n\
-            let seed = i32(ns_round(params.seed)) + seed_off;\n\
+            let seed = i32(ns_round(params.seed)) + seed_off + ns_element_seed(i);\n\
             let oct = min(max(i32(ns_round(params.octaves)), 1), 8);\n\
             let ty = i32(ns_round(params.type_));\n\
             // O tempo WRAPA antes de entrar no campo -- ver `loop_times` no lib.rs.\n\
@@ -295,6 +324,7 @@ const NS_P: GpuKernel = GpuKernel {
             port: 0,
         },
         NS_TIME,
+        NS_ID,
     ],
     params: NS_PARAMS,
     count_law: None,
@@ -358,6 +388,7 @@ const NS_ROT: GpuKernel = GpuKernel {
             port: 0,
         },
         NS_TIME,
+        NS_ID,
     ],
     params: NS_PARAMS,
     count_law: None,
@@ -396,6 +427,7 @@ const NS_SIZE: GpuKernel = GpuKernel {
             port: 0,
         },
         NS_TIME,
+        NS_ID,
     ],
     params: NS_PARAMS,
     count_law: None,

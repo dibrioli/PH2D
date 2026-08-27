@@ -190,6 +190,22 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "height_channel",
             default: 0.0,
         },
+        // **O QUE A PAREDE FAZ** — `0` reflecte (o de sempre, ao bit), `1` absorve.
+        //
+        // ⚠️ **É o *Reflect Edges* do AE (Wave World), e a nossa metade que faltava era a
+        // OUTRA:** o nó só sabia reflectir, e a caixa fechada faz a energia ficar a
+        // ressoar para sempre — medido em 2026-08-18 com `damping = 0`, um pulso único
+        // deixa a energia a subir e descer sem cair (130 → 775 → 303 → 565 em 30/60/120/240
+        // tiques), que é a assinatura de uma sala sem porta.
+        //
+        // ⚠️ **A capacidade já existia por COMPOSIÇÃO** (quatro nós e o nome de uma coluna
+        // de estado que nenhum picker oferece), e é por isso que a célula estava marcada
+        // *ergonomia* e não *omissão*. O que este param compra é o GESTO — e ele traz de
+        // borda a lei que a rota à mão tinha de honrar num segundo nó (ver [`step`]).
+        ParamSpec {
+            name: "edges",
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -203,6 +219,12 @@ struct Params {
     damping: f32,
     center: [f32; 2],
     channel: Channel,
+    /// O que a parede faz — ver [`EDGES_ABSORB`].
+    edges: i32,
+    /// O perfil da camada absorvente. ⚠️ **Não é um param do artista** — ele é
+    /// resolvido em [`Sponge::SHIPPED`] e vive aqui para a sonda o poder VARRER
+    /// sem uma segunda porta para dentro do `step`.
+    sponge: Sponge,
 }
 
 impl Params {
@@ -251,12 +273,95 @@ fn grid_positions(p: &Params) -> Vec<[f32; 2]> {
     out
 }
 
+/// **A BORDA ABSORVENTE** — `edges = 1`. `0` é a reflectora de sempre.
+pub const EDGES_ABSORB: i32 = 1;
+
+/// **O PERFIL da camada absorvente** — a largura da esponja e a mordida dela.
+///
+/// ⚠️ **Ele é um valor e não duas constantes soltas porque os dois números têm de
+/// ser VARRIDOS JUNTOS:** uma esponja estreita e forte e uma larga e fraca tiram a
+/// mesma energia total e reflectem quantidades muito diferentes, então medir um com
+/// o outro fixo mede a combinação e não a lei. A sonda `sweeps_the_sponge_profile`
+/// varre a grade dos dois.
+#[derive(Copy, Clone, Debug)]
+struct Sponge {
+    /// A largura da camada, em CÉLULAS.
+    cells: f32,
+    /// Quanto da amplitude a parede tira por tique, no limite dela.
+    ///
+    /// ⚠️ **NÃO é `1,0`, e a razão é física e não gosto:** uma máscara que cai a
+    /// zero de repente é ela própria um reflector — uma mudança abrupta de
+    /// impedância reflecte, que é o fenómeno que esta borda existe para negar. A
+    /// esponja é GRADUADA por isso, e o piso fica abaixo de 1 para a última fila
+    /// ainda propagar alguma coisa em vez de virar uma segunda parede.
+    strength: f32,
+}
+
+impl Sponge {
+    /// O que SHIPA. ⚠️ **MEDIDO, não escolhido** (`sweeps_the_sponge_profile`, o ECO
+    /// que volta ao miolo em % do que uma parede reflectora devolve):
+    ///
+    /// ```text
+    ///   cells\str    0.02    0.05    0.10    0.15    0.25    0.50    1.00
+    ///          2   55.81%  45.36%  37.95%  30.10%  31.54%  37.49%  46.49%
+    ///          4   54.45%  40.98%  32.64%  30.37%  29.69%  36.67%  40.89%
+    ///          6   50.72%  44.00%  27.77%  25.99%  32.30%  33.97%  40.16%
+    ///          8   45.87%  41.63%  25.45%  28.83%  31.32%  36.44%  31.93%
+    ///         12   39.09%  25.23%  27.63%  25.06%  30.05%  28.65%  29.26%
+    /// ```
+    ///
+    /// ⭐ **A `strength` tem um U, e as duas pontas são ruins por razões DIFERENTES:**
+    /// fraca demais mal absorve (`0,02` devolve metade), forte demais reflecte na
+    /// própria escada de impedância (`1,00` é a pior coluna em toda a metade estreita).
+    /// *A física escrita em [`Sponge::strength`] estava certa e agora está MEDIDA.*
+    ///
+    /// ⭐ **A largura paga até `6` e depois é ruído** (`6`→`12` vale ~1 ponto), e cada
+    /// célula de esponja é miolo que o artista deixa de poder usar ⇒ o joelho é `6`.
+    ///
+    /// ⚠️ **LIMITE NOMEADO: isto reduz o eco a ~26 %, não a zero.** Uma fronteira
+    /// verdadeiramente não-reflectora é a condição de radiação (Mur), que é a outra
+    /// família nomeada em [`step`] — ela troca a VIZINHANÇA no bordo, não a amplitude.
+    const SHIPPED: Self = Self {
+        cells: 6.0,
+        strength: 0.15,
+    };
+
+    /// **Quanto da amplitude a célula `(r, c)` guarda por tique** — `1` no miolo,
+    /// caindo para dentro da parede.
+    ///
+    /// A queda é QUADRÁTICA na distância à parede mais próxima: é o perfil clássico
+    /// de camada absorvente, e é o que faz a transição do miolo para a esponja ser
+    /// suave o bastante para não reflectir de volta.
+    fn at(self, r: usize, c: usize, rows: usize, cols: usize) -> f32 {
+        // A distância à parede mais PRÓXIMA, em células: o mínimo das quatro.
+        let dr = r.min(rows.saturating_sub(1).saturating_sub(r));
+        let dc = c.min(cols.saturating_sub(1).saturating_sub(c));
+        let d = dr.min(dc) as f32;
+        if d >= self.cells || self.cells <= 0.0 {
+            return 1.0;
+        }
+        let into = 1.0 - d / self.cells;
+        1.0 - self.strength * into * into
+    }
+}
+
 /// One leapfrog wave step over the height field. Reflecting (Neumann) edges: an
 /// out-of-grid neighbour reads as the centre cell, so it contributes no gradient.
+///
+/// ⚠️ **Com `edges = Absorb` a mesma vizinhança é lida, e o que muda é a
+/// AMPLITUDE**: a onda ainda chega à parede, mas chega já gasta. Trocar a
+/// vizinhança (uma condição de radiação de Mur) é a outra família, e ela precisa
+/// da velocidade local no bordo — que este nó tem, mas ao preço de uma segunda lei
+/// a viver ao lado desta. A esponja é a que a COMPOSIÇÃO já exprimia (folha 06,
+/// medido 2026-08-18), e trazer para o nó a lei que o artista já podia montar à
+/// mão é o que fecha a célula sem inventar física nova.
 fn step(h: &[f32], h_prev: &[f32], drive: Option<f32>, p: &Params) -> (Vec<f32>, Vec<f32>) {
     let (rows, cols) = (p.rows, p.cols);
     let coeff = p.speed.clamp(0.0, CFL_MAX);
     let keep = 1.0 - p.damping;
+    // ⚠️ **`Reflect` devolve `1.0` para toda célula**, então a multiplicação a
+    // jusante é a identidade e o campo é **byte-idêntico** ao que shipava.
+    let sponge = (p.edges == EDGES_ABSORB).then_some(p.sponge);
     let mut next = vec![0.0f32; h.len()];
     for r in 0..rows {
         for c in 0..cols {
@@ -268,7 +373,14 @@ fn step(h: &[f32], h_prev: &[f32], drive: Option<f32>, p: &Params) -> (Vec<f32>,
             let left = if c > 0 { at(r, c - 1) } else { h[i] };
             let right = if c + 1 < cols { at(r, c + 1) } else { h[i] };
             let lap = up + down + left + right - 4.0 * h[i];
-            let mut v = (2.0 * h[i] - h_prev[i] + coeff * lap) * keep;
+            // ⚠️ **A esponja entra UMA vez por valor, no tique em que ele nasce** — e é
+            // isso que dá de graça a lei que a rota por composição precisava de um
+            // segundo nó para honrar (*amortecer só metade do par do leapfrog custa 4×
+            // a energia do campo*, medido 2026-08-18): o `next` de hoje é o `h_prev` de
+            // amanhã, logo quando ele chega ali **já passou** pela esponja. Multiplicar
+            // também o `prev` no retorno seria passá-lo pela esponja DUAS vezes.
+            let bite = sponge.map_or(1.0, |s| s.at(r, c, rows, cols));
+            let mut v = (2.0 * h[i] - h_prev[i] + coeff * lap) * keep * bite;
             if !v.is_finite() {
                 v = 0.0; // NaN guard: reset a diverged cell
             }
@@ -368,6 +480,8 @@ impl NodeOp for MotionWave {
             damping: ctx.param("damping").clamp(0.0, 0.99),
             center: [ctx.param("center_x"), ctx.param("center_y")],
             channel: Channel::from_param(ctx.param("height_channel")),
+            edges: ctx.param("edges").round() as i32,
+            sponge: Sponge::SHIPPED,
         };
         let playhead = ctx.playhead() as f32;
         let drive = drive_value(&scalar_col(ctx.input(0), VALUE_COL));
@@ -436,6 +550,18 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 0.3,
         step: 0.005,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **O rótulo diz o que a PAREDE faz, não como ela está implementada.** «Sponge» é o
+    // nome da técnica; o artista quer saber se a onda volta ou se some — e é isso que ele lê.
+    ParamUiHint {
+        param: "edges",
+        label: "Edges",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Reflect", "Absorb"],
+        },
     },
     // ⚠️ **PARA ONDE a altura vai** — um seletor NOMEADO, nunca um slider de passos a decorar
     // (doc 89 folha 06). O vocabulário é o da casa (`motion.drive`), e por isso o artista que

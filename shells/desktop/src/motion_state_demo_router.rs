@@ -406,6 +406,35 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("102") => {
+            let sinks =
+                gpu_edges_demo::build_gpu_edges_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[edges-demo] DUAS COISAS, uma em cima da outra.
+  ⚠️ PRECISA DE PLAY.
+
+  EM CIMA -- dois tanques de agua do MESMO tamanho ({}x{}), com a mesma pancada no meio:
+    ESQUERDA  Reflect  o de sempre: a onda bate na borda e VOLTA, e como nada tira
+                       energia da caixa a agua nunca mais se acalma
+    DIREITA   Absorb   o novo: a onda some quando chega perto da borda, entao ficam
+                       aneis limpos a sair do meio
+
+  EM BAIXO -- dois cachos de {} pecas quase coladas, com o mesmo tremor:
+    ESQUERDA  o cacho inteiro treme JUNTO, como um bloco so' (o de sempre)
+    DIREITA   cada peca treme por conta dela (o novo)
+
+  QUER MEXER? Clique num tanque e procure «Edges» no painel; clique num cacho e procure
+  «Seed Per Element», logo abaixo de «Seed».
+
+  DEU ERRADO se: os dois tanques ficarem iguais depois de uns segundos; se o da direita
+  nao mostrar aneis a sair do meio; se os dois cachos tremerem do mesmo jeito; ou se
+  alguma peca sumir.",
+                gpu_edges_demo::SIDE as u32,
+                gpu_edges_demo::SIDE as u32,
+                gpu_edges_demo::CLUMP as u32,
+            );
+            sinks
+        }
         Some("101") => {
             let sinks =
                 gpu_box_demo::build_gpu_box_demo_document(doc, registry).unwrap_or_default();

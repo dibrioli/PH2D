@@ -34,21 +34,30 @@ use ph2d_node_registry::{
     RegistryError,
 };
 
-/// **O `spacing` é uma DISTÂNCIA, e é a única deste nó que é.**
+/// **As DISTÂNCIAS deste nó — e são exactamente duas.**
 ///
-/// A unidade diz *o que o número É*, nunca como ele se mostra (doc 88), e um espaçamento de arco
-/// é medido nas mesmas unidades de mundo em que a curva foi desenhada — logo `Length`, exactamente
-/// como o irmão `motion.spline_wrap` declara as coordenadas dos pontos de controle dele.
+/// A unidade diz *o que o número É*, nunca como ele se mostra (doc 88). Um espaçamento de arco é
+/// medido nas mesmas unidades de mundo em que a curva foi desenhada — logo `Length`, exactamente
+/// como o irmão `motion.spline_wrap` declara as coordenadas dos pontos de controle dele. E o
+/// `perp` é a mesma grandeza noutra direcção: a tangente que o `ph2d_arc_length::at` devolve **já
+/// é unitária**, então o número que o artista digita é uma distância de mundo e não a escala de um
+/// vector de comprimento desconhecido.
 ///
-/// ⚠️ **E os outros três ficam SEM unidade, o que é a decisão e não a omissão:** `count` é uma
-/// contagem que o `ParamWidget::Int` já apresenta, `align` é um interruptor, e o `offset` é uma
-/// FRAÇÃO do percurso (`0..1`, com volta) — o `spline_wrap`, que lê a mesma curva desenhada, deixa
-/// as frações dele (`from`/`to`/`offset`) igualmente sem unidade, e divergir aqui faria dois nós
-/// da mesma família apresentarem a mesma grandeza de dois jeitos.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "spacing",
-    unit: ParamUnit::Length,
-}];
+/// ⚠️ **E os outros ficam SEM unidade, o que é a decisão e não a omissão:** `count` é uma
+/// contagem que o `ParamWidget::Int` já apresenta, `align` é um seletor, e `offset`/`from`/`to`
+/// são FRAÇÕES do percurso (`0..1`, com volta) — o `spline_wrap`, que lê a mesma curva desenhada,
+/// deixa as frações dele (`from`/`to`/`offset`) igualmente sem unidade, e divergir aqui faria dois
+/// nós da mesma família apresentarem a mesma grandeza de dois jeitos.
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "spacing",
+        unit: ParamUnit::Length,
+    },
+    ParamUnitDecl {
+        param: "perp",
+        unit: ParamUnit::Length,
+    },
+];
 
 /// `mode`: quem responde **"quantos?"**.
 const MODE_COUNT: f32 = 0.0;
@@ -134,6 +143,34 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "mode",
             default: MODE_COUNT,
         },
+        // **O RECORTE do percurso** — a fatia da curva que o conjunto ocupa.
+        //
+        // ⚠️ **As palavras são `from`/`to` e não `Start`/`End`, e a escolha é de
+        // FAMÍLIA:** o irmão `motion.spline_wrap` lê a MESMA curva desenhada e já
+        // chama `from`/`to` à mesma grandeza (uma fatia de arco em `0..1`). Duas
+        // palavras para a mesma coisa em dois nós da mesma família é o artista a
+        // ter de aprender duas vezes — e a célula que pede isto nomeia a
+        // referência pelo rótulo dela (*Start/End*), não pela chave.
+        ParamSpec {
+            name: "from",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "to",
+            default: 1.0,
+        },
+        // **O desvio PERPENDICULAR**, em unidades de mundo, ao longo da normal.
+        //
+        // ⚠️ **E é ele que responde pelo *Side* da referência**, que a célula lista
+        // como um quarto controle: um deslocamento ASSINADO já diz o lado, e um
+        // botão `Side` ao lado dele seria um segundo jeito de escrever o mesmo
+        // sinal — dois controles que podem discordar sobre a mesma pergunta. O
+        // precedente exacto é o auto-invert do `motion.stagger`, refutado por
+        // medição em 22/08 pelo mesmo motivo.
+        ParamSpec {
+            name: "perp",
+            default: 0.0,
+        },
         // A distância de ARCO entre vizinhos, em unidades de MUNDO.
         //
         // ⚠️ **Diverge do irmão no mesmo app, e a divergência é NOMEADA:** o
@@ -203,6 +240,42 @@ fn copies_that_fit(length: f32, spacing: f32) -> usize {
     }
 }
 
+/// **Onde na curva inteira cai a fracção `u` do PERCURSO recortado.**
+///
+/// ⚠️ **A composição com o `offset` é a razão de esta função existir separada:** o
+/// enrolamento acontece no PERCURSO (`u` já vem enrolado em `0..1`), e o recorte
+/// mapeia-o depois. Fazê-lo ao contrário — enrolar depois de mapear — poria o
+/// conjunto a dar a volta pela curva INTEIRA e a saltar por cima da fatia que o
+/// artista recortou, que é exactamente o gesto que o recorte existe para negar.
+///
+/// ⚠️ **`to < from` anda para TRÁS**, e isso cai da aritmética em vez de ser um
+/// caso: é a mesma lei que o `motion.stagger` já shipa (trocar as pontas inverte
+/// a rampa) e que a folha 06 mediu quando refutou o auto-invert dele.
+///
+/// Com `from = 0` e `to = 1` isto é `0.0 + u * 1.0`, que é `u` ao bit — o nó de
+/// sempre.
+fn arc_of(u: f32, from: f32, to: f32) -> f32 {
+    from + u * (to - from)
+}
+
+/// **O desvio perpendicular**: a normal é a tangente rodada um quarto de volta, a
+/// MESMA `(-ty, tx)` que o [`ALIGN_NORMAL`] usa e que o irmão `motion.spline_wrap`
+/// computa. Uma lei, dois consumidores dentro do próprio nó.
+///
+/// ⚠️ **O sinal É o lado** (ver o param `perp`), e a tangente que o
+/// `ph2d_arc_length::at` devolve **já é unitária** — então o número que o artista
+/// digita é uma distância de MUNDO, não uma escala de um vector de comprimento
+/// desconhecido.
+fn push_off(p: [f32; 2], tangent: [f32; 2], perp: f32) -> [f32; 2] {
+    if perp == 0.0 {
+        // O default não faz aritmética nenhuma — a forma mais forte de reduzir ao
+        // que shipava é o trabalho **não correr**, e não um `+ 0.0` que ainda tem
+        // de acertar no sinal do zero.
+        return p;
+    }
+    [p[0] - tangent[1] * perp, p[1] + tangent[0] * perp]
+}
+
 struct MotionPath;
 
 impl NodeOp for MotionPath {
@@ -219,6 +292,10 @@ impl NodeOp for MotionPath {
             _ => 0.0,
         };
         let offset = ctx.param("offset") + wired;
+        // O RECORTE e o DESVIO — resolvidos uma vez por dispatch, como todo param
+        // que não varia por elemento.
+        let (from, to) = (ctx.param("from"), ctx.param("to"));
+        let perp = ctx.param("perp");
 
         // ⚠️ **O canal da GEOMETRIA, não o nome cru.** O nome cru carrega a
         // APARÊNCIA da forma (uma instância na origem, publicada pelo bake de
@@ -264,8 +341,9 @@ impl NodeOp for MotionPath {
             // e `s − floor(s)` é literalmente a linha que saiu do `arc::at`, então
             // isto é byte-idêntico ao que shipava.
             let s = i as f32 / count as f32 + offset;
-            let (p, tangent) = ph2d_arc_length::at(&pts, &lut, s - s.floor());
-            pos.push(p);
+            // O ENROLAMENTO primeiro, o RECORTE depois — ver [`arc_of`].
+            let (p, tangent) = ph2d_arc_length::at(&pts, &lut, arc_of(s - s.floor(), from, to));
+            pos.push(push_off(p, tangent, perp));
             if align != 0 {
                 // ⚠️ A NORMAL é a tangente rodada um quarto de volta — `(-ty, tx)`, o
                 // mesmo `un` que o irmão `motion.spline_wrap` já computa. Ela entra
@@ -383,6 +461,36 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: -1.0,
         max: 1.0,
         step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    // ⚠️ **Os rótulos são os da REFERÊNCIA (`Start`/`End`) e as chaves são as da
+    // FAMÍLIA (`from`/`to`)** — o artista lê a palavra que a indústria usa e o
+    // documento guarda a palavra que o irmão `motion.spline_wrap` já guarda. É
+    // exactamente para isto que o rótulo é side-metadata e a chave é contrato.
+    ParamUiHint {
+        param: "from",
+        label: "Start",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "to",
+        label: "End",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    // A faixa é a que a MÃO percorre e é simétrica, porque o SINAL é o lado — um
+    // curso que só subisse esconderia metade da resposta atrás de um campo digitado.
+    ParamUiHint {
+        param: "perp",
+        label: "Perpendicular",
+        min: -2.0,
+        max: 2.0,
+        step: 0.01,
         widget: ParamWidget::Slider,
     },
     // ⚠️ **Era um `Toggle`, e virou um seletor de TRÊS** — apendado: `0` e `1` guardam o

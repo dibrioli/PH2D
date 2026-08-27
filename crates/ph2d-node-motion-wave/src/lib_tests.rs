@@ -16,6 +16,8 @@ fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
         damping,
         center: [0.0, 0.0],
         channel: Channel::Size,
+        edges: 0,
+        sponge: Sponge::SHIPPED,
     }
 }
 
@@ -370,4 +372,247 @@ fn the_default_channel_is_the_size_that_always_shipped() {
     assert_eq!(Channel::from_param(9.0), Channel::Size);
     assert_eq!(Channel::from_param(1.0), Channel::Y);
     assert_eq!(Channel::from_param(2.0), Channel::Rotation);
+}
+
+// ---------------------------------------------------------------------------
+// A BORDA ABSORVENTE (doc 89, folha 06 · célula 36 — o *Reflect Edges* do AE)
+// ---------------------------------------------------------------------------
+
+/// A energia do campo — a soma dos quadrados. É a grandeza que RESSOA numa caixa
+/// fechada, e a única que distingue *"a onda parou"* de *"a onda está do outro lado"*.
+fn energy(h: &[f32]) -> f32 {
+    h.iter().map(|x| x * x).sum()
+}
+
+/// Um campo excitado por **um pulso só** e depois deixado em paz, sem amortecimento
+/// global: é a fixtura em que uma parede reflectora se denuncia, porque nada mais no
+/// modelo tira energia.
+fn pulse_only(p: &Params, ticks: usize) -> Vec<Vec<f32>> {
+    let mut state = Stream::new(0);
+    let mut frames = Vec::new();
+    for k in 0..ticks {
+        // ⚠️ **O pulso vai no tique 1, nunca no 0.** O tique 0 SEMEIA o campo plano e
+        // **descarta a fonte** (é o que o `seeds_a_flat_field` afirma), então uma
+        // fixtura que dispara ali mede um campo que nunca foi excitado — as duas
+        // metades saíram `0e0` e o gate reprovou por não conter o fenómeno, que é
+        // exactamente o que a metade de controle existe para apanhar.
+        let out = simulate((k == 1).then_some(1.0), &state, k as f32 / 60.0, p);
+        state = out.clone();
+        frames.push(scalar_col(&out, "wave_h"));
+    }
+    frames
+}
+
+fn absorbing(rows: usize, cols: usize) -> Params {
+    let mut p = params(rows, cols, 0.4, 0.0);
+    p.edges = EDGES_ABSORB;
+    p
+}
+
+/// ⭐⭐ **A ENTREGA: a caixa deixa de ressoar.** Com `damping = 0` uma parede
+/// reflectora guarda a energia para sempre (ela só se redistribui); a esponja
+/// deixa-a sair. O CONTROLE é o mesmo campo com a parede de sempre, e é ele que
+/// mede o fenómeno — sem ele este gate só diria *"um número desceu"*.
+#[test]
+fn the_sponge_kills_the_ringing_a_reflecting_box_keeps() {
+    const TICKS: usize = 400;
+    let refl = pulse_only(&params(31, 31, 0.4, 0.0), TICKS);
+    let absb = pulse_only(&absorbing(31, 31), TICKS);
+    let (e_refl, e_absb) = (energy(&refl[TICKS - 1]), energy(&absb[TICKS - 1]));
+    // O controle tem de RESSOAR — se ele próprio já tivesse morrido, a fixtura não
+    // conteria o fenómeno e o gate estaria a medir nada.
+    assert!(
+        e_refl > 1e-3,
+        "a fixtura nao contem o fenomeno: a caixa reflectora ja' esta' quieta ({e_refl:e})"
+    );
+    assert!(
+        e_absb < e_refl * 0.05,
+        "a esponja tem de deixar menos de 5% da energia que a parede guarda: \
+         reflect {e_refl:e} · absorb {e_absb:e}"
+    );
+}
+
+/// ⚠️ **A METADE JUSTA.** Sem ela, *"absorve"* podia ser implementado como
+/// *"zera o campo"* e o gate acima passaria — a onda tem de continuar a atravessar
+/// o miolo e a chegar lá com amplitude de verdade.
+#[test]
+fn the_absorbing_wall_does_not_kill_the_interior() {
+    let p = absorbing(31, 31);
+    let frames = pulse_only(&p, 60);
+    // Uma célula a meio caminho entre o centro e a parede, longe da esponja.
+    let probe = (p.rows / 2) * p.cols + p.cols / 2 + 6;
+    let peak = frames.iter().map(|h| h[probe].abs()).fold(0.0f32, f32::max);
+    let refl_peak = pulse_only(&params(31, 31, 0.4, 0.0), 60)
+        .iter()
+        .map(|h| h[probe].abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        peak > refl_peak * 0.9,
+        "a onda tem de chegar ao miolo praticamente inteira: absorb {peak:e} contra \
+         reflect {refl_peak:e}"
+    );
+}
+
+/// **A esponja só morde perto da parede.** No miolo ela é a identidade EXACTA — não
+/// «quase», porque um factor de `0,999` no centro seria um amortecimento global
+/// disfarçado de condição de fronteira.
+#[test]
+fn the_sponge_only_bites_near_the_wall() {
+    let s = Sponge::SHIPPED;
+    let (rows, cols) = (31, 31);
+    for r in 0..rows {
+        for c in 0..cols {
+            let dr = r.min(rows - 1 - r);
+            let dc = c.min(cols - 1 - c);
+            let bite = s.at(r, c, rows, cols);
+            #[expect(clippy::cast_precision_loss)]
+            let far = (dr.min(dc) as f32) >= s.cells;
+            if far {
+                assert_eq!(bite, 1.0, "({r},{c}) fica no miolo e foi mordida: {bite}");
+            } else {
+                assert!(
+                    bite < 1.0 && bite > 0.0,
+                    "({r},{c}) mordida invalida: {bite}"
+                );
+            }
+        }
+    }
+    // E a mordida é MONÓTONA para dentro da parede: a parede é o pior sítio.
+    let wall = s.at(0, cols / 2, rows, cols);
+    let inner = s.at(1, cols / 2, rows, cols);
+    assert!(
+        wall < inner,
+        "a parede tem de morder mais: {wall} vs {inner}"
+    );
+    assert!(
+        (wall - (1.0 - s.strength)).abs() < 1e-6,
+        "no limite a mordida e' a `strength` declarada: {wall}"
+    );
+}
+
+/// ⚠️ **`Reflect` é a caixa de sempre, e o perfil da esponja NÃO a alcança.** Um
+/// perfil absurdo tem de deixar o campo reflector byte-idêntico — é isso que prova
+/// que o modo novo não vazou para o caminho que shipava.
+#[test]
+fn a_reflecting_box_is_byte_identical_whatever_the_sponge_profile_is() {
+    let base = pulse_only(&params(21, 21, 0.4, 0.0), 120);
+    let mut wild = params(21, 21, 0.4, 0.0);
+    wild.sponge = Sponge {
+        cells: 40.0,
+        strength: 0.99,
+    };
+    assert_eq!(
+        base,
+        pulse_only(&wild, 120),
+        "o perfil vazou para o `Reflect`"
+    );
+}
+
+/// A largura do miolo em que se procura o ECO, em células a contar da parede. É FIXA
+/// e maior que a esponja mais larga que se varre — comparar profiles num miolo que
+/// mudasse de tamanho com o profile mediria o recorte, não o eco.
+const ECHO_INTERIOR: usize = 10;
+
+/// **O ECO** — o maior `|h|` que aparece no miolo DEPOIS de a frente de saída já o ter
+/// deixado. É isso que o artista vê como uma onda que volta da parede.
+///
+/// ⚠️ A janela começa em `40` porque a frente demora ~24 tiques a chegar à parede
+/// (`c = √0,4 ≈ 0,63 células/tique` sobre 15 células) e a saída já limpou o miolo aos
+/// ~11 — qualquer coisa depois disso veio de volta.
+fn echo(frames: &[Vec<f32>], rows: usize, cols: usize) -> f32 {
+    let mut m = 0.0f32;
+    for h in frames.iter().skip(40) {
+        for r in 0..rows {
+            for c in 0..cols {
+                let d = r.min(rows - 1 - r).min(c).min(cols - 1 - c);
+                if d >= ECHO_INTERIOR {
+                    m = m.max(h[r * cols + c].abs());
+                }
+            }
+        }
+    }
+    m
+}
+
+/// **SONDA** — a grade dos dois números do perfil. ⚠️ *Uma esponja estreita e forte e
+/// uma larga e fraca tiram energia parecida e reflectem quantidades muito diferentes*,
+/// então varrer um com o outro fixo mediria a combinação e não a lei.
+///
+/// ⚠️⚠️ **A RÉGUA CORRIGIU-SE ANTES DE ESCOLHER NÚMERO NENHUM.** A 1.ª versão media a
+/// *energia que sobra ao tique 400* e imprimiu **`0,003 %`–`0,24 %` nas trinta
+/// combinações, sem monotonia nenhuma** — toda a grade estava no chão, e o que variava
+/// entre células era ruído. Uma régua que dá o mesmo número para toda a grade não
+/// escolheu nada; ela só diz que **qualquer** esponja mata a ressonância a longo prazo,
+/// que é a pergunta do gate e não a deste varrimento. A grandeza que DISTINGUE é o
+/// **eco** — o que volta da parede —, e é essa que o artista vê.
+#[test]
+#[ignore = "sonda: imprime numeros, nao afirma"]
+fn sweeps_the_sponge_profile() {
+    const TICKS: usize = 240;
+    let base = pulse_only(&params(31, 31, 0.4, 0.0), TICKS);
+    let refl = echo(&base, 31, 31);
+    eprintln!("\n[esponja] o ECO que volta ao miolo, em % do que a parede reflectora devolve\n");
+    eprintln!("  a caixa reflectora (o CONTROLE) = {refl:.6}\n");
+    eprint!("  {:>9}", "cells\\str");
+    for st in [0.02f32, 0.05, 0.10, 0.15, 0.25, 0.50, 1.0] {
+        eprint!("  {st:>7.2}");
+    }
+    eprintln!();
+    for cells in [2.0f32, 4.0, 6.0, 8.0, 12.0] {
+        eprint!("  {cells:>9.0}");
+        for strength in [0.02f32, 0.05, 0.10, 0.15, 0.25, 0.50, 1.0] {
+            let mut p = absorbing(31, 31);
+            p.sponge = Sponge { cells, strength };
+            let e = echo(&pulse_only(&p, TICKS), 31, 31);
+            eprint!("  {:>6.2}%", 100.0 * e / refl);
+        }
+        eprintln!();
+    }
+    eprintln!(
+        "\n  LEITURA: procura-se o menor par que ja' esteja no joelho -- cada celula de
+  esponja e' miolo que o artista deixa de poder usar, entao gastar largura depois do
+  joelho e' preco sem produto. Um `strength = 1,0` e' a mascara que cai a ZERO na
+  parede: se a coluna dele NAO for a melhor, a razao esta' escrita no
+  `Sponge::strength` -- uma mudanca abrupta de impedancia reflecte."
+    );
+}
+
+/// ⭐ **O PERFIL QUE SHIPA É O JOELHO MEDIDO, e o gate pina as DUAS leis** que a
+/// varredura achou — não o número, que seria uma tautologia sobre uma constante.
+///
+/// ⚠️ *A 1.ª régua desta varredura media a energia que sobra ao tique 400 e imprimiu o
+/// mesmo valor nas trinta combinações* (tudo no chão, sem monotonia): uma régua que dá
+/// a mesma resposta para toda a grade não escolheu nada. Ver `sweeps_the_sponge_profile`.
+#[test]
+fn the_shipped_sponge_profile_sits_at_the_measured_knee() {
+    let echo_of = |cells: f32, strength: f32| {
+        let mut p = absorbing(31, 31);
+        p.sponge = Sponge { cells, strength };
+        echo(&pulse_only(&p, 240), 31, 31)
+    };
+    let s = Sponge::SHIPPED;
+    let shipped = echo_of(s.cells, s.strength);
+    // **LEI 1 — o U da mordida.** As duas pontas são piores que o que shipa, e por
+    // razões diferentes: fraca demais mal absorve, forte demais reflecte na escada.
+    for extreme in [0.02, 1.0] {
+        let e = echo_of(s.cells, extreme);
+        assert!(
+            e > shipped * 1.15,
+            "a mordida {extreme} tinha de ser pior que a que shipa: {e:.4} vs {shipped:.4}"
+        );
+    }
+    // **LEI 2 — a largura paga até ao joelho e depois não.** Metade da largura é
+    // NOTAVELMENTE pior; o dobro dela não compra praticamente nada, e é isso que
+    // proíbe gastar mais miolo do artista.
+    let half = echo_of(s.cells * 0.5, s.strength);
+    let double = echo_of(s.cells * 2.0, s.strength);
+    assert!(
+        half > shipped * 1.05,
+        "metade da largura tinha de ser pior: {half:.4} vs {shipped:.4}"
+    );
+    assert!(
+        double > shipped * 0.9,
+        "o dobro da largura compraria demais para o miolo que custa: \
+         {double:.4} vs {shipped:.4}"
+    );
 }

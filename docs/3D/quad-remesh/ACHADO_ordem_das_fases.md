@@ -1683,3 +1683,67 @@ quem implementa** — e é a segunda vez nesta linha que isso custa uma wave
 
 ⛔ **Shipa DESLIGADO** (`PH2D_GRIDMAP_ARCLINE` ausente ⇒ byte-idêntico), com a tabela desta
 secção ao lado.
+
+### §23.18 — ⛔⛔⛔ O A2b entra, e a esfera vai a `NaN` — a lei da Obra A repetida, na mesma peça
+
+O A1 (o sistema a ver escalares) e o A2 (as equações no espaço de variáveis) estão feitos e
+gateados. O **A2b** — as amarras a possuírem o escalar delas, com o eixo **congelado** em
+vez de recusado — entra e faz o que promete:
+
+| `sculpt_eared` | desligada | ⭐ **ligada** |
+|---|---|---|
+| grupos que entram | `0` | **`11`** |
+| arcos que **não** são linha de grade | `47`/`47` | **`37`**/`47` |
+| ⭐⭐ atravessam (mediana) | `0,96` | **`0,24`** |
+| ⛔ atravessam (pior) | `3,27` | `8,63` |
+
+⭐ **A mediana cai 4×** — é a primeira vez que a grandeza perseguida esta jornada se mexe
+na direcção certa.
+
+#### ⛔ E a forma regride nas peças que sobrevivem
+
+| peça | | aspecto p50 · p99 | enviesamento p50 · p99 | >60° |
+|---|---|---|---|---|
+| `sculpt_eared` | desligada | **`1,13`** · **`1,47`** | **`7,8°`** · **`28,3°`** | `0` |
+| `sculpt_eared` | ligada | `1,32` · `2,35` | `8,2°` · `36,6°` | `0` |
+| `sculpt_hooked` | desligada | **`1,12`** · **`1,73`** | **`6,6°`** · **`38,5°`** | **`3`** |
+| `sculpt_hooked` | ligada | `1,26` · `3,22` | `10,3° `· `62,6°` | ⛔ **`18`** |
+
+#### ⛔⛔⛔ E a `sphere_uv_96x144` NÃO SOBREVIVE: o mapa vai a `NaN`
+
+```text
+soma NaN · costura p50 0,0234 → NaN · alinhamento p50 NaN
+degrau1 0 · degrau2 44          (tudo no degrau CARO)
+⛔⛔ 2 CONFLITOS DE SINAL        (eram ZERO nas 7 peças)
+10 ciclos de arco               (eram 0 na medição do mapa livre)
+EXTRACCAO recusada: o domínio tem uma coordenada não finita
+```
+
+⭐⭐⭐ **É a lei da Obra A, palavra por palavra, e na MESMA peça:**
+
+> ⛔ em dois subsistemas o par realimenta-se e diverge: **esfera a `NaN`**, toro a `6,4e17`,
+> e amortecer **não** cura. *Duas eliminações que leem o que a outra escreve não são duas
+> eliminações.*
+
+⇒ **O A2b está incompleto POR CONSTRUÇÃO.** As amarras eliminam o que podem, mas os
+**ciclos de arco** (os que não eliminam nada) impõem uma condição sobre as **translações**
+que **não está no sistema**. O grupo e as translações escrevem-se um ao outro, e o ganho
+passa de `1`.
+
+#### ⚠️ E isto CORRIGE a leitura da regressão de forma
+
+*A regressão acima não é «o preço da restrição» — é o mesmo defeito, mais fraco.* Nas peças
+que não divergiram, o sistema realimentado assentou num sítio pior em vez de estourar. ⛔
+*Lê-la como um compromisso seria ler o número que se queria.*
+
+⇒ O **A3** deixa de ser «o passo seguinte» e passa a **pré-requisito**: os ciclos de arco
+entram no sistema dos fechos como condição sobre as translações, ao lado dos fechos planos.
+
+#### ⚠️ E o portão da §23.16 mediu a premissa no ponto ERRADO
+
+Ele leu `0` conflitos de sinal **no mapa livre**. Com a restrição activa, a `sphere_uv` dá
+**`2`** — e `10` ciclos onde havia `0`. *Um portão que valida a premissa num ponto não a
+valida no ponto onde a obra a vai usar*, e o mapa restringido é outro mapa.
+
+⛔ **Nada disto shipa:** `PH2D_GRIDMAP_ARCLINE` continua desligada e o produto é
+byte-idêntico.

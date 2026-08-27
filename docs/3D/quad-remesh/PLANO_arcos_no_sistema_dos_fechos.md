@@ -70,9 +70,10 @@ que leem o que a outra escreve não são duas eliminações»*, com a esfera a `
 
 | # | passo | o controlo que o mede |
 |---|---|---|
+| ⚠️ **A2b** | **CONSTRUÍDO e DESLIGADO** (`PH2D_GRIDMAP_ARCLINE`). As amarras possuem o escalar (o eixo é **congelado**, não recusado — era o contador da recusa a dizer qual porta abrir). ⭐ A componente atravessada cai `0,96 → 0,24`; ⛔ mas a forma regride e a esfera diverge — ver A3. | as réguas, e a tabela vive no §23.18 |
 | ✅ **A1** | **FEITO** (2026-08-27). O `ClosureSystem` ganhou `dep_axes` — por dependente, que **componentes** ele escreve. | ⭐ **Byte-idêntico nas 5 peças** (`sha256` antes/depois) + 2 gates da capacidade. |
 | **A2** | As equações dos arcos entram no mesmo sistema, na **mesma ordem topológica** da substituição existente. | `FlatReport` ganha as contagens do arco: eliminadas · ciclo · `worst_det`. ⛔ Um `det ≠ ±1` é **meia célula** e tem de ser contado, não aceite. |
-| **A3** | Os ciclos de arco (`0`–`3` por peça, desacordo inteiro) entram como **condição sobre as translações**, exactamente como o fecho plano. | O desacordo tem de ir a `0`; se não for, ele **nomeia** a peça. |
+| ⛔⛔ **A3** | **PRÉ-REQUISITO, não o passo seguinte** (`ACHADO` §23.18). Os ciclos de arco entram como **condição sobre as translações**, ao lado do fecho plano. ⚠️ Sem ele o A2b **diverge**: a `sphere_uv` vai a **`NaN`** — a assinatura exacta da Obra A, na mesma peça. | O desacordo tem de ir a `0`; e o controlo é a `sphere_uv` **produzir peça**. |
 | **A4** | A escada gulosa e o endurecimento correm **com** o sistema novo. | ⛔ **A armadilha já medida:** impor no contínuo e **não** na escada dá saída *byte-idêntica ao controlo com todos os grupos a entrar*. |
 | **A5** | Medir. | `measure_arc_quantization` (a coluna **atravessam**, que tem de cair) · `loop_census` (**voltas** e anéis fechados) · `quad_shape` (⚠️ a forma **não pode** regredir). |
 

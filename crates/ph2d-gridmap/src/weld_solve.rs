@@ -198,13 +198,23 @@ impl<'a> WeldRelaxer<'a> {
             let Some((root, members)) = ties.group(g) else {
                 continue;
             };
+            // ⛔⛔ **A 1.ª redacção recusava um membro que fosse incógnita LIVRE do
+            // sistema dos fechos, e isso recusava 100 % dos grupos nas peças reais**
+            // (`ACHADO` §23.17): os cantos dos arcos SÃO os cones, e um cone é livre.
+            //
+            // ⭐⭐⭐ **Mas «livre» quer dizer que NINGUÉM a possui** — e o relaxador já sabe
+            // segurar **um eixo** de uma livre ([`Self::freeze_free`]). ⇒ a cura não é
+            // recusar; é **aceitar e CONGELAR** aquele eixo, para a
+            // [`Self::relax_free`] deixar de o escrever. *Era o contador da recusa que
+            // dizia qual porta abrir.*
+            //
+            // ⛔ A recusa que FICA é a que continua a ser uma segunda lei: uma classe
+            // **dependente** já é escrita por substituição, e conduzi-la seria escrever
+            // a mesma variável por dois caminhos.
             let why = |x: u32| -> Option<usize> {
                 let (c, ax) = (x as usize / 2, x as usize % 2);
                 if c >= self.frozen.len() || self.sys.is_dependent_class(c) {
                     return Some(0);
-                }
-                if self.free_index_class(c).is_some() {
-                    return Some(1);
                 }
                 self.frozen[c][ax].then_some(2)
             };
@@ -212,6 +222,19 @@ impl<'a> WeldRelaxer<'a> {
                 self.refused += 1;
                 self.refused_why[k] += 1;
                 continue;
+            }
+            // ⭐ Congela o eixo de cada membro que seja incógnita livre — a raiz
+            // **inclusive**: o grupo inteiro passa a ser escrito pela [`Self::relax_tie`],
+            // e nenhum membro pode continuar a ser relaxado por conta própria.
+            let to_freeze: Vec<(usize, usize)> = members
+                .iter()
+                .filter_map(|&x| {
+                    let (c, ax) = (x as usize / 2, x as usize % 2);
+                    self.free_index_class(c).map(|i| (i, ax))
+                })
+                .collect();
+            for (i, ax) in to_freeze {
+                self.freeze_free(i, ax);
             }
             let rows: Vec<(u32, f32, f32)> = members
                 .iter()
@@ -276,9 +299,22 @@ impl<'a> WeldRelaxer<'a> {
         let y_root = self.w.value_pub(map, rc)[rax] + step;
         for &(x, sigma, delta) in rows {
             let (c, ax) = (x as usize / 2, x as usize % 2);
-            let mut y = self.w.value_pub(map, c);
-            y[ax] = sigma.mul_add(y_root, delta);
-            self.w.set(map, c, y);
+            let want = sigma.mul_add(y_root, delta);
+            let now = self.w.value_pub(map, c);
+            // ⛔⛔ **UM MEMBRO QUE É INCÓGNITA LIVRE TEM DE PASSAR PELO `bump`.** Escrevê-lo
+            // com [`Weld::set`] move a classe e **não** move as dependentes que o sistema
+            // dos fechos escreve a partir dela — e o mapa fica internamente inconsistente,
+            // sem nada a acusar. *A [`Self::relax_free`] usa o `bump` por esta mesma
+            // razão.*
+            if let Some(i) = self.free_index_class(c) {
+                let mut d = [0.0f32; 2];
+                d[ax] = want - now[ax];
+                self.sys.bump(self.w, map, i, d);
+            } else {
+                let mut y = now;
+                y[ax] = want;
+                self.w.set(map, c, y);
+            }
         }
         step.abs()
     }

@@ -3,10 +3,11 @@
 //! ⚠️ **O oráculo é a CAIXA, e nunca «a função devolveu `Some`»**: um gizmo publicado com
 //! meia-extensão zero passa em qualquer teste de presença e é exatamente o defeito reportado.
 
-use super::{EMPTY_HALF_PX, GroupBox, box_of};
+use super::EMPTY_HALF_PX;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform, Visibility};
-use ph2d_flip::FlipDoc;
-use ph2d_vec_scene::VecScene;
+use ph2d_editor::GizmoView;
+use ph2d_host::WindowSize;
+use ph2d_render::Camera2d;
 
 /// A régua do projeto nos testes — um metro tem 100 px de arte.
 const PPM: f32 = 100.0;
@@ -21,26 +22,82 @@ fn empty_root(sim: &mut SimWorld, name: &str) -> Entity {
         .id()
 }
 
-fn boxed(sim: &SimWorld, e: Entity) -> Option<GroupBox> {
-    box_of(sim, &VecScene::new(), &FlipDoc::default(), e, PPM)
+/// A `GizmoView` que o passe publicaria, com uma câmera de teste.
+fn boxed(sim: &SimWorld, e: Entity) -> Option<GizmoView> {
+    super::view(
+        sim,
+        e,
+        &Camera2d::default(),
+        WindowSize {
+            width: 800,
+            height: 600,
+        },
+        (0.0, 0.0),
+        false,
+        PPM,
+    )
+}
+
+/// A meia-extensão de MUNDO da caixa publicada.
+fn half_of(v: &GizmoView) -> [f32; 2] {
+    [
+        (v.bbox_max_world[0] - v.bbox_min_world[0]) * 0.5,
+        (v.bbox_max_world[1] - v.bbox_min_world[1]) * 0.5,
+    ]
 }
 
 /// ⭐ **O report, na sua forma mais curta: um objeto vazio é AGARRÁVEL.**
 ///
-/// ⚠️ A metade que interessa é a **extensão**: `Some(GroupBox)` com meia-extensão zero é um gizmo
-/// que se publica e não se pega — as oito alças caem no mesmo pixel.
+/// ⚠️ A metade que interessa é a **extensão**: uma `GizmoView` com meia-extensão zero passa em
+/// qualquer teste de presença e não se pega — as oito alças caem no mesmo pixel.
 ///
-/// (Mutação: devolver `half: [0.0, 0.0]` no ramo `Empty` ⇒ RED.)
+/// (Mutação: publicar `half = [0.0, 0.0]` ⇒ RED.)
 #[test]
 fn an_empty_object_gets_a_box_wide_enough_to_grab() {
     let mut sim = SimWorld::new();
     let e = empty_root(&mut sim, "Object");
-    let Some(GroupBox::Empty { half }) = boxed(&sim, e) else {
-        panic!("um objeto vazio nao publicou o marcador do vazio");
-    };
+    let v = boxed(&sim, e).expect("um objeto vazio nao publicou gizmo");
+    let half = half_of(&v);
     assert!(
         half[0] > 0.0 && half[1] > 0.0,
         "marcador do vazio com meia-extensao {half:?} — o gizmo nasce colapsado"
+    );
+}
+
+/// ⭐⭐⭐ **A caixa é a DELE, e ter filhos não a muda** (Enio, 2026-08-26, 3.ª volta):
+///
+/// > *«O objeto vazio deve permanecer com seu gizmo original e não se utilizar do gizmo dos
+/// > filhos.»*
+///
+/// ⛔ A união dos filhos foi construída, medida e **rejeitada por veredito de produto** (a árvore
+/// vive em `828bc88f4`). O gate mede o FIM: a caixa não muda quando nasce um filho longe.
+///
+/// (Mutação: unir a caixa dos filhos ⇒ RED.)
+#[test]
+fn a_group_keeps_its_own_box_and_does_not_borrow_the_childrens() {
+    let mut sim = SimWorld::new();
+    let root = empty_root(&mut sim, "Group");
+    let alone = half_of(&boxed(&sim, root).expect("gizmo do vazio"));
+    sim.world_mut().spawn((
+        Transform::from_translation(ph2d_core::Vec2::new(50.0, 0.0)),
+        sprite([9.0, 9.0]),
+        ChildOf(root),
+    ));
+    let with_child = half_of(&boxed(&sim, root).expect("gizmo do grupo"));
+    assert_eq!(
+        alone, with_child,
+        "a caixa do objeto vazio mudou por causa de um filho — ela passou a ser a dos filhos"
+    );
+    // ⚠️ E a caixa continua CENTRADA na origem dele, e não no centro do que ele contém — é esta a
+    // metade que distingue as duas versões (a união deslocava a caixa para o centroide dos filhos,
+    // deixando o pivô para trás).
+    let v = boxed(&sim, root).expect("gizmo do grupo");
+    let cx = (v.bbox_min_world[0] + v.bbox_max_world[0]) * 0.5;
+    let cy = (v.bbox_min_world[1] + v.bbox_max_world[1]) * 0.5;
+    assert!(
+        (cx - v.pivot_world[0]).abs() < 1e-4 && (cy - v.pivot_world[1]).abs() < 1e-4,
+        "a caixa ({cx}, {cy}) largou o pivo ({:?}) — ela foi para o centro dos filhos",
+        v.pivot_world
     );
 }
 
@@ -67,164 +124,6 @@ fn the_empty_marker_is_wider_than_the_handles_it_carries() {
     );
 }
 
-/// ⭐⭐ **A caixa de um grupo é a UNIÃO dos filhos** — o pedido literal do report.
-///
-/// Dois quadrados de 1 m, um em `x = -2` e outro em `x = +2` ⇒ a caixa vai de `-2,5` a `+2,5`.
-///
-/// (Mutação: unir só o primeiro filho ⇒ RED com a meia-largura errada.)
-#[test]
-fn a_group_box_is_the_union_of_its_visible_children() {
-    let mut sim = SimWorld::new();
-    let root = empty_root(&mut sim, "Group");
-    for x in [-2.0f32, 2.0] {
-        sim.world_mut().spawn((
-            Transform::from_translation(ph2d_core::Vec2::new(x, 0.0)),
-            sprite([1.0, 1.0]),
-            ChildOf(root),
-        ));
-    }
-    let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
-        panic!("um grupo com dois filhos nao publicou uniao");
-    };
-    assert!(
-        (anchor[0]).abs() < 1e-5,
-        "a uniao nao esta' centrada: {anchor:?}"
-    );
-    assert!(
-        (half[0] - 2.5).abs() < 1e-5 && (half[1] - 0.5).abs() < 1e-5,
-        "a caixa do grupo mede {half:?} e devia medir [2.5, 0.5]"
-    );
-}
-
-/// ⭐⭐ **Um filho ESCONDIDO não entra na caixa — mas os FILHOS dele continuam.**
-///
-/// ⚠️ **A segunda metade não é uma escolha, é o que o motor desenha:** `Visibility` é per-entidade
-/// e *«does not propagate to descendants»* (o doc do `sim_extract::resolve_clip_grouping` diz-o
-/// pelo nome e chama a propagação de *«a future wave»*). Saltar a sub-árvore daria uma caixa que
-/// não envolve arte que está na tela. ⛔ **A 1.ª versão deste gate afirmava o contrário** e citava
-/// a receita escondida como razão — a receita sai da tela por ser `MasterPiece`, não por
-/// `Visibility`.
-///
-/// (Mutação: apagar a guarda de `Visibility` ⇒ RED; e voltar a saltar a sub-árvore ⇒ RED no neto.)
-#[test]
-fn a_hidden_child_is_not_in_the_box() {
-    let mut sim = SimWorld::new();
-    let root = empty_root(&mut sim, "Group");
-    sim.world_mut().spawn((
-        Transform::from_translation(ph2d_core::Vec2::new(-2.0, 0.0)),
-        sprite([1.0, 1.0]),
-        ChildOf(root),
-    ));
-    let hidden = sim
-        .world_mut()
-        .spawn((
-            Transform::from_translation(ph2d_core::Vec2::new(2.0, 0.0)),
-            sprite([1.0, 1.0]),
-            Visibility::hidden(),
-            ChildOf(root),
-        ))
-        .id();
-    // ⚠️ O NETO do escondido CONTA — ele desenha (o `hidden` do pai não desce até ele). O `x = 8`
-    // do neto é RELATIVO ao pai escondido em `x = 2` ⇒ ele está em `x = 10`.
-    sim.world_mut().spawn((
-        Transform::from_translation(ph2d_core::Vec2::new(8.0, 0.0)),
-        sprite([1.0, 1.0]),
-        ChildOf(hidden),
-    ));
-    let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
-        panic!("nao publicou uniao");
-    };
-    // De `-2,5` (o filho visível) a `10,5` (o neto) ⇒ centro `4`, meia-largura `6,5`.
-    assert!(
-        (anchor[0] - 4.0).abs() < 1e-4 && (half[0] - 6.5).abs() < 1e-4,
-        "anchor={anchor:?} half={half:?} — ou o filho escondido entrou, ou o neto dele ficou de \
-         fora (e ele desenha)"
-    );
-}
-
-/// ⭐ **E sem o neto, o filho escondido de facto não entra** — o controlo que separa as duas
-/// metades do gate acima.
-#[test]
-fn a_hidden_leaf_child_is_not_in_the_box() {
-    let mut sim = SimWorld::new();
-    let root = empty_root(&mut sim, "Group");
-    sim.world_mut().spawn((
-        Transform::from_translation(ph2d_core::Vec2::new(-2.0, 0.0)),
-        sprite([1.0, 1.0]),
-        ChildOf(root),
-    ));
-    sim.world_mut().spawn((
-        Transform::from_translation(ph2d_core::Vec2::new(2.0, 0.0)),
-        sprite([1.0, 1.0]),
-        Visibility::hidden(),
-        ChildOf(root),
-    ));
-    let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
-        panic!("nao publicou uniao");
-    };
-    assert!(
-        (anchor[0] + 2.0).abs() < 1e-5 && (half[0] - 0.5).abs() < 1e-5,
-        "o filho escondido entrou na caixa: anchor={anchor:?} half={half:?}"
-    );
-}
-
-/// ⭐ **A caixa vive no espaço do PAI, não no mundo.**
-///
-/// ⚠️ [`crate::vec_gizmo_view::gizmo_view_from`] aplica a pose do pai à caixa que recebe; uma
-/// caixa já em mundo seria transformada **duas vezes** e o gizmo derivaria do objeto.
-///
-/// (Mutação: semear a pilha com `xform_of_transform(world_transform(root))` ⇒ RED.)
-#[test]
-fn the_box_is_measured_in_the_parents_frame() {
-    let mut sim = SimWorld::new();
-    let root = sim
-        .world_mut()
-        .spawn((
-            Transform::from_translation(ph2d_core::Vec2::new(100.0, -50.0)),
-            Name::new("Group"),
-        ))
-        .id();
-    sim.world_mut()
-        .spawn((Transform::IDENTITY, sprite([1.0, 1.0]), ChildOf(root)));
-    let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
-        panic!("nao publicou uniao");
-    };
-    assert!(
-        anchor[0].abs() < 1e-4 && anchor[1].abs() < 1e-4,
-        "a caixa saiu em coordenadas de MUNDO: {anchor:?}"
-    );
-    assert!((half[0] - 0.5).abs() < 1e-5, "meia-extensao {half:?}");
-}
-
-/// ⭐ **Um filho GIRADO é envolvido pelos QUATRO cantos.**
-///
-/// Um quadrado de 1 m a 45° mede `√2` na diagonal ⇒ a caixa do pai tem meia-extensão `√2/2`.
-/// Unir só `(mín, máx)` daria `0,5` — a caixa cortaria as quinas do filho.
-///
-/// (Mutação: unir só dois cantos ⇒ RED.)
-#[test]
-fn a_rotated_child_is_wrapped_by_its_four_corners() {
-    let mut sim = SimWorld::new();
-    let root = empty_root(&mut sim, "Group");
-    sim.world_mut().spawn((
-        Transform {
-            rotation: std::f32::consts::FRAC_PI_4,
-            ..Transform::IDENTITY
-        },
-        sprite([1.0, 1.0]),
-        ChildOf(root),
-    ));
-    let Some(GroupBox::Union { half, .. }) = boxed(&sim, root) else {
-        panic!("nao publicou uniao");
-    };
-    let want = std::f32::consts::SQRT_2 * 0.5;
-    assert!(
-        (half[0] - want).abs() < 1e-4 && (half[1] - want).abs() < 1e-4,
-        "a caixa mede {half:?} e devia medir [{want}, {want}] — as quinas do filho girado ficaram \
-         de fora"
-    );
-}
-
 /// ⛔ **Uma JUNTA não ganha caixa** — ela já tem os dots, e a caixa engoliria o clique neles.
 ///
 /// (Mutação: apagar a guarda `publishes_its_own_handles` ⇒ RED.)
@@ -248,7 +147,7 @@ fn a_joint_publishes_no_box_so_its_dots_keep_the_click() {
         .entity_mut(e)
         .remove::<ph2d_physics_ecs::PhysicsJoint>();
     assert!(
-        matches!(boxed(&sim, e), Some(GroupBox::Empty { .. })),
+        boxed(&sim, e).is_some(),
         "sem a junta a entidade continuou sem caixa — o gate estaria verde por outra razao"
     );
 }

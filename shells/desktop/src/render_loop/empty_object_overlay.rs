@@ -19,6 +19,15 @@
 //! (`Visibility`) e ser peça de uma **receita**. E há uma terceira, quando existir: o modo de jogo,
 //! que não pinta chrome nenhum (o `shells/game`/R1 está adiado).
 //!
+//! # ⛔ E ele NÃO esmaece fora da seleção
+//!
+//! A 1.ª versão pintava o anel do não-selecionado a `alpha = 0,35`, *«senão uma cena com seis
+//! grupos leria como seis coisas selecionadas»*. O smoke devolveu-o em duas palavras: **«quase
+//! invisível»**. ⚠️ O argumento estava certo sobre o problema e errado sobre o remédio — *a
+//! seleção já é dita pela CAIXA e pelas oito alças à volta*, que é muito mais tinta que meio tom
+//! num traço de 1,5 px. Dizer a mesma coisa duas vezes com o único canal que este anel tem só
+//! apaga o corpo do objeto. ⇒ **todos os anéis a peso cheio**.
+//!
 //! # ⚠️ A pergunta é feita UMA vez
 //!
 //! *«Este objeto é um vazio?»* e *«que raio tem o anel dele?»* são respondidas por
@@ -39,17 +48,9 @@ use ph2d_vector::{Affine, Circle, Stroke, VectorScene};
 /// defeito que o realce do Flip apanhou num smoke em 2026-07-13.
 const RING_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura de tela
 
-/// ⚠️ **O peso do anel de quem NÃO está selecionado.**
-///
-/// Os anéis são todos a cor da seleção — é o vocabulário do chrome deste app —, e sem esta metade
-/// uma cena com seis grupos leria como *«seis coisas selecionadas»*. Precedente e mesma razão: o
-/// `DIM_ALPHA` do [`super::anchor_overlay`].
-const DIM_ALPHA: f32 = 0.35; // LITERAL-COLOR-OK: peso relativo do chrome, não uma cor
-
 /// **Desenha o anel de TODO objeto vazio da cena.**
 pub(super) fn draw_empty_object_marks(
     sim: &SimWorld,
-    selected: Option<u64>,
     pixels_per_meter: f32,
     theme: Theme,
     camera: &Camera2d,
@@ -57,7 +58,7 @@ pub(super) fn draw_empty_object_marks(
     vector_scene: &mut VectorScene,
 ) {
     let ppm = pixels_per_meter.max(crate::EPS_PIXELS_PER_METER);
-    let base = ph2d_editor::paint::resolve(ColorToken::Selection, theme);
+    let color = ph2d_editor::paint::resolve(ColorToken::Selection, theme);
     for entity in crate::group_gizmo_view::empty_objects(sim) {
         let c = crate::vec_transform::world_transform(sim, entity).translation;
         let r_world = crate::group_gizmo_view::marker_world_radius(sim, entity, ppm);
@@ -70,11 +71,6 @@ pub(super) fn draw_empty_object_marks(
         if !(r.is_finite() && r > 0.0) {
             continue;
         }
-        let color = if selected == Some(entity.to_bits()) {
-            base
-        } else {
-            base.multiply_alpha(DIM_ALPHA)
-        };
         vector_scene.inner_mut().stroke(
             &Stroke::new(RING_PX),
             Affine::IDENTITY,

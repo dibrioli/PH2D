@@ -717,6 +717,13 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   receita · o modo de jogo, quando existir).
 - ⚠️ **E ele PEGA** — 4.ª fonte da porta única de pick, por último na lista para o contêiner não
   roubar o clique dos filhos.
+- ⛔ **RECUSA DE PRODUTO (3.ª volta):** a caixa de um grupo **não** é a união dos filhos. Foi
+  construída (a lei do container do envelope generalizada) e rejeitada pelo Enio — *«o objeto vazio
+  deve permanecer com seu gizmo original»*: a moldura mudava sozinha sempre que um filho se mexia. A
+  árvore vive em `828bc88f4`. ⚠️ Não custa a função: o que move o conjunto é o gizmo escrever o
+  `Transform` do PAI, não o tamanho da moldura.
+- ⚠️ E o anel **deixou de esmaecer** fora da seleção (*«quase invisível»*): a seleção já é dita pela
+  caixa e pelas oito alças, e meio tom no único canal de um traço de 1,5 px só apaga o corpo.
 
 ---
 

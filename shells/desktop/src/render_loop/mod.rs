@@ -7436,7 +7436,6 @@ impl crate::App {
                 // *«está vazio?»* é a MESMA que dimensiona a caixa do gizmo (`group_gizmo_view`).
                 empty_object_overlay::draw_empty_object_marks(
                     sim,
-                    hero.gizmo.selection,
                     hero.project.pixels_per_meter,
                     hero.theme,
                     camera,

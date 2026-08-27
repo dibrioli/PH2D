@@ -33,8 +33,8 @@
 | pôr outra cópia da receita | só pelo smoke | ✅ *Instantiate* no menu |
 | promover a excepção a padrão | não existia | ✅ *Apply to Master* — as outras cópias recebem-na |
 | soltar uma cópia da receita | não existia | ✅ *Detach from Master* |
-| pegar um **objeto vazio** ou um **grupo** no canvas | **impossível** — nenhum gizmo | ✅ caixa = união dos filhos visíveis, ou o marcador do vazio; o conjunto move-se como um objeto só |
-| ver onde está um objeto sem geometria | invisível | ✅ um **anel**, em **todo** objeto vazio da cena, selecionado ou não |
+| pegar um **objeto vazio** ou um **grupo** no canvas | **impossível** — nenhum gizmo | ✅ a caixa **dele** (o marcador), sempre do mesmo tamanho; o `Transform` dele é que anda, e os filhos seguem |
+| ver onde está um objeto sem geometria | invisível | ✅ um **anel**, em **todo** objeto vazio da cena, a peso cheio |
 | clicar no centro de um grupo | não selecionava nada | ✅ o anel **pega** — 4.ª fonte da porta de pick |
 | *Criar componente* sobre um **grupo** | as peças da receita continuavam a desenhar (dois objetos empilhados) | ✅ a receita INTEIRA sai da tela (`MasterPiece`), e o gesto não escreve `Visibility` |
 | *Revert to Master* numa peça que o artista moveu | a peça **teletransportava-se** | ✅ devolve o conteúdo e **mantém a posição** |
@@ -479,3 +479,48 @@ voltar a saltar a sub-árvore · o censo ignorar o olho · o gesto voltar a escr
   substituída por `off_canvas::is_off_canvas(…)`, e há gate a proibir as duas de coexistirem.
 - ⚠️ **`ph2d-ecs` não foi tocado** — o `MasterPiece` e o `assign_master_pieces` já existiam desde a
   F4.1; o que mudou foi quem lhes pergunta.
+
+---
+
+## §11 ⭐ A 3.ª volta (2026-08-26) — o anel a peso cheio, e a UNIÃO dos filhos REJEITADA
+
+> *«O círculo desselecionado está quase invisível. Vamos fazer um ajuste, pois não ficou legal a
+> questão do gizmo quando selecionamos o objeto vazio que tem filhos. O objeto vazio deve permanecer
+> com seu gizmo original e não se utilizar do gizmo dos filhos.»* (com foto)
+
+### §11.1 O anel deixou de esmaecer
+
+A §10 pintava o anel do não-selecionado a `alpha = 0,35`, com o argumento *«senão uma cena com seis
+grupos leria como seis coisas selecionadas»*. ⚠️ **Certo sobre o problema, errado sobre o remédio:**
+a seleção já é dita pela **caixa e pelas oito alças** à volta — muito mais tinta que meio tom num
+traço de 1,5 px. Dizer a mesma coisa duas vezes com o **único canal** que este anel tem só apaga o
+corpo do objeto. ⇒ o `DIM_ALPHA` **morreu** (uma constante retirada, não afinada) e o parâmetro
+`selected` saiu da assinatura do overlay.
+
+### §11.2 ⛔ RECUSA DE PRODUTO: a caixa NÃO é a união dos filhos
+
+A §9 fazia a caixa de um grupo ser a **união dos filhos visíveis** no espaço local do pai — a lei do
+container de um `VecEnvelope` (ADR-0129 Fatia 3) generalizada. Construída, medida, e **rejeitada
+pelo Enio**: um objeto vazio passava a ter um tamanho que não é dele, e a moldura mudava sozinha
+sempre que um filho se mexia. *Um controlo cuja moldura muda quando o artista não lhe tocou lê-se
+como o app a decidir por ele.*
+
+⇒ a caixa é **sempre o marcador**, com a meia-extensão derivada do `HANDLE_SIZE_PX`. ⚠️ **Isto não
+custa a função**: o que faz o conjunto andar como um objeto só é o gizmo escrever o `Transform` do
+PAI (os filhos seguem por parentesco), e não o tamanho da moldura.
+
+⛔ **A árvore da versão da união sobrevive em `828bc88f4`** — e o que sai com ela é a matemática dos
+quatro cantos no espaço do pai, a regra do filho escondido e cinco gates. Uma 2.ª tentativa começa
+perguntando **o que ficou pior**, não reconstruindo (precedente: a faixa de barras do
+`value.pattern` no Motion).
+
+⚠️ **O gate novo mede o FIM e não a fórmula**: a caixa não muda quando nasce um filho longe, **e**
+ela continua centrada no pivô do objeto (a união deslocava-a para o centroide dos filhos, deixando o
+pivô para trás — é essa a metade que distingue as duas versões).
+
+### §11.3 Prova de mutação (3.ª volta)
+
+**11 mutações, 11 mortas** — a caixa tomar emprestado dos filhos · a caixa colapsar · um grupo
+deixar de ser vazio · a receita ganhar anel · raio por um eixo só · o anel pegar em todo o lado · o
+censo ignorar o olho · a receita voltar a desenhar · o olho deixar de esconder · o gesto voltar a
+escrever `Visibility` · `assign_master_pieces` marcar só a raiz.

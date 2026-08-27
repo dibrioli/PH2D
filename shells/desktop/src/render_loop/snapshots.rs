@@ -503,8 +503,6 @@ pub(super) fn publish(
             // `group_gizmo_view`, que é onde ela tem gate.
             return crate::group_gizmo_view::view(
                 sim,
-                vec_scene,
-                flip,
                 sim_entity,
                 camera,
                 window_size,

@@ -35,6 +35,26 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
     )
 }
 
+/// **A cena de demonstração precisa da ferramenta MOTION, e ninguém a ligava.**
+///
+/// ⚠️ **MEDIDO em 2026-08-27, e explica um report de *«não vejo nenhum movimento»*:** com
+/// `PH2D_GPU_COOK_DEMO=<n>` posto, o documento monta-se e os sinks existem — mas a ponte só
+/// bombeia enquanto a ferramenta activa é a `motion`, então `motion_active=false` e
+/// `pump.instances = 0`. A cena não cozinha, não desenha, e o terminal imprime a legenda dela
+/// como se estivesse tudo bem. *Um smoke que precisa de um gesto que nenhum texto dele menciona
+/// é um smoke que reprova sobre produto correcto.*
+///
+/// ⚠️ **Vale para a FAMÍLIA inteira e não só para a cena que o expôs** — as 107 são todas demos
+/// de grafo do Motion e nenhuma tem sentido com outra ferramenta em mãos. As cenas com env
+/// própria (`PH2D_MOTION_OBJ_SMOKE`, `PH2D_LENS_SMOKE`, …) já faziam isto há muito, cada uma no
+/// seu ficheiro; era esta família que ficara de fora.
+///
+/// Uma vez por sessão: o artista pode trocar de ferramenta a seguir, e troca.
+#[must_use]
+pub(crate) fn demo_wants_the_motion_tool() -> bool {
+    std::env::var_os("PH2D_GPU_COOK_DEMO").is_some()
+}
+
 /// **O roteador, sem o ambiente** — a MESMA lista de níveis, chamável por um teste.
 ///
 /// ⚠️ **Extraído em 2026-08-20 porque nenhuma cena era testável de fora**, e um

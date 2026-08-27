@@ -874,6 +874,7 @@ impl App {
             sculpt3d_pending: None,
             mask_smoke_done: false,
             sheet_smoke_done: false,
+            demo_tool_forced: false,
             glow_dirt_smoke_done: false,
             slice_smoke_done: false,
             socket_smoke_done: false,

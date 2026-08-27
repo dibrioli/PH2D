@@ -91,3 +91,21 @@ fn the_two_modes_agree_bit_for_bit_on_this_scene() {
         "a preguica mudou um valor — a imagem nao seria a mesma"
     );
 }
+
+/// **A CENA TEM DUAS SAÍDAS, E ISSO É A CONDIÇÃO — não arrumação.**
+///
+/// ⚠️ **Sem isto a cena volta a não demonstrar nada, e em silêncio.** O cook é GPU-residente por
+/// omissão e o plano de GPU recusa um documento com mais de um sink
+/// (`motion_bridge_gpu`: `motion.sinks.len() != 1`); com um sink só, este grafo é inteiramente
+/// coberto, corre no device — onde o grafo é UM dispatch e não há ramo para saltar — e o botão
+/// fica inerte. Medido no quadro real: `motion_active=true` mas `pump.instances = 0`, e o modo
+/// não muda um milissegundo.
+#[test]
+fn the_scene_keeps_two_sinks_so_it_cooks_on_the_cpu() {
+    let (_, _, sinks) = scene();
+    assert_eq!(
+        sinks.len(),
+        2,
+        "com um sink so' o plano de GPU cobre a cena e o modo fica INERTE"
+    );
+}

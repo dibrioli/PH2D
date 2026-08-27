@@ -1541,6 +1541,16 @@ impl crate::App {
             }
         }
 
+        // **A FAMÍLIA `PH2D_GPU_COOK_DEMO` PRECISA DA FERRAMENTA MOTION** — ver
+        // `motion_state_demo_router::demo_wants_the_motion_tool`, onde está a medição que o
+        // expôs. Sem isto a cena monta, a legenda imprime, e a tela fica VAZIA.
+        if crate::motion_state::demo_router::demo_wants_the_motion_tool()
+            && !std::mem::replace(&mut self.demo_tool_forced, true)
+        {
+            let _ = tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            self.title_dirty = true;
+        }
+
         // **A SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11): uma sprite com
         // uma imagem de pó e riscos, um campo de peças a brilhar, e o nó `Glow` já a ler a
         // primeira. ⚠️ Ela mora AQUI e não entre os demos de grafo porque precisa de uma

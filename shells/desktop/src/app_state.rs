@@ -615,6 +615,9 @@ pub(crate) struct App {
     pub(crate) mask_smoke_done: bool,
     /// Latch one-shot de `PH2D_SHEET_SMOKE` — a folha como objeto (plano Sprite 17 §7).
     pub(crate) sheet_smoke_done: bool,
+    /// A família `PH2D_GPU_COOK_DEMO` já pegou na ferramenta Motion? Uma vez por sessão —
+    /// ver `motion_state_demo_router::demo_wants_the_motion_tool`.
+    pub(crate) demo_tool_forced: bool,
     /// `PH2D_GLOW_DIRT_SMOKE` — a máscara de sujidade do halo, encenada uma vez por sessão.
     pub(crate) glow_dirt_smoke_done: bool,
     /// `PH2D_SLICE_SMOKE` — encenado uma vez por sessão.

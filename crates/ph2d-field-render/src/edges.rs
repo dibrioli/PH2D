@@ -22,13 +22,27 @@ use rayon::prelude::*;
 /// 1. **Especializar a árvore por ladrilho aqui é neutro a pior** (W64): `29,0 → 36,4 ms` a 64
 ///    arestas. *A especialização paga-se por AMORTIZAÇÃO* — a marcha primária dilui a montagem por
 ///    `4 096` raios de ladrilho, esta por `~256`.
-/// 2. **Reaproveitar o avaliador entre lotes é neutro** (W70): medido `0,97×`–`1,01×` a `640×360` e
-///    a `1920×1080`, nas duas formas — o `map_init` da rayon (que **não** compra nada: ela parte um
-///    `par_chunks` até *uma tarefa por lote*, e o `init` corre uma vez por tarefa) e a tarefa
-///    dimensionada por `pixels / threads` (que corta as fitas de `1000` para `950` a `1920×1080` e
-///    **não** move o relógio). ⚠️ *O quadro tem `917` regiões especializadas nesse tamanho: as
-///    dezenas de fitas desta passagem são ruído ao lado delas.* A cura que **pagou** foi noutro
-///    sítio — ver `Hybrid::grad` e a marcha por fatias.
+/// 2. ⛔⛔ **«Reaproveitar o avaliador entre lotes é neutro» (W70) — a PREMISSA dela dissolveu na
+///    W82, e a recusa fica registada porque ela não estava errada: ela media outro quadro.**
+///
+///    A W70 mediu `0,97×`–`1,01×` a `640×360` e a `1920×1080`, nas duas formas — o `map_init` da
+///    rayon (que **não** compra nada: ela parte um `par_chunks` até *uma tarefa por lote*, e o
+///    `init` corre uma vez por tarefa) e a tarefa dimensionada por `pixels / threads` (que corta as
+///    fitas de `1 000` para `950` a `1920×1080` e **não** move o relógio). A razão estava escrita
+///    ao lado: *«o quadro tem `917` regiões especializadas nesse tamanho: as dezenas de fitas desta
+///    passagem são ruído ao lado delas»*.
+///
+///    ⭐ **A W82 apagou aquele `917`** (a cache de fitas entre quadros), e com ele a premissa: num
+///    assentar a `640×360` a passagem primária passou a compilar **`0`** e esta a compilar **`29`**
+///    — de ruído a **totalidade**. *Quem move o número que sustenta uma nota tem de reconferir a
+///    nota* (`CLAUDE.md §0.0`).
+///
+///    ⚠️ **E a cura da W83 NÃO é a que a W70 tentou.** Ela tentou reaproveitar o **avaliador**, que
+///    é estado mutável e não atravessa threads. O que atravessa é a **fita** — um `Arc<Mmap>` por
+///    dentro —, e é o `Hybrid::fork` que passou a cloná-la em vez de a recompilar. *O que se
+///    partilha é o código; o que se duplica é o rascunho.* Medido: o anti-serrilhado custava
+///    `1,34×` o quadro (§73.1) e passou a custar **`1,11×`**; as fitas desta passagem foram de
+///    `29` para `0`. Gate: `the_antialias_pass_compiles_no_tape_of_its_own`.
 const EDGE_CHUNK: usize = 64;
 
 pub(crate) fn resample_edges(

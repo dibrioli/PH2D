@@ -3805,6 +3805,159 @@ fn a_cached_tape_is_never_served_to_another_document() {
     );
 }
 
+/// ⭐⭐⭐ **O ASSENTAR DE UMA PEÇA NA RESOLUÇÃO NORMAL** (W83) — e ele é outro problema.
+///
+/// ⚠️ **A `measure_the_stop_and_go_cycle_the_app_really_does` mediu a peça de resolução ALTA**, onde
+/// o `coarse_doc` de facto engrossa o contorno e o app alterna dois documentos. ⛔ **Numa peça na
+/// resolução de omissão isso não acontece:** o `PREVIEW_MAX_EDGES` é `168`, que é *exactamente* o
+/// que o contorno já tem, então `coarse_doc` devolve `None` e **o documento é o mesmo o tempo todo**.
+///
+/// ⇒ para essa peça — a que o artista tem por omissão — o assentar difere do movimento por **duas**
+/// coisas, e só duas: o **anti-serrilhado** (1.º degrau) e o **tamanho cheio** (2.º).
+///
+/// ⭐⭐⭐ **E a pergunta que decide a wave é de CONTAGEM:** o 2.º degrau corre numa grelha de
+/// ladrilhos **mais fina**, e o tubo de um ladrilho pequeno está **dentro** do tubo do ladrilho
+/// grande que o cobria. ⇒ *as fitas do movimento deviam servir o assentar sem uma única
+/// recompilação*, e se não servem há uma razão que vale a wave.
+///
+/// ⚠️ Contagens — vale com a máquina sob carga.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_settle_of_a_default_resolution_piece --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_settle_of_a_default_resolution_piece() {
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    // ⚠️ **Um documento SÓ** — é o que o app tem quando o contorno já cabe no `PREVIEW_MAX_EDGES`.
+    let doc = cache_piece(168);
+    let cache = crate::TapeCache::new();
+    let mut passo = 0usize;
+    let mut quadro = |rot: bool, w: u32, h: u32, aa: bool, nome: &str| {
+        ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
+        crate::TAPE_HITS.store(0, Ordering::Relaxed);
+        // ⚠️ **O assentar corre na câmera do ÚLTIMO quadro de movimento**, e não na seguinte — ele
+        // acontece precisamente porque a câmera parou. A 1.ª versão desta sonda avançava-a, e por
+        // isso media um assentar que o app nunca faz. *Uma sonda que muda uma variável a mais mede
+        // outra coisa.*
+        if rot {
+            passo += 1;
+        }
+        let cam = Orbit {
+            rotation: Orbit::from_yaw_pitch(0.72 + (passo as f32) * 2.0f32.to_radians(), 0.52)
+                .rotation,
+            ..Orbit::default()
+        };
+        let g = crate::trace_cached_for_test(&doc, &reg, &cam, w, h, aa, Some(&cache));
+        println!(
+            "{nome} | {w:4}x{h:4} | AA {} | fitas {:4} | acertos {:5} | bordas {:6}",
+            u8::from(aa),
+            ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed),
+            crate::TAPE_HITS.load(Ordering::Relaxed),
+            g.edges.len(),
+        );
+    };
+    println!("o que o app faz         |    tamanho | AA | fitas | acertos | bordas");
+    for i in 0..4 {
+        quadro(true, 640, 360, false, &format!("gira {i}                 "));
+    }
+    quadro(false, 640, 360, true, "DEGRAU 1 (mesmo tamanho)");
+    quadro(false, 1280, 720, true, "DEGRAU 2 (tamanho cheio)");
+    println!("--- e uma segunda volta, com a cache já cheia ---");
+    for i in 0..2 {
+        quadro(true, 640, 360, false, &format!("gira {i}                 "));
+    }
+    quadro(false, 640, 360, true, "DEGRAU 1 (mesmo tamanho)");
+    quadro(false, 1280, 720, true, "DEGRAU 2 (tamanho cheio)");
+}
+
+/// ⭐⭐⭐ **ONDE O ASSENTAR SE GASTA** (W83) — a sonda que escolhe a wave, depois do smoke do Enio.
+///
+/// A §83.10.2 mediu que o ciclo do artista **não** é dominado pelos quadros a girar (`13`–`23 ms`)
+/// mas pelos dois degraus do **assentar** (`52`–`102 ms` cada). O assentar difere de um quadro de
+/// movimento por **três** coisas multiplicadas, e uma sonda que não as separa não escolhe nada:
+///
+/// | factor | quadro de movimento | assentar |
+/// |---|---|---|
+/// | contorno | grosso (`PREVIEW_MAX_EDGES = 168`) | **cheio** |
+/// | anti-serrilhado | desligado | **ligado** |
+/// | tamanho | o do preview | o do preview (1.º degrau) · **cheio** (2.º) |
+///
+/// ⚠️ E há uma quarta pergunta que só esta sonda responde: **a cache serve o assentar?** O 1.º
+/// degrau corre no mesmo tamanho (regiões parecidas, documento outro); o 2.º corre no tamanho
+/// **cheio**, e um tamanho diferente é uma grelha de ladrilhos diferente ⇒ **outras regiões**.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_where_the_settle_goes --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_where_the_settle_goes() {
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let grosso = cache_piece(168);
+    let cheio = cache_piece(672);
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    // ⚠️ Os dois tamanhos que o app usa: o do preview (um divisor do cheio) e o cheio.
+    let casos: Vec<(&str, &ph2d_field::FieldDoc, u32, u32, bool)> = vec![
+        ("movimento          ", &grosso, 640, 360, false),
+        ("+ contorno cheio   ", &cheio, 640, 360, false),
+        ("+ anti-serrilhado  ", &grosso, 640, 360, true),
+        ("DEGRAU 1 (os dois) ", &cheio, 640, 360, true),
+        ("DEGRAU 2 (+tamanho)", &cheio, 1280, 720, true),
+    ];
+    println!("o que corre         | sem cache | com cache | ganho | fitas | acertos");
+    for (nome, doc, w, h, aa) in casos {
+        let mut ms: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+        let mut conta = (0usize, 0usize);
+        let caches = [crate::TapeCache::new(), crate::TapeCache::new()];
+        // ⚠️ **A cache é AQUECIDA com o ciclo inteiro**, e não com o caso a medir: é assim que ela
+        // chega ao assentar no app — com as fitas do movimento lá dentro e o documento a alternar.
+        for (k, c) in caches.iter().enumerate() {
+            let cc = (k == 1).then_some(c);
+            for i in 0..6 {
+                let cam = Orbit {
+                    rotation: Orbit::from_yaw_pitch(0.72 + (i as f32) * 2.0f32.to_radians(), 0.52)
+                        .rotation,
+                    ..Orbit::default()
+                };
+                let _ = crate::trace_cached_for_test(&grosso, &reg, &cam, 640, 360, false, cc);
+            }
+        }
+        for _ in 0..3 {
+            for (k, c) in caches.iter().enumerate() {
+                let cc = (k == 1).then_some(c);
+                let cam = Orbit::default();
+                let _ = crate::trace_cached_for_test(doc, &reg, &cam, w, h, aa, cc);
+                ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
+                crate::TAPE_HITS.store(0, Ordering::Relaxed);
+                let t0 = std::time::Instant::now();
+                let _ = crate::trace_cached_for_test(doc, &reg, &cam, w, h, aa, cc);
+                ms[k].push(t0.elapsed().as_secs_f64() * 1000.0);
+                if k == 1 {
+                    conta = (
+                        ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed),
+                        crate::TAPE_HITS.load(Ordering::Relaxed),
+                    );
+                }
+            }
+        }
+        let (sem, com) = (med(ms[0].clone()), med(ms[1].clone()));
+        println!(
+            "{nome} | {sem:9.1} | {com:9.1} | {:5.2}x | {:5} | {:7}",
+            sem / com,
+            conta.0,
+            conta.1
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O CICLO A SÉRIO DO APP: gira, pára, gira** (W82) — e a bancada não o media.
 ///
 /// ⚠️ **A `measure_what_the_tape_cache_buys` mede um arrasto CONTÍNUO com um documento só.** O app

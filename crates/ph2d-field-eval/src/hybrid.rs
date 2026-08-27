@@ -270,15 +270,41 @@ impl Hybrid {
         }
     }
 
-    /// ⭐ **Um avaliador NOVO sobre o mesmo plano** — o que uma marcha paralela precisa.
+    /// ⭐⭐⭐ **Um avaliador NOVO sobre as MESMAS FITAS** — o que uma marcha paralela precisa, e
+    /// **sem compilar nada** (W83).
     ///
     /// ⚠️ **O avaliador da `fidget` tem estado mutável**, então partilhá-lo entre threads exigiria
-    /// trava; a marcha já resolvia isso construindo um por lote. Aqui o que se copia é a **árvore**
-    /// (um `Arc` por dentro) e o `Arc` de cada escultura: o que custa é a fita, e ela custa o mesmo
-    /// que a marcha já pagava.
+    /// trava; a marcha resolve isso construindo um por lote. ⭐ Mas a **fita** é imutável e é um
+    /// `Arc<Mmap>` por dentro: cloná-la é um incremento de contador. *O que se partilha é o código;
+    /// o que se duplica é o rascunho.*
+    ///
+    /// ⛔⛔ **Até à W83 este `fork` RECOMPILAVA**, e o preço estava escondido no sítio mais caro
+    /// que havia: a 2.ª passagem do traçado (o anti-serrilhado) constrói um avaliador por **lote de
+    /// 64 pixels de borda**, e cada um compilava a árvore **inteira** — a mais cara que existe, sem
+    /// especialização nenhuma. Medido (`docs/3DModeling/06` §84): num assentar a `640×360` são
+    /// `1 762` pixels de borda ⇒ `28` lotes ⇒ **`29` das `29` fitas do quadro**, com a passagem
+    /// primária a `100 %` de acerto na cache.
+    ///
+    /// ⚠️ **A W70 mediu «reaproveitar o avaliador entre lotes» e achou-o NEUTRO** — e a nota dela
+    /// dizia porquê: *«o quadro tem `917` regiões especializadas nesse tamanho: as dezenas de fitas
+    /// desta passagem são ruído ao lado delas»*. ⭐ **A W82 apagou aquele `917`**, e com ele a
+    /// premissa. *Quem move o número que sustenta uma nota tem de reconferir a nota.*
     #[must_use]
     pub fn fork(&self) -> Self {
-        Self::from_parts(self.plan.clone(), self.trees.clone(), self.sampled.clone())
+        let n = self.tapes.len() + self.sampled.len();
+        Self {
+            plan: self.plan.clone(),
+            trees: self.trees.clone(),
+            tapes: self
+                .tapes
+                .iter()
+                .map(|(_, tape)| (Engine::new_float_slice_eval(), tape.clone()))
+                .collect(),
+            sampled: self.sampled.clone(),
+            grad: None,
+            leaves: vec![Vec::new(); n],
+            out: Vec::new(),
+        }
     }
 
     fn from_parts(plan: Plan, trees: Vec<Tree>, sampled: Vec<SampledLeaf>) -> Self {

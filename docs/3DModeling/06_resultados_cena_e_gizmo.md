@@ -5746,7 +5746,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
-| ⭐⭐⭐ **O ASSENTAR é onde o relógio está** — `52`–`102 ms` por degrau contra `13`–`23` a girar | medido no ciclo a sério; ele corre com o contorno **cheio** | §83.10.2 |
+| ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
+| ⏸️ O contorno **cheio** é `3,39×` no assentar de uma peça de resolução ALTA | numa peça de omissão ele não muda; é o knob `Resolution` do artista | §84.4 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -5765,6 +5766,16 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W83 (§84): o que sobrava a compilar no assentar era o ANTI-SERRILHADO — e eram cinco
+  linhas.** A 2.ª passagem constrói um avaliador por lote de 64 pixels de borda, e cada um
+  **recompilava a árvore inteira**: num assentar a `640×360` isso era `29` das `29` fitas do quadro,
+  com a passagem primária a **100 %** de acerto na cache. ⭐ O `fork` passa a **clonar** a fita
+  (`Arc<Mmap>`) em vez de a recompilar ⇒ `29 → 1`, e o anti-serrilhado passou de `1,34×` para
+  **`1,11×`**. ⚠️ **A W70 já tinha medido isto e achado NEUTRO** — a nota dela dizia porquê («as
+  dezenas de fitas desta passagem são ruído ao lado das `917` regiões»), e **a W82 apagou aquele
+  `917` no dia anterior**. ⛔ E duas suposições minhas caíram antes do primeiro número: uma peça na
+  resolução de omissão **não alterna documento nenhum**, e a minha sonda **avançava a câmera** no
+  assentar, que acontece precisamente porque ela parou.
 - ⭐⭐⭐ **W82 (§83): a cache de fitas entre quadros — e a parede da §82.9 cedeu `1,2×`, não `1,7×`.**
   Uma fita construída para a região `R` serve toda a sub-região de `R` ⇒ construída para `R`
   **inflada**, ela serve o quadro seguinte: `84 %`–`93 %` de acerto, `226` compilações por quadro a
@@ -7520,3 +7531,79 @@ o contorno **cheio** (`672` arestas contra `168`) e é onde o relógio de facto 
 
 ⚠️ *O report «não parece ter melhorado» é um dado, e ele mediu duas coisas que eu não tinha medido:
 que a cache não sobrevivia ao gesto, e que `1,2×` não é visível.*
+
+## §84 — W83: o assentar — e o que sobrava a compilar era o ANTI-SERRILHADO (27/08)
+
+O smoke do Enio mandou olhar para o **assentar** (§83.10.2: girar custa `13`–`23 ms` por quadro e
+cada degrau do assentar custa `52`–`102`). A primeira coisa que a sonda fez foi corrigir **duas
+suposições minhas**.
+
+### §84.1 — ⛔ Duas correcções antes do primeiro número
+
+1. **A peça na resolução de OMISSÃO não alterna documento nenhum.** O `PREVIEW_MAX_EDGES` é `168`,
+   que é *exactamente* o que o contorno já tem por omissão ⇒ `coarse_doc` devolve `None` e o
+   documento é o mesmo o tempo todo. ⇒ *a cura da W82b (dois documentos) só morde numa peça cuja
+   `Resolution` o artista subiu.* A minha bancada tinha escolhido a peça errada nas duas direcções.
+2. ⛔ **A minha sonda avançava a câmera no assentar**, e o assentar acontece precisamente porque ela
+   **parou**. *Uma sonda que muda uma variável a mais mede outra coisa* — e neste caso media a
+   cache a falhar por um movimento que o app não faz.
+
+### §84.2 — ⭐⭐⭐ O que sobrava a compilar, contado
+
+`measure_the_settle_of_a_default_resolution_piece` (peça de omissão, um documento só, câmera parada
+no assentar):
+
+| o que o app faz | fitas compiladas | acertos na cache | pixels de borda |
+|---|---:|---:|---:|
+| gira (regime) | `1`–`36` | `202`–`240` | `0` |
+| **DEGRAU 1** (mesmo tamanho, com anti-serrilhado) | **`29`** | `240` (**100 %**) | `1 762` |
+| **DEGRAU 2** (tamanho cheio, com anti-serrilhado) | **`70`** | `835` | `3 526` |
+
+⭐⭐⭐ **As `29` são `1 762 ÷ 64 = 28` lotes de pixels de borda, mais uma** — e a passagem primária
+estava a **100 %** de acerto. *Todo o que sobrava a compilar era o anti-serrilhado*, e cada lote
+compilava a árvore **INTEIRA**, que é a mais cara que existe (sem especialização nenhuma).
+
+### §84.3 — ⭐⭐⭐ A cura são cinco linhas, e a recusa que a bloqueava dissolveu por medição
+
+O `Hybrid::fork` **recompilava**. Não precisa: a fita da `fidget` é um `Arc<Mmap>` e o que o lote
+precisa é de um **avaliador** (o rascunho mutável), não de um compilador.
+
+⚠️ **A W70 mediu isto e achou-o NEUTRO** — e a nota dela dizia porquê: *«o quadro tem `917` regiões
+especializadas nesse tamanho: as dezenas de fitas desta passagem são ruído ao lado delas»*. ⭐ **A W82
+apagou aquele `917`**, e com ele a premissa: de ruído, esta passagem passou a ser a **totalidade**.
+*Quem move o número que sustenta uma nota tem de reconferir a nota* — e quem o moveu fui eu, um dia
+antes.
+
+⚠️ **E a cura não é a que a W70 tentou.** Ela tentou reaproveitar o **avaliador**, que é estado
+mutável e não atravessa threads; o que atravessa é a **fita**. *O que se partilha é o código; o que
+se duplica é o rascunho.*
+
+| | fitas compiladas |
+|---|---:|
+| DEGRAU 1, antes | `29` |
+| **DEGRAU 1, depois** | **`1`** |
+| DEGRAU 2, antes | `70` |
+| **DEGRAU 2, depois** | **`14`** |
+
+### §84.4 — A decomposição do assentar, medida
+
+`measure_where_the_settle_goes` (`load ~6`, os absolutos valem pouco, as **razões** dentro da corrida
+valem):
+
+| o que corre | sem cache | com cache | contra o movimento |
+|---|---:|---:|---:|
+| movimento (grosso, sem AA) | `30,0` | `21,1` | `1,00×` |
+| **+ contorno cheio** (`672` contra `168`) | `101,8` | `75,3` | **`3,39×`** |
+| **+ anti-serrilhado** | `33,4` | `27,2` | **`1,11×`** |
+| DEGRAU 1 (os dois) | `115,8` | `90,0` | `3,86×` |
+| DEGRAU 2 (+ tamanho cheio, `4×` os pixels) | `275,0` | `199,4` | `9,17×` |
+
+⭐⭐ **O anti-serrilhado custava `1,34×` (§73.1) e passou a custar `1,11×`** — é a W83, medida.
+
+⭐⭐⭐ **E o factor que manda no assentar de uma peça de resolução ALTA é o CONTORNO (`3,39×`), não o
+anti-serrilhado.** Numa peça de omissão o contorno não muda ⇒ o degrau 1 custa `~1,1×` um quadro de
+movimento e o degrau 2 custa o que os **pixels** custam. *O que sobra ali não é desperdício: é a
+imagem final.*
+
+**Gate:** `the_antialias_pass_compiles_no_tape_of_its_own` (binário próprio), com a mutação que só
+ele mata — o `fork` volta a compilar.

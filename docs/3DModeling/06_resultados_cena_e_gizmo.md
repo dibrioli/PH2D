@@ -5746,6 +5746,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
+| ⭐⭐⭐ **O ASSENTAR é onde o relógio está** — `52`–`102 ms` por degrau contra `13`–`23` a girar | medido no ciclo a sério; ele corre com o contorno **cheio** | §83.10.2 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -7469,3 +7470,53 @@ segunda razão para o primeiro nível ser barato.
 guarda `394`–`754` entradas e **não** ganha ao `1,25` com `1 167`–`1 891` — o que sugere que a
 varredura não domina, mas as duas variáveis estão **confundidas** naquela linha (a fita também é mais
 gorda). *Uma comparação em que duas coisas mudam ao mesmo tempo não mede nenhuma das duas.*
+
+### §83.10 — ⛔⛔ O smoke do Enio: *«não parece ter melhorado»* — e ele tinha razão duas vezes
+
+**Report (27/08):** *«não tenho certeza mas não parece ter melhorado»*.
+
+#### §83.10.1 — O defeito: a cache era deitada fora DUAS VEZES POR GESTO
+
+⚠️ **O app alterna DOIS documentos, por construção.** `field3d_preview::coarse_doc` dá o contorno
+**grosso** enquanto a mão mexe e o **cheio** corre ao parar (a escada da W73) — e a cache morria com
+o documento, de propósito. ⇒ *cada paragem e cada retoma custavam um quadro frio.*
+
+`measure_the_stop_and_go_cycle_the_app_really_does` (o ciclo a sério: 4 quadros a girar + os 2
+degraus do assentar, três vezes):
+
+| | fitas compiladas | acertos |
+|---|---:|---:|
+| **antes** — 1.º quadro depois de cada transição | `68` | **`0`** |
+| **antes** — regime dentro de um arrasto | `2`–`18` | `50`–`67` |
+| **depois** — 1.º quadro depois de uma retoma | `5`–`14` | `54`–`61` |
+| **depois** — regime | `3`–`12` | `57`–`64` |
+
+⭐⭐⭐ **Dois quadros em cada seis eram frios**, e nenhuma bancada de arrasto **contínuo** podia
+vê-lo — a minha media um documento só. *Uma cache mede-se no ciclo que o artista faz, e o ciclo dele
+tem uma paragem.*
+
+⭐ A cura é a cache guardar **dois** documentos (`DOCS = 2`) com uma etiqueta por fita
+(`Entry::doc_id`), e o `2` não é folga: é a contagem dos degraus do preview. ⚠️ E o gate que dizia
+`the_cache_dies_with_the_document` passou a chamar-se
+`a_cached_tape_is_never_served_to_another_document` — *um nome que descreve o mecanismo envelhece com
+ele; um que descreve a lei não.*
+
+#### §83.10.2 — ⭐ E mesmo curado, ele continua a ter razão: `1,2×` não se vê
+
+Ciclo inteiro, A/B **intercalado**, mediana de 5: `774,55 → 628,43 ms` = **`1,23×`**.
+
+⚠️ **`1,23×` está abaixo do que uma pessoa distingue**, e há duas razões estruturais para ele não
+aparecer na tela:
+
+1. **A escada do preview tem degraus de `4×` em pixels** (`preview_size` escolhe um **divisor**
+   inteiro). Um ganho de `1,23×` **nunca** chega para descer um degrau ⇒ a imagem sai exactamente do
+   mesmo tamanho, `1,23×` mais depressa — e `18 ms` contra `22 ms` não é uma coisa que se veja.
+2. **O tempo do ciclo não está onde eu olhei.** Medido: os quadros a **girar** custam `13`–`23 ms` e
+   os dois degraus do **assentar** custam `52`–`102 ms` cada. ⇒ *o assentar é `~2,2×` o custo de
+   girar, e é ele que o artista espera.*
+
+⭐⭐⭐ **⇒ A wave seguinte não é mais velocidade no quadro de movimento: é o ASSENTAR.** Ele corre com
+o contorno **cheio** (`672` arestas contra `168`) e é onde o relógio de facto está.
+
+⚠️ *O report «não parece ter melhorado» é um dado, e ele mediu duas coisas que eu não tinha medido:
+que a cache não sobrevivia ao gesto, e que `1,2×` não é visível.*

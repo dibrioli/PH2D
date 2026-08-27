@@ -3768,16 +3768,21 @@ fn the_cache_never_changes_the_image() {
     );
 }
 
-/// ⭐⭐⭐ **A CACHE MORRE COM O DOCUMENTO** (W82).
+/// ⭐⭐⭐ **UMA FITA NUNCA É SERVIDA A OUTRO DOCUMENTO** (W82).
 ///
 /// ⚠️ **É o pior modo de falha que uma cache destas tem**, e não é «uma imagem errada»: é uma imagem
 /// **quase certa**. Uma fita da peça de ontem devolve uma distância plausível para a peça de hoje, e
 /// o artista vê uma forma que quase responde ao controle que ele acabou de mexer.
 ///
+/// ⚠️ **O nome deste gate era `the_cache_dies_with_the_document`, e o desenho desmentiu-o:** a cache
+/// guarda [`crate::TapeCache`] **dois** documentos ao mesmo tempo (o contorno grosso e o cheio, que
+/// o preview alterna) e nenhum deles morre — o que a lei diz é que uma fita só é servida a **quem a
+/// construiu**. *Um nome que descreve o mecanismo envelhece com ele; um que descreve a lei não.*
+///
 /// ⚠️ O gate mede-o **na imagem**, e não no contador: um contador a zero prova que a cache esvaziou,
 /// não que o que ela serviu estava certo.
 #[test]
-fn the_cache_dies_with_the_document() {
+fn a_cached_tape_is_never_served_to_another_document() {
     let reg = Registry::new();
     let cache = crate::TapeCache::new();
     let cam = Orbit::default();
@@ -3797,6 +3802,103 @@ fn the_cache_dies_with_the_document() {
     assert_eq!(
         dif, 0,
         "{dif} pixels da peça B saíram de fitas da peça A — a cache não morreu com o documento"
+    );
+}
+
+/// ⭐⭐⭐ **O CICLO A SÉRIO DO APP: gira, pára, gira** (W82) — e a bancada não o media.
+///
+/// ⚠️ **A `measure_what_the_tape_cache_buys` mede um arrasto CONTÍNUO com um documento só.** O app
+/// não faz isso: enquanto a mão mexe ele traça o contorno **grosso**
+/// (`field3d_preview::coarse_doc`), e ao parar ele traça o **cheio** — dois documentos que se
+/// alternam. E a cache morre com o documento, de propósito (a fita da peça de ontem responde um
+/// número plausível e errado).
+///
+/// ⇒ *cada paragem deita a cache fora inteira*, e o quadro seguinte à retoma volta a compilar tudo.
+/// **Uma bancada que mede o caso contínuo não pode ver isto.**
+///
+/// ⚠️ Contagens — vale com a máquina sob carga.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_stop_and_go_cycle_the_app_really_does --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_stop_and_go_cycle_the_app_really_does() {
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let grosso = cache_piece(168);
+    // O documento CHEIO é outro objecto — é o que o `coarse_doc` devolve ao contrário.
+    let cheio = cache_piece(672);
+    let (w, h) = (320u32, 180u32);
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    // ⭐ **Um CICLO** = quatro quadros a girar (contorno grosso) + os dois degraus do assentar
+    // (contorno cheio), que é a escada da W73. É o que a mão do artista faz.
+    let ciclo =
+        |cache: Option<&crate::TapeCache>, de: usize, detalhe: bool| -> (f64, usize, usize) {
+            ph2d_field_eval::hybrid::FLOAT_TAPES.store(0, Ordering::Relaxed);
+            crate::TAPE_HITS.store(0, Ordering::Relaxed);
+            let mut ms = 0.0f64;
+            let mut passo = de;
+            for volta in 0..3 {
+                for fase in 0..6 {
+                    let doc = if fase < 4 { &grosso } else { &cheio };
+                    let cam = Orbit {
+                        rotation: Orbit::from_yaw_pitch(
+                            0.72 + (passo as f32) * 2.0f32.to_radians(),
+                            0.52,
+                        )
+                        .rotation,
+                        ..Orbit::default()
+                    };
+                    if fase < 4 {
+                        passo += 1;
+                    }
+                    let t0 = std::time::Instant::now();
+                    let _ =
+                        crate::trace_cached_for_test(&doc.clone(), &reg, &cam, w, h, false, cache);
+                    let el = t0.elapsed().as_secs_f64() * 1000.0;
+                    ms += el;
+                    if detalhe {
+                        println!(
+                            "  volta {volta} · {} {fase} | {el:7.2} ms | fitas {:4} | acertos {:4}",
+                            if fase < 4 { "gira " } else { "pára " },
+                            ph2d_field_eval::hybrid::FLOAT_TAPES.swap(0, Ordering::Relaxed),
+                            crate::TAPE_HITS.swap(0, Ordering::Relaxed),
+                        );
+                    }
+                }
+            }
+            (
+                ms,
+                ph2d_field_eval::hybrid::FLOAT_TAPES.load(Ordering::Relaxed),
+                crate::TAPE_HITS.load(Ordering::Relaxed),
+            )
+        };
+    println!("=== o ciclo em detalhe, COM cache ===");
+    let cache = crate::TapeCache::new();
+    let _ = ciclo(Some(&cache), 0, false);
+    let _ = ciclo(Some(&cache), 100, true);
+
+    println!("\n=== A/B intercalado: 18 quadros por ciclo (4 a girar + 2 a parar) x 3 ===");
+    let caches = [crate::TapeCache::new(), crate::TapeCache::new()];
+    for (k, c) in caches.iter().enumerate() {
+        let _ = ciclo((k == 1).then_some(c), 0, false);
+    }
+    let mut tot: [Vec<f64>; 2] = [Vec::new(), Vec::new()];
+    for ronda in 0..5usize {
+        for (k, c) in caches.iter().enumerate() {
+            let (ms, _, _) = ciclo((k == 1).then_some(c), 1000 * (ronda + 1), false);
+            tot[k].push(ms);
+        }
+    }
+    let (sem, com) = (med(tot[0].clone()), med(tot[1].clone()));
+    println!(
+        "sem cache: {sem:7.2} ms o ciclo  ·  com cache: {com:7.2} ms  ·  ganho {:.2}x",
+        sem / com
     );
 }
 

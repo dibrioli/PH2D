@@ -60,6 +60,20 @@ pub const INFLATE: f32 = 1.25;
 /// mais são pedidas, e as do quadro corrente são pedidas todas.
 const CAPACITY: usize = 2048;
 
+/// ⭐⭐⭐ **Quantos DOCUMENTOS a cache guarda ao mesmo tempo** — e o `2` não é folga, é a contagem
+/// dos degraus do preview.
+///
+/// ⚠️ **O app alterna dois documentos por construção**: `field3d_preview::coarse_doc` dá o contorno
+/// **grosso** enquanto a mão mexe, e o **cheio** corre ao parar. Com um documento só, **cada**
+/// transição apagava a cache inteira — medido: `~68` compilações e **zero** acertos no 1.º quadro
+/// depois de cada uma, dois quadros frios em cada seis. *Uma bancada que mede um arrasto contínuo
+/// não pode ver isto*, e a minha media exactamente isso.
+///
+/// ⚠️ **Um documento a mais NÃO é mais seguro** — uma fita só é servida ao documento que a
+/// construiu (a etiqueta `Entry::gen`), e o que um terceiro slot compraria era memória para um
+/// documento que ninguém volta a pedir.
+const DOCS: usize = 2;
+
 /// ⭐⭐ **Quantas fitas vieram da cache** — o par do `FLOAT_TAPES`, que conta as que foram
 /// compiladas.
 ///
@@ -75,6 +89,9 @@ struct Entry {
     lo: [f32; 3],
     hi: [f32; 3],
     tape: RegionTape,
+    /// ⚠️ **A que DOCUMENTO esta fita pertence** — ver [`DOCS`]. Uma fita só é servida ao documento
+    /// que a construiu; a etiqueta é o que permite guardar mais de um sem os misturar.
+    doc_id: u32,
     /// O quadro em que ela foi pedida pela última vez — a régua do despejo.
     ///
     /// ⚠️⚠️ **Atómico de propósito, e isto foi MEDIDO.** A 1.ª versão tomava o cadeado de
@@ -92,10 +109,13 @@ struct Inner {
     /// mesmo processo: entre duas corridas desta workstation o mesmo passe já deu `11,36` e
     /// `5,50 ms`.
     inflate: f32,
-    /// ⚠️ **O documento a que estas fitas pertencem.** Editar a peça muda toda especialização, e
-    /// uma fita da peça de ontem responde um número plausível e errado — o pior modo de falha que
-    /// há, porque a imagem sai *quase* certa.
-    doc: Option<FieldDoc>,
+    /// ⚠️ **Os documentos que a cache conhece**, cada um com a etiqueta dele. Uma fita só é servida
+    /// ao documento que a construiu: a fita da peça de ontem responde um número plausível e errado,
+    /// que é o pior modo de falha que há — a imagem sai *quase* certa.
+    docs: Vec<(FieldDoc, u32)>,
+    /// Qual deles é o do quadro corrente.
+    current: u32,
+    next_doc_id: u32,
     frame: u64,
     entries: Vec<Entry>,
 }
@@ -127,7 +147,9 @@ impl TapeCache {
         Self {
             inner: std::sync::RwLock::new(Inner {
                 inflate: f,
-                doc: None,
+                docs: Vec::new(),
+                current: 0,
+                next_doc_id: 1,
                 frame: 0,
                 entries: Vec::new(),
             }),
@@ -154,9 +176,17 @@ impl TapeCache {
             .inner
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if inner.doc.as_ref() != Some(doc) {
-            inner.doc = Some(doc.clone());
-            inner.entries.clear();
+        if let Some((_, g)) = inner.docs.iter().find(|(d, _)| d == doc) {
+            inner.current = *g;
+        } else {
+            let g = inner.next_doc_id;
+            inner.next_doc_id = inner.next_doc_id.wrapping_add(1);
+            inner.docs.push((doc.clone(), g));
+            inner.current = g;
+            if inner.docs.len() > DOCS {
+                let velho = inner.docs.remove(0).1;
+                inner.entries.retain(|e| e.doc_id != velho);
+            }
         }
         inner.frame = inner.frame.wrapping_add(1);
     }
@@ -170,10 +200,11 @@ impl TapeCache {
             .inner
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let cur = inner.current;
         let e = inner
             .entries
             .iter()
-            .find(|e| (0..3).all(|k| lo[k] >= e.lo[k] && hi[k] <= e.hi[k]))?;
+            .find(|e| e.doc_id == cur && (0..3).all(|k| lo[k] >= e.lo[k] && hi[k] <= e.hi[k]))?;
         e.seen
             .store(inner.frame, std::sync::atomic::Ordering::Relaxed);
         TAPE_HITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -202,10 +233,12 @@ impl TapeCache {
                 .entries
                 .retain(|e| e.seen.load(std::sync::atomic::Ordering::Relaxed) > corte);
         }
+        let doc_id = inner.current;
         inner.entries.push(Entry {
             lo,
             hi,
             tape,
+            doc_id,
             seen: std::sync::atomic::AtomicU64::new(seen),
         });
     }

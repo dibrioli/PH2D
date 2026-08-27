@@ -414,3 +414,46 @@ fn the_relink_answer_rewrites_the_key_on_the_node() {
         "a chave nova tem de ficar NO NÓ — senão a peça abre hoje e falha outra vez amanhã"
     );
 }
+
+/// ⭐⭐⭐ **TODO VERBO DA FILEIRA TEM DE TER RÓTULO** — e a lista é VARRIDA, não escrita à mão.
+///
+/// ⚠️ **O `ph2d_i18n::tr` de uma chave desconhecida devolve a PRÓPRIA chave** (`leak_key`, *"o
+/// identificador cru é feio de propósito"*), e o painel pinta o que ele devolve
+/// (`ph2d_panel_model3d::paint`). ⇒ um verbo sem entrada no i18n **não falha em lado nenhum**: ele
+/// aparece na tela a dizer `panel.model3d.act.<algo>`, e todo gate de alcance continua verde —
+/// eles perguntam *"o verbo é oferecido?"*, nunca *"ele diz o quê?"*.
+///
+/// ⭐ **Foi assim que a W76 shipou:** o `ACT_RELINK` nasceu com o gesto, o despacho e três provas de
+/// mutação, e **sem a linha no `model3d.rs`**. O botão que fecha o beco do arquivo perdido dizia
+/// `panel.model3d.act.relink`.
+///
+/// ⚠️ **A lista é lida do FONTE, de propósito.** Um array `ALL_ACT_KEYS` escrito à mão ao lado dos
+/// `push` seria a mesma doença um nível acima — *um `match` exaustivo não guarda a lista de um
+/// laço*: o 7.º verbo entraria por um `push` e escaparia ao gate sem erro nenhum.
+#[test]
+fn every_act_the_row_can_emit_says_something_other_than_its_own_key() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/field3d_scene_acts.rs"),
+    )
+    .expect("o irmão das ações existe");
+    let keys: Vec<String> = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .filter(|l| l.contains("const ACT_") && l.contains(": &str = \""))
+        .filter_map(|l| l.split('"').nth(1).map(str::to_string))
+        .collect();
+    assert!(
+        keys.len() >= 6,
+        "a varredura tem de achar os verbos; achou {keys:?} — se o formato do `const` mudou, é o \
+         gate que ficou cego, não o módulo que ficou limpo"
+    );
+    let mudos: Vec<&String> = keys
+        .iter()
+        .filter(|k| ph2d_i18n::tr(k) == k.as_str())
+        .collect();
+    assert!(
+        mudos.is_empty(),
+        "estes verbos vão pintar o próprio identificador na tela (falta a linha em \
+         `crates/ph2d-i18n/src/model3d.rs`): {mudos:?}"
+    );
+}

@@ -91,6 +91,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // sentidos para a mesma palavra no mesmo painel é onde o artista aprende errado.
         "panel.model3d.act.unlink" => "Unlink",
         "panel.model3d.act.link" => "Link Drawing",
+        // ⭐⭐⭐ **RELIGAR a escultura cujo arquivo sumiu** (W76). ⚠️ As reticências prometem o
+        // DIÁLOGO, como no `+ Sculpt…` — este verbo vai pedir o arquivo novo, não conserta sozinho.
+        // ⚠️ E ele nasceu SEM esta linha: o `tr` de uma chave desconhecida devolve a própria chave
+        // (o `leak_key` do irmão), então o botão dizia `panel.model3d.act.relink` na tela e todo
+        // gate de alcance ficava verde — eles perguntam se o verbo é OFERECIDO, nunca o que ele
+        // DIZ. Quem passou a perguntar é o `every_act_the_row_can_emit_says_something_other_than_
+        // its_own_key`, que varre os `const ACT_` do fonte em vez de reescrever a lista.
+        "panel.model3d.act.relink" => "Relink Sculpture…",
         // ⭐ Os NOMES das dimensões. ⚠️ Eles vivem aqui e não numa tabela do documento: a
         // `ph2d-field` devolve **chaves**, e quem traduz é a UI (HR-15).
         "field.dim.width" => "Width",

@@ -70,6 +70,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     );
     // Pattern on Path (plano 23): os quatro botões + os dois sliders, num irmão pelo teto de LOC.
     super::patternpath::populate_patternpath(store);
+    super::texture_pattern::populate_texture_pattern(store);
     // Contour (pesquisa `20_*` #9): os três comandos, os dois pares exclusivos e os três sliders.
     super::contour::populate_contour(store);
     // Filters (FX raster, plano 24): os quatro chips de tipo + os quatro pares slider/campo.

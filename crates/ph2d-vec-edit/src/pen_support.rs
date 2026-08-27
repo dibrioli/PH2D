@@ -135,6 +135,16 @@ impl History {
         !self.undo.is_empty()
     }
 
+    /// **Quantos passos de undo estão empilhados** — a pergunta que um gate faz para provar que uma
+    /// edição gravou **um** passo, e que repetir o mesmo valor não grava nenhum.
+    ///
+    /// ⚠️ Sem ela, contar exige DRENAR a pilha com [`Self::undo`], o que a destrói — e um gate que
+    /// destrói o que mede não pode medir duas vezes.
+    #[must_use]
+    pub fn undo_len(&self) -> usize {
+        self.undo.len()
+    }
+
     pub fn can_redo(&self) -> bool {
         !self.redo.is_empty()
     }

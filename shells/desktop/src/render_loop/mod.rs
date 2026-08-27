@@ -3283,6 +3283,11 @@ impl crate::App {
             let mut pending_vec_toggle_closed = false;
             let mut pending_vec_pivot_edit = false;
             let mut pending_vec_fill_kind: Option<crate::input_dispatch::VecFillKind> = None;
+            // A lei do PADRÃO de textura (plano 33 W5). Uma só por quadro: os controles da secção
+            // são exclusivos entre si (o artista mexe num de cada vez), e uma fila daria dois passos
+            // de undo para um gesto.
+            let mut pending_texpat: Option<crate::texture_pattern_edit::TexPatCmd> = None;
+            let mut pending_texpat_source = false;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
             let mut pending_vec_grad_add = false;
@@ -3693,6 +3698,18 @@ impl crate::App {
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
                             {
                                 pending_vec_fill_kind = Some(k);
+                            } else if let Some(i) =
+                                ph2d_panel_vector::texture_pattern::tile_index_of(*id)
+                            {
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Tile(i));
+                            } else if let Some(i) =
+                                ph2d_panel_vector::texture_pattern::mode_index_of(*id)
+                            {
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Mode(i));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SOURCE {
+                                pending_texpat_source = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
                                 pending_vec_grad_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
@@ -3854,6 +3871,22 @@ impl crate::App {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SIZE {
+                                // Plano 33: o lado MAIOR de uma cópia, em unidades de mundo — o
+                                // `event.rs` do painel já converteu o track.
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Size(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_GAP {
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_ANGLE {
+                                // GRAUS aqui; o documento guarda radianos, e a conversão vive na
+                                // porta única (`texture_pattern_edit::apply`).
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Angle(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_OFFSET {
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::OffsetDenom(*v));
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SPACING {
                                 // Plano 23: ja' convertido pelo event.rs do painel para o dominio do
                                 // documento (multiplos da largura do motivo) -- aqui e' valor.
@@ -6919,6 +6952,24 @@ impl crate::App {
                 // gradient selection so the overlay highlight + panel don't cling to it.
                 self.vec_grad_selected = None;
                 self.vec_grad_drag = None;
+            }
+            // ⭐ **A secção PATTERN** (plano 33 W5) — a arte primeiro (ela abre um diálogo, que
+            // congela o laço), depois a lei. As duas desaguam na MESMA porta.
+            if pending_texpat_source && let Some(sel) = self.vec_pen.selected() {
+                // ⚠️ O `source_for` devolve a fonte que a forma JÁ tem quando ela tem uma — e aqui o
+                // artista pediu para TROCAR. O diálogo abre sempre, então o caminho é o directo.
+                let _ = sel;
+                if let Some(source) = crate::texture_pattern_pick::pick_source(asset_db) {
+                    pending_texpat = Some(crate::texture_pattern_edit::TexPatCmd::Source(source));
+                }
+            }
+            if let Some(cmd) = pending_texpat {
+                crate::texture_pattern_edit::apply(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    cmd,
+                );
             }
             if let Some(deg) = pending_vec_grad_angle {
                 crate::input_dispatch::apply_vec_set_grad_angle(

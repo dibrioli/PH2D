@@ -50,6 +50,8 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     // 2026-07-23 (ver o ⚠️ acima); o terceiro é a seção nova do Contour.
     super::vector_textpath::VECTOR_SECTION_TEXTPATH,
     super::vector_patternpath::VECTOR_SECTION_PATTERNPATH,
+    // A secção do TEXTURE PATTERN (plano 33) — a TINTA, não o motivo-sobre-guia acima.
+    super::vector_texture_pattern::VECTOR_SECTION_TEXPAT,
     super::vector_contour::VECTOR_SECTION_CONTOUR,
     // FX raster (plano 24) — distinto de EFFECTS (deformadores vetoriais, ADR-0132).
     super::vector_filters::VECTOR_SECTION_FILTERS,

@@ -44,6 +44,16 @@ pub(crate) fn source_for(
     if let Some(Paint::Pattern(p)) = scene.path(sel).and_then(|p| p.fill.as_ref()) {
         return Some(p.source);
     }
+    pick_source(assets)
+}
+
+/// **Abre o diálogo, SEMPRE** — a porta do botão *Source…*, que existe para TROCAR a arte.
+///
+/// ⚠️ É a metade crua da [`source_for`], e as duas são portas do mesmo gesto em situações
+/// diferentes: o chip *Pattern* pergunta *"há arte?"* primeiro; o botão *Source…* já sabe que há e
+/// quer outra. ⛔ Chamar a `source_for` no botão devolveria a arte que já lá está e o botão seria
+/// **mudo** — o defeito que esta linha recebeu três vezes.
+pub(crate) fn pick_source(assets: &AssetDb) -> Option<PatternSource> {
     let dialog = rfd::FileDialog::new().add_filter(
         "Image",
         &ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS

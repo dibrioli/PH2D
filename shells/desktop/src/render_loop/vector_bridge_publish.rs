@@ -235,6 +235,25 @@ pub(super) fn publish(
             (None, None)
         };
         ph2d_panel_vector::set_current_fill(kind, angle);
+        // ⭐ **A LEI DO PADRÃO** (plano 33 W5) — `None` para toda forma que não tem um, e então a
+        // secção *Pattern* nem sobe. ⚠️ O `size` publicado é o lado MAIOR: o painel autora um
+        // número e o documento guarda dois, e a diferença é o aspecto da arte, que o artista não
+        // deve poder esmagar sem querer.
+        ph2d_panel_vector::set_current_texture_pattern(
+            pen.selected()
+                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
+                .and_then(|p| match &p.fill {
+                    Some(Paint::Pattern(pat)) => Some(ph2d_panel_vector::TexturePatternRow {
+                        kind: crate::texture_pattern_edit::tile_index(pat.kind),
+                        offset_denom: f64::from(pat.offset_denom.max(1)),
+                        size: crate::texture_pattern_edit::longer_side(pat.size),
+                        gap: pat.gap[0],
+                        angle_deg: pat.angle.to_degrees(),
+                        mode: crate::texture_pattern_edit::mode_index(pat.mode),
+                    }),
+                    _ => None,
+                }),
+        );
         // Publish the selected multi-point point's influence + jitter (drive the sliders).
         let sel_point = active_handle.and_then(GradHandle::point).and_then(|i| {
             pen.selected()

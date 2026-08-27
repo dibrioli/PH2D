@@ -153,3 +153,90 @@ fn measure_the_fill_kind_row_layout() {
         );
     }
 }
+
+/// A lei de referência da secção: uma grade, arte de 1 unidade, sem vão nem rotação.
+fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
+    ph2d_panel_vector::TexturePatternRow {
+        kind,
+        offset_denom: 2.0,
+        size: 1.0,
+        gap: 0.0,
+        angle_deg: 0.0,
+        mode: 0,
+    }
+}
+
+/// **Todo controlo da secção *Pattern* está vivo sob o ponteiro e chega ao bus.**
+///
+/// ⚠️ Sem esta secção o padrão nasce e **fica como nasceu** — o motor existiria, gateado e smokado,
+/// e o artista teria uma imagem repetida que não consegue tocar.
+#[test]
+fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
+    state::set_current_fill(Some(FillKind::Pattern), None);
+    state::set_current_texture_pattern(Some(row(0)));
+    click_reaches_bus(ids::VECTOR_TEXPAT_SOURCE, "o botao Source");
+    for (i, what) in [
+        (0, "o chip Grid"),
+        (1, "o chip Brick"),
+        (2, "o chip Column"),
+        (3, "o chip Hex"),
+    ] {
+        click_reaches_bus(ph2d_panel_vector::texture_pattern::tile_id(i), what);
+    }
+    for (i, what) in [
+        (0, "o chip Tile"),
+        (1, "o chip Mirror"),
+        (2, "o chip Clamp"),
+    ] {
+        click_reaches_bus(ph2d_panel_vector::texture_pattern::mode_id(i), what);
+    }
+    state::set_current_texture_pattern(None);
+}
+
+/// ⚠️⚠️ **A secção SOME inteira para uma forma sem padrão** — presença E ausência.
+///
+/// A metade da AUSÊNCIA é a que impede o ruído: uma forma sólida não tem lei de ladrilho, e um
+/// cabeçalho que aparece para ela é um controlo que não se aplica.
+#[test]
+fn the_section_vanishes_for_a_shape_without_a_pattern() {
+    state::set_current_fill(Some(FillKind::Solid), None);
+    state::set_current_texture_pattern(None);
+    let mut host = MockPanelHost::with_panel::<VectorPanel>();
+    let mut st = VectorPanelState;
+    assert!(
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_SIZE)
+            .is_none(),
+        "a seccao Pattern subiu para uma forma sem padrao"
+    );
+    // Controlo: com padrão publicado, ela sobe — senão este gate passaria num painel partido.
+    state::set_current_texture_pattern(Some(row(0)));
+    let mut host2 = MockPanelHost::with_panel::<VectorPanel>();
+    assert!(
+        host2
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_SIZE)
+            .is_some(),
+        "com padrao a seccao tem de subir"
+    );
+    state::set_current_texture_pattern(None);
+}
+
+/// ⚠️ **O Offset só existe onde tem sentido.** Na GRADE não há desfasamento, e na COLMEIA ele é
+/// **fixo** em meio passo — é isso que a torna colmeia. Oferecê-lo ali seria um knob que o modelo
+/// ignora, que é o defeito que o [doc 90](../../../docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md)
+/// catalogou dezanove vezes.
+#[test]
+fn the_offset_row_only_shows_for_brick_and_column() {
+    let shows = |kind: u8| {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        state::set_current_texture_pattern(Some(row(kind)));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_OFFSET)
+            .is_some()
+    };
+    assert!(!shows(0), "a GRADE nao tem desfasamento");
+    assert!(shows(1), "o Brick tem");
+    assert!(shows(2), "o Column tem");
+    assert!(!shows(3), "a COLMEIA tem-no FIXO em meio passo");
+    state::set_current_texture_pattern(None);
+}

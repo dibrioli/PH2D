@@ -21,6 +21,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.envelope" => "Envelope",
         "panel.vector.section.textpath" => "Text on Path",
         "panel.vector.section.patternpath" => "Pattern on Path",
+        // ⚠️ A TINTA (plano 33), não o motivo-sobre-guia da linha acima.
+        "panel.vector.section.texpat" => "Pattern",
         "panel.vector.section.contour" => "Contour",
         "panel.vector.section.effects" => "Effects",
         "panel.vector.fx.falloff.modulates" => "modulates the effect below",

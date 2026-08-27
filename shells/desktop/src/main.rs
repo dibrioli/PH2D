@@ -533,6 +533,8 @@ mod text_path_gesture_smoke;
 mod text_path_smoke;
 /// A cena de smoke do **REFLUXO** de texto (`PH2D_BUILD_SMOKE=63`) — irmã de `build_smoke`.
 mod text_wrap_smoke;
+/// **Autorar a lei de um padrão de textura** (plano 33, W5) — a porta da secção Pattern.
+mod texture_pattern_edit;
 /// **O ASSADO dos padrões de TEXTURA** (plano 33, W4) — ⚠️ não confundir com o `pattern_live`,
 /// que é o *Pattern Along Path* (doc 23): aquele copia um motivo ao longo de uma guia, este é a
 /// TINTA de uma forma.

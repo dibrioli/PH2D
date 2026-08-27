@@ -639,7 +639,11 @@ fn every_section_header_is_registered_as_collapsible() {
         // entregue passou a aparecer por causa de outra (Enio, 2026-08-25). ⚠️ **Este número soma
         // entre linhas e se CONTA, nunca se escolhe** — duas linhas que escrevam o mesmo literal
         // fundem MUDAS e a contagem fica uma abaixo da lista.
-        37,
+        // +1 (plano 33 W5): TEXPAT — a lei do padrão de textura. ⚠️ **A TINTA**, e não a
+        // PATTERNPATH acima, que é o motivo-sobre-guia: as duas têm *pattern* no nome e são coisas
+        // diferentes. Some inteira para toda forma que não tem padrão. ⚠️ O `38` foi **CONTADO** (o
+        // gate imprimiu `left: 38`), não escolhido.
+        38,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

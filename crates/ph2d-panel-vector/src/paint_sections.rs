@@ -89,6 +89,10 @@ mod textpath;
 /// A seção **Pattern on Path** (plano 23) — módulo irmão (teto de 600 LOC).
 #[path = "paint_patternpath.rs"]
 mod patternpath;
+/// A secção **PATTERN** — a TINTA de uma forma (plano 33). ⚠️ Não confundir com a `patternpath`
+/// acima, que é o motivo-sobre-guia.
+#[path = "paint_texture_pattern.rs"]
+pub mod texture_pattern;
 
 /// A seção **Contour** (pesquisa `20_*` #9) — módulo irmão (teto de 600 LOC).
 #[path = "paint_contour.rs"]
@@ -220,6 +224,10 @@ impl BodyCtx<'_> {
         y = self.step(y, |b, y| b.stroke_style(snap, y));
         y = self.step(y, |b, y| b.fill_style(snap, y));
         y = self.step(y, Self::fill_type_section);
+        // A lei do PADRÃO fica colada ao selector que a escolhe: o artista carrega no chip
+        // `Pattern` e os controles dele aparecem logo abaixo. Ela só sobe quando a forma TEM um
+        // padrão, então numa forma sólida não custa uma linha.
+        y = self.step(y, Self::texture_pattern_section);
         y = self.step(y, Self::snap_section);
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);

@@ -82,6 +82,8 @@ mod effects;
 /// O registro dos widgets do **Pattern on Path** (plano 23) — irmão pelo teto de 600 LOC.
 #[path = "populate_patternpath.rs"]
 mod patternpath;
+#[path = "populate_texture_pattern.rs"]
+mod texture_pattern;
 
 /// O registro dos widgets do **Contour** (pesquisa `20_*` #9) — irmão pelo teto de 600 LOC.
 #[path = "populate_contour.rs"]

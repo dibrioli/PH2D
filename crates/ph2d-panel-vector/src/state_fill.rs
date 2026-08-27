@@ -12,7 +12,7 @@
 //! chamava não muda uma linha.
 
 use super::{FillKind, PathFillRule};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 thread_local! {
     /// Selected path's fill kind (`None` = no path selected / no fill). Drives the
@@ -29,6 +29,40 @@ thread_local! {
     /// Fill rule of the selected path, `Some` only when it is a COMPOUND path —
     /// the two rules agree on a single contour, so the row would be a no-op there.
     static CURRENT_FILL_RULE: Cell<Option<PathFillRule>> = const { Cell::new(None) };
+    /// A LEI do padrão da forma selecionada (`None` = ela não tem padrão) — o que a secção
+    /// **Pattern** desenha. Espelho panel-local do `PatternFill` da cena, pela MESMA razão que o
+    /// [`FillKind`] o é: o painel não depende da crate do documento.
+    static CURRENT_TEXPAT: RefCell<Option<TexturePatternRow>> = const { RefCell::new(None) };
+}
+
+/// A lei de um padrão de textura, como o painel a vê (plano 33, W5).
+///
+/// ⚠️ **`kind` e `mode` são índices**, não os enums da cena: manter o painel independente da
+/// `ph2d-vec-scene` é a mesma escolha que o [`FillKind`] já fez. A shell é quem traduz, num sítio só.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct TexturePatternRow {
+    /// `0` Grid · `1` Brick (linhas) · `2` Column (colunas) · `3` Hex.
+    pub kind: u8,
+    /// O desfasamento é `1/n` de uma célula. `1` = nenhum.
+    pub offset_denom: f64,
+    /// O lado maior de uma cópia, em unidades de mundo.
+    pub size: f64,
+    /// O vão acrescentado, em unidades de mundo. Negativo = sobreposição.
+    pub gap: f64,
+    /// A rotação do padrão, em graus.
+    pub angle_deg: f64,
+    /// `0` Tile · `1` Mirror · `2` Clamp.
+    pub mode: u8,
+}
+
+/// Publica a lei do padrão da forma selecionada (`None` esconde a secção inteira).
+pub fn set_current_texture_pattern(row: Option<TexturePatternRow>) {
+    CURRENT_TEXPAT.with(|c| *c.borrow_mut() = row);
+}
+
+/// A lei do padrão neste quadro (`None` ⇒ a secção **Pattern** nem sobe).
+pub(crate) fn current_texture_pattern() -> Option<TexturePatternRow> {
+    CURRENT_TEXPAT.with(|c| *c.borrow())
 }
 
 /// Publish the selected path's fill kind + linear angle (both `None` when no path

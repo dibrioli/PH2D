@@ -308,6 +308,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_FILL_KIND_RADIAL
         || id == ids::VECTOR_FILL_KIND_MULTI
         || id == ids::VECTOR_FILL_KIND_PATTERN
+        // A secção PATTERN (plano 33 W5): a arte, os quatro reticulados e as três repetições.
+        || id == ids::VECTOR_TEXPAT_SOURCE
+        || crate::paint_sections::texture_pattern::tile_index_of(id).is_some()
+        || crate::paint_sections::texture_pattern::mode_index_of(id).is_some()
         || id == ids::VECTOR_GRAD_ADD_POINT
         || id == ids::VECTOR_GRAD_REMOVE_POINT
         || id == ids::VECTOR_GRAD_ADD_STOP

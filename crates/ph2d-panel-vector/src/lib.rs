@@ -44,6 +44,18 @@ mod icon_dropdown;
 pub mod ids;
 mod paint;
 
+/// **As portas do TEXTURE PATTERN que a shell precisa** (plano 33, W5): o id de cada chip e o
+/// índice que ele nomeia, nos DOIS sentidos.
+///
+/// ⚠️ Elas vivem no ficheiro que PINTA a fileira, e são re-exportadas daqui em vez de copiadas: uma
+/// segunda lista escrita à mão do lado da shell divergiria no dia em que um reticulado entrasse, e
+/// o sintoma seria *"o painel mostra Brick e o desenho é Hex"* — um report sem causa aparente.
+pub mod texture_pattern {
+    pub use crate::paint_sections::texture_pattern::{
+        mode_id, mode_index_of, tile_id, tile_index_of,
+    };
+}
+
 /// A faixa do Spacing do Pattern on Path (plano 23): o avanço por cópia em múltiplos da largura do
 /// motivo. `0.01` sobrepõe 100×, `4.0` deixa vãos largos, `1.0` encaixa borda-a-borda. O track do
 /// slider é `0..1` e mapeia nesta faixa — a MESMA porta é lida pelo paint (track→display), pelo
@@ -55,6 +67,35 @@ pub(crate) const SPACING_MAX: f64 = 4.0; // LITERAL-PX-OK: faixa no domínio do 
 /// bipolar `−OFFSET_MAX..OFFSET_MAX` (track `0..1`, `0.5` = sobre a curva). Empurra as cópias para
 /// fora/dentro da curva; lido pelo paint, populate e event pela MESMA porta.
 pub(crate) const OFFSET_MAX: f64 = 2.0;
+
+// ── As faixas do TEXTURE PATTERN (plano 33, W5) ──────────────────────────────────
+// ⚠️ **Cada uma é lida por TRÊS sítios** — o paint (track→display), o populate (scale/offset do
+// chip) e o event (track→valor). Escritas em três lugares, elas divergem no dia em que uma mudar.
+//
+// ⚠️ E o **campo numérico é a saída de emergência**: o slider cobre o que se autora com a mão, e
+// quem precisar de um valor fora da faixa digita-o. É a mesma divisão que o resto do painel usa.
+/// O lado maior de UMA cópia, em unidades de MUNDO. O piso é fino o bastante para virar grão (uma
+/// forma típica deste editor mede ~2 unidades, então `0,02` são ~100 cópias); o teto deixa a cópia
+/// ficar maior que a forma, que é como se autora um padrão de uma peça só.
+pub(crate) const TEXPAT_SIZE_MIN: f64 = 0.02; // LITERAL-PX-OK: faixa no domínio do documento
+/// Ver [`TEXPAT_SIZE_MIN`].
+pub(crate) const TEXPAT_SIZE_MAX: f64 = 8.0; // LITERAL-PX-OK: faixa no domínio do documento
+/// A meia-faixa do **Gap**, em unidades de MUNDO: o slider é bipolar `−TEXPAT_GAP_MAX..+`, e
+/// `0.5` = encostado. ⚠️ **Negativo é a SOBREPOSIÇÃO** (o *Overlap* do Illustrator), e ela não é um
+/// modo à parte: sai da mesma máquina de dar-a-volta que o tijolo já precisa.
+pub(crate) const TEXPAT_GAP_MAX: f64 = 2.0; // LITERAL-PX-OK: faixa no domínio do documento
+/// A volta inteira, em GRAUS — o **Angle** é unipolar `0..360` (ao contrário da Rotation do Pattern
+/// on Path, que é bipolar): aqui não há um neutro *"deitado na curva"* a que voltar, e `0` já é o
+/// repouso na ponta do curso.
+pub(crate) const TEXPAT_ANGLE_MAX: f64 = 360.0; // LITERAL-PX-OK: faixa no domínio do documento
+/// A faixa do **Offset** do reticulado: o desfasamento é `1/n` de uma célula.
+///
+/// ⚠️ **`n = 1` é NENHUM desfasamento** (a grade), e por isso o piso é `2` — o Offset só aparece com
+/// Brick/Column, onde `1` seria a fileira a dizer-se tijolo sem o ser. O teto é o que ainda se lê:
+/// a `1/8` o desfasamento de uma linha para a seguinte é um oitavo de célula.
+pub(crate) const TEXPAT_DENOM_MIN: f64 = 2.0; // LITERAL-PX-OK: faixa no domínio do documento
+/// Ver [`TEXPAT_DENOM_MIN`].
+pub(crate) const TEXPAT_DENOM_MAX: f64 = 8.0; // LITERAL-PX-OK: faixa no domínio do documento
 /// A meia-faixa da ORIENTAÇÃO do motivo no Pattern on Path, em GRAUS: o slider é bipolar
 /// `−ROTATION_MAX..ROTATION_MAX` (track `0..1`, `0.5` = deitado ao longo da curva). Meia volta para
 /// cada lado cobre o círculo inteiro sem repetir ângulo, e o neutro cai no centro do curso — o
@@ -114,9 +155,9 @@ pub mod state_symmetry;
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView, FontPreview,
-    FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, TextAxisSlot, VectorPanelState,
-    expand_join, expand_side, last_content_h, last_visible_h, selected_stop, set_current_contour,
-    set_current_contour_can_add, set_current_convertible, set_current_effects,
+    FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, TextAxisSlot, TexturePatternRow,
+    VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h, selected_stop,
+    set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
     set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_filter_can_add, set_current_filters,
     set_current_grad_influence, set_current_grad_jitter, set_current_guides,
@@ -126,10 +167,10 @@ pub use state::{
     set_current_snap_position, set_current_text, set_current_text_align, set_current_text_axes,
     set_current_text_font, set_current_text_font_previews, set_current_text_seed,
     set_current_text_visible, set_current_text_wrap, set_current_textpath,
-    set_current_textpath_can_link, set_current_transform, set_current_vector_style,
-    set_current_vertex_count, set_current_vertex_pos, set_cut_line_exists, set_expand_join,
-    set_expand_side, set_filter_blend_names, set_filter_kinds, set_length_suffix,
-    set_selected_vertex_type, take_want_font_previews,
+    set_current_textpath_can_link, set_current_texture_pattern, set_current_transform,
+    set_current_vector_style, set_current_vertex_count, set_current_vertex_pos,
+    set_cut_line_exists, set_expand_join, set_expand_side, set_filter_blend_names,
+    set_filter_kinds, set_length_suffix, set_selected_vertex_type, take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

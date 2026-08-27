@@ -27,7 +27,7 @@ const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
 fn armed<R>(f: impl FnOnce(&mut crate::field3d_smoke::Smoke) -> R) -> R {
     set_armed_by_panel(true);
     with_smoke(|s| {
-        s.area = Some(AREA);
+        s.vp_mut().area = Some(AREA);
         s.gizmo = Some(field3d_gizmo::Anchor::global(7, [0.0, 0.0, 0.0]));
         s.pending_move = None;
         s.drag = None;
@@ -45,13 +45,13 @@ fn translation_of(m: field3d_gizmo::Motion) -> [f32; 3] {
 }
 
 fn screen_of(s: &crate::field3d_smoke::Smoke) -> Screen {
-    Screen::new(AREA.w as u32, AREA.h as u32, s.cam.half_extent)
+    Screen::new(AREA.w as u32, AREA.h as u32, s.vp().cam.half_extent)
 }
 
 /// O ponto de janela, em pixels, do meio da haste do eixo `n`.
 fn mid_of_axis(s: &crate::field3d_smoke::Smoke, n: usize) -> (f32, f32) {
     let anchor = s.gizmo.expect("ancorado");
-    let handles = field3d_gizmo::project(anchor, &s.cam, screen_of(s), s.gizmo_mode);
+    let handles = field3d_gizmo::project(anchor, &s.vp().cam, screen_of(s), s.gizmo_mode);
     let h = handles
         .iter()
         .find(|h| h.handle == Handle::Axis(n))
@@ -70,7 +70,7 @@ fn mid_of_axis(s: &crate::field3d_smoke::Smoke, n: usize) -> (f32, f32) {
 fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
     armed(|s| {
         let p = mid_of_axis(s, 0);
-        let before = s.cam;
+        let before = s.vp().cam;
         assert!(begin(
             s,
             winit::event::MouseButton::Left,
@@ -87,7 +87,7 @@ fn pressing_on_an_arrow_grabs_it_instead_of_orbiting() {
 
         // E arrastar move a PEÇA, não a vista.
         assert!(advance(s, p.0 + 60.0, p.1));
-        assert_eq!(s.cam, before, "a câmera não pode ter-se mexido");
+        assert_eq!(s.vp().cam, before, "a câmera não pode ter-se mexido");
         let (entity, motion) = s.pending_move.expect("o arrasto tem de pedir um movimento");
         assert_eq!(entity, 7, "e tem de pedi-lo para a entidade da âncora");
         assert!(
@@ -238,7 +238,7 @@ fn the_grabbed_handle_stays_lit_while_the_cursor_walks_away() {
 
 /// Onde uma bola está, em coordenadas de **janela** (a área tem canto em `AREA.x/y`).
 fn ball_at(s: &crate::field3d_smoke::Smoke, v: crate::field3d_views::Standard) -> (f32, f32) {
-    let b = crate::field3d_navball::balls(&s.cam, AREA, crate::field3d_smoke::safe_of(s))
+    let b = crate::field3d_navball::balls(&s.vp().cam, AREA, crate::field3d_smoke::safe_of(s))
         .into_iter()
         .find(|b| b.view == v)
         .expect("as seis estão sempre lá");
@@ -255,7 +255,7 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
     for v in crate::field3d_views::Standard::ALL {
         armed(|s| {
             // Longe da vista, de propósito: sem isto o gate passaria com um clique que não faz nada.
-            s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
+            s.vp_mut().cam.rotation = ph2d_field_render::Orbit::default().rotation;
             s.nav_press = None;
             let at = ball_at(s, v);
             assert!(
@@ -276,7 +276,7 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
                 "{v:?}: soltar em cima da bola tinha de PEDIR uma viagem, não saltar"
             );
             assert_eq!(
-                crate::field3d_views::named_view(&s.cam),
+                crate::field3d_views::named_view(&s.vp().cam),
                 None,
                 "{v:?}: a câmera saltou para a vista em vez de partir para ela"
             );
@@ -285,7 +285,7 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
         crate::field3d_smoke::note_flight_progress(1.0);
         armed(|s| {
             assert_eq!(
-                crate::field3d_views::named_view(&s.cam),
+                crate::field3d_views::named_view(&s.vp().cam),
                 Some(v),
                 "{v:?}: a viagem terminou fora da vista dela"
             );
@@ -305,8 +305,8 @@ fn clicking_a_navball_takes_the_camera_to_that_view() {
 #[test]
 fn dragging_from_the_navball_orbits_instead_of_snapping() {
     armed(|s| {
-        s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
-        let start = s.cam.rotation;
+        s.vp_mut().cam.rotation = ph2d_field_render::Orbit::default().rotation;
+        let start = s.vp().cam.rotation;
         let at = ball_at(s, crate::field3d_views::Standard::Front);
         assert!(begin(
             s,
@@ -317,7 +317,7 @@ fn dragging_from_the_navball_orbits_instead_of_snapping() {
         ));
         s.pending_pick = None;
         advance(s, at.0 + 60.0, at.1 + 12.0);
-        assert_ne!(s.cam.rotation, start, "o arrasto tinha de orbitar");
+        assert_ne!(s.vp().cam.rotation, start, "o arrasto tinha de orbitar");
         crate::field3d_input::finish_for_test(s);
         // ⚠️ **E não pede seleção na peça.** Achado por uma mutação sobrevivente: a guarda que o
         // impede só é load-bearing neste caso — o do arrasto que COMEÇOU no widget — e nenhum gate
@@ -328,7 +328,7 @@ fn dragging_from_the_navball_orbits_instead_of_snapping() {
             "o arrasto começado no gizmo pediu uma seleção na peça ao soltar"
         );
         assert_eq!(
-            crate::field3d_views::named_view(&s.cam),
+            crate::field3d_views::named_view(&s.vp().cam),
             None,
             "o arrasto acabou numa vista NOMEADA — ele saltou para a bola em vez de orbitar"
         );
@@ -433,7 +433,7 @@ fn the_published_safe_rect_moves_the_gizmo() {
 #[test]
 fn the_hand_cancels_a_trip_in_flight() {
     armed(|s| {
-        s.cam = ph2d_field_render::Orbit::default();
+        s.vp_mut().cam = ph2d_field_render::Orbit::default();
         crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Top);
         assert!(s.flight.is_some(), "o controle: a viagem partiu");
 
@@ -471,7 +471,7 @@ fn asking_for_the_view_we_are_already_in_starts_no_trip() {
 fn each_trip_gets_a_fresh_track_id() {
     armed(|s| {
         s.flight = None;
-        s.cam = ph2d_field_render::Orbit::default();
+        s.vp_mut().cam = ph2d_field_render::Orbit::default();
         crate::field3d_input::fly_to_view(s, crate::field3d_views::Standard::Top);
         let first = s.flight_gen;
         crate::field3d_smoke::advance_flight(s, 1.0);

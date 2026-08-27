@@ -150,7 +150,7 @@ pub(super) fn apply(
                     crate::field3d_smoke::with_smoke(|s| {
                         crate::field3d_input::fly_to_view(s, v);
                         // A mão mandou: o prato não recomeça a girar por cima da vista escolhida.
-                        s.manual = true;
+                        s.vp_mut().manual = true;
                     });
                 }
             }
@@ -158,14 +158,15 @@ pub(super) fn apply(
             ph2d_panel_model3d::ModelIntent::Camera { slot } => {
                 crate::field3d_smoke::with_smoke(|s| {
                     if slot == super::panel::ORTHO_SLOT {
-                        s.cam.lens = crate::field3d_input::law::other_lens(s.cam.lens);
+                        s.vp_mut().cam.lens =
+                            crate::field3d_input::law::other_lens(s.vp_mut().cam.lens);
                     } else if slot == super::panel::FRAME_SLOT {
-                        let mut to = s.cam;
+                        let mut to = s.vp().cam;
                         crate::field3d_input::law::home(&mut to);
                         crate::field3d_input::frame_into(s, &mut to);
                         crate::field3d_smoke::fly_to(s, to);
                     }
-                    s.manual = true;
+                    s.vp_mut().manual = true;
                 });
             }
             // ⭐ **Sair para um arquivo.** ⚠️ O pedido só é ANOTADO aqui: escrever um arquivo é

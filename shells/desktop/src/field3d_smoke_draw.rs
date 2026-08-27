@@ -37,7 +37,7 @@ pub(crate) fn draw(
         };
 
         // Colhe o traçado que ficou pronto, se ficou.
-        if let Some(job) = &smoke.inflight {
+        if let Some(job) = &smoke.vp().inflight {
             match job.rx.try_recv() {
                 Ok(r) => {
                     if !smoke.announced {
@@ -52,11 +52,11 @@ pub(crate) fn draw(
                             r.width, r.height, r.hits, r.edges, r.millis
                         );
                     }
-                    smoke.last_trace_ms = r.millis as f32;
+                    smoke.vp_mut().last_trace_ms = r.millis as f32;
                     // ⭐ **A medição que fecha o laço** (W24): o tempo **com** os pixels a que foi
                     // medido. O pedido seguinte sai daqui, e é por isso que este módulo não precisa
                     // de saber em que máquina corre.
-                    smoke.measured = Some(crate::field3d_preview::Measured {
+                    smoke.vp_mut().measured = Some(crate::field3d_preview::Measured {
                         pixels: u64::from(r.width) * u64::from(r.height),
                         millis: r.millis as f32,
                     });
@@ -66,11 +66,11 @@ pub(crate) fn draw(
                             r.width, r.height, r.millis, r.hits
                         );
                     }
-                    smoke.frame = Some((Arc::new(r.rgba), r.width, r.height));
-                    smoke.inflight = None;
+                    smoke.vp_mut().frame = Some((Arc::new(r.rgba), r.width, r.height));
+                    smoke.vp_mut().inflight = None;
                 }
                 Err(TryRecvError::Empty) => {}
-                Err(TryRecvError::Disconnected) => smoke.inflight = None,
+                Err(TryRecvError::Disconnected) => smoke.vp_mut().inflight = None,
             }
         }
 
@@ -84,26 +84,27 @@ pub(crate) fn draw(
             (area.h.round().max(1.0) as u32).max(MIN_TRACE),
         );
 
-        smoke.area = Some(area);
+        smoke.vp_mut().area = Some(area);
 
         // ⚠️ **Peça vazia é uma resposta, não um erro** — e a tela tem de a mostrar. Guardar o
         // último quadro válido faria a imagem mentir sobre a cena, que é a irmã exacta do
         // congelador que este módulo já pagou no cache do traçado.
         let Some(doc) = smoke.doc.clone() else {
-            smoke.frame = None;
-            smoke.requested = None;
+            smoke.vp_mut().frame = None;
+            smoke.vp_mut().requested = None;
             return;
         };
 
-        if !smoke.manual && smoke.inflight.is_none() {
-            let dt = smoke.since.elapsed().as_secs_f32();
-            smoke.since = std::time::Instant::now();
+        if !smoke.vp().manual && smoke.vp().inflight.is_none() {
+            let dt = smoke.vp().since.elapsed().as_secs_f32();
+            smoke.vp_mut().since = std::time::Instant::now();
             // Trava o passo: se a janela ficou minimizada meia hora, a peça não dá vinte voltas
             // de uma vez.
             // ⚠️ Em torno do Y do **MUNDO**, e não de um eixo da câmera: um prato giratório é
             // exatamente isso — a peça a girar sobre a mesa, com o horizonte parado. É o único
             // sítio deste módulo onde um eixo do mundo entra na conta, e é de propósito.
             smoke
+                .vp_mut()
                 .cam
                 .turn_world([0.0, 1.0, 0.0], -SPIN_RATE * dt.min(0.25));
         }
@@ -116,14 +117,15 @@ pub(crate) fn draw(
         // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
         let ask = crate::field3d_preview::next_trace(
             smoke
+                .vp()
                 .requested
                 .as_ref()
                 .map(|(c, w, h, d, k)| (c, *w, *h, d, *k)),
-            &smoke.cam,
+            &smoke.vp().cam,
             &doc,
             (tw, th),
-            smoke.measured,
-            smoke.frame.is_some(),
+            smoke.vp().measured,
+            smoke.vp().frame.is_some(),
             MIN_TRACE,
         );
         // ⭐ **E um REFINAMENTO cede à mão** (W32): se o que está em voo é o quadro cheio e o que se
@@ -131,16 +133,16 @@ pub(crate) fn draw(
         // esperar (até **121 ms** medidos). ⛔ O contrário nunca: um traçado de movimento corre até
         // ao fim, senão numa órbita contínua ele seria cancelado a cada quadro e a imagem
         // **congelava**. Ver `field3d_preview::cancels_the_inflight`.
-        if let (Some(job), Some((_, _, ac))) = (&smoke.inflight, ask)
+        if let (Some(job), Some((_, _, ac))) = (&smoke.vp().inflight, ask)
             && crate::field3d_preview::cancels_the_inflight(job.refinement, ac)
         {
             job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
-            smoke.inflight = None;
+            smoke.vp_mut().inflight = None;
         }
-        if let (None, Some((tw, th, coarse))) = (&smoke.inflight, ask) {
+        if let (None, Some((tw, th, coarse))) = (&smoke.vp().inflight, ask) {
             // ⚠️ **O comparado é o documento REAL.** Guardar aqui o engrossado faria a cena parecer
             // mudada em toda alternância entre grosso e fino, e o laço re-traçaria para sempre.
-            smoke.requested = Some((smoke.cam, tw, th, doc.clone(), coarse));
+            smoke.vp_mut().requested = Some((smoke.vp_mut().cam, tw, th, doc.clone(), coarse));
             // ⭐⭐⭐ **E o que vai para o traçador leva o contorno GROSSO enquanto a mão mexe**
             // (2026-08-26) — a mesma lei que já baixava os pixels, aplicada onde o custo estava: o
             // traçado paga `0,22 ms` por **aresta do contorno**, e esse custo é **cego aos pixels**.
@@ -156,7 +158,7 @@ pub(crate) fn draw(
                 crate::field3d_preview::coarse_doc(&doc, coarse).unwrap_or_else(|| doc.clone());
             let antialias = !coarse;
             let (tx, rx) = channel::<Ready>();
-            let cam = smoke.cam;
+            let cam = smoke.vp().cam;
             let matcap = Arc::clone(&smoke.matcap);
             let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
             let flag = Arc::clone(&cancel);
@@ -203,14 +205,14 @@ pub(crate) fn draw(
                     millis: t0.elapsed().as_secs_f64() * 1000.0,
                 });
             });
-            smoke.inflight = Some(crate::field3d_smoke::InFlight {
+            smoke.vp_mut().inflight = Some(crate::field3d_smoke::InFlight {
                 rx,
                 cancel,
                 refinement: !coarse,
             });
         }
 
-        if let Some((frame, fw, fh)) = &smoke.frame {
+        if let Some((frame, fw, fh)) = &smoke.vp().frame {
             // O quadro cobre a área toda — ele foi traçado com a proporção dela. Enquanto o
             // primeiro traçado do tamanho novo não chega, o anterior estica; é um quadro só, e
             // esticar é melhor do que piscar.
@@ -237,7 +239,7 @@ pub(crate) fn draw(
         // que lado do modelo se está a olhar, e essa pergunta não depende de haver algo escolhido.
         {
             let safe = crate::field3d_smoke::safe_of(smoke);
-            let balls = crate::field3d_navball::balls(&smoke.cam, area, safe);
+            let balls = crate::field3d_navball::balls(&smoke.vp().cam, area, safe);
             crate::field3d_navball_paint::paint(
                 scene_out,
                 &balls,
@@ -300,7 +302,7 @@ pub(crate) fn draw(
             // `0,503` enquanto a peça pousou em `0,500`. É a lei que o `gizmo/readout.rs` da casa já
             // escreveu, e o gate `the_readout_is_the_pose_the_world_took` prende-a aqui.
             if let Some(grip) = smoke.drag_grip {
-                let Some((o2, _)) = smoke.cam.project(anchor.origin, screen) else {
+                let Some((o2, _)) = smoke.vp().cam.project(anchor.origin, screen) else {
                     return;
                 };
                 let at = [area.x + o2[0], area.y + o2[1]];

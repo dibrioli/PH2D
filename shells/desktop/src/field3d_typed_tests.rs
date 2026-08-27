@@ -21,8 +21,8 @@ fn armed<R>(f: impl FnOnce(&mut Smoke) -> R) -> R {
 /// arrastou um bocado antes de escrever o número.
 fn holding(handle: Handle, applied: Motion) {
     armed(|s| {
-        s.area = Some(ph2d_editor::zones::Rect::new(0.0, 0.0, 800.0, 600.0));
-        s.cam = ph2d_field_render::Orbit::default();
+        s.vp_mut().area = Some(ph2d_editor::zones::Rect::new(0.0, 0.0, 800.0, 600.0));
+        s.vp_mut().cam = ph2d_field_render::Orbit::default();
         s.gizmo_mode = Mode::Move;
         let anchor = Anchor {
             entity: ENTITY,

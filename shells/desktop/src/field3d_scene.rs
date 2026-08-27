@@ -87,7 +87,7 @@ pub(crate) fn ecs_bridge(
     let (seed, ms, pending, pick) = with_smoke(|s| {
         (
             s.seed.take(),
-            s.last_trace_ms,
+            s.vp().last_trace_ms,
             s.pending_move.take(),
             s.pending_pick.take(),
         )
@@ -128,7 +128,7 @@ pub(crate) fn ecs_bridge(
         // ser servido: no quadro do load o módulo pode nem estar armado.
         if crate::field3d_smoke::wants_frame() && crate::field3d_input::frame_the_part(s) {
             crate::field3d_smoke::served_frame();
-            s.manual = true;
+            s.vp_mut().manual = true;
         }
     });
     picked.or(born)
@@ -322,7 +322,7 @@ pub(crate) fn sync_scene_and_birth(
     // abaixo) e um botão do painel podem criar no MESMO quadro, e o mais recente ganha.
     let mut created: Option<u64> = None;
     // A câmera é o «onde estou a olhar»: uma forma nova nasce no centro do quadro e no tamanho dele.
-    let cam = with_smoke(|s| s.cam).unwrap_or_default();
+    let cam = with_smoke(|s| s.vp().cam).unwrap_or_default();
 
     // ⭐ **A escultura que o diálogo carregou vira NÓ aqui** — o terceiro salto do pedido de
     // importar (ADR-0161 W22). Ela chega pelo nome; o campo já está no registo.

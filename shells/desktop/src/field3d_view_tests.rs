@@ -31,13 +31,13 @@ fn closing_the_panel_keeps_the_view_it_had() {
     disarm();
     set_armed_by_panel(true);
 
-    let start = with_smoke(|s| s.cam).expect("o pill arma o módulo");
+    let start = with_smoke(|s| s.vp().cam).expect("o pill arma o módulo");
     let posed = with_smoke(|s| {
-        crate::field3d_input::law::orbit(&mut s.cam, 40.0, 15.0);
-        s.manual = true;
+        crate::field3d_input::law::orbit(&mut s.vp_mut().cam, 40.0, 15.0);
+        s.vp_mut().manual = true;
         s.gizmo_mode = Mode::Rotate;
         s.gizmo_frame = Frame::Local;
-        (s.cam, s.manual, s.gizmo_mode, s.gizmo_frame)
+        (s.vp().cam, s.vp().manual, s.gizmo_mode, s.gizmo_frame)
     })
     .expect("armado");
     assert_ne!(
@@ -54,7 +54,7 @@ fn closing_the_panel_keeps_the_view_it_had() {
 
     // E volta.
     set_armed_by_panel(true);
-    let back = with_smoke(|s| (s.cam, s.manual, s.gizmo_mode, s.gizmo_frame))
+    let back = with_smoke(|s| (s.vp().cam, s.vp().manual, s.gizmo_mode, s.gizmo_frame))
         .expect("o pill rearma o módulo");
     assert_eq!(
         back, posed,
@@ -75,12 +75,12 @@ fn closing_the_panel_keeps_the_view_it_had() {
 fn the_turntable_stays_stopped_across_a_close() {
     disarm();
     set_armed_by_panel(true);
-    with_smoke(|s| s.manual = true).expect("armado");
+    with_smoke(|s| s.vp_mut().manual = true).expect("armado");
     set_armed_by_panel(false);
     let _ = with_smoke(|_| ());
     set_armed_by_panel(true);
     assert!(
-        with_smoke(|s| s.manual).expect("rearmado"),
+        with_smoke(|s| s.vp().manual).expect("rearmado"),
         "o prato voltou a girar sozinho por cima do ângulo que o artista pousou"
     );
     disarm();
@@ -96,7 +96,8 @@ fn the_first_open_gets_the_default_view() {
         "esquecida, a memória da vista tem de ler exatamente como a primeira abertura"
     );
     set_armed_by_panel(true);
-    let fresh = with_smoke(|s| (s.cam, s.manual, s.gizmo_mode, s.gizmo_frame)).expect("armado");
+    let fresh =
+        with_smoke(|s| (s.vp().cam, s.vp().manual, s.gizmo_mode, s.gizmo_frame)).expect("armado");
     let d = View::default();
     assert_eq!(
         fresh,
@@ -123,9 +124,9 @@ fn a_new_document_forgets_the_isolation_and_keeps_the_camera() {
     disarm();
     set_armed_by_panel(true);
     let posed = with_smoke(|s| {
-        crate::field3d_input::law::orbit(&mut s.cam, 25.0, -10.0);
+        crate::field3d_input::law::orbit(&mut s.vp_mut().cam, 25.0, -10.0);
         s.isolated = Some(11);
-        s.cam
+        s.vp().cam
     })
     .expect("armado");
     set_armed_by_panel(false);
@@ -167,4 +168,62 @@ fn an_isolation_survives_the_close_like_its_sibling_does() {
          na cena, que sobrevive a sair do modo"
     );
     disarm();
+}
+
+/// ⭐⭐⭐ **NADA PODE ESVAZIAR A LISTA DE VIEWPORTS** (W90) — a invariante que torna
+/// [`crate::field3d_smoke::Smoke::vp`] infalível.
+///
+/// # Porque ela é um censo, e não um `assert` num sítio
+///
+/// `vp()` prende o índice ao alcance e devolve `&Viewport` **sem `Option`** — é isso que mantém os
+/// ~30 sítios que perguntam pela câmera livres de responder *«e se não houver vista nenhuma?»*, uma
+/// pergunta que o produto não tem. O preço dessa comodidade é uma invariante: a lista **nunca** é
+/// vazia. Com ela partida, `self.vps.len() - 1` faz *underflow* e o módulo entra em pânico no
+/// caminho mais quente que tem.
+///
+/// ⚠️ **Uma invariante mantida por construção não tem um sítio onde a afirmar** — ela afirma-se
+/// sobre a AUSÊNCIA dos verbos que a partiriam. Quem acrescentar a divisão do canvas tem de vir
+/// aqui **nomear** onde encolhe a lista, e é essa a conversa que este gate força.
+#[test]
+fn nothing_can_empty_the_viewport_list() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    // Os verbos que ENCOLHEM uma `Vec`. ⚠️ `remove`/`drain`/`retain`/`truncate` também encolhem, e
+    // um deles com a conta errada deixa a lista vazia tão bem como um `clear`.
+    const ENCOLHEM: [&str; 5] = [
+        "vps.clear(",
+        "vps.pop(",
+        "vps.remove(",
+        "vps.drain(",
+        "vps.truncate(",
+    ];
+    let mut achados: Vec<String> = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("src existe") {
+        let path = entry.expect("entrada").path();
+        let nome = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        // ⚠️ **Só o PRODUTO.** A varredura tem de se excluir a si própria — a primeira corrida
+        // deste gate apanhou a lista de verbos que ele define, que é o modo de falha clássico de um
+        // censo por texto. E a fronteira certa não é *«este ficheiro»*: é *«código que corre no
+        // app»*, porque a invariante é sobre ele.
+        if !nome.starts_with("field3d_") || !nome.ends_with(".rs") || nome.ends_with("_tests.rs") {
+            continue;
+        }
+        let src = std::fs::read_to_string(&path).expect("lê");
+        for (i, linha) in src.lines().enumerate() {
+            if linha.trim_start().starts_with("//") {
+                continue;
+            }
+            for verbo in ENCOLHEM {
+                if linha.contains(verbo) {
+                    achados.push(format!("{nome}:{}: {}", i + 1, linha.trim()));
+                }
+            }
+        }
+    }
+    assert!(
+        achados.is_empty(),
+        "alguém encolhe a lista de viewports, e ela não pode ficar vazia — o `Smoke::vp` faz \
+         `len() - 1`. Se este sítio é legítimo (a divisão do canvas a fechar uma vista), NOMEIE-O \
+         aqui com o motivo em vez de apagar o gate:\n{}",
+        achados.join("\n")
+    );
 }

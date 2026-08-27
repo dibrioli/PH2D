@@ -187,7 +187,7 @@ fn the_imported_sculpture_arrives_at_the_framing_size() {
         })
         .expect("a escultura está lá");
     let scale = world.get::<FieldPose>(e).expect("pose").xform.scale;
-    let cam = crate::field3d_smoke::with_smoke(|s| s.cam).unwrap_or_default();
+    let cam = crate::field3d_smoke::with_smoke(|s| s.vp().cam).unwrap_or_default();
     let want = crate::field3d_import::framing_scale(extent, cam.half_extent);
     assert!(
         (scale - want).abs() < 1e-4,

@@ -34,22 +34,20 @@ pub(crate) struct InFlight {
     pub(crate) refinement: bool,
 }
 
-pub(crate) struct Smoke {
-    /// A peça a traçar, **cozida da cena** (`field3d_scene`). `None` quando não há geometria
-    /// nenhuma — apagar o último filho na Hierarquia é um gesto normal, e o resultado normal dele
-    /// é a tela ficar vazia.
-    pub(crate) doc: Option<FieldDoc>,
-    /// ⭐ **A SEMENTE** — a cena inicial, que a ponte planta **uma vez** e depois deita fora.
-    ///
-    /// ⚠️ **Ela é separada do `doc` de propósito, e a mistura era um bug.** A ponte oferecia o `doc`
-    /// **cozido** como semente, e o comentário ao lado afirmava que ele *"deixa de existir"* — o que
-    /// nunca foi verdade: ele é reescrito a cada quadro. O sintoma: apagar a peça na Hierarquia
-    /// **fazia-a voltar no quadro seguinte**, porque a ponte não encontrava raiz e replantava o que
-    /// tinha acabado de cozer.
-    ///
-    /// *Uma semente usa-se uma vez.* Depois de plantada, a cena é a fonte — e apagar a peça apaga-a.
-    pub(crate) seed: Option<FieldDoc>,
-    pub(super) matcap: Arc<MatcapTexels>,
+/// ⭐⭐⭐ **UM VIEWPORT** — a câmera, o que ela já traçou, e o laço que a serve (W90).
+///
+/// # Porque isto saiu do [`Smoke`]
+///
+/// O módulo nasceu com **uma** vista, e estes nove campos viviam soltos ao lado do documento, do
+/// gizmo e dos gestos. O canvas de primeira classe que o plano pede
+/// (`docs/3DModeling/03_plano_implicito.md`: *"modo de viewport próprio, com cabeçalho e divisão"*)
+/// precisa de **N** câmeras a olhar a MESMA peça — e a fronteira entre o que é de uma vista e o que
+/// é do módulo já estava escrita, campo a campo, nos doc-comments deles.
+///
+/// ⚠️ **O que fica no [`Smoke`] é o que é do DOCUMENTO ou do GESTO**: a peça, o gizmo, o arrasto em
+/// curso, o laço, a isolação, o verbo. Um gesto acontece **num** viewport de cada vez (o
+/// [`Smoke::active`]), e duplicá-lo por vista daria dois arrastos a discordar sobre a mesma peça.
+pub(crate) struct Viewport {
     pub(crate) cam: Orbit,
     /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
     /// enquanto o próximo (já do tamanho novo) não chega.
@@ -79,21 +77,65 @@ pub(crate) struct Smoke {
     /// ⚠️ Separado do `last_trace_ms` de propósito: aquele é para o artista ler, este é para a
     /// máquina decidir, e um tempo sem os pixels ao lado não prevê coisa nenhuma.
     pub(crate) measured: Option<crate::field3d_preview::Measured>,
-    /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
-    pub(super) announced: bool,
     /// **A área onde o quadro foi desenhado da última vez** — é ela que responde *"este clique é
     /// meu?"*. Sem isto a cena engoliria gestos de qualquer canto da janela.
     pub(crate) area: Option<EditorRect>,
-    /// O arrasto em curso, se houver ([`crate::field3d_input`]).
-    pub(crate) drag: Option<Drag>,
-    /// A última posição do ponteiro, para o delta do arrasto.
-    pub(crate) last_pointer: (f32, f32),
     /// ⭐ **O prato para de girar assim que o artista toca nele.**
     ///
     /// A lei da casa é *feature nova = auto-play*: a peça gira sozinha para provar que existe. Mas
     /// continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada
     /// quadro — a auto-demonstração deixa de ser um convite e passa a ser uma disputa.
     pub(crate) manual: bool,
+}
+
+impl Viewport {
+    /// **Um viewport novo com esta câmera** — o resto nasce vazio, que é o estado de *«ainda não
+    /// tracei nada»*.
+    pub(crate) fn new(cam: Orbit, manual: bool) -> Self {
+        Self {
+            cam,
+            frame: None,
+            inflight: None,
+            since: std::time::Instant::now(),
+            requested: None,
+            last_trace_ms: 0.0,
+            measured: None,
+            area: None,
+            manual,
+        }
+    }
+}
+
+pub(crate) struct Smoke {
+    /// A peça a traçar, **cozida da cena** (`field3d_scene`). `None` quando não há geometria
+    /// nenhuma — apagar o último filho na Hierarquia é um gesto normal, e o resultado normal dele
+    /// é a tela ficar vazia.
+    pub(crate) doc: Option<FieldDoc>,
+    /// ⭐ **A SEMENTE** — a cena inicial, que a ponte planta **uma vez** e depois deita fora.
+    ///
+    /// ⚠️ **Ela é separada do `doc` de propósito, e a mistura era um bug.** A ponte oferecia o `doc`
+    /// **cozido** como semente, e o comentário ao lado afirmava que ele *"deixa de existir"* — o que
+    /// nunca foi verdade: ele é reescrito a cada quadro. O sintoma: apagar a peça na Hierarquia
+    /// **fazia-a voltar no quadro seguinte**, porque a ponte não encontrava raiz e replantava o que
+    /// tinha acabado de cozer.
+    ///
+    /// *Uma semente usa-se uma vez.* Depois de plantada, a cena é a fonte — e apagar a peça apaga-a.
+    pub(crate) seed: Option<FieldDoc>,
+    pub(super) matcap: Arc<MatcapTexels>,
+    /// ⭐⭐⭐ **OS VIEWPORTS** — nunca vazio, e o [`Smoke::active`] é o que o gesto comanda.
+    ///
+    /// ⚠️ A invariante *«nunca vazio»* é o que torna [`Smoke::vp`] infalível, e há gate. Sem ela,
+    /// todo acesso à câmera passaria a ser um `Option` e os ~30 sítios que perguntam por ela teriam
+    /// de responder *«e se não houver vista nenhuma?»* — uma pergunta que o produto não tem.
+    pub(crate) vps: Vec<Viewport>,
+    /// Qual viewport o gesto comanda. Ver [`Smoke::vp`].
+    pub(crate) active: usize,
+    /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
+    pub(super) announced: bool,
+    /// O arrasto em curso, se houver ([`crate::field3d_input`]).
+    pub(crate) drag: Option<Drag>,
+    /// A última posição do ponteiro, para o delta do arrasto.
+    pub(crate) last_pointer: (f32, f32),
     /// ⭐ **Onde o gizmo está**, publicado pela ponte com a cena — que é quem tem o mundo. `None`
     /// quando nada de modelagem está selecionado.
     ///
@@ -224,6 +266,23 @@ pub(crate) struct Smoke {
     /// ⚠️ Ela é **cache** e não **vista** (`field3d_view::View::of`): fechar e reabrir o módulo
     /// pode deitá-la fora sem custo nenhum — a 1.ª mão a mexer volta a enchê-la.
     pub(crate) tapes: Arc<ph2d_field_render::TapeCache>,
+}
+
+impl Smoke {
+    /// ⭐ **O viewport que o gesto comanda.**
+    ///
+    /// ⚠️ **Infalível por invariante, não por sorte:** [`Smoke::vps`] nunca é vazio, e o índice é
+    /// preso ao alcance **aqui** em vez de em cada chamador. *Um `Option` nesta porta obrigaria os
+    /// ~30 sítios que perguntam pela câmera a responder «e se não houver vista nenhuma?».*
+    pub(crate) fn vp(&self) -> &Viewport {
+        &self.vps[self.active.min(self.vps.len() - 1)]
+    }
+
+    /// Ver [`Smoke::vp`].
+    pub(crate) fn vp_mut(&mut self) -> &mut Viewport {
+        let i = self.active.min(self.vps.len() - 1);
+        &mut self.vps[i]
+    }
 }
 
 /// **O que um arrasto de gizmo guarda** desde a pegada até soltar.

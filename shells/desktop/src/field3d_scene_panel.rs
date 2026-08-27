@@ -268,7 +268,7 @@ pub(crate) fn mods_for(
 /// ⚠️ Sempre oferecidas: olhar a peça de frente não depende de nada estar escolhido. E a lista é
 /// **derivada de `Standard::ALL`** — a fonte da contagem —, como a dos verbos do gizmo.
 fn views_now() -> Vec<ph2d_panel_model3d::ModeChip> {
-    let here = with_smoke(|s| crate::field3d_views::named_view(&s.cam)).flatten();
+    let here = with_smoke(|s| crate::field3d_views::named_view(&s.vp().cam)).flatten();
     crate::field3d_views::Standard::ALL
         .iter()
         .map(|v| ph2d_panel_model3d::ModeChip {
@@ -286,7 +286,7 @@ fn views_now() -> Vec<ph2d_panel_model3d::ModeChip> {
 /// com o *Isolate*.
 fn camera_now() -> Vec<ph2d_panel_model3d::ModeChip> {
     let ortho =
-        with_smoke(|s| matches!(s.cam.lens, ph2d_field_render::Lens::Ortho)).unwrap_or(false);
+        with_smoke(|s| matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho)).unwrap_or(false);
     vec![
         ph2d_panel_model3d::ModeChip {
             key: CAMERA_ACTS[ORTHO_SLOT],

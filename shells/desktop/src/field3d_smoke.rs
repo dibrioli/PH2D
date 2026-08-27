@@ -124,18 +124,13 @@ fn boot() -> Option<Smoke> {
         has_live_sculpt: false,
         tapes: std::sync::Arc::new(ph2d_field_render::TapeCache::new()),
         matcap: Arc::new(load_matcap()),
-        cam: v.cam,
-        frame: None,
-        inflight: None,
-        since: std::time::Instant::now(),
-        requested: None,
-        last_trace_ms: 0.0,
-        measured: None,
+        // ⭐ **Um viewport, que é o que o módulo sempre teve** — a divisão entra depois, e este
+        // é o estado em que ela não existe.
+        vps: vec![crate::field3d_smoke::state::Viewport::new(v.cam, v.manual)],
+        active: 0,
         announced: false,
-        area: None,
         drag: None,
         last_pointer: (0.0, 0.0),
-        manual: v.manual,
         gizmo: None,
         gizmo_hot: None,
         pending_move: None,
@@ -349,7 +344,7 @@ pub(crate) fn toggle_isolate_by_key(selected: Option<u64>) -> Option<u64> {
 /// gizmo. Ver [`Smoke::has_live_sculpt`].
 /// ⭐⭐ **PARTE PARA UMA VISTA** — em vez de saltar para ela (W51).
 ///
-/// ⚠️ **É a ÚNICA porta**: todos os caminhos que escolhiam uma vista escreviam `s.cam.rotation` à
+/// ⚠️ **É a ÚNICA porta**: todos os caminhos que escolhiam uma vista escreviam `s.vp().cam.rotation` à
 /// mão (a tecla, o chip do painel, a bola do gizmo, o `Home`). Enquanto fossem quatro escritas, uma
 /// delas ia ficar a saltar — e o defeito leria como *"às vezes é suave, às vezes não"*, que é o mais
 /// difícil de acreditar.
@@ -357,10 +352,13 @@ pub(crate) fn toggle_isolate_by_key(selected: Option<u64>) -> Option<u64> {
 /// ⚠️ Sem `Smoke` armado não há para onde partir; sem mudança nenhuma não se parte (uma viagem de
 /// zero graus acenderia a mola por nada).
 pub(crate) fn fly_to(s: &mut Smoke, to: Orbit) {
-    if to == s.cam {
+    if to == s.vp().cam {
         return;
     }
-    s.flight = Some(crate::field3d_flight::Flight { from: s.cam, to });
+    s.flight = Some(crate::field3d_flight::Flight {
+        from: s.vp().cam,
+        to,
+    });
     s.flight_gen = s.flight_gen.wrapping_add(1);
     s.flight_fresh = true;
 }
@@ -408,7 +406,7 @@ pub(crate) fn advance_flight(s: &mut Smoke, t: f32) {
     let Some(f) = s.flight else {
         return;
     };
-    s.cam = f.at(t);
+    s.vp_mut().cam = f.at(t);
     if t >= 1.0 {
         s.flight = None;
     }
@@ -423,7 +421,7 @@ pub(crate) fn note_safe(safe: EditorRect) {
 /// A parte livre, ou a área inteira quando ninguém a publicou.
 pub(crate) fn safe_of(s: &Smoke) -> EditorRect {
     s.safe
-        .or(s.area)
+        .or(s.vp().area)
         .unwrap_or(EditorRect::new(0.0, 0.0, 0.0, 0.0))
 }
 

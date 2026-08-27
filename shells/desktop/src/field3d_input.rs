@@ -41,7 +41,7 @@ pub(crate) fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
     let (Some(anchor), Some(screen)) = (s.gizmo, area_screen(s)) else {
         return Vec::new();
     };
-    field3d_gizmo::project(anchor, &s.cam, screen, s.gizmo_mode)
+    field3d_gizmo::project(anchor, &s.vp().cam, screen, s.gizmo_mode)
 }
 
 /// ⭐ **O enquadramento deste módulo é o da ÁREA — nunca o do traçado.**
@@ -51,11 +51,11 @@ pub(crate) fn handles(s: &Smoke) -> Vec<field3d_gizmo::Projected> {
 /// projetaria as alças a um terço do tamanho — o gizmo pousaria longe da superfície que ele move,
 /// e só durante o movimento. *Uma projeção, um dono.*
 pub(crate) fn area_screen(s: &Smoke) -> Option<Screen> {
-    let area = s.area?;
+    let area = s.vp().area?;
     Some(Screen::new(
         area.w.round().max(1.0) as u32,
         area.h.round().max(1.0) as u32,
-        s.cam.half_extent,
+        s.vp().cam.half_extent,
     ))
 }
 
@@ -63,7 +63,7 @@ pub(crate) fn area_screen(s: &Smoke) -> Option<Screen> {
 /// projetado. ⚠️ Esquecer esta subtração faz as alças agarrarem deslocadas do tamanho da moldura do
 /// app, e o defeito só aparece quando a janela 3D não começa em (0, 0).
 fn local(s: &Smoke, p: (f32, f32)) -> Option<[f32; 2]> {
-    let area = s.area?;
+    let area = s.vp().area?;
     Some([p.0 - area.x, p.1 - area.y])
 }
 
@@ -217,7 +217,7 @@ pub(crate) mod law {
 /// orientação e fica assim (não há o que enquadrar); o pedido de um load simplesmente não tem efeito
 /// e volta a ser feito no quadro seguinte, quando o documento já estiver cozido.
 pub(crate) fn frame_the_part(s: &mut Smoke) -> bool {
-    let mut to = s.cam;
+    let mut to = s.vp().cam;
     if !frame_into(s, &mut to) {
         return false;
     }
@@ -241,7 +241,7 @@ pub(crate) fn frame_into(s: &Smoke, to: &mut ph2d_field_render::Orbit) -> bool {
 
 /// ⭐ **Partir para uma vista nomeada**: a orientação dela **e** o enquadramento, numa viagem só.
 pub(crate) fn fly_to_view(s: &mut Smoke, view: crate::field3d_views::Standard) {
-    let mut to = s.cam;
+    let mut to = s.vp().cam;
     to.rotation = view.rotation();
     frame_into(s, &mut to);
     crate::field3d_smoke::fly_to(s, to);
@@ -326,7 +326,7 @@ impl App {
             if !over_window(s, pos) {
                 return false;
             }
-            let mut to = s.cam;
+            let mut to = s.vp().cam;
             law::home(&mut to);
             // ⭐⭐ **E ENQUADRA A PEÇA** (W46). ⚠️ Até aqui o `Home` punha o alvo na **origem** — e
             // uma peça longe dela continuava fora do quadro **depois** de a tecla correr. A tecla
@@ -340,7 +340,7 @@ impl App {
             frame_into(s, &mut to);
             crate::field3d_smoke::fly_to(s, to);
             // Repor não é "voltar ao prato giratório": a mão continua no comando.
-            s.manual = true;
+            s.vp_mut().manual = true;
             true
         })
         .unwrap_or(false)
@@ -377,7 +377,7 @@ impl App {
             if !over_window(s, pos) {
                 return false;
             }
-            s.cam.lens = law::other_lens(s.cam.lens);
+            s.vp_mut().cam.lens = law::other_lens(s.vp_mut().cam.lens);
             true
         })
         .unwrap_or(false)
@@ -407,7 +407,7 @@ impl App {
                 return false;
             }
             fly_to_view(s, view);
-            s.manual = true;
+            s.vp_mut().manual = true;
             true
         })
         .unwrap_or(false)
@@ -497,7 +497,7 @@ impl App {
             return false;
         }
         with_smoke(|s| {
-            let Some(area) = s.area else {
+            let Some(area) = s.vp().area else {
                 return false;
             };
             if pos.0 < area.x
@@ -509,8 +509,8 @@ impl App {
             }
             // A roda é mão: cancela a viagem (W51), como o arrasto.
             crate::field3d_smoke::cancel_flight(s);
-            law::zoom(&mut s.cam, steps);
-            s.manual = true;
+            law::zoom(&mut s.vp_mut().cam, steps);
+            s.vp_mut().manual = true;
             true
         })
         .unwrap_or(false)

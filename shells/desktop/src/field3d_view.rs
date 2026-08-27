@@ -90,8 +90,11 @@ impl View {
     /// silêncio.
     fn of(s: &Smoke) -> Self {
         let Smoke {
-            cam,
-            manual,
+            // ⭐⭐ **A câmera e o prato vivem no VIEWPORT desde a W90** — e a vista que sobrevive a
+            // fechar o painel é a do **activo**: guardar N câmeras exigiria também guardar a
+            // DIVISÃO, e o que a W43 promete é *«a peça certa vista do sítio onde a deixei»*.
+            vps: _,
+            active: _,
             gizmo_mode,
             gizmo_frame,
             isolated,
@@ -99,14 +102,7 @@ impl View {
             doc: _,
             seed: _,
             matcap: _,
-            frame: _,
-            inflight: _,
-            since: _,
-            requested: _,
-            last_trace_ms: _,
-            measured: _,
             announced: _,
-            area: _,
             drag: _,
             last_pointer: _,
             gizmo: _,
@@ -132,8 +128,8 @@ impl View {
             tapes: _,
         } = s;
         Self {
-            cam: *cam,
-            manual: *manual,
+            cam: s.vp().cam,
+            manual: s.vp().manual,
             gizmo_mode: *gizmo_mode,
             gizmo_frame: *gizmo_frame,
             isolated: *isolated,

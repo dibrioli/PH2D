@@ -237,7 +237,7 @@ fn pick_frame(
     ph2d_field_render::Orbit,
     ph2d_field_render::Screen,
 )> {
-    let (cam, area) = with_smoke(|s| (s.cam, s.area))?;
+    let (cam, area) = with_smoke(|s| (s.vp().cam, s.vp().area))?;
     let area = area?;
     doc?;
     let screen = ph2d_field_render::Screen::new(
@@ -350,14 +350,15 @@ pub(crate) fn duplicate_with_view(
 fn view() -> Option<(ph2d_field_render::Orbit, ph2d_field_render::Screen)> {
     with_smoke(|s| {
         let a = s
+            .vp()
             .area
             .unwrap_or(ph2d_editor::zones::Rect::new(0.0, 0.0, 1.0, 1.0));
         (
-            s.cam,
+            s.vp().cam,
             ph2d_field_render::Screen::new(
                 a.w.round().max(1.0) as u32,
                 a.h.round().max(1.0) as u32,
-                s.cam.half_extent,
+                s.vp().cam.half_extent,
             ),
         )
     })

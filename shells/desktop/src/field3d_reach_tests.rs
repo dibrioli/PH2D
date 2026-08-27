@@ -385,8 +385,8 @@ fn every_camera_chip_moves_the_camera() {
         for (slot, v) in crate::field3d_views::Standard::ALL.into_iter().enumerate() {
             // Longe dela, de propósito: sem isto o gate passaria com um `SetView` que não faz nada.
             crate::field3d_smoke::with_smoke(|s| {
-                s.cam.rotation = ph2d_field_render::Orbit::default().rotation;
-                s.cam.target = [9.0, 9.0, 9.0];
+                s.vp_mut().cam.rotation = ph2d_field_render::Orbit::default().rotation;
+                s.vp_mut().cam.target = [9.0, 9.0, 9.0];
             });
             ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::SetView { slot });
             crate::field3d_scene::sync_scene_and_birth(
@@ -403,12 +403,12 @@ fn every_camera_chip_moves_the_camera() {
             );
             crate::field3d_smoke::note_flight_progress(1.0);
             assert_eq!(
-                crate::field3d_smoke::with_smoke(|s| crate::field3d_views::named_view(&s.cam))
+                crate::field3d_smoke::with_smoke(|s| crate::field3d_views::named_view(&s.vp().cam))
                     .flatten(),
                 Some(v),
                 "o chip {slot} ({v:?}) não pôs a câmera na vista dele"
             );
-            let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
+            let t = crate::field3d_smoke::with_smoke(|s| s.vp().cam.target).expect("armado");
             assert!(
                 t.iter().all(|c| c.abs() < 1.0),
                 "o chip {slot} ({v:?}) virou a câmera e deixou o alvo em {t:?} — a vista está certa \
@@ -419,7 +419,7 @@ fn every_camera_chip_moves_the_camera() {
         // ⭐ A LENTE alterna, e volta.
         let lens_of = || {
             crate::field3d_smoke::with_smoke(|s| {
-                matches!(s.cam.lens, ph2d_field_render::Lens::Ortho)
+                matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho)
             })
             .unwrap_or(false)
         };
@@ -445,7 +445,7 @@ fn every_camera_chip_moves_the_camera() {
 
         // ⭐ O ENQUADRAR mexe a câmera para a peça.
         crate::field3d_smoke::with_smoke(|s| {
-            s.cam.target = [9.0, 9.0, 9.0];
+            s.vp_mut().cam.target = [9.0, 9.0, 9.0];
         });
         ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
             slot: crate::field3d_scene::panel::FRAME_SLOT,
@@ -458,7 +458,7 @@ fn every_camera_chip_moves_the_camera() {
             &crate::field3d_scene::no_drawing(),
         );
         crate::field3d_smoke::note_flight_progress(1.0);
-        let t = crate::field3d_smoke::with_smoke(|s| s.cam.target).expect("armado");
+        let t = crate::field3d_smoke::with_smoke(|s| s.vp().cam.target).expect("armado");
         assert!(
             t.iter().all(|c| c.abs() < 1.0),
             "o chip de enquadrar deixou o alvo em {t:?} — ele não foi buscar a peça"
@@ -496,7 +496,7 @@ fn the_lit_view_chip_goes_out_when_the_camera_leaves_it() {
         );
 
         crate::field3d_smoke::with_smoke(|s| {
-            crate::field3d_input::law::orbit(&mut s.cam, 4.0, 0.0);
+            crate::field3d_input::law::orbit(&mut s.vp_mut().cam, 4.0, 0.0);
         });
         crate::field3d_scene::sync_scene_and_birth(
             &mut sim,

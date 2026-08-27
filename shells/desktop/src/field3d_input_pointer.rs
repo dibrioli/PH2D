@@ -31,7 +31,7 @@ pub(crate) fn begin(
     // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta pergunta,
     // de propósito: um arrasto em curso continua a ser do gesto que o abriu mesmo que o cursor
     // passeie por fora — a regra de captura que todo gizmo deste shell segue.
-    let Some(area) = s.area else {
+    let Some(area) = s.vp().area else {
         return false;
     };
     if pos.0 < area.x || pos.1 < area.y || pos.0 >= area.x + area.w || pos.1 >= area.y + area.h {
@@ -51,14 +51,16 @@ pub(crate) fn begin(
         && crate::field3d_navball::hits_widget(area, crate::field3d_smoke::safe_of(s), p)
     {
         let safe = crate::field3d_smoke::safe_of(s);
-        s.nav_press =
-            crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area, safe), p);
+        s.nav_press = crate::field3d_navball::pick(
+            &crate::field3d_navball::balls(&s.vp().cam, area, safe),
+            p,
+        );
         s.drag = Some(Drag::Orbit);
         s.drag_grip = None;
         s.gizmo_hot = None;
         s.last_pointer = pos;
         s.press_at = Some(pos);
-        s.manual = true;
+        s.vp_mut().manual = true;
         return true;
     }
     // ⭐ **A alça ganha do gesto de câmera**, e só com o botão ESQUERDO: o direito continua a
@@ -92,7 +94,7 @@ pub(crate) fn begin(
         Some(Grip {
             anchor,
             from,
-            applied: field3d_gizmo::drag(h, anchor, &s.cam, screen, from, from).neutral(),
+            applied: field3d_gizmo::drag(h, anchor, &s.vp().cam, screen, from, from).neutral(),
         })
     });
     s.gizmo_hot = grabbed;
@@ -100,7 +102,7 @@ pub(crate) fn begin(
     // ⚠️ Guardado **antes** de qualquer movimento: é a origem contra a qual o `Up` decide se aquilo
     // foi um clique ou um arrasto.
     s.press_at = Some(pos);
-    s.manual = true;
+    s.vp_mut().manual = true;
     true
 }
 
@@ -170,7 +172,7 @@ fn apply_typed(s: &mut Smoke, handle: Handle) {
     let (Some(text), Some(grip)) = (s.typed.clone(), s.drag_grip) else {
         return;
     };
-    let (_, _, fwd) = s.cam.basis();
+    let (_, _, fwd) = s.vp().cam.basis();
     let Some(total) = crate::field3d_typed::value_of(&text)
         .and_then(|v| crate::field3d_typed::total(handle, &grip.anchor, fwd, v))
     else {
@@ -213,7 +215,7 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // rato do app 2D.
         // ⭐ **O realce do gizmo de NAVEGAÇÃO** (W49), pela mesma lei e no mesmo sítio: sem ele o
         // artista não sabe que bola vai pegar — e o widget lê como decoração.
-        s.nav_hot = match (s.area, local(s, (x, y))) {
+        s.nav_hot = match (s.vp().area, local(s, (x, y))) {
             (Some(area), Some(p))
                 if crate::field3d_navball::hits_widget(
                     area,
@@ -222,7 +224,10 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
                 ) =>
             {
                 let safe = crate::field3d_smoke::safe_of(s);
-                crate::field3d_navball::pick(&crate::field3d_navball::balls(&s.cam, area, safe), p)
+                crate::field3d_navball::pick(
+                    &crate::field3d_navball::balls(&s.vp().cam, area, safe),
+                    p,
+                )
             }
             _ => None,
         };
@@ -253,7 +258,7 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
                 s.lasso = Some((from, p));
             }
         }
-        Drag::Orbit => law::orbit(&mut s.cam, dx, dy),
+        Drag::Orbit => law::orbit(&mut s.vp_mut().cam, dx, dy),
         // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
         // o modelo aparecer mais à direita.
         //
@@ -261,10 +266,10 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
         // que faz arrastar o mesmo tanto de tela mover o mesmo tanto de modelo em qualquer
         // zoom. Um passo em unidades de mundo fixas ficaria absurdo assim que se aproxima.
         Drag::Pan => {
-            let Some(area) = s.area else {
+            let Some(area) = s.vp().area else {
                 return true;
             };
-            law::pan(&mut s.cam, dx, dy, area.w.min(area.h) * 0.5);
+            law::pan(&mut s.vp_mut().cam, dx, dy, area.w.min(area.h) * 0.5);
         }
         // ⭐ O arrasto do gizmo **não escreve na peça aqui**: ele acumula um PEDIDO que a ponte
         // com a cena aplica no início do quadro seguinte. É o mesmo caminho dos intents do
@@ -276,7 +281,7 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
             if s.typed.is_some() {
                 return true;
             }
-            let (Some(grip), Some(screen), Some(area)) = (s.drag_grip, area_screen(s), s.area)
+            let (Some(grip), Some(screen), Some(area)) = (s.drag_grip, area_screen(s), s.vp().area)
             else {
                 return true;
             };
@@ -285,7 +290,7 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
             let total = field3d_gizmo::drag(
                 handle,
                 grip.anchor,
-                &s.cam,
+                &s.vp().cam,
                 screen,
                 grip.from,
                 [x - area.x, y - area.y],
@@ -327,7 +332,8 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
 /// o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela comia as teclas de todo
 /// painel do app. *Quem move o número que tornava uma nota verdadeira tem de reconferir a nota.*
 pub(super) fn over_window(s: &Smoke, pos: (f32, f32)) -> bool {
-    s.area
+    s.vp()
+        .area
         .is_some_and(|a| pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h)
 }
 
@@ -381,7 +387,7 @@ pub(crate) fn finish(s: &mut Smoke) -> (bool, bool) {
     if let Some(view) = nav.filter(|_| still) {
         crate::field3d_input::fly_to_view(s, view);
     } else if was == Some(Drag::Orbit)
-        && let (Some(from), Some(area)) = (s.press_at, s.area)
+        && let (Some(from), Some(area)) = (s.press_at, s.vp().area)
         && still
     {
         // ⚠️ **Não há aqui um `nav.is_none()`, e havia** — ele era **código morto**, e uma prova de

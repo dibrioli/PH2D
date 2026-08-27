@@ -66,10 +66,10 @@ pub(super) fn armed_with<R>(doc: &FieldDoc, f: impl FnOnce(&mut SimWorld) -> R) 
     let mut sim = SimWorld::new();
     crate::field3d_scene::sync_scene(&mut sim, Some(doc), 0.0);
     crate::field3d_smoke::with_smoke(|s| {
-        s.area = Some(AREA);
+        s.vp_mut().area = Some(AREA);
         // Uma vista de frente enquadrando a peça — as duas bolas caem nos dois lados do centro.
-        s.cam = ph2d_field_render::Orbit::from_yaw_pitch(0.0, 0.0);
-        s.manual = true;
+        s.vp_mut().cam = ph2d_field_render::Orbit::from_yaw_pitch(0.0, 0.0);
+        s.vp_mut().manual = true;
     });
     // Um quadro para a ponte cozinhar e publicar o documento que o picker consome.
     crate::field3d_scene::ecs_bridge(&mut sim, None, &[], &crate::field3d_scene::no_drawing());
@@ -94,9 +94,13 @@ pub(super) fn pixel_of(p: [f32; 3]) -> [f32; 2] {
         let screen = ph2d_field_render::Screen::new(
             AREA.w.round() as u32,
             AREA.h.round() as u32,
-            s.cam.half_extent,
+            s.vp().cam.half_extent,
         );
-        s.cam.project(p, screen).expect("o ponto está no quadro").0
+        s.vp()
+            .cam
+            .project(p, screen)
+            .expect("o ponto está no quadro")
+            .0
     })
     .expect("o módulo está armado")
 }

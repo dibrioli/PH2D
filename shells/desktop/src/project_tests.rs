@@ -63,6 +63,7 @@ fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sc
         sprite_pixels: Vec::new(),
         stable_id_counter: ph2d_ecs::StableId::FIRST,
         input_map: ph2d_input::InputMap::new(),
+        pattern_art: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");
@@ -433,6 +434,7 @@ fn project_file_round_trips_through_postcard() {
         // `Default` do serde em vez de sobre os bytes que o campo de facto escreve -- foi
         // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
         input_map: super::input_map_tests::authored_input_map(),
+        pattern_art: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

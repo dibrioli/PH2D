@@ -48,6 +48,14 @@ impl crate::App {
         // coisas seria gravar duas verdades sobre o mesmo sprite. Antes dele, o carimbo ainda
         // não existiria e o achatado entraria no arquivo à socapa.
         let sprite_pixels = self.collect_sprite_pixels();
+        // A ARTE DOS PADRÕES de textura (plano 33 W4) — os pixels que cada `Paint::Pattern` da
+        // cena vectorial nomeia por `AssetId`. Vazio quando não há padrão nenhum.
+        let pattern_art = self
+            .gfx
+            .as_ref()
+            .map(|g| g.vec_scene.clone())
+            .map(|scene| self.collect_texture_pattern_art(&scene))
+            .unwrap_or_default();
         // A animação. O `serialize` carimba em cada binding a IDENTIDADE do objeto
         // (`StableId`) — é por ela que a track reencontra o objeto do outro lado do arquivo
         // (os bits de entidade não sobrevivem a um respawn). Precisa do mundo, então vem antes
@@ -118,6 +126,7 @@ impl crate::App {
                 .and_then(|g| g.hero_screen.as_ref())
                 .map(|h| h.input_map.clone())
                 .unwrap_or_default(),
+            pattern_art,
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

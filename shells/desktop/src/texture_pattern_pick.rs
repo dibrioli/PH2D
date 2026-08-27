@@ -63,11 +63,27 @@ pub(crate) fn source_for(
             )
         })
         .ok()?;
-    let id = assets
+    // ⚠️⚠️ **O id tem de ser o dos PIXELS, não o do FICHEIRO — e isto é a persistência a decidir a
+    // autoria.**
+    //
+    // O `insert_image_bytes` cunha `blake3(bytes do ficheiro)`; o `insert_image_rgba8` cunha
+    // `blake3(dims + RGBA)`. O save de um padrão embute **pixels** (o ficheiro do artista pode ter
+    // mudado de sítio, ou nunca mais existir), então reabrir o projecto re-insere RGBA — e só o
+    // segundo id volta **igual**. Com o primeiro, a fonte do padrão deixaria de resolver ao reabrir
+    // e a forma pintaria a `fallback` para sempre, sem erro nenhum a que agarrar.
+    //
+    // A dupla inserção é deliberada e barata: a primeira **descodifica**, a segunda dá a
+    // identidade durável. As duas são `or_insert_with` (HR-6), então nada se duplica no disco.
+    let decoded = assets
         .insert_image_bytes(&bytes)
         .map_err(|e| eprintln!("[ph2d-vec] padrao: {} nao e' imagem: {e:?}", path.display()))
         .ok()?;
-    Some(PatternSource::Image(id))
+    // ⚠️ O `Arc<Asset>` tem de viver numa ligação: `assets.get(..)?.image_rgba8()?` empresta de um
+    // temporário que morre no fim da expressão.
+    let asset = assets.get(&decoded)?;
+    let (w, h, px) = asset.image_rgba8()?;
+    let rgba = px.into_owned();
+    Some(PatternSource::Image(assets.insert_image_rgba8(w, h, rgba)))
 }
 
 /// O TAMANHO de mundo com que um padrão novo nasce, para a forma `sel`.

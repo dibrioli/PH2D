@@ -370,6 +370,10 @@ impl crate::App {
         // deste. (A colheita já os salta, então na prática não há duplo trabalho — mas a ordem é
         // o que torna isso verdade mesmo para um arquivo salvo por um binário anterior.)
         self.restore_sprite_pixels(sprite_pixels);
+        // A ARTE DOS PADRÕES (plano 33 W4) — devolvida ao `AssetDb` **sob o mesmo id**, que é o que
+        // a fonte de cada `Paint::Pattern` do documento nomeia. Sem isto, toda forma com padrão
+        // reabriria a pintar a cor de recurso.
+        self.restore_texture_pattern_art(&file.pattern_art);
         // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez
         // e os N sprites dela reatam a textura partilhada + o retangulo da regiao.
         self.restore_sprite_sheets(sprite_sheets);

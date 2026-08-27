@@ -119,6 +119,10 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             // sobre controlos. E um `InputMap` vazio devolve silêncio em toda leitura — o
             // comportamento byte-a-byte de todo ficheiro anterior ao mapa.
             input_map: ph2d_input::InputMap::default(),
+            // ⚠️ **Um v95 não tem padrão nenhum, e a resposta é o vazio** — a variante
+            // `Paint::Pattern` só existe desde o `VEC_SCENE_SCHEMA_VERSION` 15 (plano 33 W3), que é
+            // posterior. Vazio aqui não é "não sei": é o que aquele ficheiro de facto tem.
+            pattern_art: Vec::new(),
         },
         stable_id_counter,
     }

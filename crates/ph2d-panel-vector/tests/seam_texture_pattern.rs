@@ -147,6 +147,9 @@ fn measure_the_fill_kind_row_layout() {
         let r = host
             .painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .expect("chip pintado");
-        println!("{name:>7}: x {:.1} y {:.1} w {:.1} h {:.1}", r.x, r.y, r.w, r.h);
+        println!(
+            "{name:>7}: x {:.1} y {:.1} w {:.1} h {:.1}",
+            r.x, r.y, r.w, r.h
+        );
     }
 }

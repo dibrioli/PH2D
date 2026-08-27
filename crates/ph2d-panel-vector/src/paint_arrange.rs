@@ -12,9 +12,7 @@ use crate::paint_sections::BodyCtx;
 use crate::state::{FillKind, PathFillRule};
 use crate::{ids, state};
 use ph2d_editor_core::paint::{paint_text, resolve};
-use ph2d_editor_core::widget::panel_chrome::{
-    paint_segmented_button, paint_segmented_group_adaptive,
-};
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;

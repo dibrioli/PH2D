@@ -173,6 +173,23 @@ pub(crate) struct ProjectFile {
     /// 95 (base) + 1 (identidade) + 1 (input map) = **97**. Trocar estes dois campos de
     /// ordem não dá erro nenhum: dá dois campos a ler os bytes um do outro.
     pub(crate) input_map: ph2d_input::InputMap,
+    /// **A ARTE DOS PADRÕES de textura** (plano 33, W4) — os pixels que cada `Paint::Pattern` da
+    /// cena vectorial nomeia por `AssetId`.
+    ///
+    /// ⚠️ Sem ele, reabrir o projecto encontraria o `AssetDb` vazio, a fonte não resolveria, e toda
+    /// forma com padrão pintaria a cor de recurso **para sempre e sem erro nenhum a que agarrar** —
+    /// literalmente o defeito que o `sprite_pixels` acima curou para as sprites.
+    ///
+    /// ⚠️ **`Vec<u8>` opaco, e carrega a própria versão lá dentro** (`PATTERN_ART_DOC_VERSION`) — o
+    /// precedente do `timeline`, do `sculpt` e do `sprite_pixels`. É o que faz um campo novo lá
+    /// dentro não voltar a bumpar o `PROJECT_SCHEMA`.
+    ///
+    /// ⚠️⚠️ **A POSIÇÃO É O FORMATO, e este campo é o ÚLTIMO** — o postcard é posicional. Ver o
+    /// aviso do `input_map` acima: trocar dois campos de ordem não dá erro nenhum, dá dois campos a
+    /// ler os bytes um do outro.
+    ///
+    /// Vazio num projecto sem padrão nenhum. Ver [`crate::project_texture_pattern`].
+    pub(crate) pattern_art: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

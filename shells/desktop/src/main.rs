@@ -485,6 +485,8 @@ mod project_settings;
 /// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
 /// ferramentas de imagem atravessam, não um produtor só.
 mod project_sprite_pixels;
+/// **A arte dos padrões dentro do ficheiro de projecto** (plano 33, W4).
+mod project_texture_pattern;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.
 mod project_tokens;

@@ -208,6 +208,13 @@ pub struct ExtractReport {
     /// ⭐⭐⭐ Quantas órfãs o **resgate pela face gémea** salvou — ver
     /// [`crate::walk::WalkStats::orphan_rescued_across_edge`].
     pub orphan_rescued_across_edge: usize,
+    /// ⛔⛔⛔ **Porque o resgate pela gémea NÃO disparou** — `(sem aresta, sem gémea,
+    /// sem chave, chave com outra direcção, a própria porta)`. Ver
+    /// [`crate::walk::WalkStats::rescue_no_side`].
+    pub rescue_why: (usize, usize, usize, usize, usize),
+    /// ⭐⭐⭐ Quantas seriam resgatadas por cada convenção — ver
+    /// [`crate::walk::WalkStats::rescue_would`].
+    pub rescue_would: [usize; 4],
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
@@ -343,6 +350,14 @@ pub fn extract(
         orphan_no_partner_node_exists: ws.orphan_no_partner_node_exists,
         orphan_no_partner_on_edge: ws.orphan_no_partner_on_edge,
         orphan_rescued_across_edge: ws.orphan_rescued_across_edge,
+        rescue_why: (
+            ws.rescue_no_side,
+            ws.rescue_no_twin,
+            ws.rescue_no_key,
+            ws.rescue_wrong_dir,
+            ws.rescue_self,
+        ),
+        rescue_would: ws.rescue_would,
         orphan_on_corner: ws.orphan_on_corner,
         orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,

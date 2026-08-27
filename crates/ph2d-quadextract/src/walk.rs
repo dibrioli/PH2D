@@ -74,6 +74,21 @@ pub(crate) struct WalkStats {
     /// numa aresta nesta peça. *A régua é este número contra
     /// [`WalkStats::orphan_no_partner_on_edge`], que é quantas ficaram por salvar.*
     pub orphan_rescued_across_edge: usize,
+    /// ⛔ Por que o resgate pela gémea **não** disparou: o alvo não está sobre aresta …
+    pub rescue_no_side: usize,
+    /// … está, mas a aresta não tem gémea (é bordo).
+    pub rescue_no_twin: usize,
+    /// … tem gémea, e a chave transportada **não existe** lá.
+    pub rescue_no_key: usize,
+    /// … dessas, quantas têm ALGUMA porta no mesmo ponto, com **outra direcção**.
+    pub rescue_wrong_dir: usize,
+    /// … a chave existe e é a **própria** porta.
+    pub rescue_self: usize,
+    /// ⭐⭐⭐ Quantas seriam resgatadas por cada convenção de direcção:
+    /// `[x.dir(dir), oposta, com a troca do sinal da área, oposta dessa]`.
+    /// ⚠️ *O índice `3` é o que o código usa hoje — e ele conta `0` por construção aqui,
+    /// porque este ramo só corre quando ele falhou.*
+    pub rescue_would: [usize; 4],
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um
@@ -138,6 +153,12 @@ pub(crate) struct WalkStats {
     pub steps: usize,
     /// Quantas vezes o traço atravessou uma mudança de orientação.
     pub flips: usize,
+}
+
+/// ⛔ **A convenção alternativa da direcção no resgate pela gémea** — `PH2D_RESCUE_DIR=1`.
+/// Ver a tabela no sítio onde ela é lida.
+fn rescue_dir_raw() -> bool {
+    std::env::var("PH2D_RESCUE_DIR").ok().as_deref() == Some("1")
 }
 
 /// ⭐ **O TRAÇADO DE TODAS AS SAÍDAS.**
@@ -379,7 +400,20 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                     //
                     // Medido 2026-08-26: na `sculpt_t003` as **4** órfãs «sem parceira» são
                     // **`4` sobre uma aresta**, e na `t001` são `2` de `2`.
-                    if let Some(k) = on_edge_side(topo.uv[face], t)
+                    // ⭐⭐⭐ **POR QUE FALHA O RESGATE?** Três razões, três curas
+                    // diferentes: o alvo não está sobre aresta nenhuma · está mas a aresta
+                    // não tem gémea · tem gémea e a CHAVE não bate lá. *Um contador único
+                    // de «não resgatadas» lê as três como uma.*
+                    let side = on_edge_side(topo.uv[face], t);
+                    if side.is_none() {
+                        st.rescue_no_side += 1;
+                    }
+                    if let Some(k) = side
+                        && topo.twin[face][k].is_none()
+                    {
+                        st.rescue_no_twin += 1;
+                    }
+                    if let Some(k) = side
                         && let Some((g, _)) = topo.twin[face][k]
                     {
                         let x = topo.xf[face][k];
@@ -389,11 +423,73 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                         if before != 0 && after != 0 && before != after {
                             d2 = opposite(d2);
                         }
-                        if let Some(&j) = ports.by_key.get(&(g, t2[0], t2[1], opposite(d2)))
-                            && j != id
-                        {
-                            st.orphan_rescued_across_edge += 1;
-                            return Outcome::Linked(j, acc.then(x));
+                        // ⭐⭐⭐ **A CONVENÇÃO DA DIRECÇÃO AO ATRAVESSAR** — medida, não
+                        // adivinhada. `PH2D_RESCUE_DIR=1` usa `d2` cru; o de omissão é o
+                        // `opposite(d2)` de sempre. Quantas parceiras cada uma acharia
+                        // (2026-08-27, das que ficavam por resgatar):
+                        //
+                        // | peça | `x.dir` | oposta | `d2` | `opposite(d2)` (hoje) | total |
+                        // |---|---|---|---|---|---|
+                        // | `sculpt_wrinkled` | `0` | `7` | **`7`** | `0` | `8` |
+                        // | `sculpt_hooked` | `1` | `2` | **`3`** | `0` | `8` |
+                        // | `sculpt_eared` | `0` | `2` | **`2`** | `0` | `3` |
+                        //
+                        // ⚠️ *«Acha uma porta» não é «acha a porta certa»* — ligar uma
+                        // parceira errada parte a malha em silêncio. ⛔⛔⛔ **E o veredito
+                        // pelo RESULTADO desmente a coluna acima:**
+                        //
+                        // | peça | `opposite(d2)` (omissão) | ⛔ `d2` |
+                        // |---|---|---|
+                        // | `sculpt_wrinkled` | `10` bordo · `χ = +1` · `8` órfãs | ⭐ **`0` bordo · `χ = +2` · `0` órfãs** |
+                        // | `sculpt_hooked` | `10` bordo · `χ = 0` | ⛔ `17` bordo · `χ = −1` |
+                        // | `sculpt_eared` | `6` bordo · `χ = +1` · `7` órfãs | ⛔ `8` bordo · `11` órfãs |
+                        // | `sphere_uv_96x144` | `0` bordo · `χ = +2` | = (inerte) |
+                        //
+                        // ⇒ **uma escolha GLOBAL conserta uma peça e parte duas**: a
+                        // convenção não é uma constante, depende da transição. *A coluna
+                        // «quantas acharia» conta candidatas; o `χ` conta as CERTAS, e as
+                        // duas discordam.* ⛔ Fica em omissão o comportamento de sempre;
+                        // o desempate tem de ser derivado (a parceira certa é a que, ao
+                        // ser traçada de volta, regressa a esta porta) — e isso é obra.
+                        let want_dir = if rescue_dir_raw() { d2 } else { opposite(d2) };
+                        match ports.by_key.get(&(g, t2[0], t2[1], want_dir)) {
+                            Some(&j) if j != id => {
+                                st.orphan_rescued_across_edge += 1;
+                                return Outcome::Linked(j, acc.then(x));
+                            }
+                            Some(_) => st.rescue_self += 1,
+                            None => {
+                                st.rescue_no_key += 1;
+                                // ⭐⭐⭐ **QUAL CONVENÇÃO acharia a parceira?** Duas
+                                // perguntas ortogonais — inverter a direcção ao atravessar
+                                // (`opposite`) e trocar a cardinal quando o sinal da área
+                                // inverte —, e as quatro combinações medem-se de uma vez.
+                                // *Adivinhar uma delas custa uma corrida por tentativa; a
+                                // tabela custa uma.*
+                                let raw = x.dir(dir);
+                                for (bit, cand) in [
+                                    (0usize, raw),
+                                    (1, opposite(raw)),
+                                    (2, d2),
+                                    (3, opposite(d2)),
+                                ] {
+                                    if ports
+                                        .by_key
+                                        .get(&(g, t2[0], t2[1], cand))
+                                        .is_some_and(|&j| j != id)
+                                    {
+                                        st.rescue_would[bit] += 1;
+                                    }
+                                }
+                                // ⭐ E o ponto transportado tem ALGUMA porta na gémea, com
+                                // outra direcção? *Separa «a chave está errada na direcção»
+                                // de «não há nada ali».*
+                                if (0u8..4)
+                                    .any(|d| ports.by_key.contains_key(&(g, t2[0], t2[1], d)))
+                                {
+                                    st.rescue_wrong_dir += 1;
+                                }
+                            }
                         }
                     }
                     // ⭐⭐⭐ **ESTÁ O ALVO SOBRE UMA ARESTA do triângulo?**

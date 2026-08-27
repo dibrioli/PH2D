@@ -1133,6 +1133,17 @@ entrada fraccionarios · pior |coef| {:.3}",
                 e.orphan_on_corner,
                 e.orphan_rescued_in_fan
             );
+            println!(
+                "  ⛔⛔⛔ POR QUE o resgate pela gemea nao disparou: {} sem estar sobre \
+aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' (destas, \
+{} tem porta no mesmo ponto com OUTRA DIRECCAO) · {} eram a propria porta",
+                e.rescue_why.0, e.rescue_why.1, e.rescue_why.2, e.rescue_why.3, e.rescue_why.4
+            );
+            println!(
+                "  ⭐⭐⭐ QUAL CONVENCAO de direccao acharia a parceira: x.dir={} · oposta={} \
+· com troca de sinal={} · oposta dessa={} (esta ultima e' a que o codigo usa)",
+                e.rescue_would[0], e.rescue_would[1], e.rescue_would[2], e.rescue_would[3]
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

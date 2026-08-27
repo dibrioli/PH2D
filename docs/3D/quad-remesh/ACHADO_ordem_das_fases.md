@@ -2304,3 +2304,67 @@ remalhamento isotrópico a mesma esfera dá `0` equações de ciclo e o gate fic
 - ⛔ `6`–`10` arestas de bordo e `χ` de `0`/`+1` nas outras três: **melhorou muito e não
   fecha**. Um dono obsoleto sobrevive na `hooked` (`1` de `2`, resíduo `1,9e-4`).
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.27 — As arestas de bordo: o RESGATE pela face gémea existe, e a direcção dele não é uma constante
+
+Ficavam `6`–`10` arestas de bordo em três peças. O instrumento a montante já existia e o
+próprio relatório o chama *«o sintoma mais A MONTANTE de um furo»*.
+
+#### 1. ⭐ As órfãs são TODAS do mesmo tipo, e a correlação é perfeita
+
+| peça | órfãs «sem parceira» | destas, **sobre uma ARESTA** |
+|---|---|---|
+| `sculpt_eared` | `3` | **`3`** |
+| `sculpt_wrinkled` | `8` | **`8`** |
+| `sculpt_hooked` | `8` | **`8`** |
+
+Sem amarras: `0` órfãs em todas. ⇒ *forçar um arco à grelha inteira põe o cruzamento
+exactamente em cima de uma aresta da malha* — e aí ele pertence às **duas** faces, enquanto
+o nó nasce **uma vez**, no lado canónico.
+
+#### 2. ⭐ O resgate pela face gémea JÁ EXISTE — e não disparava
+
+`orphan_rescued_across_edge` estava a `0`. Repartido o porquê:
+
+| peça | não está sobre aresta | sobre aresta **sem gémea** | com gémea, **sem a chave** | destas, com porta **noutra direcção** |
+|---|---|---|---|---|
+| `sculpt_wrinkled` | `0` | `0` | **`8`** | **`7`** |
+| `sculpt_hooked` | `0` | `0` | **`8`** | **`4`** |
+| `sculpt_eared` | `0` | `0` | **`3`** | **`2`** |
+
+⇒ o alvo **está** sobre a aresta, a aresta **tem** gémea, e há porta no ponto transportado
+— só que com **outra direcção**. O defeito é a convenção da direcção ao atravessar.
+
+#### 3. ⛔⛔⛔ E aqui a medição desmente-se a si própria — de propósito
+
+Medidas as **quatro** convenções (`x.dir` · oposta · com a troca do sinal da área `d2` ·
+`opposite(d2)`, que é a que o código usa), `d2` acharia `7`/`3`/`2` parceiras e a actual
+acha `0`. Mas *«acha uma porta» não é «acha a porta certa»*, e o veredito pelo **resultado**:
+
+| peça | `opposite(d2)` (omissão) | ⛔ `d2` |
+|---|---|---|
+| `sculpt_wrinkled` | `10` bordo · `χ = +1` · `8` órfãs | ⭐ **`0` bordo · `χ = +2` · `0` órfãs** |
+| `sculpt_hooked` | `10` bordo · `χ = 0` | ⛔ `17` bordo · `χ = −1` |
+| `sculpt_eared` | `6` bordo · `χ = +1` · `7` órfãs | ⛔ `8` bordo · `11` órfãs |
+| `sphere_uv_96x144` | `0` bordo · `χ = +2` | = (inerte) |
+
+⇒ **uma escolha GLOBAL conserta uma peça e parte duas.** A convenção **não é uma
+constante** — depende da transição. ⚠️ *A coluna «quantas acharia» conta candidatas; o `χ`
+conta as CERTAS, e as duas discordam.*
+
+⭐ Nota do que está em jogo: com a convenção alternativa a `sculpt_wrinkled` fica
+**`χ = +2`, `0` bordo, `0` órfãs — com alinhamento perfeito**, ou seja *estritamente
+melhor* que não ter amarras, como já acontece na `sphere_uv`. **Duas** de quatro.
+
+#### ⇒ O que fica
+
+- ⛔ `PH2D_RESCUE_DIR` nasce **desligada**, com a tabela ao lado; o comportamento de
+  omissão é o de sempre.
+- ⭐ **O desempate tem de ser DERIVADO, e o critério está nomeado:** a parceira certa é a
+  que, traçada de volta, **regressa a esta porta**. As duas candidatas existem no mapa; o
+  que falta é a pergunta que as separa — e ela não é uma constante.
+- ⚠️ Este é um defeito do **`ph2d-quadextract`**, não das amarras: elas só o tornam
+  alcançável (sem elas há `0` órfãs e o ramo nunca corre).
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

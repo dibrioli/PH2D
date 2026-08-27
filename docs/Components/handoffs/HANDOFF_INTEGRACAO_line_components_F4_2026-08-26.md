@@ -16,7 +16,7 @@
 | Worktree | `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-components` |
 | Base | `main @ 0f5ce8040` |
 | Governança | [ADR-0164](../../architecture/decisions/0164-instances-are-real-entities-linked-by-stableid-with-live-sync-and-incremental-undo.md) · [ADR-0166](../../architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md) |
-| Fatias entregues | **F4.1** (o mestre é inerte) · **F4.2** (instanciar + duplicar profundo) · **F4.3** (sync vivo) · **F4.4** (overrides) · **F4.5** (os verbos, com gesto) · **os três reports do smoke de 26/08** (§9) |
+| Fatias entregues | **F4.1**..**F4.5** · **os reports do smoke de 26/08** (§9–§12) · **F4.6a/b** (os documentos possuídos: clone e propagação por conteúdo — §13) |
 
 ---
 
@@ -575,3 +575,32 @@ reordenada em vez de o selecionado ir para o fim).
 
 ⚠️ **Um campo novo no `App`** (`cycle_pick_selection`) — quem construir um `App` noutra linha não
 compila, que é o comportamento certo.
+
+---
+
+## §13 ⭐⭐ F4.6a/b — os DOCUMENTOS possuídos entram na cópia e no sync
+
+O que faltava para uma instância de **arte vetorial** existir: a cópia profunda salta os quatro
+componentes `owned_document`, e uma peça vetorial saltada fica **sem geometria nenhuma**.
+
+- **F4.6a** — [`instance_docs`](../../../shells/desktop/src/instance_docs.rs) clona o `VecPath` e
+  aponta a cópia para o clone. ⚠️ O par `path ⟺ entidade` entra **junto** (senão o
+  `vec_entities::sync` cunha uma segunda entidade), e o clone entra **sem deslocamento** (a
+  geometria é LOCAL; quem põe a peça no sítio é o `Transform`). ⭐ Cura de passagem um defeito
+  anterior às instâncias: **duplicar um grupo** com formas vetoriais dentro.
+  ⛔ Os outros três (`PaintedDoc` · `BakedForm` · `FlipObjectRef`) continuam dropados, agora com
+  **nome** no relatório e um censo de dois lados a defendê-lo.
+- **F4.6b** — [`instance_sync_docs`](../../../shells/desktop/src/instance_sync_docs.rs) propaga o
+  documento por **CONTEÚDO** (id normalizado), com o mesmo eco, a mesma chave de override e as
+  mesmas três respostas. O *Apply* ganhou o mesmo caminho: pelo geral, o mestre passaria a apontar
+  para o path da cópia.
+
+⚠️ **`OwnedDocs` entrou na ASSINATURA** de `instantiate_master`, `duplicate_subtree`, `make_master`,
+`apply_to_master`, `sync_instances` e `instance_verbs::drain` — uma cópia profunda sem os
+documentos está **incompleta**, e uma invariante que dois sítios têm de lembrar é uma que um deles
+vai esquecer. `PickWorld`-style: quem construir uma chamada nova noutra linha não compila.
+
+**⏳ Falta a F4.6c** — matar o `InstanceLive` (o produtor derivado), reescrever os verbos vetoriais
+sobre o mecanismo geral e **materializar no load** os documentos com `VecInstance` (degrau do
+`PROJECT_SCHEMA`). Enquanto ela não vier, os dois modelos coexistem: o antigo continua a servir os
+documentos antigos, e o novo já serve tudo o que se faça pelos verbos gerais.

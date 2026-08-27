@@ -564,7 +564,7 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 | F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
 | F4.4 | Override **por componente** (`ObjectInstance`) — ⚠️ *por campo* foi refutado | ✅ 2026-08-26 |
 | F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ✅ 2026-08-26 |
-| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | ⬜ |
+| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | 🟨 **a** (documentos clonados) ✅ · **b** (geometria propaga por conteúdo) ✅ · **c** (matar o `InstanceLive` + migração) ⬜ |
 | F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
 
 **O que a F4.1 mediu e o plano não dizia:** ⚠️ **a refutação nomeia CINCO `QueryState` da ponte
@@ -653,6 +653,27 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   precisou de esquecer.*
 - ⚠️ **O EMPATE está declarado: os dois mudam no mesmo passe ⇒ a RECEITA ganha**, e não fica
   override. Editar o molde é uma difusão deliberada.
+
+**O que a F4.6a/b mediram e o plano não dizia:**
+- ⛔⛔ **Saltar os documentos possuídos era a resposta certa e METADE do trabalho.** Uma peça
+  vetorial saltada pela cópia profunda não fica *«sem o vínculo»*: fica **sem geometria nenhuma** —
+  uma linha na Hierarquia que não desenha um pixel. ⇒ `instance_docs::clone_owned_documents` clona
+  o `VecPath` e aponta a cópia para o clone; o par `path ⟺ entidade` entra **junto**, senão o
+  `vec_entities::sync` cunha uma segunda entidade para o clone.
+- ⭐ **E isso cura um defeito IRMÃO, anterior às instâncias:** duplicar um GRUPO com formas
+  vetoriais dentro devolvia as peças sem geometria (uma forma SOZINHA já era roteada para a porta
+  do documento; um grupo caía na cópia profunda).
+- ⚠️ **A propagação de um documento é por CONTEÚDO, e não por bytes de componente** — e isto não é
+  uma excepção, é a definição: o `VecPathRef` de uma instância aponta para o path **dela**, então os
+  bytes diferem para sempre, de propósito (é a família da junta). O id da instância **nunca** se
+  mexe; o que se escreve é o conteúdo do mestre dentro do path dela. ⇒ o *Apply* também tem de ser
+  por conteúdo, senão o mestre passa a apontar para o path da cópia.
+- ⚠️ **Os outros três documentos possuídos (`PaintedDoc` · `BakedForm` · `FlipObjectRef`) continuam
+  DROPADOS, e agora com NOME:** cada cópia devolve um relatório do que deixou cair e o chamador
+  põe uma linha no log — *um importador que ignora em silêncio é pior que um que recusa*. O censo
+  de dois lados faz um bridge novo reprovar em vez de nascer mudo.
+- ⚠️ **Um gate meu SOBREVIVEU à mutação:** o do *«clone sem deslocamento»* comparava `subpaths`, e
+  `translate_path` mexe nos **vértices**. *Comparar a estrutura não é comparar a geometria.*
 
 **O que a F4.5 mediu e o plano não dizia:**
 - ⭐ **O *Redefinir* da tabela do doc 04 já existia** — é o *Revert to Master* que a F4.4 entregou.

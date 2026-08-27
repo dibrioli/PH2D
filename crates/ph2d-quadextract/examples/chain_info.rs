@@ -534,7 +534,10 @@ fn main() {
         "  ⛔⛔ NAO-FINITOS no mapa continuo: {} no fim · {} logo apos a 1a ronda",
         r.nonfinite.0, r.nonfinite.1
     );
-    println!("  ⛔⛔⛔ PREGOS com passo NAO-FINITO: {}", r.nonfinite_pins);
+    println!(
+        "  ⛔⛔⛔ PREGOS com passo NAO-FINITO: {} | ⭐ EQUACOES DE CICLO (A3) que entraram: {}",
+        r.nonfinite_pins, r.arc_cycles
+    );
 
     // ⭐⭐⭐ **QUANTOS singulares o CORTE de facto duplica.** O caminho soldado deriva os
     // vértices singulares dos FECHOS do grafo de cópias — e um vértice que o corte não

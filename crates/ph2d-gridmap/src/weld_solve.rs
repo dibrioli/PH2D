@@ -104,10 +104,18 @@ pub struct WeldSolveReport {
     pub nonfinite: usize,
     /// A mesma contagem **logo após a 1.ª ronda** — separa «nasceu torto» de «degradou».
     pub nonfinite_first: usize,
+    /// ⭐⭐⭐ **Equações de CICLO de arco que entraram** — o A3, a condição sobre as
+    /// translações.
+    pub arc_cycles: usize,
 }
 
 /// Um grupo amarrado: a raiz, e por membro `(escalar, σ, δ)` — ver [`crate::arcline`].
 type TieGroup = (u32, Vec<(u32, f32, f32)>);
+
+/// Uma equação de ciclo de arco: a incógnita livre e o eixo que ela **possui**, e a
+/// expressão dele — `(variável, eixo, coeficiente)`. Ver
+/// [`WeldRelaxer::attach_arc_cycles`].
+type ArcCycle = (usize, usize, Vec<(Var, usize, f32)>);
 
 /// ⭐ **O RELAXADOR SOLDADO** — o sistema reduzido, uma variável de cada vez.
 pub(crate) struct WeldRelaxer<'a> {
@@ -130,6 +138,15 @@ pub(crate) struct WeldRelaxer<'a> {
     /// ⚠️ Elas saem da [`Self::relax_class`] pela mesma porta que as pregadas: *quem tem
     /// quem o escreva não se relaxa sozinho.*
     driven: Vec<[bool; 2]>,
+    /// ⭐⭐⭐ **AS EQUAÇÕES DE CICLO DOS ARCOS** — a condição sobre as TRANSLAÇÕES.
+    ///
+    /// Por equação: a incógnita livre e o eixo que ela **possui**, e a expressão dele nos
+    /// outros termos — `y_dono = Σ coef · var[eixo]`.
+    ///
+    /// ⚠️ **É o A3, e ele é PRÉ-REQUISITO e não sequela** (`ACHADO` §23.18): uma equação
+    /// que fecha ciclo não elimina classe nenhuma, e sem esta lista a condição dela
+    /// **não está no sistema** — o grupo e as translações escrevem-se um ao outro.
+    arc_cycles: Vec<ArcCycle>,
     /// Grupos recusados por algum membro já ter dono.
     refused: usize,
     /// ⭐ Por que razão: `[dependente, livre do sistema, pregada]`.
@@ -185,6 +202,7 @@ impl<'a> WeldRelaxer<'a> {
             free_frozen: vec![[false; 2]; nf],
             neigh,
             ties: Vec::new(),
+            arc_cycles: Vec::new(),
             driven: vec![[false; 2]; nc],
             refused: 0,
             refused_why: [0; 3],
@@ -258,6 +276,87 @@ impl<'a> WeldRelaxer<'a> {
             }
             self.ties.push((root, rows));
         }
+    }
+
+    /// ⭐⭐⭐ **LIGA AS EQUAÇÕES DE CICLO** — cada uma passa a POSSUIR um escalar de
+    /// translação.
+    ///
+    /// ⚠️ **Só translações servem de dono**, e a razão é medida: uma equação de ciclo tem
+    /// `1` a `3` termos de translação (mediana `1`), e os termos de **classe** dela já
+    /// pertencem às amarras. *Escolher um dono entre os que já têm dono seria a segunda
+    /// lei outra vez, um andar abaixo.*
+    ///
+    /// ⛔ Uma equação sem translação livre é **recusada e contada** — o desenho do A3 não
+    /// a alcança, e dizê-lo é melhor do que a impor a meio.
+    pub(crate) fn attach_arc_cycles(
+        &mut self,
+        eqs: &[crate::arcline::ArcEquation],
+        cycles: &[usize],
+    ) {
+        for &k in cycles {
+            let Some(eq) = eqs.get(k) else { continue };
+            let own = eq.terms.iter().enumerate().find(|(_, t)| {
+                matches!(t.0, Var::Shift(_))
+                    && t.2.abs() > 1.0e-6
+                    && self
+                        .sys
+                        .free()
+                        .iter()
+                        .position(|&v| v == t.0)
+                        .is_some_and(|i| !self.free_axis_is_frozen(i, t.1))
+            });
+            let Some((pos, &(v, ax, k_own))) = own else {
+                self.refused += 1;
+                continue;
+            };
+            let Some(i) = self.sys.free().iter().position(|&f| f == v) else {
+                continue;
+            };
+            // `y_dono = −(1/k)·Σ outros`.
+            let rest: Vec<(Var, usize, f32)> = eq
+                .terms
+                .iter()
+                .enumerate()
+                .filter(|(j, _)| *j != pos)
+                .map(|(_, &(vv, aa, c))| (vv, aa, -c / k_own))
+                .collect();
+            self.freeze_free(i, ax);
+            self.arc_cycles.push((i, ax, rest));
+        }
+    }
+
+    /// Quantas equações de ciclo entraram.
+    pub(crate) fn arc_cycle_count(&self) -> usize {
+        self.arc_cycles.len()
+    }
+
+    /// ⭐⭐⭐ **ESCREVE OS DONOS DAS EQUAÇÕES DE CICLO** — a condição, imposta.
+    ///
+    /// ⚠️ **Corre no FIM da varredura, e a ordem é load-bearing:** os termos da expressão
+    /// são classes e translações que as fases anteriores acabaram de mover. *Impor a
+    /// condição antes delas seria impô-la sobre um estado que já não existe quando a
+    /// varredura acaba* — e é assim que uma restrição vira um ponto de partida.
+    pub(crate) fn apply_arc_cycles(&self, map: &mut GridMap) -> f32 {
+        let mut worst = 0.0f32;
+        for (i, ax, rest) in &self.arc_cycles {
+            let mut want = 0.0f32;
+            for &(v, a, c) in rest {
+                let val = match v {
+                    Var::Shift(s) => map.shift.get(s as usize).copied().unwrap_or([0.0; 2]),
+                    Var::Class(cl) => self.w.value_pub(map, cl as usize),
+                };
+                want = c.mul_add(val[a], want);
+            }
+            if !want.is_finite() {
+                continue;
+            }
+            let now = self.read_free(map, *i);
+            let mut d = [0.0f32; 2];
+            d[*ax] = want - now[*ax];
+            self.sys.bump(self.w, map, *i, d);
+            worst = worst.max(d[*ax].abs());
+        }
+        worst
     }
 
     /// Quantos grupos entraram, quantos foram recusados, e por que razão.
@@ -519,7 +618,7 @@ impl<'a> WeldRelaxer<'a> {
         for i in 0..self.sys.free().len() {
             worst = worst.max(self.relax_free(map, i));
         }
-        worst
+        worst.max(self.apply_arc_cycles(map))
     }
 }
 
@@ -627,7 +726,7 @@ pub fn solve_welded(
     h: f32,
     rounds: usize,
 ) -> (GridMap, WeldSolveReport) {
-    solve_welded_with(mesh, cut, combed, h, rounds, None)
+    solve_welded_with(mesh, cut, combed, h, rounds, None, None)
 }
 
 /// ⭐⭐⭐ **O MESMO, com as AMARRAS DOS ARCOS ligadas.**
@@ -646,6 +745,7 @@ pub fn solve_welded_with(
     h: f32,
     rounds: usize,
     ties: Option<&crate::arcline::ScalarTies>,
+    arcs: Option<(&[crate::arcline::ArcEquation], &[usize])>,
 ) -> (GridMap, WeldSolveReport) {
     let mut rep = WeldSolveReport::default();
     let (w, wrep) = weld(cut, combed);
@@ -671,10 +771,17 @@ pub fn solve_welded_with(
         let mut r = WeldRelaxer::new(&a, &w, cut, combed);
         if let Some(t) = ties {
             r.attach_ties(t);
+            // ⭐⭐⭐ **O A3:** as equações que FECHAM CICLO passam a possuir um escalar de
+            // translação. ⚠️ *Sem elas a condição não está no sistema* — e a §23.18 mediu
+            // o preço: a esfera diverge.
+            if let Some((eqs, cyc)) = arcs {
+                r.attach_arc_cycles(eqs, cyc);
+            }
             let (g, refused, why) = r.tie_counts();
             rep.tie_groups = g;
             rep.tie_refused = refused;
             rep.tie_refused_why = why;
+            rep.arc_cycles = r.arc_cycle_count();
         }
         let count_bad = |m: &GridMap| -> usize {
             m.uv.iter()

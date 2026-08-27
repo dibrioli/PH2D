@@ -1800,3 +1800,54 @@ condição sobre as translações — é **pré-requisito**, e o A2b foi medido 
 *A divergência da esfera é o sintoma mais provável dessa condição em falta.*
 
 ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+### §23.20 — ⛔⛔⛔ O A3 foi construído e NÃO TEM SUJEITO: `0` de `10` equações entram
+
+A §23.18 promoveu o A3 a **pré-requisito** e disse que a divergência da esfera era o
+sintoma da condição em falta. ⛔ **As duas afirmações caíram na mesma medição.**
+
+O A3 está ligado nas **duas** fases (o 2.º passe do contínuo e a escada gulosa), e a
+coluna nova diz quantas equações de ciclo de facto **entram**:
+
+| peça | ciclos de arco | ⭐ **entraram** | pregos `NaN` | resultado |
+|---|---|---|---|---|
+| `sphere_uv_96x144` | `10` | **`0`** | `6` | ⛔ `NaN` |
+| `sculpt_eared` | `4` | **`0`** | `0` | `χ = −2` |
+| `sculpt_hooked` | `5` | `2` | `0` | `χ = −8` |
+
+⭐⭐⭐ **`0` de `10` na peça que diverge** — e a razão é a minha própria regra: uma equação
+de ciclo só pode possuir uma translação **livre e não congelada**, e as translações dessas
+equações **já estão tomadas pelas amarras**.
+
+⇒ *A condição que este documento chamou de pré-requisito **não é imponível como foi
+desenhada**.* Ela recusa-se pela mesmíssima razão que o A2b se recusava na §23.17 — **o
+dono já tem dono** — um andar abaixo.
+
+#### ⛔ E a previsão da §23.18 está REFUTADA
+
+Ela dizia: *«a divergência da esfera é o sintoma mais provável dessa condição em falta»*.
+Com o A3 ligado, a esfera recebe **zero** equações e **continua a divergir com os mesmos
+`6` pregos**. ⇒ **o A3 não era a causa.**
+
+#### ⚠️ A QUARTA explicação minha do mesmo `NaN`, e o padrão delas
+
+`Obra A` → `relax_tie` → `G3 contínuo` → `A3 em falta`. As quatro plausíveis, as quatro
+mortas por um controlo barato. ⭐ **O padrão é sempre o mesmo:** nomeio um mecanismo e
+**construo-o**, em vez de perguntar primeiro se ele é sequer **alcançável**.
+
+⭐⭐ A régua que faltava custava cinco minutos — *«quantas entraram»*. Pedi-a **depois** de
+escrever o A3; pedida antes, teria dito que ele não tinha sujeito sem escrever uma linha
+de solver.
+
+#### ⇒ Onde a wave para, e por que via ela NÃO fecha
+
+- O **A2b funciona**: a componente atravessada cai `0,96 → 0,09` na peça do artista, e os
+  arcos que não são isolinha caem de `47` para `28`.
+- ⛔ Mas ele **parte a topologia** (`χ = −2` e `−8`), o **A3 não tem alcance**, e o `NaN`
+  da esfera continua **sem causa provada**.
+
+⇒ *O dono de cada translação tem de ser escolhido **DE UMA VEZ** entre amarras e ciclos* —
+que é o **sistema escalar único** que o plano A2 nomeava, e que eu contornei **duas vezes**
+por ser mais barato. ⛔ A terceira tentativa de o contornar não deve existir.
+
+⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

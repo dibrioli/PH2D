@@ -66,6 +66,21 @@ fecho**, ao lado do plano e do que roda. ⛔ Não como camada por cima: a lei do
 que leem o que a outra escreve não são duas eliminações»*, com a esfera a `NaN` e o toro a
 `6,4e17` ao lado.
 
+## ⛔⛔⛔ §4-bis — O ATALHO FOI TENTADO DUAS VEZES E FALHOU AS DUAS
+
+O A2b e o A3 são, os dois, tentativas de impor a restrição **por fora** do sistema —
+congelando eixos e escrevendo-os numa segunda passagem. As duas medem o mesmo fim:
+
+| tentativa | onde parou |
+|---|---|
+| **A2b** — amarras conduzem o escalar | ⭐ a atravessagem cai `0,96 → 0,09`; ⛔ a topologia parte (`χ = −2`, `−8`) e a esfera diverge |
+| **A3** — ciclos possuem uma translação | ⛔ **`0` de `10`** entram na peça que diverge: o dono já tem dono |
+
+⇒ ⭐⭐⭐ **O dono de cada translação tem de ser escolhido DE UMA VEZ**, entre amarras e
+ciclos, dentro de um **sistema escalar único** — que é o que o A1/A2 sempre nomearam e que
+foi contornado duas vezes por ser mais barato. ⛔ *Uma terceira tentativa de o contornar
+não deve existir.*
+
 ## §5 — Os passos, cada um com o seu controlo
 
 | # | passo | o controlo que o mede |
@@ -73,7 +88,7 @@ que leem o que a outra escreve não são duas eliminações»*, com a esfera a `
 | ⚠️ **A2b** | **CONSTRUÍDO e DESLIGADO** (`PH2D_GRIDMAP_ARCLINE`). As amarras possuem o escalar (o eixo é **congelado**, não recusado — era o contador da recusa a dizer qual porta abrir). ⭐ A componente atravessada cai `0,96 → 0,24`; ⛔ mas a forma regride e a esfera diverge — ver A3. | as réguas, e a tabela vive no §23.18 |
 | ✅ **A1** | **FEITO** (2026-08-27). O `ClosureSystem` ganhou `dep_axes` — por dependente, que **componentes** ele escreve. | ⭐ **Byte-idêntico nas 5 peças** (`sha256` antes/depois) + 2 gates da capacidade. |
 | **A2** | As equações dos arcos entram no mesmo sistema, na **mesma ordem topológica** da substituição existente. | `FlatReport` ganha as contagens do arco: eliminadas · ciclo · `worst_det`. ⛔ Um `det ≠ ±1` é **meia célula** e tem de ser contado, não aceite. |
-| ⛔⛔ **A3** | **PRÉ-REQUISITO, não o passo seguinte** (`ACHADO` §23.18). Os ciclos de arco entram como **condição sobre as translações**, ao lado do fecho plano. ⚠️ Sem ele o A2b **diverge**: a `sphere_uv` vai a **`NaN`** — a assinatura exacta da Obra A, na mesma peça. | O desacordo tem de ir a `0`; e o controlo é a `sphere_uv` **produzir peça**. |
+| ⛔⛔⛔ **A3** | **CONSTRUÍDO e SEM SUJEITO** (`ACHADO` §23.20): `0` de `10` equações entram na peça que diverge, porque as translações delas já pertencem às amarras. ⛔ *A previsão de que ele curaria a divergência está REFUTADA.* ~~PRÉ-REQUISITO, não o passo seguinte~~ (`ACHADO` §23.18). Os ciclos de arco entram como **condição sobre as translações**, ao lado do fecho plano. ⚠️ Sem ele o A2b **diverge**: a `sphere_uv` vai a **`NaN`** — a assinatura exacta da Obra A, na mesma peça. | O desacordo tem de ir a `0`; e o controlo é a `sphere_uv` **produzir peça**. |
 | **A4** | A escada gulosa e o endurecimento correm **com** o sistema novo. | ⛔ **A armadilha já medida:** impor no contínuo e **não** na escada dá saída *byte-idêntica ao controlo com todos os grupos a entrar*. |
 | **A5** | Medir. | `measure_arc_quantization` (a coluna **atravessam**, que tem de cair) · `loop_census` (**voltas** e anéis fechados) · `quad_shape` (⚠️ a forma **não pode** regredir). |
 

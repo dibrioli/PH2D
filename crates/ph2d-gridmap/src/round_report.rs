@@ -120,6 +120,8 @@ pub struct RoundReport {
     /// ⛔⛔⛔ Pregos da escada cujo passo saiu **não-finito** — o valor já estava
     /// `NaN` quando o prego chegou.
     pub nonfinite_pins: usize,
+    /// ⭐⭐⭐ Equações de CICLO de arco que entraram — o A3.
+    pub arc_cycles: usize,
     /// ⭐ O resíduo da costura separado por espécie — **só o caminho soldado**.
     ///
     /// ⚠️ Ele responde ao que [`Self::seam_after`] não distingue: aquele mistura as

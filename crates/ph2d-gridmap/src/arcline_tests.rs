@@ -108,7 +108,7 @@ fn the_ties_switch_is_inert_when_off() {
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
     let (a, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
-    let (b, _) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, None);
+    let (b, _) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, None, None);
     assert_eq!(a.shift, b.shift);
     assert_eq!(a.uv.len(), b.uv.len());
     for (ra, rb) in a.uv.iter().zip(&b.uv) {
@@ -135,7 +135,8 @@ fn the_ties_change_the_map_when_on() {
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &base);
     assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
-    let (tied, rep) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties));
+    let (tied, rep) =
+        crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties), None);
     assert!(
         rep.tie_groups > 0,
         "nenhum grupo entrou: {} recusados",

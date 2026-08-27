@@ -161,6 +161,9 @@ pub fn round_welded(
     // ponto de partida.*
     let ties = arcline_enabled().then(|| {
         let t = crate::arcline::build_arc_ties(cut, &w, &map);
+        // ⭐⭐⭐ O A3: as equações que fecham ciclo, no mesmo espaço de variáveis.
+        let eqs = crate::arcline::arc_equations(cut, &w, &map);
+        let cyc: Vec<usize> = t.cycle_equations().to_vec();
         let (m2, r2) = crate::weld_solve::solve_welded_with(
             mesh,
             cut,
@@ -168,6 +171,7 @@ pub fn round_welded(
             h,
             opts.welded_rounds,
             Some(&t),
+            Some((&eqs, &cyc)),
         );
         map = m2;
         before = r2;
@@ -177,6 +181,7 @@ pub fn round_welded(
         tie_groups: before.tie_groups,
         tie_refused: before.tie_refused,
         tie_refused_why: before.tie_refused_why,
+        arc_cycles: before.arc_cycles,
         nonfinite: (before.nonfinite, before.nonfinite_first),
         seam_before: (before.solve.seam_p50, before.solve.seam_max),
         weld: before.weld,
@@ -190,6 +195,11 @@ pub fn round_welded(
     let mut r = WeldRelaxer::new(&a, &w, cut, combed);
     if let Some(t) = &ties {
         r.attach_ties(t);
+        // ⚠️ **As equações de ciclo também têm de estar na escada** — a mesma lição que a
+        // §23.18 pagou: uma restrição imposta numa fase e não na seguinte é um ponto de
+        // partida.
+        let eqs = crate::arcline::arc_equations(cut, &w, &map);
+        r.attach_arc_cycles(&eqs, t.cycle_equations());
     }
 
     // ── ⭐ AS VARIÁVEIS INTEIRAS: as livres do sistema reduzido.

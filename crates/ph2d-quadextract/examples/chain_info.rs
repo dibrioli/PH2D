@@ -542,6 +542,28 @@ fn main() {
         "  ⛔⛔⛔ EIXOS que a escada SALTOU por estarem amarrados (nunca viram inteiro): {}",
         r.tie_axes_skipped
     );
+    println!(
+        "  ⭐⭐⭐ TRANSLACOES fraccionarias no fim: {} LIVRES · {} \
+DEPENDENTES (a substituicao recebeu uma livre torta) · {} ORFAS (ninguem as escreve)",
+        r.frac_shift_free, r.frac_shift_dep, r.frac_shift_orphan
+    );
+    println!(
+        "  ⭐⭐⭐ das LIVRES fraccionarias, {} tinham sido PREGADAS (=> alguem as mexeu depois)",
+        r.frac_shift_free_pinned
+    );
+    println!(
+        "  ⭐⭐⭐ ... e por EIXO: {} com os DOIS pregados · {} com UM so' · {} com NENHUM",
+        r.frac_shift_free_pinned, r.frac_shift_free_half, r.frac_shift_free_loose
+    );
+    println!(
+        "  ⭐⭐⭐ EQUACOES DE CICLO: {} com o valor FRACCIONARIO (pior {:.4}) · {} termos de \
+entrada fraccionarios · pior |coef| {:.3}",
+        r.arc_cycle_frac.0, r.arc_cycle_frac.2, r.arc_cycle_frac.1, r.arc_cycle_frac.3
+    );
+    println!(
+        "  ⛔⛔⛔ DONOS de equacao de ciclo OBSOLETOS (o mapa tem valor de uma ronda antiga): {}",
+        r.arc_cycle_stale
+    );
 
     // ⭐⭐⭐ **O DESLOCAMENTO `δ` DE CADA MEMBRO AMARRADO, e quanto dele e' FRACCIONARIO.**
     //

@@ -155,6 +155,47 @@ impl WeldRelaxer<'_> {
     /// são classes e translações que as fases anteriores acabaram de mover. *Impor a
     /// condição antes delas seria impô-la sobre um estado que já não existe quando a
     /// varredura acaba* — e é assim que uma restrição vira um ponto de partida.
+    /// ⭐⭐⭐ **A INTEGRALIDADE DE UMA EQUAÇÃO DE CICLO** —
+    /// `(want fraccionários, entradas fraccionárias, pior frac, pior |k|, donos OBSOLETOS)`.
+    ///
+    /// ⚠️ O dono de uma equação de ciclo **nunca é pregado** (a equação escreve-o), logo ele
+    /// é inteiro **se e só se** `want = Σ ±entradas` o for. *Esta é a última pergunta da
+    /// cadeia: se as entradas são inteiras e o `want` não é, o defeito está nos
+    /// coeficientes; se as entradas não são, está a montante.*
+    pub(crate) fn arc_cycle_integrality(&self, map: &GridMap) -> (usize, usize, f32, f32, usize) {
+        let (mut bad, mut bad_in, mut worst, mut kmax) = (0usize, 0usize, 0.0f32, 0.0f32);
+        let mut stale = 0usize;
+        for (i, ax, rest) in &self.arc_cycles {
+            let mut want = 0.0f32;
+            for &(v, a, c) in rest {
+                let val = match v {
+                    Var::Shift(s) => map.shift.get(s as usize).copied().unwrap_or([0.0; 2]),
+                    Var::Class(cl) => self.w.value_pub(map, cl as usize),
+                };
+                if (val[a] - val[a].round()).abs() > 1.0e-4 {
+                    bad_in += 1;
+                }
+                kmax = kmax.max(c.abs());
+                want = c.mul_add(val[a], want);
+            }
+            let f = (want - want.round()).abs();
+            if f > 1.0e-4 {
+                bad += 1;
+                worst = worst.max(f);
+            }
+            // ⭐⭐⭐ **O DONO ESTÁ OBSOLETO?** A [`Self::apply_arc_cycles`] só corre no fim
+            // de uma varredura, e as últimas pregagens da escada podem não disparar
+            // nenhuma. ⇒ o dono fica com um valor de uma ronda antiga enquanto as entradas
+            // dele já assentaram em inteiros. *`want` íntegro e dono fraccionário não é
+            // contradição — é atraso.*
+            let now = self.read_free(map, *i)[*ax];
+            if (now - want).abs() > 1.0e-4 {
+                stale += 1;
+            }
+        }
+        (bad, bad_in, worst, kmax, stale)
+    }
+
     pub(crate) fn apply_arc_cycles(&self, map: &mut GridMap) -> f32 {
         let mut worst = 0.0f32;
         for (i, ax, rest) in &self.arc_cycles {

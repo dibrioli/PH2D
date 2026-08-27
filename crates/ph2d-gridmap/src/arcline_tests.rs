@@ -518,3 +518,58 @@ fn the_ties_do_not_stop_the_translations_from_landing_on_integers() {
         );
     }
 }
+
+/// ⭐⭐⭐ **DEPOIS DE `apply_arc_cycles`, NENHUM DONO FICA OBSOLETO.**
+///
+/// ⛔⛔⛔ É o gate do último elo da §23.26. A `apply_arc_cycles` só corria no fim de uma
+/// **varredura**, e as últimas pregagens da escada gulosa podem não disparar nenhuma ⇒ o
+/// dono de uma equação de ciclo ficava com um valor de uma ronda antiga enquanto as
+/// entradas dele já tinham assentado em inteiros.
+///
+/// ⚠️ *«`want` íntegro e dono fraccionário» não é contradição — é **atraso**.* Medido: `2`
+/// donos obsoletos na `sculpt_hooked`, que eram exactamente as `2` translações livres
+/// fraccionárias, e a régua da integralidade acusava `0,3675`.
+#[test]
+fn no_arc_cycle_owner_is_left_stale_after_applying_them() {
+    // ⚠️⚠️ **A FASE ZERO É PARTE DA FIXTURA, e descobri-o a errar.** Sem o remalhamento
+    // isotrópico a mesma esfera dá `0` equações de ciclo e o gate fica vacuoso — *o que
+    // decide se o fenómeno existe não é a forma, é a malha que chega ao campo.* É por isso
+    // que a sonda do produto (`chain_info`) as vê e o meu 1.º teste não via.
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
+    mesh.triangulate();
+    ph2d_remesh_iso::remesh_isotropic(&mut mesh, ph2d_remesh_iso::ALPHA);
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let h = 0.15;
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    let ties = super::build_arc_ties(&cut, &w, &map);
+    let eqs = super::arc_equations(&cut, &w, &map);
+
+    let mut rep = crate::solve::SolveReport::default();
+    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
+    r.attach_ties(&ties);
+    r.attach_arc_cycles(&eqs, ties.cycle_equations());
+    // ⚠️ **Sem ciclos este gate não prova nada** — a fixtura tem de os conter.
+    assert!(
+        r.arc_cycle_count() > 0,
+        "a fixtura nao deu equacoes de ciclo: ela nao contem o fenomeno"
+    );
+
+    // Uma varredura para o mapa deixar de ser o de partida, e depois MEXER numa entrada:
+    // é isso que torna o dono obsoleto se ninguém o reaplicar.
+    r.sweep(&mut map);
+    for c in 0..w.classes() {
+        r.relax_class(&mut map, c);
+    }
+    r.apply_arc_cycles(&mut map);
+    let (_, _, _, _, stale) = r.arc_cycle_integrality(&map);
+    assert_eq!(
+        stale, 0,
+        "{stale} donos de equacao de ciclo ficaram com um valor que nao e' o da equacao"
+    );
+}

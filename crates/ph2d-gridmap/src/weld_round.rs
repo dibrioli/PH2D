@@ -431,6 +431,13 @@ pub fn round_welded(
                 // guloso escolhia o prego seguinte sobre um mapa que ainda não sabia do
                 // anterior.
                 r.derive_ties(map);
+                // ⭐⭐⭐ **E O DONO DE UMA EQUAÇÃO DE CICLO TAMBÉM.** Ela só corria no fim
+                // de uma varredura, e as últimas pregagens da escada podem não disparar
+                // nenhuma ⇒ o dono ficava com um valor de uma ronda antiga enquanto as
+                // entradas dele já tinham assentado em inteiros. *Medido: `2` donos
+                // obsoletos na `sculpt_hooked`, que são exactamente as `2` translações
+                // livres fraccionárias — e a régua da integralidade acusava `0,3675`.*
+                r.apply_arc_cycles(map);
                 let (visits, converged) =
                     drain(r, map, seeds.clone(), opts.local_tol, opts.local_cap);
                 if !converged {
@@ -503,6 +510,11 @@ pub fn round_welded(
         }
     }
 
+    // ⭐ **E uma última vez depois da escada**, porque o laço acima termina com uma
+    // absorção contínua que pode ter mexido as entradas de um ciclo.
+    r.derive_ties(&mut map);
+    r.apply_arc_cycles(&mut map);
+
     // ── ⭐⭐⭐ **O FECHO: reconstruir as dependentes das livres, e ENCAIXAR nos
     // inteiros que elas matematicamente já são.**
     //
@@ -523,6 +535,57 @@ pub fn round_welded(
         .filter(|(s, _)| combed.jump.get(*s).copied().flatten().is_some())
         .map(|(_, t)| (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs()))
         .fold(0.0f32, f32::max);
+    // ⚠️⚠️ **AS SONDAS DAQUI PARA BAIXO CORREM ANTES DO LAÇO QUE ARREDONDA.** A 1.ª
+    // redacção pôs a das equações de ciclo **depois** dele e leu `0` fraccionárias em tudo:
+    // *uma régua colocada a seguir ao passo que arruma mede a arrumação, não o defeito.*
+    let (cb, ci, cw, ck, cs) = r.arc_cycle_integrality(&map);
+    rep.arc_cycle_frac = (cb, ci, cw, ck);
+    rep.arc_cycle_stale = cs;
+    // ⭐⭐⭐ **QUEM é a translação fraccionária — LIVRE ou DEPENDENTE?**
+    //
+    // ⚠️ *A régua acima mede `shift`s e as amarras só tocam em CLASSES.* As duas famílias
+    // só se encontram pelo sistema dos fechos: uma dependente é `Σ coef · livre`, e é
+    // inteira **porque** as livres o são e os pivôs têm `|det| = 1`. ⇒ uma fraccionária
+    // **livre** diz que a escada não a pregou; uma **dependente** diz que a substituição
+    // recebeu uma livre torta. *São dois defeitos com curas em sítios diferentes, e a
+    // coluna única lia-os como um.*
+    for (s, t) in map.shift.iter().enumerate() {
+        if combed.jump.get(s).copied().flatten().is_none() {
+            continue;
+        }
+        let f = (t[0] - t[0].round()).abs().max((t[1] - t[1].round()).abs());
+        if f <= 1.0e-4 {
+            continue;
+        }
+        #[allow(clippy::cast_possible_truncation)]
+        let is_free = r.sys.free().contains(&Var::Shift(s as u32));
+        if is_free {
+            rep.frac_shift_free += 1;
+            // ⭐⭐⭐ **Ela chegou a ser PREGADA?** Pregar congela; se a livre fraccionária
+            // está congelada, ela **entrou** na escada e alguém a mexeu **depois** — e se
+            // não está, ela nunca foi candidata. *Duas causas, dois sítios de cura, e o
+            // contador único lia-as como uma.*
+            #[allow(clippy::cast_possible_truncation)]
+            if let Some(i) = r.sys.free().iter().position(|&v| v == Var::Shift(s as u32)) {
+                let (f0, f1) = (r.free_axis_is_pinned(i, 0), r.free_axis_is_pinned(i, 1));
+                if f0 && f1 {
+                    rep.frac_shift_free_pinned += 1;
+                }
+                // ⚠️ **Um eixo pregado e o outro não** é um terceiro caso, e o `||` lia-o
+                // como «pregada». *Pregar é por EIXO; a régua da integralidade é pelos dois.*
+                if f0 != f1 {
+                    rep.frac_shift_free_half += 1;
+                }
+                if !f0 && !f1 {
+                    rep.frac_shift_free_loose += 1;
+                }
+            }
+        } else if r.sys.is_dependent_seam(s) {
+            rep.frac_shift_dep += 1;
+        } else {
+            rep.frac_shift_orphan += 1;
+        }
+    }
     for (s, t) in map.shift.iter_mut().enumerate() {
         if combed.jump.get(s).copied().flatten().is_some() {
             *t = [t[0].round(), t[1].round()];

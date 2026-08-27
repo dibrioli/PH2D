@@ -122,6 +122,24 @@ pub struct RoundReport {
     /// ⛔⛔⛔ Eixos de incógnitas livres que a escada SALTOU por estarem congelados por
     /// uma amarra — ou seja, escalares que nunca chegam a ser inteiros.
     pub tie_axes_skipped: usize,
+    /// ⭐⭐⭐ Translações fraccionárias no fim, repartidas por QUEM as escreve:
+    /// incógnita **livre** (a escada não a pregou).
+    pub frac_shift_free: usize,
+    /// … destas, quantas a escada **chegou a pregar** (⇒ alguém as mexeu depois).
+    pub frac_shift_free_pinned: usize,
+    /// … com **um** eixo pregado e o outro não.
+    pub frac_shift_free_half: usize,
+    /// … com **nenhum** eixo pregado — nunca foram candidatas.
+    pub frac_shift_free_loose: usize,
+    /// ⭐ `(ciclos com «want» fraccionário, termos de entrada fraccionários, pior frac, pior |coef|)`.
+    pub arc_cycle_frac: (usize, usize, f32, f32),
+    /// ⛔⛔⛔ Donos de equação de ciclo **obsoletos** — o mapa tem um valor de uma ronda
+    /// antiga porque a `apply_arc_cycles` só corre no fim de uma varredura.
+    pub arc_cycle_stale: usize,
+    /// … **dependente** do sistema dos fechos (a substituição recebeu uma livre torta).
+    pub frac_shift_dep: usize,
+    /// … nem uma coisa nem outra — ninguém a escreve, e isso é um terceiro defeito.
+    pub frac_shift_orphan: usize,
     /// ⭐ A ronda em que o contínuo estourou (`0` = nunca), e o movimento dela.
     pub nonfinite_round: (usize, f32),
     /// ⭐⭐ Qual escritor estourou — ver `WeldSolveReport::nonfinite_who`.

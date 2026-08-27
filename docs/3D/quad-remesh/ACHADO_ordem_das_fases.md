@@ -2228,3 +2228,79 @@ outra obra não é uma rejeição — é um pré-requisito.*
   saltados que não são raízes. *Um grupo com dois eixos amarrados oferece **uma** raiz.*
 - ⛔ `χ = +1` em duas peças e `−2` na `hooked`: a topologia melhorou muito e **não fecha**.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.26 — ⭐⭐⭐ O último elo: o DONO de uma equação de ciclo ficava OBSOLETO
+
+A §23.25 deixou a `sculpt_hooked` como a única com `distância a inteiro ≠ 0` (`0,3675`). A
+cadeia que a explica tem **cinco** medições, e três delas corrigiram-me.
+
+#### 1. A régua mede *shifts*; as amarras tocam em *classes*
+
+| peça | fraccionárias LIVRES | DEPENDENTES | órfãs |
+|---|---|---|---|
+| `sculpt_hooked` | **`2`** | `20` | `0` |
+| as outras três | `0` | `0` | `0` |
+
+⇒ **duas translações livres** ficaram fraccionárias, e `20` dependentes herdaram-no pela
+substituição. *Uma livre torta e uma dependente torta são dois defeitos com curas em sítios
+diferentes, e a coluna única lia-os como um.*
+
+#### 2. ⚠️ A 1.ª sonda repetiu, em mim, o defeito que eu tinha acabado de curar
+
+Perguntei *«elas chegaram a ser pregadas?»* e implementei-o como
+`free_axis_is_frozen(i, 0) || free_axis_is_frozen(i, 1)` ⇒ **`2` com os dois pregados**, o
+que tornava o caso impossível. ⛔ Mas **congelar não é pregar**: congelar diz *«a
+`relax_free` não lhe toca»* e tem **três** autores (a amarra, a equação de ciclo, a
+escada); pregar diz *«ela é um inteiro»* e tem **um**. Dada a marca própria
+(`free_axis_is_pinned`), a leitura vira **`0` com os dois · `2` com UM só · `0` com
+nenhum** — e o eixo que falta é o que a [`attach_arc_cycles`] congela por **possuir**.
+*É a mesma confusão da §23.24, cometida na sonda em vez de no produto.*
+
+#### 3. ⚠️ A 2.ª sonda estava no sítio errado do TEMPO
+
+`arc_cycle_integrality` corria **depois** do laço que força as translações a inteiro, e
+lia `0` fraccionárias em tudo. *Uma régua colocada a seguir ao passo que arruma mede a
+arrumação, não o defeito.* Movida para antes dele.
+
+#### 4. E aí a contradição aparente resolve-se: era ATRASO
+
+| grandeza | valor |
+|---|---|
+| equações de ciclo com `want` fraccionário | `0` |
+| termos de entrada fraccionários | `0` |
+| pior `|coeficiente|` | `1,000` |
+| ⛔ **donos OBSOLETOS** | **`2`** |
+
+⇒ *«`want` íntegro e dono fraccionário» não é contradição — é **atraso**.* A
+[`apply_arc_cycles`] só corria no fim de uma **varredura**, e as últimas pregagens da
+escada podem não disparar nenhuma: o dono ficava com um valor de uma ronda antiga enquanto
+as entradas dele já tinham assentado em inteiros.
+
+#### 5. ⭐ A cura é a mesma forma do `derive_ties`, e o resultado
+
+`apply_arc_cycles` passa a correr **no acto** — a seguir a cada escrita da escada, e uma
+vez depois dela.
+
+| peça | dist. a inteiro | fraccionárias | atravessagem | bordo | `χ` |
+|---|---|---|---|---|---|
+| `sphere_uv_96x144` | `0` | `0` | `0,00` | **`0`** | ⭐ **`+2`** |
+| `sculpt_eared` | `0` | `0` | `0,00` | `6` | `+1` |
+| `sculpt_wrinkled` | `0` | `0` | `0,00` | `10` | `+1` |
+| `sculpt_hooked` | `1,9e-4` ⟵ `0,3675` | `0` | `0,00` | `10` ⟵ `22` | `0` ⟵ `−2` |
+
+Sem amarras, as mesmas peças dão atravessagem `0,28`–`0,55` e `χ = +2` com `0` bordo.
+
+⭐ Gate `no_arc_cycle_owner_is_left_stale_after_applying_them`, com mutação (tirar a escrita
+⇒ `1` dono obsoleto). ⚠️ **A fase zero é parte da fixtura**, e descobri-o a errar: sem o
+remalhamento isotrópico a mesma esfera dá `0` equações de ciclo e o gate fica **vacuoso** —
+*o que decide se o fenómeno existe não é a forma, é a malha que chega ao campo.*
+
+#### ⇒ O que fica
+
+- ⭐ A restrição entrega **alinhamento perfeito** (`0,00`) nas quatro peças, e na
+  `sphere_uv` sem pagar nada.
+- ⛔ `6`–`10` arestas de bordo e `χ` de `0`/`+1` nas outras três: **melhorou muito e não
+  fecha**. Um dono obsoleto sobrevive na `hooked` (`1` de `2`, resíduo `1,9e-4`).
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

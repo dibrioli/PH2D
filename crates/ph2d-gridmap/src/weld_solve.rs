@@ -88,6 +88,12 @@ pub(crate) struct WeldRelaxer<'a> {
     /// amarrado) e *«a escada prega isto?»* (sim para a raiz, não para os outros). *Um
     /// predicado a responder a duas perguntas dá a resposta certa a uma delas.*
     pinned_class: Vec<[bool; 2]>,
+    /// ⭐ O mesmo por **incógnita livre** — inclui as translações, que não têm classe.
+    ///
+    /// ⚠️ *Sem esta, «congelado» e «pregado» voltam a ler-se igual num `Var::Shift`* — e
+    /// eles são coisas diferentes: a [`Self::attach_arc_cycles`] congela o **dono** de uma
+    /// equação de ciclo, que nunca é pregado (a equação escreve-o).
+    pinned_free: Vec<[bool; 2]>,
     /// Por incógnita livre, que componentes estão pregadas.
     free_frozen: Vec<[bool; 2]>,
     /// Por classe, as classes vizinhas — a fila do degrau local anda por aqui.
@@ -163,6 +169,7 @@ impl<'a> WeldRelaxer<'a> {
             den,
             frozen: vec![[false; 2]; nc],
             pinned_class: vec![[false; 2]; nc],
+            pinned_free: vec![[false; 2]; nf],
             free_frozen: vec![[false; 2]; nf],
             neigh,
             ties: Vec::new(),
@@ -335,6 +342,7 @@ impl<'a> WeldRelaxer<'a> {
     /// sem ela, o passo da amarra desfazia o prego na varredura seguinte.
     pub(crate) fn pin_free(&mut self, i: usize, ax: usize) {
         self.freeze_free(i, ax);
+        self.pinned_free[i][ax] = true;
         if let Var::Class(c) = self.sys.free()[i] {
             self.pinned_class[c as usize][ax] = true;
         }
@@ -346,6 +354,16 @@ impl<'a> WeldRelaxer<'a> {
         if let Some(p) = self.pinned_class.get_mut(class) {
             p[ax] = true;
         }
+    }
+
+    /// Esta incógnita livre já foi pregada a um inteiro pela escada?
+    ///
+    /// ⛔ **Não é `free_axis_is_frozen`.** Congelar diz *«a `relax_free` não lhe toca»* e
+    /// tem três autores (a amarra, a equação de ciclo, a escada); pregar diz *«ela é um
+    /// inteiro»* e tem **um**. *Confundi-los foi o defeito da §23.24 nas classes, e a
+    /// primeira sonda desta secção repetiu-o nas translações.*
+    pub(crate) fn free_axis_is_pinned(&self, i: usize, ax: usize) -> bool {
+        self.pinned_free.get(i).is_some_and(|p| p[ax])
     }
 
     /// Este escalar já foi pregado a um inteiro pela escada?

@@ -223,6 +223,7 @@ fn the_opacity_channel_fades_the_tint_and_starts_from_opaque_white() {
         &[0.25, 0.75],
         1.0,
         Combine::Set,
+        false,
     );
     match out.get("tint") {
         Some(Column::Vec4(v)) => {
@@ -236,14 +237,28 @@ fn the_opacity_channel_fades_the_tint_and_starts_from_opaque_white() {
     let red = Stream::new(1)
         .with("P", Column::Vec2(vec![[0.0, 0.0]]))
         .with("tint", Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0]]));
-    let faded = channel::drive_channel(&red, channel::CH_OPACITY, &[0.5], 1.0, Combine::Multiply);
+    let faded = channel::drive_channel(
+        &red,
+        channel::CH_OPACITY,
+        &[0.5],
+        1.0,
+        Combine::Multiply,
+        false,
+    );
     match faded.get("tint") {
         Some(Column::Vec4(v)) => assert_eq!(v[0], [1.0, 0.0, 0.0, 0.5]),
         _ => panic!("tint"),
     }
 
     // An alpha the renderer cannot use is not a brighter particle — it is a bug. Clamped.
-    let over = channel::drive_channel(&plain, channel::CH_OPACITY, &[4.0, -2.0], 1.0, Combine::Set);
+    let over = channel::drive_channel(
+        &plain,
+        channel::CH_OPACITY,
+        &[4.0, -2.0],
+        1.0,
+        Combine::Set,
+        false,
+    );
     match over.get("tint") {
         Some(Column::Vec4(v)) => assert_eq!((v[0][3], v[1][3]), (1.0, 0.0)),
         _ => panic!("tint"),
@@ -282,6 +297,7 @@ fn the_colour_channels_shift_the_colour_that_is_already_there() {
         &[1.0 / 3.0],
         1.0,
         Combine::Add,
+        false,
     ));
     assert!(
         hue[1] > 0.99 && hue[0] < 0.01 && hue[2] < 0.01,
@@ -296,6 +312,7 @@ fn the_colour_channels_shift_the_colour_that_is_already_there() {
         &[0.5],
         1.0,
         Combine::Multiply,
+        false,
     ));
     assert!(
         (sat[0] - 1.0).abs() < 1e-6 && (sat[1] - 0.5).abs() < 1e-6 && (sat[2] - 0.5).abs() < 1e-6,
@@ -309,6 +326,7 @@ fn the_colour_channels_shift_the_colour_that_is_already_there() {
         &[0.5],
         1.0,
         Combine::Multiply,
+        false,
     ));
     assert!(
         (val[0] - 0.5).abs() < 1e-6 && val[1] < 1e-6 && val[2] < 1e-6,
@@ -339,7 +357,14 @@ fn the_neutral_colour_drive_is_the_identity_within_the_hsv_round_trip() {
             (channel::CH_SAT, 1.0, Combine::Multiply),
             (channel::CH_VAL, 1.0, Combine::Multiply),
         ] {
-            let out = tint_of(&channel::drive_channel(&tinted(c), ch, &[v], 1.0, mode));
+            let out = tint_of(&channel::drive_channel(
+                &tinted(c),
+                ch,
+                &[v],
+                1.0,
+                mode,
+                false,
+            ));
             for k in 0..4 {
                 worst = worst.max((out[k] - c[k]).abs());
             }
@@ -366,6 +391,7 @@ fn the_saturation_is_clamped_because_it_must_be_and_the_value_is_not() {
         &[3.0],
         1.0,
         Combine::Multiply,
+        false,
     ));
     assert!(
         over.iter().all(|k| *k >= 0.0),
@@ -377,6 +403,7 @@ fn the_saturation_is_clamped_because_it_must_be_and_the_value_is_not() {
         &[2.0],
         1.0,
         Combine::Multiply,
+        false,
     ));
     assert!(
         bright[0] > 1.5,
@@ -388,6 +415,7 @@ fn the_saturation_is_clamped_because_it_must_be_and_the_value_is_not() {
         &[-1.0],
         1.0,
         Combine::Multiply,
+        false,
     ));
     assert!(
         dark.iter().all(|k| *k >= 0.0),
@@ -404,7 +432,14 @@ fn the_falloff_masks_the_colour_drive() {
         .with("P", Column::Vec2(vec![[0.0, 0.0]; 2]))
         .with("tint", Column::Vec4(vec![[1.0, 0.0, 0.0, 1.0]; 2]))
         .with("falloff", Column::Scalar(vec![0.0, 1.0]));
-    let out = channel::drive_channel(&masked, channel::CH_HUE, &[1.0 / 3.0], 1.0, Combine::Add);
+    let out = channel::drive_channel(
+        &masked,
+        channel::CH_HUE,
+        &[1.0 / 3.0],
+        1.0,
+        Combine::Add,
+        false,
+    );
     match out.get("tint") {
         Some(Column::Vec4(v)) => {
             assert!(
@@ -431,7 +466,14 @@ fn the_falloff_masks_the_colour_drive() {
 fn measure_what_the_rotation_channel_honours() {
     let src = Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]]));
     for scale in [4.0_f32, 90.0, 360.0, 720.0, 3.6e3, 1.0e5, 1.0e7] {
-        let out = channel::drive_channel(&src, 2 /* Rotation */, &[1.0], scale, Combine::Set);
+        let out = channel::drive_channel(
+            &src,
+            2, /* Rotation */
+            &[1.0],
+            scale,
+            Combine::Set,
+            false,
+        );
         let Some(Column::Scalar(rot)) = out.get("rot") else {
             panic!("rot")
         };
@@ -461,12 +503,17 @@ fn the_appended_modes_do_what_they_say_and_the_old_indices_did_not_move() {
         (4.0, 3.0, 2.0, 1.5), // Divide
         (5.0, 3.0, 2.0, 2.0), // Min
         (6.0, 3.0, 2.0, 3.0), // Max
+        // ⚠️ O `Remap` devolve o VALOR, como o `Set` — a diferença deles não está na
+        // combinação e sim na BASE de que a máscara mede, que esta tabela não vê.
+        // Quem a prende é o `no_older_mode_can_produce_what_remap_produces`, no
+        // `combine.rs`, onde a `resolve` inteira é alcançável.
+        (7.0, 3.0, 2.0, 2.0), // Remap
     ];
     for &(idx, cur, v, want) in cases {
         let got = crate::combine::Combine::from_param(idx).apply(cur, v);
         assert!((got - want).abs() < 1e-6, "modo {idx}: {got} contra {want}");
     }
-    // E o menu do painel oferece exactamente esses sete, na mesma ordem.
+    // E o menu do painel oferece exactamente esses oito, na mesma ordem.
     let mut reg = NodeRegistry::new();
     register(&mut reg).unwrap();
     let hints = reg.param_ui(MANIFEST.id).expect("hints");

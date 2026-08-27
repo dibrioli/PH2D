@@ -134,6 +134,21 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "state",
             ty: INST_VEC2,
         },
+        // ⭐ **OS PRODUTORES** (doc 89, folha 06, célula 35 · os *Producers* do AE Wave World).
+        //
+        // ⚠️ **APENDADA**, nunca inserida: as arestas de um documento salvo guardam o ÍNDICE
+        // da porta, então pôr isto no meio trocaria as ligações de toda cena já autorada.
+        //
+        // ⚠️ **A capacidade já existia e a célula media-a** — `wave.out --pre--> field.box -->
+        // value.attribute("falloff") --> motion.drive(Custom "wave_h", Add) --> wave.state`
+        // move o berço das ondas para exactamente a caixa. O que a célula chamava de buraco era
+        // o **GESTO**: quatro nós, três arestas, e o artista tinha de saber que a coluna de
+        // ESTADO se chama `wave_h` — um nome que **nenhum picker oferece**. Esta porta é a
+        // mesma lei com duas peças e uma aresta, e sem nome nenhum para adivinhar.
+        PortSpec {
+            name: "inject",
+            ty: INST_VEC2,
+        },
     ],
     outputs: &[PortSpec {
         name: "out",
@@ -190,6 +205,12 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "height_channel",
             default: 0.0,
         },
+        // **Quanto do campo injectado entra por tique** — `0` ⇒ a porta é inerte e o nó é
+        // byte-idêntico ao que shipava, ligada ou não.
+        ParamSpec {
+            name: "inject_gain",
+            default: 0.0,
+        },
         // **O QUE A PAREDE FAZ** — `0` reflecte (o de sempre, ao bit), `1` absorve.
         //
         // ⚠️ **É o *Reflect Edges* do AE (Wave World), e a nossa metade que faltava era a
@@ -221,6 +242,8 @@ struct Params {
     channel: Channel,
     /// O que a parede faz — ver [`EDGES_ABSORB`].
     edges: i32,
+    /// Quanto do campo injectado entra por tique — `0` deixa a porta inerte.
+    inject_gain: f32,
     /// O perfil da camada absorvente. ⚠️ **Não é um param do artista** — ele é
     /// resolvido em [`Sponge::SHIPPED`] e vive aqui para a sonda o poder VARRER
     /// sem uma segunda porta para dentro do `step`.
@@ -409,7 +432,13 @@ fn step(h: &[f32], h_prev: &[f32], drive: Option<f32>, p: &Params) -> (Vec<f32>,
 /// The whole node as a pure function: seed a flat field on the first tick / a grid
 /// change, else step. Emits `P` (fixed grid) + `size` (from |height|) + the
 /// `wave_h`/`wave_prev`/`sim_t` state.
-fn simulate(drive: Option<f32>, state: &Stream, playhead: f32, p: &Params) -> Stream {
+fn simulate(
+    drive: Option<f32>,
+    state: &Stream,
+    inject: &[f32],
+    playhead: f32,
+    p: &Params,
+) -> Stream {
     let n = p.count();
     let s_h = scalar_col(state, "wave_h");
     let s_prev = scalar_col(state, "wave_prev");
@@ -423,7 +452,22 @@ fn simulate(drive: Option<f32>, state: &Stream, playhead: f32, p: &Params) -> St
         if dt < 1e-6 {
             (s_h, s_prev) // loop-wrap / same tick → hold
         } else {
-            step(&s_h, &s_prev, drive, p)
+            let (mut next, prev) = step(&s_h, &s_prev, drive, p);
+            // ⚠️ **Os PRODUTORES entram DEPOIS do passo e SÓ no `h`**, não no par do
+            // leapfrog: uma fonte é energia que chega agora, e escrevê-la também no
+            // `prev` seria dizer que ela já lá estava no tique passado — o campo leria
+            // uma velocidade de zero onde há de facto uma frente a nascer.
+            //
+            // ⚠️ **E é uma SOMA, não uma cravação.** O pino de Dirichlet do centro
+            // (`drive`) crava, e é por isso que ele apaga o que outro produtor pôs — o
+            // defeito que a folha mediu. Um produtor que se soma compõe com os outros,
+            // que é o que *"N produtores"* quer dizer.
+            if p.inject_gain != 0.0 {
+                for (h, v) in next.iter_mut().zip(inject) {
+                    *h += v * p.inject_gain;
+                }
+            }
+            (next, prev)
         }
     } else {
         (vec![0.0; n], vec![0.0; n]) // seed a flat field
@@ -482,11 +526,18 @@ impl NodeOp for MotionWave {
             channel: Channel::from_param(ctx.param("height_channel")),
             edges: ctx.param("edges").round() as i32,
             sponge: Sponge::SHIPPED,
+            inject_gain: ctx.param("inject_gain"),
         };
         let playhead = ctx.playhead() as f32;
         let drive = drive_value(&scalar_col(ctx.input(0), VALUE_COL));
         let state = ctx.input(1);
-        let out = simulate(drive, state, playhead, &p);
+        // ⚠️ **A coluna é `falloff`, e é a que a família `field.*` inteira escreve** — é isso
+        // que faz `field.box → wave.inject` ser UMA aresta. Ausente ⇒ vazio ⇒ a soma não corre.
+        let inject = match ctx.input(2).get("falloff") {
+            Some(Column::Scalar(v)) if v.len() == p.count() => v.clone(),
+            _ => Vec::new(),
+        };
+        let out = simulate(drive, state, &inject, playhead, &p);
         ctx.emit(out);
     }
 }
@@ -505,6 +556,16 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // ⚠️ **A porta `inject` fez deste nó um CONSUMIDOR de `falloff`, e o censo apanhou-o.**
+    // O gate `every_cpu_only_falloff_reader_declares_it` é derivado, não uma lista: um nó
+    // CPU-only que leia a coluna sem a declarar nasce vermelho ali. Sem esta linha o
+    // diagnoser não veria a ligação, e um artista que ligasse um `field.*` ao `inject` e não
+    // visse nada não teria quem lhe dissesse porquê — que é exactamente a classe de erro
+    // MUDO que o ADR-0155 existe para apanhar.
+    reg.register_couplings(
+        MANIFEST.id,
+        &[ph2d_node_registry::Coupling::Consumes("falloff")],
+    );
     Ok(())
 }
 
@@ -553,6 +614,16 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
     // ⚠️ **O rótulo diz o que a PAREDE faz, não como ela está implementada.** «Sponge» é o
     // nome da técnica; o artista quer saber se a onda volta ou se some — e é isso que ele lê.
+    // ⚠️ **A faixa é a que a MÃO percorre**, e o `0` do default deixa a porta inerte — um
+    // artista que ligue o fio e não veja nada tem o knob mesmo ali para o dizer.
+    ParamUiHint {
+        param: "inject_gain",
+        label: "Source Strength",
+        min: 0.0,
+        max: 2.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: "edges",
         label: "Edges",
@@ -621,3 +692,7 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "producers_tests.rs"]
+mod producers_tests;

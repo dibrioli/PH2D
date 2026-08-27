@@ -100,6 +100,9 @@ mod gpu_neighbour_demos;
 /// why the seam is the QUESTION each scene answers, not the line count.
 #[path = "motion_state_gpu_panel_demo.rs"]
 mod gpu_panel_demo;
+/// A cena `=105` — DOIS BERÇOS de onda (folha 06, célula 35: os produtores da wave).
+#[path = "motion_state_gpu_producers_demo.rs"]
+mod gpu_producers_demo;
 /// A cena do PORTÃO ESPACIAL (doc 89, folha 12), arquivo próprio pela mesma razão: ela
 /// responde *"um CAMPO consegue decidir quem escuta um EVENTO?"*, que nenhuma das outras faz.
 #[path = "motion_state_gpu_pulse_demo.rs"]
@@ -114,6 +117,9 @@ mod gpu_radius_demo;
 /// uma cadeia de chãos, que só sabe construir uma escada, não alcança) e a parede PARA.
 #[path = "motion_state_gpu_ramp_demo.rs"]
 mod gpu_ramp_demo;
+/// A cena `=104` — o EIXO e a MÁSCARA (folha 06, célula 41: o espaço e o modo do drive).
+#[path = "motion_state_gpu_space_demo.rs"]
+mod gpu_space_demo;
 /// A cena das CINCO FONTES (doc 89, folha 12), arquivo próprio pela mesma razão: ela responde
 /// *"um EVENTO consegue decidir o que passa a EXISTIR?"*, que é a outra metade da pergunta —
 /// a `=23` gateia quem escuta, esta gateia quem nasce.

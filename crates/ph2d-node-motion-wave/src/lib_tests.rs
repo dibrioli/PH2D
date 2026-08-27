@@ -7,7 +7,7 @@
 
 use super::*;
 
-fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
+pub(super) fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
     Params {
         rows,
         cols,
@@ -18,6 +18,7 @@ fn params(rows: usize, cols: usize, speed: f32, damping: f32) -> Params {
         channel: Channel::Size,
         edges: 0,
         sponge: Sponge::SHIPPED,
+        inject_gain: 0.0,
     }
 }
 
@@ -27,7 +28,7 @@ fn run(drive: impl Fn(f32) -> f32, p: &Params, ticks: usize, dt: f32) -> Vec<Vec
     let mut frames = Vec::new();
     for k in 0..ticks {
         let t = k as f32 * dt;
-        let out = simulate(Some(drive(t)), &state, t, p);
+        let out = simulate(Some(drive(t)), &state, &[], t, p);
         state = out.clone();
         frames.push(scalar_col(&out, "wave_h"));
     }
@@ -40,7 +41,7 @@ fn run_opt(drive: impl Fn(f32) -> Option<f32>, p: &Params, ticks: usize, dt: f32
     let mut frames = Vec::new();
     for k in 0..ticks {
         let t = k as f32 * dt;
-        let out = simulate(drive(t), &state, t, p);
+        let out = simulate(drive(t), &state, &[], t, p);
         state = out.clone();
         frames.push(scalar_col(&out, "wave_h"));
     }
@@ -73,8 +74,8 @@ fn an_absent_drive_leaves_no_dirichlet_pin() {
     let state = injected_state(&p, src, 0.75, 0.0);
     let dt = 1.0 / 60.0;
 
-    let free = scalar_col(&simulate(None, &state, dt, &p), "wave_h")[src];
-    let pinned = scalar_col(&simulate(Some(0.0), &state, dt, &p), "wave_h")[src];
+    let free = scalar_col(&simulate(None, &state, &[], dt, &p), "wave_h")[src];
+    let pinned = scalar_col(&simulate(Some(0.0), &state, &[], dt, &p), "wave_h")[src];
     assert_eq!(
         pinned, 0.0,
         "o CONTROLE: com a fonte LIGADA em zero o centro e' cravado"
@@ -93,7 +94,7 @@ fn a_connected_drive_still_pins_the_centre() {
     let p = params(11, 11, 0.35, 0.0);
     let src = p.source();
     let state = injected_state(&p, src, 0.75, 0.0);
-    let h = scalar_col(&simulate(Some(0.7), &state, 1.0 / 60.0, &p), "wave_h");
+    let h = scalar_col(&simulate(Some(0.7), &state, &[], 1.0 / 60.0, &p), "wave_h");
     assert_eq!(h[src], 0.7, "a fonte crava o centro, nao soma nele");
 }
 
@@ -127,7 +128,7 @@ fn an_injected_producer_radiates() {
     let mut last = Vec::new();
     for k in 0..40 {
         let t = k as f32 / 60.0;
-        let out = simulate(None, &state, t, &p);
+        let out = simulate(None, &state, &[], t, &p);
         state = out.clone();
         last = scalar_col(&out, "wave_h");
     }
@@ -143,7 +144,7 @@ fn an_injected_producer_radiates() {
 #[test]
 fn seeds_a_flat_field() {
     let p = params(5, 5, 0.3, 0.0);
-    let out = simulate(Some(0.0), &Stream::new(0), 0.0, &p);
+    let out = simulate(Some(0.0), &Stream::new(0), &[], 0.0, &p);
     assert_eq!(out.count(), 25);
     assert!(scalar_col(&out, "wave_h").iter().all(|&z| z == 0.0), "flat");
     match out.get("size").unwrap() {
@@ -235,7 +236,7 @@ fn replay_is_deterministic() {
 fn without_the_state_loop_it_stays_flat() {
     let p = params(7, 7, 0.35, 0.0);
     for k in 0..20 {
-        let out = simulate(Some(1.0), &Stream::new(0), k as f32 / 60.0, &p);
+        let out = simulate(Some(1.0), &Stream::new(0), &[], k as f32 / 60.0, &p);
         // Only the driven centre is non-zero; everything else is flat (no history).
         let h = scalar_col(&out, "wave_h");
         for (i, &z) in h.iter().enumerate() {
@@ -333,7 +334,7 @@ fn the_height_reaches_the_chosen_channel_and_keeps_its_sign() {
     // CANAL `Size` — o de sempre: a crista e o vale ENGORDAM igual (o `abs()` é correcto aqui).
     let mut ps = params(1, 3, 0.35, 0.0);
     ps.channel = Channel::Size;
-    let out_s = simulate(None, &state, 0.0, &ps);
+    let out_s = simulate(None, &state, &[], 0.0, &ps);
     let sz = size_of(&out_s);
     assert!(
         (sz[0] - sz[2]).abs() < 1e-6,
@@ -345,7 +346,7 @@ fn the_height_reaches_the_chosen_channel_and_keeps_its_sign() {
     // CANAL `Y` — a crista SOBE e o vale DESCE: o sinal sobrevive.
     let mut py = params(1, 3, 0.35, 0.0);
     py.channel = Channel::Y;
-    let out_y = simulate(None, &state, 0.0, &py);
+    let out_y = simulate(None, &state, &[], 0.0, &py);
     let yy = y_of(&out_y);
     assert!(
         yy[0] - yy[2] > 0.5,
@@ -396,7 +397,7 @@ fn pulse_only(p: &Params, ticks: usize) -> Vec<Vec<f32>> {
         // fixtura que dispara ali mede um campo que nunca foi excitado — as duas
         // metades saíram `0e0` e o gate reprovou por não conter o fenómeno, que é
         // exactamente o que a metade de controle existe para apanhar.
-        let out = simulate((k == 1).then_some(1.0), &state, k as f32 / 60.0, p);
+        let out = simulate((k == 1).then_some(1.0), &state, &[], k as f32 / 60.0, p);
         state = out.clone();
         frames.push(scalar_col(&out, "wave_h"));
     }

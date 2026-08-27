@@ -19,7 +19,7 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 103;
+const MAX_DEMO_LEVEL: u32 = 105;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -406,6 +406,58 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("105") => {
+            let sinks = gpu_producers_demo::build_gpu_producers_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[producers-demo] DOIS TANQUES de agua, {}x{}, com a MESMA batida no centro.
+  ⚠️ PRECISA DE PLAY.
+
+  ESQUERDA  as ondas nascem so' no centro -- o de sempre
+  DIREITA   o mesmo tanque, mais DUAS fontes fora do centro (a {} de cada lado):
+            tres bercos de onda a cruzarem-se
+
+  QUER MEXER? Clique no tanque da direita e procure «Source Strength» ({}). A zero, as
+  duas fontes desaparecem e ele fica igual ao da esquerda. Clique numa das caixas
+  («Box») e arraste «Center X» para mudar de sitio um dos bercos.
+
+  DEU ERRADO se: os dois tanques ficarem iguais; se o da direita mostrar so' UM berco;
+  ou se o da direita ficar so' com as fontes e sem a batida do centro.",
+                gpu_producers_demo::SIDE as u32,
+                gpu_producers_demo::SIDE as u32,
+                gpu_producers_demo::SOURCE_X,
+                gpu_producers_demo::STRENGTH,
+            );
+            sinks
+        }
+        Some("104") => {
+            let sinks =
+                gpu_space_demo::build_gpu_space_demo_document(doc, registry).unwrap_or_default();
+            eprintln!(
+                "[space-demo] DUAS COISAS. A cena e' PARADA -- nao precisa de Play.
+
+  EM CIMA -- dois leques de {} pecinhas, cada uma virada para um lado diferente.
+    As duas metades levam o MESMO empurrao ({}).
+    ESQUERDA  World    todas vao para o mesmo lado (a direita) -- o de sempre
+    DIREITA   Element  cada uma vai para a FRENTE DELA, entao o leque se abre
+
+  EM BAIXO -- duas fileiras com a MESMA mascara no meio (uma faixa de {} de largura),
+  e o tamanho conduzido por ela:
+    ESQUERDA  Set    fora da mascara as pecinhas ficam do tamanho que ja' tinham
+    DIREITA   Remap  fora da mascara elas somem -- a mascara E' o tamanho
+
+  QUER MEXER? Clique num no' «Drive» e procure «Space» (World/Element) em cima, e
+  «Mode» (a lista com «Set» e «Remap») em baixo.
+
+  DEU ERRADO se: os dois leques de cima ficarem iguais; se o da direita nao se abrir;
+  se as duas fileiras de baixo ficarem iguais; ou se a da direita sumir INTEIRA (ela
+  tem de sobreviver no meio, onde a mascara vale 1).",
+                gpu_space_demo::FAN as u32,
+                gpu_space_demo::PUSH,
+                gpu_space_demo::MASK_W,
+            );
+            sinks
+        }
         Some("103") => {
             let sinks = gpu_lifecycle_demo::build_gpu_lifecycle_demo_document(doc, registry)
                 .unwrap_or_default();

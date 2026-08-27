@@ -6924,6 +6924,11 @@ impl crate::App {
                 );
             }
             if let Some(kind) = pending_vec_fill_kind {
+                crate::texture_pattern_edit::log_shape(
+                    &format!("ANTES de mudar para {kind:?}"),
+                    vec_scene,
+                    &self.vec_pen,
+                );
                 // ⭐ **A 4ª condição da costura: o chip tem de LEVAR A ALGUM LUGAR.** Escolher
                 // *Tile* numa forma sem padrão abre o diálogo da arte — um chip que muda o tipo de
                 // preenchimento para algo invisível é o defeito que esta linha já recebeu três
@@ -6948,6 +6953,7 @@ impl crate::App {
                     kind,
                     pattern,
                 );
+                crate::texture_pattern_edit::log_shape("DEPOIS", vec_scene, &self.vec_pen);
                 // The old handle no longer addresses the new fill kind — reset the
                 // gradient selection so the overlay highlight + panel don't cling to it.
                 self.vec_grad_selected = None;

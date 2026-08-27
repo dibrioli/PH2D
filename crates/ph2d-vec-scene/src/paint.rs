@@ -259,4 +259,41 @@ impl PatternFill {
     pub fn placement(&self, cells: [u32; 2], tile_px: [u32; 2]) -> [f64; 6] {
         ph2d_vec_pattern::placement(self.period(), cells, self.origin, self.angle, tile_px)
     }
+
+    /// A colocação EFECTIVA dentro da caixa `bbox` da forma.
+    ///
+    /// ⭐⭐ **No [`PatternMode::Clamp`] ela ENQUADRA a cópia na forma; em qualquer outro modo é a
+    /// autorada, ao bit.** O `Clamp` desenha uma cópia só e estica a borda dela pelo resto — com a
+    /// cópia do tamanho de um ladrilho, no canto, o artista vê quase só borda esticada (report do
+    /// Enio, 2026-08-27: *"clamp deixa tudo em branco"*). Enquadrar é o que o modo promete
+    /// (*"mostra a imagem uma vez"*) e é o *Fill* do Figma.
+    ///
+    /// ⚠️⚠️ **DERIVADA, nunca escrita.** A 1.ª cura gravava `size`/`origin` ao entrar no modo, e o
+    /// report seguinte apanhou-a: *"quando volta para tile o aspecto fica de clamp até mudar o
+    /// parâmetro Size"*. Escrever destruía a lei que o artista tinha afinado, e voltar não a
+    /// devolvia. *Um modo de APRESENTAÇÃO não consome o documento.*
+    ///
+    /// ⚠️ **Enquadra COBRINDO, não cabendo** (o `max` das duas razões): a forma fica toda pintada e
+    /// o aspecto da arte é preservado — a arte transborda em vez de deixar faixa vazia, que num
+    /// modo assim se leria como erro de enquadramento.
+    #[must_use]
+    pub fn placement_in(
+        &self,
+        cells: [u32; 2],
+        tile_px: [u32; 2],
+        bbox: ([f64; 2], [f64; 2]),
+    ) -> [f64; 6] {
+        if !matches!(self.mode, ph2d_vec_pattern::PatternMode::Clamp) {
+            return self.placement(cells, tile_px);
+        }
+        let (lo, hi) = bbox;
+        let box_wh = [hi[0] - lo[0], hi[1] - lo[1]];
+        let ok = |v: f64| v.is_finite() && v > 0.0;
+        if !ok(self.size[0]) || !ok(self.size[1]) || !ok(box_wh[0]) || !ok(box_wh[1]) {
+            return self.placement(cells, tile_px);
+        }
+        let s = (box_wh[0] / self.size[0]).max(box_wh[1] / self.size[1]);
+        let framed = [self.size[0] * s, self.size[1] * s];
+        ph2d_vec_pattern::placement(framed, cells, lo, self.angle, tile_px)
+    }
 }

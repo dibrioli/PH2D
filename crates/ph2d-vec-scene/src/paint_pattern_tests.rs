@@ -209,3 +209,39 @@ fn a_pattern_round_trips_through_postcard() {
     };
     assert_eq!(**p, f);
 }
+
+/// ⛔⛔ **O `Clamp` ENQUADRA a cópia na forma, e a lei é DERIVADA** — report do Enio (2026-08-27):
+/// *"clamp deixa tudo em branco"*, e depois *"quando volta para tile o aspecto fica de clamp"*.
+///
+/// Os dois reports são a mesma lei vista de dois lados: enquadrar é necessário (senão o `Pad` mostra
+/// só a borda esticada) e **escrever** o enquadramento é errado (senão voltar não devolve nada).
+#[test]
+fn clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law() {
+    let mut f = fill(); // size [10, 20] (aspecto 1:2), origem [0,0]
+    let bbox = ([100.0, 50.0], [140.0, 90.0]); // 40x40, LONGE da origem
+    let autorada = f.placement([1, 1], [8, 16]);
+
+    // Tile: a colocação é a autorada, AO BIT.
+    f.mode = PatternMode::Tile;
+    assert_eq!(f.placement_in([1, 1], [8, 16], bbox), autorada);
+    f.mode = PatternMode::Mirror;
+    assert_eq!(f.placement_in([1, 1], [8, 16], bbox), autorada);
+
+    // Clamp: enquadra — a origem vira o canto da forma e a cópia COBRE a caixa.
+    f.mode = PatternMode::Clamp;
+    let m = f.placement_in([1, 1], [8, 16], bbox);
+    assert_eq!(
+        [m[4], m[5]],
+        [100.0, 50.0],
+        "a copia nao foi ao canto da forma"
+    );
+    // O canto oposto do ladrilho: `size` reescalado para cobrir 40x40 com aspecto 1:2 ⇒ [40, 80].
+    let far = [m[0] * 8.0 + m[4], m[3] * 16.0 + m[5]];
+    assert!(
+        (far[0] - 140.0).abs() < 1e-9 && far[1] >= 90.0 - 1e-9,
+        "a copia nao COBRE a caixa: canto oposto {far:?}"
+    );
+    // ⚠️ E o DOCUMENTO não se mexeu: `placement_in` é uma leitura.
+    assert_eq!(f.size, [10.0, 20.0]);
+    assert_eq!(f.origin, [0.0, 0.0]);
+}

@@ -240,3 +240,41 @@ fn the_offset_row_only_shows_for_brick_and_column() {
     assert!(!shows(3), "a COLMEIA tem-no FIXO em meio passo");
     state::set_current_texture_pattern(None);
 }
+
+/// ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
+///
+/// No `Clamp` há **uma** cópia, enquadrada na forma: o reticulado, o desfasamento, o tamanho e o vão
+/// não têm quem os leia. ⚠️ E a metade da PRESENÇA importa tanto quanto a da ausência: eles têm de
+/// **voltar** ao sair do modo, porque esconder não é apagar — a lei fica no documento.
+#[test]
+fn the_clamp_mode_hides_every_knob_it_does_not_read() {
+    let visible = |mode: u8, id| {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(1); // Brick: com desfasamento, para o Offset ter direito a aparecer
+        r.mode = mode;
+        state::set_current_texture_pattern(Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .is_some()
+    };
+    let mortos = [
+        (ids::VECTOR_TEXPAT_TILE_GRID, "o reticulado"),
+        (ids::VECTOR_TEXPAT_OFFSET, "o desfasamento"),
+        (ids::VECTOR_TEXPAT_SIZE, "o tamanho"),
+        (ids::VECTOR_TEXPAT_GAP, "o vao"),
+    ];
+    for (id, what) in mortos {
+        assert!(!visible(2, id), "o Clamp mostra {what}, que ele nao le^");
+        assert!(visible(0, id), "{what} nao VOLTOU fora do Clamp");
+    }
+    // E o que o Clamp LE^ continua lá — senão o modo ficaria sem controlo nenhum.
+    for (id, what) in [
+        (ids::VECTOR_TEXPAT_SOURCE, "a arte"),
+        (ids::VECTOR_TEXPAT_ANGLE, "o angulo"),
+        (ids::VECTOR_TEXPAT_MODE_TILE, "os modos"),
+    ] {
+        assert!(visible(2, id), "o Clamp escondeu {what}, que ele USA");
+    }
+    state::set_current_texture_pattern(None);
+}

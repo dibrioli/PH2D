@@ -41,17 +41,29 @@ impl BodyCtx<'_> {
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
         y = self.action_button(ids::VECTOR_TEXPAT_SOURCE, "Source...", y);
 
-        // O RETICULADO.
-        let tiles: Vec<(ph2d_a11y::NodeId, &str, bool)> = TILES
-            .iter()
-            .map(|(i, l)| (tile_id(*i), *l, usize::from(p.kind) == *i))
-            .collect();
-        y = self.segmented("Tile", &tiles, y);
+        // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
+        //
+        // No `Clamp` há **uma** cópia, enquadrada na forma: o reticulado, o desfasamento, o tamanho
+        // e o vão não têm quem os leia. Mostrá-los seria oferecer quatro knobs mortos — o defeito
+        // que o [doc 90](../../../docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md) catalogou
+        // dezanove vezes, e que já custou a esta secção o Offset na colmeia.
+        //
+        // ⚠️ **Esconder NÃO é apagar**: a lei fica no documento e volta inteira ao sair do `Clamp`
+        // — é o par da decisão de o enquadramento ser DERIVADO e nunca escrito.
+        let repete = p.mode != 2;
+        if repete {
+            // O RETICULADO.
+            let tiles: Vec<(ph2d_a11y::NodeId, &str, bool)> = TILES
+                .iter()
+                .map(|(i, l)| (tile_id(*i), *l, usize::from(p.kind) == *i))
+                .collect();
+            y = self.segmented("Tile", &tiles, y);
+        }
 
         // O DESFASAMENTO — só com Brick/Column. ⚠️ Na grade ele não tem sentido, e na COLMEIA ele é
         // **fixo** em meio passo (é isso que a torna colmeia): oferecê-lo ali seria um knob que o
-        // modelo ignora, que é o defeito que o doc 90 catalogou 19 vezes.
-        if matches!(p.kind, 1 | 2) {
+        // modelo ignora.
+        if repete && matches!(p.kind, 1 | 2) {
             let denom = self
                 .store
                 .number_value(ids::VECTOR_TEXPAT_OFFSET_NUM)
@@ -71,45 +83,50 @@ impl BodyCtx<'_> {
             );
         }
 
-        // O TAMANHO de uma cópia (o lado maior; o aspecto da arte é preservado).
-        let size = self
-            .store
-            .number_value(ids::VECTOR_TEXPAT_SIZE_NUM)
-            .unwrap_or(p.size);
-        let size_track = self
-            .store
-            .slider(ids::VECTOR_TEXPAT_SIZE)
-            .map_or_else(|| size_track(p.size), |(_, v)| v);
-        y = self.slider_row(
-            "Size",
-            ids::VECTOR_TEXPAT_SIZE,
-            ids::VECTOR_TEXPAT_SIZE_NUM,
-            size_track,
-            size,
-            &format!("{size:.2}"),
-            y,
-        );
+        // O TAMANHO e o VÃO — os dois só existem enquanto o padrão REPETE.
+        if repete {
+            // O TAMANHO de uma cópia (o lado maior; o aspecto da arte é preservado).
+            let size = self
+                .store
+                .number_value(ids::VECTOR_TEXPAT_SIZE_NUM)
+                .unwrap_or(p.size);
+            let size_track = self
+                .store
+                .slider(ids::VECTOR_TEXPAT_SIZE)
+                .map_or_else(|| size_track(p.size), |(_, v)| v);
+            y = self.slider_row(
+                "Size",
+                ids::VECTOR_TEXPAT_SIZE,
+                ids::VECTOR_TEXPAT_SIZE_NUM,
+                size_track,
+                size,
+                &format!("{size:.2}"),
+                y,
+            );
 
-        // O VÃO — bipolar; negativo é a sobreposição.
-        let gap = self
-            .store
-            .number_value(ids::VECTOR_TEXPAT_GAP_NUM)
-            .unwrap_or(p.gap);
-        let gap_track = self
-            .store
-            .slider(ids::VECTOR_TEXPAT_GAP)
-            .map_or_else(|| gap_track(p.gap), |(_, v)| v);
-        y = self.slider_row(
-            "Gap",
-            ids::VECTOR_TEXPAT_GAP,
-            ids::VECTOR_TEXPAT_GAP_NUM,
-            gap_track,
-            gap,
-            &format!("{gap:.2}"),
-            y,
-        );
+            // O VÃO — bipolar; negativo é a sobreposição.
+            let gap = self
+                .store
+                .number_value(ids::VECTOR_TEXPAT_GAP_NUM)
+                .unwrap_or(p.gap);
+            let gap_track = self
+                .store
+                .slider(ids::VECTOR_TEXPAT_GAP)
+                .map_or_else(|| gap_track(p.gap), |(_, v)| v);
+            y = self.slider_row(
+                "Gap",
+                ids::VECTOR_TEXPAT_GAP,
+                ids::VECTOR_TEXPAT_GAP_NUM,
+                gap_track,
+                gap,
+                &format!("{gap:.2}"),
+                y,
+            );
+        }
 
-        // O ÂNGULO do PADRÃO (não o da forma).
+        // O ÂNGULO do PADRÃO (não o da forma). ⚠️ Ele vale em TODOS os modos: no `Clamp` roda a
+        // cópia enquadrada.
+
         let angle = self
             .store
             .number_value(ids::VECTOR_TEXPAT_ANGLE_NUM)

@@ -478,7 +478,13 @@ pub(crate) fn draw_path_with(
                 fill_rule(path),
                 transform,
                 &t.image,
-                pat.placement(t.cells, t.tile_px),
+                // ⚠️ A caixa vem do desenho de PREENCHIMENTO (espaço das âncoras, como a
+                // colocação): é ela que o `Clamp` enquadra. `bounding_box` de um `BezPath` vazio
+                // devolve uma caixa degenerada, e o `placement_in` recusa-a e cai na autorada.
+                pat.placement_in(t.cells, t.tile_px, {
+                    let b = fp.bounding_box();
+                    ([b.x0, b.y0], [b.x1, b.y1])
+                }),
                 pat.mode,
                 t.quality,
                 pat.alpha,

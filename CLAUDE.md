@@ -626,13 +626,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   arredondamentos exactos **encadeados** compõem o factor, e a cena 1 do smoke marchava acima do seguro
   desde que existe. Mecanismo, tabelas e provas de mutação: [doc 06 §69–§81](docs/3DModeling/06_resultados_cena_e_gizmo.md)
   + [handoff de 26/08](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md).
-  **Aberto:** ⛔ **A BASE FICA e nunca foi alcançada:** numa peça de perfil o movimento custa `~53 ms`
-  contra um orçamento de `16,7` — em nível nenhum, e a lei da pré-visualização foi calibrada com
-  **cilindros**, que não têm contorno cozido · ⏸️ **reaproveitar as fitas já montadas** na 2.ª passagem
-  do traçado (tecto: parte dos 26 % do quadro assente) · ⏸️ um laço que **SUBTRAI** (aqui `Shift` e
-  `Ctrl` são a mesma tecla) · ⏸️ vários `VecPath` **separados** numa peça só · ⏸️ religar uma
-  escultura que mudou de sítio (pede UI) · ⏸️ o `Mirror` não se consegue demonstrar (adiado pelo Enio) ·
-  ⏸️ a composição de dois `Exact` encadeados e o gradiente de uma **escultura** seguem por medir ·
+  **Aberto:** ⛔ **A BASE FICA:** o quadro de movimento custa `26,7 ms` contra um orçamento de `16,7`
+  (era `69` antes de 26/08) — a marcha é `80 %` dele, com `8,7` amostras por pixel, e o custo é **por
+  aresta tocada**; ⛔ a **sobre-relaxação** está fora (a contagem de passos já é mínima) e atacar a
+  **montagem** tem tecto **medido de `20 %`** · ⏸️ baixar as arestas do contorno a mexer
+  (`PREVIEW_MAX_EDGES`) tem o preço medido e **muda a FORMA** — decisão de quem vê · ⏸️ o 2.º degrau
+  do assentar custa `504 ms` numa peça densa (a escada tirou-o do caminho; o número fica) · ⏸️ um laço
+  que **SUBTRAI** — mecanismo medido (os **três** modificadores são um vocabulário só) e as 4 saídas
+  com preço, **decisão do Enio** · ⏸️ a barra **demonstrável** da interpolação trilinear é `√3` e
+  ship-se o `√2` medido (dívida nomeada) ·
   ⚠️ **o panic do `ph2d-gridmap` está SEM ENDEREÇO desde 26/08** — o `solve.rs` foi reescrito
   (200 linhas) e hoje não tem `panic!`/`unwrap`/`expect`/`assert` nenhum, então `solve.rs:336` aponta
   para código que já não existe; o fecho da `line/quadextract` **não o menciona**. Duas sondas de alvo
@@ -647,16 +649,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   o vínculo à escultura **viva** custa `229–389 ms` a 128³ · a grade **fina** para a cadeia de quads é
   **107×** o preço para a mesma resposta, e piora a fidelidade · e a especialização por ladrilho está
   **ilibada** (sem ela o traçado vai de `58` para `565 ms`).
-  ⚠️ **Quatro itens desta lista estavam FECHADOS ou desactualizados** quando a linha os auditou em 25/08
-  (o traçado «2,4×» · o teto de `Resolution` · o paralelogramo · o sítio da peça). *O §5 só se edita na
-  integração, então ele acumula trabalho já pago — audite a lista antes de pegar um item dela.*
+  ⚠️ **SEIS notas deste módulo estavam desactualizadas contra o código** (auditadas em 25 e 26/08): o
+  traçado «2,4×» · o teto de `Resolution` · o paralelogramo (feito na W59) · o sítio da peça · o
+  `Mirror` «não demonstrável» (**demonstra-se**, e já tem três eixos) · o gradiente da escultura («não
+  medido» com um gate a medi-lo). ⛔ E **dois gates prometiam «erro de compilação» sobre listas
+  escritas à mão** — os dois estão derivados agora. *O §5 só se edita na integração, então ele acumula
+  trabalho já pago — audite a lista antes de pegar um item dela, e confira o CÓDIGO antes de acreditar
+  numa ausência.*
   **Smokes:** pill **MODEL** · `PH2D_FIELD_SMOKE=<n>` (o roteador é
   [`field3d_smoke_scenes.rs`](shells/desktop/src/field3d_smoke_scenes.rs)).
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova
   smokes sobre produto correto **em todo o resto do app**, e a viagem entre vistas é a excepção.
   **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·
-  [`06_resultados_cena_e_gizmo.md`](docs/3DModeling/06_resultados_cena_e_gizmo.md) §1–§56 (uma seção
-  por wave, com a tabela medida e as provas de mutação; o **§13** é a lista viva do que está aberto) ·
+  [`06_resultados_cena_e_gizmo.md`](docs/3DModeling/06_resultados_cena_e_gizmo.md) §1–§81 (uma seção
+  por wave, com a tabela medida e as provas de mutação; o **§13.0** é a lista viva do que está aberto,
+  **auditada contra o código** em 26/08) ·
   [handoffs](docs/3DModeling/handoffs/README.md)
 - **Flip** — animação 2D no idioma do Grease Pencil: tira de quadros, onion, tween v2 (correspondência por atribuição
   ótima + espiral logarítmica), **colorize LazyBrush**, multiplano 2.5D, airbrush, pressão, e o

@@ -15,3 +15,15 @@ Jornada 2026-07-06/07: integrei 3 linhas (imageio, audio, Painter) ao main **dep
 **Procedimento que funcionou:** integrar do mais seguro (drop-crate ortogonal) ao mais foundational; rebase de cada linha foi **limpo** (Mergiraf + pastas disjuntas — zero conflito mesmo pós-cutover de 30 crates). Painter tinha 18 arquivos UNCOMMITTED → commitar na worktree ANTES do rebase. No fim: `ship.sh` 1× sobre o main combinado + os 3 gates CI-only das [[feedback_ship_parity_gaps_ci_only]] (advisory-db `pull --ff-only`, `cargo deny --all-features`, `ph2d-bindgen --check`). ship 7/7 + CI matrix verde (run 28834404504).
 
 **Regra:** ao integrar uma linha que forkou antes de um cutover grande, **assuma drift de fmt/typos latente** e rode o `ship.sh` completo no fechamento — o gate da árvore combinada da integração é necessário mas NÃO suficiente. Ver também [[feedback_cargo_fmt_p_reformats_foreign_wip]] (aqui foi seguro: worktree isolada, sem WIP alheio).
+
+## ⛔ 2026-08-26 — e há um TERCEIRO que nenhum gate de linha vê: **uma crate NOVA sem licença**
+
+A `line/3DModeling` criou a crate `ph2d-quadchain` e ela nasceu **sem `license.workspace = true`**
+(as sete irmãs declaram-no). ⚠️ **Nenhum gate da linha o vê**: não é fmt, não é clippy, não é teste —
+é `cargo deny`, que **só corre no `ship.sh`**. O ship parou com
+`error[unlicensed]: ph2d-quadchain = 0.0.0 is unlicensed`, e o conserto foi uma linha.
+
+**Regra:** ao **criar uma crate** numa linha, copie o cabeçalho `[package]` de uma irmã inteiro
+(`version/edition/rust-version/publish/license/authors`, todos `.workspace = true`) — e conte, no
+handoff, que a linha criou uma crate. *Um campo que só o ship lê é um campo que a linha não pode
+testar; o que ela pode é não o esquecer.*

@@ -8710,6 +8710,44 @@ impl crate::App {
                                     crate::morph_set::graph_of(sim, &self.vec_entities, host)
                                         .shapes(),
                                 );
+                                // ⚠️ **O INVENTÁRIO da cena**, porque a linha acima disse que a
+                                // tabela está sob um id que não é o do conjunto — e a pergunta
+                                // seguinte é *o que é aquele id*. Sem isto, a resposta era mais
+                                // uma corrida do Enio.
+                                for p in vec_scene.paths() {
+                                    let e = crate::morph_set::path_of(&self.vec_entities, host)
+                                        .filter(|h| *h == p.id);
+                                    let ent = self
+                                        .vec_entities
+                                        .get(&p.id)
+                                        .map(|&b| ph2d_ecs::Entity::from_bits(b));
+                                    let (morph, machine, name, pai) = ent.map_or(
+                                        (false, false, String::new(), None),
+                                        |en| {
+                                            let w = sim.world();
+                                            (
+                                                w.get::<ph2d_ecs::VecMorph>(en).is_some(),
+                                                w.get::<ph2d_ecs::VecMorphMachine>(en).is_some(),
+                                                w.get::<ph2d_ecs::Name>(en)
+                                                    .map(|n| n.0.clone())
+                                                    .unwrap_or_default(),
+                                                w.get::<ph2d_ecs::ChildOf>(en).and_then(|c| {
+                                                    crate::morph_set::path_of(
+                                                        &self.vec_entities,
+                                                        c.parent(),
+                                                    )
+                                                }),
+                                            )
+                                        },
+                                    );
+                                    eprintln!(
+                                        "[morph]   path {} nome={name:?} morph={morph} \
+                                         maquina={machine} pai={pai:?} verts={} e-o-conjunto={}",
+                                        p.id,
+                                        p.verts.len(),
+                                        e.is_some(),
+                                    );
+                                }
                             }
                             crate::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
                         }

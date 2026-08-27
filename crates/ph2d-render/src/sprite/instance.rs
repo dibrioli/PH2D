@@ -27,6 +27,17 @@ pub struct RenderInstance {
     /// pre-multiplied `GlobalTransform` scale; that decomposition was
     /// lossy under skew — see `basis`.)
     pub size: [f32; 2],
+    /// **O sub-rect da textura, como DOIS CANTOS: `[u0, v0, u1, v1]`** — nunca
+    /// `[x, y, largura, altura]`.
+    ///
+    /// ⚠️ **A distinção está aqui porque ela já custou uma feature inteira.** A máscara de
+    /// sujidade do halo (doc 89 folha 11) leu-o como canto+tamanho, e o defeito foi **invisível**
+    /// a treze gates: as fontes `Individual` e `CookedTexture` devolvem `[0, 0, 1, 1]`, que é
+    /// idêntico nas duas convenções, e só uma célula de átlas as separa — que era justamente o
+    /// que as fixturas fabricavam à mão. A fonte da convenção é
+    /// [`crate::AtlasRegion::uv`]; o consumidor canónico é o `sprite.wgsl`, que faz
+    /// `mix(atlas_uv.x, atlas_uv.z, local.x)`. *Quem inventar um rect para um teste deriva-o de
+    /// `AtlasRegion::uv`, não o escreve.*
     pub atlas_uv: [f32; 4],
     pub tint: [f32; 4],
     /// The 2×2 world-space linear basis from `GlobalTransform`, column-

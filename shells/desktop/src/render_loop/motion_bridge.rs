@@ -422,6 +422,21 @@ pub(super) fn dispatch(
         fixed_dt,
     ));
     motion.pump.set_time_fans(fans);
+    // ⚠️ **O PLANO DE PREGUIÇA** (doc 89, folha 15) — quais roteadores podem saltar entradas
+    // neste quadro. Ele vive ao lado dos leques pela mesma razão que eles vivem ao lado dos
+    // escopos: os três são o que o cook precisa de saber e o documento não diz, e os três são
+    // reconstruídos por quadro (um ramo que ganhou estado, ou um modo que o artista desligou,
+    // tem de sair do plano no quadro em que isso acontece).
+    //
+    // ⚠️ **Reescreve, nunca acumula** — ver `Cook::set_lazy_branches`. Vazio (o caso comum, o
+    // modo nasce desligado) é o caminho de sempre, ao bit.
+    motion
+        .pump
+        .cook
+        .set_lazy_branches(ph2d_node_value_switch::lazy::plan(
+            &motion.doc.graph,
+            &motion.registry,
+        ));
     let target = motion_tick(playhead, fixed_dt);
 
     // ── GPU-resident cook (GPU/M5 Fase 1 + F1.2, ADR-0126) — opt-in preview ──

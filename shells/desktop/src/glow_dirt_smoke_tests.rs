@@ -126,6 +126,11 @@ fn the_scene_only_authors_params_the_manifests_declare() {
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registry");
     let mut g = Graph::new();
     build(&mut g).expect("monta");
+    // ⚠️ **E o `validate` do próprio grafo** — descoberto depois, ao montar a cena `=107`: ele
+    // devolve `UnknownParam` para exactamente esta classe, e cobre também os TIPOS das arestas.
+    // A varredura abaixo fica porque diz QUAL param e QUAIS estão declarados, que é o que se
+    // quer ler quando ela reprova; o `validate` é a rede mais larga.
+    g.validate(&reg).expect("a cena e' bem-tipada");
     let mut checked = 0;
     for node in g.nodes() {
         let manifest = reg

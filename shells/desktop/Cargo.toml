@@ -472,6 +472,10 @@ rfd = "0.15"
 # literal), e o arch-gate do operador por-linha pina o vocabulário deles contra o do sink —
 # um nó é uma folha e não importa do irmão, então a shell é o único sítio que vê os três.
 ph2d-node-motion-clone = { path = "../../crates/ph2d-node-motion-clone" }
+# O construtor do PLANO DE PREGUIÇA do `value.switch` (doc 89, folha 15) — o mesmo desenho
+# que traz o `time_fans` do `motion.clone` para aqui: a lei mora no crate do nó, e a shell é
+# quem a corre por quadro.
+ph2d-node-value-switch = { path = "../../crates/ph2d-node-value-switch" }
 ph2d-node-motion-emitter = { path = "../../crates/ph2d-node-motion-emitter" }
 ph2d-motion-region = { path = "../../crates/ph2d-motion-region" }
 ph2d-node-force-attractor = { path = "../../crates/ph2d-node-force-attractor" }

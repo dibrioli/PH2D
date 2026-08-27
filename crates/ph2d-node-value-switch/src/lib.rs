@@ -81,9 +81,86 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: "blend",
             default: 0.0,
         },
+        // ⚠️ **Apendado** (doc 89, folha 15): `0` = o cook puxa as quatro entradas, como sempre;
+        // `1` = ele salta as que este `select` não escolhe. Ver [`LAZY`], onde estão a medição,
+        // as três condições e a razão de a preguiça ser um MODO e não uma optimização calada.
+        ParamSpec {
+            name: LAZY,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **A AVALIAÇÃO PREGUIÇOSA** — a chave do param que a liga (doc 89, folha 15).
+///
+/// O Blender documenta-a duas vezes (*"only the input that is passed through the node is
+/// computed"*). Medido (`measure_switch_laziness`, ramos de oito oitavas sobre 4096 peças):
+/// **3,90×** quando os ramos são caros **e** exclusivos; **1,03×** quando são o mesmo ramo,
+/// porque aí o memo já a tinha entregue.
+///
+/// ⚠️ **É um MODO e não um default, e a razão é uma medição, não prudência.** A contagem de
+/// saída deste nó é o **máximo** dos comprimentos de TODAS as entradas (ver [`switch`] e o gate
+/// `the_output_count_is_decided_by_branches_nobody_chose`), então um ramo comprido que ninguém
+/// escolheu ainda decide quantos elementos saem — e no caminho de CPU um comprimento só existe
+/// depois da avaliação, logo não há como o saber sem cozinhar. ⇒ **ligar isto muda o que o nó
+/// computa** quando os ramos têm comprimentos diferentes, e é por isso que ele nasce desligado
+/// e o diz no rótulo.
+///
+/// As outras duas condições (o `select` uniforme, a sub-árvore saltada `Pure`) são verificadas
+/// pelo cook e pelo construtor do plano — ver `ph2d_nodegraph::cook::LazySelect`.
+pub const LAZY: &str = "lazy";
+
+/// **O construtor do PLANO de preguiça** — irmão por assunto: ele conhece o registry e o grafo,
+/// e este ficheiro conhece a lei do nó.
+pub mod lazy;
+
+/// **QUAIS RAMOS ESTE `select` PRECISA** — a lei que o cook chama para decidir o que saltar, no
+/// modo de ROTEAMENTO (`blend = 0`).
+///
+/// ⚠️ **Ela mora aqui, ao lado de [`switch`], e viaja para o cook como ponteiro.** Reimplementá-la
+/// no escalonador seria a segunda porta que diverge no primeiro ajuste — e o par arredondar/
+/// grampear é exactamente onde ela divergiria (o clamp é a `N_INPUTS − 1` incondicional, que é
+/// a regra da CPU e está documentada em [`GPU_KERNEL`]).
+pub fn needed_round(select: f32, out: &mut [bool]) {
+    out.fill(false);
+    let last = out.len().saturating_sub(1) as i32;
+    let idx = (select.round() as i32).clamp(0, last) as usize;
+    if let Some(slot) = out.get_mut(idx) {
+        *slot = true;
+    }
+}
+
+/// Idem, no modo de MISTURA (`blend = 1`) — e aqui são **dois** ramos, não um.
+///
+/// ⚠️ **O par colapsa num só quando `t == 0`**, porque ali o nó devolve `a` verbatim sem tocar em
+/// `b` (é o que impede um `select` inteiro autorado de passar por `a + 0,0·(b − a)`, que
+/// arredonda). ⇒ *quantos ramos estão vivos depende do VALOR do select, não só do modo* — que é
+/// precisamente a razão de esta lei ser um ponteiro para cá e não uma cópia lá.
+pub fn needed_blend(select: f32, out: &mut [bool]) {
+    out.fill(false);
+    let last = out.len().saturating_sub(1) as i32;
+    let lo = (select.floor() as i32).clamp(0, last) as usize;
+    if let Some(slot) = out.get_mut(lo) {
+        *slot = true;
+    }
+    let t = (select - select.floor()).clamp(0.0, 1.0);
+    if t == 0.0 {
+        return;
+    }
+    let hi = (select.floor() as i32 + 1).clamp(0, last) as usize;
+    if let Some(slot) = out.get_mut(hi) {
+        *slot = true;
+    }
+}
+
+/// A porta do `select`, e as portas candidatas — o que o plano de preguiça precisa de saber
+/// sobre a FORMA deste nó. Derivadas do manifesto, nunca escritas duas vezes.
+pub const SELECT_PORT: u16 = 0;
+/// As portas candidatas, na ordem em que [`needed_round`] / [`needed_blend`] as indexam.
+pub const CHOICE_PORTS: &[u16] = &[1, 2, 3, 4];
+/// A coluna escalar em que o valor do `select` viaja.
+pub const SELECT_COLUMN: &str = VALUE_COL;
 
 /// The sample of value field `v` at index `i`, applying the `1→N` broadcast rule
 /// (mirror of `motion.drive`/`value.math`): a length-1 field is held at every
@@ -317,16 +394,31 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "blend",
-    label: "Blend",
-    min: 0.0,
-    max: 1.0,
-    step: 1.0,
-    widget: ParamWidget::Enum {
-        labels: &["Off", "On"],
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "blend",
+        label: "Blend",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Off", "On"],
+        },
     },
-}];
+    // ⚠️ **O rótulo diz o que MUDA, não como funciona** (HR-15: rótulos por resultado). «Skip
+    // Unused Inputs» é o que o artista ganha; o preço — os ramos saltados deixam de decidir a
+    // contagem — está no doc de [`LAZY`] e no aviso da folha.
+    ParamUiHint {
+        param: LAZY,
+        label: "Skip Unused Inputs",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Off", "On"],
+        },
+    },
+];
 
 #[cfg(test)]
 mod tests {
@@ -544,5 +636,58 @@ mod tests {
         let ins = vec![vec![0.0, 0.0, 0.0], vec![10.0, 10.0, 10.0], vec![], vec![]];
         let out = switch(&[0.0, 0.25, 1.0], &ins, true);
         assert_eq!(out, vec![0.0, 2.5, 10.0]);
+    }
+
+    /// **A CONTAGEM DA SAÍDA DEPENDE DOS RAMOS NÃO ESCOLHIDOS — e é isto que impede a
+    /// avaliação preguiçosa de ser transparente** (doc 89, folha 15).
+    ///
+    /// ⚠️ **Este é o terceiro perigo da célula da preguiça, e o desenho dela não o nomeava.**
+    /// Os dois que ele nomeava são sobre *quando* é legal saltar um ramo (o `select` pode ser um
+    /// campo por elemento; uma sub-árvore com estado congela se um tique não a cozinhar). Este é
+    /// sobre o que se perde ao saltar mesmo quando é legal: `n` é o **máximo** dos comprimentos
+    /// de TODAS as entradas mais o do `select` (ver [`switch`]), então um ramo comprido que
+    /// ninguém escolheu ainda decide **quantos** elementos saem — e o escolhido enche-os pela
+    /// regra 1→N do [`field_at`].
+    ///
+    /// ⚠️ **E não há como saber isso sem cozinhar.** O `count_law` vive na maquinaria de GPU
+    /// (`ph2d_nodegraph::gpu`), que dimensiona *dispatches*; no caminho de CPU o comprimento de
+    /// um stream só existe depois de ele ser avaliado. ⇒ *saltar um ramo é, no caso geral, mudar
+    /// o que o nó computa* — e é por isso que a preguiça tem de ser um **MODO** declarado, com o
+    /// caminho de omissão byte-idêntico, e nunca uma optimização silenciosa do escalonador.
+    #[test]
+    fn the_output_count_is_decided_by_branches_nobody_chose() {
+        // `select = 0` ⇒ o ramo 0 é o escolhido, e ele tem UM valor (a regra 1→N).
+        // O ramo 3 tem oito, e ninguém o escolheu.
+        let select = vec![0.0];
+        let ins = vec![vec![7.0], Vec::new(), Vec::new(), vec![0.0; 8]];
+        let out = switch(&select, &ins, false);
+        assert_eq!(
+            out.len(),
+            8,
+            "hoje o ramo 3 decide a contagem mesmo sem ser escolhido"
+        );
+        assert!(
+            out.iter().all(|v| *v == 7.0),
+            "e o valor e' o do ramo 0: {out:?}"
+        );
+        // A prova do contrário: sem aquele ramo, a saída tem UM elemento. Uma preguiça
+        // transparente teria de devolver este, e não o de cima.
+        let lean = vec![vec![7.0], Vec::new(), Vec::new(), Vec::new()];
+        assert_eq!(switch(&select, &lean, false).len(), 1);
+    }
+
+    /// **O MODO DE MISTURA LÊ DOIS RAMOS** — o quarto facto que a preguiça tem de honrar.
+    ///
+    /// Com `blend` ligado e um `select` fraccionário, o nó dissolve entre `floor` e `floor+1`:
+    /// saltar «tudo menos o escolhido» apagaria metade do resultado. ⚠️ E em `t == 0` o par
+    /// colapsa num só **por ramo** (o valor sai verbatim), então o número de ramos vivos depende
+    /// do VALOR do select, não só do modo.
+    #[test]
+    fn the_blend_mode_needs_the_pair_not_the_one() {
+        let ins = vec![vec![0.0], vec![10.0], vec![20.0], vec![30.0]];
+        // select 1,5 ⇒ metade do ramo 1 e metade do 2.
+        assert_eq!(switch(&[1.5], &ins, true), vec![15.0]);
+        // select 1,0 ⇒ so' o ramo 1, verbatim (o `t == 0` devolve `a` sem tocar em `b`).
+        assert_eq!(switch(&[1.0], &ins, true), vec![10.0]);
     }
 }

@@ -131,3 +131,34 @@ pub(super) fn edges() {
         gpu_edges_demo::CLUMP as u32,
     );
 }
+
+/// A cena `=107` — a preguiça do roteador (doc 89, folha 15).
+///
+/// ⚠️ **O texto pede para julgar o MOVIMENTO e não a imagem**, porque a imagem é a mesma nos
+/// dois modos — é essa a promessa da feature. Um smoke que dissesse *"repare na diferença"* sem
+/// dizer **em quê** faria o Enio procurar uma mudança de cor que não existe.
+pub(super) fn lazy_switch() {
+    eprintln!(
+        "[preguica] UM CAMPO DE {n} PECINHAS ONDULANDO.
+  ⚠️ PRECISA DE PLAY.
+
+  Esta cena NAO se julga pela imagem — ela se julga pela SUAVIDADE do movimento.
+  Atras dela ha' QUATRO calculos pesados de ruido, e o app so' precisa de UM.
+
+  O QUE TEM DE ACONTECER: com Play ligado, a ondulacao corre lisa.
+
+  QUER MEXER? Clique no no' «Switch (Skip Unused Inputs)» e, no painel dele, mude
+  «Skip Unused Inputs» de On para Off. O movimento fica AOS SOLAVANCOS -- e' o app
+  a calcular os quatro ramos em vez de um. Volte a ligar: ele alisa outra vez.
+  (Medido: {off:.1} ms por quadro desligado contra {on:.1} ms ligado, sobre um
+  orcamento de 16,7 ms.)
+
+  ⚠️ A IMAGEM E' A MESMA nos dois modos. Se ela MUDAR ao ligar/desligar, deu errado.
+
+  DEU ERRADO se: a ondulacao ficar igual de lisa nos dois modos (o modo nao esta'
+  a fazer nada); se a imagem mudar; ou se alguma pecinha sumir.",
+        n = (super::lazy_switch_demo::SIDE * super::lazy_switch_demo::SIDE) as u32,
+        off = 10.8,
+        on = 2.8,
+    );
+}

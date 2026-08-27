@@ -53,6 +53,23 @@ fn costly_branch(g: &mut Graph, src: NodeId) -> NodeId {
     rd
 }
 
+/// Como o [`clock`], mas instalando (ou não) o PLANO DE PREGUIÇA — a metade que mede o que a
+/// feature de facto compra.
+fn clock_lazy(g: &Graph, reg: &NodeRegistry, sink: NodeId, reps: u32, lazy: bool) -> f64 {
+    let t0 = std::time::Instant::now();
+    for k in 0..reps {
+        let mut cook = Cook::new();
+        if lazy {
+            cook.set_lazy_branches(ph2d_node_value_switch::lazy::plan(g, reg));
+        }
+        let out = cook.cook(g, reg, sink, f64::from(k) / 60.0).expect("coza");
+        if let Some(Column::Scalar(v)) = out[0].as_stream().get("v") {
+            std::hint::black_box(v.first());
+        }
+    }
+    t0.elapsed().as_secs_f64() * 1000.0 / f64::from(reps)
+}
+
 /// Cozinha `sink` `reps` vezes e devolve o relógio total, em ms.
 fn clock(g: &Graph, reg: &NodeRegistry, sink: NodeId, reps: u32) -> f64 {
     let t0 = std::time::Instant::now();
@@ -124,6 +141,45 @@ fn what_would_lazy_evaluation_of_the_switch_buy() {
     eprintln!(
         "  {:<46}  {shared_ms:>9.3}",
         "o MESMO ramo nas 4 portas (memoizado)"
+    );
+
+    // 4+5. QUATRO ramos caros com um `select` UNIFORME — com e sem o modo de preguiça.
+    //
+    // ⚠️ **As linhas 2 e 3 usam um `select` POR ELEMENTO** (`value.instance_field(Index)`), e
+    // essa é precisamente a fixtura que a preguiça tem de RECUSAR: com um campo de selecção
+    // cada elemento escolhe o seu ramo, logo nenhum é dispensável. ⇒ o `3,90×` que esta sonda
+    // publicou não era alcançável pelo mecanismo que ela existia para precificar. *Uma sonda
+    // pode medir o número certo sobre um grafo que a feature nunca vai ver.*
+    let uniform_four = |lazy: bool| {
+        let mut g = Graph::new();
+        let src = grid(&mut g);
+        let sw = g.add_node("value.switch");
+        if lazy {
+            g.set_param(sw, ph2d_node_value_switch::LAZY, 1.0);
+        }
+        // Um `select` UNIFORME: a porta desligada lê o campo vazio, que é `0` em todo índice.
+        for k in 0..4u16 {
+            let b = costly_branch(&mut g, src);
+            wire(&mut g, b, 0, sw, k + 1);
+        }
+        g.validate(&reg).expect("bem-tipado");
+        (g, sw)
+    };
+    let (g, sw) = uniform_four(false);
+    let eager = clock_lazy(&g, &reg, sw, 5, false);
+    eprintln!(
+        "  {:<46}  {eager:>9.3}",
+        "4 ramos, select UNIFORME, modo OFF"
+    );
+    let (g, sw) = uniform_four(true);
+    let lazy_ms = clock_lazy(&g, &reg, sw, 5, true);
+    eprintln!(
+        "  {:<46}  {lazy_ms:>9.3}",
+        "4 ramos, select UNIFORME, modo ON"
+    );
+    eprintln!(
+        "\n  A PREGUICA COMPRA: {:.2}x  (e o piso de um ramo so' e' {floor:.3} ms)",
+        eager / lazy_ms.max(1e-9)
     );
 
     eprintln!(

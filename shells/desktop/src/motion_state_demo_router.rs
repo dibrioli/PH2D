@@ -23,7 +23,7 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 106;
+const MAX_DEMO_LEVEL: u32 = 107;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -410,6 +410,12 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("107") => {
+            let sinks = lazy_switch_demo::build_lazy_switch_demo_document(doc, registry)
+                .unwrap_or_default();
+            announce::lazy_switch();
+            sinks
+        }
         Some("106") => {
             let sinks = gpu_echo_copies_demo::build_gpu_echo_copies_demo_document(doc, registry)
                 .unwrap_or_default();

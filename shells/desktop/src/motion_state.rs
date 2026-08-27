@@ -84,6 +84,7 @@ mod gpu_box_demo;
 /// A cena `=106` — as CÓPIAS ATRASADAS (folha 08, célula 41: o atraso por cópia do clone).
 #[path = "motion_state_gpu_echo_copies_demo.rs"]
 mod gpu_echo_copies_demo;
+
 /// A cena `=102` — a PAREDE que absorve e o SEED por peça (folha 06, células 36 e 24).
 #[path = "motion_state_gpu_edges_demo.rs"]
 mod gpu_edges_demo;
@@ -144,6 +145,9 @@ mod gpu_voronoi_demo;
 /// "does the state-loop CONTAINER run on the device?", which none of the others do.
 #[path = "motion_state_gpu_zone_demo.rs"]
 mod gpu_zone_demo;
+/// **A PREGUIÇA DO ROTEADOR** (cena `=107`, doc 89 folha 15) — a última P2 da conferência.
+#[path = "motion_state_lazy_switch_demo.rs"]
+mod lazy_switch_demo;
 
 use gpu_deform_demo::{
     build_gpu_deform_demo_document, build_gpu_deform_organism_demo_document,

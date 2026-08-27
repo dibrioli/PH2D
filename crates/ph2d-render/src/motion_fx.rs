@@ -55,73 +55,25 @@ use params::{BASE_FILTER_RADIUS, F16_MAX};
 /// **O que se reconstrói a cada redimensionamento** — a cadeia de mips e os bind groups.
 #[path = "motion_fx_targets.rs"]
 mod targets;
-use targets::{Shared, build_targets};
+use targets::{Shared, bind_all, build_targets};
+
+/// **A máscara de sujidade** — a lei do enquadramento e o fallback preto (doc 89 folha 11).
+#[path = "motion_fx_dirt.rs"]
+mod dirt;
+pub use dirt::{DirtMask, scale_offset as dirt_scale_offset};
 
 use ph2d_gpu::GpuContext;
 
 #[path = "motion_fx_trig.rs"]
 mod trig;
 
-struct Tex {
-    #[allow(dead_code)]
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    size: (u32, u32),
-}
-
-fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
-    let size = (size.0.max(1), size.1.max(1));
-    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-            width: size.0,
-            height: size.1,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: crate::GameRt::FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    Tex {
-        texture,
-        view,
-        size,
-    }
-}
-
-/// **A LUT DA RAMPA DO HALO** — `HALO_LUT_TEXELS × 1`, `Rgba16Float`.
-///
-/// ⚠️ **`Rgba16Float` e não `Rgba32Float`**, e a razão é a filtragem: o `rgba32float` **não é
-/// filtrável** sem uma feature opcional do WebGPU, e sem filtragem linear a LUT devolveria
-/// degraus — exactamente o artefacto que a resolução medida existe para não ter. E não
-/// `Rgba8Unorm`, cuja quantização é `1/255`: ela **é** o passo do ecrã, ou seja gastaria o
-/// orçamento inteiro do erro antes de a interpolação começar.
-fn make_lut(gpu: &GpuContext) -> Tex {
-    let texture = gpu.device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("ph2d-render motion-fx halo LUT"),
-        size: wgpu::Extent3d {
-            width: HALO_LUT_TEXELS as u32,
-            height: 1,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: crate::GameRt::FORMAT,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    Tex {
-        texture,
-        view,
-        size: (HALO_LUT_TEXELS as u32, 1),
-    }
-}
+/// **AS TEXTURAS DO PASSE** — irmão pelo teto de LOC; ver o cabeçalho dele.
+#[path = "motion_fx_tex.rs"]
+mod tex;
+use tex::{Tex, make_lut, make_tex, mip_sizes};
+// O tecto da cadeia é lido só pela prova que o afirma; ele mora com a escada que o usa.
+#[cfg(test)]
+use tex::MAX_MIPS;
 
 /// Quantos texels a LUT do halo carrega — **espelho local** de
 /// `ph2d_node_fx_glow::HALO_LUT_TEXELS`.
@@ -131,23 +83,13 @@ fn make_lut(gpu: &GpuContext) -> Tex {
 /// por isso que ele tem gate na shell — o único sítio que vê os dois lados.
 pub const HALO_LUT_TEXELS: usize = 512;
 
-/// Cap on mip-chain depth (6 halvings reach a wide soft glow at any editor size).
-const MAX_MIPS: usize = 6;
-
-/// The mip resolutions: mip0 = half the RT, then halve while both dims stay ≥ 2,
-/// capped at [`MAX_MIPS`]. Always at least one level.
-fn mip_sizes(size: (u32, u32)) -> Vec<(u32, u32)> {
-    let mut out = Vec::new();
-    let mut s = (size.0.max(2) / 2, size.1.max(2) / 2);
-    for _ in 0..MAX_MIPS {
-        out.push(s);
-        if s.0 <= 2 || s.1 <= 2 {
-            break;
-        }
-        s = ((s.0 / 2).max(1), (s.1 / 2).max(1));
-    }
-    out
-}
+/// O tamanho do bloco de uniformes de UM passe — os três `vec4<f32>` do `Params` do WGSL.
+///
+/// ⚠️ **Ele é uma propriedade do LAYOUT, e por isso mora aqui e não em cada `create_buffer`.**
+/// Os quatro passes partilham a struct; quem escreve menos campos escreve menos, mas quem BINDA
+/// um buffer menor que ela leva erro de validação. Os três sítios que criam uniformes deste
+/// passe leem este número.
+pub(super) const UNIFORM_BYTES: u64 = 48;
 
 pub struct MotionFx {
     // Size-independent (built once):
@@ -165,6 +107,12 @@ pub struct MotionFx {
     lut: Tex,
     /// A última LUT enviada — o que impede um `write_texture` por quadro sobre bytes iguais.
     lut_uploaded: Vec<[f32; 4]>,
+    /// **A textura PRETA de 1×1** que ocupa o binding da máscara de sujidade quando não há
+    /// nenhuma escolhida — é ela que carrega a identidade do quadro (ver [`dirt::black_1x1`]).
+    dirt_fallback: Tex,
+    /// A identidade da máscara que os bind groups de agora apontam — `None` = o fallback.
+    /// É o que impede um bind group por quadro (ver [`DirtMask::key`]).
+    dirt_key: Option<u64>,
 
     // Size-dependent (rebuilt on resize):
     rt: Tex,
@@ -222,6 +170,26 @@ impl MotionFx {
                     // deixar amarrada nos outros três é um descritor por bind group.
                     wgpu::BindGroupLayoutEntry {
                         binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    // **A MÁSCARA DE SUJIDADE** (doc 89 folha 11) — pelo mesmo argumento que a
+                    // LUT acima, e por isso NO MESMO layout: um segundo layout e um segundo
+                    // pipeline layout só para o composite duplicariam a construção inteira.
+                    //
+                    // ⚠️ **Ela é `filterable`, e é a única entrada deste layout que pode ser uma
+                    // textura do ARTISTA** — `Rgba8UnormSrgb` (individual), `Rgba16Float` (o RT
+                    // de uma sprite HDR) ou um formato de bloco (o KTX2 assado). As três
+                    // amostram como `float` e são filtráveis, então cabem aqui sem um segundo
+                    // ramo; o que NÃO caberia é um formato inteiro, e nenhuma das três lojas o
+                    // produz.
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 4,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -360,7 +328,11 @@ impl MotionFx {
         let uniform = |label: &str| {
             gpu.device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
-                size: 32, // two vec4<f32> (Params.v + Params.v2; composite uses both)
+                // ⚠️ **TRÊS `vec4<f32>`, e o tamanho é do LAYOUT, não do passe.** O `Params` do
+                // WGSL é um só, partilhado pelos quatro passes; o `v3` (o enquadramento da
+                // máscara de sujidade) só é lido pelo composite, mas um buffer menor que a
+                // struct é erro de validação do wgpu no bind, não um campo que se lê a zero.
+                size: UNIFORM_BYTES,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             })
@@ -370,6 +342,7 @@ impl MotionFx {
         let u_composite = uniform("ph2d-render motion-fx u_composite");
 
         let lut = make_lut(gpu);
+        let dirt_fallback = dirt::black_1x1(gpu);
         let t = build_targets(
             gpu,
             &Shared {
@@ -379,6 +352,7 @@ impl MotionFx {
                 u_up: &u_up,
                 u_composite: &u_composite,
                 lut: &lut,
+                dirt: &dirt_fallback.view,
             },
             size,
         );
@@ -395,6 +369,8 @@ impl MotionFx {
             u_composite,
             lut,
             lut_uploaded: Vec::new(),
+            dirt_fallback,
+            dirt_key: None,
             rt: t.rt,
             mips: t.mips,
             u_down: t.u_down,
@@ -428,6 +404,7 @@ impl MotionFx {
                 u_up: &self.u_up,
                 u_composite: &self.u_composite,
                 lut: &self.lut,
+                dirt: &self.dirt_fallback.view,
             },
             size,
         );
@@ -439,6 +416,11 @@ impl MotionFx {
         self.bg_up = t.bg_up;
         self.bg_composite = t.bg_composite;
         self.size = size;
+        // ⚠️ **Os bind groups novos apontam para o FALLBACK**, porque a view do artista é
+        // emprestada por quadro e não vive aqui. Esquecer esta linha faria a máscara
+        // desaparecer no primeiro redimensionamento e voltar só quando o artista mexesse na
+        // escolha — o defeito que se reporta como *"sumiu quando eu maximizei a janela"*.
+        self.dirt_key = None;
     }
 
     /// Bright-pass, downsample, upsample and add the glow over `target` (the game
@@ -452,13 +434,46 @@ impl MotionFx {
     /// cinco interpolações e os três espaços de cor que o editor oferece são semântica da
     /// biblioteca de cor, e reimplementá-los num shader seria a segunda porta que diverge da
     /// primeira. O renderer só sabe amostrar uma tabela.
+    ///
+    /// `dirt` é a **máscara de sujidade** já resolvida pela shell (doc 89 folha 11) — `None`
+    /// quando o artista não escolheu imagem nenhuma, e aí o binding fica com a textura preta de
+    /// 1×1 e o quadro é o de sempre, **ao bit**.
     pub fn bloom_over(
         &mut self,
         gpu: &GpuContext,
         target: &wgpu::TextureView,
         params: &BloomParams,
         halo_lut: Option<&[[f32; 4]]>,
+        dirt: Option<DirtMask<'_>>,
     ) {
+        // ⚠️ **Os bind groups só se refazem quando a IMAGEM muda**, nunca por quadro: a chave é
+        // o `texture_id` que a shell já tem, e a comparação com o que está ligado é o que
+        // separa *escolher outra imagem* de *desenhar o mesmo quadro outra vez*. É a mesma
+        // disciplina do `lut_uploaded` logo abaixo, com o outro recurso.
+        let wanted = dirt.map(|d| d.key);
+        if wanted != self.dirt_key {
+            let view = dirt.map_or(&self.dirt_fallback.view, |d| d.view);
+            let (prefilter, down, up, composite) = bind_all(
+                gpu,
+                &Shared {
+                    bgl: &self.bgl,
+                    sampler: &self.sampler,
+                    u_prefilter: &self.u_prefilter,
+                    u_up: &self.u_up,
+                    u_composite: &self.u_composite,
+                    lut: &self.lut,
+                    dirt: view,
+                },
+                &self.rt,
+                &self.mips,
+                &self.u_down,
+            );
+            self.bg_prefilter = prefilter;
+            self.bg_down = down;
+            self.bg_up = up;
+            self.bg_composite = composite;
+            self.dirt_key = wanted;
+        }
         // ⚠️ **A LUT só sobe quando MUDA.** Um `write_texture` por quadro sobre bytes iguais é
         // 4 KB de banda e uma barreira de recurso por cada quadro em que nada aconteceu — e a
         // rampa muda quando o artista arrasta uma parada, não a 60 Hz.
@@ -503,18 +518,32 @@ impl MotionFx {
         let up = params.upsample_basis(aspect);
         gpu.queue
             .write_buffer(&self.u_up, 0, bytemuck::cast_slice(&up));
-        // Composite reads both vec4s: v = (intensity, saturation, _, _),
-        // v2 = tint rgba.
-        let comp: [f32; 8] = [
+        // Composite reads the three vec4s: v = (intensity, saturation, tem_rampa, dirt),
+        // v2 = tint rgba, v3 = o enquadramento da máscara de sujidade.
+        //
+        // ⚠️ **O MESMO `aspect` que a tenda usa** — o da tela —, e é o que faz a máscara cobrir
+        // a janela em vez de se esticar com ela.
+        let so = dirt.map_or([0.0; 4], |d| {
+            dirt::scale_offset(d.uv_rect, d.aspect, aspect)
+        });
+        let comp: [f32; 12] = [
             params.intensity,
             params.saturation.clamp(0.0, 1.0),
             // `v.z` diz ao shader se há LUT. `0` = o `tint` constante, o caminho literal.
             if live { 1.0 } else { 0.0 },
-            0.0,
+            // ⚠️ **O knob viaja mesmo quando não há máscara escolhida**, de propósito: a
+            // identidade do quadro é servida pela textura PRETA de 1×1, não por este número.
+            // Zerá-lo aqui também poria a garantia em DOIS sítios, e um gate de mutação sobre
+            // o fallback deixaria de sangrar.
+            params.dirt_intensity.max(0.0),
             params.tint[0],
             params.tint[1],
             params.tint[2],
             params.tint[3],
+            so[0],
+            so[1],
+            so[2],
+            so[3],
         ];
         gpu.queue
             .write_buffer(&self.u_composite, 0, bytemuck::cast_slice(&comp));

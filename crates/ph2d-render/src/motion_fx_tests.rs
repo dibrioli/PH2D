@@ -229,7 +229,7 @@ fn the_bloom_chain_is_a_valid_pipeline_on_a_real_device() {
     let mut fx = MotionFx::new(&gpu, (256, 256));
     fx.ensure_size(&gpu, (320, 200));
     let target = crate::GameRt::new(&gpu, (320, 200));
-    fx.bloom_over(&gpu, target.view(), &BloomParams::default(), None);
+    fx.bloom_over(&gpu, target.view(), &BloomParams::default(), None, None);
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
 }
 
@@ -269,10 +269,10 @@ fn every_glow_operation_and_the_ramp_lut_survive_a_real_device() {
             source: (operation % 2) as f32,
             ..BloomParams::default()
         };
-        fx.bloom_over(&gpu, target.view(), &params, Some(&lut));
+        fx.bloom_over(&gpu, target.view(), &params, Some(&lut), None);
         // E de novo SEM a tabela: o caminho literal tem de continuar válido depois de a textura
         // ter sido escrita uma vez.
-        fx.bloom_over(&gpu, target.view(), &params, None);
+        fx.bloom_over(&gpu, target.view(), &params, None, None);
     }
     // ⚠️ E uma tabela de TAMANHO ERRADO — o espelho que divergiu. Ela conta como ausente, e o
     // que este gate afirma é que ela não é meia-desenhada nem um `panic`.
@@ -281,6 +281,229 @@ fn every_glow_operation_and_the_ramp_lut_survive_a_real_device() {
         target.view(),
         &BloomParams::default(),
         Some(&lut[..8]),
+        None,
     );
     gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+}
+
+/// **A MÁSCARA DE SUJIDADE É UM BINDING QUE O DEVICE LÊ, E TROCÁ-LA NÃO REALOCA A CADEIA.**
+///
+/// ⚠️ **A metade que só um device prova:** o binding 4 entrou no layout PARTILHADO pelos quatro
+/// passes, então um bind group que o esqueça é erro de validação em TODOS eles — o prefiltro
+/// incluído, que não lê a máscara. Isso não aparece em teste de CPU nenhum; aparece como tela
+/// preta no arranque. E o caminho de troca (`dirt_key`) refaz bind groups **enquanto o encoder
+/// do quadro anterior já foi submetido**, que é a ordem que este gate exercita.
+///
+/// ⚠️ **A metade de MEMÓRIA está afirmada por identidade de textura, não por um relógio:** as
+/// views dos mips têm de ser as MESMAS depois de trocar a máscara duas vezes, senão
+/// `bind_all` está a realocar a cadeia (o defeito que ele existe para não ter).
+#[test]
+fn the_dirt_mask_binds_on_a_real_device_and_swapping_it_keeps_the_mips() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[motion_fx] SEM ADAPTER -- este gate NAO correu");
+        return;
+    };
+    let mut fx = MotionFx::new(&gpu, (128, 128));
+    let target = crate::GameRt::new(&gpu, (128, 128));
+    // Duas "imagens" quaisquer com views reais e formatos filtráveis.
+    let a = crate::GameRt::new(&gpu, (64, 32));
+    let b = crate::GameRt::new(&gpu, (16, 64));
+    let params = BloomParams {
+        dirt_intensity: 2.0,
+        ..BloomParams::default()
+    };
+    let mips_before: Vec<(u32, u32)> = fx.mips.iter().map(|m| m.size).collect();
+    let mask = |view, key, aspect| {
+        Some(crate::DirtMask {
+            view,
+            key,
+            uv_rect: [0.0, 0.0, 1.0, 1.0],
+            aspect,
+        })
+    };
+    // Sem máscara → com A → o MESMO A (não pode refazer nada) → B → sem máscara.
+    fx.bloom_over(&gpu, target.view(), &params, None, None);
+    fx.bloom_over(&gpu, target.view(), &params, None, mask(a.view(), 1, 2.0));
+    fx.bloom_over(&gpu, target.view(), &params, None, mask(a.view(), 1, 2.0));
+    fx.bloom_over(&gpu, target.view(), &params, None, mask(b.view(), 2, 0.25));
+    // E um sub-rect de atlas, com a rampa ligada ao mesmo tempo — as duas texturas
+    // opcionais do composite vivas no mesmo passe.
+    fx.bloom_over(
+        &gpu,
+        target.view(),
+        &params,
+        None,
+        Some(crate::DirtMask {
+            view: b.view(),
+            key: 3,
+            uv_rect: [0.25, 0.5, 0.5, 0.25],
+            aspect: 1.0,
+        }),
+    );
+    fx.bloom_over(&gpu, target.view(), &params, None, None);
+    gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    let mips_after: Vec<(u32, u32)> = fx.mips.iter().map(|m| m.size).collect();
+    assert_eq!(
+        mips_before, mips_after,
+        "trocar a mascara realocou a cadeia de mips"
+    );
+}
+
+/// Lê um `GameRt` de volta para bytes — `Rgba16Float`, 8 B/texel.
+fn read_rt(gpu: &ph2d_gpu::GpuContext, rt: &crate::GameRt, size: (u32, u32)) -> Vec<u8> {
+    let unpadded = size.0 * 8;
+    let padded =
+        unpadded.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT) * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let staging = gpu.device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("motion-fx identity readback"),
+        size: u64::from(padded) * u64::from(size.1),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let mut enc = gpu
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    enc.copy_texture_to_buffer(
+        wgpu::TexelCopyTextureInfo {
+            texture: rt.texture(),
+            mip_level: 0,
+            origin: wgpu::Origin3d::ZERO,
+            aspect: wgpu::TextureAspect::All,
+        },
+        wgpu::TexelCopyBufferInfo {
+            buffer: &staging,
+            layout: wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(padded),
+                rows_per_image: Some(size.1),
+            },
+        },
+        wgpu::Extent3d {
+            width: size.0,
+            height: size.1,
+            depth_or_array_layers: 1,
+        },
+    );
+    gpu.queue.submit([enc.finish()]);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let slice = staging.slice(..);
+    slice.map_async(wgpu::MapMode::Read, move |r| {
+        let _ = tx.send(r);
+    });
+    gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+    rx.recv().expect("chan").expect("map");
+    let mapped = slice.get_mapped_range();
+    let mut out = Vec::with_capacity((unpadded as usize) * (size.1 as usize));
+    for row in 0..size.1 as usize {
+        let s = row * padded as usize;
+        out.extend_from_slice(&mapped[s..s + unpadded as usize]);
+    }
+    drop(mapped);
+    staging.unmap();
+    out
+}
+
+/// **A IDENTIDADE DO QUADRO, LIDA EM PIXELS: sem imagem escolhida, o knob da sujidade não
+/// pode mover um bit — nem no máximo do curso dele.**
+///
+/// ⚠️ **Este é o gate que nenhuma afirmação de CPU pode ser, e ele é sobre o FALLBACK.** A
+/// promessa desta feature é que toda cena que já existe desenha exactamente o que desenhava; ela
+/// é servida pela textura PRETA de 1×1 no binding 4 (`colour + 0·intensity == colour`), não por
+/// o lado Rust zerar o knob. Um fallback BRANCO passa em todos os gates de CPU deste ficheiro e
+/// falha aqui — que é a definição de onde a garantia mora.
+///
+/// ⚠️ **E o controle POSITIVO está na mesma corrida:** com uma máscara ligada e o mesmo knob, os
+/// bytes TÊM de mudar. Sem essa metade, um composite que ignorasse a sujidade por completo
+/// passaria a primeira asserção com louvor.
+#[test]
+fn without_a_mask_the_dirt_knob_cannot_move_a_single_bit() {
+    let Some(gpu) = try_headless_gpu() else {
+        eprintln!("[motion_fx] SEM ADAPTER -- este gate NAO correu");
+        return;
+    };
+    const SIZE: (u32, u32) = (64, 64);
+    let mut fx = MotionFx::new(&gpu, SIZE);
+    let neutral = BloomParams::default();
+    let loud = BloomParams {
+        dirt_intensity: 4.0,
+        ..BloomParams::default()
+    };
+    // O RT do glow leva conteúdo: um clear branco, para haver halo a modular. Sem
+    // fonte nenhuma o composite soma zero e as duas leituras seriam iguais por vazio.
+    let seed = |gpu: &ph2d_gpu::GpuContext, fx: &MotionFx| {
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("seed"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: fx.rt_view(),
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 4.0,
+                        g: 4.0,
+                        b: 4.0,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        gpu.queue.submit([enc.finish()]);
+    };
+    let run = |fx: &mut MotionFx, p: &BloomParams, dirt: Option<crate::DirtMask<'_>>| {
+        let target = crate::GameRt::new(&gpu, SIZE);
+        seed(&gpu, fx);
+        fx.bloom_over(&gpu, target.view(), p, None, dirt);
+        gpu.device.poll(wgpu::PollType::wait_indefinitely()).ok();
+        read_rt(&gpu, &target, SIZE)
+    };
+    let base = run(&mut fx, &neutral, None);
+    let with_knob = run(&mut fx, &loud, None);
+    assert_eq!(
+        base, with_knob,
+        "sem mascara escolhida, subir a intensidade da sujidade mudou o quadro"
+    );
+    assert!(
+        base.iter().any(|b| *b != 0),
+        "o controle e' vazio: o composite nao escreveu nada, entao a igualdade acima nao prova nada"
+    );
+    // CONTROLE POSITIVO: com uma máscara BRANCA ligada, o mesmo knob TEM de mover bits.
+    let white = crate::GameRt::new(&gpu, (4, 4));
+    {
+        let mut enc = gpu
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("white dirt"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: white.view(),
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        gpu.queue.submit([enc.finish()]);
+    }
+    let masked = run(
+        &mut fx,
+        &loud,
+        Some(crate::DirtMask {
+            view: white.view(),
+            key: 99,
+            uv_rect: [0.0, 0.0, 1.0, 1.0],
+            aspect: 1.0,
+        }),
+    );
+    assert_ne!(
+        base, masked,
+        "com mascara branca e o knob a 4 o quadro ficou igual: o composite ignora a sujidade"
+    );
 }

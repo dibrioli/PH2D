@@ -34,15 +34,22 @@ struct Params {
     //  prefilter  → v = (threshold, threshold-knee, 2·knee, 0.25/knee), v2.x = teto
     //  downsample → v = (srcTexel.x, srcTexel.y, _, _)
     //  upsample   → v = (du.x, du.y, dv.x, dv.y)  (a base 2x2 da tenda, em UV)
-    //  composite  → v = (intensity, saturation, tem_rampa, _), v2 = tint rgba
+    //  composite  → v = (intensity, saturation, tem_rampa, dirt_intensity),
+    //               v2 = tint rgba, v3 = (scale.xy, offset.xy) da mascara de sujidade
     v: vec4<f32>,
     v2: vec4<f32>,
+    v3: vec4<f32>,
 };
 @group(0) @binding(2) var<uniform> P: Params;
 // A LUT da RAMPA do halo (doc 89 folha 11): uma tira de `HALO_LUT_TEXELS x 1` em
 // Rgba16Float, assada na CPU a partir da rampa que o artista desenhou. Ela esta' no
 // layout partilhado, entao viaja nos quatro passes -- so' o composite a le^.
 @group(0) @binding(3) var halo_lut: texture_2d<f32>;
+// A MASCARA DE SUJIDADE (doc 89 folha 11): o `Dirt Texture` do Unity / o `Bloom Dirt
+// Mask` do Unreal. Como a LUT, esta' no layout partilhado e so' o composite a le^.
+// Sem imagem escolhida o binding fica com uma textura PRETA de 1x1 -- e' ela que
+// carrega a identidade do quadro, e nao um ramo aqui dentro.
+@group(0) @binding(4) var dirt: texture_2d<f32>;
 
 // Bright-pass with a soft knee (COD/Karis): below `threshold-knee` nothing
 // contributes, above `threshold` full, quadratic ramp between — no hard edge.
@@ -159,6 +166,17 @@ fn fs_composite(in: VsOut) -> @location(0) vec4<f32> {
     if (P.v.z >= 0.5) {
         colour = textureSample(halo_lut, samp, vec2<f32>(clamp(lum, 0.0, 1.0), 0.5)).rgb;
     }
+    // A SUJIDADE SOMA-SE A' TINTA, que e' a forma da referencia (`bloom * (tint + dirt)`
+    // no UberPost do Unity): a mascara nao pinta nada sozinha, ela acende ONDE o halo ja'
+    // esta'. Somar em vez de multiplicar tambem e' o que deixa a cor da imagem passar --
+    // um mapa de sujidade e' uma fotografia colorida de po' e riscos, nao uma mascara de
+    // cobertura.
+    //
+    // O `v3` traz `scale`+`offset` ja' compostos na CPU: o `cover` que preserva o aspecto
+    // da imagem E o sub-rect da celula quando ela vem do atlas partilhado. Ver
+    // `motion_fx_dirt::scale_offset` -- a lei toda mora la', e este passe faz UMA afim.
+    let dirt_uv = in.uv * P.v3.xy + P.v3.zw;
+    colour = colour + textureSample(dirt, samp, dirt_uv).rgb * P.v.w;
     glow = glow * colour * (intensity * tint.a);
     return vec4<f32>(glow, 0.0);
 }

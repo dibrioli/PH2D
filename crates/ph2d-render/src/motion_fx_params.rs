@@ -69,6 +69,17 @@ pub struct BloomParams {
     /// ⚠️ Com luma, uma silhueta **preta e opaca** não tem nada acima do limiar e nunca acende;
     /// com alfa ela acende pela COBERTURA. É a diferença entre um halo de EMISSÃO e uma AURA.
     pub source: f32,
+    /// **QUANTO a máscara de sujidade acende** (doc 89 folha 11) — o `Dirt Intensity` do Unity
+    /// URP / o `Bloom Dirt Mask Intensity` do Unreal. `0` = o passe de sempre.
+    ///
+    /// ⚠️ **Ele soma-se ao `tint`, não multiplica o halo** — `glow · (tint + dirt·isto)`, a forma
+    /// da referência. A distinção importa: uma máscara que multiplicasse não poderia ACRESCENTAR
+    /// cor, e um mapa de sujidade é uma fotografia colorida de pó e riscos.
+    ///
+    /// ⚠️ **A identidade do quadro NÃO vive neste número.** Sem imagem escolhida o binding leva
+    /// uma textura preta de 1×1, então `dirt = 0` e a soma é literal — inclusive com este knob
+    /// alto, que é o estado em que um artista fica ao apagar o nome da imagem.
+    pub dirt_intensity: f32,
 }
 
 /// Quantas operações de composição existem — o tamanho do array de pipelines.
@@ -92,6 +103,7 @@ impl Default for BloomParams {
             clamp: 0.0,
             operation: 0.0,
             source: 0.0,
+            dirt_intensity: 0.0,
         }
     }
 }

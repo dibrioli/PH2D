@@ -294,6 +294,10 @@ impl crate::App {
                         // ⚠️ **Sem rampa, e é a mesma razão dos outros campos deste sítio**: a
                         // rampa é autoria de um NÓ, e um emissor de sprite não tem nó nenhum.
                         None,
+                        // ⚠️ **E sem máscara de sujidade, pela MESMA razão levada um passo
+                        // adiante**: a imagem dela nomeia um objecto da cena, e é o nó que
+                        // guarda o nome — um emissor de sprite não tem onde o escrever.
+                        None,
                     );
                 }
                 // Pass 1c: Motion glow (doc 67, Option B) — the Motion module's
@@ -351,6 +355,35 @@ impl crate::App {
                         // desyncs from the sparks (the halo floats away).
                         scene_viewport,
                     );
+                    // **A MÁSCARA DE SUJIDADE** (doc 89 folha 11) — o nó guarda o NOME de um
+                    // objecto da cena e o passe de tela quer uma `TextureView`. As duas metades
+                    // encontram-se aqui, DEPOIS do passe de isolamento: aquele leva o renderer
+                    // emprestado mutável, e a resolução só o lê.
+                    //
+                    // ⚠️ **A resolução corre só quando há nome autorado.** Sem ele o `resolve`
+                    // nem é chamado — uma varredura da cena por quadro para responder *"nada"*
+                    // é o custo que o caminho de sempre não pode pagar.
+                    let dirt_cooked = |id| renderer.cooked_texture_id(id);
+                    let dirt = ph2d_node_fx_glow::dirt::source(&motion.doc.graph).and_then(|n| {
+                        super::motion_glow_dirt::resolve(
+                            sim,
+                            super::motion_bridge::Appearance {
+                                atlas: renderer.atlas(),
+                                cooked: &dirt_cooked,
+                            },
+                            &n,
+                        )
+                        .or_else(|| {
+                            // ⚠️ **Um nome que não resolve é a SEXTA causa indistinguível a
+                            // olho** desta família (ver `motion_glow_layer::diag`, que já
+                            // documenta cinco). Ele é legítimo — um nome pode ser escrito antes
+                            // de a sprite existir —, então não é erro; mas ficar mudo é o que
+                            // torna *"escrevi o nome e não aconteceu nada"* indiagnosticável.
+                            super::motion_glow_dirt::diag_unresolved(&n);
+                            None
+                        })
+                    });
+                    let dirt = dirt.and_then(|r| super::motion_glow_dirt::mask(r, renderer));
                     motion_fx.bloom_over(
                         surface.gpu(),
                         game_rt.view(),
@@ -366,11 +399,13 @@ impl crate::App {
                             clamp: glow.clamp,
                             operation: glow.operation,
                             source: glow.source,
+                            dirt_intensity: glow.dirt_intensity,
                         },
                         // **A RAMPA DO HALO** (doc 89 folha 11) — assada pelo nó, que é quem
                         // possui a semântica do gradiente; aqui ela só atravessa. `None` quando
                         // o artista não desenhou nenhuma, e aí o `tint` constante manda.
                         halo_lut.as_deref(),
+                        dirt,
                     );
                 }
                 // Pass 2: AgX tonemap

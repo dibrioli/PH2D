@@ -23,6 +23,22 @@ use ph2d_gpu::GpuContext;
 use crate::individual::{IndividualTextureError, IndividualTextureStore};
 
 impl IndividualTextureStore {
+    /// **A view crua de uma entrada** — para um passe de TELA, cujo bind group tem layout próprio
+    /// e por isso não pode reutilizar o [`Self::bind_group`] do material.
+    ///
+    /// ⚠️ **Ela mora AQUI e não ao lado do `bind_group`, e o corte foi FORÇADO pelo tecto**: o
+    /// `individual.rs` está congelado a 709 na allowlist, e a regra que este ficheiro já regista
+    /// no cabeçalho é *cortar, nunca alargar a allowlist*. Das três responsabilidades irmãs
+    /// (*quem possui* · *como nascem* · **como se leem**) esta é a que serve: entregar a textura
+    /// a quem a vai amostrar de fora.
+    ///
+    /// Consumida por [`crate::SpriteRenderer::texture_view_and_dims`], que é a porta única sobre
+    /// as três lojas.
+    #[must_use]
+    pub fn view(&self, id: u32) -> Option<&wgpu::TextureView> {
+        self.entries.get(&id).map(|e| &e.view)
+    }
+
     /// Copy the GPU pixel contents of an entry back into a fresh
     /// `Vec<u8>` (RGBA8, tightly packed `width * height * 4`).
     ///

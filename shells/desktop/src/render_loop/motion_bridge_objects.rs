@@ -74,8 +74,8 @@ mod pose_tests;
 /// **COMO UM SPRITE VIRA UMA IMAGEM** — as duas lojas e o tile de uma instância só.
 #[path = "motion_bridge_objects_appearance.rs"]
 mod appearance;
-pub(crate) use appearance::Appearance;
-use appearance::{sprite_appearance, sprite_tile};
+use appearance::sprite_tile;
+pub(crate) use appearance::{Appearance, sprite_appearance};
 
 #[cfg(test)]
 #[path = "motion_bridge_objects_appearance_tests.rs"]

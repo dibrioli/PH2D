@@ -191,6 +191,15 @@ impl CookedTextureStore {
         self.entries.get(&texture_id).map(|u| &u.bind_group)
     }
 
+    /// A view crua desta textura — para um passe de TELA, cujo bind group tem layout próprio e
+    /// por isso não pode reutilizar o [`Self::bind_group`] do material.
+    ///
+    /// Consumida por [`crate::SpriteRenderer::texture_view_and_dims`], que é a porta única.
+    #[must_use]
+    pub fn view(&self, texture_id: u32) -> Option<&wgpu::TextureView> {
+        self.entries.get(&texture_id).map(|u| &u.view)
+    }
+
     /// Base-level `(width, height)` of a cooked `texture_id`, or `None`.
     /// Parallels [`IndividualTextureStore::dims`](crate::IndividualTextureStore::dims)
     /// (future region-rect support on cooked sprites).

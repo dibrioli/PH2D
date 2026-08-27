@@ -44,7 +44,7 @@ pub(crate) struct Appearance<'a> {
 
 /// The `(uv_rect, texture_id)` a sprite resolves to — the branch `sim_extract`
 /// runs. Shared by the single-sprite path and the group-child path (doc 86 §2 A4).
-pub(super) fn sprite_appearance(spr: &Sprite, look: Appearance<'_>) -> Option<([f32; 4], u32)> {
+pub(crate) fn sprite_appearance(spr: &Sprite, look: Appearance<'_>) -> Option<([f32; 4], u32)> {
     appearance_of(spr.source, &|k| look.atlas.region_uv(k), look.cooked)
 }
 

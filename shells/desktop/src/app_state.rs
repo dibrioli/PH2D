@@ -615,6 +615,8 @@ pub(crate) struct App {
     pub(crate) mask_smoke_done: bool,
     /// Latch one-shot de `PH2D_SHEET_SMOKE` — a folha como objeto (plano Sprite 17 §7).
     pub(crate) sheet_smoke_done: bool,
+    /// `PH2D_GLOW_DIRT_SMOKE` — a máscara de sujidade do halo, encenada uma vez por sessão.
+    pub(crate) glow_dirt_smoke_done: bool,
     /// `PH2D_SLICE_SMOKE` — encenado uma vez por sessão.
     pub(crate) slice_smoke_done: bool,
     /// `PH2D_SOCKET_SMOKE` — encenado uma vez por sessão.

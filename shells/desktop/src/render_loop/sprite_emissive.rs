@@ -78,6 +78,11 @@ pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
         operation: 0.0,
         source: 0.0,
         clamp: 0.0,
+        // E a MÁSCARA DE SUJIDADE apagada (doc 89 folha 11), pela terceira vez a mesma razão:
+        // ela é autoria de NÓ. ⚠️ E aqui há uma segunda: a imagem dela escolhe-se pelo nome de
+        // um objecto da cena, e um emissor de sprite não tem grafo nenhum onde esse nome pudesse
+        // ser escrito — o knob sem a imagem não é meia-feature, é um número inerte.
+        dirt_intensity: 0.0,
     }
 }
 

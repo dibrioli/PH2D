@@ -299,6 +299,10 @@ pub(crate) fn master_editing_mark_for_tests(
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
 pub(crate) mod motion_audio_gen;
 pub(crate) mod motion_externals;
+/// **A MÁSCARA DE SUJIDADE do halo**, resolvida contra a cena (doc 89 folha 11) — o nó guarda
+/// um NOME, o passe de tela quer uma `TextureView`, e este é o único sítio onde a cena, o atlas
+/// e as duas lojas de textura estão em mão ao mesmo tempo.
+pub(crate) mod motion_glow_dirt;
 /// **A CAMADA que o glow bright-passa** (bug do Enio, 2026-08-20): a lista de
 /// instâncias do passe de isolamento, que é a camada MOTION inteira e não só o
 /// passe de sprites — a metade vetorial viva entra pelo tile assado.
@@ -1535,6 +1539,25 @@ impl crate::App {
                 )));
                 self.title_dirty = true;
             }
+        }
+
+        // **A SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11): uma sprite com
+        // uma imagem de pó e riscos, um campo de peças a brilhar, e o nó `Glow` já a ler a
+        // primeira. ⚠️ Ela mora AQUI e não entre os demos de grafo porque precisa de uma
+        // textura a sério — a mesma razão que já está escrita para o `PH2D_MOTION_OBJ_SMOKE=9`.
+        if crate::glow_dirt_smoke::enabled()
+            && !std::mem::replace(&mut self.glow_dirt_smoke_done, true)
+            && crate::glow_dirt_smoke::spawn_if_enabled(
+                sim,
+                renderer,
+                asset_db,
+                next_import_cell,
+                atlas_asset_map,
+                motion,
+            )
+        {
+            let _ = tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            self.title_dirty = true;
         }
 
         // **9-SLICE** (`PH2D_SLICE_SMOKE=1`, spec Sprite 03 §3.5): duas caixas do MESMO desenho,

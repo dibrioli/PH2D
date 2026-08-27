@@ -543,6 +543,40 @@ impl SpriteRenderer {
         &self.atlas
     }
 
+    /// **A view e as dimensões por trás de um `texture_id`** — a porta ÚNICA para quem precisa
+    /// de LIGAR a textura de uma sprite em vez de a desenhar (doc 89 folha 11).
+    ///
+    /// ⚠️ **Ela existe porque um `texture_id` responde a outra pergunta.** O passe de sprites
+    /// resolve um id para o **bind group** que o material dele quer (`@group(1)`), e é isso que
+    /// as três lojas expõem hoje. Um passe de TELA — o composite do halo, com a máscara de
+    /// sujidade — tem um layout próprio, então o que ele precisa é da `TextureView` crua, para
+    /// pôr no bind group DELE. Era essa a peça que a célula da folha 11 chamou de *"a fiação
+    /// cara"*; a outra metade que ela precificava (resolver as três variantes de
+    /// `SpriteSource`) já tinha sido construída pela folha 14.
+    ///
+    /// ⚠️ **UMA porta com três braços, e não três chamadas do lado do consumidor**: o
+    /// espaço de ids é uma convenção deste crate (`ATLAS_TEXTURE_ID`, o bit dos assados, e os
+    /// individuais no resto), e um consumidor que a reimplemente é a segunda resposta que
+    /// diverge quando um quarto tipo de loja nascer. As dimensões vêm juntas porque quem liga
+    /// uma imagem a um passe de tela precisa **sempre** do aspecto dela, e pedi-las noutra
+    /// chamada seria a segunda oportunidade de as ir buscar à loja errada.
+    ///
+    /// `None` para um id que nenhuma loja conhece (uma textura ainda a carregar, ou já
+    /// libertada) — *não adivinha e não falha*.
+    #[must_use]
+    pub fn texture_view_and_dims(&self, texture_id: u32) -> Option<(&wgpu::TextureView, u32, u32)> {
+        if texture_id == RenderInstance::ATLAS_TEXTURE_ID {
+            let n = self.atlas.size_px;
+            return Some((&self.atlas.view, n, n));
+        }
+        if RenderInstance::is_cooked_texture_id(texture_id) {
+            let (w, h) = self.cooked.dims(texture_id)?;
+            return Some((self.cooked.view(texture_id)?, w, h));
+        }
+        let (w, h) = self.individual.dims(texture_id)?;
+        Some((self.individual.view(texture_id)?, w, h))
+    }
+
     /// Insert a freshly-decoded source image into the renderer's
     /// atlas at native resolution, returning the packed region on
     /// success. Wraps [`TextureAtlas::insert`] so callers (the

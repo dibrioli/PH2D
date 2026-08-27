@@ -118,7 +118,7 @@ pub use layer_compositor::{
     flatten_layer_ops, gaussian_weights, has_spatial, layer_cache_budget, max_layers_for_budget,
     motion_weights,
 };
-pub use motion_fx::{BloomParams, MotionFx};
+pub use motion_fx::{BloomParams, DirtMask, MotionFx, dirt_scale_offset};
 pub use picking::{
     WorldBbox, pick_sprite_at_world, pick_sprites_at_world, pick_sprites_in_world_rect,
     selection_bbox_world, sprite_world_to_uv, sprite_world_to_uv_unclamped,

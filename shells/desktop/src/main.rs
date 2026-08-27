@@ -234,6 +234,9 @@ mod fx_turbulence_smoke;
 mod fx_undo_smoke;
 mod gizmo_anchor_smoke;
 mod global_palette_input;
+/// **A cena da SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11) — a máscara
+/// precisa de uma IMAGEM a sério, que é o que os demos de grafo não têm.
+mod glow_dirt_smoke;
 mod gradient_smoke;
 mod grid_smoke;
 mod group_gizmo_view;
@@ -871,6 +874,7 @@ impl App {
             sculpt3d_pending: None,
             mask_smoke_done: false,
             sheet_smoke_done: false,
+            glow_dirt_smoke_done: false,
             slice_smoke_done: false,
             socket_smoke_done: false,
             mount_smoke_done: false,

@@ -71,7 +71,7 @@ pub(crate) use objects::vector_instance_as_tile;
 // The named-group membership predicate, re-exported pub(crate) so the object/flip bakes'
 // `select_present` (top-level shell modules) reach it. It is the SAME tree relation
 // `objects::group_externals` descends, and the object-bake gate pins that they agree.
-pub(crate) use objects::{Appearance, entity_is_in_a_named_group};
+pub(crate) use objects::{Appearance, entity_is_in_a_named_group, sprite_appearance};
 
 /// The LOD count knee (the const lives in the private `objects` module) — for the
 /// `=6` smoke diagnostic, so the printed threshold and the one the partition uses are

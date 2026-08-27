@@ -40,6 +40,7 @@
 | 2026-08-24 | ◆ | [HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md](HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md) | integração | a **costura deixa de ser penalizada e passa a ser ELIMINADA** — a casca fecha (`χ −4..−13 → +2`, bordo `30–78 → 0`) e 3–4× mais rápido |
 | 2026-08-24 |  | [AUDITORIA_line_seamelim_2026-08-24.md](AUDITORIA_line_seamelim_2026-08-24.md) | auditoria | o fecho da `line/seamelim` pelo template da `DIRETIVA_IMPLEMENTACAO` §3 |
 | 2026-08-26 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md) | integração | **as quatro queixas do artista, medidas**: duas curadas (o bordo como feição · o acabamento que só um dos dois caminhos tinha), a 3.ª com a causa nomeada (a aspereza é da escultura) e a 4.ª com número e **controlo**. ⭐ `t001` fecha (`χ = 2`), `t002` `31 → 14` furos. ⛔ **5 recusas medidas** e **3 afirmações minhas refutadas** |
+| 2026-08-26 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md) | integração | **o FECHO da linha**: identidade, superfície de colisão colada, o que só o `ship.sh` apanha e o que ficou **por smokar** (⚠️ três cortes de LOC). ⭐ O de conteúdo é o irmão acima |
 
 ---
 
@@ -56,7 +57,8 @@ FONTE do mecanismo** do porte do `layer.cc`; o MESTRE não os copiou de propósi
 
 *Índice conferido em 2026-08-24 — e ele estava **dois handoffs atrás do diretório** (o de 23/08 e o do papel E de 24/08). ⚠️ A contagem foi **derivada do `ls`**, como esta nota manda; sem isso o buraco não teria aparecido.*
 
-*Índice conferido em 2026-08-26 — e ele estava **TRÊS handoffs atrás** outra vez (os dois da
+*Índice conferido em 2026-08-26 (2.ª vez, ao FECHAR a linha: `29` ficheiros, `28` linhas —
+o `README.md` não se conta a si próprio). E ele estava **TRÊS handoffs atrás** outra vez (os dois da
 `line/seamelim` e o da corrente, todos de 24/08), com a contagem a dizer `23` para um
 diretório de `27`. ⚠️ **A nota acima existe desde 24/08 e o buraco reabriu em dois dias.**
 ⇒ *uma instrução para derivar do `ls` não substitui derivar do `ls`* — a conferência é

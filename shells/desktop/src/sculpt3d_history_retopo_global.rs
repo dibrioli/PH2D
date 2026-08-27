@@ -213,11 +213,11 @@ impl Sculpt3dScene {
             shape: r.shape,
             folded: r.folded,
             aligned,
-                    // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
+            // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
             // tentativa alinhada e só cai para a lisa se ela **RECUSAR** — nunca por
             // medição. Quem escolhe pela medição é a cadeia da extracção.
             measured: false,
-};
+        };
         let previous = core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, out);
         self.record(StrokeUndo::Remeshed(Box::new(previous)));
         // A malha é OUTRA: o traço em voo fala de vértices que não existem mais.

@@ -321,11 +321,16 @@ fn mean_rim_turn(mesh: &ph2d_mesh::Mesh) -> f32 {
         let dir = |w: u32| {
             let q = pos[w as usize];
             let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
-            let l = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt().max(1.0e-20);
+            let l = d[0]
+                .mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2]))
+                .sqrt()
+                .max(1.0e-20);
             [d[0] / l, d[1] / l, d[2] / l]
         };
         let (a, b) = (dir(ns[0]), dir(ns[1]));
-        let c = a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2])).clamp(-1.0, 1.0);
+        let c = a[0]
+            .mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+            .clamp(-1.0, 1.0);
         // O ângulo INTERNO é `acos(c)`; a viragem é o que falta para a recta.
         sum += 180.0 - c.acos().to_degrees();
         count += 1;
@@ -412,7 +417,7 @@ fn the_rim_law_is_off_and_the_ruler_is_alive() {
     // e é isso que se quer afirmar. ⛔ Ligar a `BORDER_LAW` passa a ser erro de COMPILAÇÃO
     // até alguém apagar esta linha e ler a tabela dela.
     const {
-        assert!(!super::BORDER_LAW);
+        assert!(!super::border::BORDER_LAW);
     };
     let mut mesh = sphere_with_a_small_hole(24, 36);
     let (loops0, len0) = border(&mesh);

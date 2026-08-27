@@ -238,3 +238,68 @@ fn a_step_naming_a_non_member_is_ignored() {
         "e o mundo tem de ficar EXACTAMENTE onde estava"
     );
 }
+
+/// ⭐⭐⭐ **DE PONTA A PONTA: tirar o `thin` e a animação continuar a MORFAR** — o gesto do Enio
+/// inteiro, pela composição que o quadro corre.
+///
+/// ⛔ Os gates acima medem a **tabela** depois da arrumação. Este mede o que o artista vê: pedir o
+/// `Hover` e a cena de facto andar de `wide` para `tall`. *Um gate sobre a tabela é cego ao que o
+/// motor faz com ela.*
+#[test]
+fn after_removing_thin_the_hover_still_morphs_to_tall() {
+    let (mut sim, mut scene, map, ids, host_id, mut states) = bench(2);
+    let host = Entity::from_bits(map[&host_id]);
+    let row = crate::morph_set::graph_of(&sim, &map, host)
+        .shapes()
+        .iter()
+        .position(|s| *s == ids[2])
+        .expect("o thin esta' na lista");
+    crate::morph_set::disconnect_row(&mut sim, &map, host, row);
+    let mut machines = crate::morph_machine_drive::MorphMachines::new();
+    crate::morph_machine_drive::reconcile(&mut machines, &mut sim, &scene, &map, &mut states);
+
+    // ⭐ E agora o quadro dos STATES: pedir o Hover e andar.
+    let mut ui = crate::render_loop::ui_state_bridge::UiMachines::new();
+    let mut cooked = crate::render_loop::ui_state_bridge::Cooked::default();
+    crate::render_loop::ui_state_bridge::request(
+        &mut ui,
+        &states,
+        host_id,
+        ph2d_ui_state::StateRole::Hover,
+    );
+    crate::render_loop::ui_state_bridge::dispatch(
+        &mut ui,
+        &mut states,
+        &mut sim,
+        &mut scene,
+        &map,
+        0.05,
+        &mut cooked,
+    );
+    assert_eq!(
+        cooked.morph_steps.len(),
+        1,
+        "⛔ a transicao nao publicou passo nenhum -- a animacao morreu"
+    );
+    let st = cooked.morph_steps[0];
+    assert_eq!(
+        (st.from, st.to),
+        (ids[0], ids[1]),
+        "⛔ o passo tem de ir de `wide` para `tall`"
+    );
+
+    // E o motor tem de o ACEITAR (a blindagem da W11h nao pode recusar um passo legitimo).
+    let mut drive = crate::preview_drive::PreviewDrive::default();
+    assert_eq!(
+        crate::morph_machine_drive::apply_ui_steps(&mut sim, &map, &cooked.morph_steps, &mut drive),
+        1,
+        "⛔ o motor RECUSOU o passo -- a blindagem esta' a morder um par legitimo"
+    );
+    let m = sim.world().get::<VecMorph>(host).unwrap();
+    assert_eq!(m.sources, [ids[0], ids[1]]);
+    assert!(
+        m.t > 0.0 && m.t < 1.0,
+        "e a cena tem de estar A MEIO: {}",
+        m.t
+    );
+}

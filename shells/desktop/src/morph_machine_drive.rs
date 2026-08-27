@@ -303,6 +303,12 @@ pub(crate) fn reconcile(
         .map(|(e, _)| e.to_bits())
         .collect();
     let mut fixed = 0;
+    if log_on() && !hosts.is_empty() {
+        eprintln!(
+            "[morph] reconcile: {} conjunto(s) neste quadro",
+            hosts.len()
+        );
+    }
     for bits in hosts {
         let e = Entity::from_bits(bits);
         let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
@@ -344,6 +350,16 @@ pub(crate) fn reconcile(
         fixed += 1;
     }
     fixed
+}
+
+/// **O diagnóstico desta costura** — `PH2D_MORPH_LOG=1`.
+///
+/// ⚠️ Ele existe porque o caminho que falha é o **da janela**: o ⊘, o apagar e o arrasto vivem no
+/// laço de render, e um gate headless prova a lei sem provar a fiação. *Quando a lei está verde e o
+/// produto não, o instrumento é o que fecha a distância.*
+fn log_on() -> bool {
+    static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ON.get_or_init(|| std::env::var_os("PH2D_MORPH_LOG").is_some())
 }
 
 /// ⭐⭐⭐ **A TABELA DE STATES SEGUE O CONJUNTO, venha a mudança por onde vier** (plano 32 W11i).
@@ -415,6 +431,12 @@ fn repair_states(
             }
         }
     }
+    if log_on() {
+        eprintln!(
+            "[morph] repair host={h} membros={shapes:?} vivos={live:?} \
+             poses-orfas={gone_objects:?} formas-orfas={gone_shapes:?}"
+        );
+    }
     let mut fixed = false;
     for id in gone_objects {
         fixed |= crate::vec_ui_state_edit::forget_object_in_all_states(states, h, id);
@@ -422,8 +444,11 @@ fn repair_states(
     // ⚠️ **Uma de cada vez, e em sequência**: a escolha prefere uma forma que nenhum outro estado
     // nomeie, então a segunda substituição tem de ver o que a primeira escolheu.
     for s in gone_shapes {
-        fixed |= crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, s, shapes)
-            .is_some();
+        let to = crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, s, shapes);
+        if log_on() {
+            eprintln!("[morph] repair host={h} substituiu forma {s} por {to:?}");
+        }
+        fixed |= to.is_some();
     }
     fixed
 }

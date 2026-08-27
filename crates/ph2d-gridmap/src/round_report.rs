@@ -115,8 +115,10 @@ pub struct RoundReport {
     pub tie_refused: usize,
     /// ⭐ A razão: `[dependente, livre do sistema, pregada]`.
     pub tie_refused_why: [usize; 3],
-    /// ⭐ `H / H_fingida` das amarras — ver [`crate::weld_solve::WeldSolveReport::tie_gain_p50`].
+    /// ⭐ `H / H_fingida` das amarras — ver [`crate::weld_solve_driver::WeldSolveReport::tie_gain_p50`].
     pub tie_gain: (f32, f32),
+    /// ⭐⭐ Grupos com RAIZ de classe simples.
+    pub tie_plain_roots: usize,
     /// ⭐ A ronda em que o contínuo estourou (`0` = nunca), e o movimento dela.
     pub nonfinite_round: (usize, f32),
     /// ⭐⭐ Qual escritor estourou — ver `WeldSolveReport::nonfinite_who`.

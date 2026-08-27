@@ -1943,3 +1943,71 @@ pela mesma razão. A propriedade que a salva é a **desigualdade**, não a exact
   era **uma** das causas, não a única; e as duas hipóteses acima estão fechadas.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto **byte-idêntico** (controlo
   conferido número a número).
+
+---
+
+### §23.22 — ⭐⭐⭐ O `NaN` FECHOU: a RAIZ de um grupo amarrado não tinha dono
+
+A §23.21 curou a sobre-relaxação (`39×`) e a esfera **continuava** a divergir na ronda
+`6134`. A causa que faltava é estrutural, e cabe numa pergunta: **quem escreve a raiz?**
+
+| membro do grupo | quem o trava da [`relax_class`] |
+|---|---|
+| não-raiz | `driven`, posto por [`attach_ties`] |
+| incógnita **livre** | `freeze_free` (que também põe `frozen[c][ax]`) |
+| ⛔ **raiz que é classe SIMPLES** | **ninguém** |
+
+⇒ a `relax_class` escrevia-a no eixo amarrado com o denominador da classe **sozinha**,
+enquanto a [`relax_tie`] a escrevia com o do grupo. **Duas leis sobre o mesmo escalar** —
+a lei da obra A, uma terceira vez, no sítio que ninguém tinha olhado porque a raiz é
+precisamente o membro que *tem* de se mexer.
+
+⭐ **A contagem CASA com o sintoma:** `6` raízes simples na `esfera-fina`, `6` pregos com
+passo não-finito no relatório original.
+
+#### A cura (uma condição a menos) e o que ela move
+
+| | não-finitos no contínuo | pregos `NaN` | escada | visitas | extracção |
+|---|---|---|---|---|---|
+| antes | `3 119` | `29` | `0 / 29` | `580 029` | ⛔ recusada |
+| **depois** | **`0`** | **`0`** | **`29 / 0`** | **`103 320`** | ✅ `561` verts, `552` quads |
+
+⚠️ Marcar a raiz é **inócuo** quando ela é livre (o `freeze_free` já a travara), e a
+`relax_tie` escreve-a de qualquer modo — `driven` só fecha a porta da `relax_class`.
+Gate `no_tied_scalar_is_also_written_by_the_class_relaxation`, com prova de mutação (repor
+o `if x != root` reprova, nomeando o escalar).
+
+#### ⭐⭐⭐ E com a esfera a convergir, o A2b finalmente MEDE-SE — ele funciona, e o preço são DOBRAS
+
+Alvo `2`, corpus nosso, `PH2D_GRIDMAP_ARCLINE` desligada → ligada:
+
+| peça | atravessagem p50 (células) | dobras | `χ` | raízes simples |
+|---|---|---|---|---|
+| `sphere_uv_96x144` | `0,44` → **`0,07`** | `0` → `8` | `+2` → `−3` | `8` |
+| `sculpt_eared` | `0,55` → **`0,36`** | `2` → `28` | `+2` → `−4` | `7` |
+| `sculpt_hooked` | `0,28` → **`0,02`** | `4` → `115` | `+2` → `−6` | `10` |
+| `sculpt_wrinkled` | `0,50` → **`0,00`** | `0` → `103` | `+2` → `−5` | `9` |
+
+⭐ **A restrição faz exactamente o que foi desenhada para fazer**: as separatrizes do F3
+passam a ser linhas de grade do mapa (`0,00`–`0,07` de célula em três das quatro peças,
+contra `0,28`–`0,55`). *A §23 inteira foi escrita para achar isto, e agora está medido.*
+
+⛔ **E o preço é a DOBRA, não o desalinhamento:** forçar um arco a ser linha de grade
+onde o mapa não o quer **vira triângulos**, e é a dobra que parte o `χ`. ⚠️ Repare que as
+duas peças com o melhor alinhamento (`0,00` e `0,02`) são as das piores contagens (`103` e
+`115`) — *a tensão é entre as duas colunas, não entre o A2b e um bug.*
+
+⛔⛔ **O endurecimento local NÃO é a saída, e a recusa é medida** (tabela em
+[`STIFFEN_PASSES`]): a nossa energia é `Σ area·|∇z − X/h|²`, ou seja **«seguir o campo»**,
+e pesar mais um triângulo virado manda-o obedecer ao campo com mais força — *exactamente no
+sítio onde obedecer é o que o vira*. A cura publicada assume uma energia **harmónica**, que
+não é a nossa.
+
+#### ⇒ Onde a obra fica
+
+- ⭐ O `NaN` está **fechado** — causa nomeada, cura de uma condição, gate com mutação.
+- ⭐ O A2b está **medido e funciona** no que foi desenhado para fazer.
+- ⛔ **A pergunta seguinte mudou:** deixou de ser *«porque diverge?»* e passou a ser
+  *«como se impõe o arco sem virar triângulos?»* — que é uma pergunta sobre a **energia**,
+  não sobre o solver.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

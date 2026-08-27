@@ -157,3 +157,22 @@ Hessiana por cópia piora a esfera; a folga de posto de [`solve2`] tornada relat
 curvatura sub-relaxa (lento, convergente); um **abaixo** sobre-relaxa e diverge.* **Errar
 para cima é lento; errar para baixo é `inf`.** Mecanismo, as duas correcções da régua e as
 tabelas: [`ACHADO_ordem_das_fases.md` §23.21](ACHADO_ordem_das_fases.md).
+
+---
+
+## §6 — ⭐⭐⭐ O `NaN` FECHOU, e a pergunta seguinte é OUTRA (2026-08-27)
+
+A causa que faltava: **a RAIZ de um grupo amarrado não tinha dono** — os outros membros
+saem da `relax_class` por `driven` e os livres por `freeze_free`, mas uma raiz de classe
+**simples** não é nem uma coisa nem outra. Contagem casa com o sintoma (`6` raízes simples,
+`6` pregos `NaN`). Curado: contínuo de `3 119` não-finitos para **`0`**, escada de `0/29`
+para **`29/0`**, e a extracção deixa de ser recusada.
+
+⭐ **Com a esfera a convergir, o A2b mede-se e FUNCIONA:** a atravessagem cai de
+`0,28`–`0,55` para **`0,00`–`0,36`** de célula nas quatro peças. ⛔ E o preço é a **DOBRA**
+(`0`–`4` → `8`–`115`), que é o que parte o `χ`.
+
+⇒ **A pergunta seguinte deixou de ser sobre o solver e passou a ser sobre a ENERGIA:** como
+impor o arco sem virar triângulos. ⛔ O endurecimento local está **recusado por medição**
+(a nossa energia é «seguir o campo»; a cura publicada assume harmónica). Mecanismo e
+tabelas: [`ACHADO_ordem_das_fases.md` §23.22](ACHADO_ordem_das_fases.md).

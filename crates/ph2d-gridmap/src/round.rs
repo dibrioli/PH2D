@@ -145,7 +145,7 @@ impl Default for RoundOptions {
         Self {
             weight: SEAM_WEIGHT,
             rounds: crate::solve::ROUNDS,
-            welded_rounds: crate::weld_solve::ROUNDS,
+            welded_rounds: crate::weld_solve_driver::ROUNDS,
             local_tol: LOCAL_TOL,
             local_cap: LOCAL_CAP,
             sweeps: SWEEPS,

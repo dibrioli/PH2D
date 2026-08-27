@@ -535,6 +535,10 @@ fn main() {
         r.tie_gain.0, r.tie_gain.1
     );
     println!(
+        "  ⭐⭐ RAIZES de classe SIMPLES (a relax_class tambem as escrevia): {}",
+        r.tie_plain_roots
+    );
+    println!(
         "  ⛔⛔ NAO-FINITOS no mapa continuo: {} no fim · {} logo apos a 1a ronda",
         r.nonfinite.0, r.nonfinite.1
     );

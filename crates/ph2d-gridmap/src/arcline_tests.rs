@@ -107,8 +107,9 @@ fn the_ties_switch_is_inert_when_off() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (a, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
-    let (b, _) = crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, None, None);
+    let (a, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (b, _) =
+        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, h, 4, None, None);
     assert_eq!(a.shift, b.shift);
     assert_eq!(a.uv.len(), b.uv.len());
     for (ra, rb) in a.uv.iter().zip(&b.uv) {
@@ -131,12 +132,12 @@ fn the_ties_change_the_map_when_on() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (base, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (base, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &base);
     assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
     let (tied, rep) =
-        crate::weld_solve::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties), None);
+        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties), None);
     assert!(
         rep.tie_groups > 0,
         "nenhum grupo entrou: {} recusados",
@@ -171,7 +172,7 @@ fn the_equation_residual_matches_the_geometric_reading() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
-    let (map, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 6);
     let (w, _) = crate::weld::weld(&cut, &combed);
 
     let eqs = super::arc_equations(&cut, &w, &map);
@@ -211,7 +212,7 @@ fn every_arc_coefficient_is_plus_or_minus_one() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
-    let (map, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 6);
     let (w, _) = crate::weld::weld(&cut, &combed);
     for eq in super::arc_equations(&cut, &w, &map) {
         for (v, ax, k) in eq.terms {
@@ -255,7 +256,7 @@ fn the_tie_denominator_never_falls_below_the_effective_curvature() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (mut map, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &map);
 
@@ -336,13 +337,71 @@ fn the_rank_slack_is_relative_to_the_matrix_scale() {
     let h = [[1.0e6, 0.0], [0.0, 1.0e-9]];
     let g = [1.0, 1.0];
     assert!(
-        crate::weld_solve::solve2_pub(h, g, [true, false]).is_none(),
+        crate::weld_solve_driver::solve2_pub(h, g, [true, false]).is_none(),
         "a coluna nula passou a guarda: o limiar ainda e' absoluto"
     );
     // E a mesma coluna, na escala DELA, é perfeitamente resolúvel.
     let h = [[1.0e-9, 0.0], [0.0, 1.0e-9]];
     assert!(
-        crate::weld_solve::solve2_pub(h, g, [true, false]).is_some(),
+        crate::weld_solve_driver::solve2_pub(h, g, [true, false]).is_some(),
         "uma matriz pequena mas sa' foi recusada: a guarda deixou de ser relativa"
     );
+}
+
+/// ⭐⭐⭐ **NENHUM MEMBRO DE UM GRUPO AMARRADO PODE SER ESCRITO PELA `relax_class` — A
+/// RAIZ INCLUÍDA.**
+///
+/// ⛔⛔⛔ É o gate da causa medida em 2026-08-27 para o `NaN` da `sphere_uv`. Os membros
+/// não-raiz saem da [`crate::weld_solve::WeldRelaxer::relax_class`] por `driven`, e os que
+/// são incógnitas LIVRES por `freeze_free`. ⚠️ *Uma raiz que seja classe **simples** não é
+/// nem uma coisa nem outra* — e a `relax_class` continuava a escrevê-la no eixo amarrado,
+/// com o denominador da classe **sozinha**, enquanto a `relax_tie` a escrevia com o do
+/// grupo. **Duas leis sobre o mesmo escalar.**
+///
+/// ⭐ A contagem CASA com o sintoma: `6` raízes simples na `esfera-fina`, `6` pregos com
+/// passo não-finito. Marcada a raiz, o contínuo passa de `3 119` não-finitos a **`0`**, a
+/// escada de `0 / 28` a **`29 / 0`**, e as visitas de `580 029` a `103 320`.
+#[test]
+fn no_tied_scalar_is_also_written_by_the_class_relaxation() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let h = 0.2;
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    let ties = super::build_arc_ties(&cut, &w, &map);
+
+    let mut rep = crate::solve::SolveReport::default();
+    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
+    r.attach_ties(&ties);
+    let groups = r.tie_counts().0;
+    assert!(groups > 0, "a esfera tem de dar grupos de amarra");
+    // ⚠️ **Sem raízes simples este gate seria vacuoso** — ele só distingue as duas
+    // redacções na população em que `freeze_free` não chega.
+    assert!(
+        r.plain_roots() > 0,
+        "a fixtura nao contem uma raiz de classe simples: o gate nao prova nada"
+    );
+
+    for g in 0..groups {
+        let Some((_, members)) = ties.group(g) else {
+            continue;
+        };
+        for &x in members {
+            let (c, ax) = (x as usize / 2, x as usize % 2);
+            let before = r.read_class(&map, c)[ax];
+            r.relax_class(&mut map, c);
+            let after = r.read_class(&map, c)[ax];
+            assert!(
+                (after - before).abs() <= 1.0e-9,
+                "grupo {g}, escalar {x} (classe {c}, eixo {ax}): a relax_class moveu-o \
+                 de {before:e} para {after:e} — e' a segunda lei sobre um escalar amarrado"
+            );
+        }
+    }
 }

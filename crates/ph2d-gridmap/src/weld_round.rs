@@ -38,7 +38,8 @@ use crate::round::{RoundOptions, RoundReport};
 use crate::solve::{GridMap, SolveReport, assemble};
 use crate::weld::{seam_residual, weld};
 use crate::weld_flat::Var;
-use crate::weld_solve::{WeldRelaxer, solve_welded};
+use crate::weld_solve::WeldRelaxer;
+use crate::weld_solve_driver::solve_welded;
 
 /// ⭐⭐⭐ **AS AMARRAS DOS ARCOS** — `PH2D_GRIDMAP_ARCLINE=1` liga-as.
 ///
@@ -164,7 +165,7 @@ pub fn round_welded(
         // ⭐⭐⭐ O A3: as equações que fecham ciclo, no mesmo espaço de variáveis.
         let eqs = crate::arcline::arc_equations(cut, &w, &map);
         let cyc: Vec<usize> = t.cycle_equations().to_vec();
-        let (m2, r2) = crate::weld_solve::solve_welded_with(
+        let (m2, r2) = crate::weld_solve_driver::solve_welded_with(
             mesh,
             cut,
             combed,
@@ -182,6 +183,7 @@ pub fn round_welded(
         tie_refused: before.tie_refused,
         tie_refused_why: before.tie_refused_why,
         tie_gain: (before.tie_gain_p50, before.tie_gain_max),
+        tie_plain_roots: before.tie_plain_roots,
         nonfinite_round: (before.nonfinite_round, before.nonfinite_move),
         nonfinite_who: before.nonfinite_who,
         arc_cycles: before.arc_cycles,

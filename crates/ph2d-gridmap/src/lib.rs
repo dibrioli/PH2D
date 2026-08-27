@@ -72,6 +72,7 @@ pub mod weld_flat;
 pub mod weld_round;
 /// ⭐⭐⭐ **G3 SOLDADO** — o mesmo sistema sem o peso da costura — ver o módulo.
 pub mod weld_solve;
+pub mod weld_solve_driver;
 
 pub use align::{Alignment, ArcQuant, measure_alignment, measure_arc_quantization};
 pub use arcline::{
@@ -87,6 +88,6 @@ pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
 pub use weld_round::{arcline_enabled, round_welded, welded_enabled};
-pub use weld_solve::{
+pub use weld_solve_driver::{
     STIFFEN_FACTOR, STIFFEN_PASSES, WeldSolveReport, solve_welded, solve_welded_with,
 };

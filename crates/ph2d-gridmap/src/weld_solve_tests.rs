@@ -1,8 +1,8 @@
 //! Os gates do sistema soldado, e as sondas que justificam as constantes dele.
 
-use super::solve_welded;
 use crate::solve::{ROUNDS as PENALISED_ROUNDS, SEAM_WEIGHT, solve_with};
 use crate::weld::{seam_residual, weld};
+use crate::weld_solve_driver::solve_welded;
 
 /// ⭐⭐⭐ **A TABELA DE DERIVADAS TEM DE PREVER O QUE ACONTECE** — o controlo directo.
 ///

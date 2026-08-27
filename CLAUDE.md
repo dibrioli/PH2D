@@ -353,12 +353,22 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   tem e o Godot não): **bloqueado** — só têm sentido com um modo de jogo, e o `shells/game`/R1 está adiado pelo Enio; a cura de
   hoje é uma **lista negra à mão** no [`player_input.rs`](shells/desktop/src/player_input.rs). ⏳ Falta também o *override*
   por-jogador em `~/.ph2d/` ·
-  **(2)** a *state machine* do **Morph** **no canvas 2D** (setas forma→forma, condições nas setas), viva no **runtime do jogo**
-  ([pesquisa 31](docs/Vector%20Module/31_pesquisa_maquinas_de_estado.md) — base **Rive**, com duas correções: *só as transições do
-  estado CORRENTE* (State Tree) e *todo input sabe quem o lê* (a cura do medo do Animator)). ⚠️ O [`VecMorph`](crates/ph2d-ecs/src/vec_morph.rs)
-  **já** é não-destrutivo e re-cozido por quadro, mas é entre **DUAS** formas; e *"no runtime"* obriga a decidir se a lei desce a uma
-  **crate-folha** ou se o **R1 sai do gelo** — é o item que muda o preço ·
-  **(3)** **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
+  ✅ **(2) A MÁQUINA DE ESTADOS DO MORPH FECHOU** ([plano 32](docs/Vector%20Module/32_plano_maquina_de_estados_do_morph.md) W1–W11j,
+  [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md)) — um botão faz o conjunto,
+  **as setas são virtuais** (o grafo é completo por construção e ninguém o desenha), **uma tecla por FORMA** (a lista é `n`, não
+  `n(n-1)`), um **modo** de pré-visualização que toma o teclado, e o conjunto **anima dentro do sistema de States** que já existia.
+  ⚠️ A lista de estados **são os FILHOS**, e daí saem de graça o arrastar-para-dentro, a ocultação e a reparação da animação quando
+  uma forma sai. ⚠️ **Interromper um morfo a meio faz a forma SALTAR** — nomeado e **não curado**: uma pose carrega **uma** forma e
+  o par vivo `(A, B, t)` não cabe nela; curá-lo é **modelo novo**, decisão do Enio. ⛔ *"funcional no runtime do jogo"* segue
+  **bloqueado no `shells/game`/R1**, adiado por ele — o **mesmo** bloqueio dos contextos do Input Map, e **não** um preço desta
+  feature (a lei já vive numa crate-folha e corre no modo de pré-visualização hoje). ⛔ As **setas desenhadas no canvas** e o
+  arrasto forma→forma foram **RETIRADOS por decisão do Enio** (25/08) — o código existiu (W3a/W3b) e foi apagado; não reconstruir
+  sem ler o [§5 do plano 32](docs/Vector%20Module/32_plano_maquina_de_estados_do_morph.md). ⚠️ E o `PROJECT_SCHEMA` subiu **sem
+  degrau de migração, e está certo** (não há projetos gravados — decisão do Enio, 26/08; o bump fica porque o postcard é
+  posicional, então **sem** ele um ficheiro velho seria lido errado **em silêncio** e com ele o load **recusa em voz alta**).
+  Cena **`=75`** · diagnóstico `PH2D_MORPH_LOG=1` ·
+  ⏳ **(3) — o ÚNICO aberto da fila, e continua SEM PLANO** ([doc 29 §F2](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md)):
+  **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
   ([`paint.rs`](crates/ph2d-vec-scene/src/paint.rs)) — ⚠️ a lei do módulo é *preenchimento em **world-space**, que transforma
   com o path*, e ⛔ leia o [plano 23](docs/Vector%20Module/23_plano_pattern_along_path.md) antes de desenhar ·
   ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que

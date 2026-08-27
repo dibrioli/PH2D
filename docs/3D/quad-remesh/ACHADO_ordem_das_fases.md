@@ -2162,3 +2162,69 @@ Um grupo amarrado tem de contribuir com **UMA** variável inteira para a escada 
 *Um predicado a responder a duas perguntas dá a resposta certa a uma delas.*
 
 ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.25 — ⭐⭐⭐ AS DUAS METADES: a raiz entra na escada, e o `δ` é inteiro
+
+A §23.24 especificou a obra em duas frases. Ela cabe em duas mudanças, e **nenhuma das
+duas funciona sozinha** — que é exactamente por que uma delas se leu como inútil.
+
+#### A obra
+
+| pergunta | quem respondia | quem responde agora |
+|---|---|---|
+| a `relax_free` escreve este eixo? | `free_axis_is_frozen` | idem — **não**, para todo membro |
+| a **escada** prega este eixo? | `free_axis_is_frozen` | ⭐ `tie_roots()` — **sim** para a raiz |
+| a `relax_tie` mexe nesta raiz? | sempre | ⭐ **não**, se a escada já a pregou |
+
+Três peças novas: [`WeldRelaxer::tie_roots`] (uma variável inteira por grupo, empurrada
+para a escada), `pinned_class` + [`pin_free`]/[`pin_class`] (pregar passa a marcar **duas**
+coisas — congelado *e* inteiro), e [`derive_ties`] (o grupo segue a raiz **no acto**, porque
+o `drain` só relaxa classes e um membro amarrado sai dessa porta por `driven`).
+
+#### ⭐⭐⭐ O resultado, e ele é grande
+
+Alvo `2`. `off` = sem amarras · `só raiz` = a obra desta secção · `só δ` = a de manhã ·
+**`as duas`** = o que shipa dentro do `PH2D_GRIDMAP_ARCLINE`.
+
+| peça | modo | dist. a inteiro | fraccionárias | atravessagem | bordo | `χ` |
+|---|---|---|---|---|---|---|
+| `sphere_uv_96x144` | off | `0,000` | `0` | `0,44` | `0` | `+2` |
+| | só `δ` | `0,4561` | `8` | `0,00` | `24` | `−4` |
+| | só raiz | `0,4770` | `10` | `0,06` | `22` | `−3` |
+| | ⭐ **as duas** | **`0,000`** | **`0`** | **`0,00`** | **`0`** | ⭐ **`+2`** |
+| `sculpt_wrinkled` | off | `0,000` | `0` | `0,50` | `0` | `+2` |
+| | só raiz | `0,4766` | `8` | `0,00` | `6` | `0` |
+| | ⭐ **as duas** | **`0,000`** | **`0`** | **`0,00`** | `10` | `+1` |
+| `sculpt_eared` | off | `0,000` | `0` | `0,55` | `0` | `+2` |
+| | ⭐ **as duas** | **`0,000`** | **`0`** | **`0,00`** | `6` | `+1` |
+| `sculpt_hooked` | off | `0,000` | `0` | `0,28` | `0` | `+2` |
+| | ⭐ **as duas** | ⛔ `0,3675` | **`0`** | **`0,00`** | `22` | `−2` |
+
+⭐⭐⭐ **Na `sphere_uv` a restrição passa a ser ESTRITAMENTE MELHOR do que não a ter:** a
+atravessagem vai de `0,44` a **`0,00`** e a topologia fica **intacta** (`χ = +2`, `0`
+arestas de bordo). *É a primeira vez que a §23 inteira entrega alinhamento sem pagar nada.*
+
+⭐ E nas outras: `χ` de `−5`/`−4`/`−6` (uma metade só) para `+1`/`+1`/`−2`, com a
+atravessagem a `0,00` em todas.
+
+#### ⚠️⚠️ E a lição é sobre a MEDIÇÃO, não sobre o `δ`
+
+Escrevi de manhã, com tabela: *«faz o que promete e não cura nada»*, e pus o `δ` inteiro a
+**desligado com nota de rejeição**. Essa nota teria impedido a próxima janela de o ligar —
+e ele é metade da cura.
+
+⇒ *Uma metade medida sozinha pode ler-se como inútil porque a outra ainda não existe.* A
+forma de o apanhar é a que esta secção usou: **a refutação nomeou a causa** (*«um `δ`
+inteiro somado a uma raiz fraccionária dá um membro fraccionário»*), e essa frase é
+literalmente a especificação da outra metade. ⛔ *Uma rejeição cuja explicação descreve
+outra obra não é uma rejeição — é um pré-requisito.*
+
+#### ⇒ O que fica aberto
+
+- ⛔ A `sculpt_hooked` é a única com `dist. a inteiro` ≠ `0` (`0,3675`) — **algum escalar
+  ainda escapa à escada ali**, e a coluna `tie_axes_skipped` (`19`) diz que há eixos
+  saltados que não são raízes. *Um grupo com dois eixos amarrados oferece **uma** raiz.*
+- ⛔ `χ = +1` em duas peças e `−2` na `hooked`: a topologia melhorou muito e **não fecha**.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

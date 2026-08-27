@@ -452,3 +452,69 @@ fn keeping_a_subset_of_groups_keeps_those_groups_intact() {
         "o grupo 1 foi filtrado e a raiz dele continua na lista"
     );
 }
+
+/// ⭐⭐⭐ **COM AS AMARRAS LIGADAS, AS TRANSLAÇÕES CONTINUAM A CAIR EM INTEIROS.**
+///
+/// ⛔⛔⛔ É o gate das **duas metades** da §23.25, e ele só é verde com as duas: a raiz de
+/// cada grupo entra na escada gulosa (senão o grupo inteiro é saltado e fica onde o
+/// contínuo o deixou) **e** o `δ` de cada membro é inteiro (senão `σ·raiz + δ` não o é,
+/// por muito inteira que a raiz seja).
+///
+/// ⚠️ *Nenhuma das duas passa este gate sozinha* — foi por isso que a primeira se leu como
+/// inútil quando foi medida antes da segunda existir.
+#[test]
+fn the_ties_do_not_stop_the_translations_from_landing_on_integers() {
+    // ⚠️ A env é do PROCESSO — o gate mede o caminho de omissão de cada uma, e por isso
+    // não a escreve: se alguém a puser a `0` no ambiente, é isso que a suíte mede.
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let h = 0.2;
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    let ties = super::build_arc_ties(&cut, &w, &map);
+    assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
+
+    // ⭐ O `δ` de todo membro não-raiz tem de ser inteiro — a 1.ª metade.
+    let mut worst_delta = 0.0f32;
+    for g in 0..ties.groups() {
+        let Some((root, mem)) = ties.group(g) else {
+            continue;
+        };
+        for &x in mem {
+            if x == root {
+                continue;
+            }
+            let (_, _, d) = ties.of(x);
+            worst_delta = worst_delta.max((d - d.round()).abs());
+        }
+    }
+    assert!(
+        worst_delta <= 1.0e-4,
+        "um membro amarrado tem δ = {worst_delta:e} de um inteiro — \
+         σ·raiz + δ nunca cai em inteiro por muito inteira que a raiz seja"
+    );
+
+    // ⭐ E a raiz de todo grupo tem de ser CANDIDATA da escada — a 2.ª metade, lida onde
+    // ela vive: se `tie_roots` estiver vazia, o `weld_round` não tem o que empurrar.
+    let mut rep = crate::solve::SolveReport::default();
+    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
+    r.attach_ties(&ties);
+    assert_eq!(
+        r.tie_roots().len(),
+        r.tie_counts().0,
+        "cada grupo que entrou tem de oferecer exactamente UMA raiz a' escada"
+    );
+    for (c, ax) in r.tie_roots() {
+        assert!(
+            r.free_axis_is_frozen(r.free_index_class(c).unwrap_or(usize::MAX), ax)
+                || r.free_index_class(c).is_none(),
+            "a raiz (classe {c}, eixo {ax}) nao esta' congelada: a relax_free ainda a escreve"
+        );
+    }
+}

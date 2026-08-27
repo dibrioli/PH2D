@@ -140,3 +140,4 @@
 - [Perf do Painter (3)](reference_topic_painter_perf.md) · [spatial GPU reconcilia vs CPU](project_painter_w4_spatial_gpu_bloom_sh.md)
 - [HISTÓRICO: Painter no teto — premissa dissolvida](project_painter_core_files_at_loc_cap.md) · [8GB = full-gate ~10min](project_solo_coord_backlog_ship_2026_05_29.md)
 - [A recusa que responde é a do knob VIZINHO — grepe a MÉTRICA](feedback_the_measured_refusal_you_need_is_in_the_neighbouring_knob.md)
+- [Rejeição cuja explicação descreve outra obra = PRÉ-REQUISITO](feedback_a_rejection_whose_explanation_describes_another_work_is_a_prerequisite.md)

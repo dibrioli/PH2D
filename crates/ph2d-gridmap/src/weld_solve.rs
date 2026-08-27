@@ -81,6 +81,13 @@ pub(crate) struct WeldRelaxer<'a> {
     den: Vec<f32>,
     /// ⭐ Por classe, que componentes estão **pregadas**.
     frozen: Vec<[bool; 2]>,
+    /// ⭐⭐⭐ Por classe, que componentes a **escada gulosa** pregou a um inteiro.
+    ///
+    /// ⚠️ **NÃO é o mesmo que `frozen`, e confundi-los foi o defeito da §23.24.** São duas
+    /// perguntas: *«a [`Self::relax_free`] escreve isto?»* (não, para todo membro
+    /// amarrado) e *«a escada prega isto?»* (sim para a raiz, não para os outros). *Um
+    /// predicado a responder a duas perguntas dá a resposta certa a uma delas.*
+    pinned_class: Vec<[bool; 2]>,
     /// Por incógnita livre, que componentes estão pregadas.
     free_frozen: Vec<[bool; 2]>,
     /// Por classe, as classes vizinhas — a fila do degrau local anda por aqui.
@@ -155,6 +162,7 @@ impl<'a> WeldRelaxer<'a> {
             sys,
             den,
             frozen: vec![[false; 2]; nc],
+            pinned_class: vec![[false; 2]; nc],
             free_frozen: vec![[false; 2]; nf],
             neigh,
             ties: Vec::new(),
@@ -251,7 +259,7 @@ impl<'a> WeldRelaxer<'a> {
         }
     }
 
-    fn free_index_class(&self, class: usize) -> Option<usize> {
+    pub(crate) fn free_index_class(&self, class: usize) -> Option<usize> {
         u32::try_from(class)
             .ok()
             .and_then(|c| self.sys.free().iter().position(|&v| v == Var::Class(c)))
@@ -319,6 +327,30 @@ impl<'a> WeldRelaxer<'a> {
     /// medido foi um passo `NaN` no meio da escada.*
     pub(crate) fn free_axis_is_frozen(&self, i: usize, ax: usize) -> bool {
         self.free_frozen.get(i).is_some_and(|f| f[ax])
+    }
+
+    /// ⭐⭐⭐ **A ESCADA PREGOU ESTE EIXO** — congela-o *e* marca-o como inteiro.
+    ///
+    /// ⚠️ A marca é o que a [`Self::relax_tie`] lê para **não mexer numa raiz pregada**:
+    /// sem ela, o passo da amarra desfazia o prego na varredura seguinte.
+    pub(crate) fn pin_free(&mut self, i: usize, ax: usize) {
+        self.freeze_free(i, ax);
+        if let Var::Class(c) = self.sys.free()[i] {
+            self.pinned_class[c as usize][ax] = true;
+        }
+    }
+
+    /// A irmã da [`Self::pin_free`] para uma classe que não é incógnita livre.
+    pub(crate) fn pin_class(&mut self, class: usize, ax: usize) {
+        self.freeze_class(class, ax);
+        if let Some(p) = self.pinned_class.get_mut(class) {
+            p[ax] = true;
+        }
+    }
+
+    /// Este escalar já foi pregado a um inteiro pela escada?
+    pub(crate) fn class_axis_is_pinned(&self, class: usize, ax: usize) -> bool {
+        self.pinned_class.get(class).is_some_and(|p| p[ax])
     }
 
     /// Prega uma componente de uma incógnita livre.

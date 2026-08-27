@@ -185,6 +185,35 @@ impl WeldRelaxer<'_> {
 
     /// ⭐⭐ Quantos grupos têm RAIZ de classe simples — a população em que a `relax_class`
     /// era a segunda lei sobre o escalar amarrado.
+    /// ⭐⭐⭐ **A RAIZ DE CADA GRUPO, no espaço `(classe, eixo)`.**
+    ///
+    /// ⛔⛔⛔ **É a lista que faltava à escada gulosa (§23.24).** Um grupo amarrado tem de
+    /// contribuir com **UMA** variável inteira, e é esta; os outros membros seguem por
+    /// `σ·y_raiz + δ`. *Sem ela, a amarra congelava o grupo inteiro e a escada saltava-o —
+    /// `26` de `96` eixos na `sculpt_hooked` nunca viam um inteiro.*
+    pub(crate) fn tie_roots(&self) -> Vec<(usize, usize)> {
+        self.ties
+            .iter()
+            .map(|(root, _)| (*root as usize / 2, *root as usize % 2))
+            .collect()
+    }
+
+    /// ⭐ **RE-DERIVA todos os grupos a partir das raízes ONDE ELAS ESTÃO** — sem passo.
+    ///
+    /// ⚠️ A escada escreve a raiz e mais ninguém; sem esta passagem os membros ficam onde
+    /// o contínuo os deixou até a varredura seguinte, e o [`crate::weld_round`] mede o mapa
+    /// **entre** as duas.
+    pub(crate) fn derive_ties(&self, map: &mut GridMap) {
+        for g in 0..self.ties.len() {
+            let Some((root, _)) = self.ties.get(g) else {
+                continue;
+            };
+            let (rc, rax) = (*root as usize / 2, *root as usize % 2);
+            let y = self.w.value_pub(map, rc)[rax];
+            self.snap_tie(map, g, y);
+        }
+    }
+
     pub(crate) fn plain_roots(&self) -> usize {
         self.plain_roots
     }
@@ -275,12 +304,21 @@ impl WeldRelaxer<'_> {
     /// membros (cada um com o sinal que o liga à raiz) sobre a soma dos denominadores
     /// deles, e escreve-se o grupo inteiro a partir da raiz.
     pub(crate) fn relax_tie(&self, map: &mut GridMap, g: usize) -> f32 {
-        let Some((root, rows)) = self.ties.get(g) else {
+        let Some((root, _)) = self.ties.get(g) else {
             return 0.0;
         };
         let Some((num, den, _)) = self.tie_normal(map, g) else {
             return 0.0;
         };
+        // ⛔⛔⛔ **UMA RAIZ PREGADA NÃO SE MEXE.** A escada nailou-a a um inteiro; dar-lhe
+        // um passo aqui desfá-lo-ia na varredura seguinte, e o grupo voltava a ser
+        // fraccionário — *que é exactamente o defeito que pôr a raiz na escada cura*.
+        let (rc0, rax0) = (*root as usize / 2, *root as usize % 2);
+        if self.class_axis_is_pinned(rc0, rax0) {
+            let y = self.w.value_pub(map, rc0)[rax0];
+            self.snap_tie(map, g, y);
+            return 0.0;
+        }
         let step = num / den;
         // ⛔⛔⛔ **UM PASSO NÃO-FINITO NÃO SE ESCREVE — CONTA-SE.**
         //
@@ -298,6 +336,19 @@ impl WeldRelaxer<'_> {
         }
         let (rc, rax) = (*root as usize / 2, *root as usize % 2);
         let y_root = self.w.value_pub(map, rc)[rax] + step;
+        self.snap_tie(map, g, y_root);
+        step.abs()
+    }
+
+    /// ⭐ **ESCREVE UM GRUPO a partir de um valor de raiz** — `y_x = σ_x·y_raiz + δ_x`.
+    ///
+    /// ⚠️ Uma função só, com **dois** chamadores: o passo da [`Self::relax_tie`] e a
+    /// re-derivação da [`Self::derive_ties`] (que a escada usa depois de pregar a raiz).
+    /// *A mesma escrita em dois sítios seria a segunda a envelhecer.*
+    fn snap_tie(&self, map: &mut GridMap, g: usize, y_root: f32) {
+        let Some((_, rows)) = self.ties.get(g) else {
+            return;
+        };
         for &(x, sigma, delta) in rows {
             let (c, ax) = (x as usize / 2, x as usize % 2);
             let want = sigma.mul_add(y_root, delta);
@@ -317,6 +368,5 @@ impl WeldRelaxer<'_> {
                 self.w.set(map, c, y);
             }
         }
-        step.abs()
     }
 }

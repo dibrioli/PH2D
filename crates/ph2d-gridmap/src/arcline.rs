@@ -323,29 +323,32 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
         // `off_filho + sinal·off_pai` com `sinal = ±1`, então inteiro + inteiro continua
         // inteiro, e dividir por `s_b = ±1` também o preserva.
         //
-        // ⛔⛔⛔ **E NÃO CURA — a hipótese está REFUTADA por medição (2026-08-27).** Com o
-        // `δ` inteiro a coluna que ele ataca vai a zero (`0` fraccionários nas quatro
-        // peças) e **a distância a inteiro DEPOIS fica onde estava** (`0,45`–`0,50`):
+        // ⛔⛔⛔ **ELA SOZINHA NÃO CURA, e eu declarei-a rejeitada por isso — ERRADO.**
         //
-        // | peça | `δ` fracc. | dist. a inteiro | dobras | `χ` |
-        // |---|---|---|---|---|
-        // | `hooked` real | `72` | `0,4706` | `75` | `−6` |
-        // | `hooked` **inteiro** | **`0`** | ⛔ `0,4542` | ⛔ `102` | `−4` |
-        // | `wrinkled` real | `40` | `0,4532` | `27` | `−5` |
-        // | `wrinkled` **inteiro** | **`0`** | ⛔ `0,4998` | ⛔ `32` | ⛔ `−6` |
-        // | `sphere_uv` real | `36` | `0,4966` | `0` | `−3` |
-        // | `sphere_uv` **inteiro** | **`0`** | ⛔ `0,4561` | `0` | ⛔ `−4` |
-        // | `eared` real | `44` | `0,4935` | `17` | `−4` |
-        // | `eared` **inteiro** | **`0`** | ⛔ `0,4883` | ⛔ `21` | ⛔ `−6` |
+        // Medido de manhã: com o `δ` inteiro a coluna que ele ataca vai a zero (`0`
+        // fraccionários nas quatro peças) e **a distância a inteiro DEPOIS fica onde
+        // estava** (`0,45`–`0,50`). Escrevi *«faz o que promete e não cura nada»*.
         //
-        // ⇒ *a razão é que o `δ` nunca foi o problema:* um membro vale `σ·raiz + δ`, e
-        // **a raiz também não é pregada** — a amarra congela o eixo de todos os membros e
-        // a escada salta os congelados (`26` de `96` eixos na `hooked`,
-        // [`crate::round::RoundReport::tie_axes_skipped`]). *Um `δ` inteiro somado a uma
-        // raiz fraccionária dá um membro fraccionário.*
+        // ⭐⭐⭐ **A razão era a OUTRA METADE, que ainda não existia.** Um membro vale
+        // `σ·raiz + δ`, e a **raiz** também não era pregada — a amarra congelava o eixo de
+        // todos os membros e a escada saltava os congelados. *Um `δ` inteiro somado a uma
+        // raiz fraccionária dá um membro fraccionário.* Com a raiz na escada
+        // ([`crate::weld_round`]), as duas juntas dão:
         //
-        // ⚠️ Fica **desligado** (`PH2D_ARC_INT_DELTA=1` liga): ele melhora o alinhamento
-        // (`0,00` de atravessagem em todas) e paga dobras e `χ` em três das quatro.
+        // | peça | dist. a inteiro | fraccionárias | atravessagem | bordo | `χ` |
+        // |---|---|---|---|---|---|
+        // | `sphere_uv_96x144` | **`0,000`** | **`0`** | **`0,00`** | **`0`** | ⭐ **`+2`** |
+        // | `sculpt_wrinkled` | **`0,000`** | **`0`** | **`0,00`** | `10` | `+1` |
+        // | `sculpt_eared` | **`0,000`** | **`0`** | **`0,00`** | `6` | `+1` |
+        // | `sculpt_hooked` | ⛔ `0,3675` | **`0`** | **`0,00`** | `22` | `−2` |
+        //
+        // contra `χ` de `−3`/`−5`/`−4`/`−6` com **uma** das metades, e atravessagem de
+        // `0,28`–`0,55` sem nenhuma. ⭐ Na `sphere_uv` a restrição passa a ser
+        // **estritamente melhor** que não a ter: alinhamento perfeito, `χ = +2`, `0` bordo.
+        //
+        // ⚠️⚠️ **A lição é sobre a medição, não sobre o `δ`:** *uma metade medida sozinha
+        // pode ler-se como inútil porque a outra ainda não existe* — e a nota de rejeição
+        // que eu escrevi teria impedido a próxima janela de a ligar.
         let raw = (sigma.mul_add(d_a, delta) - d_b) / s_b;
         uf.off[root_b as usize] = if int_delta() { raw.round() } else { raw };
     }
@@ -373,12 +376,12 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
     ties
 }
 
-/// ⛔⛔ **ARREDONDA O `δ` DE UMA AMARRA AO INTEIRO** — `PH2D_ARC_INT_DELTA=1`.
+/// ⭐⭐⭐ **ARREDONDA O `δ` DE UMA AMARRA AO INTEIRO** — `PH2D_ARC_INT_DELTA=0` desliga.
 ///
-/// ⛔ **MEDIDO E REJEITADO (2026-08-27): faz o que promete e não cura nada.** Ver a tabela
-/// no sítio onde ele é usado. Nasce **desligado**.
+/// ⚠️ **Esta constante foi REJEITADA e depois ADOPTADA no mesmo dia, e a diferença não foi
+/// de opinião: foi a outra metade nascer.** Ver a tabela no sítio onde ela é usada.
 fn int_delta() -> bool {
-    std::env::var("PH2D_ARC_INT_DELTA").ok().as_deref() == Some("1")
+    std::env::var("PH2D_ARC_INT_DELTA").ok().as_deref() != Some("0")
 }
 
 /// ⭐⭐⭐ **UMA EQUAÇÃO DE ARCO no espaço de variáveis do [`crate::weld_flat`].**

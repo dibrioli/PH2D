@@ -266,6 +266,13 @@ pub fn round_welded(
     //
     // ⚠️ *Uma afirmação de que dois números batem, verificada só onde eles batem, é a
     // forma mais cara de nota errada: ela fecha a pergunta.*
+    // As raízes das amarras, no espaço do ÍNDICE DE LIVRE — para o laço abaixo não as
+    // contar como saltadas (elas entram, por lista própria, logo a seguir).
+    let tie_roots: std::collections::BTreeSet<(usize, usize)> = r
+        .tie_roots()
+        .into_iter()
+        .filter_map(|(c, ax)| r.free_index_class(c).map(|i| (i, ax)))
+        .collect();
     let mut free: Vec<(Target, usize)> = Vec::new();
     for i in 0..r.sys.free().len() {
         if !opts.pin_singularities && matches!(r.sys.free()[i], Var::Class(_)) {
@@ -283,6 +290,11 @@ pub fn round_welded(
         // desta casa que reporta «o pior» tem essa cegueira.**
         for ax in 0..2 {
             if r.free_axis_is_frozen(i, ax) {
+                // ⭐ As raízes entram pela lista própria, logo abaixo — aqui só se conta
+                // quem de facto fica de fora.
+                if tie_roots.contains(&(i, ax)) {
+                    continue;
+                }
                 // ⛔⛔⛔ **CONTA-SE.** Uma amarra congela o eixo de TODOS os membros — a
                 // raiz incluída —, e a escada salta os congelados. ⇒ *nenhum escalar de um
                 // grupo amarrado chega a ser pregado a um inteiro*, e o grupo inteiro fica
@@ -292,6 +304,23 @@ pub fn round_welded(
             } else {
                 free.push((Target::Free(i), ax));
             }
+        }
+    }
+
+    // ⭐⭐⭐ **UMA VARIÁVEL INTEIRA POR GRUPO AMARRADO — a raiz.**
+    //
+    // ⛔⛔⛔ **Sem isto a amarra congela o grupo INTEIRO e a escada salta-o** (§23.24):
+    // `26` de `96` eixos na `sculpt_hooked` e `16` de `44` na `sphere_uv` nunca viam um
+    // inteiro, e a extracção recebia translações fraccionárias (`distância a inteiro
+    // DEPOIS` de `0,45`–`0,50` contra `0` no controlo).
+    //
+    // ⚠️ **São duas perguntas, e elas partilhavam um predicado:** *«a `relax_free` escreve
+    // este eixo?»* (não, para todo membro) e *«a escada prega este eixo?»* (**sim** para a
+    // raiz). A raiz continua congelada para a primeira e passa a candidata para a segunda.
+    for (c, ax) in r.tie_roots() {
+        match r.free_index_class(c) {
+            Some(i) => free.push((Target::Free(i), ax)),
+            None => free.push((Target::Class(c), ax)),
         }
     }
 
@@ -366,9 +395,12 @@ pub fn round_welded(
         rep.pinned += 1;
         // ⚠️ **Pregar é congelar a VARIÁVEL, não o valor** — as duas tentativas abaixo
         // escrevem valores diferentes na mesma incógnita, então congelar uma vez chega.
+        // ⭐⭐⭐ **PREGAR marca DUAS coisas** — congela (a `relax_free` não lhe toca) e
+        // **nomeia-o inteiro** (a `relax_tie` não mexe numa raiz pregada). *A segunda
+        // metade é o que impede o passo da amarra de desfazer o prego.*
         match tgt {
-            Target::Free(i) => r.freeze_free(i, ax),
-            Target::Class(c) => r.freeze_class(c, ax),
+            Target::Free(i) => r.pin_free(i, ax),
+            Target::Class(c) => r.pin_class(c, ax),
         }
         let seeds = match tgt {
             Target::Free(i) => r.classes_of_free(i),
@@ -393,6 +425,12 @@ pub fn round_welded(
                     Target::Free(i) => r.write_free(map, i, v),
                     Target::Class(c) => r.write_class(map, c, v),
                 }
+                // ⭐⭐⭐ **O GRUPO SEGUE A RAIZ IMEDIATAMENTE.** O [`drain`] só relaxa
+                // classes, e um membro amarrado sai dessa porta por `driven` — sem esta
+                // linha ele ficava onde o contínuo o deixou até à varredura seguinte, e o
+                // guloso escolhia o prego seguinte sobre um mapa que ainda não sabia do
+                // anterior.
+                r.derive_ties(map);
                 let (visits, converged) =
                     drain(r, map, seeds.clone(), opts.local_tol, opts.local_cap);
                 if !converged {

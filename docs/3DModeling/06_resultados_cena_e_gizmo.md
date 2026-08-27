@@ -5744,7 +5744,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⭐⭐⭐ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **É A ALAVANCA.** O tecto de `20 %` foi medido **com anti-serrilhado**: sem ele a montagem é **`39 %`** do quadro serial, **e não escala** (uma fita custa `1,93×` mais CPU a 32 threads) | §82.8 |
+| ⭐⭐⭐ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **É A ALAVANCA, e o tecto de `20 %` está refutado.** Compilar as 242 fitas custa `~10`–`14 ms` de um quadro de `~24`, **satura às 16 threads** (de 16 para 32 ganha `1 %`) e repete-se inteiro a cada quadro | §82.9, §82.10 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -7152,7 +7152,7 @@ gates* (o controlo é obrigatório).
 2. ⏸️ As duas fatias de fora (`8,7 %` da montagem por `0,18 %` da marcha) — as três saídas medidas e
    nenhuma se paga sozinha. ⚠️ Com a montagem barata elas deixam de importar; com a montagem cara
    elas são o mesmo problema.
-3. ⛔ **O tamanho do ladrilho está FECHADO** (§82.8): `64` sobrevive.
+3. ⛔ **`TILE` e `SLABS` estão FECHADOS** (§82.10): `64` e `4` sobrevivem à reconferência no quadro que hoje ship.
 
 ## §82.8 — ⭐⭐⭐ A máquina calma: a MONTAGEM não escala, e é ela a parede (27/08)
 
@@ -7211,3 +7211,61 @@ Varredura de `TILE` no quadro que **hoje** ship (paralelo, sem anti-serrilhado, 
 `64` ganha por `7,4 %` na peça pesada. ⇒ **`TILE = 64` fica**, e o piso de `1,52×` da §82.5 **não é
 alcançável por aí**. ⚠️ *Um piso contado em amostras é um minorante: ele diz que existe perda, não
 onde ela está.*
+
+### §82.9 — ⭐⭐⭐ O controlo: é o JIT, e ele satura às 16 threads
+
+A §82.8.2 mediu a montagem **dentro** de um quadro, com as outras threads a marchar — e duas
+explicações dão o mesmo número: *o JIT contende* ou *a marcha satura a memória e a compilação, que
+corre ao lado dela, apanha a factura*. ⛔ **As duas mandam em waves opostas.**
+
+`measure_whether_the_jit_contends_on_its_own` compila **242 regiões e não marcha uma única
+amostra**:
+
+| threads | 1 | 2 | 4 | 8 | **16** | **32** |
+|---|---:|---:|---:|---:|---:|---:|
+| ms (calma) | `130,5` | `66,3` | `34,2` | `19,2` | **`13,90`** | **`13,78`** |
+| ms (2.ª corrida) | `128,6` | `64,9` | `33,3` | `19,2` | **`11,43`** | **`10,15`** |
+| ns de CPU por fita (calma) | `539 079` | `548 212` | `565 874` | `633 566` | `919 025` | **`1 822 138`** |
+
+⭐⭐⭐ **De 16 para 32 threads a compilação ganha `1 %`** (e `13 %` na 2.ª corrida): ela **satura**. O
+tecto paralelo do JIT é `~9×`–`13×` e é atingido às **16** threads. ⇒ *a montagem não é uma vítima da
+marcha: ela contende sozinha.* O mecanismo é o que se espera de um JIT — ele mapeia memória
+**executável**, e `mmap`/`mprotect` são recursos do **kernel**, serializados entre todas as threads
+do processo.
+
+⚠️ **As duas corridas foram feitas com a máquina em estados diferentes** (`load < 4` e `load 41`) e
+os números absolutos diferem; **a saturação aparece nas duas**, e é ela a afirmação. *Uma saturação é
+robusta ao ruído de um jeito que uma diferença de `5 %` nunca é.*
+
+### §82.10 — ⇒ O que isto responde, e o que fica
+
+⭐⭐⭐ **O quadro de movimento (`~24 ms`) tem `~10`–`14 ms` de compilação de JIT que nenhuma thread
+acelera.** É `~50 %` do relógio, é a parte que não escala, e é **exactamente** o trabalho que se
+repete inteiro a cada quadro enquanto a mão mexe. ⇒ *o buraco até aos 60 Hz é a montagem, e a cura é
+não a repetir* — reaproveitar a fita entre quadros / especializar em espaço **LOCAL**, que a §72.1
+nomeou e precificou em `20 %` a partir de um quadro **com anti-serrilhado** que o preview já não
+desenha.
+
+⛔ **E as duas constantes sobreviveram à reconferência no quadro que hoje ship:**
+
+| constante | varredura nova (paralela, sem AA) | veredito |
+|---|---|---|
+| `TILE` | `168`: `32→40,0` · `48→27,8` · **`64→25,4`** · `96→32,5` | **`64` fica** (`48` empata dentro do ruído em duas de três corridas) |
+| `SLABS` | `168`: `N=2→51,9` · `N=3→44,8` · **`N=4→35,0`** · `N=6→52,0` | **`4` fica** (na peça de `672` o `6` ganha por `2 %`) |
+
+⚠️ **Uma das corridas da varredura foi descartada** — a máquina ficou ruidosa a meio (o quadro de 1
+thread saltou de `274,9` para `347,2 ms` e a linha de `672` arestas mudou por `3×`). Ficaram as
+comparações **intercaladas** dessa corrida, que são o que ela ainda mede, e os absolutos da corrida
+calma. *Um A/B intercalado sobrevive ao ruído comum; um absoluto não.*
+
+### §82.11 — ⚠️ Um membro novo da família das flakes de recurso
+
+`an_abandoned_march_returns_nothing_and_returns_fast` reprovou uma vez na suíte com a máquina a
+`load 42` (outra linha a correr) e passou **3 de 3** sozinha, sem uma linha de produto mexida entre
+as duas coisas. Ele mede *«e volta DEPRESSA»*, que é um relógio — a assinatura exacta da família que
+o `CLAUDE.md §5.0` descreve: *um gate que mede um recurso partilhado reprova sob carga e passa
+sozinho na máquina calma.*
+
+⚠️ **Não é uma lista para crescer** (o §5.0 diz-lo): é o **mecanismo** que se reconhece. Fica aqui
+porque este módulo passou a ter um, e porque a wave que o encontrou é precisamente a que mede
+relógios.

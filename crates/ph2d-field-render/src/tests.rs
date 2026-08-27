@@ -3655,6 +3655,123 @@ fn measure_what_the_four_sample_normal_changes() {
     }
 }
 
+/// ⭐⭐⭐ **O JIT CONTENDE, OU FOI SÓ MEDIDO NO MEIO DA MARCHA?** (W81) — o controlo da §82.8.2.
+///
+/// A `measure_where_the_parallel_frame_stops_scaling` mediu que uma fita custa `1,93×` mais CPU a
+/// 32 threads que a 1. ⚠️ **Ela mediu-o DENTRO de um quadro**, com as outras 31 threads a marchar —
+/// e duas explicações diferentes dão o mesmo número:
+///
+/// 1. **o JIT contende** (ele mapeia memória **executável**, e `mmap`/`mprotect` são do kernel);
+/// 2. **a marcha satura a memória** e a compilação, que corre ao lado dela, apanha a factura.
+///
+/// ⛔ **As duas mandam em waves diferentes** — a primeira diz *«compile menos fitas»*, a segunda diz
+/// *«o problema é a marcha e a montagem é uma vítima»*. Esta sonda separa-as: ela **só compila**,
+/// sem marchar uma única amostra.
+///
+/// ⚠️ Precisa da máquina a `load < 5`.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_the_jit_contends_on_its_own --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_the_jit_contends_on_its_own() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use rayon::prelude::*;
+    let reg = Registry::new();
+    let n = 168usize;
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                half_height: 0.4,
+                round: 0.06,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("caixa");
+    // ⚠️ **Regiões parecidas com as de um quadro a sério**: uma grelha de caixas dentro da peça, com
+    // a mesma ordem de grandeza de arestas guardadas. O que se mede é o **compilador**, e ele não
+    // sabe de onde a caixa veio.
+    let jobs: Vec<([f32; 3], [f32; 3])> = (0..242)
+        .map(|k| {
+            let (i, j) = ((k % 11) as f32, ((k / 11) % 11) as f32);
+            let lo = [
+                bbox.0[0] + (bbox.1[0] - bbox.0[0]) * i / 12.0,
+                bbox.0[1] + (bbox.1[1] - bbox.0[1]) * j / 12.0,
+                bbox.0[2],
+            ];
+            let hi = [
+                lo[0] + (bbox.1[0] - bbox.0[0]) / 6.0,
+                lo[1] + (bbox.1[1] - bbox.0[1]) / 6.0,
+                bbox.1[2],
+            ];
+            (lo, hi)
+        })
+        .collect();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    println!(
+        "SÓ compilação, {} regiões, nenhuma amostra marchada",
+        jobs.len()
+    );
+    println!("threads | ms      | ns por fita | contra 1 thread");
+    let mut base = 0.0f64;
+    for (k, &t) in [1usize, 2, 4, 8, 16, 32].iter().enumerate() {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(t)
+            .build()
+            .expect("pool");
+        let build = || {
+            jobs.par_iter()
+                .map(|(lo, hi)| {
+                    let pts = [
+                        [lo[0], lo[1], lo[2]],
+                        [hi[0], hi[1], hi[2]],
+                        [lo[0], hi[1], lo[2]],
+                        [hi[0], lo[1], hi[2]],
+                    ];
+                    let tape = ph2d_field_eval::hybrid::Hybrid::from_tree(
+                        rc.compile_at(&doc, *lo, *hi, &pts),
+                    );
+                    tape.sampled_count()
+                })
+                .sum::<usize>()
+        };
+        let ms = pool.install(|| {
+            let _ = build();
+            med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ = build();
+                    t0.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect())
+        });
+        // ⭐ O custo de CPU de UMA fita: relógio de parede × threads ÷ fitas.
+        let per = ms * t as f64 * 1.0e6 / jobs.len() as f64;
+        if k == 0 {
+            base = per;
+        }
+        println!("{t:7} | {ms:7.2} | {per:11.0} | {:14.2}x", per / base);
+    }
+}
+
 /// ⭐⭐⭐ **ONDE O QUADRO PARALELO DEIXA DE ESCALAR** (W81) — a medição que fecha o piso da
 /// `measure_the_floor_that_the_tile_size_puts_under_the_frame`.
 ///
@@ -3788,6 +3905,47 @@ fn measure_where_the_parallel_frame_stops_scaling() {
         println!(
             "{t:7} | {ms_t:7.2} | {tapes:5} | {asm:17.2} | {:11.0}",
             asm * 1.0e6 / tapes as f64
+        );
+    }
+
+    println!(
+        "\n== 4. varredura de SLABS no quadro que HOJE ship (paralelo, SEM anti-serrilhado) =="
+    );
+    // ⭐⭐⭐ **A constante que a §82.8.2 reabre.** O `SLABS` foi escolhido na W71 **com
+    // anti-serrilhado** — e a 2.ª passagem acrescenta marcha e **nenhuma** montagem, logo ela
+    // sub-pesa exactamente o termo que não escala. Repartir MULTIPLICA as fitas e DIVIDE as arestas
+    // por amostra: com o JIT a saturar às 16 threads, o primeiro termo ficou mais caro do que a
+    // tabela da W71 podia ver.
+    let slabs_set = [2usize, 3, 4, 6];
+    for n in [168usize, 672] {
+        let doc = piece(n);
+        let mut cols: Vec<Vec<f64>> = vec![Vec::new(); slabs_set.len()];
+        for _ in 0..3 {
+            for (k, &sl) in slabs_set.iter().enumerate() {
+                let _ =
+                    crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile_now, sl, false, true);
+                let runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t0 = std::time::Instant::now();
+                        let _ = crate::trace_tiled_for_test(
+                            &doc, &reg, &cam, w, h, tile_now, sl, false, true,
+                        );
+                        t0.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                cols[k].push(med(runs));
+            }
+        }
+        let ms: Vec<f64> = cols.into_iter().map(med).collect();
+        let win = ms
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.total_cmp(b.1))
+            .map(|(i, _)| slabs_set[i])
+            .unwrap_or(0);
+        println!(
+            "arestas {n:4} | N=2 {:6.2} | N=3 {:6.2} | N=4 {:6.2} | N=6 {:6.2} | melhor {win}",
+            ms[0], ms[1], ms[2], ms[3]
         );
     }
 

@@ -675,7 +675,8 @@ funcionou», sem o meio caminho.* A primeira coisa a construir amanhã é a **ce
 | | |
 |---|---|
 | `cargo test -p ph2d-host-desktop` (bins + tests) | ✅ **4338** passaram · 0 falharam · 251 ignorados |
-| `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | ✅ |
+| `ph2d-ecs` · `-component-desc` · `-render` · `-script` · `-physics-ecs` · `-editor-core` · `-panel-hierarchy` · `-panel-inspector` · `-timeline` | ✅ todos verdes |
+| `cargo clippy --workspace --all-targets --features ph2d-spike/bevy_ecs -- -D warnings` | ✅ (3 min 19 s, exit 0) |
 | `cargo fmt --all` | ✅ |
 | `typos` (repo inteiro) | ✅ |
 | Provas de mutação desta jornada | **34 mutações, 34 mortas** (11 + 10 + 11 da 1ª..4ª voltas do smoke, + 7 da F4.6a, + 5 da F4.6b — as contagens por bloco estão em cada §) |

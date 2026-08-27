@@ -4637,6 +4637,74 @@ fn measure_whether_one_frames_tape_serves_the_next() {
     }
 }
 
+/// ⭐⭐⭐ **O QUADRO ESCALA MELHOR AGORA QUE A COMPILAÇÃO SAIU?** (W86) — a reconferência da §82.8.
+///
+/// A §82.8.1 mediu **`36 %`** de eficiência a 32 threads e a §82.9 nomeou a causa com um controlo: o
+/// JIT **satura às 16**. ⭐ A W82 (cache entre quadros) e a W83 (o `fork` deixa de compilar) tiraram
+/// quase toda a compilação de um quadro — de `226` fitas para `5`–`15`. ⇒ *a causa nomeada deixou de
+/// estar lá, e a nota tem de ser reconferida* (`CLAUDE.md §0.0`).
+///
+/// ⚠️ **A cache é aquecida antes de medir**, e o mesmo quadro é medido em cada tamanho de pool: o que
+/// se compara é o **mesmo trabalho** repartido por mais threads.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_the_cached_frame_scales_better --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_the_cached_frame_scales_better() {
+    let reg = Registry::new();
+    let doc = cache_piece(168);
+    let cam = Orbit::default();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    for com_cache in [false, true] {
+        let cache = crate::TapeCache::new();
+        let c = com_cache.then_some(&cache);
+        // Aquecimento: um arrasto, e depois o quadro que se mede.
+        for i in 0..8 {
+            let quente = Orbit {
+                rotation: Orbit::from_yaw_pitch(0.72 + (i as f32) * 2.0f32.to_radians(), 0.52)
+                    .rotation,
+                ..Orbit::default()
+            };
+            let _ = crate::trace_cached_for_test(&doc, &reg, &quente, 640, 360, false, c);
+        }
+        println!(
+            "== {} cache ==\nthreads | ms      | ganho | eficiência",
+            if com_cache { "COM" } else { "sem" }
+        );
+        let mut base = 0.0f64;
+        for (k, t) in [1usize, 2, 4, 8, 16, 32].into_iter().enumerate() {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(t)
+                .build()
+                .expect("pool");
+            let ms = pool.install(|| {
+                let _ = crate::trace_cached_for_test(&doc, &reg, &cam, 640, 360, false, c);
+                med((0..5)
+                    .map(|_| {
+                        let t0 = std::time::Instant::now();
+                        let _ = crate::trace_cached_for_test(&doc, &reg, &cam, 640, 360, false, c);
+                        t0.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect())
+            });
+            if k == 0 {
+                base = ms;
+            }
+            println!(
+                "{t:7} | {ms:7.2} | {:5.2}x | {:9.0}%",
+                base / ms,
+                100.0 * (base / ms) / t as f64
+            );
+        }
+    }
+}
+
 /// ⭐⭐⭐ **O JIT CONTENDE, OU FOI SÓ MEDIDO NO MEIO DA MARCHA?** (W81) — o controlo da §82.8.2.
 ///
 /// A `measure_where_the_parallel_frame_stops_scaling` mediu que uma fita custa `1,93×` mais CPU a

@@ -5751,7 +5751,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **O decimador do preview apagava QUINAS** — e quem sobrevivia era uma lotaria de índice | ⭐ decima por **GIRO**: a estrela vai de `134` pontos partidos para **`10` exactos**, imagem idêntica | §85 |
 | ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
 | ⏳ **A MARCHA** — o que sobra do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio) · ⛔ **o perfil como CONSULTA fora**: a fita especializada ganha `2×`–`8×` na região real | §73, §82.1, §87 |
-| ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
+| ⭐⭐⭐ **O quadro de movimento usa `~30 %` da máquina** — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o ladrilho **não** é a alavanca (`48 ≈ 64`) · ⛔⛔ **e o JIT também não era**: tirá-lo não mudou a forma da curva (§88.2). A causa está por achar | §82.8, §88.2 |
+| ⏳ **A causa da má escala** — dois candidatos nomeados e **nenhum medido**: largura de banda de memória · desequilíbrio de ladrilhos | ⛔ o erro de hoje foi dar por causa o mecanismo que estava à mão | §88.2 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
@@ -5768,6 +5769,12 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⛔⛔ **W86 (§88): o ciclo medido de ponta a ponta — e uma atribuição MINHA caiu.** O quadro de
+  movimento é hoje **`24 ms` seja qual for o `Resolution`** (era isso o objectivo da W84/W85), e
+  continua `1,45×` acima do orçamento. ⛔⛔ **E o JIT NÃO era a causa da má escala:** a curva de
+  eficiência é a **mesma** com e sem cache (`31 %` contra `30 %` a 32 threads) — a cache desloca o
+  nível e não muda a forma. *Um mecanismo confirmado em isolamento não é, por isso, a causa do que se
+  via*, e o erro foi dar por causa o mecanismo que estava à mão.
 - ⛔⛔ **W86 (§87): a RECUSA da W56 confirmada, e por outra razão — o perfil como CONSULTA perde.**
   Com a montagem quase eliminada, o quadro é quase só marcha, e a direcção nomeada era trocar a fita
   por um BVH (*«`40 ns` contra `155`»*). Medido na região que de facto ocorre: **a fita especializada
@@ -7826,3 +7833,51 @@ regime ele era.*
 2. ⛔ **As regiões eram CENTRADAS na peça**, e num círculo isso mantém **todas** as arestas (o `dmax`
    do corte é o mesmo para todas). ⇒ a 1.ª corrida comparava uma fita cheia com uma consulta cheia,
    nas oito células. *Uma sonda que não reproduz o fenómeno mede outra coisa.*
+
+## §88 — W86: onde o quadro está — e uma atribuição minha que caiu (27/08)
+
+### §88.1 — O ciclo inteiro, com o produto de hoje
+
+`measure_where_the_frame_stands_after_all_of_it` (`load ~4`, a cache aquecida com um arrasto):
+
+| contorno autoral | | movimento `640×360` | assentar 1 `640×360` | assentar 2 `1280×720` |
+|---|---|---:|---:|---:|
+| `168` (omissão) | `mov 168 · ass 168` | **`24,1 ms`** | `28,0` | `77,8` |
+| `940` (`Resolution` alto) | `mov 157 · ass 314` | **`24,2 ms`** | `58,0` | `136,3` |
+
+⭐⭐⭐ **O quadro de movimento passou a ser o MESMO nos dois** — `24 ms`, independente do que o
+artista pôs no `Resolution`. E o assentar de uma peça pesada custa hoje `58` onde o contorno autoral
+custaria `~3×` isso.
+
+⚠️ **E ele continua `1,45×` acima do orçamento** (`24,1` contra `16,7`).
+
+### §88.2 — ⛔⛔ E a causa que eu tinha nomeado para a má escala **NÃO era o JIT**
+
+A §82.8.1 mediu `36 %` de eficiência a 32 threads e a §82.9 nomeou a causa com um controlo: *o JIT
+satura às 16*. ⭐ A W82 e a W83 tiraram quase toda a compilação de um quadro (de `226` fitas para
+`5`–`15`) ⇒ a nota tinha de ser reconferida.
+
+`measure_whether_the_cached_frame_scales_better`, o **mesmo** quadro com e sem cache, no mesmo
+processo:
+
+| threads | 1 | 2 | 4 | 8 | 16 | 32 |
+|---|---:|---:|---:|---:|---:|---:|
+| **sem cache** | `100 %` | `96 %` | `89 %` | `80 %` | `57 %` | **`31 %`** |
+| **com cache** | `100 %` | `94 %` | `87 %` | `76 %` | `56 %` | **`30 %`** |
+
+⛔⛔ **As duas curvas são a MESMA.** A cache desloca o nível inteiro para baixo (`308 → 218 ms` em
+série, `31,2 → 23,1` a 32 threads) e **não muda a forma**. ⇒ *o que estraga o escalamento estraga-o
+igualmente com e sem compilação*, e a atribuição da §82.8.2 está **refutada**.
+
+⚠️ **A §82.9 não estava errada** — ela mediu, num controlo isolado, que o JIT satura às 16 threads. O
+que ela não mediu é se ele é o **termo que manda** dentro de um quadro, e o teste que o decide é este:
+tirá-lo e ver a curva. *Um mecanismo confirmado em isolamento não é, por isso, a causa do que se via.*
+
+⚠️ **Os ABSOLUTOS desta corrida valem pouco** (`load 18`): o que ela decide é a **comparação entre as
+duas curvas**, que correu no mesmo processo e sob a mesma carga.
+
+⏳ **Fica aberto: a causa a sério.** Os dois candidatos nomeados são a **largura de banda de memória**
+(a marcha percorre buffers de `f32` grandes, e o joelho está entre 8 e 16 threads, que são núcleos
+físicos os dois) e o **desequilíbrio de ladrilhos** (a §82.5 mediu que o mais caro vale `1,52×` a
+fatia perfeita). ⛔ *Nenhum dos dois está medido, e o erro de hoje foi precisamente dar por causa o
+mecanismo que estava à mão.*

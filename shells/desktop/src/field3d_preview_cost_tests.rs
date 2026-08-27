@@ -200,3 +200,117 @@ fn measure_what_the_coarse_contour_buys() {
         );
     }
 }
+
+/// ⭐⭐⭐ **ONDE O QUADRO ESTÁ, DEPOIS DE TUDO** (W86) — a pergunta que abriu o item 1 do Enio.
+///
+/// Ela mede o **ciclo inteiro** com o produto de hoje: o quadro de movimento (contorno engrossado a
+/// `1,0°` de erro, sem anti-serrilhado, com a cache), e os dois degraus do assentar (contorno a
+/// `0,5°`, com anti-serrilhado).
+///
+/// ⚠️ **A cache é AQUECIDA com um arrasto antes de medir** — é assim que ela chega a qualquer quadro
+/// que o artista veja depois do primeiro, e medir a frio mediria a abertura do painel.
+///
+/// ⚠️ Precisa da máquina a `load < 5`.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --profile ci-test -- --exact \
+///     field3d_preview::cost_tests::measure_where_the_frame_stands_after_all_of_it \
+///     --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda; roda com --ignored --nocapture"]
+fn measure_where_the_frame_stands_after_all_of_it() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    use ph2d_field_render::{Orbit, TapeCache};
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    for autoral in [168usize, 940] {
+        let contour: Vec<[f32; 2]> = (0..autoral)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (autoral as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let doc = FieldDoc::new(
+            vec![ph2d_field::Node {
+                xform: Xform::IDENTITY,
+                kind: ph2d_field::NodeKind::Leaf(Primitive::Extrude {
+                    profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                    half_height: 0.4,
+                    round: 0.06,
+                }),
+                mods: Vec::new(),
+            }],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let movimento = super::coarse_doc(&doc, true).unwrap_or_else(|| doc.clone());
+        let assente = super::coarse_doc(&doc, false).unwrap_or_else(|| doc.clone());
+        let cache = TapeCache::new();
+        let arestas = |d: &FieldDoc| -> usize {
+            d.nodes()
+                .iter()
+                .filter_map(|n| match &n.kind {
+                    ph2d_field::NodeKind::Leaf(Primitive::Extrude { profile, .. }) => {
+                        Some(profile.segment_count())
+                    }
+                    _ => None,
+                })
+                .sum()
+        };
+        println!(
+            "--- contorno autoral {autoral} · movimento {} · assente {} ---",
+            arestas(&movimento),
+            arestas(&assente)
+        );
+        // Aquecimento: um arrasto inteiro, como o artista faz antes de parar.
+        for i in 0..8 {
+            let cam = Orbit {
+                rotation: Orbit::from_yaw_pitch(0.72 + (i as f32) * 2.0f32.to_radians(), 0.52)
+                    .rotation,
+                ..Orbit::default()
+            };
+            let _ = ph2d_field_render::trace_cached_for_test(
+                &movimento,
+                &reg,
+                &cam,
+                640,
+                360,
+                false,
+                Some(&cache),
+            );
+        }
+        let cam = Orbit::default();
+        let casos: [(&str, &FieldDoc, u32, u32, bool); 3] = [
+            ("movimento (640x360, sem AA)", &movimento, 640, 360, false),
+            ("assentar 1 (640x360, com AA)", &assente, 640, 360, true),
+            ("assentar 2 (1280x720, com AA)", &assente, 1280, 720, true),
+        ];
+        for (nome, d, w, h, aa) in casos {
+            let _ = ph2d_field_render::trace_cached_for_test(d, &reg, &cam, w, h, aa, Some(&cache));
+            let ms = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ = ph2d_field_render::trace_cached_for_test(
+                        d,
+                        &reg,
+                        &cam,
+                        w,
+                        h,
+                        aa,
+                        Some(&cache),
+                    );
+                    t0.elapsed().as_secs_f64() * 1000.0
+                })
+                .collect());
+            // O orçamento de 60 fps é `16,7 ms`, e ele só se aplica ao quadro de MOVIMENTO.
+            println!(
+                "{nome:32} | {ms:8.2} ms | {:5.2} do orçamento de 16,7",
+                ms / 16.7
+            );
+        }
+    }
+}

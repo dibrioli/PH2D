@@ -51,6 +51,7 @@
 - [Multi-máquina: GitHub fonte única](project_multi_machine_setup.md) · [fast mode: dia sem push](feedback_fast_mode_ship.md)
 - [Ship = Enio-only](feedback_ship_only_enio_end_of_all_lines.md) · [integração = Enio-only](feedback_integration_only_enio_command_end_of_all_lines.md)
 - [Integração multi-linha (12) — ordem se MEDE](reference_topic_integration_discipline.md)
+- [Mesmo literal nas 2 linhas: a sonda de colisão fica CEGA — meça o delta, não o valor](feedback_when_two_lines_pick_the_same_literal_the_collision_probe_goes_blind.md)
 - [✗ do ship pode ser AMBIENTE](feedback_a_ship_x_can_be_the_environment_not_the_code.md) · [«está em uso?» → config GLOBAL](feedback_in_use_is_answered_by_the_global_config_and_a_probe_can_start_what_it_measures.md)
 - [Pipe mascara exit code](feedback_pipe_masks_script_exit_code.md) · [laço bash não itera em zsh](feedback_a_pastable_bash_loop_never_iterates_under_zsh.md) · [crase em commit executa — -F](feedback_backticks_in_commit_message_are_command_substitution.md)
 - [LOC cap = split p/ irmão](feedback_loc_cap_split_not_allowlist_and_fmt_reexpands.md) · [cap FN ≠ cap arquivo](feedback_a_fn_cap_and_a_file_cap_measure_different_things.md)

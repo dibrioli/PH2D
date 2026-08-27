@@ -381,6 +381,14 @@ pub const fn slabs_for_test() -> usize {
     SLABS
 }
 
+/// ⭐ **O lado do ladrilho que o produto usa** — ver [`tiles::TILE`], e pela mesma razão do
+/// [`slabs_for_test`].
+#[doc(hidden)]
+#[must_use]
+pub const fn tile_for_test() -> usize {
+    TILE
+}
+
 /// ⭐⭐ **A marcha com o ESTÊNCIL escolhido** — a porta que a sonda da normal dirige.
 ///
 /// ⚠️ Pela mesma razão da [`trace_stepped_for_test`]: as duas respostas têm de ser medidas no

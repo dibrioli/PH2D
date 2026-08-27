@@ -3655,6 +3655,179 @@ fn measure_what_the_four_sample_normal_changes() {
     }
 }
 
+/// ⭐⭐⭐ **ONDE O QUADRO PARALELO DEIXA DE ESCALAR** (W81) — a medição que fecha o piso da
+/// `measure_the_floor_that_the_tile_size_puts_under_the_frame`.
+///
+/// A contagem diz que o ladrilho mais caro sozinho vale `1,52×` a fatia perfeita de todo o trabalho
+/// do quadro, e que o joelho está em `48`. ⚠️ **A contagem é um minorante** (dois ladrilhos com as
+/// mesmas amostras custam diferente, porque as regiões guardam números diferentes de arestas), e a
+/// varredura de relógio da §72 diz o contrário — `48` mais lento que `64`. Só o relógio decide, e
+/// duas grandezas o decidem:
+///
+/// 1. **a curva de escalamento por threads** com o ladrilho que ship — se ela achata cedo, o piso
+///    morde;
+/// 2. **a varredura de `TILE` no quadro que HOJE ship** — paralelo, **sem anti-serrilhado** (a
+///    varredura da §72 mediu com ele, e a W72 tirou-o do quadro de movimento).
+///
+/// ⛔ **Precisa da máquina a `load < 5`** (`CLAUDE.md §5.0`), e as duas metades correm
+/// **intercaladas** — entre duas corridas desta workstation o mesmo passe já deu `11,36` e
+/// `5,50 ms`.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_where_the_parallel_frame_stops_scaling --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_where_the_parallel_frame_stops_scaling() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let piece = |n: usize| -> FieldDoc {
+        let contour: Vec<[f32; 2]> = (0..n)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        FieldDoc::new(
+            vec![ph2d_field_eval::leaf(
+                Primitive::Extrude {
+                    profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão")
+    };
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let (w, h) = (640u32, 360u32);
+    let doc = piece(168);
+    let tile_now = crate::tile_for_test();
+    let slabs = crate::slabs_for_test();
+
+    println!(
+        "== 1. escalamento por threads (640x360, 168 arestas, lado {tile_now}, SEM anti-serrilhado) =="
+    );
+    let threads_set = [1usize, 2, 4, 8, 16, 32];
+    let mut cols: Vec<Vec<f64>> = vec![Vec::new(); threads_set.len()];
+    for _ in 0..3 {
+        for (k, &t) in threads_set.iter().enumerate() {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(t)
+                .build()
+                .expect("pool");
+            let runs: Vec<f64> = pool.install(|| {
+                let _ = crate::trace_tiled_for_test(
+                    &doc, &reg, &cam, w, h, tile_now, slabs, false, true,
+                );
+                (0..5)
+                    .map(|_| {
+                        let t0 = std::time::Instant::now();
+                        let _ = crate::trace_tiled_for_test(
+                            &doc, &reg, &cam, w, h, tile_now, slabs, false, true,
+                        );
+                        t0.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect()
+            });
+            cols[k].push(med(runs));
+        }
+    }
+    let ms: Vec<f64> = cols.into_iter().map(med).collect();
+    println!("threads | ms      | ganho | eficiência");
+    for (k, &t) in threads_set.iter().enumerate() {
+        println!(
+            "{t:7} | {:7.2} | {:5.2}x | {:9.0}%",
+            ms[k],
+            ms[0] / ms[k],
+            100.0 * (ms[0] / ms[k]) / t as f64
+        );
+    }
+
+    println!("\n== 3. a MONTAGEM escala? (ns de CPU por fita, por número de threads) ==");
+    // ⭐⭐⭐ **A pergunta de Amdahl.** A montagem é 96% JIT, e um JIT mapeia memória executável —
+    // `mmap`/`mprotect` são recursos do KERNEL, partilhados por todas as threads. Se o custo de CPU
+    // de UMA fita subir com o número de threads, a montagem não é uma fracção que se divide: é uma
+    // fracção que se **serializa**, e nenhuma quantidade de núcleos a atravessa.
+    println!("threads | ms      | fitas | montagem ms (CPU) | ns por fita");
+    for &t in &threads_set {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(t)
+            .build()
+            .expect("pool");
+        let (ms_t, asm, tapes) = pool.install(|| {
+            let _ =
+                crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile_now, slabs, false, true);
+            let mut best = (f64::INFINITY, 0.0, 0usize);
+            for _ in 0..5 {
+                crate::SPECIALISE_NS.store(0, std::sync::atomic::Ordering::Relaxed);
+                crate::SPECIALISED.store(0, std::sync::atomic::Ordering::Relaxed);
+                let t0 = std::time::Instant::now();
+                let _ = crate::trace_tiled_for_test(
+                    &doc, &reg, &cam, w, h, tile_now, slabs, false, true,
+                );
+                let el = t0.elapsed().as_secs_f64() * 1000.0;
+                if el < best.0 {
+                    best = (
+                        el,
+                        crate::SPECIALISE_NS.load(std::sync::atomic::Ordering::Relaxed) as f64
+                            / 1.0e6,
+                        crate::SPECIALISED.load(std::sync::atomic::Ordering::Relaxed),
+                    );
+                }
+            }
+            best
+        });
+        println!(
+            "{t:7} | {ms_t:7.2} | {tapes:5} | {asm:17.2} | {:11.0}",
+            asm * 1.0e6 / tapes as f64
+        );
+    }
+
+    println!(
+        "\n== 2. varredura de TILE no quadro que HOJE ship (paralelo, SEM anti-serrilhado) =="
+    );
+    let tiles_set = [32usize, 48, 64, 96];
+    for n in [168usize, 672] {
+        let doc = piece(n);
+        let mut cols: Vec<Vec<f64>> = vec![Vec::new(); tiles_set.len()];
+        for _ in 0..3 {
+            for (k, &tile) in tiles_set.iter().enumerate() {
+                let _ =
+                    crate::trace_tiled_for_test(&doc, &reg, &cam, w, h, tile, slabs, false, true);
+                let runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t0 = std::time::Instant::now();
+                        let _ = crate::trace_tiled_for_test(
+                            &doc, &reg, &cam, w, h, tile, slabs, false, true,
+                        );
+                        t0.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                cols[k].push(med(runs));
+            }
+        }
+        let ms: Vec<f64> = cols.into_iter().map(med).collect();
+        let win = ms
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.total_cmp(b.1))
+            .map(|(i, _)| tiles_set[i])
+            .unwrap_or(0);
+        println!(
+            "arestas {n:4} | 32 {:6.2} | 48 {:6.2} | 64 {:6.2} | 96 {:6.2} | melhor {win}",
+            ms[0], ms[1], ms[2], ms[3]
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O PISO QUE O TAMANHO DO LADRILHO PÕE DEBAIXO DO QUADRO** (W81).
 ///
 /// ⚠️ **Um ladrilho é indivisível**: ele compila a própria fita e marcha os próprios raios, e nenhuma

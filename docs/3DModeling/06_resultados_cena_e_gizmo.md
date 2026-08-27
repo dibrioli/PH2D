@@ -5744,9 +5744,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⏳ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | ⭐ **reavaliado PARA CIMA**: o tecto de `20 %` não contava que ele desbloqueia o ladrilho pequeno (e com ele o piso de `1,52×`) | §72.1, §82.5 |
+| ⭐⭐⭐ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **É A ALAVANCA.** O tecto de `20 %` foi medido **com anti-serrilhado**: sem ele a montagem é **`39 %`** do quadro serial, **e não escala** (uma fita custa `1,93×` mais CPU a 32 threads) | §82.8 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
-| ⏳ **O PISO de `1,52×`** que o ladrilho de `64` põe debaixo do quadro — `~34 %` do relógio é ócio estrutural | ⚠️ contradiz a varredura de relógio da §72; **só uma máquina calma decide** | §82.5 |
+| ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
@@ -5769,9 +5769,13 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
   quatro foi medido e RECUSADO** (grátis em tudo menos numa quina de navalha, onde move a normal
   `14°`–`35°`). ⭐⭐ **Ladrilhar e fatiar não custam UMA amostra** — `2 121 060` em todos os
   tamanhos, ao dígito, e eu tinha escrito o contrário. ⭐⭐⭐ E o **ladrilho mais caro** vale `1,52×`
-  a fatia perfeita de todo o quadro: um piso que nenhum escalonador cura, e que a varredura de
-  relógio da §72 contradiz — a reconciliação precisa da máquina calma. ⚠️ **Três hipóteses minhas
-  caíram antes de custarem código.**
+  a fatia perfeita de todo o quadro. ⭐⭐⭐ **E a máquina calma disse onde a perda está (§82.8): a
+  MONTAGEM não escala** — a mesma fita custa `1,93×` mais CPU a 32 threads que a 1 (o JIT mapeia
+  memória executável, e `mmap` é do kernel) —, ela é **`39 %`** do quadro serial e não os `20 %`
+  publicados (aquele número foi medido **com** anti-serrilhado, que a W72 tirou no dia seguinte). O
+  quadro usa **`36 %`** da máquina; a `76 %` ele caberia no orçamento. ⛔ **O tamanho do ladrilho
+  está fechado** — `48 ≈ 64` e a minha própria receita da §82.5 caiu. ⚠️ **Quatro hipóteses minhas
+  caíram antes de custarem código, e uma quinta depois de a escrever.**
 - ⭐⭐ **W80 (§81): a caça às listas que se dizem exaustivas — a segunda estava na lei mais cara do
   módulo.** O gate que a W53 escreveu para impedir *«uma família de features completa e invisível»*
   percorria uma **lista literal**: uma primitiva nova ficava sem botão e ele ficava **verde**. ⭐ A
@@ -7069,22 +7073,17 @@ ideal por thread `66 283` amostras):
 | 96 | 28 | 118 | 199 012 | `3,00×` |
 | 128 | 15 | 68 | 302 278 | `4,56×` |
 
-⭐⭐⭐ **O tamanho que ship está uma casa depois do joelho:** o ladrilho mais caro sozinho vale
-`1,52×` a fatia perfeitamente equilibrada de **todo** o trabalho do quadro. ⇒ com este ladrilho,
-`~34 %` do relógio é ócio estrutural, e **nenhum escalonador o cura** — só partir o ladrilho.
+⭐ **O ladrilho mais caro sozinho vale `1,52×` a fatia perfeitamente equilibrada de todo o trabalho
+do quadro**, e o joelho da contagem está em `48`.
 
-⚠️ **E há uma CONTRADIÇÃO nomeada, que só uma máquina calma resolve.** A varredura de relógio da §72
-diz que `48` é **mais lento** que `64` (`37,8` contra `33,8 ms`) — com anti-serrilhado, antes da W72.
-Ou o desequilíbrio em **tempo** é menor que o desequilíbrio em **amostras** (dois ladrilhos com as
-mesmas amostras custam diferente, porque a região de cada um guarda um número diferente de arestas),
-ou as `164` fitas a mais de `48` pagam mais do que o piso rende. ⛔ **Não decido isto com a máquina a
-`load 25`**, e nenhuma das duas leituras é uma medição.
+⛔⛔ **E a receita que este parágrafo escreveu — *«nenhum escalonador o cura, só partir o
+ladrilho»* — foi MEDIDA e está REFUTADA.** Ver a §82.8: com a máquina calma, `48` e `64` empatam
+dentro do ruído no caso do preview (duas corridas, vencedores opostos: `24,95` contra `25,11`, e
+depois `25,70` contra `24,59`) e `64` ganha claramente na peça pesada. ⇒ **o tamanho do ladrilho não
+é a alavanca**, e o `TILE = 64` sobrevive à reconferência no quadro que hoje ship.
 
-⭐⭐ **O que já se pode dizer, e muda uma prioridade:** a §72.1 pôs um *«tecto MEDIDO de `20 %`»* em
-reaproveitar a fita entre quadros, com a conta *«a montagem é `20 %` do quadro»*. ⚠️ **Essa conta
-está incompleta**: tirar a montagem não vale só os `20 %` dela — vale também **desbloquear um
-ladrilho mais pequeno**, cujo preço hoje é precisamente a montagem, e com ele o piso de `1,52×`. *Os
-dois itens compõem, e o tecto de cada um foi calculado como se o outro não existisse.*
+⚠️ *O piso é real e não é alcançável por onde eu disse.* Ele é um **minorante** contado em amostras,
+e a perda a sério é maior e tem outra causa — que a §82.8 nomeia com número.
 
 ### §82.6 — ⛔ RECUSA MEDIDA: o estêncil de QUATRO amostras para a normal
 
@@ -7146,12 +7145,69 @@ e fitas por fatia saem byte-idênticas. A `0,5` já morde (mata um gate). ⇒ a 
 **folgada**, não vigiada de perto; e *uma mutação que não muda o produto não prova nada sobre os
 gates* (o controlo é obrigatório).
 
-**Aberto, na ordem:**
+**Aberto, na ordem** — ver a §82.8, que a máquina calma reescreveu:
 
-1. ⏳ **A contradição da §82.5** — a varredura de `TILE` × `SLABS` re-corrida no quadro que **hoje**
-   ship (sem anti-serrilhado), **paralela**, e a **curva de escalamento por número de threads**, que
-   é a medição que fecha o piso de `1,52×`. Precisa da máquina a `load < 5`.
-2. ⏳ **Reaproveitar a fita entre quadros** — reavaliado para cima pela §82.5: o tecto de `20 %` foi
-   calculado sem contar que ele **desbloqueia** o ladrilho pequeno.
-3. ⏸️ As duas fatias de fora (`8,7 %` da montagem por `0,18 %` da marcha) — as três saídas medidas e
-   nenhuma se paga.
+1. ⭐⭐⭐ **Reaproveitar a fita entre quadros / especializar em espaço LOCAL.** É a alavanca, e o
+   tecto dela **não** é os `20 %` que a §72.1 escreveu.
+2. ⏸️ As duas fatias de fora (`8,7 %` da montagem por `0,18 %` da marcha) — as três saídas medidas e
+   nenhuma se paga sozinha. ⚠️ Com a montagem barata elas deixam de importar; com a montagem cara
+   elas são o mesmo problema.
+3. ⛔ **O tamanho do ladrilho está FECHADO** (§82.8): `64` sobrevive.
+
+## §82.8 — ⭐⭐⭐ A máquina calma: a MONTAGEM não escala, e é ela a parede (27/08)
+
+`measure_where_the_parallel_frame_stops_scaling`, `load < 2`, `640×360`, 168 arestas, **sem
+anti-serrilhado** (o quadro que hoje ship), mediana de 3 rondas × 5, intercalado.
+
+### §82.8.1 — A curva de escalamento
+
+| threads | 1 | 2 | 4 | 8 | 16 | **32** |
+|---|---:|---:|---:|---:|---:|---:|
+| ms | `274,9` | `142,8` | `78,7` | `45,2` | `30,8` | **`23,8`** |
+| ganho | `1,00×` | `1,93×` | `3,49×` | `6,08×` | `8,94×` | **`11,56×`** |
+| eficiência | `100 %` | `96 %` | `87 %` | `76 %` | `56 %` | **`36 %`** |
+
+⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina.** ⚠️ E a queda começa **antes** do SMT: de 8
+para 16 threads — núcleos físicos os dois — o ganho é só `1,37×`.
+
+⭐ **A conta que isto reenquadra:** a `76 %` de eficiência o mesmo trabalho daria
+`274,9 / (32 × 0,76) = 11,3 ms`, **abaixo do orçamento de `16,7`**. ⇒ *o buraco até aos 60 Hz é de
+ESCALAMENTO, não de algoritmo.*
+
+### §82.8.2 — ⭐⭐⭐ E a causa tem número: uma fita custa `1,93×` mais a 32 threads
+
+| threads | 1 | 2 | 4 | 8 | 16 | **32** |
+|---|---:|---:|---:|---:|---:|---:|
+| montagem, ms de **CPU** | `106,8` | `108,7` | `111,2` | `112,5` | `149,2` | **`206,3`** |
+| **ns por fita** | `441 335` | `449 112` | `459 489` | `464 797` | `616 395` | **`852 324`** |
+
+⭐⭐⭐ **Compilar UMA fita custa quase o dobro do CPU a 32 threads do que a 1**, com as mesmas `242`
+fitas. A montagem é **96 % JIT**, e um JIT mapeia memória **executável**: `mmap`/`mprotect` são
+recursos do **kernel**, partilhados por todas as threads. ⇒ *a montagem não é uma fracção que se
+divide entre núcleos: é uma fracção que em parte se **serializa**, e núcleos a mais tornam-na pior.*
+
+⚠️⚠️ **E ela é `39 %` do quadro serial (`106,8` de `274,9`), não os `20 %` da §72.1.** Aquele `20 %`
+foi medido **com anti-serrilhado** — a 2.ª passagem acrescenta marcha e **nenhuma** montagem, então
+ela dilui a fracção. A W72 tirou o anti-serrilhado do quadro de movimento no dia seguinte, e a nota
+ficou. *Quem move o número que sustenta uma nota tem de reconferir a nota* (§0.0) — quinta vez neste
+módulo.
+
+⇒ ⭐⭐⭐ **Reaproveitar a fita entre quadros vale MUITO mais que os `20 %` publicados:** ela é `39 %`
+do trabalho serial **e** é a parte que degrada com o paralelismo. ⚠️ O número exacto é uma
+extrapolação até alguém a construir, e a extrapolação está declarada: a marcha sozinha
+(`274,9 − 106,8 = 167,1 ms` serial) a `70 %` de eficiência daria `~7,5 ms`.
+
+### §82.8.3 — ⛔ O tamanho do ladrilho está fechado
+
+Varredura de `TILE` no quadro que **hoje** ship (paralelo, sem anti-serrilhado, duas corridas):
+
+| arestas | 32 | **48** | **64** | 96 |
+|---|---:|---:|---:|---:|
+| 168 (1.ª corrida) | `34,81` | **`24,95`** | `25,11` | `31,80` |
+| 168 (2.ª corrida) | `35,29` | `25,70` | **`24,59`** | `31,47` |
+| 672 | `114,49` | `87,08` | **`80,61`** | `112,75` |
+
+⭐ **`48` e `64` empatam dentro do ruído no caso do preview** (os vencedores trocam entre corridas) e
+`64` ganha por `7,4 %` na peça pesada. ⇒ **`TILE = 64` fica**, e o piso de `1,52×` da §82.5 **não é
+alcançável por aí**. ⚠️ *Um piso contado em amostras é um minorante: ele diz que existe perda, não
+onde ela está.*

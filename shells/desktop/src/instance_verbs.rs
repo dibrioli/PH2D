@@ -143,6 +143,7 @@ pub(crate) fn apply_to_master(
     registry: &ComponentRegistry,
     echo: &mut crate::instance_sync::MasterEcho,
     clicked: Entity,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<usize, VerbRefusal> {
     let root = instance_root_of(sim, clicked).ok_or(VerbRefusal::NotAnInstance)?;
     let scope = (root != clicked)
@@ -176,6 +177,16 @@ pub(crate) fn apply_to_master(
         else {
             continue;
         };
+        // ⭐⭐ **Um DOCUMENTO aplica-se por CONTEÚDO** (F4.6b), e não pelos bytes do componente: o
+        // `insert_from_bytes` escreveria o **id** do `VecPathRef` da instância no mestre, e as duas
+        // passariam a apontar para o mesmo path — editar uma mexeria na outra.
+        if key.type_id == ph2d_ecs::scene::stable_type_id(crate::instance_sync_docs::VEC_PATH) {
+            if crate::instance_sync_docs::apply_one(sim, docs, inst_piece, master_piece) {
+                crate::instance_sync::revert_override(sim, echo, root, key);
+                n += 1;
+            }
+            continue;
+        }
         let Some(entry) = registry.get_by_id(key.type_id) else {
             continue;
         };
@@ -275,7 +286,7 @@ pub(crate) fn drain(
                 false
             }
         },
-        Verb::Apply => match apply_to_master(sim, registry, echo, entity) {
+        Verb::Apply => match apply_to_master(sim, registry, echo, entity, docs) {
             Ok(0) => {
                 toasts.push(Toast::info("Nothing overridden here"));
                 false

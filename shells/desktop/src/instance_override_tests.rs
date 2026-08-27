@@ -14,6 +14,27 @@ fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
 }
 
+/// ⚠️ **Sem documentos vetoriais** — estes gates são de sprites/física. Os do documento vivem em
+/// `crate::instance_sync_docs`.
+fn pass(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    bridge: &PhysicsBridge,
+    echo: &mut super::MasterEcho,
+) -> usize {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    sync_instances(
+        sim,
+        r,
+        bridge,
+        echo,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
 /// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
 fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
@@ -72,12 +93,12 @@ fn an_edit_on_an_instance_survives_the_next_master_edit() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo); // o eco nasce
+    pass(&mut sim, &r, &bridge, &mut echo); // o eco nasce
 
     // O artista pinta o braço da PRIMEIRA instância de azul.
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         tint(&sim, mine),
         [0.1, 0.2, 0.9, 1.0],
@@ -87,7 +108,7 @@ fn an_edit_on_an_instance_survives_the_next_master_edit() {
     // Mais tarde, ele pinta a RECEITA de verde.
     let master_arm = piece(&sim, master, "Arm");
     paint(&mut sim, master_arm, [0.1, 0.9, 0.2, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     assert_eq!(
         tint(&sim, mine),
@@ -117,11 +138,11 @@ fn editing_the_master_creates_no_overrides() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let master_arm = piece(&sim, master, "Arm");
     paint(&mut sim, master_arm, [0.9, 0.9, 0.1, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     for (i, &root) in roots.iter().enumerate() {
         let n = sim
@@ -146,10 +167,10 @@ fn the_override_is_recorded_on_the_instance_root() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let master_arm_id = sim
         .world()
@@ -191,13 +212,13 @@ fn when_both_move_in_the_same_pass_the_master_wins() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
     let master_arm = piece(&sim, master, "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
     paint(&mut sim, master_arm, [0.9, 0.9, 0.1, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     assert_eq!(
         tint(&sim, mine),
@@ -224,10 +245,10 @@ fn revert_gives_the_piece_back_to_the_master() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let key = ph2d_ecs::OverrideKey {
         piece: sim
@@ -242,7 +263,7 @@ fn revert_gives_the_piece_back_to_the_master() {
         !super::revert_override(&mut sim, &mut echo, roots[0], key),
         "devolver duas vezes tem de dizer que nao havia o que devolver"
     );
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         tint(&sim, mine),
         tint(&sim, piece(&sim, master, "Arm")),
@@ -261,10 +282,10 @@ fn a_pose_the_solver_owns_never_becomes_an_override() {
     let mut echo = super::MasterEcho::default();
     let (_master, roots) = ragdoll(&mut sim, &r);
     let mut bridge = PhysicsBridge::new();
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     for t in 1..=60 {
         bridge.dispatch(&mut sim, true, t);
-        sync_instances(&mut sim, &r, &bridge, &mut echo);
+        pass(&mut sim, &r, &bridge, &mut echo);
     }
     for (i, &root) in roots.iter().enumerate() {
         let n = sim
@@ -305,10 +326,10 @@ fn an_override_survives_a_capture_and_restore() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (_master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     let want = sim
         .world()
         .get::<ph2d_ecs::ObjectInstance>(roots[0])
@@ -350,7 +371,7 @@ fn a_ref_carrying_component_never_captures_an_override_and_that_is_declared() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     // O artista mexe na junta de UMA instância.
     let mine = piece(&sim, roots[0], "Pin");
@@ -361,7 +382,7 @@ fn a_ref_carrying_component_never_captures_an_override_and_that_is_declared() {
         .expect("junta");
     j.motor_max_force = 42.0;
     sim.world_mut().entity_mut(mine).insert(j);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         sim.world()
             .get::<PhysicsJoint>(mine)
@@ -387,7 +408,7 @@ fn a_ref_carrying_component_never_captures_an_override_and_that_is_declared() {
         .expect("junta");
     mj.motor_max_force = 7.0;
     sim.world_mut().entity_mut(master_pin).insert(mj);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         sim.world()
             .get::<PhysicsJoint>(mine)
@@ -411,7 +432,7 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     // (a) não pertence a instância nenhuma — a receita não é cópia de ninguém.
     assert_eq!(
@@ -433,7 +454,7 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
     // (c) tem uma, e volta a ouvir a receita.
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
         Some(super::Reverted {
@@ -441,7 +462,7 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
             poses_kept: 0
         })
     );
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(tint(&sim, mine), tint(&sim, piece(&sim, master, "Arm")));
 }
 
@@ -462,13 +483,13 @@ fn reverting_from_the_piece_the_artist_touched_works() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let arm = piece(&sim, roots[0], "Arm");
     let hub = piece(&sim, roots[0], "Hub");
     paint(&mut sim, arm, [0.1, 0.2, 0.9, 1.0]);
     paint(&mut sim, hub, [0.9, 0.1, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         sim.world()
             .get::<ph2d_ecs::ObjectInstance>(roots[0])
@@ -486,7 +507,7 @@ fn reverting_from_the_piece_the_artist_touched_works() {
         }),
         "clicar na peca tem de devolver a excepcao DELA"
     );
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         tint(&sim, arm),
         tint(&sim, piece(&sim, master, "Arm")),
@@ -506,6 +527,6 @@ fn reverting_from_the_piece_the_artist_touched_works() {
             poses_kept: 0
         })
     );
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(tint(&sim, hub), tint(&sim, piece(&sim, master, "Hub")));
 }

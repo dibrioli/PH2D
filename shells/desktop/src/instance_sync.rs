@@ -195,6 +195,7 @@ pub(crate) fn sync_instances(
     registry: &ComponentRegistry,
     bridge: &PhysicsBridge,
     echo: &mut MasterEcho,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> usize {
     let mut wrote = 0;
     // ⚠️ O eco novo é montado à parte e só entra no fim: várias instâncias partilham o mesmo
@@ -213,6 +214,17 @@ pub(crate) fn sync_instances(
 
         for pair in &live.pairs {
             let (inst, master) = (pair.inst, pair.master);
+            // ⭐⭐ **O DOCUMENTO da peça** (F4.6b) — a geometria vetorial propaga por CONTEÚDO, e
+            // não pelos bytes do componente, que diferem para sempre de propósito (cada peça tem o
+            // path dela). As três respostas são as mesmas; o mecanismo vive no irmão.
+            wrote += crate::instance_sync_docs::sync_one(
+                sim,
+                docs,
+                (inst, master, pair.master_id),
+                &mut overrides,
+                &echo.master,
+                &mut next_master,
+            );
             let is_root = inst == live.root;
             for entry in registry.iter() {
                 let name = entry.canonical_name;
@@ -551,12 +563,16 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        // Três campos disjuntos do `AppGfx` (+ o eco, que é do `App`) — sem clonar nada.
+        // Campos disjuntos do `AppGfx` (+ o eco e o mapa, que são do `App`) — sem clonar nada.
         sync_instances(
             &mut gfx.sim,
             &gfx.component_registry,
             &gfx.physics,
             &mut self.instance_echo,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene: &mut gfx.vec_scene,
+                vec_entities: &mut self.vec_entities,
+            },
         );
     }
 }
@@ -570,3 +586,8 @@ mod tests;
 #[cfg(test)]
 #[path = "instance_override_tests.rs"]
 mod override_tests;
+
+/// ⚠️ Terceiro irmão pelo mesmo tecto — os gates dos **reports do smoke de 26/08**.
+#[cfg(test)]
+#[path = "instance_report_tests.rs"]
+mod report_tests;

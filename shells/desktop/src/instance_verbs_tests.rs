@@ -4,7 +4,7 @@
 //! passou a ter, o que as outras cópias receberam. Um gate que contasse chamadas ficaria verde
 //! sobre um verbo que faz a coisa errada.
 
-use super::{VerbRefusal, apply_to_master, detach};
+use super::{VerbRefusal, detach};
 use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
 use crate::instance_sync::{MasterEcho, sync_instances};
 use ph2d_ecs::{
@@ -14,6 +14,47 @@ use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
+}
+
+/// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_sync_docs` para os que têm.
+fn apply(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    echo: &mut MasterEcho,
+    clicked: Entity,
+) -> Result<usize, VerbRefusal> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::apply_to_master(
+        sim,
+        r,
+        echo,
+        clicked,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// ⚠️ **Sem documentos vetoriais** — estes gates são de sprites/física. Os do documento vivem em
+/// `crate::instance_sync_docs`.
+fn pass(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    bridge: &PhysicsBridge,
+    echo: &mut crate::instance_sync::MasterEcho,
+) -> usize {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    sync_instances(
+        sim,
+        r,
+        bridge,
+        echo,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
 }
 
 /// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_docs`.
@@ -193,7 +234,7 @@ fn the_whole_recipe_leaves_the_canvas_and_the_instance_stays() {
         );
     }
     for _ in 0..3 {
-        sync_instances(&mut sim, &r, &bridge, &mut echo);
+        pass(&mut sim, &r, &bridge, &mut echo);
     }
     for (what, e) in [
         ("a raiz", instance),
@@ -250,7 +291,7 @@ fn detaching_stops_the_following_and_changes_nothing_else() {
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
     let before = tint(&sim, mine);
@@ -263,7 +304,7 @@ fn detaching_stops_the_following_and_changes_nothing_else() {
     // A receita muda; a solta não ouve mais, e as outras duas ouvem.
     let master_arm = piece(&sim, master, "Arm");
     paint(&mut sim, master_arm, [0.9, 0.9, 0.1, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         tint(&sim, mine),
         before,
@@ -301,11 +342,11 @@ fn applying_an_override_makes_it_the_recipe_for_everyone() {
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         sim.world()
             .get::<ObjectInstance>(roots[0])
@@ -314,7 +355,7 @@ fn applying_an_override_makes_it_the_recipe_for_everyone() {
         "a fixtura tem de conter a excepcao, senao o gate nao mede nada"
     );
 
-    assert_eq!(apply_to_master(&mut sim, &r, &mut echo, mine), Ok(1));
+    assert_eq!(apply(&mut sim, &r, &mut echo, mine), Ok(1));
     assert_eq!(
         tint(&sim, piece(&sim, master, "Arm")),
         [0.1, 0.2, 0.9, 1.0],
@@ -328,7 +369,7 @@ fn applying_an_override_makes_it_the_recipe_for_everyone() {
         "a excepcao sobreviveu ao Apply — a copia fica surda ao proprio valor que promoveu"
     );
 
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
     for (i, &root) in roots.iter().enumerate() {
         assert_eq!(
             tint(&sim, piece(&sim, root, "Arm")),
@@ -347,16 +388,16 @@ fn applying_from_a_piece_promotes_only_that_piece() {
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
     let (master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
     let arm = piece(&sim, roots[0], "Arm");
     let hub = piece(&sim, roots[0], "Hub");
     let hub_before = tint(&sim, piece(&sim, master, "Hub"));
     paint(&mut sim, arm, [0.1, 0.2, 0.9, 1.0]);
     paint(&mut sim, hub, [0.9, 0.1, 0.9, 1.0]);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
 
-    assert_eq!(apply_to_master(&mut sim, &r, &mut echo, arm), Ok(1));
+    assert_eq!(apply(&mut sim, &r, &mut echo, arm), Ok(1));
     assert_eq!(
         tint(&sim, piece(&sim, master, "Hub")),
         hub_before,
@@ -379,6 +420,6 @@ fn applying_with_nothing_overridden_answers_zero() {
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
     let (_master, roots) = ragdoll(&mut sim, &r);
-    sync_instances(&mut sim, &r, &bridge, &mut echo);
-    assert_eq!(apply_to_master(&mut sim, &r, &mut echo, roots[0]), Ok(0));
+    pass(&mut sim, &r, &bridge, &mut echo);
+    assert_eq!(apply(&mut sim, &r, &mut echo, roots[0]), Ok(0));
 }

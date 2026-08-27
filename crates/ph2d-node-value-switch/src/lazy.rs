@@ -10,9 +10,11 @@
 //!
 //! ```text
 //!   1. o no' e' um `value.switch`?
-//!   2. o artista LIGOU o modo (`lazy = 1`)?          -> senao, nao entra no plano
-//!   3. o `blend` escolhe a LEI (rotear / misturar)
-//!   4. cada ramo: o cone dele e' saltavel?
+//!   2. o `lazy` ou o `blend` sao CONDUZIDOS por fio?  -> entao nao entra: o valor deles
+//!                                                        so' existe DURANTE o cozimento
+//!   3. o artista LIGOU o modo (`lazy = 1`)?           -> senao, nao entra no plano
+//!   4. o `blend` escolhe a LEI (rotear / misturar)
+//!   5. cada ramo: o cone dele e' saltavel?
 //! ```
 //!
 //! ⚠️ **A terceira condição — a que este ficheiro possui — é a do ESTADO**, e ela é o que
@@ -37,13 +39,34 @@ pub fn plan(graph: &Graph, reg: &NodeRegistry) -> LazyBranches {
         if inst.type_name != crate::MANIFEST.name {
             continue;
         }
+        // ⚠️⚠️ **UM PARAM CONDUZIDO POR FIO NÃO TEM VALOR AQUI, E LER O OVERRIDE DÁ A LEI ERRADA.**
+        // Este plano é construído **antes** do cozimento e só enxerga o valor AUTORADO
+        // (`node_param_overrides`); o `EvalCtx::param` lê o CONDUZIDO primeiro
+        // (`driven.or(overrides).or(default)` — `cook_eval_ctx.rs`). ⇒ com o `blend` conduzido a
+        // `1` e sem override, o plano instalaria `needed_round` (UM ramo) enquanto o `eval`
+        // mistura DOIS, e o não-marcado chega como `CookValue::Empty`, que se lê `0.0`.
+        // **Medido (auditoria de 2026-08-27, dois repros independentes): `[150.0]` onde a verdade
+        // é `[250.0]`.** É a mesma família do param de FORMA que fazia a forma desaparecer (§5):
+        // *a chave é pré-cook e o valor conduzido é do cook.*
+        //
+        // ⛔ **A cura não é ler o conduzido — daqui ele não existe.** É RECUSAR o nó: sem entrada
+        // no plano o cook puxa as quatro portas, que é lento e **certo**. Mesma direcção do
+        // `delayed` em [`branch_is_skippable`]: *quando a premissa não é verificável, não se
+        // afirma nada*. Vale para o `LAZY` pela mesma razão — conduzi-lo já não ligava o modo, e
+        // agora isso é uma recusa declarada em vez de um silêncio.
+        if graph
+            .param_sources(inst.id)
+            .is_some_and(|m| m.contains_key(crate::LAZY) || m.contains_key(crate::BLEND))
+        {
+            continue;
+        }
         let ov = graph.node_param_overrides(inst.id);
         let param =
             |name: &str, default: f32| ov.and_then(|m| m.get(name)).copied().unwrap_or(default);
         if param(crate::LAZY, 0.0) < 0.5 {
             continue; // o artista não ligou o modo
         }
-        let blend = param("blend", 0.0) >= 0.5;
+        let blend = param(crate::BLEND, 0.0) >= 0.5;
         let mut skippable = [false; MAX_LAZY_CHOICES];
         for (k, port) in crate::CHOICE_PORTS.iter().enumerate() {
             skippable[k] = branch_is_skippable(graph, reg, inst.id, *port);

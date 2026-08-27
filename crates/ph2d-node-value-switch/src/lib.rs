@@ -78,7 +78,7 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         // salta), `1` = o crossfader (índice fracionário mistura o par). Ver
         // [`switch`].
         ParamSpec {
-            name: "blend",
+            name: BLEND,
             default: 0.0,
         },
         // ⚠️ **Apendado** (doc 89, folha 15): `0` = o cook puxa as quatro entradas, como sempre;
@@ -91,6 +91,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     ],
     lowerings: &[LoweringKind::Cpu],
 };
+
+/// **O MODO DO ROTEADOR** — `0` arredonda e salta, `1` mistura o par que ladeia o índice.
+///
+/// ⚠️ **Ele é uma CONSTANTE porque dois leitores discordarem sobre esta chave produz saída errada
+/// em silêncio, não um erro.** Quem a lê: o [`MANIFEST`], o [`GPU_KERNEL`], o `eval`, o
+/// [`PARAM_HINTS`] e — desde a auditoria de 2026-08-27 — o construtor do plano em [`lazy`], que a
+/// usa para escolher **qual lei** viaja para o cook. Enquanto o nome era um literal em cinco
+/// sítios, essa escolha era um `"blend"` digitado a três ficheiros de distância do `eval` que o
+/// consome. *Uma lei escrita em cinco sítios ainda não é uma lei — só uma porta é.*
+pub const BLEND: &str = "blend";
 
 /// **A AVALIAÇÃO PREGUIÇOSA** — a chave do param que a liga (doc 89, folha 15).
 ///
@@ -355,7 +365,7 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     ],
     // ⚠️ Esta lista não é derivada do manifesto: um param novo compila, coza na
     // CPU, e o device recusa o shader (`invalid field accessor`).
-    params: &["blend"],
+    params: &[BLEND],
     count_law: Some(switch_count),
     variant_by_param: None,
     applicable: None,
@@ -382,7 +392,7 @@ impl NodeOp for ValueSwitch {
         let ins: Vec<Vec<f32>> = (0..N_INPUTS)
             .map(|k| scalar_col(ctx.input(k + 1), VALUE_COL))
             .collect();
-        let out = switch(&select, &ins, ctx.param("blend") >= 0.5);
+        let out = switch(&select, &ins, ctx.param(BLEND) >= 0.5);
         ctx.emit(Stream::new(out.len()).with(VALUE_COL, Column::Scalar(out)));
     }
 }
@@ -411,7 +421,7 @@ use ph2d_node_registry::{ParamUiHint, ParamWidget};
 
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
-        param: "blend",
+        param: BLEND,
         label: "Blend",
         min: 0.0,
         max: 1.0,

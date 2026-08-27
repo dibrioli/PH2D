@@ -495,3 +495,162 @@ fn a_stateful_branch_is_cooked_even_when_it_is_not_chosen() {
         "os ramos puros nao escolhidos tinham de ser saltados"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// A RÉGUA QUE FALTAVA: a RESPOSTA, e não o plano.
+//
+// ⚠️ **Os gates acima medem todos o PLANO** (`skippable`, `plan().len()`), e a auditoria de
+// 2026-08-27 mostrou o preço disso: um plano perfeitamente formado ainda escolhe a LEI ERRADA
+// se o param que a escolhe chegar por um fio. Nenhuma asserção sobre `skippable` podia ver isso,
+// porque o defeito não estava em que ramos são saltáveis — estava em **quantos** a lei pede.
+// *Um gate sobre a declaração é verde quando o executor lê outra coisa.*
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Uma fonte de um `1.0` — o DRIVER de um param. (Reusa o manifesto dos contadores: uma porta de
+/// entrada, uma de saída, `Pure`.)
+struct OneSrc;
+impl NodeOp for OneSrc {
+    fn manifest(&self) -> &'static NodeManifest {
+        static M: NodeManifest = counted_manifest(ONE);
+        &M
+    }
+    fn eval(&self, ctx: &mut ph2d_nodegraph::cook::EvalCtx<'_>) {
+        ctx.emit(ph2d_nodegraph::attr::Stream::new(1).with(
+            crate::SELECT_COLUMN,
+            ph2d_nodegraph::attr::Column::Scalar(vec![1.0]),
+        ));
+    }
+}
+const ONE: &str = "value.switch.test.one";
+
+/// Por onde o `blend` chega ao nó nesta corrida — e as três rotas **não** são equivalentes:
+/// `Driven` é a única que o construtor do plano não consegue ler.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Blend {
+    Off,
+    Authored,
+    Driven,
+}
+
+/// Coze o roteador e devolve a **coluna de saída**. Os ramos emitem `0 · 10 · 20 · 30`, então o
+/// valor identifica sozinho *qual* ramo o nó leu — e um ramo saltado que ele precisava aparece
+/// como `0`, que é o que o `CookValue::Empty` se lê.
+fn cooked(lazy: bool, blend: Blend, select: Vec<f32>) -> Vec<f32> {
+    let _guard = SERIAL
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut reg = NodeRegistry::new();
+    crate::register(&mut reg).expect("switch");
+    for k in 0..4 {
+        reg.register(Box::new(Counted(k))).expect("counted");
+    }
+    reg.register(Box::new(SelectSrc(std::sync::Mutex::new(select))))
+        .expect("select");
+    reg.register(Box::new(OneSrc)).expect("one");
+    let mut g = Graph::new();
+    let sw = g.add_node(crate::MANIFEST.name);
+    g.set_param(sw, crate::LAZY, if lazy { 1.0 } else { 0.0 });
+    match blend {
+        Blend::Off => {}
+        Blend::Authored => g.set_param(sw, crate::BLEND, 1.0),
+        Blend::Driven => {
+            let d = g.add_node(ONE);
+            g.drive_param(sw, crate::BLEND, (d, 0))
+                .expect("o fio conduz — senao este gate era VAZIO");
+        }
+    }
+    for (k, port) in crate::CHOICE_PORTS.iter().enumerate() {
+        let n = g.add_node(COUNTED[k]);
+        wire(&mut g, n, sw, *port, false);
+    }
+    let sel = g.add_node("value.switch.test.select");
+    wire(&mut g, sel, sw, crate::SELECT_PORT, false);
+    let mut cook = ph2d_nodegraph::cook::Cook::new();
+    if lazy {
+        cook.set_lazy_branches(super::plan(&g, &reg));
+    }
+    let out = cook.cook(&g, &reg, sw, 0.0).expect("coze");
+    match out.first() {
+        Some(ph2d_nodegraph::value::CookValue::Instances(s)) => {
+            crate::scalar_col(s, crate::SELECT_COLUMN)
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// ⛔⛔ **O `blend` CONDUZIDO POR FIO — o defeito que shipava.**
+///
+/// O plano nasce **antes** do cozimento e lê `node_param_overrides`; o `EvalCtx::param` lê o
+/// **conduzido** primeiro. Com o `blend` num fio e sem override, o plano instalava `needed_round`
+/// (um ramo) enquanto o `eval` misturava **dois** — e o não-marcado chegava `Empty`, isto é `0.0`.
+///
+/// A régua é o **valor**: `select = 1.5` mistura `in1 = 10` com `in2 = 20` a meio caminho ⇒ `15`.
+/// Sem a cerca, o preguiçoso devolvia `10` (`lerp(0, 20, ½)`).
+#[test]
+fn a_driven_blend_cannot_make_the_lazy_mode_answer_differently_from_the_eager_one() {
+    let truth = cooked(false, Blend::Driven, vec![1.5]);
+    assert_eq!(
+        truth,
+        vec![15.0],
+        "controle: o modo ansioso com `blend` conduzido tem de MISTURAR in1=10 com in2=20"
+    );
+    assert_eq!(
+        cooked(true, Blend::Driven, vec![1.5]),
+        truth,
+        "o modo preguicoso divergiu do ansioso: o plano escolheu a lei do ROTEAMENTO \
+         enquanto o `eval` misturava, e o ramo saltado entrou como zero"
+    );
+}
+
+/// O **mecanismo** do gate acima: o nó fica **fora do plano**, e por isso o cook puxa as quatro.
+///
+/// ⚠️ As duas metades são precisas. Sem a de cima, uma cura que fizesse os dois modos concordarem
+/// pelo motivo errado (p.ex. desligar a preguiça inteira) passaria; sem esta, a de cima não diz
+/// **onde** a cerca vive.
+#[test]
+fn a_driven_law_param_keeps_the_router_out_of_the_plan_entirely() {
+    let reg = registry();
+    for (name, blend) in [(crate::BLEND, Blend::Driven), (crate::LAZY, Blend::Off)] {
+        let mut g = Graph::new();
+        let sw = g.add_node(crate::MANIFEST.name);
+        g.set_param(sw, crate::LAZY, 1.0);
+        let d = g.add_node(PURE);
+        g.drive_param(sw, name, (d, 0))
+            .expect("o fio conduz — senao este gate era VAZIO");
+        assert!(
+            super::plan(&g, &reg).is_empty(),
+            "com `{name}` conduzido o plano nao pode afirmar nada (blend={blend:?})"
+        );
+    }
+    // E o controle: sem fio nenhum, o MESMO grafo entra no plano.
+    let mut g = Graph::new();
+    let sw = g.add_node(crate::MANIFEST.name);
+    g.set_param(sw, crate::LAZY, 1.0);
+    assert!(
+        super::plan(&g, &reg).contains_key(&sw),
+        "controle: sem param conduzido o roteador TEM de entrar, senao este gate mede o nada"
+    );
+}
+
+/// **AS DUAS LEIS TÊM DE CONCORDAR COM O QUE O NÓ LÊ, E A PROVA É O VALOR.**
+///
+/// ⚠️ O gate irmão `the_needed_law_matches_what_the_node_actually_reads` compara `needed_*` com
+/// uma expectativa **escrita à mão** e nunca chama [`crate::switch`] — então uma divergência de
+/// arredondamento entre a lei e o nó (`round` contra `floor`, ou o desempate de `0,5`) ficava
+/// verde dos dois lados. Aqui o oráculo é o **modo ansioso**, que é o nó a responder por si.
+///
+/// Os selects são os frágeis: `0,5` (o empate), `1,6` (onde `round` e `floor` discordam), `2,4`
+/// (onde concordam — o controle), e as bordas.
+#[test]
+fn the_lazy_mode_never_changes_the_answer_on_the_selects_where_the_two_laws_are_fragile() {
+    for s in [0.5_f32, 1.5, 1.6, 2.4, 2.5, -0.5, 0.0, 3.0, 99.0] {
+        for blend in [Blend::Off, Blend::Authored] {
+            let eager = cooked(false, blend, vec![s]);
+            let lazy = cooked(true, blend, vec![s]);
+            assert_eq!(
+                lazy, eager,
+                "select {s} com blend {blend:?}: o modo preguicoso mudou a RESPOSTA"
+            );
+        }
+    }
+}

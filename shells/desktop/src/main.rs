@@ -910,6 +910,7 @@ impl App {
             cycle_pick_hits: Vec::new(),
             cycle_pick_idx: 0,
             cycle_pick_count: 0,
+            cycle_pick_selection: None,
             last_bgremoval_pushed_entity: None,
             last_color_equalization_pushed_entity: None,
             color_equalization_previews: std::collections::BTreeMap::new(),

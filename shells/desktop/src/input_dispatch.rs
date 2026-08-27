@@ -5366,11 +5366,37 @@ impl App {
                         {
                             hits.push(sel);
                         }
-                        let same_list = !hits.is_empty() && hits == self.cycle_pick_hits;
+                        // ⭐⭐⭐ **O PRIMEIRO CLIQUE É DE QUEM JÁ ESTÁ SELECIONADO** (Enio,
+                        // 2026-08-26): um filho desenha por cima do pai, então tentar arrastar um
+                        // grupo já selecionado escolhia um filho. A lei — e as quatro fronteiras
+                        // dela — vive em `pick_order::start_on_selection`, que é pura e tem gate;
+                        // aqui fica só o fio.
+                        //
+                        // ⛔ **Nunca com modificador:** `Shift`/`Cmd` estão a curar a seleção, e
+                        // preferir o primário faria o `Shift`+clique num filho alternar o PAI.
+                        let bare_click = !(self.modifiers.shift_key()
+                            || self.modifiers.super_key()
+                            || self.modifiers.control_key());
+                        let cycle_start = if bare_click {
+                            crate::pick_order::start_on_selection(
+                                &mut hits,
+                                hero.gizmo.selection,
+                                matches!(gizmo_kind, Some(ph2d_editor::GizmoDragKind::Translate)),
+                            )
+                        } else {
+                            0
+                        };
+                        // ⚠️ **A seleção entra no teste do «mesma lista»**, e é ela que faz a
+                        // escolha na HIERARQUIA abrir um ciclo novo: sem isto, clicar num ponto,
+                        // escolher o pai na lista e voltar a clicar no MESMO ponto continuava o
+                        // ciclo antigo e devolvia o filho outra vez.
+                        let same_list = !hits.is_empty()
+                            && hits == self.cycle_pick_hits
+                            && hero.gizmo.selection == self.cycle_pick_selection;
                         if !same_list {
                             self.cycle_pick_world = Some(world_pos);
                             self.cycle_pick_hits = hits.clone();
-                            self.cycle_pick_idx = 0;
+                            self.cycle_pick_idx = cycle_start;
                             self.cycle_pick_count = 1;
                         } else {
                             self.cycle_pick_count = self.cycle_pick_count.saturating_add(1);
@@ -5598,6 +5624,8 @@ impl App {
                         // surfaced via hero.gizmo.selected_len() at
                         // paint time (Fase 0e polish).
                         let primary = hero.gizmo.selection;
+                        // O ciclo corrente fica atado a ESTA seleção — ver `cycle_pick_selection`.
+                        self.cycle_pick_selection = primary;
                         if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {
                             hero.selection = Some(ph2d_editor::HeroSelection {
                                 label: entry.name.clone(),

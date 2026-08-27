@@ -844,6 +844,16 @@ pub(crate) struct App {
     pub(crate) cycle_pick_hits: Vec<u64>,
     pub(crate) cycle_pick_idx: usize,
     pub(crate) cycle_pick_count: u32,
+    /// ⭐ **A seleção com que o ciclo corrente foi aberto** (Enio, 2026-08-26).
+    ///
+    /// Sem ela o ciclo sobrevive a uma seleção feita **na Hierarquia**: o artista clicava num
+    /// ponto (a lista fica gravada), escolhia o pai na lista, voltava a clicar no MESMO ponto — a
+    /// lista era a mesma, o ciclo continuava de onde estava, e ele apanhava o filho outra vez. Com
+    /// ela, mudar de seleção por fora abre um ciclo NOVO, que começa no que ele escolheu.
+    ///
+    /// ⚠️ Guardada DEPOIS do clique (é a seleção que ficou), senão o próprio ciclo se invalidaria a
+    /// cada passo e nunca andaria.
+    pub(crate) cycle_pick_selection: Option<u64>,
     /// `entity_bits` of the sprite whose RGBA was last pushed into
     /// the active `BgRemovalTool` snapshot. `None` until the first
     /// push. Reset to `None` whenever the user activates BgRemoval

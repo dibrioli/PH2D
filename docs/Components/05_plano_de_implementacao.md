@@ -724,6 +724,11 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   `Transform` do PAI, não o tamanho da moldura.
 - ⚠️ E o anel **deixou de esmaecer** fora da seleção (*«quase invisível»*): a seleção já é dita pela
   caixa e pelas oito alças, e meio tom no único canal de um traço de 1,5 px só apaga o corpo.
+- ⭐⭐ **E o PRIMEIRO CLIQUE passou a ser de quem já está selecionado** (4.ª volta): um filho desenha
+  por cima do pai, então arrastar um grupo selecionado escolhia um filho. ⚠️ Não revoga a lei do
+  contêiner — ela diz a ORDEM dos candidatos, esta diz por onde o ciclo COMEÇA. ⛔ Nunca com
+  modificador (o `Shift`+clique alternaria o pai). ⚠️ E o ciclo passou a estar atado à seleção,
+  senão escolher o pai na Hierarquia e clicar no mesmo ponto continuava o ciclo antigo.
 
 ---
 

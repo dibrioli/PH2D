@@ -36,6 +36,7 @@
 | pegar um **objeto vazio** ou um **grupo** no canvas | **impossível** — nenhum gizmo | ✅ a caixa **dele** (o marcador), sempre do mesmo tamanho; o `Transform` dele é que anda, e os filhos seguem |
 | ver onde está um objeto sem geometria | invisível | ✅ um **anel**, em **todo** objeto vazio da cena, a peso cheio |
 | clicar no centro de um grupo | não selecionava nada | ✅ o anel **pega** — 4.ª fonte da porta de pick |
+| clicar sobre o objeto que já está selecionado | pegava o filho que desenha por cima | ✅ o **1.º clique é dele**; os seguintes ciclam, como antes |
 | *Criar componente* sobre um **grupo** | as peças da receita continuavam a desenhar (dois objetos empilhados) | ✅ a receita INTEIRA sai da tela (`MasterPiece`), e o gesto não escreve `Visibility` |
 | *Revert to Master* numa peça que o artista moveu | a peça **teletransportava-se** | ✅ devolve o conteúdo e **mantém a posição** |
 | pintar a sprite de uma cópia | as irmãs ficavam como estavam | ✅ os pixels sobem à receita e **todas** mudam |
@@ -524,3 +525,53 @@ pivô para trás — é essa a metade que distingue as duas versões).
 deixar de ser vazio · a receita ganhar anel · raio por um eixo só · o anel pegar em todo o lado · o
 censo ignorar o olho · a receita voltar a desenhar · o olho deixar de esconder · o gesto voltar a
 escrever `Visibility` · `assign_master_pieces` marcar só a raiz.
+
+---
+
+## §12 ⭐⭐⭐ A 4.ª volta (2026-08-26) — **o primeiro clique é de quem já está selecionado**
+
+> *«Como os objetos filhos ficam com um z-index relativamente maior que o pai, quando tentamos
+> arrastar o pai (objeto previamente vazio) selecionamos um filho. Precisamos que a preferência do
+> primeiro clique seja do objeto que está selecionado na hierarquia e depois a cada clique a seleção
+> passe a ciclar (como já está implementado).»*
+
+⚠️ **Isto NÃO revoga a lei do contêiner** (`descendants_first`, Enio 2026-08-19): ela responde *«em
+que ORDEM os candidatos ficam»* e continua igual — um clique dentro de um grupo que **ainda não está
+selecionado** pega o filho, como no Figma. O que a 4.ª volta acrescenta é *«por onde o ciclo
+COMEÇA»*, e a resposta é o objeto que o artista já escolheu: *o gesto seguinte a escolher um objeto
+é mexer nele*, e pedir-lhe que descubra uma cadência de cliques para voltar ao que ele acabou de
+selecionar é o mesmo defeito que a lei do contêiner curou, do outro lado.
+
+A lei é pura e vive em [`pick_order::start_on_selection`](../../../shells/desktop/src/pick_order.rs),
+com quatro fronteiras e gate para cada uma:
+
+1. o selecionado **está** nos hits ⇒ o ciclo começa nele, e a **lista não é reordenada** (os cliques
+   seguintes continuam a alcançar o filho);
+2. o selecionado **não** está nos hits ⇒ nada muda;
+3. ⚠️ **excepto se o press for um `Translate` no gizmo PRIMÁRIO**: a caixa de um objeto vazio é um
+   quadrado e o anel dele é o disco **inscrito**, então premir numa **quina** da caixa é premir o
+   gizmo dele e não o corpo dele — sem esta metade o clique caía no filho por baixo. Aí o
+   selecionado entra na lista **no fim** (a ordem de camada dos outros fica intacta). *É a mesma lei
+   que já dizia «sem nada sob o cursor, cai na seleção atual» (Enio, 2026-07-09), com algo sob o
+   cursor;*
+4. ⛔ uma lista **vazia** continua vazia — é o caminho do clique no nada, que limpa a seleção.
+
+⛔ **Nunca num clique com MODIFICADOR:** `Shift`/`Cmd` estão a curar a seleção, e preferir o primário
+faria o `Shift`+clique num filho alternar o **pai**.
+
+### ⚠️ E o ciclo passou a estar atado à SELEÇÃO — a metade que quase escapou
+
+`same_list` comparava só a lista de hits. ⇒ o artista clicava num ponto (a lista fica gravada),
+escolhia o pai **na Hierarquia**, voltava a clicar no MESMO ponto — a lista era a mesma, o ciclo
+antigo continuava, e ele apanhava o filho outra vez. Com a seleção no teste (`cycle_pick_selection`),
+mudar de seleção por fora abre um ciclo **novo**, que começa no que ele escolheu.
+
+⚠️ Ela é gravada **depois** do clique (é a seleção que ficou), senão o próprio ciclo se invalidaria a
+cada passo e nunca andaria.
+
+**Prova de mutação:** 5 mutações, 5 mortas (o ciclo começar sempre no topo · uma seleção fora entrar
+na lista · a quina do gizmo deixar de contar · o clique no nada voltar a selecionar · a lista ser
+reordenada em vez de o selecionado ir para o fim).
+
+⚠️ **Um campo novo no `App`** (`cycle_pick_selection`) — quem construir um `App` noutra linha não
+compila, que é o comportamento certo.

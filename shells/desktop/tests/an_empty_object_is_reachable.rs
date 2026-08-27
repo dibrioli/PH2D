@@ -1,4 +1,4 @@
-//! ⭐ **Os dois FIOS que ligam a lei do objeto vazio ao que o artista vê** (Enio, 2026-08-26).
+//! ⭐ **Os FIOS que ligam a lei do objeto vazio ao que o artista vê** (Enio, 2026-08-26).
 //!
 //! A lei — *«a caixa é a união dos filhos visíveis, ou o marcador do vazio»* — tem gate próprio em
 //! `group_gizmo_view`. O que **não** é alcançável de um teste é a costura: `snapshots::build_view` é
@@ -54,5 +54,26 @@ fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
     assert!(
         !src.contains("let hidden = sim"),
         "o extract voltou a decidir a visibilidade no fio, ao lado da porta"
+    );
+}
+
+/// ⭐⭐⭐ **O primeiro clique é de quem já está selecionado** — o fio da 4.ª volta.
+///
+/// A lei é pura e tem gate em `pick_order::start_on_selection`; o que **não** é alcançável de um
+/// teste é o `input_dispatch`, e sem os dois fios abaixo a lei fica verde e o artista continua a
+/// apanhar um filho ao tentar arrastar o pai.
+#[test]
+fn the_click_dispatch_starts_the_cycle_on_the_selection() {
+    let src = fs::read_to_string("src/input_dispatch.rs").expect("input_dispatch.rs");
+    assert!(
+        src.contains("pick_order::start_on_selection("),
+        "o clique deixou de comecar o ciclo na selecao — arrastar um grupo volta a pegar um filho"
+    );
+    // ⚠️ E a segunda metade: mudar de seleção na HIERARQUIA tem de abrir um ciclo NOVO, senão o
+    // ciclo antigo sobrevive e devolve o filho outra vez no mesmo ponto.
+    assert!(
+        src.contains("hero.gizmo.selection == self.cycle_pick_selection"),
+        "o ciclo deixou de estar atado a' selecao — escolher o pai na Hierarquia e clicar no mesmo \
+         ponto continua o ciclo antigo"
     );
 }

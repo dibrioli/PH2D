@@ -81,6 +81,55 @@ pub(crate) fn descendants_first(world: &ph2d_ecs::World, hits: &mut [u64]) {
     }
 }
 
+/// ⭐⭐⭐ **ONDE O CICLO COMEÇA: o primeiro clique é de quem JÁ ESTÁ SELECIONADO** (Enio,
+/// 2026-08-26).
+///
+/// > *«Como os objetos filhos ficam com um z-index relativamente maior que o pai, quando tentamos
+/// > arrastar o pai (objeto previamente vazio) selecionamos um filho. Precisamos que a preferência
+/// > do primeiro clique seja do objeto que está selecionado na hierarquia e depois a cada clique a
+/// > seleção passa a ciclar.»*
+///
+/// # ⚠️ Ela NÃO revoga a lei do contêiner — escolhe outra coisa
+///
+/// [`descendants_first`] responde *«em que ORDEM os candidatos ficam»*, e continua a valer: um
+/// clique dentro de um grupo que ainda não está selecionado pega o filho, como no Figma. Esta
+/// função responde *«por onde o ciclo COMEÇA»*, e a resposta é o objeto que o artista já escolheu
+/// — porque o gesto seguinte a escolher um objeto é **mexer nele**, e pedir a um artista que
+/// descubra uma cadência de cliques para voltar ao que ele acabou de selecionar é o mesmo defeito
+/// que a lei do contêiner curou, do outro lado.
+///
+/// ⚠️ **É só o PRIMEIRO clique.** A lista devolvida é a mesma, e o ciclo dos cliques seguintes
+/// anda a partir daqui — quem quer o filho por baixo continua a chegar lá.
+///
+/// # ⚠️ `inside_its_gizmo` — o caso em que o selecionado não está nos hits
+///
+/// A caixa de um objeto vazio é um quadrado e o anel dele é o disco **inscrito**: premir numa quina
+/// da caixa é premir o gizmo dele e **não** o corpo dele, e sem esta metade o clique caía no filho
+/// por baixo. ⇒ quando o press é um *Translate* no gizmo primário, o selecionado entra na lista
+/// (no FIM, para a ordem de camada dos outros ficar intacta) e o ciclo começa nele. *É a mesma lei
+/// que já dizia «sem nada sob o cursor, cai na seleção atual» (Enio, 2026-07-09), com algo sob o
+/// cursor.*
+///
+/// ⛔ **NUNCA num clique com modificador**: `Shift`/`Cmd` estão a curar a seleção, e preferir o
+/// primário faria o `Shift`+clique num filho alternar o PAI. Quem chama passa `false` aí.
+pub(crate) fn start_on_selection(
+    hits: &mut Vec<u64>,
+    selected: Option<u64>,
+    inside_its_gizmo: bool,
+) -> usize {
+    let Some(sel) = selected else {
+        return 0;
+    };
+    if let Some(i) = hits.iter().position(|&b| b == sel) {
+        return i;
+    }
+    if inside_its_gizmo && !hits.is_empty() {
+        hits.push(sel);
+        return hits.len() - 1;
+    }
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,5 +209,65 @@ mod tests {
         let mut none: Vec<u64> = Vec::new();
         descendants_first(sim.world(), &mut none);
         assert!(none.is_empty());
+    }
+
+    /// ⭐⭐⭐ **O primeiro clique é de quem já está selecionado** (report do Enio, 2026-08-26).
+    ///
+    /// ⚠️ E a lista **não** é reordenada: o ciclo dos cliques seguintes continua a alcançar o
+    /// filho, que é a lei do contêiner intacta.
+    ///
+    /// (Mutação: devolver sempre `0` ⇒ RED.)
+    #[test]
+    fn the_first_click_starts_on_what_is_already_selected() {
+        let (_sim, parent, child, _) = family();
+        let mut hits = vec![child, parent];
+        assert_eq!(
+            start_on_selection(&mut hits, Some(parent), false),
+            1,
+            "o ciclo comecou no filho — arrastar o pai selecionado seleciona um filho"
+        );
+        assert_eq!(hits, vec![child, parent], "a lista foi reordenada");
+    }
+
+    /// **Sem seleção, ou com uma seleção que não está sob o cursor, o ciclo começa no topo.**
+    ///
+    /// (Mutação: devolver `hits.len() - 1` no caso de fora ⇒ RED.)
+    #[test]
+    fn a_selection_that_is_not_under_the_cursor_changes_nothing() {
+        let (_sim, parent, child, grand) = family();
+        let mut hits = vec![child, parent];
+        assert_eq!(start_on_selection(&mut hits, None, false), 0);
+        assert_eq!(start_on_selection(&mut hits, Some(grand), false), 0);
+        assert_eq!(
+            hits,
+            vec![child, parent],
+            "a lista mudou sem o gizmo primario"
+        );
+    }
+
+    /// ⚠️ **Premir a QUINA da caixa de um objeto vazio** — o gizmo é dele, o corpo (o disco
+    /// inscrito) não está sob o cursor, e sem esta metade o clique caía no filho.
+    ///
+    /// (Mutação: ignorar `inside_its_gizmo` ⇒ RED.)
+    #[test]
+    fn pressing_inside_its_own_gizmo_brings_the_selection_into_the_cycle() {
+        let (_sim, parent, child, _) = family();
+        let mut hits = vec![child];
+        assert_eq!(start_on_selection(&mut hits, Some(parent), true), 1);
+        assert_eq!(
+            hits,
+            vec![child, parent],
+            "o selecionado tem de entrar no FIM — a ordem de camada dos outros fica intacta"
+        );
+    }
+
+    /// ⛔ **Uma lista VAZIA continua vazia** — o caminho do clique no nada, que limpa a seleção.
+    /// Empurrar o selecionado aqui faria um clique fora de tudo re-selecionar o que já estava.
+    #[test]
+    fn an_empty_list_is_left_alone() {
+        let (_sim, parent, _, _) = family();
+        let mut hits: Vec<u64> = Vec::new();
+        assert_eq!(start_on_selection(&mut hits, Some(parent), true), 0);
+        assert!(hits.is_empty(), "o clique no nada passou a selecionar algo");
     }
 }

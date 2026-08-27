@@ -539,6 +539,8 @@ mod text_wrap_smoke;
 mod texture_pattern_live;
 /// **A porta que o chip *Tile* abre** (plano 33, W4) — escolher a arte de um padrão.
 mod texture_pattern_pick;
+/// **A cena de smoke do Texture Pattern** (`PH2D_BUILD_SMOKE=76`, plano 33).
+mod texture_pattern_smoke;
 mod theme;
 mod timeline_onion_smoke;
 #[cfg(test)]

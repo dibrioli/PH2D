@@ -373,5 +373,11 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::morph_states_smoke::frame(app, f);
         return true;
     }
+    // A cena do TEXTURE PATTERN (=76, plano 33) — irmã `texture_pattern_smoke`, mesma razão de LOC.
+    // ⚠️ Ela sintetiza a própria arte: um smoke não pode pedir um ficheiro ao Enio.
+    if level == 76 {
+        crate::texture_pattern_smoke::frame(app, f);
+        return true;
+    }
     false
 }

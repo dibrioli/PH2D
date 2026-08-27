@@ -5,7 +5,6 @@
 
 use super::sync_instances;
 use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
-use crate::instantiate::instantiate_master;
 use ph2d_ecs::{
     Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId, Transform, Visibility,
 };
@@ -13,6 +12,41 @@ use ph2d_physics_ecs::{PhysicsBridge, PhysicsJoint};
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
+}
+
+/// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
+fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    spawn_ragdoll_scene(
+        sim,
+        r,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// ⚠️ **Sem documentos vetoriais** — estes gates não têm arte vetorial (os que têm vivem em
+/// `instance_docs`). O par vazio existe para a assinatura da porta, que desde a F4.6 clona os
+/// documentos possuídos junto com os bytes.
+fn instantiate(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    master: Entity,
+    parent: Option<Entity>,
+) -> Result<Entity, crate::instantiate::Refusal> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    crate::instantiate::instantiate_master(
+        sim,
+        r,
+        master,
+        parent,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
 }
 
 /// Os descendentes de `root` com um nome dado.
@@ -38,7 +72,7 @@ fn editing_the_master_changes_every_instance() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     assert_eq!(roots.len(), 3);
 
     // O artista pinta o braço da RECEITA de verde.
@@ -83,7 +117,7 @@ fn a_second_pass_writes_nothing() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    spawn_ragdoll_scene(&mut sim, &r);
+    ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
         sync_instances(&mut sim, &r, &bridge, &mut echo),
@@ -103,7 +137,7 @@ fn the_sync_never_turns_an_instance_into_a_master() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert!(
         sim.world().get::<MasterRoot>(inst).is_none(),
@@ -131,7 +165,7 @@ fn the_instance_root_keeps_its_own_place_and_name() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     let master_at = sim
         .world()
         .get::<Transform>(master)
@@ -180,7 +214,7 @@ fn a_piece_pose_does_propagate() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let master_hub = piece(&sim, master, "Hub");
     sim.world_mut()
         .entity_mut(master_hub)
@@ -218,7 +252,7 @@ fn the_rest_pose_of_a_simulated_piece_does_not_propagate_and_that_is_declared() 
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let before = sim
         .world()
         .get::<Transform>(piece(&sim, inst, "Arm"))
@@ -252,7 +286,7 @@ fn the_propagated_joint_still_binds_the_instances_own_bodies() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let inst_hub = sim
         .world()
         .get::<StableId>(piece(&sim, inst, "Hub"))
@@ -299,7 +333,7 @@ fn the_sync_never_writes_a_pose_the_solver_owns() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let arm = piece(&sim, inst, "Arm");
     let authored = sim.world().get::<Transform>(arm).expect("pose").translation;
 
@@ -364,7 +398,7 @@ fn the_link_survives_a_sync_so_the_next_edit_still_arrives() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
 
     // Alguns quadros de app antes de o artista tocar em nada.
     for _ in 0..3 {
@@ -447,7 +481,7 @@ fn reverting_does_not_move_what_the_artist_placed() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = plain_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instanciou");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instanciou");
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     // O artista arrasta a peça E pinta-a.
@@ -523,8 +557,8 @@ fn painting_one_copy_reaches_the_others() {
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
     let master = plain_master(&mut sim);
-    let a = instantiate_master(&mut sim, &r, master, None).expect("instanciou A");
-    let b = instantiate_master(&mut sim, &r, master, None).expect("instanciou B");
+    let a = instantiate(&mut sim, &r, master, None).expect("instanciou A");
+    let b = instantiate(&mut sim, &r, master, None).expect("instanciou B");
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let pixels = ph2d_asset::AssetId::from_bytes(b"os pixels pintados");

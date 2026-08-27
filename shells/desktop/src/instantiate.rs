@@ -47,6 +47,7 @@ pub(crate) fn instantiate_master(
     registry: &ComponentRegistry,
     master_root: Entity,
     parent: Option<Entity>,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<Entity, Refusal> {
     if sim.world().get::<MasterRoot>(master_root).is_none() {
         return Err(Refusal::NotAMaster);
@@ -69,6 +70,11 @@ pub(crate) fn instantiate_master(
     else {
         return Err(Refusal::NotAMaster);
     };
+    // ⭐⭐ **Os DOCUMENTOS possuídos** (F4.6) — a cópia profunda salta-os de propósito, e sem esta
+    // metade uma peça vetorial nasce **sem geometria nenhuma**: uma linha na Hierarquia que não
+    // desenha um pixel. Ver [`crate::instance_docs`], onde a lista dos quatro está declarada.
+    let report = crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy);
+    report.warn("instanciar");
     let pieces = copy.copies();
 
     // ⚠️⚠️ **A ORDEM destes dois passos é load-bearing, e o erro é silencioso.**
@@ -150,6 +156,7 @@ pub(crate) fn duplicate_subtree(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     src: Entity,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Option<Entity> {
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(src).map(|c| c.0);
     let base = sim
@@ -158,6 +165,9 @@ pub(crate) fn duplicate_subtree(
         .map_or_else(|| "Entity".to_string(), |n| n.0.clone());
 
     let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, src, parent).ok()?;
+    // ⭐ A mesma metade que a instanciação paga: sem ela, duplicar um GRUPO com formas vetoriais
+    // dentro devolve as peças sem geometria (F4.6).
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("duplicar");
     crate::instance_refs::remap_object_refs(sim.world_mut(), &copy.copies(), &copy.stable_ids);
 
     let unique = crate::name_unique::unique_name(sim, &base);

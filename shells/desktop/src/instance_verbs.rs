@@ -57,6 +57,7 @@ pub(crate) fn make_master(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     entity: Entity,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> Result<(Entity, Entity), VerbRefusal> {
     if sim.world().get::<MasterRoot>(entity).is_some() {
         return Err(VerbRefusal::AlreadyAMaster);
@@ -71,7 +72,8 @@ pub(crate) fn make_master(
     sim.world_mut().entity_mut(entity).insert(MasterRoot);
     // ⚠️ A instância nasce ANTES de a receita ser marcada? Não: ela é a cópia da receita, e a
     // cópia leva o `MasterRoot` que a porta de instanciar depois tira. A ordem é esta.
-    let instance = match crate::instantiate::instantiate_master(sim, registry, entity, parent) {
+    let instance = match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs)
+    {
         Ok(e) => e,
         Err(_) => {
             // Desfaz a marcação: um gesto que falha a meio deixaria uma receita que o artista não
@@ -214,6 +216,7 @@ pub(crate) enum Verb {
 /// ⚠️ **Todo caminho negativo fala.** A tabela daquele menu é PLANA (ela não sabe o que a linha é),
 /// então os quatro itens aparecem em toda linha; um item que come o clique em silêncio é pior que
 /// um ausente. *É a mesma lei que o report do Enio sobre o Revert pagou.*
+#[allow(clippy::too_many_arguments)] // um verbo, o mundo, o registo, o eco, os documentos e a voz
 pub(crate) fn drain(
     verb: Verb,
     sim: &mut SimWorld,
@@ -221,11 +224,12 @@ pub(crate) fn drain(
     echo: &mut crate::instance_sync::MasterEcho,
     entity_bits: u64,
     toasts: &mut ph2d_editor::ToastQueue,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> bool {
     use ph2d_editor::Toast;
     let entity = Entity::from_bits(entity_bits);
     match verb {
-        Verb::Make => match make_master(sim, registry, entity) {
+        Verb::Make => match make_master(sim, registry, entity, docs) {
             Ok(_) => {
                 toasts.push(Toast::success(
                     "Made a component — an instance took its place",
@@ -245,20 +249,22 @@ pub(crate) fn drain(
         },
         // ⚠️ *Instantiate* pede a RECEITA, e a linha pode ser a instância que ficou no lugar dela:
         // o aviso NOMEIA a saída, senão o artista fica a clicar na linha errada.
-        Verb::Place => match crate::instantiate::instantiate_master(sim, registry, entity, None) {
-            Ok(_) => {
-                toasts.push(Toast::success("Instantiated"));
-                true
+        Verb::Place => {
+            match crate::instantiate::instantiate_master(sim, registry, entity, None, docs) {
+                Ok(_) => {
+                    toasts.push(Toast::success("Instantiated"));
+                    true
+                }
+                Err(crate::instantiate::Refusal::WouldNestInItself) => {
+                    toasts.push(Toast::warning("That would put the component inside itself"));
+                    false
+                }
+                Err(_) => {
+                    toasts.push(Toast::warning("Not a component — pick the master row"));
+                    false
+                }
             }
-            Err(crate::instantiate::Refusal::WouldNestInItself) => {
-                toasts.push(Toast::warning("That would put the component inside itself"));
-                false
-            }
-            Err(_) => {
-                toasts.push(Toast::warning("Not a component — pick the master row"));
-                false
-            }
-        },
+        }
         Verb::Detach => match detach(sim, entity) {
             Ok(n) => {
                 toasts.push(Toast::success(format!("Detached {n} piece(s) from master")));

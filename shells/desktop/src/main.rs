@@ -256,6 +256,7 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
+mod instance_docs;
 mod instance_live;
 mod instance_refs;
 mod instance_smoke;

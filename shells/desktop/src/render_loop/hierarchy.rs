@@ -109,6 +109,9 @@ pub(super) fn dispatch(
     // O documento vetorial. ⚠️ Ele chega aqui porque a row **Duplicate** da Hierarchy tem de
     // duplicar uma FORMA pela mesma porta do botão do painel — ver o bloco de `duplicate_row`.
     vec_scene: &mut ph2d_vec_scene::VecScene,
+    // ⭐ O mapa `path ⟺ entidade` (F4.6) — uma cópia profunda que clona um `VecPath` tem de
+    // registar o par, senão o `vec_entities::sync` cunha uma segunda entidade para o clone.
+    vec_entities: &mut crate::vec_entities::VecEntityMap,
     vec_history: &mut ph2d_vec_edit::History,
     vec_pen: &mut ph2d_vec_edit::PenTool,
     // Out: `(source_bits, new_bits)` of a sprite duplicate so the caller (which holds the painter +
@@ -272,7 +275,12 @@ pub(super) fn dispatch(
             // ⚠️ **O nome único continua a ser lei** — a Hierarquia já teve seleção por rótulo, e
             // qualquer código que volte a chavear pelo nome amigável merece a mesma defesa.
             let sprite = sim.world().get::<ph2d_render::Sprite>(src).is_some();
-            if let Some(copy) = crate::instantiate::duplicate_subtree(sim, registry, src) {
+            let mut docs = crate::instance_docs::OwnedDocs {
+                vec_scene,
+                vec_entities,
+            };
+            if let Some(copy) = crate::instantiate::duplicate_subtree(sim, registry, src, &mut docs)
+            {
                 // Report the pair so the caller can fork the copy's texture off the source
                 // (independent object) + flush any live paint on the source first. Only matters
                 // for sprite entities.
@@ -326,7 +334,18 @@ pub(super) fn dispatch(
     if let Some((row, verb)) = instance_verb_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
-        && crate::instance_verbs::drain(verb, sim, registry, echo, entity_bits, toasts)
+        && crate::instance_verbs::drain(
+            verb,
+            sim,
+            registry,
+            echo,
+            entity_bits,
+            toasts,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene,
+                vec_entities,
+            },
+        )
     {
         title_dirty = true;
     }

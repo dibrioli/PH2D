@@ -14,6 +14,19 @@ fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
 }
 
+/// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
+fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    spawn_ragdoll_scene(
+        sim,
+        r,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
 /// Os descendentes de `root` com um nome dado.
 fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
     let mut stack = vec![root];
@@ -58,7 +71,7 @@ fn an_edit_on_an_instance_survives_the_next_master_edit() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo); // o eco nasce
 
     // O artista pinta o braço da PRIMEIRA instância de azul.
@@ -103,7 +116,7 @@ fn editing_the_master_creates_no_overrides() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let master_arm = piece(&sim, master, "Arm");
@@ -132,7 +145,7 @@ fn the_override_is_recorded_on_the_instance_root() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
@@ -177,7 +190,7 @@ fn when_both_move_in_the_same_pass_the_master_wins() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
@@ -210,7 +223,7 @@ fn revert_gives_the_piece_back_to_the_master() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
@@ -246,7 +259,7 @@ fn a_pose_the_solver_owns_never_becomes_an_override() {
     let mut sim = SimWorld::new();
     let r = reg();
     let mut echo = super::MasterEcho::default();
-    let (_master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (_master, roots) = ragdoll(&mut sim, &r);
     let mut bridge = PhysicsBridge::new();
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     for t in 1..=60 {
@@ -291,7 +304,7 @@ fn an_override_survives_a_capture_and_restore() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (_master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (_master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
@@ -336,7 +349,7 @@ fn a_ref_carrying_component_never_captures_an_override_and_that_is_declared() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     // O artista mexe na junta de UMA instância.
@@ -397,7 +410,7 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     // (a) não pertence a instância nenhuma — a receita não é cópia de ninguém.
@@ -448,7 +461,7 @@ fn reverting_from_the_piece_the_artist_touched_works() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = super::MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let arm = piece(&sim, roots[0], "Arm");

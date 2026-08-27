@@ -106,11 +106,13 @@ pub(crate) fn spawn_master(sim: &mut SimWorld) -> ph2d_ecs::Entity {
 pub(crate) fn spawn_ragdoll_scene(
     sim: &mut SimWorld,
     registry: &ph2d_ecs::scene::ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> (ph2d_ecs::Entity, Vec<ph2d_ecs::Entity>) {
     let master = spawn_master(sim);
     let mut roots = Vec::new();
     for x in INSTANCE_X {
-        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None) else {
+        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None, docs)
+        else {
             continue;
         };
         sim.world_mut()
@@ -151,10 +153,17 @@ impl crate::App {
 
     /// Cena 1 — ver o cabeçalho do módulo.
     fn instance_smoke_ragdoll(&mut self) {
+        let vec_entities = &mut self.vec_entities;
         let gfx = self.gfx.as_mut().expect("gfx");
         crate::physics_smoke::spawn_floor(gfx.sim.world_mut());
-        // Dois campos distintos do `AppGfx` — empréstimos disjuntos, sem clonar o registo.
-        let (_master, roots) = spawn_ragdoll_scene(&mut gfx.sim, &gfx.component_registry);
+        // Campos DISJUNTOS do `AppGfx` (+ o mapa, que é do `App`) — empréstimos separados, sem
+        // clonar o registo nem o documento.
+        let mut docs = crate::instance_docs::OwnedDocs {
+            vec_scene: &mut gfx.vec_scene,
+            vec_entities,
+        };
+        let (_master, roots) =
+            spawn_ragdoll_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
         // ⚠️ A cena **imprime o que montou** — se estas linhas não aparecerem, PARE: o que está
         // na tela não é o que este smoke descreve.
         println!("[instance smoke 1] receita 'Ragdoll' la' em cima (ela NAO se mexe)");

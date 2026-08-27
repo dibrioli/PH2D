@@ -4,10 +4,9 @@
 //! passou a ter, o que as outras cópias receberam. Um gate que contasse chamadas ficaria verde
 //! sobre um verbo que faz a coisa errada.
 
-use super::{VerbRefusal, apply_to_master, detach, make_master};
+use super::{VerbRefusal, apply_to_master, detach};
 use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
 use crate::instance_sync::{MasterEcho, sync_instances};
-use crate::instantiate::instantiate_master;
 use ph2d_ecs::{
     Children, Entity, InstanceOf, MasterRoot, Name, ObjectInstance, SimWorld, Transform, Visibility,
 };
@@ -15,6 +14,59 @@ use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
+}
+
+/// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_docs`.
+fn make(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    entity: Entity,
+) -> Result<(Entity, Entity), VerbRefusal> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::make_master(
+        sim,
+        r,
+        entity,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
+fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    spawn_ragdoll_scene(
+        sim,
+        r,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// ⚠️ **Sem documentos vetoriais** — estes gates não têm arte vetorial (os que têm vivem em
+/// `instance_docs`). O par vazio existe para a assinatura da porta, que desde a F4.6 clona os
+/// documentos possuídos junto com os bytes.
+fn instantiate(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    master: Entity,
+    parent: Option<Entity>,
+) -> Result<Entity, crate::instantiate::Refusal> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    crate::instantiate::instantiate_master(
+        sim,
+        r,
+        master,
+        parent,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
 }
 
 fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
@@ -84,7 +136,7 @@ fn make_master_leaves_an_instance_in_its_place() {
     let rig = plain_rig(&mut sim);
     let where_it_was = sim.world().get::<Transform>(rig).expect("pose").translation;
 
-    let (master, instance) = make_master(&mut sim, &r, rig).expect("o gesto");
+    let (master, instance) = make(&mut sim, &r, rig).expect("o gesto");
     assert_eq!(
         master, rig,
         "a receita E' a subarvore que o artista escolheu"
@@ -132,7 +184,7 @@ fn the_whole_recipe_leaves_the_canvas_and_the_instance_stays() {
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
     let rig = plain_rig(&mut sim);
-    let (master, instance) = make_master(&mut sim, &r, rig).expect("o gesto");
+    let (master, instance) = make(&mut sim, &r, rig).expect("o gesto");
 
     for (what, e) in [("a raiz", master), ("a peca", piece(&sim, master, "Arm"))] {
         assert!(
@@ -171,20 +223,14 @@ fn make_master_refuses_a_master_and_a_piece_of_an_instance() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    assert_eq!(
-        make_master(&mut sim, &r, master),
-        Err(VerbRefusal::AlreadyAMaster)
-    );
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
-    assert_eq!(
-        make_master(&mut sim, &r, inst),
-        Err(VerbRefusal::InsideAnInstance)
-    );
+    assert_eq!(make(&mut sim, &r, master), Err(VerbRefusal::AlreadyAMaster));
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
+    assert_eq!(make(&mut sim, &r, inst), Err(VerbRefusal::InsideAnInstance));
     // ⚠️ E uma PEÇA no meio da cópia também: a pergunta é sobre os ANCESTRAIS.
     assert_eq!(
         {
             let arm = piece(&sim, inst, "Arm");
-            make_master(&mut sim, &r, arm)
+            make(&mut sim, &r, arm)
         },
         Err(VerbRefusal::InsideAnInstance)
     );
@@ -203,7 +249,7 @@ fn detaching_stops_the_following_and_changes_nothing_else() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
@@ -254,7 +300,7 @@ fn applying_an_override_makes_it_the_recipe_for_everyone() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let mine = piece(&sim, roots[0], "Arm");
@@ -300,7 +346,7 @@ fn applying_from_a_piece_promotes_only_that_piece() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
 
     let arm = piece(&sim, roots[0], "Arm");
@@ -332,7 +378,7 @@ fn applying_with_nothing_overridden_answers_zero() {
     let r = reg();
     let bridge = PhysicsBridge::new();
     let mut echo = MasterEcho::default();
-    let (_master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (_master, roots) = ragdoll(&mut sim, &r);
     sync_instances(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(apply_to_master(&mut sim, &r, &mut echo, roots[0]), Ok(0));
 }

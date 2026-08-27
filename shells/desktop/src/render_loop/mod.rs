@@ -9900,6 +9900,7 @@ impl crate::App {
                 toasts,
                 window_size,
                 vec_scene,
+                &mut self.vec_entities,
                 &mut self.vec_history,
                 &mut self.vec_pen,
                 &mut duplicate_made,

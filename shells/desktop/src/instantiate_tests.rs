@@ -4,12 +4,64 @@
 //! cada instância fica preso ao eixo DELA depois de 120 tiques de gravidade. Um gate que
 //! contasse remapeamentos ficaria verde sobre uma tabela que ninguém chama.
 
-use super::instantiate_master;
-use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
+use crate::instance_smoke::spawn_master;
 use ph2d_ecs::{
     Children, Entity, InstanceOf, MasterPiece, MasterRoot, Name, SimWorld, StableId, Transform,
 };
 use ph2d_physics_ecs::{PhysicsBridge, PhysicsJoint};
+
+/// ⚠️ **Sem documentos vetoriais** — estes gates não têm arte vetorial (os que têm vivem em
+/// `crate::instance_docs`). O par vazio existe para a assinatura da porta, que desde a F4.6 clona
+/// os documentos possuídos junto com os bytes.
+fn instantiate(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    master: Entity,
+    parent: Option<Entity>,
+) -> Result<Entity, super::Refusal> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::instantiate_master(
+        sim,
+        r,
+        master,
+        parent,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
+fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    crate::instance_smoke::spawn_ragdoll_scene(
+        sim,
+        r,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
+
+/// Irmã de [`instantiate`], pela mesma razão.
+fn duplicate(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    src: Entity,
+) -> Option<Entity> {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    super::duplicate_subtree(
+        sim,
+        r,
+        src,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+    )
+}
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
@@ -50,7 +102,7 @@ fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
 fn the_instance_joint_binds_the_instances_own_bodies() {
     let mut sim = SimWorld::new();
     let r = reg();
-    let (_master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (_master, roots) = ragdoll(&mut sim, &r);
     assert_eq!(roots.len(), 3, "as tres instancias tem de nascer");
     for (i, x) in [-2.4_f32, 0.0, 2.4].into_iter().enumerate() {
         sim.world_mut()
@@ -98,7 +150,7 @@ fn the_instance_joint_binds_the_instances_own_bodies() {
 fn the_recipe_does_not_move_while_the_instances_do() {
     let mut sim = SimWorld::new();
     let r = reg();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     let before = world_at(&sim, piece(&sim, master, "Arm"));
     let mut bridge = PhysicsBridge::new();
     for t in 1..=120 {
@@ -126,7 +178,7 @@ fn the_instance_points_at_the_master_not_at_itself() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let master_id = sim.world().get::<StableId>(master).expect("id").0;
     let own_id = sim.world().get::<StableId>(inst).expect("id").0;
     let link = sim.world().get::<InstanceOf>(inst).expect("elo").master;
@@ -141,7 +193,7 @@ fn an_instance_is_not_a_master() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     assert!(sim.world().get::<MasterRoot>(inst).is_none());
     let arm = piece(&sim, inst, "Arm");
     assert!(
@@ -162,7 +214,7 @@ fn an_instance_is_not_a_master() {
 fn each_instance_gets_its_own_name() {
     let mut sim = SimWorld::new();
     let r = reg();
-    let (master, roots) = spawn_ragdoll_scene(&mut sim, &r);
+    let (master, roots) = ragdoll(&mut sim, &r);
     let base = sim.world().get::<Name>(master).expect("nome").0.clone();
     let mut names: Vec<String> = roots
         .iter()
@@ -184,7 +236,7 @@ fn only_a_master_can_be_instantiated() {
         .spawn((Transform::IDENTITY, Name::new("Crate")))
         .id();
     assert_eq!(
-        instantiate_master(&mut sim, &r, plain, None),
+        instantiate(&mut sim, &r, plain, None),
         Err(super::Refusal::NotAMaster)
     );
 }
@@ -211,7 +263,7 @@ fn a_reference_out_of_the_master_still_points_out() {
         .expect("junta")
         .body_a = hook_id;
 
-    let inst = instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     let copied_pin = piece(&sim, inst, "Pin");
     let j = sim.world().get::<PhysicsJoint>(copied_pin).expect("junta");
     assert_eq!(
@@ -278,12 +330,12 @@ fn duplicating_a_rig_brings_the_whole_subtree_and_its_own_pin() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let inst = super::instantiate_master(&mut sim, &r, master, None).expect("instancia");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
     sim.world_mut()
         .entity_mut(inst)
         .insert(Transform::from_translation(ph2d_core::Vec2::new(-2.0, 1.2)));
 
-    let copy = super::duplicate_subtree(&mut sim, &r, inst).expect("duplicado");
+    let copy = duplicate(&mut sim, &r, inst).expect("duplicado");
     sim.world_mut()
         .entity_mut(copy)
         .insert(Transform::from_translation(ph2d_core::Vec2::new(2.0, 1.2)));
@@ -317,8 +369,8 @@ fn duplicating_an_instance_keeps_it_an_instance_of_the_same_master() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let inst = super::instantiate_master(&mut sim, &r, master, None).expect("instancia");
-    let copy = super::duplicate_subtree(&mut sim, &r, inst).expect("duplicado");
+    let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
+    let copy = duplicate(&mut sim, &r, inst).expect("duplicado");
     let a = sim.world().get::<InstanceOf>(inst).expect("elo").master;
     let b = sim
         .world()
@@ -342,7 +394,7 @@ fn duplicating_a_master_gives_a_master_whose_pieces_are_already_inert() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
-    let copy = super::duplicate_subtree(&mut sim, &r, master).expect("duplicado");
+    let copy = duplicate(&mut sim, &r, master).expect("duplicado");
     assert!(sim.world().get::<MasterRoot>(copy).is_some());
     assert!(
         sim.world()
@@ -369,7 +421,7 @@ fn the_duplicate_lands_beside_its_source() {
             ph2d_ecs::ChildOf(host),
         ))
         .id();
-    let copy = super::duplicate_subtree(&mut sim, &r, src).expect("duplicado");
+    let copy = duplicate(&mut sim, &r, src).expect("duplicado");
     assert_eq!(
         sim.world().get::<ph2d_ecs::ChildOf>(copy).map(|c| c.0),
         Some(host),
@@ -394,13 +446,13 @@ fn instantiating_inside_the_master_itself_is_refused() {
     let master = spawn_master(&mut sim);
     let inside = piece(&sim, master, "Arm");
     assert_eq!(
-        super::instantiate_master(&mut sim, &r, master, Some(inside)),
+        instantiate(&mut sim, &r, master, Some(inside)),
         Err(super::Refusal::WouldNestInItself),
         "a instancia aterrou DENTRO da propria receita"
     );
     // A própria raiz do mestre é o caso de bordo do mesmo laço.
     assert_eq!(
-        super::instantiate_master(&mut sim, &r, master, Some(master)),
+        instantiate(&mut sim, &r, master, Some(master)),
         Err(super::Refusal::WouldNestInItself)
     );
     // E o controle positivo: FORA do mestre continua a funcionar.
@@ -408,5 +460,5 @@ fn instantiating_inside_the_master_itself_is_refused() {
         .world_mut()
         .spawn((Transform::IDENTITY, Name::new("Host")))
         .id();
-    assert!(super::instantiate_master(&mut sim, &r, master, Some(host)).is_ok());
+    assert!(instantiate(&mut sim, &r, master, Some(host)).is_ok());
 }

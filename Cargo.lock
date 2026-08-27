@@ -8421,6 +8421,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-vec-pattern"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "ph2d-vec-render"
 version = "0.0.0"
 dependencies = [

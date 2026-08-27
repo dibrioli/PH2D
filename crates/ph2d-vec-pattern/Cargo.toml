@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-vec-pattern"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A casa ÚNICA do vocabulário de LADRILHO (plano 33, W1): `TileKind`/`TileLaw`/
+# `PatternMode` mais o assador que os resolve num rectângulo só. Folha ZERO-dep pelo
+# mesmo motivo que a `ph2d-warp-style` e a `ph2d-stroke-width`: ela tem dois donos que
+# não se veem — a `ph2d-vec-scene` (que é PURA, sem vello/kurbo, e guarda o documento)
+# e a `ph2d-vec-render` (que alcança a stack Linebender). Nenhuma pode depender da
+# outra, então o vocabulário tem de ser esta folha.
+#
+# serde: o `TileLaw` viaja dentro do `Paint::Pattern` no save. Sem `postcard` — só o
+# tipo é serializado; quem escreve o wire é o consumidor (a mesma linha da
+# `ph2d-warp-style`).
+serde = { version = "1", features = ["derive"] }

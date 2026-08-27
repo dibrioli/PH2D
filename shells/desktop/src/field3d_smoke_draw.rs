@@ -137,9 +137,6 @@ pub(crate) fn draw(
             job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             smoke.inflight = None;
         }
-        // ⚠️ O `(tw, th)` de dentro do `if let` é o tamanho PEDIDO e **sombreia** o cheio; este
-        // guarda o cheio para a lei do contorno grosso o poder comparar.
-        let full_size = (tw, th);
         if let (None, Some((tw, th, coarse))) = (&smoke.inflight, ask) {
             // ⚠️ **O comparado é o documento REAL.** Guardar aqui o engrossado faria a cena parecer
             // mudada em toda alternância entre grosso e fino, e o laço re-traçaria para sempre.
@@ -151,12 +148,12 @@ pub(crate) fn draw(
             // ⭐ E os dois cortes do quadro de movimento saem da MESMA bandeira (W73): o contorno
             // grosso e o anti-serrilhado desligado são a mesma lei — *grosso a mexer, nítido ao
             // assentar* —, e uma segunda pergunta para o mesmo facto podia divergir dela.
-            let doc = if coarse {
-                crate::field3d_preview::coarse_doc(&doc, (tw, th), full_size)
-                    .unwrap_or_else(|| doc.clone())
-            } else {
-                doc.clone()
-            };
+            // ⭐⭐⭐ **Os DOIS quadros engrossam o contorno** (W85) — com orçamentos de erro
+            // diferentes, e não com leis diferentes. O que ship até à W84 era «engrossa a mexer,
+            // autoral ao parar»; medido, o autoral acima de `0,5°` de erro de normal compra
+            // `≤3/255` no pixel e custa o dobro. Ver `field3d_preview::SETTLED_NORMAL_ERR_DEG`.
+            let doc =
+                crate::field3d_preview::coarse_doc(&doc, coarse).unwrap_or_else(|| doc.clone());
             let antialias = !coarse;
             let (tx, rx) = channel::<Ready>();
             let cam = smoke.cam;

@@ -225,10 +225,16 @@ mod cost_tests;
 /// ⚠️ **A substituição é SÓ no que vai para o traçador.** O documento que o laço compara
 /// ([`next_trace`]) continua a ser o real — trocar o comparado faria a cena parecer mudada a cada
 /// alternância entre grosso e fino, e o laço re-traçaria para sempre.
-pub(crate) fn coarse_doc(doc: &FieldDoc, asked: (u32, u32), full: (u32, u32)) -> Option<FieldDoc> {
-    if asked == full {
-        return None;
+/// ⭐⭐⭐ **E desde a W85 ela vale TAMBÉM ao parar** — com outro orçamento de erro, não com outra
+/// lei. Ver [`MOVING_NORMAL_ERR_DEG`] e [`SETTLED_NORMAL_ERR_DEG`]: o que muda entre os dois quadros
+/// é **quanto erro de sombreado se tolera**, e a contagem de arestas sai da forma da peça.
+pub(crate) fn coarse_doc(doc: &FieldDoc, moving: bool) -> Option<FieldDoc> {
+    let erro = if moving {
+        MOVING_NORMAL_ERR_DEG
+    } else {
+        SETTLED_NORMAL_ERR_DEG
     }
+    .to_radians();
     let mut mexeu = false;
     let nodes: Vec<ph2d_field::Node> = doc
         .nodes()
@@ -240,7 +246,7 @@ pub(crate) fn coarse_doc(doc: &FieldDoc, asked: (u32, u32), full: (u32, u32)) ->
                 | ph2d_field::Primitive::Revolve { profile },
             ) = &mut node.kind
             {
-                let thin = ph2d_field::coarsen(profile, PREVIEW_MAX_EDGES);
+                let thin = ph2d_field::coarsen_to_normal_error(profile, erro);
                 if thin.segment_count() < profile.segment_count() {
                     *profile = thin;
                     mexeu = true;
@@ -257,9 +263,40 @@ pub(crate) fn coarse_doc(doc: &FieldDoc, asked: (u32, u32), full: (u32, u32)) ->
     FieldDoc::new(nodes, doc.root()).ok()
 }
 
-/// **Quantas arestas o contorno leva enquanto a mão mexe.**
+/// ⭐⭐⭐ **Quanto erro de NORMAL o quadro de movimento tolera** (W85).
 ///
-/// ⚠️ Não é um número novo: é o que o contorno tem na resolução de **omissão** (medido, `168` no
-/// círculo do doc do [`ph2d_field::MAX_PROFILE_RESOLUTION`]) — *o preview é exactamente tão nítido
-/// como era antes de o knob existir.*
-pub(crate) const PREVIEW_MAX_EDGES: usize = 168;
+/// ⚠️ **Era uma contagem de arestas (`PREVIEW_MAX_EDGES = 168`) e passou a ser um ERRO**, porque a
+/// decimação por giro (W84) tornou a contagem uma consequência: o que o orçamento fixa é o erro da
+/// normal, que é o que a luz mostra. *Pedir um erro é pedir a coisa que se vê; pedir uma contagem é
+/// pedir um número que só a esperança liga ao que se vê.*
+///
+/// ⭐ **`1,0°` reproduz o que já shipava**: num círculo, `168` arestas dão `1,056°` de erro p99
+/// (medido, `measure_how_many_contour_edges_are_visible`) — *a constante nova entra sem mudar o
+/// quadro de movimento de nenhuma peça de omissão.*
+///
+/// ⭐⭐ E ela é **adaptativa à forma de graça**: uma estrela gira muito mais que um círculo, então
+/// recebe mais arestas — porque tem mais direcção para gastar.
+pub(crate) const MOVING_NORMAL_ERR_DEG: f32 = 1.0;
+
+/// ⭐⭐⭐ **Quanto erro de NORMAL o quadro ASSENTE tolera** (W85) — e de que recurso ele é.
+///
+/// Medido (`measure_how_many_contour_edges_are_visible`, a régua é o **pixel sombreado** em níveis
+/// de 8 bits, contra um contorno de `2048`):
+///
+/// | erro de normal p99 | arestas (círculo) | pixel p99 | pixel máx |
+/// |---:|---:|---:|---:|
+/// | `0,266°` | `672` | `1` | `1`–`2` |
+/// | **`0,529°`** | **`336`** | **`1`** | **`2`–`3`** |
+/// | `1,056°` | `168` | `3` | `4` |
+///
+/// ⭐⭐⭐ **`0,5°` é onde a imagem para de mudar:** de `336` para `672` arestas o pixel muda **um
+/// nível em 255**, e o traçado custa o **dobro** (o custo é linear nas arestas). ⇒ *subir o
+/// `Resolution` acima disto compra `≤3/255` e paga o preço inteiro.*
+///
+/// ⛔ **E o tecto NÃO se deriva do tamanho do pixel** — os mesmos números a `640×360` e a
+/// `1600×900`. O erro que se vê é **angular**, e um ângulo não encolhe com a resolução da tela.
+///
+/// ⚠️ **Isto NÃO toca a exportação.** O `Resolution` continua a governar a malha que sai para o
+/// arquivo, que é onde ele não é desperdício — ver o gate
+/// `the_export_never_goes_through_the_preview_coarsening`.
+pub(crate) const SETTLED_NORMAL_ERR_DEG: f32 = 0.5;

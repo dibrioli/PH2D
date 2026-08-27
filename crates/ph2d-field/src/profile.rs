@@ -432,7 +432,55 @@ pub fn coarsen(profile: &Profile, max_edges: usize) -> Profile {
     if !giro_total.is_finite() || giro_total <= 0.0 {
         return profile.clone();
     }
-    let orcamento = giro_total / max_edges as f64;
+    coarsen_with_turn_budget(profile, giro_total / max_edges as f64)
+}
+
+/// ⭐⭐⭐ **O CONTORNO ENGROSSADO ATÉ AO ERRO QUE SE TOLERA** (W85) — a forma que a
+/// [`coarsen`] devia ter tido desde o início.
+///
+/// # Por que o ERRO, e não a contagem
+///
+/// Depois da W84 a decimação reparte **giro** (ver [`decimate_by_turn`]), e isso torna a contagem de
+/// arestas uma consequência em vez de uma lei: o que o orçamento de giro fixa é o **erro da
+/// normal**, que é metade do ângulo que uma corda substitui. ⇒ *pedir um erro é pedir a coisa que se
+/// vê; pedir uma contagem é pedir um número que só a esperança liga ao que se vê.*
+///
+/// ⭐ **E é adaptativo à FORMA de graça:** um círculo gira `2π` e uma estrela de dez pontas gira
+/// muito mais, então a estrela recebe mais arestas **porque tem mais direcção para gastar** — sem
+/// uma regra própria a dizê-lo.
+///
+/// # ⚠️ De que recurso o número é
+///
+/// Medido (`measure_how_many_contour_edges_are_visible`, a régua é o **pixel sombreado** em níveis
+/// de 8 bits, contra um contorno de `2048`):
+///
+/// | erro de normal p99 | pixel p99 | pixel máx |
+/// |---:|---:|---:|
+/// | `0,266°` | `1` | `1`–`2` |
+/// | `0,529°` | `1` | `2`–`3` |
+/// | `1,056°` | `3` | `4` |
+/// | `2,110°` | `5` | `9`–`10` |
+///
+/// ⚠️ **E ela é INDEPENDENTE do tamanho da imagem** — os mesmos números a `640×360` e a `1600×900`.
+/// ⛔ Isso **refuta** derivar o tecto do tamanho do pixel: o erro que se vê é **angular**, e um
+/// ângulo não encolhe com a resolução da tela.
+#[must_use]
+pub fn coarsen_to_normal_error(profile: &Profile, max_error_rad: f32) -> Profile {
+    // ⚠️ O `is_finite` primeiro: um `NaN` passa por um `<= 0.0` ingénuo e o orçamento sai `NaN`.
+    if !max_error_rad.is_finite() || max_error_rad <= 0.0 {
+        return profile.clone();
+    }
+    // ⚠️ O erro da normal é **metade** do giro que a corda substitui: a corda aponta para o meio do
+    // arco, e as duas pontas dele afastam-se dela por metade do ângulo cada.
+    coarsen_with_turn_budget(profile, f64::from(max_error_rad) * 2.0)
+}
+
+/// O corpo partilhado pelas duas portas acima — *uma lei, dois nomes para a mesma pergunta*.
+fn coarsen_with_turn_budget(profile: &Profile, orcamento: f64) -> Profile {
+    let total = profile.segment_count();
+    if !orcamento.is_finite() || orcamento <= 0.0 {
+        return profile.clone();
+    }
     let thinner: Vec<Vec<[f32; 2]>> = profile
         .contours()
         .iter()

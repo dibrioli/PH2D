@@ -348,14 +348,22 @@ fn the_draw_does_not_build_its_own_projection() {
     );
 }
 
-/// ⭐⭐⭐ **O CONTORNO SÓ ENGROSSA ENQUANTO A MÃO MEXE** — as duas metades, e a segunda é a que
-/// carrega a lei.
+/// ⭐⭐⭐ **OS DOIS QUADROS ENGROSSAM, COM ORÇAMENTOS DE ERRO DIFERENTES** (W85).
 ///
-/// ⚠️ Um preview que engrossasse **sempre** entregaria ao artista uma peça que nunca fica nítida —
-/// exactamente o oposto do que o `Resolution` existe para dar. *A nitidez que se pede aparece ao
-/// PARAR, e é aí que ela tem de estar inteira.*
+/// ⚠️ **Este gate chamava-se `the_contour_only_coarsens_while_the_hand_is_moving` e a lei mudou por
+/// MEDIÇÃO.** Ele dizia: *«um preview que engrossasse sempre entregaria ao artista uma peça que
+/// nunca fica nítida — exactamente o oposto do que o `Resolution` existe para dar»*. ⭐ O que
+/// faltava era saber **onde a nitidez para de aparecer**, e a §85.1 mediu-o: acima de `0,5°` de erro
+/// de normal (um círculo de `336` arestas) o pixel muda **`≤3` níveis em `255`** e o traçado custa o
+/// **dobro**.
+///
+/// ⇒ a lei que fica é mais forte que a antiga: **o assente engrossa até onde a imagem deixa de
+/// mudar, e nem um bocado mais.** O que se corta ali não é nitidez: é trabalho que ninguém vê.
+///
+/// ⚠️ E as duas metades continuam a ser o gate: o quadro de movimento tem de engrossar **mais** que
+/// o assente, senão a lei *grosso a mexer, nítido ao assentar* deixou de existir.
 #[test]
-fn the_contour_only_coarsens_while_the_hand_is_moving() {
+fn both_frames_coarsen_but_the_moving_one_coarsens_more() {
     use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
     let n = 940usize;
     let contour: Vec<[f32; 2]> = (0..n)
@@ -378,17 +386,7 @@ fn the_contour_only_coarsens_while_the_hand_is_moving() {
         NodeId(0),
     )
     .expect("extrusão");
-    let full = (1920u32, 1080u32);
 
-    // ⚠️ **ASSENTOU** — o pedido é o tamanho cheio, e aí o contorno tem de vir INTEIRO.
-    assert!(
-        super::coarse_doc(&doc, full, full).is_none(),
-        "com a cena assente o traçado tem de receber o contorno inteiro — senão o Resolution nunca \
-         se vê"
-    );
-
-    // ⚠️ **A MEXER** — o pedido é menor, e o contorno engrossa até ao tecto do preview.
-    let grosso = super::coarse_doc(&doc, (640, 360), full).expect("a mexer, ele engrossa");
     let arestas = |d: &FieldDoc| -> usize {
         d.nodes()
             .iter()
@@ -400,10 +398,24 @@ fn the_contour_only_coarsens_while_the_hand_is_moving() {
             })
             .sum()
     };
+    // ⚠️ **ASSENTOU** — engrossa até `SETTLED_NORMAL_ERR_DEG`, que é onde o pixel para de mudar.
+    let assente = super::coarse_doc(&doc, false).expect("mesmo ao parar, ele engrossa");
     assert!(
-        arestas(&grosso) <= super::PREVIEW_MAX_EDGES,
-        "o contorno de movimento tem de caber no tecto: {} arestas",
-        arestas(&grosso)
+        arestas(&assente) < arestas(&doc),
+        "o assente tem de engrossar um contorno de {} arestas — acima de `0,5°` de erro de normal a \
+         imagem muda `≤3/255` e o traçado custa o dobro",
+        arestas(&doc)
+    );
+
+    // ⚠️ **A MEXER** — o mesmo mecanismo, com mais erro tolerado.
+    let grosso = super::coarse_doc(&doc, true).expect("a mexer, ele engrossa");
+    // ⭐⭐ **A LEI**: o movimento engrossa MAIS que o assente. Sem isto, *grosso a mexer, nítido ao
+    // assentar* deixou de existir e os dois quadros custam o mesmo.
+    assert!(
+        arestas(&grosso) < arestas(&assente),
+        "o quadro de movimento tem de engrossar mais que o assente: {} contra {}",
+        arestas(&grosso),
+        arestas(&assente)
     );
     assert!(
         arestas(&grosso) * 3 < arestas(&doc),
@@ -423,10 +435,12 @@ fn the_contour_only_coarsens_while_the_hand_is_moving() {
         NodeId(0),
     )
     .expect("esfera");
-    assert!(
-        super::coarse_doc(&leve, (640, 360), full).is_none(),
-        "uma peça sem contorno não tem o que engrossar, e não pode pagar uma cópia por isso"
-    );
+    for moving in [true, false] {
+        assert!(
+            super::coarse_doc(&leve, moving).is_none(),
+            "uma peça sem contorno não tem o que engrossar, e não pode pagar uma cópia por isso"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **UMA bandeira responde aos dois cortes do quadro de movimento** (W71+W73).
@@ -475,5 +489,56 @@ fn one_flag_answers_both_cuts_of_the_moving_frame() {
     assert!(
         !settling && (w, h) == small,
         "o degrau que alisa é FINO e no MESMO tamanho — {w}x{h}"
+    );
+}
+
+/// ⭐⭐⭐ **A EXPORTAÇÃO NUNCA PASSA PELO ENGROSSAMENTO DO PREVIEW** (W85).
+///
+/// ⚠️ **A W85 fez o quadro ASSENTE engrossar também** (até `SETTLED_NORMAL_ERR_DEG`, que é onde o
+/// pixel para de mudar) — e isso põe uma pergunta que antes não existia: *o `Resolution` do artista
+/// ainda serve para alguma coisa?* **Serve, e é aqui:** ele governa a malha que sai para o arquivo,
+/// que é onde ele **não** é desperdício. Uma malha exportada é lida de perto, medida, e reimportada;
+/// um pixel de um preview não.
+///
+/// ⛔ *Se este gate cair, subir o `Resolution` deixa de ter qualquer efeito observável* — e o knob
+/// vira um controle que consome o gesto e não faz nada, que é o defeito que este módulo já pagou
+/// três vezes.
+///
+/// ⚠️ **Varredura de fonte, e não um teste de comportamento**, porque o que se defende é a
+/// **ausência** de uma chamada: nenhum teste de saída consegue provar que um caminho não foi
+/// tomado, e a exportação escreve um arquivo.
+#[test]
+fn the_export_never_goes_through_the_preview_coarsening() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut chamadores: Vec<String> = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("o diretório do shell existe") {
+        let path = entry.expect("entrada").path();
+        if path.extension().is_none_or(|e| e != "rs") {
+            continue;
+        }
+        let nome = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
+        // Os testes deste módulo chamam-no de propósito — eles são o juiz da lei, não um caminho.
+        if nome.ends_with("_tests.rs") || nome == "field3d_preview.rs" {
+            continue;
+        }
+        let src = std::fs::read_to_string(&path).expect("o arquivo lê-se");
+        if src
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .any(|l| l.contains("coarse_doc("))
+        {
+            chamadores.push(nome);
+        }
+    }
+    assert_eq!(
+        chamadores,
+        vec!["field3d_smoke_draw.rs".to_string()],
+        "o engrossamento do preview tem UM chamador — o traçador. Um segundo (a exportação, o \
+         cozimento de malha, o vínculo) faria o `Resolution` do artista deixar de ter efeito \
+         observável nenhum: {chamadores:?}"
     );
 }

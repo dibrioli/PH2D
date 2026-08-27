@@ -5747,9 +5747,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
-| ⏸️ O contorno **cheio** é `3,39×` no assentar de uma peça de resolução ALTA | numa peça de omissão ele não muda; é o knob `Resolution` do artista | §84.4 |
+| ✅ O contorno cheio era `3,39×` no assentar de uma peça de resolução ALTA | ⭐ curado pela §86: o assente engrossa até ao erro que a imagem mostra | §84.4, §86.1 |
 | ✅ **O decimador do preview apagava QUINAS** — e quem sobrevivia era uma lotaria de índice | ⭐ decima por **GIRO**: a estrela vai de `134` pontos partidos para **`10` exactos**, imagem idêntica | §85 |
-| ⏸️ Acima de `~336` arestas o contorno muda `≤3/255` no pixel | o `Resolution` alto compra fidelidade real até ali e quase nada depois; ⛔ o tecto **não** se deriva do pixel (o erro é angular) | §85.1 |
+| ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -5768,6 +5768,14 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W85 (§86): o preview pede um ERRO, e a contagem de arestas sai da forma.** A decimação por
+  giro (W84) tornou a contagem uma consequência: o que o orçamento fixa é o **erro da normal**, que é
+  o que a luz mostra. ⇒ dois orçamentos — `1,0°` a mexer (que **reproduz o que já shipava**: `168`
+  arestas num círculo dão `1,056°`) e `0,5°` ao assentar, que é onde a §85.1 mediu a imagem parar de
+  mudar. ⭐⭐ **Uma peça de omissão não muda nada; uma de `Resolution` alto paga `2×`–`3×` menos no
+  assentar**, que é exactamente o custo de que o Enio se queixou. ⚠️ E a pergunta que isso abre
+  (*«o `Resolution` ainda serve?»*) tem gate: ele governa a **malha exportada**, e o engrossamento do
+  preview tem de continuar com **um** chamador.
 - ⭐⭐⭐ **W84 (§85): o decimador do preview apagava QUINAS, e quem sobrevivia era uma lotaria.** Ele
   tirava um em cada `k` vértices — certo para **curvatura**, que é distribuída, e errado para uma
   **quina**, que é um vértice só com todo o ângulo dentro. Medido numa estrela: com o
@@ -7696,3 +7704,61 @@ sem deixar de ser aquela forma*, e a resposta certa é gastar mais e não mentir
 **Gates:** `a_corner_survives_the_coarsening` · `the_coarsening_spends_its_budget_on_turn_not_on_length`,
 com a mutação que os mata (voltar ao passo por índice). Os três gates antigos do `coarsen` ficam
 verdes.
+
+## §86 — W85: o preview pede um ERRO, e a contagem de arestas sai da forma (27/08)
+
+A W84 fez a decimação repartir **giro**, e isso tornou a contagem de arestas uma **consequência** em
+vez de uma lei: o que o orçamento de giro fixa é o **erro da normal**, que é metade do ângulo que uma
+corda substitui — e a normal é o que a luz mostra. ⇒ *pedir um erro é pedir a coisa que se vê; pedir
+uma contagem é pedir um número que só a esperança liga ao que se vê.*
+
+### §86.1 — ⭐⭐⭐ E isso destrava o que o Enio pagou: o assente também engrossa
+
+O `PREVIEW_MAX_EDGES = 168` era uma contagem e só valia **a mexer**. Agora são **dois orçamentos de
+erro**, e o que muda entre os dois quadros é *quanto erro de sombreado se tolera*:
+
+| | orçamento | num círculo |
+|---|---:|---:|
+| a mexer (`MOVING_NORMAL_ERR_DEG`) | `1,0°` | `168` arestas — **o que já shipava** |
+| **ao assentar** (`SETTLED_NORMAL_ERR_DEG`) | **`0,5°`** | **`336`** |
+
+⭐ **O `1,0°` reproduz o quadro de movimento ao bit para uma peça de omissão** (medido: `168` arestas
+dão `1,056°` de erro p99), e o `0,5°` é onde a §85.1 mediu a imagem parar de mudar (`≤3` níveis de
+`255`, contra o **dobro** do preço).
+
+**O que isso corta, medido** (`coarsen_to_normal_error` sobre círculos):
+
+| contorno autoral | a mexer | ao assentar | corte do assente |
+|---:|---:|---:|---:|
+| `168` (omissão) | `168` | `168` | **`1,00×`** |
+| `336` | `168` | `336` | `1,00×` |
+| `672` | `168` | **`336`** | **`2,00×`** |
+| `940` | `157` | **`314`** | **`2,99×`** |
+
+⭐⭐⭐ **Uma peça de omissão não muda nada; uma de `Resolution` alto paga `2×`–`3×` menos no
+assentar** — que é exactamente o quadro que o artista espera, e exactamente o custo de que ele se
+queixou.
+
+### §86.2 — ⚠️ A lei que mudou, e o gate que a diz
+
+O gate chamava-se `the_contour_only_coarsens_while_the_hand_is_moving` e dizia: *«um preview que
+engrossasse sempre entregaria ao artista uma peça que nunca fica nítida»*. ⭐ **O que faltava era
+saber onde a nitidez para de aparecer**, e a §85.1 mediu-o. A lei nova é mais forte que a antiga:
+**o assente engrossa até onde a imagem deixa de mudar, e nem um bocado mais.** *O que se corta ali
+não é nitidez: é trabalho que ninguém vê.*
+
+Ele passou a chamar-se `both_frames_coarsen_but_the_moving_one_coarsens_more`, e as duas metades
+continuam a ser o gate — sem a segunda, *grosso a mexer, nítido ao assentar* deixou de existir.
+
+### §86.3 — ⛔ E a pergunta que isso abre tem gate próprio
+
+*Se o assente também engrossa, o `Resolution` do artista ainda serve para alguma coisa?* **Serve, e é
+aqui: ele governa a malha que sai para o ARQUIVO**, que é onde ele não é desperdício — uma malha
+exportada é lida de perto, medida e reimportada; um pixel de um preview não.
+
+⚠️ `the_export_never_goes_through_the_preview_coarsening` é uma **varredura de fonte**, porque o que
+se defende é a **ausência** de uma chamada: nenhum teste de saída prova que um caminho não foi
+tomado. Mutação que o mata: um segundo chamador do `coarse_doc`.
+
+⛔ *Se esse gate cair, subir o `Resolution` deixa de ter qualquer efeito observável* — e o knob vira
+um controle que consome o gesto e não faz nada, que é o defeito que este módulo já pagou três vezes.

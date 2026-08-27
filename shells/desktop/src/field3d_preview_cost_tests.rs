@@ -150,7 +150,6 @@ fn measure_what_the_coarse_contour_buys() {
     use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
     let reg = ph2d_field_eval::hybrid::Registry::new();
     let cam = ph2d_field_render::Orbit::default();
-    let full = (1920u32, 1080u32);
     let median = |mut v: Vec<f64>| -> f64 {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]
@@ -178,7 +177,7 @@ fn measure_what_the_coarse_contour_buys() {
         )
         .expect("extrusão");
         let asked = (640u32, 360u32);
-        let grosso = super::coarse_doc(&doc, asked, full).unwrap_or_else(|| doc.clone());
+        let grosso = super::coarse_doc(&doc, true).unwrap_or_else(|| doc.clone());
         for d in [&doc, &grosso] {
             let _ = ph2d_field_render::trace(d, &reg, &cam, asked.0, asked.1);
         }

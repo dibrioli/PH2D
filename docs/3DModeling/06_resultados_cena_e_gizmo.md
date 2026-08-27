@@ -5744,7 +5744,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | O quê | Estado | Onde |
 |---|---|---|
 | ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
-| ⭐⭐⭐ Reaproveitar a fita entre QUADROS · especializar em espaço LOCAL | **É A ALAVANCA, e o tecto de `20 %` está refutado.** Compilar as 242 fitas custa `~10`–`14 ms` de um quadro de `~24`, **satura às 16 threads** (de 16 para 32 ganha `1 %`) e repete-se inteiro a cada quadro | §82.9, §82.10 |
+| ⭐⭐⭐ **W82: reaproveitar a fita entre QUADROS** — a alavanca, **medida e desenhada** | compilar custa `~10`–`14 ms` de um quadro de `~24` e **satura às 16 threads**; a fita inflada por `1,25×` serve o quadro seguinte em `84 %`–`93 %` dos casos por `1,18×` no custo de uma amostra ⇒ estimativa **`14 ms`** | §82.9, §82.12 |
 | ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -7269,3 +7269,45 @@ sozinho na máquina calma.*
 ⚠️ **Não é uma lista para crescer** (o §5.0 diz-lo): é o **mecanismo** que se reconhece. Fica aqui
 porque este módulo passou a ter um, e porque a wave que o encontrou é precisamente a que mede
 relógios.
+
+### §82.12 — ⭐⭐⭐ A fita de um quadro serve o quadro seguinte? — a medição que desenha a W82
+
+⭐ **Uma fita construída para a região `R` é válida em toda a sub-região de `R`** — é a cerca que a
+W56 já escreveu, e ela é o mecanismo inteiro: se a fita for construída para `R` **inflada** por `f`,
+ela serve o quadro seguinte sempre que a região nova ainda lá caiba. ⇒ *a cache não precisa de chave
+nenhuma; precisa de um teste de contenção.*
+
+`measure_whether_one_frames_tape_serves_the_next` (`640×360`, tile `64`, `SLABS = 4`, arrasto = uma
+órbita de `g` graus por quadro):
+
+| arrasto | `f = 1,00` | `f = 1,25` | `f = 1,50` | `f = 2,00` | `f = 3,00` |
+|---|---:|---:|---:|---:|---:|
+| `1°` | `9,0 %` | **`92,8 %`** | `95,5 %` | `96,7 %` | `98,5 %` |
+| `2°` | `9,0 %` | `84,3 %` | **`92,8 %`** | `94,9 %` | `96,7 %` |
+| `4°` | `7,5 %` | `48,9 %` | **`82,9 %`** | `91,0 %` | `93,8 %` |
+| `8°` | `6,1 %` | `19,8 %` | `49,1 %` | **`81,7 %`** | `90,2 %` |
+| **arestas por região** | `74,6` | `88,3` | `102,1` | `124,6` | `148,0` |
+| **preço por amostra** | `1,00×` | **`1,18×`** | `1,37×` | `1,67×` | `1,98×` |
+
+⭐⭐⭐ **A `f = 1` a cache acerta `9 %`** — cachear a região *exacta* não serve para nada, e é a
+inflação que é o mecanismo. A `f = 1,25` ela acerta `84 %`–`93 %` às velocidades de arrasto reais
+(um quadro de `24 ms` a `90°/s` é `2,2°`) por **`1,18×`** no custo de uma amostra.
+
+**A conta, com os números da §82.9** (quadro `~24 ms` ≈ `14` de montagem + `10` de marcha):
+
+| f | montagem que sobra | marcha | total estimado |
+|---|---:|---:|---:|
+| hoje | `14,0` | `10,0` | `24,0 ms` |
+| `1,25` a `2°` | `2,2` | `11,8` | **`14,0 ms`** |
+| `1,50` a `4°` | `2,4` | `13,7` | `16,1 ms` |
+
+⇒ ⭐⭐⭐ **abaixo do orçamento de `16,7 ms`**, e sem tocar num algoritmo. ⚠️ **É uma estimativa** — o
+`14 + 10` não é uma separação limpa (as duas coisas intercalam-se por ladrilho), e o número a sério
+só sai depois de construído.
+
+⚠️ **O que a construção ainda tem de resolver, e está nomeado:** (1) a cache **vive entre quadros**,
+logo ela não cabe no `RegionCompiler`, que nasce e morre com o quadro — ela é do dono do traçado;
+(2) ela tem de **morrer com o documento** (editar a peça invalida tudo); (3) precisa de despejo, ou
+cresce com cada grau que a câmera roda; (4) a fita compilada é `Arc<Mmap>` na `fidget` ⇒ **cloná-la é
+um bump de contador**, e o avaliador (que é o estado mutável) nasce por uso — *é isso que torna uma
+cache partilhada entre threads possível de todo*.

@@ -3655,6 +3655,157 @@ fn measure_what_the_four_sample_normal_changes() {
     }
 }
 
+/// ⭐⭐⭐ **UMA FITA DE UM QUADRO SERVE O QUADRO SEGUINTE?** (W81) — a medição que desenha a W82.
+///
+/// A §82.9 mediu que compilar as fitas custa `~10`–`14 ms` de um quadro de `~24` e **não escala**.
+/// A cura é não recompilar — e a pergunta que a desenha é **quanto uma região se mexe entre dois
+/// quadros de um arrasto**.
+///
+/// ⭐ **Uma fita construída para a região `R` é válida em toda a sub-região de `R`** — é a cerca que
+/// a W56 já escreveu. ⇒ se a fita for construída para `R` **inflada** por `f`, ela serve o quadro
+/// seguinte sempre que a região nova ainda lá caiba, e a cache não precisa de chave nenhuma: ela
+/// precisa de um **teste de contenção**.
+///
+/// A sonda mede as duas metades do compromisso:
+///
+/// | metade | o que se lê |
+/// |---|---|
+/// | **acerto** | que fracção das regiões do quadro `n+1` cabe na região do quadro `n` inflada por `f` |
+/// | **preço** | quantas arestas a região inflada guarda a mais (o custo por amostra sobe com ela) |
+///
+/// ⚠️ Contagens e razões — vale com a máquina sob carga.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_whether_one_frames_tape_serves_the_next --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_whether_one_frames_tape_serves_the_next() {
+    /// A caixa de mundo de uma região — o par que esta sonda passa de mão em mão.
+    type Aabb = ([f32; 3], [f32; 3]);
+
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    let reg = Registry::new();
+    let n = 168usize;
+    let contour: Vec<[f32; 2]> = (0..n)
+        .map(|i| {
+            let a = std::f64::consts::TAU * (i as f64) / (n as f64);
+            [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+        })
+        .collect();
+    let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+    let index = ph2d_field_eval::profile_index::ProfileIndex::build(&profile);
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Extrude {
+                profile,
+                half_height: 0.4,
+                round: 0.06,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("extrusão");
+    let bbox = ph2d_field_eval::bounds::bounding_ball(&doc, &reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)
+        .expect("caixa");
+    let (w, h) = (640u32, 360u32);
+    let plane = Screen::new(w, h, Orbit::default().half_extent);
+    let tile = crate::tile_for_test();
+    let slabs = crate::slabs_for_test();
+    let sharp =
+        crate::Sharpness::for_frame(Orbit::default().half_extent, (w as usize).min(h as usize));
+
+    // As regiões de um quadro, na ordem (ladrilho, fatia) — `None` onde nenhuma se constrói.
+    let regions = |cam: &Orbit| -> Vec<Option<Aabb>> {
+        let mut out = Vec::new();
+        for ty in 0..(h as usize).div_ceil(tile) {
+            for tx in 0..(w as usize).div_ceil(tile) {
+                let (x0, y0) = (tx * tile, ty * tile);
+                let (x1, y1) = ((x0 + tile).min(w as usize), (y0 + tile).min(h as usize));
+                let Some((t_lo, t_hi)) =
+                    crate::tiles::tile_t_range(cam, plane, (x0, y0), (x1, y1), bbox)
+                else {
+                    for _ in 0..slabs + 2 {
+                        out.push(None);
+                    }
+                    continue;
+                };
+                let bounds = crate::tiles::slab_bounds(t_lo, t_hi, slabs);
+                for k in 0..bounds.len() - 1 {
+                    out.push(
+                        crate::tiles::slab_region(
+                            cam,
+                            plane,
+                            (x0, y0),
+                            (x1, y1),
+                            bbox,
+                            sharp.normal,
+                            &bounds,
+                            k,
+                        )
+                        .map(|r| (r.lo, r.hi)),
+                    );
+                }
+            }
+        }
+        out
+    };
+    let inflate = |b: Aabb, f: f32| -> Aabb {
+        let mut lo = b.0;
+        let mut hi = b.1;
+        for k in 0..3 {
+            let c = 0.5 * (b.0[k] + b.1[k]);
+            let half = 0.5 * (b.1[k] - b.0[k]) * f;
+            lo[k] = c - half;
+            hi[k] = c + half;
+        }
+        (lo, hi)
+    };
+    let inside =
+        |a: Aabb, b: Aabb| -> bool { (0..3).all(|k| a.0[k] >= b.0[k] && a.1[k] <= b.1[k]) };
+    // ⚠️ Para uma extrusão na pose identidade o `(u, v)` do perfil **é** o `(x, y)` do mundo, então
+    // o corte da região lê-se directamente no índice do contorno.
+    let kept = |b: Aabb| -> usize { index.probe_cull([b.0[0], b.0[1]], [b.1[0], b.1[1]]) };
+
+    let base = Orbit::default();
+    println!("arrasto | f    | acerto | arestas por região (média) | contra f=1");
+    for graus in [1.0f32, 2.0, 4.0, 8.0] {
+        let mut moved = base;
+        // ⚠️ Um arrasto orbita: a rotação muda, o alvo e a lente não.
+        moved.rotation = Orbit::from_yaw_pitch(0.72 + graus.to_radians(), 0.52).rotation;
+        let (a, b) = (regions(&base), regions(&moved));
+        let pares: Vec<(Aabb, Aabb)> = a
+            .iter()
+            .zip(&b)
+            .filter_map(|(x, y)| match (x, y) {
+                (Some(x), Some(y)) => Some((*x, *y)),
+                _ => None,
+            })
+            .collect();
+        let base_kept =
+            pares.iter().map(|(x, _)| kept(*x)).sum::<usize>() as f64 / pares.len() as f64;
+        for f in [1.0f32, 1.25, 1.5, 2.0, 3.0] {
+            let hits = pares
+                .iter()
+                .filter(|(x, y)| inside(*y, inflate(*x, f)))
+                .count();
+            let k = pares
+                .iter()
+                .map(|(x, _)| kept(inflate(*x, f)))
+                .sum::<usize>() as f64
+                / pares.len() as f64;
+            println!(
+                "{graus:5.0}° | {f:4.2} | {:5.1}% | {k:26.1} | {:10.2}x",
+                100.0 * hits as f64 / pares.len() as f64,
+                k / base_kept,
+            );
+        }
+    }
+}
+
 /// ⭐⭐⭐ **O JIT CONTENDE, OU FOI SÓ MEDIDO NO MEIO DA MARCHA?** (W81) — o controlo da §82.8.2.
 ///
 /// A `measure_where_the_parallel_frame_stops_scaling` mediu que uma fita custa `1,93×` mais CPU a

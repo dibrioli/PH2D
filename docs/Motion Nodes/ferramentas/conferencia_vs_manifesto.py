@@ -162,6 +162,23 @@ def main():
             suspects += s
             unread += u
 
+    # ⛔⛔ **A COBERTURA — o buraco que só um censo vê.** A auditoria de 2026-08-27 achou um nó
+    # de PRODUÇÃO (`motion.randomize`: registado, com manifesto, usado em 4 cenas de smoke) que
+    # **não tem célula em nenhuma das 18 folhas**. O placar dizia *"zero P0/P1/P2 em 455 linhas"*
+    # — e aquelas 455 linhas nunca lhe perguntaram nada. *Zero defeitos NO QUE SE OLHOU não é
+    # zero defeitos, e a diferença entre os dois só aparece quando alguém conta as duas listas.*
+    coberto = set()
+    for f in sorted(os.listdir(FOLHAS)):
+        if f.endswith('.md'):
+            txt = open(os.path.join(FOLHAS, f), encoding='utf-8').read()
+            coberto.update(n for n in real if f'`{n}`' in txt)
+    sem_celula = sorted(n for n in real if n not in coberto)
+    if sem_celula:
+        print('=== NOS DE PRODUCAO SEM CELULA EM FOLHA NENHUMA (a conferencia nao os cobre) ===')
+        for n in sem_celula:
+            print(f'  {n}')
+        print()
+
     if shipped:
         print('=== JA EXISTE NO MANIFESTO o param que a cura desta celula acrescentaria ===')
         print(f'{"folha":<30} {"linha":>5}  {"no":<24} param(s)')

@@ -49,7 +49,100 @@ def crate_text(crate):
     return '\n'.join(out)
 
 
+def self_test():
+    """**O CONTROLE POSITIVO DO PRÓPRIO INSTRUMENTO** — ele ainda consegue ACUSAR?
+
+    ⚠️ **Ele nasceu no dia em que a lista chegou a zero.** A auditoria de 2026-08-27 mostrou que
+    as sete acusações que esta sonda imprimia eram **todas falsas** (quatro por tupla, três por
+    prefixo de módulo); alargar os padrões curou-as e levou a lista a `0`. Mas o doc desta sonda
+    já avisava, sobre a v1, que *"um instrumento cujo verde é garantido pela forma dos dados não
+    mede nada"* — e um matcher mais permissivo é exactamente a forma de o verde voltar a ser
+    garantido. ⇒ **cada corrida prova primeiro que um morto sintético é apanhado**, e que as
+    quatro rotas de leitura conhecidas são vistas.
+
+    Falha aqui sai VERMELHO e não imprime catálogo nenhum: uma lista vazia de um instrumento que
+    não sabe acusar não é uma boa notícia, é a ausência de uma medição.
+    """
+    dead = 'ParamSpec { name: "zz_dead" }'
+    reads = {
+        'literal': 'ParamSpec { name: "zz_lit" }\n ctx.param("zz_lit")',
+        'const nu': 'ParamSpec { name: "zz_c" }\n const ZZ_C: &str = "zz_c";\n ctx.param(ZZ_C)',
+        'const qualificada': ('ParamSpec { name: "zz_q" }\n const ZZ_Q: &str = "zz_q";\n'
+                              ' ctx.param(rest::ZZ_Q)'),
+        'tupla': ('ParamSpec { name: "zz_t" }\n'
+                  ' const ZZ_T: (&str, &str) = ("zz_t", "zz_u");\n ctx.param(ZZ_T.0)'),
+        'kernel de device': 'ParamSpec { name: "zz_k" }\n params: &["zz_k"]',
+    }
+    bad = []
+    if 'zz_dead' not in scan(dead)[1]:
+        bad.append('um param declarado e NUNCA lido nao foi acusado')
+    for label, text in reads.items():
+        name = re.search(r'name: "([a-z_]+)"', text).group(1)
+        if name in scan(text)[1]:
+            bad.append(f'a rota de leitura «{label}» foi acusada de morta')
+    return bad
+
+
+def scan(text):
+    """Os params declarados e os ACUSADOS deste texto — a lei, separada da travessia."""
+    declared = PARAMSPEC.findall(text)
+    # As listas `params: &["a", "b"]` dos `GpuKernel` — a rota de device.
+    kernel_names = set()
+    for block in re.findall(r'params:\s*&\[([^\]]*)\]', text):
+        kernel_names.update(re.findall(r'"([A-Za-z0-9_]+)"', block))
+    # ⚠️ **O nome do param chega ao `ctx.param` por uma CONSTANTE em metade das crates**
+    # (`const POINT_SCALE: &str = "point_scale";` … `ctx.param(POINT_SCALE)`), e um padrão
+    # que só procure o literal entre aspas acusa esses de nunca-lidos. Foi assim que a 2ª
+    # versão desta sonda produziu **cinco** falsos positivos.
+    # *Um padrão sintático mede a SINTAXE que conhece, e o silêncio dele não é ausência.*
+    const_of = {}
+    for ident, value in re.findall(
+        r'const\s+([A-Z0-9_]+)\s*:\s*&\'?\w*\s*str\s*=\s*"([A-Za-z0-9_]+)"', text
+    ):
+        const_of.setdefault(value, set()).add(ident)
+    # ⚠️ A terceira forma: um ARRAY constante de nomes, varrido para dentro do `ctx.param`. O
+    # nome nunca aparece ao lado da chamada, então a regra passa a ser a INTENÇÃO da declaração
+    # — um agregado de nomes de param só existe para ser aberto em leituras. Indulgência
+    # DELIBERADA: deixar passar um morto é barato, acusar um vivo custa a lista inteira.
+    # ⚠️ E a QUARTA, achada em 2026-08-27: a TUPLA (`const SIZE_TAPER: (&str, &str, &str)`),
+    # lida por campo (`ctx.param(taper::SIZE_TAPER.0)`).
+    agg_names = set()
+    for pat in (
+        r'const\s+[A-Z0-9_]+\s*:\s*(?:\[|&\[)[^=]*=\s*&?\[([^\]]*)\]',
+        r'const\s+[A-Z0-9_]+\s*:\s*\([^)]*\)\s*=\s*\(([^)]*)\)',
+    ):
+        for block in re.findall(pat, text):
+            agg_names.update(re.findall(r'"([A-Za-z0-9_]+)"', block))
+    accused = []
+    for name in sorted(set(declared)):
+        cpu = len(re.findall(r'param\w*\(\s*"' + re.escape(name) + r'"', text))
+        for ident in const_of.get(name, ()):
+            # ⚠️ **O identificador pode vir QUALIFICADO POR MÓDULO** — `ctx.param(rest::
+            # REST_START)`. O padrão que só casava o identificador NU acusava metade dos nós
+            # que partem os params num ficheiro irmão: em 2026-08-27 as SETE acusações que
+            # esta sonda imprimia eram falsas, quatro por tupla e três por este prefixo.
+            # *Um instrumento cujas acusações são todas falsas deixa de ser lido, e aí a que
+            # for verdadeira também não é.*
+            cpu += len(
+                re.findall(
+                    r'param\w*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*\s*::\s*)*'
+                    + re.escape(ident)
+                    + r'\b',
+                    text,
+                )
+            )
+        if not (cpu or name in kernel_names or name in agg_names):
+            accused.append(name)
+    return sorted(set(declared)), accused
+
+
 def main():
+    bad = self_test()
+    if bad:
+        print('!! O CONTROLE DO PROPRIO INSTRUMENTO FALHOU -- a lista abaixo nao vale nada:')
+        for b in bad:
+            print(f'   - {b}')
+        return 1
     crates = sorted(glob.glob(os.path.join(ROOT, 'crates', 'ph2d-node-*')))
     if not crates:
         sys.exit('nenhuma crate de nó encontrada')
@@ -57,45 +150,13 @@ def main():
     for crate in crates:
         if not os.path.isdir(crate):
             continue
-        text = crate_text(crate)
-        declared = PARAMSPEC.findall(text)
+        declared, dead = scan(crate_text(crate))
         if not declared:
             continue
-        # As listas `params: &["a", "b"]` dos `GpuKernel` — a rota de device.
-        kernel_names = set()
-        for block in re.findall(r'params:\s*&\[([^\]]*)\]', text):
-            kernel_names.update(re.findall(r'"([A-Za-z0-9_]+)"', block))
-        # ⚠️ **O nome do param chega ao `ctx.param` por uma CONSTANTE em metade das crates**
-        # (`const POINT_SCALE: &str = "point_scale";` … `ctx.param(POINT_SCALE)`), e um padrão
-        # que só procure o literal entre aspas acusa esses de nunca-lidos. Foi assim que a 2ª
-        # versão desta sonda produziu **cinco** falsos positivos — os pesos do `motion.mixer`
-        # entre eles, que a auditoria de leitura já tinha confirmado vivos no mesmo dia.
-        # *Um padrão sintático mede a SINTAXE que conhece, e o silêncio dele não é ausência.*
-        const_of = {}
-        for ident, value in re.findall(r'const\s+([A-Z0-9_]+)\s*:\s*&\'?\w*\s*str\s*=\s*"([A-Za-z0-9_]+)"', text):
-            const_of.setdefault(value, set()).add(ident)
-        # ⚠️ E há uma terceira forma: um ARRAY constante de nomes, varrido para dentro do
-        # `ctx.param` (`const WEIGHTS: [&str; 4] = […]` … `WEIGHTS.iter().map(|w| ctx.param(w))`).
-        # Aqui o nome nunca aparece ao lado da chamada, então casar o call-site é impossível
-        # sem ler o fluxo — e a regra passa a ser a INTENÇÃO da declaração: um array de nomes
-        # de param só existe para ser aberto em leituras. É uma indulgência DELIBERADA, e o
-        # preço dela é a única direcção de erro aceitável aqui — deixar passar um morto é
-        # barato, acusar um vivo custa a confiança na lista inteira.
-        array_names = set()
-        for block in re.findall(r'const\s+[A-Z0-9_]+\s*:\s*(?:\[|&\[)[^=]*=\s*&?\[([^\]]*)\]', text):
-            array_names.update(re.findall(r'"([A-Za-z0-9_]+)"', block))
         scanned += 1
-        for name in sorted(set(declared)):
-            params_total += 1
-            cpu = len(re.findall(r'param\w*\(\s*"' + re.escape(name) + r'"', text))
-            for ident in const_of.get(name, ()):
-                cpu += len(re.findall(r'param\w*\(\s*' + re.escape(ident) + r'\b', text))
-            gpu = name in kernel_names or name in array_names
-            if cpu or gpu:
-                read_total += 1
-            else:
-                accused.append((os.path.basename(crate), name))
-
+        params_total += len(declared)
+        read_total += len(declared) - len(dead)
+        accused.extend((os.path.basename(crate), n) for n in dead)
     print(f'# {scanned} crates de nó · {params_total} params declarados · {read_total} com leitura')
     # ⚠️ **O controle positivo do próprio instrumento.** Se NENHUM param aparecesse como lido,
     # o padrão de leitura estaria errado e o zero-acusações seria vácuo, não saúde — foi

@@ -133,6 +133,50 @@ param só vale com a porta homónima desligada, e a bancada irmã que desliga as
 de o nó declarar `required_inputs`, que esta crate não declara. *A cura do ponto cego é tão boa
 quanto a declaração que ela lê.*
 
+### ⚠️ A DERIVA, medida em 2026-08-27 — e o que ela obriga
+
+A calibração acima é de quando a sonda foi escrita. A auditoria multiagêntica correu-a outra vez:
+
+| | sonda v2 (a calibração) | **2026-08-27** | Δ |
+|---|---|---|---|
+| `VIVO` | 430 | **489** | +59 |
+| `SO-EM-MODO` | 62 | **83** | +21 |
+| `MORTO` | **57** | **79** | **+22** |
+| `BANCADA-SUSPEITA` | 50 | **58** | +8 |
+
+⚠️ **`MORTO` andou +22 na direção acusatória e nada rastreava isso.** Parte é população nova
+(params acrescentados desde então), parte não — e a tabela acima é a única forma de o saber, o
+que quer dizer que **ela tem de ser re-corrida e reconciliada a cada wave que acrescente params**,
+como o placar da conferência. *Um baseline que vive num doc e não é reconferido é uma nota, e uma
+nota envelhece.*
+
+### ⛔ `value.switch::lazy` sai `MORTO` **por construção** — e é a espécie que faltava nomear
+
+O modo de avaliação preguiçosa (doc 89 folha 15) tem como **invariante** não mudar coluna nenhuma:
+ligado e desligado o nó computa o mesmo, e só o custo difere. A varredura dinâmica pergunta
+*"este param muda a saída?"* ⇒ a resposta certa para ele é **não**, para sempre.
+
+⚠️ **É a QUINTA espécie**, e ela não estava na lista: *o param cuja correção É não mudar nada*.
+Ela é indistinguível de um knob morto para qualquer sonda que compare colunas, e o preço de a
+ignorar é o mesmo do falso positivo — uma acusação permanente na lista faz a lista deixar de ser
+lida. Membros de hoje: `value.switch::lazy`. *Um param de PERFORMANCE tem de se declarar aqui no
+dia em que nasce, senão a sonda passa a mentir sobre ele todas as corridas.*
+
+### ✅ A sonda ESTÁTICA foi curada, e ganhou controle próprio (2026-08-27)
+
+As **sete** acusações que a `knobs_declarados_nunca_lidos.py` imprimia eram **todas falsas** —
+quatro por uma constante em **TUPLA** (`const SIZE_TAPER: (&str, &str, &str)`, lida por campo) e
+três por uma constante **qualificada por módulo** (`ctx.param(rest::REST_START)`), duas formas que
+os padrões dela não conheciam. O doc dela declara a direcção de erro aceitável — *«deixar passar
+um morto é barato, acusar um vivo custa a confiança na lista inteira»* — e ela estava a **100% de
+falsos positivos**, que é o pior caso da própria regra.
+
+⚠️ **E curar um matcher é a forma de o verde voltar a ser garantido pela forma dos dados**, que é
+o defeito da v1 desta mesma sonda. Por isso ela passou a ter um **controle positivo embutido**:
+cada corrida prova primeiro que um param morto sintético **é** acusado e que as **cinco** rotas de
+leitura conhecidas **não** são — e sai vermelha sem imprimir catálogo nenhum se falhar. *Uma lista
+vazia de um instrumento que não sabe acusar não é uma boa notícia: é a ausência de uma medição.*
+
 ### ⚠️ E o ponto cego SIMÉTRICO, que é o pior
 
 Um param pode estar **vivo na sonda e morto para o artista**, se o valor que o acorda for

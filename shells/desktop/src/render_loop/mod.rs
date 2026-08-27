@@ -286,6 +286,8 @@ pub(crate) mod motion_glow_layer;
 /// live GPU vector into the shared vector scene.
 pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_text_gen;
+/// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
+mod off_canvas;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;
 pub(crate) mod painter_bridge_queries;
@@ -7432,10 +7434,8 @@ impl crate::App {
                 // ⭐ **O ANEL do objeto vazio** (Enio, 2026-08-26) — um objeto sem geometria não
                 // emite pixel nenhum, e sem marca o artista não sabe onde ele está. A pergunta
                 // *«está vazio?»* é a MESMA que dimensiona a caixa do gizmo (`group_gizmo_view`).
-                empty_object_overlay::draw_empty_object_mark(
+                empty_object_overlay::draw_empty_object_marks(
                     sim,
-                    vec_scene,
-                    flip,
                     hero.gizmo.selection,
                     hero.project.pixels_per_meter,
                     hero.theme,

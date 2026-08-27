@@ -702,6 +702,22 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   era alcançável por gesto nenhum. ⛔ Fronteira nomeada: *Detach from Master* primeiro, para pintar
   uma cópia sozinha. ⚠️ Não vira override, por construção — o ponto fixo do sync fica intacto.
 
+**⭐⭐ E a 2.ª volta do mesmo smoke devolveu um defeito DESTA fase que o gate não via**
+([handoff §10](handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)):
+
+- ⛔⛔ **`Visibility` é per-entidade neste motor e NÃO desce aos descendentes** (o `sim_extract`
+  di-lo pelo nome). ⇒ o *Criar componente* da F4.5, que escondia só a RAIZ do mestre, **nunca
+  escondeu uma receita que fosse um grupo** — as peças continuavam a desenhar, e o artista via os
+  dois objetos empilhados que a nota dizia ter evitado. ⚠️ **O gate era verde porque media a MARCA
+  (`Visibility` na raiz) em vez do FIM (o que se desenha).** A cura é o extract não desenhar quem é
+  `MasterPiece` — marca **derivada**, logo incapaz de discordar da árvore —, e o gesto deixou de
+  tocar em visibilidade nenhuma.
+- ⚠️ **O anel é o CORPO de um objeto sem pixels, não uma marca de seleção**: ele vale para todo
+  objeto vazio da cena, com filhos ou sem, e só some por não estar na cena (olho fechado · peça de
+  receita · o modo de jogo, quando existir).
+- ⚠️ **E ele PEGA** — 4.ª fonte da porta única de pick, por último na lista para o contêiner não
+  roubar o clique dos filhos.
+
 ---
 
 ## §F5 — Aninhamento + variantes + Overrides sem alvo

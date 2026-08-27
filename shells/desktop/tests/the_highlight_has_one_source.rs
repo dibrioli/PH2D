@@ -132,6 +132,10 @@ fn the_object_pick_composite_exists_once() {
         "vec_gizmo_view::pick_all_at_world",
         "flip_gizmo_view::pick_all_at_world",
         "pick_sprites_at_world",
+        // ⭐ A quarta fonte (2026-08-26): o ANEL de um objeto vazio. Sem ela um grupo só era
+        // alcançável pela lista da Hierarquia — *«não consigo transformar o objeto total a partir
+        // do centro do objeto vazio»*.
+        "group_gizmo_view::pick_empty_at_world",
     ] {
         assert!(
             door.contains(source),

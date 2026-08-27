@@ -100,6 +100,91 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
         || w.get::<ph2d_field_ecs::FieldNode>(e).is_some()
 }
 
+/// ⭐ **«Este objeto é um VAZIO?»** — a pergunta que TODOS os consumidores fazem.
+///
+/// Verdadeira para uma entidade que **não desenha nada por si** e cuja pose é o `Transform` da
+/// casa: o objeto do botão `Add`, e todo grupo. ⚠️ *Ter filhos não a torna falsa* — Enio,
+/// 2026-08-26: *«o gizmo do objeto vazio deve existir mesmo quando ele ganha filhos»*.
+///
+/// ⛔ **Uma peça de RECEITA responde `false`**: um mestre não está na cena (não emite instância de
+/// desenho nenhuma — [`crate::render_loop::sim_extract`]), e um anel sobre ele seria uma marca no
+/// canvas para um objeto que não está lá. *O que não se desenha não tem anel.*
+pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
+    let w = sim.world();
+    w.get::<Transform>(e).is_some()
+        && w.get::<ph2d_render::Sprite>(e).is_none()
+        && w.get::<ph2d_ecs::VecPathRef>(e).is_none()
+        && w.get::<ph2d_ecs::FlipObjectRef>(e).is_none()
+        && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
+        && w.get::<ph2d_ecs::MasterPiece>(e).is_none()
+        && !publishes_its_own_handles(sim, e)
+}
+
+/// ⭐ **O RAIO do anel no mundo** — uma porta, dois consumidores (a tinta e o dedo).
+///
+/// ⚠️ **A escala entra pela média geométrica `√|sx·sy|`**, e não por um eixo escolhido à sorte: é a
+/// mesma lei que o traço vetorial usa sob escala não-uniforme (`√|det|`, bug #27 do Vector) — para
+/// escala uniforme é a própria escala, e é invariante à rotação. Um anel que fosse elipse sob
+/// `sx ≠ sy` teria de ser apanhado por um teste de elipse, e o dedo e a tinta discordariam no dia
+/// em que um dos dois esquecesse.
+pub(crate) fn marker_world_radius(sim: &SimWorld, e: Entity, pixels_per_meter: f32) -> f32 {
+    let wt = world_transform(sim, e);
+    let ppm = pixels_per_meter.max(f32::MIN_POSITIVE);
+    EMPTY_HALF_PX / ppm * (wt.scale.x * wt.scale.y).abs().sqrt()
+}
+
+/// **Todo objeto vazio da cena**, em ordem determinística (por identidade, nunca pelos bits de
+/// alocação, que o respawn do undo troca).
+///
+/// ⚠️ **Não é filtrado pela SELEÇÃO** — Enio, 2026-08-26: *«se desseleciono o objeto vazio, o
+/// círculo some. O círculo só pode sumir no runtime»*. O anel é o **corpo** de um objeto que não
+/// tem pixels; escondê-lo quando ele não está selecionado é a mesma coisa que não o desenhar.
+///
+/// ⚠️ Um objeto com o olho FECHADO não entra: `Visibility` é per-entidade neste motor, e um objeto
+/// que o artista escondeu não está na tela.
+pub(crate) fn empty_objects(sim: &SimWorld) -> Vec<Entity> {
+    // ⚠️ Pelos ARQUÉTIPOS, e não por uma `query` — esta é a única travessia do mundo inteiro que
+    // corre com `&World` (uma `query` pede `&mut`, e o passe de pintura só tem a partilhada).
+    // Precedente: a contagem de componentes em `snapshots`.
+    let w = sim.world();
+    let mut out: Vec<(u64, Entity)> = Vec::new();
+    for archetype in w.archetypes().iter() {
+        for ae in archetype.entities() {
+            let e = ae.id();
+            if w.get::<Visibility>(e).is_some_and(|v| v.hidden) || !is_empty_object(sim, e) {
+                continue;
+            }
+            out.push((w.get::<ph2d_ecs::StableId>(e).map_or(0, |s| s.0), e));
+        }
+    }
+    out.sort_unstable();
+    out.into_iter().map(|(_, e)| e).collect()
+}
+
+/// ⭐⭐ **O anel PEGA** — os objetos vazios cujo disco contém `world`, em bits de `Entity`.
+///
+/// ⚠️ Sem isto o anel é decoração: um objeto sem pixels não é alcançável por
+/// `pick_sprites_at_world`, logo a única forma de o selecionar era a lista da Hierarquia — e Enio
+/// pediu exatamente o contrário (*«não consigo transformar o objeto total a partir do centro do
+/// objeto vazio»*). *Uma alça que só se alcança noutro sítio não está no canvas.*
+///
+/// ⚠️ **Disco, não aro:** o interior conta. Um aro de 1,5 px é um alvo que se persegue.
+pub(crate) fn pick_empty_at_world(
+    sim: &SimWorld,
+    world: [f32; 2],
+    pixels_per_meter: f32,
+) -> Vec<u64> {
+    empty_objects(sim)
+        .into_iter()
+        .filter(|&e| {
+            let c = world_transform(sim, e).translation;
+            let r = marker_world_radius(sim, e, pixels_per_meter);
+            r > 0.0 && (world[0] - c.x).hypot(world[1] - c.y) <= r
+        })
+        .map(Entity::to_bits)
+        .collect()
+}
+
 /// A caixa intrínseca de uma peça FOLHA, no espaço local dela — `None` se ela não desenha nada.
 ///
 /// ⚠️ **As três perguntas saem das MESMAS portas que o gizmo de cada família usa** (a caixa de
@@ -146,7 +231,7 @@ pub(crate) fn box_of(
     entity: Entity,
     pixels_per_meter: f32,
 ) -> Option<GroupBox> {
-    if sim.world().get_entity(entity).is_err() || publishes_its_own_handles(sim, entity) {
+    if sim.world().get_entity(entity).is_err() || !is_empty_object(sim, entity) {
         return None;
     }
     let mut lo = [f32::INFINITY; 2];
@@ -159,20 +244,25 @@ pub(crate) fn box_of(
             continue;
         };
         for &child in kids.iter() {
-            if sim
+            // ⚠️ **Um filho escondido não entra, mas a SUB-ÁRVORE dele continua** — e isto não é
+            // uma escolha, é o que o motor desenha: *«`Visibility` is per-entity, it does not
+            // propagate to descendants»* (o doc do `sim_extract::resolve_clip_grouping` diz-o pelo
+            // nome, e chama a propagação de *«a future wave»*). Saltar a sub-árvore daria uma caixa
+            // que não envolve arte que está na tela. *A caixa descreve o que se vê.*
+            let hidden = sim
                 .world()
                 .get::<Visibility>(child)
-                .is_some_and(|v| v.hidden)
-            {
-                continue;
-            }
+                .is_some_and(|v| v.hidden);
             let local = sim
                 .world()
                 .get::<Transform>(child)
                 .copied()
                 .unwrap_or(Transform::IDENTITY);
             let x = xform_of_transform(local).then(&to_root);
-            if let Some((a, h)) = leaf_anchor_half(sim, scene, flip, child, pixels_per_meter) {
+            if let Some((a, h)) = (!hidden)
+                .then(|| leaf_anchor_half(sim, scene, flip, child, pixels_per_meter))
+                .flatten()
+            {
                 // Os QUATRO cantos, e não o par (mín, máx): sob rotação a caixa do filho não é
                 // eixo-alinhada no espaço do pai, e unir só dois cantos perderia os outros dois.
                 for sx in [-1.0f32, 1.0] {

@@ -14,9 +14,7 @@
 //! [doc 04 §112-119]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/04_decisao_arquitetura.md
 
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{
-    Children, Entity, InstanceOf, MasterRoot, ObjectInstance, SimWorld, StableId, Visibility,
-};
+use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, ObjectInstance, SimWorld, StableId};
 
 /// **Por que um verbo de instância foi recusado.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -69,24 +67,16 @@ pub(crate) fn make_master(
         return Err(VerbRefusal::InsideAnInstance);
     }
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
-    let was_hidden = sim.world().get::<Visibility>(entity).copied();
 
-    sim.world_mut()
-        .entity_mut(entity)
-        .insert((MasterRoot, Visibility { hidden: true }));
+    sim.world_mut().entity_mut(entity).insert(MasterRoot);
     // ⚠️ A instância nasce ANTES de a receita ser marcada? Não: ela é a cópia da receita, e a
     // cópia leva o `MasterRoot` que a porta de instanciar depois tira. A ordem é esta.
     let instance = match crate::instantiate::instantiate_master(sim, registry, entity, parent) {
         Ok(e) => e,
         Err(_) => {
-            // Desfaz a marcação: um gesto que falha a meio deixa uma receita escondida que o
-            // artista não pediu, e a subárvore dele desaparece da tela.
-            let mut em = sim.world_mut().entity_mut(entity);
-            em.remove::<MasterRoot>();
-            match was_hidden {
-                Some(v) => em.insert(v),
-                None => em.remove::<Visibility>(),
-            };
+            // Desfaz a marcação: um gesto que falha a meio deixaria uma receita que o artista não
+            // pediu — e a subárvore dele desapareceria da tela, porque uma receita não se desenha.
+            sim.world_mut().entity_mut(entity).remove::<MasterRoot>();
             ph2d_ecs::assign_master_pieces(sim.world_mut());
             return Err(VerbRefusal::AlreadyAMaster);
         }
@@ -97,17 +87,14 @@ pub(crate) fn make_master(
     // `Transform` verbatim, então a instância **nasce** no lugar. A mutação que apagava a linha
     // não matou gate nenhum, e foi assim que ela se revelou morta.
     //
-    // ⛔ A `Visibility` é o caso CONTRÁRIO, e por isso fica: a cópia é feita **depois** de a
-    // receita ser escondida, logo ela nasce escondida — e a instância tem de ser devolvida ao que
-    // a seleção era. (Mutação: apagar isto ⇒ RED.)
-    match was_hidden {
-        Some(v) => {
-            sim.world_mut().entity_mut(instance).insert(v);
-        }
-        None => {
-            sim.world_mut().entity_mut(instance).remove::<Visibility>();
-        }
-    }
+    //
+    // ⚠️⚠️ **E a `Visibility` SAIU daqui em 2026-08-26.** A 1.ª versão escondia a raiz da receita
+    // com `Visibility { hidden: true }` e depois devolvia à instância o valor que a seleção tinha.
+    // A premissa era **falsa**: `Visibility` é per-entidade neste motor e **não desce aos
+    // descendentes** (o `sim_extract` diz-no pelo nome), então uma receita que fosse um GRUPO
+    // continuava a desenhar as peças — o artista via **dois objetos empilhados**, que é o defeito
+    // que a nota dizia ter evitado. ⇒ hoje quem não desenha uma receita é o extract, pela marca
+    // **derivada** `MasterPiece`, e este gesto não toca em autoria nenhuma de visibilidade.
     Ok((entity, instance))
 }
 

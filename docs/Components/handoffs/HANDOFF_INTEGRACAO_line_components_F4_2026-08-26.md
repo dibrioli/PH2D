@@ -34,7 +34,9 @@
 | promover a excepção a padrão | não existia | ✅ *Apply to Master* — as outras cópias recebem-na |
 | soltar uma cópia da receita | não existia | ✅ *Detach from Master* |
 | pegar um **objeto vazio** ou um **grupo** no canvas | **impossível** — nenhum gizmo | ✅ caixa = união dos filhos visíveis, ou o marcador do vazio; o conjunto move-se como um objeto só |
-| ver onde está um objeto sem geometria | invisível | ✅ um **anel** no objeto selecionado |
+| ver onde está um objeto sem geometria | invisível | ✅ um **anel**, em **todo** objeto vazio da cena, selecionado ou não |
+| clicar no centro de um grupo | não selecionava nada | ✅ o anel **pega** — 4.ª fonte da porta de pick |
+| *Criar componente* sobre um **grupo** | as peças da receita continuavam a desenhar (dois objetos empilhados) | ✅ a receita INTEIRA sai da tela (`MasterPiece`), e o gesto não escreve `Visibility` |
 | *Revert to Master* numa peça que o artista moveu | a peça **teletransportava-se** | ✅ devolve o conteúdo e **mantém a posição** |
 | pintar a sprite de uma cópia | as irmãs ficavam como estavam | ✅ os pixels sobem à receita e **todas** mudam |
 
@@ -385,3 +387,95 @@ a ignorar o *Detach*.
   união de reimplementar a caixa de um sprite e a de uma forma vetorial.
 - ⚠️ **`revert_all_overrides` mudou de assinatura** (`Option<usize>` → `Option<Reverted>`): quem a
   chamar noutra linha não compila, o que é o comportamento certo.
+
+---
+
+## §10 ⭐⭐ A 2.ª volta do smoke (2026-08-26) — três correções ao §9 e **um defeito que ele escondia**
+
+> *«Se eu crio diretamente uma sprite não preciso do círculo — o gizmo é exclusivo do objeto que
+> nasce vazio. Outro problema: se desseleciono o objeto vazio, o círculo some. O círculo só pode
+> sumir no runtime. Outro: se o objeto vazio ganha filhos não consigo transformar o objeto total a
+> partir do centro do objeto vazio, mas o gizmo do objeto vazio deve existir mesmo quando ele ganha
+> filhos. O restante parece OK.»*
+
+### §10.1 O anel é o CORPO do objeto, não uma marca de seleção
+
+A 1.ª versão desenhava-o só para o selecionado, com a razão escrita *«a marca serve o gesto que
+está a acontecer»*. **Errada.** O anel é para um objeto sem pixels o que o quad é para uma sprite —
+e um corpo que só existe enquanto se olha para ele não é um corpo. ⇒ ele é desenhado para **todo**
+objeto vazio da cena, e ter filhos não o apaga.
+
+Ele desaparece em **duas** situações, ambas *«não está na cena»*: o olho fechado (`Visibility`) e
+ser peça de uma receita. E numa terceira, quando existir: o modo de jogo, que não pinta chrome
+nenhum (o `shells/game`/R1 está adiado — é o *«só pode sumir no runtime»* do report).
+
+⚠️ **O censo corre pelos ARQUÉTIPOS** (`empty_objects`): é a única travessia do mundo inteiro que
+funciona com `&World`, porque uma `query` do bevy pede `&mut` e o passe de pintura só tem a
+partilhada. Ordenado por `StableId`, nunca pelos bits de alocação, que o respawn do undo troca.
+
+### §10.2 O anel PEGA — a 4.ª fonte da porta de pick
+
+*«Não consigo transformar o objeto total a partir do centro do objeto vazio»* não era sobre a
+caixa: era sobre **selecionar**. Um objeto sem pixels nunca foi alcançável por
+`pick_sprites_at_world`, logo a única forma de o pegar era a lista da Hierarquia. *Uma alça que só
+se alcança noutro sítio não está no canvas.*
+
+⇒ `group_gizmo_view::pick_empty_at_world` entra em `hover_highlight::pick_objects_at` — a porta
+ÚNICA que o clique **e** o realce de hover usam (o gate `the_object_pick_composite_exists_once` já
+existia e ganhou a quarta fonte na lista de controlo).
+
+⚠️ **Por ÚLTIMO na lista, e é a metade que importa:** um objeto vazio é quase sempre o PAI da arte
+sob o anel, e `pick_order::descendants_first` **adia** o ancestral. Clique sobre a arte pega a arte;
+clique no anel onde não há arte pega o grupo; o segundo clique cicla. *O contêiner não rouba o
+clique dos filhos.*
+
+⚠️ **Disco, não aro** (o interior conta — um aro de 1,5 px é um alvo que se persegue), e o raio
+entra pela **média geométrica** `√|sx·sy|`: a mesma lei do traço vetorial sob escala não-uniforme
+(bug #27 do Vector). Um anel-elipse obrigaria o dedo a um teste de elipse, e a tinta e o dedo
+divergiriam no dia em que um dos dois esquecesse. **Uma porta, dois consumidores**
+(`marker_world_radius`).
+
+### §10.3 ⛔⛔ E o report descobriu um defeito da F4.5 que o §9 não via: **`Visibility` não desce**
+
+Ao medir *«o anel some quando a receita está escondida?»* apareceu o que estava por baixo:
+**`Visibility` é per-entidade neste motor e não propaga para os descendentes.** Não é uma
+suposição — o `sim_extract` diz-o pelo nome no doc do `resolve_clip_grouping`: *«Visibility is
+per-entity, it does not propagate to descendants … Proper subtree-hide = visibility propagation, a
+future wave.»*
+
+⇒ o *Criar componente* da F4.5, que escondia **só a raiz** do mestre, **nunca escondeu uma receita
+que fosse um grupo**: as peças dela continuavam a desenhar, e o artista via os dois objetos
+empilhados que a nota daquela fatia dizia ter evitado. ⚠️ **O gate era verde**, porque media a
+MARCA (`Visibility` na raiz) em vez do FIM (o que se desenha). *Um gate sobre o meio fica verde
+sobre o defeito que ele existe para apanhar.*
+
+**A cura:** quem não desenha uma receita é o extract, pela marca **derivada** `MasterPiece` (a raiz
+e toda a descendência, re-carimbada por quadro por `assign_master_pieces`) —
+`render_loop::off_canvas::is_off_canvas`, irmão do `sim_extract` por assunto (lá mora *como* uma
+sprite vira instância; aqui mora *se* ela vira) e porque aquele ficheiro já vive sob excepção de LOC.
+
+⛔ **Escrever `Visibility` nas peças seria o contrário do que se quer:** a `Visibility` de uma peça é
+**autoria** e propaga para as instâncias — toda cópia nasceria invisível.
+
+⇒ **o gesto deixou de tocar em `Visibility`**, e o `ROOT_IS_ITS_OWN` mantém a entrada dela por outra
+razão, que sempre foi a dela: *esconder UMA cópia é sobre aquela cópia*.
+
+⚠️ **Isto muda o que a caixa do grupo mede:** um filho escondido fica de fora, mas os **filhos dele
+continuam**, porque continuam a desenhar. A 1.ª redação saltava a sub-árvore e citava a receita
+escondida como razão — as duas metades estavam erradas.
+
+### §10.4 Prova de mutação (2.ª volta)
+
+**10 mutações, 10 mortas** — um grupo deixar de ser vazio · a receita ganhar anel · raio por um eixo
+só · o anel pegar em todo o lado · a receita voltar a desenhar · o olho deixar de esconder · a caixa
+voltar a saltar a sub-árvore · o censo ignorar o olho · o gesto voltar a escrever `Visibility` ·
+`assign_master_pieces` marcar só a raiz.
+
+### §10.5 ⚠️ O que o integrador tem de saber (2.ª volta)
+
+- ⚠️ **`PickWorld` ganhou um campo** (`pixels_per_meter`) — três sítios de construção; quem
+  construir um quarto noutra linha não compila, que é o comportamento certo.
+- ⚠️ **`sim_extract` deixou de decidir a visibilidade no fio** — a linha `let hidden = sim…` foi
+  substituída por `off_canvas::is_off_canvas(…)`, e há gate a proibir as duas de coexistirem.
+- ⚠️ **`ph2d-ecs` não foi tocado** — o `MasterPiece` e o `assign_master_pieces` já existiam desde a
+  F4.1; o que mudou foi quem lhes pergunta.

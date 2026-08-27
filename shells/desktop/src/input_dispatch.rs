@@ -4875,6 +4875,7 @@ impl App {
                         // ⭐ **A porta ÚNICA do pick de objecto** — vetor, depois Flip, depois
                         // sprites, na ordem de z que o artista vê. Esta lista existia copiada
                         // aqui e no clique simples, e o realce de proveniência ia ser a terceira.
+                        let ppm_for_pick = hero.project.pixels_per_meter;
                         let mut pw = crate::hover_highlight::PickWorld {
                             window_size: gfx.surface.size(),
                             sim: &gfx.sim,
@@ -4882,6 +4883,7 @@ impl App {
                             flip: &gfx.flip,
                             present: &mut gfx.present,
                             camera: &gfx.camera,
+                            pixels_per_meter: ppm_for_pick,
                         };
                         let hits = crate::hover_highlight::pick_objects_at(
                             &mut pw,
@@ -5319,6 +5321,7 @@ impl App {
                         let window_size = gfx.surface.size();
                         let world_pos = gfx.camera.screen_to_world((evt.x, evt.y), window_size);
                         // ⭐ **A porta ÚNICA do pick de objecto** (ver o irmão acima).
+                        let ppm_for_pick = hero.project.pixels_per_meter;
                         let mut pw = crate::hover_highlight::PickWorld {
                             window_size,
                             sim: &gfx.sim,
@@ -5326,6 +5329,7 @@ impl App {
                             flip: &gfx.flip,
                             present: &mut gfx.present,
                             camera: &gfx.camera,
+                            pixels_per_meter: ppm_for_pick,
                         };
                         let mut hits = crate::hover_highlight::pick_objects_at(
                             &mut pw,

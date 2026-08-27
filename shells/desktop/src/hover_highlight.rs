@@ -71,6 +71,9 @@ pub(crate) struct PickWorld<'a> {
     pub(crate) present: &'a mut ph2d_ecs::PresentWorld,
     pub(crate) camera: &'a ph2d_render::Camera2d,
     pub(crate) window_size: ph2d_host::WindowSize,
+    /// A régua do projeto — o anel de um objeto vazio é medido em pixels de arte
+    /// ([`crate::group_gizmo_view::marker_world_radius`]).
+    pub(crate) pixels_per_meter: f32,
 }
 
 pub(crate) fn pick_objects_at(
@@ -107,6 +110,19 @@ pub(crate) fn pick_objects_at(
         w.present.world_mut(),
         world,
     ));
+    // ⭐⭐ **E o ANEL de um objeto VAZIO pega** (Enio, 2026-08-26: *«não consigo transformar o
+    // objeto total a partir do centro do objeto vazio»*).
+    //
+    // ⚠️ **Por ÚLTIMO, e é a metade que importa:** um objeto vazio é quase sempre o PAI da arte que
+    // está por baixo do anel, e a lista é depois reordenada por `pick_order::descendants_first` —
+    // que ADIA o ancestral. Um clique sobre a arte pega a arte; um clique no anel onde não há arte
+    // pega o grupo; e o segundo clique no mesmo sítio cicla para ele. *O contêiner não rouba o
+    // clique dos filhos.*
+    hits.extend(crate::group_gizmo_view::pick_empty_at_world(
+        w.sim,
+        world,
+        w.pixels_per_meter,
+    ));
     hits
 }
 
@@ -122,11 +138,12 @@ impl crate::App {
     /// cicla.
     pub(crate) fn pick_hovered_object(&mut self, pointer: (f32, f32)) -> Option<u64> {
         // Os dois factos do store, lidos antes de qualquer borrow mutável.
-        let (over_panel, hot) = {
+        let (over_panel, hot, ppm) = {
             let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
             (
                 hero.store.panel_at(pointer.0, pointer.1).is_some(),
                 hero.store.hot_id(),
+                hero.project.pixels_per_meter,
             )
         };
         // Sobre um painel: a resposta é a LINHA, se for uma; nunca o canvas por baixo dele.
@@ -147,6 +164,7 @@ impl crate::App {
             flip: &gfx.flip,
             present: &mut gfx.present,
             camera: &gfx.camera,
+            pixels_per_meter: ppm,
         };
         pick_objects_at(
             &mut w,

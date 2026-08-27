@@ -96,12 +96,16 @@ fn a_group_box_is_the_union_of_its_visible_children() {
     );
 }
 
-/// ⭐⭐ **Um filho ESCONDIDO não entra na caixa — e a sub-árvore dele também não.**
+/// ⭐⭐ **Um filho ESCONDIDO não entra na caixa — mas os FILHOS dele continuam.**
 ///
-/// ⚠️ Isto não é asseio: a **receita** de um componente é escondida de propósito (F4.5), e uma
-/// caixa que a envolvesse mediria um objeto que não está na tela.
+/// ⚠️ **A segunda metade não é uma escolha, é o que o motor desenha:** `Visibility` é per-entidade
+/// e *«does not propagate to descendants»* (o doc do `sim_extract::resolve_clip_grouping` diz-o
+/// pelo nome e chama a propagação de *«a future wave»*). Saltar a sub-árvore daria uma caixa que
+/// não envolve arte que está na tela. ⛔ **A 1.ª versão deste gate afirmava o contrário** e citava
+/// a receita escondida como razão — a receita sai da tela por ser `MasterPiece`, não por
+/// `Visibility`.
 ///
-/// (Mutação: apagar a guarda de `Visibility` ⇒ RED, a caixa volta a `2.5`.)
+/// (Mutação: apagar a guarda de `Visibility` ⇒ RED; e voltar a saltar a sub-árvore ⇒ RED no neto.)
 #[test]
 fn a_hidden_child_is_not_in_the_box() {
     let mut sim = SimWorld::new();
@@ -120,11 +124,40 @@ fn a_hidden_child_is_not_in_the_box() {
             ChildOf(root),
         ))
         .id();
-    // o NETO do escondido também não conta
+    // ⚠️ O NETO do escondido CONTA — ele desenha (o `hidden` do pai não desce até ele). O `x = 8`
+    // do neto é RELATIVO ao pai escondido em `x = 2` ⇒ ele está em `x = 10`.
     sim.world_mut().spawn((
         Transform::from_translation(ph2d_core::Vec2::new(8.0, 0.0)),
         sprite([1.0, 1.0]),
         ChildOf(hidden),
+    ));
+    let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
+        panic!("nao publicou uniao");
+    };
+    // De `-2,5` (o filho visível) a `10,5` (o neto) ⇒ centro `4`, meia-largura `6,5`.
+    assert!(
+        (anchor[0] - 4.0).abs() < 1e-4 && (half[0] - 6.5).abs() < 1e-4,
+        "anchor={anchor:?} half={half:?} — ou o filho escondido entrou, ou o neto dele ficou de \
+         fora (e ele desenha)"
+    );
+}
+
+/// ⭐ **E sem o neto, o filho escondido de facto não entra** — o controlo que separa as duas
+/// metades do gate acima.
+#[test]
+fn a_hidden_leaf_child_is_not_in_the_box() {
+    let mut sim = SimWorld::new();
+    let root = empty_root(&mut sim, "Group");
+    sim.world_mut().spawn((
+        Transform::from_translation(ph2d_core::Vec2::new(-2.0, 0.0)),
+        sprite([1.0, 1.0]),
+        ChildOf(root),
+    ));
+    sim.world_mut().spawn((
+        Transform::from_translation(ph2d_core::Vec2::new(2.0, 0.0)),
+        sprite([1.0, 1.0]),
+        Visibility::hidden(),
+        ChildOf(root),
     ));
     let Some(GroupBox::Union { anchor, half }) = boxed(&sim, root) else {
         panic!("nao publicou uniao");
@@ -250,4 +283,139 @@ fn a_modelling_part_publishes_no_box_either() {
             "a peca de modelagem ({marker}) ganhou uma segunda caixa"
         );
     }
+}
+
+// ───────────── O anel: o report de 2026-08-26 (2.ª volta) ─────────────
+
+/// ⭐⭐⭐ **O anel NÃO segue a seleção, e ter filhos não o apaga.**
+///
+/// > *«Se desseleciono o objeto vazio, o círculo some. O círculo só pode sumir no runtime.»*
+/// > *«O gizmo do objeto vazio deve existir mesmo quando ele ganha filhos.»*
+///
+/// ⚠️ O censo **não recebe a seleção** — é essa ausência que é a cura, e por isso o gate mede a
+/// LISTA e não um desenho.
+///
+/// (Mutação: `is_empty_object` devolver `false` quando há `Children` ⇒ RED no grupo.)
+#[test]
+fn every_empty_object_is_listed_children_or_not() {
+    let mut sim = SimWorld::new();
+    let lonely = empty_root(&mut sim, "Lonely");
+    let group = empty_root(&mut sim, "Group");
+    sim.world_mut()
+        .spawn((Transform::IDENTITY, sprite([1.0, 1.0]), ChildOf(group)));
+    let listed = super::empty_objects(&sim);
+    assert!(
+        listed.contains(&lonely) && listed.contains(&group),
+        "o censo devolveu {listed:?} — faltou o vazio ou o grupo"
+    );
+}
+
+/// ⛔ **Uma SPRITE não ganha anel** (Enio: *«se eu crio diretamente uma sprite não preciso do
+/// círculo»*), e uma peça de RECEITA também não — ela não está na cena.
+///
+/// (Mutação: tirar o `MasterPiece` de `is_empty_object` ⇒ RED na receita.)
+#[test]
+fn what_draws_itself_and_what_is_not_on_the_canvas_get_no_ring() {
+    let mut sim = SimWorld::new();
+    let with_art = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Sprite"), sprite([1.0, 1.0])))
+        .id();
+    let recipe = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Recipe"),
+            ph2d_ecs::MasterRoot,
+        ))
+        .id();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let blind = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Hidden"),
+            Visibility::hidden(),
+        ))
+        .id();
+    let listed = super::empty_objects(&sim);
+    for (what, e) in [
+        ("uma sprite", with_art),
+        ("a receita", recipe),
+        ("um objeto com o olho fechado", blind),
+    ] {
+        assert!(
+            !listed.contains(&e),
+            "{what} ganhou anel — o censo devolveu {listed:?}"
+        );
+    }
+    // Controlo POSITIVO: sem o `MasterRoot`, a mesma entidade entra.
+    sim.world_mut()
+        .entity_mut(recipe)
+        .remove::<ph2d_ecs::MasterRoot>();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    assert!(
+        super::empty_objects(&sim).contains(&recipe),
+        "sem a marca de receita a entidade continuou sem anel — o gate estaria verde por outra razao"
+    );
+}
+
+/// ⭐⭐ **O anel PEGA — é isso que o torna um gizmo e não um desenho.**
+///
+/// > *«Não consigo transformar o objeto total a partir do centro do objeto vazio.»*
+///
+/// ⚠️ Os dois lados: o centro pega, e um ponto **fora** do disco não — senão o objeto vazio
+/// roubaria o clique de tudo o que estivesse por perto.
+///
+/// (Mutação: `pick_empty_at_world` devolver sempre a lista inteira ⇒ RED no ponto de fora.)
+#[test]
+fn the_ring_takes_the_click_at_the_centre_and_not_beyond_it() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(ph2d_core::Vec2::new(3.0, -1.0)),
+            Name::new("Group"),
+        ))
+        .id();
+    let r = super::marker_world_radius(&sim, e, PPM);
+    assert!(r > 0.0, "raio do marcador nao positivo: {r}");
+    assert_eq!(
+        super::pick_empty_at_world(&sim, [3.0, -1.0], PPM),
+        vec![e.to_bits()],
+        "o centro do anel nao pegou"
+    );
+    assert!(
+        super::pick_empty_at_world(&sim, [3.0 + r * 1.5, -1.0], PPM).is_empty(),
+        "o anel pegou um ponto a 1,5 raio — ele rouba o clique dos vizinhos"
+    );
+}
+
+/// ⚠️ **A escala entra pela MÉDIA GEOMÉTRICA** (`√|sx·sy|`), a mesma lei do traço vetorial sob
+/// escala não-uniforme — para escala uniforme é a própria escala, e é invariante à rotação.
+///
+/// Um anel que fosse elipse precisaria de um teste de elipse no dedo, e a tinta e o dedo
+/// divergiriam no dia em que um dos dois esquecesse.
+///
+/// (Mutação: usar `scale.x` sozinho ⇒ RED.)
+#[test]
+fn the_ring_scales_by_the_geometric_mean() {
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform {
+                scale: ph2d_core::Vec2::new(4.0, 1.0),
+                ..Transform::IDENTITY
+            },
+            Name::new("Squashed"),
+        ))
+        .id();
+    let base = EMPTY_HALF_PX / PPM;
+    let got = super::marker_world_radius(&sim, e, PPM);
+    assert!(
+        (got - base * 2.0).abs() < 1e-5,
+        "raio {got} — a media geometrica de (4, 1) e' 2, entao esperava-se {}",
+        base * 2.0
+    );
 }

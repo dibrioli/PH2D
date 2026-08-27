@@ -111,16 +111,22 @@ fn make_master_leaves_an_instance_in_its_place() {
     );
 }
 
-/// ⚠️⚠️ **A RECEITA fica escondida e a INSTÂNCIA visível** — senão o artista vê dois objetos
-/// empilhados, um que cai e outro que não, e lê isso como defeito.
+/// ⚠️⚠️ **A RECEITA INTEIRA sai da tela, e o gesto NÃO escreve visibilidade nenhuma.**
 ///
-/// ⚠️ E a segunda metade é a que quase escapou: sem a `Visibility` no `ROOT_IS_ITS_OWN`, o
-/// `hidden` da receita **propagava** e a instância nascia invisível — o gesto apagaria da tela o
-/// objeto que o artista acabou de transformar em componente.
+/// ⛔⛔ **A 1.ª versão deste gate media a coisa errada, e passava.** Ela afirmava
+/// `Visibility { hidden: true }` na RAIZ do mestre — o que era verdade — e concluía daí que *«o
+/// artista não vê dois objetos empilhados»*, o que era **falso** para toda receita que fosse um
+/// grupo: `Visibility` é per-entidade neste motor e não desce aos descendentes (o `sim_extract`
+/// diz-o pelo nome), então as PEÇAS da receita continuavam a desenhar. *Um gate sobre o meio
+/// (a marca) em vez do fim (o que se desenha) fica verde sobre o defeito que ele existe para
+/// apanhar.*
 ///
-/// (Mutação: tirar `"ph2d::ecs::Visibility"` do `ROOT_IS_ITS_OWN` ⇒ RED depois do 1.º sync.)
+/// ⇒ hoje a pergunta é a do EXTRACT: **toda** entidade da receita é `MasterPiece`, e nenhuma da
+/// instância é. E o gesto não toca em `Visibility`, para o olho da Hierarquia não passar a mentir.
+///
+/// (Mutação: `assign_master_pieces` só marcar a raiz ⇒ RED na peça.)
 #[test]
-fn the_recipe_hides_and_the_instance_does_not() {
+fn the_whole_recipe_leaves_the_canvas_and_the_instance_stays() {
     let mut sim = SimWorld::new();
     let r = reg();
     let bridge = PhysicsBridge::new();
@@ -128,20 +134,34 @@ fn the_recipe_hides_and_the_instance_does_not() {
     let rig = plain_rig(&mut sim);
     let (master, instance) = make_master(&mut sim, &r, rig).expect("o gesto");
 
-    assert!(
-        sim.world()
-            .get::<Visibility>(master)
-            .is_some_and(|v| v.hidden),
-        "a receita ficou visivel — o artista ve' dois objetos empilhados"
-    );
+    for (what, e) in [("a raiz", master), ("a peca", piece(&sim, master, "Arm"))] {
+        assert!(
+            sim.world().get::<ph2d_ecs::MasterPiece>(e).is_some(),
+            "{what} da receita continua a desenhar — o artista ve' dois objetos empilhados"
+        );
+    }
     for _ in 0..3 {
         sync_instances(&mut sim, &r, &bridge, &mut echo);
     }
+    for (what, e) in [
+        ("a raiz", instance),
+        ("a peca", piece(&sim, instance, "Arm")),
+    ] {
+        assert!(
+            sim.world().get::<ph2d_ecs::MasterPiece>(e).is_none(),
+            "{what} da INSTANCIA foi marcada como receita — o gesto apagou da tela o que o \
+             artista escolheu"
+        );
+        assert!(
+            !sim.world().get::<Visibility>(e).is_some_and(|v| v.hidden),
+            "{what} da instancia nasceu com o olho fechado"
+        );
+    }
+    // ⚠️ E a autoria de visibilidade fica INTACTA nos dois lados: o gesto não escreve `Visibility`
+    // em sítio nenhum, senão o olho da Hierarquia passaria a mostrar um estado que ninguém pediu.
     assert!(
-        !sim.world()
-            .get::<Visibility>(instance)
-            .is_some_and(|v| v.hidden),
-        "a instancia herdou o `hidden` da receita — o gesto APAGOU da tela o que o artista escolheu"
+        sim.world().get::<Visibility>(master).is_none(),
+        "o gesto escreveu `Visibility` na receita — o olho da Hierarquia passa a mentir"
     );
 }
 

@@ -33,8 +33,26 @@ fn the_gizmo_pass_publishes_a_view_for_a_group_or_an_empty() {
 fn the_paint_pass_draws_the_empty_object_ring() {
     let src = fs::read_to_string("src/render_loop/mod.rs").expect("render_loop/mod.rs");
     assert!(
-        src.contains("empty_object_overlay::draw_empty_object_mark("),
+        src.contains("empty_object_overlay::draw_empty_object_marks("),
         "o passe de pintura deixou de desenhar o anel do objeto vazio — ele fica invisivel no \
          canvas, que foi a primeira metade do report"
+    );
+}
+
+/// **A RECEITA sai da tela pelo extract** — sem este fio, *Criar componente* volta a deixar dois
+/// objetos empilhados quando a receita é um grupo.
+#[test]
+fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
+    let src = fs::read_to_string("src/render_loop/sim_extract.rs").expect("sim_extract.rs");
+    assert!(
+        src.contains("off_canvas::is_off_canvas("),
+        "o extract deixou de perguntar se a entidade esta' na cena — uma receita que seja um \
+         GRUPO volta a desenhar as pecas dela por cima da instancia"
+    );
+    // ⚠️ O controlo NEGATIVO: a leitura crua de `Visibility` era a resposta ANTIGA, e ela não
+    // pode voltar ao lado da nova — duas respostas para a mesma pergunta, e a primeira ganha.
+    assert!(
+        !src.contains("let hidden = sim"),
+        "o extract voltou a decidir a visibilidade no fio, ao lado da porta"
     );
 }

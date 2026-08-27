@@ -338,12 +338,10 @@ pub(super) fn run(
             worklist,
             |sim, present, sim_entity, gt| {
                 let mut builder = present.spawn((SimRef(sim_entity), gt));
-                // M14.6A: respect the Visibility component (eye
-                // toggle in the Hierarchy panel). Absence of the
-                // component = visible by default.
-                let hidden = sim
-                    .get::<ph2d_ecs::Visibility>(sim_entity)
-                    .is_some_and(|v| v.hidden);
+                // O olho da Hierarquia (`Visibility`) **e** as peças de uma RECEITA, numa porta
+                // só — ver [`super::off_canvas::is_off_canvas`], onde estão as duas razões e o
+                // defeito que a segunda cura.
+                let hidden = super::off_canvas::is_off_canvas(sim, sim_entity);
                 // W3.T3.12 visibility-layer cull: skip a sprite whose
                 // `VisibilityLayer` is disjoint from the camera cull_mask.
                 let culled = sim

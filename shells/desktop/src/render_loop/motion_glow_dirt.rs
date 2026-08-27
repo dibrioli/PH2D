@@ -63,6 +63,25 @@ pub(super) fn resolve(sim: &mut SimWorld, look: Appearance<'_>, name: &str) -> O
 /// cabem num `u64` porque o que distingue as células é o rect, e um hash dele basta para
 /// *"mudou?"* — a chave nunca é lida como endereço de nada.
 pub(super) fn mask<'a>(r: Resolved, renderer: &'a SpriteRenderer) -> Option<DirtMask<'a>> {
+    // ⛔⛔ **UM RECT DEGENERADO NÃO É UMA MÁSCARA COLAPSADA — É NENHUMA MÁSCARA.**
+    //
+    // O neutro do `scale_offset` (`[0,0,0,0]`) foi desenhado para o caso *sem imagem escolhida*,
+    // em que a view ligada é o preto de 1×1 e o neutro não contribui. Mas a cadeia real servia-o
+    // **com a textura do artista ligada**: `TextureAtlas::region_uv` devolve `[0,0,0,0]` para uma
+    // chave desconhecida (nome escrito antes de a imagem carregar, célula libertada) e o
+    // `sprite_appearance` nunca devolve `None` para `SpriteSource::Atlas`. ⇒ o shader fazia
+    // `dirt_uv = (0,0)` para **todos** os pixels e somava o texel `(0,0)` do átlas — o canto da
+    // primeira imagem importada — chapado sobre o halo inteiro, vezes a intensidade.
+    //
+    // ⚠️ **O modo de falha é o pior que há: depende dos DADOS.** Com o átlas vazio o texel é
+    // transparente e nada se vê; com ele cheio o brilho fica de uma cor sólida. A mesma porta
+    // abria-se por uma célula de 1 px (o inset colapsa `u0 == u1`) e por qualquer rect invertido.
+    //
+    // A régua é a mesma do `scale_offset`, e vive aqui em vez de lá **de propósito**: quem sabe
+    // que não há máscara é quem a resolve; o passe só sabe desenhar o que lhe derem.
+    if !rect_is_a_mask(r.uv_rect) {
+        return None;
+    }
     let (view, w, h) = renderer.texture_view_and_dims(r.texture_id)?;
     Some(DirtMask {
         view,
@@ -70,6 +89,17 @@ pub(super) fn mask<'a>(r: Resolved, renderer: &'a SpriteRenderer) -> Option<Dirt
         uv_rect: r.uv_rect,
         aspect: image_aspect(r.uv_rect, w, h),
     })
+}
+
+/// **ESTE RECT DESIGNA UMA IMAGEM?** — a lei que [`mask`] impõe, extraída para que um teste a
+/// alcance (o `mask` precisa de um `SpriteRenderer`, que segura uma surface de janela real).
+///
+/// Um rect vazio, invertido ou não-finito **não** é uma máscara colapsada: é a ausência de uma.
+#[must_use]
+fn rect_is_a_mask(uv_rect: [f32; 4]) -> bool {
+    let [u0, v0, u1, v1] = uv_rect;
+    let (rw, rh) = (u1 - u0, v1 - v0);
+    rw > 0.0 && rh > 0.0 && rw.is_finite() && rh.is_finite()
 }
 
 /// **O aspecto da IMAGEM, não o da textura que a contém** — a metade da lei que se mede sem

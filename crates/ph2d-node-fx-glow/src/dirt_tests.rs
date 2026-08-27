@@ -29,11 +29,56 @@ fn an_empty_or_blank_name_reads_as_no_dirt() {
     }
 }
 
+/// ⛔⛔ **O NOME VOLTA CRU, e este gate afirmava o contrário — ele PINAVA o defeito.**
+///
+/// A auditoria de 2026-08-27 mediu a cadeia inteira: o publicador de objectos publica a chave
+/// **crua** (só salta as vazias-após-trim), o `source_options` devolve `externals().keys()`
+/// verbatim, o chip escreve o que mostra, e o `resolve` da shell compara com igualdade
+/// **exacta** — deliberadamente, para que `"Dirt"` e `"Dirt "` não colidam. ⇒ aparar aqui
+/// tornava um nome com espaço **impossível de casar**, e o diagnóstico respondia *«nenhuma
+/// sprite NOMEADA "Lens Dirt" na cena»* com ela na Hierarquia. O espaço é invisível ali
+/// (`Name::new` não apara).
+///
+/// ⚠️ O trim continua a decidir a **ausência** (ver [`an_empty_or_blank_name_reads_as_no_dirt`]),
+/// que é a metade que o painel também usa. É o VALOR que não se reescreve.
 #[test]
-fn an_authored_name_is_read_back_trimmed() {
+fn an_authored_name_is_read_back_exactly_as_the_chip_wrote_it() {
     let (mut g, n) = with_glow();
     g.set_text_param(n, DIRT_KEY, "  Lens Dirt \n".to_string());
-    assert_eq!(source(&g).as_deref(), Some("Lens Dirt"));
+    assert_eq!(source(&g).as_deref(), Some("  Lens Dirt \n"));
+    // O caso que o defeito tornava inalcançável: uma sprite REAL chamada com espaço no fim.
+    let (mut g, n) = with_glow();
+    g.set_text_param(n, DIRT_KEY, "Lens Dirt ".to_string());
+    assert_eq!(
+        source(&g).as_deref(),
+        Some("Lens Dirt "),
+        "o nome tem de sair identico ao que o publicador publicou, senao nunca casa"
+    );
+}
+
+/// ⛔⛔ **O REGISTRY carrega mesmo o gate de texto — e a mutação que o apagava SOBREVIVIA.**
+///
+/// O gate irmão lê `GATES.first()`, que é o **static**: apagar
+/// `reg.register_param_gates_text(MANIFEST.id, dirt::GATES)` do `register()` deixava
+/// `ph2d-node-fx-glow` 15/15 e `ph2d-host-desktop` 4500/4500 verdes, com o `Dirt Intensity`
+/// a ser pintado **sem imagem escolhida** — que é exactamente *«um controle pintado sobre
+/// nada»*, o defeito que o gate existe para não ter.
+///
+/// ⚠️ A régua passa a ser o REGISTRY, que é quem o painel consulta. *Um gate sobre a tabela
+/// estática é verde quando ninguém a entrega.*
+#[test]
+fn the_registry_carries_the_text_gate_and_not_only_the_static() {
+    let mut reg = ph2d_node_registry::NodeRegistry::new();
+    crate::register(&mut reg).expect("o nó registra");
+    let gates = reg
+        .param_gates_text(crate::MANIFEST.id)
+        .expect("o registry tem de carregar o gate de texto do `fx.glow`");
+    assert!(
+        gates
+            .iter()
+            .any(|g| g.param == DIRT_INTENSITY && g.when_text == DIRT_KEY && g.when_present),
+        "o registry nao entrega o gate que esconde `{DIRT_INTENSITY}` sem imagem: {gates:?}"
+    );
 }
 
 /// **A identidade: o knob nasce em `0` e o nó não muda o stream.**

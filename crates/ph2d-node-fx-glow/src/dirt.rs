@@ -58,9 +58,23 @@ pub fn source(graph: &Graph) -> Option<String> {
         .id;
     let name = graph
         .node_text_param_overrides(node)
-        .and_then(|m| m.get(DIRT_KEY))?
-        .trim();
-    (!name.is_empty()).then(|| name.to_string())
+        .and_then(|m| m.get(DIRT_KEY))?;
+    // ⚠️⚠️ **O trim decide a AUSÊNCIA; ele não reescreve o VALOR.** A 1.ª versão devolvia
+    // `name.trim().to_string()`, e isso tornava um nome com espaço **impossível de casar**:
+    //   - `motion_bridge_objects::publish` publica a chave CRUA (só salta as vazias-após-trim),
+    //   - `source_options` devolve `externals().keys()` verbatim ⇒ o chip mostra `"Lens Dirt "`,
+    //   - clicar escreve `"Lens Dirt "` no text param,
+    //   - isto aparava para `"Lens Dirt"`, e o `resolve` compara com igualdade EXACTA
+    //     (deliberadamente — aparar lá faria `"Dirt"` e `"Dirt "` colidirem só nesta feature).
+    // ⇒ o artista escolhia da lista que o próprio app pintou e o diagnóstico respondia
+    // *«nenhuma sprite NOMEADA "Lens Dirt" na cena»* com ela na Hierarquia. E o espaço é
+    // **invisível** ali: `Name::new` não apara e o `unique_name_excluding` também não.
+    //
+    // ⚠️ **Toda a família irmã já fazia assim** — `motion.look_at` filtra por `trim().is_empty()`
+    // e passa o `n` **não aparado** ao `position_of`; `source.object` e `motion.path` passam o
+    // `text_param` cru. *Um valor aparado num sítio e cru no outro são duas respostas à mesma
+    // pergunta, e a que o artista vê é a que envelhece.*
+    (!name.trim().is_empty()).then(|| name.clone())
 }
 
 /// O gate que esconde a intensidade enquanto não há imagem.

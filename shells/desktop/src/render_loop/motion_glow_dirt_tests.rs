@@ -121,3 +121,42 @@ fn a_degenerate_rect_is_square_never_a_nan() {
     }
     assert_eq!(super::image_aspect([0.0, 0.0, 1.0, 1.0], 0, 0), 1.0);
 }
+
+/// ⛔⛔ **UM RECT DEGENERADO É *NENHUMA* MÁSCARA, NÃO UMA MÁSCARA COLAPSADA.**
+///
+/// A auditoria de 2026-08-27 seguiu a cadeia até ao pixel: `TextureAtlas::region_uv` devolve
+/// `[0,0,0,0]` para uma chave desconhecida (nome escrito antes de a imagem carregar, célula
+/// libertada) e o `sprite_appearance` **nunca** devolve `None` para `SpriteSource::Atlas` ⇒ o
+/// `mask` entregava uma máscara com o rect neutro **e a textura do artista ligada**, e o shader
+/// fazia `dirt_uv = (0,0)` para todos os pixels: o texel `(0,0)` do átlas — o canto da primeira
+/// imagem importada — somado chapado sobre o halo inteiro, vezes a intensidade.
+///
+/// ⚠️ **O modo de falha depende dos DADOS**: átlas vazio ⇒ transparente e invisível; átlas cheio
+/// ⇒ o brilho fica de uma cor sólida. *Um defeito que só aparece com a segunda imagem importada
+/// é o que um smoke de uma imagem só nunca vê.*
+///
+/// ⚠️ O gate que existia (`the_neutral_framing_is_not_what_makes_the_frame_identical`) afirmava o
+/// neutro **em isolamento**, raciocinando sobre *«quando não há imagem escolhida»* — um gate
+/// sobre a DECLARAÇÃO enquanto o executor emparelhava o neutro com uma view real.
+#[test]
+fn a_degenerate_rect_is_no_mask_at_all_not_a_collapsed_one() {
+    for r in [
+        [0.0, 0.0, 0.0, 0.0],           // o que `region_uv` devolve para chave desconhecida
+        [0.25, 0.25, 0.25, 0.5],        // largura zero (célula de 1 px, o inset colapsa)
+        [0.25, 0.25, 0.5, 0.25],        // altura zero
+        [0.5, 0.5, 0.25, 0.25],         // invertido — o que a leitura `[x,y,w,h]` produzia
+        [0.0, 0.0, f32::NAN, 1.0],      // não-finito
+        [0.0, 0.0, f32::INFINITY, 1.0], // idem
+    ] {
+        assert!(
+            !super::rect_is_a_mask(r),
+            "{r:?} tinha de ser LIDO como ausencia de mascara"
+        );
+    }
+    // ⚠️ **CONTROLE — sem ele um `rect_is_a_mask` que devolvesse `false` sempre passaria**, e a
+    // feature inteira ficaria desligada em silêncio. As duas fontes que dão `[0,0,1,1]` e uma
+    // célula de átlas a sério.
+    for r in [[0.0, 0.0, 1.0, 1.0], [0.25, 0.5, 0.5, 0.75]] {
+        assert!(super::rect_is_a_mask(r), "{r:?} e' uma mascara legitima");
+    }
+}

@@ -131,6 +131,16 @@ fechou»*.
    **«este arco é uma isolinha»** (atravessado `= 0`), depois **«leva `n` arestas»**.
    ⛔ E a `torus_64x32` é um caso de canto nomeado: o F4 **recusa** aquele layout
    (`Infeasible`).
+   ⛔⛔ **E DUAS curas baratas foram medidas e MORTAS** (§23.15), o que fixa a morada:
+   *pregar também os cantos do layout* dá saída **byte-idêntica** (as variáveis inteiras
+   são as **livres** do sistema reduzido, e um canto regular é escrito por substituição —
+   não tem valor próprio para pregar); e *«é o arredondamento que desalinha»* é **falso**
+   — o desvio já está **todo no G3 contínuo** (`0,90` antes contra `0,96` depois na
+   orelha; em duas peças o G5 até o **melhora**).
+   ⇒ ⭐ **A morada é o G3.** A restrição entra ali, como equação e por **eliminação**;
+   ⚠️ e a diferença contra a Obra A é que ali se eliminava um 2-vector inteiro e aqui é
+   **um escalar** — o sistema reduzido tem de passar a ver as duas componentes em
+   separado. *É essa a wave.*
 2. ⭐⭐ **O patch de VALÊNCIA 12 da `sculpt_004`** — o traçado dá `16` patches (a `t003` dá
    `31`) e um deles é não-disco com `χ = −1`; a limpeza parou porque **piorava** a topologia.
    É a instância mais nítida do item 1, e veio da peça do artista.
@@ -159,7 +169,7 @@ fechou»*.
 `examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
 `ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.14.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.15.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

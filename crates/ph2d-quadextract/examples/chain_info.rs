@@ -369,6 +369,28 @@ fn main() {
         .filter_map(|(v, _)| u32::try_from(v).ok())
         .collect();
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+
+    // ⭐⭐⭐ **PREGAR TAMBÉM OS CANTOS DO LAYOUT** (`PH2D_PIN_CORNERS=1`).
+    //
+    // Hoje só as singularidades do CAMPO vão para o G5 com pedido de ponto inteiro. Os
+    // **cantos do layout** — os extremos de cada arco — não vão, e a §23.14 mediu que
+    // praticamente nenhum arco sai isolinha. ⚠️ *Pregar os extremos num inteiro não
+    // torna um arco isolinha* (isso é a restrição de a componente atravessada ser zero);
+    // é a **pré-condição** dela, e é a mudança mais pequena que a régua consegue medir.
+    //
+    // ⛔ Instrumento apenas — nada disto entra no produto sem o número ao lado.
+    let singular: Vec<u32> = if std::env::var("PH2D_PIN_CORNERS").as_deref() == Ok("1") {
+        let mut set: std::collections::BTreeSet<u32> = singular.into_iter().collect();
+        let before = set.len();
+        set.extend(layout.corners.iter().flatten().copied());
+        println!(
+            "  ⭐ PIN_CORNERS: {before} singulares do campo + cantos do layout ⇒ {} pedidos",
+            set.len()
+        );
+        set.into_iter().collect()
+    } else {
+        singular
+    };
     // ⭐⭐⭐ **AS CONDIÇÕES DE VALIDADE DO PATCH** (o achado da ordem das fases, §2.3):
     // disco · valência `3`–`6` · convexidade. ⚠️ **As duas primeiras já eram MEDIDAS pelo
     // traçado** (`TraceReport::valence`, `non_disk`) e por um método do layout
@@ -630,6 +652,23 @@ fn main() {
         Ok(l) => match ph2d_quantize::quantize_within(&l, ph2d_quantize::Budget::new(256, 512)) {
             Err(e) => println!("  ⛔ o F4 RECUSOU este layout: {e:?}"),
             Ok((q, _)) => {
+                // ⭐⭐⭐ **ONDE O DESVIO ENTRA: antes ou depois do arredondamento?**
+                //
+                // A escada gulosa move cada cone no máximo **meia célula**; um arco tem
+                // dois extremos ⇒ o G5 sozinho não pode desalinhar mais de **uma**. E o
+                // desvio medido é `0,61`–`0,96`. ⚠️ *Os dois números são compatíveis, e
+                // é exactamente por isso que a pergunta tem de ser medida em vez de
+                // deduzida.*
+                //
+                // ⛔ Se o contínuo já desalinha, a cura não é na escada — é no G3.
+                let (cont, _) =
+                    ph2d_gridmap::solve_welded(&mesh, &cut, &combed, h, opts.welded_rounds);
+                let ac = ph2d_gridmap::measure_arc_quantization(&cut, &cont, &q.arc);
+                println!(
+                    "  ⭐⭐⭐ ANTES do arredondamento (o G3 continuo): ⛔ {} de {} nao sao isolinhas \
+                     (atravessam p50 {:.2} max {:.2}) | discordancia p50 {:.2} soma {:.0}",
+                    ac.off_axis, ac.arcs, ac.across_p50, ac.across_max, ac.diff_p50, ac.diff_sum
+                );
                 let aq = ph2d_gridmap::measure_arc_quantization(&cut, &map, &q.arc);
                 println!(
                     "  ⭐⭐⭐ O MAPA contra o F4: {} arcos ({} costuras sem arco) ⇒ ⭐ {} CONCORDAM ({:.0}%) \

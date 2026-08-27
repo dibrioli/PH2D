@@ -1511,3 +1511,58 @@ elas discordam em **todos** os arcos das sete peças.
 a mesma maquinaria com um sujeito a mais, e herdaria qualquer defeito da primeira.
 ⛔ Nenhuma das duas entra como **termo de energia** — o precedente medido é a Obra A, onde
 penalizar em vez de eliminar deu `NaN` e `6,4e17`.
+
+### §23.15 — ⛔⛔ Duas curas BARATAS medidas e mortas, e o endereço fica em G3
+
+A §23.14 nomeou a obra. Antes de a construir, duas versões baratas foram tentadas — e
+**as duas caíram**, cada uma com o mecanismo à vista. *É por isso que se mede primeiro.*
+
+#### ⛔ Cura barata nº 1 — «pregar também os cantos do layout»
+
+Hoje só as singularidades do **campo** vão ao G5 com pedido de ponto inteiro. Pregar
+**também** os cantos do layout (`PH2D_PIN_CORNERS=1` no `chain_info`) parecia a mudança
+mais pequena com efeito possível.
+
+⛔ **Saída BYTE-IDÊNTICA nas três peças** — mesmos quads, mesmas órfãs, mesmo `X`, mesma
+tabela de arcos. E o contador já dizia porquê: *«`8` singularidades (de `32`)»*.
+
+⚠️ **O mecanismo está no código:** as variáveis inteiras do caminho soldado são **as
+LIVRES do sistema reduzido** ([`weld_round`](../../../crates/ph2d-gridmap/src/weld_round.rs)),
+e uma classe livre é a que carrega um **fecho**. Um canto **regular** não tem fecho: ele é
+escrito por **substituição** a partir dos vizinhos. ⇒ *ele não tem valor próprio para
+pregar.* A lista de pedidos é filtrada pela estrutura da soldadura, não honrada como
+vem — e nada nela é um defeito.
+
+⭐ *A régua da §23.14 pagou-se aqui:* sem ela, «pregar os cantos» teria parecido uma wave
+razoável.
+
+#### ⛔⛔ Cura barata nº 2 — «é o arredondamento que desalinha»
+
+A escada gulosa move cada cone no máximo **meia célula**; um arco tem dois extremos ⇒ o
+G5 sozinho não pode desalinhar mais de **uma**. E o desvio medido é `0,61`–`0,96`. *Os
+dois números são compatíveis* — o que torna a dedução tentadora e a medição obrigatória.
+
+| peça | ⭐ **antes** (G3 contínuo) | depois (G5) | o que o G5 acrescenta |
+|---|---|---|---|
+| `sculpt_eared` | `47/47` · **`0,90`** | `47/47` · `0,96` | `+0,06` |
+| `sphere_uv_96x144` | `44/44` · **`0,77`** | `44/44` · `0,75` | **`−0,02`** |
+| `sculpt_hooked` | `84/85` · **`0,62`** | `85/85` · `0,61` | **`−0,01`** |
+| `sculpt_ridged` | `56/56` · **`0,65`** | `54/56` · `0,69` | `+0,04` |
+
+⛔⛔⛔ **O desvio já está TODO no contínuo**, e em duas peças o arredondamento até o
+**melhora**. ⇒ *a cura não é uma regra de escolha na escada gulosa* — e construí-la teria
+sido uma wave inteira sobre a fase errada.
+
+#### ⇒ O endereço final desta jornada
+
+**G3, o sistema contínuo.** Ele minimiza o desalinhamento do **gradiente** contra o campo,
+e mais nada. O layout do F3 entra **só** para cortar. A restrição *«este arco é uma
+isolinha»* tem de entrar **ali**, como equação — e por **eliminação**, nunca por peso
+([`SPEC_restricoes_por_eliminacao`](../../cleanroom/SPEC_restricoes_por_eliminacao.md), a
+Obra A como precedente medido).
+
+⭐ E a forma dela é conhecida: com as classes livres a serem os cones, um arco entre dois
+cones dá **uma equação escalar** — a componente atravessada da diferença deles é `0` —
+nas mesmas incógnitas que a costura já elimina. ⚠️ *A diferença contra a Obra A é que ali
+se eliminava uma variável 2-vector inteira, e aqui elimina-se **um escalar**: o sistema
+reduzido tem de passar a ver as duas componentes em separado.* É essa a wave.

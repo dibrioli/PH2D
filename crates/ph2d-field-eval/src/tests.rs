@@ -4719,3 +4719,135 @@ fn a_mirror_on_an_operation_folds_an_off_centre_child() {
         }
     }
 }
+
+/// ⭐⭐⭐ **A FITA ESPECIALIZADA CONTRA A CONSULTA, NA REGIÃO QUE DE FACTO OCORRE** (W86) — a
+/// medição que reabre (ou fecha) a recusa da W56.
+///
+/// # A recusa, e o que dela sobra
+///
+/// O [`crate::profile::sd_profile_in_region`] escreve porque o perfil ficou **dentro da árvore** em
+/// vez de virar uma folha consultada:
+///
+/// | motivo | estado hoje |
+/// |---|---|
+/// | ⛔ os **modificadores** (`Hollow`, `Offset`, `Array`, `Taper`) não passam numa folha amostrada | **de pé** |
+/// | ⛔ a **quina viva**: o gradiente exacto só existe com `sampled.is_empty()` | ⚠️ **DISSOLVIDO na W70** — o traçado já lê a normal por diferença central na fita float, e quem consome o gradiente exacto é a **extração**, que não passa pelo caminho por região |
+///
+/// ⚠️ **E o número da recusa era `40 ns` contra `155`** — medido sobre o perfil **INTEIRO** de 168
+/// arestas. Hoje a fita que o traçado avalia é **especializada** e guarda `67`–`88`: *a vantagem da
+/// consulta encolhe com a coisa que a especialização já cortou, e ninguém a remediu depois disso.*
+///
+/// ```text
+/// cargo test -p ph2d-field-eval --profile ci-test -- --exact \
+///     tests::measure_the_query_against_the_specialised_tape --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_query_against_the_specialised_tape() {
+    use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
+    const N: usize = 200_000;
+    let reg = crate::hybrid::Registry::new();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    for arestas in [168usize, 672] {
+        let contour: Vec<[f32; 2]> = (0..arestas)
+            .map(|i| {
+                let a = std::f64::consts::TAU * (i as f64) / (arestas as f64);
+                [(0.6 * a.cos()) as f32, (0.6 * a.sin()) as f32]
+            })
+            .collect();
+        let profile = Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil");
+        let index = crate::profile_index::ProfileIndex::build(&profile);
+        let doc = FieldDoc::new(
+            vec![crate::leaf(
+                Primitive::Extrude {
+                    profile,
+                    half_height: 0.4,
+                    round: 0.06,
+                },
+                Xform::IDENTITY,
+            )],
+            NodeId(0),
+        )
+        .expect("extrusão");
+        let rc = crate::RegionCompiler::new(&doc);
+        println!("--- {arestas} arestas ---");
+        println!(
+            "região (lado) | guardadas | fita (ns/pt) | consulta LINEAR | consulta BVH | fita/BVH"
+        );
+        // ⚠️ **Os lados que de facto ocorrem**: um ladrilho de 64 px com 4 fatias varre uma região
+        // desta ordem, e a peça mede `1,2`.
+        //
+        // ⚠️ **E elas são DESLOCADAS para junto do contorno**, e não centradas: numa região centrada
+        // num círculo o corte mantém TODAS as arestas (o `dmax` é o mesmo para todas), e uma fixtura
+        // em que o corte não corta nada não mede o que o traçado faz. *Uma sonda que não reproduz o
+        // fenómeno mede outra coisa.*
+        for lado in [1.2f32, 0.6, 0.3, 0.15] {
+            let cx = 0.6 - lado * 0.5;
+            let (lo, hi) = (
+                [cx - lado * 0.5, -lado * 0.5, -0.45f32],
+                [cx + lado * 0.5, lado * 0.5, 0.45f32],
+            );
+            // Os pontos vivem DENTRO da região — é onde a fita especializada é válida.
+            let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+            let mut s = 12_345u64;
+            let mut rnd = || {
+                s = s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1);
+                ((s >> 33) as f64 / f64::from(u32::MAX)) as f32 - 0.5
+            };
+            for _ in 0..N {
+                xs.push(cx + rnd() * lado);
+                ys.push(rnd() * lado);
+                zs.push(rnd() * 0.9);
+            }
+            let guardadas = index.probe_cull([lo[0], lo[1]], [hi[0], hi[1]]);
+
+            let mut h = crate::hybrid::Hybrid::from_tree(rc.compile(&doc, lo, hi));
+            let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+            let fita = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    let _ = h.eval(&xs, &ys, &zs).expect("avalia");
+                    t0.elapsed().as_secs_f64() * 1e9 / N as f64
+                })
+                .collect());
+
+            // ⚠️ **A consulta faz o mesmo trabalho**: a distância 2D pelo índice, mais a aritmética
+            // do `Extrude` (o `z` e o filete) em Rust simples — que são meia dúzia de flops contra
+            // as dezenas de arestas, e deixá-los de fora seria comparar duas coisas diferentes.
+            let (mut scratch, mut out) = (Vec::new(), Vec::new());
+            let consulta = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    index.sd_batch_culled(&xs, &ys, &mut scratch, &mut out);
+                    let mut acc = 0.0f32;
+                    for (i, d) in out.iter().enumerate() {
+                        let dz = zs[i].abs() - 0.4;
+                        let a = (d + 0.06).max(0.0);
+                        let b = dz.max(0.0);
+                        acc += a.hypot(b) + a.max(dz).min(0.0) - 0.06;
+                    }
+                    std::hint::black_box(acc);
+                    t0.elapsed().as_secs_f64() * 1e9 / N as f64
+                })
+                .collect());
+            // ⭐ **E a consulta pelo BVH** — que é a que o `40 ns` da nota da W56 media. O
+            // `sd_batch_culled` faz uma varredura LINEAR sobre o conjunto cortado; o `sd_batch`
+            // desce a árvore por ponto. *Comparar a errada é comparar outra coisa.*
+            let bvh = med((0..5)
+                .map(|_| {
+                    let t0 = std::time::Instant::now();
+                    index.sd_batch(&xs, &ys, &mut out);
+                    std::hint::black_box(out.len());
+                    t0.elapsed().as_secs_f64() * 1e9 / N as f64
+                })
+                .collect());
+            println!(
+                "{lado:13.2} | {guardadas:9} | {fita:12.1} | {consulta:15.1} | {bvh:12.1} | {:8.2}x",
+                fita / bvh
+            );
+        }
+    }
+}

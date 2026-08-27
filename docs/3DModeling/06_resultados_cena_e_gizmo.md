@@ -5750,7 +5750,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ O contorno cheio era `3,39×` no assentar de uma peça de resolução ALTA | ⭐ curado pela §86: o assente engrossa até ao erro que a imagem mostra | §84.4, §86.1 |
 | ✅ **O decimador do preview apagava QUINAS** — e quem sobrevivia era uma lotaria de índice | ⭐ decima por **GIRO**: a estrela vai de `134` pontos partidos para **`10` exactos**, imagem idêntica | §85 |
 | ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
-| ⏳ **A MARCHA** — os outros `80 %` do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio que marcha, e `91 %` dos raios marcham) | §73, §82.1 |
+| ⏳ **A MARCHA** — o que sobra do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio) · ⛔ **o perfil como CONSULTA fora**: a fita especializada ganha `2×`–`8×` na região real | §73, §82.1, §87 |
 | ⭐⭐⭐ **O quadro de movimento usa `36 %` da máquina** (`274,9 → 23,8 ms` em 32 threads) — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o tamanho do ladrilho **NÃO** é a alavanca (`48 ≈ 64`, medido duas vezes com vencedores opostos): `TILE = 64` fica | §82.8 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
@@ -5768,6 +5768,15 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⛔⛔ **W86 (§87): a RECUSA da W56 confirmada, e por outra razão — o perfil como CONSULTA perde.**
+  Com a montagem quase eliminada, o quadro é quase só marcha, e a direcção nomeada era trocar a fita
+  por um BVH (*«`40 ns` contra `155`»*). Medido na região que de facto ocorre: **a fita especializada
+  ganha `2×`–`8×`**, e o BVH só ganha na peça inteira a `672` arestas — o regime que a própria W56
+  eliminou. ⭐ O mecanismo é geral: *uma estrutura de aceleração amortiza-se sobre o trabalho que ela
+  poda; quando outro mecanismo já o podou, ela paga a própria descida por nada* (o cruzamento é a
+  ~`150` arestas guardadas, e a especialização guarda `24`–`202`). ⚠️ E a sonda corrigiu-se **duas**
+  vezes antes de dizer isto: media a função errada (a linear, não o BVH) e usava regiões **centradas**,
+  em que o corte não corta nada.
 - ⭐⭐⭐ **W85 (§86): o preview pede um ERRO, e a contagem de arestas sai da forma.** A decimação por
   giro (W84) tornou a contagem uma consequência: o que o orçamento fixa é o **erro da normal**, que é
   o que a luz mostra. ⇒ dois orçamentos — `1,0°` a mexer (que **reproduz o que já shipava**: `168`
@@ -7762,3 +7771,58 @@ tomado. Mutação que o mata: um segundo chamador do `coarse_doc`.
 
 ⛔ *Se esse gate cair, subir o `Resolution` deixa de ter qualquer efeito observável* — e o knob vira
 um controle que consome o gesto e não faz nada, que é o defeito que este módulo já pagou três vezes.
+
+## §87 — W86: ⛔ RECUSA CONFIRMADA — o perfil como CONSULTA perde para a fita especializada (27/08)
+
+Com a montagem quase eliminada (W82/W83), o quadro de movimento passou a ser **quase só marcha**, e o
+custo dela é `amostras × arestas por região`. A direcção nomeada desde a W56 era trocar a fita por uma
+**consulta** ao índice do contorno (um BVH), e a nota dela dizia: *«a `ProfileIndex` responde em
+`40 ns` o que a fita responde em `155`»*.
+
+⚠️ **Metade da recusa da W56 tinha dissolvido:** ela dava dois motivos — os **modificadores** (que não
+passam numa folha amostrada) e a **quina viva** (o gradiente exacto). ⭐ O segundo caiu na W70: o
+traçado lê a normal por **diferença central** na fita float, e quem consome o gradiente exacto é a
+**extração**, que não passa pelo caminho por região.
+
+### §87.1 — A medição, na região que de facto ocorre
+
+`measure_the_query_against_the_specialised_tape` (`200 k` pontos por célula, mediana de 5):
+
+| arestas do contorno | região (lado) | guardadas | fita (ns/pt) | consulta BVH | **fita/BVH** |
+|---:|---:|---:|---:|---:|---:|
+| `168` | `1,20` (a peça) | `168` | `246,9` | `283,2` | `0,87×` |
+| `168` | `0,60` | `168` | `125,8` | `489,3` | `0,26×` |
+| `168` | `0,30` | `52` | `44,7` | `262,3` | **`0,17×`** |
+| `168` | `0,15` | `24` | `22,2` | `181,9` | **`0,12×`** |
+| `672` | `1,20` (a peça) | `672` | `1083,2` | `397,6` | **`2,72×`** |
+| `672` | `0,60` | `672` | `432,0` | `723,3` | `0,60×` |
+| `672` | `0,30` | `202` | `187,8` | `372,8` | `0,50×` |
+| `672` | `0,15` | `90` | `77,2` | `249,8` | `0,31×` |
+
+⭐⭐⭐ **A fita especializada ganha `2×`–`8×` em toda região que o traçado usa.** O BVH só ganha na
+**peça inteira** com `672` arestas — que é exactamente o regime que a especialização da W56
+**eliminou**.
+
+### §87.2 — ⭐⭐⭐ O mecanismo, e ele é geral
+
+O custo do BVH é **quase plano** (`180`–`720 ns`, ele desce uma árvore por ponto); o da fita **escala
+com as arestas guardadas** (`22`–`1 083`). ⇒ eles cruzam-se por volta de **`150` arestas guardadas**,
+e a especialização guarda **`24`–`202`**.
+
+⭐ *Uma estrutura de aceleração amortiza-se sobre o trabalho que ela poda. Quando outro mecanismo já
+podou esse trabalho, ela fica a pagar o custo da própria descida por nada.* Aos `24` arestas a fita
+faz vinte e quatro `min` numa faixa SIMD (`22 ns`); o BVH desce uma árvore (`182 ns`).
+
+⚠️ **E a nota da W56 não estava errada — ela media outro regime.** O `40 ns` contra `155` é sobre o
+perfil **INTEIRO**, e a wave que a escreveu foi a que tirou esse regime do caminho. *Uma recusa pode
+ser superada pelo número da própria wave que a registou, e quem a for reler tem de reconferir de que
+regime ele era.*
+
+### §87.3 — ⚠️ E a sonda corrigiu-se DUAS vezes antes de dizer isto
+
+1. ⛔ **Ela media a função errada.** O `sd_batch_culled` faz uma varredura **LINEAR** sobre o conjunto
+   cortado; quem desce a árvore é o `sd_batch`. *Comparar a errada é comparar outra coisa* — e a
+   linear sai `2×`–`7×` pior que o BVH em quase todas as células.
+2. ⛔ **As regiões eram CENTRADAS na peça**, e num círculo isso mantém **todas** as arestas (o `dmax`
+   do corte é o mesmo para todas). ⇒ a 1.ª corrida comparava uma fita cheia com uma consulta cheia,
+   nas oito células. *Uma sonda que não reproduz o fenómeno mede outra coisa.*

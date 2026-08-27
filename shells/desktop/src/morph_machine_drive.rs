@@ -303,12 +303,6 @@ pub(crate) fn reconcile(
         .map(|(e, _)| e.to_bits())
         .collect();
     let mut fixed = 0;
-    if log_on() && !hosts.is_empty() {
-        eprintln!(
-            "[morph] reconcile: {} conjunto(s) neste quadro",
-            hosts.len()
-        );
-    }
     for bits in hosts {
         let e = Entity::from_bits(bits);
         let shapes = crate::morph_set::graph_of(sim, map, e).shapes();
@@ -357,7 +351,7 @@ pub(crate) fn reconcile(
 /// ⚠️ Ele existe porque o caminho que falha é o **da janela**: o ⊘, o apagar e o arrasto vivem no
 /// laço de render, e um gate headless prova a lei sem provar a fiação. *Quando a lei está verde e o
 /// produto não, o instrumento é o que fecha a distância.*
-fn log_on() -> bool {
+pub(crate) fn log_on() -> bool {
     static ON: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *ON.get_or_init(|| std::env::var_os("PH2D_MORPH_LOG").is_some())
 }
@@ -403,6 +397,9 @@ fn repair_states(
     shapes: &[ph2d_vec_scene::VecPathId],
 ) -> bool {
     let Some(h) = crate::morph_set::path_of(map, host) else {
+        if log_on() {
+            eprintln!("[morph] SAIU CEDO: o conjunto nao tem VecPathId no mapa");
+        }
         return false;
     };
     // ⚠️ **ATALHO DE CUSTO, e não uma lei** — dito assim de propósito: com a tabela vazia os laços
@@ -411,7 +408,7 @@ fn repair_states(
     // a sub-árvore e aloca, uma vez por conjunto por quadro. *Não vestir um atalho de lei é o que
     // impede a próxima leitura de procurar o gate que ele nunca vai ter.*
     if states.get(h).is_empty() {
-        return false;
+        return false; // o caso normal: um conjunto sem States. **Não** se loga — era o dilúvio.
     }
     let live = crate::vec_ui_state_edit::members(sim, scene, map, h);
     // ⚠️ **A leitura vem toda ANTES da escrita**: as duas portas abaixo reescrevem papéis
@@ -431,9 +428,13 @@ fn repair_states(
             }
         }
     }
-    if log_on() {
+    // ⚠️ **O log é um EVENTO, não um relatório por quadro.** A 1.ª versão imprimia sempre que a
+    // tabela não estava vazia — 60 linhas por segundo — e o Enio respondeu *"há milhares de logs"*:
+    // a linha que importava ficou enterrada nas que não importavam. *Um diagnóstico que imprime
+    // todo quadro esconde o evento que ele existe para mostrar.*
+    if log_on() && (!gone_objects.is_empty() || !gone_shapes.is_empty()) {
         eprintln!(
-            "[morph] repair host={h} membros={shapes:?} vivos={live:?} \
+            "[morph] REPARO host={h} membros={shapes:?} vivos={live:?} \
              poses-orfas={gone_objects:?} formas-orfas={gone_shapes:?}"
         );
     }
@@ -446,7 +447,7 @@ fn repair_states(
     for s in gone_shapes {
         let to = crate::vec_ui_state_edit::replace_morph_shape_in_all_states(states, h, s, shapes);
         if log_on() {
-            eprintln!("[morph] repair host={h} substituiu forma {s} por {to:?}");
+            eprintln!("[morph] REPARO host={h} substituiu forma {s} por {to:?}");
         }
         fixed |= to.is_some();
     }

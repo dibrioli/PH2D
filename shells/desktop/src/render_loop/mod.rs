@@ -8697,6 +8697,20 @@ impl crate::App {
                         // LEVAR as poses dela — não é alcançável de um teste escrita neste braço, e
                         // foi assim que ela ficou por escrever uma wave inteira.
                         crate::vec_morph_edit::MorphCmd::Disconnect { row } => {
+                            // ⚠️ **UMA linha por CLIQUE** (`PH2D_MORPH_LOG=1`) — e ela imprime as
+                            // duas coisas que decidem se a arrumação alcança a tabela: o
+                            // `VecPathId` do conjunto, e as CHAVES que a tabela de States tem.
+                            // Se as duas não baterem, a arrumação sai cedo e nada acontece.
+                            if crate::morph_machine_drive::log_on() {
+                                eprintln!(
+                                    "[morph] CLIQUE ⊘ row={row} conjunto={:?} \
+                                     chaves-da-tabela={:?} formas={:?}",
+                                    crate::morph_set::path_of(&self.vec_entities, host),
+                                    ui_states.hosts().collect::<Vec<_>>(),
+                                    crate::morph_set::graph_of(sim, &self.vec_entities, host)
+                                        .shapes(),
+                                );
+                            }
                             crate::morph_set::disconnect_row(sim, &self.vec_entities, host, row)
                         }
                         crate::vec_morph_edit::MorphCmd::Dissolve => {

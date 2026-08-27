@@ -161,6 +161,7 @@ pub(super) fn black_1x1(gpu: &ph2d_gpu::GpuContext) -> super::Tex {
         texture,
         view,
         size: (1, 1),
+        serial: super::tex::next_serial(),
     }
 }
 

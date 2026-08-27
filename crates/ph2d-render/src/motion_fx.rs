@@ -113,6 +113,9 @@ pub struct MotionFx {
     /// A identidade da máscara que os bind groups de agora apontam — `None` = o fallback.
     /// É o que impede um bind group por quadro (ver [`DirtMask::key`]).
     dirt_key: Option<u64>,
+    /// Quantas vezes os bind groups foram REFEITOS por causa da máscara — a sonda que o gate da
+    /// memória precisava e não tinha (ver [`Tex::serial`](super::tex::Tex::serial)).
+    dirt_rebinds: u32,
 
     // Size-dependent (rebuilt on resize):
     rt: Tex,
@@ -371,6 +374,7 @@ impl MotionFx {
             lut_uploaded: Vec::new(),
             dirt_fallback,
             dirt_key: None,
+            dirt_rebinds: 0,
             rt: t.rt,
             mips: t.mips,
             u_down: t.u_down,
@@ -450,8 +454,25 @@ impl MotionFx {
         // o `texture_id` que a shell já tem, e a comparação com o que está ligado é o que
         // separa *escolher outra imagem* de *desenhar o mesmo quadro outra vez*. É a mesma
         // disciplina do `lut_uploaded` logo abaixo, com o outro recurso.
-        let wanted = dirt.map(|d| d.key);
+        // ⚠️⚠️ **UM PASSE QUE NÃO LÊ A MÁSCARA NÃO A REBINDA.** Medido em 2026-08-27: o
+        // `bloom_over` tem **dois** chamadores por quadro em `render_loop::present` — o do
+        // emissivo (`dirt: None`, linha ~290) e o do glow do Motion (`dirt: Some(..)`, ~387) —, e
+        // eles **não são exclusivos**. Numa cena com sprite emissiva **e** um `fx.glow` com
+        // imagem escolhida, a chave alternava `None ↔ Some(k)` duas vezes por quadro e os quatro
+        // bind groups refaziam-se **duas** vezes: ≈24 descritores por quadro, 1 440/s — que é
+        // exactamente a *"alocação de descritor a 60 Hz"* que o doc de [`DirtMask::key`] declara
+        // evitar. *Um cache com dois escritores que discordam não é um cache.*
+        //
+        // A cerca certa não é uma chave por passe: é notar que um passe com `dirt_intensity == 0`
+        // **multiplica a máscara por zero** e por isso não se importa com o que está ligado. ⇒ ele
+        // deixa o binding como está, e o próximo passe que de facto a leia rebinda se precisar.
+        let wanted = if params.dirt_intensity > 0.0 {
+            dirt.map(|d| d.key)
+        } else {
+            self.dirt_key
+        };
         if wanted != self.dirt_key {
+            self.dirt_rebinds += 1;
             let view = dirt.map_or(&self.dirt_fallback.view, |d| d.view);
             let (prefilter, down, up, composite) = bind_all(
                 gpu,

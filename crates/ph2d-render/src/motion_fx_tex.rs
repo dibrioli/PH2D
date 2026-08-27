@@ -14,6 +14,19 @@ pub(super) struct Tex {
     pub(super) texture: wgpu::Texture,
     pub(super) view: wgpu::TextureView,
     pub(super) size: (u32, u32),
+    /// **A IDENTIDADE da alocação** — um número monotónico por textura criada.
+    ///
+    /// ⚠️ **Ele existe porque um gate deste crate media a coisa errada.** O
+    /// `the_dirt_mask_binds_on_a_real_device_and_swapping_it_keeps_the_mips` diz, no doc dele,
+    /// que a metade de MEMÓRIA está afirmada *"por identidade de textura"* — e comparava
+    /// `(u32, u32)` de **tamanho**. Como o `bloom_over` nunca reatribui `self.mips`, os dois
+    /// vectores eram o mesmo dado lido duas vezes: **mutação nenhuma podia matá-lo**, nem a que
+    /// ele nomeia (trocar `bind_all` por um `build_targets` inteiro, que devolveria os mesmos
+    /// tamanhos). *Uma afirmação que mutação nenhuma mata é uma afirmação sobre nada.*
+    ///
+    /// ⛔ Não é `wgpu::Texture::global_id()` — essa API saiu do wgpu. Um contador nosso é exacto,
+    /// custa um `u64` por textura de tela, e responde à pergunta que o doc já fazia.
+    pub(super) serial: u64,
 }
 
 pub(super) fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
@@ -37,7 +50,16 @@ pub(super) fn make_tex(gpu: &GpuContext, size: (u32, u32), label: &str) -> Tex {
         texture,
         view,
         size,
+        serial: next_serial(),
     }
+}
+
+/// O contador de [`Tex::serial`] — monotónico e partilhado por todo o processo, que é o que uma
+/// prova de identidade precisa (dois `Tex` diferentes nunca têm o mesmo número).
+pub(super) fn next_serial() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(1);
+    N.fetch_add(1, Ordering::Relaxed)
 }
 
 /// **A LUT DA RAMPA DO HALO** — `HALO_LUT_TEXELS × 1`, `Rgba16Float`.
@@ -67,6 +89,7 @@ pub(super) fn make_lut(gpu: &GpuContext) -> Tex {
         texture,
         view,
         size: (HALO_LUT_TEXELS as u32, 1),
+        serial: next_serial(),
     }
 }
 

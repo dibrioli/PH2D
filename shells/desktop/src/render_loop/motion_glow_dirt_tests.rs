@@ -22,8 +22,12 @@ fn r(texture_id: u32, uv_rect: [f32; 4]) -> Resolved {
 /// não mudaria, sem nada vermelho em lado nenhum.
 #[test]
 fn two_atlas_cells_are_two_different_masks() {
+    // ⚠️ **Duas células a SÉRIO.** A 1.ª versão escrevia a segunda como `[0.5, 0.5, 0.25, 0.25]`,
+    // que em `[u0, v0, u1, v1]` é um rect invertido e não uma célula — inofensivo para o que este
+    // gate mede (o `key_of` come bits), mas *a fixtura não continha o fenómeno que o doc nomeia*,
+    // e é a mesma classe de fixtura que já custou esta feature inteira uma vez.
     let a = key_of(r(0, [0.0, 0.0, 0.25, 0.25]));
-    let b = key_of(r(0, [0.5, 0.5, 0.25, 0.25]));
+    let b = key_of(r(0, [0.5, 0.5, 0.75, 0.75]));
     assert_ne!(a, b, "duas celulas do MESMO atlas colidiram na chave");
     // E o mesmo rect no mesmo id é a mesma escolha — senão os bind groups refar-se-iam
     // por quadro, que é exactamente o que a chave existe para evitar.

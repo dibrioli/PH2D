@@ -538,6 +538,56 @@ fn main() {
         "  ⭐⭐ RAIZES de classe SIMPLES (a relax_class tambem as escrevia): {}",
         r.tie_plain_roots
     );
+    println!(
+        "  ⛔⛔⛔ EIXOS que a escada SALTOU por estarem amarrados (nunca viram inteiro): {}",
+        r.tie_axes_skipped
+    );
+
+    // ⭐⭐⭐ **O DESLOCAMENTO `δ` DE CADA MEMBRO AMARRADO, e quanto dele e' FRACCIONARIO.**
+    //
+    // ⚠️ Um membro amarrado vale `σ·raiz + δ`, e a escada gulosa **nao o prega** (o eixo
+    // esta' congelado pela amarra). ⇒ ele so' cai em inteiro se o `δ` for inteiro — e o `δ`
+    // sai de `e·off_A − e·off_B`, que e' linear nos shifts e **nao tem razao nenhuma para
+    // o ser**. *Se esta coluna nao for zero, as translacoes deixam de ser inteiras por
+    // CONSTRUCAO, e a extraccao recebe fraccionarias.*
+    if ph2d_gridmap::arcline_enabled() {
+        let (w_d, _) = ph2d_gridmap::weld(&cut, &combed);
+        let (m_d, _) = ph2d_gridmap::solve_welded(
+            &mesh,
+            &cut,
+            &combed,
+            h,
+            ph2d_gridmap::weld_solve_driver::ROUNDS,
+        );
+        let t_d = ph2d_gridmap::arcline::build_arc_ties(&cut, &w_d, &m_d);
+        let mut fracs: Vec<f32> = Vec::new();
+        let (mut membros, mut inteiros) = (0usize, 0usize);
+        for g in 0..t_d.groups() {
+            let Some((root, mem)) = t_d.group(g) else {
+                continue;
+            };
+            for &x in mem {
+                if x == root {
+                    continue;
+                }
+                let (_, _, delta) = t_d.of(x);
+                let f = (delta - delta.round()).abs();
+                membros += 1;
+                if f <= 1.0e-4 {
+                    inteiros += 1;
+                }
+                fracs.push(f);
+            }
+        }
+        fracs.sort_by(f32::total_cmp);
+        let p50 = fracs.get(fracs.len() / 2).copied().unwrap_or(0.0);
+        let mx = fracs.last().copied().unwrap_or(0.0);
+        println!(
+            "  ⭐⭐⭐ O DESLOCAMENTO δ dos membros amarrados: {membros} membros nao-raiz \
+⇒ ⭐ {inteiros} com δ INTEIRO · ⛔ {} FRACCIONARIO (parte fracc. p50 {p50:.3} max {mx:.3})",
+            membros - inteiros
+        );
+    }
 
     // ⭐⭐⭐ **O PREÇO POR GRUPO** — `PH2D_ARC_GROUP_SCAN=1`.
     //

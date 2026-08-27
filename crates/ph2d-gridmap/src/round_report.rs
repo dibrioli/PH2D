@@ -119,6 +119,9 @@ pub struct RoundReport {
     pub tie_gain: (f32, f32),
     /// ⭐⭐ Grupos com RAIZ de classe simples.
     pub tie_plain_roots: usize,
+    /// ⛔⛔⛔ Eixos de incógnitas livres que a escada SALTOU por estarem congelados por
+    /// uma amarra — ou seja, escalares que nunca chegam a ser inteiros.
+    pub tie_axes_skipped: usize,
     /// ⭐ A ronda em que o contínuo estourou (`0` = nunca), e o movimento dela.
     pub nonfinite_round: (usize, f32),
     /// ⭐⭐ Qual escritor estourou — ver `WeldSolveReport::nonfinite_who`.

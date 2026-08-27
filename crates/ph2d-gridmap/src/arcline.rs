@@ -306,7 +306,48 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
         // `Y_r_b = (σ·s_a/s_b)·Y_r_a + (σ·d_a + δ − d_b)/s_b`.
         uf.parent[root_b as usize] = root_a;
         uf.sign[root_b as usize] = sigma * s_a / s_b;
-        uf.off[root_b as usize] = (sigma.mul_add(d_a, delta) - d_b) / s_b;
+        // ⭐⭐⭐ **O DESLOCAMENTO DE UM ARCO É INTEIRO, e isto é o que o torna um.**
+        //
+        // ⛔⛔⛔ **Medido (2026-08-27): era isto que partia o `χ`.** Um membro amarrado vale
+        // `σ·raiz + δ`, e a escada gulosa **não o prega** — o eixo está congelado pela
+        // amarra. ⇒ ele só cai em inteiro se o `δ` o for, e o `δ` sai de
+        // `e·off_A − e·off_B`, que é linear nos shifts e não tem razão nenhuma para o ser:
+        //
+        // | peça | membros não-raiz | `δ` inteiro | ⛔ `δ` fraccionário | dist. a inteiro DEPOIS |
+        // |---|---|---|---|---|
+        // | `sculpt_hooked` | `83` | `11` | **`72`** | `0,4706` |
+        // | `sculpt_wrinkled` | `46` | `6` | **`40`** | `0,4532` |
+        // | `sphere_uv_96x144` | `44` | `8` | **`36`** | `0,4966` |
+        //
+        // ⭐ **Arredondar AQUI chega para todos:** a composição do `find` é
+        // `off_filho + sinal·off_pai` com `sinal = ±1`, então inteiro + inteiro continua
+        // inteiro, e dividir por `s_b = ±1` também o preserva.
+        //
+        // ⛔⛔⛔ **E NÃO CURA — a hipótese está REFUTADA por medição (2026-08-27).** Com o
+        // `δ` inteiro a coluna que ele ataca vai a zero (`0` fraccionários nas quatro
+        // peças) e **a distância a inteiro DEPOIS fica onde estava** (`0,45`–`0,50`):
+        //
+        // | peça | `δ` fracc. | dist. a inteiro | dobras | `χ` |
+        // |---|---|---|---|---|
+        // | `hooked` real | `72` | `0,4706` | `75` | `−6` |
+        // | `hooked` **inteiro** | **`0`** | ⛔ `0,4542` | ⛔ `102` | `−4` |
+        // | `wrinkled` real | `40` | `0,4532` | `27` | `−5` |
+        // | `wrinkled` **inteiro** | **`0`** | ⛔ `0,4998` | ⛔ `32` | ⛔ `−6` |
+        // | `sphere_uv` real | `36` | `0,4966` | `0` | `−3` |
+        // | `sphere_uv` **inteiro** | **`0`** | ⛔ `0,4561` | `0` | ⛔ `−4` |
+        // | `eared` real | `44` | `0,4935` | `17` | `−4` |
+        // | `eared` **inteiro** | **`0`** | ⛔ `0,4883` | ⛔ `21` | ⛔ `−6` |
+        //
+        // ⇒ *a razão é que o `δ` nunca foi o problema:* um membro vale `σ·raiz + δ`, e
+        // **a raiz também não é pregada** — a amarra congela o eixo de todos os membros e
+        // a escada salta os congelados (`26` de `96` eixos na `hooked`,
+        // [`crate::round::RoundReport::tie_axes_skipped`]). *Um `δ` inteiro somado a uma
+        // raiz fraccionária dá um membro fraccionário.*
+        //
+        // ⚠️ Fica **desligado** (`PH2D_ARC_INT_DELTA=1` liga): ele melhora o alinhamento
+        // (`0,00` de atravessagem em todas) e paga dobras e `χ` em três das quatro.
+        let raw = (sigma.mul_add(d_a, delta) - d_b) / s_b;
+        uf.off[root_b as usize] = if int_delta() { raw.round() } else { raw };
     }
 
     offs.sort_by(f32::total_cmp);
@@ -330,6 +371,14 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
     }
     ties.report = out;
     ties
+}
+
+/// ⛔⛔ **ARREDONDA O `δ` DE UMA AMARRA AO INTEIRO** — `PH2D_ARC_INT_DELTA=1`.
+///
+/// ⛔ **MEDIDO E REJEITADO (2026-08-27): faz o que promete e não cura nada.** Ver a tabela
+/// no sítio onde ele é usado. Nasce **desligado**.
+fn int_delta() -> bool {
+    std::env::var("PH2D_ARC_INT_DELTA").ok().as_deref() == Some("1")
 }
 
 /// ⭐⭐⭐ **UMA EQUAÇÃO DE ARCO no espaço de variáveis do [`crate::weld_flat`].**

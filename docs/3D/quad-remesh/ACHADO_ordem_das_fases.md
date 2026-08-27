@@ -2081,3 +2081,84 @@ dos knobs VIZINHOS**, porque é a métrica que se repete, não o botão.
 - ⛔ **Não** se sabe o que parte o `χ` — e as dobras estão **eliminadas** da lista de
   suspeitos, que é o que esta secção compra.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.24 — ⭐⭐⭐ O que parte o `χ`: NENHUM escalar amarrado chega a ser inteiro
+
+A §23.23 eliminou as dobras da lista de suspeitos. O suspeito seguinte estava impresso no
+relatório desde o princípio, e eu não o tinha olhado:
+
+```
+⭐ distancia a inteiro DEPOIS: 4.706e-1   (tem de ser 0)
+EXTRACCAO: ... ⭐ 16 FRACCIONARIAS
+```
+
+O controlo sem amarras dá `0,000e0` e `0` fraccionárias. ⇒ **com as amarras, o G5 deixa de
+entregar translações inteiras** — e a extracção é construída sobre a hipótese de que elas o
+são.
+
+#### A 1.ª explicação: o `δ` — construída, medida, REFUTADA
+
+Um membro amarrado vale `σ·raiz + δ`, e o `δ` sai de `e·off_A − e·off_B`, linear nos
+shifts, **sem razão nenhuma para ser inteiro**. Medido:
+
+| peça | membros não-raiz | `δ` inteiro | ⛔ `δ` fraccionário | parte fracc. p50 |
+|---|---|---|---|---|
+| `sculpt_hooked` | `83` | `11` | **`72`** | `0,209` |
+| `sculpt_wrinkled` | `46` | `6` | **`40`** | `0,261` |
+| `sphere_uv_96x144` | `44` | `8` | **`36`** | `0,249` |
+
+⭐ Arredondar o `δ` na construção **basta para todos**, e a razão é estrutural: a composição
+do union-find é `off_filho + sinal·off_pai` com `sinal = ±1`, logo inteiro + inteiro
+continua inteiro. Implementado, e a coluna vai a **zero** nas quatro peças.
+
+⛔⛔⛔ **E não cura:**
+
+| peça | `δ` | `δ` fracc. | dist. a inteiro | dobras | atravessagem | `χ` |
+|---|---|---|---|---|---|---|
+| `hooked` | real | `72` | `0,4706` | `75` | `0,02` | `−6` |
+| | **inteiro** | **`0`** | ⛔ `0,4542` | ⛔ `102` | `0,00` | `−4` |
+| `wrinkled` | real | `40` | `0,4532` | `27` | `0,00` | `−5` |
+| | **inteiro** | **`0`** | ⛔ `0,4998` | ⛔ `32` | `0,00` | ⛔ `−6` |
+| `sphere_uv` | real | `36` | `0,4966` | `0` | `0,07` | `−3` |
+| | **inteiro** | **`0`** | ⛔ `0,4561` | `0` | `0,00` | ⛔ `−4` |
+| `eared` | real | `44` | `0,4935` | `17` | `0,36` | `−4` |
+| | **inteiro** | **`0`** | ⛔ `0,4883` | ⛔ `21` | `0,00` | ⛔ `−6` |
+
+*A coluna que ele ataca vai a zero e a que interessa não se mexe.* ⇒ **fica desligado**
+(`PH2D_ARC_INT_DELTA=1` liga), com a tabela ao lado.
+
+#### ⭐⭐⭐ E a refutação NOMEIA a causa
+
+*Um `δ` inteiro somado a uma raiz fraccionária dá um membro fraccionário.* E a raiz é
+fraccionária porque **também não é pregada**: a [`attach_ties`] congela o eixo de **todos**
+os membros — a raiz incluída, desde a cura da §23.22 — e a escada gulosa **salta os eixos
+congelados**. Medido, e agora com coluna própria
+([`RoundReport::tie_axes_skipped`](../../../crates/ph2d-gridmap/src/round_report.rs)):
+
+| peça | eixos SALTADOS pela escada | inteiros pregados | fracção que nunca vê um inteiro |
+|---|---|---|---|
+| `sculpt_hooked` | **`26`** | `70` | **`27 %`** |
+| `sphere_uv_96x144` | **`16`** | `28` | **`36 %`** |
+
+⇒ ⛔ **Um grupo amarrado é excluído em bloco do arredondamento inteiro**, e fica onde o
+contínuo o deixou. *A amarra responde «quem escreve isto» com «a amarra», e ninguém
+perguntou «e quem o torna inteiro».*
+
+#### ⇒ A obra seguinte está ESPECIFICADA, e é pequena
+
+Um grupo amarrado tem de contribuir com **UMA** variável inteira para a escada — a **raiz**
+—, e os outros membros seguem por `σ·y_raiz + δ` com `δ` inteiro (que é o que o
+`PH2D_ARC_INT_DELTA` já sabe fazer, e que só agora tem um consumidor que o torna útil).
+
+⚠️ **São DUAS perguntas distintas que hoje partilham um predicado:**
+
+| pergunta | quem responde hoje | quem devia responder |
+|---|---|---|
+| a `relax_free` escreve este eixo? | `free_axis_is_frozen` | **não**, para todo membro |
+| a escada prega este eixo? | `free_axis_is_frozen` | **sim** para a raiz, **não** para os outros |
+
+*Um predicado a responder a duas perguntas dá a resposta certa a uma delas.*
+
+⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

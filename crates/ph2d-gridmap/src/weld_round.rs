@@ -282,7 +282,14 @@ pub fn round_welded(
         // `max` sobre floats **ignora `NaN` em silêncio** e a soma não. **Toda régua
         // desta casa que reporta «o pior» tem essa cegueira.**
         for ax in 0..2 {
-            if !r.free_axis_is_frozen(i, ax) {
+            if r.free_axis_is_frozen(i, ax) {
+                // ⛔⛔⛔ **CONTA-SE.** Uma amarra congela o eixo de TODOS os membros — a
+                // raiz incluída —, e a escada salta os congelados. ⇒ *nenhum escalar de um
+                // grupo amarrado chega a ser pregado a um inteiro*, e o grupo inteiro fica
+                // onde o contínuo o deixou. É esta a coluna que explica a «distância a
+                // inteiro DEPOIS» de `~0,45` com as amarras ligadas.
+                rep.tie_axes_skipped += 1;
+            } else {
                 free.push((Target::Free(i), ax));
             }
         }

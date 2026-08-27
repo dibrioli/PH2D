@@ -257,3 +257,34 @@ fn registers_and_resolves() {
     register(&mut reg).unwrap();
     assert!(reg.resolve(MANIFEST.id).is_some());
 }
+
+/// ⛔⛔ **O GÉMEO DO TETO NO DEVICE É O MESMO NÚMERO — e nenhum dos quatro tinha gate.**
+///
+/// O grampo de `dt` existe **duas** vezes: uma vez em Rust e uma vez como literal dentro do WGSL.
+/// A auditoria de 2026-08-27 provou a divergência a passar despercebida: `SPRING_MAX_DT `
+/// multiplicado por **10 000** deixava a crate verde, o `registry-init` verde, o `ph2d-gpu-cook`
+/// verde — **e os 13 gates de paridade CPU↔GPU verdes num adapter REAL**.
+///
+/// ⚠️ **Não é o ponto cego de «gates de GPU são `#[ignore]`»: é o da FIXTURA.** Toda rota de
+/// paridade fixa `dt = 1/60`, que está **abaixo** do grampo — então nenhum teste chega ao ponto
+/// em que a constante age, e as duas cópias podem divergir em silêncio para sempre.
+///
+/// A régua lê o número do FONTE do shader e compara com o da CPU, o que também apanha uma
+/// reescrita («`0.03`» → «`3e-2`») sem exigir que os dois literais sejam textualmente iguais.
+#[test]
+fn the_device_twin_of_the_ceiling_is_the_same_number() {
+    let src = include_str!("kernel.rs");
+    let needle = "const SPRING_MAX_DT: f32 = ";
+    let n: f32 = src
+        .split(needle)
+        .nth(1)
+        .and_then(|s| s.split(';').next())
+        .and_then(|s| s.trim().parse().ok())
+        .expect("o WGSL tem de declarar o gemeo do teto");
+    assert!(
+        (n - crate::MAX_DT).abs() < f32::EPSILON,
+        "o teto do device ({n}) divergiu do da CPU ({}) — e nenhuma rota de paridade \
+         chega la', porque todas fixam `dt = 1/60`, abaixo do grampo",
+        crate::MAX_DT
+    );
+}

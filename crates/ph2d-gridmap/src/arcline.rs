@@ -40,6 +40,7 @@
 use crate::cut::CutMesh;
 use crate::solve::{GridMap, turn2};
 use crate::weld::Weld;
+use crate::weld_flat::Var;
 
 /// Abaixo desta razão entre o menor e o maior componente, a direcção do arco é uma
 /// leitura e não um facto.
@@ -288,6 +289,118 @@ pub fn build_arc_ties(cut: &CutMesh, w: &Weld, map: &GridMap) -> ScalarTies {
     }
     ties.report = out;
     ties
+}
+
+/// ⭐⭐⭐ **UMA EQUAÇÃO DE ARCO no espaço de variáveis do [`crate::weld_flat`].**
+///
+/// `Σ coef · var[eixo] = 0`, com **todos os coeficientes `±1`**.
+///
+/// ⚠️ **Ela é HOMOGÉNEA, e isso não é sorte.** A forma geométrica é
+/// `s_B·y_B[j_B] − s_A·y_A[j_A] = c`, e o `c` parece um termo constante — mas
+/// `c = e·off_A − e·off_B`, e `off` é ele próprio uma forma **linear nas translações**
+/// ([`Weld::cross_of`]). ⇒ *expandindo o `c`, a equação fica homogénea nas
+/// `(classes, translações)`* — que é exactamente o espaço em que o sistema dos fechos já
+/// vive. ⛔ *Se ela tivesse constante de verdade, o sistema teria de crescer um termo
+/// afim, e nenhuma das equações que ele já tem o tem.*
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct ArcEquation {
+    /// `(variável, eixo, coeficiente)`.
+    pub terms: Vec<(Var, usize, f32)>,
+}
+
+impl ArcEquation {
+    /// ⭐ O resíduo desta equação sobre um mapa vivo — quanto ela **não** vale zero.
+    ///
+    /// ⚠️ **É a régua que cruza a álgebra com a geometria:** este número tem de bater
+    /// com o componente **atravessado** que a [`crate::align::measure_arc_quantization`]
+    /// lê directamente das posições. *Duas leituras da mesma coisa por caminhos
+    /// independentes — se discordarem, a álgebra está errada, e descobre-se AGORA e não
+    /// depois da eliminação.*
+    #[must_use]
+    pub fn residual(&self, w: &Weld, map: &GridMap) -> f32 {
+        let mut acc = 0.0f32;
+        for &(v, ax, k) in &self.terms {
+            let val = match v {
+                Var::Shift(s) => map.shift.get(s as usize).copied().unwrap_or([0.0; 2]),
+                Var::Class(c) => w.value_pub(map, c as usize),
+            };
+            acc = k.mul_add(val[ax], acc);
+        }
+        acc
+    }
+}
+
+/// ⭐⭐⭐ **MONTA AS EQUAÇÕES DOS ARCOS** no espaço de variáveis do sistema dos fechos.
+///
+/// ⚠️ **O eixo atravessado sai do `map` que entra** — a solução **livre**, como em
+/// [`build_arc_ties`]. *É uma leitura, não um dado da peça.*
+#[must_use]
+pub fn arc_equations(cut: &CutMesh, w: &Weld, map: &GridMap) -> Vec<ArcEquation> {
+    let mut out = Vec::new();
+    for seam in &cut.seams {
+        if seam.arc.is_none() {
+            continue;
+        }
+        let side = &seam.side[0];
+        let p = side.patch as usize;
+        let (Some(&la), Some(&lb)) = (
+            side.local.iter().flatten().next(),
+            side.local.iter().flatten().next_back(),
+        ) else {
+            continue;
+        };
+        let (Some((ca, ra)), Some((cb, rb))) = (w.of(p, la as usize), w.of(p, lb as usize)) else {
+            continue;
+        };
+        let Some(row) = map.uv.get(p) else { continue };
+        let (Some(za), Some(zb)) = (row.get(la as usize), row.get(lb as usize)) else {
+            continue;
+        };
+        let d = [zb[0] - za[0], zb[1] - za[1]];
+        let e = if d[0].abs() >= d[1].abs() {
+            [0.0, 1.0]
+        } else {
+            [1.0, 0.0]
+        };
+        // ⭐ `e·(R^m · v) = turn2(e, −m)·v`, e o resultado é um eixo COM SINAL — é isso
+        // que faz todo coeficiente ser `±1`.
+        let axis = |m: i32| -> (usize, f32) {
+            let t = turn2(e, -m);
+            if t[0].abs() > t[1].abs() {
+                (0, t[0])
+            } else {
+                (1, t[1])
+            }
+        };
+        let mut terms: Vec<(Var, usize, f32)> = Vec::new();
+        let mut push = |v: Var, ax: usize, k: f32| {
+            if let Some(t) = terms.iter_mut().find(|t| t.0 == v && t.1 == ax) {
+                t.2 += k;
+            } else {
+                terms.push((v, ax, k));
+            }
+        };
+        // `+ e·z_B − e·z_A`, com `z = R^rot·y + off`.
+        #[allow(clippy::cast_possible_truncation)]
+        let (cav, cbv) = (ca as u32, cb as u32);
+        let (jb, sb) = axis(rb);
+        push(Var::Class(cbv), jb, sb);
+        let (ja, sa) = axis(ra);
+        push(Var::Class(cav), ja, -sa);
+        // ⭐ E o `off` de cada extremo, expandido nas translações que o atravessam.
+        for (copy, sign) in [(lb, 1.0f32), (la, -1.0f32)] {
+            let Some(ci) = w.copy_index(p, copy as usize) else {
+                continue;
+            };
+            for &(s, m) in w.cross_of(ci) {
+                let (j, k) = axis(m);
+                push(Var::Shift(s), j, sign * k);
+            }
+        }
+        terms.retain(|t| t.2.abs() > 1.0e-6);
+        out.push(ArcEquation { terms });
+    }
+    out
 }
 
 #[cfg(test)]

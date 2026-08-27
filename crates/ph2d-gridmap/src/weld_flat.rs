@@ -122,6 +122,22 @@ pub struct ClosureSystem {
     free: Vec<Var>,
     /// Por dependente, a expressão dela nas livres.
     dep: Vec<(Var, Vec<(u32, M2)>)>,
+    /// ⭐⭐⭐ **Por dependente, que COMPONENTES o sistema escreve.**
+    ///
+    /// `[true, true]` é a eliminação de sempre — uma restrição `2×2` possui a variável
+    /// inteira. ⭐ **`[true, false]` (ou o inverso) é uma restrição ESCALAR**: ela possui
+    /// **meia** variável, e a outra metade continua livre.
+    ///
+    /// ⚠️ **Por que a expressão continua a ser uma `M2`, e não uma linha:** uma matriz
+    /// com a linha não-escrita a **zeros** dá o mesmo valor e deixa o
+    /// [`ClosureSystem::bump`] correcto **sem uma linha de código mudar** — ele soma
+    /// `mul_vec(a, Δ)`, e um zero exacto soma zero. *A alternativa (mudar o contentor)
+    /// tocaria em quatro sítios para o mesmo resultado, e nenhum deles ficaria mais fácil
+    /// de ler.*
+    ///
+    /// ⛔ Quem **precisa** de saber é o [`ClosureSystem::apply`], que escreve o valor
+    /// **absoluto**: sem a máscara ele zeraria a metade que não possui.
+    dep_axes: Vec<[bool; 2]>,
     /// Por livre, as cópias que ela move e a jacobiana `∂z/∂v`.
     touch: Vec<Vec<(u32, M2)>>,
     /// ⭐ Por livre, as dependentes que ela move — pré-computado.
@@ -197,7 +213,7 @@ impl ClosureSystem {
     /// LIVRES (a substituição já foi feita na construção), então nenhuma delas lê outra
     /// dependente. *Era isso que faltava às duas versões que alternavam.*
     pub fn apply(&self, w: &Weld, map: &mut GridMap) {
-        for (v, expr) in &self.dep {
+        for (k, (v, expr)) in self.dep.iter().enumerate() {
             let mut acc = [0.0f32; 2];
             for &(i, c) in expr {
                 let val = match self.free[i as usize] {
@@ -207,6 +223,22 @@ impl ClosureSystem {
                 let p = mul_vec(c, val);
                 acc[0] += p[0];
                 acc[1] += p[1];
+            }
+            // ⭐ A máscara: uma dependente ESCALAR possui meia variável, e a outra metade
+            // fica onde estava. ⚠️ *Escrever `acc` inteiro ali zeraria uma incógnita que
+            // ninguém pediu para mexer* — e o mapa sairia mudo sobre o porquê.
+            let axes = self.dep_axes.get(k).copied().unwrap_or([true, true]);
+            if !(axes[0] && axes[1]) {
+                let now = match *v {
+                    Var::Shift(s) => map.shift[s as usize],
+                    Var::Class(cl) => w.value_pub(map, cl as usize),
+                };
+                if !axes[0] {
+                    acc[0] = now[0];
+                }
+                if !axes[1] {
+                    acc[1] = now[1];
+                }
             }
             match *v {
                 Var::Shift(s) => {
@@ -222,6 +254,26 @@ impl ClosureSystem {
 }
 
 impl ClosureSystem {
+    /// ⭐ **Monta um sistema À MÃO** — só para os gates desta crate.
+    ///
+    /// ⚠️ **Ela existe porque a máscara de componentes não é alcançável pela
+    /// [`Self::build`]**: ali toda eliminação é `2×2` por construção. *Um gate que só
+    /// pudesse exercitar o que o construtor produz nunca tocaria no caminho que a wave
+    /// dos arcos vai usar.*
+    #[cfg(test)]
+    pub(crate) fn probe(
+        free: Vec<Var>,
+        dep: Vec<(Var, Vec<(u32, M2)>)>,
+        dep_axes: Vec<[bool; 2]>,
+    ) -> Self {
+        Self {
+            free,
+            dep,
+            dep_axes,
+            ..Self::default()
+        }
+    }
+
     /// ⭐⭐⭐ **CONSTRÓI o sistema e ELIMINA uma variável por restrição independente.**
     ///
     /// ⚠️ **A expansão corre ao CONTRÁRIO da eliminação**, e tem de correr: a expressão
@@ -484,10 +536,15 @@ impl ClosureSystem {
                 }
             }
         }
+        // ⭐ A eliminação `2×2` possui a variável INTEIRA — é o caso de sempre, e é por
+        // isso que ligar a máscara aqui é byte-idêntico. *Quem escrever meia variável
+        // (a restrição de arco) marca-a como escalar na construção dela.*
+        let dep_axes = vec![[true, true]; dep.len()];
         (
             Self {
                 free,
                 dep,
+                dep_axes,
                 touch,
                 by_free,
                 dep_seam,

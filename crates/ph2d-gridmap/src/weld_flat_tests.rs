@@ -76,3 +76,61 @@ fn the_incremental_bump_agrees_with_the_full_apply() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A MÁSCARA DE COMPONENTES escreve METADE, e deixa a outra onde estava.**
+///
+/// ⚠️ **É o gate da capacidade que a wave dos arcos precisa**, e ele não afirma nada sobre
+/// o produto: com a máscara cheia (`[true, true]`, o caso de sempre) o `apply` escreve as
+/// duas componentes, e é isso que torna a construção byte-idêntica.
+///
+/// ⛔ Sem este gate, «a máscara existe» e «a máscara funciona» leem igual — e a segunda
+/// só se descobriria na wave seguinte, com uma variável a mais para bissecar.
+#[test]
+fn a_scalar_dependent_writes_half_the_variable() {
+    use super::{ClosureSystem, Var};
+    use crate::solve::GridMap;
+
+    // Um sistema à mão: uma livre (a costura `0`) e uma dependente ESCALAR (a costura
+    // `1`), cuja componente `0` é o dobro da livre e cuja componente `1` é dela própria.
+    let mut map = GridMap {
+        uv: Vec::new(),
+        shift: vec![[3.0, 0.0], [0.0, 7.0]],
+    };
+    let sys = ClosureSystem::probe(
+        vec![Var::Shift(0)],
+        vec![(Var::Shift(1), vec![(0u32, [[2.0, 0.0], [0.0, 0.0]])])],
+        vec![[true, false]],
+    );
+    sys.apply(&crate::weld::Weld::default(), &mut map);
+    assert!(
+        (map.shift[1][0] - 6.0).abs() < 1e-6,
+        "a componente possuida tem de ser escrita: {:?}",
+        map.shift[1]
+    );
+    assert!(
+        (map.shift[1][1] - 7.0).abs() < 1e-6,
+        "⛔ a componente NAO possuida tem de ficar onde estava: {:?}",
+        map.shift[1]
+    );
+}
+
+/// ⭐ E com a máscara CHEIA ele escreve as duas — o caso de sempre, e o controlo do gate
+/// acima.
+#[test]
+fn a_full_dependent_writes_both_components() {
+    use super::{ClosureSystem, Var};
+    use crate::solve::GridMap;
+
+    let mut map = GridMap {
+        uv: Vec::new(),
+        shift: vec![[3.0, 5.0], [0.0, 7.0]],
+    };
+    let sys = ClosureSystem::probe(
+        vec![Var::Shift(0)],
+        vec![(Var::Shift(1), vec![(0u32, [[2.0, 0.0], [0.0, 2.0]])])],
+        vec![[true, true]],
+    );
+    sys.apply(&crate::weld::Weld::default(), &mut map);
+    assert!((map.shift[1][0] - 6.0).abs() < 1e-6, "{:?}", map.shift[1]);
+    assert!((map.shift[1][1] - 10.0).abs() < 1e-6, "{:?}", map.shift[1]);
+}

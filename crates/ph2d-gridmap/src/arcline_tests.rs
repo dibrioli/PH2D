@@ -148,3 +148,76 @@ fn the_ties_change_the_map_when_on() {
         .any(|(ra, rb)| ra.iter().zip(rb).any(|(a, b)| a != b));
     assert!(moved, "as amarras nao moveram o mapa");
 }
+
+/// ⭐⭐⭐ **A ÁLGEBRA TEM DE REPRODUZIR A GEOMETRIA** — e é este o gate que decide se a
+/// equação está certa.
+///
+/// O resíduo de [`ArcEquation::residual`] é a **componente atravessada** do arco, lida
+/// por dentro (somando termos sobre variáveis). A
+/// [`crate::align::measure_arc_quantization`] lê a **mesma** grandeza por fora (a
+/// diferença das duas posições). ⚠️ *Dois caminhos independentes até o mesmo número — se
+/// discordarem, é a álgebra que está errada, e descobre-se AGORA e não depois da
+/// eliminação.*
+///
+/// ⛔ Sem este gate, um sinal trocado no `off` passaria despercebido até a restrição
+/// puxar o mapa para o sítio errado — e ali já haveria duas variáveis a bissecar.
+#[test]
+fn the_equation_residual_matches_the_geometric_reading() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let (map, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+
+    let eqs = super::arc_equations(&cut, &w, &map);
+    assert!(!eqs.is_empty(), "a esfera tem de dar equacoes");
+    // A leitura geométrica: por arco, o menor componente do deslocamento dos extremos.
+    let demand = vec![0u32; cut.seams.len() + 1];
+    let geo = crate::align::measure_arc_quantization(&cut, &map, &demand);
+    assert_eq!(
+        eqs.len(),
+        geo.arcs,
+        "as duas reguas tem de ver os MESMOS arcos"
+    );
+
+    let mut worst = 0.0f32;
+    for eq in &eqs {
+        worst = worst.max(eq.residual(&w, &map).abs());
+    }
+    // ⚠️ A barra é o `max` da geométrica, com folga de `f32`: as duas contas somam os
+    // mesmos termos por ordens diferentes.
+    assert!(
+        (worst - geo.across_max).abs() < 1.0e-3,
+        "algebra {worst} contra geometria {} — a equacao nao reproduz a leitura",
+        geo.across_max
+    );
+}
+
+/// ⭐ **TODO coeficiente é `±1`** — é isso que faz a eliminação levar inteiros a inteiros.
+///
+/// ⚠️ *Um coeficiente `2` seria meia célula*, que é exactamente o que o `worst_det` do
+/// [`crate::weld_flat`] existe para contar.
+#[test]
+fn every_arc_coefficient_is_plus_or_minus_one() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let (map, _) = crate::weld_solve::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    for eq in super::arc_equations(&cut, &w, &map) {
+        for (v, ax, k) in eq.terms {
+            assert!(
+                (k.abs() - 1.0).abs() < 1e-6,
+                "coeficiente {k} em {v:?}[{ax}] — a eliminacao deixaria de ser inteira"
+            );
+        }
+    }
+}

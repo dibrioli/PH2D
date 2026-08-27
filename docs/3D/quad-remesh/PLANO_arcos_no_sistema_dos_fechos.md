@@ -70,11 +70,29 @@ que leem o que a outra escreve não são duas eliminações»*, com a esfera a `
 
 | # | passo | o controlo que o mede |
 |---|---|---|
-| **A1** | O `ClosureSystem` passa a ver **escalares**, e não só pares `(u, v)`: `Var` ganha a componente, ou a eliminação passa a escrever **uma linha** em vez de uma matriz `2×2`. | ⭐ **Byte-idêntico sem restrição de arco nenhuma** — é o refactor puro, e sem este controlo a wave seguinte não é medível. |
+| ✅ **A1** | **FEITO** (2026-08-27). O `ClosureSystem` ganhou `dep_axes` — por dependente, que **componentes** ele escreve. | ⭐ **Byte-idêntico nas 5 peças** (`sha256` antes/depois) + 2 gates da capacidade. |
 | **A2** | As equações dos arcos entram no mesmo sistema, na **mesma ordem topológica** da substituição existente. | `FlatReport` ganha as contagens do arco: eliminadas · ciclo · `worst_det`. ⛔ Um `det ≠ ±1` é **meia célula** e tem de ser contado, não aceite. |
 | **A3** | Os ciclos de arco (`0`–`3` por peça, desacordo inteiro) entram como **condição sobre as translações**, exactamente como o fecho plano. | O desacordo tem de ir a `0`; se não for, ele **nomeia** a peça. |
 | **A4** | A escada gulosa e o endurecimento correm **com** o sistema novo. | ⛔ **A armadilha já medida:** impor no contínuo e **não** na escada dá saída *byte-idêntica ao controlo com todos os grupos a entrar*. |
 | **A5** | Medir. | `measure_arc_quantization` (a coluna **atravessam**, que tem de cair) · `loop_census` (**voltas** e anéis fechados) · `quad_shape` (⚠️ a forma **não pode** regredir). |
+
+### ⭐ A1 saiu MENOR do que esta espec pedia, e a razão é o código
+
+A espec dizia *«`Var` ganha a componente, ou a eliminação passa a escrever uma linha em
+vez de uma matriz `2×2`»* — as duas tocariam em quatro sítios. ⭐ **Nenhuma é precisa:**
+uma `M2` com a linha não-escrita a **zeros** já dá o valor certo, e por isso o
+[`ClosureSystem::bump`] fica correcto **sem uma linha mudar** (ele soma `mul_vec(a, Δ)`, e
+um zero exacto soma zero). Quem precisa de saber é só o `apply`, que escreve o valor
+**absoluto**.
+
+⇒ A mudança inteira é **um campo (`dep_axes`) e um `if` no `apply`**. ⚠️ *Uma espec escrita
+antes de ler o consumidor pede sempre mais do que o consumidor precisa* — e o preço de a
+seguir à letra teria sido um refactor de quatro sítios no solver que fechou a casca.
+
+⛔ **A máscara não é alcançável pela `build`** (ali toda eliminação é `2×2` por
+construção), então os gates dela entram por `ClosureSystem::probe`, um construtor
+`#[cfg(test)]`. *Um gate que só exercitasse o que o construtor produz nunca tocaria no
+caminho que a A2 vai usar.*
 
 ## §6 — ⛔ O que NÃO reconstruir (medido e rejeitado)
 

@@ -74,7 +74,9 @@ pub mod weld_round;
 pub mod weld_solve;
 
 pub use align::{Alignment, ArcQuant, measure_alignment, measure_arc_quantization};
-pub use arcline::{ArcLineSystem, ScalarTies, build_arc_ties, measure_arc_lines};
+pub use arcline::{
+    ArcEquation, ArcLineSystem, ScalarTies, arc_equations, build_arc_ties, measure_arc_lines,
+};
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};

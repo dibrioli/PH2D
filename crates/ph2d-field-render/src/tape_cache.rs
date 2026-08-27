@@ -94,6 +94,53 @@ const CAPACITY_MAX: usize = 16_384;
 /// documento que ninguém volta a pedir.
 const DOCS: usize = 2;
 
+/// ⭐⭐⭐ **QUANTO A CAIXA É DESLOCADA DENTRO DA PRÓPRIA FOLGA** — a cura da travadinha (W89).
+///
+/// # O mecanismo, medido
+///
+/// A caixa é inflada **em torno do próprio centro**, então toda região compilada no mesmo quadro
+/// tem a mesma folga em todas as direcções — e sai da caixa no **mesmo quadro seguinte**. As
+/// falhas chegam em **lote**, e o lote auto-sustenta-se (quem recompila junto volta a expirar
+/// junto). Medido num arrasto de `2°/quadro` a `426×240`:
+///
+/// | quadro | 2 | 3 | 4 | 5 | 6 |
+/// |---|---:|---:|---:|---:|---:|
+/// | compila | `98` | `323` | `148` | `250` | `122` |
+/// | ms | `12,2` | `26,9` | `19,8` | `25,7` | `16,5` |
+///
+/// ⇒ *o artista não sente a média, sente o `27` no meio dos `12`.*
+///
+/// # ⭐ A cura desloca a FASE, nunca o tamanho
+///
+/// Um deslocamento do **centro** dentro da folga que a inflação já pagou mantém o volume da caixa
+/// — logo o preço por amostra — e muda **quanto** a região ainda pode derivar antes de sair. Cada
+/// região recebe o seu, derivado do índice dela (estável entre quadros), e as coortes dispersam-se
+/// e **ficam** dispersas.
+///
+/// ⚠️ **A contenção é o limite duro**: com `|u| ≤ 1` a caixa deslocada ainda contém a região (a
+/// folga por lado é `half·(f−1)`), e é isso que o gate `the_phased_box_still_contains_its_region`
+/// afirma.
+///
+/// # A amplitude é MEDIDA (`measure_what_dispersing_the_cohorts_buys`, regime = quadros 40+ de um
+/// arrasto de 90)
+///
+/// | fase | mediana | média | máximo | compilações |
+/// |---|---:|---:|---:|---:|
+/// | `0,0` | `16,3` · `12,8` | `16,6` · `13,8` | `31,0` · `24,6` | `5 177` · `5 189` |
+/// | **`0,3`** | **`12,8` · `12,5`** | **`13,7` · `12,8`** | **`21,3` · `20,0`** | `5 181` · `5 204` |
+/// | `0,5` | `13,2` · `11,9` | `14,4` · `13,0` | `23,0` · `21,9` | `5 266` · `5 305` |
+/// | `0,8` | `14,9` · `12,9` | `15,8` · `13,4` | `28,0` · `24,1` | `5 743` · `5 744` |
+///
+/// (duas corridas, `load` 8–10 · a coluna que decide é o **máximo**, que é o que o artista sente)
+///
+/// ⭐ **A `0,3` compila o MESMO que a `0,0`** (`+0,3 %`) — a dispersão é de graça. ⛔ A `0,8` compila
+/// `+11 %`: uma região com muito pouca folga do lado da deriva expira quase todo o quadro, e a
+/// convexidade de `1/vida` cobra-o. *Há uma amplitude ÓPTIMA e ela não é a maior.*
+///
+/// ⚠️ **O ganho é de `4` a `10 ms` no máximo, não uma ordem de grandeza** — o defeito grande desta
+/// wave era outro (ver [`FRAMES_KEPT`] e a nota do módulo).
+pub const PHASE: f32 = 0.3;
+
 /// ⭐⭐ **Quantas fitas vieram da cache** — o par do `FLOAT_TAPES`, que conta as que foram
 /// compiladas.
 ///
@@ -101,6 +148,23 @@ const DOCS: usize = 2;
 /// nunca acerta é indistinguível de uma que acerta sempre — a imagem é a mesma nas duas.
 #[doc(hidden)]
 pub static TAPE_HITS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// ⭐⭐⭐ **Quantas VARREDURAS de despejo correram, e quantas fitas caíram** — o par que faltava.
+///
+/// ⚠️ **Sem eles, um despejo é invisível a toda régua deste módulo:** ele não muda a imagem, não
+/// muda o acerto **médio** de um arrasto contínuo, e o relógio que ele move é o de **um** quadro
+/// entre muitos. *Uma cache que despeja no sítio errado mede-se igual a uma que não despeja* — e o
+/// despejo corre debaixo do cadeado de ESCRITA, com 32 threads à porta.
+#[doc(hidden)]
+pub static TAPE_EVICTIONS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Ver [`TAPE_EVICTIONS`] — quantas fitas as varreduras deitaram fora.
+#[doc(hidden)]
+pub static TAPE_DROPPED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Ver [`TAPE_EVICTIONS`] — quanto tempo as varreduras passaram **dentro do cadeado de escrita**.
+#[doc(hidden)]
+pub static EVICT_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Uma caixa de mundo.
 type Aabb = ([f32; 3], [f32; 3]);
@@ -124,6 +188,12 @@ struct Entry {
 }
 
 struct Inner {
+    /// Quantos quadros de regiões esta cache guarda — ver [`FRAMES_KEPT`]. É um campo, e não a
+    /// constante lida directamente, porque a **varredura** que a escolheu tem de correr as
+    /// respostas no mesmo processo.
+    frames_kept: usize,
+    /// Quanto esta cache desloca a fase de cada caixa — ver [`PHASE`].
+    phase: f32,
     /// Quantas fitas esta cache guarda — **derivado** do que um quadro pede, ver [`FRAMES_KEPT`].
     capacity: usize,
     /// ⚠️ Quanto esta cache infla — ver [`INFLATE`]. É um campo, e não a constante lida
@@ -168,6 +238,8 @@ impl TapeCache {
     pub fn with_inflate(f: f32) -> Self {
         Self {
             inner: std::sync::RwLock::new(Inner {
+                frames_kept: FRAMES_KEPT,
+                phase: PHASE,
                 capacity: CAPACITY_MAX,
                 inflate: f,
                 docs: Vec::new(),
@@ -177,6 +249,40 @@ impl TapeCache {
                 entries: Vec::new(),
             }),
         }
+    }
+
+    /// ⚠️ Só para a sonda: a mesma cache com outro tecto — ver [`FRAMES_KEPT`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn with_frames_kept(n: usize) -> Self {
+        let c = Self::new();
+        c.inner
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .frames_kept = n;
+        c
+    }
+
+    /// ⚠️ Só para a sonda: a mesma cache com outra dispersão de fase — ver [`PHASE`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn with_phase(p: f32) -> Self {
+        let c = Self::new();
+        c.inner
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .phase = p;
+        c
+    }
+
+    /// ⚠️ Só para a sonda.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn phase_of(&self) -> f32 {
+        self.inner
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .phase
     }
 
     /// ⚠️ Só para a sonda.
@@ -202,7 +308,7 @@ impl TapeCache {
         // ⭐ **O tecto é o que o quadro pede** — ver [`FRAMES_KEPT`]. Ele sobe com a resolução e com
         // ladrilhos mais finos, que é exactamente quando o tecto fixo estrangulava.
         inner.capacity = regions_this_frame
-            .saturating_mul(FRAMES_KEPT)
+            .saturating_mul(inner.frames_kept)
             .clamp(64, CAPACITY_MAX);
         if let Some((_, g)) = inner.docs.iter().find(|(d, _)| d == doc) {
             inner.current = *g;
@@ -246,20 +352,31 @@ impl TapeCache {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let seen = inner.frame;
+        let mut mortas: Vec<Entry> = Vec::new();
         if inner.entries.len() >= inner.capacity {
-            // ⚠️ **Despejo por IDADE DE USO, e metade de uma vez.** Deitar uma fora por cada uma
-            // que entra faria o quadro em que a cache enche pagar um despejo por região; deitar
-            // metade paga-o uma vez em muitos quadros.
-            let mut ages: Vec<u64> = inner
-                .entries
-                .iter()
-                .map(|e| e.seen.load(std::sync::atomic::Ordering::Relaxed))
-                .collect();
-            ages.sort_unstable();
-            let corte = ages[ages.len() / 2];
+            // ⭐ **Despejo por IDADE DE USO, METADE de cada vez** — e a metade é MEDIDA (W89).
+            //
+            // ⛔⛔ **Uma FATIA de `1/8` foi implementada e é PIOR nos três números** (mediana
+            // `11,5 → 13,9 ms`, média `12,8 → 16,3`, máximo `21,2 → 61,7`): guardar `7/8` mantém a
+            // população colada ao tecto (`3 158` contra `2 234` fitas), e o [`TapeCache::get`] é uma
+            // **varredura linear** que paga esse tamanho em cada uma das ~600 regiões do quadro.
+            // *O que uma cache guarda a mais não é de graça: alguém a percorre.*
+            //
+            // ⚠️ A **contagem** é por índice e não por corte de valor: um corte por idade deita fora
+            // *«todos os mais velhos que X»*, e num quadro em que metade das fitas foi tocada no
+            // mesmo tique isso deita fora **nada** (a cache cresce para sempre) ou **tudo**.
+            let t0 = std::time::Instant::now();
             inner
                 .entries
-                .retain(|e| e.seen.load(std::sync::atomic::Ordering::Relaxed) > corte);
+                .sort_by_key(|e| e.seen.load(std::sync::atomic::Ordering::Relaxed));
+            let k = (inner.entries.len() / 2).max(1);
+            mortas = inner.entries.drain(..k).collect();
+            EVICT_NS.fetch_add(
+                u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            TAPE_EVICTIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            TAPE_DROPPED.fetch_add(k, std::sync::atomic::Ordering::Relaxed);
         }
         let doc_id = inner.current;
         inner.entries.push(Entry {
@@ -269,6 +386,10 @@ impl TapeCache {
             doc_id,
             seen: std::sync::atomic::AtomicU64::new(seen),
         });
+        // ⚠️ **A libertação sai de DEBAIXO do cadeado** — quem espera por esta cache são as outras
+        // 31 threads do quadro, e nenhuma delas precisa que a memória já tenha voltado ao sistema.
+        drop(inner);
+        drop(mortas);
     }
 
     /// ⚠️ Só para a sonda: quantas fitas a cache guarda.
@@ -290,15 +411,32 @@ impl TapeCache {
     }
 }
 
-/// ⭐ **A caixa inflada por `f` em torno do próprio centro** — ver [`INFLATE`].
+/// ⭐⭐⭐ **A caixa inflada por `f` e DESLOCADA dentro da folga** — ver [`PHASE`].
+///
+/// ⚠️ **A contenção é uma invariante, não uma esperança:** o deslocamento por eixo é
+/// `half·(f−1)·u` com `|u| ≤ amp ≤ 1`, e a folga por lado é exactamente `half·(f−1)` — então a
+/// região continua dentro da caixa para toda amplitude admissível. O gate
+/// `the_phased_box_still_contains_its_region` afirma-o sobre a amplitude que ship.
 #[must_use]
-pub fn inflate(lo: [f32; 3], hi: [f32; 3], f: f32) -> Aabb {
+pub fn inflate_phased(lo: [f32; 3], hi: [f32; 3], f: f32, seed: u64, amp: f32) -> Aabb {
     let mut out = ([0.0f32; 3], [0.0f32; 3]);
+    let mut z = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15);
     for k in 0..3 {
+        // splitmix64: um misturador barato e determinístico — a fase de uma região tem de ser a
+        // MESMA em todos os quadros, senão a caixa muda de sítio a cada compilação e a dispersão
+        // vira ruído.
+        z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut x = z;
+        x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        x ^= x >> 31;
+        // u ∈ [-amp, amp]
+        let u = (((x >> 40) as f32) / 8_388_608.0 - 1.0) * amp;
         let c = 0.5 * (lo[k] + hi[k]);
-        let half = 0.5 * (hi[k] - lo[k]) * f;
-        out.0[k] = c - half;
-        out.1[k] = c + half;
+        let half = 0.5 * (hi[k] - lo[k]);
+        let folga = half * (f - 1.0);
+        out.0[k] = c - half * f + folga * u;
+        out.1[k] = c + half * f + folga * u;
     }
     out
 }

@@ -19,12 +19,19 @@ use ph2d_field_render::Orbit;
 
 /// ⭐ **O traçado que está em VOO** — e a bandeira que o pode abandonar (W32).
 ///
-/// ⚠️ O `size` viaja com ele porque a decisão de cancelar precisa de saber **o que** está a correr:
-/// um refinamento cede à mão, um traçado de movimento nunca (ver `field3d_preview::cancels_the_inflight`).
+/// ⚠️ A **espécie** viaja com ele porque a decisão de cancelar precisa de saber *o que* está a
+/// correr: um refinamento cede à mão, um traçado de movimento nunca
+/// (ver `field3d_preview::cancels_the_inflight`).
+///
+/// ⚠️⚠️ **Era o `size` que viajava, e o comentário já dizia «espécie»** — o tamanho respondia por
+/// ela até a W73 pôr um refinamento no tamanho grosso, e a partir daí o degrau do meio do assentar
+/// **nunca era abandonado** (W89).
 pub(crate) struct InFlight {
     pub(crate) rx: Receiver<Ready>,
     pub(crate) cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
-    pub(crate) size: (u32, u32),
+    /// ⭐ `true` quando este traçado é um **refinamento** (contorno fino + anti-serrilhado), os dois
+    /// degraus do assentar; `false` para o quadro de movimento.
+    pub(crate) refinement: bool,
 }
 
 pub(crate) struct Smoke {

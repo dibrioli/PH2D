@@ -52,42 +52,60 @@ fn the_cache_survives_the_alternation_between_the_coarse_and_the_full_document()
     let reg = Registry::new();
     let grosso = profile_piece(168);
     let cheio = profile_piece(672);
-    let cache = TapeCache::new();
-    let mut passo = 0usize;
-    let mut quadro = |doc: &FieldDoc, avanca: bool| -> (usize, usize) {
-        FLOAT_TAPES.store(0, Ordering::Relaxed);
-        TAPE_HITS.store(0, Ordering::Relaxed);
-        let cam = Orbit {
-            rotation: Orbit::from_yaw_pitch(0.72 + (passo as f32) * 2.0f32.to_radians(), 0.52)
-                .rotation,
-            ..Orbit::default()
+    // ⭐⭐⭐ **A MESMA sequência, com e sem a paragem** — e é a diferença entre as duas que responde.
+    //
+    // ⛔⛔ **A 1.ª versão deste gate media um NÍVEL absoluto** (`acertos > fitas · 2`) e a barra foi
+    // calibrada no acerto que a retoma dava naquele dia. A W89 dispersou as coortes de propósito
+    // (`tape_cache::PHASE`) — trocando **pico por média** — e a retoma passou de um quadro de sorte
+    // para um quadro médio: `66,1 %` contra uma barra de `66,7 %`, com a propriedade que o gate
+    // NOMEIA (*«a cache é deitada fora na alternância»*) intacta a `265` acertos.
+    //
+    // *Uma barra absoluta calibrada numa distribuição reprova quando alguém melhora a distribuição.*
+    // ⇒ o gate passa a medir o **discriminador**: o modo de falha (a cache deitada fora a cada
+    // mudança de documento) dá `~0` acertos na retoma, e nenhuma dispersão o imita.
+    let corrida = |com_paragem: bool| -> (usize, usize) {
+        let cache = TapeCache::new();
+        let mut passo = 0usize;
+        let mut quadro = |doc: &FieldDoc, avanca: bool| -> (usize, usize) {
+            FLOAT_TAPES.store(0, Ordering::Relaxed);
+            TAPE_HITS.store(0, Ordering::Relaxed);
+            let cam = Orbit {
+                rotation: Orbit::from_yaw_pitch(0.72 + (passo as f32) * 2.0f32.to_radians(), 0.52)
+                    .rotation,
+                ..Orbit::default()
+            };
+            if avanca {
+                passo += 1;
+            }
+            let _ = trace_cached_for_test(doc, &reg, &cam, 320, 180, false, Some(&cache));
+            (
+                FLOAT_TAPES.load(Ordering::Relaxed),
+                TAPE_HITS.load(Ordering::Relaxed),
+            )
         };
-        if avanca {
-            passo += 1;
+        for _ in 0..4 {
+            let _ = quadro(&grosso, true);
         }
-        let _ = trace_cached_for_test(doc, &reg, &cam, 320, 180, false, Some(&cache));
-        (
-            FLOAT_TAPES.load(Ordering::Relaxed),
-            TAPE_HITS.load(Ordering::Relaxed),
-        )
+        if com_paragem {
+            // A paragem: dois quadros com o documento CHEIO, sem a câmera andar.
+            for _ in 0..2 {
+                let _ = quadro(&cheio, false);
+            }
+        }
+        // ⭐ **A medição é a RETOMA** — o 1.º quadro a girar depois da paragem, que é onde o defeito
+        // vivia. Sem paragem, é o mesmo quadro no mesmo passo de câmera: o controlo.
+        quadro(&grosso, true)
     };
-    // Uma volta inteira só para aquecer os DOIS documentos.
-    for _ in 0..4 {
-        let _ = quadro(&grosso, true);
-    }
-    for _ in 0..2 {
-        let _ = quadro(&cheio, false);
-    }
-    // ⭐ **A medição é a RETOMA** — o 1.º quadro a girar logo depois de uma paragem, que é onde o
-    // defeito vivia.
-    let (fitas, acertos) = quadro(&grosso, true);
+    let (fitas_p, acertos_p) = corrida(true);
+    let (fitas_s, acertos_s) = corrida(false);
     assert!(
-        acertos > 0 && fitas > 0,
-        "a retoma não mediu nada ({fitas} fitas, {acertos} acertos) — a fixtura não especializa"
+        acertos_s > 0 && fitas_s > 0,
+        "o CONTROLO não mediu nada ({fitas_s} fitas, {acertos_s} acertos) — a fixtura não especializa"
     );
     assert!(
-        acertos > fitas * 2,
-        "a retoma depois de uma paragem compilou {fitas} fitas para {acertos} acertos — a cache \
-         está a ser deitada fora na alternância grosso/cheio que o preview faz a cada gesto"
+        acertos_p * 2 >= acertos_s,
+        "a retoma depois de uma paragem acertou {acertos_p} contra {acertos_s} do mesmo quadro sem \
+         paragem — a cache está a ser deitada fora na alternância grosso/cheio que o preview faz a \
+         cada gesto (compilou {fitas_p} contra {fitas_s})"
     );
 }

@@ -227,7 +227,18 @@ pub(crate) fn tiled_trace(
                 // depressa e sem ambiguidade, e a inflação é o que faz a fita sobreviver ao quadro
                 // seguinte (a `f = 1` a cache acerta `9 %`). O preço está medido no doc do módulo.
                 Some(c) => {
-                    let (lo, hi) = crate::tape_cache::inflate(r.lo, r.hi, c.inflate_of());
+                    // ⚠️ A semente é a IDENTIDADE da região (ladrilho × fatia), **estável entre
+                    // quadros** — ver [`crate::tape_cache::PHASE`]. Uma semente que mudasse por
+                    // quadro punha a caixa noutro sítio a cada compilação, e a dispersão das
+                    // coortes virava ruído.
+                    let seed = ((x0 as u64) << 40) ^ ((y0 as u64) << 20) ^ (k as u64);
+                    let (lo, hi) = crate::tape_cache::inflate_phased(
+                        r.lo,
+                        r.hi,
+                        c.inflate_of(),
+                        seed,
+                        c.phase_of(),
+                    );
                     let t = ph2d_field_eval::hybrid::RegionTape::compile(rc.compile(doc, lo, hi));
                     c.insert(lo, hi, t.clone());
                     ph2d_field_eval::hybrid::Hybrid::from_region_tape(&t)

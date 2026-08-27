@@ -131,8 +131,8 @@ pub(crate) fn draw(
         // esperar (até **121 ms** medidos). ⛔ O contrário nunca: um traçado de movimento corre até
         // ao fim, senão numa órbita contínua ele seria cancelado a cada quadro e a imagem
         // **congelava**. Ver `field3d_preview::cancels_the_inflight`.
-        if let (Some(job), Some((aw, ah, _))) = (&smoke.inflight, ask)
-            && crate::field3d_preview::cancels_the_inflight(job.size, (aw, ah), (tw, th))
+        if let (Some(job), Some((_, _, ac))) = (&smoke.inflight, ask)
+            && crate::field3d_preview::cancels_the_inflight(job.refinement, ac)
         {
             job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
             smoke.inflight = None;
@@ -206,7 +206,7 @@ pub(crate) fn draw(
             smoke.inflight = Some(crate::field3d_smoke::InFlight {
                 rx,
                 cancel,
-                size: (tw, th),
+                refinement: !coarse,
             });
         }
 

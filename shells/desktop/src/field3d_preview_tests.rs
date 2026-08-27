@@ -302,24 +302,21 @@ fn a_sliver_of_an_area_never_asks_for_zero_pixels() {
 /// ele nunca está no caminho de si mesmo.
 #[test]
 fn a_refinement_yields_to_the_hand_and_a_motion_trace_never_does() {
-    let full = FULL;
-    let coarse = (full.0 / 3, full.1 / 3);
-
     assert!(
-        cancels_the_inflight(full, coarse, full),
-        "um refinamento cheio com a mão a pedir grosso TEM de ser abandonado — era a espera de 121 ms"
+        cancels_the_inflight(true, true),
+        "um refinamento com a mão a pedir movimento TEM de ser abandonado — era a espera de 121 ms"
     );
     assert!(
-        !cancels_the_inflight(coarse, coarse, full),
+        !cancels_the_inflight(false, true),
         "⛔ um traçado de MOVIMENTO nunca é cancelado — senão a imagem congela numa órbita contínua"
     );
     assert!(
-        !cancels_the_inflight(coarse, full, full),
+        !cancels_the_inflight(false, false),
         "…nem quando o que se pede a seguir é o refinamento: a imagem grossa é a que está a chegar"
     );
     assert!(
-        !cancels_the_inflight(full, full, full),
-        "…e um refinamento não se cancela a si próprio"
+        !cancels_the_inflight(true, false),
+        "…e um refinamento não se cancela a si próprio — o 2.º degrau do assentar segue o 1.º"
     );
 }
 

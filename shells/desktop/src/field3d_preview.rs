@@ -179,15 +179,30 @@ pub(crate) fn next_trace(
 /// A regra que sobrevive é a que nomeia o caso medido: **um REFINAMENTO cede à mão; um traçado de
 /// movimento corre até ao fim.** Um refinamento só começa quando nada está a mudar, então ele nunca
 /// está no caminho de si mesmo.
-pub(crate) fn cancels_the_inflight(
-    inflight: (u32, u32),
-    asked: (u32, u32),
-    full: (u32, u32),
-) -> bool {
-    // Em voo está o CHEIO (um refinamento)…
-    inflight == full
-        // …e o que se pede agora é mais grosso (a mão voltou a mexer).
-        && (asked.0 < full.0 || asked.1 < full.1)
+///
+/// # ⚠️⚠️ A pergunta era feita ao TAMANHO, e desde a W73 o tamanho já não a responde (W89)
+///
+/// A 1.ª versão perguntava *«o que está em voo é o tamanho CHEIO?»* — e isso **era** a definição de
+/// refinamento… até a W73 partir o assentar em dois degraus e pôr o primeiro deles no tamanho
+/// **grosso**. A partir daí um refinamento e um traçado de movimento partilhavam o tamanho, o
+/// predicado deixava de os distinguir, e o degrau do meio **nunca era abandonado**.
+///
+/// *Um predicado que identifica uma ESPÉCIE por uma GRANDEZA fica errado no dia em que duas
+/// espécies partilham a grandeza* — e o `InFlight` já dizia, em comentário, que sabia a espécie.
+///
+/// Medido (`measure_the_stall_a_hesitating_hand_pays`, erro angular máximo da imagem contra a mão,
+/// arrasto a `90°/s` com uma hesitação no meio):
+///
+/// | pausa da mão | pelo tamanho | **pela espécie** |
+/// |---|---:|---:|
+/// | `0 ms` | `1,50°` | `1,50°` |
+/// | **`17 ms`** | **`2,97°`** | **`1,50°`** |
+/// | `34`–`136 ms` | `1,50°` | `1,50°` |
+///
+/// ⇒ o defeito aparece na hesitação do tamanho de **um quadro**, que é a que uma mão faz sem dar
+/// por ela, e ali ele **dobra** o atraso.
+pub(crate) fn cancels_the_inflight(inflight_refinement: bool, asked_moving: bool) -> bool {
+    inflight_refinement && asked_moving
 }
 
 #[cfg(test)]

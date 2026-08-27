@@ -5743,7 +5743,11 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 
 | O quê | Estado | Onde |
 |---|---|---|
-| ✅⭐⭐⭐ **A pré-visualização ALCANÇA 60 Hz** — `14,2 ms` contra `16,7`, e independente do `Resolution` | o item nº 1 desde a §70. ⚠️ medido a `load 25,8`, logo o número real é melhor | §90.4 |
+| ✅⭐⭐⭐ **A pré-visualização ALCANÇA 60 Hz** — mediana `~12 ms` contra `16,7`, e independente do `Resolution` | o item nº 1 desde a §70. ⛔ **o `14,2 ms` da §90 foi medido com a câmera PARADA** (corrigido na §91.1); num arrasto real o quadro custa `10`–`27 ms` | §90.4, §91.1 |
+| ✅⭐⭐⭐ **A TRAVADINHA do Enio: a cache despejava `1 700` fitas debaixo do cadeado** | ⭐ `94 %` do preço era a **árvore**, que na rota do produto é lastro. Máximo do regime `364,6 → 21,7 ms` (`17×`), despejo no cadeado `~3 000×` mais barato | §91.2–§91.4 |
+| ✅⭐ **A lei do cancelamento perguntava ao TAMANHO** desde a W73 | ⭐ passa a perguntar à **espécie**: numa hesitação de um quadro o erro angular vai de `2,97°` para `1,50°` | §91.7 |
+| ✅ **`FRAMES_KEPT = 3` era derivado; agora é MEDIDO** | o joelho está lá: `1` e `2` piores, `4` e `6` compram `≤0,4 ms` por `1,4`–`2,5×` a memória | §91.8 |
+| ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
@@ -5771,7 +5775,18 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
-- ⭐⭐⭐ **W88 (§90): O QUADRO DE MOVIMENTO ENTROU NO ORÇAMENTO — `14,2 ms` contra `16,7`.** Primeiro o
+- ⭐⭐⭐ **W89 (§91): A TRAVADINHA TINHA NOME.** De `~12` em `12` quadros de arrasto a cache chegava ao
+  tecto e despejava `1 738` fitas **debaixo do cadeado de escrita**: `274,8 ms` num quadro cujo
+  orçamento é `16,7`, com as outras 31 threads à porta. ⭐⭐⭐ **`94 %` desse preço era a ÁRVORE que
+  cada fita guardava** — e o único leitor dela é o `fork` da rota de bissecção, desligada por omissão.
+  *Guardar «para o caso de» tem preço, e aqui ele era um terço de segundo de imagem congelada.*
+  Máximo do regime **`364,6 → 21,7 ms`**. ⛔ Três hipóteses caíram por medição (a hesitação da mão · a
+  contenção · o despejo em fatia de `1/8`, **pior nos três números**), e ⚠️ **a régua corrigiu-se três
+  vezes**: uma sonda que media o boot, outra que media milissegundos onde a pergunta é angular, e a
+  varredura da fase que correu com a tempestade ainda ligada. ⛔⛔ **E a §90 estava optimista: o
+  `14,2 ms` que reportei ao Enio foi medido com a câmera PARADA.**
+- ⭐⭐⭐ **W88 (§90): O QUADRO DE MOVIMENTO ENTROU NO ORÇAMENTO — `14,2 ms` contra `16,7` (⛔ ver a
+  correcção da §91.1: esse número é de câmera parada).** Primeiro o
   **oráculo**: gravar o custo verdadeiro de cada ladrilho e **simular** o escalonamento (*simule antes
   de construir*) — a ordem perfeita dá `1,00×` a 8 threads e `1,02×` a 16, logo **a ordem é o
   mecanismo**; e a 32 sobra um piso de `1,52×` que nenhuma ordem passa, porque *uma ordem não parte um
@@ -7955,6 +7970,15 @@ o `TILE_MAX` já sabe recolher — e, antes dela, saber se é mesmo a **ordem** 
 
 ## §90 — W88: ⭐⭐⭐ O QUADRO DE MOVIMENTO ENTROU NO ORÇAMENTO (27/08)
 
+> ⛔⛔ **CORRIGIDO PELA §91.1 (27/08): o `14,2 ms` desta secção foi medido com a CÂMERA PARADA.**
+> A `measure_where_the_frame_stands_after_all_of_it` aquece com um arrasto e depois cronometra `5`
+> traçados de `Orbit::default()` **repetidos** — o único caso em que a cache de fitas acerta `100 %`.
+> Num arrasto a sério o quadro de movimento custa `10`–`27 ms`, mediana `~12`. ⇒ *este número foi
+> reportado ao Enio e estava optimista;* o que a W88 de facto comprou (o `TILE`, o tecto derivado) é
+> real e mede-se na mediana, não no `14,2`. **Uma bancada que repete a mesma pose não mede
+> movimento.**
+
+
 ### §90.1 — Primeiro o oráculo: *simule antes de construir*
 
 A §89 mediu que a decomposição custa `1,47×` e que ordenar por profundidade não cura. ⚠️ **A pergunta
@@ -8025,3 +8049,169 @@ lista desde a §70.
 pede a mesma reconferência. E o escalonamento por custo (§90.1) continua por construir: com `TILE=24`
 há `27×15×6 ≈ 2 430` ladrilhos-fatia e o pior pesa muito menos, então o piso de `1,52×` encolheu
 sozinho — *é preciso re-medir o que ele ainda vale antes de o construir.*
+
+## §91 — W89: ⭐⭐⭐ A TRAVADINHA TINHA NOME — a cache despejava 1 700 fitas debaixo do cadeado (27/08)
+
+> **Report do Enio (27/08), depois do smoke da W88:** *«de tempos em tempos dá pequenas travadinhas»*.
+
+### §91.1 — ⚠️ Porque nenhuma sonda desta linha a podia ver (e uma delas mentia)
+
+Todas as bancadas do módulo medem **medianas de um tipo de quadro**, com a cache quente daquele
+tipo. Três cegueiras compostas:
+
+1. **A travadinha é cauda, não centro** — uma mediana de 5 nunca a contém.
+2. **Ela precisa de `~24 quadros de arrasto contínuo`** para a cache chegar ao tecto. As bancadas
+   mediam 5 a 15 traçados: *o fenómeno estava sempre um quadro depois do fim da medição*.
+3. ⛔⛔ **A `measure_where_the_frame_stands_after_all_of_it` (§90) mediu o quadro de «movimento»
+   com a CÂMERA PARADA** — ela aquece com um arrasto e depois cronometra `5` traçados de
+   `Orbit::default()` repetidos, que é o único caso em que a cache acerta `100 %`. ⇒ **o `14,2 ms`
+   que a §90 anuncia, e que foi reportado ao Enio, é o custo de re-traçar a MESMA pose.** Num
+   arrasto a sério o quadro custa `10`–`27 ms`, com mediana `~12`.
+
+### §91.2 — A medição que nomeia o defeito
+
+`crates/ph2d-field-render/tests/the_eviction_storm.rs` — arrasto de `2°/quadro` a `426×240`, peça de
+omissão, `90` quadros, cache nova:
+
+| quadro | 20 | 21 | 22 | **23** | 24 |
+|---|---:|---:|---:|---:|---:|
+| ms | `12,3` | `14,2` | `11,6` | **`274,8`** | `12,1` |
+| despejos | `0` | `0` | `0` | **`1` (1 738 fitas)** | `0` |
+
+E o regime confirma que **não é um acidente de arranque** — de `12` em `12` quadros:
+
+| regime (quadros 40+) | mediana | média | **MÁXIMO** | despejo dentro do cadeado |
+|---|---:|---:|---:|---:|
+| antes | `11,5` | `31,8` | **`364,6`** | `269`–`353 ms` |
+
+⇒ **a cada `~0,25 s` de arrasto contínuo a imagem congela um terço de segundo.** `97 %` desse tempo
+está **dentro do cadeado de ESCRITA**, com as outras 31 threads do quadro à porta.
+
+### §91.3 — ⭐⭐⭐ O mecanismo: 94 % do preço de despejar uma fita é a ÁRVORE
+
+`the_price_of_freeing_a_tape.rs` mede a libertação isolada de `1 700` fitas:
+
+| o que se liberta | total | por fita |
+|---|---:|---:|
+| só as **árvores** | `179,8 ms` | `105,8 µs` |
+| as fitas inteiras (máquina parada) | `191,7 ms` | `112,8 µs` |
+| as fitas inteiras (31 threads vivas) | `302,5 ms` | `177,9 µs` |
+
+⛔ **A hipótese da contenção foi REFUTADA**: com a máquina parada o preço já lá está (a contenção
+acrescenta `1,6×`, não a ordem de grandeza). ⇒ tirar o despejo do cadeado **não** era a cura.
+
+⭐⭐⭐ **A `RegionTape` guardava `{ tree, tape }`, e o único leitor da árvore é o `Hybrid::fork` da
+rota de bissecção** (`PH2D_FIELD_SHARE_TAPE=0`). Na rota do produto ela é **lastro** — e o lastro era
+a travadinha. *Guardar «para o caso de» tem preço, e aqui ele era um terço de segundo de imagem
+congelada.*
+
+### §91.4 — O A/B, e a armadilha que NÃO mordeu
+
+| regime (quadros 40+) | antes | depois | |
+|---|---:|---:|---|
+| mediana | `11,5` | `12,2` | — |
+| média | `31,8` | **`13,2`** | `2,4×` |
+| **MÁXIMO** | `364,6` | **`21,7`** | **`17×`** |
+| despejo no cadeado | `269`–`353 ms` | **`0,1 ms`** | `~3 000×` |
+
+⚠️ **A armadilha nomeada era a RELOCAÇÃO** (*«uma cura pode mudar o sítio de uma espera em vez de a
+cortar»*, §85 da W73): a árvore continua a nascer em cada compilação, e largá-la ali podia pôr
+`100 × 106 µs = 10,6 ms` em **cada** quadro. **Não aconteceu — a mediana não se mexeu** (`11,5 →
+12,2`, dentro do ruído a `load 15`). A árvore especializada é um DAG de `Arc` partilhado com a do
+documento: largada no instante em que nasce, o desmonte é quase todo decremento de contador; largada
+horas depois, ela paga o estado do alocador. *A medição isolada apontou o suspeito certo e errou o
+preço; quem decidiu foi a série do produto.*
+
+### §91.5 — ⛔⛔ Três recusas MEDIDAS (não as reconstrua)
+
+1. **O despejo em FATIA de `1/8`** (em vez de metade) é **pior nos três números**: mediana
+   `11,5 → 13,9`, média `12,8 → 16,3`, máximo `21,2 → **61,7**`. Guardar `7/8` mantém a população
+   colada ao tecto (`3 158` contra `2 234` fitas) e o `TapeCache::get` é uma **varredura linear** que
+   paga esse tamanho em cada uma das ~600 regiões do quadro. ⇒ *o que uma cache guarda a mais não é
+   de graça: alguém a percorre.*
+2. **A hesitação da mão NÃO era o mecanismo.** A 1.ª hipótese desta wave era o degrau do meio do
+   assentar não ser cancelável; a sonda mediu as duas leis lado a lado e deu **o mesmo número**
+   (§91.7 mostra o que ele de facto vale, que é outra coisa e muito menor).
+3. **A contenção nas 31 threads** — ver §91.3.
+
+### §91.6 — ⭐ A dispersão de COORTES, e a sonda que mediu outra coisa
+
+As regiões compiladas no mesmo quadro têm a mesma folga em todas as direcções ⇒ saem da caixa no
+**mesmo quadro**, e o lote auto-sustenta-se. A cura desloca a **fase** (o centro da caixa dentro da
+folga que a inflação já pagou): o volume não muda, logo o preço por amostra não muda, e as coortes
+dispersam-se — `tape_cache::inflate_phased`.
+
+⚠️⚠️ **A 1.ª varredura desta constante mediu OUTRA COISA**: correu antes de a árvore sair da fita, e
+as cinco amplitudes deram `~290 ms` de máximo porque **o máximo era a tempestade**. *Uma cura medida
+numa fixtura onde o defeito dominante é outro lê-se como inútil.* Remedida no regime (duas corridas):
+
+| fase | mediana | média | **máximo** | compilações |
+|---|---:|---:|---:|---:|
+| `0,0` | `16,3` · `12,8` | `16,6` · `13,8` | `31,0` · `24,6` | `5 177` · `5 189` |
+| **`0,3`** | **`12,8` · `12,5`** | **`13,7` · `12,8`** | **`21,3` · `20,0`** | `5 181` · `5 204` |
+| `0,5` | `13,2` · `11,9` | `14,4` · `13,0` | `23,0` · `21,9` | `5 266` · `5 305` |
+| `0,8` | `14,9` · `12,9` | `15,8` · `13,4` | `28,0` · `24,1` | `5 743` · `5 744` |
+
+⭐ A `0,3` compila **o mesmo** que a `0,0` (`+0,3 %`): a dispersão é de graça. ⛔ A `0,8` compila
+`+11 %` — uma região com pouca folga do lado da deriva expira quase todo o quadro, e a convexidade de
+`1/vida` cobra-o. *Há uma amplitude óptima e ela não é a maior.* Ganho honesto: `4`–`10 ms` no
+máximo, não uma ordem de grandeza.
+
+### §91.7 — ⭐⭐ E a lei do cancelamento perguntava ao TAMANHO desde a W73
+
+O `cancels_the_inflight` identificava *refinamento* por `inflight == cheio` — o que **era** a
+definição até a W73 partir o assentar em dois degraus e pôr o primeiro no tamanho **grosso**. A
+partir daí duas espécies partilhavam a grandeza, e o degrau do meio **nunca era abandonado**. O
+`InFlight` já dizia em comentário que sabia a espécie; hoje ela viaja de facto (`refinement: bool`).
+
+*Um predicado que identifica uma ESPÉCIE por uma GRANDEZA fica errado no dia em que duas espécies
+partilham a grandeza.*
+
+⚠️ **E a régua desta medição corrigiu-se duas vezes.** A 1.ª contava o **boot** (o primeiro traçado é
+sempre cheio por lei, `183 ms`) e ele dominava todas as linhas ⇒ as duas leis imprimiam o mesmo. A
+2.ª contava o atraso em **milissegundos**, e durante uma pausa a imagem «velha» mostra uma câmera que
+**não se mexeu** — ela está certa, e o tempo dela acusava de defeito o gesto do artista. A régua é o
+**erro angular** entre a pose na tela e a da mão:
+
+| pausa da mão | pelo tamanho | **pela espécie** |
+|---|---:|---:|
+| `0 ms` | `1,50°` | `1,50°` |
+| **`17 ms`** | **`2,97°`** | **`1,50°`** |
+| `34`–`136 ms` | `1,50°` | `1,50°` |
+
+⇒ o defeito vive na hesitação do tamanho de **um quadro** — a que uma mão faz sem dar por ela — e ali
+**dobra** o atraso.
+
+### §91.8 — ⭐ O `FRAMES_KEPT = 3` era derivado; agora é MEDIDO
+
+Ele foi escrito por raciocínio e nunca varrido, e os dois números que o sustentavam mudaram nesta
+mesma jornada. `how_many_frames_to_keep.rs` (regime, `load` alto ⇒ só se lê o que é grande):
+
+| quadros guardados | mediana | média | máximo | fitas na cache |
+|---|---:|---:|---:|---:|
+| `1` | `15,3` | `15,8` | `27,2` | `922` |
+| `2` | `13,3` | `13,8` | `22,8` | `1 624` |
+| **`3`** | **`12,1`** | `13,4` | `22,1` | `2 585` |
+| `4` | `12,0` | `13,0` | `21,1` | `3 653` |
+| `6` | `11,7` | `12,9` | `23,4` | `6 390` |
+
+⇒ **o joelho está no `3`**: `1` e `2` são piores, `4` e `6` compram `≤0,4 ms` por `1,4`–`2,5×` a
+memória e não melhoram o máximo. *Medir um tecto pode confirmá-lo, e isso é um resultado.*
+
+### §91.9 — Gates e provas de mutação
+
+| gate | onde | mutação que ele mata |
+|---|---|---|
+| `a_cached_tape_carries_no_tree_on_the_product_path` | `ph2d-field-eval` | `tree: Some(tree)` sempre → ✗ |
+| `the_phased_box_still_contains_its_region` | `ph2d-field-render` | `PHASE = 1.5` → ✗ |
+| `the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling` | `ph2d-field-render` | `k = len/1000` (o despejo não despeja) → ✗ |
+
+⚠️ **Os três são de ESTRUTURA ou de CONTAGEM, de propósito** — o defeito que apanham é de população,
+e um gate de relógio sobre ele reprovaria sob fan-out sem nada ter mudado.
+
+### §91.10 — ⚠️ Um membro NOVO da família de flakes do `CLAUDE.md §5.0`
+
+`an_abandoned_march_returns_nothing_and_returns_fast` (`ph2d-field-render`) compara **dois relógios**
+(`cut_ms < full_ms · 0,5`). A `load 10`–`15` ele mudou de resposta **entre corridas do mesmo
+binário**, e sozinho deu verde `3` de `3`. O diff desta wave não toca o caminho dele (ali a cache nem
+existe: `cache = None`).

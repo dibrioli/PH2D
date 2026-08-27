@@ -149,7 +149,9 @@ type Tapes = (
 /// [`Hybrid::fork`] — e a `Tree` da `fidget` também é um `Arc` por dentro.
 #[derive(Clone)]
 pub struct RegionTape {
-    tree: Tree,
+    /// ⭐⭐⭐ **A árvore só existe na rota de BISSECÇÃO** — ver [`share_tape`] e a nota de
+    /// [`RegionTape::compile`].
+    tree: Option<Tree>,
     tape: FloatTape,
 }
 
@@ -173,12 +175,34 @@ fn share_tape() -> bool {
 
 impl RegionTape {
     /// **Compila** — é aqui, e só aqui, que o JIT corre para uma região.
+    ///
+    /// ⭐⭐⭐ **A ÁRVORE NÃO FICA** (W89), e a razão é medida: libertar `1 700` árvores
+    /// especializadas custa `179,8 ms` contra `191,7` das fitas inteiras — ⇒ **94 % do preço de
+    /// despejar uma fita é a árvore**, e na rota do produto ela é **lastro**: o único leitor é o
+    /// [`Hybrid::fork`] que recompila, e esse só corre com `PH2D_FIELD_SHARE_TAPE=0`.
+    ///
+    /// ⚠️ *Guardar «para o caso de»* tem preço, e aqui ele era a travadinha que o Enio reportou: a
+    /// cache chegava ao tecto de `~12` em `12` quadros de arrasto e despejava `1 700` fitas de uma
+    /// vez, **debaixo do cadeado de escrita** — `270` a `365 ms` num quadro cujo orçamento é `16,7`.
     #[must_use]
     pub fn compile(tree: Tree) -> Self {
         let shape = Engine::from(tree.clone());
         FLOAT_TAPES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let tape = shape.ez_float_slice_tape();
-        Self { tree, tape }
+        Self {
+            tree: (!share_tape()).then_some(tree),
+            tape,
+        }
+    }
+
+    /// ⚠️ **Só para o gate**: a fita guarda a árvore? Ver [`RegionTape::compile`].
+    ///
+    /// *A propriedade que paga vive num campo privado, então ela é afirmada onde é definida —
+    /// exportar o interno seria pôr o lastro de volta ao alcance de quem o pode guardar.*
+    #[doc(hidden)]
+    #[must_use]
+    pub fn probe_holds_tree(&self) -> bool {
+        self.tree.is_some()
     }
 }
 
@@ -269,7 +293,7 @@ impl Hybrid {
     pub fn from_region_tape(t: &RegionTape) -> Self {
         Self {
             plan: Plan::Analytic(0),
-            trees: vec![t.tree.clone()],
+            trees: t.tree.clone().into_iter().collect(),
             tapes: vec![(Engine::new_float_slice_eval(), t.tape.clone())],
             sampled: Vec::new(),
             grad: None,

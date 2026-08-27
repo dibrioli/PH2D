@@ -5707,3 +5707,109 @@ fn measure_what_the_safe_step_costs() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A CAIXA DESLOCADA AINDA CONTÉM A REGIÃO** (W89) — a invariante da
+/// [`crate::tape_cache::PHASE`].
+///
+/// # Porque ela é uma invariante e não uma tolerância
+///
+/// A cache serve uma fita a toda região que caiba na caixa dela. Uma caixa deslocada para FORA da
+/// região serviria uma fita especializada num sítio onde a região não está — e o resultado não é um
+/// erro, é uma **imagem plausível e errada**, que é o pior modo de falha que há.
+///
+/// A conta é fechada: a folga por lado que a inflação paga é `half·(f−1)`, e o deslocamento é
+/// `half·(f−1)·u` com `|u| ≤ amp`. ⇒ para `amp ≤ 1` a região continua dentro, **por construção**.
+/// Este gate afirma-o sobre a amplitude que ship, em muitas sementes e em regiões de formas
+/// diferentes — porque a fórmula certa escrita uma vez pode ser reescrita errada.
+#[test]
+fn the_phased_box_still_contains_its_region() {
+    for (i, (lo, hi)) in [
+        ([-0.2f32, -0.2, -0.2], [0.2f32, 0.2, 0.2]),
+        ([0.0, -1.0, 3.0], [0.01, 1.0, 3.5]),
+        ([-5.0, -5.0, -5.0], [-4.9, 5.0, 0.0]),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        for seed in 0..512u64 {
+            let (blo, bhi) = crate::tape_cache::inflate_phased(
+                lo,
+                hi,
+                crate::tape_cache::INFLATE,
+                seed.wrapping_mul(0x2545_F491_4F6C_DD1D) ^ (i as u64),
+                crate::tape_cache::PHASE,
+            );
+            for k in 0..3 {
+                assert!(
+                    blo[k] <= lo[k] && bhi[k] >= hi[k],
+                    "a caixa deslocada tem de conter a região (eixo {k}, semente {seed}): \
+                     [{}, {}] não contém [{}, {}]",
+                    blo[k],
+                    bhi[k],
+                    lo[k],
+                    hi[k]
+                );
+            }
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O DESPEJO DEITA FORA METADE, E A CACHE NUNCA PASSA O TECTO** (W89).
+///
+/// # A lei, e o modo de falha que ela fecha
+///
+/// A escolha do que despejar é por **índice** (ordenar por idade e tirar `k`), nunca por corte de
+/// valor. ⚠️ Um corte por idade — *«deita fora todos os mais velhos que X»* — deita fora **nada**
+/// quando metade das fitas foi tocada no mesmo tique, e uma cache que não consegue despejar
+/// **cresce para sempre**: cada fita é um `mmap` de código executável, e o tecto de mapeamentos de
+/// um processo Linux é `65 530`.
+///
+/// ⚠️ **É um gate de CONTAGEM, de propósito** — o defeito que ele apanha (a cache a crescer, o
+/// despejo a não despejar) é um facto de população, e um gate de relógio sobre ele reprovaria sob
+/// fan-out sem nada ter mudado.
+#[test]
+fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
+    use ph2d_field_eval::hybrid::RegionTape;
+    let doc = ph2d_field::FieldDoc::new(
+        vec![ph2d_field::Node {
+            xform: Xform::IDENTITY,
+            kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
+                half: [0.4, 0.3, 0.2],
+                round: 0.05,
+            }),
+            mods: Vec::new(),
+        }],
+        NodeId(0),
+    )
+    .expect("caixa");
+    let rc = ph2d_field_eval::RegionCompiler::new(&doc);
+    let cache = crate::TapeCache::new();
+    // O tecto é derivado do que o quadro pede: `64` regiões × `FRAMES_KEPT`, com o piso de `64`.
+    cache.begin(&doc, 1);
+    let tecto = 64usize;
+    // ⚠️ **Regiões DISTINTAS** — 200 inserções da mesma caixa provariam outra coisa.
+    let mut visto_acima = false;
+    for i in 0..(tecto * 3) {
+        let t = (i as f32) * 0.01 - 1.0;
+        let tape = RegionTape::compile(rc.compile(&doc, [t, -0.1, -0.1], [t + 0.02, 0.1, 0.1]));
+        cache.insert([t, -0.1, -0.1], [t + 0.02, 0.1, 0.1], tape);
+        assert!(
+            cache.len() <= tecto,
+            "a cache passou o tecto ({} > {tecto}) na inserção {i} — um despejo que não despeja \
+             deixa-a crescer para sempre",
+            cache.len()
+        );
+        visto_acima |= cache.len() >= tecto / 2;
+    }
+    assert!(
+        visto_acima,
+        "a cache nunca chegou perto do tecto: esta fixtura não contém o fenómeno"
+    );
+    // Depois de despejar, ela fica na ordem de metade — não vazia (deitaria fora o quadro corrente)
+    // nem cheia (não teria despejado).
+    assert!(
+        cache.len() > tecto / 4,
+        "o despejo levou fitas a mais ({} de {tecto}): metade é a lei",
+        cache.len()
+    );
+}

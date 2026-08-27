@@ -4850,3 +4850,46 @@ fn measure_the_query_against_the_specialised_tape() {
         }
     }
 }
+
+/// ⭐⭐⭐ **A FITA GUARDADA NÃO CARREGA A ÁRVORE** (W89) — a lei que curou a travadinha do Enio.
+///
+/// # O que ela defende, com o número
+///
+/// Uma `RegionTape` guardada na cache do traçado vive até ser despejada. Enquanto ela segurava a
+/// árvore especializada, despejar `1 700` fitas custava `270–365 ms` **debaixo do cadeado de
+/// escrita** — e isso acontecia de `~12` em `12` quadros de arrasto contínuo, num quadro cujo
+/// orçamento é `16,7 ms`. Medido: libertar `1 700` árvores sozinhas custa `179,8 ms` contra `191,7`
+/// das fitas inteiras ⇒ **94 % do preço do despejo era a árvore**.
+///
+/// ⚠️ **E o único leitor dela é a rota de BISSECÇÃO** (`Hybrid::fork` com
+/// `PH2D_FIELD_SHARE_TAPE=0`). *Guardar «para o caso de» tem preço, e aqui ele era um terço de
+/// segundo de imagem congelada.*
+///
+/// ⚠️ **Este gate mede a rota do PRODUTO** — a outra metade da lei (com a bissecção ligada a árvore
+/// FICA) não é alcançável do mesmo processo: o `share_tape()` é um `OnceLock`.
+#[test]
+fn a_cached_tape_carries_no_tree_on_the_product_path() {
+    use crate::hybrid::RegionTape;
+    assert!(
+        std::env::var("PH2D_FIELD_SHARE_TAPE").as_deref() != Ok("0"),
+        "este gate mede a rota de omissão; com a bissecção ligada a árvore fica de propósito"
+    );
+    let doc = FieldDoc::new(
+        vec![leaf(
+            Primitive::Box {
+                half: [0.4, 0.3, 0.2],
+                round: 0.05,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("caixa");
+    let rc = crate::RegionCompiler::new(&doc);
+    let t = RegionTape::compile(rc.compile(&doc, [-0.2, -0.2, -0.2], [0.2, 0.2, 0.2]));
+    assert!(
+        !t.probe_holds_tree(),
+        "a fita guardada não pode carregar a árvore: ela é 94 % do preço de a despejar, e o único \
+         leitor dela é o fork da bissecção"
+    );
+}

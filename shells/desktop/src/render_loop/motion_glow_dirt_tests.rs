@@ -145,11 +145,11 @@ fn a_degenerate_rect_is_square_never_a_nan() {
 #[test]
 fn a_degenerate_rect_is_no_mask_at_all_not_a_collapsed_one() {
     for r in [
-        [0.0, 0.0, 0.0, 0.0],           // o que `region_uv` devolve para chave desconhecida
-        [0.25, 0.25, 0.25, 0.5],        // largura zero (célula de 1 px, o inset colapsa)
-        [0.25, 0.25, 0.5, 0.25],        // altura zero
-        [0.5, 0.5, 0.25, 0.25],         // invertido — o que a leitura `[x,y,w,h]` produzia
-        [0.0, 0.0, f32::NAN, 1.0],      // não-finito
+        [0.0, 0.0, 0.0, 0.0],      // o que `region_uv` devolve para chave desconhecida
+        [0.25, 0.25, 0.25, 0.5],   // largura zero (célula de 1 px, o inset colapsa)
+        [0.25, 0.25, 0.5, 0.25],   // altura zero
+        [0.5, 0.5, 0.25, 0.25],    // invertido — o que a leitura `[x,y,w,h]` produzia
+        [0.0, 0.0, f32::NAN, 1.0], // não-finito
         [0.0, 0.0, f32::INFINITY, 1.0], // idem
     ] {
         assert!(

@@ -129,15 +129,20 @@ impl CookCheckpoint {
     }
 }
 
-/// O sub-tique — [`Cook::substep`] e o que ele tem de saber sobre o relogio. FILHO de
-/// proposito: ele mexe nos campos privados do `Cook` (`tick`, `prev_playhead`,
-/// `prev_outputs`, `cache`), que um modulo IRMAO nao enxergaria.
-/// **O ROTEADOR PREGUIÇOSO** — FILHO pelo mesmo motivo que o `substep`: ele chama o
+/// **O ROTEADOR PREGUIÇOSO** — FILHO pelo mesmo motivo que o `substep` abaixo: ele chama o
 /// `cook_node` e lê os campos privados do `Cook`.
+///
+/// ⚠️ **Este bloco estava COLADO ao do `substep`**, e o resultado é o modo de falha que a
+/// memória do repo já nomeia: um doc-comment separado do seu item por outro doc-comment **muda
+/// de dono**. O parágrafo do sub-tique passou a documentar `mod lazy` e o `mod substep` ficou
+/// **sem doc nenhum** — invisível, porque o `rustdoc` não se queixa de um item mudo.
 #[path = "cook_lazy.rs"]
 mod lazy;
 pub use lazy::{LazyBranches, LazySelect, MAX_LAZY_CHOICES};
 
+/// O sub-tique — [`Cook::substep`] e o que ele tem de saber sobre o relogio. FILHO de
+/// proposito: ele mexe nos campos privados do `Cook` (`tick`, `prev_playhead`,
+/// `prev_outputs`, `cache`), que um modulo IRMAO nao enxergaria.
 #[path = "cook_substep.rs"]
 mod substep;
 pub use substep::{SUBSTEPS_PARAM, SubstepIsland, graph_substeps, substep_islands, upstream_cone};

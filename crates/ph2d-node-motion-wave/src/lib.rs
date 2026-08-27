@@ -53,8 +53,8 @@
 //! `wave_prev` ride the `state` feedback port (the `pre` self-loop). Tick 0
 //! (`pre` = Empty) **seeds** a flat grid; from tick 1 it steps. `dt` derives from
 //! the state's own `sim_t` — a clock that did not advance (same tick, loop-wrap, or a
-//! backwards scrub) freezes the field for that tick. See [`MIN_STEP`]: there is no `MAX_DT`
-//! here, and the absence is MEASURED.
+//! backwards scrub) freezes the field for that tick. There is no `MAX_DT` here and no epsilon,
+//! and as duas ausencias sao MEDIDAS (ver `simulate`).
 //!
 //! Deterministic → `Effect::Temporal`, replays bit-for-bit.
 
@@ -70,19 +70,6 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// **O passo mínimo de relógio que conta como *"passou tempo"***.
-///
-/// ⚠️⚠️ **Aqui NÃO existe um `MAX_DT`, e a ausência é o resultado de uma MEDIÇÃO.** Este nó
-/// carregava um `MAX_DT = 0,1` copiado dos integradores, com o doc a afirmar estabilidade — e
-/// ele **não participava dela**: o passo do leapfrog é FIXO (a [`step`] não recebe `dt`) e o
-/// `dt` aparecia numa linha só, esta. Medido: o maior `|h|` ao fim de 60 tiques é
-/// **`2,014648` para TODO salto de relógio**, de `1/60` a **`30 s`** — 300× o grampo antigo.
-/// *Um teto que dá o mesmo número 1800× acima de si próprio não é um teto: é uma constante que
-/// afirma uma propriedade de que não participa.* (doc 91 §5.4.)
-///
-/// ⚠️ **O que a comparação de facto compra fica**: um relógio que não andou — o mesmo tique, o
-/// wrap de um laço, ou um scrub para TRÁS — segura o campo em vez de o avançar.
-const MIN_STEP: f32 = 1e-6;
 /// CFL stability bound for the 2D leapfrog wave: `C = (c·dt)² ≤ 0.5`.
 const CFL_MAX: f32 = 0.49;
 /// Grid side clamp (field cost is O(rows·cols)).
@@ -396,10 +383,34 @@ fn simulate(
             .first()
             .copied()
             .unwrap_or(playhead);
-        // ⚠️ **A pergunta é *"o relógio andou?"*, e é só isso** — ver [`MIN_STEP`]. O
-        // `.clamp(0.0, MAX_DT)` que aqui estava dava a impressão de moldar o passo, e o
-        // passo do leapfrog não vê `dt` nenhum.
-        if playhead - t_prev < MIN_STEP {
+        // **O passo mínimo de relógio que conta como *"passou tempo"***.
+        //
+        // ⚠️⚠️ **Aqui NÃO existe um `MAX_DT`, e a ausência é o resultado de uma MEDIÇÃO.** Este nó
+        // carregava um `MAX_DT = 0,1` copiado dos integradores, com o doc a afirmar estabilidade — e
+        // ele **não participava dela**: o passo do leapfrog é FIXO (a [`step`] não recebe `dt`) e o
+        // `dt` aparecia numa linha só, esta. Medido: o maior `|h|` ao fim de 60 tiques é
+        // **`2,014648` para TODO salto de relógio**, de `1/60` a **`30 s`** — 300× o grampo antigo.
+        // *Um teto que dá o mesmo número 1800× acima de si próprio não é um teto: é uma constante que
+        // afirma uma propriedade de que não participa.* (doc 91 §5.4.)
+        //
+        // ⚠️ **O que a comparação de facto compra fica**: um relógio que não andou — o mesmo tique, o
+        // wrap de um laço, ou um scrub para TRÁS — segura o campo em vez de o avançar.
+        //
+        // ⛔⛔ **E NÃO HÁ EPSILON, porque não existe um «avanço pequeno demais para contar».** Esta
+        // constante era `1e-6` sem recurso nomeado nem medição — a auditoria de 2026-08-27 mostrou que
+        // a mutação `1e-6 → 1e-2` (quatro ordens de grandeza) **sobrevivia** à suíte inteira: só a
+        // EXISTÊNCIA da guarda estava gateada, o valor era livre.
+        //
+        // A derivação que faltava: **`t_prev` É um `playhead` anterior**, carimbado no estado pelo
+        // próprio nó. Logo os dois `f32` ou são o **mesmo valor** (mesmo tique, wrap, scrub para o mesmo
+        // instante) ou diferem por **pelo menos 1 ULP** — não há um meio-termo de «andou um bocadinho».
+        // ⇒ a pergunta certa é `playhead > t_prev`, exacta e sem constante.
+        //
+        // ⚠️ **E um epsilon fixo era ACTIVAMENTE errado no fim de uma sessão longa:** o ULP de um `f32`
+        // a `playhead = 100 s` é `≈7,6e-6`, **maior** que o `1e-6` que estava escrito. Acima disso ele
+        // não fazia nada; um valor maior (o `1e-2` da mutação) engoliria tiques inteiros a 60 Hz.
+        // *Um epsilon absoluto sobre uma grandeza que cresce compara-se com uma régua que encolhe.*
+        if playhead <= t_prev {
             (s_h, s_prev) // loop-wrap / same tick → hold
         } else {
             let (mut next, prev) = step(&s_h, &s_prev, drive, p);

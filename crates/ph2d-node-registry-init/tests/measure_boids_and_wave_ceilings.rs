@@ -115,11 +115,12 @@ fn nearest_neighbour(s: &ph2d_nodegraph::attr::Stream) -> f32 {
 }
 
 /// Corre o bando e devolve a distância média ao vizinho no fim.
-fn cohesion(reg: &NodeRegistry, speed: f32, radius: f32, dt: f64, ticks: usize) -> f32 {
+fn cohesion(reg: &NodeRegistry, speed: f32, radius: f32, dt: f64, ticks: usize, seed: f32) -> f32 {
     let mut g = Graph::new();
     let b = g.add_node("motion.boids");
     g.set_param(b, "count", 64.0);
     g.set_param(b, "radius", radius);
+    g.set_param(b, "seed", seed);
     g.set_param(b, "seek", 1.0);
     g.set_param(b, "cohesion", 1.0);
     g.set_param(b, "max_speed", speed);
@@ -147,23 +148,46 @@ fn how_far_can_a_bird_step_before_it_stops_flocking() {
         "\n[boids] a distancia media ao VIZINHO ao fim de 200 tiques, com raio de percepcao {radius}\n"
     );
     eprintln!(
-        "  {:>8}  {:>10}  {:>12}  {:>10}",
-        "max_speed", "dt", "passo/raio", "viz. medio"
+        "  {:>8}  {:>10}  {:>12}  {:>10}  {:>16}",
+        "max_speed", "dt", "passo/raio", "mediana", "espalhamento"
     );
+    // ⚠️⚠️ **SEMENTES, e é a correcção que a auditoria de 2026-08-27 forçou.** A 1.ª versão
+    // desta sonda fazia **uma** corrida por célula, e um bando é caótico: três corridas
+    // fisicamente idênticas (~`0,1` por tique) deram `0,653`, `0,763` e `0,863` — **17% de
+    // espalhamento**, causado por perturbações de `2,4e-8` (o `playhead` é `f32`, e em
+    // `dt = 0,1` o grampo morde em 12 de 20 tiques, tirando no máximo `2,4e-8` de cada vez).
+    // ⇒ **o `1,284 → 0,763` que o doc-comment do `MAX_DT` publicava a três decimais era da
+    // ordem do próprio ruído.** *Um número de sistema caótico sem barra de dispersão não é uma
+    // medição — é uma amostra.*
+    const SEEDS: [f32; 5] = [1.0, 2.0, 3.0, 4.0, 5.0];
     for speed in [4.0f32, 20.0, 100.0] {
         for dt in [1.0 / 60.0, 0.1, 0.25, 0.5] {
             #[expect(clippy::cast_possible_truncation, reason = "a razao e' de leitura")]
             let ratio = speed * dt as f32 / radius;
-            let nn = cohesion(&reg, speed, radius, dt, 200);
-            eprintln!("  {speed:>8.0}  {dt:>10.4}  {ratio:>12.2}  {nn:>10.3}");
+            let mut v: Vec<f32> = SEEDS
+                .iter()
+                .map(|s| cohesion(&reg, speed, radius, dt, 200, *s))
+                .collect();
+            v.sort_by(f32::total_cmp);
+            let (lo, med, hi) = (v[0], v[v.len() / 2], v[v.len() - 1]);
+            eprintln!(
+                "  {speed:>8.0}  {dt:>10.4}  {ratio:>12.2}  {med:>10.3}  {:>16}",
+                format!("{lo:.3}..{hi:.3}")
+            );
         }
     }
     eprintln!(
         "\n  LEITURA: a coluna `passo/raio` e' `max_speed·dt / radius` -- quanto de uma
   vizinhanca um passaro atravessa num tique. ⚠️ Acima de `1` ele SALTA por cima da
-  vizinhanca a que devia reagir. Se o `viz. medio` inchar exactamente ali, o teto do
-  `MAX_DT` deste no' e' DERIVADO (`radius / max_speed`) e nao um numero copiado.
-  ⚠️ O grampo de hoje (`0,1`) so' morde acima de `max_speed = 20`."
+  vizinhanca a que devia reagir.
+
+  ⛔⛔ ESTA TABELA NAO PODE REFUTAR NADA ACIMA DO GRAMPO. O `MAX_DT` esta' DENTRO do
+  sistema medido -- o `dt` so' chega ao passo depois de `clamp(0, MAX_DT)` --, entao
+  com `max_speed = 20` ou `100` as linhas de `0,25` e `0,5` sao a linha de `0,1`
+  REPETIDA. Uma hipotese sobre o que acontece acima do grampo precisa de uma corrida
+  com o grampo LEVANTADO, e ela nao esta' aqui.
+  ⚠️ E compare medianas com o ESPALHAMENTO ao lado: uma diferenca menor que a largura
+  da coluna `espalhamento` nao e' um efeito, e' a mesma corrida outra vez."
     );
 }
 

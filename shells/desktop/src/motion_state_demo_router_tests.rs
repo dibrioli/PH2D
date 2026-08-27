@@ -256,7 +256,10 @@ fn the_demo_family_takes_the_motion_tool_and_the_call_site_says_so() {
 #[test]
 fn the_tool_is_taken_only_when_the_router_actually_built_a_scene() {
     use super::wants_the_motion_tool as wants;
-    assert!(wants(true, 1), "env posta e cena montada: toma a ferramenta");
+    assert!(
+        wants(true, 1),
+        "env posta e cena montada: toma a ferramenta"
+    );
     assert!(
         !wants(true, 0),
         "`=0` (ou lixo) monta ZERO sinks — tomar o canvas ali da' uma tela em branco"

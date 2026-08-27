@@ -216,15 +216,49 @@ que é **300×** o grampo. *Um teto que dá o mesmo número 1800× acima de si p
 `MIN_STEP`, que nomeia o que a comparação de facto compra (um relógio parado, ou andado para
 trás, SEGURA o campo).
 
-⭐ **`motion.boids`: o `0,1` FICA, com DUAS hipóteses refutadas pelo caminho.**
-⛔ *«senão a sim explode»* — **falso**: a excursão não diverge em `dt` nenhum até `0,5`, porque o
-`max_speed` limita todo passo por construção (a tabela está no doc-comment do `MAX_DT`).
-⛔ *«um pássaro salta por cima da vizinhança a que reage»* — **falso**: a razão
-`max_speed·dt / radius` cruza `1` e a coesão **melhora** (o vizinho médio vai de `1,284` para
-`0,763`) — com `max_force = 0` um `dt` maior puxa mais por passo, então o bando APERTA.
-⇒ O que o grampo guarda é **quanto um salto de playhead muda o carácter do bando num tique**; nos
-defaults um passo cobre **20% da percepção**. *É a lição do `MAX_GRADIENT_STOPS` da §6 outra vez:
-a medição confirmou o número, e é esse o resultado.*
+⭐ **`motion.boids`: o `0,1` FICA** — mas a 1.ª redacção desta secção, e a do doc-comment ao lado,
+**refutavam duas hipóteses com evidência que não as podia testar**, e as duas apontavam uma para
+a outra sem que a tabela existisse em lado nenhum (*«a tabela está no doc-comment do `MAX_DT`»* ↔
+*«tabelas no doc 91 §5.4»*). Corrigido em 2026-08-27 pela auditoria multiagêntica.
+
+⚠️⚠️ **O grampo está DENTRO do sistema medido** — o `dt` só chega ao passo depois de
+`clamp(0, MAX_DT)` —, então num varrimento com ele ligado as linhas acima de `0,1` são a linha de
+`0,1` **repetida**. A sonda imprimia isso; a nota publicou `⛔ REFUTADA` na mesma.
+
+⚠️ **E os números eram da ordem do ruído.** Um bando é caótico e a sonda fazia **uma** corrida por
+célula: três corridas fisicamente idênticas dão `0,653 / 0,763 / 0,863` — **17% de espalhamento**
+a partir de perturbações de `2,4e-8` (o `playhead` é `f32`). Hoje ela varre **5 sementes** e
+imprime a mediana com o espalhamento ao lado.
+
+**O controle (mesmo varrimento, `MAX_DT = 1e9`), `load 1,43`, mediana de 5 sementes:**
+
+| `max_speed` | `dt = 1/60` | `0,1` | `0,25` | `0,5` | passo/raio a `0,5` |
+|---|---|---|---|---|---|
+| **4** (default) | 0,582 | 0,846 | 0,848 | 0,629 | 1,0 |
+| 20 | 1,284 | 0,863 | 0,940 | 1,268 | 5,0 |
+| 100 | 6,585 | 2,005 | 1,752 | 1,819 | 25,0 |
+
+⛔ *«senão a sim explode»* — **REFUTADA, agora com a corrida que a podia refutar**: nem a
+`passo/raio = 25` a excursão diverge (o `max_speed` limita todo passo por construção).
+
+⚠️ *«um pássaro salta por cima da vizinhança a que reage»* — **NÃO refutada.** Com o grampo
+levantado e `max_speed = 20`, ir de `0,1` para `0,5` (razão `1,0 → 5,0`) **afrouxa o bando 47%**
+(`0,863 → 1,268`), que é o que a hipótese prevê.
+
+⚠️ **E «o bando APERTA» não é uma lei — ela inverte-se com o `max_speed` e é FALSA no ajuste de
+fábrica.** A frase generalizava da linha `20`; no default (`4`) um passo maior **afrouxa** de
+`0,582` para `0,846` (+45%), com os espalhamentos bem separados. *Uma varredura em que uma linha
+diz o contrário das outras não escolheu nada.*
+
+⇒ O que o grampo guarda é o único efeito que sobrevive ao controle: acima da razão `1` o carácter
+do bando passa a depender do tamanho do salto de playhead em vez dos params. Nos defaults um passo
+cobre **20% da percepção**.
+
+⚠️ **O gémeo no device tem gate desde 2026-08-27** (`the_device_twin_of_the_ceiling_is_the_same
+_number`, nos quatro solvers). Antes dele, `BOIDS_MAX_DT: 0,1 → 1000,0` passava em tudo —
+**inclusive nos 13 gates de paridade CPU↔GPU com adapter real** —, porque toda rota de paridade
+fixa `dt = 1/60`, abaixo do grampo. *O ponto cego não era «gates de GPU são `#[ignore]`»: era a
+fixtura.*
 
 ⚠️ **A sonda `excursion` NÃO serviu, e é o achado de método:** ela mede um extremo global, e
 nenhum destes dois nós tem um extremo que dispare. Para o bando a régua que responde é a

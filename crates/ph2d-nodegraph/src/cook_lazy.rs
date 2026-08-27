@@ -17,14 +17,30 @@ use std::collections::BTreeMap;
 /// roteador que existe hoje (`value.switch`, quatro portas) — quem passar disto acrescenta ao
 /// número, e o gate `a_lazy_router_declares_no_more_choices_than_the_mask_holds` di-lo em voz
 /// alta em vez de truncar em silêncio.
+///
+/// ⚠️ **«Em voz alta» descrevia o gate, não o RUNTIME** (auditoria de 2026-08-27): o
+/// [`Cook::lazy_skip_mask`] devolve uma máscara toda-falsa para um plano com mais candidatas do
+/// que a máscara segura, ou seja **coza tudo, calado** — e o gate citado afirma-o só sobre o
+/// `CHOICE_PORTS` do `value.switch`, que é a única crate que hoje o declara. Um segundo roteador
+/// com nove candidatas ficaria com a feature desligada sem ninguém saber. O recuo continua a ser
+/// o certo (correcto e lento nunca é o defeito); o que ele passa a fazer é **dizer**.
 pub const MAX_LAZY_CHOICES: usize = 8;
 
 /// **UM ROTEADOR QUE PODE SALTAR AS ENTRADAS QUE NÃO ESCOLHEU** (doc 89, folha 15).
 ///
 /// O Blender documenta a preguiça duas vezes (*"only the input that is passed through the node
 /// is computed"*) e aqui o cook puxava as quatro. Medido (`measure_switch_laziness`, ramos de
-/// oito oitavas sobre 4096 peças): a preguiça compra **3,90×** quando os ramos são caros **e**
-/// exclusivos, e **1,03×** quando eles são o mesmo — porque nesse caso o memo já a entregou.
+/// oito oitavas sobre 4096 peças, `select` **uniforme**): a preguiça compra **3,83×**, e
+/// **1,02×** quando os quatro ramos são o mesmo — porque nesse caso o memo já a entregou.
+///
+/// ⛔⛔ **O `3,90×` que esta linha dizia era o número que a própria sonda declara REFUTADO**, e
+/// ele estava copiado em dois ficheiros (auditoria de 2026-08-27). Ele saía das linhas 2/3 da
+/// tabela, que conduzem o `select` por um `value.instance_field(Index)` — um campo **por
+/// elemento**, que é exactamente a fixtura que este mecanismo tem de RECUSAR: ali a preguiça
+/// nem chega a ser instalada, e o que aquelas linhas mediam era o custo de quatro ramos contra
+/// o de um, sem o modo participar. O A/B honesto são as linhas 4/5, que constroem o mesmo grafo
+/// duas vezes e só mudam o botão. *Uma razão entre duas coisas que não diferem no que se quer
+/// medir não é uma medição da coisa.*
 ///
 /// ## Ela é um MODO, e a razão não é conservadorismo — é uma medição
 ///
@@ -123,6 +139,19 @@ impl Cook {
             return Ok(skip);
         };
         if lazy.choices.len() > MAX_LAZY_CHOICES {
+            // ⚠️ **O recuo é o certo — o que faltava era a VOZ.** Coza tudo é correcto e lento;
+            // calado é que não pode ser, porque a feature fica desligada e o autor do roteador
+            // novo não tem como saber. Uma vez por processo: um aviso por cook afogaria o
+            // terminal, e a condição é estrutural (não muda de quadro para quadro).
+            static SAID: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+            if !SAID.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                eprintln!(
+                    "[cook] um roteador declara {} candidatas e a mascara segura {MAX_LAZY_CHOICES} \
+                     -- a avaliacao preguicosa fica DESLIGADA para ele (coza tudo). \
+                     Suba o `MAX_LAZY_CHOICES`.",
+                    lazy.choices.len()
+                );
+            }
             return Ok(skip);
         }
         // Sem aresta no `select`, o nó lê o campo VAZIO — que é `0.0` em todo índice, ou seja o
@@ -185,3 +214,7 @@ fn uniform_scalar(v: &CookValue, column: &str) -> Option<f32> {
         _ => Some(0.0),
     }
 }
+
+#[cfg(test)]
+#[path = "cook_lazy_tests.rs"]
+mod tests;

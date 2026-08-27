@@ -80,7 +80,10 @@ fn measure_lazy_switch_cost() {
                 .map(|i| once(lazy, 0.25 + i as f64 * 0.01))
                 .collect(),
         );
-        println!("{:<12} {ms:>10.2}", if lazy { "LIGADO" } else { "DESLIGADO" });
+        println!(
+            "{:<12} {ms:>10.2}",
+            if lazy { "LIGADO" } else { "DESLIGADO" }
+        );
     }
 }
 
@@ -221,7 +224,11 @@ fn the_second_sink_never_draws_over_the_field_the_artist_is_asked_to_judge() {
     };
     let field = count(sinks[0]);
     let anchor = count(sinks[1]);
-    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss, reason = "224")]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "224"
+    )]
     let expected = (SIDE as usize) * (SIDE as usize);
     assert_eq!(field, expected, "a saida principal tem de ser o campo todo");
     assert!(

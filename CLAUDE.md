@@ -759,19 +759,40 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   que sobrevive ao respawn por construção; 18,7 ms para 0,088 ms a 10 k entidades, medido). ⛔ Não o reintroduza.
   ⚠️ **O `StableId` NÃO é componente registado, e a ausência é a decisão** — registá-lo poria a identidade também num
   `ComponentBlob`, e a cópia profunda da F4 daria à cópia a identidade do ORIGINAL.
-  **Aberto:** ⚠️⚠️ **a F1 está PELA METADE, e foi integrada assim por decisão do Enio (24/08):** a física já aponta por
-  identidade (renomear um corpo **não** solta mais a junta), mas a **timeline ainda não** — renomear um objeto animado
-  continua a desligar o binding, e nada na tela explica a diferença. Falta a outra metade do passo 5 (`stable_name_id` da
-  timeline) e o corte da Sprite (F1.6) · ⛔ **o `physics_ecs_c9` está POR RE-CAPTURAR** — o `deterministic_hash` muda de
-  valor com o snapshot v2, e é o item mais provável de reprovar a matriz 3-OS no próximo ship · F2-F8 do
-  [plano vivo](docs/Components/05_plano_de_implementacao.md).
-  **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to 97"*) ·
+  ⭐⭐⭐ **AS INSTÂNCIAS EXISTEM** (26/08, F1.6 + F4.1–F4.5 + F4.6a/b —
+  [handoff](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)): *Make Component* esconde a
+  receita e deixa uma cópia no lugar; *Instantiate* põe outra; **editar a receita muda todas as cópias no mesmo quadro**;
+  editar UMA cópia vira **excepção** (e *Apply to Master* promove-a, *Detach* solta, *Revert* devolve **mantendo a
+  posição**). Duplicar passou a levar a **subárvore inteira** com identidade nova — e a junta da cópia prende **os corpos
+  dela**. ⚠️ **A cópia profunda SALTA quatro componentes de propósito** (os `owned_document` do catálogo): copiar o id de
+  um documento possuído 1:1 poria duas entidades a escrever nele, e duplicar uma sprite pintada devolvia um sósia que
+  apaga a tinta do original — *a cópia rasa acertava nisto por acidente*. ⚠️ **`MasterPiece` é DERIVADO, nunca gravado**
+  (só o `MasterRoot` viaja), e o passe tem **duas** metades obrigatórias: marcar sem desmarcar deixa uma peça arrastada
+  para fora do mestre **invisível ao solver, em silêncio**. ⚠️ **`deep_copy_subtree` não instancia** — a porta do produto
+  é o `instantiate.rs`, com gate a mantê-la com **um** chamador. ⭐ E um **objeto vazio ou um grupo** finalmente se pega
+  no canvas (um anel que é o corpo dele, não uma marca de selecção).
+  **Aberto:** ⚠️⚠️ **a F1 continua PELA METADE:** a física aponta por identidade (renomear um corpo **não** solta a
+  junta), a **timeline ainda não** — renomear um objeto animado desliga o binding, e nada na tela explica a diferença.
+  Falta a outra metade do passo 5 (`stable_name_id` da timeline) · ⛔ **o `physics_ecs_c9` segue POR RE-CAPTURAR** desde
+  o snapshot v2, e ⚠️ **ele NÃO corre na varredura impactada** (medido na integração de 26/08: zero menções no log do
+  gate) ⇒ nenhum gate desta jornada o cobre, e ele é o item nº 1 a reprovar a matriz 3-OS no próximo ship ·
+  ⏳ **F4.6** (o `VecInstance` subsumido) e **F4.7** (a lane do `physics_ecs_c9` com mestre+instância) · ⏳ **nada na tela
+  MOSTRA que campo está overridado** — o artista sabe pelo comportamento e pelos verbos, não por um sinal · ⛔ **a pose de
+  repouso de uma peça DINÂMICA não propaga, e é DECLARADO** (o dono do `Transform` de um corpo dinâmico é o solver
+  sempre): mover o braço da receita não move o das instâncias, nem depois de um Reset — gate com o nome inteiro ·
+  F2-F8 do [plano vivo](docs/Components/05_plano_de_implementacao.md).
+  **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to 99"* —
+  ⚠️ **um v97 ou v98 é RECUSADO**, e é a decisão da `line/Vector` levada até ao fim: sem `ProjectFileV97` congelado não
+  há forma honesta de ler aqueles bytes) ·
   reordenar irmãos na Hierarquia + Ctrl+Z · renomear um corpo com junta (`PH2D_PHYSICS_SMOKE=6` ou `=67`) · copiar um
   ragdoll e dar Play.
   **Ler:** [`docs/Components/`](docs/Components/) ·
-  [handoffs](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F0_F1parcial_2026-08-24.md) (⚠️ o §9 lista
+  [handoff de 24/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F0_F1parcial_2026-08-24.md) (⚠️ o §9 lista
   **cinco** coisas que uma leitura rápida do diff entende ao contrário, e o §10 as **três** premissas do plano que a
-  implementação refutou)
+  implementação refutou) · [handoff de 26/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)
+  (⚠️ o §3 tem **doze** dessas, e o §4 as premissas que a F4 refutou — entre elas a lei que **nenhum documento tinha**:
+  *o que não PROPAGA não se REMAPEIA*, achada por uma **mutação que SOBREVIVEU** porque nenhum gate corria o passe duas
+  vezes antes de medir)
 
 - **Image Tools — os utilitários de bitmap** (⚠️ **~30 k LOC que esta seção nunca mencionou**, achado
   da auditoria de 2026-08-18): `ph2d-tool-color-equalization` (10.291) · `ph2d-tool-bgremoval` (8.377) ·

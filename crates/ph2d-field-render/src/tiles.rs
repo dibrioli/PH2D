@@ -29,7 +29,34 @@ type TileResult = (Vec<usize>, Vec<bool>, Vec<[f32; 3]>);
 /// ⭐ O vale é raso entre **48 e 96** e fundo fora dele: a 32 px a montagem domina (400 fitas por
 /// quadro), a 192 px a pegada volta a trazer o contorno quase inteiro. Da tabela sai também o
 /// modelo — **≈ 0,29 ms de montagem por ladrilho**, e o resto é avaliação.
-pub(crate) const TILE: usize = 64;
+///
+/// ⛔⛔ **E o `64` ERA o óptimo enquanto um ladrilho pequeno pagava uma COMPILAÇÃO a mais — reconferido
+/// na W88.**
+///
+/// A W82 pôs uma cache de fitas entre quadros: a fita de um ladrilho pequeno passou a ser **reusada**,
+/// e o termo que castigava os pequenos quase desapareceu. ⚠️ E a 1.ª reconferência (§88) ainda deu
+/// `64`, porque o tecto FIXO da cache (`2 048` fitas) estrangulava exactamente os tamanhos pequenos —
+/// *o «óptimo» era o maior ladrilho que ainda cabia no meu tecto*. Com o tecto **derivado do que o
+/// quadro pede**, a resposta inverteu-se.
+///
+/// ⭐ **A varredura nova** (`measure_the_tile_size_now_that_the_cache_exists`, **intercalada** ×3,
+/// com a cache aquecida por um arrasto em cada tamanho, quadro de movimento sem anti-serrilhado):
+///
+/// | | 16 | **24** | 32 | 48 | 64 | 96 |
+/// |---|---:|---:|---:|---:|---:|---:|
+/// | `640×360` 168 ar | `12,5` | **`13,3`** | `13,8` | `15,8` | `19,1` | `32,8` |
+/// | `640×360` 672 ar | `38,2` | **`41,1`** | `43,8` | `53,3` | `62,1` | `111,5` |
+/// | `1600×900` 168 ar | `62,6` | **`60,8`** | `58,2` | `61,8` | `66,5` | `76,7` |
+///
+/// ⭐⭐⭐ **`24` ship**, e o ganho contra o `64` é **`1,44×`** no caso do preview e **`1,51×`** na peça
+/// pesada. O `16` ganha por `6 %` a `640×360` e **perde** a `1600×900`, e guarda o dobro das fitas —
+/// *uma diferença de `6 %` não paga o dobro da memória, e a linha de baixo diz que ela nem é uma
+/// diferença.*
+///
+/// ⚠️ **A tabela ANTIGA fica registada porque ela não estava errada** — ela media um mundo em que
+/// montar uma fita se pagava uma vez por ladrilho **por quadro**. *Uma constante que se move é uma
+/// medição a acontecer.*
+pub(crate) const TILE: usize = 24;
 
 /// ⭐⭐⭐ **Em quantas FATIAS DE PROFUNDIDADE o tubo de um ladrilho se reparte** (W56e) — medido.
 ///
@@ -226,7 +253,13 @@ pub(crate) fn tiled_trace(
         };
         let before = spent();
         let r = body(t);
-        TILE_MAX.fetch_max(spent() - before, std::sync::atomic::Ordering::Relaxed);
+        let custo = spent() - before;
+        TILE_MAX.fetch_max(custo, std::sync::atomic::Ordering::Relaxed);
+        if RECORD_TILE_COSTS.load(std::sync::atomic::Ordering::Relaxed)
+            && let Ok(mut v) = TILE_COSTS.lock()
+        {
+            v.push((t.1 * w.div_ceil(tile) + t.0, custo));
+        }
         r
     };
     let done: Vec<TileResult> = if parallel {
@@ -489,6 +522,23 @@ pub static SPECIALISED: std::sync::atomic::AtomicUsize = std::sync::atomic::Atom
 /// dependem do escalonamento, então o número medido em série **é** o do quadro paralelo.
 #[doc(hidden)]
 pub static TILE_MAX: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// ⚠️ Só para a sonda: gravar o custo de **cada** ladrilho, e não só o do pior.
+///
+/// ⭐ Ele existe para uma pergunta que só o **oráculo** responde: *se os ladrilhos fossem
+/// escalonados pelo custo VERDADEIRO, o `1,47×` da §89 desaparecia?* Provar a direcção com o custo
+/// medido é mais barato — e mais honesto — do que construir um estimador e descobrir depois que a
+/// ordem não era o mecanismo. *Simule antes de construir.*
+///
+/// ⚠️ **Lê-se num traçado SERIAL**, como o [`TILE_MAX`]: a diferença dos contadores globais em torno
+/// de um ladrilho só é a conta dele quando ninguém mais escreve entretanto.
+#[doc(hidden)]
+pub static RECORD_TILE_COSTS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// ⚠️ Só para a sonda — ver [`RECORD_TILE_COSTS`]. Cada entrada é `(índice do ladrilho, amostras)`.
+#[doc(hidden)]
+pub static TILE_COSTS: std::sync::Mutex<Vec<(usize, u64)>> = std::sync::Mutex::new(Vec::new());
 
 /// ⭐⭐⭐ **Quantas árvores cada FATIA DE PROFUNDIDADE especializou** (W81) — ver
 /// [`crate::SLAB_SAMPLES`], que é o outro lado da mesma pergunta.

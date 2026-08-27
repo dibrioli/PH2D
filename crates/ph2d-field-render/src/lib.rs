@@ -120,7 +120,7 @@ pub use march::{
 pub use shade::Matcap;
 pub use shade::shade;
 pub use tape_cache::{INFLATE, TAPE_HITS, TapeCache};
-pub use tiles::{SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_MAX};
+pub use tiles::{RECORD_TILE_COSTS, SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_COSTS, TILE_MAX};
 
 /// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.
 ///
@@ -311,7 +311,10 @@ fn trace_inner(
     // outra cópia da mesma lei — e a que se esquecesse dela serviria fitas de um documento que já
     // não existe. *Uma lei escrita em duas portas ainda não é uma lei.*
     if let Some(c) = cache {
-        c.begin(doc);
+        // ⚠️ **Quantas regiões este quadro vai pedir** — uma por ladrilho por fatia. É daqui que a
+        // cache tira o tecto dela, em vez de o ter escrito à mão (ver `TapeCache::begin`).
+        let (w, h) = (width as usize, height as usize);
+        c.begin(doc, w.div_ceil(TILE) * h.div_ceil(TILE) * (SLABS + 2));
     }
     trace_inner_tiles(
         doc,
@@ -413,6 +416,51 @@ pub fn trace_cached_for_test(
     cache: Option<&TapeCache>,
 ) -> Gbuffer {
     trace_inner(doc, reg, cam, width, height, true, antialias, None, cache)
+}
+
+/// ⭐⭐ **A marcha por ladrilho COM CACHE e com o lado escolhido** — a porta que a varredura do
+/// `TILE` da W88 dirige.
+///
+/// ⚠️ Ela existe porque a varredura anterior do `TILE` (§82.10) é **anterior à cache**: ali um
+/// ladrilho pequeno pagava uma compilação a mais, e hoje a fita dele também é reusada. *Uma
+/// varredura sem a cache mede um mundo que já não existe.*
+#[doc(hidden)]
+#[must_use]
+#[allow(clippy::too_many_arguments)]
+pub fn trace_tiled_with_cache_for_test(
+    doc: &FieldDoc,
+    reg: &ph2d_field_eval::hybrid::Registry,
+    cam: &Orbit,
+    width: u32,
+    height: u32,
+    tile: usize,
+    slabs: usize,
+    cache: Option<&TapeCache>,
+) -> Option<Gbuffer> {
+    let shape = ph2d_field_eval::hybrid::Hybrid::new(doc, reg);
+    let rc = ph2d_field_eval::RegionCompiler::new(doc);
+    let bbox = ph2d_field_eval::bounds::bounding_ball(doc, reg)
+        .map(ph2d_field_eval::bounds::Ball::aabb)?;
+    if shape.sampled_count() != 0 || !rc.is_worth_it() {
+        return None;
+    }
+    if let Some(c) = cache {
+        let (pw, ph) = (width as usize, height as usize);
+        c.begin(doc, pw.div_ceil(tile) * ph.div_ceil(tile) * (slabs + 2));
+    }
+    let plane = Screen::new(width, height, cam.half_extent);
+    let scene = Scene {
+        shape: &shape,
+        cam,
+        basis: cam.basis(),
+        sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
+        clip: Some(bbox),
+        step: ph2d_field_eval::safe_march_step(doc),
+        stencil: NORMAL_STENCIL,
+    };
+    Some(tiled_trace(
+        doc, &rc, &scene, plane, bbox, true, false, None, tile, slabs, cache,
+    ))
 }
 
 /// ⭐ **Quantas fatias de profundidade o produto reparte** — ver [`tiles::SLABS`].

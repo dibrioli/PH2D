@@ -52,13 +52,33 @@ use ph2d_field_eval::hybrid::RegionTape;
 /// **rápido**, que é exactamente onde o artista tolera menos detalhe.
 pub const INFLATE: f32 = 1.25;
 
-/// Quantas fitas a cache guarda antes de deitar metade fora.
+/// ⭐⭐⭐ **Quantos QUADROS de regiões a cache guarda** — e a capacidade é **derivada** disto.
 ///
-/// ⚠️ **Ele diz de que recurso é: MEMÓRIA EXECUTÁVEL.** Cada fita é um `mmap` do tamanho do código
-/// dela; `2048` regiões de um contorno de 168 arestas são da ordem de dezenas de MiB. O despejo é
-/// por **idade de uso**, e não por ordem de entrada: numa órbita contínua as regiões antigas nunca
-/// mais são pedidas, e as do quadro corrente são pedidas todas.
-const CAPACITY: usize = 2048;
+/// ⛔⛔ **Ela era um número fixo (`CAPACITY = 2048`) e esse número passou a DITAR O PRODUTO** — o
+/// defeito que o `CLAUDE.md §0.0` nomeia: *nunca deixe o fallback definir o produto*.
+///
+/// Medido (`measure_the_tile_size_now_that_the_cache_exists`, com o tecto fixo de `2048`):
+///
+/// | | ladrilho 24 | 32 | 48 | **64** |
+/// |---|---:|---:|---:|---:|
+/// | `640×360` | `43,3` | `43,0` | `50,0` | `58,8` |
+/// | **`1600×900`** | **`859,2`** | **`677,8`** | `60,8` | `65,1` |
+///
+/// ⭐ A `1600×900` um ladrilho de `32` pede `50×29 × 4 ≈ 5 800` regiões por quadro contra um tecto
+/// de `2 048`: **a cache despejava metade a cada quadro e recompilava tudo**, e o «óptimo» que a
+/// varredura devolvia era só o maior ladrilho que ainda cabia no meu tecto. *Um limite que não diz
+/// de que recurso é acaba a escolher a constante do lado.*
+///
+/// ⭐⭐ **O tecto passa a ser o que o quadro PEDE**, e `3` quadros é o que a lei da cache precisa: o
+/// quadro corrente, o anterior (de onde vêm os acertos) e o do outro documento (o preview alterna
+/// **dois** — ver [`DOCS`]).
+const FRAMES_KEPT: usize = 3;
+
+/// ⚠️ **O tecto absoluto, e ele diz de que recurso é: MEMÓRIA EXECUTÁVEL.** Cada fita é um `mmap`
+/// do código dela — uma região pequena compila poucos milhares de instruções, e o `mmap` mínimo é
+/// uma página. `16 384` fitas são da ordem de dezenas de MiB, e `65 530` é o tecto de mapeamentos
+/// que o Linux dá a um processo por omissão.
+const CAPACITY_MAX: usize = 16_384;
 
 /// ⭐⭐⭐ **Quantos DOCUMENTOS a cache guarda ao mesmo tempo** — e o `2` não é folga, é a contagem
 /// dos degraus do preview.
@@ -104,6 +124,8 @@ struct Entry {
 }
 
 struct Inner {
+    /// Quantas fitas esta cache guarda — **derivado** do que um quadro pede, ver [`FRAMES_KEPT`].
+    capacity: usize,
     /// ⚠️ Quanto esta cache infla — ver [`INFLATE`]. É um campo, e não a constante lida
     /// directamente, porque a **varredura** que a escolheu tem de poder correr as duas respostas no
     /// mesmo processo: entre duas corridas desta workstation o mesmo passe já deu `11,36` e
@@ -146,6 +168,7 @@ impl TapeCache {
     pub fn with_inflate(f: f32) -> Self {
         Self {
             inner: std::sync::RwLock::new(Inner {
+                capacity: CAPACITY_MAX,
                 inflate: f,
                 docs: Vec::new(),
                 current: 0,
@@ -171,11 +194,16 @@ impl TapeCache {
     /// ⚠️ **A comparação é por VALOR, e é barata ao lado do que ela guarda:** um `FieldDoc` de uma
     /// peça de perfil são alguns kiB de `f32` contra os `~14 ms` de compilação que a cache existe
     /// para não repetir. *Uma cache que não sabe quando morrer é uma fonte de imagens erradas.*
-    pub fn begin(&self, doc: &FieldDoc) {
+    pub fn begin(&self, doc: &FieldDoc, regions_this_frame: usize) {
         let mut inner = self
             .inner
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        // ⭐ **O tecto é o que o quadro pede** — ver [`FRAMES_KEPT`]. Ele sobe com a resolução e com
+        // ladrilhos mais finos, que é exactamente quando o tecto fixo estrangulava.
+        inner.capacity = regions_this_frame
+            .saturating_mul(FRAMES_KEPT)
+            .clamp(64, CAPACITY_MAX);
         if let Some((_, g)) = inner.docs.iter().find(|(d, _)| d == doc) {
             inner.current = *g;
         } else {
@@ -218,7 +246,7 @@ impl TapeCache {
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let seen = inner.frame;
-        if inner.entries.len() >= CAPACITY {
+        if inner.entries.len() >= inner.capacity {
             // ⚠️ **Despejo por IDADE DE USO, e metade de uma vez.** Deitar uma fora por cada uma
             // que entra faria o quadro em que a cache enche pagar um despejo por região; deitar
             // metade paga-o uma vez em muitos quadros.

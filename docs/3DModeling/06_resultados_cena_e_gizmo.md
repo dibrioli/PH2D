@@ -5743,7 +5743,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 
 | O quê | Estado | Onde |
 |---|---|---|
-| ⛔ **A pré-visualização não alcança 60 Hz numa peça de perfil** — o custo é **MONTAGEM**, não marcha | a W70 tirou-lhe `1,65×`–`1,92×`; ainda `2,5×` acima do orçamento | §70, §71 |
+| ✅⭐⭐⭐ **A pré-visualização ALCANÇA 60 Hz** — `14,2 ms` contra `16,7`, e independente do `Resolution` | o item nº 1 desde a §70. ⚠️ medido a `load 25,8`, logo o número real é melhor | §90.4 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
@@ -5752,7 +5752,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
 | ⏳ **A MARCHA** — o que sobra do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio) · ⛔ **o perfil como CONSULTA fora**: a fita especializada ganha `2×`–`8×` na região real | §73, §82.1, §87 |
 | ⭐⭐⭐ **O quadro de movimento usa `~30 %` da máquina** — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o ladrilho **não** é a alavanca (`48 ≈ 64`) · ⛔⛔ **e o JIT também não era**: tirá-lo não mudou a forma da curva (§88.2). A causa está por achar | §82.8, §88.2 |
-| ⏳ **A causa da má escala: a DECOMPOSIÇÃO**, medida em `1,47×` — e ela bate o `1,52×` que a contagem já previa | ⛔ **pôr os caros primeiro NÃO cura** (neutro a pior): a régua da profundidade está anti-correlacionada. Falta uma régua de custo que sirva | §89 |
+| ⏳ **A causa da má escala: a DECOMPOSIÇÃO** (`1,47×`) — e o oráculo prova que a **ORDEM** é o mecanismo (LPT dá `1,00×` a 8 threads, `1,02×` a 16) | ⛔ a régua da profundidade está anti-correlacionada · ⭐ com `TILE = 24` o piso encolheu sozinho: **re-medir o que ela ainda vale antes de a construir** | §89, §90.1 |
+| ✅⭐⭐ **O `TILE` estava a ser escolhido pelo TECTO DA MINHA CACHE** | ⭐ tecto **derivado** do que o quadro pede ⇒ `TILE` de `64` para **`24`**, `1,44×`–`1,51×` | §90.2, §90.3 |
+| ⏳ O `SLABS` foi escolhido com o ladrilho de `64` | a forma da região mudou; pede a mesma reconferência | §90.4 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
@@ -5769,6 +5771,16 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 
+- ⭐⭐⭐ **W88 (§90): O QUADRO DE MOVIMENTO ENTROU NO ORÇAMENTO — `14,2 ms` contra `16,7`.** Primeiro o
+  **oráculo**: gravar o custo verdadeiro de cada ladrilho e **simular** o escalonamento (*simule antes
+  de construir*) — a ordem perfeita dá `1,00×` a 8 threads e `1,02×` a 16, logo **a ordem é o
+  mecanismo**; e a 32 sobra um piso de `1,52×` que nenhuma ordem passa, porque *uma ordem não parte um
+  ladrilho*. ⛔⛔ **E aí achou-se que o `TILE` estava a ser escolhido pelo TECTO DA MINHA CACHE**: com
+  `CAPACITY = 2048` fixo, um ladrilho de `32` a `1600×900` pedia `~5 800` regiões e a cache despejava
+  metade a cada quadro (`677 ms` num quadro!) — *o «óptimo» era o maior ladrilho que ainda cabia no
+  meu tecto*. Com o tecto **derivado do que o quadro pede**, a resposta inverteu-se e o `TILE` foi de
+  `64` para **`24`** (`1,44×`–`1,51×`). ⚠️ *Um limite que não diz de que recurso é acaba a escolher a
+  constante do lado.*
 - ⛔⛔ **W87 (§89): a perda de escala é a DECOMPOSIÇÃO — e a minha cura foi medida e recusada.** O
   discriminador clássico (`T` quadros **independentes**, um por thread e cada um serial, contra **um**
   repartido por `T`) dá `16,99×` contra `11,65×` a 32 threads ⇒ **a decomposição custa `1,47×`**, e o
@@ -7940,3 +7952,76 @@ onde esta parou.
 ⏳ **Aberto:** uma régua de custo que sirva — a candidata é **o custo medido do quadro anterior**, que
 o `TILE_MAX` já sabe recolher — e, antes dela, saber se é mesmo a **ordem** que falta ou a
 **granularidade** (⛔ o tamanho do ladrilho já foi varrido e fechado, §82.10).
+
+## §90 — W88: ⭐⭐⭐ O QUADRO DE MOVIMENTO ENTROU NO ORÇAMENTO (27/08)
+
+### §90.1 — Primeiro o oráculo: *simule antes de construir*
+
+A §89 mediu que a decomposição custa `1,47×` e que ordenar por profundidade não cura. ⚠️ **A pergunta
+que ficou não era «que estimador de custo usar»: era se a ORDEM é sequer o mecanismo.**
+
+`measure_what_a_perfect_tile_schedule_would_buy` grava o custo **verdadeiro** de cada ladrilho
+(serial) e simula o escalonamento — aritmética pura, sem uma linha de produto:
+
+| threads | ordem natural / ideal | **LPT / ideal** |
+|---:|---:|---:|
+| 8 | `1,13×` | **`1,00×`** |
+| 16 | `1,40×` | **`1,02×`** |
+| 32 | `1,76×` | `1,52×` |
+
+⭐ **A ordem É o mecanismo** — com o custo verdadeiro ela chega ao ideal a 8 e 16 threads. ⚠️ E a 32
+sobra um piso de `1,52×` que **nenhuma ordem passa**: o pior ladrilho vale `4,74 %` do quadro e a
+fatia ideal é `3,1 %`. *Uma ordem não parte um ladrilho.* ⇒ o que faltava era ladrilhos **menores**.
+
+### §90.2 — ⛔⛔ E o `TILE` estava a ser escolhido pelo TECTO DA MINHA CACHE
+
+A §82.10 fechou o `TILE` em `64`, e a reconferência com a cache ligada ainda deu `64`. ⚠️ **Porque o
+tecto FIXO da cache (`CAPACITY = 2048` fitas) estrangulava exactamente os tamanhos pequenos:**
+
+| com o tecto fixo | ladrilho 24 | 32 | 48 | 64 |
+|---|---:|---:|---:|---:|
+| `640×360` | `43,3` | `43,0` | `50,0` | `58,8` |
+| **`1600×900`** | **`859,2`** | **`677,8`** | `60,8` | `65,1` |
+
+A `1600×900` um ladrilho de `32` pede `~5 800` regiões por quadro contra um tecto de `2 048`: **a
+cache despejava metade a cada quadro e recompilava tudo.** ⇒ *o «óptimo» que a varredura devolvia era
+o maior ladrilho que ainda cabia no meu tecto.*
+
+⭐⭐⭐ **Um limite que não diz de que recurso é acaba a escolher a constante do lado** (`CLAUDE.md §0`:
+*nunca deixe o fallback definir o produto*). O tecto passou a ser **derivado do que o quadro pede** —
+`FRAMES_KEPT = 3` vezes as regiões de um quadro (o corrente, o anterior de onde vêm os acertos, e o
+do outro documento que o preview alterna), com um tecto absoluto que **nomeia o recurso**
+(`CAPACITY_MAX = 16 384` fitas de memória executável).
+
+### §90.3 — ⭐ A varredura, com o tecto derivado — e a resposta inverteu-se
+
+| | 16 | **24** | 32 | 48 | 64 | 96 |
+|---|---:|---:|---:|---:|---:|---:|
+| `640×360` 168 ar | `12,5` | **`13,3`** | `13,8` | `15,8` | `19,1` | `32,8` |
+| `640×360` 672 ar | `38,2` | **`41,1`** | `43,8` | `53,3` | `62,1` | `111,5` |
+| `1600×900` 168 ar | `62,6` | **`60,8`** | `58,2` | `61,8` | `66,5` | `76,7` |
+
+⭐ **`TILE = 24` ship**: `1,44×` contra o `64` no caso do preview e `1,51×` na peça pesada. O `16`
+ganha `6 %` a `640×360`, **perde** a `1600×900` e guarda o **dobro** das fitas.
+
+### §90.4 — ⭐⭐⭐ E o quadro de movimento entrou no orçamento
+
+`measure_where_the_frame_stands_after_all_of_it`, ⚠️ medido com a máquina a **`load 25,8`** (ou seja,
+o número real é **melhor** que este):
+
+| | §88.1 (antes) | **agora** | do orçamento de `16,7` |
+|---|---:|---:|---:|
+| **movimento**, peça de omissão | `24,1` | **`14,2`** | **`0,85`** |
+| **movimento**, `Resolution` alto | `24,2` | **`13,8`** | **`0,83`** |
+| assentar 1, omissão | `28,0` | `20,6` | `1,24` |
+| assentar 1, pesada | `58,0` | `33,9` | `2,03` |
+| assentar 2, omissão | `77,8` | `55,2` | `3,30` |
+| assentar 2, pesada | `136,3` | `94,0` | `5,63` |
+
+⭐⭐⭐ **`60 Hz` no quadro que a mão sente**, e independente do `Resolution` — que era o item nº 1 da
+lista desde a §70.
+
+⏳ **Fica aberto:** o `SLABS` foi escolhido com o ladrilho de `64` e a forma da região mudou — ele
+pede a mesma reconferência. E o escalonamento por custo (§90.1) continua por construir: com `TILE=24`
+há `27×15×6 ≈ 2 430` ladrilhos-fatia e o pior pesa muito menos, então o piso de `1,52×` encolheu
+sozinho — *é preciso re-medir o que ele ainda vale antes de o construir.*

@@ -4705,6 +4705,192 @@ fn measure_whether_the_cached_frame_scales_better() {
     }
 }
 
+/// ⭐⭐⭐ **O `TILE` COM A CACHE LIGADA** (W88) — a terceira reconferência, e a premissa mudou outra
+/// vez.
+///
+/// A §82.10 varreu o `TILE` e fechou-o em `64`. ⚠️ **Aquela varredura é ANTERIOR à cache** (W82): ela
+/// media um mundo em que um ladrilho mais pequeno pagava **uma compilação de JIT a mais**, e a
+/// montagem era metade do quadro. Com a cache, a fita de um ladrilho pequeno **também** é reusada, e
+/// o termo que castigava os ladrilhos pequenos quase desapareceu.
+///
+/// ⭐ E o oráculo do escalonamento (`measure_what_a_perfect_tile_schedule_would_buy`) diz porque isto
+/// importa agora: a 32 threads, **nem a ordem perfeita passa de `1,52×`** — o pior ladrilho vale
+/// `4,74 %` do quadro inteiro e a fatia ideal é `3,1 %`. *Uma ordem não parte um ladrilho.*
+///
+/// *Quem move o número que sustenta uma nota tem de reconferir a nota* (`CLAUDE.md §0.0`).
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_the_tile_size_now_that_the_cache_exists --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_the_tile_size_now_that_the_cache_exists() {
+    let reg = Registry::new();
+    let cam = Orbit::default();
+    let med = |mut v: Vec<f64>| -> f64 {
+        v.sort_by(f64::total_cmp);
+        v[v.len() / 2]
+    };
+    let tiles = [16usize, 24, 32, 48, 64, 96];
+    for ((w, h), n) in [
+        ((640u32, 360u32), 168usize),
+        ((640, 360), 672),
+        ((1600, 900), 168),
+    ] {
+        let doc = cache_piece(n);
+        // ⚠️ **INTERCALADO** ronda a ronda: entre duas corridas desta workstation o mesmo passe já
+        // deu `11,36` e `5,50 ms`, e varrer um tamanho de cada vez mede a máquina.
+        let mut cols: Vec<Vec<f64>> = vec![Vec::new(); tiles.len()];
+        let caches: Vec<crate::TapeCache> = tiles.iter().map(|_| crate::TapeCache::new()).collect();
+        for ronda in 0..3usize {
+            for (k, &tile) in tiles.iter().enumerate() {
+                // Aquecimento: um arrasto, para a cache daquele tamanho chegar ao regime.
+                for i in 0..6 {
+                    let quente = Orbit {
+                        rotation: Orbit::from_yaw_pitch(
+                            0.72 + ((ronda * 6 + i) as f32) * 2.0f32.to_radians(),
+                            0.52,
+                        )
+                        .rotation,
+                        ..Orbit::default()
+                    };
+                    let _ = crate::trace_tiled_with_cache_for_test(
+                        &doc,
+                        &reg,
+                        &quente,
+                        w,
+                        h,
+                        tile,
+                        crate::slabs_for_test(),
+                        Some(&caches[k]),
+                    );
+                }
+                let runs: Vec<f64> = (0..5)
+                    .map(|_| {
+                        let t0 = std::time::Instant::now();
+                        let _ = crate::trace_tiled_with_cache_for_test(
+                            &doc,
+                            &reg,
+                            &cam,
+                            w,
+                            h,
+                            tile,
+                            crate::slabs_for_test(),
+                            Some(&caches[k]),
+                        );
+                        t0.elapsed().as_secs_f64() * 1000.0
+                    })
+                    .collect();
+                cols[k].push(med(runs));
+            }
+        }
+        let ms: Vec<f64> = cols.into_iter().map(med).collect();
+        let melhor = ms
+            .iter()
+            .enumerate()
+            .min_by(|a, b| a.1.total_cmp(b.1))
+            .map_or(0, |(i, _)| tiles[i]);
+        print!("{w}x{h} {n:4}ar |");
+        for (k, t) in tiles.iter().enumerate() {
+            print!(" {t}:{:7.2} ({:5}) |", ms[k], caches[k].len());
+        }
+        println!(" melhor {melhor}");
+    }
+}
+
+/// ⭐⭐⭐ **O ORÁCULO DO ESCALONAMENTO** (W88) — *simule antes de construir*.
+///
+/// A §89 mediu que a decomposição custa `1,47×` e que ordenar por **profundidade** é neutro a pior.
+/// ⚠️ **A pergunta que ficou não é «que estimador de custo usar»: é se a ORDEM é sequer o
+/// mecanismo.** Construir um estimador para descobrir depois que não era seria pagar duas vezes.
+///
+/// ⭐ Esta sonda responde com o **custo VERDADEIRO** de cada ladrilho (medido, serial) e uma
+/// simulação do escalonamento — aritmética pura, sem uma linha de produto:
+///
+/// | ordem | o que ela prevê |
+/// |---|---|
+/// | **natural** (varrimento) | o que o produto faz hoje |
+/// | **LPT** (o mais caro primeiro) | o melhor que uma ordem consegue |
+/// | **ideal** | `total / threads`, que nenhuma ordem alcança se um ladrilho for maior que a fatia |
+///
+/// ⇒ se o LPT previsto encostar no ideal, a ordem **é** o mecanismo e vale construir o estimador; se
+/// não, o `1,47×` está noutro sítio e o estimador seria trabalho perdido.
+///
+/// ⚠️ Contagens e aritmética — vale com a máquina sob carga.
+///
+/// ```text
+/// cargo test -p ph2d-field-render --profile ci-test -- --exact \
+///     tests::measure_what_a_perfect_tile_schedule_would_buy --ignored --nocapture
+/// ```
+#[test]
+#[ignore]
+fn measure_what_a_perfect_tile_schedule_would_buy() {
+    use std::sync::atomic::Ordering;
+    let reg = Registry::new();
+    let doc = cache_piece(168);
+    let cam = Orbit::default();
+    let (w, h) = (640u32, 360u32);
+    crate::TILE_COSTS.lock().expect("mutex").clear();
+    crate::RECORD_TILE_COSTS.store(true, Ordering::Relaxed);
+    // ⚠️ **SERIAL**: a diferença dos contadores globais em torno de um ladrilho só é a conta dele
+    // quando ninguém mais escreve entretanto.
+    let g = crate::trace_tiled_for_test(
+        &doc,
+        &reg,
+        &cam,
+        w,
+        h,
+        crate::tile_for_test(),
+        crate::slabs_for_test(),
+        false,
+        false,
+    )
+    .expect("traçado");
+    crate::RECORD_TILE_COSTS.store(false, Ordering::Relaxed);
+    assert!(g.hits() > 1000, "a peça saiu vazia — a sonda não mede nada");
+    let mut custos: Vec<u64> = crate::TILE_COSTS
+        .lock()
+        .expect("mutex")
+        .iter()
+        .map(|(_, c)| *c)
+        .collect();
+    let total: u64 = custos.iter().sum();
+    let pior = custos.iter().copied().max().unwrap_or(0);
+    println!(
+        "{} ladrilhos · {total} amostras · o pior vale {pior} ({:.2}% do total)",
+        custos.len(),
+        100.0 * pior as f64 / total as f64
+    );
+
+    // ⭐ **A simulação: escalonamento de lista guloso** — cada ladrilho vai para a thread que está
+    // livre mais cedo. É exactamente o que um `par_iter` com roubo de trabalho faz.
+    let makespan = |ordem: &[u64], t: usize| -> u64 {
+        let mut carga = vec![0u64; t];
+        for &c in ordem {
+            let i = carga
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, l)| **l)
+                .map_or(0, |(i, _)| i);
+            carga[i] += c;
+        }
+        carga.into_iter().max().unwrap_or(0)
+    };
+    let natural = custos.clone();
+    custos.sort_unstable_by(|a, b| b.cmp(a));
+    println!("threads | ideal | ordem natural | LPT (o pior 1º) | natural/ideal | LPT/ideal");
+    for t in [8usize, 16, 32] {
+        let ideal = total as f64 / t as f64;
+        let (a, b) = (makespan(&natural, t) as f64, makespan(&custos, t) as f64);
+        println!(
+            "{t:7} | {ideal:9.0} | {a:13.0} | {b:15.0} | {:13.2}x | {:9.2}x",
+            a / ideal,
+            b / ideal
+        );
+    }
+}
+
 /// ⭐⭐⭐ **O QUE ESTRAGA A ESCALA: A DECOMPOSIÇÃO OU UM RECURSO PARTILHADO?** (W87) — o
 /// discriminador.
 ///

@@ -10,7 +10,8 @@ use std::sync::Arc;
 use vello::Scene;
 use vello::kurbo::{Affine, BezPath, Rect};
 use vello::peniko::{
-    Blob, Brush, Color, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat, ImageQuality,
+    Blob, Brush, Color, Extend, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
+    ImageQuality,
 };
 
 pub struct VectorScene {
@@ -251,6 +252,53 @@ impl VectorScene {
         };
         let brush = ImageBrush::new(image).with_quality(quality);
         self.inner.draw_image(brush.as_ref(), transform);
+    }
+
+    /// **Preenche `path` com uma IMAGEM LADRILHADA** — a porta do *Texture Pattern* (plano 33, W2).
+    ///
+    /// ⭐⭐ **Uma `fill()` e mais nada.** Sem camada de clip, sem rasterização, sem blit: a
+    /// repetição é do amostrador do Vello (`x_extend`/`y_extend` viajam empacotados em
+    /// `sample_alpha` e o `fine.wgsl` honra-os, aplicando o extend **antes** de somar o
+    /// `atlas_offset` — o repeat dá a volta dentro do próprio ladrilho e não sangra o vizinho no
+    /// atlas). ⇒ um preenchimento com padrão custa o que uma cor chapada custa.
+    ///
+    /// # Os dois argumentos que o [`Self::fill_path`] tem MORTOS
+    ///
+    /// - **`rule`** — o `fill_path` fixa `Fill::NonZero`, e num *compound path* com `EvenOdd` isso
+    ///   pinta o buraco. É a mesma pedra que fez o `fill_multipoint` da `ph2d-vec-render` ter de
+    ///   empurrar o clip com a regra do caminho em vez do `push_clip` normal.
+    /// - **`brush_transform`** — o `fill_path` passa `None`. O Vello compõe
+    ///   `transform * brush_transform`, então é ELE que põe a colocação do padrão no espaço das
+    ///   ÂNCORAS e a faz cavalgar a pose da forma. Com `None` o padrão ficaria colado à TELA e
+    ///   escorregaria por baixo da forma — o defeito da origem-da-régua do Illustrator.
+    ///
+    /// # O que o substrato ainda não faz
+    ///
+    /// ⛔ **`ImageQuality::High` NÃO existe no Vello 0.8** — o `fine.wgsl` di-lo em texto (*"We
+    /// don't have an implementation for `IMAGE_QUALITY_HIGH` yet, just use the same as medium"*) e
+    /// cai em bilinear. Passe `Medium` para o caso liso e `Low` (vizinho mais próximo) para arte de
+    /// pixel — que é também o único modo **sem costura**: em `Repeat` o filtro bilinear grampeia na
+    /// fronteira do ladrilho em vez de dar a volta, e o artefacto é meio texel.
+    #[allow(clippy::too_many_arguments)]
+    pub fn fill_path_image(
+        &mut self,
+        path: &BezPath,
+        rule: Fill,
+        transform: Affine,
+        image: &StableImage,
+        brush_transform: Affine,
+        x_extend: Extend,
+        y_extend: Extend,
+        quality: ImageQuality,
+        alpha: f32,
+    ) {
+        let brush = ImageBrush::new(image.data.clone())
+            .with_x_extend(x_extend)
+            .with_y_extend(y_extend)
+            .with_quality(quality)
+            .with_alpha(alpha);
+        self.inner
+            .fill(rule, transform, &brush, Some(brush_transform), path);
     }
 
     /// Push a clip layer that masks subsequent drawing to `path`.

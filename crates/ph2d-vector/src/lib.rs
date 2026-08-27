@@ -23,6 +23,9 @@
 pub mod scene;
 pub mod vector_network;
 
+#[cfg(test)]
+mod scene_tests;
+
 pub use scene::{StableImage, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,
@@ -58,8 +61,8 @@ pub use vello::kurbo::{
     Affine, BezPath, Cap, Circle, Join, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2,
 };
 pub use vello::peniko::{
-    Brush, Color, ColorStop, ColorStops, Fill, Gradient, GradientKind, ImageData, ImageQuality,
-    LinearGradientPosition,
+    Brush, Color, ColorStop, ColorStops, Extend, Fill, Gradient, GradientKind, ImageData,
+    ImageQuality, LinearGradientPosition,
 };
 // Glyph + Scene used by callers that drive `Scene::draw_glyphs`
 // directly (text rendering in ph2d-editor::paint). Same version-skew

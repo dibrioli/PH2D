@@ -30,6 +30,12 @@ pub use silhouette::{MAX_SEGMENTS, silhouette_segments};
 /// sibling module (LOC cap).
 mod gradient;
 use gradient::fill_multipoint;
+
+/// **O preenchimento com PADRÃO** (plano 33) — a tradução do modo e a chamada da porta de imagem.
+pub mod pattern;
+
+#[cfg(test)]
+mod pattern_tests;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
 /// **O recorte da moldura** (plano UI/UX W0) — irmão pelo teto de LOC, e a única peça que sabe que

@@ -17,6 +17,11 @@ authors.workspace = true
 ph2d-vector = { path = "../ph2d-vector" }
 # O modelo editor-first que esta pipeline renderiza.
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+# A lei de LADRILHO do Texture Pattern (plano 33 W1): folha ZERO-dep com o vocabulario
+# (`TileKind`/`TileLaw`/`PatternMode`) e o assador. Esta crate consome o `PatternMode` para o
+# traduzir no `Extend` do peniko -- a traducao mora deste lado de proposito, porque a folha nao
+# pode conhecer peniko sem deixar de ser folha.
+ph2d-vec-pattern = { path = "../ph2d-vec-pattern" }
 # As GUIAS do documento (plano 25 §9). Aresta para o TIPO: a linha é desenhada a partir do que
 # o documento guarda, sem um segundo `{axis, pos}` aqui para divergir dele.
 ph2d-guides = { path = "../ph2d-guides" }

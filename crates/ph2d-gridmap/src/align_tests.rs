@@ -380,7 +380,11 @@ fn an_arc_that_is_not_an_isoline_is_counted() {
         &[5],
     );
     assert_eq!(q.off_axis, 1);
-    assert!((q.across_max - 2.0).abs() < 1e-5, "atravessa {}", q.across_max);
+    assert!(
+        (q.across_max - 2.0).abs() < 1e-5,
+        "atravessa {}",
+        q.across_max
+    );
     // ⚠️ E ao longo ele CONCORDA — é por isso que a coluna tem de ser separada: uma
     // régua só de contagem daria este arco por perfeito.
     assert_eq!(q.agree, 1);

@@ -689,6 +689,29 @@ fn main() {
         },
     }
 
+    // ⭐⭐⭐ **O PORTÃO DA WAVE DOS ARCOS:** as equações «este arco é uma isolinha» são
+    // consistentes entre si? Um conjunto de diferenças com sinal só se pode eliminar se
+    // **toda volta fechar**. ⛔ *Descobrir um conflito depois de refazer o relaxador
+    // custaria a wave inteira.*
+    {
+        let (w, _) = ph2d_gridmap::weld(&cut, &combed);
+        let al = ph2d_gridmap::measure_arc_lines(&cut, &w, &map);
+        println!(
+            "  ⭐⭐⭐ PORTAO DOS ARCOS: {} equacoes sobre {} escalares ⇒ ⭐ {} ELIMINAM · {} fecham ciclo \
+             | ⛔⛔⛔ {} CONFLITOS DE SINAL | desacordo numerico p50 {:.3} max {:.3} celulas \
+             | ⚠️ {} ambiguas (perto de 45°) | {} saltadas",
+            al.arcs,
+            al.scalars,
+            al.eliminated,
+            al.cycles,
+            al.sign_conflicts,
+            al.offset_p50,
+            al.offset_max,
+            al.ambiguous,
+            al.skipped
+        );
+    }
+
     let (tris, uv) = ph2d_gridmap::corner_map(&cut, &map);
     // ⭐ **CONTROLO INDEPENDENTE da ponte**: contar as dobras aqui, sem passar pela
     // extraccao. Se os dois numeros discordarem, o defeito e' do `corner_map` (uma

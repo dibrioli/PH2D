@@ -1566,3 +1566,63 @@ cones dá **uma equação escalar** — a componente atravessada da diferença d
 nas mesmas incógnitas que a costura já elimina. ⚠️ *A diferença contra a Obra A é que ali
 se eliminava uma variável 2-vector inteira, e aqui elimina-se **um escalar**: o sistema
 reduzido tem de passar a ver as duas componentes em separado.* É essa a wave.
+
+### §23.16 — ⭐⭐⭐ O PORTÃO DA WAVE: as equações dos arcos são consistentes, e quase todas eliminam
+
+Antes de refazer o relaxador do G3, a premissa da wave foi **medida**.
+[`ph2d_gridmap::arcline`](../../../crates/ph2d-gridmap/src/arcline.rs), 5 gates.
+
+#### A equação, escrita
+
+Um arco vai do canto `A` ao canto `B` na carta de um patch. Com `e` o eixo **atravessado**,
+a exigência é `e·z_B − e·z_A = 0`, e cada cópia é `z = R^rot·y_classe + off`.
+
+⭐⭐ Como `e·(R^rot·y) = turn2(e, −rot)·y` e **um quarto de volta leva um eixo a outro eixo
+com sinal**, a equação colapsa em
+
+```text
+    s_B · y_B[j_B]  −  s_A · y_A[j_A]  =  c        com s ∈ {+1, −1}
+```
+
+⭐⭐⭐ **Dois ESCALARES, coeficientes `±1`** — a mesma forma que a costura já elimina, com
+metade da variável. ⚠️ *A identidade que tudo isto assenta é verificada por gate que
+avalia os dois lados* (`the_axis_identity_holds_for_every_turn`), não por outra dedução à
+mão: é ali que um sinal troca sem nada deixar de compilar.
+
+#### ⭐ O portão, medido em 7 peças
+
+Um conjunto de diferenças com sinal é consistente **se e só se toda volta fechar**.
+
+| peça | equações | ⭐ **eliminam** | fecham ciclo | ⛔⛔⛔ **conflitos de sinal** | desacordo | ⚠️ ambíguas |
+|---|---|---|---|---|---|---|
+| `sculpt_eared` | `47` | **`47`** | `0` | **`0`** | — | `1` |
+| `sculpt_hooked` | `85` | `83` | `2` | **`0`** | `2,000` | `2` |
+| `sculpt_ridged` | `56` | `55` | `1` | **`0`** | `3,000` | `1` |
+| `sculpt_wrinkled` | `46` | **`46`** | `0` | **`0`** | — | `1` |
+| `sphere_uv_96x144` | `44` | **`44`** | `0` | **`0`** | — | `0` |
+| `sphere_shuffled` | `48` | **`48`** | `0` | **`0`** | — | `1` |
+| `cube` | `91` | `88` | `3` | **`0`** | `0,000` | `0` |
+
+⭐⭐⭐ **ZERO conflitos de sinal em todas.** A eliminação é possível como está escrita.
+
+⭐⭐ **E o grafo das restrições é quase uma FLORESTA:** `0` a `3` ciclos por peça, contra
+`44`–`91` equações. ⇒ **96 %–100 % delas eliminam um escalar directamente**, sem sistema
+nenhum a resolver. *A wave é muito mais barata do que a da costura.*
+
+⚠️ **Por que uma floresta, e não um emaranhado:** num canto onde quatro arcos se
+encontram, os dois horizontais restringem o escalar `v` e os dois verticais o `u` — o
+grafo **parte-se por eixo**, e é isso que mata os ciclos.
+
+#### ⚠️ O que fica nomeado, e não escondido
+
+- **Os poucos ciclos discordam por INTEIROS exactos** (`2` e `3` células). *Não é erro
+  contínuo, é escolha de quantização* — e o `c` deles depende das **translações**, que são
+  variáveis livres. ⇒ eles entram no **mesmo sistema de fechos** que a costura já usa
+  ([`weld_flat`](../../../crates/ph2d-gridmap/src/weld_flat.rs)), sem maquinaria nova.
+- ⚠️ **`0`–`2` arcos por peça são AMBÍGUOS** (perto de `45°`, onde o eixo atravessado é uma
+  **leitura** e não um facto — [`AMBIGUOUS_RATIO`]). *Um conflito nascido daí seria meu, não
+  da peça*, e por isso a coluna existe antes de alguém a poder confundir com um.
+
+⛔ **E o que este portão NÃO é:** ele não impõe coisa nenhuma. *A saída do botão continua
+byte-idêntica* — o que ele compra é a certeza de que a wave seguinte assenta numa premissa
+lida, e não numa que se supôs.

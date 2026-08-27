@@ -141,6 +141,15 @@ fechou»*.
    ⚠️ e a diferença contra a Obra A é que ali se eliminava um 2-vector inteiro e aqui é
    **um escalar** — o sistema reduzido tem de passar a ver as duas componentes em
    separado. *É essa a wave.*
+   ⭐⭐⭐ **E O PORTÃO DESSA WAVE JÁ PASSOU** (§23.16,
+   [`arcline.rs`](../../../crates/ph2d-gridmap/src/arcline.rs), 5 gates): a equação de um
+   arco colapsa em `s_B·y_B[j_B] − s_A·y_A[j_A] = c` — **dois escalares, coeficientes
+   `±1`** — e medido em 7 peças dá **ZERO conflitos de sinal** e um grafo **quase floresta**
+   (`0`–`3` ciclos contra `44`–`91` equações) ⇒ **96–100 % eliminam directamente**.
+   ⚠️ Os poucos ciclos discordam por **inteiros exactos** (`2`, `3` células) e o `c` deles
+   depende das translações ⇒ entram no **mesmo sistema de fechos** do `weld_flat`, sem
+   maquinaria nova. ⚠️ `0`–`2` arcos por peça são **ambíguos** (perto de `45°`), e a coluna
+   existe para não os confundir com conflitos. *A wave é mais barata que a da costura.*
 2. ⭐⭐ **O patch de VALÊNCIA 12 da `sculpt_004`** — o traçado dá `16` patches (a `t003` dá
    `31`) e um deles é não-disco com `χ = −1`; a limpeza parou porque **piorava** a topologia.
    É a instância mais nítida do item 1, e veio da peça do artista.
@@ -167,9 +176,10 @@ fechou»*.
 `ph2d-quadfill`: ⭐ `examples/fill_chain.rs` (o A/B do F4) ·
 `ph2d-quadextract`: `walk.rs`, `lib.rs`, `tests/gates_fixtures.rs`,
 `examples/{chain_info,manifold_census,loop_census,fixture_extract}.rs` ·
-`ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral), `lib.rs` ·
+`ph2d-gridmap`: `weld_round.rs`, ⭐ `align.rs` + `align_tests.rs` (a régua do espiral),
+⭐ `arcline.rs` + `arcline_tests.rs` (o portão da wave dos arcos), `lib.rs` ·
 `shells/desktop`: `sculpt3d_history_retopo_{global,extract}.rs`, `sculpt3d_scenes_quad.rs` ·
-doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.15.
+doc: `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` §13–§23.16.
 
 ⚠️ **Clean-room:** todo artefacto passou `scripts/cleanroom-sweep.sh` (56 entradas) antes de
 cada commit. Nenhuma fonte do alvo entrou nesta janela.

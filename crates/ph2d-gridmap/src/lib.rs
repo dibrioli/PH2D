@@ -53,6 +53,8 @@
 
 /// ⭐⭐⭐ **O SALTO DA GRADE AO DAR UMA VOLTA** — a régua do espiral; ver o módulo.
 pub mod align;
+/// ⭐⭐⭐ **O PORTÃO da wave dos arcos** — as restrições batem? — ver o módulo.
+pub mod arcline;
 pub mod comb;
 /// ⭐ A porta do mapa por CANTO, que a extracção consome — ver o módulo.
 pub mod corners;
@@ -72,6 +74,7 @@ pub mod weld_round;
 pub mod weld_solve;
 
 pub use align::{Alignment, ArcQuant, measure_alignment, measure_arc_quantization};
+pub use arcline::{ArcLineSystem, measure_arc_lines};
 pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};

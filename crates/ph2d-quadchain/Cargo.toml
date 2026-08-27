@@ -3,6 +3,10 @@ name = "ph2d-quadchain"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
+# ⚠️ **`license.workspace` não é cerimónia: sem ele o `cargo deny` do ship reprova**
+# (`error[unlicensed]: ph2d-quadchain = 0.0.0 is unlicensed`), e nenhum gate da linha o vê —
+# o `deny` só corre no `ship.sh`. Uma crate NOVA herda-o das irmãs; esta nasceu sem.
+license.workspace = true
 publish = false
 
 [dependencies]

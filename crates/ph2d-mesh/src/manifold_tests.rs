@@ -110,7 +110,11 @@ fn a_zero_thickness_sheet_leaves_without_opening_the_piece() {
         3,
         "⛔ a fixtura tem de CONTER o fenomeno: as tres arestas da face duplicada"
     );
-    assert_eq!(border_edges(&mesh), 0, "a fixtura parte de uma peca FECHADA");
+    assert_eq!(
+        border_edges(&mesh),
+        0,
+        "a fixtura parte de uma peca FECHADA"
+    );
     let faces_before = mesh.face_count();
 
     let rep = drop_doubled_faces(&mut mesh);
@@ -126,7 +130,10 @@ fn a_zero_thickness_sheet_leaves_without_opening_the_piece() {
         rep.refused
     );
     assert!(!rep.refused, "⛔ a cura recusou-se numa peca que ela fecha");
-    assert_eq!(rep.mirror_pairs, 1, "o par espelhado tem de ser reconhecido");
+    assert_eq!(
+        rep.mirror_pairs, 1,
+        "o par espelhado tem de ser reconhecido"
+    );
     assert_eq!(rep.bad_edges_after, 0, "⛔ sobrou aresta ambigua");
     assert_eq!(
         rep.border_after, 0,
@@ -191,8 +198,16 @@ fn a_clean_sphere_has_no_sheets_to_drop() {
     assert_eq!(rep.mirror_pairs, 0);
     assert_eq!(rep.same_winding_dropped, 0);
     assert!(!rep.refused);
-    assert_eq!(mesh.positions(), &before.0[..], "⛔ as posicoes tem de sair iguais");
-    assert_eq!(mesh.faces(), &before.1[..], "⛔ as faces tem de sair iguais");
+    assert_eq!(
+        mesh.positions(),
+        &before.0[..],
+        "⛔ as posicoes tem de sair iguais"
+    );
+    assert_eq!(
+        mesh.faces(),
+        &before.1[..],
+        "⛔ as faces tem de sair iguais"
+    );
 }
 
 /// ⭐ **REPETIÇÃO PURA — a mesma orientação — fica com UMA.**

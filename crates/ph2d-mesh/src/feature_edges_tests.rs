@@ -142,10 +142,7 @@ fn an_open_tube_has_two_boundary_loops_and_the_tangent_runs_around_them() {
     let (edges, loops) = crate::boundary_feature_edges(&mesh);
     assert_eq!(loops, 2, "⛔ um tubo aberto tem DOIS lacos de bordo");
     assert_eq!(edges.len(), 2 * SEG, "⛔ um segmento de bordo por sector");
-    let worst = edges
-        .iter()
-        .map(|e| e.dir[1].abs())
-        .fold(0.0f32, f32::max);
+    let worst = edges.iter().map(|e| e.dir[1].abs()).fold(0.0f32, f32::max);
     assert!(
         worst < 0.02,
         "⛔ a tangente do bordo tem de correr A' VOLTA do tubo, nao ao longo dele: {worst}"
@@ -199,10 +196,7 @@ fn the_tangent_smooths_the_zigzag_that_the_raw_edge_keeps() {
         .fold(0.0f32, f32::max);
     let smooth = edges.iter().map(|e| e.dir[1].abs()).fold(0.0f32, f32::max);
     eprintln!("bordo serrilhado: aresta crua {raw:.4} · tangente alisada {smooth:.4}");
-    assert!(
-        raw > 0.3,
-        "⛔ a fixtura tem de CONTER o serrilhado: {raw}"
-    );
+    assert!(raw > 0.3, "⛔ a fixtura tem de CONTER o serrilhado: {raw}");
     assert!(
         smooth < raw * 0.5,
         "⛔ a tangente tem de alisar o serrilhado, e nao herda-lo: {smooth} contra {raw}"

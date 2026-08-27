@@ -52,7 +52,9 @@
 //! Sequential like the other sims: the height field `wave_h` and its previous frame
 //! `wave_prev` ride the `state` feedback port (the `pre` self-loop). Tick 0
 //! (`pre` = Empty) **seeds** a flat grid; from tick 1 it steps. `dt` derives from
-//! the state's own `sim_t`, clamped to `[0, MAX_DT]` (a loop-wrap freezes one tick).
+//! the state's own `sim_t` — a clock that did not advance (same tick, loop-wrap, or a
+//! backwards scrub) freezes the field for that tick. See [`MIN_STEP`]: there is no `MAX_DT`
+//! here, and the absence is MEASURED.
 //!
 //! Deterministic → `Effect::Temporal`, replays bit-for-bit.
 
@@ -68,8 +70,19 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// Ceiling on a single step (see `motion.integrate`): guards a playhead jump.
-const MAX_DT: f32 = 0.1;
+/// **O passo mínimo de relógio que conta como *"passou tempo"***.
+///
+/// ⚠️⚠️ **Aqui NÃO existe um `MAX_DT`, e a ausência é o resultado de uma MEDIÇÃO.** Este nó
+/// carregava um `MAX_DT = 0,1` copiado dos integradores, com o doc a afirmar estabilidade — e
+/// ele **não participava dela**: o passo do leapfrog é FIXO (a [`step`] não recebe `dt`) e o
+/// `dt` aparecia numa linha só, esta. Medido: o maior `|h|` ao fim de 60 tiques é
+/// **`2,014648` para TODO salto de relógio**, de `1/60` a **`30 s`** — 300× o grampo antigo.
+/// *Um teto que dá o mesmo número 1800× acima de si próprio não é um teto: é uma constante que
+/// afirma uma propriedade de que não participa.* (doc 91 §5.4.)
+///
+/// ⚠️ **O que a comparação de facto compra fica**: um relógio que não andou — o mesmo tique, o
+/// wrap de um laço, ou um scrub para TRÁS — segura o campo em vez de o avançar.
+const MIN_STEP: f32 = 1e-6;
 /// CFL stability bound for the 2D leapfrog wave: `C = (c·dt)² ≤ 0.5`.
 const CFL_MAX: f32 = 0.49;
 /// Grid side clamp (field cost is O(rows·cols)).
@@ -114,6 +127,10 @@ impl Channel {
         }
     }
 }
+
+/// A ESPONJA da borda absorvente — cortada no teto de LOC (HR-18); ver o cabeçalho dela.
+mod sponge;
+use sponge::Sponge;
 
 /// The static contract of this node type (ADR-0031).
 pub const MANIFEST: NodeManifest = NodeManifest {
@@ -299,75 +316,6 @@ fn grid_positions(p: &Params) -> Vec<[f32; 2]> {
 /// **A BORDA ABSORVENTE** — `edges = 1`. `0` é a reflectora de sempre.
 pub const EDGES_ABSORB: i32 = 1;
 
-/// **O PERFIL da camada absorvente** — a largura da esponja e a mordida dela.
-///
-/// ⚠️ **Ele é um valor e não duas constantes soltas porque os dois números têm de
-/// ser VARRIDOS JUNTOS:** uma esponja estreita e forte e uma larga e fraca tiram a
-/// mesma energia total e reflectem quantidades muito diferentes, então medir um com
-/// o outro fixo mede a combinação e não a lei. A sonda `sweeps_the_sponge_profile`
-/// varre a grade dos dois.
-#[derive(Copy, Clone, Debug)]
-struct Sponge {
-    /// A largura da camada, em CÉLULAS.
-    cells: f32,
-    /// Quanto da amplitude a parede tira por tique, no limite dela.
-    ///
-    /// ⚠️ **NÃO é `1,0`, e a razão é física e não gosto:** uma máscara que cai a
-    /// zero de repente é ela própria um reflector — uma mudança abrupta de
-    /// impedância reflecte, que é o fenómeno que esta borda existe para negar. A
-    /// esponja é GRADUADA por isso, e o piso fica abaixo de 1 para a última fila
-    /// ainda propagar alguma coisa em vez de virar uma segunda parede.
-    strength: f32,
-}
-
-impl Sponge {
-    /// O que SHIPA. ⚠️ **MEDIDO, não escolhido** (`sweeps_the_sponge_profile`, o ECO
-    /// que volta ao miolo em % do que uma parede reflectora devolve):
-    ///
-    /// ```text
-    ///   cells\str    0.02    0.05    0.10    0.15    0.25    0.50    1.00
-    ///          2   55.81%  45.36%  37.95%  30.10%  31.54%  37.49%  46.49%
-    ///          4   54.45%  40.98%  32.64%  30.37%  29.69%  36.67%  40.89%
-    ///          6   50.72%  44.00%  27.77%  25.99%  32.30%  33.97%  40.16%
-    ///          8   45.87%  41.63%  25.45%  28.83%  31.32%  36.44%  31.93%
-    ///         12   39.09%  25.23%  27.63%  25.06%  30.05%  28.65%  29.26%
-    /// ```
-    ///
-    /// ⭐ **A `strength` tem um U, e as duas pontas são ruins por razões DIFERENTES:**
-    /// fraca demais mal absorve (`0,02` devolve metade), forte demais reflecte na
-    /// própria escada de impedância (`1,00` é a pior coluna em toda a metade estreita).
-    /// *A física escrita em [`Sponge::strength`] estava certa e agora está MEDIDA.*
-    ///
-    /// ⭐ **A largura paga até `6` e depois é ruído** (`6`→`12` vale ~1 ponto), e cada
-    /// célula de esponja é miolo que o artista deixa de poder usar ⇒ o joelho é `6`.
-    ///
-    /// ⚠️ **LIMITE NOMEADO: isto reduz o eco a ~26 %, não a zero.** Uma fronteira
-    /// verdadeiramente não-reflectora é a condição de radiação (Mur), que é a outra
-    /// família nomeada em [`step`] — ela troca a VIZINHANÇA no bordo, não a amplitude.
-    const SHIPPED: Self = Self {
-        cells: 6.0,
-        strength: 0.15,
-    };
-
-    /// **Quanto da amplitude a célula `(r, c)` guarda por tique** — `1` no miolo,
-    /// caindo para dentro da parede.
-    ///
-    /// A queda é QUADRÁTICA na distância à parede mais próxima: é o perfil clássico
-    /// de camada absorvente, e é o que faz a transição do miolo para a esponja ser
-    /// suave o bastante para não reflectir de volta.
-    fn at(self, r: usize, c: usize, rows: usize, cols: usize) -> f32 {
-        // A distância à parede mais PRÓXIMA, em células: o mínimo das quatro.
-        let dr = r.min(rows.saturating_sub(1).saturating_sub(r));
-        let dc = c.min(cols.saturating_sub(1).saturating_sub(c));
-        let d = dr.min(dc) as f32;
-        if d >= self.cells || self.cells <= 0.0 {
-            return 1.0;
-        }
-        let into = 1.0 - d / self.cells;
-        1.0 - self.strength * into * into
-    }
-}
-
 /// One leapfrog wave step over the height field. Reflecting (Neumann) edges: an
 /// out-of-grid neighbour reads as the centre cell, so it contributes no gradient.
 ///
@@ -448,8 +396,10 @@ fn simulate(
             .first()
             .copied()
             .unwrap_or(playhead);
-        let dt = (playhead - t_prev).clamp(0.0, MAX_DT);
-        if dt < 1e-6 {
+        // ⚠️ **A pergunta é *"o relógio andou?"*, e é só isso** — ver [`MIN_STEP`]. O
+        // `.clamp(0.0, MAX_DT)` que aqui estava dava a impressão de moldar o passo, e o
+        // passo do leapfrog não vê `dt` nenhum.
+        if playhead - t_prev < MIN_STEP {
             (s_h, s_prev) // loop-wrap / same tick → hold
         } else {
             let (mut next, prev) = step(&s_h, &s_prev, drive, p);

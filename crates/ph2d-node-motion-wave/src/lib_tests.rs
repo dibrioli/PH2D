@@ -617,3 +617,77 @@ fn the_shipped_sponge_profile_sits_at_the_measured_knee() {
          {double:.4} vs {shipped:.4}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// O `MAX_DT` QUE NÃO EXISTE (doc 91 §5.4 — a dívida que este bloco pagou)
+// ---------------------------------------------------------------------------
+
+/// ⭐⭐ **O PASSO DESTE NÓ NÃO DEPENDE DO RELÓGIO, e é por isso que aqui não há `MAX_DT`.**
+///
+/// Este nó carregava um `MAX_DT = 0,1` copiado dos integradores, com o doc a afirmar
+/// estabilidade. Ele **não participava dela**: o leapfrog é um passo FIXO — a [`step`] nem
+/// recebe `dt` — e o `dt` aparecia numa linha só, a do *"passou tempo?"*.
+///
+/// Este gate prende a propriedade: **N tiques dão o MESMO campo, seja qual for o espaçamento
+/// deles**. FALSIFICADO por qualquer lei que faça o passo crescer com o relógio.
+#[test]
+fn the_field_after_n_ticks_does_not_depend_on_how_far_apart_they_were() {
+    let p = params(15, 15, 0.4, 0.0);
+    // `1/60` está muito abaixo do grampo antigo; `30 s` é 300× ACIMA dele.
+    let close = pulse_only(&p, 40);
+    let far = {
+        let mut state = Stream::new(0);
+        let mut frames = Vec::new();
+        for k in 0..40 {
+            let out = simulate((k == 1).then_some(1.0), &state, &[], k as f32 * 30.0, &p);
+            state = out.clone();
+            frames.push(scalar_col(&out, "wave_h"));
+        }
+        frames
+    };
+    assert_eq!(
+        close.last(),
+        far.last(),
+        "o campo tem de ser o mesmo com tiques a 1/60 s e a 30 s de distancia"
+    );
+    // ⚠️ E o CONTROLE: o campo de facto EVOLUIU — senão a igualdade acima seria a de dois
+    // campos planos, que qualquer lei satisfaz.
+    let peak = close
+        .last()
+        .expect("tiques")
+        .iter()
+        .fold(0.0f32, |a, x| a.max(x.abs()));
+    assert!(
+        peak > 0.1,
+        "a fixtura tem de conter o fenomeno: pico {peak}"
+    );
+}
+
+/// **Um relógio que não andou SEGURA o campo** — o mesmo tique, o wrap de um laço, e um scrub
+/// para TRÁS. É o que o `MIN_STEP` de facto compra, e a única coisa que ele compra.
+#[test]
+fn a_clock_that_did_not_advance_holds_the_field() {
+    let p = params(11, 11, 0.4, 0.0);
+    let mut state = Stream::new(0);
+    for k in 0..6 {
+        state = simulate((k == 1).then_some(1.0), &state, &[], k as f32 / 60.0, &p);
+    }
+    let before = scalar_col(&state, "wave_h");
+    // O MESMO instante outra vez…
+    let same = simulate(None, &state, &[], 5.0 / 60.0, &p);
+    assert_eq!(before, scalar_col(&same, "wave_h"), "o mesmo tique segura");
+    // …e um instante ANTERIOR (um scrub para trás).
+    let back = simulate(None, &state, &[], 1.0 / 60.0, &p);
+    assert_eq!(
+        before,
+        scalar_col(&back, "wave_h"),
+        "um scrub para tras segura"
+    );
+    // ⚠️ O CONTROLE: um instante seguinte AVANÇA — senão isto mediria um nó parado.
+    let ahead = simulate(None, &state, &[], 6.0 / 60.0, &p);
+    assert_ne!(
+        before,
+        scalar_col(&ahead, "wave_h"),
+        "o tique seguinte avanca"
+    );
+}

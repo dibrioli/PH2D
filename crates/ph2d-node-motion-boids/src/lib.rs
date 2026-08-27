@@ -72,7 +72,19 @@ const INST_VEC2: PortType = PortType::new(Domain::Instances, Dim::Vec2, Clock::F
 const VALUE: PortType = PortType::new(Domain::Instances, Dim::Scalar, Clock::Frame);
 const VALUE_COL: &str = "v";
 
-/// Ceiling on a single step (see `motion.integrate`): guards a playhead jump.
+/// **O tecto de um passo — e o que ele guarda foi MEDIDO, com DUAS hipóteses refutadas.**
+///
+/// ⚠️ O doc 91 §5.4 registava este `0,1` como *copiado sem derivação*, ao lado do `motion.wave`
+/// — e **os dois não eram o mesmo problema**: lá o `dt` nem chega ao passo, aqui chega.
+///
+/// ⛔ *«senão a sim explode»* — **REFUTADA**: a excursão não diverge em `dt` nenhum até `0,5`
+/// (o `max_speed` limita **todo** passo por construção). ⛔ *«um pássaro salta por cima da
+/// vizinhança a que reage»* — **REFUTADA**: a razão `max_speed·dt / radius` cruza `1` e a coesão
+/// **melhora** (vizinho médio de `1,284` para `0,763`).
+///
+/// ⇒ **O `0,1` FICA**, e guarda *quanto um salto de playhead muda o CARÁCTER do bando num
+/// tique*: nos defaults um passo cobre **20% da percepção**. Tabelas no doc 91 §5.4, sonda
+/// `measure_boids_and_wave_ceilings`.
 const MAX_DT: f32 = 0.1;
 /// Half-extent of the seed cloud (world units), centred on the target/home.
 const SEED_SPREAD: f32 = 3.0;

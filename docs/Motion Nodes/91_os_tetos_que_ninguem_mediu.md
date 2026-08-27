@@ -198,9 +198,38 @@ já estava *sentado* no teto de estabilidade sem ninguém saber), a saturação 
 e o teto do `tension` em 1 600 000, cada um com a sua tabela e um oráculo de três braços
 (*sadia · EXPLODE · SALTA*). Mexer no dele move aquela tabela inteira, e isso é wave própria.
 
-⏳ **`motion.boids` e `motion.wave` continuam com `0,1` por medir.** Eles copiaram o número sem
-derivação, como os dois que este bloco curou — a sonda `excursion` já está escrita e serve-lhes com
-outro grafo. É a dívida que este doc regista.
+✅ **`motion.boids` e `motion.wave` — MEDIDOS em 2026-08-27, e a dívida está paga.**
+
+⚠️⚠️ **A primeira coisa que a medição disse é que eles NÃO ERAM O MESMO PROBLEMA** — este doc
+tratava-os como um item, e o código dizia outra coisa:
+
+| nó | a assinatura do passo | o `dt` chega lá? |
+|---|---|---|
+| `motion.boids` | `step(pos, vel, accel, w, …, **dt**, p)` | **SIM** |
+| `motion.wave` | `step(h, h_prev, drive, p)` | **NÃO** |
+
+⭐ **`motion.wave`: a constante era INERTE, e foi REMOVIDA.** O leapfrog é um passo FIXO, e o
+`dt` aparecia em **uma** linha do arquivo inteiro (`if dt < 1e-6`). Medido: o maior `|h|` ao fim
+de 60 tiques é **`2,014648` para TODO salto de relógio** — `1/60`, `0,1`, `0,5`, `2` e **`30 s`**,
+que é **300×** o grampo. *Um teto que dá o mesmo número 1800× acima de si próprio não é um teto:
+é uma constante que afirma uma propriedade de que não participa.* No lugar dela ficou o
+`MIN_STEP`, que nomeia o que a comparação de facto compra (um relógio parado, ou andado para
+trás, SEGURA o campo).
+
+⭐ **`motion.boids`: o `0,1` FICA, com DUAS hipóteses refutadas pelo caminho.**
+⛔ *«senão a sim explode»* — **falso**: a excursão não diverge em `dt` nenhum até `0,5`, porque o
+`max_speed` limita todo passo por construção (a tabela está no doc-comment do `MAX_DT`).
+⛔ *«um pássaro salta por cima da vizinhança a que reage»* — **falso**: a razão
+`max_speed·dt / radius` cruza `1` e a coesão **melhora** (o vizinho médio vai de `1,284` para
+`0,763`) — com `max_force = 0` um `dt` maior puxa mais por passo, então o bando APERTA.
+⇒ O que o grampo guarda é **quanto um salto de playhead muda o carácter do bando num tique**; nos
+defaults um passo cobre **20% da percepção**. *É a lição do `MAX_GRADIENT_STOPS` da §6 outra vez:
+a medição confirmou o número, e é esse o resultado.*
+
+⚠️ **A sonda `excursion` NÃO serviu, e é o achado de método:** ela mede um extremo global, e
+nenhum destes dois nós tem um extremo que dispare. Para o bando a régua que responde é a
+**distância média ao vizinho** (é um bando: a pergunta é se ele ainda é um), e para a onda é a
+**igualdade entre relógios**. *Uma régua herdada de outro nó mede o outro nó.*
 
 ---
 

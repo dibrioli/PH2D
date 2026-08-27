@@ -876,3 +876,62 @@ fn the_avoidance_refuses_the_device_and_the_default_does_not() {
         "com desvio: a porta-template não tem canal no device"
     );
 }
+
+// ---------------------------------------------------------------------------
+// O `MAX_DT` — o que ele guarda, MEDIDO (doc 91 §5.4)
+// ---------------------------------------------------------------------------
+
+/// ⭐ **O GRAMPO MORDE, e é a única coisa que a medição prova sobre ele.** Dois relógios
+/// acima do tecto dão a MESMA cena, porque os dois são grampados ao mesmo passo.
+///
+/// ⚠️ **Isto não é «a sim explodia sem ele»** — essa hipótese foi REFUTADA (ver o doc de
+/// [`super::MAX_DT`]: a excursão não diverge em `dt` nenhum, porque o `max_speed` limita todo
+/// passo por construção). O que o grampo faz é bornar quanto um salto de playhead muda a cena
+/// num tique, e é isso que este gate prende.
+#[test]
+fn two_clocks_above_the_ceiling_produce_the_same_flock() {
+    let p = params(24);
+    let run = |dt: f32| {
+        let mut state = Stream::new(0);
+        for k in 0..40 {
+            state = simulate([0.0, 0.0], &state, &[], k as f32 * dt, &p);
+        }
+        vec2_col(&state, "P")
+    };
+    // Os dois estão ACIMA do tecto ⇒ os dois são grampados a `MAX_DT`.
+    assert_eq!(
+        run(MAX_DT * 2.0),
+        run(MAX_DT * 5.0),
+        "dois relogios acima do tecto sao o mesmo passo"
+    );
+    // ⚠️ O CONTROLE: um relógio ABAIXO do tecto dá outra cena — senão isto mediria um nó
+    // que ignora o relógio inteiro (que é o caso do `motion.wave`, e ali é de propósito).
+    assert_ne!(
+        run(MAX_DT * 2.0),
+        run(MAX_DT * 0.25),
+        "abaixo do tecto o relogio ainda manda"
+    );
+}
+
+/// **O tecto é uma fracção da PERCEPÇÃO, e o número está escrito.** Nos defaults do nó um
+/// passo cobre `max_speed · MAX_DT`, e a régua honesta é quanto isso é do `radius`.
+///
+/// ⚠️ Este gate existe para o número não voltar a ser um literal sem referente: se alguém
+/// subir o `max_speed` default, ele diz que a conta mudou.
+#[test]
+fn one_clamped_step_stays_a_fraction_of_the_perception_radius() {
+    let manifest_default = |name: &str| MANIFEST.param_default(name).expect("param declarado");
+    let speed = manifest_default("max_speed");
+    let radius = manifest_default("radius");
+    let step = speed * MAX_DT;
+    assert!(
+        step < radius * 0.5,
+        "um passo grampado ({step}) tem de ficar bem dentro da percepcao ({radius})"
+    );
+    // E o número que o doc cita: 20% nos defaults.
+    assert!(
+        (step / radius - 0.2).abs() < 1e-5,
+        "a fraccao mudou: {} (o doc do MAX_DT diz 20%)",
+        step / radius
+    );
+}

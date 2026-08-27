@@ -322,10 +322,19 @@
 /// padrão, lido por um binário v100, encontra um índice de variante que não conhece e o postcard
 /// falha longe da causa. O bump é o que transforma isso num erro de versão.
 ///
+/// ⚠️ **E o degrau carrega DUAS mudanças, não uma:** além da variante, o `ProjectFile` ganhou
+/// **`pattern_art`** (apendado ao fim) — os pixels que cada `Paint::Pattern` nomeia por `AssetId`.
+/// Sem esse campo a fonte não resolveria ao reabrir e toda forma com padrão pintaria a cor de
+/// recurso, **sem erro nenhum**.
+///
 /// ⛔ **Sem degrau de migração, pela mesma decisão do Enio de 26/08** (*"não há projetos salvos"*):
 /// sem um `ProjectFileV100` congelado não há forma honesta de reler aqueles bytes, e um ficheiro
-/// anterior é **recusado em voz alta** no `project_load`. ⚠️ Note que aqui a recusa é
-/// **conservadora e não obrigatória** — um v100 seria lido certo pela regra posicional —, mas
-/// congelar um tipo por uma variante apendada custaria mais do que vale enquanto não houver
-/// projectos gravados.
+/// anterior é **recusado em voz alta** no `project_load`.
+///
+/// ⚠️⚠️ **E aqui a recusa é OBRIGATÓRIA, ao contrário do que a 1.ª redacção desta nota dizia.** Ela
+/// dizia que um v100 seria *"lido certo pela regra posicional"* — verdade para a **variante**
+/// apendada (os índices anteriores não se mexem), e **falso** desde que o `pattern_art` entrou: um
+/// campo novo no fim faz o postcard de um v100 chegar ao fim dos bytes (`Hit the end of buffer`, o
+/// mesmo modo de falha medido na v14 da `VecScene`). *Uma nota escrita entre as duas metades da
+/// mesma wave descreve só a primeira.*
 pub(crate) const PROJECT_SCHEMA: u32 = 101;

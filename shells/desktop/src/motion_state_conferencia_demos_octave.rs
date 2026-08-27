@@ -66,7 +66,11 @@ fn row(g: &mut Graph, octaves: f32, loop_len: f32, x: f32, y: f32) -> Option<Nod
     g.set_pos(grid, Pos { x, y });
     g.set_param(grid, "cols", COUNT);
     g.set_param(grid, "rows", 1.0);
-    g.set_param(grid, "spacing", 0.5);
+    // ⚠️ Era `spacing`, que o `motion.grid` NAO declara — um `set_param` NO-OP
+    // silencioso, e a grade shipava com o `gap` de omissao (1,0), DOBRO do autorado.
+    // Achado pela `validate` no varredor das 107 (auditoria de 2026-08-27).
+    g.set_param(grid, "gap_x", 0.5);
+    g.set_param(grid, "gap_y", 0.5);
 
     let wig = g.add_node("motion.wiggle");
     g.set_pos(wig, Pos { x: x + 220.0, y });

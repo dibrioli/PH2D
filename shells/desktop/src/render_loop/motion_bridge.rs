@@ -31,8 +31,12 @@ use ph2d_editor::{HeroScreen, ToastQueue, ToolId, ToolRegistry};
 
 // GPU-resident cook routing (F1.1 fully-GPU + F1.2 hybrid). Unconditional — the
 // GPU path does not depend on the graph-panel feature.
+// ⚠️ `pub(crate)` para que uma CENA possa afirmar a **rota** que vai tomar, e não a declaração
+// de que ela tem dois sinks. A `=107` precisa disso: `sinks.len() == 2` é o *proxy*, e o gate que
+// o media ficava verde sobre uma cena que a rota tivesse mandado para o device na mesma
+// (auditoria de 2026-08-27). `gpu_route` é função **pura** — é o oráculo certo e já existia.
 #[path = "motion_bridge_gpu.rs"]
-mod gpu;
+pub(crate) mod gpu;
 
 #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_params.rs"]

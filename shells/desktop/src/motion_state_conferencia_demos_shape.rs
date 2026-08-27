@@ -54,7 +54,11 @@ fn grid(g: &mut Graph, x: f32, y: f32) -> NodeId {
     g.set_pos(n, Pos { x, y });
     g.set_param(n, "cols", COUNT);
     g.set_param(n, "rows", 1.0);
-    g.set_param(n, "spacing", 0.5);
+    // ⚠️ Era `spacing`, que o `motion.grid` NAO declara — um `set_param` NO-OP
+    // silencioso, e a grade shipava com o `gap` de omissao (1,0), DOBRO do autorado.
+    // Achado pela `validate` no varredor das 107 (auditoria de 2026-08-27).
+    g.set_param(n, "gap_x", 0.5);
+    g.set_param(n, "gap_y", 0.5);
     n
 }
 

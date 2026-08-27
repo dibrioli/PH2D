@@ -1544,11 +1544,22 @@ impl crate::App {
         // **A FAMÍLIA `PH2D_GPU_COOK_DEMO` PRECISA DA FERRAMENTA MOTION** — ver
         // `motion_state_demo_router::demo_wants_the_motion_tool`, onde está a medição que o
         // expôs. Sem isto a cena monta, a legenda imprime, e a tela fica VAZIA.
-        if crate::motion_state::demo_router::demo_wants_the_motion_tool()
+        if crate::motion_state::demo_router::demo_wants_the_motion_tool(motion.sinks.len())
             && !std::mem::replace(&mut self.demo_tool_forced, true)
         {
-            let _ = tools.set_active(&ph2d_editor::ToolId::new("motion"));
-            self.title_dirty = true;
+            // ⚠️ **O resultado é GUARDADO e o latch só queima se a troca deu certo.** O
+            // `set_active` devolve `false` quando o id não está registado, e um `let _ =` com o
+            // latch já queimado seria uma falha silenciosa e DEFINITIVA na sessão. Os irmãos do
+            // Flip já o guardavam (`flip_hardness_smoke.rs`); este não.
+            let ok = tools.set_active(&ph2d_editor::ToolId::new("motion"));
+            if ok {
+                self.title_dirty = true;
+            } else {
+                self.demo_tool_forced = false;
+                eprintln!(
+                    "[demo] a ferramenta `motion` nao esta' registada — a cena nao vai desenhar"
+                );
+            }
         }
 
         // **A SUJIDADE NA LENTE** (`PH2D_GLOW_DIRT_SMOKE=1`, doc 89 folha 11): uma sprite com

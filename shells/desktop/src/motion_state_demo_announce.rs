@@ -150,8 +150,8 @@ pub(super) fn lazy_switch() {
   QUER MEXER? Clique no no' «Switch (Skip Unused Inputs)» e, no painel dele, mude
   «Skip Unused Inputs» de On para Off. O movimento fica AOS SOLAVANCOS -- e' o app
   a calcular os quatro ramos em vez de um. Volte a ligar: ele alisa outra vez.
-  (Medido no quadro real: {on:.1} ms ligado contra {off:.1} ms desligado, sobre um
-  orcamento de 16,7 ms.)
+  (Medido: o calculo leva {on:.1} ms ligado contra {off:.1} ms desligado, sobre um
+  orcamento de 16,7 ms por quadro.)
 
   ⚠️ A IMAGEM E' A MESMA nos dois modos. Se ela MUDAR ao ligar/desligar, deu errado.
 
@@ -163,7 +163,7 @@ pub(super) fn lazy_switch() {
   DEU ERRADO se: a ondulacao ficar igual de lisa nos dois modos (o modo nao esta' a
   fazer nada); se a imagem mudar; ou se alguma pecinha sumir.",
         n = (super::lazy_switch_demo::SIDE * super::lazy_switch_demo::SIDE) as u32,
-        on = 9.59,
-        off = 33.63,
+        on = super::lazy_switch_demo::COOK_ON_MS,
+        off = super::lazy_switch_demo::COOK_OFF_MS,
     );
 }

@@ -4,12 +4,12 @@
 //!
 //! ⚠️ **Esta cena não se julga pela IMAGEM, julga-se pelo MOVIMENTO.** A saída é a mesma com o
 //! modo ligado e desligado — é essa a promessa —, e o que muda é o custo: quatro ramos de ruído
-//! fractal de oito oitavas sobre 4096 peças, dos quais o roteador usa **um**.
+//! fractal de oito oitavas sobre as [`SIDE`]² peças, dos quais o roteador usa **um**.
 //!
-//! ```text
-//!   modo DESLIGADO  o cook puxa os quatro ramos     ~10,8 ms por cozimento
-//!   modo LIGADO     ele puxa so' o escolhido        ~2,8 ms   (o piso de um ramo so')
-//! ```
+//! ⚠️ **Os números saem da sonda `measure_lazy_switch_cost`, não de prosa** — este cabeçalho já
+//! disse `4096 peças` e `~10,8 / ~2,8 ms` enquanto o código dizia `50 176` e a tabela do [`SIDE`]
+//! dizia outra coisa ainda: **três respostas para a mesma pergunta no mesmo ficheiro**, achadas
+//! pela auditoria de 2026-08-27. Rode a sonda antes de citar qualquer um deles.
 //!
 //! ⚠️ **O `select` fica DESLIGADO de propósito.** Uma porta sem aresta lê o campo vazio, que é
 //! `0` em todo índice — uniforme por construção, que é a primeira das três condições da
@@ -22,20 +22,41 @@ use ph2d_motion_doc::MotionDoc;
 use ph2d_node_registry::NodeRegistry;
 use ph2d_nodegraph::graph::{Edge, Graph, NodeId, Pos};
 
-/// Quantas peças por lado — **MEDIDO no quadro real, não escolhido**.
+/// Quantas peças por lado — **MEDIDO, e o recurso é tempo de CPU no COZIMENTO**.
+///
+/// Sonda `measure_lazy_switch_cost` (release, `load 2,74` de 32 núcleos, mediana de 7 com
+/// aquecimento fora), `SIDE = 224` ⇒ **50 176** peças:
 ///
 /// ```text
-///   lado   pecas    modo ON    modo OFF
-///    192   36 864    7,75 ms    15,31 ms
-///    224   50 176    9,59 ms    33,63 ms   <- esta cena
-///    256   65 536   13,92 ms   146,48 ms
+///   modo LIGADO      4,12 ms/cook    25% de um quadro de 16,7
+///   modo DESLIGADO  13,81 ms/cook    83% de um quadro, ANTES de desenhar as 50 176 pecas
 /// ```
 ///
-/// `224` é onde os dois lados são inequívocos sobre um orçamento de `16,7 ms`: ligado o quadro
-/// sobra, desligado ele estoura por 2×, e a diferença lê-se como solavanco sem que o app deixe
-/// de responder. ⛔ `256` seria dramático e enganador — a `146 ms` (7 fps) o artista concluiria
-/// que a cena travou, não que o modo custa.
+/// `224` é onde o cozimento sozinho decide o quadro: ligado sobra folga para o resto do quadro,
+/// desligado ele já come 83% do orçamento antes de uma peça ser desenhada.
+///
+/// ⚠️ **A tabela anterior tinha TRÊS linhas e nenhum instrumento**, e a auditoria de 2026-08-27
+/// mostrou dois defeitos nela: as duas colunas carregavam o custo fixo do 2.º sink — que era
+/// então o campo inteiro em repouso, e que esta mesma jornada reduziu a uma peça — e a coluna
+/// OFF era **super-linear sem recurso nomeado** (`224 → 256` dava `1,31×` em peças e `4,36×` em
+/// milissegundos), o que é a assinatura de leitura sob carga. ⇒ *ficam as duas linhas que a
+/// sonda produz, e quem quiser uma terceira roda a sonda.*
+///
+/// ⛔ **O que está aqui é o COZIMENTO, não o quadro.** O quadro soma o desenho das peças, que
+/// esta sonda não mede — e afirmar um número de quadro sem o medir foi exactamente o que a
+/// tabela velha fez.
 pub(super) const SIDE: f32 = 224.0;
+/// O custo do COZIMENTO nos dois modos, em ms — o que a sonda `measure_lazy_switch_cost`
+/// imprimiu (release, máquina calma, mediana de 7).
+///
+/// ⚠️ **Eles são `const` para que o anúncio os CITE em vez de os repetir.** A 1.ª versão deste
+/// demo passava `on = 9.59, off = 33.63` como literais inline no `motion_state_demo_announce.rs`
+/// — sozinha entre as seis cenas anunciadas, e por isso a única fora do gate
+/// `the_announcement_cites_the_numbers_the_scene_uses`. Quando esta jornada mudou a cena, os dois
+/// números do anúncio ficaram errados e **nada** podia dizê-lo.
+pub(super) const COOK_ON_MS: f32 = 4.12;
+/// Ver [`COOK_ON_MS`].
+pub(super) const COOK_OFF_MS: f32 = 13.81;
 /// Quantas oitavas tornam um ramo CARO.
 const OCTAVES: f32 = 8.0;
 /// Quantos ramos o roteador tem (o manifesto do nó).
@@ -130,10 +151,31 @@ pub(super) fn build_lazy_switch_demo_document(
     // armadilha*, e é por isso que a recusa NÃO existe: o modo vale onde a CPU já é o caminho.
     // Uma segunda saída é a forma mais honesta de pôr esta cena lá — é autoria legítima, não um
     // truque, e o texto do smoke di-lo.
+    // ⚠️⚠️ **E ela lê uma grelha PRÓPRIA de UMA peça — não o campo.** A 1.ª versão ligava o `peek`
+    // ao mesmo `size`, e o pump **ACUMULA** todos os sinks (`lower_to_instances_onto` sobre um
+    // `Vec` só, `ph2d-eval-motion`): a 2.ª saída lowerava outras `SIDE²` instâncias na posição de
+    // REPOUSO e, por ser a última, desenhava-as **por cima**. Medido pela auditoria de 2026-08-27:
+    // a banda parada cobria `3,78` dos `4,59` da onda ⇒ **só 17% da altura ondulava**, e o campo é
+    // opaco (cada peça cobre `2,65×` o passo). *A cena escondia exactamente aquilo que pedia ao
+    // artista para julgar* — e o defeito nasceu da cura de um smoke anterior, o que o torna a
+    // segunda vez que este demo foi entregue sem se olhar para ele a correr.
+    //
+    // ⚠️ **Uma peça basta, e um sink SEM aresta não serve:** o que a rota de GPU conta é
+    // `sinks.len()`, não o que eles cozem — mas o `diagnose` do sweep das 107 cenas acusa
+    // `MissingInput` numa saída solta, e com razão. ⇒ a âncora é autoria a sério, minúscula.
+    let anchor = g.add_node("motion.grid");
+    g.set_pos(anchor, Pos { x: 620.0, y: 700.0 });
+    g.set_param(anchor, "rows", 1.0);
+    g.set_param(anchor, "cols", 1.0);
+    let anchor_size = g.add_node("motion.scale");
+    g.set_pos(anchor_size, Pos { x: 800.0, y: 700.0 });
+    g.set_param(anchor_size, "amount", 0.002);
+    wire(g, anchor, 0, anchor_size, 0)?;
+
     let peek = g.add_node("motion.output");
-    g.set_pos(peek, Pos { x: 980.0, y: 260.0 });
+    g.set_pos(peek, Pos { x: 980.0, y: 700.0 });
     g.set_label(peek, "(segunda saida: poe a cena no cozimento de CPU)");
-    wire(g, size, 0, peek, 0)?;
+    wire(g, anchor_size, 0, peek, 0)?;
     Some(vec![out, peek])
 }
 

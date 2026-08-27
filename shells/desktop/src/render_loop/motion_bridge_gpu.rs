@@ -24,7 +24,7 @@ pub(super) enum GpuOutcome {
 
 /// Which cook path this frame takes.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(super) enum GpuRoute {
+pub(crate) enum GpuRoute {
     /// The CPU pump renders the sinks (no GPU, or the GPU can't claim useful work).
     Cpu,
     /// The whole chain is kernel-covered: cook it 100% on the GPU, no CPU pump,
@@ -56,7 +56,7 @@ pub(super) enum GpuRoute {
 /// (`advance_or_scrub_to_nodes_scoped`). The reasoning was also unreachable when
 /// it was written — no kernel had two stream inputs — and it silently swallowed
 /// the two-seam case the day `motion.look_at` made it reachable.
-pub(super) fn gpu_route(
+pub(crate) fn gpu_route(
     gpu_enabled: bool,
     n_sinks: usize,
     scopes_empty: bool,

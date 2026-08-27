@@ -50,9 +50,31 @@ pub(super) fn demo_sinks(doc: &mut MotionDoc, registry: &NodeRegistry) -> Vec<No
 /// seu ficheiro; era esta família que ficara de fora.
 ///
 /// Uma vez por sessão: o artista pode trocar de ferramenta a seguir, e troca.
+///
+/// ⚠️ **A condição é a CENA existir, não a variável existir** (auditoria de 2026-08-27). A 1.ª
+/// versão era `var_os(..).is_some()`, e com ela `PH2D_GPU_COOK_DEMO=0` — que o `build_level`
+/// manda para o braço `_ => Vec::new()` — trocava o app para o editor de Motion **com a tela em
+/// branco**. Pior, colidia com a convenção da casa escrita vinte linhas acima no mesmo ficheiro:
+/// o `gpu_enabled_from_env` lê `0` como **desligar**, e o `motion_node_path_smoke` também.
+/// *Um `0` que liga uma coisa num ficheiro e desliga outra no mesmo ficheiro é uma armadilha.*
+///
+/// ⛔ **E a cerca NÃO é uma lista de valores válidos ao lado do roteador** — seriam duas
+/// respostas à mesma pergunta, e a que envelhece é sempre a de fora. Ela é o próprio resultado:
+/// `sinks` vem do `demo_sinks`, então a ferramenta é tomada exactamente quando há o que mostrar.
 #[must_use]
-pub(crate) fn demo_wants_the_motion_tool() -> bool {
-    std::env::var_os("PH2D_GPU_COOK_DEMO").is_some()
+pub(crate) fn demo_wants_the_motion_tool(built_sinks: usize) -> bool {
+    wants_the_motion_tool(
+        std::env::var_os("PH2D_GPU_COOK_DEMO").is_some(),
+        built_sinks,
+    )
+}
+
+/// **A lei, sem o ambiente** — a mesma extracção que o [`build_level`] já tinha, e pela mesma
+/// razão: um predicado que só se pode exercer pondo uma variável de ambiente não é testável em
+/// paralelo, e um teste que mexe no ambiente do processo envenena os vizinhos.
+#[must_use]
+pub(crate) const fn wants_the_motion_tool(env_present: bool, built_sinks: usize) -> bool {
+    env_present && built_sinks > 0
 }
 
 /// **O roteador, sem o ambiente** — a MESMA lista de níveis, chamável por um teste.

@@ -12,12 +12,18 @@ use ph2d_ecs::SimWorld;
 /// `ChildOf` on every sibling in the desired order so bevy_ecs's
 /// `Children` list reflects the user-chosen sequence.
 ///
-/// Returns `false` — never pushes a toast (silent reparent matches
-/// existing UX). Caller does not set title_dirty.
+/// Returns `false` — o reparent é mudo (é o UX que já existia). Caller does not set title_dirty.
+///
+/// ⚠️⚠️ **Com UMA excepção, e ela é a 4.ª porta do §1.1 da auditoria de 2026-08-27:** largar uma
+/// linha dentro de uma RECEITA tira o objecto da cena, porque o que está debaixo de um `MasterRoot`
+/// só desenha enquanto aquela receita está seleccionada. Mudo, esse gesto lê-se como *«o meu objecto
+/// desapareceu»* — e o artista não tem como saber que aquela linha era uma biblioteca. ⇒ **essa**
+/// fala. *Um reparent silencioso está certo enquanto o resultado for visível.*
 pub(crate) fn drain_reparent(
     intent: ph2d_editor::screens::hero::HierReparentIntent,
     live: &crate::HeroLive,
     sim: &mut SimWorld,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) -> bool {
     use ph2d_ecs::Transform;
     let Some(dragged_bits) = live.bridge.entity_for(intent.dragged) else {
@@ -62,6 +68,11 @@ pub(crate) fn drain_reparent(
     // rotação em quaternion e escala uniforme —, então o `old_world` acima sai **`None`** e a peça
     // saltava ao mudar de pai. Ver `ph2d_field_ecs::set_world_xform`.
     let old_field_world = ph2d_field_ecs::field_world_xform(sim.world(), dragged);
+    // ⚠️ **Perguntado ANTES de o `ChildOf` mudar** — depois, `master_root_of(dragged)` responde o
+    // mesmo por outra razão (o objecto já lá está), e o toast sairia para todo reparent de dentro
+    // de uma receita, incluindo os que a não atravessam.
+    let into_a_recipe =
+        new_parent_entity.is_some_and(|p| ph2d_ecs::master_root_of(sim.world(), p).is_some());
     let sim_w = sim.world_mut();
     let would_cycle = new_parent_entity.is_some_and(|np| {
         let mut current = Some(np);
@@ -247,5 +258,11 @@ pub(crate) fn drain_reparent(
     // A ordem também é de propósito: confinar DEPOIS de a pose local estar re-resolvida, senão
     // confinaríamos a pose antiga, do pai anterior.
     crate::sheet_bounds::confine(sim, dragged);
+    // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
+    if into_a_recipe {
+        toasts.push(ph2d_editor::Toast::warning(
+            "Moved into a component — it shows while the component row is selected",
+        ));
+    }
     false
 }

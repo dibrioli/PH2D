@@ -26,6 +26,19 @@ pub(crate) enum VerbRefusal {
     /// A subárvore está **dentro** de uma instância — transformá-la em receita partiria o elo
     /// da instância que a contém. É o caso que a F5 (aninhamento) abre.
     InsideAnInstance,
+    /// ⭐⭐ A subárvore está **dentro de outra RECEITA** (auditoria §1.1, 2026-08-27).
+    ///
+    /// ⚠️ **Não é simetria decorativa com a de cima — é a única das quatro portas do §1.1 cujo
+    /// dano NÃO se cura sozinho**, e o mecanismo tem nome: `master_root_of` pára na raiz **mais
+    /// próxima**, então um `MasterRoot` aninhado **ENCURTA a sub-árvore de edição**. Seleccionar a
+    /// receita exterior deixa de acender o que está debaixo da interior ⇒ a instância irmã fica
+    /// invisível **mesmo com a receita seleccionada**, que é o estado que o modo de edição existe
+    /// para tornar alcançável. As outras três portas (Duplicate, Add Child, arrastar) produzem
+    /// coisas que a marca derivada volta a acender no quadro seguinte; esta não.
+    ///
+    /// ⛔ Recusar é a resposta de HOJE, e a boa é a F5 (aninhamento de receitas) — a mesma
+    /// fronteira que o [`Self::InsideAnInstance`] declara.
+    InsideAMaster,
 }
 
 // ⛔ **Havia um quarto (`MasterIsGone`) e ele saiu**: nenhum verbo o constrói, porque a pergunta
@@ -61,6 +74,12 @@ pub(crate) fn make_master(
 ) -> Result<(Entity, Entity), VerbRefusal> {
     if sim.world().get::<MasterRoot>(entity).is_some() {
         return Err(VerbRefusal::AlreadyAMaster);
+    }
+    // ⭐⭐ **Dentro de outra RECEITA, não** — ver [`VerbRefusal::InsideAMaster`]: um `MasterRoot`
+    // aninhado encurta a sub-árvore de edição e deixa a instância irmã invisível para sempre.
+    // (A própria entidade já saiu acima, então isto pergunta pelos ANCESTRAIS.)
+    if ph2d_ecs::master_root_of(sim.world(), entity).is_some() {
+        return Err(VerbRefusal::InsideAMaster);
     }
     // ⚠️ A pergunta é sobre a entidade **e os ancestrais dela**: uma peça no meio de uma cópia
     // também está «dentro de uma instância».
@@ -291,7 +310,16 @@ pub(crate) fn drain(
                 toasts.push(Toast::info("This is already a component"));
                 false
             }
-            Err(_) => {
+            // ⚠️ **Braço por braço, e sem `_`**: a recusa nova (`InsideAMaster`) chegou aqui com um
+            // catch-all que dizia *«Inside an instance»* — a frase errada sobre a coisa errada. Um
+            // `match` exaustivo é o que obriga a próxima recusa a escolher a sua voz.
+            Err(VerbRefusal::InsideAMaster) => {
+                toasts.push(Toast::warning(
+                    "Inside a component — components cannot nest yet",
+                ));
+                false
+            }
+            Err(VerbRefusal::InsideAnInstance | VerbRefusal::NotAnInstance) => {
                 toasts.push(Toast::warning(
                     "Inside an instance — detach it first, or edit the master",
                 ));
@@ -301,7 +329,22 @@ pub(crate) fn drain(
         // ⚠️ *Instantiate* pede a RECEITA, e a linha pode ser a instância que ficou no lugar dela:
         // o aviso NOMEIA a saída, senão o artista fica a clicar na linha errada.
         Verb::Place => {
-            match crate::instantiate::instantiate_master(sim, registry, entity, None, docs) {
+            // ⭐⭐⭐ **A cópia herda o PAI da receita** (auditoria §1.3, 2026-08-27).
+            //
+            // Este ramo passava `None` LITERAL enquanto os outros dois chamadores da cópia profunda
+            // — o `make_master` (:70) e o `duplicate_subtree` — derivam o pai da fonte. ⇒ com uma
+            // receita aninhada num grupo deslocado, o *Instantiate* largava a cópia na RAIZ da cena
+            // com a pose LOCAL do mestre: medido, mundo (9,3) escala 2× ⇒ (0.5,0) escala 1×. O que
+            // se perdia não era a translação, era o transform de mundo INTEIRO do pai — a cópia
+            // saía noutro sítio, **com outro tamanho e outro ângulo**.
+            //
+            // ⚠️ **E a metade pior era o `ChildOf` que faltava, não a pose:** a cópia nº1 (a que o
+            // *Make Component* deixa no lugar) fica dentro do grupo e as nº2..n ficavam na raiz da
+            // cena ⇒ **mover o grupo passava a mover uma instância e não as outras**, e arrastar a
+            // perdida de volta à mão não curava. *Uma discordância entre irmãos, não um erro do
+            // motor de cópia.*
+            let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
+            match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs) {
                 Ok(inst) => {
                     // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].
                     if let Some(id) = sim.world().get::<StableId>(entity).map(|s| s.0) {
@@ -359,9 +402,20 @@ fn stable_index(sim: &mut SimWorld) -> std::collections::BTreeMap<u64, Entity> {
 ///
 /// ⚠️ Sobe por `ChildOf`, nunca pelo elo: o `InstanceOf` de uma peça aponta para a peça do MESTRE,
 /// e subir por ele sairia da instância e ia parar à receita.
+///
+/// ⚠️⚠️ **A 1.ª linha era `get::<InstanceOf>(clicked)?;` — um bail que apagava a travessia inteira**
+/// (auditoria §1.8, 2026-08-27), e o doc do [`make_master`] prometia o contrário. Toda peça nascida
+/// da cópia profunda tem elo, mas o que for acrescentado DEPOIS não tem: um *Add Child* sobre uma
+/// peça, um reparent para dentro da cópia, um path vetorial cunhado pelo `vec_entities::sync` e
+/// arrastado para lá. ⇒ a recusa `InsideAnInstance` não disparava e nascia um `MasterRoot` **dentro
+/// de uma instância viva**, cuja sub-árvore virava `MasterPiece`: um pedaço de uma cópia que estava
+/// visível desaparecia, com a cópia à volta a continuar a desenhar.
+///
+/// ⚠️ O oráculo do gate que sancionava o bail usava uma peça que TINHA elo (`piece(&sim, inst,
+/// "Arm")`), então a travessia ancestral nunca corria — *o oráculo confirmava o caminho curto e
+/// assinava o longo*.
 fn instance_root_of(sim: &mut SimWorld, clicked: Entity) -> Option<Entity> {
     let by_id = stable_index(sim);
-    sim.world().get::<InstanceOf>(clicked)?;
     let mut e = clicked;
     loop {
         let is_root = sim
@@ -397,3 +451,9 @@ fn subtree(sim: &SimWorld, root: Entity) -> Vec<Entity> {
 #[cfg(test)]
 #[path = "instance_verbs_tests.rs"]
 mod tests;
+
+/// ⚠️ **Onde a cópia ATERRA é outro assunto** — e o ficheiro acima estava no tecto de 600 LOC.
+/// Aqui os gates dos verbos; lá a pergunta dos dois reports do Enio sobre a pose da cópia nova.
+#[cfg(test)]
+#[path = "instance_place_tests.rs"]
+mod place_tests;

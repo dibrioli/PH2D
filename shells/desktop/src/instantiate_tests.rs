@@ -45,6 +45,10 @@ fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entit
     )
 }
 
+/// O degrau que os gates passam ao *Duplicate* — o que o produto deriva da câmara
+/// (`PASTE_OFFSET_PX` convertido), aqui um número redondo para a asserção ser exacta.
+const TEST_STEP: [f32; 2] = [0.25, -0.125];
+
 /// Irmã de [`instantiate`], pela mesma razão.
 fn duplicate(
     sim: &mut SimWorld,
@@ -60,6 +64,7 @@ fn duplicate(
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
+        TEST_STEP,
     )
 }
 
@@ -404,7 +409,15 @@ fn duplicating_a_master_gives_a_master_whose_pieces_are_already_inert() {
     );
 }
 
-/// **A cópia fica ao lado da fonte** (mesmo pai), e não na raiz da cena.
+/// **A cópia fica ao lado da fonte** — no mesmo pai **e** a um degrau dela na tela.
+///
+/// ⛔⛔ **Este gate chamava-se assim e media só o `ChildOf`** (auditoria §1.4, 2026-08-27): o NOME
+/// prometia o canvas, o CORPO lia o slot na árvore, e ele ficava verde sobre uma sobreposição
+/// perfeita — duplicar dava um objecto exactamente em cima do original, com um toast de sucesso.
+/// *Um gate cujo nome diz o fim e cuja asserção lê a marca é pior que gate nenhum: ele consome o
+/// nome que o gate certo usaria.*
+///
+/// (Mutação: apagar a soma do `step` em `duplicate_subtree` ⇒ RED na 2.ª asserção.)
 #[test]
 fn the_duplicate_lands_beside_its_source() {
     let mut sim = SimWorld::new();
@@ -426,6 +439,12 @@ fn the_duplicate_lands_beside_its_source() {
         sim.world().get::<ph2d_ecs::ChildOf>(copy).map(|c| c.0),
         Some(host),
         "a copia saiu de baixo do pai da fonte"
+    );
+    let (at, from) = (world_at(&sim, copy), world_at(&sim, src));
+    assert!(
+        (at.x - from.x - TEST_STEP[0]).abs() < 1e-6 && (at.y - from.y - TEST_STEP[1]).abs() < 1e-6,
+        "a copia aterrou em {at:?} e a fonte esta' em {from:?} — o degrau pedido era {TEST_STEP:?}. \
+         Sobrepostas, o gesto inteiro e' um toast: a Hierarquia ganha uma linha e a tela nao muda."
     );
 }
 

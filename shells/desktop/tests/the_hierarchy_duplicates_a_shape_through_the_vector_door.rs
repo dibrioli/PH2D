@@ -10,7 +10,11 @@
 //! documento e é apontada por `VecPathRef`, então o clone nascia **sem geometria nenhuma** — uma
 //! linha na Hierarchy que não desenha nada.
 
-const SRC: &str = include_str!("../src/render_loop/hierarchy.rs");
+/// ⚠️ **O assunto MUDOU DE FICHEIRO em 2026-08-27** (`hierarchy.rs` → `hierarchy_duplicate.rs`):
+/// o `hierarchy.rs` voltou ao tecto de 600 LOC quando a cópia genérica ganhou as duas leis que lhe
+/// faltavam (auditoria §1.4/§1.2), e o corte foi por assunto. Reancorar é honrar o gate — o que
+/// ele mede continua a ser a mesma decisão, escrita no sítio onde ela agora vive.
+const SRC: &str = include_str!("../src/render_loop/hierarchy_duplicate.rs");
 
 /// **A pergunta é feita ANTES de a cópia nascer.** Um caminho genérico que corresse primeiro já
 /// teria criado a entidade-fantasma que o gate existe para impedir.

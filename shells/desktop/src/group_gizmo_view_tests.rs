@@ -259,6 +259,59 @@ fn what_draws_itself_and_what_is_not_on_the_canvas_get_no_ring() {
     );
 }
 
+/// ⭐⭐⭐ **A receita que é um GRUPO recupera anel, dedo e caixa enquanto está a ser editada.**
+///
+/// ⛔ Era este o defeito §1.5 da auditoria de 2026-08-27, e é a **outra metade** da lei que o
+/// `off_canvas` recebeu na F4.6: `is_empty_object` conhecia o `MasterPiece` e não o
+/// `MasterEditing`. A raiz de **toda** receita nascida de *Make Component* sobre um grupo ou um rig
+/// é `Transform` + `Name` + `MasterRoot`, sem `Sprite` ⇒ ela caía neste ficheiro, e ficava sem
+/// anel, sem caixa e impegável **no único estado em que está na tela**. Mover a receita inteira era
+/// inalcançável por gesto de canvas.
+///
+/// ⚠️ **Os TRÊS consumidores no mesmo gate, de propósito** — a tinta ([`super::empty_objects`]), o
+/// dedo ([`super::pick_empty_at_world`]) e a caixa ([`super::view`]). Eles caem juntos porque a
+/// pergunta é uma só, e um gate sobre um deles deixaria os outros dois a apodrecer.
+///
+/// ⚠️ E o gesto é o de verdade: quem acende é `master_editing::mark`, a mesma função que o quadro
+/// chama — não um `insert(MasterEditing)` à mão, que mede a marca em vez do fim.
+///
+/// (Mutação: pôr `is_empty_object` a testar `MasterPiece.is_none()` outra vez ⇒ RED nas três.)
+#[test]
+fn the_recipe_being_edited_gets_its_ring_its_finger_and_its_box_back() {
+    let mut sim = SimWorld::new();
+    let recipe = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Rig"), ph2d_ecs::MasterRoot))
+        .id();
+    // A forma real: a raiz não desenha nada, os filhos é que têm arte.
+    sim.world_mut()
+        .spawn((Transform::IDENTITY, sprite([1.0, 1.0]), ChildOf(recipe)));
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+
+    // Controlo NEGATIVO: sem ninguém a editar, a receita não está na cena e não tem anel.
+    crate::render_loop::master_editing::mark(&mut sim, None::<u64>);
+    assert!(
+        !super::empty_objects(&sim).contains(&recipe),
+        "a receita ganhou anel sem ninguem a editar — o gate mediria o estado errado"
+    );
+
+    // O gesto: escolher a linha dela na Hierarquia.
+    crate::render_loop::master_editing::mark(&mut sim, Some(recipe.to_bits()));
+    assert!(
+        super::empty_objects(&sim).contains(&recipe),
+        "a receita editada continua sem anel — ela nao tem UM pixel no canvas"
+    );
+    assert!(
+        super::pick_empty_at_world(&sim, [0.0, 0.0], PPM).contains(&recipe.to_bits()),
+        "o centro da receita editada nao pega — mover a receita inteira e' inalcancavel por gesto"
+    );
+    let half = half_of(&boxed(&sim, recipe).expect("a receita editada nao publica GizmoView"));
+    assert!(
+        half[0] > 0.0 && half[1] > 0.0,
+        "a caixa da receita editada saiu com meia-extensao {half:?} — um gizmo colapsado"
+    );
+}
+
 /// ⭐⭐ **O anel PEGA — é isso que o torna um gizmo e não um desenho.**
 ///
 /// > *«Não consigo transformar o objeto total a partir do centro do objeto vazio.»*

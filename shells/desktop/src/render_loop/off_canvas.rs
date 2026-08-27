@@ -36,15 +36,38 @@ use ph2d_ecs::{Entity, World};
 /// ⚠️ **Função com NOME e não uma linha no fio**: a decisão vive dentro de um closure que pede um
 /// renderer, e a mutação que a desligasse compilaria e passaria a suíte inteira.
 pub(crate) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
-    // ⭐⭐ **A receita volta enquanto está a ser EDITADA** (ver `super::master_editing`): esconder
-    // sempre tornaria a forma do mestre impossível de mudar, e desenhar sempre põe dois objetos
-    // empilhados. A marca é derivada da selecção, e por isso as duas famílias de arte leem a
-    // MESMA resposta sem ninguém lhes passar a selecção.
-    (sim.get::<ph2d_ecs::MasterPiece>(entity).is_some()
-        && sim.get::<ph2d_ecs::MasterEditing>(entity).is_none())
+    is_unedited_recipe(sim, entity)
         || sim
             .get::<ph2d_ecs::Visibility>(entity)
             .is_some_and(|v| v.hidden)
+}
+
+/// ⭐⭐⭐ **A metade que fala de RECEITAS** — *«esta entidade é peça de uma receita que ninguém
+/// está a editar agora?»*.
+///
+/// ⚠️⚠️ **Ela tem nome próprio porque existe um TERCEIRO leitor**, e a auditoria de 2026-08-27
+/// (§1.5) apanhou-o com **metade da lei**: o anel do objeto vazio
+/// ([`crate::group_gizmo_view::is_empty_object`]) perguntava só *«é `MasterPiece`?»* e não conhecia
+/// o `MasterEditing`. Consequência medida: a raiz de uma receita que seja um GRUPO ou um rig — que
+/// é a forma de **toda** receita nascida de *Make Component* sobre um grupo — ficava sem anel, sem
+/// caixa e **impegável mesmo enquanto era editada**, que é precisamente o estado que o modo de
+/// edição existe para tornar alcançável.
+///
+/// ⛔ **Não replique a conjunção noutro ficheiro.** Uma lei escrita em dois sítios ainda não é uma
+/// lei — só uma PORTA é; foi o que a `line/Vector` pagou no bug #27 e o que esta pagou aqui. Quem
+/// precisar de *«está na cena?»* chama [`is_off_canvas`]; quem precisar só da metade da receita
+/// (porque o olho fechado é uma pergunta que o seu consumidor já faz noutro sítio) chama esta.
+///
+/// ⚠️ **Não é o mesmo que [`is_off_canvas`], e a diferença é o olho:** um objeto que o artista
+/// escondeu continua a ser um objeto da cena com gizmo — esconder não é deixar de existir. Foi por
+/// isso que a cura não foi simplesmente apontar o anel ao `is_off_canvas`.
+pub(crate) fn is_unedited_recipe(sim: &World, entity: Entity) -> bool {
+    // ⭐⭐ **A receita volta enquanto está a ser EDITADA** (ver `super::master_editing`): esconder
+    // sempre tornaria a forma do mestre impossível de mudar, e desenhar sempre põe dois objetos
+    // empilhados. A marca é derivada da selecção, e por isso as três famílias leem a MESMA
+    // resposta sem ninguém lhes passar a selecção.
+    sim.get::<ph2d_ecs::MasterPiece>(entity).is_some()
+        && sim.get::<ph2d_ecs::MasterEditing>(entity).is_none()
 }
 
 #[cfg(test)]

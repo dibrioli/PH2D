@@ -152,11 +152,25 @@ fn is_self_or_descendant(sim: &SimWorld, candidate: Entity, root: Entity) -> boo
 /// ⚠️ **Uma cópia de um MESTRE é outro mestre** (o `MasterRoot` viaja no blob), e uma cópia de uma
 /// INSTÂNCIA é outra instância do mesmo mestre (o elo aponta para fora do que se copiou, e por isso
 /// o remap não lhe toca). As duas são o que o artista espera de *Duplicar*.
+///
+/// ⚠️⚠️ **`step` é um degrau de MUNDO derivado da tela**, e ele existe porque a cópia aterrava
+/// **exactamente em cima da fonte** (auditoria §1.4, 2026-08-27): o ramo VETORIAL do mesmo `if`
+/// deslocava por `PASTE_OFFSET_PX` e este não deslocava nada, então o toast dizia «Duplicated
+/// entity» e a tela ficava idêntica. ⛔ **Não é a lei do `cascade`** do *Instantiate*, e confundi-las
+/// escreve o defeito outra vez com outro sinal: aquele conta as instâncias que já existem
+/// (`instances_of`), e um *Duplicate* de uma sprite não tem mestre para contar. Aqui é **um** degrau,
+/// sempre — a pergunta é *«saiu de cima do que veio?»*, não *«a quantas cópias vai?»*.
+///
+/// ⚠️ **O degrau soma-se ao `Transform` LOCAL**, como no `cascade`: sob um pai escalado ele sai
+/// maior ou menor na tela. A propriedade que o gate defende é a separação ser **> 0**, e não o
+/// número de pixels; convertê-lo para o espaço do pai custaria um inverso por gesto para mover um
+/// artefacto que ninguém vê.
 pub(crate) fn duplicate_subtree(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     src: Entity,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    step: [f32; 2],
 ) -> Option<Entity> {
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(src).map(|c| c.0);
     let base = sim
@@ -174,6 +188,11 @@ pub(crate) fn duplicate_subtree(
     sim.world_mut()
         .entity_mut(copy.root)
         .insert(Name::new(unique));
+    // ⭐ **Sai de cima da fonte** — ver o doc: sem isto o gesto inteiro é um toast.
+    if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(copy.root) {
+        t.translation.x += step[0];
+        t.translation.y += step[1];
+    }
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
     // A cópia de um mestre é um mestre: as peças dela têm de ser marcadas já.

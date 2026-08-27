@@ -38,44 +38,6 @@ pub(super) enum HierarchySelectIntent {
     },
 }
 
-/// ⭐ **Quem sabe duplicar esta entidade.**
-///
-/// ⚠️ A decisão mora aqui, com nome, porque **a escolha errada é silenciosa**: o braço genérico
-/// copia `Transform` + `Sprite` + `Name`, e para uma entidade que guarda a geometria noutro sítio
-/// isso produz um **sósia que não desenha nada** — uma linha na Hierarchy sobre coisa nenhuma.
-///
-/// Já aconteceu duas vezes, em dois módulos:
-///
-/// | Entidade | O que o braço genérico produzia | Quem duplica de verdade |
-/// |---|---|---|
-/// | um **path vetorial** (`VecPathRef`) | um sósia sem geometria — ou, pior, dois donos do mesmo path | o documento vetorial, pela porta do painel |
-/// | um **nó de modelagem 3D** (`FieldNode`) | uma linha sem `FieldNode` nem `FieldPose`, invisível ao traçado | `field3d_scene::duplicate_node`, a porta do painel |
-///
-/// *Uma entidade cuja geometria não está nela não se duplica clonando-a.*
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum DuplicateKind {
-    /// Um nó de modelagem 3D (ADR-0161).
-    Field,
-    /// Um path do editor vetorial (ADR-0110).
-    VecPath,
-    /// Tudo o resto: sprites e entidades comuns, que **são** o que guardam.
-    Entity,
-}
-
-/// Ver [`DuplicateKind`].
-pub(super) fn duplicate_kind(
-    world: &bevy_ecs::world::World,
-    src: ph2d_ecs::Entity,
-) -> DuplicateKind {
-    if world.get::<ph2d_field_ecs::FieldNode>(src).is_some() {
-        DuplicateKind::Field
-    } else if world.get::<ph2d_ecs::VecPathRef>(src).is_some() {
-        DuplicateKind::VecPath
-    } else {
-        DuplicateKind::Entity
-    }
-}
-
 /// Dispatches camera-reset, view-focus, and 9 hierarchy intents.
 /// Returns `true` if any dispatch pushed a toast.
 #[allow(clippy::too_many_arguments)]
@@ -212,7 +174,7 @@ pub(super) fn dispatch(
     if let Some(intent) = reparent_intent
         && let Some(live) = hero_live.as_ref()
     {
-        hero_intents::drain_reparent(intent, live, sim);
+        hero_intents::drain_reparent(intent, live, sim, toasts);
     }
     // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
     // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
@@ -225,72 +187,23 @@ pub(super) fn dispatch(
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
     {
-        let src = ph2d_ecs::Entity::from_bits(entity_bits);
-        // ⚠️ **Uma forma VETORIAL não se duplica clonando a entidade.** O dono da geometria é o
-        // documento, e `vec_entities::sync` mantém UMA entidade por path, nas duas direções:
-        //
-        // - clonar a entidade sem o `VecPathRef` dá um sósia que **não desenha nada** — uma linha
-        //   na Hierarchy sobre geometria nenhuma, que era o que esta row fazia;
-        // - copiar o `VecPathRef` seria pior: duas entidades a apontar para o MESMO path, e o
-        //   `sync` tem de escolher uma.
-        //
-        // Então o clone é um **PATH**, feito pela porta que o botão Duplicate do painel usa, e o
-        // `sync` cunha a entidade dele (com nome único e `RootOrder`) no mesmo frame.
-        // ⚠️ **Quem duplica esta entidade não é óbvio, e a escolha errada é SILENCIOSA** — ver
-        // [`duplicate_kind`], que é onde a decisão mora (e onde um gate lhe chega).
-        if duplicate_kind(sim.world(), src) == DuplicateKind::Field {
-            if let Some(copy) = crate::field3d_scene::duplicate_node(sim.world_mut(), src) {
-                // ⭐ A cópia fica selecionada, como no botão do painel: é o que põe o gizmo em cima
-                // dela sem ninguém a ter de procurar.
-                hero.gizmo.replace_selection(Some(copy));
-                toasts.push(Toast::success("Duplicated shape"));
-                title_dirty = true;
-            }
-        } else if let Some(vp) = sim.world().get::<ph2d_ecs::VecPathRef>(src).copied() {
-            let (dx, dy) = crate::input_dispatch::screen_offset_world(
-                camera,
-                window_size,
-                crate::input_dispatch::PASTE_OFFSET_PX,
-            );
-            if crate::input_dispatch::duplicate_vec_paths(
-                vec_scene,
-                vec_history,
-                vec_pen,
-                &[vp.0],
-                dx,
-                dy,
-            ) {
-                toasts.push(Toast::success("Duplicated shape"));
-                title_dirty = true;
-            }
-        } else {
-            // ⭐ **A cópia é PROFUNDA** (ADR-0164 / F4.2) — a subárvore inteira, todo componente
-            // registado, identidade nova, e as referências internas remapeadas.
-            //
-            // ⚠️ **O que estava aqui antes copiava QUATRO componentes** (`Transform`, `Sprite`,
-            // `Name`, `ChildOf`) **e nenhum filho**: duplicar um ragdoll dava uma linha vazia na
-            // Hierarquia, e duplicar um corpo com junta dava um corpo solto. O ADR-0164 nomeia
-            // este defeito, e ele existia por falta de porta, não por decisão.
-            //
-            // ⚠️ **O nome único continua a ser lei** — a Hierarquia já teve seleção por rótulo, e
-            // qualquer código que volte a chavear pelo nome amigável merece a mesma defesa.
-            let sprite = sim.world().get::<ph2d_render::Sprite>(src).is_some();
-            let mut docs = crate::instance_docs::OwnedDocs {
-                vec_scene,
-                vec_entities,
-            };
-            if let Some(copy) = crate::instantiate::duplicate_subtree(sim, registry, src, &mut docs)
-            {
-                // Report the pair so the caller can fork the copy's texture off the source
-                // (independent object) + flush any live paint on the source first. Only matters
-                // for sprite entities.
-                if sprite {
-                    *duplicate_made = Some((entity_bits, copy.to_bits()));
-                }
-                toasts.push(Toast::success("Duplicated entity"));
-                title_dirty = true;
-            }
-        }
+        // ⭐ **O que duplicar QUER DIZER mora no irmão** (`hierarchy_duplicate`), pelo tecto de
+        // 600 LOC — o corte é por assunto: aqui o dreno das intenções, lá a lei da cópia.
+        title_dirty |= super::hierarchy_duplicate::drain(
+            ph2d_ecs::Entity::from_bits(entity_bits),
+            entity_bits,
+            hero,
+            sim,
+            camera,
+            window_size,
+            toasts,
+            vec_scene,
+            vec_entities,
+            vec_history,
+            vec_pen,
+            duplicate_made,
+            registry,
+        );
     }
     if let Some(row) = add_child_row
         && let Some(live) = hero_live.as_ref()
@@ -586,9 +499,3 @@ pub(super) fn dispatch(
 
     title_dirty
 }
-
-/// ⚠️ Os gates do ROTEAMENTO vivem no irmão, pelo teto de 600 LOC — o corte é por assunto
-/// (o dreno das intenções aqui, a prova de que cada tipo vai para a porta certa lá).
-#[cfg(test)]
-#[path = "hierarchy_duplicate_routing_tests.rs"]
-mod duplicate_routing;

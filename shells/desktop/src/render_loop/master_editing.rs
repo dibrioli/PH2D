@@ -29,19 +29,34 @@
 
 use ph2d_ecs::{Entity, MasterEditing, SimWorld};
 
-/// ⭐ **Marca a receita que está a ser editada.** Devolve `true` quando mexeu em alguma coisa.
+/// ⭐ **Marca as receitas que estão a ser editadas.** Devolve `true` quando mexeu em alguma coisa.
 ///
-/// `selection` são os bits da entidade primária seleccionada. Uma selecção que não seja peça de
-/// receita nenhuma desmarca tudo — que é o caso comum e o mais barato.
-pub(super) fn mark(sim: &mut SimWorld, selection: Option<u64>) -> bool {
-    let editing = selection
+/// `selection` são os bits de **toda** a selecção — a primária e os extras. Uma selecção que não
+/// toque receita nenhuma desmarca tudo, que é o caso comum e o mais barato (e não aloca: um
+/// `collect` de um iterador vazio não pede memória).
+///
+/// ⚠️⚠️ **O parâmetro era um `Option<u64>` — só o primário — e isso era o defeito §1.6 da
+/// auditoria de 2026-08-27.** Duas rotas correntes deixam uma receita seleccionada sem ser
+/// primária: o Shift/Ctrl-clique (`add_to_selection`/`toggle_in_selection`) e o atalho
+/// `preserves_multi` do ramo `Replace`. ⇒ a linha ficava realçada na Hierarquia e o canvas
+/// continuava vazio, que é o report *«cliquei nela e não aconteceu nada»*. ⛔ **E o gate não podia
+/// vê-lo**: um `Option<u64>` torna o defeito inexprimível na assinatura, então
+/// `the_recipe_comes_back_while_it_is_being_edited` ficava verde por construção. *Uma assinatura
+/// que não consegue exprimir o caso é um gate que nunca o mede.*
+///
+/// ⚠️ **N receitas ao mesmo tempo é o comportamento certo, não uma tolerância:** seleccionar duas
+/// linhas de biblioteca e ver as duas é o que a multi-selecção promete em todo o resto do app.
+pub(crate) fn mark(sim: &mut SimWorld, selection: impl IntoIterator<Item = u64>) -> bool {
+    let editing: Vec<Entity> = selection
+        .into_iter()
         .map(Entity::from_bits)
         .filter(|&e| sim.world().get_entity(e).is_ok())
-        .and_then(|e| ph2d_ecs::master_root_of(sim.world(), e));
-    let want: std::collections::BTreeSet<Entity> = match editing {
-        Some(root) => subtree(sim, root),
-        None => std::collections::BTreeSet::new(),
-    };
+        .filter_map(|e| ph2d_ecs::master_root_of(sim.world(), e))
+        .collect();
+    let mut want: std::collections::BTreeSet<Entity> = std::collections::BTreeSet::new();
+    for root in editing {
+        want.extend(subtree(sim, root));
+    }
     let have: std::collections::BTreeSet<Entity> = {
         let mut q = sim
             .world_mut()

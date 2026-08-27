@@ -331,6 +331,9 @@ fn duplicating_a_group_gives_its_vector_children_their_own_paths() {
             vec_scene: &mut scene,
             vec_entities: &mut map,
         },
+        // ⚠️ Degrau ZERO de propósito: o assunto deste gate é a GEOMETRIA do clone, e o
+        // deslocamento do objecto na cena é medido por `the_duplicate_lands_beside_its_source`.
+        [0.0, 0.0],
     )
     .expect("duplicou");
     let copy_id = sim

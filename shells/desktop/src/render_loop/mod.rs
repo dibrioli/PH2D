@@ -44,6 +44,10 @@ mod gizmo_prune;
 mod gizmo_readout;
 mod hierarchy;
 mod hierarchy_add_root;
+// ⚠️ **A row *Duplicate*, por ASSUNTO** — o `hierarchy.rs` voltou ao tecto de 600 LOC quando a
+// cópia ganhou as duas leis que lhe faltavam (auditoria §1.4/§1.2). Lá o dreno das intenções, aqui
+// o que duplicar quer dizer.
+mod hierarchy_duplicate;
 mod image_edit;
 mod inspector_commits;
 #[cfg(test)]
@@ -273,7 +277,10 @@ mod inspector_anim;
 mod inspector_commits_sprite;
 mod inspector_slice;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
-mod master_editing;
+// ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a
+// receita pela porta de VERDADE — chamar `mark` é o que o quadro faz, e um `insert(MasterEditing)`
+// à mão no teste mediria a marca em vez do fim.
+pub(crate) mod master_editing;
 /// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
 /// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
 /// teste seria a segunda resposta.*
@@ -2627,7 +2634,17 @@ impl crate::App {
         // ⭐⭐⭐ **QUAL RECEITA está a ser EDITADA** (F4.6) — a marca derivada que faz *«uma receita
         // não está na cena»* e *«a forma do mestre tem de ser editável»* deixarem de se
         // contradizer. ⚠️ **Antes do extract e antes da vista do vetor**, que são os dois leitores.
-        master_editing::mark(sim, hero_screen.as_ref().and_then(|h| h.gizmo.selection));
+        // ⚠️ **A selecção INTEIRA — a primária e os extras** (auditoria §1.6): com só o primário,
+        // Shift-clicar a linha de uma receita realçava-a na Hierarquia e não a trazia à cena.
+        master_editing::mark(
+            sim,
+            hero_screen.as_ref().into_iter().flat_map(|h| {
+                h.gizmo
+                    .selection
+                    .into_iter()
+                    .chain(h.gizmo.extra_selection.iter().copied())
+            }),
+        );
         sim_extract::run(
             dt,
             sim,
@@ -10179,6 +10196,7 @@ impl crate::App {
                         },
                         live,
                         sim,
+                        toasts,
                     );
                     toasts.push(Toast::success("Removed from sheet"));
                 } else {

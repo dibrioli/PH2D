@@ -81,6 +81,15 @@ fn publishes_its_own_handles(sim: &SimWorld, e: Entity) -> bool {
 /// ⛔ **Uma peça de RECEITA responde `false`**: um mestre não está na cena (não emite instância de
 /// desenho nenhuma — [`crate::render_loop::off_canvas`]), e um anel sobre ele seria uma marca no
 /// canvas para um objeto que não está lá. *O que não se desenha não tem anel.*
+///
+/// ⚠️⚠️ **…mas a receita VOLTA enquanto está a ser editada, e esta função ficou com metade da lei
+/// até 2026-08-27** (auditoria §1.5). Ela perguntava `MasterPiece.is_none()` e não conhecia o
+/// `MasterEditing`, então a raiz de **toda** receita nascida de *Make Component* sobre um grupo ou
+/// um rig — `Transform` + `Name` + `MasterRoot`, sem `Sprite` — não tinha anel, não tinha caixa e
+/// não respondia ao clique **nem com a linha dela selecionada**: mover a receita inteira era
+/// inalcançável por gesto de canvas, no único estado em que ela está na tela. Os três consumidores
+/// morriam juntos ([`empty_objects`], [`pick_empty_at_world`] e [`view`]), porque a pergunta é uma
+/// só. Hoje ela chama a porta ([`crate::render_loop::off_canvas::is_unedited_recipe`]).
 pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
     let w = sim.world();
     w.get::<Transform>(e).is_some()
@@ -88,7 +97,7 @@ pub(crate) fn is_empty_object(sim: &SimWorld, e: Entity) -> bool {
         && w.get::<ph2d_ecs::VecPathRef>(e).is_none()
         && w.get::<ph2d_ecs::FlipObjectRef>(e).is_none()
         && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
-        && w.get::<ph2d_ecs::MasterPiece>(e).is_none()
+        && !crate::render_loop::off_canvas::is_unedited_recipe(w, e)
         && !publishes_its_own_handles(sim, e)
 }
 

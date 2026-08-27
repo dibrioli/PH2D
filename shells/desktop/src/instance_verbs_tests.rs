@@ -275,6 +275,62 @@ fn make_master_refuses_a_master_and_a_piece_of_an_instance() {
         },
         Err(VerbRefusal::InsideAnInstance)
     );
+    // ⭐⭐ **O caso ancestral A SÉRIO** (auditoria §1.8): uma entidade **sem `InstanceOf` próprio**
+    // pendurada dentro da cópia viva. Toda peça nascida da cópia profunda tem elo, então a
+    // travessia ancestral nunca corria — o gate acima confirmava o caminho curto e assinava o
+    // longo. É o que um *Add Child* sobre uma peça produz, e a recusa não disparava: nascia um
+    // `MasterRoot` **dentro de uma instância viva**, e o pedaço dela desaparecia da tela.
+    let stowaway = {
+        let arm = piece(&sim, inst, "Arm");
+        sim.world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Child"),
+                ph2d_ecs::ChildOf(arm),
+            ))
+            .id()
+    };
+    assert!(
+        sim.world().get::<InstanceOf>(stowaway).is_none(),
+        "o controlo negativo caiu: o filho novo TEM elo, e a travessia ancestral nao seria exercida"
+    );
+    assert_eq!(
+        make(&mut sim, &r, stowaway),
+        Err(VerbRefusal::InsideAnInstance),
+        "um filho acrescentado DEPOIS virou receita dentro de uma copia viva"
+    );
+}
+
+/// ⛔⛔ **Dentro de outra RECEITA, também não** — auditoria §1.1, e é a porta cujo dano **não** se
+/// cura sozinha no quadro seguinte.
+///
+/// `master_root_of` pára na raiz MAIS PRÓXIMA, então um `MasterRoot` aninhado **encurta a
+/// sub-árvore de edição**: seleccionar a receita exterior deixa de acender o que está debaixo da
+/// interior, e a instância irmã fica invisível **mesmo com a receita seleccionada**.
+///
+/// (Mutação: apagar a guarda ⇒ RED; e o `Err` distingue-se de `InsideAnInstance`, senão o toast
+/// diria a frase errada sobre a coisa errada.)
+#[test]
+fn make_master_refuses_inside_another_component() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let outer = spawn_master(&mut sim);
+    let inner = piece(&sim, outer, "Arm");
+    assert_eq!(
+        make(&mut sim, &r, inner),
+        Err(VerbRefusal::InsideAMaster),
+        "uma peca da receita virou receita — a instancia irma fica invisivel para sempre"
+    );
+    // Controlo POSITIVO: fora da receita, a MESMA sub-árvore é aceite.
+    sim.world_mut()
+        .entity_mut(inner)
+        .remove::<ph2d_ecs::ChildOf>();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    ph2d_ecs::assign_missing_root_order(sim.world_mut());
+    assert!(
+        make(&mut sim, &r, inner).is_ok(),
+        "a guarda recusa tambem fora de uma receita — ela nao mede o aninhamento"
+    );
 }
 
 // ── DESTACAR ───────────────────────────────────────────────────────────────────────────────
@@ -422,94 +478,4 @@ fn applying_with_nothing_overridden_answers_zero() {
     let (_master, roots) = ragdoll(&mut sim, &r);
     pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(apply(&mut sim, &r, &mut echo, roots[0]), Ok(0));
-}
-
-/// ⭐⭐⭐ **UMA CÓPIA NUNCA ATERRA EM CIMA DO QUE VEIO** (report do Enio, 2026-08-26 → 27).
-///
-/// Duas formas idênticas sobrepostas fazem *«mudei o mestre»* e *«mudei a cópia por cima dele»*
-/// serem o mesmo gesto na tela — e foi isso que fez a propagação **parecer morta estando viva**.
-///
-/// ⚠️ Os **três** lados: a 1.ª cópia sai um passo, a 2.ª sai dois (cascata), e o *Criar componente*
-/// **não** desloca — ali a cópia tem de ficar exactamente onde a seleção estava.
-///
-/// (Mutação: `cascade` não escrever a translação ⇒ RED; cascatear no `Verb::Make` ⇒ RED.)
-#[test]
-fn a_placed_instance_never_lands_on_top_of_what_it_came_from() {
-    let mut sim = SimWorld::new();
-    let r = reg();
-    let mut echo = MasterEcho::default();
-    let mut toasts = ph2d_editor::ToastQueue::default();
-    let at = ph2d_core::Vec2::new(2.0, -1.0);
-    let src = sim
-        .world_mut()
-        .spawn((Transform::from_translation(at), Name::new("Badge")))
-        .id();
-    let step = [0.5_f32, -0.25];
-    // ⚠️ **Pelo DRENO, e não pela função** — os dois verbos partilham o `place_step`, e uma
-    // mutação que cascateasse o *Criar componente* passava enquanto o gate chamava
-    // `make_master` directamente. *Um gate que salta o dreno não mede o verbo, mede a função.*
-    {
-        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-        assert!(
-            super::drain(
-                super::Verb::Make,
-                &mut sim,
-                &r,
-                &mut echo,
-                src.to_bits(),
-                &mut toasts,
-                &mut crate::instance_docs::OwnedDocs {
-                    vec_scene: &mut sc,
-                    vec_entities: &mut mp,
-                },
-                step,
-            ),
-            "o *Criar componente* nao fez nada"
-        );
-    }
-    let master = src;
-    let mut place = |sim: &mut SimWorld, echo: &mut MasterEcho| {
-        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-        super::drain(
-            super::Verb::Place,
-            sim,
-            &r,
-            echo,
-            master.to_bits(),
-            &mut toasts,
-            &mut crate::instance_docs::OwnedDocs {
-                vec_scene: &mut sc,
-                vec_entities: &mut mp,
-            },
-            step,
-        )
-    };
-    assert!(place(&mut sim, &mut echo), "o *Instantiate* nao fez nada");
-    assert!(
-        place(&mut sim, &mut echo),
-        "o 2o *Instantiate* nao fez nada"
-    );
-
-    // As poses das instâncias, sem a que o *Criar componente* deixou no lugar.
-    let master_id = sim.world().get::<ph2d_ecs::StableId>(master).expect("id").0;
-    let mut poses: Vec<(f32, f32)> = {
-        // ⚠️ Só a RAIZ de uma instância tem o elo a apontar para o `master_id`; as peças apontam
-        // para as peças do mestre. Não é preciso um segundo componente para as distinguir.
-        let mut q = sim.world_mut().query::<(&InstanceOf, &Transform)>();
-        q.iter(sim.world())
-            .filter(|(link, _)| link.master == master_id)
-            .map(|(_, t)| (t.translation.x, t.translation.y))
-            .collect()
-    };
-    poses.sort_by(|a, b| a.0.total_cmp(&b.0));
-    assert_eq!(poses.len(), 3, "esperavam-se TRES copias: {poses:?}");
-    for (i, (x, y)) in poses.iter().enumerate() {
-        let want = (at.x + step[0] * i as f32, at.y + step[1] * i as f32);
-        assert!(
-            (x - want.0).abs() < 1e-4 && (y - want.1).abs() < 1e-4,
-            "a copia {i} aterrou em {:?} e devia aterrar em {want:?} — a cascata (a copia 0 e' a \
-             do *Criar componente*, que NAO desloca)",
-            (x, y)
-        );
-    }
 }

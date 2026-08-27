@@ -269,7 +269,18 @@ impl crate::App {
         let (master, roots) = spawn_vector_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
         // ⚠️ **O DIAGNÓSTICO do que ela montou, peça a peça.** Uma cópia sem `VecPathRef` é o modo
         // de falha que não deixa linha nenhuma em lado nenhum — e é o 1.º suspeito do §14.
-        println!("[instance smoke 2] receita 'Badge' (Box + Label) a' ESQUERDA, longe das copias");
+        // ⚠️ **A receita NAO esta' na tela ate' alguem a escolher** — a marca `MasterEditing`
+        // (F4.6) e' derivada da selecao, e ate' 2026-08-27 estas linhas descreviam coordenadas
+        // vazias: o smoke que existe para dar o meio-caminho entregava «o mestre ficou invisivel»,
+        // que e' exactamente o report que ele existe para evitar.
+        println!(
+            "[instance smoke 2] PASSO 1: na lista da esquerda (Hierarchy) clique na linha 'Badge' \
+             — o cracha' da RECEITA aparece a' ESQUERDA das tres copias"
+        );
+        println!(
+            "[instance smoke 2] (sem esse clique a receita NAO se ve': ela e' a biblioteca, e so' \
+             aparece enquanto a linha dela esta' escolhida)"
+        );
         for name in ["Box", "Label"] {
             let m = piece_path(&gfx.sim, master, name);
             let copies: Vec<String> = roots
@@ -294,8 +305,8 @@ impl crate::App {
             );
         }
         println!(
-            "[instance smoke 2] agora escolha 'Badge > Box' (a RECEITA, a' esquerda) e mova um no' \
-             dela: as TRES copias tem de mudar junto"
+            "[instance smoke 2] PASSO 2: escolha 'Badge > Box' (a RECEITA, a' esquerda) e mova um \
+             no' dela: as TRES copias tem de mudar junto"
         );
         println!(
             "[instance smoke 2] se nao mudarem, rode outra vez com PH2D_INSTANCE_LOG=1 — o passe \
@@ -318,7 +329,11 @@ impl crate::App {
             spawn_ragdoll_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
         // ⚠️ A cena **imprime o que montou** — se estas linhas não aparecerem, PARE: o que está
         // na tela não é o que este smoke descreve.
-        println!("[instance smoke 1] receita 'Ragdoll' la' em cima (ela NAO se mexe)");
+        // ⚠️ Ver a nota da cena 2: a receita so' esta' na tela enquanto a linha dela esta' escolhida.
+        println!(
+            "[instance smoke 1] PASSO 1: na lista da esquerda (Hierarchy) clique na linha \
+             'Ragdoll' — a RECEITA aparece la' em cima (ela NAO se mexe)"
+        );
         for (i, r) in roots.iter().enumerate() {
             let name = gfx
                 .sim
@@ -341,8 +356,8 @@ impl crate::App {
         // cena diz qual. Sem esta linha o artista vê três pêndulos e não descobre sozinho que
         // editar a receita muda os três.
         println!(
-            "[instance smoke 1] agora escolha 'Ragdoll > Arm' (o de CIMA, a receita) e mude a cor \
-             em 'Color & Tint': os tres bracos de baixo mudam com ele"
+            "[instance smoke 1] PASSO 2: escolha 'Ragdoll > Arm' (o de CIMA, a receita) e mude a \
+             cor em 'Color & Tint': os tres bracos de baixo mudam com ele"
         );
         // ⭐ E a terceira metade é o OVERRIDE (F4.4): a excepção que o artista faz numa cópia tem
         // de sobreviver à edição seguinte da receita. Sem a instrução, ele nunca a descobre.

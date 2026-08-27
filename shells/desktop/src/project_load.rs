@@ -54,25 +54,38 @@ impl crate::App {
                     return;
                 }
             },
-            // ⭐ **97 → 98: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
+            // ⭐ **98 → 99: o corte da `Sprite`** (ADR-0164 F1 passo 6). A forma do ficheiro é a
             // mesma, então ele lê-se com o tipo VIVO — o que muda são os bytes DENTRO do blob da
             // `Sprite`, que o parse atravessa sem olhar. Ver `crate::project_migrate_sprite`.
-            97 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
+            //
+            // ⚠️⚠️ **ESTE BRAÇO ERA `97 =>` E FOI RE-ENGATADO NA INTEGRAÇÃO de 2026-08-26.** Ele
+            // nasceu quando o corte da `Sprite` era o degrau `98`; a `line/Vector` pôs outro degrau
+            // no meio (o `morph_shape` do `ObjectPose`) e o corte passou a ser o `99`. ⛔ **Deixá-lo
+            // em `97` seria o defeito que o bump existe para impedir:** este braço lê os bytes com o
+            // tipo **VIVO**, e o tipo vivo já tem o campo da `line/Vector` — um v97 sairia lixo
+            // bem-formado. *Um número que soma entre linhas move o CONSUMIDOR dele, não só a
+            // declaração.*
+            //
+            // ⛔ **Um v97 é RECUSADO**, e é a decisão da `line/Vector` aplicada até ao fim: ela
+            // escolheu, com o Enio, não congelar um `ProjectFileV97` (*"não há projetos salvos"*).
+            // Sem tipo congelado não existe forma honesta de ler aqueles bytes. O `v95` continua a
+            // subir a escada inteira, porque o tipo dele **está** congelado.
+            98 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
                 Ok((_, mut f)) => {
                     let r = crate::project_migrate_sprite::split_sprite_blobs(&mut f.state.world);
                     eprintln!(
-                        "[proj] migrado v97 -> v{PROJECT_SCHEMA} ({} sprites partidas, {} componentes anexados, {} ilegiveis)",
+                        "[proj] migrado v98 -> v{PROJECT_SCHEMA} ({} sprites partidas, {} componentes anexados, {} ilegiveis)",
                         r.sprites, r.components, r.unreadable
                     );
                     self.toast(format!(
-                        "Project migrated from format 97 to {PROJECT_SCHEMA}"
+                        "Project migrated from format 98 to {PROJECT_SCHEMA}"
                     ));
                     (f, None)
                 }
                 Err(e) => {
-                    eprintln!("[proj] v97 ilegivel: {e}");
+                    eprintln!("[proj] v98 ilegivel: {e}");
                     self.toast(format!(
-                        "Project refused: format 97 file is unreadable ({e})"
+                        "Project refused: format 98 file is unreadable ({e})"
                     ));
                     return;
                 }
@@ -83,7 +96,7 @@ impl crate::App {
                     Ok((_, old)) => {
                         let mut m = crate::project_migrate::migrate_v95_to_v96(old);
                         // ⚠️ **A escada é ENCADEADA: um v95 sobe a 96 e depois passa pelo corte
-                        // da 98.** O `migrate_v95_to_v96` não sabe da `Sprite`, e um v95 tem
+                        // da 99.** O `migrate_v95_to_v96` não sabe da `Sprite`, e um v95 tem
                         // sprites v4 como qualquer outro — saltar este passo daria um ficheiro
                         // antigo que abre com todas as sprites a ler lixo bem-formado.
                         let split = crate::project_migrate_sprite::split_sprite_blobs(

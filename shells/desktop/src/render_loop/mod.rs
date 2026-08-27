@@ -6891,11 +6891,29 @@ impl crate::App {
                 );
             }
             if let Some(kind) = pending_vec_fill_kind {
+                // ⭐ **A 4ª condição da costura: o chip tem de LEVAR A ALGUM LUGAR.** Escolher
+                // *Tile* numa forma sem padrão abre o diálogo da arte — um chip que muda o tipo de
+                // preenchimento para algo invisível é o defeito que esta linha já recebeu três
+                // vezes. ⚠️ Desistir devolve `None`, e o `apply` **não muda nada**.
+                // ⚠️ Sem closure: `self.vec_pen.selected()` e `self.texture_pattern_source_for`
+                // (que é `&mut self`) não cabem no mesmo `and_then`.
+                let mut pattern = None;
+                if kind == crate::input_dispatch::VecFillKind::Pattern
+                    && let Some(sel) = self.vec_pen.selected()
+                    && let Some(source) =
+                        crate::texture_pattern_pick::source_for(asset_db, vec_scene, sel)
+                {
+                    let size = crate::texture_pattern_pick::default_size(
+                        asset_db, vec_scene, sel, &source,
+                    );
+                    pattern = Some((source, size));
+                }
                 crate::input_dispatch::apply_vec_set_fill_kind(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
                     kind,
+                    pattern,
                 );
                 // The old handle no longer addresses the new fill kind — reset the
                 // gradient selection so the overlay highlight + panel don't cling to it.
@@ -9150,6 +9168,24 @@ impl crate::App {
                 sim,
             );
             let vec_fx = self.fx_live.images();
+            // ⭐ **OS LADRILHOS DE PADRÃO** (plano 33, W4). Assados aqui, depois do `sync` e antes
+            // do desenho — e memoizados, porque assar custa (`1,047 ms` para um ladrilho de
+            // `536x1072` em colmeia) e desenhar não custa nada (uma `fill()`).
+            //
+            // ⚠️ O filtro sai da porta ÚNICA da casa (`image_quality_for`), a mesma que o upscale e
+            // a pré-visualização do BgRemoval usam — um padrão de pixel art tem de amostrar como
+            // uma sprite de pixel art, e adivinhá-lo aqui daria duas respostas à mesma pergunta.
+            //
+            // ⚠️ Usa o `asset_db` que JÁ está desestruturado neste escopo, e não
+            // `self.gfx.as_ref()` nem `gfx.asset_db`: o empréstimo MUTÁVEL dos dois abre muito
+            // acima e vive até ao fim do quadro. Um reempréstimo partilhado daqui morre quando o
+            // `recook` volta.
+            self.texture_pattern_live.recook(
+                vec_scene,
+                asset_db,
+                ph2d_editor::image_quality_for(hero.project.image_filter),
+            );
+            let vec_patterns = self.texture_pattern_live.tiles();
             // As PELES de widget deste frame (plano UI/UX W6.2). Cozidas AQUI, depois do `sync`
             // (senão uma forma recém-marcada ainda não tem entidade) e com a câmera na mão —
             // quem sabe onde a forma está na tela é quem tem a projeção.
@@ -9212,6 +9248,7 @@ impl crate::App {
                 &vec_live,
                 vec_fx,
                 &vec_skins,
+                vec_patterns,
                 cam_affine,
                 vector_scene,
             );

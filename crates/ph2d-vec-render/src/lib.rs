@@ -155,6 +155,33 @@ pub struct FxImage {
     pub rect: (f64, f64, f64, f64),
 }
 
+/// **O LADRILHO ASSADO de um padrão** neste quadro — runtime-only, como a [`FxImage`].
+///
+/// O documento guarda a RELAÇÃO (qual arte, que reticulado, que tamanho); isto é o desenho
+/// derivado dela. ⚠️ Carrega um [`ph2d_vector::StableImage`] pela MESMA razão que a `FxImage`: o
+/// id de Blob tem de ser **estável** para o Vello reusar a textura do atlas em vez de a re-enviar a
+/// cada quadro. Quem o produz constrói-o UMA vez (no memo) e clona o handle por quadro.
+#[derive(Clone)]
+pub struct PatternTile {
+    /// O rectângulo que a GPU repete.
+    pub image: ph2d_vector::StableImage,
+    /// Quantas células ele contém (`[1,1]` na grade, `[1,n]` no tijolo por linha) — o
+    /// [`ph2d_vec_scene::PatternFill::placement`] precisa disto para saber quantos PERÍODOS o
+    /// rectângulo cobre.
+    pub cells: [u32; 2],
+    /// A resolução do assado, em pixels.
+    pub tile_px: [u32; 2],
+    /// O filtro de amostragem, **derivado do modo de imagem do app** (PixelArt -> `Low`).
+    ///
+    /// ⚠️ Ele vem de fora porque esta crate não conhece as preferências do app — a mesma razão pela
+    /// qual o `draw_image_rgba` já o recebe em vez de o adivinhar.
+    pub quality: ph2d_vector::ImageQuality,
+}
+
+/// Os ladrilhos de padrão deste quadro, por forma. Vazio = nenhum padrão resolvido, e toda forma
+/// com `Paint::Pattern` pinta a `fallback` dela — que é desenho CERTO, não uma desistência.
+pub type PatternTiles = std::collections::BTreeMap<VecPathId, PatternTile>;
+
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
 pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
@@ -206,6 +233,7 @@ pub fn dispatch(
     live: &LiveGeometry,
     fx: &FxImages,
     skins: &WidgetSkins,
+    patterns: &PatternTiles,
     camera: Affine,
     target: &mut VectorScene,
 ) {
@@ -238,13 +266,18 @@ pub fn dispatch(
                 // A derivada já está em MUNDO (a shell assou a pose dentro dela), então ela sobe
                 // pela CÂMERA e não pelo afim do path — aplicar a pose duas vezes foi bug real
                 // desta linha.
+                // ⚠️ **O ladrilho é procurado pelo id da FONTE, tal como a tinta dos tokens
+                // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
+                // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
+                // pararia na borda do primeiro efeito.
+                let tile = patterns.get(&path.id);
                 if let Some(items) = live.get(&path.id) {
                     for item in items {
-                        draw_path(&item.painted(bound), camera, target);
+                        draw_path_tiled(&item.painted(bound), camera, target, tile);
                     }
                 } else {
                     let transform = path_to_screen(xforms, path.id, camera);
-                    draw_path(&path.painted(bound), transform, target);
+                    draw_path_tiled(&path.painted(bound), transform, target, tile);
                 }
             }
         }
@@ -401,8 +434,21 @@ pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[
 /// Tessela sua própria geometria ([`path_tess`]) e delega a [`draw_path_with`] — byte-idêntico ao
 /// desenho de antes: 1 cozimento + as construções de sempre por chamada.
 pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
+    draw_path_tiled(path, transform, target, None);
+}
+
+/// Igual a [`draw_path`], mas com o LADRILHO de padrão desta forma neste quadro.
+///
+/// ⚠️ **Duas portas para a mesma pergunta divergem** — é por isso que a `draw_path` delega aqui em
+/// vez de ter um corpo próprio: um ladrilho ausente é *literalmente* o `None`, e não outro caminho.
+pub(crate) fn draw_path_tiled(
+    path: &VecPath,
+    transform: Affine,
+    target: &mut VectorScene,
+    tile: Option<&PatternTile>,
+) {
     let tess = path_tess(path);
-    draw_path_with(path, &tess, transform, target);
+    draw_path_with(path, &tess, transform, target, tile);
 }
 
 /// Desenha um path a partir da geometria JÁ TESSELADA (`tess`) — a metade barata do [`draw_path`],
@@ -416,11 +462,28 @@ pub(crate) fn draw_path_with(
     tess: &PathTess,
     transform: Affine,
     target: &mut VectorScene,
+    tile: Option<&PatternTile>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     if let Some(fill) = &path.fill {
         let fp = fill_bp.expect("fill => fill_bp construido");
-        if let Paint::MultiPoint { points } = fill {
+        // ⭐ **O padrão desenha a IMAGEM quando o ladrilho existe, e a `fallback` quando não.**
+        // As duas metades são desenho certo: a segunda é o que o artista vê enquanto a arte carrega,
+        // ou quando a forma-fonte desapareceu — e ⛔ desenhar NADA seria pior (uma forma invisível
+        // não se distingue de um preenchimento vazio).
+        if let (Paint::Pattern(pat), Some(t)) = (fill, tile) {
+            pattern::fill_pattern(
+                target,
+                fp,
+                fill_rule(path),
+                transform,
+                &t.image,
+                pat.placement(t.cells, t.tile_px),
+                pat.mode,
+                t.quality,
+                pat.alpha,
+            );
+        } else if let Paint::MultiPoint { points } = fill {
             // ⚠️ `path`, não `cooked`: o `fill_multipoint` mede a caixa dos pontos de controle da
             // forma AUTORADA (`control_point_bounds`). Passar o cozido moveria o gradiente de toda
             // forma com quina viva ou efeito — mudança de aparência dentro de um fix de custo.

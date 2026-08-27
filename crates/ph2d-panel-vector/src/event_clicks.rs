@@ -307,6 +307,7 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_FILL_KIND_LINEAR
         || id == ids::VECTOR_FILL_KIND_RADIAL
         || id == ids::VECTOR_FILL_KIND_MULTI
+        || id == ids::VECTOR_FILL_KIND_PATTERN
         || id == ids::VECTOR_GRAD_ADD_POINT
         || id == ids::VECTOR_GRAD_REMOVE_POINT
         || id == ids::VECTOR_GRAD_ADD_STOP

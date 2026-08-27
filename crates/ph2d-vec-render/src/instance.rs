@@ -77,7 +77,14 @@ pub(crate) fn draw_shape_instance_tessellated(
     target: &mut VectorScene,
 ) {
     if path.fill.is_some() {
-        draw_path_with(path, tess, transform, target);
+        // ⚠️⚠️ **UMA INSTÂNCIA DE MOTION DE UMA FORMA COM PADRÃO PINTA A `fallback`, e é DECLARADO.**
+        //
+        // Esta rota é alimentada pelo cozimento do Motion, que é outro oleoduto: ele não tem o mapa
+        // de ladrilhos do quadro em mãos, e inventar um aqui seria adivinhar de onde ele vem. ⛔ Não
+        // é «não deu» — é a fronteira desta wave, e o gate
+        // `a_motion_instance_of_a_patterned_shape_paints_the_fallback` prende-a, para que o dia em
+        // que alguém a mudar seja um acto deliberado e não um efeito colateral.
+        draw_path_with(path, tess, transform, target, None);
     } else {
         let fill_bp = tess
             .fill_bp

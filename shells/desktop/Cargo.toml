@@ -309,6 +309,9 @@ ph2d-vector = { path = "../../crates/ph2d-vector" }
 # + render `ph2d-vec-render` sobre o VectorScene fundacional). Aditiva — coexiste
 # com o sistema de edição antigo até o cutover (Fase R).
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
+# A lei de LADRILHO do Texture Pattern (plano 33): o `texture_pattern_live` assa a arte no
+# reticulado pedido antes de a entregar ao render. Folha ZERO-dep.
+ph2d-vec-pattern = { path = "../../crates/ph2d-vec-pattern" }
 ph2d-vec-render = { path = "../../crates/ph2d-vec-render" }
 # ADR-0108 Fase 1.1: máquinas de edição interativa (Pen agora) sobre a cena nova.
 ph2d-vec-edit = { path = "../../crates/ph2d-vec-edit" }

@@ -67,6 +67,8 @@ pub const VECTOR_FILL_KIND_LINEAR: NodeId = hash_node_id("vector.fill_kind.linea
 pub const VECTOR_FILL_KIND_RADIAL: NodeId = hash_node_id("vector.fill_kind.radial");
 /// Multi-point (Cavalry freeform IDW) fill.
 pub const VECTOR_FILL_KIND_MULTI: NodeId = hash_node_id("vector.fill_kind.multi");
+/// **Padrão de textura** (plano 33): uma arte repetida num reticulado.
+pub const VECTOR_FILL_KIND_PATTERN: NodeId = hash_node_id("vector.fill_kind.pattern");
 pub const VECTOR_GRAD_ANGLE: NodeId = hash_node_id("vector.grad.angle");
 pub const VECTOR_GRAD_ANGLE_NUM: NodeId = hash_node_id("vector.grad.angle_num");
 /// Multi-point gradient: add a point (bbox center) / remove the selected point.

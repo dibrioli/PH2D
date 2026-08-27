@@ -531,6 +531,12 @@ mod text_path_gesture_smoke;
 mod text_path_smoke;
 /// A cena de smoke do **REFLUXO** de texto (`PH2D_BUILD_SMOKE=63`) — irmã de `build_smoke`.
 mod text_wrap_smoke;
+/// **O ASSADO dos padrões de TEXTURA** (plano 33, W4) — ⚠️ não confundir com o `pattern_live`,
+/// que é o *Pattern Along Path* (doc 23): aquele copia um motivo ao longo de uma guia, este é a
+/// TINTA de uma forma.
+mod texture_pattern_live;
+/// **A porta que o chip *Tile* abre** (plano 33, W4) — escolher a arte de um padrão.
+mod texture_pattern_pick;
 mod theme;
 mod timeline_onion_smoke;
 #[cfg(test)]
@@ -1047,6 +1053,7 @@ impl App {
             vec_symmetry_origin: None,
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
+            texture_pattern_live: crate::texture_pattern_live::TexturePatternLive::default(),
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,

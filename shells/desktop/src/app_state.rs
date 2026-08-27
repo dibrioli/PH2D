@@ -1429,6 +1429,8 @@ pub(crate) struct App {
     /// (`ph2d_ecs::VecFilter`, plano 24). Runtime-only: o documento guarda a RELAÇÃO (o
     /// componente), e isto são os pixels derivados dela, injetados no z da forma.
     pub(crate) fx_live: crate::fx_live::FxLive,
+    /// **Os LADRILHOS de padrão de TEXTURA deste quadro** (plano 33, W4) — assados e memoizados.
+    pub(crate) texture_pattern_live: crate::texture_pattern_live::TexturePatternLive,
     /// A silhueta resolvida das formas TRAÇADAS que carregam filtro — a união
     /// `preenchimento ∪ traço` que o campo de distância dos FX consome. Ver [`crate::fx_silhouette`].
     pub(crate) fx_silhouette: crate::fx_silhouette::FxSilhouette,

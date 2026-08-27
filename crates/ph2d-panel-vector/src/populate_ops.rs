@@ -186,6 +186,7 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_FILL_KIND_LINEAR);
     button(store, ids::VECTOR_FILL_KIND_RADIAL);
     button(store, ids::VECTOR_FILL_KIND_MULTI);
+    button(store, ids::VECTOR_FILL_KIND_PATTERN);
     button(store, ids::VECTOR_GRAD_ADD_POINT);
     button(store, ids::VECTOR_GRAD_REMOVE_POINT);
     button(store, ids::VECTOR_GRAD_ADD_STOP);

@@ -180,3 +180,115 @@ fn a_pattern_without_a_tile_paints_its_fallback() {
         path.fill.as_ref().unwrap().primary_color()
     );
 }
+
+/// ⭐⭐ **O LADRILHO SUBSTITUI A `fallback` — e sem ladrilho o encode é EXACTAMENTE o de uma cor
+/// chapada.**
+///
+/// Esta é a afirmação forte da W4, e ela é byte-a-byte: uma forma com `Paint::Pattern` sem ladrilho
+/// resolvido encoda o **mesmo** que a mesma forma com `Paint::Solid(fallback)`. Isso é o que faz a
+/// pré-visualização ser *desenho certo* e não um estado degradado com aparência própria.
+#[test]
+fn a_tile_replaces_the_fallback_and_without_one_the_encode_is_the_solids() {
+    use crate::{VecViewState, VecXforms};
+    use ph2d_vec_scene::{Paint, PatternFill, PatternSource, Rgba8, VecPath, VecScene, VecVertex};
+    let cor = Rgba8::new(200, 30, 30, 255);
+    let shape = |fill: Paint| {
+        let mut scene = VecScene::default();
+        scene.push_path(VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            fill: Some(fill),
+            ..VecPath::default()
+        });
+        scene
+    };
+    let run = |scene: &VecScene, tiles: &crate::PatternTiles| {
+        let mut target = VectorScene::new();
+        crate::dispatch(
+            scene,
+            &VecViewState::default(),
+            &VecXforms::new(),
+            &crate::LiveGeometry::new(),
+            &crate::FxImages::new(),
+            &crate::WidgetSkins::new(),
+            tiles,
+            Affine::IDENTITY,
+            &mut target,
+        );
+        target
+    };
+    let pat = shape(Paint::Pattern(Box::new(PatternFill::new(
+        PatternSource::Shape(1),
+        [4.0, 4.0],
+        cor,
+    ))));
+    let solid = shape(Paint::solid(cor));
+    let empty = crate::PatternTiles::new();
+
+    // 1. Sem ladrilho: BYTE-A-BYTE o encode de um sólido da cor de recurso.
+    let a = run(&pat, &empty);
+    let b = run(&solid, &empty);
+    // ⚠️ `DrawTag` não implementa `Debug`, então a comparação é `assert!` e não `assert_eq!`.
+    assert!(a.inner().encoding().draw_tags == b.inner().encoding().draw_tags);
+    assert_eq!(
+        a.inner().encoding().draw_data,
+        b.inner().encoding().draw_data
+    );
+
+    // 2. Com ladrilho: deixa de o ser, e continua a NÃO empurrar camada.
+    let mut tiles = crate::PatternTiles::new();
+    let id = pat.paths()[0].id;
+    tiles.insert(
+        id,
+        crate::PatternTile {
+            image: tile(),
+            cells: [1, 1],
+            tile_px: [1, 1],
+            quality: ImageQuality::Medium,
+        },
+    );
+    let c = run(&pat, &tiles);
+    assert!(
+        c.inner().encoding().draw_tags != b.inner().encoding().draw_tags,
+        "o ladrilho nao substituiu a cor de recurso"
+    );
+    assert_eq!(c.inner().encoding().n_clips, 0);
+    assert_eq!(c.inner().encoding().n_paths, 1);
+}
+
+/// ⚠️⚠️ **UMA INSTÂNCIA DE MOTION DE UMA FORMA COM PADRÃO PINTA A `fallback`, e é DECLARADO.**
+///
+/// A rota de instância é alimentada pelo cozimento do Motion — outro oleoduto, que não tem o mapa
+/// de ladrilhos do quadro em mãos. ⛔ Não é *"não deu"*: é a fronteira desta wave, e este gate
+/// prende-a para que o dia em que alguém a mudar seja um acto deliberado e não um efeito colateral.
+#[test]
+fn a_motion_instance_of_a_patterned_shape_paints_the_fallback() {
+    use ph2d_vec_scene::{Paint, PatternFill, PatternSource, Rgba8, VecPath, VecVertex};
+    let cor = Rgba8::new(200, 30, 30, 255);
+    let mk = |fill: Paint| VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(fill),
+        ..VecPath::default()
+    };
+    let draw = |p: &VecPath| {
+        let mut s = VectorScene::new();
+        crate::standalone::draw_path_standalone(p, Affine::IDENTITY, &mut s);
+        s
+    };
+    let pat = draw(&mk(Paint::Pattern(Box::new(PatternFill::new(
+        PatternSource::Shape(1),
+        [4.0, 4.0],
+        cor,
+    )))));
+    let solid = draw(&mk(Paint::solid(cor)));
+    assert_eq!(
+        pat.inner().encoding().draw_data,
+        solid.inner().encoding().draw_data,
+        "a rota de instancia deixou de pintar a fallback - se foi de proposito, actualize esta lei"
+    );
+}

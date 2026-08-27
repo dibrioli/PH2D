@@ -268,25 +268,41 @@ impl BodyCtx<'_> {
             (ids::VECTOR_FILL_KIND_LINEAR, "Linear", FillKind::Linear),
             (ids::VECTOR_FILL_KIND_RADIAL, "Radial", FillKind::Radial),
             (ids::VECTOR_FILL_KIND_MULTI, "Multi", FillKind::MultiPoint),
+            (ids::VECTOR_FILL_KIND_PATTERN, "Pattern", FillKind::Pattern),
         ];
+        // ⭐⭐ **A fileira REFLUI, e deixou de reimplementar a aritmética de largura.**
+        //
+        // Ela repartia `inner_w` à mão por `n` chips — a MESMA expressão que o
+        // `paint_segmented_group_adaptive` já é, e que o doc-comment do [`Self::segmented`] logo
+        // acima chama de *"uma segunda regra de quebra vivendo neste painel"*. Com quatro chips
+        // ninguém notava; o **quinto** (o padrão, plano 33) é o que a faz morder: cada chip novo
+        // encolhe TODOS, de `58,5` para `45,6` px (medido), e o painter **não trunca** — um rótulo
+        // largo demais transborda para cima do vizinho.
+        //
+        // ⭐⭐ **E a medição fechou o círculo.** Com a repartição à mão, os cinco chips ficavam a
+        // `45,60 px` cada e `"Pattern"` media `41,37` — folga **negativa**, e o rótulo teria de ser
+        // `"Tile"`. Com o refluxo, os quatro primeiros voltam aos `60,0 px` **de antes** e o quinto
+        // ganha uma linha INTEIRA de `252 px`: a restrição que ditava o rótulo curto **dissolveu-se
+        // ao curar a fileira**, e o nome de produto cabe. *Quem move o número que tornava algo
+        // inalcançável tem de reconferir a nota.*
+        //
+        // Os dois gates que o medem: `every_fill_kind_chip_label_fits_its_chip` (a folga de cada
+        // rótulo, com o painter REAL e o sistema de texto REAL) e `the_five_chips_do_not_overlap`.
+        let segs: Vec<(&str, bool, ph2d_a11y::NodeId)> = kinds
+            .iter()
+            .map(|(id, label, k)| (*label, kind == *k, *id))
+            .collect();
+        let used = paint_segmented_group_adaptive(
+            Rect::new(self.inner_x, y, self.inner_w, self.row_h),
+            &segs,
+            self.scene,
+            self.text_system,
+            self.theme,
+            self.store,
+            self.hit_index,
+        );
         let gap = Spacing::Sm.px();
-        let cw = ((self.inner_w - gap * (kinds.len() as f32 - 1.0)) / kinds.len() as f32).max(1.0);
-        for (i, (id, label, k)) in kinds.iter().enumerate() {
-            let rx = self.inner_x + i as f32 * (cw + gap);
-            let rect = Rect::new(rx, y, cw, self.row_h);
-            let bstate = self.store.button_visual(*id);
-            paint_segmented_button(
-                rect,
-                label,
-                kind == *k,
-                bstate,
-                self.scene,
-                self.text_system,
-                self.theme,
-            );
-            self.hit_index.register(*id, rect);
-        }
-        y += self.row_h + self.row_gap;
+        y += used + self.row_gap;
 
         // Multi-point: Add / Remove point (drag points on-canvas to move them) +
         // Influence slider for the selected point.

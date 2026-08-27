@@ -517,6 +517,8 @@ pub(crate) enum VecFillKind {
     Linear,
     Radial,
     MultiPoint,
+    /// Padrão de textura (plano 33).
+    Pattern,
 }
 
 /// Map a Fill-type button `NodeId` to its [`VecFillKind`] (`None` otherwise).
@@ -529,6 +531,8 @@ pub(crate) fn vec_fill_kind_for_id(id: ph2d_editor::NodeId) -> Option<VecFillKin
         Some(VecFillKind::Radial)
     } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_MULTI {
         Some(VecFillKind::MultiPoint)
+    } else if id == ph2d_editor::ids::VECTOR_FILL_KIND_PATTERN {
+        Some(VecFillKind::Pattern)
     } else {
         None
     }
@@ -621,11 +625,18 @@ fn linear_span(lo: [f64; 2], hi: [f64; 2], degrees: f64) -> ([f64; 2], [f64; 2])
 /// and existing gradient geometry when the kind is unchanged; when entering a
 /// gradient from Solid/other, the geometry is seeded to fit the path's bbox. One
 /// undo step iff it changed.
+/// ⚠️ **`pattern` é a FONTE já resolvida** para o caso `Pattern`, e vem de fora de propósito: ela
+/// pode exigir um diálogo de ficheiro, que congela o laço e por isso pertence à shell (a porta
+/// `crate::modal`), não a esta função pura de documento.
+///
+/// ⚠️ **`None` com `kind == Pattern` é DESISTÊNCIA e não muda nada** — o artista fechou o diálogo,
+/// e apagar o gradiente dele por isso seria o pior dos dois mundos.
 pub(crate) fn apply_vec_set_fill_kind(
     scene: &mut ph2d_vec_scene::VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
     kind: VecFillKind,
+    pattern: Option<(ph2d_vec_scene::PatternSource, [f64; 2])>,
 ) {
     use ph2d_vec_scene::Paint;
     let Some(sel) = pen.selected() else {
@@ -674,6 +685,20 @@ pub(crate) fn apply_vec_set_fill_kind(
             _ => Paint::MultiPoint {
                 points: gradient_points_from(&cur, lo, hi),
             },
+        },
+        VecFillKind::Pattern => match (&cur, pattern) {
+            // Já é padrão: preserva a lei inteira (trocar de chip e voltar não perde a arte, nem o
+            // reticulado, nem a colocação).
+            (Some(p @ Paint::Pattern(_)), _) => p.clone(),
+            (_, Some((source, size))) => {
+                Paint::Pattern(Box::new(ph2d_vec_scene::PatternFill::new(
+                    source,
+                    size,
+                    crate::texture_pattern_pick::fallback_of(cur.as_ref()),
+                )))
+            }
+            // ⚠️ Desistiu do diálogo: NÃO mexe no preenchimento.
+            (_, None) => return,
         },
     };
     if cur.as_ref() == Some(&new_fill) {

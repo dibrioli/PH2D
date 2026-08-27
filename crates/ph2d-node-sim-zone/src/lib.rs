@@ -93,10 +93,39 @@ pub const MANIFEST: NodeManifest = NodeManifest {
     // relógio pede que o interior dela corra ([`ph2d_nodegraph::cook::Cook::substep`]). O param
     // mora aqui porque é aqui que o artista o procura e porque o painel se auto-popula da lista;
     // ele entra no fingerprint do cook pela porta de sempre, então mudá-lo re-cozinha.
-    params: &[ParamSpec {
-        name: "substeps",
-        default: 1.0,
-    }],
+    params: &[
+        ParamSpec {
+            name: "substeps",
+            default: 1.0,
+        },
+        // ── O CICLO DE VIDA (doc 89, folha 13 · o *Emitter State* do Niagara) ──
+        //
+        // ⚠️ **Estes QUATRO são lidos pelo `eval`**, ao contrário do `substeps` acima — e é
+        // por isso que são params comuns e não metadado lateral: a cerca 2 da folha fala do
+        // que o SEQUENCIADOR precisa de saber, e o preço do device está pago pelo
+        // `applicable` do kernel (ver [`ZONE_KERNEL`]).
+        //
+        // Os defaults (`start = 0`, `duration = 0` ⇒ **para sempre**) devolvem a zona que
+        // shipava — e não por promessa: com eles a maquinaria do ciclo **não corre**
+        // (`Life::is_default`), e o `eval` toma exactamente o ramo de antes.
+        ParamSpec {
+            name: "start",
+            default: 0.0,
+        },
+        // `0` Forever (a zona que shipava) · `1` Once · `2` Loop — ver [`life::Mode`].
+        ParamSpec {
+            name: "mode",
+            default: 0.0,
+        },
+        ParamSpec {
+            name: "duration",
+            default: 2.0,
+        },
+        ParamSpec {
+            name: "loop_delay",
+            default: 0.0,
+        },
+    ],
     lowerings: &[LoweringKind::Cpu],
 };
 
@@ -151,6 +180,8 @@ fn store(s: &Stream) -> Stream {
     out
 }
 
+mod life;
+
 struct SimZone;
 
 impl NodeOp for SimZone {
@@ -174,10 +205,39 @@ impl NodeOp for SimZone {
         //
         // The state of a zone lives on the zone's OWN previous output. So that is what it asks:
         // did *I* emit anything last tick? (`EvalCtx::started` — doc 48.)
-        let held = if ctx.started() {
-            ctx.input(IN_STATE)
-        } else {
-            ctx.input(IN_INIT)
+        //
+        // ⚠️ **O CICLO DE VIDA é uma SEGUNDA porta ao lado desta, nunca uma substituição.**
+        // Com os defaults o `is_default` corta fora a maquinaria e o que corre é o ramo acima.
+        //
+        // ⚠️⚠️ **E o que esse corte COMPRA teve de ser achado por mutação.** A 1.ª redacção
+        // dizia *"a maquinaria não corre"* e **nenhuma mutação matava a afirmação**: para
+        // `t >= 0` a lei geral concorda com este ramo tique a tique, então desligar o
+        // curto-circuito deixava a suíte verde. *Uma afirmação que mutação nenhuma mata é uma
+        // afirmação sobre nada.* O que ele compra é **a zona de sempre não perguntar as
+        // horas**: num relógio NEGATIVO a lei do ciclo diria `Dormant`, e ela semeia. É a
+        // diferença inteira, e o gate `the_default_zone_does_not_ask_the_clock_what_time_it_is`
+        // é quem a prende.
+        let life = life::Life::of(&|name| ctx.param(name));
+        if life.is_default() {
+            let held = if ctx.started() {
+                ctx.input(IN_STATE)
+            } else {
+                ctx.input(IN_INIT)
+            };
+            ctx.emit(store(held));
+            return;
+        }
+        // ⚠️ **`Nothing` é um stream VAZIO, e ele fecha o laço sozinho:** o interior lê a
+        // saída anterior da zona por uma aresta atrasada, então uma vez emitido o vazio o
+        // interior cozinha vazio e devolve vazio — a sim fica de facto parada, sem nenhum
+        // nó a jusante precisar de saber que houve um ciclo.
+        let held = match life.emit(ctx.playhead(), ctx.dt(), ctx.started()) {
+            life::Emit::Nothing => {
+                ctx.emit(Stream::new(0));
+                return;
+            }
+            life::Emit::Seed => ctx.input(IN_INIT),
+            life::Emit::Carry => ctx.input(IN_STATE),
         };
         ctx.emit(store(held));
     }
@@ -190,7 +250,7 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // tells the sequencer to forward `init` before the loop has state and `state`
     // after, stripping the SAME `TRANSIENTS` the CPU `store()` strips (one list,
     // two consumers — they cannot drift).
-    reg.register_gpu_kernel(MANIFEST.id, GpuKernel::PASSTHROUGH);
+    reg.register_gpu_kernel(MANIFEST.id, ZONE_KERNEL);
     reg.register_state_select(
         MANIFEST.id,
         StateSelect {
@@ -201,6 +261,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     );
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_ui(
         MANIFEST.id,
         ph2d_node_registry::NodeUiManifest {
@@ -214,14 +276,98 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
 
 /// O `IntSlider` é o que faz a unidade cair em `ParamUnit::Count` sem uma 2ª declaração —
 /// um substep é uma CONTAGEM, e meio substep não quer dizer nada.
-static PARAM_HINTS: &[ParamUiHint] = &[ParamUiHint {
-    param: "substeps",
-    label: "Substeps",
-    min: 1.0,
-    max: 16.0,
-    step: 1.0,
-    widget: ParamWidget::IntSlider,
-}];
+static PARAM_HINTS: &[ParamUiHint] = &[
+    ParamUiHint {
+        param: "substeps",
+        label: "Substeps",
+        min: 1.0,
+        max: 16.0,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    // ── O CICLO DE VIDA ──────────────────────────────────────────────────────
+    ParamUiHint {
+        param: "mode",
+        label: "Life Cycle",
+        min: 0.0,
+        max: 2.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: &["Forever", "Once", "Loop"],
+        },
+    },
+    // ⚠️ O `start` vale nos TRÊS modos — atrasar o começo não tem nada a ver com ter fim.
+    ParamUiHint {
+        param: "start",
+        label: "Start",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "duration",
+        label: "Duration",
+        min: MIN_DURATION_UI,
+        max: 20.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: "loop_delay",
+        label: "Loop Delay",
+        min: 0.0,
+        max: 10.0,
+        step: 0.05,
+        widget: ParamWidget::Slider,
+    },
+];
+
+/// O piso do slider da duração.
+///
+/// ⚠️ **DERIVADO do piso da lei, não escrito ao lado dele.** Dois literais iguais em dois
+/// arquivos são duas respostas à mesma pergunta, e a que envelhece é sempre a que ninguém lê —
+/// um gate a compará-los só apanharia a divergência depois de ela existir. Aqui ela não pode
+/// existir. (A conversão perde ~2e-10, que é a precisão do `f32` e não uma discordância.)
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "um piso de slider e' f32 por contrato do `ParamUiHint`"
+)]
+const MIN_DURATION_UI: f32 = life::MIN_DURATION as f32;
+
+/// **Só os knobs que o modo escolhido de facto LÊ aparecem** — a lei do `count`/`spacing` do
+/// `motion.path`, e a razão de o ciclo ser um modo e não uma sentinela: em `Forever` a duração
+/// e o descanso não mudam um quadro, e um controle pintado que não é lido é o defeito que a
+/// caça aos knobs mortos (doc 90) desta linha existiu para apagar.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: "duration",
+        when: "mode",
+        values: &[1, 2],
+    },
+    ph2d_node_registry::ParamGate {
+        param: "loop_delay",
+        when: "mode",
+        values: &[2],
+    },
+];
+
+/// **O que cada número É** (doc 88): os três do ciclo são DURAÇÕES. O `substeps` é uma
+/// contagem, e o `IntSlider` já a declara sem uma 2.ª entrada.
+static PARAM_UNITS: &[ph2d_node_registry::ParamUnitDecl] = &[
+    ph2d_node_registry::ParamUnitDecl {
+        param: "start",
+        unit: ph2d_node_registry::ParamUnit::Seconds,
+    },
+    ph2d_node_registry::ParamUnitDecl {
+        param: "duration",
+        unit: ph2d_node_registry::ParamUnit::Seconds,
+    },
+    ph2d_node_registry::ParamUnitDecl {
+        param: "loop_delay",
+        unit: ph2d_node_registry::ParamUnit::Seconds,
+    },
+];
 
 /// O teto digitável, MEDIDO — a tabela está no doc-comment de [`MAX_SUBSTEPS`].
 static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
@@ -232,3 +378,28 @@ static PARAM_HARD_MAX: &[ParamHardMax] = &[ParamHardMax {
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "life_tests.rs"]
+mod life_tests;
+
+/// **O kernel da zona — a passagem de sempre, com o preço do CICLO DE VIDA nomeado.**
+///
+/// A zona é um *conditional passthrough* (ADR-0135): o plano a reivindica sem emitir passe de
+/// compute, e o `StateSelect` diz ao sequenciador que porta encaminhar. ⚠️ **O ciclo de vida é
+/// uma decisão que o sequenciador não sabe tomar** — ele conhece «antes de haver estado» e
+/// «depois», não um relógio com atraso, duração e repetição.
+///
+/// ⚠️ **Então o ciclo de vida é CPU-only, e o bloqueador é este:** ensinar a fase ao device
+/// significaria pôr o relógio dentro do `StateSelect`, que é o metadado lateral que a cerca 2 da
+/// folha 13 reserva. Com os defaults nada disso acontece — `applicable` devolve `true`, o
+/// `StateSelect` decide como sempre, e a zona continua **residente na GPU**. É o precedente
+/// exacto do `motion.emitter` (os modos novos dele são CPU-only, com o bloqueador escrito ao
+/// lado), e o preço está na cerca 1: *um nó que o device não reivindica custa a residência do
+/// laço inteiro*.
+const ZONE_KERNEL: GpuKernel = GpuKernel {
+    // ⚠️ **A MESMA porta que o `eval` usa** (`Life::of`) — se cada lado lesse os params à
+    // mão, o device podia reivindicar uma zona que a CPU já considera ciclada.
+    applicable: Some(|p| life::Life::of(p).is_default()),
+    ..GpuKernel::PASSTHROUGH
+};

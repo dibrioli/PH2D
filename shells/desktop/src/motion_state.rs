@@ -89,6 +89,9 @@ mod gpu_edges_demo;
 /// `vel` a cada tique, então até existir a coluna `hit` a pergunta não era exprimível.
 #[path = "motion_state_gpu_hit_demo.rs"]
 mod gpu_hit_demo;
+/// A cena `=103` — o RELÓGIO da simulação (folha 13, célula 60: o ciclo de vida da zona).
+#[path = "motion_state_gpu_lifecycle_demo.rs"]
+mod gpu_lifecycle_demo;
 /// The NEIGHBOURHOOD scenes (ADR-0140), split out for the same reason: they
 /// answer the interacting-sim question none of the throughput scenes can.
 #[path = "motion_state_gpu_neighbour_demos.rs"]

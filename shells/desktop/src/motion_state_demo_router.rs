@@ -19,7 +19,7 @@ use super::*;
 /// não acusa (ele mede o piso). O que acusa é a cena nova nunca ser diagnosticada —
 /// então esta linha anda junto com o braço novo do `match`.
 #[cfg(test)]
-const MAX_DEMO_LEVEL: u32 = 97;
+const MAX_DEMO_LEVEL: u32 = 103;
 
 /// Os sinks da cena que o ambiente pediu — vazio quando ele não pediu nada, que é a TELA
 /// VAZIA com que o editor abre.
@@ -406,6 +406,33 @@ pub(crate) fn build_level(
         Some("96") => conferencia::value_family(doc, registry),
         Some("97") => conferencia::base_family(doc, registry),
         Some("98") => conferencia::stamp_family(doc, registry),
+        Some("103") => {
+            let sinks = gpu_lifecycle_demo::build_gpu_lifecycle_demo_document(doc, registry)
+                .unwrap_or_default();
+            eprintln!(
+                "[lifecycle-demo] O RELOGIO DA SIMULACAO: tres fileiras iguais de {} pecas,
+  caindo. So' o RELOGIO de cada uma e' diferente.
+  ⚠️ PRECISA DE PLAY.
+
+  ESQUERDA  Forever  a de sempre: cai, sai da tela e nunca mais volta
+  MEIO      Once     fica {} s PARADA no ar, cai por {} s, e some
+  DIREITA   Loop     cai por {} s, some por {} s, e RECOMECA do alto -- sempre
+
+  QUER MEXER? Clique numa fileira e procure «Life Cycle» no painel da «Simulation Zone»:
+  «Forever», «Once» e «Loop». Com «Once» ou «Loop» aparece «Duration»; so' com «Loop»
+  aparece «Loop Delay». O «Start» atrasa o comeco nos tres.
+
+  DEU ERRADO se: a do meio comecar a cair junto com a da esquerda; se a da direita nao
+  voltar ao alto; se alguma fileira nascer com menos pecas que a outra; ou se a da
+  direita voltar ao alto SEM ter sumido antes.",
+                gpu_lifecycle_demo::COLS as u32,
+                gpu_lifecycle_demo::START,
+                gpu_lifecycle_demo::DURATION,
+                gpu_lifecycle_demo::DURATION,
+                gpu_lifecycle_demo::REST,
+            );
+            sinks
+        }
         Some("102") => {
             let sinks =
                 gpu_edges_demo::build_gpu_edges_demo_document(doc, registry).unwrap_or_default();

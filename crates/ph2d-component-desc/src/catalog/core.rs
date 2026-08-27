@@ -145,6 +145,17 @@ pub const DESCS: &[D] = &[
         C::Instancing,
         INSTANCE_OF,
     ),
+    // ⭐⭐ **A cópia LIGADA** (Enio, 2026-08-27) — o `Alt+D` do Blender: esta peça divide a ARTE da
+    // receita, então editar a tinta ou o desenho dela **sobe** e chega às irmãs, em vez de virar
+    // excepção dela.
+    //
+    // ⚠️ **`Intrinsic` pela razão do `InstanceOf`:** ela chega pelo verbo *Instantiate Linked*, que
+    // copia a subárvore inteira antes de a pôr. Oferecê-la na paleta poria a marca numa entidade
+    // que não é cópia de nada — e a subida de pixels procuraria um mestre que não existe, calada.
+    //
+    // ⭐ E ela aparece no Inspector porque é a única superfície que diz ao artista **qual das duas
+    // leis** esta cópia segue: as duas são iguais na tela até ao gesto seguinte.
+    D::intrinsic("ph2d::ecs::LinkedArt", "Linked Art", C::Instancing, MARKER),
     D::authored("ph2d::ecs::Locked", "Locked", C::Identity, O::ANY, MARKER),
     D::authored("ph2d::ecs::Mask2D", "Mask", C::Rendering, O::IMAGE, &[]),
     D::authored(

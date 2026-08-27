@@ -49,6 +49,10 @@ const NEVER_PROPAGATES: &[&str] = &[
     "ph2d::ecs::MasterRoot",
     "ph2d::ecs::InstanceOf",
     "ph2d::ecs::ObjectInstance",
+    // ⭐ **A marca da cópia LIGADA** (Enio 2026-08-27). O mestre não a tem, e este passe propaga
+    // também a AUSÊNCIA — sem esta linha ele arrancava a marca da cópia todo o quadro, e o modo
+    // `Alt+D` durava exactamente um frame.
+    "ph2d::ecs::LinkedArt",
 ];
 
 /// ⭐⭐⭐ **O ECO do mestre — como o passe sabe QUEM se mexeu.**

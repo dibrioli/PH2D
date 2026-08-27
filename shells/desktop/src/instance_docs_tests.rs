@@ -78,6 +78,7 @@ fn a_vector_piece_of_an_instance_gets_its_own_path() {
             vec_scene: &mut scene,
             vec_entities: &mut map,
         },
+        crate::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
 
@@ -121,6 +122,7 @@ fn the_clone_is_registered_so_the_sync_mints_no_ghost() {
             vec_scene: &mut scene,
             vec_entities: &mut map,
         },
+        crate::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
 
@@ -159,6 +161,7 @@ fn the_clone_carries_no_offset_because_the_pose_is_in_the_transform() {
             vec_scene: &mut scene,
             vec_entities: &mut map,
         },
+        crate::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
     let copy_piece = piece(&sim, inst, "Plate");

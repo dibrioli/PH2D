@@ -100,6 +100,31 @@ pub struct ObjectInstance {
     pub overrides: std::collections::BTreeSet<OverrideKey>,
 }
 
+/// ⭐⭐⭐ **Esta peça DIVIDE a arte do mestre** — o *Duplicate Linked* do Blender (Enio, 2026-08-27).
+///
+/// # As duas leis, e porque são a MESMA
+///
+/// Sem esta marca, uma cópia tem arte **própria**: editar o desenho dela vira uma excepção dela, e
+/// as irmãs não mudam. Com ela, a edição **sobe ao mestre** — e o passe seguinte leva-a a todas.
+/// É o `Alt+D`: uma malha, vários objetos.
+///
+/// ⚠️ **«Arte» são os PIXELS e os DOCUMENTOS POSSUÍDOS, nunca as propriedades.** Uma cópia ligada
+/// continua a ter a pose, o `tint` e os componentes dela — senão ela não era uma cópia, era o mesmo
+/// objeto desenhado duas vezes. É exactamente a fronteira do Blender: partilha-se o *dado*, não o
+/// *objeto*.
+///
+/// # ⚠️ Porque é per-PEÇA e não na raiz
+///
+/// Os dois consumidores — a subida da tinta (`hero_intents::texture_rebind`) e a do documento
+/// (`instance_sync_docs`) — têm em mão a **peça** que o artista tocou, nunca a raiz. Uma marca na
+/// raiz obrigaria os dois a subir a árvore para a encontrar, e *cada um teria a sua resposta*. É a
+/// mesma razão pela qual o [`InstanceOf`] vive em toda peça.
+///
+/// ⛔ **Não propaga** (`instance_sync::NEVER_PROPAGATES`): o mestre não a tem, e um passe que
+/// propagasse a ausência arrancá-la-ia da cópia todo o quadro.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinkedArt;
+
 /// O que uma cópia profunda produziu — e o mapa que o remap consome.
 #[derive(Clone, Debug)]
 pub struct DeepCopy {

@@ -251,6 +251,9 @@ pub enum EditorAction {
     /// ⭐ **Instanciar** a receita desta linha (ADR-0164 / F4.5).
     HierInstantiate { row: ph2d_a11y::NodeId },
 
+    /// ⭐ **Instanciar LIGADO** (Enio, 2026-08-27) — a cópia divide a ARTE da receita.
+    HierInstantiateLinked { row: ph2d_a11y::NodeId },
+
     /// ⭐ **Destacar** — a instância deixa de seguir a receita (ADR-0164 / F4.5).
     HierDetach { row: ph2d_a11y::NodeId },
 

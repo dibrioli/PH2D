@@ -107,6 +107,7 @@ fn instantiate(
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
+        crate::instantiate::ArtLink::Own,
     )
 }
 
@@ -298,6 +299,78 @@ fn make_master_refuses_a_master_and_a_piece_of_an_instance() {
         make(&mut sim, &r, stowaway),
         Err(VerbRefusal::InsideAnInstance),
         "um filho acrescentado DEPOIS virou receita dentro de uma copia viva"
+    );
+}
+
+/// ⭐⭐⭐ **Os DOIS verbos de instanciar, e o que os separa** (Enio, 2026-08-27).
+///
+/// > *«No modelo Blender há os dois modos: Duplicate e Duplicate Linked.»*
+///
+/// *Instantiate* dá arte **própria** (`Shift+D`); *Instantiate Linked* dá uma cópia que **divide a
+/// arte** da receita (`Alt+D`). A marca é o que os dois consumidores — a tinta e o documento —
+/// leem, e ela vai em **toda peça**, não só na raiz: eles têm em mão a peça que o artista tocou.
+///
+/// ⚠️ **Pelo DRENO, e não pela função**: é o dreno que traduz o verbo em lei, e um gate que o
+/// saltasse mediria o `instantiate_master`, que já recebe a resposta pronta.
+///
+/// (Mutação: dar `ArtLink::Shared` aos dois verbos ⇒ RED no lado `Own`; e ao contrário ⇒ RED no
+/// outro. É por isso que o gate mede os DOIS na mesma cena.)
+#[test]
+fn the_two_instantiate_verbs_differ_only_in_which_art_law_the_copy_follows() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let mut echo = MasterEcho::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let master = spawn_master(&mut sim);
+    let mut place = |sim: &mut SimWorld, echo: &mut MasterEcho, verb: super::Verb| {
+        let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+        assert!(
+            super::drain(
+                verb,
+                sim,
+                &r,
+                echo,
+                master.to_bits(),
+                &mut toasts,
+                &mut crate::instance_docs::OwnedDocs {
+                    vec_scene: &mut sc,
+                    vec_entities: &mut mp,
+                },
+                [0.0, 0.0],
+            ),
+            "o verbo {verb:?} nao fez nada"
+        );
+    };
+    place(&mut sim, &mut echo, super::Verb::Place);
+    place(&mut sim, &mut echo, super::Verb::PlaceLinked);
+
+    let master_id = sim.world().get::<ph2d_ecs::StableId>(master).expect("id").0;
+    let mut roots: Vec<Entity> = {
+        let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
+        q.iter(sim.world())
+            .filter(|(_, l)| l.master == master_id)
+            .map(|(e, _)| e)
+            .collect()
+    };
+    roots.sort();
+    assert_eq!(roots.len(), 2, "os dois verbos nao deixaram duas copias");
+    let linked: Vec<bool> = roots
+        .iter()
+        .map(|&e| sim.world().get::<ph2d_ecs::LinkedArt>(e).is_some())
+        .collect();
+    assert_eq!(
+        linked.iter().filter(|l| **l).count(),
+        1,
+        "as duas copias seguem a MESMA lei ({linked:?}) — os dois itens do menu fazem o mesmo"
+    );
+    // ⚠️ E a marca vai em toda PEÇA, senão a tinta e o documento — que recebem a peça, nunca a
+    // raiz — leriam a ausência e a cópia ligada comportava-se como uma normal.
+    let ligada = roots[usize::from(linked[1])];
+    assert!(
+        sim.world()
+            .get::<ph2d_ecs::LinkedArt>(piece(&sim, ligada, "Arm"))
+            .is_some(),
+        "a peca da copia ligada nao tem a marca — so' a raiz a tem, e ninguem le' a raiz"
     );
 }
 

@@ -250,6 +250,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // ⚠️ Todos respondem numa linha a que não se aplicam — a tabela é plana.
             (ids::CTX_MENU_HIER_MAKE_COMPONENT, "Make Component", None),
             (ids::CTX_MENU_HIER_INSTANTIATE, "Instantiate", None),
+            (
+                ids::CTX_MENU_HIER_INSTANTIATE_LINKED,
+                "Instantiate Linked",
+                None,
+            ),
             (ids::CTX_MENU_HIER_APPLY_TO_MASTER, "Apply to Master", None),
             (
                 ids::CTX_MENU_HIER_REVERT_TO_MASTER,

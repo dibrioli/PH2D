@@ -96,6 +96,26 @@ pub(super) fn sync_one(
     // ganha, como no resto do passe: inventar um override a partir de um estado que ninguém viu
     // mudar seria congelar contra a receita algo que o artista nunca pediu.
     if !master_moved && echo.contains_key(&echo_key) {
+        // ⭐⭐⭐ **A cópia LIGADA responde ao contrário, e é o `Alt+D`** (Enio, 2026-08-27): a
+        // edição dela não é uma excepção **dela**, é uma edição da receita feita a partir dela.
+        // Sobe, e o passe seguinte leva-a às irmãs.
+        //
+        // ⚠️ **A peça já existia** — é o mesmo `apply_one` do verbo *Apply to Master*. O modo
+        // ligado não é uma segunda lei de propagação: é a lei que já havia, escolhida no gesto em
+        // vez de num clique posterior.
+        //
+        // ⚠️ **E o eco tem de aprender o valor NOVO no mesmo passe**, senão o quadro seguinte lê
+        // *«o mestre mexeu-se»* contra o eco velho e a subida vira uma propagação que se repete.
+        if sim.world().get::<ph2d_ecs::LinkedArt>(inst).is_some() {
+            if apply_one(sim, docs, inst, master) {
+                if let Some(now) = docs.vec_scene.path(mp.0) {
+                    next_master.insert(echo_key, Some(content_bytes(now)));
+                }
+                diag.doc_wrote += 1;
+                return 1;
+            }
+            return 0;
+        }
         overrides.overrides.insert(key); // (3)
         return 0;
     }

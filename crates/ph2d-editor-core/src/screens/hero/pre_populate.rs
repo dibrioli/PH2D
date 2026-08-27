@@ -406,6 +406,7 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_REVERT_TO_MASTER,
         ids::CTX_MENU_HIER_MAKE_COMPONENT,
         ids::CTX_MENU_HIER_INSTANTIATE,
+        ids::CTX_MENU_HIER_INSTANTIATE_LINKED,
         ids::CTX_MENU_HIER_DETACH,
         ids::CTX_MENU_HIER_APPLY_TO_MASTER,
         ids::CTX_MENU_HIER_DELETE,

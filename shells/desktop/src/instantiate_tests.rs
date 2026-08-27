@@ -29,6 +29,7 @@ fn instantiate(
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
+        crate::instantiate::ArtLink::Own,
     )
 }
 

@@ -126,8 +126,14 @@ pub(crate) fn spawn_ragdoll_scene(
     let master = spawn_master(sim);
     let mut roots = Vec::new();
     for x in INSTANCE_X {
-        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None, docs)
-        else {
+        let Ok(inst) = crate::instantiate::instantiate_master(
+            sim,
+            registry,
+            master,
+            None,
+            docs,
+            crate::instantiate::ArtLink::Own,
+        ) else {
             continue;
         };
         sim.world_mut()
@@ -202,8 +208,17 @@ pub(crate) fn spawn_vector_scene(
 ) -> (ph2d_ecs::Entity, Vec<ph2d_ecs::Entity>) {
     let master = spawn_vector_master(sim, docs);
     let mut roots = Vec::new();
-    for x in VEC_INSTANCE_X {
-        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None, docs)
+    // ⭐⭐ **A TERCEIRA cópia é LIGADA, e as duas primeiras não** (Enio, 2026-08-27) — é a única
+    // forma de o smoke mostrar as DUAS leis: mexer na 1.ª muda só ela, mexer na 3.ª muda todas.
+    // *Uma cena que só demonstra um dos modos deixa o outro por descobrir.*
+    for (i, x) in VEC_INSTANCE_X.into_iter().enumerate() {
+        let link = if i + 1 == VEC_INSTANCE_X.len() {
+            crate::instantiate::ArtLink::Shared
+        } else {
+            crate::instantiate::ArtLink::Own
+        };
+        let Ok(inst) =
+            crate::instantiate::instantiate_master(sim, registry, master, None, docs, link)
         else {
             continue;
         };
@@ -307,6 +322,17 @@ impl crate::App {
         println!(
             "[instance smoke 2] PASSO 2: escolha 'Badge > Box' (a RECEITA, a' esquerda) e mova um \
              no' dela: as TRES copias tem de mudar junto"
+        );
+        // ⭐⭐⭐ **As DUAS leis lado a lado** (Enio, 2026-08-27) — é para isto que a 3.ª cópia nasce
+        // LIGADA. Sem estas duas linhas o artista tem o modo novo na cena e nenhuma forma de saber
+        // que ele existe, que é o defeito §1.7 outra vez, um nível acima.
+        println!(
+            "[instance smoke 2] PASSO 3: mova um no' da 1a copia (a mais a' esquerda das tres) — \
+             so' ELA muda. E' a copia com desenho PROPRIO."
+        );
+        println!(
+            "[instance smoke 2] PASSO 4: mova um no' da 3a copia (a mais a' direita) — a RECEITA e \
+             as outras duas mudam junto. Essa e' LIGADA (o 'Instantiate Linked')."
         );
         println!(
             "[instance smoke 2] se nao mudarem, rode outra vez com PH2D_INSTANCE_LOG=1 — o passe \

@@ -4104,6 +4104,10 @@ impl crate::App {
                     EditorAction::HierInstantiate { row } => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
                     }
+                    EditorAction::HierInstantiateLinked { row } => {
+                        instance_verb_row
+                            .get_or_insert((row, crate::instance_verbs::Verb::PlaceLinked));
+                    }
                     EditorAction::HierDetach { row } => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Detach));
                     }

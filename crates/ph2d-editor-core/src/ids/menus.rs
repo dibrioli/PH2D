@@ -198,6 +198,10 @@ pub const CTX_MENU_HIER_REVERT_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_r
 pub const CTX_MENU_HIER_MAKE_COMPONENT: NodeId = hash_node_id("ctx_menu_hier_make_component");
 /// ⭐ **Instanciar** a receita escolhida (ADR-0164 / F4.5).
 pub const CTX_MENU_HIER_INSTANTIATE: NodeId = hash_node_id("ctx_menu_hier_instantiate");
+/// ⭐ **Instanciar LIGADO** (Enio, 2026-08-27) — o `Alt+D` do Blender: a cópia divide a ARTE da
+/// receita, então editar a tinta ou o desenho dela sobe e chega a todas as irmãs.
+pub const CTX_MENU_HIER_INSTANTIATE_LINKED: NodeId =
+    hash_node_id("ctx_menu_hier_instantiate_linked");
 /// ⭐ **Destacar** — a instância deixa de seguir a receita (ADR-0164 / F4.5).
 pub const CTX_MENU_HIER_DETACH: NodeId = hash_node_id("ctx_menu_hier_detach");
 /// ⭐ **Aplicar ao mestre** — a excepção vira o padrão (ADR-0164 / F4.5).

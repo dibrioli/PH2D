@@ -31,7 +31,17 @@ struct Fixture {
 }
 
 impl Fixture {
+    /// A cópia com arte **PRÓPRIA** (*Instantiate*) — o caso de sempre.
     fn new() -> Self {
+        Self::with_link(crate::instantiate::ArtLink::Own)
+    }
+
+    /// ⭐ **A cópia LIGADA** (*Instantiate Linked*, o `Alt+D`) — Enio, 2026-08-27.
+    fn linked() -> Self {
+        Self::with_link(crate::instantiate::ArtLink::Shared)
+    }
+
+    fn with_link(link: crate::instantiate::ArtLink) -> Self {
         let mut sim = SimWorld::new();
         let mut scene = VecScene::new();
         let mut map = VecEntityMap::new();
@@ -61,6 +71,7 @@ impl Fixture {
                 vec_scene: &mut scene,
                 vec_entities: &mut map,
             },
+            link,
         )
         .expect("instanciou");
         let inst_piece = piece(&sim, inst_root, "Plate");
@@ -198,6 +209,47 @@ fn a_shape_edited_on_the_copy_becomes_an_override() {
         mine,
         "o mestre atropelou uma excepcao — a lei diz que ele so' ganha o EMPATE"
     );
+}
+
+/// ⭐⭐⭐ **A MESMA edição numa cópia LIGADA SOBE à receita** (Enio, 2026-08-27) — o `Alt+D`.
+///
+/// > *«Podemos criar um modo similar ao Blender onde em qualquer que se mudar todas mudam?»*
+///
+/// ⚠️ **É o gémeo exacto de [`a_shape_edited_on_the_copy_becomes_an_override`], e de propósito:**
+/// a mesma cena, o mesmo gesto, o mesmo passe — muda só a lei que a cópia segue. Um gate do modo
+/// ligado numa cena diferente não provaria que é a MARCA que decide.
+///
+/// ⚠️ E a metade que mantém o ponto fixo: **não** pode virar excepção (senão a cópia editada ficava
+/// surda à receita), e o passe seguinte não pode reescrever nada.
+///
+/// (Mutação: apagar o ramo do `LinkedArt` no `sync_one` ⇒ RED nas duas primeiras asserções.)
+#[test]
+fn a_shape_edited_on_a_linked_copy_rises_to_the_master() {
+    let mut f = Fixture::linked();
+    let id = f.inst_path();
+    f.nudge(id, -5.0);
+    let mine = f.verts(id);
+    f.pass();
+    assert_eq!(
+        f.verts(f.master_path),
+        mine,
+        "a edicao da copia LIGADA nao subiu — ela ficou uma excepcao dela, que e' o outro modo"
+    );
+    assert_eq!(
+        f.sim
+            .world()
+            .get::<ph2d_ecs::ObjectInstance>(f.inst_root)
+            .map_or(0, |o| o.overrides.len()),
+        0,
+        "a copia LIGADA capturou uma excepcao — ela ficaria surda a' receita para sempre"
+    );
+    // ⚠️ O ponto fixo: com o eco em dia, o passe seguinte não escreve nada.
+    assert_eq!(
+        f.pass(),
+        0,
+        "o passe seguinte voltou a escrever — a subida repete-se"
+    );
+    assert_eq!(f.verts(id), mine, "a forma da copia mudou sozinha");
 }
 
 /// ⭐ **APLICAR ao mestre escreve o CONTEÚDO, nunca o id.**

@@ -50,6 +50,7 @@ fn instantiate(
             vec_scene: &mut sc,
             vec_entities: &mut mp,
         },
+        crate::instantiate::ArtLink::Own,
     )
 }
 
@@ -163,12 +164,17 @@ fn reverting_does_not_move_what_the_artist_placed() {
     );
 }
 
-/// ⭐⭐⭐ **O OUTRO REPORT: pintar uma cópia muda as irmãs** (Enio, 2026-08-26).
+/// ⭐⭐⭐ **O OUTRO REPORT: pintar uma cópia LIGADA muda as irmãs** (Enio, 2026-08-26 → 27).
 ///
 /// > *«Pintei uma sprite de uma instância e as outras não mudaram.»*
 ///
 /// A edição de pixels sobe até à receita ([`crate::hero_intents::texture_rebind`]) e o passe
 /// leva-a a toda a gente.
+///
+/// ⚠️ **Em 2026-08-27 isto passou a ser o modo LIGADO** (`Instantiate Linked`, o `Alt+D`) e deixou
+/// de valer para toda cópia — porque valer para todas era metade de uma incoerência: a tinta subia
+/// e a geometria vetorial da mesma cópia virava excepção. O irmão
+/// [`painting_an_unlinked_copy_keeps_it_to_itself`] guarda o outro lado.
 ///
 /// ⚠️ **A metade que mantém o ponto fixo:** ela **não** pode virar excepção. Se virasse, a cópia
 /// pintada ficava surda à receita para sempre — e o gate mede isso ao lado do resultado visível.
@@ -184,6 +190,13 @@ fn painting_one_copy_reaches_the_others() {
     let master = plain_master(&mut sim);
     let a = instantiate(&mut sim, &r, master, None).expect("instanciou A");
     let b = instantiate(&mut sim, &r, master, None).expect("instanciou B");
+    // ⭐ As duas são LIGADAS — é este o modo cuja promessa o gate mede. (O `instantiate` local dá
+    // `ArtLink::Own`, que é o outro lado e tem gate próprio no `texture_rebind`.)
+    for root in [a, b] {
+        for e in [root, piece(&sim, root, "Arm")] {
+            sim.world_mut().entity_mut(e).insert(ph2d_ecs::LinkedArt);
+        }
+    }
     pass(&mut sim, &r, &bridge, &mut echo);
 
     let pixels = ph2d_asset::AssetId::from_bytes(b"os pixels pintados");

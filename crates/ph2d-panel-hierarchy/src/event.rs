@@ -49,6 +49,7 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_REVERT_TO_MASTER
         || id == ids::CTX_MENU_HIER_MAKE_COMPONENT
         || id == ids::CTX_MENU_HIER_INSTANTIATE
+        || id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED
         || id == ids::CTX_MENU_HIER_DETACH
         || id == ids::CTX_MENU_HIER_APPLY_TO_MASTER
         || id == ids::CTX_MENU_HIER_DELETE
@@ -90,6 +91,9 @@ fn try_context_menu_row(
             host.bus_mut().push(EditorAction::HierMakeComponent { row });
         } else if id == ids::CTX_MENU_HIER_INSTANTIATE {
             host.bus_mut().push(EditorAction::HierInstantiate { row });
+        } else if id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED {
+            host.bus_mut()
+                .push(EditorAction::HierInstantiateLinked { row });
         } else if id == ids::CTX_MENU_HIER_DETACH {
             host.bus_mut().push(EditorAction::HierDetach { row });
         } else if id == ids::CTX_MENU_HIER_APPLY_TO_MASTER {

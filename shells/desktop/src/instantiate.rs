@@ -28,6 +28,27 @@ pub(crate) enum Refusal {
     WouldNestInItself,
 }
 
+/// ⭐⭐⭐ **A cópia tem arte PRÓPRIA, ou DIVIDE a do mestre?** (Enio, 2026-08-27.)
+///
+/// É a escolha do Blender entre `Shift+D` e `Alt+D`, aplicada ao que uma cópia é aqui — e ela vale
+/// para as DUAS artes ao mesmo tempo, a tinta e o desenho, que é o ponto: até 2026-08-27 os pixels
+/// respondiam uma coisa e a geometria vetorial a outra, e o artista não tinha por onde saber.
+///
+/// ⚠️ **Um `bool` aqui seria lido ao contrário** no dia em que alguém passasse `true` a pensar em
+/// *«é uma instância»*. O nome vive no tipo.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ArtLink {
+    /// **Arte própria.** Editar o desenho ou a tinta desta cópia vira uma **excepção dela**; as
+    /// irmãs não mudam. É o `Shift+D`, e é o que *Instantiate* faz.
+    Own,
+    /// **Arte do mestre.** A edição **sobe à receita** e o passe seguinte leva-a a todas as
+    /// cópias. É o `Alt+D`, e é o que *Instantiate Linked* faz.
+    ///
+    /// ⚠️ Só a ARTE — a pose, o `tint` e os componentes continuam a ser desta cópia. Ver
+    /// [`ph2d_ecs::LinkedArt`].
+    Shared,
+}
+
 /// **Instancia o mestre `master_root`**, devolvendo a raiz da instância.
 ///
 /// `parent` diz onde ela aterra (`None` = raiz da cena).
@@ -42,12 +63,15 @@ pub(crate) enum Refusal {
 ///   cópia profunda seguinte copiaria a cópia. ⚠️ *A recusa é no GESTO e não um tecto de
 ///   profundidade*: um limite numérico transformaria um erro de autoria numa contagem, e o artista
 ///   veria a árvore crescer até um número que ninguém lhe explicou.
+///
+/// `link` escolhe **qual das duas leis** a cópia segue — ver [`ArtLink`].
 pub(crate) fn instantiate_master(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     master_root: Entity,
     parent: Option<Entity>,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    link: ArtLink,
 ) -> Result<Entity, Refusal> {
     if sim.world().get::<MasterRoot>(master_root).is_none() {
         return Err(Refusal::NotAMaster);
@@ -103,6 +127,12 @@ pub(crate) fn instantiate_master(
         sim.world_mut()
             .entity_mut(dst)
             .insert(InstanceOf { master: id });
+        // ⭐⭐ **A marca da cópia LIGADA acompanha o elo, peça a peça** — ver [`ArtLink`] e
+        // [`ph2d_ecs::LinkedArt`]. Os dois consumidores (a tinta e o documento) têm em mão a peça
+        // que o artista tocou, nunca a raiz.
+        if link == ArtLink::Shared {
+            sim.world_mut().entity_mut(dst).insert(ph2d_ecs::LinkedArt);
+        }
     }
 
     let unique = crate::name_unique::unique_name(sim, &base);

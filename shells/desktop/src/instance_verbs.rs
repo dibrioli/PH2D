@@ -91,8 +91,17 @@ pub(crate) fn make_master(
     sim.world_mut().entity_mut(entity).insert(MasterRoot);
     // ⚠️ A instância nasce ANTES de a receita ser marcada? Não: ela é a cópia da receita, e a
     // cópia leva o `MasterRoot` que a porta de instanciar depois tira. A ordem é esta.
-    let instance = match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs)
-    {
+    // ⚠️ **A cópia que fica no lugar tem arte PRÓPRIA** (`Own`): o gesto é *«guarda isto na
+    // biblioteca»*, e o que o artista pintar nela a seguir é dela. Quem quiser o `Alt+D` pede-o
+    // pelo nome, com o *Instantiate Linked*.
+    let instance = match crate::instantiate::instantiate_master(
+        sim,
+        registry,
+        entity,
+        parent,
+        docs,
+        crate::instantiate::ArtLink::Own,
+    ) {
         Ok(e) => e,
         Err(_) => {
             // Desfaz a marcação: um gesto que falha a meio deixaria uma receita que o artista não
@@ -269,8 +278,12 @@ fn cascade(sim: &mut SimWorld, instance: Entity, master_id: u64, step: [f32; 2])
 pub(crate) enum Verb {
     /// *Make Component* — a seleção vira receita.
     Make,
-    /// *Instantiate* — mais uma cópia da receita.
+    /// *Instantiate* — mais uma cópia da receita, com **arte própria**.
     Place,
+    /// ⭐ *Instantiate Linked* — mais uma cópia que **divide a arte** da receita (Enio,
+    /// 2026-08-27). É o `Alt+D` do Blender: editar a tinta ou o desenho dela sobe à receita e
+    /// chega a todas. Ver [`crate::instantiate::ArtLink`].
+    PlaceLinked,
     /// *Detach from Master* — corta o vínculo.
     Detach,
     /// *Apply to Master* — a excepção vira o padrão.
@@ -328,7 +341,15 @@ pub(crate) fn drain(
         },
         // ⚠️ *Instantiate* pede a RECEITA, e a linha pode ser a instância que ficou no lugar dela:
         // o aviso NOMEIA a saída, senão o artista fica a clicar na linha errada.
-        Verb::Place => {
+        Verb::Place | Verb::PlaceLinked => {
+            // ⭐⭐⭐ **Qual das duas leis** — ver [`crate::instantiate::ArtLink`]. O verbo é que a
+            // escolhe, e não uma preferência escondida: *«esta cópia é minha»* e *«esta cópia é a
+            // mesma coisa noutro sítio»* são dois pedidos diferentes, e o artista faz um deles.
+            let link = if verb == Verb::PlaceLinked {
+                crate::instantiate::ArtLink::Shared
+            } else {
+                crate::instantiate::ArtLink::Own
+            };
             // ⭐⭐⭐ **A cópia herda o PAI da receita** (auditoria §1.3, 2026-08-27).
             //
             // Este ramo passava `None` LITERAL enquanto os outros dois chamadores da cópia profunda
@@ -344,13 +365,22 @@ pub(crate) fn drain(
             // perdida de volta à mão não curava. *Uma discordância entre irmãos, não um erro do
             // motor de cópia.*
             let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
-            match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs) {
+            match crate::instantiate::instantiate_master(sim, registry, entity, parent, docs, link)
+            {
                 Ok(inst) => {
                     // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].
                     if let Some(id) = sim.world().get::<StableId>(entity).map(|s| s.0) {
                         cascade(sim, inst, id, place_step);
                     }
-                    toasts.push(Toast::success("Instantiated"));
+                    // ⚠️ **O toast diz QUAL das duas** — os dois itens do menu ficam um debaixo do
+                    // outro e a diferença entre eles só se vê no gesto SEGUINTE (pintar, mover um
+                    // nó). Uma confirmação igual para os dois deixaria o artista sem saber qual
+                    // clicou.
+                    toasts.push(Toast::success(if verb == Verb::PlaceLinked {
+                        "Instantiated linked — its art follows the component both ways"
+                    } else {
+                        "Instantiated"
+                    }));
                     true
                 }
                 Err(crate::instantiate::Refusal::WouldNestInItself) => {

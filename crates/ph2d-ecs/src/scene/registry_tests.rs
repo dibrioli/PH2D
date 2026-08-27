@@ -154,7 +154,9 @@ fn register_ecs_components_populates_registry() {
     //   raiz nasceu, pelo StableId dele.
     // + 1 dos OVERRIDES (ObjectInstance, ADR-0164 F4.4, 2026-08-26) -- o conjunto de
     //   `(peca, componente)` que a instancia possui contra o mestre.
-    assert_eq!(reg.len(), 77);
+    // + 1 da COPIA LIGADA (LinkedArt, Enio 2026-08-27) -- o *Duplicate Linked* do Blender:
+    //   esta peca divide a arte do mestre, entao a edicao dela SOBE em vez de virar excepcao.
+    assert_eq!(reg.len(), 78);
     assert!(reg.get_by_name("ph2d::ecs::VecClipContent").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecBoolOp").is_some());
     assert!(reg.get_by_name("ph2d::ecs::SpritePixels").is_some());

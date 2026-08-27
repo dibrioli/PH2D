@@ -77,27 +77,36 @@ pub(crate) fn rebind_to_individual(
 /// ⭐⭐ **A cadeia que uma edição de pixels percorre**: a entidade tocada, e — se ela é peça de uma
 /// **instância** — a peça do MESTRE de que nasceu, e assim por diante.
 ///
-/// # Por que os pixels sobem e o resto não (Enio, 2026-08-26)
+/// # ⭐⭐⭐ A subida é do modo LIGADO, e só dele (Enio, 2026-08-27)
 ///
-/// > *«Pintei uma sprite de uma instância e as outras não mudaram.»*
+/// > *«No modelo Blender há os dois modos: Duplicate e Duplicate Linked.»*
 ///
-/// Medido antes de decidir: a pintura mudava `Sprite` + `SpritePixels` **na cópia**, o passe de
-/// sync lia *«só a instância mexeu»* e capturava um **override** — modelo correto, resultado
-/// errado. Duas coisas o dizem:
+/// A cadeia só sobe enquanto a peça tem [`ph2d_ecs::LinkedArt`] — o `Alt+D`. Sem a marca, pintar
+/// uma cópia é uma edição **dela**, o passe de sync lê *«só a instância mexeu»* e captura um
+/// override, que é o que *Instantiate* promete.
 ///
-/// 1. **Uma imagem é um ASSET, não uma propriedade.** Em todo motor 2D pintar a textura muda quem
-///    a usa; o que é per-objecto é *qual* imagem ele usa, não o conteúdo dela. O `tint`, a pose, a
-///    máscara continuam a ser da cópia — a fronteira é entre *os pixels* e *os botões*.
-/// 2. **A receita está ESCONDIDA** (F4.5), então pintá-la não é alcançável por gesto nenhum. Sem
-///    esta subida, os pixels de um componente eram a única coisa do app que não tinha como ser
-///    editada.
+/// # ⚠️ Das duas razões originais, uma MORREU e ninguém reconferiu a nota
+///
+/// Este bloco dizia (F4.5) que a subida valia para **toda** cópia, por duas razões:
+///
+/// 1. **Uma imagem é um ASSET, não uma propriedade** — em todo motor 2D pintar a textura muda quem
+///    a usa. ⭐ Continua verdade, e é exactamente o que **dividir a arte** quer dizer: virou o modo,
+///    em vez de ser uma lei do app.
+/// 2. ⛔ **«A receita está ESCONDIDA, então pintá-la não é alcançável por gesto nenhum»** — era
+///    verdade na F4.5 e **deixou de o ser na F4.6**: escolher a linha da receita põe-na na tela
+///    (`MasterEditing`), e o artista pinta-a directamente. *Quem move o número que tornava algo
+///    inalcançável tem de reconferir a nota.*
+///
+/// ⛔⛔ E enquanto valia para todas, ela era **metade de uma incoerência**: a tinta de uma cópia
+/// subia e a **geometria vetorial da mesma cópia** não (`instance_sync_docs` capturava override),
+/// sem nada na tela a explicar a diferença. Hoje as duas leem a mesma marca.
 ///
 /// ⚠️ **Não é um override, e é por construção:** ao escrever no mestre o passe seguinte lê *«o
 /// mestre mexeu-se»* e leva os bytes a **todas** as instâncias; a que foi pintada já os tem, logo
 /// `want == have` e ela não é reescrita. O ponto fixo do sync fica intacto.
 ///
-/// ⛔ **A FRONTEIRA, nomeada:** para pintar UMA cópia diferente das outras, *Detach from Master*
-/// primeiro. Uma cópia que ainda segue a receita não tem pixels próprios — é isso que ser cópia é.
+/// ⛔ **A FRONTEIRA, nomeada:** para pintar UMA cópia ligada diferente das outras, *Detach from
+/// Master* primeiro — ou tê-la criado com *Instantiate* em vez de *Instantiate Linked*.
 ///
 /// ⚠️ **Sem entidade repetida**, e a guarda não é um tecto numérico: um elo corrompido que
 /// apontasse para trás daria um laço infinito dentro de um commit de ferramenta, e um número
@@ -109,7 +118,19 @@ fn write_through_targets(sim: &mut SimWorld, entity: Entity) -> Vec<Entity> {
     };
     let mut out = vec![entity];
     let mut cur = entity;
-    while let Some(link) = sim.world().get::<ph2d_ecs::InstanceOf>(cur).copied()
+    // ⭐⭐⭐ **A subida é do modo LIGADO, e só dele** (Enio, 2026-08-27).
+    //
+    // ⚠️ Uma das duas razões desta subida MORREU e ninguém reconferiu a nota: *«a receita está
+    // escondida, então pintá-la não é alcançável por gesto nenhum»* era verdade na F4.5 e deixou
+    // de o ser na F4.6 — hoje escolher a linha da receita põe-na na tela, e o artista pinta-a
+    // directamente. Sobra a razão 1 (*uma imagem é um asset*), e ela não é uma lei do app: é o que
+    // uma cópia **LIGADA** quer dizer. *Quem move o número que tornava algo inalcançável tem de
+    // reconferir a nota.*
+    //
+    // ⛔ Sem a marca, a subida punha a tinta de UMA cópia em TODAS — e a geometria vetorial da
+    // mesma cópia fazia o contrário, no mesmo objeto, sem nada na tela a explicar a diferença.
+    while sim.world().get::<ph2d_ecs::LinkedArt>(cur).is_some()
+        && let Some(link) = sim.world().get::<ph2d_ecs::InstanceOf>(cur).copied()
         && let Some(&up) = by_id.get(&link.master)
         && !out.contains(&up)
     {
@@ -184,7 +205,10 @@ mod write_through_tests {
     use ph2d_render::Sprite;
 
     /// Uma peça de instância e a peça da receita de que ela nasceu.
-    fn a_copy_and_its_recipe(sim: &mut SimWorld) -> (Entity, Entity) {
+    ///
+    /// ⚠️ **`linked` é o argumento porque a lei tem DOIS lados desde 2026-08-27** — uma fixtura que
+    /// só soubesse construir um deles é uma fixtura sem o fenómeno para o outro.
+    fn a_copy_and_its_recipe(sim: &mut SimWorld, linked: bool) -> (Entity, Entity) {
         let recipe = sim
             .world_mut()
             .spawn((Sprite::individual(1, [1.0, 1.0], [1.0; 4]), StableId(42)))
@@ -197,16 +221,25 @@ mod write_through_tests {
                 InstanceOf { master: 42 },
             ))
             .id();
+        if linked {
+            sim.world_mut().entity_mut(copy).insert(ph2d_ecs::LinkedArt);
+        }
         (copy, recipe)
     }
 
-    /// ⭐⭐ **Pintar uma cópia escreve na RECEITA** (Enio, 2026-08-26) — os pixels são um asset.
+    /// ⭐⭐⭐ **Pintar uma cópia LIGADA escreve na RECEITA** — e o passe leva-a às irmãs.
+    ///
+    /// ⚠️ **Este gate afirmava isto de TODA cópia** (F4.5, com a razão *«uma imagem é um asset»*),
+    /// e era metade de uma incoerência que o Enio nomeou em 2026-08-27: a tinta subia e a
+    /// geometria vetorial da MESMA cópia não. Hoje as duas leem a mesma marca, e quem escolhe é o
+    /// artista no gesto (*Instantiate* contra *Instantiate Linked*). O irmão
+    /// [`painting_an_unlinked_copy_keeps_it_to_itself`] guarda o outro lado.
     ///
     /// (Mutação: devolver `vec![entity]` em `write_through_targets` ⇒ RED.)
     #[test]
-    fn painting_a_copy_writes_through_to_the_recipe() {
+    fn painting_a_linked_copy_writes_through_to_the_recipe() {
         let mut sim = SimWorld::new();
-        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim, true);
         let pixels = ph2d_asset::AssetId::from_bytes(b"tinta");
         rebind_to_individual(
             copy,
@@ -231,6 +264,42 @@ mod write_through_tests {
         }
     }
 
+    /// ⭐⭐⭐ **E uma cópia NÃO ligada pinta-se sozinha** — o outro lado da mesma lei.
+    ///
+    /// É o `Shift+D`: *Instantiate* dá arte própria, e o que o artista pinta nela é dela. A receita
+    /// fica intacta, e o passe de sync captura a excepção pela porta de sempre.
+    ///
+    /// ⚠️ **Os dois lados no mesmo módulo, de propósito.** Enquanto só existia o lado de cima, a
+    /// única forma de ter uma cópia com tinta própria era *Detach* — soltá-la da receita para
+    /// sempre —, e a geometria vetorial da mesma cópia já fazia o contrário sem ninguém ter
+    /// escolhido.
+    ///
+    /// (Mutação: subir a cadeia sem olhar ao `LinkedArt` ⇒ RED.)
+    #[test]
+    fn painting_an_unlinked_copy_keeps_it_to_itself() {
+        let mut sim = SimWorld::new();
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim, false);
+        rebind_to_individual(
+            copy,
+            &mut sim,
+            9,
+            ph2d_asset::AssetId::from_bytes(b"so' desta copia"),
+            [2.0, 2.0],
+            false,
+            SamplingWindow::Dies,
+        );
+        assert!(
+            sim.world().get::<ph2d_ecs::SpritePixels>(recipe).is_none(),
+            "uma copia com arte PROPRIA escreveu na receita — o *Instantiate* deixou de se \
+             distinguir do *Instantiate Linked*"
+        );
+        // Controlo POSITIVO: a cópia recebeu mesmo a tinta, senão o gate passaria sobre um no-op.
+        assert!(
+            sim.world().get::<ph2d_ecs::SpritePixels>(copy).is_some(),
+            "a copia tambem nao foi pintada — o gate acima nao mede nada"
+        );
+    }
+
     /// ⛔ **A FRONTEIRA, nomeada: uma cópia DESTACADA pinta-se sozinha.**
     ///
     /// *Destacar* apaga o `InstanceOf`, e é isso — e só isso — que faz a cadeia parar. É a resposta
@@ -240,7 +309,7 @@ mod write_through_tests {
     #[test]
     fn a_detached_copy_paints_only_itself() {
         let mut sim = SimWorld::new();
-        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim, true);
         sim.world_mut().entity_mut(copy).remove::<InstanceOf>();
         rebind_to_individual(
             copy,
@@ -264,11 +333,15 @@ mod write_through_tests {
     #[test]
     fn a_link_that_points_back_does_not_loop() {
         let mut sim = SimWorld::new();
-        let (copy, recipe) = a_copy_and_its_recipe(&mut sim);
+        let (copy, recipe) = a_copy_and_its_recipe(&mut sim, true);
         // A receita a dizer-se cópia da cópia — só um ficheiro corrompido faz isto.
+        //
+        // ⚠️ **E LIGADA também**, senão a travessia parava nela por falta da marca e a guarda de
+        // repetição não chegava a ser exercida: a mutação que a apaga passaria. *Uma condição nova
+        // a montante pode tornar inobservável a metade que o gate existe para medir.*
         sim.world_mut()
             .entity_mut(recipe)
-            .insert(InstanceOf { master: 43 });
+            .insert((InstanceOf { master: 43 }, ph2d_ecs::LinkedArt));
         let chain = write_through_targets(&mut sim, copy);
         assert_eq!(chain, vec![copy, recipe], "a cadeia repetiu uma entidade");
     }

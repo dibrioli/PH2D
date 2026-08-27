@@ -346,6 +346,10 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ⭐ **Os OVERRIDES** (ADR-0164 / F4.2..F4.4) — autoria pura: sem eles um projeto reaberto
     // perde toda excepção que o artista fez numa instância, e o sync achata-as no quadro seguinte.
     reg.register_default::<crate::ObjectInstance>("ph2d::ecs::ObjectInstance");
+    // ⭐ **A cópia LIGADA** (Enio 2026-08-27, o *Duplicate Linked* do Blender) — autoria: qual das
+    // duas leis esta cópia segue é uma escolha do artista no gesto, e um projeto reaberto que a
+    // perdesse passaria a guardar as edições dela como excepções em vez de as levar às irmãs.
+    reg.register_default::<crate::LinkedArt>("ph2d::ecs::LinkedArt");
     reg.register_default::<crate::ClipChildren>("ph2d::ecs::ClipChildren");
     reg.register_default::<crate::MaskInteraction>("ph2d::ecs::MaskInteraction");
     reg.register_default::<crate::Mask2D>("ph2d::ecs::Mask2D");

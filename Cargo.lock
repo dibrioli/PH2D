@@ -5779,6 +5779,7 @@ dependencies = [
  "ph2d-node-fx-drop-shadow",
  "ph2d-node-fx-glow",
  "ph2d-node-motion-bezier-warp",
+ "ph2d-node-motion-clone",
  "ph2d-node-motion-distribute-poisson",
  "ph2d-node-motion-emitter",
  "ph2d-node-motion-output",

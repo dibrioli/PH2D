@@ -177,6 +177,8 @@ pub(crate) fn scrollbar_panel_for_id(id: NodeId) -> Option<NodeId> {
         Some(ids::AUTHORED_PANEL)
     } else if id == crate::widget::SCULPT3D_SCROLLBAR_ID {
         Some(ids::SCULPT3D_PANEL)
+    } else if id == crate::widget::MODEL3D_SCROLLBAR_ID {
+        Some(ids::MODEL3D_PANEL)
     } else {
         None
     }

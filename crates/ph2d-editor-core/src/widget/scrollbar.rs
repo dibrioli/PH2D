@@ -290,6 +290,18 @@ pub const MOTION_PARAMS_SCROLLBAR_ID: NodeId = NodeId(841);
 /// collision note above before taking it.
 pub const INPUT_MAP_SCROLLBAR_ID: NodeId = NodeId(842);
 
+/// **O painel do módulo de MODELAGEM 3D** (ADR-0161) — o report do Enio de 2026-08-27:
+/// *«o painel 3d Model precisa de scroll e barra de scroll»*.
+///
+/// ⛔ **Ele já RECORTAVA e nunca rolava**, que é a pior das três formas: um painel sem recorte
+/// desenha por cima do título e vê-se; um que recorta e rola funciona; **um que recorta e não rola
+/// esconde os controles e não diz nada.** As linhas do fim — o rodapé, e as fileiras de parâmetros
+/// de um documento com vários nós — ficavam inalcançáveis, sem sinal nenhum de que existiam.
+///
+/// ⚠️ Thumb próprio pelo mesmo motivo dos irmãos acima. Next free id is `844`; re-read the
+/// collision note above before taking it.
+pub const MODEL3D_SCROLLBAR_ID: NodeId = NodeId(843);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -393,6 +405,7 @@ mod tests {
             ("SCULPT3D", SCULPT3D_SCROLLBAR_ID),
             ("MOTION_PARAMS", MOTION_PARAMS_SCROLLBAR_ID),
             ("INPUT_MAP", INPUT_MAP_SCROLLBAR_ID),
+            ("MODEL3D", MODEL3D_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

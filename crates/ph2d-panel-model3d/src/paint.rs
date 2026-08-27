@@ -10,7 +10,11 @@ use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
     panel_drag_handle_rect,
 };
-use ph2d_editor_core::widget::{NUMBER_INPUT_MIN_W_PX, paint_slider_with_chip_layout_adaptive};
+use ph2d_editor_core::widget::{
+    MODEL3D_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, paint_scrollbar,
+    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    scrollbar_track_rect,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_field::Bound;
 use ph2d_i18n::tr;
@@ -107,9 +111,23 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     let x = rect.x + PANEL_HEAD_PAD;
     let w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);
 
-    ctx.scene
-        .push_clip(&rect_to_vello(Rect::new(rect.x, body_top, rect.w, body_h)));
-    let mut y = body_top;
+    // ⭐⭐⭐ **O CORPO ROLA** (report do Enio, 2026-08-27: *«o painel 3d Model precisa de scroll e
+    // barra de scroll»*).
+    //
+    // ⛔ **Ele já recortava e nunca rolava, que é a pior das três formas:** um painel sem recorte
+    // desenha por cima do título e vê-se; um que recorta e rola funciona; **um que recorta e não
+    // rola esconde os controles e não diz nada.** O rodapé e as fileiras de parâmetros de um
+    // documento com vários nós ficavam inalcançáveis, sem sinal nenhum de que existiam.
+    let body_rect = Rect::new(rect.x, body_top, rect.w, body_h);
+    let scroll = ctx.host.store().panel_scroll(ids::MODEL3D_PANEL);
+    ctx.scene.push_clip(&rect_to_vello(body_rect));
+    // ⚠️ **UMA BANDA, DOIS CONSUMIDORES** — a lei que o painel do Motion pagou. O `push_clip` da
+    // cena recorta o **DESENHO**; sem o gémeo no `HitIndex`, uma fileira rolada para cima continua
+    // **registada** onde ninguém a vê, e o hit-rect dela sobe para a faixa do TÍTULO. *Enquanto
+    // nada rolava isto era inofensivo por aritmética; ligar a rolagem é o dia em que passa a
+    // morder.*
+    ctx.host.hit_index_mut().push_clip(body_rect);
+    let mut y = body_top - scroll;
     // ⭐ **O seletor do verbo, no topo** — é a porta que se encontra sem saber que existe. As
     // teclas `G`/`R`/`S` são a outra, e são para quem já sabe.
     y = paint_chips(ctx, &snapshot.modes, ids::model3d_mode_button, x, w, y);
@@ -160,8 +178,58 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         y = paint_row(ctx, row, slot as u32, x, w, y);
     }
     y = paint_footer(ctx, &snapshot, x, w, y);
-    state::set_last_content_h(y - body_top + PANEL_HEAD_PAD);
+    // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
+    // calhou de ser desenhado. Sem ele o `max_scroll` encolheria a cada rolagem e o painel
+    // empurraria o artista de volta para o topo.
+    let content_h = y + scroll - body_top + PANEL_HEAD_PAD;
+    state::set_last_content_h(content_h);
     ctx.scene.pop_layer();
+    // ⚠️ O `pop` vem ANTES da barra, e de propósito: o polegar vive no corpo mas **não rola com
+    // ele** — recortá-lo pela mesma banda seria correcto hoje e uma armadilha no dia em que ele
+    // saísse um pixel.
+    ctx.host.hit_index_mut().pop_clip();
+    paint_scroll_chrome(ctx, body_rect, content_h, body_h, scroll, theme);
+}
+
+/// Desenha a barra de rolagem e **publica** o par `content_h`/`visible_h` que o dispatch da roda
+/// consome.
+///
+/// ⚠️ **Publicar é a metade que não se vê e sem a qual a roda não faz nada:** o `dispatch_wheel`
+/// deriva o `max_scroll` desses dois números, então um painel que recorta, desloca e desenha o
+/// polegar — mas não publica — rola com o polegar e fica **inerte na roda**.
+fn paint_scroll_chrome(
+    ctx: &mut PaintCtx,
+    body_rect: Rect,
+    content_h: f32,
+    body_h: f32,
+    scroll: f32,
+    theme: ph2d_tokens::Theme,
+) {
+    if scrollbar_is_needed(content_h, body_h) {
+        let track = scrollbar_track_rect(body_rect);
+        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
+        paint_scrollbar(
+            body_rect,
+            scroll,
+            content_h,
+            body_h,
+            ctx.host.store().scrollbar_visual(MODEL3D_SCROLLBAR_ID),
+            ctx.scene,
+            theme,
+        );
+        ctx.host
+            .hit_index_mut()
+            .register(MODEL3D_SCROLLBAR_ID, thumb);
+    }
+    let store = ctx.host.store_mut();
+    store.set_panel_content_h(ids::MODEL3D_PANEL, content_h);
+    store.set_panel_visible_h(ids::MODEL3D_PANEL, body_h);
+    // ⚠️ O clamp existe porque o conteúdo ENCOLHE: apagar um nó na Hierarquia tira fileiras, e um
+    // painel rolado até ao fim abriria em branco.
+    let max_scroll = (content_h - body_h).max(0.0);
+    if store.panel_scroll(ids::MODEL3D_PANEL) > max_scroll {
+        store.set_panel_scroll(ids::MODEL3D_PANEL, max_scroll);
+    }
 }
 
 /// ⭐ **Um seletor segmentado** — os verbos do gizmo, ou o referencial dos eixos. Devolve o **y
@@ -381,3 +449,10 @@ fn bound_is_wall(b: Bound) -> bool {
 #[cfg(test)]
 #[path = "paint_tests.rs"]
 mod tests;
+
+/// ⚠️ **Irmão de arquivo, e não uma secção do `paint_tests`:** aqueles medem o que se **lê** numa
+/// linha (a formatação); estes medem a **costura da rolagem**, que é outra pergunta e tem outra
+/// fixtura (um host de painel a sério).
+#[cfg(test)]
+#[path = "paint_scroll_tests.rs"]
+mod scroll_tests;

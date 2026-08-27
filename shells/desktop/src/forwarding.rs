@@ -348,9 +348,9 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     };
     use ph2d_editor::screens::hero::ids::{
         AUDIO_EDITOR_PANEL, AUDIO_MIXER_PANEL, AUTHORED_PANEL, BGR_PANEL, CEQ_PANEL, EQS_PANEL,
-        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, MOTION_PARAMS_PANEL,
-        PAD_PANEL, PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL, TOKENS_PANEL, UPS_PANEL,
-        VECTOR_PANEL, WET_TUNING_PANEL,
+        FLIP_PANEL, FLIP_STRIP_PANEL, GAL_PANEL, HIER_PANEL, INSP_PANEL, MODEL3D_PANEL,
+        MOTION_PARAMS_PANEL, PAD_PANEL, PAINTER_LAYERS_PANEL, PHYSICS_PANEL, SCULPT3D_PANEL,
+        TOKENS_PANEL, UPS_PANEL, VECTOR_PANEL, WET_TUNING_PANEL,
     };
     let inside = |panel_id| {
         hero.store
@@ -365,6 +365,10 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
     // panels (CEQ/BGR/PAD/UPS/EQS) added 2026-05-24 — without them
     // CEQ's wheel routed to camera zoom instead of panel scroll.
     inside(INSP_PANEL)
+        // ⚠️ **O painel do módulo de MODELAGEM 3D** (report do Enio, 2026-08-27). Sem esta linha a
+        // roda sobre ele **orbitava a peça** em vez de rolar a lista — a quarta das quatro edições
+        // que o `scrollable_panels_intercept_the_wheel` nomeia, e a única que não falha alto.
+        || inside(MODEL3D_PANEL)
         || inside(MOTION_PARAMS_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)

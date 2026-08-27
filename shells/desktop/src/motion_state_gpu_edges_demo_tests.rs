@@ -176,7 +176,7 @@ fn only_the_per_element_clump_breaks_apart() {
 /// `=98`..`=101`.
 #[test]
 fn the_announcement_cites_the_numbers_the_scene_uses() {
-    let src = include_str!("motion_state_demo_router.rs");
+    let src = include_str!("motion_state_demo_announce.rs");
     assert!(
         src.contains("gpu_edges_demo::SIDE") && src.contains("gpu_edges_demo::CLUMP"),
         "o lado do tanque e a contagem do cacho saem dos `const`"

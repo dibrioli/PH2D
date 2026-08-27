@@ -32,6 +32,8 @@ use ph2d_nodegraph::node::{
 };
 use ph2d_nodegraph::port::{Clock, Dim, Domain, PortType};
 
+/// O LEQUE de tempo — o atraso por cópia (doc 89, folha 08).
+pub mod fan;
 mod radial;
 mod trig;
 
@@ -55,6 +57,16 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         ParamSpec {
             name: "count",
             default: 3.0,
+        },
+        // **O ATRASO POR CÓPIA**, em segundos — o *Shape Time Offset* do Cavalry
+        // (doc 89, folha 08). `0` ⇒ leque nenhum, e o nó é o de sempre ao bit.
+        //
+        // ⚠️ **A recusa da célula (*"as cópias são LINHAS, não sub-cooks"*) DISSOLVEU** quando
+        // as `TimeFans` do ADR-0163 deixaram um nó cozinhar a própria entrada em N instantes —
+        // e quem as construiu foi esta mesma linha, três blocos antes (§0.0).
+        ParamSpec {
+            name: fan::TIME_OFFSET,
+            default: 0.0,
         },
         ParamSpec {
             name: "distance",
@@ -367,7 +379,19 @@ impl NodeOp for MotionClone {
                 pivot,
             )
         };
-        let out = clone_stream(input, k, &place, scale_taper, rot_taper);
+        // ⚠️ **O LEQUE decide se as cópias têm relógios diferentes.** Ele só existe quando o
+        // `time_offset` o pediu (ver [`fan::time_fans`]), então o caminho de sempre — uma
+        // entrada replicada `k` vezes — continua a ser tomado por todo documento de hoje.
+        //
+        // ⚠️ **A contagem que manda é a do LEQUE**, não o `k` do orçamento: o leque foi
+        // montado antes de haver stream nenhuma (ele não conhece a contagem viva), e usar
+        // dois números diferentes faria a fatia `k` ler a placa da cópia errada.
+        let out = if ctx.fan_len() > 0 {
+            let slices: Vec<&Stream> = (0..ctx.fan_len()).map(|i| ctx.fan(i)).collect();
+            fan::clone_fanned(&slices, &place, scale_taper, rot_taper)
+        } else {
+            clone_stream(input, k, &place, scale_taper, rot_taper)
+        };
         ctx.emit(out);
     }
 }
@@ -390,6 +414,14 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
+    // O atraso é uma DURAÇÃO (doc 88).
+    reg.register_param_units(
+        MANIFEST.id,
+        &[ph2d_node_registry::ParamUnitDecl {
+            param: fan::TIME_OFFSET,
+            unit: ph2d_node_registry::ParamUnit::Seconds,
+        }],
+    );
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     Ok(())
 }
@@ -428,6 +460,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: 32.0,
         step: 1.0,
         widget: ParamWidget::IntSlider,
+    },
+    // ⚠️ **A faixa é a que a MÃO percorre e é SIMÉTRICA:** um atraso negativo faz as cópias
+    // lerem o FUTURO, que é uma antecipação e não um erro — a mesma escolha do `perp` do
+    // `motion.path`, cujo sinal também é uma direcção e não uma magnitude.
+    ParamUiHint {
+        param: fan::TIME_OFFSET,
+        label: "Time Offset",
+        min: -1.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
     },
     // ⚠️ **Primeiro, porque ele decide o que os outros QUEREM DIZER** (a fila ou o leque).
     ParamUiHint {
@@ -560,6 +603,10 @@ mod taper_tests;
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "fan_tests.rs"]
+mod fan_tests;
 
 #[cfg(test)]
 #[path = "radial_tests.rs"]

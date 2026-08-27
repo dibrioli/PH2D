@@ -405,13 +405,18 @@ pub(super) fn dispatch(
     // aqui porque o `spacing` do rastro conta TIQUES, e a duração de um tique é
     // do shell, não do documento.
     //
-    // ⚠️ **Dois produtores, um mapa** — o rastro re-cozido e a história da origem
-    // do emissor. Eles não colidem por construção (o mapa é chaveado por
-    // `NodeId`, e um nó é de um tipo só), e a UNIÃO é montada aqui em vez de
-    // dentro de um deles: quem sabe que existem dois é o shell, e um `time_fans`
-    // que chamasse o outro faria de duas crates-folha uma cadeia.
+    // ⚠️ **TRÊS produtores, um mapa** — o rastro re-cozido, a história da origem do emissor
+    // e o atraso por cópia do `motion.clone`. Eles não colidem por construção (o mapa é
+    // chaveado por `NodeId`, e um nó é de um tipo só), e a UNIÃO é montada aqui em vez de
+    // dentro de um deles: quem sabe que existem três é o shell, e um `time_fans` que
+    // chamasse o outro faria de duas crates-folha uma cadeia.
     let mut fans = ph2d_node_motion_trail::time_fans(&motion.doc.graph, &motion.registry, fixed_dt);
     fans.extend(ph2d_node_motion_emitter::time_fans(
+        &motion.doc.graph,
+        &motion.registry,
+        fixed_dt,
+    ));
+    fans.extend(ph2d_node_motion_clone::fan::time_fans(
         &motion.doc.graph,
         &motion.registry,
         fixed_dt,

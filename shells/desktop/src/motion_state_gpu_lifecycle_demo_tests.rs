@@ -128,7 +128,7 @@ fn the_once_half_ends_for_good() {
 /// ⚠️ **Os números que o anúncio cita vivem em `const`** — a lei das cenas `=98`..`=102`.
 #[test]
 fn the_announcement_cites_the_numbers_the_scene_uses() {
-    let src = include_str!("motion_state_demo_router.rs");
+    let src = include_str!("motion_state_demo_announce.rs");
     for k in [
         "gpu_lifecycle_demo::COLS",
         "gpu_lifecycle_demo::START",

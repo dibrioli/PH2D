@@ -112,7 +112,7 @@ fn outside_the_mask_set_keeps_the_size_and_remap_zeroes_it() {
 /// ⚠️ **Os números que o anúncio cita vivem em `const`** — a lei das cenas `=98`..`=103`.
 #[test]
 fn the_announcement_cites_the_numbers_the_scene_uses() {
-    let src = include_str!("motion_state_demo_router.rs");
+    let src = include_str!("motion_state_demo_announce.rs");
     for k in [
         "gpu_space_demo::FAN",
         "gpu_space_demo::PUSH",

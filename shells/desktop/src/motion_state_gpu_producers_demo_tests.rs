@@ -88,7 +88,7 @@ fn the_bare_pond_is_still_beating_at_its_centre() {
 /// ⚠️ **Os números que o anúncio cita vivem em `const`.**
 #[test]
 fn the_announcement_cites_the_numbers_the_scene_uses() {
-    let src = include_str!("motion_state_demo_router.rs");
+    let src = include_str!("motion_state_demo_announce.rs");
     for k in [
         "gpu_producers_demo::SIDE",
         "gpu_producers_demo::SOURCE_X",

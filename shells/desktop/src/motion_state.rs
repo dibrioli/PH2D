@@ -81,6 +81,9 @@ mod gpu_bounce_demo;
 /// A cena `=101` — um obstaculo com quinas (folha 13, a caixa solida).
 #[path = "motion_state_gpu_box_demo.rs"]
 mod gpu_box_demo;
+/// A cena `=106` — as CÓPIAS ATRASADAS (folha 08, célula 41: o atraso por cópia do clone).
+#[path = "motion_state_gpu_echo_copies_demo.rs"]
+mod gpu_echo_copies_demo;
 /// A cena `=102` — a PAREDE que absorve e o SEED por peça (folha 06, células 36 e 24).
 #[path = "motion_state_gpu_edges_demo.rs"]
 mod gpu_edges_demo;

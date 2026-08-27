@@ -344,3 +344,54 @@ fn duplicating_a_group_gives_its_vector_children_their_own_paths() {
         scene.path(copy_id).expect("copia").verts
     );
 }
+
+/// ⭐⭐⭐ **A CENA 2 monta o que ela diz que monta** — as duas peças, em cada uma das três cópias,
+/// com geometria **própria** e a **mesma forma** da receita.
+///
+/// ⛔ É a metade headless do instrumento do §14: a cena imprime este diagnóstico no app, e aqui ele
+/// é um gate. *Um smoke que descreve uma coisa e monta outra é pior que não haver smoke.*
+///
+/// (Mutação: instanciar uma vez só ⇒ RED na contagem; não clonar o documento ⇒ RED em «SEM
+/// GEOMETRIA».)
+#[test]
+fn the_vector_smoke_scene_builds_three_copies_with_their_own_art() {
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let r = reg();
+    // ⚠️ **A PORTA da cena**, e não os ingredientes dela: um gate que remontasse as cópias por
+    // conta própria ficaria verde sobre uma cena que instancia uma vez só (a mutação que o provou).
+    let (master, roots) = crate::instance_smoke::spawn_vector_scene(
+        &mut sim,
+        &r,
+        &mut OwnedDocs {
+            vec_scene: &mut scene,
+            vec_entities: &mut map,
+        },
+    );
+    assert_eq!(roots.len(), 3, "a cena nao montou TRES copias");
+    let mut seen: std::collections::BTreeSet<u64> = std::collections::BTreeSet::new();
+    for name in ["Box", "Label"] {
+        let m = crate::instance_smoke::piece_path(&sim, master, name)
+            .unwrap_or_else(|| panic!("a receita nao tem a peca {name:?} com geometria"));
+        seen.insert(m);
+        for (i, &root) in roots.iter().enumerate() {
+            let id = crate::instance_smoke::piece_path(&sim, root, name).unwrap_or_else(|| {
+                panic!("a copia {} nasceu SEM GEOMETRIA na peca {name:?}", i + 1)
+            });
+            assert!(
+                seen.insert(id),
+                "a copia {} partilha o path da receita (ou de outra copia) na peca {name:?}",
+                i + 1
+            );
+            assert_eq!(
+                scene.path(m).expect("receita").verts,
+                scene.path(id).expect("copia").verts,
+                "a copia {} nasceu com outra forma na peca {name:?}",
+                i + 1
+            );
+        }
+    }
+    // 2 peças × (1 receita + 3 cópias) = 8 paths distintos.
+    assert_eq!(seen.len(), 8, "paths distintos: {}", seen.len());
+}

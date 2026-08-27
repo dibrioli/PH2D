@@ -256,9 +256,11 @@ mod input_map_drag;
 #[cfg(test)]
 #[path = "inspector_presence_tests.rs"]
 mod inspector_presence_tests;
+mod instance_diag;
 mod instance_docs;
 mod instance_live;
 mod instance_refs;
+mod instance_revert;
 mod instance_smoke;
 /// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
 mod instance_sync;

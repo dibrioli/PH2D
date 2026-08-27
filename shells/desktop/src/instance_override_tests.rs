@@ -436,28 +436,28 @@ fn reverting_a_whole_instance_answers_the_three_cases() {
 
     // (a) não pertence a instância nenhuma — a receita não é cópia de ninguém.
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, master),
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, master),
         None
     );
     // ⚠️ E nem uma PEÇA da receita: subir por `ChildOf` a partir dela chega ao mestre, e um
     // mestre não é uma instância. *A metade que impede o verbo de morder a própria biblioteca.*
     let master_arm = piece(&sim, master, "Arm");
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, master_arm),
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, master_arm),
         None
     );
     // (b) é instância e não tem excepção.
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(super::Reverted::default())
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, roots[0]),
+        Some(crate::instance_revert::Reverted::default())
     );
     // (c) tem uma, e volta a ouvir a receita.
     let mine = piece(&sim, roots[0], "Arm");
     paint(&mut sim, mine, [0.1, 0.2, 0.9, 1.0]);
     pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(super::Reverted {
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, roots[0]),
+        Some(crate::instance_revert::Reverted {
             count: 1,
             poses_kept: 0
         })
@@ -500,8 +500,8 @@ fn reverting_from_the_piece_the_artist_touched_works() {
 
     // O gesto: botão direito no BRAÇO.
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, arm),
-        Some(super::Reverted {
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, arm),
+        Some(crate::instance_revert::Reverted {
             count: 1,
             poses_kept: 0
         }),
@@ -521,8 +521,8 @@ fn reverting_from_the_piece_the_artist_touched_works() {
 
     // E na RAIZ continua a devolver tudo o que resta.
     assert_eq!(
-        super::revert_all_overrides(&mut sim, &mut echo, roots[0]),
-        Some(super::Reverted {
+        crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, roots[0]),
+        Some(crate::instance_revert::Reverted {
             count: 1,
             poses_kept: 0
         })

@@ -130,10 +130,11 @@ fn reverting_does_not_move_what_the_artist_placed() {
         "a fixtura tem de ter DUAS excepcoes (pose + cor), senao o gate nao separa nada"
     );
 
-    let got = super::revert_all_overrides(&mut sim, &mut echo, arm).expect("e' uma instancia");
+    let got = crate::instance_revert::revert_all_overrides(&mut sim, &mut echo, arm)
+        .expect("e' uma instancia");
     assert_eq!(
         got,
-        super::Reverted {
+        crate::instance_revert::Reverted {
             count: 1,
             poses_kept: 1
         },

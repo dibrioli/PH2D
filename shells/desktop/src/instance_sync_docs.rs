@@ -56,6 +56,7 @@ pub(super) fn sync_one(
     overrides: &mut ObjectInstance,
     echo: &Echo,
     next_master: &mut Echo,
+    diag: &mut crate::instance_diag::PassDiag,
 ) -> usize {
     let type_id = ph2d_ecs::scene::stable_type_id(VEC_PATH);
     let (Some(mp), Some(ip)) = (
@@ -67,6 +68,9 @@ pub(super) fn sync_one(
     let Some(want) = docs.vec_scene.path(mp.0).cloned() else {
         return 0;
     };
+    // ⚠️ Contado AQUI, e não no chamador: é este o ponto em que o par «tem documento dos dois
+    // lados», e é a guarda que morre em silêncio quando a cópia nasce sem geometria.
+    diag.doc_pairs += 1;
     let want_bytes = Some(content_bytes(&want));
     let echo_key = (master_id, type_id);
     let master_moved = echo.get(&echo_key).is_some_and(|p| *p != want_bytes);
@@ -87,6 +91,7 @@ pub(super) fn sync_one(
     if content_bytes(have) == want_bytes.clone().unwrap_or_default() {
         return 0;
     }
+    diag.doc_diff += 1;
     // ⚠️ **Sem eco não há atribuição** — o 1.º passe, ou o 1.º depois de um load. Aí o mestre
     // ganha, como no resto do passe: inventar um override a partir de um estado que ninguém viu
     // mudar seria congelar contra a receita algo que o artista nunca pediu.
@@ -95,6 +100,7 @@ pub(super) fn sync_one(
         return 0;
     }
     write_content(docs, ip.0, &want);
+    diag.doc_wrote += 1;
     1
 }
 

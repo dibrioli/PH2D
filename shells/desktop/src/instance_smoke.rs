@@ -12,9 +12,24 @@
 //!
 //! ⛔ **O que o defeito parecia**, antes do remap da F4.2: as três juntas continuavam a nomear os
 //! corpos do MESTRE — que não simulam —, então os braços caíam soltos no chão.
+//!
+//! # Cena 2 — a receita VETORIAL instanciada 3× (o instrumento que faltava, F4.6)
+//!
+//! ⛔⛔ **Ela nasce de um report que o gate não apanhou** (Enio, 2026-08-26: *«ao mudo o path, as
+//! instâncias não mudaram»*): a F4.6b tem gates verdes e uma sonda headless que imita a ordem do
+//! quadro — e no app não acontece. *Um subsistema sem cena de smoke própria recebe sempre o mesmo
+//! report — «não funcionou» — sem o meio caminho.*
+//!
+//! ⚠️ **A receita fica LONGE das cópias, de propósito.** Se ela nascesse por cima, «editei o
+//! mestre» e «editei a cópia que está em cima dele» seriam o mesmo gesto na tela — e a diferença
+//! entre as duas é exactamente o que esta cena tem de decidir.
+//!
+//! ⚠️ Ela **imprime o diagnóstico do que montou** (ids de path por peça, e se o conteúdo bate).
+//! Com `PH2D_INSTANCE_LOG=1` o passe imprime o dele a cada mudança — ver
+//! [`crate::instance_diag`].
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, StableId, Transform};
+use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, StableId, Transform, VecPathRef};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsJoint, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
@@ -123,6 +138,97 @@ pub(crate) fn spawn_ragdoll_scene(
     (master, roots)
 }
 
+/// Onde a receita VETORIAL fica, e onde as três cópias dela aterram (cena 2).
+///
+/// ⚠️ **A receita LONGE das cópias** — ver o cabeçalho: sobrepostas, «editei o mestre» e «editei a
+/// cópia por cima dele» são o mesmo gesto, e é essa distinção que a cena existe para permitir.
+const VEC_MASTER_AT: Vec2 = Vec2::new(-4.2, 1.6);
+const VEC_INSTANCE_X: [f32; 3] = [-0.6, 1.6, 3.8];
+const VEC_INSTANCE_Y: f32 = 1.6;
+
+/// ⭐ **Monta a receita vetorial**: uma raiz vazia com DUAS peças (caixa + etiqueta).
+///
+/// ⚠️ **Duas peças, e não uma:** uma receita de peça única não exercita a sub-árvore, e a
+/// sub-árvore é metade do que a F4.6 tem de provar (cada peça leva o documento DELA).
+///
+/// ⚠️ **A entidade e o par `path ⟺ entidade` nascem aqui**, e não pelo `vec_entities::sync` do
+/// quadro seguinte: a cena instancia no MESMO quadro, e uma peça sem entidade não entra na cópia
+/// profunda.
+fn spawn_vector_master(
+    sim: &mut SimWorld,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+) -> ph2d_ecs::Entity {
+    use ph2d_vec_scene::{Paint, Rgba8, rectangle};
+    let root = sim
+        .world_mut()
+        .spawn((
+            Transform::from_translation(VEC_MASTER_AT),
+            Name::new("Badge"),
+            MasterRoot,
+        ))
+        .id();
+    for (name, lo, hi, rgb) in [
+        ("Box", [-0.9, -0.5], [0.9, 0.5], [58, 96, 168]),
+        ("Label", [-0.6, -0.18], [0.6, 0.18], [232, 236, 245]),
+    ] {
+        let mut path = rectangle(lo, hi);
+        path.fill = Some(Paint::Solid(Rgba8::new(rgb[0], rgb[1], rgb[2], 255)));
+        let id = docs.vec_scene.push_path(path);
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new(name),
+                VecPathRef(id),
+                ChildOf(root),
+            ))
+            .id();
+        docs.vec_entities.insert(id, e.to_bits());
+    }
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    root
+}
+
+/// ⭐ **A cena 2 inteira**: a receita e as três cópias, espalhadas.
+///
+/// ⚠️ **Porta única, e é o que torna o gate um ORÁCULO em vez de um espelho.** A 1.ª versão tinha
+/// o laço no corpo do smoke e o gate montava as cópias por conta própria — uma mutação que fazia a
+/// cena instanciar **uma vez só** passava, porque o gate media os ingredientes, não a cena.
+pub(crate) fn spawn_vector_scene(
+    sim: &mut SimWorld,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+) -> (ph2d_ecs::Entity, Vec<ph2d_ecs::Entity>) {
+    let master = spawn_vector_master(sim, docs);
+    let mut roots = Vec::new();
+    for x in VEC_INSTANCE_X {
+        let Ok(inst) = crate::instantiate::instantiate_master(sim, registry, master, None, docs)
+        else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(inst)
+            .insert(Transform::from_translation(Vec2::new(x, VEC_INSTANCE_Y)));
+        roots.push(inst);
+    }
+    (master, roots)
+}
+
+/// O `VecPathId` da peça `name` da subárvore de `root`, se ela tiver documento.
+pub(crate) fn piece_path(sim: &SimWorld, root: ph2d_ecs::Entity, name: &str) -> Option<u64> {
+    let mut stack = vec![root];
+    while let Some(e) = stack.pop() {
+        if sim.world().get::<Name>(e).is_some_and(|n| n.0 == name) {
+            return sim.world().get::<VecPathRef>(e).map(|v| v.0);
+        }
+        if let Some(kids) = sim.world().get::<ph2d_ecs::Children>(e) {
+            stack.extend(kids.iter().copied());
+        }
+    }
+    None
+}
+
 impl crate::App {
     /// Prólogo do quadro, uma vez. No-op sem a env.
     pub(crate) fn instance_smoke(&mut self) {
@@ -138,7 +244,8 @@ impl crate::App {
         self.instance_smoke_done = true;
         match which.trim() {
             "1" => self.instance_smoke_ragdoll(),
-            other => println!("[instance smoke] cena {other:?} nao existe (ha' a 1)"),
+            "2" => self.instance_smoke_vector(),
+            other => println!("[instance smoke] cena {other:?} nao existe (ha' a 1 e a 2)"),
         }
         // ⚠️ **O relógio TEM de partir a andar**, e a linha vive no prólogo pela razão do smoke da
         // física: uma lista por-cena seria a enumeração de que a próxima cena nasce fora. Sem isto
@@ -149,6 +256,51 @@ impl crate::App {
         }
         self.playhead.rewind();
         self.playhead.play();
+    }
+
+    /// Cena 2 — ver o cabeçalho do módulo.
+    fn instance_smoke_vector(&mut self) {
+        let vec_entities = &mut self.vec_entities;
+        let gfx = self.gfx.as_mut().expect("gfx");
+        let mut docs = crate::instance_docs::OwnedDocs {
+            vec_scene: &mut gfx.vec_scene,
+            vec_entities,
+        };
+        let (master, roots) = spawn_vector_scene(&mut gfx.sim, &gfx.component_registry, &mut docs);
+        // ⚠️ **O DIAGNÓSTICO do que ela montou, peça a peça.** Uma cópia sem `VecPathRef` é o modo
+        // de falha que não deixa linha nenhuma em lado nenhum — e é o 1.º suspeito do §14.
+        println!("[instance smoke 2] receita 'Badge' (Box + Label) a' ESQUERDA, longe das copias");
+        for name in ["Box", "Label"] {
+            let m = piece_path(&gfx.sim, master, name);
+            let copies: Vec<String> = roots
+                .iter()
+                .map(|&r| {
+                    piece_path(&gfx.sim, r, name).map_or_else(
+                        || "SEM GEOMETRIA".to_string(),
+                        |id| {
+                            let same = m
+                                .and_then(|mid| gfx.vec_scene.path(mid))
+                                .zip(gfx.vec_scene.path(id))
+                                .is_some_and(|(a, b)| a.verts == b.verts);
+                            format!("path {id}{}", if same { "" } else { " (FORMA DIFERENTE)" })
+                        },
+                    )
+                })
+                .collect();
+            println!(
+                "[instance smoke 2] peca {name:?}: receita = path {:?} · copias = {}",
+                m,
+                copies.join(" · ")
+            );
+        }
+        println!(
+            "[instance smoke 2] agora escolha 'Badge > Box' (a RECEITA, a' esquerda) e mova um no' \
+             dela: as TRES copias tem de mudar junto"
+        );
+        println!(
+            "[instance smoke 2] se nao mudarem, rode outra vez com PH2D_INSTANCE_LOG=1 — o passe \
+             diz em que pergunta ele parou"
+        );
     }
 
     /// Cena 1 — ver o cabeçalho do módulo.

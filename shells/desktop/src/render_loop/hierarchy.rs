@@ -325,7 +325,7 @@ pub(super) fn dispatch(
     if let Some(row) = revert_to_master_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
-        && crate::instance_sync::drain_revert_to_master(sim, echo, entity_bits, toasts)
+        && crate::instance_revert::drain_revert_to_master(sim, echo, entity_bits, toasts)
     {
         title_dirty = true;
     }

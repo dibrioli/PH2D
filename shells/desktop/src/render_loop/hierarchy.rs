@@ -345,6 +345,15 @@ pub(super) fn dispatch(
                 vec_scene,
                 vec_entities,
             },
+            // O passo da cascata: o MESMO de tela que o *Duplicate* usa, convertido pela câmera.
+            {
+                let (dx, dy) = crate::input_dispatch::screen_offset_world(
+                    camera,
+                    window_size,
+                    crate::input_dispatch::PASTE_OFFSET_PX,
+                );
+                [dx as f32, dy as f32]
+            },
         )
     {
         title_dirty = true;

@@ -55,6 +55,20 @@ pub struct MasterRoot;
 #[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct MasterPiece;
 
+/// ⭐⭐ **Esta entidade é peça da receita que o artista está a EDITAR agora.**
+///
+/// ⚠️ **DERIVADA da SELEÇÃO, e por isso NÃO registada** — como o [`MasterPiece`], e pela mesma
+/// razão: a selecção é vista, não documento, e um valor derivado no arquivo envenena o undo.
+///
+/// Quem a mantém é o passe da shell (`render_loop::master_editing`), e ela existe para uma
+/// pergunta só: *uma receita não está na cena, **excepto** enquanto se mexe nela* — sem isso, ou o
+/// artista vê dois objetos empilhados, ou não consegue mudar a forma do mestre.
+///
+/// ⛔ Não a insira à mão: uma marca escrita fora do passe sobrevive só até ao passe seguinte, o que
+/// é pior que não existir, porque funciona uma vez.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct MasterEditing;
+
 /// ⭐ **Marca toda a descendência de cada [`MasterRoot`], e DESMARCA o que já não pertence a um.**
 /// Devolve `true` quando mexeu em alguma coisa.
 ///

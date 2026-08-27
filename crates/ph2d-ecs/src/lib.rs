@@ -104,7 +104,9 @@ pub use instantiate::{
     DeepCopy, InstanceOf, ObjectInstance, OverrideKey, deep_copy_subtree, remap_instance_of,
 };
 pub use masking::{ClipChildren, ClipMode, Mask2D, MaskInteraction, MaskMode};
-pub use master::{MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of};
+pub use master::{
+    MasterEditing, MasterPiece, MasterRoot, assign_master_pieces, is_master_piece, master_root_of,
+};
 pub use name::{Name, stable_name_id};
 pub use named_anchor::{
     ANCHOR_NAME_MAX_BYTES, ANCHORS_MAX, AnchorData, AnchorKind, AnchorNameError, DICT_MAX_DEPTH,

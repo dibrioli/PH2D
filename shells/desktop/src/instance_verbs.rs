@@ -207,6 +207,44 @@ pub(crate) fn apply_to_master(
     Ok(n)
 }
 
+/// ⭐⭐ **Quantas instâncias deste mestre já existem** — o `n` da cascata.
+///
+/// Conta as RAÍZES (a peça cujo `master` é o próprio mestre), e não as peças: um crachá de duas
+/// peças não é duas cópias.
+fn instances_of(sim: &mut SimWorld, master_id: u64) -> usize {
+    let mut q = sim.world_mut().query::<&InstanceOf>();
+    q.iter(sim.world())
+        .filter(|link| link.master == master_id)
+        .count()
+}
+
+/// ⭐⭐⭐ **UMA CÓPIA NUNCA ATERRA EM CIMA DO QUE VEIO** (report do Enio, 2026-08-26 → 27).
+///
+/// O *Instantiate* punha a cópia na pose do mestre — exactamente por cima dele e das irmãs. Duas
+/// formas idênticas sobrepostas não são um estado que o artista desfaça com o olho: *«mudei o
+/// mestre»* e *«mudei a cópia que está em cima dele»* passam a ser o mesmo gesto na tela, e foi
+/// isso que fez a propagação **parecer morta quando estava viva** (o §14 do handoff — a cena 2, com
+/// a receita LONGE das cópias, propaga).
+///
+/// ⚠️ **A lei é a que o verbo VETORIAL já tinha** (`vec_component_edit::cascade_offset`): um passo
+/// de TELA por cópia, cascateado. Um passo de mundo fixo seria invisível com o zoom afastado e
+/// atiraria a cópia para fora do ecrã com o zoom perto.
+///
+/// ⚠️ **A 1.ª cópia fica no ZERO, e isso não é uma segunda regra** — é o que a CONTAGEM já diz: ela
+/// conta as instâncias que já existem **menos a que acabou de nascer**, e para a primeira isso é
+/// zero. É por isso que o *Criar componente* deixa a cópia exactamente onde a seleção estava sem
+/// precisar de um ramo próprio. ⛔ *Uma afirmação que mutação nenhuma mata é uma afirmação sobre
+/// nada* — a versão anterior deste doc dizia *«o Criar componente NÃO cascateia»*, e cascatear
+/// ali era um no-op.
+fn cascade(sim: &mut SimWorld, instance: Entity, master_id: u64, step: [f32; 2]) {
+    // `- 1`: a instância que acabou de nascer já está contada.
+    let n = instances_of(sim, master_id).saturating_sub(1) as f32;
+    if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(instance) {
+        t.translation.x += step[0] * n;
+        t.translation.y += step[1] * n;
+    }
+}
+
 /// **Qual dos verbos o menu pediu.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Verb {
@@ -236,6 +274,8 @@ pub(crate) fn drain(
     entity_bits: u64,
     toasts: &mut ph2d_editor::ToastQueue,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    // O passo da cascata, em unidades de MUNDO — ver [`cascade`].
+    place_step: [f32; 2],
 ) -> bool {
     use ph2d_editor::Toast;
     let entity = Entity::from_bits(entity_bits);
@@ -262,7 +302,11 @@ pub(crate) fn drain(
         // o aviso NOMEIA a saída, senão o artista fica a clicar na linha errada.
         Verb::Place => {
             match crate::instantiate::instantiate_master(sim, registry, entity, None, docs) {
-                Ok(_) => {
+                Ok(inst) => {
+                    // ⭐ A cópia não aterra em cima do mestre nem das irmãs — ver [`cascade`].
+                    if let Some(id) = sim.world().get::<StableId>(entity).map(|s| s.0) {
+                        cascade(sim, inst, id, place_step);
+                    }
                     toasts.push(Toast::success("Instantiated"));
                     true
                 }

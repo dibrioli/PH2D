@@ -1,5 +1,12 @@
 //! ⭐⭐ **O que NÃO está na cena** — a pergunta que o extract faz a cada entidade.
 //!
+//! ⚠️⚠️ **E ela tem DOIS leitores, de propósito** (F4.6): o extract de sprites e a cadeia de
+//! visibilidade do vetor ([`crate::vec_entities`]). Enquanto era só o primeiro, a regra tinha duas
+//! respostas — a arte vetorial de um mestre continuava a desenhar **por baixo da cópia** que o
+//! *Criar componente* deixa no lugar, e o artista não distinguia uma da outra. Foi isso que fez a
+//! propagação parecer morta estando viva (o §14 do handoff): a cena 2 do smoke, com a receita
+//! LONGE das cópias, propaga.
+//!
 //! ⚠️ **Irmão de [`super::sim_extract`] por ASSUNTO** (e porque aquele ficheiro já vive sob uma
 //! excepção de LOC): lá mora *como* uma sprite vira `RenderInstance`; aqui mora *se* ela vira.
 //! A decisão precisa de nome próprio — ela vive dentro de um closure que pede um renderer, e uma
@@ -28,8 +35,13 @@ use ph2d_ecs::{Entity, World};
 ///
 /// ⚠️ **Função com NOME e não uma linha no fio**: a decisão vive dentro de um closure que pede um
 /// renderer, e a mutação que a desligasse compilaria e passaria a suíte inteira.
-pub(super) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
-    sim.get::<ph2d_ecs::MasterPiece>(entity).is_some()
+pub(crate) fn is_off_canvas(sim: &World, entity: Entity) -> bool {
+    // ⭐⭐ **A receita volta enquanto está a ser EDITADA** (ver `super::master_editing`): esconder
+    // sempre tornaria a forma do mestre impossível de mudar, e desenhar sempre põe dois objetos
+    // empilhados. A marca é derivada da selecção, e por isso as duas famílias de arte leem a
+    // MESMA resposta sem ninguém lhes passar a selecção.
+    (sim.get::<ph2d_ecs::MasterPiece>(entity).is_some()
+        && sim.get::<ph2d_ecs::MasterEditing>(entity).is_none())
         || sim
             .get::<ph2d_ecs::Visibility>(entity)
             .is_some_and(|v| v.hidden)

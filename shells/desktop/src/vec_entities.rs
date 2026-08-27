@@ -11,7 +11,7 @@
 //! Entidade apagada pela Hierarquia ⇒ path removido do documento. Tudo em
 //! [`sync`], uma vez por frame, antes de qualquer leitura.
 
-use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef, Visibility};
+use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef};
 use ph2d_vec_scene::{VecPathId, VecScene, VecViewState};
 use std::collections::BTreeMap;
 
@@ -200,7 +200,9 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
     // contra um save corrompido.
     for _ in 0..MAX_DEPTH {
         let Some(e) = cur else { return true };
-        if w.get::<Visibility>(e).is_some_and(|v| v.hidden) {
+        // ⭐⭐ **A MESMA porta que o extract de sprites usa** — o olho do artista **e** *«uma receita
+        // não está na cena»*. O porquê vive lá (F4.6).
+        if crate::render_loop::off_canvas::is_off_canvas(w, e) {
             return false;
         }
         // ⭐⭐ **Ser MEMBRO de um conjunto de Morph States esconde, e isso é DERIVADO** (plano 32
@@ -216,12 +218,17 @@ fn visible_chain(w: &ph2d_ecs::World, entity: Entity) -> bool {
     true
 }
 
+/// **Agrupar e desagrupar** — módulo irmão pelo mesmo tecto e pelo mesmo critério: aqui em cima
+/// mora a ponte `path ⟺ entidade`; ali, o verbo que muda a ÁRVORE.
+#[path = "vec_entities_group.rs"]
+mod group;
 /// **A ancestralidade e o que uma SELEÇÃO significa** — módulo irmão, pelo teto de 600 LOC
 /// da shell. O corte é por assunto: aqui em cima mora o que a ponte MANTÉM (a identidade
 /// path ⟺ entidade, a ordem, o que a árvore esconde); ali, o que a árvore RESPONDE — *quem é
 /// o objeto que este clique nomeia, e o que selecioná-lo significa*.
 #[path = "vec_entities_selection.rs"]
 mod selection;
+pub(crate) use group::{group_entities, ungroup_entities};
 pub(crate) use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
 
 #[cfg(test)]
@@ -234,102 +241,47 @@ fn bits(map: &VecEntityMap, id: VecPathId) -> Entity {
     Entity::from_bits(map[&id])
 }
 
-/// Agrupa as entidades `members` sob uma **entidade comum nova** (nome, `Transform`,
-/// `RootOrder`), preservando a ordem. É o mesmo grupo que os sprites usam — por isso
-/// ele aceita qualquer mistura de tipos (ADR-0110). Devolve o grupo, ou `None` se
-/// sobrar menos de 2 ancestrais de topo distintos.
-///
-/// Agrupar normaliza para os ancestrais de topo: pegar um filho traz o grupo dele
-/// junto (aninhamento), não o filho solto — a convenção de qualquer editor.
-pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Option<u64> {
-    let mut tops: Vec<Entity> = Vec::new();
-    for &bits in members {
-        let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_err() {
-            continue;
-        }
-        let t = top_ancestor(sim, e);
-        if !tops.contains(&t) {
-            tops.push(t);
-        }
-    }
-    if tops.len() < 2 {
-        return None;
-    }
-    let order = next_root_order(sim);
-    let group = sim
-        .world_mut()
-        .spawn((Transform::default(), Name::new(name), RootOrder(order)))
-        .id();
-    // `Children` preserva a ordem de inserção → os membros entram na ordem de z.
-    for t in tops {
-        if let Ok(mut e) = sim.world_mut().get_entity_mut(t) {
-            e.remove::<RootOrder>();
-            e.insert(ChildOf(group));
-        }
-    }
-    Some(group.to_bits())
-}
-
-/// Dissolve os grupos de topo tocados por `members`. Um "grupo" aqui é o que a
-/// árvore chama de grupo: uma entidade **sem geometria própria** (nem `VecPathRef`
-/// nem sprite) que tem filhos. Um sprite com filhos é um pai, não um grupo — e
-/// dissolvê-lo apagaria um objeto. Devolve quantos grupos sumiram.
-pub(crate) fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
-    let mut tops: Vec<Entity> = Vec::new();
-    for &bits in members {
-        let e = Entity::from_bits(bits);
-        if sim.world().get_entity(e).is_err() {
-            continue;
-        }
-        let t = top_ancestor(sim, e);
-        if t != e && !tops.contains(&t) && is_plain_group(sim, t) {
-            tops.push(t);
-        }
-    }
-    let mut order = next_root_order(sim);
-    for g in &tops {
-        let parent = sim.world().get::<ChildOf>(*g).map(|c| c.parent());
-        let kids: Vec<Entity> = sim
-            .world()
-            .get::<ph2d_ecs::Children>(*g)
-            .map(|c| c.iter().copied().collect())
-            .unwrap_or_default();
-        for k in kids {
-            if let Ok(mut e) = sim.world_mut().get_entity_mut(k) {
-                match parent {
-                    Some(p) => {
-                        e.insert(ChildOf(p));
-                    }
-                    None => {
-                        e.remove::<ChildOf>();
-                        e.insert(RootOrder(order));
-                        order = order.saturating_add(1);
-                    }
-                }
-            }
-        }
-        if let Ok(e) = sim.world_mut().get_entity_mut(*g) {
-            e.despawn();
-        }
-    }
-    tops.len()
-}
-
-/// A entidade é um grupo puro: sem geometria própria, mas com filhos. Um sprite ou
-/// um path com filhos NÃO é um grupo — dissolvê-lo apagaria um objeto.
-fn is_plain_group(sim: &SimWorld, e: Entity) -> bool {
-    let w = sim.world();
-    w.get::<VecPathRef>(e).is_none()
-        && w.get::<ph2d_render::Sprite>(e).is_none()
-        && w.get::<ph2d_ecs::Children>(e)
-            .is_some_and(|c| !c.is_empty())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    // ⚠️ Só os gates a usam desde que a porta de «está na cena?» passou a ser o `off_canvas`.
+    use ph2d_ecs::Visibility;
     use ph2d_vec_scene::rectangle;
+
+    /// ⭐⭐⭐ **A arte VETORIAL de uma receita também sai da cena** (F4.6, o §14).
+    ///
+    /// ⛔ Enquanto a porta de *«está na cena?»* era só do extract de SPRITES, a regra tinha duas
+    /// respostas: a forma de um mestre continuava a desenhar **por baixo da cópia** que o *Criar
+    /// componente* deixa no lugar, e o artista não distinguia uma da outra.
+    ///
+    /// ⚠️ E a outra metade: enquanto a receita está a ser **editada**, ela volta.
+    ///
+    /// (Mutação: a cadeia voltar a ler só `Visibility` ⇒ RED.)
+    #[test]
+    fn the_vector_art_of_a_recipe_leaves_the_canvas_too() {
+        let (mut sim, mut scene, mut map) = setup();
+        let id = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
+        sync(&mut sim, &mut scene, &mut map);
+        let e = bits(&map, id);
+        assert!(
+            !view_state(&sim, &map).is_hidden(id),
+            "a forma nasceu escondida"
+        );
+
+        sim.world_mut().entity_mut(e).insert(ph2d_ecs::MasterRoot);
+        ph2d_ecs::assign_master_pieces(sim.world_mut());
+        assert!(
+            view_state(&sim, &map).is_hidden(id),
+            "a arte da receita continua a desenhar — dois objetos empilhados"
+        );
+
+        // E volta enquanto está a ser editada.
+        crate::render_loop::master_editing_mark_for_tests(&mut sim, Some(e.to_bits()));
+        assert!(
+            !view_state(&sim, &map).is_hidden(id),
+            "a receita nao volta ao ser editada — a forma do mestre fica inalcancavel"
+        );
+    }
 
     /// **Duplicar uma forma dá ao clone o PRÓPRIO path, e o `sync` cunha UMA entidade para ele.**
     ///

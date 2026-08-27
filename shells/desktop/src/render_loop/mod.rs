@@ -272,6 +272,18 @@ mod inspector_anchor;
 mod inspector_anim;
 mod inspector_commits_sprite;
 mod inspector_slice;
+/// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
+mod master_editing;
+/// ⚠️ A MESMA porta do passe, alcançável dos gates de outro módulo (a cadeia de visibilidade do
+/// vetor lê a marca, e o gate dela tem de a poder carimbar). *Um segundo carimbo escrito à mão no
+/// teste seria a segunda resposta.*
+#[cfg(test)]
+pub(crate) fn master_editing_mark_for_tests(
+    sim: &mut ph2d_ecs::SimWorld,
+    selection: Option<u64>,
+) -> bool {
+    master_editing::mark(sim, selection)
+}
 /// doc 89 folha 14: a metade do shell do `source.text` — o bloco vira uma
 /// instância POR CARACTERE, com a geometria de cada glifo internada no MESMO
 /// store das formas (um `geometry_id` é um `geometry_id`, venha de onde vier).
@@ -287,7 +299,7 @@ pub(crate) mod motion_glow_layer;
 pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_text_gen;
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
-mod off_canvas;
+pub(crate) mod off_canvas;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;
 pub(crate) mod painter_bridge_queries;
@@ -2612,6 +2624,10 @@ impl crate::App {
                 }
             }
         }
+        // ⭐⭐⭐ **QUAL RECEITA está a ser EDITADA** (F4.6) — a marca derivada que faz *«uma receita
+        // não está na cena»* e *«a forma do mestre tem de ser editável»* deixarem de se
+        // contradizer. ⚠️ **Antes do extract e antes da vista do vetor**, que são os dois leitores.
+        master_editing::mark(sim, hero_screen.as_ref().and_then(|h| h.gizmo.selection));
         sim_extract::run(
             dt,
             sim,

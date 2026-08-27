@@ -4746,7 +4746,6 @@ fn a_mirror_on_an_operation_folds_an_off_centre_child() {
 fn measure_the_query_against_the_specialised_tape() {
     use ph2d_field::{FieldDoc, FillRule, NodeId, Primitive, Profile, Xform};
     const N: usize = 200_000;
-    let reg = crate::hybrid::Registry::new();
     let med = |mut v: Vec<f64>| -> f64 {
         v.sort_by(f64::total_cmp);
         v[v.len() / 2]

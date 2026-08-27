@@ -538,6 +538,62 @@ fn main() {
         "  ⭐⭐ RAIZES de classe SIMPLES (a relax_class tambem as escrevia): {}",
         r.tie_plain_roots
     );
+
+    // ⭐⭐⭐ **O PREÇO POR GRUPO** — `PH2D_ARC_GROUP_SCAN=1`.
+    //
+    // ⚠️ *A pergunta que decide a forma da cura:* as dobras que a restrição paga estão
+    // **espalhadas** por todos os arcos, ou **concentradas** em poucos? Concentrado ⇒ há
+    // um subconjunto que compra quase todo o alinhamento por quase nada. **Medir antes de
+    // construir** — e cada linha aqui é uma resolução contínua inteira, por isso a sonda
+    // vive atrás de uma env.
+    if std::env::var("PH2D_ARC_GROUP_SCAN").as_deref() == Ok("1") {
+        let (w_scan, _) = ph2d_gridmap::weld(&cut, &combed);
+        let (m_scan, _) = ph2d_gridmap::solve_welded(
+            &mesh,
+            &cut,
+            &combed,
+            h,
+            ph2d_gridmap::weld_solve_driver::ROUNDS,
+        );
+        let all = ph2d_gridmap::arcline::build_arc_ties(&cut, &w_scan, &m_scan);
+        let n = all.groups();
+        println!("  ⭐⭐⭐ VARREDURA POR GRUPO ({n} grupos, uma resolucao continua cada):");
+        let base = ph2d_gridmap::solve_welded_with(
+            &mesh,
+            &cut,
+            &combed,
+            h,
+            ph2d_gridmap::weld_solve_driver::ROUNDS,
+            None,
+            None,
+        )
+        .1;
+        println!(
+            "    [nenhum] dobras {} (antes do arredondamento)",
+            base.folded_after
+        );
+        for g in 0..n {
+            let only = all.keep_groups(&[g]);
+            let membros = only.group(0).map_or(0, |t| t.1.len());
+            let rep = ph2d_gridmap::solve_welded_with(
+                &mesh,
+                &cut,
+                &combed,
+                h,
+                ph2d_gridmap::weld_solve_driver::ROUNDS,
+                Some(&only),
+                None,
+            )
+            .1;
+            println!(
+                "    [grupo {g:>2}] {membros:>2} membros · entrou={} · dobras {} (delta {:+}) · nao-finitos {}",
+                rep.tie_groups,
+                rep.folded_after,
+                rep.folded_after as i64 - base.folded_after as i64,
+                rep.nonfinite
+            );
+        }
+    }
     println!(
         "  ⛔⛔ NAO-FINITOS no mapa continuo: {} no fim · {} logo apos a 1a ronda",
         r.nonfinite.0, r.nonfinite.1

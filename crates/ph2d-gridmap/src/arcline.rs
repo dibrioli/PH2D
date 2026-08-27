@@ -142,6 +142,33 @@ impl ScalarTies {
         self.roots.len()
     }
 
+    /// ⭐⭐⭐ **A MESMA TABELA COM SÓ ALGUNS GRUPOS LIGADOS** — o instrumento que responde
+    /// se o preço em dobras está **espalhado** pelos arcos ou **concentrado** em poucos.
+    ///
+    /// ⚠️ *A pergunta decide a forma da cura:* concentrado ⇒ há um subconjunto de arcos
+    /// que compra quase todo o alinhamento por quase nenhuma dobra; espalhado ⇒ não há
+    /// escolha a fazer e a cura tem de ser outra. **Medir antes de construir.**
+    ///
+    /// ⛔ O `cycle_eq` sai **vazio** de propósito: um leque de ciclos sobre um subconjunto
+    /// de grupos não é um sub-problema do original, e misturá-los mediria duas coisas.
+    #[must_use]
+    pub fn keep_groups(&self, keep: &[usize]) -> Self {
+        let mut out = Self {
+            tie: self.tie.clone(),
+            roots: Vec::new(),
+            members: Vec::new(),
+            cycle_eq: Vec::new(),
+            report: self.report,
+        };
+        for &g in keep {
+            if let (Some(&r), Some(m)) = (self.roots.get(g), self.members.get(g)) {
+                out.roots.push(r);
+                out.members.push(m.clone());
+            }
+        }
+        out
+    }
+
     /// A raiz do grupo `g` e os escalares dele.
     #[must_use]
     pub fn group(&self, g: usize) -> Option<(u32, &[u32])> {

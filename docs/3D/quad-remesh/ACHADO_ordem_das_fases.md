@@ -2011,3 +2011,73 @@ não é a nossa.
   *«como se impõe o arco sem virar triângulos?»* — que é uma pergunta sobre a **energia**,
   não sobre o solver.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.23 — ⛔⛔⛔ CORRECÇÃO: a DOBRA não é o que parte o `χ`, e a recusa já estava escrita
+
+A §23.22 fechou com esta frase: *«forçar um arco a ser linha de grade onde o mapa não o
+quer vira triângulos, e é a dobra que parte o `χ`»*. **A primeira metade é verdade. A
+segunda está REFUTADA por medição, no dia seguinte.**
+
+#### O que a varredura por grupo achou primeiro
+
+`PH2D_ARC_GROUP_SCAN=1` corre uma resolução contínua **por grupo de amarra**, sozinho.
+Na `sculpt_hooked` (17 grupos):
+
+| grupo | membros | dobras no contínuo | delta |
+|---|---|---|---|
+| *nenhum* | — | `5` | — |
+| os outros **16** | `2`–`6` | `5` (um deles `6`) | **`+0`** (um `+1`) |
+| ⛔ **`14`** | **`52`** | **`79`** | **`+74`** |
+
+⇒ ⭐ *o preço não está espalhado pelos arcos — está num grupo só.* A união transitiva junta
+uma **componente gigante** (52 escalares reduzidos a **um** grau de liberdade), e é ela que
+vira os triângulos. Os grupos pequenos são locais e o mapa acomoda-os de graça.
+
+#### E o tecto de tamanho (`PH2D_ARC_MAX_GROUP=8`) diz as três coisas de uma vez
+
+| peça | modo | grupos | dobras no contínuo | atravessagem p50 | `χ` |
+|---|---|---|---|---|---|
+| `sculpt_hooked` | off | — | `5` | `0,28` | **`+2`** |
+| | tecto `8` | `16` | **`5`** | `0,31` | ⛔ `−6` |
+| | sem tecto | `17` | `75` | ⭐ **`0,02`** | ⛔ `−6` |
+| `sculpt_wrinkled` | off | — | `2` | `0,50` | **`+2`** |
+| | tecto `8` | `11` | **`4`** | `0,22` | ⛔ `−4` |
+| | sem tecto | `12` | `27` | ⭐ **`0,00`** | ⛔ `−5` |
+| `sphere_uv_96x144` | off | — | `0` | `0,44` | **`+2`** |
+| | tecto `8` | `11` | **`0`** | `0,30` | ⛔ `−3` |
+| | sem tecto | `12` | `0` | ⭐ **`0,07`** | ⛔ `−3` |
+
+1. ⭐ **O tecto apaga as dobras** — a `hooked` volta a `5`, que é **exactamente** o valor do
+   controlo sem amarras. A hipótese do grupo gigante está confirmada.
+2. ⛔ **E o `χ` continua partido na mesma** (`−6`, `−4`, `−3`). *Com as dobras de volta ao
+   valor de um mapa que dá `χ = +2`, o `χ` é `−6`.* ⇒ **as duas grandezas são
+   independentes, e a frase da §23.22 estava errada.**
+3. ⛔ **O alinhamento vinha quase todo do grupo gigante:** com tecto, a `hooked` fica em
+   `0,31` — **pior que os `0,28` de não ter amarra nenhuma**. Os 16 grupos de graça não
+   compram alinhamento nenhum ali.
+
+⇒ ⛔ **O tecto NÃO é a cura**: ele troca a coluna que melhorava pela que não melhora, e
+deixa a que interessa exactamente onde estava. Fica como **instrumento** (a tabela acima é
+o que ele existe para produzir), com o valor por omissão a ser **sem tecto**.
+
+#### ⚠️⚠️ E a recusa já estava escrita, no mesmo ficheiro que eu editei nesse dia
+
+A tabela de rejeição do [`RETRY_ON_FOLD`] (`weld_round.rs`, 2026-08-25) abre com:
+
+> ⚠️ **«Dobra» e «furo» não são o mesmo defeito.** A inferência que motivou esta wave —
+> *«seis das vinte dobras vêm do arredondamento, logo tirá-las cura os furos»* — é uma
+> premissa **falsa**, e só uma medição a podia derrubar.
+
+*Reproduzi a mesma inferência falsa dois dias depois, sobre a mesma métrica, no mesmo
+ficheiro.* ⇒ **as recusas medidas a consultar não são só as do knob que se mexe — são as
+dos knobs VIZINHOS**, porque é a métrica que se repete, não o botão.
+
+#### ⇒ O que fica aberto, e agora com uma coisa a menos
+
+- ⭐ Sabe-se **onde** está o preço em dobras (um grupo, o gigante) e que ele **se pode
+  desligar**.
+- ⛔ **Não** se sabe o que parte o `χ` — e as dobras estão **eliminadas** da lista de
+  suspeitos, que é o que esta secção compra.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

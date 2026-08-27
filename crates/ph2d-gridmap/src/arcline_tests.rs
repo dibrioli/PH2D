@@ -405,3 +405,50 @@ fn no_tied_scalar_is_also_written_by_the_class_relaxation() {
         }
     }
 }
+
+/// ⭐ **O SUBCONJUNTO DE GRUPOS É UM SUBCONJUNTO, e a tabela dos escalares SOBREVIVE.**
+///
+/// A [`ScalarTies::keep_groups`] é o instrumento que respondeu se o preço em dobras estava
+/// espalhado ou concentrado (⇒ concentrado: `16` grupos de graça, `1` a pagar `+74`). Ela
+/// só serve se o grupo que fica for **o mesmo** grupo — mesmos membros, mesma raiz, e o
+/// `of()` a resolver como antes. ⚠️ *Um filtro que reindexasse os escalares mediria outra
+/// coisa e ninguém veria.*
+#[test]
+fn keeping_a_subset_of_groups_keeps_those_groups_intact() {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(16, 24, 1.0);
+    mesh.triangulate();
+    let dual = ph2d_crossfield::Dual::build(&mesh);
+    let (field, _) = ph2d_crossfield::solve_miq(&dual);
+    let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
+    let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
+    let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 4);
+    let (w, _) = crate::weld::weld(&cut, &combed);
+    let all = super::build_arc_ties(&cut, &w, &map);
+    assert!(
+        all.groups() >= 3,
+        "a fixtura precisa de 3 grupos para escolher"
+    );
+
+    let keep = [0usize, 2];
+    let sub = all.keep_groups(&keep);
+    assert_eq!(sub.groups(), keep.len());
+    for (k, &g) in keep.iter().enumerate() {
+        let (root_a, mem_a) = all.group(g).expect("grupo original");
+        let (root_b, mem_b) = sub.group(k).expect("grupo mantido");
+        assert_eq!(root_a, root_b, "a raiz do grupo {g} mudou ao filtrar");
+        assert_eq!(mem_a, mem_b, "os membros do grupo {g} mudaram ao filtrar");
+        for &x in mem_a {
+            assert_eq!(all.of(x), sub.of(x), "o escalar {x} resolve doutra maneira");
+        }
+    }
+    // ⛔ E um grupo que ficou de fora não pode continuar a ser um grupo.
+    let roots: Vec<u32> = (0..sub.groups())
+        .filter_map(|k| sub.group(k).map(|t| t.0))
+        .collect();
+    let dropped = all.group(1).expect("grupo 1").0;
+    assert!(
+        !roots.contains(&dropped),
+        "o grupo 1 foi filtrado e a raiz dele continua na lista"
+    );
+}

@@ -51,6 +51,36 @@ pub fn arcline_enabled() -> bool {
     std::env::var("PH2D_GRIDMAP_ARCLINE").ok().as_deref() == Some("1")
 }
 
+/// ⭐⭐⭐ **O TECTO DE TAMANHO DE UM GRUPO AMARRADO** — `PH2D_ARC_MAX_GROUP=<n>`.
+///
+/// ⛔⛔⛔ **O preço em dobras NÃO está espalhado pelos arcos — está num grupo só.** Medido
+/// em 2026-08-27 na `sculpt_hooked` (varredura grupo a grupo, `PH2D_ARC_GROUP_SCAN=1`):
+///
+/// | grupo | membros | dobras no contínuo | delta |
+/// |---|---|---|---|
+/// | *nenhum* | — | `5` | — |
+/// | os outros **16** | `2`–`6` | `5` (um deles `6`) | **`+0`** (um `+1`) |
+/// | ⛔ **`14`** | **`52`** | **`79`** | **`+74`** |
+///
+/// ⇒ *dezasseis restrições são de graça e uma paga tudo.* A união transitiva dos arcos
+/// junta uma **componente gigante** — 52 escalares reduzidos a **um** grau de liberdade —,
+/// e é ela que vira os triângulos. ⚠️ Os grupos pequenos são locais e o mapa acomoda-os.
+///
+/// ⛔ **Sem tecto por omissão**, para a medição de referência continuar a existir; e a
+/// família toda está atrás do [`arcline_enabled`], que nasce desligado.
+fn arc_group_cap(t: crate::arcline::ScalarTies) -> crate::arcline::ScalarTies {
+    let Some(cap) = std::env::var("PH2D_ARC_MAX_GROUP")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+    else {
+        return t;
+    };
+    let keep: Vec<usize> = (0..t.groups())
+        .filter(|&g| t.group(g).is_some_and(|(_, m)| m.len() <= cap))
+        .collect();
+    t.keep_groups(&keep)
+}
+
 /// ⭐ **O INTERRUPTOR, numa porta só:** `PH2D_GRIDMAP_WELD=0` volta ao G3 penalizado.
 ///
 /// ⚠️ **Ele vive aqui e não em cada chamador** porque houve dois — o instrumento e o
@@ -161,7 +191,7 @@ pub fn round_welded(
     // ⚠️ *Uma restrição imposta numa fase e não na seguinte não é uma restrição; é um
     // ponto de partida.*
     let ties = arcline_enabled().then(|| {
-        let t = crate::arcline::build_arc_ties(cut, &w, &map);
+        let t = arc_group_cap(crate::arcline::build_arc_ties(cut, &w, &map));
         // ⭐⭐⭐ O A3: as equações que fecham ciclo, no mesmo espaço de variáveis.
         let eqs = crate::arcline::arc_equations(cut, &w, &map);
         let cyc: Vec<usize> = t.cycle_equations().to_vec();

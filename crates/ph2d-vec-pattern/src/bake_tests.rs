@@ -185,35 +185,53 @@ fn brick_by_row_is_the_transpose_of_brick_by_column() {
     }
 }
 
-/// ⛔ **O tecto é do ATLAS, e ele é PARTILHADO.**
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"em column, a depender do valor dos parâmetros o pattern
+/// some"*.**
 ///
-/// Medido no `vello_encoding-0.8.0/src/image_cache.rs:9-10`: o atlas de imagem começa em `1024`,
-/// dobra até `MAX_ATLAS_SIZE = 8192`, e é **um só para todas as imagens do quadro**. Um recurso que
-/// não consegue vaga é **descartado em silêncio** (`resolve.rs:296`), e o próprio shader avisa que
-/// o caso *"isn't robust"*. ⇒ recusar em voz alta é a única opção honesta.
+/// A 1.ª versão **RECUSAVA** um ladrilho maior que o atlas, e a forma voltava à cor de recurso sem
+/// explicação. E o tecto chegava com facilidade absurda porque o **VÃO era assado na resolução da
+/// ARTE** — e vão é espaço VAZIO.
 ///
-/// ⚠️ **O `offset_denom` não tem tecto próprio** — ele multiplica uma aresta, então quem o limita é
-/// esta conta.
+/// ⭐ **Medido**: arte de `256 px` a medir 1 unidade, com `Gap 2` e `Column 1/8`, pedia
+/// `6144x768`; a MESMA lei em `Grid` pede `768x768`. Os reticulados desfasados chegam ao tecto
+/// **`n` vezes mais cedo** — e é por isso que o report é sobre a Column.
+///
+/// ⇒ o ladrilho é **REDUZIDO até caber**, nunca recusado.
+///
+/// # O tecto continua a ser do ATLAS
+///
+/// `vello_encoding-0.8.0/src/image_cache.rs:9-10`: o atlas nasce em `1024`, dobra até
+/// `MAX_ATLAS_SIZE = 8192`, e é **um só para todas as imagens do quadro**. Um recurso sem vaga é
+/// descartado **em silêncio** (`resolve.rs:296`).
 #[test]
-fn a_tile_that_would_not_fit_the_atlas_is_refused() {
-    let (aw, ah) = (MAX_TILE_EDGE_PX / 2, 4);
+fn a_tile_that_would_overflow_the_atlas_is_scaled_not_refused() {
+    let (aw, ah) = (256u32, 256);
     let a = art(aw, ah);
-    let law = |denom| TileLaw {
+    let law = |gap: i32, denom: u8| TileLaw {
         kind: TileKind::BrickCol,
         offset_denom: denom,
-        gap_px: [0, 0],
+        gap_px: [gap, gap],
     };
-    // Controlo: exactamente no tecto, passa.
-    let ok = bake(&a, aw, ah, &law(2)).expect("no tecto ainda cabe");
-    assert_eq!(ok.width, MAX_TILE_EDGE_PX);
-    // Um passo acima, recusa em voz alta — e diz o tamanho que teria.
-    assert_eq!(
-        bake(&a, aw, ah, &law(3)),
-        Err(BakeError::TooBig {
-            width: MAX_TILE_EDGE_PX / 2 * 3,
-            height: ah
-        })
+    // O caso do report: 8 colunas de (256 + 512) = 6144 px de largura.
+    let t = bake(&a, aw, ah, &law(512, 8)).expect("tem de ASSAR, nao recusar");
+    assert!(
+        t.width <= MAX_TILE_EDGE_PX && t.height <= MAX_TILE_EDGE_PX,
+        "o ladrilho reduzido nao coube: {}x{}",
+        t.width,
+        t.height
     );
+    assert_eq!(t.cells, [8, 1], "a LEI nao muda com a reducao");
+    // ⭐ E a proporção arte:vão sobrevive — é ela que faz o passo no mundo ficar igual.
+    let cell_w = t.width / 8;
+    let art_w = cell_w - (cell_w * 512 / (256 + 512));
+    assert!(
+        (f64::from(art_w) / f64::from(cell_w) - 256.0 / 768.0).abs() < 0.02,
+        "a proporcao arte:vao mudou na reducao"
+    );
+    // CONTROLO: o que já cabia continua **na resolução nativa** — reduzir sempre seria pagar
+    // qualidade por nada.
+    let ok = bake(&a, aw, ah, &law(0, 4)).expect("cabe");
+    assert_eq!((ok.width, ok.height), (1024, 256));
 }
 
 /// ⭐ **Vão NEGATIVO é a sobreposição** — o *Overlap* do Illustrator — e ela sai de graça da mesma
@@ -306,4 +324,37 @@ fn the_bake_of_a_full_tile_stays_under_the_kill() {
         t.width, t.height, t.cells[1]
     );
     assert!(ms < 8.0, "o assado custou {ms:.3} ms, o kill e' 8");
+}
+
+/// ⚠️⚠️ **A REDUÇÃO não puxa a cor de debaixo do alfa zero.**
+///
+/// Somar RGBA **reto** de texels com alfas diferentes mistura a cor dos transparentes na dos
+/// opacos — a borda de todo PNG com transparência muda de cor. A média é em alfa
+/// **pré-multiplicado**: soma de `cor x alfa`, divisão pela soma dos alfas.
+///
+/// A fixtura contém o fenómeno: metade branca OPACA, metade **preta TRANSPARENTE**. Uma média reta
+/// devolveria cinzento; a certa devolve branco com meia alfa.
+#[test]
+fn the_downscale_does_not_bleed_colour_from_under_zero_alpha() {
+    // 2x1 -> 1x1: um texel branco opaco + um preto transparente.
+    let src = vec![255u8, 255, 255, 255, 0, 0, 0, 0];
+    // Um `gap_px` enorme força a redução; `Grid` mantém uma célula só.
+    let law = TileLaw {
+        kind: TileKind::Grid,
+        offset_denom: 1,
+        gap_px: [MAX_TILE_EDGE_PX as i32 * 2, 0],
+    };
+    let t = bake(&src, 2, 1, &law).expect("assa reduzido");
+    // A arte reduziu para 1x1; o texel dela é o primeiro do ladrilho.
+    let c = texel(&t.rgba, t.width, 0, 0);
+    assert_eq!(
+        [c[0], c[1], c[2]],
+        [255, 255, 255],
+        "a media puxou a cor de debaixo do alfa zero: {c:?}"
+    );
+    assert!(
+        (i32::from(c[3]) - 128).abs() <= 1,
+        "a alfa media devia ser ~128, deu {}",
+        c[3]
+    );
 }

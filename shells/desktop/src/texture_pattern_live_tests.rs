@@ -153,12 +153,14 @@ fn a_shape_that_loses_its_pattern_loses_its_tile() {
     );
 }
 
-/// ⛔ **Um ladrilho que não caberia no atlas é RECUSADO, e a forma volta à `fallback`.**
+/// ⛔⛔ **REPORT DO ENIO (2026-08-27): *"em column o pattern some"*.** Um ladrilho que não caberia
+/// no atlas é **REDUZIDO até caber**, não recusado — e a forma continua a mostrar o padrão.
 ///
-/// A alternativa é o Vello descartar o recurso **em silêncio** (`resolve.rs:296`, e o próprio
-/// shader diz que o caso *"isn't robust"*) — uma forma que some sem nada dizer.
+/// ⚠️ **Este gate afirmava o CONTRÁRIO até hoje** (`..._leaves_no_tile`), e foi ele que apanhou a
+/// mudança de lei quando o assador passou a reduzir. *Um gate que se torna vermelho por causa de uma
+/// cura é um gate a fazer o trabalho dele — ele obriga a dizer, por escrito, que a lei mudou.*
 #[test]
-fn a_tile_too_big_for_the_atlas_leaves_no_tile() {
+fn a_tile_too_big_for_the_atlas_is_scaled_and_still_shows() {
     let db = AssetDb::new();
     let big = ph2d_vec_pattern::MAX_TILE_EDGE_PX / 2;
     let asset = db.insert_image_rgba8(big, 4, vec![0u8; (big as usize) * 4 * 4]);
@@ -168,9 +170,19 @@ fn a_tile_too_big_for_the_atlas_leaves_no_tile() {
         Rgba8::new(1, 2, 3, 255),
     );
     f.kind = TileKind::BrickCol;
-    f.offset_denom = 3; // 3 x (MAX/2) passa do tecto
+    f.offset_denom = 3; // 3 x (MAX/2) passaria do tecto
     let (scene, path) = scene_with(f);
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium);
-    assert!(live.tiles().get(&path).is_none());
+    let tile = live
+        .tiles()
+        .get(&path)
+        .expect("o ladrilho tem de ser REDUZIDO, nao recusado");
+    assert!(
+        tile.tile_px[0] <= ph2d_vec_pattern::MAX_TILE_EDGE_PX
+            && tile.tile_px[1] <= ph2d_vec_pattern::MAX_TILE_EDGE_PX,
+        "o reduzido nao coube: {:?}",
+        tile.tile_px
+    );
+    assert_eq!(tile.cells, [3, 1], "a LEI nao muda com a reducao");
 }

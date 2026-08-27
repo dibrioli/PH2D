@@ -28,6 +28,11 @@ use crate::TileLaw;
 /// inteiro e evictaria tudo o resto. ⛔ Não é um número "por segurança": é o recurso, dito com nome,
 /// e a metade é o que deixa um padrão coexistir com o resto do quadro.
 ///
+/// ⚠️⚠️ **Passar dele NÃO recusa — REDUZ** (report do Enio, 2026-08-27: *"em column, a depender do
+/// valor dos parâmetros o pattern some"*). A 1.ª versão recusava, e a forma voltava à cor de recurso
+/// sem explicação; e o tecto chegava com facilidade absurda porque o **vão** era assado na resolução
+/// da arte. Ver [`bake`].
+///
 /// ⚠️ E é ele que limita o [`TileLaw::offset_denom`] — que por isso **não tem tecto próprio**.
 pub const MAX_TILE_EDGE_PX: u32 = 4096;
 
@@ -36,8 +41,9 @@ pub const MAX_TILE_EDGE_PX: u32 = 4096;
 pub enum BakeError {
     /// Arte de dimensão zero, ou um buffer que não bate com `largura x altura x 4`.
     Empty,
-    /// O ladrilho passaria de [`MAX_TILE_EDGE_PX`]. Carrega as medidas que ele teria — recusar em
-    /// voz alta é a única alternativa a um recurso descartado em silêncio pelo atlas.
+    /// O ladrilho não cabe em [`MAX_TILE_EDGE_PX`] **nem depois de reduzido** — o que exige mais
+    /// células do que um `offset_denom: u8` consegue exprimir (255 células de 1 px cabem). A guarda
+    /// fica porque a única forma de lá chegar seria uma contagem que este tipo não produz.
     TooBig { width: u32, height: u32 },
 }
 
@@ -61,29 +67,46 @@ pub fn bake(art: &[u8], aw: u32, ah: u32, law: &TileLaw) -> Result<Tile, BakeErr
     if aw == 0 || ah == 0 || art.len() != (aw as usize) * (ah as usize) * 4 {
         return Err(BakeError::Empty);
     }
-    let cell = cell_px([aw, ah], law.gap_px);
     let cells = law.cells();
-    let (tw, th) = (
-        u64::from(cell[0]) * u64::from(cells[0]),
-        u64::from(cell[1]) * u64::from(cells[1]),
-    );
-    if tw > u64::from(MAX_TILE_EDGE_PX) || th > u64::from(MAX_TILE_EDGE_PX) {
+    // ⛔⛔ **REPORT DO ENIO (2026-08-27): *"em column, a depender do valor dos parâmetros o pattern
+    // some"*.**
+    //
+    // A 1.ª versão **RECUSAVA** um ladrilho maior que o atlas, e a forma voltava à cor de recurso
+    // sem explicação. E ele estourava com facilidade absurda, porque o **VÃO era assado na
+    // resolução da ARTE** — e vão é espaço VAZIO. Medido: arte de `256 px` a medir 1 unidade, com
+    // `Gap 2` e `Column 1/8`, pedia `6144x768`; a mesma lei em `Grid` pede `768x768`. ⇒ os
+    // reticulados desfasados chegam ao tecto **`n` vezes mais cedo**, e é por isso que o report é
+    // sobre a Column.
+    //
+    // ⇒ o ladrilho passa a ser **REDUZIDO até caber**, nunca recusado. A arte perde resolução (só
+    // quando o artista empurra o vão), e o padrão continua a aparecer — que é a única coisa que o
+    // artista pode julgar. ⚠️ A redução **não muda a lei**: a proporção arte:vão é preservada, e a
+    // `placement` divide pelo `tile_px` do assado, então o passo no mundo fica igual ao bit.
+    let (art_px, gap_px, scale) = fit_to_atlas([aw, ah], law.gap_px, cells);
+    let cell = cell_px(art_px, gap_px);
+    let (tw, th) = (cell[0] * cells[0], cell[1] * cells[1]);
+    if tw > MAX_TILE_EDGE_PX || th > MAX_TILE_EDGE_PX {
+        // Inalcançável com um `offset_denom: u8` (255 células de 1 px cabem), e a guarda fica
+        // porque a única forma de lá chegar seria uma contagem de células que este tipo não exprime.
         return Err(BakeError::TooBig {
-            width: u32::try_from(tw).unwrap_or(u32::MAX),
-            height: u32::try_from(th).unwrap_or(u32::MAX),
+            width: tw,
+            height: th,
         });
     }
-    // Depois da guarda os dois cabem em `u32` por construção (<= MAX_TILE_EDGE_PX).
-    let (tw, th) = (
-        u32::try_from(tw).unwrap_or(MAX_TILE_EDGE_PX),
-        u32::try_from(th).unwrap_or(MAX_TILE_EDGE_PX),
-    );
+    // A arte, já na resolução em que ela entra no ladrilho.
+    let reduced;
+    let (src, sw, sh) = if scale < 1.0 {
+        reduced = downscale(art, aw, ah, art_px[0], art_px[1]);
+        (&reduced[..], art_px[0], art_px[1])
+    } else {
+        (art, aw, ah)
+    };
     let mut rgba = vec![0u8; (tw as usize) * (th as usize) * 4];
     for row in 0..cells[1] {
         for col in 0..cells[0] {
             let s = law.shift_px(cell, col, row);
             let origin = [col * cell[0] + s[0], row * cell[1] + s[1]];
-            blit_wrapped(&mut rgba, [tw, th], art, [aw, ah], origin);
+            blit_wrapped(&mut rgba, [tw, th], src, [sw, sh], origin);
         }
     }
     Ok(Tile {
@@ -156,4 +179,88 @@ fn over(dst: &mut [u8], src: &[u8]) {
     {
         dst[3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
     }
+}
+
+/// **A escala que faz o ladrilho caber no atlas** — e a arte + o vão já reduzidos por ela.
+///
+/// Devolve `(arte_px, vao_px, escala)`, com `escala = 1.0` quando nada precisa de reduzir (o
+/// caminho comum, e o que mantém a grade encostada byte-idêntica).
+///
+/// ⚠️ **A arte tem piso de 1 px.** Uma arte que a redução levasse a zero desapareceria — e um
+/// ladrilho todo transparente é indistinguível de *"a ferramenta parou de funcionar"*.
+fn fit_to_atlas(art: [u32; 2], gap: [i32; 2], cells: [u32; 2]) -> ([u32; 2], [i32; 2], f64) {
+    let cell = cell_px(art, gap);
+    let (tw, th) = (
+        u64::from(cell[0]) * u64::from(cells[0]),
+        u64::from(cell[1]) * u64::from(cells[1]),
+    );
+    let max = u64::from(MAX_TILE_EDGE_PX);
+    if tw <= max && th <= max {
+        return (art, gap, 1.0);
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let s = (max as f64 / tw.max(th) as f64).clamp(0.0, 1.0);
+    let px = |v: u32| {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let out = ((f64::from(v) * s).round() as u32).max(1);
+        out
+    };
+    let gp = |v: i32| {
+        #[allow(clippy::cast_possible_truncation)]
+        let out = (f64::from(v) * s).round() as i32;
+        out
+    };
+    ([px(art[0]), px(art[1])], [gp(gap[0]), gp(gap[1])], s)
+}
+
+/// Reduz `src` para `dw x dh` por **filtro de caixa**.
+///
+/// ⚠️⚠️ **Média em alfa PRÉ-MULTIPLICADA, e isto não é detalhe.** Somar RGBA reto de texels com
+/// alfas diferentes puxa a cor dos transparentes para dentro dos opacos — a borda de todo PNG com
+/// transparência escurece (ou clareia) para a cor que está escondida debaixo do alfa zero. A soma é
+/// de `cor x alfa`, e a divisão é pela soma dos alfas.
+fn downscale(src: &[u8], sw: u32, sh: u32, dw: u32, dh: u32) -> Vec<u8> {
+    let mut out = vec![0u8; (dw as usize) * (dh as usize) * 4];
+    for dy in 0..dh {
+        let (y0, y1) = span(dy, dh, sh);
+        for dx in 0..dw {
+            let (x0, x1) = span(dx, dw, sw);
+            let (mut r, mut g, mut b, mut a, mut n) = (0.0f64, 0.0, 0.0, 0.0, 0.0f64);
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    let o = ((y as usize) * (sw as usize) + x as usize) * 4;
+                    let sa = f64::from(src[o + 3]) / 255.0;
+                    r += f64::from(src[o]) * sa;
+                    g += f64::from(src[o + 1]) * sa;
+                    b += f64::from(src[o + 2]) * sa;
+                    a += sa;
+                    n += 1.0;
+                }
+            }
+            let o = ((dy as usize) * (dw as usize) + dx as usize) * 4;
+            let byte = |v: f64| {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let out = v.round().clamp(0.0, 255.0) as u8;
+                out
+            };
+            if a > 0.0 {
+                out[o] = byte(r / a);
+                out[o + 1] = byte(g / a);
+                out[o + 2] = byte(b / a);
+            }
+            out[o + 3] = byte(if n > 0.0 { a / n * 255.0 } else { 0.0 });
+        }
+    }
+    out
+}
+
+/// A faixa de texels da fonte que o texel `d` de uma dimensão de `dn` cobre numa fonte de `sn`.
+fn span(d: u32, dn: u32, sn: u32) -> (u32, u32) {
+    let lo = (u64::from(d) * u64::from(sn) / u64::from(dn.max(1)))
+        .try_into()
+        .unwrap_or(0u32);
+    let hi = ((u64::from(d) + 1) * u64::from(sn) / u64::from(dn.max(1)))
+        .try_into()
+        .unwrap_or(sn);
+    (lo.min(sn.saturating_sub(1)), hi.clamp(lo + 1, sn))
 }

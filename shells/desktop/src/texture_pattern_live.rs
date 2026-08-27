@@ -83,13 +83,23 @@ impl TexturePatternLive {
                 }
                 continue;
             }
-            let Ok(tile) = ph2d_vec_pattern::bake(&px, aw, ah, &key.law) else {
-                // ⚠️ Recusa do assador (o ladrilho não caberia no atlas do Vello): a forma volta à
-                // `fallback` **em voz alta** — a alternativa é o Vello descartar o recurso em
-                // silêncio, que é o que este caminho existe para impedir.
-                self.tiles.remove(&path.id);
-                self.keys.remove(&path.id);
-                continue;
+            let tile = match ph2d_vec_pattern::bake(&px, aw, ah, &key.law) {
+                Ok(t) => t,
+                Err(e) => {
+                    // ⚠️ **EM VOZ ALTA, e uma vez por lei nova** (o memo só chega aqui quando a
+                    // chave muda). O report do Enio de 2026-08-27 — *"em column o pattern some"* —
+                    // era exactamente esta recusa, calada: a forma voltava à cor de recurso e nada
+                    // dizia porquê. Hoje o assador **reduz** em vez de recusar, e chegar aqui passou
+                    // a ser um caso que um `offset_denom: u8` não consegue produzir.
+                    eprintln!(
+                        "[pattern] o assado da forma {} recusou ({e:?}) - ela vai pintar a cor de \
+                         recurso",
+                        path.id
+                    );
+                    self.tiles.remove(&path.id);
+                    self.keys.remove(&path.id);
+                    continue;
+                }
             };
             let Some(image) = StableImage::from_rgba(Arc::new(tile.rgba), tile.width, tile.height)
             else {

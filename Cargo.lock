@@ -8433,6 +8433,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-guides",
  "ph2d-tokens",
+ "ph2d-vec-pattern",
  "ph2d-vec-scene",
  "ph2d-vector",
 ]

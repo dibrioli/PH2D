@@ -773,9 +773,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   no canvas (um anel que é o corpo dele, não uma marca de selecção).
   **Aberto:** ⚠️⚠️ **a F1 continua PELA METADE:** a física aponta por identidade (renomear um corpo **não** solta a
   junta), a **timeline ainda não** — renomear um objeto animado desliga o binding, e nada na tela explica a diferença.
-  Falta a outra metade do passo 5 (`stable_name_id` da timeline) · ⛔ **o `physics_ecs_c9` segue POR RE-CAPTURAR** desde
-  o snapshot v2, e ⚠️ **ele NÃO corre na varredura impactada** (medido na integração de 26/08: zero menções no log do
-  gate) ⇒ nenhum gate desta jornada o cobre, e ele é o item nº 1 a reprovar a matriz 3-OS no próximo ship ·
+  Falta a outra metade do passo 5 (`stable_name_id` da timeline) · ⭐⭐ **A NOTA DE QUE O `physics_ecs_c9` ESTAVA «POR
+  RE-CAPTURAR» ERA FALSA, e foi medida na integração de 26/08:** ele **não tem baseline fixado em lado nenhum** — o
+  `spike.yml` corre o binário `physics_ecs_c9` nos **três** sistemas, guarda um artefato por OS e o
+  `determinism-compare` faz `sort -u | wc -l` **entre eles**. ⇒ *Não há o que re-capturar: uma mudança de snapshot move
+  os três igualmente e a comparação continua a passar.* O risco real é **outro** — que os três **discordem**, e isso só o
+  CI mede. ⚠️ Ele **não corre na varredura impactada** (zero menções no log do gate), então localmente prova-se só o que
+  se pode: o binário **corre e é estável** na árvore fundida (mesmo hash em 2 de 2 corridas). ⚠️ A `line/components`
+  sabia disto e desenhou para isso — *«dar os mesmos ids em qualquer máquina, senão o `physics_ecs_c9` diverge entre os
+  3 OS»* ([`instantiate.rs`](crates/ph2d-ecs/src/instantiate.rs)) ·
   ⏳ **F4.6** (o `VecInstance` subsumido) e **F4.7** (a lane do `physics_ecs_c9` com mestre+instância) · ⏳ **nada na tela
   MOSTRA que campo está overridado** — o artista sabe pelo comportamento e pelos verbos, não por um sinal · ⛔ **a pose de
   repouso de uma peça DINÂMICA não propaga, e é DECLARADO** (o dono do `Transform` de um corpo dinâmico é o solver

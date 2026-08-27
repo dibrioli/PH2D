@@ -25,6 +25,13 @@ extend-ignore-identifiers-re = [
     # `factores` — pt-PT de «fatores», num doc-comment do `ph2d-field-eval` sobre compor
     # limites (*«encadear misturas pode compor os factores»*). O typos quer o inglês `factors`.
     "^factores$",
+    # `vectores` — a MESMA família (pt-PT de «vetores»), num doc-comment do `ph2d-mesh`
+    # sobre a média de eixos (*«uma média de eixos feita como média de vectores cancela
+    # exactamente onde os dois mais concordam»*). O typos quer o inglês `vectors`.
+    # ⚠️ Este é o QUARTO membro (`excepcional`, `PROJECTO`, `factores`, `vectores`): a doença
+    # não é a palavra, é o repo escrever prosa em pt-PT dentro de um linter de inglês — cada
+    # linha nova aqui é uma que o ship só apanha depois de a linha ter fechado.
+    "^vectores$",
     # mlua + Luau API surface and types
     "luau",
     "mlua",

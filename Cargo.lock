@@ -5796,6 +5796,7 @@ dependencies = [
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
  "ph2d-node-value-pattern",
+ "ph2d-node-value-switch",
  "ph2d-nodegraph",
  "ph2d-paint-gpu",
  "ph2d-painter-brush",

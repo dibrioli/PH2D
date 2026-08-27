@@ -473,8 +473,12 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: dirt::DIRT_INTENSITY,
         label: "Dirt Intensity",
         min: 0.0,
-        max: 4.0,
-        step: 0.01,
+        // ⚠️ **`8` e não `4`, e o número saiu da MEDIÇÃO** (ver a tabela em `glow_dirt_smoke`):
+        // o padrão da máscara só começa a ler-se como mancha por volta de `5` — o decil de cima
+        // do halo dobra ali —, e acima de `8` o ganho é marginal. Um slider que parasse em `4`
+        // punha o ponto útil na ponta do curso.
+        max: 8.0,
+        step: 0.05,
         widget: ParamWidget::Slider,
     },
 ];

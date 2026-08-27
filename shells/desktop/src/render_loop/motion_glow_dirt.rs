@@ -82,10 +82,17 @@ pub(super) fn mask<'a>(r: Resolved, renderer: &'a SpriteRenderer) -> Option<Dirt
 /// fontes e uma máscara esticada na terceira — o modo de falha por-fonte que a célula nomeou,
 /// com as duas rotas indistinguíveis num teste que só usasse imagens individuais.
 ///
+/// ⚠️ **O `uv_rect` é `[u0, v0, u1, v1]` — os dois CANTOS**, que é o que
+/// [`ph2d_render::AtlasRegion::uv`] devolve. Lê-lo como `[x, y, w, h]` foi o defeito da 1.ª
+/// versão desta feature, e ele é invisível em duas das três fontes: `Individual` e
+/// `CookedTexture` devolvem `[0, 0, 1, 1]`, que se lê **igual** nas duas convenções. Só a célula
+/// de atlas as separa.
+///
 /// Um rect degenerado devolve `1` (quadrado), que o enquadramento trata sem `NaN`.
 #[must_use]
 fn image_aspect(uv_rect: [f32; 4], tex_w: u32, tex_h: u32) -> f32 {
-    let (iw, ih) = (uv_rect[2] * tex_w as f32, uv_rect[3] * tex_h as f32);
+    let [u0, v0, u1, v1] = uv_rect;
+    let (iw, ih) = ((u1 - u0) * tex_w as f32, (v1 - v0) * tex_h as f32);
     if ih > 0.0 && iw > 0.0 && (iw / ih).is_finite() {
         iw / ih
     } else {

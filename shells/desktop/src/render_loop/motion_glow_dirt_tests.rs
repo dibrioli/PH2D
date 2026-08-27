@@ -68,15 +68,39 @@ fn the_key_separates_a_whole_sweep_of_choices() {
 /// `CookedTexture` (rect inteiro) o aspecto da textura É o da imagem, então uma implementação
 /// que lesse o da textura passaria as duas e falharia só no atlas — *"funciona com umas imagens
 /// e falha em silêncio com outras"*, literal.
+///
+/// ⚠️ **O rect é DERIVADO de uma [`ph2d_render::AtlasRegion`] real, e é essa a correcção que
+/// interessa.** A 1.ª versão deste gate escrevia `[0.25, 0.5, 512/2048, 256/2048]` à mão, lendo
+/// o rect como `[x, y, w, h]` — a mesma leitura errada que o código fazia —, e por isso ele
+/// passava sobre um defeito que apagava a feature inteira. *Uma fixtura escrita na convenção do
+/// autor concorda com o código do autor.* Derivá-la da função que a PRODUZ é o que impede isso.
 #[test]
 fn an_atlas_cell_reports_its_own_aspect_not_the_shared_sheets() {
-    // O átlas é QUADRADO (2048×2048). Uma célula de 512×256 dentro dele é 2:1.
-    let cell = [0.25, 0.5, 512.0 / 2048.0, 256.0 / 2048.0];
-    let got = super::image_aspect(cell, 2048, 2048);
+    // O átlas é QUADRADO. Uma célula de 512×256 dentro dele é 2:1.
+    const SHEET: u32 = 2048;
+    let cell = ph2d_render::AtlasRegion {
+        x: 512,
+        y: 1024,
+        w: 512,
+        h: 256,
+    }
+    .uv(SHEET);
+    let got = super::image_aspect(cell, SHEET, SHEET);
     assert!(
-        (got - 2.0).abs() < 1e-4,
-        "a celula e' 2:1 e leu {got} — o aspecto veio da FOLHA, nao da imagem"
+        (got - 2.0).abs() < 0.02,
+        "a celula e' 2:1 e leu {got} (rect {cell:?}) — o aspecto veio da FOLHA, nao da imagem"
     );
+    // E uma célula QUADRADA num átlas quadrado le^ 1:1 — o caso desta cena, e o que a
+    // leitura errada dava como 5,26:1.
+    let square = ph2d_render::AtlasRegion {
+        x: 1088,
+        y: 0,
+        w: 256,
+        h: 256,
+    }
+    .uv(8192);
+    let got = super::image_aspect(square, 8192, 8192);
+    assert!((got - 1.0).abs() < 0.02, "celula quadrada leu {got}");
     // E uma textura que é dela própria devolve o aspecto dela.
     assert!((super::image_aspect([0.0, 0.0, 1.0, 1.0], 640, 480) - 4.0 / 3.0).abs() < 1e-4);
     assert!((super::image_aspect([0.0, 0.0, 1.0, 1.0], 256, 256) - 1.0).abs() < 1e-6);
@@ -88,6 +112,8 @@ fn a_degenerate_rect_is_square_never_a_nan() {
         [0.0, 0.0, 0.0, 1.0],
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 0.0],
+        // E um rect INVERTIDO — o que a leitura errada produzia.
+        [0.5, 0.5, 0.25, 0.25],
     ] {
         let a = super::image_aspect(r, 1024, 1024);
         assert_eq!(a, 1.0, "{r:?}");

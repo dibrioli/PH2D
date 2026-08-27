@@ -11,9 +11,12 @@ use super::*;
 fn the_dirt_image_is_mostly_dark_with_bright_patches() {
     let px = dirt_pixels();
     assert_eq!(px.len(), (DIRT_PX * DIRT_PX * 4) as usize);
+    // ⚠️ **Em LINEAR, que é o que o shader vê.** Os bytes estão codificados em sRGB (ver
+    // `dirt_pixels`), então medir `byte/255` mediria a codificação e não a luz.
+    let lin = |b: u8| ph2d_color::srgb::srgb_to_linear_byte(b);
     let lum: Vec<f32> = px
         .chunks_exact(4)
-        .map(|c| (f32::from(c[0]) + f32::from(c[1]) + f32::from(c[2])) / (3.0 * 255.0))
+        .map(|c| (lin(c[0]) + lin(c[1]) + lin(c[2])) / 3.0)
         .collect();
     let dark = lum.iter().filter(|v| **v < 0.1).count();
     let bright = lum.iter().filter(|v| **v > 0.5).count();
@@ -146,5 +149,39 @@ fn the_scene_only_authors_params_the_manifests_declare() {
     assert!(
         checked >= 6,
         "a varredura so' viu {checked} params autorados"
+    );
+}
+
+/// **A IMAGEM É CODIFICADA EM sRGB, E ISSO NÃO É COSMÉTICA.**
+///
+/// ⚠️ **Sem este passo a máscara é quase preta e a feature parece não existir.** O átlas
+/// partilhado é `Rgba8UnormSrgb`, então o amostrador decodifica o byte para linear antes de o
+/// composite o ver: escrever o linear `0,04` como byte cru (`10`) chega ao shader como
+/// **`0,004`** — dez vezes menos. Medido na aplicação real: com bytes crus, o pixel mediano do
+/// halo mudava `1,01×` com o knob no máximo, e o report foi *«não percebi nenhuma mudança»*.
+///
+/// O gate afirma a ida-e-volta: o byte que sai daqui, decodificado como o hardware o decodifica,
+/// tem de devolver o valor LINEAR que a síntese autorou.
+#[test]
+fn the_image_survives_the_srgb_round_trip_of_the_atlas() {
+    let px = dirt_pixels();
+    let lin = |b: u8| ph2d_color::srgb::srgb_to_linear_byte(b);
+    // ⚠️ **O PISO da linha de cima, não um pixel escolhido a dedo** — o `(0,0)` parecia fundo e
+    // é uma mota de pó (o hash do pó é `0` ali). O canal AZUL da 1.ª linha é `a * 0.55`, e o
+    // menor `a` daquela linha é o fundo autorado, `0,04`.
+    let base_blue = (0..DIRT_PX as usize)
+        .map(|x| lin(px[x * 4 + 2]))
+        .fold(f32::INFINITY, f32::min);
+    assert!(
+        (base_blue - 0.04 * 0.55).abs() < 0.004,
+        "o fundo devia voltar a {:.4} em linear e voltou a {base_blue:.4} — os bytes nao estao \
+         codificados em sRGB",
+        0.04 * 0.55
+    );
+    // E o CONTROLE que nomeia o defeito: se os bytes fossem crus, o mesmo pixel leria ~10× menos.
+    let raw_would_be = ph2d_color::srgb::srgb_to_linear_unit(0.04 * 0.55);
+    assert!(
+        raw_would_be < base_blue / 4.0,
+        "o controle nao separa as duas escritas ({raw_would_be:.5} vs {base_blue:.5})"
     );
 }

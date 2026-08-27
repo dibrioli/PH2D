@@ -53,8 +53,16 @@ pub struct DirtMask<'a> {
     pub view: &'a wgpu::TextureView,
     /// A identidade estável desta textura (o `texture_id` da shell). Ver o doc do tipo.
     pub key: u64,
-    /// O sub-rect `[x, y, w, h]` em UV que a imagem ocupa na `view` — a célula do atlas, ou
-    /// `[0, 0, 1, 1]` para uma textura que é dela própria.
+    /// O sub-rect que a imagem ocupa na `view`, na convenção da casa: **`[u0, v0, u1, v1]`** —
+    /// os dois CANTOS, não `[x, y, largura, altura]`.
+    ///
+    /// ⚠️ **Esta linha existe porque a 1.ª versão leu-a ao contrário, e nenhum gate a apanhou.**
+    /// A fonte da convenção é [`crate::AtlasRegion::uv`] (`[(x+½)/s, (y+½)/s, (x+w−½)/s,
+    /// (y+h−½)/s]`), e as OUTRAS duas fontes de textura devolvem `[0, 0, 1, 1]`, que se lê
+    /// **igual** nas duas convenções. ⇒ só a célula de atlas distingue as duas, e um gate escrito
+    /// com rects inventados na convenção errada concorda com o código errado. *Uma fixtura que
+    /// codifica o mesmo mal-entendido que o código não prova nada* — é por isso que o gate desta
+    /// lei passou a DERIVAR o rect de uma `AtlasRegion` real.
     pub uv_rect: [f32; 4],
     /// O aspecto `largura/altura` da IMAGEM (em pixels), não da view: numa célula de atlas os
     /// dois são coisas diferentes, e é o da imagem que decide o enquadramento.
@@ -81,6 +89,15 @@ pub fn scale_offset(uv_rect: [f32; 4], image_aspect: f32, screen_aspect: f32) ->
     {
         return [0.0, 0.0, 0.0, 0.0];
     }
+    // ⚠️ **`[u0, v0, u1, v1]`, os dois CANTOS** — ver o doc de [`DirtMask::uv_rect`]. Ler isto
+    // como `[x, y, w, h]` foi o defeito da 1.ª versão: o `u1` de uma célula de atlas entra como
+    // se fosse uma largura, e a máscara passa a amostrar **fora da célula** — noutra sprite, ou
+    // no vazio preto, que é o sintoma que se vê (*a sujidade não faz nada*).
+    let [u0, v0, u1, v1] = uv_rect;
+    let (rw, rh) = (u1 - u0, v1 - v0);
+    if rw <= 0.0 || rh <= 0.0 || !rw.is_finite() || !rh.is_finite() {
+        return [0.0, 0.0, 0.0, 0.0];
+    }
     // Mais larga que a tela ⇒ encosta em ALTURA e corta a largura; e vice-versa.
     let (sx, sy) = if image_aspect > screen_aspect {
         (screen_aspect / image_aspect, 1.0)
@@ -89,8 +106,7 @@ pub fn scale_offset(uv_rect: [f32; 4], image_aspect: f32, screen_aspect: f32) ->
     };
     let (ox, oy) = ((1.0 - sx) * 0.5, (1.0 - sy) * 0.5);
     // E a composição com o sub-rect da célula, na ordem que a mantém DENTRO dela.
-    let [rx, ry, rw, rh] = uv_rect;
-    [sx * rw, sy * rh, ox * rw + rx, oy * rh + ry]
+    [sx * rw, sy * rh, ox * rw + u0, oy * rh + v0]
 }
 
 /// **A textura de 1×1 PRETA que ocupa o binding quando não há máscara.**

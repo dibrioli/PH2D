@@ -27,12 +27,35 @@ pub(crate) const DIRT_NAME: &str = "Lens Dirt";
 /// O lado da textura de sujidade, em pixels.
 const DIRT_PX: u32 = 256;
 
-/// Quanto a máscara acende, na cena montada. Alto de propósito: o smoke tem de deixar o
-/// padrão gritar, e o artista baixa depois.
-const DIRT_INTENSITY: f32 = 3.0;
+/// **Quanto a máscara acende, na cena montada — MEDIDO, não escolhido.**
+///
+/// A régua é a razão entre o quadro COM e SEM máscara, **por pixel**, restrita aos pixels onde
+/// há halo de facto (`> 0,15` no `game_rt` HDR) — uma percentil global não serve, porque ela é
+/// dominada pelo fundo da tela, onde não há halo nenhum para a sujidade modular:
+///
+/// ```text
+///   Dirt Intensity   p50    p90    p99    max   | >1,25x   >2x   (do halo)
+///        3           1,09   1,58   2,55   3,24  |   18%     5%
+///        4           1,12   1,77   3,06   3,99  |   20%     8%
+///        5           1,15   1,96   3,58   4,74  |   21%    10%
+///        6           1,18   2,15   4,10   5,49  |   22%    11%
+///        8           1,24   2,54   5,13   6,98  |   25%    15%
+/// ```
+///
+/// **`5`** é onde o decil de cima do halo praticamente DOBRA (p90 `1,96`) e um décimo dele passa
+/// de `2×` — que é o ponto em que o padrão deixa de ser uma suspeita e vira uma mancha. Acima
+/// disso o ganho é marginal e o halo começa a estourar.
+const DIRT_INTENSITY: f32 = 5.0;
 
-/// Quantas peças brilhantes o campo tem por lado.
-const FIELD: f32 = 7.0;
+/// Quantas peças brilhantes o campo tem por lado, e o espaçamento delas.
+///
+/// ⚠️ **Poucas e GRANDES, não muitas e pequenas** — medido: com 7×7 peças de `0,16` o halo cobre
+/// 59% do quadro e o padrão da sujidade toca `14%` dele; com 4×4 de `0,45` e o raio a `3,0` o
+/// halo cobre **78%** e o padrão toca `21%`. *Uma máscara de tela só se lê onde há halo*, então
+/// o que a torna legível é a ÁREA do halo, não a quantidade de fontes.
+const FIELD: f32 = 4.0;
+/// O espaçamento do campo — ver [`FIELD`].
+const GAP: f32 = 1.30;
 
 pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_GLOW_DIRT_SMOKE").is_some()
@@ -50,7 +73,7 @@ pub(crate) fn enabled() -> bool {
 /// por isso que ela se soma ao `tint` em vez de multiplicar o resultado.
 fn dirt_pixels() -> Vec<u8> {
     let n = DIRT_PX as usize;
-    let mut lum = vec![0.02_f32; n * n];
+    let mut lum = vec![0.04_f32; n * n];
     // Os borrões: centros, raios e forças escolhidos à mão (uma lista, não um gerador — o
     // padrão tem de ser o MESMO em toda máquina, senão duas fotos do smoke não se comparam).
     const BLOBS: [(f32, f32, f32, f32); 9] = [
@@ -71,9 +94,13 @@ fn dirt_pixels() -> Vec<u8> {
             for (cx, cy, r, k) in BLOBS {
                 let d = ((u - cx).powi(2) + (v - cy).powi(2)).sqrt() / r;
                 if d < 1.0 {
-                    // Queda suave (o quadrado do complemento) — uma borda dura leria como
-                    // um adesivo, não como pó.
-                    a += k * (1.0 - d) * (1.0 - d);
+                    // ⚠️ **Queda PARABÓLICA (`1 − d²`), e o expoente foi MEDIDO.** A 1.ª versão
+                    // usava `(1 − d)²`, cuja média sobre o disco é `k/6`: os borrões cobriam 40%
+                    // da imagem e mesmo assim quase toda essa área era escura, então o halo
+                    // modulado mal se distinguia (p90 subia `1,17×` com o knob no máximo). Com
+                    // `1 − d²` a média é `k/2` — **três vezes** —, e a borda continua macia, que
+                    // é o que impede a mancha de ler como um adesivo.
+                    a += k * (1.0 - d * d);
                 }
             }
             // Dois riscos finos, atravessados: o que uma lente arranhada tem e um campo de
@@ -108,7 +135,14 @@ fn dirt_pixels() -> Vec<u8> {
                 a * (0.55 + 0.45 * t),
             );
             let px = (y * n + x) * 4;
-            let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0) as u8;
+            // ⚠️ **CODIFICA em sRGB, e este passo não é cosmético — sem ele a máscara é
+            // praticamente PRETA.** O átlas partilhado é `Rgba8UnormSrgb`, então o amostrador
+            // DECODIFICA o byte para linear antes de o shader o ver: um `0,04` escrito como byte
+            // cru (`10`) chega ao composite como **`0,004`**, dez vezes menos. Medido: com os
+            // bytes crus, o pixel mediano do halo mudava `1,01×` com o knob no máximo — que é
+            // exactamente *«não percebi nenhuma mudança»*. Os números deste ficheiro são
+            // LINEARES (é assim que se raciocina sobre luz); a conversão é a porta de saída.
+            let q = |v: f32| ph2d_color::srgb::linear_to_srgb_byte(v.clamp(0.0, 1.0));
             out[px] = q(r);
             out[px + 1] = q(g);
             out[px + 2] = q(b);
@@ -141,20 +175,20 @@ fn build(g: &mut Graph) -> Option<NodeId> {
     // `spacing_x`/`spacing_y`, que é um `set_param` **silenciosamente inerte**: a cena montava,
     // o campo saía com o espaçamento de fábrica e nada em lado nenhum dizia porquê. O gate
     // `the_scene_only_authors_params_the_manifests_declare` existe por causa desta linha.
-    g.set_param(grid, "gap_x", 0.62);
-    g.set_param(grid, "gap_y", 0.62);
+    g.set_param(grid, "gap_x", GAP);
+    g.set_param(grid, "gap_y", GAP);
 
     let size = g.add_node("motion.scale");
     g.set_pos(size, Pos { x: 180.0, y: 0.0 });
-    g.set_param(size, "amount", 0.16);
+    g.set_param(size, "amount", 0.45);
     wire(g, grid, size)?;
 
     let glow = g.add_node("fx.glow");
     g.set_pos(glow, Pos { x: 360.0, y: 0.0 });
     g.set_param(glow, "threshold", 0.25);
     g.set_param(glow, "knee", 0.35);
-    g.set_param(glow, "intensity", 2.4);
-    g.set_param(glow, "radius", 1.6);
+    g.set_param(glow, "intensity", 1.2);
+    g.set_param(glow, "radius", 3.0);
     g.set_param(
         glow,
         ph2d_node_fx_glow::dirt::DIRT_INTENSITY,

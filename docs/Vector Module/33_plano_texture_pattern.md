@@ -431,6 +431,36 @@ barra. O assado (W1) tem orçamento próprio: **8 ms** para um ladrilho de 512×
 
 ---
 
+## §6-bis — O ESTADO, em 2026-08-27 (⚠️ audite esta tabela antes de pegar um item)
+
+> *O §5 do `CLAUDE.md` só se edita na integração, então ele acumula trabalho já pago.* Esta tabela é
+> o que a linha `line/Vector` de facto fechou, com o commit ao lado.
+
+| Wave | Estado | O que ficou de fora |
+|---|---|---|
+| **W1** assador | ✅ | — (10/10 mutações mortas; assado medido em `1,047 ms` contra o kill de 8) |
+| **W2** porta de render | ✅ | — (6/6 mutações mortas depois de uma corrigida) |
+| **W3** o dado | ✅ | `VEC_SCENE` **14→15**, `PROJECT_SCHEMA` **99→100**; ⚠️ **RECONTE na integração** |
+| **W4** fonte 1 (imagem) | ✅ | ⛔ instância de Motion pinta a `fallback` (fronteira declarada, com gate) |
+| **W4b** persistência | ✅ | — |
+| **W5** painel | ⚠️ **METADE**: o 5.º chip vive, a fileira reflui, a 4.ª condição está fechada (o chip abre o diálogo) | ⏳ **a secção *Pattern* com os knobs** — Tile type · Offset · Size · Gap · Angle · Repeat. Hoje um padrão nasce e **não se afina** |
+| **W6** alças na tela | ⏳ | mover · escalar · rodar, espelhando o `GradHandle` |
+| **W7** fonte 2 (forma) | ⏳ | o modelo do Figma; hoje `PatternSource::Shape` existe no dado e **não resolve** |
+| **W8** smoke | ✅ | `PH2D_BUILD_SMOKE=76` |
+
+⭐ **A ordem seguinte é W5(resto) → W6 → W7**: sem a secção, o artista vê o padrão e não o afina —
+é o maior buraco entre o que existe e um produto.
+
+⚠️ **Dois achados que mudaram o desenho a meio, e que a próxima janela herda:**
+
+1. **A fileira de chips reimplementava a aritmética de largura à mão.** Com 4 ninguém notava; o 5.º
+   fez morder. Hoje ela passa pelo `paint_segmented_group_adaptive`, que **reflui** — os quatro
+   chips antigos voltaram aos `60,0 px` **de antes** e o quinto ganhou uma linha inteira de `252`.
+   ⇒ a restrição que ia obrigar o rótulo `"Tile"` dissolveu-se, e o nome de produto cabe.
+2. **A persistência mudou a AUTORIA.** O `insert_image_bytes` cunha o id do **ficheiro**; só o
+   `insert_image_rgba8` (o id dos **pixels**) volta igual depois de um save. Com o primeiro, reabrir
+   o projecto daria um id novo e a fonte apontaria para o nada — sem erro nenhum.
+
 ## §7 — O que este plano NÃO faz, de propósito
 
 - ⛔ **Padrão VECTORIAL ladrilhado** (resolução infinita ao ampliar). É irmão do `PathEffect::Hatch`

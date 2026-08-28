@@ -175,6 +175,7 @@ fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
     state::set_current_fill(Some(FillKind::Pattern), None);
     state::set_current_texture_pattern(Some(row(0)));
     click_reaches_bus(ids::VECTOR_TEXPAT_SOURCE, "o botao Source");
+    click_reaches_bus(ids::VECTOR_TEXPAT_PICK_SHAPE, "o botao Use Shape");
     for (i, what) in [
         (0, "o chip Grid"),
         (1, "o chip Brick"),
@@ -271,6 +272,7 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
     // E o que o Clamp LE^ continua lá — senão o modo ficaria sem controlo nenhum.
     for (id, what) in [
         (ids::VECTOR_TEXPAT_SOURCE, "a arte"),
+        (ids::VECTOR_TEXPAT_PICK_SHAPE, "a forma como arte"),
         (ids::VECTOR_TEXPAT_ANGLE, "o angulo"),
         (ids::VECTOR_TEXPAT_MODE_TILE, "os modos"),
     ] {

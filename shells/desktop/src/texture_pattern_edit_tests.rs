@@ -190,3 +190,60 @@ fn switching_modes_never_touches_the_authored_law() {
         "e o ultimo modo tem de valer"
     );
 }
+
+/// ⭐⭐ **A PORTA POR-ID do Picker** (plano 33, W7) — ela resolve por identidade e **não** pela
+/// seleção, e é essa separação que faz o gesto de duas mãos funcionar.
+///
+/// ⚠️ O alvo é capturado no *arm*; o clique seguinte cai noutra forma, e ela passa a ser a
+/// selecionada. Ler a seleção aqui apontaria o padrão para a forma errada — o *"escolhendo a si
+/// mesmo"* que o doc do `vec_pick` nomeia como a razão de o Picker existir.
+#[test]
+fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
+    // ⚠️ A fonte inicial aponta para um id que NÃO pode nascer nesta cena: a 1.ª redacção usava o
+    // `fill()` partilhado (que aponta para `Shape(1)`) e a segunda forma nascia **com o id 1** — a
+    // escrita virava um no-op e o gate media a colisão da fixtura, não a porta.
+    let mut inicial = fill();
+    inicial.source = PatternSource::Shape(999);
+    let (mut scene, _pen, alvo) = scene_with(inicial);
+    // Uma SEGUNDA forma, que é quem estaria selecionada depois do clique.
+    let outra = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(Paint::solid(Rgba8::new(9, 9, 9, 255))),
+        ..VecPath::default()
+    });
+    let mut h = ph2d_vec_edit::History::default();
+    assert!(set_source(
+        &mut scene,
+        &mut h,
+        alvo,
+        PatternSource::Shape(outra)
+    ));
+    assert_eq!(pattern_of(&scene, alvo).source, PatternSource::Shape(outra));
+    assert_eq!(h.undo_len(), 1, "escrever a fonte e' UM passo de undo");
+
+    // ⚠️ O MESMO valor não grava passo — senão re-armar o picker e escolher a mesma forma encheria
+    // a pilha de undo com passos que não mudam nada.
+    assert!(!set_source(
+        &mut scene,
+        &mut h,
+        alvo,
+        PatternSource::Shape(outra)
+    ));
+    assert_eq!(h.undo_len(), 1, "o mesmo valor gravou um passo espurio");
+
+    // ⚠️ E uma forma SEM padrão não é tocada: o picker escreve numa forma que TEM um.
+    assert!(!set_source(
+        &mut scene,
+        &mut h,
+        outra,
+        PatternSource::Shape(alvo)
+    ));
+    assert_eq!(h.undo_len(), 1);
+    assert!(matches!(
+        scene.path(outra).and_then(|p| p.fill.as_ref()),
+        Some(Paint::Solid(_))
+    ));
+}

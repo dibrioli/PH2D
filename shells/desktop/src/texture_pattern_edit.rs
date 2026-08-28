@@ -93,6 +93,35 @@ fn with_longer_side(size: [f64; 2], longer: f64) -> [f64; 2] {
     [size[0] * s, size[1] * s]
 }
 
+/// **Troca a ARTE do padrão da forma `host`** — a porta do Picker (W7), que resolve por ID e não
+/// pela seleção.
+///
+/// ⚠️ Existe ao lado do [`apply`] porque o alvo é **capturado no arm** do pick: o clique seguinte
+/// cai noutra forma, e ela passa a ser a selecionada. Ler a seleção aqui apontaria o padrão para a
+/// forma errada — exactamente o *"escolhendo a si mesmo"* que o Picker foi criado para eliminar.
+pub(crate) fn set_source(
+    scene: &mut VecScene,
+    history: &mut ph2d_vec_edit::History,
+    host: ph2d_vec_scene::VecPathId,
+    source: PatternSource,
+) -> bool {
+    let Some(Paint::Pattern(cur)) = scene.path(host).and_then(|p| p.fill.as_ref()) else {
+        return false;
+    };
+    if cur.source == source {
+        return false;
+    }
+    let mut next = (**cur).clone();
+    next.source = source;
+    let pre = scene.clone();
+    if let Some(path) = scene.path_mut(host) {
+        path.fill = Some(Paint::Pattern(Box::new(next)));
+        history.push_undo(pre);
+        return true;
+    }
+    false
+}
+
 /// Aplica `cmd` ao padrão da forma selecionada. No-op silencioso quando não há forma, quando ela
 /// não tem padrão, ou quando o valor já era esse.
 pub(crate) fn apply(

@@ -2329,6 +2329,18 @@ impl App {
                     }
                     swapped
                 }),
+            // ⭐ **A ARTE de um padrão** (plano 33 W7): a fonte é a forma COM o padrão, o clicado
+            // é a forma que passa a ser o desenho que se repete. ⚠️ O `guide == pick.source()` logo
+            // acima já barra o ciclo — e a `source_shape` do memo barra-o outra vez, porque o
+            // documento pode chegar lá por outro caminho (um save, um replay).
+            crate::vec_pick::PathPick::TexturePatternArt(host) => {
+                crate::texture_pattern_edit::set_source(
+                    &mut gfx.vec_scene,
+                    &mut self.vec_history,
+                    host,
+                    ph2d_vec_scene::PatternSource::Shape(guide),
+                )
+            }
             // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
             crate::vec_pick::PathPick::WidgetBind(widget) => {
                 crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec_entities, widget, guide)

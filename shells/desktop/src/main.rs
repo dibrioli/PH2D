@@ -1060,6 +1060,7 @@ impl App {
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
             texture_pattern_live: crate::texture_pattern_live::TexturePatternLive::default(),
+            texture_pattern_scratch: None,
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),
             vec_offset_mirrored: None,

@@ -1431,6 +1431,9 @@ pub(crate) struct App {
     pub(crate) fx_live: crate::fx_live::FxLive,
     /// **Os LADRILHOS de padrão de TEXTURA deste quadro** (plano 33, W4) — assados e memoizados.
     pub(crate) texture_pattern_live: crate::texture_pattern_live::TexturePatternLive,
+    /// O passe dedicado que rasteriza uma forma-FONTE de padrão isolada (plano 33, W7). Criado
+    /// sob demanda no 1.º padrão-de-forma da sessão; um projecto só com imagens nunca o cria.
+    pub(crate) texture_pattern_scratch: Option<ph2d_render::VelloPass>,
     /// A silhueta resolvida das formas TRAÇADAS que carregam filtro — a união
     /// `preenchimento ∪ traço` que o campo de distância dos FX consome. Ver [`crate::fx_silhouette`].
     pub(crate) fx_silhouette: crate::fx_silhouette::FxSilhouette,

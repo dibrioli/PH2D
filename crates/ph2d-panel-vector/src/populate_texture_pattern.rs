@@ -26,6 +26,7 @@ const TEXPAT_DENOM_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do docum
 /// irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
 pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
     button(store, ids::VECTOR_TEXPAT_SOURCE);
+    button(store, ids::VECTOR_TEXPAT_PICK_SHAPE);
     for i in 0..4 {
         button(store, crate::paint_sections::texture_pattern::tile_id(i));
     }

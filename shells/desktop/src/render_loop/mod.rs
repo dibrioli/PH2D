@@ -3288,6 +3288,7 @@ impl crate::App {
             // de undo para um gesto.
             let mut pending_texpat: Option<crate::texture_pattern_edit::TexPatCmd> = None;
             let mut pending_texpat_source = false;
+            let mut pending_texpat_pick = false;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
             let mut pending_vec_grad_add = false;
@@ -3710,6 +3711,10 @@ impl crate::App {
                                     Some(crate::texture_pattern_edit::TexPatCmd::Mode(i));
                             } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SOURCE {
                                 pending_texpat_source = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_PICK_SHAPE {
+                                // Picker (W7): arma; a FONTE (a forma com o padrão) é capturada no
+                                // drain, porque o clique seguinte muda a seleção.
+                                pending_texpat_pick = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
                                 pending_vec_grad_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
@@ -5626,6 +5631,13 @@ impl crate::App {
             }
             // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
             // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
+            if pending_texpat_pick && let Some(host) = self.vec_pen.selected() {
+                self.vec_path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host));
+                eprintln!(
+                    "[ph2d-vec] texture pattern: pick armado -- clique na FORMA que vai ser a arte \
+                     (vazio = desiste)"
+                );
+            }
             if pending_pp_pick && let Some(motif) = self.vec_pen.selected() {
                 self.vec_path_pick = Some(crate::vec_pick::PathPick::PatternMotif(motif));
                 eprintln!(
@@ -9132,10 +9144,26 @@ impl crate::App {
             //
             // ⚠️ Usa o `asset_db` que JÁ está desestruturado neste escopo: o empréstimo MUTÁVEL do
             // `gfx` abre muito acima e vive até ao fim do quadro.
+            // ⭐ O assador de FORMA (W7) entra INJECTADO: ele é render + readback, e cablá-lo no
+            // memo poria uma `GpuContext` na assinatura e tornaria todo gate dele dependente de uma
+            // placa. Aqui ele é a porta única `motion_object_bake::bake_rgba`.
+            let mut bake_shape = |id| {
+                crate::motion_object_bake::bake_rgba(
+                    &mut self.texture_pattern_scratch,
+                    vec_scene,
+                    &vec_xf,
+                    &vec_live,
+                    id,
+                    surface.gpu(),
+                    surface.format(),
+                )
+                .map(|(rgba, w, h, _)| (w, h, rgba))
+            };
             self.texture_pattern_live.recook(
                 vec_scene,
                 asset_db,
                 ph2d_editor::image_quality_for(hero.project.image_filter),
+                &mut bake_shape,
             );
             self.fx_live.recook(
                 vec_scene,

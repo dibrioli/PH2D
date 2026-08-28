@@ -414,8 +414,12 @@ fn bake_one(
 /// reimplementation. Returns `(rgba, wpx, hpx, world_size)`. Touches no sprite
 /// renderer (no upload). The readback is slow, but it runs only on a content
 /// change (cached by the caller), so steady state pays nothing.
+///
+/// ⭐ **Público na crate desde 2026-08-27** (plano 33, W7): o *Texture Pattern* usa uma FORMA do
+/// documento como arte, e assar uma forma em pixels é **isto**. O doc acima já dizia a lei — *"ONE
+/// door, never a reimplementation"* —, e um segundo assador seria a segunda porta que ela proíbe.
 #[allow(clippy::too_many_arguments)]
-fn bake_rgba(
+pub(crate) fn bake_rgba(
     scratch: &mut Option<VelloPass>,
     scene: &VecScene,
     xforms: &VecXforms,

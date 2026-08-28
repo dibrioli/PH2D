@@ -23,6 +23,13 @@ pub const VECTOR_SECTION_TEXPAT: NodeId = hash_node_id("vector.section.texpat");
 /// **Source…** — troca a ARTE do padrão (abre o diálogo de ficheiro).
 pub const VECTOR_TEXPAT_SOURCE: NodeId = hash_node_id("vector.texpat.source");
 
+/// **Use Shape** — o gesto de DUAS MÃOS (plano 33, W7): com a forma-do-padrão selecionada, apertar
+/// isto arma o pick, e o clique seguinte no canvas escolhe a forma que passa a ser a ARTE.
+///
+/// ⭐ É o modelo do Figma (*"the pattern's source references another object on the canvas"*), e o
+/// padrão fica **VIVO**: editar a forma-fonte re-assa o ladrilho em toda forma que a usa.
+pub const VECTOR_TEXPAT_PICK_SHAPE: NodeId = hash_node_id("vector.texpat.pick_shape");
+
 // ── O RETICULADO: como as cópias se arrumam ──────────────────────────────────────
 /// **Grid** — cada cópia debaixo da de cima. O ponto neutro.
 pub const VECTOR_TEXPAT_TILE_GRID: NodeId = hash_node_id("vector.texpat.tile.grid");

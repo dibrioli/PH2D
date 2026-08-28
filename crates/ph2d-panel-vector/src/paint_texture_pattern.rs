@@ -40,6 +40,9 @@ impl BodyCtx<'_> {
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
         y = self.action_button(ids::VECTOR_TEXPAT_SOURCE, "Source...", y);
+        // ⭐ **A ARTE pode ser uma FORMA do documento** (W7) — o modelo do Figma. O gesto é o de
+        // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
+        y = self.action_button(ids::VECTOR_TEXPAT_PICK_SHAPE, "Use Shape...", y);
 
         // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
         //

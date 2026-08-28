@@ -8,7 +8,7 @@
 //! ⚠️ E ela tem um quadrante **transparente**: um padrão só-opaco esconde a lei do alfa, que é onde
 //! a família do Bug #4 do Motion vive.
 //!
-//! As seis formas, da esquerda para a direita:
+//! As seis formas da fileira de cima, da esquerda para a direita (e uma **sétima** em baixo):
 //!
 //! 1. **Grade** (o controlo, e o HERÓI já selecionado) — a repetição simples.
 //! 2. **Tijolo 1/2** — as linhas desfasam-se meia célula. O ladrilho assado tem **duas** linhas.
@@ -20,6 +20,10 @@
 //!    pedra em que o `fill_multipoint` tropeçou, e o `VectorScene::fill_path` ainda tem o defeito.
 //! 6. **Esticada** — a MESMA grade numa forma escalada só num eixo: o padrão **esmaga com ela**, ao
 //!    contrário da caneta do traço (bug #27). As duas leis estão certas e são diferentes.
+//! 7. ⭐⭐ **Em baixo: a arte é uma FORMA do documento** (W7) — o triângulo ao lado dela. Mexer nos
+//!    nós do triângulo re-assa o ladrilho **na hora**, que é o *"pattern fills are dynamic"* do
+//!    Figma. ⚠️ O motivo fica **visível de propósito**: escondê-lo é o gesto do olho na Hierarquia,
+//!    e uma fonte invisível por omissão seria uma forma que o artista não sabe que tem.
 
 use ph2d_vec_pattern::{PatternMode, TileKind};
 use ph2d_vec_scene::{
@@ -141,6 +145,28 @@ fn build(app: &mut crate::App) {
         ..VecPath::default()
     });
 
+    // ⭐⭐ 7 — a ARTE é uma FORMA DO DOCUMENTO (W7, o modelo do Figma). O motivo fica ao lado,
+    // visível e editável: mexer nos nós dele re-assa o ladrilho na hora.
+    let motivo = scene.push_path(VecPath {
+        verts: [[x(5) - 0.4, -3.5], [x(5) + 0.4, -3.5], [x(5), -2.6]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(Paint::Solid(Rgba8::new(90, 190, 220, 255))),
+        ..VecPath::default()
+    });
+    scene.push_path(VecPath {
+        verts: rect(x(4), -3.0, half),
+        closed: true,
+        fill: Some(pattern(
+            PatternSource::Shape(motivo),
+            TileKind::BrickRow,
+            PatternMode::Tile,
+            [70, 90, 110],
+        )),
+        ..VecPath::default()
+    });
+
     // 6 — a mesma grade numa forma ESTICADA só em x. O padrão esmaga COM ela.
     let mut wide = VecPath {
         verts: rect(x(5) + half, 0.0, half),
@@ -174,6 +200,8 @@ fn select_hero(app: &mut crate::App) {
          repeticao. (5) BURACO (EvenOdd): o miolo tem de ficar VAZIO - se o padrao o pintar, a \
          regra de preenchimento nao viajou. (6) ESTICADA: a mesma grade numa forma escalada so' em \
          x - o padrao ESMAGA com ela, ao contrario do traco. A arte tem um quadrante TRANSPARENTE \
-         (canto inferior direito de cada copia): ele tem de deixar ver o fundo, nao pintar vermelho."
+         (canto inferior direito de cada copia): ele tem de deixar ver o fundo, nao pintar vermelho. \
+         ⭐ E EM BAIXO: um quadrado cuja ARTE e' o TRIANGULO ao lado dele (uma forma do documento). \
+         Mexa nos nos do triangulo com a ferramenta Node -- o padrao tem de mudar NA HORA."
     );
 }

@@ -83,3 +83,50 @@ fn a_handle_drag_opens_and_closes_exactly_one_undo_step() {
         "o release da alca de padrao nao FECHA o passo de undo"
     );
 }
+
+/// ⭐⭐ **O PICKER DA ARTE-FORMA está fiado** (plano 33, W7) — o gesto de duas mãos do Figma.
+///
+/// ⚠️ **A fonte é CAPTURADA no arm**, e é essa a razão de existir do picker: o clique seguinte cai
+/// noutra forma, e ela passaria a ser a selecionada. Ler a seleção na hora de resolver apontaria o
+/// padrão para a forma errada — o *"escolhendo a si mesmo"* que o doc do `vec_pick` nomeia.
+#[test]
+fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
+    let render = code("render_loop/mod.rs");
+    assert!(
+        render.contains("VECTOR_TEXPAT_PICK_SHAPE"),
+        "o botao Use Shape nao e' reconhecido no despacho"
+    );
+    assert!(
+        render.contains("PathPick::TexturePatternArt(host)"),
+        "o pick da arte-forma nao e' ARMADO com a fonte capturada"
+    );
+    let d = code("input_dispatch.rs");
+    assert!(
+        d.contains("PathPick::TexturePatternArt(host) =>"),
+        "o clique no canvas nao RESOLVE o pick da arte-forma"
+    );
+    assert!(
+        d.contains("texture_pattern_edit::set_source("),
+        "o pick resolvido nao escreve a fonte pela porta por-ID"
+    );
+    // ⚠️ E a porta por-ID tem de existir SEPARADA da que lê a seleção — é essa separação que impede
+    // o padrão de apontar para a forma que o clique acabou de seleccionar.
+    assert!(
+        code("texture_pattern_edit.rs").contains("pub(crate) fn set_source("),
+        "a porta por-ID sumiu; o picker voltaria a ler a selecao"
+    );
+    // ⚠️⚠️ **E o ARGUMENTO é o `host` CAPTURADO, nunca o `guide` clicado.**
+    //
+    // Esta linha existe porque uma prova de mutação não a alcançou: trocar `host` por `guide`
+    // compila, inverte o gesto inteiro (o padrão passa a viver na forma que se clicou, e a arte a
+    // ser a que estava selecionada) — e **nenhum** gate de comportamento a via, porque a shell não
+    // é alcançável de um teste. *Uma afirmação que só um gate de fonte alcança precisa desse gate.*
+    let arm = d
+        .find("PathPick::TexturePatternArt(host) =>")
+        .expect("o braco existe");
+    let corpo = &d[arm..arm + 320];
+    assert!(
+        corpo.contains("set_source(") && corpo.contains("host,"),
+        "o picker escreve numa forma que nao e' a CAPTURADA - o gesto de duas maos inverte-se"
+    );
+}

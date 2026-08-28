@@ -223,6 +223,10 @@ pub struct ExtractReport {
     pub rescue_mutual: (usize, usize),
     /// ⭐⭐⭐ Ver [`crate::walk::WalkStats::rescue_offset`].
     pub rescue_offset: [usize; 4],
+    /// ⭐⭐⭐ `(sem porta nenhuma, destas com a gémea degenerada, com a face de cá degenerada)`.
+    pub rescue_no_port: (usize, usize, usize),
+    /// ⭐⭐⭐ `(destas, quantas num CANTO da gémea, quantas com a gémea a ter outras portas)`.
+    pub rescue_no_port_where: (usize, usize),
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
@@ -370,6 +374,12 @@ pub fn extract(
         rescue_ambiguous: ws.rescue_ambiguous,
         rescue_mutual: (ws.rescue_mutual, ws.rescue_not_mutual),
         rescue_offset: ws.rescue_offset,
+        rescue_no_port: (
+            ws.rescue_no_port,
+            ws.rescue_no_port_flat,
+            ws.rescue_no_port_here_flat,
+        ),
+        rescue_no_port_where: (ws.rescue_no_port_corner, ws.rescue_no_port_face_has_others),
         orphan_on_corner: ws.orphan_on_corner,
         orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,

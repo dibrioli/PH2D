@@ -79,6 +79,16 @@ pub(crate) struct WalkStats {
     /// ⭐⭐⭐ Das que ficaram sem chave, em que cardinal RELATIVO ao `d2` existe porta —
     /// `+0` e `+2` são as duas convenções; `+1`/`+3` seriam um quarto de volta de erro.
     pub rescue_offset: [usize; 4],
+    /// ⭐⭐⭐ Órfãs cujo ponto transportado **não tem porta nenhuma** na gémea.
+    pub rescue_no_port: usize,
+    /// … destas, quantas com a **gémea** degenerada no domínio (`face_sign == 0`).
+    pub rescue_no_port_flat: usize,
+    /// … e quantas com a face **de cá** degenerada.
+    pub rescue_no_port_here_flat: usize,
+    /// … e quantas caem num **canto** da gémea (nó de vértice, que nasce pelo leque).
+    pub rescue_no_port_corner: usize,
+    /// … e em quantas a gémea **tem** portas noutros pontos.
+    pub rescue_no_port_face_has_others: usize,
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um

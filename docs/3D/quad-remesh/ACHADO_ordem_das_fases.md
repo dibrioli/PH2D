@@ -2573,3 +2573,51 @@ O `+2` é sempre `0` (este ramo só corre quando ele falhou), e os `+1`/`+3` sã
 - ⛔ A maior das duas é da **fase 3 (a emissão das saídas)**, não da 4 (o passeio) — outro
   ficheiro, outra pergunta.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.32 — A população de EMISSÃO está caracterizada: são **todas** cantos da gémea
+
+A §23.31 repartiu o resto em duas populações e disse que a maior é de **emissão**. Duas
+medições fecham-na.
+
+#### 1. ⛔ A gémea não é degenerada — a 1.ª hipótese cai
+
+A emissão dá portas aos **dois** lados de um nó de aresta, *mas só se o `sigma` daquele
+lado não for zero* ⇒ a hipótese óbvia é a gémea ser degenerada no domínio.
+
+| peça | sem porta nenhuma | gémea degenerada | face de cá degenerada |
+|---|---|---|---|
+| `sculpt_wrinkled` | `1` | **`0`** | **`0`** |
+| `sculpt_hooked` | `4` | **`0`** | **`0`** |
+| `sculpt_eared` | `1` | **`0`** | **`0`** |
+
+*(E os totais confirmam a repartição da §23.31: `1`/`4`/`1`.)*
+
+#### 2. ⭐⭐⭐ São **todas** cantos — `1/1`, `4/4`, `1/1`
+
+| peça | sem porta | **num CANTO da gémea** | gémea com portas noutros pontos |
+|---|---|---|---|
+| `sculpt_wrinkled` | `1` | **`1`** | `1` |
+| `sculpt_hooked` | `4` | **`4`** | **`0`** |
+| `sculpt_eared` | `1` | **`1`** | **`0`** |
+
+⇒ **a restrição do arco empurra o cruzamento para cima de um VÉRTICE da malha.** E ali o
+caminho da aresta não emite nada por construção — o `by_vertex_hit` salta-o de propósito,
+porque um ponto que é vértice **não é** um nó de aresta: ele é um nó de **vértice**, e as
+portas dele nascem pelo **leque**.
+
+⚠️ E nas duas peças piores a face gémea **não tem porta nenhuma** (`0` noutros pontos) —
+ou seja, o leque daquele vértice não emitiu para ali.
+
+#### ⇒ O que fica
+
+- ⭐ A população maior está **totalmente caracterizada**, sem resíduo: `6` de `6` são
+  cantos, e a hipótese da degenerescência caiu com `0` de `6`.
+- ⛔ A cura é na **emissão do leque de um vértice** (`ports.rs`, `Site::Vertex` +
+  `fan::seed_corners`), não no passeio nem no emparelhamento. *É a terceira fase, e é a
+  primeira vez que esta investigação sai da quarta.*
+- ⚠️ **É um caso que as amarras tornam comum e que não é delas:** um cruzamento exactamente
+  sobre um vértice é legal, e a extracção trata-o mal — sem amarras ele quase nunca acontece
+  (`0` órfãs no controlo), e por isso ninguém o tinha visto.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

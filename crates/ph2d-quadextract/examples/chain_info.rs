@@ -1158,6 +1158,14 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
                 "  ⭐⭐⭐ das SEM CHAVE, em que cardinal RELATIVO ao d2 ha' porta: +0={} +1={} +2={} +3={}",
                 e.rescue_offset[0], e.rescue_offset[1], e.rescue_offset[2], e.rescue_offset[3]
             );
+            println!(
+                "  ⭐⭐⭐ SEM PORTA NENHUMA ali: {} · destas, gemea DEGENERADA {} · face de ca' degenerada {}",
+                e.rescue_no_port.0, e.rescue_no_port.1, e.rescue_no_port.2
+            );
+            println!(
+                "  ⭐⭐⭐ ... destas, {} caem num CANTO da gemea · {} com a gemea a ter portas NOUTROS pontos",
+                e.rescue_no_port_where.0, e.rescue_no_port_where.1
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

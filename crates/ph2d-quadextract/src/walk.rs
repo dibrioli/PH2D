@@ -555,6 +555,7 @@ fn trace_one(
                                 // `+1`/`+3`, a direcção transportada está a **um quarto de
                                 // volta** do que devia — que é outro defeito, com outra
                                 // cura, e não mais uma convenção.
+                                let mut any = false;
                                 for k in 0u8..4 {
                                     if ports
                                         .by_key
@@ -562,6 +563,42 @@ fn trace_one(
                                         .is_some_and(|&j| j != id)
                                     {
                                         st.rescue_offset[k as usize] += 1;
+                                        any = true;
+                                    }
+                                }
+                                // ⭐⭐⭐ **AS QUE NÃO TÊM PORTA NENHUMA ALI** — a população
+                                // que a §23.31 mostrou ser de EMISSÃO e não de
+                                // emparelhamento. A emissão dá portas aos dois lados de um
+                                // nó de aresta, **mas só se o `sigma` daquele lado não for
+                                // zero** ⇒ a 1.ª hipótese é a gémea ser **degenerada** no
+                                // domínio. *Se não for, a cura está noutro sítio.*
+                                if !any {
+                                    st.rescue_no_port += 1;
+                                    if face_sign(topo, g as usize) == 0 {
+                                        st.rescue_no_port_flat += 1;
+                                    }
+                                    if face_sign(topo, face) == 0 {
+                                        st.rescue_no_port_here_flat += 1;
+                                    }
+                                    // ⭐⭐⭐ **O PONTO É UM CANTO da gémea?** Um nó sobre um
+                                    // VÉRTICE não nasce pelo caminho da aresta (o
+                                    // `by_vertex_hit` salta-o) — ele nasce pelo **leque**,
+                                    // e se o leque daquele vértice não tiver semente as
+                                    // portas dele não existem em face nenhuma.
+                                    if topo.uv[g as usize].contains(&t2) {
+                                        st.rescue_no_port_corner += 1;
+                                    }
+                                    // ⭐ E há porta em ALGUM ponto daquela face? *Separa «a
+                                    // face não tem portas» de «não tem NESTE ponto».*
+                                    if ports
+                                        .by_key
+                                        .range(
+                                            (g, i64::MIN, i64::MIN, 0)..=(g, i64::MAX, i64::MAX, 3),
+                                        )
+                                        .next()
+                                        .is_some()
+                                    {
+                                        st.rescue_no_port_face_has_others += 1;
                                     }
                                 }
                             }

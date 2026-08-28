@@ -192,6 +192,31 @@ pub(crate) fn t_at(area: EditorRect, p: [f32; 2]) -> (f32, f32) {
     )
 }
 
+/// ⭐⭐⭐ **O CURSOR que a costura debaixo do ponteiro pede** (W93, report do Enio) — `None` quando
+/// não há costura ali.
+///
+/// ⚠️ **Ele sai do MESMO [`seam_grab`] que o gesto usa**, e essa é a lei que o divisor do grafo do
+/// Motion já escreve ao lado do dele: *o cursor e o gesto leem a mesma fonte, senão discordam sobre
+/// onde a faixa está* — e o defeito seria a seta a aparecer um pixel ao lado de onde o arrasto
+/// pega, que se lê como *«às vezes não agarra»*.
+///
+/// ⭐ **No cruzamento é o `Move`**: ali as duas costuras vão juntas, e uma seta de um eixo só
+/// prometeria metade do gesto.
+pub(crate) fn seam_cursor(
+    area: EditorRect,
+    split: Split,
+    p: [f32; 2],
+) -> Option<winit::window::CursorIcon> {
+    use winit::window::CursorIcon;
+    match seam_grab(area, split, p)? {
+        (true, true) => Some(CursorIcon::Move),
+        // ⚠️ A seta é PERPENDICULAR à linha: uma costura vertical move-se na horizontal.
+        (true, false) => Some(CursorIcon::EwResize),
+        (false, true) => Some(CursorIcon::NsResize),
+        (false, false) => None,
+    }
+}
+
 /// ⭐ **Qual viewport contém este ponto** — a pergunta que o ponteiro faz.
 ///
 /// ⚠️ **Toma uma SEQUÊNCIA e não os [`Rects`] de propósito:** quem pergunta em tempo de desenho tem

@@ -1522,7 +1522,9 @@ impl App {
     /// CursorMoved (winit dedups the icon). Priority: an armed colour-picker
     /// eyedropper wins (a crosshair "target"), else the Motion graph's split
     /// divider shows a double-arrow resize cursor (`NsResize` ↕ for a horizontal
-    /// divider, `EwResize` ↔ for a vertical one), else a timeline grab band
+    /// divider, `EwResize` ↔ for a vertical one), else the 3D canvas split seam
+    /// (same law, plus `Move` on the crossing where both seams travel together),
+    /// else a timeline grab band
     /// (panel edge, label splitter, graph-height grip), else the default arrow.
     fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
@@ -1542,6 +1544,13 @@ impl App {
                     } else {
                         CursorIcon::NsResize
                     }
+                } else if let Some(icon) = crate::field3d_smoke::with_smoke(|s| {
+                    crate::field3d_smoke::divider_cursor(s, self.last_pointer)
+                })
+                .flatten()
+                {
+                    // ⭐ A costura da divisão do canvas 3D (W93) — a mesma fonte que o arrasto lê.
+                    icon
                 } else if let Some(icon) = self.timeline_resize_cursor(h) {
                     icon
                 } else {

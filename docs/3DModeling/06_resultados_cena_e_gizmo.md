@@ -8475,6 +8475,31 @@ Gates: `the_seam_is_grabbable_and_nothing_else_is` (o meio de um quadrante **nã
 arrasto é a órbita, que é o gesto principal do módulo) · o ladrilhamento passa a ser varrido em
 **quatro** posições do divisor.
 
+### §92.13 — ⭐ W93: a seta de redimensionar sobre a costura (report do Enio)
+
+> *«faltou uma seta bidirecional indicadora quando o cursor está em cima da linha (vertical para a
+> linha horizontal, horizontal para a linha vertical)»*
+
+⭐ **A casa já tinha o sítio e o precedente**: `update_eyedropper_cursor` decide o cursor por
+prioridade, e o divisor do grafo do Motion já lá está com exactamente esta lei — *`NsResize` ↕ para
+um divisor horizontal, `EwResize` ↔ para um vertical*. A costura do canvas 3D entra na mesma cadeia.
+
+⚠️ **A seta sai do MESMO `seam_grab` que o arrasto usa**, e a razão está escrita ao lado do divisor
+do Motion: *o cursor e o gesto leem a mesma fonte, senão discordam sobre onde a faixa está.* Duas
+contas dariam a seta um pixel ao lado de onde o arrasto pega, e o defeito lê-se como *«às vezes não
+agarra»* — dos piores de reproduzir.
+
+⭐ **No cruzamento é o `Move`**: ali as duas costuras vão juntas, e uma seta de um eixo só prometeria
+metade do gesto.
+
+⚠️ **A lei vive no módulo** (`field3d_layout::seam_cursor` + `field3d_viewports::divider_cursor`) e o
+despacho apenas pergunta — assim ele não precisa de conhecer o layout, e a resposta cabe numa
+chamada de `with_smoke`.
+
+Gate: `the_cursor_over_a_seam_points_across_it` — a seta é **perpendicular** à linha, o cruzamento é
+`Move`, o meio de um quadrante não tem seta, e ⭐ **uma varredura afirma que o cursor e o arrasto
+concordam pixel a pixel** sobre haver costura. Mutação (trocar as duas setas): ✗.
+
 ### §92.7 — ⏳ O que fica aberto
 
 - **O CABEÇALHO** — a outra metade da frase do plano. Hoje o chrome do módulo é o painel lateral e o

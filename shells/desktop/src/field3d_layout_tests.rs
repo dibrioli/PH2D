@@ -528,3 +528,50 @@ fn the_real_gesture_moves_the_divider_and_does_not_drift() {
         with_smoke(crate::field3d_smoke::toggle_split);
     });
 }
+
+/// ⭐⭐⭐ **A SETA APARECE ONDE O ARRASTO PEGA** (W93, report do Enio: *«faltou uma seta bidirecional
+/// indicadora quando o cursor está em cima da linha»*).
+///
+/// ⚠️ **O cursor e o gesto leem a MESMA fonte** ([`super::seam_grab`]), e é essa a lei — o divisor do
+/// grafo do Motion já a escreve ao lado do dele. Duas contas dariam a seta um pixel ao lado de onde
+/// o arrasto pega, e o defeito lê-se como *«às vezes não agarra»*, que é dos piores de reproduzir.
+///
+/// ⚠️ **A seta é PERPENDICULAR à linha:** uma costura vertical move-se na horizontal. Trocá-las é o
+/// erro que se lê como certo até alguém tentar usar.
+#[test]
+fn the_cursor_over_a_seam_points_across_it() {
+    use super::seam_cursor;
+    use winit::window::CursorIcon;
+    let area = EditorRect::new(0.0, 0.0, 1000.0, 800.0);
+    let split = Split::quad();
+    assert_eq!(
+        seam_cursor(area, split, [500.0, 100.0]),
+        Some(CursorIcon::EwResize),
+        "a costura VERTICAL move-se na horizontal"
+    );
+    assert_eq!(
+        seam_cursor(area, split, [200.0, 400.0]),
+        Some(CursorIcon::NsResize),
+        "a costura HORIZONTAL move-se na vertical"
+    );
+    assert_eq!(
+        seam_cursor(area, split, [500.0, 400.0]),
+        Some(CursorIcon::Move),
+        "no cruzamento as duas vão juntas — uma seta de um eixo só prometeria metade do gesto"
+    );
+    assert_eq!(
+        seam_cursor(area, split, [250.0, 200.0]),
+        None,
+        "no meio de um quadrante o cursor é o de sempre: ali o arrasto é a órbita"
+    );
+    assert_eq!(seam_cursor(area, Split::One, [500.0, 400.0]), None);
+    // ⭐ **E a seta aparece EXACTAMENTE onde o arrasto pega** — as duas leem a mesma fonte, e isto
+    // é o que o afirma em vez de o prometer.
+    for x in [480.0f32, 495.0, 497.0, 500.0, 503.0, 505.0, 520.0] {
+        assert_eq!(
+            seam_cursor(area, split, [x, 100.0]).is_some(),
+            super::seam_grab(area, split, [x, 100.0]).is_some(),
+            "em x={x} o cursor e o arrasto discordam sobre haver costura"
+        );
+    }
+}

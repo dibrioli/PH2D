@@ -68,7 +68,9 @@ pub(crate) use state::{Drag, Grip, InFlight, Ready, Smoke};
 #[path = "field3d_viewports.rs"]
 mod viewports;
 use state::{MatcapTexels, STATE};
-pub(crate) use viewports::{canvas_area, ensure_viewports, toggle_split, viewport_at};
+pub(crate) use viewports::{
+    canvas_area, divider_cursor, ensure_viewports, toggle_split, viewport_at,
+};
 
 /// ⭐ **O catálogo das cenas** vive no irmão — ver [`field3d_smoke_scenes`](self::scenes).
 #[path = "field3d_smoke_scenes.rs"]

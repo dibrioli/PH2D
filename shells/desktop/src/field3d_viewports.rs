@@ -41,6 +41,14 @@ pub(crate) fn canvas_area(s: &Smoke) -> Option<ph2d_editor::zones::Rect> {
     Some(ph2d_editor::zones::Rect::new(x0, y0, x1 - x0, y1 - y0))
 }
 
+/// ⭐⭐ **O cursor que este ponto da janela pede**, ou `None` (W93).
+///
+/// ⚠️ **A porta é aqui e não no despacho** porque é aqui que o `Smoke` vive — e é isto que mantém a
+/// resposta a uma chamada de `with_smoke`, em vez de o despacho ter de conhecer o layout.
+pub(crate) fn divider_cursor(s: &Smoke, pos: (f32, f32)) -> Option<winit::window::CursorIcon> {
+    crate::field3d_layout::seam_cursor(canvas_area(s)?, s.split, [pos.0, pos.1])
+}
+
 /// ⭐⭐⭐ **ABRE E FECHA A DIVISÃO** (W90).
 ///
 /// ⚠️ **Ao fechar, a vista que fica é a ACTIVA** — não «a primeira». É a lei do Blender e é a certa:

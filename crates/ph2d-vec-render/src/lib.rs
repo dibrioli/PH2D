@@ -34,9 +34,6 @@ use gradient::fill_multipoint;
 /// **O preenchimento com PADRÃO** (plano 33) — a tradução do modo e a chamada da porta de imagem.
 pub mod pattern;
 
-/// **As três alças do padrão na tela** (plano 33, W6) — irmãs das do gradiente.
-pub mod pattern_handle;
-
 #[cfg(test)]
 mod pattern_tests;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
@@ -111,6 +108,11 @@ pub use blend_overlay::draw_blend_overlay;
 mod build;
 pub(crate) use build::build_contours;
 pub use build::{build_bezpath, build_fill_bezpath, build_lines_bezpath};
+
+/// **AS CAIXAS em px de tela** — módulo irmão pelo teto de LOC, e o corte é por RESPONSABILIDADE:
+/// ali ninguém desenha, só se pergunta *onde, na tela, esta forma vive*.
+mod path_bounds;
+pub use path_bounds::{path_bounds_under, path_screen_bounds, standalone_path_screen_bounds};
 
 /// A [`Fill`] rule do Vello para o `fill_rule` do path.
 pub(crate) fn fill_rule(path: &VecPath) -> Fill {
@@ -297,69 +299,6 @@ pub fn dispatch(
 fn draw_fx_image(img: &FxImage, target: &mut VectorScene) {
     // Id de Blob estável ⇒ o Vello reusa a textura do atlas (sem re-upload por frame).
     target.draw_stable_image(&img.image, img.rect, ph2d_vector::ImageQuality::Medium);
-}
-
-/// **O bbox em TELA de um caminho, como o [`dispatch`] o desenharia** — honrando a geometria
-/// DERIVADA (`live`) e a pose (`xforms`). É a pergunta que o produtor de FX raster (plano 24) faz
-/// para dimensionar o scratch e posicionar a imagem: onde, na tela, esta forma vive?
-///
-/// Inclui a metade da espessura do traço (o contorno transborda o fill), escalada pelo afim.
-/// `None` se o caminho não existe ou não tem geometria que desenhe algo.
-#[must_use]
-pub fn path_screen_bounds(
-    scene: &VecScene,
-    xforms: &VecXforms,
-    live: &LiveGeometry,
-    id: VecPathId,
-    camera: Affine,
-) -> Option<(f64, f64, f64, f64)> {
-    let mut acc: Option<Rect> = None;
-    let mut eat = |path: &VecPath, xf: Affine| {
-        if let Some(r) = path_bounds_under(path, xf) {
-            acc = Some(acc.map_or(r, |cur| cur.union(r)));
-        }
-    };
-    if let Some(items) = live.get(&id) {
-        // Derivada já em MUNDO ⇒ sobe pela câmera (como no `dispatch`).
-        for item in items {
-            eat(item, camera);
-        }
-    } else {
-        let path = scene.paths().iter().find(|p| p.id == id)?;
-        eat(path, path_to_screen(xforms, id, camera));
-    }
-    let r = acc?;
-    Some((r.x0, r.y0, r.x1, r.y1))
-}
-
-/// **A caixa de UM caminho AVULSO sob um afim** — a lei de limites desta crate, numa
-/// porta só.
-///
-/// ⚠️ **Ela era o corpo do fecho `eat` do [`path_screen_bounds`]**, e saiu de lá
-/// quando um segundo chamador apareceu: o bake de tile de um `source.shape`, cujo
-/// `VecPath` vive num store e **não** na cena vetorial (bug do Enio, 2026-08-20 —
-/// *"tudo deve brilhar"*). Duas transcrições desta conta divergiriam no
-/// transbordo do traço, e o sintoma seria a ponta CEIFADA que o parágrafo abaixo
-/// nomeia — num caminho e não no outro.
-///
-/// Inclui a metade da espessura do traço (o contorno transborda o fill), escalada
-/// pelo afim. `None` se o caminho não tem geometria que desenhe algo.
-#[must_use]
-pub fn path_bounds_under(path: &VecPath, xf: Affine) -> Option<Rect> {
-    let mut bp = build_bezpath(path);
-    if bp.elements().is_empty() {
-        return None;
-    }
-    bp.apply_affine(xf);
-    let r = bp.bounding_box();
-    Some(standalone::inflate_for_stroke(path, xf, r))
-}
-
-/// A caixa avulsa em coordenadas de tela, como o [`path_screen_bounds`] a devolve.
-#[must_use]
-pub fn standalone_path_screen_bounds(path: &VecPath, xf: Affine) -> Option<(f64, f64, f64, f64)> {
-    let r = path_bounds_under(path, xf)?;
-    Some((r.x0, r.y0, r.x1, r.y1))
 }
 
 /// **A geometria TESSELADA de um path** — os `BezPath`s que o [`draw_path`] constrói de `cooked()`

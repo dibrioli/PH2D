@@ -281,21 +281,84 @@ impl PatternFill {
         self.size = [self.size[0] * s, self.size[1] * s];
     }
 
-    /// **Os três pontos das alças de canvas**, no espaço das âncoras: `[mover, escalar, rodar]`.
+    /// **A FASE do padrão dentro de UMA repetição**, `0..1` por eixo, medida do canto `base`.
     ///
-    /// ⭐ É a disposição do Inkscape (*"um `x` que move, um quadrado que escala, um círculo que
-    /// roda"*) — a diferença entre afinar um padrão na TELA e preencher um formulário de números.
-    /// A de escala senta a um `size` no eixo X do padrão; a de rotação, a um `size` no Y. ⚠️ Os dois
-    /// eixos vêm da MESMA rotação, então rodar o padrão roda as alças com ele.
+    /// ⭐ **É uma faixa FECHADA que exprime toda a aparência distinta**, porque deslocar o padrão
+    /// por um período inteiro é a identidade — o modelo do `background-position` em percentagem e do
+    /// arrasto de origem do Illustrator. Um par de coordenadas de mundo cruas seria ilimitado (a
+    /// forma vive onde quiser) e quase todo o curso seria repetição.
+    ///
+    /// ⚠️ **Os eixos são os do PADRÃO**, não os do mundo: é ao longo deles que a repetição é
+    /// periódica, e é por isso que rodar o padrão roda também o que o *Shift* desliza.
+    ///
+    /// ⚠️ Um período não-positivo não tem fase nenhuma e devolve `0` — o `gap` é **bipolar**, então
+    /// `size + gap` pode ser negativo, e `rem_euclid` de um período negativo daria uma fase que anda
+    /// para trás.
     #[must_use]
-    pub fn handle_points(&self) -> [[f64; 2]; 3] {
+    pub fn shift(&self, base: [f64; 2]) -> [f64; 2] {
+        let p = self.period();
+        let along = self.along_axes(base);
+        [0usize, 1].map(|k| {
+            if p[k].is_finite() && p[k] > 0.0 && along[k].is_finite() {
+                (along[k] / p[k]).rem_euclid(1.0)
+            } else {
+                0.0
+            }
+        })
+    }
+
+    /// **Põe a fase do eixo `axis`** (`0` = o eixo X do padrão, `1` = o Y) — a **porta ÚNICA** da
+    /// posição, e a única escrita do `origin` depois do nascimento.
+    ///
+    /// ⚠️ **Só a parte FRACCIONÁRIA se mexe.** Reescrever a posição inteira teleportaria a origem
+    /// para junto de `base`; no `Tile` isso seria invisível (um período é a identidade), mas no
+    /// `Mirror` a identidade são DOIS períodos e o reflexo trocaria de fase sozinho.
+    ///
+    /// ⚠️⚠️ **E ela é IDEMPOTENTE por construção**: o deslocamento é aplicado ao `origin` que já
+    /// existe, e um delta abaixo de um bilionésimo do período não escreve nada. Sem isso, a ida e
+    /// volta `origin -> fase -> origin` (que o painel faz a cada quadro em que o slider está
+    /// agarrado) devolveria um `origin` diferente no último bit e cada quadro viraria um passo de
+    /// undo — o defeito que o `canonicalize` do editor curou para o mundo inteiro.
+    pub fn set_shift_axis(&mut self, base: [f64; 2], axis: usize, shift: f64) {
+        let Some(&per) = self.period().get(axis) else {
+            return;
+        };
+        if !per.is_finite() || per <= 0.0 || !shift.is_finite() {
+            return;
+        }
+        let along = self.along_axes(base);
+        let Some(&cur) = along.get(axis) else { return };
+        if !cur.is_finite() {
+            return;
+        }
+        let delta = (cur / per)
+            .div_euclid(1.0)
+            .mul_add(per, shift.rem_euclid(1.0) * per)
+            - cur;
+        // ⚠️ Uma tolerância RELATIVA ao período, e não um epsilon absoluto: o que se compara é
+        // "isto é uma fracção autorável de uma repetição?". O chip anda de 1% e o track é `f32`
+        // (~1e-7 relativo), então `1e-12` está muito abaixo de qualquer gesto e muito acima do ruído
+        // de vírgula flutuante da ida e volta pela base ortonormal (~1e-16).
+        if delta.abs() <= per * 1e-12 {
+            return;
+        }
         let (sin, cos) = self.angle.sin_cos();
-        let ax = [cos * self.size[0], sin * self.size[0]];
-        let ay = [-sin * self.size[1], cos * self.size[1]];
+        let dir = if axis == 0 { [cos, sin] } else { [-sin, cos] };
+        self.origin = [
+            delta.mul_add(dir[0], self.origin[0]),
+            delta.mul_add(dir[1], self.origin[1]),
+        ];
+    }
+
+    /// `origin − base`, projectado nos eixos do padrão. A base ortonormal de [`Self::shift`] e de
+    /// [`Self::set_shift_axis`], escrita **uma vez** — as duas têm de concordar bit a bit, senão a
+    /// fase que o painel mostra não é a fase que ele escreve.
+    fn along_axes(&self, base: [f64; 2]) -> [f64; 2] {
+        let (sin, cos) = self.angle.sin_cos();
+        let d = [self.origin[0] - base[0], self.origin[1] - base[1]];
         [
-            self.origin,
-            [self.origin[0] + ax[0], self.origin[1] + ax[1]],
-            [self.origin[0] + ay[0], self.origin[1] + ay[1]],
+            d[0].mul_add(cos, d[1] * sin),
+            (-d[0]).mul_add(sin, d[1] * cos),
         ]
     }
 

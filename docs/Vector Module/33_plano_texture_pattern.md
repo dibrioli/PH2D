@@ -190,9 +190,13 @@ não um knob novo**, e está nomeada na W5.
    ⇒ **é a W7 deste plano**, e é o que separa *um preenchimento de imagem* de *um sistema de padrões*.
 4. ⭐ **O que o Inkscape acertou:** o padrão edita-se **na tela**, com três alças
    ([Inkscape Beginners' Guide](https://inkscape-manuals.readthedocs.io/en/latest/creating-custom-patterns.html)) —
-   e não num formulário de números. ⇒ **é a W6**, e a máquina de alças **já existe** nesta crate
+   e não num formulário de números. ⇒ foi a **W6**, e a máquina de alças **já existia** nesta crate
    (`GradHandle` + `hit_gradient_handle` / `drag_gradient_handle` / `draw_gradient_handles`,
    [`gradient.rs`](../../crates/ph2d-vec-render/src/gradient.rs)).
+   ⛔⛔ **E o Enio RECUSOU-A depois de a ver** (2026-08-27: *"não ficou legal"*) — este item da
+   pesquisa continua a descrever o Inkscape com fidelidade, e **deixou de descrever este produto**.
+   O que ficou no lugar está no **§6-quater**. *Uma leitura do estado da arte não é um veredito do
+   dono; e quando os dois discordam, quem manda é o segundo.*
 
 ### §1.3 — ⭐⭐ A síntese, e a ideia que faz este desenho ser MAIS simples que o dos outros
 
@@ -394,7 +398,9 @@ fileiras** — cabe, mas a W5 mede-a em vez de o assumir.
 | W4 | `a_saved_pattern_reopens_with_the_same_pixels` | o defeito exacto que o [`project_sprite_pixels.rs`](../../shells/desktop/src/project_sprite_pixels.rs) curou para as sprites |
 | W5 | `seam_pattern.rs` (CLICA) | chip pintado e morto sob o dedo |
 | W5 | `the_pattern_chip_opens_the_source_door_when_there_is_none` | a 4.ª condição |
-| W6 | `the_handles_write_through_the_same_door_as_the_sliders` | alça e número a divergirem |
+| ~~W6~~ | ~~`the_handles_write_through_the_same_door_as_the_sliders`~~ ⛔ as alças foram retiradas (§6-quater) | ~~alça e número a divergirem~~ |
+| W9 | `the_pattern_has_no_canvas_handles_anymore` | a próxima janela reconstruir as alças de boa-fé |
+| W9 | `writing_the_phase_that_is_already_there_writes_nothing` | cada quadro do arrasto virar um passo de undo |
 | W7 | `editing_the_source_shape_rebakes_the_tile` | o *dynamic* do Figma |
 
 ⚠️ **Prova de mutação em cada wave, com os três controlos no arnês** — e a regra que esta linha
@@ -419,7 +425,7 @@ isso que ele é o instrumento certo.*
 | **W3** | **O dado** — `Paint::Pattern(Box<..>)`, tripla de schema, degrau da escada | `ph2d-vec-scene` + shell | **sim** (14->15, 99->100) |
 | **W4** | **Fonte 1: uma IMAGEM** — `ph2d-asset-id` (extracção) · `rfd` pela porta da casa · `AssetDb` · persistência espelhando o `collect_sprite_pixels` | crate nova + shell | não |
 | **W5** | **O painel** — 5.º chip + secção *Pattern* (8 sítios de costura + i18n + tokens), e a 4.ª condição | `ph2d-panel-vector` + `ph2d-editor-core` + `ph2d-i18n` + shell | não |
-| **W6** | **As alças na tela** — mover · escalar · rodar, espelhando o `GradHandle` (a lei do Inkscape) | `ph2d-vec-render` + shell | não |
+| ~~**W6**~~ | ~~**As alças na tela** — mover · escalar · rodar, espelhando o `GradHandle` (a lei do Inkscape)~~ ⛔ **CONSTRUÍDA E RETIRADA** por decisão do Enio (§6-quater) | ~~`ph2d-vec-render` + shell~~ | não |
 | **W7** | ⭐ **Fonte 2: uma FORMA do documento**, viva — o modelo do Figma: editar a fonte re-assa o ladrilho em toda forma que a usa | shell | não |
 | **W8** | **Cena de smoke** auto-verificável + os números medidos | `build_smoke.rs` | não |
 
@@ -444,12 +450,14 @@ barra. O assado (W1) tem orçamento próprio: **8 ms** para um ladrilho de 512×
 | **W4** fonte 1 (imagem) | ✅ | ⛔ instância de Motion pinta a `fallback` (fronteira declarada, com gate) |
 | **W4b** persistência | ✅ | — |
 | **W5** painel | ✅ | o 5.º chip + a fileira que reflui + a secção **Pattern** inteira (Source… · Tile · Offset · Size · Gap · Angle · Repeat), com 7/7 mutações mortas |
-| **W6** alças na tela | ✅ | mover · escalar · rodar (a lei do Inkscape), 6/6 mutações mortas |
+| ~~**W6** alças na tela~~ | ⛔ **RETIRADA** | construída (mover · escalar · rodar, 6/6 mutações mortas) e **apagada** no mesmo dia por decisão do Enio — **§6-quater** |
 | **W7** fonte 2 (forma) | ✅ | o modelo do Figma, **viva** (editar a fonte re-assa), com o botão *Use Shape…* e a recusa do ciclo |
 | **W8** smoke | ✅ | `PH2D_BUILD_SMOKE=76` |
+| **W9** *Shift X/Y* no painel | ✅ | a POSIÇÃO passou para duas fileiras (§6-quater); a lei é uma fase `0..100 %` de UMA repetição, nos eixos do padrão |
 
-⭐⭐ **AS OITO WAVES FECHARAM** (2026-08-27). O que sobra é o que os reports do Enio abriram e o que
-ele decidir a seguir — a lista está no §6-ter.
+⭐⭐ **AS OITO WAVES FECHARAM** (2026-08-27) — e a **W6 foi depois retirada**, com a posição a mudar
+de sítio na W9. O que sobra é o que os reports do Enio abriram e o que ele decidir a seguir — a
+lista está no §6-ter.
 
 ⚠️ **E a W5 deixou duas coisas nomeadas:**
 
@@ -478,7 +486,64 @@ ele decidir a seguir — a lista está no §6-ter.
 | *"os parâmetros que um modo não usa não devem aparecer"* | ✅ no `Clamp` somem Tile · Offset · Size · Gap, e **voltam** ao sair; as três alças de canvas também |
 | *"filters anula pattern"* | ✅ a rasterização isolada do FX não levava o ladrilho, e a imagem de FX **substitui** o desenho |
 | *"em column o pattern some"* | ✅ o **vão** era assado na resolução da arte; o ladrilho é **reduzido até caber**, nunca recusado |
+| *"não ficou legal [as alças]. vamos retirar e deixar os ajustes apenas no painel"* | ⛔ as três alças de canvas foram **apagadas**; a posição virou *Shift X/Y* no painel — **§6-quater** |
 | ⏳ *"pattern anula stroke"* / *"o contorno não volta ao trocar pattern por solid"* | ⚠️ **NÃO REPRODUZIDO.** O documento preserva o `StrokeSpec` inteiro nas duas trocas, o `restyle_selected_strokes` nunca apaga, e a rota de desenho encoda os dois caminhos (gate com controlo de sólido). ⇒ há um instrumento — `PH2D_PATTERN_LOG=1` imprime, por evento, o que a forma TEM antes e depois de cada troca de tipo de preenchimento. **Espera a corrida do Enio.** |
+
+## §6-quater — ⛔ **AS ALÇAS DE CANVAS FORAM RETIRADAS** (Enio, 2026-08-27), e a posição mudou de sítio
+
+> *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*
+
+**Veredito de produto, sem mecanismo nomeado.** Isto é uma decisão do dono, não uma medição — e é
+por isso que ela fica escrita aqui **com o que existia**: uma 2.ª tentativa começa perguntando *o
+que ficou pior*, nunca reconstruindo. (É a mesma disciplina da faixa de barras do `value.pattern` do
+Motion, e das setas de canvas do plano 32, retiradas por ele em 25/08.)
+
+### O que foi apagado
+
+`ph2d-vec-render::pattern_handle` inteiro (o módulo + os gates), `PatternFill::handle_points`, os
+campos `App::vec_pattern_drag` / `vec_pattern_selected`, os quatro sítios de fiação
+(`vec_pattern_hit` · o move · o press com `history.begin` · o release com `commit_if_changed`) e o
+desenho no `render_loop`. Ele existiu em `001b8ba43`; a árvore de antes deste corte é recuperável
+daí.
+
+### ⚠️ Retirar as três alças NÃO é retirar três ajustes — é retirar UM
+
+O *Size* e o *Angle* já eram fileiras do painel: a alça de escalar e a de rodar tinham **irmã**, e
+apagá-las não tira nada ao artista. A de **mover** não tinha: o `origin` só era escrito no
+nascimento (`default_placement`) e por ela. ⇒ *"deixar os ajustes apenas no painel"* obrigava a que
+a posição **passasse a existir no painel** — senão o corte teria silenciosamente **encolhido o
+produto**, que é o oposto do que o pedido diz.
+
+### A W9: *Shift X* e *Shift Y*, uma FASE de uma repetição
+
+| | |
+|---|---|
+| **A faixa** | `0..100 %`, unipolar. ⭐ Ela **não é um palpite**: deslocar o padrão por um período inteiro é a **identidade**, então `100 %` é o mesmo que `0 %` e a faixa exprime **toda** a aparência distinta. O recurso que a fecha é a periodicidade do reticulado. |
+| **⛔ A alternativa recusada** | uma coordenada de MUNDO crua. Ela é **ilimitada** (a forma vive onde quiser), quase todo o curso dela é repetição, e um slider precisa de duas pontas. |
+| **Os eixos** | os do **PADRÃO**, não os do mundo — é ao longo deles que a repetição é periódica. Rodar o padrão roda o que o *Shift* desliza. |
+| **A base** | o canto da **caixa da forma** — o MESMO canto em que a colocação nasce. Sem uma referência ligada à forma, a fase dependeria de onde a forma está no mundo. |
+| **A porta única** | `PatternFill::shift` / `set_shift_axis` (`ph2d-vec-scene`) — a leitura que o painel mostra e a escrita que ele faz atravessam a **mesma** base ortonormal (`along_axes`), escrita uma vez. |
+| **No `Clamp`** | some, com as outras quatro: ali a colocação é **derivada** e `origin` não tem quem o leia. |
+
+⚠️⚠️ **Duas armadilhas que a implementação pagou, e que uma reescrita reencontra:**
+
+1. **Só a parte FRACCIONÁRIA se mexe.** Reescrever a posição inteira teleportaria a origem para
+   junto da base; no `Tile` isso é invisível (um período é a identidade), mas no `Mirror` a
+   identidade são **dois** períodos e o reflexo trocaria de fase sozinho. *Uma escrita que só está
+   certa num dos modos não é a lei.*
+2. **A escrita tem de ser IDEMPOTENTE**, com tolerância **relativa ao período**. A ida e volta
+   `origin -> fase -> origin` corre a **cada quadro** em que o slider está agarrado, e sem isso o
+   último bit mudava sempre ⇒ **cada quadro um passo de undo** — o defeito que o `canonicalize` do
+   editor curou para o mundo inteiro. O gate é
+   `writing_the_phase_that_is_already_there_writes_nothing` (64 re-escritas, igualdade **exacta**).
+
+### A cerca executável
+
+`the_pattern_has_no_canvas_handles_anymore`
+([`shells/desktop/tests/the_shape_art_picker_is_wired.rs`](../../shells/desktop/tests/the_shape_art_picker_is_wired.rs))
+recusa os quatro nomes e **exige** que a porta que ficou no lugar exista — senão ele ficaria verde
+num produto que **perdeu** a posição em vez de a ter mudado de sítio. ⚠️ *Uma decisão de produto que
+vive só num documento é uma decisão que a próxima janela reconstrói de boa-fé.*
 
 ## §7 — O que este plano NÃO faz, de propósito
 

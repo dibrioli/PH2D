@@ -246,9 +246,15 @@ pub(super) fn publish(
                     Some(Paint::Pattern(pat)) => Some(ph2d_panel_vector::TexturePatternRow {
                         kind: crate::texture_pattern_edit::tile_index(pat.kind),
                         offset_denom: f64::from(pat.offset_denom.max(1)),
-                        size: crate::texture_pattern_edit::longer_side(pat.size),
+                        size: pat.longer_side(),
                         gap: pat.gap[0],
                         angle_deg: pat.angle.to_degrees(),
+                        // ⚠️ A fase mede-se do canto da CAIXA da forma — a MESMA base que a
+                        // escrita usa (`TexPatCmd::Shift`). Sem uma caixa não há fase, e `0` é a
+                        // resposta honesta: é onde o padrão nasce.
+                        shift_pct: scene
+                            .path_bbox(p.id)
+                            .map_or([0.0, 0.0], |(lo, _)| pat.shift(lo).map(|s| s * 100.0)),
                         mode: crate::texture_pattern_edit::mode_index(pat.mode),
                     }),
                     _ => None,

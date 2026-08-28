@@ -46,7 +46,7 @@ fn setting_the_size_keeps_the_arts_aspect() {
     apply(&mut scene, &mut h, &pen, TexPatCmd::Size(4.0));
     let p = pattern_of(&scene, id);
     assert!(
-        (longer_side(p.size) - 4.0).abs() < 1e-9,
+        (p.longer_side() - 4.0).abs() < 1e-9,
         "o lado maior nao virou 4: {:?}",
         p.size
     );
@@ -246,4 +246,43 @@ fn the_by_id_door_writes_the_captured_shape_and_nothing_else() {
         scene.path(outra).and_then(|p| p.fill.as_ref()),
         Some(Paint::Solid(_))
     ));
+}
+
+/// ⭐⭐ **O SHIFT MOVE O PADRÃO, e a base é o canto da CAIXA da forma** (Enio, 2026-08-27).
+///
+/// Esta fileira substitui a alça de MOVER do W6, retirada por decisão dele. ⚠️ A base tem de ser
+/// ligada à FORMA: com uma base no mundo, a fase de um padrão dependeria de onde a forma está.
+#[test]
+fn the_shift_command_moves_the_pattern_by_a_fraction_of_one_repeat() {
+    // A forma é o quadrado `[0,0]..[10,10]`; a arte mede `[8, 2]` sem vão ⇒ período `[8, 2]`.
+    let (mut scene, pen, id) = scene_with(fill());
+    let mut h = ph2d_vec_edit::History::default();
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Shift(0, 25.0));
+    let p = pattern_of(&scene, id);
+    assert!(
+        (p.origin[0] - 2.0).abs() < 1e-9,
+        "25% de um periodo de 8 sao 2 unidades: {:?}",
+        p.origin
+    );
+    assert!(
+        p.origin[1].abs() < 1e-12,
+        "o eixo Y mexeu-se: {:?}",
+        p.origin
+    );
+    assert_eq!(h.undo_len(), 1);
+
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Shift(1, 50.0));
+    let p = pattern_of(&scene, id);
+    assert!(
+        (p.origin[1] - 1.0).abs() < 1e-9,
+        "50% de um periodo de 2 e' 1 unidade: {:?}",
+        p.origin
+    );
+    assert_eq!(h.undo_len(), 2);
+
+    // ⚠️ **O MESMO valor não grava passo.** O slider re-publica a cada quadro em que está agarrado;
+    // sem isto, arrastar uma vez encheria a pilha de undo.
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Shift(0, 25.0));
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Shift(1, 50.0));
+    assert_eq!(h.undo_len(), 2, "o mesmo valor gravou um passo espurio");
 }

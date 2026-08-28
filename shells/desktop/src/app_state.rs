@@ -1504,14 +1504,9 @@ pub(crate) struct App {
     /// visitada, e reabri-lo por frame faria todo hover pagar a booleana de novo.
     pub(crate) vec_build: Option<crate::shape_build::BuildSession>,
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
-    /// **A alça de PADRÃO sob o dedo** (plano 33, W6) — irmã da do gradiente, e exclusiva dela
-    /// (um preenchimento é gradiente **ou** padrão).
-    pub(crate) vec_pattern_drag: Option<ph2d_vec_render::pattern_handle::PatHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.
     pub(crate) vec_grad_selected: Option<ph2d_vec_render::GradHandle>,
-    /// A alça de padrão REALÇADA (a última tocada) — o anel branco.
-    pub(crate) vec_pattern_selected: Option<ph2d_vec_render::pattern_handle::PatHandle>,
     /// In-app path clipboard for Vector Ctrl+C/X/V — a clone of the copied path
     /// (geometry + style, id-less). `None` until the first copy/cut.
     pub(crate) vec_clipboard: Option<ph2d_vec_scene::VecClip>,

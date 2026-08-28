@@ -245,3 +245,139 @@ fn clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law() {
     assert_eq!(f.size, [10.0, 20.0]);
     assert_eq!(f.origin, [0.0, 0.0]);
 }
+
+// ── A FASE (`shift`) — a posição do padrão depois de as alças de canvas saírem ────────
+//
+// ⛔ As três alças do plano 33 W6 foram RETIRADAS por decisão do Enio (2026-08-27: *"não ficou
+// legal. vamos retirar e deixar os ajustes apenas no painel"*). A posição passou para as fileiras
+// *Shift X/Y*, e é esta lei que elas atravessam.
+
+/// **A fase mede-se ao longo dos eixos DO PADRÃO, em unidades de UMA repetição.**
+///
+/// ⚠️ Os eixos do padrão e não os do mundo: é ao longo deles que a repetição é periódica. Com um
+/// quarto de volta os dois papéis trocam, e é isso que este gate mede.
+#[test]
+fn the_shift_is_a_phase_along_the_patterns_own_axes() {
+    let mut f = fill(); // size [10, 20], gap [0, 0] ⇒ período [10, 20]
+    f.origin = [2.5, 5.0];
+    let s = f.shift([0.0, 0.0]);
+    assert!((s[0] - 0.25).abs() < 1e-12, "{s:?}");
+    assert!((s[1] - 0.25).abs() < 1e-12, "{s:?}");
+
+    // Um quarto de volta: o eixo X do padrão passa a apontar para +Y do mundo.
+    f.angle = std::f64::consts::FRAC_PI_2;
+    f.origin = [0.0, 2.5];
+    let s = f.shift([0.0, 0.0]);
+    assert!(
+        (s[0] - 0.25).abs() < 1e-12,
+        "com o padrao rodado, andar em +Y do MUNDO e' andar no eixo X DELE: {s:?}"
+    );
+    assert!(s[1].abs() < 1e-12, "e o outro eixo nao se mexeu: {s:?}");
+}
+
+/// ⭐ **Uma repetição inteira é a IDENTIDADE** — é isso que fecha a faixa do slider em `0..100 %`.
+///
+/// ⚠️ Se um período não fosse a identidade, a faixa seria um limite de conforto (um palpite), e não
+/// o recurso. A faixa é a periodicidade do reticulado.
+#[test]
+fn a_whole_period_of_shift_reads_the_same_phase() {
+    let mut f = fill(); // período [10, 20]
+    f.origin = [3.0, 4.0];
+    let antes = f.shift([0.0, 0.0]);
+    f.origin = [3.0 + 10.0 * 3.0, 4.0 - 20.0 * 2.0];
+    let depois = f.shift([0.0, 0.0]);
+    assert!(
+        (antes[0] - depois[0]).abs() < 1e-12 && (antes[1] - depois[1]).abs() < 1e-12,
+        "{antes:?} != {depois:?}"
+    );
+}
+
+/// ⚠️⚠️ **Escrever a fase só mexe na parte FRACCIONÁRIA — a origem não é teleportada para junto da
+/// base.**
+///
+/// No `Tile` teleportar seria invisível (um período é a identidade), mas no `Mirror` a identidade
+/// são DOIS períodos e o reflexo trocaria de fase sozinho. *Uma escrita que só está certa num dos
+/// modos não é a lei.*
+#[test]
+fn setting_the_shift_moves_only_the_fractional_part() {
+    let mut f = fill(); // período [10, 20]
+    f.origin = [37.0, 4.0]; // 3 períodos inteiros + 0,7
+    f.set_shift_axis([0.0, 0.0], 0, 0.2);
+    assert!(
+        (f.origin[0] - 32.0).abs() < 1e-9,
+        "a origem saltou de celula: {:?}",
+        f.origin
+    );
+    assert!((f.shift([0.0, 0.0])[0] - 0.2).abs() < 1e-12);
+}
+
+/// ⭐⭐ **A escrita é IDEMPOTENTE, e é isso que a impede de encher a pilha de undo.**
+///
+/// A ida e volta `origin -> fase -> origin` acontece a **cada quadro** em que o slider está
+/// agarrado. Sem tolerância, o último bit mudaria de cada vez e cada quadro viraria um passo — o
+/// defeito que o `canonicalize` do editor curou para o mundo inteiro.
+#[test]
+fn writing_the_phase_that_is_already_there_writes_nothing() {
+    let mut f = fill();
+    f.origin = [37.0, 4.0];
+    f.angle = 0.7; // um ângulo feio de propósito: a base ortonormal não é a canónica
+    let fase = f.shift([1.5, -2.5]);
+    let antes = f.origin;
+    for _ in 0..64 {
+        f.set_shift_axis([1.5, -2.5], 0, fase[0]);
+        f.set_shift_axis([1.5, -2.5], 1, fase[1]);
+    }
+    assert_eq!(
+        f.origin, antes,
+        "64 re-escritas do MESMO valor moveram a origem - cada quadro seria um passo de undo"
+    );
+}
+
+/// **Escrever um eixo não toca no outro** — o delta é aplicado ao longo de UMA direcção.
+///
+/// ⚠️ A 1.ª redacção reconstruía a origem a partir das duas projecções, e a ida e volta pela base
+/// deixava lixo de vírgula flutuante no eixo que ninguém tinha pedido.
+///
+/// ⚠️⚠️ **E os DOIS sentidos são obrigatórios.** A 1.ª versão deste gate escrevia só o eixo `0`, e
+/// uma mutação que mandava **os dois** deltas pela direcção do eixo `0` **SOBREVIVEU** — para o eixo
+/// `0` ela é a identidade. *Uma fixtura que só exercita o caso em que a mutação é um no-op não mede
+/// a lei.*
+#[test]
+fn writing_one_axis_leaves_the_other_untouched() {
+    for (escrito, olhado) in [(0usize, 1usize), (1, 0)] {
+        let mut f = fill();
+        f.angle = 0.7;
+        f.origin = [3.0, 4.0];
+        let antes = f.shift([0.0, 0.0])[olhado];
+        f.set_shift_axis([0.0, 0.0], escrito, 0.31);
+        assert_eq!(
+            f.shift([0.0, 0.0])[olhado],
+            antes,
+            "escrever o eixo {escrito} mexeu no {olhado}"
+        );
+        // CONTROLO: o eixo que se pediu de facto MUDOU — senão o gate passaria com uma escrita
+        // que não faz nada.
+        assert!(
+            (f.shift([0.0, 0.0])[escrito] - 0.31).abs() < 1e-12,
+            "o eixo {escrito} nao recebeu a fase pedida"
+        );
+    }
+}
+
+/// ⚠️ **Um período não-positivo não tem fase nenhuma.** O `gap` é BIPOLAR, então `size + gap` pode
+/// ser zero ou negativo — e `rem_euclid` de um período negativo daria uma fase que anda para trás.
+#[test]
+fn a_non_positive_period_has_no_phase_and_no_write() {
+    let mut f = fill(); // size [10, 20]
+    f.gap = [-10.0, -20.0]; // período [0, 0]
+    assert_eq!(f.shift([0.0, 0.0]), [0.0, 0.0]);
+    let antes = f.origin;
+    f.set_shift_axis([0.0, 0.0], 0, 0.4);
+    f.set_shift_axis([0.0, 0.0], 1, 0.4);
+    assert_eq!(f.origin, antes, "escreveu uma fase que nao existe");
+    // ⚠️ E um eixo que não existe também não escreve — o índice vem do painel.
+    f.gap = [0.0, 0.0];
+    let antes = f.origin;
+    f.set_shift_axis([0.0, 0.0], 2, 0.4);
+    assert_eq!(f.origin, antes, "um eixo inexistente escreveu");
+}

@@ -127,6 +127,39 @@ impl BodyCtx<'_> {
             );
         }
 
+        // ⭐ A POSIÇÃO — onde, dentro de uma repetição, a arte começa.
+        //
+        // ⚠️ Ela vive aqui porque as três alças de canvas do W6 foram RETIRADAS (Enio, 2026-08-27:
+        // *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*). O tamanho e a
+        // rotação já tinham fileira; a posição não tinha nenhuma, e sem estas duas retirar as alças
+        // teria tirado ao artista uma coisa que ele fazia.
+        //
+        // ⚠️ Dentro do `repete` pela mesma lei dos outros: no `Clamp` a colocação é DERIVADA (uma
+        // cópia enquadrada na forma) e a fase não tem quem a leia.
+        if repete {
+            for (axis, label, sid, nid) in [
+                (
+                    0usize,
+                    "Shift X",
+                    ids::VECTOR_TEXPAT_SHIFT_X,
+                    ids::VECTOR_TEXPAT_SHIFT_X_NUM,
+                ),
+                (
+                    1,
+                    "Shift Y",
+                    ids::VECTOR_TEXPAT_SHIFT_Y,
+                    ids::VECTOR_TEXPAT_SHIFT_Y_NUM,
+                ),
+            ] {
+                let pct = self.store.number_value(nid).unwrap_or(p.shift_pct[axis]);
+                let track = self
+                    .store
+                    .slider(sid)
+                    .map_or_else(|| shift_track(p.shift_pct[axis]), |(_, v)| v);
+                y = self.slider_row(label, sid, nid, track, pct, &format!("{pct:.0}%"), y);
+            }
+        }
+
         // O ÂNGULO do PADRÃO (não o da forma). ⚠️ Ele vale em TODOS os modos: no `Clamp` roda a
         // cópia enquadrada.
 
@@ -206,6 +239,13 @@ pub(crate) fn size_track(size: f64) -> f32 {
 #[must_use]
 pub(crate) fn gap_track(gap: f64) -> f32 {
     (((gap + crate::TEXPAT_GAP_MAX) / (2.0 * crate::TEXPAT_GAP_MAX)).clamp(0.0, 1.0)) as f32
+}
+
+/// O track `0..1` de uma fase em percentagem (unipolar `0..100`). ⚠️ O MESMO mapa que o `event` e o
+/// `populate` usam — a fronteira única.
+#[must_use]
+pub(crate) fn shift_track(pct: f64) -> f32 {
+    ((pct / crate::TEXPAT_SHIFT_MAX).clamp(0.0, 1.0)) as f32
 }
 
 /// O track `0..1` de um ângulo em graus (unipolar `0..360`).

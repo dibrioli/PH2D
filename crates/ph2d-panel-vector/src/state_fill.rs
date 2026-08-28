@@ -51,6 +51,11 @@ pub struct TexturePatternRow {
     pub gap: f64,
     /// A rotação do padrão, em graus.
     pub angle_deg: f64,
+    /// **A fase dentro de UMA repetição**, em percentagem, ao longo dos eixos do PADRÃO.
+    ///
+    /// ⚠️ Substitui as três alças de canvas do plano 33 W6, retiradas por decisão do Enio
+    /// (2026-08-27). `100` é o mesmo que `0`: um período inteiro de deslocamento é a identidade.
+    pub shift_pct: [f64; 2],
     /// `0` Tile · `1` Mirror · `2` Clamp.
     pub mode: u8,
 }

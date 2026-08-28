@@ -138,39 +138,8 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_PATTERNPATH_ROTATION {
         return Some(forward_track(host, id, 0.5, crate::rotation_from_track));
     }
-    // ── TEXTURE PATTERN (plano 33 W5) ──────────────────────────────────────────
-    // ⚠️ Os quatro mapas são os MESMOS que o `populate` dá ao chip numérico e que o `paint` usa
-    // para o track — a fronteira única. Três cópias divergiriam no dia em que uma faixa mudasse.
-    if id == ids::VECTOR_TEXPAT_SIZE {
-        return Some(forward_track(host, id, 0.5, |t| {
-            t.mul_add(
-                crate::TEXPAT_SIZE_MAX - crate::TEXPAT_SIZE_MIN,
-                crate::TEXPAT_SIZE_MIN,
-            )
-        }));
-    }
-    // Gap: BIPOLAR, `0.5` = encostado. Negativo é a SOBREPOSIÇÃO.
-    if id == ids::VECTOR_TEXPAT_GAP {
-        return Some(forward_track(host, id, 0.5, |t| {
-            t.mul_add(2.0 * crate::TEXPAT_GAP_MAX, -crate::TEXPAT_GAP_MAX)
-        }));
-    }
-    // Angle: UNIPOLAR `0..360` — o repouso é `0`, na PONTA do curso (ao contrário da Rotation do
-    // Pattern on Path, que tem um neutro no meio).
-    if id == ids::VECTOR_TEXPAT_ANGLE {
-        return Some(forward_track(host, id, 0.0, |t| {
-            t * crate::TEXPAT_ANGLE_MAX
-        }));
-    }
-    // Offset: o denominador do desfasamento, INTEIRO — o `round` aqui é o que impede um `1/2,7`.
-    if id == ids::VECTOR_TEXPAT_OFFSET {
-        return Some(forward_track(host, id, 0.0, |t| {
-            t.mul_add(
-                crate::TEXPAT_DENOM_MAX - crate::TEXPAT_DENOM_MIN,
-                crate::TEXPAT_DENOM_MIN,
-            )
-            .round()
-        }));
+    if let Some(consumed) = texpat::texpat_slider_event(host, id) {
+        return Some(consumed);
     }
     if let Some(consumed) = contour::contour_slider_event(host, id) {
         return Some(consumed);
@@ -564,6 +533,11 @@ use clicks::forwards_plain_click;
 /// O roteamento dos controles do **Contour** — irmão pelo teto de 600 LOC do painel.
 #[path = "event_contour.rs"]
 mod contour;
+
+/// O roteamento dos sliders do **Texture Pattern** (plano 33) — irmão pelo mesmo teto, e pelo
+/// mesmo corte: um assunto, uma porta.
+#[path = "event_texpat.rs"]
+mod texpat;
 
 #[path = "event_filters.rs"]
 mod filters;

@@ -1079,8 +1079,6 @@ impl App {
             vec_build: None,
             vec_grad_drag: None,
             vec_grad_selected: None,
-            vec_pattern_drag: None,
-            vec_pattern_selected: None,
             vec_clipboard: None,
             vec_pivot_edit: false,
             vec_snap: crate::vec_snap::VecSnapSettings::default(),

@@ -23,6 +23,13 @@ pub(crate) enum TexPatCmd {
     OffsetDenom(f64),
     /// O lado MAIOR de uma cópia, em unidades de mundo.
     Size(f64),
+    /// ⭐ **A FASE dentro de UMA repetição**, em percentagem, no eixo `0` (X do padrão) ou `1` (Y).
+    ///
+    /// ⚠️ Substitui a alça de MOVER do plano 33 W6, retirada por decisão do Enio (2026-08-27:
+    /// *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*). O tamanho e a
+    /// rotação já tinham slider; a posição não tinha nenhum, e sem isto retirar as alças teria
+    /// tirado ao artista uma coisa que ele fazia.
+    Shift(u8, f64),
     /// O vão acrescentado, em unidades de mundo (negativo = sobreposição).
     Gap(f64),
     /// A rotação do padrão, em graus.
@@ -69,28 +76,6 @@ pub(crate) fn mode_index(m: PatternMode) -> u8 {
         PatternMode::Mirror => 1,
         PatternMode::Clamp => 2,
     }
-}
-
-/// O lado MAIOR de uma cópia — o número que o slider *Size* mostra.
-///
-/// ⭐ **O painel autora UM número e o documento guarda DOIS**, e a diferença é o aspecto da arte:
-/// oferecer os dois lados deixaria o artista esmagar a imagem sem querer, e nascer esticado é a
-/// primeira coisa que ele leria como *"a ferramenta deformou a minha imagem"*.
-#[must_use]
-pub(crate) fn longer_side(size: [f64; 2]) -> f64 {
-    size[0].max(size[1])
-}
-
-/// Reescala o par preservando o aspecto, para que o lado maior meça `longer`.
-fn with_longer_side(size: [f64; 2], longer: f64) -> [f64; 2] {
-    let cur = longer_side(size);
-    // ⚠️ `is_finite()` ANTES da comparação: um `NaN` reprova toda desigualdade e escorregaria pela
-    // porta de trás, deixando um `size` de `NaN` que apaga a forma sem erro nenhum.
-    if !cur.is_finite() || cur <= 0.0 || !longer.is_finite() || longer <= 0.0 {
-        return [longer.max(f64::EPSILON), longer.max(f64::EPSILON)];
-    }
-    let s = longer / cur;
-    [size[0] * s, size[1] * s]
 }
 
 /// **Troca a ARTE do padrão da forma `host`** — a porta do Picker (W7), que resolve por ID e não
@@ -151,7 +136,17 @@ pub(crate) fn apply(
         TexPatCmd::Mode(i) => next.mode = mode_of(i),
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         TexPatCmd::OffsetDenom(n) => next.offset_denom = n.clamp(1.0, 255.0).round() as u8,
-        TexPatCmd::Size(v) => next.size = with_longer_side(next.size, v),
+        // ⚠️ Pela porta ÚNICA do tamanho (`ph2d-vec-scene`), que preserva o aspecto da arte: o
+        // painel autora UM número e o documento guarda DOIS.
+        TexPatCmd::Size(v) => next.set_longer_side(v),
+        // ⚠️ **A base da fase é o canto da CAIXA da forma** — o mesmo canto em que a colocação
+        // nasce (`texture_pattern_pick::default_placement`). Sem uma referência ligada à forma, a
+        // fase de um padrão dependeria de onde a forma está no mundo.
+        TexPatCmd::Shift(axis, pct) => {
+            if let Some((lo, _)) = scene.path_bbox(sel) {
+                next.set_shift_axis(lo, usize::from(axis), pct / 100.0);
+            }
+        }
         TexPatCmd::Gap(v) => next.gap = [v, v],
         TexPatCmd::Angle(deg) => next.angle = deg.to_radians(),
         TexPatCmd::Source(s) => next.source = s,

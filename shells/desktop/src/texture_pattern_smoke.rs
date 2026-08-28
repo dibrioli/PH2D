@@ -202,6 +202,9 @@ fn select_hero(app: &mut crate::App) {
          x - o padrao ESMAGA com ela, ao contrario do traco. A arte tem um quadrante TRANSPARENTE \
          (canto inferior direito de cada copia): ele tem de deixar ver o fundo, nao pintar vermelho. \
          ⭐ E EM BAIXO: um quadrado cuja ARTE e' o TRIANGULO ao lado dele (uma forma do documento). \
-         Mexa nos nos do triangulo com a ferramenta Node -- o padrao tem de mudar NA HORA."
+         Mexa nos nos do triangulo com a ferramenta Node -- o padrao tem de mudar NA HORA. \
+         ⭐ TODO o ajuste vive no painel, na seccao Pattern: Tile, Offset, Size, Gap, Shift X, \
+         Shift Y, Angle e Repeat. As barras SHIFT X/Y deslizam a arte dentro de UMA repeticao \
+         (0..100%, e 100 e' o mesmo que 0). No modo Clamp elas somem, com as outras que ele nao le^."
     );
 }

@@ -2625,67 +2625,6 @@ impl App {
         false
     }
 
-    /// **Qual alça de PADRÃO o cursor acerta** (plano 33, W6) — irmã da `vec_grad_hit`, e a mesma
-    /// descida: a geometria do padrão é LOCAL como a do path (ADR-0111), então o cursor desce pelo
-    /// afim da entidade e o raio de captura com ele.
-    fn vec_pattern_hit(
-        &self,
-        pos: (f32, f32),
-    ) -> Option<ph2d_vec_render::pattern_handle::PatHandle> {
-        if !self.vector_tool_active() {
-            return None;
-        }
-        let gfx = self.gfx.as_ref()?;
-        let sel = self.vec_pen.selected()?;
-        let path = gfx.vec_scene.paths().iter().find(|p| p.id == sel)?;
-        let win = gfx.surface.size();
-        let w = gfx.camera.screen_to_world(pos, win);
-        let w0 = gfx.camera.screen_to_world((0.0, 0.0), win);
-        let w1 = gfx.camera.screen_to_world((1.0, 0.0), win);
-        let px = (((w1[0] - w0[0]).powi(2) + (w1[1] - w0[1]).powi(2)).sqrt()) as f64;
-        let x = crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
-            &gfx.sim,
-            ph2d_ecs::Entity::from_bits(*self.vec_entities.get(&sel)?),
-        ));
-        let inv = x.inverse()?;
-        let l = inv.apply([f64::from(w[0]), f64::from(w[1])]);
-        ph2d_vec_render::pattern_handle::hit_pattern_handle(
-            path,
-            l[0],
-            l[1],
-            9.0 * px / x.mean_scale(),
-        )
-    }
-
-    /// Enquanto uma alça de padrão está agarrada, leva-a ao cursor. No-op sem arrasto vivo.
-    fn vec_pattern_drag_move(&mut self, x: f32, y: f32) -> bool {
-        let Some(handle) = self.vec_pattern_drag else {
-            return false;
-        };
-        let Some(sel) = self.vec_pen.selected() else {
-            return false;
-        };
-        let Some(gfx) = self.gfx.as_mut() else {
-            return false;
-        };
-        let win = gfx.surface.size();
-        let w = gfx.camera.screen_to_world((x, y), win);
-        let l = match self.vec_entities.get(&sel).and_then(|&b| {
-            crate::vec_transform::xform_of_transform(crate::vec_transform::world_transform(
-                &gfx.sim,
-                ph2d_ecs::Entity::from_bits(b),
-            ))
-            .inverse()
-        }) {
-            Some(inv) => inv.apply([f64::from(w[0]), f64::from(w[1])]),
-            None => [f64::from(w[0]), f64::from(w[1])],
-        };
-        if let Some(path) = gfx.vec_scene.path_mut(sel) {
-            return ph2d_vec_render::pattern_handle::drag_pattern_handle(path, handle, l[0], l[1]);
-        }
-        false
-    }
-
     /// Motion Nodes M1: is the cursor over the docked graph panel? Drives the
     /// cursor-gated graph keyboard focus + middle-pan routing (Blender-style F
     /// acts on the hovered area, graph vs scene).
@@ -3100,10 +3039,6 @@ impl App {
         // Gradient group 3b: dragging a multi-point gradient handle. Same
         // early-return discipline; no-op unless a grad drag is live.
         if self.vec_grad_drag_move(self.last_pointer.0, self.last_pointer.1) {
-            return;
-        }
-        // Plano 33 W6: as três alças do padrão. Mesma disciplina de retorno-cedo.
-        if self.vec_pattern_drag_move(self.last_pointer.0, self.last_pointer.1) {
             return;
         }
         // ADR-0108 Fase 1: shape drag-to-size (Rectangle/Ellipse/Polygon). Same
@@ -4087,8 +4022,6 @@ impl App {
                         // Object selection changed → drop any gradient-handle selection.
                         self.vec_grad_selected = None;
                         self.vec_grad_drag = None;
-                        self.vec_pattern_selected = None;
-                        self.vec_pattern_drag = None;
                         return;
                     }
                     self.vec_marquee = Some(crate::vec_marquee::VecMarquee::open(
@@ -4141,17 +4074,6 @@ impl App {
                     if let Some(i) = self.vec_grad_hit(self.last_pointer) {
                         self.vec_grad_selected = Some(i);
                         self.vec_grad_drag = Some(i);
-                        if let Some(gfx) = self.gfx.as_ref() {
-                            self.vec_history.begin(&gfx.vec_scene);
-                        }
-                        return;
-                    }
-                    // Plano 33 W6: um Down numa alça de PADRÃO começa a arrastá-la. ⚠️ Exclusiva da
-                    // do gradiente por construção (um preenchimento é uma coisa OU a outra), então
-                    // a ordem entre as duas não decide nada.
-                    if let Some(i) = self.vec_pattern_hit(self.last_pointer) {
-                        self.vec_pattern_selected = Some(i);
-                        self.vec_pattern_drag = Some(i);
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.begin(&gfx.vec_scene);
                         }
@@ -4541,14 +4463,6 @@ impl App {
                     }
                     // Gradient group 3b: end a gradient-handle drag (commit iff moved).
                     if self.vec_grad_drag.take().is_some() {
-                        if let Some(gfx) = self.gfx.as_ref() {
-                            self.vec_history.commit_if_changed(&gfx.vec_scene);
-                        }
-                        return;
-                    }
-                    // Plano 33 W6: fim de um arrasto de alça de padrão — UM passo de undo por
-                    // GESTO, não por quadro (o `begin` no Down, o `commit_if_changed` aqui).
-                    if self.vec_pattern_drag.take().is_some() {
                         if let Some(gfx) = self.gfx.as_ref() {
                             self.vec_history.commit_if_changed(&gfx.vec_scene);
                         }

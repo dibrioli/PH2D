@@ -70,3 +70,21 @@ pub const VECTOR_TEXPAT_MODE_TILE: NodeId = hash_node_id("vector.texpat.mode.til
 pub const VECTOR_TEXPAT_MODE_MIRROR: NodeId = hash_node_id("vector.texpat.mode.mirror");
 /// **Clamp** — uma cópia só, e o resto é a orla dela esticada.
 pub const VECTOR_TEXPAT_MODE_CLAMP: NodeId = hash_node_id("vector.texpat.mode.clamp");
+
+// ── A POSIÇÃO: onde, dentro de UMA repetição, a arte começa ──────────────────────
+//
+// ⭐ Estas duas fileiras substituem as três alças de canvas do plano 33 W6, RETIRADAS por decisão
+// do Enio (2026-08-27: *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*).
+// O tamanho e a rotação já tinham fileira (`SIZE`, `ANGLE`); a POSIÇÃO não tinha nenhuma, e sem
+// ela retirar as alças teria tirado do artista uma coisa que ele fazia.
+/// **Shift X** — a fase do padrão ao longo do eixo X DELE, em percentagem de uma repetição.
+///
+/// ⚠️ Uma faixa fechada `0..100`, e não uma coordenada de mundo: deslocar por um período inteiro é
+/// a identidade, então `0..100 %` já exprime toda a aparência distinta.
+pub const VECTOR_TEXPAT_SHIFT_X: NodeId = hash_node_id("vector.texpat.shift.x");
+/// O campo numérico gémeo do [`VECTOR_TEXPAT_SHIFT_X`].
+pub const VECTOR_TEXPAT_SHIFT_X_NUM: NodeId = hash_node_id("vector.texpat.shift.x.num");
+/// **Shift Y** — a fase do padrão ao longo do eixo Y DELE, em percentagem de uma repetição.
+pub const VECTOR_TEXPAT_SHIFT_Y: NodeId = hash_node_id("vector.texpat.shift.y");
+/// O campo numérico gémeo do [`VECTOR_TEXPAT_SHIFT_Y`].
+pub const VECTOR_TEXPAT_SHIFT_Y_NUM: NodeId = hash_node_id("vector.texpat.shift.y.num");

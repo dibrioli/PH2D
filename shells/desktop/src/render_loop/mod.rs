@@ -3884,6 +3884,14 @@ impl crate::App {
                             } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_GAP {
                                 pending_texpat =
                                     Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SHIFT_X {
+                                // Plano 33: a FASE dentro de uma repetição, em % — o `event.rs` do
+                                // painel já converteu o track.
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Shift(0, *v));
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SHIFT_Y {
+                                pending_texpat =
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Shift(1, *v));
                             } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_ANGLE {
                                 // GRAUS aqui; o documento guarda radianos, e a conversão vive na
                                 // porta única (`texture_pattern_edit::apply`).
@@ -9516,17 +9524,6 @@ impl crate::App {
                         vec_scene,
                         Some(sel),
                         self.vec_grad_selected,
-                        ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
-                        vector_scene,
-                    );
-                }
-                // Plano 33 W6: as três alças do PADRÃO (mover · escalar · rodar), pela mesma
-                // descida — a geometria delas é LOCAL como a do path.
-                if let Some(sel) = self.vec_pen.selected() {
-                    ph2d_vec_render::pattern_handle::draw_pattern_handles(
-                        vec_scene,
-                        Some(sel),
-                        self.vec_pattern_selected,
                         ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
                         vector_scene,
                     );

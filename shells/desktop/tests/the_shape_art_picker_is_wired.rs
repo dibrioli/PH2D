@@ -1,17 +1,16 @@
-//! **AS TRÊS ALÇAS DO PADRÃO ESTÃO FIADAS NOS QUATRO SÍTIOS** (plano 33, W6).
+//! **O PICKER DA ARTE-FORMA está fiado, do botão até ao vínculo** (plano 33, W7).
 //!
 //! ⚠️ **A shell não é alcançável de um teste de unidade** — o `App` segura uma surface de janela
 //! real. É a mesma razão pela qual o undo do filtro do sculpt3d, o desenho do offset vivo e o pick
 //! do mapa desenhado têm todos um gate que lê o FONTE. Aqui o risco é concreto e já mordeu duas
-//! vezes nesta casa: uma alça **pintada e morta sob o ponteiro** dá exactamente o mesmo report que
-//! uma alça que nunca foi pintada.
+//! vezes nesta casa: um controlo **pintado e morto sob o ponteiro** dá exactamente o mesmo report
+//! que um controlo que nunca foi pintado.
 //!
-//! Os quatro sítios são independentes:
-//!
-//! 1. **o PRESS** agarra (sem ele, o desenho é um enfeite);
-//! 2. **o MOVE** arrasta (sem ele, agarra e nada acontece);
-//! 3. **o RELEASE** fecha o passo de undo (sem ele, um gesto vira N passos ou nenhum);
-//! 4. **o DESENHO** mostra (sem ele, o artista tem de adivinhar onde agarrar).
+//! ⚠️ **Este ficheiro chamava-se `the_pattern_handles_are_wired`** e guardava também os quatro
+//! sítios das três alças de canvas do padrão (W6). **Elas foram RETIRADAS por decisão do Enio**
+//! (2026-08-27: *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*), e a
+//! posição do padrão passou a ser as fileiras **Shift X/Y** da secção *Pattern*. O motivo e o que
+//! ficou no lugar estão no [plano 33](../../../docs/Vector%20Module/33_plano_texture_pattern.md) §6.
 
 use std::fs;
 use std::path::Path;
@@ -30,58 +29,6 @@ fn code(rel: &str) -> String {
         .filter(|l| !l.trim_start().starts_with("//"))
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-#[test]
-fn the_pattern_handles_are_wired_at_all_four_sites() {
-    let dispatch = code("input_dispatch.rs");
-    for (needle, what) in [
-        (
-            "fn vec_pattern_hit(",
-            "o hit-test (qual alça o cursor acerta)",
-        ),
-        (
-            "self.vec_pattern_drag = Some(i);",
-            "o PRESS que agarra a alça",
-        ),
-        ("if self.vec_pattern_drag_move(", "o MOVE que a arrasta"),
-        (
-            "if self.vec_pattern_drag.take().is_some() {",
-            "o RELEASE que fecha o passo de undo",
-        ),
-    ] {
-        assert!(
-            dispatch.contains(needle),
-            "{what} saiu do `input_dispatch.rs` - a alca fica pintada e morta sob o ponteiro"
-        );
-    }
-    assert!(
-        code("render_loop/mod.rs").contains("pattern_handle::draw_pattern_handles("),
-        "o DESENHO das alcas saiu do quadro - o artista tem de adivinhar onde agarrar"
-    );
-}
-
-/// ⚠️ **UM GESTO É UM PASSO DE UNDO**, e isso exige os DOIS lados: o `begin` no press e o
-/// `commit_if_changed` no release. Só o segundo, e o passo nasce do nada; só o primeiro, e o gesto
-/// nunca fecha.
-#[test]
-fn a_handle_drag_opens_and_closes_exactly_one_undo_step() {
-    let d = code("input_dispatch.rs");
-    let press = d
-        .find("self.vec_pattern_drag = Some(i);")
-        .expect("o press existe");
-    let depois = &d[press..press + 400];
-    assert!(
-        depois.contains("self.vec_history.begin("),
-        "o press da alca de padrao nao ABRE o passo de undo"
-    );
-    let rel = d
-        .find("if self.vec_pattern_drag.take().is_some() {")
-        .expect("o release existe");
-    assert!(
-        d[rel..rel + 400].contains("commit_if_changed("),
-        "o release da alca de padrao nao FECHA o passo de undo"
-    );
 }
 
 /// ⭐⭐ **O PICKER DA ARTE-FORMA está fiado** (plano 33, W7) — o gesto de duas mãos do Figma.
@@ -128,5 +75,35 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     assert!(
         corpo.contains("set_source(") && corpo.contains("host,"),
         "o picker escreve numa forma que nao e' a CAPTURADA - o gesto de duas maos inverte-se"
+    );
+}
+
+/// ⛔⛔ **AS ALÇAS DE CANVAS DO PADRÃO NÃO VOLTAM SEM ORDEM** (Enio, 2026-08-27).
+///
+/// ⚠️ Este gate é o par executável da recusa escrita no plano 33 §6. Uma decisão de produto que
+/// vive só num documento é uma decisão que a próxima janela reconstrói de boa-fé — *o §5 do
+/// roteador já acumulou trabalho já pago por exactamente isto*.
+///
+/// A posição do padrão é hoje autorada pelas fileiras **Shift X/Y** do painel, que passam pela
+/// mesma porta única (`PatternFill::set_shift_axis`) que a alça de mover usava.
+#[test]
+fn the_pattern_has_no_canvas_handles_anymore() {
+    for (rel, agulha) in [
+        ("input_dispatch.rs", "vec_pattern_hit"),
+        ("input_dispatch.rs", "vec_pattern_drag"),
+        ("render_loop/mod.rs", "draw_pattern_handles"),
+        ("app_state.rs", "vec_pattern_selected"),
+    ] {
+        assert!(
+            !src(rel).contains(agulha),
+            "`{agulha}` voltou a `{rel}` - as alcas de canvas do padrao foram RETIRADAS por decisao \
+             do Enio (plano 33 §6); os ajustes vivem no painel"
+        );
+    }
+    // ⚠️ E o CONTROLO: a porta que ficou no lugar delas tem de existir, senão este gate ficaria
+    // verde num produto que perdeu a posição do padrão em vez de a ter mudado de sítio.
+    assert!(
+        src("texture_pattern_edit.rs").contains("TexPatCmd::Shift"),
+        "a posicao do padrao nao e' autoravel por lado nenhum"
     );
 }

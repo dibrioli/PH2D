@@ -24,9 +24,13 @@ use crate::ids;
 /// Fora daqui os sete pintam, acendem sob o mouse e **não fazem nada**: o pill nunca troca o modo,
 /// os chips nunca alcançam o componente e os presets nunca escrevem W/H.
 ///
-/// ⚠️ **A cadeia abaixo está EXACTAMENTE no teto de 200 LOC** depois desta wave. A próxima adição
-/// não cabe: ela tem de extrair uma FAMÍLIA (os catorze pills de modo são a candidata óbvia) —
-/// e isso é trabalho de quem for dono da cadeia, não contrabando dentro de outra feature.
+/// ⚠️ **A cadeia abaixo vive ENCOSTADA no teto de 200 LOC**, e já o estourou duas vezes: a cura é
+/// sempre extrair uma FAMÍLIA (os pills de modo foram a primeira; a booleana, em 2026-08-27, foi a
+/// segunda — ver [`is_boolean_click`]). ⛔ Nunca uma entrada no `FN_OVERAGE_OK`.
+///
+/// ⚠️⚠️ E o gate mora em `ph2d-editor-core/tests/`: **um fechamento por `cargo test -p
+/// ph2d-panel-vector` NÃO o alcança**, então a wave que acrescenta um botão aqui só o vê no gate
+/// batched — que é onde ele foi de facto apanhado das duas vezes.
 /// **As opções dos dois pickers de TOKEN** (plano UI/UX W4). Um helper, e não 162 linhas na
 /// cadeia — o mesmo motivo do `is_frame_widget`.
 ///
@@ -237,38 +241,14 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // MORTOS.
         || filters::is_filter_button(id)
         || (0..ids::MAX_ENVELOPE_PRESETS).any(|i| id == ids::vector_envelope_preset_id(i))
-
-        || id == ids::VECTOR_BOOL_UNION
-        // A BOOLEANA VIVA: os dois chips de modo sao panel-local no VALOR, mas a shell precisa
-        // saber que o modo mudou (ela e' quem le' o modo no clique de uma das oito); e o Apply e'
-        // um comando de DOCUMENTO. Fora daqui os tres pintariam e estariam MORTOS.
+        || is_boolean_click(id)
         || is_frame_widget(id)
         || is_layout_widget(id)
         || is_anchor_widget(id)
         // As opções dos pickers de token (plano UI/UX W4). Fora daqui elas pintam, acendem sob
         // o mouse e o Click morre no painel — o artista escolheria um token e nada mudaria.
         || is_token_option(id)
-        || id == ids::VECTOR_BOOL_LIVE_OFF
-        || id == ids::VECTOR_BOOL_LIVE_ON
-        || id == ids::VECTOR_BOOL_APPLY
         || is_prefab_click(id)
-        || id == ids::VECTOR_BOOL_MINUS_BACK
-        || id == ids::VECTOR_BOOL_TRIM
-        || id == ids::VECTOR_BOOL_CROP
-        || id == ids::VECTOR_BOOL_MERGE
-        || id == ids::VECTOR_BOOL_SUBTRACT
-        || id == ids::VECTOR_BOOL_INTERSECT
-        || id == ids::VECTOR_BOOL_EXCLUDE
-        // O VERBO DE UMA FORMA (2026-08-22). Ids proprios, e nao os quatro de cima: os dois
-        // conjuntos convivem na mesma seccao e fazem coisas diferentes sobre a mesma selecao.
-        // O valor mora num COMPONENTE, entao o clique atravessa o barramento -- fora daqui os
-        // quatro chips pintariam, acenderiam sob o mouse, e estariam MORTOS.
-        || id == ids::VECTOR_BOOL_SHAPE_UNION
-        || id == ids::VECTOR_BOOL_SHAPE_SUBTRACT
-        || id == ids::VECTOR_BOOL_SHAPE_INTERSECT
-        || id == ids::VECTOR_BOOL_SHAPE_EXCLUDE
-        || id == ids::VECTOR_COMPOUND_MAKE
-        || id == ids::VECTOR_COMPOUND_RELEASE
         // Expand: os dois COMANDOS (a junção não vem aqui — é panel-local).
         || id == ids::VECTOR_EXPAND_OFFSET_PATH
         || id == ids::VECTOR_EXPAND_OUTLINE_STROKE
@@ -425,4 +405,36 @@ mod tests {
             );
         }
     }
+}
+
+/// **A BOOLEANA, num predicado só** — os dois chips de modo, o Apply, os oito verbos de receita, os
+/// quatro verbos de FORMA e o par do compound path.
+///
+/// ⚠️ Extraído do [`forwards_plain_click`] pelo teto de 200 LOC por função, e o corte é o mesmo dos
+/// irmãos ([`is_frame_widget`], [`is_layout_widget`], [`is_anchor_widget`]): **um assunto**. Os oito
+/// da receita e os quatro da FORMA convivem na mesma secção e fazem coisas diferentes sobre a mesma
+/// selecção — os dois conjuntos têm ids próprios de propósito.
+///
+/// ⚠️ **Todos atravessam o barramento.** Os chips de modo são panel-local no VALOR, mas a shell
+/// precisa saber que o modo mudou (é ela quem o lê no clique de um dos oito), e o Apply é um comando
+/// de DOCUMENTO. Fora daqui eles pintariam, acenderiam sob o rato e o `Click` morreria no painel —
+/// o report que o Enio já deu duas vezes sobre esta mesma fileira.
+fn is_boolean_click(id: ph2d_a11y::NodeId) -> bool {
+    id == ids::VECTOR_BOOL_UNION
+        || id == ids::VECTOR_BOOL_LIVE_OFF
+        || id == ids::VECTOR_BOOL_LIVE_ON
+        || id == ids::VECTOR_BOOL_APPLY
+        || id == ids::VECTOR_BOOL_MINUS_BACK
+        || id == ids::VECTOR_BOOL_TRIM
+        || id == ids::VECTOR_BOOL_CROP
+        || id == ids::VECTOR_BOOL_MERGE
+        || id == ids::VECTOR_BOOL_SUBTRACT
+        || id == ids::VECTOR_BOOL_INTERSECT
+        || id == ids::VECTOR_BOOL_EXCLUDE
+        || id == ids::VECTOR_BOOL_SHAPE_UNION
+        || id == ids::VECTOR_BOOL_SHAPE_SUBTRACT
+        || id == ids::VECTOR_BOOL_SHAPE_INTERSECT
+        || id == ids::VECTOR_BOOL_SHAPE_EXCLUDE
+        || id == ids::VECTOR_COMPOUND_MAKE
+        || id == ids::VECTOR_COMPOUND_RELEASE
 }

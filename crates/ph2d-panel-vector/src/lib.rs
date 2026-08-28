@@ -84,6 +84,14 @@ pub(crate) const TEXPAT_SIZE_MAX: f64 = 8.0; // LITERAL-PX-OK: faixa no domínio
 /// `0.5` = encostado. ⚠️ **Negativo é a SOBREPOSIÇÃO** (o *Overlap* do Illustrator), e ela não é um
 /// modo à parte: sai da mesma máquina de dar-a-volta que o tijolo já precisa.
 pub(crate) const TEXPAT_GAP_MAX: f64 = 2.0; // LITERAL-PX-OK: faixa no domínio do documento
+/// A repetição inteira, em PERCENTAGEM — o **Shift X/Y** é unipolar `0..100`.
+///
+/// ⚠️ **A faixa não é um palpite: ela é o PERÍODO.** Deslocar o padrão por uma repetição inteira é a
+/// identidade, então `0..100 %` já exprime **toda** a aparência distinta e `100` é o mesmo que `0` —
+/// o recurso que fecha esta faixa é a periodicidade do reticulado, não um limite de conforto. Uma
+/// coordenada de mundo crua seria ilimitada (a forma vive onde quiser) e quase todo o curso dela
+/// seria repetição.
+pub(crate) const TEXPAT_SHIFT_MAX: f64 = 100.0; // LITERAL-PX-OK: faixa no domínio do documento
 /// A volta inteira, em GRAUS — o **Angle** é unipolar `0..360` (ao contrário da Rotation do Pattern
 /// on Path, que é bipolar): aqui não há um neutro *"deitado na curva"* a que voltar, e `0` já é o
 /// repouso na ponta do curso.

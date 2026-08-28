@@ -57,10 +57,15 @@ pub use structure::{VecClip, VecClipSpan, VecViewState};
 mod xform;
 pub use xform::{VecXforms, Xform, xform_of};
 
+/// **Assar um afim na geometria** — irmão de `path_ops` pelo teto de LOC, e o corte é por
+/// RESPONSABILIDADE: o `path_ops` move e mede um caminho **no frame dele**; aqui o afim entra na
+/// geometria e o frame **desaparece**.
+mod path_bake_xform;
 /// Whole-path transforms (flip / rotate / translate / scale / bbox) live in a
 /// sibling module (LOC cap); the `impl VecScene` block is inherent.
 mod path_ops;
-pub use path_ops::{bake_xform, curve_bbox_in_frame};
+pub use path_bake_xform::bake_xform;
+pub use path_ops::curve_bbox_in_frame;
 
 /// **A SONDA DE CURVA** (plano 25 §9): projetar um ponto SOBRE a geometria e achar onde duas
 /// curvas se cruzam — as duas perguntas do snap de precisão. Irmã do [`geometry`], e separada

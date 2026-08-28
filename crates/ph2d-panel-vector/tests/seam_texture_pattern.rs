@@ -162,6 +162,7 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
         size: 1.0,
         gap: 0.0,
         angle_deg: 0.0,
+        shift_pct: [0.0, 0.0],
         mode: 0,
     }
 }
@@ -264,6 +265,10 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
         (ids::VECTOR_TEXPAT_OFFSET, "o desfasamento"),
         (ids::VECTOR_TEXPAT_SIZE, "o tamanho"),
         (ids::VECTOR_TEXPAT_GAP, "o vao"),
+        // ⚠️ A fase entra nesta lista pela MESMA razão que o tamanho: no `Clamp` a colocação é
+        // DERIVADA (uma cópia enquadrada na forma), e `origin` não tem quem o leia.
+        (ids::VECTOR_TEXPAT_SHIFT_X, "o Shift X"),
+        (ids::VECTOR_TEXPAT_SHIFT_Y, "o Shift Y"),
     ];
     for (id, what) in mortos {
         assert!(!visible(2, id), "o Clamp mostra {what}, que ele nao le^");

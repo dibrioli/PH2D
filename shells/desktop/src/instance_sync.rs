@@ -311,6 +311,41 @@ pub(crate) fn sync_instances(
                 // Aí o mestre ganha: inventar um override a partir de um estado que ninguém viu
                 // mudar seria congelar contra a receita algo que o artista nunca pediu.
                 if !master_moved && echo.master.contains_key(&echo_key) {
+                    // ⭐⭐⭐ **Numa cópia LIGADA, TUDO sobe — não só a arte** (report do Enio,
+                    // 2026-08-27: *«várias propriedades dos objetos inclusos nos componentes (como
+                    // posição e rot) ao serem modificados nas instâncias linkadas não são
+                    // transferidos para outras instâncias»*).
+                    //
+                    // ⛔ **A minha 1.ª versão limitou o modo à ARTE, citando o `Alt+D` do Blender —
+                    // e o referencial certo era outro.** O que o artista tem aqui é uma
+                    // *collection instance*: o componente é um CONJUNTO, e no Blender editar o que
+                    // está dentro da coleção muda todas as instâncias dela. *Um referencial escolhido
+                    // pela peça errada dá uma fronteira que o artista não reconhece.*
+                    //
+                    // ⚠️ **A raiz continua a ser dela** (`ROOT_IS_ITS_OWN`, filtrado acima): pose,
+                    // nome, ordem e o olho de uma cópia são daquela cópia — senão arrastar uma
+                    // instância arrastava todas, que é o oposto do que uma cópia é. É a mesma
+                    // fronteira do Blender: o objeto da instância é dela, o conteúdo é partilhado.
+                    //
+                    // ⚠️ E o **eco fica como está**, pela razão medida no irmão
+                    // ([`crate::instance_sync_docs::sync_one`]): atualizá-lo aqui faria o quadro
+                    // seguinte concluir *«o mestre não se mexeu»* e as irmãs capturavam excepções
+                    // falsas em vez de receberem.
+                    if sim.world().get::<ph2d_ecs::LinkedArt>(inst).is_some() {
+                        match &have {
+                            Some(bytes) => {
+                                if (entry.insert_from_bytes)(sim.world_mut(), master, bytes).is_ok()
+                                {
+                                    wrote += 1;
+                                }
+                            }
+                            None => {
+                                (entry.remove)(sim.world_mut(), master);
+                                wrote += 1;
+                            }
+                        }
+                        continue;
+                    }
                     overrides.overrides.insert(key); // (3)
                     continue;
                 }

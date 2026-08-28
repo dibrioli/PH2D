@@ -233,3 +233,91 @@ fn painting_one_copy_reaches_the_others() {
         "o passe deixou de ser ponto fixo depois de uma pintura"
     );
 }
+
+/// ⭐⭐⭐ **Numa cópia LIGADA, mover uma PEÇA move a peça de todas** — report do Enio, 2026-08-27.
+///
+/// > *«Várias propriedades dos objetos inclusos nos componentes (como posição e rot) ao serem
+/// > modificados nas instâncias linkadas não são transferidos para outras instâncias.»*
+///
+/// ⛔ **A minha 1.ª versão do modo ligado cobria só a ARTE**, citando o `Alt+D` do Blender — e o
+/// referencial certo era a *collection instance*: um componente é um CONJUNTO, e editar o que está
+/// DENTRO dele muda todas as instâncias dele. *Um referencial escolhido pela peça errada dá uma
+/// fronteira que o artista não reconhece.*
+///
+/// ⚠️ **E a metade que fica:** a pose da RAIZ de cada cópia continua a ser dela
+/// (`ROOT_IS_ITS_OWN`). Sem isso, arrastar uma instância arrastava todas — o oposto do que uma
+/// cópia é, e a mesma fronteira que o Blender tem entre o objeto e o conteúdo.
+///
+/// (Mutação: apagar o ramo do `LinkedArt` no caso (3) do `sync_instances` ⇒ RED na irmã.)
+#[test]
+fn moving_a_piece_of_a_linked_copy_moves_the_piece_of_every_copy() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let bridge = PhysicsBridge::new();
+    let mut echo = super::MasterEcho::default();
+    let master = plain_master(&mut sim);
+    let a = instantiate(&mut sim, &r, master, None).expect("instanciou A");
+    let b = instantiate(&mut sim, &r, master, None).expect("instanciou B");
+    for root in [a, b] {
+        for e in [root, piece(&sim, root, "Arm")] {
+            sim.world_mut().entity_mut(e).insert(ph2d_ecs::LinkedArt);
+        }
+    }
+    // As duas raízes em sítios diferentes — é o que uma cópia é, e o gate tem de o preservar.
+    let (at_a, at_b) = (
+        ph2d_core::Vec2::new(-3.0, 0.0),
+        ph2d_core::Vec2::new(3.0, 0.0),
+    );
+    sim.world_mut()
+        .entity_mut(a)
+        .insert(Transform::from_translation(at_a));
+    sim.world_mut()
+        .entity_mut(b)
+        .insert(Transform::from_translation(at_b));
+    pass(&mut sim, &r, &bridge, &mut echo); // semeia o eco
+
+    // O gesto: mover o braço DENTRO da cópia A.
+    let moved = ph2d_core::Vec2::new(1.0, 2.5);
+    let arm_a = piece(&sim, a, "Arm");
+    sim.world_mut()
+        .entity_mut(arm_a)
+        .insert(Transform::from_translation(moved));
+    // Dois quadros: o 1.º sobe, o 2.º leva às irmãs.
+    pass(&mut sim, &r, &bridge, &mut echo);
+    pass(&mut sim, &r, &bridge, &mut echo);
+
+    for (who, root) in [("a receita", master), ("a irma", b)] {
+        assert_eq!(
+            sim.world()
+                .get::<Transform>(piece(&sim, root, "Arm"))
+                .expect("pose")
+                .translation,
+            moved,
+            "{who} nao recebeu a pose da peca — a copia ligada so' partilhava a ARTE"
+        );
+    }
+    // ⚠️ E as RAÍZES ficam onde estavam: partilha-se o conteúdo, nunca o objeto.
+    for (who, root, at) in [("A", a, at_a), ("B", b, at_b)] {
+        assert_eq!(
+            sim.world()
+                .get::<Transform>(root)
+                .expect("pose")
+                .translation,
+            at,
+            "a copia {who} mudou de sitio — arrastar uma instancia passou a arrastar todas"
+        );
+    }
+    // ⚠️ Nenhuma excepção falsa, e o passe assenta.
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::ObjectInstance>(b)
+            .map_or(0, |o| o.overrides.len()),
+        0,
+        "a irma capturou uma excepcao — ela fica surda a' receita para sempre"
+    );
+    assert_eq!(
+        pass(&mut sim, &r, &bridge, &mut echo),
+        0,
+        "o passe nao assentou — a subida repete-se todo o quadro"
+    );
+}

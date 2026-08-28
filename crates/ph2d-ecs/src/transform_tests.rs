@@ -150,6 +150,126 @@ fn root_draw_order_follows_root_order_not_entity_id() {
     assert_eq!(order, vec![c, a, b]);
 }
 
+/// ⭐⭐⭐ **A ordem de DESENHO dos irmãos é o `SiblingOrder`, e não a de INSERÇÃO** — report do
+/// Enio, 2026-08-27: *«com uso de Undo muitas vezes o z-order muda sem o comando do usuário, e
+/// sprites que estão mais abaixo na hierarquia passam a ser desenhadas atrás de sprites que estão
+/// mais acima»*.
+///
+/// ⛔⛔ **Eram DUAS respostas à mesma pergunta.** A lista da Hierarquia lê `sibling_key` desde a F1
+/// (ADR-0164); esta travessia — que é quem dá o `draw_order` — lia a lista `Children` crua, que é
+/// **ordem de inserção**. Elas concordavam por acidente até alguém reordenar irmãos ou desfazer.
+///
+/// (Mutação: tirar o `sort_by_key(sibling_key)` do `propagate_transforms` ⇒ RED.)
+#[test]
+fn sibling_draw_order_follows_sibling_order_not_insertion() {
+    let mut world = World::new();
+    let root = world.spawn((Transform::IDENTITY, crate::RootOrder(0))).id();
+    // Nascidos por esta ordem, autorados na ORDEM INVERSA — é o estado que um arrastar na
+    // Hierarquia produz, e o que o respawn do undo reconstrói de outra maneira.
+    let first = world
+        .spawn((
+            Transform::IDENTITY,
+            crate::ChildOf(root),
+            crate::SiblingOrder(2),
+        ))
+        .id();
+    let second = world
+        .spawn((
+            Transform::IDENTITY,
+            crate::ChildOf(root),
+            crate::SiblingOrder(1),
+        ))
+        .id();
+    let third = world
+        .spawn((
+            Transform::IDENTITY,
+            crate::ChildOf(root),
+            crate::SiblingOrder(0),
+        ))
+        .id();
+    let mut state = TransformPropagationState::new(&mut world);
+    let mut present = World::new();
+    let mut buf = WorklistBuf::with_capacity(8);
+    let mut order = Vec::new();
+    propagate_transforms(
+        &world,
+        &mut state,
+        &mut present,
+        &mut buf,
+        |_s, _p, e, _| {
+            order.push(e);
+        },
+    );
+    assert_eq!(
+        order,
+        vec![root, third, second, first],
+        "o desenho seguiu a ordem de INSERCAO — a lista da Hierarquia mostra a outra, e o \
+         artista ve' uma sprite de baixo desenhada atras de uma de cima"
+    );
+}
+
+/// ⭐⭐ **E as DUAS leituras concordam** — a lista e o canvas, sobre o mesmo mundo.
+///
+/// ⚠️ **É este o gate que faltava**, e não um sobre cada um dos dois: o defeito nunca foi *«esta
+/// travessia está errada»* — as duas estavam internamente coerentes e **respondiam diferente**.
+/// *Um gate por leitor fica verde sobre uma divergência entre eles.*
+#[test]
+fn the_hierarchy_list_and_the_canvas_agree_on_the_order() {
+    use crate::scene::snapshot::{HierarchySnapshot, HierarchyWalkState, build_hierarchy_snapshot};
+    let mut world = World::new();
+    let mut ids = Vec::new();
+    for (order, name) in [(2u32, "c"), (0, "a"), (1, "b")] {
+        ids.push(
+            world
+                .spawn((
+                    Transform::IDENTITY,
+                    crate::Name::new(name),
+                    crate::RootOrder(order),
+                ))
+                .id(),
+        );
+    }
+    // Um filho em cada raiz, autorado ao contrário do nascimento.
+    for (i, &r) in ids.iter().enumerate() {
+        for k in 0..2u32 {
+            world.spawn((
+                Transform::IDENTITY,
+                crate::Name::new(format!("{i}-{k}")),
+                crate::ChildOf(r),
+                crate::SiblingOrder(1 - k),
+            ));
+        }
+    }
+    let mut state = TransformPropagationState::new(&mut world);
+    let mut present = World::new();
+    let mut buf = WorklistBuf::with_capacity(16);
+    let mut canvas = Vec::new();
+    propagate_transforms(
+        &world,
+        &mut state,
+        &mut present,
+        &mut buf,
+        |_s, _p, e, _| {
+            canvas.push(e);
+        },
+    );
+
+    let mut hstate = HierarchyWalkState::new(&mut world);
+    let mut scratch = Vec::new();
+    let mut snap = HierarchySnapshot::default();
+    build_hierarchy_snapshot(&world, &mut hstate, &mut scratch, &mut snap);
+    let list: Vec<crate::Entity> = snap
+        .entries
+        .iter()
+        .map(|e| crate::Entity::from_bits(e.entity))
+        .collect();
+    assert_eq!(
+        canvas, list,
+        "a lista da Hierarquia e o canvas ordenaram diferente — o artista arrasta uma linha e a \
+         pilha nao a segue"
+    );
+}
+
 #[test]
 fn worklist_buf_clear_preserves_capacity() {
     let mut buf = WorklistBuf::with_capacity(64);

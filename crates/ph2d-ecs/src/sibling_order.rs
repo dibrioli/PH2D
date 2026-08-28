@@ -61,6 +61,37 @@ pub fn sibling_key(world: &World, child: Entity) -> (u32, bevy_ecs::entity::Enti
     (order, child.index())
 }
 
+/// ⭐⭐⭐ **A chave de ordenação de uma RAIZ** — a gémea da de cima, e pela mesma razão.
+///
+/// ⛔⛔ **Ela existe porque a lei estava escrita DUAS vezes e as duas cópias divergiram** (report do
+/// Enio, 2026-08-27: *«com uso de Undo muitas vezes o z-order muda sem o comando do usuário, e
+/// sprites que estão mais abaixo na hierarquia passam a ser desenhadas atrás de sprites que estão
+/// mais acima»*).
+///
+/// A **lista** (`build_hierarchy_snapshot`) e o **canvas** (`propagate_transforms`, que é quem dá o
+/// `draw_order`) faziam a mesma pergunta e respondiam diferente:
+///
+/// | | raízes | filhos |
+/// |---|---|---|
+/// | a lista | `(RootOrder, bits)` | **`sibling_key`** (ADR-0164 F1) |
+/// | o canvas | `(RootOrder, bits)` | ⛔ **a ordem de INSERÇÃO da lista `Children`** |
+///
+/// A ordem de inserção é memória de runtime que o respawn do undo reconstrói do zero — por
+/// `StableId`, que não é o `SiblingOrder`. ⇒ **ao primeiro Ctrl+Z a ordem de desenho passa a ser
+/// outra**, e a lista continua a mostrar a que o artista autorou. A F1 curou este defeito na lista
+/// e ninguém voltou a perguntar o que o desenho ainda usava. *Uma lei escrita em dois sítios ainda
+/// não é uma lei — só uma PORTA é.*
+///
+/// ⚠️ O desempate é o `Entity::index()`, como no [`sibling_key`], e só morde entre raízes que ainda
+/// não têm número — `assign_missing_root_order` corre no passe de quadro e apaga o empate.
+#[must_use]
+pub fn root_key(world: &World, root: Entity) -> (u32, bevy_ecs::entity::EntityIndex) {
+    let order = world
+        .get::<crate::RootOrder>(root)
+        .map_or(u32::MAX, |r| r.0);
+    (order, root.index())
+}
+
 /// **Dá um `SiblingOrder` a todo filho que ainda não tem um, preservando a ordem que a
 /// Hierarquia já mostra.** Idempotente; devolve `false` quando não havia nada a fazer.
 ///

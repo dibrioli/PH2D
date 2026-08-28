@@ -296,3 +296,141 @@ fn applying_a_shape_to_the_master_writes_the_content_not_the_id() {
         "a receita passou a apontar para o path da INSTANCIA"
     );
 }
+
+/// ⭐⭐⭐ **E as IRMÃS recebem** — report do Enio, 2026-08-27: *«nem todas as instâncias aceitam a
+/// edição dos pontos da shape»*.
+///
+/// ⛔⛔ **O defeito era a subida atualizar o ECO.** Medido por sonda, com três cópias:
+///
+/// ```text
+/// editei a LIGADA -> mestre=-2.0  copias=[-1.0, -1.0, -2.0]  overrides=[0, 0, 0]
+///    +1 quadro:      mestre=-2.0  copias=[-1.0, -1.0, -2.0]   <- as irmas NUNCA recebem
+///    e a seguir:                             overrides=[1, 1, 0]  <- e ficam SURDAS
+/// ```
+///
+/// O eco é a memória de *quem se mexeu*. Ensinado o valor novo no mesmo passe, o quadro seguinte
+/// conclui *«o mestre não se mexeu»* — e cada irmã, que ainda tem a forma velha, lê-se como *«só a
+/// instância mexeu»* e captura uma excepção que ninguém pediu. ⇒ **as duas metades do report** (as
+/// irmãs não mudam · depois recusam mandar) eram o mesmo bug.
+///
+/// ⚠️ **Este gate precisa de DUAS instâncias, e é por isso que ele não cabia no irmão**
+/// [`a_shape_edited_on_a_linked_copy_rises_to_the_master`]: com uma só, a subida é indistinguível
+/// de uma subida que ninguém recebe. *Uma fixtura de um não pode medir «e as outras».*
+///
+/// (Mutação: repor o `next_master.insert(..)` na subida ⇒ RED na irmã.)
+#[test]
+fn a_linked_copy_rises_and_the_sisters_receive_it() {
+    let mut sim = SimWorld::new();
+    let mut scene = VecScene::new();
+    let mut map = VecEntityMap::new();
+    let registry = reg();
+    let master_path = scene.push_path(rectangle([-1.0, -1.0], [1.0, 1.0]));
+    let root = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Badge"), MasterRoot))
+        .id();
+    let mpiece = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Plate"),
+            VecPathRef(master_path),
+            ChildOf(root),
+        ))
+        .id();
+    map.insert(master_path, mpiece.to_bits());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    // ⚠️⚠️ **A ORDEM é a metade que decide, e a 1.ª versão deste gate não a tinha** — ele criava
+    // DUAS ligadas e a mutação SOBREVIVEU. Uma irmã processada DEPOIS da que sobe lê o mestre já
+    // novo no mesmo passe e recebe de qualquer maneira; quem o eco engana é a irmã processada
+    // ANTES, que só pode receber no passe seguinte. `live_instances` ordena por `StableId`, logo a
+    // irmã tem de NASCER primeiro. *Um gate cuja fixtura esconde a ordem mede a metade fácil.*
+    let mut roots = Vec::new();
+    for link in [
+        crate::instantiate::ArtLink::Own,
+        crate::instantiate::ArtLink::Shared,
+    ] {
+        roots.push(
+            crate::instantiate::instantiate_master(
+                &mut sim,
+                &registry,
+                root,
+                None,
+                &mut OwnedDocs {
+                    vec_scene: &mut scene,
+                    vec_entities: &mut map,
+                },
+                link,
+            )
+            .expect("instanciou"),
+        );
+    }
+    let id_of = |sim: &SimWorld, e: Entity| sim.world().get::<ph2d_ecs::StableId>(e).expect("id").0;
+    assert!(
+        id_of(&sim, roots[0]) < id_of(&sim, roots[1]),
+        "a irma nao nasceu antes da ligada — o passe processa-a DEPOIS e o gate mede a metade facil"
+    );
+    let bridge = PhysicsBridge::new();
+    let mut echo = MasterEcho::default();
+    let run = |sim: &mut SimWorld,
+               scene: &mut VecScene,
+               map: &mut VecEntityMap,
+               echo: &mut MasterEcho| {
+        sync_instances(
+            sim,
+            &registry,
+            &bridge,
+            echo,
+            &mut OwnedDocs {
+                vec_scene: scene,
+                vec_entities: map,
+            },
+        )
+    };
+    run(&mut sim, &mut scene, &mut map, &mut echo); // semeia o eco
+    let ids: Vec<VecPathId> = roots
+        .iter()
+        .map(|&r| {
+            sim.world()
+                .get::<VecPathRef>(piece(&sim, r, "Plate"))
+                .expect("geometria")
+                .0
+        })
+        .collect();
+    let x = |sc: &VecScene, id: VecPathId| sc.path(id).expect("path").verts[0].anchor[0];
+
+    // O gesto: mover um ponto da cópia LIGADA (a segunda).
+    scene.path_mut(ids[1]).expect("path").verts[0].anchor[0] = -7.0;
+    // Dois quadros: o 1.º sobe, o 2.º leva às irmãs. (O passe é um ponto fixo, não um oráculo
+    // instantâneo — e um quadro de atraso é invisível, uma irmã surda para sempre não é.)
+    run(&mut sim, &mut scene, &mut map, &mut echo);
+    run(&mut sim, &mut scene, &mut map, &mut echo);
+
+    assert!(
+        (x(&scene, master_path) + 7.0).abs() < 1e-9,
+        "a edicao da copia LIGADA nao subiu: mestre={}",
+        x(&scene, master_path)
+    );
+    assert!(
+        (x(&scene, ids[0]) + 7.0).abs() < 1e-9,
+        "a IRMA nao recebeu: ela ficou em {} enquanto o mestre esta' em {}",
+        x(&scene, ids[0]),
+        x(&scene, master_path)
+    );
+    for (i, &r) in roots.iter().enumerate() {
+        assert_eq!(
+            sim.world()
+                .get::<ph2d_ecs::ObjectInstance>(r)
+                .map_or(0, |o| o.overrides.len()),
+            0,
+            "a copia {} capturou uma excepcao FALSA — ela fica surda a' receita para sempre",
+            i + 1
+        );
+    }
+    // ⚠️ E o ponto fixo chega: um 3.º passe não escreve nada.
+    assert_eq!(
+        run(&mut sim, &mut scene, &mut map, &mut echo),
+        0,
+        "o passe nao assentou — a subida repete-se todo o quadro"
+    );
+}

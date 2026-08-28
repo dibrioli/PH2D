@@ -516,13 +516,11 @@ impl TransformPropagationState {
 /// `WorklistBuf`; the function performs no `Vec::push` that grows
 /// past capacity, no `Box::new`, no `String::from`. Entities without
 /// `Transform` are silently skipped.
-/// Root draw-order key: the explicit `RootOrder.0`, or `u32::MAX` when
-/// absent (so un-ordered roots fall after explicit ones, matching
-/// `build_hierarchy_snapshot`).
-fn root_order_key(world: &World, e: Entity) -> u32 {
-    world.get::<crate::RootOrder>(e).map_or(u32::MAX, |r| r.0)
-}
-
+///
+/// ⛔ **O `root_order_key` local MORREU em 2026-08-27** e a chave passou a ser a porta partilhada
+/// [`crate::root_key`]: ele respondia `u32` e o desempate ficava aqui, escrito outra vez, com
+/// `to_bits()` em vez do `index()` que a lista usa. Ver o doc daquela porta para o report que o
+/// apanhou — *duas cópias de uma lei divergem no dia em que uma delas é curada.*
 pub fn propagate_transforms<F>(
     sim_w: &World,
     state: &mut TransformPropagationState,
@@ -561,9 +559,7 @@ pub fn propagate_transforms<F>(
     // un-ordered roots sort after explicit ones by entity id — stable
     // across `bevy_ecs` archetype reordering.)
     worklist.stack.sort_unstable_by(|&(a, _), &(b, _)| {
-        let ka = (root_order_key(sim_w, a), a.to_bits());
-        let kb = (root_order_key(sim_w, b), b.to_bits());
-        kb.cmp(&ka)
+        crate::root_key(sim_w, b).cmp(&crate::root_key(sim_w, a))
     });
 
     // Phase 2 — DFS. Pop, compute world transform, invoke callback,
@@ -584,6 +580,18 @@ pub fn propagate_transforms<F>(
             // then drain in reverse onto the DFS stack.
             worklist.children_scratch.clear();
             worklist.children_scratch.extend(children.iter());
+            // ⭐⭐⭐ **A ordem é o `SiblingOrder`, e não a de INSERÇÃO** (report do Enio,
+            // 2026-08-27) — a MESMA porta que a lista da Hierarquia usa desde a F1
+            // ([`crate::sibling_key`]). Enquanto este sítio lia a lista `Children` crua, o canvas
+            // e a lista respondiam diferente **a partir do primeiro Ctrl+Z**: o respawn do undo
+            // reconstrói `Children` por `StableId`, que não é a ordem que o artista autorou.
+            //
+            // ⚠️ **Custo medido em ordem de grandeza, não em relógio:** um `sort_by_key` por PAI
+            // com filhos, sobre uma lista que já está quase sempre ordenada. Não aloca — o
+            // `children_scratch` é o mesmo buffer de sempre (HR-3).
+            worklist
+                .children_scratch
+                .sort_by_key(|&c| crate::sibling_key(sim_w, c));
             // Reverse so DFS visits the first child first.
             for &child in worklist.children_scratch.iter().rev() {
                 // ⚠️ **A âncora entra AQUI, e não noutro passe.** Um filho que monta numa

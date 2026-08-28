@@ -121,7 +121,8 @@ pub use sampling::{
     resolve_texture_repeat,
 };
 pub use sibling_order::{
-    SiblingOrder, assign_missing_sibling_order, ordered_children, set_sibling_order, sibling_key,
+    SiblingOrder, assign_missing_sibling_order, ordered_children, root_key, set_sibling_order,
+    sibling_key,
 };
 pub use sim::{SimComponent, SimWorld};
 pub use slice_nine::{SliceDrawMode, SliceNine, SliceRegion, SliceTileMode, TileRegionMode};

@@ -158,21 +158,15 @@ pub fn build_hierarchy_snapshot(
     // Collect roots with their explicit ordering key (if any). The
     // sort runs ascending, but the DFS pops from the END of `scratch`
     // — so push in REVERSE of the desired display order.
-    let mut roots: Vec<(Entity, u32)> = Vec::new();
-    for entity in state.roots.iter(sim_w) {
-        let order = sim_w
-            .get::<crate::RootOrder>(entity)
-            .map(|r| r.0)
-            .unwrap_or(u32::MAX);
-        roots.push((entity, order));
-    }
-    roots.sort_unstable_by(|a, b| {
-        a.1.cmp(&b.1)
-            .then_with(|| a.0.to_bits().cmp(&b.0.to_bits()))
-    });
+    //
+    // ⛔ **Pela PORTA partilhada** ([`crate::root_key`]) desde 2026-08-27: esta chave estava
+    // escrita aqui e outra vez no `propagate_transforms`, com desempates diferentes (`to_bits`
+    // contra `index`) — e o desenho e a lista podiam discordar. Ver o doc da porta.
+    let mut roots: Vec<Entity> = state.roots.iter(sim_w).collect();
+    roots.sort_unstable_by_key(|&e| crate::root_key(sim_w, e));
     // Reverse before pushing: DFS pops LIFO, so the LAST scratch
     // entry becomes the FIRST entry in the snapshot.
-    for (entity, _) in roots.into_iter().rev() {
+    for entity in roots.into_iter().rev() {
         scratch.push((entity, 0, None));
     }
 

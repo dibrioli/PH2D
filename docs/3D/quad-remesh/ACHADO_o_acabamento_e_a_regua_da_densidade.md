@@ -476,3 +476,36 @@ uma descrição de algoritmo,* e a única forma de a testar era medir a saída d
 [QuadRemesher — user doc](https://www.exoside.com/quadremesherdata/QuadRemesher_1.3_UserDoc.pdf) ·
 [Exoside](https://exoside.com/) ·
 [State of the Art in Quad Meshing](https://www.researchgate.net/publication/279257597_State_of_the_Art_in_Quad_Meshing)
+
+---
+
+## §13 — ⭐⭐ E o veto pagava o acabamento para deitar a malha fora
+
+O `ph2d_quadchain::quads_or_keep_from` oferece a cadeia como **melhoria opcional**: ela corre,
+e a saída só substitui a malha do artista se for melhor. ⛔ **Com o acabamento dentro da
+cadeia, uma peça DURA passou a pagá-lo inteiro para ser deitada fora** — no cubo subdividido
+(o caso em que a cadeia perde **por medição**: a grade dual já é a resposta certa ali) a saída
+abre arestas de bordo, o veto recusa, e o acabamento tinha corrido até ao tecto **duas vezes**
+(a lei alinhada e a cega) sobre uma malha que ninguém ia usar.
+
+⚠️ **O sintoma foi um teste que passou de segundos a minutos**, e não uma medição de perf: o
+`when_the_chain_loses_the_mesh_the_artist_asked_for_comes_back` da suite do `quadchain`.
+*Um teste que fica lento é uma medição de custo que ninguém pediu.*
+
+⭐ **A cura não é uma optimização com risco — é a ordem certa.** O veto tem duas metades e só
+a segunda precisa do acabamento:
+
+1. *«a peça continua fechada?»* — pergunta sobre **topologia**, e uma relaxação **move
+   vértices e mais nada**;
+2. *«a forma melhorou?»* — essa sim precisa da malha acabada.
+
+⇒ `quads_from_mesh` parte-se em `quads_from_mesh_raw` + o acabamento, e o veto de topologia
+decide com a malha **crua**. ⚠️ **A propriedade que torna isto legítimo tem gate**
+(`the_finishing_cannot_change_the_edge_census`), e sem ela a reordenação seria uma aposta.
+
+⏳ **E fica uma pergunta EM ABERTO, deliberadamente não respondida aqui:** dentro do
+`quads_or_keep_from` a superfície do acabamento é o **`feed`** (a malha que entrou na cadeia) e
+não o **`keep`** (a do nível que o artista escolheu, mais fiel). Escolhi o `feed` porque é o que
+a porta irmã usaria, e assim **esta reordenação é provadamente neutra**. *Trocar as duas é uma
+mudança de comportamento que pede a sua própria medição, e misturá-la com uma correcção de
+custo esconderia as duas.*

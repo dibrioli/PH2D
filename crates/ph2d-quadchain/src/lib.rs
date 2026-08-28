@@ -118,6 +118,35 @@ pub fn quads_from_mesh(
     reference: &Mesh,
     target_edge: f32,
 ) -> Result<(Mesh, ChainReport), ChainError> {
+    let (mut out, mut report) = quads_from_mesh_raw(reference, target_edge)?;
+    let clock = std::time::Instant::now();
+    report.finish = ph2d_quadfill::finish_extracted(&mut out, reference);
+    report.ms.finish = clock.elapsed().as_secs_f32() * 1000.0;
+    report.shape = ph2d_quadfill::quad_shape(&out);
+    Ok((out, report))
+}
+
+/// ⭐⭐⭐ **A CADEIA SEM O ACABAMENTO** — ver [`quads_from_mesh`], de que esta é a primeira
+/// metade.
+///
+/// # ⛔⛔ Por que ela é pública, e não um detalhe
+///
+/// O veto de [`quads_or_keep_from`] tem duas metades, e **só a segunda precisa do
+/// acabamento**: *«a peça continua fechada?»* é uma pergunta sobre a **topologia**, e uma
+/// relaxação move vértices e mais nada — a contagem de arestas de bordo e não-manifold é
+/// **idêntica** antes e depois dele (há gate).
+///
+/// ⚠️ **Sem esta porta, uma peça DURA pagava o acabamento inteiro para ser deitada fora.**
+/// Medido: no cubo subdividido — o caso em que a cadeia perde por medição — a saída abre
+/// arestas de bordo, o veto recusa, e o acabamento tinha corrido até ao tecto **duas vezes**
+/// (a lei alinhada e a cega) sobre uma malha que ninguém ia usar.
+///
+/// # Errors
+/// Ver [`ChainError`].
+pub fn quads_from_mesh_raw(
+    reference: &Mesh,
+    target_edge: f32,
+) -> Result<(Mesh, ChainReport), ChainError> {
     let mut ms = ChainTiming::default();
     let mut clock = std::time::Instant::now();
     let mut lap = |slot: &mut f32| {
@@ -167,22 +196,12 @@ pub fn quads_from_mesh(
         tris: &tris,
         uv: &uv,
     };
-    let (mut out, e) = ph2d_quadextract::extract(&cm, None).map_err(ChainError::Extract)?;
+    let (out, e) = ph2d_quadextract::extract(&cm, None).map_err(ChainError::Extract)?;
     if out.faces().is_empty() {
         return Err(ChainError::TooCoarse);
     }
     lap(&mut ms.extract);
 
-    // ── ⭐⭐⭐ O ACABAMENTO. Ver [`ph2d_quadfill::finish_extract`].
-    //
-    // ⛔⛔ **Esta crate entregava a malha CRUA** enquanto o shell da escultura corria `6`
-    // rondas de Laplaciano — *duas ordens para o mesmo botão, e só uma com acabamento.*
-    // A porta é a mesma para os dois desde 2026-08-28.
-    //
-    // ⚠️ **`reference` e não `work`:** a saída pousa na escultura que o artista fez; a
-    // remalhada do F1 já arredondou uma vez, e reprojectar sobre ela somaria os dois erros.
-    let finish = ph2d_quadfill::finish_extracted(&mut out, reference);
-    lap(&mut ms.finish);
     let shape = ph2d_quadfill::quad_shape(&out);
     let report = ChainReport {
         ms,
@@ -193,7 +212,7 @@ pub fn quads_from_mesh(
         folded: e.folded_faces,
         aligned: round.shift_frac_max == 0.0,
         shape,
-        finish,
+        finish: ph2d_quadfill::FinishReport::default(),
     };
     Ok((out, report))
 }
@@ -322,15 +341,26 @@ pub fn quads_or_keep_from(feed: &Mesh, keep: &Mesh, target_edge: f32) -> (Mesh, 
     // ⛔ **Isto NÃO é a cura.** O defeito é do `ph2d-gridmap` e a linha dele está viva sobre aquele
     // arquivo (`line/quadextract`); tocá-lo daqui seria colisão de mesmo-símbolo. Ele está nomeado
     // no handoff, com a fixtura que o reproduz.
+    // ⭐⭐⭐ **A CADEIA CRUA PRIMEIRO, e o acabamento só depois do veto de TOPOLOGIA.**
+    //
+    // ⚠️ **Não é uma optimização com risco: é a ordem certa.** Uma relaxação move vértices e
+    // mais nada, então a contagem de arestas de bordo e não-manifold é a **mesma** antes e
+    // depois do acabamento (gate `the_finishing_cannot_change_the_edge_census`) — decidir o
+    // veto com a malha crua dá **exactamente** o mesmo veredito.
+    //
+    // ⛔ **Medido: sem esta ordem, uma peça DURA pagava o acabamento inteiro para ser
+    // deitada fora** — no cubo subdividido, o caso em que a cadeia perde por medição, ele
+    // corria até ao tecto **duas vezes** (a lei alinhada e a cega) sobre uma malha que
+    // ninguém ia usar.
     let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        quads_from_mesh(feed, target_edge)
+        quads_from_mesh_raw(feed, target_edge)
     }));
     let Ok(ran) = ran else {
         return (keep.clone(), Verdict::Panicked);
     };
     match ran {
         Err(e) => (keep.clone(), Verdict::Refused(e)),
-        Ok((out, r)) => {
+        Ok((mut out, mut r)) => {
             let (bound_out, non_out) = edge_census(&out);
             if bound_out > bound_keep || non_out > non_keep {
                 return (
@@ -341,6 +371,18 @@ pub fn quads_or_keep_from(feed: &Mesh, keep: &Mesh, target_edge: f32) -> (Mesh, 
                     },
                 );
             }
+            // ⭐ Sobreviveu à topologia: agora vale a pena acabá-la.
+            //
+            // ⚠️ **A superfície é o `feed`, e não o `keep`, para que esta reordenação seja
+            // PROVAVELMENTE neutra** — é o que [`quads_from_mesh`] usaria. ⏳ *Qual das duas
+            // é a certa é uma pergunta em aberto e NÃO se responde aqui:* o `keep` é a malha
+            // do nível que o artista escolheu (mais fiel) e o `feed` é a que entrou na
+            // cadeia. Trocá-las é uma mudança de comportamento que pede a sua própria
+            // medição, e misturá-la com uma correcção de custo esconderia as duas.
+            let clock = std::time::Instant::now();
+            r.finish = ph2d_quadfill::finish_extracted(&mut out, feed);
+            r.ms.finish = clock.elapsed().as_secs_f32() * 1000.0;
+            r.shape = ph2d_quadfill::quad_shape(&out);
             if r.shape.skew_p50 >= before.skew_p50 {
                 return (
                     keep.clone(),

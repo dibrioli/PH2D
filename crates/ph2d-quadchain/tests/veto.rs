@@ -218,3 +218,51 @@ fn when_the_chain_loses_the_mesh_the_artist_asked_for_comes_back() {
         out.faces().len()
     );
 }
+
+/// ⭐⭐⭐ **O ACABAMENTO NÃO PODE MUDAR O CENSO DE ARESTAS** — é isto que torna legítimo
+/// decidir o veto de topologia **antes** de o pagar.
+///
+/// ⛔⛔ **Sem esta propriedade a reordenação seria uma aposta.** Medido em 2026-08-28: no
+/// cubo subdividido — o caso em que a cadeia perde por medição — a saída abre arestas de
+/// bordo e o veto recusa; com o acabamento à frente, ele corria até ao tecto **duas vezes**
+/// (a lei alinhada e a cega) sobre uma malha que ninguém ia usar.
+///
+/// ⚠️ **A fixtura tem de ser uma peça que a cadeia ACEITA** — num cubo o veto dispara antes
+/// e o gate mediria o caminho que não interessa.
+#[test]
+fn the_finishing_cannot_change_the_edge_census() {
+    let piece = ph2d_mesh::shapes::uv_sphere(24, 36, 0.45);
+    let target = ph2d_remesh_iso::target_edge(&piece, ph2d_remesh_iso::ALPHA);
+    let Ok((raw, _)) = ph2d_quadchain::quads_from_mesh_raw(&piece, target) else {
+        panic!("a cadeia crua recusou a esfera — a fixtura deixou de medir o que mede");
+    };
+    let Ok((done, _)) = ph2d_quadchain::quads_from_mesh(&piece, target) else {
+        panic!("a cadeia inteira recusou a esfera");
+    };
+    assert_eq!(
+        (raw.vert_count(), raw.face_count()),
+        (done.vert_count(), done.face_count()),
+        "o acabamento mudou a CONTAGEM — ele so' pode mover vertices"
+    );
+    let census = |m: &ph2d_mesh::Mesh| {
+        let mut count: std::collections::BTreeMap<(u32, u32), usize> =
+            std::collections::BTreeMap::new();
+        for f in m.faces() {
+            let v = f.verts();
+            for k in 0..v.len() {
+                let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                *count.entry((a.min(b), a.max(b))).or_default() += 1;
+            }
+        }
+        (
+            count.values().filter(|&&c| c == 1).count(),
+            count.values().filter(|&&c| c > 2).count(),
+        )
+    };
+    assert_eq!(
+        census(&raw),
+        census(&done),
+        "o censo de arestas mudou com o acabamento — o veto de topologia NAO pode correr \
+         antes dele"
+    );
+}

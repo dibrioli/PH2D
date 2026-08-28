@@ -485,10 +485,16 @@ mod intents;
 #[path = "field3d_scene_panel.rs"]
 mod panel;
 
+/// ⭐⭐⭐ **O VERBO por forma** — a fileira do painel e o selo da Hierarquia — vive no irmão. Ver
+/// [`field3d_scene_verb`](self::verb).
+#[path = "field3d_scene_verb.rs"]
+mod verb;
+
 #[path = "field3d_scene_acts.rs"]
 mod acts;
 pub(crate) use acts::link_badges;
 pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};
+pub(crate) use verb::verb_at;
 
 /// **Onde uma forma nova entra** — perto do que está selecionado.
 ///

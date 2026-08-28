@@ -325,6 +325,7 @@ fn measure_trace_cost() {
                     children: vec![NodeId(0), NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(3),
@@ -439,6 +440,7 @@ fn measure_antialias_cost() {
                     children: vec![NodeId(0), NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(3),
@@ -502,6 +504,7 @@ fn dump_frame() {
                     children: vec![NodeId(0), NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(3),
@@ -941,6 +944,7 @@ fn measure_taper_frame_cost() {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
                 mods: vec![Unary::Taper { slope }],
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1056,6 +1060,7 @@ fn the_ceiling_of_any_profile_cure() {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Leaf(p),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1148,6 +1153,7 @@ fn the_tiled_march_draws_the_same_image_as_the_row_march() {
                 xform,
                 kind: NodeKind::Leaf(p),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1278,6 +1284,7 @@ fn the_table_of_what_the_tiled_march_buys() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1339,6 +1346,7 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -1423,6 +1431,7 @@ fn the_table_of_what_a_depth_slab_would_buy() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1526,6 +1535,7 @@ fn the_table_of_which_half_the_tiled_frame_pays() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1612,6 +1622,7 @@ fn the_table_of_what_a_full_march_step_would_buy() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1676,6 +1687,7 @@ fn the_table_of_where_the_tile_assembly_goes() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1790,6 +1802,7 @@ fn the_table_of_what_the_shape_of_the_outline_does() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -1863,6 +1876,7 @@ fn every_sample_lies_inside_the_region_that_built_its_tape() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -2023,6 +2037,7 @@ fn the_table_of_how_many_depth_slabs() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -2098,6 +2113,7 @@ fn the_table_of_whether_an_inner_ray_enters_first() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -2164,6 +2180,7 @@ fn a_depth_slab_keeps_fewer_edges_than_the_whole_tube() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -2564,6 +2581,7 @@ fn the_table_of_whether_a_hull_culls_better_than_its_box() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -2687,6 +2705,7 @@ fn the_hull_contains_every_ray_of_its_own_tile() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -2797,6 +2816,7 @@ fn the_hull_culls_strictly_better_than_its_box() {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -5778,6 +5798,7 @@ fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
                 round: 0.05,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

@@ -771,6 +771,7 @@ fn shelled(r: f32, mods: Vec<ph2d_field::Unary>) -> FieldDoc {
             xform: Xform::IDENTITY,
             kind: NodeKind::Leaf(Primitive::Sphere { radius: r }),
             mods,
+            verb: None,
         }],
         NodeId(0),
     )
@@ -1049,6 +1050,7 @@ fn an_off_centre_shape_still_measures_to_the_nearest_copy() {
                     count: n,
                     spacing: s,
                 }],
+                verb: None,
             },
         ],
         NodeId(1),
@@ -1110,6 +1112,7 @@ fn the_mirror_folds_the_domain_exactly() {
                     children: vec![NodeId(0)],
                 },
                 mods: vec![Unary::Mirror],
+                verb: None,
             },
         ],
         NodeId(1),
@@ -1159,6 +1162,7 @@ fn a_radial_array_of_n_is_exactly_the_union_of_n_rotated_copies() {
                     children: vec![NodeId(0)],
                 },
                 mods: vec![Unary::Radial { count: n }],
+                verb: None,
             },
         ],
         NodeId(1),
@@ -1218,6 +1222,7 @@ fn the_radial_axis_answers_instead_of_producing_a_nan() {
                     children: vec![NodeId(0)],
                 },
                 mods: vec![Unary::Radial { count: 8 }],
+                verb: None,
             },
         ],
         NodeId(1),
@@ -2413,11 +2418,13 @@ fn the_specialised_document_agrees_inside_its_region() {
                     round: 0.0,
                 }),
                 mods: vec![Unary::Shell { thickness: 0.06 }],
+                verb: None,
             },
             Node {
                 xform: Xform::at(0.3, 0.1, 0.0),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
                 mods: Vec::new(),
+                verb: None,
             },
         ];
         nodes.push(Node {
@@ -2431,6 +2438,7 @@ fn the_specialised_document_agrees_inside_its_region() {
                 children: vec![NodeId(0), NodeId(1)],
             },
             mods: Vec::new(),
+            verb: None,
         });
         FieldDoc::new(nodes, NodeId(2)).expect("a peça mista")
     };

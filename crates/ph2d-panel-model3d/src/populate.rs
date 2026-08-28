@@ -55,6 +55,7 @@ const CHIP_FAMILIES: &[fn(u32) -> ph2d_a11y::NodeId] = &[
     ids::model3d_frame_button,
     ids::model3d_add_button,
     ids::model3d_op_button,
+    ids::model3d_verb_button,
     ids::model3d_mod_button,
     ids::model3d_export_button,
     ids::model3d_act_button,

@@ -29,6 +29,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                 xform: Xform::at(2.5, -1.0, 0.5),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -43,6 +44,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         round: 0.05,
                     }),
                     mods: Vec::new(),
+                    verb: None,
                 },
                 Node {
                     xform: Xform::at(0.9, 0.3, -0.2),
@@ -52,6 +54,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         round: 0.0,
                     }),
                     mods: Vec::new(),
+                    verb: None,
                 },
                 Node {
                     xform: Xform {
@@ -64,6 +67,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         children: vec![NodeId(0), NodeId(1)],
                     },
                     mods: Vec::new(),
+                    verb: None,
                 },
             ],
             NodeId(2),
@@ -81,6 +85,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         spacing: 0.9,
                     },
                 ],
+                verb: None,
             }],
             NodeId(0),
         )
@@ -139,6 +144,7 @@ fn the_ball_is_not_absurdly_bigger_than_the_piece() {
                 xform: Xform::at(0.2, 0.0, 0.0),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.25 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform {
@@ -151,6 +157,7 @@ fn the_ball_is_not_absurdly_bigger_than_the_piece() {
                     children: vec![NodeId(0)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform {
@@ -163,6 +170,7 @@ fn the_ball_is_not_absurdly_bigger_than_the_piece() {
                     children: vec![NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -186,12 +194,14 @@ fn a_cutter_does_not_grow_the_piece() {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
                 mods: Vec::new(),
+                verb: None,
             },
             // Um cortador ENORME e longe — ele não pode inflar a caixa da peça.
             Node {
                 xform: Xform::at(9.0, 0.0, 0.0),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 5.0 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform::IDENTITY,
@@ -200,6 +210,7 @@ fn a_cutter_does_not_grow_the_piece() {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),

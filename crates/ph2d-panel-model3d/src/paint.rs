@@ -137,6 +137,23 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ⭐ **Criar e combinar** — sem estes dois, o módulo edita a cena que veio pronta e mais nada.
     y = paint_chips(ctx, &snapshot.adds, ids::model3d_add_button, x, w, y);
     y = paint_chips(ctx, &snapshot.ops, ids::model3d_op_button, x, w, y);
+    // ⭐⭐⭐ **O VERBO DESTA FORMA**, logo abaixo da operação do grupo — porque é ela que ele
+    // qualifica: *o grupo diz o padrão, a forma diz se o segue*.
+    //
+    // ⚠️ **A nota vem ANTES dos chips e NOMEIA a forma**, e não é cosmética: tocar um filho pode
+    // acender o grupo inteiro no canvas, e sem o nome o artista escolhe o verbo sem saber de qual
+    // das formas o painel fala. É a cura que o vetorial pagou em 2026-08-22, e a razão de a fileira
+    // e o nome viajarem juntos no retrato.
+    if let Some(subject) = &snapshot.verb_subject {
+        y = paint_note(
+            ctx,
+            &format!("{}: {subject}", tr("panel.model3d.verb_of")),
+            x,
+            w,
+            y,
+        );
+        y = paint_chips(ctx, &snapshot.verbs, ids::model3d_verb_button, x, w, y);
+    }
     // ⭐ **O que se faz À forma depois de ela existir** — a casca e o afastamento, os dois verbos em
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
     y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);

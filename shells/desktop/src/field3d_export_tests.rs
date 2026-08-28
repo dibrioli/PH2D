@@ -10,6 +10,7 @@ fn leaf(p: Primitive, x: f32) -> Node {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(p),
         mods: Vec::new(),
+        verb: None,
     }
 }
 
@@ -30,6 +31,7 @@ fn two_apart() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),

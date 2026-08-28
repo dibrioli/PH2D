@@ -38,6 +38,7 @@ fn a_doc() -> FieldDoc {
                 round: 0.05,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -107,6 +108,7 @@ fn a_sculpture_crosses_the_snapshot_carrying_its_file_name() {
             xform: Xform::at(0.1, 0.2, 0.3),
             kind: ph2d_field::NodeKind::Sampled { key: KEY.into() },
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -187,11 +189,13 @@ fn a_nested_doc() -> FieldDoc {
         xform: Xform::at(x, 0.0, 0.0),
         kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     };
     let combine = |op, children| ph2d_field::Node {
         xform: Xform::IDENTITY,
         kind: ph2d_field::NodeKind::Combine { op, children },
         mods: Vec::new(),
+        verb: None,
     };
     FieldDoc::new(
         vec![

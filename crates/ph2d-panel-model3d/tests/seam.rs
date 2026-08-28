@@ -27,6 +27,8 @@ fn scene_with_one_union() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -214,6 +216,8 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -296,6 +300,8 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -337,6 +343,8 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -389,6 +397,8 @@ fn the_axis_selector_is_its_own_family() {
         ],
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -440,6 +450,8 @@ fn the_selectors_never_answer_for_each_other() {
             chip("panel.model3d.op.union"),
             chip("panel.model3d.op.subtract"),
         ],
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: vec![
             chip("panel.model3d.mod.shell"),
             chip("panel.model3d.mod.offset"),
@@ -519,6 +531,8 @@ fn scene_with_one_position_row() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -769,6 +783,18 @@ fn every_painted_button_answers_a_real_click() {
         frames: vec![chip("panel.model3d.frame.global")],
         adds: vec![chip("panel.model3d.add.sphere")],
         ops: vec![chip("panel.model3d.op.union")],
+        // ⭐⭐ **A fileira do VERBO entra na varredura** (W97) — e é ela que este gate existe para
+        // apanhar: quatro chips pintados, hit-indexados e **mortos sob o ponteiro** é exactamente o
+        // que aconteceu ao vetorial em 2026-08-22, com o `Click` sintético a passar por cima.
+        //
+        // ⚠️ **`verb_subject` tem de vir junto**: o `paint` só desenha a fileira quando há sujeito
+        // nomeado, então um `verbs` cheio com sujeito `None` deixaria os chips fora da varredura e
+        // este gate ficaria verde sem nunca os ter tocado.
+        verbs: vec![
+            chip("panel.model3d.verb.inherit"),
+            chip("panel.model3d.verb.cut"),
+        ],
+        verb_subject: Some("Cylinder".to_string()),
         mods: vec![chip("panel.model3d.mod.shell")],
         exports: vec![chip("panel.model3d.export.draft")],
         acts: vec![chip("panel.model3d.act.duplicate")],
@@ -845,6 +871,8 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         frames: Vec::new(),
         adds: Vec::new(),
         ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -894,5 +922,83 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
     assert!(
         drain_intents().is_empty(),
         "um slot fora da fileira publicada despachou uma intenção"
+    );
+}
+
+/// ⭐⭐⭐ **O CHIP DO VERBO DESPACHA O SLOT DELE — e NÃO o da operação do grupo** (W97).
+///
+/// # ⚠️ Por que este gate é o que importa nesta wave
+///
+/// As duas fileiras dizem quase as mesmas palavras e têm **sujeitos diferentes**: a de cima é a
+/// operação do **grupo**, a de baixo é o verbo de **uma forma**. Se as duas partilhassem a família
+/// de ids, um clique em «Cut» trocaria a operação do grupo inteiro — e nada na tela diria porquê.
+/// *Uma família partilhada entre dois sujeitos é um botão que faz a coisa certa ao alvo errado.*
+///
+/// ⚠️ E o **slot 0 é o `Inherit`**, que apaga o verbo em vez de escrever um. Um `unwrap_or(0)` no
+/// braço errado devolveria toda forma à herança ao primeiro clique em qualquer chip.
+#[test]
+fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    publish(ModelSnapshot {
+        modes: Vec::new(),
+        frames: Vec::new(),
+        adds: Vec::new(),
+        // ⚠️ As DUAS fileiras publicadas ao mesmo tempo — é essa a disposição que o artista vê com
+        // uma forma escolhida, e a única em que a confusão de famílias é observável.
+        ops: vec![chip("panel.model3d.op.union")],
+        verbs: (0..4).map(|_| chip("panel.model3d.verb.add")).collect(),
+        verb_subject: Some("Cylinder".to_string()),
+        mods: Vec::new(),
+        exports: Vec::new(),
+        acts: Vec::new(),
+        views: Vec::new(),
+        camera: Vec::new(),
+        rows: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+
+    for slot in 0..4usize {
+        let _ = drain_intents();
+        host.apply_panel_event::<Model3dPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::model3d_verb_button(slot as u32)),
+        );
+        assert_eq!(
+            drain_intents(),
+            vec![ModelIntent::SetVerb { slot }],
+            "o chip de verbo {slot} não despachou o slot dele"
+        );
+    }
+
+    // ⭐ **A outra fileira continua a ser a outra fileira**: o mesmo slot, na família da operação,
+    // tem de sair como `ApplyOp`.
+    let _ = drain_intents();
+    host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_op_button(0)),
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::ApplyOp { slot: 0 }],
+        "o chip da operação do grupo despachou a intenção da forma"
+    );
+
+    // ⚠️ E um slot além da fileira publicada não despacha nada — o `populate` cunha `MAX_MODES` ids
+    // às cegas, e a fileira do verbo tem quatro.
+    let _ = drain_intents();
+    host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_verb_button(5)),
+    );
+    assert!(
+        drain_intents().is_empty(),
+        "um slot fora da fileira do verbo despachou uma intenção"
     );
 }

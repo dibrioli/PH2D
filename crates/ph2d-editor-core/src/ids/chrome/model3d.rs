@@ -66,6 +66,17 @@ pub fn model3d_mod_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.mod.{slot}"))
 }
 
+/// ⭐⭐⭐ **O botão do VERBO DESTA FORMA** — com que operação ela dobra sobre as anteriores.
+///
+/// ⚠️ **Família própria, e não a do `model3d_op_button`.** As duas fileiras dizem as mesmas
+/// palavras e têm sujeitos diferentes: aquela é a operação **do grupo** (o padrão de quem não se
+/// pronunciou); esta é a escolha **de uma forma**. Partilhar a família faria um clique em «Subtract»
+/// na fileira de baixo trocar a operação do grupo inteiro.
+#[must_use]
+pub fn model3d_verb_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.verb.{slot}"))
+}
+
 /// ⭐ **O botão de EXPORTAR** numa resolução, pela posição.
 #[must_use]
 pub fn model3d_export_button(slot: u32) -> NodeId {

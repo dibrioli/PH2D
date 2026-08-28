@@ -23,6 +23,7 @@ fn nose() -> FieldDoc {
             xform: Xform::at(0.0, 0.0, 0.45),
             kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.12 }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

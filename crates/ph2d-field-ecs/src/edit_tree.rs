@@ -418,6 +418,17 @@ fn copy_optional(world: &mut World, src: Entity, dst: Entity) {
     if let Some(src_link) = world.get::<crate::FieldProfileSource>(src).copied() {
         world.entity_mut(dst).insert(src_link);
     }
+    // ⭐⭐ **E o VERBO viaja com a cópia** (W97) — duplicar um furo tem de dar outro furo.
+    //
+    // ⚠️ **Este é o defeito que o gate irmão previu por escrito**, e ele apanhou-o no mesmo dia em
+    // que o componente nasceu: sem esta linha, duplicar uma forma que subtrai devolvia uma que
+    // **soma**, porque a cópia caía na herança do pai. Sem erro e sem aviso.
+    //
+    // ⚠️ E é `Option`, não `unwrap_or_default`: a ausência é *«herda do pai»*, e uma cópia que a
+    // materializasse num verbo escrito passaria a discordar do grupo no dia em que o padrão mudasse.
+    if let Some(verb) = world.get::<crate::FieldVerb>(src).copied() {
+        world.entity_mut(dst).insert(verb);
+    }
 }
 
 /// ⭐ **Apaga um nó e o que está debaixo dele.**

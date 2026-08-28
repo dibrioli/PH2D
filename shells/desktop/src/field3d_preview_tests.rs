@@ -379,6 +379,7 @@ fn both_frames_coarsen_but_the_moving_one_coarsens_more() {
                 round: 0.06,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -428,6 +429,7 @@ fn both_frames_coarsen_but_the_moving_one_coarsens_more() {
             xform: Xform::IDENTITY,
             kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

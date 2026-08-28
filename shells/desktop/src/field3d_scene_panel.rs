@@ -49,6 +49,7 @@ pub(crate) fn publish_snapshot(
         with_smoke(|s| (s.has_live_sculpt, s.profile_pick.is_some())).unwrap_or((false, false));
     let adds = adds_for(live_sculpt, profile);
     let ops = ops_for(world, selection);
+    let (verbs, verb_subject) = super::verb::verbs_for(world, selection);
     let mods = mods_for(world, selection);
     // ⚠️ **Derivado de `ExportLevel::ALL`**, que é a fonte da contagem — a mesma lei do `Mode::ALL`
     // e do `SHAPES`. E sem `active` nenhum: são ações, não um modo.
@@ -80,6 +81,14 @@ pub(crate) fn publish_snapshot(
         .collect();
     // ⭐⭐ **O selo do vínculo sai desta MESMA travessia** (W57) — ver [`link_badges`].
     {
+        // ⭐⭐⭐ **O VERBO é o selo de base desta lista** (W97): ordem + verbo **são** a receita, e é
+        // isto que torna uma peça de cinco formas legível sem cinco cliques.
+        //
+        // ⛔ **E ele GANHA do `LNK`, que é uma perda deliberada.** O campo do selo é **um por
+        // linha**: o `LNK` responde *«de onde veio esta forma?»*, que se pergunta uma vez e tem
+        // gesto no painel do escolhido; o verbo responde *«o que ela FAZ à peça?»*, que é o que o
+        // olho lê ao percorrer a lista, sempre. ⚠️ **O gatilho da cura está nomeado:** no dia em que
+        // a linha da Hierarquia pintar **dois** selos, os dois cabem — e é aí que isto se revê.
         let mut m: std::collections::BTreeMap<u64, &'static str> = all
             .iter()
             .filter(|(e, _)| {
@@ -89,6 +98,16 @@ pub(crate) fn publish_snapshot(
             })
             .map(|(e, _)| (e.to_bits(), LINK_BADGE))
             .collect();
+        for (e, _) in &all {
+            if let Some(badge) = super::verb::verb_badge(world, *e) {
+                // ⚠️ **A BASE cede ao `LNK`, e só ela** — ver [`super::verb::BASE_BADGE`]. `BSE`
+                // repete o que a POSIÇÃO já diz; o vínculo não é derivável de nada na tela.
+                if badge == super::verb::BASE_BADGE && m.contains_key(&e.to_bits()) {
+                    continue;
+                }
+                m.insert(e.to_bits(), badge);
+            }
+        }
         // ⭐⭐⭐ **E O SELO DO ISOLAMENTO** (2026-08-25) — ver [`ISOLATE_BADGE`] para a precedência.
         //
         // ⚠️ **A pergunta é feita à travessia, não ao mundo**: um isolamento pendurado numa entidade
@@ -106,6 +125,8 @@ pub(crate) fn publish_snapshot(
         frames,
         adds,
         ops,
+        verbs,
+        verb_subject,
         mods,
         exports,
         acts,

@@ -1,4 +1,4 @@
-//! **A modelagem 3D por campo implícito** — os 5 de `ph2d-field-ecs` ([ADR-0161](../../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)).
+//! **A modelagem 3D por campo implícito** — os 6 de `ph2d-field-ecs` ([ADR-0161](../../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md)).
 //!
 //! ⚠️ **Quase tudo aqui é máquina, e a razão é a arquitetura do módulo:** *a hierarquia da
 //! cena É o documento* — o `FieldDoc` é **cozido** dela a cada quadro. Quem põe um `FieldNode`
@@ -28,4 +28,11 @@ pub const DESCS: &[D] = &[
         "Profile Source",
         C::Model3D,
     ),
+    // ⭐⭐ **O VERBO da forma** (W97) — com que operação ela dobra sobre os irmãos anteriores.
+    //
+    // ⚠️ **Máquina, como os irmãos, e por uma razão a mais que eles:** a AUSÊNCIA deste componente
+    // significa *«herda o do pai»*. Um `+` do Inspector que o anexasse escreveria um verbo que
+    // ninguém escolheu, e a forma passaria a discordar do grupo em silêncio — quem o autora é a
+    // fileira do painel `MODEL`, que sabe qual é o verbo em vigor antes de o escrever.
+    D::machinery("ph2d::field::FieldVerb", "Field Verb", C::Model3D),
 ];

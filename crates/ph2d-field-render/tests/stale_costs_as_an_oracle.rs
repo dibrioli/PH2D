@@ -39,6 +39,7 @@ fn circulo(n: usize) -> FieldDoc {
                 round: 0.06,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

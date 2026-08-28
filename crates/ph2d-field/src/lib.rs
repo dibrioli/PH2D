@@ -66,8 +66,12 @@ use serde::{Deserialize, Serialize};
 /// `Sampled` onde havia outra coisa. ⚠️ **A migração continua vazia pelo mesmo motivo de sempre**
 /// (nada persiste um [`FieldDoc`]), e o degrau sobe pela mesma razão.
 ///
+/// v5: o [`Node`] ganhou o **verbo** ([`Node::verb`]) — cada forma traz a operação com que dobra
+/// sobre o resultado das anteriores, em vez de a herdar toda do pai. É campo novo numa struct, e
+/// postcard é **posicional**; a migração continua vazia pelo motivo de sempre.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 4;
+pub const FIELD_DOC_VERSION: u32 = 5;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -245,6 +249,40 @@ impl Op {
     }
 }
 
+/// ⭐⭐⭐ **A RECEITA de uma combinação, numa frase:** as formas dobram na **ordem** em que estão, e
+/// cada uma traz o **verbo** com que se junta ao resultado das anteriores.
+///
+/// `((c₀ ⊕₁ c₁) ⊕₂ c₂) …`, onde `⊕ᵢ` é o verbo de `cᵢ` — ou o **do pai**, quando `cᵢ` não trouxe
+/// nenhum. É a mesma lei que o vetorial desta casa já paga desde 2026-08-22
+/// (`docs/Vector Module/27_um_verbo_por_forma.md`), e ela vale aqui **pela mesma razão pela qual foi
+/// barata lá**: os dois avaliadores já eram uma dobra à esquerda; o que estava fixo era só o verbo.
+///
+/// # ⚠️ Ausência é HERANÇA, não «sem verbo»
+///
+/// `None` não quer dizer *«esta forma não se combina»* — quer dizer *«use o do pai»*. As duas
+/// consequências pesam para o mesmo lado:
+///
+/// - **todo documento anterior a esta versão avalia byte-idêntico**, porque nele ninguém se
+///   pronunciou;
+/// - **o seletor do pai não morre**: ele deixa de ser *a* operação e passa a ser o **padrão** de
+///   quem não se pronunciou. Sem essa escolha ele ficaria inerte, que é o defeito *«parâmetro que
+///   não muda nada»*.
+///
+/// # ⚠️ O verbo do PRIMEIRO filho nunca é perguntado
+///
+/// Ele **semeia** o acumulado — não há nada antes dele com que dobrar. Guardá-lo mesmo assim é
+/// deliberado: *reordenar não pode destruir a escolha de quem passou pelo topo.* Arrastar o
+/// terceiro filho para cima torna-o base sem nada a consertar, e arrastá-lo de volta devolve o
+/// verbo que ele tinha.
+///
+/// ⛔ **E não é «começar do vazio»**, que seria a outra forma de o dizer: com o acumulado a nascer
+/// vazio, uma subtração no topo apagaria a peça inteira (`∅ − a = ∅`) — uma reordenação que
+/// destrói o modelo em silêncio.
+#[must_use]
+pub fn fold_verb(parent: Op, child: Option<Op>) -> Op {
+    child.unwrap_or(parent)
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum NodeKind {
     Leaf(Primitive),
@@ -317,17 +355,35 @@ pub struct Node {
     /// **antes** da pose dele. Vazia na esmagadora maioria dos nós. Ver [`crate::mods`].
     #[serde(default)]
     pub mods: Vec<Unary>,
+    /// ⭐⭐⭐ **O VERBO com que este nó dobra sobre o resultado dos irmãos anteriores** — `None`
+    /// herda o do pai. A lei inteira, com o que cada metade compra, está em [`fold_verb`].
+    ///
+    /// ⚠️ **Aqui e não no pai**, e a diferença é estrutural: um verbo guardado no pai como lista
+    /// paralela a `children` seria uma segunda resposta a *«quantos filhos há»*, e ela ficaria
+    /// obsoleta em todo sítio que desloca índices — o [`FieldDoc::union_all`] é um deles. Preso ao
+    /// nó, ele viaja com o nó de graça.
+    #[serde(default)]
+    pub verb: Option<Op>,
 }
 
 impl Node {
-    /// Um nó sem modificadores — a forma curta, que é o caso de quase todo nó.
+    /// Um nó sem modificadores e que **herda** o verbo do pai — a forma curta, que é o caso de
+    /// quase todo nó.
     #[must_use]
     pub fn new(xform: Xform, kind: NodeKind) -> Self {
         Self {
             xform,
             kind,
             mods: Vec::new(),
+            verb: None,
         }
+    }
+
+    /// ⭐ **O verbo com que este nó dobra**, dado o do pai. Ver [`fold_verb`] — a lei vive lá, e
+    /// esta é a forma curta para quem tem o nó em mãos.
+    #[must_use]
+    pub fn fold_verb(&self, parent: Op) -> Op {
+        fold_verb(parent, self.verb)
     }
 }
 
@@ -434,6 +490,13 @@ impl FieldDoc {
             }
             roots.push(NodeId(doc.root.0 + base));
         }
+        // ⚠️ **A raiz adotada perde o verbo dela**, e isto é decisão e não zelo: um verbo autorado
+        // dentro de uma peça fala dos **irmãos dela**, e aqui ele passaria a falar das **outras
+        // peças** da cena — uma peça inteira a subtrair-se de outra sem ninguém o ter pedido. Esta
+        // porta chama-se `union_all`; a união é o contrato, e não uma omissão a herdar.
+        for r in &roots {
+            nodes[r.0 as usize].verb = None;
+        }
         let root = NodeId(nodes.len() as u32);
         nodes.push(Node {
             xform: Xform::IDENTITY,
@@ -442,6 +505,7 @@ impl FieldDoc {
                 children: roots,
             },
             mods: Vec::new(),
+            verb: None,
         });
         Some(Self::new(nodes, root))
     }

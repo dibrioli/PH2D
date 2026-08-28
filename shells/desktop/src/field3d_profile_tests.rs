@@ -68,6 +68,7 @@ fn the_table_that_chose_the_tolerance() {
                     xform: ph2d_field::Xform::IDENTITY,
                     kind: ph2d_field::NodeKind::Leaf(k),
                     mods: Vec::new(),
+                    verb: None,
                 }],
                 ph2d_field::NodeId(0),
             )
@@ -183,6 +184,7 @@ fn the_table_that_chose_the_resolution_ceiling() {
                     round: 0.0,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             ph2d_field::NodeId(0),
         )
@@ -276,6 +278,7 @@ fn the_table_of_where_the_banding_knee_moves_with_zoom() {
                         round: 0.0,
                     }),
                     mods: Vec::new(),
+                    verb: None,
                 }],
                 ph2d_field::NodeId(0),
             )

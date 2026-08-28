@@ -26,11 +26,13 @@ fn a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent() {
                     round: 0.02,
                 }),
                 mods: Vec::new(),
+                verb: None,
             },
             ph2d_field::Node {
                 xform: Xform::at(-0.3, 0.0, 0.0),
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Sphere { radius: 0.1 }),
                 mods: Vec::new(),
+                verb: None,
             },
             ph2d_field::Node {
                 // O pai roda um quarto de volta em torno de Z.
@@ -44,6 +46,7 @@ fn a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent() {
                     children: vec![ph2d_field::NodeId(0), ph2d_field::NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         ph2d_field::NodeId(2),

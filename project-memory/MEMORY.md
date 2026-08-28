@@ -18,6 +18,7 @@
 ## Comunicação & decisão
 - [Decida, não pergunte](feedback_decide_dont_ask_gold_standard.md) · [os PRINCÍPIOS decidem, não o Enio](feedback_the_principles_decide_not_the_enio.md)
 - [Uma feature = UMA linha, janelas ao mínimo; a nova assume a MESMA linha (25/08)](feedback_one_feature_one_line_minimum_windows.md)
+- [O desenho pedido pode já ser LEI noutra metade do app — procure antes de desenhar](feedback_the_design_being_asked_for_may_already_be_law_in_another_half_of_the_app.md)
 - [«checksum» vermelho: o agente AGE, não escala](feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated.md)
 - [Handoff promete UMA linha no §5 e entrega 89 — meça o diff](feedback_a_handoff_can_promise_one_line_in_the_router_and_ship_eighty_nine.md)
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — ao Enio curto, sem jargão (§0.8)
@@ -100,6 +101,7 @@
 - [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
 - [FEITO ≠ ENTREGUE — sonda no consumidor](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) · [gate sobre a MARCA ≠ sobre o FIM](feedback_a_gate_on_the_mark_i_chose_is_green_when_the_marks_premise_is_false.md) · [2 falhas refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md)
 - [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
+- [Gate que compara DUAS construções é cego à mutação partilhada — a lei pede ORÁCULO](feedback_a_gate_that_compares_two_constructions_is_blind_to_a_shared_mutation.md)
 - [Restore com mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) · [metade nova torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md)
 - [Reproduza o resultado alheio antes do seu insumo](feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md)
 - [Oráculo (9)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)

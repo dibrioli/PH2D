@@ -73,7 +73,12 @@ enum Plan {
     Analytic(usize),
     /// Índice num campo amostrado, com a pose do nó já invertida.
     Sampled(usize),
-    Combine(Op, Vec<Plan>),
+    /// A combinação: o verbo do **pai** (o padrão de quem não se pronunciou) e os filhos, cada um
+    /// com o verbo **dele** — ver [`ph2d_field::fold_verb`].
+    ///
+    /// ⚠️ **Pares, e não dois `Vec` paralelos**: um verbo e o plano dele nascem juntos, e duas
+    /// listas seriam duas respostas a *«quantos filhos há»*, com uma chance a mais de divergirem.
+    Combine(Op, Vec<(Option<Op>, Plan)>),
 }
 
 #[derive(Clone)]
@@ -499,13 +504,15 @@ fn reduce(plan: &Plan, base: usize, leaves: &[Vec<f32>], out: &mut [f32]) {
     match plan {
         Plan::Analytic(i) => out.copy_from_slice(&leaves[*i]),
         Plan::Sampled(i) => out.copy_from_slice(&leaves[base + *i]),
-        Plan::Combine(op, kids) => {
-            reduce(&kids[0], base, leaves, out);
+        Plan::Combine(parent, kids) => {
+            // ⚠️ O verbo de `kids[0]` **não é perguntado**: ele semeia o acumulado.
+            reduce(&kids[0].1, base, leaves, out);
             let mut rhs = vec![0.0f32; out.len()];
-            for k in &kids[1..] {
+            for (verb, k) in &kids[1..] {
+                let op = ph2d_field::fold_verb(*parent, *verb);
                 reduce(k, base, leaves, &mut rhs);
                 for (a, b) in out.iter_mut().zip(&rhs) {
-                    *a = apply(*op, *a, *b);
+                    *a = apply(op, *a, *b);
                 }
             }
         }
@@ -594,10 +601,10 @@ impl Builder<'_> {
                     if all_analytic {
                         // ⭐ **A FUSÃO**: nada de amostrado por baixo, então isto volta a ser uma
                         // árvore só — e o documento sem escultura produz uma fita, como antes.
-                        let trees: Vec<Tree> = children
+                        let trees: Vec<(Option<Op>, Tree)> = children
                             .iter()
                             .map(|c| match &built[c.0 as usize] {
-                                Built::Tree(t) => t.clone(),
+                                Built::Tree(t) => (doc.nodes()[c.0 as usize].verb, t.clone()),
                                 Built::Mixed(_) => unreachable!("acabou de se verificar"),
                             })
                             .collect();
@@ -615,17 +622,21 @@ impl Builder<'_> {
                         // o item aberto nomeado no §22).
                         let mut kids = Vec::with_capacity(children.len());
                         for c in children {
+                            let verb = doc.nodes()[c.0 as usize].verb;
                             let taken = std::mem::replace(
                                 &mut built[c.0 as usize],
                                 Built::Tree(Tree::constant(0.0)),
                             );
-                            kids.push(match taken {
-                                Built::Tree(t) => {
-                                    self.trees.push(t);
-                                    Plan::Analytic(self.trees.len() - 1)
-                                }
-                                Built::Mixed(p) => p,
-                            });
+                            kids.push((
+                                verb,
+                                match taken {
+                                    Built::Tree(t) => {
+                                        self.trees.push(t);
+                                        Plan::Analytic(self.trees.len() - 1)
+                                    }
+                                    Built::Mixed(p) => p,
+                                },
+                            ));
                         }
                         Built::Mixed(Plan::Combine(*op, kids))
                     }

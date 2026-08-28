@@ -49,15 +49,17 @@
 
 mod cook;
 mod edit;
+mod edit_verb;
 mod spawn;
 
-pub use cook::{cook, field_world_xform, is_hidden, set_world_xform, world_xform};
+pub use cook::{contributes, cook, field_world_xform, is_hidden, set_world_xform, world_xform};
 pub use edit::{
     add_leaf, add_mod, add_sampled, can_detach, can_wrap, dims_of, duplicate, mods_of, params_of,
     promote_leaf_hosts, radius_bound, radius_of, remove, remove_mod, rotate_world,
     rotate_world_about, scale_about, scale_by, set_dim, set_op, set_param, set_radius, top_level,
     translate_world, walk, wrap_in_op,
 };
+pub use edit_verb::{VerbRole, set_verb, verb_of, verb_role};
 pub use spawn::{shape_name, spawn_doc};
 
 use ph2d_ecs::scene::ComponentRegistry;
@@ -145,9 +147,38 @@ pub struct FieldProfileSource {
     pub level: u32,
 }
 
+/// ⭐⭐⭐ **O VERBO desta forma** — com que operação ela dobra sobre o resultado dos irmãos que vêm
+/// antes dela na Hierarquia. A lei inteira está em [`ph2d_field::fold_verb`].
+///
+/// # ⚠️ A AUSÊNCIA é que carrega o significado
+///
+/// Um nó **sem** este componente herda o verbo do pai — e é por isso que ele é um componente
+/// opcional e não um campo do [`FieldNode`]. As duas leituras coincidem de propósito:
+///
+/// | no mundo | no documento | quer dizer |
+/// |---|---|---|
+/// | sem `FieldVerb` | `Node::verb == None` | *«use o do meu pai»* |
+/// | com `FieldVerb` | `Node::verb == Some(op)` | *«eu dobro assim»* |
+///
+/// ⇒ toda peça anterior a esta wave coze **byte-idêntica**, e o seletor do pai não morre: ele passa
+/// a ser o **padrão** de quem não se pronunciou.
+///
+/// ⚠️ **Componente PRÓPRIO**, pelas duas razões que o [`FieldMods`] já paga (bytes em todo nó ·
+/// postcard posicional), mais uma terceira que é só desta: *a ausência é um estado do modelo*, e um
+/// `Option` dentro de um componente que existe sempre não a saberia dizer sem a inventar.
+///
+/// ⚠️ **O verbo do PRIMEIRO irmão não é usado** — ele semeia o acumulado. Guardá-lo mesmo assim é
+/// deliberado: reordenar não destrói a escolha de quem passou pelo topo, e arrastar de volta
+/// devolve o que estava lá.
+#[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FieldVerb {
+    pub op: ph2d_field::Op,
+}
+
 impl SimComponent for FieldNode {}
 impl SimComponent for FieldPose {}
 impl SimComponent for FieldMods {}
+impl SimComponent for FieldVerb {}
 impl SimComponent for FieldProfileSource {}
 
 impl Default for FieldPose {
@@ -171,6 +202,10 @@ pub fn register_field_components(reg: &mut ComponentRegistry) {
     reg.register::<FieldNode>("ph2d::field::FieldNode");
     reg.register_default::<FieldPose>("ph2d::field::FieldPose");
     reg.register_default::<FieldMods>("ph2d::field::FieldMods");
+    // ⚠️ `register`, e **não** `register_default`: este componente não tem neutro. A ausência dele
+    // já quer dizer uma coisa (*«herda do pai»*), e um default inventaria um verbo que ninguém
+    // escolheu em todo nó que o não tenha.
+    reg.register::<FieldVerb>("ph2d::field::FieldVerb");
     reg.register::<FieldProfileSource>("ph2d::field::FieldProfileSource");
 }
 
@@ -201,3 +236,6 @@ pub fn scene_field<K: Ord>(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod verb_tests;

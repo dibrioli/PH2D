@@ -55,6 +55,7 @@ fn ball(x: f32) -> Node {
         xform: ph2d_field::Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     }
 }
 
@@ -63,6 +64,7 @@ fn combine(op: Op, children: Vec<NodeId>) -> Node {
         xform: ph2d_field::Xform::IDENTITY,
         kind: NodeKind::Combine { op, children },
         mods: Vec::new(),
+        verb: None,
     }
 }
 
@@ -190,6 +192,19 @@ const ROWS: &[Row] = &[
         intent: |slot| ModelIntent::ApplyOp { slot },
         slots: 3,
     },
+    // ⭐⭐⭐ **O VERBO DA FORMA** (W97). ⚠️ Ela entra nesta tabela e passa a ser varrida pelos seis
+    // casos de seleção **de graça** — inclusive o que importa: com a **base** escolhida a fileira
+    // não é oferecida *e* o gesto não faz nada, que é a lei da W34 a valer nos dois sentidos.
+    Row {
+        name: "verbo da forma",
+        // ⚠️ Lê o `verb_subject` e não o `verbs`: é ele que o `paint` consulta para desenhar a
+        // fileira, então um `verbs` cheio sem sujeito seria **oferecido** para este gate e
+        // **invisível** para o artista.
+        read: |s| s.verb_subject.is_some(),
+        intent: |slot| ModelIntent::SetVerb { slot },
+        // ⚠️ Derivado do `VERBS`, nunca um literal — a lição do `ACTS` logo abaixo.
+        slots: super::verb::VERBS.len(),
+    },
     Row {
         name: "modificadores",
         read: |s| !s.mods.is_empty(),
@@ -205,6 +220,18 @@ const ROWS: &[Row] = &[
         slots: crate::field3d_scene::acts::ACTS.len(),
     },
 ];
+
+/// ⭐ **A fileira pelo NOME** — e nunca por índice.
+///
+/// ⚠️ Isto é uma correcção, e o defeito era silencioso: as asserções abaixo endereçavam a tabela
+/// pela POSIÇÃO, e inserir a fileira do verbo no meio re-apontou-as para outra fileira. Elas
+/// continuaram a compilar e a correr — a medir a coisa errada. *Um índice para dentro de uma lista
+/// que cresce é um endereço que muda de dono sem avisar.*
+fn row(name: &str) -> &'static Row {
+    ROWS.iter()
+        .find(|r| r.name == name)
+        .unwrap_or_else(|| panic!("não há fileira «{name}» na tabela"))
+}
 
 /// ⭐ **O painel PUBLICA esta fileira nesta seleção?**
 ///
@@ -287,20 +314,23 @@ fn the_panel_offers_exactly_what_the_gesture_does() {
 fn the_gestures_the_product_promises_are_all_reachable() {
     // ⭐ O sintoma do Enio, 2026-08-22: *"ainda não temos como criar novos grupos"*.
     assert!(
-        offered(&ROWS[0], one_shape),
+        offered(row("operações"), one_shape),
         "com UMA forma escolhida a fileira de operações tem de aparecer — é o gesto de criar grupo"
     );
-    assert!(offered(&ROWS[0], two_siblings), "dois irmãos embrulham-se");
     assert!(
-        offered(&ROWS[0], the_root),
+        offered(row("operações"), two_siblings),
+        "dois irmãos embrulham-se"
+    );
+    assert!(
+        offered(row("operações"), the_root),
         "a raiz é uma operação, e trocar-lhe o verbo é o gesto mais usado do módulo"
     );
     assert!(
-        offered(&ROWS[2], an_inner_group),
+        offered(row("ações"), an_inner_group),
         "um grupo interno duplica-se e apaga-se como qualquer nó"
     );
     assert!(
-        offered(&ROWS[1], one_shape),
+        offered(row("modificadores"), one_shape),
         "uma forma aceita casca e afastamento"
     );
 }
@@ -317,13 +347,13 @@ fn the_rows_stay_silent_where_the_gesture_is_refused() {
         );
     }
     assert!(
-        !offered(&ROWS[0], two_strangers),
+        !offered(row("operações"), two_strangers),
         "duas formas de pais diferentes não se embrulham — a fileira mentiria"
     );
     // ⭐ O segundo defeito, que a generalização da lei encontrou: `duplicate` e `remove` recusam a
     // raiz **por decisão escrita** (ela *é* a peça), e a fileira aparecia à mesma.
     assert!(
-        !offered(&ROWS[2], the_root),
+        !offered(row("ações"), the_root),
         "com a peça inteira escolhida, Duplicar e Apagar recusam os dois — a fileira não é pintada"
     );
 }

@@ -172,6 +172,7 @@ fn measure_what_the_coarse_contour_buys() {
                     round: 0.06,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -243,6 +244,7 @@ fn measure_where_the_frame_stands_after_all_of_it() {
                     round: 0.06,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -372,6 +374,7 @@ fn measure_the_stall_a_hesitating_hand_pays() {
                     round: 0.06,
                 }),
                 mods: Vec::new(),
+                verb: None,
             }],
             NodeId(0),
         )
@@ -513,7 +516,7 @@ fn measure_the_stall_a_hesitating_hand_pays() {
                 linha[li] = (atraso_max, comecados, abandonados);
             }
             println!(
-                "{pausa_ms:9.0} ms | {:17.2}° | {:14.2}° | {}/{} → {}/{}",
+                "{pausa_ms:9.0} ms | {:17.2}° | {:14.2}° | {}/{} -> {}/{}",
                 linha[0].0, linha[1].0, linha[0].1, linha[0].2, linha[1].1, linha[1].2
             );
         }

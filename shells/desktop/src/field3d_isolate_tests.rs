@@ -15,6 +15,7 @@ fn nested() -> FieldDoc {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: r }),
         mods: Vec::new(),
+        verb: None,
     };
     FieldDoc::new(
         vec![
@@ -28,6 +29,7 @@ fn nested() -> FieldDoc {
                     children: vec![NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 // ⚠️ **A RAIZ também sai da identidade, e isto é o gate a existir.** Com a raiz na
@@ -40,6 +42,7 @@ fn nested() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(3)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(4),
@@ -305,6 +308,7 @@ fn a_scene_key_is_asked_for_instead_of_being_read_from_disk() {
                 key: crate::field3d_import::SCENE_KEY.to_string(),
             },
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -490,6 +494,24 @@ fn a_dead_isolation_is_not_announced() {
     });
 }
 
+/// ⭐ **Quantas linhas dizem `ISO`** — e é isto que os dois gates abaixo sempre quiseram medir.
+///
+/// ⚠️ **Eles perguntavam ao mapa INTEIRO** (`badges.len() == 1`, `is_empty()`), e isso valia
+/// enquanto o isolamento e o vínculo eram os únicos selos. A W97 pôs o **verbo** em toda linha que
+/// participa da receita, e a premissa dissolveu: o mapa passou a ter `BSE`/`UNI`/`SUB` de propósito.
+///
+/// ⛔ **Não é baixar a barra — é dizer com precisão o que a barra sempre foi.** A afirmação é *«uma
+/// linha, e só uma, diz que está isolada»*, e ela continua a apanhar o defeito que a escreveu
+/// (selar todas) e o da irmã (selar uma entidade morta). *Uma mudança de modelo obriga a
+/// re-perguntar o que cada gate ainda mede.*
+fn isolados() -> Vec<u64> {
+    crate::field3d_scene::link_badges()
+        .into_iter()
+        .filter(|(_, b)| *b == crate::field3d_scene::acts::ISOLATE_BADGE)
+        .map(|(e, _)| e)
+        .collect()
+}
+
 /// ⭐⭐⭐ **A HIERARQUIA DIZ QUAL LINHA ESTÁ ISOLADA** (2026-08-25).
 ///
 /// ⚠️ O painel do MODEL já o dizia desde a W44 — mas a Hierarquia, que é onde o artista olha quando
@@ -518,8 +540,8 @@ fn the_hierarchy_says_which_row_is_isolated() {
             "a linha isolada tem de o dizer na Hierarquia"
         );
         assert_eq!(
-            badges.len(),
-            1,
+            isolados(),
+            vec![group.to_bits()],
             "e só ela — selar as outras seria dizer que TODAS estão isoladas: {badges:?}"
         );
 
@@ -532,7 +554,7 @@ fn the_hierarchy_says_which_row_is_isolated() {
             &crate::field3d_scene::no_drawing(),
         );
         assert!(
-            crate::field3d_scene::link_badges().is_empty(),
+            isolados().is_empty(),
             "com a peça inteira de volta o selo tem de cair — senão ele acusa um isolamento que \
              já não existe"
         );
@@ -558,7 +580,7 @@ fn a_badge_pinned_to_a_dead_object_is_not_painted() {
             &crate::field3d_scene::no_drawing(),
         );
         assert!(
-            crate::field3d_scene::link_badges().is_empty(),
+            isolados().is_empty(),
             "um isolamento pendurado numa entidade morta não pode selar linha nenhuma"
         );
     });

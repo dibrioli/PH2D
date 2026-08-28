@@ -29,6 +29,7 @@ fn two_boxes() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -60,6 +61,7 @@ fn a_forward_reference_is_refused_because_it_is_how_a_cycle_would_enter() {
                     children: vec![NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
             cube(0.4, 0.0),
         ],
@@ -137,6 +139,7 @@ fn an_empty_combine_is_refused() {
                 children: vec![],
             },
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -187,7 +190,11 @@ fn the_shape_of_a_saved_field_is_pinned() {
         // (`Node::mods`), e um `Vec` vazio em postcard custa **um byte de comprimento**. Três nós,
         // três bytes. *Re-pinar aqui é legítimo porque a versão SUBIU junto e a conta bate* — o que
         // o doc do gate proíbe é re-pinar sem as duas coisas.
-        148,
+        //
+        // ⭐ **148 → 151 na v5** (W97), e a conta é a mesma: cada nó ganhou o VERBO
+        // (`Node::verb: Option<Op>`), e um `Option::None` em postcard custa **um byte de
+        // discriminante**. Três nós, três bytes. ⚠️ A versão subiu de 4 para 5 no mesmo commit.
+        151,
         "a forma serializada mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -435,7 +442,8 @@ fn the_shape_of_a_saved_profile_is_pinned() {
         bytes.len(),
         // ⚠️ MEDIDO na criação do gate (2026-08-19): 4 pontos × 2 × f32 + o cabeçalho da árvore.
         // **84 → 85 na v3**: um nó, um byte de comprimento da pilha vazia. Ver o gate irmão.
-        85,
+        // **85 → 86 na v5** (W97): um nó, um byte do `Option::None` do verbo. A mesma conta.
+        86,
         "a forma serializada do perfil mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -496,6 +504,7 @@ fn editing_the_number_does_not_change_an_organic_blend_into_an_exact_one() {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -652,6 +661,7 @@ fn shrinking_a_shape_shrinks_its_fillet_instead_of_refusing() {
             xform: Xform::IDENTITY,
             kind: NodeKind::Leaf(b),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

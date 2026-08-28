@@ -17,6 +17,7 @@ fn ball(x: f32) -> Node {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     }
 }
 
@@ -33,6 +34,7 @@ fn a_difference() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -83,6 +85,7 @@ fn a_union() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),

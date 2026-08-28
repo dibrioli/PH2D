@@ -47,6 +47,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.op.union" => "Union",
         "panel.model3d.op.subtract" => "Subtract",
         "panel.model3d.op.intersect" => "Intersect",
+        // ⭐⭐⭐ **O VERBO DA FORMA** — a fileira que diz o que ESTA forma faz ao resultado das
+        // anteriores. ⚠️ **Palavras diferentes das da operação acima, e de propósito:** as duas
+        // fileiras aparecem juntas com sujeitos diferentes (o grupo · a forma), e repetir "Union"
+        // faria as duas lerem-se como a mesma pergunta feita duas vezes. As escolhidas são as do
+        // *Shape Mode* do Illustrator, que é o padrão-ouro deste desenho.
+        "panel.model3d.verb_of" => "This shape",
+        // ⚠️ **`Inherit` é o primeiro**, e é o que torna a escolha reversível: sem ele, pedir um
+        // verbo uma vez tirava a forma do padrão do grupo para sempre.
+        "panel.model3d.verb.inherit" => "Inherit",
+        "panel.model3d.verb.add" => "Add",
+        "panel.model3d.verb.cut" => "Cut",
+        "panel.model3d.verb.common" => "Common",
         // ⭐ Os MODIFICADORES. ⚠️ São interruptores: aceso quer dizer que o objeto já tem um.
         // "Hollow" e não "Shell" — o rótulo diz o que se OBTÉM ("oco"), e "Shell" num app 3D é
         // ambíguo com a casca de superfície. "Grow/Shrink" diria os dois sentidos, mas o número faz

@@ -94,6 +94,7 @@ pub(crate) fn owners_under(
                     xform: ph2d_field_ecs::world_xform(world, e),
                     kind: NodeKind::Leaf(prim.clone()),
                     mods: Vec::new(),
+                    verb: None,
                 }],
                 NodeId(0),
             )

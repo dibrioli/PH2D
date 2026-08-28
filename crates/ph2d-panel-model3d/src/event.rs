@@ -115,6 +115,13 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        WidgetEvent::Click(id) if slot_in(id, ids::model3d_verb_button).is_some() => {
+            let slot = slot_in(id, ids::model3d_verb_button).unwrap_or(0);
+            slot < state::current().verbs.len() && {
+                state::push_intent(ModelIntent::SetVerb { slot });
+                true
+            }
+        }
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_mod_button).is_some() => {
             let slot = slot_in(id, ids::model3d_mod_button).unwrap_or(0);
             slot < state::current().mods.len() && {

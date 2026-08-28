@@ -236,6 +236,24 @@ pub(super) fn apply(
                     }
                 }
             }
+            // ⭐⭐⭐ **O VERBO DESTA FORMA** (W97) — com que operação ela dobra sobre as anteriores.
+            //
+            // ⚠️ **A MISTURA em vigor é lida ANTES e escrita junto** — ver [`verb_at`]. Uma forma
+            // que herdava a subtração de um grupo com filete `0,12` e passasse a subtrair com
+            // aresta viva mudaria de forma ao clique, sem ninguém ter tocado num raio.
+            //
+            // ⚠️ O sujeito é o **primeiro** da seleção, que é exactamente o que a fileira **nomeia**
+            // no painel ([`verbs_for`]) — as duas metades da costura leem a mesma entidade, e é isso
+            // que impede o clique de escrever noutra forma que não a nomeada.
+            ph2d_panel_model3d::ModelIntent::SetVerb { slot } => {
+                if let Some(&e) = selection.first()
+                    && let Some(role) = ph2d_field_ecs::verb_role(world, e)
+                    && let Some(current) = role.op()
+                    && let Some(verb) = verb_at(slot, current.blend())
+                {
+                    let _ = ph2d_field_ecs::set_verb(world, e, verb);
+                }
+            }
             // O referencial dos eixos é estado de VISTA, como o verbo.
             ph2d_panel_model3d::ModelIntent::SetGizmoFrame { slot } => {
                 if let Some(frame) = crate::field3d_gizmo::Frame::ALL.get(slot).copied() {

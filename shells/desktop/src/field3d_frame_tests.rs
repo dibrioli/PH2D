@@ -9,6 +9,7 @@ fn far_part(cx: f32, r: f32) -> FieldDoc {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: r }),
         mods: Vec::new(),
+        verb: None,
     };
     FieldDoc::new(
         vec![
@@ -21,6 +22,7 @@ fn far_part(cx: f32, r: f32) -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -60,6 +62,7 @@ fn lone_sphere(cx: f32, r: f32) -> FieldDoc {
             xform: Xform::at(cx, 0.0, 0.0),
             kind: NodeKind::Leaf(Primitive::Sphere { radius: r }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

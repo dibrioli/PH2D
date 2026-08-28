@@ -38,7 +38,7 @@ pub fn compile(doc: &FieldDoc) -> Tree {
         // Seguro pela invariante da arena: todo filho já foi construído.
         let inner = match &node.kind {
             NodeKind::Leaf(p) => primitive(p),
-            NodeKind::Combine { op, children } => combine(*op, children, &built),
+            NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
             // ⚠️ **Uma escultura NÃO é exprimível numa árvore** — ver [`hybrid`]. Aqui ela lê como
             // espaço vazio, que é o degenerado seguro: numa união some, numa subtração não corta.
             // Quem quiser a escultura de facto compila pelo [`hybrid::Hybrid`], e é ele que a
@@ -238,24 +238,33 @@ fn blended(b: Blend) -> ops::Blended {
     }
 }
 
-fn combine(op: Op, children: &[ph2d_field::NodeId], built: &[Tree]) -> Tree {
-    let trees: Vec<Tree> = children
+fn combine(op: Op, children: &[ph2d_field::NodeId], nodes: &[Node], built: &[Tree]) -> Tree {
+    let kids: Vec<(Option<Op>, Tree)> = children
         .iter()
-        .map(|c| built[c.0 as usize].clone())
+        .map(|c| (nodes[c.0 as usize].verb, built[c.0 as usize].clone()))
         .collect();
-    combine_trees(op, &trees)
+    combine_trees(op, &kids)
 }
 
 /// A mesma combinação, já sobre as árvores — a porta que o avaliador híbrido partilha.
-pub(crate) fn combine_trees(op: Op, trees: &[Tree]) -> Tree {
-    let b = blended(op.blend());
-    let mut acc = trees[0].clone();
-    for rhs in &trees[1..] {
+///
+/// ⭐ **A dobra sempre foi esta**; o que mudou em 2026-08-28 é que o verbo deixou de ser constante:
+/// cada filho traz o dele, ou herda o do pai ([`ph2d_field::fold_verb`], onde a lei está escrita).
+///
+/// ⚠️ **E a MISTURA vem junto com o verbo**, porque ela vive dentro dele ([`Op`] carrega o
+/// [`ph2d_field::Blend`]). É por isso que um raio por objeto sai desta mesma linha: quem traz o
+/// verbo traz o raio da junção que ele faz.
+pub(crate) fn combine_trees(parent: Op, kids: &[(Option<Op>, Tree)]) -> Tree {
+    // ⚠️ O verbo de `kids[0]` **não é perguntado**: ele semeia o acumulado. Ver [`fold_verb`].
+    let mut acc = kids[0].1.clone();
+    for (verb, rhs) in &kids[1..] {
+        let op = ph2d_field::fold_verb(parent, *verb);
+        let b = blended(op.blend());
         let rhs = rhs.clone();
         acc = match op {
             Op::Union(_) => ops::union(&acc, &rhs, b),
             Op::Intersection(_) => ops::intersection(&acc, &rhs, b),
-            // `children[0]` menos todos os seguintes.
+            // O acumulado menos este filho.
             Op::Difference(_) => ops::difference(&acc, &rhs, b),
         };
     }
@@ -389,6 +398,10 @@ pub use step::{inflation_depth, safe_march_step};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "verb_tests.rs"]
+mod verb_tests;
 
 /// ⭐⭐⭐ **O DOCUMENTO COMPILADO PARA UMA REGIÃO DO MUNDO** (W56) — a ponte entre a especialização
 /// do perfil e quem a vai consumir.
@@ -538,7 +551,7 @@ fn compile_in_region_with(
                     specialised_profile(p, idx, m.box_of(lo, hi), &pts)
                 })
                 .unwrap_or_else(|| primitive(p)),
-            NodeKind::Combine { op, children } => combine(*op, children, &built),
+            NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
             NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
         };
         built.push(place(&stacked(&inner, &node.mods), node.xform));

@@ -106,6 +106,22 @@ pub struct ModelSnapshot {
     /// nada é pior do que um que não aparece. Ele mostra-se quando uma operação está selecionada
     /// (e aí o ativo diz qual ela é) ou quando há dois nós irmãos escolhidos.
     pub ops: Vec<ModeChip>,
+    /// ⭐⭐⭐ **O VERBO DA FORMA ESCOLHIDA** — com que operação ela dobra sobre o resultado das
+    /// anteriores (`Inherit` · `Add` · `Subtract` · `Intersect`).
+    ///
+    /// ⚠️ **Não é a fileira [`Self::ops`] outra vez, e o sujeito é a diferença:** aquela é a
+    /// operação **do grupo**, que passa a ser o *padrão* de quem não se pronunciou; esta é a escolha
+    /// **desta forma**. É por isso que ela vem com o [`Self::verb_subject`] — a fileira **nomeia o
+    /// próprio sujeito**, que é a cura que o vetorial pagou em 2026-08-22 quando o artista escolheu
+    /// o verbo sem saber de qual forma o painel falava.
+    ///
+    /// ⚠️ **O primeiro chip é `Inherit`**, e é ele que faz o modelo caber na fileira: sem um gesto
+    /// que devolva a forma à herança, escolher um verbo uma vez seria irreversível.
+    ///
+    /// ⚠️ Vazio ⇒ não é pintada: a base não dobra sobre nada, e a raiz da peça não tem irmãos.
+    pub verbs: Vec<ModeChip>,
+    /// O **nome** da forma de que a fileira [`Self::verbs`] fala. `None` ⇒ não há fileira.
+    pub verb_subject: Option<String>,
     /// ⭐ **Os modificadores** — casca e afastamento. São **interruptores**: `active` diz que o nó
     /// já tem um daquela natureza, e clicar tira-o.
     ///
@@ -188,6 +204,9 @@ pub enum ModelIntent {
     AddShape { slot: usize },
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
     ApplyOp { slot: usize },
+    /// ⭐⭐ **Escrever o verbo da forma escolhida**, pela **posição** no seletor — e a posição `0` é
+    /// o `Inherit`, que **apaga** o verbo em vez de escrever um.
+    SetVerb { slot: usize },
     /// Liga ou desliga um modificador do nó, pela **posição** no seletor.
     ToggleMod { slot: usize },
     /// Escrever a peça num arquivo, pela **posição** no seletor de resolução.

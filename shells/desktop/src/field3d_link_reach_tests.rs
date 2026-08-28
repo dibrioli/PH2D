@@ -217,8 +217,13 @@ fn a_linked_shape_wears_the_badge_and_a_loose_one_does_not() {
         0.0,
         &crate::field3d_scene::no_drawing(),
     );
-    assert!(
-        link_badges().is_empty(),
+    // ⚠️ **A pergunta é sobre o selo do VÍNCULO, e não sobre o mapa estar vazio.** Ela era
+    // `is_empty()` enquanto o vínculo e o isolamento eram os únicos selos; a W97 pôs o **verbo** em
+    // toda linha que participa da receita, de propósito. *Uma mudança de modelo obriga a
+    // re-perguntar o que cada gate ainda mede* — e o que este sempre mediu está agora escrito.
+    assert_ne!(
+        link_badges().get(&sel[0].to_bits()).copied(),
+        Some(LINK_BADGE),
         "uma extrusão SOLTA está a usar o selo do vínculo"
     );
     link(sim.world_mut(), sel[0], 7);
@@ -456,4 +461,84 @@ fn every_act_the_row_can_emit_says_something_other_than_its_own_key() {
         "estes verbos vão pintar o próprio identificador na tela (falta a linha em \
          `crates/ph2d-i18n/src/model3d.rs`): {mudos:?}"
     );
+}
+
+/// ⭐⭐⭐ **A PRECEDÊNCIA DO SELO, e ela tem UMA excepção** (W97) — `BSE` cede ao `LNK`, os outros
+/// verbos não.
+///
+/// # ⚠️ A regra, numa frase
+///
+/// > *O selo diz o que a linha não consegue dizer sozinha.*
+///
+/// `BSE` é **derivável da posição** — é a primeira linha que conta —, então cedê-lo ao vínculo não
+/// custa informação nenhuma. `SUB`/`INT`/`UNI` **não** são deriváveis de nada na tela, e sem eles a
+/// receita ganha um buraco: uma sequência com uma linha ilegível deixa de se ler **inteira**, ao
+/// contrário de uma marca de proveniência, que é um facto independente por linha.
+///
+/// ⛔ **Um segundo selo por linha é a cura de verdade, e o preço está MEDIDO:** o campo é
+/// `HierarchyEntity::badge: Option<String>` e os produtores são vários (o vetor, a sprite, a física,
+/// este módulo) — é mudança de tipo foundational com N escritores, e não «uma função». É esse o
+/// gatilho para rever isto.
+#[test]
+fn only_the_base_badge_yields_to_the_link_badge() {
+    use ph2d_field::{Blend, Op};
+
+    let (mut sim, sel) = a_drawn_shape();
+    crate::field3d_smoke::set_armed_by_panel(true);
+    link(sim.world_mut(), sel[0], 7);
+
+    // A forma é a ÚNICA do grupo, logo é a base — e a base cede.
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    assert_eq!(
+        link_badges().get(&sel[0].to_bits()).copied(),
+        Some(LINK_BADGE),
+        "a BASE ligada a um desenho tinha de mostrar o vínculo — `BSE` repete o que a posição diz"
+    );
+
+    // ⭐ **O controlo que dá sentido ao gate:** a MESMA linha, com um verbo que não é derivável,
+    // deixa de ceder. Sem isto, «cede sempre» passaria aqui.
+    let pai = sim
+        .world()
+        .get::<bevy_ecs::hierarchy::ChildOf>(sel[0])
+        .expect("a forma tem o grupo por pai")
+        .0;
+    let irmao = ph2d_field_ecs::add_leaf(
+        sim.world_mut(),
+        pai,
+        Primitive::Sphere { radius: 0.2 },
+        [0.0, 0.0, 0.0],
+    )
+    .expect("nasce ao lado");
+    // A ordem manda: o irmão nasce depois, então a extrusão continua a ser a base. Ela só deixa de o
+    // ser quando é ELA a falar — e aí o verbo ganha.
+    ph2d_field_ecs::set_verb(sim.world_mut(), irmao, Some(Op::Difference(Blend::Sharp)))
+        .expect("é um nó");
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    link(sim.world_mut(), irmao, 9);
+    crate::field3d_scene::sync_scene_and_birth(
+        &mut sim,
+        None,
+        &sel,
+        0.0,
+        &crate::field3d_scene::no_drawing(),
+    );
+    assert_eq!(
+        link_badges().get(&irmao.to_bits()).copied(),
+        Some("SUB"),
+        "uma forma que CORTA e segue um desenho tem de mostrar o corte — o buraco na receita custa \
+         mais do que a marca de proveniência"
+    );
+    crate::field3d_smoke::set_armed_by_panel(false);
 }

@@ -74,11 +74,13 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         xform: Xform::IDENTITY,
         kind: NodeKind::Combine { op, children },
         mods: Vec::new(),
+        verb: None,
     };
     let leaf = |p: Primitive, x: Xform| Node {
         xform: x,
         kind: NodeKind::Leaf(p),
         mods: Vec::new(),
+        verb: None,
     };
     let s = std::f32::consts::FRAC_1_SQRT_2;
 
@@ -228,6 +230,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         xform: Xform::IDENTITY,
                         kind: ph2d_field::NodeKind::Sampled { key: "blob".into() },
                         mods: Vec::new(),
+                        verb: None,
                     },
                     leaf(
                         Primitive::Cylinder {
@@ -246,6 +249,68 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     ),
                 ],
                 NodeId(2),
+            )
+        }
+        7 => {
+            // ⭐⭐⭐ **UM VERBO POR FORMA** (W97) — a receita numa lista PLANA.
+            //
+            // ⚠️ **O que esta cena tem de provar é a AUSÊNCIA de parentescos.** Antes desta wave,
+            // dois furos com raios de junção diferentes exigiam **dois grupos aninhados** — a queixa
+            // que abriu a wave. Aqui os quatro nós são irmãos de um grupo só, e a Hierarquia lê-se
+            // de cima para baixo como a receita: `BSE` · `UNI` · `SUB` · `SUB`.
+            //
+            // ⚠️ A 2.ª forma é **CALADA de propósito**: ela herda o verbo *e o filete* do grupo
+            // (`Union` a `0,08`), e é o que torna a herança visível ao lado das que se pronunciam.
+            println!(
+                "[field-smoke] cena 7 — UM VERBO POR FORMA: 4 irmãos, zero aninhamento. \
+                 Bloco (BSE) · bossa CALADA que herda o filete 0,08 (UNI) · furo em pé com junção \
+                 0,10 (SUB) · furo deitado de aresta VIVA (SUB)"
+            );
+            let mut furo_gordo = leaf(
+                Primitive::Cylinder {
+                    radius: 0.15,
+                    half_height: 1.2,
+                    round: 0.0,
+                },
+                Xform::at(-0.22, 0.0, 0.0),
+            );
+            // ⭐ O filete da junção viaja DENTRO do verbo — é o que faz «um raio por objeto» existir.
+            furo_gordo.verb = Some(Op::Difference(Blend::Exact { radius: 0.10 }));
+            let mut furo_vivo = leaf(
+                Primitive::Cylinder {
+                    radius: 0.15,
+                    half_height: 1.2,
+                    round: 0.0,
+                },
+                Xform {
+                    translation: [0.3, 0.0, 0.0],
+                    rotation: [s, 0.0, 0.0, s],
+                    ..Xform::IDENTITY
+                },
+            );
+            // ⚠️ O MESMO verbo, outro raio — o par que era inexprimível sem aninhar.
+            furo_vivo.verb = Some(Op::Difference(Blend::Sharp));
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Box {
+                            half: [0.55, 0.3, 0.4],
+                            round: 0.04,
+                        },
+                        Xform::IDENTITY,
+                    ),
+                    leaf(
+                        Primitive::Sphere { radius: 0.26 },
+                        Xform::at(0.0, 0.34, 0.0),
+                    ),
+                    furo_gordo,
+                    furo_vivo,
+                    combine(
+                        Op::Union(Blend::Exact { radius: 0.08 }),
+                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
+                    ),
+                ],
+                NodeId(4),
             )
         }
         _ => {
@@ -281,3 +346,9 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
     };
     doc.expect("as cenas do smoke são documentos válidos")
 }
+
+/// ⭐⭐ **Os gates do roteador** — nenhum existia até à W97. Ver
+/// [`field3d_smoke_scene_tests`](self::scene_tests).
+#[cfg(test)]
+#[path = "field3d_smoke_scene_tests.rs"]
+mod scene_tests;

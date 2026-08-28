@@ -16,6 +16,7 @@ fn three_in_a_row() -> FieldDoc {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     };
     FieldDoc::new(
         vec![
@@ -29,6 +30,7 @@ fn three_in_a_row() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(3),

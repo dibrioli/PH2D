@@ -22,6 +22,7 @@ fn seed() -> FieldDoc {
                 round: 0.0,
             }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )

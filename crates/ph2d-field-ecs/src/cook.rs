@@ -11,7 +11,7 @@ use bevy_ecs::hierarchy::{ChildOf, Children};
 use bevy_ecs::world::World;
 use ph2d_field::{FieldDoc, FieldError, Node, NodeId, NodeKind, NodeShape, Xform};
 
-use crate::{FieldMods, FieldNode, FieldPose};
+use crate::{FieldMods, FieldNode, FieldPose, FieldVerb};
 
 /// **Coze a subárvore de `root` num [`FieldDoc`].**
 ///
@@ -112,12 +112,17 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                     .get::<FieldMods>(e)
                     .map(|m| m.stack.clone())
                     .unwrap_or_default();
+                // ⭐ **O verbo desta forma**, ou `None` — que é *«herda o do pai»* e não *«sem
+                // verbo»*. Ver [`crate::FieldVerb`]: a ausência do componente É a resposta, e é por
+                // isso que ela atravessa daqui até ao documento sem se traduzir.
+                let verb = world.get::<FieldVerb>(e).map(|v| v.op);
                 let id = match &node.shape {
                     NodeShape::Sampled { key } => {
                         nodes.push(Node {
                             xform,
                             kind: NodeKind::Sampled { key: key.clone() },
                             mods,
+                            verb,
                         });
                         Some(NodeId(nodes.len() as u32 - 1))
                     }
@@ -126,6 +131,7 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                             xform,
                             kind: NodeKind::Leaf(p.clone()),
                             mods,
+                            verb,
                         });
                         Some(NodeId(nodes.len() as u32 - 1))
                     }
@@ -141,6 +147,7 @@ fn emit(world: &World, root: Entity, nodes: &mut Vec<Node>) -> Option<NodeId> {
                                 xform,
                                 kind: NodeKind::Combine { op: *op, children },
                                 mods,
+                                verb,
                             });
                             Some(NodeId(nodes.len() as u32 - 1))
                         }
@@ -204,11 +211,43 @@ pub fn is_hidden(world: &World, e: Entity) -> bool {
         .is_some_and(|v| v.hidden)
 }
 
-fn kids(world: &World, e: Entity) -> Vec<Entity> {
+pub(crate) fn kids(world: &World, e: Entity) -> Vec<Entity> {
     world
         .get::<Children>(e)
         .map(|c| c.iter().copied().collect())
         .unwrap_or_default()
+}
+
+/// ⭐⭐ **Esta entidade rende ALGUMA COISA ao documento?** — a pergunta que o [`emit`] responde
+/// implicitamente, aberta para quem precisa dela **antes** do cozimento.
+///
+/// ⚠️ **Ela existe por causa da BASE** ([`crate::verb_role`]): *quem semeia o acumulado* é o
+/// primeiro filho que **contribui**, e não o primeiro da lista — esconder o primeiro promove o
+/// segundo, porque é isso que o `emit` faz. Uma segunda cópia desta regra no painel poria a
+/// Hierarquia a escrever `BASE` numa linha que subtrai.
+///
+/// As três recusas são as do [`emit`], na mesma ordem: não é nó de modelagem · está **escondido**
+/// (e aí a subárvore inteira cai com ele, ver [`is_hidden`]) · é uma operação **sem nada** por
+/// baixo, que *não é um erro: ela não existe*.
+///
+/// ⚠️ **Iterativa**, como o `emit` e pela mesma razão: a profundidade é o que o artista agrupar.
+#[must_use]
+pub fn contributes(world: &World, e: Entity) -> bool {
+    let mut stack = vec![e];
+    while let Some(k) = stack.pop() {
+        let Some(node) = world.get::<FieldNode>(k) else {
+            continue;
+        };
+        if is_hidden(world, k) {
+            continue;
+        }
+        match node.shape {
+            // Uma forma é o que rende geometria; uma operação só rende o que houver por baixo.
+            NodeShape::Leaf(_) | NodeShape::Sampled { .. } => return true,
+            NodeShape::Combine(_) => stack.extend(kids(world, k)),
+        }
+    }
+    false
 }
 
 /// **A pose de MUNDO de um nó** — a cadeia de [`FieldPose`] composta da raiz para baixo.

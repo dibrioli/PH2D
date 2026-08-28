@@ -20,6 +20,7 @@ fn three_spheres() -> FieldDoc {
         xform: Xform::at(x, y, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.15 }),
         mods: Vec::new(),
+        verb: None,
     };
     FieldDoc::new(
         vec![
@@ -33,6 +34,7 @@ fn three_spheres() -> FieldDoc {
                     children: vec![NodeId(0), NodeId(1), NodeId(2)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(3),
@@ -100,6 +102,7 @@ fn the_answer_uses_the_world_pose_not_the_local_one() {
             xform: Xform::at(x, 0.0, 0.0),
             kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.12 }),
             mods: Vec::new(),
+            verb: None,
         };
         FieldDoc::new(
             vec![
@@ -113,6 +116,7 @@ fn the_answer_uses_the_world_pose_not_the_local_one() {
                         children: vec![NodeId(0), NodeId(1)],
                     },
                     mods: Vec::new(),
+                    verb: None,
                 },
             ],
             NodeId(2),

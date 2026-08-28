@@ -10,6 +10,7 @@ fn doc(radius: f32) -> FieldDoc {
             xform: Xform::IDENTITY,
             kind: NodeKind::Leaf(Primitive::Sphere { radius }),
             mods: Vec::new(),
+            verb: None,
         }],
         NodeId(0),
     )
@@ -94,6 +95,7 @@ fn the_hierarchy_eye_takes_the_node_out_of_the_piece() {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     };
     let union = |children: Vec<NodeId>| Node {
         xform: Xform::IDENTITY,
@@ -102,6 +104,7 @@ fn the_hierarchy_eye_takes_the_node_out_of_the_piece() {
             children,
         },
         mods: Vec::new(),
+        verb: None,
     };
     // ⚠️ **Um grupo ANINHADO, e não uma união rasa** — é ele que separa *recusar na descida* de
     // *recusar na subida*: com a pergunta na subida, esconder o grupo deixaria os filhos dele
@@ -260,11 +263,13 @@ fn cooking_from_the_real_root_is_unchanged_by_the_chain() {
                 xform: Xform::at(0.3, -0.2, 0.1),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform::at(-0.4, 0.5, 0.0),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.15 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform::at(1.0, 2.0, -3.0),
@@ -273,6 +278,7 @@ fn cooking_from_the_real_root_is_unchanged_by_the_chain() {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),
@@ -300,6 +306,7 @@ fn isolating_a_node_keeps_it_where_it_was_in_the_world() {
                 xform: Xform::at(0.25, 0.0, 0.0),
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 // ⭐ O GRUPO está deslocado: é o que a cadeia tem de trazer.
@@ -309,6 +316,7 @@ fn isolating_a_node_keeps_it_where_it_was_in_the_world() {
                     children: vec![NodeId(0)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(1),
@@ -360,7 +368,7 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
     crate::register_field_components(&mut reg);
     assert_eq!(
         reg.len(),
-        5,
+        6,
         "o módulo passou a ter outro componente — ensine-o ao `copy_optional` (a cópia da \
          Hierarquia) e acrescente-o à fixture abaixo, senão duplicar um nó perde-o em silêncio"
     );
@@ -374,6 +382,7 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.3 }),
                 mods: Vec::new(),
+                verb: None,
             },
             Node {
                 xform: Xform::IDENTITY,
@@ -382,6 +391,7 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
                     children: vec![NodeId(0)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(1),
@@ -403,6 +413,14 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
     world
         .entity_mut(leaf)
         .insert(crate::FieldProfileSource { path: 77, level: 3 });
+    // ⭐⭐ **E o VERBO** (W97): duplicar um furo tem de dar outro furo. Sem a linha no
+    // `copy_optional`, a cópia caía na herança do pai e passava a SOMAR — sem erro e sem aviso.
+    crate::set_verb(
+        &mut world,
+        leaf,
+        Some(ph2d_field::Op::Difference(Blend::Exact { radius: 0.04 })),
+    )
+    .expect("é um nó");
 
     let copy = crate::duplicate(&mut world, leaf, [0.5, 0.0, 0.0]).expect("duplicou");
     assert_eq!(
@@ -414,5 +432,10 @@ fn a_duplicate_carries_every_optional_component_of_a_node() {
         world.get::<crate::FieldProfileSource>(copy).copied(),
         Some(crate::FieldProfileSource { path: 77, level: 3 }),
         "e a cópia continua ligada ao mesmo desenho, no mesmo nível"
+    );
+    assert_eq!(
+        crate::verb_of(&world, copy),
+        Some(ph2d_field::Op::Difference(Blend::Exact { radius: 0.04 })),
+        "a cópia de um FURO tinha de sair furo — sem o verbo ela cai na herança e passa a somar"
     );
 }

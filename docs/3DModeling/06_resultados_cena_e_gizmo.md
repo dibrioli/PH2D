@@ -5780,7 +5780,24 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⏸️ A barra **demonstrável** da interpolação trilinear é `√3`, e ship-se o `√2` medido | dívida nomeada | §78.3 |
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
+| ✅⭐⭐⭐ **UM VERBO POR FORMA** — a operação sai do grupo e entra em cada objeto (etapa **1** de 3) | a receita lê-se na Hierarquia (`UNI`/`SUB`/`INT`/`BSE`, os selos do vetorial) · ausência = **herança** · a base **semeia** e guarda o verbo dela | §93 |
+| ⏳ **(2) O RAIO por objeto na UI** — o motor já o entrega | ⚠️ um objeto passa a ter **dois** raios (quina · junção) e os dois chamam-se "Radius" · ⛔ e o `Organic` entrega **3/4** do número que mostra, o que um raio por objeto torna visível | §93.9 |
+| ⏳ **(3) O CHAMFER** como 4.º carácter do `Blend` | ⭐ **uma fórmula só** — intersecção e subtração saem por De Morgan | §93.9 |
 
+- ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
+  Enio (*«a hierarquia fica mais confusa criando vários parentescos… colocar a operação dentro de cada
+  objeto»*), que é **o mesmo** que ele desenhou para o vetorial em 22/08 — logo esta wave é as duas
+  metades do app passarem a falar a mesma língua, com os **mesmos selos**. ⭐ Foi barata porque os dois
+  avaliadores **já eram uma dobra à esquerda**: o que estava fixo era só o verbo. ⭐⭐ **As duas idéias
+  do pedido são UMA:** uma mistura pertence a uma JUNÇÃO, e é a dobra que dá a cada forma exactamente
+  uma — *«um raio por objeto» não tinha onde existir antes*. ⚠️ **Ausência é HERANÇA**, então toda peça
+  anterior avalia igual e o seletor do pai vira o **padrão**; ⛔ e o acumulado **não** começa vazio
+  (uma subtração no topo apagaria a peça). ⛔⛔ **Um mutante SOBREVIVEU e o achado é maior que o gate:**
+  apagar a herança inteira passou em todos, porque eles **comparavam duas construções** e a mutação
+  afectava as duas igual — *um controlo que partilha o defeito não é um controlo*; a cura é medir
+  contra **oráculo**, e aí os 5 morrem. ⚠️ E o gate de alcance apanhou um defeito **meu** na tabela
+  dele: as asserções endereçavam as fileiras por **índice**, e inserir uma no meio re-apontou-as em
+  silêncio.
 - ⭐⭐⭐ **W89 (§91): A TRAVADINHA TINHA NOME.** De `~12` em `12` quadros de arrasto a cache chegava ao
   tecto e despejava `1 738` fitas **debaixo do cadeado de escrita**: `274,8 ms` num quadro cujo
   orçamento é `16,7`, com as outras 31 threads à porta. ⭐⭐⭐ **`94 %` desse preço era a ÁRVORE que
@@ -8606,3 +8623,243 @@ pesar) ou se o orçamento apertar. O instrumento fica no sítio, e re-corre em d
   vista. Ficam globais por decisão: são sobre a **selecção** e a **ferramenta**, não sobre a câmera.
 - **O custo de uma edição com a divisão aberta** — quatro traçados disparam ao mesmo tempo e cada um
   quer a máquina toda. Inerente à divisão (o Blender faz o mesmo), **por medir**.
+
+---
+
+## §93 — W97: ⭐⭐⭐ UM VERBO POR FORMA — a operação sai do grupo e entra em cada objeto (28/08)
+
+> **Pedido do Enio, 2026-08-28:** *"precisamos investigar um modo mais intuitivo e fácil de combinar
+> as formas. Atualmente quando se cria uma nova operação a hierarquia fica mais confusa criando
+> vários parentescos. Minha idéia é colocar a operação dentro de cada objeto. […] A partir do segundo
+> objeto aparecem os modos booleanos para aquele objeto que será aplicado ao resultante das operações
+> anteriores. […] as operações booleanas continuam obedecendo a ordem da hierarquia."*
+
+### §93.1 — A lei, e por que ela já era metade da casa
+
+> ⭐⭐⭐ **As formas dobram na ORDEM da hierarquia, e cada uma traz o verbo com que se junta ao
+> resultado das anteriores.** `((c₀ ⊕₁ c₁) ⊕₂ c₂) …`, onde `⊕ᵢ` é o verbo de `cᵢ` — ou o **do pai**,
+> quando `cᵢ` não trouxe nenhum.
+
+⚠️ **Isto não é um desenho novo: é o desenho que o VETORIAL desta casa já shipou em 2026-08-22**
+([`27_um_verbo_por_forma.md`](../Vector%20Module/27_um_verbo_por_forma.md)), a partir do mesmo pedido
+do mesmo dono. O valor maior desta wave não é a feature — é as **duas metades do app passarem a
+falar a mesma língua**, com o mesmo vocabulário de selos.
+
+⭐ **E foi barata pela mesma razão que lá:** medido antes de escrever uma linha, **os dois
+avaliadores já eram uma dobra à esquerda** — `combine_trees` faz `acc = trees[0]; for rhs in
+&trees[1..] { acc = op(acc, rhs, b) }` e o `Plan::Combine` faz o mesmo em números. O que estava fixo
+era **só o verbo**.
+
+| | antes | agora |
+|---|---|---|
+| onde vive a operação | no **pai** (`NodeKind::Combine { op }`) | continua lá, como **padrão**; cada filho pode trazer o seu |
+| onde vive o raio da junção | no **mesmo** `op` do pai — **um** para todos os filhos | viaja **dentro do verbo**, logo um por forma |
+| dois furos com raios diferentes | **dois grupos aninhados** (a queixa do Enio) | dois verbos, zero parentescos |
+
+### §93.2 — ⭐ As duas idéias do pedido são UMA, e a segunda é a razão da primeira
+
+O Enio pediu duas coisas (a operação por objeto · o fillet por objeto). Medido: **a segunda só é
+exprimível depois da primeira.**
+
+Uma mistura pertence a uma **JUNÇÃO**, não a um objeto. Sob a árvore N-ária um `Combine` de 3 filhos
+tem **duas** junções e **uma** `Blend` — «um raio por objeto» não tem onde existir. A dobra dá a cada
+forma exactamente **uma** junção (a que ela faz com o acumulado) ⇒ *é a dobra que torna «por objeto»
+e «por junção» a mesma coisa.*
+
+⇒ E por isso o `Op` (que **carrega** o `Blend`) é o que viaja no filho: o raio veio junto, de graça, e
+o `each_shape_carries_the_radius_of_its_own_joint` mede-o.
+
+### §93.3 — ⚠️ Ausência é HERANÇA, não «sem verbo»
+
+`Node::verb` é `Option<Op>` e o componente [`FieldVerb`] é **opcional**. As duas leituras coincidem de
+propósito:
+
+| no mundo | no documento | quer dizer |
+|---|---|---|
+| sem `FieldVerb` | `Node::verb == None` | *«use o do meu pai»* |
+| com `FieldVerb` | `Node::verb == Some(op)` | *«eu dobro assim»* |
+
+Isto compra duas coisas, e as duas pesam para o mesmo lado:
+
+- **toda peça anterior avalia igual** — ninguém se pronunciou (gate
+  `silence_is_the_boolean_of_always`, com o controlo a ser a árvore **aninhada de dois filhos**, que
+  é como a mesma peça se exprimia antes e **não usa o campo novo**);
+- **o seletor do pai não morre**: deixa de ser *a* operação e passa a ser o **padrão** de quem não se
+  pronunciou. Sem esta escolha ele ficaria inerte, que é o defeito *«parâmetro que não muda nada»*.
+
+### §93.4 — ⚠️ Onde eu discordei do pedido: o primeiro objeto GUARDA o verbo dele
+
+O pedido diz *«o primeiro objeto é a base e logo não deve ter modos booleanos»*. O comportamento é
+esse; a **representação** não.
+
+⛔ **Não é «o acumulado começa vazio»**, que seria a outra forma de o dizer: com ela, uma subtração no
+topo apagaria a peça inteira (`∅ − a = ∅`) — uma reordenação a destruir o modelo em silêncio.
+⇒ O primeiro filho **semeia** o acumulado e o verbo dele **nunca é perguntado**
+(`the_first_shapes_verb_is_never_asked`).
+
+⭐ E ele é **guardado na mesma**: *reordenar não pode destruir a escolha de quem passou pelo topo.*
+Arrastar o terceiro para cima torna-o base sem nada a consertar, e arrastá-lo de volta devolve o
+verbo que ele tinha.
+
+⚠️ **E a BASE é a primeira que CONTRIBUI, não a primeira da lista** — esconder a primeira **promove a
+segunda**, porque é isso que o cozimento faz. A resposta sai do `contributes`, que é a **mesma**
+função que o `emit` usa: uma segunda cópia da regra no painel poria a Hierarquia a escrever `BSE`
+numa linha escondida e `SUB` na que de facto semeia.
+
+### §93.5 — A receita LÊ-SE na Hierarquia (a metade que faz o desenho funcionar)
+
+O verbo aparece como **selo na linha**, e não só no painel lateral: *a Hierarquia já mostra a ordem;
+o selo acrescenta o verbo; **ordem + verbo são a receita.*** Com o verbo só no inspector, entender uma
+peça de cinco formas custa cinco cliques — que é exactamente a queixa que abriu esta wave.
+
+⭐ **Os códigos são os do vetorial** (`UNI` · `SUB` · `INT` · `BSE`) e a tabela de tons de
+`paint_hierarchy_row` **já os conhecia**: ela foi escrita em 22/08 pela outra metade do app, e o
+comentário dela já dizia *«a BASE não tem verbo»*. Zero linhas novas no pintor da Hierarquia.
+
+⚠️ **O selo mostra o verbo EFECTIVO** — quem herda sela `UNI` na mesma. A pergunta da lista é *«o que
+acontece?»*; *«quem escolheu?»* é a do painel, e as duas têm superfícies separadas.
+
+⭐⭐ **A PRECEDÊNCIA tem UMA excepção, e a regra que a decide vale para a fileira toda:**
+
+> *O selo diz o que a linha não consegue dizer sozinha.*
+
+⇒ **`ISO` > `SUB`/`INT`/`UNI` > `LNK` > `BSE`.** O `BSE` é **derivável da posição** (é a primeira
+linha que conta), então cedê-lo ao vínculo não custa informação nenhuma; os outros verbos não são
+deriváveis de nada na tela, e sem eles a **receita ganha um buraco** — uma sequência com uma linha
+ilegível deixa de se ler **inteira**, ao contrário de uma marca de proveniência, que é um facto
+independente por linha. O `ISO` continua acima dos dois porque é o único que explica uma **ausência**.
+
+⚠️ **A 1.ª redacção desta secção dizia «o verbo ganha do `LNK`, e é uma perda deliberada» — e estava
+errada por não ter a excepção.** Dois gates do vínculo apanharam-na, e a regra que os manteve
+**intactos** é a que ficou. ⛔ **E o preço da cura de verdade está MEDIDO, não afirmado:** um segundo
+selo por linha é `HierarchyEntity::badge: Option<String>` a virar lista, com N produtores (o vetor, a
+sprite, a física, este módulo) — mudança foundational, e não «uma função». É esse o gatilho.
+
+### §93.6 — A fileira do painel, e por que ela tem QUATRO chips
+
+`Inherit` · `Add` · `Cut` · `Common`.
+
+- ⚠️ **`Inherit` é o primeiro, e é ele que faz o modelo caber na fileira**: sem um gesto que devolva a
+  forma ao padrão do grupo, escolher um verbo uma vez seria **irreversível**. *Um modo em que só se
+  entra é um modo errado.*
+- ⚠️ **Palavras diferentes das da fileira de cima**, e de propósito: as duas aparecem juntas com
+  **sujeitos diferentes** (o grupo · a forma), e repetir "Union/Subtract/Intersect" faria as duas
+  lerem-se como a mesma pergunta feita duas vezes. As escolhidas são as do *Shape Mode* do
+  Illustrator, que é o padrão-ouro deste desenho.
+- ⚠️ **A fileira NOMEIA o sujeito** (`This shape: Cylinder`). Tocar um filho pode acender o grupo
+  inteiro no canvas, e sem o nome o artista escolhe o verbo sem saber de qual forma o painel fala —
+  foi **exactamente** esse o defeito que o vetorial pagou em 22/08, e o report *«os botões não
+  funcionaram»* não bastava para o localizar.
+- ⚠️ **Herdar acende o `Inherit`**, e não o verbo herdado: o `active` diz *o que foi escolhido*.
+  Acender o herdado faria um clique nele parecer inerte e no entanto mudar o estado.
+
+⭐ **A MISTURA em vigor viaja com o verbo escolhido** (`verb_at(slot, blend)`): uma forma que herdava
+a subtração de um grupo com filete `0,12` e passasse a subtrair com **aresta viva** mudaria de forma
+ao clique, sem ninguém ter tocado num raio. É a lei que o `set_op` já escrevia para o grupo — *o raio
+é do nó, não da operação*.
+
+### §93.7 — Os gates, e a MUTAÇÃO QUE SOBREVIVEU
+
+**20 gates novos**, e os 5 de alcance da W34 a varrer a fileira nova de graça.
+
+| onde | o que prende |
+|---|---|
+| `ph2d-field-eval/src/verb_tests.rs` (7) | a dobra, **pelas duas rotas** (árvore + números, conferidas ponto a ponto dentro do `at`) |
+| `ph2d-field-ecs/src/verb_tests.rs` (7) | a travessia mundo → documento, a base por **contribuição**, `union_all` a não herdar |
+| `ph2d-panel-model3d/tests/seam.rs` (+1, e a varredura) | o **gesto real** (Down+Up) chega a `SetVerb` com o slot certo, e **nunca** ao `ApplyOp` |
+| `field3d_reach_tests.rs` (a tabela) | oferecer ⟺ fazer, nos **seis** casos de seleção |
+
+⛔⛔ **UM MUTANTE SOBREVIVEU, e o achado é maior que o gate.** Trocar `child.unwrap_or(parent)` por
+`child.unwrap_or(Op::Union(Blend::Sharp))` — isto é, **apagar a herança inteira** — passou em todos os
+gates então escritos.
+
+⚠️ A causa não foi falta de cobertura: eles **comparavam duas construções**, e a mutação afectava as
+duas da mesma maneira. *Um controlo que partilha o defeito do sujeito não é um controlo.*
+⇒ A cura é o `inheriting_means_the_parents_verb_and_the_parents_blend`, que mede contra um **oráculo**
+e não contra um irmão: com o pai a subtrair, o coração da 2.ª forma está FORA da peça — e isso é
+verdade ou falso sozinho. Com ele, **os 5 mutantes morrem**.
+
+⚠️ **E o gate de alcance apanhou um defeito silencioso MEU, na própria tabela dele:** as asserções
+endereçavam as fileiras por **índice** (`ROWS[1]`, `ROWS[2]`), e inserir a do verbo no meio
+re-apontou-as para outra fileira — elas continuaram a compilar e a correr, a medir a coisa errada.
+Passaram a endereçar por **nome**. *Um índice para dentro de uma lista que cresce é um endereço que
+muda de dono sem avisar.*
+
+### §93.8 — O que mudou, em código
+
+`ph2d_field::{fold_verb, Node::verb}` (`FIELD_DOC_VERSION` 4 → **5**) · `combine_trees` e
+`Plan::Combine` passam a levar o verbo de cada filho **em pares** (⛔ não dois `Vec` paralelos: seriam
+duas respostas a *«quantos filhos há»*) · `ph2d_field_ecs::{FieldVerb, set_verb, verb_of, verb_role,
+VerbRole, contributes}` + `edit_verb.rs` (arquivo irmão — o `edit_tree.rs` está em 436 LOC, e a regra
+é *split, nunca allowlist*) · a fileira `verbs`/`verb_subject` no retrato do painel, com id, braço,
+`CHIP_FAMILIES` e i18n próprios (⚠️ **os cinco sítios** que a W48 pagou por esquecer um).
+
+⚠️ **O `verb` é campo do `Node` e não uma lista no pai**: uma lista paralela a `children` seria uma
+segunda resposta a *«quantos filhos há»*, e ficaria obsoleta em todo sítio que desloca índices — o
+`union_all` é um deles. Preso ao nó, ele viaja de graça.
+
+⚠️ **E o `union_all` LIMPA o verbo da raiz que adopta**: um verbo autorado dentro de uma peça fala dos
+**irmãos dela**, e ali passaria a falar das **outras peças** da cena — uma peça inteira a subtrair-se
+de outra sem ninguém o pedir.
+
+### §93.9 — ⏳ O que fica para as etapas 2 e 3
+
+- **(2)** o raio por objeto **na UI** — o motor já o entrega (§93.2), falta a linha no painel e
+  ⚠️ **os dois nomes**: um objeto passa a ter **dois** raios (a quina dele próprio · a junção com o
+  resto) e hoje os dois chamam-se "Radius". ⛔ E é o momento de corrigir o `Blend::Organic`, que
+  entrega **3/4** do número que mostra: com um raio só na peça isso quase não se nota; com um por
+  objeto, quatro formas marcadas `0,1` vão parecer visivelmente diferentes.
+- **(3)** o **Chamfer** como 4.º carácter ao lado de `Sharp`/`Exact`/`Organic` — ⭐ **uma fórmula só**,
+  porque a intersecção e a subtração saem por De Morgan (a nota do `Op` já o diz).
+
+### §93.10 — ⚠️ O que o PORTÃO DE FECHO apanhou (quatro ✗, e três eram defeitos a sério)
+
+O gate-mãe desta wave não foi nenhum dos 20 que escrevi: foram os que **já existiam**.
+
+| ✗ | o que era | veredicto |
+|---|---|---|
+| `a_duplicate_carries_every_optional_component_of_a_node` | o `copy_optional` não conhecia o `FieldVerb` ⇒ **duplicar um furo devolvia uma forma que SOMA** | ⭐⭐ **defeito real**, curado. A mensagem do gate previa-o por escrito desde a W55 |
+| `every_registered_component_has_a_descriptor` | o catálogo de componentes não tinha a linha do `FieldVerb` | ⭐ defeito real, curado (`machinery`, porque a **ausência** é que significa herança — um `+` do Inspector escreveria um verbo que ninguém escolheu) |
+| `the_shape_of_a_saved_{field,profile}_is_pinned` | `148 → 151` e `85 → 86` | ✅ **esperado, e a conta bate exactamente**: `Option::None` custa 1 byte de discriminante, e são 3 nós e 1 nó. ⚠️ Re-pinar só é legítimo porque a **versão subiu no mesmo commit** — é o que o doc do gate exige |
+| `shell_files_respect_hr18_loc_cap` | `field3d_scene_panel.rs` **606** · `field3d_smoke.rs` **606** | ⛔ **o segundo já estava a 606 no HEAD** — vermelho pré-existente que os outros ✗ escondiam (o nextest cancela na 1.ª falha). Os dois **partidos**, nunca allowlist |
+
+⚠️ **E o `no_tofu_glyphs` apanhou uma seta `→` que EU deixei na W89**, num `println!` de sonda. Ela
+viveu duas waves porque aquele arquivo não entrava na varredura impactada até esta o tocar.
+
+⭐⭐ **Os dois splits são por ASSUNTO e não por tamanho:**
+[`field3d_smoke_isolate.rs`](../../shells/desktop/src/field3d_smoke_isolate.rs) (as duas leis do
+isolamento — o chip e a tecla — que são **duas perguntas**) e
+[`field3d_scene_verb.rs`](../../shells/desktop/src/field3d_scene_verb.rs) (a fileira e o selo).
+⚠️ E o primeiro desenterrou um defeito de documentação: o doc-comment do `gesture_in_progress`
+estava **colado ao `toggle_isolate`, 200 linhas acima** — a família do *«atributo separado do item
+por um doc-comment muda de dono»*. Devolvido.
+
+### §93.11 — ⭐ E NENHUM gate construía as cenas do smoke
+
+Achado ao acrescentar a cena 7: o `scene()` termina em
+`.expect("as cenas do smoke são documentos válidos")`, e **nada** o exercia. Uma cena com um raio que
+não cabe entrava em pânico **ao arrancar**, e o primeiro a descobri-lo seria o Enio — com a janela a
+fechar e uma mensagem que não é para ele.
+
+⚠️ O segundo lado é mais silencioso: um `n` **sem braço no `match` cai no `_`** e desenha a cena 1.
+O artista pede a cena nova, vê a de sempre, e conclui que a feature não foi feita. É a família do
+`no_two_smoke_scenes_claim_the_same_level` dos outros módulos, aqui pela primeira vez —
+[`field3d_smoke_scene_tests.rs`](../../shells/desktop/src/field3d_smoke_scene_tests.rs), 3 gates.
+
+⚠️ E o terceiro apanhou uma nota velha: o `main.rs` anunciava **`PH2D_FIELD_SMOKE=1..3`** com **seis**
+cenas construídas. *Uma nota que diz o alcance de um roteador é a primeira coisa que alguém lê e a
+última que alguém actualiza* — hoje há gate a ligá-la ao `match`.
+
+### §93.12 — ⚠️ E DOIS gates mediam uma premissa que esta wave dissolveu
+
+`the_hierarchy_says_which_row_is_isolated` e `a_badge_pinned_to_a_dead_object_is_not_painted`
+perguntavam ao **mapa inteiro** de selos (`badges.len() == 1`, `is_empty()`), e isso valia enquanto o
+isolamento e o vínculo eram os únicos selos. O verbo pôs um em **toda** linha que participa da
+receita, de propósito — e as duas ficaram vermelhas sobre produto correcto.
+
+⛔ **Não se baixou a barra: disse-se com precisão o que ela sempre foi.** A afirmação dos dois é *«uma
+linha, e só uma, diz que está ISOLADA»*, e hoje é isso que eles contam (`isolados()`). Ela continua a
+apanhar o defeito que os escreveu (selar todas) e o da irmã (selar uma entidade morta).
+
+⇒ *Uma mudança de modelo obriga a re-perguntar o que cada gate ainda mede* — e o sinal de que é este
+caso, e não uma regressão, é o gate falhar **a contar** e não **a afirmar**.

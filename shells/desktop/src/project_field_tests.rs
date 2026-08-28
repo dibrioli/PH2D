@@ -25,6 +25,7 @@ fn a_doc_naming(key: &str) -> ph2d_field::FieldDoc {
                 key: key.to_string(),
             },
             mods: Vec::new(),
+            verb: None,
         }],
         ph2d_field::NodeId(0),
     )
@@ -91,6 +92,7 @@ fn a_part_doc() -> ph2d_field::FieldDoc {
         xform: Xform::at(x, 0.0, 0.0),
         kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.2 }),
         mods: Vec::new(),
+        verb: None,
     };
     ph2d_field::FieldDoc::new(
         vec![
@@ -103,6 +105,7 @@ fn a_part_doc() -> ph2d_field::FieldDoc {
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
+                verb: None,
             },
         ],
         NodeId(2),

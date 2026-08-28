@@ -444,12 +444,12 @@ barra. O assado (W1) tem orçamento próprio: **8 ms** para um ladrilho de 512×
 | **W4** fonte 1 (imagem) | ✅ | ⛔ instância de Motion pinta a `fallback` (fronteira declarada, com gate) |
 | **W4b** persistência | ✅ | — |
 | **W5** painel | ✅ | o 5.º chip + a fileira que reflui + a secção **Pattern** inteira (Source… · Tile · Offset · Size · Gap · Angle · Repeat), com 7/7 mutações mortas |
-| **W6** alças na tela | ⏳ | mover · escalar · rodar, espelhando o `GradHandle` |
-| **W7** fonte 2 (forma) | ⏳ | o modelo do Figma; hoje `PatternSource::Shape` existe no dado e **não resolve** |
+| **W6** alças na tela | ✅ | mover · escalar · rodar (a lei do Inkscape), 6/6 mutações mortas |
+| **W7** fonte 2 (forma) | ✅ | o modelo do Figma, **viva** (editar a fonte re-assa), com o botão *Use Shape…* e a recusa do ciclo |
 | **W8** smoke | ✅ | `PH2D_BUILD_SMOKE=76` |
 
-⭐ **A ordem seguinte é W6 → W7.** Com a secção fechada, o que falta é *conforto* (afinar na tela em
-vez de por números) e *alcance* (usar uma forma do documento como arte), não capacidade.
+⭐⭐ **AS OITO WAVES FECHARAM** (2026-08-27). O que sobra é o que os reports do Enio abriram e o que
+ele decidir a seguir — a lista está no §6-ter.
 
 ⚠️ **E a W5 deixou duas coisas nomeadas:**
 
@@ -468,6 +468,17 @@ vez de por números) e *alcance* (usar uma forma do documento como arte), não c
 2. **A persistência mudou a AUTORIA.** O `insert_image_bytes` cunha o id do **ficheiro**; só o
    `insert_image_rgba8` (o id dos **pixels**) volta igual depois de um save. Com o primeiro, reabrir
    o projecto daria um id novo e a fonte apontaria para o nada — sem erro nenhum.
+
+## §6-ter — O que os SMOKES do Enio abriram (2026-08-27)
+
+| | estado |
+|---|---|
+| *"clamp deixa tudo em branco"* | ✅ o padrão nascia na **origem do mundo**; nasce no canto da forma, e o `Clamp` **enquadra** (derivado, nunca escrito) |
+| *"volta para tile e o aspecto fica de clamp"* | ✅ o enquadramento deixou de ser gravado — trocar de modo escreve **um** campo |
+| *"os parâmetros que um modo não usa não devem aparecer"* | ✅ no `Clamp` somem Tile · Offset · Size · Gap, e **voltam** ao sair; as três alças de canvas também |
+| *"filters anula pattern"* | ✅ a rasterização isolada do FX não levava o ladrilho, e a imagem de FX **substitui** o desenho |
+| *"em column o pattern some"* | ✅ o **vão** era assado na resolução da arte; o ladrilho é **reduzido até caber**, nunca recusado |
+| ⏳ *"pattern anula stroke"* / *"o contorno não volta ao trocar pattern por solid"* | ⚠️ **NÃO REPRODUZIDO.** O documento preserva o `StrokeSpec` inteiro nas duas trocas, o `restyle_selected_strokes` nunca apaga, e a rota de desenho encoda os dois caminhos (gate com controlo de sólido). ⇒ há um instrumento — `PH2D_PATTERN_LOG=1` imprime, por evento, o que a forma TEM antes e depois de cada troca de tipo de preenchimento. **Espera a corrida do Enio.** |
 
 ## §7 — O que este plano NÃO faz, de propósito
 

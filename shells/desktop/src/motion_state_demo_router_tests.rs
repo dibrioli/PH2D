@@ -222,6 +222,88 @@ fn no_conference_scene_ships_a_setup_hole() {
     assert!(built >= 60, "controle: a varredura montou só {built} cenas");
 }
 
+/// **QUANTAS PORTAS DE REALIMENTAÇÃO ESTÃO VAZIAS** — a medição que decide se escondê-las é
+/// livre ou se custa uma capacidade.
+///
+/// ```text
+/// cargo test -p ph2d-host-desktop --bins measure_feedback_ports -- --ignored --nocapture
+/// ```
+///
+/// ⚠️ **A pergunta vem de um report do Enio (2026-08-27, com foto): a porta de estado do
+/// `motion.boids` lê-se como *"uma reentrada de link"* e confunde.** O doc 03 §3 já tinha o
+/// diagnóstico em três partes — *o usuário não deveria (i) ver uma porta chamada `state`,
+/// (ii) desenhar o fechamento, (iii) ler um laço cruzando o grafo* — e a wave O1 curou (ii) e
+/// (iii). A (i) nunca foi fechada, e é exactamente o que a foto mostra.
+///
+/// ⛔ **Esconder sem condição TIRA uma capacidade que já shipa:** o `motion.integrate` recebe a
+/// cadeia de forças no `forces`, e o `motion.soft_body` recebe `motion.pin_constraint` e
+/// `field.index_range` no `state` (cenas da conferência). *Um clamp no caminho do estado é um
+/// clamp persistente — coisa que a referência não faz.*
+///
+/// ⇒ o que esta sonda mede é a razão entre os dois estados: quantas portas seguram **só o
+/// auto-laço do motor** (nada autorado, e aí a porta não oferece nada) contra quantas seguram
+/// uma cadeia. É esse número que diz se «esconder enquanto vazia» resolve o report ou é cosmética.
+#[test]
+#[ignore = "sonda: imprime numeros, nao afirma"]
+fn measure_feedback_ports() {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("registra");
+    let (mut vazias, mut com_cadeia, mut cenas) = (0usize, 0usize, 0usize);
+    let mut por_tipo: std::collections::BTreeMap<&str, (usize, usize)> = Default::default();
+    for level in 1..=MAX_DEMO_LEVEL {
+        let mut doc = MotionDoc::default();
+        if build_level(Some(&level.to_string()), &mut doc, &reg).is_empty() {
+            continue;
+        }
+        cenas += 1;
+        for n in doc.graph.nodes() {
+            let Some(op) = ph2d_nodegraph::cook::OpResolver::resolve(&reg, n.type_id()) else {
+                continue;
+            };
+            let man = op.manifest();
+            let Some(out0) = man.outputs.first() else {
+                continue;
+            };
+            let Some((port, _)) = man
+                .inputs
+                .iter()
+                .enumerate()
+                .find(|(_, p)| matches!(p.name, "state" | "forces") && p.ty == out0.ty)
+            else {
+                continue;
+            };
+            // Uma aresta NÃO-atrasada a entrar na porta é autoria; só o `pre` é o motor.
+            let autorada = doc
+                .graph
+                .edges()
+                .iter()
+                .any(|e| !e.delayed && e.to == (n.id, port as u16));
+            let slot = por_tipo.entry(man.name).or_default();
+            if autorada {
+                com_cadeia += 1;
+                slot.1 += 1;
+            } else {
+                vazias += 1;
+                slot.0 += 1;
+            }
+        }
+    }
+    let total = vazias + com_cadeia;
+    println!("\n[feedback] {cenas} cenas · {total} portas de realimentacao");
+    println!(
+        "  so' o auto-laco do motor : {vazias:>4}  ({:.0}%)",
+        100.0 * vazias as f32 / total as f32
+    );
+    println!(
+        "  com cadeia AUTORADA      : {com_cadeia:>4}  ({:.0}%)",
+        100.0 * com_cadeia as f32 / total as f32
+    );
+    println!("\n  {:<26} {:>7} {:>9}", "no'", "vazias", "c/cadeia");
+    for (ty, (v, c)) in &por_tipo {
+        println!("  {ty:<26} {v:>7} {c:>9}");
+    }
+}
+
 /// ⛔⛔ **A CURA DAS 107 CENAS NÃO TINHA GATE NENHUM, E A MUTAÇÃO SOBREVIVIA.**
 ///
 /// A família `PH2D_GPU_COOK_DEMO` precisa da ferramenta `motion` em mãos; sem ela as 107 montam,

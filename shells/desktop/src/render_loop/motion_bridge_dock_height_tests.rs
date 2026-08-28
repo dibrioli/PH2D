@@ -270,6 +270,85 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
 /// nascer FECHADO, honrado por um default no `is_collapsed`. Ele tira este nó da lista (a
 /// secção «Curve» leva 8 das 19 linhas) e provavelmente também o `bezier_warp`. ⛔ Um TERCEIRO
 /// nome aqui, antes disso, é que passa a ser a lista a crescer.
+/// ⛔⛔ **A TERCEIRA ESPÉCIE DE ESTOURO: o que só existe no estado que a FEATURE cria.**
+///
+/// O censo irmão constrói cada nó com `add_node(ty)` e mais nada — sem text param autorado e com
+/// a tabela de externals **vazia**. Para o `fx.glow` isso apaga **duas** coisas de uma vez: a
+/// linha `Dirt Intensity` (gateada à presença do `dirt`) e os *chips* da linha `Dirt Texture`,
+/// cuja altura é função de `Cook::externals()`. ⇒ ele mede `592` de um corpo de `664` e o gate
+/// diz que cabe — **medindo o painel com a feature DESLIGADA** (auditoria de 2026-08-27).
+///
+/// Medido no estado do próprio smoke (`dirt` autorado + 1 nome publicado): **674 px**. Com 5
+/// nomes, `708`; com 9, `742`.
+///
+/// ⚠️ **Exceção aberta por decisão do Enio (2026-08-27)**, e ela é de OUTRA espécie que as três
+/// do irmão: aquelas estouram no DEFAULT, esta estoura no USO. ⛔ A resposta boa é a mesma —
+/// secções recolhíveis, que hoje não existem —, e o preço de a adiar é o artista abrir o painel
+/// já a precisar da roda para ver os dois controlos da sujidade juntos.
+///
+/// ⚠️ *Este ficheiro já conhecia a classe*: ele carrega uma sonda `#[ignore]` dedicada
+/// (`measure_the_wrap_with_a_shape`) porque o `motion.spline_wrap` mede o FALLBACK no default.
+/// Ninguém escrevera a espelhada para o nó cujo default é o estado VAZIO.
+#[test]
+fn the_authored_state_overflow_is_named_too() {
+    /// `(tipo, altura no estado autorado)` — medido em 2026-08-27.
+    const AUTHORED_OVERFLOW: &[(&str, f32)] = &[("fx.glow", 674.0)];
+    let body = reach_census_body();
+    for (ty, px) in AUTHORED_OVERFLOW {
+        let got = authored_height(ty);
+        assert!(
+            (got - px).abs() < 1.0,
+            "`{ty}` media {px:.0} px no estado autorado e mede {got:.0} agora — um param \
+             entrou ou saiu; re-meça e mova o número, ou desfaça"
+        );
+        assert!(
+            got > body,
+            "`{ty}` já CABE no corpo ({got:.0} <= {body:.0}) no estado autorado — tire-o da lista"
+        );
+    }
+}
+
+/// A altura do painel de `ty` com os text params AUTORADOS e um nome PUBLICADO — o estado em que
+/// o artista de facto usa o nó, e o que o censo do default não consegue ver.
+fn authored_height(ty: &str) -> f32 {
+    use ph2d_nodegraph::attr::{Column, Stream};
+    let mut motion = MotionState::new();
+    let node = motion.doc.graph.add_node(ty);
+    // O text param autorado e o mesmo nome na tabela de externals — as DUAS metades: sem a
+    // primeira a linha `Dirt Intensity` fica gateada fora; sem a segunda a fileira de chips do
+    // `Dirt Texture` não é pintada. É a soma delas que faz o painel passar do corpo.
+    motion
+        .doc
+        .graph
+        .set_text_param(node, "dirt", "Lens Dirt".to_string());
+    motion.pump.cook.set_external(
+        "Lens Dirt",
+        Stream::new(1).with("P", Column::Vec2(vec![[0.0, 0.0]])),
+    );
+    ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+    let snap = build_params_snapshot(&motion, ProjectSettings::default());
+    ph2d_panel_motion_params::set_current_params(snap);
+    let mut host =
+        ph2d_ui_testkit::MockPanelHost::with_panel::<ph2d_panel_motion_params::MotionParamsPanel>();
+    let mut state = ph2d_panel_motion_params::MotionParamsPanelState;
+    let _ = host.paint::<ph2d_panel_motion_params::MotionParamsPanel>(
+        &mut state,
+        Rect {
+            x: 0.0,
+            y: 0.0,
+            w: ph2d_editor::screens::layout::INSPECTOR_W,
+            h: INSPECTOR_MAX_H,
+        },
+    );
+    let h = host
+        .store()
+        .panel_content_h(ph2d_editor::ids::MOTION_PARAMS_PANEL)
+        .unwrap_or(0.0);
+    ph2d_panel_motion_params::set_current_params(None);
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    h
+}
+
 #[test]
 fn the_dock_overflow_is_named_not_discovered() {
     /// Os nós que passam do dock **de propósito**, com a altura medida em 2026-08-23.

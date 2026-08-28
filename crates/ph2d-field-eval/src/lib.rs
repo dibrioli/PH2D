@@ -234,7 +234,13 @@ fn blended(b: Blend) -> ops::Blended {
     match b {
         Blend::Sharp => ops::Blended::Sharp,
         Blend::Exact { radius } => ops::Blended::Exact(f64::from(radius)),
-        Blend::Organic { k } => ops::Blended::Organic(f64::from(k)),
+        Blend::Chamfer { radius } => ops::Blended::Chamfer(f64::from(radius)),
+        // ⭐ **A CALIBRAÇÃO entra aqui, e só aqui** — o documento guarda o raio ENTREGUE e o operador
+        // cru quer o alcance `k`. Ver [`Blend::ORGANIC_REACH`]: sem esta linha, trocar de carácter
+        // com o mesmo número na tela mudaria o tamanho da peça.
+        Blend::Organic { radius } => {
+            ops::Blended::Organic(f64::from(radius * Blend::ORGANIC_REACH))
+        }
     }
 }
 

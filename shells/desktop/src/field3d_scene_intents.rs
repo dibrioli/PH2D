@@ -254,6 +254,18 @@ pub(super) fn apply(
                     let _ = ph2d_field_ecs::set_verb(world, e, verb);
                 }
             }
+            // ⭐⭐⭐ **O CARÁTER da mistura** (W99) — e o **número não se mexe**.
+            //
+            // ⚠️ Numa FORMA, isto **materializa o verbo**, como o raio de junção e pelo mesmo
+            // motivo: escolher o carácter da própria junta *é* pronunciar-se. Sem isso, o chip
+            // escreveria no grupo e mudaria as outras formas caladas com ele.
+            ph2d_panel_model3d::ModelIntent::SetCharacter { slot } => {
+                if let Some(&e) = selection.first()
+                    && let Some(c) = ph2d_field::Character::ALL.get(slot).copied()
+                {
+                    let _ = ph2d_field_ecs::set_character(world, e, c);
+                }
+            }
             // O referencial dos eixos é estado de VISTA, como o verbo.
             ph2d_panel_model3d::ModelIntent::SetGizmoFrame { slot } => {
                 if let Some(frame) = crate::field3d_gizmo::Frame::ALL.get(slot).copied() {

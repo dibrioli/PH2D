@@ -29,6 +29,7 @@ fn scene_with_one_union() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -218,6 +219,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -302,6 +304,7 @@ fn clicking_a_verb_reaches_the_gizmo_intent() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -345,6 +348,7 @@ fn a_verb_slot_with_no_verb_behind_it_does_nothing() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -399,6 +403,7 @@ fn the_axis_selector_is_its_own_family() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -452,6 +457,7 @@ fn the_selectors_never_answer_for_each_other() {
         ],
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: vec![
             chip("panel.model3d.mod.shell"),
             chip("panel.model3d.mod.offset"),
@@ -533,6 +539,7 @@ fn scene_with_one_position_row() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -795,6 +802,13 @@ fn every_painted_button_answers_a_real_click() {
             chip("panel.model3d.verb.cut"),
         ],
         verb_subject: Some("Cylinder".to_string()),
+        // ⭐ **A fileira do CARÁTER entra na varredura** (W99) — pela mesma razão da do verbo: um
+        // chip pintado, hit-indexado e **morto sob o ponteiro** dá o mesmo report de um que nunca
+        // foi pintado.
+        characters: vec![
+            chip("panel.model3d.character.fillet"),
+            chip("panel.model3d.character.chamfer"),
+        ],
         mods: vec![chip("panel.model3d.mod.shell")],
         exports: vec![chip("panel.model3d.export.draft")],
         acts: vec![chip("panel.model3d.act.duplicate")],
@@ -873,6 +887,7 @@ fn a_click_on_a_camera_chip_dispatches_that_exact_slot() {
         ops: Vec::new(),
         verbs: Vec::new(),
         verb_subject: None,
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -951,6 +966,7 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
         ops: vec![chip("panel.model3d.op.union")],
         verbs: (0..4).map(|_| chip("panel.model3d.verb.add")).collect(),
         verb_subject: Some("Cylinder".to_string()),
+        characters: Vec::new(),
         mods: Vec::new(),
         exports: Vec::new(),
         acts: Vec::new(),
@@ -1000,5 +1016,78 @@ fn a_click_on_a_verb_chip_dispatches_that_slot_and_never_the_group_op() {
     assert!(
         drain_intents().is_empty(),
         "um slot fora da fileira do verbo despachou uma intenção"
+    );
+}
+
+/// ⭐⭐⭐ **O CHIP DO CARÁTER DESPACHA O SLOT DELE — e não o do verbo** (W99).
+///
+/// ⚠️ As duas fileiras vivem lado a lado na mesma forma e respondem a perguntas diferentes: *como
+/// esta forma se junta* (o verbo) e *que forma tem a junta* (o carácter). Partilhar a família de ids
+/// faria um clique em «Chamfer» trocar o **verbo** — o botão certo a fazer a coisa certa ao alvo
+/// errado, que é o modo de falha mais caro desta família.
+#[test]
+fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
+    let chip = |k: &'static str| ph2d_panel_model3d::ModeChip {
+        key: k,
+        active: false,
+    };
+    publish(ModelSnapshot {
+        modes: Vec::new(),
+        frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
+        // As DUAS fileiras publicadas ao mesmo tempo — a disposição em que a confusão é observável.
+        verbs: (0..4).map(|_| chip("panel.model3d.verb.add")).collect(),
+        verb_subject: Some("Cylinder".to_string()),
+        characters: (0..3)
+            .map(|_| chip("panel.model3d.character.fillet"))
+            .collect(),
+        mods: Vec::new(),
+        exports: Vec::new(),
+        acts: Vec::new(),
+        views: Vec::new(),
+        camera: Vec::new(),
+        rows: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    let mut panel_state = Model3dPanelState;
+
+    for slot in 0..3usize {
+        let _ = drain_intents();
+        host.apply_panel_event::<Model3dPanel>(
+            &mut panel_state,
+            WidgetEvent::Click(ids::model3d_character_button(slot as u32)),
+        );
+        assert_eq!(
+            drain_intents(),
+            vec![ModelIntent::SetCharacter { slot }],
+            "o chip de carácter {slot} não despachou o slot dele"
+        );
+    }
+
+    // ⭐ **O controlo**: o mesmo slot, na família do verbo, continua a ser o verbo.
+    let _ = drain_intents();
+    host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_verb_button(1)),
+    );
+    assert_eq!(
+        drain_intents(),
+        vec![ModelIntent::SetVerb { slot: 1 }],
+        "o chip do VERBO despachou a intenção do carácter"
+    );
+
+    // ⚠️ E um slot além da fileira publicada não despacha nada — a fileira tem três.
+    let _ = drain_intents();
+    host.apply_panel_event::<Model3dPanel>(
+        &mut panel_state,
+        WidgetEvent::Click(ids::model3d_character_button(4)),
+    );
+    assert!(
+        drain_intents().is_empty(),
+        "um slot fora da fileira do carácter despachou uma intenção"
     );
 }

@@ -99,23 +99,31 @@ fn an_exact_external_round_delivers_the_radius_asked() {
     }
 }
 
-/// ⚠️ **O `k` do orgânico NÃO é um raio, e este gate pina o quanto ele erra.**
+/// ⭐⭐⭐ **O ORGÂNICO ESTÁ CALIBRADO, e este gate é onde a decisão ficou escrita** (W99).
 ///
-/// A conta é fechada, não empírica: no ponto em que as duas superfícies estão à mesma distância,
-/// o smooth-min polinomial vale `r − k/4`. Com `k = r` isso é **3/4 do pedido** — os 25 % que a W0
-/// mediu, agora derivados.
+/// # ⚠️ A história deste gate, porque ela é a lição
 ///
-/// Se alguém "consertar" isto em silêncio, o gate acusa; se alguém o **calibrar** de propósito
-/// (×4/3), o gate é o lugar onde a decisão fica escrita.
+/// Ele nasceu a pinar que o `k` **não era um raio**: no ponto em que as duas superfícies estão à
+/// mesma distância `d`, o smooth-min polinomial vale `d − k/4`, e com `k = d` isso dá **3/4** —
+/// os 25 % que a W0 mediu. O doc-comment dele dizia, por escrito: *«se alguém o calibrar de
+/// propósito, o gate é o lugar onde a decisão fica escrita»*. ⭐ **Foi exactamente o que aconteceu**,
+/// e ele reprovou no dia certo.
+///
+/// ⛔ **Mas o «×4/3» que ele sugeria era sobre uma TERCEIRA grandeza** — o valor do campo aqui, que
+/// não é nem o **recuo** na parede nem a **mordida** no canto. A calibração que shipa é pela
+/// mordida, que é a silhueta que o artista vê (`the_four_characters`).
+///
+/// ⇒ Com [`ph2d_field::Blend::ORGANIC_REACH`] `= 4 − 2√2`, o valor aqui passa a ser **`d/√2`**, e a
+/// conta fecha: `1 − (4 − 2√2)/4 = 1/√2`. *Uma constante analítica, confirmada por medição.*
 #[test]
 fn the_organic_blend_falls_short_by_exactly_k_over_four() {
     for r in [0.05_f64, 0.1, 0.2] {
-        let f = Field::new(&elbow(Blend::Organic { k: r as f32 }));
+        let f = Field::new(&elbow(Blend::Organic { radius: r as f32 }));
         let at_centre = f.at(r, r, 0.0);
-        let expected = r - r / 4.0;
+        let expected = r / std::f64::consts::SQRT_2;
         assert!(
             (at_centre - expected).abs() < EPS,
-            "orgânico com k={r}: esperava {expected} (= 3/4 de {r}), veio {at_centre}"
+            "orgânico calibrado com raio={r}: esperava {expected} (= {r}/√2), veio {at_centre}"
         );
     }
 }
@@ -1854,7 +1862,7 @@ fn the_numeric_law_is_the_same_law_as_the_tree() {
     for blend in [
         Blend::Sharp,
         Blend::Exact { radius: 0.08 },
-        Blend::Organic { k: 0.08 },
+        Blend::Organic { radius: 0.08 },
     ] {
         for op in [
             Op::Union(blend),
@@ -2807,15 +2815,15 @@ fn the_table_of_who_inflates_the_gradient() {
         ),
         (
             "Union Organic k=0,2",
-            pair(Op::Union(Blend::Organic { k: 0.2 })),
+            pair(Op::Union(Blend::Organic { radius: 0.2 })),
         ),
         (
             "Intersect Organic k=0,2",
-            pair(Op::Intersection(Blend::Organic { k: 0.2 })),
+            pair(Op::Intersection(Blend::Organic { radius: 0.2 })),
         ),
         (
             "Difference Organic k=0,2",
-            pair(Op::Difference(Blend::Organic { k: 0.2 })),
+            pair(Op::Difference(Blend::Organic { radius: 0.2 })),
         ),
         (
             "Shell t=0,05",
@@ -2962,14 +2970,24 @@ fn the_table_of_the_gradient_across_the_parameter() {
         "Union Organic k",
         [0.0f32, 0.05, 0.2, 0.6, 1.2]
             .into_iter()
-            .map(|k| (format!("{k}"), pair(Op::Union(Blend::Organic { k }))))
+            .map(|k| {
+                (
+                    format!("{k}"),
+                    pair(Op::Union(Blend::Organic { radius: k })),
+                )
+            })
             .collect(),
     );
     show(
         "Difference Organic k",
         [0.0f32, 0.05, 0.2, 0.6, 1.2]
             .into_iter()
-            .map(|k| (format!("{k}"), pair(Op::Difference(Blend::Organic { k }))))
+            .map(|k| {
+                (
+                    format!("{k}"),
+                    pair(Op::Difference(Blend::Organic { radius: k })),
+                )
+            })
             .collect(),
     );
     show(
@@ -3087,7 +3105,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
             for (bn, b) in [
                 ("Sharp", Blend::Sharp),
                 ("Exact", Blend::Exact { radius: r }),
-                ("Organic", Blend::Organic { k: r * 2.0 }),
+                ("Organic", Blend::Organic { radius: r * 2.0 }),
             ] {
                 if bn == "Sharp" && r != 0.0 {
                     continue;
@@ -3961,7 +3979,7 @@ fn measure_what_the_chain_gains_from_a_finer_grid() {
                     Node::new(
                         Xform::IDENTITY,
                         NodeKind::Combine {
-                            op: Op::Union(Blend::Organic { k: 0.06 }),
+                            op: Op::Union(Blend::Organic { radius: 0.06 }),
                             children: vec![NodeId(0), NodeId(1)],
                         },
                     ),
@@ -4084,7 +4102,7 @@ fn measure_the_ladder_that_keeps_the_ratio() {
                     Node::new(
                         Xform::IDENTITY,
                         NodeKind::Combine {
-                            op: Op::Union(Blend::Organic { k: 0.06 }),
+                            op: Op::Union(Blend::Organic { radius: 0.06 }),
                             children: vec![NodeId(0), NodeId(1)],
                         },
                     ),
@@ -4575,7 +4593,7 @@ fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
 
     let mut n = two();
     n.push(combine(
-        Op::Union(Blend::Organic { k: 0.3 }),
+        Op::Union(Blend::Organic { radius: 0.3 }),
         vec![NodeId(0), NodeId(1)],
     ));
     assert_eq!(

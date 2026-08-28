@@ -122,6 +122,14 @@ pub struct ModelSnapshot {
     pub verbs: Vec<ModeChip>,
     /// O **nome** da forma de que a fileira [`Self::verbs`] fala. `None` ⇒ não há fileira.
     pub verb_subject: Option<String>,
+    /// ⭐⭐⭐ **O CARÁCTER da mistura** — `Fillet` · `Chamfer` · `Organic` (W99).
+    ///
+    /// ⚠️ **Três e não quatro:** a aresta **viva** não é um carácter, é o **raio zero** — e o slider
+    /// do raio já o exprime. Um quarto chip seria uma segunda porta para o mesmo facto.
+    ///
+    /// ⚠️ Ela aparece onde há **mistura**: numa operação (o carácter do filete dela, que é o padrão
+    /// dos filhos calados) e numa forma que se junta ao resto. Vazio ⇒ não é pintada.
+    pub characters: Vec<ModeChip>,
     /// ⭐ **Os modificadores** — casca e afastamento. São **interruptores**: `active` diz que o nó
     /// já tem um daquela natureza, e clicar tira-o.
     ///
@@ -207,6 +215,8 @@ pub enum ModelIntent {
     /// ⭐⭐ **Escrever o verbo da forma escolhida**, pela **posição** no seletor — e a posição `0` é
     /// o `Inherit`, que **apaga** o verbo em vez de escrever um.
     SetVerb { slot: usize },
+    /// ⭐⭐ **Trocar o CARÁTER da mistura**, pela **posição** no seletor — e o **número não se mexe**.
+    SetCharacter { slot: usize },
     /// Liga ou desliga um modificador do nó, pela **posição** no seletor.
     ToggleMod { slot: usize },
     /// Escrever a peça num arquivo, pela **posição** no seletor de resolução.

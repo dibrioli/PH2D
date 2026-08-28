@@ -426,17 +426,15 @@ pub fn set_param(
                 // não ser oferecida.
                 return Err(FieldError::BadRoot);
             };
-            let blend = if value > 0.0 {
-                // ⚠️ O **carácter** da mistura sobrevive: quem já era orgânica continua orgânica,
-                // e uma aresta viva acorda como `Exact` — é a lei que o `set_shape_radius` já
-                // escreve para o filete de uma forma, e duas leis para o mesmo gesto divergiriam.
-                match op.blend() {
-                    ph2d_field::Blend::Organic { .. } => ph2d_field::Blend::Organic { k: value },
-                    _ => ph2d_field::Blend::Exact { radius: value },
-                }
-            } else {
-                ph2d_field::Blend::Sharp
-            };
+            // ⚠️ O **carácter** da mistura sobrevive ao número novo, e a escada é a **mesma
+            // porta** que o filete de um grupo usa ([`ph2d_field::Blend::with_amount`]).
+            //
+            // ⛔ **Isto era uma CÓPIA até 2026-08-28, e a cópia não conhecia o chanfro:** mudar o
+            // raio de uma junta chanfrada transformava-a em filete, em silêncio. A afirmação de que
+            // a porta era única estava escrita neste comentário e era **falsa** — quem a apanhou foi
+            // a prova de mutação, com o mutante de `with_amount` a sobreviver por não haver ninguém
+            // a chamá-la. *Uma lei escrita em dois sítios ainda não é uma lei.*
+            let blend = op.blend().with_amount(value);
             crate::set_verb(
                 world,
                 entity,

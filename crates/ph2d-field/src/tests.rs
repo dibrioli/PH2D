@@ -500,7 +500,7 @@ fn editing_the_number_does_not_change_an_organic_blend_into_an_exact_one() {
             Node {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Combine {
-                    op: Op::Union(Blend::Organic { k: 0.05 }),
+                    op: Op::Union(Blend::Organic { radius: 0.05 }),
                     children: vec![NodeId(0), NodeId(1)],
                 },
                 mods: Vec::new(),
@@ -514,7 +514,7 @@ fn editing_the_number_does_not_change_an_organic_blend_into_an_exact_one() {
     assert!(matches!(
         &doc.nodes()[2].kind,
         NodeKind::Combine {
-            op: Op::Union(Blend::Organic { k: 0.09 }),
+            op: Op::Union(Blend::Organic { radius: 0.09 }),
             ..
         }
     ));

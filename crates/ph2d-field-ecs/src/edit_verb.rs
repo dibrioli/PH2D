@@ -14,7 +14,7 @@
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::ChildOf;
 use bevy_ecs::world::World;
-use ph2d_field::{FieldError, NodeShape, Op};
+use ph2d_field::{Character, FieldError, NodeShape, Op};
 
 use crate::cook::{contributes, kids};
 use crate::{FieldNode, FieldVerb};
@@ -115,4 +115,71 @@ pub fn verb_role(world: &World, entity: Entity) -> Option<VerbRole> {
         Some(op) => VerbRole::Own(op),
         None => VerbRole::Inherited(parent_op),
     })
+}
+
+// ───────── W99: o CARÁTER da mistura ─────────
+
+/// ⭐⭐ **O carácter que ESTE nó usa**, ou `None` quando ele não tem mistura nenhuma.
+///
+/// ⚠️ **A pergunta é a mesma que a do raio**, e por isso a resposta sai dos mesmos dois sítios: uma
+/// **operação** tem o carácter do filete dela (que é o padrão dos filhos calados); uma **forma** tem
+/// o do verbo com que ela dobra. *Se as duas superfícies do painel discordassem sobre onde o número
+/// vive, o chip e o slider escreveriam em nós diferentes.*
+#[must_use]
+pub fn character_of(world: &World, entity: Entity) -> Option<Character> {
+    if let Some(NodeShape::Combine(op)) = world.get::<FieldNode>(entity).map(|n| &n.shape) {
+        return Some(Character::of(op.blend()));
+    }
+    verb_role(world, entity)
+        .and_then(|r| r.op())
+        .map(|op| Character::of(op.blend()))
+}
+
+/// ⭐⭐⭐ **Troca o CARÁTER da mistura, mantendo o número.**
+///
+/// ⚠️ Quem carrega no chip escolheu a **forma**; ver o número saltar junto seria o painel a decidir
+/// por ele ([`Character::apply`]).
+///
+/// ⚠️ **Numa FORMA, isto materializa o verbo** — como o raio de junção, e pelo mesmo motivo:
+/// escolher o carácter da própria junção *é* pronunciar-se. Sem isso, o chip escreveria no grupo e
+/// mudaria as outras formas caladas com ele.
+///
+/// # Errors
+/// [`FieldError::BadRoot`] quando o nó não tem mistura — a base e a raiz.
+pub fn set_character(
+    world: &mut World,
+    entity: Entity,
+    character: Character,
+) -> Result<(), FieldError> {
+    if let Some(NodeShape::Combine(op)) = world.get::<FieldNode>(entity).map(|n| &n.shape) {
+        // ⛔ **NÃO pelo [`crate::set_op`]** — ele **preserva a mistura de propósito** (é a porta de
+        // trocar o VERBO, e o raio é do nó, não da operação), então passar-lhe a mistura nova
+        // devolvia-a engolida em silêncio. *Uma porta que guarda um campo não serve para escrever
+        // nesse campo* — e foi o gate de alcançabilidade que o disse, com o botão a aparecer e a não
+        // fazer nada.
+        let novo = with_blend(*op, character.apply(op.blend()));
+        let Some(mut node) = world.get_mut::<FieldNode>(entity) else {
+            return Err(FieldError::BadRoot);
+        };
+        node.shape = NodeShape::Combine(novo);
+        return Ok(());
+    }
+    let Some(op) = verb_role(world, entity).and_then(|r| r.op()) else {
+        return Err(FieldError::BadRoot);
+    };
+    set_verb(
+        world,
+        entity,
+        Some(with_blend(op, character.apply(op.blend()))),
+    )
+}
+
+/// A mesma operação, com outra mistura. ⚠️ **Escrita uma vez**: a escada `Union|Intersection|
+/// Difference` já vive em três sítios desta crate, e a quarta cópia é a que diverge.
+fn with_blend(op: Op, blend: ph2d_field::Blend) -> Op {
+    match op {
+        Op::Union(_) => Op::Union(blend),
+        Op::Intersection(_) => Op::Intersection(blend),
+        Op::Difference(_) => Op::Difference(blend),
+    }
 }

@@ -59,7 +59,7 @@ pub use edit::{
     rotate_world_about, scale_about, scale_by, set_dim, set_op, set_param, set_radius, top_level,
     translate_world, walk, wrap_in_op,
 };
-pub use edit_verb::{VerbRole, set_verb, verb_of, verb_role};
+pub use edit_verb::{VerbRole, character_of, set_character, set_verb, verb_of, verb_role};
 pub use spawn::{shape_name, spawn_doc};
 
 use ph2d_ecs::scene::ComponentRegistry;

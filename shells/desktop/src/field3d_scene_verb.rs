@@ -136,3 +136,47 @@ pub(crate) fn verb_badge(
         },
     })
 }
+
+// ───────── W99: o CARÁTER da mistura ─────────
+
+/// ⭐⭐⭐ **A fileira do CARÁTER** — a forma da transição, ao lado do número que diz o tamanho.
+///
+/// ⚠️ **Ela é DERIVADA de [`ph2d_field::Character::ALL`]**, que é a fonte da contagem: um carácter
+/// novo aparece na UI sem uma linha de mudança aqui. É a mesma lei do `Mode::ALL` e do
+/// `ExportLevel::ALL`.
+///
+/// ⚠️ **Três chips e não quatro:** a aresta **viva** não é um carácter, é o **raio zero**, e o
+/// slider já o exprime. Um quarto seria uma segunda porta para o mesmo facto, e as duas podiam
+/// discordar.
+///
+/// ⚠️ **A pergunta é a MESMA que a do raio** ([`ph2d_field_ecs::character_of`]): a fileira aparece
+/// onde há mistura — numa operação (o carácter do filete dela, que é o padrão dos filhos calados) e
+/// numa forma que se junta ao resto. Vazio na base e na raiz, que não têm junta nenhuma.
+pub(crate) fn characters_for(
+    world: &bevy_ecs::world::World,
+    selected: &[bevy_ecs::entity::Entity],
+) -> Vec<ph2d_panel_model3d::ModeChip> {
+    let Some(&e) = selected.first() else {
+        return Vec::new();
+    };
+    let Some(actual) = ph2d_field_ecs::character_of(world, e) else {
+        return Vec::new();
+    };
+    ph2d_field::Character::ALL
+        .iter()
+        .map(|c| ph2d_panel_model3d::ModeChip {
+            key: character_key(*c),
+            active: *c == actual,
+        })
+        .collect()
+}
+
+/// A chave i18n de cada carácter. ⚠️ **Um `match` exaustivo**, e é ele que fecha a corrente: um
+/// carácter novo no documento é **erro de compilação** aqui, e não um chip sem rótulo.
+pub(crate) fn character_key(c: ph2d_field::Character) -> &'static str {
+    match c {
+        ph2d_field::Character::Fillet => "panel.model3d.character.fillet",
+        ph2d_field::Character::Chamfer => "panel.model3d.character.chamfer",
+        ph2d_field::Character::Organic => "panel.model3d.character.organic",
+    }
+}

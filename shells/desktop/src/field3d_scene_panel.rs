@@ -50,6 +50,7 @@ pub(crate) fn publish_snapshot(
     let adds = adds_for(live_sculpt, profile);
     let ops = ops_for(world, selection);
     let (verbs, verb_subject) = super::verb::verbs_for(world, selection);
+    let characters = super::verb::characters_for(world, selection);
     let mods = mods_for(world, selection);
     // ⚠️ **Derivado de `ExportLevel::ALL`**, que é a fonte da contagem — a mesma lei do `Mode::ALL`
     // e do `SHAPES`. E sem `active` nenhum: são ações, não um modo.
@@ -127,6 +128,7 @@ pub(crate) fn publish_snapshot(
         ops,
         verbs,
         verb_subject,
+        characters,
         mods,
         exports,
         acts,

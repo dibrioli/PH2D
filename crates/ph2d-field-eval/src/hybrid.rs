@@ -545,14 +545,20 @@ fn union(a: f32, b: f32, blend: Blend) -> f32 {
             let uy = (radius - b).max(0.0);
             a.min(b).max(radius) - ux.hypot(uy)
         }
-        Blend::Organic { k } if k > 0.0 => {
+        // ⭐⭐⭐ **O CHANFRO** (W99) — a mesma linha da árvore (`ops::union_chamfer`), em números.
+        Blend::Chamfer { radius } if radius > 0.0 => a
+            .min(b)
+            .min((a + b - radius) * std::f32::consts::FRAC_1_SQRT_2),
+        Blend::Organic { radius } if radius > 0.0 => {
+            // ⭐ A calibração, igual à da árvore — ver [`Blend::ORGANIC_REACH`].
+            let k = radius * Blend::ORGANIC_REACH;
             let h = 0.5f32.mul_add((b - a) / k, 0.5).clamp(0.0, 1.0);
             let mixed = (a - b).mul_add(h, b);
             mixed - k * h * (1.0 - h)
         }
         // ⚠️ Raio zero é união DURA, e não uma fórmula com um zero dentro — é o mesmo ramo que a
         // árvore toma, e a razão é a mesma: com `r = 0` as duas são algebricamente idênticas.
-        Blend::Exact { .. } | Blend::Organic { .. } => a.min(b),
+        Blend::Exact { .. } | Blend::Chamfer { .. } | Blend::Organic { .. } => a.min(b),
     }
 }
 

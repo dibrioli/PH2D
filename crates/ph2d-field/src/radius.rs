@@ -5,7 +5,7 @@
 //! mudar?"* vive aqui — e vive **uma vez**, porque a árvore tem dois donos possíveis (a arena
 //! cozida e a cena ECS) e os dois têm de aplicar a mesma regra.
 
-use crate::{Blend, FieldDoc, FieldError, NodeId, NodeKind, NodeShape, Op, Primitive};
+use crate::{FieldDoc, FieldError, NodeId, NodeKind, NodeShape, Op, Primitive};
 
 impl FieldDoc {
     /// **O raio EDITÁVEL de um nó** — `None` quando não há nenhum.
@@ -157,13 +157,11 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
             what: "radius",
         }),
         NodeShape::Combine(op) => {
-            let blend = match op.blend() {
-                // O caráter ORGÂNICO é uma escolha de produto e sobrevive a mudar o número;
-                // trocá-lo aqui seria decidir por quem só mexeu num slider.
-                Blend::Organic { .. } => Blend::Organic { k: radius },
-                _ if radius <= 0.0 => Blend::Sharp,
-                _ => Blend::Exact { radius },
-            };
+            // ⭐ O CARÁCTER é uma escolha de produto e sobrevive a mudar o número; trocá-lo aqui
+            // seria decidir por quem só mexeu num slider. ⚠️ **A escada vive numa porta só**
+            // ([`Blend::with_amount`]): enquanto foi copiada, os dois caminhos que a usam
+            // discordavam sobre o que um zero faz a um chanfro.
+            let blend = op.blend().with_amount(radius);
             *op = match *op {
                 Op::Union(_) => Op::Union(blend),
                 Op::Intersection(_) => Op::Intersection(blend),

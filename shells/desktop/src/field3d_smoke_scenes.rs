@@ -313,6 +313,51 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(4),
             )
         }
+        8 => {
+            // ⭐⭐⭐ **OS TRÊS CARACTERES LADO A LADO** (W99) — a mesma junta, três formas.
+            //
+            // ⚠️ **O mesmo número nos três, de propósito**: é a única disposição em que se vê o que
+            // a calibração compra. O filete e o orgânico põem a silhueta do canto **no mesmo
+            // sítio** (medido, `the_four_characters`); o chanfro come mais, e é essa a diferença
+            // que o artista escolhe.
+            println!(
+                "[field-smoke] cena 8 — OS TRÊS CARACTERES: três colunas com a MESMA junta de \
+                 0,18 — Fillet (arco) · Chamfer (corte reto) · Organic (derretido)"
+            );
+            let coluna = |x: f32, blend: Blend| {
+                let mut poste = leaf(
+                    Primitive::Box {
+                        half: [0.16, 0.5, 0.16],
+                        round: 0.0,
+                    },
+                    Xform::at(x, 0.0, 0.0),
+                );
+                // ⚠️ O verbo do poste é o que carrega o carácter: cada coluna junta-se à base com a
+                // forma dela.
+                poste.verb = Some(Op::Union(blend));
+                poste
+            };
+            FieldDoc::new(
+                vec![
+                    // A base: uma laje comum às três, para haver junta que ver.
+                    leaf(
+                        Primitive::Box {
+                            half: [1.1, 0.12, 0.35],
+                            round: 0.0,
+                        },
+                        Xform::at(0.0, -0.5, 0.0),
+                    ),
+                    coluna(-0.7, Blend::Exact { radius: 0.18 }),
+                    coluna(0.0, Blend::Chamfer { radius: 0.18 }),
+                    coluna(0.7, Blend::Organic { radius: 0.18 }),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
+                    ),
+                ],
+                NodeId(4),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

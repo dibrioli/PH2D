@@ -59,6 +59,19 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.verb.add" => "Add",
         "panel.model3d.verb.cut" => "Cut",
         "panel.model3d.verb.common" => "Common",
+        // ⭐⭐⭐ **O CARÁTER da mistura** (W99) — a FORMA da transição, ao lado do número que diz o
+        // tamanho. ⚠️ **Não há um "Sharp" aqui:** a aresta viva é o **raio zero**, e o slider já o
+        // exprime — um quarto chip seria uma segunda porta para o mesmo facto, e as duas podiam
+        // discordar.
+        //
+        // ⚠️ **"Fillet" repete o rótulo da linha de número, e é de propósito:** ali ele diz *quanto*,
+        // aqui diz *qual forma*. É a mesma palavra para a mesma coisa — o contrário é que confundia.
+        "panel.model3d.character.fillet" => "Fillet",
+        "panel.model3d.character.chamfer" => "Chamfer",
+        // ⚠️ **"Organic" e não "Smooth":** este app já usa "Smooth" para alisar malha no módulo de
+        // escultura, e duas coisas diferentes com o mesmo nome no mesmo app é o que faz o artista
+        // procurar no sítio errado.
+        "panel.model3d.character.organic" => "Organic",
         // ⭐ Os MODIFICADORES. ⚠️ São interruptores: aceso quer dizer que o objeto já tem um.
         // "Hollow" e não "Shell" — o rótulo diz o que se OBTÉM ("oco"), e "Shell" num app 3D é
         // ambíguo com a casca de superfície. "Grow/Shrink" diria os dois sentidos, mas o número faz

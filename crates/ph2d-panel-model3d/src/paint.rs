@@ -154,6 +154,17 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         );
         y = paint_chips(ctx, &snapshot.verbs, ids::model3d_verb_button, x, w, y);
     }
+    // ⭐⭐⭐ **O CARÁTER da mistura** (W99), logo abaixo — porque ele qualifica a junta que a fileira
+    // de cima escolheu. ⚠️ Ela é **independente** do sujeito nomeado acima: uma OPERAÇÃO tem
+    // carácter e não tem verbo, então a fileira aparece ali sozinha.
+    y = paint_chips(
+        ctx,
+        &snapshot.characters,
+        ids::model3d_character_button,
+        x,
+        w,
+        y,
+    );
     // ⭐ **O que se faz À forma depois de ela existir** — a casca e o afastamento, os dois verbos em
     // que a tese do módulo mais aparece (ver `ph2d_field::mods`).
     y = paint_chips(ctx, &snapshot.mods, ids::model3d_mod_button, x, w, y);

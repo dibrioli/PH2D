@@ -27,12 +27,14 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod blend;
 pub mod dims;
 pub mod mods;
 pub mod profile;
 pub mod radius;
 pub mod xform;
 
+pub use blend::{Blend, Character};
 pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 pub use profile::{
@@ -70,8 +72,13 @@ use serde::{Deserialize, Serialize};
 /// sobre o resultado das anteriores, em vez de a herdar toda do pai. É campo novo numa struct, e
 /// postcard é **posicional**; a migração continua vazia pelo motivo de sempre.
 ///
+/// v6: o [`Blend`] ganhou o **chanfro** ([`Blend::Chamfer`]) e o campo do orgânico passou de `k`
+/// (o alcance cru) para `radius` (o **entregue**, calibrado por [`Blend::ORGANIC_REACH`]). São
+/// variante nova num `enum` **e** mudança de significado de um número: um documento v5 leria o
+/// alcance de um orgânico como se fosse raio, e a peça mudaria de forma em silêncio.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 5;
+pub const FIELD_DOC_VERSION: u32 = 6;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -194,34 +201,6 @@ impl Primitive {
             Primitive::Torus { .. } => PrimitiveKind::Torus,
             Primitive::Extrude { .. } => PrimitiveKind::Extrude,
             Primitive::Revolve { .. } => PrimitiveKind::Revolve,
-        }
-    }
-}
-
-/// O **caráter** do arredondamento de uma operação.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
-pub enum Blend {
-    /// Aresta viva.
-    Sharp,
-    /// Raio **constante de verdade** — o *look* de produto, e o default do módulo.
-    /// Medido: entrega o raio pedido com **0,00 %** de erro (ADR-0161 §3).
-    Exact { radius: f32 },
-    /// Transição contínua ("derretida").
-    ///
-    /// ⚠️ **`k` NÃO é um raio.** Medido: entrega **exatamente 3/4** do número, em todos os raios
-    /// testados. Quem o mostrar na UI com a etiqueta "raio" mente 25 % ao utilizador, sempre — ou
-    /// calibra (×4/3), ou lhe dá outro nome.
-    Organic { k: f32 },
-}
-
-impl Blend {
-    /// O raio (ou alcance) desta mistura, ou `0.0` se for viva.
-    #[must_use]
-    pub fn amount(self) -> f32 {
-        match self {
-            Blend::Sharp => 0.0,
-            Blend::Exact { radius } => radius,
-            Blend::Organic { k } => k,
         }
     }
 }

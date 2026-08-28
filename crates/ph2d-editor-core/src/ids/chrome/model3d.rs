@@ -77,6 +77,16 @@ pub fn model3d_verb_button(slot: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.verb.{slot}"))
 }
 
+/// ⭐⭐⭐ **O botão do CARÁCTER da mistura** — a FORMA da transição (arco · corte reto · derretido).
+///
+/// ⚠️ **Família própria, e não a do verbo:** as duas fileiras aparecem juntas na mesma forma e
+/// respondem a perguntas diferentes (*como se junta* · *que forma tem a junta*). Partilhar a família
+/// faria um clique em «Chamfer» trocar o verbo.
+#[must_use]
+pub fn model3d_character_button(slot: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.character.{slot}"))
+}
+
 /// ⭐ **O botão de EXPORTAR** numa resolução, pela posição.
 #[must_use]
 pub fn model3d_export_button(slot: u32) -> NodeId {

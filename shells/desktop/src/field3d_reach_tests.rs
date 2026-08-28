@@ -205,6 +205,16 @@ const ROWS: &[Row] = &[
         // ⚠️ Derivado do `VERBS`, nunca um literal — a lição do `ACTS` logo abaixo.
         slots: super::verb::VERBS.len(),
     },
+    // ⭐⭐⭐ **O CARÁTER da mistura** (W99). ⚠️ Ela é a **terceira** fileira desta tabela a existir
+    // por causa do verbo por forma, e entra aqui pelo mesmo motivo: os seis casos de seleção
+    // varrem-na de graça — incluindo o que importa, a **base**, onde não há junta que qualificar.
+    Row {
+        name: "carácter da mistura",
+        read: |s| !s.characters.is_empty(),
+        intent: |slot| ModelIntent::SetCharacter { slot },
+        // ⚠️ Derivado do documento, nunca um literal.
+        slots: ph2d_field::Character::ALL.len(),
+    },
     Row {
         name: "modificadores",
         read: |s| !s.mods.is_empty(),

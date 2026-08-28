@@ -2339,7 +2339,10 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
         ),
         ("união viva", two(Op::Union(Blend::Sharp))),
         ("subtracção viva", two(Op::Difference(Blend::Sharp))),
-        ("união orgânica", two(Op::Union(Blend::Organic { k: 0.4 }))),
+        (
+            "união orgânica",
+            two(Op::Union(Blend::Organic { radius: 0.4 })),
+        ),
     ];
     for (name, doc) in cases {
         let step = ph2d_field_eval::safe_march_step(&doc);

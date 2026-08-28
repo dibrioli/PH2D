@@ -130,10 +130,20 @@ pub fn inflation_depth(doc: &FieldDoc) -> u32 {
             // é essa a forma da **cena 1 do smoke** (três cilindros num nó). *Uma fixtura de dois
             // filhos não vê a corrente que o lowering constrói.*
             NodeKind::Combine { op, children } => match op.blend() {
-                Blend::Exact { radius } if radius != 0.0 => {
+                // ⭐⭐⭐ **O CHANFRO conta como um arredondamento exacto** (W99), e o balde é
+                // MEDIDO: `the_chamfer_is_measured_against_the_march` lê o `‖∇f‖` dele no mesmo
+                // canto de 90º e afirma que ele não passa o `√2` que este balde já paga.
+                //
+                // ⚠️ **Pô-lo no balde do `Sharp` seria o erro que fura**: o termo do corte tem
+                // gradiente acima de `1` onde as duas normais se alinham, e um passo do tamanho do
+                // valor atravessaria a superfície.
+                Blend::Exact { radius } | Blend::Chamfer { radius } if radius != 0.0 => {
                     u32::try_from(children.len().saturating_sub(1)).unwrap_or(u32::MAX)
                 }
-                Blend::Exact { .. } | Blend::Sharp | Blend::Organic { .. } => 0,
+                Blend::Exact { .. }
+                | Blend::Chamfer { .. }
+                | Blend::Sharp
+                | Blend::Organic { .. } => 0,
             },
             NodeKind::Leaf(_) => 0,
         };

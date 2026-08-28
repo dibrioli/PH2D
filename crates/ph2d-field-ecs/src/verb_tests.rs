@@ -397,20 +397,124 @@ fn a_zero_joint_is_a_live_edge_and_a_negative_one_is_refused() {
 /// ⭐ **O carácter da mistura SOBREVIVE ao raio novo** — quem era orgânica continua orgânica.
 ///
 /// ⚠️ A lei é copiada do `set_shape_radius` de propósito: duas leis para o mesmo gesto divergem na
-/// primeira wave que corrija uma delas. É o mesmo motivo por que o `set_op` preserva a mistura.
+/// primeira wave que corrija uma delas. É o mesmo motivo por que o `set_op` preserva a mistura.///
+/// ⛔⛔ **A primeira versão deste gate provava um carácter só, e foi por isso que um defeito passou:**
+/// o `Param::Joint` tinha uma **cópia** da escada que não conhecia o chanfro, e mudar o raio de uma
+/// junta chanfrada transformava-a em filete **em silêncio**. O comentário ao lado dela dizia que a
+/// porta era única, e era falso. ⇒ *quem varre um carácter varre todos*, e a prova de mutação foi
+/// quem o disse (o mutante de `with_amount` sobreviveu por não haver ninguém a chamá-la).
 #[test]
 fn the_character_of_the_blend_survives_a_new_radius() {
     let (mut world, _, kids) = two_boxes();
-    crate::set_verb(
-        &mut world,
-        kids[1],
-        Some(Op::Difference(Blend::Organic { k: 0.1 })),
-    )
-    .expect("é um nó");
-    crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.3).expect("escreve");
+    // ⚠️ **Os DOIS caracteres que sobrevivem**, e não só o orgânico. O `Exact` não entra porque é
+    // ele o destino de um erro — um gate que o incluísse passaria com a escada apagada.
+    for (nome, antes, depois) in [
+        (
+            "orgânico",
+            Blend::Organic { radius: 0.1 },
+            Blend::Organic { radius: 0.3 },
+        ),
+        (
+            "chanfro",
+            Blend::Chamfer { radius: 0.1 },
+            Blend::Chamfer { radius: 0.3 },
+        ),
+    ] {
+        crate::set_verb(&mut world, kids[1], Some(Op::Difference(antes))).expect("é um nó");
+        crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.3).expect("escreve");
+        assert_eq!(
+            crate::verb_of(&world, kids[1]),
+            Some(Op::Difference(depois)),
+            "o carácter {nome} e o VERBO tinham de sobreviver ao raio novo"
+        );
+    }
+}
+
+// ───────── W99: o CARÁTER da mistura ─────────
+
+/// ⭐⭐⭐ **TROCAR O CARÁTER NÃO MEXE NO NÚMERO** — nem numa forma, nem num grupo.
+///
+/// ⚠️ Quem carrega no chip escolheu a **forma** da junta; ver o raio saltar junto seria o painel a
+/// decidir por ele. E o contrário — trocar o raio e perder o carácter — é o mesmo defeito ao
+/// contrário, e tem gate próprio (`the_character_of_the_blend_survives_a_new_radius`).
+#[test]
+fn switching_character_keeps_the_number() {
+    use ph2d_field::Character;
+    let (mut world, root, kids) = two_boxes();
+
+    // ── Numa FORMA: o carácter materializa o verbo, como o raio ──
+    crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.17).expect("escreve");
+    crate::set_character(&mut world, kids[1], Character::Chamfer).expect("troca");
     assert_eq!(
         crate::verb_of(&world, kids[1]),
-        Some(Op::Difference(Blend::Organic { k: 0.3 })),
-        "o carácter e o VERBO tinham de sobreviver ao raio novo"
+        Some(Op::Union(Blend::Chamfer { radius: 0.17 })),
+        "o número tinha de sobreviver à troca de carácter"
+    );
+    assert_eq!(
+        crate::character_of(&world, kids[1]),
+        Some(Character::Chamfer),
+        "e a leitura tem de devolver o que a escrita pôs"
+    );
+
+    // ── Num GRUPO: o raio dele é o padrão dos filhos calados, e também não se mexe ──
+    crate::set_character(&mut world, root, Character::Organic).expect("troca");
+    let grupo = crate::params_of(&world, root)
+        .into_iter()
+        .find(|(p, _)| *p == ph2d_field::Param::Dim(0))
+        .expect("o grupo tem raio");
+    assert!(
+        (grupo.1.value - 0.08).abs() < 1e-6,
+        "o raio PADRÃO do grupo mudou ao trocar de carácter: {}",
+        grupo.1.value
+    );
+    assert_eq!(crate::character_of(&world, root), Some(Character::Organic));
+}
+
+/// ⭐⭐ **Trocar o carácter de UMA forma não toca no irmão que herda** — a mesma lei do raio.
+///
+/// ⛔ Sem a materialização, o chip escreveria no grupo e mudaria as outras caladas com ele — que é o
+/// defeito que o verbo por forma existe para curar, agora pela segunda porta.
+#[test]
+fn switching_character_speaks_for_this_shape_alone() {
+    use ph2d_field::Character;
+    let (mut world, root, kids) = two_boxes();
+    let terceiro = crate::add_leaf(
+        &mut world,
+        root,
+        Primitive::Sphere { radius: 0.3 },
+        [0.0, 0.0, 0.0],
+    )
+    .expect("nasce");
+
+    crate::set_character(&mut world, kids[1], Character::Chamfer).expect("troca");
+
+    assert_eq!(
+        crate::verb_of(&world, terceiro),
+        None,
+        "o irmão CALADO ganhou um verbo — a escrita foi para o grupo"
+    );
+    assert_eq!(
+        crate::character_of(&world, terceiro),
+        Some(Character::Fillet),
+        "e ele continua a ler o carácter herdado do grupo"
+    );
+}
+
+/// ⭐ **A BASE e a RAIZ não têm carácter a escolher** — a mesma recusa do raio de junção.
+///
+/// ⚠️ A **raiz** deste teste é uma operação, então ela **tem** (o filete dela é o padrão dos
+/// filhos); quem não tem é a **base**, que não se junta a nada.
+#[test]
+fn the_base_has_no_character_to_choose() {
+    use ph2d_field::Character;
+    let (mut world, _, kids) = two_boxes();
+    assert_eq!(
+        crate::character_of(&world, kids[0]),
+        None,
+        "a BASE não tem junta"
+    );
+    assert!(
+        crate::set_character(&mut world, kids[0], Character::Chamfer).is_err(),
+        "escrever o carácter da base tinha de ser recusado"
     );
 }

@@ -5782,7 +5782,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 | ✅⭐⭐⭐ **UM VERBO POR FORMA** — a operação sai do grupo e entra em cada objeto (etapa **1** de 3) | a receita lê-se na Hierarquia (`UNI`/`SUB`/`INT`/`BSE`, os selos do vetorial) · ausência = **herança** · a base **semeia** e guarda o verbo dela | §93 |
 | ✅⭐⭐⭐ **(2) O RAIO POR OBJETO** — linha **Joint**, derivada, e escrever nela **materializa** o verbo | ⭐ o painel não mudou (as linhas saem do `params_of`) · ⚠️ **Fillet** = as arestas da forma · **Joint** = o encontro, e o grupo passa a dizer `Joint` (é o padrão) | §94 |
-| ⏳ **(3) O CHAMFER** como 4.º carácter do `Blend` | ⭐ **uma fórmula só** — intersecção e subtração saem por De Morgan. ⛔ **E ela é a dona da calibração do `Organic`**: hoje ele entrega **3/4** do número que mostra e **não tem produtor na UI**; o chip de carácter é que o torna alcançável | §94.5 |
+| ✅⭐⭐⭐ **(3) O CHANFRO** — `Fillet · Chamfer · Organic`, **três** chips (a aresta viva é o raio zero) | ⭐ uma fórmula só, exacta · ⚠️ **DUAS réguas** (recuo · mordida) e nenhum carácter bate as duas: o orgânico calibra-se pela **mordida**, o chanfro **não se calibra** · ⛔ 2 mutantes sobreviveram e um era defeito VIVO | §95 |
 
 - ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
   Enio (*«a hierarquia fica mais confusa criando vários parentescos… colocar a operação dentro de cada
@@ -8935,3 +8935,123 @@ o `set_radius`/`Param::Joint` só o **preservam** quando já lá está.
 ⇒ A mentira é **latente**, e quem a acorda é o **chip de carácter da etapa 3**. Ela passa para lá,
 onde deixa de ser opcional. *Um defeito inalcançável é uma armadilha armada, não um defeito — e a
 wave que o torna alcançável é a dona dele.*
+
+---
+
+## §95 — W99: ⭐⭐⭐ O CHANFRO — e as DUAS RÉGUAS que ele obrigou a separar (28/08)
+
+A etapa 3 das três que o Enio pediu em 28/08.
+
+### §95.1 — Uma fórmula, e ela é exacta
+
+`min(min(a, b), (a + b − r)·√½)` — o plano do chanfro num canto de 90° é `a + b = r`, e a distância a
+ele é `(a+b−r)/√2`, **exacta**. Intersecção e subtração saem por **De Morgan**, como as outras: o
+`Op` já tinha a nota a dizer que *só a união precisa de fórmula própria*, e ela pagou-se aqui.
+
+> ⭐ No CAD, filete e chanfro são duas máquinas com modos de falha diferentes. Aqui são a mesma conta
+> com um termo trocado, e **nenhuma pode falhar**.
+
+### §95.2 — ⭐⭐⭐ DUAS RÉGUAS, e confundi-las era a nota antiga da crate
+
+O `union_smooth` trazia escrito: *«o `k` não é um raio — medido, entrega 3/4 do número»*. A medição
+desta wave diz que **há duas grandezas**, e a nota media uma e falava da outra:
+
+| carácter | **recuo** na parede | **mordida** no canto |
+|---|---|---|
+| `Fillet` (arco) | `1,0000` | `1,0000` |
+| `Chamfer` (corte reto) | **`1,0202`** | `1,7071` |
+| `Organic` (derretido) | `1,1644` | **`1,0000`** |
+
+⇒ **nenhum carácter bate as duas**, e escolher qual calibrar é uma decisão de produto:
+
+- **o orgânico calibra-se pela MORDIDA** (`Blend::ORGANIC_REACH`), porque é a **silhueta** que o
+  artista vê: trocar `Fillet` ↔ `Organic` com o mesmo número deixa o canto onde está e muda só a
+  forma da transição. ⇒ o recuo dele fica em `1,16×`, e isso é **divergência declarada**, com barra
+  dos dois lados no gate — um borrão derretido não tem linha de tangência nítida para alinhar.
+- ⛔ **o chanfro NÃO se calibra:** um corte reto e um arco de mesmo recuo arrancam material diferente
+  no meio, e é essa diferença que o artista escolhe. Calibrá-lo daria **quatro chips com três
+  formas**, e há um gate a proibi-lo pelo número (`mordida > 1,3`).
+
+### §95.2-bis — ⭐⭐⭐ Eram TRÊS réguas, e o gate que escreveu a nota velha previu isto por escrito
+
+A varredura de fecho reprovou o `the_organic_blend_falls_short_by_exactly_k_over_four` — **o gate que
+estabeleceu o «3/4»**. O doc-comment dele dizia, palavra por palavra:
+
+> *«Se alguém "consertar" isto em silêncio, o gate acusa; se alguém o **calibrar** de propósito
+> (×4/3), o gate é o lugar onde a decisão fica escrita.»*
+
+⇒ Ele reprovou no dia certo e pelo motivo certo. ⛔ **Mas o `×4/3` que ele sugeria era sobre uma
+TERCEIRA grandeza:** o **valor do campo** no cotovelo — nem o recuo, nem a mordida. *Três réguas, e a
+que decide é a que o artista vê.*
+
+⭐⭐⭐ **E a constante fechou-se em forma analítica:** o smooth-min vale `d − k/4` onde as duas
+superfícies distam `d`, e a mordida do filete exacto põe a silhueta em `d/√2`; igualar dá
+
+> **`ORGANIC_REACH = 4(1 − 1/√2) = 4 − 2√2 = 1,171573`**
+
+que é o número que a varredura tinha medido a `1,0000`. O gate passa a pinar `d/√2`, que é a mesma
+conta do outro lado. *Uma constante analítica, confirmada por medição — e não um decimal ajustado até
+o teste passar.*
+
+### §95.3 — Três chips, e o quarto não existe de propósito
+
+`Fillet · Chamfer · Organic`. ⚠️ **A aresta viva não é um carácter, é o raio ZERO** — e o slider já o
+exprime. Um chip `Sharp` seria uma segunda porta para o mesmo facto, e as duas podiam discordar.
+
+⚠️ A fileira aparece **onde há mistura**: numa operação (o carácter do filete dela, que é o padrão
+dos filhos calados) e numa forma que se junta ao resto. Na **base** não, pela mesma razão do raio.
+⭐ E numa forma ela **materializa o verbo**, como o raio de junção: escolher a forma da própria junta
+*é* pronunciar-se.
+
+⚠️ **Trocar de carácter não mexe no número.** Quem carrega no chip escolheu a forma; ver o raio
+saltar junto seria o painel a decidir por ele.
+
+### §95.4 — ⚠️ O que a marcha exigiu, e ele foi MEDIDO
+
+O `march_depth` conta **arredondamentos exactos** porque `‖∇f‖` chega a `√2` neles. O chanfro entra
+no **mesmo balde**, e o balde é medido (`the_chamfer_is_measured_against_the_march`): pô-lo no do
+`Sharp` seria o erro que **fura** a peça, porque o termo do corte tem gradiente acima de `1` onde as
+duas normais se alinham.
+
+### §95.5 — ⛔⛔ DOIS MUTANTES SOBREVIVERAM, e um era um defeito VIVO
+
+| mutante | por que sobreviveu | o que ele revelou |
+|---|---|---|
+| apagar o `min` do `union_chamfer` | as duas réguas medem **no canto**, e ali o termo do corte já é o mínimo — o `min` só protege **longe** dele | a propriedade *«é sempre um minorante»* estava escrita no doc-comment **sem gate nenhum**. Hoje tem: `the_chamfer_never_overstates_the_distance`, sobre uma janela `6×` maior que o alcance |
+| `with_amount` devolver sempre `Exact` | **ninguém a chamava** | ⛔ **defeito VIVO:** a minha edição que rotearia o raio de junção por ela **nunca entrou** (o script abortou num `assert` e eu só refiz metade). O `Param::Joint` ficou com uma **cópia** da escada que **não conhecia o chanfro** ⇒ mudar o raio de uma junta chanfrada transformava-a em filete, **em silêncio** — e o comentário ao lado jurava que a porta era única |
+
+⚠️ *Uma régua que só olha onde o fenómeno é forte não vê a guarda que o segura noutro sítio.*
+⚠️ *Uma lei escrita em dois sítios ainda não é uma lei — e um comentário a dizer que é, é pior.*
+
+⭐ E o gate do carácter passou a varrer **todos** os que sobrevivem (orgânico **e** chanfro): provar
+um só foi o que deixou o defeito passar. ⛔ O `Exact` fica de fora **de propósito** — ele é o
+**destino** de um erro, e incluí-lo faria o gate passar com a escada apagada.
+
+**12 mutantes, 12 mortos.**
+
+### §95.6 — ⭐ E o gate de alcançabilidade apanhou um defeito no mesmo dia
+
+`set_character` chamava o `ph2d_field_ecs::set_op` para escrever no grupo — e **aquele preserva a
+mistura de propósito** (é a porta de trocar o VERBO; o raio é do nó, não da operação). A troca de
+carácter era engolida em silêncio: chip pintado, aceso, e a peça igual.
+
+⇒ *Uma porta que guarda um campo não serve para escrever nesse campo.* Quem o disse foi o
+`the_panel_offers_exactly_what_the_gesture_does`, com `oferecido=true age=false`.
+
+### §95.7 — O formato
+
+`FIELD_DOC_VERSION` **5 → 6**: variante nova no `Blend` **e** mudança de significado de um número
+(`Organic { k }` → `Organic { radius }`). ⚠️ Um documento v5 leria o alcance cru de um orgânico como
+se fosse raio, e a peça mudaria de forma em silêncio. ⭐ Os dois pinos de bytes **não se mexeram** — a
+variante nova cabe no mesmo discriminante e o campo tem o mesmo tamanho.
+
+**Smoke:** cena **`=8`** — as três colunas com a **mesma** junta de `0,18`, lado a lado.
+
+### §95.8 — ⚠️ E o tecto de LOC, pela QUARTA vez em três waves
+
+`ph2d-field/src/lib.rs` passou a **739** contra o tecto de **700** da workspace. Partido por assunto
+para [`blend.rs`](../../crates/ph2d-field/src/blend.rs) — tudo o que responde *«que forma tem esta
+junta, e de que tamanho»*; o `Op` e o `fold_verb` (*«quem se junta a quem»*) ficaram onde estavam.
+
+⛔ *Split, nunca allowlist.* A conta das três waves: `field3d_scene_panel.rs` · `field3d_smoke.rs`
+(pré-existente) · `field3d_scene_tests.rs` · `ph2d-field/src/lib.rs`.

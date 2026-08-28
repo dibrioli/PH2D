@@ -121,7 +121,9 @@ pub use probe_doors::*;
 #[doc(hidden)]
 pub use shade::Matcap;
 pub use shade::shade;
-pub use tape_cache::{EVICT_NS, INFLATE, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS, TapeCache};
+pub use tape_cache::{
+    EVICT_NS, GET_NS, INFLATE, TAPE_DROPPED, TAPE_EVICTIONS, TAPE_HITS, TapeCache,
+};
 pub use tiles::{RECORD_TILE_COSTS, SLAB_SPEC, SPECIALISE_NS, SPECIALISED, TILE_COSTS, TILE_MAX};
 
 /// O padrão de re-amostragem de um pixel de borda: **4-rook (RGSS)**.

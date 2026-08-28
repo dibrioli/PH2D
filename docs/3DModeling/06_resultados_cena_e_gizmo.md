@@ -5750,9 +5750,10 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
 | ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
 | ✅⭐⭐ **Cada vista diz o NOME dela**, derivado da câmera (orbitar a *Top* fá-la *User*) | a metade do cabeçalho que não rouba pixels ao traçado | §92.10 |
-| ⏳ O cabeçalho **CLICÁVEL** (menu por vista) — e é ele que destrava o divisor arrastável | pede a faixa reservada, que obriga a porta do layout a devolver dois retângulos por vista | §92.10 |
+| ⏳ O cabeçalho **CLICÁVEL** (menu por vista) | pede a faixa reservada, que obriga a porta do layout a devolver dois retângulos por vista | §92.10 |
+| ⏳ O **divisor arrastável** | ⚠️ a minha nota dizia que ele dependia do cabeçalho e **estava errada**: ele precisa de uma zona de pega na costura, de um `t` no `Split` e da porta do layout — nada disso é o cabeçalho | §92.7 |
 | ✅⭐⭐ **O custo de uma EDIÇÃO com a divisão aberta** — medido: quatro juntas custam `3,93×` uma (elas só se fatiam) | ⭐ curado por **ORDEM**: a activa tem prioridade e chega em `64 ms` em vez de `254` | §92.9 |
-| ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
+| ⛔ A **varredura linear** do `TapeCache::get` — **MEDIDA**: `3,0 %` do quadro de movimento, `10,7 %` a `640×360`, e cresce ~quadraticamente | não paga um índice **ainda**; o gatilho está nomeado | §92.11 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
 | ✅ **O assentar: o que sobrava a compilar era o ANTI-SERRILHADO** | ⭐ `29` fitas por degrau → **`1`**; o custo dele caiu de `1,34×` para **`1,11×`**. A recusa da W70 dissolveu porque a W82 apagou a premissa dela | §84 |
@@ -8407,6 +8408,31 @@ e um rótulo permanente seria ruído sobre a peça.
 Gate: `the_viewport_label_follows_the_camera_and_not_the_quadrant` — as seis nomeadas dizem nomes
 **distintos**, todas as chaves **traduzem** (um rótulo que mostra a própria chave é pior que nenhum),
 e uma câmera orbitada passa a *User*. Mutação (prender o rótulo): ✗.
+
+### §92.11 — ⛔ A varredura linear da cache: MEDIDA, e não vale a complexidade (ainda)
+
+O item que a §91.5 abriu (*«o que uma cache guarda a mais não é de graça: alguém a percorre»*) e que
+nunca tinha sido medido sozinho. `where_the_frame_goes_now.rs` (⚠️ `load 20`, então leem-se **razões**
+e não relógios):
+
+| | `get` | especializar | `get` / (`get`+`spec`) | regiões/quadro |
+|---|---:|---:|---:|---:|
+| `426×240` (movimento) | `10,1` ms-thread | `325` | **`3,0 %`** | `604` |
+| `640×360` | `76,0` | `633` | **`10,7 %`** | `1 278` |
+
+⭐ **O custo cresce ~quadraticamente**: dobram as regiões e a varredura faz `7,5×`. É a forma
+esperada — ela percorre a população **por região**, e a população é o tecto derivado, que é
+proporcional às regiões (`FRAMES_KEPT × regiões`).
+
+⛔ **A `3 %` no quadro de movimento ela não paga um índice.** A cura desenhada seria um mapa
+directo `(ladrilho, fatia) → entrada` consultado antes da varredura (a mesma região pede quase a
+mesma caixa todo quadro, então acertaria ~85 % em `O(1)`), com invalidação no despejo. É trabalho
+real, com um gate novo, por `3 %` de um quadro que já cabe no orçamento.
+
+⚠️ **O GATILHO está nomeado:** ela passa a valer quando as regiões de um quadro crescerem —
+resolução maior, ladrilho menor, ou o assentar a `1280×720` com a divisão aberta. *Uma recusa medida
+responde uma pergunta; quando a sua for outra, remeça.* O instrumento fica no sítio
+([`GET_NS`](../../crates/ph2d-field-render/src/tape_cache.rs)).
 
 ### §92.7 — ⏳ O que fica aberto
 

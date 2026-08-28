@@ -162,6 +162,14 @@ pub static TAPE_EVICTIONS: std::sync::atomic::AtomicUsize = std::sync::atomic::A
 #[doc(hidden)]
 pub static TAPE_DROPPED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
+/// ⭐⭐ **Quanto tempo se passou DENTRO do [`TapeCache::get`]** — a varredura linear.
+///
+/// ⚠️ Ela percorre a população inteira por **cada região** de um quadro (~600 a `426×240`), e a
+/// população é o tecto derivado (`~2 600` fitas). *O que uma cache guarda a mais não é de graça:
+/// alguém a percorre* — e até aqui ninguém tinha medido quanto.
+#[doc(hidden)]
+pub static GET_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Ver [`TAPE_EVICTIONS`] — quanto tempo as varreduras passaram **dentro do cadeado de escrita**.
 #[doc(hidden)]
 pub static EVICT_NS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -330,6 +338,16 @@ impl TapeCache {
     /// ⚠️ **Tudo debaixo do cadeado de LEITURA** — ver o campo `seen`.
     #[must_use]
     pub fn get(&self, lo: [f32; 3], hi: [f32; 3]) -> Option<RegionTape> {
+        let t0 = std::time::Instant::now();
+        let out = self.get_inner(lo, hi);
+        GET_NS.fetch_add(
+            u64::try_from(t0.elapsed().as_nanos()).unwrap_or(u64::MAX),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+        out
+    }
+
+    fn get_inner(&self, lo: [f32; 3], hi: [f32; 3]) -> Option<RegionTape> {
         let inner = self
             .inner
             .read()

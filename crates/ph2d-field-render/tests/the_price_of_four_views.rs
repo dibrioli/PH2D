@@ -60,7 +60,15 @@ fn measure_what_an_edit_costs_with_the_canvas_split() {
         let reg = ph2d_field_eval::hybrid::Registry::new();
         let cache = TapeCache::new();
         let t0 = std::time::Instant::now();
-        let _ = ph2d_field_render::trace_cached_for_test(&doc, &reg, &cam(0.0), w, h, true, Some(&cache));
+        let _ = ph2d_field_render::trace_cached_for_test(
+            &doc,
+            &reg,
+            &cam(0.0),
+            w,
+            h,
+            true,
+            Some(&cache),
+        );
         t0.elapsed().as_secs_f64() * 1000.0
     };
     let quatro = || -> f64 {
@@ -104,12 +112,19 @@ fn measure_what_an_edit_costs_with_the_canvas_split() {
         c.push(quatro());
     }
     let (cheio, quarto, todas) = (med(a), med(b), med(c));
-    println!("uma vista, área INTEIRA  {}x{}  | {cheio:8.1} ms", CHEIO.0, CHEIO.1);
+    println!(
+        "uma vista, área INTEIRA  {}x{}  | {cheio:8.1} ms",
+        CHEIO.0, CHEIO.1
+    );
     println!(
         "uma vista, um QUARTO     {}x{}   | {quarto:8.1} ms  ({:.2}x do inteiro)",
         CHEIO.0 / 2,
         CHEIO.1 / 2,
         quarto / cheio
     );
-    println!("QUATRO vistas ao mesmo tempo          | {todas:8.1} ms  ({:.2}x do inteiro · {:.2}x de uma sozinha)", todas / cheio, todas / quarto);
+    println!(
+        "QUATRO vistas ao mesmo tempo          | {todas:8.1} ms  ({:.2}x do inteiro · {:.2}x de uma sozinha)",
+        todas / cheio,
+        todas / quarto
+    );
 }

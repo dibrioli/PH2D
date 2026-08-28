@@ -36,8 +36,8 @@ mod paint_wire;
 #[path = "paint_wires.rs"]
 mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
-pub use paint_port_label::PortLabel;
 use paint_port_label::draw_port_labels;
+pub use paint_port_label::{PortLabel, input_label_budget_px};
 #[path = "paint_grid.rs"]
 mod paint_grid;
 #[path = "paint_overlays.rs"]

@@ -270,6 +270,80 @@ fn the_last_row_of_the_tallest_node_is_reachable_by_scrolling() {
 /// nascer FECHADO, honrado por um default no `is_collapsed`. Ele tira este nó da lista (a
 /// secção «Curve» leva 8 das 19 linhas) e provavelmente também o `bezier_warp`. ⛔ Um TERCEIRO
 /// nome aqui, antes disso, é que passa a ser a lista a crescer.
+/// ⛔⛔ **AS SAÍDAS MÚLTIPLAS SÃO TRÊS, ESTÃO NOMEADAS, E TODO RÓTULO CABE.**
+///
+/// Pergunta do Enio no smoke (2026-08-27): *"conferiu se há múltiplos outputs? e se há nomes
+/// neles?"* — e a resposta anterior tinha vindo de um **regex sobre o fonte**, que nesta mesma
+/// sessão já contara params como se fossem portas, duas vezes. O registry diz outra coisa:
+/// **127** nós com uma saída, não `294`. *Uma contagem de catálogo pergunta-se ao registry.*
+///
+/// A regra do rótulo é *entradas sempre, saídas só quando há mais de uma* — então os três nós
+/// abaixo são o **único** sítio onde uma saída é escrita, e o único onde a entrada divide a
+/// largura do cartão com ela. Ficam NOMEADOS para que um quarto seja notado: ele traz um
+/// desenho que ninguém olhou.
+///
+/// ⚠️ **E a metade que importa é a que CABE.** O rótulo trunca em silêncio quando não cabe, e um
+/// nome truncado é a mesma ambiguidade do report, só que disfarçada de resposta. Medido: o mais
+/// comprido do catálogo é `Reference` (`pulse.compare`), `50 px` de `168` disponíveis; nos três
+/// de saída múltipla o pior é `Pulse`, `28 px` de `84`.
+#[test]
+fn the_multi_output_nodes_are_named_and_every_label_fits() {
+    use ph2d_panel_motion_graph::{PortLabel, input_label_budget_px};
+    /// Os únicos nós do catálogo com mais de uma saída — medidos no registry.
+    const MULTI_OUTPUT: &[&str] = &["pulse.counter", "sim.lifetime", "value.cursor"];
+    let motion = MotionState::new();
+    let mut found: Vec<&str> = motion
+        .registry
+        .manifests()
+        .filter(|m| m.outputs.len() > 1)
+        .map(|m| m.name)
+        .collect();
+    found.sort_unstable();
+    assert_eq!(
+        found, MULTI_OUTPUT,
+        "a lista de nos com saida multipla mudou — o cartao dele divide a largura entre a \
+         entrada e a saida, e esse desenho precisa de ser olhado"
+    );
+
+    let mut over: Vec<String> = Vec::new();
+    let mut entradas = 0usize;
+    for man in motion.registry.manifests() {
+        let budget = input_label_budget_px(man.outputs.len());
+        for p in man.inputs {
+            entradas += 1;
+            let l = PortLabel::of(p.name);
+            if l.approx_width_px() > budget {
+                over.push(format!(
+                    "{}::{} ({:.0} px > {budget:.0})",
+                    man.name,
+                    p.name,
+                    l.approx_width_px()
+                ));
+            }
+        }
+        if man.outputs.len() > 1 {
+            for p in man.outputs {
+                let l = PortLabel::of(p.name);
+                if l.approx_width_px() > budget {
+                    over.push(format!(
+                        "{}::{}! ({:.0} px > {budget:.0})",
+                        man.name,
+                        p.name,
+                        l.approx_width_px()
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        over.is_empty(),
+        "rotulos que TRUNCAM no cartao — um nome cortado e' a mesma ambiguidade do report, \
+         disfarcada de resposta: {over:?}"
+    );
+    // ⚠️ CONTROLE: sem ele um `manifests()` vazio daria zero acusacoes sobre o nada.
+    assert!(entradas > 150, "o censo viu so' {entradas} entradas");
+}
+
 /// ⛔⛔ **TODA PORTA DO CATÁLOGO TEM UM NOME LEGÍVEL** — o censo que fecha o report do Enio.
 ///
 /// *"Vários nós como o próprio boids têm uma série de inputs sem nenhum nome, sem identificação.

@@ -27,8 +27,12 @@
 //!
 //! ## As duas leis
 //!
-//! 1. **ENTRADAS sempre; SAÍDAS só quando há mais de uma.** Medido: **294 nós têm exactamente uma
-//!    saída** e só **três** têm mais (`out`+`carry`, `out`+`died`+`pulse`, `x`+`y`). Um rótulo
+//! 1. **ENTRADAS sempre; SAÍDAS só quando há mais de uma.** Medido **no registry** (2026-08-27):
+//!    **127 nós têm exactamente uma saída** e só **três** têm mais — `value.cursor` (`x`/`y`),
+//!    `pulse.counter` (`out`/`carry`) e `sim.lifetime` (`out`/`died`/`pulse`). ⚠️ A 1.ª redacção
+//!    desta linha dizia `294`, tirado de um **regex sobre o fonte** que contava manifestos
+//!    repetidos; a forma estava certa e o número não. *Uma contagem de catálogo pergunta-se ao
+//!    registry, nunca ao texto.* Um rótulo
 //!    responde *"qual delas?"*, e com uma saída não há pergunta — escrever «Out» em 294 cartões
 //!    seria ruído a competir com o nome do nó.
 //! 2. **O rótulo é DERIVADO do nome do manifesto**, não uma segunda tabela. `target_x` → `Target
@@ -142,6 +146,31 @@ impl PortLabel {
     }
 }
 
+/// **A largura que sobra para um rótulo de ENTRADA**, dado quantas saídas o nó tem.
+///
+/// ⚠️ **Exposta porque o censo do catálogo precisa dela**, e a alternativa era o gate recalcular
+/// `CARD_W`/`PAD` do seu lado — a segunda cópia da mesma conta, que é o defeito que este ficheiro
+/// existe para não repetir. A lei mora aqui; quem mede lê-a.
+#[must_use]
+pub fn input_label_budget_px(outputs: usize) -> f32 {
+    if outputs > 1 {
+        geom::CARD_W * 0.5 - PORT_LABEL_PAD_X
+    } else {
+        geom::CARD_W - 2.0 * PORT_LABEL_PAD_X
+    }
+}
+
+impl PortLabel {
+    /// A largura aproximada deste rótulo — pelo mesmo avanço médio que alinha as saídas.
+    /// ⚠️ Aproximada **de propósito**: não há API de medição neste caminho (ver [`LABEL_CHAR_W`]).
+    #[must_use]
+    pub fn approx_width_px(&self) -> f32 {
+        #[expect(clippy::cast_precision_loss, reason = "um rotulo tem < 24 bytes")]
+        let n = self.len as f32;
+        n * LABEL_CHAR_W
+    }
+}
+
 /// **Escreve o nome de cada porta na faixa que o cartão já reservou para ela.**
 pub(super) fn draw_port_labels(ctx: &mut PaintCtx, n: &GraphNodeView, view: &View, theme: Theme) {
     if view.zoom < PORT_LABEL_MIN_ZOOM {
@@ -160,11 +189,7 @@ pub(super) fn draw_port_labels(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
 
     // Uma SAÍDA rotulada reserva metade da largura; sem ela a entrada fica com o cartão todo.
     let labelled_outputs = n.outputs.len() > 1;
-    let in_max_w = if labelled_outputs {
-        w * 0.5 - pad
-    } else {
-        w - 2.0 * pad
-    };
+    let in_max_w = input_label_budget_px(n.outputs.len()) * view.zoom;
 
     for (i, p) in n.inputs.iter().enumerate() {
         let (_, cy) = socket_center(n, view, false, i);
@@ -188,8 +213,7 @@ pub(super) fn draw_port_labels(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
         let (_, cy) = socket_center(n, view, true, i);
         let label = PortLabel::of(p.name);
         // Alinhada à DIREITA por avanço médio — ver [`LABEL_CHAR_W`].
-        #[expect(clippy::cast_precision_loss, reason = "um rotulo tem < 24 bytes")]
-        let text_w = label.as_str().len() as f32 * LABEL_CHAR_W * view.zoom;
+        let text_w = label.approx_width_px() * view.zoom;
         paint_text_title(
             ctx.text_system,
             ctx.scene,

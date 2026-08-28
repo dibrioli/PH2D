@@ -451,3 +451,28 @@ que paga o relevo nas três em que dispara.
 
 ⚠️ **Preço:** `0,2`–`0,6 s` na densidade do botão e `3`–`12 s` na fina, sobre uma cadeia que
 o botão corre **duas** vezes. `PH2D_EXTRACT_FINISH=0` desliga.
+
+---
+
+## §12 — A pesquisa do ZBrush (pedida pelo Enio), e o que ela deu
+
+O **ZRemesher** (ZBrush) e o **QuadRemesher** (Exoside) são do **mesmo autor** (Maxime Rouca) e
+partilham o algoritmo; ele é **proprietário e fechado**, logo o que existe publicamente é o
+conjunto de *features*, não o método:
+
+| o que eles anunciam | o que isso é para nós |
+|---|---|
+| ⭐ **Adaptive Size** — quads menores onde a curvatura é alta | ⛔ **REFUTADO como o que nos separa** — ver §6: o oráculo é **uniforme** (`e ≈ 0` sobre `8×` de curvatura). É *feature de produto*, não correção |
+| **Target polygon count** em vez de aresta-alvo | conversão trivial sobre o que já temos |
+| **ZRemesher Guides** / densidade por *vertex paint* | autoria: curvas que orientam o campo. ⚠️ Precisa de UI e de o campo (F2) aceitar restrições direccionais — que é a **mesma maquinaria** da `SPEC_restricoes_por_eliminacao` |
+| auto-detecção de arestas vivas | já temos (`PH2D_FEATURE_EDGES`, e o bordo como feição desde 26/08) |
+
+⇒ **a pesquisa não entregou uma cura de qualidade** — entregou uma **fila de features de
+artista**, e a única que parecia técnica caiu por medição. ⚠️ *Uma manchete de produto não é
+uma descrição de algoritmo,* e a única forma de a testar era medir a saída de alguém.
+
+**Fontes:** [ZRemesher (Maxon docs)](https://help.maxon.net/zbr/en-us/Content/html/reference-guide/tool/polymesh/geometry/zremesher/zremesher.html) ·
+[Adaptive Size](https://help.maxon.net/zbr/en-us/Content/html/user-guide/3d-modeling/topology/zremesher/adaptive-size/adaptive-size.html) ·
+[QuadRemesher — user doc](https://www.exoside.com/quadremesherdata/QuadRemesher_1.3_UserDoc.pdf) ·
+[Exoside](https://exoside.com/) ·
+[State of the Art in Quad Meshing](https://www.researchgate.net/publication/279257597_State_of_the_Art_in_Quad_Meshing)

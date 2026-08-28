@@ -55,9 +55,14 @@ pub(super) fn duplicate_kind(
 /// ramo de MODELAGEM seleccionava a cópia, o VETORIAL deslocava-a um degrau de tela, e o genérico
 /// — sprites, grupos, instâncias e **receitas** — não fazia nem uma coisa nem outra. Duplicar
 /// deixava a cópia exactamente em cima da fonte (o gesto inteiro era um toast) e duplicar uma
-/// receita deixava-a **invisível**, porque uma cópia de mestre é outro mestre e um mestre só
-/// desenha enquanto está seleccionado. *Três ramos do mesmo `if` a responder três coisas à mesma
+/// receita deixava-a **invisível**. *Três ramos do mesmo `if` a responder três coisas à mesma
 /// pergunta.*
+///
+/// ⛔⛔ **E a 1.ª cura da invisibilidade era o SINTOMA:** seleccionar a cópia mostra-a **uma vez**,
+/// e o clique seguinte apaga-a outra vez — o Enio voltou a reportá-lo no mesmo dia. A causa era a
+/// cópia de uma receita ser uma segunda receita; hoje ela é um objeto comum
+/// ([`crate::instantiate::duplicate_subtree`]). *Curar o sintoma de um objeto invisível é
+/// mostrá-lo uma vez.*
 #[allow(clippy::too_many_arguments)] // o mundo, a câmara, a voz, os dois documentos e a saída
 pub(super) fn drain(
     src: ph2d_ecs::Entity,
@@ -128,6 +133,12 @@ pub(super) fn drain(
     // código que volte a chavear pelo nome amigável merece a mesma defesa.
     let sprite = sim.world().get::<ph2d_render::Sprite>(src).is_some();
     let recipe = sim.world().get::<ph2d_ecs::MasterRoot>(src).is_some();
+    // ⚠️ **A outra metade do report** (Enio, 2026-08-27): duplicar uma PEÇA de dentro de um
+    // componente deixa a cópia dentro dele — o que está certo (ela passou a fazer parte da
+    // receita) e some assim que o artista muda de selecção. Aqui o defeito não é o resultado,
+    // é o SILÊNCIO: um toast de sucesso sobre um objeto que não aparece lê-se como o mesmo
+    // bug. Lido ANTES da cópia, senão a resposta é sobre a cópia e não sobre onde ela cai.
+    let inside = !recipe && ph2d_ecs::master_root_of(sim.world(), src).is_some();
     let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene,
         vec_entities,
@@ -147,16 +158,19 @@ pub(super) fn drain(
         *duplicate_made = Some((entity_bits, copy.to_bits()));
     }
     // ⭐ A cópia fica seleccionada, como no ramo de MODELAGEM: é o que põe o gizmo em cima dela sem
-    // ninguém a ter de procurar — e, se a fonte era uma RECEITA, é também o que a torna visível.
+    // ninguém a ter de procurar. ⚠️ **Já não é isto que a torna visível** — ver o doc do dreno.
     hero.gizmo.replace_selection(Some(copy.to_bits()));
-    // ⚠️ **O toast NOMEIA a regra que a cópia herdou.** Sem isto o artista duplica uma receita, lê
-    // «Duplicated entity», e tem na tela um objecto que só existe enquanto a linha dele estiver
-    // escolhida — sem uma superfície que lho diga.
-    toasts.push(Toast::success(if recipe {
-        "Duplicated component — it shows while its row is selected"
+    // ⚠️ **O toast diz o que a cópia É** (report do Enio, 2026-08-27). A 1.ª versão anunciava a
+    // regra que a cópia herdava (*«it shows while its row is selected»*) — descrevia com exactidão
+    // um objeto que desaparece, em vez de o não produzir. Hoje a cópia de uma receita é um objeto
+    // comum, e o toast nomeia a diferença para o artista não a procurar na biblioteca.
+    toasts.push(if recipe {
+        Toast::success("Duplicated as a plain object — use Make Component for a second component")
+    } else if inside {
+        Toast::warning("Duplicated inside the component — it shows while the component is selected")
     } else {
-        "Duplicated entity"
-    }));
+        Toast::success("Duplicated entity")
+    });
     true
 }
 

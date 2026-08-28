@@ -391,22 +391,44 @@ fn duplicating_an_instance_keeps_it_an_instance_of_the_same_master() {
     );
 }
 
-/// ⚠️ **Duplicar um MESTRE dá outro mestre — e as peças dele nascem INERTES no mesmo quadro.**
+/// ⭐⭐⭐ **Duplicar uma RECEITA dá um objeto COMUM, que se VÊ** (report do Enio, 2026-08-27:
+/// *«a duplicata está ficando invisível como o componente»*).
 ///
-/// Sem o `assign_master_pieces` na porta, a receita copiada simularia até ao próximo passe da
-/// ponte: um ragdoll da biblioteca a cair meio metro e a parar.
+/// ⛔⛔ **Este gate afirmava o contrário** (*«duplicar um mestre dá outro mestre»*) e estava verde
+/// sobre o report: ele media a MARCA que escolheu — `MasterRoot` na cópia, `MasterPiece` nas peças
+/// — e a marca ganhou um segundo consumidor em 2026-08-26 (os PIXELS, `render_loop::off_canvas`)
+/// sem ninguém re-perguntar o que ele ainda media. *Um gate sobre a marca fica verde quando a
+/// premissa da marca é falsa.*
+///
+/// ⚠️ **A régua agora é o FIM** — `is_off_canvas` com **nada seleccionado**, que é o estado em que
+/// o artista fica um segundo depois do gesto. A 1.ª cura (seleccionar a cópia) mostrava-a uma vez
+/// e não passa aqui.
+///
+/// (Mutação: tirar o `remove::<MasterRoot>()` do `duplicate_subtree` ⇒ RED na cópia e na peça.)
 #[test]
-fn duplicating_a_master_gives_a_master_whose_pieces_are_already_inert() {
+fn duplicating_a_master_gives_a_plain_object_that_is_on_the_canvas() {
     let mut sim = SimWorld::new();
     let r = reg();
     let master = spawn_master(&mut sim);
     let copy = duplicate(&mut sim, &r, master).expect("duplicado");
-    assert!(sim.world().get::<MasterRoot>(copy).is_some());
+    // Ninguém está a editar receita nenhuma — o estado normal.
+    crate::render_loop::master_editing::mark(&mut sim, None::<u64>);
+    for (what, e) in [("a copia", copy), ("a peca dela", piece(&sim, copy, "Arm"))] {
+        assert!(
+            !crate::render_loop::off_canvas::is_off_canvas(sim.world(), e),
+            "{what} nasceu fora da tela — o artista duplica e o objeto desaparece assim que \
+             ele clica noutro sitio"
+        );
+    }
     assert!(
-        sim.world()
-            .get::<MasterPiece>(piece(&sim, copy, "Arm"))
-            .is_some(),
-        "a peca da receita copiada nao esta' marcada — ela simularia"
+        sim.world().get::<MasterRoot>(copy).is_none(),
+        "a copia ficou a ser uma segunda receita"
+    );
+    // ⚠️ **Controlo POSITIVO: a receita ORIGINAL continua fora da tela.** Sem ele, um
+    // `is_off_canvas` que devolvesse sempre `false` passaria nas duas asserções acima.
+    assert!(
+        crate::render_loop::off_canvas::is_off_canvas(sim.world(), master),
+        "a receita original tambem esta' na tela — a regua nao mede nada"
     );
 }
 

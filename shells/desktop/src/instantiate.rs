@@ -179,9 +179,26 @@ fn is_self_or_descendant(sim: &SimWorld, candidate: Entity, root: Entity) -> boo
 /// O ADR-0164 nomeia esse defeito; ele existia porque copiar bytes de tipos que a shell não conhece
 /// não tinha porta, e agora tem.
 ///
-/// ⚠️ **Uma cópia de um MESTRE é outro mestre** (o `MasterRoot` viaja no blob), e uma cópia de uma
-/// INSTÂNCIA é outra instância do mesmo mestre (o elo aponta para fora do que se copiou, e por isso
-/// o remap não lhe toca). As duas são o que o artista espera de *Duplicar*.
+/// ⭐⭐⭐ **A cópia de uma RECEITA é um objeto COMUM, e não uma segunda receita** (report do Enio,
+/// 2026-08-27: *«a duplicata está ficando invisível como o componente»*).
+///
+/// ⛔⛔ **A lei anterior — *«uma cópia de um mestre é outro mestre»*, com o `MasterRoot` a viajar no
+/// blob — foi escrita quando um mestre DESENHAVA.** Desde a F4.6 ele só está na tela enquanto a
+/// linha dele está escolhida, então *Duplicate* numa receita devolvia um objeto que **desaparece
+/// assim que o artista clica noutro sítio**, com um toast de sucesso por cima. A auditoria de
+/// 2026-08-27 apanhou-o (§1.2); a 1.ª cura foi **selecionar** a cópia — o que a mostra e não a
+/// resolve, porque a selecção seguinte apaga-a outra vez. *Curar o sintoma de um objeto invisível
+/// é mostrá-lo uma vez.*
+///
+/// ⛔ **E não havia gesto que o desfizesse:** o `Make` recusa com `AlreadyAMaster`, o `Detach` exige
+/// `InstanceOf`. A cópia era um fantasma sem cura por verbo — só Ctrl+Z ou Delete.
+///
+/// ⇒ *Duplicar* promete, em toda a app, **outro destes, ali**. Quem quer uma segunda receita faz
+/// *Duplicate* e depois *Make Component* — dois gestos, os dois visíveis.
+///
+/// ⚠️ **Uma cópia de uma INSTÂNCIA continua a ser outra instância** do mesmo mestre: o elo aponta
+/// para fora do que se copiou, e por isso o remap não lhe toca. Ela desenha, logo não tem o
+/// problema — *e é a razão de a cura ser sobre o `MasterRoot`, e não sobre «duplicar»*.
 ///
 /// ⚠️⚠️ **`step` é um degrau de MUNDO derivado da tela**, e ele existe porque a cópia aterrava
 /// **exactamente em cima da fonte** (auditoria §1.4, 2026-08-27): o ramo VETORIAL do mesmo `if`
@@ -213,6 +230,10 @@ pub(crate) fn duplicate_subtree(
     // dentro devolve as peças sem geometria (F4.6).
     crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy).warn("duplicar");
     crate::instance_refs::remap_object_refs(sim.world_mut(), &copy.copies(), &copy.stable_ids);
+
+    // ⭐⭐⭐ **A cópia não é uma receita** — ver o doc. É a mesma linha que o `instantiate_master`
+    // já dava à instância, e pela mesma razão: com o marcador ela nasce fora da cena.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
 
     let unique = crate::name_unique::unique_name(sim, &base);
     sim.world_mut()

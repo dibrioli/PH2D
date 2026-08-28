@@ -57,8 +57,19 @@ pub(crate) fn draw(
         let n = layout.as_slice().len();
         quadros[..n].copy_from_slice(layout.as_slice());
         crate::field3d_smoke::ensure_viewports(smoke, n);
-        for (i, r) in quadros[..n].iter().copied().enumerate() {
-            viewport_pass(smoke, i, r, &doc, scene_out);
+        // ⭐⭐⭐ **A ACTIVA PASSA PRIMEIRO** (W90c), e a ordem é a lei — não uma preferência.
+        //
+        // ⛔ A guarda de prioridade dentro do passe pergunta *«a activa tem traçado em voo?»*, e
+        // numa ordem natural (`0..n`) as vistas que correm **antes** dela escapam-lhe no primeiro
+        // tique: naquele instante a activa ainda não começou, então a resposta é «não». *Uma
+        // prioridade que depende de quem chega primeiro não é uma prioridade* — e foi o gate
+        // `the_active_viewport_gets_its_image_first` que o disse, com as duas a empatar no tique 2.
+        //
+        // ⚠️ A ordem de PINTURA é indiferente: os retângulos não se sobrepõem (é o que o gate
+        // `the_four_pieces_tile_the_area_exactly` garante).
+        let activa = smoke.active.min(n - 1);
+        for i in std::iter::once(activa).chain((0..n).filter(|k| *k != activa)) {
+            viewport_pass(smoke, i, quadros[i], &doc, scene_out);
         }
         // ⭐⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** (W90) — por cima das imagens e por baixo do
         // gizmo, que é onde uma moldura de janela vive.
@@ -290,7 +301,31 @@ fn viewport_pass(
         job.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
         smoke.vps[i].inflight = None;
     }
-    if let (None, Some((tw, th, coarse))) = (&smoke.vps[i].inflight, ask) {
+    // ⭐⭐⭐ **A VISTA ACTIVA TEM PRIORIDADE** (W90c) — e o número que a exige está medido.
+    //
+    // Quatro traçados a correr ao mesmo tempo **não ganham nada** por serem quatro: cada um já
+    // satura a máquina com o `rayon`, então eles só se fatiam. Medido a `load 1,7`
+    // (`the_price_of_four_views.rs`, uma edição a `1280×720`):
+    //
+    // | | ms |
+    // |---|---:|
+    // | uma vista, área inteira | `156,2` |
+    // | uma vista, um quarto | `64,5` |
+    // | **quatro ao mesmo tempo** | **`253,7`** (`3,93×` uma sozinha) |
+    //
+    // ⇒ sem esta guarda, a vista onde a mão do artista está espera pelas **outras três**: `254 ms`
+    // em vez de `64`. *Trabalho total igual, latência percebida `3,9×` pior — e a fatia que importa
+    // é sempre a mesma.*
+    //
+    // ⚠️ **Não há fome:** as vistas nomeadas são estáticas, então elas só têm trabalho quando o
+    // DOCUMENTO muda — e nesse instante a activa também tem, e acaba primeiro. O caso em que elas
+    // esperariam muito (a mão a orbitar **enquanto** o documento muda a cada quadro) é o caso em que
+    // o que elas mostrariam já estaria velho.
+    let activa_em_voo = i != smoke.active.min(smoke.vps.len() - 1)
+        && smoke.vps[smoke.active.min(smoke.vps.len() - 1)]
+            .inflight
+            .is_some();
+    if let (None, false, Some((tw, th, coarse))) = (&smoke.vps[i].inflight, activa_em_voo, ask) {
         // ⚠️ **O comparado é o documento REAL.** Guardar aqui o engrossado faria a cena parecer
         // mudada em toda alternância entre grosso e fino, e o laço re-traçaria para sempre.
         smoke.vps[i].requested = Some((smoke.vps[i].cam, tw, th, doc.clone(), coarse));

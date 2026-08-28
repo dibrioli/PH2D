@@ -281,3 +281,84 @@ fn every_still_viewport_settles_not_only_the_active_one() {
         crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
     });
 }
+
+/// ⭐⭐⭐ **A VISTA ACTIVA CHEGA PRIMEIRO** (W90c) — a prioridade que o relógio exigiu.
+///
+/// # O número que a manda existir
+///
+/// `the_price_of_four_views.rs`, máquina calma, uma edição a `1280×720`: uma vista de área inteira
+/// custa `156,2 ms`, uma de um quarto `64,5`, e **quatro ao mesmo tempo `253,7`** — `3,93×` uma
+/// sozinha. ⇒ elas **não ganham nada** por correrem juntas (cada uma já satura a máquina com o
+/// `rayon`, então só se fatiam), e sem prioridade a vista onde a mão do artista está espera pelas
+/// outras três: `254 ms` em vez de `64`.
+///
+/// ⚠️ **A afirmação é de ORDEM, não de relógio** — e é por isso que ela não é um gate de tempo
+/// (aqueles reprovam sob fan-out sem nada mudar). Com a guarda, uma vista não-activa **nem começa**
+/// enquanto a activa tem traçado em voo ⇒ a imagem da activa aparece pelo menos um quadro antes de
+/// qualquer outra, por construção.
+#[test]
+fn the_active_viewport_gets_its_image_first() {
+    use crate::field3d_scene::lasso_tests::{AREA, armed_with};
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.4, 0.3, 0.2],
+                round: 0.05,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a peça");
+    armed_with(&doc, |_| {
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
+        // ⚠️ **Do FRIO**: nenhuma vista tem imagem, que é o instante em que a ordem se decide.
+        crate::field3d_smoke::with_smoke(|s| {
+            for v in &mut s.vps {
+                v.probe_forget_frame();
+            }
+        });
+        let mut primeiro = [usize::MAX; 4];
+        for tick in 0..600 {
+            let mut scene = ph2d_vector::VectorScene::new();
+            crate::field3d_smoke::draw(AREA, ph2d_tokens::Theme::default(), &mut text, &mut scene);
+            let tem = crate::field3d_smoke::with_smoke(|s| {
+                let mut t = [false; 4];
+                for (i, v) in s.vps.iter().enumerate() {
+                    t[i] = v.probe_has_frame();
+                }
+                t
+            })
+            .unwrap_or([false; 4]);
+            for i in 0..4 {
+                if tem[i] && primeiro[i] == usize::MAX {
+                    primeiro[i] = tick;
+                }
+            }
+            if primeiro.iter().all(|t| *t != usize::MAX) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        let activa = crate::field3d_smoke::with_smoke(|s| s.active).expect("armado");
+        assert!(
+            primeiro.iter().all(|t| *t != usize::MAX),
+            "nem todas as vistas chegaram a ter imagem: {primeiro:?}"
+        );
+        for i in 0..4 {
+            if i == activa {
+                continue;
+            }
+            assert!(
+                primeiro[activa] < primeiro[i],
+                "a vista {i} recebeu imagem no tique {} e a ACTIVA ({activa}) só no {} — sem \
+                 prioridade a vista onde a mão está espera pelas outras três (254 ms contra 64)",
+                primeiro[i],
+                primeiro[activa]
+            );
+        }
+        crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
+    });
+}

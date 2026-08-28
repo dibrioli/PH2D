@@ -106,6 +106,23 @@ impl Viewport {
     ///
     /// *A pergunta vive onde os dados vivem* — abrir os campos ao resto do shell só para um teste
     /// os poder ler seria pagar em encapsulamento o que uma função de três linhas resolve.
+    /// ⚠️ **Só para o gate**: volta ao estado de *«ainda não tracei nada»*, para que a ORDEM em que
+    /// as vistas recebem a primeira imagem possa ser observada do frio.
+    #[cfg(test)]
+    #[doc(hidden)]
+    pub(crate) fn probe_forget_frame(&mut self) {
+        self.frame = None;
+        self.requested = None;
+        self.inflight = None;
+    }
+
+    /// ⚠️ **Só para o gate**: esta vista já tem uma imagem na tela?
+    #[cfg(test)]
+    #[doc(hidden)]
+    pub(crate) fn probe_has_frame(&self) -> bool {
+        self.frame.is_some()
+    }
+
     // ⚠️ `cfg(test)` porque ela é uma sonda **de teste** numa crate binária: sem isto o build do
     // produto carrega um método que ninguém chama, e o aviso está certo.
     #[cfg(test)]

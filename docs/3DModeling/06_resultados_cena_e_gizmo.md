@@ -5750,7 +5750,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
 | ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
 | ⏳ O **cabeçalho** por viewport — e é ele que destrava o divisor arrastável | a divisão em `N` livre pede uma pega, e uma pega pede onde viver | §92.7 |
-| ⏳ O custo de uma EDIÇÃO com a divisão aberta (quatro traçados a disparar juntos) | inerente à divisão (o Blender faz o mesmo), **por medir** | §92.7 |
+| ✅⭐⭐ **O custo de uma EDIÇÃO com a divisão aberta** — medido: quatro juntas custam `3,93×` uma (elas só se fatiam) | ⭐ curado por **ORDEM**: a activa tem prioridade e chega em `64 ms` em vez de `254` | §92.9 |
 | ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
@@ -8342,6 +8342,42 @@ convergir, que é o próprio sintoma.
 
 ⭐ A pergunta é feita por `Viewport::probe_resting_state`, e não abrindo os campos: *a pergunta vive
 onde os dados vivem.*
+
+### §92.9 — ⭐⭐⭐ W90c: quatro traçados juntos não ganham NADA, e a activa passa a ter prioridade
+
+O item que a §92.7 deixou *«por medir»*. `the_price_of_four_views.rs`, máquina calma (`load 1,7`),
+uma **edição** a `1280×720` (a cache de fitas é inútil de propósito: o documento mudou, nenhuma fita
+antiga serve):
+
+| | ms | |
+|---|---:|---|
+| uma vista, área inteira `1280×720` | `156,2` | |
+| uma vista, um quarto `640×360` | `64,5` | `0,41×` do inteiro |
+| **quatro ao mesmo tempo** | **`253,7`** | `1,62×` do inteiro · **`3,93×` uma sozinha** |
+
+⭐⭐ **`3,93×` de quatro é o mesmo que somá-las:** cada traçado já satura a máquina com o `rayon`, então
+correr quatro só os **fatia**. *Não há paralelismo por colher — ele já foi colhido dentro de cada um.*
+
+⭐ E o trabalho total sobe `1,65×` para os **mesmos pixels** (`258` contra `156`): é o custo **fixo**
+de um traçado — a re-amostragem do contorno, a montagem das fitas — pago quatro vezes. Ele não
+encolhe com a área.
+
+⇒ **A cura não é acelerar, é ORDENAR.** Uma vista não-activa não começa um traçado enquanto a activa
+tiver um em voo: o trabalho total é o mesmo e a vista onde a mão do artista está chega em `64 ms` em
+vez de `254`. *Latência percebida `3,9×` melhor, sem uma linha de algoritmo.*
+
+⚠️ **Não há fome:** as vistas nomeadas são estáticas, então só têm trabalho quando o **documento**
+muda — e nesse instante a activa também tem, e acaba primeiro.
+
+⛔ **E o gate apanhou um defeito na minha própria guarda:** ela pergunta *«a activa tem traçado em
+voo?»*, e numa ordem natural (`0..n`) as vistas que correm **antes** dela escapam-lhe no primeiro
+tique — naquele instante a activa ainda não começou. *Uma prioridade que depende de quem chega
+primeiro não é uma prioridade.* ⇒ a activa passa a ser **a primeira do laço**, e a ordem de pintura é
+indiferente porque os retângulos não se sobrepõem.
+
+Gate: `the_active_viewport_gets_its_image_first` — uma afirmação de **ORDEM**, nunca de relógio (do
+frio, a imagem da activa aparece pelo menos um quadro antes de qualquer outra, por construção).
+Mutação (desligar a guarda): ✗.
 
 ### §92.7 — ⏳ O que fica aberto
 

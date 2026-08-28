@@ -328,3 +328,61 @@ no §2 e não aqui.*
   por face** (ela vem de `ph2d_mesh::principal_dirs` sem suavização de vizinhança).
 - **`sculpt_hooked` grossa:** o `fid máx` sobe de `6,25 %` para `7,61 %` (um vértice; o `p95`
   fica em `0,27 %`) e as dobras de `2` para `3`.
+
+---
+
+## §10 — As TRÊS correcções que o próprio produto impôs à lei, cada uma com a medição
+
+A lei do §7 estava certa sobre o mecanismo e **errada três vezes sobre a forma**. Cada erro
+foi apanhado por medir através da porta, e cada um é uma armadilha reutilizável.
+
+### §10.1 — ⛔ O limiar de paragem foi calibrado no programa errado
+
+`EXTRACT_SETTLE` saiu de uma varredura da relaxação **sozinha** (`1e-2` ⇒ 93 rondas,
+`7,8° → 4,5°`). Na porta ela corre **depois** do Laplaciano, e a mesma fracção deu **23
+rondas** e `7,8° → 6,8°`. *O passo anterior pré-condiciona a malha, o movimento começa menor,
+e o mesmo limiar relativo chega muito mais cedo.* ⇒ o valor que shipa (`1e-3`) está medido
+**através da porta**, e a forma aberta (`finish_extracted_with`) existe para que a varredura
+não possa voltar a medir outro programa.
+
+### §10.2 — ⛔⛔ A comparação de Pareto contra a MELHOR ronda é uma catraca
+
+A relaxação **mergulha antes de subir**: as primeiras rondas melhoram uma coluna e pioram
+outra. Comparando cada ronda com a **melhor até então**, bastava uma ronda inicial ganhar
+numa coluna para nenhuma das seguintes conseguir dominá-la — e a corrida entregava a ronda
+zero. Medido: com a catraca, **as quatro peças na densidade fina saíam intocadas**
+(`ficou a 0`, `128` rondas = a paciência).
+
+⭐ A cura é comparar a aceitação com a **ronda zero** e escolher, entre as aceitáveis, pela
+mediana. A garantia fica mais simples de dizer — *o que sai nunca é pior que o que shipava em
+nenhuma das três colunas* — e o mergulho deixa de a cegar.
+
+### §10.3 — ⭐⭐⭐ Há peças em que a lei alinhada não tem nada a dizer, e a cega tem
+
+Mesmo com a aceitação corrigida, há peças em que a relaxação **alinhada** piora uma coluna
+logo à primeira ronda e nunca é aceite. A porta passa então a vez à lei **cega** — e só
+então, o que garante que onde o relevo estava em jogo ele fica guardado.
+
+⚠️ **O preço está medido e é o relevo** (`17,7° → 19,3°` no gancho fino). ⭐ A troca faz-se
+com os números na mão: o oráculo entrega `13,3°` naquela peça — *já estamos atrás dessa
+coluna com ou sem isto* — e as três colunas que a barra dele nomeia são onde a troca nos põe
+à frente.
+
+### §10.4 — ⛔ E uma cura CONSTRUÍDA que não foi adoptada: suavizar o campo de direções
+
+A hipótese era que a direção principal **por face** é ruidosa. ⭐ Construiu-se a suavização
+4-RoSy (`ph2d_quadfill::quality::smooth_hint`, com a rotação de quarto de volta que impede
+duas vizinhas alinhadas de se cancelarem) e mediu-se:
+
+| onde a suavização corre | `wrinkled` fina | `hooked` grossa |
+|---|---|---|
+| **nenhuma** | não se mexia | `7,7° → 4,3°` · aspecto `1,09` · relevo `14,6°` |
+| ⛔ nas faces da **SAÍDA** (8 rondas) | ⭐ `5,2° → 2,6°`, `p99 15,0°` | ⛔ `7,7° → 5,8°` · aspecto `1,13` · **1** face `>4×` · relevo `18,6°` |
+| na **superfície** (8 rondas) | — | — |
+
+⛔ **Um raio contado em VIZINHOS é um raio em unidades de mundo diferentes em cada
+densidade** — foi por isso que ela ajudava a malha fina e estragava a grossa. Mudá-la para a
+superfície corrige o domínio, e a medição seguinte mostrou que ela **deixou de ser
+necessária**: com a aceitação do §10.2 a densidade fina passa a melhorar sem suavização
+nenhuma. ⇒ `HINT_SMOOTH_ROUNDS = 0`, **o código fica vivo e testado, e a medição é o
+resultado**.

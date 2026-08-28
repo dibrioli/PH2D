@@ -287,6 +287,18 @@ fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
     [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1].mul_add(b[2], -(a[2] * b[1])),
+        a[2].mul_add(b[0], -(a[0] * b[2])),
+        a[0].mul_add(b[1], -(a[1] * b[0])),
+    ]
+}
+
 fn norm(a: [f32; 3]) -> f32 {
     a[0].mul_add(a[0], a[1].mul_add(a[1], a[2] * a[2])).sqrt()
 }
@@ -324,12 +336,41 @@ pub struct Hint {
     pub weight: f32,
 }
 
-/// Amostra [`Hint`] no centróide de cada face de `out`. ⚠️ **Uma vez, não por ronda:** o
-/// campo de direções é liso e o acabamento move os vértices uma fração de aresta, então
-/// re-amostrar por ronda pagaria a busca `N` vezes para mudar o alvo quase nada.
+/// ⭐⭐⭐ **QUANTAS RONDAS DE SUAVIZAÇÃO O CAMPO DE DIREÇÕES LEVA** — ver [`smooth_hint`].
+///
+/// ⛔⛔ **O número existe porque a direção principal por FACE é ruidosa, e o ruído tinha
+/// preço medido** (2026-08-28): na `sculpt_wrinkled` fina o acabamento alinhado **não batia
+/// a ronda zero**; com o campo suavizado ele leva o enviesamento de `5,2°` a `2,6°`, o `p99`
+/// de `35,5°` a `15,0°` e **deixa o relevo exactamente onde estava** (`11,8°`).
+///
+/// ⛔⛔⛔ **E as rondas correm na SUPERFÍCIE, nunca na malha de saída — a 1.ª versão fazia-o
+/// na saída e o raio da suavização passava a depender da DENSIDADE pedida.** Medido: `8`
+/// rondas sobre as faces da saída melhoravam a densidade fina e **estragavam a grossa** (no
+/// gancho grosso o enviesamento ia de `4,3°` para `5,8°`, o aspecto de `1,09` para `1,13`,
+/// nascia uma face acima de `4×` e o relevo caía de `14,6°` para `18,6°`). *Um raio contado
+/// em vizinhos é um raio em unidades de mundo diferentes em cada densidade.*
+pub const HINT_SMOOTH_ROUNDS: usize = 0;
+
+/// Amostra [`Hint`] no centróide de cada face de `out`, e **suaviza-o** — ver
+/// [`HINT_SMOOTH_ROUNDS`]. ⚠️ **Uma vez, não por ronda:** o campo de direções é liso (depois
+/// desta suavização) e o acabamento move os vértices uma fração de aresta, então re-amostrar
+/// por ronda pagaria a busca `N` vezes para mudar o alvo quase nada.
 #[must_use]
 pub fn surface_hint(surface: &Mesh, out: &Mesh) -> Vec<Hint> {
-    let dirs = ph2d_mesh::principal_dirs(surface);
+    let mut dirs: Vec<Hint> = ph2d_mesh::principal_dirs(surface)
+        .into_iter()
+        .map(|d| Hint {
+            dir: d.dir,
+            weight: d.anisotropy,
+        })
+        .collect();
+    // ⭐⭐⭐ **Suaviza NA SUPERFÍCIE, nunca na saída** — ver [`smooth_hint`].
+    smooth_hint(surface, &mut dirs, HINT_SMOOTH_ROUNDS);
+    sample_hint(surface, out, &dirs)
+}
+
+/// A amostragem — a metade que leva o campo da superfície às faces da saída.
+fn sample_hint(surface: &Mesh, out: &Mesh, dirs: &[Hint]) -> Vec<Hint> {
     let rb = surface.bounds();
     let seed = norm(sub(rb.max, rb.min)) * 0.02;
     let pos = out.positions();
@@ -341,13 +382,125 @@ pub fn surface_hint(surface: &Mesh, out: &Mesh) -> Vec<Hint> {
             let Some(rf) = nearest_face(surface, c, seed, &mut hits) else {
                 return Hint::default();
             };
-            let pd = dirs[rf];
-            Hint {
-                dir: pd.dir,
-                weight: pd.anisotropy,
-            }
+            dirs.get(rf).copied().unwrap_or_default()
         })
         .collect()
+}
+
+/// ⭐⭐⭐ **SUAVIZA O CAMPO DE DIREÇÕES, respeitando a simetria de 4 VOLTAS.**
+///
+/// Cada face troca com as vizinhas por vértice. ⚠️ **Uma média vectorial simples destruiria
+/// o campo:** duas faces vizinhas podem estar alinhadas e ter representantes a `90°` um do
+/// outro, e a soma deles é **zero**. ⭐ A lei é a da família 4-RoSy: leva-se a direção da
+/// vizinha ao plano da face central, escolhe-se entre as **quatro** rotações a que fica mais
+/// perto do representante de lá, e só então se soma — pesado pela confiança de cada uma.
+///
+/// ⚠️ **A confiança também se espalha**, e é isso que dá alvo a uma face que caiu numa zona
+/// isotrópica ao lado de uma anisotrópica. Sem isso a suavização mudava a direção e deixava
+/// o peso a zero, que é uma direção que ninguém usa.
+pub(crate) fn smooth_hint(mesh: &Mesh, hint: &mut [Hint], rounds: usize) {
+    if rounds == 0 || hint.is_empty() {
+        return;
+    }
+    let pos = mesh.positions();
+    let faces = mesh.faces();
+    let adj = mesh.adjacency();
+    let normals: Vec<[f32; 3]> = faces
+        .iter()
+        .map(|f| {
+            let n = face_normal(pos, f.verts());
+            let l = norm(n).max(1.0e-20);
+            [n[0] / l, n[1] / l, n[2] / l]
+        })
+        .collect();
+    // Vizinhas por vértice, uma vez.
+    let mut ring: Vec<Vec<u32>> = vec![Vec::new(); faces.len()];
+    for (fi, f) in faces.iter().enumerate() {
+        for &v in f.verts() {
+            for &g in adj.vert_faces.neighbours(v as usize) {
+                if g as usize != fi && !ring[fi].contains(&g) {
+                    ring[fi].push(g);
+                }
+            }
+        }
+    }
+    let mut next = hint.to_vec();
+    for _ in 0..rounds {
+        for fi in 0..faces.len() {
+            let n = normals[fi];
+            let c = hint[fi];
+            // A base do plano da face: o representante actual, ou uma aresta se ele for nulo.
+            let seed = if c.weight > 0.0 { c.dir } else { tangent_of(pos, faces[fi].verts()) };
+            let e1 = {
+                let along = dot(seed, n);
+                let t = [
+                    along.mul_add(-n[0], seed[0]),
+                    along.mul_add(-n[1], seed[1]),
+                    along.mul_add(-n[2], seed[2]),
+                ];
+                let l = norm(t);
+                if l < 1.0e-12 {
+                    next[fi] = c;
+                    continue;
+                }
+                [t[0] / l, t[1] / l, t[2] / l]
+            };
+            let e2 = cross(n, e1);
+            let (mut ax, mut ay, mut w) = (c.weight, 0.0f32, c.weight);
+            for &g in &ring[fi] {
+                let h = hint[g as usize];
+                if h.weight <= 0.0 {
+                    continue;
+                }
+                let along = dot(h.dir, n);
+                let t = [
+                    along.mul_add(-n[0], h.dir[0]),
+                    along.mul_add(-n[1], h.dir[1]),
+                    along.mul_add(-n[2], h.dir[2]),
+                ];
+                let l = norm(t);
+                if l < 1.0e-9 {
+                    continue;
+                }
+                let (mut x, mut y) = (dot(t, e1) / l, dot(t, e2) / l);
+                // ⭐ A rotação de 4-RoSy mais próxima de `(1, 0)`: leva `(x, y)` ao sector
+                // `[-45°, 45°]` por quartos de volta, que é `(x, y) -> (y, -x)`.
+                for _ in 0..3 {
+                    if x >= y.abs() {
+                        break;
+                    }
+                    let (nx, ny) = (y, -x);
+                    x = nx;
+                    y = ny;
+                }
+                ax = h.weight.mul_add(x, ax);
+                ay = h.weight.mul_add(y, ay);
+                w += h.weight;
+            }
+            let l = ax.hypot(ay);
+            if l < 1.0e-12 || w <= 0.0 {
+                next[fi] = c;
+                continue;
+            }
+            let (ux, uy) = (ax / l, ay / l);
+            #[allow(clippy::cast_precision_loss)]
+            let count = (ring[fi].len() + 1) as f32;
+            next[fi] = Hint {
+                dir: [
+                    uy.mul_add(e2[0], ux * e1[0]),
+                    uy.mul_add(e2[1], ux * e1[1]),
+                    uy.mul_add(e2[2], ux * e1[2]),
+                ],
+                weight: w / count,
+            };
+        }
+        hint.copy_from_slice(&next);
+    }
+}
+
+/// Uma direção qualquer no plano de uma face — a semente de quem não tem representante.
+fn tangent_of(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
+    sub(pos[v[1 % v.len()] as usize], pos[v[0] as usize])
 }
 
 /// A normal de uma face, pelo primeiro triângulo dela.

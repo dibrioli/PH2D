@@ -110,6 +110,9 @@ pub struct FinishReport {
     pub before: QuadShape,
     /// A forma que sai.
     pub after: QuadShape,
+    /// ⭐ **A saída veio da lei CEGA** — a alinhada não conseguiu mexer-se. Ver
+    /// [`finish_extracted`].
+    pub blind: bool,
 }
 
 /// ⭐⭐⭐ **DESISTIR: a janela conta da MELHOR ronda, nunca do início.**
@@ -131,29 +134,36 @@ fn give_up(round: usize, kept: usize) -> bool {
 /// `1e-6` conta como melhoria e a corrida nunca desiste.
 const SAME: f32 = 1.0e-3;
 
-/// ⭐⭐⭐ **A COMPARAÇÃO É DE PARETO nas três colunas que a barra do oráculo nomeia** —
-/// faces péssimas, enviesamento mediano e aspecto mediano.
+/// ⭐⭐⭐ **A RONDA É ACEITÁVEL se não for pior que a RONDA ZERO em nenhuma das três
+/// colunas que a barra do oráculo nomeia** — faces péssimas, enviesamento mediano e aspecto
+/// mediano.
 ///
-/// Uma ronda ganha quando **não é pior em nenhuma** e é **estritamente melhor em pelo
-/// menos uma**. ⚠️ *Não há peso nenhum aqui, de propósito:* as três grandezas não têm
-/// unidade comum, e somá-las seria uma opinião com números por cima.
+/// ⚠️ **Contra a ronda ZERO, nunca contra a melhor até agora.** ⛔⛔ A 1.ª redacção
+/// comparava com a melhor e isso é um **catraca**: a relaxação mergulha antes de subir, e
+/// bastava uma ronda inicial melhorar uma coluna e piorar outra para todas as seguintes
+/// ficarem sem forma de a dominar. Medido em 2026-08-28: na densidade fina a corrida
+/// entregava a ronda zero em **todas** as peças do corpus, enquanto a mesma lei com esta
+/// aceitação chega a `1,04 / 2,0° / p99 22,8` numa peça em que a ronda zero dá
+/// `1,11 / 6,5° / p99 33,0`. *Uma ordem parcial usada como catraca não é conservadora: é
+/// cega ao que vem depois do mergulho.*
 ///
-/// ⛔⛔ **A 1.ª redacção era lexicográfica `(faces péssimas, mediana)` e recusava melhorias
-/// REAIS** (medido 2026-08-28): numa esfera-UV crua a relaxação leva o aspecto de `1,384`
-/// para `1,251` e mexe a mediana em `+0,2°` — a ordem lexicográfica lia isso como «pior» e
-/// a corrida entregava a ronda zero. *Uma ordem total obriga a escolher uma coluna
-/// vencedora; a de Pareto só recusa o que é pior em alguma.*
+/// ⭐ A garantia fica a mesma e mais simples de dizer: **o que sai nunca é pior que o que
+/// shipava em nenhuma das três.**
+fn acceptable(s: &QuadShape, base: &QuadShape) -> bool {
+    s.skew_over_60 <= base.skew_over_60
+        && s.skew_p50 <= base.skew_p50 + SAME
+        && s.aspect_p50 <= base.aspect_p50 + SAME
+}
+
+/// ⭐ **Entre as aceitáveis, decide o ENVIESAMENTO MEDIANO** — a coluna que o artista
+/// fotografa e a manchete da barra do oráculo —, com o aspecto a desempatar.
 ///
-/// ⭐ E a garantia sai mais FORTE: como a melhor ronda é uma cadeia de melhorias de Pareto
-/// a partir da ronda zero, a saída **nunca é pior que ela em nenhuma das três**.
+/// ⚠️ *Não há peso nenhum aqui:* a aceitação já garantiu que nenhuma coluna anda para trás,
+/// então esta escolha não pode trocar uma coisa por outra. Somar as três seria uma opinião
+/// com números por cima.
 fn better(a: &QuadShape, b: &QuadShape) -> bool {
-    let no_worse = a.skew_over_60 <= b.skew_over_60
-        && a.skew_p50 <= b.skew_p50 + SAME
-        && a.aspect_p50 <= b.aspect_p50 + SAME;
-    let strictly = a.skew_over_60 < b.skew_over_60
-        || a.skew_p50 < b.skew_p50 - SAME
-        || a.aspect_p50 < b.aspect_p50 - SAME;
-    no_worse && strictly
+    a.skew_p50 < b.skew_p50 - SAME
+        || ((a.skew_p50 - b.skew_p50).abs() <= SAME && a.aspect_p50 < b.aspect_p50 - SAME)
 }
 
 fn median_edge(mesh: &Mesh) -> f32 {
@@ -177,7 +187,53 @@ fn median_edge(mesh: &Mesh) -> f32 {
 /// *Reprojectar sobre a remalhada somaria os dois erros* — a mesma lei que o
 /// [`crate::fill`] escreve com o defeito de 2026-08-21 ao lado.
 pub fn finish_extracted(mesh: &mut Mesh, surface: &Mesh) -> FinishReport {
-    finish_extracted_with(mesh, surface, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE)
+    // ── A lei ALINHADA primeiro: onde ela se mexe, o relevo fica guardado.
+    let mut aligned = mesh.clone();
+    let ra = finish_extracted_with(&mut aligned, surface, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE);
+    if ra.kept > 0 {
+        *mesh = aligned;
+        return ra;
+    }
+    // ── ⭐⭐⭐ **E SE ELA NÃO CONSEGUIU MEXER-SE, A CEGA TEM A SUA VEZ.**
+    //
+    // ⛔⛔ **Medido 2026-08-28, e é a razão de isto existir:** na densidade FINA a lei
+    // alinhada não bate a ronda zero em peça nenhuma do corpus — a relaxação sobe uma das
+    // três colunas logo à primeira ronda e a comparação recusa-a para sempre. A mesma peça,
+    // com o alinhamento desligado, vai de `1,11 / 6,5° / p99 33,0 / >60 1` para
+    // `1,04 / 2,0° / p99 22,8 / >60 0`.
+    //
+    // ⚠️ **O PREÇO está medido e é o relevo** (`17,7° → 19,3°` no gancho fino,
+    // `11,8° → 13,6°` na enrugada). ⭐ A troca faz-se com os números na mão: o oráculo
+    // entrega `13,3°` de relevo naquela peça — *já estamos atrás dessa coluna com ou sem
+    // isto* — e as três colunas que a barra dele nomeia são onde a troca nos põe à frente.
+    // ⛔ **A ordem importa e não é uma preferência:** a cega só corre onde a alinhada
+    // **não teve nada a dizer**, então onde o relevo estava em jogo ele fica guardado.
+    //
+    // ⚠️ E a suavização do campo de direções (`quality::HINT_SMOOTH_ROUNDS`) foi construída
+    // para curar isto **e não curou** — a hipótese do ruído por face está REFUTADA.
+    let mut blind = mesh.clone();
+    let rb = finish_extracted_with(&mut blind, surface, 0.0, EXTRACT_SETTLE);
+    if use_blind(&ra, &rb) {
+        *mesh = blind;
+        return FinishReport { blind: true, ..rb };
+    }
+    // Nenhuma das duas bateu o Laplaciano: fica ele.
+    *mesh = aligned;
+    ra
+}
+
+/// ⭐⭐⭐ **QUANDO A LEI CEGA GANHA A VEZ** — a lei da escolha, separada de quem a executa.
+///
+/// ⚠️ **Ela é `pub(crate)` e testada sem malha nenhuma de propósito.** Medido em
+/// 2026-08-28: nem a esfera com bico nem o toro sacudido conseguem encenar as duas
+/// respostas — na primeira **nenhuma** das leis se mexe, na segunda mexem-se as duas. *Uma
+/// escolha que a fixtura não separa testa-se onde ela é declarada, e afinar a fixtura até
+/// ela separar seria escolher a resposta.*
+///
+/// ⛔ **A cega só entra onde a alinhada não teve nada a dizer** — é isso que garante que o
+/// relevo fica guardado onde ele estava em jogo.
+pub(crate) fn use_blind(aligned: &FinishReport, blind: &FinishReport) -> bool {
+    aligned.kept == 0 && blind.kept > 0
 }
 
 /// A mesma lei com o alinhamento ao relevo **à vista** — ver [`EXTRACT_RELIEF_PULL`].
@@ -237,7 +293,7 @@ pub fn finish_extracted_with(
         );
         rep.rounds = r + 1;
         let s = quad_shape(mesh);
-        if better(&s, &rep.after) {
+        if acceptable(&s, &rep.before) && better(&s, &rep.after) {
             rep.after = s;
             rep.kept = r + 1;
             best_pos.copy_from_slice(mesh.positions());

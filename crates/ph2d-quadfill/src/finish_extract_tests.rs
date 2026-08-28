@@ -11,6 +11,32 @@ use ph2d_mesh::Mesh;
 use super::{EXTRACT_MAX_ROUNDS, finish_extracted};
 use crate::shape::quad_shape;
 
+/// ⭐ **UM TORO SACUDIDO** — grade limpa (sem o leque de pólo de uma esfera-UV), curvaturas
+/// muito diferentes (anisotropia a sério) e um abanão determinístico que dá à relaxação o
+/// que endireitar. *Sem o abanão a malha já é o ponto fixo e nenhuma lei se mexe.*
+fn jittered_torus() -> (Mesh, Mesh) {
+    let surface = {
+        let mut t = ph2d_mesh::shapes::torus(32, 16, 1.0, 0.35);
+        t.triangulate();
+        t
+    };
+    let mut quads = ph2d_mesh::shapes::torus(32, 16, 1.0, 0.35);
+    {
+        // Deslocamento determinístico — nada de RNG num gate.
+        let pos = quads.positions_mut();
+        for (i, p) in pos.iter_mut().enumerate() {
+            #[allow(clippy::cast_precision_loss)]
+            let t = (i as f32).mul_add(12.9898, 4.1414).sin() * 43758.547;
+            let f = [t.fract(), (t * 1.37).fract(), (t * 2.71).fract()];
+            for k in 0..3 {
+                p[k] = f[k].mul_add(0.120, p[k] - 0.060);
+            }
+        }
+    }
+    quads.rebuild();
+    (quads, surface)
+}
+
 /// Uma esfera de quads com **um bico**: o pólo puxado para fora, que é a forma em que o
 /// pedido de cada face é mais contraditório.
 fn spiked() -> (Mesh, Mesh) {
@@ -103,13 +129,14 @@ fn the_finish_moves_vertices_and_nothing_else() {
     );
 }
 
-/// ⭐⭐⭐ **A COMPARAÇÃO É DE PARETO, e testa-se sem malha nenhuma.**
+/// ⭐⭐⭐ **A ACEITAÇÃO É CONTRA A RONDA ZERO, e a escolha é a mediana** — as duas leis,
+/// sem malha nenhuma.
 ///
-/// ⛔ **Ela não é gateável pela fixtura, e a prova de mutação disse-o** (2026-08-28): trocar
-/// a lei por «só a mediana» deixava os gates de malha verdes, porque naquelas peças as duas
-/// concordam. *Uma lei que a fixtura não separa testa-se onde ela é declarada.*
+/// ⛔ **Elas não são gateáveis pela fixtura, e a prova de mutação disse-o** (2026-08-28):
+/// nas peças de teste as várias ordens concordam. *Uma lei que a fixtura não separa
+/// testa-se onde ela é declarada.*
 #[test]
-fn a_round_that_trades_one_column_for_another_is_refused() {
+fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
     let base = crate::shape::QuadShape {
         skew_over_60: 2,
         skew_p50: 8.0,
@@ -118,61 +145,100 @@ fn a_round_that_trades_one_column_for_another_is_refused() {
     };
     let mut win = base;
     win.skew_p50 = 4.0;
-    assert!(
-        super::better(&win, &base),
-        "melhor na mediana e igual no resto tem de ganhar"
-    );
-    // ⛔ Troca: ganha muito na mediana e perde UMA face péssima.
+    assert!(super::acceptable(&win, &base), "melhor na mediana tem de ser aceite");
+    // ⛔ Compra mediana com uma face péssima a mais.
     let mut trade = base;
     trade.skew_p50 = 0.5;
     trade.skew_over_60 = 3;
     assert!(
-        !super::better(&trade, &base),
-        "uma ronda que compra mediana com uma face pessima tem de ser recusada"
+        !super::acceptable(&trade, &base),
+        "uma ronda que ganha uma face pessima tem de ser recusada"
     );
     // ⛔ E o mesmo do outro lado: ganha faces péssimas e perde aspecto.
     let mut trade2 = base;
     trade2.skew_over_60 = 0;
     trade2.aspect_p50 = 1.40;
     assert!(
-        !super::better(&trade2, &base),
+        !super::acceptable(&trade2, &base),
         "uma ronda que compra faces pessimas com aspecto tem de ser recusada"
     );
+    // ⭐ E a escolha ENTRE aceitáveis é a mediana, com o aspecto a desempatar.
+    let mut a = base;
+    a.skew_p50 = 3.0;
+    let mut b = base;
+    b.skew_p50 = 4.0;
+    assert!(super::better(&a, &b), "a mediana menor tem de ganhar");
+    let mut c = base;
+    c.skew_p50 = 3.0;
+    c.aspect_p50 = 1.05;
+    assert!(super::better(&c, &a), "empatada a mediana, decide o aspecto");
     // ⭐ E o empate dentro do ruído não é melhoria — senão a corrida nunca desiste.
     let mut noise = base;
     noise.skew_p50 = 8.0 - super::SAME * 0.5;
+    assert!(!super::better(&noise, &base), "uma diferenca abaixo do ruido nao e' melhoria");
+}
+
+/// ⭐⭐ **O ALINHAMENTO AO RELEVO NÃO É INERTE** — a lei muda o resultado.
+///
+/// ⚠️ **É só isto que uma fixtura sintética pode afirmar, e a tentativa de afirmar mais
+/// falhou honestamente** (2026-08-28): num toro a relaxação **cega** restaura a grade
+/// perfeita, que *já é* a grade alinhada, então ali o alinhamento só pode acrescentar erro
+/// (`1,64°` contra `1,03°`). ⭐ *A afirmação «o alinhamento guarda o relevo» é sobre peças
+/// irregulares, onde a relaxação cega DERIVA* — e é uma medição de corpus, com tabela:
+/// `sculpt_wrinkled` grossa, relevo `11,9°` (cru) → `18,8°` (cega) → `11,2°` (alinhada).
+/// ⛔ Escolher uma fixtura sintética que passasse seria afinar a fixtura até o gate passar.
+#[test]
+fn the_relief_pull_is_not_inert() {
+    let (quads, surface) = jittered_torus();
+    let (mut blind, mut aligned) = (quads.clone(), quads);
+    super::finish_extracted_with(&mut blind, &surface, 0.0, super::EXTRACT_SETTLE);
+    super::finish_extracted_with(
+        &mut aligned,
+        &surface,
+        super::EXTRACT_RELIEF_PULL,
+        super::EXTRACT_SETTLE,
+    );
+    let moved = blind
+        .positions()
+        .iter()
+        .zip(aligned.positions())
+        .map(|(a, b)| {
+            (a[0] - b[0])
+                .hypot(a[1] - b[1])
+                .hypot(a[2] - b[2])
+        })
+        .fold(0.0f32, f32::max);
     assert!(
-        !super::better(&noise, &base),
-        "uma diferenca abaixo do ruido nao e' melhoria"
+        moved > 1.0e-4,
+        "a lei alinhada e a cega entregaram a MESMA malha (maior desvio {moved:.2e}) -- o \
+         alinhamento esta' inerte"
     );
 }
 
-/// ⭐⭐⭐ **O ALINHAMENTO AO RELEVO PAGA-SE, e a fixtura é um TORO.**
+/// ⭐⭐⭐ **A LEI CEGA SÓ TEM A VEZ QUANDO A ALINHADA NÃO SE MEXEU** — a lei da escolha.
 ///
-/// ⚠️ **Uma esfera não pode medir isto:** as duas curvaturas dela são iguais, a anisotropia
-/// é `0` e a lei degenera no quadrado puro — foi exactamente por isso que uma mutação que
-/// punha o `pull` a zero sobreviveu à 1.ª redacção destes gates. Um toro tem as duas
-/// curvaturas muito diferentes e a grade dele **nasce alinhada**, então o relevo só pode
-/// piorar: é a forma em que a diferença entre as duas leis é máxima.
+/// ⛔⛔ **Nenhuma fixtura sintética a separa, e as duas foram tentadas** (2026-08-28): na
+/// esfera com bico **nenhuma** das leis se mexe (a queda dispara e não acha nada); no toro
+/// sacudido **mexem-se as duas** (a queda nunca dispara). *Afinar uma fixtura até ela
+/// separar seria escolher a resposta em vez de a medir.*
 #[test]
-fn the_relief_pull_keeps_the_grid_on_the_form() {
-    let quads = ph2d_mesh::shapes::torus(32, 16, 1.0, 0.35);
-    let surface = {
-        let mut s = quads.clone();
-        s.triangulate();
-        s
+fn the_blind_law_only_gets_its_turn_when_the_aligned_one_did_not_move() {
+    let r = |kept: usize| super::FinishReport {
+        kept,
+        ..super::FinishReport::default()
     };
-    let relief = |m: &Mesh| crate::quality::follows_relief(&surface, m).0;
-    let (mut blind, mut aligned) = (quads.clone(), quads);
-    super::finish_extracted_with(&mut blind, &surface, 0.0, super::EXTRACT_SETTLE);
-    // ⚠️ **O lado alinhado passa pela PORTA DO PRODUTO**, não pela forma aberta: uma
-    // mutação que pusesse o `pull` da porta a zero **sobreviveu** enquanto este gate a
-    // contornava (medido, 2026-08-28). *Gatear a lei não é gatear quem a usa.*
-    super::finish_extracted(&mut aligned, &surface);
-    let (rb, ra) = (relief(&blind), relief(&aligned));
     assert!(
-        ra < rb,
-        "o alinhamento devia guardar o relevo e mediu {ra:.2}° contra os {rb:.2}° da lei cega"
+        super::use_blind(&r(0), &r(7)),
+        "a alinhada nao se mexeu e a cega mexeu-se: a cega tem de entrar"
+    );
+    assert!(
+        !super::use_blind(&r(3), &r(7)),
+        "a alinhada mexeu-se: a cega NAO pode entrar, senao o relevo perde-se onde ele \
+         estava em jogo"
+    );
+    assert!(
+        !super::use_blind(&r(0), &r(0)),
+        "nenhuma se mexeu: fica a ronda zero"
     );
 }
 

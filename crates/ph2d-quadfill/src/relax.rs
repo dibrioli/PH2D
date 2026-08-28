@@ -119,9 +119,6 @@ use ph2d_mesh::Mesh;
 /// paga dobras; o defeito que o artista fotografa é a mediana.
 pub const SQUARE_ROUNDS: usize = 0;
 
-/// **O amortecimento.** ⚠️ Meio passo, como no irmão Laplaciano: a projecção dá o
-/// alvo, não o destino desta ronda.
-const LAMBDA: f32 = 0.5;
 
 /// ⭐⭐⭐ **N RONDAS de relaxação por ajuste de quadrado** — a porta pública desta lei.
 ///
@@ -298,14 +295,6 @@ fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
 }
 
-fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [
-        a[1].mul_add(b[2], -(a[2] * b[1])),
-        a[2].mul_add(b[0], -(a[0] * b[2])),
-        a[0].mul_add(b[1], -(a[1] * b[0])),
-    ]
-}
-
 fn norm(a: [f32; 3]) -> f32 {
     dot(a, a).sqrt()
 }
@@ -408,169 +397,24 @@ pub(crate) fn square_once(
     hint: &[crate::quality::Hint],
     pull: f32,
 ) -> f32 {
-    let n = mesh.vert_count();
-    let before: Vec<[f32; 3]> = mesh.positions().to_vec();
-    let mut acc = vec![[0.0f32; 3]; n];
-    let mut cnt = vec![0u32; n];
-    {
-        let pos = mesh.positions();
-        for (fi, f) in mesh.faces().iter().enumerate() {
-            let v = f.verts();
-            if v.len() != 4 {
-                for &i in v {
-                    let p = pos[i as usize];
-                    for k in 0..3 {
-                        acc[i as usize][k] += p[k];
-                    }
-                    cnt[i as usize] += 1;
-                }
-                continue;
-            }
-            let p = [
-                pos[v[0] as usize],
-                pos[v[1] as usize],
-                pos[v[2] as usize],
-                pos[v[3] as usize],
-            ];
-            let c3 = [
-                0.25 * (p[0][0] + p[1][0] + p[2][0] + p[3][0]),
-                0.25 * (p[0][1] + p[1][1] + p[2][1] + p[3][1]),
-                0.25 * (p[0][2] + p[1][2] + p[2][2] + p[3][2]),
-            ];
-            // ⚠️ **Newell, não o produto de duas arestas.** Um quad alabeado — e
-            // quase todos são, sobre uma superfície curva — não tem normal única;
-            // Newell dá a do plano de mínimos quadrados, que é o plano onde o
-            // ajuste tem de correr.
-            let mut nrm = [0.0f32; 3];
-            for k in 0..4 {
-                let (a, b) = (p[k], p[(k + 1) % 4]);
-                nrm[0] += (a[1] - b[1]) * (a[2] + b[2]);
-                nrm[1] += (a[2] - b[2]) * (a[0] + b[0]);
-                nrm[2] += (a[0] - b[0]) * (a[1] + b[1]);
-            }
-            let nl = norm(nrm);
-            // Quad degenerado: sem plano não há ajuste, e forçar um seria inventar
-            // uma direcção. Contribui neutro.
-            if nl < 1.0e-12 {
-                for &i in v {
-                    let q = pos[i as usize];
-                    for k in 0..3 {
-                        acc[i as usize][k] += q[k];
-                    }
-                    cnt[i as usize] += 1;
-                }
-                continue;
-            }
-            let nu = [nrm[0] / nl, nrm[1] / nl, nrm[2] / nl];
-            // A base do plano. ⚠️ `e2 = n × e1` faz `e1 × e2 = n`, e é isso que
-            // garante que um quad enrolado no sentido directo em 3D se lê no
-            // sentido directo em 2D — sem essa escolha o harmónico da mão certa
-            // seria o outro.
-            let r = sub(p[0], c3);
-            let along = dot(r, nu);
-            let e1r = [
-                along.mul_add(-nu[0], r[0]),
-                along.mul_add(-nu[1], r[1]),
-                along.mul_add(-nu[2], r[2]),
-            ];
-            let e1l = norm(e1r);
-            if e1l < 1.0e-12 {
-                for &i in v {
-                    let q = pos[i as usize];
-                    for k in 0..3 {
-                        acc[i as usize][k] += q[k];
-                    }
-                    cnt[i as usize] += 1;
-                }
-                continue;
-            }
-            let e1 = [e1r[0] / e1l, e1r[1] / e1l, e1r[2] / e1l];
-            let e2 = cross(nu, e1);
-            let mut z = [[0.0f32; 2]; 4];
-            for k in 0..4 {
-                let d = sub(p[k], c3);
-                z[k] = [dot(d, e1), dot(d, e2)];
-            }
-            let (mut hz, ccw) = square_harmonic(z);
-            // ⭐⭐⭐ **O RELEVO ENTRA AQUI** — ver [`steer`] e [`crate::quality::surface_hint`].
-            // A direção-alvo vem em espaço de MUNDO e é lida no plano do próprio quad; sem
-            // essa projecção uma direção quase perpendicular ao quad daria um ângulo que não
-            // existe na face.
-            if let Some(hint) = hint.get(fi).filter(|h| h.weight > 0.0) {
-                let f2 = [dot(hint.dir, e1), dot(hint.dir, e2)];
-                hz = steer(hz, f2, (hint.weight * pull).clamp(0.0, 1.0));
-            }
-            let w = square_from(hz, ccw);
-            for k in 0..4 {
-                let i = v[k] as usize;
-                for t in 0..3 {
-                    acc[i][t] += w[k][1].mul_add(e2[t], w[k][0].mul_add(e1[t], c3[t]));
-                }
-                cnt[i] += 1;
-            }
-        }
-    }
-    let normals: Vec<[f32; 3]> = mesh.normals().to_vec();
-    let mut next = vec![[0.0f32; 3]; n];
-    {
-        let pos = mesh.positions();
-        for v in 0..n {
-            let p = pos[v];
-            if cnt[v] == 0 {
-                next[v] = p;
-                continue;
-            }
-            #[allow(clippy::cast_precision_loss)]
-            let inv = 1.0 / cnt[v] as f32;
-            let d = [
-                acc[v][0].mul_add(inv, -p[0]),
-                acc[v][1].mul_add(inv, -p[1]),
-                acc[v][2].mul_add(inv, -p[2]),
-            ];
-            let nv = normals[v];
-            let along = dot(d, nv);
-            let mut q = [
-                LAMBDA.mul_add(along.mul_add(-nv[0], d[0]), p[0]),
-                LAMBDA.mul_add(along.mul_add(-nv[1], d[1]), p[1]),
-                LAMBDA.mul_add(along.mul_add(-nv[2], d[2]), p[2]),
-            ];
-            // ⭐⭐⭐ **A CERCA DE VIAGEM** — ver [`square_relax_capped`]. Ela mede da posição
-            // que a EXTRACÇÃO deu, nunca da ronda anterior: uma cerca por-ronda seria um
-            // limite de velocidade, e o que se quer limitar é a **distância percorrida**.
-            if let Some(o) = origin.get(v).filter(|_| max_travel.is_finite()) {
-                let t = sub(q, *o);
-                let l = norm(t);
-                if l > max_travel {
-                    let s = max_travel / l;
-                    q = [
-                        t[0].mul_add(s, o[0]),
-                        t[1].mul_add(s, o[1]),
-                        t[2].mul_add(s, o[2]),
-                    ];
-                }
-            }
-            next[v] = q;
-        }
-    }
-    // ⚠️ **O raio sai do MAIOR movimento desta ronda** — ver a nota em
-    // [`square_relax_capped`]. Ele é decidido **antes** de projectar porque é a projecção
-    // que ele governa, e o `seed` do chamador é o piso (a 1.ª ronda ainda não sabe se os
-    // vértices estão sobre a superfície).
-    let mut moved = 0.0f32;
-    for (q, p) in next.iter().zip(&before) {
-        moved = moved.max(norm(sub(*q, *p)));
-    }
-    let radius = (2.0 * moved).max(seed);
-    for q in &mut next {
-        *q = ph2d_remesh_iso::project_onto(reference, *q, radius);
-    }
-    let mut real = 0.0f32;
-    for (q, p) in next.iter().zip(&before) {
-        real = real.max(norm(sub(*q, *p)));
-    }
-    mesh.positions_mut().copy_from_slice(&next);
+    // ⭐⭐⭐ **UMA lei, dois chamadores.** O corpo vive em [`crate::relax_rounds`], que corre
+    // sobre buffers e em paralelo; aqui fica a forma que escreve na [`Mesh`] a cada ronda —
+    // é o que o [`crate::fill`] (a montagem por patches) espera, e ali `SQUARE_ROUNDS` é `0`,
+    // então o custo do `rebuild` por ronda não paga nada a ninguém.
+    //
+    // ⛔ *Duas cópias desta lei era o defeito à espera:* a que o produto corre e a que os
+    // gates medem teriam divergido no dia em que uma delas mudasse.
+    let topo = crate::relax_rounds::Topology::of(mesh);
+    let faces = mesh.faces().to_vec();
+    let mut pos = mesh.positions().to_vec();
+    let (mut fnorm, mut vnorm) = (Vec::new(), Vec::new());
+    let moved = crate::relax_rounds::round(
+        &mut pos, &faces, &topo, reference, hint, pull, origin, max_travel, seed, &mut fnorm,
+        &mut vnorm,
+    );
+    mesh.positions_mut().copy_from_slice(&pos);
     mesh.rebuild();
-    real
+    moved
 }
 
 #[cfg(test)]

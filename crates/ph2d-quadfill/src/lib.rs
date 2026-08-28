@@ -59,6 +59,8 @@ mod rectangle;
 mod regraduate;
 /// ⭐ **A RELAXAÇÃO QUE OLHA PARA O ÂNGULO** — o ajuste de quadrado — ver [`relax`].
 mod relax;
+/// ⭐⭐⭐ **A RONDA SOBRE BUFFERS, em paralelo** — ver [`relax_rounds`].
+mod relax_rounds;
 /// **O QUE A MONTAGEM DIZ** — recusa, relatório e proveniência — ver [`report`].
 pub mod report;
 /// ⭐ **A FORMA DE CADA QUAD** — a régua por-face — ver [`shape`].
@@ -80,5 +82,5 @@ pub use relax::{
     square_relax_capped,
 };
 pub use report::{FillError, FillReport, Provenance};
-pub use shape::{QuadShape, quad_shape, skew_by_fan, skew_by_provenance};
+pub use shape::{QuadShape, quad_shape, quad_shape_of, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

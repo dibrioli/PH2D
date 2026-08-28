@@ -302,31 +302,46 @@ pub fn finish_extracted_with(
     } else {
         Vec::new()
     };
-    let origin: Vec<[f32; 3]> = mesh.positions().to_vec();
+    // ⭐⭐⭐ **O LAÇO CORRE SOBRE BUFFERS, e a `Mesh` só se escreve no fim.**
+    //
+    // ⛔⛔ Medido 2026-08-28: com `Mesh::rebuild()` por ronda, o acabamento era `11,5 s` de
+    // `17,7 s` na `sculpt_eared` — e o `rebuild` reconstrói a adjacência, a curvatura e a
+    // **octree** da saída, que uma relaxação não muda e não lê. ⚠️ *A porta única do
+    // `rebuild` continua a valer:* a malha nunca fica publicada meio-derivada, porque ela só
+    // é escrita **uma vez**, no fim.
+    let topo = crate::relax_rounds::Topology::of(mesh);
+    let faces = mesh.faces().to_vec();
+    let mut pos = mesh.positions().to_vec();
+    let origin: Vec<[f32; 3]> = pos.clone();
     let floor = crate::finish::bbox_seed(surface);
-    // ⚠️ **A melhor ronda guarda-se por POSIÇÕES, não por malha inteira** — a topologia não
-    // muda numa relaxação, e clonar a `Mesh` a cada melhoria pagaria as faces outra vez.
     let mut best_pos = origin.clone();
+    // ⚠️ Os dois buffers de normais vivem FORA do laço — realocá-los por ronda é o mesmo
+    // desperdício que o `rebuild` era, num tamanho menor.
+    let (mut fnorm, mut vnorm) = (Vec::new(), Vec::new());
     for r in 0..EXTRACT_MAX_ROUNDS {
         let seed = if r == 0 { floor } else { 1.0e-6 };
-        let mv = crate::relax::square_once(
-            mesh,
+        let mv = crate::relax_rounds::round(
+            &mut pos,
+            &faces,
+            &topo,
             surface,
-            seed,
-            &origin,
-            f32::INFINITY,
             &hint,
             pull,
+            &origin,
+            f32::INFINITY,
+            seed,
+            &mut fnorm,
+            &mut vnorm,
         );
         rep.rounds = r + 1;
-        let s = quad_shape(mesh);
+        let s = crate::shape::quad_shape_of(&pos, &faces);
         if acceptable(&s, &rep.before) && better(&s, &rep.after) {
             rep.after = s;
             rep.kept = r + 1;
             if rep.first == 0 {
                 rep.first = r + 1;
             }
-            best_pos.copy_from_slice(mesh.positions());
+            best_pos.copy_from_slice(&pos);
         }
         // ⚠️ **Assentar OU desistir** — ver [`give_up`].
         if mv <= settle || give_up(r, rep.first) {
@@ -334,7 +349,8 @@ pub fn finish_extracted_with(
         }
     }
     // ⚠️ **Repor é incondicional**, e não «se a última não foi a melhor»: `kept == 0` quer
-    // dizer que a saída é a da ronda zero, e essa também tem de ser reposta.
+    // dizer que a saída é a da ronda zero, e essa também tem de ser reposta. ⭐ E é **aqui**
+    // que a malha é publicada — uma vez, com o `rebuild` inteiro.
     mesh.positions_mut().copy_from_slice(&best_pos);
     mesh.rebuild();
     rep

@@ -94,11 +94,22 @@ fn pct(sorted: &[f32], p: f32) -> f32 {
 /// guarda a promessa de que ele não existe.
 #[must_use]
 pub fn quad_shape(mesh: &Mesh) -> QuadShape {
-    let pos = mesh.positions();
-    let mut aspect: Vec<f32> = Vec::with_capacity(mesh.faces().len());
-    let mut skew: Vec<f32> = Vec::with_capacity(mesh.faces().len());
-    let mut area: Vec<f32> = Vec::with_capacity(mesh.faces().len());
-    for f in mesh.faces() {
+    quad_shape_of(mesh.positions(), mesh.faces())
+}
+
+/// ⭐⭐ **A MESMA régua sobre PARTES** — posições e faces, sem a [`Mesh`].
+///
+/// ⚠️ **Ela existe porque um laço de relaxação não pode publicar a malha a cada ronda.**
+/// `Mesh::rebuild` reconstrói a adjacência, a curvatura e a **octree** da saída — e uma
+/// relaxação não lê nenhuma das três e não muda a topologia. *Medido em 2026-08-28: era `1`
+/// de `3` do acabamento.* A porta única do `rebuild` continua a valer (a malha nunca fica
+/// publicada meio-derivada); o que muda é que ela é chamada **uma vez, no fim**.
+#[must_use]
+pub fn quad_shape_of(pos: &[[f32; 3]], faces: &[ph2d_mesh::Face]) -> QuadShape {
+    let mut aspect: Vec<f32> = Vec::with_capacity(faces.len());
+    let mut skew: Vec<f32> = Vec::with_capacity(faces.len());
+    let mut area: Vec<f32> = Vec::with_capacity(faces.len());
+    for f in faces {
         let v = f.verts();
         let n = v.len();
         if n < 3 {

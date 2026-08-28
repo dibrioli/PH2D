@@ -16,6 +16,9 @@ authors.workspace = true
 # campo, patches, inteiros -- e nenhuma delas produz algo que o artista veja.
 
 [dependencies]
+# rayon: a lib de paralelismo sancionada da casa (SKILL_Stack §919). O acabamento e'
+# embaracosamente paralelo e era 65% do relogio do botao -- ver `relax_rounds`.
+rayon = "1"
 ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-quantize = { path = "../ph2d-quantize" }
 ph2d-trace = { path = "../ph2d-trace" }

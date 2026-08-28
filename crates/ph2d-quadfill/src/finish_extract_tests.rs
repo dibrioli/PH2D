@@ -319,3 +319,67 @@ fn the_patience_only_runs_while_nothing_has_been_accepted() {
         "desistiu com uma aceitacao dentro da janela"
     );
 }
+
+/// ⭐⭐⭐ **O RESULTADO NÃO DEPENDE DE QUANTOS NÚCLEOS A MÁQUINA TEM.**
+///
+/// ⛔⛔ **É a afirmação central do desenho paralelo, e ela não é grátis:** a forma óbvia —
+/// percorrer faces em paralelo e **acumular** no vértice — muda a ordem da soma em `f32`
+/// entre corridas. ⭐ Por isso a ronda é **duas passagens** (por face a escrever no índice
+/// da face; por vértice a ler a incidência **ordenada**), e este gate mede exactamente isso:
+/// a mesma peça, dois tamanhos de *pool*, **bit a bit**.
+///
+/// ⚠️ *Um resultado que depende do hardware não é um resultado* — e num repo cujo
+/// determinismo é uma espinha (`physics_ecs_c9` compara três sistemas operativos), uma
+/// dependência dessas entra em silêncio.
+#[test]
+fn the_finish_gives_the_same_mesh_on_one_thread_and_on_many() {
+    let (quads, surface) = jittered_torus();
+    let run = |threads: usize| {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .expect("pool");
+        pool.install(|| {
+            let mut m = quads.clone();
+            let rep = finish_extracted(&mut m, &surface);
+            (m.positions().to_vec(), rep.rounds, rep.kept)
+        })
+    };
+    let (one, r1, k1) = run(1);
+    let (many, r8, k8) = run(8);
+    assert_eq!(
+        (r1, k1),
+        (r8, k8),
+        "a corrida mudou de forma com o numero de threads: {r1}/{k1} contra {r8}/{k8}"
+    );
+    for (i, (a, b)) in one.iter().zip(&many).enumerate() {
+        for t in 0..3 {
+            assert!(
+                a[t].to_bits() == b[t].to_bits(),
+                "o vertice {i} saiu diferente com 1 e com 8 threads: {a:?} contra {b:?}"
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **A MALHA SÓ SE PUBLICA UMA VEZ** — `Mesh::rebuild` fora do laço.
+///
+/// ⛔⛔ Medido 2026-08-28: com ele **por ronda**, o acabamento era `11,5 s` de `17,7 s` numa
+/// peça; fora do laço são `1,5 s`, com a saída **idêntica**. Ele reconstrói a adjacência, a
+/// curvatura e a **octree** da saída — e uma relaxação não muda a topologia nem lê nenhuma
+/// das três (a projecção consulta a octree da *superfície*).
+///
+/// ⚠️ **O gate LÊ O FONTE**, como os irmãos do shell: um `rebuild` que volte para dentro do
+/// laço compila, passa a suíte inteira e só se vê no relógio.
+#[test]
+fn the_mesh_is_published_once_and_not_per_round() {
+    let src = include_str!("finish_extract.rs");
+    // ⚠️ O token vem partido de propósito: este gate vive ao lado do ficheiro que lê.
+    let call = concat!("mesh.", "rebuild()");
+    let n = src.matches(call).count();
+    assert_eq!(
+        n, 1,
+        "o acabamento publica a malha {n} vezes; tem de ser UMA, no fim -- com ela por ronda \
+         o passe custava 7,6x mais para a MESMA saida"
+    );
+}

@@ -1,0 +1,69 @@
+//! ⭐⭐⭐ **ONDE O TEMPO DO BOTÃO VAI** — a cadeia canónica, fase a fase.
+//!
+//! ```text
+//! cargo run --release -p ph2d-quadchain --example chain_time -- <peca.obj> [alvo]
+//! ```
+//!
+//! ⚠️ **Ela corre a MESMA função que o produto** ([`ph2d_quadchain::quads_from_mesh`]) — uma
+//! sonda que reescrevesse a ordem mediria outro programa. ⛔ O botão da escultura corre a
+//! cadeia **duas** vezes (campo alinhado e campo liso), então o relógio dele é ~`2×` isto.
+
+fn load(name: &str) -> ph2d_mesh::Mesh {
+    if let Some(rest) = name.strip_prefix("esfera:") {
+        let n: usize = rest.parse().unwrap_or(48);
+        return ph2d_mesh::shapes::uv_sphere(n, n * 3 / 2, 1.0);
+    }
+    let text = std::fs::read_to_string(name).unwrap_or_else(|e| panic!("{name}: {e}"));
+    ph2d_mesh::import_obj(&text)
+        .unwrap_or_else(|e| panic!("{name} nao e' um OBJ deste leitor: {e:?}"))
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("{name} nao tem peca dentro"))
+        .mesh
+}
+
+fn main() {
+    let mut args = std::env::args().skip(1);
+    let name = args.next().unwrap_or_else(|| String::from("esfera:48"));
+    let scale: f32 = args.next().and_then(|s| s.parse().ok()).unwrap_or(1.0);
+    let mut piece = load(&name);
+    piece.triangulate();
+    let target = ph2d_remesh_iso::target_edge(&piece, ph2d_remesh_iso::ALPHA) * scale;
+    let clock = std::time::Instant::now();
+    match ph2d_quadchain::quads_from_mesh(&piece, target) {
+        Err(e) => println!("{name}: a cadeia recusou: {e:?}"),
+        Ok((out, r)) => {
+            let t = r.ms;
+            let all = t.total().max(1.0e-6);
+            let pct = |x: f32| 100.0 * x / all;
+            println!(
+                "{name} (alvo x{scale}) -> {} quads em {:.0} ms (relogio de parede {:.0} ms)",
+                r.quads,
+                all,
+                clock.elapsed().as_secs_f32() * 1000.0
+            );
+            for (nome, v) in [
+                ("F1 remalha ", t.remesh),
+                ("F2 campo   ", t.field),
+                ("F3 tracado ", t.trace),
+                ("G1/G2 corte", t.cut),
+                ("G3/G5 mapa ", t.map),
+                ("extraccao  ", t.extract),
+                ("ACABAMENTO ", t.finish),
+            ] {
+                println!("   {nome} {v:8.0} ms  {:5.1}%", pct(v));
+            }
+            println!(
+                "   * acabamento: {} rondas, 1a aceite {}, ficou {} (cega {})",
+                r.finish.rounds, r.finish.first, r.finish.kept, r.finish.blind
+            );
+            println!(
+                "   forma: aspecto p50 {:.2} | enviesamento p50 {:.1} p99 {:.1} | {} faces",
+                r.shape.aspect_p50,
+                r.shape.skew_p50,
+                r.shape.skew_p99,
+                out.face_count()
+            );
+        }
+    }
+}

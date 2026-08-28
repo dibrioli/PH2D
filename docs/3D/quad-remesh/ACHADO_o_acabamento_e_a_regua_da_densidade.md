@@ -511,3 +511,63 @@ não o **`keep`** (a do nível que o artista escolheu, mais fiel). Escolhi o `fe
 a porta irmã usaria, e assim **esta reordenação é provadamente neutra**. *Trocar as duas é uma
 mudança de comportamento que pede a sua própria medição, e misturá-la com uma correcção de
 custo esconderia as duas.*
+
+---
+
+## §14 — ⛔⛔⛔ «MUITO DEMORADO» (Enio, 2026-08-28) — e onde o tempo estava
+
+O smoke validou a qualidade (*«melhor que o plugin padrão ouro do Blender»*) e reprovou o
+relógio. ⭐ **A primeira coisa a fazer com um veredito de produto é transformá-lo num número**
+— `cargo run --release -p ph2d-quadchain --example chain_time -- <peça>.obj`, que corre a
+**mesma função que o botão**:
+
+| fase | `sculpt_eared` | `sculpt_wrinkled` |
+|---|---|---|
+| F1 remalha + F2 campo | 2,5 s | 1,5 s |
+| F3 + G1/G2 + extracção | 0,04 s | 0,03 s |
+| G3/G5 mapa | 3,7 s | 3,0 s |
+| ⛔ **acabamento (o desta jornada)** | **11,5 s (65 %)** | **3,5 s (44 %)** |
+| **total, UMA passagem** | **17,7 s** | **8,0 s** |
+
+⚠️ **E o botão corre a cadeia DUAS vezes** (campo alinhado e campo liso) ⇒ ~`35 s` na orelha.
+
+### §14.1 — ⭐⭐⭐ Três desperdícios meus, todos **por ronda**
+
+1. ⛔⛔ **`Mesh::rebuild()` a cada ronda.** Ele recomputa as normais de face, a **adjacência**,
+   as normais de vértice, a **curvatura** e a **octree** da saída. Uma relaxação **não muda a
+   topologia** e não lê nenhuma das três últimas — *a projecção consulta a octree da
+   superfície, não a da malha que está a ser relaxada.*
+2. ⛔ **A incidência vértice→face reconstruída a cada ronda**, pela mesma razão.
+3. ⛔ **Tudo sequencial** num laço embaraçosamente paralelo, numa máquina de 32 núcleos.
+
+⚠️ **A porta única do `rebuild` NÃO foi violada** — a cerca dele é declarada (*«uma wave que
+reconstrói só metade disto deixa o sistema estável e errado»*). ⭐ A cura respeita-a: o laço
+corre sobre **buffers** e a `Mesh` é publicada **uma vez**, no fim, com o `rebuild` inteiro.
+
+### §14.2 — O paralelismo é DETERMINÍSTICO, e isso decidiu a forma
+
+⛔ A forma óbvia — faces em paralelo a **acumular** no vértice — muda a ordem da soma em `f32`
+entre corridas. ⭐ A que fica é **duas passagens**: por **face**, a escrever no índice da
+própria face (sem contenção, sem soma); por **vértice**, a ler a incidência **ordenada** (a
+soma acontece sempre na mesma ordem). *Um resultado que depende de quantos núcleos a máquina
+tem não é um resultado* — e há gate que corre a mesma peça com `1` e com `8` threads e
+compara **bit a bit**.
+
+⚠️ **E as normais são as da CASA.** A 1.ª redacção somava Newell não normalizado e o resultado
+**mudou** (`726` rondas passaram a `724`, o `p99` mexeu na 2.ª casa). *Uma relaxação que muda
+de resultado ao ser optimizada não foi optimizada — foi substituída.*
+
+### §14.3 — O ganho, e o que ficou a ser o maior termo
+
+| | antes | ⭐ **depois** | |
+|---|---|---|---|
+| acabamento · `eared` | 11 535 ms | **1 524 ms** | **7,6×** |
+| acabamento · `wrinkled` | 3 515 ms | **599 ms** | **5,9×** |
+| total · `eared` | 17 713 ms | **6 591 ms** | 2,7× |
+| total · `wrinkled` | 8 030 ms | **4 940 ms** | 1,6× |
+
+⭐⭐ **E a saída é a MESMA** — `726` rondas, aspecto `1,04`, enviesamento `2,9° / 13,6°` na
+orelha; `618`/`614` e `1,07 / 2,7° / 27,4°` na enrugada. *Os mesmos números do original.*
+
+⇒ **o maior termo passa a ser o G3/G5 (o mapa): `45 %`–`58 %`**, `2,9`–`3,0 s`. Ele é
+pré-existente (`8 000` rondas de Gauss–Seidel no `ph2d-gridmap`) e é o próximo alvo.

@@ -263,8 +263,12 @@ fn viewport_pass(
     // o que está na tela ainda é grosso, sai o **cheio**. Uma cena parada e já nítida custa
     // **zero** — senão re-traçaria o mesmo quadro para sempre, queimando um núcleo por nada.
     let ask = crate::field3d_preview::next_trace(
-        smoke
-            .vp()
+        // ⛔⛔ **ERA `smoke.vp()` — o viewport ACTIVO** (report do Enio, 27/08: *«apenas a janela
+        // activa fica com o objecto liso, as demais ficam no modo de baixa resolução»*). Cada
+        // viewport perguntava *«a câmera mudou?»* comparando a câmera DELE com o pedido de OUTRO
+        // ⇒ para toda vista não-activa a resposta era **sempre sim**, e ela ficava presa no quadro
+        // de movimento para sempre, sem nunca subir os dois degraus do assentar.
+        smoke.vps[i]
             .requested
             .as_ref()
             .map(|(c, w, h, d, k)| (c, *w, *h, d, *k)),

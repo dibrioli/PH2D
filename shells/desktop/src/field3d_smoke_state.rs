@@ -99,6 +99,24 @@ pub(crate) struct Viewport {
 }
 
 impl Viewport {
+    /// ⚠️ **Só para o gate**: em que estado esta vista PAROU.
+    ///
+    /// `None` enquanto ela ainda não tem quadro pronto ou tem traçado em voo; `Some(true)` quando o
+    /// último traçado que ela pediu foi um quadro de **movimento** (grosso, sem anti-serrilhado).
+    ///
+    /// *A pergunta vive onde os dados vivem* — abrir os campos ao resto do shell só para um teste
+    /// os poder ler seria pagar em encapsulamento o que uma função de três linhas resolve.
+    // ⚠️ `cfg(test)` porque ela é uma sonda **de teste** numa crate binária: sem isto o build do
+    // produto carrega um método que ninguém chama, e o aviso está certo.
+    #[cfg(test)]
+    #[doc(hidden)]
+    pub(crate) fn probe_resting_state(&self) -> Option<bool> {
+        if self.frame.is_none() || self.inflight.is_some() {
+            return None;
+        }
+        Some(self.requested.as_ref().is_some_and(|(_, _, _, _, k)| *k))
+    }
+
     /// **Um viewport novo com esta câmera** — o resto nasce vazio, que é o estado de *«ainda não
     /// tracei nada»*.
     pub(crate) fn new(cam: Orbit, manual: bool) -> Self {

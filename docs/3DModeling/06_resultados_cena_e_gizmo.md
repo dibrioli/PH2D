@@ -5748,6 +5748,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐ **A lei do cancelamento perguntava ao TAMANHO** desde a W73 | ⭐ passa a perguntar à **espécie**: numa hesitação de um quadro o erro angular vai de `2,97°` para `1,50°` | §91.7 |
 | ✅ **`FRAMES_KEPT = 3` era derivado; agora é MEDIDO** | o joelho está lá: `1` e `2` piores, `4` e `6` compram `≤0,4 ms` por `1,4`–`2,5×` a memória | §91.8 |
 | ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
+| ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
 | ⏳ O **cabeçalho** por viewport — e é ele que destrava o divisor arrastável | a divisão em `N` livre pede uma pega, e uma pega pede onde viver | §92.7 |
 | ⏳ O custo de uma EDIÇÃO com a divisão aberta (quatro traçados a disparar juntos) | inerente à divisão (o Blender faz o mesmo), **por medir** | §92.7 |
 | ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
@@ -8304,6 +8305,43 @@ só re-traçam quando o documento muda. Orbitar a perspectiva não lhes toca.
 | `each_viewport_stores_the_rect_the_layout_gave_it` | ⭐ **a costura**: desenha de verdade e depois pergunta ao **ponteiro** — as duas travessias têm de concordar (mutação: `viewport_at` a devolver sempre `Some(0)` → ✗) |
 | `nothing_can_empty_the_viewport_list` | a invariante que torna o `vp()` infalível |
 | `every_camera_chip_moves_the_camera` | agora com a régua da divisão dentro |
+
+### §92.8 — ⛔⛔ O smoke do Enio: só a vista ACTIVA ficava lisa (27/08)
+
+> *«apenas a janela activa fica com o objecto desenhado liso, as demais ficam no modo de baixa
+> resolução»*
+
+Cada viewport decide o traçado seguinte com `next_trace`, que compara **o pedido anterior** com o
+estado de agora. O passe perguntava pelo pedido do viewport **ACTIVO** e comparava-o com a câmera
+**deste**:
+
+```text
+smoke.vp().requested   ←  o activo
+&smoke.vps[i].cam      ←  a câmera de outro
+```
+
+⇒ para toda vista não-activa, *«a câmera mudou?»* era **sempre sim**, e ela ficava presa no quadro de
+movimento (grosso, sem anti-serrilhado) **para sempre**, sem nunca subir os dois degraus do assentar.
+
+⚠️ **A causa é mecânica e vale como aviso:** a reescrita que retargetou o passe de `smoke.vp()` para
+`smoke.vps[i]` casava o padrão **numa linha**, e o `cargo fmt` tinha partido exactamente as
+expressões longas em três. *Uma reescrita por padrão de LINHA é cega à mesma expressão embrulhada
+pelo formatador — e o formatador embrulha precisamente as maiores.* (As três multi-linha deste
+ficheiro foram corrigidas à mão **antes** do retarget, e por isso ficaram com o alvo antigo.)
+
+⚠️⚠️ **E os cinco gates da W90 passaram todos**, porque mediam a **geometria** (os retângulos
+ladrilham · a costura tem um dono · cada viewport guarda a sua área). *Uma divisão certa pode
+alimentar quatro laços errados* — o defeito não estava em onde as vistas ficam, mas em **com quem
+cada uma se compara**.
+
+⇒ Gate novo, com a régua que faltava — o **estado em que cada vista PÁRA**:
+`every_still_viewport_settles_not_only_the_active_one`. Ele abre a divisão, desenha até as quatro
+terem quadro pronto e nenhuma ter traçado em voo, e exige que **nenhuma** esteja a pedir um quadro de
+movimento com a cena quieta. Mutação (repor `smoke.vp()`): ✗ em `3,12 s` — ele nem chega a
+convergir, que é o próprio sintoma.
+
+⭐ A pergunta é feita por `Viewport::probe_resting_state`, e não abrindo os campos: *a pergunta vive
+onde os dados vivem.*
 
 ### §92.7 — ⏳ O que fica aberto
 

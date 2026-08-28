@@ -206,3 +206,78 @@ fn each_viewport_stores_the_rect_the_layout_gave_it() {
         crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
     });
 }
+
+/// ⭐⭐⭐ **TODA VISTA PARADA ASSENTA — não só a activa** (W90b, report do Enio 27/08).
+///
+/// > *«apenas a janela activa fica com o objecto desenhado liso, as demais ficam no modo de baixa
+/// > resolução»*
+///
+/// # O defeito, e porque nenhum gate desta wave o via
+///
+/// Cada viewport decide o traçado seguinte com [`crate::field3d_preview::next_trace`], que compara o
+/// **pedido anterior** com o estado de agora. O passe perguntava pelo pedido do viewport **ACTIVO** e
+/// comparava-o com a câmera **deste** ⇒ para toda vista não-activa *«a câmera mudou?»* era **sempre
+/// sim**, e ela ficava presa no quadro de movimento (grosso, sem anti-serrilhado) para sempre.
+///
+/// ⚠️ **Os gates da W90 mediam a GEOMETRIA** (os retângulos ladrilham, a costura tem um dono, cada
+/// viewport guarda a sua área) e passaram todos: o defeito não estava em onde as vistas ficam, mas
+/// em **com quem cada uma se compara**. *Uma divisão certa pode alimentar quatro laços errados.*
+///
+/// ⇒ a régua é o **estado em que cada vista PÁRA**: com a cena quieta, nenhuma pode continuar a
+/// pedir um quadro de movimento.
+#[test]
+fn every_still_viewport_settles_not_only_the_active_one() {
+    use crate::field3d_scene::lasso_tests::{AREA, armed_with};
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.4, 0.3, 0.2],
+                round: 0.05,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a peça");
+    armed_with(&doc, |_| {
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
+        // ⚠️ **Espera LIMITADA, e o limite é generoso de propósito**: os traçados correm noutras
+        // threads, e o que se afirma é a CONVERGÊNCIA, não um tempo. Ou as quatro assentam, ou o
+        // produto está partido — não há um terceiro resultado que a máquina lenta produza.
+        let mut assentaram = false;
+        for _ in 0..600 {
+            let mut scene = ph2d_vector::VectorScene::new();
+            crate::field3d_smoke::draw(AREA, ph2d_tokens::Theme::default(), &mut text, &mut scene);
+            let pronto = crate::field3d_smoke::with_smoke(|s| {
+                s.vps.iter().all(|v| v.probe_resting_state().is_some())
+            })
+            .unwrap_or(false);
+            if pronto {
+                assentaram = true;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        assert!(
+            assentaram,
+            "as quatro vistas não chegaram a um quadro pronto em 3 s"
+        );
+        crate::field3d_smoke::with_smoke(|s| {
+            for (i, v) in s.vps.iter().enumerate() {
+                let grosso = v
+                    .probe_resting_state()
+                    .expect("a vista está parada com um quadro");
+                assert!(
+                    !grosso,
+                    "o viewport {i} parou a pedir um quadro de MOVIMENTO com a cena quieta — ele \
+                     nunca sobe os degraus do assentar, e o artista vê-o em baixa resolução para \
+                     sempre (activo = {})",
+                    s.active
+                );
+            }
+        });
+        crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
+    });
+}

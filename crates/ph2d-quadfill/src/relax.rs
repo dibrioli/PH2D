@@ -496,11 +496,9 @@ pub(crate) fn square_once(
             // A direção-alvo vem em espaço de MUNDO e é lida no plano do próprio quad; sem
             // essa projecção uma direção quase perpendicular ao quad daria um ângulo que não
             // existe na face.
-            if let Some(hint) = hint.get(fi) {
-                if hint.weight > 0.0 {
-                    let f2 = [dot(hint.dir, e1), dot(hint.dir, e2)];
-                    hz = steer(hz, f2, (hint.weight * pull).clamp(0.0, 1.0));
-                }
+            if let Some(hint) = hint.get(fi).filter(|h| h.weight > 0.0) {
+                let f2 = [dot(hint.dir, e1), dot(hint.dir, e2)];
+                hz = steer(hz, f2, (hint.weight * pull).clamp(0.0, 1.0));
             }
             let w = square_from(hz, ccw);
             for k in 0..4 {
@@ -539,18 +537,16 @@ pub(crate) fn square_once(
             // ⭐⭐⭐ **A CERCA DE VIAGEM** — ver [`square_relax_capped`]. Ela mede da posição
             // que a EXTRACÇÃO deu, nunca da ronda anterior: uma cerca por-ronda seria um
             // limite de velocidade, e o que se quer limitar é a **distância percorrida**.
-            if max_travel.is_finite() {
-                if let Some(o) = origin.get(v) {
-                    let t = sub(q, *o);
-                    let l = norm(t);
-                    if l > max_travel {
-                        let s = max_travel / l;
-                        q = [
-                            t[0].mul_add(s, o[0]),
-                            t[1].mul_add(s, o[1]),
-                            t[2].mul_add(s, o[2]),
-                        ];
-                    }
+            if let Some(o) = origin.get(v).filter(|_| max_travel.is_finite()) {
+                let t = sub(q, *o);
+                let l = norm(t);
+                if l > max_travel {
+                    let s = max_travel / l;
+                    q = [
+                        t[0].mul_add(s, o[0]),
+                        t[1].mul_add(s, o[1]),
+                        t[2].mul_add(s, o[2]),
+                    ];
                 }
             }
             next[v] = q;

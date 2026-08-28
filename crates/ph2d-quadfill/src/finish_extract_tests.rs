@@ -53,8 +53,8 @@ fn spiked() -> (Mesh, Mesh) {
     };
     {
         let pos = quads.positions_mut();
-        for k in 0..3 {
-            pos[top][k] *= 3.0;
+        for c in &mut pos[top] {
+            *c *= 3.0;
         }
     }
     quads.rebuild();

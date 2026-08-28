@@ -415,3 +415,39 @@ maior primeira aceitação medida (`418`).
 ⭐⭐ **E a tabela responde à pergunta que o §10.3 deixava no ar:** com a paciência certa,
 **sete das oito células ficam com a lei ALINHADA** — a queda para a cega é a excepção de uma
 peça, não a regra. *O relevo fica guardado onde ele tinha alguma coisa a dizer.*
+
+---
+
+## §11 — ⭐⭐⭐ O RESULTADO: à densidade do oráculo, batemos a saída ALISADA dele
+
+A/B pela porta do produto (`PH2D_OUT_RELAX=6` reproduz o que shipava). **Cada célula é a
+mesma extracção; só o acabamento muda.**
+
+### Densidade do BOTÃO (`alvo 2`)
+
+| peça | aspecto p50 | ⭐ envies. p50 | envies. p99 | `>60°` | relevo | lei |
+|---|---|---|---|---|---|---|
+| `sculpt_wrinkled` | `1,19 →` **`1,10`** | `7,8° →` **`4,5°`** | `34,5° →` **`32,0°`** | `0 → 0` | `12,1° →` **`11,5°`** | alinhada |
+| `sculpt_eared` | `1,14 →` **`1,07`** | `10,4° →` **`3,8°`** | `33,4° →` **`30,9°`** | `0 → 0` | `17,4° → 18,6°` | alinhada |
+| `sculpt_hooked` | `1,17 →` **`1,09`** | `7,7° →` **`4,2°`** | `49,1° →` **`45,0°`** | `2 → 2` | `16,5° → 17,7°` | cega |
+| `sphere_uv` | `1,11 →` **`1,06`** | `7,4° →` **`3,0°`** | `34,3° →` **`30,4°`** | `0 → 0` | (confiança `0,00`) | alinhada |
+
+### ⭐⭐⭐ Densidade do ORÁCULO (`alvo 0,667`) — a comparação que vale
+
+| peça | nós ANTES | ⭐ **nós DEPOIS** | oráculo `_smooth` | quem ganha a forma |
+|---|---|---|---|---|
+| `sphere_uv` | `1,10 / 3,8° / 17,3°` | **`1,04 / 2,6° / 10,1°`** | `1,22 / 5,9° / 20,0°` | ⭐⭐⭐ **nós, nas três** |
+| `sculpt_eared` | `1,10 / 6,3° / 27,2°` | **`1,04 / 3,3° / 11,0°`** | `1,08 / 5,7° / 20,2°` | ⭐⭐⭐ **nós, nas três** |
+| `sculpt_hooked` | `1,11 / 6,5° / 33,0°` (`>60` 1) | **`1,04 / 2,0° / 22,8°`** (`>60` **0**) | `1,19 / 5,8° / 48,1°` (`>60` 4) | ⭐⭐⭐ **nós, nas quatro** |
+| `sculpt_wrinkled` | `1,12 / 5,2° / 35,5°` | **`1,07 / 2,8° / 22,8°`** | `1,08 / 4,8° / **17,0°**` | nós no aspecto e na mediana; **ele na cauda** |
+
+⚠️ **A coluna em que ficamos atrás é o RELEVO**, e ela não é nova: `11,6°` contra `7,0°` na
+enrugada e `19,3°` contra `13,3°` no gancho (empatados na orelha, `20,0°` contra `19,4°`).
+*Já estávamos atrás dessa coluna antes desta jornada* (`11,8°` e `17,7°`), e é a fronteira
+que fica aberta.
+
+⚠️ **E a lei alinhada ganha em 5 das 8 células** — a queda para a cega é a excepção, e é ela
+que paga o relevo nas três em que dispara.
+
+⚠️ **Preço:** `0,2`–`0,6 s` na densidade do botão e `3`–`12 s` na fina, sobre uma cadeia que
+o botão corre **duas** vezes. `PH2D_EXTRACT_FINISH=0` desliga.

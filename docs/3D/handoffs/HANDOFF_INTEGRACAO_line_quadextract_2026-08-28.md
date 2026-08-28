@@ -37,54 +37,64 @@
 ⛔ **O caminho do `ph2d_quadfill::fill` (a montagem por patches) fica INTACTO** — a tabela de
 rejeição dele (`SQUARE_ROUNDS = 0`) foi medida noutra conectividade e continua a valer lá.
 
-## §3 — As quatro constantes, e de onde saiu cada número
+## §3 — As constantes, e de onde saiu cada número
 
 | constante | valor | de onde |
 |---|---|---|
-| `EXTRACT_RELIEF_PULL` | **`1,0`** | ⭐ *o peso É a confiança* — a anisotropia crua, sem constante por cima. Numa esfera ela é `0` e a lei degenera **ao bit** no quadrado puro (as linhas `x0`..`x4` da varredura são idênticas) |
-| `EXTRACT_SETTLE` | **`1e-3`** da aresta mediana | tabela medida **através da porta**; `3e-4` custa `1,5`–`3×` mais para comprar `0,2`–`0,3°` |
-| `EXTRACT_PATIENCE` | **`128`** rondas sem melhoria | ⛔ sem ela, a `sculpt_hooked` fina gastava `1 200` rondas e `8,3 s` para entregar a malha com que começou |
-| `EXTRACT_MAX_ROUNDS` | `1 200` | a rede; medido, `1e-3` gasta `248`–`350` rondas |
+| `EXTRACT_RELIEF_PULL` | **`1,0`** | ⭐ *o peso É a confiança* — a anisotropia crua, sem constante por cima. Numa esfera ela é `0` e a lei degenera **ao bit** no quadrado puro |
+| `EXTRACT_SETTLE` | **`1e-3`** da aresta mediana | tabela medida **através da porta**; `3e-4` custa `1,5`–`3×` mais para `0,2`–`0,3°` |
+| `EXTRACT_PATIENCE` | **`768`** rondas **sem aceitar nada** | `1,8×` a maior primeira aceitação medida (`418`) |
+| `EXTRACT_MAX_ROUNDS` | `1 200` | a rede |
+| `quality::HINT_SMOOTH_ROUNDS` | **`0`** | ⛔ construída, medida e **não adoptada** — ver §4.4 |
 
-⚠️ **O `EXTRACT_SETTLE` foi escolhido DUAS vezes.** A 1.ª (`1e-2`) saiu de uma varredura
-**sem a ronda zero à frente** e não sobreviveu ao produto: através da porta deu `23` rondas
-em vez de `93`, e `7,8° → 6,8°` em vez de `7,8° → 4,5°`. *O Laplaciano pré-condiciona a
-malha, o movimento começa menor, e o mesmo limiar relativo chega muito mais cedo.*
+## §4 — ⚠️ As SETE coisas que uma leitura rápida do diff entende ao contrário
 
-## §4 — ⚠️ As cinco coisas que uma leitura rápida do diff entende ao contrário
-
-1. **A relaxação por ajuste de quadrado NÃO é nova** — ela existe desde 2026-08-22 e estava
-   `SQUARE_ROUNDS = 0`, **medida e rejeitada**. O que mudou foi a **conectividade** a que ela
+1. **A relaxação por ajuste de quadrado NÃO é nova** — existe desde 2026-08-22, com
+   `SQUARE_ROUNDS = 0` **medida e rejeitada**. O que mudou foi a **conectividade** a que ela
    se aplica: a tabela da rejeição mediu a montagem por patches (`27°` de mediana, defeito na
-   conectividade), e a extracção entrega `1,10 / 3,8°`. *Uma recusa medida responde uma
+   conectividade); a extracção entrega `1,10 / 3,8°`. *Uma recusa medida responde uma
    pergunta.*
-2. **O Laplaciano NÃO saiu** — ele é a ronda zero. Medido: na `sculpt_hooked` fina ele leva as
-   faces péssimas de `7` para `1`, e **nenhuma** quantidade de ajuste de quadrado faz isso.
-   As duas leis atacam metades diferentes (comprimento · ângulo).
-3. **A cerca de viagem existe na API e nasce DESLIGADA** (`square_relax_capped`). Ela foi
-   medida e **não serve** como cura: a `0,35 h` guarda o relevo e paga o `p99` (`52,8°` contra
-   `34,5°`), porque prende exactamente os vértices que mais precisavam de andar.
-4. **A comparação é de PARETO, não lexicográfica.** A 1.ª redacção era
-   `(faces péssimas, mediana)` e **recusava melhorias reais**: numa esfera-UV crua a
-   relaxação leva o aspecto de `1,384` a `1,251` e mexe a mediana em `+0,2°`.
-5. **O raio de reprojecção encolher não é uma aproximação** — depois da 1.ª ronda o vértice
-   está *sobre* a superfície, então uma esfera de `2×` o que ele acabou de andar contém o pé
-   mais próximo, e `faces_in_sphere` devolve toda face que a corte. Vale `~12×` de relógio.
+2. **O Laplaciano NÃO saiu** — ele é a ronda zero, e é ele que mata a face extrema (`>60°` de
+   `7` para `1` na `sculpt_hooked` fina). As duas leis atacam metades diferentes.
+3. **A cerca de VIAGEM existe na API e nasce DESLIGADA** (`square_relax_capped`) — medida e
+   rejeitada como cura: a `0,35 h` guarda o relevo e paga o `p99` (`52,8°` contra `34,5°`).
+4. **A aceitação é contra a RONDA ZERO, e cobre CINCO colunas** (`>60`, enviesamento `p50` e
+   `p99`, aspecto `p50` e `p99`). ⛔ A 1.ª redacção comparava com a **melhor até então** e era
+   uma **catraca**: a relaxação mergulha antes de subir, e as quatro peças da densidade fina
+   saíam intocadas. A escolha **entre** aceitáveis é a mediana, com o aspecto a desempatar.
+5. ⛔ **A paciência conta rondas SEM ACEITAR NADA, não «desde a melhor».** Na
+   `sculpt_hooked` fina a primeira aceitação é a `312` e a melhor é a `830`: com `128` rondas
+   *desde a melhor* a peça saía **intocada** em vez de ir a `1,04 / 2,0° / p99 22,8`.
+6. ⭐ **Há uma queda para a lei CEGA**, e ela só corre quando a alinhada **não se mexeu** — é
+   isso que guarda o relevo onde ele estava em jogo (`5` das `8` células ficam com a
+   alinhada). ⚠️ Nas outras três o preço é o relevo, e está medido.
+7. **O raio de reprojecção encolher não é aproximação** — depois da 1.ª ronda o vértice está
+   *sobre* a superfície, e uma esfera de `2×` o que ele andou contém o pé mais próximo. Vale
+   `~12×` de relógio.
 
-## §5 — ⛔ O que fica ABERTO, com o número ao lado
+## §5 — ⭐⭐⭐ O RESULTADO, e o que fica ABERTO
 
-- ⚠️ **Na `sculpt_hooked` FINA o alinhamento nunca bate a ronda zero.** Aquela peça sai do
-  Laplaciano com `1` face péssima e a relaxação alinhada sobe-a para `2` logo à primeira, o
-  que a comparação recusa. ⇒ a porta entrega ali **exactamente o que shipava** (sem
-  regressão) e a paciência corta o desperdício. ⛔ Com o alinhamento **desligado** aquela
-  mesma peça chegava a `1,04 / 2,0° / p99 22,8 / >60 0` — *há ali um ganho que esta lei não
-  alcança*, e a hipótese seguinte é a **direcção principal ser ruidosa por face** (ela vem de
-  `ph2d_mesh::principal_dirs` sem qualquer suavização de vizinhança).
-- ⚠️ **Na `sculpt_hooked` grossa o `fid máx` sobe** (`6,25 %` → `7,61 %`) e as dobras vão de
-  `2` para `3`. É **um vértice** (o `p95` fica em `0,27 %`) e a peça já falhava ali; mas está
-  nomeado.
-- ⛔ **O `>60°` não entra no alinhamento como restrição** — ele só entra na *escolha* da
-  ronda. Uma relaxação que nunca criasse uma face péssima é outra obra.
+À densidade do oráculo (`alvo 0,667`), contra a saída **`_smooth`** dele:
+
+| peça | nós ANTES | ⭐ **nós DEPOIS** | oráculo `_smooth` |
+|---|---|---|---|
+| `sphere_uv` | `1,10 / 3,8° / 17,3°` | **`1,04 / 2,6° / 10,1°`** | `1,22 / 5,9° / 20,0°` |
+| `sculpt_eared` | `1,10 / 6,3° / 27,2°` | **`1,04 / 3,3° / 11,0°`** | `1,08 / 5,7° / 20,2°` |
+| `sculpt_hooked` | `1,11 / 6,5° / 33,0°` (`>60` 1) | **`1,04 / 2,0° / 22,8°`** (`>60` **0**) | `1,19 / 5,8° / 48,1°` (`>60` 4) |
+| `sculpt_wrinkled` | `1,12 / 5,2° / 35,5°` | **`1,07 / 2,8° / 22,8°`** | `1,08 / 4,8° / **17,0°**` |
+
+⇒ **batemos a saída alisada dele em TODAS as colunas de forma em três das quatro peças**, e
+em duas de três na quarta (ele fica com a cauda da enrugada).
+
+### ⛔ Aberto, com o número ao lado
+
+- **O RELEVO** é a coluna em que ficamos atrás: `11,6°` contra `7,0°` na enrugada e `19,3°`
+  contra `13,3°` no gancho (empatados na orelha). ⚠️ *Já estávamos atrás antes desta
+  jornada* (`11,8°` e `17,7°`) — a queda para a lei cega paga mais um pouco em três células.
+- ⛔ **A hipótese do «campo de direções ruidoso» está REFUTADA** como cura da recusa da lei
+  alinhada: a suavização 4-RoSy foi construída, medida e não adoptada (§4.4 do ACHADO §10.4).
+- **Preço:** `0,2`–`0,6 s` na densidade do botão, `3`–`12 s` na fina, e o botão corre a
+  cadeia **duas** vezes. `PH2D_EXTRACT_FINISH=0` desliga.
 
 ## §6 — O que o Enio smoka
 

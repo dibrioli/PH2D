@@ -26,12 +26,34 @@
 //! a curvatura não pede refino) ele bate quase exato: `0,02 × 1,732 = 0,0346`
 //! contra **0,0356** medidos.
 //!
-//! ⚠️ **Nas fixturas CURVAS o oráculo termina mais FINO que `alpha × diag`**
-//! (0,0566 contra 0,0693 na esfera; 0,0588 contra 0,0859 na `sculpt_hooked`) —
-//! ou seja, ele refina abaixo do alvo onde a curvatura pede. *Essa metade da lei
-//! ainda não está portada, e é o primeiro item aberto do F1* — o que existe aqui
-//! é o alvo **uniforme**, que já é o que faz a densidade parar de depender da
-//! entrada.
+//! ⛔⛔⛔ **E o «item aberto» que aqui esteve desde 2026-08-20 está REFUTADO** (medido
+//! 2026-08-28). Ele dizia: *«nas fixturas curvas o oráculo termina mais FINO que
+//! `alpha × diag` (0,0566 contra 0,0693 na esfera; 0,0588 contra 0,0859 na
+//! `sculpt_hooked`) — ou seja, ele refina abaixo do alvo onde a curvatura pede»*.
+//!
+//! ⭐ **A malha remalhada DELE foi medida por bandas de curvatura** (`κ ≈ 2·|L(p)|/h²`,
+//! a lei do Laplaciano uniforme que dá `1/R` numa esfera), e o expoente de `h ~ κ^e`
+//! sobre uma faixa de **`8×`** na curvatura é:
+//!
+//! | peça | `κ` da banda 0 | `κ` da banda 7 | aresta na banda 0 | na banda 7 | ⇒ `e` |
+//! |---|---|---|---|---|---|
+//! | `sculpt_eared` | 0,97 | **7,70** | 0,0564 | 0,0490 | **`−0,029`** |
+//! | `sculpt_hooked` | 0,73 | **6,64** | 0,0579 | 0,0552 | **`−0,007`** |
+//! | `sculpt_wrinkled` | 0,97 | **6,20** | 0,0566 | 0,0558 | **`+0,009`** |
+//!
+//! ⇒ `e ≈ 0`: **a malha dele é uniforme, tal como esta.** (`−0,5` seria erro geométrico
+//! constante; `−1`, ângulo constante.)
+//!
+//! ⭐⭐⭐ **A inferência de 2026-08-20 confundiu duas afirmações:** *«o alvo GLOBAL dele
+//! numa peça curva é menor que `alpha × diag`»* é verdade, e **não implica** *«ele refina
+//! LOCALMENTE onde a curvatura pede»*, que é falso. A primeira é sobre como ele escolhe
+//! **um** número por peça; a segunda, sobre a variação **dentro** dela.
+//!
+//! ⚠️ Isto **não** diz que densidade adaptativa seja má ideia — diz que ela é uma **feature
+//! de produto** (o *Adaptive Size* do ZBrush/QuadRemesher, com o artista a decidir) e
+//! **não** o que separa a nossa saída da dele. Detalhe:
+//! [`ACHADO_o_acabamento_e_a_regua_da_densidade.md`](../../../docs/3D/quad-remesh/ACHADO_o_acabamento_e_a_regua_da_densidade.md)
+//! §6.
 //!
 //! # O laço, e de quem é cada peça
 //!

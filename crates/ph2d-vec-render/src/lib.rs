@@ -34,6 +34,9 @@ use gradient::fill_multipoint;
 /// **O preenchimento com PADRÃO** (plano 33) — a tradução do modo e a chamada da porta de imagem.
 pub mod pattern;
 
+/// **As três alças do padrão na tela** (plano 33, W6) — irmãs das do gradiente.
+pub mod pattern_handle;
+
 #[cfg(test)]
 mod pattern_tests;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};

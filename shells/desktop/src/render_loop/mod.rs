@@ -9492,6 +9492,17 @@ impl crate::App {
                         vector_scene,
                     );
                 }
+                // Plano 33 W6: as três alças do PADRÃO (mover · escalar · rodar), pela mesma
+                // descida — a geometria delas é LOCAL como a do path.
+                if let Some(sel) = self.vec_pen.selected() {
+                    ph2d_vec_render::pattern_handle::draw_pattern_handles(
+                        vec_scene,
+                        Some(sel),
+                        self.vec_pattern_selected,
+                        ph2d_vec_render::path_to_screen(&vec_xf, sel, cam_affine),
+                        vector_scene,
+                    );
+                }
                 // O gesto de REGIÃO em curso, em px de tela — retângulo ou LAÇO, conforme a
                 // forma que o press congelou.
                 if let Some(m) = self.vec_marquee.as_ref() {

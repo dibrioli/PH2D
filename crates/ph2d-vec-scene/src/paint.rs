@@ -254,6 +254,51 @@ impl PatternFill {
         }
     }
 
+    /// **O lado MAIOR de uma cópia** — o número que o slider *Size* e a alça de escala autoram.
+    ///
+    /// ⭐ **O painel autora UM número e o documento guarda DOIS**, e a diferença é o aspecto da
+    /// arte: oferecer os dois lados deixaria o artista esmagar a imagem sem querer.
+    #[must_use]
+    pub fn longer_side(&self) -> f64 {
+        self.size[0].max(self.size[1])
+    }
+
+    /// Reescala `size` preservando o aspecto, para que o lado maior meça `longer`.
+    ///
+    /// ⚠️⚠️ **A PORTA ÚNICA do tamanho.** O slider e a alça de canvas escrevem por aqui, e é isso
+    /// que os impede de divergir — a lei escrita nos dois sítios é a lei que um dia muda só num.
+    ///
+    /// ⚠️ `is_finite()` ANTES da comparação: um `NaN` reprova toda desigualdade e escorregaria pela
+    /// porta de trás, deixando um `size` de `NaN` que apaga a forma sem erro nenhum.
+    pub fn set_longer_side(&mut self, longer: f64) {
+        let cur = self.longer_side();
+        if !cur.is_finite() || cur <= 0.0 || !longer.is_finite() || longer <= 0.0 {
+            let v = longer.max(f64::EPSILON);
+            self.size = [v, v];
+            return;
+        }
+        let s = longer / cur;
+        self.size = [self.size[0] * s, self.size[1] * s];
+    }
+
+    /// **Os três pontos das alças de canvas**, no espaço das âncoras: `[mover, escalar, rodar]`.
+    ///
+    /// ⭐ É a disposição do Inkscape (*"um `x` que move, um quadrado que escala, um círculo que
+    /// roda"*) — a diferença entre afinar um padrão na TELA e preencher um formulário de números.
+    /// A de escala senta a um `size` no eixo X do padrão; a de rotação, a um `size` no Y. ⚠️ Os dois
+    /// eixos vêm da MESMA rotação, então rodar o padrão roda as alças com ele.
+    #[must_use]
+    pub fn handle_points(&self) -> [[f64; 2]; 3] {
+        let (sin, cos) = self.angle.sin_cos();
+        let ax = [cos * self.size[0], sin * self.size[0]];
+        let ay = [-sin * self.size[1], cos * self.size[1]];
+        [
+            self.origin,
+            [self.origin[0] + ax[0], self.origin[1] + ax[1]],
+            [self.origin[0] + ay[0], self.origin[1] + ay[1]],
+        ]
+    }
+
     /// O afim **pixels do ladrilho -> espaço das âncoras**, para o `brush_transform` do render.
     #[must_use]
     pub fn placement(&self, cells: [u32; 2], tile_px: [u32; 2]) -> [f64; 6] {

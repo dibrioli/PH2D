@@ -234,3 +234,149 @@ fn the_centre_does_not_move() {
         "o centro andou de {a:?} para {b:?}"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ A LEI DO ALINHAMENTO AO RELEVO — ver [`super::steer`].
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A orientação da GRADE de um quadrado de harmónico `h`, dobrada em `[0°, 90°)`.
+///
+/// ⚠️ **É a aresta, não o harmónico** — os cantos de `h·iᵏ` estão a `arg(h) + 90°k` e as
+/// arestas entre eles correm a `arg(h) + 45° + 90°k`. *Medir o harmónico daria um gate
+/// verde com a grade rodada 45°.*
+fn grid_angle(h: [f32; 2]) -> f32 {
+    let a = h[1].atan2(h[0]) + std::f32::consts::FRAC_PI_4;
+    a.rem_euclid(std::f32::consts::FRAC_PI_2)
+}
+
+/// A menor diferença entre dois ângulos de grade, em `[0°, 45°]`.
+fn grid_gap(a: f32, b: f32) -> f32 {
+    let q = std::f32::consts::FRAC_PI_2;
+    let d = (a - b).rem_euclid(q);
+    d.min(q - d)
+}
+
+/// ⭐⭐⭐ **PESO ZERO NÃO TOCA — ao bit.**
+///
+/// ⛔ **É esta metade que faz a esfera continuar a ver a lei antiga.** Numa superfície sem
+/// direcção preferida a anisotropia é `0`, e sem esta garantia o alinhamento poria uma
+/// costura onde a forma não pede nenhuma. ⚠️ *Bit a bit, e não «quase igual»* — a linha
+/// `x0` da varredura de 2026-08-28 tem de ser idêntica em toda coluna à corrida sem
+/// alinhamento nenhum, e um `1e-7` de deriva estragaria essa comparação.
+#[test]
+fn a_zero_weight_hint_leaves_the_square_untouched() {
+    let h = [0.7f32, -0.3];
+    for f in [[1.0f32, 0.0], [0.0, 1.0], [-0.4, 0.9], [0.0, 0.0]] {
+        let got = super::steer(h, f, 0.0);
+        assert!(
+            got[0].to_bits() == h[0].to_bits() && got[1].to_bits() == h[1].to_bits(),
+            "peso zero mexeu o harmonico: {h:?} -> {got:?} com alvo {f:?}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **COM PESO CHEIO A GRADE FICA NA DIRECÇÃO PEDIDA** — e a régua é módulo `90°`.
+///
+/// ⚠️ **A varredura cobre uma volta inteira do alvo**, de propósito: a dobragem em
+/// `[−45°, 45°]` é onde um erro de sinal ou um `rem_euclid` trocado se esconde, e ele só
+/// aparece nos quadrantes que uma fixtura única não visita.
+#[test]
+fn full_weight_lands_the_grid_on_the_asked_direction() {
+    let h = [0.6f32, 0.25];
+    for k in 0..24 {
+        #[allow(clippy::cast_precision_loss)]
+        let t = std::f32::consts::TAU * k as f32 / 24.0;
+        let f = [t.cos(), t.sin()];
+        let got = super::steer(h, f, 1.0);
+        let gap = grid_gap(grid_angle(got), t);
+        assert!(
+            gap <= 1.0e-4,
+            "com peso 1 a grade ficou a {:.3}° do alvo (alvo {:.1}°)",
+            gap.to_degrees(),
+            t.to_degrees()
+        );
+    }
+}
+
+/// ⭐⭐ **O TAMANHO NÃO É NEGOCIADO** — a rotação é uma rotação.
+///
+/// ⛔ Sem este lado, uma implementação que devolvesse `f` normalizado a `|h|` errado
+/// passaria no gate acima e encolheria a malha a cada ronda. *O tamanho vem dos quatro
+/// pontos; só a orientação vem do relevo.*
+#[test]
+fn steering_is_a_rotation_and_keeps_the_size() {
+    let h = [0.6f32, 0.25];
+    let r0 = h[0].hypot(h[1]);
+    for k in 0..24 {
+        #[allow(clippy::cast_precision_loss)]
+        let t = std::f32::consts::TAU * k as f32 / 24.0;
+        for w in [0.13f32, 0.5, 1.0] {
+            let got = super::steer(h, [t.cos(), t.sin()], w);
+            let r = got[0].hypot(got[1]);
+            assert!(
+                (r - r0).abs() <= 1.0e-5 * r0.max(1.0),
+                "o raio mudou de {r0} para {r} (peso {w}, alvo {:.1}°)",
+                t.to_degrees()
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **O QUADRADO NUNCA RODA MAIS DE 45°** — porque rodar `90°` é a mesma grade.
+///
+/// ⚠️ **É o gate que impede o alinhamento de VIRAR a grade de lado.** Sem a dobragem, um
+/// alvo a `80°` faria o quadrado dar quase um quarto de volta para «obedecer» a uma
+/// direcção que ele já obedecia; a malha inteira giraria por nada e o relevo pioraria
+/// exactamente onde ele é mais forte.
+///
+/// ⛔⛔ **A 1.ª redacção deste gate era uma TAUTOLOGIA, e a prova de mutação apanhou-a**
+/// (2026-08-28): ela media a rotação com o [`grid_gap`], que devolve um valor em
+/// `[0°, 45°]` **por construção** — a asserção não podia falhar, e com a dobragem removida
+/// ela ficou verde. ⭐ A régua certa é o ângulo **CRU** entre `h` e o `h` rodado: uma
+/// rotação de `80°` lê-se `80°` ali, e `45°` no outro.
+#[test]
+fn steering_never_turns_a_square_by_more_than_an_eighth_turn() {
+    let h = [0.6f32, 0.25];
+    for k in 0..64 {
+        #[allow(clippy::cast_precision_loss)]
+        let t = std::f32::consts::TAU * k as f32 / 64.0;
+        for w in [0.25f32, 1.0] {
+            let got = super::steer(h, [t.cos(), t.sin()], w);
+            // O ângulo CRU entre os dois harmónicos, dobrado só em `(-180°, 180°]`.
+            let raw = (got[1].atan2(got[0]) - h[1].atan2(h[0]) + std::f32::consts::PI)
+                .rem_euclid(std::f32::consts::TAU)
+                - std::f32::consts::PI;
+            assert!(
+                raw.abs() <= std::f32::consts::FRAC_PI_4 + 1.0e-4,
+                "o quadrado rodou {:.1}°, mais que os 45° que uma grade admite (peso {w}, alvo {:.1}°)",
+                raw.to_degrees(),
+                t.to_degrees()
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **O PESO INTERPOLA, e é monótono** — meio peso anda menos de meio caminho? Não: anda
+/// **exactamente** metade do desvio, e é isso que faz a anisotropia ser uma confiança e não
+/// um interruptor.
+///
+/// ⛔ Sem ele, uma implementação que tratasse qualquer `w > 0` como `1` passaria nos outros
+/// quatro gates — e as linhas `x0,5`, `x1` e `x2` da varredura mediriam a mesma coisa.
+#[test]
+fn half_the_weight_covers_half_the_gap() {
+    let h = [0.6f32, 0.25];
+    let a0 = grid_angle(h);
+    for k in 0..16 {
+        #[allow(clippy::cast_precision_loss)]
+        let t = std::f32::consts::TAU * k as f32 / 16.0;
+        let f = [t.cos(), t.sin()];
+        let full = grid_gap(grid_angle(super::steer(h, f, 1.0)), a0);
+        let half = grid_gap(grid_angle(super::steer(h, f, 0.5)), a0);
+        assert!(
+            (half - full * 0.5).abs() <= 1.0e-4,
+            "meio peso andou {:.3}° e o caminho inteiro e' {:.3}°",
+            half.to_degrees(),
+            full.to_degrees()
+        );
+    }
+}

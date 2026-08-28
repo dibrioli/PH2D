@@ -73,13 +73,15 @@ pub struct ChainTiming {
     pub map: f32,
     /// A extracção das isolinhas inteiras.
     pub extract: f32,
+    /// ⭐ O acabamento — ver [`ph2d_quadfill::finish_extracted`].
+    pub finish: f32,
 }
 
 impl ChainTiming {
     /// O total, que é o que quem espera sente.
     #[must_use]
     pub fn total(self) -> f32 {
-        self.remesh + self.field + self.trace + self.cut + self.map + self.extract
+        self.remesh + self.field + self.trace + self.cut + self.map + self.extract + self.finish
     }
 }
 
@@ -100,6 +102,9 @@ pub struct ChainReport {
     pub aligned: bool,
     /// A forma de cada face — a régua que a `line/sculpt3d` calibrou contra o oráculo.
     pub shape: ph2d_quadfill::QuadShape,
+    /// ⭐ O que o acabamento fez — ver [`ph2d_quadfill::FinishReport`]. ⚠️ Ele carrega a
+    /// forma **antes** dele, e é isso que torna o ganho legível sem uma segunda corrida.
+    pub finish: ph2d_quadfill::FinishReport,
 }
 
 /// ⭐⭐⭐ **A CADEIA, do triângulo ao quad alinhado.**
@@ -162,11 +167,22 @@ pub fn quads_from_mesh(
         tris: &tris,
         uv: &uv,
     };
-    let (out, e) = ph2d_quadextract::extract(&cm, None).map_err(ChainError::Extract)?;
+    let (mut out, e) = ph2d_quadextract::extract(&cm, None).map_err(ChainError::Extract)?;
     if out.faces().is_empty() {
         return Err(ChainError::TooCoarse);
     }
     lap(&mut ms.extract);
+
+    // ── ⭐⭐⭐ O ACABAMENTO. Ver [`ph2d_quadfill::finish_extract`].
+    //
+    // ⛔⛔ **Esta crate entregava a malha CRUA** enquanto o shell da escultura corria `6`
+    // rondas de Laplaciano — *duas ordens para o mesmo botão, e só uma com acabamento.*
+    // A porta é a mesma para os dois desde 2026-08-28.
+    //
+    // ⚠️ **`reference` e não `work`:** a saída pousa na escultura que o artista fez; a
+    // remalhada do F1 já arredondou uma vez, e reprojectar sobre ela somaria os dois erros.
+    let finish = ph2d_quadfill::finish_extracted(&mut out, reference);
+    lap(&mut ms.finish);
     let shape = ph2d_quadfill::quad_shape(&out);
     let report = ChainReport {
         ms,
@@ -177,6 +193,7 @@ pub fn quads_from_mesh(
         folded: e.folded_faces,
         aligned: round.shift_frac_max == 0.0,
         shape,
+        finish,
     };
     Ok((out, report))
 }

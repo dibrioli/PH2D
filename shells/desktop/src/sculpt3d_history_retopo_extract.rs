@@ -240,8 +240,18 @@ impl Sculpt3dScene {
             // ⭐ **O preço, medido:** `425 ms` sobre `7 750` quads numa cadeia de `7,0 s` —
             // **6 %**, na densidade mais fina medida (melhor de 3, `6 979` contra `7 404 ms`).
             // ⚠️ `PH2D_EXTRACT_FINISH=0` desliga, para bissecar.
+            //
+            // ⭐⭐⭐ **E DESDE 2026-08-28 O ACABAMENTO É UMA PORTA, não uma linha aqui** — a
+            // mesma que a `ph2d-quadchain` chama, porque *duas ordens para o mesmo botão com
+            // acabamentos diferentes é uma lei que gate nenhum defende*. Ela corre o
+            // Laplaciano como **ronda zero** e depois o ajuste de quadrado **alinhado ao
+            // relevo**, e entrega a MELHOR ronda — ver `ph2d_quadfill::finish_extract`.
+            //
+            // ⚠️ **O ganho, medido na densidade que este botão usa** (`sculpt_eared`, 524
+            // quads): enviesamento mediano `10,4° → 3,8°`, aspecto `1,14 → 1,07`, faces
+            // péssimas `0 → 0`, e o preço `21 ms → ~400 ms` numa cadeia de segundos.
             if std::env::var("PH2D_EXTRACT_FINISH").as_deref() != Ok("0") {
-                ph2d_quadfill::smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS);
+                ph2d_quadfill::finish_extracted(&mut out, &reference);
             }
             let out = out;
 

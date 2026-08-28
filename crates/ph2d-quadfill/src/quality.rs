@@ -303,6 +303,53 @@ fn centroid(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
     c
 }
 
+/// ⭐⭐⭐ **A DIREÇÃO QUE A SUPERFÍCIE PREFERE, no centro de cada face da saída** — o
+/// que o acabamento precisa de saber para não desalinhar a grade enquanto a endireita.
+///
+/// ⚠️ **É a MESMA fonte que a régua [`follows_relief`] usa** ([`ph2d_mesh::principal_dirs`]),
+/// e isso é deliberado: o acabamento passa a mirar exactamente aquilo por que é julgado, em
+/// vez de o estragar por acidente. ⛔ *Não é mirar a régua* — a direção principal é também o
+/// que o campo cruzado (F2) persegue, então as duas metades da cadeia passam a querer a
+/// mesma coisa. A régua continua a poder reprovar: ela mede **arestas**, isto orienta
+/// **faces**, e o peso abaixo faz a maior parte das faces quase não ser puxada.
+///
+/// ⭐ **O peso é a ANISOTROPIA**, em `[0, 1]`, tal como ela sai da estimativa: numa esfera
+/// as duas curvaturas são iguais, não há direção preferida, e o peso `0` devolve a lei do
+/// quadrado puro. *Um alinhamento sem confiança põe costura onde a forma não pede nenhuma.*
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Hint {
+    /// A direção principal, em espaço de MUNDO.
+    pub dir: [f32; 3],
+    /// Quanto ela vale, em `[0, 1]` — ver [`ph2d_mesh::PrincipalDir::anisotropy`].
+    pub weight: f32,
+}
+
+/// Amostra [`Hint`] no centróide de cada face de `out`. ⚠️ **Uma vez, não por ronda:** o
+/// campo de direções é liso e o acabamento move os vértices uma fração de aresta, então
+/// re-amostrar por ronda pagaria a busca `N` vezes para mudar o alvo quase nada.
+#[must_use]
+pub fn surface_hint(surface: &Mesh, out: &Mesh) -> Vec<Hint> {
+    let dirs = ph2d_mesh::principal_dirs(surface);
+    let rb = surface.bounds();
+    let seed = norm(sub(rb.max, rb.min)) * 0.02;
+    let pos = out.positions();
+    let mut hits: Vec<u32> = Vec::new();
+    out.faces()
+        .iter()
+        .map(|f| {
+            let c = centroid(pos, f.verts());
+            let Some(rf) = nearest_face(surface, c, seed, &mut hits) else {
+                return Hint::default();
+            };
+            let pd = dirs[rf];
+            Hint {
+                dir: pd.dir,
+                weight: pd.anisotropy,
+            }
+        })
+        .collect()
+}
+
 /// A normal de uma face, pelo primeiro triângulo dela.
 fn face_normal(pos: &[[f32; 3]], v: &[u32]) -> [f32; 3] {
     let (p0, p1, p2) = (

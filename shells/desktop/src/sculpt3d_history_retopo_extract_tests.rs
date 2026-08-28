@@ -106,21 +106,30 @@ fn a_extraccao_alisa_contra_a_escultura_e_nao_contra_a_remalhada() {
     // ⚠️ **O token vem partido de propósito:** este gate lê o ficheiro em que ele
     // próprio vive, e um literal inteiro contar-se-ia a si mesmo. *Um gate que se conta
     // nunca mede o produto.*
-    let call = concat!("ph2d_quadfill::", "smooth(");
+    let call = concat!("ph2d_quadfill::", "finish_extracted(");
     let n = src.matches(call).count();
     assert_eq!(
         n, 1,
-        "o caminho da extraccao chama o alisamento {n} vezes; tem de ser UMA -- ver o \
+        "o caminho da extraccao chama o acabamento {n} vezes; tem de ser UMA -- ver o \
          doc do `ph2d_quadfill::fill` e o defeito de 2026-08-21"
     );
     let full = concat!(
         "ph2d_quadfill::",
-        "smooth(&mut out, &reference, ph2d_quadfill::SMOOTHING_ROUNDS)"
+        "finish_extracted(&mut out, &reference)"
     );
     assert!(
         src.contains(full),
-        "⛔⛔ o alisamento tem de pousar na `reference` (a ESCULTURA) e nao na `work` \
-         (a remalhada), e usar o mesmo SMOOTHING_ROUNDS do caminho irmao"
+        "⛔⛔ o acabamento tem de pousar na `reference` (a ESCULTURA) e nao na `work` \
+         (a remalhada)"
+    );
+    // ⛔⛔ **E o alisamento CRU não pode voltar por uma segunda porta.** Em 2026-08-28 o
+    // Laplaciano passou a ser a *ronda zero* de `finish_extracted`; uma chamada solta aqui
+    // seria um segundo acabamento a correr por cima do primeiro, e as duas passariam neste
+    // ficheiro sem se verem.
+    assert_eq!(
+        src.matches(concat!("ph2d_quadfill::", "smooth(")).count(),
+        0,
+        "⛔ o alisamento cru voltou a este caminho -- ele vive dentro de `finish_extracted`"
     );
 }
 

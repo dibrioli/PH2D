@@ -209,10 +209,51 @@ pub fn square_relax_capped(
     max_travel: f32,
     settle: f32,
 ) -> SquareReport {
+    square_relax_aligned(mesh, surface, rounds, max_travel, settle, 0.0)
+}
+
+/// ⭐⭐⭐ **A RELAXAÇÃO QUE OLHA PARA O RELEVO** — a porta que o produto usa.
+///
+/// `pull` multiplica a confiança de cada face (ver [`crate::quality::Hint`]) antes de ela
+/// rodar o quadrado; `0` devolve [`square_relax_capped`] **ao bit**.
+///
+/// # ⛔⛔⛔ Por que ela existe: a relaxação cega CONVERGE PARA UMA GRADE CEGA
+///
+/// Medido 2026-08-28, `sculpt_wrinkled` grossa, sem alinhamento: o enviesamento mediano cai
+/// de `8,6°` para `3,2°` **e o relevo sobe de `11,9°` para `18,8°`** (`22,5°` = uma grade
+/// que ignora a forma). A relaxação desliza a grade pela superfície até os quads serem
+/// quadrados, e ao fazê-lo apaga a única propriedade que distingue uma retopologia por campo
+/// cruzado de um remesh por voxel. ⚠️ **O Enio nomeou essa propriedade no smoke de 24/08** —
+/// *«obedece razoavelmente o relevo»*.
+///
+/// ⭐ **E a saída não é alisar menos.** O oráculo `quadwild-bimdf` corre um passe de
+/// acabamento que compra forma **sem pagar relevo**: na `sculpt_wrinkled` ele vai de
+/// `5,1° → 4,8°` de enviesamento com o relevo a ir de `7,1° → 7,0°`, e no `sculpt_hooked` o
+/// relevo até **melhora** (`15,1° → 13,3°`). *Um acabamento que estraga o alinhamento não é
+/// o acabamento certo com demasiadas rondas; é outro acabamento.*
+///
+/// ⛔ **E uma cerca de viagem sozinha foi MEDIDA e não serve** (`sculpt_wrinkled` grossa): a
+/// `0,35 h` ela guarda o relevo (`11,6°`) e paga o `p99` do enviesamento — `52,8°` contra os
+/// `34,5°` de hoje —, porque a cerca prende exactamente os vértices que mais precisavam de
+/// andar. *A cerca limita a distância; o defeito não é distância, é direcção.*
+pub fn square_relax_aligned(
+    mesh: &mut Mesh,
+    surface: &Mesh,
+    rounds: usize,
+    max_travel: f32,
+    settle: f32,
+    pull: f32,
+) -> SquareReport {
     let mut rep = SquareReport::default();
     if rounds == 0 {
         return rep;
     }
+    // ⚠️ **Amostrado UMA vez** — ver [`crate::quality::surface_hint`].
+    let hint: Vec<crate::quality::Hint> = if pull > 0.0 {
+        crate::quality::surface_hint(surface, mesh)
+    } else {
+        Vec::new()
+    };
     let origin: Vec<[f32; 3]> = mesh.positions().to_vec();
     let floor = crate::finish::bbox_seed(surface);
     for r in 0..rounds {
@@ -223,7 +264,7 @@ pub fn square_relax_capped(
         // ⚠️ *Um raio grande não é mais correcto — é só mais caro*, e era ele que fazia a
         // ronda custar `~5,6 µs` por vértice.
         let seed = if r == 0 { floor } else { 1.0e-6 };
-        let mv = square_once(mesh, surface, seed, &origin, max_travel);
+        let mv = square_once(mesh, surface, seed, &origin, max_travel, &hint, pull);
         rep.rounds = r + 1;
         rep.last_move = mv;
         if mv <= settle {
@@ -279,7 +320,19 @@ fn norm(a: [f32; 3]) -> f32 {
 /// desta crate que é matemática pura, e uma troca de sinal aqui produziria uma
 /// malha *plausível* e errada. *Uma lei que se pode testar sem malha nenhuma
 /// testa-se sem malha nenhuma.*
-pub(crate) fn nearest_square(z: [[f32; 2]; 4]) -> [[f32; 2]; 4] {
+#[must_use]
+pub fn nearest_square(z: [[f32; 2]; 4]) -> [[f32; 2]; 4] {
+    let (h, ccw) = square_harmonic(z);
+    square_from(h, ccw)
+}
+
+/// ⭐ **O harmónico e a MÃO** — a metade da lei que decide *que quadrado*, separada da que
+/// o escreve em cantos.
+///
+/// ⚠️ **Separada porque o alinhamento ao relevo entra AQUI** (ver [`steer`]): ele mantém
+/// `|h|` — o tamanho que os quatro pontos pedem — e roda a fase. *Se a rotação entrasse
+/// depois dos cantos, seria uma segunda lei a discordar desta.*
+pub(crate) fn square_harmonic(z: [[f32; 2]; 4]) -> ([f32; 2], bool) {
     // `a` = harmónico da mão directa, `b` = da mão inversa. `i·(x,y) = (−y, x)`.
     let a = [
         0.25 * (z[0][0] + z[1][1] - z[2][0] - z[3][1]),
@@ -290,7 +343,43 @@ pub(crate) fn nearest_square(z: [[f32; 2]; 4]) -> [[f32; 2]; 4] {
         0.25 * (z[0][1] + z[1][0] - z[2][1] - z[3][0]),
     ];
     let ccw = a[0].mul_add(a[0], a[1] * a[1]) >= b[0].mul_add(b[0], b[1] * b[1]);
-    let h = if ccw { a } else { b };
+    (if ccw { a } else { b }, ccw)
+}
+
+/// ⭐⭐⭐ **RODA O QUADRADO PARA A DIREÇÃO QUE A SUPERFÍCIE PEDE** — sem lhe tocar no tamanho.
+///
+/// `f` é a direção-alvo já no plano do quad (2-D, não precisa de estar normalizada) e `w` é
+/// quanto ela vale, em `[0, 1]`.
+///
+/// # A lei
+///
+/// As **arestas** do quadrado `h·iᵏ` correm a `arg(h) + 45° + 90°k`, então a orientação de
+/// uma grade é um ângulo **módulo 90°**. O desvio até ao alvo dobra-se para `[−45°, 45°]` —
+/// *rodar 90° é a mesma grade* — e aplica-se `w` dele. ⚠️ **`w = 0` devolve `h` ao bit**, e
+/// é isso que faz uma esfera (sem direção preferida) continuar a ver a lei do quadrado puro.
+pub(crate) fn steer(h: [f32; 2], f: [f32; 2], w: f32) -> [f32; 2] {
+    let lf = f[0].mul_add(f[0], f[1] * f[1]).sqrt();
+    let lh = h[0].mul_add(h[0], h[1] * h[1]).sqrt();
+    if w <= 0.0 || lf < 1.0e-12 || lh < 1.0e-12 {
+        return h;
+    }
+    let quarter = std::f32::consts::FRAC_PI_2;
+    // A orientação da GRADE é a da aresta, que está a 45° do harmónico.
+    let edge = h[1].atan2(h[0]) + std::f32::consts::FRAC_PI_4;
+    let target = f[1].atan2(f[0]);
+    let mut d = (target - edge).rem_euclid(quarter);
+    if d > quarter * 0.5 {
+        d -= quarter;
+    }
+    let (s, c) = (w * d).sin_cos();
+    [
+        h[0].mul_add(c, -(h[1] * s)),
+        h[0].mul_add(s, h[1] * c),
+    ]
+}
+
+/// Escreve os quatro cantos do quadrado de harmónico `h` e mão `ccw`.
+pub(crate) fn square_from(h: [f32; 2], ccw: bool) -> [[f32; 2]; 4] {
     let mut out = [[0.0f32; 2]; 4];
     for (k, o) in out.iter_mut().enumerate() {
         // `w = h · iᵏ` (ou `h · (−i)ᵏ` na mão inversa), em componentes.
@@ -316,6 +405,8 @@ pub(crate) fn square_once(
     seed: f32,
     origin: &[[f32; 3]],
     max_travel: f32,
+    hint: &[crate::quality::Hint],
+    pull: f32,
 ) -> f32 {
     let n = mesh.vert_count();
     let before: Vec<[f32; 3]> = mesh.positions().to_vec();
@@ -323,7 +414,7 @@ pub(crate) fn square_once(
     let mut cnt = vec![0u32; n];
     {
         let pos = mesh.positions();
-        for f in mesh.faces() {
+        for (fi, f) in mesh.faces().iter().enumerate() {
             let v = f.verts();
             if v.len() != 4 {
                 for &i in v {
@@ -400,7 +491,18 @@ pub(crate) fn square_once(
                 let d = sub(p[k], c3);
                 z[k] = [dot(d, e1), dot(d, e2)];
             }
-            let w = nearest_square(z);
+            let (mut hz, ccw) = square_harmonic(z);
+            // ⭐⭐⭐ **O RELEVO ENTRA AQUI** — ver [`steer`] e [`crate::quality::surface_hint`].
+            // A direção-alvo vem em espaço de MUNDO e é lida no plano do próprio quad; sem
+            // essa projecção uma direção quase perpendicular ao quad daria um ângulo que não
+            // existe na face.
+            if let Some(hint) = hint.get(fi) {
+                if hint.weight > 0.0 {
+                    let f2 = [dot(hint.dir, e1), dot(hint.dir, e2)];
+                    hz = steer(hz, f2, (hint.weight * pull).clamp(0.0, 1.0));
+                }
+            }
+            let w = square_from(hz, ccw);
             for k in 0..4 {
                 let i = v[k] as usize;
                 for t in 0..3 {

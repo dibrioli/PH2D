@@ -43,6 +43,8 @@ mod domain;
 pub mod fan;
 /// ⭐⭐ **O ACABAMENTO** — alisar, orientar, medir — ver [`finish`].
 mod finish;
+/// ⭐⭐⭐ **O ACABAMENTO DA CADEIA DE EXTRACÇÃO** — ver [`finish_extract`].
+pub mod finish_extract;
 /// ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE** — LSCM — ver [`lscm`].
 mod lscm;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
@@ -68,8 +70,15 @@ mod weights;
 
 pub use aligned::{INTERIOR, Interior};
 pub use finish::smooth;
-pub use quality::{detail_lost, folded_against, folded_by_neighbours, follows_relief};
-pub use relax::{SQUARE_ROUNDS, SquareReport, square_relax, square_relax_capped};
+pub use finish_extract::{
+    finish_extracted_with,
+    EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,
+};
+pub use quality::{Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint};
+pub use relax::{
+    SQUARE_ROUNDS, SquareReport, nearest_square, square_relax, square_relax_aligned,
+    square_relax_capped,
+};
 pub use report::{FillError, FillReport, Provenance};
 pub use shape::{QuadShape, quad_shape, skew_by_fan, skew_by_provenance};
 pub use stitch::{SMOOTHING_ROUNDS, fill, fill_with};

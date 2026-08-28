@@ -190,3 +190,141 @@ segunda é sobre a **variação dentro** da peça, e só a segunda seria trabalh
 seja má ideia — diz que ela é uma **feature de produto** (o *Adaptive Size* do ZBrush, com o
 artista a decidir), e **não** o que separa a nossa saída da dele. *Construí-la à espera de
 fechar esta distância teria sido pagar por uma diferença que não existe.*
+
+---
+
+## §7 — ⭐⭐⭐ O ACABAMENTO QUE OLHA PARA O RELEVO (e por que ele é o certo)
+
+### §7.1 — A régua que faltava: **o acabamento do oráculo não paga relevo**
+
+Com o `piece_report` a receber a escultura (`PH2D_REF=`), mediu-se pela primeira vez a
+obediência ao relevo das saídas **dele**:
+
+| peça | oráculo cru | oráculo `_smooth` | nós (fina, `lap 6`) |
+|---|---|---|---|
+| `sculpt_wrinkled` | 7,1° | ⭐ **7,0°** | 11,8° |
+| `sculpt_eared` | 19,7° | 19,4° | 20,3° |
+| `sculpt_hooked` | 15,1° | ⭐ **13,3°** | 17,7° |
+
+⭐⭐⭐ **O passe de acabamento dele compra forma SEM pagar relevo — e no gancho até o
+MELHORA.** ⇒ *um acabamento que estraga o alinhamento não é o acabamento certo com rondas a
+mais; é outro acabamento.* E as duas tentativas cegas confirmam-no:
+
+- **relaxação sem cerca**: `sculpt_wrinkled` grossa, enviesamento `8,6° → 3,2°` e relevo
+  `11,9° → 18,8°` (com `22,5°` = cega). *Ela desliza a grade pela superfície até os quads
+  serem quadrados, e apaga a propriedade que distingue uma retopologia por campo cruzado de
+  um remesh por voxel.*
+- ⛔ **cerca de VIAGEM sozinha, medida e rejeitada**: a `0,35 h` ela guarda o relevo
+  (`11,6°`) e paga o `p99` do enviesamento — `52,8°` contra os `34,5°` de hoje. *A cerca
+  limita a distância; o defeito não é distância, é direcção.* (A cerca fica na API, por ser
+  uma propriedade útil e medida, e nasce **desligada**.)
+
+### §7.2 — A lei: rodar o quadrado para onde a superfície pede, com o peso da CONFIANÇA
+
+O quadrado mais próximo de quatro pontos tem forma fechada (o 1.º harmónico `h`, ver
+`ph2d_quadfill::nearest_square`). ⭐ **O tamanho vem dos pontos; a ORIENTAÇÃO não precisa
+de vir.** As arestas de `h·iᵏ` correm a `arg(h) + 45° + 90°k`, logo a orientação de uma
+grade é um ângulo **módulo 90°** — e rodá-la para a direcção principal da superfície é uma
+correcção dobrada em `[−45°, 45°]`, aplicada com peso.
+
+⭐⭐⭐ **O peso é a ANISOTROPIA, tal como ela sai da estimativa, sem constante nenhuma por
+cima** (`|k₁ − k₂| / (|k₁| + |k₂|)`, em `[0, 1]`). Numa esfera ela é `0` e a lei degenera
+**ao bit** no quadrado puro — e a medição prova-o: na `sphere_uv` as linhas `x0`, `x0.5`,
+`x1`, `x2` e `x4` são **idênticas em toda coluna**. *Um alinhamento sem confiança poria
+costura onde a forma não pede nenhuma.*
+
+### §7.3 — A tabela, densidade grossa (a que o botão usa), `relevo x1` contra o que shipa hoje
+
+| peça | enviesamento p50 | enviesamento p99 | aspecto p50 | `>60°` | ⭐ **relevo** | ms |
+|---|---|---|---|---|---|---|
+| `sculpt_wrinkled` | `7,8° →` **`4,5°`** | `34,5° →` **`30,8°`** | `1,19 →` **`1,09`** | `0 → 0` | `12,1° →` **`11,2°`** | `17 → 393` |
+| `sculpt_hooked` | `7,7° →` **`4,2°`** | `49,1° →` **`44,0°`** | `1,17 →` **`1,09`** | `2 → 2` | `16,5° →` **`14,7°`** | `8 → 186` |
+| `sculpt_eared` | `10,4° →` **`3,8°`** | `33,4° →` **`31,2°`** | `1,14 →` **`1,07`** | `0 → 0` | `17,4° → 17,8°` | `21 → 411` |
+| `sphere_uv` | `7,4° →` **`3,0°`** | `34,3° →` **`30,4°`** | `1,11 →` **`1,06`** | `0 → 0` | `25,9° → 14,6°` | `18 → 318` |
+
+⚠️ **A única coluna que não melhora é o relevo da orelha** (`+0,4°`), a peça com a menor
+confiança de anisotropia do corpus (`0,05`) — e a relaxação cega ali custava `+3,7°`.
+
+⚠️ **Preço medido:** `190`–`411 ms`, contra os `8`–`21 ms` do Laplaciano de hoje, sobre uma
+cadeia de `4`–`10 s`. ⭐ E ele já leva **duas** acelerações que valem `~12×`: o raio da
+reprojecção **encolhe com o movimento da ronda** (exacto — depois da 1.ª ronda o vértice
+está *sobre* a superfície, e uma esfera de `2×` o que ele andou contém o pé mais próximo) e
+a corrida **sai por assentamento** em vez de gastar o tecto (`259`–`394` rondas de `2 000`).
+
+⛔ **O Laplaciano SAI do caminho da extracção.** Ele não é somado: medido, `lap` + quadrado
+entrega pior ponta que o quadrado sozinho, e o quadrado sozinho já leva o `>60°` de `8` a
+`0` nas peças em que o Laplaciano o levava.
+
+---
+
+## §8 — O PREÇO DA LEI DE PARAGEM, e a regressão que ela expôs
+
+A relaxação sai **por assentamento** (`settle`, em fracções da aresta alvo) e não por um
+número de rondas — *a taxa de convergência depende do tamanho da malha, então um tecto de
+rondas é uma cerca cujo tamanho muda com a peça.* O que a paragem custa, medido:
+
+| peça · alvo | `settle` | rondas | ms | envies. p50 / p99 | `>60°` | dobras |
+|---|---|---|---|---|---|---|
+| `wrinkled` · 0,667 | — (`lap 6` hoje) | — | 145 | `5,2°` / `35,5°` | 0 | 0 |
+| | `3e-2` | 26 | **322** | `5,2°` / `33,6°` | 0 | 0 |
+| | `1e-2` | 93 | 1 005 | `4,5°` / `28,5°` | 0 | 0 |
+| | `3e-3` | 360 | 3 664 | `3,7°` / `24,6°` | 0 | 0 |
+| | `1e-3` | 940 | 9 360 | `2,8°` / `23,4°` | 0 | 0 |
+| `eared` · 2 | — (`lap 6` hoje) | — | 21 | `10,4°` / `33,4°` | 0 | 0 |
+| | `1e-2` | 33 | **55** | `9,6°` / `34,1°` | 0 | 0 |
+| | `3e-3` | 140 | 172 | `6,3°` / `33,0°` | 0 | 0 |
+| | `1e-3` | 369 | 413 | `3,8°` / `31,2°` | 0 | 0 |
+
+⭐ **A escada é regular e o preço é linear nas rondas** — nada aqui satura antes de `1e-3`.
+
+### ⛔⛔ E a régua apanhou uma REGRESSÃO que a densidade grossa escondia
+
+`sculpt_hooked` **fina** (3 208 quads), com o ajuste de quadrado **sozinho**:
+
+| acabamento | envies. p50 / p99 | ⛔ `>60°` | ⛔ **dobras** | fid máx |
+|---|---|---|---|---|
+| nenhum | `6,9°` / `42,2°` | 7 | **0** | 2,247 % |
+| ⭐ `lap 6` (hoje) | `6,5°` / `33,0°` | **1** | **0** | 3,248 % |
+| quadrado, `settle 1e-2` | `3,3°` / `39,1°` | ⛔ **6** | ⛔ **3** | 2,728 % |
+| quadrado, tecto 100 | `4,8°` / `41,1°` | ⛔ **11** | ⛔ **2** | 2,332 % |
+
+⇒ **as duas leis não são substitutas: elas atacam metades diferentes.** O Laplaciano iguala
+**comprimentos** e é ele que mata a face extrema (`>60°` de `7` para `1`); o ajuste de
+quadrado endireita o **ângulo** e é ele que move a mediana (`6,5°` para `3,3°`). ⚠️ *A
+densidade grossa não distinguia os dois* — ali o quadrado sozinho também levava o `>60°` a
+zero, e a conclusão «o Laplaciano sai» teria shipado uma regressão numa peça com ponta.
+
+---
+
+## §9 — ⭐⭐⭐ A/B FINAL, **através da porta do produto**, na densidade que o botão usa
+
+`PH2D_OUT_RELAX=6` reproduz o que shipava (`6` rondas de Laplaciano); sem ele o `chain_info`
+chama `ph2d_quadfill::finish_extracted`, que é **a mesma função que o botão chama**.
+
+| peça (`alvo 2`) | aspecto p50 | ⭐ envies. p50 | envies. p99 | `>60°` | relevo | rondas |
+|---|---|---|---|---|---|---|
+| `sculpt_wrinkled` | `1,19 →` **`1,10`** | `7,8° →` **`4,5°`** | `34,5° →` **`32,0°`** | `0 → 0` | `12,1° →` **`11,5°`** | 308 (ficou 302) |
+| `sculpt_eared` | `1,14 →` **`1,07`** | `10,4° →` **`3,8°`** | `33,4° →` **`30,9°`** | `0 → 0` | `17,4° → 18,6°` | 350 |
+| `sculpt_hooked` | `1,17 →` **`1,09`** | `7,7° →` **`4,3°`** | `49,1° →` **`45,4°`** | `2 → 2` | `16,5° →` **`14,6°`** | 283 (ficou 273) |
+| `sphere_uv_96x144` | `1,11 →` **`1,06`** | `7,4° →` **`3,0°`** | `34,3° →` **`30,4°`** | `0 → 0` | (confiança `0,00`) | 248 |
+
+⭐⭐⭐ **As quatro peças melhoram em aspecto, mediana e `p99`, nenhuma ganha uma face
+péssima, e o relevo melhora em duas.** A única coluna que anda para trás é o relevo da
+orelha (`+1,2°`), a peça com a **menor confiança de anisotropia do corpus** (`0,04`) — ali o
+número é quase ruído, e a relaxação **cega** custava `+3,7°`.
+
+⚠️ **Contra a barra do oráculo** (`aspecto p50 1,08–1,22` · `envies. p50 4,8–7,1°`), medida a
+`3 352`–`4 696` quads: estas quatro saídas têm `370`–`576` quads e entregam `1,06`–`1,10` e
+`3,0°`–`4,5°`. *A comparação continua a não ser da mesma densidade — é por isso que ela está
+no §2 e não aqui.*
+
+### ⛔ O que ficou por curar, nomeado
+
+- **`sculpt_hooked` fina:** o alinhamento nunca bate a ronda zero (aquela peça sai do
+  Laplaciano com `1` face péssima e a relaxação alinhada sobe-a para `2` à primeira). A porta
+  entrega **exactamente o que shipava** e a paciência corta o desperdício. ⛔ Com o
+  alinhamento **desligado** a mesma peça chega a `1,04 / 2,0° / p99 22,8 / >60 0`: *há ali um
+  ganho que esta lei não alcança*, e a hipótese seguinte é a direcção principal ser **ruidosa
+  por face** (ela vem de `ph2d_mesh::principal_dirs` sem suavização de vizinhança).
+- **`sculpt_hooked` grossa:** o `fid máx` sobe de `6,25 %` para `7,61 %` (um vértice; o `p95`
+  fica em `0,27 %`) e as dobras de `2` para `3`.

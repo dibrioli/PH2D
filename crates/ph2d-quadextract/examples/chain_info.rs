@@ -1039,12 +1039,21 @@ entrada fraccionarios · pior |coef| {:.3}",
                 // já pôs uma sonda a medir o comportamento ANTIGO enquanto imprimia como se
                 // fosse o novo (o `pin_lone_singularities` do `chain_info`). *Um instrumento
                 // cujo default diverge do produto responde por outro programa.*
-                let rounds: usize = std::env::var("PH2D_OUT_RELAX")
-                    .ok()
-                    .and_then(|v| v.parse().ok())
-                    .unwrap_or(ph2d_quadfill::SMOOTHING_ROUNDS);
+                //
+                // ⭐ Desde 2026-08-28 é a **porta** que o botão chama; `PH2D_OUT_RELAX=<n>`
+                // volta ao Laplaciano cru de `n` rondas, que é o A/B contra o que shipava.
                 let mut m = out;
-                ph2d_quadfill::smooth(&mut m, &raw, rounds);
+                match std::env::var("PH2D_OUT_RELAX").ok().and_then(|v| v.parse().ok()) {
+                    Some(rounds) => ph2d_quadfill::smooth(&mut m, &raw, rounds),
+                    None => {
+                        let f = ph2d_quadfill::finish_extracted(&mut m, &raw);
+                        println!(
+                            "  ⭐ ACABAMENTO: {} rondas, ficou a {} | envies p50 {:.1}° -> {:.1}° | >60 {} -> {}",
+                            f.rounds, f.kept, f.before.skew_p50, f.after.skew_p50,
+                            f.before.skew_over_60, f.after.skew_over_60
+                        );
+                    }
+                }
                 m
             };
             // ⭐⭐⭐ **A VARREDURA DO ACABAMENTO** (`PH2D_RELAX_SCAN=1`) — Laplaciano contra
@@ -1059,69 +1068,49 @@ entrada fraccionarios · pior |coef| {:.3}",
                     "  ⭐⭐⭐ VARREDURA DO ACABAMENTO ({} quads, a mesma extraccao em todas as linhas)",
                     unfinished.face_count()
                 );
-                // ⚠️ **A escada é do LAPLACIANO até saturar**, e o ajuste de quadrado
-                // entra depois dele — a 1.ª varredura mediu `6` e `20` e a segunda linha já
-                // batia a primeira em toda coluna. *Uma escada que acaba onde o número ainda
-                // se move não escolheu nada* (`CLAUDE.md` §0.0).
-                // ⭐⭐⭐ **A ESCADA É DA CERCA DE VIAGEM**, em múltiplos do alvo de aresta `h`
-                // — ver `ph2d_quadfill::square_relax_capped`. As duas primeiras linhas são
-                // os CONTROLES (cru e o acabamento de hoje), e o `∞` é a relaxação sem
-                // cerca, que já se mediu ser mais quadrada **e quase cega ao relevo**.
-                for (lap, sq, cap) in [
-                    (0usize, 0usize, 0.0f32),
-                    (6, 0, 0.0),
-                    (0, 2000, f32::INFINITY),
-                    (0, 2000, 1.00),
-                    (0, 2000, 0.50),
-                    (0, 2000, 0.35),
-                    (0, 2000, 0.25),
-                    (0, 2000, 0.15),
-                    (0, 2000, 0.10),
-                    (0, 2000, 0.05),
+                // ⚠️ **Todas as linhas passam pela PORTA do produto**
+                // (`ph2d_quadfill::finish_extracted_with`), e não por uma composição escrita
+                // aqui. *Uma varredura que reescreve a lei em vez de a chamar mede outra
+                // coisa* — e foi assim que a 1.ª escolha do `EXTRACT_SETTLE` saiu de uma
+                // configuração sem a ronda zero à frente.
+                for (pull, settle) in [
+                    (0.0f32, 0.0f32),
+                    (1.0, 3.0e-2),
+                    (1.0, 1.0e-2),
+                    (1.0, 3.0e-3),
+                    (1.0, 1.0e-3),
+                    (1.0, 3.0e-4),
+                    (0.0, 1.0e-3),
+                    (0.0, 3.0e-4),
                 ] {
                     let clock = std::time::Instant::now();
                     let mut m = unfinished.clone();
-                    ph2d_quadfill::smooth(&mut m, &raw, lap);
-                    // ⚠️ `settle` em `1/1000` da aresta: uma ronda que move menos que isso não
-                    // muda nenhuma das réguas, e o tecto de `2000` é só a rede.
-                    let rep = ph2d_quadfill::square_relax_capped(
-                        &mut m,
-                        &raw,
-                        sq,
-                        if cap.is_finite() { cap * h } else { cap },
-                        h * 1.0e-3,
-                    );
+                    let rep = if settle > 0.0 {
+                        ph2d_quadfill::finish_extracted_with(&mut m, &raw, pull, settle)
+                    } else {
+                        ph2d_quadfill::smooth(&mut m, &raw, ph2d_quadfill::SMOOTHING_ROUNDS);
+                        ph2d_quadfill::FinishReport::default()
+                    };
                     let ms = clock.elapsed().as_secs_f32() * 1000.0;
-                    let s = ph2d_quadfill::quad_shape(&m);
-                    // ⚠️ `detail_lost` devolve `(p95, MAX)` — não `(p50, p95)`. *Uma coluna
-                    // com o rótulo errado lê-se ao contrário.*
+                    let sh = ph2d_quadfill::quad_shape(&m);
+                    // ⚠️ `detail_lost` devolve `(p95, MAX)`, e `22,5°` é o relevo de uma
+                    // grade que ignora a forma.
                     let (fid95, fidmax) = ph2d_quadfill::detail_lost(&raw, &m);
-                    // ⚠️ `22,5°` é o valor de uma grade que IGNORA o relevo — é contra ele
-                    // que este número se lê, não contra zero.
                     let (relief, _) = ph2d_quadfill::follows_relief(&raw, &m);
                     println!(
-                        "     lap {lap:3} cerca {:>5} | aspecto p50 {:.2} p99 {:.2} | ENVIES p50 {:5.1} p99 {:5.1} (>60: {:3}) | area {:.2} | dobras {:3} | fid p95 {:.3}% max {:.3}% | relevo {:.1}° | viagem p50 {:.2}h max {:.2}h presos {} | {} rondas | {ms:.0} ms",
-                        if sq == 0 {
-                            String::from("-")
-                        } else if cap.is_finite() {
-                            format!("{cap:.2}h")
-                        } else {
-                            String::from("inf")
-                        },
-                        s.aspect_p50,
-                        s.aspect_p99,
-                        s.skew_p50,
-                        s.skew_p99,
-                        s.skew_over_60,
-                        s.area_spread,
+                        "     relevo x{pull:<3} assenta {settle:>8.0e} | aspecto p50 {:.2} p99 {:.2} | ENVIES p50 {:5.1} p99 {:5.1} (>60: {:3}) | area {:.2} | dobras {:3} | fid p95 {:.3}% max {:.3}% | relevo {:.1}° | {} rondas (ficou {}) | {ms:.0} ms",
+                        sh.aspect_p50,
+                        sh.aspect_p99,
+                        sh.skew_p50,
+                        sh.skew_p99,
+                        sh.skew_over_60,
+                        sh.area_spread,
                         ph2d_quadfill::folded_by_neighbours(&m),
                         fid95 * 100.0,
                         fidmax * 100.0,
                         relief,
-                        rep.travel_p50 / h,
-                        rep.travel_max / h,
-                        rep.clamped,
                         rep.rounds,
+                        rep.kept,
                     );
                 }
             }

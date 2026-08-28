@@ -495,7 +495,7 @@ pub fn fill_with(
     if square > 0 {
         let origin: Vec<[f32; 3]> = mesh.positions().to_vec();
         for _ in 0..square {
-            crate::relax::square_once(&mut mesh, surface, seed, &origin, f32::INFINITY);
+            crate::relax::square_once(&mut mesh, surface, seed, &origin, f32::INFINITY, &[], 0.0);
         }
     }
 

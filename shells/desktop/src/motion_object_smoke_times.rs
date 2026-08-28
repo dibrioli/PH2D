@@ -197,3 +197,121 @@ mod tests {
         );
     }
 }
+
+/// **A MESMA cena, com o offset vindo de um FIO** (`PH2D_MOTION_OBJ_SMOKE=10`).
+///
+/// ⚠️ **Ela existe porque a `=7` não conseguia ver o defeito.** Aquela autora o `time_offset`
+/// como override, e a membrana que publica o canal deslocado lia exactamente o override — as
+/// duas metades concordavam por acidente. Com o valor a vir de um **fio**, o `eval` do nó pedia
+/// `appearance_of(nome, 0,25)` (o `ctx.param` resolve o conduzido) e a membrana publicava
+/// `appearance_of(nome, 0,0)`: chaves diferentes, external nenhum, e **o objecto da direita
+/// SUMIA** — que é o sintoma que a própria mensagem da `=7` manda procurar.
+///
+/// A cura é a escada inteira numa porta só (`motion_externals::resolved_params`, 2026-08-28).
+///
+/// ⚠️ **O override é LIMPO, não sobrescrito.** Deixá-lo em `0,25` ao lado do fio faria a
+/// escada errada acertar por acidente — a cena leria «funciona» sobre o defeito, que é
+/// exactamente o que a `=7` fazia.
+pub(super) fn build_driven_offset_graph(graph: &mut Graph, name: &str) -> Vec<NodeId> {
+    let sinks = build_two_times_graph(graph, name);
+    let shifted: Vec<NodeId> = graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_id() == ph2d_node_source_object::MANIFEST.id)
+        .map(|n| n.id)
+        .filter(|id| {
+            graph
+                .node_param_overrides(*id)
+                .and_then(|m| m.get(ph2d_node_source_object::TIME_OFFSET_PARAM).copied())
+                .is_some_and(|v| v != 0.0)
+        })
+        .collect();
+    for id in shifted {
+        let off = graph
+            .node_param_overrides(id)
+            .and_then(|m| m.get(ph2d_node_source_object::TIME_OFFSET_PARAM).copied())
+            .unwrap_or(0.0);
+        graph.clear_param(id, ph2d_node_source_object::TIME_OFFSET_PARAM);
+        let num = graph.add_node("value.number");
+        graph.set_param(num, "value", off);
+        graph.set_label(num, "+0.25s (wire)");
+        let p = graph.pos(id).unwrap_or(Pos { x: 0.0, y: 0.0 });
+        graph.set_pos(
+            num,
+            Pos {
+                x: p.x - 180.0,
+                y: p.y,
+            },
+        );
+        graph
+            .drive_param(id, ph2d_node_source_object::TIME_OFFSET_PARAM, (num, 0))
+            .expect("o `time_offset` aceita ser dirigido");
+    }
+    sinks
+}
+
+#[cfg(test)]
+mod driven_tests {
+    use super::*;
+
+    /// **A CENA `=10` AUTORA O OFFSET POR FIO, e o autorado fica LIMPO.**
+    ///
+    /// ⚠️ As duas metades são o gate. Se o override sobrevivesse ao lado do fio, a membrana
+    /// antiga (que lia só o override) publicaria a chave certa **por acidente** e a cena leria
+    /// «funciona» sobre o defeito — exactamente o que a `=7` fazia. É a mesma lei que os gates
+    /// do `audio.bands` e do canal deslocado escrevem: *o controle é o autorado DISCORDAR do
+    /// fio*, e aqui a discordância é o autorado não existir.
+    #[test]
+    fn the_driven_scene_puts_the_offset_on_a_wire_and_leaves_no_override() {
+        let mut g = Graph::new();
+        let sinks = build_driven_offset_graph(&mut g, "Walk");
+        assert_eq!(sinks.len(), 2, "duas cadeias, como na =7");
+
+        let objs: Vec<NodeId> = g
+            .nodes()
+            .iter()
+            .filter(|n| n.type_id() == ph2d_node_source_object::MANIFEST.id)
+            .map(|n| n.id)
+            .collect();
+        assert_eq!(objs.len(), 2);
+
+        let driven: Vec<NodeId> = objs
+            .iter()
+            .copied()
+            .filter(|id| {
+                g.param_sources(*id)
+                    .is_some_and(|s| s.contains_key(ph2d_node_source_object::TIME_OFFSET_PARAM))
+            })
+            .collect();
+        assert_eq!(driven.len(), 1, "exactamente UM lado e' conduzido");
+        let id = driven[0];
+        assert!(
+            g.node_param_overrides(id)
+                .and_then(|m| m.get(ph2d_node_source_object::TIME_OFFSET_PARAM))
+                .is_none(),
+            "o autorado tem de estar LIMPO — senao a escada errada acerta por acidente"
+        );
+
+        // E o driver diz o número que a mensagem promete.
+        let (src, _) = *g
+            .param_sources(id)
+            .expect("dirigido")
+            .get(ph2d_node_source_object::TIME_OFFSET_PARAM)
+            .expect("o offset");
+        assert_eq!(
+            g.node(src).map(|i| i.type_name.as_str()),
+            Some("value.number"),
+            "quem conduz e' o no' de numero da cena"
+        );
+        assert_eq!(
+            g.node_param_overrides(src).and_then(|m| m.get("value")),
+            Some(&0.25),
+            "o fio poe os 0,25 s que a mensagem da cena anuncia"
+        );
+
+        // ⚠️ O CONTROLE: o outro lado continua em `0` e SEM fio — é ele que torna a
+        // diferença de fase legível, e uma cena com os dois conduzidos não mostraria nada.
+        let other = objs.into_iter().find(|o| *o != id).expect("o outro");
+        assert!(g.param_sources(other).is_none_or(|s| s.is_empty()));
+    }
+}

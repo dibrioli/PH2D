@@ -54,7 +54,7 @@ pub(crate) mod times;
 /// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
 #[path = "motion_object_smoke_sink.rs"]
 pub(crate) mod sink;
-use times::{build_two_times_graph, spawn_flip_walk_named};
+use times::{build_driven_offset_graph, build_two_times_graph, spawn_flip_walk_named};
 
 /// O nome que o artista daria ao objeto — e que ele escolhe no campo `Object`.
 const OBJECT: &str = "Object";
@@ -484,6 +484,30 @@ impl crate::App {
                      chegou ao bake; se a direita SUMIR, o canal deslocado nao foi publicado. \
                      Pare o play e faca scrub: a diferenca de fase tem de se manter em \
                      qualquer quadro."
+                );
+            }
+            // =10 — o MESMO que a `=7`, com o offset a vir de um FIO. A `=7` autora o
+            // override, e a membrana lia o override: as duas metades concordavam por acidente
+            // e o defeito era invisível. Ver `times::build_driven_offset_graph`.
+            10 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                spawn_flip_walk_named(&mut gfx.flip, OBJECT);
+            }
+            10 if f == 6 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                let outs = build_driven_offset_graph(&mut gfx.motion.doc.graph, OBJECT);
+                gfx.motion.sinks.extend(outs);
+                let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
+                self.playhead.play();
+                eprintln!(
+                    "[motion.obj smoke =10] a MESMA cena da =7, mas o +0,25 s vem de um FIO \
+                     (o no' Number a' esquerda), nao de um numero escrito no proprio objecto. \
+                     O QUE OLHAR: as duas grades desenham a MESMA arte e a da DIREITA esta \
+                     sempre UM PASSO a frente. SE A DIREITA SUMIR, a membrana voltou a ler o \
+                     valor autorado em vez do que o fio poe — que e' o defeito que esta cena \
+                     existe para apanhar (a =7 nao o via: la' os dois lados liam o mesmo \
+                     numero por acidente). Arraste o Value do Number: a fase da direita tem \
+                     de seguir o arrasto."
                 );
             }
             _ => {}

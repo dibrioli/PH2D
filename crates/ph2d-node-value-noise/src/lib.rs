@@ -365,10 +365,28 @@ static PARAM_GATES_ABOVE: &[ParamGateAbove] = &[
 /// nó vale metros em `P`, graus em `rot` e nada em `tint` — o `ParamUnit::None` do
 /// registry escreve exactamente isso). O `pan` mede RETICULADO, que não é nenhuma
 /// das unidades do vocabulário; uma unidade errada é pior que uma ausente.
-static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
-    param: "loop_period",
-    unit: ParamUnit::Seconds,
-}];
+static PARAM_UNITS: &[ParamUnitDecl] = &[
+    ParamUnitDecl {
+        param: "loop_period",
+        unit: ParamUnit::Seconds,
+    },
+    // ⚠️ **A MAGNITUDE, quando o fio cai num PARAM** (doc 58 + doc 88, 2026-08-28) — a mesma
+    // lei da irmã `value.lfo`, e a nota acima é a razão dela, não a objecção a ela: a unidade
+    // é propriedade do FLUXO, e um param **DIRIGIDO** é um fluxo que termina em UM param
+    // declarado, não numa coluna que pode ser qualquer coisa.
+    //
+    // ⚠️ **O PAR, e a completude é gateada**: a saída é `ruído·amplitude + offset`, homogénea
+    // de grau 1 nos dois juntos. ⛔ `frequency`/`speed`/`pan_*` medem o RETICULADO e o
+    // `loop_period` mede tempo — nenhum vive na unidade do que o nó emite.
+    ParamUnitDecl {
+        param: "amplitude",
+        unit: ParamUnit::FromWire,
+    },
+    ParamUnitDecl {
+        param: "offset",
+        unit: ParamUnit::FromWire,
+    },
+];
 
 /// **Os dois knobs do celular só existem no celular** (`kernel == 2`). Um
 /// controlo que não faz nada é pior que um controlo que falta — e aqui a

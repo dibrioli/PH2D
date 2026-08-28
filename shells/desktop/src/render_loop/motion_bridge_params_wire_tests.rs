@@ -249,3 +249,49 @@ fn the_resolved_face_is_never_itself_a_question() {
         ParamUnit::FromWire | ParamUnit::FromChannel
     ));
 }
+
+/// **A LEI VALE PARA O `value.lfo` TAMBÉM, e ele é o nó do report original.**
+///
+/// ⚠️ *"preciso usar LFO:Offset"* foi a frase que abriu o `value.number` — o artista ia buscar
+/// o `offset` de uma LFO com amplitude zero porque não havia um número. O `offset` dele tem a
+/// MESMA confusão de faces, e a cura é a mesma declaração.
+///
+/// ⚠️ **Os DOIS params, e o par é o ponto:** a saída é `w·amplitude + offset`, então declarar só
+/// um deles seria meia unidade (há gate de homogeneidade em `ph2d-node-registry-init`). Aqui
+/// mede-se a outra ponta — que a declaração CHEGA à row que o artista lê.
+#[test]
+fn the_lfo_wears_the_face_of_what_it_drives_too() {
+    let mut motion = MotionState::new();
+    let lfo = motion.doc.graph.add_node("value.lfo");
+    let shape = motion.doc.graph.add_node("source.shape");
+    motion
+        .doc
+        .graph
+        .drive_param(shape, "size", (lfo, 0))
+        .expect("o `size` aceita fio");
+    ph2d_panel_motion_graph::set_graph_selection(vec![lfo.0]);
+
+    let snap = build_params_snapshot(&motion, ProjectSettings::default()).expect("resolve");
+    let row = |name: &str| {
+        snap.rows
+            .iter()
+            .find_map(|r| match r {
+                ParamRow::Scalar(s) if s.name == name => Some(s.clone()),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("a row `{name}` existe"))
+    };
+    for name in ["amplitude", "offset"] {
+        assert_eq!(
+            row(name).display.suffix,
+            "px",
+            "`{name}` conduz um comprimento, logo le-se em px"
+        );
+    }
+    // ⚠️ **E o CONTROLE: o `period` NÃO se converte.** Ele são segundos, e uma face de
+    // comprimento ali multiplicaria um tempo por `pixels_per_meter` — o defeito que o
+    // `FromChannel` regista como `±90` virando `±9000`.
+    assert_eq!(row("period").display.suffix, "s");
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

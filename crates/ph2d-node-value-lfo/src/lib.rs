@@ -491,6 +491,30 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[
         param: "fade_in",
         unit: ParamUnit::Seconds,
     },
+    // ⚠️ **A MAGNITUDE, quando o fio cai num PARAM** (doc 58 + doc 88, 2026-08-28).
+    //
+    // A nota acima continua certa e é a razão desta: *"o `amplitude` deste nó vale metros em
+    // `P`, graus em `rot` e nada em `tint`"* — a unidade é propriedade do FLUXO, não do nó. É
+    // exactamente por isso que um param **DIRIGIDO** pode responder: ali o fluxo não termina
+    // numa coluna (que pode ser qualquer coisa), termina em **UM param declarado com UMA
+    // unidade declarada**, e o grafo sabe qual. A lacuna que a nota preferia a um número errado
+    // só é honesta enquanto o destino é desconhecido.
+    //
+    // ⚠️ **Os DOIS juntos, e a completude é gateada** (`the_from_wire_set_is_the_output_scale`):
+    // a saída é `w(fase)·amplitude·env + offset`, homogénea de grau 1 no PAR. Declarar só um
+    // deles seria meia unidade — e o gate reprova, porque escalar o conjunto declarado deixaria
+    // de escalar a saída.
+    //
+    // ⛔ O `period`/`fade_in` (segundos), o `bpm` (taxa), a `phase` (fracção do ciclo) e o
+    // `phase_stagger` ficam de fora: nenhum deles vive na unidade do que o nó emite.
+    ParamUnitDecl {
+        param: "amplitude",
+        unit: ParamUnit::FromWire,
+    },
+    ParamUnitDecl {
+        param: "offset",
+        unit: ParamUnit::FromWire,
+    },
 ];
 
 #[cfg(test)]

@@ -251,7 +251,7 @@ fn the_stroke_travels_with_the_shape() {
     a.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 2.0));
     b.stroke = Some(StrokeSpec::new(Rgba8::new(200, 100, 50, 255), 10.0));
 
-    let stroke = |p: &VecPath| p.stroke.expect("traço");
+    let stroke = |p: &VecPath| p.stroke.clone().expect("traço");
     // Pontas EXATAS.
     assert!(
         (stroke(&morph(&a, &b, 0.0).unwrap()).width - 2.0).abs() < 1e-9,
@@ -268,8 +268,11 @@ fn the_stroke_travels_with_the_shape() {
         "a largura do meio é o lerp: {}",
         mid.width
     );
-    assert_ne!((mid.color.r, mid.color.g, mid.color.b), (0, 0, 0));
-    assert_ne!((mid.color.r, mid.color.g, mid.color.b), (200, 100, 50));
+    assert_ne!((mid.color().r, mid.color().g, mid.color().b), (0, 0, 0));
+    assert_ne!(
+        (mid.color().r, mid.color().g, mid.color().b),
+        (200, 100, 50)
+    );
 
     // Um lado SEM traço: a largura afina (fade a 0), não troca de repente no meio.
     let mut c = square([12.0, 0.0], 1.0);

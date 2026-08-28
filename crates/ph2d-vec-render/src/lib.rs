@@ -466,14 +466,14 @@ pub(crate) fn draw_stroke_with(
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     let stroke_own = tess.stroke_bp.as_ref();
-    if let Some(s) = path.stroke {
+    if let Some(s) = path.stroke.as_ref() {
         let bp = stroke_own
             .or(fill_bp)
             .expect("stroke => um dos dois desenhos existe");
         // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
         // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
-        let brush = Brush::Solid(color(s.color));
-        for piece in ph2d_vec_scene::stroke_plan(path, &s) {
+        let brush = Brush::Solid(color(s.color()));
+        for piece in ph2d_vec_scene::stroke_plan(path, s) {
             match piece {
                 StrokePiece::Line { path: line } => match line {
                     // Emprestado = a peça É o path, e `bp` já o descreve (o caso de 99% dos
@@ -484,7 +484,7 @@ pub(crate) fn draw_stroke_with(
                     Cow::Borrowed(_) => {
                         stroke_uniform::stroke_uniform(
                             target,
-                            &kurbo_stroke(&s, tess.dash),
+                            &kurbo_stroke(s, tess.dash),
                             transform,
                             &brush,
                             bp,
@@ -496,11 +496,11 @@ pub(crate) fn draw_stroke_with(
                         // seta a ponta ficava DESCOLADA do último traço (Enio, 2026-08-22). A
                         // peça emprestada (acima) É o caminho, e aí o cache já é a resposta —
                         // o caso comum segue sem medir nada por quadro.
-                        let dash = ph2d_vec_scene::dash_for(&p, &s);
+                        let dash = ph2d_vec_scene::dash_for(&p, s);
                         let line_bp = build_bezpath(&p);
                         stroke_uniform::stroke_uniform(
                             target,
-                            &kurbo_stroke(&s, dash),
+                            &kurbo_stroke(s, dash),
                             transform,
                             &brush,
                             &line_bp,

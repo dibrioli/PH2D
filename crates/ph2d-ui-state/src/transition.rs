@@ -293,7 +293,11 @@ impl Transition {
                         // A TINTA vai SEMPRE pela porta do Blend, com forma ou sem ela — uma
                         // resposta só para *"como duas tintas interpolam neste app"*.
                         fill: ph2d_vec_blend::mix_paint(from.fill.as_ref(), to.fill.as_ref(), tc),
-                        stroke: ph2d_vec_blend::mix_stroke(from.stroke, to.stroke, tc),
+                        stroke: ph2d_vec_blend::mix_stroke(
+                            from.stroke.clone(),
+                            to.stroke.clone(),
+                            tc,
+                        ),
                         geometry: None,
                         // A LARGURA VIVA pela porta da crate que a define — e o `None` é o
                         // perfil uniforme, então um lado sem perfil é um lado com o perfil que
@@ -376,7 +380,7 @@ impl Transition {
                         Some(plan) => {
                             let mut g = plan.at(tc);
                             g.fill.clone_from(&p.fill);
-                            g.stroke = p.stroke;
+                            g.stroke.clone_from(&p.stroke);
                             Some(g)
                         }
                         None => from.geometry.clone(),

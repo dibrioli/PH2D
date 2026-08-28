@@ -212,10 +212,10 @@ pub(crate) fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenToo
     let traco = path.stroke.as_ref().map_or("SEM traco".to_string(), |s| {
         format!(
             "Stroke(cor={},{},{},{} largura={} align={:?} dash={})",
-            s.color.r,
-            s.color.g,
-            s.color.b,
-            s.color.a,
+            s.color().r,
+            s.color().g,
+            s.color().b,
+            s.color().a,
             s.width,
             s.align,
             s.dash.is_some()

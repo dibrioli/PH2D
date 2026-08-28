@@ -117,10 +117,10 @@ fn a_stroked_shape_without_a_filter_is_not_resolved() {
 #[test]
 fn a_zero_width_stroke_costs_nothing_here() {
     let (mut scene, mut sim, map, id) = scene(true);
-    scene.paths_mut()[0].stroke = scene.paths()[0]
-        .stroke
-        .as_ref()
-        .map(|s| StrokeSpec { width: 0.0, ..*s });
+    scene.paths_mut()[0].stroke = scene.paths()[0].stroke.as_ref().map(|s| StrokeSpec {
+        width: 0.0,
+        ..s.clone()
+    });
     arm_filter(&mut sim, &map, id);
     let mut fx = FxSilhouette::default();
     fx.recook(

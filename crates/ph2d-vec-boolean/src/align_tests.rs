@@ -280,7 +280,7 @@ fn an_aligned_dash_keeps_the_cadence_of_the_centred_one() {
     let mut inner = centred.clone();
     inner.stroke = Some(StrokeSpec {
         align: StrokeAlign::Inner,
-        ..centred.stroke.expect("tem traco")
+        ..centred.stroke.clone().expect("tem traco")
     });
 
     let n_centred = outline_stroke(&centred).len();

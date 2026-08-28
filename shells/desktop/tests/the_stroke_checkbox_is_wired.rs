@@ -102,8 +102,11 @@ fn only_one_publication_answers_whether_the_stroke_exists() {
 #[test]
 fn the_per_frame_restyle_still_refuses_a_shape_without_a_stroke() {
     let s = shell("render_loop/vector_bridge_style.rs");
+    // ⚠️ A agulha é o PREFIXO, e não a linha inteira: a wave A do plano 35 tirou o `Copy` do
+    // `StrokeSpec`, e o `else` passou a vir depois de um `.as_ref()`. *Um gate que fixa a grafia
+    // exacta de uma linha reprova a refactoração que não mudou a lei que ele defende.*
     assert!(
-        s.contains("let Some(old) = path.stroke else"),
+        s.contains("let Some(old) = path.stroke"),
         "o `restyle_selected_strokes` deixou de RECUSAR quem nao tem traco - ele corre por QUADRO, \
          e agora veste toda forma selecionada sem ninguem pedir"
     );

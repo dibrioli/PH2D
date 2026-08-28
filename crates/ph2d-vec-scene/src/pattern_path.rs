@@ -313,7 +313,7 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
             verts: map_contour(&motif.verts, &frame),
             closed: motif.closed,
             fill: motif.fill.clone(),
-            stroke: motif.stroke,
+            stroke: motif.stroke.clone(),
             subpaths,
             fill_rule: motif.fill_rule,
             ..VecPath::default()

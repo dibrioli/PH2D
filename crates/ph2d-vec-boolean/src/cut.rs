@@ -130,7 +130,7 @@ pub fn cut_open(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutRef
         out.push(VecPath {
             verts: tail,
             closed: false,
-            stroke: source.stroke,
+            stroke: source.stroke.clone(),
             fill: source.fill.clone(),
             effects: source.effects.clone(),
             ..VecPath::default()
@@ -207,7 +207,7 @@ pub fn cut_closed(source: &VecPath, line: &VecPath) -> Result<Vec<VecPath>, CutR
     }
     for p in &mut pieces {
         p.fill.clone_from(&source.fill);
-        p.stroke = source.stroke;
+        p.stroke.clone_from(&source.stroke);
         p.effects.clone_from(&source.effects);
     }
     Ok(pieces)

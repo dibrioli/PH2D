@@ -291,7 +291,7 @@ impl VecScene {
                     verts: sub.verts,
                     closed: sub.closed,
                     fill: template.fill.clone(),
-                    stroke: template.stroke,
+                    stroke: template.stroke.clone(),
                     ..VecPath::default()
                 },
             ));

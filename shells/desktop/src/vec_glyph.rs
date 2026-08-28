@@ -147,7 +147,7 @@ pub(crate) fn text_to_vec_paths(
             if let Some(frame) = glyph_frame(placement, pen, advance)
                 && let Ok(outline) = font.outline(gid, axes)
                 && let Some(path) =
-                    glyph_to_vec_path(&outline, scale, &frame, fill.clone(), *stroke)
+                    glyph_to_vec_path(&outline, scale, &frame, fill.clone(), stroke.clone())
             {
                 out.push(path);
             }
@@ -241,7 +241,7 @@ pub(crate) fn text_to_compound_path(
         verts: first.verts,
         closed: true,
         fill: fill.clone(),
-        stroke: *stroke,
+        stroke: stroke.clone(),
         subpaths: iter.collect(),
         fill_rule: FillRule::NonZero,
         ..Default::default()

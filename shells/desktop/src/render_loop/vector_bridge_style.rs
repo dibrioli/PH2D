@@ -46,7 +46,7 @@ impl StrokeStyle {
     /// O traço `s` já é esta ficha, ou reescrevê-lo mudaria alguma coisa? (A largura fica de
     /// fora: ela só acompanha a tool enquanto o slider é arrastado.)
     pub(crate) fn differs_from(&self, s: &StrokeSpec) -> bool {
-        s.color != self.color
+        s.color() != self.color
             || s.cap != self.cap
             || s.join != self.join
             || s.align != self.align
@@ -62,7 +62,7 @@ impl StrokeStyle {
     /// lados (detectar / gravar) não possam divergir num campo esquecido.
     pub(crate) fn onto(&self, width: f64) -> StrokeSpec {
         StrokeSpec {
-            color: self.color,
+            paint: ph2d_vec_scene::StrokePaint::Solid(self.color),
             width,
             cap: self.cap,
             join: self.join,
@@ -95,7 +95,7 @@ pub(crate) fn restyle_selected_strokes(
         };
         // Um caminho SEM traço (só preenchimento) não tem o que reestilizar — e ganhar um
         // traço do nada seria a UI inventando geometria.
-        let Some(old) = path.stroke else {
+        let Some(old) = path.stroke.as_ref() else {
             continue;
         };
         path.stroke = Some(style.onto(new_width.unwrap_or(old.width)));
@@ -228,10 +228,10 @@ pub(crate) fn seed_style_from_selection(
         None => tool.adopt_fill([0, 0, 0, 0]),
         Some(_) => {}
     }
-    let Some(stroke) = path.stroke else {
+    let Some(stroke) = path.stroke.as_ref() else {
         return;
     };
-    tool.adopt_stroke(&stroke, stroke.width * world_to_px);
+    tool.adopt_stroke(stroke, stroke.width * world_to_px);
     reseed_style_sliders(store, tool);
 }
 

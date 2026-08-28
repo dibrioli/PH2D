@@ -469,3 +469,121 @@ fn measure_the_paint_sizes() {
         std::mem::size_of::<Option<PatternFill>>()
     );
 }
+
+// ── O PADRÃO NO TRAÇO — wave A: o DADO (plano 35) ─────────────────────────────────────
+
+use crate::{StrokePaint, StrokeSpec};
+
+fn stroke_com_padrao() -> StrokeSpec {
+    let mut s = StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 2.0);
+    s.paint = StrokePaint::Pattern(Box::new(fill()));
+    s
+}
+
+/// ⭐⭐ **UM TRAÇO PODE CARREGAR UM PADRÃO** — o buraco inteiro que o plano 35 fecha.
+#[test]
+fn a_stroke_can_carry_a_pattern() {
+    let s = stroke_com_padrao();
+    assert!(s.pattern().is_some(), "o traco nao carrega o padrao");
+    // CONTROLO: um traço sólido continua a não ter nenhum — senão o gate mediria o `Some` de tudo.
+    assert!(
+        StrokeSpec::new(Rgba8::new(1, 2, 3, 255), 1.0)
+            .pattern()
+            .is_none()
+    );
+}
+
+/// ⭐ **A COR continua a ter resposta num traço com padrão** — a `fallback`, que é literalmente o que
+/// ele pinta enquanto o ladrilho não resolve.
+///
+/// ⚠️ É esta porta que faz a troca de `color: Rgba8` por `StrokePaint` custar **um caractere** em
+/// cada leitor que só quer uma cor (a swatch, o token, o `StrokeStyle` da shell), em vez de um
+/// `match` espalhado por quinze ficheiros.
+#[test]
+fn the_stroke_colour_still_answers_for_a_patterned_stroke() {
+    assert_eq!(stroke_com_padrao().color(), fill().fallback);
+    assert_eq!(
+        StrokeSpec::new(Rgba8::new(7, 8, 9, 255), 1.0).color(),
+        Rgba8::new(7, 8, 9, 255)
+    );
+}
+
+/// **O padrão do traço sobrevive ao save**, com a lei intacta.
+#[test]
+fn the_stroke_pattern_survives_the_save() {
+    let s = stroke_com_padrao();
+    let bytes = postcard::to_allocvec(&s).expect("serializa");
+    let back: StrokeSpec = postcard::from_bytes(&bytes).expect("desserializa");
+    assert_eq!(back, s);
+    assert_eq!(
+        back.pattern().map(|p| p.source),
+        Some(fill().source),
+        "a fonte da arte nao voltou"
+    );
+}
+
+/// ⚠️ **Desvanecer um traço com padrão baixa a OPACIDADE dele** — a MESMA lei que o preenchimento
+/// já obedecia, e por isso o mesmo gate do outro lado.
+///
+/// Escalar só a `fallback` faria a linha manter o ladrilho a cheio e clarear apenas o instante em
+/// que ele ainda não resolveu, que é o contrário do que se vê.
+#[test]
+fn fading_a_patterned_stroke_dims_the_pattern_not_just_its_fallback() {
+    let mut path = VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(stroke_com_padrao()),
+        ..VecPath::default()
+    };
+    path.id = VecPathId::default();
+    let mut scene = VecScene::default();
+    let id = scene.push_path(path);
+    let bound = BoundStyle {
+        path: id,
+        alpha: Some(128),
+        ..BoundStyle::default()
+    };
+    let drawn = scene.paths()[0].painted(Some(&bound));
+    let p = drawn
+        .stroke
+        .as_ref()
+        .and_then(StrokeSpec::pattern)
+        .expect("padrao");
+    assert!(
+        (p.alpha - 128.0 / 255.0).abs() < 1e-6,
+        "a opacidade do padrao do traco nao desceu: {}",
+        p.alpha
+    );
+    assert_eq!(p.fallback.a, 128, "a cor de recurso desce junto");
+}
+
+/// ⚠️ **Um TOKEN de cor no traço substitui a tinta por uma COR** — a mesma lei que a linha do
+/// preenchimento já obedecia (ela troca o `Paint` inteiro por um `Solid`).
+///
+/// Pintar só a `fallback` de um padrão seria escolher uma cor que ninguém vê.
+#[test]
+fn a_colour_token_on_a_patterned_stroke_replaces_the_paint() {
+    let mut path = VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(stroke_com_padrao()),
+        ..VecPath::default()
+    };
+    path.id = VecPathId::default();
+    let mut scene = VecScene::default();
+    let id = scene.push_path(path);
+    let tok = Rgba8::new(200, 30, 40, 255);
+    let bound = BoundStyle {
+        path: id,
+        stroke: Some(tok),
+        ..BoundStyle::default()
+    };
+    let drawn = scene.paths()[0].painted(Some(&bound));
+    let s = drawn.stroke.as_ref().expect("traco");
+    assert!(s.pattern().is_none(), "o padrao sobreviveu ao token");
+    assert_eq!(s.color(), tok);
+}

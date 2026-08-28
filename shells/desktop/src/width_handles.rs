@@ -77,7 +77,7 @@ pub(crate) struct Grab {
 /// `stroke.width` como está, então o `power_stroke` molda a fita na largura autorada mesmo sob
 /// uma pose escalada. Uma alça que multiplicasse pela escala pousaria fora da tinta.
 fn half_width(scene: &VecScene, id: VecPathId) -> Option<f64> {
-    let w = scene.path(id)?.stroke?.width;
+    let w = scene.path(id)?.stroke.as_ref()?.width;
     (w > 0.0).then_some(w * 0.5)
 }
 

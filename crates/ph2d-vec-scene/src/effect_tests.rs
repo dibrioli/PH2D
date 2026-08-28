@@ -470,7 +470,7 @@ fn baking_effects_preserves_identity_and_style() {
     {
         let p = scene.path_mut(id).unwrap();
         p.fill = fill.clone();
-        p.stroke = stroke;
+        p.stroke.clone_from(&stroke);
     }
     assert!(scene.bake_cooked(id));
     let p = scene.path(id).unwrap();

@@ -79,7 +79,7 @@ fn head_size_and_round_reach_every_selected_path() {
             .paths()
             .iter()
             .find(|p| p.id == *id)
-            .and_then(|p| p.stroke)
+            .and_then(|p| p.stroke.clone())
             .expect("o caminho tem traco");
         assert!(
             (spec.marker_scale - 2.5).abs() < 1e-12,
@@ -108,14 +108,14 @@ fn the_width_is_rewritten_only_when_the_caller_hands_one() {
     let (mut scene, ids) = scene_with(1);
 
     restyle_selected_strokes(&mut scene, &ids, &style(), None);
-    let kept = scene.paths()[0].stroke.expect("traco").width;
+    let kept = scene.paths()[0].stroke.as_ref().expect("traco").width;
     assert!(
         (kept - W).abs() < f64::EPSILON,
         "sem largura entregue ela tem de ser PRESERVADA: {kept} != {W}"
     );
 
     restyle_selected_strokes(&mut scene, &ids, &style(), Some(0.5));
-    let handed = scene.paths()[0].stroke.expect("traco").width;
+    let handed = scene.paths()[0].stroke.as_ref().expect("traco").width;
     assert!((handed - 0.5).abs() < f64::EPSILON, "entregue, ela segue");
 }
 

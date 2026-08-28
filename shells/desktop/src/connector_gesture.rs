@@ -125,7 +125,7 @@ impl App {
         self.vec_history.begin(&gfx.vec_scene);
         let mut path = ph2d_vec_scene::line(world, world);
         path.stroke = Some(ph2d_vec_scene::StrokeSpec {
-            color: style.stroke,
+            paint: ph2d_vec_scene::StrokePaint::Solid(style.stroke),
             width: style.stroke_w_px * px_to_world,
             cap: style.cap,
             join: style.join,

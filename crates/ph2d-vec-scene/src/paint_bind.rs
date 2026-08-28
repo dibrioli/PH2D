@@ -111,8 +111,11 @@ impl VecPath {
         if let Some(c) = b.fill {
             out.fill = Some(Paint::Solid(c));
         }
+        // ⚠️ Um token de cor no traço **substitui a tinta por uma cor** — a mesma lei que a linha
+        // do preenchimento acima já obedece (ela troca o `Paint` inteiro por um `Solid`). Pintar só
+        // a `fallback` de um padrão seria escolher uma cor que ninguém vê.
         if let (Some(c), Some(s)) = (b.stroke, out.stroke.as_mut()) {
-            s.color = c;
+            s.paint = crate::StrokePaint::Solid(c);
         }
         if let (Some(w), Some(s)) = (b.width, out.stroke.as_mut()) {
             s.width = w;
@@ -159,8 +162,15 @@ fn fade(p: &mut VecPath, a: u8) {
         }
         None => {}
     }
-    if let Some(s) = p.stroke.as_mut() {
-        scale(&mut s.color);
+    // ⚠️ **O traço desvanece pela MESMA lei do preenchimento** (plano 35): um padrão no traço não
+    // tem cor para escalar — tem OPACIDADE, e as duas descem juntas.
+    match p.stroke.as_mut().map(|s| &mut s.paint) {
+        Some(crate::StrokePaint::Solid(c)) => scale(c),
+        Some(crate::StrokePaint::Pattern(pat)) => {
+            pat.alpha = (pat.alpha * f32::from(a) / 255.0).clamp(0.0, 1.0);
+            scale(&mut pat.fallback);
+        }
+        None => {}
     }
 }
 

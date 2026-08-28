@@ -46,7 +46,7 @@ pub(crate) fn reopen_text_session(
         .paths()
         .iter()
         .find(|p| p.id == id)
-        .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+        .map_or((None, None), |p| (p.fill.clone(), p.stroke.clone()));
     // O MESMO cozimento da sessão (baseline local, depois centrado) — daqui sai o
     // `center` que liga a pose ao `origin`.
     let center = text_to_compound_path(

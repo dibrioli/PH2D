@@ -75,7 +75,7 @@ impl AlignLive {
             // Outer passava aqui e entrava no mapa com a própria fonte.
             if !input
                 .iter()
-                .any(|p| p.stroke.is_some_and(|s| s.is_aligned()))
+                .any(|p| p.stroke.as_ref().is_some_and(|s| s.is_aligned()))
             {
                 continue;
             }

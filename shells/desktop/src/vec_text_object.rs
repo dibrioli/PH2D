@@ -138,7 +138,7 @@ pub(crate) fn recook_text_object(
         .paths()
         .iter()
         .find(|p| p.id == id)
-        .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+        .map_or((None, None), |p| (p.fill.clone(), p.stroke.clone()));
     let guide = crate::vec_text_ride::guide_of(sim, scene, map, entity);
     let placement = guide.as_ref().map_or(
         TextPlacement::At([0.0, 0.0]),
@@ -309,7 +309,7 @@ pub(crate) fn convert_text_selection_to_curves(
             .paths()
             .iter()
             .find(|p| p.id == id)
-            .map_or((None, None), |p| (p.fill.clone(), p.stroke));
+            .map_or((None, None), |p| (p.fill.clone(), p.stroke.clone()));
         let font = crate::vec_font::resolve(params.family.as_deref());
         let layout = layout_of_params(&params);
         let axes = axes_of_params(&params);

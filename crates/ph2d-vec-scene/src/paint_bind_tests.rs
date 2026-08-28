@@ -88,7 +88,7 @@ fn binding_a_stroke_colours_an_existing_stroke_and_never_invents_one() {
     let mut with = shape();
     with.stroke = Some(StrokeSpec::new(Rgba8::new(0, 0, 0, 255), 0.05));
     let drawn = with.painted(Some(&b(&with)));
-    assert_eq!(drawn.stroke.as_ref().map(|s| s.color), Some(tok));
+    assert_eq!(drawn.stroke.as_ref().map(|s| s.color()), Some(tok));
     assert!(
         (drawn.stroke.as_ref().expect("tem traco").width - 0.05).abs() < 1e-12,
         "a largura AUTORADA sobrevive: o token e' de cor"
@@ -189,7 +189,7 @@ fn the_opacity_fades_every_species_of_paint() {
         "so' o ALFA desvanece; a cor autorada fica"
     );
     assert_eq!(
-        drawn.stroke.as_ref().map(|s| s.color.a),
+        drawn.stroke.as_ref().map(|s| s.color().a),
         Some(128),
         "o traco desvanece com o resto — a forma inteira e' que fica translucida"
     );

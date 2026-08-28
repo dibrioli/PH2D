@@ -337,4 +337,22 @@
 /// campo novo no fim faz o postcard de um v100 chegar ao fim dos bytes (`Hit the end of buffer`, o
 /// mesmo modo de falha medido na v14 da `VecScene`). *Uma nota escrita entre as duas metades da
 /// mesma wave descreve só a primeira.*
-pub(crate) const PROJECT_SCHEMA: u32 = 101;
+/// # 102 — o PADRÃO no TRAÇO (plano 35, wave A)
+///
+/// O `StrokeSpec` deixou de ter `color: Rgba8` e passou a ter `paint: StrokePaint`
+/// (`Solid(Rgba8)` | `Pattern(Box<PatternFill>)`), e o `VEC_SCENE_SCHEMA_VERSION` subiu
+/// **15 -> 16** — logo este sobe por arrasto, e a **tripla** de `project_schema_tests` vê o degrau.
+///
+/// ⚠️⚠️ **Este degrau é DESTRUTIVO nos dois sentidos, ao contrário do 100.** Ali uma variante foi
+/// **apendada** a um enum e os índices anteriores ficaram onde estavam; aqui um campo **mudou de
+/// tipo** no meio da estrutura: onde o postcard de um v100 tem os 4 bytes de um `Rgba8`, um leitor
+/// v101 espera o **discriminante** de um enum. Os bytes não deixam de existir — eles passam a
+/// significar outra coisa, e é o pior modo de falha que há: ⛔ *ler torto sem erro nenhum*.
+///
+/// ⛔ **Sem degrau de migração, pela mesma decisão do Enio de 26/08** (*"não há projetos salvos"*):
+/// sem um `ProjectFileV100` congelado não há forma honesta de reler aqueles bytes, e um ficheiro
+/// anterior é **recusado em voz alta** no `project_load`.
+///
+/// ⭐ E o `StrokePaint` foi desenhado para que o **próximo** degrau seja barato: um gradiente no
+/// traço é uma variante **apendada**, do lado aditivo da regra.
+pub(crate) const PROJECT_SCHEMA: u32 = 102;

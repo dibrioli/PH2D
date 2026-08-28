@@ -76,10 +76,10 @@ fn the_zero_does_not_forget_the_colour() {
     p.stroke = Some(StrokeSpec::new(red, 0.0));
 
     // O documento guarda a cor mesmo com o traço invisível...
-    assert_eq!(p.stroke.expect("stroke").color, red);
+    assert_eq!(p.stroke.as_ref().expect("stroke").color(), red);
     // ...e ela volta intacta quando a largura volta.
     p.stroke = p.stroke.map(|s| StrokeSpec { width: 4.0, ..s });
-    assert_eq!(p.stroke.expect("stroke").color, red);
+    assert_eq!(p.stroke.as_ref().expect("stroke").color(), red);
     let mut none = square();
     none.stroke = None;
     assert!(

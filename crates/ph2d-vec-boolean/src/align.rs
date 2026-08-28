@@ -55,13 +55,13 @@ use crate::{BoolOp, apply, expand::drop_slivers, outline_stroke};
 /// tela do jeito que estava; devolver vazio a apagaria em silêncio.
 #[must_use]
 pub fn aligned_stroke(path: &VecPath) -> Option<Vec<VecPath>> {
-    let s = path.stroke?;
+    let s = path.stroke.as_ref()?;
     if !s.is_aligned() || !all_contours_closed(path) {
         return None;
     }
     // A banda DUPLA: o mesmo traço com o dobro da largura, que cobre `[−w, +w]`.
     let band = outline_stroke(&VecPath {
-        stroke: Some(doubled(&s)),
+        stroke: Some(doubled(s)),
         ..path.clone()
     });
     if band.is_empty() {
@@ -72,7 +72,7 @@ pub fn aligned_stroke(path: &VecPath) -> Option<Vec<VecPath>> {
     // recorte sair já com a cor do traço — em vez de a carimbar depois, que seria confiar duas
     // vezes na mesma decisão.
     let region = VecPath {
-        fill: Some(Paint::Solid(s.color)),
+        fill: Some(Paint::Solid(s.color())),
         stroke: None,
         ..path.clone()
     };
@@ -99,7 +99,7 @@ fn doubled(s: &StrokeSpec) -> StrokeSpec {
     StrokeSpec {
         width: s.width * 2.0,
         dash: s.dash.map(|(d, g)| (d * 0.5, g * 0.5)),
-        ..*s
+        ..s.clone()
     }
 }
 

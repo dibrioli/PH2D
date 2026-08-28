@@ -179,7 +179,10 @@ mod tests {
         ];
         for s in &shapes {
             assert_eq!(
-                s.stroke.expect("toda forma da cena tem traço").align,
+                s.stroke
+                    .as_ref()
+                    .expect("toda forma da cena tem traço")
+                    .align,
                 StrokeAlign::Centre,
                 "a cena semeou um alinhamento por baixo do pano"
             );

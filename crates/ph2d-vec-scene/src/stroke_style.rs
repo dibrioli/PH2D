@@ -94,11 +94,56 @@ impl StrokeAlign {
     }
 }
 
-/// Estilo do traço de um path: cor + largura (world-units) + ponta/junção +
+/// ⭐⭐ **COM QUE TINTA um traço desenha** (plano 35) — a lista FECHADA, e não o [`crate::Paint`] do
+/// preenchimento.
+///
+/// ⛔ **Reusar o `Paint` está RECUSADO por medição de risco, não por gosto:** ele representa
+/// `Linear`/`Radial`/`MultiPoint`, e o renderer de traço **não os desenha**. Um modelo que
+/// representa o que o desenho não faz produz um documento que se grava, recarrega e pinta errado —
+/// *estado inalcançável, gravado*. Quando um gradiente no traço for pedido, este enum **ganha uma
+/// variante** (append-only, um degrau da escada).
+///
+/// ⛔ E a saída barata — manter `color` e apendar um `pattern: Option<..>` ao lado — daria ao traço
+/// **duas fontes de tinta que podem discordar**, e o sintoma seria a swatch a mostrar uma cor
+/// enquanto a linha desenha outra coisa.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum StrokePaint {
+    /// Uma cor chapada — o caminho de 99 % dos traços.
+    Solid(Rgba8),
+    /// ⭐ **Um PADRÃO de textura**, a mesma lei do preenchimento (plano 33).
+    ///
+    /// ⚠️ **`Box`, e o número decidiu-o:** em linha o `StrokeSpec` ia de `64` para `176` bytes e o
+    /// `VecPath` engordava **54 %** — pago por **toda** forma em **toda** fotografia de undo,
+    /// inclusive as que não têm padrão nenhum. Atrás do `Box` são `+4 %`. O preço é o `StrokeSpec`
+    /// deixar de ser `Copy`, e o compilador contou esse preço em ~15–30 sítios mecânicos.
+    Pattern(Box<crate::PatternFill>),
+}
+
+impl StrokePaint {
+    /// **A COR que representa esta tinta** — a sólida, ou a `fallback` do padrão.
+    ///
+    /// ⭐ É a porta que mantém honesta toda superfície que só sabe perguntar *"de que cor é este
+    /// traço?"* — a swatch do painel, o token de cor, o `StrokeStyle` da shell. ⚠️ A `fallback` de um
+    /// padrão **não é uma aproximação**: é literalmente a cor que ele pinta enquanto o ladrilho não
+    /// resolve.
+    #[must_use]
+    pub fn color(&self) -> Rgba8 {
+        match self {
+            Self::Solid(c) => *c,
+            Self::Pattern(p) => p.fallback,
+        }
+    }
+}
+
+/// Estilo do traço de um path: tinta + largura (world-units) + ponta/junção +
 /// tracejado opcional. Substitui a tupla `(Rgba8, f64)` da Fase 0.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+///
+/// ⚠️ **Deixou de ser `Copy` em 2026-08-27** (plano 35): a tinta pode ser um padrão, e ele vive
+/// atrás de um `Box` porque em linha o `VecPath` engordaria 54 % (§0.1 do plano).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StrokeSpec {
-    pub color: Rgba8,
+    /// ⚠️ **Era `color: Rgba8`.** Quem só quer uma cor pergunta por [`Self::color`].
+    pub paint: StrokePaint,
     pub width: f64,
     pub cap: LineCap,
     pub join: LineJoin,
@@ -155,7 +200,7 @@ impl StrokeSpec {
     #[must_use]
     pub fn new(color: Rgba8, width: f64) -> Self {
         Self {
-            color,
+            paint: StrokePaint::Solid(color),
             width,
             cap: LineCap::Butt,
             join: LineJoin::Miter,
@@ -165,6 +210,25 @@ impl StrokeSpec {
             marker_scale: 1.0,
             marker_round: 0.0,
             align: StrokeAlign::Centre,
+        }
+    }
+
+    /// **A COR que representa este traço** — a sólida, ou a `fallback` do padrão.
+    ///
+    /// ⭐ Ela existe para que a troca de `color: Rgba8` por [`StrokePaint`] custe **um caractere**
+    /// em cada leitor que só quer uma cor (`s.color` -> `s.color()`), em vez de um `match` espalhado
+    /// por quinze ficheiros. *Uma pergunta que quinze sítios fazem tem de ter uma porta.*
+    #[must_use]
+    pub fn color(&self) -> Rgba8 {
+        self.paint.color()
+    }
+
+    /// O padrão desta tinta, se ela for um. `None` num traço sólido.
+    #[must_use]
+    pub fn pattern(&self) -> Option<&crate::PatternFill> {
+        match &self.paint {
+            StrokePaint::Solid(_) => None,
+            StrokePaint::Pattern(p) => Some(p),
         }
     }
 

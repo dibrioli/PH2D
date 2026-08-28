@@ -48,7 +48,8 @@ impl VectorTool {
     /// A largura entra em **px de tela** (a unidade que a tool guarda), convertida pelo chamador:
     /// o `StrokeSpec` a traz em MUNDO, e a conversão tem um dono só.
     pub fn adopt_stroke(&mut self, s: &ph2d_vec_scene::StrokeSpec, width_px: f64) {
-        self.stroke = [s.color.r, s.color.g, s.color.b, s.color.a];
+        let c = s.color();
+        self.stroke = [c.r, c.g, c.b, c.a];
         // ⚠️ Clampa contra as CONSTANTES, e NÃO pela porta do slider. Rotear um `f64` por
         // `px_to_slider`/`slider_to_px` parecia reuso elegante e **quantiza**: a trilha é `f32`,
         // e 20,0 volta como 20,000000298 (medido pelo gate da lei). Adotar tem de devolver o

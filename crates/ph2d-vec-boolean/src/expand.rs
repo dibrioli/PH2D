@@ -271,14 +271,14 @@ fn retarget(el: &mut PathEl, to: Point) {
 /// cores diferentes justamente porque são coisas diferentes.
 #[must_use]
 pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
-    let Some(s) = path.stroke else {
+    let Some(s) = path.stroke.as_ref() else {
         return Vec::new();
     };
     let mut acc: Option<Region> = None;
-    for piece in stroke_plan(path, &s) {
+    for piece in stroke_plan(path, s) {
         let region = match piece {
             StrokePiece::Line { path: p } => {
-                penned(&to_bez_with(&p, Closing::AsDrawn), &line_pen(&p, &s))
+                penned(&to_bez_with(&p, Closing::AsDrawn), &line_pen(&p, s))
             }
             // A caneta do símbolo é crua e sólida — ver `StrokePiece::Symbol`.
             StrokePiece::Symbol { path: p } => {
@@ -301,7 +301,7 @@ pub fn outline_stroke(path: &VecPath) -> Vec<VecPath> {
         });
     }
     match acc {
-        Some(acc) => acc.into_paths(&ink_style(&s)),
+        Some(acc) => acc.into_paths(&ink_style(s)),
         None => Vec::new(),
     }
 }
@@ -356,7 +356,7 @@ pub fn silhouette_paths(path: &VecPath) -> Vec<VecPath> {
 /// comandos que assam tinta ([`outline_stroke`] e [`power_stroke`]) têm de responder igual.
 fn ink_style(s: &StrokeSpec) -> VecPath {
     VecPath {
-        fill: Some(Paint::Solid(s.color)),
+        fill: Some(Paint::Solid(s.color())),
         stroke: None,
         ..VecPath::default()
     }

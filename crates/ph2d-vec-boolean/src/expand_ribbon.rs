@@ -38,7 +38,7 @@ use crate::{Closing, to_bez_with};
 /// dois botões para a mesma saída seria pior que ter um), ou se o sweep falhar.
 #[must_use]
 pub fn power_stroke(path: &VecPath, profile: &WidthStops) -> Vec<VecPath> {
-    let Some(s) = path.stroke.filter(|_| !profile.is_uniform()) else {
+    let Some(s) = path.stroke.as_ref().filter(|_| !profile.is_uniform()) else {
         return Vec::new();
     };
     let cooked = path.cooked();
@@ -55,13 +55,13 @@ pub fn power_stroke(path: &VecPath, profile: &WidthStops) -> Vec<VecPath> {
         ribbon_into(
             &mut ink,
             &to_bez_with(&piece, Closing::AsDrawn),
-            &s,
+            s,
             profile,
             closed,
         );
     }
     match Region::of(&ink, LsFillRule::NonZero).filter(|r| !r.is_empty()) {
-        Some(acc) => drop_slivers(acc.into_paths(&ink_style(&s))),
+        Some(acc) => drop_slivers(acc.into_paths(&ink_style(s))),
         None => Vec::new(),
     }
 }

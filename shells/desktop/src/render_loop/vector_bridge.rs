@@ -306,8 +306,8 @@ pub(super) fn dispatch(
             marker_round,
         };
         let differs = |p: &ph2d_vec_scene::VecPath| {
-            let stroke_differs = p.stroke.is_some_and(|s| {
-                stroke_style.differs_from(&s)
+            let stroke_differs = p.stroke.as_ref().is_some_and(|s| {
+                stroke_style.differs_from(s)
                     || (width_authored && (s.width - new_w).abs() > f64::EPSILON)
             });
             let fill_differs = if let Some(h) = active_handle {

@@ -390,11 +390,14 @@ fn a_width_token_reaches_the_drawn_stroke_and_never_invents_one() {
     assert!(
         drawn
             .stroke
+            .as_ref()
             .is_some_and(|s| (s.width - expected).abs() < 1e-9),
         "o traco desenhado tem de ter a espessura do token"
     );
     assert!(
-        path.stroke.is_some_and(|s| (s.width - 0.5).abs() < 1e-9),
+        path.stroke
+            .as_ref()
+            .is_some_and(|s| (s.width - 0.5).abs() < 1e-9),
         "e o DOCUMENTO continua com a largura que o artista escreveu"
     );
 }

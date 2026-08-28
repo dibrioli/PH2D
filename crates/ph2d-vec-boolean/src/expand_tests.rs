@@ -396,8 +396,8 @@ fn baking_an_arrow_keeps_its_head() {
     // escrito aqui: um gate com a constante copiada passa a mentir no dia em que a ponta mudar de
     // tamanho, e mente afirmando exactamente o que devia proteger.
     let reach = ph2d_vec_scene::Marker::Triangle
-        .inset(arrow.stroke.map_or(1.0, |s| s.marker_scale))
-        * arrow.stroke.map_or(1.0, |s| s.width);
+        .inset(arrow.stroke.as_ref().map_or(1.0, |s| s.marker_scale))
+        * arrow.stroke.as_ref().map_or(1.0, |s| s.width);
     let right = out.iter().map(|p| bbox(p).x1).fold(f64::MIN, f64::max);
     assert!(
         (right - (20.0 + reach)).abs() < 0.2,

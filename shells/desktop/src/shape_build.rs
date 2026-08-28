@@ -191,7 +191,7 @@ impl BuildSession {
             // fonte. O que sobra de uma forma continua sendo aquela forma: o estilo é dela.
             for p in &mut rest {
                 p.fill = src.fill.clone();
-                p.stroke = src.stroke;
+                p.stroke.clone_from(&src.stroke);
             }
             drop_slivers(
                 &mut rest,
@@ -215,7 +215,7 @@ impl BuildSession {
         {
             for p in &mut merged {
                 p.fill = top.fill.clone();
-                p.stroke = top.stroke;
+                p.stroke.clone_from(&top.stroke);
             }
         }
         BuildResult { merged, remainder }

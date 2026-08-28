@@ -95,7 +95,7 @@ pub fn offset_ring(
         verts,
         closed: true,
         fill: path.fill.clone(),
-        stroke: path.stroke,
+        stroke: path.stroke.clone(),
         // ⚠️ **NonZero, e é a espinha:** o loop pode ser auto-cruzado (côncavo + `d` grande), e é
         // o winding NonZero do rasterizador que preenche a auto-interseção — o mesmo que a
         // booleana faria, sem o custo dela.

@@ -26,7 +26,7 @@ fn cena(com_traco: bool) -> (VecScene, PenTool, VecPathId) {
 }
 
 fn traco(scene: &VecScene, id: VecPathId) -> Option<StrokeSpec> {
-    scene.path(id).and_then(|p| p.stroke)
+    scene.path(id).and_then(|p| p.stroke.clone())
 }
 
 /// ⭐⭐ **O BURACO INTEIRO** (Enio, 2026-08-27): uma forma que nasceu sem traço não conseguia ganhar
@@ -61,7 +61,7 @@ fn the_new_stroke_comes_from_the_tool_style_not_from_a_default() {
     assert!(toggle(&mut scene, &mut h, &pen, 0.25));
     let s = traco(&scene, id).expect("vestiu");
     assert_eq!(
-        s.color,
+        s.color(),
         Rgba8::new(200, 30, 40, 255),
         "a COR nao veio da tool"
     );

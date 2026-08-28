@@ -130,7 +130,7 @@ impl Plan {
             fill_rule: compound::fill_rule_for(links.len()),
             links,
             fill: (a.fill.clone(), b.fill.clone()),
-            stroke: (a.stroke, b.stroke),
+            stroke: (a.stroke.clone(), b.stroke.clone()),
         })
     }
 
@@ -158,7 +158,7 @@ impl Plan {
             ..VecPath::default()
         };
         out.fill = mix_paint(self.fill.0.as_ref(), self.fill.1.as_ref(), t);
-        out.stroke = mix_stroke(self.stroke.0, self.stroke.1, t);
+        out.stroke = mix_stroke(self.stroke.0.clone(), self.stroke.1.clone(), t);
         out
     }
 }
@@ -424,7 +424,7 @@ pub fn mix_paint(a: Option<&Paint>, b: Option<&Paint>, t: f64) -> Option<Paint> 
 pub fn mix_stroke(a: Option<StrokeSpec>, b: Option<StrokeSpec>, t: f64) -> Option<StrokeSpec> {
     match (a, b) {
         (Some(sa), Some(sb)) => Some(StrokeSpec {
-            color: mix_oklab(sa.color, sb.color, t),
+            paint: ph2d_vec_scene::StrokePaint::Solid(mix_oklab(sa.color(), sb.color(), t)),
             width: sa.width + (sb.width - sa.width) * t,
             // cap/join/dash/pontas são discretos — o lado mais próximo (o mesmo critério do fill).
             ..(if t < 0.5 { sa } else { sb })

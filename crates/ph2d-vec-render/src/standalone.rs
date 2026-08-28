@@ -44,13 +44,13 @@ pub(crate) fn inflate_for_stroke(path: &VecPath, xf: Affine, r: Rect) -> Rect {
         // a kurbo só a corta no `miter_limit`. Inflar por meia largura recortava a ponta contra a
         // borda do scratch, e o efeito visível era **a ponta CEIFADA** (reportado no smoke). O
         // limite é lido do MESMO construtor que o renderer usa, não de uma segunda constante.
-        if let Some(s) = path.stroke {
+        if let Some(s) = path.stroke.as_ref() {
             let [a, b, c, d, _, _] = xf.as_coeffs();
             let sx = (a * a + b * b).sqrt();
             let sy = (c * c + d * d).sqrt();
             // Só a JUNTA e o `miter_limit` são lidos aqui; um tracejado não muda o
             // transbordo, então medir o caminho para o ajustar seria trabalho por nada.
-            let k = kurbo_stroke(&s, None);
+            let k = kurbo_stroke(s, None);
             let reach = if matches!(k.join, Join::Miter) {
                 k.miter_limit.max(1.0)
             } else {

@@ -70,7 +70,7 @@ impl PenStyle {
     #[must_use]
     pub fn stroke_spec(&self, width: f64) -> StrokeSpec {
         StrokeSpec {
-            color: self.stroke,
+            paint: ph2d_vec_scene::StrokePaint::Solid(self.stroke),
             width,
             cap: self.cap,
             join: self.join,

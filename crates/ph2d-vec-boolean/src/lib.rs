@@ -218,7 +218,7 @@ pub(crate) fn compound_from(group: &[BezPath], style: &VecPath) -> Option<VecPat
         verts: outer,
         closed: true,
         fill: style.fill.clone(),
-        stroke: style.stroke,
+        stroke: style.stroke.clone(),
         subpaths,
         // Contorno único: as duas regras coincidem — mantém o default histórico.
         fill_rule: if compound {

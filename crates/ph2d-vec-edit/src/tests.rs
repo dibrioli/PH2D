@@ -477,8 +477,8 @@ fn set_style_colors_new_paths_and_survives_clear() {
     };
     pen.set_style(style);
     pen.on_press(&mut scene, [0.0, 0.0], PTW, false, &mut nosnap);
-    let s = scene.paths()[0].stroke.expect("stroke");
-    assert_eq!(s.color, style.stroke);
+    let s = scene.paths()[0].stroke.as_ref().expect("stroke");
+    assert_eq!(s.color(), style.stroke);
     assert_eq!(s.width, style.stroke_w_px * PTW);
     // Fechar aplica o fill do estilo.
     pen.on_release();

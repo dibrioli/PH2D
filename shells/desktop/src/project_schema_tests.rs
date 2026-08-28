@@ -432,7 +432,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 100→101 + VEC_SCENE 14→15: o TEXTURE PATTERN (plano 33 W3). O `Paint` ganhou a 5ª
         // variante (`Pattern`), entao a forma da `VecScene` MUDOU -- e desta vez a tripla VE^ o
         // degrau, ao contrario do 99 e do 100, que vivia dentro de um `ComponentBlob` opaco.
-        (101, 13, 15),
+        (102, 13, 16),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

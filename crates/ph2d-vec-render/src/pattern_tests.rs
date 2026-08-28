@@ -311,7 +311,7 @@ fn a_patterned_shape_still_draws_its_stroke() {
             verts: verts.clone(),
             closed: true,
             fill: Some(fill),
-            stroke,
+            stroke: stroke.clone(),
             ..VecPath::default()
         };
         let mut s = VectorScene::new();

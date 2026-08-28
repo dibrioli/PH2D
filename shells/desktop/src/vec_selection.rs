@@ -308,7 +308,15 @@ mod tests {
         };
         let n = restyle_selected_strokes(&mut scene, pen.selected_paths(), &style, Some(3.0));
 
-        let colour = |id| scene.path(id).expect("path").stroke.expect("stroke").color;
+        let colour = |id| {
+            scene
+                .path(id)
+                .expect("path")
+                .stroke
+                .as_ref()
+                .expect("stroke")
+                .color()
+        };
         assert_eq!(
             n, 1,
             "restilizou {n} traços — a moldura emprestou os filhos"

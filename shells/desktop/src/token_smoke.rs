@@ -275,8 +275,8 @@ mod tests {
         for (x, y) in a.paths().iter().zip(b.paths().iter()) {
             assert_eq!(x.fill, y.fill, "mesma cor de preenchimento");
             assert_eq!(
-                x.stroke.as_ref().map(|s| s.color),
-                y.stroke.as_ref().map(|s| s.color),
+                x.stroke.as_ref().map(|s| s.color()),
+                y.stroke.as_ref().map(|s| s.color()),
                 "mesma cor de traco"
             );
         }

@@ -199,7 +199,7 @@ pub(crate) fn capture(
     pose.bool_group_op = crate::bool_live::group_above(sim, map, id).map(|(_, op)| op);
     if let Some(p) = scene.paths().iter().find(|p| p.id == id) {
         pose.fill.clone_from(&p.fill);
-        pose.stroke = p.stroke;
+        pose.stroke.clone_from(&p.stroke);
         // **A FORMA, sempre.** Um estado que não a gravasse não teria como animar uma edição de
         // nó, um Fillet ou um Chamfer — e o campo existia, com o motor pronto do outro lado,
         // esperando um produtor que nunca chegou.
@@ -339,7 +339,7 @@ pub(crate) fn install(
     }
     if let Some(p) = scene.paths_mut().iter_mut().find(|p| p.id == pose.id) {
         p.fill.clone_from(&pose.fill);
-        p.stroke = pose.stroke;
+        p.stroke.clone_from(&pose.stroke);
         if let Some(g) = &pose.geometry {
             p.verts.clone_from(&g.verts);
             p.closed = g.closed;

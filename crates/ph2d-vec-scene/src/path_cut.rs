@@ -114,7 +114,7 @@ impl VecScene {
             verts: tail,
             closed: false,
             fill: src.fill.clone(),
-            stroke: src.stroke,
+            stroke: src.stroke.clone(),
             fill_rule: src.fill_rule,
             // A pilha de efeitos é APARÊNCIA, e as duas metades continuam a mesma aparência.
             effects: src.effects.clone(),

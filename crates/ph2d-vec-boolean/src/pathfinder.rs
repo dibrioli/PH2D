@@ -204,7 +204,7 @@ fn merge(paths: &[&VecPath]) -> Vec<VecPath> {
 /// lista que recebeu, e nas quatro receitas quem manda é outra forma.
 fn wear(p: &mut VecPath, src: &VecPath) {
     p.fill.clone_from(&src.fill);
-    p.stroke = src.stroke;
+    p.stroke.clone_from(&src.stroke);
     p.effects.clone_from(&src.effects);
 }
 

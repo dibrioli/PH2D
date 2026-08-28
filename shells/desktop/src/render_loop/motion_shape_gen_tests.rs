@@ -365,8 +365,8 @@ fn the_shape_carries_the_stroke_the_artist_authored() {
         "a largura, deu {}",
         st.width
     );
-    assert_eq!(st.color.r, 255, "e a cor: R cheio");
-    assert_eq!(st.color.g, 0);
+    assert_eq!(st.color().r, 255, "e a cor: R cheio");
+    assert_eq!(st.color().g, 0);
     // A GEOMETRIA não muda — um traço é tinta, não forma.
     assert_eq!(
         inked.verts.len(),

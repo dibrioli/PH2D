@@ -348,12 +348,25 @@ fn node_param_targets(motion: &MotionState, nodes: &[GraphNodeView]) -> BTreeMap
 /// The type is the one a value node emits (`Instances/Scalar`, the node's own clock), so the
 /// drop's compatibility filter does the rest: only a value wire can reach a parameter, which
 /// is exactly the rule the cook enforces anyway (`driven_value` reads the `"v"` column).
+///
+/// ⚠️ **Nem um param que o painel ESCONDE** (report do Enio, 2026-08-27: *"Shape expõe todos
+/// os parâmetros de todos os tipos de shape, mas deveria expor apenas os da shape
+/// selecionada"*). O `source.shape` declara dezenas de espécies e gateia cada knob à sua — um
+/// círculo não tem dente, e o painel já sabia disso. Este menu não sabia: ele listava
+/// `manifest.params` cru, então oferecia *Tooth Depth* num círculo, e o fio ligado ficava a
+/// conduzir um número que a receita daquela espécie **nunca lê** — um knob morto com um fio
+/// visível, que é pior que um knob morto (o artista vê a ligação e conclui que ela age).
+///
+/// ⚠️ **A resposta vem da MESMA porta que o painel usa** (`params_visible::shown_params`):
+/// uma segunda implementação da conjunção dos três gates é como um param passa a aparecer num
+/// sítio do app e não noutro — que é o defeito em si, com o sinal trocado.
 fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<PortChoice> {
     use ph2d_panel_motion_graph::PortView;
     let Some(manifest) = manifest_of(motion, n) else {
         return Vec::new();
     };
     let driven = motion.doc.graph.param_sources(n);
+    let shown = super::params::params_visible::shown_params(motion, n);
     let hints = motion
         .doc
         .graph
@@ -363,6 +376,7 @@ fn param_choices(motion: &MotionState, n: NodeId, v: &GraphNodeView) -> Vec<Port
         .params
         .iter()
         .filter(|p| driven.is_none_or(|d| !d.contains_key(p.name)))
+        .filter(|p| shown(p.name))
         .map(|p| {
             // The artist reads the label the params panel shows them ("Strength"), not the
             // canonical key ("strength") — the same name in both places, or the menu is

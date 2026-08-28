@@ -74,12 +74,11 @@ pub use snapshot::{
     AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MAX_ENUM_OPTIONS,
     MAX_PARAM_ROWS, MotionParamIntent, PaletteRow, ParamRow, ParamsSnapshot, RowDisplay, ScalarRow,
     SeedRow, SourceRow, TextRow, ToggleRow, drain_param_intents, param_grad_swatch_id,
-    param_pal_swatch_id, param_swatch_id, scalar_text, set_current_params,
+    param_pal_swatch_id, param_swatch_id, push_param_intent, scalar_text, set_current_params,
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, current_params, param_checkbox_id, param_chip_id, param_enum_id,
     param_number_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
-    push_param_intent,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 

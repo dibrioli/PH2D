@@ -464,7 +464,14 @@ pub(crate) fn current_params() -> Option<ParamsSnapshot> {
 }
 
 /// Queue a param edit for the bridge to apply (panel → shell).
-pub(crate) fn push_param_intent(intent: MotionParamIntent) {
+///
+/// ⚠️ **`pub`, e a assimetria era o problema:** o `drain_param_intents` já é público (a shell
+/// drena), e só esta metade não era — o que deixava o caminho REAL de uma edição de param
+/// inalcançável de fora deste crate. Um gate da shell tinha então de chamar a função interna
+/// que o `apply_param_edits` chama, em vez do `apply_param_edits`, e um gate assim fica verde
+/// no dia em que o executor deixar de a chamar. *É a forma de gate vazio que a auditoria deste
+/// módulo apanhou vinte e quatro vezes.*
+pub fn push_param_intent(intent: MotionParamIntent) {
     INTENTS.with(|c| c.borrow_mut().push(intent));
 }
 

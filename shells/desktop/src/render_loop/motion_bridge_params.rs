@@ -10,9 +10,9 @@
 
 use super::color::{color_groups, linear_rgba_to_srgb8};
 use crate::motion_state::MotionState;
-/// The unit vocabulary (what a param's number IS) and the panel's display face
-/// (how it reads). Module scope because `display_face` — the single conversion
-/// point — sits beside `contain`, not inside the builder.
+/// O vocabulário de unidades (o que o número de um param É). O `display_face` — a única
+/// conversão — mudou-se para `params_wire`, que é onde a pergunta *"em que face esta row se
+/// lê?"* passou a viver inteira; aqui fica só quem a consome.
 use ph2d_node_registry::ParamUnit;
 use ph2d_panel_motion_params::RowDisplay;
 
@@ -32,7 +32,6 @@ mod params_channel;
 /// Re-exported under its old path so the params tests (a sibling module) and this
 /// module keep naming the presets `params::apply_channel_presets` after the split.
 pub(super) use params_channel::apply_channel_presets;
-use params_channel::channel_unit;
 
 /// The **write-back** half — this frame's edits applied to the node, and the one
 /// reader of a param's current value (a sibling child, shell LOC cap). The seam is
@@ -45,10 +44,20 @@ use params_channel::channel_unit;
 mod params_range;
 use params_range::{channel_range_override, contain};
 
+/// **A roupa que um CONDUTOR veste** — a face e a faixa do param que o fio dele alimenta.
+/// Irmã de `params_range` pela mesma pergunta (*até onde este controle alcança?*), cortada
+/// pelo mesmo teto de LOC.
+#[path = "motion_bridge_params_wire.rs"]
+mod params_wire;
+
 /// **QUANDO uma row aparece** — as três famílias de gate de visibilidade (irmã de
 /// `params_range`, cortada pelo mesmo teto e pelo mesmo critério: por assunto).
+/// ⚠️ `pub(crate)` porque a resposta deixou de ser só do painel: o menu que um fio largado
+/// oferece (`fold::param_choices`) e a lei que solta um fio órfão (`params_edit`) fazem a
+/// MESMA pergunta, e uma segunda implementação seria um param oferecido num sítio e escondido
+/// noutro — que foi o report do Enio sobre o `motion.shape`.
 #[path = "motion_bridge_params_visible.rs"]
-mod params_visible;
+pub(crate) mod params_visible;
 /// A metade de PAINEL da cura dos knobs mortos (doc 90 §7.2) — a irmã do gate de kernel
 /// `param_gates_are_exact`, que vive em `ph2d-node-registry-init`.
 #[cfg(test)]
@@ -84,6 +93,21 @@ pub(crate) fn source_options_for_tests(motion: &MotionState) -> Vec<String> {
     params_stream::source_options(motion)
 }
 
+/// O caminho REAL de uma edição de param, para os gates que a medem de ponta a ponta —
+/// `push_param_intent` de fora, este dreno aqui.
+///
+/// ⚠️ Existe para que um gate não tenha de chamar a função INTERNA que o `apply_param_edits`
+/// chama: um gate assim fica verde no dia em que o executor deixar de a chamar, que é a forma
+/// de gate vazio que a auditoria de 2026-08-27 apanhou vinte e quatro vezes.
+#[cfg(test)]
+pub(crate) fn apply_param_edits_for_tests(
+    motion: &mut MotionState,
+    store: &ph2d_editor::interaction::WidgetStore,
+    toasts: &mut ph2d_editor::ToastQueue,
+) {
+    apply_param_edits(motion, store, toasts);
+}
+
 /// **Publish the params panel this frame** (M1.P1) — the dispatch's one call: apply the
 /// selected node's edits, rebuild its snapshot, seed the colour swatches from it, hand it
 /// to the panel. Needs BOTH motion panels (selection from the graph, rows to params); it
@@ -94,6 +118,7 @@ pub(super) fn publish(
     store: &mut ph2d_editor::interaction::WidgetStore,
     motion_active: bool,
     project: ph2d_editor::ProjectSettings,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) {
     if !motion_active {
         ph2d_panel_motion_params::set_current_params(None);
@@ -101,50 +126,12 @@ pub(super) fn publish(
     }
     // Apply this frame's edits (colour picks + scalar sliders) BEFORE rebuilding, so the
     // panel reflects them; then seed each colour swatch's picker from the fresh snapshot.
-    apply_param_edits(motion, store);
+    apply_param_edits(motion, store, toasts);
     let snap = build_params_snapshot(motion, project);
     if let Some(s) = &snap {
         super::color::seed_color_swatches(store, s);
     }
     ph2d_panel_motion_params::set_current_params(snap);
-}
-
-/// **The display face for one param** (doc 88, Wave A) — the single place a
-/// declared [`ParamUnit`] becomes the number the artist reads.
-///
-/// [`ParamUnit::Length`] is the only unit that CONVERTS, and it converts through
-/// the project's setting, never a constant of its own: the same
-/// `pixels_per_meter` the sprite importer and the gizmo readouts use. Everything
-/// else is stored in the unit it is shown in, so it gets a suffix and a scale of
-/// exactly `1.0` — the neutral face, byte-identical to before this wave.
-///
-/// [`ParamUnit::FromChannel`] is resolved first, by asking the channel the node
-/// currently drives; a node with no `channel` param cannot answer, and an
-/// unanswerable unit is [`ParamUnit::None`] rather than a guess.
-fn display_face(
-    unit: ParamUnit,
-    channel: Option<i32>,
-    project: ph2d_editor::ProjectSettings,
-) -> RowDisplay {
-    let unit = match unit {
-        ParamUnit::FromChannel => channel.map(channel_unit).unwrap_or_default(),
-        other => other,
-    };
-    if let Some(fixed) = unit.fixed_suffix() {
-        return RowDisplay::new(1.0, fixed);
-    }
-    if !unit.converts() {
-        return RowDisplay::default();
-    }
-    // A world LENGTH: stored in metres, shown in the project's unit.
-    RowDisplay::new(
-        f64::from(
-            project
-                .display_unit
-                .from_meters(1.0, project.pixels_per_meter),
-        ),
-        project.display_unit.suffix(),
-    )
 }
 
 /// The single selected Motion node's `NodeId.0`, or `None` unless exactly one
@@ -232,6 +219,11 @@ pub(crate) fn build_params_snapshot(
         .iter()
         .any(|p| p.name == "channel")
         .then(|| value_of("channel").round() as i32);
+    // **A roupa do CONDUTOR** (doc 58 + doc 88): se a saída deste nó cai em params, a face e
+    // a faixa das rows marcadas `FromWire` são as DELES. Resolvida UMA vez para o nó — a
+    // resposta é do nó (quem ele alimenta), não da row, e recalculá-la por row varreria o
+    // mapa de params dirigidos do documento N vezes por quadro.
+    let wire = params_wire::wire_face(motion, nid);
 
     let mut rows: Vec<ParamRow> = Vec::new();
 
@@ -451,14 +443,11 @@ pub(crate) fn build_params_snapshot(
         // if a table entry says otherwise. A param with no hint at all still gets
         // to declare a unit — the hint's absence is a missing RANGE, not a
         // missing quantity.
-        let face = display_face(
-            ph2d_node_registry::unit_of(
-                hint.map_or(ParamWidget::Slider, |h| h.widget),
-                motion.registry.param_unit_declared(type_id, spec.name),
-            ),
-            channel,
-            project,
+        let declared_unit = ph2d_node_registry::unit_of(
+            hint.map_or(ParamWidget::Slider, |h| h.widget),
+            motion.registry.param_unit_declared(type_id, spec.name),
         );
+        let face = params_wire::display_face(declared_unit, channel, wire.map(|w| w.unit), project);
         // ⚠️ ONE `.in_display` for BOTH arms of the match — the conversion site is
         // the push, not the construction, so a third arm cannot be added without
         // one.
@@ -471,6 +460,19 @@ pub(crate) fn build_params_snapshot(
                     let (min, max, step) = channel
                         .and_then(|ch| {
                             channel_range_override(&motion.registry, &inst.type_name, spec.name, ch)
+                        })
+                        // … or, for a param that declared its unit comes from the WIRE, the
+                        // range of the param it drives. ⚠️ **A faixa tem de seguir a face,
+                        // ou a cura fica pela metade:** a face converte o número (`0,94` lê
+                        // `94 px`) e a faixa é a ESCALA contra a qual ele se arrasta — com a
+                        // face do destino e a faixa própria, o `Number` mostraria `94 px`
+                        // num slider de `±7500 px`, onde a `size` inteira do destino
+                        // (`5..1000 px`) cabe num décimo do track e um pixel de arrasto vale
+                        // ~98 px. *Vestir a roupa é vestir as duas peças.*
+                        .or_else(|| {
+                            (declared_unit == ParamUnit::FromWire)
+                                .then(|| wire.and_then(|w| w.range))
+                                .flatten()
                         })
                         .unwrap_or((h.min, h.max, h.step));
                     // … then widen it again, unconditionally, so it CONTAINS the doc

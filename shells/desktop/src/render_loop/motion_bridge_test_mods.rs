@@ -68,6 +68,11 @@ mod reset_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_rowcap_tests.rs"]
 mod rowcap_tests;
+/// **O que um fio alcanca numa FORMA** — o menu que so' oferece os knobs da especie escolhida,
+/// e o fio que cai quando a especie muda (report do Enio, 2026-08-27).
+#[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
+#[path = "motion_bridge_shape_link_tests.rs"]
+mod shape_link_tests;
 /// O CENSO dos params de FORMA (curva, rampa, paleta, texto) — a espécie que a caça aos
 /// knobs mortos não podia ver, porque ela varre o `MANIFEST` e uma forma não é um `ParamSpec`.
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]

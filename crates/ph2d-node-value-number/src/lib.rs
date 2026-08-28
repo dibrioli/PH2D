@@ -79,6 +79,12 @@ pub const STATE: &str = "state";
 /// do catálogo salta de `~60` para os milhares sem nada pelo meio. Os extremos reais vão a `−720`
 /// e a `22 000`, e nenhum curso de mão os alcança com passo utilizável — é para isso que existe
 /// o tecto DIGITÁVEL abaixo.
+///
+/// ⚠️ **Isto é o default de quem NÃO conduz nada.** Desde a cura do `ParamUnit::FromWire`
+/// (2026-08-27), um `Number` ligado a um param veste a faixa DAQUELE param — ligado ao
+/// `source.shape::size` ele arrasta em `5..1000 px`, exactamente como o slider do destino. A
+/// união das faixas do catálogo só manda enquanto o nó está solto, que é o único momento em que
+/// ninguém sabe para que ele serve.
 const HAND_SPAN: f32 = 75.0;
 /// **O TECTO DA MÁQUINA — e o recurso é a PRECISÃO do `f32`**, não uma opinião.
 ///
@@ -179,10 +185,29 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_gates(MANIFEST.id, PARAM_GATES);
     reg.register_param_hard_max(MANIFEST.id, HARD_MAX);
     reg.register_param_hard_min(MANIFEST.id, HARD_MIN);
+    reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     Ok(())
 }
 
-use ph2d_node_registry::{ParamGate, ParamHardMax, ParamHardMin, ParamUiHint, ParamWidget};
+use ph2d_node_registry::{
+    ParamGate, ParamHardMax, ParamHardMin, ParamUiHint, ParamUnit, ParamUnitDecl, ParamWidget,
+};
+
+/// **O NÚMERO É O QUE ELE CONDUZ** (doc 88 + doc 58) — o report do Enio, 2026-08-27:
+/// *"number em 0,94 imprime em shape:size 94px."*
+///
+/// Ele estava certo sobre o defeito e o número estava certo sobre a física: o
+/// `source.shape::size` é um comprimento guardado em **metros**, e `0,94 m` **são** `94 px`.
+/// As duas rows diziam a verdade sobre a própria unidade — e por isso o artista via **um
+/// fio e dois números**, sem nada na tela que os ligasse.
+///
+/// ⚠️ **`state` e `kind` ficam de fora, e não é omissão:** um índice de enum e uma caixa não
+/// são grandezas. Marcá-los faria a caixa de um booleano herdar a face de um comprimento e
+/// mostrar `100 px` para *ligado*.
+static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
+    param: VALUE_PARAM,
+    unit: ParamUnit::FromWire,
+}];
 
 /// **Cada modo mostra o seu controle, e só o seu.** Sem isto o painel pintaria a caixa e o
 /// slider ao mesmo tempo, e um deles seria um controle sobre nada — o defeito que o

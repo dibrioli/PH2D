@@ -24,9 +24,14 @@ use crate::render_loop::motion_bridge::{backdrops, color, gpu, subgraph};
 /// the node's swatches) and commits on release; a discrete typed commit (no
 /// session) is wrapped in its own step. Each applied edit re-cooks
 /// (`mark_dirty`). Stale intents whose node no longer exists are dropped.
+///
+/// ⚠️ **`toasts` porque uma edição pode SOLTAR um fio** (`drop_hidden_drivers`): trocar a
+/// espécie de uma forma esconde os knobs que ela não lê, e um fio que os conduzia tem de cair
+/// — em voz alta, nunca em silêncio.
 pub(super) fn apply_param_edits(
     motion: &mut MotionState,
     store: &ph2d_editor::interaction::WidgetStore,
+    toasts: &mut ph2d_editor::ToastQueue,
 ) {
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{MotionParamIntent, any_param_editing};
@@ -93,7 +98,10 @@ pub(super) fn apply_param_edits(
                 subgraph::apply_param_intent(motion, subgraph::view_id(sid), intent);
                 continue;
             }
-            match intent {
+            // ⚠️ **O nó que esta intenção TOCOU**, para a reparação a seguir. Os braços que
+            // saem por `continue` não tocaram nada (nó inexistente, backdrop, card), e é isso
+            // que os mantém fora da reparação sem uma condição extra.
+            let touched = match intent {
                 MotionParamIntent::SetParam { node, param, value } => {
                     let nid = NodeId(node);
                     let Some(inst) = motion.doc.graph.node(nid) else {
@@ -125,6 +133,7 @@ pub(super) fn apply_param_edits(
                         // whose re-derive is O(current tick) and freezes a drag.
                         motion.gpu_cook.reseed_from_next_tick();
                     }
+                    nid
                 }
                 // A formula edit (a `motion.expression` text param) — the additive text
                 // channel (docs/Motion Nodes/32-33).
@@ -135,6 +144,7 @@ pub(super) fn apply_param_edits(
                     }
                     motion.doc.graph.set_text_param(nid, param, value);
                     motion.pump.mark_dirty();
+                    nid
                 }
                 // Devolver um param ao default é REMOVER o override, nunca escrever o default
                 // por cima (`Graph::clear_param` explica o porquê: um override que por acaso
@@ -153,8 +163,13 @@ pub(super) fn apply_param_edits(
                     if a || b {
                         motion.pump.mark_dirty();
                     }
+                    nid
                 }
-            }
+            };
+            // **A REPARAÇÃO**, uma vez por intenção que tocou um nó — nunca três cópias, uma
+            // por braço: um braço novo sem ela seria uma quarta porta pela qual o fio órfão
+            // volta, e ninguém o veria porque o defeito é silencioso por natureza.
+            drop_hidden_drivers(motion, touched, toasts);
         }
         if discrete {
             motion.history.commit_if_changed(&motion.doc);
@@ -186,4 +201,85 @@ pub(crate) fn param_value(
         .and_then(|i| motion.registry.resolve(i.type_id()))
         .and_then(|op| op.manifest().params.iter().find(|p| p.name == name))
         .map_or(0.0, |p| p.default)
+}
+
+/// **UM PARAM QUE DESAPARECEU NÃO FICA CONDUZIDO** — o segundo pedido do report do Enio de
+/// 2026-08-27: *"se o usuário trocar de shape e a nova shape não tiver um parâmetro linkado,
+/// o link deve ser quebrado"*.
+///
+/// Trocar a espécie de um `source.shape` esconde os knobs que aquela espécie não lê. Um fio
+/// que os conduzia continuava ligado: o socket ficava no card, o número continuava a ser
+/// cozido, e **nada o lia** — um fio visível a alimentar um param inexistente, que é pior que
+/// o knob morto que o `ParamGate` existe para não ter (doc 90). *Um controle escondido o
+/// artista deixa de ver; um fio pendurado ele continua a ver, e conclui que age.*
+///
+/// ⚠️ **A lei é um INVARIANTE, não um diff:** *nenhum param escondido fica conduzido*. Não se
+/// compara "antes" com "depois" — comparar exigiria capturar a visibilidade antes de cada
+/// escrita, e um caminho de escrita novo (um preset, um paste, uma migração) escaparia à
+/// captura. Perguntar o estado FINAL não tem esse buraco, e é idempotente: correr duas vezes
+/// não solta nada a mais.
+///
+/// ⚠️⚠️ **E a régua NÃO é a do menu de largar, de propósito — a assimetria é a lei.** O menu
+/// filtra pelas **três** famílias de gate (um controle que não se vê não se pode usar, logo não
+/// se oferece); esta solta pela **discreta apenas** (`mode_hidden`). Soltar um fio DESTRÓI
+/// trabalho do artista, e isso só se justifica quando o controle deixou de EXISTIR — não
+/// quando ele está momentaneamente inerte. ⚠️ Medido no próprio `source.shape`: **seis** params
+/// (as duas cores, o tracejado e as duas pontas do Trim) pendem do *Stroke Width* passar por
+/// zero, que é um arrasto — a 1.ª redacção desta função usava as três famílias e apagava a
+/// ligação do artista no meio de um gesto reversível.
+///
+/// ⚠️ **E é a mesma família da lei do CANAL que já vivia ao lado** (`apply_channel_presets`:
+/// *"todo param cuja FAIXA segue o canal tem de ter o VALOR trazido para a faixa nova"*) — ali
+/// o que fica inconsistente é um número, aqui é uma aresta.
+///
+/// ⚠️ **Nunca em silêncio.** O fio é trabalho do artista; soltá-lo sem dizer é o app a desfazer
+/// uma edição às escondidas. O toast NOMEIA os params soltos, pelo rótulo que o painel mostra.
+fn drop_hidden_drivers(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    toasts: &mut ph2d_editor::ToastQueue,
+) {
+    // Os nomes primeiro, com o `motion` emprestado só para leitura; a escrita vem depois.
+    let hidden: Vec<String> = {
+        let gone = super::params_visible::mode_hidden(motion, nid);
+        motion
+            .doc
+            .graph
+            .param_sources(nid)
+            .into_iter()
+            .flatten()
+            .map(|(name, _)| name.clone())
+            .filter(|name| gone(name))
+            .collect()
+    };
+    if hidden.is_empty() {
+        return;
+    }
+    // O rótulo que o painel mostra ("Tooth Depth"), nunca a chave canónica: o artista procura
+    // no painel o que o toast lhe disser.
+    let hints = motion
+        .doc
+        .graph
+        .node(nid)
+        .and_then(|i| motion.registry.param_ui(i.type_id()));
+    let labels: Vec<&str> = hidden
+        .iter()
+        .map(|name| {
+            hints
+                .and_then(|hs| hs.iter().find(|h| h.param == *name))
+                .map_or(name.as_str(), |h| h.label)
+        })
+        .collect();
+    toasts.push(ph2d_editor::Toast::info(if labels.len() == 1 {
+        format!("Unlinked {} - this shape has no such control", labels[0])
+    } else {
+        format!(
+            "Unlinked {} - this shape has no such controls",
+            labels.join(", ")
+        )
+    }));
+    for name in &hidden {
+        motion.doc.graph.undrive_param(nid, name);
+    }
+    motion.pump.mark_dirty();
 }

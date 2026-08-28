@@ -356,7 +356,7 @@ pub(super) fn dispatch(
     // dispatch so this file stays under the shell LOC cap. Needs BOTH panels:
     // the selection comes from the graph, the rows go to params. ──────────────
     #[cfg(all(feature = "panel-motion-graph", feature = "panel-motion-params"))]
-    params::publish(motion, &mut hero.store, motion_active, hero.project);
+    params::publish(motion, &mut hero.store, motion_active, hero.project, toasts);
 
     if !motion_active {
         return;

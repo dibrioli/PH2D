@@ -67,6 +67,38 @@ pub enum ParamUnit {
     /// length conversion from being applied to degrees — the failure that turns a
     /// `±90` into a `±9000`.
     FromChannel,
+    /// **The unit is the unit of the param this node's output DRIVES** (doc 58) —
+    /// the wire's destination, not the node.
+    ///
+    /// ⚠️ This variant exists because the fence [`Self::None`] declares above is
+    /// **right about the reason and wrong about this case**. It says a `value.*`
+    /// magnitude *"means whatever the column the artist wires it into means […] a
+    /// unit is a property of the FLOW, not of the node"* — and that is exactly why
+    /// a DRIVEN param can answer: a driven param is not a column, it is one
+    /// **declared** param with one **declared** unit, and the graph knows which.
+    /// The gap the fence preferred over a wrong number is only honest while the
+    /// destination is unknown.
+    ///
+    /// Measured report that opened it (Enio, 2026-08-27): a `value.number` at
+    /// `0,94` driving `source.shape::size` — a [`Self::Length`] stored in metres —
+    /// read `0,94` on the driver and **`94 px`** on the destination. One wire, two
+    /// numbers, and nothing on screen to reconcile them.
+    ///
+    /// ⚠️ It resolves to [`Self::None`] whenever the destinations **disagree** (a
+    /// driver feeding a length and an angle), when the node drives nothing, and
+    /// when a destination is itself `FromWire` — the fence's own answer, kept for
+    /// exactly the cases the fence was about.
+    ///
+    /// ⏳ **Só o `value.number` a declara hoje, e a fronteira é deliberada.** A mesma
+    /// confusão existe no `value.lfo` (`offset`/`amplitude`) — foi o `offset` dele que o
+    /// artista usava por falta de um número, e é o mesmo defeito. Fica de fora porque ali é
+    /// um nó **já shipado e usado**, cuja faixa de `amplitude` foi afinada por canal
+    /// (`register_param_channel_range`): adoptar a faixa do destino muda como um slider
+    /// familiar se arrasta, e isso é uma mudança de produto que pede smoke, não uma cura.
+    /// *O `value.number` é novo e é o nó do report — nele a face nova é a primeira que
+    /// alguém vê.* Cada nó que declarar isto tem de dizer **quais** dos seus params são
+    /// magnitudes na unidade do destino, exactamente como o [`Self::FromChannel`] já exige.
+    FromWire,
     /// A frequency in **hertz**. Não converte: um hertz é um hertz em qualquer
     /// escala de mundo — ele descreve o SOM, não a cena.
     Hertz,
@@ -98,6 +130,9 @@ impl ParamUnit {
             ParamUnit::Hertz => Some("Hz"),
             ParamUnit::Decibel => Some("dB"),
             ParamUnit::Length | ParamUnit::FromChannel | ParamUnit::None => None,
+            // Deferred exactly like `FromChannel`: the face belongs to whoever
+            // resolves the wire, and a suffix guessed here would outlive the wire.
+            ParamUnit::FromWire => None,
             ParamUnit::Count | ParamUnit::Ratio => None,
         }
     }
@@ -211,6 +246,7 @@ mod tests {
             ParamUnit::Count,
             ParamUnit::Ratio,
             ParamUnit::FromChannel,
+            ParamUnit::FromWire,
         ] {
             assert!(
                 !u.converts(),
@@ -218,6 +254,32 @@ mod tests {
             );
         }
         assert!(ParamUnit::Length.converts());
+    }
+
+    /// **`FromWire` is a DEFERRAL, exactly like `FromChannel`** — it names no face
+    /// of its own, so a panel that forgot to resolve it shows a bare number rather
+    /// than a wrong one.
+    ///
+    /// ⚠️ The pair matters: `converts()` false AND `fixed_suffix()` `None`. A
+    /// variant that converted here would scale by `pixels_per_meter` *before*
+    /// anyone asked the wire what it drives — which is the `±90 → ±9000` failure
+    /// `FromChannel`'s own doc records.
+    #[test]
+    fn from_wire_names_no_face_of_its_own() {
+        assert_eq!(ParamUnit::FromWire.fixed_suffix(), None);
+        assert!(!ParamUnit::FromWire.converts());
+        // And a plain slider DOES carry it through to the resolver — the half that
+        // makes the feature reachable at all.
+        assert_eq!(
+            unit_of(ParamWidget::Slider, Some(ParamUnit::FromWire)),
+            ParamUnit::FromWire
+        );
+        // …while a widget that fixes its own unit still wins, so a mis-declared
+        // `FromWire` can never turn an angle into a length.
+        assert_eq!(
+            unit_of(ParamWidget::Angle, Some(ParamUnit::FromWire)),
+            ParamUnit::Angle
+        );
     }
 
     /// A Length has NO fixed suffix on purpose — its face (`px` / `m`) is the

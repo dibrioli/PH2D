@@ -2523,3 +2523,53 @@ do corpus, e por isso a evidência delas é a tabela medida.
   perfeito e `4`–`8` arestas de bordo (eram `6`–`10`).
 - ⛔ Os `χ` de `+1`/`0` e as arestas que sobram **continuam abertos**.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.31 — O que sobra são DUAS populações, e uma delas não é de emparelhamento
+
+Com o passe mútuo ligado sobram `4`–`8` arestas de bordo. As contas fecham exactamente, e
+isso reparte o resto em duas coisas com curas diferentes.
+
+#### 1. ⭐ Não há erro de quarto de volta — essa classe fecha
+
+Das órfãs que ficam sem chave, em que cardinal **relativo ao `d2`** existe porta:
+
+| peça | `+0` (`d2`) | `+1` | `+2` (`opposite(d2)`) | `+3` |
+|---|---|---|---|---|
+| `sculpt_wrinkled` | **`7`** | `3` | `0` | `3` |
+| `sculpt_hooked` | **`3`** | `0` | `0` | `3` |
+| `sculpt_eared` | **`2`** | `1` | `0` | `1` |
+
+O `+2` é sempre `0` (este ramo só corre quando ele falhou), e os `+1`/`+3` são as hastes
+**perpendiculares** do mesmo nó — *a outra isolinha que ali passa*, e portanto normais.
+⇒ ⭐ **a direcção transportada não está a um quarto de volta de nada**; a hipótese fecha.
+
+#### 2. ⭐ E as contas fecham, o que reparte o resto
+
+| peça | órfãs sem chave | com candidata `d2` | pares mútuos (×2 portas) | recusadas | **sem porta nenhuma** |
+|---|---|---|---|---|---|
+| `sculpt_wrinkled` | `8` | `7` | `3` (`6`) | `1` | **`1`** |
+| `sculpt_hooked` | `8` | `3` | `1` (`2`) | `1` | **`4`** |
+| `sculpt_eared` | `3` | `2` | `0` | `2` | **`1`** |
+
+(`6 + 1 = 7` · `2 + 1 = 3` · `0 + 2 = 2` — cada linha fecha.)
+
+⇒ **duas populações, e só uma é de emparelhamento:**
+
+- ⛔ **as recusadas pelo passe mútuo** (`1`/`1`/`2`): existe uma candidata e ela **não é
+  recíproca**. *A recusa está certa* — ligá-las é o que partia a `sculpt_hooked` (§23.28).
+  O que falta é saber por que é que a outra ponta nomeia outra pessoa.
+- ⛔⛔ **as que não têm porta nenhuma** no ponto transportado (`1`/`4`/`1`, e é a **maioria**
+  na `hooked`): ali não existe nó do lado da gémea. *Isso não é uma pergunta de
+  emparelhamento — é de EMISSÃO*: o cruzamento da isolinha com aquela aresta não chegou a
+  ser emitido do outro lado.
+
+#### ⇒ O que fica
+
+- ⭐ Uma classe de hipóteses fechada por medição (quarto de volta), e o resto **repartido
+  com contas que fecham** — o que é a diferença entre «faltam 8» e «faltam duas coisas
+  diferentes, `1`+`4`+`1` de uma e `1`+`1`+`2` da outra».
+- ⛔ A maior das duas é da **fase 3 (a emissão das saídas)**, não da 4 (o passeio) — outro
+  ficheiro, outra pergunta.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

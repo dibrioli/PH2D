@@ -550,6 +550,20 @@ fn trace_one(
                                 {
                                     st.rescue_wrong_dir += 1;
                                 }
+                                // ⭐⭐⭐ **QUAL cardinal, RELATIVO ao `d2`?** As duas
+                                // convenções são `+0` e `+2`; se o que existe estiver em
+                                // `+1`/`+3`, a direcção transportada está a **um quarto de
+                                // volta** do que devia — que é outro defeito, com outra
+                                // cura, e não mais uma convenção.
+                                for k in 0u8..4 {
+                                    if ports
+                                        .by_key
+                                        .get(&(g, t2[0], t2[1], (d2 + k) & 3))
+                                        .is_some_and(|&j| j != id)
+                                    {
+                                        st.rescue_offset[k as usize] += 1;
+                                    }
+                                }
                             }
                         }
                     }

@@ -1154,6 +1154,10 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
                 "  ⭐⭐⭐ PASSE MUTUO (cada lado nomeia o outro): {} pares ligados · {} candidatas SEM correspondencia",
                 e.rescue_mutual.0, e.rescue_mutual.1
             );
+            println!(
+                "  ⭐⭐⭐ das SEM CHAVE, em que cardinal RELATIVO ao d2 ha' porta: +0={} +1={} +2={} +3={}",
+                e.rescue_offset[0], e.rescue_offset[1], e.rescue_offset[2], e.rescue_offset[3]
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

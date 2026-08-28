@@ -76,6 +76,9 @@ pub(crate) struct WalkStats {
     pub rescue_mutual: usize,
     /// ⛔ Candidatas registadas que **não** foram correspondidas do outro lado.
     pub rescue_not_mutual: usize,
+    /// ⭐⭐⭐ Das que ficaram sem chave, em que cardinal RELATIVO ao `d2` existe porta —
+    /// `+0` e `+2` são as duas convenções; `+1`/`+3` seriam um quarto de volta de erro.
+    pub rescue_offset: [usize; 4],
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um

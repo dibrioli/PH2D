@@ -5762,7 +5762,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **O preview pede um ERRO, e a contagem sai da forma** | ⭐ o assente engrossa até `0,5°` de erro de normal: peça de omissão **intocada**, peça de `Resolution` alto **`2×`–`3×`** mais barata a assentar, com `≤3/255` de mudança | §86 |
 | ⏳ **A MARCHA** — o que sobra do quadro; custo **por aresta tocada** | ⛔ sobre-relaxação fora (`8,0` amostras por raio) · ⛔ **o perfil como CONSULTA fora**: a fita especializada ganha `2×`–`8×` na região real | §73, §82.1, §87 |
 | ⭐⭐⭐ **O quadro de movimento usa `~30 %` da máquina** — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o ladrilho **não** é a alavanca (`48 ≈ 64`) · ⛔⛔ **e o JIT também não era**: tirá-lo não mudou a forma da curva (§88.2). A causa está por achar | §82.8, §88.2 |
-| ⏳ **A causa da má escala: a DECOMPOSIÇÃO** (`1,47×`) — e o oráculo prova que a **ORDEM** é o mecanismo (LPT dá `1,00×` a 8 threads, `1,02×` a 16) | ⛔ a régua da profundidade está anti-correlacionada · ⭐ com `TILE = 24` o piso encolheu sozinho: **re-medir o que ela ainda vale antes de a construir** | §89, §90.1 |
+| ⛔ A **ordenação dos ladrilhos** — **MEDIDA e fechada**: o tecto caiu de `1,76×` para `1,14×` com o ladrilho a `24`, e o custo do quadro **anterior** atinge-o (`1,00×`) | recusada: `1,01×` a 8 threads, e o preço é uma tabela por ladrilho entre quadros. Gatilho nomeado | §92.16 |
 | ✅⭐⭐ **O `TILE` estava a ser escolhido pelo TECTO DA MINHA CACHE** | ⭐ tecto **derivado** do que o quadro pede ⇒ `TILE` de `64` para **`24`**, `1,44×`–`1,51×` | §90.2, §90.3 |
 | ⏳ O `SLABS` — **reconferido**: a imagem é idêntica nas 5, mas o óptimo MOVE-SE com o tamanho do quadro (`2`–`3` a `426×240`, `4`–`6` a `640×360`) | fica em `4` (o compromisso); decide-se com uma corrida a `load < 5`, e a resposta pode ser **derivá-lo** do tamanho | §92.14 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
@@ -8555,6 +8555,47 @@ posição volta ao meio. Ela é barata de repor com a mão e cara de justificar 
 campo da `View` é uma coordenada de layout.
 
 Gate: `the_split_survives_closing_the_panel`, provado por mutação.
+
+### §92.16 — W96: a ordenação dos ladrilhos — o estimador EXISTE, e o prémio encolheu para `1,13×` (só a 32 threads)
+
+O item aberto desde a §89 com o número `1,47×` colado a ele. Duas medições fecham-no, **na máquina
+calma** (`load 1,3`).
+
+**1. O tecto colapsou com o ladrilho a `24`** (`measure_what_a_perfect_tile_schedule_would_buy`):
+
+| threads | ordem natural / ideal (ladrilho **24**) | (era com **64**) |
+|---|---:|---:|
+| 8 | `1,01×` | `1,13×` |
+| 16 | `1,03×` | `1,40×` |
+| 32 | **`1,14×`** | **`1,76×`** |
+
+O pior ladrilho vale hoje `1,07 %` do total (eram `4,74 %`). ⇒ *o `1,47×` que este documento
+carregava era um número medido com outro ladrilho, e a W88 mudou-o sem que a nota o soubesse.*
+
+**2. O estimador que faltava EXISTE, e atinge o tecto** (`stale_costs_as_an_oracle.rs`). ⛔ A minha
+primeira tentativa foi recusada por medição (a profundidade da peça sob o ladrilho está
+**anti-correlacionada** com o custo — o caro é o da silhueta). O que ali não existia: **o custo do
+MESMO ladrilho no quadro anterior**.
+
+| arrasto | threads | natural/ideal | **anterior/ideal** |
+|---|---:|---:|---:|
+| `1°` | 32 | `1,14×` | **`1,00×`** |
+| `2°` | 32 | `1,13×` | **`1,00×`** |
+| `4°` | 32 | `1,12×` | **`1,01×`** |
+
+⭐ *Um estimador «velho de um quadro» escalona tão bem como o oráculo* — num arrasto a câmera anda
+`~2°`, e um ladrilho caro continua caro.
+
+⚠️ **A régua é o ESCALONAMENTO, não a correlação:** o que se paga é o *makespan*, e uma correlação
+alta não promete um. Foi assim que se mediu.
+
+⛔⛔ **RECUSA MEDIDA, com o gatilho:** o prémio é `1,13×` a **32** threads, `1,04×` a 16 e **`1,01×`
+a 8** — *não existe na máquina de oito núcleos*, que é a outra máquina deste projecto. E o preço é
+uma tabela de custos por ladrilho a viver **entre quadros** (mais um dono por viewport, mais a
+recolha sem contenção no caminho quente). ⇒ *`1,4 ms` de um quadro de `12`, numa máquina só.*
+
+⚠️ **O gatilho:** ela volta a valer se os ladrilhos ficarem **menos e mais gordos** (o pior volta a
+pesar) ou se o orçamento apertar. O instrumento fica no sítio, e re-corre em dois comandos.
 
 ### §92.7 — ⏳ O que fica aberto
 

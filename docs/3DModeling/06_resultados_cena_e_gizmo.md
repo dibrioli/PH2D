@@ -5751,7 +5751,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
 | ✅⭐⭐ **Cada vista diz o NOME dela**, derivado da câmera (orbitar a *Top* fá-la *User*) | a metade do cabeçalho que não rouba pixels ao traçado | §92.10 |
 | ⏳ O cabeçalho **CLICÁVEL** (menu por vista) | pede a faixa reservada, que obriga a porta do layout a devolver dois retângulos por vista | §92.10 |
-| ⏳ O **divisor arrastável** | ⚠️ a minha nota dizia que ele dependia do cabeçalho e **estava errada**: ele precisa de uma zona de pega na costura, de um `t` no `Split` e da porta do layout — nada disso é o cabeçalho | §92.7 |
+| ✅⭐⭐⭐ **As divisórias ARRASTAM-SE** (o cruzamento move as duas) | ⚠️ e a nota que dizia depender do cabeçalho estava **errada** | §92.12 |
 | ✅⭐⭐ **O custo de uma EDIÇÃO com a divisão aberta** — medido: quatro juntas custam `3,93×` uma (elas só se fatiam) | ⭐ curado por **ORDEM**: a activa tem prioridade e chega em `64 ms` em vez de `254` | §92.9 |
 | ⛔ A **varredura linear** do `TapeCache::get` — **MEDIDA**: `3,0 %` do quadro de movimento, `10,7 %` a `640×360`, e cresce ~quadraticamente | não paga um índice **ainda**; o gatilho está nomeado | §92.11 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
@@ -8433,6 +8433,47 @@ real, com um gate novo, por `3 %` de um quadro que já cabe no orçamento.
 resolução maior, ladrilho menor, ou o assentar a `1280×720` com a divisão aberta. *Uma recusa medida
 responde uma pergunta; quando a sua for outra, remeça.* O instrumento fica no sítio
 ([`GET_NS`](../../crates/ph2d-field-render/src/tape_cache.rs)).
+
+### §92.12 — ⭐⭐⭐ W92: as divisórias ARRASTAM-SE
+
+⚠️ **A minha nota da W90 dizia que isto dependia do cabeçalho clicável, e estava errada** — um
+divisor precisa de uma **zona de pega** na costura, de um `t` no `Split` e da porta do layout. Nada
+disso é o cabeçalho. *Uma dependência afirmada sem a desmontar é um adiamento com cara de
+arquitectura.*
+
+**As fracções vivem DENTRO da variante** (`Split::Quad { tx, ty }`), e não num campo ao lado: a
+divisão *é* as duas costuras, e um `t` guardado noutro sítio seria um estado que pode discordar do
+modo.
+
+⭐ **A trava é a da CASA, lida e não re-decidida:** `CenterSplit::clamp_t` (`T_MIN = 0,25`,
+`T_MAX = 0,75`, `NaN`-aware) já fixa *«cada painel guarda sempre um quarto»* para o divisor
+cena/grafo. *A lei é a mesma; escrevê-la outra vez seria ter duas.*
+
+⚠️ **As costuras da pega são lidas dos RETÂNGULOS**, nunca recalculadas do `t`: eles são arredondados
+na porta, e uma segunda conta erraria por meio pixel — que é exactamente a largura de um gesto que
+falha de vez em quando.
+
+⚠️ **A faixa de pega é maior do que a linha desenhada** (`±5 px`), e é a lei de todo divisor de
+janela: *a pega é uma afirmação sobre o que o DEDO alcança, não sobre o que o olho vê.* O cruzamento
+agarra **as duas** costuras, como no Blender.
+
+⚠️ **A costura GANHA de tudo, e é o único gesto que não pertence a viewport nenhum** — ela está
+*entre* eles. Sem essa precedência (e antes da escolha do activo), apontar para a linha do meio
+orbitaria a vista de um dos lados e o divisor seria inalcançável.
+
+⭐⭐ **E o arrasto mede o TOTAL, nunca incrementos** — a mesma lei que o gizmo deste módulo paga com a
+âncora congelada (W26). Uma soma de deltas acumula o erro de **cada** trava: quem arrasta até ao
+batente e volta encontraria a costura permanentemente deslocada da mão.
+
+⛔ **E os meus dois primeiros gates provavam a lei PURA — se o `advance` somasse incrementos eles
+ficavam verdes.** *A causa nº 1 da semana perdida no Painter foi esta: os dois lados corretos e
+ninguém a ligar os dois.* ⇒ o gate que fica é o da **costura**
+(`the_real_gesture_moves_the_divider_and_does_not_drift`): `begin` na costura → `advance` a bater nos
+dois limites → a linha volta a estar debaixo do dedo. Mutação (somar deltas): ✗.
+
+Gates: `the_seam_is_grabbable_and_nothing_else_is` (o meio de um quadrante **não** é pega — ali o
+arrasto é a órbita, que é o gesto principal do módulo) · o ladrilhamento passa a ser varrido em
+**quatro** posições do divisor.
 
 ### §92.7 — ⏳ O que fica aberto
 

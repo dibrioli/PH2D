@@ -26,13 +26,22 @@ use ph2d_editor::zones::Rect as EditorRect;
 /// e a vista do artista*, que é o que o Blender, o Maya e o MoI oferecem e o que as **seis vistas
 /// nomeadas** deste módulo (W47) já sabem produzir. *Um divisor arrastável com um número livre é
 /// outra feature, e ela pede o cabeçalho primeiro.*
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) enum Split {
     /// A vista única — o que o módulo sempre teve.
     #[default]
     One,
-    /// Quatro vistas: cima, lado, frente, e a do artista.
-    Quad,
+    /// ⭐ Quatro vistas: cima, lado, frente, e a do artista — com **onde** as duas costuras estão.
+    ///
+    /// ⚠️ **As fracções vivem AQUI e não num campo ao lado**: a divisão *é* as duas costuras, e um
+    /// `t` guardado noutro sítio seria um estado que pode discordar do modo. Elas nascem no meio
+    /// ([`Split::quad`]) e são presas ao alcance legal em [`Split::with_t`].
+    Quad {
+        /// A fracção horizontal da área, medida da esquerda.
+        tx: f32,
+        /// A fracção vertical, medida do topo.
+        ty: f32,
+    },
 }
 
 impl Split {
@@ -41,7 +50,29 @@ impl Split {
     pub(crate) fn count(self) -> usize {
         match self {
             Self::One => 1,
-            Self::Quad => 4,
+            Self::Quad { .. } => 4,
+        }
+    }
+
+    /// ⭐ **A divisão em quatro com as costuras no meio** — como ela nasce.
+    pub(crate) fn quad() -> Self {
+        Self::Quad { tx: 0.5, ty: 0.5 }
+    }
+
+    /// ⭐⭐ **As costuras noutro sítio, presas ao alcance legal.**
+    ///
+    /// ⚠️ **A trava é a da casa, lida e não re-decidida:** [`ph2d_editor::screens::layout::CenterSplit`]
+    /// (o divisor cena/grafo) fixa `T_MIN = 0,25` e `T_MAX = 0,75` com a razão *«a cena e o grafo
+    /// guardam sempre um quarto»* — e ela é `NaN`-aware, que é o que impede um arrasto degenerado de
+    /// envenenar o layout. *A lei é a mesma; escrevê-la outra vez seria ter duas.*
+    pub(crate) fn with_t(self, tx: f32, ty: f32) -> Self {
+        use ph2d_editor::screens::layout::CenterSplit;
+        match self {
+            Self::One => Self::One,
+            Self::Quad { .. } => Self::Quad {
+                tx: CenterSplit::clamp_t(tx),
+                ty: CenterSplit::clamp_t(ty),
+            },
         }
     }
 
@@ -53,9 +84,9 @@ impl Split {
     pub(crate) fn named(self, i: usize) -> Option<crate::field3d_views::Standard> {
         use crate::field3d_views::Standard;
         match (self, i) {
-            (Self::Quad, 0) => Some(Standard::Top),
-            (Self::Quad, 1) => Some(Standard::Right),
-            (Self::Quad, 2) => Some(Standard::Front),
+            (Self::Quad { .. }, 0) => Some(Standard::Top),
+            (Self::Quad { .. }, 1) => Some(Standard::Right),
+            (Self::Quad { .. }, 2) => Some(Standard::Front),
             _ => None,
         }
     }
@@ -91,9 +122,9 @@ pub(crate) fn rects(area: EditorRect, split: Split) -> Rects {
             itens: [rect(x0, y0, x2, y2); 4],
             n: 1,
         },
-        Split::Quad => {
-            let x1 = (area.x + area.w * 0.5).round();
-            let y1 = (area.y + area.h * 0.5).round();
+        Split::Quad { tx, ty } => {
+            let x1 = area.w.mul_add(tx, area.x).round();
+            let y1 = area.h.mul_add(ty, area.y).round();
             Rects {
                 itens: [
                     rect(x0, y0, x1, y1),
@@ -105,6 +136,60 @@ pub(crate) fn rects(area: EditorRect, split: Split) -> Rects {
             }
         }
     }
+}
+
+/// A largura da faixa em que a costura se agarra, de cada lado dela.
+///
+/// ⚠️ **Ela é maior do que a linha desenhada**, e isso não é descuido: a pega de um divisor é uma
+/// afirmação sobre o que o **dedo** alcança, não sobre o que o olho vê — é a lei que todo divisor de
+/// janela segue, e apontar para uma linha de um pixel seria um gesto que só acerta por sorte.
+const GRAB_HALF_PX: f32 = 5.0; // LITERAL-PX-OK: overlay metric (divider grab band)
+
+/// ⭐⭐⭐ **QUE COSTURAS ESTE PONTO AGARRA** — `(a vertical, a horizontal)`.
+///
+/// `None` quando ele não agarra nenhuma. ⚠️ **As duas juntas são o caso do CENTRO**, e ele é
+/// deliberado: agarrar o cruzamento move as duas costuras de uma vez, que é o que o Blender faz e o
+/// que a mão espera quando aponta para o meio.
+pub(crate) fn seam_grab(area: EditorRect, split: Split, p: [f32; 2]) -> Option<(bool, bool)> {
+    let Split::Quad { .. } = split else {
+        return None;
+    };
+    // ⚠️ **As costuras são lidas dos RETÂNGULOS**, nunca recalculadas a partir do `t`: elas são
+    // arredondadas na porta, e uma segunda conta aqui erraria por meio pixel — que é exactamente a
+    // largura de um gesto que falha de vez em quando.
+    let r = rects(area, split);
+    let q = r.as_slice();
+    let (x1, y1) = (q[0].x + q[0].w, q[0].y + q[0].h);
+    let dentro = p[0] >= q[0].x - GRAB_HALF_PX
+        && p[0] <= q[3].x + q[3].w + GRAB_HALF_PX
+        && p[1] >= q[0].y - GRAB_HALF_PX
+        && p[1] <= q[3].y + q[3].h + GRAB_HALF_PX;
+    if !dentro {
+        return None;
+    }
+    let v = (p[0] - x1).abs() <= GRAB_HALF_PX;
+    let h = (p[1] - y1).abs() <= GRAB_HALF_PX;
+    (v || h).then_some((v, h))
+}
+
+/// ⭐ **A fracção que o ponteiro nomeia**, dado o retângulo do canvas — a metade inversa da
+/// [`rects`].
+///
+/// ⚠️ Sem trava aqui: quem prende ao alcance legal é o [`Split::with_t`], e prender **duas** vezes
+/// esconderia de qual das duas o número saiu.
+pub(crate) fn t_at(area: EditorRect, p: [f32; 2]) -> (f32, f32) {
+    (
+        if area.w > 0.0 {
+            (p[0] - area.x) / area.w
+        } else {
+            0.5
+        },
+        if area.h > 0.0 {
+            (p[1] - area.y) / area.h
+        } else {
+            0.5
+        },
+    )
 }
 
 /// ⭐ **Qual viewport contém este ponto** — a pergunta que o ponteiro faz.

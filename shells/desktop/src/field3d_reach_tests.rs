@@ -485,7 +485,7 @@ fn every_camera_chip_moves_the_camera() {
         );
         assert_eq!(
             quantos(),
-            crate::field3d_layout::Split::Quad.count(),
+            crate::field3d_layout::Split::quad().count(),
             "o chip da divisão não abriu as quatro vistas (estava em {antes})"
         );
         // …e o retrato DIZ o estado novo, como o da lente.

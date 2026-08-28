@@ -363,6 +363,12 @@ pub(crate) enum Drag {
     /// (o canvas 2D usa-a para alternar um objeto no clique). Segurada com um **clique** ela
     /// alterna um; segurada com um **arrasto**, alterna um rectângulo. *Um vocabulário, não dois.*
     Lasso,
+    /// ⭐⭐⭐ **UMA COSTURA DA DIVISÃO está agarrada** (W92) — `(a vertical, a horizontal)`.
+    ///
+    /// ⚠️ **Ele ganha de tudo**, e é o único gesto que não pertence a viewport nenhum: a costura
+    /// está **entre** eles. Sem esta precedência, apontar para a linha do meio orbitaria a vista de
+    /// um dos lados e o divisor seria inalcançável.
+    Divider(bool, bool),
 }
 
 /// O que uma requisição de traçado devolve.

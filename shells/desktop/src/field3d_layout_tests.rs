@@ -19,52 +19,57 @@ fn the_four_pieces_tile_the_area_exactly() {
         EditorRect::new(10.5, 20.5, 999.0, 555.0),
         EditorRect::new(-3.25, 7.75, 640.5, 361.5),
     ] {
-        let r = rects(area, Split::Quad);
-        let q = r.as_slice();
-        assert_eq!(q.len(), 4, "a divisão em quatro tem quatro pedaços");
-        for p in q {
-            assert!(
-                p.x.fract() == 0.0
-                    && p.y.fract() == 0.0
-                    && p.w.fract() == 0.0
-                    && p.h.fract() == 0.0,
-                "os pixels saem INTEIROS da porta: {p:?}"
+        // ⚠️ **Com a costura em vários sítios** (W92): o ladrilhamento tem de valer para toda
+        // posição do divisor, e não só para o meio — é ao arrastar que um arredondamento por
+        // LARGURA deixaria a linha do fundo a aparecer.
+        for (tx, ty) in [(0.5f32, 0.5f32), (0.25, 0.75), (0.331, 0.667), (0.75, 0.25)] {
+            let r = rects(area, Split::quad().with_t(tx, ty));
+            let q = r.as_slice();
+            assert_eq!(q.len(), 4, "a divisão em quatro tem quatro pedaços");
+            for p in q {
+                assert!(
+                    p.x.fract() == 0.0
+                        && p.y.fract() == 0.0
+                        && p.w.fract() == 0.0
+                        && p.h.fract() == 0.0,
+                    "os pixels saem INTEIROS da porta: {p:?}"
+                );
+                assert!(
+                    p.w > 0.0 && p.h > 0.0,
+                    "um pedaço vazio não é um viewport: {p:?}"
+                );
+            }
+            // Ladrilham: cada aresta interior é o MESMO número para os dois vizinhos.
+            assert_eq!(
+                q[0].x + q[0].w,
+                q[1].x,
+                "sem folga entre as colunas de cima"
             );
-            assert!(
-                p.w > 0.0 && p.h > 0.0,
-                "um pedaço vazio não é um viewport: {p:?}"
+            assert_eq!(
+                q[2].x + q[2].w,
+                q[3].x,
+                "sem folga entre as colunas de baixo"
+            );
+            assert_eq!(
+                q[0].y + q[0].h,
+                q[2].y,
+                "sem folga entre as linhas da esquerda"
+            );
+            assert_eq!(
+                q[1].y + q[1].h,
+                q[3].y,
+                "sem folga entre as linhas da direita"
+            );
+            let soma: f32 = q.iter().map(|p| p.w * p.h).sum();
+            let inteira = (area.x + area.w).round() - area.x.round();
+            let alta = (area.y + area.h).round() - area.y.round();
+            assert_eq!(
+                soma,
+                inteira * alta,
+                "a soma das áreas TEM de ser a área com t=({tx}, {ty}) — um pixel a menos é uma linha \
+             do fundo a aparecer no meio da peça"
             );
         }
-        // Ladrilham: cada aresta interior é o MESMO número para os dois vizinhos.
-        assert_eq!(
-            q[0].x + q[0].w,
-            q[1].x,
-            "sem folga entre as colunas de cima"
-        );
-        assert_eq!(
-            q[2].x + q[2].w,
-            q[3].x,
-            "sem folga entre as colunas de baixo"
-        );
-        assert_eq!(
-            q[0].y + q[0].h,
-            q[2].y,
-            "sem folga entre as linhas da esquerda"
-        );
-        assert_eq!(
-            q[1].y + q[1].h,
-            q[3].y,
-            "sem folga entre as linhas da direita"
-        );
-        let soma: f32 = q.iter().map(|p| p.w * p.h).sum();
-        let inteira = (area.x + area.w).round() - area.x.round();
-        let alta = (area.y + area.h).round() - area.y.round();
-        assert_eq!(
-            soma,
-            inteira * alta,
-            "a soma das áreas TEM de ser a área — um pixel a menos é uma linha do fundo a aparecer \
-             no meio da peça"
-        );
     }
 }
 
@@ -85,7 +90,7 @@ fn a_single_viewport_is_the_whole_area() {
 #[test]
 fn a_point_on_the_seam_belongs_to_exactly_one_viewport() {
     let area = EditorRect::new(0.0, 0.0, 1000.0, 800.0);
-    let r = rects(area, Split::Quad);
+    let r = rects(area, Split::quad());
     // A costura vertical está em x = 500; a horizontal em y = 400.
     assert_eq!(
         hit(r.as_slice().iter().copied(), [499.0, 399.0]),
@@ -117,7 +122,7 @@ fn a_point_on_the_seam_belongs_to_exactly_one_viewport() {
 
 /// ⭐ **A contagem e a disposição saem da mesma fonte.**
 ///
-/// ⚠️ *Um `4` escrito ao lado de um `Split::Quad` é a segunda resposta à mesma pergunta* — e é a que
+/// ⚠️ *Um `4` escrito ao lado de um `Split::quad()` é a segunda resposta à mesma pergunta* — e é a que
 /// envelhece quando alguém acrescentar uma divisão em dois.
 #[test]
 fn the_count_and_the_named_views_agree() {
@@ -129,16 +134,16 @@ fn the_count_and_the_named_views_agree() {
             .len()
     );
     assert_eq!(
-        Split::Quad.count(),
-        rects(EditorRect::new(0.0, 0.0, 8.0, 8.0), Split::Quad)
+        Split::quad().count(),
+        rects(EditorRect::new(0.0, 0.0, 8.0, 8.0), Split::quad())
             .as_slice()
             .len()
     );
-    assert_eq!(Split::Quad.named(0), Some(Standard::Top));
-    assert_eq!(Split::Quad.named(1), Some(Standard::Right));
-    assert_eq!(Split::Quad.named(2), Some(Standard::Front));
+    assert_eq!(Split::quad().named(0), Some(Standard::Top));
+    assert_eq!(Split::quad().named(1), Some(Standard::Right));
+    assert_eq!(Split::quad().named(2), Some(Standard::Front));
     assert_eq!(
-        Split::Quad.named(3),
+        Split::quad().named(3),
         None,
         "o quadrante do artista é o da PERSPECTIVA — é onde a mão dele já está"
     );
@@ -182,7 +187,7 @@ fn each_viewport_stores_the_rect_the_layout_gave_it() {
         let mut scene = ph2d_vector::VectorScene::new();
         crate::field3d_smoke::draw(AREA, ph2d_tokens::Theme::default(), &mut text, &mut scene);
 
-        let esperados = rects(AREA, Split::Quad);
+        let esperados = rects(AREA, Split::quad());
         crate::field3d_smoke::with_smoke(|s| {
             assert_eq!(s.vps.len(), 4, "a divisão devia ter aberto quatro vistas");
             for (i, r) in esperados.as_slice().iter().enumerate() {
@@ -360,5 +365,166 @@ fn the_active_viewport_gets_its_image_first() {
             );
         }
         crate::field3d_smoke::with_smoke(crate::field3d_smoke::toggle_split);
+    });
+}
+
+/// ⭐⭐⭐ **A COSTURA AGARRA-SE, E SÓ ELA** (W92).
+///
+/// ⚠️ **A faixa de pega é maior do que a linha desenhada**, e isso é a lei de todo divisor de
+/// janela: a pega é uma afirmação sobre o que o **dedo** alcança, não sobre o que o olho vê.
+/// Apontar para uma linha de um pixel seria um gesto que só acerta por sorte.
+///
+/// ⭐ E o **cruzamento agarra as duas** — é o que o Blender faz, e o que a mão espera quando aponta
+/// para o meio.
+#[test]
+fn the_seam_is_grabbable_and_nothing_else_is() {
+    use super::seam_grab;
+    let area = EditorRect::new(0.0, 0.0, 1000.0, 800.0);
+    let split = Split::quad();
+    // As costuras estão em x = 500 e y = 400.
+    assert_eq!(seam_grab(area, split, [500.0, 100.0]), Some((true, false)));
+    assert_eq!(seam_grab(area, split, [200.0, 400.0]), Some((false, true)));
+    assert_eq!(
+        seam_grab(area, split, [500.0, 400.0]),
+        Some((true, true)),
+        "o cruzamento agarra as DUAS costuras"
+    );
+    assert_eq!(
+        seam_grab(area, split, [250.0, 200.0]),
+        None,
+        "o meio de um quadrante não é uma pega — ali o arrasto é a órbita, que é o gesto principal"
+    );
+    assert_eq!(
+        seam_grab(area, Split::One, [500.0, 400.0]),
+        None,
+        "sem divisão não há costura para agarrar"
+    );
+    // ⚠️ A faixa tem de ser mais larga que a linha, mas não tão larga que roube a órbita.
+    assert!(
+        seam_grab(area, split, [497.0, 100.0]).is_some(),
+        "3 px ao lado ainda agarra"
+    );
+    assert!(
+        seam_grab(area, split, [480.0, 100.0]).is_none(),
+        "20 px ao lado já é o quadrante"
+    );
+}
+
+/// ⭐⭐ **A LEI PURA do divisor** — ⚠️ e ela **não** guarda o gesto: ver o gate da costura logo
+/// abaixo, que é o que exercita o `advance` de verdade.
+///
+/// **O divisor segue o dedo em ABSOLUTO** — arrastar até ao batente e voltar não o desloca (W92).
+///
+/// ⚠️ **É a armadilha dos incrementos**, e este módulo já a pagou uma vez no gizmo (a âncora
+/// congelada da W26): uma soma de deltas acumula o erro de **cada** trava, e quem arrasta até ao
+/// limite e volta encontra a costura permanentemente deslocada da mão. *Mede-se o TOTAL contra uma
+/// origem que não se mexe* — aqui, o próprio canvas.
+#[test]
+fn dragging_the_divider_to_the_stop_and_back_leaves_it_under_the_finger() {
+    use super::t_at;
+    let area = EditorRect::new(0.0, 0.0, 1000.0, 800.0);
+    let mut split = Split::quad();
+    // Uma varredura que ATRAVESSA os dois batentes e volta ao meio.
+    for x in [500.0f32, 900.0, 950.0, 990.0, 300.0, 100.0, 10.0, 500.0] {
+        let (tx, ty) = t_at(area, [x, 400.0]);
+        split = split.with_t(tx, ty);
+    }
+    let Split::Quad { tx, .. } = split else {
+        panic!("continua dividida")
+    };
+    assert!(
+        (tx - 0.5).abs() < 1e-6,
+        "depois de bater nos dois limites, a costura voltou a {tx} em vez de 0,5 — o arrasto está a \
+         somar incrementos"
+    );
+    // ⭐ E o batente guarda um quarto para cada lado, que é a lei da casa (`CenterSplit`).
+    let extremo = Split::quad().with_t(t_at(area, [990.0, 10.0]).0, t_at(area, [990.0, 10.0]).1);
+    let Split::Quad { tx, ty } = extremo else {
+        panic!("continua dividida")
+    };
+    assert!(
+        (0.25..=0.75).contains(&tx) && (0.25..=0.75).contains(&ty),
+        "o batente deixou t=({tx}, {ty}) fora de [0,25 · 0,75] — um quadrante pode ficar sem área"
+    );
+}
+
+/// ⭐⭐⭐ **A COSTURA DO DIVISOR: o gesto REAL move a linha, e em absoluto** (W92).
+///
+/// # ⚠️ Porque o gate de cima não bastava
+///
+/// Ele prova `t_at` + `with_t`, que são a lei **pura**. Se o `advance` somasse incrementos —
+/// exactamente o defeito que este módulo já pagou no gizmo (a âncora congelada da W26) — aquele
+/// gate ficaria **verde**. *A causa nº 1 da semana perdida no Painter foi esta: os dois lados
+/// corretos e ninguém a ligar os dois.*
+///
+/// Aqui o caminho é o de produção: `begin` na costura → `advance` ao longo de um arrasto que bate
+/// nos **dois** limites → a linha volta a estar debaixo do dedo.
+#[test]
+fn the_real_gesture_moves_the_divider_and_does_not_drift() {
+    use crate::field3d_input::{advance, begin};
+    use crate::field3d_scene::lasso_tests::{AREA, armed_with};
+    use crate::field3d_smoke::{Drag, with_smoke};
+    use ph2d_field::{FieldDoc, NodeId, Primitive, Xform};
+    let doc = FieldDoc::new(
+        vec![ph2d_field_eval::leaf(
+            Primitive::Box {
+                half: [0.4, 0.3, 0.2],
+                round: 0.05,
+            },
+            Xform::IDENTITY,
+        )],
+        NodeId(0),
+    )
+    .expect("a peça");
+    armed_with(&doc, |_| {
+        let mut text = ph2d_text::TextSystem::without_system_fonts();
+        with_smoke(crate::field3d_smoke::toggle_split);
+        // Um quadro para os viewports guardarem as áreas — é delas que sai o canvas.
+        let mut scene = ph2d_vector::VectorScene::new();
+        crate::field3d_smoke::draw(AREA, ph2d_tokens::Theme::default(), &mut text, &mut scene);
+
+        let meio = (AREA.x + AREA.w * 0.5, AREA.y + AREA.h * 0.5);
+        with_smoke(|s| {
+            assert!(
+                begin(s, winit::event::MouseButton::Left, Drag::Orbit, false, meio),
+                "o botão na costura tem de ser aceite"
+            );
+            assert_eq!(
+                s.drag,
+                Some(Drag::Divider(true, true)),
+                "no cruzamento, o gesto agarra as DUAS costuras — e não a órbita"
+            );
+            // Um arrasto que atravessa os dois batentes e volta ao meio.
+            for f in [0.9f32, 0.99, 0.05, 0.01, 0.5] {
+                advance(s, AREA.x + AREA.w * f, AREA.y + AREA.h * f);
+            }
+            let crate::field3d_layout::Split::Quad { tx, ty } = s.split else {
+                panic!("continua dividida")
+            };
+            assert!(
+                (tx - 0.5).abs() < 1e-6 && (ty - 0.5).abs() < 1e-6,
+                "depois de bater nos dois limites e voltar ao meio, a costura ficou em ({tx}, {ty}) \
+                 — o arrasto está a somar incrementos em vez de medir o total"
+            );
+            s.drag = None;
+        });
+        // ⭐ E a órbita continua a ser o gesto do MEIO de um quadrante.
+        with_smoke(|s| {
+            let dentro = (AREA.x + AREA.w * 0.25, AREA.y + AREA.h * 0.25);
+            assert!(begin(
+                s,
+                winit::event::MouseButton::Left,
+                Drag::Orbit,
+                false,
+                dentro
+            ));
+            assert_eq!(
+                s.drag,
+                Some(Drag::Orbit),
+                "no meio de um quadrante o arrasto tem de continuar a ser a órbita"
+            );
+            s.drag = None;
+        });
+        with_smoke(crate::field3d_smoke::toggle_split);
     });
 }

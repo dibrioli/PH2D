@@ -22,6 +22,25 @@ pub(crate) fn viewport_at(s: &Smoke, pos: (f32, f32)) -> Option<usize> {
     )
 }
 
+/// ⭐⭐ **O retângulo do CANVAS inteiro** — a união dos viewports (W92).
+///
+/// ⚠️ **É derivado e não guardado**, e os retângulos ladrilham a área exactamente (há gate), então a
+/// união é a área. *Guardá-lo seria uma segunda resposta a «onde está o canvas?», e a que
+/// envelheceria seria a guardada.* `None` enquanto nenhuma vista tiver desenhado.
+pub(crate) fn canvas_area(s: &Smoke) -> Option<ph2d_editor::zones::Rect> {
+    let mut it = s.vps.iter().filter_map(|v| v.area);
+    let first = it.next()?;
+    let (mut x0, mut y0) = (first.x, first.y);
+    let (mut x1, mut y1) = (first.x + first.w, first.y + first.h);
+    for r in it {
+        x0 = x0.min(r.x);
+        y0 = y0.min(r.y);
+        x1 = x1.max(r.x + r.w);
+        y1 = y1.max(r.y + r.h);
+    }
+    Some(ph2d_editor::zones::Rect::new(x0, y0, x1 - x0, y1 - y0))
+}
+
 /// ⭐⭐⭐ **ABRE E FECHA A DIVISÃO** (W90).
 ///
 /// ⚠️ **Ao fechar, a vista que fica é a ACTIVA** — não «a primeira». É a lei do Blender e é a certa:
@@ -30,8 +49,8 @@ pub(crate) fn viewport_at(s: &Smoke, pos: (f32, f32)) -> Option<usize> {
 pub(crate) fn toggle_split(s: &mut Smoke) {
     use crate::field3d_layout::Split;
     s.split = match s.split {
-        Split::One => Split::Quad,
-        Split::Quad => Split::One,
+        Split::One => Split::quad(),
+        Split::Quad { .. } => Split::One,
     };
     // ⚠️ A lista é reconciliada no desenho ([`ensure_viewports`]), que é quem sabe a área — mas o
     // **número** já é conhecido aqui, e adiá-lo faria o quadro seguinte perguntar «de quem é este

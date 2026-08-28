@@ -28,6 +28,20 @@ pub(crate) fn begin(
     additive: bool,
     pos: (f32, f32),
 ) -> bool {
+    // ⭐⭐⭐ **A COSTURA GANHA DE TUDO** (W92) — ela está **entre** os viewports, e não dentro de
+    // nenhum. Sem esta precedência (e antes da escolha do activo), apontar para a linha do meio
+    // orbitaria a vista de um dos lados e o divisor seria inalcançável.
+    //
+    // ⚠️ Só com o botão **esquerdo**: o do meio é o pan e o direito é de quem vier a seguir.
+    if button == winit::event::MouseButton::Left
+        && let Some(area) = crate::field3d_smoke::canvas_area(s)
+        && let Some((v, h)) = crate::field3d_layout::seam_grab(area, s.split, [pos.0, pos.1])
+    {
+        s.drag = Some(Drag::Divider(v, h));
+        s.last_pointer = pos;
+        s.press_at = Some(pos);
+        return true;
+    }
     // ⭐⭐⭐ **O BOTÃO DESCE NUM VIEWPORT, E É ELE QUE PASSA A COMANDAR** (W90).
     //
     // ⚠️ **Antes de tudo, e só no `begin`:** daqui para baixo o módulo inteiro já lê `s.vp()`, então
@@ -268,6 +282,23 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
             }
         }
         Drag::Orbit => law::orbit(&mut s.vp_mut().cam, dx, dy),
+        // ⭐⭐⭐ **O DIVISOR segue o dedo em ABSOLUTO, nunca por incrementos** (W92).
+        //
+        // ⚠️ Uma soma de deltas acumula o erro de cada trava: arrastar até ao batente e voltar
+        // deixaria a costura **deslocada** da mão para sempre. *É a mesma lei que o gizmo deste
+        // módulo já paga com a âncora congelada — mede-se o TOTAL, contra uma origem que não se
+        // mexe.* Aqui a origem é o próprio canvas.
+        Drag::Divider(v, h) => {
+            let (Some(area), crate::field3d_layout::Split::Quad { tx, ty }) =
+                (crate::field3d_smoke::canvas_area(s), s.split)
+            else {
+                return true;
+            };
+            let (nx, ny) = crate::field3d_layout::t_at(area, [x, y]);
+            s.split = s
+                .split
+                .with_t(if v { nx } else { tx }, if h { ny } else { ty });
+        }
         // O alvo anda ao CONTRÁRIO da mão: mover o ponto olhado para a esquerda é o que faz
         // o modelo aparecer mais à direita.
         //

@@ -88,22 +88,36 @@ impl BodyCtx<'_> {
 
         // O TAMANHO e o VÃO — os dois só existem enquanto o padrão REPETE.
         if repete {
-            // O TAMANHO de uma cópia (o lado maior; o aspecto da arte é preservado).
-            let size = self
-                .store
-                .number_value(ids::VECTOR_TEXPAT_SIZE_NUM)
-                .unwrap_or(p.size);
-            let size_track = self
-                .store
-                .slider(ids::VECTOR_TEXPAT_SIZE)
-                .map_or_else(|| size_track(p.size), |(_, v)| v);
-            y = self.slider_row(
-                "Size",
-                ids::VECTOR_TEXPAT_SIZE,
-                ids::VECTOR_TEXPAT_SIZE_NUM,
-                size_track,
-                size,
-                &format!("{size:.2}"),
+            // ⭐⭐ O TAMANHO, **os DOIS eixos** (Enio, 2026-08-27: poder achatar a arte de
+            // propósito). Era um número só — o lado maior, com o aspecto sempre preservado.
+            //
+            // ⚠️ **A protecção não desapareceu, mudou de lei imposta para gesto escolhido**: o
+            // cadeado nasce LIGADO, e com ele mexer num eixo leva o outro pelo mesmo factor. Ele
+            // preserva a razão **ACTUAL** e não a natural da arte — voltar ao aspecto da imagem
+            // desfaria o achatamento que o artista acabou de autorar.
+            for (axis, label, sid, nid) in [
+                (
+                    0usize,
+                    "Width",
+                    ids::VECTOR_TEXPAT_W,
+                    ids::VECTOR_TEXPAT_W_NUM,
+                ),
+                (1, "Height", ids::VECTOR_TEXPAT_H, ids::VECTOR_TEXPAT_H_NUM),
+            ] {
+                let v = self.store.number_value(nid).unwrap_or(p.size[axis]);
+                let track = self
+                    .store
+                    .slider(sid)
+                    .map_or_else(|| size_track(p.size[axis]), |(_, t)| t);
+                y = self.slider_row(label, sid, nid, track, v, &format!("{v:.2}"), y);
+            }
+            // ⚠️ O cadeado vem DEPOIS dos dois números que ele liga — ele descreve o que acontece
+            // *àquelas duas linhas*, e um controlo que descreve o que está acima dele lê-se onde
+            // está.
+            y = self.checkbox_row(
+                ids::VECTOR_TEXPAT_LOCK,
+                tr("panel.vector.texpat.lock"),
+                p.lock_aspect,
                 y,
             );
 

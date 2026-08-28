@@ -3581,6 +3581,10 @@ impl crate::App {
                                 // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
                                 // entao o clique e' da shell — o painel so' mostra o estado.
                                 pending_resize_box = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_LOCK {
+                                // ⭐ O CADEADO é estado de SESSÃO (o gesto, não o padrão): o clique
+                                // inverte-o aqui e nada toca no documento.
+                                self.texpat_lock_aspect = !self.texpat_lock_aspect;
                             } else if *id == ph2d_editor::ids::VECTOR_STROKE_PRESENT {
                                 // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
                                 // então o clique e' da shell — o painel so' mostra o estado.
@@ -3883,11 +3887,19 @@ impl crate::App {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SIZE {
-                                // Plano 33: o lado MAIOR de uma cópia, em unidades de mundo — o
-                                // `event.rs` do painel já converteu o track.
+                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_W
+                                || *id == ph2d_editor::ids::VECTOR_TEXPAT_H
+                            {
+                                // Plano 33 W10: UM eixo do tamanho, em unidades de mundo (o
+                                // `event.rs` do painel já converteu o track), e o CADEADO da
+                                // sessão, que decide se o outro eixo vem junto.
+                                let axis = u8::from(*id == ph2d_editor::ids::VECTOR_TEXPAT_H);
                                 pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Size(*v));
+                                    Some(crate::texture_pattern_edit::TexPatCmd::Axis(
+                                        axis,
+                                        *v,
+                                        self.texpat_lock_aspect,
+                                    ));
                             } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_GAP {
                                 pending_texpat =
                                     Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v));
@@ -7110,6 +7122,7 @@ impl crate::App {
                 &self.vec_entities,
                 self.vec_pivot_edit,
                 self.vec_snap,
+                self.texpat_lock_aspect,
             );
             // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois
             // publicar**, a mesma ordem do `resize_box` — publicar antes deixaria a caixa a mostrar

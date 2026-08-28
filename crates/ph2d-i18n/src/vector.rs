@@ -41,6 +41,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.frame.clip" => "Clip content",
         "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.stroke.present" => "Stroke",
+        "panel.vector.texpat.lock" => "Lock Aspect",
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",
         "panel.vector.frame.panel" => "Show as Panel",

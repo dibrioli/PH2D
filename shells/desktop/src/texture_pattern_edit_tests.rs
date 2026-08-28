@@ -37,24 +37,28 @@ fn pattern_of(scene: &VecScene, id: VecPathId) -> PatternFill {
     }
 }
 
-/// ⭐ **Mudar o Size preserva o ASPECTO da arte.** O painel autora UM número e o documento guarda
-/// DOIS — oferecer os dois lados deixaria o artista esmagar a imagem sem querer.
+/// ⭐ **COM o cadeado, mexer num eixo preserva a razão** — a protecção de sempre, agora como gesto.
 #[test]
-fn setting_the_size_keeps_the_arts_aspect() {
-    let (mut scene, pen, id) = scene_with(fill());
+fn with_the_lock_an_axis_keeps_the_ratio() {
+    let (mut scene, pen, id) = scene_with(fill()); // size [8, 2] — 4:1
     let mut h = ph2d_vec_edit::History::default();
-    apply(&mut scene, &mut h, &pen, TexPatCmd::Size(4.0));
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Axis(0, 4.0, true));
     let p = pattern_of(&scene, id);
-    assert!(
-        (p.longer_side() - 4.0).abs() < 1e-9,
-        "o lado maior nao virou 4: {:?}",
-        p.size
-    );
-    assert!(
-        (p.size[0] / p.size[1] - 4.0).abs() < 1e-9,
-        "o aspecto 4:1 nao sobreviveu: {:?}",
-        p.size
-    );
+    assert_eq!(p.size, [4.0, 1.0], "o cadeado nao preservou a razao 4:1");
+}
+
+/// ⭐⭐ **SEM o cadeado, a arte ACHATA — e é isto que o Enio pediu** (2026-08-27).
+#[test]
+fn without_the_lock_the_art_squashes_on_purpose() {
+    let (mut scene, pen, id) = scene_with(fill()); // [8, 2]
+    let mut h = ph2d_vec_edit::History::default();
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Axis(1, 8.0, false));
+    let p = pattern_of(&scene, id);
+    assert_eq!(p.size, [8.0, 8.0], "o outro eixo mexeu-se, ou este nao");
+    assert_eq!(h.undo_len(), 1, "achatar e' UM passo de undo");
+    // ⚠️ E o MESMO valor não grava passo — o slider re-publica a cada quadro em que está agarrado.
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Axis(1, 8.0, false));
+    assert_eq!(h.undo_len(), 1, "o mesmo valor gravou um passo espurio");
 }
 
 /// **Cada mudança é UM passo de undo, e um valor repetido NÃO é passo nenhum.**
@@ -151,7 +155,7 @@ fn a_shape_without_a_pattern_is_left_alone() {
     let mut pen = ph2d_vec_edit::PenTool::default();
     pen.select_many(&[id]);
     let mut h = ph2d_vec_edit::History::default();
-    apply(&mut scene, &mut h, &pen, TexPatCmd::Size(4.0));
+    apply(&mut scene, &mut h, &pen, TexPatCmd::Axis(0, 4.0, true));
     assert_eq!(h.undo_len(), 0, "gravou um passo sobre uma forma solida");
     assert!(matches!(
         scene.path(id).and_then(|p| p.fill.as_ref()),

@@ -16,7 +16,7 @@ pub(super) fn texpat_slider_event(
 ) -> Option<bool> {
     // ⚠️ Os quatro mapas são os MESMOS que o `populate` dá ao chip numérico e que o `paint` usa
     // para o track — a fronteira única. Três cópias divergiriam no dia em que uma faixa mudasse.
-    if id == ids::VECTOR_TEXPAT_SIZE {
+    if id == ids::VECTOR_TEXPAT_W || id == ids::VECTOR_TEXPAT_H {
         return Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(
                 crate::TEXPAT_SIZE_MAX - crate::TEXPAT_SIZE_MIN,

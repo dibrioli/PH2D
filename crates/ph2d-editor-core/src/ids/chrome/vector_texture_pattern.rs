@@ -88,3 +88,24 @@ pub const VECTOR_TEXPAT_SHIFT_X_NUM: NodeId = hash_node_id("vector.texpat.shift.
 pub const VECTOR_TEXPAT_SHIFT_Y: NodeId = hash_node_id("vector.texpat.shift.y");
 /// O campo numérico gémeo do [`VECTOR_TEXPAT_SHIFT_Y`].
 pub const VECTOR_TEXPAT_SHIFT_Y_NUM: NodeId = hash_node_id("vector.texpat.shift.y.num");
+
+// ── O TAMANHO POR EIXO e o CADEADO (plano 33, W10) ──────────────────────────────
+//
+// ⛔ Substituem o `VECTOR_TEXPAT_SIZE`, que autorava **um** número (o lado maior, aspecto sempre
+// preservado). O Enio pediu para poder achatar a arte **de propósito** — e a protecção não
+// desapareceu: mudou de lei imposta para gesto escolhido, com o cadeado LIGADO por omissão.
+/// **Width** — a largura de uma cópia, em unidades de MUNDO.
+pub const VECTOR_TEXPAT_W: NodeId = hash_node_id("vector.texpat.w");
+/// O campo numérico gémeo do [`VECTOR_TEXPAT_W`].
+pub const VECTOR_TEXPAT_W_NUM: NodeId = hash_node_id("vector.texpat.w.num");
+/// **Height** — a altura de uma cópia, em unidades de MUNDO.
+pub const VECTOR_TEXPAT_H: NodeId = hash_node_id("vector.texpat.h");
+/// O campo numérico gémeo do [`VECTOR_TEXPAT_H`].
+pub const VECTOR_TEXPAT_H_NUM: NodeId = hash_node_id("vector.texpat.h.num");
+/// ⭐ **Lock Aspect** — a caixa que decide se mexer num eixo leva o outro.
+///
+/// ⚠️ **Ela PRESERVA A RAZÃO ACTUAL, não a natural da arte** (a lei do *constrain proportions* do
+/// Photoshop e do Figma): um cadeado que voltasse ao aspecto da imagem **desfaria o achatamento**
+/// que o artista autorou. ⇒ ele descreve o **gesto**, não o padrão — e por isso **não viaja no
+/// ficheiro**, e este bloco não move schema nenhum.
+pub const VECTOR_TEXPAT_LOCK: NodeId = hash_node_id("vector.texpat.lock");

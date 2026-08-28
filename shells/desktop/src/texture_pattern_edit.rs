@@ -21,8 +21,13 @@ pub(crate) enum TexPatCmd {
     Mode(u8),
     /// O desfasamento é `1/n`.
     OffsetDenom(f64),
-    /// O lado MAIOR de uma cópia, em unidades de mundo.
-    Size(f64),
+    /// ⭐ **UM eixo do tamanho** (`0` = largura, `1` = altura) e o estado do CADEADO.
+    ///
+    /// ⛔ Era `Size(f64)` — o lado maior, com o aspecto sempre preservado. O Enio pediu (2026-08-27)
+    /// para poder achatar a arte **de propósito**, e a protecção mudou de lei imposta para gesto
+    /// escolhido. ⚠️ O cadeado viaja **no comando** porque ele é da SESSÃO (a shell é a dona), e a
+    /// lei que ele governa vive na porta única `PatternFill::set_axis`.
+    Axis(u8, f64, bool),
     /// ⭐ **A FASE dentro de UMA repetição**, em percentagem, no eixo `0` (X do padrão) ou `1` (Y).
     ///
     /// ⚠️ Substitui a alça de MOVER do plano 33 W6, retirada por decisão do Enio (2026-08-27:
@@ -136,9 +141,10 @@ pub(crate) fn apply(
         TexPatCmd::Mode(i) => next.mode = mode_of(i),
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         TexPatCmd::OffsetDenom(n) => next.offset_denom = n.clamp(1.0, 255.0).round() as u8,
-        // ⚠️ Pela porta ÚNICA do tamanho (`ph2d-vec-scene`), que preserva o aspecto da arte: o
-        // painel autora UM número e o documento guarda DOIS.
-        TexPatCmd::Size(v) => next.set_longer_side(v),
+        // ⚠️ Pela porta ÚNICA do tamanho (`ph2d-vec-scene`). Com o cadeado, os dois eixos escalam
+        // pelo MESMO factor — a razão ACTUAL sobrevive, e não a natural da arte: voltar ao aspecto
+        // da imagem desfaria o achatamento que o artista acabou de autorar.
+        TexPatCmd::Axis(axis, v, lock) => next.set_axis(usize::from(axis), v, lock),
         // ⚠️ **A base da fase é o canto da CAIXA da forma** — o mesmo canto em que a colocação
         // nasce (`texture_pattern_pick::default_placement`). Sem uma referência ligada à forma, a
         // fase de um padrão dependeria de onde a forma está no mundo.

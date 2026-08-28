@@ -454,6 +454,7 @@ barra. O assado (W1) tem orçamento próprio: **8 ms** para um ladrilho de 512×
 | **W7** fonte 2 (forma) | ✅ | o modelo do Figma, **viva** (editar a fonte re-assa), com o botão *Use Shape…* e a recusa do ciclo |
 | **W8** smoke | ✅ | `PH2D_BUILD_SMOKE=76` |
 | **W9** *Shift X/Y* no painel | ✅ | a POSIÇÃO passou para duas fileiras (§6-quater); a lei é uma fase `0..100 %` de UMA repetição, nos eixos do padrão |
+| **W10** *Width/Height* + cadeado | ✅ | o TAMANHO passa a ser **dois** números, e a arte achata de propósito (§6-sexies). ⛔ **Schema: zero** |
 
 ⭐⭐ **AS OITO WAVES FECHARAM** (2026-08-27) — e a **W6 foi depois retirada**, com a posição a mudar
 de sítio na W9. O que sobra é o que os reports do Enio abriram e o que ele decidir a seguir — a
@@ -461,10 +462,10 @@ lista está no §6-ter.
 
 ⚠️ **E a W5 deixou duas coisas nomeadas:**
 
-- **O Size é UM número** (o lado maior, com o aspecto preservado). Autorar os dois lados é
-  expressável hoje escalando a FORMA de forma não-uniforme — o padrão esmaga com ela —, e um par de
-  campos deixaria o artista esmagar a arte sem querer. ⏸️ Se um smoke pedir, o desenho é um cadeado
-  de aspecto, não dois campos soltos.
+- ✅ **O Size era UM número** (o lado maior, com o aspecto preservado) — **e deixou de ser** em
+  2026-08-27, quando o Enio pediu para poder achatar a arte de propósito. O desenho é o que esta
+  nota previa (**um cadeado de aspecto**, não dois campos soltos), com uma correcção que ela não
+  antecipava: **o cadeado preserva a razão ACTUAL, não a natural da arte** — ver §6-sexies.
 - **O Gap é UM número** para os dois eixos (`gap: [v, v]`). O dado guarda os dois; a UI oferece um.
 
 ⚠️ **Dois achados que mudaram o desenho a meio, e que a próxima janela herda:**
@@ -624,3 +625,42 @@ que para as formas dele funciona.
 2. **W1 primeiro, e ela não precisa de GPU nenhuma** — é uma folha pura com gates red-first.
 3. ⚠️ **Reconte os três números do §0.4 contra o `main` do dia.** Eles somam entre linhas, e este
    ficheiro já viu duas recontagens (`96 -> 97`, `98 -> 99`).
+
+---
+
+## §6-sexies — ⭐ **W10: o tamanho passa a ter DOIS eixos, e a arte achata de propósito**
+
+> Enio, 2026-08-27. O §6-bis já previa a forma da cura (*"um cadeado de aspecto, não dois campos
+> soltos"*) — e errou num ponto que decide o produto.
+
+### ⭐⭐ O cadeado preserva a razão **ACTUAL**, não a natural da arte
+
+É a lei do *constrain proportions* do **Photoshop** e do **Figma**, e a diferença não é cosmética:
+um cadeado que voltasse ao aspecto da imagem **desfaria o achatamento** que o artista acabou de
+autorar, no instante em que ele mexesse no outro número. ⇒ com o cadeado, mexer num eixo escala
+**os dois pelo mesmo factor**; sem ele, cada eixo é independente.
+
+⚠️⚠️ **E é isso que faz o cadeado NÃO precisar de viajar no ficheiro.** Ele descreve o **gesto**
+(*"estou a escalar proporcionalmente"*), não o padrão — o que se grava é o `size`, e ele já guarda
+os dois eixos desde que a `Paint::Pattern` existe.
+
+⇒ **`PROJECT_SCHEMA` e `VEC_SCENE` NÃO se mexem nesta wave.** ⛔ Um `lock_aspect: bool` no documento
+seria estado persistente cujo único trabalho é **proibir o gesto que o artista pediu**, e ainda
+custaria um degrau da escada.
+
+| | |
+|---|---|
+| **A porta única** | `PatternFill::set_axis(axis, v, lock)` — o slider passa por aqui, e é ele que impede a lei de existir em dois sítios |
+| **Onde o cadeado mora** | `App::texpat_lock_aspect` — sessão da shell, publicado ao painel na `TexturePatternRow`, e viaja no `TexPatCmd::Axis` |
+| **A faixa** | a **MESMA** nos dois eixos. ⚠️ Um eixo com faixa própria faria o cadeado saturar num deles e continuar no outro, e a razão que ele promete preservar quebrava sozinha na ponta do curso |
+| **O default** | **ligado** — o comportamento exacto que a secção tinha antes de os dois eixos existirem |
+| **Gates** | 4 no modelo + 3 no shell + o seam (o cadeado clicado, e escondido no `Clamp` com o resto) |
+
+### ⚠️ O que uma leitura rápida do diff entende ao CONTRÁRIO
+
+1. **`set_longer_side` não foi «removido por limpeza»** — ele *era* a protecção, e a protecção
+   mudou de **lei imposta** para **gesto escolhido**. Ela continua lá, com o cadeado ligado.
+2. **Um `size` degenerado sob o cadeado vira quadrado**, e não é um caso esquecido: sem razão
+   anterior não há razão a preservar, e `[v, v]` é o único par que satisfaz *"a razão de antes"*.
+3. **O `VECTOR_TEXPAT_SIZE` continua definido no `editor-core`** (o bloco de ids é append-only) e
+   deixou de ser re-exportado pelo painel — é assim que um id morre sem partir o hash de ninguém.

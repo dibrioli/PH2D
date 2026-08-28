@@ -159,7 +159,8 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
     ph2d_panel_vector::TexturePatternRow {
         kind,
         offset_denom: 2.0,
-        size: 1.0,
+        size: [1.0, 1.0],
+        lock_aspect: true,
         gap: 0.0,
         angle_deg: 0.0,
         shift_pct: [0.0, 0.0],
@@ -177,6 +178,9 @@ fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
     state::set_current_texture_pattern(Some(row(0)));
     click_reaches_bus(ids::VECTOR_TEXPAT_SOURCE, "o botao Source");
     click_reaches_bus(ids::VECTOR_TEXPAT_PICK_SHAPE, "o botao Use Shape");
+    // ⭐ O CADEADO de proporção (W10) — um checkbox, e o clique é da shell (ela é a dona do
+    // estado da sessão). Fora da allowlist ele acenderia sob o rato e não faria nada.
+    click_reaches_bus(ids::VECTOR_TEXPAT_LOCK, "a caixa Lock Aspect");
     for (i, what) in [
         (0, "o chip Grid"),
         (1, "o chip Brick"),
@@ -206,7 +210,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_SIZE)
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_W)
             .is_none(),
         "a seccao Pattern subiu para uma forma sem padrao"
     );
@@ -215,7 +219,7 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
     let mut host2 = MockPanelHost::with_panel::<VectorPanel>();
     assert!(
         host2
-            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_SIZE)
+            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_W)
             .is_some(),
         "com padrao a seccao tem de subir"
     );
@@ -263,7 +267,9 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
     let mortos = [
         (ids::VECTOR_TEXPAT_TILE_GRID, "o reticulado"),
         (ids::VECTOR_TEXPAT_OFFSET, "o desfasamento"),
-        (ids::VECTOR_TEXPAT_SIZE, "o tamanho"),
+        (ids::VECTOR_TEXPAT_W, "a largura"),
+        (ids::VECTOR_TEXPAT_H, "a altura"),
+        (ids::VECTOR_TEXPAT_LOCK, "o cadeado"),
         (ids::VECTOR_TEXPAT_GAP, "o vao"),
         // ⚠️ A fase entra nesta lista pela MESMA razão que o tamanho: no `Clamp` a colocação é
         // DERIVADA (uma cópia enquadrada na forma), e `origin` não tem quem o leia.
@@ -284,4 +290,46 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
         assert!(visible(2, id), "o Clamp escondeu {what}, que ele USA");
     }
     state::set_current_texture_pattern(None);
+}
+
+/// ⭐⭐ **A CAIXA É ALIMENTADA PELO ESTADO PUBLICADO** — e não por um literal.
+///
+/// ⚠️ Este gate nasceu de uma **mutação sobrevivente**: trocar `p.lock_aspect` por `true` na pintura
+/// deixava a caixa sempre marcada, e os gates de alcance (que só medem se ela é CLICÁVEL) ficavam
+/// todos verdes. *Um controlo que chega ao barramento mas mente sobre o estado dá o mesmo report que
+/// um controlo morto.*
+///
+/// ⚠️⚠️ **Ele lê o FONTE, e a tentativa behavioural foi MEDIDA e falhou:** `host.store().checkbox()`
+/// devolve `None`, porque esta caixa é registada como `Button` (o molde do `VECTOR_TRANSFORM_RESIZE_BOX`)
+/// e o `checkbox_row` recebe o valor **por argumento**, do estado publicado — ele nunca chega ao
+/// store. Mudar o registo para `Checkbox` só para o teste o alcançar mudaria a rota do clique.
+#[test]
+fn the_lock_checkbox_is_fed_by_the_published_state() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src")
+            .join("paint_texture_pattern.rs"),
+    )
+    .expect("o pintor da seccao");
+    let code: String = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let i = code
+        .find("ids::VECTOR_TEXPAT_LOCK,")
+        .expect("a caixa e' pintada");
+    // ⚠️ A linha tem de ser EXACTAMENTE o campo publicado. Uma versão anterior deste gate procurava
+    // a substring `p.lock_aspect` e **um `!p.lock_aspect` SOBREVIVEU** — a negação contém a agulha.
+    // *Uma verificação por substring aprova o contrário do que ela quer afirmar.*
+    let arg = code[i..i + 160]
+        .lines()
+        .map(str::trim)
+        .find(|l| l.contains("lock_aspect"));
+    assert_eq!(
+        arg,
+        Some("p.lock_aspect,"),
+        "a caixa deixou de ser alimentada pelo estado publicado tal e qual - ela passa a mentir \
+         sobre o cadeado, e nenhum gate de alcance o ve^"
+    );
 }

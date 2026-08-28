@@ -230,8 +230,9 @@ fn select_hero(app: &mut crate::App) {
          (canto inferior direito de cada copia): ele tem de deixar ver o fundo, nao pintar vermelho. \
          ⭐ E EM BAIXO: um quadrado cuja ARTE e' o TRIANGULO ao lado dele (uma forma do documento). \
          Mexa nos nos do triangulo com a ferramenta Node -- o padrao tem de mudar NA HORA. \
-         ⭐ TODO o ajuste vive no painel, na seccao Pattern: Tile, Offset, Size, Gap, Shift X, \
-         Shift Y, Angle e Repeat. As barras SHIFT X/Y deslizam a arte dentro de UMA repeticao \
+         ⭐ TODO o ajuste vive no painel, na seccao Pattern: Tile, Offset, Width, Height, \
+         Lock Aspect, Gap, Shift X, Shift Y, Angle e Repeat. Com o CADEADO ligado (o default) mexer \
+         num eixo leva o outro; desligado, a arte ACHATA de proposito. As barras SHIFT X/Y deslizam a arte dentro de UMA repeticao \
          (0..100%, e 100 e' o mesmo que 0). No modo Clamp elas somem, com as outras que ele nao le^. \
          ⭐ E TODA forma desta cena nasce COM CONTORNO (escuro, fino) -- antes nasciam sem nenhum, e \
          a seccao Stroke ficava inerte SO' AQUI. Troque Fill Type entre Solid e Pattern: o contorno \

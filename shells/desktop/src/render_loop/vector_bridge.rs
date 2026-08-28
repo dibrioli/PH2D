@@ -133,6 +133,9 @@ pub(super) fn dispatch(
     // custaria mais uma posição numa assinatura que ninguém lê ao chamar. A GRADE não está
     // aqui (ela é do painel universal de Grid Snap).
     snap: crate::vec_snap::VecSnapSettings,
+    // ⭐ O CADEADO de proporção do padrão (plano 33 W10). Ele é da SESSÃO — descreve o gesto,
+    // não o padrão —, então mora na shell e só atravessa aqui para o painel o desenhar.
+    texpat_lock: bool,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -396,6 +399,7 @@ pub(super) fn dispatch(
         px_to_world,
         pivot_edit,
         snap,
+        texpat_lock,
     );
 
     // Mirror the tool's mode + shape params so the input dispatch can route

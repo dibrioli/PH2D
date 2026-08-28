@@ -254,30 +254,40 @@ impl PatternFill {
         }
     }
 
-    /// **O lado MAIOR de uma cópia** — o número que o slider *Size* e a alça de escala autoram.
+    /// **Põe UM eixo do tamanho de uma cópia** (`0` = largura, `1` = altura) — a **porta ÚNICA** do
+    /// tamanho, e a lei do cadeado de proporção.
     ///
-    /// ⭐ **O painel autora UM número e o documento guarda DOIS**, e a diferença é o aspecto da
-    /// arte: oferecer os dois lados deixaria o artista esmagar a imagem sem querer.
-    #[must_use]
-    pub fn longer_side(&self) -> f64 {
-        self.size[0].max(self.size[1])
-    }
-
-    /// Reescala `size` preservando o aspecto, para que o lado maior meça `longer`.
+    /// ⭐ **`lock` PRESERVA A RAZÃO ACTUAL, e não a natural da arte.** É a lei do *constrain
+    /// proportions* do Photoshop e do Figma, e a diferença importa: um cadeado que voltasse ao
+    /// aspecto da imagem **desfaria o achatamento** que o artista autorou, no instante em que ele
+    /// mexesse no outro número. ⇒ com o cadeado, mexer num eixo escala **os dois pelo mesmo
+    /// factor**; sem ele, cada eixo é independente e a arte achata **de propósito**.
     ///
-    /// ⚠️⚠️ **A PORTA ÚNICA do tamanho.** O slider e a alça de canvas escrevem por aqui, e é isso
-    /// que os impede de divergir — a lei escrita nos dois sítios é a lei que um dia muda só num.
+    /// ⚠️⚠️ **E é por isso que o cadeado NÃO precisa de viajar no ficheiro:** ele não descreve o
+    /// padrão, descreve o **gesto**. O que se grava é o `size`, e ele já guarda os dois eixos desde
+    /// que a `Paint::Pattern` existe — *este plano não move schema nenhum*.
     ///
     /// ⚠️ `is_finite()` ANTES da comparação: um `NaN` reprova toda desigualdade e escorregaria pela
     /// porta de trás, deixando um `size` de `NaN` que apaga a forma sem erro nenhum.
-    pub fn set_longer_side(&mut self, longer: f64) {
-        let cur = self.longer_side();
-        if !cur.is_finite() || cur <= 0.0 || !longer.is_finite() || longer <= 0.0 {
-            let v = longer.max(f64::EPSILON);
+    pub fn set_axis(&mut self, axis: usize, v: f64, lock: bool) {
+        let Some(&cur) = self.size.get(axis) else {
+            return;
+        };
+        if !v.is_finite() || v <= 0.0 {
+            return;
+        }
+        if !lock {
+            self.size[axis] = v;
+            return;
+        }
+        // Com o cadeado, o factor é o MESMO nos dois eixos — é isso que preserva a razão. Um
+        // `cur` não-positivo não define factor nenhum, e aí os dois eixos passam a medir `v`
+        // (que é o único par que satisfaz *"a razão de antes"* quando não havia razão).
+        if !cur.is_finite() || cur <= 0.0 {
             self.size = [v, v];
             return;
         }
-        let s = longer / cur;
+        let s = v / cur;
         self.size = [self.size[0] * s, self.size[1] * s];
     }
 

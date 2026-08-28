@@ -1503,6 +1503,16 @@ pub(crate) struct App {
     /// Vive entre frames de propósito: o arranjo MEMOIZA a geometria de cada região
     /// visitada, e reabri-lo por frame faria todo hover pagar a booleana de novo.
     pub(crate) vec_build: Option<crate::shape_build::BuildSession>,
+    /// ⭐ **O CADEADO de proporção do padrão de textura** (plano 33, W10) — mexer num eixo do
+    /// tamanho leva o outro pelo mesmo factor.
+    ///
+    /// ⚠️ **Estado de SESSÃO, e é essa a decisão:** ele descreve o **gesto** (*"estou a escalar
+    /// proporcionalmente"*), não o padrão. Gravá-lo no documento seria guardar como alguém estava a
+    /// editar; e ele **preserva a razão ACTUAL**, nunca a natural da arte — um cadeado que voltasse
+    /// ao aspecto da imagem desfaria o achatamento que o artista acabou de autorar.
+    ///
+    /// Nasce **ligado**: é o comportamento que a secção tinha antes de os dois eixos existirem.
+    pub(crate) texpat_lock_aspect: bool,
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.

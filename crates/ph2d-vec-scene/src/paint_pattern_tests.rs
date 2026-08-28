@@ -381,3 +381,65 @@ fn a_non_positive_period_has_no_phase_and_no_write() {
     f.set_shift_axis([0.0, 0.0], 2, 0.4);
     assert_eq!(f.origin, antes, "um eixo inexistente escreveu");
 }
+
+// ── O TAMANHO POR EIXO e o cadeado de proporção (plano 33, W10) ───────────────────────
+//
+// ⛔ O `set_longer_side` (um número, aspecto sempre preservado) foi SUBSTITUÍDO: o artista pediu
+// para poder achatar de propósito. A protecção não desapareceu — mudou de lei imposta para gesto
+// escolhido, e o default do cadeado é LIGADO.
+
+/// ⭐⭐ **COM o cadeado, os dois eixos escalam pelo MESMO factor — a razão ACTUAL sobrevive.**
+///
+/// ⚠️ Um cadeado que voltasse ao aspecto natural da arte **desfaria o achatamento** que o artista
+/// autorou, no instante em que ele mexesse no outro número. É a lei do Photoshop e do Figma.
+#[test]
+fn the_lock_preserves_the_current_ratio_not_the_arts_natural_one() {
+    let mut f = fill(); // size [10, 20] — já 1:2
+    f.size = [4.0, 1.0]; // o artista ACHATOU para 4:1
+    f.set_axis(0, 8.0, true);
+    assert_eq!(
+        f.size,
+        [8.0, 2.0],
+        "o cadeado desfez o achatamento em vez de o escalar"
+    );
+    // E pelo outro eixo, com o mesmo resultado de razão.
+    f.set_axis(1, 1.0, true);
+    assert_eq!(f.size, [4.0, 1.0]);
+}
+
+/// **SEM o cadeado, cada eixo é independente** — é isto que o artista pediu.
+#[test]
+fn without_the_lock_an_axis_moves_alone() {
+    let mut f = fill(); // [10, 20]
+    f.set_axis(0, 5.0, false);
+    assert_eq!(f.size, [5.0, 20.0], "o outro eixo mexeu-se");
+    f.set_axis(1, 5.0, false);
+    assert_eq!(f.size, [5.0, 5.0]);
+}
+
+/// ⚠️ **Um valor inválido não escreve nada** — e o `NaN` é o caso que escorrega pela porta de trás,
+/// porque ele reprova toda desigualdade. Um `size` de `NaN` apaga a forma sem erro nenhum.
+#[test]
+fn a_non_positive_or_nan_size_writes_nothing() {
+    for mau in [0.0, -3.0, f64::NAN, f64::INFINITY] {
+        for lock in [true, false] {
+            let mut f = fill();
+            f.set_axis(0, mau, lock);
+            assert_eq!(f.size, [10.0, 20.0], "{mau} escreveu (lock={lock})");
+        }
+    }
+    // ⚠️ E um eixo que não existe também não escreve — o índice vem do painel.
+    let mut f = fill();
+    f.set_axis(2, 5.0, false);
+    assert_eq!(f.size, [10.0, 20.0]);
+}
+
+/// ⚠️ **Um `size` degenerado não define razão nenhuma**, e o cadeado não pode dividir por ele. Os
+/// dois eixos passam a medir `v` — o único par que satisfaz *"a razão de antes"* quando não havia.
+#[test]
+fn a_degenerate_size_under_the_lock_becomes_square() {
+    let mut f = fill();
+    f.size = [0.0, 4.0];
+    f.set_axis(0, 3.0, true);
+    assert_eq!(f.size, [3.0, 3.0]);
+}

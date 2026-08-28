@@ -47,6 +47,8 @@ pub(super) fn publish(
     px_to_world: f64,
     pivot_edit: bool,
     snap: crate::vec_snap::VecSnapSettings,
+    // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
+    texpat_lock: bool,
 ) {
     // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
     //    (so a picker alpha shows on the panel) + publish. ──────────────────
@@ -246,7 +248,8 @@ pub(super) fn publish(
                     Some(Paint::Pattern(pat)) => Some(ph2d_panel_vector::TexturePatternRow {
                         kind: crate::texture_pattern_edit::tile_index(pat.kind),
                         offset_denom: f64::from(pat.offset_denom.max(1)),
-                        size: pat.longer_side(),
+                        size: pat.size,
+                        lock_aspect: texpat_lock,
                         gap: pat.gap[0],
                         angle_deg: pat.angle.to_degrees(),
                         // ⚠️ A fase mede-se do canto da CAIXA da forma — a MESMA base que a

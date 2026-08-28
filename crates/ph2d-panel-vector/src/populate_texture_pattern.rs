@@ -36,23 +36,33 @@ pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
         button(store, crate::paint_sections::texture_pattern::mode_id(i));
     }
 
-    // Size: track `0..1` → `TEXPAT_SIZE_MIN..TEXPAT_SIZE_MAX`.
+    // Width/Height: os DOIS eixos, no mesmo mapa `0..1` -> `TEXPAT_SIZE_MIN..TEXPAT_SIZE_MAX`.
+    // ⚠️ A MESMA faixa nos dois: um eixo com faixa própria faria o cadeado (que multiplica os dois
+    // pelo mesmo factor) saturar num deles e continuar no outro — e a razão que ele promete
+    // preservar quebrava sozinha na ponta do curso.
     let size_span = (crate::TEXPAT_SIZE_MAX - crate::TEXPAT_SIZE_MIN) as f32;
-    slider_chip(
-        store,
-        ids::VECTOR_TEXPAT_SIZE,
-        ids::VECTOR_TEXPAT_SIZE_NUM,
-        crate::paint_sections::texture_pattern::size_track(1.0),
-        1.0,
-        size_span,
-        crate::TEXPAT_SIZE_MIN as f32,
-    );
-    store.set_number_range(
-        ids::VECTOR_TEXPAT_SIZE_NUM,
-        crate::TEXPAT_SIZE_MIN,
-        crate::TEXPAT_SIZE_MAX,
-        TEXPAT_SIZE_STEP,
-    );
+    for (sid, nid) in [
+        (ids::VECTOR_TEXPAT_W, ids::VECTOR_TEXPAT_W_NUM),
+        (ids::VECTOR_TEXPAT_H, ids::VECTOR_TEXPAT_H_NUM),
+    ] {
+        slider_chip(
+            store,
+            sid,
+            nid,
+            crate::paint_sections::texture_pattern::size_track(1.0),
+            1.0,
+            size_span,
+            crate::TEXPAT_SIZE_MIN as f32,
+        );
+        store.set_number_range(
+            nid,
+            crate::TEXPAT_SIZE_MIN,
+            crate::TEXPAT_SIZE_MAX,
+            TEXPAT_SIZE_STEP,
+        );
+    }
+    // ⭐ O CADEADO. Sem este registo ele fica pintado, com hit-rect, e MORTO sob o rato.
+    button(store, ids::VECTOR_TEXPAT_LOCK);
 
     // Gap: BIPOLAR `−TEXPAT_GAP_MAX..+` (o mesmo mapa do Offset do Pattern on Path), `0.5` = zero.
     slider_chip(

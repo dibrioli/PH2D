@@ -45,8 +45,17 @@ pub struct TexturePatternRow {
     pub kind: u8,
     /// O desfasamento é `1/n` de uma célula. `1` = nenhum.
     pub offset_denom: f64,
-    /// O lado maior de uma cópia, em unidades de mundo.
-    pub size: f64,
+    /// O tamanho de uma cópia — **os DOIS eixos**, em unidades de mundo.
+    ///
+    /// ⛔ Era **um** número (o lado maior, aspecto sempre preservado) até 2026-08-27: o Enio pediu
+    /// para poder achatar a arte de propósito, e a protecção mudou de lei imposta para gesto
+    /// escolhido ([`Self::lock_aspect`]).
+    pub size: [f64; 2],
+    /// ⭐ O **cadeado de proporção** está ligado? Mexer num eixo leva o outro pelo mesmo factor.
+    ///
+    /// ⚠️ Ele descreve o **gesto**, não o padrão: vive na sessão da shell e **não viaja no
+    /// ficheiro**. Um cadeado gravado seria estado que descreve como alguém estava a editar.
+    pub lock_aspect: bool,
     /// O vão acrescentado, em unidades de mundo. Negativo = sobreposição.
     pub gap: f64,
     /// A rotação do padrão, em graus.

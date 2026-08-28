@@ -84,7 +84,7 @@ pub(crate) fn draw_shape_instance_tessellated(
         // é «não deu» — é a fronteira desta wave, e o gate
         // `a_motion_instance_of_a_patterned_shape_paints_the_fallback` prende-a, para que o dia em
         // que alguém a mudar seja um acto deliberado e não um efeito colateral.
-        draw_path_with(path, tess, transform, target, None);
+        draw_path_with(path, tess, transform, target, None, None);
     } else {
         let fill_bp = tess
             .fill_bp
@@ -101,7 +101,7 @@ pub(crate) fn draw_shape_instance_tessellated(
         // mexia na largura do traço, e o `motion.tint` a jusante deixava de pintar coisa
         // nenhuma. Pela porta ÚNICA do traço ([`crate::draw_stroke_with`]), então tracejado,
         // pontas e alinhamento são os mesmos de um caminho de documento.
-        crate::draw_stroke_with(path, tess, transform, target);
+        crate::draw_stroke_with(path, tess, transform, target, None);
     }
 }
 

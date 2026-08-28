@@ -89,6 +89,60 @@ pub fn stroke_uniform(
     }
 }
 
+/// ⭐⭐ **O MESMO traço, pintado com uma IMAGEM** (plano 35, wave B) — e ele existe por causa de uma
+/// armadilha que o irmão sólido não tem.
+///
+/// ⚠️⚠️ **O Vello compõe `transform * brush_transform`, e este módulo tem DOIS caminhos que passam
+/// afins diferentes ao Vello.** No caminho rápido a geometria é local e o afim é o `transform` ⇒ o
+/// `brush_transform` local chega certo. No caminho não-conforme a geometria **já foi levada à tela**
+/// e o afim é `IDENTITY` ⇒ o padrão ficaria no espaço errado, encolhido no canto do mundo. Aqui ele
+/// é pré-composto com o `transform`.
+///
+/// ⇒ *o padrão tem de cair no MESMO sítio nos dois caminhos*, e há gate a medi-lo.
+#[allow(clippy::too_many_arguments)] // um facto por argumento, como o irmao de preenchimento
+pub fn stroke_uniform_image(
+    target: &mut VectorScene,
+    stroke: &Stroke,
+    transform: Affine,
+    image: &ph2d_vector::StableImage,
+    brush_transform: Affine,
+    x_extend: ph2d_vector::Extend,
+    y_extend: ph2d_vector::Extend,
+    quality: ph2d_vector::ImageQuality,
+    alpha: f32,
+    bp: &BezPath,
+) {
+    let (pen, pen_xf) = pen_for(stroke, transform);
+    match pen {
+        None => target.stroke_path_image(
+            bp,
+            stroke,
+            pen_xf,
+            image,
+            brush_transform,
+            x_extend,
+            y_extend,
+            quality,
+            alpha,
+        ),
+        Some(pen) => {
+            let screen = transform * bp.clone();
+            target.stroke_path_image(
+                &screen,
+                &pen,
+                pen_xf,
+                image,
+                // ⚠️ A geometria já atravessou o afim; o pincel tem de o atravessar também.
+                transform * brush_transform,
+                x_extend,
+                y_extend,
+                quality,
+                alpha,
+            );
+        }
+    }
+}
+
 /// **A CANETA QUE CHEGA AO VELLO, e sob que afim** — a decisão inteira desta porta, isolada para
 /// poder ser MEDIDA.
 ///

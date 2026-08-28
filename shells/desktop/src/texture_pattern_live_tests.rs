@@ -50,7 +50,10 @@ fn a_loaded_image_becomes_a_tile() {
     ));
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    let tile = live.tiles().get(&path).expect("o padrao assou");
+    let tile = live
+        .tiles()
+        .get(&(path, ph2d_vec_render::PatternSlot::Fill))
+        .expect("o padrao assou");
     assert_eq!(tile.tile_px, [4, 4]);
     assert_eq!(tile.cells, [1, 1]);
 }
@@ -67,7 +70,11 @@ fn an_unresolved_source_produces_no_tile() {
     ));
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    assert!(live.tiles().get(&path).is_none());
+    assert!(
+        live.tiles()
+            .get(&(path, ph2d_vec_render::PatternSlot::Fill))
+            .is_none()
+    );
     // E uma fonte-FORMA também não, enquanto a W7 não existir.
     let (scene2, path2) = scene_with(PatternFill::new(
         PatternSource::Shape(7),
@@ -75,7 +82,11 @@ fn an_unresolved_source_produces_no_tile() {
         Rgba8::new(1, 2, 3, 255),
     ));
     live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape());
-    assert!(live.tiles().get(&path2).is_none());
+    assert!(
+        live.tiles()
+            .get(&(path2, ph2d_vec_render::PatternSlot::Fill))
+            .is_none()
+    );
 }
 
 /// ⭐ **O memo acerta: re-assar sem mudar nada devolve o MESMO handle** (o mesmo `Blob`, logo a
@@ -93,9 +104,11 @@ fn recooking_an_unchanged_pattern_keeps_the_same_handle() {
     ));
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    let first = live.tiles()[&path].image.clone();
+    let first = live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)]
+        .image
+        .clone();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    let second = &live.tiles()[&path].image;
+    let second = &live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)].image;
     assert_eq!(
         first.width(),
         second.width(),
@@ -112,7 +125,7 @@ fn recooking_an_unchanged_pattern_keeps_the_same_handle() {
     let (scene2, path2) = scene_with(f2);
     live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape());
     assert_eq!(
-        live.tiles()[&path2].tile_px,
+        live.tiles()[&(path2, ph2d_vec_render::PatternSlot::Fill)].tile_px,
         [4, 12],
         "o tijolo de 1/3 pede tres linhas"
     );
@@ -132,7 +145,7 @@ fn changing_the_filter_does_not_rebake() {
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
     live.recook(&scene, &db, ImageQuality::Low, &mut no_shape());
-    let t = &live.tiles()[&path];
+    let t = &live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)];
     assert_eq!(t.quality, ImageQuality::Low, "o filtro tem de acompanhar");
     assert_eq!(t.tile_px, [4, 4]);
 }
@@ -149,7 +162,10 @@ fn a_shape_that_loses_its_pattern_loses_its_tile() {
     ));
     let mut live = TexturePatternLive::default();
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    assert!(live.tiles().contains_key(&path));
+    assert!(
+        live.tiles()
+            .contains_key(&(path, ph2d_vec_render::PatternSlot::Fill))
+    );
     scene.path_mut(path).unwrap().fill = Some(Paint::solid(Rgba8::new(9, 9, 9, 255)));
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
     assert!(
@@ -181,7 +197,7 @@ fn a_tile_too_big_for_the_atlas_is_scaled_and_still_shows() {
     live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
     let tile = live
         .tiles()
-        .get(&path)
+        .get(&(path, ph2d_vec_render::PatternSlot::Fill))
         .expect("o ladrilho tem de ser REDUZIDO, nao recusado");
     assert!(
         tile.tile_px[0] <= ph2d_vec_pattern::MAX_TILE_EDGE_PX
@@ -225,7 +241,12 @@ fn a_pattern_whose_source_is_itself_is_refused() {
         !assou,
         "o assador foi chamado para uma forma que e' a propria fonte"
     );
-    assert!(live.tiles().get(&id).is_none(), "o ciclo produziu ladrilho");
+    assert!(
+        live.tiles()
+            .get(&(id, ph2d_vec_render::PatternSlot::Fill))
+            .is_none(),
+        "o ciclo produziu ladrilho"
+    );
     // CONTROLO: apontar a OUTRA forma assa.
     let outra = ciclo.push_path(VecPath {
         verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
@@ -239,7 +260,12 @@ fn a_pattern_whose_source_is_itself_is_refused() {
     }
     let mut bake2 = |_| Some((2u32, 2, vec![9u8; 2 * 2 * 4]));
     live.recook(&ciclo, &db, ImageQuality::Medium, &mut bake2);
-    assert!(live.tiles().get(&id).is_some(), "a fonte valida nao assou");
+    assert!(
+        live.tiles()
+            .get(&(id, ph2d_vec_render::PatternSlot::Fill))
+            .is_some(),
+        "a fonte valida nao assou"
+    );
 }
 
 /// ⭐⭐ **EDITAR A FORMA-FONTE RE-ASSA o ladrilho** — é o *"pattern fills are dynamic"* do Figma, e é
@@ -281,7 +307,10 @@ fn editing_the_source_shape_rebakes_the_tile() {
         live.recook(&scene, &db, ImageQuality::Medium, &mut bake);
     }
     assert_eq!(n, 1, "o memo re-assou o que nao mudou");
-    assert!(live.tiles().contains_key(&alvo));
+    assert!(
+        live.tiles()
+            .contains_key(&(alvo, ph2d_vec_render::PatternSlot::Fill))
+    );
     // Mexer num NÓ da fonte tem de re-assar.
     if let Some(p) = scene.path_mut(fonte) {
         p.verts[2].anchor = [5.0, 5.0];
@@ -296,5 +325,64 @@ fn editing_the_source_shape_rebakes_the_tile() {
     assert_eq!(
         n, 2,
         "editar a forma-fonte NAO re-assou - o padrao ficaria morto"
+    );
+}
+
+// ── O PADRÃO NO TRAÇO — wave C (plano 35) ─────────────────────────────────────────────
+
+/// ⭐⭐ **UMA FORMA PODE TER PADRÃO NO PREENCHIMENTO E NO TRAÇO AO MESMO TEMPO**, e os dois são
+/// entradas INDEPENDENTES no memo.
+///
+/// ⚠️ **A fixtura contém o fenómeno de propósito:** os dois padrões têm reticulados diferentes, e
+/// por isso ladrilhos diferentes. Com dois padrões IGUAIS este gate ficaria verde sobre um mapa
+/// indexado só pela forma — que era exactamente o defeito que a chave por slot cura.
+#[test]
+fn a_shape_can_have_a_pattern_on_fill_and_stroke_at_once() {
+    use ph2d_vec_render::PatternSlot;
+    let (db, asset) = db_with_art();
+    let mut do_fill = PatternFill::new(
+        PatternSource::Image(asset),
+        [4.0, 4.0],
+        Rgba8::new(1, 2, 3, 255),
+    );
+    do_fill.kind = TileKind::Grid;
+    let mut do_traco = PatternFill::new(
+        PatternSource::Image(asset),
+        [4.0, 4.0],
+        Rgba8::new(9, 9, 9, 255),
+    );
+    // ⚠️ Tijolo com meio passo: o ladrilho assado tem DUAS linhas, então ele difere do da grade em
+    // pixels — é o que torna a mistura das duas entradas visível a este gate.
+    do_traco.kind = TileKind::BrickRow;
+    do_traco.offset_denom = 2;
+
+    let (mut scene, id) = scene_with(do_fill);
+    let mut s = ph2d_vec_scene::StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 1.0);
+    s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(do_traco));
+    scene.path_mut(id).expect("a forma").stroke = Some(s);
+
+    let mut live = TexturePatternLive::default();
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+
+    let f = live
+        .tiles()
+        .get(&(id, PatternSlot::Fill))
+        .expect("o padrao do preenchimento assou");
+    let t = live
+        .tiles()
+        .get(&(id, PatternSlot::Stroke))
+        .expect("o padrao do traco assou");
+    assert_ne!(
+        f.tile_px, t.tile_px,
+        "os dois ladrilhos sairam iguais - a chave do mapa nao esta' a separar as duas tintas"
+    );
+
+    // ⚠️ E a varredura desmarca por SLOT: tirar o padrão do traço não pode levar o do preenchimento.
+    scene.path_mut(id).expect("a forma").stroke = None;
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    assert!(live.tiles().contains_key(&(id, PatternSlot::Fill)));
+    assert!(
+        !live.tiles().contains_key(&(id, PatternSlot::Stroke)),
+        "o ladrilho do traco sobreviveu a' remocao da tinta dele"
     );
 }

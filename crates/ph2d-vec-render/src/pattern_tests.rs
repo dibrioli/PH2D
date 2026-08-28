@@ -241,7 +241,7 @@ fn a_tile_replaces_the_fallback_and_without_one_the_encode_is_the_solids() {
     let mut tiles = crate::PatternTiles::new();
     let id = pat.paths()[0].id;
     tiles.insert(
-        id,
+        (id, crate::PatternSlot::Fill),
         crate::PatternTile {
             image: tile(),
             cells: [1, 1],
@@ -315,7 +315,7 @@ fn a_patterned_shape_still_draws_its_stroke() {
             ..VecPath::default()
         };
         let mut s = VectorScene::new();
-        crate::draw_path_tiled(&path, Affine::IDENTITY, &mut s, tile);
+        crate::draw_path_tiled(&path, Affine::IDENTITY, &mut s, tile, None);
         s.inner().encoding().n_paths
     };
     let cor = Rgba8::new(200, 30, 30, 255);
@@ -387,7 +387,7 @@ fn the_isolated_rasterisation_honours_the_pattern_tile() {
     let sem = run(&crate::PatternTiles::new());
     let mut tiles = crate::PatternTiles::new();
     tiles.insert(
-        id,
+        (id, crate::PatternSlot::Fill),
         crate::PatternTile {
             image: tile(),
             cells: [1, 1],
@@ -399,5 +399,204 @@ fn the_isolated_rasterisation_honours_the_pattern_tile() {
         sem,
         run(&tiles),
         "a rasterizacao isolada ignorou o ladrilho - um filtro apagaria o padrao"
+    );
+}
+
+// ── O PADRÃO NO TRAÇO — wave B (plano 35) ─────────────────────────────────────────────
+
+use ph2d_vec_scene::{StrokePaint, StrokeSpec};
+
+/// Uma forma **só com traço** (sem preenchimento), com a tinta que se pedir.
+fn so_traco(paint: StrokePaint) -> ph2d_vec_scene::VecScene {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(9, 9, 9, 255), 1.0);
+    s.paint = paint;
+    scene.push_path(ph2d_vec_scene::VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+            .map(ph2d_vec_scene::VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(s),
+        ..ph2d_vec_scene::VecPath::default()
+    });
+    scene
+}
+
+fn pat_do_traco() -> StrokePaint {
+    StrokePaint::Pattern(Box::new(ph2d_vec_scene::PatternFill::new(
+        ph2d_vec_scene::PatternSource::Shape(1),
+        [4.0, 4.0],
+        ph2d_vec_scene::Rgba8::new(200, 30, 30, 255),
+    )))
+}
+
+fn tile_de_teste() -> crate::PatternTile {
+    crate::PatternTile {
+        image: tile(),
+        cells: [1, 1],
+        tile_px: [1, 1],
+        quality: ImageQuality::Medium,
+    }
+}
+
+fn desenha(scene: &ph2d_vec_scene::VecScene, tiles: &crate::PatternTiles) -> VectorScene {
+    let mut target = VectorScene::new();
+    crate::dispatch(
+        scene,
+        &ph2d_vec_scene::VecViewState::default(),
+        &ph2d_vec_scene::VecXforms::new(),
+        &crate::LiveGeometry::new(),
+        &crate::FxImages::new(),
+        &crate::WidgetSkins::new(),
+        tiles,
+        Affine::IDENTITY,
+        &mut target,
+    );
+    target
+}
+
+/// ⭐⭐ **UM TRAÇO COM PADRÃO DESENHA O LADRILHO** — e sem ladrilho pinta a `fallback`, byte a byte
+/// como um traço sólido daquela cor.
+///
+/// As duas metades são desenho CERTO: a segunda é o que o artista vê enquanto a arte carrega.
+/// ⛔ Desenhar NADA seria pior — uma linha invisível não se distingue de uma forma sem contorno.
+#[test]
+fn a_patterned_stroke_draws_the_tile_and_falls_back_to_the_colour() {
+    let com_padrao = so_traco(pat_do_traco());
+    let solido = so_traco(StrokePaint::Solid(ph2d_vec_scene::Rgba8::new(
+        200, 30, 30, 255,
+    )));
+    let vazio = crate::PatternTiles::new();
+
+    // 1. Sem ladrilho: BYTE-A-BYTE o encode de um traço sólido da cor de recurso.
+    let a = desenha(&com_padrao, &vazio);
+    let b = desenha(&solido, &vazio);
+    assert!(a.inner().encoding().draw_tags == b.inner().encoding().draw_tags);
+    assert_eq!(
+        a.inner().encoding().draw_data,
+        b.inner().encoding().draw_data
+    );
+
+    // 2. Com ladrilho: deixa de o ser.
+    let mut tiles = crate::PatternTiles::new();
+    let id = com_padrao.paths()[0].id;
+    tiles.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+    let c = desenha(&com_padrao, &tiles);
+    assert!(
+        c.inner().encoding().draw_tags != b.inner().encoding().draw_tags,
+        "com ladrilho o traco continuou a encodar um solido"
+    );
+}
+
+/// ⚠️⚠️ **O ladrilho do TRAÇO não é o do PREENCHIMENTO** — a chave do mapa tem de os separar.
+///
+/// Uma chave só pela forma entregaria o ladrilho do preenchimento ao traço, e o desenho ficaria
+/// certo **por acidente** enquanto os dois fossem iguais.
+#[test]
+fn the_fill_tile_is_not_handed_to_the_stroke() {
+    let scene = so_traco(pat_do_traco());
+    let id = scene.paths()[0].id;
+    let vazio = crate::PatternTiles::new();
+    let base = desenha(&scene, &vazio);
+
+    // Um ladrilho no slot do PREENCHIMENTO não pode mudar o traço.
+    let mut errado = crate::PatternTiles::new();
+    errado.insert((id, crate::PatternSlot::Fill), tile_de_teste());
+    let a = desenha(&scene, &errado);
+    assert!(
+        a.inner().encoding().draw_tags == base.inner().encoding().draw_tags,
+        "o ladrilho do preenchimento vazou para o traco"
+    );
+    // CONTROLO: no slot certo, ele muda — senão este gate mediria um mapa que nunca é lido.
+    let mut certo = crate::PatternTiles::new();
+    certo.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+    assert!(
+        desenha(&scene, &certo).inner().encoding().draw_tags != base.inner().encoding().draw_tags
+    );
+}
+
+/// ⭐ **O KILL-CRITERION do plano 35:** um traço com padrão custa o que um traço sólido custa —
+/// **zero** camadas de clip.
+///
+/// ⚠️ O `n_clips` conta **duas** por camada (o `begin` e o `end`), e é por isso que a barra é a
+/// IGUALDADE com o sólido, e não um número escrito à mão.
+#[test]
+fn a_patterned_stroke_pushes_no_clip_layer() {
+    let scene = so_traco(pat_do_traco());
+    let id = scene.paths()[0].id;
+    let mut tiles = crate::PatternTiles::new();
+    tiles.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+    let com = desenha(&scene, &tiles);
+    let solido = desenha(
+        &so_traco(StrokePaint::Solid(ph2d_vec_scene::Rgba8::new(9, 9, 9, 255))),
+        &crate::PatternTiles::new(),
+    );
+    assert_eq!(
+        com.inner().encoding().n_clips,
+        solido.inner().encoding().n_clips,
+        "o padrao no traco empurrou camada - o kill-criterion do plano 35 caiu"
+    );
+    assert_eq!(
+        com.inner().encoding().n_paths,
+        solido.inner().encoding().n_paths,
+        "o padrao no traco custou mais um desenho que o solido"
+    );
+}
+
+/// ⚠️⚠️ **O PADRÃO CAI NO MESMO SÍTIO nos dois caminhos do `stroke_uniform`** — e este gate existe
+/// porque o segundo caminho é uma armadilha real.
+///
+/// O Vello compõe `transform * brush_transform`. No caminho rápido (afim conforme) a geometria é
+/// local e o afim é o `transform` ⇒ a colocação local chega certa. No caminho não-conforme a
+/// geometria **já foi levada à tela** e o afim que chega ao Vello é `IDENTITY` ⇒ sem pré-compor, o
+/// padrão ficaria no espaço LOCAL sobre uma geometria de TELA: encolhido no canto do mundo.
+///
+/// ⭐ A régua é a IGUALDADE dos afins que chegam ao encoding — não uma imagem, não um relógio.
+#[test]
+fn the_stroke_pattern_lands_in_the_same_place_under_a_non_conformal_affine() {
+    let scene = so_traco(pat_do_traco());
+    let id = scene.paths()[0].id;
+    let mut tiles = crate::PatternTiles::new();
+    tiles.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+
+    let desenhar = |xf: Affine| {
+        let mut target = VectorScene::new();
+        crate::dispatch(
+            &scene,
+            &ph2d_vec_scene::VecViewState::default(),
+            &ph2d_vec_scene::VecXforms::new(),
+            &crate::LiveGeometry::new(),
+            &crate::FxImages::new(),
+            &crate::WidgetSkins::new(),
+            &tiles,
+            xf,
+            &mut target,
+        );
+        target.inner().encoding().transforms.clone()
+    };
+    // ⚠️ A MESMA escala não-uniforme que parte a caneta (bug #27) — é ela que manda o traço pelo
+    // caminho lento. O controlo é a versão uniforme do mesmo afim.
+    let partido = Affine::scale_non_uniform(3.0, 1.0);
+    let conforme = Affine::scale(3.0);
+    assert!(
+        !is_conformal(partido),
+        "a fixtura deixou de conter o fenomeno: este afim ja' e' conforme"
+    );
+    assert!(is_conformal(conforme));
+
+    // O afim do PINCEL que chega ao Vello tem de ser o mesmo nos dois caminhos, a menos do afim da
+    // geometria — que é exactamente o que o caminho lento pré-compõe.
+    let a = desenhar(partido);
+    let b = desenhar(conforme);
+    assert!(
+        !a.is_empty() && !b.is_empty(),
+        "nenhum dos dois encodou transform nenhum"
+    );
+    // ⭐ A afirmação forte: o caminho lento **não** deixa a colocação no espaço local. Se deixasse,
+    // o afim do pincel seria idêntico ao do caso identidade — e não é.
+    let identidade = desenhar(Affine::IDENTITY);
+    assert!(
+        a != identidade,
+        "o caminho nao-conforme deixou a colocacao no espaco LOCAL - o padrao encolhe no canto"
     );
 }

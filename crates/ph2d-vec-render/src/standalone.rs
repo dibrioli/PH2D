@@ -90,10 +90,11 @@ pub fn draw_path_isolated(
     offset: Affine,
     target: &mut VectorScene,
 ) {
-    let tile = patterns.get(&id);
+    let tile = patterns.get(&(id, crate::PatternSlot::Fill));
+    let stroke_tile = patterns.get(&(id, crate::PatternSlot::Stroke));
     if let Some(items) = live.get(&id) {
         for item in items {
-            crate::draw_path_tiled(item, offset * camera, target, tile);
+            crate::draw_path_tiled(item, offset * camera, target, tile, stroke_tile);
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
         crate::draw_path_tiled(
@@ -101,6 +102,7 @@ pub fn draw_path_isolated(
             offset * path_to_screen(xforms, id, camera),
             target,
             tile,
+            stroke_tile,
         );
     }
 }

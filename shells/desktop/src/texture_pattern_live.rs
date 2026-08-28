@@ -28,7 +28,7 @@
 //! por quadro faz a textura ser **re-enviada ao atlas** todo quadro.
 
 use ph2d_asset::AssetDb;
-use ph2d_vec_render::{PatternTile, PatternTiles};
+use ph2d_vec_render::{PatternSlot, PatternTile, PatternTiles};
 use ph2d_vec_scene::{Paint, PatternSource, VecPath, VecPathId, VecScene};
 use ph2d_vector::{ImageQuality, StableImage};
 use std::collections::{BTreeMap, BTreeSet};
@@ -87,7 +87,7 @@ fn source_shape(scene: &VecScene, host: VecPathId, source: &PatternSource) -> Op
 #[derive(Default)]
 pub(crate) struct TexturePatternLive {
     tiles: PatternTiles,
-    keys: BTreeMap<VecPathId, Key>,
+    keys: BTreeMap<(VecPathId, PatternSlot), Key>,
 }
 
 impl TexturePatternLive {
@@ -115,78 +115,109 @@ impl TexturePatternLive {
     ) {
         let mut seen = BTreeSet::new();
         for path in scene.paths() {
-            let Some(Paint::Pattern(pat)) = path.fill.as_ref() else {
-                continue;
+            // ⭐⭐ **AS DUAS TINTAS de uma forma** (plano 35, wave C): o preenchimento e o traço
+            // podem ter padrões INDEPENDENTES, então cada um é uma entrada própria no memo.
+            // ⚠️ Uma chave só pela forma entregaria o ladrilho do preenchimento ao traço, e o
+            // desenho ficaria certo **por acidente** enquanto os dois fossem iguais.
+            let da_forma = match path.fill.as_ref() {
+                Some(Paint::Pattern(pat)) => Some((PatternSlot::Fill, pat.as_ref())),
+                _ => None,
             };
-            let shape = source_shape(scene, path.id, &pat.source);
-            // ⚠️ Uma fonte-FORMA que não resolve (inexistente, ou a própria forma) nunca chega ao
-            // assador: a recusa é PURA e mora na `source_shape`.
-            if matches!(pat.source, PatternSource::Shape(_)) && shape.is_none() {
-                continue;
+            let do_traco = path
+                .stroke
+                .as_ref()
+                .and_then(ph2d_vec_scene::StrokeSpec::pattern)
+                .map(|pat| (PatternSlot::Stroke, pat));
+            for (slot, pat) in da_forma.into_iter().chain(do_traco) {
+                self.bake_one(
+                    scene, assets, quality, bake_shape, &mut seen, path.id, slot, pat,
+                );
             }
-            let key = Key {
-                source: pat.source,
-                kind: pat.kind,
-                offset_denom: pat.offset_denom,
-                size: pat.size,
-                gap: pat.gap,
-                shape,
-            };
-            seen.insert(path.id);
-            if self.keys.get(&path.id) == Some(&key) {
-                // ⭐ Só o filtro se actualiza: ele não muda um byte do assado. E — mais importante —
-                // **não se resolve a arte**: com uma fonte-FORMA isso seria um readback de GPU por
-                // quadro.
-                if let Some(t) = self.tiles.get_mut(&path.id) {
-                    t.quality = quality;
-                }
-                continue;
-            }
-            let Some((aw, ah, px)) = art_of(&pat.source, assets, key.shape.is_some(), bake_shape)
-            else {
-                // A arte ainda não carregou: a entrada fica de fora e a forma pinta a `fallback` —
-                // desenho certo, não desistência. ⚠️ E a chave NÃO se grava, senão o próximo quadro
-                // acharia que já estava assado.
-                self.tiles.remove(&path.id);
-                self.keys.remove(&path.id);
-                continue;
-            };
-            let law = pat.law([aw, ah]);
-            let tile = match ph2d_vec_pattern::bake(&px, aw, ah, &law) {
-                Ok(t) => t,
-                Err(e) => {
-                    eprintln!(
-                        "[pattern] o assado da forma {} recusou ({e:?}) - ela vai pintar a cor de \
-                         recurso",
-                        path.id
-                    );
-                    self.tiles.remove(&path.id);
-                    self.keys.remove(&path.id);
-                    continue;
-                }
-            };
-            let Some(image) = StableImage::from_rgba(Arc::new(tile.rgba), tile.width, tile.height)
-            else {
-                self.tiles.remove(&path.id);
-                self.keys.remove(&path.id);
-                continue;
-            };
-            self.tiles.insert(
-                path.id,
-                PatternTile {
-                    image,
-                    cells: tile.cells,
-                    tile_px: [tile.width, tile.height],
-                    quality,
-                },
-            );
-            self.keys.insert(path.id, key);
         }
         // ⚠️ **A varredura tem as DUAS metades.** Marcar sem desmarcar deixaria o ladrilho de uma
-        // forma que deixou de ter padrão (ou que foi apagada) a ser desenhado para sempre, e a
+        // tinta que deixou de ter padrão (ou de uma forma apagada) a ser desenhado para sempre, e a
         // memória dele viva — é a mesma lei das duas metades do passe do `MasterPiece`.
-        self.tiles.retain(|id, _| seen.contains(id));
-        self.keys.retain(|id, _| seen.contains(id));
+        self.tiles.retain(|k, _| seen.contains(k));
+        self.keys.retain(|k, _| seen.contains(k));
+    }
+
+    /// Assa (ou reaproveita) o ladrilho de **uma** tinta. Extraída do [`Self::recook`] quando o
+    /// traço passou a poder ter padrão — o corpo é o mesmo, o sujeito é que passou a ser dois.
+    #[allow(clippy::too_many_arguments)] // um facto por argumento; agrupá-los esconderia o slot
+    fn bake_one(
+        &mut self,
+        scene: &VecScene,
+        assets: &AssetDb,
+        quality: ImageQuality,
+        bake_shape: &mut dyn FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)>,
+        seen: &mut BTreeSet<(VecPathId, PatternSlot)>,
+        id: VecPathId,
+        slot: PatternSlot,
+        pat: &ph2d_vec_scene::PatternFill,
+    ) {
+        let shape = source_shape(scene, id, &pat.source);
+        // ⚠️ Uma fonte-FORMA que não resolve (inexistente, ou a própria forma) nunca chega ao
+        // assador: a recusa é PURA e mora na `source_shape`.
+        if matches!(pat.source, PatternSource::Shape(_)) && shape.is_none() {
+            return;
+        }
+        let key = Key {
+            source: pat.source,
+            kind: pat.kind,
+            offset_denom: pat.offset_denom,
+            size: pat.size,
+            gap: pat.gap,
+            shape,
+        };
+        let slot_key = (id, slot);
+        seen.insert(slot_key);
+        if self.keys.get(&slot_key) == Some(&key) {
+            // ⭐ Só o filtro se actualiza: ele não muda um byte do assado. E — mais importante —
+            // **não se resolve a arte**: com uma fonte-FORMA isso seria um readback de GPU por
+            // quadro.
+            if let Some(t) = self.tiles.get_mut(&slot_key) {
+                t.quality = quality;
+            }
+            return;
+        }
+        let Some((aw, ah, px)) = art_of(&pat.source, assets, key.shape.is_some(), bake_shape)
+        else {
+            // A arte ainda não carregou: a entrada fica de fora e a tinta pinta a `fallback` —
+            // desenho certo, não desistência. ⚠️ E a chave NÃO se grava, senão o próximo quadro
+            // acharia que já estava assado.
+            self.tiles.remove(&slot_key);
+            self.keys.remove(&slot_key);
+            return;
+        };
+        let law = pat.law([aw, ah]);
+        let tile = match ph2d_vec_pattern::bake(&px, aw, ah, &law) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!(
+                    "[pattern] o assado da forma {id} ({slot:?}) recusou ({e:?}) - ela vai pintar a \
+                     cor de recurso"
+                );
+                self.tiles.remove(&slot_key);
+                self.keys.remove(&slot_key);
+                return;
+            }
+        };
+        let Some(image) = StableImage::from_rgba(Arc::new(tile.rgba), tile.width, tile.height)
+        else {
+            self.tiles.remove(&slot_key);
+            self.keys.remove(&slot_key);
+            return;
+        };
+        self.tiles.insert(
+            slot_key,
+            PatternTile {
+                image,
+                cells: tile.cells,
+                tile_px: [tile.width, tile.height],
+                quality,
+            },
+        );
+        self.keys.insert(slot_key, key);
     }
 }
 

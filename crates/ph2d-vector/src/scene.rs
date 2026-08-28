@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 use vello::Scene;
-use vello::kurbo::{Affine, BezPath, Rect};
+use vello::kurbo::{Affine, BezPath, Rect, Stroke};
 use vello::peniko::{
     Blob, Brush, Color, Extend, Fill, ImageAlphaType, ImageBrush, ImageData, ImageFormat,
     ImageQuality,
@@ -299,6 +299,35 @@ impl VectorScene {
             .with_alpha(alpha);
         self.inner
             .fill(rule, transform, &brush, Some(brush_transform), path);
+    }
+
+    /// ⭐ **Uma IMAGEM preenche a FAIXA de um traço** (plano 35, wave B) — irmã do
+    /// [`Self::fill_path_image`], e existe pela mesma razão: o `brush_transform` do peniko está
+    /// **morto** na porta de traço que havia, e é ele que põe o padrão no espaço local do caminho.
+    ///
+    /// ⚠️ O Vello compõe `transform * brush_transform` — então quem chama tem de saber sob que afim
+    /// a GEOMETRIA vai (ver `stroke_uniform`, onde o caminho não-conforme leva a geometria à tela e
+    /// passa `IDENTITY`).
+    #[allow(clippy::too_many_arguments)] // os mesmos sete factos do irmão de preenchimento
+    pub fn stroke_path_image(
+        &mut self,
+        path: &BezPath,
+        style: &Stroke,
+        transform: Affine,
+        image: &StableImage,
+        brush_transform: Affine,
+        x_extend: Extend,
+        y_extend: Extend,
+        quality: ImageQuality,
+        alpha: f32,
+    ) {
+        let brush = ImageBrush::new(image.data.clone())
+            .with_x_extend(x_extend)
+            .with_y_extend(y_extend)
+            .with_quality(quality)
+            .with_alpha(alpha);
+        self.inner
+            .stroke(style, transform, &brush, Some(brush_transform), path);
     }
 
     /// Push a clip layer that masks subsequent drawing to `path`.

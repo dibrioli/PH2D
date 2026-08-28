@@ -10,11 +10,9 @@
 //! Fase 0: draw estático da cena inteira. **Dirty-tracking** (só re-encodar a
 //! sub-árvore que mudou — a alavanca de escala do ADR-0108) é o próximo passo.
 
-use std::borrow::Cow;
-
 use ph2d_vec_scene::{
-    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokePiece, StrokeSpec, VecPath,
-    VecPathId, VecScene, VecViewState, VecXforms,
+    FillRule as VecFillRule, LineCap, LineJoin, Paint, Rgba8, StrokeSpec, VecPath, VecPathId,
+    VecScene, VecViewState, VecXforms,
 };
 use ph2d_vector::{
     Affine, BezPath, Brush, Cap, Circle, Color, ColorStop, Fill, Gradient, Join, Point, Rect,
@@ -109,6 +107,12 @@ mod build;
 pub(crate) use build::build_contours;
 pub use build::{build_bezpath, build_fill_bezpath, build_lines_bezpath};
 
+/// **A METADE DO TRAÇO** — módulo irmão pelo teto de LOC, e o corte por RESPONSABILIDADE já estava
+/// escrito no doc-comment da função: quem traça passa por uma porta só, incluindo a rota de
+/// instância de Motion.
+mod stroke_draw;
+pub(crate) use stroke_draw::draw_stroke_with;
+
 /// **AS CAIXAS em px de tela** — módulo irmão pelo teto de LOC, e o corte é por RESPONSABILIDADE:
 /// ali ninguém desenha, só se pergunta *onde, na tela, esta forma vive*.
 mod path_bounds;
@@ -183,9 +187,23 @@ pub struct PatternTile {
     pub quality: ph2d_vector::ImageQuality,
 }
 
-/// Os ladrilhos de padrão deste quadro, por forma. Vazio = nenhum padrão resolvido, e toda forma
-/// com `Paint::Pattern` pinta a `fallback` dela — que é desenho CERTO, não uma desistência.
-pub type PatternTiles = std::collections::BTreeMap<VecPathId, PatternTile>;
+/// ⭐ **QUAL das duas tintas de uma forma** este ladrilho serve (plano 35, wave B).
+///
+/// ⚠️ Uma forma pode ter padrão no preenchimento **e** no traço, e são dois `PatternFill`
+/// independentes ⇒ o mapa não pode ser indexado só pela forma. *Uma chave que não distingue os dois
+/// sujeitos entrega o ladrilho do preenchimento ao traço, e o desenho fica certo por acidente
+/// enquanto os dois forem iguais.*
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum PatternSlot {
+    /// O padrão do `Paint::Pattern` do preenchimento.
+    Fill,
+    /// O padrão do `StrokePaint::Pattern` do traço.
+    Stroke,
+}
+
+/// Os ladrilhos de padrão deste quadro, por forma **e por slot**. Vazio = nenhum padrão resolvido, e
+/// toda tinta de padrão pinta a `fallback` dela — que é desenho CERTO, não uma desistência.
+pub type PatternTiles = std::collections::BTreeMap<(VecPathId, PatternSlot), PatternTile>;
 
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
@@ -275,14 +293,15 @@ pub fn dispatch(
                 // logo acima e pela mesma razão**: as cópias derivadas (offset/pattern-on-path/
                 // espelho) têm id próprio, então uma busca por elas não acharia nada e o padrão
                 // pararia na borda do primeiro efeito.
-                let tile = patterns.get(&path.id);
+                let tile = patterns.get(&(path.id, PatternSlot::Fill));
+                let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
                 if let Some(items) = live.get(&path.id) {
                     for item in items {
-                        draw_path_tiled(&item.painted(bound), camera, target, tile);
+                        draw_path_tiled(&item.painted(bound), camera, target, tile, stroke_tile);
                     }
                 } else {
                     let transform = path_to_screen(xforms, path.id, camera);
-                    draw_path_tiled(&path.painted(bound), transform, target, tile);
+                    draw_path_tiled(&path.painted(bound), transform, target, tile, stroke_tile);
                 }
             }
         }
@@ -376,7 +395,7 @@ pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[
 /// Tessela sua própria geometria ([`path_tess`]) e delega a [`draw_path_with`] — byte-idêntico ao
 /// desenho de antes: 1 cozimento + as construções de sempre por chamada.
 pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    draw_path_tiled(path, transform, target, None);
+    draw_path_tiled(path, transform, target, None, None);
 }
 
 /// Igual a [`draw_path`], mas com o LADRILHO de padrão desta forma neste quadro.
@@ -388,9 +407,10 @@ pub(crate) fn draw_path_tiled(
     transform: Affine,
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
+    stroke_tile: Option<&PatternTile>,
 ) {
     let tess = path_tess(path);
-    draw_path_with(path, &tess, transform, target, tile);
+    draw_path_with(path, &tess, transform, target, tile, stroke_tile);
 }
 
 /// Desenha um path a partir da geometria JÁ TESSELADA (`tess`) — a metade barata do [`draw_path`],
@@ -405,6 +425,7 @@ pub(crate) fn draw_path_with(
     transform: Affine,
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
+    stroke_tile: Option<&PatternTile>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     if let Some(fill) = &path.fill {
@@ -448,86 +469,7 @@ pub(crate) fn draw_path_with(
             );
         }
     }
-    draw_stroke_with(path, tess, transform, target);
-}
-
-/// **A metade do TRAÇO** de [`draw_path_with`] — extraída porque a rota de INSTÂNCIA de
-/// Motion precisa dela sem a metade do preenchimento (a cor de um primitivo é o `tint` da
-/// instância, não o `path.fill`).
-///
-/// ⚠️ **Extraída, e não copiada.** O traço é o que o [`ph2d_vec_scene::stroke_plan`] lista —
-/// tracejado, pontas, alinhamento — e uma segunda cópia disso divergiria no primeiro ajuste
-/// ([[feedback_two_doors_to_the_same_question_diverge]]). Quem quiser traçar passa por aqui.
-pub(crate) fn draw_stroke_with(
-    path: &VecPath,
-    tess: &PathTess,
-    transform: Affine,
-    target: &mut VectorScene,
-) {
-    let fill_bp = tess.fill_bp.as_ref();
-    let stroke_own = tess.stroke_bp.as_ref();
-    if let Some(s) = path.stroke.as_ref() {
-        let bp = stroke_own
-            .or(fill_bp)
-            .expect("stroke => um dos dois desenhos existe");
-        // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
-        // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
-        let brush = Brush::Solid(color(s.color()));
-        for piece in ph2d_vec_scene::stroke_plan(path, s) {
-            match piece {
-                StrokePiece::Line { path: line } => match line {
-                    // Emprestado = a peça É o path, e `bp` já o descreve (o caso de 99% dos
-                    // traços, e o motivo de o plano devolver `Cow`). ⚠️ Passa por REFERÊNCIA:
-                    // clonar o `BezPath` por instância era um custo por-instância que o cache de
-                    // tesselação não remove — e a 160k estrelas era metade do que sobrava (byte-
-                    // idêntico: um clone e o original encodam os mesmos bytes no Vello).
-                    Cow::Borrowed(_) => {
-                        stroke_uniform::stroke_uniform(
-                            target,
-                            &kurbo_stroke(s, tess.dash),
-                            transform,
-                            &brush,
-                            bp,
-                        );
-                    }
-                    Cow::Owned(p) => {
-                        // Encurtada pelos marcadores ⇒ o padrão tem de encaixar NA LINHA que se
-                        // traça, não no objeto: o `tess.dash` mede o caminho INTEIRO, e com a
-                        // seta a ponta ficava DESCOLADA do último traço (Enio, 2026-08-22). A
-                        // peça emprestada (acima) É o caminho, e aí o cache já é a resposta —
-                        // o caso comum segue sem medir nada por quadro.
-                        let dash = ph2d_vec_scene::dash_for(&p, s);
-                        let line_bp = build_bezpath(&p);
-                        stroke_uniform::stroke_uniform(
-                            target,
-                            &kurbo_stroke(s, dash),
-                            transform,
-                            &brush,
-                            &line_bp,
-                        );
-                    }
-                },
-                StrokePiece::Symbol { path: geo } => {
-                    stroke_uniform::stroke_uniform(
-                        target,
-                        &Stroke::new(s.width),
-                        transform,
-                        &brush,
-                        &build_bezpath(&geo),
-                    );
-                }
-                StrokePiece::Fill { path: geo } => {
-                    target.inner_mut().fill(
-                        Fill::NonZero,
-                        transform,
-                        &brush,
-                        None,
-                        &build_bezpath(&geo),
-                    );
-                }
-            }
-        }
-    }
+    draw_stroke_with(path, tess, transform, target, stroke_tile);
 }
 
 /// **A camada de INSTÂNCIA de Motion** — módulo irmão pelo teto de 700 LOC. O corte é por assunto:

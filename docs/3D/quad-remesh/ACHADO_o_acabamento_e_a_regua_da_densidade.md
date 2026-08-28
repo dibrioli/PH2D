@@ -130,6 +130,8 @@ e a pergunta é outra.*
   variável em vez de rectângulos de tamanho uniforme. ⚠️ *É a troca que se quer* — a régua do
   artista e a do oráculo são forma, não uniformidade de área.
 - ⛔ **`relevo` (obediência às direcções principais) DEGRADA-SE, e as duas leis pagam o mesmo.**
+  ⚠️ *(Isto vale para as duas leis CEGAS desta secção; o §7 introduz a que olha para o relevo,
+  e com ela o número deixa de se mover — leia as duas antes de citar uma.)*
   Fica inerte na orelha (`20,3°` → `19,9°`) e na esfera (onde `22,5°` = cega, porque uma esfera
   não tem direcção preferida — a régua é pesada pela anisotropia e ali cala-se por construção),
   e **move-se na `wrinkled`**, que é a peça com relevo a sério: `11,8°` → `12,5°` (160) →

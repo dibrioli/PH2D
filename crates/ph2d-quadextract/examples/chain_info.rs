@@ -1166,6 +1166,10 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
                 "  ⭐⭐⭐ ... destas, {} caem num CANTO da gemea · {} com a gemea a ter portas NOUTROS pontos",
                 e.rescue_no_port_where.0, e.rescue_no_port_where.1
             );
+            println!(
+                "  ⛔⛔⛔ desses cantos: {} com o no' MUDO (nenhuma porta em face nenhuma) · {} com portas NOUTRAS faces",
+                e.rescue_corner.0, e.rescue_corner.1
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

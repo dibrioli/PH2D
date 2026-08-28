@@ -587,6 +587,26 @@ fn trace_one(
                                     // portas dele não existem em face nenhuma.
                                     if topo.uv[g as usize].contains(&t2) {
                                         st.rescue_no_port_corner += 1;
+                                        // ⭐⭐⭐ **O NÓ DAQUELE CANTO TEM PORTAS NALGUM
+                                        // SÍTIO?** As portas de um nó de vértice nascem
+                                        // pelo LEQUE e ficam registadas com a face de cada
+                                        // sector. ⇒ *«não há porta nesta face» e «este nó
+                                        // não tem porta nenhuma» são dois defeitos
+                                        // diferentes*: o 1.º é de indexação, o 2.º é o
+                                        // leque a não emitir. As órfãs são poucas, e a
+                                        // varredura linear paga-se.
+                                        let anywhere = ports
+                                            .ports
+                                            .iter()
+                                            .filter(|q| q.at == t2 && q.face == g)
+                                            .count();
+                                        let same_node =
+                                            ports.ports.iter().filter(|q| q.at == t2).count();
+                                        if same_node == 0 {
+                                            st.rescue_corner_node_mute += 1;
+                                        } else if anywhere == 0 {
+                                            st.rescue_corner_other_faces += 1;
+                                        }
                                     }
                                     // ⭐ E há porta em ALGUM ponto daquela face? *Separa «a
                                     // face não tem portas» de «não tem NESTE ponto».*

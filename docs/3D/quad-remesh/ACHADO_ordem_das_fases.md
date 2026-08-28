@@ -2621,3 +2621,38 @@ ou seja, o leque daquele vértice não emitiu para ali.
   sobre um vértice é legal, e a extracção trata-o mal — sem amarras ele quase nunca acontece
   (`0` órfãs no controlo), e por isso ninguém o tinha visto.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.33 — ⚠️ CORRECÇÃO à §23.32: o nó do canto **não é mudo** — o leque salta um SECTOR
+
+A §23.32 fechou com *«a cura é na emissão do leque de um vértice»* e deu por caracterizada
+a população. A caracterização estava certa (`6` de `6` são cantos); **a conclusão sobre o
+mecanismo não**, e a medição que faltava era a que discrimina.
+
+| peça | cantos sem porta na gémea | nó **MUDO** (sem porta em face nenhuma) | com portas **NOUTRAS faces** |
+|---|---|---|---|
+| `sculpt_wrinkled` | `1` | **`0`** | **`1`** |
+| `sculpt_hooked` | `4` | **`0`** | **`4`** |
+| `sculpt_eared` | `1` | **`0`** | **`1`** |
+
+⇒ **o nó daquele vértice EXISTE e tem portas** — só que nenhuma com a face que o traço
+precisa. *«O leque não emitiu» e «o leque emitiu para outros sectores» são dois defeitos, e
+eu escrevi o primeiro tendo medido apenas o sintoma comum aos dois.*
+
+⚠️ E a coluna da §23.32 que dizia *«a gémea não tem portas noutros pontos»* (`0` na `hooked`
+e na `eared`) **é consistente e não é o mesmo facto**: aquela face não tem porta **nenhuma**,
+deste nó ou de outro.
+
+#### ⇒ A pergunta, agora exacta
+
+O ponto é um canto de `g`, logo `g` **está** no leque daquele vértice. O leque emite uma
+porta por sector com cruzamento, e emitiu para outros sectores do mesmo nó — **mas não para
+o de `g`**. *Porquê aquele sector e não os outros?* — é uma pergunta sobre
+[`fan::fan_of`]/[`seed_corners`] e sobre o `sweep`, não sobre a emissão em bloco.
+
+⚠️ **É a segunda vez nesta investigação que uma conclusão minha sobre o mecanismo se
+antecipa à medição que a discrimina** (a outra: a §23.24, «a dobra parte o `χ`»). O padrão é
+o mesmo: *o sintoma é comum a duas causas, e eu nomeio a que me ocorreu primeiro.*
+
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

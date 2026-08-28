@@ -89,6 +89,10 @@ pub(crate) struct WalkStats {
     pub rescue_no_port_corner: usize,
     /// … e em quantas a gémea **tem** portas noutros pontos.
     pub rescue_no_port_face_has_others: usize,
+    /// ⛔⛔⛔ Cantos cujo nó **não tem porta nenhuma em face nenhuma** — o leque calou-se.
+    pub rescue_corner_node_mute: usize,
+    /// ⛔ Cantos cujo nó tem portas, mas **noutras faces** — defeito de indexação.
+    pub rescue_corner_other_faces: usize,
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um

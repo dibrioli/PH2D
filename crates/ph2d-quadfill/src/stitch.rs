@@ -488,8 +488,15 @@ pub fn fill_with(
     // estado em que nasce; este pega numa malha já de passo regular e ataca a
     // única coisa que o outro não vê. ⚠️ *A ordem inversa foi medida* — ver a
     // tabela em [`SQUARE_ROUNDS`].
-    for _ in 0..square {
-        crate::relax::square_once(&mut mesh, surface, seed);
+    // ⚠️ **Sem cerca de viagem aqui, de propósito** — a cerca nasceu em 2026-08-28 para a
+    // cadeia de EXTRACÇÃO, e ligá-la neste caminho mudaria uma saída cuja tabela de
+    // rejeição ([`SQUARE_ROUNDS`]) foi medida sem ela. *Uma cerca nova não se aplica
+    // retroactivamente a uma medição antiga.*
+    if square > 0 {
+        let origin: Vec<[f32; 3]> = mesh.positions().to_vec();
+        for _ in 0..square {
+            crate::relax::square_once(&mut mesh, surface, seed, &origin, f32::INFINITY);
+        }
     }
 
     let mut report = measure(&mesh, surface, &pts.prov, smoothing + square, flipped);

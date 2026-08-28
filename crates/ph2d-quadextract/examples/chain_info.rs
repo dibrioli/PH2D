@@ -1030,6 +1030,10 @@ entrada fraccionarios · pior |coef| {:.3}",
             // **medida** do `finish.rs` (com direcção, as dobras foram de `1` para `10` e a
             // aresta máxima de `2,58×` para `5,85×`). *Uma experiência que reescreve a lei em
             // vez de a chamar mede outra coisa.*
+            // ⭐⭐⭐ **A SAÍDA CRUA, guardada** — é dela que a varredura do acabamento parte.
+            // ⚠️ *Uma varredura que re-corresse a cadeia mediria também o ruído da cadeia;*
+            // partindo todas as variantes da MESMA extracção, a diferença é só o acabamento.
+            let unfinished = out.clone();
             let out = {
                 // ⚠️⚠️ **O DEFAULT É O DO PRODUTO, e não zero.** Em 2026-08-26 esta linha
                 // já pôs uma sonda a medir o comportamento ANTIGO enquanto imprimia como se
@@ -1043,6 +1047,84 @@ entrada fraccionarios · pior |coef| {:.3}",
                 ph2d_quadfill::smooth(&mut m, &raw, rounds);
                 m
             };
+            // ⭐⭐⭐ **A VARREDURA DO ACABAMENTO** (`PH2D_RELAX_SCAN=1`) — Laplaciano contra
+            // ajuste de quadrado, sobre a MESMA malha extraída.
+            //
+            // ⚠️ A recusa de 2026-08-22 (`ph2d_quadfill::SQUARE_ROUNDS`) mediu o ajuste de
+            // quadrado sobre a montagem por PATCHES, cuja mediana era `27°` e cujo defeito
+            // era a **conectividade**. Esta cadeia extrai, e a conectividade dela é outra.
+            // *Uma recusa medida responde uma pergunta; esta é outra pergunta.*
+            if std::env::var("PH2D_RELAX_SCAN").as_deref() == Ok("1") {
+                println!(
+                    "  ⭐⭐⭐ VARREDURA DO ACABAMENTO ({} quads, a mesma extraccao em todas as linhas)",
+                    unfinished.face_count()
+                );
+                // ⚠️ **A escada é do LAPLACIANO até saturar**, e o ajuste de quadrado
+                // entra depois dele — a 1.ª varredura mediu `6` e `20` e a segunda linha já
+                // batia a primeira em toda coluna. *Uma escada que acaba onde o número ainda
+                // se move não escolheu nada* (`CLAUDE.md` §0.0).
+                // ⭐⭐⭐ **A ESCADA É DA CERCA DE VIAGEM**, em múltiplos do alvo de aresta `h`
+                // — ver `ph2d_quadfill::square_relax_capped`. As duas primeiras linhas são
+                // os CONTROLES (cru e o acabamento de hoje), e o `∞` é a relaxação sem
+                // cerca, que já se mediu ser mais quadrada **e quase cega ao relevo**.
+                for (lap, sq, cap) in [
+                    (0usize, 0usize, 0.0f32),
+                    (6, 0, 0.0),
+                    (0, 2000, f32::INFINITY),
+                    (0, 2000, 1.00),
+                    (0, 2000, 0.50),
+                    (0, 2000, 0.35),
+                    (0, 2000, 0.25),
+                    (0, 2000, 0.15),
+                    (0, 2000, 0.10),
+                    (0, 2000, 0.05),
+                ] {
+                    let clock = std::time::Instant::now();
+                    let mut m = unfinished.clone();
+                    ph2d_quadfill::smooth(&mut m, &raw, lap);
+                    // ⚠️ `settle` em `1/1000` da aresta: uma ronda que move menos que isso não
+                    // muda nenhuma das réguas, e o tecto de `2000` é só a rede.
+                    let rep = ph2d_quadfill::square_relax_capped(
+                        &mut m,
+                        &raw,
+                        sq,
+                        if cap.is_finite() { cap * h } else { cap },
+                        h * 1.0e-3,
+                    );
+                    let ms = clock.elapsed().as_secs_f32() * 1000.0;
+                    let s = ph2d_quadfill::quad_shape(&m);
+                    // ⚠️ `detail_lost` devolve `(p95, MAX)` — não `(p50, p95)`. *Uma coluna
+                    // com o rótulo errado lê-se ao contrário.*
+                    let (fid95, fidmax) = ph2d_quadfill::detail_lost(&raw, &m);
+                    // ⚠️ `22,5°` é o valor de uma grade que IGNORA o relevo — é contra ele
+                    // que este número se lê, não contra zero.
+                    let (relief, _) = ph2d_quadfill::follows_relief(&raw, &m);
+                    println!(
+                        "     lap {lap:3} cerca {:>5} | aspecto p50 {:.2} p99 {:.2} | ENVIES p50 {:5.1} p99 {:5.1} (>60: {:3}) | area {:.2} | dobras {:3} | fid p95 {:.3}% max {:.3}% | relevo {:.1}° | viagem p50 {:.2}h max {:.2}h presos {} | {} rondas | {ms:.0} ms",
+                        if sq == 0 {
+                            String::from("-")
+                        } else if cap.is_finite() {
+                            format!("{cap:.2}h")
+                        } else {
+                            String::from("inf")
+                        },
+                        s.aspect_p50,
+                        s.aspect_p99,
+                        s.skew_p50,
+                        s.skew_p99,
+                        s.skew_over_60,
+                        s.area_spread,
+                        ph2d_quadfill::folded_by_neighbours(&m),
+                        fid95 * 100.0,
+                        fidmax * 100.0,
+                        relief,
+                        rep.travel_p50 / h,
+                        rep.travel_max / h,
+                        rep.clamped,
+                        rep.rounds,
+                    );
+                }
+            }
             let shape = ph2d_quadfill::quad_shape(&out);
             println!(
                 "  EXTRACCAO: residuo de translacao p50 {:.3e} max {:.3e} · ⭐ {} \

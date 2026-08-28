@@ -29,6 +29,15 @@ fn p50(v: &mut [f32]) -> f32 {
 }
 
 fn main() {
+    // ⭐⭐⭐ **A PEÇA DO ARTISTA, quando ela é dada** (`PH2D_REF=<peca>.obj`) — sem ela este
+    // instrumento só sabe medir a saída CONTRA SI PRÓPRIA (forma, valência, rugosidade), e
+    // as duas réguas que comparam com a ESCULTURA ficam mudas.
+    //
+    // ⚠️ **Ela existe porque a barra do oráculo estava a ser lida sem controle.** Comparar a
+    // nossa saída com a dele em forma é lícito e fácil; comparar *obediência ao relevo* e
+    // *fidelidade* exige a malha de entrada dos dois — e sem esta porta a nossa perda de
+    // relevo ao alisar não tinha com o que ser comparada.
+    let reference = std::env::var("PH2D_REF").ok().map(|p| load(&p));
     for name in std::env::args().skip(1) {
         let mesh = load(&name);
         let pos = mesh.positions().to_vec();
@@ -221,14 +230,29 @@ fn main() {
         );
         println!(
             "  ⭐⭐ FORMA: aspecto p50 {:.2} p99 {:.2} (>4x: {}) | ENVIESAMENTO p50 {:.1}° \
-             p99 {:.1}° (>60: {})",
+             p99 {:.1}° (>60: {}) | area spread {:.2}",
             shape.aspect_p50,
             shape.aspect_p99,
             shape.aspect_over_4,
             shape.skew_p50,
             shape.skew_p99,
-            shape.skew_over_60
+            shape.skew_over_60,
+            // ⚠️ **A coluna que faltava para comparar um ACABAMENTO com outro.** Alisar
+            // troca uniformidade de ÁREA por esquadria, e sem esta coluna a troca fica
+            // invisível — foi ela que subiu de `1,45` para `1,60` na escada de 2026-08-28.
+            shape.area_spread,
         );
+        if let Some(r) = reference.as_ref() {
+            // ⚠️ `22,5°` é o valor de uma grade que IGNORA o relevo — é contra ele que este
+            // número se lê, e não contra zero. E `detail_lost` devolve `(p95, MAX)`.
+            let (relief, conf) = ph2d_quadfill::follows_relief(r, &mesh);
+            let (fid95, fidmax) = ph2d_quadfill::detail_lost(r, &mesh);
+            println!(
+                "  ⭐⭐ CONTRA A ESCULTURA: relevo {relief:.1}° (22,5 = cega · confianca {conf:.2}) | fidelidade p95 {:.3}% max {:.3}%",
+                fid95 * 100.0,
+                fidmax * 100.0,
+            );
+        }
         println!(
             "  ⛔ FACES PESSIMAS (>60°): {} · {}",
             ruim_r.len(),

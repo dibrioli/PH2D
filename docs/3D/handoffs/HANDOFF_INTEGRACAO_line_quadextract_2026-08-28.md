@@ -105,10 +105,38 @@ cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-quadextract && env PH2D_SC
 Depois: **`Quad Retopology`** no painel de escultura. `PH2D_EXTRACT_FINISH=0` volta ao
 acabamento antigo (o Laplaciano cru), para comparar lado a lado.
 
-## §7 — Gates novos (todos provados por mutação)
+## §7 — ⭐⭐ O veto pagava o acabamento para deitar a malha fora
 
-`crates/ph2d-quadfill/src/finish_extract_tests.rs` (7) e `relax_tests.rs` (+6).
-**14 mutações, 14 mortas** — entre elas duas que a 1.ª redacção dos gates deixava viver:
-*a ordem ignora o aspecto* e *a paciência conta do início*. ⚠️ E um gate desta jornada era
-uma **tautologia** apanhada por mutação: ele media a rotação com uma função que devolve
-`[0°, 45°]` **por construção**, logo não podia falhar.
+⛔ Com o acabamento dentro de `quads_from_mesh`, uma peça **dura** passou a pagá-lo inteiro
+para ser deitada fora: no cubo subdividido (o caso em que a cadeia perde **por medição**) a
+saída abre arestas de bordo, o veto recusa, e o acabamento tinha corrido até ao tecto **duas
+vezes**. ⚠️ **O sintoma foi um TESTE que passou de segundos a minutos**, não uma medição de
+perf — *um teste que fica lento é uma medição de custo que ninguém pediu*.
+
+⭐ A cura é a **ordem**: `quads_from_mesh` parte-se em `quads_from_mesh_raw` + o acabamento, e
+o veto de **topologia** decide com a malha crua (uma relaxação move vértices e mais nada). A
+propriedade tem gate (`the_finishing_cannot_change_the_edge_census`). Suite do `quadchain`
+depois da cura: **10,06 s**.
+
+⏳ **Aberto, deliberadamente:** dentro do `quads_or_keep_from` a superfície do acabamento é o
+`feed` e não o `keep` — escolhido assim para a reordenação ser **provadamente neutra**.
+
+## §8 — Gates novos (todos provados por mutação)
+
+`crates/ph2d-quadfill/src/finish_extract_tests.rs` (**8**), `relax_tests.rs` (**+6**) e
+`crates/ph2d-quadchain/tests/veto.rs` (**+1**).
+**15 mutações, 15 mortas** — entre elas três que a 1.ª redacção dos gates deixava viver
+(*a aceitação ignora o aspecto* · *a paciência conta do início* · *a lei cega entra sempre*).
+⚠️ E um gate desta jornada era uma **tautologia** apanhada por mutação: ele media a rotação
+com uma função que devolve `[0°, 45°]` **por construção**, logo não podia falhar.
+
+## §9 — Portão de fecho
+
+| | |
+|---|---|
+| `cargo test -p ph2d-quadfill` | ⭐ verde (21 + 16 nas suites de integração, 0 falhas) |
+| `cargo test -p ph2d-quadchain` | ⭐ verde (5, **10,06 s**) |
+| `cargo test -p ph2d-remesh-iso` | ⭐ verde (9) |
+| `cargo clippy --all-targets` nas três + no shell | ⭐ limpo |
+| `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |
+| `scripts/doc-index.sh --check` | ⭐ 14 índices em dia (+ o de `docs/3D/handoffs/`, à mão, com a contagem **derivada do `ls`**) |

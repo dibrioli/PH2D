@@ -143,3 +143,4 @@
 - [Rejeição cuja explicação descreve outra obra = PRÉ-REQUISITO](feedback_a_rejection_whose_explanation_describes_another_work_is_a_prerequisite.md)
 - [Sonda depois do passo que ARRUMA mede a arrumação](feedback_a_ruler_placed_after_the_tidying_step_measures_the_tidying.md)
 - [Sonda no ramo do FRACASSO de A não vê os acertos de A](feedback_a_probe_in_the_failure_branch_cannot_see_the_other_sides_successes.md)
+- [Correlação sem contra-exemplos pode descrever DISPONIBILIDADE, não correcção](feedback_a_correlation_with_zero_counterexamples_may_describe_another_question.md)

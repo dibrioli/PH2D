@@ -2418,3 +2418,53 @@ erradas** — na `hooked`, os `2` resgates extra levam o `χ` de `0` a `−1`.
 - ⭐ Com esse desempate, **três** das quatro peças ficariam ≥ o controlo, e duas
   estritamente melhores.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.29 — ⛔ A regra derivada da DOBRA descreve QUAL candidata existe, não qual está CERTA
+
+A §23.28 fechou com *«o desempate tem de ser derivado»*. Derivei-o, e ele **não serve** —
+pela razão mais instrutiva possível.
+
+#### 1. ⭐ Com a sonda no sítio certo, a regra aparece limpa
+
+Refeita a correlação **sobre todos os resgates** (a anterior vivia no ramo do fracasso de
+uma delas — §23.28), `d2` / `opposite(d2)`:
+
+| peça | nenhuma dobrada | só a gémea | só a face | **as DUAS** |
+|---|---|---|---|---|
+| `sculpt_wrinkled` | `0`/`0` | **`3`**/`0` | **`4`**/`0` | `0`/`0` |
+| `sculpt_hooked` | **`1`**/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`2`** |
+| `sculpt_eared` | `0`/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`4`** |
+
+**18 casos, zero contra-exemplos, zero ambíguas** ⇒ *`opposite(d2)` sse as **duas** faces
+estão dobradas; `d2` em todo o resto.* ⭐ E explica-se: o `d2` já leva **uma** troca quando
+*exactamente uma* está dobrada; com as duas, a composição volta a preservar a orientação e
+é a convenção da porta que roda mais uma vez.
+
+#### 2. ⛔⛔⛔ E ela dá EXACTAMENTE o mesmo que a união — regressão incluída
+
+| peça | omissão (só `opposite(d2)`) | união | ⛔ **regra derivada** |
+|---|---|---|---|
+| `sculpt_wrinkled` | `10` bordo · `χ = +1` | `0` · `+2` | `0` · `+2` |
+| `sculpt_eared` | `6` · `+1` · `7` órfãs | `4` · `+1` · `4` | `4` · `+1` · `4` |
+| `sculpt_hooked` | `10` · `0` · `8` órfãs | `17` · `−1` | ⛔ `17` · `−1` |
+| `sphere_uv_96x144` | `0` · `+2` | = | = |
+
+⇒ **a razão é a própria §23.28:** as duas convenções **nunca colidem**, logo onde só existe
+uma candidata, *«escolher pela dobra»* e *«tentar as duas»* escolhem a **mesma**.
+
+#### ⇒ A lição, e ela é a mesma armadilha um andar acima
+
+⚠️ **A correlação prevê QUAL CANDIDATA EXISTE, não qual está CERTA.** Li disponibilidade
+como correcção. *Uma tabela com zero contra-exemplos pode estar a descrever outra pergunta*
+— e a pergunta que ela descreve aqui é *«qual das duas chaves está no mapa»*, que é
+trivialmente respondida por «a que está», não por uma lei.
+
+- ⛔ `PH2D_RESCUE_DIR` mantém **`1`** (o comportamento de sempre) em omissão. `0` = a regra
+  derivada · `2` = só `d2` · `3` = a união. **Os três alternativos são a mesma medição**, e
+  nenhum shipa.
+- ⭐ O que sobrevive: o desempate tem de ser sobre **correcção**, e a única proposta com
+  esse feitio continua a ser *a parceira certa é a que, traçada de volta, regressa a esta
+  porta* — que precisa do traçado, não de uma tabela.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

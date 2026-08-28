@@ -33,12 +33,14 @@ const MAX_STEPS: usize = 256;
 mod stats;
 pub(crate) use stats::WalkStats;
 
-/// **O modo do resgate pela gémea** — `1`/ausente = só `opposite(d2)`, **o comportamento
-/// de sempre** · `0` = as duas convenções · `2` = só `d2`.
+/// **O modo do resgate pela gémea.** Ausente/`1` = só `opposite(d2)`, **o comportamento de
+/// sempre** · `0` = a regra derivada da dobra · `2` = só `d2` · `3` = a união das duas.
 ///
-/// ⛔⛔ **A união das duas NÃO é o de omissão, e a razão é medida:** ela leva a
-/// `sculpt_wrinkled` à perfeição e melhora a `sculpt_eared`, e **piora** a
-/// `sculpt_hooked`. Ver a tabela no sítio onde isto é lido.
+/// ⛔⛔ **Nenhum dos três modos alternativos shipa, e os três são a MESMA medição:** todos
+/// levam a `sculpt_wrinkled` à perfeição (`χ = +2`, `0` bordo) e a `sculpt_eared` a `4`
+/// bordo, e todos pioram a `sculpt_hooked` (`17` bordo, `χ = −1` contra `10`/`0`).
+/// *Onde só existe uma candidata, escolher pela dobra e tentar as duas escolhem a mesma —
+/// e algumas dessas candidatas são as erradas.*
 fn rescue_mode() -> u8 {
     std::env::var("PH2D_RESCUE_DIR")
         .ok()
@@ -360,10 +362,69 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                         // omissão por `d2` PERDIA os resgates que a outra já fazia
                         // (`eared` de `4` para `2`). *Uma sonda que só corre no ramo do
                         // fracasso não vê os sucessos do outro lado.*
+                        // ⭐⭐⭐ **A CORRELAÇÃO MEDE-SE AQUI, sobre TODOS os resgates.**
+                        //
+                        // ⚠️ *A 1.ª versão desta sonda vivia no ramo em que `opposite(d2)`
+                        // já tinha falhado*, e por isso lia `0` na coluna dela — o que se
+                        // lê como «ela nunca acerta» e é o contrário dos dados. Aqui ela
+                        // corre **antes** da escolha, e vê os dois lados.
+                        //
+                        // ⚠️ A [`Xf`] é rotação de quarto de volta + translação inteira —
+                        // ela **nunca espelha**. ⇒ a troca que o código faz não é sobre a
+                        // carta, é sobre **triângulos DOBRADOS** (`face_sign`), e é
+                        // exactamente aí que estas órfãs vivem.
+                        {
+                            let ok = |d: u8| {
+                                ports
+                                    .by_key
+                                    .get(&(g, t2[0], t2[1], d))
+                                    .is_some_and(|&j| j != id)
+                            };
+                            let (h_op, h_d2) = (ok(opposite(d2)), ok(d2));
+                            if h_op || h_d2 {
+                                let b = usize::from(before < 0);
+                                let a = usize::from(after < 0);
+                                st.rescue_by_fold[b * 4 + a * 2 + usize::from(h_op)] += 1;
+                                if h_op && h_d2 {
+                                    st.rescue_ambiguous += 1;
+                                }
+                            }
+                        }
+                        // ⭐⭐⭐ **A REGRA DERIVADA (2026-08-27):** `opposite(d2)` **sse as
+                        // DUAS faces estão dobradas**; `d2` em todo o resto.
+                        //
+                        // Medida com a sonda a ver os dois lados, `d2`/`opposite(d2)`:
+                        //
+                        // | peça | nenhuma dobrada | só a gémea | só a face | **as duas** |
+                        // |---|---|---|---|---|
+                        // | `sculpt_wrinkled` | `0`/`0` | **`3`**/`0` | **`4`**/`0` | `0`/`0` |
+                        // | `sculpt_hooked` | **`1`**/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`2`** |
+                        // | `sculpt_eared` | `0`/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`4`** |
+                        //
+                        // **18 casos, zero contra-exemplos, zero ambíguas.** E ela
+                        // explica-se: o `d2` já leva **uma** troca quando *exactamente
+                        // uma* das faces está dobrada; com as **duas** dobradas a
+                        // composição volta a preservar a orientação e é a convenção da
+                        // porta que roda mais uma vez.
+                        //
+                        // ⛔⛔⛔ **E ELA NÃO SERVE — medido no mesmo dia.** A regra derivada
+                        // dá **exactamente** o mesmo resultado que a união (`sculpt_hooked`
+                        // em `17` bordo e `χ = −1`, contra `10`/`0` sem ela), e a razão é
+                        // que *as duas convenções nunca colidem*: onde só existe uma
+                        // candidata, «escolher pela dobra» e «tentar as duas» escolhem a
+                        // **mesma**.
+                        //
+                        // ⇒ ⚠️ **a correlação prevê QUAL CANDIDATA EXISTE, não qual está
+                        // CERTA.** Li disponibilidade como correcção — a mesma armadilha da
+                        // sonda no ramo do fracasso, um andar acima. *Uma tabela com zero
+                        // contra-exemplos pode estar a descrever outra pergunta.*
+                        let both_folded = before < 0 && after < 0;
                         let order: &[u8] = match rescue_mode() {
                             1 => &[0],
                             2 => &[1],
-                            _ => &[0, 1],
+                            3 => &[0, 1],
+                            _ if both_folded => &[0],
+                            _ => &[1],
                         };
                         let hit = order.iter().find_map(|&which| {
                             let want = if which == 0 { opposite(d2) } else { d2 };
@@ -400,30 +461,6 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                                         .is_some_and(|&j| j != id)
                                     {
                                         st.rescue_would[bit] += 1;
-                                    }
-                                }
-                                // ⭐⭐⭐ **DE QUE DEPENDE A CONVENÇÃO?** A [`Xf`] é rotação
-                                // de quarto de volta + translação inteira — ela **nunca
-                                // espelha**. ⇒ a troca que o código faz não é sobre a
-                                // carta, é sobre **triângulos DOBRADOS** (`face_sign`), e
-                                // é exactamente aí que estas órfãs vivem. Cruzar «qual
-                                // convenção acertou» com «que faces estão dobradas» é o
-                                // que DERIVA a regra em vez de a escolher.
-                                let hit_d2 = ports
-                                    .by_key
-                                    .get(&(g, t2[0], t2[1], d2))
-                                    .is_some_and(|&j| j != id);
-                                let hit_op = ports
-                                    .by_key
-                                    .get(&(g, t2[0], t2[1], opposite(d2)))
-                                    .is_some_and(|&j| j != id);
-                                if hit_d2 || hit_op {
-                                    let b = usize::from(before < 0);
-                                    let a = usize::from(after < 0);
-                                    let w = usize::from(hit_op);
-                                    st.rescue_by_fold[b * 4 + a * 2 + w] += 1;
-                                    if hit_d2 && hit_op {
-                                        st.rescue_ambiguous += 1;
                                     }
                                 }
                                 // ⭐ E o ponto transportado tem ALGUMA porta na gémea, com

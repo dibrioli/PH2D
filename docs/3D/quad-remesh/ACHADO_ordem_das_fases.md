@@ -2707,3 +2707,45 @@ resultado**: as candidatas entram, nenhuma é recíproca, a saída não muda um 
 - ⭐ A lista de candidatas **fica** (é a estrutura certa para «várias rotas»), e o gate
   cobre-a: o caso `4 → {5, 7}` prova que *oferecer mais não é ligar mais*.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.35 — ⛔⛔⛔ A pergunta que eu não tinha feito: as amarras pioram a FORMA dos quads
+
+Toda a §23 foi escrita para curar o **espiral** — as separatrizes do F3 não serem linhas de
+grade do mapa. E conseguiu-o: a atravessagem cai de `0,28`–`0,55` para **`0,00`** nas quatro
+peças. ⛔ Mas eu nunca medi a coluna pela qual **este módulo é julgado**.
+
+| peça | aspecto p50 | enviesamento p50 | enviesamento p99 | faces `>60°` | `χ` |
+|---|---|---|---|---|---|
+| `sphere_uv_96x144` | `1,11` → ⛔ `1,14` | `7,4°` → `7,3°` | `34,3°` → ⛔ `35,7°` | `0` → `0` | `+2` → `+2` |
+| `sculpt_wrinkled` | `1,19` → ⛔ `1,26` | `7,8°` → ⛔ **`11,5°`** | `34,5°` → ⛔ `35,7°` | `0` → `0` | `+2` → `+1` |
+| `sculpt_eared` | `1,14` → ⛔ `1,23` | `10,4°` → `10,1°` | `33,4°` → ⛔ `36,8°` | `0` → `0` | `+2` → `+1` |
+| `sculpt_hooked` | `1,17` → ⛔ `1,21` | `7,7°` → ⛔ `9,8°` | `49,1°` → ⛔ **`59,7°`** | `2` → ⛔ `3` | `+2` → `0` |
+
+⛔ **O aspecto piora nas QUATRO.** O enviesamento p99 piora em três, o p50 em duas (e na
+`wrinkled` são `+47 %`), e as faces péssimas sobem na `hooked`.
+
+⚠️ **A barra é o oráculo, e ela é `4,8°`–`7,1°` de enviesamento** (`CLAUDE.md` §5): sem
+amarras já estamos em `7,4°`–`10,4°`, e com elas vamos a `7,3°`–`11,5°`. *A restrição
+afasta-nos da barra que a linha existe para alcançar.*
+
+#### ⇒ O que isto reformula
+
+- ⛔ **Mesmo que a topologia fechasse**, a feature como está shipava uma **regressão** na
+  métrica principal. O `χ` e as arestas de bordo eram o obstáculo visível; a forma é o
+  obstáculo que estava a ser ignorado.
+- ⚠️ **Foi um proxy a conduzir a wave inteira.** A atravessagem (as separatrizes serem
+  isolinhas) é uma propriedade *estrutural* e mede-se bem; a forma é o produto. *Um proxy
+  que chega a `0,00` não prova nada sobre a coisa de que ele é proxy.*
+- ⭐ E o mecanismo é coerente com o que já se sabia: forçar um arco a passar por onde o mapa
+  não o quer **estica os quads à volta dele** — a mesma energia que a §23.22 mediu a virar
+  triângulos, vista na coluna que o artista vê.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico. E agora com
+  uma razão a mais para nascer desligada — não é só que a topologia não fecha.
+
+#### ⇒ A decisão é do Enio, e a pergunta é curta
+
+*Vale a pena continuar a fechar a topologia de uma restrição que, mesmo fechada, entrega
+quads menos quadrados?* — ou o espiral tem de ser atacado sem forçar as separatrizes, por
+exemplo no F3 (que é quem as traça) em vez de no G3/G5.

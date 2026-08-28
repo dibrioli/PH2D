@@ -8531,6 +8531,31 @@ das três linhas), e a `load 32` eu não separo `1,2×` de ruído — a linha de
 confirmar, a resposta não é outra constante — é **derivar** o `SLABS` do tamanho que o laço do
 preview escolheu, que é a única forma de ele estar certo nas duas.
 
+### §92.15 — W95: a divisão sobrevive a fechar o painel — e a razão que a excluía era FALSA
+
+⛔⛔ **A W90 deixou o `split` fora da [`View`] com esta razão escrita:** *«restaurar a divisão
+obrigaria a restaurar as quatro câmeras, e o que a W43 promete é uma vista»*. **É falso** — três das
+quatro são **DERIVADAS** (nascem da orientação que o nome promete) e a `ensure_viewports` já as
+reconstrói a partir da câmera do artista, que é a única autorada e que a `View` **já guardava**.
+
+⚠️ *Uma dependência afirmada sem a desmontar é uma feature adiada com cara de arquitectura* — e esta
+é a **segunda** desta wave, depois da que dizia que o divisor arrastável precisava do cabeçalho
+(§92.12). As duas custaram uma linha de código cada, depois de desmontadas.
+
+⭐ E ela **pertence** à vista pela mesma razão que a câmera: a divisão é uma preferência de bancada.
+Um artista que trabalha em quatro vistas, pega no editor vetorial e volta não quer encontrar uma.
+
+⚠️ **A lista nasce já com a divisão lembrada** (`ensure_viewports` no fim do `boot`). Ela seria
+reconciliada no primeiro desenho de qualquer forma — mas então haveria **um quadro** em que o `split`
+diz «quatro» e a lista tem uma, e *um estado que só é verdade a partir do segundo quadro é um estado
+que alguém vai ler no primeiro*.
+
+⚠️ O que **não** viaja é a POSIÇÃO das costuras: o que se lembra é *«eu trabalho dividido»*, e a
+posição volta ao meio. Ela é barata de repor com a mão e cara de justificar guardada — nenhum outro
+campo da `View` é uma coordenada de layout.
+
+Gate: `the_split_survives_closing_the_panel`, provado por mutação.
+
 ### §92.7 — ⏳ O que fica aberto
 
 - **O CABEÇALHO** — a outra metade da frase do plano. Hoje o chrome do módulo é o painel lateral e o

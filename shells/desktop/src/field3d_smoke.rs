@@ -119,7 +119,7 @@ fn boot() -> Option<Smoke> {
         "[field-smoke] traçado no tamanho REAL da área, com anti-serrilhado — prato giratório, \
          feche a janela para sair"
     );
-    Some(Smoke {
+    let mut smoke = Smoke {
         doc: Some(doc.clone()),
         seed: Some(doc),
         isolated: v.isolated,
@@ -136,7 +136,9 @@ fn boot() -> Option<Smoke> {
         // é o estado em que ela não existe.
         vps: vec![crate::field3d_smoke::state::Viewport::new(v.cam, v.manual)],
         active: 0,
-        split: crate::field3d_layout::Split::One,
+        // ⭐ **A divisão volta com a vista** (W95) — os viewports que ela pede são reconstruídos
+        // logo a seguir, a partir da câmera lembrada.
+        split: v.split,
         announced: false,
         drag: None,
         last_pointer: (0.0, 0.0),
@@ -152,7 +154,13 @@ fn boot() -> Option<Smoke> {
         pending_lasso: None,
         gizmo_mode: v.gizmo_mode,
         gizmo_frame: v.gizmo_frame,
-    })
+    };
+    // ⭐ **A lista nasce já com a divisão lembrada** (W95). Ela seria reconciliada no primeiro
+    // desenho de qualquer forma, mas então haveria um quadro em que o `split` diz «quatro» e a
+    // lista tem uma — e *um estado que só é verdade a partir do segundo quadro é um estado que
+    // alguém vai ler no primeiro*.
+    ensure_viewports(&mut smoke, v.split.count());
+    Some(smoke)
 }
 
 // ⚠️ **`needs_trace` VIVEU AQUI e foi absorvida** pela `field3d_preview::next_trace` (W24). Ela

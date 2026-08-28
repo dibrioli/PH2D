@@ -240,3 +240,45 @@ fn nothing_can_empty_the_viewport_list() {
         achados.join("\n")
     );
 }
+
+/// ⭐⭐⭐ **A DIVISÃO SOBREVIVE A FECHAR O PAINEL** (W95).
+///
+/// ⛔⛔ **A W90 deixou-a de fora com uma razão ERRADA:** *«restaurar a divisão obrigaria a restaurar
+/// as quatro câmeras»*. É falso — três delas são **derivadas** (nascem da orientação que o nome
+/// promete), e a única autorada é a do artista, que a [`crate::field3d_view::View`] já guardava.
+/// *Uma dependência afirmada sem a desmontar é uma feature adiada com cara de arquitectura.*
+///
+/// ⚠️ E a divisão **pertence** à vista pela mesma razão que a câmera: é uma preferência de bancada.
+/// Um artista que trabalha em quatro vistas, pega no editor vetorial e volta não quer encontrar uma.
+#[test]
+fn the_split_survives_closing_the_panel() {
+    use crate::field3d_layout::Split;
+    use crate::field3d_smoke::{set_armed_by_panel, with_smoke};
+    set_armed_by_panel(true);
+    with_smoke(|s| {
+        crate::field3d_smoke::toggle_split(s);
+        assert!(matches!(s.split, Split::Quad { .. }), "abriu a divisão");
+        // Uma costura fora do meio: o que se lembra é a divisão, e não a posição dela.
+        s.split = s.split.with_t(0.3, 0.7);
+    });
+    // Fechar e reabrir.
+    set_armed_by_panel(false);
+    let _ = with_smoke(|_| ());
+    set_armed_by_panel(true);
+    with_smoke(|s| {
+        assert!(
+            matches!(s.split, Split::Quad { .. }),
+            "reabrir devolveu a vista única — a divisão é preferência de bancada, como a câmera"
+        );
+        assert_eq!(
+            s.vps.len(),
+            Split::quad().count(),
+            "a lista nasceu com uma vista só: o `split` diria «quatro» num quadro em que a lista \
+             tem uma, e alguém leria esse quadro"
+        );
+        // Volta ao estado de repouso para não deixar herança ao teste seguinte.
+        crate::field3d_smoke::toggle_split(s);
+    });
+    set_armed_by_panel(false);
+    let _ = with_smoke(|_| ());
+}

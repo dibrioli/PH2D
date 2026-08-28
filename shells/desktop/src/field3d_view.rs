@@ -67,6 +67,19 @@ pub(crate) struct View {
     pub(crate) gizmo_frame: Frame,
     /// O nó isolado, se algum.
     pub(crate) isolated: Option<u64>,
+    /// ⭐⭐⭐ **Como o canvas estava dividido** (W95) — ver [`crate::field3d_layout::Split`].
+    ///
+    /// ⛔⛔ **A W90 deixou-a de FORA com uma razão errada:** *«restaurar a divisão obrigaria a
+    /// restaurar as quatro câmeras»*. É falso — **três delas são DERIVADAS** (as vistas nomeadas
+    /// nascem da orientação que o nome promete, e a [`crate::field3d_smoke::ensure_viewports`] já as
+    /// reconstrói a partir da câmera do artista, que é a única autorada). *Uma dependência afirmada
+    /// sem a desmontar é uma feature adiada com cara de arquitectura* — a segunda desta wave, depois
+    /// da que dizia que o divisor precisava do cabeçalho.
+    ///
+    /// ⚠️ E ela **pertence** aqui: a divisão é uma preferência de bancada, exactamente como a
+    /// câmera. Um artista que trabalha em quatro vistas e pega no editor vetorial não quer voltar e
+    /// encontrar uma.
+    pub(crate) split: crate::field3d_layout::Split,
 }
 
 impl Default for View {
@@ -75,6 +88,7 @@ impl Default for View {
     /// sem memória podiam divergir sem ninguém notar; há gate.
     fn default() -> Self {
         Self {
+            split: crate::field3d_layout::Split::One,
             cam: Orbit::default(),
             manual: false,
             gizmo_mode: Mode::default(),
@@ -95,7 +109,7 @@ impl View {
             // DIVISÃO, e o que a W43 promete é *«a peça certa vista do sítio onde a deixei»*.
             vps: _,
             active: _,
-            split: _,
+            split,
             gizmo_mode,
             gizmo_frame,
             isolated,
@@ -128,6 +142,7 @@ impl View {
             // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
         } = s;
         Self {
+            split: *split,
             cam: s.vp().cam,
             manual: s.vp().manual,
             gizmo_mode: *gizmo_mode,

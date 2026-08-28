@@ -5764,7 +5764,7 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⭐⭐⭐ **O quadro de movimento usa `~30 %` da máquina** — o buraco até 60 Hz é de ESCALAMENTO, não de algoritmo | ⛔ o ladrilho **não** é a alavanca (`48 ≈ 64`) · ⛔⛔ **e o JIT também não era**: tirá-lo não mudou a forma da curva (§88.2). A causa está por achar | §82.8, §88.2 |
 | ⏳ **A causa da má escala: a DECOMPOSIÇÃO** (`1,47×`) — e o oráculo prova que a **ORDEM** é o mecanismo (LPT dá `1,00×` a 8 threads, `1,02×` a 16) | ⛔ a régua da profundidade está anti-correlacionada · ⭐ com `TILE = 24` o piso encolheu sozinho: **re-medir o que ela ainda vale antes de a construir** | §89, §90.1 |
 | ✅⭐⭐ **O `TILE` estava a ser escolhido pelo TECTO DA MINHA CACHE** | ⭐ tecto **derivado** do que o quadro pede ⇒ `TILE` de `64` para **`24`**, `1,44×`–`1,51×` | §90.2, §90.3 |
-| ⏳ O `SLABS` foi escolhido com o ladrilho de `64` | a forma da região mudou; pede a mesma reconferência | §90.4 |
+| ⏳ O `SLABS` — **reconferido**: a imagem é idêntica nas 5, mas o óptimo MOVE-SE com o tamanho do quadro (`2`–`3` a `426×240`, `4`–`6` a `640×360`) | fica em `4` (o compromisso); decide-se com uma corrida a `load < 5`, e a resposta pode ser **derivá-lo** do tamanho | §92.14 |
 | ⛔ O estêncil de **quatro** amostras para a normal (`7 %` de todas as amostras) | **RECUSA MEDIDA** — numa quina de navalha move a normal `14°`–`35°` | §82.6 |
 | ⏸️ As duas fatias de FORA: `8,7 %` da montagem por `0,18 %` da marcha | as três saídas medidas, nenhuma se paga | §82.3 |
 | ⏸️ Baixar as arestas do contorno a mexer (`PREVIEW_MAX_EDGES`) | preço medido na tabela; muda a FORMA, decisão de quem vê | §73.1 |
@@ -8499,6 +8499,37 @@ chamada de `with_smoke`.
 Gate: `the_cursor_over_a_seam_points_across_it` — a seta é **perpendicular** à linha, o cruzamento é
 `Move`, o meio de um quadrante não tem seta, e ⭐ **uma varredura afirma que o cursor e o arrasto
 concordam pixel a pixel** sobre haver costura. Mutação (trocar as duas setas): ✗.
+
+### §92.14 — W94: o `SLABS` reconferido — e o óptimo MOVE-SE com o tamanho do quadro
+
+O item que a §90.4 abriu: o `SLABS = 4` foi escolhido com o ladrilho a `64`, e ele é `24` desde a
+W88 — mais a cache de fitas, que mudou o que uma região custa. *Uma varredura envelhece com o custo
+que ela pesava*, e esta já tinha mudado de veredito uma vez (a original deu `2`; a W71 deu `4`).
+
+`how_many_slabs_now.rs`, regime de um arrasto, ×3 intercalado (⚠️ `load 32` — leem-se **ordens**):
+
+| | `2` | `3` | **`4`** (ship) | `6` | `8` |
+|---|---:|---:|---:|---:|---:|
+| contorno 168 · `426×240` | **`13,2`** | `13,7` | `14,2` | `16,4` | `20,3` |
+| contorno 940 · `426×240` | `66,1` | **`65,5`** | `72,0` | `80,1` | `91,7` |
+| contorno 168 · **`640×360`** | `35,2` | `33,0` | **`28,9`** | `28,8` | `64,6` |
+
+⭐⭐ **As três fixturas discordam, e isso É o resultado:** ao tamanho do quadro de movimento (`426×240`)
+ganham `2`–`3` por `1,08×`–`1,10×`; a `640×360` ganham `4`–`6`. ⇒ **não há um número certo — há uma
+função do tamanho do quadro**, e o tamanho do quadro é escolhido pelo **orçamento**
+(`field3d_preview`), logo ele muda de máquina para máquina.
+
+⭐ **A imagem é IDÊNTICA em todas as fatias** (`0` pixels de silhueta diferentes, normal `0,00e0` nas
+cinco): o `SLABS` é puramente um botão de custo, e não uma troca de qualidade. *A coluna que a
+varredura original nomeia como «o que separa ficou rápido de ficou rápido e errado» está limpa.*
+
+⛔ **NÃO se mexe no `4`, e a razão é honesta:** ele é o compromisso (nunca pior que `1,2×` em nenhuma
+das três linhas), e a `load 32` eu não separo `1,2×` de ruído — a linha de `640×360` tem um máximo de
+`101,92` para `6` fatias contra `40,55` para `4`, que é ruído a falar.
+
+⚠️ **O que decidiria:** uma corrida a `load < 5` nas duas resoluções. E se a discordância se
+confirmar, a resposta não é outra constante — é **derivar** o `SLABS` do tamanho que o laço do
+preview escolheu, que é a única forma de ele estar certo nas duas.
 
 ### §92.7 — ⏳ O que fica aberto
 

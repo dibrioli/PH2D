@@ -283,3 +283,193 @@ fn a_piece_added_deep_lands_under_its_own_parent() {
         "a peca neta nao aterrou debaixo do pai dela — a arvore da copia deixou de ser a do mestre"
     );
 }
+
+/// ⭐⭐⭐ **A EXCEPÇÃO sobrevive a apagar a peça no mestre, e VOLTA A PEGAR quando ela volta**
+/// (ADR-0164 / F5.3 — *Overrides sem alvo*).
+///
+/// ⛔⛔ **Foi a F5.1 que criou este buraco**, e a sonda mediu-o:
+///
+/// ```text
+/// depois da excepcao:                      overrides=1
+/// depois de apagar a peca do mestre:       overrides=1  pecas na copia=[]
+/// depois do undo no mestre:  tint da copia = [1,1,1,1]   ← a excepcao era [0.9,…]
+/// ```
+///
+/// Antes da F5.1 ninguém despawnava a peça, então a excepção vivia no componente dela e o
+/// re-encontro era automático. Com a peça a morrer, ficava **a chave sem o valor**: a cópia perdia
+/// a excepção *e* ficava **surda à receita para sempre**, porque o passe salta o que a instância
+/// possui.
+///
+/// ⚠️ **E é por isso que os bytes aqui NÃO contradizem a refutação da F4.4** (*«guardar bytes cria
+/// duas fontes para o mesmo número»*): a peça órfã não existe, logo não há segunda fonte — há a
+/// única. *A premissa da refutação era «a peça é uma entidade real», e a F5.1 tornou-a destruível.*
+///
+/// (Mutação: não chamar o `entomb` ⇒ RED na cor; não chamar o `exhume` ⇒ RED na cor.)
+#[test]
+fn an_override_outlives_its_piece_and_binds_again_when_it_returns() {
+    let (mut sim, r, master, inst) = scene();
+    let mut echo = MasterEcho::default();
+    pass(&mut sim, &r, &mut echo);
+    let mine = [0.9, 0.1, 0.1, 1.0];
+    let box_inst = sim
+        .world()
+        .get::<Children>(inst)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca da copia");
+    let mut spr = sim
+        .world()
+        .get::<ph2d_render::Sprite>(box_inst)
+        .copied()
+        .expect("sprite");
+    spr.tint = mine;
+    sim.world_mut().entity_mut(box_inst).insert(spr);
+    pass(&mut sim, &r, &mut echo);
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::ObjectInstance>(inst)
+            .map_or(0, |o| o.overrides.len()),
+        1,
+        "a excepcao nao foi capturada — a fixtura nao contem o fenomeno"
+    );
+
+    // O gesto: o artista apaga a peça NO MESTRE.
+    let box_master = sim
+        .world()
+        .get::<Children>(master)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca do mestre");
+    let sid = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(box_master)
+        .expect("id")
+        .0;
+    let master_sprite = sim
+        .world()
+        .get::<ph2d_render::Sprite>(box_master)
+        .copied()
+        .expect("sprite do mestre");
+    sim.world_mut().entity_mut(box_master).despawn();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    pass(&mut sim, &r, &mut echo);
+
+    assert!(names(&sim, inst).is_empty(), "a peca ficou na copia");
+    let o = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(inst)
+        .cloned()
+        .expect("a raiz da instancia");
+    assert_eq!(o.overrides.len(), 0, "a chave ficou a apontar para o nada");
+    assert_eq!(
+        o.orphans.len(),
+        1,
+        "a excepcao foi perdida em vez de guardada — o artista perde trabalho por um Delete"
+    );
+
+    // O Ctrl+Z no mestre: a peça volta com o MESMO `StableId`.
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("Box"),
+        master_sprite,
+        ChildOf(master),
+        ph2d_ecs::StableId(sid),
+    ));
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    pass(&mut sim, &r, &mut echo);
+
+    let back = sim
+        .world()
+        .get::<Children>(inst)
+        .and_then(|c| c.iter().next().copied())
+        .expect("a peca voltou");
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_render::Sprite>(back)
+            .expect("sprite")
+            .tint,
+        mine,
+        "a excepcao nao voltou a pegar — a copia ficou com o valor do mestre"
+    );
+    let o = sim
+        .world()
+        .get::<ph2d_ecs::ObjectInstance>(inst)
+        .cloned()
+        .expect("a raiz");
+    assert_eq!(o.orphans.len(), 0, "o orfao ficou la' depois de repor");
+    assert_eq!(
+        o.overrides.len(),
+        1,
+        "a excepcao nao voltou a ser uma excepcao"
+    );
+    assert_eq!(pass(&mut sim, &r, &mut echo), 0, "o passe nao assentou");
+}
+
+/// ⛔ **E o mestre continua sem alcançar a peça reposta** — é o que ser uma excepção quer dizer.
+///
+/// ⚠️ Sem esta metade, «voltar a pegar» podia significar *«a chave voltou»* com a cópia a obedecer
+/// à receita na mesma — e o gate acima passaria, porque no instante em que ele mede os dois valores
+/// coincidem por outra razão.
+#[test]
+fn the_restored_override_still_wins_against_the_master() {
+    let (mut sim, r, master, inst) = scene();
+    let mut echo = MasterEcho::default();
+    pass(&mut sim, &r, &mut echo);
+    let mine = [0.9, 0.1, 0.1, 1.0];
+    let box_inst = sim
+        .world()
+        .get::<Children>(inst)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca da copia");
+    let mut spr = sim
+        .world()
+        .get::<ph2d_render::Sprite>(box_inst)
+        .copied()
+        .expect("sprite");
+    spr.tint = mine;
+    sim.world_mut().entity_mut(box_inst).insert(spr);
+    pass(&mut sim, &r, &mut echo);
+
+    let box_master = sim
+        .world()
+        .get::<Children>(master)
+        .and_then(|c| c.iter().next().copied())
+        .expect("peca do mestre");
+    let sid = sim
+        .world()
+        .get::<ph2d_ecs::StableId>(box_master)
+        .expect("id")
+        .0;
+    let mut master_sprite = sim
+        .world()
+        .get::<ph2d_render::Sprite>(box_master)
+        .copied()
+        .expect("sprite do mestre");
+    sim.world_mut().entity_mut(box_master).despawn();
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    pass(&mut sim, &r, &mut echo);
+    // A peça volta, e o artista muda a COR dela no mestre a seguir.
+    master_sprite.tint = [0.0, 0.0, 1.0, 1.0];
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("Box"),
+        master_sprite,
+        ChildOf(master),
+        ph2d_ecs::StableId(sid),
+    ));
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    pass(&mut sim, &r, &mut echo);
+    pass(&mut sim, &r, &mut echo);
+
+    let back = sim
+        .world()
+        .get::<Children>(inst)
+        .and_then(|c| c.iter().next().copied())
+        .expect("a peca voltou");
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_render::Sprite>(back)
+            .expect("sprite")
+            .tint,
+        mine,
+        "o mestre atropelou a excepcao reposta — ela voltou como chave e nao como lei"
+    );
+}

@@ -422,7 +422,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `ComponentBlob` da `Sprite` (20 campos -> 13). ⛔ Esta tripla NAO podia ver esse degrau:
         // ela mede a forma dos documentos, e o blob e' um `Vec<u8>` opaco para ela. O gate que o
         // ve' e' `crate::project_migrate_sprite`.
-        (99, 13, 14),
+        // PROJECT 99→100 (ADR-0164 F5.3): o `ObjectInstance` ganhou os ORFAOS -- um segundo campo
+        // (`orphans: BTreeMap<OverrideKey, Vec<u8>>`) dentro de um componente REGISTADO. ⚠️ **A
+        // `VecScene`, o `FlipDoc` e o `ProjectFile` NAO mudaram** (os dois numeros ao lado ficam
+        // onde estavam): o que mudou foram os BYTES dentro de um `ComponentBlob`, que para esta
+        // tripla e' um `Vec<u8>` opaco. E' o mesmo cego do degrau 98→99, e a razao de ele estar
+        // escrito aqui e' que a proxima pessoa vai olhar para esta tripla primeiro.
+        // ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+        (100, 13, 14),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

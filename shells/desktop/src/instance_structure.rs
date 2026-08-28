@@ -37,6 +37,10 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(crate) struct StructureReport {
     pub(crate) added: usize,
     pub(crate) removed: usize,
+    /// Excepções que perderam o alvo neste passe (F5.3).
+    pub(crate) orphaned: usize,
+    /// Excepções que voltaram a pegar porque a peça voltou.
+    pub(crate) restored: usize,
 }
 
 /// ⭐⭐ **Põe a forma de cada instância a par com a do mestre dela.**
@@ -161,9 +165,15 @@ fn reconcile_one(
         // `only_the_instantiate_door_calls_the_deep_copy` existe porque uma 2.ª montagem esquece
         // sempre um dos passos (o remap, os documentos, o `MasterRoot`), e o defeito é mudo. Ele
         // apanhou-me a escrever exactamente isso.
-        if crate::instantiate::materialise_piece(sim, registry, docs, piece, host, linked).is_some()
+        if let Some(new_root) =
+            crate::instantiate::materialise_piece(sim, registry, docs, piece, host, linked)
         {
             out.added += 1;
+            // ⭐ E se esta peça já cá esteve e o artista tinha uma excepção nela, ela volta agora.
+            let sid = sim.world().get::<StableId>(piece).map(|s| s.0);
+            if let Some(sid) = sid {
+                exhume(sim, registry, root, sid, new_root, out);
+            }
         }
     }
 
@@ -175,6 +185,14 @@ fn reconcile_one(
         .into_iter()
         .flat_map(|e| subtree(sim, e).into_iter())
         .collect();
+    // ⭐⭐⭐ **A EXCEPÇÃO do artista sai da peça ANTES de a peça morrer** (F5.3) — ver
+    // [`ph2d_ecs::ObjectInstance::orphans`]. Sem isto, apagar a peça no mestre e **desfazer**
+    // devolvia-a com o valor do MESTRE e a chave de override intacta: a cópia perdia a excepção
+    // **e ficava surda à receita para sempre**, porque o passe salta o que a instância possui.
+    // ⚠️ *Foi a F5.1 que criou este buraco* — antes dela ninguém despawnava a peça.
+    if !doomed.is_empty() {
+        entomb(sim, registry, root, &doomed, out);
+    }
     for e in doomed {
         if let Ok(em) = sim.world_mut().get_entity_mut(e) {
             em.despawn();
@@ -185,6 +203,95 @@ fn reconcile_one(
 
 fn master_root_sid(sim: &SimWorld, master_root: Entity) -> Option<u64> {
     sim.world().get::<StableId>(master_root).map(|s| s.0)
+}
+
+/// ⭐⭐ **Guarda os bytes de cada override cuja peça vai morrer**, na raiz da instância.
+///
+/// ⚠️ **Só os que têm override.** Uma peça que a instância não possui não tem excepção nenhuma a
+/// perder — guardar-lhe os bytes seria uma cópia do mestre a envelhecer num sítio que ninguém lê.
+fn entomb(
+    sim: &mut SimWorld,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    root: Entity,
+    doomed: &BTreeSet<Entity>,
+    out: &mut StructureReport,
+) {
+    let Some(mut inst) = sim.world().get::<ph2d_ecs::ObjectInstance>(root).cloned() else {
+        return;
+    };
+    let mut wrote = false;
+    for &e in doomed {
+        let Some(link) = sim.world().get::<InstanceOf>(e).copied() else {
+            continue;
+        };
+        // ⚠️ O `range` sobre a chave ordenada dá as entradas desta peça sem varrer as outras —
+        // é para isto que `OverrideKey` ordena por `piece` antes de `type_id`.
+        let keys: Vec<ph2d_ecs::OverrideKey> = inst
+            .overrides
+            .iter()
+            .filter(|k| k.piece == link.master)
+            .copied()
+            .collect();
+        for key in keys {
+            let Some(entry) = registry.get_by_id(key.type_id) else {
+                continue;
+            };
+            // ⚠️ A AUSÊNCIA também é a excepção (o artista tirou o componente da cópia), e por
+            // isso o `unwrap_or_default` do serialize não pode ser confundido com «não havia»:
+            // o que se guarda é o `Option`, achatado em bytes vazios para a ausência.
+            let bytes = (entry.serialize)(sim.world(), e)
+                .unwrap_or_default()
+                .unwrap_or_default();
+            inst.orphans.insert(key, bytes);
+            inst.overrides.remove(&key);
+            out.orphaned += 1;
+            wrote = true;
+        }
+    }
+    if wrote {
+        sim.world_mut().entity_mut(root).insert(inst);
+    }
+}
+
+/// ⭐⭐ **Repõe a excepção quando a peça VOLTA** (o `Ctrl+Z` no mestre).
+///
+/// ⚠️ **A chave é a mesma porque o `StableId` sobrevive ao respawn do undo** — é a propriedade que
+/// o id compra, e é ela que faz *«volta a pegar»* ser verdade em vez de uma esperança.
+fn exhume(
+    sim: &mut SimWorld,
+    registry: &ph2d_ecs::scene::ComponentRegistry,
+    root: Entity,
+    piece_sid: u64,
+    inst_piece: Entity,
+    out: &mut StructureReport,
+) {
+    let Some(mut inst) = sim.world().get::<ph2d_ecs::ObjectInstance>(root).cloned() else {
+        return;
+    };
+    let keys: Vec<ph2d_ecs::OverrideKey> = inst
+        .orphans
+        .keys()
+        .filter(|k| k.piece == piece_sid)
+        .copied()
+        .collect();
+    if keys.is_empty() {
+        return;
+    }
+    for key in keys {
+        let Some(bytes) = inst.orphans.remove(&key) else {
+            continue;
+        };
+        if let Some(entry) = registry.get_by_id(key.type_id) {
+            if bytes.is_empty() {
+                (entry.remove)(sim.world_mut(), inst_piece);
+            } else {
+                let _ = (entry.insert_from_bytes)(sim.world_mut(), inst_piece, &bytes);
+            }
+        }
+        inst.overrides.insert(key);
+        out.restored += 1;
+    }
+    sim.world_mut().entity_mut(root).insert(inst);
 }
 
 #[cfg(test)]

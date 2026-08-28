@@ -302,4 +302,12 @@
 ///
 /// A migração é uma travessia das linhas do snapshot (`crate::project_migrate_sprite`), não um
 /// espelho do ficheiro: congelar 14 campos que não mudaram seria a cópia errada.
-pub(crate) const PROJECT_SCHEMA: u32 = 99;
+/// ⭐ **100 (2026-08-27) — o `ObjectInstance` ganhou os ORFÃOS** (ADR-0164 / F5.3): um segundo
+/// campo (`orphans: BTreeMap<OverrideKey, Vec<u8>>`) dentro de um componente REGISTADO, e o
+/// postcard é posicional. Um v99 lido por este binário atravessaria o `Vec<u8>` opaco do
+/// `ComponentBlob` sem olhar e leria o fim da lista de overrides como o início do mapa — lixo
+/// bem-formado, calado.
+///
+/// ⛔ **Sem degrau de migração, e está certo** — é a decisão do Enio de 26/08 (não há projetos
+/// gravados). O número sobe para o load **recusar em voz alta** em vez de ler errado em silêncio.
+pub(crate) const PROJECT_SCHEMA: u32 = 100;

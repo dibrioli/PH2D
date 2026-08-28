@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA da instância segue a do mestre) ✅ 2026-08-27** · variantes e *Overrides sem alvo* ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — o modelo) ✅ 2026-08-27** (falta a SECÇÃO no Inspector) · variantes ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
@@ -838,6 +838,35 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
 - ⚠️ **E uma mutação minha SOBREVIVEU por fixtura plana:** *«a peça nova aterra na raiz em vez de no
   pai certo»* passa quando a peça nova é filha da raiz, porque os dois ramos dão o mesmo. O gate
   que a mata tem uma peça NETA. *Uma fixtura de um nível não pode medir de que nível a peça é.*
+
+---
+
+**O que a F5.3 mediu e o plano não dizia (2026-08-27):**
+- ⛔⛔ **A F5.1 abriu o buraco que a F5.3 fecha**, e a sonda mostrou-o inteiro:
+  ```text
+  depois da excepcao:                 overrides=1
+  depois de apagar a peca do mestre:  overrides=1  pecas na copia=[]
+  depois do undo no mestre:  tint da copia = [1,1,1,1]   <- a excepcao era [0.9,…]
+  ```
+  Antes da F5.1 ninguém despawnava a peça, então a excepção vivia no componente dela e o
+  re-encontro era automático. Com a peça a morrer ficava **a chave sem o valor**: a cópia perdia a
+  excepção **e ficava surda à receita para sempre** (o passe salta o que a instância possui).
+- ⭐⭐ **E isto RE-ABRE, com a premissa mudada, a refutação da F4.4** (*«guardar bytes cria duas
+  fontes para o mesmo número»*). Ela valia porque *«a instância É uma entidade real»* — e a F5.1
+  tornou a peça **destruível**. Numa peça órfã não há segunda fonte: há a **única**. ⇒
+  `ObjectInstance.orphans: BTreeMap<OverrideKey, Vec<u8>>`, escrito **só** quando o alvo morre.
+  *Quem move o número que tornava algo inalcançável tem de reconferir a nota.*
+- ⭐ **«Volta a pegar» é verdade por causa do `StableId`** — a chave é a mesma depois do respawn do
+  undo, e é a propriedade que o id compra sobre um caminho de nomes (a §0 do endereçamento).
+- ⛔ **Nunca se apagam sozinhos** (a lei do *«unused overrides»* do Unity): sair por causa de um
+  `Delete` no mestre é perder trabalho do artista em silêncio.
+- ⚠️ **`PROJECT_SCHEMA` 99 → 100**, sem degrau de migração (decisão do Enio, 26/08). ⚠️ A **tripla**
+  do `project_schema_tests` **não vê este degrau** — os bytes mudaram *dentro* de um `ComponentBlob`,
+  que para ela é opaco. É o mesmo cego do 98→99, e está escrito lá porque é a primeira coisa que a
+  próxima pessoa vai olhar.
+- ⏳ **Falta a SECÇÃO no Inspector** que os LISTA (o *«Overrides sem alvo»* do critério 3 da F5): o
+  modelo está fechado e gateado, a superfície não existe. É a mesma família do item aberto *«nada na
+  tela mostra que campo está overridado»*.
 
 ---
 

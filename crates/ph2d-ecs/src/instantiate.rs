@@ -98,6 +98,28 @@ pub struct OverrideKey {
 pub struct ObjectInstance {
     /// Ordenado por construção (HR-5): a serialização tem de ser determinística.
     pub overrides: std::collections::BTreeSet<OverrideKey>,
+    /// ⭐⭐⭐ **Os overrides SEM ALVO** — a excepção de uma peça que o mestre já não tem
+    /// (ADR-0164 / F5.3).
+    ///
+    /// # ⚠️ Aqui os bytes são obrigatórios, e isso NÃO contradiz a refutação acima
+    ///
+    /// A refutação diz que guardar bytes cria **duas fontes para o mesmo número** — e ela vale
+    /// enquanto a peça existe, porque aí o valor vive no componente dela. Uma peça órfã **não
+    /// existe**: o mestre apagou-a, e a F5.1 tira-a da instância a seguir. ⇒ não há segunda fonte,
+    /// há a ÚNICA. *A premissa da refutação era «a peça é uma entidade real», e a F5.1 tornou-a
+    /// destruível — quem move o número que tornava algo inalcançável tem de reconferir a nota.*
+    ///
+    /// # O que isto compra, medido
+    ///
+    /// Sem esta metade, apagar uma peça no mestre e **desfazer** devolvia a peça com o valor do
+    /// MESTRE e a chave de override intacta ⇒ a cópia ficava com a excepção perdida **e surda à
+    /// receita para sempre** (o passe salta o que a instância possui). Medido por sonda em
+    /// 2026-08-27: `tint da copia = [1,1,1,1]`, quando a excepção era `[0.9,…]`.
+    ///
+    /// ⛔ **Nunca se apagam sozinhos** — é a lei do *«unused overrides»* do Unity, e a razão é que
+    /// apagar a excepção do artista por causa de um `Delete` no mestre é perder trabalho em
+    /// silêncio. Sai por gesto, ou quando a peça volta e ela é reposta.
+    pub orphans: std::collections::BTreeMap<OverrideKey, Vec<u8>>,
 }
 
 /// ⭐⭐⭐ **Esta peça DIVIDE a arte do mestre** — o *Duplicate Linked* do Blender (Enio, 2026-08-27).

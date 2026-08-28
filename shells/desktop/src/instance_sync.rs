@@ -209,7 +209,7 @@ pub(crate) fn sync_instances(
     // construção**. Materializá-la aqui é o que dá a promessa de UM quadro: ela forma par já a
     // seguir e recebe os bytes do mestre no mesmo passe.
     let structure = crate::instance_structure::reconcile(sim, registry, docs);
-    let mut wrote = structure.added + structure.removed;
+    let mut wrote = structure.added + structure.removed + structure.orphaned + structure.restored;
     // ⭐ **O retrato do passe** — `PH2D_INSTANCE_LOG=1`. Ver [`crate::instance_diag`]: sem ele, um
     // par que morre na guarda do documento não deixa uma linha em lado nenhum.
     let mut diag = crate::instance_diag::PassDiag::default();

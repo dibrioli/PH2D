@@ -148,6 +148,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.view.left" => "Left (^3)",
         "panel.model3d.view.top" => "Top (7)",
         "panel.model3d.view.bottom" => "Bottom (^7)",
+        // ⭐ O RÓTULO no canto de cada viewport (W90d) — o nome NU, sem o atalho.
+        //
+        // ⚠️ **Chaves próprias e não as de cima**: o rótulo do botão traz o atalho de propósito (é a
+        // única forma de a tecla ser descoberta), e um "(7)" no canto da imagem seria a promessa de
+        // um controlo que ali não existe. *A mesma palavra em dois sítios pode ter de dizer coisas
+        // diferentes.*
+        "viewport.model3d.view.front" => "Front",
+        "viewport.model3d.view.back" => "Back",
+        "viewport.model3d.view.right" => "Right",
+        "viewport.model3d.view.left" => "Left",
+        "viewport.model3d.view.top" => "Top",
+        "viewport.model3d.view.bottom" => "Bottom",
+        // A vista que não é nenhuma das seis — o artista pôs a câmera onde quis.
+        "viewport.model3d.view.user" => "User",
         // Os TRÊS gestos de câmera que não são uma vista.
         "panel.model3d.camera.ortho" => "Ortho (5)",
         "panel.model3d.camera.frame" => "Frame (Home)",

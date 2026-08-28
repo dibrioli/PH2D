@@ -259,6 +259,47 @@ pub(crate) fn paint_split(
     }
 }
 
+/// ⭐⭐⭐ **O RÓTULO DE UMA VISTA** (W90d) — o que a quina de cada viewport diz.
+///
+/// # Porque ele existe
+///
+/// Com quatro vistas na tela, *«qual é qual?»* passa a ser uma pergunta — e a resposta estava só na
+/// geometria, que é ambígua exactamente nas peças simétricas em que ela mais importa. É a metade do
+/// **cabeçalho** que o plano pede (`03_plano_implicito.md`), na forma que não rouba pixels ao
+/// traçado: uma faixa reservada encolheria as quatro imagens e obrigaria a porta do layout a
+/// devolver dois retângulos por vista.
+///
+/// ⚠️ **É um MOSTRADOR, não um controlo.** Trocar a vista de um quadrante já é alcançável — clicar
+/// nele (passa a activo) e `Numpad1/3/7` ou o botão do painel. *Antes de construir um controlo,
+/// meça se a composição já o exprime.*
+///
+/// ⚠️ O texto vem da chave i18n derivada da **câmera** ([`crate::field3d_views::label_key`]), nunca
+/// do quadrante: orbitar a vista de cima faz dela *User*, que é o que ela passou a ser.
+pub(crate) fn paint_view_label(
+    scene: &mut VectorScene,
+    text: &mut ph2d_text::TextSystem,
+    rect: ph2d_editor::zones::Rect,
+    key: &str,
+    theme: Theme,
+) {
+    let line = ph2d_i18n::tr(key);
+    if line.is_empty() {
+        return;
+    }
+    ph2d_editor::paint::paint_text_block(
+        text,
+        scene,
+        line,
+        rect.x + LABEL_INSET_PX,
+        rect.y + LABEL_INSET_PX,
+        ph2d_tokens::TypeToken::Sm.px(),
+        rect.w,
+        // ⚠️ **Text2 e não Text1**: ele acompanha a peça o tempo todo, e um rótulo com o mesmo peso
+        // do número de um gesto competiria com o que o artista está a fazer.
+        ph2d_editor::paint::resolve(ColorToken::Text2, theme),
+    );
+}
+
 /// Uma poligonal com espessura, um quadrilátero por segmento.
 ///
 /// ⚠️ **Sem junta nas dobras, de propósito.** Uma argola amostrada em 48 pedaços dobra ~7,5° por
@@ -353,6 +394,8 @@ pub(crate) fn paint_readout_text(
 }
 
 /// Quanto a ficha se afasta do centro do gizmo, e a largura máxima dela.
+/// O recuo do rótulo de vista à quina do viewport — ver [`paint_view_label`].
+const LABEL_INSET_PX: f32 = 8.0; // LITERAL-PX-OK: overlay metric (viewport label inset)
 const READOUT_OFFSET_PX: f32 = 26.0; // LITERAL-PX-OK: overlay metric (readout offset from gizmo centre)
 const READOUT_MAX_W_PX: f32 = 220.0; // LITERAL-PX-OK: overlay metric (readout wrap width)
 

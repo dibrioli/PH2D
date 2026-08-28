@@ -71,6 +71,15 @@ pub(crate) fn draw(
         for i in std::iter::once(activa).chain((0..n).filter(|k| *k != activa)) {
             viewport_pass(smoke, i, quadros[i], &doc, scene_out);
         }
+        // ⭐⭐ **O RÓTULO DE CADA VISTA** (W90d) — só com a divisão aberta: com uma vista só, a
+        // pergunta *«qual é qual?»* não existe, e um rótulo permanente seria ruído sobre a peça.
+        if n > 1 {
+            for (i, r) in quadros[..n].iter().enumerate() {
+                let key = crate::field3d_views::label_key(&smoke.vps[i].cam);
+                crate::field3d_gizmo_paint::paint_view_label(scene_out, text, *r, key, theme);
+            }
+        }
+
         // ⭐⭐⭐ **AS COSTURAS E A MOLDURA DO ACTIVO** (W90) — por cima das imagens e por baixo do
         // gizmo, que é onde uma moldura de janela vive.
         crate::field3d_gizmo_paint::paint_split(

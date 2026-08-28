@@ -5749,7 +5749,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅ **`FRAMES_KEPT = 3` era derivado; agora é MEDIDO** | o joelho está lá: `1` e `2` piores, `4` e `6` compram `≤0,4 ms` por `1,4`–`2,5×` a memória | §91.8 |
 | ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
 | ✅ **E só a vista ACTIVA ficava lisa** (smoke do Enio, 27/08) | ⭐ cada viewport comparava-se com o pedido do **activo**; os 5 gates da wave mediam a GEOMETRIA e passaram todos | §92.8 |
-| ⏳ O **cabeçalho** por viewport — e é ele que destrava o divisor arrastável | a divisão em `N` livre pede uma pega, e uma pega pede onde viver | §92.7 |
+| ✅⭐⭐ **Cada vista diz o NOME dela**, derivado da câmera (orbitar a *Top* fá-la *User*) | a metade do cabeçalho que não rouba pixels ao traçado | §92.10 |
+| ⏳ O cabeçalho **CLICÁVEL** (menu por vista) — e é ele que destrava o divisor arrastável | pede a faixa reservada, que obriga a porta do layout a devolver dois retângulos por vista | §92.10 |
 | ✅⭐⭐ **O custo de uma EDIÇÃO com a divisão aberta** — medido: quatro juntas custam `3,93×` uma (elas só se fatiam) | ⭐ curado por **ORDEM**: a activa tem prioridade e chega em `64 ms` em vez de `254` | §92.9 |
 | ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
@@ -8378,6 +8379,34 @@ indiferente porque os retângulos não se sobrepõem.
 Gate: `the_active_viewport_gets_its_image_first` — uma afirmação de **ORDEM**, nunca de relógio (do
 frio, a imagem da activa aparece pelo menos um quadro antes de qualquer outra, por construção).
 Mutação (desligar a guarda): ✗.
+
+### §92.10 — ⭐⭐ W90d: cada vista diz o NOME dela, e o nome sai da câmera
+
+A outra metade da frase do plano (*«cabeçalho e divisão»*), na forma que **não rouba pixels ao
+traçado**: uma faixa reservada encolheria as quatro imagens e obrigaria a porta do layout a devolver
+**dois** retângulos por vista. O rótulo mora na quina, por cima da imagem.
+
+⚠️ **Derivado da CÂMERA, nunca do quadrante** (`field3d_views::label_key`): a vista de cima nasce no
+quadrante de cima-esquerda, mas o artista pode orbitá-la — e a partir daí ela **não é** a vista de
+cima. *Um rótulo preso ao sítio continuaria a dizer «Top» sobre uma vista qualquer, e nada na tela o
+desmentiria.* É a lei do Blender e é a certa.
+
+⚠️ **Chaves i18n PRÓPRIAS**, e não as dos botões: o rótulo de um botão traz o atalho de propósito
+(*"Top (7)"* — é a única forma de a tecla ser descoberta por quem não sabe que ela existe), e um
+`(7)` na quina da imagem seria a promessa de um controlo que ali não existe. *A mesma palavra em dois
+sítios pode ter de dizer coisas diferentes.*
+
+⚠️ **É um MOSTRADOR, não um controlo** — e isso é uma decisão, não uma omissão: trocar a vista de um
+quadrante já é alcançável (clicar nele, que o torna activo, e `Numpad1/3/7` ou o botão do painel).
+*Antes de construir um controlo, meça se a composição já o exprime.* ⏳ Um cabeçalho **clicável** (com
+menu por vista) fica aberto, e é ele que pede a faixa reservada.
+
+⚠️ E ele só aparece **com a divisão aberta**: com uma vista só a pergunta *«qual é qual?»* não existe,
+e um rótulo permanente seria ruído sobre a peça.
+
+Gate: `the_viewport_label_follows_the_camera_and_not_the_quadrant` — as seis nomeadas dizem nomes
+**distintos**, todas as chaves **traduzem** (um rótulo que mostra a própria chave é pior que nenhum),
+e uma câmera orbitada passa a *User*. Mutação (prender o rótulo): ✗.
 
 ### §92.7 — ⏳ O que fica aberto
 

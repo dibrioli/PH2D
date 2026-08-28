@@ -131,6 +131,23 @@ pub(crate) fn named_view(cam: &Orbit) -> Option<Standard> {
         .find(|s| 1.0 - dot(cam.rotation, s.rotation()).abs() < RECOGNISE)
 }
 
+/// ⭐⭐ **A chave i18n do RÓTULO desta câmera** (W90d) — o que o canto do viewport diz.
+///
+/// ⚠️ **Derivada da CÂMERA, nunca do quadrante.** Orbitar a vista de cima faz dela *User*, que é o
+/// que ela passou a ser — exactamente como no Blender. *Um rótulo preso ao sítio mentiria assim que
+/// a mão tocasse na vista, e mentiria em silêncio.*
+pub(crate) fn label_key(cam: &Orbit) -> &'static str {
+    match named_view(cam) {
+        Some(Standard::Front) => "viewport.model3d.view.front",
+        Some(Standard::Back) => "viewport.model3d.view.back",
+        Some(Standard::Right) => "viewport.model3d.view.right",
+        Some(Standard::Left) => "viewport.model3d.view.left",
+        Some(Standard::Top) => "viewport.model3d.view.top",
+        Some(Standard::Bottom) => "viewport.model3d.view.bottom",
+        None => "viewport.model3d.view.user",
+    }
+}
+
 fn dot(a: [f32; 4], b: [f32; 4]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2].mul_add(b[2], a[3] * b[3])))
 }

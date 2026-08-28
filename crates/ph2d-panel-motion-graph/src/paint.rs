@@ -27,6 +27,8 @@ use paint_menu::draw_menu;
 mod paint_breadcrumb;
 #[path = "paint_inert_badge.rs"]
 mod paint_inert_badge;
+#[path = "paint_port_label.rs"]
+mod paint_port_label;
 #[path = "paint_stamp.rs"]
 mod paint_stamp;
 #[path = "paint_wire.rs"]
@@ -34,6 +36,8 @@ mod paint_wire;
 #[path = "paint_wires.rs"]
 mod paint_wires;
 use paint_inert_badge::draw_inert_badge;
+pub use paint_port_label::PortLabel;
+use paint_port_label::draw_port_labels;
 #[path = "paint_grid.rs"]
 mod paint_grid;
 #[path = "paint_overlays.rs"]
@@ -388,6 +392,11 @@ fn draw_card(
         let (cx, cy) = socket_center(n, view, true, i);
         paint_socket_glyph(ctx, cx, cy, SOCKET_R * view.zoom, p, theme);
     }
+
+    // **O NOME de cada porta**, na faixa que o cartão já reservava e deixava em branco (report
+    // do Enio, 2026-08-27) — ver `paint_port_label`. Depois dos glifos, porque o texto é o que
+    // tem de ganhar quando os dois disputam o mesmo pixel.
+    draw_port_labels(ctx, n, view, theme);
 
     // The inline readout: what this card produced on this frame's cook, under its sockets.
     // Text2 (the muted tone), not Text1 — it is a live instrument reading, not a label the

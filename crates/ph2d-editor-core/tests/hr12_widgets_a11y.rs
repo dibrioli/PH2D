@@ -364,6 +364,17 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
     // a11y node for a wire (and for its routing waypoints) is registered by `hits.rs`,
     // which wires AccessKit itself. Keeping the drawing and the hit path in one file is
     // what the cap forbids; keeping them AGREEING is what `wire_path` is for (doc 44).
+    // Motion graph port labels — split from `paint.rs` for the 600-LOC cap, same shape as
+    // `paint_wire.rs` above: it draws text over a surface it does not own. The interactive
+    // thing is the SOCKET, whose a11y node `hits.rs` registers (`push_socket_hits`); this
+    // file registers no hit and consumes no gesture.
+    // ⚠️ **A metade de LEITOR DE TELA do mesmo report continua ABERTA e é do painel, não deste
+    // ficheiro:** o hit de socket carrega `node` + índice de `port` e nunca o nome, então a
+    // árvore de AccessKit diz «porta 2». Fechá-la é dar um canal de NOME ao `hits.rs`.
+    (
+        "ph2d-panel-motion-graph/src/paint_port_label.rs",
+        "pure text drawing — the sockets' AccessKit nodes are registered in hits.rs",
+    ),
     (
         "ph2d-panel-motion-graph/src/paint_wire.rs",
         "pure spline drawing — the wires' AccessKit nodes are registered in hits.rs",

@@ -81,6 +81,22 @@ pub enum Param {
     ///
     /// O teto é [`crate::MAX_PROFILE_RESOLUTION`], e ele é medido.
     Resolution,
+    /// ⭐⭐⭐ **O RAIO DA JUNÇÃO desta forma** (W98) — com que arredondamento ela se encontra com o
+    /// resultado das anteriores.
+    ///
+    /// ⚠️ **Não é o [`Param::Dim`] do filete da forma, e a diferença é o SUJEITO.** O `Dim` do
+    /// arredondamento é das arestas **dela própria** — as 12 de uma caixa, o aro de um cilindro — e
+    /// existe mesmo numa peça de uma forma só. Este é do **encontro**, e só existe porque há alguma
+    /// coisa antes. Uma caixa arredondada que corta com aresta viva precisa dos dois números ao
+    /// mesmo tempo, e uma chave só não os saberia distinguir.
+    ///
+    /// ⭐ **Escrever aqui MATERIALIZA o verbo** quando a forma o estava a herdar: pedir um raio de
+    /// junção próprio *é* pronunciar-se. O painel mostra isso na hora — o chip `Inherit` apaga-se e
+    /// acende o verbo que ela agora tem por escrito.
+    ///
+    /// ⚠️ A **base** não tem esta chave: ela semeia o acumulado e não se junta a nada
+    /// ([`crate::fold_verb`]).
+    Joint,
 }
 
 /// ⭐ **O que uma grandeza admite** — a forma da faixa, e de que recurso vem cada ponta.

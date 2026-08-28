@@ -5781,8 +5781,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ⛔ Os níveis de exportação **não** podem mandar na densidade dos quads | recusa MEDIDA, revertida | §70 |
 | ⛔ Dois `panic` do `ph2d-gridmap` com reprodutor | **dono: `line/quadextract`** | §68, §70 |
 | ✅⭐⭐⭐ **UM VERBO POR FORMA** — a operação sai do grupo e entra em cada objeto (etapa **1** de 3) | a receita lê-se na Hierarquia (`UNI`/`SUB`/`INT`/`BSE`, os selos do vetorial) · ausência = **herança** · a base **semeia** e guarda o verbo dela | §93 |
-| ⏳ **(2) O RAIO por objeto na UI** — o motor já o entrega | ⚠️ um objeto passa a ter **dois** raios (quina · junção) e os dois chamam-se "Radius" · ⛔ e o `Organic` entrega **3/4** do número que mostra, o que um raio por objeto torna visível | §93.9 |
-| ⏳ **(3) O CHAMFER** como 4.º carácter do `Blend` | ⭐ **uma fórmula só** — intersecção e subtração saem por De Morgan | §93.9 |
+| ✅⭐⭐⭐ **(2) O RAIO POR OBJETO** — linha **Joint**, derivada, e escrever nela **materializa** o verbo | ⭐ o painel não mudou (as linhas saem do `params_of`) · ⚠️ **Fillet** = as arestas da forma · **Joint** = o encontro, e o grupo passa a dizer `Joint` (é o padrão) | §94 |
+| ⏳ **(3) O CHAMFER** como 4.º carácter do `Blend` | ⭐ **uma fórmula só** — intersecção e subtração saem por De Morgan. ⛔ **E ela é a dona da calibração do `Organic`**: hoje ele entrega **3/4** do número que mostra e **não tem produtor na UI**; o chip de carácter é que o torna alcançável | §94.5 |
 
 - ⭐⭐⭐ **W97 (§93): UM VERBO POR FORMA — e o desenho já era LEI na metade 2D deste app.** Pedido do
   Enio (*«a hierarquia fica mais confusa criando vários parentescos… colocar a operação dentro de cada
@@ -8804,11 +8804,11 @@ de outra sem ninguém o pedir.
 
 ### §93.9 — ⏳ O que fica para as etapas 2 e 3
 
-- **(2)** o raio por objeto **na UI** — o motor já o entrega (§93.2), falta a linha no painel e
-  ⚠️ **os dois nomes**: um objeto passa a ter **dois** raios (a quina dele próprio · a junção com o
-  resto) e hoje os dois chamam-se "Radius". ⛔ E é o momento de corrigir o `Blend::Organic`, que
-  entrega **3/4** do número que mostra: com um raio só na peça isso quase não se nota; com um por
-  objeto, quatro formas marcadas `0,1` vão parecer visivelmente diferentes.
+- **(2)** ✅ **FEITA — ver §94.**
+  ⚠️ **E uma correcção a esta lista:** a calibração do `Blend::Organic` **não** pertence à etapa 2.
+  Medido em 28/08: *ele não tem produtor nenhum na UI* — nada o constrói fora dos testes, e o
+  `set_radius` só o **preserva** se já lá estiver. A mentira dos 3/4 é **latente**, e quem a acorda é
+  o **chip de carácter da etapa 3** ⇒ ela passa para lá, onde é obrigatória.
 - **(3)** o **Chamfer** como 4.º carácter ao lado de `Sharp`/`Exact`/`Organic` — ⭐ **uma fórmula só**,
   porque a intersecção e a subtração saem por De Morgan (a nota do `Op` já o diz).
 
@@ -8863,3 +8863,75 @@ apanhar o defeito que os escreveu (selar todas) e o da irmã (selar uma entidade
 
 ⇒ *Uma mudança de modelo obriga a re-perguntar o que cada gate ainda mede* — e o sinal de que é este
 caso, e não uma regressão, é o gate falhar **a contar** e não **a afirmar**.
+
+---
+
+## §94 — W98: ⭐⭐⭐ UM RAIO DE JUNÇÃO POR FORMA — e as duas palavras que ele obrigou (28/08)
+
+A etapa 2 das três que o Enio pediu em 28/08. O **motor** já a entregava desde a W97 (o `Op` carrega
+o `Blend`, então quem traz o verbo traz o raio); o que faltava era a **linha** e o **nome**.
+
+### §94.1 — A linha é DERIVADA, e é por isso que o painel não mudou
+
+O painel monta as linhas de número a partir de `params_of(world, e)` — chave i18n, valor e faixa. ⇒
+acrescentar `Param::Joint` ali fez a linha **aparecer sozinha**, com slider, campo numérico, undo e
+persistência, **sem uma linha de mudança no painel**. *Um painel derivado é o que faz uma grandeza
+nova custar o que ela de facto é.*
+
+### §94.2 — ⚠️ UMA FORMA TEM DOIS RAIOS, e a colisão de nomes era real
+
+| linha | de quem | existe quando |
+|---|---|---|
+| **Fillet** (`Param::Dim`) | das arestas **dela própria** — as 12 de uma caixa, o aro de um cilindro | sempre, mesmo numa peça de uma forma só |
+| **Joint** (`Param::Joint`) | do **encontro** com o resultado das anteriores | só porque há alguma coisa antes |
+
+Uma caixa arredondada que corta com aresta viva mostra os **dois números ao mesmo tempo**, e antes
+desta wave os dois chamavam-se `Fillet`. *Dois rótulos iguais na mesma coluna são dois controles que
+o artista não sabe separar.*
+
+⭐ **E o GRUPO passou a dizer `Joint` também**, de propósito: depois do verbo por forma, o raio dele
+**é** o raio de junção **padrão** — o que as formas caladas usam. *Uma grandeza, uma palavra.*
+
+⚠️ **Um gate apanhou a imprecisão da 1.ª redacção**, e a distinção que ele forçou é a que importa: a
+raiz **tem** a chave `field.dim.joint` (o padrão dela) e **não** tem o `Param::Joint` (*«o meu próprio
+encontro»*). ⇒ duas coisas diferentes com o mesmo nome na tela, e está certo — *o que as separa é
+quem escreve onde, não como se chamam*.
+
+### §94.3 — ⭐⭐⭐ Escrever o raio MATERIALIZA o verbo, e é isso que faz a wave valer
+
+A linha aparece **também para quem herda**, com o valor herdado: *«quero a boca deste furo mais
+macia»* não pode exigir que o artista entenda o modelo do verbo primeiro. Escrever nela dá à forma o
+verbo **por escrito** — o mesmo verbo que ela já usava, com o raio novo — e o chip `Inherit` apaga-se
+à vista.
+
+⛔ **Sem esta metade, arrastar a linha de uma forma calada escreveria no GRUPO**, e as outras caladas
+mudariam com ela — que é exactamente o defeito que o verbo por forma existe para curar. ⚠️ E um gate
+que só medisse *«o valor mudou»* passaria com essa escrita: **é o irmão calado que separa as duas
+hipóteses**, e ele está nos dois gates (o da lei e o da costura).
+
+⚠️ Zero é a **aresta viva** e não uma recusa (a lei do `set_shape_radius`, copiada de propósito para
+não haver duas); negativo é recusado e deixa o nó **como estava**. O **carácter** da mistura
+sobrevive ao raio novo.
+
+### §94.4 — A prova
+
+**7 gates novos** (6 na `ph2d-field-ecs` + 1 de **costura** no shell, que mede o retrato publicado →
+o intent → o documento **cozido**, porque *uma lei correcta que o painel não publica é um gesto que
+ninguém alcança*). **8 mutantes, 8 mortos** — entre eles *«a linha é oferecida a toda a gente»*,
+*«materializar esquece qual verbo era»* e *«o carácter não sobrevive»*.
+
+⚠️ E o portão de fecho voltou a apanhar o **tecto de LOC**: o gate de costura pôs o
+`field3d_scene_tests.rs` em **676**. Partido por assunto para
+[`field3d_verb_seam_tests.rs`](../../shells/desktop/src/field3d_verb_seam_tests.rs), **filho** do
+módulo de testes para lhe usar as fixturas — duplicá-las seria a segunda cena de teste a envelhecer
+sozinha. ⛔ *Split, nunca allowlist* — a terceira vez em duas waves.
+
+### §94.5 — ⚠️ Uma correcção ao plano das três etapas
+
+A nota da §93.9 mandava corrigir o `Blend::Organic` (que entrega **3/4** do número que mostra) nesta
+etapa. **Medido: ele não tem produtor nenhum na UI** — nada o constrói fora dos testes e do smoke, e
+o `set_radius`/`Param::Joint` só o **preservam** quando já lá está.
+
+⇒ A mentira é **latente**, e quem a acorda é o **chip de carácter da etapa 3**. Ela passa para lá,
+onde deixa de ser opcional. *Um defeito inalcançável é uma armadilha armada, não um defeito — e a
+wave que o torna alcançável é a dona dele.*

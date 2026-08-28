@@ -589,3 +589,11 @@ mod edit;
 /// por tamanho: cada um responde a uma pergunta diferente sobre a mesma cena.
 #[path = "field3d_scene_gesture_tests.rs"]
 mod gesture;
+
+/// ⭐⭐ **A costura do VERBO e do RAIO DE JUNÇÃO** — vive no irmão, e é um **filho** deste módulo
+/// para lhe usar as fixturas. Ver [`field3d_verb_seam_tests`](self::verb_seam).
+///
+/// ⚠️ **Corte por LOC** (HR-18): este arquivo passou dos 600 com o gate da W98. ⛔ *Split, nunca
+/// allowlist* — e o corte é por assunto, o que o torna legível sozinho.
+#[path = "field3d_verb_seam_tests.rs"]
+mod verb_seam;

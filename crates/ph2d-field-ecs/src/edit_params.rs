@@ -174,7 +174,12 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 out.push((
                     Param::Dim(0),
                     Dim {
-                        key: "field.dim.round",
+                        // ⭐ **"Joint" e não "Fillet" desde a W98**, e é o rótulo a apanhar o modelo:
+                        // depois do verbo por forma, o raio de um grupo é o **raio de junção
+                        // padrão** — o que as formas caladas usam. É a mesma grandeza que a linha
+                        // [`Param::Joint`] de cada filho escreve, e duas palavras para uma grandeza
+                        // é o que faz o artista pensar que são duas.
+                        key: "field.dim.joint",
                         value: v,
                         // ⚠️ **Uma mistura não tem parede**: o campo continua a ser uma distância com
                         // qualquer raio ([`radius_bound`] devolve sempre `Soft` aqui).
@@ -194,6 +199,29 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 .enumerate()
                 .map(|(i, d)| (Param::Dim(i as u16), d)),
         ),
+    }
+    // ⭐⭐⭐ **O RAIO DA JUNÇÃO desta forma** (W98) — logo depois do que ela mede, porque é sobre o
+    // **encontro** dela com o resto e não sobre o que ela é.
+    //
+    // ⚠️ **A pergunta é feita ao PAPEL, e não à forma** ([`crate::verb_role`]): a base não se junta
+    // a nada, e a raiz da peça também não. Oferecer a linha ali seria um controle que escreve num
+    // verbo que ninguém lê — a affordance que mente, e a mesma lei da W34 que a fileira do painel
+    // já honra.
+    //
+    // ⭐ **E ela aparece também para quem HERDA**, com o valor herdado: *"quero a boca deste furo
+    // mais macia"* não pode exigir que o artista entenda o modelo do verbo primeiro. Escrever
+    // materializa (ver [`Param::Joint`]), e o chip `Inherit` apaga-se à vista.
+    if let Some(op) = crate::verb_role(world, entity).and_then(|r| r.op()) {
+        out.push((
+            Param::Joint,
+            Dim {
+                key: "field.dim.joint",
+                value: op.blend().amount(),
+                // ⚠️ **Sem parede**, como a do grupo: o campo continua a ser uma distância com
+                // qualquer raio de mistura. Quem fecha o teto é a vista.
+                span: Span::Positive,
+            },
+        ));
     }
     // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55) — logo depois do que a forma mede, e antes do que
     // se fez a ela.
@@ -377,6 +405,48 @@ pub fn set_param(
             Ok(())
         }
         Param::Dim(i) => set_dim(world, entity, i as usize, value),
+        // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — e escrever aqui **MATERIALIZA o verbo**.
+        //
+        // ⚠️ Uma forma que herdava passa a ter o verbo por escrito, com o **mesmo** verbo que ela
+        // já usava e o raio novo: *pedir um raio de junção próprio é pronunciar-se*. Sem esta
+        // metade, arrastar a linha de uma forma calada escreveria no grupo — e mudaria as outras
+        // caladas com ela, que é exactamente o defeito que a wave do verbo existe para curar.
+        //
+        // ⚠️ **Zero é a aresta VIVA**, e não uma recusa: é a mesma lei do `set_shape_radius`, onde o
+        // raio zero é `Sharp` e não um erro. Negativo é que não existe.
+        Param::Joint => {
+            if value < 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: entity.to_bits() as u32,
+                    what: "joint",
+                });
+            }
+            let Some(op) = crate::verb_role(world, entity).and_then(|r| r.op()) else {
+                // A base não se junta a nada, e a raiz também não — a mesma recusa que faz a linha
+                // não ser oferecida.
+                return Err(FieldError::BadRoot);
+            };
+            let blend = if value > 0.0 {
+                // ⚠️ O **carácter** da mistura sobrevive: quem já era orgânica continua orgânica,
+                // e uma aresta viva acorda como `Exact` — é a lei que o `set_shape_radius` já
+                // escreve para o filete de uma forma, e duas leis para o mesmo gesto divergiriam.
+                match op.blend() {
+                    ph2d_field::Blend::Organic { .. } => ph2d_field::Blend::Organic { k: value },
+                    _ => ph2d_field::Blend::Exact { radius: value },
+                }
+            } else {
+                ph2d_field::Blend::Sharp
+            };
+            crate::set_verb(
+                world,
+                entity,
+                Some(match op {
+                    ph2d_field::Op::Union(_) => ph2d_field::Op::Union(blend),
+                    ph2d_field::Op::Intersection(_) => ph2d_field::Op::Intersection(blend),
+                    ph2d_field::Op::Difference(_) => ph2d_field::Op::Difference(blend),
+                }),
+            )
+        }
         // ⭐⭐ **O NÍVEL DE RESOLUÇÃO** (W55) — e escrever aqui não muda geometria nenhuma: muda a
         // **intenção**, e quem a converte é o recozimento do quadro seguinte.
         //

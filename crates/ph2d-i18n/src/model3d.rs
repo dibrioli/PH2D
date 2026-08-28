@@ -120,7 +120,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.thickness" => "Thickness",
         // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
         // dita pelo nome dela.
+        // ⚠️ **"Fillet" é o arredondamento da forma DELA PRÓPRIA** — as 12 arestas de uma caixa, o
+        // aro de um cilindro. Ele existe numa peça de uma forma só.
         "field.dim.round" => "Fillet",
+        // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — como esta forma se encontra com o resultado das
+        // anteriores. ⚠️ **Palavra própria, e não "Fillet" outra vez:** desde o verbo por forma, uma
+        // caixa arredondada que corta com aresta viva mostra os **dois** números ao mesmo tempo, e
+        // dois rótulos iguais na mesma coluna são dois controles que o artista não sabe separar.
+        //
+        // ⚠️ E o **grupo** usa esta mesma chave, de propósito: o raio dele é o raio de junção
+        // **padrão**, o que as formas caladas usam. *Uma grandeza, uma palavra.*
+        "field.dim.joint" => "Joint",
         // ⭐⭐ **A RESOLUÇÃO do contorno vivo** (W55). ⚠️ "Resolution" e não "Quality": o número diz
         // com que finura o **desenho** é convertido na peça, e "Quality" prometeria uma opinião
         // sobre o resultado. Quem modela num CAD conhece a palavra com este sentido exacto.

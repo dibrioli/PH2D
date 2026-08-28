@@ -206,3 +206,211 @@ fn joining_scenes_never_inherits_a_pieces_verb() {
         "uma peça adoptada pela cena trouxe o verbo dela"
     );
 }
+
+// ───────── W98: o RAIO DA JUNÇÃO por forma ─────────
+
+/// Uma peça com uma união de filete `0,08` e duas **caixas** — a forma que tem filete próprio, que é
+/// o que torna a colisão de nomes observável.
+fn two_boxes() -> (
+    World,
+    bevy_ecs::entity::Entity,
+    Vec<bevy_ecs::entity::Entity>,
+) {
+    let caixa = || {
+        Node::new(
+            Xform::IDENTITY,
+            NodeKind::Leaf(Primitive::Box {
+                half: [0.4; 3],
+                round: 0.05,
+            }),
+        )
+    };
+    let doc = FieldDoc::new(
+        vec![
+            caixa(),
+            caixa(),
+            Node::new(
+                Xform::IDENTITY,
+                NodeKind::Combine {
+                    op: Op::Union(Blend::Exact { radius: 0.08 }),
+                    children: vec![NodeId(0), NodeId(1)],
+                },
+            ),
+        ],
+        NodeId(2),
+    )
+    .expect("peça");
+    let mut world = World::new();
+    let root = crate::spawn_doc(&mut world, &doc, "peça");
+    let kids: Vec<_> = world
+        .get::<bevy_ecs::hierarchy::Children>(root)
+        .map(|c| c.iter().copied().collect())
+        .unwrap_or_default();
+    (world, root, kids)
+}
+
+fn chaves(world: &World, e: bevy_ecs::entity::Entity) -> Vec<&'static str> {
+    crate::params_of(world, e)
+        .into_iter()
+        .map(|(_, d)| d.key)
+        .collect()
+}
+
+/// ⭐⭐⭐ **UMA FORMA TEM DOIS RAIOS, e eles têm nomes DIFERENTES.**
+///
+/// ⚠️ É a colisão que o verbo por forma criou: uma caixa arredondada que se junta ao resto mostra o
+/// filete **das arestas dela** e o raio **do encontro** na mesma coluna. Dois rótulos iguais são dois
+/// controles que o artista não sabe separar — e o painel deriva o rótulo da chave, então a chave é
+/// onde isto se resolve.
+#[test]
+fn a_shape_shows_its_own_fillet_and_its_joint_under_different_names() {
+    let (world, _, kids) = two_boxes();
+    let ks = chaves(&world, kids[1]);
+    assert!(
+        ks.contains(&"field.dim.round"),
+        "sumiu o filete das arestas da própria caixa: {ks:?}"
+    );
+    assert!(
+        ks.contains(&"field.dim.joint"),
+        "a forma não oferece o raio da junção dela: {ks:?}"
+    );
+}
+
+/// ⭐⭐ **A BASE não tem raio de junção** — ela semeia o acumulado e não se junta a nada.
+///
+/// ⚠️ E a **raiz** também não. Oferecer a linha ali seria um controle a escrever num verbo que
+/// ninguém lê — a lei da W34, aqui aplicada a uma linha de número em vez de a uma fileira de chips.
+///
+/// # ⚠️ A pergunta é sobre o `Param`, e NÃO sobre o rótulo
+///
+/// A 1.ª redacção deste gate procurava a chave `field.dim.joint`, e reprovou na raiz — **com razão**:
+/// o **grupo** usa essa chave de propósito, porque o raio dele *é* o raio de junção **padrão**, o que
+/// as formas caladas usam (*uma grandeza, uma palavra*). O que ele não tem é o [`Param::Joint`], que
+/// é *«o meu próprio encontro»*. ⇒ **Duas coisas diferentes com o mesmo nome na tela, e é correcto:**
+/// o que as separa é quem escreve onde, não como se chamam.
+#[test]
+fn the_base_and_the_root_have_no_joint_to_set() {
+    let (world, root, kids) = two_boxes();
+    let proprio = |e| {
+        crate::params_of(&world, e)
+            .into_iter()
+            .any(|(p, _)| p == ph2d_field::Param::Joint)
+    };
+    assert!(
+        !proprio(kids[0]),
+        "a BASE recebeu um raio de junção próprio"
+    );
+    assert!(!proprio(root), "a RAIZ recebeu um raio de junção próprio");
+    // ⭐ E o controlo do rótulo partilhado: a raiz **mostra** um raio de junção (o padrão dela).
+    assert!(
+        chaves(&world, root).contains(&"field.dim.joint"),
+        "o grupo tinha de mostrar o raio de junção PADRÃO — é o que as formas caladas usam"
+    );
+}
+
+/// ⭐⭐ **Quem HERDA vê o valor herdado** — e não um zero, nem uma linha ausente.
+///
+/// ⚠️ *«Quero a boca deste furo mais macia»* não pode exigir que o artista entenda o modelo do verbo
+/// primeiro. A linha mostra o que **de facto acontece** àquela forma agora.
+#[test]
+fn an_inheriting_shape_shows_the_radius_it_actually_uses() {
+    let (world, _, kids) = two_boxes();
+    let joint = crate::params_of(&world, kids[1])
+        .into_iter()
+        .find(|(p, _)| *p == ph2d_field::Param::Joint)
+        .expect("a linha existe");
+    assert!(
+        (joint.1.value - 0.08).abs() < 1e-6,
+        "a linha tinha de mostrar o 0,08 do grupo, e mostrou {}",
+        joint.1.value
+    );
+}
+
+/// ⭐⭐⭐ **Escrever o raio MATERIALIZA o verbo — e NÃO toca no irmão que herda.**
+///
+/// ⚠️ É a razão de existir da wave inteira, num gate: sem a materialização, arrastar a linha de uma
+/// forma calada escreveria no **grupo**, e as outras caladas mudariam com ela — que é exactamente o
+/// defeito que o verbo por forma cura. ⛔ Um gate que só medisse *«o valor mudou»* passaria com essa
+/// escrita no grupo; é o **irmão** que separa as duas hipóteses.
+#[test]
+fn writing_the_joint_speaks_for_this_shape_alone() {
+    let (mut world, root, kids) = two_boxes();
+    // Um terceiro, também calado — o controlo.
+    let terceiro = crate::add_leaf(
+        &mut world,
+        root,
+        Primitive::Sphere { radius: 0.3 },
+        [0.0, 0.0, 0.0],
+    )
+    .expect("nasce");
+
+    crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.2).expect("escreve");
+
+    assert_eq!(
+        crate::verb_of(&world, kids[1]),
+        Some(Op::Union(Blend::Exact { radius: 0.2 })),
+        "a forma tinha de passar a ter o verbo POR ESCRITO, com o verbo que já usava"
+    );
+    assert_eq!(
+        crate::verb_role(&world, terceiro),
+        Some(VerbRole::Inherited(Op::Union(Blend::Exact {
+            radius: 0.08
+        }))),
+        "o irmão CALADO mudou junto — a escrita foi para o grupo"
+    );
+    // ⚠️ E o grupo ficou como estava: o padrão de quem não se pronunciou não se mexe.
+    let grupo = crate::params_of(&world, root)
+        .into_iter()
+        .find(|(p, _)| *p == ph2d_field::Param::Dim(0))
+        .expect("o grupo tem o raio padrão");
+    assert!(
+        (grupo.1.value - 0.08).abs() < 1e-6,
+        "o raio PADRÃO do grupo mudou: {}",
+        grupo.1.value
+    );
+}
+
+/// ⭐ **Zero é a aresta VIVA, e negativo é recusado** — a mesma lei do filete de uma forma.
+///
+/// ⚠️ Um zero recusado obrigaria o artista a apagar o verbo para conseguir uma quina, o que é outro
+/// gesto e noutro sítio.
+#[test]
+fn a_zero_joint_is_a_live_edge_and_a_negative_one_is_refused() {
+    let (mut world, _, kids) = two_boxes();
+    crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.0).expect("zero entra");
+    assert_eq!(
+        crate::verb_of(&world, kids[1]),
+        Some(Op::Union(Blend::Sharp)),
+        "zero tinha de dar aresta viva"
+    );
+    assert!(
+        crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, -0.1).is_err(),
+        "um raio negativo não existe"
+    );
+    assert_eq!(
+        crate::verb_of(&world, kids[1]),
+        Some(Op::Union(Blend::Sharp)),
+        "e a recusa deixa o nó COMO ESTAVA — a invariante do módulo"
+    );
+}
+
+/// ⭐ **O carácter da mistura SOBREVIVE ao raio novo** — quem era orgânica continua orgânica.
+///
+/// ⚠️ A lei é copiada do `set_shape_radius` de propósito: duas leis para o mesmo gesto divergem na
+/// primeira wave que corrija uma delas. É o mesmo motivo por que o `set_op` preserva a mistura.
+#[test]
+fn the_character_of_the_blend_survives_a_new_radius() {
+    let (mut world, _, kids) = two_boxes();
+    crate::set_verb(
+        &mut world,
+        kids[1],
+        Some(Op::Difference(Blend::Organic { k: 0.1 })),
+    )
+    .expect("é um nó");
+    crate::set_param(&mut world, kids[1], ph2d_field::Param::Joint, 0.3).expect("escreve");
+    assert_eq!(
+        crate::verb_of(&world, kids[1]),
+        Some(Op::Difference(Blend::Organic { k: 0.3 })),
+        "o carácter e o VERBO tinham de sobreviver ao raio novo"
+    );
+}

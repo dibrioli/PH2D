@@ -27,7 +27,7 @@
 
 use ph2d_vec_pattern::{PatternMode, TileKind};
 use ph2d_vec_scene::{
-    FillRule, Paint, PatternFill, PatternSource, Rgba8, VecPath, VecPathId, VecVertex,
+    FillRule, Paint, PatternFill, PatternSource, Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex,
 };
 
 /// O lado da arte, em pixels.
@@ -36,6 +36,28 @@ const ART: u32 = 32;
 const BOX: f64 = 2.2;
 /// O passo entre formas.
 const STEP: f64 = 2.6;
+/// A largura do contorno, em unidades de mundo — a mesma ordem de grandeza dos outros smokes
+/// vetoriais desta casa (`0,012`–`0,02`), subida porque aqui ela tem de **ler-se por cima de uma
+/// arte com detalhe**, e não por cima de um preenchimento chapado.
+const STROKE_W: f64 = 0.03; // LITERAL-PX-OK: largura no domínio do documento
+
+/// ⛔⛔ **TODA forma desta cena NASCE COM CONTORNO** (Enio, 2026-08-27: *"o contorno funciona com as
+/// shapes que eu desejo, mas não funcionam com os teus desenhos"*).
+///
+/// ⚠️ **Era o smoke, não o produto** — e foi o report que fechou uma caça de três mensagens. A
+/// ferramenta de forma escreve `path.stroke = Some(..)` **sempre**
+/// ([`ph2d_vec_edit`](../../../crates/ph2d-vec-edit/src/shape.rs)), então toda forma que o artista
+/// desenha tem contorno; estas nasciam de `..VecPath::default()`, que é `stroke: None`. E o
+/// `restyle_selected_strokes` **recusa por desenho** quem não tem um (*"ganhar um traço do nada
+/// seria a UI inventando geometria"*) ⇒ a secção *Stroke* ficava **pintada e inerte** só aqui, o
+/// que se lê exactamente como *"o padrão anulou o contorno"*.
+///
+/// ⚠️⚠️ **A lição é da CENA, não do padrão:** uma cena de smoke montada por código não herda o que
+/// a ferramenta de autoria garante — *ela tem de nascer no estado em que o artista a encontraria*,
+/// senão o smoke mede um objecto que o produto nunca produz.
+fn contorno() -> StrokeSpec {
+    StrokeSpec::new(Rgba8::new(35, 35, 45, 255), STROKE_W)
+}
 
 /// A arte de referência: barra em cima, meia-diagonal, um quadrante transparente.
 ///
@@ -122,6 +144,7 @@ fn build(app: &mut crate::App) {
             verts: rect(x(i), 0.0, half),
             closed: true,
             fill: Some(pattern(source, kind, mode, fb)),
+            stroke: Some(contorno()),
             ..VecPath::default()
         });
     }
@@ -142,6 +165,7 @@ fn build(app: &mut crate::App) {
             PatternMode::Tile,
             [80, 100, 120],
         )),
+        stroke: Some(contorno()),
         ..VecPath::default()
     });
 
@@ -153,6 +177,7 @@ fn build(app: &mut crate::App) {
             .to_vec(),
         closed: true,
         fill: Some(Paint::Solid(Rgba8::new(90, 190, 220, 255))),
+        stroke: Some(contorno()),
         ..VecPath::default()
     });
     scene.push_path(VecPath {
@@ -164,6 +189,7 @@ fn build(app: &mut crate::App) {
             PatternMode::Tile,
             [70, 90, 110],
         )),
+        stroke: Some(contorno()),
         ..VecPath::default()
     });
 
@@ -177,6 +203,7 @@ fn build(app: &mut crate::App) {
             PatternMode::Tile,
             [120, 80, 110],
         )),
+        stroke: Some(contorno()),
         ..VecPath::default()
     };
     wide.id = VecPathId::default();
@@ -205,6 +232,9 @@ fn select_hero(app: &mut crate::App) {
          Mexa nos nos do triangulo com a ferramenta Node -- o padrao tem de mudar NA HORA. \
          ⭐ TODO o ajuste vive no painel, na seccao Pattern: Tile, Offset, Size, Gap, Shift X, \
          Shift Y, Angle e Repeat. As barras SHIFT X/Y deslizam a arte dentro de UMA repeticao \
-         (0..100%, e 100 e' o mesmo que 0). No modo Clamp elas somem, com as outras que ele nao le^."
+         (0..100%, e 100 e' o mesmo que 0). No modo Clamp elas somem, com as outras que ele nao le^. \
+         ⭐ E TODA forma desta cena nasce COM CONTORNO (escuro, fino) -- antes nasciam sem nenhum, e \
+         a seccao Stroke ficava inerte SO' AQUI. Troque Fill Type entre Solid e Pattern: o contorno \
+         tem de continuar la', e a largura/cor dele tem de responder ao painel."
     );
 }

@@ -487,7 +487,7 @@ lista está no §6-ter.
 | *"filters anula pattern"* | ✅ a rasterização isolada do FX não levava o ladrilho, e a imagem de FX **substitui** o desenho |
 | *"em column o pattern some"* | ✅ o **vão** era assado na resolução da arte; o ladrilho é **reduzido até caber**, nunca recusado |
 | *"não ficou legal [as alças]. vamos retirar e deixar os ajustes apenas no painel"* | ⛔ as três alças de canvas foram **apagadas**; a posição virou *Shift X/Y* no painel — **§6-quater** |
-| ⏳ *"pattern anula stroke"* / *"o contorno não volta ao trocar pattern por solid"* | ⚠️ **NÃO REPRODUZIDO.** O documento preserva o `StrokeSpec` inteiro nas duas trocas, o `restyle_selected_strokes` nunca apaga, e a rota de desenho encoda os dois caminhos (gate com controlo de sólido). ⇒ há um instrumento — `PH2D_PATTERN_LOG=1` imprime, por evento, o que a forma TEM antes e depois de cada troca de tipo de preenchimento. **Espera a corrida do Enio.** |
+| ✅ *"pattern anula stroke"* / *"o contorno não volta ao trocar pattern por solid"* | ⭐⭐ **ERA A CENA DO SMOKE, e o produto nunca esteve errado** — fechado pelo terceiro report do Enio (*"o contorno funciona com as shapes que eu desejo, mas não funcionam com os teus desenhos"*), que é o que **nomeou a população**. Mecanismo no **§6-quinquies**. |
 
 ## §6-quater — ⛔ **AS ALÇAS DE CANVAS FORAM RETIRADAS** (Enio, 2026-08-27), e a posição mudou de sítio
 
@@ -545,6 +545,50 @@ recusa os quatro nomes e **exige** que a porta que ficou no lugar exista — sen
 num produto que **perdeu** a posição em vez de a ter mudado de sítio. ⚠️ *Uma decisão de produto que
 vive só num documento é uma decisão que a próxima janela reconstrói de boa-fé.*
 
+## §6-quinquies — ⭐⭐ O *"pattern anula stroke"* era a CENA DO SMOKE, não o produto
+
+Três mensagens do Enio, e a terceira é a que resolveu — porque **nomeou a população**:
+
+> *"o contorno funciona com as shapes que eu desejo, mas não funcionam com os teus desenhos"*
+
+### O mecanismo, em três factos que só juntos explicam o report
+
+1. A ferramenta de forma escreve `path.stroke = Some(self.style.stroke_spec(w))`
+   **incondicionalmente** ([`shape.rs`](../../crates/ph2d-vec-edit/src/shape.rs)) ⇒ **toda** forma
+   que o artista desenha nasce com contorno.
+2. A cena do smoke construía os `VecPath` com `..VecPath::default()`, que é **`stroke: None`**.
+3. O `restyle_selected_strokes` **recusa por desenho** quem não tem um — *"ganhar um traço do nada
+   seria a UI inventando geometria"*
+   ([`vector_bridge_style.rs`](../../shells/desktop/src/render_loop/vector_bridge_style.rs)).
+
+⇒ a secção *Stroke* estava **pintada e inerte**, e **só nesta cena**. Isso lê-se exactamente como
+*"o padrão anulou o contorno"* — e as duas buscas anteriores foram no sítio errado porque a
+pergunta *"o padrão apaga o traço?"* tem resposta **não** em todo lado que se olhe.
+
+### ⚠️ As três lições, e nenhuma é sobre padrões
+
+- **Uma cena de smoke montada por CÓDIGO não herda o que a ferramenta de autoria garante.** Ela tem
+  de nascer **no estado em que o artista a encontraria**; senão o smoke mede um objecto que o
+  produto nunca produz, e o report que ele gera manda a próxima janela caçar um defeito que não
+  existe. Gate: `every_shape_in_the_pattern_smoke_is_born_with_a_stroke`.
+- **Um gate «não reproduzi» é uma afirmação sobre a POPULAÇÃO que ele mediu.** Os gates da wave
+  construíam a forma como o *produto* a constrói (com traço) e estavam certos; a cena construía-a
+  de outra maneira. *Reproduzir com a fixtura errada prova o quê?*
+- **A 3.ª pergunta ao Enio não devia ter sido «rode o log».** A pergunta que resolveu foi *"em que
+  formas?"* — e ela custava uma linha. O `PH2D_PATTERN_LOG=1` teria mostrado `SEM traco` e dito o
+  mesmo, mas exigindo dele uma corrida com variável de ambiente. *Pergunte a população antes de
+  entregar um instrumento.*
+
+### ⏳ O que isto DESTAPOU, e que é decisão do Enio (não construído)
+
+**Uma forma que nasceu sem contorno não pode ganhar um.** A recusa do `restyle_selected_strokes` é
+deliberada e está comentada, mas o efeito é que a secção *Stroke* é oferecida e é **inerte** para
+essa forma — e não há *"Add Stroke"* em lado nenhum. Hoje isso só se alcança pelo caminho que esta
+cena usava, porque a autoria sempre veste; mas o Illustrator, o Figma e o Inkscape **todos** deixam
+acrescentar um traço a qualquer forma. ⇒ Ou o verbo existe, ou a secção **some** para quem não tem
+traço (a lei que a secção *Pattern* já obedece). ⛔ Não construído: é outra secção, e o Enio disse
+que para as formas dele funciona.
+
 ## §7 — O que este plano NÃO faz, de propósito
 
 - ⛔ **Padrão VECTORIAL ladrilhado** (resolução infinita ao ampliar). É irmão do `PathEffect::Hatch`
@@ -553,8 +597,22 @@ vive só num documento é uma decisão que a próxima janela reconstrói de boa-
 - ⛔ **Preferência "o padrão anda com a forma?"** — a casa já decidiu (§2.2.1), e a Adobe mostra o
   preço de a transformar numa opção.
 - ⛔ **Bicúbico.** O Vello 0.8 não o tem (§0.1); prometê-lo seria prometer o que o substrato não faz.
-- ⏸️ **Padrão no TRAÇO** (o Figma tem: *"as a fill or stroke"*). O `StrokeSpec` é outra casa e o
-  `stroke_uniform.rs` tem lei própria; entra depois de o preenchimento fechar, se o smoke o pedir.
+- ⏸️ **Padrão no TRAÇO** (o Figma tem: *"as a fill or stroke"*) — **a última lacuna de paridade que
+  este plano nomeia**, e o preenchimento fechou. ⚠️ **O preço foi MEDIDO em 2026-08-27, e não é o
+  que a frase anterior sugeria** (*"o `StrokeSpec` é outra casa"*):
+  - o modelo certo é o do SVG e o do Figma — **um traço tem um `Paint`, como um preenchimento**
+    (`StrokeSpec.color: Rgba8` → `StrokeSpec.paint: Paint`);
+  - mas o `Paint` carrega um `Vec<GradientStop>` e um `Box<PatternFill>` ⇒ **o `StrokeSpec` deixa de
+    ser `Copy`**, e ele é `Copy` hoje (`#[derive(Copy, ..)]`,
+    [`stroke_style.rs`](../../crates/ph2d-vec-scene/src/stroke_style.rs));
+  - raio de explosão medido: **287 menções a `StrokeSpec` em 13 crates**, das quais **22 sítios
+    copiam-no para fora de um *place*** (`if let Some(s) = path.stroke`, `let Some(old) = …`) e
+    **quebram** — incluindo o `draw_stroke_with` e o `restyle_selected_strokes`;
+  - mais **schema**: `VEC_SCENE_SCHEMA_VERSION` + a tripla + um degrau na escada.
+  - ⛔ **A saída barata está RECUSADA por desenho**: um `stroke_pattern` à parte no `VecPath`
+    manteria o `Copy` e daria ao traço **duas fontes de tinta** (`stroke.color` e o campo novo), que
+    é exactamente o defeito de duas-portas contra o qual este plano inteiro foi escrito.
+  ⇒ é **uma wave própria, com dono e ordem do Enio**, não um apêndice desta.
 - ⏸️ **Navegador de assets.** O ADR-0165 chama-se *index before browser*; a W4 usa a porta de
   ficheiro que a casa já tem e que tem gate.
 

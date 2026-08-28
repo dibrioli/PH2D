@@ -204,7 +204,12 @@ pub(crate) fn sync_instances(
     echo: &mut MasterEcho,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
 ) -> usize {
-    let mut wrote = 0;
+    // ⭐⭐⭐ **A FORMA antes dos VALORES** (F5.1) — ver [`crate::instance_structure`]: uma peça
+    // acrescentada ao mestre não forma par nenhum, então o laço de baixo é cego a ela **por
+    // construção**. Materializá-la aqui é o que dá a promessa de UM quadro: ela forma par já a
+    // seguir e recebe os bytes do mestre no mesmo passe.
+    let structure = crate::instance_structure::reconcile(sim, registry, docs);
+    let mut wrote = structure.added + structure.removed;
     // ⭐ **O retrato do passe** — `PH2D_INSTANCE_LOG=1`. Ver [`crate::instance_diag`]: sem ele, um
     // par que morre na guarda do documento não deixa uma linha em lado nenhum.
     let mut diag = crate::instance_diag::PassDiag::default();

@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA da instância segue a do mestre) ✅ 2026-08-27** · variantes e *Overrides sem alvo* ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
@@ -812,6 +812,32 @@ só com nomes únicos · `Por hierarquia`) + relatório. ⛔ Nunca automático (
 
 **Testes:** a tabela de operações do doc 04 §2.6 vira uma suíte — uma linha, um gate; ciclo
 indireto (B contém instância de V que é-a B) é recusado com mensagem; prova de mutação no re-key.
+
+---
+
+**O que a F5.1 mediu e o plano não dizia (2026-08-27):**
+- ⭐⭐ **O aninhamento JÁ propagava** — medido por sonda antes de escrever uma linha: `B → instância
+  de B dentro de A → instância de A na cena` leva uma edição de B até à cena **num passe**, e o
+  passe assenta. A ordem topológica sai de graça porque `live_instances` ordena por `StableId` e a
+  ordem de criação coincide com a de dependência. ⚠️ *Coincide* — não é derivada; a ordem por
+  dependência continua por escrever, e o preço de não a ter é **N passes em vez de um**, não um
+  resultado errado.
+- ⛔⛔ **O que faltava era outra coisa, e a sonda deu-a de graça:** `a_inst tem 0 filho(s) depois do
+  passe`. A tabela do §2.6 promete *«adicionar peça → materializa em todas»* e **nada o fazia** —
+  o passe de valores percorre PARES, e uma peça que só existe do lado do mestre não forma par
+  nenhum. Para o artista: *«acrescentei uma peça ao componente e as cópias não mudaram»*, que é a
+  quarta vez que esta linha ouve essa frase por um mecanismo diferente.
+- ⇒ `instance_structure::reconcile`, **antes** do passe de valores (é isso que dá a promessa de UM
+  quadro: a peça materializada forma par já a seguir e recebe os bytes no mesmo passe). As duas
+  metades juntas — acrescentar sem remover deixa na cena um objeto que o artista apagou da
+  biblioteca —, com a fronteira do que o ARTISTA pendurou na cópia (sem elo ⇒ não é sobra) e a da
+  instância órfã (mestre inteiro ausente ⇒ lei antiga, intocada).
+- ⚠️ **O gate `only_the_instantiate_door_calls_the_deep_copy` apanhou-me a escrever uma SEGUNDA
+  montagem** dentro do passe estrutural. Ele estava certo: a operação mudou-se para a porta
+  (`instantiate::materialise_piece`) — *uma cópia profunda tem uma porta*.
+- ⚠️ **E uma mutação minha SOBREVIVEU por fixtura plana:** *«a peça nova aterra na raiz em vez de no
+  pai certo»* passa quando a peça nova é filha da raiz, porque os dois ramos dão o mesmo. O gate
+  que a mata tem uma peça NETA. *Uma fixtura de um nível não pode medir de que nível a peça é.*
 
 ---
 

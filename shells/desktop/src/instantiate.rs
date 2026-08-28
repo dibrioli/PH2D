@@ -251,6 +251,54 @@ pub(crate) fn duplicate_subtree(
     Some(copy.root)
 }
 
+/// ⭐⭐ **Materializa UMA peça do mestre dentro de uma instância** (ADR-0164 / F5.1).
+///
+/// `piece` é a peça do MESTRE; `host` é a entidade da instância que corresponde ao pai dela.
+/// Devolve a raiz da peça materializada.
+///
+/// ⚠️ **Ela vive AQUI, na porta, e não em quem a chama** — o gate
+/// [`tests::only_the_instantiate_door_calls_the_deep_copy`] apanhou-me a escrever uma segunda
+/// montagem no `instance_structure`, e a razão dele é literal: uma 2.ª montagem esquece sempre um
+/// dos quatro passos (documentos possuídos · remap de referências · o elo em toda peça · tirar o
+/// `MasterRoot`), e cada esquecimento é **mudo**. *Uma cópia profunda tem uma porta.*
+///
+/// ⚠️ **`linked` vem da INSTÂNCIA, não da peça:** uma peça nova dentro de uma cópia ligada nasce
+/// ligada, senão a edição dela seria a única daquela cópia que não sobe ao mestre.
+///
+/// ⛔ **Ela NÃO desloca nada** (ao contrário do [`duplicate_subtree`]): a peça tem de aterrar
+/// exactamente onde a receita a pôs — um degrau aqui faria a mesma peça sair noutro sítio em cada
+/// cópia.
+pub(crate) fn materialise_piece(
+    sim: &mut SimWorld,
+    registry: &ComponentRegistry,
+    docs: &mut crate::instance_docs::OwnedDocs<'_>,
+    piece: Entity,
+    host: Entity,
+    linked: bool,
+) -> Option<Entity> {
+    let copy = ph2d_ecs::deep_copy_subtree(sim.world_mut(), registry, piece, Some(host)).ok()?;
+    crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy)
+        .warn("materializar peca");
+    let pieces: Vec<Entity> = copy.copies();
+    crate::instance_refs::remap_object_refs(sim.world_mut(), &pieces, &copy.stable_ids);
+    for (&src, &dst) in &copy.entities {
+        let Some(id) = sim.world().get::<StableId>(src).map(|s| s.0) else {
+            continue;
+        };
+        sim.world_mut()
+            .entity_mut(dst)
+            .insert(InstanceOf { master: id });
+        if linked {
+            sim.world_mut().entity_mut(dst).insert(ph2d_ecs::LinkedArt);
+        }
+    }
+    // A peça materializada não é um mestre — a mesma linha que a instanciação paga, e pela mesma
+    // razão: com o marcador ela nasce fora da cena.
+    sim.world_mut().entity_mut(copy.root).remove::<MasterRoot>();
+    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    Some(copy.root)
+}
+
 #[cfg(test)]
 #[path = "instantiate_tests.rs"]
 mod tests;

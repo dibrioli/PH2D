@@ -262,6 +262,9 @@ mod instance_live;
 mod instance_refs;
 mod instance_revert;
 mod instance_smoke;
+/// ⭐ **A FORMA de uma instância segue a do mestre** (ADR-0164 / F5.1) — irmão do sync, que
+/// responde *que valor*; este responde *que peças*.
+mod instance_structure;
 /// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
 mod instance_sync;
 mod instance_sync_docs;

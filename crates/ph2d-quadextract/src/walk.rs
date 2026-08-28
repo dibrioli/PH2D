@@ -53,17 +53,24 @@ pub(crate) use stats::WalkStats;
 /// única parte desta wave que uma mutação consegue matar num teste barato.
 ///
 /// Devolve cada par **uma vez** (`i < j`), e conta as candidatas sem correspondência.
-fn mutual_links(cand: &[Option<(u32, Xf)>], st: &mut WalkStats) -> Vec<(u32, u32, Xf)> {
+fn mutual_links(cand: &[Vec<(u32, Xf)>], st: &mut WalkStats) -> Vec<(u32, u32, Xf)> {
     let mut out = Vec::new();
     for (i, slot) in cand.iter().enumerate() {
-        let Some((j, xf)) = *slot else { continue };
         #[allow(clippy::cast_possible_truncation)]
         let me = i as u32;
-        let back = cand.get(j as usize).copied().flatten().map(|(k, _)| k);
-        if back != Some(me) {
-            st.rescue_not_mutual += 1;
+        // ⭐⭐⭐ **VÁRIAS candidatas por porta, e a mutualidade escolhe entre elas.**
+        //
+        // ⚠️ *A ambiguidade do leque é «qual das rotas», e oferecer só a primeira é
+        // escolher* — foi medido: a 1.ª rota é o palpite errado e o passe mútuo recusava-a
+        // sempre. ⭐ Com a lista, quem decide é a reciprocidade e não a ordem.
+        let hit = slot.iter().find(|&&(j, _)| {
+            cand.get(j as usize)
+                .is_some_and(|b| b.iter().any(|&(k, _)| k == me))
+        });
+        let Some(&(j, xf)) = hit else {
+            st.rescue_not_mutual += usize::from(!slot.is_empty());
             continue;
-        }
+        };
         // ⚠️ **Uma vez por par.** Sem isto o segundo lado volta a entrar, e a contagem de
         // pares diz o dobro do que se ligou.
         if me < j {
@@ -75,6 +82,20 @@ fn mutual_links(cand: &[Option<(u32, Xf)>], st: &mut WalkStats) -> Vec<(u32, u32
 }
 
 /// ⭐ **O passe MÚTUO** — ligado por omissão; `PH2D_RESCUE_MUTUAL=0` desliga-o.
+/// ⛔⛔ **O leque AMBÍGUO regista candidatas para o passe mútuo** — `PH2D_FAN_MUTUAL=1`
+/// liga-o. **Nasce desligado, e é uma recusa MEDIDA.**
+///
+/// A guarda de 2026-08-26 recusava o leque de uma **singularidade** porque *«escolher uma
+/// rota é um palpite»*, e o passe mútuo é a máquina que torna um palpite seguro. ⛔ **Medido
+/// (2026-08-27): nem uma candidata do leque é recíproca** — nem a primeira, nem, com a
+/// lista, todas elas: `0` pares novos e `0` arestas de bordo a menos nas três peças.
+///
+/// ⇒ *a rota do leque não aponta ao par certo em direcção nenhuma.* Tabela e mecanismo:
+/// `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` **§23.34**.
+fn fan_mutual() -> bool {
+    std::env::var("PH2D_FAN_MUTUAL").ok().as_deref() == Some("1")
+}
+
 fn mutual_pass() -> bool {
     std::env::var("PH2D_RESCUE_MUTUAL").ok().as_deref() != Some("0")
 }
@@ -92,7 +113,7 @@ pub(crate) fn trace_all(topo: &Topo, ports: &mut Ports) -> WalkStats {
     let mut orphan_at: Vec<[f64; 3]> = Vec::new();
     let mut miss_cells: Vec<f64> = Vec::new();
     let mut tri_cells: Vec<f64> = Vec::new();
-    let mut cand: Vec<Option<(u32, Xf)>> = vec![None; ports.ports.len()];
+    let mut cand: Vec<Vec<(u32, Xf)>> = vec![Vec::new(); ports.ports.len()];
     for i in 0..ports.ports.len() {
         if ports.ports[i].link.is_some() {
             continue;
@@ -239,7 +260,7 @@ fn trace_one(
     ports: &Ports,
     id: u32,
     st: &mut WalkStats,
-    cand: &mut [Option<(u32, Xf)>],
+    cand: &mut [Vec<(u32, Xf)>],
 ) -> Outcome {
     let p = ports.ports[id as usize];
     let mut face = p.face as usize;
@@ -301,6 +322,9 @@ fn trace_one(
                         // caminho só.
                         let unambiguous =
                             fan.holonomy.is_none_or(|h| h == crate::exact::Xf::IDENTITY);
+                        if !unambiguous {
+                            st.fan_ambiguous += 1;
+                        }
                         if let Some(i0) = fan
                             .corners
                             .iter()
@@ -308,7 +332,19 @@ fn trace_one(
                         {
                             let base = fan.to_here[i0].inverse();
                             for i in 0..fan.corners.len() {
-                                if !unambiguous {
+                                // ⭐⭐⭐ **O LEQUE AMBÍGUO DEIXA DE RECUSAR — passa a
+                                // REGISTAR.**
+                                //
+                                // ⛔ A guarda existia porque *«escolher uma rota é um
+                                // palpite»*: num leque fechado com holonomia ≠ identidade
+                                // (uma **singularidade**) as duas rotas apontam a saídas
+                                // diferentes, e medido em 2026-08-26 o palpite levava as
+                                // arestas de bordo de `4` a `6` no `cube`.
+                                //
+                                // ⭐ **O passe mútuo dissolve essa razão:** um palpite só
+                                // liga se o outro lado apontar de volta. ⇒ aqui regista-se
+                                // a candidata e a decisão é lá.
+                                if !unambiguous && !fan_mutual() {
                                     break;
                                 }
                                 if i == i0 {
@@ -336,8 +372,17 @@ fn trace_one(
                                 if let Some(&j) = ports.by_key.get(&key)
                                     && j != id
                                 {
-                                    st.orphan_rescued_in_fan += 1;
-                                    return Outcome::Linked(j, acc.then(x));
+                                    if unambiguous {
+                                        st.orphan_rescued_in_fan += 1;
+                                        return Outcome::Linked(j, acc.then(x));
+                                    }
+                                    // ⚠️ **Primeira candidata só**, e a decisão não é
+                                    // aqui: se o outro lado não a nomear de volta, o passe
+                                    // mútuo recusa-a.
+                                    if !cand[id as usize].iter().any(|&(k, _)| k == j) {
+                                        st.fan_candidate += 1;
+                                        cand[id as usize].push((j, acc.then(x)));
+                                    }
                                 }
                             }
                         }
@@ -383,109 +428,18 @@ fn trace_one(
                         // `opposite(d2)` de sempre. Quantas parceiras cada uma acharia
                         // (2026-08-27, das que ficavam por resgatar):
                         //
-                        // | peça | `x.dir` | oposta | `d2` | `opposite(d2)` (hoje) | total |
-                        // |---|---|---|---|---|---|
-                        // | `sculpt_wrinkled` | `0` | `7` | **`7`** | `0` | `8` |
-                        // | `sculpt_hooked` | `1` | `2` | **`3`** | `0` | `8` |
-                        // | `sculpt_eared` | `0` | `2` | **`2`** | `0` | `3` |
+                        // ⛔ **Nenhuma convenção única serve, e a regra derivada da
+                        // dobra também não** — ela dá o mesmo que tentar as duas, porque
+                        // *as duas nunca colidem* (`rescue_ambiguous = 0`). As tabelas, as
+                        // quatro tentativas e o que cada uma mediu:
+                        // `docs/3D/quad-remesh/ACHADO_ordem_das_fases.md` **§23.27–§23.30**.
                         //
-                        // ⚠️ *«Acha uma porta» não é «acha a porta certa»* — ligar uma
-                        // parceira errada parte a malha em silêncio. ⛔⛔⛔ **E o veredito
-                        // pelo RESULTADO desmente a coluna acima:**
-                        //
-                        // | peça | `opposite(d2)` (omissão) | ⛔ `d2` |
-                        // |---|---|---|
-                        // | `sculpt_wrinkled` | `10` bordo · `χ = +1` · `8` órfãs | ⭐ **`0` bordo · `χ = +2` · `0` órfãs** |
-                        // | `sculpt_hooked` | `10` bordo · `χ = 0` | ⛔ `17` bordo · `χ = −1` |
-                        // | `sculpt_eared` | `6` bordo · `χ = +1` · `7` órfãs | ⛔ `8` bordo · `11` órfãs |
-                        // | `sphere_uv_96x144` | `0` bordo · `χ = +2` | = (inerte) |
-                        //
-                        // ⇒ **uma escolha GLOBAL conserta uma peça e parte duas.**
-                        //
-                        // ⭐⭐⭐ **E a UNIÃO das duas é legítima, porque elas nunca colidem**
-                        // (`rescue_ambiguous = 0` nas três peças: no mesmo ponto da gémea
-                        // há candidata para uma **ou** para a outra, nunca para as duas).
-                        // Medida a união:
-                        //
-                        // | peça | só `opposite(d2)` (omissão) | só `d2` | ⭐ as DUAS |
-                        // |---|---|---|---|
-                        // | `sculpt_wrinkled` | `10` bordo · `χ = +1` · `8` órfãs | `0` · `+2` · `0` | ⭐ **`0` bordo · `χ = +2` · `0` órfãs** |
-                        // | `sculpt_eared` | `6` · `+1` · `7` | `8` · `+1` · `11` | ⭐ **`4` bordo · `χ = +1` · `4` órfãs** |
-                        // | `sculpt_hooked` | `10` · `0` · `8` | `17` · `−1` | ⛔ `17` bordo · `χ = −1` |
-                        // | `sphere_uv_96x144` | `0` · `+2` | = | = |
-                        //
-                        // ⇒ **melhor em duas, pior numa** ⇒ *algumas das parceiras que a
-                        // 2.ª convenção encontra são as ERRADAS.* ⛔ Fica em omissão o
-                        // comportamento de sempre; o desempate tem de ser derivado — **a
-                        // parceira certa é a que, traçada de volta, regressa a esta
-                        // porta** —, e isso é obra.
-                        // ⭐⭐⭐ **AS DUAS CONVENÇÕES, e elas NUNCA colidem.** Medido
-                        // (`rescue_ambiguous = 0` nas três peças): no mesmo ponto da gémea
-                        // existe candidata para `opposite(d2)` **ou** para `d2`, nunca para
-                        // as duas. ⇒ tentar as duas por ordem é **determinista**, e não é
-                        // uma escolha entre elas — é a união.
-                        //
-                        // ⚠️ *A tabela «qual acertaria» só via as falhas de `opposite(d2)`*
-                        // e por isso lia-se como se `d2` fosse sempre a certa; trocar a
-                        // omissão por `d2` PERDIA os resgates que a outra já fazia
-                        // (`eared` de `4` para `2`). *Uma sonda que só corre no ramo do
-                        // fracasso não vê os sucessos do outro lado.*
-                        // ⭐⭐⭐ **A CORRELAÇÃO MEDE-SE AQUI, sobre TODOS os resgates.**
-                        //
-                        // ⚠️ *A 1.ª versão desta sonda vivia no ramo em que `opposite(d2)`
-                        // já tinha falhado*, e por isso lia `0` na coluna dela — o que se
-                        // lê como «ela nunca acerta» e é o contrário dos dados. Aqui ela
-                        // corre **antes** da escolha, e vê os dois lados.
-                        //
-                        // ⚠️ A [`Xf`] é rotação de quarto de volta + translação inteira —
-                        // ela **nunca espelha**. ⇒ a troca que o código faz não é sobre a
-                        // carta, é sobre **triângulos DOBRADOS** (`face_sign`), e é
-                        // exactamente aí que estas órfãs vivem.
-                        {
-                            let ok = |d: u8| {
-                                ports
-                                    .by_key
-                                    .get(&(g, t2[0], t2[1], d))
-                                    .is_some_and(|&j| j != id)
-                            };
-                            let (h_op, h_d2) = (ok(opposite(d2)), ok(d2));
-                            if h_op || h_d2 {
-                                let b = usize::from(before < 0);
-                                let a = usize::from(after < 0);
-                                st.rescue_by_fold[b * 4 + a * 2 + usize::from(h_op)] += 1;
-                                if h_op && h_d2 {
-                                    st.rescue_ambiguous += 1;
-                                }
-                            }
-                        }
-                        // ⭐⭐⭐ **A REGRA DERIVADA (2026-08-27):** `opposite(d2)` **sse as
-                        // DUAS faces estão dobradas**; `d2` em todo o resto.
-                        //
-                        // Medida com a sonda a ver os dois lados, `d2`/`opposite(d2)`:
-                        //
-                        // | peça | nenhuma dobrada | só a gémea | só a face | **as duas** |
-                        // |---|---|---|---|---|
-                        // | `sculpt_wrinkled` | `0`/`0` | **`3`**/`0` | **`4`**/`0` | `0`/`0` |
-                        // | `sculpt_hooked` | **`1`**/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`2`** |
-                        // | `sculpt_eared` | `0`/`0` | **`1`**/`0` | **`1`**/`0` | `0`/**`4`** |
-                        //
-                        // **18 casos, zero contra-exemplos, zero ambíguas.** E ela
-                        // explica-se: o `d2` já leva **uma** troca quando *exactamente
-                        // uma* das faces está dobrada; com as **duas** dobradas a
-                        // composição volta a preservar a orientação e é a convenção da
-                        // porta que roda mais uma vez.
-                        //
-                        // ⛔⛔⛔ **E ELA NÃO SERVE — medido no mesmo dia.** A regra derivada
-                        // dá **exactamente** o mesmo resultado que a união (`sculpt_hooked`
-                        // em `17` bordo e `χ = −1`, contra `10`/`0` sem ela), e a razão é
-                        // que *as duas convenções nunca colidem*: onde só existe uma
-                        // candidata, «escolher pela dobra» e «tentar as duas» escolhem a
-                        // **mesma**.
-                        //
-                        // ⇒ ⚠️ **a correlação prevê QUAL CANDIDATA EXISTE, não qual está
-                        // CERTA.** Li disponibilidade como correcção — a mesma armadilha da
-                        // sonda no ramo do fracasso, um andar acima. *Uma tabela com zero
-                        // contra-exemplos pode estar a descrever outra pergunta.*
+                        // ⭐ O que decide é o **passe mútuo**, no fim do laço: regista-se a
+                        // candidata da outra convenção e só se liga se o outro lado a
+                        // nomear de volta.
+                        // A regra derivada (modo `0`): `opposite(d2)` sse as **duas**
+                        // faces estão dobradas. ⛔ Ela existe para a bissecção, não para
+                        // shipar — ver a §23.29.
                         let both_folded = before < 0 && after < 0;
                         let order: &[u8] = match rescue_mode() {
                             1 => &[0],
@@ -519,7 +473,7 @@ fn trace_one(
                                 if let Some(&j) = ports.by_key.get(&(g, t2[0], t2[1], alt))
                                     && j != id
                                 {
-                                    cand[id as usize] = Some((j, acc.then(x)));
+                                    cand[id as usize].push((j, acc.then(x)));
                                 }
                                 // ⭐⭐⭐ **QUAL CONVENÇÃO acharia a parceira?** Duas
                                 // perguntas ortogonais — inverter a direcção ao atravessar

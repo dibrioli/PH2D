@@ -2656,3 +2656,54 @@ antecipa à medição que a discrimina** (a outra: a §23.24, «a dobra parte o 
 o mesmo: *o sintoma é comum a duas causas, e eu nomeio a que me ocorreu primeiro.*
 
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.34 — ⛔ O leque de uma singularidade não aponta ao par certo, e o passe mútuo prova-o de graça
+
+A §23.33 pôs a pergunta exacta: *porque é que o leque emite para uns sectores e não para o
+de `g`?* A resposta estava no código, e a resposta ao **próximo** passo veio de graça.
+
+#### 1. ⭐ O resgate pelo leque JÁ existe, e está desligado por uma medição de 26/08
+
+Um nó de vértice tem as saídas **espalhadas pelo leque**, cada uma emitida com a **sua**
+face — e a chave é `(face, u, v, dir)`, logo quem chega pela face errada não acha. O
+resgate que percorre o leque existe, e é **recusado** quando o vértice é uma
+**singularidade** (holonomia ≠ identidade), com esta razão escrita:
+
+> *«Num leque fechado, ir de um canto a outro pela ordem do leque ou pelo outro lado dá
+> transições que diferem pela holonomia. Se ela não é a identidade, as duas rotas apontam
+> para saídas diferentes, e escolher uma é um palpite.»* — medido: sem a guarda, o `cube`
+> ia de `4` para `6` arestas de bordo.
+
+⭐ **E o passe mútuo (§23.30) é exactamente a máquina que torna um palpite seguro:** ele só
+liga se o outro lado apontar de volta. ⇒ a razão da guarda **dissolve-se**, e a coisa a
+fazer é *registar* em vez de recusar.
+
+#### 2. ⛔ Medido — e nem uma única candidata do leque é recíproca
+
+| peça | órfãs de canto **ambíguas** | candidatas registadas | ⛔ pares mútuos NOVOS | bordo |
+|---|---|---|---|---|
+| `sculpt_hooked` | `2` | `3` | **`0`** | `8` → `8` |
+| `sculpt_eared` | `1` | `1` | **`0`** | `6` → `6` |
+| `sculpt_wrinkled` | `0` | `0` | — | `4` → `4` |
+
+E não é a ordem: a tabela de candidatas passou a ser uma **lista** (várias por porta), o
+leque ambíguo registou **todas** as rotas, e o resultado é o mesmo `0`.
+
+⇒ ⛔ **a rota do leque não aponta ao par certo em direcção nenhuma.** A cura daquelas
+órfãs não está na travessia do leque.
+
+#### ⇒ O que isto compra, e é mais do que parece
+
+⭐⭐ **O passe mútuo transformou uma hipótese cara numa medição barata.** Sem ele, testar
+esta ideia era ligar os pares e ver o estrago (foi o que aconteceu em 26/08: `4` → `6`
+bordo, e a conclusão foi uma guarda). Com ele, a ideia **auto-refuta-se sem tocar no
+resultado**: as candidatas entram, nenhuma é recíproca, a saída não muda um bit.
+
+⇒ *um filtro de correcção não serve só para curar — serve para PERGUNTAR sem pagar.*
+
+- ⛔ `PH2D_FAN_MUTUAL` nasce **desligada**, com a tabela ao lado.
+- ⭐ A lista de candidatas **fica** (é a estrutura certa para «várias rotas»), e o gate
+  cobre-a: o caso `4 → {5, 7}` prova que *oferecer mais não é ligar mais*.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

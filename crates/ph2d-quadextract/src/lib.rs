@@ -229,6 +229,8 @@ pub struct ExtractReport {
     pub rescue_no_port_where: (usize, usize),
     /// ⭐⭐⭐ `(cantos com o nó MUDO, cantos com portas noutras faces)`.
     pub rescue_corner: (usize, usize),
+    /// ⭐⭐⭐ `(órfãs de canto com leque AMBÍGUO, candidatas que ele registou)`.
+    pub fan_ambiguous: (usize, usize),
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
@@ -383,6 +385,7 @@ pub fn extract(
         ),
         rescue_no_port_where: (ws.rescue_no_port_corner, ws.rescue_no_port_face_has_others),
         rescue_corner: (ws.rescue_corner_node_mute, ws.rescue_corner_other_faces),
+        fan_ambiguous: (ws.fan_ambiguous, ws.fan_candidate),
         orphan_on_corner: ws.orphan_on_corner,
         orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,

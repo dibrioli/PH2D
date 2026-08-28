@@ -20,14 +20,17 @@ fn only_pairs_that_name_each_other_are_linked() {
     // `0 ↔ 1` mútuo · `2 → 3` unilateral (o `3` não nomeia ninguém) · `4 → 5`
     // unilateral (o `5` nomeia o `6`) · `5 ↔ 6` mútuo · `7` sem candidata.
     let cand = [
-        Some((1u32, x)),
-        Some((0u32, x)),
-        Some((3u32, x)),
-        None,
-        Some((5u32, x)),
-        Some((6u32, x)),
-        Some((5u32, x)),
-        None,
+        vec![(1u32, x)],
+        vec![(0u32, x)],
+        vec![(3u32, x)],
+        Vec::new(),
+        // ⭐ O `4` oferece DUAS candidatas: a `5` (que nomeia o `6`) e a `7` (que não
+        // nomeia ninguém). *Nenhuma é recíproca ⇒ o `4` não liga*, e é isso que prova que
+        // a lista não afrouxa a lei: **oferecer mais não é ligar mais.**
+        vec![(5u32, x), (7u32, x)],
+        vec![(6u32, x)],
+        vec![(5u32, x)],
+        Vec::new(),
     ];
     let mut st = WalkStats::default();
     let out = mutual_links(&cand, &mut st);

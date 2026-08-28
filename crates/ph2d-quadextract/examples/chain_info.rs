@@ -1170,6 +1170,10 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
                 "  ⛔⛔⛔ desses cantos: {} com o no' MUDO (nenhuma porta em face nenhuma) · {} com portas NOUTRAS faces",
                 e.rescue_corner.0, e.rescue_corner.1
             );
+            println!(
+                "  ⭐⭐⭐ LEQUE AMBIGUO (singularidade): {} orfas de canto · {} candidatas registadas p/ o passe mutuo",
+                e.fan_ambiguous.0, e.fan_ambiguous.1
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

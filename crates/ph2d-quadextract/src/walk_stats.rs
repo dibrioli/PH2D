@@ -93,6 +93,10 @@ pub(crate) struct WalkStats {
     pub rescue_corner_node_mute: usize,
     /// ⛔ Cantos cujo nó tem portas, mas **noutras faces** — defeito de indexação.
     pub rescue_corner_other_faces: usize,
+    /// ⭐⭐⭐ Órfãs num canto cujo leque é **ambíguo** (singularidade: holonomia ≠ identidade).
+    pub fan_ambiguous: usize,
+    /// … e quantas candidatas o leque ambíguo registou para o passe mútuo.
+    pub fan_candidate: usize,
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um

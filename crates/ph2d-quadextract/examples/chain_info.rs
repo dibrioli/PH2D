@@ -1144,6 +1144,12 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
 · com troca de sinal={} · oposta dessa={} (esta ultima e' a que o codigo usa)",
                 e.rescue_would[0], e.rescue_would[1], e.rescue_would[2], e.rescue_would[3]
             );
+            let f = e.rescue_by_fold;
+            println!(
+                "  ⭐⭐⭐ QUAL ACERTOU x QUEM ESTA' DOBRADO (d2 / oposta): nenhuma \
+{}/{} · so' a gemea {}/{} · so' a face {}/{} · as DUAS {}/{} | ambiguas {}",
+                f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], e.rescue_ambiguous
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

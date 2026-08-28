@@ -2368,3 +2368,53 @@ melhor* que não ter amarras, como já acontece na `sphere_uv`. **Duas** de quat
 - ⚠️ Este é um defeito do **`ph2d-quadextract`**, não das amarras: elas só o tornam
   alcançável (sem elas há `0` órfãs e o ramo nunca corre).
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.28 — A UNIÃO das duas convenções é legítima (elas nunca colidem) — e ainda não chega
+
+A §23.27 mediu as duas convenções e concluiu *«uma escolha global conserta uma peça e parte
+duas»*. Faltava a pergunta que torna a escolha desnecessária.
+
+#### 1. ⚠️ A minha sonda só via metade, e por construção
+
+Cruzada «qual convenção acertou» com «que faces estão dobradas», a leitura era:
+
+| peça | nenhuma dobrada | só a gémea | só a face | as duas | **ambíguas** |
+|---|---|---|---|---|---|
+| `sculpt_wrinkled` | `0`/`0` | `3`/`0` | `4`/`0` | `0`/`0` | **`0`** |
+| `sculpt_hooked` | `1`/`0` | `1`/`0` | `1`/`0` | `0`/`0` | **`0`** |
+| `sculpt_eared` | `0`/`0` | `1`/`0` | `1`/`0` | `0`/`0` | **`0`** |
+
+(`d2`/`opposite(d2)`.) Lê-se como *«`opposite(d2)` nunca acerta»* — **e é falso**: a sonda
+vive no ramo em que `opposite(d2)` **já falhou**, e por isso não vê os `4` resgates que ela
+faz na `eared` nem os `2` na `hooked`. ⇒ *uma sonda que só corre no ramo do fracasso de A
+não pode ver os sucessos de A.*
+
+#### 2. ⭐⭐⭐ Mas a coluna que interessa é a última: `ambíguas = 0`
+
+No mesmo ponto da gémea há candidata para **uma** convenção **ou** para a outra, **nunca
+para as duas**. ⇒ tentá-las por ordem não é escolher entre elas — é a **união**, e é
+determinista. Medida:
+
+| peça | só `opposite(d2)` (omissão) | só `d2` | ⭐ as **DUAS** |
+|---|---|---|---|
+| `sculpt_wrinkled` | `10` bordo · `χ = +1` · `8` órfãs | `0` · `+2` · `0` | ⭐ **`0` bordo · `χ = +2` · `0` órfãs** |
+| `sculpt_eared` | `6` · `+1` · `7` | `8` · `+1` · `11` | ⭐ **`4` bordo · `χ = +1` · `4` órfãs** |
+| `sculpt_hooked` | `10` · `0` · `8` | `17` · `−1` | ⛔ `17` bordo · `χ = −1` |
+| `sphere_uv_96x144` | `0` · `+2` | = | = |
+
+⇒ **melhor em duas, pior numa.** A união encontra mais parceiras e **algumas são as
+erradas** — na `hooked`, os `2` resgates extra levam o `χ` de `0` a `−1`.
+
+#### ⇒ O que fica
+
+- ⛔ `PH2D_RESCUE_DIR` mantém em omissão o comportamento de sempre (`1`); `0` = as duas,
+  `2` = só `d2`. **Nenhuma regressão shipa.**
+- ⭐ **O desempate está reduzido a uma pergunta só, e ela não é sobre dobras nem sobre a
+  carta** (a [`Xf`] é rotação + translação inteira e **nunca espelha**): *a parceira certa
+  é a que, traçada de volta, regressa a esta porta.* As candidatas nunca são duas — o que
+  falta é saber se a única que existe é **a certa**.
+- ⭐ Com esse desempate, **três** das quatro peças ficariam ≥ o controlo, e duas
+  estritamente melhores.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

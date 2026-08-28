@@ -215,6 +215,10 @@ pub struct ExtractReport {
     /// ⭐⭐⭐ Quantas seriam resgatadas por cada convenção — ver
     /// [`crate::walk::WalkStats::rescue_would`].
     pub rescue_would: [usize; 4],
+    /// ⭐⭐⭐ Ver [`crate::walk::WalkStats::rescue_by_fold`].
+    pub rescue_by_fold: [usize; 8],
+    /// Ver [`crate::walk::WalkStats::rescue_ambiguous`].
+    pub rescue_ambiguous: usize,
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
@@ -358,6 +362,8 @@ pub fn extract(
             ws.rescue_self,
         ),
         rescue_would: ws.rescue_would,
+        rescue_by_fold: ws.rescue_by_fold,
+        rescue_ambiguous: ws.rescue_ambiguous,
         orphan_on_corner: ws.orphan_on_corner,
         orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,

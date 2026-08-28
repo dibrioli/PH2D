@@ -383,6 +383,32 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐⭐⭐ **`Ctrl+Alt+Q` abre e fecha a DIVISÃO do canvas** (W90) — a tecla do Blender para a
+    /// mesma coisa (*Toggle Quad View*).
+    ///
+    /// ⚠️ **Com os TRÊS modificadores exigidos por nome**, e não «pelo menos estes»: um
+    /// `Ctrl+Alt+Shift+Q` é de outra pessoa, e engoli-lo é o sequestro que a nota do `mode_for_key`
+    /// descreve. Mesma guarda de ponteiro das irmãs.
+    pub(crate) fn field3d_quad_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::KeyQ
+            || !self.modifiers.control_key()
+            || !self.modifiers.alt_key()
+            || self.modifiers.shift_key()
+            || self.modifiers.super_key()
+        {
+            return false;
+        }
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            crate::field3d_smoke::toggle_split(s);
+            true
+        })
+        .unwrap_or(false)
+    }
+
     /// ⭐⭐ **`Numpad1/3/7` põem a câmera numa VISTA NOMEADA**, e `Ctrl` dá a oposta (W47).
     ///
     /// ⚠️ As teclas são as do Blender — **as teclas, não os eixos**: ele é Z para cima e este módulo

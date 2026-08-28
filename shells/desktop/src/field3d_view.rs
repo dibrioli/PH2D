@@ -95,6 +95,7 @@ impl View {
             // DIVISÃO, e o que a W43 promete é *«a peça certa vista do sítio onde a deixei»*.
             vps: _,
             active: _,
+            split: _,
             gizmo_mode,
             gizmo_frame,
             isolated,
@@ -125,7 +126,6 @@ impl View {
             has_live_sculpt: _,
             // ⚠️ **Cache, e não vista** — as fitas compiladas de um quadro. Deitá-las fora ao
             // fechar não custa nada: a 1.ª mão a mexer volta a enchê-las.
-            tapes: _,
         } = s;
         Self {
             cam: s.vp().cam,

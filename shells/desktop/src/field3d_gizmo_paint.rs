@@ -199,6 +199,66 @@ pub(crate) fn paint_lasso(
     );
 }
 
+/// ⭐⭐⭐ **O CHROME DA DIVISÃO** (W90): as costuras entre os viewports e a moldura do **activo**.
+///
+/// # Porque a moldura é obrigatória, e não decoração
+///
+/// Com quatro vistas iguais na tela, *«qual delas o teclado comanda?»* passa a ser uma pergunta — e
+/// ela tem resposta (o [`crate::field3d_smoke::Smoke::active`], que o botão do rato escolhe). Sem a
+/// moldura, `Home`, `Numpad5` e os verbos do gizmo agiriam numa vista que o artista não sabe qual é:
+/// *um estado que muda o que a tecla seguinte faz e não se vê é a definição de uma interface que
+/// mente.*
+///
+/// ⚠️ **As costuras são DERIVADAS dos retângulos**, nunca do `Split`: cada aresta interior é
+/// desenhada uma vez, e uma divisão nova (duas vistas, três) entra aqui sem uma linha.
+pub(crate) fn paint_split(
+    scene: &mut VectorScene,
+    rects: &[ph2d_editor::zones::Rect],
+    active: usize,
+    theme: Theme,
+) {
+    // A vista única não tem costura nem dono a anunciar — e pintar-lhe uma moldura seria uma
+    // afirmação sobre um estado que ali não existe.
+    if rects.len() < 2 {
+        return;
+    }
+    let at = Affine::IDENTITY;
+    let (x0, y0) = (
+        rects.iter().fold(f32::MAX, |a, r| a.min(r.x)),
+        rects.iter().fold(f32::MAX, |a, r| a.min(r.y)),
+    );
+    let (x1, y1) = (
+        rects.iter().fold(f32::MIN, |a, r| a.max(r.x + r.w)),
+        rects.iter().fold(f32::MIN, |a, r| a.max(r.y + r.h)),
+    );
+    let costura = ColorToken::Border.resolve(theme);
+    for r in rects {
+        // A aresta ESQUERDA de um retângulo é interior quando não é a da união — e a de cima idem.
+        // ⚠️ Cada uma é desenhada por todos os vizinhos que a partilham; a repetição é invisível
+        // (a mesma cor no mesmo sítio) e evita uma lista de arestas com dono.
+        if r.x > x0 {
+            ribbon(scene, &[[r.x, y0], [r.x, y1]], costura, at);
+        }
+        if r.y > y0 {
+            ribbon(scene, &[[x0, r.y], [x1, r.y]], costura, at);
+        }
+    }
+    if let Some(a) = rects.get(active) {
+        ribbon(
+            scene,
+            &[
+                [a.x, a.y],
+                [a.x + a.w, a.y],
+                [a.x + a.w, a.y + a.h],
+                [a.x, a.y + a.h],
+                [a.x, a.y],
+            ],
+            ColorToken::Accent.resolve(theme),
+            at,
+        );
+    }
+}
+
 /// Uma poligonal com espessura, um quadrilátero por segmento.
 ///
 /// ⚠️ **Sem junta nas dobras, de propósito.** Uma argola amostrada em 48 pedaços dobra ~7,5° por

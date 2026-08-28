@@ -61,7 +61,14 @@ const BACKGROUND: [u8; 4] = [0, 0, 0, 0];
 #[path = "field3d_smoke_state.rs"]
 mod state;
 pub(crate) use state::{Drag, Grip, InFlight, Ready, Smoke};
+
+/// ⭐⭐⭐ **A LISTA DE VIEWPORTS** — quem a abre, quem a fecha e de quem é um ponto (W90). Vive no
+/// irmão pela mesma razão do [`state`]: o `field3d_smoke.rs` é a porta do módulo, e o tecto de LOC
+/// do HR-18 é o instrumento que impede uma porta de virar um armazém.
+#[path = "field3d_viewports.rs"]
+mod viewports;
 use state::{MatcapTexels, STATE};
+pub(crate) use viewports::{ensure_viewports, toggle_split, viewport_at};
 
 /// ⭐ **O catálogo das cenas** vive no irmão — ver [`field3d_smoke_scenes`](self::scenes).
 #[path = "field3d_smoke_scenes.rs"]
@@ -122,12 +129,12 @@ fn boot() -> Option<Smoke> {
         nav_hot: None,
         nav_press: None,
         has_live_sculpt: false,
-        tapes: std::sync::Arc::new(ph2d_field_render::TapeCache::new()),
         matcap: Arc::new(load_matcap()),
         // ⭐ **Um viewport, que é o que o módulo sempre teve** — a divisão entra depois, e este
         // é o estado em que ela não existe.
         vps: vec![crate::field3d_smoke::state::Viewport::new(v.cam, v.manual)],
         active: 0,
+        split: crate::field3d_layout::Split::One,
         announced: false,
         drag: None,
         last_pointer: (0.0, 0.0),

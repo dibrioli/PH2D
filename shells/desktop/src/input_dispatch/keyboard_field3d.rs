@@ -65,6 +65,12 @@ impl App {
             return true;
         }
 
+        // ADR-0161 W90: `Ctrl+Alt+Q` abre e fecha a DIVISÃO do canvas em quatro vistas — a tecla
+        // do Blender para o *Toggle Quad View*. Mesma guarda de ponteiro das outras.
+        if self.field3d_quad_key(code) {
+            return true;
+        }
+
         // ADR-0161 W44: `Shift+I` isola o escolhido — ou devolve a peça inteira. A tecla é a do
         // módulo de escultura, lida e não escolhida. ⭐ É ela a **porta de saída** do isolamento: o
         // chip da fileira desaparece com a raiz escolhida, e sem esta tecla a peça isolada não

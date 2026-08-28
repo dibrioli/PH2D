@@ -28,6 +28,15 @@ pub(crate) fn begin(
     additive: bool,
     pos: (f32, f32),
 ) -> bool {
+    // ⭐⭐⭐ **O BOTÃO DESCE NUM VIEWPORT, E É ELE QUE PASSA A COMANDAR** (W90).
+    //
+    // ⚠️ **Antes de tudo, e só no `begin`:** daqui para baixo o módulo inteiro já lê `s.vp()`, então
+    // acertar o activo **aqui** é a única linha que a divisão custa ao caminho do ponteiro. ⛔ E no
+    // `Move`/`Up` a pergunta não se repete, pela mesma lei de captura que a nota abaixo escreve: um
+    // arrasto que mudasse de câmera ao atravessar a costura orbitaria duas peças com um gesto só.
+    if let Some(i) = crate::field3d_smoke::viewport_at(s, pos) {
+        s.active = i;
+    }
     // ⚠️ **Fora da área desenhada, o gesto não é meu.** O `Move` e o `Up` NÃO fazem esta pergunta,
     // de propósito: um arrasto em curso continua a ser do gesto que o abriu mesmo que o cursor
     // passeie por fora — a regra de captura que todo gizmo deste shell segue.
@@ -332,9 +341,11 @@ pub(crate) fn advance(s: &mut Smoke, x: f32, y: f32) -> bool {
 /// o dia em que a cena passou a nascer sozinha chegou, e a partir dali ela comia as teclas de todo
 /// painel do app. *Quem move o número que tornava uma nota verdadeira tem de reconferir a nota.*
 pub(super) fn over_window(s: &Smoke, pos: (f32, f32)) -> bool {
-    s.vp()
-        .area
-        .is_some_and(|a| pos.0 >= a.x && pos.1 >= a.y && pos.0 < a.x + a.w && pos.1 < a.y + a.h)
+    // ⚠️⚠️ **A pergunta é sobre o MÓDULO, não sobre uma vista** (W90). Enquanto ela lia
+    // `s.vp().area`, com a divisão aberta uma tecla premida sobre o quadrante *Front* respondia
+    // «não é minha» — e o `Home`, o `Numpad5` e o `Shift+I` deixavam de funcionar em três quartos
+    // do canvas, em silêncio.
+    crate::field3d_smoke::viewport_at(s, pos).is_some()
 }
 
 /// **Que verbo esta tecla nomeia** — `None` quando ela não é deste módulo.

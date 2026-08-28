@@ -5747,6 +5747,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 | ✅⭐⭐⭐ **A TRAVADINHA do Enio: a cache despejava `1 700` fitas debaixo do cadeado** | ⭐ `94 %` do preço era a **árvore**, que na rota do produto é lastro. Máximo do regime `364,6 → 21,7 ms` (`17×`), despejo no cadeado `~3 000×` mais barato | §91.2–§91.4 |
 | ✅⭐ **A lei do cancelamento perguntava ao TAMANHO** desde a W73 | ⭐ passa a perguntar à **espécie**: numa hesitação de um quadro o erro angular vai de `2,97°` para `1,50°` | §91.7 |
 | ✅ **`FRAMES_KEPT = 3` era derivado; agora é MEDIDO** | o joelho está lá: `1` e `2` piores, `4` e `6` compram `≤0,4 ms` por `1,4`–`2,5×` a memória | §91.8 |
+| ✅⭐⭐⭐ **O CANVAS DIVIDE-SE EM QUATRO VISTAS** (`Ctrl+Alt+Q` ou o chip *Quad View*) | o item que o plano chama *«o produto»* desde a W2; falta a outra metade da frase dele, o **cabeçalho** | §92 |
+| ⏳ O **cabeçalho** por viewport — e é ele que destrava o divisor arrastável | a divisão em `N` livre pede uma pega, e uma pega pede onde viver | §92.7 |
+| ⏳ O custo de uma EDIÇÃO com a divisão aberta (quatro traçados a disparar juntos) | inerente à divisão (o Blender faz o mesmo), **por medir** | §92.7 |
 | ⏳ A **varredura linear** do `TapeCache::get` paga o tamanho da população em cada uma das ~600 regiões | achado da recusa da fatia de `1/8`; nunca foi medido sozinho | §91.5 |
 | ✅ **W82: a cache de fitas entre quadros EXISTE** | ⭐ `1,15×`–`1,23×` no quadro de movimento, com `84 %`–`93 %` de acerto e `226` compilações/quadro a cair para `16`–`44`. ⛔ **A estimativa de `1,7×` estava errada por dois motivos nomeados** | §83.7, §83.8 |
 | ⏳ A cache contra o **CASCO** e não a caixa | o `1,11×` que ela deixa na mesa; pede um teste em **dois níveis** (a caixa rejeita, o casco confirma) | §83.9 |
@@ -8215,3 +8218,99 @@ e um gate de relógio sobre ele reprovaria sob fan-out sem nada ter mudado.
 (`cut_ms < full_ms · 0,5`). A `load 10`–`15` ele mudou de resposta **entre corridas do mesmo
 binário**, e sozinho deu verde `3` de `3`. O diff desta wave não toca o caminho dele (ali a cache nem
 existe: `cache = None`).
+
+## §92 — W90: ⭐⭐⭐ O CANVAS DIVIDE-SE EM QUATRO VISTAS (27/08)
+
+> O plano fecha o canvas de primeira classe como *"modo de viewport próprio, com **cabeçalho e
+> divisão**"* ([`03_plano_implicito.md`](../3DModeling/03_plano_implicito.md)), e o Enio levantou-o
+> em 19/08 (*"melhor fazer como foi feito o Sculpt ou já criar o canvas 3D estilo Blender"*). A
+> **divisão** é a metade que não existia; o resto do canvas de primeira classe (as seis vistas
+> nomeadas, o gizmo de navegação, a viagem entre vistas) fechou nas W47–W52.
+
+### §92.1 — W90a: o estado de UMA vista sai do `Smoke`
+
+A fronteira já estava escrita, campo a campo, nos doc-comments — e a W43 já lhe tinha dado nome do
+lado da vista (`View::of`). Nove campos passam para uma `Viewport`: `cam`, `frame`, `inflight`,
+`since`, `requested`, `last_trace_ms`, `measured`, `area`, `manual`. Fica no `Smoke` o que é do
+**documento** ou do **gesto**: a peça, o gizmo, o arrasto, o laço, a isolação, o verbo.
+
+⭐ `Smoke::vp()`/`vp_mut()` prendem o índice ao alcance **na porta**. *Um `Option` ali obrigaria os
+~30 sítios que perguntam pela câmera a responder «e se não houver vista nenhuma?», que é uma pergunta
+que o produto não tem.* O preço é uma invariante — a lista nunca é vazia — e ela tem censo.
+
+Neutro e medido: `3 834` passaram (os `3 833` de antes + o censo), `0` falharam.
+
+### §92.2 — A porta do layout, e a lição que esta casa pagou com um bug de produto
+
+`field3d_layout::rects` devolve os retângulos em pixels **inteiros**, e eles ladrilham a área
+**exactamente**. ⚠️ Não é preciosismo: o `CenterSplit::scene_viewport` (o divisor cena/grafo) devolvia
+`h · t` fraccionário, o passe de sprites recebia `422,4` e o `set_scissor_rect` ao lado `422` — a
+diferença de `0,095 %` era invisível parada e **um movimento** num pan (report do Enio, 25/08).
+⇒ *um valor que é pixels não pode sair fraccionário da porta que o define.* Aqui as **arestas** é que
+são arredondadas (nunca as larguras), que é o que faz cada aresta interior ser o **mesmo número** para
+os dois vizinhos.
+
+⚠️ **O divisor não é uma folga na geometria** — insetar os retângulos faria os quatro traçados perder
+pixels e o fundo aparecer por baixo. A linha é pintada por cima, no chrome.
+
+### §92.3 — As decisões, e de onde cada uma veio
+
+| decisão | de onde |
+|---|---|
+| `Top` em cima-esq · `Right` em cima-dir · `Front` em baixo-esq · **a perspectiva do artista em baixo-dir** | a disposição do Blender — e é onde a mão dele já está |
+| as três nomeadas nascem **ortográficas** | uma vista nomeada existe para **medir**, e a perspectiva estraga exactamente isso |
+| …e nascem `manual: true` | o `manual` é *«o prato já foi tocado»*; um `Top` que girasse sozinho deixava de ser o Top no quadro seguinte. ⭐ *A lei que já existia responde à pergunta nova sem um campo a mais* |
+| o botão do rato escolhe o viewport **activo**, e o `Move`/`Up` não repetem a pergunta | a lei de captura que todo gizmo deste shell segue: um arrasto que mudasse de câmera ao atravessar a costura orbitaria duas peças com um gesto só |
+| ao FECHAR, fica a vista **activa** | o artista fecha a olhar para o quadrante que lhe interessa; ficar com outro desfaz-lhe o gesto |
+| o gizmo e o navball só no activo | as alças são a projecção do gesto; pintá-las nas quatro convidaria a agarrar numa vista e arrastar noutra |
+| a moldura do activo é **obrigatória** | com quatro vistas iguais, *«qual delas o teclado comanda?»* passa a ser uma pergunta com resposta — e *um estado que muda o que a tecla seguinte faz e não se vê é a definição de uma interface que mente* |
+
+### §92.4 — ⚠️ A cache de fitas passa a ser DO VIEWPORT, e isto é a W89 a reabrir pela porta do lado
+
+O tecto da cache é **derivado do que um quadro pede** (§91.8). Com quatro viewports a chamar
+`TapeCache::begin`, o último a passar dimensionava a cache para **um quarto** da tela — a debulha que
+a §91 acabou de curar, reaberta por uma feature que nada tem a ver com ela. ⇒ a cache muda de dono e
+passa a viver na `Viewport`.
+
+⭐ **E o total não sobe:** quatro viewports de um quarto da área pedem, somados, as regiões de uma
+tela. *O que muda é quem contabiliza.*
+
+⭐⭐ **E o custo em regime é ~UM viewport a mexer:** as três vistas nomeadas são **estáticas** — elas
+só re-traçam quando o documento muda. Orbitar a perspectiva não lhes toca.
+
+### §92.5 — ⭐⭐ Dois gates recusaram esta wave, e os dois tinham razão
+
+1. **`every_camera_chip_moves_the_camera`** reprovou o chip novo. A régua daquela fileira é *«o chip
+   mexe na câmera»* e o meu muda a **divisão** — quantas câmeras há. ⛔ A cura **não** foi afrouxar a
+   lei: foi dar-lhe a régua da espécie (a contagem de viewports abre em `4` e fecha em `1`, e o chip
+   **acende**). *Uma lei de alcançabilidade tem uma régua por espécie de gesto* — a própria nota da
+   W47 já o dizia, e o gate obrigou-me a lê-la.
+2. **O meu censo `nothing_can_empty_the_viewport_list` tinha um buraco:** listava `clear`/`pop`/
+   `remove`/`drain`/`truncate` e **não** a ATRIBUIÇÃO, que é o modo mais óbvio de todos — e é
+   exactamente o que a divisão veio a fazer (`smoke.vps = novos`). *Um censo por texto só apanha o que
+   alguém se lembrou de escrever, e o que se esquece é o caso normal.* Hoje a lista inclui `vps = ` e
+   o `ensure_viewports` é o **único** sítio autorizado, com o motivo escrito ao lado. ⚠️ A primeira
+   corrida do censo apanhou também a **própria lista de verbos** que ele define — o modo de falha
+   clássico de um censo por texto, e a fronteira certa não era *«este ficheiro»* mas *«código que
+   corre no app»*.
+
+### §92.6 — Gates
+
+| gate | o que prende |
+|---|---|
+| `the_four_pieces_tile_the_area_exactly` | pixels inteiros e soma das áreas = área, em origens fraccionárias e tamanhos ímpares |
+| `a_point_on_the_seam_belongs_to_exactly_one_viewport` | o teste semi-aberto: a costura tem **um** dono |
+| `the_count_and_the_named_views_agree` | a contagem e a disposição saem da mesma fonte |
+| `each_viewport_stores_the_rect_the_layout_gave_it` | ⭐ **a costura**: desenha de verdade e depois pergunta ao **ponteiro** — as duas travessias têm de concordar (mutação: `viewport_at` a devolver sempre `Some(0)` → ✗) |
+| `nothing_can_empty_the_viewport_list` | a invariante que torna o `vp()` infalível |
+| `every_camera_chip_moves_the_camera` | agora com a régua da divisão dentro |
+
+### §92.7 — ⏳ O que fica aberto
+
+- **O CABEÇALHO** — a outra metade da frase do plano. Hoje o chrome do módulo é o painel lateral e o
+  gizmo de navegação; um cabeçalho por viewport (com o nome da vista e o modo de sombreado) é a wave
+  seguinte, e é ele que destrava o **divisor arrastável** (uma divisão em `N` livre pede uma pega).
+- **A isolação e o verbo do gizmo são do MÓDULO, não do viewport.** No Blender a *local view* é por
+  vista. Ficam globais por decisão: são sobre a **selecção** e a **ferramenta**, não sobre a câmera.
+- **O custo de uma edição com a divisão aberta** — quatro traçados disparam ao mesmo tempo e cada um
+  quer a máquina toda. Inerente à divisão (o Blender faz o mesmo), **por medir**.

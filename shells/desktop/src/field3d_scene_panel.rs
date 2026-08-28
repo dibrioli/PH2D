@@ -287,6 +287,7 @@ fn views_now() -> Vec<ph2d_panel_model3d::ModeChip> {
 fn camera_now() -> Vec<ph2d_panel_model3d::ModeChip> {
     let ortho =
         with_smoke(|s| matches!(s.vp().cam.lens, ph2d_field_render::Lens::Ortho)).unwrap_or(false);
+    let quad = with_smoke(|s| s.split == crate::field3d_layout::Split::Quad).unwrap_or(false);
     vec![
         ph2d_panel_model3d::ModeChip {
             key: CAMERA_ACTS[ORTHO_SLOT],
@@ -296,18 +297,30 @@ fn camera_now() -> Vec<ph2d_panel_model3d::ModeChip> {
             key: CAMERA_ACTS[FRAME_SLOT],
             active: false,
         },
+        ph2d_panel_model3d::ModeChip {
+            key: CAMERA_ACTS[QUAD_SLOT],
+            active: quad,
+        },
     ]
 }
 
 /// Os gestos de câmera, na ordem do seletor.
-pub(crate) const CAMERA_ACTS: [&str; 2] =
-    ["panel.model3d.camera.ortho", "panel.model3d.camera.frame"];
+pub(crate) const CAMERA_ACTS: [&str; 3] = [
+    "panel.model3d.camera.ortho",
+    "panel.model3d.camera.frame",
+    "panel.model3d.camera.quad",
+];
 
 /// A **lente** — interruptor. ⚠️ Derivados, nunca números à mão: um gesto novo no meio da lista
 /// mudaria o índice e o botão passaria a fazer outra coisa, sem erro nenhum.
 pub(crate) const ORTHO_SLOT: usize = 0;
 /// O **enquadrar** — ação.
 pub(crate) const FRAME_SLOT: usize = 1;
+/// ⭐⭐ A **divisão do canvas** (W90) — interruptor, como a lente.
+///
+/// ⚠️ Ele mora nesta fileira e não numa nova porque a pergunta dela é *«como estou a olhar?»* — e
+/// *«de quantos sítios ao mesmo tempo»* é uma resposta a essa, exactamente como a lente.
+pub(crate) const QUAD_SLOT: usize = 2;
 
 /// ⭐ **O NOME do nó isolado** (W44) — `None` quando se vê a peça inteira.
 ///

@@ -12,7 +12,7 @@ pub(super) use crate::field3d_input::begin;
 use crate::field3d_scene::SelectRequest;
 use crate::field3d_smoke::Drag;
 
-pub(super) const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
+pub(crate) const AREA: ph2d_editor::zones::Rect = ph2d_editor::zones::Rect {
     x: 100.0,
     y: 50.0,
     w: 400.0,
@@ -61,7 +61,7 @@ fn armed<R>(f: impl FnOnce(&mut SimWorld) -> R) -> R {
     armed_with(&two_balls(), f)
 }
 
-pub(super) fn armed_with<R>(doc: &FieldDoc, f: impl FnOnce(&mut SimWorld) -> R) -> R {
+pub(crate) fn armed_with<R>(doc: &FieldDoc, f: impl FnOnce(&mut SimWorld) -> R) -> R {
     crate::field3d_smoke::set_armed_by_panel(true);
     let mut sim = SimWorld::new();
     crate::field3d_scene::sync_scene(&mut sim, Some(doc), 0.0);

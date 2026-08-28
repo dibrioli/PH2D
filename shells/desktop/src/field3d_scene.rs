@@ -175,7 +175,10 @@ mod link_reach_tests;
 
 #[cfg(test)]
 #[path = "field3d_lasso_tests.rs"]
-mod lasso_tests;
+// ⚠️ **`pub(crate)` porque o arnês dele é PARTILHADO** — o `armed_with`/`AREA` arma o módulo e
+// desenha um quadro de verdade, e o gate da costura da divisão (W90) precisa exactamente disso.
+// *Um segundo arnês seria uma segunda definição de «o módulo está a correr».*
+pub(crate) mod lasso_tests;
 
 #[cfg(test)]
 #[path = "field3d_lasso_catch_tests.rs"]

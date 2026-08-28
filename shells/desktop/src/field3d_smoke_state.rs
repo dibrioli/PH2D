@@ -86,6 +86,16 @@ pub(crate) struct Viewport {
     /// continuar a girar **depois** de alguém a ter posto num ângulo é desfazer o gesto dele a cada
     /// quadro — a auto-demonstração deixa de ser um convite e passa a ser uma disputa.
     pub(crate) manual: bool,
+    /// ⭐⭐⭐ **A CACHE DE FITAS É DO VIEWPORT** (W90) — e não do módulo.
+    ///
+    /// ⚠️ **Ela era do [`Smoke`], e com a divisão isso vira um defeito medido:** o tecto da cache é
+    /// **derivado do que um quadro pede** (W89, `TapeCache::begin`), e com quatro viewports a
+    /// chamá-lo o último a passar dimensionava a cache para **um quarto** da tela. Era a debulha
+    /// que a W89 acabou de curar, reaberta pela porta do lado.
+    ///
+    /// ⭐ E o total não sobe: quatro viewports de um quarto da área pedem, somados, as regiões de
+    /// uma tela — *o que muda é quem contabiliza.*
+    pub(crate) tapes: Arc<ph2d_field_render::TapeCache>,
 }
 
 impl Viewport {
@@ -102,6 +112,7 @@ impl Viewport {
             measured: None,
             area: None,
             manual,
+            tapes: Arc::new(ph2d_field_render::TapeCache::new()),
         }
     }
 }
@@ -130,6 +141,13 @@ pub(crate) struct Smoke {
     pub(crate) vps: Vec<Viewport>,
     /// Qual viewport o gesto comanda. Ver [`Smoke::vp`].
     pub(crate) active: usize,
+    /// ⭐⭐⭐ **Como o canvas está dividido** — ver [`crate::field3d_layout::Split`].
+    ///
+    /// ⚠️ **Estado de VISTA**, como a câmera: ele não toca a peça, não entra no undo e não viaja no
+    /// arquivo. ⛔ E **não** viaja no [`crate::field3d_view::View`] que sobrevive a fechar o painel:
+    /// restaurar a divisão obrigaria a restaurar as **quatro** câmeras, e o que a W43 promete é
+    /// *«a peça certa vista do sítio onde a deixei»* — uma promessa sobre UMA vista.
+    pub(crate) split: crate::field3d_layout::Split,
     /// Já anunciou o primeiro quadro? Ver a nota do `boot`.
     pub(super) announced: bool,
     /// O arrasto em curso, se houver ([`crate::field3d_input`]).
@@ -255,17 +273,6 @@ pub(crate) struct Smoke {
     /// tem `AppGfx` nenhum, e dar-lhe um faria o traçado passar a depender do módulo de escultura.
     /// Sem a feature `sculpt3d` ele fica **sempre falso**, e o botão nunca é oferecido.
     pub(crate) has_live_sculpt: bool,
-    /// ⭐⭐⭐ **AS FITAS JÁ COMPILADAS, entre quadros** (W82) — ver
-    /// [`ph2d_field_render::TapeCache`].
-    ///
-    /// ⚠️ **Ela vive AQUI porque tem de sobreviver ao quadro**, e o traçado corre numa thread
-    /// própria: o `Arc` é o que a atravessa. Medido (`docs/3DModeling/06` §82.9): compilar as fitas
-    /// de um quadro custa `~14 ms` de um quadro de `~24`, **satura às 16 threads** (de 16 para 32
-    /// ganha `1 %`) e é refeito inteiro a cada quadro enquanto a mão mexe.
-    ///
-    /// ⚠️ Ela é **cache** e não **vista** (`field3d_view::View::of`): fechar e reabrir o módulo
-    /// pode deitá-la fora sem custo nenhum — a 1.ª mão a mexer volta a enchê-la.
-    pub(crate) tapes: Arc<ph2d_field_render::TapeCache>,
 }
 
 impl Smoke {

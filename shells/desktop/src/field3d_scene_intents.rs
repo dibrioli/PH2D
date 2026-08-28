@@ -160,6 +160,9 @@ pub(super) fn apply(
                     if slot == super::panel::ORTHO_SLOT {
                         s.vp_mut().cam.lens =
                             crate::field3d_input::law::other_lens(s.vp_mut().cam.lens);
+                    } else if slot == super::panel::QUAD_SLOT {
+                        // ⭐⭐⭐ **A DIVISÃO** (W90) — ver `field3d_smoke::toggle_split`.
+                        crate::field3d_smoke::toggle_split(s);
                     } else if slot == super::panel::FRAME_SLOT {
                         let mut to = s.vp().cam;
                         crate::field3d_input::law::home(&mut to);

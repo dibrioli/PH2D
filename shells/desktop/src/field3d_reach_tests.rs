@@ -372,7 +372,7 @@ fn every_camera_chip_moves_the_camera() {
             "a fileira das vistas é DERIVADA de `Standard::ALL` — se divergir, um botão fica sem lei \
              ou uma lei fica sem botão"
         );
-        assert_eq!(snap.camera.len(), 2, "a lente e o enquadrar");
+        assert_eq!(snap.camera.len(), 3, "a lente, o enquadrar e a divisão");
 
         // ⭐ Cada VISTA põe a câmera exatamente na orientação que o nome dela promete — **e
         // enquadra**.
@@ -463,6 +463,49 @@ fn every_camera_chip_moves_the_camera() {
             t.iter().all(|c| c.abs() < 1.0),
             "o chip de enquadrar deixou o alvo em {t:?} — ele não foi buscar a peça"
         );
+
+        // ⭐⭐⭐ **A DIVISÃO** (W90), e a régua dela é OUTRA — de propósito.
+        //
+        // ⚠️ **Este chip não mexe na câmera: ele muda QUANTAS câmeras há.** A lei desta fileira é
+        // *«o chip faz o que a fileira promete»*, e a fileira promete *«como estou a olhar?»* — a
+        // régua tem de ser a espécie do gesto, não uma cópia da do vizinho. *Foi este gate que
+        // recusou o chip novo enquanto ele não tinha lei própria, que é exactamente o trabalho
+        // dele.*
+        let quantos = || crate::field3d_smoke::with_smoke(|s| s.vps.len()).unwrap_or(0);
+        let antes = quantos();
+        ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
+            slot: crate::field3d_scene::panel::QUAD_SLOT,
+        });
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert_eq!(
+            quantos(),
+            crate::field3d_layout::Split::Quad.count(),
+            "o chip da divisão não abriu as quatro vistas (estava em {antes})"
+        );
+        // …e o retrato DIZ o estado novo, como o da lente.
+        assert!(
+            ph2d_panel_model3d::state::current().camera[crate::field3d_scene::panel::QUAD_SLOT]
+                .active,
+            "o chip da divisão não acende com a divisão aberta"
+        );
+        // ⭐ **E fecha**, deixando UMA vista — um interruptor que só liga é meio interruptor.
+        ph2d_panel_model3d::state::push_intent_for_test(ModelIntent::Camera {
+            slot: crate::field3d_scene::panel::QUAD_SLOT,
+        });
+        crate::field3d_scene::sync_scene_and_birth(
+            &mut sim,
+            None,
+            &[],
+            0.0,
+            &crate::field3d_scene::no_drawing(),
+        );
+        assert_eq!(quantos(), 1, "o chip da divisão não voltou à vista única");
     });
 }
 

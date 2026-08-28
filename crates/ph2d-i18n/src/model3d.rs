@@ -148,9 +148,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.view.left" => "Left (^3)",
         "panel.model3d.view.top" => "Top (7)",
         "panel.model3d.view.bottom" => "Bottom (^7)",
-        // Os dois gestos de câmera que não são uma vista.
+        // Os TRÊS gestos de câmera que não são uma vista.
         "panel.model3d.camera.ortho" => "Ortho (5)",
         "panel.model3d.camera.frame" => "Frame (Home)",
+        // ⭐ A divisão do canvas. O atalho é o do Blender para a mesma coisa.
+        "panel.model3d.camera.quad" => "Quad View (^\u{2325}Q)",
         // ⭐ O estado de VISTA que precisa de se anunciar: só um nó está à vista, e qual.
         // ⚠️ A frase traz o **nome** ao lado — "estás a ver só uma parte" sem dizer qual deixa o
         // artista à procura.

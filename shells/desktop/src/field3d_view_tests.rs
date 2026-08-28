@@ -189,13 +189,22 @@ fn nothing_can_empty_the_viewport_list() {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     // Os verbos que ENCOLHEM uma `Vec`. ⚠️ `remove`/`drain`/`retain`/`truncate` também encolhem, e
     // um deles com a conta errada deixa a lista vazia tão bem como um `clear`.
-    const ENCOLHEM: [&str; 5] = [
+    const ENCOLHEM: [&str; 6] = [
         "vps.clear(",
         "vps.pop(",
         "vps.remove(",
         "vps.drain(",
         "vps.truncate(",
+        // ⛔⛔ **A ATRIBUIÇÃO estava fora da lista, e é o modo mais óbvio de todos.** A 1.ª versão
+        // deste censo listava cinco verbos de `Vec` e deixou passar `vps = <o que for>` — que é
+        // exactamente o que a divisão do canvas veio a fazer. *Um censo por texto só apanha o que
+        // alguém se lembrou de escrever, e o que se esquece é o caso NORMAL.*
+        "vps = ",
     ];
+    /// ⭐ **O único sítio autorizado, com o motivo.** Ver `field3d_smoke::ensure_viewports`: ele
+    /// reconstrói a lista quando a divisão muda (a vista do artista muda de quadrante, então não é
+    /// um `push`), e **prende o `n` a `≥ 1` na primeira linha** — é lá que a invariante vive.
+    const AUTORIZADOS: [(&str, &str); 1] = [("field3d_viewports.rs", "smoke.vps = novos;")];
     let mut achados: Vec<String> = Vec::new();
     for entry in std::fs::read_dir(&dir).expect("src existe") {
         let path = entry.expect("entrada").path();
@@ -213,7 +222,11 @@ fn nothing_can_empty_the_viewport_list() {
                 continue;
             }
             for verbo in ENCOLHEM {
-                if linha.contains(verbo) {
+                if linha.contains(verbo)
+                    && !AUTORIZADOS
+                        .iter()
+                        .any(|(f, l)| *f == nome && linha.trim() == *l)
+                {
                     achados.push(format!("{nome}:{}: {}", i + 1, linha.trim()));
                 }
             }

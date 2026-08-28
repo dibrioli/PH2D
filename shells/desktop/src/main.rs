@@ -135,6 +135,7 @@ mod field3d_import;
 /// ADR-0161 — o smoke do módulo de modelagem 3D (`PH2D_FIELD_SMOKE=1..3`): o **campo traçado** na
 /// tela, que é o caminho pelo qual o artista vê a peça (a malha é só para exportar).
 mod field3d_input;
+mod field3d_layout;
 /// ADR-0161 W25 — a VOZ do módulo: uma peça que não cozinha diz porquê, e diz uma vez.
 mod field3d_mode;
 mod field3d_navball;

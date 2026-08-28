@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**27 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**29 handoffs** · **11** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -39,8 +39,9 @@
 | 2026-08-24 |  | [HANDOFF_INTEGRACAO_CORRENTE_quadremesh_2026-08-24.md](HANDOFF_INTEGRACAO_CORRENTE_quadremesh_2026-08-24.md) | corrente | as **três linhas** do quad remesh ao `main`, a pedido do Enio — o que cada uma entregou e o que ficou por integrar |
 | 2026-08-24 | ◆ | [HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md](HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md) | integração | a **costura deixa de ser penalizada e passa a ser ELIMINADA** — a casca fecha (`χ −4..−13 → +2`, bordo `30–78 → 0`) e 3–4× mais rápido |
 | 2026-08-24 |  | [AUDITORIA_line_seamelim_2026-08-24.md](AUDITORIA_line_seamelim_2026-08-24.md) | auditoria | o fecho da `line/seamelim` pelo template da `DIRETIVA_IMPLEMENTACAO` §3 |
-| 2026-08-26 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md) | integração | **as quatro queixas do artista, medidas**: duas curadas (o bordo como feição · o acabamento que só um dos dois caminhos tinha), a 3.ª com a causa nomeada (a aspereza é da escultura) e a 4.ª com número e **controlo**. ⭐ `t001` fecha (`χ = 2`), `t002` `31 → 14` furos. ⛔ **5 recusas medidas** e **3 afirmações minhas refutadas** |
-| 2026-08-26 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md) | integração | **o FECHO da linha**: identidade, superfície de colisão colada, o que só o `ship.sh` apanha e o que ficou **por smokar** (⚠️ três cortes de LOC). ⭐ O de conteúdo é o irmão acima |
+| 2026-08-26 | ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26.md) | integração | **as quatro queixas do artista, medidas**: duas curadas (o bordo como feição · o acabamento que só um dos dois caminhos tinha), a 3.ª com a causa nomeada (a aspereza é da escultura) e a 4.ª com número e **controlo**. ⭐ `t001` fecha (`χ = 2`), `t002` `31 → 14` furos. ⛔ **5 recusas medidas** e **3 afirmações minhas refutadas** |
+| 2026-08-26 | ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-26_FECHO.md) | integração | **o FECHO da linha**: identidade, superfície de colisão colada, o que só o `ship.sh` apanha e o que ficou **por smokar** (⚠️ três cortes de LOC). ⭐ O de conteúdo é o irmão acima |
+| 2026-08-28 | ★ ◆ | [HANDOFF_INTEGRACAO_line_quadextract_2026-08-28.md](HANDOFF_INTEGRACAO_line_quadextract_2026-08-28.md) | integração | ⛔⛔⛔ **a barra do oráculo estava a ser lida a 1/9 da densidade dele** — à densidade dele a mesma cadeia já estava dentro dela. O que faltava era o **ACABAMENTO**, agora numa porta só (`ph2d_quadfill::finish_extracted`): Laplaciano como ronda zero, ajuste de quadrado **alinhado ao relevo**, e a **melhor ronda**. ⚠️ **Quatro correcções que só a porta impôs** (o limiar calibrado no programa errado · a catraca de Pareto · a paciência a medir a coisa errada · uma cura construída e não adoptada) |
 
 ---
 
@@ -67,3 +68,10 @@ diretório de `27`. ⚠️ **A nota acima existe desde 24/08 e o buraco reabriu 
 *Índice conferido na reabertura de 2026-08-18. ⚠️ Ele já esteve **seis handoffs atrás** do
 diretório — a contagem e o **★** se **DERIVAM do `ls`**, nunca de memória. Handoff novo entra
 aqui, não na raiz de `docs/`.*
+
+*Índice conferido em 2026-08-28 (`30` ficheiros, `29` linhas — o `README.md` não se conta a
+si próprio). ⚠️ A contagem declarada dizia `27` para um diretório de `29`: ela estava **dois
+atrás** outra vez, e desta vez o buraco não era só o handoff novo. ⇒ a conferência é
+`for f in *.md; do grep -q "$f" README.md || echo AUSENTE; done`, e a contagem **derivada do
+`ls`** é a outra metade dela — a primeira acha o que falta na tabela, a segunda acha o que
+falta no número.*

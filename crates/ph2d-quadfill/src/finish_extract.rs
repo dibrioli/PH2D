@@ -77,18 +77,32 @@ pub const EXTRACT_SETTLE: f32 = 1.0e-3;
 /// rondas nas células do corpus, então este número **não** é o que manda.
 pub const EXTRACT_MAX_ROUNDS: usize = 1_200;
 
-/// ⭐⭐⭐ **QUANTAS RONDAS SEM MELHORIA ANTES DE DESISTIR.**
+/// ⭐⭐⭐ **QUANTAS RONDAS SEM ACEITAR NADA ANTES DE DESISTIR** — ver [`give_up`].
 ///
 /// ⛔⛔ **Ela existe por uma medição, não por prudência.** Na `sculpt_hooked` **fina** o
 /// alinhamento ao relevo nunca bate a ronda zero — aquela peça tem `1` face péssima depois
 /// do Laplaciano, e a relaxação alinhada sobe-a para `2` logo na primeira ronda, o que a
-/// ordem de comparação recusa **para sempre**. Sem esta rede a corrida gastava `1 200`
-/// rondas e `8,3 s` para entregar exactamente a malha com que começou.
+/// aceitação recusa **para sempre**. Sem esta rede a corrida gastava `1 200` rondas e
+/// `8,3 s` para entregar exactamente a malha com que começou.
 ///
-/// ⚠️ **Ela é um limite de DESPERDÍCIO, não de qualidade:** nas peças que melhoram, a última
-/// melhoria chega perto do fim (`302` de `308`, `273` de `283`), sempre com intervalos muito
-/// menores que este número entre melhorias sucessivas.
-pub const EXTRACT_PATIENCE: usize = 128;
+/// # ⚠️ O número é `1,8×` a maior PRIMEIRA ACEITAÇÃO medida
+///
+/// | peça · alvo | 1.ª ronda aceite | melhor | caiu para a lei cega? |
+/// |---|---|---|---|
+/// | `wrinkled` · 2 | 1 | 302 de 308 | não |
+/// | `eared` · 2 | 9 | 350 de 350 | não |
+/// | `hooked` · 2 | 1 | 273 de 283 | não |
+/// | `sphere_uv` · 2 | 1 | 248 de 248 | não |
+/// | `wrinkled` · 0,667 | 209 | 901 de 902 | não |
+/// | ⚠️ `eared` · 0,667 | **418** | 762 de 793 | não |
+/// | `hooked` · 0,667 | 312 | 830 de 830 | ⭐ **sim** |
+/// | `sphere_uv` · 0,667 | 1 | 408 de 408 | não |
+///
+/// ⛔⛔⛔ **A 1.ª redacção pôs `128` e cortava trabalho real** — com ela a `sculpt_hooked`
+/// fina saía **intocada** em vez de ir a `1,04 / 2,0° / p99 22,8` com zero faces péssimas.
+/// ⭐ **E só UMA das oito células cai para a lei cega** — é isso que faz o relevo ficar
+/// guardado nas outras sete.
+pub const EXTRACT_PATIENCE: usize = 768;
 
 /// ⭐⭐ **Quanto a direcção da superfície roda o quadrado** — multiplica a anisotropia.
 ///
@@ -106,6 +120,10 @@ pub struct FinishReport {
     pub rounds: usize,
     /// ⭐ **Qual delas ficou** — `0` significa que nenhuma bateu o Laplaciano.
     pub kept: usize,
+    /// ⭐⭐ **A PRIMEIRA ronda aceite** (`0` = nenhuma). ⚠️ Ela e a [`FinishReport::kept`] são
+    /// grandezas diferentes e é a distância entre elas que precifica a paciência: *desistir
+    /// enquanto nada foi aceite* é barato, *desistir depois* corta trabalho real.
+    pub first: usize,
     /// A forma logo após a ronda zero (o produto de 2026-08-26).
     pub before: QuadShape,
     /// A forma que sai.
@@ -115,18 +133,22 @@ pub struct FinishReport {
     pub blind: bool,
 }
 
-/// ⭐⭐⭐ **DESISTIR: a janela conta da MELHOR ronda, nunca do início.**
+/// ⭐⭐⭐ **DESISTIR: só enquanto NADA foi aceite ainda.**
 ///
-/// `round` é o índice `0`-based da ronda que acabou de correr e `kept` é a **melhor** até
-/// agora (`0` = a ronda zero, o Laplaciano).
+/// `round` é o índice `0`-based da ronda que acabou e `first` é a **primeira** ronda aceite
+/// (`0` = nenhuma até agora).
 ///
-/// ⛔ **Um contador que arrancasse do início mataria a corrida à ronda
-/// [`EXTRACT_PATIENCE`] ainda a melhorar** — e nenhuma fixtura de malha o apanha de forma
-/// robusta, porque para o separar é preciso uma peça cuja última melhoria caia depois da
-/// janela, e isso depende da malha. *Uma lei que a fixtura não separa testa-se onde ela é
-/// declarada.*
-fn give_up(round: usize, kept: usize) -> bool {
-    (round + 1).saturating_sub(kept) >= EXTRACT_PATIENCE
+/// ⛔⛔⛔ **A 1.ª redacção media «rondas desde a MELHOR» e cortava trabalho real.** Medido
+/// 2026-08-28 na `sculpt_hooked` fina: a primeira ronda aceite é a **`312`** e a melhor é a
+/// **`830`** — com uma janela de `128` desde a melhor, a corrida morria à ronda `128` e a
+/// peça saía intocada (`1,11 / 6,5° / p99 33,0`), quando ela chega a
+/// **`1,04 / 2,0° / p99 22,8` com zero faces péssimas**.
+///
+/// ⭐ *Desistir enquanto nada foi aceite é barato; desistir depois corta trabalho real* — as
+/// duas grandezas são diferentes e a distância entre elas (`312` e `830` na mesma corrida) é
+/// o preço de as confundir.
+fn give_up(round: usize, first: usize) -> bool {
+    first == 0 && round + 1 >= EXTRACT_PATIENCE
 }
 
 /// ⭐ **Ruído de vírgula flutuante abaixo do qual duas formas são a MESMA forma** — em graus
@@ -153,6 +175,11 @@ fn acceptable(s: &QuadShape, base: &QuadShape) -> bool {
     s.skew_over_60 <= base.skew_over_60
         && s.skew_p50 <= base.skew_p50 + SAME
         && s.aspect_p50 <= base.aspect_p50 + SAME
+        // ⚠️ **A CAUDA também conta, e ela entrou tarde:** sem esta linha a `sculpt_eared`
+        // fina saía com o `p99` do enviesamento em `28,2°` contra os `27,2°` da ronda zero
+        // — *uma coluna que o relatório mostra e a garantia não cobria.*
+        && s.skew_p99 <= base.skew_p99 + SAME
+        && s.aspect_p99 <= base.aspect_p99 + SAME
 }
 
 /// ⭐ **Entre as aceitáveis, decide o ENVIESAMENTO MEDIANO** — a coluna que o artista
@@ -296,10 +323,13 @@ pub fn finish_extracted_with(
         if acceptable(&s, &rep.before) && better(&s, &rep.after) {
             rep.after = s;
             rep.kept = r + 1;
+            if rep.first == 0 {
+                rep.first = r + 1;
+            }
             best_pos.copy_from_slice(mesh.positions());
         }
         // ⚠️ **Assentar OU desistir** — ver [`give_up`].
-        if mv <= settle || give_up(r, rep.kept) {
+        if mv <= settle || give_up(r, rep.first) {
             break;
         }
     }

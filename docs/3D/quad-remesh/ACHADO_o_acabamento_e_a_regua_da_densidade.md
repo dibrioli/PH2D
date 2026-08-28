@@ -386,3 +386,32 @@ superfície corrige o domínio, e a medição seguinte mostrou que ela **deixou 
 necessária**: com a aceitação do §10.2 a densidade fina passa a melhorar sem suavização
 nenhuma. ⇒ `HINT_SMOOTH_ROUNDS = 0`, **o código fica vivo e testado, e a medição é o
 resultado**.
+
+### §10.5 — ⛔⛔⛔ E a PACIÊNCIA media a coisa errada, o que quase apagou o maior ganho da jornada
+
+A rede que corta o desperdício foi escrita como *«desistir ao fim de `N` rondas sem
+MELHORIA»*, com `N = 128`. ⛔ **Ela cortava trabalho real, e o preço era enorme:** com ela a
+`sculpt_hooked` fina saía **intocada**; sem ela a mesma peça vai a
+`1,04 / 2,0° / p99 22,8° / >60 0`.
+
+⭐ **A causa lê-se em duas grandezas que estavam a ser confundidas** — a **primeira** ronda
+aceite e a **melhor**:
+
+| peça · alvo | 1.ª ronda aceite | melhor | caiu para a lei cega? | envies. p50 |
+|---|---|---|---|---|
+| `wrinkled` · 2 | 1 | 302 de 308 | não | `7,8° → 4,5°` |
+| `eared` · 2 | 9 | 350 de 350 | não | `10,4° → 3,8°` |
+| `hooked` · 2 | 1 | 273 de 283 | não | `7,7° → 4,3°` |
+| `sphere_uv` · 2 | 1 | 248 de 248 | não | `7,4° → 3,0°` |
+| `wrinkled` · 0,667 | 209 | 901 de 902 | não | `5,2° → 2,8°` |
+| ⚠️ `eared` · 0,667 | **418** | 762 de 793 | não | `6,3° → 3,5°` |
+| `hooked` · 0,667 | 312 | 830 de 830 | ⭐ **sim** | `6,5° → 2,0°` |
+| `sphere_uv` · 0,667 | 1 | 408 de 408 | não | `3,8° → 2,6°` |
+
+⇒ *desistir enquanto **nada** foi aceite é barato; desistir depois corta trabalho real.* A
+lei passa a ser **`first == 0 && round >= EXTRACT_PATIENCE`**, e o número (`768`) é `1,8×` a
+maior primeira aceitação medida (`418`).
+
+⭐⭐ **E a tabela responde à pergunta que o §10.3 deixava no ar:** com a paciência certa,
+**sete das oito células ficam com a lei ALINHADA** — a queda para a cega é a excepção de uma
+peça, não a regra. *O relevo fica guardado onde ele tinha alguma coisa a dizer.*

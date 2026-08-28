@@ -140,7 +140,9 @@ fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
     let base = crate::shape::QuadShape {
         skew_over_60: 2,
         skew_p50: 8.0,
+        skew_p99: 40.0,
         aspect_p50: 1.20,
+        aspect_p99: 1.90,
         ..crate::shape::QuadShape::default()
     };
     let mut win = base;
@@ -161,6 +163,22 @@ fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
     assert!(
         !super::acceptable(&trade2, &base),
         "uma ronda que compra faces pessimas com aspecto tem de ser recusada"
+    );
+    // ⛔ E a CAUDA conta: comprar mediana com `p99` é a troca que a `sculpt_eared` fina
+    // fazia antes desta coluna entrar (`27,2° → 28,2°`).
+    let mut trade3 = base;
+    trade3.skew_p50 = 1.0;
+    trade3.skew_p99 = base.skew_p99 + 1.0;
+    assert!(
+        !super::acceptable(&trade3, &base),
+        "uma ronda que compra mediana com a CAUDA tem de ser recusada"
+    );
+    let mut trade4 = base;
+    trade4.skew_p50 = 1.0;
+    trade4.aspect_p99 = base.aspect_p99 + 0.1;
+    assert!(
+        !super::acceptable(&trade4, &base),
+        "uma ronda que compra mediana com a cauda do ASPECTO tem de ser recusada"
     );
     // ⭐ E a escolha ENTRE aceitáveis é a mediana, com o aspecto a desempatar.
     let mut a = base;
@@ -268,32 +286,36 @@ fn the_patience_gives_up_instead_of_spending_the_whole_net() {
     );
 }
 
-/// ⭐⭐⭐ **A PACIÊNCIA CONTA DA MELHOR RONDA, NÃO DO INÍCIO** — a lei, sem malha nenhuma.
+/// ⭐⭐⭐ **A PACIÊNCIA SÓ CORRE ENQUANTO NADA FOI ACEITE** — a lei, sem malha nenhuma.
 ///
-/// ⛔ **Uma fixtura de malha não a separa de forma robusta, e foi medido**: para distinguir
-/// as duas leituras é preciso uma peça cuja última melhoria caia **depois** da janela, e
-/// isso depende do abanão que se lhe dá (num toro sacudido a `0,12` a melhor ronda foi a
-/// `124`, a `0,20` foi a `10`). *Perseguir uma fixtura que passe raspando seria afinar a
-/// fixtura até o gate passar* — a lei testa-se onde ela é declarada.
+/// ⛔⛔ **A 1.ª redacção media «rondas desde a MELHOR» e cortava trabalho real** (medido
+/// 2026-08-28): na `sculpt_hooked` fina a primeira ronda aceite é a `312` e a melhor é a
+/// `830`; com uma janela de `128` **desde a melhor**, a corrida morria à ronda `128` e a
+/// peça saía intocada (`1,11 / 6,5° / p99 33,0`), quando ela chega a `1,04 / 2,0° / p99
+/// 22,8` com **zero** faces péssimas. ⚠️ *Desistir enquanto nada foi aceite é barato;
+/// desistir depois corta trabalho real.*
+///
+/// ⚠️ **Testa-se aqui e não numa fixtura:** para a separar seria preciso uma peça cuja
+/// primeira aceitação caísse dentro da janela e a melhor fora dela, e afinar uma fixtura até
+/// ela separar seria escolher a resposta.
 #[test]
-fn the_patience_window_starts_at_the_best_round() {
+fn the_patience_only_runs_while_nothing_has_been_accepted() {
     let p = super::EXTRACT_PATIENCE;
-    // Acabou de melhorar: nunca desiste, por mais tarde que seja a ronda.
-    assert!(!super::give_up(10_000, 10_001), "desistiu logo apos uma melhoria");
-    // Uma janela inteira sem melhoria desde a ronda ZERO: desiste.
+    // Nada aceite e a janela ainda aberta: continua.
+    assert!(!super::give_up(p - 2, 0), "desistiu antes da janela fechar");
+    // Nada aceite e a janela fechou: desiste.
     assert!(
         super::give_up(p - 1, 0),
-        "nao desistiu depois de {p} rondas sem bater a ronda zero"
+        "nao desistiu depois de {p} rondas sem aceitar nada"
     );
-    assert!(!super::give_up(p - 2, 0), "desistiu antes da janela fechar");
-    // ⭐ E o caso que separa as duas leituras: ronda tardia, melhoria recente.
+    // ⭐ O caso que separa as duas leituras: uma aceitação MUITO cedo, e a corrida continua
+    // muito depois da janela.
     assert!(
-        !super::give_up(p * 5, p * 5 - 2),
-        "um contador que arrancasse do INICIO teria desistido aqui -- a janela conta da \
-         melhor ronda"
+        !super::give_up(p * 9, 1),
+        "desistiu com uma ronda ja' aceite -- a paciencia so' corre enquanto nada foi aceite"
     );
     assert!(
-        super::give_up(p * 5, p * 4),
-        "uma janela inteira sem melhoria tem de desistir, por tardia que seja"
+        !super::give_up(p * 9, p / 2),
+        "desistiu com uma aceitacao dentro da janela"
     );
 }

@@ -1048,8 +1048,8 @@ entrada fraccionarios · pior |coef| {:.3}",
                     None => {
                         let f = ph2d_quadfill::finish_extracted(&mut m, &raw);
                         println!(
-                            "  ⭐ ACABAMENTO: {} rondas, ficou a {} | envies p50 {:.1}° -> {:.1}° | >60 {} -> {}",
-                            f.rounds, f.kept, f.before.skew_p50, f.after.skew_p50,
+                            "  ⭐ ACABAMENTO: {} rondas, 1a aceite {} ficou {} (cega {}) | envies p50 {:.1}° -> {:.1}° | >60 {} -> {}",
+                            f.rounds, f.first, f.kept, f.blind, f.before.skew_p50, f.after.skew_p50,
                             f.before.skew_over_60, f.after.skew_over_60
                         );
                     }

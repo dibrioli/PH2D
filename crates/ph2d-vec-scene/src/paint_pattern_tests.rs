@@ -443,3 +443,29 @@ fn a_degenerate_size_under_the_lock_becomes_square() {
     f.set_axis(0, 3.0, true);
     assert_eq!(f.size, [3.0, 3.0]);
 }
+
+/// ⭐ **SONDA: o que cada peça de tinta PESA** — o número que decide se o padrão no TRAÇO cabe
+/// dentro do `StrokeSpec` ou tem de ser indirecto (plano 35).
+///
+/// ⚠️ Uma sonda, não uma afirmação: ela imprime e não julga. O gate que julga é o
+/// `the_paint_enum_does_not_grow_when_pattern_lands`, e ele mede outra coisa.
+#[test]
+#[ignore = "sonda: imprime tamanhos, nao afirma nada"]
+fn measure_the_paint_sizes() {
+    println!("Rgba8        {:>4}", std::mem::size_of::<Rgba8>());
+    println!("Paint        {:>4}", std::mem::size_of::<Paint>());
+    println!("PatternFill  {:>4}", std::mem::size_of::<PatternFill>());
+    println!(
+        "StrokeSpec   {:>4}",
+        std::mem::size_of::<crate::StrokeSpec>()
+    );
+    println!("VecPath      {:>4}", std::mem::size_of::<VecPath>());
+    println!(
+        "Option<Box<PatternFill>> {:>4}",
+        std::mem::size_of::<Option<Box<PatternFill>>>()
+    );
+    println!(
+        "Option<PatternFill>      {:>4}",
+        std::mem::size_of::<Option<PatternFill>>()
+    );
+}

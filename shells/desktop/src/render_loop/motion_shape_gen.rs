@@ -42,6 +42,11 @@ pub(crate) use store::VecPathStore;
 
 /// The manifest default for a param NAME — the fallback the node's `ctx.param`
 /// takes when there is no override (and, for `source.shape`, no driven layer).
+/// ⚠️ **Só os TESTES o chamam desde 2026-08-28** — o produto lê a escada inteira pela porta
+/// (`motion_externals::resolved_params`), que já resolve o default. Ele fica porque duas suítes
+/// de forma perguntam *«qual é o default deste knob?»* sem quererem a escada, e sai do binário
+/// para não ser código morto lá dentro.
+#[cfg(test)]
 pub(crate) fn manifest_default(name: &str) -> f32 {
     MANIFEST
         .params
@@ -391,22 +396,16 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     // mutate the store and the cook (three disjoint fields of `MotionState`).
     let mut jobs: Vec<(String, ShapeParams, f32)> = Vec::with_capacity(ids.len());
     for id in ids {
-        let driven = super::motion_externals::driven_params(motion, id, seconds);
-        let graph = &motion.doc.graph;
         // ⚠️ A chave e o descritor leem pelo MESMO getter — é o que faz a
         // chave do shell e a do nó serem os mesmos bits. E os dois passam pela
         // NORMALIZAÇÃO (`unit_value`), então a chave nomeia a geometria em raio 1
         // que o `build_shape_path` de facto constrói.
-        let ov = graph.node_param_overrides(id);
-        // ⚠️ **A escada é a MESMA do `EvalCtx::param`: conduzido → override → default.**
-        // Ver [`driven_params`] para o porquê de o shell ter de resolver o conduzido.
-        let get = |name: &str| {
-            driven
-                .get(name)
-                .copied()
-                .or_else(|| ov.and_then(|m| m.get(name).copied()))
-                .unwrap_or_else(|| manifest_default(name))
-        };
+        // ⚠️ **A escada é a MESMA do `EvalCtx::param`: conduzido → override → default**, e
+        // desde 2026-08-28 ela vem de UMA porta ([`super::motion_externals::resolved_params`]):
+        // estava copiada aqui e no texto, e as outras duas membranas do grupo nunca a
+        // herdaram — uma lei escrita duas vezes ainda não é uma lei.
+        let resolved = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let (unit, scale) = ShapeParams::read_unit(get);
         jobs.push((shape_key(get), unit, scale));
     }

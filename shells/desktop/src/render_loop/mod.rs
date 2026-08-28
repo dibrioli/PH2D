@@ -7038,6 +7038,9 @@ impl crate::App {
                     atlas: renderer.atlas(),
                     cooked: &cooked,
                 },
+                // ⚠️ O relógio, porque o canal DESLOCADO resolve um param que pode vir de um
+                // fio — e um param conduzido só tem valor num INSTANTE (doc 58).
+                self.playhead.time(),
             );
             // ...and the CURSOR, last, into the same table (`ph2d_nodegraph::external`).
             // It is not a document value — it is an editor input that changes every

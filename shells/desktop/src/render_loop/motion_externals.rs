@@ -68,6 +68,45 @@ pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
 /// ⚠️ **A escada que o chamador monta é a do `EvalCtx::param`: conduzido → override →
 /// default.** Trocar a ordem faria um param conduzido perder para um override antigo, que é o
 /// mesmo defeito com outra cara.
+/// **A ESCADA INTEIRA, resolvida para UM nó — a porta única de toda membrana** (doc 58).
+///
+/// `conduzido → override → default`, que é **exactamente** a ordem do
+/// [`EvalCtx::param`](ph2d_nodegraph::cook::EvalCtx::param). Uma membrana que cunha uma chave
+/// de conteúdo tem de a derivar dos mesmos números que o nó vai ler; qualquer degrau em falta
+/// faz as duas chaves divergirem, o nó lê um external que ninguém publicou, e **o que ele
+/// desenha desaparece em silêncio**.
+///
+/// ⚠️⚠️ **Esta função existe porque a lei estava ESCRITA e não era HERDADA.** O cabeçalho deste
+/// arquivo já dizia *"a membrana que nascer amanhã tem de a herdar sem a redescobrir"* — e o
+/// censo de 2026-08-28 mediu que das quatro membranas que derivam uma chave de params, **duas
+/// nunca a herdaram**: o `motion_audio_gen` (as OITO bandas) e o canal deslocado do
+/// `source.object` (o `time_offset`). As duas curadas tinham a escada **copiada**, e uma lei
+/// copiada duas vezes não é uma lei — só uma PORTA é.
+///
+/// ⚠️ Devolve **todo** param declarado, nunca só os conduzidos: um `get` que caísse fora do
+/// mapa teria de reimplementar o degrau do default, que é o degrau que se esquece.
+pub(super) fn resolved_params(
+    motion: &mut MotionState,
+    node: ph2d_nodegraph::graph::NodeId,
+    seconds: f64,
+    manifest: &'static ph2d_nodegraph::node::NodeManifest,
+) -> BTreeMap<&'static str, f32> {
+    let driven = driven_params(motion, node, seconds);
+    let ov = motion.doc.graph.node_param_overrides(node);
+    manifest
+        .params
+        .iter()
+        .map(|p| {
+            let v = driven
+                .get(p.name)
+                .copied()
+                .or_else(|| ov.and_then(|m| m.get(p.name).copied()))
+                .unwrap_or(p.default);
+            (p.name, v)
+        })
+        .collect()
+}
+
 pub(super) fn driven_params(
     motion: &mut MotionState,
     node: ph2d_nodegraph::graph::NodeId,

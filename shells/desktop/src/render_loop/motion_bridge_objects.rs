@@ -453,7 +453,12 @@ fn group_stream(leaves: &[LeafInstance]) -> Stream {
 ///
 /// ⚠️ **Call AFTER `publish_shapes`:** it clears the external table first and this
 /// APPENDS objects into it, so the cook sees both the curves and the objects.
-pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, look: Appearance<'_>) {
+pub(crate) fn publish_objects(
+    motion: &mut MotionState,
+    sim: &mut SimWorld,
+    look: Appearance<'_>,
+    seconds: f64,
+) {
     // `&mut pump.cook` and the two `_bake` reads are disjoint fields — sprites resolve
     // live from the atlas; the fx phase filled `object_bake`/`flip_object_bake` last
     // frame (doc 86 §2 A2/A3).
@@ -469,11 +474,7 @@ pub(crate) fn publish_objects(motion: &mut MotionState, sim: &mut SimWorld, look
     // canal já existe. Rodá-lo antes daria um external vazio, e um `time_offset` num
     // sprite faria o objeto SUMIR — que é a forma mais cara de um param novo estar
     // errado, porque ela parece a feature funcionando em outro objeto.
-    publish_shifted(
-        &mut motion.pump.cook,
-        &motion.doc.graph,
-        &motion.flip_object_bake,
-    );
+    publish_shifted(motion, seconds);
 }
 
 /// **Bake the named vector shapes to tiles** (doc 86 §2 A2) — at the fx phase, where
@@ -526,7 +527,7 @@ pub(crate) fn bake_flip_objects(
     renderer: &mut ph2d_render::SpriteRenderer,
     sim: &SimWorld,
 ) {
-    let shifts = wanted_shifts(&motion.doc.graph);
+    let shifts = wanted_shifts(motion, playhead.time());
     motion
         .flip_object_bake
         .bake(flip, map, playhead, &shifts, gpu, renderer, sim);

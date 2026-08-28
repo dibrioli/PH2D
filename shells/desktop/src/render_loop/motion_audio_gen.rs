@@ -46,15 +46,6 @@ use crate::motion_state::MotionState;
 /// O default do manifesto para um param — o fallback que o `ctx.param` do nó toma
 /// quando não há override. Ler pelo mesmo caminho dos dois lados é o que faz a
 /// chave do shell e a do nó serem os mesmos bits.
-fn manifest_default(name: &str) -> f32 {
-    MANIFEST
-        .params
-        .iter()
-        .find(|s| s.name == name)
-        .map(|s| s.default)
-        .unwrap_or(0.0)
-}
-
 /// A análise pronta de um arquivo sob uma configuração: `cols × count` níveis já
 /// dobrados, ponderados, normalizados e suavizados.
 pub(crate) struct BandTrack {
@@ -178,27 +169,37 @@ impl BandCache {
 /// do nó — uma chave por instante encheria o canal externo de nomes mortos.
 pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     // Junta os trabalhos primeiro para o empréstimo do grafo morrer antes de
-    // mutarmos o cache e o cook (campos disjuntos do `MotionState`).
-    let graph = &motion.doc.graph;
-    let jobs: Vec<(String, String, BandSpec)> = graph
+    // mutarmos o cache e o cook (campos disjuntos do `MotionState`). ⚠️ A resolução da
+    // escada COZINHA o driver, então ela precisa do `motion` inteiro — daí o laço, e não o
+    // `map` sobre um `&graph` emprestado.
+    let ids: Vec<ph2d_nodegraph::graph::NodeId> = motion
+        .doc
+        .graph
         .nodes()
         .iter()
         .filter(|n| n.type_name == MANIFEST.name)
-        .map(|n| {
-            let ov = graph.node_param_overrides(n.id);
-            let spec = BandSpec::from_params(|name| {
-                ov.and_then(|m| m.get(name).copied())
-                    .unwrap_or_else(|| manifest_default(name))
-            });
-            let file = graph
-                .node_text_params()
-                .get(&n.id)
-                .and_then(|m| m.get(FILE_KEY))
-                .cloned()
-                .unwrap_or_default();
-            (spec.key(&file), file, spec)
-        })
+        .map(|n| n.id)
         .collect();
+    let mut jobs: Vec<(String, String, BandSpec)> = Vec::with_capacity(ids.len());
+    for id in ids {
+        // ⚠️ **A ESCADA INTEIRA** (`conduzido → override → default`), pela porta que as três
+        // membranas partilham. Até 2026-08-28 esta lia só `override → default`, e o `eval` do
+        // nó monta a MESMA chave por `ctx.param` — que resolve o conduzido. ⇒ conduzir
+        // qualquer um dos oito params fazia as duas chaves DIVERGIREM: o nó pedia uma análise
+        // que ninguém publicou, `levels` vinha vazio, e ele emitia **um campo de zeros**. Todas
+        // as bandas planas, sem erro nenhum.
+        let p = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let spec = BandSpec::from_params(|name| p.get(name).copied().unwrap_or(0.0));
+        let file = motion
+            .doc
+            .graph
+            .node_text_params()
+            .get(&id)
+            .and_then(|m| m.get(FILE_KEY))
+            .cloned()
+            .unwrap_or_default();
+        jobs.push((spec.key(&file), file, spec));
+    }
     for (key, file, spec) in jobs {
         let levels = motion.band_cache.track(&key, &file, &spec).at(seconds);
         let stream = if levels.is_empty() {

@@ -23,12 +23,18 @@ use super::*;
 /// sobrescreve a cópia. Se o bake não produziu geometria naquele quadro (a animação
 /// não tem desenho ali), a cópia transparente FICA: pulado, nunca adivinhado, que é a
 /// mesma cerca que o resto desta membrana honra.
-pub(crate) fn publish_shifted(
-    cook: &mut Cook,
-    graph: &ph2d_nodegraph::graph::Graph,
-    flip_bakes: &crate::motion_flip_bake::FlipObjectBake,
-) {
-    for (name, off) in shifted_requests(graph) {
+///
+/// ⚠️ **`&mut MotionState` + `seconds`, e não `(cook, graph)`, desde 2026-08-28:** o `off` de
+/// cada pedido é um param que pode vir de um FIO, e resolver um param conduzido é cozinhar o
+/// driver ([`super::super::motion_externals::resolved_params`]). Com a assinatura antiga esta
+/// membrana lia `override → default` enquanto o `eval` do nó monta a MESMA chave por
+/// `ctx.param` — que resolve o conduzido — e as duas chaves DIVERGIAM: o objeto sumia.
+pub(crate) fn publish_shifted(motion: &mut MotionState, seconds: f64) {
+    let requests = shifted_requests(motion, seconds);
+    // Campos disjuntos do `MotionState`: o cook muta, os bakes só se leem.
+    let cook = &mut motion.pump.cook;
+    let flip_bakes = &motion.flip_object_bake;
+    for (name, off) in requests {
         if crate::render_loop::motion_bridge::shapes::is_reserved(&name) {
             continue; // the editor's namespace
         }
@@ -58,9 +64,9 @@ pub(crate) fn publish_shifted(
 /// VRAM, e a pergunta *"quantas?"* tem uma resposta que o artista põe na tela com a
 /// mão: o número de nós `source.object`. Sem esta varredura o bake teria de adivinhar
 /// uma faixa de offsets — e adivinhar é assar tiles que ninguém pediu.
-pub(crate) fn wanted_shifts(graph: &ph2d_nodegraph::graph::Graph) -> Vec<f32> {
+pub(crate) fn wanted_shifts(motion: &mut MotionState, seconds: f64) -> Vec<f32> {
     let mut out = vec![0.0_f32];
-    for (_, off) in shifted_requests(graph) {
+    for (_, off) in shifted_requests(motion, seconds) {
         if !out.iter().any(|x| x.to_bits() == off.to_bits()) {
             out.push(off);
         }
@@ -73,31 +79,43 @@ pub(crate) fn wanted_shifts(graph: &ph2d_nodegraph::graph::Graph) -> Vec<f32> {
 ///
 /// ⚠️ O offset zero fica de fora de propósito: ele já é o nome cru, e publicá-lo de
 /// novo seria uma segunda escrita no canal que todo o resto já usa.
-pub(crate) fn shifted_requests(graph: &ph2d_nodegraph::graph::Graph) -> Vec<(String, f32)> {
+pub(crate) fn shifted_requests(motion: &mut MotionState, seconds: f64) -> Vec<(String, f32)> {
     // O id vem do MANIFEST do próprio nó, nunca de um literal repetido aqui.
     let ty = ph2d_node_source_object::MANIFEST.id;
+    // Os nós primeiro: resolver a escada COZINHA o driver, e isso precisa do `motion` inteiro.
+    let ids: Vec<(ph2d_nodegraph::graph::NodeId, String)> = motion
+        .doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_id() == ty)
+        .filter_map(|n| {
+            motion
+                .doc
+                .graph
+                .node_text_params()
+                .get(&n.id)
+                .and_then(|p| p.get("object"))
+                .map(|name| (n.id, name.clone()))
+        })
+        .collect();
     let mut out = Vec::new();
-    for n in graph.nodes() {
-        if n.type_id() != ty {
-            continue;
-        }
-        let Some(name) = graph
-            .node_text_params()
-            .get(&n.id)
-            .and_then(|p| p.get("object"))
-            .map(String::as_str)
-        else {
-            continue;
-        };
-        let off = graph
-            .node_param_overrides(n.id)
-            .and_then(|p| p.get(ph2d_node_source_object::TIME_OFFSET_PARAM))
-            .copied()
-            .unwrap_or(0.0);
+    for (id, name) in ids {
+        // ⚠️ **A ESCADA INTEIRA** — `conduzido → override → default`, a mesma do `ctx.param`
+        // com que o `eval` do nó monta a chave que ele vai LER. Ver o doc de [`publish_shifted`].
+        let off = crate::render_loop::motion_externals::resolved_params(
+            motion,
+            id,
+            seconds,
+            &ph2d_node_source_object::MANIFEST,
+        )
+        .get(ph2d_node_source_object::TIME_OFFSET_PARAM)
+        .copied()
+        .unwrap_or(0.0);
         if off == 0.0 || name.trim().is_empty() {
             continue;
         }
-        out.push((name.to_string(), off));
+        out.push((name, off));
     }
     out
 }

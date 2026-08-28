@@ -319,3 +319,70 @@ fn write_wav(path: &std::path::Path, data: &SampleData) {
     }
     std::fs::write(path, w).expect("escreve o wav da fixture");
 }
+
+/// **UM PARAM CONDUZIDO POR FIO CUNHA A MESMA CHAVE DOS DOIS LADOS** — o gêmeo do
+/// `publish_then_cook_the_node_reads_its_own_bands`, e o defeito que ele não via.
+///
+/// ⚠️ **O `eval` do nó monta a chave com `ctx.param`, que resolve `conduzido → override →
+/// default`; esta membrana lia só `override → default`.** Conduza qualquer um dos oito params
+/// e as duas chaves DIVERGEM: o nó pede uma análise que ninguém publicou, `levels` vem vazio, e
+/// ele emite **um campo de zeros** — todas as barras planas, sem erro nenhum.
+///
+/// ⚠️ **O CONTROLO é o autorado DISCORDAR do fio:** o `count` autorado fica no default (`16`)
+/// e só o fio diz `8`. Com o autorado já em `8` a escada errada acertaria por acidente, e o
+/// gate ficaria verde sobre o defeito — que é a forma de gate vazio que este módulo já pagou.
+#[test]
+fn a_driven_param_mints_the_same_key_on_both_sides() {
+    let dir = std::env::temp_dir().join("ph2d_audio_bands_gate");
+    std::fs::create_dir_all(&dir).ok();
+    let path = dir.join("driven.wav");
+    write_wav(&path, &tone(1000.0, 0.4));
+
+    let reg = registry();
+    let mut state = MotionState::new();
+    let n = state.doc.graph.add_node("audio.bands");
+    state
+        .doc
+        .graph
+        .set_text_param(n, FILE_KEY, path.to_string_lossy().as_ref());
+    // O `count` NÃO é autorado — ele vem de um fio, e o default do manifesto é outro número.
+    let default_count = MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == param::COUNT)
+        .expect("o `count` e' declarado")
+        .default;
+    assert_ne!(
+        default_count, 8.0,
+        "o controle exige que o autorado DISCORDE do fio"
+    );
+    let num = state.doc.graph.add_node("value.number");
+    state.doc.graph.set_param(num, "value", 8.0);
+    state
+        .doc
+        .graph
+        .drive_param(n, param::COUNT, (num, 0))
+        .expect("o `count` aceita fio");
+
+    publish(&mut state, 0.2);
+    let out = state
+        .pump
+        .cook
+        .cook(&state.doc.graph, &reg, n, 0.2)
+        .expect("coze");
+    let CookValue::Instances(s) = &out[0] else {
+        panic!("a saida e' um stream")
+    };
+    assert_eq!(
+        s.count(),
+        8,
+        "a cardinalidade e' o `count` do FIO, nao o do manifesto"
+    );
+    let Some(Column::Scalar(v)) = Stream::get(s, VALUE_COL) else {
+        panic!("emite a coluna de valor")
+    };
+    assert!(
+        v.iter().any(|x| *x > 0.5),
+        "e o tom CHEGA ao no' — um campo de zeros e' o sintoma exacto do defeito: {v:?}"
+    );
+}

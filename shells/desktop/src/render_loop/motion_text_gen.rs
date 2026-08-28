@@ -40,15 +40,6 @@ use crate::vec_glyph_build::glyph_to_vec_path;
 /// O default do manifesto para um param — o fallback que o `ctx.param` do nó toma
 /// quando não há override. Ler pelo mesmo caminho dos dois lados é o que faz a
 /// chave do shell e a do nó serem os mesmos bits.
-fn manifest_default(name: &str) -> f32 {
-    MANIFEST
-        .params
-        .iter()
-        .find(|s| s.name == name)
-        .map(|s| s.default)
-        .unwrap_or(0.0)
-}
-
 /// **A chave de conteúdo de UM GLIFO** — o que decide se dois carimbos partilham
 /// geometria. As três letras de `"AAA"` internam uma vez.
 ///
@@ -172,17 +163,12 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     for id in ids {
         // ⚠️ **A mesma escada da irmã das formas — conduzido → override → default.** Um
         // `size`/`weight` conduzido por fio fazia o texto DESAPARECER: ver
-        // [`super::motion_externals::driven_params`], onde o mecanismo está escrito.
-        let driven = super::motion_externals::driven_params(motion, id, seconds);
+        // [`super::motion_externals::resolved_params`], onde o mecanismo está escrito.
+        // ⚠️ Ela era **copiada** aqui, e o censo de 2026-08-28 mediu o preço da cópia: das
+        // quatro membranas que cunham uma chave de params, duas nunca a herdaram.
+        let resolved = super::motion_externals::resolved_params(motion, id, seconds, &MANIFEST);
+        let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
         let graph = &motion.doc.graph;
-        let ov = graph.node_param_overrides(id);
-        let get = |name: &str| {
-            driven
-                .get(name)
-                .copied()
-                .or_else(|| ov.and_then(|m| m.get(name).copied()))
-                .unwrap_or_else(|| manifest_default(name))
-        };
         let tov = graph.node_text_params().get(&id);
         let text = text_of(tov.and_then(|m| m.get(TEXT_KEY)).map(String::as_str)).to_string();
         let font = font_of(tov.and_then(|m| m.get(FONT_KEY)).map(String::as_str)).to_string();

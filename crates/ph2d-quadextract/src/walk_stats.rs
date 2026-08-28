@@ -72,6 +72,10 @@ pub(crate) struct WalkStats {
     /// … e quantas tinham candidata nas **duas** convenções (aí a contagem acima conta a
     /// oposta, e o desempate não pode vir daqui).
     pub rescue_ambiguous: usize,
+    /// ⭐⭐⭐ Pares ligados pelo **passe mútuo** — cada lado nomeou o outro.
+    pub rescue_mutual: usize,
+    /// ⛔ Candidatas registadas que **não** foram correspondidas do outro lado.
+    pub rescue_not_mutual: usize,
     /// ⭐ **Das órfãs «sem parceira», quantas caíram num CANTO do triângulo.**
     ///
     /// ⚠️ Um canto é um nó de **vértice**, registado com a face canónica do leque — um

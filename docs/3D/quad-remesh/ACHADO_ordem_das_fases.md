@@ -2468,3 +2468,58 @@ trivialmente respondida por «a que está», não por uma lei.
   esse feitio continua a ser *a parceira certa é a que, traçada de volta, regressa a esta
   porta* — que precisa do traçado, não de uma tabela.
 - ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.
+
+---
+
+### §23.30 — ⭐⭐⭐ O desempate por CORRECÇÃO: só liga quem cada lado NOMEIA
+
+A §23.29 fechou com *«o desempate tem de ser sobre correcção, e a única proposta com esse
+feitio é: a parceira certa é a que, traçada de volta, regressa a esta porta — que precisa
+do traçado»*. **Precisa não.**
+
+#### A lei, e por que ela é barata
+
+As duas pontas **já foram traçadas** — o laço percorre todas as portas. Se cada uma
+**registar** a candidata que a convenção alternativa lhe deu, sem ligar, então no fim:
+
+> *Liga-se `i ↔ j` só quando `cand[i] = j` **e** `cand[j] = i`.*
+
+⭐ É o critério do traçado de volta **já calculado**, sem um segundo traçado. E é sobre
+**correcção**, não sobre disponibilidade — que é o que faltava às três tentativas
+anteriores (§23.27 a escolha global, §23.28 a união, §23.29 a regra da dobra), que ligavam
+a candidata **assim que ela aparecia**.
+
+#### O resultado: melhora e NUNCA regride
+
+| peça | sem passe mútuo | ⭐ **com** | ligados / rejeitados |
+|---|---|---|---|
+| `sculpt_wrinkled` | `10` bordo · `χ = +1` | ⭐ **`4` bordo** · `χ = +1` | `3` / `1` |
+| `sculpt_hooked` | `10` bordo · `χ = 0` | ⭐ **`8` bordo** · `χ = 0` | `1` / `0` |
+| `sculpt_eared` | `6` bordo · `χ = +1` | `6` · `+1` | `0` / **`1` rejeitada** |
+| `sphere_uv_96x144` | `0` · `+2` | `0` · `+2` | inerte |
+
+⭐⭐ **Compare-se com a união (§23.28), que ligava tudo:** ela dava `0` bordo na `wrinkled`
+mas levava a `hooked` a `17` bordo e `χ = −1`. *O passe mútuo recusa exactamente essas* —
+e a `eared` mostra a recusa a funcionar: a única candidata dela **não é mútua** e não liga.
+
+⇒ **Ganha menos que a união e não parte nada.** É a primeira variante desta família que
+pode shipar dentro do `PH2D_GRIDMAP_ARCLINE`, e nasce **ligada** (`PH2D_RESCUE_MUTUAL=0`
+desliga).
+
+#### ⭐ E a lei ficou gateável sem fixtura
+
+A regra é sobre a **tabela de candidatas**, não sobre a malha ⇒ `mutual_links` é uma função
+pura, e o gate `only_pairs_that_name_each_other_are_linked` cobre o par mútuo, o unilateral
+e a corrente `4 → 5 → 6` (em que `5 ↔ 6` é mútuo e o `4` fica de fora). Mutação: aceitar
+qualquer candidata nomeada em vez de só a mútua ⇒ vermelho.
+
+⚠️ *É a única parte desta wave que uma mutação mata num teste barato* — as outras precisam
+do corpus, e por isso a evidência delas é a tabela medida.
+
+#### ⇒ O que fica
+
+- ⭐ Estado das quatro peças com as amarras ligadas: `sphere_uv` **estritamente melhor** que
+  o controlo (alinhamento perfeito, `χ = +2`, `0` bordo); as outras três com alinhamento
+  perfeito e `4`–`8` arestas de bordo (eram `6`–`10`).
+- ⛔ Os `χ` de `+1`/`0` e as arestas que sobram **continuam abertos**.
+- ⛔ **Nada shipa:** `PH2D_GRIDMAP_ARCLINE` desligada, produto byte-idêntico.

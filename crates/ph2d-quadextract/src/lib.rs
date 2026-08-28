@@ -219,6 +219,8 @@ pub struct ExtractReport {
     pub rescue_by_fold: [usize; 8],
     /// Ver [`crate::walk::WalkStats::rescue_ambiguous`].
     pub rescue_ambiguous: usize,
+    /// ⭐⭐⭐ `(pares ligados pelo passe MÚTUO, candidatas sem correspondência do outro lado)`.
+    pub rescue_mutual: (usize, usize),
     /// ⭐ Das «sem parceira», quantas caíram num **canto** — ver
     /// [`crate::walk::WalkStats::orphan_on_corner`].
     pub orphan_on_corner: usize,
@@ -364,6 +366,7 @@ pub fn extract(
         rescue_would: ws.rescue_would,
         rescue_by_fold: ws.rescue_by_fold,
         rescue_ambiguous: ws.rescue_ambiguous,
+        rescue_mutual: (ws.rescue_mutual, ws.rescue_not_mutual),
         orphan_on_corner: ws.orphan_on_corner,
         orphan_rescued_in_fan: ws.orphan_rescued_in_fan,
         orphan_no_exit: ws.orphan_no_exit,

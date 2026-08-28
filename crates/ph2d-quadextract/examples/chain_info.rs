@@ -1150,6 +1150,10 @@ aresta · {} sobre aresta SEM GEMEA (bordo) · {} com gemea mas SEM A CHAVE la' 
 {}/{} · so' a gemea {}/{} · so' a face {}/{} · as DUAS {}/{} | ambiguas {}",
                 f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], e.rescue_ambiguous
             );
+            println!(
+                "  ⭐⭐⭐ PASSE MUTUO (cada lado nomeia o outro): {} pares ligados · {} candidatas SEM correspondencia",
+                e.rescue_mutual.0, e.rescue_mutual.1
+            );
             // ⭐⭐⭐ **ONDE as celulas falharam** — a coluna que responde ao report do
             // artista (*«furos nas pontas»*), e que nenhuma regua desta linha tinha.
             println!(

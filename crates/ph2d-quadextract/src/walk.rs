@@ -17,7 +17,7 @@
 //! ⛔ **Bordo:** uma aresta com uma face só **aborta** o traço, e a saída fica
 //! **pendente**. Saídas pendentes são ignoradas na extracção de células.
 
-use crate::exact::{P, Xf, opposite, orient, step};
+use crate::exact::{P, Xf, opposite, step};
 use crate::ingest::Topo;
 use crate::ports::Ports;
 
@@ -28,6 +28,11 @@ use crate::ports::Ports;
 /// unidades de passos; um que gaste centenas está a andar em círculo sobre um mapa
 /// que não fecha, e o que interessa é que ele **pare e seja contado**.
 const MAX_STEPS: usize = 256;
+
+#[path = "walk_geom.rs"]
+mod geom;
+pub(crate) use geom::face_sign;
+use geom::{contains, crosses, exit_side, on_edge_side};
 
 #[path = "walk_stats.rs"]
 mod stats;
@@ -41,6 +46,39 @@ pub(crate) use stats::WalkStats;
 /// bordo, e todos pioram a `sculpt_hooked` (`17` bordo, `χ = −1` contra `10`/`0`).
 /// *Onde só existe uma candidata, escolher pela dobra e tentar as duas escolhem a mesma —
 /// e algumas dessas candidatas são as erradas.*
+/// ⭐⭐⭐ **OS PARES EM QUE CADA LADO NOMEIA O OUTRO** — a lei do passe mútuo, sozinha.
+///
+/// ⚠️ **Está separada da travessia de propósito:** o critério é sobre a TABELA de
+/// candidatas e não precisa da malha, então pode ser gateado sem fixtura nenhuma — e é a
+/// única parte desta wave que uma mutação consegue matar num teste barato.
+///
+/// Devolve cada par **uma vez** (`i < j`), e conta as candidatas sem correspondência.
+fn mutual_links(cand: &[Option<(u32, Xf)>], st: &mut WalkStats) -> Vec<(u32, u32, Xf)> {
+    let mut out = Vec::new();
+    for (i, slot) in cand.iter().enumerate() {
+        let Some((j, xf)) = *slot else { continue };
+        #[allow(clippy::cast_possible_truncation)]
+        let me = i as u32;
+        let back = cand.get(j as usize).copied().flatten().map(|(k, _)| k);
+        if back != Some(me) {
+            st.rescue_not_mutual += 1;
+            continue;
+        }
+        // ⚠️ **Uma vez por par.** Sem isto o segundo lado volta a entrar, e a contagem de
+        // pares diz o dobro do que se ligou.
+        if me < j {
+            st.rescue_mutual += 1;
+            out.push((me, j, xf));
+        }
+    }
+    out
+}
+
+/// ⭐ **O passe MÚTUO** — ligado por omissão; `PH2D_RESCUE_MUTUAL=0` desliga-o.
+fn mutual_pass() -> bool {
+    std::env::var("PH2D_RESCUE_MUTUAL").ok().as_deref() != Some("0")
+}
+
 fn rescue_mode() -> u8 {
     std::env::var("PH2D_RESCUE_DIR")
         .ok()
@@ -54,12 +92,13 @@ pub(crate) fn trace_all(topo: &Topo, ports: &mut Ports) -> WalkStats {
     let mut orphan_at: Vec<[f64; 3]> = Vec::new();
     let mut miss_cells: Vec<f64> = Vec::new();
     let mut tri_cells: Vec<f64> = Vec::new();
+    let mut cand: Vec<Option<(u32, Xf)>> = vec![None; ports.ports.len()];
     for i in 0..ports.ports.len() {
         if ports.ports[i].link.is_some() {
             continue;
         }
         #[allow(clippy::cast_possible_truncation)]
-        match trace_one(topo, ports, i as u32, &mut st) {
+        match trace_one(topo, ports, i as u32, &mut st, &mut cand) {
             Outcome::Linked(j, acc) => {
                 // ⛔ **A parceira já tem dona.** Sobrescrever partiria a ligação dela
                 // ao meio: uma meia-ligação sem a outra metade.
@@ -110,6 +149,29 @@ pub(crate) fn trace_all(topo: &Topo, ports: &mut Ports) -> WalkStats {
                 ]);
             }
             Outcome::Runaway => st.runaway += 1,
+        }
+    }
+    // ⭐⭐⭐ **O PASSE MÚTUO** — o desempate por CORRECÇÃO, e ele não precisa de traçar
+    // nada de novo.
+    //
+    // ⛔⛔ A §23.29 mediu e rejeitou ligar a candidata da outra convenção assim que ela
+    // aparece: algumas são as **erradas** (a `sculpt_hooked` ia de `χ = 0` para `−1`). E
+    // nomeou o critério que falta — *«a parceira certa é a que, traçada de volta, regressa
+    // a esta porta»* — parecendo pedir um segundo traçado.
+    //
+    // ⭐ **Não pede:** as duas pontas já foram traçadas, e cada uma registou a sua
+    // candidata. *Se o par é genuíno, cada lado nomeia o outro.* ⇒ liga-se `i ↔ j` só
+    // quando `cand[i] = j` **e** `cand[j] = i`.
+    if mutual_pass() {
+        for (i, j, xf) in mutual_links(&cand, &mut st) {
+            if ports.ports[i as usize].link.is_some() || ports.ports[j as usize].link.is_some() {
+                continue;
+            }
+            ports.ports[i as usize].link = Some(j);
+            ports.ports[i as usize].link_xf = xf;
+            ports.ports[j as usize].link = Some(i);
+            ports.ports[j as usize].link_xf = xf.inverse();
+            st.linked += 1;
         }
     }
     miss_cells.sort_by(f64::total_cmp);
@@ -172,7 +234,13 @@ enum Outcome {
     Runaway,
 }
 
-fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome {
+fn trace_one(
+    topo: &Topo,
+    ports: &Ports,
+    id: u32,
+    st: &mut WalkStats,
+    cand: &mut [Option<(u32, Xf)>],
+) -> Outcome {
     let p = ports.ports[id as usize];
     let mut face = p.face as usize;
     let mut o = p.at;
@@ -442,6 +510,17 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
                             Some(_) => st.rescue_self += 1,
                             None => {
                                 st.rescue_no_key += 1;
+                                // ⭐⭐⭐ **A OUTRA CONVENÇÃO TEM CANDIDATA — REGISTA-SE, NÃO
+                                // SE LIGA.** Ligar aqui é o que a §23.29 mediu e rejeitou:
+                                // algumas dessas candidatas são as **erradas**. O desempate
+                                // por CORRECÇÃO faz-se depois, e é barato: *se o par é
+                                // genuíno, cada lado nomeia o outro.*
+                                let alt = if order[0] == 0 { d2 } else { opposite(d2) };
+                                if let Some(&j) = ports.by_key.get(&(g, t2[0], t2[1], alt))
+                                    && j != id
+                                {
+                                    cand[id as usize] = Some((j, acc.then(x)));
+                                }
                                 // ⭐⭐⭐ **QUAL CONVENÇÃO acharia a parceira?** Duas
                                 // perguntas ortogonais — inverter a direcção ao atravessar
                                 // (`opposite`) e trocar a cardinal quando o sinal da área
@@ -541,128 +620,6 @@ fn trace_one(topo: &Topo, ports: &Ports, id: u32, st: &mut WalkStats) -> Outcome
     Outcome::Runaway
 }
 
-/// O sinal da área da imagem de uma face.
-/// ⭐ **Sobre QUAL lado do triângulo o ponto cai** — `None` se está no interior.
-///
-/// ⚠️ O índice do lado é o do laço da travessia (`uv[k] → uv[(k+1) % 3]`), e é ele que
-/// indexa [`Topo::twin`] e [`Topo::xf`]. *Uma convenção de lado escrita duas vezes é duas
-/// convenções.*
-fn on_edge_side(tri: [P; 3], t: P) -> Option<usize> {
-    let [a, b, c] = tri;
-    if crate::exact::orient(a, b, t) == 0 {
-        Some(0)
-    } else if crate::exact::orient(b, c, t) == 0 {
-        Some(1)
-    } else if crate::exact::orient(c, a, t) == 0 {
-        Some(2)
-    } else {
-        None
-    }
-}
-
-pub(crate) fn face_sign(topo: &Topo, f: usize) -> i8 {
-    let [a, b, c] = topo.uv[f];
-    orient(a, b, c)
-}
-
-/// O ponto está **dentro ou sobre** o triângulo-imagem?
-fn contains(topo: &Topo, f: usize, q: P) -> bool {
-    let [a, b, c] = topo.uv[f];
-    let s = orient(a, b, c);
-    if s == 0 {
-        return false;
-    }
-    let e = [orient(a, b, q), orient(b, c, q), orient(c, a, q)];
-    e.iter().all(|&x| x == 0 || x == s)
-}
-
-/// ⭐ **A ARESTA POR ONDE O SEGMENTO SAI** — e o desempate que apaga os casos
-/// especiais.
-fn exit_side(topo: &Topo, f: usize, entry: Option<usize>, o: P, t: P) -> Option<usize> {
-    let mut best: Option<(usize, u8)> = None;
-    for k in 0..3usize {
-        if entry == Some(k) {
-            continue;
-        }
-        let a = topo.uv[f][k];
-        let b = topo.uv[f][(k + 1) % 3];
-        if !crosses(o, t, a, b) {
-            continue;
-        }
-        let n = u8::from(on_segment(o, t, a)) + u8::from(on_segment(o, t, b));
-        if best.is_none_or(|(_, c)| n < c) {
-            best = Some((k, n));
-        }
-    }
-    best.map(|(k, _)| k)
-}
-
-/// Os dois segmentos tocam-se ou cruzam-se? Fechado nos extremos, de propósito: um
-/// segmento que passa por um vértice **atravessa** as duas arestas que ali se
-/// encontram, e é o desempate que decide qual delas serve.
-fn crosses(o: P, t: P, a: P, b: P) -> bool {
-    let (d1, d2) = (orient(o, t, a), orient(o, t, b));
-    let (d3, d4) = (orient(a, b, o), orient(a, b, t));
-    d1 * d2 <= 0 && d3 * d4 <= 0
-}
-
-/// O ponto está no segmento `[o, t]`, extremos incluídos?
-fn on_segment(o: P, t: P, q: P) -> bool {
-    orient(o, t, q) == 0
-        && q[0] >= o[0].min(t[0])
-        && q[0] <= o[0].max(t[0])
-        && q[1] >= o[1].min(t[1])
-        && q[1] <= o[1].max(t[1])
-}
-
 #[cfg(test)]
-mod tests {
-    use super::on_edge_side;
-
-    /// ⭐⭐⭐ **A CONVENÇÃO DO LADO — `k` é a aresta do canto `k` para o `k+1`.**
-    ///
-    /// ⛔⛔ **É ela que indexa [`Topo::twin`] e [`Topo::xf`]**, e um índice trocado manda o
-    /// resgate perguntar à face errada. ⚠️ *Uma convenção de lado escrita duas vezes é duas
-    /// convenções, e nenhum tipo as separa: as três são `usize`.*
-    #[test]
-    fn the_side_index_is_the_corner_it_starts_from() {
-        let tri = [[0, 0], [6, 0], [0, 6]];
-        // O ponto médio de cada lado tem de dar o índice desse lado.
-        assert_eq!(on_edge_side(tri, [3, 0]), Some(0), "lado 0 = canto 0 -> 1");
-        assert_eq!(on_edge_side(tri, [3, 3]), Some(1), "lado 1 = canto 1 -> 2");
-        assert_eq!(on_edge_side(tri, [0, 3]), Some(2), "lado 2 = canto 2 -> 0");
-    }
-
-    /// ⭐⭐ **O interior não é aresta nenhuma** — e sem esta metade a lei aceitaria tudo.
-    #[test]
-    fn a_point_inside_is_on_no_side() {
-        let tri = [[0, 0], [6, 0], [0, 6]];
-        assert_eq!(on_edge_side(tri, [1, 1]), None);
-        assert_eq!(on_edge_side(tri, [2, 2]), None);
-    }
-
-    /// ⭐⭐⭐ **UM CANTO pertence a DOIS lados, e a resposta é o de índice MENOR.**
-    ///
-    /// ⚠️ Não é uma preferência: é o que torna a escolha **determinista**. *Um empate
-    /// resolvido de outra maneira em cada chamada faria o resgate perguntar a uma face
-    /// diferente a cada corrida* — e o hash da grade é contrato (HR-5).
-    #[test]
-    fn a_corner_belongs_to_the_lower_side() {
-        let tri = [[0, 0], [6, 0], [0, 6]];
-        assert_eq!(on_edge_side(tri, [0, 0]), Some(0), "canto 0: lados 0 e 2");
-        assert_eq!(on_edge_side(tri, [6, 0]), Some(0), "canto 1: lados 0 e 1");
-        assert_eq!(on_edge_side(tri, [0, 6]), Some(1), "canto 2: lados 1 e 2");
-    }
-
-    /// ⭐⭐ **Um ponto sobre o PROLONGAMENTO de um lado também é colinear** — e a função
-    /// diz que sim, de propósito.
-    ///
-    /// ⚠️ **Ela é um predicado de COLINEARIDADE, não de pertença ao segmento**, e quem a
-    /// chama já sabe que o ponto está *dentro* do triângulo ([`contains`] correu antes).
-    /// *Dizer isto aqui é mais barato que alguém a reutilizar noutro sítio e descobrir.*
-    #[test]
-    fn the_predicate_is_collinearity_not_membership() {
-        let tri = [[0, 0], [6, 0], [0, 6]];
-        assert_eq!(on_edge_side(tri, [99, 0]), Some(0));
-    }
-}
+#[path = "walk_tests.rs"]
+mod tests;

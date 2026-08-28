@@ -462,3 +462,83 @@ fn the_link_survives_a_sync_so_the_next_edit_still_arrives() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O SMOKE-GATE 3 da fase: o ponto fixo aguenta o SOLVER a correr** (ADR-0164 / F4.7).
+///
+/// ⚠️ **É outro gate que `a_second_pass_writes_nothing`, e a diferença é quem escreve.** Ali o
+/// mundo está parado e o único escritor é o passe; aqui o solver reescreve o `Transform` de cada
+/// braço **todo o tique**, e o passe tem de continuar a devolver zero. Um passe que lesse a queda
+/// como *«a instância mexeu-se»* capturava um override por cópia no 1.º tique — e cada uma ficava
+/// surda à receita para sempre, com a fila de undo a encher por quadro.
+///
+/// ⚠️ **120 tiques, e não dois:** o defeito que isto apanha é cumulativo por construção. Uma
+/// corrida de dois passos mede um mundo que ainda não caiu.
+///
+/// ⚠️ **A metade que o torna honesto é o CONTROLE POSITIVO:** os braços têm de ter caído de facto.
+/// Sem ele, uma ponte que não simulasse nada passava com folga — *um passe que não escreve sobre
+/// um mundo parado não prova nada sobre um mundo que anda*.
+///
+/// (Mutação: tirar a guarda do `pose_owner` (`document_owns_pose`) ⇒ RED, com overrides a nascer.)
+#[test]
+fn the_sync_is_a_fixed_point_while_the_solver_runs() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let mut bridge = PhysicsBridge::new();
+    let mut echo = super::MasterEcho::default();
+    let (_master, roots) = ragdoll(&mut sim, &r);
+    for (i, x) in [-2.4_f32, 0.0, 2.4].into_iter().enumerate() {
+        sim.world_mut()
+            .entity_mut(roots[i])
+            .insert(Transform::from_translation(ph2d_core::Vec2::new(x, 1.2)));
+    }
+    let before: Vec<f32> = roots
+        .iter()
+        .map(|&root| {
+            ph2d_ecs::world_transform(sim.world(), piece(&sim, root, "Arm"))
+                .expect("pose")
+                .translation
+                .y
+        })
+        .collect();
+    // O 1.º passe semeia o eco, como no arranque do app.
+    pass(&mut sim, &r, &bridge, &mut echo);
+
+    let mut wrote_after_settle = 0;
+    for tick in 1..=120 {
+        bridge.dispatch(&mut sim, true, tick);
+        let n = pass(&mut sim, &r, &bridge, &mut echo);
+        // ⚠️ O 1.º tique depois do eco ainda pode escrever (o solver acabou de mexer numa pose que
+        // o mestre não tem); o que não pode é escrever para SEMPRE.
+        if tick > 2 {
+            wrote_after_settle += n;
+        }
+    }
+    assert_eq!(
+        wrote_after_settle, 0,
+        "o sync escreveu {wrote_after_settle} vez(es) enquanto o solver corria — cada uma e' um \
+         passo de undo, e a fila enche por quadro"
+    );
+    for (i, &root) in roots.iter().enumerate() {
+        assert_eq!(
+            sim.world()
+                .get::<ph2d_ecs::ObjectInstance>(root)
+                .map_or(0, |o| o.overrides.len()),
+            0,
+            "a copia {} capturou uma excepcao a CAIR — ela fica surda a' receita para sempre",
+            i + 1
+        );
+    }
+    // ⚠️ **Controle POSITIVO:** os braços caíram mesmo, senão o gate mede um mundo parado.
+    for (i, &root) in roots.iter().enumerate() {
+        let now = ph2d_ecs::world_transform(sim.world(), piece(&sim, root, "Arm"))
+            .expect("pose")
+            .translation
+            .y;
+        assert!(
+            now < before[i] - 0.1,
+            "a copia {} nao caiu ({:.3} -> {now:.3}) — a ponte nao simulou e o gate nao mede nada",
+            i + 1,
+            before[i]
+        );
+    }
+}

@@ -35,6 +35,7 @@
 //! physics-ecs-c9 hash: <hex64>
 //! ```
 
+mod instances;
 mod joints;
 mod player;
 mod rigs;
@@ -616,6 +617,12 @@ fn main() {
 
     // As oito lanes da familia das ZONAS -- irmao proprio pelo cap de 700 LOC.
     zones::spawn(&mut sim);
+
+    // ⭐⭐⭐ A lane do MESTRE + INSTANCIA (ADR-0164 / F4.7) -- irmao proprio pelo cap de 700 LOC.
+    // E' a unica lane cujo defeito e' invisivel numa maquina so': ela prova que a COPIA PROFUNDA
+    // da' as mesmas identidades nos tres SO, e que o mestre nao entra no solver. Ver
+    // `instances.rs`.
+    instances::spawn(&mut sim);
 
     // A lane do PLAYER DE PLATAFORMA (W7) -- irmao proprio, e a unica cujo
     // estado depende de um fluxo de ENTRADA por tique. Ver `player.rs`.

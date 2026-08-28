@@ -23,7 +23,7 @@
 | F1 | `StableId` + `SiblingOrder` + snapshot v2 + **a 1ª migração** + corte da Sprite | ✅ 2026-08-25 |
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
-| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ (+ os 3 reports do smoke de 26/08); faltam F4.6–F4.7 |
+| F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
 | F5 | Aninhamento + variantes + Overrides sem alvo | ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
@@ -564,8 +564,8 @@ consumidores hoje) com remap de `StableId` e refs — substitui a cópia rasa de
 | F4.3 | Sync vivo mestre→instância (`set_if_neq`, ordem determinística, `pose_owner`) | ✅ 2026-08-26 — smoke-gate **2** |
 | F4.4 | Override **por componente** (`ObjectInstance`) — ⚠️ *por campo* foi refutado | ✅ 2026-08-26 |
 | F4.5 | Destacar / Redefinir / Aplicar ao mestre + **os verbos na UI** | ✅ 2026-08-26 |
-| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | 🟨 **a** (documentos clonados) ✅ · **b** (geometria por conteúdo) ⛔ **gates verdes, SMOKE REPROVOU** — [handoff §14](handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md) · **c** (matar o `InstanceLive` + migração) ⬜ |
-| F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ⬜ smoke-gate 3 |
+| F4.6 | O `VecInstance` subsumido (doc 04 §2.9) + degrau de schema | 🟨 **a** (documentos clonados) ✅ · **b** (geometria por conteúdo) ✅ **smoke OK 2026-08-27** (a causa do ✗ era a receita vetorial ainda DESENHAR — sobreposta à cópia) · **c** (matar o `InstanceLive` + migração) ⛔ **BLOQUEADA na F5** — ver abaixo |
+| F4.7 | Lane do `physics_ecs_c9` com mestre+instância; ponto fixo sob física | ✅ 2026-08-27 — smoke-gate **3** |
 
 **O que a F4.1 mediu e o plano não dizia:** ⚠️ **a refutação nomeia CINCO `QueryState` da ponte
 (`bridge.rs:84-127`); são SEIS.** Ela cita uma *faixa de linhas de um ficheiro*, e a `WheelQuery`
@@ -654,6 +654,24 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
 - ⚠️ **O EMPATE está declarado: os dois mudam no mesmo passe ⇒ a RECEITA ganha**, e não fica
   override. Editar o molde é uma difusão deliberada.
 
+**⛔⛔ O que a MEDIÇÃO da F4.6c achou, e que muda a fatia (2026-08-27):**
+- **Ela não é um porte — é um porte MENOS três features.** O plano diz *«verbos/UI ficam»*, e o
+  sistema vetorial tem **seis** verbos contra os quatro do geral: além de *Create/Place/Detach/
+  Reset*, ele tem **`Swap`** (trocar de mestre) e **`UpdateMain`**, e mais os **variants** —
+  `vec_variants.rs`, que deriva o conjunto de *«os `VecComponentMain` irmãos do mesmo pai»* e é o
+  `VecInstance` quem escolhe qual. ⇒ **matar o `VecInstance` hoje apaga os variants**, e variants
+  são a **§F5** deste plano. *Uma fatia que se declara «porte» tem de contar os dois lados antes.*
+- **Medida a superfície:** `VecInstance` em **24 ficheiros**, ~1 210 LOC de produção em quatro
+  módulos (`instance_live` · `vec_component_edit` · `vec_component_pieces` · `vec_instance_follow`)
+  e **44 gates**.
+- ⭐ **E a lei que o plano manda re-medir DISSOLVE-SE.** O `vec_instance_follow` existe porque o
+  modelo derivado perde a translação do mestre (`D(p) = (p − Tm)·I + Ti`), então uma alça ancorada
+  paga a âncora numa translação que a cópia não herda. No mecanismo geral **não há delta**: a
+  instância é uma sub-árvore REAL, a pose da raiz dela é dela (`ROOT_IS_ITS_OWN`) e a de cada peça
+  chega verbatim. ⇒ nada a portar — *o substrato apaga a cura*. ⚠️ Vale a pena escrever isto porque
+  a nota do módulo apresenta a compensação como uma lei do produto, e ela é uma lei do MODELO.
+- ⇒ **A ordem certa é F5 antes de F4.6c**, e a F4.7 foi feita primeiro por ser independente.
+
 **O que a F4.6a/b mediram e o plano não dizia:**
 - ⛔⛔ **Saltar os documentos possuídos era a resposta certa e METADE do trabalho.** Uma peça
   vetorial saltada pela cópia profunda não fica *«sem o vínculo»*: fica **sem geometria nenhuma** —
@@ -682,6 +700,22 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   pelo renderer vetorial), então mestre e cópia ficam sobrepostos e a edição pode estar a cair na
   cópia. ⛔ E falta o instrumento: **não há cena de smoke com receita vetorial** — o
   `PH2D_INSTANCE_SMOKE=1` monta um ragdoll de sprites.
+
+**O que a F4.7 mediu e o plano não dizia (2026-08-27):**
+- ⚠️ **A lane não cabe toda no `physics_ecs_c9`.** Aquele binário vive em `ph2d-physics-ecs`, que
+  não vê a shell — e o *ponto fixo sob física* precisa do `sync_instances`, que é da shell. ⇒ a
+  fatia é **duas**: a lane de determinismo (cross-OS, no binário) e o ponto fixo (gate de shell,
+  `the_sync_is_a_fixed_point_while_the_solver_runs`, com o solver a correr 120 tiques).
+- ⭐⭐ **O `body_count` que o binário imprime NUNCA foi afirmado**, e a comparação do CI é entre os
+  três SO. ⇒ uma receita que entrasse no solver mudaria o hash **igualmente nas três máquinas** e o
+  `sort -u | wc -l` continuava verde. *A comparação entre máquinas não vê um defeito que as três
+  máquinas cometem.* A lane traz gate próprio (`the_recipe_stays_out_of_the_solver_and_the_copies_swing`),
+  e a mutação que o mata é a LEI (`NotAMaster = ()` na ponte), não o andaime.
+- ⚠️ **A ordem do `assign_master_pieces` na lane é DUAS chamadas**, e a 1.ª mutação que tentei
+  sobreviveu por causa disso: a 2.ª re-marcava. *Uma mutação neutralizada a jusante não mede nada.*
+- ⚠️ O binário **não** chama `assign_master_pieces` — quem o faz no produto é o
+  `render_loop::physics_bridge::dispatch`, na shell. A lane chama-o ela própria, e o comentário diz
+  porquê.
 
 **O que a F4.5 mediu e o plano não dizia:**
 - ⭐ **O *Redefinir* da tabela do doc 04 já existia** — é o *Revert to Master* que a F4.4 entregou.

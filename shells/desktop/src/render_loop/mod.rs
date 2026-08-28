@@ -3181,6 +3181,9 @@ impl crate::App {
             // **Resize Box** (plano UI/UX W3b): o clique e' um TOGGLE, entao nao ha' operando —
             // um bool basta para dizer *"houve clique"*.
             let mut pending_resize_box = false;
+            // ⭐ **Stroke** (plano 34): a caixa que dá/tira o traço da forma selecionada. Também é
+            // um TOGGLE, então um bool basta — o operando é a ficha da ferramenta, e ela não viaja.
+            let mut pending_stroke_present = false;
             let mut pending_layout_field: Option<(crate::vec_layout_edit::LayoutField, f64)> = None;
             // **O Z-INDEX global** (Enio, 2026-08-04): o numero que sobrepoe a ordem da
             // hierarquia. Campo numerico, entao a rota e' a mesma do Transform.
@@ -3578,6 +3581,10 @@ impl crate::App {
                                 // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
                                 // entao o clique e' da shell — o painel so' mostra o estado.
                                 pending_resize_box = true;
+                            } else if *id == ph2d_editor::ids::VECTOR_STROKE_PRESENT {
+                                // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
+                                // então o clique e' da shell — o painel so' mostra o estado.
+                                pending_stroke_present = true;
                             } else if let Some(e) =
                                 crate::vec_component_edit::component_edit_for_id(*id)
                             {
@@ -7104,6 +7111,24 @@ impl crate::App {
                 self.vec_pivot_edit,
                 self.vec_snap,
             );
+            // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois
+            // publicar**, a mesma ordem do `resize_box` — publicar antes deixaria a caixa a mostrar
+            // o estado ANTERIOR por um quadro, e o artista veria o clique *"não pegar"*.
+            //
+            // ⚠️ **Aqui, e não no dreno de baixo:** a ficha do traço novo sai do `vec_pen`, que o
+            // `dispatch` acabou de sincronizar com a ferramenta (`pen.set_style`). Um sítio mais
+            // tarde leria a ficha do quadro anterior.
+            if pending_stroke_present {
+                crate::vec_stroke_present::toggle(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    vec_px_to_world,
+                );
+            }
+            ph2d_panel_vector::state::set_stroke_present(
+                crate::vec_stroke_present::selected_stroke_present(vec_scene, &self.vec_pen),
+            );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;
             // BEFORE paint + present, so the split/panel visibility it sets and
@@ -8854,12 +8879,7 @@ impl crate::App {
                     );
                 }
                 ph2d_panel_vector::state::set_token_bindings(
-                    crate::vec_bindings::selected_bindings(
-                        sim,
-                        vec_scene,
-                        &self.vec_entities,
-                        &sel,
-                    ),
+                    crate::vec_bindings::selected_bindings(sim, &self.vec_entities, &sel),
                 );
                 // **As ETIQUETAS das molduras** (Enio 2026-08-01) — publicadas em TODO frame, com
                 // qualquer ferramenta em mãos. ⚠️ Aqui não vale a cerca da RÉGUA (que só vive com

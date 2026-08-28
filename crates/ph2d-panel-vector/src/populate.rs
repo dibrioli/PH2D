@@ -523,4 +523,13 @@ fn populate_transform_fields(store: &mut WidgetStore) {
             state: ButtonState::Normal,
         },
     );
+    // ⭐ **Stroke** (plano 34) — a caixa que diz se ESTA forma tem traço. Mesmo registo, e pela
+    // mesma razão que o irmão acima: sem ele a caixa fica pintada, com hit-rect, e MORTA sob o
+    // rato — a checagem de focabilidade mora no store.
+    store.register(
+        ids::VECTOR_STROKE_PRESENT,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
 }

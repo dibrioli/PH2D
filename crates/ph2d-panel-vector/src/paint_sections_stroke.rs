@@ -19,6 +19,30 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // ⭐⭐ **ESTA FORMA TEM TRAÇO?** (plano 34) — a linha que faltava, e o report que a pediu foi
+        // o do Enio de 2026-08-27 (*"o contorno funciona com as shapes que eu desejo, mas não
+        // funcionam com os teus desenhos"*).
+        //
+        // ⚠️ **Um checkbox e não um `segmented`**, pela lei que este ficheiro-irmão já escreveu:
+        // *um `segmented` é uma escolha entre MODOS nomeados; um checkbox é uma PROPRIEDADE que o
+        // objeto tem ou não tem*. Ter traço é o segundo caso.
+        //
+        // ⚠️ `None` (nada selecionado, ou selecção múltipla) **não pinta a linha** — uma caixa que
+        // descreve um objecto que não está lá é pior que caixa nenhuma.
+        let tem_traco = state::stroke_present().unwrap_or(false);
+        if let Some(on) = state::stroke_present() {
+            y = self.checkbox_row(
+                ids::VECTOR_STROKE_PRESENT,
+                tr("panel.vector.stroke.present"),
+                on,
+                y,
+            );
+        }
+        // ⛔⛔ **E as rows abaixo FICAM VISÍVEIS mesmo sem traço** — o oposto da lei que o Enio pediu
+        // para a secção *Pattern* (*"os parâmetros que um modo não usa não devem aparecer"*), e a
+        // diferença é real: esta secção é a ficha da **TOOL** (`snap`), espelhada na selecção. Cada
+        // row aqui autora **o traço da próxima forma que se desenhar**, então nenhuma está morta —
+        // o que faltava era dizer que elas não alcançam ESTA forma, e é a caixa que o diz.
         // Width slider + px chip.
         let track = self
             .store
@@ -45,7 +69,7 @@ impl BodyCtx<'_> {
         );
         // ⚠️ Oferecida sob a MESMA condição da cor do traço, e pela metade que falta: um token de
         // largura numa forma sem traço teria de inventar a COR.
-        if let Some(b) = crate::state::token_bindings().filter(|b| b.stroke_exists) {
+        if let Some(b) = crate::state::token_bindings().filter(|_| tem_traco) {
             let width_chip = ph2d_editor_core::widget::slider_with_chip_chip_rect(
                 width_row,
                 LABEL_COL_W,
@@ -90,7 +114,7 @@ impl BodyCtx<'_> {
 
         // **O TOKEN do traço** (plano UI/UX W4), logo abaixo da cor que ele cobre. Só é oferecido
         // quando a seleção TEM traço: o token colore o traço que existe e nunca inventa largura.
-        if let Some(b) = bindings.filter(|b| b.stroke_exists) {
+        if let Some(b) = bindings.filter(|_| tem_traco) {
             y = self.token_row(ids::VECTOR_TOKEN_STROKE, b.stroke.as_deref(), y);
         }
 

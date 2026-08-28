@@ -79,10 +79,8 @@ fn first_row_at(scroll: f32) -> (Rect, HeroScreen) {
 /// uma única posição passaria por sorte.
 #[test]
 fn the_first_row_of_the_token_picker_lands_on_the_panels_band() {
-    state::set_token_bindings(Some(TokenBindings {
-        stroke_exists: true,
-        ..TokenBindings::default()
-    }));
+    state::set_stroke_present(Some(true));
+    state::set_token_bindings(Some(TokenBindings::default()));
     let layout = HeroLayout::for_viewport(VIEWPORT);
     let band = layout.popover_region();
     let bar_bottom = layout.top_bar.y + layout.top_bar.h;

@@ -205,7 +205,11 @@ pub(crate) fn set_selected_binding(
     }
 }
 
-/// O que o painel mostra nas rows de token: o que a seleção tem preso, e se ela tem traço.
+/// O que o painel mostra nas rows de token: o que a seleção tem preso.
+///
+/// ⚠️ **Ele deixou de receber a cena em 2026-08-27 (plano 34)**: a única coisa que a lia era o
+/// `stroke_exists`, que mudou de dono. Um argumento que ninguém usa é o próximo a ser preenchido
+/// com a árvore errada.
 ///
 /// `None` quando a seleção não é uma forma única — as rows não são pintadas, porque prender um
 /// token a *"várias formas ao mesmo tempo"* precisa de uma resposta a *"e se elas discordarem?"*
@@ -213,7 +217,6 @@ pub(crate) fn set_selected_binding(
 #[must_use]
 pub(crate) fn selected_bindings(
     sim: &SimWorld,
-    scene: &ph2d_vec_scene::VecScene,
     map: &VecEntityMap,
     selected: &[ph2d_vec_scene::VecPathId],
 ) -> Option<ph2d_panel_vector::state::TokenBindings> {
@@ -231,9 +234,12 @@ pub(crate) fn selected_bindings(
         width: key(BoundProp::StrokeWidth),
         gap_main: key(BoundProp::LayoutGapMain),
         gap_cross: key(BoundProp::LayoutGapCross),
-        stroke_exists: scene.path(*id).is_some_and(|p| p.stroke.is_some()),
-        // ⚠️ O gêmeo do `stroke_exists` para os vãos: sem `VecLayout` a moldura não empilha, e um
-        // token de vão preso ali seria uma escolha que não move um pixel.
+        // ⚠️⚠️ **O `stroke_exists` SAIU daqui (plano 34).** A pergunta *"esta forma tem traço?"*
+        // passou a ter porta própria (`vec_stroke_present::selected_stroke_present`), porque a
+        // caixa de marcar da secção *Stroke* faz a MESMA pergunta — e duas respostas divergem no
+        // dia em que uma ganha uma condição.
+        // ⚠️ O gêmeo dele para os vãos FICA, porque não tem um segundo leitor: sem `VecLayout` a
+        // moldura não empilha, e um token de vão preso ali não move um pixel.
         flows: sim.world().get::<ph2d_ecs::VecLayout>(e).is_some(),
     })
 }

@@ -35,11 +35,15 @@ fn pointer(kind: PointerKind, x: f32, y: f32, t: u128) -> PointerEvent {
     }
 }
 
+/// ⚠️ **O `stroke_exists` SAIU do `TokenBindings` (plano 34)** e passou a ter porta própria — a
+/// mesma que a caixa de marcar da secção *Stroke* lê. Estes gates continuam a medir exactamente o
+/// que mediam (*"a row do token segue a existência do traço"*), agora pela publicação certa; e é
+/// **essa** unificação que impede a caixa e a row de discordarem.
 fn bound(fill: Option<&str>, stroke: Option<&str>, stroke_exists: bool) -> TokenBindings {
+    state::set_stroke_present(Some(stroke_exists));
     TokenBindings {
         fill: fill.map(str::to_owned),
         stroke: stroke.map(str::to_owned),
-        stroke_exists,
         ..TokenBindings::default()
     }
 }
@@ -412,10 +416,8 @@ fn the_gap_chips_follow_the_flow_and_the_cross_one_follows_wrap() {
 fn every_pickers_painted_list_is_its_own_table() {
     for slot in ids::TOKEN_SLOTS {
         let first = slot.table.key(0).expect("toda tabela tem uma 1a chave");
-        let mut b = TokenBindings {
-            stroke_exists: true,
-            ..TokenBindings::default()
-        };
+        state::set_stroke_present(Some(true));
+        let mut b = TokenBindings::default();
         match slot.code {
             0 => b.fill = Some(first.to_owned()),
             1 => b.stroke = Some(first.to_owned()),

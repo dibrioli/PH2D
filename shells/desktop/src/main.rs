@@ -670,6 +670,10 @@ mod vec_shape_params;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
+/// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
+/// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
+/// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
+mod vec_stroke_present;
 mod vec_text;
 mod vec_text_object;
 mod vec_text_reopen;

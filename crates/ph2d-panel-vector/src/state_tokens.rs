@@ -4,10 +4,16 @@
 //! (`ph2d_ecs::VecBindings`) e isto é a projeção que a shell publica por frame. O painel não
 //! alcança o mundo — se alcançasse, haveria duas respostas para *"esta forma segue um token?"*.
 //!
-//! ⚠️ **O `stroke_exists` viaja junto, e não é redundante.** O token de traço colore o traço que
-//! existe e nunca inventa largura (ver `VecPath::painted`); sem este fato o painel ofereceria uma
-//! row que o artista escolhe e que não muda um pixel — que é a definição de controle morto. O
-//! `flows` (W4c.4) é o gêmeo dele para os vãos: sem auto layout não há vão a espaçar.
+//! ⚠️⚠️ **O `stroke_exists` SAIU daqui em 2026-08-27 (plano 34).** Ele respondia a *"esta forma tem
+//! traço?"*, que passou a ter uma porta própria — [`crate::state::stroke_present`] — porque a
+//! caixa de marcar da secção *Stroke* faz a MESMA pergunta. ⛔ Duas respostas à mesma pergunta
+//! divergem no dia em que uma ganha uma condição, e aqui a divergência seria visível de imediato:
+//! a caixa a dizer *"tem traço"* e a row de token a não aparecer. A razão de a pergunta existir
+//! não mudou: o token de traço colore o traço que existe e nunca inventa largura (ver
+//! `VecPath::painted`), então sem ela o painel oferece uma row que não muda um pixel.
+//!
+//! O `flows` (W4c.4) fica: ele é o gêmeo para os vãos (sem auto layout não há vão a espaçar), e
+//! **não** tem um segundo leitor.
 
 use std::cell::RefCell;
 
@@ -24,8 +30,6 @@ pub struct TokenBindings {
     pub gap_main: Option<String>,
     /// Chave do token do vão TRANSVERSAL (W4c.4).
     pub gap_cross: Option<String>,
-    /// A seleção tem traço — é isto que decide se as rows do traço são OFERECIDAS.
-    pub stroke_exists: bool,
     /// A seleção é uma moldura que FLUI (`VecLayout`) — idem, para as rows de vão.
     pub flows: bool,
 }

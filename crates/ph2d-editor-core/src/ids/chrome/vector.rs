@@ -657,3 +657,13 @@ pub const VECTOR_MODE_PENCIL: NodeId = hash_node_id("vector.mode.pencil");
 /// (Fillet/Chamfer) na fileira TOOL: os três editam um atributo VIVO de uma forma que já existe,
 /// apontando-a no canvas.
 pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");
+
+/// ⭐ **Stroke (a caixa de marcar)** — *esta forma TEM traço?* (plano 34).
+///
+/// ⚠️ **Um checkbox e não um `segmented`**, pela lei que este painel já escreveu: *um `segmented` é
+/// uma escolha entre MODOS nomeados; um checkbox é uma PROPRIEDADE que o objeto tem ou não tem*.
+///
+/// ⛔ **O rótulo NÃO é "Outline"**: já existe [`VECTOR_EXPAND_OUTLINE_STROKE`], que é outra coisa
+/// (converter o traço numa forma preenchida). Duas palavras para um conceito e uma palavra para
+/// dois é como um painel passa a mentir.
+pub const VECTOR_STROKE_PRESENT: NodeId = hash_node_id("vector.stroke.present");

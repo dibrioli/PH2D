@@ -46,3 +46,11 @@ corte para o **irmão por responsabilidade** — nunca allowlist
 ([[feedback-loc-cap-split-not-allowlist-and-fmt-reexpands]]). ⭐ O corte bom nomeia **uma pergunta
 por módulo** (*«que células fecham?»* contra *«que vértice não devia existir?»*), e o sinal de que
 ele é o certo é as duas metades **cruzarem-se num sítio só**.
+
+## ⚠️ A TERCEIRA variante do filtro, achada em 2026-08-29 — `--bins` não é `--tests`
+
+As duas primeiras variantes eram `-p <crate>` e `cargo fmt -p <crate>`. A terceira é **dentro da
+crate certa**: `cargo test -p ph2d-host-desktop --bins` corre **3 834** testes do shell e **não toca
+em `shells/desktop/tests/`** — onde vive `shell_files_respect_hr18_loc_cap`, o gate de LOC do próprio
+shell. *Um portão pode correr quase quatro mil testes da crate certa e ainda assim não alcançar o
+gate dela.* ⇒ o comando é `cargo test -p <crate>` **sem** `--bins` (ou `--tests` explícito ao lado).

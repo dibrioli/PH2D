@@ -369,10 +369,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   degrau de migração, e está certo** (não há projetos gravados — decisão do Enio, 26/08; o bump fica porque o postcard é
   posicional, então **sem** ele um ficheiro velho seria lido errado **em silêncio** e com ele o load **recusa em voz alta**).
   Cena **`=75`** · diagnóstico `PH2D_MORPH_LOG=1` ·
-  ⏳ **(3) — o ÚNICO aberto da fila, e continua SEM PLANO** ([doc 29 §F2](docs/Vector%20Module/29_fila_morph_state_machine_e_texture_pattern.md)):
-  **Texture pattern** no preenchimento: o `Paint` tem **4** variantes e **nenhuma de imagem**
-  ([`paint.rs`](crates/ph2d-vec-scene/src/paint.rs)) — ⚠️ a lei do módulo é *preenchimento em **world-space**, que transforma
-  com o path*, e ⛔ leia o [plano 23](docs/Vector%20Module/23_plano_pattern_along_path.md) antes de desenhar ·
+  ✅ **(3) O TEXTURE PATTERN FECHOU, e virou DOIS modelos** (planos
+  [33](docs/Vector%20Module/33_plano_texture_pattern.md) · [35](docs/Vector%20Module/35_plano_padrao_no_traco.md) ·
+  [36](docs/Vector%20Module/36_plano_pincel_de_contorno.md), [handoff](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_pattern_brush_2026-08-29.md)):
+  o `Paint` ganhou a 5.ª variante e o `StrokeSpec` trocou uma COR por uma TINTA (`StrokePaint`).
+  ⭐⭐ **São DOIS modelos, e todo aplicativo sério entrega os dois** — *"a coisa precisa funcionar sem
+  limitações"* (Enio, 28/08): **`Pattern`** é a TINTA que o contorno revela (normativo em SVG 2, e
+  por isso um tracejado são **buracos** no papel de parede — ⛔ não é defeito), e **`Brush`** é a ARTE
+  que PERCORRE a linha (o *Pattern Brush* do Illustrator), que escala com a largura e **reinicia em
+  cada traço**. ⚠️ A arte de um pincel é uma **FORMA do documento** (gesto de duas mãos, ⛔ sem
+  diálogo de ficheiro), e o motor já estava pago desde o plano 23 — faltava **endereçá-lo como
+  propriedade do traço**. ⚠️ Tetos MEDIDOS: `MAX_DASHES = 4096` (o joelho está entre 4 103 traços a
+  6,32 ms e 8 205 a 12,08, contra o *kill* de 8). ⏳ Falta a **W5, as QUINAS** — os 4 modos
+  automáticos do Illustrator medidos lado a lado antes de escolher o nosso; hoje um contorno com
+  quina viva mostra as cópias a saltar no canto, e as cenas de smoke são de curvas suaves por isso.
+  Cenas **`=76`** (a estampa) e **`=77`** (o pincel) ·
   ✅ **o `n`/folga do *tether* e o `DRAG_RATE_X = 50` NUNCA foram «feel sem medição» — a NOTA é que
   envelheceu** (conferido 24/08, mecanismo no [estudo §6.6](docs/Vector%20Module/Estudos/ESTUDO_UI_viva_o_que_falta_para_encantar_2026-08-12.md)):
   o `50` é o atalho de **último recurso** de uma caixa **sem intervalo nenhum**, e acima dele está a `ScrubLaw` · ⏸️ abrir/fechar painel **nunca** foi

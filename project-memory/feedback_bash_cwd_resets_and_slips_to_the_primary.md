@@ -103,3 +103,28 @@ porque havia gate; sem ele, a regressão viajava no commit.
 
 ⚠️ *A pergunta que resolve isto numa linha: «este ficheiro é o mesmo nas duas árvores?» Se a
 linha alguma vez lhe tocou, a resposta é não, e copiar é um `revert` silencioso.*
+
+
+## ⭐⭐⭐ Adenda 2026-08-27 (7.ª) — a guarda que FUNCIONA é um assert sobre o CONTEÚDO da sua linha
+
+Mesma escorregadela, mesmo tell (`File exists (os error 17)` sobre `/PH2D/target/debug`), mesma
+receita de recuperação — que desta vez correu limpa: `git status --porcelain` no primário (só os
+meus dois ficheiros), `git diff` para provar que o conteúdo era meu, `git checkout -- <os dois
+caminhos exactos>`, e **reaplicar na worktree**, nunca copiar ([[feedback_the_memory_symlink_points_at_the_primary_tree_not_your_worktree]]).
+
+⭐ **O que mudou o resultado foi a guarda que passei a pôr no topo de todo script de edição:**
+
+```python
+W='/home/enio/.../Worktrees/line-<módulo>'
+src=open(W+'/caminho/do/ficheiro.rs').read()
+assert 'refinement: bool' in src, 'ARVORE ERRADA: falta a W89'
+```
+
+**Why:** o `assert os.getcwd().endswith(...)` desta memória protege contra a cwd, e o path absoluto
+protege contra o `cd` — mas **nenhum dos dois protege contra o path absoluto ERRADO** (a árvore
+primária escrita à mão num script). Um assert sobre uma marca que **só o commit da sua linha tem**
+prova a árvore pelo que ela É, não por onde eu acho que ela está — e é a única guarda que não
+depende de eu me lembrar de qual das duas raízes é a minha.
+
+**How to apply:** escolha a marca no ficheiro que vai editar (um símbolo que a sua linha criou), e
+ponha o assert **antes** de qualquer `replace`. Ele custa uma linha e falha alto.

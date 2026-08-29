@@ -444,7 +444,7 @@ fn stable_index(sim: &mut SimWorld) -> std::collections::BTreeMap<u64, Entity> {
 /// ⚠️ O oráculo do gate que sancionava o bail usava uma peça que TINHA elo (`piece(&sim, inst,
 /// "Arm")`), então a travessia ancestral nunca corria — *o oráculo confirmava o caminho curto e
 /// assinava o longo*.
-fn instance_root_of(sim: &mut SimWorld, clicked: Entity) -> Option<Entity> {
+pub(crate) fn instance_root_of(sim: &mut SimWorld, clicked: Entity) -> Option<Entity> {
     let by_id = stable_index(sim);
     let mut e = clicked;
     loop {

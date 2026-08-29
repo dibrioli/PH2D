@@ -497,6 +497,11 @@ pub(crate) struct LiveSnapshots {
     pub joint_info: Option<ph2d_editor_core::screens::hero::InspectorJointInfo>,
     pub wheel_info: Option<ph2d_editor_core::screens::hero::InspectorWheelInfo>,
     pub player_info: Option<ph2d_editor_core::screens::hero::InspectorPlayerInfo>,
+    /// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — `Some` só quando o selecionado é peça de
+    /// uma cópia. ⚠️ **Não entra no `any_section`**, e pela razão das outras três: uma peça de
+    /// instância tem sempre `Transform`, logo o `transform_info` já a representa — contá-la
+    /// outra vez não mudaria a resposta.
+    pub instance_info: Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
     pub name_present: bool,
     /// Alguma seção viva? ⚠️ A §5 9-Slice, a §11 Animation e a §12 Sockets **não** entram nesta
     /// conta, e é deliberado: as três só existem sobre uma sprite, que já está representada pelo
@@ -514,6 +519,7 @@ impl LiveSnapshots {
         let sampling_info = crate::state::current_inspector_sampling();
         let blend_info = crate::state::current_inspector_blend();
         let (physics_info, joint_info, wheel_info, player_info) = physics_family_infos();
+        let instance_info = crate::state::current_inspector_instance();
         let name_present = crate::state::current_inspector_name_is_some();
         let any_section = any_live_section([
             transform_info.is_some(),
@@ -542,6 +548,7 @@ impl LiveSnapshots {
             joint_info,
             wheel_info,
             player_info,
+            instance_info,
             name_present,
             any_section,
         }

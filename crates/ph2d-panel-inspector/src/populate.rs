@@ -25,6 +25,16 @@ pub fn populate(store: &mut WidgetStore) {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
     );
+    // ⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3) — e ele nasceu MORTO SOB O DEDO até o
+    // `hit_indexed_ids_are_registered` o apanhar. *Um botão pintado e não registado não é um botão
+    // que falha às vezes: ele nunca é focável, logo o Down/Up nunca dispara.* É a terceira vez que
+    // esta casa paga a mesma costura (o `+` da F3, os chips da booleana, agora este).
+    store.register(
+        ids::INSP_INSTANCE_CLEAR_ORPHANS,
+        ph2d_editor_core::interaction::InteractiveState::Button {
+            state: ph2d_editor_core::widget::ButtonState::Normal,
+        },
+    );
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);

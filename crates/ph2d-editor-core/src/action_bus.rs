@@ -538,6 +538,16 @@ pub enum EditorAction {
     /// tem essas três respostas é a shell — o painel só diz *quem* perguntou.
     InspectorAddComponentRequested { entity_bits: u64 },
 
+    /// ⭐ **Limpar as excepções SEM ALVO de uma instância** (ADR-0164 / F5.3).
+    ///
+    /// `root_bits` é a RAIZ da instância — o `ObjectInstance` mora lá, e uma peça não sabe
+    /// quantos órfãos a cópia inteira tem (um órfão não TEM peça).
+    ///
+    /// ⛔ Existe porque eles **nunca** se apagam sozinhos (a lei do *«unused overrides»* do
+    /// Unity): sair por causa de um `Delete` no mestre é perder trabalho do artista em
+    /// silêncio. ⇒ o gesto é explícito, e é este.
+    InspectorClearUnusedOverrides { root_bits: u64 },
+
     /// Inspector → shell channel for a §12 Physics Joint field (W3). The
     /// `entity_bits` are the JOINT object's, not a body's — a joint is an
     /// entity, and this section describes it.

@@ -44,6 +44,8 @@ mod color_tint;
 /// tecto de LOC.
 mod emissive_row;
 mod identity;
+/// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
+pub(crate) mod instance;
 pub(crate) mod joint;
 mod joint_pair_rows;
 mod material_blend;

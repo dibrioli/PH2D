@@ -228,6 +228,11 @@ pub(super) fn publish(
     // que tem o `bool_live` em maos, e stampado aqui porque e' aqui que as linhas ainda
     // sao mutaveis -- o mesmo sitio, e o mesmo motivo, do `entry.selected`.
     bool_badges: &std::collections::BTreeMap<u64, &'static str>,
+    // ⭐ **O registo de componentes** (ADR-0164 / F5) — a seção COMPONENT nomeia os componentes
+    // overridados, e só o registo traduz `type_id → nome de exibição`. ⚠️ Sem ele a seção teria
+    // de guardar uma tabela de nomes: uma SEGUNDA resposta a *«como se chama este
+    // componente?»*, que divergiria do rótulo do botão que o anexa.
+    component_registry: &ph2d_ecs::scene::ComponentRegistry,
 ) {
     // M14.4a: if live-bridge enabled, rebuild HierarchySnapshot
     // from SimWorld + push into HeroScreen BEFORE paint. The
@@ -1015,6 +1020,15 @@ pub(super) fn publish(
             hero.project.pixels_per_meter,
         )
     });
+    // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
+    // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a
+    // lei da F3 (o Inspector mostra o que o objeto TEM). ⛔ Ao contrário da §5 e da §12, ela NÃO se
+    // publica «vazia com um +»: não há gesto de anexar uma instância — ela nasce de *Instantiate*.
+    let inspector_instance = super::inspector_instance::build_instance_info(
+        sim,
+        component_registry,
+        hero.gizmo.selection,
+    );
     // W3: the Join gesture needs exactly TWO bodies, and only the shell can
     // see the selection — the panel is handed one entity at a time. Asked once
     // here, so the painter (which offers the button) and the event handler
@@ -1159,6 +1173,7 @@ pub(super) fn publish(
         ph2d_panel_inspector::set_current_inspector_blend(inspector_blend);
         ph2d_panel_inspector::set_current_inspector_slice(inspector_slice);
         ph2d_panel_inspector::set_current_inspector_anchor(inspector_anchor);
+        ph2d_panel_inspector::set_current_inspector_instance(inspector_instance);
         ph2d_panel_inspector::set_current_inspector_anim(inspector_anim);
         ph2d_panel_inspector::set_current_inspector_physics(inspector_physics);
         ph2d_panel_inspector::set_current_inspector_joint(inspector_joint);

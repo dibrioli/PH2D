@@ -17,17 +17,12 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::{HeroLayout, HeroSelection};
-use ph2d_editor_core::widget::SCROLLBAR_W;
-use ph2d_editor_core::widget::panel_chrome::{
-    paint_panel_corner_dot, paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
-};
-use ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y;
 use ph2d_editor_core::widget::showcase::paint_section_separator;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
 use ph2d_vector::VectorScene;
 
-const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
+pub(crate) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
 const SECTION_HEAD_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut PaintCtx) {
@@ -94,43 +89,22 @@ fn paint_inspector(
     // §11: qual animação está aberta no editor. Mesmo contrato do `anchor_selected`.
     anim_selected: &mut usize,
 ) {
-    let rect = layout.inspector;
-    paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = panel_drag_handle_rect(
+    // ⭐ **A moldura do corpo — superfície, alças, cabeçalho, clip e a caixa interior.**
+    // Ver [`crate::paint_frame::open_body`]: nada disto é orquestração de seção, e é a mesma razão
+    // pela qual o cabeçalho saiu para o `paint_head` em 2026-08-23.
+    let crate::paint_body::BodyFrame {
         rect,
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
-        // Inspector has no close button — its visibility is governed
-        // by the TopBar toggle. Reserve nothing on the right so the
-        // drag area spans the full width.
-        0.0,
-    );
-    let resize_handle_rect = panel_resize_handle_rect(rect);
-    let resize_handle_bl_rect =
-        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
-    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
-
-    // O cabeçalho — título, subtítulo, fechar e o divisor. Ver `paint_head`.
-    let content_top =
-        crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index, store);
-
-    let content_bottom = rect.y + rect.h - Spacing::Xs.px();
-    let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
-    let clip = ph2d_vector::Rect::new(
-        rect.x as f64,
-        content_top as f64,
-        (rect.x + rect.w) as f64,
-        content_bottom as f64,
-    );
-    scene.push_clip(&clip);
-
-    let inner_x = rect.x + BODY_PAD;
-    let scrollbar_reserve = SCROLLBAR_W + Spacing::Sm.px();
-    let inner_w = (rect.w - BODY_PAD * 2.0 - scrollbar_reserve).max(0.0);
-    let body_top_y = content_top - scroll_y + Spacing::Xs.px();
+        drag_handle_rect,
+        resize_handle_rect,
+        resize_handle_bl_rect,
+        content_top,
+        content_bottom,
+        scroll_y,
+        inner_x,
+        inner_w,
+        body_top_y,
+    } = crate::paint_body::open_body(layout, scene, text_system, theme, hit_index, store);
     let mut section_tops_y: Vec<f32> = Vec::with_capacity(4);
-    LAST_BODY_TOP_SCREEN_Y.with(|c| c.set(content_top + Spacing::Xs.px()));
     // Os treze snapshots e o `any_section`, numa pergunta só. Ver `paint_frame::LiveSnapshots`.
     let crate::paint_frame::LiveSnapshots {
         transform_info,
@@ -146,6 +120,7 @@ fn paint_inspector(
         joint_info,
         wheel_info,
         player_info,
+        instance_info,
         name_present,
         any_section,
     } = crate::paint_frame::LiveSnapshots::fetch();
@@ -331,6 +306,29 @@ fn paint_inspector(
         anchor_selected,
         &notes_per_section,
     );
+    // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — a ÚLTIMA, e de propósito: ela descreve a
+    // relação do objeto com a biblioteca, não uma propriedade dele. Pô-la no meio empurraria para
+    // baixo as seções que o artista abre a toda a hora.
+    if let Some(info) = instance_info.as_ref() {
+        y = live_section!(
+            ids::INSP_INSTANCE_SECTION,
+            section_tops_y.len(),
+            SECTION_HEAD_H,
+            {
+                crate::sections::instance::paint_instance_section(
+                    scene,
+                    text_system,
+                    theme,
+                    hit_index,
+                    store,
+                    info,
+                    inner_x,
+                    inner_w,
+                    y,
+                )
+            }
+        );
+    }
     if any_section {
         crate::paint_frame::paint_trailing_notes(
             scene,
@@ -363,63 +361,16 @@ fn paint_inspector(
         },
         section_tops_y,
     );
-    // **OS TRÊS POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
-    // ⚠️ Saíram daqui em 2026-08-23 para `paint_frame_shared`: o «Rides Parent Anchor» da §12
-    // levou este orquestrador de 380 a 403 contra uma tolerância que **só desce**. Os três
-    // andam juntos porque partilham UMA lei — o popover pinta-se fora da ordem das seções —
-    // e levar só o novo deixaria o número onde estava, que não é encolher.
-    crate::paint_frame_shared::paint_deferred_popovers(scene, text_system, theme, hit_index);
-
-    scene.pop_layer();
-
-    paint_panel_corner_dot(rect, scene, theme);
-    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
-    close_frame_hits(
+    // ⭐ **O fecho, simétrico do [`crate::paint_body::open_body`]** — os popovers diferidos, o
+    // `pop_layer` do clip que ele abriu, os cantos e o re-registo dos hits.
+    crate::paint_body::close_body(
+        scene,
+        text_system,
+        theme,
         hit_index,
         rect,
-        drag_handle_rect,
-        resize_handle_rect,
-        resize_handle_bl_rect,
+        [drag_handle_rect, resize_handle_rect, resize_handle_bl_rect],
     );
-}
-
-/// ⭐ **O que se re-regista no FIM do quadro, e porquê** — as alças, o X e o `+`.
-///
-/// ⚠️ **Estes hits têm de vir DEPOIS de tudo**, e a razão é uma só: o `HitIndex` resolve
-/// back-to-front, então quem regista por último ganha. A alça de arrasto cobre a banda do título e
-/// um widget do corpo que rolou para debaixo dela também — sem este bloco, o que o dedo alcança no
-/// cabeçalho é o que rolou para lá, e não o botão que o olho vê.
-///
-/// A nota original é de **2026-05-24** (o padrão foi reportado na Widget Gallery) e cobria só o X.
-/// ⚠️ **O `+` da F3 (ADR-0166) nasceu sem ele e ficou MORTO SOB O DEDO** — pintado, a acender no
-/// hover, e clicável a nada. Foi o 1.º smoke do Enio que o apanhou; o gate que o defende agora
-/// pergunta *quem ganha o clique*, e não *o id foi registado* (que era `true` o tempo todo).
-///
-/// ⚠️ **Saiu do [`paint_inspector`] pela catraca**, que levou o orquestrador a 304 contra uma
-/// tolerância de 292 que **só desce**: o cluster inteiro sai, e não só a linha nova — *ficar no
-/// mesmo sítio não é encolher*.
-fn close_frame_hits(
-    hit_index: &mut ph2d_editor_core::interaction::HitIndex,
-    rect: ph2d_editor_core::zones::Rect,
-    drag_handle_rect: ph2d_editor_core::zones::Rect,
-    resize_handle_rect: ph2d_editor_core::zones::Rect,
-    resize_handle_bl_rect: ph2d_editor_core::zones::Rect,
-) {
-    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
-    hit_index.register(
-        ids::INSP_CLOSE,
-        ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),
-    );
-    // ⚠️ **Só quando ele é PINTADO** — sem objeto sob o Inspector o botão não existe, e um hit
-    // registado sobre um botão que ninguém desenhou é a metade oposta do mesmo defeito.
-    if crate::state::current_inspector_transform().is_some() {
-        hit_index.register(
-            ids::INSP_ADD_COMPONENT,
-            ph2d_editor_core::widget::panel_chrome::panel_header_add_button_rect(rect),
-        );
-    }
 }
 
 /// The section separator, callable from `paint_frame`'s extracted section

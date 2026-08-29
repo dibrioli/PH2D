@@ -345,6 +345,16 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // ⭐ **O `paint.rs` do Inspector passou a ser ORQUESTRADOR PURO em 2026-08-27** (ADR-0164 / F5):
+    // a moldura do corpo — superfície, alças, cabeçalho, clip, cantos — saiu inteira para o
+    // `paint_body.rs` quando a seção COMPONENT o empurrou acima do tecto de LOC. ⚠️ Ele deixou de
+    // nomear um primitivo **porque deixou de pintar um pixel**, e não porque alguém tirou a
+    // ligação: cada seção que ele chama emite o a11y dela, e o `paint_body` nomeia o
+    // `panel_chrome::`. *A ausência aqui é a consequência de o ficheiro ter mudado de trabalho.*
+    (
+        "ph2d-panel-inspector/src/paint.rs",
+        "orquestrador puro desde a F5; a moldura vive no `paint_body.rs` e cada secao emite o a11y dela",
+    ),
     (
         "ph2d-panel-audio-editor/src/paint_sections_chrome.rs",
         "chrome de secção extraído do `paint_sections.rs` pelo cap de LOC — pinta pelo `paint_section_header` canónico e regista o hit pelo `ClippedHits` do painel; sem semântica própria",

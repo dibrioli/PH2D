@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — o modelo) ✅ 2026-08-27** (falta a SECÇÃO no Inspector) · variantes ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — modelo E secção) ✅ 2026-08-27** · variantes ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
@@ -867,6 +867,30 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
 - ⏳ **Falta a SECÇÃO no Inspector** que os LISTA (o *«Overrides sem alvo»* do critério 3 da F5): o
   modelo está fechado e gateado, a superfície não existe. É a mesma família do item aberto *«nada na
   tela mostra que campo está overridado»*.
+
+---
+
+**O que a SECÇÃO da F5.3 mediu e o plano não dizia (2026-08-27):**
+- ⭐ **Ela fecha DOIS abertos com uma superfície:** o critério 3 da F5 (a lista de *Overrides sem
+  alvo*) e a linha que este módulo carregava desde 26/08 — *«nada na tela MOSTRA que campo está
+  overridado»*. O modelo existia desde a F4.4 e era **inteiramente invisível**: lia-se pelo que ele
+  IMPEDE. *Um estado que só se lê pelo que ele impede não é um estado que o artista possa gerir.*
+- ⚠️ **Uma seção do Inspector custa SEIS sítios** (modelo em `ph2d-editor-core` · ids · construtor
+  na shell · publish em `snapshots` · `LiveSnapshots` + painter · dreno da acção), e a **7.ª** é a
+  que morde: o `populate.rs`. O gate `hit_indexed_ids_are_registered` apanhou o botão **morto sob o
+  dedo** — pintado, a acender no hover, clicável a nada. É a **terceira** vez que esta casa paga a
+  mesma costura (o `+` da F3, os chips da booleana do Vector, agora este).
+- ⚠️ **A catraca de LOC cobrou os dois painéis, e as duas curas foram estruturais**: a escada de
+  cliques de um id virou **tabela** (`SINGLE_ID_CLICKS`, `apply_event_impl` 276 → **273**) e a
+  MOLDURA do corpo saiu inteira para o ficheiro irmão `paint_body.rs` (`open_body` + `close_body`
+  simétrico; `paint_inspector` 289 → **284**). ⛔ Ela não podia ir para o `paint_frame.rs`, que
+  estava a 600 e recebeu-a a 636 — *curar um tecto estourando o outro não é curar*.
+- ⭐ E o `paint.rs` virou **orquestrador puro** — deixou de nomear um primitivo de a11y **porque
+  deixou de pintar um pixel**, o que exigiu declará-lo no `PANEL_A11Y_DELEGATE_OK`. *A ausência ali
+  é a consequência de o ficheiro ter mudado de trabalho.*
+- ⚠️ **Duas mutações minhas SOBREVIVERAM, e o gate estava certo**: o construtor tem DUAS guardas (o
+  elo e a raiz) e um objeto solto falha as duas, então cada mutação era neutralizada pela outra. *A
+  mutação honesta tem de tirar as duas juntas* — e essa mata.
 
 ---
 

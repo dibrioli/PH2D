@@ -93,6 +93,12 @@ thread_local! {
     pub(crate) static CURRENT_INSPECTOR_NAME: std::cell::RefCell<Option<InspectorNameInfo>> =
         const { std::cell::RefCell::new(None) };
 
+    /// ⭐ **A seção COMPONENT** (ADR-0164 / F5). Um `RefCell` como os irmãos que carregam nomes:
+    /// a lista de componentes overridados não é `Copy`.
+    pub(crate) static CURRENT_INSPECTOR_INSTANCE: std::cell::RefCell<
+        Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
+    > = const { std::cell::RefCell::new(None) };
+
     /// §12 Physics Joint. A `RefCell`, unlike its `Cell` siblings, because the
     /// info carries the two bodies' NAMES and so is not `Copy`.
     pub(crate) static CURRENT_INSPECTOR_JOINT: std::cell::RefCell<Option<InspectorJointInfo>> =
@@ -212,6 +218,18 @@ pub fn set_current_inspector_visibility(info: Option<InspectorVisibilityInfo>) {
 
 pub(crate) fn current_inspector_visibility() -> Option<InspectorVisibilityInfo> {
     CURRENT_INSPECTOR_VISIBILITY.with(|c| c.get())
+}
+
+/// ⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
+pub fn set_current_inspector_instance(
+    info: Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo>,
+) {
+    CURRENT_INSPECTOR_INSTANCE.with(|c| *c.borrow_mut() = info);
+}
+
+pub(crate) fn current_inspector_instance()
+-> Option<ph2d_editor_core::screens::hero::InspectorInstanceInfo> {
+    CURRENT_INSPECTOR_INSTANCE.with(|c| c.borrow().clone())
 }
 
 pub fn set_current_inspector_name(info: Option<InspectorNameInfo>) {

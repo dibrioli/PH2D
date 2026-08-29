@@ -63,6 +63,25 @@ pub(crate) fn apply_event(
 /// ⚠️ **Função irmã, e não um braço da mãe:** as 14 linhas dela levaram o `apply_event_impl` de 292
 /// para 306 contra um teto de 200 cuja tolerância **só desce** — o precedente é o `visibility_toggle`
 /// (função irmã no mesmo ficheiro, que está com folga sob o teto de 600 do ARQUIVO).
+/// ⭐⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3).
+///
+/// ⚠️ **O painel diz QUEM pediu, não o que fazer** — o `root_bits` é a RAIZ da instância, que é
+/// onde o `ObjectInstance` mora. A shell é quem tem o mundo; este ficheiro só honra o clique.
+///
+/// ⚠️ **Função irmã, e não um braço do `apply_event_impl`** — o precedente é o
+/// [`add_component_click`] logo abaixo, e a razão é a mesma (o teto de LOC daquela função).
+fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if ev != WidgetEvent::Click(ids::INSP_INSTANCE_CLEAR_ORPHANS) {
+        return false;
+    }
+    let Some(root_bits) = crate::state::current_inspector_instance().map(|i| i.root_bits) else {
+        return false;
+    };
+    host.bus_mut()
+        .push(EditorAction::InspectorClearUnusedOverrides { root_bits });
+    true
+}
+
 fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if ev != WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
         return false;
@@ -111,11 +130,20 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
     false
 }
 
+/// ⭐ **Os cliques de UM id, em TABELA.** Cada um responde *«era eu?»* e devolve `true` se agiu.
+///
+/// ⚠️ **Uma tabela, e não uma escada de `if`**: a escada era três linhas por entrada e, com o
+/// `clear_orphans_click` da F5, empurrou o `apply_event_impl` acima do tecto. A catraca do
+/// `architecture_panel_loc_cap` **só desce**, e o que ela pede é exactamente isto — *quando N
+/// blocos têm a mesma forma, a forma é que é o dado.* O próximo entra numa linha.
+const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
+    add_component_click,
+    clear_orphans_click,
+    section_color_click,
+];
+
 fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if add_component_click(host, ev) {
-        return true;
-    }
-    if section_color_click(host, ev) {
+    if SINGLE_ID_CLICKS.iter().any(|f| f(host, ev)) {
         return true;
     }
 

@@ -275,6 +275,9 @@ mod empty_object_overlay;
 mod inspector_anchor;
 mod inspector_anim;
 mod inspector_commits_sprite;
+/// ⭐ **A seção COMPONENT do Inspector** (ADR-0164 / F5) — o que esta cópia tem de diferente
+/// da receita, e o gesto que limpa as excepções sem alvo.
+mod inspector_instance;
 mod inspector_slice;
 /// Qual receita está a ser EDITADA — o passe que carimba a marca derivada.
 // ⚠️ `pub(crate)` porque o gate do anel de objeto vazio (`group_gizmo_view_tests`) acende a
@@ -2902,6 +2905,8 @@ impl crate::App {
                     b.extend(crate::field3d_scene::link_badges());
                     b
                 },
+                // O registo — ver o parâmetro na assinatura do `publish`.
+                component_registry,
             );
             // Flip W7.5/§4.A: os gizmos do modo Edit — só na tool Flip em modo Edit. Os
             // dois campos próprios no `GizmoStateGroup` (append-only) são MUTUAMENTE
@@ -4355,6 +4360,17 @@ impl crate::App {
                     // sabe construir.
                     EditorAction::InspectorAddComponentRequested { entity_bits } => {
                         add_component_for = Some(entity_bits);
+                    }
+                    // ⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3). Aplicado JÁ, e não
+                    // adiado para um local: ele não precisa de nada que este ponto não tenha, e o
+                    // `post_frame_undo` (que corre no fim) vê a mudança e regista o passo.
+                    EditorAction::InspectorClearUnusedOverrides { root_bits } => {
+                        let n = inspector_instance::clear_orphans(sim, root_bits);
+                        if n > 0 {
+                            toasts.push(ph2d_editor::Toast::success(format!(
+                                "Cleared {n} unused override(s)"
+                            )));
+                        }
                     }
 
                     // §11 Physics Body. Fans out over a BulkSelect like its

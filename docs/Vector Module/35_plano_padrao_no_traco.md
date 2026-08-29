@@ -485,3 +485,49 @@ primeira vez que este app põe duas imagens `Extend::Repeat` na mesma forma.
 ⛔ **E o log que o Enio mandou descreve outra forma** — `Stroke(tinta=Solid(35,35,45,255)
 largura=0.03)`, um traço SÓLIDO: *as bolhas da foto não são o contorno daquela forma*. Falta a linha
 do `PH2D_PATTERN_LOG=1` **da forma errada**, e é ela que fecha a hipótese.
+
+---
+
+## §10 — ⭐⭐⭐ O REPORT DE 28/08 FECHOU: **o contorno estava TRACEJADO**
+
+### §10.1 — A linha do diagnóstico que respondeu tudo
+
+```
+Stroke(tinta=Pattern(kind=Grid mode=Tile size=[0.408, 0.136] ... offset_denom=4)
+       largura=0.22495545496781233 align=Centre cap=Round join=Miter
+       dash=Some((0.8816105723381042, 1.60546875)))
+```
+
+`dash=Some(..)` + `cap=Round`. **As "bolhas" são os traços do tracejado**, cada um cheio de arte.
+Com um contorno fino e sólido, um tracejado é uma linha pontilhada discreta; com uma faixa larga e
+estampada, é a aparência inteira.
+
+### §10.2 — ⭐ As duas queixas "impossíveis" eram a MESMA coisa
+
+| Queixa | Mecanismo |
+|---|---|
+| *"depende do width"* | o `StrokeSpec` guarda o tracejado em **MÚLTIPLOS DA LARGURA** (`0,88 × 0,225 ≈ 0,2` de traço) |
+| *"não é consistente, pode ou não aparecer para o mesmo width"* | a `dash_fit` **reajusta o tracejado ao COMPRIMENTO do caminho** para a emenda fechar — mover um nó muda o comprimento |
+
+⛔ **Nada disto é defeito.** O padrão desenha certo sobre um traço tracejado, e o tracejado é
+autorado (fileiras *Dash*/*Gap* da secção *Stroke*). O gesto que desfaz é **Dash = 0**.
+
+⇒ gate `a_dashed_patterned_stroke_still_paints_the_pattern`, com a fixtura a usar os **números
+medidos na sessão dele** — para a próxima janela não voltar a caçar o padrão quando o que mudou foi
+o traço. Prova de mutação: desligar o padrão quando há dash mata-o.
+
+### §10.3 — ⚠️⚠️ A LIÇÃO, e ela é minha
+
+**A primeira leitura da 1.ª foto foi a certa** — *"blobs a intervalos regulares com pontas redondas =
+um tracejado"* — e eu **abandonei-a** para perseguir escala, alfa, extend, atlas e afins. Depois
+gastei **quatro rondas** e cinco medições headless a ilibar funções puras.
+
+⭐ **O que faltava não era medir melhor: era medir o SUJEITO CERTO.** Todas as cinco sondas mediam o
+que o *meu código* faz; nenhuma media o que o *documento dele* tinha. E o instrumento que respondeu
+em uma linha (`log_shape` a nomear a tinta e a ficha inteira do traço) **custou dez minutos** e
+podia ter sido a primeira coisa.
+
+⛔ **A regra que fica:** perante um report com foto, o primeiro passo é **ler o estado do documento**,
+não gerar hipóteses sobre o renderizador. *Ler uma foto é gerar hipóteses; ler o documento é medir.*
+E um diagnóstico que não NOMEIA o sujeito novo (a `tinta` do traço só entrou no `log_shape` na 3.ª
+ronda) manda a janela seguinte adivinhar.

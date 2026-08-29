@@ -460,3 +460,66 @@ fn measure_the_brush_a_stroke_gets_against_the_one_a_fill_gets() {
         );
     }
 }
+
+/// ⭐⭐ **UM TRAÇO TRACEJADO COM PADRÃO CONTINUA A PINTAR O PADRÃO** — e custa o mesmo.
+///
+/// ⚠️⚠️ **Este gate nasce de quatro rondas de report** (Enio, 2026-08-28): o contorno da forma dele
+/// estava **tracejado** (`dash=Some((0.88, 1.61))`, `cap=Round`), e cada traço cheio de arte lê-se
+/// como *"bolhas"*. Com um contorno fino e sólido um tracejado é uma linha pontilhada discreta; com
+/// uma faixa larga e estampada, é a aparência inteira.
+///
+/// ⭐ **E as duas queixas que pareciam impossíveis eram a mesma coisa:** o `StrokeSpec` guarda o
+/// tracejado em **MÚLTIPLOS DA LARGURA** (daí *"depende do width"*), e a `dash_fit` **reajusta-o ao
+/// comprimento do caminho** para a emenda fechar (daí *"não é consistente, pode ou não aparecer
+/// para o mesmo width"* — mover um nó muda o comprimento).
+///
+/// ⛔ *Nada disto é defeito*, e é por isso que existe um gate: para a próxima janela não voltar a
+/// caçar o padrão quando o que mudou foi o traço.
+#[test]
+fn a_dashed_patterned_stroke_still_paints_the_pattern() {
+    let dashed = |paint: StrokePaint| {
+        let mut scene = ph2d_vec_scene::VecScene::default();
+        let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(9, 9, 9, 255), 0.22);
+        s.paint = paint;
+        // Os números MEDIDOS na sessão do Enio — a fixtura contém o fenómeno, e não uma aproximação.
+        s.dash = Some((0.881_610_572_338_104_2, 1.605_468_75));
+        s.cap = ph2d_vec_scene::LineCap::Round;
+        let id = scene.push_path(ph2d_vec_scene::VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(ph2d_vec_scene::VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            stroke: Some(s),
+            ..ph2d_vec_scene::VecPath::default()
+        });
+        (scene, id)
+    };
+    let (cena, id) = dashed(pat_do_traco());
+    let mut tiles = crate::PatternTiles::new();
+    tiles.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+    let com = desenha(&cena, &tiles);
+    // ⭐ A `fallback` do padrão, num traço SÓLIDO tracejado igual: é o desenho que sairia se o
+    // ladrilho fosse ignorado.
+    let (cena_sol, _) = dashed(StrokePaint::Solid(ph2d_vec_scene::Rgba8::new(
+        200, 30, 30, 255,
+    )));
+    let sem = desenha(&cena_sol, &crate::PatternTiles::new());
+
+    assert_ne!(
+        com.inner().encoding().draw_data,
+        sem.inner().encoding().draw_data,
+        "o traco tracejado pintou a cor de recurso - o tracejado engoliu o padrao"
+    );
+    // ⚠️ E **o preço não muda**: o tracejado é da CANETA (a kurbo aplica-o), não uma peça por
+    // traço. Se este número subir, alguém passou a emitir um desenho por dash.
+    assert_eq!(
+        com.inner().encoding().n_paths,
+        sem.inner().encoding().n_paths,
+        "o padrao num traco tracejado passou a custar mais desenhos que a cor"
+    );
+    assert_eq!(
+        com.inner().encoding().n_clips,
+        0,
+        "o traco tracejado com padrao empurrou camada"
+    );
+}

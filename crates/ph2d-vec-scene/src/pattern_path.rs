@@ -120,11 +120,27 @@ pub struct PatternSpec {
     /// `0.0` é o neutro: os gates de rotação-zero que já existiam (`the_copies_tile_the_straight_guide`,
     /// `the_copies_rotate_to_the_tangent_on_a_curve`) seguem verdes sem tocar num número.
     pub rotation_deg: f64,
+    /// ⭐⭐ **Esticar o avanço para as cópias FECHAREM exactamente no comprimento da guia.**
+    ///
+    /// O [plano 23 §3](../../../docs/Vector%20Module/23_plano_pattern_along_path.md) deixou isto
+    /// nomeado como *"refinamento com dono próprio"* — e o dono é o **pincel de contorno**
+    /// (plano 36): numa guia FECHADA, a cauda que sobra é um vão encostado a uma cópia inteira
+    /// **sempre na mesma quina**, que é exactamente o defeito que o `dash_fit` já curou para o
+    /// tracejado (Enio, 2026-08-22).
+    ///
+    /// ⭐ **E a lei é a MESMA porta** (`crate::dash_fit::fit`), com o avanço no lugar do período:
+    /// não se muda o número de cópias, muda-se o avanço. *Duas leis de encaixe divergiriam no dia
+    /// em que uma ganhasse um cuidado — e esta casa já paga essa lição em três sítios.*
+    ///
+    /// `false` é o neutro e o default: o consumidor de hoje (o *Pattern on Path*) sai **byte a
+    /// byte** como saía.
+    pub fit_to_guide: bool,
 }
 
 impl Default for PatternSpec {
     fn default() -> Self {
         Self {
+            fit_to_guide: false,
             start_offset: 0.0,
             end_offset: f64::INFINITY,
             spacing: 1.0,
@@ -265,7 +281,15 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     // O rotor UMA vez por re-cook; a medida do motivo sai do referencial DELE (§ do módulo).
     let rot = Rotor::new(spec.rotation_deg);
     let (width, center) = motif_bbox(motif, rot);
-    let advance = (width * spec.spacing).max(MIN_ADVANCE);
+    let mut advance = (width * spec.spacing).max(MIN_ADVANCE);
+    // ⭐⭐ **O ENCAIXE, pela porta do tracejado.** O `dash_fit::fit` escala um `[traço, vão]` para
+    // caber um número INTEIRO de vezes; um avanço é o mesmo problema com o vão a zero, e a
+    // resposta é a primeira componente. ⚠️ Só quando o consumidor o pede — o default é `false`, e
+    // o *Pattern on Path* sai byte a byte como saía.
+    if spec.fit_to_guide {
+        advance = crate::dash_fit::fit([advance, 0.0], total, guide.closed())[0].max(MIN_ADVANCE);
+    }
+    let advance = advance;
     let inv = 1.0 / advance;
 
     // As cópias cuja FATIA `[lead_k, lead_k + avanço]` cabe em `[0, total]`, `lead_k = start + avanço·k`.

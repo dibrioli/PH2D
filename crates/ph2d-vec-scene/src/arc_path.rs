@@ -40,6 +40,14 @@ pub struct ArcPath {
     /// `s` vira busca binária, e as âncoras de entrada **são exatamente estas posições** — que é
     /// o que permite a um efeito amostrar onde o caminho já tem vértice.
     starts: Vec<f64>,
+    /// ⭐ **O contorno FECHA?** — guardado porque quem encaixa um padrão nele precisa de o saber, e
+    /// a resposta já entrou pelo construtor.
+    ///
+    /// ⚠️ **A informação estava a ser DEITADA FORA:** o `from_contour` recebia `closed` para contar
+    /// os segmentos e esquecia-o. Um consumidor que precisasse dela teria de a carregar em paralelo
+    /// — e um dado paralelo ao objecto que o descreve dessincroniza no primeiro sítio que esquecer
+    /// de o passar. *Se o construtor já sabe, o objecto guarda.*
+    closed: bool,
 }
 
 impl ArcPath {
@@ -61,7 +69,18 @@ impl ArcPath {
             acc += arclen(c);
         }
         starts.push(acc);
-        Some(Self { segs, starts })
+        Some(Self {
+            segs,
+            starts,
+            closed,
+        })
+    }
+
+    /// **Este contorno fecha?** — a lei de encaixe é outra num aberto (ali não há emenda, há duas
+    /// PONTAS), e é o `dash_fit::fit` que a distingue.
+    #[must_use]
+    pub fn closed(&self) -> bool {
+        self.closed
     }
 
     /// O comprimento total do contorno.

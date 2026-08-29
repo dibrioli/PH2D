@@ -117,7 +117,7 @@ depois dos efeitos vivos (cantos vivos, largura viva, booleana), pela mesma raz�
 | Wave | Entrega | Onde |
 |---|---|---|
 | **W1** ✅ | `StrokePaint::Brush(Box<BrushStroke>)` + o schema (`VEC_SCENE` **16→17**, `PROJECT` **101→102**, a tripla) | `ph2d-vec-scene` |
-| **W2** | O **motor**: correr o `pattern_along` sobre o próprio contorno da forma, com **fit** de emenda pela porta da `dash_fit` | `ph2d-vec-scene` + `-render` |
+| **W2** ✅ | O **motor**: correr o `pattern_along` sobre o próprio contorno, com **fit** de emenda pela porta da `dash_fit` — **0,423 ms / 200 cópias**, 19× sob o *kill* | `ph2d-vec-scene` |
 | **W3** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pela porta que já parte o traço em peças (`stroke_plan`) | `ph2d-vec-render` |
 | **W4** | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (tamanho · espaçamento · offset normal/tangencial · flip), irmã das outras duas | `ph2d-panel-vector` + shell |
 | **W5** | As **QUINAS**: os 4 modos do Illustrator medidos lado a lado, e o nosso escolhido **com a tabela** | `ph2d-vec-scene` |
@@ -208,3 +208,66 @@ janela procurar o que mudou no diff.*
 ⚠️ E o **round-trip nomeia os SETE campos**, em vez de um `assert_eq!` da struct: uma igualdade
 verde diz que os bytes voltam, **não quais**. Com um campo apendado e não escrito, os dois lados
 teriam o default e a igualdade passaria.
+
+---
+
+## §7 — W2 fechada: **o motor** (2026-08-28)
+
+### §7.1 — ⭐⭐ O ENCAIXE é a porta do tracejado, com o avanço no lugar do período
+
+O `dash_fit::fit` é uma **lei pura**: escala um `[traço, vão]` para caber um número **inteiro** de
+vezes num contorno. Um avanço é o mesmo problema com o vão a zero — e a resposta é a primeira
+componente. ⇒ `PatternSpec::fit_to_guide`, e a lei **não se reescreve**.
+
+⚠️ **O plano 23 §3 deixou isto nomeado como *"refinamento com dono próprio"*** — e o dono é este
+plano. *Um adiamento com dono nomeado é uma dívida; sem dono, é uma limitação.*
+
+⛔ **E fica OPT-IN:** o default é `false`, e o *Pattern on Path* sai **byte a byte** como saía —
+mudar uma feature entregue por causa de outra seria o oposto do que este plano faz.
+
+### §7.2 — ⚠️ O `ArcPath` estava a DEITAR FORA o que lhe diziam
+
+`from_contour(verts, closed)` recebia `closed` para contar os segmentos e **esquecia-o**. Um
+consumidor que precisasse dele teria de o carregar em paralelo — e um dado paralelo ao objecto que o
+descreve dessincroniza no primeiro sítio que esquecer de o passar. ⇒ o `ArcPath` guarda-o.
+*Se o construtor já sabe, o objecto guarda.*
+
+### §7.3 — ⭐ Cada CONTORNO fecha, e a limitação herdada era inventada
+
+O `dash_fit` escolhe o contorno **mais longo** porque o traçador recebe **um** par `[traço, vão]`
+para o caminho inteiro (a nota dele diz isso, com o preço). O pincel **não tem essa restrição**: cada
+contorno recebe as suas cópias e fecha exactamente. *Herdar uma limitação sem perguntar se ela ainda
+existe é inventá-la.*
+
+### §7.4 — ⭐⭐ O KILL-CRITERION, MEDIDO
+
+```
+[plano 36 W2] re-cook do pincel: 0,423 ms  (200 copias)  — kill = 8 ms
+```
+
+**19× de folga**, e mais rápido que os `0,597 ms` que o plano 23 mediu para o mesmo trabalho: a
+escala da arte é **um passe sobre os vértices dela, uma vez** — não por cópia. Gate `#[ignore]`,
+`--release`.
+
+### §7.5 — ⚠️⚠️ DUAS lições de processo, e as duas custaram
+
+1. **O `| grep Summary` da varredura ENGOLIU um erro de compilação.** A saída veio vazia e eu quase a
+   li como *"sem falhas"*. É o modo de falha que o roteador §2 documenta com número
+   (**4.414 corridas que nunca chegaram a rodar um teste**) e a razão de os scripts preservarem o
+   *exit code*. ⇒ *uma corrida que devolve NADA nunca é uma corrida verde.*
+2. **O que apanhou o erro foi um LITERAL DE STRUCT.** O `spec_to_motor` do *Pattern on Path*
+   constrói o `PatternSpec` campo a campo, sem `..Default::default()` — então o campo novo **obrigou
+   a uma decisão**. Com o `..Default` a decisão teria sido tomada em silêncio, pelo default.
+   ⭐ *Um construtor exaustivo é um gate que não se apaga.*
+
+### §7.6 — As quatro provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| a altura deixa de multiplicar a largura | `the_brush_art_scales_with_the_stroke_width` |
+| `fit_to_guide: false` no pincel | `on_a_closed_contour_the_copies_close_exactly` |
+| só o contorno principal recebe cópias | `every_contour_of_a_compound_gets_its_own_copies` |
+| o encaixe passa a ser o default | `the_fit_is_opt_in_and_the_old_consumer_is_untouched` |
+
+⚠️ E o gate do encaixe traz o **controlo de que a fixtura contém o fenómeno**: a arte foi escolhida
+com uma largura que **não** divide o perímetro, senão ele ficaria verde sobre um encaixe por acidente.

@@ -252,10 +252,15 @@ pub use iso::{iso_cone, iso_cube, iso_pyramid};
 mod marker;
 pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 
+/// ⭐⭐⭐ **O PINCEL de contorno** (plano 36) — a arte que PERCORRE a linha, ao lado do padrão que é
+/// a tinta que ela revela. São dois modelos, e o estado da arte entrega os dois.
+pub mod brush_stroke;
 /// O **ESTILO do traço** (`LineCap` · `LineJoin` · `StrokeSpec`) — módulo irmão pelo teto
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
+pub use brush_stroke::{brush_along_path, brush_copies, brush_height};
+
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
 };

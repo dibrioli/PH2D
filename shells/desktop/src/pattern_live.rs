@@ -93,6 +93,14 @@ fn spec_to_motor(spec: &VecPatternPath, rotation_deg: f32, total: f64) -> Patter
         offset: f64::from(spec.offset),
         flip: spec.flip,
         rotation_deg: f64::from(rotation_deg),
+        // ⛔ **O ENCAIXE fica DESLIGADO aqui, e é a decisão** (plano 36, W2): o *Pattern on Path*
+        // tila pelo avanço nominal e deixa a cauda sobrar — comportamento entregue, gateado e
+        // aprovado em smoke. Ligá-lo mudaria uma feature por causa de outra.
+        //
+        // ⭐ **E o literal de struct é o que faz o compilador perguntar:** um `..Default::default()`
+        // aqui teria absorvido o campo novo em silêncio, e a decisão nunca teria sido tomada.
+        // *Um construtor exaustivo é um gate que não se apaga.*
+        fit_to_guide: false,
     }
 }
 

@@ -240,6 +240,35 @@ impl crate::App {
     /// onde o ciclo calhou estar.
     #[must_use]
     pub(crate) fn capture_project(&mut self) -> Option<ProjectState> {
+        // ⭐⭐⭐ **O MUNDO E O DOCUMENTO TÊM DE CONCORDAR ANTES DA FOTOGRAFIA** (report do Enio,
+        // 2026-08-27: *«as peças apagadas voltaram sem pais e na posição (0,0) do mundo»*).
+        //
+        // ⛔ **O mecanismo, reproduzido por sonda:** a reconciliação `path ⟺ entidade` corre CEDO
+        // no quadro (`render_loop/mod.rs`, antes do canvas) e o *Delete* da Hierarquia corre TARDE.
+        // Logo o quadro em que uma peça vetorial é apagada **termina inconsistente**: a entidade já
+        // morreu e o `VecPath` dela ainda está no documento. Esta captura fotografava esse
+        // instante, e o Ctrl+Z repunha-o — aí a reconciliação do quadro seguinte via *«um path sem
+        // entidade»* e **CUNHAVA** uma: `Transform::default()`, sem `ChildOf`, chamada `Path N`.
+        // Isto é, exactamente, um objeto **sem pai na origem do mundo**.
+        //
+        // ```text
+        // UNDO+1: Path 0<-None@Vec2(0.0, 0.0) | Path 1<-None@Vec2(0.0, 0.0)
+        // ```
+        //
+        // ⚠️ **Aqui, e não no dreno do Delete:** todo `despawn` produz a mesma inconsistência, e o
+        // Delete é só um dos produtores. E é aqui que ela deixa de existir para os DOIS
+        // consumidores — *undo e save gravam a MESMA captura*, que é a lei deste módulo: um save
+        // feito no mesmo quadro escrevia o fantasma no ficheiro.
+        //
+        // ⚠️ **Sim, esta chamada pode CRIAR entidades** (a 3.ª direcção do `sync` cunha a entidade
+        // de um path novo). É o que o quadro seguinte faria de qualquer maneira, e fazê-lo antes da
+        // fotografia é o que põe a entidade **dentro** do passo de undo em vez de fora dele.
+        // Idempotente: com o mundo e o documento a par, é no-op.
+        //
+        // ⚠️ **Empréstimos DISJUNTOS de `self`** — `gfx` e `vec_entities` são campos diferentes.
+        if let Some(gfx) = self.gfx.as_mut() {
+            crate::vec_entities::sync(&mut gfx.sim, &mut gfx.vec_scene, &mut self.vec_entities);
+        }
         // ⚠️ Empréstimos DISJUNTOS de `self` — o ledger e o `gfx` são campos diferentes, e é por
         // isso que os dois podem estar vivos ao mesmo tempo.
         let drive = &self.preview_drive;

@@ -567,6 +567,10 @@ mod ui_states_bool_smoke;
 mod ui_states_smoke;
 mod undo;
 mod undo_route;
+/// ⭐ **O fantasma na origem** (report do Enio, 2026-08-27) — o mundo e o documento têm de
+/// concordar ANTES da fotografia do undo.
+#[cfg(test)]
+mod undo_vec_ghost_tests;
 mod units_smoke;
 mod value_curve_smoke;
 mod value_gain_smoke;

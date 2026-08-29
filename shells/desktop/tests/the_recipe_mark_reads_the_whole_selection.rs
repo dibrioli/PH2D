@@ -109,3 +109,36 @@ fn each_smoke_scene_tells_the_artist_to_click_the_recipe_row() {
         );
     }
 }
+
+/// ⭐⭐⭐ **A FOTOGRAFIA reconcilia o documento primeiro** — report do Enio, 2026-08-27: *«as peças
+/// apagadas voltaram sem pais e na posição (0,0) do mundo»*.
+///
+/// A reconciliação `path ⟺ entidade` corre CEDO no quadro e o *Delete* corre TARDE, então o quadro
+/// em que uma forma vetorial é apagada termina com a entidade morta e o `VecPath` dela vivo. O
+/// undo fotografava esse instante; ao repô-lo, a reconciliação seguinte **cunhava** uma entidade
+/// para o path órfão — `Transform::default()`, sem `ChildOf`. Um objeto **sem pai na origem**.
+///
+/// # Porque é arch-gate
+///
+/// O gate de unidade (`undo_vec_ghost_tests`) mede a PROPRIEDADE com a reconciliação escrita nele.
+/// O que ele não pode ver é se o **produto** a chama — e era exactamente isso que faltava: as
+/// funções todas estavam certas, e ninguém as punha por esta ordem. *Um gate sobre uma lei não
+/// prova que alguém a invoca.*
+#[test]
+fn the_photograph_reconciles_the_document_first() {
+    let s = src("undo.rs");
+    let Some(at) = s.find("fn capture_project(") else {
+        panic!("a porta unica da fotografia mudou de nome — reancore este gate");
+    };
+    let block = &s[at..];
+    let end = block
+        .find("ProjectState::capture(")
+        .expect("o `capture_project` deixou de tirar a fotografia");
+    let block = &block[..end];
+    assert!(
+        block.contains("vec_entities::sync"),
+        "a fotografia do undo (e do SAVE — e' a mesma porta) deixou de reconciliar o documento \
+         com o mundo antes de fotografar. Um quadro que apaga uma forma vetorial termina \
+         inconsistente, e repor esse instante cunha um objeto sem pai na origem.\n{block}"
+    );
+}

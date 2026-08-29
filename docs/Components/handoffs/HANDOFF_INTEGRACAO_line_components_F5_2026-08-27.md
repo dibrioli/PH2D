@@ -272,11 +272,17 @@ gate que já existia.
 
 ## 9 — Estado do gate batched
 
-`CARGO_INCREMENTAL=0 bash scripts/nextest-impacted.sh` — resultado colado no fecho da linha (§10).
+```
+NO_FAIL_FAST=1 CARGO_INCREMENTAL=0 bash scripts/nextest-impacted.sh
+Summary [27.406s] 11377 tests run: 11377 passed, 1226 skipped
+```
+⚠️ **A 1.ª corrida (com fail-fast) parou em 3 384 com 7 993 por correr**, num ✗ da flake abaixo — e
+um resultado assim **não diz** se o resto está verde. A corrida que vale é a de cima.
 `cargo fmt --all` ✅ · `clippy --all-targets` ✅ nas 4 crates tocadas.
 ⚠️ **Flake conhecida e PRÉ-EXISTENTE** encontrada nesta jornada:
-`flip_smooth::resample_measurement::precisao::orcamento::a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget`
-— membro **nomeado** da família de flakes de recurso sob fan-out (`CLAUDE.md` §5.0). Verde sozinho
+`flip_smooth::resample_measurement::precisao::orcamento::{a_long_stroke_is_bounded_by_the_redundancy_floor_not_by_a_budget, the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke}`
+— ⚠️ **DOIS membros diferentes em duas corridas do mesmo binário**, que é a assinatura de carga e
+não de lógica. Membros **nomeados** da família de flakes de recurso sob fan-out (`CLAUDE.md` §5.0). Verde sozinho
 (`--test-threads=1`), commit sem uma linha no módulo dele. ⇒ **re-rode sozinho antes de suspeitar
 do merge.**
 

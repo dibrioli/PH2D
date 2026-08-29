@@ -255,3 +255,7 @@ alguém dizer com que números ela se mede.
 | Teto de excentricidade do elipsóide | a forma está **correta**; só a marcha viva degrada (`324` passos a `1:64` contra `MAX_STEPS = 400`) — limitar a peça pelo previsualizador é o §0 ao contrário |
 | Polígono dos vales **+ um triângulo por ponta** | é uma **partição**: `min` de peças que se tocam sem se sobrepor dá `0` no interior do sólido (doc 06 §101.5) |
 | `MAX_STAR_POINTS` acima de 16 | `24` pontas custam `5,17×` o cilindro, contra o `3,80×` que o `MAX_PRISM_SIDES` fixou como preço aceite |
+
+| Filete que só é arco a **90°** | `(1 − 1/√2)·r/sin α` contra `r·(1/sin α − 1)`; as duas curas (canto exato · raio compensado) **pioram** a sonda de arestas (doc 06 §102.5) |
+| Canto exato dobrado sobre expressão composta | a corda e o disco são globais: `0,0 %` → `1,3 %` de aresta viva no prisma (doc 06 §102.5) |
+| Sonda de arestas semeada só por FORA | cega ao vinco **côncavo**: a mutação do vale da estrela sobrevive (`1,4 %` → `1,3 %`, ruído) — doc 06 §102.1 |

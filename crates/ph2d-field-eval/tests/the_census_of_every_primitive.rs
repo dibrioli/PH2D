@@ -104,6 +104,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             major: 0.4,
             minor: 0.15,
             angle: std::f64::consts::PI as f32 * 1.3,
+            round: 0.04,
         },
         // ⚠️ **CINCO pontas**, que é o número ímpar: com um par, metade das paredes cai sobre a
         // outra metade por simetria, e uma costura entre pipas vizinhas nunca seria varrida em

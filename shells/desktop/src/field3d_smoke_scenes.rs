@@ -460,6 +460,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             major: 0.26,
                             minor: 0.073,
                             angle: std::f32::consts::PI,
+                            round: 0.026,
                         },
                         x(0.82),
                     ),

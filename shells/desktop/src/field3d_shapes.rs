@@ -280,6 +280,7 @@ fn a_torus_arc(r: f32) -> Primitive {
         major: r,
         minor: r * 0.28,
         angle: std::f32::consts::PI,
+        round: r * 0.28 * 0.35,
     }
 }
 

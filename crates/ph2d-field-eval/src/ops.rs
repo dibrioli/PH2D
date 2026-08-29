@@ -122,6 +122,48 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
     length2(&q, &Tree::z()) - Tree::constant(minor)
 }
 
+/// ⭐⭐⭐ **O FILETE DESTA CASA SÓ É UM ARCO A 90°, e as DUAS curas foram medidas e rejeitadas**
+/// (W104).
+///
+/// # O achado
+///
+/// A interseção arredondada publicada é `length2(r + a, r + b) − r`, e o zero dela é
+/// `(a+r)² + (b+r)² = r²` — o círculo de raio `r` à volta do ponto que dista `r` das duas faces,
+/// que é **exactamente** o centro do filete. ⚠️ Mas `length2(a, b)` só é a distância euclidiana se
+/// os dois gradientes forem **ortogonais**. ⇒ o vértice recua `(1 − 1/√2)·r/sin α` em vez do
+/// `r·(1/sin α − 1)` de um arco verdadeiro:
+///
+/// | meio-ângulo interno `α` | recuo do operador | recuo de um arco de raio `r` | razão |
+/// |---|---|---|---|
+/// | **45°** (quina recta) | `0,414 r` | `0,414 r` | **1,00** |
+/// | 30° | `0,586 r` | `1,000 r` | 1,71 |
+/// | **19,2°** (ponta de estrela) | `0,892 r` | `2,046 r` | **2,29** |
+///
+/// ⇒ o mesmo número dá filetes de tamanhos diferentes conforme o ângulo da quina, e uma ponta muito
+/// aguda arredonda **2,3× menos** do que se pediu.
+///
+/// # ⛔⛔ As duas curas, CONSTRUÍDAS e REJEITADAS pela sonda de arestas
+///
+/// A régua é `measure_sharp_edges` (fração da superfície sobre um vinco, com o filete a metade do
+/// limite):
+///
+/// | construção | prisma | estrela |
+/// |---|---|---|
+/// | **o operador, tal como shipa** | **`0,0 %` · 2°** | **`0,1 %` · 35°** |
+/// | canto **exato** (`min(max(f1,f2,corda), disco)` no referencial `(u,w)` do par de planos) | `0,4 %` · 31° | `1,8 %` · 61° |
+/// | raio **compensado** pelo ângulo (`r·(1−sin α)/(1−1/√2)`) | `5,4 %` · 50° | `0,2 %` · 48° |
+///
+/// ⭐ **O canto exato dá o arco certo e é 1-Lipschitz** — e crava no **vértice de 3 vias**, onde uma
+/// quina lateral encontra o aro: ele é `min`/`max` de ramos com troca **dura**, e os dois filetes
+/// que ali se encontram não concordam. *O operador é LISO, e a suavidade dele no vértice vale mais
+/// do que a exactidão dele na aresta.*
+///
+/// ⭐ **A compensação dá o recuo certo** — e parte o prisma pela razão simétrica: ela torna o recuo
+/// igual **fazendo a largura da mistura diferente** em cada aresta, e onde duas misturas de larguras
+/// diferentes se encontram nasce o mesmo vinco. *«Arredondar por igual» tem duas leituras — o recuo
+/// e a largura — e só uma delas sobrevive a um vértice.*
+///
+/// ⇒ fica o operador cru, e a dependência do ângulo fica **nomeada e medida**.
 /// ⭐⭐⭐ **A LEI DAS TRÊS FORMAS DA W101, numa frase:** *um sólido de parede reta é a interseção de
 /// uma laje com meias-fatias, e `max` de funções 1-Lipschitz é 1-Lipschitz.*
 ///
@@ -162,19 +204,10 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
 /// É o corpo com os cantos redondos. *A receita nunca foi «encolher e deslocar»: era «encolher uma
 /// distância EXATA e deslocar».*
 ///
-/// ⚠️ Medido (amostras dentro da peça, sem filete → com o filete máximo): caixa `−34,5 %`, cilindro
-/// `−27,6 %`, **cone `+0,0 %`**, **prisma `+0,0 %`** — bit a bit o mesmo campo —, e a cunha
-/// **`+41,0 %`**, que é o mesmo defeito mais um sinal trocado no plano do corte (recuar um
-/// semiespaço é **somar** `r`, e o `sd_wedge` subtraía).
-///
-/// ⭐ **A cura é a porta que já existia:** a interseção com `Blended::Exact(r)` — a mesma que o
-/// artista escolhe entre duas formas. As paredes ficam **onde foram autoradas** (nada de encolher e
-/// repor), e o aro sai com o raio pedido.
-///
 /// `walls` são as meias-fatias já **normalizadas** (gradiente unitário); `half_height` é a laje em Z.
-fn slab_and_walls(walls: Tree, half_height: f64, round: f64) -> Tree {
+fn slab_and_walls(walls: &Tree, half_height: f64, round: f64) -> Tree {
     let slab = Tree::z().abs() - Tree::constant(half_height);
-    intersection(&slab, &walls, Blended::Exact(round))
+    intersection(&slab, walls, Blended::Exact(round))
 }
 
 /// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
@@ -197,7 +230,7 @@ fn tapered_wall(radial: &Tree, bottom: f64, top: f64, half_height: f64) -> Tree 
 pub fn sd_cone(bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
     let radial = length2(&Tree::x(), &Tree::y());
     slab_and_walls(
-        tapered_wall(&radial, bottom, top, half_height),
+        &tapered_wall(&radial, bottom, top, half_height),
         half_height,
         round,
     )
@@ -225,20 +258,31 @@ pub fn sd_capsule(radius: f64, half_height: f64) -> Tree {
 /// isso que faz a pirâmide não ser uma segunda resposta à mesma pergunta.
 pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
     let n = sides.max(3);
-    let k = f64::from(std::f32::consts::PI / n as f32).cos();
+    let beta = std::f64::consts::PI / f64::from(n);
+    let k = beta.cos();
     let (b, t) = (bottom * k, top * k);
-    let mut walls: Option<Tree> = None;
-    for i in 0..n {
+    let parede = |i: u32| {
         let ang = std::f64::consts::TAU * (f64::from(i) + 0.5) / f64::from(n);
         let radial = Tree::x() * Tree::constant(ang.cos()) + Tree::y() * Tree::constant(ang.sin());
-        let d = tapered_wall(&radial, b, t, half_height);
-        walls = Some(walls.map_or_else(|| d.clone(), |w: Tree| w.max(d.clone())));
+        tapered_wall(&radial, b, t, half_height)
+    };
+    // ⭐⭐⭐ **AS QUINAS LATERAIS ARREDONDAM COM O MESMO RAIO** (W104 — a 2.ª foto do Enio: uma
+    // pirâmide com o aro de baixo redondo e as arestas laterais vivas).
+    //
+    // ⚠️ A W103 fechava as paredes com `max` cru e só arredondava o aro, e o doc chamava-lhe *«a
+    // mesma divisão do `Extrude`»*. ⛔ **Não é a mesma:** ali a quina do contorno tem um dono
+    // declarado (o editor vetorial, com `Live Corners`), e aqui **ninguém a possui**. *Uma divisão
+    // de responsabilidade copiada de outra forma é uma aresta órfã quando o segundo dono não existe.*
+    let mut walls: Option<Tree> = None;
+    for i in 0..n {
+        let d = parede(i);
+        walls = Some(walls.map_or_else(
+            || d.clone(),
+            |w: Tree| intersection(&w, &d, Blended::Exact(round)),
+        ));
     }
     let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
-    // ⚠️ **As quinas VERTICAIS ficam vivas** (o `max` entre paredes), e só o **aro** arredonda: é o
-    // que o `round` desta primitiva promete, e é a mesma divisão do [`ph2d_field::Primitive::Extrude`]
-    // (a quina do contorno tem outro dono).
-    slab_and_walls(walls, half_height, round)
+    slab_and_walls(&walls, half_height, round)
 }
 
 /// Cunha: a caixa de meias-extensões `half` cortada pelo plano que liga `(−hx, +hz)` a `(+hx, −hz)`.
@@ -276,7 +320,7 @@ pub fn sd_wedge(half: [f64; 3], round: f64) -> Tree {
 ///
 /// ⚠️ `angle >= 2π` devolve o toro inteiro: não há dois semiplanos que exprimam «tudo», e inventar
 /// um corte de `2π − ε` deixaria uma fenda invisível que o artista descobria ao exportar.
-pub fn sd_torus_arc(major: f64, minor: f64, angle: f64) -> Tree {
+pub fn sd_torus_arc(major: f64, minor: f64, angle: f64, round: f64) -> Tree {
     let torus = sd_torus(major, minor);
     if angle >= std::f64::consts::TAU {
         return torus;
@@ -291,7 +335,10 @@ pub fn sd_torus_arc(major: f64, minor: f64, angle: f64) -> Tree {
     } else {
         n1.min(n2)
     };
-    torus.max(setor)
+    // ⭐⭐ **Os DOIS aros do corte arredondam** (W104): a sonda de arestas media `30 %` da superfície
+    // deste arco sobre um vinco de `88°`, e ele **não tinha controle de filete nenhum** — era a
+    // única forma do catálogo com aresta autorada e sem o slider que a trata.
+    intersection(&torus, &setor, Blended::Exact(round))
 }
 
 /// União dura: `min(a, b)`. É aqui que nasce a quina viva.
@@ -340,22 +387,40 @@ pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
     let polar = |r: f64, a: f64| [r * a.cos(), r * a.sin()];
-    let mut shape = length2(&Tree::x(), &Tree::y()) - Tree::constant(inner);
+    let disco = length2(&Tree::x(), &Tree::y()) - Tree::constant(inner);
+    let mut pontas: Option<Tree> = None;
     for k in 0..n {
         let phi = std::f64::consts::TAU * f64::from(k) / f64::from(n);
         let tip = polar(outer, phi);
         let (before, after) = (polar(inner, phi - beta), polar(inner, phi + beta));
-        // As duas arestas da ponta, no sentido anti-horário do contorno.
-        let kite = half_plane(before, tip).max(half_plane(tip, after));
-        // ⚠️ E o SECTOR, que é o que impede a cunha da ponta de sair pelo lado oposto da peça — a
-        // mesma dupla de semiplanos pela origem do [`sd_torus_arc`], com abertura `2π/n < π`.
+        // ⭐⭐⭐ **A PONTA é uma quina CONVEXA**, e arredonda-se com o arco exato de raio `round`
+        // (W104, a 1.ª foto do Enio).
+        let ponta = intersection(
+            &half_plane(before, tip),
+            &half_plane(tip, after),
+            Blended::Exact(round),
+        );
+        // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
+        // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
         let (a1, a2) = (phi - beta, phi + beta);
         let h1 = Tree::x() * Tree::constant(a1.sin()) - Tree::y() * Tree::constant(a1.cos());
         let h2 = Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos());
-        shape = shape.min(kite.max(h1).max(h2));
+        let pipa = ponta.max(h1).max(h2);
+        // ⭐⭐⭐ **O VALE é uma quina CÔNCAVA**, e uma quina côncava arredonda-se ACRESCENTANDO
+        // material no entalhe — o dual de De Morgan do mesmo arco.
+        //
+        // ⚠️ Ao longo da divisória (do centro ao vale) as duas pipas cobrem os dois lados, então não
+        // há para onde acrescentar e nada é acrescentado — o efeito é **só** no vale.
+        pontas = Some(pontas.map_or_else(
+            || pipa.clone(),
+            |w: Tree| union(&w, &pipa, Blended::Exact(round)),
+        ));
     }
-    // ⚠️ **Só o ARO arredonda**, como no prisma: as pontas do contorno ficam vivas.
-    slab_and_walls(shape, half_height, round)
+    let pontas = pontas.unwrap_or_else(|| Tree::constant(0.0));
+    // ⚠️ **O disco entra por `min` CRU** — ele é enchimento interior e não fronteira, e arredondar
+    // contra ele misturaria um raio a mais no vale (a fronteira dele passa exactamente por lá). Ver
+    // a nota da costura, acima: com `round = 0` ele continua a ser o que a mata.
+    slab_and_walls(&pontas.min(disco), half_height, round)
 }
 
 /// ⭐⭐ **A gaiola de uma caixa** — as 12 arestas de secção quadrada, em **três** vigas dobradas.

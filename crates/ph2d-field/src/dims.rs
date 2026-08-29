@@ -354,6 +354,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             major,
             minor,
             angle,
+            round,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -372,6 +373,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *angle,
                 span: Span::Wall(std::f32::consts::TAU),
             },
+            round_dim(*round),
         ],
         // ⭐⭐ **DOIS RAIOS, como o Illustrator** (W103) — e não um raio mais uma razão. ⚠️ A razão
         // seria o único número adimensional deste arquivo, e o artista que quer *«a ponta a 40 e o
@@ -558,7 +560,8 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Prism { .. }
             | Primitive::Wedge { .. }
             | Primitive::Star { .. }
-            | Primitive::BoxFrame { .. }),
+            | Primitive::BoxFrame { .. }
+            | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);
@@ -608,12 +611,12 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Prism { round, .. }
         | Primitive::Wedge { round, .. }
         | Primitive::Star { round, .. }
-        | Primitive::BoxFrame { round, .. } => *round = value,
+        | Primitive::BoxFrame { round, .. }
+        | Primitive::TorusArc { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. }
         | Primitive::Ellipsoid { .. } => {}
     }
     Ok(())
@@ -641,7 +644,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Prism { round, .. }
         | Primitive::Wedge { round, .. }
         | Primitive::Star { round, .. }
-        | Primitive::BoxFrame { round, .. } => {
+        | Primitive::BoxFrame { round, .. }
+        | Primitive::TorusArc { round, .. } => {
             if *round > ceiling {
                 *round = ceiling.max(0.0);
                 return true;
@@ -652,7 +656,6 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. }
         | Primitive::Ellipsoid { .. } => false,
     }
 }
@@ -756,7 +759,9 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             major,
             minor,
             angle: _,
+            round,
         } => {
+            *round *= factor;
             // ⚠️ **O ÂNGULO não escala** — ele é adimensional. Multiplicá-lo faria o arco fechar-se
             // ao aumentar a peça, que é mudar a forma e não o tamanho (a mesma lei da contagem).
             *major *= factor;

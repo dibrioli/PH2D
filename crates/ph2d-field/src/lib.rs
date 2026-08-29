@@ -93,8 +93,11 @@ use serde::{Deserialize, Serialize};
 /// variantes **acrescentadas no fim** do `enum` — nenhum índice existente se move —, e o degrau sobe
 /// pela lei do módulo, como o v7.
 ///
+/// v10: o [`Primitive::TorusArc`] ganhou `round`. É campo novo numa variante, e postcard é
+/// **posicional**: um documento v9 leria o ângulo dele como filete.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 9;
+pub const FIELD_DOC_VERSION: u32 = 10;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -210,7 +213,17 @@ pub enum Primitive {
     /// exprimam «tudo»). Abaixo disso o sector é a interseção de dois semiplanos até `π` e a
     /// **união** deles acima — uma escolha feita ao MONTAR a árvore, em Rust, e não com uma
     /// ramificação dentro do campo (ver `ops::sd_torus_arc`).
-    TorusArc { major: f32, minor: f32, angle: f32 },
+    TorusArc {
+        major: f32,
+        minor: f32,
+        angle: f32,
+        /// ⭐ **Os dois aros do corte** (W104) — a aresta entre a face cortada e o tubo.
+        ///
+        /// ⚠️ Ela **não existia** até à W104, e a ausência não era uma decisão: a sonda de arestas
+        /// mediu `30 %` da superfície deste arco sobre um vinco de `88°`, e esta era a única forma
+        /// do catálogo com aresta autorada e **sem o slider que a trata**.
+        round: f32,
+    },
     /// ⭐⭐⭐ **Estrela de `points` pontas puxada em Z** (W103) — `outer` é o raio das PONTAS e
     /// `inner` o dos VALES.
     ///
@@ -896,9 +909,11 @@ fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
             major,
             minor,
             angle,
+            round,
         } => {
             positive(major, "major")?;
             positive(minor, "minor")?;
+            round_fits(round, round_limit(p).unwrap_or(0.0))?;
             // ⚠️ **O ângulo é o único número deste arquivo cujo teto importa tanto quanto o piso**:
             // acima de `2π` o sector deixa de ser exprimível por semiplanos, e a porta coage em vez
             // de recusar (o slider pára lá, e só um documento estragado traz mais).

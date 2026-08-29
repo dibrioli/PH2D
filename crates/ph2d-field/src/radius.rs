@@ -25,14 +25,14 @@ impl FieldDoc {
                 | Primitive::Prism { round, .. }
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
-                | Primitive::BoxFrame { round, .. } => Some(*round),
+                | Primitive::BoxFrame { round, .. }
+                | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. }
                 | Primitive::Ellipsoid { .. } => None,
             },
             // Uma escultura não tem aresta autorada: o `round` dela é a malha.
@@ -137,14 +137,14 @@ impl NodeShape {
                 | Primitive::Prism { round, .. }
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
-                | Primitive::BoxFrame { round, .. } => Some(*round),
+                | Primitive::BoxFrame { round, .. }
+                | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. }
                 | Primitive::Ellipsoid { .. } => None,
             },
         }
@@ -213,13 +213,13 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Prism { round, .. }
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
-                | Primitive::BoxFrame { round, .. } => *round = radius,
+                | Primitive::BoxFrame { round, .. }
+                | Primitive::TorusArc { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. }
                 | Primitive::Ellipsoid { .. } => {}
             }
             Ok(())
@@ -250,8 +250,10 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. }
         | Primitive::Ellipsoid { .. } => None,
+        // ⚠️ **O raio do TUBO**: o filete come o aro do corte de dentro para fora, e a `minor` ele
+        // teria comido o tubo inteiro — a face cortada deixaria de existir.
+        Primitive::TorusArc { minor, .. } => Some(*minor),
         // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
         //
         // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular
@@ -392,12 +394,12 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         Primitive::Cone { round, .. }
         | Primitive::Prism { round, .. }
         | Primitive::Wedge { round, .. }
-        | Primitive::Star { round, .. } => *round != 0.0,
+        | Primitive::Star { round, .. }
+        | Primitive::TorusArc { round, .. } => *round != 0.0,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. }
         | Primitive::Ellipsoid { .. } => false,
     }
 }

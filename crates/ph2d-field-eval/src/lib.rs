@@ -106,7 +106,13 @@ pub(crate) fn primitive(p: &Primitive) -> Tree {
             major,
             minor,
             angle,
-        } => ops::sd_torus_arc(f64::from(major), f64::from(minor), f64::from(angle)),
+            round,
+        } => ops::sd_torus_arc(
+            f64::from(major),
+            f64::from(minor),
+            f64::from(angle),
+            f64::from(round),
+        ),
         Primitive::Star {
             points,
             outer,

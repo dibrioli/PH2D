@@ -126,41 +126,77 @@ fn the_tips_reach_the_outer_radius_and_the_valleys_the_inner_one() {
     }
 }
 
-/// ⭐⭐ **SÓ O ARO ARREDONDA; a quina VERTICAL da ponta fica viva** — a divisão que o `round` desta
-/// forma promete, e a mesma do prisma.
+/// ⭐⭐⭐ **O FILETE ALCANÇA A PONTA E O VALE, E O QUANTO É ANALÍTICO** (W104).
 ///
-/// ⚠️ Ela precisa das **duas** metades: sem a segunda, um filete que arredondasse tudo passaria; sem
-/// a primeira, um filete inerte passaria (e foi exactamente esse o defeito da W101, apanhado pelo
-/// censo).
+/// # ⛔ A W103 afirmava o CONTRÁRIO, e o smoke do Enio devolveu a foto
+///
+/// O gate anterior chamava-se *«só o aro arredonda; a quina vertical da ponta fica viva»*, e o
+/// doc-comment dele dizia que era *«a mesma divisão do `Extrude`»*. ⚠️ **Não era a mesma:** no
+/// `Extrude` a quina do contorno tem um **dono declarado** (o editor vetorial, com os `Live
+/// Corners`); aqui não havia dono nenhum — o artista só tem este slider. *Uma divisão de
+/// responsabilidade copiada de outra forma é uma aresta órfã quando o segundo dono não existe.*
+///
+/// # A lei, e ela CARREGA a dependência do ângulo
+///
+/// O operador de filete desta casa recua o vértice `(1 − 1/√2)·r/sin α`, com `α` o meio-ângulo
+/// interno da quina — e **não** o `r·(1/sin α − 1)` de um arco verdadeiro (os dois coincidem a 45°
+/// e divergem fora dali; ver a nota do `ops`, com as duas curas medidas e rejeitadas). Os dois
+/// `sin α` saem da MESMA aresta: `inner·sin β/|u|` na ponta e `outer·sin β/|u|` no vale.
+///
+/// ⚠️ Este gate mede a lei **e** a razão para o arco verdadeiro — se alguém trocar o operador, a
+/// segunda afirmação diz **em que direção** ele mudou, em vez de só reprovar.
 #[test]
-fn only_the_rim_of_a_star_is_rounded_and_the_vertical_tip_stays_sharp() {
-    let round = 0.05_f32;
-    let limite = ph2d_field::round_limit(&a_star(0.0)).expect("a estrela tem filete");
+fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says() {
+    let round = 0.05_f64;
+    let limite = f64::from(ph2d_field::round_limit(&a_star(0.0)).expect("a estrela tem filete"));
     assert!(
         round < limite,
         "a fixtura tem de caber no limite ({limite:.4}) para medir o que quer"
     );
-    let vivo = field_of(a_star(0.0));
-    let redondo = field_of(a_star(round));
-    let ponta = (OUTER, 0.0);
-    // A meia-altura, a quina da ponta é uma aresta **vertical** — nenhum dos dois a toca.
-    for (nome, f) in [("vivo", &vivo), ("redondo", &redondo)] {
-        let r = boundary_radius(f, 1.0, 0.0, 1.0);
-        assert!(
-            (r - OUTER).abs() < 1.0e-4,
-            "«{nome}»: a ponta a meia-altura mede {r:.6} e foi pedida a {OUTER} — o filete do ARO \
-             não pode comer a quina vertical"
-        );
-    }
-    // Junto à tampa, o filete TEM de ter comido.
-    let z = HALF_H * 0.999;
+    let recuo = 1.0 - std::f64::consts::FRAC_1_SQRT_2;
+    let beta = std::f64::consts::PI / f64::from(STAR_POINTS);
+    let u = (OUTER * OUTER + INNER * INNER - 2.0 * OUTER * INNER * beta.cos()).sqrt();
+    let sin_ponta = INNER * beta.sin() / u;
+    let sin_vale = OUTER * beta.sin() / u;
+    let esperado_ponta = OUTER - recuo * round / sin_ponta;
+    let esperado_vale = INNER + recuo * round / sin_vale;
+
+    let f = field_of(a_star(round as f32));
+    let ponta = boundary_radius(&f, 1.0, 0.0, 1.0);
+    let vale = boundary_radius(&f, beta.cos(), beta.sin(), 1.0);
     assert!(
-        vivo.at(ponta.0 * 0.999, 0.0, z) < 0.0,
-        "sem filete, a quina da ponta junto à tampa está dentro"
+        (ponta - esperado_ponta).abs() < 1.0e-3,
+        "a ponta filetada mede {ponta:.6} e o operador diz {esperado_ponta:.6}"
     );
     assert!(
-        redondo.at(ponta.0 * 0.999, 0.0, z) > 0.0,
-        "com filete de {round}, a quina da ponta junto à tampa tem de estar FORA — o aro arredonda"
+        (vale - esperado_vale).abs() < 1.0e-3,
+        "o vale filetado mede {vale:.6} e o operador diz {esperado_vale:.6}"
+    );
+    // ⭐ **A dependência do ângulo, medida:** um arco verdadeiro de raio `r` recuaria a ponta
+    // `r·(1/sin α − 1)`. A razão é o que o `CLAUDE.md` §0 exige de um limite — o número, não a
+    // impressão.
+    let arco = round * (1.0 / sin_ponta - 1.0);
+    let razao = arco / (recuo * round / sin_ponta);
+    assert!(
+        (razao - 2.29).abs() < 0.05,
+        "a ponta desta fixtura devia arredondar {razao:.2}× menos do que um arco verdadeiro, e a \
+         conta deu outro número — o operador mudou"
+    );
+    // ⛔ **O CONTROLE, e são DOIS**: sem filete os dois estão nos raios autorados, e o filete tem de
+    // os mover em **sentidos opostos**. Sem esta metade, um construtor que encolhesse a estrela
+    // inteira passaria a primeira.
+    let vivo = field_of(a_star(0.0));
+    assert!(
+        (boundary_radius(&vivo, 1.0, 0.0, 1.0) - OUTER).abs() < 1.0e-4,
+        "sem filete a ponta tem de estar no raio autorado"
+    );
+    assert!(
+        ponta < OUTER - 1.0e-3,
+        "o filete tem de encolher a PONTA (convexa)"
+    );
+    assert!(
+        vale > INNER + 1.0e-4,
+        "o filete tem de afastar o VALE (côncavo) — uma quina côncava arredonda-se ACRESCENTANDO"
     );
 }
 

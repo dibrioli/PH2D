@@ -330,6 +330,7 @@ fn a_torus_arc_covers_exactly_the_angle_asked() {
             major: major as f32,
             minor: minor as f32,
             angle: angle as f32,
+            round: 0.0,
         });
         let dentro = |t: f64| f.at(major * t.cos(), major * t.sin(), 0.0) < 0.0;
         // No meio do sector: dentro. Um cabelo fora dele: fora.
@@ -363,6 +364,7 @@ fn a_full_sweep_is_the_whole_torus() {
         major: 0.4,
         minor: 0.12,
         angle: std::f32::consts::TAU,
+        round: 0.0,
     });
     for i in 0..64 {
         let t = std::f64::consts::TAU * f64::from(i) / 64.0;

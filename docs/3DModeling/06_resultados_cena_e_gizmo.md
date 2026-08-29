@@ -9744,3 +9744,134 @@ construída aqui.
   Ela **coage nos dois sentidos** (`keep_below`/`keep_above`) — recusar pararia um arrasto do outro
   controlo sem dizer porquê, num campo em que o artista nem estava a tocar.
 - Cena de smoke **`=11`** (estrela · gaiola · elipsóide, lado a lado).
+
+---
+
+## §102 — W104: ⭐⭐⭐ TODA ARESTA ARREDONDA — e o filete só é um arco a 90° (29/08)
+
+**O report do Enio** (com duas fotos): *«veja se o fillet da estrela pode ser melhorado»* ·
+*«veja se o algoritmo da estrela poderia arredondar as quinas externas e internas como no módulo
+vector»* · *«Fillet não funcionava em várias formas criadas. Melhor revisar todas»* · *«Veja prisma.
+Temos fillet para algumas arestas e não para outra»* · *«Várias formas não podem ter suas arestas
+arredondadas por igual para criar um aspecto de subdivision do blender»*.
+
+### §102.1 — ⭐⭐⭐ O instrumento: a sonda ACHA as arestas, não as recebe numa lista
+
+*«Revisar todas»* respondido por uma lista escrita à mão de *«que arestas esta forma tem»* só
+encontra as arestas que **quem a escreveu já conhecia** — e o report é exactamente sobre arestas que
+ninguém tinha listado. ⇒ `measure_sharp_edges` projecta pontos na superfície e mede a **variação da
+normal** numa vizinhança pequena: numa superfície lisa a normal roda `~2d/r`; numa aresta viva ela
+**salta o ângulo diedro**, seja qual for `d`. A coluna que interessa é *«que fração da superfície
+está sobre um vinco»*, e a lista de formas sai de `PrimitiveKind::ALL` ⇒ **uma primitiva nova entra
+sozinha**.
+
+⛔⛔ **E a sonda nasceu CEGA a metade do problema.** Semeada só com **direcções** (um ponto por
+direcção, à distância do bordo), ela não vê **vinco côncavo**: de fora, o gradiente aponta para a
+face mais próxima e escorrega para longe do entalhe. Medido — apagar o arredondamento do **vale** de
+uma estrela movia a leitura de `1,4 %` para `1,3 %`, que é ruído: *a mutação sobreviveu ao gate e só
+morreu no gate analítico do vale.* ⇒ segunda família de sementes, uma **grelha dentro da caixa**: de
+dentro o gradiente aponta para a superfície mais próxima, e os pontos no cone de influência do
+entalhe projectam-se **nele**. Com ela, a mesma mutação passa a ler `2,6 %` e morre.
+*Uma sonda que só olha de fora só encontra o que é convexo.*
+
+### §102.2 — A auditoria, antes e depois
+
+Fração da superfície sobre um vinco (`> 25°` de salto de normal), com o filete a **metade** do
+limite — o regime de uso; o máximo é a forma degenerada:
+
+| forma | sem filete | ANTES (W103) | DEPOIS (W104) |
+|---|---|---|---|
+| box · cylinder · cone · wedge · box_frame | 10–67 % | 0,0 % | 0,0 % |
+| **prism** | 19,0 % | **8,2 %** · 60° | **0,0 %** · 4° |
+| **star** | 56,2 % | **30,2 %** · 88° | **1,2 %** · 37° |
+| **torus_arc** | 29,8 % | **30,0 %** — *sem controle de filete nenhum* | **0,0 %** · 4° |
+| sphere · torus · capsule · ellipsoid | 0,0 % | (não têm aresta) | (idem) |
+
+⇒ as três lacunas eram: as **quinas laterais** do prisma (a 2.ª foto), as **pontas e os vales** da
+estrela (a 1.ª), e o **arco de toro**, que era a única forma do catálogo com aresta autorada e
+**sem o slider que a trata** — ninguém tinha reparado.
+
+### §102.3 — As curas
+
+- **Prisma**: as paredes fecham-se umas nas outras com o aro arredondado, em vez de `max` cru.
+  ⚠️ O doc da W103 chamava à divisão *«a mesma do `Extrude`»*. ⛔ **Não é a mesma:** ali a quina do
+  contorno tem um **dono declarado** (o editor vetorial, com os `Live Corners`); aqui **ninguém a
+  possui** — o artista só tem este slider. *Uma divisão de responsabilidade copiada de outra forma é
+  uma aresta órfã quando o segundo dono não existe.*
+- **Estrela**: a **ponta** é uma quina **convexa** (interseção arredondada das suas duas arestas) e o
+  **vale** é uma quina **côncava** (união arredondada entre pipas vizinhas — uma quina côncava
+  arredonda-se **acrescentando** material). ⚠️ O **sector** entre pipas corta **a seco**, de
+  propósito: ele não é uma aresta da peça, e arredondá-lo abriria um sulco **dentro** do sólido.
+- **Arco de toro**: ganhou `round` (`FIELD_DOC_VERSION` **9 → 10**), e os dois aros do corte
+  arredondam.
+
+### §102.4 — ⭐⭐⭐ O achado: o filete desta casa só é um ARCO a 90°
+
+A interseção arredondada publicada é `length2(r + a, r + b) − r`, e o zero dela é
+`(a+r)² + (b+r)² = r²` — o círculo de raio `r` à volta do ponto que dista `r` das duas faces, que é
+**exactamente** o centro do filete. ⚠️ Mas `length2(a, b)` só é a distância euclidiana se os dois
+gradientes forem **ortogonais**. ⇒ o vértice recua `(1 − 1/√2)·r/sin α`, e não o `r·(1/sin α − 1)`
+de um arco verdadeiro:
+
+| meio-ângulo interno `α` | recuo do operador | recuo de um arco de raio `r` | razão |
+|---|---|---|---|
+| **45°** (quina recta) | `0,414 r` | `0,414 r` | **1,00** |
+| 30° | `0,586 r` | `1,000 r` | 1,71 |
+| **19,2°** (ponta de estrela) | `0,892 r` | `2,046 r` | **2,29** |
+
+⇒ *«arredondar por igual» é falso enquanto o mesmo número der filetes de tamanhos diferentes
+conforme o ângulo da quina* — uma ponta muito aguda arredonda **2,3× menos** do que se pediu. A
+medição saiu de um gate que reprovou: `0,405396` medido contra `0,347714` previsto pelo arco.
+
+### §102.5 — ⛔⛔ As duas curas foram CONSTRUÍDAS e REJEITADAS pela sonda
+
+| construção | prisma | estrela |
+|---|---|---|
+| **o operador, tal como shipa** | **0,0 %** · 4° | **1,2 %** · 37° |
+| canto **exato** (`min(max(f1,f2,corda), disco)` no referencial `(u,w)` do par de planos) | 0,4 % · 31° | 1,8 % · 61° |
+| raio **compensado** pelo ângulo (`r·(1−sin α)/(1−1/√2)`) | 5,4 % · 50° | 0,2 % · 48° |
+
+⭐ **O canto exato dá o arco certo em qualquer ângulo e é 1-Lipschitz** — e crava no **vértice de
+3 vias**, onde uma quina lateral encontra o aro: ele é `min`/`max` de ramos com troca **dura**, e os
+dois filetes que ali se encontram não concordam. ⚠️ E ele só vale entre **dois planos**: dobrá-lo
+sobre expressões compostas (o acumulado das paredes de um prisma) piorou a leitura de `0,0 %` para
+`1,3 %`, porque a corda e o disco são expressões **globais** de um referencial que deixou de
+descrever a geometria.
+
+⭐ **A compensação dá o recuo certo** — e parte o prisma pela razão simétrica: ela torna o recuo
+igual **fazendo a largura da mistura diferente** em cada aresta, e onde duas misturas de larguras
+diferentes se encontram nasce o mesmo vinco. *«Arredondar por igual» tem duas leituras — o recuo e a
+largura — e só uma delas sobrevive a um vértice.*
+
+⇒ **fica o operador cru**, e a dependência do ângulo fica **nomeada e medida**. *O operador é liso, e
+a suavidade dele no vértice vale mais do que a exactidão dele na aresta.*
+
+### §102.6 — O que sobra, nomeado
+
+⏳ **O vértice de 3 VIAS da estrela** (`1,2 %` da superfície, salto de `37°`): onde a quina da ponta
+e o aro se cruzam. ⚠️ **Não é uma aresta viva** — `37°` sobre `0,004` de arco é uma mistura ~5×
+mais **apertada** que o raio pedido, não um corte. As setas da 1.ª foto do Enio apontam exactamente
+para lá, e o que ele viu era o estado anterior: `88°`. ⛔ As duas curas conhecidas estão medidas
+acima e **pioram** o conjunto; a terceira — tratar o vértice como o *bevel* do Blender trata — não
+existe na álgebra de campos desta casa.
+
+⏳ **A dependência do ângulo** (§102.4): o gate
+`the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says` **afirma a razão
+`2,29×`**, então quem trocar o operador sabe em que direcção ele mudou, em vez de só ver vermelho.
+
+### §102.7 — Provas de mutação: 7 de 7 mortas
+
+| mutação | gate |
+|---|---|
+| as quinas laterais do prisma voltam a ser vivas | `the_fillet_reaches_every_edge_of_every_shape` |
+| a ponta da estrela volta a ser viva | idem |
+| **o vale da estrela volta a ser vivo** | idem (**depois** da grelha interior) + o gate analítico |
+| os aros do corte do arco de toro voltam a ser vivos | idem |
+| o arco de toro perde o limite do filete | idem |
+| o filete do arco de toro deixa de se declarar inflacionário | `every_primitive_honours_the_march` |
+| a lei do recuo troca o operador pelo arco verdadeiro | o gate analítico da estrela |
+
+⚠️ **E o controle do arnês estava errado**: ele contava os testes **passados** para saber se o filtro
+casara alguma coisa, então uma mutação que **reprovava** lia-se como *«filtro casou zero»* — seis das
+sete apareceram assim na primeira ronda. *Um controle de filtro tem de contar os passados **e** os
+reprovados.*

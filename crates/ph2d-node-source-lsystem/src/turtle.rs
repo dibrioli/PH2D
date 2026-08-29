@@ -68,6 +68,12 @@ pub(crate) struct Setup {
     pub tropism: f32,
     /// Para onde o tropismo puxa (graus).
     pub tropism_angle: f32,
+    /// **O comprimento da geração mais nova estica com a fracção** (*Continuous length* do
+    /// Houdini). É a lei que anima uma gramática que cresce pela PONTA.
+    pub(crate) continuous_length: bool,
+    /// **E a viragem dela ABRE com a fracção** (*Continuous angles*). É a lei que anima uma
+    /// gramática de REFINAMENTO, que não tem ponta nenhuma para esticar.
+    pub(crate) continuous_angle: bool,
     /// A geração mais nova e quanto dela já cresceu, `(geração, fracção)`. `fracção = 1`
     /// significa geração inteira.
     pub youngest: (u16, f32),
@@ -277,14 +283,44 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     // gramática de refinamento animar (ela dá um *zoom* auto-semelhante). Custa uma segunda
     // derivação para medir a razão, e muda o que `Generations` quer dizer — é decisão de
     // produto, não uma correcção.
+    // ⭐⭐⭐ **E A ALTERNATIVA NOMEADA ACIMA ERA A CURA ERRADA** — pesquisa de 2026-08-29, a
+    // pedido do Enio (*"acho que o ideal é o crescimento suave. como fazem os grandes apps?"*).
+    //
+    // O L-System SOP do Houdini tem **DOIS** interruptores, não um: *Continuous angles* e
+    // *Continuous length* — e a documentação dele diz o que escalam: *"the angles rotated by
+    // the last generation's turtle operations are scaled by the amount into the generation,
+    // and the lengths taken by the last generation's turtle operations are scaled by the
+    // amount into the generation"*.
+    //
+    // ⇒ **São duas leis para as duas famílias, e eu tinha construído uma só.** Medido pela
+    // bancada (`examples/preset_report.rs`, razão de expansão por geração):
+    //
+    // | família | razão | o que cresce | a lei que a anima |
+    // |---|---|---|---|
+    // | Tree · Fern · Wild · Sprig | `1,63 → 1,06` (converge para 1) | a PONTA | o **comprimento** estica |
+    // | Bush · Koch | **`3,00` em toda geração** | a figura INTEIRA | o **ângulo** abre |
+    // | Weed · Dragon | `2,03` · `~1,41` | idem | idem |
+    //
+    // Uma gramática de refinamento não tem ponta que estique — mas as dobras NOVAS dela podem
+    // **abrir** de `0` até ao ângulo cheio, e aí a figura desdobra-se em vez de aparecer.
+    // *A fracção não tinha sujeito porque eu estava a procurá-lo na grandeza errada.*
     let has_old_drawing = chain
         .iter()
         .any(|m| m.born != set.youngest.0 && draws_or_marks(m.sym));
-    let youngest = if has_old_drawing {
-        set.youngest
+    // ⚠️ **O comprimento continua GUARDADO pelo `has_old_drawing`** (a cura do pisca-pisca de
+    // 28/08 fica): sem nada velho, escalar o comprimento encolhe a planta inteira. O ÂNGULO
+    // não precisa da guarda — desdobrar não colapsa nada.
+    let len_frac = if set.continuous_length && has_old_drawing {
+        set.youngest.1
     } else {
-        (set.youngest.0, 1.0)
+        1.0
     };
+    let ang_frac = if set.continuous_angle {
+        set.youngest.1
+    } else {
+        1.0
+    };
+    let youngest = (set.youngest.0, len_frac);
     let mut stack: Vec<State> = Vec::new();
     let mut i = 0usize;
     while i < chain.len() {
@@ -295,6 +331,7 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         } else {
             1.0
         };
+        let grow_a = if m.born == youngest.0 { ang_frac } else { 1.0 };
         match m.sym {
             b'F' | b'G' | b'f' | b'g' => {
                 let d = m.arg(0).unwrap_or(st.step) * grow;
@@ -341,8 +378,10 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
                     m.sym,
                 );
             }
-            b'+' => st.heading += m.arg(0).unwrap_or(set.angle),
-            b'-' => st.heading -= m.arg(0).unwrap_or(set.angle),
+            // ⚠️ **A viragem da geração mais nova ABRE com a fracção** — é esta linha que faz
+            // uma gramática de refinamento animar. `grow_a` é `1` para tudo o que não é novo.
+            b'+' => st.heading += m.arg(0).unwrap_or(set.angle) * grow_a,
+            b'-' => st.heading -= m.arg(0).unwrap_or(set.angle) * grow_a,
             b'|' => st.heading += DEGREES_PER_TURN / 2.0,
             b'!' => st.width = m.arg(0).unwrap_or(st.width * set.width_scale),
             b'"' => st.step = m.arg(0).unwrap_or(st.step * set.length_scale),

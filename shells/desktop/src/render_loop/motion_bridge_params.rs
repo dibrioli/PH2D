@@ -72,6 +72,9 @@ mod params_visible_tests;
 #[path = "motion_bridge_params_file.rs"]
 pub(crate) mod params_file;
 
+#[path = "motion_bridge_params_text_rows.rs"]
+mod text_rows;
+
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;
 use params_edit::apply_param_edits;
@@ -164,8 +167,7 @@ pub(crate) fn build_params_snapshot(
     use ph2d_nodegraph::cook::OpResolver;
     use ph2d_nodegraph::graph::NodeId;
     use ph2d_panel_motion_params::{
-        AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, ParamRow, ParamsSnapshot,
-        ScalarRow, SeedRow, SourceRow, TextRow, ToggleRow,
+        AngleRow, ColorRow, EnumRow, ParamRow, ParamsSnapshot, ScalarRow, SeedRow, ToggleRow,
     };
 
     // The params panel shows the properties of whatever ONE subject is selected.
@@ -235,149 +237,17 @@ pub(crate) fn build_params_snapshot(
 
     let mut rows: Vec<ParamRow> = Vec::new();
 
-    // Text params (a `motion.expression` formula, a `field.remap` Curve) are NOT
-    // `ParamSpec`s (f32-only), so they never appear in the manifest loop below — surface
-    // each as a row FIRST, reading the graph's text channel (docs/Motion Nodes/32-33).
-    // `Curve` rides the SAME text channel as `Text` but paints an interactive curve editor
-    // (A1-ui): draggable handles over the serialized curve, never the string.
-    for h in hints.into_iter().flatten().filter(|h| shown(h.param)) {
-        // A named-channel picker (plan §1.1): the artist-facing face of a stream-column
-        // TEXT param. It reads the live column (a text param) + its `mode` (an f32
-        // param), matches them to a channel, and folds `mode` in (consumed, so it gets
-        // no row of its own). Custom = no match → the raw text field is offered.
-        if let ParamWidget::Channels {
-            mode_param,
-            channels,
-        } = h.widget
-        {
-            let attr = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            let mode = value_of(mode_param).round() as i32;
-            let selected = channels
-                .iter()
-                .position(|c| c.column == attr && c.mode == mode)
-                .unwrap_or(channels.len());
-            // The live upstream columns the Custom picker offers (roadmap: dropdown
-            // populated at runtime) — everything the curated channels already cover
-            // is excluded, so the chips are the ADVANCED columns, not duplicates.
-            let covered: std::collections::BTreeSet<&str> =
-                channels.iter().map(|c| c.column).collect();
-            let extra = params_stream::upstream_scalar_columns(motion, nid, &covered, &attr);
-            rows.push(ParamRow::Channels(ChannelsRow {
-                label: h.label.to_string(),
-                text_param: h.param,
-                mode_param,
-                // Resolve to primitives so the panel needs no registry dependency.
-                channels: channels
-                    .iter()
-                    .map(|c| (c.label, c.column, c.mode))
-                    .collect(),
-                selected,
-                custom: attr,
-                extra,
-            }));
-            consumed.push(mode_param);
-            continue;
-        }
-        // A source picker (doc 65): a TEXT param that names a value the app published
-        // into the external channel. The options are the LIVE published names — the same
-        // `Cook::externals` the node reads from — so the artist picks a shape they drew
-        // by name. `motion.pump.cook` holds the externals whether the graph cooked on the
-        // CPU or the GPU (the shell republishes them every frame, ADR-0126-independent).
-        if h.widget == ParamWidget::Source {
-            let current = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            let options = params_stream::source_options(motion);
-            rows.push(ParamRow::Source(SourceRow {
-                label: h.label.to_string(),
-                param: h.param,
-                options,
-                current,
-            }));
-            continue;
-        }
-        // A Gradient editor (doc 85) — a `ColorRamp` in a text param (`serialize_gradient`),
-        // the colour sibling of the Curve. The panel draws the bar + draggable stops from the
-        // string; a stop's COLOUR is read back through the OKLCH picker below.
-        if h.widget == ParamWidget::Palette {
-            let value = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            rows.push(ParamRow::Palette(ph2d_panel_motion_params::PaletteRow {
-                name: h.param,
-                label: h.label.to_string(),
-                value,
-            }));
-            continue;
-        }
-        if h.widget == ParamWidget::Gradient {
-            let value = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            rows.push(ParamRow::Gradient(GradientRow {
-                name: h.param,
-                label: h.label.to_string(),
-                value,
-            }));
-            continue;
-        }
-        // Um CAMINHO de ficheiro: o campo editável, o botão que abre o diálogo, e a marca de
-        // ausência. ⚠️ O `Path::exists` corre AQUI, uma vez por quadro por row — o painel não
-        // pode tocar no disco enquanto pinta, e é a única informação desta row que o artista
-        // não tem outra forma de ver (um caminho que aponta para nada lê-se exactamente como
-        // um caminho bom, e o nó responde com silêncio).
-        if let ParamWidget::File { .. } = h.widget {
-            let value = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            let missing = !value.is_empty() && !std::path::Path::new(&value).exists();
-            rows.push(ParamRow::File(ph2d_panel_motion_params::FileRow {
-                name: h.param,
-                label: h.label.to_string(),
-                value,
-                missing,
-            }));
-            continue;
-        }
-        if h.widget == ParamWidget::Text || h.widget == ParamWidget::Curve {
-            let value = motion
-                .doc
-                .graph
-                .node_text_param_overrides(nid)
-                .and_then(|m| m.get(h.param))
-                .cloned()
-                .unwrap_or_default();
-            let name = h.param;
-            let label = h.label.to_string();
-            rows.push(if h.widget == ParamWidget::Curve {
-                ParamRow::Curve(CurveRow { name, label, value })
-            } else {
-                ParamRow::Text(TextRow { name, label, value })
-            });
-        }
-    }
+    // As rows que nascem do canal de TEXTO vivem no irmão (HR-18) — ver
+    // [`text_rows::push_text_rows`] para o porquê do corte.
+    text_rows::push_text_rows(
+        &mut rows,
+        motion,
+        nid,
+        hints,
+        &shown,
+        &value_of,
+        &mut consumed,
+    );
 
     for spec in manifest.params.iter().filter(|s| shown(s.name)) {
         let hint = hints.and_then(|hs| hs.iter().find(|h| h.param == spec.name));

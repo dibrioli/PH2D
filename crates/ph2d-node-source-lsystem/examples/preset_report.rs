@@ -213,6 +213,9 @@ fn main() {
 
     derive_framing();
     growth_report();
+    expansion_report();
+    smoothness_sweep();
+    reveal_report();
 
     println!("\n== A ESPESSURA ESCORRE? (size do 1o elemento contra o ultimo) ==");
     for ls::Preset {
@@ -394,4 +397,188 @@ fn growth_report() {
         "\n   (uniforme em {N} passos seria {:.0}%)",
         100.0 / N as f32
     );
+}
+
+/// **A RAZÃO DE EXPANSÃO de cada molde** — quanto a figura cresce por geração.
+///
+/// É dela que sai o passo-por-geração que mantém uma gramática de REFINAMENTO do mesmo
+/// tamanho: `step_scale = 1 / razão`. Sem isso, «refinar» e «crescer» são a mesma coisa para
+/// o desenho, e nenhuma interpolação pode ser suave — a figura muda de TAMANHO em cada
+/// travessia de geração.
+#[allow(dead_code)]
+fn expansion_report() {
+    println!("\n== A RAZÃO DE EXPANSÃO (tamanho da geração n+1 / da n), no angulo do molde ==");
+    println!(
+        "{:8} {:>7} {:>34}   {:>10}",
+        "molde", "ang", "razoes por geracao", "1/mediana"
+    );
+    for p in ls::PRESETS {
+        let base: Vec<(&str, f32)> = vec![
+            ("angle", p.angle),
+            ("step", 0.5),
+            ("width", default_of("width")),
+            ("width_scale", default_of("width_scale")),
+            ("length_scale", default_of("length_scale")),
+            ("root_angle", default_of("root_angle")),
+            ("seed", default_of("seed")),
+            ("mode", ls::MODE_GRAMMAR as f32),
+        ];
+        let sizes: Vec<f32> = (1..=6)
+            .map(|g| {
+                let s = shoot(p.axiom, p.rules, g as f32, &base);
+                s.w.max(s.h)
+            })
+            .collect();
+        let mut r: Vec<f32> = sizes.windows(2).map(|w| w[1] / w[0].max(1e-6)).collect();
+        let line: String = r.iter().map(|x| format!("{x:6.2}")).collect();
+        r.sort_by(f32::total_cmp);
+        let med = r[r.len() / 2];
+        println!(
+            "{:8} {:>7.1} {line:>34}   {:>10.4}",
+            p.label,
+            p.angle,
+            1.0 / med
+        );
+    }
+}
+
+/// **A VARREDURA QUE ESCOLHE O `step_scale`** — a pergunta do Enio de 2026-08-29
+/// (*"acho que o ideal e' o crescimento suave"*).
+///
+/// Para cada molde, com os dois interruptores LIGADOS, mede o pior passo de uma varredura
+/// fina do `Generations`. O `step_scale` sai daqui, medido — nunca escolhido.
+#[allow(dead_code)]
+fn smoothness_sweep() {
+    const N: usize = 40;
+    println!("\n== QUAL `step_scale` ALISA CADA MOLDE (pior passo, % da subida total) ==");
+    print!("{:8}", "molde");
+    let scales = [1.0f32, 0.80, 0.67, 0.50, 0.40, 0.3333, 0.25, 0.20];
+    for k in scales {
+        print!("{:>9}", format!("{k:.3}"));
+    }
+    println!("   melhor");
+    for p in ls::PRESETS {
+        print!("{:8}", p.label);
+        let mut best = (f32::MAX, 0.0f32);
+        for k in scales {
+            let base: Vec<(&str, f32)> = vec![
+                ("angle", p.angle),
+                ("step", p.step),
+                ("width", p.width),
+                ("width_scale", default_of("width_scale")),
+                ("length_scale", default_of("length_scale")),
+                ("root_angle", default_of("root_angle")),
+                ("seed", default_of("seed")),
+                ("mode", ls::MODE_GRAMMAR as f32),
+                ("step_scale", k),
+            ];
+            let hs: Vec<f32> = (0..=N)
+                .map(|j| {
+                    let g = 1.0 + (p.generations - 1.0) * j as f32 / N as f32;
+                    let s = shoot(p.axiom, p.rules, g, &base);
+                    s.w.max(s.h)
+                })
+                .collect();
+            // ⚠️⚠️ **O DENOMINADOR É A MÉDIA, não a subida total** — e a 1.ª redacção usava a
+            // subida, o que fez esta varredura imprimir **619 050 %**. O motivo é o próprio
+            // objectivo: com o `step_scale` certo uma gramática de refinamento fica do MESMO
+            // TAMANHO e só ganha detalhe, então a subida é ~0 e a razão explode. *Uma régua
+            // normalizada pelo que a cura leva a zero mede a cura ao contrário.*
+            let mean = hs.iter().sum::<f32>() / hs.len() as f32;
+            let worst = hs
+                .windows(2)
+                .map(|w| (w[1] - w[0]).abs())
+                .fold(0.0, f32::max);
+            let frac = worst / mean.max(1e-6);
+            if frac < best.0 {
+                best = (frac, k);
+            }
+            print!("{:>8.0}%", frac * 100.0);
+        }
+        println!("   {:.4}", best.1);
+    }
+    println!("   (a barra e' o pior passo contra a MEDIA do tamanho)");
+}
+
+/// **E SE A ANIMACAO CERTA FOR OUTRA?** — a lei da casa: *antes de construir um item de lista
+/// aberta, MEÇA se a composição já o exprime.*
+///
+/// Uma figura de refinamento não CRESCE — ela é redesenhada mais fina. A animação que os
+/// motion designers usam para uma curva assim não é «mais gerações»: é **revelar o traçado**
+/// (o *trim path*), que aqui é `source.lsystem → field.index_range(Index) → motion.cull`.
+///
+/// Isto mede exactamente essa composição sem montar o grafo: revelar os primeiros `k %` dos
+/// elementos é o que o `motion.cull` faz sobre um campo de índice.
+#[allow(dead_code)]
+fn reveal_report() {
+    const N: usize = 40;
+    println!("\n== REVELAR O TRACADO (o que `index_range + cull` ja' faz hoje) ==");
+    println!(
+        "{:8} {:>12} {:>12}   veredito",
+        "molde", "pior_passo", "ramifica?"
+    );
+    for p in ls::PRESETS {
+        let base: Vec<(&str, f32)> = vec![
+            ("angle", p.angle),
+            ("step", p.step),
+            ("width", p.width),
+            ("width_scale", default_of("width_scale")),
+            ("length_scale", default_of("length_scale")),
+            ("root_angle", default_of("root_angle")),
+            ("seed", default_of("seed")),
+            ("mode", ls::MODE_GRAMMAR as f32),
+        ];
+        let st = ls::probe_build(p.axiom, p.rules, p.generations, &base);
+        let pts = match st.get("P") {
+            Some(Column::Vec2(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        let parent = match st.get("parent") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        // Ramifica? Dois elementos pendurados no mesmo pai. Numa CURVA isso nao acontece, e a
+        // ordem da cadeia E' a ordem do traco.
+        let mut seen = std::collections::BTreeMap::<i64, usize>::new();
+        for q in parent.iter().filter(|x| **x >= 0.0) {
+            *seen.entry(*q as i64).or_default() += 1;
+        }
+        let branches = seen.values().filter(|c| **c > 1).count();
+
+        // A ponta revelada anda de forma contínua? A régua é o SALTO da ponta entre dois
+        // quadros, contra o tamanho da figura.
+        let n = pts.len();
+        let bbox = {
+            let x0 = pts.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
+            let x1 = pts.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
+            let y0 = pts.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
+            let y1 = pts.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+            (x1 - x0).max(y1 - y0).max(1e-6)
+        };
+        let mut worst = 0.0f32;
+        for j in 1..=N {
+            let a = (n as f32 * (j - 1) as f32 / N as f32) as usize;
+            let b = (n as f32 * j as f32 / N as f32) as usize;
+            if a == 0 || b == 0 || a >= n || b >= n {
+                continue;
+            }
+            let d = ((pts[b][0] - pts[a][0]).powi(2) + (pts[b][1] - pts[a][1]).powi(2)).sqrt();
+            worst = worst.max(d / bbox);
+        }
+        println!(
+            "{:8} {:>11.0}% {:>12}   {}",
+            p.label,
+            worst * 100.0,
+            if branches > 0 {
+                format!("{branches} nos")
+            } else {
+                "CURVA".to_string()
+            },
+            if worst < 0.25 {
+                "revela SUAVE"
+            } else {
+                "salta entre ramos"
+            }
+        );
+    }
 }

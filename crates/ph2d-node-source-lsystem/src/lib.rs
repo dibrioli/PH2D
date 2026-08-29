@@ -219,6 +219,30 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::BEND,
             default: 0.0,
         },
+        // AS TRES QUE FAZEM O CRESCIMENTO SUAVE (2026-08-29, a pedido do Enio, com o L-System
+        // SOP do Houdini como referencia -- ver `turtle::walk` para o mecanismo e a tabela de
+        // razoes de expansao que separou as duas familias).
+        //
+        // Os dois interruptores nascem LIGADOS: e' o que o artista quer, e a razao de o no'
+        // existir e' animar o `Generations`. O `step_scale` nasce em `1,0` -- neutro exacto,
+        // entao nenhum documento se mexe por ele.
+        ParamSpec {
+            name: param::CONTINUOUS_LENGTH,
+            default: 1.0,
+        },
+        // MEDIDO E DESLIGADO. Ver `turtle::walk` para a tabela: ligado, ele PIORA as quatro
+        // gramaticas de refinamento (Koch 69% -> 138% de pior passo) porque nelas TODO modulo
+        // e' da geracao mais nova, entao a fraccao achata a figura inteira numa linha. Nas que
+        // crescem pela ponta ele nao move a regua (3-5% com e sem). Fica como CONTROLO do
+        // artista -- e' o `Continuous angles` do Houdini -- e nao como default.
+        ParamSpec {
+            name: param::CONTINUOUS_ANGLE,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::STEP_SCALE,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -244,6 +268,9 @@ pub mod param {
     pub const SEGMENTS: &str = "segments";
     pub const VARIATION: &str = "variation";
     pub const BEND: &str = "bend";
+    pub const CONTINUOUS_LENGTH: &str = "continuous_length";
+    pub const CONTINUOUS_ANGLE: &str = "continuous_angle";
+    pub const STEP_SCALE: &str = "step_scale";
 }
 
 /// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.
@@ -552,6 +579,9 @@ struct Params {
     segments: f32,
     variation: f32,
     bend: f32,
+    continuous_length: f32,
+    continuous_angle: f32,
+    step_scale: f32,
 }
 
 impl Params {
@@ -588,6 +618,9 @@ impl Params {
             segments: ctx.param(param::SEGMENTS),
             variation: ctx.param(param::VARIATION),
             bend: ctx.param(param::BEND),
+            continuous_length: ctx.param(param::CONTINUOUS_LENGTH),
+            continuous_angle: ctx.param(param::CONTINUOUS_ANGLE),
+            step_scale: ctx.param(param::STEP_SCALE),
         }
     }
 
@@ -611,6 +644,9 @@ impl Params {
             param::SEGMENTS => self.segments,
             param::VARIATION => self.variation,
             param::BEND => self.bend,
+            param::CONTINUOUS_LENGTH => self.continuous_length,
+            param::CONTINUOUS_ANGLE => self.continuous_angle,
+            param::STEP_SCALE => self.step_scale,
             _ => 0.0,
         }
     }
@@ -661,7 +697,19 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         &d.chain,
         &turtle::Setup {
             angle: p.angle,
-            step: p.step,
+            // O PASSO ENCOLHE POR GERACAO (*Step Size Scale* do Houdini) -- e' o que
+            // torna uma gramatica de REFINAMENTO um refinamento em vez de um crescimento.
+            //
+            // Medido: `F -> F[+F]F[-F]F` e `F -> F+F-F-F+F` expandem EXACTAMENTE `3,00` em
+            // toda geracao; com `step_scale = 1/3` a figura fica do mesmo tamanho e so'
+            // ganha detalhe. As que crescem pela ponta convergem para `~1,06` e nao
+            // precisam dele -- por isso o default e' `1,0`, o neutro EXACTO.
+            //
+            // O expoente e' o `generations` FRACCIONARIO e nao o `ceil`: com o inteiro o
+            // passo daria um degrau em cada travessia, que e' o defeito que isto cura.
+            // Um `powf` e' transcendental (HR-5) e corre UMA vez por cozedura, nunca por
+            // elemento -- a mesma cerca (e o mesmo lado dela) da avaliacao de expressoes.
+            step: p.step * p.step_scale.max(1e-4).powf(p.generations.clamp(0.0, 64.0)),
             width: p.width,
             width_scale: p.width_scale,
             length_scale: p.length_scale,
@@ -669,6 +717,8 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             tropism: p.tropism,
             tropism_angle: p.tropism_angle,
             youngest,
+            continuous_length: p.continuous_length.round() as i32 != 0,
+            continuous_angle: p.continuous_angle.round() as i32 != 0,
             // `0` = mundo (o desenho alinha com o ramo). Qualquer outro valor é o local.
             orient_world: p.orient.round() as i32 == 0,
         },
@@ -877,6 +927,31 @@ static PARAM_HINTS: &[ParamUiHint] = &[
             labels: ORIENT_LABELS,
         },
     },
+    // As tres do CRESCIMENTO SUAVE (2026-08-29). Ver `turtle::walk` para a medicao.
+    ParamUiHint {
+        param: param::CONTINUOUS_LENGTH,
+        label: "Grow Length",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: param::CONTINUOUS_ANGLE,
+        label: "Grow Angle",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Toggle,
+    },
+    ParamUiHint {
+        param: param::STEP_SCALE,
+        label: "Step Scale",
+        min: 0.1,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     ParamUiHint {
         param: param::SEED,
         label: "Seed",
@@ -982,6 +1057,9 @@ static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     ph2d_node_registry::ParamGroup::new(param::LENGTH_SCALE, "Growth"),
     ph2d_node_registry::ParamGroup::new(param::WIDTH, "Growth"),
     ph2d_node_registry::ParamGroup::new(param::WIDTH_SCALE, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::STEP_SCALE, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::CONTINUOUS_LENGTH, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::CONTINUOUS_ANGLE, "Growth"),
     // ⚠️ Esta nasce FECHADA: é a única cujos cinco defaults já dão uma planta de pé, e o
     // artista que nunca a abrir não perde nada.
     ph2d_node_registry::ParamGroup::new(param::ROOT_ANGLE, "Lean & Look").folded(),
@@ -1077,6 +1155,10 @@ pub fn probe_build(
         segments: 1.0,
         variation: 0.0,
         bend: 0.0,
+        // Os defaults do manifesto, para a sonda medir o produto e nao outra coisa.
+        continuous_length: 1.0,
+        continuous_angle: 1.0,
+        step_scale: 1.0,
     };
     for (n, v) in overrides {
         match *n {
@@ -1086,6 +1168,9 @@ pub fn probe_build(
             param::SEGMENTS => p.segments = *v,
             param::VARIATION => p.variation = *v,
             param::BEND => p.bend = *v,
+            param::CONTINUOUS_LENGTH => p.continuous_length = *v,
+            param::CONTINUOUS_ANGLE => p.continuous_angle = *v,
+            param::STEP_SCALE => p.step_scale = *v,
             param::STEP => p.step = *v,
             param::WIDTH => p.width = *v,
             param::WIDTH_SCALE => p.width_scale = *v,

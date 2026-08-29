@@ -108,7 +108,7 @@ fn every_caption_is_chip_sized() {
 fn every_scene_labels_both_halves_on_opposite_sides() {
     for (name, all) in scenes() {
         assert_eq!(all.len() % 2, 0, "{name}: uma ficha por metade");
-        for pair in all.chunks_exact(2) {
+        for pair in all.as_chunks::<2>().0.iter() {
             let (l, r) = (&pair[0], &pair[1]);
             assert!(
                 l.world[0] < 0.0,

@@ -229,7 +229,12 @@ pub(crate) fn relight_stale(
 /// A normal é `n × 0,5 + 0,5` por canal; o peso vai no alfa, cru.
 pub(crate) fn form_to_rgba8(form: &[f32]) -> Vec<u8> {
     let mut out = vec![0u8; form.len()];
-    for (o, f) in out.chunks_exact_mut(4).zip(form.chunks_exact(4)) {
+    for (o, f) in out
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(form.as_chunks::<4>().0.iter())
+    {
         for c in 0..3 {
             o[c] = quantise(f[c] * 0.5 + 0.5);
         }
@@ -268,7 +273,12 @@ pub(crate) fn occlusion_from_r8(bytes: &[u8]) -> Vec<f32> {
 /// errado — e o consumidor renormalizaria de qualquer jeito. Fazê-lo aqui é fazê-lo **uma vez**.
 pub(crate) fn form_from_rgba8(bytes: &[u8]) -> Vec<f32> {
     let mut out = vec![0f32; bytes.len()];
-    for (o, b) in out.chunks_exact_mut(4).zip(bytes.chunks_exact(4)) {
+    for (o, b) in out
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(bytes.as_chunks::<4>().0.iter())
+    {
         let (x, y, z) = (
             f32::from(b[0]) / 255.0 * 2.0 - 1.0,
             f32::from(b[1]) / 255.0 * 2.0 - 1.0,

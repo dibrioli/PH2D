@@ -707,7 +707,7 @@ mod tests {
         let (out, w, h) = nearest_upscale(&src, 2, 2, 3);
         assert_eq!((w, h), (6, 6));
         // Every pixel should be [10,20,30,255].
-        for chunk in out.chunks_exact(4) {
+        for chunk in out.as_chunks::<4>().0 {
             assert_eq!(chunk, &[10, 20, 30, 255]);
         }
     }
@@ -719,7 +719,7 @@ mod tests {
         let src = solid(8, 8, [50, 100, 150]);
         let (out, w, h) = lanczos3_resample(bytemuck::cast_slice(&src), 8, 8, 16, 16);
         assert_eq!((w, h), (16, 16));
-        for chunk in out.chunks_exact(4) {
+        for chunk in out.as_chunks::<4>().0 {
             assert_eq!(chunk[0], 50);
             assert_eq!(chunk[1], 100);
             assert_eq!(chunk[2], 150);
@@ -732,7 +732,7 @@ mod tests {
         let src = solid(8, 8, [50, 100, 150]);
         let (out, w, h) = mitchell_resample(bytemuck::cast_slice(&src), 8, 8, 5, 11);
         assert_eq!((w, h), (5, 11));
-        for chunk in out.chunks_exact(4) {
+        for chunk in out.as_chunks::<4>().0 {
             assert_eq!(chunk[0], 50);
             assert_eq!(chunk[1], 100);
             assert_eq!(chunk[2], 150);

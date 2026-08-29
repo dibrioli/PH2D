@@ -525,7 +525,7 @@ mod tests {
         // Seed region already the fill colour ⇒ nothing changes ⇒ None.
         let (w, h) = (4, 4);
         let mut px = vec![0u8; w * h * 4];
-        for c in px.chunks_exact_mut(4) {
+        for c in px.as_chunks_mut::<4>().0.iter_mut() {
             c.copy_from_slice(&[0, 255, 0, 255]);
         }
         assert!(flood_fill(&mut px, w, h, (1, 1), [0, 255, 0], 0, None).is_none());

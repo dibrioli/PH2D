@@ -35,7 +35,7 @@ fn tool_with_shape_layers(layers: usize) -> PainterTool {
         // A rota do SPRITE plano — a que o "Use as Brush Shape" da hierarquia toma para um sprite que
         // não é o documento aberto, e a que o report nomeia.
         let mut px = vec![255u8; n * 4];
-        for (i, p) in px.chunks_exact_mut(4).enumerate() {
+        for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
             p[0] = (i * 11) as u8;
         }
         tool.set_brush_shape_image_rgba(&px, w, h, Some(7));

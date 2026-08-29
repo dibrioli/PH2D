@@ -137,7 +137,7 @@ fn a_structural_edit_is_not_confined() {
     // metade dos metadados.
     {
         let buf = std::sync::Arc::make_mut(&mut t.canvas_rgba);
-        for px in buf.chunks_exact_mut(4).skip(600).take(40) {
+        for px in buf.as_chunks_mut::<4>().0.iter_mut().skip(600).take(40) {
             px[0] = px[0].wrapping_add(37);
         }
     }

@@ -13,7 +13,7 @@ pub(super) fn make_hsv_tile(index: u32, side: u32) -> Vec<u8> {
     let hue = (index as f32 * 0.618_034) % 1.0;
     let (r, g, b) = hsv_to_rgb(hue, 0.85, 0.95);
     let mut out = vec![0u8; (side * side * 4) as usize];
-    for chunk in out.chunks_exact_mut(4) {
+    for chunk in out.as_chunks_mut::<4>().0 {
         chunk[0] = r;
         chunk[1] = g;
         chunk[2] = b;
@@ -66,7 +66,7 @@ mod tests {
         let tile = make_hsv_tile(0, DEMO_TILE_PX);
         assert_eq!(tile.len(), (DEMO_TILE_PX * DEMO_TILE_PX * 4) as usize);
         // Every pixel uniform — solid color.
-        for chunk in tile.chunks_exact(4) {
+        for chunk in tile.as_chunks::<4>().0 {
             assert_eq!(chunk[0], tile[0]);
             assert_eq!(chunk[1], tile[1]);
             assert_eq!(chunk[2], tile[2]);

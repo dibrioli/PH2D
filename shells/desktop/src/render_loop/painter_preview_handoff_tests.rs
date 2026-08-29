@@ -427,8 +427,10 @@ fn the_gpu_producer_shows_what_the_cpu_producer_shows() {
     // so it runs AFTER the readback.
     let truth = screen_truth(&mut t);
     let lit_pixels = shown
-        .chunks_exact(4)
-        .zip(truth.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(truth.as_chunks::<4>().0.iter())
         .filter(|(a, _)| a[..3] != [255, 255, 255])
         .count();
     assert!(
@@ -507,7 +509,9 @@ fn the_paper_alone_survives_the_gpu_producer() {
     // perfeitamente e o gate passaria por vácuo — que é exatamente o estado que ele existe para
     // reprovar. O dente TEM de ter acendido alguma coisa.
     let lit = shown
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[..3] != [255, 255, 255])
         .count();
     assert!(

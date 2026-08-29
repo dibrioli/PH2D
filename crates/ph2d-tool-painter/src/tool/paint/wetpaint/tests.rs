@@ -31,9 +31,7 @@ fn tool_in_mode(mode: &str) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode(mode);
     t
 }
@@ -352,7 +350,7 @@ fn the_wet_paint_wears_the_brushs_colour_not_black() {
     // over a CORRECT product).
     let mut best = [255u8; 4];
     let mut best_dev = 0u32;
-    for px in t.canvas_rgba.chunks_exact(4) {
+    for px in t.canvas_rgba.as_chunks::<4>().0.iter() {
         let dev = px[..3].iter().map(|&c| 255u32 - u32::from(c)).sum::<u32>();
         if dev > best_dev {
             best_dev = dev;
@@ -535,9 +533,7 @@ fn alpha_lock_pins_the_wet_silhouette_to_the_existing_paint() {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
     let active = t.layers.active().expect("active layer");
     t.layers.get_mut(active).expect("layer").alpha_locked = true;
@@ -712,7 +708,9 @@ fn the_sessionless_wet_eraser_erases_the_baked_canvas() {
     t.set_paint_tool_mode("eraser"); // stays in Wet Paint (the W2.6 wire)
     let alpha_sum = |t: &PainterTool| -> u64 {
         t.canvas_rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|px| u64::from(px[3]))
             .sum()
     };
@@ -1334,7 +1332,9 @@ fn a_wet_shape_previews_in_the_water_itself() {
     t.on_canvas_pointer(cp([100.0, 80.0], PointerPhase::Up));
     let painted = t
         .canvas_rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .any(|px| px[0] != 255 || px[1] != 255 || px[2] != 255);
     assert!(painted, "uma elipse em modo wet não autorou NADA");
     assert!(
@@ -1512,9 +1512,7 @@ fn a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.set_paint_tool_mode("wetpaint");
         let mid = (size / 2) as f32;
         t.on_canvas_pointer(cp([80.0, mid], PointerPhase::Down));

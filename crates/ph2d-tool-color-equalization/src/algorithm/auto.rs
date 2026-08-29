@@ -35,7 +35,7 @@ pub fn auto_white_balance(rgba: &mut [u8]) {
     let mut sum_g = 0.0_f64;
     let mut sum_b = 0.0_f64;
     let mut count: u64 = 0;
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -57,7 +57,7 @@ pub fn auto_white_balance(rgba: &mut [u8]) {
     let gain_r = mean_gray / mean_r;
     let gain_g = mean_gray / mean_g;
     let gain_b = mean_gray / mean_b;
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -111,7 +111,7 @@ impl Default for HistogramData {
 pub fn compute_histogram(pixels: &[ph2d_color::SrgbRgba]) -> HistogramData {
     let rgba: &[u8] = bytemuck::cast_slice(pixels);
     let mut h = HistogramData::default();
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -182,7 +182,7 @@ pub fn auto_levels(rgba: &mut [u8]) {
     let lut_r = stretch_lut(r_lo, r_hi);
     let lut_g = stretch_lut(g_lo, g_hi);
     let lut_b = stretch_lut(b_lo, b_hi);
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -205,7 +205,7 @@ pub fn auto_colors(rgba: &mut [u8]) {
     let lut_r = stretch_lut(r_lo, r_hi);
     let lut_g = stretch_lut(g_lo, g_hi);
     let lut_b = stretch_lut(b_lo, b_hi);
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -232,7 +232,7 @@ pub fn auto_contrast(rgba: &mut [u8]) {
     // 1. Linear-luma histogram (256 bins over `[0, 1]`).
     let mut hist_l = [0u32; 256];
     let mut total: u32 = 0;
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -252,7 +252,7 @@ pub fn auto_contrast(rgba: &mut [u8]) {
     let range = ((hi as f32 - lo as f32) / 255.0).max(f32::EPSILON);
 
     // 2. Per-pixel: stretch linear Y, scale linear RGB by the ratio, encode.
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -373,7 +373,7 @@ mod tests {
         auto_levels(&mut buf);
         let mut lo = 255u8;
         let mut hi = 0u8;
-        for px in buf.chunks_exact(4) {
+        for px in buf.as_chunks::<4>().0 {
             lo = lo.min(px[0]);
             hi = hi.max(px[0]);
         }
@@ -418,7 +418,7 @@ mod tests {
         auto_contrast(&mut buf);
         let mut lo = 255u8;
         let mut hi = 0u8;
-        for px in buf.chunks_exact(4) {
+        for px in buf.as_chunks::<4>().0 {
             lo = lo.min(px[0]);
             hi = hi.max(px[0]);
         }

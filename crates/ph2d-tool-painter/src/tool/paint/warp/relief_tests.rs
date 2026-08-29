@@ -35,9 +35,7 @@ fn deformable_relief_tool() -> (PainterTool, crate::tool::RtLayerId) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("a layer");
@@ -363,9 +361,7 @@ fn a_bare_layer_gains_no_planes_from_a_warp() {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.on_canvas_pointer(cp([30.0, 48.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([60.0, 48.0], PointerPhase::Move));
@@ -430,7 +426,9 @@ fn the_transform_carries_the_body_where_it_carries_the_colour() {
     let ink = |t: &PainterTool| {
         let g: Vec<f32> = t
             .canvas_rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| 255.0 - f32::from(p[1]))
             .collect();
         centroid_x(&g, 160, |v| v > 8.0).expect("fixture: a tinta existe")

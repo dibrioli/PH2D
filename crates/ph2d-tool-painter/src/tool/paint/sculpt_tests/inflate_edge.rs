@@ -61,9 +61,7 @@ pub(super) fn thick_round_blob() -> (PainterTool, crate::tool::RtLayerId) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("a layer");
@@ -258,9 +256,7 @@ fn the_grown_rim_wears_the_paints_material_and_fades_with_it() {
     b.impasto_metallic = 1.0;
     b.impasto_roughness = 0.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.on_canvas_pointer(cp([CX, CY], PointerPhase::Down));
     t.on_canvas_pointer(cp([CX, CY], PointerPhase::Up));

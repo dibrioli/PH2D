@@ -39,9 +39,7 @@ fn wc_tool(size: u32, radius: f32, watercolor: bool, warp: f32) -> PainterTool {
         ..Default::default()
     };
     let seed = t.paint.brush;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = seed;
-    }
+    t.paint.brush_by_mode.fill(seed);
     t
 }
 
@@ -395,9 +393,7 @@ fn the_smooth_edges_checkbox_is_not_dead_under_dilution() {
             opacity: 0.4,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         let cx = f32::from(u16::try_from(SIZE / 2).unwrap_or(128));
         t.on_canvas_pointer(cp([cx, 40.0], PointerPhase::Down));
         for i in 1..=16u8 {
@@ -414,7 +410,7 @@ fn the_smooth_edges_checkbox_is_not_dead_under_dilution() {
         let on = wash(dilution, true);
         let off = wash(dilution, false);
         // CONTROLE: a fixture TEM de pintar, senão dois canvases em branco também "diferem" em nada.
-        let inked = on.chunks_exact(4).filter(|c| c[1] < 200).count();
+        let inked = on.as_chunks::<4>().0.iter().filter(|c| c[1] < 200).count();
         assert!(
             inked > 10_000,
             "Dilution {dilution}: a fixture nao pintou a lavagem ({inked} texels)"

@@ -61,7 +61,7 @@ fn the_region_render_is_the_full_render_where_it_is_asked() {
     // The fixture must contain the phenomenon: pigment inside the rect.
     assert_eq!(inside, (x1 - x0 + 1) * (y1 - y0 + 1));
     assert!(
-        full.chunks_exact(4).any(|px| px[3] > 0),
+        full.as_chunks::<4>().0.iter().any(|px| px[3] > 0),
         "stroke deposited nothing"
     );
 }

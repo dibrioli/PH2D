@@ -281,7 +281,9 @@ impl Build {
             32 => raw.to_vec(),
             // Escala de cinza + alfa: o cinza vai aos três canais.
             16 => raw
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .flat_map(|p| [p[0], p[0], p[0], p[1]])
                 .collect(),
             // Indexado: a paleta manda, e o índice transparente é buraco.

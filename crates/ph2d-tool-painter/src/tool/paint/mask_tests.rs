@@ -57,9 +57,7 @@ fn the_mask_lays_exactly_what_the_digital_brush_lays() {
     let mut mask_brush = m.paint.brush;
     mask_brush.color = [0.0, 0.0, 0.0];
     p.paint.brush = mask_brush;
-    for slot in &mut p.paint.brush_by_mode {
-        *slot = mask_brush;
-    }
+    p.paint.brush_by_mode.fill(mask_brush);
     stroke(&mut p); // (o `vstroke` já drena o preview; o campo pintado mora no canvas)
     let canvas = p.canvas_rgba.clone();
 

@@ -63,7 +63,7 @@ fn diff(a: &[u8], b: &[u8]) -> (usize, u8, f64) {
     let mut n = 0usize;
     let mut worst = 0u8;
     let mut sum = 0u64;
-    for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+    for (pa, pb) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0.iter()) {
         let d = (0..4)
             .map(|i| pa[i].abs_diff(pb[i]))
             .max()

@@ -288,7 +288,7 @@ pub(crate) fn seed_unbound_links(
         binding_links(doc, b, names, &mut wanted);
     }
     for c in doc.clips() {
-        for (_, expr) in c.expr.iter() {
+        for expr in c.expr.values() {
             let Ok(ir) = ph2d_expr_parse::parse(expr) else {
                 continue;
             };

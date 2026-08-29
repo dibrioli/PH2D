@@ -10,7 +10,12 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
 /// Quantos texels do canvas deixaram de ser o branco de fundo.
 fn inked(t: &crate::tool::PainterTool) -> usize {
-    t.canvas_rgba.chunks_exact(4).filter(|p| p[0] < 250).count()
+    t.canvas_rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 250)
+        .count()
 }
 
 /// Desenha um laço quadrado de lado `s` centrado em `c`, e devolve os texels entintados.
@@ -382,7 +387,12 @@ fn loop_gesture_ticked(t: &mut crate::tool::PainterTool, c: f32, s: f32, steps: 
 
 /// Os texels entintados, como máscara.
 fn ink_mask(t: &crate::tool::PainterTool) -> Vec<bool> {
-    t.canvas_rgba.chunks_exact(4).map(|p| p[0] < 250).collect()
+    t.canvas_rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| p[0] < 250)
+        .collect()
 }
 
 /// **A MANCHA SEGUE A TINTA, NÃO O PONTEIRO** (W8; report do Enio 2026-08-15, com a foto: o contorno

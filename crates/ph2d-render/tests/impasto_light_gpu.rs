@@ -656,7 +656,7 @@ fn the_form_plane_crosses_the_seam_already_neutralised() {
     let form = planes.form.as_deref().expect("a doação atravessou");
 
     let mut zero_z = 0usize;
-    for texel in form.chunks_exact(4) {
+    for texel in form.as_chunks::<4>().0 {
         if texel[2] == 0.0 {
             zero_z += 1;
         }

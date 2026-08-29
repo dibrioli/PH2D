@@ -232,7 +232,7 @@ fn texture_preview_is_grayscale_opaque_and_varies() {
         h,
     );
     let (mut dark, mut light) = (0, 0);
-    for px in buf.chunks_exact(4) {
+    for px in buf.as_chunks::<4>().0 {
         assert_eq!(px[3], 255, "preview pixels are opaque");
         assert!(px[0] == px[1] && px[1] == px[2], "preview is grayscale");
         if px[0] < 40 {
@@ -292,7 +292,7 @@ fn texture_preview_colorizes_with_the_ramp_and_shows_alpha() {
     let sprite = render(RampAlphaMode::TextureAlpha);
     let mut reddish = 0;
     let mut pure_green = 0;
-    for px in sprite.chunks_exact(4) {
+    for px in sprite.as_chunks::<4>().0 {
         if px[0] > 150 && px[1] < 90 {
             reddish += 1;
         }
@@ -308,7 +308,9 @@ fn texture_preview_colorizes_with_the_ramp_and_shows_alpha() {
     // Off mode: alpha ignored → the s=1 cells ARE pure-ish green (no checker bleed).
     let off = render(RampAlphaMode::None);
     let off_green = off
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|px| px[0] < 40 && px[1] > 215)
         .count();
     assert!(off_green > 0, "Off mode shows the opaque green end");

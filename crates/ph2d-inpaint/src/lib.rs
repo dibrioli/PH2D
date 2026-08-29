@@ -92,7 +92,12 @@ fn to_u8(v: f32) -> u8 {
 /// algorithm reconstructs colour; alpha is restored from the source at the end).
 fn plane_from_rgba(w: usize, h: usize, rgba: &[u8]) -> Img {
     let mut p = Img::new(w, h);
-    for (dst, src) in p.px.chunks_exact_mut(3).zip(rgba.chunks_exact(4)) {
+    for (dst, src) in
+        p.px.as_chunks_mut::<3>()
+            .0
+            .iter_mut()
+            .zip(rgba.as_chunks::<4>().0.iter())
+    {
         dst[0] = f32::from(src[0]) / 255.0;
         dst[1] = f32::from(src[1]) / 255.0;
         dst[2] = f32::from(src[2]) / 255.0;

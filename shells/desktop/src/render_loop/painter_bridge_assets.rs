@@ -41,7 +41,9 @@ fn pick_brush_rgba(asset_db: &ph2d_asset::AssetDb) -> Result<Option<(Vec<u8>, u3
 /// consumidor que precisa de cinza, é o que deixa o outro consumidor com os pixels que ele precisa.
 fn to_luminance(rgba: &[u8]) -> Vec<u8> {
     // Rec.601 luminance: weights 77/150/29 sum to 256, so the `>> 8` keeps `[0,255]`.
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)
         .collect()
 }

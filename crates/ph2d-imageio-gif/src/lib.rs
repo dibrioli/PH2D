@@ -83,7 +83,9 @@ fn frame_to_image_buffer(frame: &image::Frame) -> ImageBuffer<SrgbRgba> {
     let buf = frame.buffer();
     let (width, height) = buf.dimensions();
     let pixels: Vec<SrgbRgba> = buf
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
         .collect();
     ImageBuffer {

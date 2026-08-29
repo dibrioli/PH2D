@@ -257,7 +257,9 @@ fn layer_pixels(
         )));
     }
     let pixels: Vec<SrgbRgba> = raw
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
         .collect();
     Ok(ImageBuffer {
@@ -289,7 +291,9 @@ fn flat_image_to_image_buffer(
         width: canvas_w,
         height: canvas_h,
         pixels: raw
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
             .collect(),
         color_profile: ColorProfile::Srgb,

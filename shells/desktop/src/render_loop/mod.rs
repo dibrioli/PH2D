@@ -11246,7 +11246,9 @@ impl crate::App {
                             let lum: Vec<u8> = src
                                 .image
                                 .pixels
-                                .chunks_exact(4)
+                                .as_chunks::<4>()
+                                .0
+                                .iter()
                                 .map(|p| {
                                     ((u32::from(p[0]) * 77
                                         + u32::from(p[1]) * 150
@@ -11335,7 +11337,9 @@ impl crate::App {
                         let lum: Vec<u8> = src
                             .image
                             .pixels
-                            .chunks_exact(4)
+                            .as_chunks::<4>()
+                            .0
+                            .iter()
                             .map(|p| {
                                 ((u32::from(p[0]) * 77
                                     + u32::from(p[1]) * 150

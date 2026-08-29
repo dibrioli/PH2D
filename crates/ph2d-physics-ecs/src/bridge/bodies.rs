@@ -178,7 +178,7 @@ impl PhysicsBridge {
         // Stale bodies: entity no longer carries the components. O(N²) is
         // fine at W1 body counts and allocates nothing; only fires on
         // despawn (steady state leaves `to_remove` empty).
-        for (&e, _) in self.bodies.iter() {
+        for &e in self.bodies.keys() {
             if !self.seen.contains(&e) {
                 self.to_remove.push(e);
             }

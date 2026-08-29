@@ -181,7 +181,7 @@ fn continuity(
     let mut total = 0usize;
     let mut whole = 0usize;
     let mut edges = 0usize;
-    for e in wire.chunks_exact(2) {
+    for e in wire.as_chunks::<2>().0 {
         let (a, b) = (pos[e[0] as usize], pos[e[1] as usize]);
         let (Some(pa), Some(pb)) = (cam.project(a, (W, H)), cam.project(b, (W, H))) else {
             continue;
@@ -281,7 +281,7 @@ fn strict_front(mesh: &Mesh, cam: &Camera3d, mask: &mut [bool]) -> f64 {
     ph2d_mesh_render::wire_indices(mesh, &mut wire);
     let pos = mesh.positions();
     let mut sum = 0.0;
-    for e in wire.chunks_exact(2) {
+    for e in wire.as_chunks::<2>().0 {
         if facing_at(mesh, e[0], cam) <= STRICT_MARGIN
             || facing_at(mesh, e[1], cam) <= STRICT_MARGIN
         {
@@ -325,7 +325,7 @@ fn strict_front_binned(mesh: &Mesh, cam: &Camera3d, bins: &mut [(Vec<bool>, f64)
     ph2d_mesh_render::wire_indices(mesh, &mut wire);
     let pos = mesh.positions();
     let n = bins.len();
-    for e in wire.chunks_exact(2) {
+    for e in wire.as_chunks::<2>().0 {
         let (fa, fb) = (facing_at(mesh, e[0], cam), facing_at(mesh, e[1], cam));
         let f = fa.min(fb);
         if f <= STRICT_MARGIN {
@@ -435,7 +435,7 @@ fn front_edge_mask(mesh: &Mesh, cam: &Camera3d, near: &mut [bool]) {
             }
         }
     };
-    for e in wire.chunks_exact(2) {
+    for e in wire.as_chunks::<2>().0 {
         let (a, b) = (pos[e[0] as usize], pos[e[1] as usize]);
         let (Some(pa), Some(pb)) = (cam.project(a, (W, H)), cam.project(b, (W, H))) else {
             continue;
@@ -465,7 +465,7 @@ fn front_edge_pixels(mesh: &Mesh, cam: &Camera3d) -> f64 {
     ph2d_mesh_render::wire_indices(mesh, &mut wire);
     let pos = mesh.positions();
     let mut sum = 0.0;
-    for e in wire.chunks_exact(2) {
+    for e in wire.as_chunks::<2>().0 {
         let (a, b) = (pos[e[0] as usize], pos[e[1] as usize]);
         let (Some(pa), Some(pb)) = (cam.project(a, (W, H)), cam.project(b, (W, H))) else {
             continue;

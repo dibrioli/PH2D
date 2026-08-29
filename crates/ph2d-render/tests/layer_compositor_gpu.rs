@@ -2362,7 +2362,7 @@ fn injected_slice_wins_until_provider_version_bumps() {
     let region = Region::full(w, h);
     let solid = |r: u8, g: u8, b: u8| {
         let mut v = vec![0u8; (w * h * 4) as usize];
-        for px in v.chunks_exact_mut(4) {
+        for px in v.as_chunks_mut::<4>().0 {
             px.copy_from_slice(&[r, g, b, 255]);
         }
         v
@@ -2536,7 +2536,7 @@ fn composite_region_into_canvas_refreshes_region_and_preserves_outside() {
     let (w, h) = (32u32, 32u32);
     let solid = |r: u8, g: u8, b: u8| {
         let mut v = vec![0u8; (w * h * 4) as usize];
-        for px in v.chunks_exact_mut(4) {
+        for px in v.as_chunks_mut::<4>().0 {
             px.copy_from_slice(&[r, g, b, 255]);
         }
         v

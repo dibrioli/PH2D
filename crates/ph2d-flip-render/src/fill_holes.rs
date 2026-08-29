@@ -116,7 +116,7 @@ pub fn triangulate_even_odd(outer: &[Vec2], holes: &[Vec<Vec2>]) -> Vec<Vec2> {
         xs.sort_by(f32::total_cmp);
         // Even-odd: os pares (0,1), (2,3), … são o INTERIOR. Um buraco inverte a
         // paridade duas vezes ao ser atravessado — e some do preenchimento sozinho.
-        for pair in xs.chunks_exact(2) {
+        for pair in xs.as_chunks::<2>().0 {
             let (xa, xb) = (pair[0], pair[1]);
             if (xb - xa).abs() < f32::EPSILON {
                 continue; // span de largura zero (duas arestas no mesmo x)
@@ -161,7 +161,9 @@ mod tests {
     /// A área dos triângulos (soma dos |shoelace|/2) — o que se mede para provar que o
     /// preenchimento cobre a região certa.
     fn area(tris: &[Vec2]) -> f32 {
-        tris.chunks_exact(3)
+        tris.as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 ((t[1].x - t[0].x) * (t[2].y - t[0].y) - (t[1].y - t[0].y) * (t[2].x - t[0].x))
                     .abs()
@@ -199,7 +201,7 @@ mod tests {
         );
         // E nenhum triângulo cai DENTRO do furo (o centro do furo não é coberto).
         let center = Vec2::new(5.0, 5.0);
-        let inside_hole = tris.chunks_exact(3).any(|t| {
+        let inside_hole = tris.as_chunks::<3>().0.iter().any(|t| {
             let s =
                 |a: Vec2, b: Vec2, p: Vec2| (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
             let (d1, d2, d3) = (

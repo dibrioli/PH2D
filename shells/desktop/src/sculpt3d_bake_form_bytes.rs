@@ -18,7 +18,12 @@ use super::*;
 /// consumidor faria de qualquer jeito: `n·0,5 + 0,5` quantizado não devolve um vetor unitário.
 fn quantise_form(form: &[f32]) -> Vec<f32> {
     let mut out = vec![0f32; form.len()];
-    for (o, f) in out.chunks_exact_mut(4).zip(form.chunks_exact(4)) {
+    for (o, f) in out
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(form.as_chunks::<4>().0.iter())
+    {
         let enc = |v: f32| ((v * 0.5 + 0.5).clamp(0.0, 1.0) * 255.0 + 0.5).floor() / 255.0;
         let (x, y, z) = (
             enc(f[0]) * 2.0 - 1.0,
@@ -43,7 +48,7 @@ fn bake_with(
 ) -> Vec<u8> {
     let n = (SIDE * SIDE) as usize;
     let mut base = vec![0u8; n * 4];
-    for px in base.chunks_exact_mut(4) {
+    for px in base.as_chunks_mut::<4>().0.iter_mut() {
         px.copy_from_slice(&[base_rgb[0], base_rgb[1], base_rgb[2], 255]);
     }
     let (relief, cover, mat0, mat1) = neutral_planes(&base);

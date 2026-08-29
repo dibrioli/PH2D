@@ -39,7 +39,7 @@ fn ridge(paper_alpha: u8, impasto: bool, color: [f32; 3]) -> PainterTool {
     let size = 60u32;
     let mut t = PainterTool::default();
     let mut px = vec![255u8; (size * size * 4) as usize];
-    for p in px.chunks_exact_mut(4) {
+    for p in px.as_chunks_mut::<4>().0.iter_mut() {
         p[3] = paper_alpha;
     }
     t.set_source(px, size, size);
@@ -59,9 +59,7 @@ fn ridge(paper_alpha: u8, impasto: bool, color: [f32; 3]) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.paint.impasto_show = true;
     let at = |x: f32, y: f32, phase| CanvasPointer {
         pos: [x, y],
@@ -89,7 +87,9 @@ pub(super) fn ridge_for_alpha_gate_with(impasto: bool) -> PainterTool {
 }
 
 fn lum(rgba: &[u8]) -> Vec<u8> {
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)
         .collect()
 }
@@ -318,14 +318,16 @@ fn installing_a_sprite_with_colour_keeps_the_silhouette_it_always_had() {
     let (w, h) = (8u32, 8u32);
     let n = (w * h) as usize;
     let mut px = vec![0u8; n * 4];
-    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         p[0] = (i * 3) as u8;
         p[1] = (i * 5) as u8;
         p[2] = (i * 7) as u8;
         p[3] = 255 - (i * 2) as u8;
     }
     let lum: Vec<u8> = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)
         .collect();
 
@@ -355,7 +357,7 @@ fn installing_a_sprite_with_colour_keeps_the_silhouette_it_always_had() {
 fn a_single_layer_sprite_can_paint_its_own_colours() {
     let (w, h) = (4u32, 4u32);
     let mut px = vec![255u8; (w * h) as usize * 4];
-    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         p[0] = (i * 11) as u8;
     }
     let mut t = PainterTool::default();

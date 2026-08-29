@@ -268,8 +268,10 @@ fn the_bridge_writes_exactly_the_region_it_was_handed() {
     let mut outside = 0usize;
     let mut inside_same = 0usize;
     for (i, (a, b)) in before
-        .chunks_exact(4)
-        .zip(t.canvas_rgba.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(t.canvas_rgba.as_chunks::<4>().0.iter())
         .enumerate()
     {
         #[allow(clippy::cast_possible_truncation)]

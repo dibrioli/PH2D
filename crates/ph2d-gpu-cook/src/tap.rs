@@ -266,7 +266,13 @@ impl GpuCook {
             let run = &flat[base..base + n * lanes];
             let col = match slot.dim {
                 Dim::Scalar => Column::Scalar(run.to_vec()),
-                Dim::Vec2 => Column::Vec2(run.chunks_exact(2).map(|c| [c[0], c[1]]).collect()),
+                Dim::Vec2 => Column::Vec2(
+                    run.as_chunks::<2>()
+                        .0
+                        .iter()
+                        .map(|c| [c[0], c[1]])
+                        .collect(),
+                ),
                 // Vec3 pads to 16 bytes (4 lanes) — take the first three.
                 Dim::Vec3 => Column::Vec3(
                     run.chunks_exact(lanes)
@@ -274,7 +280,9 @@ impl GpuCook {
                         .collect(),
                 ),
                 _ => Column::Vec4(
-                    run.chunks_exact(4)
+                    run.as_chunks::<4>()
+                        .0
+                        .iter()
                         .map(|c| [c[0], c[1], c[2], c[3]])
                         .collect(),
                 ),

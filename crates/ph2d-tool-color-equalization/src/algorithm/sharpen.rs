@@ -30,7 +30,7 @@ pub fn sharpen_laplacian(rgba: &mut [u8], w: u32, h: u32, amount: f32) {
     // Pre-linearize once; reused for 4 neighbour lookups per pixel × 3
     // channels — amortises the sRGB transfer.
     let mut src_lin: Vec<[f32; 3]> = Vec::with_capacity(n_px);
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0 {
         src_lin.push([
             srgb_to_linear_u8(px[0]),
             srgb_to_linear_u8(px[1]),

@@ -388,10 +388,9 @@ fn group_chip_ui(
         // deslocamento que o pintor usa. `checked_sub` e não `- 1`: a opção zero
         // não é o material `-1`, é a AUSÊNCIA de matcap.
         ui.matcap = i.checked_sub(1).map(|k| u8::try_from(k).unwrap_or(u8::MAX));
-    } else if let Some(i) = index_of(&ids::SCULPT3D_DETAIL, id) {
-        ui.detail = u8::try_from(i).unwrap_or(0);
     } else {
-        return None;
+        let i = index_of(&ids::SCULPT3D_DETAIL, id)?;
+        ui.detail = u8::try_from(i).unwrap_or(0);
     }
     Some(ui)
 }

@@ -111,7 +111,7 @@ pub fn detect_subject_interior(
 
 /// Y' = 0.299R + 0.587G + 0.114B, integer-approx (Rec.601).
 fn compute_luma(rgba: &[u8], n: usize, out: &mut [u8]) {
-    for (px, dst) in rgba.chunks_exact(4).zip(out.iter_mut()).take(n) {
+    for (px, dst) in rgba.as_chunks::<4>().0.iter().zip(out.iter_mut()).take(n) {
         let r = px[0] as u32;
         let g = px[1] as u32;
         let b = px[2] as u32;

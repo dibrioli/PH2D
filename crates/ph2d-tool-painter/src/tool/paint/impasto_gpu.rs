@@ -336,9 +336,7 @@ mod tests {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([14.0, 24.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([34.0, 24.0], PointerPhase::Up));
@@ -477,9 +475,7 @@ mod tests {
                 ..Default::default()
             };
             t.paint.brush = b;
-            for slot in &mut t.paint.brush_by_mode {
-                *slot = b;
-            }
+            t.paint.brush_by_mode.fill(b);
             let mid = (size / 2) as f32;
             t.on_canvas_pointer(cp([40.0, mid], PointerPhase::Down));
             t.on_canvas_pointer(cp([160.0, mid], PointerPhase::Move));

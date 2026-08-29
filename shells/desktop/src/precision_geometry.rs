@@ -142,7 +142,12 @@ pub(crate) fn apply_alpha8_to_rgba16(src: &[u16], alpha_rgba8: &[u8]) -> Option<
         return None;
     }
     let mut out = src.to_vec();
-    for (px, a8) in out.chunks_exact_mut(CH).zip(alpha_rgba8.chunks_exact(CH)) {
+    for (px, a8) in out
+        .as_chunks_mut::<CH>()
+        .0
+        .iter_mut()
+        .zip(alpha_rgba8.as_chunks::<CH>().0.iter())
+    {
         // ⚠️ Meio-float, não inteiro: `1.0` é `0x3C00` e não `0xFFFF`. Escrever o byte esticado
         // seria um alfa de ~2000× — a imagem inteira opaca e estourada.
         px[3] = ph2d_color::f32_to_half(f32::from(a8[3]) / 255.0);
@@ -241,7 +246,7 @@ mod tests {
     fn nearest_replication_never_produces_a_value_the_source_lacks() {
         let src = tagged(3, 1);
         let out = replicate_rgba16(&src, 3, 1, 7, 1).expect("cabe");
-        for px in out.chunks_exact(4) {
+        for px in out.as_chunks::<4>().0.iter() {
             assert!(
                 px[0] < 3,
                 "apareceu a coluna {} numa origem de 3 — isso e' interpolacao, nao replicacao",
@@ -277,7 +282,12 @@ mod tests {
         let src = tagged(4, 4);
         let alpha = vec![0u8; 4 * 4 * 4];
         let out = apply_alpha8_to_rgba16(&src, &alpha).expect("mesmo comprimento");
-        for (before, after) in src.chunks_exact(4).zip(out.chunks_exact(4)) {
+        for (before, after) in src
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks::<4>().0.iter())
+        {
             assert_eq!(&before[0..3], &after[0..3], "o RGB nao pode ser tocado");
         }
     }

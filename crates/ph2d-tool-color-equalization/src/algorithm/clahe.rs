@@ -51,7 +51,7 @@ pub fn clahe(src: &[u8], w: u32, h: u32, clip_limit: f32, tile_grid_size: u32, d
     let mut luma = vec![0u8; n_px];
     let mut cb = vec![0.0_f32; n_px];
     let mut cr = vec![0.0_f32; n_px];
-    for (i, px) in src.chunks_exact(4).enumerate() {
+    for (i, px) in src.as_chunks::<4>().0.iter().enumerate() {
         let r = px[0] as f32;
         let g = px[1] as f32;
         let b = px[2] as f32;
@@ -264,7 +264,7 @@ mod tests {
         // Should not panic; uniform input maps the (now single) populated
         // bin to 255 just like the larger clip_limit cases.
         clahe(&src, 8, 8, 1.0, 4, &mut dst);
-        for px in dst.chunks_exact(4) {
+        for px in dst.as_chunks::<4>().0 {
             assert_eq!(px[0], 255);
             assert_eq!(px[3], 255);
         }
@@ -286,7 +286,7 @@ mod tests {
         clahe(&src, 32, 32, 2.0, 4, &mut dst);
         let mut lo = 255u8;
         let mut hi = 0u8;
-        for px in dst.chunks_exact(4) {
+        for px in dst.as_chunks::<4>().0 {
             lo = lo.min(px[0]);
             hi = hi.max(px[0]);
         }

@@ -147,7 +147,9 @@ fn source_for(
 /// ficheiro inteiro.
 fn hdr_offer(halves: &[u16], width: u32, height: u32) -> DecodedImage {
     let pixels = halves
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|px| {
             ph2d_color::LinearRgba::new(
                 ph2d_color::half_to_f32(px[0]),

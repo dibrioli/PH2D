@@ -128,9 +128,7 @@ fn white_canvas(size: u32, radius: f32) -> PainterTool {
     // it instead of loading that tool's independent default (the "Sync with other tools" model). Tests
     // that exercise the independent/linked behaviour itself set their slots explicitly.
     let seed = t.paint.brush;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = seed;
-    }
+    t.paint.brush_by_mode.fill(seed);
     t
 }
 
@@ -3141,9 +3139,7 @@ fn switching_sprite_while_the_paint_is_still_wet_does_not_index_the_old_moisture
     // instead of "does the SHAPE match?".
     let mut t = white_canvas(64, 8.0);
     t.paint.brush.watercolor = true;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([34.0, 34.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([34.0, 34.0], PointerPhase::Up));
@@ -3193,9 +3189,7 @@ fn editing_the_paper_re_renders_the_wet_wash_with_the_new_paper() {
     t.paint.brush.paper.kind = TextureKind::Voronoi; // a lattice paper: Size genuinely changes the tooth
     t.paint.brush.paper.mapping = TextureMapping::Tiled;
     t.paint.brush.paper_depth = 1.0;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
     let memo_before: Vec<f32> = t.paint.wet_substrate.clone();
@@ -3261,9 +3255,7 @@ fn jitter_rotate_reaches_smear_on_a_flattened_untextured_dab() {
             ..Default::default()
         };
         // The tool keeps a brush PER MODE — seed every slot, or selecting Smear swaps the settings out.
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         t.paint.seed = seed; // the jitter draw
         t.handle_panel_event(PanelEvent::SelectOption(
             core_ids::PAINTER_PAINT_MODE,
@@ -3402,9 +3394,7 @@ fn paper_depth_and_granulation_re_render_the_wet_wash() {
     };
     t.paint.brush.paper.kind = TextureKind::Voronoi;
     t.paint.brush.paper.mapping = TextureMapping::Tiled;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
     let before = (*t.canvas_rgba).clone();
@@ -3449,9 +3439,7 @@ fn grain_rake_is_inert_under_the_wash() {
             },
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down));
         for i in 1..10u16 {
             t.on_canvas_pointer(cp([16.0 + 4.0 * f32::from(i), 32.0], PointerPhase::Move));
@@ -3461,7 +3449,11 @@ fn grain_rake_is_inert_under_the_wash() {
     };
     let plain = wash(false);
     assert!(
-        plain.chunks_exact(4).any(|p| p[0] != 255 || p[1] != 255),
+        plain
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] != 255 || p[1] != 255),
         "the wash actually painted (guard against a fixture that proves nothing)"
     );
     assert_eq!(plain, wash(true), "Grain Rake is inert under the wash");
@@ -3645,9 +3637,7 @@ fn under_the_wash_neither_accumulate_nor_strength_reaches_the_paint() {
             accumulate,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([36.0, 36.0], PointerPhase::Up));
@@ -3655,7 +3645,9 @@ fn under_the_wash_neither_accumulate_nor_strength_reaches_the_paint() {
     };
     // CONTROLE: o traço tem de PINTAR, senão os três `assert_eq!` abaixo passam por vácuo.
     let painted = wash(0.9, true)
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
         .count();
     assert!(
@@ -3714,9 +3706,7 @@ fn under_the_wash_neither_accumulate_nor_strength_reaches_the_paint() {
             strength,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down));
         let mut x = 16.0f32;
         while x < 96.0 {
@@ -6783,7 +6773,7 @@ fn stencil_card_panel_events_drive_the_stencil_frame_not_the_texture() {
 
 /// `true` when the RGBA buffer is not a flat fill (the texture produced spatial variation).
 fn buf_varies(b: &[u8]) -> bool {
-    b.chunks_exact(4).any(|p| p != &b[0..4])
+    b.as_chunks::<4>().0.iter().any(|p| p != &b[0..4])
 }
 
 #[test]
@@ -6861,7 +6851,9 @@ fn texture_layer_renders_composites_and_edits_live_via_panel_events() {
     let (hidden, _, _) = t.run_full();
     assert!(
         hidden
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .all(|p| p[0] == 255 && p[1] == 255 && p[2] == 255 && p[3] == 255),
         "hiding the texture layer reveals the white base"
     );
@@ -7599,7 +7591,7 @@ fn deform_transform_distort_warps_a_free_corner() {
 fn deform_transform_perf_move_is_under_frame_budget() {
     let size = 2048u32;
     let mut src = vec![0u8; (size * size * 4) as usize];
-    for px in src.chunks_exact_mut(4) {
+    for px in src.as_chunks_mut::<4>().0.iter_mut() {
         px.copy_from_slice(&[200, 120, 60, 255]);
     }
     let mut t = PainterTool::default();
@@ -7636,7 +7628,7 @@ fn deform_transform_perf_move_is_under_frame_budget() {
 fn deform_warp_perf_drag_is_under_frame_budget() {
     let size = 2048u32;
     let mut src = vec![0u8; (size * size * 4) as usize];
-    for px in src.chunks_exact_mut(4) {
+    for px in src.as_chunks_mut::<4>().0.iter_mut() {
         px.copy_from_slice(&[200, 120, 60, 255]);
     }
     let mut t = PainterTool::default();
@@ -7724,7 +7716,7 @@ fn perf_transform_whole_image_table() {
     let size = 2048u32;
     let run = |mode: u8, whole: bool, hold: bool, grab: [f32; 2]| -> f64 {
         let mut src = vec![0u8; (size * size * 4) as usize];
-        for px in src.chunks_exact_mut(4) {
+        for px in src.as_chunks_mut::<4>().0.iter_mut() {
             px.copy_from_slice(&[200, 120, 60, 255]);
         }
         let mut t = PainterTool::default();
@@ -12185,9 +12177,7 @@ fn watercolor_edge_darkens_the_rim_not_the_interior() {
         let mut t = PainterTool::default();
         t.set_source(vec![255u8; (size * size * 4) as usize], size, size);
         t.paint.brush = brush;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = brush;
-        }
+        t.paint.brush_by_mode.fill(brush);
         assert!(t.on_canvas_pointer(cp(center, PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp(center, PointerPhase::Up)));
         t
@@ -12241,9 +12231,7 @@ fn watercolor_granulation_textures_the_wash() {
             granulation,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
         // Variance of the R channel over a deep-interior window (well inside the 26 px disc → cover ≈ 1,
@@ -12277,7 +12265,7 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
         let size = 48u32;
         // A solid opaque blue base already on the canvas (the "previous wash" to mix into).
         let mut src = vec![0u8; (size * size * 4) as usize];
-        for p in src.chunks_exact_mut(4) {
+        for p in src.as_chunks_mut::<4>().0.iter_mut() {
             p.copy_from_slice(&[30, 55, 195, 255]);
         }
         let mut t = PainterTool::default();
@@ -12298,9 +12286,7 @@ fn watercolor_pigment_mixes_wet_on_wet_toward_green() {
             pigment_mix,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)));
         px(&t, size, 24, 24)
@@ -12345,9 +12331,7 @@ fn watercolor_opacity_gives_light_pigments_body() {
             opacity,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
         px(&t, size, 32, 32)
@@ -12394,9 +12378,7 @@ fn watercolor_wash_is_live_before_pen_up() {
         warp: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let lum = |p: [u8; 4]| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]);
     // Paint a horizontal band and STOP without releasing (no Up event).
     assert!(t.on_canvas_pointer(cp([24.0, 48.0], PointerPhase::Down)));
@@ -12435,9 +12417,7 @@ fn watercolor_off_is_a_plain_deposit() {
         watercolor: false, // OFF → the plain deposit path, no optical composite
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Down)));
     assert!(t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Up)));
     // The dab deposited the (opaque) brush colour straight — a plain Mix over white.
@@ -12488,9 +12468,7 @@ fn watercolor_smudge_true_smears_the_painted_paint() {
             wet_rewet: 0.0, // isolate the physical smear from the wet-on-wet rewet
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         // Left-to-right stroke crossing the band and exiting into white.
         assert!(t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down)));
         let mut x = 16.0f32;
@@ -12561,9 +12539,7 @@ fn watercolor_smudge_wraps_across_the_tiling_seam() {
             wet_rewet: 0.0, // isolate the physical smear from the wet-on-wet rewet
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         t.paint.tiling = [tiling, false];
         // Rightward stroke near the right edge, crossing the seam (dabs at x≈52..72, radius 6 ⇒ the copies
         // wrap onto the left edge); a dense step (2 px) so the drag accumulates, y=32.
@@ -12620,9 +12596,7 @@ fn watercolor_live_recomposite_is_local_to_the_frame() {
         depth: 2.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Paint the left third of a horizontal band, live.
     assert!(t.on_canvas_pointer(cp([30.0, 128.0], PointerPhase::Down)));
     t.on_canvas_pointer(cp([50.0, 128.0], PointerPhase::Move));
@@ -12701,9 +12675,7 @@ fn watercolor_moving_preview_restores_the_old_position() {
         stroke_method: StrokeMethod::DragDot,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([70.0, 32.0], PointerPhase::Down)));
     assert_ne!(
         px(&t, size, 70, 32),
@@ -12803,9 +12775,7 @@ fn probe(wet: f32) {
         wet_rewet: wet,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let y = 1024.0f32;
     assert!(t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down)));
     let n = 440usize; // ~1760 px of stroke, 4 px per Move
@@ -12854,9 +12824,7 @@ fn watercolor_incremental_composite_matches_full_recompose() {
         depth: 2.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Long diagonal live stroke, pen still down — TWO Moves per frame (a 120 Hz mouse at 60 fps), so
     // each composite covers the UNION of that frame's dabs. That is the harder case for the property
     // under test: a wider window has more room to leave a pixel stale, not less.
@@ -12919,15 +12887,11 @@ fn watercolor_incremental_composite_matches_full_with_water() {
         wet_dilution: 0.6, // água carregada — o caso do smoke (Charge 1 default)
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A assado (SEM água) — o anel/lift d'água só liga sobre PIGMENTO (bp_ring > 0); numa
     // tela virgem o halo nem é lido e a paridade passa vazia.
     t.paint.brush.wet_dilution = 0.0;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down)));
     for i in 1..=40 {
         t.on_canvas_pointer(cp([30.0 + i as f32 * 4.5, 60.0], PointerPhase::Move));
@@ -12935,9 +12899,7 @@ fn watercolor_incremental_composite_matches_full_with_water() {
     t.on_canvas_pointer(cp([210.0, 60.0], PointerPhase::Up));
     // Traço B com ÁGUA, VIVO, cruzando o wash em diagonal — paridade no estado ao vivo.
     t.paint.brush.wet_dilution = 0.6;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down)));
     for i in 1..=40 {
         let p = 30.0 + i as f32 * 4.5;
@@ -13024,9 +12986,7 @@ fn watercolor_app_params_incremental_vs_full_ablated(
         ..Default::default()
     };
     tweak(&mut t.paint.brush);
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A assado (SEM água), horizontal — com o heartbeat do app entre os Moves.
     assert!(t.on_canvas_pointer(cp([60.0, 250.0], PointerPhase::Down)));
     for i in 1..=40 {
@@ -13038,9 +12998,7 @@ fn watercolor_app_params_incremental_vs_full_ablated(
     // Traço B com ÁGUA, VIVO, cruzando o wash em diagonal (cruza em ~(250,250)).
     t.paint.brush.wet_dilution = 0.6;
     tweak(&mut t.paint.brush);
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([100.0, 60.0], PointerPhase::Down)));
     for i in 1..=40 {
         t.on_canvas_pointer(cp(
@@ -13238,9 +13196,7 @@ fn measure_whether_the_window_itself_moves_the_pixels() {
         wet_charge: 1.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([60.0, 250.0], PointerPhase::Down)));
     for i in 1..=40 {
         t.on_canvas_pointer(cp([60.0 + i as f32 * 10.0, 250.0], PointerPhase::Move));
@@ -13257,7 +13213,12 @@ fn measure_whether_the_window_itself_moves_the_pixels() {
     let full: Vec<u8> = t.canvas_rgba.to_vec();
     let (bw, bn) = {
         let (mut w, mut n) = (0i32, 0usize);
-        for (a, b) in baked.chunks_exact(4).zip(full.chunks_exact(4)) {
+        for (a, b) in baked
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(full.as_chunks::<4>().0.iter())
+        {
             let d = (0..4)
                 .map(|c| (i32::from(a[c]) - i32::from(b[c])).abs())
                 .max()
@@ -13328,8 +13289,10 @@ fn measure_which_term_carries_the_incremental_residue() {
             watercolor_app_params_incremental_vs_full_ablated(1.0, 7.0, None, tweak);
         let (worst, _) = worst_byte_delta(&inc, &full);
         let n = inc
-            .chunks_exact(4)
-            .zip(full.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(full.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x != y))
             .count();
         eprintln!("[ablacao] {label} pior Δ{worst} · {n} px");
@@ -13353,7 +13316,13 @@ fn measure_when_the_incremental_diverges() {
             let (worst, _) = worst_byte_delta(&inc, &full);
             let s = size as usize;
             let (mut n, mut x0, mut y0, mut x1, mut y1) = (0usize, usize::MAX, usize::MAX, 0, 0);
-            for (p, (a, b)) in inc.chunks_exact(4).zip(full.chunks_exact(4)).enumerate() {
+            for (p, (a, b)) in inc
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(full.as_chunks::<4>().0.iter())
+                .enumerate()
+            {
                 if a.iter().zip(b.iter()).any(|(x, y)| x != y) {
                     n += 1;
                     let (x, y) = (p % s, p / s);
@@ -13449,9 +13418,7 @@ fn watercolor_granulation_amount_is_inert_without_a_source() {
         granulation_use_paper: false, // …but no source: Same-as-Paper off…
         ..Default::default()          // …and no Grain image set
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up)));
     // Deep-interior window (cover ≈ 1): with no substrate the wash must be FLAT (zero variance).
@@ -13509,9 +13476,7 @@ fn watercolor_wet_lifts_and_bleeds_the_painted_paint() {
             wet_rewet: wet,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 64.0], PointerPhase::Down)));
         let mut x = 16.0f32;
         while x < 100.0 {
@@ -13573,9 +13538,7 @@ fn watercolor_wet_redistributes_the_wash_on_blank_canvas() {
             wet_rewet: wet,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([24.0, 48.0], PointerPhase::Down)));
         for x in [36.0, 48.0, 60.0, 72.0] {
             t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
@@ -13612,7 +13575,7 @@ fn watercolor_wet_redistributes_the_wash_on_blank_canvas() {
 fn watercolor_wet_lift_stays_in_hue_without_pigment() {
     let size = 96u32;
     let mut src = vec![0u8; (size * size * 4) as usize];
-    for px4 in src.chunks_exact_mut(4) {
+    for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
         px4.copy_from_slice(&[217, 13, 13, 255]); // a dry red wash everywhere
     }
     let mut t = PainterTool::default();
@@ -13635,9 +13598,7 @@ fn watercolor_wet_lift_stays_in_hue_without_pigment() {
         wet_rewet: 1.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([30.0, 48.0], PointerPhase::Down)));
     for x in [42.0, 54.0, 66.0] {
         t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
@@ -13665,7 +13626,7 @@ fn watercolor_wet_drives_the_paint_mix_without_pigment() {
     fn run(pigment: bool) -> PainterTool {
         let size = 96u32;
         let mut src = vec![0u8; (size * size * 4) as usize];
-        for px4 in src.chunks_exact_mut(4) {
+        for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
             px4.copy_from_slice(&[217, 13, 13, 255]); // dry red everywhere
         }
         let mut t = PainterTool::default();
@@ -13688,9 +13649,7 @@ fn watercolor_wet_drives_the_paint_mix_without_pigment() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([30.0, 48.0], PointerPhase::Down)));
         for x in [42.0, 54.0, 66.0] {
             t.on_canvas_pointer(cp([x, 48.0], PointerPhase::Move));
@@ -13746,18 +13705,14 @@ fn watercolor_ground_is_the_real_backdrop_not_a_virtual_cream() {
     let mut direct = PainterTool::default();
     direct.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     direct.paint.brush = wet_brush();
-    for slot in &mut direct.paint.brush_by_mode {
-        *slot = direct.paint.brush;
-    }
+    direct.paint.brush_by_mode.fill(direct.paint.brush);
     stroke(&mut direct);
     // (b) The stroke on a TRANSPARENT layer added above the same white base.
     let mut layered = PainterTool::default();
     layered.set_source(vec![255u8; (size * size * 4) as usize], size, size);
     layered.add_raster_layer("wash").expect("add layer");
     layered.paint.brush = wet_brush();
-    for slot in &mut layered.paint.brush_by_mode {
-        *slot = layered.paint.brush;
-    }
+    layered.paint.brush_by_mode.fill(layered.paint.brush);
     stroke(&mut layered);
     // Flatten (b) through the real compositor and compare inside the wash.
     let active = layered.layers.active().expect("active");
@@ -13795,7 +13750,7 @@ fn watercolor_wet_reads_no_paint_on_a_paper_colored_ground() {
     fn run(wet: f32) -> PainterTool {
         let size = 96u32;
         let mut src = vec![0u8; (size * size * 4) as usize];
-        for px4 in src.chunks_exact_mut(4) {
+        for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
             px4.copy_from_slice(&[100, 100, 100, 255]); // uniform mid-gray, no paint anywhere
         }
         let mut t = PainterTool::default();
@@ -13818,9 +13773,7 @@ fn watercolor_wet_reads_no_paint_on_a_paper_colored_ground() {
             wet_rewet: wet,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
         let mut x = 16.0f32;
         while x < 80.0 {
@@ -13888,9 +13841,7 @@ fn watercolor_wet_lifts_paint_lighter_than_the_old_cream() {
             wet_rewet: wet,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
         let mut x = 16.0f32;
         while x < 80.0 {
@@ -13951,9 +13902,7 @@ fn watercolor_soak_deepens_and_widens_the_dissolve_while_parked() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([40.0, 64.0], PointerPhase::Down)));
         let mut x = 40.0f32;
         while x < 64.0 {
@@ -14047,9 +13996,7 @@ fn watercolor_spread_clears_the_pool_centre() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Down)));
         assert!(t.on_canvas_pointer(cp([100.0, 100.0], PointerPhase::Up)));
         let lum = |c: [u8; 4]| {
@@ -14100,9 +14047,7 @@ fn watercolor_high_spread_frame_cost_bounded() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         let y = 1024.0f32;
         assert!(t.on_canvas_pointer(cp([100.0, y], PointerPhase::Down)));
         let n = 80usize;
@@ -14175,9 +14120,7 @@ fn watercolor_wet_mix_carries_colour_downstream() {
             wet_pull: 0.6,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 80.0], PointerPhase::Down)));
         let mut x = 16.0f32;
         while x < 130.0 {
@@ -14218,7 +14161,7 @@ fn watercolor_wet_mix_charge_controls_pickup() {
     fn run(charge: f32) -> PainterTool {
         let size = 96u32;
         let mut src = vec![0u8; (size * size * 4) as usize];
-        for px4 in src.chunks_exact_mut(4) {
+        for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
             px4.copy_from_slice(&[210, 30, 30, 255]); // dry red everywhere
         }
         let mut t = PainterTool::default();
@@ -14241,9 +14184,7 @@ fn watercolor_wet_mix_charge_controls_pickup() {
             wet_pull: 0.3,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
         let mut x = 16.0f32;
         while x < 80.0 {
@@ -14275,7 +14216,7 @@ fn watercolor_wet_mix_charge_controls_pickup() {
 fn watercolor_wet_mix_default_charge_deposits_pure_colour() {
     let size = 96u32;
     let mut src = vec![0u8; (size * size * 4) as usize];
-    for px4 in src.chunks_exact_mut(4) {
+    for px4 in src.as_chunks_mut::<4>().0.iter_mut() {
         px4.copy_from_slice(&[210, 30, 30, 255]);
     }
     let mut t = PainterTool::default();
@@ -14298,9 +14239,7 @@ fn watercolor_wet_mix_default_charge_deposits_pure_colour() {
         wet_pull: 0.8,   // even with Pull set, no pickup at full charge
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([16.0, 48.0], PointerPhase::Down)));
     let mut x = 16.0f32;
     while x < 80.0 {
@@ -14356,9 +14295,7 @@ fn watercolor_wet_mix_exit_bleed_mirrors_entry() {
         wet_pull: 0.0, // the reported Charge-only case
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
     while y < 140.0 {
@@ -14430,9 +14367,7 @@ fn watercolor_wet_mix_carried_colour_is_saturated_not_watery() {
         wet_pull: 0.6,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
     while y < 145.0 {
@@ -14492,9 +14427,7 @@ fn watercolor_wet_mix_exit_edge_keeps_pickup() {
         wet_pull: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([100.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
     while y < 175.0 {
@@ -14539,9 +14472,7 @@ fn watercolor_shape_editor_bake_runs_the_wash() {
             stroke_method: StrokeMethod::Line,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     fn draw_and_commit(t: &mut PainterTool) {
         t.on_canvas_pointer(cp([8.0, 32.0], PointerPhase::Down)); // corner 1
@@ -14598,9 +14529,7 @@ fn watercolor_shape_preview_leaves_no_trail() {
             stroke_method: StrokeMethod::Line,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     let size = 64u32;
 
@@ -14656,9 +14585,7 @@ fn watercolor_wash_ignores_the_brush_blend_mode() {
             blend, // the wash must ignore this entirely
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down)));
         t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([48.0, 32.0], PointerPhase::Up));
@@ -14702,9 +14629,7 @@ fn watercolor_respects_selection_and_protection_masks() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     let size = 64u32;
 
@@ -14795,9 +14720,7 @@ fn watercolor_alpha_lock_paints_only_into_existing_alpha() {
         wet_rewet: 1.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let active = t.layers.active().expect("active layer");
     t.layers.get_mut(active).expect("layer").alpha_locked = true;
 
@@ -14845,9 +14768,7 @@ fn watercolor_tiling_wraps_the_wash_across_the_seam() {
         edge_spread: 4.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.paint.tiling = [true, false]; // seamless wrap on X
 
     // Dab at x=62 (r=8 ⇒ footprint [54,70] crosses the far edge at x=64).
@@ -14890,9 +14811,7 @@ fn watercolor_shape_wash_crosses_the_tiling_seam() {
             stroke_method: StrokeMethod::Line,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     // A vertical Line at x=62 (r=8 ⇒ footprint [54,70] crosses the far edge at x=64): two clicks place the
     // start + end anchors, then Apply bakes.
@@ -14961,9 +14880,7 @@ fn watercolor_texture_size_rerenders_the_wet_wash_and_all_tiles() {
         },
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.paint.tiling = [true, true];
 
     // Paint a wash at x=62 (footprint [54,70] crosses the far edge ⇒ a wrapped copy paints x∈[0,6]); lift.
@@ -15037,9 +14954,7 @@ fn watercolor_alpha_lock_is_a_noop_on_fully_opaque() {
             wet_rewet: 1.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     fn stroke(t: &mut PainterTool) {
         assert!(t.on_canvas_pointer(cp([24.0, 32.0], PointerPhase::Down)));
@@ -15096,9 +15011,7 @@ fn watercolor_shape_automatic_continuity_and_image_silhouette() {
             edge_spread: 4.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     let size = 64u32;
 
@@ -15119,9 +15032,7 @@ fn watercolor_shape_automatic_continuity_and_image_silhouette() {
         Falloff::Watercolor,
         "unchecking auto-selects the Watercolor falloff preset (continuity)"
     );
-    for slot in &mut manual_t.paint.brush_by_mode {
-        *slot = manual_t.paint.brush;
-    }
+    manual_t.paint.brush_by_mode.fill(manual_t.paint.brush);
     stroke(&mut manual_t);
     assert_eq!(
         auto_t.canvas_rgba.as_slice(),
@@ -15141,9 +15052,7 @@ fn watercolor_shape_automatic_continuity_and_image_silhouette() {
         }
     }
     img_t.set_brush_shape_image(lum, 16, 16);
-    for slot in &mut img_t.paint.brush_by_mode {
-        *slot = img_t.paint.brush;
-    }
+    img_t.paint.brush_by_mode.fill(img_t.paint.brush);
     assert!(t_dab_paints_asymmetric(&mut img_t, size));
 }
 
@@ -15200,9 +15109,7 @@ fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
             granulation: 0.0, // no mottle either
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
     }
     fn dab(t: &mut PainterTool) {
         assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
@@ -15227,9 +15134,7 @@ fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
     let mut t = white_canvas(size, 12.0);
     wet_manual(&mut t);
     t.paint.brush.dab_flatten = 0.8;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     dab(&mut t);
     let (ex, ey) = extent(&t, size);
     assert!(
@@ -15241,9 +15146,7 @@ fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
     wet_manual(&mut t);
     t.paint.brush.dab_flatten = 0.8;
     t.paint.brush.dab_angle_deg = 90;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     dab(&mut t);
     let (ex, ey) = extent(&t, size);
     assert!(
@@ -15255,16 +15158,12 @@ fn watercolor_manual_shape_flatten_rotate_and_grey_tip_normalise() {
     let mut white_tip = white_canvas(size, 12.0);
     wet_manual(&mut white_tip);
     white_tip.set_brush_shape_image(vec![255u8; 16 * 16], 16, 16);
-    for slot in &mut white_tip.paint.brush_by_mode {
-        *slot = white_tip.paint.brush;
-    }
+    white_tip.paint.brush_by_mode.fill(white_tip.paint.brush);
     dab(&mut white_tip);
     let mut grey_tip = white_canvas(size, 12.0);
     wet_manual(&mut grey_tip);
     grey_tip.set_brush_shape_image(vec![128u8; 16 * 16], 16, 16);
-    for slot in &mut grey_tip.paint.brush_by_mode {
-        *slot = grey_tip.paint.brush;
-    }
+    grey_tip.paint.brush_by_mode.fill(grey_tip.paint.brush);
     dab(&mut grey_tip);
     assert_eq!(
         white_tip.canvas_rgba.as_slice(),
@@ -15309,9 +15208,7 @@ fn watercolor_textured_tip_keeps_typical_wash_with_density_variation() {
         }
     }
     t.set_brush_shape_image(lum, 32, 32);
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down)));
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
 
@@ -15386,9 +15283,7 @@ fn watercolor_wet_mix_blue_over_yellow_deposits_green() {
         wet_pull: 0.6,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([16.0, 80.0], PointerPhase::Down)));
     let mut x = 16.0f32;
     while x < 130.0 {
@@ -15456,9 +15351,7 @@ fn watercolor_granulation_deposits_into_valleys_not_peaks() {
     // image, so Size 8 makes the full 16-px image span the 64-px canvas — WHITE (peaks) lands on
     // the left half, BLACK (valleys) on the right (the u-wrap crosses the halves at x = 32).
     t.paint.brush.texture.size = [8.0, 8.0];
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down)));
     for i in 1..=20 {
         t.on_canvas_pointer(cp([12.0 + i as f32 * 2.0, 32.0], PointerPhase::Move));
@@ -15524,9 +15417,7 @@ fn watercolor_granulation_bake_settles_beyond_the_live_preview() {
     t.set_brush_texture_image(lum, 16, 16);
     t.paint.brush.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
     t.paint.brush.texture.size = [8.0, 8.0];
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([12.0, 32.0], PointerPhase::Down)));
     for i in 1..=20 {
         t.on_canvas_pointer(cp([12.0 + i as f32 * 2.0, 32.0], PointerPhase::Move));
@@ -15589,9 +15480,7 @@ fn watercolor_wet_mix_charge_depletes_along_the_stroke() {
         wet_charge: 0.25, // short reserve; white canvas ⇒ nothing to pick up ⇒ pure depletion
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([12.0, 128.0], PointerPhase::Down)));
     let mut x = 12.0f32;
     while x < 240.0 {
@@ -15652,9 +15541,7 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
     // Pale pool at x∈[40..110], rich pool at x∈[150..220], both horizontal at y = 200 — far enough
     // down that a vertical Charge-0.1 stroke (span ≈ 107 px) arrives fully depleted (travel ≈ 188).
     t.paint.brush.color = [1.0, 0.78, 0.78]; // pale pink: little pigment to pick up
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([40.0, 200.0], PointerPhase::Down)));
     let mut x = 40.0f32;
     while x < 110.0 {
@@ -15663,9 +15550,7 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
     }
     t.on_canvas_pointer(cp([110.0, 200.0], PointerPhase::Up));
     t.paint.brush.color = [0.75, 0.05, 0.05]; // rich red: a real reservoir to smudge from
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([150.0, 200.0], PointerPhase::Down)));
     let mut x = 150.0f32;
     while x < 220.0 {
@@ -15676,9 +15561,7 @@ fn watercolor_wet_mix_depleted_brush_respects_pool_intensity() {
     // Two depleted blue crossings (Charge 0.1), one through each pool.
     t.paint.brush.color = [0.15, 0.25, 0.7];
     t.paint.brush.wet_charge = 0.1;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     stroke_v(&mut t, 75.0); // through the PALE pool
     stroke_v(&mut t, 185.0); // through the RICH pool
     let g = |x: u32, y: u32| f32::from(px(&t, size, x, y)[1]);
@@ -15736,9 +15619,7 @@ fn watercolor_touching_wet_washes_merge_without_double_rim() {
             granulation: 0.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         let stroke_v = |t: &mut PainterTool, x: f32| {
             assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
             let mut y = 30.0f32;
@@ -15809,9 +15690,7 @@ fn watercolor_wet_button_reactivates_dry_paint() {
             wet_rewet: 0.0, // the brush itself does NOT rewet — only the Wet button will
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         // Wash A — a vertical band at x = 48.
         assert!(t.on_canvas_pointer(cp([48.0, 20.0], PointerPhase::Down)));
         let mut y = 20.0f32;
@@ -15837,9 +15716,7 @@ fn watercolor_wet_button_reactivates_dry_paint() {
         t.paint.brush.color = [0.98, 0.98, 0.98];
         t.paint.brush.fill = 0.1;
         t.paint.brush.opacity = 0.0; // no body: pure transparent water, so any change is the LIFT only
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         if press_wet {
             t.wet_canvas_now();
         }
@@ -15887,9 +15764,7 @@ fn watercolor_second_stroke_does_not_reset_the_first_strokes_drying() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let stroke_v = |t: &mut PainterTool, x: f32| {
         assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
         let mut y = 30.0f32;
@@ -15951,9 +15826,7 @@ fn watercolor_undo_clears_the_moisture() {
         depth: 1.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([32.0, 20.0], PointerPhase::Down)));
     let mut y = 20.0f32;
     while y < 44.0 {
@@ -15990,9 +15863,7 @@ fn watercolor_overlapping_bbox_does_not_rewet_the_neighbour_wash() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let wet_at = |t: &PainterTool, x: usize, y: usize| t.paint.canvas_wet[y * size as usize + x];
     // A: horizontal band at y = 30 (x ≈ 12..68). Bake, then dry a little.
     assert!(t.on_canvas_pointer(cp([20.0, 30.0], PointerPhase::Down)));
@@ -16049,9 +15920,7 @@ fn watercolor_param_change_junction_is_soft() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([48.0, 15.0], PointerPhase::Down)));
     let mut y = 15.0;
     while y < 80.0 {
@@ -16062,9 +15931,7 @@ fn watercolor_param_change_junction_is_soft() {
     // B: horizontal band y=48 crossing A, params Y (Body baixo) → CLARO. Mesma sessão úmida.
     t.paint.brush.fill = 0.12;
     t.paint.brush.depth = 1.0;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([15.0, 48.0], PointerPhase::Down)));
     let mut x = 15.0;
     while x < 80.0 {
@@ -16106,9 +15973,7 @@ fn watercolor_wetness_is_laid_live_during_the_stroke() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([48.0, 30.0], PointerPhase::Down)));
     t.on_canvas_pointer(cp([48.0, 50.0], PointerPhase::Move));
     // NO pen-up yet — the moisture must already be present (live pour), not empty until the bake.
@@ -16139,9 +16004,7 @@ fn watercolor_drying_recedes_from_the_edges() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // A solid vertical band centred on x = 48 (radius 18 ⇒ x ≈ 30..66).
     assert!(t.on_canvas_pointer(cp([48.0, 20.0], PointerPhase::Down)));
     let mut y = 20.0f32;
@@ -16196,9 +16059,7 @@ fn watercolor_session_drying_mid_stroke_does_not_double_bake() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A (vertical band at x = 60), baked + poured into the session.
     assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
@@ -16256,9 +16117,7 @@ fn watercolor_session_keeps_each_strokes_style() {
         granulation: 0.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     let stroke_v = |t: &mut PainterTool, x: f32| {
         assert!(t.on_canvas_pointer(cp([x, 30.0], PointerPhase::Down)));
         let mut y = 30.0f32;
@@ -16272,9 +16131,7 @@ fn watercolor_session_keeps_each_strokes_style() {
     let a_probe: Vec<[u8; 4]> = (80..110u32).map(|y| px(&t, size, 60, y)).collect();
     // Concentration BAIXA no traço 2 — mesma sessão molhada (imediato).
     t.paint.brush.depth = 0.6;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     stroke_v(&mut t, 140.0); // wash B, longe do probe de A mas na mesma união/sessão
     let a_after: Vec<[u8; 4]> = (80..110u32).map(|y| px(&t, size, 60, y)).collect();
     assert_eq!(
@@ -16317,9 +16174,7 @@ fn watercolor_clean_water_backrun_blooms_on_wet_wash() {
         wet_rewet: 0.0, // Rewet OFF — a ÁGUA sozinha tem que produzir o bloom
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash vertical (banda x ≈ 46..74), assentado (seca a sessão).
     assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
@@ -16338,9 +16193,7 @@ fn watercolor_clean_water_backrun_blooms_on_wet_wash() {
     // forma no contorno — numa gota pequena o casco cobre o centro (bloom todo-anel, físico).
     t.paint.brush.radius_px = 30.0;
     t.paint.brush.wet_dilution = 1.0;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Down)));
     t.on_canvas_pointer(cp([61.0, 95.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([60.0, 95.0], PointerPhase::Up));
@@ -16407,9 +16260,7 @@ fn watercolor_signed_rim_pales_the_fringe() {
             opacity: 0.0, // isolate the signed rim from the body/opacity film (its own test)
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
         let mut y = 30.0f32;
         while y < 130.0 {
@@ -16477,9 +16328,7 @@ fn watercolor_rim_strengthens_where_the_brush_dwelled() {
         wet_rewet: 0.5, // Bleed on — the dwell pours soak
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([80.0, 30.0], PointerPhase::Down)));
     let mut y = 30.0f32;
     while y < 120.0 {
@@ -16534,9 +16383,7 @@ fn watercolor_session_rerender_reproduces_the_bake_byte_exact() {
         wet_rewet: 0.5,   // Bleed on — arma o caminho de rewet + o dwell
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A (banda x ≈ 48..72) com DWELL no fim — o soak boosta o rim do bake (EDGE-4).
     assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
@@ -16606,9 +16453,7 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
         wet_rewet: 0.5,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A (banda x ≈ 48..72), assado.
     assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
@@ -16637,9 +16482,7 @@ fn watercolor_session_brush_changes_do_not_touch_baked_washes() {
     t.paint.brush.wet_rewet = 0.2;
     t.paint.brush.granulation = 0.0;
     t.paint.brush.color = [0.1, 0.2, 0.9];
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([106.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
     while y < 120.0 {
@@ -16687,9 +16530,7 @@ fn watercolor_session_substrate_change_does_not_touch_baked_washes() {
     };
     t.paint.brush.paper.kind = TextureKind::PaperCold;
     t.paint.brush.paper.mapping = TextureMapping::Tiled;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A (banda x ≈ 36..84), assado com PaperCold.
     assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
@@ -16714,9 +16555,7 @@ fn watercolor_session_substrate_change_does_not_touch_baked_washes() {
     // Traço B (mesma sessão, mesma geometria) TROCA o papel para None — a janela larga de B cobre A,
     // e o composite re-texturiza a poça assada de A com o substrato novo (o bug).
     t.paint.brush.paper.kind = TextureKind::None;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([96.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
     while y < 120.0 {
@@ -16758,9 +16597,7 @@ fn watercolor_water_junction_owner_line_is_smooth() {
         wet_dilution: 0.5,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // VERTICAL primeiro (x = 60), HORIZONTAL por último (y = 95) — a ordem do smoke; a fronteira
     // de dono do horizontal corta o vertical em y ≈ 81.
     assert!(t.on_canvas_pointer(cp([60.0, 30.0], PointerPhase::Down)));
@@ -16822,9 +16659,7 @@ fn watercolor_diluted_wash_is_not_retroactively_rewetted_by_next_stroke() {
         wet_dilution: 0.6, // o gatilho do smoke (Charge 1 default)
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Wash A assado (banda x ≈ 48..72), com a própria água (Dilution).
     assert!(t.on_canvas_pointer(cp([60.0, 40.0], PointerPhase::Down)));
     let mut y = 40.0f32;
@@ -16877,9 +16712,7 @@ fn watercolor_wet_session_survives_charge_slider_change() {
         wet_charge: 1.0,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([60.0, 128.0], PointerPhase::Down)));
     for i in 1..=20 {
         t.on_canvas_pointer(cp([60.0 + i as f32 * 7.0, 128.0], PointerPhase::Move));
@@ -16941,9 +16774,7 @@ fn watercolor_junction_transition_profile() {
             wet_rewet: 0.0, // traço 1 sem rewet (como no smoke)
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         // Traço 1: vertical por x=300.
         assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
         for i in 1..=40 {
@@ -16954,9 +16785,7 @@ fn watercolor_junction_transition_profile() {
         t.on_tick(16.0);
         // Traço 2: horizontal por y=300, com o Rewet do caso.
         t.paint.brush.wet_rewet = wet;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
         for i in 1..=40 {
             t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
@@ -17091,9 +16920,7 @@ fn watercolor_junction_lightening_is_soft_and_preserved() {
             wet_rewet: 0.0,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([300.0, 80.0], PointerPhase::Down)));
         for i in 1..=40 {
             t.on_canvas_pointer(cp([300.0, 80.0 + i as f32 * 11.0], PointerPhase::Move));
@@ -17102,9 +16929,7 @@ fn watercolor_junction_lightening_is_soft_and_preserved() {
         t.on_canvas_pointer(cp([300.0, 520.0], PointerPhase::Up));
         t.on_tick(16.0);
         t.paint.brush.wet_rewet = wet2;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         assert!(t.on_canvas_pointer(cp([80.0, 300.0], PointerPhase::Down)));
         for i in 1..=40 {
             t.on_canvas_pointer(cp([80.0 + i as f32 * 11.0, 300.0], PointerPhase::Move));
@@ -17188,9 +17013,7 @@ fn watercolor_dry_button_ends_the_wet_session() {
         watercolor: true,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     assert!(t.on_canvas_pointer(cp([16.0, 32.0], PointerPhase::Down)));
     for i in 1..=12 {
         t.on_canvas_pointer(cp([16.0 + i as f32 * 3.0, 32.0], PointerPhase::Move));
@@ -17314,9 +17137,7 @@ fn impasto_rich_stroke(tweak: impl FnOnce(&mut BrushSpec)) -> Vec<u8> {
     b.symmetry.center = [24.0, 24.0];
     tweak(&mut b);
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.paint.tiling = [true, true]; // wrap on both axes
     t.on_canvas_pointer(cp([6.0, 10.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([20.0, 22.0], PointerPhase::Move));
@@ -17390,9 +17211,7 @@ fn impasto_canvas(size: u32) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t
 }
 
@@ -17430,9 +17249,7 @@ fn impasto_symmetry_mirrors_the_relief() {
     b.symmetry.axis = ph2d_painter_brush::MirrorAxis::X; // mirror across the vertical centre line
     b.symmetry.center = [20.0, 20.0];
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([8.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([8.0, 12.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([8.0, 12.0], PointerPhase::Up));
@@ -17513,9 +17330,7 @@ fn impasto_draw_to_depth_sculpts_without_painting() {
     let mut b = t.paint.brush;
     b.impasto_draw_to = DrawTo::Depth;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let before = (*t.canvas_rgba).clone();
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
@@ -17571,9 +17386,7 @@ fn watercolor_is_untouched_by_impasto() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([16.0, 24.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([32.0, 24.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([32.0, 24.0], PointerPhase::Up));
@@ -17632,9 +17445,7 @@ fn impasto_on_does_not_disturb_the_pigment() {
         b.texture.mapping = TextureMapping::Random;
         arm(&mut b);
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([10.0, 24.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([24.0, 24.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([38.0, 24.0], PointerPhase::Up));
@@ -17689,9 +17500,7 @@ fn impasto_per_layer_color_leaves_one_coherent_relief() {
     b.impasto_depth = 0.6;
     b.space_attenuation = false;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([32.0, 32.0], PointerPhase::Up));
 
@@ -17733,9 +17542,7 @@ fn impasto_light_leaves_flat_paint_byte_identical() {
     let mut b = t.paint.brush;
     b.impasto = false; // paint normally: pigment, no body
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
     let unlit = lit(&mut t);
@@ -17768,9 +17575,7 @@ fn impasto_light_reads_as_raised_not_engraved() {
     soft.falloff = Falloff::Smooth;
     soft.radius_px = 10.0;
     t.paint.brush = soft;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = soft;
-    }
+    t.paint.brush_by_mode.fill(soft);
     t.paint.impasto_rig.lights[0].angle_deg = 180; // from the LEFT (-x)
     t.paint.impasto_rig.lights[0].elev_deg = 30;
     t.set_impasto_shine(0.0); // isolate the diffuse term — the highlight is a separate question
@@ -17922,9 +17727,7 @@ fn impasto_perf_kill_criterion() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         let mid = (size / 2) as f32;
         // A GROUND stroke first: without paint already on the canvas, Push has nothing to shove and the
         // measurement would be of a code path that never ran. (It flattered the first run of this probe.)
@@ -17985,9 +17788,7 @@ fn impasto_smoothing_settles_the_paint_it_just_laid() {
         b.impasto_smoothing = smoothing;
         b.radius_px = 8.0; // a hard disk ⇒ a sharp-walled slab: maximum gradient to soften
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([30.0, 15.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([30.0, 45.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([30.0, 45.0], PointerPhase::Up));
@@ -18218,9 +18019,7 @@ fn impasto_light_does_not_shade_paint_that_is_not_there() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::ViewPlane;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         let path = [[100.0, 40.0], [110.0, 90.0], [100.0, 140.0], [110.0, 170.0]];
         t.on_canvas_pointer(cp(path[0], PointerPhase::Down));
         for p in &path[1..] {
@@ -18309,9 +18108,7 @@ fn impasto_shadowed_paint_is_dark_but_never_black() {
     let mut b = t.paint.brush;
     b.impasto_depth = 1.0; // maximum relief ⇒ the steepest walls this brush can make
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Up));
@@ -18371,9 +18168,7 @@ fn grain_relief_stroke(mapping: ph2d_painter_brush::TextureMapping) -> (Vec<f32>
     b.texture.kind = TextureKind::Noise;
     b.texture.mapping = mapping;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let step = b.dab_spacing_px().round().max(2.0) as usize;
     t.on_canvas_pointer(cp([60.0, 160.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([280.0, 160.0], PointerPhase::Move));
@@ -18584,9 +18379,7 @@ fn flat_probe_exact_smoke_arming() {
         b.texture.mapping = mapping;
         b.texture.size = [tex_size, tex_size];
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([140.0, 120.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([90.0, 180.0], PointerPhase::Up));
@@ -18653,9 +18446,7 @@ fn impasto_grain_textures_the_body_instead_of_removing_it() {
             b.texture.mapping = TextureMapping::Tiled;
         }
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([140.0, 120.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([90.0, 180.0], PointerPhase::Up));
@@ -18714,9 +18505,7 @@ fn spacing_probe_relief_must_not_depend_on_dab_pitch() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
@@ -18764,9 +18553,7 @@ fn spacing_probe_relief_must_not_depend_on_dab_pitch() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = mapping;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
@@ -18828,9 +18615,7 @@ fn impasto_relief_is_the_same_at_any_dab_spacing() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
@@ -18891,9 +18676,7 @@ fn sweep_probe_jitter_spacing() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 150.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([260.0, 150.0], PointerPhase::Up));
@@ -18931,9 +18714,7 @@ fn spacing_probe_curved_full_field() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         // A curve, like the smoke's S.
         t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
         for p in [[120.0, 90.0], [90.0, 140.0], [130.0, 190.0], [110.0, 225.0]] {
@@ -19000,9 +18781,7 @@ fn spacing_probe_curved_full_field() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
         for p in [[120.0, 90.0], [90.0, 140.0], [130.0, 190.0], [110.0, 225.0]] {
             t.on_canvas_pointer(cp(p, PointerPhase::Move));
@@ -19034,9 +18813,7 @@ fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
         b.impasto_depth = depth;
         b.impasto_smoothing = smoothing;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Up));
@@ -19080,9 +18857,7 @@ fn impasto_depth_and_smoothing_are_live_on_the_stroke_already_painted() {
     b.radius_px = 8.0;
     b.impasto_depth = 0.5;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([15.0, 15.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([15.0, 15.0], PointerPhase::Up));
     t.on_canvas_pointer(cp([45.0, 45.0], PointerPhase::Down));
@@ -19134,9 +18909,7 @@ fn halo_probe_translucent_edge() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
@@ -19155,7 +18928,9 @@ fn halo_probe_translucent_edge() {
         let (litp, plain, h) = run(paper);
         // "Ink" = how far the pixel is from bare paper: 0 = untouched, 1 = fully covered.
         let core = plain
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| (i32::from(p[0]) - i32::from(p[1])).abs())
             .max()
             .unwrap_or(1)
@@ -19221,9 +18996,7 @@ fn impasto_light_shades_the_paint_not_the_paper_showing_through_it() {
         b.texture.kind = TextureKind::Noise;
         b.texture.mapping = TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.set_impasto_shine(shine);
         t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
@@ -19317,9 +19090,7 @@ fn impasto_soft_stroke_reads_as_a_body_with_an_edge() {
     b.impasto_body = 1.0; // this gate IS the body curve (the artist's default is the round profile)
     b.impasto_source = DepthSource::Uniform; // isolate the body curve — grain is another gate
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.paint.impasto_rig.lights[0].angle_deg = 90; // straight across a horizontal stroke
     t.paint.impasto_rig.lights[0].elev_deg = 45;
     t.set_impasto_shine(0.0); // the diffuse modelling is the claim; the glint has its own gates
@@ -19447,9 +19218,7 @@ fn impasto_strokes_pile_up_only_to_the_glass() {
     let mut b = t.paint.brush;
     b.impasto_depth = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     for _ in 0..3 {
         t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
@@ -19617,9 +19386,7 @@ fn impasto_body_zero_obeys_the_falloff() {
     b.impasto_smoothing = 0.0; // the raw deposit IS the claim — no settling on top
     b.impasto_body = 0.0; // the round school
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
     for i in 1..=8 {
         t.on_canvas_pointer(cp(
@@ -19702,9 +19469,7 @@ fn impasto_stroke_then_edit(
     b.texture.mapping = TextureMapping::Tiled;
     arm(&mut b);
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([60.0, 70.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([90.0, 60.0], PointerPhase::Move));
@@ -19814,9 +19579,7 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
         b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.paint.impasto_rig.lights[0].angle_deg = 90;
         t.paint.impasto_rig.lights[0].elev_deg = 45;
         t.set_impasto_shine(shine);
@@ -19900,9 +19663,7 @@ fn impasto_shine_glints_on_the_wall_without_bleaching_the_rim() {
         b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
         b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.paint.impasto_show = false; // the light pass does not run at all
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
@@ -19965,9 +19726,7 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
         b.radius_px = 10.0;
         b.impasto_depth = 1.0;
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([20.0, 60.0], PointerPhase::Up));
@@ -19978,9 +19737,7 @@ fn impasto_plow_drags_the_relief_with_the_paint() {
         k.strength = 1.0;
         k.hardness = 1.0; // a firm blade: the drag is the claim, not the falloff
         t.paint.brush = k;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = k;
-        }
+        t.paint.brush_by_mode.fill(k);
         t.paint.paint_mode = PaintMode::Smear;
         t.on_canvas_pointer(cp([20.0, 40.0], PointerPhase::Down));
         for x in 1..=20 {
@@ -20071,9 +19828,7 @@ fn the_knife_carries_the_body_across_the_frontier_as_mass_not_a_filament() {
     b.impasto_depth = 1.0;
     b.color = [0.8, 0.1, 0.1];
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     // A vertical ridge of thick paint at x = 40.
     t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Move));
@@ -20202,9 +19957,7 @@ fn smear_trail_probe(size: u32, stride: f32) -> (usize, u32) {
     b.impasto_depth = 1.0;
     b.color = [0.8, 0.1, 0.1];
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([40.0, 190.0], PointerPhase::Up));
@@ -20291,9 +20044,7 @@ fn the_knives_warp_session_does_not_outlive_its_stroke() {
     b.radius_px = 10.0;
     b.impasto_depth = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([30.0, 100.0], PointerPhase::Up));
@@ -20354,9 +20105,7 @@ fn the_composite_stack_closes_its_smear_session_at_pen_up() {
     let mut b = t.paint.brush;
     b.radius_px = 12.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.paint.composite_enabled = true;
 
     let mut widths = Vec::new();
@@ -20500,9 +20249,7 @@ fn a_second_smear_stroke_builds_on_the_first() {
     b.impasto_depth = 1.0;
     b.color = [0.8, 0.1, 0.1];
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 140.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([30.0, 140.0], PointerPhase::Up));
@@ -20606,9 +20353,7 @@ fn impasto_level_buries_what_is_under_it_in_the_stacking_order() {
     let mut b = t.paint.brush;
     b.impasto_depth = 0.8;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Up));
     let ground = t.composed_relief_at(30, 30);
@@ -20632,9 +20377,7 @@ fn impasto_level_buries_what_is_under_it_in_the_stacking_order() {
     let mut thin = t.paint.brush;
     thin.impasto_depth = 0.25;
     t.paint.brush = thin;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = thin;
-    }
+    t.paint.brush_by_mode.fill(thin);
     for l in [top, mid] {
         t.select_layer(l);
         t.on_canvas_pointer(cp([30.0, 30.0], PointerPhase::Down));
@@ -20765,9 +20508,7 @@ fn impasto_smoothing_settles_every_stroke_the_moment_the_pen_leaves_the_canvas()
     b.impasto_body = 1.0;
     b.impasto_smoothing = 1.0; // the knob under test, at its loudest
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
 
     for (n, y) in [(1u32, 30.0f32), (2, 60.0), (3, 90.0)] {
         // The stroke, at the app's real cadence: a preview drain after every pointer event, as a frame
@@ -20870,9 +20611,7 @@ fn sculpt_and_apply(size: u32, method: StrokeMethod, smoothing: f32) -> Vec<f32>
     b.impasto_smoothing = smoothing;
     b.stroke_method = method;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     if matches!(method, StrokeMethod::Line) {
         // The Line is a POLYLINE: it is authored click-by-click, not by dragging. Driving it with a
         // drag paints nothing at all — pigment included — which is a fixture that does not contain the
@@ -20975,9 +20714,7 @@ fn impasto_an_applied_shape_keeps_its_body_when_the_next_stroke_lands() {
     b.impasto_depth = 1.0;
     b.stroke_method = StrokeMethod::Arc; // an editable shape: the family that never committed
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
     for i in 1..=6 {
         t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, 60.0], PointerPhase::Move));
@@ -20994,9 +20731,7 @@ fn impasto_an_applied_shape_keeps_its_body_when_the_next_stroke_lands() {
     let mut b2 = t.paint.brush;
     b2.stroke_method = StrokeMethod::Space;
     t.paint.brush = b2;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b2;
-    }
+    t.paint.brush_by_mode.fill(b2);
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([20.0, 20.0], PointerPhase::Up));
 
@@ -21021,9 +20756,7 @@ fn impasto_a_cancelled_shape_leaves_no_ghost_ridge() {
     b.impasto_depth = 1.0;
     b.stroke_method = StrokeMethod::Arc;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
     for i in 1..=6 {
         t.on_canvas_pointer(cp([30.0 + 10.0 * i as f32, 60.0], PointerPhase::Move));
@@ -21074,9 +20807,7 @@ fn impasto_the_stroke_commit_is_cropped_to_the_stroke_and_byte_identical() {
     b.impasto_smoothing = 1.0; // the settle at full reach: the whole point of the window
     b.impasto_source = DepthSource::Grain; // per-texel grain: no smooth field to hide a seam in
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
 
     // A first stroke, so the second one has a GROUND to be re-based onto (the patch of the layer's
     // pre-stroke relief — the other thing the crop replaced, and the 64 MB clone it removed).
@@ -21211,9 +20942,7 @@ fn slab_canvas(size: u32) -> (PainterTool, RtLayerId) {
     b.impasto_body = 1.0;
     b.impasto_smoothing = 0.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     // A broad field of thick paint across the middle of the canvas.
     t.on_canvas_pointer(cp([20.0, 80.0], PointerPhase::Down));
     for x in 1..=8 {
@@ -21262,9 +20991,7 @@ fn impasto_push_conserves_the_paint_it_shoves() {
     b.impasto_depth = 0.0; // deposit NOTHING: isolate the displacement from the deposit
     b.impasto_push = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
     for y in 1..=6 {
         t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
@@ -21305,9 +21032,7 @@ fn impasto_push_ploughs_a_channel_and_stands_the_paint_up_at_its_edges() {
     b.impasto_depth = 0.0; // no deposit: what changes is the ground, and only the ground
     b.impasto_push = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
     for y in 1..=6 {
         t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
@@ -21352,9 +21077,7 @@ fn impasto_push_is_live_on_a_stroke_that_was_laid_with_it_armed() {
     b.impasto_depth = 0.5; // a loaded brush, as an artist would hold it
     b.impasto_push = 0.5; // …with the knob ARMED, which is what records the ingredient
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
     for y in 1..=6 {
         t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
@@ -21428,9 +21151,7 @@ fn a_stroke_laid_with_push_off_has_no_ingredient_to_re_derive() {
     b.impasto_depth = 0.5;
     b.impasto_push = 0.0; // the knob OFF — the default a normal brush ships with
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
     for y in 1..=6 {
         t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
@@ -21468,9 +21189,7 @@ fn impasto_push_banks_the_ridge_while_the_brush_is_still_moving() {
     b.impasto_depth = 0.0; // a dry brush: what changes is the GROUND, and only the ground
     b.impasto_push = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let rim_before = t.composed_relief_at(80 + 14, 80);
     assert!(rim_before > 0.2, "the slab is there ({rim_before})");
 
@@ -21519,9 +21238,7 @@ fn impasto_push_banks_a_smooth_ridge_with_no_crease_scored_along_it() {
     b.impasto_smoothing = 0.0; // no settle to hide behind: the RIM's own shape is on trial
     b.impasto_push = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([80.0, 40.0], PointerPhase::Down));
     for y in 1..=6 {
         t.on_canvas_pointer(cp([80.0, 40.0 + 12.0 * y as f32], PointerPhase::Move));
@@ -21582,9 +21299,7 @@ fn impasto_lays_no_pigment_where_the_light_lays_no_shading() {
             ..Default::default() // …and otherwise the ARTIST's defaults (Depth 1, Body 0), on purpose
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([70.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([110.0, 100.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([80.0, 160.0], PointerPhase::Up));
@@ -21670,9 +21385,7 @@ fn the_film_binds_only_a_brush_that_lays_body() {
         };
         mutate(&mut b);
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([80.0, 90.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Up));
@@ -21733,9 +21446,7 @@ fn the_film_never_starves_the_brush_at_low_strength() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 30.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([80.0, 90.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([40.0, 90.0], PointerPhase::Up));
@@ -21790,9 +21501,7 @@ fn the_light_models_a_faint_stroke() {
                 ..Default::default()
             };
             t.paint.brush = b;
-            for slot in &mut t.paint.brush_by_mode {
-                *slot = b;
-            }
+            t.paint.brush_by_mode.fill(b);
             t.on_canvas_pointer(cp([40.0, 40.0], PointerPhase::Down));
             t.on_canvas_pointer(cp([120.0, 90.0], PointerPhase::Move));
             t.on_canvas_pointer(cp([40.0, 130.0], PointerPhase::Up));
@@ -21885,9 +21594,7 @@ fn impasto_paint_has_an_edge_not_a_fringe() {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.on_canvas_pointer(cp([60.0, 120.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([180.0, 120.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([180.0, 120.0], PointerPhase::Up));
@@ -21942,9 +21649,7 @@ fn a_coloured_light_rig_leaves_flat_paint_byte_identical() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([30.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([90.0, 80.0], PointerPhase::Up));
@@ -22021,9 +21726,7 @@ fn every_lamp_in_the_rig_is_live() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
@@ -22143,9 +21846,7 @@ fn a_single_lamp_shifts_brightness_never_hue() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
@@ -22194,9 +21895,7 @@ fn the_lights_turned_all_the_way_down_is_an_unlit_canvas() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([30.0, 35.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([90.0, 85.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([90.0, 85.0], PointerPhase::Up));
@@ -22246,9 +21945,7 @@ fn the_glint_only_ever_adds_light() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([35.0, 40.0], PointerPhase::Down));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Move));
         t.on_canvas_pointer(cp([105.0, 95.0], PointerPhase::Up));
@@ -22357,9 +22054,7 @@ fn impasto_material_render_with(
     b.texture.kind = ph2d_painter_brush::TextureKind::Noise;
     b.texture.mapping = ph2d_painter_brush::TextureMapping::Tiled;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.paint.impasto_rig.lights[0].angle_deg = 90;
     t.paint.impasto_rig.lights[0].elev_deg = 45;
     t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
@@ -22759,9 +22454,7 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
         b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
             t.on_canvas_pointer(cp(
@@ -22792,9 +22485,7 @@ fn adjust_last_stroke_gates_whether_the_sliders_reach_the_canvas() {
         b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
             t.on_canvas_pointer(cp(
@@ -22853,9 +22544,7 @@ fn a_fresh_brush_does_not_adjust_the_last_stroke() {
         b.impasto_depth = 0.175;
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
             t.on_canvas_pointer(cp(
@@ -22909,9 +22598,7 @@ fn adjust_last_stroke_does_not_destroy_the_strokes_ingredients() {
         b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
         b.color = [0.9, 0.1, 0.1];
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.on_canvas_pointer(cp([40.0, 80.0], PointerPhase::Down));
         for i in 1..=8 {
             t.on_canvas_pointer(cp(
@@ -23064,9 +22751,7 @@ fn the_impasto_planes_cost_twelve_bytes_per_pixel() {
     let mut b = t.paint.brush;
     b.impasto_depth = 0.7;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     // A layer nobody has sculpted pays nothing at all — the maps are lazy, and that is load-bearing.
     assert!(
         t.heights.is_empty() && t.covers.is_empty() && t.mats.is_empty(),
@@ -23126,9 +22811,7 @@ fn undoing_a_stroke_restores_the_material_underneath_it() {
     b.impasto_depth = 0.175; // radius 40 now scales the deposit ×4 (Enio's size-scaling); this restores the calibrated 0.7-load relief so the gate keeps testing the profile, not the scale
     b.color = [0.9, 0.1, 0.1];
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let stroke = |t: &mut PainterTool, y: f32| {
         t.on_canvas_pointer(cp([40.0, y], PointerPhase::Down));
         for i in 1..=8 {
@@ -23218,9 +22901,7 @@ fn one_dab_relief(radius: f32, depth: f32) -> (f32, Vec<f32>, u32) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let c = f32::from(u8::try_from(size / 2).unwrap_or(110));
     t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
     t.on_canvas_pointer(cp([c, c], PointerPhase::Up));
@@ -23304,9 +22985,7 @@ fn a_big_brush_still_shows_relief_it_is_not_just_flat_paint() {
                 ..Default::default()
             };
             t.paint.brush = b;
-            for slot in &mut t.paint.brush_by_mode {
-                *slot = b;
-            }
+            t.paint.brush_by_mode.fill(b);
             let c = f32::from(u8::try_from(size / 2).unwrap_or(110));
             t.on_canvas_pointer(cp([c, c], PointerPhase::Down));
             t.on_canvas_pointer(cp([c, c], PointerPhase::Up));
@@ -23360,9 +23039,7 @@ fn stacking_is_linear_and_weight_proportional() {
     let mut b = t.paint.brush;
     b.impasto_depth = 1.0;
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let centre = (24 * 48 + 24) as usize;
     let mut last = 0.0f32;
     for n in 1..=6u32 {
@@ -23588,7 +23265,9 @@ fn an_undone_line_takes_its_relief_with_it() {
         assert!(steps > 0, "{name}: fixture had something to undo");
         assert_eq!(
             t.canvas_rgba
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .filter(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
                 .count(),
             0,

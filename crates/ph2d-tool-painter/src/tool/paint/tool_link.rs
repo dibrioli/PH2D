@@ -54,9 +54,7 @@ impl PainterTool {
         if !self.paint.link_shared_settings {
             // Unlinking: every mode keeps what's currently on screen (all were showing `brush`).
             let current = self.paint.brush;
-            for slot in &mut self.paint.brush_by_mode {
-                *slot = current;
-            }
+            self.paint.brush_by_mode.fill(current);
         }
         // Linking needs no seeding: while linked, a mode switch keeps the live `brush`, so every tool
         // immediately shows this (the checked) panel's settings.

@@ -142,7 +142,7 @@ mod tests {
             h,
         );
         let (mut dark, mut light) = (0, 0);
-        for px in buf.chunks_exact(4) {
+        for px in buf.as_chunks::<4>().0 {
             assert_eq!(px[3], 255, "no-ramp layer is opaque");
             assert!(px[0] == px[1] && px[1] == px[2], "grayscale");
             if px[0] < 40 {
@@ -183,7 +183,7 @@ mod tests {
         // Sprite-alpha mode: the s=1 cells become FULLY TRANSPARENT (real alpha 0), s=0 stays opaque.
         let sprite = render(RampAlphaMode::TextureAlpha);
         let (mut transparent, mut opaque) = (0, 0);
-        for px in sprite.chunks_exact(4) {
+        for px in sprite.as_chunks::<4>().0 {
             if px[3] < 10 {
                 transparent += 1;
             } else if px[3] > 245 {
@@ -195,7 +195,7 @@ mod tests {
         // Off mode: alpha ignored → every texel opaque (recolour only).
         let off = render(RampAlphaMode::None);
         assert!(
-            off.chunks_exact(4).all(|px| px[3] == 255),
+            off.as_chunks::<4>().0.iter().all(|px| px[3] == 255),
             "Off mode keeps the layer fully opaque"
         );
     }

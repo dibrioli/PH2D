@@ -81,7 +81,7 @@ impl AlphaImage {
             return None;
         }
         let mut px = Vec::with_capacity(n);
-        for t in rgba.chunks_exact(4).take(n) {
+        for t in rgba.as_chunks::<4>().0.iter().take(n) {
             let a = f32::from(t[3]) * (1.0 / 255.0);
             let l = LUM[0].mul_add(
                 f32::from(t[0]),

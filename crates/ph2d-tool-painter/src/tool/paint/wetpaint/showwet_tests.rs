@@ -43,9 +43,7 @@ fn fixture() -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
     t
 }
@@ -112,8 +110,10 @@ fn painted(media: Media, veil_first: bool) -> Vec<u8> {
 }
 
 fn pixels_differing(a: &[u8], b: &[u8]) -> usize {
-    a.chunks_exact(4)
-        .zip(b.chunks_exact(4))
+    a.as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0.iter())
         .filter(|(x, y)| x != y)
         .count()
 }

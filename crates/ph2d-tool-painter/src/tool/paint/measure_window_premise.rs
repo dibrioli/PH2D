@@ -63,9 +63,7 @@ fn the_window_premise_is_measured_not_assumed() {
     }
     fn arm(t: &mut PainterTool, b: BrushSpec) {
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
     }
     // (h, cover, mats) por texel — o que a luz de fato integra.
     fn planes_opt(t: &PainterTool) -> Option<Vec<(f32, u8, u8, u8)>> {
@@ -222,9 +220,7 @@ fn the_brush_snapshot_costs_the_same_on_a_canvas_sixteen_times_bigger() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         // A premissa: um traço DE VERDADE, senão o envelope está vazio e o caminho caro nunca corre —
         // a fixture tem de CONTER o fenômeno.
         let cp = |p: [f32; 2], phase| CanvasPointer {

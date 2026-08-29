@@ -164,7 +164,7 @@ fn a_baked_flip_object_carries_the_composed_two_layer_silhouette() {
         .readback_individual(tid)
         .expect("readback the tile");
     let (mut opaque, mut blue, mut orange) = (0usize, 0usize, 0usize);
-    for px in rgba.chunks_exact(4) {
+    for px in rgba.as_chunks::<4>().0.iter() {
         let (r, g, b, a) = (i32::from(px[0]), i32::from(px[1]), i32::from(px[2]), px[3]);
         if a > 128 {
             opaque += 1;

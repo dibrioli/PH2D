@@ -564,7 +564,7 @@ mod tests {
         // Use a deliberately tinted buffer so auto-WB has something to
         // correct (the gradient otherwise sums close to grey already).
         let mut buf = gradient_buf(32, 32);
-        for px in buf.chunks_exact_mut(4) {
+        for px in buf.as_chunks_mut::<4>().0 {
             // Push red up by 20% to simulate a warm cast.
             px[0] = ((px[0] as u16 * 6 / 5).min(255)) as u8;
         }

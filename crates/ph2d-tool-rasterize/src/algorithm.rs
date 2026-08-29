@@ -671,7 +671,7 @@ mod tests {
         let rgba = solid(4, 4, [0, 0, 0, 0]);
         let r = rasterize(&rgba, 4, 4, 2.0, 2.0, 0.0);
         // Every output pixel must have alpha 0.
-        for chunk in r.pixels.chunks_exact(4) {
+        for chunk in r.pixels.as_chunks::<4>().0 {
             assert_eq!(chunk[3], 0, "transparent input → transparent output");
         }
     }
@@ -682,7 +682,7 @@ mod tests {
         // reconstruct a constant input exactly (modulo rounding ±1).
         let rgba = solid(16, 16, [200, 50, 100, 255]);
         let r = rasterize(&rgba, 16, 16, 0.75, 0.75, 0.0);
-        for chunk in r.pixels.chunks_exact(4) {
+        for chunk in r.pixels.as_chunks::<4>().0 {
             assert!((chunk[0] as i32 - 200).abs() <= 1);
             assert!((chunk[1] as i32 - 50).abs() <= 1);
             assert!((chunk[2] as i32 - 100).abs() <= 1);

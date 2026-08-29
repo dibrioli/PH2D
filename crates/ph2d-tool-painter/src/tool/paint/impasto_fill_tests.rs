@@ -33,9 +33,7 @@ fn canvas(size: u32, radius: f32, impasto: bool) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     if impasto {
         t.set_brush_impasto(true);
         t.set_brush_impasto_depth(1.0);

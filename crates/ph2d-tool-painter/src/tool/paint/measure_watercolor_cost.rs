@@ -58,9 +58,7 @@ fn wash(size: u32, radius: f32) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_media(PaintMedia::Watercolor);
     t
 }
@@ -170,9 +168,7 @@ fn measure_how_the_watercolor_scales_with_the_brush() {
             ..Default::default()
         };
         d.paint.brush = b;
-        for slot in &mut d.paint.brush_by_mode {
-            *slot = b;
-        }
+        d.paint.brush_by_mode.fill(b);
         d.set_paint_media(PaintMedia::Digital);
         d
     }
@@ -498,9 +494,7 @@ fn measure_what_a_watercolor_move_is_made_of() {
         ..Default::default()
     };
     d.paint.brush = b;
-    for slot in &mut d.paint.brush_by_mode {
-        *slot = b;
-    }
+    d.paint.brush_by_mode.fill(b);
     d.set_paint_media(PaintMedia::Digital);
     let dig = move_ms(&mut d, SIZE, RADIUS);
     println!(

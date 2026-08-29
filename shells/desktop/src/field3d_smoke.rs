@@ -89,7 +89,7 @@ fn load_matcap() -> MatcapTexels {
     let bytes = ph2d_mesh_render::matcap::decode(id);
     let n = (side as usize) * (side as usize);
     let mut rgb = Vec::with_capacity(n * 3);
-    for texel in bytes.chunks_exact(8) {
+    for texel in bytes.as_chunks::<8>().0.iter() {
         // RGBA em `f16` little-endian; o alfa é descartado (é 1 em toda parte, por construção).
         for c in 0..3 {
             let bits = u16::from_le_bytes([texel[c * 2], texel[c * 2 + 1]]);

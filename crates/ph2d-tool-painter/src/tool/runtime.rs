@@ -251,7 +251,9 @@ impl PainterTool {
         // Sem relevo o passe multiplica por 1 e soma 0, então isto é byte-idêntico ao que já shipava.
         self.apply_impasto_light(&mut rgba, Region { x: 0, y: 0, w, h });
         let lum = rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| {
                 ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8
             })

@@ -36,9 +36,7 @@ fn eraser_canvas(size: u32) -> (PainterTool, crate::tool::RtLayerId) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_brush_impasto(true);
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("uma camada");

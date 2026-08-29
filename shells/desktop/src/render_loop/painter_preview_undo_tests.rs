@@ -114,7 +114,9 @@ fn the_screen_after_an_undo_is_what_the_other_producer_would_draw() {
     // roda depois do readback.
     let truth = screen_truth(&mut t);
     let painted = truth
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[..3] != [255, 255, 255])
         .count();
     assert!(
@@ -270,7 +272,9 @@ fn the_planes_are_current_when_the_gpu_lane_takes_the_frame_back() {
     assert_eq!((w, h), (size, size));
     let truth = screen_truth(&mut t);
     let painted = truth
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[..3] != [255, 255, 255])
         .count();
     assert!(

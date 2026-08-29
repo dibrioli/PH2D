@@ -15,7 +15,12 @@ use ph2d_editor_core::tool::{CanvasPaintTool, PointerPhase};
 
 /// Quantos texels do canvas deixaram de ser o branco de fundo.
 fn inked(t: &crate::tool::PainterTool) -> usize {
-    t.canvas_rgba.chunks_exact(4).filter(|p| p[0] < 250).count()
+    t.canvas_rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 250)
+        .count()
 }
 
 /// **A TEIA SOBREVIVE AO PREENCHIMENTO** — os fios do Sketchy / Wire são tinta CUMULATIVA, e a
@@ -132,14 +137,16 @@ fn the_fill_writes_nothing_outside_the_rect_it_saved() {
     };
     let a = bare(true);
     let b = bare(false);
-    let painted = b.chunks_exact(4).filter(|p| p[0] < 250).count();
+    let painted = b.as_chunks::<4>().0.iter().filter(|p| p[0] < 250).count();
     assert!(
         painted > 1_000,
         "a fixture nao pintou nada ({painted} texels): o oraculo nao mede nada"
     );
     let ghosts = a
-        .chunks_exact(4)
-        .zip(b.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0.iter())
         .filter(|(x, y)| x[0].abs_diff(y[0]) > 8)
         .count();
     assert_eq!(

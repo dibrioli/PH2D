@@ -10,7 +10,12 @@ use ph2d_painter_brush::line_kind::LineKind;
 
 /// Quantos texels do canvas deixaram de ser o branco de fundo.
 fn inked(t: &PainterTool) -> usize {
-    t.canvas_rgba.chunks_exact(4).filter(|p| p[0] < 250).count()
+    t.canvas_rgba
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 250)
+        .count()
 }
 
 /// Arma o Sketchy com números que costuram de facto.
@@ -146,7 +151,7 @@ fn a_re_stamp_method_does_not_sew() {
     };
     let bare = dragdot_gesture(LineKind::None);
     assert!(
-        bare.chunks_exact(4).any(|p| p[0] < 250),
+        bare.as_chunks::<4>().0.iter().any(|p| p[0] < 250),
         "controle: o gesto Drag Dot tem de pintar"
     );
     assert_eq!(

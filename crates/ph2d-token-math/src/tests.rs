@@ -79,7 +79,7 @@ fn the_time_sugar_of_the_shared_language_is_refused_without_a_special_case() {
 /// está vazia, então o índice não resolve e o `Bindings` devolveria zero; a recusa vem antes.
 #[test]
 fn hand_written_ref_indices_do_not_reach_a_token() {
-    let (_, refs) = translate("ref0 * 2").map_or((String::new(), Vec::new()), |x| x);
+    let (_, refs) = translate("ref0 * 2").unwrap_or((String::new(), Vec::new()));
     // Ele PASSA no `reject_unbound_names` (é um `ref<N>` bem formado) e chega a `eval` com a lista
     // vazia; o valor então é 0, e a porta de escrita o recusa por não ser um comprimento útil.
     assert!(refs.is_empty());

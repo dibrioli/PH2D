@@ -164,7 +164,7 @@ pub(crate) fn measure(
     // [`FillReport::edge_long_prov`]. A barra é relativa à MEDIANA e não ao alvo:
     // esta função não conhece o alvo do chamador, e a mediana é o alvo realizado.
     let mut edge_long_prov = [0usize; Provenance::COUNT];
-    for ((a, b), _) in count.iter() {
+    for (a, b) in count.keys() {
         let (p, q) = (pos[*a as usize], pos[*b as usize]);
         let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
         let len = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();

@@ -40,9 +40,7 @@ fn deposited_stroke(size: u32) -> (PainterTool, crate::tool::RtLayerId, Vec<f32>
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("a layer");

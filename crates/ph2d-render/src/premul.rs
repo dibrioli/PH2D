@@ -124,7 +124,7 @@ impl SpriteImage {
 /// Rounded (`+ 127` before the divide) so the round-trip back through
 /// [`unpremultiply_rgba8`] stays within ±1 per channel.
 pub fn premultiply_rgba8(rgba: &mut [u8]) {
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         let a = px[3] as u32;
         px[0] = mul_div_255(px[0] as u32, a) as u8;
         px[1] = mul_div_255(px[1] as u32, a) as u8;
@@ -152,7 +152,7 @@ pub fn premultiply_rgba8(rgba: &mut [u8]) {
 /// on M-series, well within the per-frame budget already paid for the
 /// full-res preview pipeline.
 pub fn premultiply_rgba8_in_linear(rgba: &mut [u8]) {
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         let a = px[3] as f32 / 255.0;
         for ch in px[..3].iter_mut() {
             let srgb = *ch as f32 / 255.0;
@@ -192,7 +192,7 @@ fn linear_to_srgb(c: f32) -> f32 {
 /// texture back. Fully-transparent texels carry no recoverable colour,
 /// so they collapse to `(0,0,0,0)`.
 pub fn unpremultiply_rgba8(rgba: &mut [u8]) {
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         let a = px[3] as u32;
         if a == 0 {
             px[0] = 0;

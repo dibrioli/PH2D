@@ -122,7 +122,7 @@ pub fn apply_lut3d(rgba: &mut [u8], lut: &LUT3D, intensity: f32) {
     let stride_y = (n as usize) * 3;
     let stride_z = (n as usize) * (n as usize) * 3;
 
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }
@@ -243,7 +243,7 @@ mod tests {
         // Build a LUT that pins everything to white — non-transparent
         // pixels should turn white, transparent ones remain untouched.
         let mut white_lut = identity_lut(9);
-        for cell in white_lut.data.chunks_exact_mut(3) {
+        for cell in white_lut.data.as_chunks_mut::<3>().0 {
             cell[0] = 1.0;
             cell[1] = 1.0;
             cell[2] = 1.0;
@@ -258,7 +258,7 @@ mod tests {
     fn blend_luts_endpoints_match_inputs() {
         let mut a = identity_lut(9);
         // Tint a slightly red so blend has something to interpolate.
-        for cell in a.data.chunks_exact_mut(3) {
+        for cell in a.data.as_chunks_mut::<3>().0 {
             cell[0] = (cell[0] + 0.1).min(1.0);
         }
         let b = identity_lut(9);
@@ -272,7 +272,7 @@ mod tests {
     fn blend_luts_midpoint_averages_cells() {
         let mut a = identity_lut(9);
         let b = identity_lut(9);
-        for cell in a.data.chunks_exact_mut(3) {
+        for cell in a.data.as_chunks_mut::<3>().0 {
             cell[0] = 1.0;
         }
         let mid = blend_luts(&a, &b, 0.5);

@@ -263,7 +263,7 @@ fn sample_through_the_shader(
     for row in 0..H as usize {
         let start = row * padded;
         let bytes = &data[start..start + unpadded];
-        for pair in bytes.chunks_exact(2) {
+        for pair in bytes.as_chunks::<2>().0 {
             let bits = u16::from_le_bytes([pair[0], pair[1]]);
             out.push(ph2d_imageio::half_to_f32(bits));
         }

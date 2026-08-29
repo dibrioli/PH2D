@@ -153,7 +153,9 @@ fn decode_layer_png(bytes: &[u8]) -> Result<ImageBuffer<SrgbRgba>, Error> {
     }
     let rgba = img.to_rgba8();
     let pixels: Vec<SrgbRgba> = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
         .collect();
     Ok(ImageBuffer {

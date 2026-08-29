@@ -38,9 +38,7 @@ fn imp_tool(size: u32, radius: f32) -> PainterTool {
         ..Default::default()
     };
     let seed = t.paint.brush;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = seed;
-    }
+    t.paint.brush_by_mode.fill(seed);
     t
 }
 

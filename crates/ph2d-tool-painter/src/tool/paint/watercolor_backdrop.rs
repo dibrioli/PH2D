@@ -131,7 +131,7 @@ impl PainterTool {
         });
         let Some(anchor) = anchor else {
             let mut ground = vec![0u8; (w as usize) * (h as usize) * 4];
-            for px in ground.chunks_exact_mut(4) {
+            for px in ground.as_chunks_mut::<4>().0 {
                 px.copy_from_slice(&[paper[0], paper[1], paper[2], 255]);
             }
             return ground;

@@ -58,9 +58,7 @@ fn wash_brush() -> BrushSpec {
 
 pub(super) fn arm(t: &mut PainterTool, spec: BrushSpec) {
     t.paint.brush = spec;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = spec;
-    }
+    t.paint.brush_by_mode.fill(spec);
 }
 
 fn stroke(t: &mut PainterTool, from: [f32; 2], to: [f32; 2]) {
@@ -121,7 +119,9 @@ fn report(label: &str, t: &PainterTool) {
     // CONTROLE: a cena tem de conter tinta, senao a tabela abaixo compara dois zeros.
     let painted = t
         .canvas_rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[1] != 255)
         .count();
     println!(

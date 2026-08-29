@@ -207,8 +207,10 @@ fn a_neutral_adjust_is_byte_identical_to_no_adjust_at_all() {
     let plain = render(&gpu, &mut pass, &[]);
     let neutral = render(&gpu, &mut pass, &[adjust(0.0, 0.0, 0.0)]);
     let differ = plain
-        .chunks_exact(4)
-        .zip(neutral.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(neutral.as_chunks::<4>().0.iter())
         .filter(|(a, b)| a != b)
         .count();
     assert_eq!(
@@ -381,7 +383,13 @@ fn the_adjust_never_moves_the_coverage() {
     let mut pass = FxStackPass::new(&gpu);
     let plain = render(&gpu, &mut pass, &[]);
     let out = render(&gpu, &mut pass, &[adjust(0.3, -0.5, 0.4)]);
-    for (i, (a, b)) in plain.chunks_exact(4).zip(out.chunks_exact(4)).enumerate() {
+    for (i, (a, b)) in plain
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(out.as_chunks::<4>().0.iter())
+        .enumerate()
+    {
         assert_eq!(
             a[3], b[3],
             "o alfa do texel {i} mudou: {} -> {}",

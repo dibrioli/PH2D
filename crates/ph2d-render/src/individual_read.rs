@@ -85,7 +85,9 @@ impl IndividualTextureStore {
             return Ok((w, h, bytes));
         }
         let halves: Vec<u16> = bytes
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|p| u16::from_le_bytes([p[0], p[1]]))
             .collect();
         Ok((w, h, ph2d_color::rgba16_to_rgba8(&halves)))

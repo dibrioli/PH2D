@@ -35,9 +35,7 @@ fn sculpt_canvas(size: u32) -> (PainterTool, crate::tool::RtLayerId, Vec<f32>) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     let layer = t.layers.active().expect("a layer");
     // A relief with real high-frequency content: a ridge with a saw-tooth on it, so a blur has something
     // to knock down and a sharpen has something to raise. Deterministic (HR-5: no RNG in a gate).
@@ -355,9 +353,7 @@ fn the_sculpt_does_not_light_bare_paper() {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     // Paint a stroke down the LEFT half only — the right half stays bare paper.
     drag(&mut t, &[[60.0, 40.0], [60.0, 100.0], [60.0, 160.0]]);
     let layer = t.layers.active().expect("a layer");
@@ -597,9 +593,7 @@ fn no_other_paint_mode_touches_the_relief() {
             b.impasto_plow = p;
         }
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         drag(&mut t, &[[30.0, 50.0], [50.0, 50.0], [70.0, 50.0]]);
         let after = heights_of(&t, layer);
         let moved = before

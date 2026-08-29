@@ -44,9 +44,7 @@ pub(in crate::tool::paint) fn soft_tool(strength: f32, accumulate: bool) -> Pain
     t.paint.brush.falloff = Falloff::Smooth;
     t.paint.brush.color = [0.0, 0.0, 0.0];
     let seed = t.paint.brush;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = seed;
-    }
+    t.paint.brush_by_mode.fill(seed);
     t.set_brush_strength(strength);
     if accumulate {
         t.handle_panel_event(PanelEvent::Click(core_ids::PAINTER_BRUSH_ACCUMULATE));
@@ -215,9 +213,7 @@ fn measure_accumulate_reaches_colour_but_not_relief() {
             let mut t = soft_tool(1.0, acc);
             t.paint.brush.impasto = true;
             let seed = t.paint.brush;
-            for slot in &mut t.paint.brush_by_mode {
-                *slot = seed;
-            }
+            t.paint.brush_by_mode.fill(seed);
             one_stroke(&mut t, n);
             let i = (Y as usize * SIZE as usize) + PROBE_X as usize;
             let h = t
@@ -250,9 +246,7 @@ pub(in crate::tool::paint) fn impasto_tool(accumulate: bool) -> PainterTool {
     let mut t = soft_tool(1.0, accumulate);
     t.paint.brush.impasto = true;
     let seed = t.paint.brush;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = seed;
-    }
+    t.paint.brush_by_mode.fill(seed);
     t
 }
 
@@ -344,9 +338,7 @@ fn measure_whether_strength_is_inert_per_medium() {
             _ => {}
         }
         let seed = t.paint.brush;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = seed;
-        }
+        t.paint.brush_by_mode.fill(seed);
         // A Strength é re-aplicada DEPOIS dos slots: o `set_brush_strength` escreve no slot vivo.
         t.set_brush_strength(strength);
         if medium == "wetpaint" {

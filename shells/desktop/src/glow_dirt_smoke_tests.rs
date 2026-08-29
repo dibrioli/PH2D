@@ -15,7 +15,9 @@ fn the_dirt_image_is_mostly_dark_with_bright_patches() {
     // `dirt_pixels`), então medir `byte/255` mediria a codificação e não a luz.
     let lin = |b: u8| ph2d_color::srgb::srgb_to_linear_byte(b);
     let lum: Vec<f32> = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|c| (lin(c[0]) + lin(c[1]) + lin(c[2])) / 3.0)
         .collect();
     let dark = lum.iter().filter(|v| **v < 0.1).count();
@@ -31,7 +33,7 @@ fn the_dirt_image_is_mostly_dark_with_bright_patches() {
     );
     // E o alfa é opaco em toda parte — a máscara é lida por RGB, e um alfa variável seria um
     // segundo canal a decidir a mesma coisa.
-    assert!(px.chunks_exact(4).all(|c| c[3] == 255));
+    assert!(px.as_chunks::<4>().0.iter().all(|c| c[3] == 255));
 }
 
 /// A imagem é COLORIDA — a metade da referência que um cinzento não mostra.
@@ -39,7 +41,9 @@ fn the_dirt_image_is_mostly_dark_with_bright_patches() {
 fn the_dirt_image_carries_colour_not_just_brightness() {
     let px = dirt_pixels();
     let coloured = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|c| {
             let (r, g, b) = (i32::from(c[0]), i32::from(c[1]), i32::from(c[2]));
             (r - b).abs() > 24 && r.max(g).max(b) > 64

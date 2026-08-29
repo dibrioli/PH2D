@@ -74,7 +74,7 @@ fn two_rasters_normal_top_over_bottom() {
     src.insert(top, solid(w, h, [50, 50, 200, 255]));
     let out = composite(&s, &src, w, h);
     // Every pixel == top color (opaque over).
-    for px in out.chunks_exact(4) {
+    for px in out.as_chunks::<4>().0.iter() {
         assert_eq!(&px[0..3], &[50, 50, 200], "expected top color");
         assert_eq!(px[3], 255);
     }
@@ -474,7 +474,7 @@ fn adjustment_layer_noop_stub_is_identity() {
     let mut src = MapPixelSource::default();
     src.insert(base, solid(w, h, [120, 60, 200, 255]));
     let out = composite(&s, &src, w, h);
-    for px in out.chunks_exact(4) {
+    for px in out.as_chunks::<4>().0.iter() {
         assert_eq!(
             &px[0..3],
             &[120, 60, 200],
@@ -693,7 +693,7 @@ fn the_flat_ground_fill_is_what_the_accumulator_path_would_encode() {
         ];
         let via_accumulator = super::compose::encode(&vec![g; N]);
         let mut flat = vec![0u8; N * 4];
-        for px in flat.chunks_exact_mut(4) {
+        for px in flat.as_chunks_mut::<4>().0.iter_mut() {
             px.copy_from_slice(&[ground[0], ground[1], ground[2], 255]);
         }
         assert_eq!(

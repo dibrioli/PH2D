@@ -341,7 +341,7 @@ pub(crate) fn parse_level_index(bytes: &[u8], level_count: u32) -> Option<Vec<(u
     let end = 80usize.checked_add(count.checked_mul(24)?)?;
     let table = bytes.get(80..end)?;
     let mut out = Vec::with_capacity(count);
-    for chunk in table.chunks_exact(24) {
+    for chunk in table.as_chunks::<24>().0 {
         let byte_offset = u64::from_le_bytes(chunk[0..8].try_into().ok()?);
         let byte_length = u64::from_le_bytes(chunk[8..16].try_into().ok()?);
         out.push((byte_offset, byte_length));

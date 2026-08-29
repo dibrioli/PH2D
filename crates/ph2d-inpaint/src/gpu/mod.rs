@@ -374,7 +374,12 @@ fn bind(binding: u32, buffer: &wgpu::Buffer) -> wgpu::BindGroupEntry<'_> {
 /// Pack an RGB [`Plane`] into `w*h` `vec4<f32>` (a = 1) for a storage buffer.
 fn pack_vec4(p: &Plane) -> Vec<f32> {
     let mut v = vec![0.0f32; p.w * p.h * 4];
-    for (dst, srcpx) in v.chunks_exact_mut(4).zip(p.px.chunks_exact(3)) {
+    for (dst, srcpx) in v
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(p.px.as_chunks::<3>().0.iter())
+    {
         dst[0] = srcpx[0];
         dst[1] = srcpx[1];
         dst[2] = srcpx[2];

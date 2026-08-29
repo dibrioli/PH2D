@@ -84,7 +84,7 @@ fn luau_attach_script_parses_hex_bytecode() {
     assert_eq!(cmds.len(), 1);
     let expected_digest = {
         let mut d = [0u8; 32];
-        for (i, chunk) in hex.as_bytes().chunks_exact(2).enumerate() {
+        for (i, chunk) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
             let s = std::str::from_utf8(chunk).unwrap();
             d[i] = u8::from_str_radix(s, 16).unwrap();
         }

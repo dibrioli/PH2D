@@ -159,7 +159,9 @@ pub fn dither_offset_lsb(x: u32, y: u32) -> f32 {
 pub fn rgba16_to_rgba8_dithered(halves: &[u16], width: u32) -> Vec<u8> {
     assert!(width > 0, "rgba16_to_rgba8_dithered: width = 0");
     halves
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .enumerate()
         .flat_map(|(i, px)| {
             let i = i as u32;
@@ -307,12 +309,12 @@ mod tests {
         let plain = rgba16_to_rgba8(&halves);
         let dithered = rgba16_to_rgba8_dithered(&halves, width);
 
-        let flat = plain.chunks_exact(4).all(|p| p[0] == plain[0]);
+        let flat = plain.as_chunks::<4>().0.iter().all(|p| p[0] == plain[0]);
         assert!(flat, "sem dither, um valor uniforme tem de dar UM byte so'");
 
         let mut lows = 0usize;
         let mut highs = 0usize;
-        for p in dithered.chunks_exact(4) {
+        for p in dithered.as_chunks::<4>().0 {
             match p[0] {
                 100 => lows += 1,
                 101 => highs += 1,
@@ -344,7 +346,9 @@ mod tests {
             .flat_map(|_| [half, half, half, crate::f32_to_half(1.0)])
             .collect();
         for (i, p) in rgba16_to_rgba8_dithered(&halves, width)
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .enumerate()
         {
             assert!(
@@ -380,7 +384,7 @@ mod tests {
         let halves: Vec<u16> = (0..64).flat_map(|_| [half, half, half, half]).collect();
         let plain = rgba16_to_rgba8(&halves);
         assert!(
-            plain.chunks_exact(4).all(|p| p == &plain[..4]),
+            plain.as_chunks::<4>().0.iter().all(|p| p == &plain[..4]),
             "`rgba16_to_rgba8` tem de dar o MESMO byte para o mesmo valor, sempre"
         );
     }

@@ -160,7 +160,7 @@ fn parse_asset_id(hex: &str) -> Result<AssetId, CookError> {
         return Err(CookError::InvalidAssetId(hex.to_owned()));
     }
     let mut digest = [0u8; 32];
-    for (i, chunk) in hex.as_bytes().chunks_exact(2).enumerate() {
+    for (i, chunk) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
         let s =
             std::str::from_utf8(chunk).map_err(|_| CookError::InvalidAssetId(hex.to_owned()))?;
         digest[i] =

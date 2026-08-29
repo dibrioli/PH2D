@@ -625,8 +625,10 @@ fn a_restamp_preview_leaves_no_ghost_in_the_free_plane() {
     let dragged = run(true);
     let placed = run(false);
     let diff = dragged
-        .chunks_exact(4)
-        .zip(placed.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(placed.as_chunks::<4>().0.iter())
         .filter(|(a, b)| a[0].abs_diff(b[0]) > 1)
         .count();
     assert_eq!(

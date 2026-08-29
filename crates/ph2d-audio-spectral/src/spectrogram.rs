@@ -477,7 +477,13 @@ mod tests {
             sg.columns()
         );
         let img = sg.rgba(w, h, &[[0, 0, 0], [255, 255, 255]]);
-        let brightest = img.chunks_exact(4).map(|p| p[0]).max().unwrap_or(0);
+        let brightest = img
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[0])
+            .max()
+            .unwrap_or(0);
         assert!(
             brightest > 200,
             "the beep did not survive the downsample (brightest pixel {brightest}/255) — \

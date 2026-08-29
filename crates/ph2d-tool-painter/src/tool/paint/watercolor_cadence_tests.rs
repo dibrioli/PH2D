@@ -58,9 +58,7 @@ fn wash(size: u32, radius: f32) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_media(PaintMedia::Watercolor);
     t
 }

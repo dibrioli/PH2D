@@ -100,7 +100,7 @@ impl ImageImporter for HdrRadianceImporter {
         // → synthesize 1.0.
         let pixel_count = (width as usize) * (height as usize);
         let mut pixels = Vec::with_capacity(pixel_count);
-        for chunk in buf.chunks_exact(12) {
+        for chunk in buf.as_chunks::<12>().0 {
             // Each pixel = 3 floats = 12 bytes.
             let r = f32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
             let g = f32::from_ne_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);

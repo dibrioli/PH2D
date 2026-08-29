@@ -406,9 +406,7 @@ fn the_worst_single_event_of_a_stroke_names_itself() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.toggle_brush_impasto();
         t.set_brush_impasto_depth(1.0);
 
@@ -503,9 +501,7 @@ fn what_the_pen_up_is_made_of() {
                 ..Default::default()
             };
             t.paint.brush = b;
-            for slot in &mut t.paint.brush_by_mode {
-                *slot = b;
-            }
+            t.paint.brush_by_mode.fill(b);
             if impasto {
                 t.toggle_brush_impasto();
                 t.set_brush_impasto_depth(1.0);

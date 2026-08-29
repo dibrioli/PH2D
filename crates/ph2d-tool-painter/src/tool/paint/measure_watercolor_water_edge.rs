@@ -63,9 +63,7 @@ fn wash(dilution: f32, smooth_edges: bool) -> Vec<u8> {
         opacity: 0.4,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Um traço VERTICAL: cada linha do canvas atravessa a mesma borda, que é o que torna a
     // serrilha (variação de linha para linha do contorno) mensurável.
     let cx = f32::from(u16::try_from(SIDE / 2).unwrap_or(128));
@@ -180,9 +178,7 @@ pub(super) fn wash_over_dry(dilution: f32, smooth_edges: bool) -> Vec<u8> {
         opacity: 0.4,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // Traco 1 — a faixa HORIZONTAL em y=90. Ao soltar ela commita: os texels dela passam a ter
     // um `style_owner` proprio, e o composite do traco seguinte os re-renderiza como `settled`.
     t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
@@ -277,9 +273,7 @@ pub(super) fn wash_two_stages(dilution: f32, smooth_edges: bool) -> (Vec<u8>, Ve
         opacity: 0.4,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
     for i in 1..=16u8 {
         t.on_canvas_pointer(cp([24.0 + f32::from(i) * 13.0, 90.0], PointerPhase::Move));
@@ -381,9 +375,7 @@ fn wash_with_a_tip(dilution: f32, smooth_edges: bool) -> Vec<u8> {
         opacity: 0.4,
         ..Default::default()
     };
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = t.paint.brush;
-    }
+    t.paint.brush_by_mode.fill(t.paint.brush);
     // A lavagem de fundo: uma faixa larga e baixa, que seca.
     t.on_canvas_pointer(cp([30.0, 170.0], PointerPhase::Down));
     for i in 1..=14u8 {

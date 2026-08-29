@@ -391,7 +391,7 @@ fn line_canvas() -> Vec<u8> {
 
 /// Quantos texels ainda carregam tinta escura — a régua de *"as linhas somem"*.
 fn ink(px: &[u8]) -> usize {
-    px.chunks_exact(4).filter(|c| c[0] < 128).count()
+    px.as_chunks::<4>().0.iter().filter(|c| c[0] < 128).count()
 }
 
 /// O gather REAL do produto ([`bilinear_clamped`]), dirigido por um campo dado. Uma reamostragem por

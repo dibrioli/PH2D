@@ -64,9 +64,7 @@ fn warpable_canvas(size: u32, with_relief: bool) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     if with_relief {
         t.set_brush_impasto_depth(1.0);

@@ -30,7 +30,7 @@ fn corpo<'a>(src: &'a str, assinatura: &str) -> &'a str {
         .find(assinatura)
         .unwrap_or_else(|| panic!("`{assinatura}` sumiu — reconfirme a cerca antes de renomear"));
     let resto = &src[ini..];
-    &resto[..resto.find("\n}").map_or(resto.len(), |i| i)]
+    &resto[..resto.find("\n}").unwrap_or(resto.len())]
 }
 
 #[test]

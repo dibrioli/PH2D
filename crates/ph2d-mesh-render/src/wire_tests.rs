@@ -6,7 +6,9 @@ use std::collections::BTreeSet;
 
 /// O conjunto de arestas que a lista descreve, normalizado.
 fn edge_set(out: &[u32]) -> BTreeSet<(u32, u32)> {
-    out.chunks_exact(2)
+    out.as_chunks::<2>()
+        .0
+        .iter()
         .map(|p| (p[0].min(p[1]), p[0].max(p[1])))
         .collect()
 }

@@ -63,7 +63,13 @@ impl GpuCook {
         column: &str,
     ) -> Option<Vec<[f32; 2]>> {
         let flat: Vec<f32> = self.read_column_lanes(gpu, node, column)?;
-        Some(flat.chunks_exact(2).map(|c| [c[0], c[1]]).collect())
+        Some(
+            flat.as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| [c[0], c[1]])
+                .collect(),
+        )
     }
 
     /// The same, for a `Dim::Vec4` column (`tint`). Note the buffer's element
@@ -76,7 +82,9 @@ impl GpuCook {
     ) -> Option<Vec<[f32; 4]>> {
         let flat: Vec<f32> = self.read_column_lanes(gpu, node, column)?;
         Some(
-            flat.chunks_exact(4)
+            flat.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2], c[3]])
                 .collect(),
         )

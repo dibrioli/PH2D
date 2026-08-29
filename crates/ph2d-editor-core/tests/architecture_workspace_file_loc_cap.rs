@@ -57,9 +57,15 @@ const FILE_OVERAGE_OK: &[(&str, usize)] = &[
     // `paint_text.rs` (com re-export, então nenhum chamador mudou de endereço) e
     // o arquivo caiu para 685, sob o teto simples de 700. Entrada DELETADA em vez
     // de baixada — é a única direção que esta tabela anda.
-    ("ph2d-imageio-apng/src/lib.rs", 768),
+    // Retired 2026-08-29 (`docs/Atualizar Stack/`, bloco A): `ph2d-imageio-apng/src/lib.rs`
+    // (768) e `ph2d-imageio-tiff/src/lib.rs` (905). A migração `chunks_exact` → `as_chunks`
+    // do Rust 1.98 empurrou os DOIS por cima do próprio teto — cada conversão vira três
+    // linhas depois do `fmt`, e ambos estavam exatamente NO limite (+14 e +6).
+    // ⚠️ A cura NÃO foi subir a entrada: os testes saíram para `src/tests.rs` (o padrão de
+    // 63 crates desta árvore) e os ficheiros caíram para 496 e 410 — **sob o teto simples de
+    // 700**, então as duas entradas foram DELETADAS. *Um teto que cresce ao ser tocado não
+    // é um teto.*
     ("ph2d-imageio-ph2d-native/src/schema.rs", 746),
-    ("ph2d-imageio-tiff/src/lib.rs", 905),
     // Retired 2026-07-09 (M2.N1): `cook.rs` was 864 LOC of engine + inline
     // tests; the tests moved to `cook_tests.rs` + `cook_scope_tests.rs`, so the
     // engine now sits at ~459 LOC under the plain 700 cap. Entry deleted rather

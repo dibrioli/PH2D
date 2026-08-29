@@ -93,7 +93,7 @@ pub fn posterize(
     let grain = dither_grain.clamp(1, 8);
 
     if strength <= f32::EPSILON {
-        for px in rgba.chunks_exact_mut(4) {
+        for px in rgba.as_chunks_mut::<4>().0 {
             for c in &mut px[..3] {
                 *c = posterize_value(*c as f32, step);
             }
@@ -110,7 +110,7 @@ pub fn posterize(
     let mut buf = vec![0.0_f32; gtotal * 3];
 
     if grain == 1 {
-        for (i, px) in rgba.chunks_exact(4).enumerate() {
+        for (i, px) in rgba.as_chunks::<4>().0.iter().enumerate() {
             buf[i * 3] = px[0] as f32;
             buf[i * 3 + 1] = px[1] as f32;
             buf[i * 3 + 2] = px[2] as f32;
@@ -440,11 +440,21 @@ mod tests {
         for i in 0..total {
             rgba[i * 4 + 3] = 255;
         }
-        let avg_before =
-            rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
+        let avg_before = rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[0] as u32)
+            .sum::<u32>() as f32
+            / total as f32;
         posterize(&mut rgba, w, h, 2, true, 1.0, 1);
-        let avg_after =
-            rgba.chunks_exact(4).map(|p| p[0] as u32).sum::<u32>() as f32 / total as f32;
+        let avg_after = rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[0] as u32)
+            .sum::<u32>() as f32
+            / total as f32;
         assert!(
             (avg_before - avg_after).abs() < 6.0,
             "FS dithering must preserve global mean (before={avg_before}, after={avg_after})"
@@ -483,7 +493,7 @@ mod tests {
         }
         quantize(&mut rgba, w, h, 4);
         let mut palette: std::collections::BTreeSet<(u8, u8, u8)> = Default::default();
-        for px in rgba.chunks_exact(4) {
+        for px in rgba.as_chunks::<4>().0 {
             palette.insert((px[0], px[1], px[2]));
         }
         assert!(

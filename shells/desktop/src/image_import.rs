@@ -228,7 +228,7 @@ pub fn spawn_blank_canvas(
         _ => [0, 0, 0, 0],         // LITERAL-COLOR-OK: fully-transparent canvas
     };
     let mut pixels = vec![0u8; px_count];
-    for px in pixels.chunks_exact_mut(4) {
+    for px in pixels.as_chunks_mut::<4>().0.iter_mut() {
         px.copy_from_slice(&fill);
     }
     spawn_rgba(

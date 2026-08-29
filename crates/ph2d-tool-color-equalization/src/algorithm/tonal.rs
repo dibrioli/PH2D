@@ -176,7 +176,7 @@ pub fn adjust_tonal(rgba: &mut [u8], params: &ColorEqualizationParams) {
     };
     let needs_oklab = params.vibrance != 0.0 || params.saturation != 0.0;
 
-    for px in rgba.chunks_exact_mut(4) {
+    for px in rgba.as_chunks_mut::<4>().0 {
         if px[3] == 0 {
             continue;
         }

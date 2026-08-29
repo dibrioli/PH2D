@@ -99,13 +99,13 @@ pub fn shade(g: &Gbuffer, m: &Matcap<'_>, background: [u8; 4]) -> Vec<u8> {
 
     let mut out = vec![0u8; (g.width as usize) * (g.height as usize) * 4];
     if m.side == 0 {
-        for px in out.chunks_exact_mut(4) {
+        for px in out.as_chunks_mut::<4>().0.iter_mut() {
             px.copy_from_slice(&background);
         }
         return out;
     }
 
-    for (i, px) in out.chunks_exact_mut(4).enumerate() {
+    for (i, px) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         if g.hit[i] {
             let rgb = m.colour(g.normal[i]);
             write(px, [rgb[0], rgb[1], rgb[2], 1.0]);

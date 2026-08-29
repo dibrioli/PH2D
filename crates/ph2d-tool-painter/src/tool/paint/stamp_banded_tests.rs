@@ -57,8 +57,10 @@ fn covers_every_change(
     let mut ok = true;
     let mut n = 0usize;
     for (i, (a, b)) in buf
-        .chunks_exact(4)
-        .zip(pristine.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(pristine.as_chunks::<4>().0.iter())
         .enumerate()
     {
         if a == b {
@@ -127,7 +129,7 @@ fn the_banded_batch_is_identical_under_alpha_lock_too() {
     let mut serial = canvas();
     let mut banded = canvas();
     // Alpha variado por linha: o `preserve_alpha` multiplica pelo alpha ANTERIOR do pixel.
-    for (i, px) in serial.chunks_exact_mut(4).enumerate() {
+    for (i, px) in serial.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         px[3] = u8::try_from((i / W as usize) % 256).unwrap_or(255);
     }
     banded.copy_from_slice(&serial);

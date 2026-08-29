@@ -62,9 +62,7 @@ fn diag_enio_capsule_and_blobs() {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("a layer");
@@ -163,9 +161,7 @@ fn diag_edge_hardness_vs_paint_thickness() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.set_paint_tool_mode("brush");
         t.set_brush_impasto_depth(1.0);
         let layer = t.layers.active().expect("a layer");
@@ -212,9 +208,7 @@ fn diag_one_form_vs_two_competing() {
             ..Default::default()
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         t.set_paint_tool_mode("brush");
         t.set_brush_impasto_depth(1.0);
         let layer = t.layers.active().expect("a layer");

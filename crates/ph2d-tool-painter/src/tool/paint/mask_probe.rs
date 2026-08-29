@@ -31,7 +31,7 @@ use ph2d_editor_core::tool::{
 pub(in crate::tool::paint) fn mask_tool(size: u32) -> PainterTool {
     let mut t = PainterTool::default();
     let mut px = vec![0u8; (size * size * 4) as usize];
-    for c in px.chunks_exact_mut(4) {
+    for c in px.as_chunks_mut::<4>().0.iter_mut() {
         c[0] = 200;
         c[1] = 30;
         c[2] = 30;

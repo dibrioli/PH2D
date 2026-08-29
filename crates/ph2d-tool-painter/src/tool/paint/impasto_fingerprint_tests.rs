@@ -147,7 +147,9 @@ fn the_fingerprint_is_taken_over_a_deposit_that_happened() {
     let painted = t
         .canvas_rgba
         .as_ref()
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|px| px[0] != 255 || px[1] != 255 || px[2] != 255)
         .count();
 

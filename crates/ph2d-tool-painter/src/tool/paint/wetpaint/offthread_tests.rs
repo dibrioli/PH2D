@@ -60,9 +60,7 @@ fn sized_puddle(size: u32, radius: f32, moves: u32) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_media(PaintMedia::WetPaint);
     let y = f32::from(u16::try_from(size / 2).expect("tela cabe em u16"));
     let step = radius * 0.4;

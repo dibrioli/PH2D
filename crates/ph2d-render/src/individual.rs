@@ -673,11 +673,10 @@ impl IndividualTextureStore {
     /// Returns the post-decrement count, or `None` if the id was
     /// already absent (idempotent for safety).
     pub fn release(&mut self, id: u32) -> Option<u32> {
-        let stop = if let Some(entry) = self.entries.get_mut(&id) {
+        let stop = {
+            let entry = self.entries.get_mut(&id)?;
             entry.refcount = entry.refcount.saturating_sub(1);
             entry.refcount
-        } else {
-            return None;
         };
         if stop == 0 {
             self.entries.remove(&id);

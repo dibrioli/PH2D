@@ -1229,7 +1229,7 @@ fn the_same_art_at_the_products_scale_renders_the_same() {
         // arredondamento, não geometria.
         let mut differing = 0usize;
         let mut worst = 0i32;
-        for (pa, pb) in a.chunks_exact(4).zip(b.chunks_exact(4)) {
+        for (pa, pb) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0.iter()) {
             let d = (0..3)
                 .map(|c| (pa[c] as i32 - pb[c] as i32).abs())
                 .max()

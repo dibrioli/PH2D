@@ -123,7 +123,7 @@ fn round_trip_trim_then_make_square_then_trim_preserves_bbox_and_pixels() {
     assert_eq!(t1.height, rect.3 as u32);
     // Every pixel of the trimmed buffer should be opaque (the bbox
     // contains only the rectangle).
-    for chunk in t1.pixels.chunks_exact(4) {
+    for chunk in t1.pixels.as_chunks::<4>().0 {
         assert_eq!(chunk, &[0xAA, 0xBB, 0xCC, 0xFF]);
     }
 

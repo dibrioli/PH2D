@@ -274,7 +274,9 @@ fn lum(px: &[u8], x: u32, y: u32) -> f32 {
 /// Fração de pixels que não são o fundo.
 fn coverage(px: &[u8]) -> f32 {
     let lit = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] + p[1] + p[2] > 8)
         .count();
     lit as f32 / (W * H) as f32
@@ -551,8 +553,10 @@ fn orbiting_changes_what_the_device_draws() {
     let angled = render(&device, &queue, &mesh, &cam);
 
     let diff = face_on
-        .chunks_exact(4)
-        .zip(angled.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(angled.as_chunks::<4>().0.iter())
         .filter(|(a, b)| a[0].abs_diff(b[0]) > 8)
         .count();
     let frac = diff as f32 / (W * H) as f32;
@@ -1530,7 +1534,9 @@ fn the_pose_scale_grows_the_silhouette_without_tilting_the_light() {
     // A luz: o brilho MÉDIO da tinta não pode mudar com o tamanho.
     let mean = |px: &[u8]| {
         let lit: Vec<f32> = px
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| p[0] as u32 + p[1] as u32 + p[2] as u32 > 8)
             .map(|p| (p[0] as f32 + p[1] as f32 + p[2] as f32) / 3.0)
             .collect();

@@ -43,9 +43,7 @@ fn wet_tool(ratio: u8) -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
     // Pela PORTA (o slider), não pelo campo — é o caminho do artista.
     t.set_wet_grid_ratio(f64::from(ratio));
@@ -306,9 +304,7 @@ fn a_cell_larger_than_the_brush_deposits_nothing() {
             ..t.paint.brush
         };
         t.paint.brush = b;
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = b;
-        }
+        t.paint.brush_by_mode.fill(b);
         stroke(&mut t);
         composite_all(&mut t);
         ink_centroid(&t).1

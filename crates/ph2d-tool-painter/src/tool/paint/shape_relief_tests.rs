@@ -175,7 +175,7 @@ fn a_document_without_sculpture_is_captured_untouched() {
     let n = (size as usize) * (size as usize);
     let mut t = PainterTool::default();
     let mut src = vec![255u8; n * 4];
-    for (i, px) in src.chunks_exact_mut(4).enumerate() {
+    for (i, px) in src.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         px[0] = (i % 251) as u8;
         px[1] = (i % 199) as u8;
         px[2] = (i % 173) as u8;

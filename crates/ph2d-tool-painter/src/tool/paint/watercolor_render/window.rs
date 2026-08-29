@@ -69,7 +69,7 @@ impl PainterTool {
             _ => {
                 let p = self.paper_color_rgb8();
                 let mut g = vec![0u8; n * 4];
-                for px in g.chunks_exact_mut(4) {
+                for px in g.as_chunks_mut::<4>().0 {
                     px.copy_from_slice(&[p[0], p[1], p[2], 255]);
                 }
                 Arc::new(g)

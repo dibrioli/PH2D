@@ -137,7 +137,9 @@ fn the_bake_gesture_lights_the_selected_sprite() {
         .expect("o slot do sprite volta");
     assert_eq!((w, h), (EDGE, EDGE));
     let shaded = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|px| px[0] < 250 && px[3] > 0)
         .count();
     let total = (EDGE * EDGE) as usize;

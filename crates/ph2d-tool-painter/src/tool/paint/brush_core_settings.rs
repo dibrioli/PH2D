@@ -305,7 +305,9 @@ mod tests {
     /// O pixel mais tingido da tela (o oráculo é o que o ARTISTA vê, nunca a assinatura).
     fn most_painted(t: &PainterTool) -> [u8; 3] {
         t.canvas_rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| [p[0], p[1], p[2]])
             .min_by_key(|p| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]))
             .unwrap_or([255, 255, 255])

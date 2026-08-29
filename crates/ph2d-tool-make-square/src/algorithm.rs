@@ -174,7 +174,9 @@ mod tests {
     fn pack(bytes: Vec<u8>) -> Vec<SrgbRgba> {
         assert!(bytes.len().is_multiple_of(4));
         bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
             .collect()
     }

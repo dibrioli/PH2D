@@ -33,7 +33,12 @@ fn lit(t: &PainterTool) -> Vec<u8> {
 
 /// Excursão de luminância em NÍVEIS (`max − min`) — o número que diz se o dente se vê.
 fn excursion(px: &[u8]) -> u32 {
-    let l: Vec<u32> = px.chunks_exact(4).map(|c| u32::from(c[0])).collect();
+    let l: Vec<u32> = px
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| u32::from(c[0]))
+        .collect();
     l.iter().max().copied().unwrap_or(0) - l.iter().min().copied().unwrap_or(0)
 }
 
@@ -103,8 +108,10 @@ fn the_paper_roughness_changes_the_picture() {
     broad.set_substrate_roughness(1.0);
     let (a, b) = (lit(&tight), lit(&broad));
     let moved = a
-        .chunks_exact(4)
-        .zip(b.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0.iter())
         .filter(|(x, y)| x[0] != y[0])
         .count();
     assert!(

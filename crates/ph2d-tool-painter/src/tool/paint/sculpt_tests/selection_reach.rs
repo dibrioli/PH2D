@@ -67,9 +67,7 @@ fn deposited_near_the_edge() -> (PainterTool, crate::tool::RtLayerId) {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("brush");
     t.set_brush_impasto_depth(1.0);
     let layer = t.layers.active().expect("uma camada");

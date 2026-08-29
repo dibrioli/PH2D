@@ -37,7 +37,9 @@ fn read_wav(path: &Path) -> SampleData {
     let sr = u32::from_le_bytes([bytes[24], bytes[25], bytes[26], bytes[27]]);
     let pcm = &bytes[44..];
     let samples: Vec<f32> = pcm
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
         .collect();
     SampleData::from_interleaved(samples, AudioFormat::new(sr, ChannelLayout::Mono))

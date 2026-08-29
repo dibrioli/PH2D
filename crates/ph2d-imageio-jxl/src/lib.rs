@@ -155,7 +155,9 @@ impl ImageImporter for JxlImporter {
                 })
                 .collect(),
             2 => planar
-                .chunks_exact(2)
+                .as_chunks::<2>()
+                .0
+                .iter()
                 .map(|c| {
                     let v = (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
                     let a = (c[1].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
@@ -163,7 +165,9 @@ impl ImageImporter for JxlImporter {
                 })
                 .collect(),
             3 => planar
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| {
                     SrgbRgba([
                         (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,
@@ -174,7 +178,9 @@ impl ImageImporter for JxlImporter {
                 })
                 .collect(),
             4 => planar
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| {
                     SrgbRgba([
                         (c[0].clamp(0.0, 1.0) * 255.0 + 0.5) as u8,

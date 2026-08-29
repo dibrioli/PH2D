@@ -395,7 +395,9 @@ fn the_warp_reads_between_texels_instead_of_snapping_to_one() {
         &[turb(8.0, 32.0, 3, 0, FxOp::MODE_SMOOTH)],
     );
     let mid = px
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[3] > 8 && p[3] < 247)
         .count();
     eprintln!("texels de cobertura PARCIAL na saída: {mid}");

@@ -129,7 +129,9 @@ impl ImageImporter for PngImporter {
         ) {
             let rgba = img.to_rgba16();
             let pixels: Vec<LinearRgba> = rgba
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| {
                     LinearRgba::new(
                         srgb_to_linear_unit(f32::from(c[0]) / 65535.0),
@@ -151,7 +153,9 @@ impl ImageImporter for PngImporter {
         // the same 8-bit RGBA wire shape.
         let rgba = img.to_rgba8();
         let pixels: Vec<SrgbRgba> = rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| SrgbRgba([c[0], c[1], c[2], c[3]]))
             .collect();
         Ok(DecodedImage::Flat(ImageBuffer {

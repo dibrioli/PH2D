@@ -602,9 +602,7 @@ fn measure_whether_the_pale_corner_needs_two_strokes() {
             opacity: 0.4,
             ..Default::default()
         };
-        for slot in &mut t.paint.brush_by_mode {
-            *slot = t.paint.brush;
-        }
+        t.paint.brush_by_mode.fill(t.paint.brush);
         // UM traco: o braco horizontal ate a dobra, e dali o vertical para baixo.
         t.on_canvas_pointer(cp([24.0, 90.0], PointerPhase::Down));
         for i in 1..=11u8 {

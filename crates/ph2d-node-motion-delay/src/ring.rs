@@ -109,10 +109,18 @@ pub(crate) fn flat(col: &Column) -> (Vec<f32>, usize) {
 pub(crate) fn unflat(v: Vec<f32>, w: usize) -> Column {
     match w {
         1 => Column::Scalar(v),
-        2 => Column::Vec2(v.chunks_exact(2).map(|c| [c[0], c[1]]).collect()),
-        3 => Column::Vec3(v.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()),
+        2 => Column::Vec2(v.as_chunks::<2>().0.iter().map(|c| [c[0], c[1]]).collect()),
+        3 => Column::Vec3(
+            v.as_chunks::<3>()
+                .0
+                .iter()
+                .map(|c| [c[0], c[1], c[2]])
+                .collect(),
+        ),
         _ => Column::Vec4(
-            v.chunks_exact(4)
+            v.as_chunks::<4>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2], c[3]])
                 .collect(),
         ),

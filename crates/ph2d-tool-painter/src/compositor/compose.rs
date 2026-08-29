@@ -157,7 +157,7 @@ pub fn composite_below(
     // *"empty"* is a fact about the list and *"invisible"* is a fact about each layer.
     if !found || slices.iter().all(|s| s.is_empty()) {
         let mut ground_only = vec![0u8; (width as usize) * (height as usize) * 4];
-        for px in ground_only.chunks_exact_mut(4) {
+        for px in ground_only.as_chunks_mut::<4>().0 {
             px.copy_from_slice(&[ground[0], ground[1], ground[2], 255]);
         }
         return ground_only;

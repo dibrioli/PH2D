@@ -114,7 +114,7 @@ fn every_route_paints_the_cell_and_not_one_texel_more() {
     // clamp não tem tinta para estender, e a fixture ficaria verde sobre todas as rotas.
     let n = 64u32;
     let mut rgba = vec![0u8; (n * n * 4) as usize];
-    for p in rgba.chunks_exact_mut(4) {
+    for p in rgba.as_chunks_mut::<4>().0.iter_mut() {
         p[0] = 20;
         p[3] = 255;
     }

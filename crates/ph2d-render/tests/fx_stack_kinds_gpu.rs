@@ -180,8 +180,10 @@ fn every_kind_draws_something() {
         };
         let out = render_ramp(&mut pass, &[one(kind, 5.0, RED, offset)]);
         let differ = plain
-            .chunks_exact(4)
-            .zip(out.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a != b)
             .count();
         let total = (W * H) as usize;
@@ -506,8 +508,10 @@ fn an_op_at_zero_opacity_is_a_no_op_for_every_kind() {
         o.opacity = 0.0;
         let out = render(&gpu, &mut pass, &[o]);
         let differ = plain
-            .chunks_exact(4)
-            .zip(out.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(out.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a != b)
             .count();
         assert_eq!(

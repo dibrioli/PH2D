@@ -62,7 +62,7 @@ impl Plane {
             return [0.0; 3];
         }
         let mut s = [0.0f32; 3];
-        for p in self.px.chunks_exact(3) {
+        for p in self.px.as_chunks::<3>().0 {
             s[0] += p[0];
             s[1] += p[1];
             s[2] += p[2];
@@ -149,7 +149,7 @@ mod tests {
         }
         let d = p.downsample();
         assert_eq!((d.w, d.h), (2, 2));
-        for c in d.px.chunks_exact(3) {
+        for c in d.px.as_chunks::<3>().0 {
             assert!((c[0] - 0.5).abs() < 1e-6);
             assert!((c[1] - 0.25).abs() < 1e-6);
             assert!((c[2] - 0.75).abs() < 1e-6);
@@ -166,7 +166,7 @@ mod tests {
         }
         let u = p.upsample_to(5, 5);
         assert_eq!((u.w, u.h), (5, 5));
-        for c in u.px.chunks_exact(3) {
+        for c in u.px.as_chunks::<3>().0 {
             assert!((c[0] - 0.3).abs() < 1e-6);
             assert!((c[1] - 0.6).abs() < 1e-6);
             assert!((c[2] - 0.9).abs() < 1e-6);

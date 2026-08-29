@@ -177,9 +177,11 @@ fn without_antialiasing_shading_is_exactly_the_mask() {
     assert!(g.edges.is_empty(), "com `antialias = false` não há bordas");
     assert_eq!(rgba.len(), 64 * 64 * 4);
     let painted = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .enumerate()
-        .filter(|(i, px)| g.hit[*i] && *px != bg)
+        .filter(|(i, px)| g.hit[*i] && **px != bg)
         .count();
     assert_eq!(
         painted,
@@ -187,9 +189,11 @@ fn without_antialiasing_shading_is_exactly_the_mask() {
         "todo pixel com superfície tem de ser pintado"
     );
     let background = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .enumerate()
-        .filter(|(i, px)| !g.hit[*i] && *px == bg)
+        .filter(|(i, px)| !g.hit[*i] && **px == bg)
         .count();
     assert_eq!(
         background,
@@ -229,7 +233,9 @@ fn antialiasing_produces_real_partial_coverage_on_the_silhouette() {
     // E a cobertura vira ALFA intermédio na imagem.
     let rgba = shade(&g, &toy(2, &TOY_MATCAP), [0, 0, 0, 0]);
     let soft = rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|px| px[3] > 0 && px[3] < 255)
         .count();
     assert!(
@@ -532,7 +538,7 @@ fn dump_frame() {
         let rgba = shade(&g, &toy(SIDE as u32, &texels), [0, 0, 0, 0]);
         // Composição sobre cinza médio: `dst = src + (1-a)*bg`, com `src` já pré-multiplicado.
         let mut ppm = format!("P6\n{w} {h}\n255\n").into_bytes();
-        for px in rgba.chunks_exact(4) {
+        for px in rgba.as_chunks::<4>().0.iter() {
             let a = f32::from(px[3]) / 255.0;
             for c in &px[..3] {
                 let v = f32::from(*c) + (1.0 - a) * 90.0;

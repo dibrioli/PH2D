@@ -233,7 +233,7 @@ impl LutApplyPipeline {
         let lut_size = lut.size;
         let lut_cells = (lut_size as usize).pow(3);
         let mut lut_f16 = Vec::with_capacity(lut_cells * 4);
-        for cell in lut.data.chunks_exact(3) {
+        for cell in lut.data.as_chunks::<3>().0 {
             lut_f16.push(half::f16::from_f32(cell[0]));
             lut_f16.push(half::f16::from_f32(cell[1]));
             lut_f16.push(half::f16::from_f32(cell[2]));

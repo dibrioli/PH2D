@@ -302,7 +302,7 @@ fn compare(
         .expect("a malha esta la'");
 
     let mut base = vec![0u8; n * 4];
-    for px in base.chunks_exact_mut(4) {
+    for px in base.as_chunks_mut::<4>().0.iter_mut() {
         px.copy_from_slice(&[base_rgb[0], base_rgb[1], base_rgb[2], 255]);
     }
     let (relief, cover, mat0, mat1) = neutral_planes(&base);

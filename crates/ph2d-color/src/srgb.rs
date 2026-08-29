@@ -70,7 +70,9 @@ impl SrgbRgba {
             bytes.len()
         );
         bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|c| Self::new(c[0], c[1], c[2], c[3]))
     }
 

@@ -50,7 +50,7 @@ pub(crate) fn neutral_planes(base: &[u8]) -> (Vec<f32>, Vec<u8>, Vec<u8>, Vec<u8
     let n = base.len() / 4;
     let m = clay_material().to_bytes();
     let relief = vec![0.0f32; n];
-    let cover: Vec<u8> = base.chunks_exact(4).map(|px| px[3]).collect();
+    let cover: Vec<u8> = base.as_chunks::<4>().0.iter().map(|px| px[3]).collect();
     let mut mat0 = vec![0u8; n * 4];
     let mut mat1 = vec![0u8; n * 4];
     for i in 0..n {

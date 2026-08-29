@@ -224,8 +224,10 @@ fn the_paint_slider_is_live_on_the_last_stroke_only_under_adjust_last_stroke() {
         let thin = lit(&t);
         t.set_shape_relief(1.0); // sem pintar de novo
         let thick = lit(&t);
-        thin.chunks_exact(4)
-            .zip(thick.chunks_exact(4))
+        thin.as_chunks::<4>()
+            .0
+            .iter()
+            .zip(thick.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a[0] != b[0])
             .count()
     };

@@ -91,9 +91,7 @@ fn brush(method: StrokeMethod, r: f32) -> BrushSpec {
 /// um default some ao trocar de ferramenta (a lição do `toggle_brush_impasto`).
 fn arm(t: &mut PainterTool, b: BrushSpec) {
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
 }
 
 fn fresh(method: StrokeMethod, r: f32) -> PainterTool {

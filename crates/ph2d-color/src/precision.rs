@@ -169,7 +169,9 @@ pub fn half_to_f32(half: u16) -> f32 {
 #[must_use]
 pub fn rgba8_to_rgba16(bytes: &[u8]) -> Vec<u16> {
     bytes
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|px| {
             [
                 f32_to_half(srgb_to_linear_byte(px[0])),
@@ -187,7 +189,9 @@ pub fn rgba8_to_rgba16(bytes: &[u8]) -> Vec<u16> {
 #[must_use]
 pub fn rgba16_to_rgba8(halves: &[u16]) -> Vec<u8> {
     halves
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|px| {
             let alpha = (half_to_f32(px[3]).clamp(0.0, 1.0) * 255.0).round() as u8;
             [

@@ -501,7 +501,7 @@ fn params_fingerprint_is_unambiguous_across_name_value_boundary() {
     // Regression for the audit's framing collision: without length-prefixed
     // names, `{"p": <bytes "emon">, "q": 2.5}` and `{"pemonq": 2.5}` flatten
     // to the same byte stream and collide → memo would return a stale stream.
-    let v_p = f32::from_bits(u32::from_le_bytes([b'e', b'm', b'o', b'n']));
+    let v_p = f32::from_bits(u32::from_le_bytes(*b"emon"));
     let mut a = BTreeMap::new();
     a.insert("p".to_string(), v_p);
     a.insert("q".to_string(), 2.5_f32);

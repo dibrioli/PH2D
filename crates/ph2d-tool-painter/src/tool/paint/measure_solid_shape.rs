@@ -36,7 +36,12 @@ fn measure_whether_the_web_survives_the_fill() {
 
     let side = 256u32;
     let ink = |t: &PainterTool| -> Vec<bool> {
-        t.canvas_rgba.chunks_exact(4).map(|p| p[0] < 250).collect()
+        t.canvas_rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| p[0] < 250)
+            .collect()
     };
     let run = |kind: LineKind, solid: bool| -> Vec<bool> {
         let mut t = tool(side, PaintMedia::Digital, 3.0);
@@ -140,14 +145,18 @@ fn measure_whether_the_fill_depends_on_the_event_rate() {
         let few = run(6, tiling);
         let many = run(60, tiling);
         let diff = few
-            .chunks_exact(4)
-            .zip(many.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(many.as_chunks::<4>().0.iter())
             .filter(|(a, b)| a[0].abs_diff(b[0]) > 8)
             .count();
         // …e onde eles diferem: a faixa envolvida é a coluna 0..12 da borda esquerda.
         let wrap: usize = few
-            .chunks_exact(4)
-            .zip(many.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(many.as_chunks::<4>().0.iter())
             .enumerate()
             .filter(|(i, (a, b))| (i % side as usize) < 12 && a[0].abs_diff(b[0]) > 8)
             .count();
@@ -184,13 +193,17 @@ fn measure_whether_the_fill_depends_on_the_event_rate() {
         let a = bare(true, tiling);
         let b = bare(false, tiling);
         let ghosts = a
-            .chunks_exact(4)
-            .zip(b.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(b.as_chunks::<4>().0.iter())
             .filter(|(x, y)| x[0].abs_diff(y[0]) > 8)
             .count();
         let wrap = a
-            .chunks_exact(4)
-            .zip(b.chunks_exact(4))
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(b.as_chunks::<4>().0.iter())
             .enumerate()
             .filter(|(i, (x, y))| (i % side as usize) < 12 && x[0].abs_diff(y[0]) > 8)
             .count();
@@ -279,8 +292,10 @@ fn measure_that_every_line_kind_does_something_under_solid() {
         t.canvas_rgba.to_vec()
     };
     let diff = |a: &[u8], b: &[u8]| -> usize {
-        a.chunks_exact(4)
-            .zip(b.chunks_exact(4))
+        a.as_chunks::<4>()
+            .0
+            .iter()
+            .zip(b.as_chunks::<4>().0.iter())
             .filter(|(x, y)| x[0].abs_diff(y[0]) > 8)
             .count()
     };
@@ -302,8 +317,8 @@ fn measure_that_every_line_kind_does_something_under_solid() {
     ] {
         let off = run(kind, false);
         let on = run(kind, true);
-        let ink_off = off.chunks_exact(4).filter(|p| p[0] < 250).count();
-        let ink_on = on.chunks_exact(4).filter(|p| p[0] < 250).count();
+        let ink_off = off.as_chunks::<4>().0.iter().filter(|p| p[0] < 250).count();
+        let ink_on = on.as_chunks::<4>().0.iter().filter(|p| p[0] < 250).count();
         println!(
             "{:<10} {:>12} {:>12} {:>12} {:>12}",
             format!("{kind:?}"),
@@ -313,8 +328,18 @@ fn measure_that_every_line_kind_does_something_under_solid() {
             ink_on
         );
     }
-    let i0 = base_off.chunks_exact(4).filter(|p| p[0] < 250).count();
-    let i1 = base_on.chunks_exact(4).filter(|p| p[0] < 250).count();
+    let i0 = base_off
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 250)
+        .count();
+    let i1 = base_on
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|p| p[0] < 250)
+        .count();
     println!("{:<10} {:>12} {:>12} {i0:>12} {i1:>12}", "None", 0, 0);
 }
 

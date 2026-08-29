@@ -230,9 +230,7 @@ impl PainterTool {
         }
         if self.paint.warp.active {
             self.paint.warp.pre = Arc::clone(&self.canvas_rgba);
-            for d in Arc::make_mut(&mut self.paint.warp.disp) {
-                *d = [0.0, 0.0];
-            }
+            Arc::make_mut(&mut self.paint.warp.disp).fill([0.0, 0.0]);
             // The relief baseline rebases WITH the pixel baseline — the two are one canvas. Leaving the
             // old planes frozen would make the next Reconstruct slide the body back to a state the
             // pixels can no longer reach.

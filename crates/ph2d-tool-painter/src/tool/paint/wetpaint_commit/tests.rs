@@ -29,9 +29,7 @@ fn wet_tool() -> PainterTool {
         ..Default::default()
     };
     t.paint.brush = b;
-    for slot in &mut t.paint.brush_by_mode {
-        *slot = b;
-    }
+    t.paint.brush_by_mode.fill(b);
     t.set_paint_tool_mode("wetpaint");
     t
 }
@@ -103,14 +101,20 @@ fn the_commit_does_not_change_a_single_texel() {
     draw_ellipse(&mut t);
     let before: Vec<u8> = t.canvas_rgba.as_ref().clone();
     assert!(
-        before.chunks_exact(4).any(|p| p[0] != 255 || p[1] != 255),
+        before
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] != 255 || p[1] != 255),
         "fixture: a autoria pintou alguma coisa"
     );
     assert!(t.commit_open_shape());
     let after = t.canvas_rgba.as_ref();
     let moved = before
-        .chunks_exact(4)
-        .zip(after.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(after.as_chunks::<4>().0.iter())
         .filter(|(b, a)| b != a)
         .count();
     assert_eq!(
@@ -360,7 +364,9 @@ fn a_live_session_survives_authoring_and_the_deposit_fuses() {
         .clone();
     let preview_px: Vec<bool> = t
         .canvas_rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
         .collect();
     for _ in 0..6 {
@@ -383,7 +389,9 @@ fn a_live_session_survives_authoring_and_the_deposit_fuses() {
     }
     let still: Vec<bool> = t
         .canvas_rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| p[0] != 255 || p[1] != 255 || p[2] != 255)
         .collect();
     assert_eq!(
@@ -475,7 +483,9 @@ fn undo_over_a_wet_apply_reinstates_the_editable_shape_over_still_water() {
     );
     let painted = t
         .canvas_rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .any(|p| p[0] != 255 || p[1] != 255 || p[2] != 255);
     assert!(painted, "the reinstated shape has no visible preview");
     // ⚠️ O re-Apply re-autora: o rascunho é a água, então o depósito acontece no re-stamp que a
@@ -732,7 +742,9 @@ fn probe_sketch_vs_deposit() {
     for radius in [10.0f32, 60.0] {
         let ink = |t: &PainterTool| -> Vec<f64> {
             t.canvas_rgba
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .map(|p| f64::from(255 - p[1].min(p[2])))
                 .collect()
         };

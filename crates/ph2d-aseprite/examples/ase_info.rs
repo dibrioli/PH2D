@@ -53,7 +53,12 @@ fn main() {
                 // Quantos pixels do primeiro quadro não são transparentes — a diferença entre «leu»
                 // e «leu ALGUMA COISA». Um leitor partido devolve quadros do tamanho certo, vazios.
                 let ink = doc.frames.first().map_or(0, |fr| {
-                    fr.rgba.chunks_exact(4).filter(|p| p[3] != 0).count()
+                    fr.rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .filter(|p| p[3] != 0)
+                        .count()
                 });
                 println!(
                     "[v] {name}: {}x{} · {} frames · {} tags · {} px pintados no 1o quadro · duracao {}",

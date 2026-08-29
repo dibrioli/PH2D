@@ -19,7 +19,7 @@ use crate::PainterTool;
 fn sprite() -> (Vec<u8>, u32, u32) {
     let (w, h) = (8u32, 8u32);
     let mut px = vec![0u8; (w * h) as usize * 4];
-    for (i, p) in px.chunks_exact_mut(4).enumerate() {
+    for (i, p) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         p[0] = (i * 3) as u8;
         p[1] = (i * 5) as u8;
         p[2] = (i * 7) as u8;
@@ -29,13 +29,15 @@ fn sprite() -> (Vec<u8>, u32, u32) {
 }
 
 fn luminance(rgba: &[u8]) -> Vec<u8> {
-    rgba.chunks_exact(4)
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
         .map(|p| ((u32::from(p[0]) * 77 + u32::from(p[1]) * 150 + u32::from(p[2]) * 29) >> 8) as u8)
         .collect()
 }
 
 fn alpha(rgba: &[u8]) -> Vec<u8> {
-    rgba.chunks_exact(4).map(|p| p[3]).collect()
+    rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect()
 }
 
 /// **As duas leis são alcançáveis, e o interruptor as troca** — o report, no mecanismo.

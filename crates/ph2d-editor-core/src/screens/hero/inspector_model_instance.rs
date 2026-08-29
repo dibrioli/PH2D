@@ -41,6 +41,18 @@ pub struct InspectorInstanceInfo {
     pub orphans: usize,
     /// A entidade da RAIZ da instância — quem recebe o gesto de limpar os órfãos.
     pub root_bits: u64,
+    /// ⭐⭐⭐ **Esta cópia é ela própria uma RECEITA** — uma variante (report do Enio, 2026-08-27).
+    ///
+    /// # ⚠️ O cartão nomeava a RELAÇÃO e nunca o que o objeto É
+    ///
+    /// Uma variante é `MasterRoot` **e** `InstanceOf` ao mesmo tempo: ela segue a base *e* é a
+    /// receita das cópias dela. O cartão chamava-lhe *«Instance of "Badge"»*, que é verdade e
+    /// **esconde a metade que decide** — quem edita uma variante muda todas as cópias dela, e o
+    /// artista não tinha como saber isso pelo painel.
+    ///
+    /// ⚠️ É lido da **raiz**, e não da peça selecionada: uma peça dentro de uma variante pertence
+    /// à variante, e a pergunta *«de que sou cópia?»* é sempre da raiz.
+    pub is_variant: bool,
     /// ⭐⭐⭐ **A família de VARIANTES a que esta cópia pode pertencer** (F5, critério 2).
     ///
     /// ⚠️ **Derivada, nunca declarada** — é a mesma lei da fileira de variants do vetor: *um
@@ -68,6 +80,21 @@ pub struct VariantChoice {
 }
 
 impl InspectorInstanceInfo {
+    /// ⭐ **A linha de proveniência** — *«o que este objeto é, e de quem»*.
+    ///
+    /// ⚠️ **Duas palavras, e a diferença não é cosmética:** *Instance* é uma cópia que a receita
+    /// alcança; *Variant* é ela própria uma receita, que a base alcança e que alcança as cópias
+    /// dela. Editar as duas tem consequências diferentes, e é o painel que tem de o dizer.
+    #[must_use]
+    pub fn provenance(&self) -> String {
+        let what = if self.is_variant {
+            "Variant"
+        } else {
+            "Instance"
+        };
+        format!("{what} of \u{201c}{}\u{201d}", self.master_name)
+    }
+
     /// A linha que resume o estado, para quem não quer ler a lista.
     ///
     /// ⚠️ **Sem excepção nenhuma ela diz «segue a receita»**, e isso é informação: é a diferença
@@ -75,6 +102,9 @@ impl InspectorInstanceInfo {
     #[must_use]
     pub fn summary(&self) -> String {
         let base = match (self.overridden.len(), self.orphans) {
+            // ⚠️ Numa variante a palavra é a mesma e o sujeito é outro: ela segue a **base**. Dizer
+            // «segue o componente» sobre uma receita seria a mesma ambiguidade um nível acima.
+            (0, 0) if self.is_variant => "Follows its base".to_string(),
             (0, 0) => "Follows the component".to_string(),
             (0, n) => format!("Follows the component \u{b7} {n} unused"),
             (k, 0) => format!("{k} override(s) on this piece"),

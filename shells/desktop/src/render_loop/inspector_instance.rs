@@ -72,6 +72,9 @@ pub(super) fn build_instance_info(
         overridden,
         orphans: inst.orphans.len(),
         root_bits: root.to_bits(),
+        // ⚠️ Da RAIZ: uma peça dentro de uma variante não é ela própria uma receita, mas pertence
+        // a uma — e é isso que o artista precisa de ler antes de a editar.
+        is_variant: sim.world().get::<ph2d_ecs::MasterRoot>(root).is_some(),
         variants,
         variants_beyond,
     })

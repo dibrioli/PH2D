@@ -14,7 +14,9 @@
 //! [doc 04 §112-119]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/04_decisao_arquitetura.md
 
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, ObjectInstance, SimWorld, StableId};
+use ph2d_ecs::{
+    Children, Entity, InstanceOf, MasterRoot, Name, ObjectInstance, SimWorld, StableId,
+};
 
 /// **Por que um verbo de instância foi recusado.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -97,6 +99,13 @@ pub(crate) fn make_master(
         return Err(VerbRefusal::InsideAnInstance);
     }
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
+    // ⭐⭐ **O que este objeto ERA** — se ele já seguia um mestre, o gesto faz uma VARIANTE, e daí
+    // sai o nome (ver o bloco do fim). Lido ANTES, porque a marcação e a cópia mexem nos dois.
+    let base_link = sim
+        .world()
+        .get::<ph2d_ecs::InstanceOf>(entity)
+        .map(|l| l.master);
+    let original_name = sim.world().get::<Name>(entity).map(|n| n.0.clone());
 
     sim.world_mut().entity_mut(entity).insert(MasterRoot);
     // ⚠️ A instância nasce ANTES de a receita ser marcada? Não: ela é a cópia da receita, e a
@@ -135,7 +144,46 @@ pub(crate) fn make_master(
     // continuava a desenhar as peças — o artista via **dois objetos empilhados**, que é o defeito
     // que a nota dizia ter evitado. ⇒ hoje quem não desenha uma receita é o extract, pela marca
     // **derivada** `MasterPiece`, e este gesto não toca em autoria nenhuma de visibilidade.
+    // ⭐⭐⭐ **Uma VARIANTE ganha um nome que diz o que ela é, e a cópia FICA com o nome do
+    // artista** (report do Enio, 2026-08-27: *«a mensagem [diz] Instance of "ele mesmo"»*).
+    //
+    // # O que ele viu, e porque lia como auto-referência
+    //
+    // O gesto promove o objeto ESCOLHIDO a receita e põe uma cópia no lugar. No caso comum isso
+    // lê-se bem — `Badge` vira receita e a cópia `Badge (1)` diz *«Instance of "Badge"»*. Sobre
+    // uma **instância** já não: o promovido chamava-se `Badge (1)`, a cópia nova ficava
+    // `Badge (2)`, e o cartão dizia *«Instance of "Badge (1)"»* — o nome que estava na linha que
+    // ele acabara de clicar. *A identidade mudou de dono e o nome não, então o cartão parecia
+    // apontar para o próprio objeto.*
+    //
+    // ⇒ é a **biblioteca** que ganha o nome novo (`"<base> Variant"`, o idioma do Unity) e o que
+    // fica na tela **mantém o nome que o artista lhe deu**. ⚠️ A ordem é load-bearing: renomear a
+    // variante PRIMEIRO liberta o nome original, e só então a cópia o pode reclamar.
+    //
+    // ⚠️ E é o de tela que fica com o nome **de propósito**: a referência durável entre objetos
+    // deste app é o `stable_name_id` (o hash do `Name`), então um binding de timeline apontado ao
+    // nome antigo passa a resolver para a cópia — que é o objeto que continua na cena.
+    if let Some(base_id) = base_link {
+        let base_name = master_named(sim, base_id).unwrap_or_else(|| "Component".to_string());
+        let vname =
+            crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
+        sim.world_mut().entity_mut(entity).insert(Name::new(vname));
+        if let Some(original) = original_name {
+            let cname = crate::name_unique::unique_name_excluding(sim, &original, instance);
+            sim.world_mut()
+                .entity_mut(instance)
+                .insert(Name::new(cname));
+        }
+    }
     Ok((entity, instance))
+}
+
+/// O `Name` da entidade cujo `StableId` é `id` — o mesmo do construtor do cartão.
+fn master_named(sim: &mut SimWorld, id: u64) -> Option<String> {
+    let mut q = sim.world_mut().query::<(&ph2d_ecs::StableId, &Name)>();
+    q.iter(sim.world())
+        .find(|(s, _)| s.0 == id)
+        .map(|(_, n)| n.0.clone())
 }
 
 /// ⭐ **DESTACAR** — corta o vínculo; os objetos continuam exatamente iguais, só deixam de seguir.

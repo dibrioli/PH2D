@@ -357,3 +357,47 @@ fn family() -> (
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     (sim, r, base, copy)
 }
+
+/// ⭐⭐⭐ **O cartão diz o que o objeto É, não só o que ele segue** — report do Enio, 2026-08-27.
+///
+/// Uma variante é `MasterRoot` **e** `InstanceOf`: ela segue a base *e* é a receita das cópias
+/// dela. Chamar-lhe *«Instance of "Base"»* é verdade e esconde a metade que decide — quem edita uma
+/// variante muda todas as cópias dela.
+///
+/// ⚠️ **E a peça DENTRO da variante lê o mesmo**: a pergunta *«de que sou cópia?»* é da raiz.
+///
+/// (Mutação: `is_variant` fixo em `false` ⇒ RED.)
+#[test]
+fn the_card_calls_a_variant_a_variant_and_a_copy_a_copy() {
+    let (mut sim, r, base, variant) = family();
+    let plain = instantiate(&mut sim, &r, base);
+
+    let v = super::build_instance_info(&mut sim, &r, Some(variant.to_bits())).expect("variante");
+    assert!(v.is_variant, "a variante nao se declarou receita");
+    assert!(
+        v.provenance().starts_with("Variant of"),
+        "o cartao da variante ainda diz «Instance»: {:?}",
+        v.provenance()
+    );
+
+    let c = super::build_instance_info(&mut sim, &r, Some(plain.to_bits())).expect("copia");
+    assert!(!c.is_variant, "uma copia comum declarou-se receita");
+    assert!(
+        c.provenance().starts_with("Instance of"),
+        "o cartao de uma copia comum deixou de dizer «Instance»: {:?}",
+        c.provenance()
+    );
+
+    // A peça DENTRO da variante: mesma resposta, porque a pergunta é da raiz.
+    let piece = *sim
+        .world()
+        .get::<ph2d_ecs::Children>(variant)
+        .expect("a variante tem pecas")
+        .first()
+        .expect("uma peca");
+    let p = super::build_instance_info(&mut sim, &r, Some(piece.to_bits())).expect("peca");
+    assert!(
+        p.is_variant,
+        "uma peca dentro de uma variante leu-se como copia comum — a pergunta e' da RAIZ"
+    );
+}

@@ -126,3 +126,89 @@ fn a_copy_of_a_variant_is_born_with_no_overrides() {
         "a copia herdou as excepcoes da variante — elas chaveiam pecas da BASE e nao alcancam nada"
     );
 }
+
+/// ⭐⭐⭐ **A BIBLIOTECA ganha o nome novo; o que fica na TELA mantém o do artista** — report do
+/// Enio, 2026-08-27: *«a mensagem [diz] Instance of "ele mesmo"»*.
+///
+/// O gesto promove o objeto escolhido a receita e põe uma cópia no lugar. Sobre uma **instância**
+/// isso lia-se como auto-referência: o promovido chamava-se `Badge (1)`, a cópia nova ficava
+/// `Badge (2)`, e o cartão dela dizia *«Instance of "Badge (1)"»* — o nome que estava na linha que
+/// o artista acabara de clicar. *A identidade mudou de dono e o nome não.*
+///
+/// ⚠️ **As duas metades**, e a ordem entre elas: a variante é renomeada primeiro (o que **liberta**
+/// o nome original) e só então a cópia o reclama. Sem a 1.ª metade a 2.ª devolve `Badge (1) (1)`.
+///
+/// (Mutação: não renomear a variante ⇒ a cópia não recupera o nome ⇒ RED.)
+#[test]
+fn making_a_variant_names_the_library_and_leaves_the_canvas_name_alone() {
+    let mut sim = SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let g = spawn_master(&mut sim);
+    // ⚠️ O `spawn_master` já devolve uma receita; a variante nasce da CÓPIA dela.
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+    let copy = crate::instantiate::instantiate_master(
+        &mut sim,
+        &r,
+        g,
+        None,
+        &mut docs,
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou");
+    let on_canvas = name(&sim, copy);
+
+    let (variant, replacement) =
+        crate::instance_verbs::make_master(&mut sim, &r, copy, &mut docs).expect("variante");
+
+    assert_eq!(
+        name(&sim, variant),
+        format!("{} Variant", name(&sim, g)),
+        "a receita nova nao diz que e' uma variante — e' o idioma do Unity, e e' o que impede a \
+         linha da biblioteca de se confundir com o objeto de tela"
+    );
+    assert_eq!(
+        name(&sim, replacement),
+        on_canvas,
+        "o objeto que ficou na tela foi RENOMEADO. O artista clicou numa linha chamada {on_canvas:?} \
+         e ela mudou de nome debaixo dele — e o cartao passa a apontar para o nome que ela tinha, \
+         que e' exactamente o report da auto-referencia"
+    );
+}
+
+/// ⚠️ **Um *Make Component* comum não inventa a palavra `Variant`** — o gesto sobre um objeto solto
+/// não tem base nenhuma que o nome pudesse nomear.
+#[test]
+fn a_plain_make_component_keeps_the_old_naming() {
+    let mut sim = SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let g = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::Name::new("Badge")))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let mut docs = crate::instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+    let (master, inst) =
+        crate::instance_verbs::make_master(&mut sim, &r, g, &mut docs).expect("receita");
+    assert_eq!(name(&sim, master), "Badge");
+    assert!(
+        !name(&sim, inst).contains("Variant"),
+        "um objeto solto virou «Variant» de nada: {:?}",
+        name(&sim, inst)
+    );
+}
+
+fn name(sim: &SimWorld, e: ph2d_ecs::Entity) -> String {
+    sim.world()
+        .get::<ph2d_ecs::Name>(e)
+        .map_or_else(|| "?".to_string(), |n| n.0.clone())
+}

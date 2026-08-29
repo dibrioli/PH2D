@@ -56,12 +56,14 @@ pub(crate) fn paint_instance_card(
     let tx = x + CARD_PAD;
     let tw = (w - CARD_PAD * 2.0).max(0.0);
     let mut ty = y + CARD_PAD;
-    // A linha de proveniência: de que receita esta cópia nasceu. É a única superfície que o diz —
-    // a Hierarquia mostra a árvore, não o vínculo.
+    // A linha de proveniência: **o que este objeto é**, e de que receita nasceu. É a única
+    // superfície que o diz — a Hierarquia mostra a árvore, não o vínculo. ⚠️ A frase sai do modelo
+    // (`provenance()`): *Instance* e *Variant* são estados diferentes, e escrevê-la aqui poria a
+    // escolha num sítio que nenhum gate de modelo alcança.
     paint_text(
         text_system,
         scene,
-        &format!("Instance of \u{201c}{}\u{201d}", info.master_name),
+        &info.provenance(),
         tx,
         ty,
         font,

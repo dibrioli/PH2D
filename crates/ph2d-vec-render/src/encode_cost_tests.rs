@@ -67,6 +67,7 @@ fn encode_ms(scene: &VecScene) -> f64 {
             &fx,
             &crate::WidgetSkins::new(),
             &crate::PatternTiles::new(),
+            &crate::BrushArts::new(),
             Affine::IDENTITY,
             &mut target,
         );
@@ -134,6 +135,7 @@ fn draws_of(fill: bool, stroke: bool, open_subpath: bool) -> (u32, u32) {
         &FxImages::new(),
         &crate::WidgetSkins::new(),
         &crate::PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut target,
     );

@@ -445,6 +445,15 @@ pub(crate) fn bake_rgba(
         xforms,
         live,
         &ph2d_vec_render::PatternTiles::new(),
+        // ⭐⭐ **O PINCEL, ao contrário do padrão, É RESOLÚVEL AQUI** (plano 36, W3) — e a
+        // assimetria é real, não um descuido: o ladrilho de um padrão precisa do assado (arte
+        // descodificada, reticulado composto), que vive fora desta função; a arte de um pincel é
+        // **geometria da mesma cena** que este assado já recebe. ⇒ o padrão leva a `fallback`
+        // declarada acima, e o pincel leva as cópias de verdade.
+        //
+        // ⚠️ *Herdar a limitação do vizinho por simetria seria inventá-la* — a mesma lição que o
+        // encaixe por contorno deu na W2.
+        &crate::brush_live::resolve(scene),
         id,
         camera,
         Affine::translate((-x0, -y0)),

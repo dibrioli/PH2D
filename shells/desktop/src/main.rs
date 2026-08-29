@@ -72,6 +72,10 @@ mod bool_gesture;
 mod bool_live;
 /// A cena de smoke da booleana viva (`PH2D_BUILD_SMOKE=48`) — irmã de `build_smoke`, teto de LOC.
 mod bool_smoke;
+/// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
+/// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
+/// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
+mod brush_live;
 mod buffer_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;
@@ -670,9 +674,6 @@ mod vec_shape_params;
 mod vec_snap;
 /// Os alvos de snap vindos do RASTER (irmão de `vec_snap`, teto de LOC).
 mod vec_snap_sprites;
-/// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
-/// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
-/// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
 mod vec_stroke_paint;
 mod vec_stroke_present;
 mod vec_text;

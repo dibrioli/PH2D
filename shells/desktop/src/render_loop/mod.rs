@@ -9464,6 +9464,10 @@ impl crate::App {
                 vec_fx,
                 &vec_skins,
                 vec_patterns,
+                // ⭐ **A arte dos PINCÉIS deste quadro** (plano 36, W3) — resolvida aqui pela
+                // mesma razão que o ladrilho do padrão o é: a crate de desenho não alcança a cena,
+                // e o guarda de ciclo tem de viver onde se pode medir.
+                &crate::brush_live::resolve(vec_scene),
                 cam_affine,
                 vector_scene,
             );

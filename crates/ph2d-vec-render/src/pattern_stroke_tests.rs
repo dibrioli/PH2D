@@ -49,6 +49,15 @@ fn tile_de_teste() -> crate::PatternTile {
 }
 
 fn desenha(scene: &ph2d_vec_scene::VecScene, tiles: &crate::PatternTiles) -> VectorScene {
+    desenha_com(scene, tiles, &crate::BrushArts::new())
+}
+
+/// A irmã com o mapa de PINCÉIS — o `desenha` delega aqui, para não haver duas portas.
+fn desenha_com(
+    scene: &ph2d_vec_scene::VecScene,
+    tiles: &crate::PatternTiles,
+    brushes: &crate::BrushArts,
+) -> VectorScene {
     let mut target = VectorScene::new();
     crate::dispatch(
         scene,
@@ -58,6 +67,7 @@ fn desenha(scene: &ph2d_vec_scene::VecScene, tiles: &crate::PatternTiles) -> Vec
         &crate::FxImages::new(),
         &crate::WidgetSkins::new(),
         tiles,
+        brushes,
         Affine::IDENTITY,
         &mut target,
     );
@@ -178,6 +188,7 @@ fn the_stroke_pattern_lands_in_the_same_place_under_a_non_conformal_affine() {
             &crate::FxImages::new(),
             &crate::WidgetSkins::new(),
             &tiles,
+            &crate::BrushArts::new(),
             xf,
             &mut target,
         );
@@ -521,5 +532,98 @@ fn a_dashed_patterned_stroke_still_paints_the_pattern() {
         com.inner().encoding().n_clips,
         0,
         "o traco tracejado com padrao empurrou camada"
+    );
+}
+
+// ── ⭐⭐⭐ O PINCEL DESENHA — plano 36, W3 ─────────────────────────────────────────
+
+/// Uma forma cujo traço é um PINCEL que nomeia `art`.
+fn so_traco_com_pincel(art: ph2d_vec_scene::VecPathId) -> ph2d_vec_scene::VecScene {
+    let mut scene = ph2d_vec_scene::VecScene::default();
+    let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(200, 30, 30, 255), 1.0);
+    s.paint = StrokePaint::Brush(Box::new(ph2d_vec_scene::BrushStroke {
+        art,
+        fallback: ph2d_vec_scene::Rgba8::new(200, 30, 30, 255),
+        ..ph2d_vec_scene::BrushStroke::default()
+    }));
+    scene.push_path(ph2d_vec_scene::VecPath {
+        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+            .map(ph2d_vec_scene::VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(s),
+        ..ph2d_vec_scene::VecPath::default()
+    });
+    scene
+}
+
+/// A arte: um quadradinho com preenchimento próprio.
+fn arte_do_pincel() -> ph2d_vec_scene::VecPath {
+    ph2d_vec_scene::VecPath {
+        verts: [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]
+            .map(ph2d_vec_scene::VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(ph2d_vec_scene::Paint::solid(ph2d_vec_scene::Rgba8::new(
+            10, 200, 40, 255,
+        ))),
+        ..ph2d_vec_scene::VecPath::default()
+    }
+}
+
+/// ⭐⭐⭐ **UM TRAÇO COM PINCEL DESENHA AS CÓPIAS** — e sem arte resolvida cai no traço SÓLIDO.
+///
+/// As duas metades são desenho CERTO: a segunda é o que o artista vê enquanto a forma-fonte não
+/// resolve (apagada, ou um id que já não existe). ⛔ Desenhar NADA seria pior — uma linha invisível
+/// não se distingue de uma forma sem contorno.
+#[test]
+fn a_brushed_stroke_draws_the_copies_and_falls_back_to_the_colour() {
+    let scene = so_traco_com_pincel(ph2d_vec_scene::VecPathId::from(7u64));
+    let id = scene.paths()[0].id;
+    let art = arte_do_pincel();
+    let mut brushes = crate::BrushArts::new();
+    brushes.insert(id, art);
+
+    let com = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
+    let sem = desenha_com(
+        &scene,
+        &crate::PatternTiles::new(),
+        &crate::BrushArts::new(),
+    );
+    // ⭐ O perímetro é 40 e a arte mede 1 ⇒ ~40 cópias, cada uma um desenho.
+    assert!(
+        com.inner().encoding().n_paths > sem.inner().encoding().n_paths + 10,
+        "o pincel nao emitiu as copias ({} contra {} do recurso)",
+        com.inner().encoding().n_paths,
+        sem.inner().encoding().n_paths
+    );
+    // ⚠️ **A metade da AUSÊNCIA**: sem arte, desenha-se **um** traço (o sólido de recurso), e não
+    // zero. Uma linha que desaparece é indistinguível de uma forma sem contorno.
+    assert!(
+        sem.inner().encoding().n_paths >= 1,
+        "sem arte resolvida o traco desapareceu - a cor de recurso e' desenho CERTO"
+    );
+}
+
+/// ⛔⛔ **AS CÓPIAS NÃO PODEM CARREGAR PINCEL** — o guarda de ciclo é ESTRUTURAL.
+///
+/// Uma arte que tivesse ela própria um pincel entraria em recursão infinita, e o sintoma não seria
+/// um erro: seria o app a parar. ⇒ o desenho das cópias passa `None` nos três mapas, e a recusa
+/// vive **na chamada**, não numa bandeira que alguém se lembre de passar.
+///
+/// ⚠️ A régua é o FONTE, porque a alternativa é provocar a recursão — e um gate que trava o binário
+/// não é um gate.
+#[test]
+fn the_copies_are_drawn_without_any_brush_of_their_own() {
+    let src = include_str!("stroke_draw.rs");
+    let code: String = src
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        code.contains("crate::draw_path_tiled(&copia, transform, target, None, None, None);"),
+        "as copias deixaram de ser desenhadas com os tres mapas a `None` - uma arte com pincel \
+         proprio entra em recursao infinita, e o sintoma e' o app a parar"
     );
 }

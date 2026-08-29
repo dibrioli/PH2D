@@ -28,6 +28,7 @@ pub(crate) fn draw_stroke_with(
     transform: Affine,
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
+    brush_art: Option<&VecPath>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     let stroke_own = tess.stroke_bp.as_ref();
@@ -38,6 +39,28 @@ pub(crate) fn draw_stroke_with(
         // O QUE um traço desenha é decidido em `ph2d_vec_scene::stroke_plan` — a porta
         // única, que o Outline Stroke também consome. Aqui só se PINTA o que ela lista.
         let brush = Brush::Solid(color(s.color()));
+        // ⭐⭐⭐ **O PINCEL** (plano 36, W3) — a arte PERCORRE a linha, em vez da tinta que ela
+        // revela. É o outro modelo, e ele responde ao contrário às mesmas perguntas: escala com a
+        // largura, e as cópias são GEOMETRIA (não um amostrador).
+        //
+        // ⚠️ **A guia é o `path` COZIDO que o traço percorre** — o mesmo `bp` que o traçado usa
+        // sai dele. Correr a arte pela fonte autorada poria as cópias num caminho que ninguém vê.
+        //
+        // ⚠️ **Sem arte resolvida, cai no traço SÓLIDO da cor de recurso** (o `brush` acima) — as
+        // duas metades são desenho certo, e ⛔ desenhar NADA seria pior: uma linha invisível não se
+        // distingue de uma forma sem contorno.
+        if let Some((b, art)) = s.brush().zip(brush_art) {
+            {
+                for copia in ph2d_vec_scene::brush_along_path(&path.cooked(), art, b, s.width) {
+                    // ⛔⛔ **As cópias desenham SEM pincel, ladrilho ou arte** (os três `None`), e
+                    // isso é o guarda de ciclo estrutural: uma arte que tivesse ela própria um
+                    // pincel entraria em recursão infinita. *A recusa vive na chamada, não numa
+                    // bandeira que alguém se lembre de passar.*
+                    crate::draw_path_tiled(&copia, transform, target, None, None, None);
+                }
+                return;
+            }
+        }
         // ⭐⭐ **O PADRÃO NO TRAÇO** (plano 35, wave B) — a mesma lei do preenchimento: desenha a
         // IMAGEM quando o ladrilho existe, e a `fallback` (o `brush` acima) quando não. As duas
         // metades são desenho certo; ⛔ desenhar NADA seria pior.

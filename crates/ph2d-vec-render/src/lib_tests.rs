@@ -48,6 +48,7 @@ fn the_live_geometry_draws_instead_of_the_source() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut a,
     );
@@ -68,6 +69,7 @@ fn the_live_geometry_draws_instead_of_the_source() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut b,
     );
@@ -95,6 +97,7 @@ fn an_empty_live_entry_draws_nothing() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -118,6 +121,7 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut plain,
     );
@@ -135,6 +139,7 @@ fn a_replace_filter_draws_the_image_in_place_of_the_shape() {
         &fx,
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -160,6 +165,7 @@ fn a_shape_without_a_filter_draws_itself() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut plain,
     );
@@ -177,6 +183,7 @@ fn a_shape_without_a_filter_draws_itself() {
         &fx,
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut s,
     );
@@ -291,6 +298,7 @@ fn encode_cost_by_n() {
             &FxImages::new(),
             &WidgetSkins::new(),
             &PatternTiles::new(),
+            &crate::BrushArts::new(),
             affine,
             &mut target,
         ); // warm
@@ -306,6 +314,7 @@ fn encode_cost_by_n() {
                 &FxImages::new(),
                 &WidgetSkins::new(),
                 &PatternTiles::new(),
+                &crate::BrushArts::new(),
                 affine,
                 &mut target,
             );
@@ -454,6 +463,7 @@ fn the_dispatch_draws_the_token_colour_not_the_literal() {
             &FxImages::new(),
             &WidgetSkins::new(),
             &PatternTiles::new(),
+            &crate::BrushArts::new(),
             Affine::IDENTITY,
             &mut t,
         );
@@ -514,6 +524,7 @@ fn the_widget_skin_replaces_the_drawing() {
         &FxImages::new(),
         &WidgetSkins::new(),
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut plain,
     );
@@ -542,6 +553,7 @@ fn the_widget_skin_replaces_the_drawing() {
         &FxImages::new(),
         &skins,
         &PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut dressed,
     );

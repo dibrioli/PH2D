@@ -65,6 +65,7 @@ fn encode(scene: &VecScene, view: &VecViewState) -> (u32, u32, u32) {
         &FxImages::new(),
         &crate::WidgetSkins::new(),
         &crate::PatternTiles::new(),
+        &crate::BrushArts::new(),
         Affine::IDENTITY,
         &mut target,
     );

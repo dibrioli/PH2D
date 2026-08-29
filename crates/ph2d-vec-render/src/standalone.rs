@@ -85,6 +85,7 @@ pub fn draw_path_isolated(
     xforms: &VecXforms,
     live: &LiveGeometry,
     patterns: &crate::PatternTiles,
+    brushes: &crate::BrushArts,
     id: VecPathId,
     camera: Affine,
     offset: Affine,
@@ -92,9 +93,10 @@ pub fn draw_path_isolated(
 ) {
     let tile = patterns.get(&(id, crate::PatternSlot::Fill));
     let stroke_tile = patterns.get(&(id, crate::PatternSlot::Stroke));
+    let art = brushes.get(&id);
     if let Some(items) = live.get(&id) {
         for item in items {
-            crate::draw_path_tiled(item, offset * camera, target, tile, stroke_tile);
+            crate::draw_path_tiled(item, offset * camera, target, tile, stroke_tile, art);
         }
     } else if let Some(path) = scene.paths().iter().find(|p| p.id == id) {
         crate::draw_path_tiled(
@@ -103,6 +105,7 @@ pub fn draw_path_isolated(
             target,
             tile,
             stroke_tile,
+            art,
         );
     }
 }

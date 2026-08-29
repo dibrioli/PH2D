@@ -208,6 +208,16 @@ pub enum PatternSlot {
 /// toda tinta de padrão pinta a `fallback` dela — que é desenho CERTO, não uma desistência.
 pub type PatternTiles = std::collections::BTreeMap<(VecPathId, PatternSlot), PatternTile>;
 
+/// ⭐⭐⭐ **A ARTE COZIDA de cada PINCEL deste quadro**, pela forma HOSPEDEIRA (plano 36, W3).
+///
+/// ⚠️ **Resolvida pela shell, como o ladrilho do padrão** — e pela mesma razão: esta crate não
+/// alcança a cena, e ir buscar a forma-fonte aqui dentro poria a resolução (com o guarda de ciclo,
+/// a geometria viva e o cozimento) num sítio que não a pode medir.
+///
+/// Vazio = nenhum pincel resolvido, e todo traço de pincel pinta a **cor de recurso** dele — que é
+/// desenho CERTO, não desistência.
+pub type BrushArts = std::collections::BTreeMap<VecPathId, ph2d_vec_scene::VecPath>;
+
 /// Os FX raster deste frame, por forma. Vazio = nenhum FX na cena, e o desenho é o de sempre —
 /// **byte-idêntico** ao mundo pré-FX (o caminho comum não paga nada).
 pub type FxImages = std::collections::BTreeMap<VecPathId, FxImage>;
@@ -260,6 +270,7 @@ pub fn dispatch(
     fx: &FxImages,
     skins: &WidgetSkins,
     patterns: &PatternTiles,
+    brushes: &BrushArts,
     camera: Affine,
     target: &mut VectorScene,
 ) {
@@ -298,13 +309,29 @@ pub fn dispatch(
                 // pararia na borda do primeiro efeito.
                 let tile = patterns.get(&(path.id, PatternSlot::Fill));
                 let stroke_tile = patterns.get(&(path.id, PatternSlot::Stroke));
+                // ⭐ **A arte do PINCEL, pelo id da FONTE — a mesma lei do ladrilho logo acima.**
+                let art = brushes.get(&path.id);
                 if let Some(items) = live.get(&path.id) {
                     for item in items {
-                        draw_path_tiled(&item.painted(bound), camera, target, tile, stroke_tile);
+                        draw_path_tiled(
+                            &item.painted(bound),
+                            camera,
+                            target,
+                            tile,
+                            stroke_tile,
+                            art,
+                        );
                     }
                 } else {
                     let transform = path_to_screen(xforms, path.id, camera);
-                    draw_path_tiled(&path.painted(bound), transform, target, tile, stroke_tile);
+                    draw_path_tiled(
+                        &path.painted(bound),
+                        transform,
+                        target,
+                        tile,
+                        stroke_tile,
+                        art,
+                    );
                 }
             }
         }
@@ -398,7 +425,7 @@ pub(crate) fn dash_of(cooked: &VecPath, stroke: Option<&StrokeSpec>) -> Option<[
 /// Tessela sua própria geometria ([`path_tess`]) e delega a [`draw_path_with`] — byte-idêntico ao
 /// desenho de antes: 1 cozimento + as construções de sempre por chamada.
 pub(crate) fn draw_path(path: &VecPath, transform: Affine, target: &mut VectorScene) {
-    draw_path_tiled(path, transform, target, None, None);
+    draw_path_tiled(path, transform, target, None, None, None);
 }
 
 /// Igual a [`draw_path`], mas com o LADRILHO de padrão desta forma neste quadro.
@@ -411,9 +438,10 @@ pub(crate) fn draw_path_tiled(
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
     stroke_tile: Option<&PatternTile>,
+    brush_art: Option<&ph2d_vec_scene::VecPath>,
 ) {
     let tess = path_tess(path);
-    draw_path_with(path, &tess, transform, target, tile, stroke_tile);
+    draw_path_with(path, &tess, transform, target, tile, stroke_tile, brush_art);
 }
 
 /// Desenha um path a partir da geometria JÁ TESSELADA (`tess`) — a metade barata do [`draw_path`],
@@ -429,6 +457,7 @@ pub(crate) fn draw_path_with(
     target: &mut VectorScene,
     tile: Option<&PatternTile>,
     stroke_tile: Option<&PatternTile>,
+    brush_art: Option<&ph2d_vec_scene::VecPath>,
 ) {
     let fill_bp = tess.fill_bp.as_ref();
     if let Some(fill) = &path.fill {
@@ -472,7 +501,7 @@ pub(crate) fn draw_path_with(
             );
         }
     }
-    draw_stroke_with(path, tess, transform, target, stroke_tile);
+    draw_stroke_with(path, tess, transform, target, stroke_tile, brush_art);
 }
 
 /// **A camada de INSTÂNCIA de Motion** — módulo irmão pelo teto de 700 LOC. O corte é por assunto:

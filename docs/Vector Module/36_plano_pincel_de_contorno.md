@@ -118,7 +118,8 @@ depois dos efeitos vivos (cantos vivos, largura viva, booleana), pela mesma raz�
 |---|---|---|
 | **W1** ✅ | `StrokePaint::Brush(Box<BrushStroke>)` + o schema (`VEC_SCENE` **16→17**, `PROJECT` **101→102**, a tripla) | `ph2d-vec-scene` |
 | **W2** ✅ | O **motor**: correr o `pattern_along` sobre o próprio contorno, com **fit** de emenda pela porta da `dash_fit` — **0,423 ms / 200 cópias**, 19× sob o *kill* | `ph2d-vec-scene` |
-| **W3** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pela porta que já parte o traço em peças (`stroke_plan`) | `ph2d-vec-render` |
+| **W3** ✅ | O **desenho**: as cópias emitidas, com o guarda de ciclo estrutural e a queda para a cor de recurso | `ph2d-vec-render` + shell |
+| **W3-bis** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pelas fatias `[start, end]` que o `PatternSpec` já tem | `ph2d-vec-render` |
 | **W4** | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (tamanho · espaçamento · offset normal/tangencial · flip), irmã das outras duas | `ph2d-panel-vector` + shell |
 | **W5** | As **QUINAS**: os 4 modos do Illustrator medidos lado a lado, e o nosso escolhido **com a tabela** | `ph2d-vec-scene` |
 | **W6** | Persistência + smoke + gates + mutações | shell |
@@ -271,3 +272,58 @@ escala da arte é **um passe sobre os vértices dela, uma vez** — não por có
 
 ⚠️ E o gate do encaixe traz o **controlo de que a fixtura contém o fenómeno**: a arte foi escolhida
 com uma largura que **não** divide o perímetro, senão ele ficaria verde sobre um encaixe por acidente.
+
+---
+
+## §8 — W3 fechada: **o desenho** (2026-08-28)
+
+### §8.1 — ⭐ A arte entra pela porta do LADRILHO, e pela mesma razão
+
+`BrushArts = BTreeMap<VecPathId, VecPath>` — a arte **cozida** de cada pincel, pela forma
+HOSPEDEIRA, resolvida pela **shell** (`brush_live`). A `ph2d-vec-render` não alcança a cena, e ir
+buscar a forma-fonte lá dentro poria o guarda de ciclo, a geometria viva e o cozimento num sítio que
+não os pode medir. *É a decisão que o ladrilho do padrão já tinha tomado.*
+
+⚠️ **A chave é quem PINTA, não quem é pintado.** Trocá-las faria o desenho procurar pelo id errado e
+cair sempre na cor de recurso — gate com o controlo de que o mapa tem **uma entrada por hospedeira**.
+
+### §8.2 — ⛔⛔ O guarda de ciclo é ESTRUTURAL, não uma bandeira
+
+As cópias desenham com os **três mapas a `None`**. Uma arte que tivesse ela própria um pincel
+entraria em recursão infinita, e ⚠️ **o sintoma não seria um erro: seria o app a parar**. ⇒ a recusa
+vive **na chamada**, e não numa bandeira que alguém se lembre de passar.
+
+⚠️ E há uma segunda metade, PURA, no `brush_live`: uma forma **não pode ser o próprio pincel** — a
+mesma recusa que o padrão-forma já tem, e pelo mesmo mecanismo.
+
+### §8.3 — ⭐⭐ As DUAS portas de rasterização isolada, e a assimetria entre elas
+
+| Porta | Padrão | Pincel |
+|---|---|---|
+| **FX raster** (`fx_live`) | ✅ já resolvia — e **esqueceu-o uma vez**: o report do Enio de 27/08 (*"filters anula pattern"*) | ✅ resolve |
+| **Assado de objecto Motion** (`motion_object_bake`) | ⛔ leva a `fallback`, **declarado**: o ladrilho precisa do assado, que vive fora | ✅ **resolve** |
+
+⭐ **A assimetria é real, não um descuido:** o ladrilho de um padrão precisa da arte descodificada e
+do reticulado composto; a arte de um pincel é **geometria da mesma cena** que o assado já recebe.
+*Herdar a limitação do vizinho por simetria seria inventá-la* — a mesma lição que o encaixe por
+contorno deu na W2.
+
+⚠️ **A porta do FX é a que já esqueceu a tinta nova uma vez.** Uma segunda porta de desenho esquece a
+tinta seguinte — e desta vez ela entrou na mesma wave.
+
+### §8.4 — As quatro provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| o ramo do pincel nunca dispara | `a_brushed_stroke_draws_the_copies_and_falls_back_to_the_colour` |
+| o guarda de ciclo desligado | `a_shape_can_never_be_its_own_brush` |
+| a arte entra AUTORADA em vez de cozida | `the_art_enters_cooked_not_as_authored` |
+| o mapa chaveado pela ARTE em vez da hospedeira | `the_brush_art_resolves_keyed_by_its_host` |
+
+### §8.5 — ⚠️ Um membro NOVO da família de flakes de recurso
+
+`the_cost_of_a_player_is_linear_in_their_number` (`ph2d-physics-ecs::measure_player_budget`)
+reprovou na varredura e passou **3/3 sozinho**, com **zero** ficheiros de física no diff. Ele compara
+**duas medianas de relógio**, que é a forma que o `CLAUDE.md` §5.0 declara ser a família inteira —
+*"todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa"*.
+Fica registado aqui para a próxima janela não o caçar.

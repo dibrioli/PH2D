@@ -278,6 +278,12 @@ impl FxLive {
                 xforms,
                 live,
                 patterns,
+                // ⛔⛔ **O PINCEL entra AQUI também** (plano 36, W3) — e esta porta já esqueceu a
+                // tinta nova uma vez: o report do Enio de 27/08 (*"filters anula pattern"*) foi
+                // exactamente isto, com o padrão no lugar do pincel. A imagem de FX **toma o
+                // lugar** do desenho, então uma forma cuja rasterização ignore o pincel perde-o ao
+                // ligar um filtro. *Uma segunda porta de desenho esquece a tinta seguinte.*
+                &crate::brush_live::resolve(scene),
                 job.id,
                 camera,
                 Affine::translate((

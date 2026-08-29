@@ -19,10 +19,7 @@ fn corner(blend: Blend) -> FieldDoc {
     let plate = |half: [f32; 3], at: [f32; 3]| {
         Node::new(
             Xform::at(at[0], at[1], at[2]),
-            NodeKind::Leaf(Primitive::Box {
-                half,
-                round: 0.0,
-            }),
+            NodeKind::Leaf(Primitive::Box { half, round: 0.0 }),
         )
     };
     FieldDoc::new(

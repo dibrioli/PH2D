@@ -329,8 +329,8 @@ fn growth_report() {
     println!("\n== CRESCIMENTO: e' suave, ou aos saltos? ==");
     println!("   (varredura de 1,0 ate' as geracoes que o molde declara, em {N} passos)");
     println!(
-        "{:8} {:>10} {:>12} {:>10}   {}",
-        "molde", "reescreve", "pior_passo", "congela_em", "veredito"
+        "{:8} {:>10} {:>12} {:>10}   veredito",
+        "molde", "reescreve", "pior_passo", "congela_em"
     );
     for p in ls::PRESETS {
         // A gramática reescreve o símbolo que DESENHA? É esta a pergunta que separa as duas

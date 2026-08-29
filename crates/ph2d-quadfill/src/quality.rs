@@ -430,7 +430,11 @@ pub(crate) fn smooth_hint(mesh: &Mesh, hint: &mut [Hint], rounds: usize) {
             let n = normals[fi];
             let c = hint[fi];
             // A base do plano da face: o representante actual, ou uma aresta se ele for nulo.
-            let seed = if c.weight > 0.0 { c.dir } else { tangent_of(pos, faces[fi].verts()) };
+            let seed = if c.weight > 0.0 {
+                c.dir
+            } else {
+                tangent_of(pos, faces[fi].verts())
+            };
             let e1 = {
                 let along = dot(seed, n);
                 let t = [

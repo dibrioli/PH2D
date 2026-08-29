@@ -578,7 +578,8 @@ fn sizing_field(work: &Mesh, target: f32, adaptive: f32) -> Vec<f32> {
             ];
             let tri = f64::from(n[0].mul_add(n[0], n[1].mul_add(n[1], n[2] * n[2])).sqrt()) * 0.5;
             let h = f64::from(
-                (per_vertex[v[0] as usize] + per_vertex[v[k] as usize]
+                (per_vertex[v[0] as usize]
+                    + per_vertex[v[k] as usize]
                     + per_vertex[v[k + 1] as usize])
                     / 3.0,
             )

@@ -103,7 +103,14 @@ fn one_at_a_time_beats_the_batch() {
     let (cut, combed, h, singular) = chain(&mut mesh);
     let opts = RoundOptions::default();
 
-    let (map, batch_rep) = solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), opts.weight, opts.rounds);
+    let (map, batch_rep) = solve_with(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        opts.weight,
+        opts.rounds,
+    );
     let (g, _) = crate::gauge::fix(&cut, &combed, &map);
     let batch: f32 = g
         .cycle
@@ -111,7 +118,14 @@ fn one_at_a_time_beats_the_batch() {
         .map(|&(_, t)| (t[0] - t[0].round()).abs() + (t[1] - t[1].round()).abs())
         .sum();
 
-    let (_, r) = round_to_integers(&mesh, &cut, &combed, crate::solve::Step::uniform(h), opts, &singular);
+    let (_, r) = round_to_integers(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        opts,
+        &singular,
+    );
     eprintln!(
         "  LOTE: soma dos passos {batch:.3} (costura p50 {:.4} max {:.4})",
         batch_rep.seam_p50, batch_rep.seam_max
@@ -129,7 +143,14 @@ fn as_translacoes_ficam_todas_inteiras() {
     // dentro.
     let mut mesh = ph2d_mesh::shapes::uv_sphere(12, 18, 1.0);
     let (cut, combed, h, singular) = chain(&mut mesh);
-    let (map, r) = round_to_integers(&mesh, &cut, &combed, crate::solve::Step::uniform(h), RoundOptions::default(), &singular);
+    let (map, r) = round_to_integers(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        RoundOptions::default(),
+        &singular,
+    );
     assert_eq!(
         r.shift_frac_max, 0.0,
         "sobrou uma translacao nao-inteira: {:.3e}",
@@ -193,7 +214,14 @@ fn o_mapa_convergido_do_solver_e_ponto_fixo_do_relaxador() {
     // ⚠️ **Sem arredondamento nenhum**: o que se cobra aqui é a EQUAÇÃO, e pregar um
     // inteiro no meio mediria a equação mais o arredondamento.
     let (cut, combed, h, _singular) = chain(&mut mesh);
-    let (mut map, _) = solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), crate::solve::SEAM_WEIGHT, 40_000);
+    let (mut map, _) = solve_with(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        crate::solve::SEAM_WEIGHT,
+        40_000,
+    );
     let scale: f32 = map
         .uv
         .iter()
@@ -206,7 +234,13 @@ fn o_mapa_convergido_do_solver_e_ponto_fixo_do_relaxador() {
     );
 
     let mut rep = SolveReport::default();
-    let a = assemble(&mesh, &cut, &combed, crate::solve::Step::uniform(h), &mut rep);
+    let a = assemble(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        &mut rep,
+    );
     let r = Relaxer::new(&a, &cut, &combed, crate::solve::SEAM_WEIGHT);
     let moved = r.sweep(&mut map);
     assert!(
@@ -226,7 +260,14 @@ fn o_mapa_convergido_do_solver_e_ponto_fixo_do_relaxador() {
 fn a_escada_fica_no_degrau_barato() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(12, 18, 1.0);
     let (cut, combed, h, singular) = chain(&mut mesh);
-    let (_, r) = round_to_integers(&mesh, &cut, &combed, crate::solve::Step::uniform(h), RoundOptions::default(), &singular);
+    let (_, r) = round_to_integers(
+        &mesh,
+        &cut,
+        &combed,
+        crate::solve::Step::uniform(h),
+        RoundOptions::default(),
+        &singular,
+    );
     assert_eq!(
         r.level1 + r.level2,
         r.pinned,

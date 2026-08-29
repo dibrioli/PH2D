@@ -42,10 +42,7 @@ impl Step<'static> {
     /// O passo constante — o que todo chamador de antes de 2026-08-28 pede.
     #[must_use]
     pub const fn uniform(h: f32) -> Self {
-        Self {
-            h,
-            per_vertex: &[],
-        }
+        Self { h, per_vertex: &[] }
     }
 }
 
@@ -70,11 +67,7 @@ impl Step<'_> {
                 n += 1;
             }
         }
-        if n == 0 {
-            self.h
-        } else {
-            sum / n as f32
-        }
+        if n == 0 { self.h } else { sum / n as f32 }
     }
 }
 

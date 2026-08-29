@@ -228,8 +228,8 @@ pub struct SolveReport {
 /// ⭐⭐ A montagem do sistema — ver o módulo irmão.
 #[path = "assembly.rs"]
 mod assembly;
-pub(crate) use assembly::{Assembly, assemble, poisson_numerator};
 pub use assembly::Step;
+pub(crate) use assembly::{Assembly, assemble, poisson_numerator};
 
 /// ⭐⭐⭐ **RESOLVE O MAPA.** `h` é o passo alvo da grade, na unidade da peça.
 #[must_use]

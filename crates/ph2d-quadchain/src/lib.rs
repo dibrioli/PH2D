@@ -182,9 +182,23 @@ pub fn quads_from_mesh_raw(
     // ── G3 + G5. O mapa, e o arredondamento uma-a-uma que o torna inteiro.
     let opts = ph2d_gridmap::RoundOptions::default();
     let (map, round) = if ph2d_gridmap::welded_enabled() {
-        ph2d_gridmap::round_welded(&work, &cut, &combed, ph2d_gridmap::Step::uniform(target_edge), opts, &singular)
+        ph2d_gridmap::round_welded(
+            &work,
+            &cut,
+            &combed,
+            ph2d_gridmap::Step::uniform(target_edge),
+            opts,
+            &singular,
+        )
     } else {
-        ph2d_gridmap::round_to_integers(&work, &cut, &combed, ph2d_gridmap::Step::uniform(target_edge), opts, &singular)
+        ph2d_gridmap::round_to_integers(
+            &work,
+            &cut,
+            &combed,
+            ph2d_gridmap::Step::uniform(target_edge),
+            opts,
+            &singular,
+        )
     };
 
     lap(&mut ms.map);

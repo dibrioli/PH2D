@@ -133,7 +133,14 @@ fn the_welded_system_beats_the_penalised_one_on_both_columns() {
     ] {
         let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
         let t = std::time::Instant::now();
-        let (_, pen) = solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), SEAM_WEIGHT, PENALISED_ROUNDS);
+        let (_, pen) = solve_with(
+            &mesh,
+            &cut,
+            &combed,
+            crate::solve::Step::uniform(h),
+            SEAM_WEIGHT,
+            PENALISED_ROUNDS,
+        );
         eprintln!(
             "{name}\n  PENALIZADO (w={SEAM_WEIGHT}, {:.1}s): angulo p50 {:.2}° | escala {:.3} \
              | costura p50 {:.4} max {:.4}",
@@ -145,7 +152,8 @@ fn the_welded_system_beats_the_penalised_one_on_both_columns() {
         );
         for rounds in [500usize, 2_000, 8_000] {
             let t = std::time::Instant::now();
-            let (map, r) = solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), rounds);
+            let (map, r) =
+                solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), rounds);
             let (w, _) = weld(&cut, &combed);
             let sr = seam_residual(&w, &map);
             eprintln!(

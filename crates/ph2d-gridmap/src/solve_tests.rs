@@ -294,7 +294,14 @@ fn the_global_map_on_a_real_sphere() {
 
     for weight in [1.0f32, 8.0, 64.0, 512.0] {
         for rounds in [2_000usize, 10_000, 40_000] {
-            let (_, rep) = super::solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), weight, rounds);
+            let (_, rep) = super::solve_with(
+                &mesh,
+                &cut,
+                &combed,
+                crate::solve::Step::uniform(h),
+                weight,
+                rounds,
+            );
             eprintln!(
                 "  peso {weight:>6.0} rondas {rounds:>6}: ⭐angulo p50 {:>5.1}° p95 {:>5.1}° \
                  | escala p50 {:.3} p95 {:.3} | costura p50 {:.4} max {:.4} | (misto {:.3})",
@@ -349,7 +356,14 @@ fn does_the_stiff_system_just_need_more_rounds() {
     let h = edges[edges.len() / 2];
     for weight in [64.0f32, 512.0] {
         for rounds in [40_000usize, 160_000, 640_000] {
-            let (_, rep) = super::solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), weight, rounds);
+            let (_, rep) = super::solve_with(
+                &mesh,
+                &cut,
+                &combed,
+                crate::solve::Step::uniform(h),
+                weight,
+                rounds,
+            );
             eprintln!(
                 "  peso {weight:>5.0} rondas {rounds:>7}: ⭐angulo p50 {:>5.1}° p95 {:>5.1}° \
                  | escala p50 {:.3} | costura p50 {:.4} max {:.4}",

@@ -265,10 +265,12 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
 
         // ⭐⭐⭐ **A CERCA POR SÍTIO entra nos DOIS passes** — ver [`SizingGrid`]. Ela é
         // reconstruída a cada ronda porque a malha muda, e é isso que a mantém honesta.
-        let grid = adaptive_on().then(|| SizingGrid::build(mesh, target)).flatten();
-        let split = grid.as_ref().map(|g| {
-            move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR
-        });
+        let grid = adaptive_on()
+            .then(|| SizingGrid::build(mesh, target))
+            .flatten();
+        let split = grid
+            .as_ref()
+            .map(|g| move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR);
         let split_ref: ph2d_mesh::Sizing<'_> = split
             .as_ref()
             .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
@@ -282,9 +284,9 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
             &mut scratch,
         );
         let (centre, radius) = whole(mesh);
-        let shrink = grid.as_ref().map(|g| {
-            move |p: [f32; 3]| g.at(p) * COLLAPSE_FACTOR
-        });
+        let shrink = grid
+            .as_ref()
+            .map(|g| move |p: [f32; 3]| g.at(p) * COLLAPSE_FACTOR);
         let shrink_ref: ph2d_mesh::Sizing<'_> = shrink
             .as_ref()
             .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
@@ -410,7 +412,13 @@ fn whole(mesh: &Mesh) -> ([f32; 3], f32) {
 /// ⛔ A lei do rebordo, recusada por medição — ver o módulo irmão.
 #[path = "border.rs"]
 mod border;
+mod project;
+mod sizing;
+
+pub use project::{project_facing, project_onto};
+
 use border::{border_lambda, border_law_on, border_polyline, project_onto_polyline};
+use sizing::{SizingGrid, adaptive_on, facing_on};
 
 fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bool) {
     let n = mesh.vert_count();
@@ -558,316 +566,8 @@ fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bo
 /// Meio passo de Laplaciano — o amortecimento que o torna monótono.
 const LAMBDA: f32 = 0.5;
 
-/// ⭐⭐⭐ **O ALVO POR SÍTIO, numa grelha grosseira** — o que as portas de topologia consultam.
-///
-/// ⛔⛔ **Ela existe porque um alvo ÚNICO não pode representar uma agulha.** Na peça do artista
-/// (2026-08-29) o alvo é `0,089` e o **raio local** de um espinho cai a `0,037`: o passe de
-/// colapso come toda aresta abaixo de `0,071`, e as arestas que dão a volta ao tubo são
-/// justamente essas — *a agulha fecha-se sobre si antes de qualquer outra fase existir.*
-///
-/// ⚠️ **Por POSIÇÃO e não por índice**, porque é isso que as portas aceitam: elas renumeram
-/// (`Remap`) e correm várias passagens por chamada, então um vetor por vértice ficaria
-/// obsoleto dentro da própria chamada.
-///
-/// ⚠️ **A célula é o alvo GLOBAL**, e a consulta leva o **mínimo dos 27 vizinhos**: uma grelha
-/// que respondesse só pela célula própria daria um degrau na fronteira dela, e um degrau no
-/// limiar de colapso é uma fileira de arestas que morre de um lado e vive do outro.
-struct SizingGrid {
-    cell: f32,
-    fallback: f32,
-    want: std::collections::BTreeMap<(i32, i32, i32), f32>,
-}
-
-impl SizingGrid {
-    /// ⭐ O alvo local sai da **curvatura normalizada pela mediana** — a mesma lei livre de
-    /// escala que a `ph2d_quadflow::ScaleField` usa. ⚠️ **O tecto é `1`**: esta grelha nunca
-    /// grosseira, então não pode piorar nenhuma região que o laço já resolveu.
-    fn build(mesh: &Mesh, target: f32) -> Option<Self> {
-        let curv = mesh.curvatures();
-        if curv.is_empty() {
-            return None;
-        }
-        let mut mags: Vec<f32> = curv.iter().map(|k| k.abs()).collect();
-        mags.sort_by(f32::total_cmp);
-        let median = mags[mags.len() / 2];
-        if median <= 1.0e-9 {
-            return None;
-        }
-        let cell = target.max(1.0e-6);
-        let mut want: std::collections::BTreeMap<(i32, i32, i32), f32> =
-            std::collections::BTreeMap::new();
-        let pos = mesh.positions();
-        for (v, p) in pos.iter().enumerate() {
-            let k = curv.get(v).copied().unwrap_or(0.0).abs().max(1.0e-9);
-            let h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
-            let key = Self::key_of(*p, cell);
-            let slot = want.entry(key).or_insert(h);
-            if h < *slot {
-                *slot = h;
-            }
-        }
-        Some(Self {
-            cell,
-            fallback: target,
-            want,
-        })
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    fn key_of(p: [f32; 3], cell: f32) -> (i32, i32, i32) {
-        (
-            (p[0] / cell).floor() as i32,
-            (p[1] / cell).floor() as i32,
-            (p[2] / cell).floor() as i32,
-        )
-    }
-
-    /// O alvo local: o **mínimo** entre a célula e as 26 vizinhas.
-    fn at(&self, p: [f32; 3]) -> f32 {
-        let (x, y, z) = Self::key_of(p, self.cell);
-        let mut best = f32::INFINITY;
-        for dx in -1..=1 {
-            for dy in -1..=1 {
-                for dz in -1..=1 {
-                    if let Some(h) = self.want.get(&(x + dx, y + dy, z + dz)) {
-                        best = best.min(*h);
-                    }
-                }
-            }
-        }
-        if best.is_finite() { best } else { self.fallback }
-    }
-}
-
-/// ⭐⭐⭐ **A CERCA POR SÍTIO está ligada?** — `PH2D_ISO_ADAPT=1` liga.
-///
-/// # ⭐ Ela CURA a agulha, e a medição é dramática
-///
-/// Alcance perdido pela fase zero, na fixtura de espinhos (sem → com):
-///
-/// | `σ` | sem | com |
-/// |---|---|---|
-/// | `0,30` | `+0,1 %` | `+0,3 %` |
-/// | `0,20` | `−0,9 %` | ⭐ `+0,8 %` |
-/// | `0,14` | `−1,6 %` | ⭐ `+0,8 %` |
-/// | `0,10` | `−5,8 %` | ⭐ **`−0,8 %`** |
-/// | `0,07` | `−12,9 %` | ⭐ **`−1,3 %`** |
-/// | `0,05` | ⛔ `−15,8 %` | ⭐⭐⭐ **`−0,8 %`** |
-///
-/// ⭐ E a topologia da malha de trabalho fica **perfeita** (`χ = 2`, zero bordo, zero
-/// não-manifold, valência máxima `10`). *A agulha sobrevive.*
-///
-/// # ⛔⛔⛔ E PARTE A CADEIA A JUSANTE — a mesma lei do [`facing_on`], um nível mais fundo
-///
-/// Medida de ponta a ponta **pelo botão**, na peça do artista, `Detail 0,85`:
-///
-/// | | alcance final | `χ` | bordo | não-manif. | dobras | relógio |
-/// |---|---|---|---|---|---|---|
-/// | ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `0` | `76` | **`27,8 s`** |
-/// | ⛔ ligada | ⛔ `−17,3 %` | ⛔ `−7` | ⛔ **`62`** | ⛔ `2` | `101` | ⛔ **`167 s`** |
-///
-/// ⚠️ **O mecanismo é o mesmo das duas vezes:** a malha de trabalho passa de `3 982` para
-/// `33 156` faces e deixa de ser **isotrópica**; o campo cruzado, o traçado e o mapa — que
-/// dependem de uma triangulação bem comportada — perdem-se nela, e o alcance FINAL até piora.
-///
-/// ⭐⭐⭐ **A lei, agora confirmada DUAS vezes:** *uma fase medida sozinha pode melhorar e
-/// piorar o produto.* ⇒ a cadeia inteira tem de ser consciente do sizing, e isso é a wave do
-/// **factor de escala conforme** que a `sizing_field` do shell já nomeia — não uma cerca só
-/// no F1.
-fn adaptive_on() -> bool {
-    std::env::var("PH2D_ISO_ADAPT").as_deref() == Ok("1")
-}
-
-/// ⭐ **Quantas vezes o alvo pode encolher onde a forma aperta.**
-///
-/// ⚠️ **É a mesma cerca de gradação que a [`ph2d_quadflow::MAX_ADAPTIVE_RATIO`] declara**
-/// noutra crate (*duas células cujas escalas diferem por mais do que isto deixam de ter
-/// aresta comum*), e o número aqui é o mesmo `4` — a agulha recebe até `4×` mais resolução
-/// linear que o corpo.
-const ADAPT_RATIO: f32 = 4.0;
-
-/// ⭐⭐⭐ **A reprojecção exige que o pé CONCORDE com a normal** — ver o uso.
-///
-/// ⚠️ **Lida uma vez por passe** e não por vértice: `env::var` aloca, e este laço corre sobre
-/// a malha inteira em cada uma das [`MAX_ROUNDS`] rondas.
-///
-/// # ⛔⛔⛔ MEDIDA, e NÃO ADOPTADA — ela cura esta fase e parte a seguinte
-///
-/// ⭐ **Ela faz exactamente o que promete.** Na peça do artista (2026-08-29) o alcance que a
-/// fase zero come cai de **`−15,9 %` para `−5,7 %`** — melhor que os `−13,2 %` da ferramenta
-/// de terceiros com que ele a comparou. Nas fixturas de espinhos é **inerte** onde não há
-/// agulha (`σ ≥ 0,14`, saída idêntica) e ganha a `σ = 0,07` (`−12,9 % → −7,9 %`).
-///
-/// ⛔⛔ **E a cadeia a jusante desaba.** Medida de ponta a ponta pelo botão, na mesma peça,
-/// `Detail 0,85`:
-///
-/// | | alcance final | `χ` | bordo | ilhas | dobras | `>60°` | relógio |
-/// |---|---|---|---|---|---|---|---|
-/// | ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `1` | `76` | `2` | **`31 s`** |
-/// | ⛔ ligada | ⛔ `−14,2 %` | ⛔ **`−16`** | ⛔ **`250`** | ⛔ **`5`** | ⛔ `798` | ⛔ `41` | ⛔ `79 s` |
-///
-/// ⚠️ **O mecanismo do estrago:** manter o vértice do seu lado guarda a agulha e deixa lá uma
-/// malha **emaranhada** — a malha de trabalho passa de `3 982` para `9 458` faces com
-/// valência até `23` (contra `8`). O campo cruzado e o traçado, que dependem de uma
-/// triangulação bem comportada, perdem-se nela. *E o alcance FINAL até piora: a ponta
-/// guardada não sobrevive à cadeia.*
-///
-/// ⭐ **A lição, e ela é a razão de esta função ficar:** *uma fase medida sozinha pode
-/// melhorar e piorar o produto.* A cura verdadeira tem de tratar as duas ao mesmo tempo —
-/// guardar a agulha **e** entregar ao campo uma malha que ele saiba ler.
-fn facing_on() -> bool {
-    std::env::var("PH2D_ISO_FACING").as_deref() == Ok("1")
-}
-
-/// **O PONTO MAIS PRÓXIMO da superfície de referência.**
-///
-/// ⚠️ **É público porque o F5 o reusa**, e duas implementações de *"o ponto mais
-/// próximo da superfície"* divergiriam exatamente onde ninguém olha — na parte
-/// esparsa do modelo, que é onde o raio de busca decide tudo.
-///
-/// ⚠️ **O raio de busca DOBRA até achar face.** Um raio fixo devolve zero faces
-/// sobre uma parte esparsa do modelo, e a projeção vira um no-op **silencioso** —
-/// o Laplaciano então roda sem freio e a peça encolhe.
-pub fn project_onto(mesh: &Mesh, p: [f32; 3], seed_radius: f32) -> [f32; 3] {
-    project_facing(mesh, p, seed_radius, None)
-}
-
-/// **O PONTO MAIS PRÓXIMO QUE OLHA PARA O MESMO LADO.**
-///
-/// ⭐⭐ **Dentro de um vinco CÔNCAVO o ponto mais próximo pode estar do outro lado
-/// da dobra**, e é aí que a malha rasga. A razão é geométrica e não numérica: o
-/// eixo medial de uma concavidade **encosta na superfície**, então dois pontos a
-/// milímetros um do outro têm pés opostos. Um deles atravessa a dobra, e a face
-/// entre os dois vira uma lasca — a fenda que a foto de 2026-08-22 mostra colada à
-/// borda da orelha.
-///
-/// ⚠️ **A cura clássica não é um raio menor: é uma DIREÇÃO.** Com `facing =
-/// Some(n)`, uma face candidata só entra se a normal dela concordar com `n`. Sem
-/// candidato nenhum que concorde, ela **cai para o mais próximo** — porque uma
-/// projeção que falha é pior que uma que erra de lado: o Laplaciano roda sem freio
-/// e a peça encolhe.
-///
-/// ⚠️ **O limiar é `0`, e não um cosseno afinado.** *Do mesmo lado* é uma pergunta
-/// de sinal; qualquer número acima disso seria uma segunda escolha a defender, e a
-/// superfície de referência é um poliedro cujas normais saltam de faceta em faceta.
-#[must_use]
-pub fn project_facing(
-    mesh: &Mesh,
-    p: [f32; 3],
-    seed_radius: f32,
-    facing: Option<[f32; 3]>,
-) -> [f32; 3] {
-    let b = mesh.bounds();
-    let d = [
-        b.max[0] - b.min[0],
-        b.max[1] - b.min[1],
-        b.max[2] - b.min[2],
-    ];
-    let diag = d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
-    let mut radius = seed_radius.max(1.0e-6);
-    let mut hits: Vec<u32> = Vec::new();
-    loop {
-        hits.clear();
-        mesh.octree().faces_in_sphere(p, radius, &mut hits);
-        if !hits.is_empty() || radius > diag {
-            break;
-        }
-        radius *= 2.0;
-    }
-    if hits.is_empty() {
-        return p;
-    }
-    let (verts, faces) = (mesh.positions(), mesh.faces());
-    let normals = mesh.face_normals();
-    let (mut best, mut best_p) = (f32::INFINITY, p);
-    // ⚠️ **O de RECURSO é acumulado na mesma passagem**, e não numa segunda: uma
-    // segunda varredura pagaria a consulta ao octree outra vez, e o caminho sem
-    // candidato concordante é justamente o caro.
-    let (mut any, mut any_p) = (f32::INFINITY, p);
-    for &f in &hits {
-        let v = faces[f as usize].verts();
-        let agrees = facing.is_none_or(|n| {
-            normals
-                .get(f as usize)
-                .is_none_or(|m| n[0].mul_add(m[0], n[1].mul_add(m[1], n[2] * m[2])) > 0.0)
-        });
-        for k in 1..v.len() - 1 {
-            let q = closest_on_triangle(
-                p,
-                verts[v[0] as usize],
-                verts[v[k] as usize],
-                verts[v[k + 1] as usize],
-            );
-            let d = sub(q, p);
-            let dist = dot(d, d);
-            if dist < any {
-                any = dist;
-                any_p = q;
-            }
-            if agrees && dist < best {
-                best = dist;
-                best_p = q;
-            }
-        }
-    }
-    if best.is_finite() { best_p } else { any_p }
-}
-
-/// O ponto do triângulo mais próximo de `p` — as sete regiões de Voronoi.
-fn closest_on_triangle(p: [f32; 3], a: [f32; 3], b: [f32; 3], c: [f32; 3]) -> [f32; 3] {
-    let (ab, ac, ap) = (sub(b, a), sub(c, a), sub(p, a));
-    let (d1, d2) = (dot(ab, ap), dot(ac, ap));
-    if d1 <= 0.0 && d2 <= 0.0 {
-        return a;
-    }
-    let bp = sub(p, b);
-    let (d3, d4) = (dot(ab, bp), dot(ac, bp));
-    if d3 >= 0.0 && d4 <= d3 {
-        return b;
-    }
-    let vc = d1.mul_add(d4, -(d3 * d2));
-    if vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0 {
-        let v = d1 / (d1 - d3);
-        return axpy(v, ab, a);
-    }
-    let cp = sub(p, c);
-    let (d5, d6) = (dot(ab, cp), dot(ac, cp));
-    if d6 >= 0.0 && d5 <= d6 {
-        return c;
-    }
-    let vb = d5.mul_add(d2, -(d1 * d6));
-    if vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0 {
-        let w = d2 / (d2 - d6);
-        return axpy(w, ac, a);
-    }
-    let va = d3.mul_add(d6, -(d5 * d4));
-    if va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0 {
-        let w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
-        return axpy(w, sub(c, b), b);
-    }
-    let denom = 1.0 / (va + vb + vc);
-    let (v, w) = (vb * denom, vc * denom);
-    [
-        w.mul_add(ac[0], v.mul_add(ab[0], a[0])),
-        w.mul_add(ac[1], v.mul_add(ab[1], a[1])),
-        w.mul_add(ac[2], v.mul_add(ab[2], a[2])),
-    ]
-}
-
-fn axpy(t: f32, d: [f32; 3], o: [f32; 3]) -> [f32; 3] {
-    [
-        t.mul_add(d[0], o[0]),
-        t.mul_add(d[1], o[1]),
-        t.mul_add(d[2], o[2]),
-    ]
-}
-
 pub(crate) fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
     a[0].mul_add(b[0], a[1].mul_add(b[1], a[2] * b[2]))
-}
-
-fn sub(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
-    [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
 }
 
 #[cfg(test)]

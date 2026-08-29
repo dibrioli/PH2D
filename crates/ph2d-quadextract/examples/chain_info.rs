@@ -506,9 +506,23 @@ fn main() {
         ..base_opts
     };
     let (map, r) = if welded {
-        ph2d_gridmap::round_welded(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts, &singular)
+        ph2d_gridmap::round_welded(
+            &mesh,
+            &cut,
+            &combed,
+            ph2d_gridmap::Step::uniform(h),
+            opts,
+            &singular,
+        )
     } else {
-        ph2d_gridmap::round_to_integers(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts, &singular)
+        ph2d_gridmap::round_to_integers(
+            &mesh,
+            &cut,
+            &combed,
+            ph2d_gridmap::Step::uniform(h),
+            opts,
+            &singular,
+        )
     };
     println!(
         "  caminho: {}",
@@ -574,7 +588,8 @@ entrada fraccionarios · pior |coef| {:.3}",
     // CONSTRUCAO, e a extraccao recebe fraccionarias.*
     if ph2d_gridmap::arcline_enabled() {
         let (w_d, _) = ph2d_gridmap::weld(&cut, &combed);
-        let (m_d, _) = ph2d_gridmap::solve_welded(&mesh,
+        let (m_d, _) = ph2d_gridmap::solve_welded(
+            &mesh,
             &cut,
             &combed,
             ph2d_gridmap::Step::uniform(h),
@@ -619,7 +634,8 @@ entrada fraccionarios · pior |coef| {:.3}",
     // vive atrás de uma env.
     if std::env::var("PH2D_ARC_GROUP_SCAN").as_deref() == Ok("1") {
         let (w_scan, _) = ph2d_gridmap::weld(&cut, &combed);
-        let (m_scan, _) = ph2d_gridmap::solve_welded(&mesh,
+        let (m_scan, _) = ph2d_gridmap::solve_welded(
+            &mesh,
             &cut,
             &combed,
             ph2d_gridmap::Step::uniform(h),
@@ -828,8 +844,13 @@ entrada fraccionarios · pior |coef| {:.3}",
                 // deduzida.*
                 //
                 // ⛔ Se o contínuo já desalinha, a cura não é na escada — é no G3.
-                let (cont, _) =
-                    ph2d_gridmap::solve_welded(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts.welded_rounds);
+                let (cont, _) = ph2d_gridmap::solve_welded(
+                    &mesh,
+                    &cut,
+                    &combed,
+                    ph2d_gridmap::Step::uniform(h),
+                    opts.welded_rounds,
+                );
                 let ac = ph2d_gridmap::measure_arc_quantization(&cut, &cont, &q.arc);
                 println!(
                     "  ⭐⭐⭐ ANTES do arredondamento (o G3 continuo): ⛔ {} de {} nao sao isolinhas \
@@ -1041,14 +1062,23 @@ entrada fraccionarios · pior |coef| {:.3}",
                 // ⭐ Desde 2026-08-28 é a **porta** que o botão chama; `PH2D_OUT_RELAX=<n>`
                 // volta ao Laplaciano cru de `n` rondas, que é o A/B contra o que shipava.
                 let mut m = out;
-                match std::env::var("PH2D_OUT_RELAX").ok().and_then(|v| v.parse().ok()) {
+                match std::env::var("PH2D_OUT_RELAX")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                {
                     Some(rounds) => ph2d_quadfill::smooth(&mut m, &raw, rounds),
                     None => {
                         let f = ph2d_quadfill::finish_extracted(&mut m, &raw);
                         println!(
                             "  ⭐ ACABAMENTO: {} rondas, 1a aceite {} ficou {} (cega {}) | envies p50 {:.1}° -> {:.1}° | >60 {} -> {}",
-                            f.rounds, f.first, f.kept, f.blind, f.before.skew_p50, f.after.skew_p50,
-                            f.before.skew_over_60, f.after.skew_over_60
+                            f.rounds,
+                            f.first,
+                            f.kept,
+                            f.blind,
+                            f.before.skew_p50,
+                            f.after.skew_p50,
+                            f.before.skew_over_60,
+                            f.after.skew_over_60
                         );
                     }
                 }

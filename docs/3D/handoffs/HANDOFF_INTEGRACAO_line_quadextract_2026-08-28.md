@@ -657,3 +657,74 @@ remeshing* (pinar o vértice de canto), não densidade — outra wave, outra ré
 ⚠️ **Dois gates da própria crate reprovaram primeiro, e o motivo é a lição:** `χ` saiu `14`
 contra `2` e `13` contra `1` — **doze órfãos, doze unidades**. *A superfície estava certa e o
 ARQUIVO não*, porque `V − E + F` conta todos os vértices e o vértice preso ficava lá.
+
+## §8-nonies — ⛔⛔ O PORTÃO QUE ESTAS TRÊS WAVES NUNCA ALCANÇARAM, e o roteiro que mentia
+
+### ⛔ O vermelho: **duas** crates acima do tecto de LOC, e nenhuma corrida desta linha o viu
+
+`workspace_src_files_under_loc_cap` (em `ph2d-editor-core/tests/`) reprovava com
+
+| ficheiro | LOC | tecto |
+|---|---|---|
+| `ph2d-remesh-iso/src/lib.rs` | `875` | `700` |
+| `ph2d-quadextract/src/cells.rs` | `758` | `700` |
+
+⚠️⚠️ **É a 5.ª vez que esta linha paga a MESMA forma** ([memória](../../../project-memory/feedback_a_closing_run_with_a_name_filter_never_reaches_a_tree_scanning_gate.md)):
+todo portão de fecho destas waves correu **com filtro de nome** (`-p ph2d-quadextract`,
+`--bins retopo`), e um gate que **VARRE A ÁRVORE** vive noutra crate — nenhum filtro por
+pacote o alcança, por construção. *Um `-p` responde «a minha crate está verde?»; ele nunca
+responde «a árvore está verde?».*
+
+⚠️ E o `cargo fmt` da árvore expôs mais dois ficheiros meus por formatar
+(`sculpt3d_history_retopo_extract{,_tests}.rs`), commitados assim numa wave anterior — pelo
+mesmo motivo: `cargo fmt -p <crate> -- --check` nunca entrou em nenhum dos portões.
+
+### ⭐ A cura: dois SPLITS por responsabilidade (⛔ nunca uma entrada no allowlist)
+
+**`ph2d-remesh-iso`** (`875 → 573`) parte em dois irmãos, e a fronteira é uma pergunta cada:
+
+| módulo | a pergunta que ele responde |
+|---|---|
+| `lib.rs` | *que aresta se divide, que aresta colapsa?* |
+| `sizing.rs` | *qual é o alvo **AQUI**?* — a `SizingGrid` **e** as duas portas medidas-e-recusadas (`adaptive_on`, `facing_on`), cada uma com a sua tabela |
+| `project.rs` | *onde é que este vértice **pousa**?* — `project_onto` / `project_facing` / o triângulo mais próximo |
+
+⚠️ **O `dot` FICA no `lib.rs`** e o `project.rs` importa-o: ele tem um segundo consumidor
+fora da projecção (`relax_and_project`), e movê-lo teria sido arrumação a fingir de desenho.
+
+**`ph2d-quadextract`** (`cells.rs` `758 → 524`) ganha `doublets.rs`, e a fronteira também é
+uma pergunta cada: `cells.rs` responde *«que células fecham?»*, `doublets.rs` responde *«que
+vértice não devia existir?»*. ⭐ As duas cruzam-se **num sítio só** — o `build` chama
+`dissolve_doublets` e `compact_verts` — e é essa a razão de o corte ser barato.
+
+⚠️ **A porta pública muda de dono:** `pub use doublets::repair_doublets` (era `cells::`). A
+assinatura não se mexe, então nenhum chamador nota.
+
+### ⭐ E o ROTEIRO da cena `=35` descrevia o defeito ERRADO
+
+O passo (4) de `announce_extract` dizia que a ponta *«chega a fechar-se num ponto»* por o
+motor não ver o vinco. ⛔ **Isso era a leitura de 22/08 e o §8-septies/§8-octies refutaram-na:**
+a ponta era **costurada fechada na fase zero**, e isso está curado; o que sobra é o **ápice**,
+que é outro defeito (nenhuma malha finita representa um ponto) — *e o roteiro mandava o Enio
+olhar para a causa que já não existe.*
+
+Três mudanças, todas dentro do gate que já existia:
+
+- **(0) `Ctrl+Shift+O`** para trazer a peça dele. ⚠️ O roteiro nunca nomeou o gesto, e
+  **arrastar não funciona nesta máquina** (o Wayland não entrega `DroppedFile` — medido em
+  `sculpt3d_import.rs`). *O smoke pedia uma peça e não dizia como a pôr lá dentro.*
+- **(4)** os **dois** defeitos separados, com o curado marcado e o que sobra nomeado.
+- **(8)** clicar **duas vezes seguidas** e ver a contagem ficar parada — a régua do §8-ter,
+  que era a única das três curas sem passo de smoke.
+
+## §9-bis — Portão de fecho da re-corrida (§8-nonies)
+
+| | |
+|---|---|
+| `architecture_workspace_file_loc_cap` + `architecture_widget_loc_cap` | ⭐ verde (era **vermelho** com 2 ficheiros) |
+| `cargo fmt` na árvore | ⭐ limpo (corrigiu 3 ficheiros desta linha) |
+| `cargo test -p ph2d-remesh-iso -p ph2d-quadextract -p ph2d-mesh -p ph2d-quadfill` | ⭐ verde |
+| `cargo test -p ph2d-host-desktop --bins retopo` · `--bins roteiro` | ⭐ verde |
+| `cargo clippy --all-targets` nas duas crates + shell | ⭐ `0` avisos |
+| `scripts/cleanroom-sweep.sh` sobre os 6 ficheiros | ⭐ limpo (56 entradas) |
+| binário `--release` reconstruído | ⭐ pronto a correr |

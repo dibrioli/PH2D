@@ -73,10 +73,12 @@ mod weights;
 pub use aligned::{INTERIOR, Interior};
 pub use finish::smooth;
 pub use finish_extract::{
-    finish_extracted_with,
     EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,
+    finish_extracted_with,
 };
-pub use quality::{Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint};
+pub use quality::{
+    Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint,
+};
 pub use relax::{
     SQUARE_ROUNDS, SquareReport, nearest_square, square_relax, square_relax_aligned,
     square_relax_capped,

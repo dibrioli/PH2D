@@ -120,8 +120,16 @@ fn the_finish_moves_vertices_and_nothing_else() {
     let (mut quads, surface) = spiked();
     let (v, f) = (quads.vert_count(), quads.face_count());
     let rep = finish_extracted(&mut quads, &surface);
-    assert_eq!(quads.vert_count(), v, "o acabamento mudou a contagem de vertices");
-    assert_eq!(quads.face_count(), f, "o acabamento mudou a contagem de faces");
+    assert_eq!(
+        quads.vert_count(),
+        v,
+        "o acabamento mudou a contagem de vertices"
+    );
+    assert_eq!(
+        quads.face_count(),
+        f,
+        "o acabamento mudou a contagem de faces"
+    );
     assert!(
         rep.rounds <= EXTRACT_MAX_ROUNDS,
         "correu {} rondas, mais que a rede de {EXTRACT_MAX_ROUNDS}",
@@ -147,7 +155,10 @@ fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
     };
     let mut win = base;
     win.skew_p50 = 4.0;
-    assert!(super::acceptable(&win, &base), "melhor na mediana tem de ser aceite");
+    assert!(
+        super::acceptable(&win, &base),
+        "melhor na mediana tem de ser aceite"
+    );
     // ⛔ Compra mediana com uma face péssima a mais.
     let mut trade = base;
     trade.skew_p50 = 0.5;
@@ -189,11 +200,17 @@ fn a_round_that_worsens_any_column_against_round_zero_is_refused() {
     let mut c = base;
     c.skew_p50 = 3.0;
     c.aspect_p50 = 1.05;
-    assert!(super::better(&c, &a), "empatada a mediana, decide o aspecto");
+    assert!(
+        super::better(&c, &a),
+        "empatada a mediana, decide o aspecto"
+    );
     // ⭐ E o empate dentro do ruído não é melhoria — senão a corrida nunca desiste.
     let mut noise = base;
     noise.skew_p50 = 8.0 - super::SAME * 0.5;
-    assert!(!super::better(&noise, &base), "uma diferenca abaixo do ruido nao e' melhoria");
+    assert!(
+        !super::better(&noise, &base),
+        "uma diferenca abaixo do ruido nao e' melhoria"
+    );
 }
 
 /// ⭐⭐ **O ALINHAMENTO AO RELEVO NÃO É INERTE** — a lei muda o resultado.
@@ -220,11 +237,7 @@ fn the_relief_pull_is_not_inert() {
         .positions()
         .iter()
         .zip(aligned.positions())
-        .map(|(a, b)| {
-            (a[0] - b[0])
-                .hypot(a[1] - b[1])
-                .hypot(a[2] - b[2])
-        })
+        .map(|(a, b)| (a[0] - b[0]).hypot(a[1] - b[1]).hypot(a[2] - b[2]))
         .fold(0.0f32, f32::max);
     assert!(
         moved > 1.0e-4,

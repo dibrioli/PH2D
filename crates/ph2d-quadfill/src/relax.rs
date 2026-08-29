@@ -119,7 +119,6 @@ use ph2d_mesh::Mesh;
 /// paga dobras; o defeito que o artista fotografa é a mediana.
 pub const SQUARE_ROUNDS: usize = 0;
 
-
 /// ⭐⭐⭐ **N RONDAS de relaxação por ajuste de quadrado** — a porta pública desta lei.
 ///
 /// `surface` é a malha em que a saída pousa (a que o artista fez), e é sobre ela que
@@ -361,10 +360,7 @@ pub(crate) fn steer(h: [f32; 2], f: [f32; 2], w: f32) -> [f32; 2] {
         d -= quarter;
     }
     let (s, c) = (w * d).sin_cos();
-    [
-        h[0].mul_add(c, -(h[1] * s)),
-        h[0].mul_add(s, h[1] * c),
-    ]
+    [h[0].mul_add(c, -(h[1] * s)), h[0].mul_add(s, h[1] * c)]
 }
 
 /// Escreve os quatro cantos do quadrado de harmónico `h` e mão `ccw`.

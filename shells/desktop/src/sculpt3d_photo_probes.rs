@@ -684,7 +684,11 @@ fn the_artists_piece_through_the_button() {
     let local = std::env::var("PH2D_PROBE_LOCAL").as_deref() == Ok("1");
     eprintln!(
         "   MOTOR: {}",
-        if local { "Fast (local)" } else { "Even Grid (global)" }
+        if local {
+            "Fast (local)"
+        } else {
+            "Even Grid (global)"
+        }
     );
     // ⭐⭐⭐ **QUANTOS CLIQUES** — o artista carrega outra vez quando o resultado parece
     // errado, e o alvo do 2.º clique sai da malha que o 1.º deixou. *Um botão cujo repetir
@@ -822,7 +826,9 @@ fn spiked_ball(n: usize, sigma: f32) -> ph2d_mesh::Mesh {
         let u = [p[0] / len, p[1] / len, p[2] / len];
         let mut grow = 0.0f32;
         for d in &dirs {
-            let c = u[0].mul_add(d[0], u[1].mul_add(d[1], u[2] * d[2])).clamp(-1.0, 1.0);
+            let c = u[0]
+                .mul_add(d[0], u[1].mul_add(d[1], u[2] * d[2]))
+                .clamp(-1.0, 1.0);
             let ang = c.acos();
             grow = grow.max(reach * (-(ang / sigma) * (ang / sigma)).exp());
         }
@@ -875,7 +881,11 @@ fn islands(tag: &str, mesh: &ph2d_mesh::Mesh) {
     }
     let mut counts: Vec<usize> = size.values().copied().collect();
     counts.sort_unstable_by(|a, b| b.cmp(a));
-    eprintln!("   {tag}: {} ilha(s) -> {:?}", counts.len(), &counts[..counts.len().min(6)]);
+    eprintln!(
+        "   {tag}: {} ilha(s) -> {:?}",
+        counts.len(),
+        &counts[..counts.len().min(6)]
+    );
     if counts.len() > 1 {
         let pos = mesh.positions();
         for (root, n) in &size {

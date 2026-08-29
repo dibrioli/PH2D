@@ -318,7 +318,10 @@ fn the_detail_slider_asks_for_the_same_density_after_a_retopology() {
         // percentual: *uma barra aproximada mede o erro da aproximação.*
         let drift = (b / a - 1.0).abs();
         let bar = ((area.1 / area.0).sqrt() - 1.0).abs() + 1.0e-4;
-        eprintln!("  d={detail:.2}: alvo {a:.5} -> {b:.5} ({:+.2} %)", 100.0 * (b / a - 1.0));
+        eprintln!(
+            "  d={detail:.2}: alvo {a:.5} -> {b:.5} ({:+.2} %)",
+            100.0 * (b / a - 1.0)
+        );
         assert!(
             drift <= bar,
             "d={detail:.2}: o alvo mudou {:.2} % entre duas tesselacoes da MESMA superficie \

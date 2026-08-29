@@ -73,6 +73,9 @@ fn announce_extract() {
          [sculpt3d]    (PH2D_RETOPO_EXTRACT=0 volta ao de sempre, para comparar.)\n\
          [sculpt3d]    O botao e' o mesmo `Quad Retopology`; o motor por tras dele e' outro.\n\
          [sculpt3d]    Abra o painel com a CRASE (`) e ache a secao Topology.\n\
+         [sculpt3d]    (0) PARA TRAZER A SUA PECA: Ctrl+Shift+O abre o seletor de ficheiro, e\n\
+         [sculpt3d]        aceita .obj, .ply e .stl. ⚠️ ARRASTAR o ficheiro para a janela NAO\n\
+         [sculpt3d]        funciona nesta maquina -- o Wayland nao entrega o arrasto ao app.\n\
          [sculpt3d]    (1) CLIQUE em `Quad Retopology`. ⚠️ A janela FICA PARADA alguns\n\
          [sculpt3d]        segundos -- e' o solver a correr, nao e' um travamento. Se passar de\n\
          [sculpt3d]        um minuto, ai' sim PARE e diga.\n\
@@ -84,11 +87,16 @@ fn announce_extract() {
          [sculpt3d]        nao tiras compridas. No terminal, `enviesamento X/Y graus`: o X e' o\n\
          [sculpt3d]        tipico, e menor e' melhor. Abaixo de 7 e' o nivel do melhor programa\n\
          [sculpt3d]        que existe.\n\
-         [sculpt3d]    (4) ⭐⭐ OLHE AS PONTAS, OS CHIFRES E OS VINCOS -- e' o que falta.\n\
-         [sculpt3d]        O motor ainda NAO sabe que um vinco existe, entao a grelha atravessa\n\
-         [sculpt3d]        a aresta em diagonal e, numa ponta, chega a fechar-se num ponto.\n\
-         [sculpt3d]        ⛔ Isso E' conhecido e esta' medido (num octaedro sao 9% das faces);\n\
-         [sculpt3d]        NAO precisa de report. O que eu preciso e' do passo (5).\n\
+         [sculpt3d]    (4) ⭐⭐ OLHE AS PONTAS E OS VINCOS -- e' o que falta, e sao DOIS\n\
+         [sculpt3d]        defeitos diferentes que ate' 29/08 se liam como um so'.\n\
+         [sculpt3d]        ⭐ CURADO: a ponta era COSTURADA FECHADA logo na 1a etapa (as arestas\n\
+         [sculpt3d]        que dao a volta a um espinho sao as mais curtas da peca, e a etapa\n\
+         [sculpt3d]        juntava tudo o que fosse curto). Nao junta mais.\n\
+         [sculpt3d]        ⛔ O QUE SOBRA e' o BICO, e nenhuma malha finita o resolve: um espinho\n\
+         [sculpt3d]        sculptado acaba num PONTO, e uma grelha acaba sempre um pouco antes.\n\
+         [sculpt3d]        Isso esta' medido; NAO precisa de report. Idem o vinco, que a grelha\n\
+         [sculpt3d]        ainda atravessa em diagonal por nao saber que ele existe.\n\
+         [sculpt3d]        O que eu preciso e' do passo (5).\n\
          [sculpt3d]    (5) ⭐ O JULGAMENTO, e e' a unica coisa que eu nao consigo medir sozinho:\n\
          [sculpt3d]        tirando as pontas e os vincos, a malha ja' serve para trabalhar?\n\
          [sculpt3d]        Se serve, o proximo passo e' ensinar o motor a ver os vincos; se nao\n\
@@ -100,7 +108,12 @@ fn announce_extract() {
          [sculpt3d]        botao e outra DEPOIS -- com as duas eu reproduzo o defeito exacto\n\
          [sculpt3d]        em vez de o adivinhar a partir de uma peca parecida.\n\
          [sculpt3d]    (7) ⚠️ Aumentar o `Detail` NAO limpa os defeitos: a taxa deles por face e'\n\
-         [sculpt3d]        praticamente a mesma, entao uma malha 6x maior mostra 6x mais. Medido."
+         [sculpt3d]        praticamente a mesma, entao uma malha 6x maior mostra 6x mais. Medido.\n\
+         [sculpt3d]    (8) ⭐ CLIQUE DUAS VEZES SEGUIDAS, sem desfazer entre elas. A contagem de\n\
+         [sculpt3d]        quads tem de ficar PARECIDA nas duas. Ate' 28/08 ela derretia\n\
+         [sculpt3d]        (19786 -> 1747 -> 520 -> 281 com o slider parado), porque o `Detail`\n\
+         [sculpt3d]        se media na peca que o proprio botao acabara de reescrever. Se voltar\n\
+         [sculpt3d]        a derreter, diga -- essa e' a unica das tres que ainda me surpreende."
     );
 }
 

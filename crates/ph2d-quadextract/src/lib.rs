@@ -56,7 +56,8 @@ pub mod exact;
 pub mod mapa;
 
 mod cells;
-pub use cells::repair_doublets;
+mod doublets;
+pub use doublets::repair_doublets;
 mod fan;
 mod ingest;
 mod nodes;

@@ -59,7 +59,14 @@ fn which_weight_gives_the_best_quads() {
         };
         run(&layout.arc_tau, "controlo      ");
         for weight in [1.0f32, 8.0, 64.0, 512.0] {
-            let (map, sr) = crate::solve::solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), weight, 160_000);
+            let (map, sr) = crate::solve::solve_with(
+                &mesh,
+                &cut,
+                &combed,
+                crate::solve::Step::uniform(h),
+                weight,
+                160_000,
+            );
             let (tau, mr) = super::arc_marks(&layout, &cut, &map);
             eprintln!(
                 "  ── peso {weight:>5.0}: angulo p50 {:>4.1}° | costura max {:.4} | marcou {}/{} \

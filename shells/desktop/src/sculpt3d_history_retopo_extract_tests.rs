@@ -113,10 +113,7 @@ fn a_extraccao_alisa_contra_a_escultura_e_nao_contra_a_remalhada() {
         "o caminho da extraccao chama o acabamento {n} vezes; tem de ser UMA -- ver o \
          doc do `ph2d_quadfill::fill` e o defeito de 2026-08-21"
     );
-    let full = concat!(
-        "ph2d_quadfill::",
-        "finish_extracted(&mut out, &reference)"
-    );
+    let full = concat!("ph2d_quadfill::", "finish_extracted(&mut out, &reference)");
     assert!(
         src.contains(full),
         "⛔⛔ o acabamento tem de pousar na `reference` (a ESCULTURA) e nao na `work` \
@@ -297,12 +294,13 @@ fn a_densidade_segue_a_curvatura_sem_mudar_a_contagem() {
                     u[2].mul_add(w[0], -(u[0] * w[2])),
                     u[0].mul_add(w[1], -(u[1] * w[0])),
                 ];
-                let tri =
-                    f64::from(nn[0].mul_add(nn[0], nn[1].mul_add(nn[1], nn[2] * nn[2])).sqrt())
-                        * 0.5;
-                let hh = f64::from(
-                    (h(v[0] as usize) + h(v[k] as usize) + h(v[k + 1] as usize)) / 3.0,
-                );
+                let tri = f64::from(
+                    nn[0]
+                        .mul_add(nn[0], nn[1].mul_add(nn[1], nn[2] * nn[2]))
+                        .sqrt(),
+                ) * 0.5;
+                let hh =
+                    f64::from((h(v[0] as usize) + h(v[k] as usize) + h(v[k + 1] as usize)) / 3.0);
                 acc += tri / (hh * hh);
             }
         }

@@ -49,17 +49,19 @@ pub(crate) fn draw_stroke_with(
         // ⚠️ **Sem arte resolvida, cai no traço SÓLIDO da cor de recurso** (o `brush` acima) — as
         // duas metades são desenho certo, e ⛔ desenhar NADA seria pior: uma linha invisível não se
         // distingue de uma forma sem contorno.
-        if let Some((b, art)) = s.brush().zip(brush_art) {
-            {
-                for copia in ph2d_vec_scene::brush_along_path(&path.cooked(), art, b, s.width) {
-                    // ⛔⛔ **As cópias desenham SEM pincel, ladrilho ou arte** (os três `None`), e
-                    // isso é o guarda de ciclo estrutural: uma arte que tivesse ela própria um
-                    // pincel entraria em recursão infinita. *A recusa vive na chamada, não numa
-                    // bandeira que alguém se lembre de passar.*
-                    crate::draw_path_tiled(&copia, transform, target, None, None, None);
-                }
-                return;
+        //
+        // ⭐⭐⭐ **E o TRACEJADO reinicia a arte em cada traço** (W3-bis) — a lei do Illustrator. O
+        // `brush_along_path` lê o tracejado do MESMO `StrokeSpec`, pela porta do traçador: passar
+        // `(pincel, largura)` soltos deixaria a arte numa cadência e a linha noutra.
+        if let Some(art) = brush_art.filter(|_| s.brush().is_some()) {
+            for copia in ph2d_vec_scene::brush_along_path(&path.cooked(), art, s) {
+                // ⛔⛔ **As cópias desenham SEM pincel, ladrilho ou arte** (os três `None`), e
+                // isso é o guarda de ciclo estrutural: uma arte que tivesse ela própria um
+                // pincel entraria em recursão infinita. *A recusa vive na chamada, não numa
+                // bandeira que alguém se lembre de passar.*
+                crate::draw_path_tiled(&copia, transform, target, None, None, None);
             }
+            return;
         }
         // ⭐⭐ **O PADRÃO NO TRAÇO** (plano 35, wave B) — a mesma lei do preenchimento: desenha a
         // IMAGEM quando o ladrilho existe, e a `fallback` (o `brush` acima) quando não. As duas

@@ -100,7 +100,7 @@ fn spec_to_motor(spec: &VecPatternPath, rotation_deg: f32, total: f64) -> Patter
         // ⭐ **E o literal de struct é o que faz o compilador perguntar:** um `..Default::default()`
         // aqui teria absorvido o campo novo em silêncio, e a decisão nunca teria sido tomada.
         // *Um construtor exaustivo é um gate que não se apaga.*
-        fit_to_guide: false,
+        fit_span: None,
     }
 }
 

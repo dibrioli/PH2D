@@ -379,5 +379,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::texture_pattern_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ O PINCEL DE CONTORNO (=77, plano 36) — irmã `brush_smoke`, mesma razão de LOC.
+    // ⚠️ Ela é a IRMÃ da 76, e as duas existem lado a lado de propósito: aquela é a estampa (uma
+    // TINTA que o contorno revela, normativa em SVG 2), esta é o pincel (uma ARTE que percorre a
+    // linha). *Um aplicativo que só tem um dos dois é o que tem limitação.*
+    if level == 77 {
+        crate::brush_smoke::frame(app, f);
+        return true;
+    }
     false
 }

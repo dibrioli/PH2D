@@ -259,7 +259,7 @@ pub mod brush_stroke;
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-pub use brush_stroke::{brush_along_path, brush_copies, brush_height};
+pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
 
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,

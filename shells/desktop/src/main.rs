@@ -76,6 +76,7 @@ mod bool_smoke;
 /// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
 /// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
 mod brush_live;
+mod brush_smoke;
 mod buffer_smoke;
 mod build_smoke;
 mod build_smoke_corner_tools;

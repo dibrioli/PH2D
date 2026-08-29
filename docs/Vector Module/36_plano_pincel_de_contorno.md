@@ -119,7 +119,7 @@ depois dos efeitos vivos (cantos vivos, largura viva, booleana), pela mesma raz�
 | **W1** ✅ | `StrokePaint::Brush(Box<BrushStroke>)` + o schema (`VEC_SCENE` **16→17**, `PROJECT` **101→102**, a tripla) | `ph2d-vec-scene` |
 | **W2** ✅ | O **motor**: correr o `pattern_along` sobre o próprio contorno, com **fit** de emenda pela porta da `dash_fit` — **0,423 ms / 200 cópias**, 19× sob o *kill* | `ph2d-vec-scene` |
 | **W3** ✅ | O **desenho**: as cópias emitidas, com o guarda de ciclo estrutural e a queda para a cor de recurso | `ph2d-vec-render` + shell |
-| **W3-bis** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pelas fatias `[start, end]` que o `PatternSpec` já tem | `ph2d-vec-render` |
+| **W3-bis** ✅ | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator) + a cena de smoke `=77` — teto de fatias medido em **4096** | `ph2d-vec-scene` + shell |
 | **W4** ✅ | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (Size · Spacing · Rotation · Offset · Flip) + o gesto de duas mãos | `ph2d-panel-vector` + shell |
 | **W5** | As **QUINAS**: os 4 modos do Illustrator medidos lado a lado, e o nosso escolhido **com a tabela** | `ph2d-vec-scene` |
 | **W6** | Persistência + smoke + gates + mutações | shell |
@@ -381,3 +381,115 @@ knobs saltarem para o default.
 **5/5 verdes sozinhos**, e o diff sem uma linha de Flip, áudio ou Painter. ⭐ E o sinal que o §5.0
 descreve apareceu inteiro: *num grupo, o conjunto de reprovadas MUDA entre corridas do mesmo
 binário* — a corrida anterior reprovou outros dois.
+
+---
+
+## §10 — W3-bis fechada: **o TRACEJADO** (2026-08-29)
+
+> *"mas não posso usar o dash com pattern?"* — a pergunta que abriu o plano fecha aqui.
+
+### §10.1 — ⭐⭐ A arte reinicia em cada traço, e os vãos ficam VAZIOS
+
+A lei é a do *Pattern Brush* do Illustrator, e ela cabe inteira em duas frases:
+
+1. **as FATIAS** que o contorno oferece são os **traços** do traçador
+   ([`brush_spans`](../../crates/ph2d-vec-scene/src/brush_stroke.rs));
+2. o **avanço encaixa no TRAÇO**, não no contorno — é isso que faz cada traço começar e acabar com
+   uma cópia inteira.
+
+⚠️ **O `[traço, vão]` chega já ENCAIXADO, pela porta do traçador**
+([`dash_fit::dash_lengths_for`](../../crates/ph2d-vec-scene/src/dash_fit.rs)) — o mesmo par que
+desenharia a linha. *Uma segunda medição poria a arte numa cadência e a linha noutra, e o artista
+veria dois tracejados sobre a mesma forma.*
+
+⚠️ **A última fatia é TRUNCADA no fim do contorno**, como um traçador faz: um composto carrega **um**
+par de tracejado, fitado ao contorno mais longo, então os outros anéis acabam a meio de um traço.
+
+### §10.2 — ⭐ O alvo do encaixe é UM número para todas as fatias
+
+⛔ A alternativa — encaixar cada fatia em si mesma — daria à fatia truncada uma cadência própria,
+**à vista**. Com um alvo só, todo traço leva o mesmo ritmo e a fatia truncada simplesmente leva
+menos cópias.
+
+### §10.3 — ⚠️ `fit_to_guide: bool` virou `fit_span: Option<f64>`, e a W2 estava a decidir no sítio errado
+
+Enquanto era um `bool` (*"encaixa na guia"*), o alvo era **sempre** a guia inteira. Num traço
+tracejado quem tem de fechar é o **TRAÇO**, e só o chamador sabe qual dos dois é o sujeito. *Um
+parâmetro booleano é uma decisão tomada por quem não tem os dois números na mão.*
+
+### §10.4 — ⛔⛔ Uma guarda que eu escrevi, gateei, e a mutação DESFEZ
+
+O `dash_fit` tem duas leis (fechada: `n` períodos · aberta: `n` períodos **mais um traço**), e eu
+concluí — com razão aparente — que *"uma fatia de traço é aberta mesmo numa guia fechada"*, escrevi
+a derivação e um gate a defendê-la pela saída.
+
+⭐⭐ **A mutação que trocava a derivação de volta por `guide.closed()` SOBREVIVEU.** Com o vão a
+zero as duas leis dizem a mesma frase — *`round(T/p)` cópias de comprimento `p`* — e só divergem
+nos **empates do `round` em `f64`**, que nenhuma fixtura honesta atinge. A derivação saiu; ficou a
+linha simples com a medição ao lado.
+
+⚠️ **Três redacções minhas erraram antes disso, cada uma medida e refutada pela seguinte:**
+
+| # | O que afirmei | O que a medição deu |
+|---|---|---|
+| 1 | as duas leis dão o **mesmo bit** | reprovou na 2.ª amostra — **2 ULP** |
+| 2 | *"2 ULP, é só uma questão de nome"* | reprovou a **`5,84e-4`** relativo (3 ordens acima) |
+| 3 | *"⇒ a bandeira é load-bearing, derive-a"* | a **mutação sobreviveu** — é knife-edge, e nada honesto lá cai |
+
+*Uma afirmação sobre `f64` que não foi varrida é uma conjectura com cara de teorema; e uma guarda
+que mutação nenhuma mata é código sem sujeito.*
+
+### §10.5 — ⭐⭐ O teto de fatias, MEDIDO (`MAX_DASHES = 4096`)
+
+⚠️ **O que o tracejado acrescenta ao custo NÃO são as cópias**: a soma delas sobre os traços é no
+máximo `total/avanço`, o mesmo do contorno inteiro. O que cresce é o custo **FIXO por fatia** (uma
+medida do bbox da arte, uma divisão).
+
+| traços | cópias | re-cook |
+|---|---|---|
+| 1 (sem tracejado) | 200 | 0,27 ms |
+| 100 | 100 | 0,15 ms |
+| 400 | 400 | 0,62 ms |
+| 1 026 | 1 025 | 1,69 ms |
+| 2 051 | 2 051 | 2,92 ms |
+| **4 103** | 4 103 | **6,32 ms** |
+| 8 205 | 8 205 | ⛔ **12,08 ms** |
+
+⇒ o joelho está entre `4 103` e `8 205` contra o *kill* de **8 ms**; o teto fica em **4096**, com o
+teto real medido a `5,8`–`6,0 ms`. ⭐ É o mesmo número do `MAX_COPIES` **por medição, não por
+simetria** — os dois limitam o trabalho de um re-cook. ⚠️ Ele morde quando
+`comprimento(contorno) > 4096 × período` (com largura `0,03` e tracejado `(2,2)`: um perímetro de
+**~490** unidades), e o sintoma é a arte **parar a meio do contorno, sem aviso** — a mesma nota que
+o `MAX_COPIES` já carrega, e a mesma saída: o cache por-params do plano 23 §0.
+
+### §10.6 — ⭐ A cena de smoke: `PH2D_BUILD_SMOKE=77`
+
+Irmã da `=76` (a estampa) de propósito: as duas existem lado a lado porque são os **dois modelos**.
+Cinco formas + a arte visível: o caso base · **o tracejado** · uma onda ABERTA · um anel COMPOSTO ·
+a mesma arte com `Rotation = 90` e `Flip`.
+
+⚠️ **As curvas são suaves de propósito** — as QUINAS são a W5, e uma cena que as exibisse mostraria
+um buraco **conhecido** como se fosse um defeito.
+
+⚠️ **A fixtura precisou de duas correcções, e as duas foram apanhadas por gate:**
+
+- o tracejado `(3, 2)` dava **exactamente uma cópia por traço** — e aí *"a arte reinicia em cada
+  traço"* e *"há uma bolha em cada traço"* **desenham a mesma coisa**. O número saiu da conta
+  (arte de `0,875` escalada, volta de `6,91`) e é `(5, 2½)`: 3 traços de 2 cópias;
+- a régua da assimetria da arte era um **proxy** (centro do bbox contra a média dos vértices) e
+  reprovou produto correto a `0,0125`. A régua a sério **espelha a arte e mede o quanto ela deixou
+  de coincidir consigo mesma** — `0,19` em `x` e `0,37` em `y`. *A média de quatro pontos não sabe
+  nada sobre a forma entre eles.*
+
+### §10.7 — As cinco provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| o alvo do encaixe deixa de ser o traço (`alvo = total`) | `every_dash_carries_the_same_rhythm` |
+| o tracejado não chega ao motor (`dash = None`) | `the_art_lives_inside_the_dashes_and_the_gaps_stay_empty` |
+| o encaixe do avanço desliga (`fit_span: None`) | `on_a_closed_contour_the_copies_close_exactly` |
+| as fatias deixam de ser limitadas (`MAX_DASHES` fora do laço) | `the_spans_are_one_without_a_dash_and_one_per_dash_with_one` |
+| a cena volta ao tracejado de uma cópia por traço | `the_smoke_dash_carries_more_than_one_copy_per_dash` |
+
+⚠️ E a **sexta** foi a que sobreviveu (§10.4) — ela não está nesta tabela porque não há gate: o que
+ela mediu foi que a guarda não tinha sujeito, e a resposta foi apagar a guarda.

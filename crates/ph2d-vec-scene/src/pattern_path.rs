@@ -120,7 +120,8 @@ pub struct PatternSpec {
     /// `0.0` é o neutro: os gates de rotação-zero que já existiam (`the_copies_tile_the_straight_guide`,
     /// `the_copies_rotate_to_the_tangent_on_a_curve`) seguem verdes sem tocar num número.
     pub rotation_deg: f64,
-    /// ⭐⭐ **Esticar o avanço para as cópias FECHAREM exactamente no comprimento da guia.**
+    /// ⭐⭐ **O COMPRIMENTO em que o avanço tem de caber um número INTEIRO de vezes**, ou `None`
+    /// para tilar pelo avanço nominal e deixar a cauda sobrar.
     ///
     /// O [plano 23 §3](../../../docs/Vector%20Module/23_plano_pattern_along_path.md) deixou isto
     /// nomeado como *"refinamento com dono próprio"* — e o dono é o **pincel de contorno**
@@ -132,15 +133,25 @@ pub struct PatternSpec {
     /// não se muda o número de cópias, muda-se o avanço. *Duas leis de encaixe divergiriam no dia
     /// em que uma ganhasse um cuidado — e esta casa já paga essa lição em três sítios.*
     ///
-    /// `false` é o neutro e o default: o consumidor de hoje (o *Pattern on Path*) sai **byte a
+    /// ⚠️⚠️ **Quem chama diz o comprimento, e isso é a wave W3-bis a corrigir a W2.** Enquanto era
+    /// um `bool` (*"encaixa na guia"*), o alvo era sempre a guia inteira — e num traço
+    /// **TRACEJADO** a arte reinicia em cada traço, então o comprimento que tem de fechar é o do
+    /// **TRAÇO**, não o do contorno. Só o chamador sabe qual dos dois é o sujeito; deixá-lo dentro
+    /// faria a fatia de um traço encaixar no perímetro da forma, que é a resposta a outra pergunta.
+    ///
+    /// ⭐ **E é o mesmo número para TODAS as fatias de um traço**, de propósito: cada traço fecha
+    /// com o mesmo ritmo, e a cauda truncada de um contorno que não foi o eleito do `dash_fit`
+    /// simplesmente leva menos cópias — em vez de mudar de cadência à vista.
+    ///
+    /// `None` é o neutro e o default: o consumidor de hoje (o *Pattern on Path*) sai **byte a
     /// byte** como saía.
-    pub fit_to_guide: bool,
+    pub fit_span: Option<f64>,
 }
 
 impl Default for PatternSpec {
     fn default() -> Self {
         Self {
-            fit_to_guide: false,
+            fit_span: None,
             start_offset: 0.0,
             end_offset: f64::INFINITY,
             spacing: 1.0,
@@ -284,10 +295,23 @@ pub fn pattern_along(motif: &VecPath, guide: &ArcPath, spec: &PatternSpec) -> Ve
     let mut advance = (width * spec.spacing).max(MIN_ADVANCE);
     // ⭐⭐ **O ENCAIXE, pela porta do tracejado.** O `dash_fit::fit` escala um `[traço, vão]` para
     // caber um número INTEIRO de vezes; um avanço é o mesmo problema com o vão a zero, e a
-    // resposta é a primeira componente. ⚠️ Só quando o consumidor o pede — o default é `false`, e
+    // resposta é a primeira componente. ⚠️ Só quando o consumidor o pede — o default é `None`, e
     // o *Pattern on Path* sai byte a byte como saía.
-    if spec.fit_to_guide {
-        advance = crate::dash_fit::fit([advance, 0.0], total, guide.closed())[0].max(MIN_ADVANCE);
+    //
+    // ⚠️⚠️ **O `closed` NÃO é load-bearing aqui, e isso foi PROVADO por mutação, não suposto.** As
+    // duas leis do `dash_fit` são a fechada (`n` períodos) e a aberta (`n` períodos **mais um
+    // traço**); com o **vão a zero** as duas dizem a mesma coisa — *`round(T/p)` cópias de
+    // comprimento `p`, no mínimo uma* — e são a mesma expressão até ao empate do `round` em `f64`
+    // (medido: `5,84e-4` de avanço no pior caso de 2400 amostras, gate
+    // `the_zero_gap_fit_is_the_same_law_either_way_within_one_copy`).
+    //
+    // ⛔ **Uma redacção anterior DERIVAVA a bandeira da fatia** (*"uma fatia de traço é aberta mesmo
+    // numa guia fechada"*) — o nome era melhor e o código era **inobservável**: a mutação que a
+    // trocava de volta por `guide.closed()` **SOBREVIVEU** a um gate escrito de propósito para a
+    // apanhar. *Uma guarda que mutação nenhuma mata é código sem sujeito, e vale menos que a linha
+    // simples com a medição ao lado.*
+    if let Some(span) = spec.fit_span {
+        advance = crate::dash_fit::fit([advance, 0.0], span, guide.closed())[0].max(MIN_ADVANCE);
     }
     let advance = advance;
     let inv = 1.0 / advance;

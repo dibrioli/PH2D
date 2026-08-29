@@ -627,3 +627,40 @@ fn the_copies_are_drawn_without_any_brush_of_their_own() {
          proprio entra em recursao infinita, e o sintoma e' o app a parar"
     );
 }
+
+/// ⭐⭐⭐ **O TRACEJADO CHEGA AO PINCEL PELA COSTURA INTEIRA** (plano 36, W3-bis) — a arte reinicia
+/// em cada traço, e os vãos ficam sem cópia nenhuma.
+///
+/// ⚠️ **A régua é a CONTAGEM de desenhos**, e não a geometria: aqui o sujeito é a costura (o
+/// `stroke_draw` entregar o `StrokeSpec` inteiro ao motor), não a lei — essa é medida vértice a
+/// vértice na `ph2d-vec-scene`. *Uma régua no sítio errado mede a travessia, não a resposta.*
+#[test]
+fn a_dashed_brush_draws_fewer_copies_because_the_gaps_are_empty() {
+    let mut scene = so_traco_com_pincel(ph2d_vec_scene::VecPathId::from(7u64));
+    let id = scene.paths()[0].id;
+    let mut brushes = crate::BrushArts::new();
+    brushes.insert(id, arte_do_pincel());
+    let cheio = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
+
+    // O MESMO traço, tracejado: `(4, 2)` múltiplos de uma largura de `1` ⇒ traço de 4, vão de 2.
+    if let Some(s) = scene.path_mut(id).and_then(|p| p.stroke.as_mut()) {
+        s.dash = Some((4.0, 2.0));
+    }
+    let picotado = desenha_com(&scene, &crate::PatternTiles::new(), &brushes);
+    assert!(
+        picotado.inner().encoding().n_paths < cheio.inner().encoding().n_paths,
+        "o tracejado nao chegou ao pincel: {} copias contra {} sem ele - o `stroke_draw` esta' a \
+         perder o `StrokeSpec` pelo caminho",
+        picotado.inner().encoding().n_paths,
+        cheio.inner().encoding().n_paths
+    );
+    // ⚠️ **A metade que impede a leitura ao contrário**: o tracejado tira cópias, não as apaga
+    // todas. Sem esta barra, um pincel que deixasse de desenhar passaria neste gate.
+    assert!(
+        picotado.inner().encoding().n_paths > cheio.inner().encoding().n_paths / 2,
+        "o tracejado apagou mais de metade das copias ({} de {}) - isso nao e' um traco picotado, \
+         e' um pincel partido",
+        picotado.inner().encoding().n_paths,
+        cheio.inner().encoding().n_paths
+    );
+}

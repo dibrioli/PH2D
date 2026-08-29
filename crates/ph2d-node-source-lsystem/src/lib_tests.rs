@@ -297,3 +297,202 @@ fn the_fraction_is_still_alive_where_something_old_survives() {
         "numa gramatica que reescreve tudo, a fraccao nao tem sujeito e o passo e' inteiro"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// O MODO GUIADO — a metade que mede a PLANTA (a que mede o TEXTO vive no `shape_tests.rs`).
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+/// A largura do que a planta ocupa em `x` — a régua do LEQUE.
+fn span_x(s: &ph2d_nodegraph::attr::Stream) -> f32 {
+    match s.get("P") {
+        Some(Column::Vec2(v)) => {
+            let lo = v.iter().map(|p| p[0]).fold(f32::MAX, f32::min);
+            let hi = v.iter().map(|p| p[0]).fold(f32::MIN, f32::max);
+            hi - lo
+        }
+        _ => 0.0,
+    }
+}
+
+/// Uma planta GUIADA — o texto passa a ser irrelevante, e é isso que o gate abaixo prova.
+fn guided(overrides: &[(&str, f32)]) -> ph2d_nodegraph::attr::Stream {
+    guided_at(5.0, overrides)
+}
+
+/// A mesma, com o número de gerações à escolha de quem mede.
+fn guided_at(generations: f32, overrides: &[(&str, f32)]) -> ph2d_nodegraph::attr::Stream {
+    let mut ov = vec![(param::MODE, MODE_GUIDED as f32)];
+    ov.extend_from_slice(overrides);
+    probe_build(DEFAULT_AXIOM, DEFAULT_RULES, generations, &ov)
+}
+
+/// ⭐⭐⭐ **NO GUIADO O TEXTO NÃO É LIDO** — a afirmação inteira do modo.
+///
+/// ⚠️ *Um controle que não faz nada não é pintado*, e o inverso é pior: um texto que o nó
+/// lesse a meias faria o painel esconder a caixa **enquanto ela ainda mandava**. O gate
+/// alimenta o nó com uma gramática que não se parece com nada e exige o MESMO stream.
+///
+/// ⚠️ **E o CONTROLE é a outra metade**: a mesma gramática de lixo em `Grammar` tem de dar
+/// outra coisa. Sem ele, um `build` que ignorasse o texto nos DOIS modos passaria isto.
+#[test]
+fn the_guided_mode_does_not_read_the_authored_text_and_the_grammar_mode_does() {
+    let a = guided(&[]);
+    let b = probe_build(
+        "Q",
+        "Q -> QQQQ[+Q][-Q]",
+        5.0,
+        &[(param::MODE, MODE_GUIDED as f32)],
+    );
+    assert_eq!(
+        a.count(),
+        b.count(),
+        "o guiado leu o texto: {} contra {}",
+        a.count(),
+        b.count()
+    );
+    assert_eq!(
+        height(&a).to_bits(),
+        height(&b).to_bits(),
+        "o guiado leu o texto"
+    );
+
+    // O CONTROLE: em `Grammar` aquela gramática tem de produzir outra planta.
+    let c = probe_build("Q", "Q -> QQQQ[+Q][-Q]", 5.0, &[]);
+    assert_ne!(
+        a.count(),
+        c.count(),
+        "a gramatica de lixo deu a MESMA planta que os sliders — o texto nao esta a ser lido \
+         em modo nenhum, e as duas metades deste gate seriam vacuas"
+    );
+}
+
+/// ⭐ **O nó recém-dropado desenha uma árvore** — no modo em que ele de facto abre.
+///
+/// ⚠️ É o gate irmão de `the_factory_defaults_draw_a_tree_that_branches`, e ele passou a ser
+/// necessário no dia em que o default do `Mode` deixou de ser a gramática: aquele mede o
+/// caminho que o artista **já não** encontra primeiro.
+#[test]
+fn the_node_as_dropped_from_the_palette_draws_a_branching_tree() {
+    let s = guided(&[]);
+    assert!(s.count() > 30, "so {} elementos", s.count());
+    assert!(height(&s) > 1.0, "altura {}", height(&s));
+    let parent = scal(&s, "parent");
+    let mut sorted = parent.clone();
+    sorted.sort_by(f32::total_cmp);
+    sorted.dedup();
+    assert!(
+        sorted.len() < parent.len(),
+        "sem pais repetidos nao ha ramo"
+    );
+}
+
+/// ⭐⭐ **OS QUATRO SLIDERS DE FORMA MEXEM NA PLANTA** — um por um, cada um contra o default.
+///
+/// ⚠️ **É o gate que a pergunta do Enio pede**: de que serve trocar duas caixas de texto por
+/// quatro sliders se algum deles for inerte? A régua de cada um é a grandeza que ele PROMETE
+/// mover, e não «alguma coisa mudou» — um `assert_ne` sobre a contagem passaria com o slider
+/// ligado ao knob errado.
+#[test]
+fn every_shape_slider_moves_the_thing_its_label_promises() {
+    let base = guided(&[]);
+
+    // `Branches`: mais rebentos, mais elementos — e o leque abre.
+    let three = guided(&[(param::BRANCHES, 3.0)]);
+    assert!(
+        three.count() > base.count(),
+        "Branches: {} contra {}",
+        three.count(),
+        base.count()
+    );
+
+    // `Angle`: o leque é mais LARGO.
+    //
+    // ⚠️⚠️ **A medição tem de ser numa planta RASA, e a 1.ª redacção deste gate reprovou
+    // sobre produto correto por não o ser.** A `5` gerações o leque SATURA: a `60°` por
+    // nível, ao terceiro o ramo já aponta para baixo e volta a fechar a largura — medido,
+    // `2,68` contra `2,35`, uns miseráveis 14 % para um ângulo 2,4× maior. Numa planta de
+    // **duas** gerações há exactamente uma bifurcação, e aí a largura é o que o slider diz:
+    // `sin 60° / sin 25° = 2,05×`. *Uma fixtura em que o fenómeno satura não distingue duas
+    // respostas — a régua não estava errada, a planta é que era funda demais.*
+    let fan = |a: f32| span_x(&guided_at(2.0, &[(param::ANGLE, a)]));
+    assert!(
+        fan(60.0) > fan(25.0) * 1.8,
+        "Angle: leque {} contra {}",
+        fan(60.0),
+        fan(25.0)
+    );
+
+    // `Trunk Segments`: o mesmo número de bifurcações, mas a planta é MAIS ALTA.
+    let tall = guided(&[(param::SEGMENTS, 3.0)]);
+    assert!(
+        height(&tall) > height(&base) * 1.5,
+        "Trunk Segments: altura {} contra {}",
+        height(&tall),
+        height(&base)
+    );
+
+    // `Bend`: a planta perde a simetria de espelho — o centro de massa sai do eixo.
+    let cx = |s: &ph2d_nodegraph::attr::Stream| match s.get("P") {
+        Some(Column::Vec2(v)) => v.iter().map(|p| p[0]).sum::<f32>() / v.len() as f32,
+        _ => 0.0,
+    };
+    let curved = guided(&[(param::BEND, 20.0)]);
+    assert!(
+        cx(&curved).abs() > cx(&base).abs() + 0.1,
+        "Bend: centro em {} contra {}",
+        cx(&curved),
+        cx(&base)
+    );
+
+    // `Variation`: a MESMA forma com sementes diferentes deixa de ser a mesma planta.
+    let v1 = guided(&[(param::VARIATION, 0.6), (param::SEED, 1.0)]);
+    let v9 = guided(&[(param::VARIATION, 0.6), (param::SEED, 9.0)]);
+    assert_ne!(
+        height(&v1).to_bits(),
+        height(&v9).to_bits(),
+        "Variation: as duas sementes deram plantas gemeas"
+    );
+    // ⚠️ E o CONTROLE: SEM variação as duas sementes têm de dar a MESMA planta, senão o
+    // `assert_ne` acima estaria a medir a semente e não o slider.
+    let s1 = guided(&[(param::SEED, 1.0)]);
+    let s9 = guided(&[(param::SEED, 9.0)]);
+    assert_eq!(
+        height(&s1).to_bits(),
+        height(&s9).to_bits(),
+        "sem Variation a semente nao pode mudar nada — a gramatica derivada e deterministica"
+    );
+}
+
+/// ⚠️ **O CRESCIMENTO FRACCIONÁRIO CONTINUA A VALER NO GUIADO.**
+///
+/// A razão de existir deste nó é animar o `Generations`, e a gramática derivada não pode
+/// perder isso — ela reescreve `A`, que **não** é o símbolo que desenha (`F`), então a
+/// fracção tem sujeito. *Uma gramática gerada que não crescesse seria a feature principal
+/// perdida no default.*
+#[test]
+fn the_derived_grammar_still_grows_continuously_with_a_fractional_generation() {
+    let hs: Vec<f32> = (0..=12)
+        .map(|k| {
+            let g = 3.0 + k as f32 * 0.25;
+            height(&probe_build(
+                DEFAULT_AXIOM,
+                DEFAULT_RULES,
+                g,
+                &[(param::MODE, MODE_GUIDED as f32)],
+            ))
+        })
+        .collect();
+    let rise = hs[hs.len() - 1] - hs[0];
+    assert!(rise > 0.05, "a planta guiada nao cresceu: {hs:?}");
+    // ⚠️ **Continuidade e não monotonia** — a mesma correcção que a mutação ML7 forçou: um
+    // SALTO satisfaz «sobe sempre», e é exactamente o que a fracção existe para não ter.
+    let worst = hs
+        .windows(2)
+        .map(|w| (w[1] - w[0]).abs())
+        .fold(0.0f32, f32::max);
+    assert!(
+        worst < 0.35 * rise,
+        "um passo de {worst} contra uma subida total de {rise} — isto e um salto, nao um \
+         crescimento: {hs:?}"
+    );
+}

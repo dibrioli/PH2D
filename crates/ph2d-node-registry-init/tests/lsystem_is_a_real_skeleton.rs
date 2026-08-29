@@ -51,6 +51,19 @@ fn both_sides(axiom: &str, rules: &str, generations: f32) -> (Stream, Stream) {
     let reg = registry();
     let mut g = Graph::new();
     let l = g.add_node("source.lsystem");
+    // ⚠️⚠️ **A fixtura DECLARA que autora uma gramática, e sem isto ela mede outra coisa.**
+    // Desde 2026-08-29 o default do nó é `Guided` — os sliders de forma —, e no guiado o texto
+    // **não é lido**. Estas quatro gramáticas exercitam ramos, cortes e marcas de propósito;
+    // sem o modo, as quatro cozinhariam a MESMA árvore derivada e três dos gates deste
+    // ficheiro passariam a medir a mesma planta com quatro nomes. *Um default que muda
+    // re-pergunta a toda fixtura que dependia do antigo* — e este ficheiro deu o aviso: o
+    // `the_emitted_topology_is_a_tree_and_not_a_chain_or_a_cloud` caiu de `> 4` bifurcações
+    // para **3**, que é o que a árvore binária guiada tem.
+    g.set_param(
+        l,
+        ph2d_node_source_lsystem::param::MODE,
+        ph2d_node_source_lsystem::MODE_GRAMMAR as f32,
+    );
     g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, axiom);
     g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, rules);
     g.set_param(l, ph2d_node_source_lsystem::param::GENERATIONS, generations);

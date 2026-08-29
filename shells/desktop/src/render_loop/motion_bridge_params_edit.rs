@@ -121,6 +121,15 @@ pub(super) fn apply_param_edits(
                     let preset_pick = (param == ph2d_node_source_lsystem::param::PRESET
                         && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON)
                         .then(|| inst.type_name.clone());
+                    // ⭐ **A CONVERSÃO do L-System**: sair de `Guided` para `Grammar` assa a
+                    // gramática que os sliders estavam a fazer. Medida AQUI, antes do
+                    // `set_param`, porque é uma TRANSIÇÃO — depois dele os dois lados do
+                    // «de onde para onde» leriam o mesmo valor.
+                    let bake_grammar = (param == ph2d_node_source_lsystem::param::MODE
+                        && (value as f32).round() as i32 == ph2d_node_source_lsystem::MODE_GRAMMAR
+                        && param_value(motion, nid, param).round() as i32
+                            != ph2d_node_source_lsystem::MODE_GRAMMAR)
+                        .then(|| inst.type_name.clone());
                     // ADR-0130 D7: an edit that re-numbers the emitter's ids
                     // (rate/life/max) moves the id↔particle map, so the GPU sim's
                     // paired state would mispair the new window against the old.
@@ -136,6 +145,9 @@ pub(super) fn apply_param_edits(
                     }
                     if let Some(tn) = preset_pick {
                         super::apply_lsystem_preset(motion, nid, &tn, value as f32);
+                    }
+                    if let Some(tn) = bake_grammar {
+                        super::bake_lsystem_grammar(motion, nid, &tn);
                     }
                     motion.pump.mark_dirty();
                     if renumbers_sim {

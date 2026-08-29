@@ -201,6 +201,53 @@ pub(in crate::render_loop::motion_bridge) fn apply_lsystem_preset(
         .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, *rules);
 }
 
+/// ⭐⭐⭐ **ASSAR o modo guiado no texto** — o que acontece quando o artista muda `Mode` de
+/// `Guided` para `Grammar`.
+///
+/// # Por que a conversão ESCREVE, em vez de o texto ficar como estava
+///
+/// É a lei da casa para fonte-vs-cozido (ADR-0121) com o verbo `Detach` do ADR-0164: enquanto
+/// o modo é guiado, os sliders são a FONTE e a gramática é derivada; a partir do momento em
+/// que o artista vai para `Grammar`, a fonte passa a ser o texto — e ele tem de encontrar lá
+/// **a planta que estava a ver**, não a de fábrica nem a que escreveu há meia hora.
+///
+/// ⭐ **É também o único sítio onde alguém APRENDE a notação**: a gramática que aparece é a
+/// que os sliders dele faziam, com os nomes dos params lá dentro (`s*length_scale`, `+`,
+/// `+(angle*0.500)`). Foi essa a resposta que faltava ao report de 2026-08-29.
+///
+/// ⚠️ **Só na TRANSIÇÃO, e é o call site que a mede.** Se isto corresse a cada edição com o
+/// modo já em `Grammar`, cada mexida num slider escondido reescreveria por cima do que o
+/// artista digitou. O caminho de volta (`Grammar → Guided`) **não apaga nada**: o texto fica
+/// intacto, e voltar a `Grammar` devolve-o.
+///
+/// ⚠️ **Corre dentro do MESMO passo de undo** que o `set_param` do modo — o `Ctrl+Z` devolve
+/// o par (modo, texto) de uma vez. É a mesma nota do [`apply_lsystem_preset`].
+pub(in crate::render_loop::motion_bridge) fn bake_lsystem_grammar(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+) {
+    if type_name != ph2d_node_source_lsystem::MANIFEST.name {
+        return;
+    }
+    use ph2d_node_source_lsystem::param;
+    let v = |p: &str| crate::render_loop::motion_bridge::params::param_value(motion, nid, p);
+    let (axiom, rules) = ph2d_node_source_lsystem::grammar_for(
+        v(param::BRANCHES),
+        v(param::SEGMENTS),
+        v(param::VARIATION),
+        v(param::BEND),
+    );
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, ph2d_node_source_lsystem::AXIOM_PARAM, axiom);
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, &rules);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

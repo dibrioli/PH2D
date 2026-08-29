@@ -271,3 +271,75 @@ fn the_threshold_cures_live_on_the_nodes_the_audit_named() {
         }
     }
 }
+
+/// ⭐⭐⭐ **AS DUAS METADES DO L-SYSTEM NUNCA APARECEM JUNTAS, E NENHUM MODO FICA SEM AS SUAS.**
+///
+/// ⚠️ Report do Enio, 2026-08-29: *"eu havia te pedido o L-System estado da arte (…) O Blender
+/// e Houdini usam Axiom e Rules?"*. A medição: o **Houdini** sim (`Premise` + `Rule 1..N`); o
+/// **Blender não tem L-System nenhum** — a árvore dele é o *Sapling Tree Gen* (Weber & Penn),
+/// sliders puros —, e o padrão da indústria (SpeedTree) é uma hierarquia de geradores com
+/// sliders. ⇒ a gramática é o estado da arte do MOTOR, não da INTERFACE.
+///
+/// O `Mode` é a cura, e ele só é um MODO se o painel de facto trocar de metade:
+/// - em `Guided` a gramática é derivada ⇒ as caixas mostrariam texto que **o nó não lê**;
+/// - em `Grammar` os quatro números de forma não alimentam nada ⇒ seriam knobs mortos.
+///
+/// ⚠️ **As DUAS direcções, e a segunda é a que a família dos knobs mortos esquece**: um gate
+/// que só afirmasse *"não aparece o que não age"* passaria com o painel a esconder tudo.
+#[test]
+fn the_lsystem_shows_exactly_one_authoring_half_per_mode() {
+    use ph2d_node_source_lsystem as ls;
+    let reg = registry();
+    let m = manifest_of(&reg, ls::MANIFEST.name);
+    let vis = Visibility::of(&reg, m.id);
+
+    const GRAMMAR_HALF: &[&str] = &[ls::AXIOM_PARAM, ls::RULES_PARAM, ls::param::PRESET];
+    const SHAPE_HALF: &[&str] = &[
+        ls::param::BRANCHES,
+        ls::param::SEGMENTS,
+        ls::param::VARIATION,
+        ls::param::BEND,
+    ];
+
+    for (mode, shown, hidden) in [
+        (ls::MODE_GUIDED, SHAPE_HALF, GRAMMAR_HALF),
+        (ls::MODE_GRAMMAR, GRAMMAR_HALF, SHAPE_HALF),
+    ] {
+        let value_of = |p: &str| {
+            if p == ls::param::MODE {
+                mode as f32
+            } else {
+                0.0
+            }
+        };
+        let has_text = |_: &str| true;
+        for p in shown {
+            assert!(
+                vis.shows(p, &value_of, &has_text),
+                "modo {mode}: `{p}` tem de aparecer — sem ele o modo nao tem autoria nenhuma"
+            );
+        }
+        for p in hidden {
+            assert!(
+                !vis.shows(p, &value_of, &has_text),
+                "modo {mode}: `{p}` esta' a ser pintado e nao alimenta nada"
+            );
+        }
+    }
+
+    // ⚠️ E o CONTROLE do próprio `Mode`: ele aparece nos DOIS, senão o artista entra num modo
+    // e fica sem o controle que o tira de lá.
+    for mode in [ls::MODE_GUIDED, ls::MODE_GRAMMAR] {
+        let value_of = |p: &str| {
+            if p == ls::param::MODE {
+                mode as f32
+            } else {
+                0.0
+            }
+        };
+        assert!(
+            vis.shows(ls::param::MODE, &value_of, &|_: &str| true),
+            "o proprio `Mode` sumiu no modo {mode}"
+        );
+    }
+}

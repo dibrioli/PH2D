@@ -120,3 +120,98 @@ fn the_preset_param_is_declared_and_reaches_the_node() {
     motion.doc.graph.set_param(n, ls::param::PRESET, 2.0);
     assert!((param_value(&motion, n, ls::param::PRESET) - 2.0).abs() < 1e-6);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────
+// A CONVERSÃO — `Guided → Grammar` assa a gramática que os sliders faziam (2026-08-29).
+// ─────────────────────────────────────────────────────────────────────────────────────────
+
+use super::params::bake_lsystem_grammar;
+
+/// ⭐⭐⭐ **CONVERTER MOSTRA A GRAMÁTICA QUE OS SLIDERS ESTAVAM A FAZER** — e não a de fábrica.
+///
+/// ⚠️ É a resposta inteira ao report de 2026-08-29 (*"O Blender e Houdini usam Axiom e
+/// Rules?"* — o Houdini sim, o Blender **não tem L-System nenhum**). O nó abre em sliders; o
+/// artista que quiser a gramática muda o modo e encontra lá **a planta que estava a ver**.
+/// Se a conversão escrevesse o default, ela seria um botão que **destrói o trabalho** e
+/// ninguém o carregaria uma segunda vez.
+#[test]
+fn converting_to_grammar_bakes_the_plant_the_sliders_were_making() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    motion.doc.graph.set_param(n, ls::param::BRANCHES, 3.0);
+    motion.doc.graph.set_param(n, ls::param::SEGMENTS, 2.0);
+    bake_lsystem_grammar(&mut motion, n, "source.lsystem");
+
+    let (want_axiom, want_rules) = ls::grammar_for(3.0, 2.0, 0.0, 0.0);
+    assert_eq!(text_of(&motion, n, ls::AXIOM_PARAM), want_axiom);
+    assert_eq!(text_of(&motion, n, ls::RULES_PARAM), want_rules);
+    // ⚠️ E o CONTROLE: o que foi assado NÃO é a gramática de fábrica. Sem ele, um `bake` que
+    // escrevesse o default passaria a primeira metade em qualquer forma que lhe dessem.
+    assert_ne!(
+        text_of(&motion, n, ls::RULES_PARAM),
+        ls::DEFAULT_RULES,
+        "a conversao escreveu o default e deitou fora os sliders do artista"
+    );
+}
+
+/// ⚠️ **A conversão lê os SLIDERS DAQUELE nó, não os defaults do manifesto.**
+///
+/// Duas formas diferentes têm de assar duas gramáticas diferentes — senão o `bake` é uma
+/// constante com cara de função, e o gate acima passaria com ele a ignorar o nó por inteiro.
+#[test]
+fn the_bake_reads_that_nodes_own_sliders_and_not_a_constant() {
+    let mut motion = MotionState::new();
+    let a = motion.doc.graph.add_node("source.lsystem");
+    let b = motion.doc.graph.add_node("source.lsystem");
+    motion.doc.graph.set_param(a, ls::param::BRANCHES, 2.0);
+    motion.doc.graph.set_param(b, ls::param::BRANCHES, 5.0);
+    motion.doc.graph.set_param(b, ls::param::BEND, 9.0);
+    bake_lsystem_grammar(&mut motion, a, "source.lsystem");
+    bake_lsystem_grammar(&mut motion, b, "source.lsystem");
+    assert_ne!(
+        text_of(&motion, a, ls::RULES_PARAM),
+        text_of(&motion, b, ls::RULES_PARAM),
+        "duas formas diferentes assaram a MESMA gramatica"
+    );
+}
+
+/// **A porta não toca em nó que não é dela** — a mesma cerca do [`apply_lsystem_preset`].
+#[test]
+fn the_bake_never_writes_on_another_node_type() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("motion.grid");
+    bake_lsystem_grammar(&mut motion, n, "motion.grid");
+    assert!(text_of(&motion, n, ls::RULES_PARAM).is_empty());
+}
+
+/// ⭐⭐ **O QUE FOI ASSADO DESENHA A MESMA PLANTA** — a propriedade que faz a conversão ser
+/// uma conversão, e não um recomeço.
+///
+/// ⚠️ Ela não é óbvia e podia falhar de duas maneiras: o `bake` podia montar a string por
+/// outro caminho que o `build` (dois geradores), ou a gramática assada podia perder um param
+/// pelo caminho (o literal em vez do nome). A régua é a CONTAGEM de elementos e a altura, dos
+/// dois lados, com a fixtura a ter uma forma que **não** é o default.
+#[test]
+fn what_was_baked_draws_exactly_what_the_sliders_drew() {
+    let shape = [
+        (ls::param::BRANCHES, 3.0f32),
+        (ls::param::SEGMENTS, 2.0),
+        (ls::param::BEND, 6.0),
+    ];
+    let mut guided: Vec<(&str, f32)> = vec![(ls::param::MODE, ls::MODE_GUIDED as f32)];
+    guided.extend_from_slice(&shape);
+    let before = ls::probe_build(ls::DEFAULT_AXIOM, ls::DEFAULT_RULES, 5.0, &guided);
+
+    let (axiom, rules) = ls::grammar_for(3.0, 2.0, 0.0, 6.0);
+    let mut authored: Vec<(&str, f32)> = vec![(ls::param::MODE, ls::MODE_GRAMMAR as f32)];
+    authored.extend_from_slice(&shape);
+    let after = ls::probe_build(axiom, &rules, 5.0, &authored);
+
+    assert_eq!(
+        before.count(),
+        after.count(),
+        "a conversao mudou a planta: {} elementos antes, {} depois",
+        before.count(),
+        after.count()
+    );
+}

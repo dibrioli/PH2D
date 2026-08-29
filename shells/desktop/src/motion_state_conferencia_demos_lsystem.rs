@@ -63,56 +63,91 @@ const GROW_MIN: f32 = 1.0;
 /// ALTURA da planta, então o número aqui responde a *«dá para ver?»* e não a *«funciona?»*.
 const GRAVITY: f32 = 35.0;
 
-/// As cinco colunas: `(rótulo, axioma, regras, gerações, semente, tropismo, ângulo)`.
+/// ⭐ **O número que torna a planta GUIADA idêntica à gramática de fábrica.**
+///
+/// O modo guiado emite `A(s*length_scale)`; a gramática de fábrica traz o literal `0.7` lá
+/// dentro. Com o slider aqui, as duas expressões são **a mesma**, e por isso a coluna 1 pode
+/// ser autorada por sliders sem que a coluna 4 (que a copia por gramática) deixe de a
+/// espelhar. O gate mede-o **ao bit**.
+const GUIDED_LENGTH_SCALE: f32 = 0.7;
+
+/// Uma coluna da cena.
+///
+/// ⚠️ **Campos com NOME, e não uma tupla de oito** — a tupla passou a ser «muito complexa»
+/// para o clippy no dia em que o `guided` entrou, e o aviso estava certo por outra razão:
+/// `PLANTS[3].5` não diz a ninguém que aquilo é o tropismo, e os gates desta cena leem a
+/// tabela por índice.
+pub(crate) struct Plant {
+    /// A ficha por cima da coluna, no canvas e no terminal.
+    pub label: &'static str,
+    /// O axioma AUTORADO. ⚠️ Na coluna guiada ele não é escrito no grafo — fica aqui a ser o
+    /// ORÁCULO contra o qual o gate da identidade ao bit compara.
+    pub axiom: &'static str,
+    /// As regras autoradas, com a mesma nota do [`Plant::axiom`].
+    pub rules: &'static str,
+    pub generations: f32,
+    pub seed: f32,
+    pub tropism: f32,
+    pub angle: f32,
+    /// `true` ⇒ a coluna é autorada por SLIDERS e o texto acima não vai ao grafo.
+    pub guided: bool,
+}
+
+/// As cinco colunas.
 ///
 /// ⚠️ **A 2 e a 3 têm de partilhar TUDO menos a semente** — é isso que torna a diferença
 /// entre elas uma afirmação sobre a estocástica em vez de sobre duas gramáticas.
-pub(crate) const PLANTS: &[(&str, &str, &str, f32, f32, f32, f32)] = &[
-    (
-        "1. parametrica (o default)",
-        ls::DEFAULT_AXIOM,
-        ls::DEFAULT_RULES,
-        6.0,
-        1.0,
-        0.0,
-        25.0,
-    ),
-    (
-        "2. estocastica, semente 1",
-        "A(step)",
-        STOCHASTIC,
-        6.0,
-        1.0,
-        0.0,
-        25.0,
-    ),
-    (
-        "3. estocastica, semente 9",
-        "A(step)",
-        STOCHASTIC,
-        6.0,
-        9.0,
-        0.0,
-        25.0,
-    ),
-    (
-        "4. a 1 com gravidade",
-        ls::DEFAULT_AXIOM,
-        ls::DEFAULT_RULES,
-        6.0,
-        1.0,
-        GRAVITY,
-        25.0,
-    ),
-    (
-        "5. samambaia, a CRESCER",
-        "A(step)",
-        FERN,
-        GROW_MAX,
-        1.0,
-        0.0,
-        28.0,
-    ),
+pub(crate) const PLANTS: &[Plant] = &[
+    Plant {
+        label: "1. GUIADA por sliders",
+        axiom: ls::DEFAULT_AXIOM,
+        rules: ls::DEFAULT_RULES,
+        generations: 6.0,
+        seed: 1.0,
+        tropism: 0.0,
+        angle: 25.0,
+        guided: true,
+    },
+    Plant {
+        label: "2. estocastica, semente 1",
+        axiom: "A(step)",
+        rules: STOCHASTIC,
+        generations: 6.0,
+        seed: 1.0,
+        tropism: 0.0,
+        angle: 25.0,
+        guided: false,
+    },
+    Plant {
+        label: "3. estocastica, semente 9",
+        axiom: "A(step)",
+        rules: STOCHASTIC,
+        generations: 6.0,
+        seed: 9.0,
+        tropism: 0.0,
+        angle: 25.0,
+        guided: false,
+    },
+    Plant {
+        label: "4. a 1 com gravidade",
+        axiom: ls::DEFAULT_AXIOM,
+        rules: ls::DEFAULT_RULES,
+        generations: 6.0,
+        seed: 1.0,
+        tropism: GRAVITY,
+        angle: 25.0,
+        guided: false,
+    },
+    Plant {
+        label: "5. samambaia, a CRESCER",
+        axiom: "A(step)",
+        rules: FERN,
+        generations: GROW_MAX,
+        seed: 1.0,
+        tropism: 0.0,
+        angle: 28.0,
+        guided: false,
+    },
 ];
 
 /// **A gramática que de facto CRESCE** — o eixo principal estende-se e cada nó deixa um ramo
@@ -142,13 +177,15 @@ pub(crate) fn captions() -> Vec<crate::motion_demo_legend::Caption> {
     PLANTS
         .iter()
         .enumerate()
-        .map(|(k, p)| crate::motion_demo_legend::Caption::new([(k as f32 - 2.0) * COL_W, 2.4], p.0))
+        .map(|(k, p)| {
+            crate::motion_demo_legend::Caption::new([(k as f32 - 2.0) * COL_W, 2.4], p.label)
+        })
         .collect()
 }
 
 /// Os rótulos, para o anúncio no terminal.
 pub(crate) fn labels() -> impl Iterator<Item = &'static str> {
-    PLANTS.iter().map(|p| p.0)
+    PLANTS.iter().map(|p| p.label)
 }
 
 fn wire(g: &mut ph2d_nodegraph::graph::Graph, a: NodeId, b: NodeId) -> Option<()> {
@@ -167,16 +204,31 @@ pub(crate) fn build_lsystem_demo_document(
 ) -> Option<Vec<NodeId>> {
     let g = &mut doc.graph;
     let mut sinks = Vec::new();
-    for (k, (_, axiom, rules, gens, seed, tropism, angle)) in PLANTS.iter().enumerate() {
+    for (k, p) in PLANTS.iter().enumerate() {
         let lane = 120.0 + k as f32 * 300.0;
         let l = g.add_node("source.lsystem");
         g.set_pos(l, Pos { x: 260.0, y: lane });
-        g.set_text_param(l, ls::AXIOM_PARAM, *axiom);
-        g.set_text_param(l, ls::RULES_PARAM, *rules);
-        g.set_param(l, ls::param::GENERATIONS, *gens);
-        g.set_param(l, ls::param::SEED, *seed);
-        g.set_param(l, ls::param::TROPISM, *tropism);
-        g.set_param(l, ls::param::ANGLE, *angle);
+        // ⚠️⚠️ **CADA PLANTA DECLARA O MODO EM QUE FOI AUTORADA.** Desde 2026-08-29 o default
+        // do nó é `Guided` (os sliders de forma), e uma cena que escrevesse os dois textos sem
+        // dizer o modo mostraria **cinco vezes a mesma árvore derivada** — os textos
+        // ignorados, a cena a compilar e a não provar nada.
+        if p.guided {
+            g.set_param(l, ls::param::MODE, ls::MODE_GUIDED as f32);
+            // ⭐ **E este é o número que torna a derivada IDÊNTICA à gramática de fábrica.**
+            // O guiado emite `A(s*length_scale)`; a gramática de fábrica tem o literal `0.7`
+            // lá dentro. Com o slider em `0,7` as duas expressões são a mesma, e o gate
+            // `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` mede-o AO BIT
+            // — é a prova de que os sliders não são uma segunda planta parecida.
+            g.set_param(l, ls::param::LENGTH_SCALE, GUIDED_LENGTH_SCALE);
+        } else {
+            g.set_param(l, ls::param::MODE, ls::MODE_GRAMMAR as f32);
+            g.set_text_param(l, ls::AXIOM_PARAM, p.axiom);
+            g.set_text_param(l, ls::RULES_PARAM, p.rules);
+        }
+        g.set_param(l, ls::param::GENERATIONS, p.generations);
+        g.set_param(l, ls::param::SEED, p.seed);
+        g.set_param(l, ls::param::TROPISM, p.tropism);
+        g.set_param(l, ls::param::ANGLE, p.angle);
         g.set_param(l, ls::param::WIDTH, TRUNK_W);
         g.set_param(l, ls::param::STEP, 0.28);
 

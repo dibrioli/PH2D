@@ -31,7 +31,9 @@ mod sections;
 mod params_channel;
 /// Re-exported under its old path so the params tests (a sibling module) and this
 /// module keep naming the presets `params::apply_channel_presets` after the split.
-pub(super) use params_channel::{apply_channel_presets, apply_lsystem_preset};
+pub(super) use params_channel::{
+    apply_channel_presets, apply_lsystem_preset, bake_lsystem_grammar,
+};
 
 /// The **write-back** half — this frame's edits applied to the node, and the one
 /// reader of a param's current value (a sibling child, shell LOC cap). The seam is

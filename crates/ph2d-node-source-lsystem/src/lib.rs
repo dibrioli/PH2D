@@ -60,6 +60,7 @@
 mod derive;
 mod grammar;
 mod hash;
+pub mod shape;
 mod trig;
 mod turtle;
 
@@ -188,6 +189,29 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::PRESET,
             default: 0.0,
         },
+        // ⚠️ **`0` = `Guided`, e o default é a resposta ao report de 2026-08-29.** Um nó
+        // recém-dropado abre com sliders de forma; a gramática está a UM clique, e é ela
+        // que o `Mode` assa quando o artista lá vai. Ver [`shape`] para o porquê.
+        ParamSpec {
+            name: param::MODE,
+            default: MODE_GUIDED as f32,
+        },
+        ParamSpec {
+            name: param::BRANCHES,
+            default: 2.0,
+        },
+        ParamSpec {
+            name: param::SEGMENTS,
+            default: 1.0,
+        },
+        ParamSpec {
+            name: param::VARIATION,
+            default: 0.0,
+        },
+        ParamSpec {
+            name: param::BEND,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -208,7 +232,20 @@ pub mod param {
     pub const SEED: &str = "seed";
     pub const ORIENT: &str = "orient";
     pub const PRESET: &str = "preset";
+    pub const MODE: &str = "mode";
+    pub const BRANCHES: &str = "branches";
+    pub const SEGMENTS: &str = "segments";
+    pub const VARIATION: &str = "variation";
+    pub const BEND: &str = "bend";
 }
+
+/// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.
+pub const MODE_GUIDED: i32 = 0;
+/// **O modo GRAMÁTICA** — o texto manda, e os sliders de forma somem.
+pub const MODE_GRAMMAR: i32 = 1;
+
+/// Os dois modos de autoria. ⚠️ A ordem É o valor gravado: `Guided` tem de ficar em `0`.
+pub const MODE_LABELS: &[&str] = &["Guided", "Grammar"];
 
 /// **O que a coluna `rot` quer dizer** — ver [`crate::turtle::Setup::orient_world`] para o
 /// mecanismo. `0` = mundo (o desenho alinha com o ramo) · `1` = local (o contrato do `rig.*`).
@@ -223,8 +260,15 @@ pub const ORIENT_LABELS: &[&str] = &["Growth", "Local"];
 /// deixaria de aceitar o que se copia de qualquer lado.
 ///
 /// ⇒ O que se dá é um SÍTIO POR ONDE COMEÇAR. O artista escolhe um molde, vê a planta, e
-/// edita — que é como toda a gente aprende esta linguagem. É o que o L-System SOP do Houdini,
-/// o `sca-tools` do Blender e o L-studio fazem.
+/// edita — que é como toda a gente aprende esta linguagem. É o que o L-System SOP do Houdini
+/// e o L-studio fazem.
+///
+/// ⚠️⚠️ **E os moldes NÃO chegaram** — report do Enio, 2026-08-29. A 1.ª redacção desta nota
+/// citava «o `sca-tools` do Blender» como se ele fizesse isto, e estava **errada duas vezes**:
+/// o Blender não tem L-System nenhum, e o `sca-tools` é colonização de espaço (sliders, sem
+/// gramática). *A referência que eu invoquei para justificar a interface era a referência que
+/// prova o contrário.* A cura é o [`crate::shape`]: os moldes ficam, mas atrás deles passa a
+/// haver um modo GUIADO, que é o default.
 ///
 /// ⚠️ **O molde `0` é o de fábrica**, para um nó recém-dropado e o selector concordarem.
 pub const PRESETS: &[(&str, &str, &str)] = &[
@@ -321,9 +365,29 @@ struct Params {
     tropism_angle: f32,
     seed: f32,
     orient: f32,
+    mode: f32,
+    branches: f32,
+    segments: f32,
+    variation: f32,
+    bend: f32,
 }
 
 impl Params {
+    /// **Os sliders mandam?** — a pergunta que decide de onde vem a gramática.
+    fn guided(&self) -> bool {
+        self.mode.round() as i32 != MODE_GRAMMAR
+    }
+
+    /// Os números de forma, na cara que o [`shape`] pede.
+    fn shape(&self) -> shape::Shape {
+        shape::Shape {
+            branches: self.branches,
+            segments: self.segments,
+            variation: self.variation,
+            bend: self.bend,
+        }
+    }
+
     fn read(ctx: &EvalCtx<'_>) -> Self {
         Self {
             generations: ctx.param(param::GENERATIONS),
@@ -337,6 +401,11 @@ impl Params {
             tropism_angle: ctx.param(param::TROPISM_ANGLE),
             seed: ctx.param(param::SEED),
             orient: ctx.param(param::ORIENT),
+            mode: ctx.param(param::MODE),
+            branches: ctx.param(param::BRANCHES),
+            segments: ctx.param(param::SEGMENTS),
+            variation: ctx.param(param::VARIATION),
+            bend: ctx.param(param::BEND),
         }
     }
 
@@ -355,6 +424,11 @@ impl Params {
             param::TROPISM_ANGLE => self.tropism_angle,
             param::SEED => self.seed,
             param::ORIENT => self.orient,
+            param::MODE => self.mode,
+            param::BRANCHES => self.branches,
+            param::SEGMENTS => self.segments,
+            param::VARIATION => self.variation,
+            param::BEND => self.bend,
             _ => 0.0,
         }
     }
@@ -368,11 +442,22 @@ fn or_default<'a>(src: &'a str, fallback: &'a str) -> &'a str {
 /// Deriva e interpreta — a função inteira do nó, sem o `EvalCtx` à volta (é ela que os
 /// gates e a bancada de medição chamam).
 fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::Stream {
-    // ⚠️ **A queda para o default vive AQUI, e não em quem lê o param.** Um text param
-    // apagado não pode apagar a planta — e enquanto esta regra morou no `eval`, nenhum gate a
-    // alcançava: a porta que os testes e a bancada de medição chamam é esta.
-    let axiom_src = or_default(axiom_src, DEFAULT_AXIOM);
-    let rules_src = or_default(rules_src, DEFAULT_RULES);
+    // ⚠️ **A escolha do MODO vive aqui, pela mesma razão que a queda para o default**: esta
+    // é a porta que os gates e a bancada de medição chamam, e uma decisão tomada no `eval`
+    // seria inalcançável por qualquer um dos dois. No guiado o texto do artista **não é
+    // lido** — ele fica intacto no documento, à espera de que alguém volte a `Grammar`.
+    let generated;
+    let (axiom_src, rules_src) = if p.guided() {
+        generated = shape::rules(&p.shape());
+        (shape::AXIOM, generated.as_str())
+    } else {
+        // ⚠️ **A queda para o default vive AQUI, e não em quem lê o param.** Um text param
+        // apagado não pode apagar a planta.
+        (
+            or_default(axiom_src, DEFAULT_AXIOM),
+            or_default(rules_src, DEFAULT_RULES),
+        )
+    };
     let params = |n: &str| p.by_name(n);
     let axiom = derive::axiom_modules(axiom_src, &params);
     let rules = grammar::parse_rules(rules_src);
@@ -423,6 +508,8 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     reg.register_param_ui(MANIFEST.id, PARAM_HINTS);
     reg.register_param_units(MANIFEST.id, PARAM_UNITS);
     reg.register_param_hard_max(MANIFEST.id, PARAM_HARD_MAX);
+    reg.register_param_gates(MANIFEST.id, PARAM_GATES);
+    reg.register_param_groups(MANIFEST.id, PARAM_GROUPS);
     Ok(())
 }
 
@@ -443,8 +530,52 @@ static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] = &[ph2d_node_registr
 }];
 
 static PARAM_HINTS: &[ParamUiHint] = &[
-    // ⚠️ **Primeiro os dois textos, e é o que o nó É**: um L-System é a gramática. Os dez
-    // números são a interpretação dela.
+    // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
+    ParamUiHint {
+        param: param::MODE,
+        label: "Mode",
+        min: 0.0,
+        max: (MODE_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: MODE_LABELS,
+        },
+    },
+    // Os quatro números de FORMA — o modo guiado inteiro. Ver [`shape`].
+    ParamUiHint {
+        param: param::BRANCHES,
+        label: "Branches",
+        min: 1.0,
+        max: shape::MAX_BRANCHES,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: param::SEGMENTS,
+        label: "Trunk Segments",
+        min: 1.0,
+        max: shape::MAX_SEGMENTS,
+        step: 1.0,
+        widget: ParamWidget::IntSlider,
+    },
+    ParamUiHint {
+        param: param::VARIATION,
+        label: "Variation",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::BEND,
+        label: "Bend",
+        min: -30.0,
+        max: 30.0,
+        step: 0.5,
+        widget: ParamWidget::Angle,
+    },
+    // ⚠️ **Depois os dois textos, e é o que o nó É por dentro**: um L-System é a gramática.
+    // Os números são a interpretação dela.
     ParamUiHint {
         param: AXIOM_PARAM,
         label: "Axiom",
@@ -572,6 +703,82 @@ static PARAM_HINTS: &[ParamUiHint] = &[
     },
 ];
 
+/// **AS DUAS METADES NÃO SE VÊEM UMA À OUTRA** — o gate de visibilidade que faz o `Mode` ser
+/// um modo em vez de um rótulo.
+///
+/// ⚠️ *Um controle que não faz nada não é pintado.* No guiado a gramática é derivada, então
+/// as caixas de texto mostrariam o que o nó **não lê** — a pior forma de mentir num painel,
+/// porque o artista edita e nada acontece. No modo gramática os quatro números de forma
+/// deixam de alimentar seja o que for, pela mesma razão do outro lado.
+///
+/// ⚠️ **O `Preset` fica com a GRAMÁTICA**, e não com os sliders: um molde É uma gramática, e
+/// escolher um no guiado escreveria num texto que ninguém está a ler.
+static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    ph2d_node_registry::ParamGate {
+        param: AXIOM_PARAM,
+        when: param::MODE,
+        values: &[MODE_GRAMMAR],
+    },
+    ph2d_node_registry::ParamGate {
+        param: RULES_PARAM,
+        when: param::MODE,
+        values: &[MODE_GRAMMAR],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::PRESET,
+        when: param::MODE,
+        values: &[MODE_GRAMMAR],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::BRANCHES,
+        when: param::MODE,
+        values: &[MODE_GUIDED],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::SEGMENTS,
+        when: param::MODE,
+        values: &[MODE_GUIDED],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::VARIATION,
+        when: param::MODE,
+        values: &[MODE_GUIDED],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::BEND,
+        when: param::MODE,
+        values: &[MODE_GUIDED],
+    },
+];
+
+/// **AS SEÇÕES** — quatro perguntas, e cada uma responde-se sem ler as outras.
+///
+/// ⚠️ **O `Mode` fica FORA de todas**, de propósito: as soltas são pintadas primeiro
+/// (`split_into_sections`), e o controle que decide o que as seções contêm não pode viver
+/// dentro de uma delas — muito menos dentro de uma que nasça fechada.
+static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
+    ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::BEND, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::VARIATION, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::PRESET, "Grammar"),
+    ph2d_node_registry::ParamGroup::new(AXIOM_PARAM, "Grammar"),
+    ph2d_node_registry::ParamGroup::new(RULES_PARAM, "Grammar"),
+    ph2d_node_registry::ParamGroup::new(param::GENERATIONS, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::STEP, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::LENGTH_SCALE, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::WIDTH, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::WIDTH_SCALE, "Growth"),
+    // ⚠️ Esta nasce FECHADA: é a única cujos cinco defaults já dão uma planta de pé, e o
+    // artista que nunca a abrir não perde nada.
+    ph2d_node_registry::ParamGroup::new(param::ROOT_ANGLE, "Lean & Look").folded(),
+    ph2d_node_registry::ParamGroup::new(param::TROPISM, "Lean & Look").folded(),
+    ph2d_node_registry::ParamGroup::new(param::TROPISM_ANGLE, "Lean & Look").folded(),
+    ph2d_node_registry::ParamGroup::new(param::ORIENT, "Lean & Look").folded(),
+    ph2d_node_registry::ParamGroup::new(param::SEED, "Lean & Look").folded(),
+];
+
 /// **O que cada número É** (doc 88) — só as grandezas que são uma DISTÂNCIA de mundo.
 ///
 /// O `step` é a única: um ângulo já tem a face dele pelo widget, e `width` é uma ESCALA
@@ -589,6 +796,31 @@ static PARAM_UNITS: &[ParamUnitDecl] = &[ParamUnitDecl {
 /// (`tests/measure_lsystem_ceiling.rs`) é um alvo de integração e não vê itens de teste. Uma
 /// porta que só o teste unitário alcança obrigaria a bancada a reimplementar o caminho — e
 /// aí ela mediria outro código.
+/// **A GRAMÁTICA QUE OS SLIDERS ESTÃO A FAZER AGORA** — a porta que a shell chama para
+/// ASSAR o guiado no texto quando o artista muda para `Grammar`.
+///
+/// ⚠️ **Uma porta e não uma segunda conta na shell.** O `build` deriva a mesma coisa a cada
+/// cozedura; se a shell montasse a string à mão, os dois lados divergiriam no dia em que um
+/// deles ganhasse um símbolo — e o artista veria a planta MUDAR ao converter, que é
+/// exactamente o que uma conversão não pode fazer.
+#[must_use]
+pub fn grammar_for(
+    branches: f32,
+    segments: f32,
+    variation: f32,
+    bend: f32,
+) -> (&'static str, String) {
+    (
+        shape::AXIOM,
+        shape::rules(&shape::Shape {
+            branches,
+            segments,
+            variation,
+            bend,
+        }),
+    )
+}
+
 #[must_use]
 pub fn probe_build(
     axiom: &str,
@@ -608,10 +840,25 @@ pub fn probe_build(
         tropism_angle: -90.0,
         seed: 1.0,
         orient: 0.0,
+        // ⚠️⚠️ **`Grammar`, e NÃO o default do manifesto.** Esta porta recebe um axioma e
+        // umas regras nos ARGUMENTOS; abri-la em `Guided` faria o nó ignorá-los, e as
+        // dezenas de gates que a chamam passariam a medir a gramática derivada em vez da
+        // que escreveram — todos verdes, todos sobre outra coisa. *Uma porta de sonda tem
+        // de honrar o que lhe é passado, e o modo é o que decide se ela o honra.*
+        mode: MODE_GRAMMAR as f32,
+        branches: 2.0,
+        segments: 1.0,
+        variation: 0.0,
+        bend: 0.0,
     };
     for (n, v) in overrides {
         match *n {
             param::ANGLE => p.angle = *v,
+            param::MODE => p.mode = *v,
+            param::BRANCHES => p.branches = *v,
+            param::SEGMENTS => p.segments = *v,
+            param::VARIATION => p.variation = *v,
+            param::BEND => p.bend = *v,
             param::STEP => p.step = *v,
             param::WIDTH => p.width = *v,
             param::WIDTH_SCALE => p.width_scale = *v,

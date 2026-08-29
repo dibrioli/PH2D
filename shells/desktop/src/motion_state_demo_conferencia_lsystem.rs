@@ -11,12 +11,20 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
     eprintln!(
         "[cena 108] Cinco plantas, da esquerda para a direita. ⚠️ A QUINTA MEXE -- de' Play.
 
-  Cada planta nasce de DUAS caixas de texto no painel: «Axiom» (por onde comeca) e
-  «Rules» (como cada letra e' reescrita). O resto sao dez botoes que dizem como
-  desenhar o que a reescrita produziu.
+  ⭐ O PAINEL TEM DOIS MODOS, e o botao «Mode» no topo troca entre eles:
 
-  1. A ARVORE. O tronco e' grosso e as pontas sao finas -- e ninguem desenhou isso:
-     a regra diz «depois de desenhar, afina», e a espessura escorre pelos ramos.
+      «Guided»  -- a forma sai de SLIDERS: quantos ramos, que angulo, quanto do
+                   tronco antes de bifurcar, quanto varia, quanto verga.
+                   E' assim que um no' novo nasce.
+      «Grammar» -- as duas caixas de texto («Axiom» e «Rules»), para quem quer
+                   escrever a receita a' mao.
+
+  E trocar de «Guided» para «Grammar» ESCREVE nas caixas a receita que os sliders
+  estavam a fazer. E' a maneira mais facil de aprender a linguagem: mexa nos
+  sliders, troque o modo, e leia.
+
+  1. A ARVORE FEITA POR SLIDERS -- nao ha' texto nenhum nela. O tronco e' grosso e as
+     pontas sao finas, e ninguem desenhou isso: a espessura escorre pelos ramos.
   2. e 3. A MESMA REGRA, sementes diferentes. Elas TEM de sair diferentes uma da
      outra: e' o que quer dizer «esta planta sorteia como se ramifica».
   4. A PLANTA 1 COM GRAVIDADE. As pontas vergam para baixo. Compare com a 1: a
@@ -33,20 +41,24 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
         "
   QUER MEXER?
 
-    · Clique numa planta e procure «Generations» no painel: arraste-o devagar. A planta
-      tem de CRESCER, nao saltar.
-    · «Angle» abre e fecha os ramos. «Width Scale» decide quanto cada ramo afina.
-    · «Tropism» e' a gravidade; «Tropism Direction» diz para onde ela puxa.
-    · Na 2 ou na 3, mexa em «Seed» (o botao de re-sortear ao lado do numero): outra
-      planta, mesma especie.
-    · E o mais divertido: reescreva as «Rules». Experimente na planta 1:
-        A(s) -> F(s)![+A(s*0.8)][-A(s*0.8)][A(s*0.6)]
+    · Clique na PLANTA 1 (a guiada). Na seccao «Shape»: «Branches» de 2 para 3 ou 4,
+      «Trunk Segments» para 3 (nasce um tronco limpo), «Bend» para uns 10 graus, e
+      «Variation» para 0,5 (a planta deixa de ser simetrica).
+    · Ainda na 1: troque «Mode» para «Grammar». As caixas «Axiom» e «Rules» aparecem
+      JA' PREENCHIDAS com a receita dos seus sliders. Ctrl+Z desfaz.
+    · «Generations» em qualquer planta: arraste devagar -- ela tem de CRESCER, nao saltar.
+    · «Angle» abre e fecha os ramos. A seccao «Lean & Look» (fechada, clique para abrir)
+      tem a gravidade e o re-sortear.
+    · Nas plantas de gramatica ha' ainda o «Preset»: oito receitas prontas.
 
   DEU ERRADO se:
     · a 2 e a 3 sairem IGUAIS (a semente deixou de valer);
     · a 1 e a 4 sairem iguais (a gravidade nao chegou);
     · a 5 ficar parada, ou crescer aos SALTOS em vez de continuamente;
     · a 5 APAGAR-SE e voltar de vez a cada ramo novo (era o defeito de 28/08);
+    · a PLANTA 1 mostrar caixas de texto (ela e' a guiada -- nao devia ter nenhuma);
+    · mexer em «Branches» ou «Trunk Segments» na 1 nao mudar nada;
+    · trocar a 1 para «Grammar» deixar as caixas VAZIAS, ou mostrar outra planta;
     · alguma planta sair como uma bola de pontos do mesmo tamanho (a espessura morreu);
     · alguma planta sair de cabeca para baixo, ou fora do ecra;
     · o app engasgar ao arrastar «Generations» ate ao fim."

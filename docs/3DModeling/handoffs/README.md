@@ -13,7 +13,7 @@
 [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) são uma wave cada, com a tabela
 medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **fronteira da linha**.
 
-**2 handoffs.**
+**5 handoffs.**
 
 | Data | Arquivo | Papel | Assunto |
 |---|---|---|---|
@@ -21,6 +21,7 @@ medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **f
 | 2026-08-23 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-23.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-23.md) | integração | Handoff de INTEGRAÇÃO — as waves **35–55**, 24 commits (DIRETRIZ §1.5.9) |
 | 2026-08-24 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md) | integração | Handoff de INTEGRAÇÃO — as waves **56e–58d**, 20 commits (DIRETRIZ §1.5.9) |
 | 2026-08-26 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md) | integração | Handoff de INTEGRAÇÃO — as waves **59–80**, 25 commits (DIRETRIZ §1.5.9) |
+| 2026-08-29 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-29.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-29.md) | integração | Handoff de INTEGRAÇÃO — as waves **81–104-ter**, 45 commits (DIRETRIZ §1.5.9) |
 
 ---
 
@@ -29,6 +30,6 @@ medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **f
 | pergunta | onde se responde |
 |---|---|
 | *o que o módulo **é**, e por que esta rota* | [`README.md`](../README.md) — a porta, com a tabela dos 6 docs |
-| *o que foi **medido** em cada wave* | [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) §1–§56 |
+| *o que foi **medido** em cada wave* | [`06_resultados_cena_e_gizmo.md`](../06_resultados_cena_e_gizmo.md) §1–§104 |
 | *o que está **aberto**, hoje* | o **§13** do doc 06 — a lista viva |
 | *por que **campo implícito** e não malha* | [ADR-0161](../../architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md) |

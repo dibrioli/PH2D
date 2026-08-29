@@ -9385,3 +9385,75 @@ causa era mesmo só o ponteiro.
 O `sculpt3d_pointer_down` corre **antes** deste no mesmo despacho e tem exactamente a mesma forma:
 com o `Ctrl+K` ou a biblioteca do Motion abertos sobre o módulo de escultura armado, o clique morre
 ali. A `line/sculpt3d` é a dona daquele módulo.
+
+---
+
+## §99 — ⛔⛔⛔ O SMOKE DA W98: as juntas mudavam de aspecto ao ROTACIONAR — a marcha lia o filete do GRUPO (29/08)
+
+Enio, 2026-08-29, com duas fotos do mesmo modelo em ângulos diferentes: *«4 formas juntas, coloquei
+algum nível de joint em cada uma e ao rotacionar as áreas do joint mudam de aspecto.»*
+
+### §99.1 — ⭐ O raciocínio que localiza a causa em uma frase
+
+**Um campo não muda com a câmera.** A geometria é a mesma de todo ângulo. Se o *aspecto* muda ao
+rodar, quem muda é a **MARCHA**: o passo é grande demais, o raio **atravessa** a superfície, e onde
+ele acerta passa a depender da direcção. É exactamente o sintoma que o `safe_march_step` existe para
+não haver.
+
+### §99.2 — ⛔ A causa é um defeito que a W97 introduziu, e eu não o vi
+
+O `inflation_depth` classifica um `Combine` por **`op.blend()`** — a mistura **do grupo**. Até à W97
+essa era a única mistura que existia. A W97 pôs o **verbo em cada forma** (`Node::verb`) e a W98 pôs
+o **raio de junção** com ele: hoje o filete de cada passo da dobra sai do verbo **efectivo** do filho
+(`combine_trees`: `fold_verb(parent, filho.verb)` → `.blend()`).
+
+⇒ com o grupo em `Sharp` — que é como ele nasce — e cada filho a trazer o seu `Exact`, a
+profundidade lia **zero** e o passo ficava em `1,0`. Medido na peça do report:
+
+| formas | junta | passo | `‖∇f‖` | `passo × ‖∇f‖` |
+|---|---|---|---|---|
+| 2 | `0,05` | `1,0000` | `1,1717` | **`1,17`** ⛔ |
+
+*Acima de `1` o raio atravessa.*
+
+⚠️ **É o §0 do `CLAUDE.md` a morder em mim:** *quem move o número que tornava algo inalcançável tem
+de reconferir a nota.* Eu movi o filete de sítio e não re-perguntei o que esta lei media.
+
+### §99.3 — A cura: a lei pergunta o verbo EFECTIVO, passo a passo
+
+`inflation_depth` conta, entre os `n − 1` passos da dobra, **quantos inflam** — cada um pelo
+`fold_verb(parent, filho.verb)`, que é literalmente o que o `combine_trees` lê ao construir a árvore.
+
+⚠️ **Tem de ser o EFECTIVO, e não um dos dois lados:**
+
+| cura errada | o que ela parte |
+|---|---|
+| ler só `node.verb` | o grupo com filete e os filhos calados volta a ler **zero** |
+| contar `children.len() − 1` sempre que o grupo arredonda | castiga a peça em que metade das juntas foi pedida **viva** — o caminho lento a definir o teto do rápido (§0) |
+
+Os dois casos têm gate próprio (`an_inherited_joint_still_counts` ·
+`a_shape_that_asks_for_a_sharp_joint_does_not_inflate_it`).
+
+### §99.4 — ⭐⭐ E a pergunta *«quem MAIS lê a mistura do grupo?»* achou um IRMÃO silencioso
+
+O `bounds::of_node` decidia como cada filho contribui para a **caixa do mundo** olhando o `op` **do
+grupo**. Com o grupo em `Difference` — *«o que se corta não acrescenta matéria, fica só o primeiro
+filho»* — um filho que pede `Union` **acrescenta** e caía fora do bordo ⇒ a peça sai **cortada** na
+parte que ele junta, e nada explica porquê.
+
+⚠️ Este não era o defeito que o Enio viu; foi achado a verificar o primeiro. *Achar uma metade de
+uma família é motivo para procurar as outras, não para dar a família por fechada* — a segunda vez
+que esta linha paga essa frase em dois dias (a outra: o teclado curado e o ponteiro shipado partido,
+§98.4).
+
+### §99.5 — As provas
+
+| mutação | resultado |
+|---|---|
+| a marcha volta a ler o filete DO GRUPO | **MORTA** (3 gates) |
+| a caixa volta a ler o verbo DO GRUPO | **MORTA** |
+
+⚠️ O gate do primeiro defeito foi **red-first** (mediu `1,17` antes da cura); o do segundo foi
+escrito depois, e por isso a prova dele **é** a mutação.
+
+**Smoke:** a mesma peça do report — 4 formas num grupo, uma junta em cada, e **rodar**.

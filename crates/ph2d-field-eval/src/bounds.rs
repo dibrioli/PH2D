@@ -101,17 +101,50 @@ fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<
             center: [0.0; 3],
             radius: f.bounding_radius(),
         }),
+        // ⭐⭐⭐ **A DOBRA, PASSO A PASSO, com o verbo EFECTIVO de cada filho** (2026-08-29).
+        //
+        // ⛔ **Isto perguntava `op` — o verbo DO GRUPO — e a W97 pôs um verbo em cada forma.** O
+        // defeito era silencioso e assimétrico: com o grupo em `Difference` e um filho a pedir
+        // `Union`, o bordo ficava só com o primeiro filho, e o que o segundo **acrescenta** caía
+        // fora da caixa do mundo ⇒ a peça sai **cortada**, sem uma palavra.
+        //
+        // ⚠️ **Irmão do defeito que o Enio viu na marcha** (`step::inflation_depth`), achado ao
+        // perguntar *«quem MAIS lê a mistura do grupo?»*. *Achar uma metade de uma família é motivo
+        // para procurar as outras.*
+        //
+        // ⚠️ O primeiro filho **semeia** e o verbo dele não é perguntado — a lei do `fold_verb`, a
+        // mesma que o `combine_trees` e o `inflation_depth` pagam.
+        //
+        // ⚠️ **O raio do filete não entra**, e é medido pela geometria: um arredondamento enche o
+        // vinco côncavo, que fica **dentro** da união dos dois bordos. Ele não cresce a peça.
         NodeKind::Combine { op, children } => {
-            let mut it = children.iter().filter_map(|c| of_node(doc, reg, *c));
-            match op {
-                // ⭐ **A subtração é o PRIMEIRO filho e mais nada**: o que se corta não acrescenta
-                // matéria, e um cortador enorme e distante inflaria a caixa da peça inteira.
-                Op::Difference(_) => it.next(),
-                // A interseção cabe em qualquer um dos lados: o MENOR é o bordo mais apertado que
-                // continua a ser um bordo.
-                Op::Intersection(_) => it.reduce(|a, b| if a.radius <= b.radius { a } else { b }),
-                Op::Union(_) => it.reduce(Ball::merge),
+            let mut acc: Option<Ball> = None;
+            for c in children {
+                let Some(ball) = of_node(doc, reg, *c) else {
+                    continue;
+                };
+                let Some(a) = acc else {
+                    acc = Some(ball);
+                    continue;
+                };
+                let verb = doc.node(*c).and_then(|n| n.verb);
+                acc = Some(match ph2d_field::fold_verb(*op, verb) {
+                    // ⭐ **O que se corta não acrescenta matéria** — e um cortador enorme e distante
+                    // inflaria a caixa da peça inteira.
+                    Op::Difference(_) => a,
+                    // A interseção cabe em qualquer um dos lados: o MENOR é o bordo mais apertado
+                    // que continua a ser um bordo.
+                    Op::Intersection(_) => {
+                        if a.radius <= ball.radius {
+                            a
+                        } else {
+                            ball
+                        }
+                    }
+                    Op::Union(_) => Ball::merge(a, ball),
+                });
             }
+            acc
         }
     }?;
     Some(place(with_mods(local, &node.mods), node.xform))

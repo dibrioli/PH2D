@@ -109,6 +109,24 @@ pub fn safe_march_step(doc: &FieldDoc) -> f32 {
 /// quadratura. As medições ficam em `1,09` porque saturar as três ao mesmo tempo exigiria a
 /// superfície perpendicular aos três eixos **no mesmo ponto**, e uma distância com sinal não faz
 /// isso. *A diferença entre a barra medida e a demonstrável fica escrita em vez de esquecida.*
+/// **Esta mistura INFLA o gradiente?** — a pergunta de um passo da dobra, num sítio só.
+///
+/// ⭐⭐⭐ **O CHANFRO conta como um arredondamento exacto** (W99), e o balde é MEDIDO:
+/// `the_chamfer_is_measured_against_the_march` lê o `‖∇f‖` dele no mesmo canto de 90º e afirma que
+/// ele não passa o `√2` que este balde já paga.
+///
+/// ⚠️ **Pô-lo no balde do `Sharp` seria o erro que fura**: o termo do corte tem gradiente acima de
+/// `1` onde as duas normais se alinham, e um passo do tamanho do valor atravessaria a superfície.
+///
+/// ⚠️ **Raio zero não infla**, e não é um caso de borda: é como o produto exprime *«junta viva»*
+/// (o slider do filete a zero), e é o estado em que toda peça nasce.
+fn inflates(blend: Blend) -> bool {
+    match blend {
+        Blend::Exact { radius } | Blend::Chamfer { radius } => radius != 0.0,
+        Blend::Sharp | Blend::Organic { .. } => false,
+    }
+}
+
 #[must_use]
 pub fn inflation_depth(doc: &FieldDoc) -> u32 {
     // A arena tem os filhos ANTES dos pais, então uma passagem para a frente basta.
@@ -129,22 +147,39 @@ pub fn inflation_depth(doc: &FieldDoc) -> u32 {
             // 3 filhos lê `‖∇f‖ = 1,5411` e com 5 lê `1,9585`, os dois acima do `√2` de um nível — e
             // é essa a forma da **cena 1 do smoke** (três cilindros num nó). *Uma fixtura de dois
             // filhos não vê a corrente que o lowering constrói.*
-            NodeKind::Combine { op, children } => match op.blend() {
-                // ⭐⭐⭐ **O CHANFRO conta como um arredondamento exacto** (W99), e o balde é
-                // MEDIDO: `the_chamfer_is_measured_against_the_march` lê o `‖∇f‖` dele no mesmo
-                // canto de 90º e afirma que ele não passa o `√2` que este balde já paga.
-                //
-                // ⚠️ **Pô-lo no balde do `Sharp` seria o erro que fura**: o termo do corte tem
-                // gradiente acima de `1` onde as duas normais se alinham, e um passo do tamanho do
-                // valor atravessaria a superfície.
-                Blend::Exact { radius } | Blend::Chamfer { radius } if radius != 0.0 => {
-                    u32::try_from(children.len().saturating_sub(1)).unwrap_or(u32::MAX)
-                }
-                Blend::Exact { .. }
-                | Blend::Chamfer { .. }
-                | Blend::Sharp
-                | Blend::Organic { .. } => 0,
-            },
+            // ⭐⭐⭐ **CADA PASSO DA DOBRA TRAZ O SEU FILETE, e a lei pergunta ao verbo EFECTIVO**
+            // (2026-08-29 — o report do Enio).
+            //
+            // ⛔ **Esta linha perguntava `op.blend()`, a mistura DO GRUPO, e isso deixou de ser a
+            // única que existe na W97.** Com o verbo em cada forma e o raio de junção com ele
+            // (W98), o filete de cada passo sai de `fold_verb(parent, filho.verb)` — que é
+            // exactamente o que o [`crate::combine_trees`] lê ao construir a árvore.
+            //
+            // ⇒ com o grupo em `Sharp` e cada filho a trazer o seu `Exact`, a profundidade lia
+            // **zero**, o passo ficava em `1,0`, e o raio **atravessava** a superfície: medido
+            // `passo 1,0000 × ‖∇f‖ 1,1717 = 1,17` com duas esferas e junta `0,05`. O sintoma que o
+            // Enio viu é o que um furo dependente da direcção **é**: *«ao rotacionar, as áreas do
+            // joint mudam de aspecto»*.
+            //
+            // ⚠️ **É o verbo EFECTIVO e não um dos dois lados**: ler só `node.verb` trocaria o
+            // defeito pelo simétrico (o grupo com filete e os filhos calados voltaria a ler zero), e
+            // contar `children.len() − 1` sempre que o GRUPO arredonda castigaria a peça em que
+            // metade das juntas foi pedida viva — o caminho lento a definir o teto do rápido (§0).
+            //
+            // ⚠️ **O primeiro filho não é perguntado**: ele semeia o acumulado, e `n` filhos são
+            // `n − 1` passos. É a mesma lei do `fold_verb`, e escrevê-la aqui outra vez seria a
+            // segunda cópia — por isso a pergunta atravessa a **porta** dele.
+            NodeKind::Combine { op, children } => u32::try_from(
+                children
+                    .iter()
+                    .skip(1)
+                    .filter(|c| {
+                        let verb = doc.node(**c).and_then(|n| n.verb);
+                        inflates(ph2d_field::fold_verb(*op, verb).blend())
+                    })
+                    .count(),
+            )
+            .unwrap_or(u32::MAX),
             NodeKind::Leaf(_) => 0,
         };
         depth[i] = below + here;

@@ -405,6 +405,7 @@ fn the_report_carries_the_shape_of_every_quad() {
         measured: false,
         folded: 0,
         mirrored: 0,
+        doublets: 0,
     };
     let text = crate::sculpt3d::history::retopo_global::retopo_line(&line);
     assert!(

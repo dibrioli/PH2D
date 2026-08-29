@@ -609,13 +609,27 @@ fn the_artists_piece_through_the_button() {
         eprintln!("no GPU adapter on this machine -- nothing to assert");
         return;
     };
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
-    let piece = ph2d_mesh::import_obj(&text)
-        .unwrap_or_else(|e| panic!("{path} nao e' um OBJ deste leitor: {e:?}"))
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| panic!("{path} nao tem peca dentro"))
-        .mesh;
+    // ⭐⭐⭐ **A FIXTURA SINTÉTICA `espinhos:<n>`** — ver [`spiked_ball`]. ⛔ Ela existe porque
+    // *a fixtura só prova o que ela contém*: a peça que o artista fotografou em 28/08 é a
+    // saída partida, e a **entrada** dele não está nesta árvore. Sem uma peça com pontas
+    // finas, toda medição desta wave mediria uma bola.
+    let piece = if let Some(n) = path.strip_prefix("espinhos:") {
+        spiked_ball(
+            n.parse().unwrap_or(6),
+            std::env::var("PH2D_SPIKE_SIGMA")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.10f32),
+        )
+    } else {
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+        ph2d_mesh::import_obj(&text)
+            .unwrap_or_else(|e| panic!("{path} nao e' um OBJ deste leitor: {e:?}"))
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| panic!("{path} nao tem peca dentro"))
+            .mesh
+    };
     let detail: f32 = std::env::var("PH2D_DETAIL")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -661,6 +675,7 @@ fn the_artists_piece_through_the_button() {
             target / ph2d_quadflow::mean_edge(&work),
         );
         census("F1", &work);
+        islands("F1", &work);
     }
     // ⭐⭐⭐ **QUAL das duas portas** — o painel tem um dropdown, e o `Global` é o de
     // omissão ([`ph2d_panel_sculpt3d::state::RetopoMode`]). ⛔ `PH2D_PROBE_LOCAL=1` corre a
@@ -726,6 +741,62 @@ fn the_artists_piece_through_the_button() {
     islands("SAIDA", &out);
     relief_density("SAIDA", &out);
     holes("SAIDA", &out);
+}
+
+/// ⭐⭐⭐ **UMA BOLA COM ESPINHOS** — a fixtura que CONTÉM o fenómeno de 2026-08-29.
+///
+/// ⛔⛔ **Ela existe porque a peça do artista não está nesta árvore.** As fotos dele mostram
+/// uma bola com cinco ou seis **espinhos longos e finos**, e o remesh **amputa-os**: os três
+/// piores sítios da saída estão a `r = 1,80`, `1,73` e `1,53` (o corpo tem `r ≈ 1`), com
+/// `16` e `12` vértices irregulares cada um e arestas de `0,34` contra uma mediana de
+/// `0,031`. ⚠️ *Uma esfera lisa não contém nada disto, e era sobre esferas lisas que toda
+/// medição desta linha corria.*
+///
+/// A construção: uma `uv_sphere` fina, e cada vértice é empurrado para fora ao longo do seu
+/// raio por um envelope **gaussiano** centrado em cada direcção de espinho. ⚠️ O expoente do
+/// envelope é o que torna o espinho **fino**: `exp(−(θ/σ)²)` com `σ` pequeno dá uma agulha,
+/// que é exactamente o que a foto mostra.
+fn spiked_ball(n: usize, sigma: f32) -> ph2d_mesh::Mesh {
+    let mut mesh = ph2d_mesh::shapes::uv_sphere(96, 144, 1.0);
+    // ⚠️ **Direcções ESPALHADAS e não num eixo** — a espiral de Fibonacci evita que dois
+    // espinhos caiam na mesma fileira de vértices da esfera, o que os tornaria o mesmo
+    // espinho gordo em vez de dois finos.
+    let golden = std::f32::consts::PI * (3.0 - 5.0f32.sqrt());
+    let dirs: Vec<[f32; 3]> = (0..n.max(1))
+        .map(|i| {
+            let y = 1.0 - 2.0 * (i as f32 + 0.5) / n.max(1) as f32;
+            let r = (1.0 - y * y).max(0.0).sqrt();
+            let a = golden * i as f32;
+            [r * a.cos(), y, r * a.sin()]
+        })
+        .collect();
+    // ⭐⭐⭐ **OS NÚMEROS SÃO OS DA PEÇA DELE**, medidos no `.obj` que ele exportou: o
+    // espinho mais longo vai a `r = 1,81` de um corpo de `r ~ 1`, e o **raio local** dele cai
+    // de `0,147` (a 65 % do comprimento) para **`0,037`** (a 97 %). O F1 remalha com aresta
+    // `0,089`, que e' **2,4x** a espessura da ponta.
+    // A 1a redaccao usou `sigma = 0,22` e deu cones GORDOS: a cadeia devolvia casca fechada
+    // em todas as densidades e a fixtura **nao continha o fenomeno**.
+    let reach = 0.85f32;
+    let pos = mesh.positions_mut();
+    for p in pos.iter_mut() {
+        let len = p[0].mul_add(p[0], p[1].mul_add(p[1], p[2] * p[2])).sqrt();
+        if len < 1.0e-6 {
+            continue;
+        }
+        let u = [p[0] / len, p[1] / len, p[2] / len];
+        let mut grow = 0.0f32;
+        for d in &dirs {
+            let c = u[0].mul_add(d[0], u[1].mul_add(d[1], u[2] * d[2])).clamp(-1.0, 1.0);
+            let ang = c.acos();
+            grow = grow.max(reach * (-(ang / sigma) * (ang / sigma)).exp());
+        }
+        let k = 1.0 + grow * 1.2;
+        for i in 0..3 {
+            p[i] = u[i] * len * k;
+        }
+    }
+    mesh.rebuild();
+    mesh
 }
 
 /// ⭐⭐⭐ **AS ILHAS** — componentes ligados por aresta, e o que cada uma pesa.
@@ -951,5 +1022,45 @@ fn holes(tag: &str, mesh: &ph2d_mesh::Mesh) {
             c[1] * inv,
             c[2] * inv,
         );
+    }
+}
+
+/// ⭐⭐⭐ **SONDA — a FASE ZERO preserva a topologia que recebe?**
+///
+/// ⛔⛔ **Reproduzido com a peça do artista em 2026-08-29:** ela entra `χ = 2`, fechada,
+/// zero não-manifold — e a `remesh_isotropic` devolve **`χ = 6` com uma aresta não-manifold**.
+/// A jusante o `ph2d-gridmap` entra em `index out of bounds` (`assembly.rs:193`), que é o
+/// estouro que este repo tinha **sem endereço** desde 26/08.
+///
+/// ⚠️ **Ela é PURA — não precisa de GPU**, e por isso pode virar gate assim que a fixtura
+/// sintética reproduzir o fenómeno.
+///
+/// ```text
+/// \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   does_phase_zero_keep_the_topology -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- a fase zero preserva a topologia?"]
+fn does_phase_zero_keep_the_topology() {
+    let mut cases: Vec<(String, ph2d_mesh::Mesh)> = Vec::new();
+    for sigma in [0.30f32, 0.20, 0.14, 0.10, 0.07, 0.05] {
+        cases.push((format!("espinhos sigma={sigma:.2}"), spiked_ball(6, sigma)));
+    }
+    if let Ok(path) = std::env::var("PH2D_PIECE")
+        && let Ok(text) = std::fs::read_to_string(&path)
+        && let Ok(pieces) = ph2d_mesh::import_obj(&text)
+        && let Some(p) = pieces.into_iter().next()
+    {
+        cases.push((format!("ARTISTA {path}"), p.mesh));
+    }
+    for (name, piece) in cases {
+        eprintln!("── {name}");
+        census("  entrada", &piece);
+        let mut work = piece.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        census("  fase zero", &work);
+        islands("  fase zero", &work);
     }
 }

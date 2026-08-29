@@ -74,10 +74,19 @@ impl Sculpt3dScene {
 
         // ── F1. A fase zero. ⛔ **Não a salte, e não meça sem ela:** com a
         // triangulação crua a mesma cadeia dá o dobro do enviesamento.
-        let reference = self.mesh().clone();
-        let mut work = reference.clone();
-        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
-        work.triangulate();
+        //
+        // ⭐⭐⭐ **MAS ANTES: reparar as MORDIDAS da entrada** — ver
+        // [`ph2d_quadextract::repair_doublets`]. ⛔⛔ A saída que o artista exportou em
+        // 2026-08-29 tinha `19` doublets, todos em pontas finas, e ao voltar a entrar ela faz
+        // a fase zero devolver `χ = 6` com aresta não-manifold — donde o estouro do
+        // `ph2d-gridmap` (`assembly.rs:193`). *Fechar só o lado da saída deixaria toda peça
+        // já gravada a partir este botão para sempre.*
+        //
+        // ⚠️ **A reparação é EXACTA e não move um vértice:** funde as duas faces que prendem
+        // o vértice numa só (`V−1`, `E−2`, `F−1`, `χ` invariante).
+        let mut reference = self.mesh().clone();
+        let bitten = ph2d_quadextract::repair_doublets(&mut reference).unwrap_or(0);
+        let reference = reference;
 
         // ⭐ **O alvo sai da malha que o artista trouxe** — a mesma lei do irmão, e a
         // alternativa (derivá-lo da remalhada) foi medida e mata o slider.
@@ -89,6 +98,16 @@ impl Sculpt3dScene {
         // `0,50`: `19 786 -> 1 747 -> 520 -> 281` quads em três apertos, `−98,6 %`.
         // *Foi isto que ele fotografou e chamou de «pontas com baixa resolução».*
         let target = ph2d_quadflow::edge_for_detail_by_count(&reference, detail);
+
+        // ⭐⭐⭐ **A FASE ZERO SEGUE O ALVO** — ver [`f1_follows_target`].
+        let work = if f1_follows_target() {
+            ph2d_quadchain::phase_zero(&reference, target)
+        } else {
+            let mut w = reference.clone();
+            ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
+            w.triangulate();
+            w
+        };
 
         // ── F2 + F3 + G1 + G2.
         let mut dual = ph2d_crossfield::Dual::build(&work);
@@ -292,15 +311,36 @@ impl Sculpt3dScene {
         //
         // ⚠️ `PH2D_RETOPO_SERIAL=1` volta a correr as duas em série — é o A/B, e é o que
         // permite dizer quanto o paralelo vale nesta máquina em vez de o supor.
+        // ⭐⭐⭐ **UMA TENTATIVA QUE ESTOURA É UMA TENTATIVA QUE PERDE, e não o fim da peça.**
+        //
+        // ⛔⛔ **Reproduzido em 2026-08-29 com a peça do artista** (a bola de espinhos): a
+        // fase zero devolve uma malha de trabalho **não-manifold** (`χ = 6`, uma aresta com
+        // três faces) porque a remalha isotrópica *belisca* um espinho mais fino que a aresta
+        // alvo — e a jusante o `ph2d-gridmap` entra em `index out of bounds`
+        // (`assembly.rs:193`). *É o mesmo estouro que este repo tinha SEM ENDEREÇO desde
+        // 26/08.*
+        //
+        // ⚠️ **A cura de fundo é a fase zero preservar a topologia que recebe**, e ela é
+        // outra wave. O que esta porta tem de garantir é o mínimo do produto: **o artista
+        // não perde a escultura porque a retopologia falhou.** A `ph2d-quadchain` já tinha
+        // esta rede (`Verdict::Panicked`) e este caminho não — *duas portas para o mesmo
+        // botão, e só uma sabia não cair.*
+        //
+        // ⚠️ **`AssertUnwindSafe` é honesto aqui:** a `attempt` não escreve em nada partilhado
+        // — ela lê `work`/`reference`/`dual` e devolve uma malha nova.
+        let guarded = |w: f32, features: bool| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| attempt(w, features)))
+                .unwrap_or(Err(RemeshRefusal::TooCoarseToResolve))
+        };
         let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
             (
-                attempt(ph2d_crossfield::ALIGN_WEIGHT, false),
-                attempt(0.0, false),
+                guarded(ph2d_crossfield::ALIGN_WEIGHT, false),
+                guarded(0.0, false),
             )
         } else {
             rayon::join(
-                || attempt(ph2d_crossfield::ALIGN_WEIGHT, false),
-                || attempt(0.0, false),
+                || guarded(ph2d_crossfield::ALIGN_WEIGHT, false),
+                || guarded(0.0, false),
             )
         };
         let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
@@ -338,7 +378,7 @@ impl Sculpt3dScene {
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
         let (relief_won, (out, e, _shift_frac_max, shape)) = if open_edges(&out) > 0
-            && let Ok(f) = attempt(ph2d_crossfield::ALIGN_WEIGHT, true)
+            && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true)
             && worse(
                 &out,
                 shape.skew_over_60,
@@ -371,6 +411,9 @@ impl Sculpt3dScene {
             // enrola sobre si próprio.
             folded: e.folded_faces,
             mirrored: e.mirrored_cells,
+            // ⚠️ **A soma das DUAS metades**: as que a extracção não emitiu e as que a
+            // reparação da entrada dissolveu. *O artista vê uma mordida, não duas fases.*
+            doublets: e.doublets + bitten,
             // ⭐⭐⭐ **`aligned` diz QUAL CAMPO produziu esta malha** — é o sentido que o
             // `retopo_line` lhe dá. ⛔ Até 2026-08-26 este caminho punha aqui a
             // **exactidão do arredondamento** (`shift_frac_max == 0.0`), que é outra
@@ -392,6 +435,34 @@ impl Sculpt3dScene {
 #[must_use]
 pub(in crate::sculpt3d) fn extract_requested() -> bool {
     extract_from(std::env::var("PH2D_RETOPO_EXTRACT").ok().as_deref())
+}
+
+/// ⭐⭐⭐ **A FASE ZERO REMALHA PARA O ALVO, ou para o `ALPHA` fixo?**
+///
+/// ⛔⛔ **O report de 2026-08-29 (duas fotos, «o remesh amputou pontas»)**: a peça do artista
+/// tem espinhos cujo **raio local** cai para `0,037`, e o F1 remalha com
+/// `ALPHA × diagonal = 0,089` — **2,4× a espessura da ponta**. *A remalha isotrópica destrói
+/// o espinho antes de a cadeia começar, e tudo a jusante trabalha sobre uma peça já
+/// amputada.*
+///
+/// ⚠️ **A `ph2d-quadchain` levou esta correcção em 2026-08-25 e este caminho não** — o doc
+/// do `phase_zero` diz-o com todas as letras: *«um parâmetro que metade da função ignora só
+/// mente para o SEGUNDO chamador»*, e o segundo chamador é este botão.
+///
+/// # ⛔⛔⛔ E A HIPÓTESE FOI REFUTADA PELA MEDIÇÃO — por isso ela nasce DESLIGADA
+///
+/// Medido 2026-08-29 na fixtura de espinhos (`espinhos:6`), o mesmo alvo dos dois lados:
+///
+/// | | `Detail 0,50` | `Detail 0,85` |
+/// |---|---|---|
+/// | ⭐ `ALPHA` fixo (o que shipa) | `χ = 2` · `0` bordo · envies. `4,6°` · `21` dobras | `χ = 2` · `0` bordo · `4,0°` · `29` dobras |
+/// | ⛔ segue o alvo | `χ = 1` · **`4` bordo** · `10,1°` · ⛔ **`123` dobras** | (não fechou a tempo) |
+///
+/// ⭐ **É a MESMA direcção que o varrimento de densidade da `ph2d-quadchain` deu** (§8-ter):
+/// uma malha de trabalho mais fina não é mais informação — é onde a topologia se perde.
+/// *A remalha grosseira é o filtro que faz o campo cruzado ver a forma e não o ruído.*
+fn f1_follows_target() -> bool {
+    std::env::var("PH2D_F1_TARGET").as_deref() == Ok("1")
 }
 
 /// ⭐⭐ **AS LINHAS DE FEIÇÃO entram no campo?** — obra B, e ⛔ **`false` por omissão**.

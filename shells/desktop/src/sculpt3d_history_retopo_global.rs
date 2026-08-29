@@ -216,6 +216,7 @@ impl Sculpt3dScene {
             folded: r.folded,
             // ⚠️ **`0` é um FACTO**: o F5 monta patch a patch, não extrai isolinhas.
             mirrored: 0,
+            doublets: 0,
             aligned,
             // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
             // tentativa alinhada e só cai para a lisa se ela **RECUSAR** — nunca por
@@ -390,7 +391,7 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
     format!(
         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
          {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
-         em {:.0} ms{}{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
+         em {:.0} ms{}{}{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
         r.verts,
         r.quads,
         r.non_quads,
@@ -441,6 +442,13 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
             String::new()
         } else {
             format!(" -- {} almofada(s) descartada(s)", r.mirrored)
+        },
+        // ⭐⭐⭐ **AS MORDIDAS** — ver `QuadRemeshReport::doublets`. Um vértice preso entre
+        // duas faces e' o que o artista fotografou como ponta amputada, e ele realimenta-se.
+        if r.doublets == 0 {
+            String::new()
+        } else {
+            format!(" -- {} mordida(s) dissolvida(s)", r.doublets)
         },
         // ⭐⭐ **QUAL CAMPO correu.** A cadeia global tenta o campo
         // ALINHADO ao relevo e cai para o só-suavidade quando o

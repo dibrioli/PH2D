@@ -351,6 +351,73 @@ com espec própria.
 
 ⇒ **O `Follow Curvature` continua a nascer em `0` e o caminho de omissão é byte-idêntico.**
 
+## §8-quinquies — ⛔⛔⛔ «O REMESH AMPUTOU PONTAS» (Enio, 29/08, 6 fotos) — e é um CICLO
+
+O report mais claro da série: a foto do **antes** mostra uma bola com espinhos longos e
+finos; a do **depois** mostra dois deles **rasgados e ocos**. E o diagnóstico dele:
+*«o algoritmo não entende que em áreas mais finas é necessário mais faces»*.
+
+### ⭐⭐⭐ A REPRODUÇÃO, e ela dá o endereço de um estouro que o repo perdeu
+
+Correndo o **botão** sobre o `.obj` que ele exportou:
+
+| fase | `χ` | bordo | não-manifold | componentes |
+|---|---|---|---|---|
+| entrada dele | `2` | `0` | `0` | `1` |
+| ⛔ **depois da fase zero** | **`6`** | `0` | **`1`** | `1` |
+
+⛔⛔ E a jusante: `panicked at crates/ph2d-gridmap/src/assembly.rs:193:34: index out of
+bounds: the len is 28 but the index is 33`. ⭐ **É o estouro que o `CLAUDE.md` §5 diz estar
+«SEM ENDEREÇO desde 26/08»** — a `line/3DModeling` procurava-o em `solve.rs:336`, que já não
+existe. *Ele mora no `assembly.rs`, e o gatilho é uma malha de trabalho não-manifold.*
+
+### ⭐⭐⭐ A causa é uma MORDIDA que se REALIMENTA
+
+⚠️ **A peça dele já entra danificada, e o dano é nosso.** A saída que ele exportou tem
+**`19` vértices de valência `2`**, todos em pontas finas, e **os `19` são doublets
+clássicos**: um vértice preso entre **duas** faces que partilham três cantos.
+
+⛔ **O ciclo:** a extracção emite doublets nas pontas → o artista exporta / continua a
+esculpir → carrega outra vez → a **fase zero**, que só sabe remalhar superfície, não sabe o
+que fazer com um vértice de duas arestas e **rasga a topologia** (`χ = 2 → 6`) → o solver
+estoura ou a ponta sai amputada. *Cada volta piora a anterior.*
+
+⚠️ **E as fixturas sintéticas NÃO reproduzem.** Varreu-se uma bola de espinhos com
+`σ = 0,30 … 0,05` (raio de ponta a descer até bem abaixo da aresta alvo) e **todas** saem
+`χ = 2`, zero não-manifold. ⇒ *não é a espessura sozinha que parte a fase zero: é a
+espessura MAIS a mordida que já lá estava.* A fixtura ficou na sonda
+(`spiked_ball`), e a lição é que **só a peça do artista continha o fenómeno**.
+
+### As três curas, e o que cada uma vale medido
+
+| | |
+|---|---|
+| ⭐ a extracção **não emite** doublets (`dissolve_doublets`, `CellStats::doublets`) | fecha o lado da produção |
+| ⭐ o botão **repara** os que a peça já traz (`ph2d_quadextract::repair_doublets`) | fecha o lado do consumo — ⛔ *sem ele toda peça já gravada partiria o botão para sempre* |
+| ⭐⭐ uma tentativa que **estoura** perde, em vez de derrubar tudo (`catch_unwind`) | o artista **não perde a escultura** porque a retopologia falhou |
+
+⭐ **A dissolução é exacta e não move um vértice:** as duas faces partilham três cantos, logo
+fundem-se numa — `V−1`, `E−2`, `F−1`, **`χ` invariante**. ⚠️ A **ordem** sai do percurso da
+fronteira (`a → q → b → p`), e trocá-la daria um quad que se auto-intersecta — há gate, com
+mutação. ⛔ E uma **almofada** (`p == q`) não é um doublet: ela descarta-se, noutro sítio.
+
+Medido na peça dele, antes e depois das três:
+
+| | `Detail 0,50` | `Detail 0,90` |
+|---|---|---|
+| ⛔ antes | **estoura**; `16` bordo; `non_quads` a estourar o `usize` | **estoura**; `16` bordo |
+| ⭐ depois | sem estouro · **`4`** bordo · `0` não-quads | sem estouro · **`8`** bordo · `0` não-quads |
+
+⚠️ **E fica ABERTO o que ele nomeou:** os espinhos ainda rasgam (`4`–`8` arestas de bordo, no
+espinho a `r ≈ 1,15`). A cura de fundo é a **fase zero preservar a topologia que recebe** —
+uma remalha isotrópica que não belisca uma agulha mais fina que a sua aresta alvo — e isso é
+uma wave em `ph2d-remesh-iso`, com esta reprodução como gate de partida.
+
+⚠️ **Um contador que descreve a fase errada:** a 1.ª versão da dissolução deixou o `st.quads`
+a contar as células **antes** da fusão, e a jusante `faces − quads` deu `usize` negativo — o
+log imprimiu `18446744073709551613`. *Corrigido na mesma wave, e nomeado aqui porque a
+subtracção sem sinal é o modo de falha que não avisa.*
+
 ## §9 — Portão de fecho
 
 | | |
@@ -386,3 +453,20 @@ com espec própria.
 | `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |
 | **prova de mutação** — a chave do ciclo deixa de olhar o sentido inverso | ⭐ MORREU |
 | **prova de mutação** — a renormalização da contagem sai | ⭐ MORREU |
+
+⭐ **E a re-corrida depois do §8-quinquies** (a mordida, a reparação e a rede):
+
+| | |
+|---|---|
+| `cargo test -p ph2d-quadextract -p ph2d-quadflow -p ph2d-quadchain` | ⭐ verde (`0` falhas) |
+| `cargo test -p ph2d-host-desktop --bins retopo` | ⭐ verde (`7`) |
+| `cargo clippy` nas cinco crates `--all-targets` | ⭐ limpo (`0`) |
+| `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (56 entradas) |
+| **prova de mutação** — a ordem da fusão troca `p` com `q` | ⭐ MORREU |
+| **prova de mutação** — a recusa da almofada sai | ⭐ MORREU |
+| **prova de mutação** — a compactação dos órfãos sai | ⭐ MORREU |
+| **fim-a-fim** — a peça do artista | ⭐ sem estouro; bordo `16 → 4` (`d 0,50`) e `16 → 8` (`d 0,90`) |
+
+⚠️ **Dois gates da própria crate reprovaram primeiro, e o motivo é a lição:** `χ` saiu `14`
+contra `2` e `13` contra `1` — **doze órfãos, doze unidades**. *A superfície estava certa e o
+ARQUIVO não*, porque `V − E + F` conta todos os vértices e o vértice preso ficava lá.

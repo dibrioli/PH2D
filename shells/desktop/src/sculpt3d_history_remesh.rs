@@ -118,6 +118,10 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// coluna desta linha*: `χ` conta os dois lados de uma almofada e dá `2`, o bordo é
     /// zero, o não-manifold é zero.
     pub mirrored: usize,
+    /// ⭐⭐⭐ **DOUBLETS dissolvidos** — ver [`ph2d_quadextract::ExtractReport::doublets`]. Um
+    /// vértice preso entre duas faces é a **mordida** que o artista fotografou nas pontas, e
+    /// ela realimenta-se: a saída com doublets, ao voltar a entrar, parte a fase zero.
+    pub doublets: usize,
     /// ⭐⭐ **O campo desta corrida obedeceu ao RELEVO?**
     ///
     /// ⛔ **Ele existe porque a cadeia global tem uma REDE**, e uma rede silenciosa
@@ -269,6 +273,7 @@ impl Sculpt3dScene {
             // ⚠️ **`0` é um FACTO aqui**: este motor não extrai de mapa nenhum, então não há
             // dobra de mapa que possa gerar uma almofada.
             mirrored: 0,
+            doublets: 0,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

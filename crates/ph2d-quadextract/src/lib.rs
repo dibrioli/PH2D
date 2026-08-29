@@ -56,6 +56,7 @@ pub mod exact;
 pub mod mapa;
 
 mod cells;
+pub use cells::repair_doublets;
 mod fan;
 mod ingest;
 mod nodes;
@@ -314,6 +315,10 @@ pub struct ExtractReport {
     /// duas vezes com orientações opostas, e o par sai como uma **almofada solta**: dois
     /// quads coincidentes, casco fechado, `χ = 2`, invisível a toda outra régua.
     pub mirrored_cells: usize,
+    /// ⭐⭐⭐ **Doublets dissolvidos** — ver [`crate::cells::CellStats::doublets`]. Um vértice
+    /// interior com duas arestas e duas faces: a mordida das pontas finas, e ela
+    /// **realimenta-se** quando a saída volta a entrar na cadeia.
+    pub doublets: usize,
 }
 
 /// ⭐⭐⭐ **A EXTRACÇÃO.**
@@ -420,6 +425,7 @@ pub fn extract(
         degenerate_cells: cs.degenerate_cells,
         triangles: cs.triangles,
         mirrored_cells: cs.mirrored_cells,
+        doublets: cs.doublets,
     };
     Ok((mesh, report))
 }

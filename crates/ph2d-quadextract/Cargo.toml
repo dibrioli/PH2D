@@ -34,6 +34,7 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-quadfill = { path = "../ph2d-quadfill" }
 # A descompressao dos fixtures (`.mapa.gz`). ⚠️ `miniz_oxide` e nao `flate2`: ele ja'
 # esta' na arvore como dependencia DIRECTA de duas crates da casa.
+# ⛔ TETO: ver `ph2d-aseprite/Cargo.toml` (duas cópias, benignas).
 miniz_oxide = "0.8"
 # ⚠️ A CADEIA INTEIRA DA CASA, so' para o instrumento `chain_info` e para o gate que
 # mede a forma com a FASE ZERO honrada. ⛔ Nenhuma delas e' dependencia do produto: a

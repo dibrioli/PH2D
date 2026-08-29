@@ -12,4 +12,8 @@ authors.workspace = true
 [dependencies]
 ph2d-host = { path = "../ph2d-host" }
 wgpu = "28"
-pollster = "0.4"
+# ⛔ TETO — o `rfd 0.17.2` (diálogos de ficheiro, shells/desktop) pede `^0.4`. O topo
+# é 1.0.1 e é INALCANÇÁVEL enquanto o rfd não passar: duas cópias de pollster dariam
+# dois `block_on` distintos a competir pelo mesmo executor. Reconfira com
+# `bash scripts/stack-audit.sh --tetos` (medido 2026-08-29).
+pollster = "0.4.0"

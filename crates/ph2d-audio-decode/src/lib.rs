@@ -11,13 +11,12 @@ mod reader;
 pub use reader::Reader;
 
 use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};
+use symphonia::core::codecs::audio::AudioDecoderOptions;
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::FormatOptions;
+use symphonia::core::formats::probe::Hint;
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 /// Errors from decoding an audio buffer.
 #[derive(Debug, thiserror::Error)]
@@ -42,30 +41,43 @@ pub enum DecodeError {
 pub fn decode(bytes: &[u8]) -> Result<SampleData, DecodeError> {
     let cursor = std::io::Cursor::new(bytes.to_vec());
     let mss = MediaSourceStream::new(Box::new(cursor), Default::default());
-    let probed = symphonia::default::get_probe().format(
+    // ⚠️ symphonia 0.6: `Probe::format` -> `Probe::probe`, devolvendo o `FormatReader` directo.
+    let mut format = symphonia::default::get_probe().probe(
         &Hint::new(),
         mss,
-        &FormatOptions::default(),
-        &MetadataOptions::default(),
+        FormatOptions::default(),
+        MetadataOptions::default(),
     )?;
-    let mut format = probed.format;
+    // ⚠️ 0.6: `codec_params` e' `Option<CodecParameters>` e o enum distingue audio de video/legenda.
     let track = format
         .tracks()
         .iter()
-        .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
+        .find(|t| t.codec_params.as_ref().is_some_and(|p| p.is_audio()))
         .ok_or(DecodeError::NoTrack)?;
     let track_id = track.id;
-    let mut decoder =
-        symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
+    let audio_params = track
+        .codec_params
+        .as_ref()
+        .and_then(|p| p.audio())
+        .ok_or(DecodeError::NoTrack)?;
+    let mut rate: Option<u32> = audio_params.sample_rate;
+    let mut channels: Option<usize> = audio_params
+        .channels
+        .as_ref()
+        .map(symphonia::core::audio::Channels::count);
+    let mut decoder = symphonia::default::get_codecs()
+        .make_audio_decoder(audio_params, &AudioDecoderOptions::default())?;
 
-    let mut rate: Option<u32> = track.codec_params.sample_rate;
-    let mut channels: Option<usize> = track.codec_params.channels.map(|c| c.count());
     let mut interleaved: Vec<f32> = Vec::new();
-    let mut buf: Option<SampleBuffer<f32>> = None;
+    // ⚠️ O `SampleBuffer<f32>` sumiu na 0.6; o `copy_to_vec_interleaved` reenche este Vec
+    // (clear + extend), então a capacidade sobrevive entre pacotes.
+    let mut buf: Vec<f32> = Vec::new();
 
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            // ⚠️ 0.6: fim do media e' `Ok(None)` explicito (era `IoError(UnexpectedEof)`).
+            Ok(None) => break,
+            Ok(Some(p)) => p,
             // Clean end-of-stream (Symphonia signals EOF as an IO error).
             Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 break;
@@ -73,19 +85,18 @@ pub fn decode(bytes: &[u8]) -> Result<SampleData, DecodeError> {
             Err(SymphoniaError::ResetRequired) => break,
             Err(e) => return Err(e.into()),
         };
-        if packet.track_id() != track_id {
+        if packet.track_id != track_id {
             continue;
         }
         match decoder.decode(&packet) {
             Ok(decoded) => {
-                let spec = *decoded.spec();
-                rate.get_or_insert(spec.rate);
-                channels.get_or_insert(spec.channels.count());
-                let sample_buf = buf.get_or_insert_with(|| {
-                    SampleBuffer::<f32>::new(decoded.capacity() as u64, spec)
-                });
-                sample_buf.copy_interleaved_ref(decoded);
-                interleaved.extend_from_slice(sample_buf.samples());
+                // ⚠️ 0.6: o `AudioSpec` deixou de ser `Copy` (ele carrega o mapa de canais).
+                // Lê-se por referência — nada aqui precisa de posse.
+                let spec = decoded.spec();
+                rate.get_or_insert(spec.rate());
+                channels.get_or_insert(spec.channels().count());
+                decoded.copy_to_vec_interleaved(&mut buf);
+                interleaved.extend_from_slice(&buf);
             }
             // A single corrupt packet shouldn't abort the whole decode.
             Err(SymphoniaError::DecodeError(_)) => continue,

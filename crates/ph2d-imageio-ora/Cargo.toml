@@ -20,10 +20,10 @@ ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 # Pure-Rust ZIP read/write. `default-features = false` keeps wasm
 # clean (no `time`, no `deflate64`).
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "8", default-features = false, features = ["deflate"] }
 # Pure-Rust read-only XML parser; we hand-write the simple ORA XML
 # on export to avoid pulling a second XML dep.
-roxmltree = { version = "0.20", default-features = false }
+roxmltree = { version = "0.21", default-features = false }
 # PNG codec for the per-layer images embedded in the ZIP.
 image = { version = "0.25", default-features = false, features = ["png"] }
 

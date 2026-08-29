@@ -24,7 +24,8 @@ wgpu = { version = "28", features = ["wgsl"] }
 bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
-pollster = "0.4"
+# ⛔ TETO: ver `ph2d-gpu/Cargo.toml` (segurado pelo rfd).
+pollster = "0.4.0"
 # ⚠️ O gate de paridade precisa da função REAL do Painter como ORÁCULO — uma reescrita local seria
 # a segunda resposta que esta crate existe para não ter. `dev`, não `dependencies`: o `src/` não a
 # toca ⇒ machete-safe, o padrão que a `ph2d-flip-render` já usa pelo mesmo motivo.

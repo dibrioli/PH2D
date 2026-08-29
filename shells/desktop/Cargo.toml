@@ -70,6 +70,7 @@ ph2d-aseprite = { path = "../../crates/ph2d-aseprite" }
 # verdade pela porta do produto, para não precisar do Aseprite instalado. ⚠️ Mesma crate (e mesma
 # major) que o leitor usa: duas bibliotecas de zlib na árvore seriam duas respostas a *"o que é um
 # fluxo comprimido"*.
+# ⛔ TETO: ver `ph2d-aseprite/Cargo.toml` (duas cópias, benignas).
 miniz_oxide = "0.8"
 # Wave 11 color-space migration (ADR-0042 §6 #2): typed color wrappers
 # (SrgbRgba) at the IO boundary. The shell casts between the existing
@@ -517,7 +518,9 @@ ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
 ph2d-node-motion-output = { path = "../../crates/ph2d-node-motion-output" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-core-graphics = "0.23"
+# ⛔ TETO — o `winit 0.30.13` pede `^0.23.1`. O topo é 0.25.0. ⚠️ Este teto CAI
+# sozinho quando o `winit 0.31` sair de beta; reconfira então.
+core-graphics = "0.23.2"
 
 [package.metadata.cargo-machete]
 # `bevy_ecs` is reached only through `#[derive(Component)]` expansion,

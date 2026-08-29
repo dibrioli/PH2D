@@ -81,4 +81,4 @@ ph2d-editor = { path = "../ph2d-editor" }
 # Wave 2 PR 11.5 design-sync test reads `docs/design/tools/*.toml`
 # and compares each entry field-by-field against the matching
 # registered `ToolManifest`. Dev-only — no runtime dep on serde.
-toml = "0.9"
+toml = "1"

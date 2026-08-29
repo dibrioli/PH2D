@@ -22,4 +22,4 @@ authors.workspace = true
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
-jxl-oxide = { version = "0.10", default-features = false }
+jxl-oxide = { version = "0.12", default-features = false }

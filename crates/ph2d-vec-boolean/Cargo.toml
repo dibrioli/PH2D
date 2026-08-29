@@ -16,4 +16,29 @@ authors.workspace = true
 # do wrapper provado `ph2d-vector-kurbo` (lift, não herança de arquitetura).
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 kurbo = "0.13"
+# ⛔ TETO POR RECUSA MEDIDA — fica em 0.3. Medido 2026-08-29 (`docs/Atualizar Stack/`, F5).
+#
+# O `linesweeper 0.4` (2026-06-14) mudou DUAS convenções ao mesmo tempo, e ele próprio se
+# declara *early beta*:
+#   1. o modo de saída "aproximado" passou a ser o PADRÃO — as garantias fortes de
+#      ordenação/aninhamento que a 0.3 dava ficaram atrás de `Topology::contours_correct`;
+#   2. «the winding direction conventions have changed; output curves have been reversed».
+#
+# Subir parte o POWER STROKE: seis gates caem de uma vez, todos a contar formas —
+# `the_ink_is_one_connected_piece_with_no_loops` esperava `1` e recebia `173`,
+# `the_ink_is_thicker_where_the_profile_says` recebia `128` (= `RIBBON_SAMPLES`).
+# O produto sairia como centenas de peças soltas em vez de uma fita.
+#
+# ⚠️ O QUE JÁ FOI MEDIDO, para a próxima tentativa não repetir:
+#   · usar `Topology::contours_correct` em vez de `binary_op` **não muda nada** — os números
+#     saem idênticos (60/32/173/128/128). Não é o aninhamento aproximado.
+#   · a porta (`engine::binary_grouped`) está CORRECTA para os casos simples: 2 quadrados
+#     sobrepostos dão 1 grupo, e a área com sinal sai igual à da entrada (orientação preservada).
+#   · 3 quads que partilham a aresta INTEIRA fundem em 1 grupo; 3 sobrepostos também.
+#   ⇒ o motor funde. O defeito está na interacção entre a fita REAL (perfil variável, caminho
+#     curvo, `Closing::AsDrawn`) e as convenções novas — e é aí que a próxima janela deve
+#     instrumentar, não no `engine.rs`.
+#
+# ⛔ Isto NÃO é armengo: é recusa MEDIDA com mecanismo. O armengo seria baixar as barras dos
+# seis gates ou shipar a fita partida. Reabrir é uma tarefa PRÓPRIA, com gates próprios.
 linesweeper = "0.3"

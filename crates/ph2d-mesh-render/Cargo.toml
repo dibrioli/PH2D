@@ -63,7 +63,8 @@ half = "2"
 
 [dev-dependencies]
 # Os gates de GPU sao headless e bloqueiam no request_adapter/map_async.
-pollster = "0.4"
+# ⛔ TETO: ver `ph2d-gpu/Cargo.toml` (segurado pelo rfd).
+pollster = "0.4.0"
 # ⚠️ DEV-dependency, nunca `[dependencies]`: o gate do upload incremental dirige
 # um traco REAL para produzir a lista `last_moved()` que a shell vai passar --
 # um deformador escrito a mao no teste seria uma segunda resposta a "que

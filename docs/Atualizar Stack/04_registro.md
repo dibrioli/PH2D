@@ -65,7 +65,7 @@ parede, medido pelo próprio shell.
 | **C** — GPU e texto | 22 | 0 | por fazer | | |
 | **D** — bevy_ecs | 14 | 0 | por fazer | | |
 | **E** — rapier2d | 14 | 0 | por fazer | | |
-| **F** — a cauda | 19 | 0 | por fazer | | |
+| **F** — a cauda | 19 | **18** | 🟡 F5 devolvida | LLM | 2026-08-29 |
 | **G** — fecho | 6 | 0 | por fazer | | |
 
 ### Bloco T, tarefa a tarefa
@@ -184,6 +184,33 @@ custou **~1 GB** (26 % → 28 %).
 
 ---
 
+### Bloco F — 18 de 19 fechadas em 2026-08-29 (a F5 volta como tarefa própria)
+
+**Resultado:** `20 041 / 20 041`, clippy verde, `fmt` limpo.
+
+**Nove subidas limpas, sem tocar numa linha de código:** `roxmltree` 0.20→0.21 · `jxl-oxide`
+0.10→0.12 · **`zip` 2→8 (seis majors)** · `taffy` 0.12→0.14 · `ctt` 0.4→0.5 · `criterion` 0.7→0.8 ·
+`toml` 0.9→1.1 · `wasmtime` 47→48.
+
+⭐ **`symphonia` 0.5 → 0.6 foi REDESENHO, não renome** — `SampleBuffer`, `DecoderOptions` e
+`CODEC_TYPE_NULL` **deixaram de existir**. Migrado lendo o fonte real da 0.6 (`SampleBuffer` →
+`copy_to_vec_interleaved` num `Vec` nosso · `codecs::audio::AudioDecoderOptions` ·
+`make_audio_decoder` · `Probe::format`→`probe` devolvendo o leitor directo · `packet.track_id`
+virou campo · `AudioSpec` deixou de ser `Copy`). Verificado a jusante: `audio-decode` 2,
+`audio-stream` 4, `audio-encode` 28, `audio-edit` 235 — todos verdes.
+⭐⭐ **Duas mudanças MELHORARAM o nosso código:** o fim de ficheiro deixou de ser um
+`IoError(UnexpectedEof)` disfarçado e passou a ser `Ok(None)` explícito (o ramo antigo fica como
+rede, para um ficheiro cortado a meio); e a escolha de faixa passou de *«o codec não é NULO»* para
+*«os parâmetros existem **e** são de áudio»* — mais estrito, de graça, porque o enum novo distingue
+áudio de vídeo e legenda.
+
+**Nove tectos documentados no sítio onde alguém os vai querer subir** (`pollster` ×4,
+`miniz_oxide` ×3, `core-graphics`, `ndarray`), cada um com o dono, o motivo e o gatilho de
+reabertura. ⚠️ O `ndarray` está marcado pelo que é: **dívida NOSSA** — quem o prende é o
+`deep_filter` que nós vendorizámos, e o `stack-audit.sh` nem o vê (não varre `vendor/`).
+
+---
+
 ## §3 — As decisões que este plano exige explicitamente
 
 Cada uma **tem** de ser respondida — deixar acontecer por omissão é o defeito.
@@ -238,6 +265,7 @@ As linhas ficaram num `main` anterior e o `target/` de cada uma está frio.
 |---|---|---|---|
 | **wgpu 30** | `vello 0.10` pede `^29.0.3`; forçar dá duas cópias e o vello recusa o nosso `Device` | 2026-08-29 | `01_inventario.md` §3 |
 | **rapier «migrou para glam»** | nenhuma versão **publicada** faz; é o `master` não lançado | 2026-08-29 | `01_inventario.md` §7 |
+| **`linesweeper` 0.4** | parte o POWER STROKE: 6 gates esperavam `1` forma e recebiam `32`/`60`/`128`/`173` (o `128` = `RIBBON_SAMPLES`). A 0.4 mudou **duas** convenções de uma vez — saída «aproximada» por omissão e **direção invertida** — e declara-se *early beta* | 2026-08-29 | `crates/ph2d-vec-boolean/Cargo.toml` (a nota traz as **3 hipóteses já eliminadas**) |
 | | | | |
 
 ## §7 — Diário

@@ -38,6 +38,11 @@ ph2d-audio-edit = { path = "../ph2d-audio-edit" }
 deep_filter = { path = "vendor/deep_filter", features = ["tract", "default-model"] }
 # The tensor type `DfTract::process` speaks (`ArrayView2<f32>`). Matched to the
 # `^0.15` that `libDF` uses, so the `Array2` we build is the one it accepts.
+# ⛔ TETO, e este é DÍVIDA NOSSA, não imposição de terceiros: o `deep_filter` que
+# VENDORIZAMOS em `vendor/` pede `^0.15` (ADR-0123). O topo é 0.17.2. Subir só o
+# nosso lado dá duas cópias E parte a fronteira por onde passamos arrays para ele.
+# ⚠️ O `scripts/stack-audit.sh` NÃO vê este teto — ele não varre `vendor/`, que está
+# fora do workspace de propósito. Por isso está escrito aqui.
 ndarray = "0.15"
 
 [package.metadata.cargo-machete]

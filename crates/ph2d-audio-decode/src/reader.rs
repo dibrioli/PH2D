@@ -18,29 +18,38 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::{CODEC_TYPE_NULL, Decoder, DecoderOptions};
+use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::errors::Error as SymphoniaError;
+use symphonia::core::formats::probe::Hint;
 use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 use crate::DecodeError;
 
 /// Everything `build` has to hand back to re-arm a reader: demuxer, decoder, track, rate, channels.
-type Armed = (Box<dyn FormatReader>, Box<dyn Decoder>, u32, u32, usize);
+type Armed = (
+    Box<dyn FormatReader>,
+    Box<dyn AudioDecoder>,
+    u32,
+    u32,
+    usize,
+);
 
 /// A file being decoded a packet at a time. Never holds more than one packet of audio.
 pub struct Reader {
     path: PathBuf,
     format: Box<dyn FormatReader>,
-    decoder: Box<dyn Decoder>,
+    decoder: Box<dyn AudioDecoder>,
     track_id: u32,
     rate: u32,
     channels: usize,
     /// Reused across packets — allocated on the first one and never again.
-    buf: Option<SampleBuffer<f32>>,
+    ///
+    /// ⚠️ Era um `SampleBuffer<f32>` até ao symphonia 0.6, que **removeu** esse tipo. O substituto
+    /// é um `Vec` nosso que a `copy_to_vec_interleaved` reenche: ela faz `clear()` + `extend`, então
+    /// a capacidade sobrevive entre pacotes e a promessa de "aloca uma vez" continua a valer.
+    buf: Vec<f32>,
 }
 
 impl Reader {
@@ -55,7 +64,7 @@ impl Reader {
             track_id,
             rate,
             channels,
-            buf: None,
+            buf: Vec::new(),
         })
     }
 
@@ -68,31 +77,42 @@ impl Reader {
             // A hint, not a decision — Symphonia still probes the bytes. It just probes faster.
             hint.with_extension(ext);
         }
-        let probed = symphonia::default::get_probe().format(
+        // ⚠️ symphonia 0.6: `Probe::format` -> `Probe::probe`, e ele devolve o `FormatReader`
+        // directamente em vez de um `ProbeResult` com campo `.format`.
+        let format = symphonia::default::get_probe().probe(
             &hint,
             mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
+            FormatOptions::default(),
+            MetadataOptions::default(),
         )?;
-        let format = probed.format;
+        // ⚠️ 0.6: `Track::codec_params` passou a ser `Option<CodecParameters>`, e o `CodecParameters`
+        // e' um ENUM (Audio/Video/Subtitle). "Faixa decodificavel" deixa de ser "o codec nao e' NULL"
+        // e passa a ser "os parametros existem E sao de audio" — mais estrito, e de graca.
         let track = format
             .tracks()
             .iter()
-            .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
+            .find(|t| t.codec_params.as_ref().is_some_and(|p| p.is_audio()))
             .ok_or(DecodeError::NoTrack)?;
         let track_id = track.id;
         let rate = track
             .codec_params
-            .sample_rate
+            .as_ref()
+            .and_then(|p| p.audio())
+            .and_then(|a| a.sample_rate)
             .ok_or(DecodeError::UnknownRate)?;
-        let channels = track
+        let audio_params = track
             .codec_params
+            .as_ref()
+            .and_then(|p| p.audio())
+            .ok_or(DecodeError::NoTrack)?;
+        let channels = audio_params
             .channels
-            .map(|c| c.count())
+            .as_ref()
+            .map(symphonia::core::audio::Channels::count)
             .unwrap_or(2)
             .max(1);
         let decoder = symphonia::default::get_codecs()
-            .make(&track.codec_params, &DecoderOptions::default())?;
+            .make_audio_decoder(audio_params, &AudioDecoderOptions::default())?;
         Ok((format, decoder, track_id, rate, channels))
     }
 
@@ -114,7 +134,12 @@ impl Reader {
     pub fn next_packet(&mut self) -> Result<Option<&[f32]>, DecodeError> {
         loop {
             let packet = match self.format.next_packet() {
-                Ok(p) => p,
+                // ⚠️ symphonia 0.6: o fim do media passou a ser `Ok(None)` EXPLICITO. Antes ele
+                // chegava disfarcado de `IoError(UnexpectedEof)`, e o ramo abaixo existia so' para
+                // o traduzir. Ele FICA como rede — um MediaSource que corte a meio ainda produz um
+                // EOF de I/O real, e ai' "acabou" continua a ser a resposta certa.
+                Ok(None) => return Ok(None),
+                Ok(Some(p)) => p,
                 // Symphonia signals a clean end-of-stream as an unexpected EOF.
                 Err(SymphoniaError::IoError(e))
                     if e.kind() == std::io::ErrorKind::UnexpectedEof =>
@@ -124,18 +149,13 @@ impl Reader {
                 Err(SymphoniaError::ResetRequired) => return Ok(None),
                 Err(e) => return Err(e.into()),
             };
-            if packet.track_id() != self.track_id {
+            if packet.track_id != self.track_id {
                 continue;
             }
             match self.decoder.decode(&packet) {
                 Ok(decoded) => {
-                    let spec = *decoded.spec();
-                    let buf = self.buf.get_or_insert_with(|| {
-                        SampleBuffer::<f32>::new(decoded.capacity() as u64, spec)
-                    });
-                    buf.copy_interleaved_ref(decoded);
-                    // `self.buf` is Some — it was just inserted.
-                    return Ok(self.buf.as_ref().map(|b| b.samples()));
+                    decoded.copy_to_vec_interleaved(&mut self.buf);
+                    return Ok(Some(&self.buf));
                 }
                 // One corrupt packet must not end the song.
                 Err(SymphoniaError::DecodeError(_)) => continue,
@@ -159,7 +179,7 @@ impl Reader {
         self.channels = channels;
         // The sample buffer is sized by the codec's packet capacity, which has not changed — but it
         // belonged to the old decoder, so let the first packet re-make it.
-        self.buf = None;
+        self.buf.clear();
         Ok(())
     }
 }

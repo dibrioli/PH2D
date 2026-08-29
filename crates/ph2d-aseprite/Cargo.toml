@@ -13,4 +13,8 @@ authors.workspace = true
 # ZLIB. ⚠️ `miniz_oxide` e nao `flate2`: os dois JA' estao na arvore (o `png` puxa ambos), e este
 # e' Rust puro — a crate inteira e' `#![forbid(unsafe_code)]`, e um decodificador de ficheiro do
 # utilizador e' exactamente a superficie onde isso importa. A API que se usa e' UMA funcao.
+# ⛔ TETO — `ctt`, `exr` e `png` pedem `^0.8`; o `flate2` pede `^0.9`. NENHUMA versão
+# serve a todos, então o cargo carrega DUAS cópias — e aqui isso é **benigno**: o
+# miniz_oxide é folha de compressão e nenhum tipo dele atravessa a nossa API.
+# (O veredito de "duas cópias" é por crate: em wgpu/vello/glam seria defeito.)
 miniz_oxide = "0.8"

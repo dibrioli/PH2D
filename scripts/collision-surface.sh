@@ -125,7 +125,7 @@ hit=$(git diff --name-only "$MB"..HEAD | while read -r f; do
 [ -n "$hit" ] && { echo "  ✗ ENCONTRADOS:"; echo "$hit" | sed 's/^/      /'; } || echo "    nenhum nos arquivos da linha"
 
 echo
-echo "▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace+shell · 600 ph2d-panel-* · 500 widget · tool-runtime tem gate proprio)"
+echo "▸ TETOS DE LOC nos arquivos que a linha tocou (700 workspace · 600 painel/shell · 500 widget · 650 tool-runtime)"
 # ⚠️ ESPELHA `is_excluded()` do gate real (architecture_workspace_file_loc_cap.rs).
 # Sem isto o script grita sobre arquivos que o gate NUNCA cobra — medido em
 # 2026-08-18: acusou `ph2d-gpu-cook/tests/gpu_cpu_parity.rs` (6.247 linhas) como
@@ -142,13 +142,7 @@ while read -r f; do
   cap=700
   case "$f" in
     crates/ph2d-editor-core/src/widget/*) cap=500 ;;
-    # ⚠️ 600 é do `architecture_panel_loc_cap`, e ele cobre SÓ `crates/ph2d-panel-*`.
-    # `shells/desktop/**` não tem gate próprio: quem o governa é o
-    # `architecture_workspace_file_loc_cap`, a 700 desde a [ADR-0105]. Enquanto os dois
-    # estiveram juntos aqui, esta sonda imprimia ✗ sobre arquivos que o gate aprova —
-    # e um ✗ falso manda o integrador partir um arquivo que não precisa (medido
-    # 2026-08-29 na line/3DModeling: `field3d_input.rs`, 635 LOC, gate VERDE).
-    crates/ph2d-panel-*)                   cap=600 ;;
+    crates/ph2d-panel-*|shells/desktop/*)  cap=600 ;;
   esac
   # o escape numerado do gate: uma entrada na allowlist congela o valor daquele dia
   if grep -qE "^\s*\(\"${f#crates/}\"|// ph2d-loc-cap:" "$f" 2>/dev/null; then

@@ -434,12 +434,12 @@ fn cena_alvos(no_fill: bool, no_traco: bool) -> (VecScene, ph2d_vec_edit::PenToo
     (scene, pen, id)
 }
 
-/// ⭐⭐ **A SECÇÃO EDITA O ALVO QUE ESTÁ ACESO** (gate nº 6 do plano 35 §4).
+/// ⭐⭐ **CADA SECÇÃO ESCREVE SÓ NA SUA TINTA** (gate nº 6 do plano 35 §4, na forma da wave F).
 ///
 /// ⚠️ **O controle é a outra metade**: com o preenchimento aceso, o traço tem de ficar INTACTO. Sem
 /// ele, uma implementação que escrevesse nos dois passaria.
 #[test]
-fn the_pattern_section_edits_the_target_that_is_lit() {
+fn each_section_writes_only_its_own_paint() {
     let (mut scene, pen, id) = cena_alvos(true, true);
     let mut h = ph2d_vec_edit::History::default();
     apply(
@@ -484,68 +484,10 @@ fn the_pattern_section_edits_the_target_that_is_lit() {
     );
 }
 
-/// ⭐⭐ **O CHIP DO ALVO só aparece quando os dois existem** (gate nº 7 do plano 35 §4) — com um só
-/// não há escolha a oferecer.
+/// ⚠️ **A troca de ARTE também honra o SUJEITO** — o botão *Source…* e o picker de forma da
+/// secção do traço escrevem no traço, e não sempre no preenchimento.
 #[test]
-fn the_target_chip_only_shows_when_both_exist() {
-    let want = PatternSlot::Fill;
-    let (s, _, id) = cena_alvos(true, true);
-    assert_eq!(lit_target(&s, id, want).map(|(_, ambos)| ambos), Some(true));
-    let (s, _, id) = cena_alvos(true, false);
-    assert_eq!(
-        lit_target(&s, id, want).map(|(_, ambos)| ambos),
-        Some(false),
-        "o chip aparece com UM alvo so' - ele nao tem escolha a oferecer"
-    );
-    let (s, _, id) = cena_alvos(false, true);
-    assert_eq!(
-        lit_target(&s, id, want).map(|(_, ambos)| ambos),
-        Some(false)
-    );
-    let (s, _, id) = cena_alvos(false, false);
-    assert_eq!(
-        lit_target(&s, id, want),
-        None,
-        "sem padrao nenhum a seccao ainda sobe"
-    );
-}
-
-/// ⚠️⚠️ **A preferência de sessão é COAGIDA ao que a forma tem.**
-///
-/// Escolher *Stroke* numa forma e clicar noutra, cujo traço não tem padrão, não pode fazer a secção
-/// **desaparecer** por se lembrar de uma escolha feita algures.
-#[test]
-fn a_sticky_target_is_coerced_to_what_the_shape_actually_has() {
-    // Só o preenchimento tem padrão, e a sessão lembra-se do TRAÇO.
-    let (s, _, id) = cena_alvos(true, false);
-    assert_eq!(
-        lit_target(&s, id, PatternSlot::Stroke).map(|(a, _)| a),
-        Some(PatternSlot::Fill),
-        "a preferencia venceu o que existe - a seccao sobe vazia"
-    );
-    // E o simétrico.
-    let (s, _, id) = cena_alvos(false, true);
-    assert_eq!(
-        lit_target(&s, id, PatternSlot::Fill).map(|(a, _)| a),
-        Some(PatternSlot::Stroke)
-    );
-    // CONTROLO: com os dois, a preferência MANDA — senão este gate ficaria verde num produto que
-    // ignora o chip por completo.
-    let (s, _, id) = cena_alvos(true, true);
-    assert_eq!(
-        lit_target(&s, id, PatternSlot::Stroke).map(|(a, _)| a),
-        Some(PatternSlot::Stroke)
-    );
-    assert_eq!(
-        lit_target(&s, id, PatternSlot::Fill).map(|(a, _)| a),
-        Some(PatternSlot::Fill)
-    );
-}
-
-/// ⚠️ **A troca de ARTE também honra o alvo** — o botão *Source…* e o picker de forma escrevem na
-/// tinta acesa, e não sempre no preenchimento.
-#[test]
-fn changing_the_art_honours_the_target_too() {
+fn changing_the_art_honours_the_subject_too() {
     let (mut scene, _, id) = cena_alvos(true, true);
     let mut h = ph2d_vec_edit::History::default();
     assert!(set_source(

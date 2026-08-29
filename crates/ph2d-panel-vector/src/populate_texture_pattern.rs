@@ -24,117 +24,116 @@ const TEXPAT_DENOM_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do docum
 /// Passo dos campos do **Shift X/Y**, em PERCENTAGEM de uma repetição — 1 % por tecla.
 const TEXPAT_SHIFT_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento
 
-/// Os botões + os quatro sliders da secção Pattern. Registados INCONDICIONALMENTE como todos os
-/// irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
+/// Os botões + os sliders das DUAS secções *Pattern* (plano 35, wave F). Registados
+/// INCONDICIONALMENTE como todos os irmãos — quem decide se o clique é possível é a PINTURA (sem
+/// hit-rect não há Click).
+///
+/// ⭐⭐ **Percorre a MESMA lista que a pintura** (`TexPatKnob::ALL` × os slots): um knob novo nasce
+/// registado nas duas secções sozinho. ⛔ Uma lista escrita à mão aqui seria a terceira cópia dos
+/// controlos, e a que deixa um chip *pintado e MORTO sob o rato* — o defeito que esta casa já
+/// pagou com 36 células de física e dez chips do Painter.
 pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
-    // ⭐ O ALVO (plano 35, wave D). Sem este registo os dois chips ficam pintados, com hit-rect, e
-    // MORTOS sob o rato — o defeito que esta linha já recebeu de report três vezes.
-    button(store, ids::VECTOR_TEXPAT_TARGET_FILL);
-    button(store, ids::VECTOR_TEXPAT_TARGET_STROKE);
-    button(store, ids::VECTOR_TEXPAT_SOURCE);
-    button(store, ids::VECTOR_TEXPAT_PICK_SHAPE);
-    for i in 0..4 {
-        button(store, crate::paint_sections::texture_pattern::tile_id(i));
-    }
-    for i in 0..3 {
-        button(store, crate::paint_sections::texture_pattern::mode_id(i));
-    }
+    use crate::ids::TexPatKnob as K;
+    for slot in 0..ids::TEXPAT_SLOTS {
+        let kid = |k| crate::paint_sections::texture_pattern::kid(slot, k);
+        // Os botões: a arte, o picker, o cadeado, os 4 reticulados e as 3 repetições.
+        for k in K::ALL {
+            if matches!(
+                k,
+                K::Source | K::PickShape | K::Lock | K::Tile(_) | K::Mode(_)
+            ) {
+                button(store, kid(k));
+            }
+        }
 
-    // Width/Height: os DOIS eixos, no mesmo mapa `0..1` -> `TEXPAT_SIZE_MIN..TEXPAT_SIZE_MAX`.
-    // ⚠️ A MESMA faixa nos dois: um eixo com faixa própria faria o cadeado (que multiplica os dois
-    // pelo mesmo factor) saturar num deles e continuar no outro — e a razão que ele promete
-    // preservar quebrava sozinha na ponta do curso.
-    let size_span = (crate::TEXPAT_SIZE_MAX - crate::TEXPAT_SIZE_MIN) as f32;
-    for (sid, nid) in [
-        (ids::VECTOR_TEXPAT_W, ids::VECTOR_TEXPAT_W_NUM),
-        (ids::VECTOR_TEXPAT_H, ids::VECTOR_TEXPAT_H_NUM),
-    ] {
+        // Width/Height: os DOIS eixos, no mesmo mapa `0..1` -> `TEXPAT_SIZE_MIN..TEXPAT_SIZE_MAX`.
+        // ⚠️ A MESMA faixa nos dois: um eixo com faixa própria faria o cadeado (que multiplica os
+        // dois pelo mesmo factor) saturar num deles e continuar no outro — e a razão que ele promete
+        // preservar quebrava sozinha na ponta do curso.
+        let size_span = (crate::TEXPAT_SIZE_MAX - crate::TEXPAT_SIZE_MIN) as f32;
+        for (sk, nk) in [(K::Width, K::WidthNum), (K::Height, K::HeightNum)] {
+            slider_chip(
+                store,
+                kid(sk),
+                kid(nk),
+                crate::paint_sections::texture_pattern::size_track(1.0),
+                1.0,
+                size_span,
+                crate::TEXPAT_SIZE_MIN as f32,
+            );
+            store.set_number_range(
+                kid(nk),
+                crate::TEXPAT_SIZE_MIN,
+                crate::TEXPAT_SIZE_MAX,
+                TEXPAT_SIZE_STEP,
+            );
+        }
+
+        // Gap: BIPOLAR `-TEXPAT_GAP_MAX..+` (o mesmo mapa do Offset do Pattern on Path), `0.5` = zero.
         slider_chip(
             store,
-            sid,
-            nid,
-            crate::paint_sections::texture_pattern::size_track(1.0),
-            1.0,
-            size_span,
-            crate::TEXPAT_SIZE_MIN as f32,
+            kid(K::Gap),
+            kid(K::GapNum),
+            crate::paint_sections::texture_pattern::gap_track(0.0),
+            0.0,
+            (2.0 * crate::TEXPAT_GAP_MAX) as f32,
+            -crate::TEXPAT_GAP_MAX as f32,
         );
         store.set_number_range(
-            nid,
-            crate::TEXPAT_SIZE_MIN,
-            crate::TEXPAT_SIZE_MAX,
-            TEXPAT_SIZE_STEP,
+            kid(K::GapNum),
+            -crate::TEXPAT_GAP_MAX,
+            crate::TEXPAT_GAP_MAX,
+            TEXPAT_GAP_STEP,
         );
-    }
-    // ⭐ O CADEADO. Sem este registo ele fica pintado, com hit-rect, e MORTO sob o rato.
-    button(store, ids::VECTOR_TEXPAT_LOCK);
 
-    // Gap: BIPOLAR `−TEXPAT_GAP_MAX..+` (o mesmo mapa do Offset do Pattern on Path), `0.5` = zero.
-    slider_chip(
-        store,
-        ids::VECTOR_TEXPAT_GAP,
-        ids::VECTOR_TEXPAT_GAP_NUM,
-        crate::paint_sections::texture_pattern::gap_track(0.0),
-        0.0,
-        (2.0 * crate::TEXPAT_GAP_MAX) as f32,
-        -crate::TEXPAT_GAP_MAX as f32,
-    );
-    store.set_number_range(
-        ids::VECTOR_TEXPAT_GAP_NUM,
-        -crate::TEXPAT_GAP_MAX,
-        crate::TEXPAT_GAP_MAX,
-        TEXPAT_GAP_STEP,
-    );
-
-    // Angle: UNIPOLAR `0..360`.
-    slider_chip(
-        store,
-        ids::VECTOR_TEXPAT_ANGLE,
-        ids::VECTOR_TEXPAT_ANGLE_NUM,
-        0.0,
-        0.0,
-        crate::TEXPAT_ANGLE_MAX as f32,
-        0.0,
-    );
-    store.set_number_range(
-        ids::VECTOR_TEXPAT_ANGLE_NUM,
-        0.0,
-        crate::TEXPAT_ANGLE_MAX,
-        TEXPAT_ANGLE_STEP,
-    );
-
-    // Shift X/Y: UNIPOLAR `0..100 %` de uma repetição. ⚠️ `100` é o mesmo que `0` — a faixa é a
-    // periodicidade do reticulado, não um limite de conforto.
-    for (sid, nid) in [
-        (ids::VECTOR_TEXPAT_SHIFT_X, ids::VECTOR_TEXPAT_SHIFT_X_NUM),
-        (ids::VECTOR_TEXPAT_SHIFT_Y, ids::VECTOR_TEXPAT_SHIFT_Y_NUM),
-    ] {
+        // Angle: UNIPOLAR `0..360`.
         slider_chip(
             store,
-            sid,
-            nid,
-            crate::paint_sections::texture_pattern::shift_track(0.0),
+            kid(K::Angle),
+            kid(K::AngleNum),
             0.0,
-            crate::TEXPAT_SHIFT_MAX as f32,
+            0.0,
+            crate::TEXPAT_ANGLE_MAX as f32,
             0.0,
         );
-        store.set_number_range(nid, 0.0, crate::TEXPAT_SHIFT_MAX, TEXPAT_SHIFT_STEP);
-    }
+        store.set_number_range(
+            kid(K::AngleNum),
+            0.0,
+            crate::TEXPAT_ANGLE_MAX,
+            TEXPAT_ANGLE_STEP,
+        );
 
-    // Offset: o denominador é INTEIRO — `slider_chip_int`, senão o campo aceitaria `1/2,7`.
-    let denom_span = (crate::TEXPAT_DENOM_MAX - crate::TEXPAT_DENOM_MIN) as f32;
-    slider_chip_int(
-        store,
-        ids::VECTOR_TEXPAT_OFFSET,
-        ids::VECTOR_TEXPAT_OFFSET_NUM,
-        crate::paint_sections::texture_pattern::denom_track(2.0),
-        2.0,
-        denom_span,
-        crate::TEXPAT_DENOM_MIN as f32,
-    );
-    store.set_number_range(
-        ids::VECTOR_TEXPAT_OFFSET_NUM,
-        crate::TEXPAT_DENOM_MIN,
-        crate::TEXPAT_DENOM_MAX,
-        TEXPAT_DENOM_STEP,
-    );
+        // Shift X/Y: UNIPOLAR `0..100 %` de uma repetição. ⚠️ `100` é o mesmo que `0` — a faixa é a
+        // periodicidade do reticulado, não um limite de conforto.
+        for (sk, nk) in [(K::ShiftX, K::ShiftXNum), (K::ShiftY, K::ShiftYNum)] {
+            slider_chip(
+                store,
+                kid(sk),
+                kid(nk),
+                crate::paint_sections::texture_pattern::shift_track(0.0),
+                0.0,
+                crate::TEXPAT_SHIFT_MAX as f32,
+                0.0,
+            );
+            store.set_number_range(kid(nk), 0.0, crate::TEXPAT_SHIFT_MAX, TEXPAT_SHIFT_STEP);
+        }
+
+        // Offset: o denominador é INTEIRO — `slider_chip_int`, senão o campo aceitaria `1/2,7`.
+        let denom_span = (crate::TEXPAT_DENOM_MAX - crate::TEXPAT_DENOM_MIN) as f32;
+        slider_chip_int(
+            store,
+            kid(K::Offset),
+            kid(K::OffsetNum),
+            crate::paint_sections::texture_pattern::denom_track(2.0),
+            2.0,
+            denom_span,
+            crate::TEXPAT_DENOM_MIN as f32,
+        );
+        store.set_number_range(
+            kid(K::OffsetNum),
+            crate::TEXPAT_DENOM_MIN,
+            crate::TEXPAT_DENOM_MAX,
+            TEXPAT_DENOM_STEP,
+        );
+    }
 }

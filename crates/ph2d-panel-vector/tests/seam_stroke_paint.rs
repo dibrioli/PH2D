@@ -78,8 +78,9 @@ fn click_reaches_bus(id: ph2d_a11y::NodeId, what: &str) {
 /// dentro de um binário.
 fn limpa() {
     state::set_stroke_paint_kind(None);
-    state::set_texpat_target_is_stroke(None);
-    state::set_current_texture_pattern(None);
+    for slot in 0..ph2d_panel_vector::ids::TEXPAT_SLOTS {
+        state::set_current_texture_pattern(slot, None);
+    }
 }
 
 /// **Os dois chips da tinta do traço estão vivos, nos DOIS estados.**
@@ -137,53 +138,17 @@ fn lei() -> ph2d_panel_vector::TexturePatternRow {
     }
 }
 
-/// **Os dois chips do ALVO estão vivos, nos DOIS estados.**
-#[test]
-fn both_target_chips_are_reachable_and_reach_the_bus() {
-    state::set_current_texture_pattern(Some(lei()));
-    for no_traco in [false, true] {
-        state::set_texpat_target_is_stroke(Some(no_traco));
-        click_reaches_bus(ids::VECTOR_TEXPAT_TARGET_FILL, "o chip Fill do alvo");
-        click_reaches_bus(ids::VECTOR_TEXPAT_TARGET_STROKE, "o chip Stroke do alvo");
-    }
-    limpa();
-}
-
-/// ⛔ **Com UM alvo só, a fileira não é pintada** — não há escolha a oferecer, e a secção edita o
-/// que houver.
-///
-/// ⚠️ **O controle é a metade que importa**: as fileiras ABAIXO continuam lá. Sem ele, este gate
-/// ficaria verde sobre uma secção que desapareceu inteira.
-#[test]
-fn the_target_row_is_absent_when_there_is_no_choice_to_offer() {
-    state::set_current_texture_pattern(Some(lei()));
-    state::set_texpat_target_is_stroke(None);
-    for id in [
-        ids::VECTOR_TEXPAT_TARGET_FILL,
-        ids::VECTOR_TEXPAT_TARGET_STROKE,
-    ] {
-        assert!(
-            rect(id).is_none(),
-            "o chip do alvo foi pintado com um sujeito so' - ele nao tem escolha a oferecer"
-        );
-    }
-    assert!(
-        rect(ids::VECTOR_TEXPAT_SOURCE).is_some(),
-        "a seccao inteira sumiu - o que devia sumir era so' a fileira do alvo"
-    );
-    limpa();
-}
-
-/// ⚠️ **E sem padrão nenhum a secção inteira não sobe** — inclusive a fileira do alvo, que de outro
-/// modo seria um chip a escolher entre dois sujeitos inexistentes.
+/// ⚠️ **E sem padrão nenhum NENHUMA das duas secções sobe.**
 #[test]
 fn no_pattern_means_no_section_at_all() {
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_panel_vector::texture_pattern::kid;
     limpa();
-    state::set_texpat_target_is_stroke(Some(true));
     for id in [
-        ids::VECTOR_TEXPAT_TARGET_FILL,
-        ids::VECTOR_TEXPAT_SOURCE,
-        ids::VECTOR_TEXPAT_W,
+        kid(0, K::Source),
+        kid(0, K::Width),
+        kid(1, K::Source),
+        kid(1, K::Width),
     ] {
         assert!(
             rect(id).is_none(),
@@ -191,4 +156,67 @@ fn no_pattern_means_no_section_at_all() {
         );
     }
     limpa();
+}
+
+// ── ⭐⭐ A WAVE F: DUAS SECÇÕES, CADA UMA COM OS SEUS ─────────────────────────────
+//
+// Enio, 2026-08-28: *"cada seção deve ter seus ajustes próprios"*. ⛔ Os dois gates do chip
+// `Fill | Stroke` foram RETIRADOS daqui: eles defendiam um conceito que deixou de existir.
+
+/// **A secção *Stroke Pattern* sobe quando o TRAÇO tem padrão — e só ela.**
+///
+/// ⚠️ **A metade que importa é a outra:** a do PREENCHIMENTO fica quieta. Sem ela, este gate ficaria
+/// verde sobre um painel que pinta as duas secções sempre — o ruído que a lei do `Option` proíbe.
+#[test]
+fn the_stroke_pattern_section_rises_only_for_the_stroke() {
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_panel_vector::texture_pattern::kid;
+    limpa();
+    state::set_stroke_present(Some(true));
+    state::set_stroke_paint_kind(Some(StrokePaintKind::Pattern));
+    state::set_current_texture_pattern(1, Some(lei()));
+    assert!(
+        rect(kid(1, K::Width)).is_some(),
+        "a seccao do TRACO nao subiu com o traco a ter padrao"
+    );
+    assert!(
+        rect(kid(0, K::Width)).is_none(),
+        "a seccao do PREENCHIMENTO subiu sem o miolo ter padrao"
+    );
+    limpa();
+    state::set_stroke_present(None);
+}
+
+/// ⭐⭐ **NENHUM CONTROLO É PARTILHADO ENTRE AS DUAS SECÇÕES** — é isto que torna o sujeito
+/// inequívoco, e é o que substitui a preferência de sessão da wave D.
+///
+/// ⚠️ Um id partilhado faria o clique numa secção escrever na tinta da outra: literalmente o report
+/// de 28/08, com um chip a mentir sobre qual sujeito estava aceso.
+///
+/// ⭐ E a ida-e-volta (`kid` -> `texpat_knob_of`) é o que deixa a shell resolver o SUJEITO a partir
+/// do gesto, sem nada guardado.
+#[test]
+fn no_control_is_shared_between_the_two_sections() {
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_panel_vector::texture_pattern::{kid, texpat_knob_of};
+    let mut vistos = std::collections::BTreeSet::new();
+    for slot in 0..ph2d_panel_vector::ids::TEXPAT_SLOTS {
+        for k in K::ALL {
+            let id = kid(slot, k);
+            assert!(
+                vistos.insert(id),
+                "o controlo {k:?} da tinta {slot} partilha o id com outro - um clique numa seccao \
+                 escreveria na tinta da outra"
+            );
+            assert_eq!(
+                texpat_knob_of(id),
+                Some((slot, k)),
+                "o id do controlo {k:?} da tinta {slot} nao resolve de volta"
+            );
+        }
+    }
+    // CONTROLO: um id de FORA não é reclamado por esta família — senão o resolvedor engoliria o
+    // clique do vizinho e a secção passaria a consumir gestos que não são dela.
+    assert_eq!(texpat_knob_of(ids::VECTOR_STROKE_PRESENT), None);
+    assert_eq!(texpat_knob_of(ids::VECTOR_STROKE_KIND_PATTERN), None);
 }

@@ -1513,17 +1513,6 @@ pub(crate) struct App {
     ///
     /// Nasce **ligado**: é o comportamento que a secção tinha antes de os dois eixos existirem.
     pub(crate) texpat_lock_aspect: bool,
-    /// ⭐ **Qual das duas tintas a secção *Pattern* edita** (plano 35, wave D).
-    ///
-    /// ⚠️ **Estado de SESSÃO, como o cadeado ao lado, e pela mesma razão:** ele descreve *o que
-    /// estou a editar*, não o que a forma É. Gravá-lo no documento seria guardar a posição de um
-    /// dedo.
-    ///
-    /// ⚠️ **É uma PREFERÊNCIA pegajosa, e é COAGIDA ao que existe em cada leitura**
-    /// (`texture_pattern_edit::lit_target`): pedir `Stroke` numa forma cujo traço não tem padrão
-    /// devolve o preenchimento. Sem essa coerção, escolher *Stroke* numa forma e clicar noutra faria
-    /// a secção **desaparecer** por se lembrar de uma escolha feita algures.
-    pub(crate) texpat_target: ph2d_vec_render::PatternSlot,
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.

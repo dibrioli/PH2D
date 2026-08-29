@@ -222,12 +222,22 @@ impl BodyCtx<'_> {
         y = self.step(y, Self::textpath_section);
         y = self.step(y, Self::axes_section);
         y = self.step(y, |b, y| b.stroke_style(snap, y));
+        // ⭐⭐ **A secção PATTERN do TRAÇO** (tinta 1) — Enio, 2026-08-28: *"cada seção deve ter seus
+        // ajustes próprios"*. Logo abaixo da secção que descreve a mesma linha, e só sobe quando o
+        // traço TEM padrão.
+        //
+        // ⚠️⚠️ **IRMÃ, e não aninhada dentro da secção *Stroke***: a 1.ª redacção pintou-a lá dentro
+        // e o `SectionFold` estourou (*"aberto e nunca fechado: o recorte da cena ficou pendurado"*)
+        // — uma dobra não aninha, e o `return` de uma secção vazia deixaria a de fora por fechar.
+        // *A UI que se quer ali é uma secção a seguir, não uma secção dentro.*
+        y = self.step(y, |s, y| s.texture_pattern_section(1, y));
         y = self.step(y, |b, y| b.fill_style(snap, y));
         y = self.step(y, Self::fill_type_section);
         // A lei do PADRÃO fica colada ao selector que a escolhe: o artista carrega no chip
         // `Pattern` e os controles dele aparecem logo abaixo. Ela só sobe quando a forma TEM um
         // padrão, então numa forma sólida não custa uma linha.
-        y = self.step(y, Self::texture_pattern_section);
+        // ⭐ A secção do PREENCHIMENTO (tinta 0); a do TRAÇO é irmã da *Stroke*, logo acima.
+        y = self.step(y, |s, y| s.texture_pattern_section(0, y));
         y = self.step(y, Self::snap_section);
         y = self.step(y, Self::transform_section);
         y = self.step(y, Self::vertex_section);

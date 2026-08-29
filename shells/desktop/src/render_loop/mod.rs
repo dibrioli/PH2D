@@ -3289,9 +3289,15 @@ impl crate::App {
             // A lei do PADRÃO de textura (plano 33 W5). Uma só por quadro: os controles da secção
             // são exclusivos entre si (o artista mexe num de cada vez), e uma fila daria dois passos
             // de undo para um gesto.
-            let mut pending_texpat: Option<crate::texture_pattern_edit::TexPatCmd> = None;
-            let mut pending_texpat_source = false;
-            let mut pending_texpat_pick = false;
+            // ⚠️ **Cada um leva o SUJEITO junto** (plano 35, wave F): o slot sai do id do controlo
+            // que foi clicado, e não de uma preferência guardada — *o que o gesto endereça não pode
+            // ser lido de outro sítio no drain.*
+            let mut pending_texpat: Option<(
+                ph2d_vec_render::PatternSlot,
+                crate::texture_pattern_edit::TexPatCmd,
+            )> = None;
+            let mut pending_texpat_source: Option<ph2d_vec_render::PatternSlot> = None;
+            let mut pending_texpat_pick: Option<ph2d_vec_render::PatternSlot> = None;
             // ⭐ A TINTA do traço (plano 35, wave D) — irmã do `pending_vec_fill_kind`, e drenada no
             // MESMO sítio, porque as duas podem precisar de abrir o diálogo da arte.
             let mut pending_vec_stroke_kind: Option<ph2d_panel_vector::StrokePaintKind> = None;
@@ -3584,17 +3590,6 @@ impl crate::App {
                                 // **Resize Box** (plano UI/UX W3b): o override mora no COMPONENTE,
                                 // entao o clique e' da shell — o painel so' mostra o estado.
                                 pending_resize_box = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_LOCK {
-                                // ⭐ O CADEADO é estado de SESSÃO (o gesto, não o padrão): o clique
-                                // inverte-o aqui e nada toca no documento.
-                                self.texpat_lock_aspect = !self.texpat_lock_aspect;
-                            } else if let Some(alvo) =
-                                crate::texture_pattern_edit::target_for_id(*id)
-                            {
-                                // ⭐ O ALVO da secção *Pattern* também é de SESSÃO, como o cadeado:
-                                // ele diz o que estou a EDITAR, não o que a forma É. E e' uma
-                                // PREFERENCIA — quem a coage ao que existe e' o `lit_target`.
-                                self.texpat_target = alvo;
                             } else if *id == ph2d_editor::ids::VECTOR_STROKE_PRESENT {
                                 // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
                                 // então o clique e' da shell — o painel so' mostra o estado.
@@ -3724,22 +3719,42 @@ impl crate::App {
                                 // ⭐ A TINTA do traço (plano 35, wave D). Ela mexe no DOCUMENTO,
                                 // entao o clique e' da shell — o painel so' mostra qual chip acende.
                                 pending_vec_stroke_kind = Some(k);
-                            } else if let Some(i) =
-                                ph2d_panel_vector::texture_pattern::tile_index_of(*id)
+                            } else if let Some((slot, knob)) =
+                                ph2d_panel_vector::texture_pattern::texpat_knob_of(*id)
                             {
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Tile(i));
-                            } else if let Some(i) =
-                                ph2d_panel_vector::texture_pattern::mode_index_of(*id)
-                            {
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Mode(i));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SOURCE {
-                                pending_texpat_source = true;
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_PICK_SHAPE {
-                                // Picker (W7): arma; a FONTE (a forma com o padrão) é capturada no
-                                // drain, porque o clique seguinte muda a seleção.
-                                pending_texpat_pick = true;
+                                // ⭐⭐ **O SUJEITO VEM NO PRÓPRIO ID** (plano 35, wave F). Cada
+                                // secção tem os seus controlos, então o clique já **diz** em qual
+                                // das duas tintas escrever — e a preferência de sessão que a wave D
+                                // precisava (`texpat_target`) deixou de existir, com a classe
+                                // inteira de *"mexi num knob e mudou o outro sujeito"*.
+                                use ph2d_editor::ids::TexPatKnob as K;
+                                let slot = if slot == 1 {
+                                    ph2d_vec_render::PatternSlot::Stroke
+                                } else {
+                                    ph2d_vec_render::PatternSlot::Fill
+                                };
+                                match knob {
+                                    K::Tile(i) => {
+                                        pending_texpat = Some((
+                                            slot,
+                                            crate::texture_pattern_edit::TexPatCmd::Tile(i),
+                                        ));
+                                    }
+                                    K::Mode(i) => {
+                                        pending_texpat = Some((
+                                            slot,
+                                            crate::texture_pattern_edit::TexPatCmd::Mode(i),
+                                        ));
+                                    }
+                                    K::Source => pending_texpat_source = Some(slot),
+                                    // Picker (W7): arma; a FONTE (a forma com o padrão) é capturada
+                                    // no drain, porque o clique seguinte muda a seleção.
+                                    K::PickShape => pending_texpat_pick = Some(slot),
+                                    // ⭐ O CADEADO é estado de SESSÃO (o gesto, não o padrão): o
+                                    // clique inverte-o aqui e nada toca no documento.
+                                    K::Lock => self.texpat_lock_aspect = !self.texpat_lock_aspect,
+                                    _ => {}
+                                }
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
                                 pending_vec_grad_add = true;
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_REMOVE_POINT {
@@ -3901,38 +3916,53 @@ impl crate::App {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_W
-                                || *id == ph2d_editor::ids::VECTOR_TEXPAT_H
+                            } else if let Some((slot, knob)) =
+                                ph2d_panel_vector::texture_pattern::texpat_knob_of(*id)
                             {
-                                // Plano 33 W10: UM eixo do tamanho, em unidades de mundo (o
-                                // `event.rs` do painel já converteu o track), e o CADEADO da
-                                // sessão, que decide se o outro eixo vem junto.
-                                let axis = u8::from(*id == ph2d_editor::ids::VECTOR_TEXPAT_H);
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Axis(
-                                        axis,
+                                // ⭐⭐ **O SUJEITO VEM NO ID** (plano 35, wave F): cada secção tem os
+                                // seus sliders, então arrastar um deles já diz em QUAL das duas
+                                // tintas escrever. ⚠️ O `event.rs` do painel já converteu o track
+                                // para o domínio do documento — aqui `*v` é valor.
+                                use ph2d_editor::ids::TexPatKnob as K;
+                                let alvo = if slot == 1 {
+                                    ph2d_vec_render::PatternSlot::Stroke
+                                } else {
+                                    ph2d_vec_render::PatternSlot::Fill
+                                };
+                                let cmd = match knob {
+                                    // UM eixo do tamanho + o CADEADO da sessão, que decide se o
+                                    // outro eixo vem junto.
+                                    K::Width => Some(crate::texture_pattern_edit::TexPatCmd::Axis(
+                                        0,
                                         *v,
                                         self.texpat_lock_aspect,
-                                    ));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_GAP {
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SHIFT_X {
-                                // Plano 33: a FASE dentro de uma repetição, em % — o `event.rs` do
-                                // painel já converteu o track.
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Shift(0, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_SHIFT_Y {
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Shift(1, *v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_ANGLE {
-                                // GRAUS aqui; o documento guarda radianos, e a conversão vive na
-                                // porta única (`texture_pattern_edit::apply`).
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::Angle(*v));
-                            } else if *id == ph2d_editor::ids::VECTOR_TEXPAT_OFFSET {
-                                pending_texpat =
-                                    Some(crate::texture_pattern_edit::TexPatCmd::OffsetDenom(*v));
+                                    )),
+                                    K::Height => {
+                                        Some(crate::texture_pattern_edit::TexPatCmd::Axis(
+                                            1,
+                                            *v,
+                                            self.texpat_lock_aspect,
+                                        ))
+                                    }
+                                    K::Gap => Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v)),
+                                    // A FASE dentro de uma repetição, em %.
+                                    K::ShiftX => {
+                                        Some(crate::texture_pattern_edit::TexPatCmd::Shift(0, *v))
+                                    }
+                                    K::ShiftY => {
+                                        Some(crate::texture_pattern_edit::TexPatCmd::Shift(1, *v))
+                                    }
+                                    // GRAUS aqui; o documento guarda radianos, e a conversão vive
+                                    // na porta única (`texture_pattern_edit::apply`).
+                                    K::Angle => {
+                                        Some(crate::texture_pattern_edit::TexPatCmd::Angle(*v))
+                                    }
+                                    K::Offset => Some(
+                                        crate::texture_pattern_edit::TexPatCmd::OffsetDenom(*v),
+                                    ),
+                                    _ => None,
+                                };
+                                pending_texpat = cmd.map(|c| (alvo, c));
                             } else if *id == ph2d_editor::ids::VECTOR_PATTERNPATH_SPACING {
                                 // Plano 23: ja' convertido pelo event.rs do painel para o dominio do
                                 // documento (multiplos da largura do motivo) -- aqui e' valor.
@@ -5672,10 +5702,8 @@ impl crate::App {
             }
             // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
             // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
-            if pending_texpat_pick
+            if let Some(slot) = pending_texpat_pick
                 && let Some(host) = self.vec_pen.selected()
-                && let Some((slot, _)) =
-                    crate::texture_pattern_edit::lit_target(vec_scene, host, self.texpat_target)
             {
                 self.vec_path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host, slot));
                 eprintln!(
@@ -7044,23 +7072,19 @@ impl crate::App {
             }
             // ⭐ **A secção PATTERN** (plano 33 W5) — a arte primeiro (ela abre um diálogo, que
             // congela o laço), depois a lei. As duas desaguam na MESMA porta.
-            if pending_texpat_source && let Some(sel) = self.vec_pen.selected() {
+            if let Some(slot) = pending_texpat_source
+                && self.vec_pen.selected().is_some()
+            {
                 // ⚠️ O `source_for` devolve a fonte que a forma JÁ tem quando ela tem uma — e aqui o
                 // artista pediu para TROCAR. O diálogo abre sempre, então o caminho é o directo.
-                let _ = sel;
                 if let Some(source) = crate::texture_pattern_pick::pick_source(asset_db) {
-                    pending_texpat = Some(crate::texture_pattern_edit::TexPatCmd::Source(source));
+                    pending_texpat =
+                        Some((slot, crate::texture_pattern_edit::TexPatCmd::Source(source)));
                 }
             }
-            // ⭐⭐ **TODA escrita da secção passa pelo ALVO ACESO** (plano 35, wave D), e ele é a
-            // preferência de sessão **coagida ao que a forma tem**. ⚠️ Ler `self.texpat_target` cru
-            // aqui escreveria no traço de uma forma cujo traço não tem padrão — um no-op silencioso
-            // com a secção a mostrar o preenchimento.
-            let texpat_slot = self.vec_pen.selected().and_then(|sel| {
-                crate::texture_pattern_edit::lit_target(vec_scene, sel, self.texpat_target)
-                    .map(|(alvo, _)| alvo)
-            });
-            if let (Some(cmd), Some(slot)) = (pending_texpat, texpat_slot) {
+            // ⭐⭐ **O SUJEITO VEIO NO ID DO CONTROLO** (plano 35, wave F): cada secção tem os seus,
+            // então não há preferência a coagir nem alvo a resolver — *o gesto diz em quem escreve*.
+            if let Some((slot, cmd)) = pending_texpat {
                 crate::texture_pattern_edit::apply(
                     vec_scene,
                     &mut self.vec_history,
@@ -7176,7 +7200,6 @@ impl crate::App {
                 self.vec_pivot_edit,
                 self.vec_snap,
                 self.texpat_lock_aspect,
-                self.texpat_target,
             );
             // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois
             // publicar**, a mesma ordem do `resize_box` — publicar antes deixaria a caixa a mostrar

@@ -64,53 +64,6 @@ fn write_pattern(
     }
 }
 
-/// O alvo que este `NodeId` nomeia (`None` se não é um dos dois chips) — plano 35, wave D.
-///
-/// ⚠️ **Uma porta, e não um `if` inline no despacho**, pelas razões de sempre desta casa (a irmã é
-/// a `vec_stroke_paint::kind_for_id`): quem acrescentar uma tinta acrescenta-a aqui, e o despacho
-/// não muda uma linha. ⭐ E porque um SÍMBOLO é uma agulha estável para um gate de fonte, enquanto
-/// uma expressão inline é reescrita pelo `cargo fmt` — foi assim que a 1.ª redacção do gate
-/// `the_pattern_target_chip_is_wired` reprovou produto correcto.
-#[must_use]
-pub(crate) fn target_for_id(id: ph2d_editor::NodeId) -> Option<PatternSlot> {
-    if id == ph2d_editor::ids::VECTOR_TEXPAT_TARGET_FILL {
-        Some(PatternSlot::Fill)
-    } else if id == ph2d_editor::ids::VECTOR_TEXPAT_TARGET_STROKE {
-        Some(PatternSlot::Stroke)
-    } else {
-        None
-    }
-}
-
-/// ⭐⭐ **QUEM é o sujeito da secção *Pattern*, e há escolha a oferecer?** (plano 35, wave D)
-///
-/// Devolve `(o alvo aceso, os dois existem)`. `None` = a forma não tem padrão nenhum e a secção nem
-/// sobe.
-///
-/// ⚠️ **`want` é a PREFERÊNCIA de sessão, e ela é COAGIDA ao que existe** — pedir o traço numa forma
-/// cujo traço não tem padrão devolve o preenchimento, e não um sujeito vazio. *Uma preferência
-/// pegajosa que sobrevive ao objecto tem de ser reconciliada com ele em cada leitura, senão a secção
-/// desaparece por lembrar-se de uma escolha feita noutra forma.*
-///
-/// ⛔ **Uma função e não duas.** Perguntar *"qual é o alvo?"* e *"mostro o chip?"* em sítios
-/// separados é como as duas respostas passam a discordar: o chip apareceria com um alvo só.
-#[must_use]
-pub(crate) fn lit_target(
-    scene: &VecScene,
-    id: VecPathId,
-    want: PatternSlot,
-) -> Option<(PatternSlot, bool)> {
-    let fill = pattern_at(scene, id, PatternSlot::Fill).is_some();
-    let stroke = pattern_at(scene, id, PatternSlot::Stroke).is_some();
-    let alvo = match (fill, stroke) {
-        (false, false) => return None,
-        (true, false) => PatternSlot::Fill,
-        (false, true) => PatternSlot::Stroke,
-        (true, true) => want,
-    };
-    Some((alvo, fill && stroke))
-}
-
 /// O que a secção *Pattern* pede ao documento.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum TexPatCmd {

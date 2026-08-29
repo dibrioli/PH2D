@@ -174,29 +174,32 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
 /// e o artista teria uma imagem repetida que não consegue tocar.
 #[test]
 fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
+    use ph2d_panel_vector::ids::TexPatKnob as K;
     state::set_current_fill(Some(FillKind::Pattern), None);
-    state::set_current_texture_pattern(Some(row(0)));
-    click_reaches_bus(ids::VECTOR_TEXPAT_SOURCE, "o botao Source");
-    click_reaches_bus(ids::VECTOR_TEXPAT_PICK_SHAPE, "o botao Use Shape");
-    // ⭐ O CADEADO de proporção (W10) — um checkbox, e o clique é da shell (ela é a dona do
-    // estado da sessão). Fora da allowlist ele acenderia sob o rato e não faria nada.
-    click_reaches_bus(ids::VECTOR_TEXPAT_LOCK, "a caixa Lock Aspect");
-    for (i, what) in [
-        (0, "o chip Grid"),
-        (1, "o chip Brick"),
-        (2, "o chip Column"),
-        (3, "o chip Hex"),
-    ] {
-        click_reaches_bus(ph2d_panel_vector::texture_pattern::tile_id(i), what);
+    // ⭐⭐ **AS DUAS secções** (plano 35, wave F) — a do preenchimento e a do traço. ⚠️ E percorridas
+    // pela MESMA lista que as pinta e regista (`TexPatKnob::ALL`): um knob novo entra neste gate
+    // sozinho. *Uma lista escrita à mão aqui seria a quarta cópia dos controlos.*
+    for slot in 0..ph2d_panel_vector::ids::TEXPAT_SLOTS {
+        // A secção do traço só sobe com um traço que tenha padrão — a do preenchimento não olha
+        // para isto, e é por isso que a publicação é por tinta.
+        state::set_stroke_present(Some(true));
+        state::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Pattern));
+        state::set_current_texture_pattern(slot, Some(row(0)));
+        for k in K::ALL {
+            // Só os BOTÕES atravessam o barramento por Click; os sliders têm porta própria.
+            if matches!(
+                k,
+                K::Source | K::PickShape | K::Lock | K::Tile(_) | K::Mode(_)
+            ) {
+                click_reaches_bus(
+                    ph2d_panel_vector::texture_pattern::kid(slot, k),
+                    &format!("o controlo {k:?} da tinta {slot}"),
+                );
+            }
+        }
+        state::set_current_texture_pattern(slot, None);
     }
-    for (i, what) in [
-        (0, "o chip Tile"),
-        (1, "o chip Mirror"),
-        (2, "o chip Clamp"),
-    ] {
-        click_reaches_bus(ph2d_panel_vector::texture_pattern::mode_id(i), what);
-    }
-    state::set_current_texture_pattern(None);
+    state::set_stroke_paint_kind(None);
 }
 
 /// ⚠️⚠️ **A secção SOME inteira para uma forma sem padrão** — presença E ausência.
@@ -206,24 +209,36 @@ fn every_pattern_section_control_is_reachable_and_reaches_the_bus() {
 #[test]
 fn the_section_vanishes_for_a_shape_without_a_pattern() {
     state::set_current_fill(Some(FillKind::Solid), None);
-    state::set_current_texture_pattern(None);
+    state::set_current_texture_pattern(0, None);
+    state::set_current_texture_pattern(1, None);
     let mut host = MockPanelHost::with_panel::<VectorPanel>();
     let mut st = VectorPanelState;
     assert!(
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_W)
-            .is_none(),
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Width)
+        )
+        .is_none(),
         "a seccao Pattern subiu para uma forma sem padrao"
     );
     // Controlo: com padrão publicado, ela sobe — senão este gate passaria num painel partido.
-    state::set_current_texture_pattern(Some(row(0)));
+    state::set_current_texture_pattern(0, Some(row(0)));
     let mut host2 = MockPanelHost::with_panel::<VectorPanel>();
     assert!(
         host2
-            .painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_W)
+            .painted_rect::<VectorPanel>(
+                &mut st,
+                VIEWPORT,
+                ph2d_panel_vector::texture_pattern::kid(
+                    0,
+                    ph2d_panel_vector::ids::TexPatKnob::Width
+                )
+            )
             .is_some(),
         "com padrao a seccao tem de subir"
     );
-    state::set_current_texture_pattern(None);
+    state::set_current_texture_pattern(0, None);
 }
 
 /// ⚠️ **O Offset só existe onde tem sentido.** Na GRADE não há desfasamento, e na COLMEIA ele é
@@ -234,17 +249,21 @@ fn the_section_vanishes_for_a_shape_without_a_pattern() {
 fn the_offset_row_only_shows_for_brick_and_column() {
     let shows = |kind: u8| {
         state::set_current_fill(Some(FillKind::Pattern), None);
-        state::set_current_texture_pattern(Some(row(kind)));
+        state::set_current_texture_pattern(0, Some(row(kind)));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
-        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, ids::VECTOR_TEXPAT_OFFSET)
-            .is_some()
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Offset),
+        )
+        .is_some()
     };
     assert!(!shows(0), "a GRADE nao tem desfasamento");
     assert!(shows(1), "o Brick tem");
     assert!(shows(2), "o Column tem");
     assert!(!shows(3), "a COLMEIA tem-no FIXO em meio passo");
-    state::set_current_texture_pattern(None);
+    state::set_current_texture_pattern(0, None);
 }
 
 /// ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
@@ -258,23 +277,47 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(1); // Brick: com desfasamento, para o Offset ter direito a aparecer
         r.mode = mode;
-        state::set_current_texture_pattern(Some(r));
+        state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
     let mortos = [
-        (ids::VECTOR_TEXPAT_TILE_GRID, "o reticulado"),
-        (ids::VECTOR_TEXPAT_OFFSET, "o desfasamento"),
-        (ids::VECTOR_TEXPAT_W, "a largura"),
-        (ids::VECTOR_TEXPAT_H, "a altura"),
-        (ids::VECTOR_TEXPAT_LOCK, "o cadeado"),
-        (ids::VECTOR_TEXPAT_GAP, "o vao"),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Tile(0)),
+            "o reticulado",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Offset),
+            "o desfasamento",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Width),
+            "a largura",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Height),
+            "a altura",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Lock),
+            "o cadeado",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Gap),
+            "o vao",
+        ),
         // ⚠️ A fase entra nesta lista pela MESMA razão que o tamanho: no `Clamp` a colocação é
         // DERIVADA (uma cópia enquadrada na forma), e `origin` não tem quem o leia.
-        (ids::VECTOR_TEXPAT_SHIFT_X, "o Shift X"),
-        (ids::VECTOR_TEXPAT_SHIFT_Y, "o Shift Y"),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::ShiftX),
+            "o Shift X",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::ShiftY),
+            "o Shift Y",
+        ),
     ];
     for (id, what) in mortos {
         assert!(!visible(2, id), "o Clamp mostra {what}, que ele nao le^");
@@ -282,14 +325,29 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
     }
     // E o que o Clamp LE^ continua lá — senão o modo ficaria sem controlo nenhum.
     for (id, what) in [
-        (ids::VECTOR_TEXPAT_SOURCE, "a arte"),
-        (ids::VECTOR_TEXPAT_PICK_SHAPE, "a forma como arte"),
-        (ids::VECTOR_TEXPAT_ANGLE, "o angulo"),
-        (ids::VECTOR_TEXPAT_MODE_TILE, "os modos"),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
+            "a arte",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(
+                0,
+                ph2d_panel_vector::ids::TexPatKnob::PickShape,
+            ),
+            "a forma como arte",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Angle),
+            "o angulo",
+        ),
+        (
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Mode(0)),
+            "os modos",
+        ),
     ] {
         assert!(visible(2, id), "o Clamp escondeu {what}, que ele USA");
     }
-    state::set_current_texture_pattern(None);
+    state::set_current_texture_pattern(0, None);
 }
 
 /// ⭐⭐ **A CAIXA É ALIMENTADA PELO ESTADO PUBLICADO** — e não por um literal.
@@ -317,7 +375,7 @@ fn the_lock_checkbox_is_fed_by_the_published_state() {
         .collect::<Vec<_>>()
         .join("\n");
     let i = code
-        .find("ids::VECTOR_TEXPAT_LOCK,")
+        .find("kid(ids::TexPatKnob::Lock),")
         .expect("a caixa e' pintada");
     // ⚠️ A linha tem de ser EXACTAMENTE o campo publicado. Uma versão anterior deste gate procurava
     // a substring `p.lock_aspect` e **um `!p.lock_aspect` SOBREVIVEU** — a negação contém a agulha.

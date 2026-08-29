@@ -418,3 +418,70 @@ mesma coisa e uma palavra a duas (§1). Se o Enio quiser esse comportamento no c
 | `Symbol` traçado com metade da largura | `the_pattern_branch_draws_the_same_pieces_as_the_solid_one` |
 | `lei`: `f.origin = [0.0, 0.0]` | `a_pattern_is_born_where_its_shape_starts` |
 | `canto`: `[cx - half, cy]` | idem (⚠️ **sobreviveu** à 1.ª redacção do gate — §8.5) |
+
+---
+
+## §9 — WAVE F: **duas secções, cada uma com os seus** (Enio, 2026-08-28)
+
+> *"cada seção deve ter seus ajustes próprios"*
+
+### §9.1 — ⛔ A ordem SUPERSEDE o §2.4, e a recusa estava meia certa
+
+O §2.4 recusava duplicar a secção: *"onze fileiras a dobrar, e as duas divergiriam no primeiro knob
+novo"*. ⇒ **certa sobre o CÓDIGO, errada sobre a UI.** Um alvo escondido num chip faz o artista mexer
+num knob e ver o **outro sujeito** mudar — e foi exactamente o report que a wave D colheu.
+
+⭐ **A UI duplica; o código não.** As duas secções saem de **uma** função de pintura
+(`texture_pattern_section(slot, y)`) e de **uma** família de ids (`texpat_id(slot, knob)`), com o
+slot por parâmetro. Um knob novo é **uma variante de enum** e nasce, nas duas secções, pintado,
+registado e roteado. *A divergência que a recusa temia morre no TIPO, não na disciplina.*
+
+### §9.2 — ⭐⭐ O SUJEITO passou a viver no GESTO
+
+`texpat_target` (a preferência de sessão da wave D) e o `lit_target` que a coagia **foram apagados**.
+O id do controlo clicado já diz em qual das duas tintas escrever, e `texpat_knob_of` resolve-o —
+**a mesma porta que os pinta e que os regista**, com três consumidores e nenhuma lista à mão.
+
+⇒ some a classe inteira de *"mexi num knob e mudou o outro sujeito"*: não há onde o sujeito
+discordar do gesto, porque não há segundo sítio onde ele esteja escrito.
+
+### §9.3 — ⚠️ Uma dobra NÃO aninha
+
+A 1.ª redacção pintou a secção do traço **dentro** da secção *Stroke*. O `SectionFold` estourou
+(*"aberto e nunca fechado: o recorte da cena ficou pendurado"*): o `return` de uma secção vazia
+deixaria a de fora por fechar. ⇒ ela é **irmã**, logo abaixo da *Stroke*. *A UI que se quer ali é uma
+secção A SEGUIR, não uma secção DENTRO.*
+
+⚠️ E o rótulo **nomeia o sujeito** (*Stroke Pattern*): duas secções chamadas *Pattern* no mesmo
+painel reproduziriam, pintado, o defeito que o chip tinha.
+
+### §9.4 — Os gates que MUDARAM de sujeito
+
+| Retirado (wave D) | Porquê | Entrou (wave F) |
+|---|---|---|
+| `the_target_chip_only_shows_when_both_exist` | não há chip | `the_stroke_pattern_section_rises_only_for_the_stroke` |
+| `a_sticky_target_is_coerced_to_what_the_shape_actually_has` | não há preferência | `no_control_is_shared_between_the_two_sections` (ids distintos + ida-e-volta) |
+| `the_pattern_target_chip_is_wired` | não há alvo a publicar | `each_paint_publishes_its_own_law` |
+| `every_pattern_write_goes_through_the_coerced_target` | não há coerção | `every_pattern_write_takes_its_subject_from_the_control_that_was_touched` |
+
+⚠️ **E TRÊS gates reprovaram produto CORRECTO pela mesma causa de sempre** — a agulha era uma
+GRAFIA: o nome de uma constante (`VECTOR_TEXPAT_PICK_SHAPE`), um literal reescrito por um
+*replace* em massa, e a contagem de secções (`38` → **`39`**, que se **CONTA**).
+
+### §9.5 — ⏳ O REPORT DE 28/08 CONTINUA ABERTO, e a pista nova é decisiva
+
+> *"o problema aparece a depender do width e não é consistente, pode ou não aparecer para o mesmo
+> width"*
+
+⭐⭐⭐ **NÃO-DETERMINÍSTICO para a mesma entrada.** Isso **exclui** toda a família de defeitos de
+modelo — e explica por que as cinco medições headless do §8 saíram verdes: elas medem funções puras,
+e uma função pura não é intermitente.
+
+⇒ o suspeito passa a ser o que **não** é puro entre o modelo e o ecrã: o assado memoizado
+(`StableImage`/`Blob`), o **atlas de imagens do Vello** e a sua repacotagem por quadro. ⚠️ A wave B
+**dobrou** o número de imagens por forma (o ladrilho do traço ao lado do do preenchimento), e é a
+primeira vez que este app põe duas imagens `Extend::Repeat` na mesma forma.
+
+⛔ **E o log que o Enio mandou descreve outra forma** — `Stroke(tinta=Solid(35,35,45,255)
+largura=0.03)`, um traço SÓLIDO: *as bolhas da foto não são o contorno daquela forma*. Falta a linha
+do `PH2D_PATTERN_LOG=1` **da forma errada**, e é ela que fecha a hipótese.

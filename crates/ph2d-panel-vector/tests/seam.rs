@@ -643,7 +643,11 @@ fn every_section_header_is_registered_as_collapsible() {
         // PATTERNPATH acima, que é o motivo-sobre-guia: as duas têm *pattern* no nome e são coisas
         // diferentes. Some inteira para toda forma que não tem padrão. ⚠️ O `38` foi **CONTADO** (o
         // gate imprimiu `left: 38`), não escolhido.
-        38,
+        // +1 (plano 35 wave F): TEXPAT_STROKE — a lei do padrão do TRAÇO, secção PRÓPRIA (Enio,
+        // 2026-08-28: *"cada seção deve ter seus ajustes próprios"*). ⚠️ **IRMÃ da *Stroke*, e não
+        // aninhada dentro dela**: uma dobra não aninha, e a 1.ª redacção estourou o `SectionFold`
+        // (*"aberto e nunca fechado"*). ⚠️ O `39` foi **CONTADO** (o gate imprimiu `left: 39`).
+        39,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

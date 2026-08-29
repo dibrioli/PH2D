@@ -51,9 +51,7 @@ mod paint;
 /// segunda lista escrita à mão do lado da shell divergiria no dia em que um reticulado entrasse, e
 /// o sintoma seria *"o painel mostra Brick e o desenho é Hex"* — um report sem causa aparente.
 pub mod texture_pattern {
-    pub use crate::paint_sections::texture_pattern::{
-        mode_id, mode_index_of, tile_id, tile_index_of,
-    };
+    pub use crate::paint_sections::texture_pattern::{kid, texpat_knob_of};
 }
 
 /// A faixa do Spacing do Pattern on Path (plano 23): o avanço por cópia em múltiplos da largura do
@@ -179,7 +177,7 @@ pub use state::{
     set_current_vector_style, set_current_vertex_count, set_current_vertex_pos,
     set_cut_line_exists, set_expand_join, set_expand_side, set_filter_blend_names,
     set_filter_kinds, set_length_suffix, set_selected_vertex_type, set_stroke_paint_kind,
-    set_texpat_target_is_stroke, take_want_font_previews,
+    take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

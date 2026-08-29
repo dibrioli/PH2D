@@ -23,49 +23,60 @@ const TILES: [(usize, &str); 4] = [(0, "Grid"), (1, "Brick"), (2, "Column"), (3,
 /// As três leis de repetição.
 const MODES: [(usize, &str); 3] = [(0, "Tile"), (1, "Mirror"), (2, "Clamp")];
 
+/// Os dois sujeitos, e o cabeçalho de cada um. ⚠️ Índice = o `slot` da família de ids.
+const SECOES: [(ph2d_a11y::NodeId, &str); 2] = [
+    (ids::VECTOR_SECTION_TEXPAT, "panel.vector.section.texpat"),
+    (
+        ids::VECTOR_SECTION_TEXPAT_STROKE,
+        "panel.vector.section.texpat_stroke",
+    ),
+];
+
+/// O id do controlo `knob` da secção da tinta `slot` — o atalho local da fábrica do editor-core.
+#[must_use]
+pub fn kid(slot: usize, knob: ids::TexPatKnob) -> ph2d_a11y::NodeId {
+    ids::texpat_id(slot, knob)
+}
+
+/// ⭐⭐ **A gémea: que `(tinta, controlo)` este id nomeia** (`None` se não é da secção).
+///
+/// ⚠️ **Uma porta, três consumidores** — o `populate` regista por aqui, o `event_clicks` deixa
+/// passar por aqui e a shell resolve o SLOT por aqui. Três listas escritas à mão divergiriam no
+/// primeiro knob novo, e a que o artista vê é a que envelhece.
+#[must_use]
+pub fn texpat_knob_of(id: ph2d_a11y::NodeId) -> Option<(usize, ids::TexPatKnob)> {
+    (0..ids::TEXPAT_SLOTS).find_map(|slot| {
+        ids::TexPatKnob::ALL
+            .iter()
+            .find(|k| kid(slot, **k) == id)
+            .map(|k| (slot, *k))
+    })
+}
+
 impl BodyCtx<'_> {
-    /// Secção **PATTERN** — a lei do padrão de textura da forma selecionada.
-    pub(crate) fn texture_pattern_section(&mut self, y: f32) -> f32 {
-        let Some(p) = state::current_texture_pattern() else {
+    /// Secção **PATTERN** da tinta `slot` — a lei do padrão de textura da forma selecionada.
+    ///
+    /// ⭐⭐ **UMA função, dois sujeitos** (plano 35, wave F; Enio 2026-08-28: *"cada seção deve ter
+    /// seus ajustes próprios"*). O plano §2.4 recusava duplicar a secção — *"onze fileiras a
+    /// dobrar, e as duas divergiriam no primeiro knob novo"* — e a recusa estava certa sobre o
+    /// **CÓDIGO** e errada sobre a **UI**: um alvo escondido num chip faz o artista mexer num knob
+    /// e ver o outro sujeito mudar. ⇒ a UI duplica, o código não, e a divergência morre no tipo.
+    pub(crate) fn texture_pattern_section(&mut self, slot: usize, y: f32) -> f32 {
+        let Some(p) = state::current_texture_pattern(slot) else {
             return y;
         };
-        let (mut y, collapsed) = self.section_header(
-            ids::VECTOR_SECTION_TEXPAT,
-            tr("panel.vector.section.texpat"),
-            y,
-        );
+        let (sec_id, sec_label) = SECOES[slot.min(SECOES.len() - 1)];
+        let (mut y, collapsed) = self.section_header(sec_id, tr(sec_label), y);
         if collapsed {
             return y;
         }
-        // ⭐⭐ **QUAL DOS DOIS ESTÁ A SER EDITADO** (plano 35, wave D) — `Fill | Stroke`.
-        //
-        // Desde que um traço pode carregar um padrão, esta secção tem **dois sujeitos possíveis** na
-        // MESMA forma, com leis independentes. A fileira diz qual deles as onze linhas abaixo estão
-        // a editar, e vem **primeiro** porque tudo o que se lê a seguir é sobre ele.
-        //
-        // ⚠️ **`None` não pinta a fileira** — a forma tem padrão numa tinta só, e não há escolha a
-        // oferecer. É a lei do `Option` que a caixa *Stroke* e o *Resize Box* já obedecem.
-        //
-        // ⛔ **A fileira não DECIDE o sujeito, ela MOSTRA-o.** Quem decide é a shell, que publica em
-        // `set_current_texture_pattern` a lei **do alvo aceso**: duas respostas a *"quem é o
-        // sujeito?"* divergiriam, e o sintoma seria esta fileira a dizer *Stroke* enquanto os onze
-        // knobs abaixo editam o preenchimento.
-        if let Some(no_traco) = state::texpat_target_is_stroke() {
-            y = self.segmented(
-                "Target",
-                &[
-                    (ids::VECTOR_TEXPAT_TARGET_FILL, "Fill", !no_traco),
-                    (ids::VECTOR_TEXPAT_TARGET_STROKE, "Stroke", no_traco),
-                ],
-                y,
-            );
-        }
+        let kid = |k| kid(slot, k);
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
-        y = self.action_button(ids::VECTOR_TEXPAT_SOURCE, "Source...", y);
+        y = self.action_button(kid(ids::TexPatKnob::Source), "Source...", y);
         // ⭐ **A ARTE pode ser uma FORMA do documento** (W7) — o modelo do Figma. O gesto é o de
         // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
-        y = self.action_button(ids::VECTOR_TEXPAT_PICK_SHAPE, "Use Shape...", y);
+        y = self.action_button(kid(ids::TexPatKnob::PickShape), "Use Shape...", y);
 
         // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
         //
@@ -81,7 +92,13 @@ impl BodyCtx<'_> {
             // O RETICULADO.
             let tiles: Vec<(ph2d_a11y::NodeId, &str, bool)> = TILES
                 .iter()
-                .map(|(i, l)| (tile_id(*i), *l, usize::from(p.kind) == *i))
+                .map(|(i, l)| {
+                    (
+                        kid(ids::TexPatKnob::Tile(*i as u8)),
+                        *l,
+                        usize::from(p.kind) == *i,
+                    )
+                })
                 .collect();
             y = self.segmented("Tile", &tiles, y);
         }
@@ -92,16 +109,16 @@ impl BodyCtx<'_> {
         if repete && matches!(p.kind, 1 | 2) {
             let denom = self
                 .store
-                .number_value(ids::VECTOR_TEXPAT_OFFSET_NUM)
+                .number_value(kid(ids::TexPatKnob::OffsetNum))
                 .unwrap_or(p.offset_denom);
             let track = self
                 .store
-                .slider(ids::VECTOR_TEXPAT_OFFSET)
+                .slider(kid(ids::TexPatKnob::Offset))
                 .map_or_else(|| denom_track(p.offset_denom), |(_, v)| v);
             y = self.slider_row(
                 "Offset",
-                ids::VECTOR_TEXPAT_OFFSET,
-                ids::VECTOR_TEXPAT_OFFSET_NUM,
+                kid(ids::TexPatKnob::Offset),
+                kid(ids::TexPatKnob::OffsetNum),
                 track,
                 denom,
                 &format!("1/{}", denom.round() as i64),
@@ -122,10 +139,15 @@ impl BodyCtx<'_> {
                 (
                     0usize,
                     "Width",
-                    ids::VECTOR_TEXPAT_W,
-                    ids::VECTOR_TEXPAT_W_NUM,
+                    kid(ids::TexPatKnob::Width),
+                    kid(ids::TexPatKnob::WidthNum),
                 ),
-                (1, "Height", ids::VECTOR_TEXPAT_H, ids::VECTOR_TEXPAT_H_NUM),
+                (
+                    1,
+                    "Height",
+                    kid(ids::TexPatKnob::Height),
+                    kid(ids::TexPatKnob::HeightNum),
+                ),
             ] {
                 let v = self.store.number_value(nid).unwrap_or(p.size[axis]);
                 let track = self
@@ -138,7 +160,7 @@ impl BodyCtx<'_> {
             // *àquelas duas linhas*, e um controlo que descreve o que está acima dele lê-se onde
             // está.
             y = self.checkbox_row(
-                ids::VECTOR_TEXPAT_LOCK,
+                kid(ids::TexPatKnob::Lock),
                 tr("panel.vector.texpat.lock"),
                 p.lock_aspect,
                 y,
@@ -147,16 +169,16 @@ impl BodyCtx<'_> {
             // O VÃO — bipolar; negativo é a sobreposição.
             let gap = self
                 .store
-                .number_value(ids::VECTOR_TEXPAT_GAP_NUM)
+                .number_value(kid(ids::TexPatKnob::GapNum))
                 .unwrap_or(p.gap);
             let gap_track = self
                 .store
-                .slider(ids::VECTOR_TEXPAT_GAP)
+                .slider(kid(ids::TexPatKnob::Gap))
                 .map_or_else(|| gap_track(p.gap), |(_, v)| v);
             y = self.slider_row(
                 "Gap",
-                ids::VECTOR_TEXPAT_GAP,
-                ids::VECTOR_TEXPAT_GAP_NUM,
+                kid(ids::TexPatKnob::Gap),
+                kid(ids::TexPatKnob::GapNum),
                 gap_track,
                 gap,
                 &format!("{gap:.2}"),
@@ -178,14 +200,14 @@ impl BodyCtx<'_> {
                 (
                     0usize,
                     "Shift X",
-                    ids::VECTOR_TEXPAT_SHIFT_X,
-                    ids::VECTOR_TEXPAT_SHIFT_X_NUM,
+                    kid(ids::TexPatKnob::ShiftX),
+                    kid(ids::TexPatKnob::ShiftXNum),
                 ),
                 (
                     1,
                     "Shift Y",
-                    ids::VECTOR_TEXPAT_SHIFT_Y,
-                    ids::VECTOR_TEXPAT_SHIFT_Y_NUM,
+                    kid(ids::TexPatKnob::ShiftY),
+                    kid(ids::TexPatKnob::ShiftYNum),
                 ),
             ] {
                 let pct = self.store.number_value(nid).unwrap_or(p.shift_pct[axis]);
@@ -202,16 +224,16 @@ impl BodyCtx<'_> {
 
         let angle = self
             .store
-            .number_value(ids::VECTOR_TEXPAT_ANGLE_NUM)
+            .number_value(kid(ids::TexPatKnob::AngleNum))
             .unwrap_or(p.angle_deg);
         let angle_track = self
             .store
-            .slider(ids::VECTOR_TEXPAT_ANGLE)
+            .slider(kid(ids::TexPatKnob::Angle))
             .map_or_else(|| angle_track(p.angle_deg), |(_, v)| v);
         y = self.slider_row(
             "Angle",
-            ids::VECTOR_TEXPAT_ANGLE,
-            ids::VECTOR_TEXPAT_ANGLE_NUM,
+            kid(ids::TexPatKnob::Angle),
+            kid(ids::TexPatKnob::AngleNum),
             angle_track,
             angle,
             &format!("{angle:.0}"),
@@ -221,48 +243,16 @@ impl BodyCtx<'_> {
         // A REPETIÇÃO.
         let modes: Vec<(ph2d_a11y::NodeId, &str, bool)> = MODES
             .iter()
-            .map(|(i, l)| (mode_id(*i), *l, usize::from(p.mode) == *i))
+            .map(|(i, l)| {
+                (
+                    kid(ids::TexPatKnob::Mode(*i as u8)),
+                    *l,
+                    usize::from(p.mode) == *i,
+                )
+            })
             .collect();
         self.segmented("Repeat", &modes, y)
     }
-}
-
-/// O id do chip de reticulado `i`. ⚠️ Uma porta só: o paint OFERECE por aqui e a shell HONRA pela
-/// gémea ([`tile_index_of`]) — duas listas escritas à mão divergiriam no dia em que uma crescesse.
-#[must_use]
-pub fn tile_id(i: usize) -> ph2d_a11y::NodeId {
-    match i {
-        1 => ids::VECTOR_TEXPAT_TILE_BRICK,
-        2 => ids::VECTOR_TEXPAT_TILE_COLUMN,
-        3 => ids::VECTOR_TEXPAT_TILE_HEX,
-        _ => ids::VECTOR_TEXPAT_TILE_GRID,
-    }
-}
-
-/// A gémea de [`tile_id`]: o índice de reticulado que este id nomeia.
-#[must_use]
-pub fn tile_index_of(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..TILES.len())
-        .find(|i| tile_id(*i) == id)
-        .map(|i| i as u8)
-}
-
-/// O id do chip de repetição `i`.
-#[must_use]
-pub fn mode_id(i: usize) -> ph2d_a11y::NodeId {
-    match i {
-        1 => ids::VECTOR_TEXPAT_MODE_MIRROR,
-        2 => ids::VECTOR_TEXPAT_MODE_CLAMP,
-        _ => ids::VECTOR_TEXPAT_MODE_TILE,
-    }
-}
-
-/// A gémea de [`mode_id`].
-#[must_use]
-pub fn mode_index_of(id: ph2d_a11y::NodeId) -> Option<u8> {
-    (0..MODES.len())
-        .find(|i| mode_id(*i) == id)
-        .map(|i| i as u8)
 }
 
 /// O track `0..1` de um tamanho de mundo. ⚠️ O MESMO mapa que o `event` e o `populate` usam.

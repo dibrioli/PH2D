@@ -82,55 +82,55 @@ fn choosing_pattern_on_a_bare_stroke_opens_the_art_door() {
     );
 }
 
-/// **Os dois sítios do ALVO** — o clique que o move, e a publicação que o acende.
+/// ⭐ **AS DUAS SECÇÕES PUBLICAM, cada uma a sua lei** (plano 35, wave F).
+///
+/// ⛔ Substitui o gate dos *"dois sítios do ALVO"*: o chip `Fill | Stroke` deixou de existir, e com
+/// ele a publicação de qual alvo estava aceso.
 #[test]
-fn the_pattern_target_chip_is_wired() {
-    let render = code("render_loop/mod.rs");
-    // ⚠️ **A agulha é um SÍMBOLO, e a 1.ª redacção era uma expressão inline** (`self.texpat_target
-    // = if *id ...`) — que o `cargo fmt` reflowiu para três linhas, e o gate reprovou produto
-    // correcto. *Um gate de fonte que fixa uma expressão mede o formatador; um que fixa um nome
-    // mede o código.* ⇒ o despacho passou a chamar uma porta com nome.
+fn each_paint_publishes_its_own_law() {
+    let publish = code("render_loop/vector_bridge_publish.rs");
     assert!(
-        render.contains("crate::texture_pattern_edit::target_for_id("),
-        "o clique no chip do alvo nao e' reconhecido no despacho - ele acende e nada muda"
+        !publish.contains("set_texpat_target_is_stroke"),
+        "a publicacao do alvo voltou - nao ha' alvo, ha' duas seccoes"
     );
     assert!(
-        render.contains("self.texpat_target = alvo;"),
-        "o alvo reconhecido nao move a preferencia de sessao"
+        publish.contains("ph2d_panel_vector::set_current_texture_pattern(\n                slot,"),
+        "a lei do padrao deixou de ser publicada POR TINTA"
     );
-    assert!(
-        code("render_loop/vector_bridge_publish.rs")
-            .contains("ph2d_panel_vector::set_texpat_target_is_stroke("),
-        "a publicacao do alvo saiu do bridge - o chip nunca e' pintado"
+    assert_eq!(
+        publish
+            .matches("crate::texture_pattern_edit::pattern_at(")
+            .count(),
+        2,
+        "as duas tintas tem de ser lidas pela MESMA porta, uma vez cada"
     );
 }
 
-/// ⚠️⚠️ **A ESCRITA passa pelo alvo COAGIDO, nunca pela preferência crua.**
+/// ⭐⭐ **O SUJEITO DE CADA ESCRITA VEM DO ID DO CONTROLO** (plano 35, wave F).
 ///
-/// Ler `self.texpat_target` directamente no dreno escreveria no traço de uma forma cujo traço não
-/// tem padrão — um **no-op silencioso**, com a secção a mostrar o preenchimento e o slider a não
-/// fazer nada. ⇒ o dreno tem de perguntar ao `lit_target`.
-///
-/// ⛔ E a mesma coerção vale para o PICKER: ele captura o slot no arm, e um slot cru capturado ali
-/// sobreviveria à mudança de forma.
+/// ⛔ **Substitui o gate do alvo COAGIDO** da wave D: com duas secções, não há preferência de
+/// sessão a coagir — o clique/arrasto já diz em qual das duas tintas escrever. *Um sujeito que se
+/// lê de outro sítio no drain é um sujeito que pode discordar do gesto.*
 #[test]
-fn every_pattern_write_goes_through_the_coerced_target() {
+fn every_pattern_write_takes_its_subject_from_the_control_that_was_touched() {
     let render = code("render_loop/mod.rs");
+    assert!(
+        !render.contains("texpat_target"),
+        "a preferencia de sessao do alvo voltou - com duas seccoes ela nao tem sujeito, e foi ela \
+         que produziu o report de 28/08"
+    );
+    // Os DOIS despachos (clique e slider) resolvem `(tinta, controlo)` pela porta que os PINTA.
     assert_eq!(
         render
-            .matches("crate::texture_pattern_edit::lit_target(")
+            .matches("ph2d_panel_vector::texture_pattern::texpat_knob_of(*id)")
             .count(),
         2,
-        "o dreno da lei e o arm do picker sao os DOIS sitios que resolvem o alvo - se este numero \
-         mudou, ha' um terceiro a resolvê-lo (ou um deles passou a ler a preferencia crua)"
+        "o clique e o slider tem de resolver o sujeito pela MESMA porta - se este numero mudou, ha' \
+         um terceiro despacho a adivinhá-lo"
     );
-    // O `apply` recebe um slot que veio do `lit_target`, e não a preferência.
-    let dreno = render
-        .find("crate::texture_pattern_edit::apply(")
-        .expect("o dreno da lei existe");
-    let janela = &render[dreno.saturating_sub(600)..dreno];
+    // E o comando leva o slot junto até ao documento.
     assert!(
-        janela.contains("lit_target(vec_scene, sel, self.texpat_target)"),
-        "o dreno da lei do padrao nao coage a preferencia ao que a forma tem"
+        render.contains("if let Some((slot, cmd)) = pending_texpat {"),
+        "o dreno da lei deixou de carregar o sujeito com o comando"
     );
 }

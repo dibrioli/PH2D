@@ -52,6 +52,8 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_patternpath::VECTOR_SECTION_PATTERNPATH,
     // A secção do TEXTURE PATTERN (plano 33) — a TINTA, não o motivo-sobre-guia acima.
     super::vector_texture_pattern::VECTOR_SECTION_TEXPAT,
+    // ⭐ E a irmã do TRAÇO (plano 35, wave F): *"cada seção deve ter seus ajustes próprios"*.
+    super::vector_texture_pattern::VECTOR_SECTION_TEXPAT_STROKE,
     super::vector_contour::VECTOR_SECTION_CONTOUR,
     // FX raster (plano 24) — distinto de EFFECTS (deformadores vetoriais, ADR-0132).
     super::vector_filters::VECTOR_SECTION_FILTERS,

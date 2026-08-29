@@ -23,6 +23,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.section.patternpath" => "Pattern on Path",
         // ⚠️ A TINTA (plano 33), não o motivo-sobre-guia da linha acima.
         "panel.vector.section.texpat" => "Pattern",
+        // ⭐ A secção irmã, dentro de *Stroke* (plano 35, wave F). ⚠️ O rótulo NOMEIA o sujeito: com
+        // duas secções chamadas "Pattern" no mesmo painel, o artista fica sem saber qual e' qual —
+        // que e' o defeito que a fileira `Fill | Stroke` tinha, so' que pintado.
+        "panel.vector.section.texpat_stroke" => "Stroke Pattern",
         "panel.vector.section.contour" => "Contour",
         "panel.vector.section.effects" => "Effects",
         "panel.vector.fx.falloff.modulates" => "modulates the effect below",

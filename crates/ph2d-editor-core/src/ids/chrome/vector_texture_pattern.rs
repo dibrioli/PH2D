@@ -17,111 +17,118 @@ use ph2d_a11y::NodeId;
 
 use super::super::hash_node_id;
 
-/// Secção **PATTERN** — a tinta de uma forma quando ela é um padrão de textura.
+/// Secção **PATTERN do PREENCHIMENTO** — a tinta do miolo quando ela é um padrão de textura.
 pub const VECTOR_SECTION_TEXPAT: NodeId = hash_node_id("vector.section.texpat");
 
-/// **Source…** — troca a ARTE do padrão (abre o diálogo de ficheiro).
-pub const VECTOR_TEXPAT_SOURCE: NodeId = hash_node_id("vector.texpat.source");
-
-/// **Use Shape** — o gesto de DUAS MÃOS (plano 33, W7): com a forma-do-padrão selecionada, apertar
-/// isto arma o pick, e o clique seguinte no canvas escolhe a forma que passa a ser a ARTE.
+/// ⭐⭐ Secção **PATTERN do TRAÇO** — a irmã, e o pedido do Enio de 2026-08-28: *"cada seção deve
+/// ter seus ajustes próprios"*.
 ///
-/// ⭐ É o modelo do Figma (*"the pattern's source references another object on the canvas"*), e o
-/// padrão fica **VIVO**: editar a forma-fonte re-assa o ladrilho em toda forma que a usa.
-pub const VECTOR_TEXPAT_PICK_SHAPE: NodeId = hash_node_id("vector.texpat.pick_shape");
-
-// ── O RETICULADO: como as cópias se arrumam ──────────────────────────────────────
-/// **Grid** — cada cópia debaixo da de cima. O ponto neutro.
-pub const VECTOR_TEXPAT_TILE_GRID: NodeId = hash_node_id("vector.texpat.tile.grid");
-/// **Brick** — as LINHAS desfasam-se horizontalmente.
-pub const VECTOR_TEXPAT_TILE_BRICK: NodeId = hash_node_id("vector.texpat.tile.brick");
-/// **Column** — as COLUNAS desfasam-se verticalmente (o *half-drop* têxtil, com Offset 1/2).
-pub const VECTOR_TEXPAT_TILE_COLUMN: NodeId = hash_node_id("vector.texpat.tile.column");
-/// **Hex** — a colmeia: meio passo **mais** o espaçamento `√3/2` que põe os seis vizinhos à mesma
-/// distância. ⚠️ O assado é o mesmo do Brick de meio passo; o que a torna colmeia é o espaçamento.
-pub const VECTOR_TEXPAT_TILE_HEX: NodeId = hash_node_id("vector.texpat.tile.hex");
-
-/// **Offset** — o desfasamento é `1/n` de uma célula. Só aparece com Brick/Column: na grade ele
-/// não tem sentido, e na colmeia ele é **fixo** em meio passo.
-pub const VECTOR_TEXPAT_OFFSET: NodeId = hash_node_id("vector.texpat.offset");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_OFFSET`].
-pub const VECTOR_TEXPAT_OFFSET_NUM: NodeId = hash_node_id("vector.texpat.offset.num");
-
-/// **Size** — o lado maior de uma cópia, em unidades de MUNDO. ⚠️ O aspecto da arte é preservado.
-pub const VECTOR_TEXPAT_SIZE: NodeId = hash_node_id("vector.texpat.size");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_SIZE`].
-pub const VECTOR_TEXPAT_SIZE_NUM: NodeId = hash_node_id("vector.texpat.size.num");
-
-/// **Gap** — o vão acrescentado a cada célula, em unidades de MUNDO. **Bipolar**: negativo é a
-/// SOBREPOSIÇÃO (o *Overlap* do Illustrator).
-pub const VECTOR_TEXPAT_GAP: NodeId = hash_node_id("vector.texpat.gap");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_GAP`].
-pub const VECTOR_TEXPAT_GAP_NUM: NodeId = hash_node_id("vector.texpat.gap.num");
-
-/// **Angle** — a rotação do padrão, em GRAUS. ⚠️ Do PADRÃO, não da forma.
-pub const VECTOR_TEXPAT_ANGLE: NodeId = hash_node_id("vector.texpat.angle");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_ANGLE`].
-pub const VECTOR_TEXPAT_ANGLE_NUM: NodeId = hash_node_id("vector.texpat.angle.num");
-
-// ── A REPETIÇÃO: como o ladrilho preenche o que sobra ────────────────────────────
-/// **Tile** — repete (`Extend::Repeat`). O caminho comum.
-pub const VECTOR_TEXPAT_MODE_TILE: NodeId = hash_node_id("vector.texpat.mode.tile");
-/// **Mirror** — espelha a cada repetição; a costura desaparece mesmo em arte não periódica.
-pub const VECTOR_TEXPAT_MODE_MIRROR: NodeId = hash_node_id("vector.texpat.mode.mirror");
-/// **Clamp** — uma cópia só, e o resto é a orla dela esticada.
-pub const VECTOR_TEXPAT_MODE_CLAMP: NodeId = hash_node_id("vector.texpat.mode.clamp");
-
-// ── A POSIÇÃO: onde, dentro de UMA repetição, a arte começa ──────────────────────
-//
-// ⭐ Estas duas fileiras substituem as três alças de canvas do plano 33 W6, RETIRADAS por decisão
-// do Enio (2026-08-27: *"não ficou legal. vamos retirar e deixar os ajustes apenas no painel"*).
-// O tamanho e a rotação já tinham fileira (`SIZE`, `ANGLE`); a POSIÇÃO não tinha nenhuma, e sem
-// ela retirar as alças teria tirado do artista uma coisa que ele fazia.
-/// **Shift X** — a fase do padrão ao longo do eixo X DELE, em percentagem de uma repetição.
+/// ⛔ **Ela SUBSTITUI a fileira `Fill | Stroke`** que a wave D pôs no topo de uma secção
+/// partilhada. O plano 35 §2.4 recusava duplicar a secção — *"onze fileiras a dobrar, e as duas
+/// divergiriam no primeiro knob novo"* —, e a recusa estava certa sobre o **CÓDIGO** e errada sobre
+/// a **UI**: um alvo escondido num chip faz o artista mexer num knob e ver o outro sujeito mudar,
+/// que foi exactamente o report que a wave D colheu.
 ///
-/// ⚠️ Uma faixa fechada `0..100`, e não uma coordenada de mundo: deslocar por um período inteiro é
-/// a identidade, então `0..100 %` já exprime toda a aparência distinta.
-pub const VECTOR_TEXPAT_SHIFT_X: NodeId = hash_node_id("vector.texpat.shift.x");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_SHIFT_X`].
-pub const VECTOR_TEXPAT_SHIFT_X_NUM: NodeId = hash_node_id("vector.texpat.shift.x.num");
-/// **Shift Y** — a fase do padrão ao longo do eixo Y DELE, em percentagem de uma repetição.
-pub const VECTOR_TEXPAT_SHIFT_Y: NodeId = hash_node_id("vector.texpat.shift.y");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_SHIFT_Y`].
-pub const VECTOR_TEXPAT_SHIFT_Y_NUM: NodeId = hash_node_id("vector.texpat.shift.y.num");
+/// ⭐ A divergência que a recusa temia continua impossível, e por construção: os controlos nascem
+/// de **uma** função de pintura e de **uma** família de ids ([`texpat_id`]), com o slot por
+/// parâmetro. Um knob novo aparece nas duas secções sozinho.
+pub const VECTOR_SECTION_TEXPAT_STROKE: NodeId = hash_node_id("vector.section.texpat.stroke");
 
-// ── O TAMANHO POR EIXO e o CADEADO (plano 33, W10) ──────────────────────────────
-//
-// ⛔ Substituem o `VECTOR_TEXPAT_SIZE`, que autorava **um** número (o lado maior, aspecto sempre
-// preservado). O Enio pediu para poder achatar a arte **de propósito** — e a protecção não
-// desapareceu: mudou de lei imposta para gesto escolhido, com o cadeado LIGADO por omissão.
-/// **Width** — a largura de uma cópia, em unidades de MUNDO.
-pub const VECTOR_TEXPAT_W: NodeId = hash_node_id("vector.texpat.w");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_W`].
-pub const VECTOR_TEXPAT_W_NUM: NodeId = hash_node_id("vector.texpat.w.num");
-/// **Height** — a altura de uma cópia, em unidades de MUNDO.
-pub const VECTOR_TEXPAT_H: NodeId = hash_node_id("vector.texpat.h");
-/// O campo numérico gémeo do [`VECTOR_TEXPAT_H`].
-pub const VECTOR_TEXPAT_H_NUM: NodeId = hash_node_id("vector.texpat.h.num");
-/// ⭐ **Lock Aspect** — a caixa que decide se mexer num eixo leva o outro.
+/// Quantas TINTAS a secção *Pattern* endereça: `0` = preenchimento, `1` = traço.
 ///
-/// ⚠️ **Ela PRESERVA A RAZÃO ACTUAL, não a natural da arte** (a lei do *constrain proportions* do
-/// Photoshop e do Figma): um cadeado que voltasse ao aspecto da imagem **desfaria o achatamento**
-/// que o artista autorou. ⇒ ele descreve o **gesto**, não o padrão — e por isso **não viaja no
-/// ficheiro**, e este bloco não move schema nenhum.
-pub const VECTOR_TEXPAT_LOCK: NodeId = hash_node_id("vector.texpat.lock");
+/// ⚠️ É o **espelho** do `ph2d_vec_render::PatternSlot`, e vive aqui porque o editor-core não
+/// depende da crate de desenho — a mesma razão pela qual o painel espelha o `FillKind`.
+pub const TEXPAT_SLOTS: usize = 2;
 
-// ── O ALVO da secção (plano 35, wave D) ────────────────────────────────────────
-//
-// ⭐⭐ **A secção tem DOIS sujeitos possíveis** desde que um traço pode carregar um padrão: o
-// preenchimento e o traço da MESMA forma, com leis independentes. A fileira diz qual deles as onze
-// linhas abaixo estão a editar.
-//
-// ⛔ **Duplicar a secção está recusado** (plano 35 §2.4): onze fileiras a dobrar, e as duas
-// divergiriam no primeiro knob novo.
-//
-// ⚠️ **Ela só é PINTADA quando os dois existem** — com um só não há escolha a oferecer, e a secção
-// edita o que houver. É a lei do `Option` que a caixa *Stroke* e o *Resize Box* já obedecem.
-/// **Fill** — a secção edita o padrão do preenchimento.
-pub const VECTOR_TEXPAT_TARGET_FILL: NodeId = hash_node_id("vector.texpat.target.fill");
-/// **Stroke** — a secção edita o padrão do traço.
-pub const VECTOR_TEXPAT_TARGET_STROKE: NodeId = hash_node_id("vector.texpat.target.stroke");
+/// **Que controlo da secção *Pattern***, sem dizer de qual das duas tintas — o slot é o outro
+/// parâmetro de [`texpat_id`].
+///
+/// ⭐ **Um enum, e não vinte constantes por secção.** A lista é fechada e o compilador conhece-a:
+/// um knob novo é uma variante, e ele nasce com id nas DUAS secções, registado e roteado, sem que
+/// ninguém se lembre de o duplicar. *Era a divergência que o plano 35 §2.4 temia — e ela morre no
+/// tipo, não na disciplina.*
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TexPatKnob {
+    /// **Source…** — troca a ARTE (abre o diálogo de ficheiro).
+    Source,
+    /// **Use Shape…** — arma o gesto de duas mãos (a arte passa a ser uma forma do documento).
+    PickShape,
+    /// O chip de reticulado `i` (`0` Grid · `1` Brick · `2` Column · `3` Hex).
+    Tile(u8),
+    /// O chip de repetição `i` (`0` Tile · `1` Mirror · `2` Clamp).
+    Mode(u8),
+    /// **Offset** — o denominador do desfasamento (`1/n`).
+    Offset,
+    /// O campo numérico gémeo do [`Self::Offset`].
+    OffsetNum,
+    /// **Width** — a largura de uma cópia, em unidades de MUNDO.
+    Width,
+    /// O campo numérico gémeo da [`Self::Width`].
+    WidthNum,
+    /// **Height** — a altura de uma cópia, em unidades de MUNDO.
+    Height,
+    /// O campo numérico gémeo da [`Self::Height`].
+    HeightNum,
+    /// ⭐ **Lock Aspect** — mexer num eixo leva o outro. Preserva a razão ACTUAL, não a natural da
+    /// arte, e por isso descreve o GESTO: ele vive na sessão e **não viaja no ficheiro**.
+    Lock,
+    /// **Gap** — o vão acrescentado (negativo = sobreposição).
+    Gap,
+    /// O campo numérico gémeo do [`Self::Gap`].
+    GapNum,
+    /// **Angle** — a rotação do padrão, em graus.
+    Angle,
+    /// O campo numérico gémeo do [`Self::Angle`].
+    AngleNum,
+    /// **Shift X** — a fase dentro de UMA repetição, em % do eixo X do padrão.
+    ShiftX,
+    /// O campo numérico gémeo do [`Self::ShiftX`].
+    ShiftXNum,
+    /// **Shift Y** — a fase ao longo do eixo Y do padrão.
+    ShiftY,
+    /// O campo numérico gémeo do [`Self::ShiftY`].
+    ShiftYNum,
+}
+
+impl TexPatKnob {
+    /// **Todos os controlos**, na ordem em que a secção os pinta.
+    ///
+    /// ⚠️ É esta lista que o `populate` regista e que o roteamento percorre para resolver um id de
+    /// volta em `(slot, knob)`. Uma variante fora daqui nasce **pintada e morta** — a lacuna que
+    /// esta casa já pagou com 36 células de física e dez chips do Painter.
+    pub const ALL: [Self; 24] = [
+        Self::Source,
+        Self::PickShape,
+        Self::Tile(0),
+        Self::Tile(1),
+        Self::Tile(2),
+        Self::Tile(3),
+        Self::Offset,
+        Self::OffsetNum,
+        Self::Width,
+        Self::WidthNum,
+        Self::Height,
+        Self::HeightNum,
+        Self::Lock,
+        Self::Gap,
+        Self::GapNum,
+        Self::ShiftX,
+        Self::ShiftXNum,
+        Self::ShiftY,
+        Self::ShiftYNum,
+        Self::Angle,
+        Self::AngleNum,
+        Self::Mode(0),
+        Self::Mode(1),
+        Self::Mode(2),
+    ];
+}
+
+/// O [`NodeId`] do controlo `knob` da secção da tinta `slot`.
+///
+/// ⚠️ Runtime `format!` + gémeo FNV no mesmo espaço de ids — a mesma fábrica do
+/// `vector_marker_option_id` e dos chips do catálogo de formas.
+#[must_use]
+pub fn texpat_id(slot: usize, knob: TexPatKnob) -> NodeId {
+    super::painter::fnv_node_id_runtime(&format!("vector.texpat.{slot}.{knob:?}"))
+}

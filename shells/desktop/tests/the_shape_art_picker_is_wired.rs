@@ -39,8 +39,11 @@ fn code(rel: &str) -> String {
 #[test]
 fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     let render = code("render_loop/mod.rs");
+    // ⚠️ A agulha passou a ser o KNOB (plano 35, wave F): os ids da secção são derivados por
+    // `(tinta, controlo)`, então já não há uma constante com este nome. *Um gate que fixa o nome de
+    // uma constante reprova a família que a substitui sem mudar a lei que ele defende.*
     assert!(
-        render.contains("VECTOR_TEXPAT_PICK_SHAPE"),
+        render.contains("K::PickShape => pending_texpat_pick"),
         "o botao Use Shape nao e' reconhecido no despacho"
     );
     // ⚠️ **A agulha é o PREFIXO, e a 1.ª redacção fixava `TexturePatternArt(host)` inteiro** — a

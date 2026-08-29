@@ -295,16 +295,12 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // então o clique é da shell, como o da fileira do preenchimento logo acima.
         || id == ids::VECTOR_STROKE_KIND_SOLID
         || id == ids::VECTOR_STROKE_KIND_PATTERN
-        // A secção PATTERN (plano 33 W5): a arte, os quatro reticulados e as três repetições.
-        || id == ids::VECTOR_TEXPAT_SOURCE
-        || id == ids::VECTOR_TEXPAT_PICK_SHAPE
-        || id == ids::VECTOR_TEXPAT_LOCK
-        // ⭐ **O ALVO da secção** (plano 35, wave D) — ele escolhe qual das duas tintas as onze
-        // fileiras abaixo editam, e essa escolha é de SESSÃO (a shell é a dona), como o cadeado.
-        || id == ids::VECTOR_TEXPAT_TARGET_FILL
-        || id == ids::VECTOR_TEXPAT_TARGET_STROKE
-        || crate::paint_sections::texture_pattern::tile_index_of(id).is_some()
-        || crate::paint_sections::texture_pattern::mode_index_of(id).is_some()
+        // ⭐⭐ **AS DUAS secções PATTERN** (plano 35, wave F) — a do preenchimento e a do traço.
+        //
+        // ⚠️ **Percorridas pela MESMA lista que as PINTA** (`TexPatKnob::ALL` × os slots): um knob
+        // novo atravessa o barramento sozinho, nas duas secções. ⛔ Uma allowlist escrita à mão
+        // aqui seria a terceira cópia da lista de controlos — e a que envelhece primeiro.
+        || crate::paint_sections::texture_pattern::texpat_knob_of(id).is_some()
         || id == ids::VECTOR_GRAD_ADD_POINT
         || id == ids::VECTOR_GRAD_REMOVE_POINT
         || id == ids::VECTOR_GRAD_ADD_STOP

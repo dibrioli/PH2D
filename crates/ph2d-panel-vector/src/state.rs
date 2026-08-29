@@ -145,11 +145,11 @@ mod fill_state;
 pub use fill_state::set_current_grad_jitter;
 pub use fill_state::{
     TexturePatternRow, set_current_fill, set_current_fill_rule, set_current_grad_influence,
-    set_current_texture_pattern, set_texpat_target_is_stroke,
+    set_current_texture_pattern,
 };
 pub(crate) use fill_state::{
     current_fill_kind, current_fill_rule, current_grad_angle, current_grad_influence,
-    current_grad_jitter, current_texture_pattern, texpat_target_is_stroke,
+    current_grad_jitter, current_texture_pattern,
 };
 
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.

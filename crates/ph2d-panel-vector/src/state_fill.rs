@@ -32,7 +32,10 @@ thread_local! {
     /// A LEI do padrão da forma selecionada (`None` = ela não tem padrão) — o que a secção
     /// **Pattern** desenha. Espelho panel-local do `PatternFill` da cena, pela MESMA razão que o
     /// [`FillKind`] o é: o painel não depende da crate do documento.
-    static CURRENT_TEXPAT: RefCell<Option<TexturePatternRow>> = const { RefCell::new(None) };
+    /// ⚠️ **Uma por TINTA** (plano 35, wave F): índice `0` = preenchimento, `1` = traço. Uma só
+    /// entrada obrigava a secção a ter um ALVO escondido num chip, e o artista mexia num knob e via
+    /// o outro sujeito mudar — o report do Enio de 2026-08-28.
+    static CURRENT_TEXPAT: RefCell<[Option<TexturePatternRow>; 2]> = const { RefCell::new([None, None]) };
 }
 
 /// A lei de um padrão de textura, como o painel a vê (plano 33, W5).
@@ -69,14 +72,18 @@ pub struct TexturePatternRow {
     pub mode: u8,
 }
 
-/// Publica a lei do padrão da forma selecionada (`None` esconde a secção inteira).
-pub fn set_current_texture_pattern(row: Option<TexturePatternRow>) {
-    CURRENT_TEXPAT.with(|c| *c.borrow_mut() = row);
+/// Publica a lei do padrão da tinta `slot` (`None` esconde a secção dela).
+pub fn set_current_texture_pattern(slot: usize, row: Option<TexturePatternRow>) {
+    CURRENT_TEXPAT.with(|c| {
+        if let Some(v) = c.borrow_mut().get_mut(slot) {
+            *v = row;
+        }
+    });
 }
 
-/// A lei do padrão neste quadro (`None` ⇒ a secção **Pattern** nem sobe).
-pub(crate) fn current_texture_pattern() -> Option<TexturePatternRow> {
-    CURRENT_TEXPAT.with(|c| *c.borrow())
+/// A lei do padrão da tinta `slot` neste quadro (`None` ⇒ a secção dela nem sobe).
+pub(crate) fn current_texture_pattern(slot: usize) -> Option<TexturePatternRow> {
+    CURRENT_TEXPAT.with(|c| c.borrow().get(slot).copied().flatten())
 }
 
 /// Publish the selected path's fill kind + linear angle (both `None` when no path
@@ -125,28 +132,4 @@ pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
 /// The selected compound path's fill rule this frame (`None` = not compound).
 pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
     CURRENT_FILL_RULE.with(Cell::get)
-}
-
-thread_local! {
-    /// ⭐ **Qual dos dois sujeitos a secção *Pattern* está a editar** (plano 35, wave D).
-    ///
-    /// `None` = **não pintar a fileira**: a forma tem padrão numa tinta só, e não há escolha a
-    /// oferecer. `Some(false)` = o preenchimento aceso · `Some(true)` = o traço aceso.
-    static TEXPAT_TARGET_IS_STROKE: Cell<Option<bool>> = const { Cell::new(None) };
-}
-
-/// Publica o alvo aceso da secção *Pattern* (`None` esconde a fileira do alvo).
-///
-/// ⚠️ **Ela NÃO decide o que a secção mostra** — quem decide é a shell, que publica em
-/// [`set_current_texture_pattern`] a lei **do alvo aceso**. Duas respostas a *"quem é o sujeito?"*
-/// divergiriam, e o sintoma seria a fileira a dizer *Stroke* enquanto os onze knobs abaixo dela
-/// editam o preenchimento.
-pub fn set_texpat_target_is_stroke(v: Option<bool>) {
-    TEXPAT_TARGET_IS_STROKE.with(|c| c.set(v));
-}
-
-/// O alvo aceso neste quadro (`None` = a fileira não é pintada).
-#[must_use]
-pub(crate) fn texpat_target_is_stroke() -> Option<bool> {
-    TEXPAT_TARGET_IS_STROKE.with(Cell::get)
 }

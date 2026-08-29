@@ -263,20 +263,37 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
         // da engine são por-região porque o traço as usa por-dab.
         let (centre, radius) = whole(mesh);
 
-        ph2d_mesh::refine_in_sphere(
+        // ⭐⭐⭐ **A CERCA POR SÍTIO entra nos DOIS passes** — ver [`SizingGrid`]. Ela é
+        // reconstruída a cada ronda porque a malha muda, e é isso que a mantém honesta.
+        let grid = adaptive_on().then(|| SizingGrid::build(mesh, target)).flatten();
+        let split = grid.as_ref().map(|g| {
+            move |p: [f32; 3]| g.at(p) * SPLIT_FACTOR
+        });
+        let split_ref: ph2d_mesh::Sizing<'_> = split
+            .as_ref()
+            .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
+        ph2d_mesh::refine_in_sphere_sized(
             mesh,
             centre,
             radius,
             target * SPLIT_FACTOR,
+            split_ref,
             &mut births,
             &mut scratch,
         );
         let (centre, radius) = whole(mesh);
-        ph2d_mesh::collapse_in_sphere(
+        let shrink = grid.as_ref().map(|g| {
+            move |p: [f32; 3]| g.at(p) * COLLAPSE_FACTOR
+        });
+        let shrink_ref: ph2d_mesh::Sizing<'_> = shrink
+            .as_ref()
+            .map(|f| f as &(dyn Fn([f32; 3]) -> f32 + Sync));
+        ph2d_mesh::collapse_in_sphere_sized(
             mesh,
             centre,
             radius,
             target * COLLAPSE_FACTOR,
+            shrink_ref,
             &mut remap,
             &mut scratch,
         );
@@ -293,6 +310,25 @@ fn remesh_with(mesh: &mut Mesh, alpha: f32, rim_law: bool) -> Report {
         last = now;
     }
 
+    // ⭐⭐⭐ **A CAUDA ADAPTATIVA — refinar onde a forma APERTA, e só refinar.**
+    //
+    // ⛔⛔ **A raiz da amputação (report do artista, 2026-08-29):** o laço acima remalha para
+    // um alvo **uniforme** (`ALPHA × diagonal = 0,089` na peça dele), e o **raio local** de um
+    // espinho dele cai a `0,037`. *Uma agulha mais fina do que UM triângulo não pode ser
+    // representada* — nenhum truque de reprojecção a salva, porque não há onde a pôr.
+    //
+    // ⚠️ **E é por isso que a reprojecção-com-normal (ver [`facing_on`]) curou a fase e
+    // partiu a seguinte:** ela guardava os vértices da agulha com o alvo ainda a `0,089`,
+    // logo com triângulos gigantes e mal formados. *Guardar a ponta e desenhar a grade não
+    // são dois trabalhos: são um.*
+    //
+    // ⭐ **Aqui a adaptação é DE GRAÇA**, e é a diferença para a tentativa do §8-quater: o F1
+    // é uma remalha **métrica**, não uma parametrização — um alvo que varia realiza-se
+    // exactamente, sem projecção de mínimos quadrados a lavá-lo.
+    //
+    // ⚠️ **Só REFINA**, nunca grosseira: o corpo fica com a densidade que sempre teve, e o
+    // que muda é a agulha. E corre **depois** do laço, senão o passe de colapso dele comia as
+    // faces finas na ronda seguinte.
     // ⭐⭐⭐ **A REPARAÇÃO NÃO-MANIFOLD, e ela vem DEPOIS do remalhe.**
     //
     // ⛔⛔ **Uma aresta reclamada por três faces mente para todo o resto do motor.** O mapa
@@ -521,6 +557,134 @@ fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bo
 
 /// Meio passo de Laplaciano — o amortecimento que o torna monótono.
 const LAMBDA: f32 = 0.5;
+
+/// ⭐⭐⭐ **O ALVO POR SÍTIO, numa grelha grosseira** — o que as portas de topologia consultam.
+///
+/// ⛔⛔ **Ela existe porque um alvo ÚNICO não pode representar uma agulha.** Na peça do artista
+/// (2026-08-29) o alvo é `0,089` e o **raio local** de um espinho cai a `0,037`: o passe de
+/// colapso come toda aresta abaixo de `0,071`, e as arestas que dão a volta ao tubo são
+/// justamente essas — *a agulha fecha-se sobre si antes de qualquer outra fase existir.*
+///
+/// ⚠️ **Por POSIÇÃO e não por índice**, porque é isso que as portas aceitam: elas renumeram
+/// (`Remap`) e correm várias passagens por chamada, então um vetor por vértice ficaria
+/// obsoleto dentro da própria chamada.
+///
+/// ⚠️ **A célula é o alvo GLOBAL**, e a consulta leva o **mínimo dos 27 vizinhos**: uma grelha
+/// que respondesse só pela célula própria daria um degrau na fronteira dela, e um degrau no
+/// limiar de colapso é uma fileira de arestas que morre de um lado e vive do outro.
+struct SizingGrid {
+    cell: f32,
+    fallback: f32,
+    want: std::collections::BTreeMap<(i32, i32, i32), f32>,
+}
+
+impl SizingGrid {
+    /// ⭐ O alvo local sai da **curvatura normalizada pela mediana** — a mesma lei livre de
+    /// escala que a `ph2d_quadflow::ScaleField` usa. ⚠️ **O tecto é `1`**: esta grelha nunca
+    /// grosseira, então não pode piorar nenhuma região que o laço já resolveu.
+    fn build(mesh: &Mesh, target: f32) -> Option<Self> {
+        let curv = mesh.curvatures();
+        if curv.is_empty() {
+            return None;
+        }
+        let mut mags: Vec<f32> = curv.iter().map(|k| k.abs()).collect();
+        mags.sort_by(f32::total_cmp);
+        let median = mags[mags.len() / 2];
+        if median <= 1.0e-9 {
+            return None;
+        }
+        let cell = target.max(1.0e-6);
+        let mut want: std::collections::BTreeMap<(i32, i32, i32), f32> =
+            std::collections::BTreeMap::new();
+        let pos = mesh.positions();
+        for (v, p) in pos.iter().enumerate() {
+            let k = curv.get(v).copied().unwrap_or(0.0).abs().max(1.0e-9);
+            let h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
+            let key = Self::key_of(*p, cell);
+            let slot = want.entry(key).or_insert(h);
+            if h < *slot {
+                *slot = h;
+            }
+        }
+        Some(Self {
+            cell,
+            fallback: target,
+            want,
+        })
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn key_of(p: [f32; 3], cell: f32) -> (i32, i32, i32) {
+        (
+            (p[0] / cell).floor() as i32,
+            (p[1] / cell).floor() as i32,
+            (p[2] / cell).floor() as i32,
+        )
+    }
+
+    /// O alvo local: o **mínimo** entre a célula e as 26 vizinhas.
+    fn at(&self, p: [f32; 3]) -> f32 {
+        let (x, y, z) = Self::key_of(p, self.cell);
+        let mut best = f32::INFINITY;
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                for dz in -1..=1 {
+                    if let Some(h) = self.want.get(&(x + dx, y + dy, z + dz)) {
+                        best = best.min(*h);
+                    }
+                }
+            }
+        }
+        if best.is_finite() { best } else { self.fallback }
+    }
+}
+
+/// ⭐⭐⭐ **A CERCA POR SÍTIO está ligada?** — `PH2D_ISO_ADAPT=1` liga.
+///
+/// # ⭐ Ela CURA a agulha, e a medição é dramática
+///
+/// Alcance perdido pela fase zero, na fixtura de espinhos (sem → com):
+///
+/// | `σ` | sem | com |
+/// |---|---|---|
+/// | `0,30` | `+0,1 %` | `+0,3 %` |
+/// | `0,20` | `−0,9 %` | ⭐ `+0,8 %` |
+/// | `0,14` | `−1,6 %` | ⭐ `+0,8 %` |
+/// | `0,10` | `−5,8 %` | ⭐ **`−0,8 %`** |
+/// | `0,07` | `−12,9 %` | ⭐ **`−1,3 %`** |
+/// | `0,05` | ⛔ `−15,8 %` | ⭐⭐⭐ **`−0,8 %`** |
+///
+/// ⭐ E a topologia da malha de trabalho fica **perfeita** (`χ = 2`, zero bordo, zero
+/// não-manifold, valência máxima `10`). *A agulha sobrevive.*
+///
+/// # ⛔⛔⛔ E PARTE A CADEIA A JUSANTE — a mesma lei do [`facing_on`], um nível mais fundo
+///
+/// Medida de ponta a ponta **pelo botão**, na peça do artista, `Detail 0,85`:
+///
+/// | | alcance final | `χ` | bordo | não-manif. | dobras | relógio |
+/// |---|---|---|---|---|---|---|
+/// | ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `0` | `76` | **`27,8 s`** |
+/// | ⛔ ligada | ⛔ `−17,3 %` | ⛔ `−7` | ⛔ **`62`** | ⛔ `2` | `101` | ⛔ **`167 s`** |
+///
+/// ⚠️ **O mecanismo é o mesmo das duas vezes:** a malha de trabalho passa de `3 982` para
+/// `33 156` faces e deixa de ser **isotrópica**; o campo cruzado, o traçado e o mapa — que
+/// dependem de uma triangulação bem comportada — perdem-se nela, e o alcance FINAL até piora.
+///
+/// ⭐⭐⭐ **A lei, agora confirmada DUAS vezes:** *uma fase medida sozinha pode melhorar e
+/// piorar o produto.* ⇒ a cadeia inteira tem de ser consciente do sizing, e isso é a wave do
+/// **factor de escala conforme** que a `sizing_field` do shell já nomeia — não uma cerca só
+/// no F1.
+fn adaptive_on() -> bool {
+    std::env::var("PH2D_ISO_ADAPT").as_deref() == Ok("1")
+}
+
+/// ⭐ **Quantas vezes o alvo pode encolher onde a forma aperta.**
+///
+/// ⚠️ **É a mesma cerca de gradação que a [`ph2d_quadflow::MAX_ADAPTIVE_RATIO`] declara**
+/// noutra crate (*duas células cujas escalas diferem por mais do que isto deixam de ter
+/// aresta comum*), e o número aqui é o mesmo `4` — a agulha recebe até `4×` mais resolução
+/// linear que o corpo.
+const ADAPT_RATIO: f32 = 4.0;
 
 /// ⭐⭐⭐ **A reprojecção exige que o pé CONCORDE com a normal** — ver o uso.
 ///

@@ -140,6 +140,32 @@ pub fn collapse_in_sphere(
     remap: &mut Remap,
     scratch: &mut RegionScratch,
 ) -> Collapse {
+    collapse_in_sphere_sized(mesh, center, radius, edge_min, None, remap, scratch)
+}
+
+/// ⭐⭐⭐ **O MESMO, com um LIMIAR QUE VARIA COM O SÍTIO** — ver [`Sizing`].
+///
+/// ⛔⛔ **Ela existe por um report do artista (2026-08-29): «o remesh amputou pontas».** Um
+/// limiar único come toda aresta abaixo dele, e numa **agulha** as arestas que dão a volta ao
+/// tubo são justamente as curtas — a peça dele tem espinhos de raio local `0,037` contra um
+/// alvo de `0,089`. *O colapso fecha a agulha sobre si antes de qualquer outra fase existir:
+/// medido, a remalha isotrópica come `15,9 %` do alcance da peça.*
+///
+/// ⚠️ **O limiar é dado por POSIÇÃO e não por índice de vértice**, e a razão é o contrato
+/// desta porta: ela **renumera** (ver [`Remap`]) e corre até [`MAX_PASSES`] passagens, então
+/// um vetor indexado por vértice ficaria obsoleto dentro da própria chamada. *Uma tabela que
+/// o próprio laço invalida é pior que nenhuma.*
+///
+/// `sizing = None` é **byte-idêntico** a [`collapse_in_sphere`] — é o controlo.
+pub fn collapse_in_sphere_sized(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    edge_min: f32,
+    sizing: Sizing<'_>,
+    remap: &mut Remap,
+    scratch: &mut RegionScratch,
+) -> Collapse {
     *remap = Remap {
         faces: mesh.face_count(),
         verts: mesh.vert_count(),
@@ -154,7 +180,7 @@ pub fn collapse_in_sphere(
     let (v0, f0) = (mesh.vert_count(), mesh.face_count());
     let mut passes = 0;
     while passes < MAX_PASSES {
-        let Some(step) = one_pass(mesh, center, radius, edge_min, scratch) else {
+        let Some(step) = one_pass(mesh, center, radius, edge_min, sizing, scratch) else {
             break;
         };
         remap.then(step);
@@ -169,6 +195,12 @@ pub fn collapse_in_sphere(
         passes,
     }
 }
+
+/// ⭐⭐⭐ **UM LIMIAR QUE VARIA COM O SÍTIO** — `None` é o limiar único de sempre.
+///
+/// A função recebe uma **posição de mundo** e devolve o comprimento de aresta abaixo do qual
+/// se colapsa ali. ⚠️ *Por posição e não por índice*: estas portas renumeram.
+pub type Sizing<'a> = Option<&'a (dyn Fn([f32; 3]) -> f32 + Sync)>;
 
 /// Um colapso decidido, ainda não aplicado.
 struct Planned {
@@ -199,6 +231,7 @@ fn one_pass(
     center: [f32; 3],
     radius: f32,
     edge_min: f32,
+    sizing: Sizing<'_>,
     scratch: &mut RegionScratch,
 ) -> Option<Remap> {
     let r2 = radius * radius;
@@ -230,7 +263,7 @@ fn one_pass(
         if !centroid_in_sphere(mesh.positions(), v, center, r2) {
             continue;
         }
-        let Some((a, b)) = shortest_edge_under(mesh.positions(), v, emin2) else {
+        let Some((a, b)) = shortest_edge_under(mesh.positions(), v, emin2, sizing) else {
             continue;
         };
         let Some(p) = plan(mesh, a, b) else {
@@ -292,7 +325,12 @@ fn centroid_in_sphere(pos: &[[f32; 3]], v: &[u32], center: [f32; 3], r2: f32) ->
 /// exato do `longest_edge` do refino: colapsar uma aresta que não é a mais curta
 /// deixa a mais curta ainda lá, e a rodada seguinte a apaga de qualquer jeito —
 /// mas depois de o vizinho ter mudado de forma por nada.
-fn shortest_edge_under(pos: &[[f32; 3]], v: &[u32], emin2: f32) -> Option<(u32, u32)> {
+fn shortest_edge_under(
+    pos: &[[f32; 3]],
+    v: &[u32],
+    emin2: f32,
+    sizing: Sizing<'_>,
+) -> Option<(u32, u32)> {
     let mut best: Option<(f32, u32, u32)> = None;
     for k in 0..v.len() {
         let (a, b) = (v[k], v[(k + 1) % v.len()]);
@@ -303,7 +341,22 @@ fn shortest_edge_under(pos: &[[f32; 3]], v: &[u32], emin2: f32) -> Option<(u32, 
             best = Some((l2, a, b));
         }
     }
-    best.filter(|&(l2, ..)| l2 < emin2).map(|(_, a, b)| (a, b))
+    let (l2, a, b) = best?;
+    // ⚠️ **O limiar é o do MEIO da aresta**, e não o do vértice `a`: os dois extremos podem
+    // cair em bandas diferentes, e escolher um deles faria o colapso depender de qual canto a
+    // face propôs primeiro — que é a mesma armadilha de determinismo que o `keep`/`gone`
+    // desta função já resolve pelo índice.
+    let limit2 = sizing.map_or(emin2, |f| {
+        let (pa, pb) = (pos[a as usize], pos[b as usize]);
+        let mid = [
+            0.5 * (pa[0] + pb[0]),
+            0.5 * (pa[1] + pb[1]),
+            0.5 * (pa[2] + pb[2]),
+        ];
+        let h = f(mid);
+        h * h
+    });
+    if l2 < limit2 { Some((a, b)) } else { None }
 }
 
 /// Decide se a aresta `a—b` pode colapsar, e para onde. Ver as quatro recusas no

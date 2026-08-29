@@ -141,6 +141,26 @@ pub fn refine_in_sphere(
     births: &mut Vec<Birth>,
     scratch: &mut RegionScratch,
 ) -> Refine {
+    refine_in_sphere_sized(mesh, center, radius, edge_max, None, births, scratch)
+}
+
+/// ⭐⭐⭐ **O MESMO, com um LIMIAR QUE VARIA COM O SÍTIO** — ver [`crate::Sizing`].
+///
+/// ⛔ **A irmã do [`crate::collapse_in_sphere_sized`], e as duas andam juntas:** proteger a
+/// agulha do colapso sem lhe dar resolução deixa-a com triângulos gigantes e mal formados —
+/// medido, é isso que faz o campo cruzado a jusante perder-se. *Guardar a ponta e desenhar a
+/// grade são um trabalho só.*
+///
+/// `sizing = None` é **byte-idêntico** a [`refine_in_sphere`].
+pub fn refine_in_sphere_sized(
+    mesh: &mut Mesh,
+    center: [f32; 3],
+    radius: f32,
+    edge_max: f32,
+    sizing: crate::Sizing<'_>,
+    births: &mut Vec<Birth>,
+    scratch: &mut RegionScratch,
+) -> Refine {
     births.clear();
     if !mesh.faces().iter().all(Face::is_tri) {
         return Refine::NotTriangles;
@@ -160,6 +180,7 @@ pub fn refine_in_sphere(
             center,
             radius,
             edge_max,
+            sizing,
             births,
             &mut touched,
             scratch,
@@ -311,11 +332,16 @@ fn faces_of_edge(adj: &Adjacency, faces: &[Face], a: u32, b: u32, out: &mut Vec<
 }
 
 /// Um passe. `true` se alguma coisa foi partida.
+///
+/// ⚠️ **Oito argumentos, e o oitavo é a cerca por sítio** — ver [`crate::Sizing`]. Agrupá-los
+/// num `struct` seria uma indireção por aresta num laço que corre sobre a malha inteira.
+#[allow(clippy::too_many_arguments)]
 fn one_pass(
     mesh: &mut Mesh,
     center: [f32; 3],
     radius: f32,
     edge_max: f32,
+    sizing: crate::Sizing<'_>,
     births: &mut Vec<Birth>,
     touched: &mut Vec<u32>,
     region: &mut RegionScratch,
@@ -409,7 +435,19 @@ fn one_pass(
                 positions[v[(k + 1) % v.len()] as usize],
             );
             let d = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
-            if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= emax2 {
+            // ⚠️ **O limiar é o do MEIO da aresta** — a mesma lei da irmã do colapso: os dois
+            // extremos podem cair em bandas diferentes, e escolher um deles faria a decisão
+            // depender de qual canto a face propôs primeiro.
+            let limit2 = sizing.map_or(emax2, |g| {
+                let mid = [
+                    0.5 * (pa[0] + pb[0]),
+                    0.5 * (pa[1] + pb[1]),
+                    0.5 * (pa[2] + pb[2]),
+                ];
+                let h = g(mid);
+                h * h
+            });
+            if d[0] * d[0] + d[1] * d[1] + d[2] * d[2] <= limit2 {
                 continue;
             }
             long.push((f, u8::try_from(k).unwrap_or(u8::MAX)));

@@ -508,3 +508,19 @@ fn a_reprojeccao_que_respeita_a_normal_nasce_desligada() {
          arestas de bordo e cinco ilhas"
     );
 }
+
+/// ⭐⭐⭐ **A cerca por sítio nasce DESLIGADA** — ver [`super::adaptive_on`], que traz as duas
+/// tabelas.
+///
+/// ⛔ Ela **cura** a agulha (o alcance perdido na fase zero vai de `−15,8 %` para `−0,8 %`, com
+/// a topologia da malha de trabalho perfeita) e **parte** a cadeia (`χ` de `1` para `−7`, bordo
+/// de `4` para `62`, `6×` o relógio). ⚠️ *É a segunda vez que uma cura de fase zero mede assim
+/// — e é por isso que a decisão vive numa função com gate.*
+#[test]
+fn a_cerca_por_sitio_nasce_desligada() {
+    assert!(
+        !super::adaptive_on(),
+        "⛔ sem a env ela tem de estar DESLIGADA -- ligada, a peca do artista sai com 62 \
+         arestas de bordo e demora 167 s"
+    );
+}

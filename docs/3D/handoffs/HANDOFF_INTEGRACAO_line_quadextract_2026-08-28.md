@@ -530,6 +530,81 @@ fase.
 `PH2D_ISO_FACING=1` liga-a. **A cura verdadeira tem de tratar as duas fases ao mesmo tempo:
 guardar a agulha e entregar ao campo uma malha que ele saiba ler.**
 
+## §8-octies — ⭐⭐⭐ A AGULHA SOBREVIVE À FASE ZERO — e a cadeia não sobrevive à agulha
+
+O §8-septies deixou a lei: *guardar a ponta e desenhar a grade são um trabalho só*. Esta wave
+levou-a até ao fim e a resposta é a mesma, um nível mais fundo.
+
+### A causa, escrita como número
+
+A fase zero remalha para um alvo **uniforme** (`ALPHA × diagonal = 0,089` na peça do artista) e
+o **raio local** de um espinho dele cai a `0,037`. ⛔ **O passe de COLAPSO come toda aresta
+abaixo de `0,071`, e as arestas que dão a volta ao tubo são justamente essas** — a agulha
+fecha-se sobre si antes de o campo cruzado existir. *Uma agulha mais fina que um triângulo não
+tem onde ser representada.*
+
+### A cura: o limiar deixa de ser um número e passa a ser um CAMPO
+
+Duas portas irmãs em `ph2d-mesh`, **append-only** (`sizing = None` é byte-idêntico ao que
+existia, e o pincel não muda de assinatura):
+
+* `collapse_in_sphere_sized` · `refine_in_sphere_sized`, com `Sizing = Option<&dyn Fn([f32;3]) -> f32>`
+* ⚠️ **por POSIÇÃO e não por índice de vértice**, porque estas portas **renumeram** (`Remap`) e
+  correm várias passagens por chamada: *uma tabela que o próprio laço invalida é pior que
+  nenhuma.*
+* ⚠️ **o limiar é o do MEIO da aresta** — os dois extremos podem cair em bandas diferentes, e
+  escolher um deles faria a decisão depender de qual canto a face propôs primeiro.
+
+E em `ph2d-remesh-iso` a `SizingGrid`: alvo local `= alvo × clamp(mediana(|κ|)/|κ|, 1/4, 1)`,
+numa grelha de célula `= alvo`, consultada pelo **mínimo dos 27 vizinhos** (⚠️ *um degrau no
+limiar de colapso é uma fileira de arestas que morre de um lado e vive do outro*). ⭐ **O tecto
+é `1`: ela nunca grosseira**, então não pode piorar região nenhuma que o laço já resolveu.
+
+### ⭐⭐⭐ Ela CURA a fase, e o número é dramático
+
+Alcance perdido pela fase zero, fixtura de espinhos:
+
+| `σ` | sem | com |
+|---|---|---|
+| `0,30` | `+0,1 %` | `+0,3 %` |
+| `0,20` | `−0,9 %` | ⭐ `+0,8 %` |
+| `0,14` | `−1,6 %` | ⭐ `+0,8 %` |
+| `0,10` | `−5,8 %` | ⭐ **`−0,8 %`** |
+| `0,07` | `−12,9 %` | ⭐ **`−1,3 %`** |
+| `0,05` | ⛔ `−15,8 %` | ⭐⭐⭐ **`−0,8 %`** |
+
+⭐ E a malha de trabalho fica **perfeita**: `χ = 2`, zero bordo, zero não-manifold, valência
+máxima `10`.
+
+### ⛔⛔⛔ E PARTE A CADEIA — a segunda confirmação da mesma lei
+
+Pelo **botão**, peça do artista, `Detail 0,85`:
+
+| | alcance final | `χ` | bordo | não-manif. | relógio |
+|---|---|---|---|---|---|
+| ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `0` | **`27,8 s`** |
+| ⛔ ligada | ⛔ `−17,3 %` | ⛔ `−7` | ⛔ **`62`** | ⛔ `2` | ⛔ **`167 s`** |
+
+⚠️ **O mesmo mecanismo das duas vezes:** a malha de trabalho passa de `3 982` para `33 156`
+faces e **deixa de ser isotrópica**; o campo, o traçado e o mapa perdem-se nela, e o alcance
+FINAL até piora.
+
+⚠️ **E na peça dele a fase zero só recupera `0,9` ponto** (`−15,9 % → −15,0 %`) contra os `15`
+pontos das agulhas sintéticas: *o que sobra ali é o ÁPICE* — um cone sculptado termina num
+ponto, e nenhuma densidade finita o representa. **São dois defeitos, e só um é o colapso.**
+
+### ⏳ O que fica escrito para a wave seguinte
+
+⭐⭐⭐ **A lei, agora confirmada DUAS vezes** (`facing_on` e `adaptive_on`): *uma fase medida
+sozinha pode melhorar e piorar o produto.* ⇒ **a cadeia inteira tem de ser consciente do
+sizing** — é a mesma conclusão que o §8-quater tirou pelo outro lado (o passo do mapa), e as
+duas apontam para a mesma obra: o **factor de escala conforme por construção**
+(`Δ log h` contra a curvatura de Gauss, `h = h₀·e^{−s}`), que é integrável e portanto sobrevive
+tanto à parametrização quanto à remalha.
+
+⭐ **E o segundo defeito tem nome próprio:** preservar o **ápice** é *feature-preserving
+remeshing* (pinar o vértice de canto), não densidade — outra wave, outra régua.
+
 ## §9 — Portão de fecho
 
 | | |

@@ -740,6 +740,17 @@ fn the_artists_piece_through_the_button() {
     census("SAIDA", &out);
     islands("SAIDA", &out);
     relief_density("SAIDA", &out);
+    // ⭐ **`PH2D_DUMP=<ficheiro>` escreve a saída** — é o que permite medir a SECÇÃO do
+    // espinho fora daqui, com a mesma régua que comparou as três malhas do artista.
+    if let Ok(path) = std::env::var("PH2D_DUMP") {
+        let text = ph2d_mesh::write_obj(&[ph2d_mesh::ExportPiece {
+            name: Some("out"),
+            mesh: &out,
+            pose: ph2d_mesh::Pose::default(),
+        }]);
+        let _ = std::fs::write(&path, text);
+        eprintln!("   DUMP: {path}");
+    }
     // ⭐⭐⭐ **O ALCANCE da saída contra o da entrada** — a régua da AMPUTAÇÃO, e a única
     // que a peça do artista de 2026-08-29 move. ⛔ Nenhuma régua de topologia ou de forma
     // a vê: uma ponta comida sai fechada, com quads bonitos.

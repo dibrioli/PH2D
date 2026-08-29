@@ -72,7 +72,7 @@ mod volume;
 
 pub use aabb::Aabb;
 pub use adjacency::{Adjacency, Csr};
-pub use collapse::{Collapse, collapse_in_sphere, collapse_target};
+pub use collapse::{Collapse, Sizing, collapse_in_sphere, collapse_in_sphere_sized, collapse_target};
 pub use cotangent::{
     RingWeights, cotangent_ring_average_at, curvature_normal_dir_at, curvature_normals_of,
     mean_curvature_normal_at, ring_weights_at,
@@ -81,7 +81,7 @@ pub use curvature::{
     curvature_at, curvature_of, curvature_pair_at, recompute_curvature, world_curvature_at,
 };
 pub use curvature_dirs::{PrincipalDir, principal_dirs};
-pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere};
+pub use dyntopo::{Birth, Refine, edge_target, refine_in_sphere, refine_in_sphere_sized};
 pub use dyntopo_flip::relax_valence;
 pub use edges::Edges;
 pub use export::{ExportPiece, MeshFormat, triangle_count, write_obj, write_ply, write_stl};

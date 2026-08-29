@@ -118,18 +118,21 @@ ignore = [
     # unused by any PH2D code. Accepted until winit's Wayland CSD chain migrates.
     # (Coord 2026-06-30 — advisory landed post last green push; ship-blocking.)
     "RUSTSEC-2026-0192",
-    # `quick-xml` DoS advisories (RUSTSEC-2026-0194 quadratic duplicate-attribute
-    # scan; RUSTSEC-2026-0195 unbounded namespace-declaration allocation in
-    # `NsReader`). Pulled transitively ONLY on Linux/Wayland, at BUILD TIME:
-    # quick-xml ← wayland-scanner (proc-macro) ← smithay-client-toolkit ← winit.
-    # It parses the TRUSTED, in-repo Wayland protocol XML during codegen — never
-    # untrusted runtime input — so the memory-exhaustion / quadratic paths are
-    # unreachable. Not compiled on macOS/Windows. wayland-scanner pins 0.39.x
-    # (no fixed release reachable without bumping the winit/Wayland chain).
-    # Accepted until that chain migrates. (Coord 2026-07-02 — advisories landed
-    # post last green push; ship-blocking, same class as RUSTSEC-2026-0192.)
-    "RUSTSEC-2026-0194",
-    "RUSTSEC-2026-0195",
+    # RETIRADAS 2026-08-29 (`docs/Atualizar Stack/`, bloco B): as duas advisories de
+    # DoS do `quick-xml` — RUSTSEC-2026-0194 (varrimento quadrático de atributos
+    # duplicados) e RUSTSEC-2026-0195 (alocação sem limite de declarações de
+    # namespace no `NsReader`).
+    #
+    # ⚠️ O motivo escrito aqui em 2026-07-02 era *«o wayland-scanner prende o 0.39.x
+    # e não há versão corrigida alcançável sem bumpar a cadeia winit/Wayland»*.
+    # **Deixou de ser verdade** — um `cargo update` levou o `quick-xml` a **0.41.0**,
+    # que corrige as duas, sem tocar no winit. Verificado retirando ambas as entradas:
+    # `cargo deny check advisories` responde `advisories ok`.
+    #
+    # ⛔ *Uma supressão cujo motivo é «não há saída» tem de ser re-testada sempre que
+    # o grafo de dependências se mexe — senão ela sobrevive à própria razão de existir.*
+    # O `cargo deny` avisa (`advisory-not-detected`) quando uma entrada deixa de casar;
+    # esse aviso é um convite a apagar, não ruído.
     # `tract-nnef` integer overflow in the NNEF tensor parser -> OOB read ON MODEL
     # LOAD (RUSTSEC-2026-0217, 6.1 medium). Pulled transitively ONLY by the W7 ML
     # denoise: tract-nnef <- tract-onnx <- deep_filter (VENDORED, ADR-0123) <-

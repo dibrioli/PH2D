@@ -61,7 +61,7 @@ parede, medido pelo próprio shell.
 |---|---:|---:|---|---|---|
 | **T** — terreno | 5 | **5** | ✅ **fechado** | LLM | 2026-08-29 |
 | **A** — Rust 1.98 | 11 | **11** | ✅ **fechado** | LLM | 2026-08-29 |
-| **B** — 31 compatíveis | 4 | 0 | por fazer | | |
+| **B** — 31 compatíveis | 4 | **4** | ✅ **fechado** | LLM | 2026-08-29 |
 | **C** — GPU e texto | 22 | 0 | por fazer | | |
 | **D** — bevy_ecs | 14 | 0 | por fazer | | |
 | **E** — rapier2d | 14 | 0 | por fazer | | |
@@ -129,6 +129,58 @@ conferida antes/depois (12→12, 11→11) — mover testes de ficheiro é o gest
 ⚠️ **Uma reprovada foi flake de carga, não regressão:**
 `a_round_live_offset_costs_like_the_other_joins` (o membro canónico do §5.0 do `CLAUDE.md`) — 3 de 3
 passam sozinho.
+
+---
+
+### Bloco B — fechado 2026-08-29
+
+**Resultado:** `20 041 / 20 041` outra vez, clippy verde, `fmt` limpo, `physics_ecs_c9` no mesmo
+hash, `deny` e `audit` ok. **196 pacotes moveram**, todos compatíveis.
+
+⛔ **A GUARDA do plano disparou e a SONDA é que estava errada.** A verificação «nenhum crate dos
+blocos C/D/E pode mexer» acusou `kurbo`, `skrifa`, `peniko`, `glam`, `accesskit`, `miniz_oxide` —
+mas ela indexava o lock por **nome**, e um dicionário `nome → versão` **colapsa duplicados**. Esta
+árvore tem várias crates em duas versões de propósito. Refeita como **multiconjunto**, a resposta é
+outra: `wgpu` 28, `vello` 0.8, `bevy_ecs` 0.18, `rapier2d` 0.28, `pollster` 0.4, `ndarray` 0.15 —
+**todos parados**, como o plano exige.
+
+⚠️ **E o mesmo defeito produziu um alarme falso sobre `glam`:** o lock lista **19 versões**
+(0.14 … 0.33). Elas são dependências **opcionais e desligadas** do `nalgebra`, que oferece conversões
+para cada glam já lançada — e o `Cargo.lock` é **agnóstico a features**, resolve o que *poderia* ser
+activado. Compilada há **uma**: `glam v0.30.10`. *A nossa continua em 0.30 — o trabalho do bloco F é
+real.*
+
+⭐ **Três supressões mortas apagadas.** O `cargo update` levou o `quick-xml` de 0.39.4 a **0.41.0**,
+que corrige as **duas** advisories de DoS cujo `ignore` no `deny.toml` dizia *«não há versão corrigida
+alcançável sem bumpar a cadeia winit/Wayland»*. Havia. Verificado retirando ambas: `advisories ok`.
+⛔ *Uma supressão cujo motivo é «não há saída» tem de ser re-testada sempre que o grafo se mexe.*
+
+**Três duplicatas NOVAS**, e as duas que importam são transitórias: `skrifa 0.44` + `read-fonts 0.41`
+vêm do `swash 0.2.10` ← `parley 0.6` — **o bloco C colapsa-as** ao levar a nossa `skrifa` a 0.44.
+`miniz_oxide 0.9.1` é o tecto já documentado (folha de compressão; duas cópias é benigno).
+
+### ⛔ ENOSPC no meio do bloco B — e NÃO era o disco
+
+O clippy morreu com `No space left on device` e quatro `could not compile`. **Nenhum era erro real.**
+
+| | |
+|---|---|
+| disco do projecto | 34 GB de 1,9 TB · 1 827 GiB não-alocados · `btrfs-health` **VERDE, e certo** |
+| `/mnt/ramtarget` (tmpfs, 48 GB) | **100 % cheio** |
+
+`target/debug` e `target/rust-analyzer` são **links** para essa tmpfs (setup deliberado e medido:
+73 % menos escrita no SSD). Ocupavam **23 GB de `debug/incremental`** e **16 GB de cache do RA**.
+
+⭐ **A causa não é «a tmpfs é pequena»: é que esta jornada NÃO TEM inner loop.** Toda corrida é um
+build em LOTE da workspace inteira (`clippy --workspace`, `nextest --workspace`), e o §2 do
+`CLAUDE.md` já diz que em lote a compilação incremental «não colhe nada e paga 11 GB». Aqui pagou 48.
+Medido depois de libertar: **100 % → 26 %**, e o clippy da workspace inteira **sem** incremental
+custou **~1 GB** (26 % → 28 %).
+
+⇒ **Os blocos C, D e E correm com `CARGO_INCREMENTAL=0` em TODA corrida**, não só no nextest.
+
+⚠️ E isto qualifica o **T1**: o `nodatacow` valeu para `ci-test` e `release` (disco); `debug` e
+`rust-analyzer` vivem em tmpfs, onde ele não significa nada.
 
 ---
 

@@ -113,7 +113,24 @@ if [ "$fstype" = "btrfs" ]; then
   if   [ "$unalloc" -lt $(( 8 * GIB )) ];  then red=1;    say "✗ não-alocado $(gib "$unalloc") GiB — a metadata NÃO tem de onde crescer (dados: $(gib "$data_used") usados em $(gib "$data_total") GiB alocados)"
   elif [ "$unalloc" -lt $(( 32 * GIB )) ]; then yellow=1; say "! não-alocado $(gib "$unalloc") GiB — pouco; um dia de jornada come isto"
   else                                                    say "✓ não-alocado $(gib "$unalloc") GiB"; fi
-  if   [ "$meta_free" -lt $(( 1 * GIB )) ]; then red=1;    say "✗ metadata livre $(gib "$meta_free") GiB de $(gib "$meta_total") — ENOSPC iminente (o df não mostra)"
+  # ⚠️ A metadata só é VERMELHA com as DUAS metades: pouca folga **E** sem de onde
+  # crescer. O caso que fez este script nascer (2026-08-22) tinha 6 GiB de metadata
+  # alocados, 5,46 usados **e o não-alocado esgotado** — daí o ENOSPC a meio do
+  # build, o artefato truncado e o `mold` em SIGBUS.
+  #
+  # Reprovar pela folga sozinha dá VERMELHO FALSO num disco recém-criado: o btrfs
+  # aloca UM pedaço de 1 GiB de metadata e usa ~0,10 dele, então `meta_free` nasce
+  # em 0,90 — com 1,8 TiB não-alocados de onde tirar o pedaço seguinte. Medido no
+  # disco novo em 2026-08-29: este ramo gritava «ENOSPC iminente» sobre um sistema
+  # com 1% de uso, e a linha logo acima já dizia ✓ ao não-alocado.
+  #
+  # ⛔ Um alarme que toca todos os dias deixa de ser lido — e o dia em que o perigo
+  # for real, ninguém olha. É por isso que a correção é exigir a conjunção, e não
+  # afrouxar a barra.
+  if   [ "$meta_free" -lt $(( 1 * GIB )) ] && [ "$unalloc" -lt $(( 8 * GIB )) ]; then red=1
+    say "✗ metadata livre $(gib "$meta_free") GiB de $(gib "$meta_total") E não-alocado $(gib "$unalloc") GiB — ENOSPC iminente (o df não mostra)"
+  elif [ "$meta_free" -lt $(( 1 * GIB )) ]; then
+    say "✓ metadata livre $(gib "$meta_free") GiB de $(gib "$meta_total") — apertada, mas há $(gib "$unalloc") GiB não-alocados: o btrfs aloca outro pedaço quando precisar"
   elif [ "$meta_free" -lt $(( 2 * GIB )) ]; then yellow=1; say "! metadata livre $(gib "$meta_free") GiB de $(gib "$meta_total") — apertado"
   else                                                     say "✓ metadata livre $(gib "$meta_free") GiB de $(gib "$meta_total")"; fi
 

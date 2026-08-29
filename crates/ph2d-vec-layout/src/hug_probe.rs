@@ -28,8 +28,8 @@ fn hug_probe_a_frame_sized_auto_wraps_its_children() {
         .map(|_| {
             tree.new_leaf(Style {
                 size: TaffySize {
-                    width: length(10.0),
-                    height: length(6.0),
+                    width: length(10.0_f32),
+                    height: length(6.0_f32),
                 },
                 ..Default::default()
             })
@@ -48,14 +48,14 @@ fn hug_probe_a_frame_sized_auto_wraps_its_children() {
                 display: Display::Flex,
                 flex_direction: FlexDirection::Row,
                 gap: TaffySize {
-                    width: length(4.0),
-                    height: length(0.0),
+                    width: length(4.0_f32),
+                    height: length(0.0_f32),
                 },
                 padding: TaffyRect {
-                    top: length(2.0),
-                    right: length(2.0),
-                    bottom: length(2.0),
-                    left: length(2.0),
+                    top: length(2.0_f32),
+                    right: length(2.0_f32),
+                    bottom: length(2.0_f32),
+                    left: length(2.0_f32),
                 },
                 ..Default::default()
             },
@@ -102,8 +102,8 @@ fn hug_probe_one_axis_hugs_while_the_other_is_fixed() {
     let kid = tree
         .new_leaf(Style {
             size: TaffySize {
-                width: length(10.0),
-                height: length(6.0),
+                width: length(10.0_f32),
+                height: length(6.0_f32),
             },
             ..Default::default()
         })
@@ -113,15 +113,15 @@ fn hug_probe_one_axis_hugs_while_the_other_is_fixed() {
         .new_with_children(
             Style {
                 size: TaffySize {
-                    width: length(100.0),
+                    width: length(100.0_f32),
                     height: Dimension::AUTO,
                 },
                 display: Display::Flex,
                 padding: TaffyRect {
-                    top: length(3.0),
-                    right: length(0.0),
-                    bottom: length(3.0),
-                    left: length(0.0),
+                    top: length(3.0_f32),
+                    right: length(0.0_f32),
+                    bottom: length(3.0_f32),
+                    left: length(0.0_f32),
                 },
                 ..Default::default()
             },
@@ -164,8 +164,8 @@ fn hug_probe_min_and_max_clamp_the_hug() {
     let kid = tree
         .new_leaf(Style {
             size: TaffySize {
-                width: length(10.0),
-                height: length(6.0),
+                width: length(10.0_f32),
+                height: length(6.0_f32),
             },
             ..Default::default()
         })
@@ -179,7 +179,7 @@ fn hug_probe_min_and_max_clamp_the_hug() {
                     height: Dimension::AUTO,
                 },
                 min_size: TaffySize {
-                    width: length(30.0),
+                    width: length(30.0_f32),
                     height: auto(),
                 },
                 display: Display::Flex,

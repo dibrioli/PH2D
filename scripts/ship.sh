@@ -45,6 +45,16 @@ run_optional() { # run_optional "<label>" <tool-binary> <cmd...>
 
 echo "ship.sh — mirroring spike.yml lint + test jobs (this compiles a lot; ~minutes)"
 
+# ⚠️ PARIDADE COM O CI: o `spike.yml` põe `CARGO_BUILD_WARNINGS: deny` no `env` do
+# workflow inteiro (2026-08-29, tarefa A8 de `docs/Atualizar Stack/`), então TODA
+# corrida de cargo lá nega aviso — não só os passos de lint. Sem esta linha o ship
+# ficava verde num aviso que o CI reprova, que é o modo de falha exacto que este
+# script existe para prevenir.
+# ⛔ NÃO troque por `RUSTFLAGS="-D warnings"`: aquele entra no fingerprint do cargo e
+# recompila tudo (medido: 2 399 ms contra 105 ms num crate só). O `env` do spike.yml
+# tem a tabela.
+export CARGO_BUILD_WARNINGS="${CARGO_BUILD_WARNINGS:-deny}"
+
 # ── CI `lint` job parity (spike.yml) ────────────────────────────────────
 run "fmt --check" cargo fmt --all -- --check
 run "clippy (workspace, all-targets, CI features)" \

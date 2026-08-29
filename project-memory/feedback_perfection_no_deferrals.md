@@ -35,4 +35,35 @@ A regra aplica a gaps **dentro do escopo da decisão atual** (código que está 
 
 **Dimensão CUSTO explicitada 2026-05-28:** Enio formulou "minha decisão nesse projeto é: o melhor possível sem pensar em custos". Custo (tempo de build, complexidade/instalação no CI, número de crates, footprint de dependência, tempo de compile) **NÃO é razão válida** para escolher a opção técnica inferior. Quando há fork qualidade-vs-custo (ex: implementação de referência vendored vs wrapper mais leve; decode+encode completo vs decode-only para "economizar crates"; suportar HDR/wide-gamut de verdade vs rejeitar pra simplificar), o Coordenador escolhe **a mais correta/completa** e segue — custo sai da equação como fator de decisão. A escolha permanece técnica (qual é genuinamente melhor), não maximalista cega: ainda vale [[feedback-audit-scope-discipline]] (não invadir crate adjacente) e o litmus de gap-adjacente acima. Caso de aplicação: AVIF W3.T4 — virou Path C (libavif reference impl) + decode E encode + HDR real, em vez do Path A decode-only/reject-HDR que o handoff propunha pra economizar CI install.
 
-Liga com [[feedback-communication-style]] (pt-BR direto, opções concretas), [[feedback-communication-simplicity]] (não over-aski), [[feedback-audit-lens-diversity]] (rotação de lentes), [[no-industrial-claims-without-verification]] (verificações externas), [[feedback-audit-internal-state-grep]] (verificações internas) — quando aplico esta regra, executo direto, não pergunto "tem certeza?".
+**Dimensão SUPRESSÃO explicitada 2026-08-29 — «nada armengado»:** Enio reformulou a regra numa
+atualização de stack: *«aqui buscamos o padrão ouro em tudo, o estado da arte. Havendo problemas,
+corrigimos. Ao fim não quero nada armengado, quero a perfeição. Busque a perfeição sem olhar os
+custos.»*
+
+⚠️ **A faceta nova, e ela é contra-intuitiva: SILENCIAR um diagnóstico é armengo mesmo quando a
+FERRAMENTA está genuinamente defeituosa.** O caso: o `clippy::manual_slice_fill` do Rust 1.98 emite
+uma sugestão partida — `for slot in &mut x { *slot = v }` vira `&mut x.fill(v);`, com o `&mut` do
+laço deixado para trás (**236 de 236** sugestões numa crate, e o `cargo clippy --fix` aplica-a e sai
+`exit 0`). Eu pus `#![allow(...)]` com o mecanismo documentado, e **isso estava errado**.
+
+*A justificativa era tecnicamente correta e respondia à pergunta errada.* «A regra está defeituosa,
+logo desligo a regra» confunde **a transformação** (boa: `.fill()` é mais claro e pode virar
+`memset`) com **o caminho automático até ela** (partido). O padrão-ouro é fazer a transformação —
+à mão, nos 236 — e não carregar supressão nenhuma.
+
+**How to apply:**
+- Um `allow`/`ignore`/`skip`/`expect` novo é sempre suspeito. Pergunte: *estou a desligar um
+  diagnóstico ERRADO sobre o meu código, ou a esconder trabalho que não quero fazer?* Só o primeiro
+  é legítimo, e mesmo esse quer a cerca datada e o gatilho de reabertura.
+- Quando a ferramenta automática está partida **de forma sistemática**, isso torna-a *tratável*, não
+  desculpa: aplique, repare o defeito conhecido, e prove a completude com uma busca que não pode
+  casar nada (aqui: nenhuma linha `^\s*&mut .*\.fill\(`). O compilador é o juiz dos casos em que a
+  reparação seria errada.
+- ⚠️ Meio-feito é o **pior** estado — pior que não começar e pior que terminar. Se metade de uma
+  migração mecânica já entrou, terminá-la é a opção barata; deixá-la a meio obriga todo leitor futuro
+  a descobrir sozinho qual metade é qual.
+- Um teto imposto por dependência de TERCEIROS (o `vello` não suportar wgpu 30) é estado honesto, não
+  armengo. Um teto imposto por código que **nós** vendorizamos e não atualizámos (o `ndarray ^0.15`
+  do nosso `deep_filter`) é dívida nossa — classifique-os separadamente antes de os aceitar.
+
+Liga com [[feedback-communication-style]] (pt-BR direto, opções concretas), [[feedback-communication-simplicity]] (não over-aski), [[feedback-audit-lens-diversity]] (rotação de lentes), [[no-industrial-claims-without-verification]] (verificações externas), [[feedback-audit-internal-state-grep]] (verificações internas) — quando aplico esta regra, executo direto, não pergunto "tem certeza?". E [[feedback-an-automatic-tools-exit-code-says-nothing-about-what-it-produced]] — foi a medição independente, não o `exit 0`, que revelou o defeito que motivou esta seção.

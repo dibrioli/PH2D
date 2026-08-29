@@ -29,8 +29,14 @@ edition = "2024"
 # wasmtime exigem 1.94) e o nosso código (dois `if let` guards em
 # `input_dispatch.rs`, estáveis só em 1.95). O gate que devia pegar isto nunca
 # rodou 1.92 — `rust-toolchain.toml` vence `rustup default` —, então ele media o
-# PIN e ficava verde. Ver `tests/msrv_is_the_pinned_toolchain.rs`.
-rust-version = "1.95"
+# PIN e ficava verde. Ver
+# `crates/ph2d-editor-core/tests/architecture_msrv_is_the_pinned_toolchain.rs`
+# (o caminho `tests/…` que esta nota citava nunca existiu na raiz).
+#
+# 1.95 → 1.98 em 2026-08-29 (`docs/Atualizar Stack/`, bloco A). O piso volta a ser
+# o pin por construção; se alguém quiser de facto suportar compilador mais velho,
+# é aquele gate que fica vermelho e obriga a decisão a ser tomada de propósito.
+rust-version = "1.98"
 publish = false
 license = "LicenseRef-Proprietary"
 authors = ["Enio Oliveira Dias Brito <dibrioli@gmail.com>"]

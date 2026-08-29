@@ -11,6 +11,7 @@
 - [GPU tests headless (evidência velha Mac/Metal)](reference_gpu_tests_run_headless_metal.md) · [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
 - [Monitores: perf no LG; AOC read-only](reference_display_topology_workstation.md) · [workstation travou 2×: reclaim](project_workstation_freeze_memory_reclaim.md)
 - [VSCode morre por OOMPolicy=stop](project_vscode_dies_by_oompolicy_not_by_choice.md) · [bypass recusado; 2 chaves claudeCode.*](reference_vscode_extension_refuses_bypass_and_edits_always_prompt_in_default.md)
+- [Projetos moram num disco DEDICADO de 2TB, mesmo caminho](project_projects_live_on_a_dedicated_2tb_disk.md) · [target em tmpfs: 1ª build pós-boot dá «File exists»](feedback_a_tmpfs_backed_target_reports_file_exists_not_broken_link.md)
 - [Disco cheio corrompe .o → mold SIGBUS](project_disk_full_corrupts_objects_mold_sigbus.md) · [«cheio» = metadata btrfs; btrfs-health.sh](project_btrfs_metadata_starved_not_disk_full_2026_08_22.md)
 - [Prompt Deck](reference_prompt_deck_app.md) · [~/Apps invisíveis ao cachy-update](reference_manual_apps_in_home_apps_are_invisible_to_cachy_update.md) · [atalho global Plasma 6](reference_kde_plasma6_global_shortcut.md)
 - [HISTÓRICO: aquarela/wash (17)](reference_topic_watercolor_historical.md)
@@ -31,6 +32,8 @@
 - [Exemplo pronto pra smoke](feedback_ready_to_smoke_example.md) · [perfeição sem adiamentos](feedback_perfection_no_deferrals.md)
 - [O teto é do HARDWARE](feedback_the_ceiling_is_the_hardwares_never_the_fallbacks.md) · [medir pode confirmá-lo](feedback_measuring_a_ceiling_can_confirm_it_and_that_is_the_result.md) · [razão com denominador-knob](feedback_a_ratio_bar_tightens_itself_when_the_denominator_is_a_knob.md)
 - [Produto final, não MVP](feedback_final_product_every_node_ships_the_full_pro_param_set.md) · [wave de pesquisa recursa](feedback_a_research_fanout_recurses_bound_it.md)
+- ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo mesmo com a ferramenta defeituosa** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — e meio-feito é pior que não começar
+- [`exit 0` de ferramenta automática não diz o que ela produziu (3× num dia)](feedback_an_automatic_tools_exit_code_says_nothing_about_what_it_produced.md) — e um portão que para no 1º erro não mede o total: varra **sem** `-D warnings`
 - [Painter: 4 causas](feedback_painter_inefficiency_4_causes.md) · [comentário velho mente](feedback_stale_comment_and_dead_code_lie.md) · [«design rejeita X»? grepe o gate](feedback_before_declaring_the_design_rejects_an_invariant_grep_for_its_gate.md)
 - [Nota de diferido não é spec](feedback_a_deferral_notes_bar_may_exceed_the_projects_policy.md) · [inexactidão que subestima é folga](feedback_not_every_inexactness_is_danger_the_one_that_underestimates_is_slack.md)
 - [Coluna sem rótulo lê-se ao contrário](feedback_an_unlabelled_probe_column_gets_read_backwards.md) · [que número a resposta CONTRÁRIA imprimiria?](feedback_ask_what_number_the_opposite_answer_would_print.md)

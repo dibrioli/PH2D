@@ -3,7 +3,6 @@
 //! é o assunto e o que o painel vê dele*.
 
 use super::super::tests::scene_with_host_and_child;
-use super::super::*;
 use super::*;
 use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_vec_scene::{VecScene, rectangle};

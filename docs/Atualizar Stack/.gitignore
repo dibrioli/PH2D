@@ -1,0 +1,8 @@
+# Artefactos de MEDIÇÃO da jornada. São o material bruto: logs de portão, listas
+# de alvos, despejos de pixel, a fotografia do "antes". Úteis enquanto a jornada
+# corre, sem valor depois dela, e pesados (o log da suíte sozinho passa de 1 MB).
+#
+# ⚠️ O que SOBREVIVE é o que for TRANSCRITO para o `04_registro.md` — que é
+# versionado de propósito. Um número que não coube lá não era um resultado, era
+# ruído de execução.
+_*

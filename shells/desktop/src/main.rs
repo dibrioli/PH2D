@@ -1131,7 +1131,7 @@ impl App {
         // begin_frame snapshots last-frame held buttons so
         // pressed()/released() return correct edge-trigger values.
         self.input.begin_frame();
-        while let Some(gilrs::Event { event, time: _, .. }) = g.next_event() {
+        while let Some(gilrs::Event { event, .. }) = g.next_event() {
             match event {
                 gilrs::EventType::Connected => {
                     println!("[{:>6}ms] gamepad connected", self.handler.elapsed_ms());

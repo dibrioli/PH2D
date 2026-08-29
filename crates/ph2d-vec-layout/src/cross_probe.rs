@@ -275,8 +275,8 @@ fn does_content_alignment_reach_a_single_band() {
         let kid = t
             .new_leaf(Style {
                 size: Size {
-                    width: length(30.0),
-                    height: length(20.0),
+                    width: length(30.0_f32),
+                    height: length(20.0_f32),
                 },
                 ..Default::default()
             })
@@ -286,8 +286,8 @@ fn does_content_alignment_reach_a_single_band() {
                 Style {
                     display: Display::Flex,
                     size: Size {
-                        width: length(100.0),
-                        height: length(100.0),
+                        width: length(100.0_f32),
+                        height: length(100.0_f32),
                     },
                     flex_wrap: wrap,
                     align_items: Some(items),

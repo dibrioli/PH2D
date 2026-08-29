@@ -21,7 +21,21 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
+  # ⚠️ `CARGO_BUILD_WARNINGS` no lugar de `RUSTFLAGS: "-D warnings"` (Cargo 1.97,
+  # adoptado 2026-08-29 — `docs/Atualizar Stack/`, tarefa A8). Os dois negam aviso;
+  # a diferença é a CACHE, e ela foi MEDIDA num crate só (`ph2d-color`), a seguir a
+  # uma build normal:
+  #
+  #   CARGO_BUILD_WARNINGS=deny …    105 ms   (reaproveita os artefactos)
+  #   RUSTFLAGS="-D warnings" …    2 399 ms   (recompila: RUSTFLAGS entra no fingerprint)
+  #
+  # ⇒ **23× num crate pequeno**, e o `RUSTFLAGS` aplica-se à workspace inteira: era
+  # ele que fazia toda corrida de CI divergir da cache local e das outras jobs.
+  # ⚠️ Escopo também melhora: o `CARGO_BUILD_WARNINGS` policia só os pacotes LOCAIS,
+  # que é exactamente o que queremos (as deps já vêm com `--cap-lints allow`).
+  # ⛔ O `clippy -- -D warnings` dos passos de lint FICA — é outro mecanismo
+  # (argumento ao clippy, não flag de rustc) e não entra no fingerprint.
+  CARGO_BUILD_WARNINGS: deny
   # Reproducibility: fixed timestamp baked into builds (per SKILL §12.7).
   # Updated only on intentional release tag.
   SOURCE_DATE_EPOCH: "1746662400"
@@ -39,14 +53,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      # Toolchain channel is PINNED to 1.95 (matches rust-toolchain.toml), not
+      # Toolchain channel is PINNED to 1.98 (matches rust-toolchain.toml), not
       # @stable. @stable rotates Swatinem/rust-cache's rustc-hash on every Rust
       # release, busting every per-OS cache at once and forcing cold rebuilds —
       # the 2026-06-30 stuck-cold Windows loop (run 28473978977). A fixed channel
-      # keeps the cache key stable across releases. Bump these `@1.95` refs in
+      # keeps the cache key stable across releases. Bump these `@1.98` refs in
       # lockstep com o rust-toolchain.toml quando o pin se mover — e o gate
       # `architecture_msrv_is_the_pinned_toolchain` obriga a MSRV a mover-se junto.
-      - uses: dtolnay/rust-toolchain@1.95
+      # ⚠️ São QUATRO (linhas 49, 235, 461, 628) e uma esquecida não dá erro: dá um
+      # job a medir outra toolchain, com a cache a rodar sozinha. 1.95 → 1.98 em
+      # 2026-08-29 (`docs/Atualizar Stack/`, bloco A).
+      - uses: dtolnay/rust-toolchain@1.98
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -223,7 +240,7 @@ jobs:
     # a warm cache, so the pipeline self-heals on every drift/eviction
     # instead of wedging. Warm Windows stays ~12 min, far under the cap.
     # Follow-up to avoid the slow re-warm entirely: pin the toolchain
-    # action to 1.95 (matches rust-toolchain.toml) so stable releases stop
+    # action to 1.98 (matches rust-toolchain.toml) so stable releases stop
     # rotating the cache key.
     timeout-minutes: 90
     strategy:
@@ -232,10 +249,10 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.95
+      - uses: dtolnay/rust-toolchain@1.98
 
       # Force-install the toolchain pinned in `rust-toolchain.toml`
-      # (channel 1.95). Without this, `cargo nextest …` on macos-latest
+      # (channel 1.98). Without this, `cargo nextest …` on macos-latest
       # has been hitting `rustup-init`'s "unexpected argument 'nextest'"
       # failure path — the rustup proxy can't auto-install the pinned
       # toolchain on first invocation, so the binary falls back to its
@@ -458,7 +475,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.95
+      - uses: dtolnay/rust-toolchain@1.98
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ matrix.os }}
@@ -625,7 +642,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.95
+      - uses: dtolnay/rust-toolchain@1.98
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: bench

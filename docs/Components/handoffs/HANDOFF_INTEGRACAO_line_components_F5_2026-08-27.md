@@ -259,9 +259,14 @@ primeiro: a 1.ª corrida deu *«ok»* sobre **zero** testes, porque o gate vive 
 iniciais não descreviam nada.
 
 ### 8.4 Prova de mutação
-**12 mutações, 12 mortes.** Sete na fatia das variantes, três no cartão/nome, duas no substrato de
-identidade da timeline — a última com o controlo do filtro feito **só sobre os gates novos**, senão
-a morte podia ser de um gate que já existia.
+**12 mutações, 12 mortes** — e **uma delas só morreu depois de o gate que a vê existir**, que é a
+leitura honesta: a nº 7 (apagar o `populate` dos chips) **SOBREVIVEU** contra o
+`hit_indexed_ids_are_registered` e só cai contra o `table_driven_chips_are_registered_too`. *Contar
+12/12 sem dizer isto seria contar a morte de uma mutação para o gate errado.*
+
+Sete na fatia das variantes, três no cartão/nome, duas no substrato de identidade da timeline — a
+última com o controlo do filtro feito **só sobre os gates novos**, senão a morte podia ser de um
+gate que já existia.
 
 ---
 

@@ -24,7 +24,7 @@
 | F2 | O undo vira incremental (protocolo das 6 condições) | ✅ 2026-08-25 |
 | F3 | O Inspector passa a mostrar o que o objeto TEM · o `+` e a paleta · objeto vazio na raiz — **walking skeleton** | ✅ 2026-08-25 |
 | F4 | Núcleo de instância: Duplicar/Criar componente/Instanciar/sync/Destacar + física | 🟨 F4.1–F4.5 ✅ · F4.6a/b ✅ · **F4.7 ✅ (os 3 smoke-gates)** · **F4.6c bloqueada na F5** (ela apagaria os variants — ver §F4) · + a auditoria de 27/08 e o modo LIGADO |
-| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — modelo E secção) ✅ 2026-08-27** · variantes ⬜ |
+| F5 | Aninhamento + variantes + Overrides sem alvo | 🟨 **F5.1 (a FORMA segue o mestre) ✅** · **F5.3 (Overrides sem alvo — modelo E secção) ✅** · **variantes ✅ 2026-08-27 (critério 2: autoria + re-key + chips)** · critério 4 (*Apply to inner master*) ⬜ · troca p/ mestre não aparentado ⬜ |
 | F6 | O índice de assets (`ph2d-asset-index`) — sem UI | ⬜ |
 | F7 | O painel Asset Browser + o arrasto único | ⬜ |
 | F8 | Restore incremental + `VecScene`/`FlipDoc` versionados | ⬜ |
@@ -891,6 +891,54 @@ indireto (B contém instância de V que é-a B) é recusado com mensagem; prova 
 - ⚠️ **Duas mutações minhas SOBREVIVERAM, e o gate estava certo**: o construtor tem DUAS guardas (o
   elo e a raiz) e um objeto solto falha as duas, então cada mutação era neutralizada pela outra. *A
   mutação honesta tem de tirar as duas juntas* — e essa mata.
+
+---
+
+---
+
+**O que as VARIANTES mediram e o plano não dizia (2026-08-27):**
+- ⭐⭐⭐ **A cadeia derivada JÁ propagava — medida por sonda antes de uma linha de código.** Uma
+  variante é um `MasterRoot` que também é `InstanceOf`, e o `live_instances` já procurava *toda*
+  entidade cujo elo aponta para um mestre vivo. Editar a base alcança a variante **e as instâncias
+  dela num passe** (2 escritas). ⇒ o mecanismo custou **zero**; o que faltava era o **gesto** e o
+  **re-key**. *A peça que falta pode já estar construída.*
+- ⭐⭐ **O mapa de re-key já vive no mundo: são os próprios elos.** As peças da variante dizem de que
+  peça da base nasceram, então `base → variante` lê-se invertendo `InstanceOf`. A pesquisa chamava a
+  isto *«a operação que nenhum outro sistema consegue, porque nenhum tem chave mestre-relativa com
+  caminho»* — aqui é mais barato do que ela previa, e a razão é a tese do ADR-0164: **a instância é
+  uma entidade real**. ⛔ Sem nomes, sem caminhos, sem heurística.
+- ⭐ **A troca é um RE-KEY e mais nada.** Ela muda o elo da raiz, os elos das peças e as chaves de
+  override, e **para**: materializar, apagar e sepultar já é o passe estrutural da F5.1 + F5.3. É
+  isso que a torna **reversível de graça** — a peça que o alvo não tem é sepultada e **exumada** na
+  volta.
+- ⚠️⚠️ **Duas leis que só o vermelho deu:**
+  1. **A troca tem de ESQUECER o eco** das peças do mestre novo. Senão a diferença contra o mestre
+     NOVO lê-se como *«a instância mexeu-se»* e a cópia congela com o valor do **velho**. É o mesmo
+     mecanismo do *Revert*, que já o tinha escrito. ⚠️ Colateral nomeada: o eco é do MESTRE, logo
+     alcança as irmãs — e o único caso que perde é uma edição feita **no mesmo quadro, antes do
+     passe**, que são dois gestos num quadro em duas cópias.
+  2. **Uma chave de override SEM imagem fica como está.** Apagá-la perdia a excepção **antes** de o
+     `entomb` da F5.3 lhe serializar os bytes. *A troca não tem de saber o que é um byte: ela deixa a
+     chave onde o sepultador a procura.*
+- ⛔ **Uma variante NÃO pode perder uma peça da base** — medido, e é a cerca que torna o mapa total
+  numa direcção: o passe estrutural põe a peça de volta. É a regra do Unity (*uma Prefab Variant não
+  apaga um objeto herdado*) dita por outro caminho, e a 1.ª versão de um gate escolheu essa direcção
+  impossível.
+- ⚠️ **Uma fixtura minha media um mundo que o app nunca produz:** ela deitava fora o **eco** entre
+  passes, e um eco novo cai na regra do 1.º encontro (*o mestre ganha*), o que apagava a excepção da
+  variante. *O eco sai da fixtura com o mundo* — custou dois vermelhos.
+- ⭐⭐⭐ **ACHADO REPO-WIDE: o `hit_indexed_ids_are_registered` é CEGO aos chips guiados por TABELA.**
+  Ele só lê `.register(ids::LITERAL, …)`, e uma fileira passa a **variável do laço** — o doc dele
+  di-lo, e ninguém tinha lido isso como um buraco. A mutação que apagava o `populate` dos chips
+  **SOBREVIVEU**. ⚠️ E o controlo do filtro salvou a leitura: a 1.ª corrida deu *«ok»* sobre **zero**
+  testes, porque o gate vive noutra crate. ⇒ gate novo `table_driven_chips_are_registered_too`, com
+  **catraca**: 9 tabelas por registar em 4 painéis de outras linhas ficam **nomeadas e datadas**, e a
+  lista só encolhe. ⭐ A metade *«só encolhe»* apanhou-me a mim: **duas** das 11 iniciais não
+  descreviam nada.
+- ⚠️ **Dois tectos de LOC, curados por ASSUNTO:** a **fila** saiu do `action_bus.rs` (54 linhas no
+  FIM, onde nenhuma linha paralela escreve). ⛔ O corte óbvio — tirar o `EditorAction`, que é o que
+  cresce — poria **toda** linha que acrescenta uma acção em conflito textual: *ao criar foundational,
+  projecte-o para isolamento*.
 
 ---
 

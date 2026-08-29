@@ -271,7 +271,7 @@ impl MeshRenderer {
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-mesh layout"),
-            bind_group_layouts: &[&bgl, &obj_bgl, &ao_bgl, &sss_bgl],
+            bind_group_layouts: &[Some(&bgl), Some(&obj_bgl), Some(&ao_bgl), Some(&sss_bgl)],
             immediate_size: 0,
         });
 
@@ -449,10 +449,10 @@ impl MeshRenderer {
                     // escrever deixaria a malha do outro lado da peça atravessar
                     // a superfície da frente, e o wireframe viraria um emaranhado
                     // que não diz de que lado está o quê.
-                    depth_write_enabled: true,
+                    depth_write_enabled: Some(true),
                     // `Less` com limpeza em 1.0: profundidade 3D comum. (O Flip usa
                     // `Greater` porque a ordem dele é 2D por-traço, outra pergunta.)
-                    depth_compare: wgpu::CompareFunction::Less,
+                    depth_compare: Some(wgpu::CompareFunction::Less),
                     stencil: wgpu::StencilState::default(),
                     bias,
                 }),
@@ -470,20 +470,12 @@ impl MeshRenderer {
             slope_scale: 0.0,
             clamp: 0.0,
         };
-        // ⚠️ **O viés NEGATIVO é o que faz a aresta ganhar da face.** Uma linha
-        // desenhada sobre o triângulo que a contém é COPLANAR com ele, e uma
-        // comparação de profundidade entre dois números que a rasterização
-        // computou por caminhos diferentes é uma moeda: o resultado é o
-        // z-fighting clássico, a malha piscando em faixas. Puxar a linha para
-        // perto do olho (`Less` com profundidade 0 = perto ⇒ viés negativo) a
-        // tira do empate. O termo de INCLINAÇÃO é o que cobre a face quase de
-        // perfil, onde a profundidade varia muito dentro de um pixel e um viés
-        // constante não alcança.
-        const WIRE: wgpu::DepthBiasState = wgpu::DepthBiasState {
-            constant: -4,
-            slope_scale: -1.0,
-            clamp: 0.0,
-        };
+        // ⛔ **O viés da ARESTA é ZERO — ele nunca alcançou uma linha.** O WebGPU
+        // exige viés nulo fora de topologia de triângulos, e o `wgpu` 29 passou a
+        // VALIDÁ-LO (o 28 ignorava calado). O que faz a aresta ganhar da face é a
+        // `WIRE_DEPTH_NUDGE` no shader — o mecanismo, a medição e o preço deste
+        // campo morto estão lá, ao lado dela.
+        const WIRE: wgpu::DepthBiasState = SOLID;
         let pipeline = make(Variant {
             label: "ph2d-mesh pipeline",
             vs: "vs_main",
@@ -608,7 +600,7 @@ impl MeshRenderer {
             layout: Some(
                 &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ph2d-mesh ssao layout"),
-                    bind_group_layouts: &[&ssao_bgl],
+                    bind_group_layouts: &[Some(&ssao_bgl)],
                     immediate_size: 0,
                 }),
             ),

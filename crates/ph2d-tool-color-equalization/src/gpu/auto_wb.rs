@@ -181,14 +181,14 @@ impl AutoWbPipelines {
             gpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ceq.auto_wb.reduce.layout"),
-                    bind_group_layouts: &[&reduce_bind_group_layout],
+                    bind_group_layouts: &[Some(&reduce_bind_group_layout)],
                     immediate_size: 0,
                 });
         let apply_pipeline_layout =
             gpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ceq.auto_wb.apply.layout"),
-                    bind_group_layouts: &[&apply_bind_group_layout],
+                    bind_group_layouts: &[Some(&apply_bind_group_layout)],
                     immediate_size: 0,
                 });
 

@@ -21,7 +21,7 @@ impl TransientPool {
     }
 
     /// Drop all cached transients. Called on:
-    /// - `SurfaceError::Lost` recovery
+    /// - `CurrentSurfaceTexture::Lost` recovery
     /// - `Lifecycle::Background` (proactive VRAM release)
     ///
     /// Both per ADR-0020.

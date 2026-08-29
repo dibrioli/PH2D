@@ -16,11 +16,17 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+// ⚠️ parley 0.11 deixou de re-exportar o `swash`: a 0.6 tinha `pub use swash;`
+// no `lib.rs` e a 0.11.1 não depende dele em lado nenhum (o shaper passou a ser
+// o `harfrust`). O tipo de tag OpenType mudou de dono e de REPRESENTAÇÃO junto:
+// era `u32` (`swash::tag_from_bytes`), hoje é `parley::setting::Tag`, um
+// `#[repr(transparent)] [u8; 4]` vindo do `parlance` — e `Tag::new` é `const fn`,
+// então as constantes abaixo continuam a ser constantes.
 use parley::{
-    Alignment, FontContext, FontSettings, FontStack, FontVariation, FontWeight, Layout,
+    Alignment, FontContext, FontFamily, FontVariation, FontVariations, FontWeight, Layout,
     LayoutContext, StyleProperty,
     fontique::{Blob, Collection, CollectionOptions, FontInfoOverride, SourceCache},
-    swash::tag_from_bytes,
+    setting::Tag,
 };
 
 /// OpenType axis tag for "Optical Size" (`opsz`). Inter 4.x supports
@@ -29,7 +35,7 @@ use parley::{
 /// GPU rasterization at 12-14 px; at larger `opsz` it shifts toward
 /// a "Display" cut (tighter spacing, finer details). Values outside
 /// the axis range are clamped by skrifa.
-const OPSZ_TAG: u32 = tag_from_bytes(b"opsz");
+const OPSZ_TAG: Tag = Tag::new(b"opsz");
 
 /// OpenType axis tag for "Weight" (`wght`). MUST be pushed alongside
 /// `opsz` in the `FontVariations` array — `StyleProperty::FontVariations`
@@ -39,7 +45,7 @@ const OPSZ_TAG: u32 = tag_from_bytes(b"opsz");
 /// default weight (~Regular 400) regardless of the FontWeight selection,
 /// making FontWeight bumps invisible — exactly the "Crisp Heavy looks
 /// identical to Crisp" symptom seen on 2026-05-25.
-const WGHT_TAG: u32 = tag_from_bytes(b"wght");
+const WGHT_TAG: Tag = Tag::new(b"wght");
 
 /// Inter Variable (v4.0, SIL OFL) — bundled so chrome text rasterizes
 /// to the same glyphs everywhere, independent of installed system fonts.
@@ -169,7 +175,7 @@ impl TextSystem {
             source_cache: SourceCache::default(),
         };
         // Force the registered family name. Without a system-font
-        // fallback chain, parley resolves the FontStack by exact
+        // fallback chain, parley resolves the FontFamily by exact
         // family_by_name() lookup — so the in-collection name MUST
         // match the string we put in `primary_stack`. The TTF's own
         // name table reports "Inter" (not "InterVariable"), so without
@@ -287,9 +293,15 @@ impl TextSystem {
             1.0,  // device pixel ratio
             true, // quantize
         );
-        builder.push_default(StyleProperty::FontStack(FontStack::Source(Cow::Borrowed(
-            self.primary_stack.as_str(),
-        ))));
+        // `StyleProperty::FontStack(FontStack)` virou `FontFamily(FontFamily)` na
+        // parley 0.11 (o tipo mudou-se para o `parlance` e passou a ter o nome da
+        // propriedade CSS que representa). A variante `Source(Cow<str>)` é a MESMA
+        // — uma lista `font-family` em sintaxe CSS —, então a tradução é de nome,
+        // não de semântica: continua a ser "InterVariable, sans-serif" resolvido da
+        // esquerda para a direita.
+        builder.push_default(StyleProperty::FontFamily(FontFamily::Source(
+            Cow::Borrowed(self.primary_stack.as_str()),
+        )));
         builder.push_default(StyleProperty::FontSize(font_size));
         // Inter at Regular 400 looks washed out at small UI sizes
         // without LCD subpixel AA — the strokes are too thin to
@@ -321,16 +333,22 @@ impl TextSystem {
                 value: weight.value(),
             },
         ];
-        builder.push_default(StyleProperty::FontVariations(FontSettings::List(
+        // `FontSettings<'a, T>` era UM tipo genérico servindo variações e features;
+        // a parley 0.11 partiu-o em dois tipos concretos (`FontVariations` /
+        // `FontFeatures`), cada um com as mesmas duas variantes `Source`/`List`.
+        // Só o nome muda — `List(Cow<[FontVariation]>)` continua a ser a lista já
+        // parseada, que é o que evita re-parsear a string CSS a cada layout.
+        builder.push_default(StyleProperty::FontVariations(FontVariations::List(
             Cow::Borrowed(&variations),
         )));
         let mut layout: Layout<()> = builder.build(text);
         layout.break_all_lines(Some(max_width));
-        layout.align(
-            Some(max_width),
-            Alignment::Start,
-            parley::AlignmentOptions::default(),
-        );
+        // ⚠️ `align` perdeu o `container_width` na parley 0.11: o alinhamento passou
+        // a ser feito relativamente ao `max_advance` que `break_all_lines` já
+        // recebeu — logo o argumento era a MESMA largura escrita duas vezes, e duas
+        // respostas para a mesma pergunta é o que a assinatura nova apaga. O
+        // `Some(max_width)` de cima é agora a única fonte da largura do contentor.
+        layout.align(Alignment::Start, parley::AlignmentOptions::default());
         if self.layout_cache.len() >= LAYOUT_CACHE_CAP {
             self.layout_cache.clear();
         }
@@ -406,7 +424,7 @@ impl Default for TextSystem {
 }
 
 /// Register the bundled Inter Variable into `font_context.collection`.
-/// Returns the family name to reference in `FontStack` on success,
+/// Returns the family name to reference in `FontFamily` on success,
 /// `None` if registration produced no usable family (e.g. fontique
 /// rejected the bytes). Callers fall back to `sans-serif`.
 fn register_inter(font_context: &mut FontContext) -> Option<&'static str> {

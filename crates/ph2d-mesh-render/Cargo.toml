@@ -26,7 +26,7 @@ ph2d-light = { path = "../ph2d-light" }
 # `ph2d-vector-doc`); uma Mat4 escrita a mao aqui seria a segunda resposta.
 glam = "0.30"
 # wgpu 28 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render.
-wgpu = "28"
+wgpu = "29.0.4"
 # O DECODER DOS MATCAPS. Os nove PNGs de `assets/matcaps/` sao `include_bytes!`,
 # e alguem tem de transforma-los em texels -- ver `src/matcap.rs`.
 #

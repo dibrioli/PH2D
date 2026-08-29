@@ -194,7 +194,7 @@ impl FxStackPass {
             gpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ph2d-render fx_stack layout"),
-                    bind_group_layouts: &[bgl],
+                    bind_group_layouts: &[Some(bgl)],
                     immediate_size: 0,
                 })
         };

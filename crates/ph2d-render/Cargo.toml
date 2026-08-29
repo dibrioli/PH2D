@@ -26,17 +26,19 @@ ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 # ph2d-asset does not depend on ph2d-render → no cycle.
 ph2d-asset = { path = "../ph2d-asset" }
 bevy_ecs = "0.19"
-wgpu = "28"
+wgpu = "29.0.4"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 # Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2):
 # `SpriteImage::new` takes `Vec<SrgbRgba>` instead of `Vec<u8>`.
 ph2d-color = { path = "../ph2d-color" }
-# Vello renderer for the M11 widget paint pass. Pinned to 0.8 (which
-# tracks wgpu 28 — this is why ph2d-gpu/render/desktop downgraded
-# from wgpu 29 in this PR; see ADR follow-up). VelloPass takes
+# Vello renderer for the M11 widget paint pass. ⛔ TETO: o vello 0.10 pede
+# `wgpu = "^29.0.3"`, e e' ELE que fixa toda a cadeia de GPU em 29.0.4 — o
+# wgpu 30 existe e nao e' alcancavel (forcar da' DUAS copias, e o `Device` de
+# uma nao serve a` outra). Reconferir quando o vello suportar wgpu 30:
+# `bash scripts/stack-audit.sh --tetos`. VelloPass takes
 # `&vello::Scene` directly so we don't need ph2d-vector here; the
 # editor builds the Scene via ph2d-vector and passes it through.
-vello = "0.8"
+vello = "0.10.0"
 # serde derives on `Sprite` so it can be carried by `PrefabDoc` /
 # `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
 # until `#[derive(Saveable)]` lands.
@@ -89,7 +91,7 @@ criterion = { version = "0.8", default-features = false }
 # rotation→basis ABI change, ADR-0070-amendment-4) is caught before it
 # reaches a GPU pipeline build. Mirrors ph2d-painter-brush's stamp.wgsl
 # naga gate. `wgsl-in` feature for the WGSL front-end.
-naga = { version = "28", features = ["wgsl-in"] }
+naga = { version = "29.0.4", features = ["wgsl-in"] }
 # Painter W3 Block 2: the blend math source-of-truth `apply_blend` + `BlendMode`
 # is the CPU REFERENCE for `shader_blend_modes_bit_identical_with_rust` and the
 # GPU↔CPU readback parity gate. Dev-dep only — production `LayerCompositor`

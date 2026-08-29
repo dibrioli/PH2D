@@ -503,6 +503,36 @@ fn vs_core(
 //    por pixel; no vértice ela leva a metade da frente junto.
 const WIRE_DEPTH_NUDGE: f32 = 3.0e-3;
 
+// ⛔⛔ **E o `DepthBiasState` do pipeline de arestas era CÓDIGO MORTO — confirmado
+// pela plataforma em 2026-08-29, na subida do `wgpu` 28 → 29.**
+//
+// O `pipeline_build` declarava, para o passe de arestas,
+// `DepthBiasState { constant: -4, slope_scale: -1.0 }`, com um comentário longo a
+// explicar que *"o viés negativo é o que faz a aresta ganhar da face"*. O
+// raciocínio está certo **para triângulos**; aquela topologia é `LineList`. O
+// WebGPU exige `depthBias`, `depthBiasSlopeScale` e `depthBiasClamp` **iguais a
+// zero** fora de topologia de triângulos, e o Vulkan aplica viés só a primitivas
+// de polígono ⇒ aquele valor **nunca foi aplicado por backend nenhum**.
+//
+// ⭐ **A casa já o tinha medido** — a sonda `probe_wire_continuity` traz, escrito,
+// que *"não há um gate afirmando «o viés do pipeline não alcança uma linha», que é
+// o achado mais caro desta investigação — porque eu não consigo fazê-lo falhar
+// pelo motivo que ele alegaria"*, com a varredura ao lado: `constant` de **0 a
+// −4096**, tinta **idêntica ao pixel**. A cura verdadeira é esta constante (mais o
+// empurrão lateral abaixo, que ataca a outra metade). O campo do pipeline ficou
+// para trás porque **nada o obrigava a sair**.
+//
+// ⇒ O `wgpu` 29 obrigou: ele valida o que o 28 tolerava, e a criação do pipeline
+// passou a falhar com *"Depth bias is not compatible with non-triangle topology
+// LineList"* — **48 gates de uma vez**, e foi assim que o cadáver apareceu.
+// ⚠️ *Um valor inerte não custa nada até ao dia em que a plataforma deixa de o
+// tolerar; nesse dia custa a suíte inteira — e enquanto lá está, quem o lê pela
+// primeira vez acredita no comentário.*
+//
+// ⚠️ O gate que faltava agora existe, e não é nosso: **é a própria validação do
+// `wgpu`**. Quem repuser um viés naquele pipeline não vê um teste vermelho — vê a
+// malha 3D inteira deixar de desenhar.
+
 // **A ARESTA** — a mesma posição do [`vs_main`], um passo mais perto do olho.
 //
 // ⚠️ **Ele delega em vez de recalcular:** duas expressões para *"onde este

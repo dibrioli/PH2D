@@ -176,14 +176,14 @@ impl UnsharpSharpenPipeline {
             gpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ceq.sharpen_unsharp_h.layout"),
-                    bind_group_layouts: &[&h_bind_group_layout],
+                    bind_group_layouts: &[Some(&h_bind_group_layout)],
                     immediate_size: 0,
                 });
         let v_pipeline_layout =
             gpu.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("ceq.sharpen_unsharp_v.layout"),
-                    bind_group_layouts: &[&v_bind_group_layout],
+                    bind_group_layouts: &[Some(&v_bind_group_layout)],
                     immediate_size: 0,
                 });
 

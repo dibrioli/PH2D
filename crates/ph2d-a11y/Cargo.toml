@@ -15,8 +15,12 @@ authors.workspace = true
 # Mac VoiceOver + Win Narrator + iPadOS VoiceOver + Linux AT-SPI
 # pela mesma trait `Node`. Per ADR-0023 §10.
 #
-# Versão pinada: 0.21 (compatível com Rust 1.85+ MSRV).
+# Versão pinada: 0.24.1.
+# ⚠️ NAO e' um teto imposto pelo parley, ao contrario do que se poderia supor: a
+# feature `accesskit` do parley NAO esta' no `default`, e o `Cargo.lock` mostra
+# esta crate como UNICA dependente. O pin exacto e' higiene, nao restricao —
+# `"0.24"` ja' resolvia `<0.25` sozinho. Medido 2026-08-29.
 # As crates de adapter por OS (accesskit_macos, accesskit_windows,
 # accesskit_unix) ficam fora deste crate — só o shell desktop/iPad
 # pulla os adapters pra ligar no winit/UIKit.
-accesskit = "0.24"
+accesskit = "0.24.1"

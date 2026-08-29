@@ -18,10 +18,11 @@ authors.workspace = true
 # paint PR; downgrade rationale documented in the same commit.
 # kurbo + peniko reach our public API via `vello::kurbo` /
 # `vello::peniko` re-exports — declaring them as direct deps would
-# risk version skew (vello 0.8 ships peniko 0.6, kurbo 0.12).
+# risk version skew (o vello 0.10 traz peniko 0.6.1 e kurbo 0.13 — conte-os no
+# `Cargo.lock`, nao aqui: esta linha ja' esteve errada sobre o kurbo).
 # `default-features = false` drops vello's CPU-pipeline-cache code
 # we don't use; the `wgpu` feature keeps GPU integration on.
-vello = { version = "0.8", default-features = false, features = ["wgpu"] }
+vello = { version = "0.10.0", default-features = false, features = ["wgpu"] }
 
 # Vector Module document data model — `VectorNetwork` /
 # `Vertex` / `Segment` / `Region` round-trip through the new

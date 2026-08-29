@@ -626,7 +626,8 @@ impl GpuCook {
         // bind group turns it into a validation panic.
         let instance_bytes =
             u64::from(count) * std::mem::size_of::<ph2d_render::RenderInstance>() as u64;
-        let binding_limit = u64::from(gpu.device.limits().max_storage_buffer_binding_size);
+        // wgpu 29: `max_storage_buffer_binding_size` is already `u64`.
+        let binding_limit = gpu.device.limits().max_storage_buffer_binding_size;
         if instance_bytes > binding_limit {
             return Err(GpuCookError::BindingTooLarge {
                 bytes: instance_bytes,

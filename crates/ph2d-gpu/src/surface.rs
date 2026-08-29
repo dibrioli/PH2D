@@ -209,21 +209,30 @@ impl SurfaceContext {
             self.state = SurfaceState::Healthy;
         }
 
-        // wgpu 28 returns Result<SurfaceTexture, SurfaceError> where
-        // suboptimal is a field on the success variant. The variant
-        // mapping below preserves the wgpu 29 semantics we previously
-        // had — see ADR-0020 for the recovery state machine.
+        // ⭐ wgpu 29: `get_current_texture()` deixou de devolver `Result<SurfaceTexture,
+        // SurfaceError>` e passa a devolver **um enum só**, `CurrentSurfaceTexture`, com o
+        // sucesso e as cinco recusas lado a lado. O `suboptimal`, que era um CAMPO da variante
+        // de sucesso, virou uma variante própria — e é uma melhoria: um campo booleano num
+        // sucesso é fácil de não ler, e este aqui decide se o quadro seguinte reconfigura.
+        //
+        // ⭐⭐ **`Occluded` faz nascer um caminho que já estava escrito e era inalcançável.**
+        // O nosso `AcquireError::Occluded` existe desde sempre e o shell já o trata
+        // (`render_loop/present.rs` salta o quadro) — mas o `SurfaceError` do wgpu 28 **não
+        // tinha** essa situação, então nenhum produtor podia emiti-lo. Esta árvore já esteve no
+        // wgpu 29 e recuou; o que se faz aqui é **restaurar**, não inventar.
+        //
+        // ⚠️ Duas recusas antigas DESAPARECERAM e não são perda: `OutOfMemory` deixou de ser
+        // reportada por esta porta, e `Other` foi **renomeada para `Validation`** com um
+        // significado mais estreito e mais útil — *um erro de validação apanhado por um error
+        // scope* —, que é exactamente o que o nosso texto já dizia.
+        //
+        // Ver ADR-0020 para a máquina de recuperação.
         match self.surface.get_current_texture() {
-            Ok(texture) => {
-                if texture.suboptimal {
-                    // Render this frame, reconfigure before next acquire.
-                    self.state = SurfaceState::NeedsReconfigureNext;
-                } else {
-                    self.state = match self.state {
-                        SurfaceState::TimingOut(_) => SurfaceState::Healthy,
-                        other => other,
-                    };
-                }
+            wgpu::CurrentSurfaceTexture::Success(texture) => {
+                self.state = match self.state {
+                    SurfaceState::TimingOut(_) => SurfaceState::Healthy,
+                    other => other,
+                };
                 Ok(FrameTarget::new(
                     texture,
                     self.config.format,
@@ -231,10 +240,26 @@ impl SurfaceContext {
                 ))
             }
 
-            Err(wgpu::SurfaceError::Outdated) => {
+            // Desenha ESTE quadro e reconfigura antes do próximo acquire — a textura serve, mas
+            // já não casa com as propriedades da superfície.
+            wgpu::CurrentSurfaceTexture::Suboptimal(texture) => {
+                self.state = SurfaceState::NeedsReconfigureNext;
+                Ok(FrameTarget::new(
+                    texture,
+                    self.config.format,
+                    self.gpu.clone(),
+                ))
+            }
+
+            wgpu::CurrentSurfaceTexture::Outdated => {
                 self.surface.configure(&self.gpu.device, &self.config);
                 match self.surface.get_current_texture() {
-                    Ok(texture) => {
+                    // ⚠️ Depois de reconfigurar, um `Suboptimal` é aceite como sucesso: o estado
+                    // vai para `Healthy` na mesma, porque a reconfiguração que ele pediria **é a
+                    // que acabámos de fazer**. Tratá-lo como falha aqui poria a superfície a
+                    // reconfigurar em ciclo.
+                    wgpu::CurrentSurfaceTexture::Success(texture)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(texture) => {
                         self.state = SurfaceState::Healthy;
                         Ok(FrameTarget::new(
                             texture,
@@ -242,14 +267,14 @@ impl SurfaceContext {
                             self.gpu.clone(),
                         ))
                     }
-                    Err(_) => {
+                    _ => {
                         self.state = SurfaceState::AwaitingReconfigure;
                         Err(AcquireError::AwaitingReconfigure)
                     }
                 }
             }
 
-            Err(wgpu::SurfaceError::Timeout) => {
+            wgpu::CurrentSurfaceTexture::Timeout => {
                 let count = match self.state {
                     SurfaceState::TimingOut(n) => n + 1,
                     _ => 1,
@@ -264,18 +289,19 @@ impl SurfaceContext {
                 }
             }
 
-            Err(wgpu::SurfaceError::Lost) => {
+            // ⚠️ **NÃO mexe no estado da superfície, de propósito.** Uma janela minimizada não
+            // está partida — ela volta. Marcar `AwaitingReconfigure` aqui forçaria uma
+            // reconfiguração a cada quadro enquanto o utilizador tem outra janela por cima.
+            wgpu::CurrentSurfaceTexture::Occluded => Err(AcquireError::Occluded),
+
+            wgpu::CurrentSurfaceTexture::Lost => {
                 self.transients.clear();
                 self.state = SurfaceState::AwaitingReconfigure;
                 Err(AcquireError::AwaitingReconfigure)
             }
 
-            Err(wgpu::SurfaceError::OutOfMemory) => Err(AcquireError::Other(
-                "wgpu out-of-memory during get_current_texture".into(),
-            )),
-
-            Err(wgpu::SurfaceError::Other) => Err(AcquireError::Other(
-                "wgpu generic error inside get_current_texture (caught by error scope)".into(),
+            wgpu::CurrentSurfaceTexture::Validation => Err(AcquireError::Other(
+                "wgpu validation error inside get_current_texture (caught by error scope)".into(),
             )),
         }
     }

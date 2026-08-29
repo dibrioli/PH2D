@@ -16,8 +16,12 @@ ph2d-vector-doc = { path = "../ph2d-vector-doc" }
 # (ADR-0066 §2.4). Read-only contract dep (the "mocks kill vaporware" crate).
 ph2d-vector-traits = { path = "../ph2d-vector-traits" }
 # skrifa (Linebender) — variable-font parsing + axis-aware outlines. Already in
-# the workspace tree via parley/vello (0.40); pure Rust, no native build deps.
-skrifa = "0.40"
+# the workspace tree via parley/vello; pure Rust, no native build deps.
+# ⛔ TETO: o `vello 0.10.0`, o `parley 0.11.1` e o `usvg` pedem `^0.44.0`, que em
+# 0.x significa `>=0.44.0, <0.45.0`. Existem 0.45 e 0.46 no indice, e elas NAO
+# "forcam uma escolha" — elas COEXISTEM, e um `OutlineGlyph` de uma copia nao
+# serve a` outra. Reconferir com `bash scripts/stack-audit.sh --tetos`.
+skrifa = "0.44.0"
 # glam::Vec2 — the network's coordinate type.
 glam = "0.30"
 # SmallVec — axes inline ≤ 8 per glyph (ADR-0066 §2.7 cap).

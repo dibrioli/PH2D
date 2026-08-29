@@ -145,7 +145,7 @@ fn sample_through_the_shader(
         .device
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("precision parity layout"),
-            bind_group_layouts: &[bgl],
+            bind_group_layouts: &[Some(bgl)],
             immediate_size: 0,
         });
     let target_format = wgpu::TextureFormat::Rgba16Float;

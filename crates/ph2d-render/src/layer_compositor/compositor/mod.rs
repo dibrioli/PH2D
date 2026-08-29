@@ -134,7 +134,7 @@ impl LayerCompositor {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render layer_composite layout"),
-                bind_group_layouts: &[&bgl],
+                bind_group_layouts: &[Some(&bgl)],
                 immediate_size: 0,
             });
 
@@ -303,7 +303,7 @@ impl LayerCompositor {
                 .device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some(label),
-                    bind_group_layouts: &[bgl],
+                    bind_group_layouts: &[Some(bgl)],
                     immediate_size: 0,
                 });
             gpu.device

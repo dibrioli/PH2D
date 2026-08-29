@@ -321,7 +321,7 @@ fn game_rt_from_srgb_fixture(gpu: &GpuContext) -> wgpu::Texture {
         .device
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("tonemap descent sample layout"),
-            bind_group_layouts: &[&bgl],
+            bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
     let pipeline = gpu
@@ -506,7 +506,7 @@ fn descend_with_probe(
         .device
         .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("tonemap descent probe layout"),
-            bind_group_layouts: &[&bgl],
+            bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
     let pipeline = gpu

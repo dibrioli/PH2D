@@ -9,7 +9,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-wgpu = "28"
+wgpu = "29.0.4"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-nodegraph = { path = "../ph2d-nodegraph" }
@@ -19,7 +19,7 @@ ph2d-render = { path = "../ph2d-render" }
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }  # o sweep do naga DERIVA o registry em vez de o enumerar
 # naga (same major as wgpu 28) — parse + validate every generated compute
 # module at `cargo test` time, no device needed (mirrors sprite_wgsl_valid).
-naga = { version = "28", features = ["wgsl-in"] }
+naga = { version = "29.0.4", features = ["wgsl-in"] }
 # The parity gates cook a REAL motion chain on both paths.
 ph2d-node-registry = { path = "../ph2d-node-registry" }
 # The gradient presets (doc 85) the color_ramp LUT-parity gate drives, serialized.

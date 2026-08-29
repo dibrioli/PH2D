@@ -62,7 +62,7 @@ parede, medido pelo próprio shell.
 | **T** — terreno | 5 | **5** | ✅ **fechado** | LLM | 2026-08-29 |
 | **A** — Rust 1.98 | 11 | **11** | ✅ **fechado** | LLM | 2026-08-29 |
 | **B** — 31 compatíveis | 4 | **4** | ✅ **fechado** | LLM | 2026-08-29 |
-| **C** — GPU e texto | 22 | 0 | por fazer | | |
+| **C** — GPU e texto | 22 | **22** | ✅ **fechado** (4 eram inexistentes — §11) · falta o smoke do Enio | LLM | 2026-08-29 |
 | **D** — bevy_ecs | 14 | **14** | ✅ **fechado** (9 eram irrelevantes — §10) | LLM | 2026-08-29 |
 | **E** — rapier2d | 14 | 0 | por fazer | | |
 | **F** — a cauda | 19 | **14** | 🟡 5 abertas (F1·F2·F4·F8·F16) + F5 devolvida | LLM | 2026-08-29 |
@@ -341,6 +341,155 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 **apaga a pergunta**. Esta teria custado a alguém a descoberta no meio da execução, com o bloco
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
+
+## §11 — Bloco C — GPU e texto (2026-08-29)
+
+**19 linhas de manifesto**, e as seis crates subiram **juntas** como o bloco exigia:
+`wgpu` 28 → **29.0.4** · `vello` 0.8 → **0.10.0** · `naga` 28 → **29.0.4** ·
+`skrifa` 0.40 → **0.44.0** · `parley` 0.6 → **0.11.1** · `fontique` 0.6 → **0.11.1** ·
+`accesskit` fixado em **0.24.1**. Mais o `usvg` 0.43 → **0.48** (a F16, que entrou aqui porque é
+ela que solta o `kurbo`).
+
+### §11.1 — ⭐ O que a subida rendeu de graça: cinco duplicações mortas
+
+| dependência | antes | depois |
+|---|---:|---:|
+| `skrifa` | **3 cópias** (0.37 · 0.40 · 0.44) | **1** (0.44.0) |
+| `read-fonts` | **3 cópias** (0.35 · 0.37 · 0.41) | **1** (0.41.0) |
+| `swash` | 1 cópia | **0 — saiu da árvore** |
+| `kurbo` | 2 cópias (0.11.3 · 0.13.1) | **1** (0.13.1) |
+| `wgpu-types` | 2 cópias | **1** (29.0.4) |
+
+⚠️ O `wgpu-types` colapsou no **bloco D**, não neste — a 2.ª cópia vinha do `bevy_reflect 0.18`.
+O `kurbo` colapsou com o `usvg`, cuja cópia de `svgtypes` era a **única** consumidora da 0.11.3.
+*Um teto pode cair por causa de um bloco que ninguém ligou a ele.*
+
+### §11.2 — ⛔ As quatro tarefas do plano que mandavam trabalho INEXISTENTE
+
+| tarefa | o plano mandava | medido |
+|---|---|---|
+| **C10** | 34 edições de `VertexState::buffers` | **0** — a linha do wgpu 29 é byte a byte igual à do 28 |
+| **C13** | pôr `@interpolate(flat)` em 3 varyings | **0** — a regra já existia no naga 28, e os 3 casamentos são **atributos de vértice**, onde o atributo nem se aplica |
+| **C16** | renomes de `Alignment` | **0** — o enum é idêntico desde antes da versão que usávamos |
+| **C17** | `peniko::Font` → `FontData` | **0** — já tinha acontecido antes da 0.6 |
+
+### §11.3 — ⚠️ E a contagem errou nas DUAS receitas que sobraram
+
+| receita | plano | medido |
+|---|---:|---:|
+| `bind_group_layouts` → `Option` no `ph2d-render` | 9 | **13** |
+| idem nas crates-ferramenta | 8 (ou 9 — o plano discordava de si próprio) | **10** |
+
+Os agentes **não confiaram no número**: varreram o crate inteiro e reportaram a diferença. Depois
+disso uma varredura da árvore toda (`bind_group_layouts` sem `Some(`, `depth_*` sem `Some(`,
+`SurfaceError`, `.suboptimal`) devolveu **zero**. *Um número numa receita é uma expectativa, não
+um alvo — quem executa conta.*
+
+### §11.4 — ⭐⭐ Dois achados que valem mais que a subida
+
+**1. Um caminho nosso que era INALCANÇÁVEL passou a existir.** O `AcquireError::Occluded` está
+declarado no `ph2d-gpu` e o shell já o trata (salta o quadro) — mas o `SurfaceError` do wgpu 28
+**não tinha** essa situação, então nenhum produtor podia emiti-lo. O wgpu 29 tem `Occluded`, e o
+comentário do ficheiro revela porquê: *«esta árvore já esteve no wgpu 29 e recuou»*. ⇒ o C8
+**restaura**, não inventa.
+
+**2. Uma quebra que o reconhecimento declarou INEXISTENTE, e cuja cura é melhor que o original.**
+Ele afirmou ter conferido os oito símbolos do `fontique` e que as assinaturas eram idênticas. O
+`Script` mudou de dono (fontique → `parlance`) e **perdeu o `From<&str>`**. ⭐ A conversão antiga
+era `as_bytes().try_into().unwrap_or_default()`: **um código de escrita com tamanho errado virava
+quatro zeros em silêncio**, e o sintoma seria uma cascata de fontes errada para aquele idioma. O
+substituto (`Script::from_bytes([u8; 4])`) torna isso **erro de compilação**.
+⚠️ *O reconhecimento errou por olhar assinaturas de FUNÇÃO e não a origem do TIPO.*
+
+### §11.5 — ⚠️ O que MUDA PIXEL, e compila verde
+
+Esta é a lista que decide o smoke do dono. Nenhum destes itens dá erro.
+
+| # | o quê | onde se vê |
+|---|---|---|
+| **1** | **Toda imagem do vello desloca-se meio pixel.** Correcção de defeito do upstream (*"blurry image rendering due to incorrect half-pixel offset"*, vello 0.9): o `fine.wgsl` passou a amostrar no **centro** do pixel. | Os três modos de qualidade, 46 sítios de `draw_image`. **Mais visível no modo de arte de pixel**: meio pixel muda qual texel o vizinho-mais-próximo escolhe ⇒ uma pré-visualização pode aparecer deslocada **uma coluna inteira**. |
+| **2** | **`ImageQuality::High` era bilinear disfarçado e passa a bicúbico de verdade** (Mitchell, 16 amostras). | O filtro **«Smooth»** fica mais nítido, com o halo fino que um Mitchell produz numa borda de contraste. **2 sítios de produto.** |
+| **3** | **O `y_offset` do glifo inverteu de sinal** (parley 0.8). ⭐ **E isso CURA um defeito nosso** — a 0.6 injectava uma grandeza Y-up num campo Y-down. | Acentos posicionados por *mark-attachment* subiam ao contrário. Para latino precomposto, `y_offset` é 0 e **nada muda**. |
+| **4** | **O motor de moldagem saltou `harfrust` 0.3 → 0.12.** | Kerning e largura de cluster podem mover texto **um pixel** em qualquer painel. Não estava na lista de risco do plano. |
+
+⛔ **E uma que o plano mandava procurar e NÃO PODE ACONTECER:** o gradiente do selector de cor.
+Verificado no gerador da rampa do vello — o modo novo é opcional, o campo que o escolhe já existia
+na versão que usávamos, nenhum sítio nosso o escreve, e o caminho por omissão é a **mesma chamada**.
+O gradiente é **byte-idêntico**. *Mandar o dono procurar o que não pode acontecer gasta a única
+coisa que ele tem de escasso.*
+
+### §11.5-bis — ⭐⭐⭐ O achado do bloco: **48 gates caíram por um valor INERTE**
+
+A fotografia do «depois» dos gates de GPU passou de **12** vermelhos para **65**, e quase toda a
+suíte do `ph2d-mesh-render` estava lá. A causa é **uma linha**:
+
+```
+In Device::create_render_pipeline, label = 'ph2d-mesh wire'
+  Depth bias is not compatible with non-triangle topology LineList
+```
+
+O passe de arestas declarava `DepthBiasState { constant: -4, slope_scale: -1.0 }`, com um
+comentário longo a explicar que *«o viés negativo é o que faz a aresta ganhar da face»*. O
+raciocínio está certo **para triângulos**; a topologia é `LineList`. O WebGPU exige viés **zero**
+fora de topologia de triângulos e o Vulkan aplica-o só a polígonos ⇒ **aquele valor nunca foi
+aplicado por backend nenhum**.
+
+⭐⭐ **E esta casa já o tinha medido.** A sonda `probe_wire_continuity` carrega, escrito:
+
+> *«não há um gate afirmando "o viés do pipeline não alcança uma linha", que é o achado mais caro
+> desta investigação — porque eu não consigo fazê-lo falhar pelo motivo que ele alegaria»*
+
+com a varredura ao lado: `constant` de **0 a −4096**, tinta **idêntica ao pixel**. A cura
+verdadeira foi construída no shader (`WIRE_DEPTH_NUDGE` + o empurrão lateral, cada um a atacar
+metade do problema, cada um com a sua tabela). **O campo do pipeline ficou para trás porque nada o
+obrigava a sair.**
+
+⇒ **O `wgpu` 29 foi o que o obrigou:** ele valida o que o 28 ignorava calado.
+
+⚠️ **A lição, e ela é geral:** *um valor inerte não custa nada até ao dia em que a plataforma deixa
+de o tolerar — e nesse dia custa a suíte inteira.* Pior: enquanto lá está, **quem o lê pela
+primeira vez acredita no comentário**. O gate que faltava não era sobre o wireframe; era sobre o
+campo estar morto — e a investigação que o descobriu disse, com todas as letras, que não sabia como
+o escrever.
+
+⭐ **Curado, e a prova é a que o próprio módulo já queria:** com o viés a zero, os gates de
+continuidade do arame (*quanto de cada aresta chega à tela*, *as arestas rasantes são comidas pela
+própria superfície?*) passam — **60 de 62**, e os 2 que sobram são os **mesmos dois** que já
+estavam vermelhos na fotografia do antes.
+
+### §11.5-ter — O veredito dos gates de GPU: **zero regressões**
+
+| | antes | depois |
+|---|---:|---:|
+| corridos | 535 | 535 |
+| passaram | 523 | **525** |
+| **falharam** | **12** | **10** |
+
+Diferença nominal: **1 novo**, **3 curados**. E os quatro são **sondas de custo/relógio**:
+`emitter_sim_ceiling_probe` (o novo) re-corre **3 de 3 verde** sozinho, com a máquina a carga
+**0,36**; os três «curados» (`how_far_does_the_packing_scale`, `bounded_readback_cost_probe`,
+`two_seam_hybrid_timing`) são da mesma espécie e caíram no «antes» porque **aquela** corrida
+apanhou a máquina a carga 20.
+
+⇒ **9 vermelhos estáveis, os mesmos nos dois lados. O bloco C não introduziu nenhuma regressão de
+GPU** — o que ele fez foi expor o viés morto (§11.5-bis) e curá-lo.
+
+### §11.6-bis — ⚠️ Um MEMBRO NOVO da família de falso-positivos de carga
+
+`ph2d-field-render tests::an_abandoned_march_returns_nothing_and_returns_fast` reprovou **uma vez**
+no portão desta jornada (`14,24 ms` contra `17,94 ms`, uma razão de dois relógios) e passou
+**3 de 3** ao correr sozinho — com a máquina ainda a **carga 20**.
+
+Ele tem a forma exacta que o `CLAUDE.md` §5.0 descreve: *mede um recurso partilhado dividindo dois
+relógios*. E o crate não tem relação nenhuma com este bloco — o traçador de campo é CPU, não toca
+`wgpu`, `vello` nem `parley`. ⇒ acrescentar à lista de membros confirmados no fecho da jornada.
+
+### §11.6 — ⚠️ Uma decisão que passa por omissão se ninguém a nomear
+
+O `parley 0.11.1` tem uma feature nova **`complex-scripts` que NÃO é default**. Sem ela, a
+segmentação de linha e de palavra degrada para **tailandês, khmer, lao e birmanês** (o parley cai
+nos segmentadores *não-complexos*). Nenhum idioma do produto hoje ⇒ **não ligámos**, mas fica
+nomeado: é uma escolha, não um esquecimento.
 
 ## §10 — Bloco D — `bevy_ecs` 0.18.1 → 0.19.1 (2026-08-29)
 

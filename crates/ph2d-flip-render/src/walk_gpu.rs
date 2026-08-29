@@ -127,7 +127,7 @@ impl WalkPass {
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-flip walk pl"),
-            bind_group_layouts: &[&layout],
+            bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
         let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

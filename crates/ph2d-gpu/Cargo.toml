@@ -11,7 +11,7 @@ authors.workspace = true
 
 [dependencies]
 ph2d-host = { path = "../ph2d-host" }
-wgpu = "28"
+wgpu = "29.0.4"
 # ⛔ TETO — o `rfd 0.17.2` (diálogos de ficheiro, shells/desktop) pede `^0.4`. O topo
 # é 1.0.1 e é INALCANÇÁVEL enquanto o rfd não passar: duas cópias de pollster dariam
 # dois `block_on` distintos a competir pelo mesmo executor. Reconfira com

@@ -19,4 +19,4 @@ authors.workspace = true
 ph2d-vector-font = { path = "../ph2d-vector-font" }
 # Linebender system-font enumeration + script fallback — already in the tree via
 # parley/vello (0.6). `default = ["system"]` → real installed fonts + OS cascade.
-fontique = "0.6"
+fontique = "0.11.1"

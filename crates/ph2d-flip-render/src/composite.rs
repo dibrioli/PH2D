@@ -83,7 +83,7 @@ impl FlipCompose {
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-flip compose layout"),
-            bind_group_layouts: &[&bgl],
+            bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {

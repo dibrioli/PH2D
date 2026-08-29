@@ -170,6 +170,27 @@ fn paint_text_weighted(
                         // pixel-aligned per glyph. X snap depends on
                         // the current `TextRendering` preset's
                         // `SnapX` strategy (None / Half / Full).
+                        //
+                        // ⚠️ **`g.y` é Y-DOWN, e nós NÃO o negamos** — nem antes
+                        // nem depois da subida do parley 0.6 → 0.11. A prova está
+                        // a jusante, no `vello_encoding::resolve`: o transform
+                        // por-glifo é `matrix: [1,0,0,-1]` com
+                        // `translation: [g.x, g.y]`. O `-1` inverte o CONTORNO
+                        // (que vem da fonte em Y-up); a translação compõe-se como
+                        // `M·p + t`, logo `t` vive no espaço de SAÍDA, que é o da
+                        // tela, Y para baixo — o mesmo em que `Affine::translate`
+                        // acima põe o topo da caixa de texto.
+                        //
+                        // ⚠️ O que a parley 0.8 inverteu foi só o `y_offset` que o
+                        // shaper devolve (font space, Y-up) antes de o somar à
+                        // baseline; a baseline em si é Y-down nas duas versões e
+                        // `positioned_glyphs()` (`g.y += baseline`) é linha a
+                        // linha idêntica. ⇒ a 0.6 injetava uma grandeza Y-up num
+                        // campo Y-down: um acento posicionado por
+                        // mark-attachment do GPOS descia em vez de subir. A subida
+                        // CURA esse defeito nosso; compensar o sinal aqui seria
+                        // reintroduzi-lo. Para o latino precomposto que o chrome
+                        // usa, `y_offset` é 0 e a saída não muda um bit.
                         x: snap_x_apply(g.x, snap_x),
                         y: g.y.round(),
                     }),
@@ -242,6 +263,16 @@ pub fn paint_text_rotated_ccw(
                         // Snap X pre-rotation in Crisp; rotation
                         // turns this into snap-Y in screen space —
                         // which aligns rotated stems to columns.
+                        //
+                        // ⚠️ `g.y` passa CRU, sem negação — a convenção é a mesma
+                        // do `paint_text_weighted` (lá está o mecanismo inteiro):
+                        // `vello::Glyph::y` é Y-down, e a inversão de sinal da
+                        // parley 0.8 corrigiu o `y_offset` do shaper, não a
+                        // baseline. ⚠️ Diferença com o pintor reto: aqui NÃO há
+                        // `.round()`, então este caminho vê o deslocamento
+                        // sub-pixel do GPOS por inteiro — se algum dia um rótulo
+                        // girado usar marcas combinantes, é aqui que a mudança
+                        // aparece primeiro.
                         x: snap_x_apply(g.x, snap_x),
                         y: g.y,
                     }),

@@ -272,13 +272,27 @@ impl VectorScene {
     ///   ÂNCORAS e a faz cavalgar a pose da forma. Com `None` o padrão ficaria colado à TELA e
     ///   escorregaria por baixo da forma — o defeito da origem-da-régua do Illustrator.
     ///
-    /// # O que o substrato ainda não faz
+    /// # O que o substrato faz — e o que MUDOU ao subir o vello
     ///
-    /// ⛔ **`ImageQuality::High` NÃO existe no Vello 0.8** — o `fine.wgsl` di-lo em texto (*"We
-    /// don't have an implementation for `IMAGE_QUALITY_HIGH` yet, just use the same as medium"*) e
-    /// cai em bilinear. Passe `Medium` para o caso liso e `Low` (vizinho mais próximo) para arte de
-    /// pixel — que é também o único modo **sem costura**: em `Repeat` o filtro bilinear grampeia na
-    /// fronteira do ladrilho em vez de dar a volta, e o artefacto é meio texel.
+    /// ⭐ **`ImageQuality::High` passou a existir de verdade.** Até ao vello 0.8 ele era bilinear
+    /// disfarçado, e o `fine.wgsl` dizia-o em texto (*"We don't have an implementation for
+    /// `IMAGE_QUALITY_HIGH` yet, just use the same as medium"*). Do 0.9 em diante há um
+    /// `bicubic_sample` a sério (Mitchell, B = C = 1/3, 16 amostras).
+    /// ⚠️ **Isto muda pixel sem mudar uma linha nossa:** os dois sítios de produto que mapeiam
+    /// «Smooth» para `High` (`ph2d-editor-core/src/project.rs` e `ph2d-vec-render/src/gradient.rs`)
+    /// passam a ficar mais nítidos, com o ligeiro sobre-disparo que um filtro Mitchell produz numa
+    /// borda de contraste alto.
+    ///
+    /// ⚠️⚠️ **E TODA imagem desenhada pelo vello deslocou-se meio pixel** — não é escolha nossa, é
+    /// a correcção de um defeito do upstream (*"Fixed: blurry image rendering due to incorrect
+    /// half-pixel offset"*, vello 0.9): o `fine.wgsl` passou a amostrar no **centro** do pixel e
+    /// não no canto. Vale para os três modos de qualidade, e o mais visível é o **`Low`**: meio
+    /// pixel muda qual texel o vizinho-mais-próximo escolhe, então uma pré-visualização de arte de
+    /// pixel pode aparecer deslocada **uma coluna inteira**.
+    ///
+    /// Continua a valer: `Medium` para o caso liso e `Low` para arte de pixel — que é também o
+    /// único modo **sem costura**, porque em `Repeat` o filtro bilinear grampeia na fronteira do
+    /// ladrilho em vez de dar a volta, e o artefacto é meio texel.
     #[allow(clippy::too_many_arguments)]
     pub fn fill_path_image(
         &mut self,

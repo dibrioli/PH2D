@@ -20,7 +20,7 @@ authors.workspace = true
 # dado simples — uma tabela e uma lista de discos.
 [dependencies]
 ph2d-gpu = { path = "../ph2d-gpu" }
-wgpu = { version = "28", features = ["wgsl"] }
+wgpu = { version = "29.0.4", features = ["wgsl"] }
 bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

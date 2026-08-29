@@ -125,7 +125,7 @@ impl FlipRenderer {
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ph2d-flip layout"),
-            bind_group_layouts: &[&bgl],
+            bind_group_layouts: &[Some(&bgl)],
             immediate_size: 0,
         });
 
@@ -437,8 +437,8 @@ pub(crate) fn premult_over() -> wgpu::BlendState {
 fn depth_greater(format: wgpu::TextureFormat) -> wgpu::DepthStencilState {
     wgpu::DepthStencilState {
         format,
-        depth_write_enabled: true,
-        depth_compare: wgpu::CompareFunction::Greater,
+        depth_write_enabled: Some(true),
+        depth_compare: Some(wgpu::CompareFunction::Greater),
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }

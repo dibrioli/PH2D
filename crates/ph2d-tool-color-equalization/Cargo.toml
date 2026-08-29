@@ -47,7 +47,7 @@ ph2d-color = { path = "../ph2d-color" }
 # uploads/downloads round-trip through a single device/queue pair.
 ph2d-gpu = { path = "../ph2d-gpu", optional = true }
 # Pinned to workspace's wgpu version (28) to avoid ABI drift.
-wgpu = { version = "28", optional = true }
+wgpu = { version = "29.0.4", optional = true }
 # `Pod` / `Zeroable` for safe `&[u8]` ↔ `&[u32]` ↔ uniform-buffer casts
 # AND for Wave 11 typed-color cast_vec at the source-snapshot boundary.
 # Always available (not gated on `gpu`) — the `derive` sub-feature only

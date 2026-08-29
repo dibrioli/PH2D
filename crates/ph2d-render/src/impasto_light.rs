@@ -349,7 +349,7 @@ impl ImpastoLightPass {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render impasto_light layout"),
-                bind_group_layouts: &[&bgl],
+                bind_group_layouts: &[Some(&bgl)],
                 immediate_size: 0,
             });
         let pipeline = gpu

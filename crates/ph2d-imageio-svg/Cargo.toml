@@ -24,6 +24,15 @@ authors.workspace = true
 
 [dependencies]
 ph2d-imageio = { path = "../ph2d-imageio" }
-# usvg 0.43 is the canonical pure-Rust SVG simplifier; parse-only
+# usvg is the canonical pure-Rust SVG simplifier; parse-only
 # validation in W3.T5 (the tree is dropped — see crate doc).
-usvg = { version = "0.43", default-features = false }
+#
+# ⚠️ **A feature `svgz` NÃO é opcional para nós, e a ausência dela seria uma regressão
+# SILENCIOSA.** Até à 0.43 o `flate2` era dependência não-opcional do usvg, então um `.svg` que
+# por dentro é gzip entrava no descompressor. Na 0.48 ele passou para trás desta feature, e sem
+# ela o mesmo ficheiro recebe `Err("...enable svgz cargo feature...")`. Medido 2026-08-29, mesma
+# entrada nas duas versões. O `flate2` já está no grafo por outros 7 consumidores ⇒ custo zero.
+#
+# ⭐ Subir também COLAPSA o `kurbo`: a 0.43 arrastava `kurbo 0.11.3` via `svgtypes 0.15`, e era o
+# ÚNICO consumidor dessa cópia — a 0.48 pede `^0.13`, que é a que o resto da árvore já usa.
+usvg = { version = "0.48", default-features = false, features = ["svgz"] }

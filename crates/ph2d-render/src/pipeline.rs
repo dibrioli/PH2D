@@ -216,7 +216,7 @@ impl SpritePipeline {
             .device
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("ph2d-render sprite layout"),
-                bind_group_layouts: &[&frame_bgl, &material_bgl],
+                bind_group_layouts: &[Some(&frame_bgl), Some(&material_bgl)],
                 immediate_size: 0,
             });
 
@@ -301,8 +301,8 @@ impl SpritePipeline {
         };
         let mark_ds = wgpu::DepthStencilState {
             format: STENCIL_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Always),
             stencil: wgpu::StencilState {
                 front: mark_face,
                 back: mark_face,
@@ -320,8 +320,8 @@ impl SpritePipeline {
         };
         let test_ds = wgpu::DepthStencilState {
             format: STENCIL_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Always),
             stencil: wgpu::StencilState {
                 front: test_face,
                 back: test_face,
@@ -339,8 +339,8 @@ impl SpritePipeline {
         };
         let test_outside_ds = wgpu::DepthStencilState {
             format: STENCIL_FORMAT,
-            depth_write_enabled: false,
-            depth_compare: wgpu::CompareFunction::Always,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Always),
             stencil: wgpu::StencilState {
                 front: test_outside_face,
                 back: test_outside_face,

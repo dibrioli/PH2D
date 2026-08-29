@@ -3122,7 +3122,7 @@ fn measure_the_device_limits() {
     );
     eprintln!(
         "max_storage_bind   {} MB",
-        l.max_storage_buffer_binding_size as u64 / (1024 * 1024)
+        l.max_storage_buffer_binding_size / (1024 * 1024)
     );
     for &size in &[1024u32, 2048, 4096, 8192] {
         let per = (size as u64) * (size as u64) * 4;

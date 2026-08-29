@@ -405,7 +405,7 @@ ph2d-vector-font = { path = "../../crates/ph2d-vector-font" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 # Enumeração de fontes do sistema (famílias + bytes) para a escolha de fonte do
 # texto vetorial. Mesma versão que o parley do ph2d-text já traz na árvore.
-fontique = "0.6"
+fontique = "0.11.1"
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
@@ -423,7 +423,7 @@ postcard = { version = "1", features = ["alloc"] }
 # (postcard-encodes optional sorting components). Already in the lockfile
 # transitively; declaring it direct just names the trait.
 serde = "1"
-wgpu = "28"
+wgpu = "29.0.4"
 winit = "0.30"
 gilrs = "0.11"
 # Phase 2.1 audio wiring. `cpal` owns the OS output device (HR-1: the platform

@@ -43,18 +43,31 @@ const BLOCKS: &[(u32, u32, u32)] = &[
 
 /// ISO 15924 script tag for a primary language subtag (the fallback key the OS
 /// keys its cascade on). Unknown → Latin.
-fn script_for_language(lang: &str) -> &'static str {
+/// ⚠️ **Devolve `Script`, e não `&str`, de propósito — e isso apaga um defeito silencioso.**
+///
+/// Até ao `fontique` 0.6 esta tabela devolvia texto e o chamador fazia `Script::from(&str)`. Essa
+/// conversão era `value.as_bytes().try_into().unwrap_or_default()`: **um literal com tamanho
+/// errado virava o valor por omissão — quatro zeros — sem erro nem aviso**, e a única consequência
+/// visível seria uma cascata de fontes silenciosamente errada para aquele idioma.
+///
+/// O `fontique` 0.11 tirou o `From<&str>` (sobrou um `FromStr` que devolve `Result`), e a
+/// substituição certa é **melhor do que o que havia**: `Script::from_bytes` recebe `[u8; 4]`, então
+/// um literal com três ou cinco letras é **erro de compilação** — a linguagem passa a garantir o
+/// que antes era uma convenção por escrever.
+///
+/// Os códigos são ISO 15924 na forma canónica *Titlecase*, que é a que o `from_bytes` assume.
+fn script_for_language(lang: &str) -> Script {
     match lang {
-        "ja" => "Jpan",
-        "zh" => "Hani",
-        "ko" => "Kore",
-        "ar" | "fa" | "ur" | "ps" => "Arab",
-        "he" | "yi" => "Hebr",
-        "th" => "Thai",
-        "hi" | "mr" | "ne" | "sa" => "Deva",
-        "el" => "Grek",
-        "ru" | "uk" | "bg" | "sr" | "be" | "mk" => "Cyrl",
-        _ => "Latn",
+        "ja" => Script::from_bytes(*b"Jpan"),
+        "zh" => Script::from_bytes(*b"Hani"),
+        "ko" => Script::from_bytes(*b"Kore"),
+        "ar" | "fa" | "ur" | "ps" => Script::from_bytes(*b"Arab"),
+        "he" | "yi" => Script::from_bytes(*b"Hebr"),
+        "th" => Script::from_bytes(*b"Thai"),
+        "hi" | "mr" | "ne" | "sa" => Script::from_bytes(*b"Deva"),
+        "el" => Script::from_bytes(*b"Grek"),
+        "ru" | "uk" | "bg" | "sr" | "be" | "mk" => Script::from_bytes(*b"Cyrl"),
+        _ => Script::from_bytes(*b"Latn"),
     }
 }
 
@@ -145,7 +158,7 @@ impl PlatformHost for SystemFontHost {
 
     fn fallback_chain(&self, locale: &Locale) -> Vec<FontFamily> {
         let mut inner = self.inner.lock().expect("font host mutex");
-        let script = Script::from(script_for_language(locale.language()));
+        let script = script_for_language(locale.language());
         let key = FallbackKey::from((script, locale.as_str()));
         // Resolve the OS cascade to family ids → names, then build coverage.
         let ids: Vec<_> = inner.collection.fallback_families(key).collect();

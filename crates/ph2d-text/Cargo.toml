@@ -13,7 +13,7 @@ authors.workspace = true
 # parley — Linebender's text-layout engine. Wraps harfrust (HarfBuzz
 # rewrite in Rust) for shaping and skrifa for font handling. Currently
 # 0.x; same alpha-risk note as Vello (M11 plan).
-parley = "0.6"
+parley = "0.11.1"
 # ph2d-tokens — TextRendering enum + crisp_weight_boost (Crisp Text
 # Rendering Phase 0). Used by `layout_for_rendering` to bump nominal
 # FontWeight at small sizes when the rendering strategy is Crisp.

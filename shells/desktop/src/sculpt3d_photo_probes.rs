@@ -740,6 +740,31 @@ fn the_artists_piece_through_the_button() {
     census("SAIDA", &out);
     islands("SAIDA", &out);
     relief_density("SAIDA", &out);
+    // ⭐⭐⭐ **O ALCANCE da saída contra o da entrada** — a régua da AMPUTAÇÃO, e a única
+    // que a peça do artista de 2026-08-29 move. ⛔ Nenhuma régua de topologia ou de forma
+    // a vê: uma ponta comida sai fechada, com quads bonitos.
+    {
+        let reach = |m: &ph2d_mesh::Mesh| -> f32 {
+            let pos = m.positions();
+            let n = pos.len().max(1) as f32;
+            let mut c = [0.0f32; 3];
+            for q in pos {
+                for k in 0..3 {
+                    c[k] += q[k] / n;
+                }
+            }
+            pos.iter().fold(0.0f32, |acc, q| {
+                let d = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
+                acc.max(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt())
+            })
+        };
+        eprintln!(
+            "   ALCANCE: entrada {:.4} -> saida {:.4} ({:+.1} %)",
+            reach(&piece),
+            reach(&out),
+            100.0 * (reach(&out) / reach(&piece) - 1.0)
+        );
+    }
     holes("SAIDA", &out);
 }
 

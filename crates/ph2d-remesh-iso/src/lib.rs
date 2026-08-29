@@ -488,8 +488,29 @@ fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bo
     // com e sem um salto para o rebordo, o perímetro sai igual — nos dois valores de
     // `BORDER_LAMBDA` que a varredura correu. *Um salto que nada muda é uma linha a
     // defender para sempre.*
-    for t in &mut target_pos {
-        *t = project_onto(reference, *t, target);
+    // ⭐⭐⭐ **O PÉ TEM DE CONCORDAR COM A NORMAL, e é isto que salva uma AGULHA.**
+    //
+    // ⛔⛔ **Reproduzido em 2026-08-29 com a peça do artista:** a fase zero sozinha come
+    // **`15,9 %`** do alcance dela (`2,355 → 1,981`), e a cadeia inteira a jusante perde mais
+    // `0,018` — *a amputação acontece toda aqui*. Nas fixturas de espinhos a perda segue a
+    // espessura: `−1,6 %` a `σ = 0,30`, `−5,8 %` a `0,10`, `−12,9 %` a `0,07`, `−15,8 %` a
+    // `0,05`.
+    //
+    // ⭐ **O mecanismo:** [`project_onto`] pede o ponto **mais próximo** da referência. Num
+    // tubo mais fino que o espaçamento, o mais próximo está do **OUTRO LADO** — o vértice
+    // atravessa a agulha, e o tubo fecha-se sobre si.
+    //
+    // ⚠️ **A cura já existia nesta crate e este chamador não a usava:**
+    // [`project_facing`] recusa um pé cuja normal de face **discorda** da direcção dada, e
+    // cai no de recurso quando nenhum concorda. *Uma capacidade construída e não ligada é
+    // uma capacidade que não existe.*
+    //
+    // ⛔⛔ **Ela nasce DESLIGADA, e a razão é medida:** cura esta fase e parte a seguinte —
+    // ver [`facing_on`], que traz a tabela. `PH2D_ISO_FACING=1` liga-a.
+    let facing = facing_on();
+    for (v, t) in target_pos.iter_mut().enumerate() {
+        let n = facing.then(|| normals[v]);
+        *t = project_facing(reference, *t, target, n);
     }
     mesh.positions_mut().copy_from_slice(&target_pos);
     // ⚠️ **O `rebuild` paga a dívida que o `positions_mut` nomeia**: sem ele a
@@ -500,6 +521,39 @@ fn relax_and_project(mesh: &mut Mesh, reference: &Mesh, target: f32, rim_law: bo
 
 /// Meio passo de Laplaciano — o amortecimento que o torna monótono.
 const LAMBDA: f32 = 0.5;
+
+/// ⭐⭐⭐ **A reprojecção exige que o pé CONCORDE com a normal** — ver o uso.
+///
+/// ⚠️ **Lida uma vez por passe** e não por vértice: `env::var` aloca, e este laço corre sobre
+/// a malha inteira em cada uma das [`MAX_ROUNDS`] rondas.
+///
+/// # ⛔⛔⛔ MEDIDA, e NÃO ADOPTADA — ela cura esta fase e parte a seguinte
+///
+/// ⭐ **Ela faz exactamente o que promete.** Na peça do artista (2026-08-29) o alcance que a
+/// fase zero come cai de **`−15,9 %` para `−5,7 %`** — melhor que os `−13,2 %` da ferramenta
+/// de terceiros com que ele a comparou. Nas fixturas de espinhos é **inerte** onde não há
+/// agulha (`σ ≥ 0,14`, saída idêntica) e ganha a `σ = 0,07` (`−12,9 % → −7,9 %`).
+///
+/// ⛔⛔ **E a cadeia a jusante desaba.** Medida de ponta a ponta pelo botão, na mesma peça,
+/// `Detail 0,85`:
+///
+/// | | alcance final | `χ` | bordo | ilhas | dobras | `>60°` | relógio |
+/// |---|---|---|---|---|---|---|---|
+/// | ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `1` | `76` | `2` | **`31 s`** |
+/// | ⛔ ligada | ⛔ `−14,2 %` | ⛔ **`−16`** | ⛔ **`250`** | ⛔ **`5`** | ⛔ `798` | ⛔ `41` | ⛔ `79 s` |
+///
+/// ⚠️ **O mecanismo do estrago:** manter o vértice do seu lado guarda a agulha e deixa lá uma
+/// malha **emaranhada** — a malha de trabalho passa de `3 982` para `9 458` faces com
+/// valência até `23` (contra `8`). O campo cruzado e o traçado, que dependem de uma
+/// triangulação bem comportada, perdem-se nela. *E o alcance FINAL até piora: a ponta
+/// guardada não sobrevive à cadeia.*
+///
+/// ⭐ **A lição, e ela é a razão de esta função ficar:** *uma fase medida sozinha pode
+/// melhorar e piorar o produto.* A cura verdadeira tem de tratar as duas ao mesmo tempo —
+/// guardar a agulha **e** entregar ao campo uma malha que ele saiba ler.
+fn facing_on() -> bool {
+    std::env::var("PH2D_ISO_FACING").as_deref() == Ok("1")
+}
 
 /// **O PONTO MAIS PRÓXIMO da superfície de referência.**
 ///

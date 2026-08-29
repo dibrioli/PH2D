@@ -492,3 +492,19 @@ fn a_closed_piece_has_no_rim_to_keep() {
         "⛔ o remalhe ABRIU uma peca fechada"
     );
 }
+
+/// ⭐⭐⭐ **A reprojecção que respeita a normal nasce DESLIGADA** — ver
+/// [`super::facing_on`], que traz a tabela da medição.
+///
+/// ⛔ Ela **cura** a fase zero (o alcance que a peça do artista perde cai de `−15,9 %` para
+/// `−5,7 %`) e **parte** a cadeia a jusante (`χ` de `1` para `−16`, bordo de `4` para `250`,
+/// `5` ilhas, o dobro do relógio). ⚠️ *Uma fase medida sozinha pode melhorar e piorar o
+/// produto* — e é por isso que a decisão vive numa função com gate em vez de num comentário.
+#[test]
+fn a_reprojeccao_que_respeita_a_normal_nasce_desligada() {
+    assert!(
+        !super::facing_on(),
+        "⛔ sem a env ela tem de estar DESLIGADA -- ligada, a peca do artista sai com 250 \
+         arestas de bordo e cinco ilhas"
+    );
+}

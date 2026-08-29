@@ -484,6 +484,52 @@ se tentou** — e a saída do QRemeshify prova que o **objectivo** é alcançáv
 aresta na ponta, com metade das faces). *«Inalcançável» era uma afirmação sobre a nossa
 tentativa, não sobre o problema* (`CLAUDE.md` §0.0).
 
+## §8-septies — ⛔⛔⛔ A CURA DA AMPUTAÇÃO: achada, medida, e NÃO ADOPTADA
+
+O §8-sexies deixou a wave especificada: *a reprojecção da fase zero encolhe um tubo cujo raio
+local é comparável à aresta alvo — uma projecção ao ponto mais próximo, numa agulha, pode
+aterrar do outro lado.* ⭐ **A hipótese estava certa e a cura já existia nesta árvore:**
+`ph2d_remesh_iso::project_facing` recusa um pé cuja normal de face **discorda** da direcção
+dada — e o `relax_and_project` chamava-a com `None`. *Uma capacidade construída e não ligada
+é uma capacidade que não existe.*
+
+### ⭐ Ela cura a fase que ataca
+
+| peça | alcance perdido na fase zero, sem | com |
+|---|---|---|
+| `espinhos σ = 0,30` · `0,20` · `0,14` | `−1,6 %` … | **idêntico** (inerte sem agulha) |
+| `espinhos σ = 0,10` | `−5,8 %` | `−6,3 %` |
+| ⭐ `espinhos σ = 0,07` | `−12,9 %` | ⭐ **`−7,9 %`** |
+| ⚠️ `espinhos σ = 0,05` | `−15,8 %` | ⚠️ `−18,0 %` |
+| ⭐⭐ **`sculpt_antes` do artista** | ⛔ `−15,9 %` | ⭐⭐ **`−5,7 %`** |
+
+⭐ Na peça dele passa a perder **menos que a ferramenta de terceiros** (`−5,7 %` contra os
+`−13,2 %` do QRemeshify).
+
+### ⛔⛔ E parte a fase seguinte
+
+Medida de ponta a ponta **pelo botão**, mesma peça, `Detail 0,85`:
+
+| | alcance final | `χ` | bordo | ilhas | dobras | `>60°` | relógio |
+|---|---|---|---|---|---|---|---|
+| ⭐ desligada (o que shipa) | `−12,4 %` | `1` | **`4`** | `1` | `76` | `2` | **`31 s`** |
+| ⛔ ligada | ⛔ `−14,2 %` | ⛔ **`−16`** | ⛔ **`250`** | ⛔ **`5`** | ⛔ `798` | ⛔ `41` | ⛔ `79 s` |
+
+⚠️ **O mecanismo do estrago:** guardar o vértice do seu lado guarda a agulha **e deixa lá uma
+malha emaranhada** — a de trabalho passa de `3 982` para `9 458` faces com valência até `23`
+(contra `8`). O campo cruzado e o traçado, que dependem de uma triangulação bem comportada,
+perdem-se nela. ⛔ **E o alcance FINAL até piora:** a ponta guardada não sobrevive à cadeia.
+
+⭐⭐⭐ **A lei que esta wave paga:** *uma fase medida sozinha pode melhorar e piorar o produto.*
+A régua do §8-sexies (o alcance depois da fase zero) é honesta e **insuficiente** — ela mede a
+fase, não a travessia. ⇒ toda cura de fase zero passa a ser medida **pelo botão**, não pela
+fase.
+
+⇒ A função fica, **desligada**, com a tabela ao lado e um gate sobre a decisão
+(`a_reprojeccao_que_respeita_a_normal_nasce_desligada`, provado por mutação).
+`PH2D_ISO_FACING=1` liga-a. **A cura verdadeira tem de tratar as duas fases ao mesmo tempo:
+guardar a agulha e entregar ao campo uma malha que ele saiba ler.**
+
 ## §9 — Portão de fecho
 
 | | |

@@ -251,6 +251,15 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::STEP_SCALE,
             default: 1.0,
         },
+        // ⭐⭐⭐ **O CONTROLO QUE CRESCE POR IGUAL** (2026-08-29: *"ainda não linear"*).
+        //
+        // ⚠️ **`1.0` e' o no-op EXACTO**, e e' isso que o torna aditivo: no default nada nesta
+        // casa se mexe -- nem uma cena, nem um gate, nem um bit. O `Generations` continua a
+        // querer dizer geracoes; este diz *quanto do caminho ate' la'*.
+        ParamSpec {
+            name: param::GROWTH,
+            default: 1.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -279,6 +288,7 @@ pub mod param {
     pub const CONTINUOUS_LENGTH: &str = "continuous_length";
     pub const CONTINUOUS_ANGLE: &str = "continuous_angle";
     pub const STEP_SCALE: &str = "step_scale";
+    pub const GROWTH: &str = "growth";
 }
 
 /// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.
@@ -590,6 +600,7 @@ struct Params {
     continuous_length: f32,
     continuous_angle: f32,
     step_scale: f32,
+    growth: f32,
 }
 
 impl Params {
@@ -629,6 +640,7 @@ impl Params {
             continuous_length: ctx.param(param::CONTINUOUS_LENGTH),
             continuous_angle: ctx.param(param::CONTINUOUS_ANGLE),
             step_scale: ctx.param(param::STEP_SCALE),
+            growth: ctx.param(param::GROWTH),
         }
     }
 
@@ -655,6 +667,7 @@ impl Params {
             param::CONTINUOUS_LENGTH => self.continuous_length,
             param::CONTINUOUS_ANGLE => self.continuous_angle,
             param::STEP_SCALE => self.step_scale,
+            param::GROWTH => self.growth,
             _ => 0.0,
         }
     }
@@ -663,6 +676,93 @@ impl Params {
 /// O texto do artista, ou o de fábrica se ele estiver vazio.
 fn or_default<'a>(src: &'a str, fallback: &'a str) -> &'a str {
     if src.trim().is_empty() { fallback } else { src }
+}
+
+/// ⭐⭐⭐ **QUANTAS GERAÇÕES O `Growth` PEDE** — a remapagem que faz o arrasto crescer por
+/// igual, e o report do Enio de 2026-08-29 (*"ainda não linear"*).
+///
+/// # O mecanismo
+///
+/// Uma gramática de refinamento multiplica a figura por uma razão `r` a cada geração — medido,
+/// **exactamente `3,00`** no Bush e na Koch, em toda geração. Logo `tamanho ≈ r^g`, e um slider
+/// linear em `g` dá um crescimento **exponencial**: medido no arrasto inteiro, o Bush anda
+/// `+0,017` no início e `+0,157` no fim (`9×`), e o Dragon `+0,007` contra `+0,335` (`48×`).
+/// *Eu tinha medido uma travessia; ele arrasta o slider todo.*
+///
+/// ⇒ Para o TAMANHO ser linear em `t`, resolve-se `r^g = r + t·(r^G − r)`, ou seja
+/// `g = log_r(r + t·(r^G − r))`. É isto.
+///
+/// ⚠️ **`t = 1` devolve `G` EXACTAMENTE**, e é isso que torna o param aditivo: no default nada
+/// nesta casa se mexe. ⚠️ E com `r ≈ 1` (as que crescem pela PONTA, cuja razão converge para
+/// `1,06`) o logaritmo degenera — aí a rampa linear já é a certa, e é ela que se usa.
+///
+/// ⚠️ O `r` é MEDIDO por quem chama (duas derivações baratas), nunca contado da gramática:
+/// ver [`turtle::walk`] para as duas vezes em que contá-lo deu `5` onde a resposta era `3`.
+fn growth_generations(g_max: f32, t: f32, r: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    if t >= 1.0 || g_max <= 1.0 {
+        return g_max;
+    }
+    // ⚠️ A barra `1,05` é o joelho: abaixo dela `log(r)` fica pequeno o bastante para o
+    // quociente amplificar o ruído de `f32`, e a rampa linear já é indistinguível da certa.
+    if !(r.is_finite() && r > 1.05) {
+        return 1.0 + (g_max - 1.0) * t;
+    }
+    let ln_r = r.ln();
+    let alvo = r + t * ((g_max * ln_r).exp() - r);
+    (alvo.max(r).ln() / ln_r).clamp(1.0, g_max)
+}
+
+/// **A razão de expansão por geração, MEDIDA** — duas derivações baratas.
+///
+/// ⚠️ Ela é medida em `g` BAIXO de propósito: para uma gramática auto-semelhante a razão é
+/// constante (`3,00` em toda geração, medido), e derivar no topo custaria o orçamento inteiro
+/// só para saber um número que já se sabe a `4`.
+fn measure_ratio(axiom_src: &str, rules_src: &str, p: &Params) -> f32 {
+    let params = |n: &str| p.by_name(n);
+    let axiom = derive::axiom_modules(axiom_src, &params);
+    let rules = grammar::parse_rules(rules_src);
+    let span_at = |g: u16| {
+        let d = derive::derive(&axiom, &rules, g, 1, MAX_MODULES, &params);
+        turtle::span(
+            &d.chain,
+            &turtle::Setup {
+                angle: p.angle,
+                step: 1.0,
+                width: 1.0,
+                width_scale: p.width_scale,
+                length_scale: p.length_scale,
+                root_angle: p.root_angle,
+                tropism: p.tropism,
+                tropism_angle: p.tropism_angle,
+                angle_frac: 1.0,
+                youngest: (d.generations, 1.0),
+                orient_world: true,
+            },
+        )
+    };
+    // ⚠️⚠️ **O modelo exponencial só vale para uma gramática que ainda MULTIPLICA.** As que
+    // crescem pela PONTA têm uma razão que converge para `1` (`1,63 → 1,30 → 1,15 → 1,06`), e
+    // aplicar-lhes o logaritmo PIORA-AS — medido: o Tree foi de `0,5×` para `0,8×` e o Wild de
+    // `1,8×` para `2,2×` quando o limiar era `1,05` e as apanhava.
+    //
+    // ⚠️⚠️ **E a MÉDIA GEOMÉTRICA sobre duas gerações, não uma razão só**: a razão do Dragon
+    // OSCILA (`2,00 · 1,50 · 1,67 · 1,40 · 1,57`) porque a curva alterna de orientação, e uma
+    // amostra única fazia um discriminador de «a razão encolheu?» classificá-lo como
+    // convergente — exactamente a peça que ele precisa. *Uma série que oscila não se lê em
+    // dois pontos.*
+    //
+    // ⇒ o limiar tem um significado, e não é um número escolhido: *a figura ainda multiplica
+    // por pelo menos `1,25` por geração nesta profundidade?* Medido, ele parte o corpus em
+    // duas: `3,00` (Bush, Koch) · `2,03` (Weed) · `1,48` (Dragon) de um lado; `1,15` (Fern) ·
+    // `1,10` (Sprig) · `1,08` (Tree) do outro.
+    const STILL_MULTIPLIES: f32 = 1.25;
+    let (a, b, c) = (span_at(4), span_at(5), span_at(6));
+    if !(a > 1e-6 && b > 1e-6 && c > 1e-6) {
+        return 1.0;
+    }
+    let r = (c / a).sqrt();
+    if r >= STILL_MULTIPLIES { r } else { 1.0 }
 }
 
 /// Deriva e interpreta — a função inteira do nó, sem o `EvalCtx` à volta (é ela que os
@@ -687,7 +787,18 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     let params = |n: &str| p.by_name(n);
     let axiom = derive::axiom_modules(axiom_src, &params);
     let rules = grammar::parse_rules(rules_src);
-    let (gens, youngest) = generation_plan(p.generations);
+    // ⭐ **O `Growth` remapeia as gerações para o TAMANHO crescer por igual** — e em `1.0`
+    // (o default) devolve `p.generations` exactamente, sem medir nada.
+    let generations = if p.growth < 1.0 {
+        growth_generations(
+            p.generations,
+            p.growth,
+            measure_ratio(axiom_src, rules_src, p),
+        )
+    } else {
+        p.generations
+    };
+    let (gens, youngest) = generation_plan(generations);
     let seed = if p.seed.is_finite() {
         p.seed.abs() as u32
     } else {
@@ -704,7 +815,7 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     // O `Setup` de uma travessia de MEDIÇÃO — as duas fracções à escolha de quem mede.
     let base = |len: f32, ang: f32, youngest: (u16, f32)| turtle::Setup {
         angle: p.angle,
-        step: p.step * p.step_scale.max(1e-4).powf(p.generations.clamp(0.0, 64.0)),
+        step: p.step * p.step_scale.max(1e-4).powf(generations.clamp(0.0, 64.0)),
         width: p.width,
         width_scale: p.width_scale,
         length_scale: p.length_scale,
@@ -786,7 +897,7 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             // passo daria um degrau em cada travessia, que e' o defeito que isto cura.
             // Um `powf` e' transcendental (HR-5) e corre UMA vez por cozedura, nunca por
             // elemento -- a mesma cerca (e o mesmo lado dela) da avaliacao de expressoes.
-            step: p.step * p.step_scale.max(1e-4).powf(p.generations.clamp(0.0, 64.0)),
+            step: p.step * p.step_scale.max(1e-4).powf(generations.clamp(0.0, 64.0)),
             width: p.width,
             width_scale: p.width_scale,
             length_scale: p.length_scale,
@@ -1021,6 +1132,14 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         widget: ParamWidget::Toggle,
     },
     ParamUiHint {
+        param: param::GROWTH,
+        label: "Growth",
+        min: 0.0,
+        max: 1.0,
+        step: 0.005,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
         param: param::STEP_SCALE,
         label: "Step Scale",
         min: 0.1,
@@ -1129,6 +1248,7 @@ static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     ph2d_node_registry::ParamGroup::new(AXIOM_PARAM, "Grammar"),
     ph2d_node_registry::ParamGroup::new(RULES_PARAM, "Grammar"),
     ph2d_node_registry::ParamGroup::new(param::GENERATIONS, "Growth"),
+    ph2d_node_registry::ParamGroup::new(param::GROWTH, "Growth"),
     ph2d_node_registry::ParamGroup::new(param::STEP, "Growth"),
     ph2d_node_registry::ParamGroup::new(param::LENGTH_SCALE, "Growth"),
     ph2d_node_registry::ParamGroup::new(param::WIDTH, "Growth"),
@@ -1250,6 +1370,23 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
     }
 }
 
+/// **A RAZÃO DE EXPANSÃO QUE O NÓ MEDIU** — `1.0` quando a gramática converge (e portanto não
+/// é remapeada pelo `Growth`).
+///
+/// ⚠️ Existe para um gate poder perguntar ao PRODUTO *«esta gramática é auto-semelhante?»* em
+/// vez de responder sozinho. A 1.ª redacção do gate do arrasto tinha o seu próprio critério
+/// (a razão entre duas gerações consecutivas) e **discordava do nó no Dragon**, cuja razão
+/// oscila — ele ficava na família errada e o gate media a lei que o produto não aplica.
+/// *Duas respostas à mesma pergunta, e a que o artista vê é a outra.*
+///
+/// ⚠️ **Ela recebe os OVERRIDES, e a 1.ª redacção não recebia** — media com o ângulo de
+/// fábrica (`25°`) em vez do que o molde exige, e a Koch (que é `90°` por definição) saía a
+/// `4,81` em vez de `3,00`. *Uma sonda que não recebe o estado mede outro produto.*
+#[must_use]
+pub fn probe_growth_ratio(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> f32 {
+    measure_ratio(axiom, rules, &probe_params(5.0, overrides))
+}
+
 #[must_use]
 pub fn probe_rule_weights(rules: &str) -> Vec<f32> {
     grammar::parse_rules(rules)
@@ -1289,6 +1426,7 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
         continuous_length: manifest_default(param::CONTINUOUS_LENGTH),
         continuous_angle: manifest_default(param::CONTINUOUS_ANGLE),
         step_scale: manifest_default(param::STEP_SCALE),
+        growth: manifest_default(param::GROWTH),
     };
     for (n, v) in overrides {
         match *n {
@@ -1301,6 +1439,7 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
             param::CONTINUOUS_LENGTH => p.continuous_length = *v,
             param::CONTINUOUS_ANGLE => p.continuous_angle = *v,
             param::STEP_SCALE => p.step_scale = *v,
+            param::GROWTH => p.growth = *v,
             param::STEP => p.step = *v,
             param::WIDTH => p.width = *v,
             param::WIDTH_SCALE => p.width_scale = *v,

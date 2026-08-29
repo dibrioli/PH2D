@@ -269,3 +269,176 @@ fn the_length_growth_switch_has_no_subject_in_a_refinement_grammar() {
         "numa que cresce pela ponta o Grow Length TEM de mandar"
     );
 }
+
+/// A travessia pelo **`Growth`** (`0 → 1`), que é o arrasto que o artista de facto faz.
+fn full_drag(p: &ls::Preset) -> Vec<f32> {
+    const N: usize = 24;
+    (0..=N)
+        .map(|k| {
+            at(
+                p,
+                p.generations,
+                &[(ls::param::GROWTH, k as f32 / N as f32)],
+            )
+        })
+        .collect()
+}
+
+/// **Quem REFINA e quem cresce pela PONTA — pela decisão DO PRODUTO.**
+///
+/// ⚠️⚠️ Isto tinha um critério PRÓPRIO (a razão entre duas gerações consecutivas) e
+/// **discordava do nó no Dragon**, cuja razão oscila (`2,00 · 1,50 · 1,67 · 1,40 · 1,57`): ele
+/// caía na família errada e o gate media a lei que o produto não lhe aplica. *Um gate que
+/// classifica por conta própria testa a sua própria classificação.*
+fn is_refiner(p: &ls::Preset) -> bool {
+    ls::probe_growth_ratio(p.axiom, p.rules, &[(ls::param::ANGLE, p.angle)]) > 1.0
+}
+
+/// ⭐⭐⭐ **O ARRASTO INTEIRO CRESCE POR IGUAL** — o report do Enio de 2026-08-29
+/// (*"ainda não linear"*), depois de eu ter medido a coisa errada duas vezes.
+///
+/// ⚠️⚠️ **Eu media UMA travessia de geração; ele arrasta o slider TODO.** Dentro de uma
+/// travessia a rampa já era recta; ao longo do arrasto ela é **exponencial**, porque cada
+/// geração multiplica a figura por uma razão constante (`3,00` no Bush e na Koch, medido). O
+/// Bush andava `+0,017` no início e `+0,157` no fim (`9×`); o Dragon `+0,007` contra `+0,335`
+/// (`48×`). *Uma régua sobre um trecho não vê a curvatura do percurso.*
+///
+/// ⚠️⚠️ **E A BARRA É ABSOLUTA, não comparativa — quatro mutações obrigaram.** A 1.ª redacção
+/// comparava cada molde com *o pior dos que o dono aceitava*, e essa referência sai do MESMO
+/// arrasto: uma sabotagem que piora toda a gente **sobe a barra junto** e passa. É a *razão
+/// entre dois doentes* que esta casa já pagou. Os números abaixo são medidos e escritos aqui:
+/// Bush `1,0` · Weed `0,7` · Koch `1,0` · Dragon `1,9`, contra `1,8`–`2,1`–`1,9`–`3,7` sem a
+/// remapagem.
+#[test]
+fn dragging_the_growth_slider_is_even_for_the_grammars_that_multiply() {
+    // A barra: o pior medido é `1,9` (Dragon). `2,2` dá folga para a máquina e reprova todos
+    // os valores sem remapagem (o Dragon dava `3,7`).
+    const BAR: f32 = 2.2;
+    let mut seen = 0usize;
+    for p in ls::PRESETS.iter().filter(|p| is_refiner(p)) {
+        seen += 1;
+        let hs = full_drag(p);
+        let r = ripple(&hs.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>());
+        assert!(
+            hs[hs.len() - 1] > hs[0] * 1.5,
+            "{}: o arrasto do Growth tem de crescer: {hs:?}",
+            p.label
+        );
+        assert!(
+            r <= BAR,
+            "{}: o arrasto ondula {r:.2}x (barra {BAR}) — o report de 2026-08-29 voltou",
+            p.label
+        );
+    }
+    // ⚠️ **O CONTROLE**: a família tem de existir. Um censo que varre zero responde «está tudo
+    // bem» para sempre.
+    assert!(seen >= 4, "so' {seen} gramaticas de refinamento no corpus");
+}
+
+/// ⭐⭐⭐ **E A REMAPAGEM NÃO TOCA EM QUEM CRESCE PELA PONTA** — a metade que uma barra sobre a
+/// ondulação nunca poderia afirmar.
+///
+/// ⚠️ Uma gramática cuja razão CONVERGE (`1,63 → 1,06`) não é exponencial, e remapeá-la
+/// **piora-a**: medido, o Tree foi de `0,5×` para `0,8×` e o Wild de `1,8×` para `2,2×` quando
+/// o discriminador as apanhava. Aqui a inércia é afirmada como uma **identidade**: para elas,
+/// `Growth = t` tem de dar exactamente `Generations = 1 + (G−1)·t`, que é a rampa linear.
+#[test]
+fn the_remap_leaves_the_tip_growers_exactly_where_they_were() {
+    let mut seen = 0usize;
+    for p in ls::PRESETS.iter().filter(|p| !is_refiner(p)) {
+        seen += 1;
+        for k in 1..8 {
+            let t = k as f32 / 8.0;
+            let via_growth = at(p, p.generations, &[(ls::param::GROWTH, t)]);
+            let linear = at(p, 1.0 + (p.generations - 1.0) * t, &[]);
+            assert_eq!(
+                via_growth.to_bits(),
+                linear.to_bits(),
+                "{} em t = {t}: o Growth remapeou uma gramatica que CONVERGE — ela nao e' \
+                 exponencial, e o logaritmo piora-a",
+                p.label
+            );
+        }
+    }
+    assert!(seen >= 4, "so' {seen} gramaticas de ponta no corpus");
+}
+
+/// ⭐⭐ **`Growth = 1` É O NO-OP EXACTO** — e é isso que torna o param aditivo.
+///
+/// ⚠️ Sem esta metade, acrescentar o controlo teria mexido em toda cena e todo gate desta
+/// casa. Com ela, o default não move um bit: o `Generations` continua a querer dizer gerações.
+#[test]
+fn growth_at_one_is_bit_identical_to_not_having_the_control() {
+    for p in ls::PRESETS {
+        let with = at(p, p.generations, &[(ls::param::GROWTH, 1.0)]);
+        let without = at(p, p.generations, &[]);
+        assert_eq!(
+            with.to_bits(),
+            without.to_bits(),
+            "{}: o Growth em 1 tem de ser o no-op EXACTO",
+            p.label
+        );
+    }
+    // ⚠️ E o CONTROLE: abaixo de `1` ele TEM de mexer, senão o param é um knob morto.
+    let bush = ls::PRESETS
+        .iter()
+        .find(|p| p.label == "Bush")
+        .expect("existe");
+    assert_ne!(
+        at(bush, bush.generations, &[(ls::param::GROWTH, 0.5)]).to_bits(),
+        at(bush, bush.generations, &[]).to_bits(),
+        "o Growth em 0,5 nao mexeu — knob morto"
+    );
+}
+
+/// ⭐⭐⭐ **A RAZÃO MEDIDA BATE COM O QUE A MATEMÁTICA DIZ** — e o oráculo é externo, não o
+/// próprio medidor.
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU**: medir a razão numa amostra só
+/// (`span6/span5`) em vez da média geométrica sobre duas gerações não mudava a CLASSIFICAÇÃO
+/// de nenhum molde deste corpus, então todos os gates de comportamento ficavam verdes. *Um
+/// corpus que não contém o caso não pode reprovar a régua que ele quebra.*
+///
+/// ⇒ A régua passou a ser a EXACTIDÃO, contra factos conhecidos:
+/// - o arbusto `F -> F[+F]F[-F]F` e a ilha de Koch `F -> F+F-F-F+F` são auto-semelhantes de
+///   factor **3** (três `F` colineares num, e o gerador da ilha a `90°` a abranger três
+///   unidades no outro) — medido: `3,0000` nos dois, ao dígito;
+/// - a curva do dragão escala por **`√2`** — medido `1,4832`, `4,9 %` acima, porque a razão
+///   dela **oscila** e a janela é finita.
+///
+/// Uma amostra só põe o dragão fora da barra; a média geométrica põe-no dentro.
+#[test]
+fn the_measured_ratio_agrees_with_what_the_mathematics_says() {
+    let r =
+        |p: &ls::Preset| ls::probe_growth_ratio(p.axiom, p.rules, &[(ls::param::ANGLE, p.angle)]);
+    let of = |name: &str| {
+        ls::PRESETS
+            .iter()
+            .find(|p| p.label == name)
+            .expect("existe")
+    };
+
+    for name in ["Bush", "Koch"] {
+        let got = r(of(name));
+        assert!(
+            (got - 3.0).abs() < 0.03,
+            "{name} e' auto-semelhante de factor 3 e a medicao deu {got:.4}"
+        );
+    }
+    let dragon = r(of("Dragon"));
+    let sqrt2 = 2.0f32.sqrt();
+    assert!(
+        (dragon / sqrt2 - 1.0).abs() < 0.10,
+        "a curva do dragao escala por raiz de 2 ({sqrt2:.4}) e a medicao deu {dragon:.4} \
+         ({:+.1}%) — uma amostra so' nao aguenta a oscilacao dela",
+        (dragon / sqrt2 - 1.0) * 100.0
+    );
+    // ⚠️ E o CONTROLE: as que CONVERGEM devolvem o neutro EXACTO, senão elas seriam remapeadas.
+    for name in ["Tree", "Fern", "Wild", "Sprig"] {
+        assert_eq!(
+            r(of(name)),
+            1.0,
+            "{name} converge e tem de devolver o neutro exacto"
+        );
+    }
+}

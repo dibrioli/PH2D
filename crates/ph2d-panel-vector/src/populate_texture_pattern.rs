@@ -27,6 +27,10 @@ const TEXPAT_SHIFT_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do docum
 /// Os botões + os quatro sliders da secção Pattern. Registados INCONDICIONALMENTE como todos os
 /// irmãos — quem decide se o clique é possível é a PINTURA (sem hit-rect não há Click).
 pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
+    // ⭐ O ALVO (plano 35, wave D). Sem este registo os dois chips ficam pintados, com hit-rect, e
+    // MORTOS sob o rato — o defeito que esta linha já recebeu de report três vezes.
+    button(store, ids::VECTOR_TEXPAT_TARGET_FILL);
+    button(store, ids::VECTOR_TEXPAT_TARGET_STROKE);
     button(store, ids::VECTOR_TEXPAT_SOURCE);
     button(store, ids::VECTOR_TEXPAT_PICK_SHAPE);
     for i in 0..4 {

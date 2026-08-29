@@ -45,11 +45,24 @@ fn smoke_code() -> String {
 
 /// **Tantos contornos quantas formas.** A conta é sobre o construtor (`..VecPath::default()`), que é
 /// o que uma forma nova acrescenta — então a 8.ª forma desta cena só passa se nascer vestida.
+///
+/// ⚠️⚠️ **A agulha é `stroke: Some(`, e a 1.ª redacção contava `stroke: Some(contorno())`** — a
+/// GRAFIA de uma porta, não a lei. A wave D do plano 35 acrescentou um segundo construtor
+/// (`contorno_com_padrao`), e o gate reprovou **produto correcto**: as duas formas novas nascem
+/// vestidas, só que por outra porta. *Um gate que fixa o nome de quem obedece à lei reprova a
+/// segunda maneira de a obedecer* — e a lei aqui é *nascer com contorno*, seja qual for a tinta.
 #[test]
 fn every_shape_in_the_pattern_smoke_is_born_with_a_stroke() {
     let src = smoke_code();
     let formas = src.matches("..VecPath::default()").count();
-    let vestidas = src.matches("stroke: Some(contorno())").count();
+    let vestidas = src.matches("stroke: Some(").count();
+    // ⚠️ E nenhuma se declara SEM contorno: `stroke: None` satisfaria a contagem acima por
+    // omissão em nenhum sítio, mas escrito explicitamente é a mesma regressão com outra cara.
+    assert_eq!(
+        src.matches("stroke: None").count(),
+        0,
+        "uma forma da cena declara-se SEM contorno - e' o report de 27/08 a voltar"
+    );
     assert!(
         formas > 0,
         "a cena do smoke deixou de construir formas - este gate ficou sem sujeito"
@@ -91,5 +104,49 @@ fn the_smoke_stroke_is_actually_visible() {
     assert!(
         corpo.contains(", 255)"),
         "a cor do contorno nao e' opaca - um traco de alfa 0 passa o gate irmao e nao se ve^"
+    );
+}
+
+/// ⭐⭐ **A CENA CONTÉM O FENÓMENO da wave D** — um contorno com padrão, e uma forma com padrão nos
+/// DOIS.
+///
+/// ⚠️ Sem a segunda, a fileira `Fill | Stroke` **nunca é pintada** nesta cena e o smoke não alcança
+/// metade da wave: com um alvo só não há escolha a oferecer. *Uma cena de smoke que não contém o
+/// fenómeno mede outra coisa* — foi exactamente assim que o defeito do contorno sobreviveu a uma
+/// wave inteira de gates verdes.
+#[test]
+fn the_scene_contains_a_patterned_stroke_and_a_shape_with_both() {
+    let src = smoke_code();
+    assert!(
+        src.contains("fn contorno_com_padrao("),
+        "a porta do contorno com padrao sumiu da cena - a wave D nao tem o que smokar"
+    );
+    assert_eq!(
+        src.matches("stroke: Some(contorno_com_padrao(").count(),
+        2,
+        "a cena tem de ter DUAS formas de contorno com padrao: uma SO' contorno (o sujeito puro) e          uma com padrao nos dois (a unica que faz aparecer a fileira do alvo)"
+    );
+    assert_eq!(
+        src.matches("fill: None").count(),
+        1,
+        "a forma SO' CONTORNO sumiu - e' ela que obriga o `Clamp` a enquadrar pela caixa do TRACO"
+    );
+}
+
+/// ⚠️ **A largura do contorno com padrão é DERIVADA do ladrilho, nunca a `STROKE_W`.**
+///
+/// A `STROKE_W` de `0,03` é menos de um décimo de uma cópia: o motivo não se leria, e um smoke em
+/// que a feature é invisível não é um smoke. *Uma largura escolhida à mão envelhece no dia em que o
+/// tamanho da arte mudar.*
+#[test]
+fn the_patterned_stroke_is_wide_enough_to_show_its_art() {
+    let src = smoke_src();
+    let corte = src
+        .find("fn contorno_com_padrao(")
+        .expect("a porta do contorno com padrao");
+    let corpo = &src[corte..corte + 400];
+    assert!(
+        corpo.contains("let lado = BOX / 6.0;") && corpo.contains("lado * 1.2"),
+        "a largura do contorno com padrao deixou de sair do lado do ladrilho - com a `STROKE_W` da          cena (0,03) o motivo nao se le^"
     );
 }

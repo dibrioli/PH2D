@@ -38,6 +38,37 @@ impl BodyCtx<'_> {
                 y,
             );
         }
+        // ⭐⭐ **COM QUE TINTA O TRAÇO DESENHA** (plano 35, wave D) — `Solid | Pattern`.
+        //
+        // ⚠️ **Um `segmented` e não um checkbox**, pela MESMA lei que escolheu o checkbox acima,
+        // aplicada à metade certa: *ter traço* é uma propriedade que a forma tem ou não tem;
+        // *com que tinta ele desenha* é uma escolha entre MODOS nomeados.
+        //
+        // ⚠️ `None` (sem traço, sem selecção, ou selecção múltipla) **não pinta a fileira** — sem
+        // traço não há tinta de traço a escolher, e uma fileira que descreve o que não está lá é
+        // pior que fileira nenhuma.
+        //
+        // ⛔ A lista **NÃO** é a do preenchimento: o renderer de traço não desenha gradiente, e um
+        // chip que produzisse um `StrokePaint::Linear` gravaria estado que nada pinta (plano 35
+        // §2.1).
+        if let Some(k) = state::stroke_paint_kind() {
+            y = self.segmented(
+                "Type",
+                &[
+                    (
+                        ids::VECTOR_STROKE_KIND_SOLID,
+                        "Solid",
+                        k == state::StrokePaintKind::Solid,
+                    ),
+                    (
+                        ids::VECTOR_STROKE_KIND_PATTERN,
+                        "Pattern",
+                        k == state::StrokePaintKind::Pattern,
+                    ),
+                ],
+                y,
+            );
+        }
         // ⛔⛔ **E as rows abaixo FICAM VISÍVEIS mesmo sem traço** — o oposto da lei que o Enio pediu
         // para a secção *Pattern* (*"os parâmetros que um modo não usa não devem aparecer"*), e a
         // diferença é real: esta secção é a ficha da **TOOL** (`snap`), espelhada na selecção. Cada

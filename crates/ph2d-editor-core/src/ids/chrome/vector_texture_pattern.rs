@@ -109,3 +109,19 @@ pub const VECTOR_TEXPAT_H_NUM: NodeId = hash_node_id("vector.texpat.h.num");
 /// que o artista autorou. ⇒ ele descreve o **gesto**, não o padrão — e por isso **não viaja no
 /// ficheiro**, e este bloco não move schema nenhum.
 pub const VECTOR_TEXPAT_LOCK: NodeId = hash_node_id("vector.texpat.lock");
+
+// ── O ALVO da secção (plano 35, wave D) ────────────────────────────────────────
+//
+// ⭐⭐ **A secção tem DOIS sujeitos possíveis** desde que um traço pode carregar um padrão: o
+// preenchimento e o traço da MESMA forma, com leis independentes. A fileira diz qual deles as onze
+// linhas abaixo estão a editar.
+//
+// ⛔ **Duplicar a secção está recusado** (plano 35 §2.4): onze fileiras a dobrar, e as duas
+// divergiriam no primeiro knob novo.
+//
+// ⚠️ **Ela só é PINTADA quando os dois existem** — com um só não há escolha a oferecer, e a secção
+// edita o que houver. É a lei do `Option` que a caixa *Stroke* e o *Resize Box* já obedecem.
+/// **Fill** — a secção edita o padrão do preenchimento.
+pub const VECTOR_TEXPAT_TARGET_FILL: NodeId = hash_node_id("vector.texpat.target.fill");
+/// **Stroke** — a secção edita o padrão do traço.
+pub const VECTOR_TEXPAT_TARGET_STROKE: NodeId = hash_node_id("vector.texpat.target.stroke");

@@ -291,10 +291,18 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         || id == ids::VECTOR_FILL_KIND_RADIAL
         || id == ids::VECTOR_FILL_KIND_MULTI
         || id == ids::VECTOR_FILL_KIND_PATTERN
+        // ⭐ **A TINTA DO TRAÇO** (plano 35, wave D) — ela mexe no DOCUMENTO (`path.stroke.paint`),
+        // então o clique é da shell, como o da fileira do preenchimento logo acima.
+        || id == ids::VECTOR_STROKE_KIND_SOLID
+        || id == ids::VECTOR_STROKE_KIND_PATTERN
         // A secção PATTERN (plano 33 W5): a arte, os quatro reticulados e as três repetições.
         || id == ids::VECTOR_TEXPAT_SOURCE
         || id == ids::VECTOR_TEXPAT_PICK_SHAPE
         || id == ids::VECTOR_TEXPAT_LOCK
+        // ⭐ **O ALVO da secção** (plano 35, wave D) — ele escolhe qual das duas tintas as onze
+        // fileiras abaixo editam, e essa escolha é de SESSÃO (a shell é a dona), como o cadeado.
+        || id == ids::VECTOR_TEXPAT_TARGET_FILL
+        || id == ids::VECTOR_TEXPAT_TARGET_STROKE
         || crate::paint_sections::texture_pattern::tile_index_of(id).is_some()
         || crate::paint_sections::texture_pattern::mode_index_of(id).is_some()
         || id == ids::VECTOR_GRAD_ADD_POINT

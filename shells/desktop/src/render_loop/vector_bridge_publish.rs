@@ -49,6 +49,8 @@ pub(super) fn publish(
     snap: crate::vec_snap::VecSnapSettings,
     // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
     texpat_lock: bool,
+    // O alvo da secção *Pattern* — a preferência de sessão, ainda por coagir ao que existe.
+    texpat_target: ph2d_vec_render::PatternSlot,
 ) {
     // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
     //    (so a picker alpha shows on the panel) + publish. ──────────────────
@@ -237,30 +239,41 @@ pub(super) fn publish(
             (None, None)
         };
         ph2d_panel_vector::set_current_fill(kind, angle);
-        // ⭐ **A LEI DO PADRÃO** (plano 33 W5) — `None` para toda forma que não tem um, e então a
-        // secção *Pattern* nem sobe. ⚠️ O `size` publicado é o lado MAIOR: o painel autora um
-        // número e o documento guarda dois, e a diferença é o aspecto da arte, que o artista não
-        // deve poder esmagar sem querer.
+        // ⭐⭐ **A LEI DO PADRÃO, E DE QUAL DAS DUAS TINTAS** (plano 33 W5 + plano 35 wave D).
+        //
+        // `None` para toda forma sem padrão nenhum, e então a secção *Pattern* nem sobe.
+        //
+        // ⚠️⚠️ **UMA pergunta, UMA resposta:** o `lit_target` decide o sujeito **e** se há escolha a
+        // oferecer, e as duas publicações abaixo saem dela. Resolver o alvo aqui e voltar a
+        // resolvê-lo no dreno da escrita seria a secção a mostrar uma tinta e a escrever noutra —
+        // com o artista a descobri-lo arrastando um slider.
+        let alvo = pen
+            .selected()
+            .and_then(|sel| crate::texture_pattern_edit::lit_target(scene, sel, texpat_target));
+        ph2d_panel_vector::set_texpat_target_is_stroke(alvo.and_then(|(slot, ambos)| {
+            // ⛔ O chip só aparece com os DOIS: com um só não há escolha a oferecer.
+            ambos.then_some(slot == ph2d_vec_render::PatternSlot::Stroke)
+        }));
         ph2d_panel_vector::set_current_texture_pattern(
             pen.selected()
-                .and_then(|sel| scene.paths().iter().find(|p| p.id == sel))
-                .and_then(|p| match &p.fill {
-                    Some(Paint::Pattern(pat)) => Some(ph2d_panel_vector::TexturePatternRow {
-                        kind: crate::texture_pattern_edit::tile_index(pat.kind),
-                        offset_denom: f64::from(pat.offset_denom.max(1)),
-                        size: pat.size,
-                        lock_aspect: texpat_lock,
-                        gap: pat.gap[0],
-                        angle_deg: pat.angle.to_degrees(),
-                        // ⚠️ A fase mede-se do canto da CAIXA da forma — a MESMA base que a
-                        // escrita usa (`TexPatCmd::Shift`). Sem uma caixa não há fase, e `0` é a
-                        // resposta honesta: é onde o padrão nasce.
-                        shift_pct: scene
-                            .path_bbox(p.id)
-                            .map_or([0.0, 0.0], |(lo, _)| pat.shift(lo).map(|s| s * 100.0)),
-                        mode: crate::texture_pattern_edit::mode_index(pat.mode),
-                    }),
-                    _ => None,
+                .zip(alvo)
+                .and_then(|(sel, (slot, _))| {
+                    crate::texture_pattern_edit::pattern_at(scene, sel, slot).map(|pat| (sel, pat))
+                })
+                .map(|(sel, pat)| ph2d_panel_vector::TexturePatternRow {
+                    kind: crate::texture_pattern_edit::tile_index(pat.kind),
+                    offset_denom: f64::from(pat.offset_denom.max(1)),
+                    size: pat.size,
+                    lock_aspect: texpat_lock,
+                    gap: pat.gap[0],
+                    angle_deg: pat.angle.to_degrees(),
+                    // ⚠️ A fase mede-se do canto da CAIXA da forma — a MESMA base que a
+                    // escrita usa (`TexPatCmd::Shift`). Sem uma caixa não há fase, e `0` é a
+                    // resposta honesta: é onde o padrão nasce.
+                    shift_pct: scene
+                        .path_bbox(sel)
+                        .map_or([0.0, 0.0], |(lo, _)| pat.shift(lo).map(|s| s * 100.0)),
+                    mode: crate::texture_pattern_edit::mode_index(pat.mode),
                 }),
         );
         // Publish the selected multi-point point's influence + jitter (drive the sliders).

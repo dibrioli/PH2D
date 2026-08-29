@@ -43,14 +43,25 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
         render.contains("VECTOR_TEXPAT_PICK_SHAPE"),
         "o botao Use Shape nao e' reconhecido no despacho"
     );
+    // ⚠️ **A agulha é o PREFIXO, e a 1.ª redacção fixava `TexturePatternArt(host)` inteiro** — a
+    // wave D do plano 35 acrescentou o SLOT à captura e este gate reprovou produto correcto. *Um
+    // gate que fixa a aridade de um construtor reprova a extensão que não muda a lei que ele
+    // defende.*
     assert!(
-        render.contains("PathPick::TexturePatternArt(host)"),
+        render.contains("PathPick::TexturePatternArt(host"),
         "o pick da arte-forma nao e' ARMADO com a fonte capturada"
+    );
+    // ⭐ **E o SLOT obedece à MESMA lei** (plano 35, wave D): *qual das duas tintas eu estava a
+    // editar* é tão parte da captura quanto *qual forma*. Lê-lo no clique leria uma preferência de
+    // sessão que pode ter mudado no meio.
+    assert!(
+        render.contains("PathPick::TexturePatternArt(host, slot)"),
+        "o slot nao e' capturado no arm - o picker escreveria na tinta que estiver acesa AGORA"
     );
     let d = code("input_dispatch.rs");
     assert!(
-        d.contains("PathPick::TexturePatternArt(host) =>"),
-        "o clique no canvas nao RESOLVE o pick da arte-forma"
+        d.contains("PathPick::TexturePatternArt(host, slot) =>"),
+        "o clique no canvas nao RESOLVE o pick da arte-forma com o slot capturado"
     );
     assert!(
         d.contains("texture_pattern_edit::set_source("),
@@ -69,12 +80,18 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     // ser a que estava selecionada) — e **nenhum** gate de comportamento a via, porque a shell não
     // é alcançável de um teste. *Uma afirmação que só um gate de fonte alcança precisa desse gate.*
     let arm = d
-        .find("PathPick::TexturePatternArt(host) =>")
+        .find("PathPick::TexturePatternArt(host, slot) =>")
         .expect("o braco existe");
-    let corpo = &d[arm..arm + 320];
+    let corpo = &d[arm..arm + 380];
     assert!(
         corpo.contains("set_source(") && corpo.contains("host,"),
         "o picker escreve numa forma que nao e' a CAPTURADA - o gesto de duas maos inverte-se"
+    );
+    // ⚠️ E na TINTA capturada, pela mesma razão: `self.texpat_target` lido aqui seria a preferência
+    // de agora, e não a de quando o gesto começou.
+    assert!(
+        corpo.contains("slot,"),
+        "o picker escreve numa tinta que nao e' a CAPTURADA no arm"
     );
 }
 

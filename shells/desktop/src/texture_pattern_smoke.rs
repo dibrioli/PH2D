@@ -98,16 +98,53 @@ fn rect(cx: f64, cy: f64, half: f64) -> Vec<VecVertex> {
     .to_vec()
 }
 
-fn pattern(source: PatternSource, kind: TileKind, mode: PatternMode, fallback: [u8; 3]) -> Paint {
+/// A lei de um padrão, com o tamanho de cópia pedido — a porta única, para o preenchimento e o
+/// traço nascerem da MESMA conta (plano 35, wave D).
+fn lei(
+    source: PatternSource,
+    kind: TileKind,
+    mode: PatternMode,
+    fallback: [u8; 3],
+    lado: f64,
+) -> PatternFill {
     let mut f = PatternFill::new(
         source,
-        [BOX / 3.0, BOX / 3.0],
+        [lado, lado],
         Rgba8::new(fallback[0], fallback[1], fallback[2], 255),
     );
     f.kind = kind;
     f.offset_denom = 2;
     f.mode = mode;
-    Paint::Pattern(Box::new(f))
+    f
+}
+
+fn pattern(source: PatternSource, kind: TileKind, mode: PatternMode, fallback: [u8; 3]) -> Paint {
+    Paint::Pattern(Box::new(lei(source, kind, mode, fallback, BOX / 3.0)))
+}
+
+/// ⭐⭐ **UM CONTORNO COM PADRÃO** (plano 35) — a faixa recebe o ladrilho.
+///
+/// ⚠️ **A largura é DERIVADA do ladrilho, não escolhida**: a `STROKE_W` de `0,03` é fina demais
+/// para o motivo se ler (menos de um décimo de uma cópia), e um smoke em que a feature é invisível
+/// não é um smoke. Aqui a faixa fica em `1,2 ×` o lado de uma cópia — larga o bastante para se ver
+/// **o que** repete, estreita o bastante para se ver **que** repete ao longo do perímetro (~24
+/// cópias nos `8,8` de contorno de uma destas formas).
+///
+/// ⛔ E ela **não** manda no padrão: engrossar a linha muda a faixa, nunca o motivo (plano 35 §2.3).
+fn contorno_com_padrao(source: PatternSource, mode: PatternMode, fallback: [u8; 3]) -> StrokeSpec {
+    let lado = BOX / 6.0;
+    let mut s = StrokeSpec::new(
+        Rgba8::new(fallback[0], fallback[1], fallback[2], 255),
+        lado * 1.2,
+    );
+    s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(lei(
+        source,
+        TileKind::Grid,
+        mode,
+        fallback,
+        lado,
+    )));
+    s
 }
 
 pub(crate) fn frame(app: &mut crate::App, f: u32) {
@@ -193,6 +230,37 @@ fn build(app: &mut crate::App) {
         ..VecPath::default()
     });
 
+    // ⭐⭐ 8 — **SÓ CONTORNO, com padrão** (plano 35). Sem `fill` nenhum: é o caso que prova que a
+    // faixa é o sujeito, e é também o que obriga o `Clamp` a enquadrar pela caixa do TRAÇO — um
+    // enquadramento pela do preenchimento não teria o que ler aqui.
+    scene.push_path(VecPath {
+        verts: rect(x(0), -3.0, half),
+        closed: true,
+        fill: None,
+        stroke: Some(contorno_com_padrao(source, PatternMode::Tile, [40, 40, 55])),
+        ..VecPath::default()
+    });
+
+    // ⭐⭐ 9 — **OS DOIS**, com leis DIFERENTES (grade no preenchimento, espelho no traço). É esta
+    // forma que faz aparecer a fileira `Fill | Stroke` no topo da secção *Pattern*: com um alvo só
+    // não há escolha a oferecer, e o chip não é pintado.
+    scene.push_path(VecPath {
+        verts: rect(x(1), -3.0, half),
+        closed: true,
+        fill: Some(pattern(
+            source,
+            TileKind::Grid,
+            PatternMode::Tile,
+            [100, 100, 120],
+        )),
+        stroke: Some(contorno_com_padrao(
+            source,
+            PatternMode::Mirror,
+            [40, 55, 40],
+        )),
+        ..VecPath::default()
+    });
+
     // 6 — a mesma grade numa forma ESTICADA só em x. O padrão esmaga COM ela.
     let mut wide = VecPath {
         verts: rect(x(5) + half, 0.0, half),
@@ -236,6 +304,13 @@ fn select_hero(app: &mut crate::App) {
          (0..100%, e 100 e' o mesmo que 0). No modo Clamp elas somem, com as outras que ele nao le^. \
          ⭐ E TODA forma desta cena nasce COM CONTORNO (escuro, fino) -- antes nasciam sem nenhum, e \
          a seccao Stroke ficava inerte SO' AQUI. Troque Fill Type entre Solid e Pattern: o contorno \
-         tem de continuar la', e a largura/cor dele tem de responder ao painel."
+         tem de continuar la', e a largura/cor dele tem de responder ao painel. \
+         ⭐⭐ E EMBAIXO A' ESQUERDA, DUAS FORMAS NOVAS: a 1a e' SO' CONTORNO, e o contorno dela e' \
+         feito da arte (sem preenchimento nenhum). A 2a tem padrao NOS DOIS -- grade no miolo, \
+         espelhado no contorno. Selecione a 2a: a seccao Stroke ganha a fileira **Type** \
+         (Solid | Pattern) e a seccao Pattern ganha, no topo, a fileira **Target** \
+         (Fill | Stroke) -- e' ela que diz qual dos dois os knobs abaixo estao a editar. Na 1a \
+         forma o Target NAO aparece, porque com um alvo so' nao ha' escolha. Engrosse o contorno \
+         com a barra Width: a faixa engrossa e o MOTIVO nao muda de tamanho."
     );
 }

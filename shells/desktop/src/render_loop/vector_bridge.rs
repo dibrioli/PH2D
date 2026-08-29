@@ -136,6 +136,9 @@ pub(super) fn dispatch(
     // ⭐ O CADEADO de proporção do padrão (plano 33 W10). Ele é da SESSÃO — descreve o gesto,
     // não o padrão —, então mora na shell e só atravessa aqui para o painel o desenhar.
     texpat_lock: bool,
+    // ⭐ O ALVO da secção *Pattern* (plano 35, wave D) — a PREFERÊNCIA de sessão, coagida ao que a
+    // forma de facto tem por `texture_pattern_edit::lit_target`.
+    texpat_target: ph2d_vec_render::PatternSlot,
 ) -> VectorDrawConfig {
     let vector_active = tools
         .active()
@@ -400,6 +403,7 @@ pub(super) fn dispatch(
         pivot_edit,
         snap,
         texpat_lock,
+        texpat_target,
     );
 
     // Mirror the tool's mode + shape params so the input dispatch can route

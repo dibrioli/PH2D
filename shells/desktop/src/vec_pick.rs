@@ -39,7 +39,11 @@ pub(crate) enum PathPick {
     /// Escape desiste, o hover realça. E aqui a captura é ainda mais necessária que nos irmãos: a
     /// fonte é a forma **selecionada**, e o clique seguinte cai noutra forma, que passaria a ser a
     /// selecionada. Sem capturar, o padrão apontaria para si próprio.
-    TexturePatternArt(VecPathId),
+    ///
+    /// ⚠️ **O SLOT viaja junto** (plano 35, wave D) — a forma pode ter padrão nas duas tintas, e
+    /// *qual delas eu estava a editar quando armei* é tão parte da captura quanto *qual forma*.
+    /// Reler o alvo no clique leria a preferência de uma sessão que pode ter mudado no meio.
+    TexturePatternArt(VecPathId, ph2d_vec_render::PatternSlot),
     /// Um WIDGET autorado (W8b.3) à espera da forma que a row dele vai DIRIGIR.
     ///
     /// ⚠️ Cabe aqui pela mesma razão do `InstanceMain`: o gesto é o MESMO, e o que muda é só o que
@@ -55,8 +59,8 @@ impl PathPick {
             PathPick::PatternMotif(id)
             | PathPick::TextObject(id)
             | PathPick::InstanceMain(id)
-            | PathPick::TexturePatternArt(id)
             | PathPick::WidgetBind(id) => id,
+            PathPick::TexturePatternArt(id, _) => id,
         }
     }
 }

@@ -37,6 +37,29 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
+        // ⭐⭐ **QUAL DOS DOIS ESTÁ A SER EDITADO** (plano 35, wave D) — `Fill | Stroke`.
+        //
+        // Desde que um traço pode carregar um padrão, esta secção tem **dois sujeitos possíveis** na
+        // MESMA forma, com leis independentes. A fileira diz qual deles as onze linhas abaixo estão
+        // a editar, e vem **primeiro** porque tudo o que se lê a seguir é sobre ele.
+        //
+        // ⚠️ **`None` não pinta a fileira** — a forma tem padrão numa tinta só, e não há escolha a
+        // oferecer. É a lei do `Option` que a caixa *Stroke* e o *Resize Box* já obedecem.
+        //
+        // ⛔ **A fileira não DECIDE o sujeito, ela MOSTRA-o.** Quem decide é a shell, que publica em
+        // `set_current_texture_pattern` a lei **do alvo aceso**: duas respostas a *"quem é o
+        // sujeito?"* divergiriam, e o sintoma seria esta fileira a dizer *Stroke* enquanto os onze
+        // knobs abaixo editam o preenchimento.
+        if let Some(no_traco) = state::texpat_target_is_stroke() {
+            y = self.segmented(
+                "Target",
+                &[
+                    (ids::VECTOR_TEXPAT_TARGET_FILL, "Fill", !no_traco),
+                    (ids::VECTOR_TEXPAT_TARGET_STROKE, "Stroke", no_traco),
+                ],
+                y,
+            );
+        }
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
         y = self.action_button(ids::VECTOR_TEXPAT_SOURCE, "Source...", y);

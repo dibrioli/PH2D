@@ -3292,6 +3292,9 @@ impl crate::App {
             let mut pending_texpat: Option<crate::texture_pattern_edit::TexPatCmd> = None;
             let mut pending_texpat_source = false;
             let mut pending_texpat_pick = false;
+            // ⭐ A TINTA do traço (plano 35, wave D) — irmã do `pending_vec_fill_kind`, e drenada no
+            // MESMO sítio, porque as duas podem precisar de abrir o diálogo da arte.
+            let mut pending_vec_stroke_kind: Option<ph2d_panel_vector::StrokePaintKind> = None;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
             let mut pending_vec_grad_add = false;
@@ -3585,6 +3588,13 @@ impl crate::App {
                                 // ⭐ O CADEADO é estado de SESSÃO (o gesto, não o padrão): o clique
                                 // inverte-o aqui e nada toca no documento.
                                 self.texpat_lock_aspect = !self.texpat_lock_aspect;
+                            } else if let Some(alvo) =
+                                crate::texture_pattern_edit::target_for_id(*id)
+                            {
+                                // ⭐ O ALVO da secção *Pattern* também é de SESSÃO, como o cadeado:
+                                // ele diz o que estou a EDITAR, não o que a forma É. E e' uma
+                                // PREFERENCIA — quem a coage ao que existe e' o `lit_target`.
+                                self.texpat_target = alvo;
                             } else if *id == ph2d_editor::ids::VECTOR_STROKE_PRESENT {
                                 // **Stroke** (plano 34): dar ou tirar o traço mexe no DOCUMENTO,
                                 // então o clique e' da shell — o painel so' mostra o estado.
@@ -3710,6 +3720,10 @@ impl crate::App {
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
                             {
                                 pending_vec_fill_kind = Some(k);
+                            } else if let Some(k) = crate::vec_stroke_paint::kind_for_id(*id) {
+                                // ⭐ A TINTA do traço (plano 35, wave D). Ela mexe no DOCUMENTO,
+                                // entao o clique e' da shell — o painel so' mostra qual chip acende.
+                                pending_vec_stroke_kind = Some(k);
                             } else if let Some(i) =
                                 ph2d_panel_vector::texture_pattern::tile_index_of(*id)
                             {
@@ -5658,8 +5672,12 @@ impl crate::App {
             }
             // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
             // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
-            if pending_texpat_pick && let Some(host) = self.vec_pen.selected() {
-                self.vec_path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host));
+            if pending_texpat_pick
+                && let Some(host) = self.vec_pen.selected()
+                && let Some((slot, _)) =
+                    crate::texture_pattern_edit::lit_target(vec_scene, host, self.texpat_target)
+            {
+                self.vec_path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host, slot));
                 eprintln!(
                     "[ph2d-vec] texture pattern: pick armado -- clique na FORMA que vai ser a arte \
                      (vazio = desiste)"
@@ -6998,6 +7016,32 @@ impl crate::App {
                 self.vec_grad_selected = None;
                 self.vec_grad_drag = None;
             }
+            // ⭐⭐ **A TINTA DO TRAÇO** (plano 35, wave D) — a 4ª condição da costura, outra vez:
+            // escolher *Pattern* num traço que ainda não tem padrão **abre o diálogo da arte**.
+            // ⚠️ Desistir devolve `None`, e o `set_kind` **não muda nada** — apagar-lhe a cor do
+            // traço por ter fechado um diálogo seria o pior dos dois mundos.
+            if let Some(kind) = pending_vec_stroke_kind {
+                let mut pattern = None;
+                if kind == ph2d_panel_vector::StrokePaintKind::Pattern
+                    && let Some(sel) = self.vec_pen.selected()
+                    && let Some(source) = crate::texture_pattern_pick::pick_source(asset_db)
+                {
+                    // ⚠️ **A colocação sai da MESMA porta do preenchimento** — o tamanho preserva o
+                    // aspecto da arte e o canto é o da FORMA, nunca a origem do mundo. Uma segunda
+                    // lei de nascimento aqui reabriria o report do `Clamp` em branco.
+                    let (size, origin) = crate::texture_pattern_pick::default_placement(
+                        asset_db, vec_scene, sel, &source,
+                    );
+                    pattern = Some((source, size, origin));
+                }
+                crate::vec_stroke_paint::set_kind(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    kind,
+                    pattern,
+                );
+            }
             // ⭐ **A secção PATTERN** (plano 33 W5) — a arte primeiro (ela abre um diálogo, que
             // congela o laço), depois a lei. As duas desaguam na MESMA porta.
             if pending_texpat_source && let Some(sel) = self.vec_pen.selected() {
@@ -7008,11 +7052,20 @@ impl crate::App {
                     pending_texpat = Some(crate::texture_pattern_edit::TexPatCmd::Source(source));
                 }
             }
-            if let Some(cmd) = pending_texpat {
+            // ⭐⭐ **TODA escrita da secção passa pelo ALVO ACESO** (plano 35, wave D), e ele é a
+            // preferência de sessão **coagida ao que a forma tem**. ⚠️ Ler `self.texpat_target` cru
+            // aqui escreveria no traço de uma forma cujo traço não tem padrão — um no-op silencioso
+            // com a secção a mostrar o preenchimento.
+            let texpat_slot = self.vec_pen.selected().and_then(|sel| {
+                crate::texture_pattern_edit::lit_target(vec_scene, sel, self.texpat_target)
+                    .map(|(alvo, _)| alvo)
+            });
+            if let (Some(cmd), Some(slot)) = (pending_texpat, texpat_slot) {
                 crate::texture_pattern_edit::apply(
                     vec_scene,
                     &mut self.vec_history,
                     &self.vec_pen,
+                    slot,
                     cmd,
                 );
             }
@@ -7123,6 +7176,7 @@ impl crate::App {
                 self.vec_pivot_edit,
                 self.vec_snap,
                 self.texpat_lock_aspect,
+                self.texpat_target,
             );
             // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois
             // publicar**, a mesma ordem do `resize_box` — publicar antes deixaria a caixa a mostrar
@@ -7141,6 +7195,12 @@ impl crate::App {
             }
             ph2d_panel_vector::state::set_stroke_present(
                 crate::vec_stroke_present::selected_stroke_present(vec_scene, &self.vec_pen),
+            );
+            // ⭐ **A TINTA do traço** (plano 35, wave D) — publicada AQUI, ao lado da irmã, e não no
+            // `vector_bridge`: o dreno acima pode ter acabado de dar ou tirar o traço, e uma
+            // publicação anterior a ele mostraria a fileira de um traço que já não existe.
+            ph2d_panel_vector::state::set_stroke_paint_kind(
+                crate::vec_stroke_paint::selected_stroke_paint_kind(vec_scene, &self.vec_pen),
             );
             // Motion Nodes M0.T10: same phase as vector_bridge (AFTER the
             // ActivateTool drain, so a freshly-activated tool is seen this frame;

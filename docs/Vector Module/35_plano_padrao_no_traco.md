@@ -149,8 +149,8 @@ escada. ⚠️ **Conte os três contra o `main` do dia** — esta linha já os m
 | **A** | `StrokePaint` + `StrokeSpec.paint` + `color()`, e a cauda mecânica do `Copy` | `ph2d-vec-scene` + `-render` + `-boolean` + `-edit` | **sim** |
 | **B** | `stroke_path_image` + o traço a desenhar com o ladrilho | `ph2d-vector` + `ph2d-vec-render` | não |
 | **C** | O memo varre o traço; o ladrilho do traço assa como o do preenchimento | shell | não |
-| **D** | A UI: tipo do traço (`Solid \| Pattern`) + o alvo (`Fill \| Stroke`) na secção *Pattern* | `ph2d-panel-vector` + shell | não |
-| **E** | Persistência + smoke + gates + mutações | shell | não |
+| **D** ✅ | A UI: tipo do traço (`Solid \| Pattern`) + o alvo (`Fill \| Stroke`) na secção *Pattern* | `ph2d-panel-vector` + shell | não |
+| **E** ✅ | Persistência + smoke + gates + mutações | shell | não |
 
 **Kill-criterion (DIRETIVA §5):** o desenho promete que **um traço com padrão custa o que um traço
 sólido custa** — uma chamada de `stroke()`, zero camadas de clip. Se a wave B medir mais do que isso
@@ -185,3 +185,79 @@ nos dois. Um gate só sobre a primeira passa com a wave inteira por construir.
 - ⏸️ **Um padrão partilhado entre fill e stroke** (editar um muda o outro). Hoje são dois
   `PatternFill` independentes; partilhar exige um id de recurso, que é o *navegador de assets* que o
   ADR-0165 adia.
+
+---
+
+## §6 — O que as waves D e E MEDIRAM (2026-08-28)
+
+### §6.1 — ⛔⛔ Um defeito de PERSISTÊNCIA que o plano não previa
+
+A colheita que embute a arte de um padrão no `.ph2dproj`
+([`project_texture_pattern.rs`](../../shells/desktop/src/project_texture_pattern.rs)) **lia só o
+`path.fill`**. ⇒ uma forma cujo **traço** tinha padrão gravava o `AssetId` no documento e **nunca os
+pixels**: reabrir o projecto noutra sessão dava uma linha pintada a **cor de recurso**, para sempre e
+**sem erro nenhum a que agarrar** — o defeito exacto que aquele ficheiro existe para curar, com o
+sujeito trocado.
+
+⚠️ **Ele não estava na lista de gates do §4**, e nenhum dos seis primeiros o alcançava: a wave A
+gateou o round-trip da `VecScene` (que carrega o `StrokePaint` **inteiro**, incluindo o `AssetId`), e
+os pixels viajam **noutro blob**. *Um round-trip verde sobre o documento não diz nada sobre os
+recursos que o documento NOMEIA.*
+
+⭐ A cura veio com a metade **PURA** extraída (`art_ids_named_by`), porque a colheita precisa do
+`AssetDb`, que vive num `AppGfx` que segura uma surface de janela real — sem a extracção, a única
+defesa possível seria um gate de FONTE a procurar a palavra `stroke`.
+
+### §6.2 — ⚠️ Um gate reprovou PRODUTO CORRECTO, e o defeito era a agulha dele
+
+`every_shape_in_the_pattern_smoke_is_born_with_a_stroke` (plano 34) contava
+`stroke: Some(contorno())` — a **grafia** de uma porta, não a lei. A wave D acrescentou um segundo
+construtor (`contorno_com_padrao`) e o gate reprovou duas formas que **nascem vestidas**, só que por
+outra porta.
+
+⇒ a agulha passou a ser `stroke: Some(`, mais um controlo `stroke: None == 0`. *Um gate que fixa o
+nome de quem obedece à lei reprova a segunda maneira de a obedecer.*
+
+### §6.3 — O ALVO é uma preferência COAGIDA, nunca um estado
+
+`texpat_target` vive na sessão (como o cadeado), e **toda** leitura passa por
+`texture_pattern_edit::lit_target`, que a coage ao que a forma de facto tem. Sem a coerção, escolher
+*Stroke* numa forma e clicar noutra faria a secção **desaparecer** por se lembrar de uma escolha
+feita algures — e a escrita cairia num slot vazio, um **no-op silencioso** com a secção a mostrar o
+outro sujeito.
+
+⭐ **Uma função responde às DUAS perguntas** (*quem é o sujeito?* e *mostro o chip?*): separá-las é
+como as duas respostas passam a discordar, e o sintoma seria o chip a aparecer com um alvo só.
+
+### §6.4 — As nove provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| `lit_target`: `(true, false) => want` | `a_sticky_target_is_coerced_to_what_the_shape_actually_has` |
+| `lit_target`: `fill \|\| stroke` | `the_target_chip_only_shows_when_both_exist` |
+| `write_pattern`: o braço `Stroke` nunca escreve | `the_pattern_section_edits_the_target_that_is_lit` |
+| `set_kind`: `Solid` com uma cor fixa | `going_back_to_solid_keeps_the_colour_the_line_was_already_showing` |
+| a fileira *Type* pintada sem tinta publicada | `the_stroke_type_row_is_absent_without_a_stroke` |
+| o chip do alvo pintado com um sujeito só | `the_target_row_is_absent_when_there_is_no_choice_to_offer` |
+| `stroke_draw`: o pincel a escalar com `s.width` | `the_stroke_pattern_does_not_scale_with_the_stroke_width` |
+| a colheita a ignorar o traço | `the_art_of_a_patterned_stroke_travels_in_the_file_too` |
+
+Cada uma com os **três controlos**: verde antes · a agulha casa exactamente uma vez · verde depois do
+restore (com `utime`, senão o cargo fica *stale*).
+
+### §6.5 — Os 7 gates do §4, e onde eles estão
+
+| # | Gate | Onde |
+|---|---|---|
+| 1 | `a_stroke_can_carry_a_pattern` | `ph2d-vec-scene/src/paint_pattern_tests.rs` |
+| 2 | `the_stroke_pattern_survives_the_save` + `the_art_of_a_patterned_stroke_travels_in_the_file_too` | idem + `shells/desktop/src/project_texture_pattern_tests.rs` |
+| 3 | `a_patterned_stroke_pushes_no_clip_layer` | `ph2d-vec-render/src/pattern_tests.rs` |
+| 4 | `the_stroke_pattern_does_not_scale_with_the_stroke_width` | idem |
+| 5 | `the_stroke_colour_still_answers_for_a_patterned_stroke` | `ph2d-vec-scene/src/paint_pattern_tests.rs` |
+| 6 | `the_pattern_section_edits_the_target_that_is_lit` | `shells/desktop/src/texture_pattern_edit_tests.rs` |
+| 7 | `the_target_chip_only_shows_when_both_exist` | idem |
+
+Mais a costura das duas fileiras novas
+([`seam_stroke_paint.rs`](../../crates/ph2d-panel-vector/tests/seam_stroke_paint.rs), gesto REAL) e os
+quatro sítios da shell
+([`the_stroke_paint_row_is_wired.rs`](../../shells/desktop/tests/the_stroke_paint_row_is_wired.rs)).

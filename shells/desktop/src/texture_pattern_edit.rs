@@ -10,7 +10,106 @@
 //! o slider re-publica o valor que já lá estava (o defeito que fazia todo quadro virar undo).
 
 use ph2d_vec_pattern::{PatternMode, TileKind};
-use ph2d_vec_scene::{Paint, PatternFill, PatternSource, VecScene};
+use ph2d_vec_render::PatternSlot;
+use ph2d_vec_scene::{Paint, PatternFill, PatternSource, StrokePaint, VecPathId, VecScene};
+
+/// ⭐⭐ **O padrão de UMA das duas tintas da forma** (plano 35, wave D) — a porta única de *"que
+/// padrão vive aqui?"*, e a única coisa neste ficheiro que sabe que existem dois sítios.
+///
+/// ⚠️ **Escrita e leitura passam pela MESMA distinção** ([`write_pattern`]), e é isso que impede o
+/// defeito clássico desta wave: publicar a lei do traço e escrever no preenchimento. Duas escadas
+/// de `match` divergem no dia em que uma ganhar uma variante.
+#[must_use]
+pub(crate) fn pattern_at(
+    scene: &VecScene,
+    id: VecPathId,
+    slot: PatternSlot,
+) -> Option<&PatternFill> {
+    let path = scene.path(id)?;
+    match slot {
+        PatternSlot::Fill => match path.fill.as_ref() {
+            Some(Paint::Pattern(p)) => Some(p),
+            _ => None,
+        },
+        PatternSlot::Stroke => path
+            .stroke
+            .as_ref()
+            .and_then(ph2d_vec_scene::StrokeSpec::pattern),
+    }
+}
+
+/// Escreve `next` na tinta `slot` da forma `id`. `false` = a tinta deixou de ser um padrão entre a
+/// leitura e a escrita (só acontece se a cena mudar no meio) e **nada** é escrito.
+fn write_pattern(
+    scene: &mut VecScene,
+    id: VecPathId,
+    slot: PatternSlot,
+    next: PatternFill,
+) -> bool {
+    let Some(path) = scene.path_mut(id) else {
+        return false;
+    };
+    match slot {
+        PatternSlot::Fill => {
+            path.fill = Some(Paint::Pattern(Box::new(next)));
+            true
+        }
+        PatternSlot::Stroke => match path.stroke.as_mut() {
+            Some(s) => {
+                s.paint = StrokePaint::Pattern(Box::new(next));
+                true
+            }
+            None => false,
+        },
+    }
+}
+
+/// O alvo que este `NodeId` nomeia (`None` se não é um dos dois chips) — plano 35, wave D.
+///
+/// ⚠️ **Uma porta, e não um `if` inline no despacho**, pelas razões de sempre desta casa (a irmã é
+/// a `vec_stroke_paint::kind_for_id`): quem acrescentar uma tinta acrescenta-a aqui, e o despacho
+/// não muda uma linha. ⭐ E porque um SÍMBOLO é uma agulha estável para um gate de fonte, enquanto
+/// uma expressão inline é reescrita pelo `cargo fmt` — foi assim que a 1.ª redacção do gate
+/// `the_pattern_target_chip_is_wired` reprovou produto correcto.
+#[must_use]
+pub(crate) fn target_for_id(id: ph2d_editor::NodeId) -> Option<PatternSlot> {
+    if id == ph2d_editor::ids::VECTOR_TEXPAT_TARGET_FILL {
+        Some(PatternSlot::Fill)
+    } else if id == ph2d_editor::ids::VECTOR_TEXPAT_TARGET_STROKE {
+        Some(PatternSlot::Stroke)
+    } else {
+        None
+    }
+}
+
+/// ⭐⭐ **QUEM é o sujeito da secção *Pattern*, e há escolha a oferecer?** (plano 35, wave D)
+///
+/// Devolve `(o alvo aceso, os dois existem)`. `None` = a forma não tem padrão nenhum e a secção nem
+/// sobe.
+///
+/// ⚠️ **`want` é a PREFERÊNCIA de sessão, e ela é COAGIDA ao que existe** — pedir o traço numa forma
+/// cujo traço não tem padrão devolve o preenchimento, e não um sujeito vazio. *Uma preferência
+/// pegajosa que sobrevive ao objecto tem de ser reconciliada com ele em cada leitura, senão a secção
+/// desaparece por lembrar-se de uma escolha feita noutra forma.*
+///
+/// ⛔ **Uma função e não duas.** Perguntar *"qual é o alvo?"* e *"mostro o chip?"* em sítios
+/// separados é como as duas respostas passam a discordar: o chip apareceria com um alvo só.
+#[must_use]
+pub(crate) fn lit_target(
+    scene: &VecScene,
+    id: VecPathId,
+    want: PatternSlot,
+) -> Option<(PatternSlot, bool)> {
+    let fill = pattern_at(scene, id, PatternSlot::Fill).is_some();
+    let stroke = pattern_at(scene, id, PatternSlot::Stroke).is_some();
+    let alvo = match (fill, stroke) {
+        (false, false) => return None,
+        (true, false) => PatternSlot::Fill,
+        (false, true) => PatternSlot::Stroke,
+        (true, true) => want,
+    };
+    Some((alvo, fill && stroke))
+}
 
 /// O que a secção *Pattern* pede ao documento.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -93,19 +192,19 @@ pub(crate) fn set_source(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     host: ph2d_vec_scene::VecPathId,
+    slot: PatternSlot,
     source: PatternSource,
 ) -> bool {
-    let Some(Paint::Pattern(cur)) = scene.path(host).and_then(|p| p.fill.as_ref()) else {
+    let Some(cur) = pattern_at(scene, host, slot) else {
         return false;
     };
     if cur.source == source {
         return false;
     }
-    let mut next = (**cur).clone();
+    let mut next = cur.clone();
     next.source = source;
     let pre = scene.clone();
-    if let Some(path) = scene.path_mut(host) {
-        path.fill = Some(Paint::Pattern(Box::new(next)));
+    if write_pattern(scene, host, slot, next) {
         history.push_undo(pre);
         return true;
     }
@@ -118,15 +217,16 @@ pub(crate) fn apply(
     scene: &mut VecScene,
     history: &mut ph2d_vec_edit::History,
     pen: &ph2d_vec_edit::PenTool,
+    slot: PatternSlot,
     cmd: TexPatCmd,
 ) {
     let Some(sel) = pen.selected() else {
         return;
     };
-    let Some(Paint::Pattern(cur)) = scene.path(sel).and_then(|p| p.fill.as_ref()) else {
+    let Some(cur) = pattern_at(scene, sel, slot) else {
         return;
     };
-    let mut next: PatternFill = (**cur).clone();
+    let mut next: PatternFill = cur.clone();
     match cmd {
         TexPatCmd::Tile(i) => next.kind = tile_of(i),
         // ⚠️⚠️ **O enquadramento do `Clamp` NÃO se escreve — ele é DERIVADO no desenho.**
@@ -157,12 +257,11 @@ pub(crate) fn apply(
         TexPatCmd::Angle(deg) => next.angle = deg.to_radians(),
         TexPatCmd::Source(s) => next.source = s,
     }
-    if next == **cur {
+    if pattern_at(scene, sel, slot) == Some(&next) {
         return;
     }
     let pre = scene.clone();
-    if let Some(path) = scene.path_mut(sel) {
-        path.fill = Some(Paint::Pattern(Box::new(next)));
+    if write_pattern(scene, sel, slot, next) {
         history.push_undo(pre);
     }
 }

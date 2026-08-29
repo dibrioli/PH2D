@@ -2333,11 +2333,12 @@ impl App {
             // é a forma que passa a ser o desenho que se repete. ⚠️ O `guide == pick.source()` logo
             // acima já barra o ciclo — e a `source_shape` do memo barra-o outra vez, porque o
             // documento pode chegar lá por outro caminho (um save, um replay).
-            crate::vec_pick::PathPick::TexturePatternArt(host) => {
+            crate::vec_pick::PathPick::TexturePatternArt(host, slot) => {
                 crate::texture_pattern_edit::set_source(
                     &mut gfx.vec_scene,
                     &mut self.vec_history,
                     host,
+                    slot,
                     ph2d_vec_scene::PatternSource::Shape(guide),
                 )
             }

@@ -61,8 +61,8 @@ pub use resize_box_state::set_resize_box;
 /// **única** resposta a essa pergunta neste painel: ela substituiu o `TokenBindings::stroke_exists`.
 #[path = "state_stroke.rs"]
 mod stroke_state;
-pub use stroke_state::set_stroke_present;
-pub(crate) use stroke_state::stroke_present;
+pub use stroke_state::{StrokePaintKind, set_stroke_paint_kind, set_stroke_present};
+pub(crate) use stroke_state::{stroke_paint_kind, stroke_present};
 
 /// **O ÍMÃ e as RÉGUAS** — irmão pelo teto de 600 LOC dos painéis, e o corte é por assunto: as
 /// cinco chaves respondem *a que a ponta se agarra, e o que a borda do canvas mostra*, e nenhuma
@@ -145,11 +145,11 @@ mod fill_state;
 pub use fill_state::set_current_grad_jitter;
 pub use fill_state::{
     TexturePatternRow, set_current_fill, set_current_fill_rule, set_current_grad_influence,
-    set_current_texture_pattern,
+    set_current_texture_pattern, set_texpat_target_is_stroke,
 };
 pub(crate) use fill_state::{
     current_fill_kind, current_fill_rule, current_grad_angle, current_grad_influence,
-    current_grad_jitter, current_texture_pattern,
+    current_grad_jitter, current_texture_pattern, texpat_target_is_stroke,
 };
 
 /// **OS TOKENS da seleção** (plano UI/UX W4) — que propriedade dela segue um token, e qual.

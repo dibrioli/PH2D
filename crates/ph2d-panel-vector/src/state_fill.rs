@@ -126,3 +126,27 @@ pub fn set_current_fill_rule(rule: Option<PathFillRule>) {
 pub(crate) fn current_fill_rule() -> Option<PathFillRule> {
     CURRENT_FILL_RULE.with(Cell::get)
 }
+
+thread_local! {
+    /// ⭐ **Qual dos dois sujeitos a secção *Pattern* está a editar** (plano 35, wave D).
+    ///
+    /// `None` = **não pintar a fileira**: a forma tem padrão numa tinta só, e não há escolha a
+    /// oferecer. `Some(false)` = o preenchimento aceso · `Some(true)` = o traço aceso.
+    static TEXPAT_TARGET_IS_STROKE: Cell<Option<bool>> = const { Cell::new(None) };
+}
+
+/// Publica o alvo aceso da secção *Pattern* (`None` esconde a fileira do alvo).
+///
+/// ⚠️ **Ela NÃO decide o que a secção mostra** — quem decide é a shell, que publica em
+/// [`set_current_texture_pattern`] a lei **do alvo aceso**. Duas respostas a *"quem é o sujeito?"*
+/// divergiriam, e o sintoma seria a fileira a dizer *Stroke* enquanto os onze knobs abaixo dela
+/// editam o preenchimento.
+pub fn set_texpat_target_is_stroke(v: Option<bool>) {
+    TEXPAT_TARGET_IS_STROKE.with(|c| c.set(v));
+}
+
+/// O alvo aceso neste quadro (`None` = a fileira não é pintada).
+#[must_use]
+pub(crate) fn texpat_target_is_stroke() -> Option<bool> {
+    TEXPAT_TARGET_IS_STROKE.with(Cell::get)
+}

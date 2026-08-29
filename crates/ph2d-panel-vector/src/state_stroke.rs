@@ -30,3 +30,36 @@ pub fn set_stroke_present(v: Option<bool>) {
 pub(crate) fn stroke_present() -> Option<bool> {
     STROKE_PRESENT.with(Cell::get)
 }
+
+/// ⭐ **Com que TINTA o traço desenha** (plano 35, wave D) — espelho panel-local do `StrokePaint`
+/// da cena, pela MESMA razão que o [`super::FillKind`] o é: o painel não depende da crate do
+/// documento.
+///
+/// ⛔ **Duas variantes, e não as cinco do preenchimento.** O renderer de traço não desenha
+/// gradiente; um modelo que representa o que o desenho não faz produz estado inalcançável GRAVADO
+/// (plano 35 §2.1). Quando um gradiente no traço for pedido, isto ganha uma variante.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum StrokePaintKind {
+    /// Uma cor.
+    Solid,
+    /// Uma arte repetida.
+    Pattern,
+}
+
+thread_local! {
+    /// `Some(k)` para uma selecção cujo traço tem uma tinta; `None` quando não há o que descrever.
+    static STROKE_PAINT_KIND: Cell<Option<StrokePaintKind>> = const { Cell::new(None) };
+}
+
+/// Publica a tinta do traço deste quadro (shell -> painel).
+pub fn set_stroke_paint_kind(v: Option<StrokePaintKind>) {
+    STROKE_PAINT_KIND.with(|c| c.set(v));
+}
+
+/// A tinta do traço neste quadro. `None` = a fileira **não é pintada** — a mesma lei do
+/// [`stroke_present`]: *uma fileira que descreve um objecto que não está lá é pior que fileira
+/// nenhuma*. Sem traço não há tinta de traço a escolher.
+#[must_use]
+pub(crate) fn stroke_paint_kind() -> Option<StrokePaintKind> {
+    STROKE_PAINT_KIND.with(Cell::get)
+}

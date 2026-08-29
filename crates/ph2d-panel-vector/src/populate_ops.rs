@@ -188,6 +188,10 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     button(store, ids::VECTOR_FILL_KIND_RADIAL);
     button(store, ids::VECTOR_FILL_KIND_MULTI);
     button(store, ids::VECTOR_FILL_KIND_PATTERN);
+    // ⭐ A TINTA DO TRAÇO (plano 35, wave D) — irmã da fileira acima, com duas variantes em vez de
+    // cinco. Sem este registo os dois chips pintam, ACENDEM sob o rato e o `Click` morre no painel.
+    button(store, ids::VECTOR_STROKE_KIND_SOLID);
+    button(store, ids::VECTOR_STROKE_KIND_PATTERN);
     button(store, ids::VECTOR_GRAD_ADD_POINT);
     button(store, ids::VECTOR_GRAD_REMOVE_POINT);
     button(store, ids::VECTOR_GRAD_ADD_STOP);

@@ -41,6 +41,44 @@ pub(crate) struct SavedPatternArt {
     pub(crate) rgba: Vec<u8>,
 }
 
+/// ⭐⭐ **QUE ARTES esta cena nomeia** — a metade PURA da colheita (plano 35, wave D).
+///
+/// ⚠️ **Extraída para poder ser GATEADA.** A colheita precisa do `AssetDb`, que vive num `AppGfx`
+/// que segura uma surface de janela real ⇒ ela não é alcançável de um teste, e a única defesa
+/// possível era um gate de FONTE a procurar a palavra `stroke`. Esta função responde à pergunta que
+/// de facto importa — *o coletor vê as duas tintas?* — sobre uma cena construída à mão.
+///
+/// ⚠️ **As DUAS tintas.** Enquanto isto lia só o `fill`, uma forma cujo TRAÇO tinha padrão gravava o
+/// `AssetId` no documento e **nunca os pixels**: reabrir dava uma linha pintada a cor de recurso,
+/// para sempre e **sem erro nenhum a que agarrar** — exactamente o defeito que este ficheiro existe
+/// para curar, com o sujeito trocado. *Um coletor que varre metade do modelo é indistinguível de um
+/// que varre tudo, até alguém usar a outra metade.*
+///
+/// ⏳ Uma fonte-FORMA (W7) não entra: ela É o documento, e o documento já viaja. Só a imagem precisa
+/// dos pixels.
+#[must_use]
+pub(crate) fn art_ids_named_by(
+    scene: &ph2d_vec_scene::VecScene,
+) -> std::collections::BTreeSet<AssetId> {
+    let mut ids = std::collections::BTreeSet::new();
+    for path in scene.paths() {
+        let da_forma = match path.fill.as_ref() {
+            Some(Paint::Pattern(p)) => Some(p.as_ref()),
+            _ => None,
+        };
+        let do_traco = path
+            .stroke
+            .as_ref()
+            .and_then(ph2d_vec_scene::StrokeSpec::pattern);
+        for p in da_forma.into_iter().chain(do_traco) {
+            if let PatternSource::Image(id) = p.source {
+                ids.insert(id);
+            }
+        }
+    }
+    ids
+}
+
 impl crate::App {
     /// Colhe a arte de cada padrão da cena, para embutir no ficheiro.
     ///
@@ -49,19 +87,10 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else {
             return Vec::new();
         };
+        // ⚠️ **A lista de quem embutir sai da porta PURA** (`art_ids_named_by`), e não de um segundo
+        // passeio pela cena — duas travessias divergem no dia em que uma ganhar uma tinta.
         let mut by_id: BTreeMap<AssetId, SavedPatternArt> = BTreeMap::new();
-        for path in scene.paths() {
-            let Some(Paint::Pattern(p)) = path.fill.as_ref() else {
-                continue;
-            };
-            // ⏳ Uma fonte-FORMA (W7) não tem arte a embutir: ela É o documento, e o documento já
-            // viaja. Só a imagem precisa dos pixels.
-            let PatternSource::Image(id) = p.source else {
-                continue;
-            };
-            if by_id.contains_key(&id) {
-                continue;
-            }
+        for id in art_ids_named_by(scene) {
             let Some(asset) = gfx.asset_db.get(&id) else {
                 continue;
             };

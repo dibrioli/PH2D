@@ -673,6 +673,7 @@ mod vec_snap_sprites;
 /// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
 /// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
 /// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
+mod vec_stroke_paint;
 mod vec_stroke_present;
 mod vec_text;
 mod vec_text_object;
@@ -1085,6 +1086,8 @@ impl App {
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os
             // dois eixos existirem (plano 33, W10).
             texpat_lock_aspect: true,
+            // O preenchimento é o alvo por omissão: foi o único sujeito desta secção até a wave D.
+            texpat_target: ph2d_vec_render::PatternSlot::Fill,
             vec_grad_selected: None,
             vec_clipboard: None,
             vec_pivot_edit: false,

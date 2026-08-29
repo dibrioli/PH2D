@@ -163,10 +163,10 @@ pub mod state_symmetry;
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
 pub use state::{
     FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView, FontPreview,
-    FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, TextAxisSlot, TexturePatternRow,
-    VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h, selected_stop,
-    set_current_contour, set_current_contour_can_add, set_current_convertible, set_current_effects,
-    set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
+    FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, StrokePaintKind, TextAxisSlot,
+    TexturePatternRow, VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h,
+    selected_stop, set_current_contour, set_current_contour_can_add, set_current_convertible,
+    set_current_effects, set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
     set_current_fill_rule, set_current_filter_can_add, set_current_filters,
     set_current_grad_influence, set_current_grad_jitter, set_current_guides,
     set_current_has_envelope, set_current_path_closed, set_current_patternpath,
@@ -178,7 +178,8 @@ pub use state::{
     set_current_textpath_can_link, set_current_texture_pattern, set_current_transform,
     set_current_vector_style, set_current_vertex_count, set_current_vertex_pos,
     set_cut_line_exists, set_expand_join, set_expand_side, set_filter_blend_names,
-    set_filter_kinds, set_length_suffix, set_selected_vertex_type, take_want_font_previews,
+    set_filter_kinds, set_length_suffix, set_selected_vertex_type, set_stroke_paint_kind,
+    set_texpat_target_is_stroke, take_want_font_previews,
 };
 
 use ph2d_a11y::NodeId;

@@ -600,3 +600,50 @@ fn the_stroke_pattern_lands_in_the_same_place_under_a_non_conformal_affine() {
         "o caminho nao-conforme deixou a colocacao no espaco LOCAL - o padrao encolhe no canto"
     );
 }
+
+/// ⭐⭐ **O PADRÃO NÃO ESCALA COM A LARGURA DO TRAÇO** (gate nº 4 do plano 35 §4) — a queixa que o
+/// Illustrator colhe há anos, do lado certo.
+///
+/// *A largura decide a **faixa**; o padrão decide **o que a preenche**.* São duas grandezas, e
+/// juntá-las faria engrossar a linha mudar o motivo debaixo dela.
+///
+/// ⚠️ **A régua é o afim do PINCEL que chega ao encoding**, e não uma imagem: se a colocação
+/// passasse a ler a largura, ele mudaria entre as duas corridas.
+///
+/// ⚠️⚠️ **O CONTROLE é a metade que importa** — as duas corridas têm de diferir em ALGUMA coisa,
+/// senão este gate ficaria verde sobre um produto que ignora a largura por completo (e aí ele não
+/// mediria nada).
+#[test]
+fn the_stroke_pattern_does_not_scale_with_the_stroke_width() {
+    let desenhar = |w: f64| {
+        let mut scene = ph2d_vec_scene::VecScene::default();
+        let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(9, 9, 9, 255), w);
+        s.paint = pat_do_traco();
+        let id = scene.push_path(ph2d_vec_scene::VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(ph2d_vec_scene::VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            stroke: Some(s),
+            ..ph2d_vec_scene::VecPath::default()
+        });
+        let mut tiles = crate::PatternTiles::new();
+        tiles.insert((id, crate::PatternSlot::Stroke), tile_de_teste());
+        let alvo = desenha(&scene, &tiles);
+        let e = alvo.inner().encoding();
+        (e.transforms.clone(), e.styles.clone())
+    };
+    let (xf_fino, estilo_fino) = desenhar(0.5);
+    let (xf_grosso, estilo_grosso) = desenhar(4.0);
+    assert_eq!(
+        xf_fino, xf_grosso,
+        "o afim do PINCEL mudou com a largura - engrossar a linha mexe no motivo (a queixa do \
+         Illustrator, do lado errado)"
+    );
+    // CONTROLE: a largura CHEGOU ao desenho. Sem esta metade, o gate acima ficaria verde sobre um
+    // produto que nunca lê a largura — e aí ele não estaria a medir nada.
+    assert_ne!(
+        estilo_fino, estilo_grosso,
+        "as duas larguras encodaram o MESMO estilo - a fixtura nao contem o fenomeno"
+    );
+}

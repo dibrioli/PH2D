@@ -667,3 +667,22 @@ pub const VECTOR_MODE_WIDTH: NodeId = hash_node_id("vector.mode.width");
 /// (converter o traço numa forma preenchida). Duas palavras para um conceito e uma palavra para
 /// dois é como um painel passa a mentir.
 pub const VECTOR_STROKE_PRESENT: NodeId = hash_node_id("vector.stroke.present");
+
+// ── A TINTA DO TRAÇO (plano 35, wave D) ────────────────────────────────────────
+//
+// ⚠️ **Um `segmented` e não um checkbox**, pela MESMA lei que escolheu o checkbox acima, aplicada ao
+// contrário: *ter traço* é uma propriedade que a forma tem ou não tem; *com que tinta o traço
+// desenha* é uma escolha entre MODOS nomeados. As duas fileiras vivem lado a lado e cada uma obedece
+// à metade certa da lei.
+//
+// ⛔ **A lista é `Solid | Pattern` e NÃO a do preenchimento.** O renderer de traço não desenha
+// gradiente, e um chip que produzisse um `StrokePaint::Linear` gravaria estado que nada pinta — a
+// recusa está escrita no plano 35 §2.1 e o modelo (`StrokePaint`) tem duas variantes por isso.
+/// **Solid** — o traço desenha com uma cor.
+pub const VECTOR_STROKE_KIND_SOLID: NodeId = hash_node_id("vector.stroke.kind.solid");
+/// **Pattern** — o traço desenha com uma arte repetida.
+///
+/// ⚠️ Clicar aqui numa forma cujo traço ainda não tem padrão **abre a porta da arte** — a 4ª
+/// condição da costura (*a sequência tem de levar a algum lugar*), a mesma que o chip *Pattern* do
+/// preenchimento já honra.
+pub const VECTOR_STROKE_KIND_PATTERN: NodeId = hash_node_id("vector.stroke.kind.pattern");

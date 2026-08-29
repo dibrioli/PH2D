@@ -425,7 +425,13 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         min: 0.0,
         max: 0.0,
         step: 0.0,
-        widget: ParamWidget::Text,
+        // ⚠️ **Uma ESPÉCIE, nunca uma lista de extensões.** Este crate não depende de crate
+        // de áudio nenhuma — é essa cerca estrutural que impede a FFT de entrar no cook —,
+        // logo ele **não pode saber** o que este build descodifica. Quem tem os
+        // descodificadores é a shell, e é ela que resolve a espécie para a constante canónica.
+        widget: ParamWidget::File {
+            kind: ph2d_node_registry::FileKind::Audio,
+        },
     },
     ParamUiHint {
         param: param::COUNT,

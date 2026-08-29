@@ -163,6 +163,45 @@ pub enum ParamWidget {
     /// put controls on screen that change nothing. The strip WRAPS, so the row has no
     /// length limit of its own: the artist adds colours until they stop wanting more.
     Palette,
+    /// A **path to a file on disk**, carried in a TEXT param — a path field plus a
+    /// *Browse…* button that opens the OS dialog, and a **missing-footage** mark when
+    /// the path names nothing.
+    ///
+    /// ⚠️ **The node declares a [`FileKind`], never a list of extensions**, and the
+    /// asymmetry is the whole point. `audio.bands` may not name `wav`/`flac`/`ogg`:
+    /// its fence is **structural** — it depends on no audio crate, so it *cannot*
+    /// know what this app decodes, and a list copied into it would be a second answer
+    /// to *what is an audio file* that ages the day a codec is added. The shell owns
+    /// the resolution (it owns the decoders), so the kind is the whole contract.
+    ///
+    /// ⚠️ **The text param stays the source of truth** — the dialog only WRITES it,
+    /// exactly as a [`Self::Source`] chip writes the name it publishes. The field
+    /// below stays editable on purpose: a path typed by hand, pasted from a terminal,
+    /// or fixed after a move must not require the dialog.
+    File { kind: FileKind },
+}
+
+/// **What a [`ParamWidget::File`] is asking for** — the vocabulary the node speaks,
+/// resolved to actual extensions by the shell (which owns the readers).
+///
+/// ⚠️ **A kind exists only once something READS it.** A variant nobody resolves is a
+/// filter that silently offers nothing, and the artist reads that as *"this app cannot
+/// open my file"* — the shell-side census
+/// (`every_file_kind_the_registry_declares_has_a_filter`) is what keeps this honest.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FileKind {
+    /// A sound file, whatever this build can decode (`audio.bands`).
+    Audio,
+}
+
+impl FileKind {
+    /// Every kind, for the census that proves each one resolves to a real filter.
+    ///
+    /// ⚠️ **A list beside an enum is the thing that rots**, so the gate that reads it
+    /// (`every_file_kind_the_registry_declares_has_a_filter`) also checks its LENGTH against
+    /// the arms the shell's exhaustive `match` covers — a variant added without a line here
+    /// would otherwise be censused by nobody.
+    pub const ALL: &'static [FileKind] = &[FileKind::Audio];
 }
 
 impl ParamWidget {

@@ -32,6 +32,32 @@ pub enum ParamRow {
     Palette(PaletteRow),
     Channels(ChannelsRow),
     Source(SourceRow),
+    File(FileRow),
+}
+
+/// A **path to a file on disk**, carried in a text param: an editable path field, a
+/// *Browse…* button, and a **missing-footage** mark.
+///
+/// ⚠️ **The KIND of file is deliberately absent.** The panel would have to depend on
+/// `ph2d-node-registry` to carry it, and it does not depend on the registry by design —
+/// every other row is resolved primitives for the same reason. The shell already knows
+/// `(node, param)` when the intent comes back, so it looks the kind up in the hint it
+/// itself published: *the side that owns the dialog is the side that owns the filter.*
+///
+/// ⚠️ **`missing` is computed by the SHELL** (a `Path::exists`), not here — a panel that
+/// touched the filesystem while painting would stat a path every frame. It is the one
+/// piece of a file row the artist cannot see any other way: an empty path reads as
+/// *"not set yet"*, and a full path that names nothing reads, without this, as *"set"*.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FileRow {
+    /// The text-param key (`Graph::set_text_param`) — echoed in the intents.
+    pub name: &'static str,
+    /// English label (from the `ParamUiHint`).
+    pub label: String,
+    /// The current path (empty → nothing chosen yet).
+    pub value: String,
+    /// `true` when `value` is non-empty and names nothing on disk.
+    pub missing: bool,
 }
 
 /// A **named-channel picker** row (plan §1.1) — segmented channel buttons plus a
@@ -445,6 +471,15 @@ pub enum MotionParamIntent {
     /// exatamente essa migração acontecendo (o gradiente do `color_ramp`, a paleta do
     /// `color_array`). Limpar o que não existe é um no-op barato.
     ResetParam { node: u32, param: String },
+    /// **Ask the shell to open a file dialog** for a [`FileRow`], and write the pick into
+    /// `param` (a `Graph::set_text_param`).
+    ///
+    /// ⚠️ **It carries no filter, and that is the design.** A dialog is an OS window that
+    /// freezes the loop, so only the shell may open one — and the shell resolves the
+    /// filter from the `ParamUiHint` it published for `(node, param)`. Putting the
+    /// extensions in the intent would make the panel the second place that answers *what
+    /// is an audio file*, through a channel nothing gates.
+    PickFile { node: u32, param: &'static str },
 }
 
 thread_local! {
@@ -485,10 +520,11 @@ mod ids;
 pub(crate) use ids::{
     CHANNELS_EXTRA_BASE, MAX_CURVE_POINTS, MAX_GRADIENT_STOPS, param_checkbox_id, param_chip_id,
     param_curve_add_id, param_curve_editor_id, param_curve_interp_id, param_curve_point_id,
-    param_curve_remove_id, param_enum_id, param_grad_add_id, param_grad_editor_id,
-    param_grad_hue_id, param_grad_interp_id, param_grad_preset_id, param_grad_remove_id,
-    param_grad_space_id, param_grad_stop_id, param_number_id, param_pal_add_id,
-    param_pal_remove_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
+    param_curve_remove_id, param_enum_id, param_file_browse_id, param_grad_add_id,
+    param_grad_editor_id, param_grad_hue_id, param_grad_interp_id, param_grad_preset_id,
+    param_grad_remove_id, param_grad_space_id, param_grad_stop_id, param_number_id,
+    param_pal_add_id, param_pal_remove_id, param_reroll_id, param_reset_id, param_slider_id,
+    param_text_id,
 };
 pub use ids::{
     MAX_ENUM_OPTIONS, MAX_PARAM_ROWS, param_grad_swatch_id, param_pal_swatch_id, param_swatch_id,
@@ -514,6 +550,7 @@ impl ParamRow {
             Self::Gradient(r) => vec![r.name],
             Self::Palette(r) => vec![r.name],
             Self::Source(r) => vec![r.param],
+            Self::File(r) => vec![r.name],
             // Uma cor é QUATRO params (o swatch dobra RGBA), então resetá-la é resetar os quatro.
             Self::Color(r) => r.channels.to_vec(),
             // E um picker de canal é dois: a coluna (texto) e o modo (f32) que a acompanha.

@@ -21,9 +21,9 @@ use std::collections::BTreeMap;
 
 mod ui;
 pub use ui::{
-    Coupling, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange, ParamGate,
-    ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget, ReadChannel,
-    card_title,
+    Coupling, FileKind, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange,
+    ParamGate, ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget,
+    ReadChannel, card_title,
 };
 
 /// The param UNIT vocabulary (doc 88, Wave A) — a sibling module rather than more

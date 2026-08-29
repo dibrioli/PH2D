@@ -8,6 +8,7 @@
 //! have cut a single `match` on `ParamWidget` across two files, which is cutting
 //! through the middle of one thing rather than along a seam.
 
+use super::params_file;
 use crate::motion_state::MotionState;
 use crate::render_loop::motion_bridge::{backdrops, color, gpu, subgraph};
 
@@ -153,6 +154,25 @@ pub(super) fn apply_param_edits(
                 // Os DOIS canais são limpos com o mesmo nome porque um param viaja por um só
                 // — e qual deles é conhecimento que apodrece se a UI o carregar. Limpar o que
                 // não existe custa uma busca falhada.
+                // **Escolher um ficheiro** — o painel PEDE, a shell abre. O diálogo congela o
+                // loop, e por isso passa pela porta que o declara (`modal::pick_file`, via
+                // `params_file::pick`); o filtro sai da espécie que o `ParamUiHint` declara,
+                // nunca de uma lista escrita aqui.
+                //
+                // ⚠️ Cancelar não escreve nada e não toca o nó: sai por `continue`, então nem
+                // a reparação de fios órfãos corre. *Um gesto abandonado não é uma edição.*
+                MotionParamIntent::PickFile { node, param } => {
+                    let nid = NodeId(node);
+                    if motion.doc.graph.node(nid).is_none() {
+                        continue;
+                    }
+                    let Some(path) = params_file::pick(motion, nid, param) else {
+                        continue;
+                    };
+                    motion.doc.graph.set_text_param(nid, param, path);
+                    motion.pump.mark_dirty();
+                    nid
+                }
                 MotionParamIntent::ResetParam { node, param } => {
                     let nid = NodeId(node);
                     if motion.doc.graph.node(nid).is_none() {

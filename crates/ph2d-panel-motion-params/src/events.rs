@@ -225,6 +225,18 @@ pub(crate) fn on_click(id: NodeId, snap: &ParamsSnapshot) -> EventOutcome {
                     return EventOutcome::Consumed;
                 }
             }
+            ParamRow::File(row) if id == crate::snapshot::param_file_browse_id(slot) => {
+                // ⚠️ O painel **não abre o diálogo**: ele pede. Um `rfd::FileDialog` congela o
+                // loop e só a shell tem a porta que declara o congelamento (`modal::pick_file`),
+                // e só ela sabe que extensões este build lê. O intent leva o par
+                // `(nó, param)` e mais nada — a shell resolve o resto do `ParamUiHint` que ela
+                // própria publicou.
+                push_param_intent(MotionParamIntent::PickFile {
+                    node: snap.node,
+                    param: row.name,
+                });
+                return EventOutcome::Consumed;
+            }
             ParamRow::Source(row) => {
                 // A source chip (doc 65): clicking a published name writes it to the text
                 // param — the same channel the raw field below writes, one source of truth.
@@ -291,6 +303,7 @@ pub(crate) fn on_text_commit(
                 ParamRow::Text(row) => row.name,
                 ParamRow::Channels(row) => row.text_param,
                 ParamRow::Source(row) => row.param,
+                ParamRow::File(row) => row.name,
                 _ => return EventOutcome::Ignored,
             };
             push_param_intent(MotionParamIntent::SetTextParam {

@@ -224,6 +224,21 @@ pub(crate) fn paint_rows(
                     theme,
                 );
             }
+            ParamRow::File(row) => {
+                y = kinds::paint_file_row(
+                    row,
+                    i,
+                    inner_x,
+                    inner_w,
+                    row_gap,
+                    y,
+                    store,
+                    hit_index,
+                    scene,
+                    text_system,
+                    theme,
+                );
+            }
             ParamRow::Source(row) => {
                 y = paint_source_row(
                     row,

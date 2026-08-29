@@ -4,6 +4,7 @@
 //! is `rows_paint`'s import scope; the row structs come from the crate root.
 
 use super::*;
+use crate::param_file_browse_id;
 use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
 
@@ -471,4 +472,98 @@ pub(super) fn paint_toggle_row(
     hit_index.register(cb_id, crect);
     y += ROW_H_PX + row_gap;
     y
+}
+
+/// Largura do botão *Browse…* de uma [`FileRow`].
+///
+/// ⚠️ **Não é medida do texto porque não há medidor de texto exposto aqui** — a mesma razão
+/// (e o mesmo compromisso) do [`DRIVER_COL_W`] acima. O rótulo é curto e constante, e o corte
+/// que sobra é o `max_w` que todo rótulo deste painel já sofre.
+const BROWSE_W: f32 = 84.0; // LITERAL-PX-OK: file-row browse button (chrome-specific)
+
+/// A **File** row: rótulo + botão *Browse…* na mesma linha, o caminho editável por baixo, e a
+/// marca de **missing footage** quando o caminho não nomeia nada.
+///
+/// ⚠️ **O campo continua editável, de propósito.** Um diálogo é a forma *confortável* de
+/// escolher; um caminho colado de um terminal, ou corrigido depois de mover a pasta, não pode
+/// exigir abrir uma janela do sistema. O diálogo ESCREVE o campo — ele não o substitui —, que
+/// é a mesma relação que um chip de [`SourceRow`] tem com o campo dele.
+///
+/// ⚠️ **A marca de ausência é a razão de a row existir**, e não enfeite: sem ela um caminho
+/// que aponta para nada lê-se exatamente como um caminho válido, e o nó devolve silêncio (um
+/// campo de zeros) sem que nada na tela diga porquê. É o *missing footage* que todo DCC sabe
+/// nomear — dito, aqui, no sítio onde o artista o pode corrigir.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_file_row(
+    row: &crate::FileRow,
+    i: usize,
+    inner_x: f32,
+    inner_w: f32,
+    row_gap: f32,
+    mut y: f32,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) -> f32 {
+    let label_font = TypeToken::Sm.px();
+    let btn = Rect::new(
+        inner_x + (inner_w - BROWSE_W).max(0.0),
+        y,
+        BROWSE_W.min(inner_w),
+        ROW_H_PX,
+    );
+    paint_text(
+        text_system,
+        scene,
+        &row.label,
+        inner_x,
+        y + (ROW_H_PX - label_font) * 0.5,
+        label_font,
+        (inner_w - BROWSE_W - Spacing::Sm.px()).max(0.0),
+        resolve(ColorToken::Text2, theme),
+    );
+    let bid = param_file_browse_id(i);
+    paint_segmented_button(
+        btn,
+        "Browse\u{2026}",
+        false,
+        store.button_visual(bid),
+        scene,
+        text_system,
+        theme,
+    );
+    hit_index.register(bid, btn);
+    y += ROW_H_PX + Spacing::Xs.px();
+
+    let field = Rect::new(inner_x, y, inner_w, ROW_H_PX);
+    crate::text_rows::paint_text_field(
+        field,
+        "e.g. /home/you/song.wav",
+        param_text_id(i),
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    y += ROW_H_PX;
+
+    if row.missing {
+        y += Spacing::Xs.px();
+        paint_text(
+            text_system,
+            scene,
+            "File not found",
+            inner_x,
+            y,
+            label_font,
+            inner_w,
+            // O acento de ERRO: é a única coisa desta row que o artista tem de reparar.
+            resolve(ColorToken::Danger, theme),
+        );
+        y += label_font;
+    }
+    y + row_gap
 }

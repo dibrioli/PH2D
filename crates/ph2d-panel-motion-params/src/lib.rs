@@ -65,20 +65,27 @@ mod tests_unit;
 #[path = "lib_seed_tests.rs"]
 mod tests_seed;
 
+/// A row de **FICHEIRO** — o botão que abre o diálogo, o campo que continua editável, e a
+/// marca de *missing footage*.
+#[cfg(test)]
+#[path = "lib_file_tests.rs"]
+mod tests_file;
+
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};
 use number_rows::{
     ANGLE_DECIMALS, SEED_DECIMALS, mirror_chip, mirror_number, mirror_slider, next_seed,
     number_is_typing, number_value, paint_angle_row, paint_seed_row,
 };
 pub use snapshot::{
-    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, GradientRow, MAX_ENUM_OPTIONS,
+    AngleRow, ChannelsRow, ColorRow, CurveRow, EnumRow, FileRow, GradientRow, MAX_ENUM_OPTIONS,
     MAX_PARAM_ROWS, MotionParamIntent, PaletteRow, ParamRow, ParamsSnapshot, RowDisplay, ScalarRow,
     SeedRow, SourceRow, TextRow, ToggleRow, drain_param_intents, param_grad_swatch_id,
     param_pal_swatch_id, param_swatch_id, push_param_intent, scalar_text, set_current_params,
 };
 use snapshot::{
     CHANNELS_EXTRA_BASE, current_params, param_checkbox_id, param_chip_id, param_enum_id,
-    param_number_id, param_reroll_id, param_reset_id, param_slider_id, param_text_id,
+    param_file_browse_id, param_number_id, param_reroll_id, param_reset_id, param_slider_id,
+    param_text_id,
 };
 use text_rows::{mirror_text, paint_text_row, text_is_typing, text_value};
 
@@ -373,6 +380,16 @@ impl Panel for MotionParamsPanel {
                     text: String::new(),
                     caret: 0,
                     selection_anchor: None,
+                },
+            );
+            // O botão *Browse…* de uma File row. Sem isto ele pinta, entra no hit index, e
+            // fica MORTO sob o dedo — o mesmo defeito que a seta de reverter teve, e que o
+            // §5 do CLAUDE.md regista com o nome: *um controlo nunca pintado e um morto sob o
+            // ponteiro dão o MESMO report*.
+            store.register(
+                param_file_browse_id(slot),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
                 },
             );
             store.register(

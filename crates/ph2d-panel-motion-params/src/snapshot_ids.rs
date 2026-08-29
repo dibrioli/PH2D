@@ -184,8 +184,19 @@ pub(crate) fn param_reroll_id(slot: usize) -> NodeId {
 }
 
 /// Stable widget id for the `slot`-th Text row's `TextInput` field (formula editor).
+///
+/// ⚠️ **A [`crate::FileRow`] reuses it for its path field** — deliberately, and it is the
+/// same reuse a `Channels` row's *Custom…* field and a `Source` row's field already make:
+/// one text field per slot, whoever the row is. `on_text_commit` is the single place that
+/// decides which param the buffer belongs to, so a fourth reader is a `match` arm rather
+/// than a second pool nobody registers.
 pub(crate) fn param_text_id(slot: usize) -> NodeId {
     fnv_id(&format!("motion_param/text/{slot}"))
+}
+
+/// The `slot`-th File row's **Browse…** button — the one that opens the OS dialog.
+pub(crate) fn param_file_browse_id(slot: usize) -> NodeId {
+    fnv_id(&format!("motion_param/file/{slot}/browse"))
 }
 
 /// The `slot`-th Curve row's **editor parent** id — the `CurvePoint.parent` every

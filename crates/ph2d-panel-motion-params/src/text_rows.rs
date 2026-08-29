@@ -86,8 +86,36 @@ pub(crate) fn paint_text_row(
         resolve(ColorToken::Text2, theme),
     );
     let fy = rect.y + label_font + Spacing::Xs.px();
-    let field = Rect::new(rect.x, fy, rect.w, ROW_H_PX);
+    paint_text_field(
+        Rect::new(rect.x, fy, rect.w, ROW_H_PX),
+        placeholder,
+        id,
+        store,
+        hit_index,
+        scene,
+        text_system,
+        theme,
+    );
+    label_font + Spacing::Xs.px() + ROW_H_PX
+}
 
+/// **O campo, sem o rótulo** — a metade que [`paint_text_row`] desenha por baixo do dele, e
+/// que a `File` row precisa de pôr noutro sítio (o botão *Browse…* ocupa a linha do rótulo).
+///
+/// ⚠️ Extraído em vez de copiado porque *a mesma lei escrita em dois sítios ainda não é uma
+/// lei*: quem lê o buffer, quem decide a moldura, e quem regista o hit-rect têm de ser o mesmo
+/// código, senão um campo passa a aceitar o dedo num rectângulo e a desenhar-se noutro.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_text_field(
+    field: Rect,
+    placeholder: &str,
+    id: NodeId,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
     let (state, text, caret, anchor) = match store.get(id) {
         Some(InteractiveState::TextInput {
             state,
@@ -111,5 +139,4 @@ pub(crate) fn paint_text_row(
         theme,
     );
     hit_index.register(id, field);
-    label_font + Spacing::Xs.px() + ROW_H_PX
 }

@@ -64,6 +64,12 @@ pub(crate) mod params_visible;
 #[path = "motion_bridge_params_visible_tests.rs"]
 mod params_visible_tests;
 
+/// A resolução do `ParamWidget::File`: quem abre o diálogo e quem sabe que extensões este
+/// build lê. Fica na shell porque a cerca do `audio.bands` é estrutural (ele não depende de
+/// crate de áudio nenhuma), e o diálogo tem de passar pela porta que declara o congelamento.
+#[path = "motion_bridge_params_file.rs"]
+pub(crate) mod params_file;
+
 #[path = "motion_bridge_params_edit.rs"]
 mod params_edit;
 use params_edit::apply_param_edits;
@@ -328,6 +334,28 @@ pub(crate) fn build_params_snapshot(
                 name: h.param,
                 label: h.label.to_string(),
                 value,
+            }));
+            continue;
+        }
+        // Um CAMINHO de ficheiro: o campo editável, o botão que abre o diálogo, e a marca de
+        // ausência. ⚠️ O `Path::exists` corre AQUI, uma vez por quadro por row — o painel não
+        // pode tocar no disco enquanto pinta, e é a única informação desta row que o artista
+        // não tem outra forma de ver (um caminho que aponta para nada lê-se exactamente como
+        // um caminho bom, e o nó responde com silêncio).
+        if let ParamWidget::File { .. } = h.widget {
+            let value = motion
+                .doc
+                .graph
+                .node_text_param_overrides(nid)
+                .and_then(|m| m.get(h.param))
+                .cloned()
+                .unwrap_or_default();
+            let missing = !value.is_empty() && !std::path::Path::new(&value).exists();
+            rows.push(ParamRow::File(ph2d_panel_motion_params::FileRow {
+                name: h.param,
+                label: h.label.to_string(),
+                value,
+                missing,
             }));
             continue;
         }

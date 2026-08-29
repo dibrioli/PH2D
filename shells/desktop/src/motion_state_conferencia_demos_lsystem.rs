@@ -41,8 +41,9 @@ const COL_W: f32 = 3.2;
 const TRUNK_W: f32 = 0.09;
 /// Quantos segundos o relógio da quinta coluna leva a crescer e a voltar.
 const GROW_PERIOD: f32 = 6.0;
-/// Até onde o relógio faz o arbusto crescer.
-const GROW_MAX: f32 = 4.0;
+/// Até onde o relógio faz a samambaia crescer. `6` dá 64 elementos no pico — densidade
+/// comparável às outras quatro colunas, que ficam entre 26 e 64.
+const GROW_MAX: f32 = 6.0;
 /// Quanto a quarta planta verga.
 ///
 /// ⚠️ **É um número de DEMO, e a barra é a vista.** A lei do ABOP anula-se quando o ramo já
@@ -94,15 +95,30 @@ pub(crate) const PLANTS: &[(&str, &str, &str, f32, f32, f32, f32)] = &[
         25.0,
     ),
     (
-        "5. arbusto, a CRESCER",
-        "F",
-        "F -> F[+F]F[-F]F",
+        "5. samambaia, a CRESCER",
+        "A(step)",
+        FERN,
         GROW_MAX,
         1.0,
         0.0,
-        25.7,
+        28.0,
     ),
 ];
+
+/// **A gramática que de facto CRESCE** — o eixo principal estende-se e cada nó deixa um ramo
+/// lateral, e o `F` é TERMINAL (nenhuma regra o reescreve).
+///
+/// ⚠️⚠️ **A 1.ª versão desta coluna usava o arbusto clássico do ABOP (`F -> F[+F]F[-F]F`) e
+/// PISCAVA** — report do Enio, 2026-08-28: *"a cada ramo que vai nascer tudo se apaga e aparece
+/// de vez"*. Aquela regra reescreve o próprio símbolo que desenha, então ao fim de cada
+/// passagem a planta INTEIRA é nova: não há nada velho contra o qual um rebento se destaque, e
+/// a fracção encolhia tudo (altura medida: `13,5 → 10,1 → 40,5 → 30,4`).
+///
+/// O nó passou a recusar a fracção nesse caso (ver `turtle::walk`), o que tira o pisca-pisca —
+/// mas uma gramática de REFINAMENTO continua a não ter crescimento para mostrar, e esta coluna
+/// existe para mostrar crescimento. ⇒ a gramática é outra, e a altura dela sobe **sem uma
+/// queda**: `1,31 → 2,18` ao longo de três gerações.
+const FERN: &str = "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)";
 
 /// Três produções para o mesmo predecessor: uma que se abre, uma que se dobra à esquerda, e
 /// uma que só continua. Os pesos somam livremente — o nó normaliza.

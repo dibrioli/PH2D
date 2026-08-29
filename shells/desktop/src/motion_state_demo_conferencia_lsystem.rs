@@ -21,8 +21,10 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
      outra: e' o que quer dizer «esta planta sorteia como se ramifica».
   4. A PLANTA 1 COM GRAVIDADE. As pontas vergam para baixo. Compare com a 1: a
      forma e' a mesma, a inclinacao nao.
-  5. O ARBUSTO A CRESCER. O numero de geracoes esta ligado a um relogio, entao ela
-     cresce e volta a encolher, continuamente. ESTA E' A LEITURA MAIS IMPORTANTE."
+  5. A SAMAMBAIA A CRESCER. O numero de geracoes esta ligado a um relogio, entao ela
+     cresce e volta a encolher, CONTINUAMENTE -- os rebentos novos esticam a partir do
+     ramo que ja' la' estava, e o resto da planta nao se mexe.
+     ESTA E' A LEITURA MAIS IMPORTANTE."
     );
     for (i, label) in conferencia_demos_lsystem::labels().enumerate() {
         eprintln!("  {}. {label}", i + 1);
@@ -44,6 +46,7 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
     · a 2 e a 3 sairem IGUAIS (a semente deixou de valer);
     · a 1 e a 4 sairem iguais (a gravidade nao chegou);
     · a 5 ficar parada, ou crescer aos SALTOS em vez de continuamente;
+    · a 5 APAGAR-SE e voltar de vez a cada ramo novo (era o defeito de 28/08);
     · alguma planta sair como uma bola de pontos do mesmo tamanho (a espessura morreu);
     · alguma planta sair de cabeca para baixo, ou fora do ecra;
     · o app engasgar ao arrastar «Generations» ate ao fim."

@@ -11,6 +11,27 @@ use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::value::CookValue;
 
 /// Coze o documento da cena e devolve a nuvem de posições de cada planta.
+/// As nuvens de posições no instante `t`.
+fn plants_at(t: f64) -> Vec<Vec<[f32; 2]>> {
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
+    let mut doc = MotionDoc::default();
+    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let mut cook = Cook::new();
+    sinks
+        .iter()
+        .map(
+            |s| match &cook.cook(&doc.graph, &reg, *s, t).expect("coze")[0] {
+                CookValue::Instances(st) => match st.get("P") {
+                    Some(Column::Vec2(v)) => v.clone(),
+                    _ => Vec::new(),
+                },
+                other => panic!("esperava instancias, veio {other:?}"),
+            },
+        )
+        .collect()
+}
+
 fn plants() -> Vec<Vec<[f32; 2]>> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
@@ -34,14 +55,27 @@ fn plants() -> Vec<Vec<[f32; 2]>> {
 
 /// **Toda planta desenha alguma coisa** — o controlo mais barato e o que apanha uma cena que
 /// monta um grafo e cozinha o vazio.
+///
+/// ⚠️ **Medida no PICO do ciclo, e não em `t = 0`.** O tamanho da 5.ª é função do relógio (o
+/// `Generations` dela vem de um LFO), então num instante qualquer ela pode estar legitimamente
+/// pequena — a 1.ª redacção deste gate lia `t = 0`, apanhava-a a meio do ciclo com 8 elementos
+/// e acusava a cena de estar vazia. *Uma régua fixa num instante mede o relógio, não a planta.*
 #[test]
 fn every_plant_in_the_scene_actually_grows() {
-    for (k, p) in plants().iter().enumerate() {
+    let peak: Vec<usize> = (0..12).map(|k| plants_at(f64::from(k) * 0.4)).fold(
+        vec![0usize; PLANTS.len()],
+        |acc, now| {
+            acc.iter()
+                .zip(&now)
+                .map(|(a, p)| (*a).max(p.len()))
+                .collect()
+        },
+    );
+    for (k, n) in peak.iter().enumerate() {
         assert!(
-            p.len() > 20,
-            "a planta {} saiu com {} elementos",
-            PLANTS[k].0,
-            p.len()
+            *n > 20,
+            "a planta {} saiu com {n} elementos no pico",
+            PLANTS[k].0
         );
     }
 }

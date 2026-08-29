@@ -140,6 +140,12 @@ impl Out {
     }
 }
 
+/// Os símbolos que fazem nascer um elemento — os únicos cuja idade decide se há crescimento
+/// para mostrar. Um `[`, um `+` ou um `!` da geração nova não são um rebento.
+fn draws_or_marks(sym: u8) -> bool {
+    matches!(sym, b'F' | b'G' | b'f' | b'g' | b'J' | b'K' | b'M')
+}
+
 /// `(cos, sin, 1/‖(cos, sin)‖)` na direcção `heading` — os **três** separados, e a separação
 /// é o gate.
 ///
@@ -233,13 +239,43 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         0,
         b'^',
     );
+    // ⭐⭐⭐ **A FRACÇÃO SÓ SE APLICA SE HOUVER ALGO VELHO PARA CONTRASTAR.**
+    //
+    // ⚠️ **Report do Enio, 2026-08-28: *"a cada ramo que vai nascer tudo se apaga e aparece de
+    // vez"*** — e a medição dá-lhe razão: com a gramática clássica `F -> F[+F]F[-F]F` a altura
+    // da planta CAI a 25 % em cada cruzamento de geração e volta a subir (13,5 → 10,1 → 40,5
+    // → 30,4). Não é a fracção estar partida: é ela não ter sujeito.
+    //
+    // O mecanismo: aquela regra reescreve **o próprio símbolo que desenha**, então ao fim de
+    // cada passagem **todo** módulo de desenho é da geração mais nova — «o rebento» é a planta
+    // inteira, e escalar «o rebento» escala tudo. A lei estava certa e o conjunto a que ela se
+    // aplica estava vazio de contraste.
+    //
+    // ⇒ Se nenhum módulo de desenho for VELHO, a geração é INTEIRA. A planta passa a saltar
+    // entre inteiros (que é honesto: aquela gramática de facto refina a planta toda, e triplica
+    // de altura a cada passagem) em vez de encolher para nada e voltar — *um passo é uma
+    // mudança, um pisca-pisca é uma mentira sobre o que crescer parece*.
+    //
+    // ⛔ **A alternativa NÃO foi construída, e está nomeada:** escalar a planta INTEIRA por um
+    // factor que a faça coincidir com a geração anterior em `frac = 0` faria mesmo uma
+    // gramática de refinamento animar (ela dá um *zoom* auto-semelhante). Custa uma segunda
+    // derivação para medir a razão, e muda o que `Generations` quer dizer — é decisão de
+    // produto, não uma correcção.
+    let has_old_drawing = chain
+        .iter()
+        .any(|m| m.born != set.youngest.0 && draws_or_marks(m.sym));
+    let youngest = if has_old_drawing {
+        set.youngest
+    } else {
+        (set.youngest.0, 1.0)
+    };
     let mut stack: Vec<State> = Vec::new();
     let mut i = 0usize;
     while i < chain.len() {
         let m = &chain[i];
         // Quanto desta geração já cresceu: `1` para tudo o que não é a mais nova.
-        let grow = if m.born == set.youngest.0 {
-            set.youngest.1
+        let grow = if m.born == youngest.0 {
+            youngest.1
         } else {
             1.0
         };

@@ -229,3 +229,71 @@ fn an_emptied_text_param_falls_back_to_the_factory_grammar() {
     let b = default_tree(5.0);
     assert_eq!(a.count(), b.count());
 }
+
+/// ⭐⭐⭐ **SUBIR AS GERAÇÕES NUNCA ENCURTA A PLANTA** — a lei que o report do Enio enuncia,
+/// para TODA família de gramática.
+///
+/// ⚠️⚠️ **Report de 2026-08-28: *"a cada ramo que vai nascer tudo se apaga e aparece de vez"***.
+/// Medido: com o arbusto clássico do ABOP a altura caía a 25 % em cada cruzamento de geração e
+/// voltava a subir — `13,5 → 10,1 → 40,5 → 30,4`.
+///
+/// O mecanismo: aquela regra **reescreve o próprio símbolo que desenha**, então ao fim de cada
+/// passagem TODO módulo de desenho é da geração nova. «O rebento» era a planta inteira, e
+/// escalá-lo escalava tudo. *A lei estava certa e o conjunto a que ela se aplica estava vazio
+/// de contraste.*
+///
+/// ⚠️ **As três famílias estão aqui de propósito**, e a do meio é a que falhava: um gate só
+/// sobre a gramática de fábrica (que tem `F` terminal) fica verde para sempre — foi assim que
+/// isto shipou. *Uma fixtura que não contém o fenómeno aprova a cura de qualquer coisa.*
+#[test]
+fn raising_the_generations_never_shortens_the_plant() {
+    for (name, axiom, rules) in [
+        ("crescimento (F terminal)", DEFAULT_AXIOM, DEFAULT_RULES),
+        ("refinamento (o F reescreve-se)", "F", "F -> F[+F]F[-F]F"),
+        ("duplicacao pura", "F", "F -> FF"),
+    ] {
+        let mut prev = f32::MIN;
+        let mut heights = Vec::new();
+        for k in 0..=32 {
+            let g = 2.0 + k as f32 * 0.125;
+            let h = height(&probe_build(axiom, rules, g, &[]));
+            heights.push((g, h));
+            assert!(
+                h >= prev - 1e-4,
+                "{name}: a altura RECUOU de {prev} para {h} em g = {g} — a planta apaga-se e \
+                 volta. Percurso: {heights:?}"
+            );
+            prev = h;
+        }
+        // E o CONTROLE: a varredura tem de ter feito a planta crescer de facto, senão a
+        // monotonia acima seria a de uma linha constante.
+        assert!(
+            heights.last().unwrap().1 > heights[0].1 * 1.5,
+            "{name}: a fixtura nao cresceu o bastante para a monotonia querer dizer algo: \
+             {heights:?}"
+        );
+    }
+}
+
+/// ⚠️ **E a fracção continua VIVA onde ela tem sujeito** — a metade oposta.
+///
+/// Sem isto, a cura acima passaria com a fracção desligada em toda a parte: a planta saltaria
+/// entre inteiros sempre, e o crescimento contínuo — que é a razão de existir deste nó —
+/// morreria em silêncio.
+#[test]
+fn the_fraction_is_still_alive_where_something_old_survives() {
+    let a = height(&default_tree(4.0));
+    let b = height(&default_tree(4.5));
+    let c = height(&default_tree(5.0));
+    assert!(
+        b > a + 1e-4 && b < c - 1e-4,
+        "com `F` terminal a meia geracao tem de ficar ENTRE as duas inteiras: {a} / {b} / {c}"
+    );
+    // E na gramática de refinamento a fracção é inerte, de propósito — o degrau é o produto.
+    let r = |g| height(&probe_build("F", "F -> F[+F]F[-F]F", g, &[]));
+    assert_eq!(
+        r(4.25).to_bits(),
+        r(4.75).to_bits(),
+        "numa gramatica que reescreve tudo, a fraccao nao tem sujeito e o passo e' inteiro"
+    );
+}

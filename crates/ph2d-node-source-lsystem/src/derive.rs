@@ -291,6 +291,16 @@ fn pick(rules: &[Rule], hits: &[usize], seed: u32, step: u16, i: usize) -> Optio
 /// O resultado de uma derivação.
 pub(crate) struct Derived {
     pub chain: Vec<Module>,
+    /// ⭐⭐⭐ **A CADEIA DA GERAÇÃO ANTERIOR** — o oráculo do tamanho de onde a fracção parte.
+    ///
+    /// A âncora do crescimento suave de uma gramática de refinamento é *«qual é o factor que
+    /// põe a geração nova, com as viragens fechadas, exactamente por cima da anterior?»*. Esse
+    /// factor é **geométrico** e não se conta a partir da gramática — mede-se, percorrendo as
+    /// duas. É o preço que o Enio aprovou em 2026-08-29 (*"desenhar a planta duas vezes"*), e
+    /// ele só se paga numa geração FRACCIONÁRIA: numa inteira nada disto corre.
+    ///
+    /// Vazia quando não houve reescrita nenhuma.
+    pub previous: Vec<Module>,
     /// Quantas gerações COMPLETAS correram. Menor do que o pedido ⇒ o orçamento saturou.
     pub generations: u16,
 }
@@ -307,11 +317,12 @@ pub(crate) fn derive(
     let mut chain: Vec<Module> = axiom.to_vec();
     chain.truncate(budget);
     let mut done = 0u16;
+    let mut previous: Vec<Module> = Vec::new();
     if !rules.is_empty() {
         for step in 1..=gens {
             match rewrite(&chain, rules, step, seed, budget, params) {
                 Some(next) => {
-                    chain = next;
+                    previous = std::mem::replace(&mut chain, next);
                     done = step;
                 }
                 None => break,
@@ -321,6 +332,7 @@ pub(crate) fn derive(
     Derived {
         chain,
         generations: done,
+        previous,
     }
 }
 

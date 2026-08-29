@@ -120,18 +120,56 @@ fn the_tip_growers_animate_smoothly_and_the_others_are_a_different_family() {
     }
 }
 
-/// ⛔ **A RECUSA, EXECUTÁVEL: o que o `Grow Angle` FAZ, e o que ele não prova.**
+/// ⛔⛔ **A RECUSA É DE PRODUTO, NÃO DE MEDIÇÃO — e a diferença é o assunto deste gate.**
 ///
-/// ⚠️ Sem este gate, a próxima pessoa lê o cabeçalho, acha que o interruptor é a cura e
-/// liga-o por default. *Uma recusa medida só sobrevive se for um gate.*
+/// ⚠️⚠️ **A 1.ª redacção afirmava que o `Grow Angle` NÃO alisava, e ficou falsa no mesmo dia.**
+/// Com a âncora medida ele alisa, e por muito: Bush **`69 % → 9 %`**, Weed `53 % → 9 %`, Koch
+/// `69 % → 17 %`, Dragon `34 % → 31 %`. O que estava errado era eu ter parado de procurar a
+/// âncora — ela não se conta a partir da gramática (a Koch põe 5 módulos e cresce `3,00×`),
+/// mede-se percorrendo as duas gerações.
+///
+/// ⛔ **E mesmo assim ele shipa desligado, por VEREDITO do dono do produto** (2026-08-29:
+/// *"os que vc tentou corrigir não ficarão bons"*): os quatro ficam em `9–31 %` contra os
+/// `5–8 %` de quem cresce pela ponta, e o gesto que se vê é a figura **desdobrar-se**, que não
+/// é crescer.
+///
+/// ⭐ *Uma recusa MEDIDA e um veredito de PRODUTO são coisas diferentes, e vestir um de outro
+/// é o modo de falha que esta linha já cometeu hoje.* Este gate afirma as duas metades pelo
+/// que elas são: o número diz que a lei funciona, e o default diz que o dono não a quer ligada.
 #[test]
-fn the_angle_growth_moves_a_refinement_grammar_without_being_proven_to_smooth_it() {
+fn the_angle_growth_does_smooth_a_refinement_grammar_and_ships_off_by_product_verdict() {
     let bush = ls::PRESETS
         .iter()
         .find(|p| p.label == "Bush")
         .expect("o molde existe");
-    let cloud = |on: f32, g: f32| {
-        let s = ls::probe_build(
+    let off = worst_step(bush, &[]);
+    let on = worst_step(bush, &[(ls::param::CONTINUOUS_ANGLE, 1.0)]);
+    // 1. A lei FUNCIONA — e por uma margem que não é ruído.
+    assert!(
+        on < off * 0.5,
+        "o Grow Angle deixou de alisar o Bush ({:.0}% ligado contra {:.0}% desligado) — a \
+         ancora medida partiu-se, e o `previous` da derivacao e' o primeiro sitio a olhar",
+        on * 100.0,
+        off * 100.0
+    );
+    // 2. E MESMO ASSIM o produto shipa com ela desligada. ⚠️ É esta metade que morre no dia em
+    //    que alguém ligar o default sem falar com o dono.
+    let default = ls::MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == ls::param::CONTINUOUS_ANGLE)
+        .expect("o param existe")
+        .default;
+    assert_eq!(
+        default, 0.0,
+        "o `Grow Angle` shipa DESLIGADO por veredito do dono do produto (2026-08-29), nao por \
+         a lei nao funcionar — ver o doc deste gate antes de mexer"
+    );
+    // 3. ⚠️ E o CONTROLE da recusa: desligado, a fracção é INERTE numa gramática de
+    //    refinamento — o degrau inteiro é o produto, byte a byte.
+    let step = |g: f32| {
+        worst_step(bush, &[]);
+        ls::probe_build(
             bush.axiom,
             bush.rules,
             g,
@@ -139,44 +177,11 @@ fn the_angle_growth_moves_a_refinement_grammar_without_being_proven_to_smooth_it
                 (ls::param::MODE, ls::MODE_GRAMMAR as f32),
                 (ls::param::ANGLE, bush.angle),
                 (ls::param::STEP, bush.step),
-                (ls::param::CONTINUOUS_ANGLE, on),
             ],
-        );
-        match s.get("P") {
-            Some(Column::Vec2(v)) => v.clone(),
-            _ => Vec::new(),
-        }
+        )
+        .count()
     };
-    let dev = |g: f32| {
-        cloud(0.0, g)
-            .iter()
-            .zip(cloud(1.0, g))
-            .map(|(a, b)| ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2)).sqrt())
-            .fold(0.0f32, f32::max)
-    };
-    // 1. Ele MOVE — e o desvio CAI quando a geração fecha, que é a assinatura de uma viragem
-    //    a ABRIR (e não de uma figura a ser trocada por outra).
-    let (early, late) = (dev(3.25), dev(3.75));
-    assert!(
-        early > 1e-3,
-        "o Grow Angle nao move nada — knob morto ({early})"
-    );
-    assert!(
-        late < early,
-        "o desvio tem de CAIR quando a geracao fecha ({early} -> {late})"
-    );
-    // 2. E em geração INTEIRA não move NADA: a fracção é `1`, não há o que abrir.
-    assert_eq!(dev(4.0), 0.0, "numa geracao inteira nao ha' o que abrir");
-    // 3. ⛔ E NÃO alisa, pela única régua que existe.
-    let off = worst_step(bush, &[]);
-    let on = worst_step(bush, &[(ls::param::CONTINUOUS_ANGLE, 1.0)]);
-    assert!(
-        on >= off * 0.9,
-        "o Grow Angle ALISOU o Bush ({:.0}% contra {:.0}%) — a recusa do cabecalho deixou de \
-         valer e tem de ser reescrita",
-        on * 100.0,
-        off * 100.0
-    );
+    assert_eq!(step(3.25), step(3.75), "por omissao o passo e' inteiro");
 }
 
 /// ⭐ **Ele shipa DESLIGADO, e é BYTE-INERTE numa gramática que cresce pela ponta.**
@@ -263,4 +268,57 @@ fn the_step_scale_keeps_a_refinement_grammar_the_same_size_but_not_continuous() 
         worst_step(koch, &[(ls::param::STEP_SCALE, 1.0 / 3.0)]) > 0.20,
         "a Koch passou a ser continua so' com o Step Scale — reconfira a recusa do cabecalho"
     );
+}
+
+/// ⭐⭐⭐ **A ÂNCORA É O NÚMERO CERTO, E NÃO SÓ «UM NÚMERO QUE MELHORA».**
+///
+/// ⚠️⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU.** Trocar a pose de partida de
+/// `frac = 0` (viragens fechadas) por `frac = 1` (abertas) muda a âncora de `1/5` para `1/3` —
+/// e o gate irmão, que só perguntava *«melhorou 2×?»*, ficou verde com as duas. *Uma barra de
+/// «melhorou» não distingue duas âncoras que ambas melhoram.*
+///
+/// A régua é o próprio significado da âncora: com ela aplicada, a geração nova em `frac = 0`
+/// tem de ter **o tamanho da anterior**. É uma identidade, não uma desigualdade.
+#[test]
+fn the_anchor_puts_the_new_generation_exactly_on_top_of_the_previous_one() {
+    for (name, axiom, rules) in [
+        ("arbusto (com ramos)", "F", "F -> F[+F]F[-F]F"),
+        ("koch (curva pura)", "F", "F -> F+F-F-F+F"),
+        ("duplicacao", "F", "F -> FF"),
+    ] {
+        let anchor = ls::probe_anchor(axiom, rules, 4.0);
+        assert!(
+            (0.02..1.0).contains(&anchor),
+            "{name}: a ancora saiu {anchor}"
+        );
+        // A identidade: `size(n+1, frac->0)` == `size(n, inteira)`.
+        let at = |g: f32| {
+            let s = ls::probe_build(
+                axiom,
+                rules,
+                g,
+                &[
+                    (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+                    (ls::param::CONTINUOUS_ANGLE, 1.0),
+                ],
+            );
+            match s.get("P") {
+                Some(Column::Vec2(v)) if !v.is_empty() => {
+                    let x0 = v.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
+                    let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
+                    let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
+                    let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+                    (x1 - x0).max(y1 - y0)
+                }
+                _ => 0.0,
+            }
+        };
+        let (whole, just_after) = (at(4.0), at(4.0 + 1e-3));
+        let ratio = just_after / whole.max(1e-6);
+        assert!(
+            (0.97..1.03).contains(&ratio),
+            "{name}: logo depois da geracao 4 a figura mede {ratio:.3}x a de 4 — a ancora nao \
+             a poe por cima da anterior (ancora = {anchor:.4})"
+        );
+    }
 }

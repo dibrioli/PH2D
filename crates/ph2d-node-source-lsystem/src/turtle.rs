@@ -74,6 +74,12 @@ pub(crate) struct Setup {
     /// **E a viragem dela ABRE com a fracção** (*Continuous angles*). É a lei que anima uma
     /// gramática de REFINAMENTO, que não tem ponta nenhuma para esticar.
     pub(crate) continuous_angle: bool,
+    /// ⭐⭐⭐ **DE ONDE O COMPRIMENTO DA GERAÇÃO NOVA PARTE**, numa gramática de refinamento —
+    /// o factor que a põe, com as viragens fechadas, exactamente por cima da anterior.
+    ///
+    /// **MEDIDO** por quem chama (o [`crate::build`] percorre as duas cadeias), nunca contado
+    /// a partir da gramática: a razão é geométrica. `1.0` = sem âncora (o neutro).
+    pub(crate) anchor: f32,
     /// A geração mais nova e quanto dela já cresceu, `(geração, fracção)`. `fracção = 1`
     /// significa geração inteira.
     pub youngest: (u16, f32),
@@ -236,6 +242,26 @@ fn cut(chain: &[Module], from: usize) -> usize {
     chain.len()
 }
 
+/// **A maior dimensão da caixa que esta cadeia desenha** — o oráculo da âncora.
+///
+/// ⚠️ **Chama o `walk` e deita o stream fora, de propósito.** Uma segunda travessia «leve»
+/// seria a MESMA lei escrita duas vezes, e é a família de defeito que este módulo já pagou
+/// três vezes; o preço de uma alocação vale mais que a divergência. E ela **só corre numa
+/// geração fraccionária** — numa inteira a âncora não é precisa e ninguém a mede.
+pub(crate) fn span(chain: &[Module], set: &Setup) -> f32 {
+    let s = walk(chain, set);
+    match s.get("P") {
+        Some(Column::Vec2(v)) if !v.is_empty() => {
+            let x0 = v.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
+            let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
+            let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
+            let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+            (x1 - x0).max(y1 - y0)
+        }
+        _ => 0.0,
+    }
+}
+
 /// **Interpreta a cadeia** e devolve o stream de elementos.
 pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     let mut out = Out::with_capacity(chain.len() / 2 + 1);
@@ -307,19 +333,50 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     let has_old_drawing = chain
         .iter()
         .any(|m| m.born != set.youngest.0 && draws_or_marks(m.sym));
-    // ⚠️ **O comprimento continua GUARDADO pelo `has_old_drawing`** (a cura do pisca-pisca de
-    // 28/08 fica): sem nada velho, escalar o comprimento encolhe a planta inteira. O ÂNGULO
-    // não precisa da guarda — desdobrar não colapsa nada.
-    let len_frac = if set.continuous_length && has_old_drawing {
-        set.youngest.1
+    // ⭐⭐⭐ **DUAS LEIS, E O `has_old_drawing` ESCOLHE ENTRE ELAS** — a cura do report do Enio
+    // de 2026-08-29 (*"acho que o ideal é o crescimento suave"*).
+    //
+    // | família | de onde o comprimento novo PARTE | porquê |
+    // |---|---|---|
+    // | cresce pela PONTA (há desenho velho) | **`0`** | um rebento sai do nada e estica |
+    // | REFINA (não há) | **`1/spread`** | os `spread` sub-segmentos deitados em fila cobrem EXACTAMENTE o segmento que substituíram |
+    //
+    // ⚠️⚠️ **É a âncora `1/spread` que faltava, e é por isso que o `Step Scale` sozinho não
+    // curava**: ele aplica uma CONSTANTE, e o que a travessia precisa é de um LERP ancorado na
+    // taxa de expansão medida. Com as viragens novas fechadas e o passo a `1/spread`, a
+    // geração `n+1` desenha-se **por cima** da `n`; a partir daí a fracção abre as viragens e
+    // estica o passo, e a figura desdobra-se em vez de saltar.
+    //
+    // ⚠️ Numa gramática de refinamento o `+`/`-` da geração anterior **SOBREVIVE** (nenhuma
+    // regra o reescreve — só o `F` é reescrito), então fechar as viragens NOVAS deixa a forma
+    // antiga de pé. Foi essa a peça que a leitura do código deu e a intuição não.
+    let frac = set.youngest.1;
+    let (len_frac, ang_frac) = if has_old_drawing {
+        // A lei de sempre (a cura do pisca-pisca de 28/08): o rebento estica de zero. O ângulo
+        // é inerte aqui por construção — a viragem nova é seguida de um não-terminal que ainda
+        // não desenha nada.
+        (frac, frac)
     } else {
-        1.0
+        // A lei do REFINAMENTO: o passo parte da ÂNCORA MEDIDA, e as viragens abrem.
+        //
+        // ⛔ **A âncora NÃO se conta a partir da gramática, e tentei.** A `F -> F[+F]F[-F]F`
+        // põe **5** módulos de desenho por cada um e a figura cresce **3,00×** — dois deles
+        // estão dentro de parênteses e não estendem o caminho. A Koch põe 5 sem parênteses
+        // nenhum e cresce **3,00×** na mesma, porque as viragens a dobram. *A razão é
+        // geométrica; contar símbolos dá 5 onde a resposta é 3.*
+        // ⛔⛔ **VEREDITO DO DONO DO PRODUTO, 2026-08-29: *"os que vc tentou corrigir não
+        // ficarão bons"*** — e a medição concorda com ele. Mesmo com a âncora, os quatro ficam
+        // em `9 %`/`9 %`/`17 %`/`31 %` de pior passo contra os `5–8 %` dos que crescem pela
+        // ponta; e o que se vê não é crescer, é a figura **desdobrar-se**, que é outro gesto.
+        // ⇒ a lei fica atrás do `Grow Angle`, que shipa **DESLIGADO**: com ele desligado o
+        // caminho é byte-idêntico ao que sempre houve (o degrau inteiro).
+        if set.continuous_angle {
+            (set.anchor + (1.0 - set.anchor) * frac, frac)
+        } else {
+            (1.0, 1.0)
+        }
     };
-    let ang_frac = if set.continuous_angle {
-        set.youngest.1
-    } else {
-        1.0
-    };
+    let len_frac = if set.continuous_length { len_frac } else { 1.0 };
     let youngest = (set.youngest.0, len_frac);
     let mut stack: Vec<State> = Vec::new();
     let mut i = 0usize;

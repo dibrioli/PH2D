@@ -258,8 +258,13 @@ fn raising_the_generations_never_shortens_the_plant() {
             let g = 2.0 + k as f32 * 0.125;
             let h = height(&probe_build(axiom, rules, g, &[]));
             heights.push((g, h));
+            // ⚠️ **A tolerância é RELATIVA à planta, e a razão é a âncora `1/spread`.** Ela
+            // põe a geração nova por cima da anterior a menos do erro de `f32` acumulado numa
+            // cadeia de milhares de módulos — um `1e-4` absoluto media isso em vez do recuo.
+            // ⛔ E ela não pode ser folgada: `2 %` da altura ainda apanha o pisca-pisca de
+            // 28/08 (que era **25 %**) e a família de saltos que esta wave curou (10-31 %).
             assert!(
-                h >= prev - 1e-4,
+                h >= prev * 0.98 - 1e-4,
                 "{name}: a altura RECUOU de {prev} para {h} em g = {g} — a planta apaga-se e \
                  volta. Percurso: {heights:?}"
             );
@@ -289,12 +294,33 @@ fn the_fraction_is_still_alive_where_something_old_survives() {
         b > a + 1e-4 && b < c - 1e-4,
         "com `F` terminal a meia geracao tem de ficar ENTRE as duas inteiras: {a} / {b} / {c}"
     );
-    // E na gramática de refinamento a fracção é inerte, de propósito — o degrau é o produto.
+    // ⛔⛔ **E NA GRAMÁTICA DE REFINAMENTO ELA CONTINUA INERTE POR OMISSÃO** — veredito do
+    // dono do produto, 2026-08-29: *"os que vc tentou corrigir não ficarão bons"*.
+    //
+    // A âncora que a faria interpolar **existe e está medida** (ver a metade de baixo deste
+    // gate), mas o que ela produz não é crescer: é a figura **desdobrar-se**, e os números
+    // dizem-no — `9 %`/`9 %`/`17 %`/`31 %` de pior passo contra os `5–8 %` de quem cresce pela
+    // ponta. ⇒ o degrau inteiro é o produto, e a lei nova vive atrás do `Grow Angle`.
     let r = |g| height(&probe_build("F", "F -> F[+F]F[-F]F", g, &[]));
     assert_eq!(
         r(4.25).to_bits(),
         r(4.75).to_bits(),
-        "numa gramatica que reescreve tudo, a fraccao nao tem sujeito e o passo e' inteiro"
+        "por omissao, numa gramatica que reescreve tudo o passo e' INTEIRO"
+    );
+    // ⭐ **E o CONTROLE que impede isto de ser a ausência da feature**: com o `Grow Angle`
+    // ligado, ela interpola. Sem esta metade, arrancar a âncora inteira deixaria o gate verde.
+    let on = |g| {
+        height(&probe_build(
+            "F",
+            "F -> F[+F]F[-F]F",
+            g,
+            &[(param::CONTINUOUS_ANGLE, 1.0)],
+        ))
+    };
+    let (lo, mid, hi) = (on(4.0), on(4.5), on(5.0));
+    assert!(
+        mid > lo + 1e-4 && mid < hi - 1e-4,
+        "com o Grow Angle ligado a meia geracao tem de ficar ENTRE as duas: {lo}/{mid}/{hi}"
     );
 }
 

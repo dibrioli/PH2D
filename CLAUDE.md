@@ -626,7 +626,23 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   arredondamentos exactos **encadeados** compõem o factor, e a cena 1 do smoke marchava acima do seguro
   desde que existe. Mecanismo, tabelas e provas de mutação: [doc 06 §69–§81](docs/3DModeling/06_resultados_cena_e_gizmo.md)
   + [handoff de 26/08](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md).
-  **Aberto:** ⛔ **A BASE FICA:** o quadro de movimento custa `26,7 ms` contra um orçamento de `16,7`
+  ⭐⭐ **O catálogo de formas FECHOU** (W100–W103): **16 entradas** numa **paleta com busca** (`A` ou
+  *+ Add shape…*), agrupadas por família — a fileira de chips cortava em `MAX_MODES = 8` e já tinha 8.
+  O `Primitive` tem **14** famílias, e cada linha do catálogo carrega o **próprio construtor**
+  (⛔ as quatro constantes `SHAPES.len() − N` morreram: acrescentar no fim fazia o botão *Extrude*
+  abrir o diálogo de escultura, **sem erro nenhum**). ⭐⭐⭐ **E o filete alcança TODA aresta de toda
+  forma** (W104): `0,0 %` da superfície sobre um vinco com o filete a metade do limite, nas dez formas
+  que o têm — medido por uma sonda que **acha** as arestas pela variação da normal, e não por uma lista
+  escrita à mão. ⚠️ Antes disso o `round` do **cone** e do **prisma** era **inerte** (`+0,0 %` de
+  volume, campo bit a bit igual) e o da **cunha** fazia a peça **crescer 41 %**; o **arco de toro** não
+  tinha controle de filete nenhum. `FIELD_DOC_VERSION` **4 → 10**. Cena **`=11`**.
+  **Aberto:** ⏳ **O filete só é um ARCO a 90°** — o operador recua o vértice `(1 − 1/√2)·r/sin α` e um
+  arco verdadeiro recua `r·(1/sin α − 1)`; numa ponta de estrela (19°) isso é **`2,29×` menos** filete
+  do que o número diz. Hoje compensa-se **só nas quinas AGUDAS** (`max(1, factor)`), e as duas curas
+  gerais estão **medidas e rejeitadas** (doc 06 §102.5 e §104.3) · ⏳ o teto de `round` da **estrela** é
+  `12,3 %` do bordo, contra `43–60 %` de todas as outras formas — ela é a única em que a mistura é uma
+  faixa estreita a atravessar uma face grande ·
+  ⛔ **A BASE FICA:** o quadro de movimento custa `26,7 ms` contra um orçamento de `16,7`
   (era `69` antes de 26/08) — a marcha é `80 %` dele, com `8,7` amostras por pixel, e o custo é **por
   aresta tocada**; ⛔ a **sobre-relaxação** está fora (a contagem de passos já é mínima) e atacar a
   **montagem** tem tecto **medido de `20 %`** · ⏸️ baixar as arestas do contorno a mexer
@@ -661,10 +677,15 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   ⚠️ **Preferência fora do repo:** `~/.ph2d/prefs.txt` — um `reduced_motion=1` esquecido reprova
   smokes sobre produto correto **em todo o resto do app**, e a viagem entre vistas é a excepção.
   **Ler:** [`docs/3DModeling/`](docs/3DModeling/) ·
-  [`06_resultados_cena_e_gizmo.md`](docs/3DModeling/06_resultados_cena_e_gizmo.md) §1–§81 (uma seção
+  [`06_resultados_cena_e_gizmo.md`](docs/3DModeling/06_resultados_cena_e_gizmo.md) §1–§104 (uma seção
   por wave, com a tabela medida e as provas de mutação; o **§13.0** é a lista viva do que está aberto,
   **auditada contra o código** em 26/08) ·
-  [handoffs](docs/3DModeling/handoffs/README.md)
+  [`07_fillet_e_chanfro_por_aresta.md`](docs/3DModeling/07_fillet_e_chanfro_por_aresta.md) ·
+  [`08_formas_por_formula.md`](docs/3DModeling/08_formas_por_formula.md) ·
+  [handoff de 29/08](docs/3DModeling/handoffs/HANDOFF_INTEGRACAO_line_3DModeling_2026-08-29.md)
+  (⚠️ o §9 tem **quatro** coisas que uma leitura rápida do diff entende ao contrário — entre elas que o
+  `round` do cone e do prisma era **inerte**, não «fraco» — e o §10 as duas premissas que a
+  implementação refutou) · [handoffs](docs/3DModeling/handoffs/README.md)
 - **Flip** — animação 2D no idioma do Grease Pencil: tira de quadros, onion, tween v2 (correspondência por atribuição
   ótima + espiral logarítmica), **colorize LazyBrush**, multiplano 2.5D, airbrush, pressão, e o
   **motor novo de traço**, em que o traço deixa de ser rasterizado e passa a ser **PERCORRIDO**

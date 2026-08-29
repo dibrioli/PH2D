@@ -197,7 +197,7 @@ fn every_field_of_the_style_is_seen_by_the_change_detector() {
              controle e nada mudaria na tela (nem undo)"
         );
         // E o gravador realmente escreve o campo (o outro lado do mesmo pacto).
-        let written = m.onto(spec.width);
+        let written = m.onto(&spec, spec.width);
         assert!(
             m.differs_from(&spec) && !m.differs_from(&written),
             "`{field}` foi detectado mas NAO foi gravado pelo `onto`"
@@ -248,7 +248,7 @@ fn what_the_apply_writes_the_selection_reads_back() {
         marker_round: 0.5,
     };
     let width_world = 0.4;
-    let spec = ficha.onto(width_world);
+    let spec = ficha.onto(&StrokeSpec::new(ficha.color, width_world), width_world);
 
     let mut tool = VectorTool::default();
     // O documento fala MUNDO, a tool fala px de TELA — a conversão é do chamador.
@@ -287,7 +287,10 @@ fn adopting_a_style_does_not_arm_the_restyle() {
     use ph2d_tool_vector::VectorTool;
     let mut tool = VectorTool::default();
     assert!(!tool.take_apply_to_selected(), "o default nao arma");
-    tool.adopt_stroke(&style().onto(0.2), 10.0);
+    tool.adopt_stroke(
+        &style().onto(&StrokeSpec::new(style().color, 0.2), 0.2),
+        10.0,
+    );
     tool.adopt_fill([1, 2, 3, 4]);
     assert!(
         !tool.take_apply_to_selected(),
@@ -348,5 +351,224 @@ fn selecting_a_path_reseeds_the_store_not_only_the_tool() {
             < 1e-6,
         "o STORE ficou com o valor anterior: a barra de Width mostraria a largura errada \
          (track {track})"
+    );
+}
+
+// ── ⛔⛔ O REPORT DO ENIO, 2026-08-28: *"se ajustar width sai de pattern e vai para solid"* ───────
+
+/// Uma forma com traço **de padrão**, e a ficha da ferramenta com a mesma cor de recurso (que é o
+/// que a `seed_style_from_selection` adopta ao seleccioná-la).
+fn cena_com_traco_de_padrao() -> (VecScene, ph2d_vec_scene::VecPathId) {
+    let mut scene = VecScene::new();
+    let cor = super::style::rgba([11, 22, 33, 200]);
+    let mut s = ph2d_vec_scene::StrokeSpec::new(cor, 0.5);
+    s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(ph2d_vec_scene::PatternFill::new(
+        ph2d_vec_scene::PatternSource::Shape(7),
+        [3.0, 4.0],
+        cor,
+    )));
+    let id = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        stroke: Some(s),
+        ..VecPath::default()
+    });
+    (scene, id)
+}
+
+fn padrao_de(
+    scene: &VecScene,
+    id: ph2d_vec_scene::VecPathId,
+) -> Option<ph2d_vec_scene::PatternFill> {
+    scene
+        .path(id)
+        .and_then(|p| p.stroke.as_ref())
+        .and_then(ph2d_vec_scene::StrokeSpec::pattern)
+        .cloned()
+}
+
+/// ⛔⛔ **AJUSTAR A LARGURA NÃO PODE APAGAR O PADRÃO DO TRAÇO** (Enio, 2026-08-28).
+///
+/// ⚠️⚠️ **O defeito estava escrito como INVARIANTE** neste ficheiro: *"a ficha + a largura
+/// determinam o traço INTEIRO — nada do spec antigo sobrevive"*. Era verdade enquanto o traço tinha
+/// **uma** tinta possível; a wave A do plano 35 deu-lhe duas, e a frase passou a dizer *"toda
+/// edição de geometria do traço destrói a tinta autorada"*.
+///
+/// ⭐ **A lei certa já existia nesta casa, no PREENCHIMENTO** (`vector_bridge.rs`, report do Enio
+/// de 2026-07-08): *"a fill pick only replaces a Solid / None fill; it must NEVER clobber a
+/// gradient (use Fill Type -> Solid for that)"*. O traço nunca a aprendeu porque, até há dois dias,
+/// ele não tinha o que houvesse a preservar. *Uma invariante é uma afirmação sobre o modelo do dia
+/// em que foi escrita.*
+#[test]
+fn adjusting_the_stroke_width_never_destroys_the_pattern() {
+    let (mut scene, id) = cena_com_traco_de_padrao();
+    let antes = padrao_de(&scene, id).expect("a fixtura nasce com padrao");
+    let n = restyle_selected_strokes(&mut scene, &[id], &style(), Some(9.0));
+    assert_eq!(n, 1, "o traco tem de ser reestilizado");
+    assert_eq!(
+        scene
+            .path(id)
+            .and_then(|p| p.stroke.as_ref())
+            .map(|s| s.width),
+        Some(9.0),
+        "a largura nova nao entrou - o gate mediria a preservacao sem a edicao"
+    );
+    assert_eq!(
+        padrao_de(&scene, id).as_ref().map(|p| p.source),
+        Some(antes.source),
+        "ajustar a largura APAGOU o padrao do traco e voltou a solido - o report de 28/08"
+    );
+    assert_eq!(
+        padrao_de(&scene, id).map(|p| p.size),
+        Some(antes.size),
+        "a lei do padrao foi reconstruida do zero"
+    );
+}
+
+/// ⚠️ **E não é só a largura**: cap, join, alinhamento, tracejado e as pontas passam pela MESMA
+/// porta, e cada um destruía o padrão sozinho.
+///
+/// *O report nomeou o controlo que ele tocou; o defeito era a porta.*
+#[test]
+fn no_stroke_geometry_control_destroys_the_pattern() {
+    for (campo, ficha) in [
+        (
+            "cap",
+            StrokeStyle {
+                cap: LineCap::Round,
+                ..style()
+            },
+        ),
+        (
+            "join",
+            StrokeStyle {
+                join: LineJoin::Round,
+                ..style()
+            },
+        ),
+        (
+            "align",
+            StrokeStyle {
+                align: ph2d_vec_scene::StrokeAlign::Inner,
+                ..style()
+            },
+        ),
+        (
+            "dash",
+            StrokeStyle {
+                dash: Some((9.0, 9.0)),
+                ..style()
+            },
+        ),
+        (
+            "marker_scale",
+            StrokeStyle {
+                marker_scale: 3.0,
+                ..style()
+            },
+        ),
+    ] {
+        let (mut scene, id) = cena_com_traco_de_padrao();
+        restyle_selected_strokes(&mut scene, &[id], &ficha, None);
+        assert!(
+            padrao_de(&scene, id).is_some(),
+            "mexer em `{campo}` apagou o padrao do traco"
+        );
+        // CONTROLO: a edição de facto ENTROU — senão este gate ficaria verde sobre uma porta que
+        // deixou de escrever seja o que for.
+        let spec = scene
+            .path(id)
+            .and_then(|p| p.stroke.clone())
+            .expect("o traco existe");
+        assert!(
+            !ficha.differs_from(&spec),
+            "`{campo}` foi preservado porque nada foi escrito - o controlo nao discrimina"
+        );
+    }
+}
+
+/// ⭐⭐ **A COR ainda alcança um traço de padrão — ela escreve a COR DE RECURSO.**
+///
+/// ⚠️ *"Nunca esmagar"* não pode virar *"não fazer nada"*: a swatch **mostra** essa cor
+/// (`StrokeSpec::color()` responde a `fallback` de um padrão desde a wave A), e uma swatch que
+/// mostra um valor e não o muda é o controlo morto que esta linha caça há três waves.
+///
+/// ⛔ E ela **não** troca a tinta: a porta explícita para sair do padrão é a fileira `Type ->
+/// Solid`. *Uma segunda porta silenciosa para sair de um modo é exactamente o report de 28/08.*
+#[test]
+fn the_colour_still_reaches_a_patterned_stroke_through_its_fallback() {
+    let (mut scene, id) = cena_com_traco_de_padrao();
+    let nova = super::style::rgba([200, 30, 40, 255]);
+    let ficha = StrokeStyle {
+        color: nova,
+        ..style()
+    };
+    restyle_selected_strokes(&mut scene, &[id], &ficha, None);
+    assert_eq!(
+        padrao_de(&scene, id).map(|p| p.fallback),
+        Some(nova),
+        "a cor nao alcanca um traco de padrao - a swatch mostra um valor que nao se pode mudar"
+    );
+    assert!(
+        padrao_de(&scene, id).is_some(),
+        "a cor TROCOU a tinta - a porta de sair do padrao e' a fileira Type, e so' ela"
+    );
+    // ⚠️ E o detector concorda com o escritor: `color()` responde a `fallback`, então depois de
+    // escrever a ficha deixa de diferir. Sem isto o restyle re-dispararia todo quadro.
+    let spec = scene
+        .path(id)
+        .and_then(|p| p.stroke.clone())
+        .expect("o traco existe");
+    assert!(
+        !ficha.differs_from(&spec),
+        "o detector continua a ver diferenca depois de escrever - o restyle corre todo quadro e \
+         cada um vira um passo de undo"
+    );
+}
+
+/// ⛔⛔ **A OPACIDADE do traço tem de alcançar um traço de padrão** — irmã do defeito de 28/08, e
+/// **medida**, não suposta: com um ladrilho, o desenho lê `PatternFill::alpha` e a alfa da cor de
+/// recurso só aparece enquanto a arte não resolve
+/// ([`stroke_draw`](../../../crates/ph2d-vec-render/src/stroke_draw.rs)). ⇒ escrever só a cor
+/// deixaria a barra *Opacity* a andar sem mudar um pixel.
+///
+/// ⭐ **A lei já existia, escrita palavra por palavra** no `paint_bind::fade`: *"um padrão não tem
+/// cor para escalar — tem OPACIDADE, e as duas descem juntas"*. Aqui ela vale para a AUTORIA, e não
+/// só para a sobreposição derivada.
+///
+/// ⚠️ **Uma opacidade, uma casa**: para um traço sólido ela vive na alfa da cor; para um de padrão,
+/// no `alpha` do padrão, com a `fallback` mantida em sincronia para o instante pré-resolução ser o
+/// mesmo. Duas casas divergiriam no dia em que uma delas ganhasse um knob.
+#[test]
+fn the_stroke_opacity_reaches_a_patterned_stroke() {
+    let (mut scene, id) = cena_com_traco_de_padrao();
+    let meia = super::style::rgba([11, 22, 33, 128]);
+    let ficha = StrokeStyle {
+        color: meia,
+        ..style()
+    };
+    restyle_selected_strokes(&mut scene, &[id], &ficha, None);
+    let p = padrao_de(&scene, id).expect("o padrao sobrevive");
+    assert!(
+        (p.alpha - 128.0 / 255.0).abs() < 1e-6,
+        "a barra Opacity nao alcanca o padrao do traco (alpha={}) - ela anda e nao muda um pixel",
+        p.alpha
+    );
+    assert_eq!(
+        p.fallback.a, 128,
+        "a cor de recurso ficou fora de sincronia - o instante pre-resolucao mostraria outra coisa"
+    );
+    // CONTROLO: opaco devolve o padrão a cheio — senão o gate ficaria verde sobre uma porta que
+    // escreve `alpha` uma vez e nunca mais o levanta.
+    let opaca = StrokeStyle {
+        color: super::style::rgba([11, 22, 33, 255]),
+        ..style()
+    };
+    restyle_selected_strokes(&mut scene, &[id], &opaca, None);
+    assert!(
+        (padrao_de(&scene, id).expect("o padrao sobrevive").alpha - 1.0).abs() < 1e-6,
+        "a opacidade nao volta a subir"
     );
 }

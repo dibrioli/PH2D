@@ -261,3 +261,82 @@ Mais a costura das duas fileiras novas
 ([`seam_stroke_paint.rs`](../../crates/ph2d-panel-vector/tests/seam_stroke_paint.rs), gesto REAL) e os
 quatro sítios da shell
 ([`the_stroke_paint_row_is_wired.rs`](../../shells/desktop/tests/the_stroke_paint_row_is_wired.rs)).
+
+---
+
+## §7 — ⛔⛔ O REPORT DE 2026-08-28: *"se ajustar width sai de pattern e vai para solid"*
+
+### §7.1 — A causa: uma INVARIANTE que envelheceu quando o modelo cresceu
+
+`StrokeStyle::onto` ([`vector_bridge_style.rs`](../../shells/desktop/src/render_loop/vector_bridge_style.rs))
+reconstruía o `StrokeSpec` inteiro e escrevia `paint: StrokePaint::Solid(self.color)` — **por desenho
+explícito**, com a razão escrita ao lado:
+
+> *"a ficha + a largura determinam o traço INTEIRO — nada do spec antigo sobrevive, e é isso que
+> garante que os dois lados (detectar / gravar) não possam divergir num campo esquecido."*
+
+⚠️⚠️ **Era verdade enquanto o traço tinha UMA tinta possível.** A wave A deu-lhe duas, e a mesma
+frase passou a significar *"toda edição de geometria do traço destrói a tinta autorada"*.
+*Uma invariante é uma afirmação sobre o modelo do dia em que foi escrita — quem alarga o modelo tem
+de a reconferir* (§0.0 do roteador, aplicado a uma invariante em vez de a um teto).
+
+⭐ **E o report nomeou o Width, mas o defeito era a PORTA:** cap, join, alinhamento, tracejado e as
+duas pontas passam pela mesma `onto` e destruíam o padrão cada um sozinho. Gate:
+`no_stroke_geometry_control_destroys_the_pattern`.
+
+### §7.2 — ⭐ A lei certa já existia nesta casa, e também veio de um report
+
+No **preenchimento**, escrita no [`vector_bridge.rs`](../../shells/desktop/src/render_loop/vector_bridge.rs)
+desde 2026-07-08:
+
+> *"a fill pick only replaces a Solid / None fill; it must NEVER clobber a gradient (use Fill Type ->
+> Solid for that). Guards the linear/radial->solid regression (Enio 2026-07-08)."*
+
+O traço nunca a aprendeu porque, até 26/08, ele não tinha o que houvesse a preservar. ⇒ **a ficha da
+ferramenta possui uma COR, nunca a TINTA**: ela escreve a cor *dentro* da tinta que já lá está, e a
+espécie da tinta só muda pela porta explícita — a fileira *Type*, da wave D.
+
+### §7.3 — ⚠️ *"Nunca esmagar"* não pode virar *"não fazer nada"*
+
+A swatch **mostra** a cor de recurso de um padrão (`StrokeSpec::color()` responde-a desde a wave A).
+Uma swatch que mostra um valor e não o muda é o controlo morto que esta linha caça há três waves — e
+faria o `differs_from` disparar **todo quadro**, com cada um a virar um passo de undo. ⇒ a cor
+escreve a `fallback`.
+
+⭐⭐ **E a OPACIDADE é a metade que se VÊ, medida:** com um ladrilho, o desenho lê
+`PatternFill::alpha` e a alfa da `fallback` só aparece enquanto a arte não resolve
+([`stroke_draw.rs`](../../crates/ph2d-vec-render/src/stroke_draw.rs)) ⇒ escrever só a cor deixaria a
+barra *Opacity* a andar **sem mudar um pixel**. A lei já estava escrita palavra por palavra no
+`paint_bind::fade` (*"um padrão não tem cor para escalar — tem OPACIDADE, e as duas descem
+juntas"*), ali para a sobreposição derivada; agora vale para a **autoria**.
+
+⚠️ **Uma opacidade, uma casa** — e **inclusive no nascimento**: um traço a 50% que vira padrão
+nasceria com o `alpha = 1,0` do construtor e **saltaria** para opaco no clique
+(`vec_stroke_paint::set_kind`).
+
+### §7.4 — ⏳ O IRMÃO SIMÉTRICO, medido e NÃO curado: a opacidade do PREENCHIMENTO
+
+`fill_differs` exclui um `Paint::Pattern` pelo `matches!(p.fill, None | Some(Paint::Solid(_)))`
+⇒ **a barra *Opacity* do preenchimento também está morta sobre um padrão**, e isto é
+**pré-existente** (plano 33), não uma regressão desta wave.
+
+⛔ **Não foi curado, e a razão é que o sujeito não está decidido:** para o traço, a ferramenta
+**adopta** a cor da forma seleccionada (`adopt_stroke` lê `stroke.color()`), então escrever a
+`fallback` é a ida-e-volta de um valor que o painel já mostra. Para o preenchimento,
+`seed_style_from_selection` faz `Some(_) => {}` numa tinta não-sólida — a swatch mostra a **última
+cor autorada**, não a do padrão. Escrever essa cor no padrão faria uma cor velha saltar para dentro
+dele na primeira mexida do slider.
+
+⇒ curar exige primeiro decidir **o que a swatch do *Fill* significa sobre um padrão**, que é
+decisão de produto. As duas saídas: (a) a swatch adopta a `fallback` do padrão, como o traço faz, e
+a lei fica idêntica nos dois; (b) só a ALFA atravessa, e a cor do padrão só se muda pelo *Source…*.
+
+### §7.5 — As cinco provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| `onto`: o braço `Pattern` volta a `Solid(self.color)` | `adjusting_the_stroke_width_never_destroys_the_pattern` |
+| idem | `no_stroke_geometry_control_destroys_the_pattern` |
+| `onto`: a `fallback` não recebe a cor | `the_colour_still_reaches_a_patterned_stroke_through_its_fallback` |
+| `onto`: o `alpha` não recebe a opacidade | `the_stroke_opacity_reaches_a_patterned_stroke` |
+| `set_kind`: o padrão nasce com o `alpha` do construtor | `the_opacity_survives_the_paint_switch_in_both_directions` |

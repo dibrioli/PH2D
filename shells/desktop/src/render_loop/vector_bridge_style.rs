@@ -57,12 +57,59 @@ impl StrokeStyle {
             || (s.marker_round - self.marker_round).abs() > f64::EPSILON
     }
 
-    /// O `StrokeSpec` desta ficha com a largura `width`. **A ficha + a largura determinam o
-    /// traço INTEIRO** — nada do spec antigo sobrevive, e é isso que garante que os dois
-    /// lados (detectar / gravar) não possam divergir num campo esquecido.
-    pub(crate) fn onto(&self, width: f64) -> StrokeSpec {
+    /// O `StrokeSpec` desta ficha com a largura `width`, **escrito sobre `old`**.
+    ///
+    /// A ficha + a largura determinam todo o resto do traço — nada mais do spec antigo sobrevive, e
+    /// é isso que garante que os dois lados (detectar / gravar) não possam divergir num campo
+    /// esquecido.
+    ///
+    /// ⛔⛔ **A TINTA é a excepção, e ela custou um report** (Enio, 2026-08-28: *"se ajustar width
+    /// sai de pattern e vai para solid"*).
+    ///
+    /// ⚠️⚠️ **O defeito estava escrito aqui como INVARIANTE**: *"a ficha + a largura determinam o
+    /// traço INTEIRO — nada do spec antigo sobrevive"*. Era **verdade** enquanto o traço tinha uma
+    /// tinta possível; a wave A do plano 35 deu-lhe duas, e a mesma frase passou a significar *"toda
+    /// edição de geometria do traço destrói a tinta autorada"*. *Uma invariante é uma afirmação
+    /// sobre o modelo do dia em que foi escrita — quem alarga o modelo tem de a reconferir.*
+    ///
+    /// ⭐ **A lei certa já existia nesta casa, no PREENCHIMENTO** — e também por um report do Enio
+    /// (2026-07-08), escrita no `vector_bridge`: *"a fill pick only replaces a Solid / None fill; it
+    /// must NEVER clobber a gradient (use Fill Type -> Solid for that)"*. O traço nunca a aprendeu
+    /// porque, até dois dias atrás, ele não tinha o que houvesse a preservar.
+    ///
+    /// ⇒ **a ficha possui uma COR, nunca a TINTA**: ela escreve a cor *dentro* da tinta que já lá
+    /// está, e a espécie da tinta só muda pela porta explícita (a fileira *Type*, plano 35 wave D).
+    ///
+    /// ⚠️ E *"nunca esmagar"* não pode virar *"não fazer nada"*: a swatch **mostra** a cor de
+    /// recurso de um padrão (`StrokeSpec::color()` responde-a desde a wave A), então é ela que a
+    /// cor escreve. Uma swatch que mostra um valor e não o muda é o controlo morto que esta linha
+    /// caça há três waves — e é também o que faria o [`Self::differs_from`] disparar **todo
+    /// quadro**, com cada um a virar um passo de undo.
+    pub(crate) fn onto(&self, old: &StrokeSpec, width: f64) -> StrokeSpec {
+        use ph2d_vec_scene::StrokePaint;
+        let paint = match &old.paint {
+            StrokePaint::Solid(_) => StrokePaint::Solid(self.color),
+            StrokePaint::Pattern(p) => {
+                let mut p = p.clone();
+                p.fallback = self.color;
+                // ⚠️⚠️ **A OPACIDADE também**, e ela é a metade que se vê: com um ladrilho o desenho
+                // lê o `alpha` do padrão, e a alfa da `fallback` só aparece enquanto a arte não
+                // resolve (`ph2d-vec-render/src/stroke_draw.rs`). Escrever só a cor deixaria a
+                // barra *Opacity* a andar sem mudar um pixel — um controlo morto.
+                //
+                // ⭐ A lei já estava escrita palavra por palavra no `paint_bind::fade`: *"um padrão
+                // não tem cor para escalar — tem OPACIDADE, e as duas descem juntas"*. Ali para a
+                // sobreposição derivada; aqui para a AUTORIA.
+                //
+                // ⚠️ **Uma opacidade, uma casa:** num traço sólido ela vive na alfa da cor, num de
+                // padrão no `alpha` dele, com a `fallback` em sincronia. Duas casas divergiriam no
+                // dia em que uma delas ganhasse um knob próprio.
+                p.alpha = f32::from(self.color.a) / 255.0;
+                StrokePaint::Pattern(p)
+            }
+        };
         StrokeSpec {
-            paint: ph2d_vec_scene::StrokePaint::Solid(self.color),
+            paint,
             width,
             cap: self.cap,
             join: self.join,
@@ -98,7 +145,7 @@ pub(crate) fn restyle_selected_strokes(
         let Some(old) = path.stroke.as_ref() else {
             continue;
         };
-        path.stroke = Some(style.onto(new_width.unwrap_or(old.width)));
+        path.stroke = Some(style.onto(old, new_width.unwrap_or(old.width)));
         n += 1;
     }
     n

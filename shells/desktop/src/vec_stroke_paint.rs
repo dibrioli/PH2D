@@ -95,6 +95,11 @@ pub(crate) fn set_kind(
                 return false;
             };
             let mut f = PatternFill::new(source, size, cur.color());
+            // ⚠️ **A OPACIDADE atravessa a troca de tinta.** Um traço a 50% que vira padrão nasceria
+            // com `alpha = 1,0` (o default do construtor) e **saltaria para opaco** no clique; e a
+            // primeira mexida no painel puxá-lo-ia de volta a 50%, porque é ali que a opacidade do
+            // traço mora (`StrokeStyle::onto`). *Uma opacidade, uma casa — inclusive no nascimento.*
+            f.alpha = f32::from(cur.color().a) / 255.0;
             // ⛔ O canto é o da FORMA, não a origem do mundo — a lei que o `Clamp` do preenchimento
             // pagou com um report (`texture_pattern_pick::default_placement`).
             f.origin = origin;

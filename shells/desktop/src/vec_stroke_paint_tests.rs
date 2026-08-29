@@ -215,3 +215,46 @@ fn the_two_chips_map_to_the_two_kinds_and_nothing_else_does() {
     );
     assert_eq!(kind_for_id(ph2d_editor::ids::VECTOR_STROKE_PRESENT), None);
 }
+
+/// ⚠️ **A OPACIDADE atravessa a troca de tinta, nos DOIS sentidos.**
+///
+/// Um traço a 50% que vira padrão nasceria opaco (o `alpha` do construtor é `1,0`) e **saltaria** no
+/// clique; e a primeira mexida no painel puxá-lo-ia de volta, porque é no `StrokeStyle::onto` que a
+/// opacidade do traço mora. *Uma opacidade, uma casa — inclusive no nascimento.*
+#[test]
+fn the_opacity_survives_the_paint_switch_in_both_directions() {
+    let (mut scene, pen, id) = cena(Some(false));
+    // Meia opacidade no traço sólido de partida.
+    if let Some(s) = scene.path_mut(id).and_then(|p| p.stroke.as_mut()) {
+        s.paint = StrokePaint::Solid(Rgba8::new(11, 22, 33, 128));
+    }
+    let mut h = History::default();
+    assert!(set_kind(
+        &mut scene,
+        &mut h,
+        &pen,
+        StrokePaintKind::Pattern,
+        Some((arte(), [1.0, 1.0], [0.0, 0.0])),
+    ));
+    let Some(StrokePaint::Pattern(p)) = tinta(&scene, id) else {
+        panic!("o traco tem de ser padrao");
+    };
+    assert!(
+        (p.alpha - 128.0 / 255.0).abs() < 1e-6,
+        "o padrao nasceu OPACO sobre um traco a meia opacidade - ele salta no clique (alpha={})",
+        p.alpha
+    );
+    // E a volta devolve a mesma alfa, pela `fallback`.
+    assert!(set_kind(
+        &mut scene,
+        &mut h,
+        &pen,
+        StrokePaintKind::Solid,
+        None
+    ));
+    assert_eq!(
+        tinta(&scene, id),
+        Some(StrokePaint::Solid(Rgba8::new(11, 22, 33, 128))),
+        "a opacidade nao voltou do padrao para o solido"
+    );
+}

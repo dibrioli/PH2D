@@ -176,6 +176,18 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::SEED,
             default: 1.0,
         },
+        // ⚠️ **APENDADO**, nunca inserido — um documento salvo guarda o NOME do param, mas a
+        // ordem é o que uma leitura por índice veria. E o default é `0` = `Growth`: é o que o
+        // desenho quer, e foi o report do Enio (2026-08-28).
+        ParamSpec {
+            name: param::ORIENT,
+            default: 0.0,
+        },
+        // O molde carregado: um `0` é a árvore de fábrica, que é o que um nó novo já é.
+        ParamSpec {
+            name: param::PRESET,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -194,7 +206,52 @@ pub mod param {
     pub const TROPISM: &str = "tropism";
     pub const TROPISM_ANGLE: &str = "tropism_angle";
     pub const SEED: &str = "seed";
+    pub const ORIENT: &str = "orient";
+    pub const PRESET: &str = "preset";
 }
+
+/// **O que a coluna `rot` quer dizer** — ver [`crate::turtle::Setup::orient_world`] para o
+/// mecanismo. `0` = mundo (o desenho alinha com o ramo) · `1` = local (o contrato do `rig.*`).
+pub const ORIENT_LABELS: &[&str] = &["Growth", "Local"];
+
+/// **OS MOLDES** — o que responde à pergunta *"Axiom e Rules não são nada intuitivos"*
+/// (Enio, 2026-08-28).
+///
+/// ⭐ **A resposta NÃO é inventar uma sintaxe amigável.** `F[+F]F` é a notação de Lindenmayer:
+/// é o que está no ABOP, nos tutoriais, nos fóruns e em todo exemplo que o artista vai
+/// encontrar. Trocá-la tornaria este nó **incompatível com o conhecimento do mundo** — ele
+/// deixaria de aceitar o que se copia de qualquer lado.
+///
+/// ⇒ O que se dá é um SÍTIO POR ONDE COMEÇAR. O artista escolhe um molde, vê a planta, e
+/// edita — que é como toda a gente aprende esta linguagem. É o que o L-System SOP do Houdini,
+/// o `sca-tools` do Blender e o L-studio fazem.
+///
+/// ⚠️ **O molde `0` é o de fábrica**, para um nó recém-dropado e o selector concordarem.
+pub const PRESETS: &[(&str, &str, &str)] = &[
+    ("Tree", DEFAULT_AXIOM, DEFAULT_RULES),
+    (
+        "Fern",
+        "A(step)",
+        "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)",
+    ),
+    ("Bush", "F", "F -> F[+F]F[-F]F"),
+    ("Weed", "X", "X -> F[+X]F[-X]+X ; F -> FF"),
+    (
+        "Wild",
+        "A(step)",
+        "A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)] ; \
+         A(s) -> (0.35) F(s)![+A(s*0.66)]-A(s*0.78) ; \
+         A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)]",
+    ),
+    ("Koch", "F", "F -> F+F-F-F+F"),
+    ("Dragon", "F", "F -> F+G ; G -> F-G"),
+    ("Sprig", "A(step)", "A(s) -> F(s)[+J][-J]!A(s*0.8) ; J -> J"),
+];
+
+/// Os rótulos dos moldes — derivados de [`PRESETS`] por um gate, nunca escritos duas vezes.
+pub const PRESET_LABELS: &[&str] = &[
+    "Tree", "Fern", "Bush", "Weed", "Wild", "Koch", "Dragon", "Sprig",
+];
 
 /// O axioma de fábrica: um módulo `A` que carrega o `step` do painel.
 ///
@@ -263,6 +320,7 @@ struct Params {
     tropism: f32,
     tropism_angle: f32,
     seed: f32,
+    orient: f32,
 }
 
 impl Params {
@@ -278,6 +336,7 @@ impl Params {
             tropism: ctx.param(param::TROPISM),
             tropism_angle: ctx.param(param::TROPISM_ANGLE),
             seed: ctx.param(param::SEED),
+            orient: ctx.param(param::ORIENT),
         }
     }
 
@@ -295,6 +354,7 @@ impl Params {
             param::TROPISM => self.tropism,
             param::TROPISM_ANGLE => self.tropism_angle,
             param::SEED => self.seed,
+            param::ORIENT => self.orient,
             _ => 0.0,
         }
     }
@@ -342,6 +402,8 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             tropism: p.tropism,
             tropism_angle: p.tropism_angle,
             youngest,
+            // `0` = mundo (o desenho alinha com o ramo). Qualquer outro valor é o local.
+            orient_world: p.orient.round() as i32 == 0,
         },
     )
 }
@@ -477,6 +539,29 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         step: 1.0,
         widget: ParamWidget::Angle,
     },
+    // ⚠️ **O molde vem PRIMEIRO de todos** — antes até do axioma. É a resposta ao *"não são
+    // nada intuitivos"*: o artista escolhe um sítio por onde começar, vê a planta, e só depois
+    // edita o texto. Um selector abaixo das caixas seria a ajuda escondida atrás do problema.
+    ParamUiHint {
+        param: param::PRESET,
+        label: "Preset",
+        min: 0.0,
+        max: (PRESETS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: PRESET_LABELS,
+        },
+    },
+    ParamUiHint {
+        param: param::ORIENT,
+        label: "Shape Faces",
+        min: 0.0,
+        max: 1.0,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: ORIENT_LABELS,
+        },
+    },
     ParamUiHint {
         param: param::SEED,
         label: "Seed",
@@ -522,6 +607,7 @@ pub fn probe_build(
         tropism: 0.0,
         tropism_angle: -90.0,
         seed: 1.0,
+        orient: 0.0,
     };
     for (n, v) in overrides {
         match *n {
@@ -534,6 +620,7 @@ pub fn probe_build(
             param::TROPISM => p.tropism = *v,
             param::TROPISM_ANGLE => p.tropism_angle = *v,
             param::SEED => p.seed = *v,
+            param::ORIENT => p.orient = *v,
             other => panic!("probe_build: param desconhecido {other}"),
         }
     }

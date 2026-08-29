@@ -161,6 +161,46 @@ fn wave_channel_amplitude(channel: i32) -> f32 {
     }
 }
 
+/// ⭐⭐⭐ **UM MOLDE ESCOLHIDO ESCREVE AS DUAS CAIXAS DE TEXTO** — a resposta ao *"Axiom e
+/// Rules não são nada intuitivos"* (Enio, 2026-08-28).
+///
+/// ⚠️ **A resposta NÃO foi inventar uma sintaxe amigável**, e a razão é medida em vez de
+/// estética: `F[+F]F` é a notação de Lindenmayer, e é ela que está no ABOP, nos tutoriais e em
+/// todo exemplo que o artista vai encontrar. Trocá-la tornaria este nó **incompatível com o
+/// conhecimento do mundo** — ele deixaria de aceitar o que se copia de qualquer lado. ⇒ o que
+/// se dá é um sítio por onde COMEÇAR: escolhe-se um molde, vê-se a planta, e edita-se.
+///
+/// ⚠️ **Ele vive AQUI, ao lado do preset de canal, e não no crate do nó** — pela mesma razão
+/// que aquele: um param que reescreve OUTROS é edição de EDITOR, não matemática de nó. O nó
+/// possui a tabela (é vocabulário dele); quem a aplica é a ponte, dentro do mesmo passo de
+/// undo, para o `Ctrl+Z` devolver o texto anterior.
+///
+/// ⚠️ **Ele SOBRESCREVE o que o artista escreveu, e é isso que um molde é.** O undo é a rede,
+/// e é por isso que ele corre dentro do passo — sem isso, um clique acidental apagaria uma
+/// gramática autorada sem volta.
+pub(in crate::render_loop::motion_bridge) fn apply_lsystem_preset(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+    preset: f32,
+) {
+    if type_name != ph2d_node_source_lsystem::MANIFEST.name {
+        return;
+    }
+    let table = ph2d_node_source_lsystem::PRESETS;
+    let Some((_, axiom, rules)) = table.get(preset.round().max(0.0) as usize) else {
+        return;
+    };
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, ph2d_node_source_lsystem::AXIOM_PARAM, *axiom);
+    motion
+        .doc
+        .graph
+        .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, *rules);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

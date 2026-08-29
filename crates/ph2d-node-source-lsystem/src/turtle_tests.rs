@@ -19,6 +19,10 @@ fn setup() -> Setup {
         tropism: 0.0,
         tropism_angle: -90.0,
         youngest: (0, 1.0),
+        // ⚠️ **LOCAL na fixtura de base**, de propósito: os gates da invariante do rig medem o
+        // contrato do `rig.*`, e é ele que exige o ângulo local. O modo de MUNDO (o default do
+        // produto) tem gates próprios.
+        orient_world: false,
     }
 }
 
@@ -207,4 +211,45 @@ fn an_unknown_letter_draws_nothing() {
     let without = draw("FF", &setup());
     assert_eq!(with.count(), without.count());
     assert_eq!(vec2(&with, "P"), vec2(&without, "P"));
+}
+
+/// ⭐⭐ **A FORMA APONTA PARA ONDE O RAMO CRESCE** — o report do Enio de 2026-08-28.
+///
+/// O lowering desenha cada instância com o ângulo da coluna **`rot`**, e o contrato do `rig.*`
+/// diz que `rot` é o ângulo LOCAL. Num galho a direito o local é ≈ `0` ⇒ a forma carimbada saía
+/// sempre em pé, qualquer que fosse a direcção do ramo.
+///
+/// ⚠️ **O CONTROLE é o modo LOCAL**: ali o `rot` de uma haste a direito TEM de ser ≈ `0`, e é
+/// isso que prova que os dois modos são de facto dois — e que o local continua a servir o rig.
+#[test]
+fn in_growth_mode_the_shape_faces_along_its_branch() {
+    let mut world = setup();
+    world.orient_world = true;
+    world.angle = 40.0;
+    // Uma haste a subir, depois um ramo a 40° para cada lado.
+    let w = draw("FF[+FF][-FF]", &world);
+    let (rot, wrot) = (scal(&w, "rot"), scal(&w, "wrot"));
+    for (i, (r, wr)) in rot.iter().zip(&wrot).enumerate() {
+        assert!(
+            (r - wr).abs() < 1e-4,
+            "no modo de crescimento o elemento {i} tem de apontar para o MUNDO: {r} vs {wr}"
+        );
+    }
+    // E os ramos apontam de facto para lados diferentes — senão o gate acima seria vacuo.
+    let mut sorted = rot.clone();
+    sorted.sort_by(f32::total_cmp);
+    assert!(
+        sorted.last().unwrap() - sorted.first().unwrap() > 70.0,
+        "os dois ramos abrem 80 graus entre si: {rot:?}"
+    );
+
+    // ⚠️ O CONTROLE: em LOCAL a mesma haste sai toda a zero (nada virou em relação ao pai).
+    let mut local = world;
+    local.orient_world = false;
+    let l = scal(&draw("FF[+FF][-FF]", &local), "rot");
+    let straight = l.iter().filter(|r| r.abs() < 1e-4).count();
+    assert!(
+        straight >= 4,
+        "em local uma haste a direito tem de ter `rot` zero: {l:?}"
+    );
 }

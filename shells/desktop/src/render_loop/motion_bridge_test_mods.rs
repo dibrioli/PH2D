@@ -46,6 +46,10 @@ mod enumcap_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_library_tests.rs"]
 mod library_tests;
+/// O selector de MOLDES do `source.lsystem` — a resposta ao *"Axiom e Rules não são nada
+/// intuitivos"* (Enio, 2026-08-28).
+#[path = "motion_bridge_lsystem_preset_tests.rs"]
+mod lsystem_preset_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;

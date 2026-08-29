@@ -44,6 +44,16 @@ const GROW_PERIOD: f32 = 6.0;
 /// Até onde o relógio faz a samambaia crescer. `6` dá 64 elementos no pico — densidade
 /// comparável às outras quatro colunas, que ficam entre 26 e 64.
 const GROW_MAX: f32 = 6.0;
+/// **E de onde ele parte.**
+///
+/// ⚠️ **Report do Enio, 2026-08-28: *"o tronco pisca uma vez"*.** Medido: no fundo do ciclo o
+/// relógio levava o `Generations` a **zero**, e zero gerações é o axioma por derivar — um
+/// módulo MUDO. A planta ficava com **um** elemento (a raiz, que não desenha nada) e sumia,
+/// uma vez por volta. *O pisca não estava no crescimento: estava no fundo do relógio.*
+///
+/// `1` é o menor valor que ainda desenha — um rebento de um segmento. Ele é o PISO do LFO, e
+/// é isso que faz a coluna nascer de um broto em vez de nascer do nada.
+const GROW_MIN: f32 = 1.0;
 /// Quanto a quarta planta verga.
 ///
 /// ⚠️ **É um número de DEMO, e a barra é a vista.** A lei do ABOP anula-se quando o ramo já
@@ -177,8 +187,9 @@ pub(crate) fn build_lsystem_demo_document(
             let clock = g.add_node("value.lfo");
             g.set_pos(clock, Pos { x: 60.0, y: lane });
             g.set_param(clock, "period", GROW_PERIOD);
-            g.set_param(clock, "amplitude", GROW_MAX / 2.0);
-            g.set_param(clock, "offset", GROW_MAX / 2.0);
+            // A faixa é `[GROW_MIN, GROW_MAX]`, e o piso não é decoração — ver [`GROW_MIN`].
+            g.set_param(clock, "amplitude", (GROW_MAX - GROW_MIN) / 2.0);
+            g.set_param(clock, "offset", (GROW_MAX + GROW_MIN) / 2.0);
             g.drive_param(l, ls::param::GENERATIONS, (clock, 0)).ok()?;
         }
 

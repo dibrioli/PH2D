@@ -217,3 +217,31 @@ fn only_the_fifth_plant_moves_with_the_clock() {
         assert!(!m, "a planta {} devia estar parada e mexeu-se", i + 1);
     }
 }
+
+/// ⭐⭐ **A 5.ª PLANTA NUNCA SOME** — a lei que o report de 2026-08-28 enuncia.
+///
+/// ⚠️ *"o tronco pisca uma vez"*. Medido: no fundo do ciclo o relógio levava o `Generations` a
+/// **zero**, e zero gerações é o axioma por derivar — um módulo mudo. A planta ficava com UM
+/// elemento (a raiz, que não desenha) e desaparecia, uma vez por volta.
+///
+/// A régua é a CONTAGEM ao longo de um ciclo inteiro, amostrada fino: em nenhum instante ela
+/// pode cair ao osso. E o CONTROLE é ela de facto respirar — uma planta presa no máximo também
+/// nunca sumiria, e não seria o que a coluna promete.
+#[test]
+fn the_growing_plant_never_blinks_out() {
+    let counts: Vec<usize> = (0..=40)
+        .map(|k| plants_at(f64::from(k) * 0.2)[4].len())
+        .collect();
+    let low = *counts.iter().min().expect("amostrou");
+    let high = *counts.iter().max().expect("amostrou");
+    assert!(
+        low > 1,
+        "a planta desapareceu (ficou com {low} elemento) — o fundo do relogio leva as \
+         geracoes a zero: {counts:?}"
+    );
+    assert!(
+        high > low * 4,
+        "e o CONTROLE: ela tem de RESPIRAR, senao o gate acima e' o de uma planta parada \
+         no maximo: {counts:?}"
+    );
+}

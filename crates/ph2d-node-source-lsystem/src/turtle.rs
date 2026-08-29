@@ -71,6 +71,22 @@ pub(crate) struct Setup {
     /// A geração mais nova e quanto dela já cresceu, `(geração, fracção)`. `fracção = 1`
     /// significa geração inteira.
     pub youngest: (u16, f32),
+    /// **O que a coluna `rot` quer dizer** — e a pergunta tem dois donos.
+    ///
+    /// ⚠️⚠️ **Report do Enio, 2026-08-28: *"as shapes não rotacionam, mas parece que deveriam
+    /// rotacionar para se alinhar com a direção do crescimento"*** — e ele tem razão. O
+    /// lowering desenha cada instância com o ângulo da coluna **`rot`**
+    /// (`ph2d-eval-motion/src/lower.rs`), e o contrato do `rig.*` diz que `rot` é o ângulo
+    /// **LOCAL** da junta em relação ao pai. Num galho a direito o local é ≈ `0`, então a forma
+    /// carimbada saía sempre em pé.
+    ///
+    /// ⇒ **Dois consumidores lêem o mesmo nome com sentidos diferentes**, e nenhum está
+    /// errado: o desenho pergunta *«para onde esta peça aponta no mundo»*, e o `rig.fk`
+    /// pergunta *«quanto esta junta virou em relação à anterior»*. A escolha é do artista, e
+    /// é por isso que ela é um param em vez de uma decisão escondida.
+    ///
+    /// `true` = mundo (o default, o que o desenho quer) · `false` = local (o contrato do rig).
+    pub orient_world: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -289,7 +305,12 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
                     // ⚠️ `d * c * inv`, associado à ESQUERDA — a MESMA ordem do `rig.fk`.
                     // Ver [`dir`]: com `d * (c * inv)` a identidade sai a 1 ULP.
                     let p = [out.p[par][0] + d * c * inv, out.p[par][1] + d * sn * inv];
-                    let rot = st.heading - out.wrot[par];
+                    // Ver [`Setup::orient_world`]: o mesmo nome, dois sentidos.
+                    let rot = if set.orient_world {
+                        st.heading
+                    } else {
+                        st.heading - out.wrot[par]
+                    };
                     st.cur = out.push(
                         par as f32, d, rot, st.heading, p, st.width, st.depth, m.born, m.sym,
                     );
@@ -305,10 +326,13 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
             }
             b'J' | b'K' | b'M' => {
                 let par = anchor(&mut st, &mut out, m.born, m.sym);
+                // Uma marca não tem osso, mas TEM direcção: ela aponta como o ramo em que
+                // pousou. Em local isso é `0` (ela não virou nada em relação ao pai).
+                let mark_rot = if set.orient_world { out.wrot[par] } else { 0.0 };
                 out.push(
                     par as f32,
                     0.0,
-                    0.0,
+                    mark_rot,
                     out.wrot[par],
                     out.p[par],
                     st.width,

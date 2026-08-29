@@ -1,0 +1,122 @@
+//! **O MOLDE DO L-SYSTEM ESCREVE AS DUAS CAIXAS** — as quatro condições de UI para ele.
+//!
+//! Report do Enio (2026-08-28): *"Axiom e Rules não são nada intuitivos. Alguma soluções para
+//! isso?"* ⇒ um selector de moldes, que é o que o L-System SOP do Houdini e o L-studio fazem.
+//!
+//! ⚠️ **A resposta não foi inventar uma sintaxe amigável**, e a razão é medida: `F[+F]F` é a
+//! notação de Lindenmayer, e é ela que está no livro, nos tutoriais e em todo exemplo que o
+//! artista vai encontrar. Trocá-la tornaria este nó incompatível com o conhecimento do mundo.
+
+use super::params::{apply_lsystem_preset, param_value};
+use crate::motion_state::MotionState;
+use ph2d_node_source_lsystem as ls;
+
+fn text_of(motion: &MotionState, nid: ph2d_nodegraph::graph::NodeId, key: &str) -> String {
+    motion
+        .doc
+        .graph
+        .node_text_param_overrides(nid)
+        .and_then(|m| m.get(key))
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// **Todo molde tem rótulo, axioma e regras — e as regras COMPILAM.**
+///
+/// ⚠️ Um molde cujas regras o parser descarta é um botão que apaga a planta: o artista clica,
+/// vê a gramática mudar, e não vê nada crescer. É a falha mais cara que uma tabela de moldes
+/// pode ter, porque ela ensina que o selector não funciona.
+#[test]
+fn every_preset_is_a_grammar_that_actually_draws() {
+    assert!(!ls::PRESETS.is_empty());
+    assert_eq!(
+        ls::PRESETS.len(),
+        ls::PRESET_LABELS.len(),
+        "os rotulos e a tabela tem de ter o mesmo comprimento — um selector com um rotulo a \
+         mais oferece um molde que nao existe, e com um a menos esconde um que existe"
+    );
+    for (k, (label, axiom, rules)) in ls::PRESETS.iter().enumerate() {
+        assert_eq!(
+            *label,
+            ls::PRESET_LABELS[k],
+            "o rotulo {k} discorda da tabela"
+        );
+        assert!(!axiom.trim().is_empty() && !rules.trim().is_empty());
+        let s = ls::probe_build(axiom, rules, 5.0, &[]);
+        assert!(
+            s.count() > 3,
+            "o molde {label:?} desenha {} elementos — ele nao cresce",
+            s.count()
+        );
+    }
+}
+
+/// **O molde `0` é o de fábrica**, para um nó recém-dropado e o selector concordarem.
+///
+/// Sem isto, um nó novo mostraria «Tree» seleccionado e uma gramática que não é a do Tree — o
+/// painel a mentir sobre o próprio estado no primeiro segundo de vida.
+#[test]
+fn the_first_preset_is_what_a_fresh_node_already_is() {
+    assert_eq!(ls::PRESETS[0].1, ls::DEFAULT_AXIOM);
+    assert_eq!(ls::PRESETS[0].2, ls::DEFAULT_RULES);
+}
+
+/// ⭐ **Escolher um molde ESCREVE as duas caixas** — a costura que o torna um botão vivo.
+#[test]
+fn picking_a_preset_writes_both_text_boxes() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    for (k, (label, axiom, rules)) in ls::PRESETS.iter().enumerate() {
+        apply_lsystem_preset(&mut motion, n, "source.lsystem", k as f32);
+        assert_eq!(
+            text_of(&motion, n, ls::AXIOM_PARAM),
+            *axiom,
+            "{label}: axioma"
+        );
+        assert_eq!(
+            text_of(&motion, n, ls::RULES_PARAM),
+            *rules,
+            "{label}: regras"
+        );
+    }
+}
+
+/// ⚠️ **E ele não toca em mais nada** — nem noutro tipo de nó, nem num índice que não existe.
+///
+/// O CONTROLE do tipo é o que impede um `preset` de outro nó (o nome é comum) de reescrever
+/// texto alheio; o do índice é o que impede um documento carregado com um número velho de
+/// apagar a gramática do artista.
+#[test]
+fn a_foreign_node_and_an_out_of_range_index_are_both_no_ops() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    motion.doc.graph.set_text_param(n, ls::AXIOM_PARAM, "MEU");
+    motion
+        .doc
+        .graph
+        .set_text_param(n, ls::RULES_PARAM, "MEU -> MEU");
+
+    apply_lsystem_preset(&mut motion, n, "motion.grid", 1.0);
+    assert_eq!(
+        text_of(&motion, n, ls::AXIOM_PARAM),
+        "MEU",
+        "outro tipo nao toca"
+    );
+
+    apply_lsystem_preset(&mut motion, n, "source.lsystem", 999.0);
+    assert_eq!(
+        text_of(&motion, n, ls::AXIOM_PARAM),
+        "MEU",
+        "indice fora da faixa"
+    );
+    assert_eq!(text_of(&motion, n, ls::RULES_PARAM), "MEU -> MEU");
+}
+
+/// **E o param existe no manifesto** — senão o selector não teria onde guardar a escolha.
+#[test]
+fn the_preset_param_is_declared_and_reaches_the_node() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    motion.doc.graph.set_param(n, ls::param::PRESET, 2.0);
+    assert!((param_value(&motion, n, ls::param::PRESET) - 2.0).abs() < 1e-6);
+}

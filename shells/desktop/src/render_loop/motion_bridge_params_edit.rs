@@ -115,6 +115,12 @@ pub(super) fn apply_param_edits(
                         && (param_value(motion, nid, "channel") - value as f32).abs()
                             > f32::EPSILON;
                     let type_name = channel_switch.then(|| inst.type_name.clone());
+                    // ⭐ **O MOLDE do L-System**: escolher um escreve as duas caixas de texto.
+                    // A mesma família do preset de canal — um param que reescreve OUTROS —, e
+                    // pelo mesmo motivo dentro do MESMO passo de undo.
+                    let preset_pick = (param == ph2d_node_source_lsystem::param::PRESET
+                        && (param_value(motion, nid, param) - value as f32).abs() > f32::EPSILON)
+                        .then(|| inst.type_name.clone());
                     // ADR-0130 D7: an edit that re-numbers the emitter's ids
                     // (rate/life/max) moves the id↔particle map, so the GPU sim's
                     // paired state would mispair the new window against the old.
@@ -127,6 +133,9 @@ pub(super) fn apply_param_edits(
                     motion.doc.graph.set_param(nid, param, value as f32);
                     if let Some(tn) = type_name {
                         super::apply_channel_presets(motion, nid, &tn, value as f32);
+                    }
+                    if let Some(tn) = preset_pick {
+                        super::apply_lsystem_preset(motion, nid, &tn, value as f32);
                     }
                     motion.pump.mark_dirty();
                     if renumbers_sim {

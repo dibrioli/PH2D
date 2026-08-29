@@ -54,6 +54,13 @@ fn both_sides(axiom: &str, rules: &str, generations: f32) -> (Stream, Stream) {
     g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, axiom);
     g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, rules);
     g.set_param(l, ph2d_node_source_lsystem::param::GENERATIONS, generations);
+    // ⚠️ **`Local`, e a escolha é o assunto deste ficheiro.** Desde 2026-08-28 o nó tem um
+    // param `Shape Faces` que decide o que a coluna `rot` quer dizer, e o DEFAULT é `Growth`
+    // (o ângulo de MUNDO), porque é isso que o desenho quer: sem ele a forma carimbada sai
+    // sempre em pé, qualquer que seja a direcção do ramo (report do Enio). O contrato do
+    // `rig.*` pede o ângulo LOCAL — logo é o modo `Local` que estes gates medem, e é o gate
+    // `growth_orientation_is_not_a_skeleton` que afirma a outra metade.
+    g.set_param(l, ph2d_node_source_lsystem::param::ORIENT, 1.0);
     let fk = g.add_node("rig.fk");
     g.connect(Edge {
         from: (l, 0),
@@ -152,4 +159,48 @@ fn the_emitted_topology_is_a_tree_and_not_a_chain_or_a_cloud() {
             "o elemento {i} pendura no {p}, que ainda nao existe"
         );
     }
+}
+
+/// ⚠️⚠️ **E o MODO DE CRESCIMENTO não é um esqueleto — a fronteira, dita em voz alta.**
+///
+/// No default (`Shape Faces = Growth`) a coluna `rot` carrega o ângulo de **MUNDO**, que é o
+/// que o lowering desenha. O `rig.fk` lê a mesma coluna como o ângulo **LOCAL** da junta, então
+/// ele re-resolve a planta noutro sítio — não por estar partido, mas porque os dois consumidores
+/// perguntam coisas diferentes ao mesmo nome.
+///
+/// ⚠️ Este gate existe para essa troca ser **medida** em vez de descoberta: quem ligar um
+/// `rig.*` a jusante e vir a planta a saltar vem aqui e encontra o param, em vez de abrir um bug.
+/// *Um nome com dois donos precisa de um interruptor e de uma nota, não de uma escolha
+/// escondida.*
+#[test]
+fn growth_orientation_is_not_a_skeleton_and_that_is_the_trade() {
+    let reg = registry();
+    let mut g = Graph::new();
+    let l = g.add_node("source.lsystem");
+    g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, "F");
+    g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, "F -> F[+F]F[-F]F");
+    g.set_param(l, ph2d_node_source_lsystem::param::GENERATIONS, 3.0);
+    // O DEFAULT — nenhum override de `orient`.
+    let fk = g.add_node("rig.fk");
+    g.connect(Edge {
+        from: (l, 0),
+        to: (fk, 0),
+        delayed: false,
+    })
+    .expect("liga");
+    let mut cook = Cook::new();
+    let raw = stream_of(cook.cook(&g, &reg, l, 0.0).expect("coze"));
+    let resolved = stream_of(cook.cook(&g, &reg, fk, 0.0).expect("coze"));
+    let (a, b) = (positions(&raw), positions(&resolved));
+    let moved = a
+        .iter()
+        .zip(&b)
+        .filter(|(p, q)| (p[0] - q[0]).abs() > 1e-4 || (p[1] - q[1]).abs() > 1e-4)
+        .count();
+    assert!(
+        moved > a.len() / 4,
+        "no modo de crescimento o rig.fk TEM de re-resolver a planta noutro sitio — se ele nao \
+         mexesse, ou o default deixou de ser `Growth` ou a coluna `rot` deixou de ser o angulo \
+         de mundo, e a forma carimbada voltou a sair em pe'"
+    );
 }

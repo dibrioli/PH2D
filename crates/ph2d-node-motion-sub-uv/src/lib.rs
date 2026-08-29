@@ -142,7 +142,25 @@ pub const MANIFEST: NodeManifest = NodeManifest {
         name: "out",
         ty: INST_VEC2,
     }],
-    effect: Effect::Pure,
+    // ⚠️⚠️ **`Temporal`, e a troca é a CURA DE UM DEFEITO PRÉ-EXISTENTE** (report do Enio,
+    // 2026-08-28: *"não há nenhuma animação ou movimento na cena de smoke"*).
+    //
+    // Este nó lê `ctx.playhead()` (o `speed` e o `stagger` são um relógio), e a impressão
+    // digital do memo só inclui o relógio **se o nó se declarar `Temporal`**
+    // (`cook_fingerprint.rs`: *"a playhead bits (if `Temporal`)"*). Declarado `Pure`, ele
+    // cozinhava UMA vez e devolvia o mesmo stream para sempre: o flipbook ficava **congelado**
+    // na célula do primeiro quadro.
+    //
+    // ⚠️ **Ele shipou assim desde que existe, e ninguém viu — porque nenhuma cena tinha ligado
+    // o relógio dele.** A fileira sub-UV da `=9` deixa o `speed` no default (`0`), então a
+    // única coisa que o exercitava era um nó parado. *Um defeito só é visível onde há uma cena
+    // que o contenha.*
+    //
+    // ⚠️ E os gates não o viam por uma razão própria: eles construíam um `Cook::new()` a cada
+    // instante, e um memo que nasce vazio nunca devolve nada de velho. Quem reusa o cozinhador
+    // é o app — e é assim que o gate `the_flipbook_keeps_moving_under_one_persistent_cook`
+    // passou a medir.
+    effect: Effect::Temporal,
     clock: Clock::Frame,
     params: &[
         ParamSpec {

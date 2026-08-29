@@ -67,8 +67,18 @@ fn wire(g: &mut Graph, a: NodeId, ap: u16, b: NodeId, bp: u16) {
 ///
 /// A coluna é `[escala_u, escala_v, desloc_u, desloc_v]`; numa tira de `CELLS × 1` a célula é
 /// `desloc_u / escala_u`, arredondada — a conta inversa da que o nó fez.
-fn cell_at(g: &Graph, reg: &ph2d_node_registry::NodeRegistry, sink: NodeId, t: f64) -> i32 {
-    let mut cook = Cook::new();
+///
+/// ⚠️ **O cozinhador vem de FORA e é reusado.** Um `Cook::new()` por instante nunca devolve
+/// nada de velho, e foi por isso que a 1.ª redacção destes quatro ficou cega ao
+/// `motion.sub_uv` estar **congelado** por se declarar `Pure` a ler o relógio (2026-08-28).
+/// *A régua tem de ser a do app, e o app reusa o cozinhador.*
+fn cell_at(
+    g: &Graph,
+    reg: &ph2d_node_registry::NodeRegistry,
+    sink: NodeId,
+    cook: &mut Cook,
+    t: f64,
+) -> i32 {
     let CookValue::Instances(s) = &cook.cook(g, reg, sink, t).expect("coze")[0] else {
         panic!("instancias")
     };
@@ -91,9 +101,12 @@ fn strip(speed: f32) -> (Graph, NodeId) {
 }
 
 /// A sequência de células nos `n` primeiros passos de meio segundo.
+/// ⚠️ **UM cozinhador para a caminhada inteira** — é a régua do APP, e a única que vê um memo
+/// a devolver um stream velho.
 fn walk(g: &Graph, reg: &ph2d_node_registry::NodeRegistry, sink: NodeId, n: usize) -> Vec<i32> {
+    let mut cook = Cook::new();
     (0..n)
-        .map(|k| cell_at(g, reg, sink, k as f64 * 0.5))
+        .map(|k| cell_at(g, reg, sink, &mut cook, k as f64 * 0.5))
         .collect()
 }
 
@@ -193,8 +206,9 @@ fn unequal_frame_duration_is_the_one_that_is_genuinely_missing() {
     let reg = registry();
     let (g, sink) = strip(2.0);
     // Amostrado FINO: cada célula tem de ocupar exactamente a mesma fatia de tempo.
+    let mut fine_cook = Cook::new();
     let fine: Vec<i32> = (0..60)
-        .map(|k| cell_at(&g, &reg, sink, k as f64 * 0.05))
+        .map(|k| cell_at(&g, &reg, sink, &mut fine_cook, k as f64 * 0.05))
         .collect();
     let mut runs = Vec::new();
     let mut cur = (fine[0], 0usize);

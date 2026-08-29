@@ -148,6 +148,10 @@ fn only_the_fifth_plant_moves_with_the_clock() {
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
     let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    // ⚠️ **UM cozinhador para toda a varredura, e é a régua do APP.** Um `Cook::new()` por
+    // instante nunca devolve nada de velho — foi essa a cegueira que deixou o `motion.sub_uv`
+    // congelado passar por todos os gates (2026-08-28). Aqui a planta 5 tem de andar com o
+    // MESMO memo que o app usa.
     let mut cook = Cook::new();
     let counts_at = |cook: &mut Cook, t: f64| -> Vec<usize> {
         sinks

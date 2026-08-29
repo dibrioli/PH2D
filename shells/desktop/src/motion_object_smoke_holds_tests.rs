@@ -29,13 +29,18 @@ fn registry() -> NodeRegistry {
 ///
 /// A `uv_cell` é `[escala_u, escala_v, desloc_u, desloc_v]` numa grelha `2 × 2`, então a
 /// célula é `col + row · cols` reconstruída dos deslocamentos: a conta inversa da do nó.
+///
+/// ⚠️ **O cozinhador vem de FORA e é reusado.** Um `Cook::new()` por instante nunca devolve
+/// nada de velho — e foi por isso que a 1.ª redacção destes gates ficou cega ao flipbook estar
+/// **congelado** (o `motion.sub_uv` declarava-se `Pure` a ler o relógio). *A régua tem de ser
+/// a do app, e o app reusa o cozinhador.*
 fn cells_at(
     g: &ph2d_nodegraph::graph::Graph,
     reg: &NodeRegistry,
     sinks: &[NodeId],
+    cook: &mut Cook,
     t: f64,
 ) -> (i32, i32) {
-    let mut cook = Cook::new();
     let read = |cook: &mut Cook, s: NodeId| -> i32 {
         let CookValue::Instances(st) = &cook.cook(g, reg, s, t).expect("coze")[0] else {
             panic!("instancias")
@@ -48,7 +53,7 @@ fn cells_at(
         let row = (c[3] / c[1]).round();
         (col + row * (1.0 / c[0]).round()) as i32
     };
-    (read(&mut cook, sinks[0]), read(&mut cook, sinks[1]))
+    (read(cook, sinks[0]), read(cook, sinks[1]))
 }
 
 /// A MESMA metade de ritmo da cena, alimentada por uma grelha.
@@ -119,11 +124,12 @@ fn the_real_scene_gives_the_flipbook_a_clock_and_only_one_side_a_rhythm() {
 fn both_sides_actually_change_cell_over_one_cycle() {
     let (g, sinks) = scene();
     let reg = registry();
+    let mut cook = Cook::new();
     let cycle = f64::from(CELLS / SPEED);
     let mut left = Vec::new();
     let mut right = Vec::new();
     for k in 0..24 {
-        let (l, r) = cells_at(&g, &reg, &sinks, k as f64 * cycle / 24.0);
+        let (l, r) = cells_at(&g, &reg, &sinks, &mut cook, k as f64 * cycle / 24.0);
         left.push(l);
         right.push(r);
     }
@@ -147,9 +153,10 @@ fn both_sides_actually_change_cell_over_one_cycle() {
 fn the_two_sides_do_not_show_the_same_thing() {
     let (g, sinks) = scene();
     let reg = registry();
+    let mut cook = Cook::new();
     let cycle = f64::from(CELLS / SPEED);
     let differs = (0..48)
-        .map(|k| cells_at(&g, &reg, &sinks, k as f64 * cycle / 48.0))
+        .map(|k| cells_at(&g, &reg, &sinks, &mut cook, k as f64 * cycle / 48.0))
         .filter(|(l, r)| l != r)
         .count();
     assert!(
@@ -168,10 +175,11 @@ fn the_two_sides_do_not_show_the_same_thing() {
 fn one_full_cycle_brings_both_sides_back_to_where_they_started() {
     let (g, sinks) = scene();
     let reg = registry();
+    let mut cook = Cook::new();
     let cycle = f64::from(CELLS / SPEED);
-    let (l0, r0) = cells_at(&g, &reg, &sinks, 0.0);
+    let (l0, r0) = cells_at(&g, &reg, &sinks, &mut cook, 0.0);
     for turns in 1..4 {
-        let (l, r) = cells_at(&g, &reg, &sinks, cycle * f64::from(turns));
+        let (l, r) = cells_at(&g, &reg, &sinks, &mut cook, cycle * f64::from(turns));
         assert_eq!(l, l0, "a esquerda fugiu ao fim de {turns} voltas");
         assert_eq!(
             r, r0,
@@ -186,12 +194,13 @@ fn one_full_cycle_brings_both_sides_back_to_where_they_started() {
 fn the_third_quadrant_is_the_one_that_lingers() {
     let (g, sinks) = scene();
     let reg = registry();
+    let mut cook = Cook::new();
     let cycle = f64::from(CELLS / SPEED);
     let mut held = [0usize; 4];
     let mut plain = [0usize; 4];
     const N: usize = 600;
     for k in 0..N {
-        let (l, r) = cells_at(&g, &reg, &sinks, k as f64 * cycle / N as f64);
+        let (l, r) = cells_at(&g, &reg, &sinks, &mut cook, k as f64 * cycle / N as f64);
         plain[(l.rem_euclid(4)) as usize] += 1;
         held[(r.rem_euclid(4)) as usize] += 1;
     }
@@ -206,4 +215,41 @@ fn the_third_quadrant_is_the_one_that_lingers() {
         (ratio - 3.0).abs() < 0.3,
         "a terceira devia durar 3x e durou {ratio:.2}x ({held:?})"
     );
+}
+
+/// ⭐⭐⭐ **O FLIPBOOK CONTINUA A ANDAR COM UM COZINHADOR REUSADO** — o gate que apanha o
+/// defeito que o report de 2026-08-28 de facto tinha.
+///
+/// ⚠️⚠️ **É a segunda causa do mesmo report, e a primeira cura não lhe tocou.** Depois de a
+/// cena passar a ter relógio, ela continuava parada: o `motion.sub_uv` declarava-se
+/// `Effect::Pure` e lia `ctx.playhead()`, e a impressão digital do memo só inclui o relógio
+/// para um nó `Temporal`. Ele cozinhava UMA vez e devolvia o mesmo stream para sempre.
+///
+/// ⚠️ **E nenhum dos gates irmãos o via**, porque todos construíam um `Cook::new()` por
+/// instante — *um memo que nasce vazio nunca devolve nada de velho*. Quem reusa o cozinhador é
+/// o app. **A régua tem de ser a do app.**
+#[test]
+fn the_flipbook_keeps_moving_under_one_persistent_cook() {
+    let (g, sinks) = scene();
+    let reg = registry();
+    let mut cook = Cook::new();
+    let cycle = f64::from(CELLS / SPEED);
+    let mut seen: Vec<(i32, i32)> = Vec::new();
+    for k in 0..24 {
+        seen.push(cells_at(
+            &g,
+            &reg,
+            &sinks,
+            &mut cook,
+            k as f64 * cycle / 24.0,
+        ));
+    }
+    let left: std::collections::BTreeSet<i32> = seen.iter().map(|(l, _)| *l).collect();
+    let right: std::collections::BTreeSet<i32> = seen.iter().map(|(_, r)| *r).collect();
+    assert_eq!(
+        left.len(),
+        4,
+        "com o cozinhador REUSADO a esquerda tem de percorrer as quatro celulas: {seen:?}"
+    );
+    assert_eq!(right.len(), 4, "e a direita tambem: {seen:?}");
 }

@@ -3,8 +3,9 @@
 use super::hash_node_id;
 use ph2d_a11y::NodeId;
 
-/// O cabeçalho da seção — o que o `begin_section` regista para a nota e o recolher.
-pub const INSP_INSTANCE_SECTION: NodeId = hash_node_id("insp_instance_section");
+// ⛔ **Havia um `INSP_INSTANCE_SECTION` e ele SAIU** (Enio, 2026-08-27): a superfície deixou de ser
+// uma seção e passou a ser um CARTÃO no topo, que não tem cabeçalho, nem recolher, nem âncora de
+// nota — logo não tem o que registar. *Um id que nada regista é um id que nada resolve.*
 
 /// ⭐ **Limpar as excepções SEM ALVO** (F5.3).
 ///

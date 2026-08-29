@@ -1,15 +1,31 @@
-//! ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — *«o que esta cópia tem de diferente da receita»*.
+//! ⭐⭐⭐ **O CARTÃO de instância** (ADR-0164 / F5) — *«o que esta cópia tem de diferente da
+//! receita»*, no **topo** do Inspector.
 //!
-//! Ver [`ph2d_editor_core::screens::hero::InspectorInstanceInfo`] para o buraco que ela fecha: o
+//! Ver [`ph2d_editor_core::screens::hero::InspectorInstanceInfo`] para o buraco que ele fecha: o
 //! modelo de override existe desde a F4.4 e era **inteiramente invisível** — o artista lia-o pelo
 //! COMPORTAMENTO (a receita deixou de alcançar aquela peça), nunca por um sinal.
+//!
+//! # ⚠️ Por que é um CARTÃO no topo, e não uma seção no fim
+//!
+//! A 1.ª versão era uma seção como as outras, **por último**, com o argumento de que *«ela descreve
+//! a relação do objeto com a biblioteca, não uma propriedade dele»*. Enio (2026-08-27):
+//! *«essas mensagens não ficariam melhor num card no topo do inspector?»* — e o argumento corta
+//! para o outro lado: é **contexto sobre o que o objeto É**, logo lê-se **antes** das propriedades.
+//! *Um artista que só descobre no fim do painel que está a editar uma cópia já editou.* Figma e
+//! Unity põem a mesma faixa no topo, os dois.
+//!
+//! ⛔ **E cartão, não seção:** sem cabeçalho, sem recolher, sem âncora de nota. Ele é *chrome que
+//! avisa*, e **um aviso que se pode fechar não avisa**.
 
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 
-/// Pinta a seção. Devolve o `y` de baixo.
+/// A margem de dentro do cartão — o que separa o texto da borda dele.
+const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
+
+/// Pinta o cartão. Devolve o `y` de baixo.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_instance_section(
+pub(crate) fn paint_instance_card(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -20,34 +36,49 @@ pub(crate) fn paint_instance_section(
     w: f32,
     y: f32,
 ) -> f32 {
-    let mut y = y;
     let font = TypeToken::Base.px();
     let small = TypeToken::Sm.px();
     let line = font + Spacing::Xs.px();
+    // ⚠️ **A altura é MEDIDA antes de pintar**, e não somada enquanto se desenha: o fundo do cartão
+    // tem de ser desenhado PRIMEIRO (senão cobre o texto), e por isso ele precisa de saber onde
+    // acaba. *Um fundo pintado depois do conteúdo é o conteúdo apagado.*
+    let rows = 2 + info.overridden.len() + usize::from(info.orphans > 0);
+    let card_h = CARD_PAD * 2.0 + line * rows as f32;
+    let card = Rect::new(x, y, w, card_h);
+    fill_rounded_rect(
+        scene,
+        card,
+        Radius::Md.px(),
+        resolve(ColorToken::Bg2, theme),
+    );
+
+    let tx = x + CARD_PAD;
+    let tw = (w - CARD_PAD * 2.0).max(0.0);
+    let mut ty = y + CARD_PAD;
     // A linha de proveniência: de que receita esta cópia nasceu. É a única superfície que o diz —
     // a Hierarquia mostra a árvore, não o vínculo.
     paint_text(
         text_system,
         scene,
         &format!("Instance of \u{201c}{}\u{201d}", info.master_name),
-        x,
-        y,
+        tx,
+        ty,
         font,
-        w,
+        tw,
         resolve(ColorToken::Text1, theme),
     );
-    y += line;
+    ty += line;
     paint_text(
         text_system,
         scene,
         &info.summary(),
-        x,
-        y,
+        tx,
+        ty,
         small,
-        w,
+        tw,
         resolve(ColorToken::Text2, theme),
     );
-    y += line;
+    ty += line;
 
     // ⚠️ **Uma linha por componente overridado, pelo NOME que o `+` usa.** Sem elas o artista sabe
     // que «alguma coisa» está diferente e não sabe o quê — que é metade do defeito.
@@ -56,19 +87,19 @@ pub(crate) fn paint_instance_section(
             text_system,
             scene,
             &format!("\u{2022} {name}"),
-            x + Spacing::Md.px(),
-            y,
+            tx + Spacing::Sm.px(),
+            ty,
             font,
-            w,
+            tw,
             resolve(ColorToken::Text1, theme),
         );
-        y += line;
+        ty += line;
     }
 
     // ⭐ O gesto dos ÓRFÃOS — e ele **só aparece quando existem**: um botão permanentemente inerte
     // é ruído que o artista aprende a ignorar.
     if info.orphans > 0 {
-        let host = Rect::new(x, y, w, ROW_H_PX);
+        let host = Rect::new(tx, ty, tw, line);
         hit_index.register(ids::INSP_INSTANCE_CLEAR_ORPHANS, host);
         let button = Button::new(
             ids::INSP_INSTANCE_CLEAR_ORPHANS,
@@ -77,7 +108,6 @@ pub(crate) fn paint_instance_section(
         .kind(ButtonKind::Default)
         .visual(store.button_visual(ids::INSP_INSTANCE_CLEAR_ORPHANS));
         paint_button(&button, host, scene, text_system, theme);
-        y += ROW_H_PX;
     }
-    y + SECTION_BOTTOM_PAD_PX
+    y + card_h + SECTION_BOTTOM_PAD_PX
 }

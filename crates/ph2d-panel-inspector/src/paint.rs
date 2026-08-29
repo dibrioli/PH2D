@@ -124,8 +124,25 @@ fn paint_inspector(
         name_present,
         any_section,
     } = crate::paint_frame::LiveSnapshots::fetch();
-    let mut y = body_top_y + Spacing::Xs.px();
+    let y = body_top_y + Spacing::Xs.px();
 
+    // ⭐⭐⭐ **O CARTÃO de instância vem PRIMEIRO, e não é uma seção** — o porquê das duas coisas
+    // (incluindo o argumento que a 1.ª versão usou ao contrário) vive no cabeçalho de
+    // [`crate::sections::instance`], que é onde ele é lido por quem for mexer no cartão.
+    let mut y = y;
+    if let Some(info) = instance_info.as_ref() {
+        y = crate::sections::instance::paint_instance_card(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            info,
+            inner_x,
+            inner_w,
+            y,
+        );
+    }
     let (notes_per_section, trailing_notes) = crate::paint_frame::split_notes(store);
     // Section macro: paints the section, then the outline (if any),
     // then notes anchored to THIS section (at the END, before the
@@ -306,29 +323,6 @@ fn paint_inspector(
         anchor_selected,
         &notes_per_section,
     );
-    // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — a ÚLTIMA, e de propósito: ela descreve a
-    // relação do objeto com a biblioteca, não uma propriedade dele. Pô-la no meio empurraria para
-    // baixo as seções que o artista abre a toda a hora.
-    if let Some(info) = instance_info.as_ref() {
-        y = live_section!(
-            ids::INSP_INSTANCE_SECTION,
-            section_tops_y.len(),
-            SECTION_HEAD_H,
-            {
-                crate::sections::instance::paint_instance_section(
-                    scene,
-                    text_system,
-                    theme,
-                    hit_index,
-                    store,
-                    info,
-                    inner_x,
-                    inner_w,
-                    y,
-                )
-            }
-        );
-    }
     if any_section {
         crate::paint_frame::paint_trailing_notes(
             scene,

@@ -50,6 +50,11 @@ mod library_tests;
 /// intuitivos"* (Enio, 2026-08-28).
 #[path = "motion_bridge_lsystem_preset_tests.rs"]
 mod lsystem_preset_tests;
+
+/// O SELECTOR de moldes pelo despacho REAL — irmão cortado pelo teto de LOC (HR-18),
+/// no corte que a pergunta desenha: lá *o que a tabela é*, aqui *o que o clique faz*.
+#[path = "motion_bridge_lsystem_selector_tests.rs"]
+mod lsystem_selector_tests;
 #[cfg(all(test, feature = "panel-motion-graph", feature = "panel-motion-params"))]
 #[path = "motion_bridge_param_tests.rs"]
 mod param_tests;

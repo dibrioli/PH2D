@@ -164,6 +164,42 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
 /// e a largura — e só uma delas sobrevive a um vértice.*
 ///
 /// ⇒ fica o operador cru, e a dependência do ângulo fica **nomeada e medida**.
+/// ⭐⭐⭐ **O RAIO QUE UMA QUINA AGUDA PEDE — e SÓ quando ele ALARGA** (W104-ter).
+///
+/// # A conta
+///
+/// O operador recua o vértice `(1 − 1/√2)·r/sin α`, e um arco verdadeiro recua `r·(1/sin α − 1)`
+/// (ver a nota acima). Passar-lhe `r·(1 − sin α)/(1 − 1/√2)` iguala os dois em qualquer ângulo, e a
+/// 45° o factor é **exactamente 1** — a quina recta não se mexe um bit.
+///
+/// # ⛔⛔ Aplicá-lo aos DOIS lados foi medido e rejeitado; aplicá-lo a UM funciona
+///
+/// A W104 experimentou a compensação em **todas** as quinas e o prisma piorou de `0,0 %` para
+/// `5,4 %` de aresta viva. ⚠️ **A causa não era a compensação — era o SENTIDO dela.** Numa quina
+/// **obtusa** (`α > 45°`, como os 60° de um hexágono) o factor é **< 1**: ele *estreita* a mistura, e
+/// onde uma mistura estreita encontra a do aro, que não estreitou, nasce o vinco. Numa quina
+/// **aguda** (`α < 45°`, como os 19° da ponta de uma estrela) ele *alarga*, e uma mistura mais larga
+/// **engole** a diferença em vez de a marcar.
+///
+/// ⇒ `max(1, factor)`: compensa-se quem é agudo, e quem é obtuso fica intocado. Medido na estrela,
+/// com a sonda de **CURVATURA** — a que vê o risco no sombreado, que a de vinco não vê:
+///
+/// | | quebra de curvatura média | pontos maus na ponta |
+/// |---|---|---|
+/// | sem compensar | `3,71` | **1 940** |
+/// | **compensado** | **`1,19`** | **0** |
+///
+/// ⚠️ E a mistura alargada **cabe**: ela estende-se `comp·r` do vértice ao longo das duas arestas, e
+/// na estrela `2,29·r + r < |u|` (o comprimento da aresta) com folga de `1,5×` no filete máximo —
+/// o `star_round_limit`, que já é mais apertado, garante-o.
+fn sharp_corner_radius(alpha: f64, r: f64) -> f64 {
+    const RIGHT: f64 = 1.0 - FRAC_1_SQRT_2;
+    if !(1.0e-6..std::f64::consts::FRAC_PI_2).contains(&alpha) {
+        return r;
+    }
+    r * ((1.0 - alpha.sin()) / RIGHT).max(1.0)
+}
+
 /// ⭐⭐⭐ **A LEI DAS TRÊS FORMAS DA W101, numa frase:** *um sólido de parede reta é a interseção de
 /// uma laje com meias-fatias, e `max` de funções 1-Lipschitz é 1-Lipschitz.*
 ///
@@ -261,6 +297,13 @@ pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64)
     let beta = std::f64::consts::PI / f64::from(n);
     let k = beta.cos();
     let (b, t) = (bottom * k, top * k);
+    let m = (t - b) / (2.0 * half_height);
+    // ⭐ **O meio-ângulo interno da quina lateral, com a inclinação dentro**: as normais de duas
+    // paredes vizinhas são `(cos φ, sin φ, −m)·k`, e o cosseno entre elas é `(cos 2β + m²)/(1 + m²)`.
+    // ⚠️ Num hexágono isto dá 60° e o [`sharp_corner_radius`] não faz nada; num **triângulo** dá 30°
+    // e ele alarga — que é onde a quina é aguda o bastante para precisar.
+    let cos_psi = ((2.0 * beta).cos() + m * m) / (1.0 + m * m);
+    let alfa_lateral = (std::f64::consts::PI - cos_psi.clamp(-1.0, 1.0).acos()) * 0.5;
     let parede = |i: u32| {
         let ang = std::f64::consts::TAU * (f64::from(i) + 0.5) / f64::from(n);
         let radial = Tree::x() * Tree::constant(ang.cos()) + Tree::y() * Tree::constant(ang.sin());
@@ -278,7 +321,13 @@ pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64)
         let d = parede(i);
         walls = Some(walls.map_or_else(
             || d.clone(),
-            |w: Tree| intersection(&w, &d, Blended::Exact(round)),
+            |w: Tree| {
+                intersection(
+                    &w,
+                    &d,
+                    Blended::Exact(sharp_corner_radius(alfa_lateral, round)),
+                )
+            },
         ));
     }
     let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
@@ -386,6 +435,13 @@ fn half_plane(a: [f64; 2], b: [f64; 2]) -> Tree {
 pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64) -> Tree {
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
+    // ⭐ **Os meio-ângulos das duas quinas saem da MESMA aresta** (`lado` é o comprimento dela): na
+    // ponta `sin α = inner·sin β/|u|`, no vale `sin α = outer·sin β/|u|`. São os mesmos que o
+    // [`ph2d_field::radius::star_round_limit`] usa. ⚠️ Só a **ponta** é compensada — ela é aguda; o
+    // vale é obtuso e o `max(1, ·)` do [`sharp_corner_radius`] deixa-o em paz, que é o que a medição
+    // pede (a região do vale já lê **zero** pontos de curvatura má).
+    let lado = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
+    let alfa_ponta = (inner * beta.sin() / lado).clamp(0.0, 1.0).asin();
     let polar = |r: f64, a: f64| [r * a.cos(), r * a.sin()];
     // ⛔ **E o disco NÃO recua com o filete** — foi tentado e a medição disse que é inerte.
     //
@@ -405,7 +461,7 @@ pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64
         let ponta = intersection(
             &half_plane(before, tip),
             &half_plane(tip, after),
-            Blended::Exact(round),
+            Blended::Exact(sharp_corner_radius(alfa_ponta, round)),
         );
         // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
         // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.

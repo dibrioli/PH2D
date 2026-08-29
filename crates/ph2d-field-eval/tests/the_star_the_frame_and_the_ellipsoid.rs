@@ -136,15 +136,17 @@ fn the_tips_reach_the_outer_radius_and_the_valleys_the_inner_one() {
 /// Corners`); aqui não havia dono nenhum — o artista só tem este slider. *Uma divisão de
 /// responsabilidade copiada de outra forma é uma aresta órfã quando o segundo dono não existe.*
 ///
-/// # A lei, e ela CARREGA a dependência do ângulo
+/// # ⭐⭐⭐ A lei, e ela diz QUAL das duas quinas é compensada
 ///
-/// O operador de filete desta casa recua o vértice `(1 − 1/√2)·r/sin α`, com `α` o meio-ângulo
-/// interno da quina — e **não** o `r·(1/sin α − 1)` de um arco verdadeiro (os dois coincidem a 45°
-/// e divergem fora dali; ver a nota do `ops`, com as duas curas medidas e rejeitadas). Os dois
-/// `sin α` saem da MESMA aresta: `inner·sin β/|u|` na ponta e `outer·sin β/|u|` no vale.
+/// O operador de filete desta casa recua o vértice `(1 − 1/√2)·r/sin α`, e um arco verdadeiro recua
+/// `r·(1/sin α − 1)` — os dois coincidem a 45° e divergem fora dali. A **ponta** é aguda (19°) e
+/// passa pelo [`ops::sharp_corner_radius`], que a compensa ⇒ ela recua o do **arco verdadeiro**. O
+/// **vale** é obtuso e o `max(1, ·)` daquela porta deixa-o em paz ⇒ ele recua o do **operador**.
 ///
-/// ⚠️ Este gate mede a lei **e** a razão para o arco verdadeiro — se alguém trocar o operador, a
-/// segunda afirmação diz **em que direção** ele mudou, em vez de só reprovar.
+/// ⚠️ Os dois `sin α` saem da MESMA aresta: `inner·sin β/|u|` na ponta e `outer·sin β/|u|` no vale.
+///
+/// ⇒ este gate mede **duas leis diferentes na mesma peça**, e é isso que o torna a prova de que a
+/// compensação é **selectiva**: trocá-la por «compensa tudo» ou «não compensa nada» reprova aqui.
 #[test]
 fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says() {
     let round = 0.05_f64;
@@ -158,7 +160,9 @@ fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says()
     let u = (OUTER * OUTER + INNER * INNER - 2.0 * OUTER * INNER * beta.cos()).sqrt();
     let sin_ponta = INNER * beta.sin() / u;
     let sin_vale = OUTER * beta.sin() / u;
-    let esperado_ponta = OUTER - recuo * round / sin_ponta;
+    // ⭐ A ponta é COMPENSADA: ela recua o do arco verdadeiro.
+    let esperado_ponta = OUTER - round * (1.0 / sin_ponta - 1.0);
+    // ⭐ O vale é obtuso e NÃO é compensado: ele recua o do operador.
     let esperado_vale = INNER + recuo * round / sin_vale;
 
     let f = field_of(a_star(round as f32));
@@ -172,15 +176,22 @@ fn the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says()
         (vale - esperado_vale).abs() < 1.0e-3,
         "o vale filetado mede {vale:.6} e o operador diz {esperado_vale:.6}"
     );
-    // ⭐ **A dependência do ângulo, medida:** um arco verdadeiro de raio `r` recuaria a ponta
-    // `r·(1/sin α − 1)`. A razão é o que o `CLAUDE.md` §0 exige de um limite — o número, não a
-    // impressão.
-    let arco = round * (1.0 / sin_ponta - 1.0);
-    let razao = arco / (recuo * round / sin_ponta);
+    // ⭐ **A razão da compensação, medida:** sem ela a ponta arredondaria `2,29×` menos do que o
+    // arco. É o número que o `CLAUDE.md` §0 exige — a conta, não a impressão.
+    let razao = (round * (1.0 / sin_ponta - 1.0)) / (recuo * round / sin_ponta);
     assert!(
         (razao - 2.29).abs() < 0.05,
-        "a ponta desta fixtura devia arredondar {razao:.2}× menos do que um arco verdadeiro, e a \
-         conta deu outro número — o operador mudou"
+        "a compensação da ponta desta fixtura devia valer {razao:.2}×, e a conta deu outro número"
+    );
+    // ⛔ **E o VALE não é compensado** — a metade que prova que ela é SELECTIVA.
+    //
+    // ⚠️ E o sentido da desigualdade é o achado: numa quina **obtusa** o operador avança **MAIS**
+    // do que um arco verdadeiro (`0,0178` contra `0,0109` nesta fixtura), porque o factor
+    // `(1 − sin α)/(1 − 1/√2)` é `< 1` ali. É por isso que compensá-la *estreitaria* a mistura — e
+    // foi isso que partiu o prisma na W104.
+    assert!(
+        vale > INNER + round * (1.0 / sin_vale - 1.0) + 1.0e-3,
+        "o vale avançou só o do arco verdadeiro — a compensação deixou de ser só das quinas AGUDAS"
     );
     // ⛔ **O CONTROLE, e são DOIS**: sem filete os dois estão nos raios autorados, e o filete tem de
     // os mover em **sentidos opostos**. Sem esta metade, um construtor que encolhesse a estrela

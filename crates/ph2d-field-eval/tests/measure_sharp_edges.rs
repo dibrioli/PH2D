@@ -207,6 +207,231 @@ fn crease_points(p: &Primitive) -> Vec<([f64; 3], f64)> {
     only_creases(&traverse(p, 4096, 6).0)
 }
 
+/// ⭐⭐⭐ **A QUEBRA DE CURVATURA** — o que o olho lê como uma LINHA numa superfície lisa.
+///
+/// # Por que a variação da normal não chega
+///
+/// A sonda de vinco mede o salto da **normal**: ela acha aresta viva. ⚠️ Um filete circular não tem
+/// aresta nenhuma na fronteira da faixa — a normal é contínua ali —, mas a **curvatura** salta de
+/// zero (a face plana) para `1/r` (o arco). Isso é `G1` sem ser `G2`, e é exactamente o que produz a
+/// banda de Mach que se vê como um risco no sombreado.
+///
+/// ⇒ esta sonda mede a **segunda diferença** da normal ao longo de uma tangente: `|n(+d) − 2n(0) +
+/// n(−d)|/d`, adimensionalizada pelo tamanho da peça. Numa superfície de curvatura contínua ela é
+/// pequena em toda parte; numa fronteira de faixa ela **espeta**.
+fn curvature_break(p: &Primitive, seeds: usize) -> (f64, f64) {
+    let doc = FieldDoc::new(
+        vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p.clone()))],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let shape = ph2d_field_eval::Engine::from(ph2d_field_eval::compile(&doc));
+    let tape = shape.ez_float_slice_tape();
+    let mut ev = ph2d_field_eval::Engine::new_float_slice_eval();
+    let mut batch = |q: &[[f64; 3]]| -> Vec<f64> {
+        let xs: Vec<f32> = q.iter().map(|w| w[0] as f32).collect();
+        let ys: Vec<f32> = q.iter().map(|w| w[1] as f32).collect();
+        let zs: Vec<f32> = q.iter().map(|w| w[2] as f32).collect();
+        ev.eval(&tape, &xs, &ys, &zs)
+            .expect("avalia")
+            .iter()
+            .map(|v| f64::from(*v))
+            .collect()
+    };
+    let r = f64::from(ph2d_field::bounding_radius(p)) * 1.05;
+    let mut pts: Vec<[f64; 3]> = (0..seeds)
+        .map(|i| {
+            let z = 1.0 - 2.0 * (i as f64 + 0.5) / seeds as f64;
+            let s = (1.0 - z * z).max(0.0).sqrt();
+            let a = 2.399_963_229_728_653 * i as f64;
+            [s * a.cos() * r, s * a.sin() * r, z * r]
+        })
+        .collect();
+    project(&mut batch, &mut pts);
+    let n0 = normals(&mut batch, &pts);
+    // Dois pontos por tangente, dos dois lados, projectados de volta.
+    let d = STEP;
+    let (mut mais, mut menos) = (Vec::new(), Vec::new());
+    for (q, n) in pts.iter().zip(&n0) {
+        let (t1, _) = tangents(*n);
+        mais.push([q[0] + d * t1[0], q[1] + d * t1[1], q[2] + d * t1[2]]);
+        menos.push([q[0] - d * t1[0], q[1] - d * t1[1], q[2] - d * t1[2]]);
+    }
+    project(&mut batch, &mut mais);
+    project(&mut batch, &mut menos);
+    let na = normals(&mut batch, &mais);
+    let nb = normals(&mut batch, &menos);
+    let dentro = batch(&pts);
+    let (mut pior, mut soma, mut conta) = (0.0_f64, 0.0_f64, 0_usize);
+    for i in 0..pts.len() {
+        if dentro[i].abs() > 1.0e-3 {
+            continue;
+        }
+        let mut acc = 0.0;
+        for a in 0..3 {
+            let s = na[i][a] - 2.0 * n0[i][a] + nb[i][a];
+            acc += s * s;
+        }
+        // Adimensional: a segunda diferença por `d`, vezes o tamanho da peça.
+        let v = acc.sqrt() / d * r;
+        if v.is_finite() {
+            pior = pior.max(v);
+            soma += v;
+            conta += 1;
+        }
+    }
+    (pior, if conta == 0 { 0.0 } else { soma / conta as f64 })
+}
+
+/// ⭐ **ONDE ficam as quebras de curvatura** — a irmã de [`where_the_creases_are`], para a pergunta
+/// que a normal não responde.
+#[test]
+#[ignore]
+fn where_the_curvature_breaks_are() {
+    let base = Primitive::Star {
+        points: 5,
+        outer: 0.45,
+        inner: 0.18,
+        half_height: 0.25,
+        round: 0.0,
+    };
+    let p = with_round(&base, 0.999).expect("tem filete");
+    let (pontos, _, _) = traverse(&p, 4096, 6);
+    // Reaproveita a travessia só para as posições; a curvatura sai da sonda própria.
+    let _ = pontos;
+    let mut por_faixa = [(0.0_f64, 0_usize); 5];
+    let quebras = curvature_points(&p, 4096);
+    for (c, v) in &quebras {
+        let raio = (c[0] * c[0] + c[1] * c[1]).sqrt();
+        let i = if c[2].abs() > 0.24 {
+            0 // tampa
+        } else if raio > 0.38 {
+            1 // ponta
+        } else if raio < 0.22 {
+            2 // vale
+        } else if c[2].abs() > 0.20 {
+            3 // aro
+        } else {
+            4 // parede
+        };
+        por_faixa[i].0 = por_faixa[i].0.max(*v);
+        por_faixa[i].1 += 1;
+    }
+    for (i, nome) in ["tampa", "ponta", "vale", "aro", "parede"]
+        .iter()
+        .enumerate()
+    {
+        println!(
+            "  {nome:8} | pior {:7.2} | {} pontos acima de 1,0",
+            por_faixa[i].0, por_faixa[i].1
+        );
+    }
+}
+
+/// Os pontos cuja quebra de curvatura passa de `1,0`.
+fn curvature_points(p: &Primitive, seeds: usize) -> Vec<([f64; 3], f64)> {
+    let doc = FieldDoc::new(
+        vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p.clone()))],
+        NodeId(0),
+    )
+    .expect("a peça");
+    let shape = ph2d_field_eval::Engine::from(ph2d_field_eval::compile(&doc));
+    let tape = shape.ez_float_slice_tape();
+    let mut ev = ph2d_field_eval::Engine::new_float_slice_eval();
+    let mut batch = |q: &[[f64; 3]]| -> Vec<f64> {
+        let xs: Vec<f32> = q.iter().map(|w| w[0] as f32).collect();
+        let ys: Vec<f32> = q.iter().map(|w| w[1] as f32).collect();
+        let zs: Vec<f32> = q.iter().map(|w| w[2] as f32).collect();
+        ev.eval(&tape, &xs, &ys, &zs)
+            .expect("avalia")
+            .iter()
+            .map(|v| f64::from(*v))
+            .collect()
+    };
+    let r = f64::from(ph2d_field::bounding_radius(p)) * 1.05;
+    let mut pts: Vec<[f64; 3]> = (0..seeds)
+        .map(|i| {
+            let z = 1.0 - 2.0 * (i as f64 + 0.5) / seeds as f64;
+            let s = (1.0 - z * z).max(0.0).sqrt();
+            let a = 2.399_963_229_728_653 * i as f64;
+            [s * a.cos() * r, s * a.sin() * r, z * r]
+        })
+        .collect();
+    project(&mut batch, &mut pts);
+    let n0 = normals(&mut batch, &pts);
+    let d = STEP;
+    let (mut mais, mut menos) = (Vec::new(), Vec::new());
+    for (q, n) in pts.iter().zip(&n0) {
+        let (t1, _) = tangents(*n);
+        mais.push([q[0] + d * t1[0], q[1] + d * t1[1], q[2] + d * t1[2]]);
+        menos.push([q[0] - d * t1[0], q[1] - d * t1[1], q[2] - d * t1[2]]);
+    }
+    project(&mut batch, &mut mais);
+    project(&mut batch, &mut menos);
+    let na = normals(&mut batch, &mais);
+    let nb = normals(&mut batch, &menos);
+    let dentro = batch(&pts);
+    let mut out = Vec::new();
+    for i in 0..pts.len() {
+        if dentro[i].abs() > 1.0e-3 {
+            continue;
+        }
+        let mut acc = 0.0;
+        for a in 0..3 {
+            let s = na[i][a] - 2.0 * n0[i][a] + nb[i][a];
+            acc += s * s;
+        }
+        let v = acc.sqrt() / d * r;
+        if v.is_finite() && v > 1.0 {
+            out.push((pts[i], v));
+        }
+    }
+    out
+}
+
+/// ⭐ **A tabela da quebra de curvatura** — a irmã da tabela de vincos, para a pergunta que ela não
+/// responde: *«o que se vê é uma aresta, ou é a fronteira de uma faixa de filete?»*
+#[test]
+#[ignore]
+fn measure_curvature_breaks() {
+    println!(
+        "  forma          | limite/bordo | no MÁXIMO (pior/média) | ao MESMO filete relativo (14 %)"
+    );
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let Some(limite) = ph2d_field::round_limit(&p) else {
+            continue;
+        };
+        let bordo = ph2d_field::bounding_radius(&p);
+        let Some(q) = with_round(&p, 0.999) else {
+            continue;
+        };
+        let (pior, media) = curvature_break(&q, 4096);
+        // ⭐ **A coluna que compara maçãs com maçãs**: o mesmo filete em fração do BORDO da peça.
+        // Sem ela, uma forma cujo `round_limit` é 14 % do tamanho é comparada com outra cujo limite
+        // é 62 % — e o que se lê é a largura da faixa, não a qualidade da mistura.
+        let alvo = bordo * 0.14;
+        let mesmo = if alvo < limite {
+            let mut shape = ph2d_field::NodeShape::Leaf(p.clone());
+            ph2d_field::set_shape_radius(&mut shape, 0, alvo).ok();
+            let ph2d_field::NodeShape::Leaf(r) = shape else {
+                continue;
+            };
+            let (a, b) = curvature_break(&r, 4096);
+            format!("{a:8.2} / {b:6.2}")
+        } else {
+            format!("{:>17}", "(o limite é menor)")
+        };
+        println!(
+            "  {:14} | {:11.1} % | {pior:8.2} / {media:6.2} | {mesmo}",
+            k.key(),
+            100.0 * limite / bordo
+        );
+    }
+}
+
 fn tangents(n: [f64; 3]) -> ([f64; 3], [f64; 3]) {
     let a = if n[2].abs() < 0.9 {
         [0.0, 0.0, 1.0]
@@ -502,5 +727,55 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
         pior_no_vale < 20.0,
         "no encontro do vale com a tampa a normal salta {pior_no_vale:.1}° — as duas pipas chegam \
          ao vale cada uma com o vinco do seu plano de sector, e a união funde os dois vincos"
+    );
+}
+
+/// ⭐⭐⭐ **O FILETE NÃO DEIXA UMA CRISTA DE CURVATURA** — o gate do 3.º smoke do Enio
+/// (*«quase perfeito»*, com a seta numa ponta da estrela).
+///
+/// # ⚠️ Por que a barra de VINCO não bastava
+///
+/// A sonda de vinco mede o salto da **normal**: ela acha aresta viva. Um filete demasiado
+/// **apertado** não tem aresta nenhuma — a normal é contínua —, mas a **curvatura** dispara, e é
+/// isso que o olho lê como um risco no sombreado. A estrela lia `0,0 %` de vinco e a foto do Enio
+/// mostrava a linha na ponta.
+///
+/// ⇒ a régua é a **segunda diferença da normal**, adimensionalizada pelo tamanho da peça, e é a
+/// **média** que separa: uma crista larga levanta a média, um pico isolado não.
+///
+/// Medido no filete máximo: `0,04`–`0,47` em sete formas, e a estrela em **`1,19`** (era **`3,71`**
+/// antes de a ponta dela ser compensada). A barra é `2,0` — abaixo do defeito curado com `1,9×` de
+/// folga, e acima de toda forma boa com `4×`.
+#[test]
+fn the_fillet_leaves_no_curvature_ridge() {
+    let (mut medidas, mut maior) = (0, 0.0_f64);
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let Some(q) = with_round(&p, 0.999) else {
+            continue;
+        };
+        let (_, media) = curvature_break(&q, 2048);
+        maior = maior.max(media);
+        assert!(
+            media < 2.0,
+            "«{}»: a quebra de curvatura média é {media:.2} — o filete deixa uma crista, e ela \
+             vê-se como um risco no sombreado mesmo sem aresta nenhuma",
+            k.key()
+        );
+        medidas += 1;
+    }
+    // ⛔ **O CONTROLE**: sem ele, um dia em que nenhuma forma tenha filete o gate passa vazio.
+    assert!(
+        medidas >= 6,
+        "só {medidas} formas com filete foram medidas — o gate perdeu o sujeito"
+    );
+    // ⛔ **E o segundo CONTROLE: a sonda tem de estar a MEDIR alguma coisa.** Uma que devolvesse
+    // sempre zero passaria a barra em toda a linha sem olhar para nada — e foi uma mutação a
+    // substituí-la por `0,0` que mostrou o buraco. Um filete real deixa sempre alguma curvatura.
+    assert!(
+        maior > 0.1,
+        "a maior quebra de curvatura medida foi {maior:.3} — a sonda deixou de medir"
     );
 }

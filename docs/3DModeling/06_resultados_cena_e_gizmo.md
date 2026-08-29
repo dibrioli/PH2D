@@ -9941,3 +9941,88 @@ aresta viva, e as duas curas para ela continuam medidas e rejeitadas.
 
 **Provas de mutação: 4 de 4 mortas** — a folga apagada · a folga sem tecto (a forma parte) · a região
 do controle esvaziada · a travessia a voltar a filtrar.
+
+---
+
+## §104 — W104-ter: ⭐⭐⭐ A COMPENSAÇÃO DO ÂNGULO, mas SÓ nas quinas AGUDAS (29/08)
+
+**O 3.º smoke** (Enio, com foto e a seta numa ponta da estrela): *«quase perfeito»*.
+
+### §104.1 — ⭐⭐ A régua de VINCO não via o defeito, e foi preciso outra
+
+A sonda de vinco mede o salto da **normal**: ela acha aresta viva. ⚠️ A estrela lia **`0,0 %`** de
+vinco e a foto mostrava a linha. *Um filete demasiado **apertado** não tem aresta nenhuma — a normal
+é contínua — mas a **curvatura** dispara, e é isso que o olho lê como um risco no sombreado.*
+
+⇒ régua nova: a **segunda diferença da normal** ao longo de uma tangente, adimensionalizada pelo
+tamanho da peça (`curvature_break`). E é a **média** que separa — uma crista larga levanta a média,
+um pico isolado não:
+
+| forma | quebra de curvatura média (filete máximo) |
+|---|---|
+| cylinder · box · cone · torus_arc · wedge · prism | `0,04` – `0,15` |
+| box_frame | `0,47` |
+| **star** | **`3,71`** |
+
+⭐ E ela também revelou por que a estrela é o caso difícil: o `round_limit` dela é **`12,3 %`** do
+bordo da peça, contra **`43–60 %`** de todas as outras. *Ela não pode ser arredondada tanto quanto
+as outras, e por isso é a única em que a mistura é uma faixa estreita a atravessar uma face grande.*
+
+### §104.2 — ⭐ E o mapa disse ONDE: nas pontas, e o vale a ZERO
+
+| região | pontos com quebra > 1,0 |
+|---|---|
+| **ponta** | **1 940** |
+| parede | 102 · aro 353 · tampa 217 |
+| **vale** | **0** ⭐ (a cura da W104-bis fechou-o por completo) |
+
+### §104.3 — ⭐⭐⭐ A cura: a compensação, aplicada SÓ onde ela ALARGA
+
+A W104 tinha construído e **rejeitado** a compensação do ângulo (`r·(1−sin α)/(1−1/√2)`, que iguala
+o recuo do operador ao de um arco verdadeiro) porque ela partia o prisma (`0,0 %` → `5,4 %` de
+aresta viva). ⚠️ **A causa não era a compensação — era o SENTIDO dela:**
+
+- quina **obtusa** (`α > 45°`, os 60° de um hexágono): o factor é **< 1** ⇒ ele **estreita** a
+  mistura, e onde uma mistura estreita encontra a do aro, que não estreitou, nasce o vinco;
+- quina **aguda** (`α < 45°`, os 19° da ponta de uma estrela): o factor é **> 1** ⇒ ele **alarga**, e
+  uma mistura mais larga **engole** a diferença em vez de a marcar.
+
+⇒ `sharp_corner_radius` = `r·max(1, factor)`. Medido:
+
+| | vinco (metade / máximo) | curvatura média | pontos maus na ponta |
+|---|---|---|---|
+| a estrela da W104-bis | `1,0 %` · 25,4° / `0,0 %` · 13,6° | `3,71` | **1 940** |
+| **com a ponta compensada** | **`0,0 %` · 14,2° / `0,0 %` · 7,3°** | **`1,19`** | **0** |
+
+⭐ A estrela passa a ler `0,0 %` de aresta viva nos **dois** regimes — como todas as outras — e o
+pior salto dela no filete máximo (`7,3°`) fica **abaixo do cone** (`11,8°`).
+
+⚠️ **E a porta é geral**: o prisma passa por ela e a 60° ela **não faz nada**; num prisma
+**triangular** (30°) ela alarga, que é onde a quina é aguda o bastante para precisar.
+
+⚠️ **A mistura alargada cabe**: ela estende-se `comp·r` do vértice ao longo das duas arestas, e na
+estrela `2,29·r + r < |u|` com folga de `1,5×` no filete máximo — o `star_round_limit`, que já é
+mais apertado, garante-o.
+
+### §104.4 — Os gates, e o que cada um passou a dizer
+
+- `the_fillet_reaches_the_tips_and_the_valleys_by_the_amount_the_operator_says` mede agora **duas
+  leis diferentes na mesma peça**: a ponta recua o do **arco verdadeiro** (compensada) e o vale o do
+  **operador** (obtusa, intocada). ⚠️ E o sentido da desigualdade do vale é o achado: numa quina
+  obtusa o operador avança **MAIS** do que um arco (`0,0178` contra `0,0109`) — é por isso que
+  compensá-la estreitaria.
+- `the_fillet_leaves_no_curvature_ridge`: a média da quebra de curvatura, barra `2,0` (o defeito
+  curado dava `3,71`, e toda forma boa fica em `≤ 0,47`).
+
+### §104.5 — Provas de mutação: 4 de 4 mortas
+
+| mutação | gate |
+|---|---|
+| a ponta deixa de ser compensada | `the_fillet_leaves_no_curvature_ridge` (`3,71`) |
+| a compensação passa a valer também para as **obtusas** | idem — o prisma vai a `2,70` (pico `99,84`) |
+| a lei da ponta volta a ser a do operador | o gate analítico da estrela |
+| a sonda de curvatura devolve zero | o **2.º controle** do gate (*«a maior quebra medida foi 0,000»*) |
+
+⚠️ **O 2.º controle nasceu de uma mutação que sobreviveu**: uma sonda que devolvesse sempre zero
+passaria a barra em toda a linha sem olhar para nada. *Uma barra precisa de um piso tanto quanto de
+um tecto.*

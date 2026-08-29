@@ -5885,6 +5885,7 @@ dependencies = [
  "ph2d-vector",
  "ph2d-vector-font",
  "postcard",
+ "rayon",
  "rfd",
  "serde",
  "wgpu",
@@ -7873,6 +7874,7 @@ dependencies = [
  "ph2d-quadfill",
  "ph2d-remesh-iso",
  "ph2d-trace",
+ "rayon",
 ]
 
 [[package]]
@@ -7898,6 +7900,7 @@ dependencies = [
  "ph2d-quantize",
  "ph2d-remesh-iso",
  "ph2d-trace",
+ "rayon",
 ]
 
 [[package]]

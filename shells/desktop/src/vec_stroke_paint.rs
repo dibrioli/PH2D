@@ -53,6 +53,7 @@ pub(crate) fn selected_stroke_paint_kind(
     Some(match s.paint {
         StrokePaint::Solid(_) => StrokePaintKind::Solid,
         StrokePaint::Pattern(_) => StrokePaintKind::Pattern,
+        StrokePaint::Brush(_) => StrokePaintKind::Brush,
     })
 }
 
@@ -87,7 +88,15 @@ pub(crate) fn set_kind(
     let novo = match (kind, &cur.paint) {
         // Já é o que se pediu: nada a fazer, e a lei inteira do padrão sobrevive.
         (StrokePaintKind::Solid, StrokePaint::Solid(_))
-        | (StrokePaintKind::Pattern, StrokePaint::Pattern(_)) => return false,
+        | (StrokePaintKind::Pattern, StrokePaint::Pattern(_))
+        | (StrokePaintKind::Brush, StrokePaint::Brush(_)) => return false,
+        // ⏳ **O PINCEL ainda não se cria por aqui** (plano 36: o modelo é a W1, a criação é a W4).
+        //
+        // ⚠️ **Recusar em voz baixa é o certo, e não um `todo!()`:** esta porta é o dreno de um
+        // clique, e um panic aqui derrubaria o app se alguém publicasse o chip antes da hora. ⛔ E
+        // um `_ => return false` genérico calaria também os casos de cima — *o enum é fechado
+        // precisamente para que a próxima variante me traga aqui.*
+        (StrokePaintKind::Brush, _) => return false,
         // ⚠️ A cor que fica é a `fallback` do padrão — a que a linha já mostrava.
         (StrokePaintKind::Solid, _) => StrokePaint::Solid(cur.color()),
         (StrokePaintKind::Pattern, _) => {

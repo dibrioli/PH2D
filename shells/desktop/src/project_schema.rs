@@ -355,4 +355,15 @@
 ///
 /// ⭐ E o `StrokePaint` foi desenhado para que o **próximo** degrau seja barato: um gradiente no
 /// traço é uma variante **apendada**, do lado aditivo da regra.
-pub(crate) const PROJECT_SCHEMA: u32 = 102;
+/// # 103 — o PINCEL de contorno (plano 36, wave W1)
+///
+/// O `StrokePaint` ganhou `Brush(Box<BrushStroke>)` e o `VEC_SCENE_SCHEMA_VERSION` subiu
+/// **16 -> 17** — logo este sobe por arrasto, e a **tripla** de `project_schema_tests` vê o degrau.
+///
+/// ⭐ **Do lado ADITIVO da regra, e a nota do 101 previu-o:** *"o `StrokePaint` foi desenhado para
+/// que o próximo degrau seja barato — uma variante apendada"*. Os índices anteriores não se mexem,
+/// então um v101 lido por v102 está correcto; o que quebra é o inverso, e é o número que o
+/// transforma num erro de versão em vez de num postcard a falhar longe da causa.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
+pub(crate) const PROJECT_SCHEMA: u32 = 103;

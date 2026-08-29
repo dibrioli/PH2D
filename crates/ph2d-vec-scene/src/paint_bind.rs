@@ -170,6 +170,13 @@ fn fade(p: &mut VecPath, a: u8) {
             pat.alpha = (pat.alpha * f32::from(a) / 255.0).clamp(0.0, 1.0);
             scale(&mut pat.fallback);
         }
+        // ⏳ **UM PINCEL desvanece a cor de recurso, e as CÓPIAS ainda não** (plano 36, W1).
+        //
+        // As cópias são `VecPath` com a tinta DELAS — o desvanecimento delas mora em quem as
+        // desenha, e esse caminho nasce na W2. ⚠️ **Declarado aqui de propósito:** o compilador
+        // trouxe-me a este braço (o enum é fechado), e escrever um `_ => {}` calaria a metade que
+        // falta. *Uma metade nomeada é uma dívida; uma metade silenciosa é um defeito.*
+        Some(crate::StrokePaint::Brush(b)) => scale(&mut b.fallback),
         None => {}
     }
 }

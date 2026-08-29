@@ -12,7 +12,7 @@ fn src() -> PatternSource {
     PatternSource::Image(AssetId::from_bytes(b"tijolo"))
 }
 
-fn fill() -> PatternFill {
+pub(super) fn fill() -> PatternFill {
     PatternFill::new(src(), [10.0, 20.0], Rgba8::new(200, 30, 30, 255))
 }
 
@@ -474,7 +474,7 @@ fn measure_the_paint_sizes() {
 
 use crate::{StrokePaint, StrokeSpec};
 
-fn stroke_com_padrao() -> StrokeSpec {
+pub(super) fn stroke_com_padrao() -> StrokeSpec {
     let mut s = StrokeSpec::new(Rgba8::new(9, 9, 9, 255), 2.0);
     s.paint = StrokePaint::Pattern(Box::new(fill()));
     s

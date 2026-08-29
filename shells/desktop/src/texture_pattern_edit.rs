@@ -294,6 +294,20 @@ pub(crate) fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenToo
             ph2d_vec_scene::StrokePaint::Solid(c) => {
                 format!("Solid({},{},{},{})", c.r, c.g, c.b, c.a)
             }
+            ph2d_vec_scene::StrokePaint::Brush(b) => format!(
+                "Brush(arte={:?} spacing={} offset={} flip={} rotation_deg={} scale={} \
+                 recurso={},{},{},{})",
+                b.art,
+                b.spacing,
+                b.offset,
+                b.flip,
+                b.rotation_deg,
+                b.scale,
+                b.fallback.r,
+                b.fallback.g,
+                b.fallback.b,
+                b.fallback.a
+            ),
             ph2d_vec_scene::StrokePaint::Pattern(p) => format!(
                 "Pattern(kind={:?} mode={:?} size={:?} gap={:?} origin={:?} alpha={} \
                  offset_denom={} fonte={:?})",

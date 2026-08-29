@@ -94,6 +94,75 @@ impl StrokeAlign {
     }
 }
 
+/// ⭐⭐⭐ **A ARTE QUE PERCORRE O CONTORNO** — o *Pattern Brush* (plano 36, W1).
+///
+/// # Porque é uma variante e não um modo do padrão
+///
+/// São **dois modelos**, e o estado da arte entrega os dois (plano 36 §1):
+///
+/// - o [`StrokePaint::Pattern`] é uma **TINTA** que o contorno REVELA. É **normativo em SVG 2**:
+///   *"the stroke operation must be identical to converting the stroke geometry to a path and
+///   filling it with the paint server"* ⇒ um tracejado são **buracos** no papel de parede, e a arte
+///   não os conhece.
+/// - isto é um **PINCEL**: a arte **percorre** o caminho, roda com a tangente e (como no
+///   Illustrator) **reinicia em cada traço** do tracejado.
+///
+/// Um modo do padrão faria a mesma tinta responder às duas leis, e metade dos knobs de cada uma
+/// ficaria morta na outra.
+///
+/// # ⛔ A arte é uma FORMA, e não um [`crate::PatternSource`]
+///
+/// O motor (`pattern_along`, plano 23) copia **GEOMETRIA**: ele recebe um `VecPath` e devolve
+/// `Vec<VecPath>`. Um `PatternSource` também aceita **imagem**, e `Brush(Image(..))` seria estado
+/// **gravável e indesenhável** — a mesma lei que recusou reusar o [`crate::Paint`] aqui.
+///
+/// # ⚠️ E ele ESCALA com a largura do traço, ao contrário do padrão
+///
+/// O plano 35 §2.3 fixou que uma TINTA **não** escala com a largura (*"a largura decide a faixa; o
+/// padrão decide o que a preenche"*). Um pincel é o oposto, e é o que o Illustrator faz: **o pincel
+/// É a faixa**, então a arte nasce com a altura da largura do traço, e o [`Self::scale`] multiplica
+/// isso. *A mesma pergunta tem respostas contrárias nos dois modelos, e é por isso que são dois.*
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BrushStroke {
+    /// A **forma** do documento que se repete ao longo do contorno.
+    pub art: crate::VecPathId,
+    /// A cor que a linha pinta enquanto a arte não resolve (apagada, ou um id que não existe).
+    ///
+    /// ⚠️ **Desenhar NADA seria pior** — uma linha invisível não se distingue de uma forma sem
+    /// contorno. É a mesma lei da `fallback` do padrão.
+    pub fallback: Rgba8,
+    /// Multiplica a **largura do motivo** para dar o avanço por cópia: `1.0` encaixa borda-a-borda,
+    /// `<1` sobrepõe, `>1` deixa vão. É o `spacing` do motor.
+    pub spacing: f64,
+    /// Desvio da guia ao longo da **normal**, positivo para a ESQUERDA do sentido de marcha — a
+    /// convenção (e o sinal) do `dy` do texto em caminho.
+    pub offset: f64,
+    /// A arte do **outro lado** da curva, a percorrê-la ao contrário.
+    pub flip: bool,
+    /// **Orientação do motivo sobre a curva, em GRAUS**, dentro do referencial da cópia.
+    ///
+    /// ⚠️ A unidade está no NOME de propósito: um ângulo sem unidade declarada é o defeito que não
+    /// dá erro em sítio nenhum, e o motor já paga essa lição.
+    pub rotation_deg: f64,
+    /// Multiplica a altura **DERIVADA da largura do traço**. `1.0` = a arte tem exactamente a
+    /// altura da faixa.
+    pub scale: f64,
+}
+
+impl Default for BrushStroke {
+    fn default() -> Self {
+        Self {
+            art: crate::VecPathId::default(),
+            fallback: Rgba8::new(0, 0, 0, 255),
+            spacing: 1.0,
+            offset: 0.0,
+            flip: false,
+            rotation_deg: 0.0,
+            scale: 1.0,
+        }
+    }
+}
+
 /// ⭐⭐ **COM QUE TINTA um traço desenha** (plano 35) — a lista FECHADA, e não o [`crate::Paint`] do
 /// preenchimento.
 ///
@@ -117,6 +186,12 @@ pub enum StrokePaint {
     /// inclusive as que não têm padrão nenhum. Atrás do `Box` são `+4 %`. O preço é o `StrokeSpec`
     /// deixar de ser `Copy`, e o compilador contou esse preço em ~15–30 sítios mecânicos.
     Pattern(Box<crate::PatternFill>),
+    /// ⭐⭐⭐ **Um PINCEL** — a arte PERCORRE o contorno (plano 36). Ver [`BrushStroke`] para os dois
+    /// modelos e por que são dois.
+    ///
+    /// ⚠️ `Box` pela MESMA conta do padrão: em linha, toda forma da cena pagaria o tamanho em toda
+    /// fotografia de undo, inclusive as que não têm pincel nenhum.
+    Brush(Box<BrushStroke>),
 }
 
 impl StrokePaint {
@@ -131,6 +206,16 @@ impl StrokePaint {
         match self {
             Self::Solid(c) => *c,
             Self::Pattern(p) => p.fallback,
+            Self::Brush(b) => b.fallback,
+        }
+    }
+
+    /// O **pincel** desta tinta (`None` se ela não é um).
+    #[must_use]
+    pub fn brush(&self) -> Option<&BrushStroke> {
+        match self {
+            Self::Brush(b) => Some(b),
+            _ => None,
         }
     }
 }
@@ -227,9 +312,15 @@ impl StrokeSpec {
     #[must_use]
     pub fn pattern(&self) -> Option<&crate::PatternFill> {
         match &self.paint {
-            StrokePaint::Solid(_) => None,
+            StrokePaint::Solid(_) | StrokePaint::Brush(_) => None,
             StrokePaint::Pattern(p) => Some(p),
         }
+    }
+
+    /// O **pincel** desta tinta, se ela for um (plano 36). `None` num traço sólido ou de padrão.
+    #[must_use]
+    pub fn brush(&self) -> Option<&BrushStroke> {
+        self.paint.brush()
     }
 
     /// **Esta faixa precisa ser RECORTADA contra o interior da forma?**

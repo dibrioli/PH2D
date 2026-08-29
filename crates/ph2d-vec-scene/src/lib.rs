@@ -27,6 +27,9 @@ pub use geometry::{
 mod compound;
 pub use compound::{Contour, FillRule, reverse_contour};
 
+#[cfg(test)]
+#[path = "brush_stroke_tests.rs"]
+mod brush_stroke_tests;
 /// **Como uma forma é PINTADA** — `Rgba8`, os gradientes e o `Paint` que os une. Split de
 /// `lib.rs` pelo teto de LOC; os tipos são re-exportados aqui, então os caminhos não mudam.
 mod paint;
@@ -253,7 +256,9 @@ pub use marker::{ALL_MARKERS, Marker, end_tangent, stroke_head, trim_path};
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-pub use stroke_style::{LineCap, LineJoin, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec};
+pub use stroke_style::{
+    BrushStroke, LineCap, LineJoin, OffsetSide, StrokeAlign, StrokePaint, StrokeSpec,
+};
 
 /// **O perfil de largura** de um traço (Power Stroke / Width Tool) — a largura varia ao longo
 /// do caminho, e é o que separa um desenho de um diagrama.
@@ -451,7 +456,21 @@ pub struct VecPath {
 /// v15 com um padrão, lido por um binário v14, encontra um índice de variante que não conhece), e o
 /// bump é o que transforma isso num erro de versão. ⚠️ O `Box` **não** aparece no wire: o postcard
 /// serializa através dele.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 16;
+/// v16: o [`StrokeSpec`] deixou de ter `color: Rgba8` e passou a ter `paint: StrokePaint`
+/// (`Solid | Pattern`) — o *padrão no traço* (plano 35, wave A). ⚠️⚠️ **DESTRUTIVO nos dois
+/// sentidos**, ao contrário de todos os degraus acima: um campo **mudou de tipo no meio da
+/// estrutura**, então onde um v15 tem os 4 bytes de um `Rgba8` um leitor v16 espera o
+/// **discriminante** de um enum. Os bytes não desaparecem — passam a significar outra coisa, que é
+/// o pior modo de falha que há (⛔ *ler torto sem erro nenhum*), e é o número que o transforma num
+/// erro de versão. ⚠️ **Este degrau ficou por escrever quando a wave A o subiu** — a escada parou no
+/// v15 e o `project_schema.rs` documentou-o sozinho; *uma escada com um degrau a menos manda a
+/// próxima janela procurar o que mudou no diff*.
+/// v17: o [`StrokePaint`] ganhou `Brush(Box<BrushStroke>)` — o **pincel de contorno** (plano 36,
+/// W1). Variante **APENDADA**, do lado aditivo da regra: um save v16 lido por v17 está correcto, e
+/// o que quebra é o inverso (um v17 com pincel encontra, num binário v16, um índice de variante que
+/// ele não conhece). ⭐ É exactamente o degrau barato que a nota do `PROJECT_SCHEMA` 101 previu ao
+/// desenhar o `StrokePaint` como enum.
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 17;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

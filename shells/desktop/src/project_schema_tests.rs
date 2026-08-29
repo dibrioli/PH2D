@@ -432,7 +432,14 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 100→101 + VEC_SCENE 14→15: o TEXTURE PATTERN (plano 33 W3). O `Paint` ganhou a 5ª
         // variante (`Pattern`), entao a forma da `VecScene` MUDOU -- e desta vez a tripla VE^ o
         // degrau, ao contrario do 99 e do 100, que vivia dentro de um `ComponentBlob` opaco.
-        (102, 13, 16),
+        // PROJECT 101→102 + VEC_SCENE 15→16: o PADRAO NO TRACO (plano 35, wave A). O `StrokeSpec`
+        // trocou `color: Rgba8` por `paint: StrokePaint` -- um campo que MUDOU DE TIPO no meio da
+        // estrutura, e por isso o degrau mais destrutivo desta escada: os bytes de um v101 nao
+        // desaparecem, passam a significar outra coisa. ⛔ *Ler torto sem erro nenhum.*
+        // PROJECT 102→103 + VEC_SCENE 16→17: o PINCEL DE CONTORNO (plano 36, W1). O `StrokePaint`
+        // ganhou `Brush(Box<BrushStroke>)` -- variante APENDADA, do lado aditivo da regra, e
+        // exactamente o degrau barato que a nota do 102 previu ao desenhar a tinta como enum.
+        (103, 13, 17),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

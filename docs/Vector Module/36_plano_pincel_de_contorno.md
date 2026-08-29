@@ -116,7 +116,7 @@ depois dos efeitos vivos (cantos vivos, largura viva, booleana), pela mesma raz�
 
 | Wave | Entrega | Onde |
 |---|---|---|
-| **W1** | `StrokePaint::Brush(Box<BrushStroke>)` + o schema (o postcard é posicional ⇒ `VEC_SCENE_SCHEMA_VERSION` +1, `PROJECT_SCHEMA` +1, a tripla) | `ph2d-vec-scene` |
+| **W1** ✅ | `StrokePaint::Brush(Box<BrushStroke>)` + o schema (`VEC_SCENE` **16→17**, `PROJECT` **101→102**, a tripla) | `ph2d-vec-scene` |
 | **W2** | O **motor**: correr o `pattern_along` sobre o próprio contorno da forma, com **fit** de emenda pela porta da `dash_fit` | `ph2d-vec-scene` + `-render` |
 | **W3** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pela porta que já parte o traço em peças (`stroke_plan`) | `ph2d-vec-render` |
 | **W4** | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (tamanho · espaçamento · offset normal/tangencial · flip), irmã das outras duas | `ph2d-panel-vector` + shell |
@@ -151,3 +151,60 @@ medido, há um mês.
 | Substituir o modelo A pelo B | a norma SVG exige o A, e o Figma entrega-o como *fill or stroke* | §1.1 |
 | Os 5 ladrilhos do Illustrator na v1 | as quinas são *"a stumbling block"* declarado até para eles; entram com medição | §3.3 |
 | *"Diminua o Width da estampa"* como resposta ao artista | é um contorno para a ausência do modelo B | §5 |
+
+---
+
+## §6 — W1 fechada: **o modelo** (2026-08-28)
+
+### §6.1 — ⛔ A arte de um pincel é uma FORMA, e o TIPO impede o contrário
+
+`BrushStroke::art` é um `VecPathId`, **não** um `PatternSource`. O motor (`pattern_along`, plano 23)
+copia **geometria**; um `PatternSource` também aceita imagem, e `Brush(Image(..))` seria estado
+**gravável e indesenhável**. É a mesma lei que recusou reusar o `Paint` como tinta de traço
+(plano 35 §2.1), e aqui ela está no **tipo** — a forma mais forte de invariante, e a mais fácil de
+apagar num refactor sem dar por isso. ⇒ gate `a_brush_can_only_name_a_shape_never_an_image`.
+
+### §6.2 — ⭐⭐ O pincel ESCALA com a largura; o padrão NÃO
+
+O plano 35 §2.3 fixou o contrário para a TINTA (*"a largura decide a faixa; o padrão decide o que a
+preenche"*) — a queixa clássica do Illustrator, do lado certo. Um pincel **é** a faixa, e o *Pattern
+Brush* escala com o peso do traço.
+
+⇒ o pincel guarda `scale` **relativo** (multiplica a altura derivada da largura) e o padrão guarda
+`size` **absoluto** em unidades de mundo. *Se os dois guardassem a mesma grandeza, uma das duas leis
+estaria escrita no sítio errado.*
+
+### §6.3 — ⭐ O enum FECHADO trouxe-me a cinco decisões que eu não teria visto
+
+O compilador parou em cinco `match` exaustivos, e **cada um era uma pergunta de produto**:
+
+| Sítio | A decisão |
+|---|---|
+| `paint_bind::fade` | ⏳ um pincel desvanece a **cor de recurso**, e as CÓPIAS ainda não — declarado, não calado com um `_ => {}` |
+| `StrokeSpec::pattern()` | um pincel **não** responde como padrão |
+| `StrokeStyle::onto` | a cor escreve a `fallback`, **nunca** substitui a tinta — e aqui **não** há opacidade a escrever, ao contrário do padrão |
+| `log_shape` | o diagnóstico **nomeia** o pincel inteiro |
+| `vec_stroke_paint::set_kind` | recusa em voz baixa (a criação é a W4) — ⛔ e não um `todo!()`, que derrubaria o app se alguém publicasse o chip antes da hora |
+
+*Um `_ =>` genérico em qualquer um deles teria calado uma pergunta.* ⚠️ **Uma metade nomeada é uma
+dívida; uma metade silenciosa é um defeito.**
+
+### §6.4 — ⚠️ A escada do `VEC_SCENE` estava um degrau atrás
+
+Ela parava no **v15**: a wave A do plano 35 subiu para 16 e **não escreveu o degrau** (documentou-o
+só no `project_schema.rs`). Escritos os dois — v16 (destrutivo: um campo mudou de tipo no meio da
+estrutura) e v17 (aditivo: variante apendada). *Uma escada com um degrau a menos manda a próxima
+janela procurar o que mudou no diff.*
+
+### §6.5 — As quatro provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| `pattern()` a devolver `Some` para um pincel | `a_stroke_can_carry_a_brush` |
+| `color()` a devolver preto em vez da `fallback` | `the_stroke_colour_still_answers_for_a_brush` |
+| `#[serde(skip)]` no `scale` | `the_brush_survives_the_save` |
+| o neutro do `scale` a virar `2.0` | `the_brush_scale_is_relative_and_the_pattern_size_is_absolute` |
+
+⚠️ E o **round-trip nomeia os SETE campos**, em vez de um `assert_eq!` da struct: uma igualdade
+verde diz que os bytes voltam, **não quais**. Com um campo apendado e não escrito, os dois lados
+teriam o default e a igualdade passaria.

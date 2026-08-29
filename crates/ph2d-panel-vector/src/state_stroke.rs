@@ -44,6 +44,13 @@ pub enum StrokePaintKind {
     Solid,
     /// Uma arte repetida.
     Pattern,
+    /// ⭐⭐ **Um PINCEL** — a arte PERCORRE o contorno (plano 36).
+    ///
+    /// ⚠️ **O chip dele só é PINTADO quando o desenho existir** (W4). Acrescentar a variante aqui
+    /// na W1 é o que faz o modelo dar a volta e o diagnóstico nomeá-lo; pintar o chip antes de a
+    /// linha desenhar seria a 4.ª condição da costura falhada de propósito — *um chip que muda o
+    /// tipo para algo invisível é o defeito que esta linha já recebeu de report três vezes*.
+    Brush,
 }
 
 thread_local! {

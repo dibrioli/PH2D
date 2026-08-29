@@ -89,6 +89,18 @@ impl StrokeStyle {
         use ph2d_vec_scene::StrokePaint;
         let paint = match &old.paint {
             StrokePaint::Solid(_) => StrokePaint::Solid(self.color),
+            // ⭐ **A MESMA lei do padrão** (plano 35 §7.2): a ficha possui uma COR, nunca a TINTA.
+            // Um pincel guarda a cor de recurso, e é ela que a swatch mostra.
+            //
+            // ⚠️ **E aqui NÃO há opacidade a escrever**, ao contrário do padrão: as cópias do
+            // pincel são `VecPath` com a tinta DELAS, e o desvanecimento delas mora em quem as
+            // desenha. *A mesma pergunta tem respostas diferentes nos dois modelos, e é por isso
+            // que o enum é fechado — ele trouxe-me a este braço.*
+            StrokePaint::Brush(b) => {
+                let mut b = b.clone();
+                b.fallback = self.color;
+                StrokePaint::Brush(b)
+            }
             StrokePaint::Pattern(p) => {
                 let mut p = p.clone();
                 p.fallback = self.color;

@@ -101,6 +101,26 @@ JavaScript.
 
 ## §3 — Cel Animation
 
+> ⛔⛔ **CORRIGIDO EM 2026-08-28 — DUAS DAS TRÊS LEIS QUE ESTA SECÇÃO DIZIA FALTAR JÁ EXISTEM.**
+> A secção abaixo dizia que ao `motion.sub_uv` faltavam *ping-pong*, *duração desigual* e
+> *tocar uma vez*. A medição — [`cel_animation_laws_the_graph_already_has.rs`](../../crates/ph2d-node-registry-init/tests/cel_animation_laws_the_graph_already_has.rs),
+> quatro gates que COZEM o grafo e lêem a célula que o artista vê — refuta duas:
+>
+> | lei | o plano dizia | a medição diz |
+> |---|---|---|
+> | **inverso** | falta | ⛔ o `speed` do `sub_uv` **já vai a negativo** (`min: -MAX_CELL_SPEED`). **Zero** nós: `[0,5,4,3,2,1,0]` |
+> | **ping-pong** | falta | ⛔ o `value.wrap` **já tem `Mirror`** (`MirroredRepeat`, período `2w`). **Um** nó, e sem repetir as pontas: `[0,1,2,3,4,5,4,3,2,1,0]` |
+> | **tocar uma vez** | falta | ⛔ o `value.wrap` **já tem `Clamp`**, e segura na ÚLTIMA célula: `[0,1,2,3,4,5,5,5,5]` |
+> | **duração desigual** | falta | ⏳ **essa falta mesmo** — a rota que existe é uniforme *por construção*, e há gate a medi-lo |
+>
+> ⇒ Construir `direction` e `play` como params seria pôr no painel botões que o app já tem
+> (`CLAUDE.md` §5.0: *"antes de construir um item de lista aberta, MEÇA se a composição já o
+> exprime"*). **O item encolheu de três leis para uma.**
+>
+> ⚠️ **Como o erro entrou:** a pesquisa leu o que o `sub_uv` *escreve* e o que a `AnimationTag`
+> *tem*, e não leu o `min` do slider dele nem a lista de modos do vizinho. *Uma ausência
+> afirmada sem olhar a API é um palpite com cara de medição.*
+
 ### O achado que decide o desenho
 
 **Não é um nó, e não é um modo do `value.switch`.**
@@ -239,6 +259,8 @@ Source shipa com um campo de texto onde o artista digita `/home/…/vendas.csv`.
 | Item | Motivo |
 |---|---|
 | Cel animation como **nó novo** | O `motion.sub_uv` já é o flipbook da casa, **com GPU**; e a cadeia de valor já é exprimível em 3 nós hoje |
+| `direction` (inverso / ping-pong) como param novo | ⛔ **MEDIDO 2026-08-28**: o inverso é o `speed` negativo (zero nós) e o ping-pong é o `value.wrap(Mirror)` (um nó). Gate: `cel_animation_laws_the_graph_already_has` |
+| `play` (tocar uma vez) como param novo | ⛔ **MEDIDO**: é o `value.wrap(Clamp)`, e ele já segura na ÚLTIMA célula, que é a lei da §11 do Sprite |
 | Cel animation como modo do **`value.switch`** | Ele roteia um **escalar**, não um stream — `N_INPUTS = 4`, coluna `v` |
 | Reusar o **componente** `SpriteAnimator` | `SimComponent` per-entidade, com acumulador e relógio de parede. Um nó é derivado do playhead; o acumulador o quebraria sob scrub |
 | Campo de **colar CSV** | Um `\n` num text param **corrompe o `.ph2dproj`** — é mudança de formato, não de UX |

@@ -671,6 +671,17 @@ resolução** com a da cena. *Uma referência por faixa de linhas envelhece à v
   chega verbatim. ⇒ nada a portar — *o substrato apaga a cura*. ⚠️ Vale a pena escrever isto porque
   a nota do módulo apresenta a compensação como uma lei do produto, e ela é uma lei do MODELO.
 - ⇒ **A ordem certa é F5 antes de F4.6c**, e a F4.7 foi feita primeiro por ser independente.
+- ⭐⭐ **RECONFERIDA em 2026-08-27, depois de as variantes existirem** (§0.0: *quem move o número que
+  tornava algo inalcançável tem de reconferir a nota*). Das **três** features que o vetor tinha e o
+  geral não, **duas e meia** passaram a existir:
+  - **`Swap`** ⇒ `instance_variant::swap`, e com re-key determinístico, que o `Swap` do vetor não tem;
+  - **`UpdateMain`** ⇒ `instance_verbs::apply_to_master`, que já existia desde a F4.5;
+  - **variants** ⇒ existem, **menos os EIXOS de propriedade**. O `vec_variants.rs` lê
+    `Size=Small, State=Idle` do `Name` e pinta **uma fileira por propriedade**; o cartão geral pinta
+    **uma fileira só**, com um chip por versão. ⚠️ A lei dos eixos é do NOME, não do `VecInstance` —
+    o `parse_combo` é genérico e re-hospeda-se na família geral.
+  ⇒ **A F4.6c deixou de estar bloqueada; ela passou a CONTER uma fatia**: portar os eixos para o
+  cartão antes de apagar os 24 ficheiros. *Um porte que apaga uma feature não é um porte.*
 
 **O que a F4.6a/b mediram e o plano não dizia:**
 - ⛔⛔ **Saltar os documentos possuídos era a resposta certa e METADE do trabalho.** Uma peça

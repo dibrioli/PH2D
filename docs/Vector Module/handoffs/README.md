@@ -8,7 +8,7 @@
 > um handoff descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**65 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
+**66 handoffs** · **8** citados pelo CLAUDE.md §5 (marcados **◆** — são os que a
 §5 aponta como o detalhe de mecanismo de uma integração).
 
 | Data | | Arquivo | Papel | Assunto |
@@ -79,6 +79,7 @@
 | 2026-08-24 |  | [HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md](HANDOFF_INTEGRACAO_line_Vector_input_map_2026-08-24.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **O INPUT MAP** (W1–W7): acções nomeadas à la Godot, janela flutuante, press-to-bind, `PROJECT_SCHEMA` 95→96 (2026-08-24) |
 | 2026-08-26 |  | [HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md](HANDOFF_INTEGRACAO_line_Vector_morph_states_2026-08-26.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **A MÁQUINA DE ESTADOS DO MORPH** (W1–W11j): um botão faz o conjunto, setas virtuais, uma tecla por FORMA, o modo que toma o teclado, e o conjunto anima dentro dos States; `PROJECT_SCHEMA` 97→98 **sem degrau** (2026-08-26) |
 | 2026-08-27 |  | [HANDOFF_INTEGRACAO_line_Vector_texture_pattern_2026-08-27.md](HANDOFF_INTEGRACAO_line_Vector_texture_pattern_2026-08-27.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **TEXTURE PATTERN** (W1–W9): `Paint::Pattern`, quatro reticulados, três repetições, arte por IMAGEM ou por FORMA VIVA; as alças de canvas construídas e RETIRADAS pelo Enio; `PROJECT_SCHEMA` 99→100 · `VEC_SCENE` 14→15 (2026-08-27) |
+| 2026-08-29 |  | [HANDOFF_INTEGRACAO_line_Vector_pattern_brush_2026-08-29.md](HANDOFF_INTEGRACAO_line_Vector_pattern_brush_2026-08-29.md) | integração | HANDOFF DE INTEGRAÇÃO — `line/Vector` · **os DOIS modelos de estampa**: o padrão como TINTA (planos 33+35) e o **PINCEL de contorno** (plano 36), que escala com a largura e reinicia em cada traço. ⚠️ **SUPERSEDE o de 27/08** — 37 commits, e o `PROJECT_SCHEMA` passa a ser **contado** contra o `main` (as duas linhas escreveram o literal `100`) (2026-08-29) |
 ---
 *Índice arrumado em 2026-08-10 (DIRETRIZ §1.5.9). Handoff novo entra aqui, não na raiz de
 `docs/`.*

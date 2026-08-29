@@ -10,6 +10,8 @@ license.workspace = true
 publish = false
 
 [dependencies]
+# rayon: so' para o exemplo `chain_time`, que mede duas cadeias em paralelo.
+rayon = "1"
 # A cadeia inteira, na ordem em que ela corre. ⚠️ Esta crate NÃO tem algoritmo: ela é a ORDEM, e a
 # ordem é a coisa que duas linhas estavam prestes a escrever duas vezes.
 ph2d-mesh = { path = "../ph2d-mesh" }

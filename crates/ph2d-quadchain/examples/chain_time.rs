@@ -29,6 +29,34 @@ fn main() {
     let mut piece = load(&name);
     piece.triangulate();
     let target = ph2d_remesh_iso::target_edge(&piece, ph2d_remesh_iso::ALPHA) * scale;
+    // ⭐⭐⭐ **DUAS CADEIAS INDEPENDENTES, em série e em paralelo** (`duas` como 3.º
+    // argumento) — é o que o botão faz (campo alinhado e campo liso) e a pergunta é se o
+    // paralelo paga. ⚠️ *Não é uma cópia da ordem*: são duas invocações da **porta**.
+    if std::env::args().nth(3).as_deref() == Some("duas") {
+        let serie = std::time::Instant::now();
+        let a = ph2d_quadchain::quads_from_mesh(&piece, target);
+        let b = ph2d_quadchain::quads_from_mesh(&piece, target);
+        let t_serie = serie.elapsed().as_secs_f32() * 1000.0;
+        let par = std::time::Instant::now();
+        let (c, d) = rayon::join(
+            || ph2d_quadchain::quads_from_mesh(&piece, target),
+            || ph2d_quadchain::quads_from_mesh(&piece, target),
+        );
+        let t_par = par.elapsed().as_secs_f32() * 1000.0;
+        let q = |r: &Result<(ph2d_mesh::Mesh, ph2d_quadchain::ChainReport), _>| {
+            r.as_ref().map_or(0, |(_, x)| x.quads)
+        };
+        println!(
+            "{name}: DUAS cadeias -> serie {t_serie:.0} ms · paralelo {t_par:.0} ms ({:.2}x) \
+             | quads {} {} {} {}",
+            t_serie / t_par.max(1.0e-6),
+            q(&a),
+            q(&b),
+            q(&c),
+            q(&d)
+        );
+        return;
+    }
     let clock = std::time::Instant::now();
     match ph2d_quadchain::quads_from_mesh(&piece, target) {
         Err(e) => println!("{name}: a cadeia recusou: {e:?}"),

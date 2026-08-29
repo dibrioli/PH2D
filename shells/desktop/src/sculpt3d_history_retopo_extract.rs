@@ -269,8 +269,31 @@ impl Sculpt3dScene {
         // mediana onde ela existe (na `sculpt_eared`, `7,8° → 5,1°`, com as duas chaves da
         // frente a zero nas duas tentativas). ⇒ *é uma troca de qualidade por espera, e a
         // escolha é do dono do produto* — o número está aqui para ele a poder fazer.
-        let aligned = attempt(ph2d_crossfield::ALIGN_WEIGHT, false);
-        let smooth = attempt(0.0, false);
+        // ⭐⭐⭐ **AS DUAS EM PARALELO — o custo passa a ser o MÁXIMO, não a soma.**
+        //
+        // ⛔ A nota acima ainda vale sobre a saída barata (ela perderia qualidade), e é por
+        // isso que a cura **não** é escolher uma: as duas tentativas são **independentes** —
+        // partilham só leituras (`work`, `reference`, `layout`) e não escrevem nada em comum.
+        // *Não havia troca nenhuma a fazer: havia duas coisas em série que podiam estar lado
+        // a lado.*
+        //
+        // ⚠️ **`rayon::join` e não threads à mão:** ele é a lib sancionada da casa
+        // (SKILL_Stack §919) e o *work-stealing* dele compõe com o paralelismo que já existe
+        // **dentro** de cada passagem (o acabamento), em vez de competir com ele.
+        //
+        // ⚠️ `PH2D_RETOPO_SERIAL=1` volta a correr as duas em série — é o A/B, e é o que
+        // permite dizer quanto o paralelo vale nesta máquina em vez de o supor.
+        let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
+            (
+                attempt(ph2d_crossfield::ALIGN_WEIGHT, false),
+                attempt(0.0, false),
+            )
+        } else {
+            rayon::join(
+                || attempt(ph2d_crossfield::ALIGN_WEIGHT, false),
+                || attempt(0.0, false),
+            )
+        };
         let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
             (Ok(a), Ok(b)) => {
                 if worse(

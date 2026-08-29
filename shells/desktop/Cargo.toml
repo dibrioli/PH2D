@@ -12,6 +12,10 @@ name = "ph2d-host-desktop"
 path = "src/main.rs"
 
 [dependencies]
+# rayon: a lib de paralelismo sancionada da casa (SKILL_Stack §919). O botao de
+# retopologia corre a cadeia DUAS vezes e elas sao independentes -- ver
+# `sculpt3d_history_retopo_extract.rs`.
+rayon = "1"
 # A lei da máquina de estados do Morph (plano 32) — folha, partilhada com o runtime do jogo.
 ph2d-morph-machine = { path = "../../crates/ph2d-morph-machine" }
 # libm — HR-5 cross-OS bit-identical sincosf used in input_dispatch.rs

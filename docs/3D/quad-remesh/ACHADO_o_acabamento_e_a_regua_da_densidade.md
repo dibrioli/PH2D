@@ -650,3 +650,40 @@ contrário) — dentro da banda de caos que o doc do solver já descrevia.
 ⚠️ **E o botão continua a correr a cadeia DUAS vezes** — é a maior alavanca que sobra, e ela
 não exige escolher entre as duas tentativas: elas são independentes e podem correr **em
 paralelo**.
+
+---
+
+## §16 — ⭐⭐⭐ E o `2×` do botão não era uma escolha: eram duas coisas em série
+
+O botão corre a cadeia **duas vezes** — campo alinhado e campo liso — e fica com a melhor.
+A nota que estava no shell tratava isto como uma **troca**: *«sair cedo manteria o caso comum
+a `1×` mas perderia a melhoria da mediana onde ela existe (`7,8° → 5,1°`) ⇒ é qualidade por
+espera, e a escolha é do dono do produto»*.
+
+⛔ **A troca era falsa.** As duas tentativas são **independentes**: partilham só leituras
+(`work`, `reference`, o layout) e não escrevem nada em comum. *Não havia nada a escolher —
+havia duas coisas em série que podiam estar lado a lado.*
+
+| peça | duas cadeias em SÉRIE | ⭐ **em PARALELO** | | saída |
+|---|---|---|---|---|
+| `sculpt_eared` | `12 126`–`12 945 ms` | **`6 484`–`6 517 ms`** | **`1,87×`–`1,99×`** | idêntica (`2 468` quads nas quatro) |
+| `sculpt_wrinkled` | `6 238 ms` | **`3 693 ms`** | **`1,69×`** | idêntica (`2 463` quads nas quatro) |
+
+⚠️ **`rayon::join` e não threads à mão:** o *work-stealing* dele **compõe** com o paralelismo
+que já existe **dentro** de cada passagem (o acabamento), em vez de competir com ele — é o que
+explica o `1,87×` em vez de um `2×` limpo, e também por que não é pior que isso.
+`PH2D_RETOPO_SERIAL=1` volta ao serial, que é o A/B.
+
+### §16.1 — O somatório da jornada
+
+| | original | ⭐ **agora** | |
+|---|---|---|---|
+| **o BOTÃO na `sculpt_eared`** | `~35 s` | **`~6,5 s`** | **`5,4×`** |
+| **o BOTÃO na `sculpt_wrinkled`** | `~16 s` | **`~3,7 s`** | **`4,3×`** |
+
+⭐⭐ **E nada disto trocou qualidade por relógio:** o acabamento entrega a **mesma malha**, o
+solver entrega a **mesma topologia** (`χ = 2`, zero bordo, zero não-manifold nas quatro peças)
+com a forma a mover-se em milésimos para os dois lados, e as duas tentativas em paralelo
+devolvem **os mesmos quads**.
+
+⇒ *Os três ganhos foram desperdício removido, não precisão sacrificada.*

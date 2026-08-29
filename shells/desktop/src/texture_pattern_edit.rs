@@ -270,6 +270,30 @@ pub(crate) fn apply(
 #[path = "texture_pattern_edit_tests.rs"]
 mod tests;
 
+thread_local! {
+    /// A última forma descrita — o log é por EVENTO, e mudar de selecção é o evento.
+    static ULTIMA: std::cell::Cell<Option<VecPathId>> = const { std::cell::Cell::new(None) };
+}
+
+/// **Descreve a forma selecionada quando a selecção MUDA** — a porta que o report de 28/08 pediu.
+///
+/// ⚠️ **Por EVENTO, nunca por quadro.** A primeira sonda desta casa foi devolvida com *"há milhares
+/// de logs"*; aqui o evento é o clique que muda a selecção, que é exactamente quando o artista quer
+/// saber o que tem em mãos.
+pub(crate) fn log_selection(scene: &VecScene, pen: &ph2d_vec_edit::PenTool) {
+    if !log_on() {
+        return;
+    }
+    let sel = pen.selected();
+    if ULTIMA.with(std::cell::Cell::get) == sel {
+        return;
+    }
+    ULTIMA.with(|c| c.set(sel));
+    if sel.is_some() {
+        log_shape("selecao", scene, pen);
+    }
+}
+
 /// `PH2D_PATTERN_LOG=1` — o diagnóstico do padrão.
 ///
 /// ⚠️ **Por EVENTO, nunca por quadro.** A primeira sonda que esta linha escreveu (a do morfo) foi
@@ -309,15 +333,24 @@ pub(crate) fn log_shape(tag: &str, scene: &VecScene, pen: &ph2d_vec_edit::PenToo
         ),
     };
     let traco = path.stroke.as_ref().map_or("SEM traco".to_string(), |s| {
+        // ⚠️ **A TINTA do traço entra aqui** (plano 35): sem ela o log respondia *"que cor"* a uma
+        // pergunta que passou a ser *"que TINTA"*, e um report sobre o padrão do contorno não tinha
+        // uma linha que o descrevesse. *Um diagnóstico que não nomeia o sujeito novo manda a
+        // próxima janela adivinhar — e eu adivinhei cinco vezes.*
+        let tinta = match &s.paint {
+            ph2d_vec_scene::StrokePaint::Solid(c) => {
+                format!("Solid({},{},{},{})", c.r, c.g, c.b, c.a)
+            }
+            ph2d_vec_scene::StrokePaint::Pattern(p) => format!(
+                "Pattern(kind={:?} mode={:?} size={:?} gap={:?} origin={:?} alpha={} \
+                 offset_denom={} fonte={:?})",
+                p.kind, p.mode, p.size, p.gap, p.origin, p.alpha, p.offset_denom, p.source
+            ),
+        };
         format!(
-            "Stroke(cor={},{},{},{} largura={} align={:?} dash={})",
-            s.color().r,
-            s.color().g,
-            s.color().b,
-            s.color().a,
-            s.width,
-            s.align,
-            s.dash.is_some()
+            "Stroke(tinta={tinta} largura={} align={:?} cap={:?} join={:?} dash={:?} \
+             marcadores={:?}/{:?} escala={})",
+            s.width, s.align, s.cap, s.join, s.dash, s.marker_start, s.marker_end, s.marker_scale
         )
     });
     eprintln!(

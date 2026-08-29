@@ -7199,6 +7199,9 @@ impl crate::App {
             // ⭐ **A TINTA do traço** (plano 35, wave D) — publicada AQUI, ao lado da irmã, e não no
             // `vector_bridge`: o dreno acima pode ter acabado de dar ou tirar o traço, e uma
             // publicação anterior a ele mostraria a fileira de um traço que já não existe.
+            // ⭐ **O DIAGNÓSTICO da selecção** (`PH2D_PATTERN_LOG=1`) — aqui, depois dos drenos,
+            // porque é aqui que a cena é o que o artista vê. Por EVENTO: só quando a selecção muda.
+            crate::texture_pattern_edit::log_selection(vec_scene, &self.vec_pen);
             ph2d_panel_vector::state::set_stroke_paint_kind(
                 crate::vec_stroke_paint::selected_stroke_paint_kind(vec_scene, &self.vec_pen),
             );

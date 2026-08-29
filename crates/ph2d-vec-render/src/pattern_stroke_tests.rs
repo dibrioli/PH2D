@@ -394,3 +394,69 @@ fn the_pattern_branch_draws_the_same_pieces_as_the_solid_one() {
          o traco ganha padrao"
     );
 }
+
+/// ⭐ **SONDA: o PINCEL que chega ao encoding é o mesmo num preenchimento e num traço?**
+///
+/// Mesmo ladrilho, mesma colocação, mesmo modo — só muda quem pinta. Se os `draw_data` diferirem, o
+/// amostrador recebe outra lei (outro `Extend`, outra alfa, outro afim de pincel) e é aí que mora
+/// o *"um ladrilho e transparente em volta"* da foto de 28/08.
+#[test]
+#[ignore = "sonda: imprime, nao afirma"]
+fn measure_the_brush_a_stroke_gets_against_the_one_a_fill_gets() {
+    let quadrado = {
+        let mut s = ph2d_vec_scene::VecScene::default();
+        s.push_path(ph2d_vec_scene::VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(ph2d_vec_scene::VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            ..ph2d_vec_scene::VecPath::default()
+        });
+        s
+    };
+    let bp = build_bezpath(&quadrado.paths()[0]);
+    let place = Affine::new([2.0, 0.0, 0.0, 2.0, 0.5, 0.5]);
+    let img = tile();
+    for modo in [
+        ph2d_vec_pattern::PatternMode::Tile,
+        ph2d_vec_pattern::PatternMode::Mirror,
+        ph2d_vec_pattern::PatternMode::Clamp,
+    ] {
+        let e = crate::pattern::extend_of(modo);
+        let mut f = VectorScene::new();
+        f.fill_path_image(
+            &bp,
+            ph2d_vector::Fill::NonZero,
+            Affine::IDENTITY,
+            &img,
+            place,
+            e,
+            e,
+            ImageQuality::Medium,
+            1.0,
+        );
+        let mut t = VectorScene::new();
+        t.stroke_path_image(
+            &bp,
+            &ph2d_vector::Stroke::new(1.0),
+            Affine::IDENTITY,
+            &img,
+            place,
+            e,
+            e,
+            ImageQuality::Medium,
+            1.0,
+        );
+        let (ef, et) = (f.inner().encoding(), t.inner().encoding());
+        println!(
+            "  {modo:?} -> {e:?}\n    fill  : draw_data={:?}\n    stroke: draw_data={:?}\n    \
+             IGUAIS? tags={} data={}  (n_tags fill={} stroke={})",
+            ef.draw_data,
+            et.draw_data,
+            ef.draw_tags.len() == et.draw_tags.len(),
+            ef.draw_data == et.draw_data,
+            ef.draw_tags.len(),
+            et.draw_tags.len(),
+        );
+    }
+}

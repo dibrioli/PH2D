@@ -386,3 +386,126 @@ fn a_shape_can_have_a_pattern_on_fill_and_stroke_at_once() {
         "o ladrilho do traco sobreviveu a' remocao da tinta dele"
     );
 }
+
+/// ⭐ **SONDA do report de 2026-08-28 (2.º, *"não resolveu"*)** — o que o assado REAL entrega ao
+/// traço, com os números exactos da cena de smoke.
+///
+/// Imprime, para a tinta do preenchimento e a do traço da MESMA forma: o tamanho do ladrilho em
+/// pixels, as células, e **quantas unidades de mundo uma cópia cobre** — que é a grandeza que a
+/// foto mede.
+#[test]
+#[ignore = "sonda: imprime, nao afirma"]
+fn measure_the_baked_tile_of_each_paint() {
+    const BOX: f64 = 2.2;
+    const ART: u32 = 32;
+    let db = AssetDb::new();
+    // A MESMA arte do smoke: barra no topo, meia-diagonal, um quadrante transparente.
+    let mut px = Vec::with_capacity((ART * ART * 4) as usize);
+    for y in 0..ART {
+        for x in 0..ART {
+            let c = if y < ART / 8 {
+                [230u8, 140, 60, 255]
+            } else if x + y < ART {
+                [70, 120, 210, 255]
+            } else if x > ART * 3 / 4 && y > ART * 3 / 4 {
+                [200, 40, 40, 0]
+            } else {
+                [235, 232, 225, 255]
+            };
+            px.extend_from_slice(&c);
+        }
+    }
+    let arte = px.clone();
+    let asset = db.insert_image_rgba8(ART, ART, px);
+    let canto = [-1.3, -4.1]; // longe da origem, como as formas de baixo do smoke
+    let mk = |lado: f64, kind: TileKind, denom: u8| {
+        let mut f = PatternFill::new(
+            PatternSource::Image(asset),
+            [lado, lado],
+            Rgba8::new(1, 2, 3, 255),
+        );
+        f.kind = kind;
+        f.offset_denom = denom;
+        f.origin = canto;
+        f
+    };
+    let fill = mk(BOX / 3.0, TileKind::Grid, 2);
+    let stroke_pat = mk(BOX / 6.0, TileKind::BrickRow, 2);
+    let mut scene = VecScene::default();
+    let mut s = ph2d_vec_scene::StrokeSpec::new(Rgba8::new(1, 2, 3, 255), (BOX / 6.0) * 1.2);
+    s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(stroke_pat));
+    let id = scene.push_path(VecPath {
+        verts: [
+            [canto[0], canto[1]],
+            [canto[0] + BOX, canto[1]],
+            [canto[0] + BOX, canto[1] + BOX],
+            [canto[0], canto[1] + BOX],
+        ]
+        .map(VecVertex::corner)
+        .to_vec(),
+        closed: true,
+        fill: Some(Paint::Pattern(Box::new(fill))),
+        stroke: Some(s),
+        ..VecPath::default()
+    });
+    let mut live = TexturePatternLive::default();
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    println!(
+        "\n  forma de {BOX} unidades, traco de {:.4}",
+        (BOX / 6.0) * 1.2
+    );
+    for (slot, pat) in [
+        (
+            ph2d_vec_render::PatternSlot::Fill,
+            scene
+                .path(id)
+                .and_then(|p| p.fill.as_ref())
+                .and_then(|f| match f {
+                    Paint::Pattern(p) => Some((**p).clone()),
+                    _ => None,
+                }),
+        ),
+        (
+            ph2d_vec_render::PatternSlot::Stroke,
+            scene
+                .path(id)
+                .and_then(|p| p.stroke.as_ref())
+                .and_then(ph2d_vec_scene::StrokeSpec::pattern)
+                .cloned(),
+        ),
+    ] {
+        let Some(pat) = pat else { continue };
+        let Some(t) = live.tiles().get(&(id, slot)) else {
+            println!("  {slot:?}: SEM LADRILHO");
+            continue;
+        };
+        let pl = pat.placement_in(t.cells, t.tile_px, ([0.0, 0.0], [BOX, BOX]));
+        // ⭐ **A ALFA do ladrilho ASSADO** — pela MESMA porta que o memo usa
+        // (`ph2d_vec_pattern::bake`). A arte e' ~94 % opaca, entao um assado com muito
+        // transparente e' o assador a deixar buracos — e e' isso que se le^ como "blobs".
+        let law = pat.law([ART, ART]);
+        if let Ok(assado) = ph2d_vec_pattern::bake(&arte, ART, ART, &law) {
+            let n = assado.rgba.len() / 4;
+            let vazios = (0..n).filter(|i| assado.rgba[i * 4 + 3] == 0).count();
+            println!(
+                "    ALFA do assado {}x{}: {n} texels, {vazios} transparentes ({:.1} %)",
+                assado.width,
+                assado.height,
+                100.0 * vazios as f64 / n.max(1) as f64
+            );
+        }
+        println!(
+            "  {slot:?}: size={:?} kind={:?} denom={} | tile_px={:?} cells={:?} | UMA COPIA cobre \
+             {:.4} x {:.4} do mundo (o ladrilho inteiro: {:.4} x {:.4})",
+            pat.size,
+            pat.kind,
+            pat.offset_denom,
+            t.tile_px,
+            t.cells,
+            pl[0].hypot(pl[1]) * f64::from(t.tile_px[0]) / f64::from(t.cells[0].max(1)),
+            pl[2].hypot(pl[3]) * f64::from(t.tile_px[1]) / f64::from(t.cells[1].max(1)),
+            pl[0].hypot(pl[1]) * f64::from(t.tile_px[0]),
+            pl[2].hypot(pl[3]) * f64::from(t.tile_px[1]),
+        );
+    }
+}

@@ -108,6 +108,17 @@ H. HANDOFF DE INTEGRAÇÃO (entregável obrigatório ao fechar): escreva o
 G. UI canônica sempre: zero hex, zero f32 literal de UI, tudo por
    tokens/i18n (CLAUDE.md §0.3). Contratos congelados (CLAUDE.md §6)
    são intocáveis nesta linha.
+I. DEIXE O SMOKE COMPILADO. O ÚLTIMO passo da linha — depois do commit
+   final e da limpeza do incremental — é construir, DENTRO da sua
+   worktree, o binário do comando que você vai entregar ao Enio:
+   `cargo build -p ph2d-host-desktop --release` (+ as `--features` de
+   cada smoke que as exija). Nada do seu dia o produz: `cargo check`
+   não gera código e o gate roda no perfil `ci-test`, que é outro
+   target/ — sem este passo o primeiro gesto dele é esperar o build
+   mais caro do repo. Rode 2× e cole a 2ª saída no handoff ("Finished"
+   em segundos, ZERO "Compiling"): é a prova. Compile a MESMA linha de
+   comando que entrega (pacote, perfil, features e a árvore do `cd`) —
+   qualquer diferença é outro build. Detalhe: DIRETRIZ §1.5.9 item 9.
 ═══════════════════════════════════════════════════════════════════
 ```
 

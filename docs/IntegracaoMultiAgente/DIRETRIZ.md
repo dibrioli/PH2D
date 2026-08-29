@@ -210,6 +210,12 @@ nunca funde uma combinação não-testada. Precondição dura: primário limpo e
 violação do 1.5.1 — pare e reporte). Linha integrada segue viva pra próxima wave do módulo;
 morreu de vez → `git worktree remove Worktrees/line-<x> && git branch -d line/<x>`.
 
+⚠️ **Antes de reportar "main verde local", deixe o binário do smoke compilado NO PRIMÁRIO** —
+`cargo build -p ph2d-host-desktop --release` de dentro da raiz (mais as `--features` de cada
+smoke que o Enio vá rodar). Depois da fusão é o **main** que ele smoka, e a árvore que ele abre é
+a do primário: as worktrees podem estar todas quentes e ele ainda pagar o build inteiro. Regra,
+armadilhas e a prova (2ª corrida sem `Compiling`): §1.5.9 item 9.
+
 *(Fluxo manual equivalente, se precisar depurar passo a passo: os mesmos comandos, na ordem
 acima. O script é a fonte única — não duplique a lista aqui.)*
 
@@ -333,8 +339,40 @@ fecha a linha ([`CLAUDE.md §0.7`](../../CLAUDE.md)). Conteúdo mínimo (curto, 
    > É a mesma lição da parede de 208 handoffs, um nível acima: **acrescentar é barato para quem
    > escreve e caro para todos os que leem, sempre.**
 
+9. ⚠️ **DEIXE O BINÁRIO DO SMOKE COMPILADO — o Enio não espera build.** O smoke é
+   `cargo run -p ph2d-host-desktop --release` ([`CLAUDE.md §5`](../../CLAUDE.md)), e **nada na
+   jornada da linha o produz**: o inner loop é `cargo check -p` (não gera código) e o gate batched
+   roda no perfil `ci-test`, que é outro `target/`. Resultado: a linha fecha **100% verde** e o
+   primeiro gesto dele ainda paga um build de release inteiro — `lto = "thin"` +
+   `codegen-units = 1` ([`Cargo.toml`](../../Cargo.toml) `[profile.release]`), o build mais caro
+   do repo. *Ele é o dono do produto, não um engenheiro esperando compilar* (`CLAUDE.md §0.8`).
+
+   **Último passo da linha, depois do commit final e do item 7:**
+   ```bash
+   cd "$(git rev-parse --show-toplevel)"        # a SUA worktree
+   cargo build -p ph2d-host-desktop --release   # + as --features de cada smoke que as exija
+   cargo build -p ph2d-host-desktop --release   # 2ª corrida = a PROVA: "Finished" em segundos e
+                                                # ZERO linhas "Compiling". Cole-a no handoff.
+   ```
+   - **Compile a MESMA linha de comando que você entrega**, byte a byte: pacote, perfil,
+     `--features` e a **árvore do `cd`**. Qualquer diferença é OUTRO build, e quem o paga é ele.
+     Casos reais: `--features audio-ml` (smoke do Audio) é um **segundo** binário; o
+     `./play.command` exporta `CARGO_TARGET_DIR=target-slots/slot-brushoverhaul`, então ele e o
+     `cargo run` da mesma pasta são **dois** builds; e em Modo L o `cd` do comando é o da **sua
+     worktree** — deixar o binário quente numa árvore e entregar o path da outra não adianta nada
+     (é a mesma família silenciosa do [`MODELO_TROCA_DE_AGENTE_NA_LINHA.md`](MODELO_TROCA_DE_AGENTE_NA_LINHA.md)).
+   - **Uma env var não é um build:** todo `PH2D_*=<n>` é lido em runtime, então **um** binário
+     cobre todas as cenas. O que multiplica builds é **feature**, **perfil** e **`target/`**.
+   - **Por último, e depois do último commit** — qualquer edição posterior o torna obsoleto **em
+     silêncio**: o cargo simplesmente reconstrói quando ele apertar Enter, e nada avisa.
+   - **Não colide com o item 7:** o perfil release **não usa** compilação incremental — medido
+     2026-08-27, `target/release/incremental` está **vazio (0 B)** enquanto o `incremental/` de
+     `debug`+`ci-test` da mesma worktree pesa **14,5 GB**. Você devolve ~14 GB e guarda **2,0 GB**
+     de `target/release`: o saldo do fecho continua fortemente negativo.
+
 Modelo de resumo no fim da linha: *"Linha `<módulo>` pronta (HEAD `<sha>`, N commits). Handoff
-de integração: <itens 2–6>. Aguardo ordem de integração."*
+de integração: <itens 2–6>. Smoke compilado: `<o comando exato>` (2ª corrida: Finished em `<N>`s,
+zero Compiling). Aguardo ordem de integração."*
 
 **ONDE ele é escrito — `docs/<Módulo>/handoffs/`, nunca a raiz de `docs/`** (regra de
 2026-08-10). O topo da pasta do módulo é o **pensamento** dele (planos, pesquisas, `BUGS_*`);

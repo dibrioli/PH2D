@@ -308,6 +308,13 @@ Cinco linhas fechando assim tiram **~125 GB** do pico sem tocar em nada que algu
 ⚠️ **Reclamar no FIM, nunca desligar no COMEÇO:** durante a jornada o `incremental/` do `dev` é o que
 faz o inner loop voar. O que ele não pode é sobreviver à linha que o criou.
 
+⚠️ **E o `release/` da mesma worktree NÃO é artefato reclamável: é o ENTREGÁVEL.** Desde a emenda de
+2026-08-27 a linha fecha deixando o binário do smoke construído (DIRETRIZ §1.5.9 item 9) — o comando
+que o Enio vai rodar tem de **abrir o app**, não começar o build mais caro do repo. Os dois números,
+medidos na mesma worktree em 27/08: `debug`+`ci-test`/`incremental` = **14,5 GB** (leve tudo),
+`target/release` = **2,0 GB** (fica). O `release` também **não** tem incremental — a linha do
+`rm -rf …/target/*/incremental` não o toca (`target/release/incremental` está vazio, 0 B).
+
 ### Regra 3 — `split-debuginfo = "unpacked"` no `[profile.dev]` — **2,5×, MEDIDO**
 
 Cada um dos 40 binários de teste liga estaticamente a workspace inteira **com DWARF completo**, e por
@@ -348,6 +355,7 @@ mesmo alvo dos dois modos e compara a pegada real.
 | **`~/.cache/sccache`** | É o **cache quente** que serve os deps entre worktrees (hit de ~78% num target FRIO). Apagá-lo torna o 1º build de amanhã lento — é o oposto de arrumar. O instinto "limpar caches pra liberar memória" está **errado** aqui. |
 | **Fonte, `.git`, trabalho não-commitado** | Óbvio, e é o que a §1.2 protege. |
 | **`git clean -fdx` · `git reset --hard` · `git checkout .`** | "Limpar a árvore" com esses APAGA trabalho não-commitado em silêncio, e o gate "passa" ([[feedback_mutation_undo_with_cp_never_git_checkout]], [[feedback_destructive_git_outside_pasta]]). Para limpar artefato, use `rm -rf <target>` — cirúrgico, nunca um comando git destrutivo. |
+| **`target/release/` de uma linha FECHADA com smoke pendente** | Depois da DIRETRIZ §1.5.9 item 9, aquele binário **é o entregável** — apagá-lo devolve exatamente a espera que a regra existe para tirar do Enio, e o portão não vê a diferença (a worktree está limpa e fria justamente porque a linha fechou). São **2,0 GB**; o resto do target da mesma worktree são **14,5 GB** e continua livre: `rm -rf "$t"/debug "$t"/ci-test` em vez de `rm -rf "$t"`. Já smokado (ou linha integrada e o Enio disse ok)? Aí o release cai junto. |
 | **`git worktree remove` / `git branch -d`** | Uma linha integrada segue viva pra próxima wave; removê-la sem **ordem explícita do Enio** perde a worktree e qualquer commit não-pushado dela. Limpar o `target/` já libera o disco **sem** encostar na linha. |
 | **`git push` / `git commit`** | Fim-de-dia é arrumação, não entrega. Só por ordem explícita (CLAUDE.md §0.7). |
 

@@ -30,4 +30,11 @@ Feche a linha `$1`.
    ⛔ **E indexe as recusas:** arquivar um `⛔ MEDIDO E REJEITADO` sem o índice no doc vivo é
    apagá-lo (o log de perf do Painter guardava 47; o §5 citava cinco). As mais duras são
    **títulos de seção** — um extrator que só lê o corpo perde 31 de 126.
-6. PARE. Não integre, não pushe.
+6. **Deixe o smoke COMPILADO — último passo, depois do commit final** (DIRETRIZ §1.5.9 item 9).
+   Dentro da SUA worktree, o binário do comando exato que você vai entregar:
+   `cargo build -p ph2d-host-desktop --release` (+ as `--features` de cada smoke que as exija).
+   Rode 2× e cole a 2ª saída no handoff — *Finished* em segundos e **zero** linhas `Compiling`
+   é a prova. Nada do seu dia produz esse binário (`check` não gera código; o gate é perfil
+   `ci-test`, outro target/), e o Enio não espera build. Uma env `PH2D_*` NÃO é outro build;
+   feature, perfil e árvore do `cd` são.
+7. PARE. Não integre, não pushe.

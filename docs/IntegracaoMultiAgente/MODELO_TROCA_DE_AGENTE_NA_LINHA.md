@@ -72,7 +72,7 @@ FASE 2 — ESTADO (leia, nesta ordem, DENTRO da worktree):
    foi tentado e re-litigar decisão fechada.
 6. docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md — inteira, e
    RELEIA a cada passo, como ela manda.
-7. As REGRAS PERMANENTES DA SESSÃO (A–H) do
+7. As REGRAS PERMANENTES DA SESSÃO (A–I) do
    docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md — elas valem
    IGUAIS para você. Não estão copiadas aqui de propósito: duas cópias
    da mesma regra divergem.
@@ -84,9 +84,15 @@ COMO ESTA SESSÃO TERMINA:
    linha no meio: gate batched 1× sobre o diff ACUMULADO, handoff de
    integração em docs/<Módulo>/handoffs/, e o item 7 — reclamar o
    `target/*/incremental` da worktree (25 GB, risco zero, o cargo recria).
+   ⚠️ E o item 9, que é o ÚLTIMO passo de todos: deixar o binário do smoke
+   JÁ COMPILADO na sua worktree — `cargo build -p ph2d-host-desktop
+   --release` (+ features), rodado 2× com a 2ª saída colada no handoff
+   ("Finished" em segundos, zero "Compiling"). O Enio não espera build:
+   nada no seu dia produz esse binário (o `check` não gera código, o gate
+   é perfil `ci-test`), e uma edição posterior o invalida em SILÊNCIO.
    Você NÃO integra e NÃO pusha: entrega o handoff e PARA (CLAUDE.md §0.7).
 
-REGRA DE OURO DESTA SESSÃO (além das A–H):
+REGRA DE OURO DESTA SESSÃO (além das A–I):
 ⛔ Na dúvida sobre onde você está, `pwd`. Antes de qualquer commit,
    `git branch --show-current`. Custa um segundo; a alternativa é
    descobrir na integração que o trabalho foi para o main.

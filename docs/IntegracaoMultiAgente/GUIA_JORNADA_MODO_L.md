@@ -22,7 +22,7 @@ desktop 128 GB.
 | Quem | Faz |
 |---|---|
 | **Você (operador)** | Decide os módulos/tarefas disjuntos, abre as janelas, cola o bloco, dá a tarefa. Arbitra só os 2 casos irredutíveis (abaixo). **No fim: coleta o handoff de cada linha, abre o agente integrador e manda o ship — tudo por ordem sua.** |
-| **Cada linha** (1 janela = 1 agente) | Trabalha na worktree dela, roda `cargo check -p` no loop, fecha o gate batched, **escreve o handoff de integração (DIRETRIZ §1.5.9) e PARA** — reporta "linha pronta + handoff" e espera. NÃO integra nem faz ship sozinha. |
+| **Cada linha** (1 janela = 1 agente) | Trabalha na worktree dela, roda `cargo check -p` no loop, fecha o gate batched, **escreve o handoff de integração (DIRETRIZ §1.5.9), deixa o binário do smoke JÁ COMPILADO (item 9) e PARA** — reporta "linha pronta + handoff" e espera. NÃO integra nem faz ship sozinha. |
 | **Agente integrador** (1 janela, no primário, quando você mandar) | Recebe os handoffs, resolve TODOS os conflitos e funde cada linha via `foundational-integrate.sh` (`--ff-only` + gate testado); o ship só depois, também por ordem sua. |
 
 Não há Coordenador de plantão — a não-colisão é por construção (worktree isola git, pasta
@@ -60,6 +60,12 @@ topo daquele doc**, e é a razão de o bloco existir separado.
 - Cada linha commita local (`--no-verify`, fast mode), fecha o gate batched, **escreve o
   handoff de integração (DIRETRIZ §1.5.9) e reporta "linha pronta + handoff"** — e PARA.
   **Ela NÃO integra sozinha:** a fusão é depois, pelo agente integrador, por ordem sua.
+- ⚠️ **"Pronta" inclui o smoke já compilado** (DIRETRIZ §1.5.9 item 9): o comando que a linha te
+  entrega tem de **abrir o app**, não começar um build. Nada no dia dela produz esse binário — o
+  loop é `cargo check` (não gera código) e o gate roda noutro perfil —, então sem esse passo você
+  espera o build mais caro do repo antes de ver a feature. O handoff traz a prova: a 2ª corrida do
+  `cargo build … --release` dizendo *Finished* em segundos, **sem nenhuma linha `Compiling`**.
+  Abriu e ficou compilando? A linha pulou o item 9 — peça o passo, não o build.
 - **Você só age quando um agente te REPORTA** (os 2 casos irredutíveis):
 
   | Agente reporta | O que você faz |
@@ -76,7 +82,9 @@ Quando as linhas reportarem "pronta + handoff" e **você decidir integrar**:
 2. O integrador funde **uma linha de cada vez** via `bash scripts/foundational-integrate.sh`
    (de dentro de cada worktree): `--ff-only` serializa — a 1ª é FF, as demais rebaseiam sobre
    o novo main e o integrador resolve os conflitos (Cargo.lock/gerados = regenera; mesmo-símbolo
-   = renumera/decide com base nos handoffs). Ele reporta o **main verde local** e PARA.
+   = renumera/decide com base nos handoffs). Ele reporta o **main verde local** e PARA —
+   **com o binário de release do primário já construído** (DIRETRIZ §1.5.3), porque depois da
+   fusão é o `main` que você smoka, e as worktrees quentes não servem para isso.
 3. Cada linha integrada segue viva pra próxima wave (ou "encerra a linha":
    `git worktree remove` + `git branch -d`).
 4. **Ship é 1× por jornada, e SÓ quando você mandar** ("ship"/"push"). O integrador (ou uma

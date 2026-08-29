@@ -40,6 +40,9 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             Primitive::Prism { .. } => "Prism",
             Primitive::Wedge { .. } => "Wedge",
             Primitive::TorusArc { .. } => "Torus Arc",
+            Primitive::Star { .. } => "Star",
+            Primitive::BoxFrame { .. } => "Box Frame",
+            Primitive::Ellipsoid { .. } => "Ellipsoid",
         },
     }
 }

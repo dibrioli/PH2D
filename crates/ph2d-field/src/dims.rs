@@ -373,6 +373,93 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 span: Span::Wall(std::f32::consts::TAU),
             },
         ],
+        // ⭐⭐ **DOIS RAIOS, como o Illustrator** (W103) — e não um raio mais uma razão. ⚠️ A razão
+        // seria o único número adimensional deste arquivo, e o artista que quer *«a ponta a 40 e o
+        // vale a 15»* teria de fazer a divisão de cabeça. O preço é o `inner` ter uma **parede que
+        // é outro campo**, e é o único caso — ver a coerção no [`set_dim`].
+        Primitive::Star {
+            points,
+            outer,
+            inner,
+            half_height,
+            round,
+        } => vec![
+            Dim {
+                key: "field.dim.points",
+                value: *points as f32,
+                span: Span::Count {
+                    min: crate::MIN_STAR_POINTS,
+                    max: crate::MAX_STAR_POINTS,
+                },
+            },
+            Dim {
+                key: "field.dim.radius",
+                value: *outer,
+                span: Span::Positive,
+            },
+            // ⚠️ **A parede é o raio da PONTA**, e é do documento: com o vale por fora dela a
+            // estrela deixa de ser uma estrela (ver a validação).
+            Dim {
+                key: "field.dim.radius_inner",
+                value: *inner,
+                span: Span::Wall(*outer),
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            round_dim(*round),
+        ],
+        Primitive::BoxFrame {
+            half,
+            thickness,
+            round,
+        } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half[0] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half[1] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: half[2] * 2.0,
+                span: Span::Positive,
+            },
+            // ⚠️ **A parede é a MENOR meia-extensão**: acima dela as vigas opostas encontram-se e a
+            // gaiola vira uma caixa maciça — o miolo vazio é a forma.
+            Dim {
+                key: "field.dim.thickness",
+                value: *thickness,
+                span: Span::Wall(half[0].min(half[1]).min(half[2])),
+            },
+            round_dim(*round),
+        ],
+        // ⚠️ **As mesmas três chaves da caixa**, e a escolha é deliberada: o artista mede uma peça
+        // pela extensão dela, e um elipsóide que mostrasse «semi-eixo» pediria a divisão por dois
+        // que nenhuma outra forma deste painel pede.
+        Primitive::Ellipsoid { radii } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: radii[0] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: radii[1] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: radii[2] * 2.0,
+                span: Span::Positive,
+            },
+        ],
     }
 }
 
@@ -430,6 +517,29 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         (Primitive::TorusArc { minor, .. }, 1) => *minor = value,
         // ⚠️ **COAGE no teto**, como a contagem de lados: acima de uma volta o sector não existe.
         (Primitive::TorusArc { angle, .. }, 2) => *angle = value.min(std::f32::consts::TAU),
+        (Primitive::Ellipsoid { radii }, i @ 0..=2)
+        | (Primitive::BoxFrame { half: radii, .. }, i @ 0..=2) => radii[i] = half,
+        (
+            Primitive::BoxFrame {
+                half, thickness, ..
+            },
+            3,
+        ) => {
+            *thickness = keep_below(value, half[0].min(half[1]).min(half[2]));
+        }
+        // ⭐⭐ **A ÚNICA parede deste arquivo que é OUTRO CAMPO**, e ela coage nos dois sentidos.
+        //
+        // ⚠️ Recusar seria a resposta errada aqui, e não por conforto: o slider do vale pára no raio
+        // da ponta (a [`Span::Wall`] di-lo), então o valor de fora só chega por um arrasto do OUTRO
+        // controlo — baixar a ponta até passar o vale. *Uma recusa nesse gesto pararia o arrasto sem
+        // dizer porquê, num campo em que o artista nem estava a tocar.*
+        (Primitive::Star { outer, inner, .. }, 1) => *outer = keep_above(value, *inner),
+        (Primitive::Star { outer, inner, .. }, 2) => *inner = keep_below(value, *outer),
+        (Primitive::Star { half_height, .. }, 3) => *half_height = half,
+        (Primitive::Star { points, .. }, 0) => {
+            // ⚠️ Coage como a contagem de lados do prisma, e pela mesma razão.
+            *points = (value.round() as u32).clamp(crate::MIN_STAR_POINTS, crate::MAX_STAR_POINTS);
+        }
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -446,7 +556,9 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Extrude { .. }
             | Primitive::Cone { .. }
             | Primitive::Prism { .. }
-            | Primitive::Wedge { .. }),
+            | Primitive::Wedge { .. }
+            | Primitive::Star { .. }
+            | Primitive::BoxFrame { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);
@@ -454,6 +566,17 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         _ => return Err(bad("dim")),
     }
     Ok(())
+}
+
+/// `value`, mantido **estritamente abaixo** de `ceiling` — a folga é uma fração do próprio tecto,
+/// pela razão do [`ROUND_MARGIN`] (num alvo de `0,01` um épsilon fixo seria o tecto inteiro).
+fn keep_below(value: f32, ceiling: f32) -> f32 {
+    value.min(ceiling * (1.0 - ROUND_MARGIN))
+}
+
+/// `value`, mantido **estritamente acima** de `floor` — a irmã do [`keep_below`].
+fn keep_above(value: f32, floor: f32) -> f32 {
+    value.max(floor / (1.0 - ROUND_MARGIN))
 }
 
 /// Onde fica o filete na lista desta forma, se ela tiver um.
@@ -483,12 +606,15 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Extrude { round, .. }
         | Primitive::Cone { round, .. }
         | Primitive::Prism { round, .. }
-        | Primitive::Wedge { round, .. } => *round = value,
+        | Primitive::Wedge { round, .. }
+        | Primitive::Star { round, .. }
+        | Primitive::BoxFrame { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. } => {}
+        | Primitive::TorusArc { .. }
+        | Primitive::Ellipsoid { .. } => {}
     }
     Ok(())
 }
@@ -513,7 +639,9 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Extrude { round, .. }
         | Primitive::Cone { round, .. }
         | Primitive::Prism { round, .. }
-        | Primitive::Wedge { round, .. } => {
+        | Primitive::Wedge { round, .. }
+        | Primitive::Star { round, .. }
+        | Primitive::BoxFrame { round, .. } => {
             if *round > ceiling {
                 *round = ceiling.max(0.0);
                 return true;
@@ -524,7 +652,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. } => false,
+        | Primitive::TorusArc { .. }
+        | Primitive::Ellipsoid { .. } => false,
     }
 }
 
@@ -632,6 +761,38 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             // ao aumentar a peça, que é mudar a forma e não o tamanho (a mesma lei da contagem).
             *major *= factor;
             *minor *= factor;
+        }
+        Primitive::Star {
+            points: _,
+            outer,
+            inner,
+            half_height,
+            round,
+        } => {
+            // ⚠️ **A contagem de pontas NÃO escala** — a lei da contagem de lados: multiplicá-la
+            // faria uma estrela de 5 virar uma de 10 ao aumentar a peça, que é mudar a forma.
+            *outer *= factor;
+            *inner *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::BoxFrame {
+            half,
+            thickness,
+            round,
+        } => {
+            for h in half.iter_mut() {
+                *h *= factor;
+            }
+            // ⚠️ **A espessura escala com o resto**, e é o que mantém a proporção da gaiola: uma
+            // moldura ampliada com a viga fina seria outra peça, não a mesma maior.
+            *thickness *= factor;
+            *round *= factor;
+        }
+        Primitive::Ellipsoid { radii } => {
+            for r in radii.iter_mut() {
+                *r *= factor;
+            }
         }
     }
     true

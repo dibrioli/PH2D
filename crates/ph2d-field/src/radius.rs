@@ -23,14 +23,17 @@ impl FieldDoc {
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
                 | Primitive::Prism { round, .. }
-                | Primitive::Wedge { round, .. } => Some(*round),
+                | Primitive::Wedge { round, .. }
+                | Primitive::Star { round, .. }
+                | Primitive::BoxFrame { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. } => None,
+                | Primitive::TorusArc { .. }
+                | Primitive::Ellipsoid { .. } => None,
             },
             // Uma escultura não tem aresta autorada: o `round` dela é a malha.
             NodeKind::Sampled { .. } => None,
@@ -132,14 +135,17 @@ impl NodeShape {
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
                 | Primitive::Prism { round, .. }
-                | Primitive::Wedge { round, .. } => Some(*round),
+                | Primitive::Wedge { round, .. }
+                | Primitive::Star { round, .. }
+                | Primitive::BoxFrame { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. } => None,
+                | Primitive::TorusArc { .. }
+                | Primitive::Ellipsoid { .. } => None,
             },
         }
     }
@@ -205,13 +211,16 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
                 | Primitive::Prism { round, .. }
-                | Primitive::Wedge { round, .. } => *round = radius,
+                | Primitive::Wedge { round, .. }
+                | Primitive::Star { round, .. }
+                | Primitive::BoxFrame { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
-                | Primitive::TorusArc { .. } => {}
+                | Primitive::TorusArc { .. }
+                | Primitive::Ellipsoid { .. } => {}
             }
             Ok(())
         }
@@ -241,7 +250,8 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
-        | Primitive::TorusArc { .. } => None,
+        | Primitive::TorusArc { .. }
+        | Primitive::Ellipsoid { .. } => None,
         // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
         //
         // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular
@@ -302,6 +312,93 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
             };
             Some(half[0].min(half[1]).min(half[2]).min(plano))
         }
+        // ⭐⭐ **Aqui o limite NÃO é «a peça deixa de existir» — é «a ESTRELA deixa de ser uma
+        // estrela»**, e a distinção é o que o torna o número certo.
+        //
+        // O filete é o do **aro**, e a pegada dele na tampa é a **erosão 2D** da estrela por
+        // `round`: a ponta recua e o vale avança, cada um `round/sin α` (ver [`star_round_limit`]).
+        // No limite os dois chegam ao MESMO raio e a tampa vira um polígono regular de `2n` lados —
+        // que é o maior filete que ainda arredonda uma estrela. Um passo acima, a ponta fica
+        // **dentro** do vale e a tampa deixa de ser a forma que o artista autorou.
+        Primitive::Star {
+            points,
+            outer,
+            inner,
+            half_height,
+            ..
+        } => Some(half_height.min(star_round_limit(*points, *outer, *inner))),
+        // ⚠️ **Metade da espessura**: o recuo come a viga dos DOIS lados, e a `e/2` ela desaparece.
+        // O `min` com as meias-extensões fecha o caso da moldura mais fina que baixa que grossa.
+        Primitive::BoxFrame {
+            half, thickness, ..
+        } => Some((thickness * 0.5).min(half[0]).min(half[1]).min(half[2])),
+    }
+}
+
+/// Até onde o filete de um [`Primitive::Star`] pode ir — ver a nota em [`round_limit`].
+///
+/// ⭐ **A conta é a do canto deslocado**, e vale para os dois cantos de uma vez: recuar as duas
+/// arestas de um vértice de meio-ângulo interno `α` move-o `round/sin α` ao longo da bissetriz. Com
+/// `β = π/n` e `|u|` o comprimento de uma aresta, `sin α` vale `q·sin β/|u|` na ponta e
+/// `R·sin β/|u|` no vale — as duas saem da MESMA aresta, e é por isso que uma função só as
+/// responde. Igualar `R'` a `q'` dá o número.
+///
+/// ⚠️ **A erosão não está no CAMPO** — desde a W103 a estrela é construída com as paredes onde foram
+/// autoradas, e quem arredonda é a interseção com a laje. Esta conta responde só *«até onde o filete
+/// ainda arredonda uma estrela»*, que é a pegada dele na tampa.
+#[must_use]
+pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
+    let n = points.max(crate::MIN_STAR_POINTS);
+    let beta = std::f32::consts::PI / n as f32;
+    let u = (outer * outer + inner * inner - 2.0 * outer * inner * beta.cos()).sqrt();
+    if u <= f32::MIN_POSITIVE || outer <= inner {
+        return 0.0;
+    }
+    (outer - inner) * inner * outer * beta.sin() / (u * (outer + inner))
+}
+
+/// ⭐⭐⭐ **O FILETE DESTA FORMA INFLA O GRADIENTE?** (W103) — a pergunta que a marcha faz.
+///
+/// # Por que a resposta não é a mesma para todas
+///
+/// Há **duas** maneiras de arredondar uma aresta convexa neste módulo, e elas têm campos diferentes:
+///
+/// - **encolher uma distância EXATA e deslocá-la** (`box_raw`, `cylinder_raw`): a dilatação de uma
+///   distância exata é o corpo com os cantos redondos, e o campo continua `1`-Lipschitz;
+/// - **interseção ARREDONDADA** (`Blended::Exact`): é a única saída quando as paredes não são
+///   ortogonais — e ela **infla**. Medido, num cone de declive `0,47`: `‖∇f‖ = 1,1943`, que é
+///   exatamente o `√(1 − cos φ)` do canto de ângulo interno `φ`.
+///
+/// ⚠️ **A marcha TEM de saber**, e é a mesma lei que o report do Enio de 2026-08-29 pagou: o
+/// `inflation_depth` lia a mistura do **grupo** e não a de cada forma, o passo ficava em `1,0` sobre
+/// um campo de `1,17`, e o raio atravessava a superfície. Uma primitiva que arredonda por interseção
+/// é **outro** produtor da mesma inflação — e o `NodeKind::Leaf` valia `0` para todos.
+///
+/// ⚠️ **Lista FECHADA**: uma primitiva nova é erro de compilação aqui, e quem a escrever tem de
+/// dizer por que porta ela arredonda. `false` quando o raio é zero — é assim que o produto exprime
+/// *«aresta viva»*, e é o estado que não pode custar passo nenhum.
+#[must_use]
+pub fn fillet_inflates(p: &Primitive) -> bool {
+    match p {
+        // As duas exatas: a fonte encolhe e o deslocamento repõe, com o `length` do canto a fazer
+        // o arredondamento de verdade.
+        // ⚠️ **A gaiola entra aqui**: ela é a união de três caixas, cada uma pela receita da caixa,
+        // e o `min` de uma união não infla.
+        Primitive::Box { .. }
+        | Primitive::Cylinder { .. }
+        | Primitive::Extrude { .. }
+        | Primitive::BoxFrame { .. } => false,
+        // As quatro de parede não-ortogonal, que arredondam pela interseção.
+        Primitive::Cone { round, .. }
+        | Primitive::Prism { round, .. }
+        | Primitive::Wedge { round, .. }
+        | Primitive::Star { round, .. } => *round != 0.0,
+        Primitive::Sphere { .. }
+        | Primitive::Torus { .. }
+        | Primitive::Revolve { .. }
+        | Primitive::Capsule { .. }
+        | Primitive::TorusArc { .. }
+        | Primitive::Ellipsoid { .. } => false,
     }
 }
 
@@ -377,6 +474,16 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         } => (bottom.max(*top) * apothem_ratio(*sides)).min(*half_height),
         Primitive::Wedge { half, .. } => half[0].min(half[1]).min(half[2]),
         Primitive::TorusArc { minor, .. } => *minor,
+        // ⚠️ **O raio do VALE, não o da ponta** — é a menor dimensão que define a estrela, e é
+        // aquela contra a qual um filete de junção se mede (um filete maior do que o vale engole o
+        // miolo e deixa só as pontas).
+        Primitive::Star {
+            inner, half_height, ..
+        } => inner.min(*half_height),
+        // ⚠️ **A ESPESSURA da viga**, e não a caixa: a peça mais fina de uma gaiola é a aresta, e
+        // um filete de junção da escala da caixa engoliria a moldura inteira.
+        Primitive::BoxFrame { thickness, .. } => *thickness,
+        Primitive::Ellipsoid { radii } => radii[0].min(radii[1]).min(radii[2]),
     }
 }
 
@@ -495,5 +602,16 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         // ⚠️ **Um ARCO cabe no toro inteiro**, e é o bordo honesto: apertá-lo pelo sector exigiria
         // a caixa de um sector de anel, e um bordo menor **corta a peça** sem dizer nada.
         Primitive::TorusArc { major, minor, .. } => major + minor,
+        // A ponta é o ponto mais afastado no plano, e ela está a `outer` do eixo.
+        Primitive::Star {
+            outer, half_height, ..
+        } => hyp(*outer, *half_height),
+        // A gaiola cabe na caixa de que ela é o esqueleto.
+        Primitive::BoxFrame { half, .. } => {
+            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
+        }
+        // ⚠️ **O MAIOR semi-eixo** — o menor daria uma esfera que corta a peça nos outros dois, e a
+        // assimetria desta função é a lei (errar para cima custa resolução, errar para baixo corta).
+        Primitive::Ellipsoid { radii } => radii[0].max(radii[1]).max(radii[2]),
     }
 }

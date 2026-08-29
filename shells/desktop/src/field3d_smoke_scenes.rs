@@ -473,6 +473,51 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(4),
             )
         }
+        11 => {
+            println!(
+                "[field-smoke] cena 11 — O LOTE DA W103: estrela de 5 pontas · gaiola de caixa · \
+                 elipsóide, lado a lado"
+            );
+            let x = |v: f32| Xform {
+                translation: [v, 0.0, 0.0],
+                ..Xform::IDENTITY
+            };
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Star {
+                            points: 5,
+                            outer: 0.30,
+                            inner: 0.12,
+                            half_height: 0.10,
+                            round: 0.020,
+                        },
+                        x(-0.62),
+                    ),
+                    leaf(
+                        Primitive::BoxFrame {
+                            half: [0.26, 0.26, 0.26],
+                            thickness: 0.078,
+                            round: 0.020,
+                        },
+                        x(0.0),
+                    ),
+                    leaf(
+                        Primitive::Ellipsoid {
+                            radii: [0.30, 0.165, 0.24],
+                        },
+                        x(0.62),
+                    ),
+                    // ⚠️ Aresta viva na junção, como as cenas 9 e 10: elas não se tocam, e um filete
+                    // de junção seria um número que não faz nada.
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2)],
+                    ),
+                ],
+                NodeId(3),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

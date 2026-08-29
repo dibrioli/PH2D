@@ -56,6 +56,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.pyramid_truncated" => "Truncated Pyramid",
         "panel.model3d.add.wedge" => "Wedge",
         "panel.model3d.add.torus_arc" => "Torus Arc",
+        // ⭐⭐ O LOTE DA W103 — o fim da fila do doc 08. ⚠️ **"Star" sem o número de pontas**, pela
+        // razão do prisma: ela nasce de 5 e o primeiro controlo do painel são as pontas, então
+        // "5-Point Star" prometeria uma forma fixa e mandaria procurar "6-Point Star" numa lista
+        // que nunca a terá.
+        "panel.model3d.add.star" => "Star",
+        "panel.model3d.add.box_frame" => "Box Frame",
+        "panel.model3d.add.ellipsoid" => "Ellipsoid",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -162,6 +169,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // total, que o número não é.
         "field.dim.length" => "Length",
         "field.dim.sides" => "Sides",
+        "field.dim.points" => "Points",
+        // ⚠️ **"Inner Radius" e não "Ratio"**: o documento guarda um raio, e um rótulo de razão
+        // prometeria um número entre 0 e 1 que o campo não é.
+        "field.dim.radius_inner" => "Inner Radius",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o
         // número cru, e o rótulo não promete unidade nenhuma.
         "field.dim.angle" => "Sweep",

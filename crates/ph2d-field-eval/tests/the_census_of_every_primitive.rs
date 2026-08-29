@@ -105,6 +105,26 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             minor: 0.15,
             angle: std::f64::consts::PI as f32 * 1.3,
         },
+        // ⚠️ **CINCO pontas**, que é o número ímpar: com um par, metade das paredes cai sobre a
+        // outra metade por simetria, e uma costura entre pipas vizinhas nunca seria varrida em
+        // ângulo genérico.
+        PrimitiveKind::Star => Primitive::Star {
+            points: 5,
+            outer: 0.45,
+            inner: 0.18,
+            half_height: 0.25,
+            round: 0.03,
+        },
+        PrimitiveKind::BoxFrame => Primitive::BoxFrame {
+            half: [0.45, 0.35, 0.4],
+            thickness: 0.12,
+            round: 0.03,
+        },
+        // ⚠️ **Os três semi-eixos DIFERENTES**: com dois iguais o campo é o de um esferóide, e a
+        // razão `min/max` — que é exatamente o que esta forma subestima — só aparece num par.
+        PrimitiveKind::Ellipsoid => Primitive::Ellipsoid {
+            radii: [0.5, 0.2, 0.35],
+        },
     })
 }
 
@@ -129,29 +149,84 @@ fn worst_gradient(f: &Field, e: f64, steps: usize) -> f64 {
     worst
 }
 
-fn field_of(p: Primitive) -> Field {
-    let doc = FieldDoc::new(
+fn doc_of(p: Primitive) -> FieldDoc {
+    FieldDoc::new(
         vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(p))],
         NodeId(0),
     )
-    .expect("a peça");
-    Field::new(&doc)
+    .expect("a peça")
 }
 
+fn field_of(p: Primitive) -> Field {
+    Field::new(&doc_of(p))
+}
+
+/// ⭐⭐⭐ **O produto `passo × ‖∇f‖` é o que fura, e é ele que este gate mede.**
+///
+/// # ⛔ A barra era `‖∇f‖ ≤ 1,02`, e a W103 mostrou que essa pergunta é a errada
+///
+/// Enquanto **toda** primitiva era 1-Lipschitz, medir só o gradiente dava no mesmo. Deixou de dar
+/// no dia em que o filete do cone passou a existir: ele arredonda por **interseção arredondada** (a
+/// única saída com paredes não-ortogonais), e isso infla — `1,1943` medido, que é o `√(1 − cos φ)`
+/// do canto. Baixar a barra seria **afrouxar o gate**; a resposta certa é perguntar ao módulo qual
+/// o passo que ele vai de facto usar nesta peça ([`ph2d_field_eval::safe_march_step`]) e exigir que
+/// o **produto** seja seguro.
+///
+/// ⭐ Isto é estritamente MAIS forte do que a barra antiga: uma primitiva que inflasse **sem** o
+/// declarar ao [`ph2d_field::fillet_inflates`] passaria a barra de `1,02`… não passaria — mas
+/// também não passa aqui, e agora com a causa nomeada (o passo continua em `1,0`).
 #[test]
 fn every_primitive_honours_the_march() {
     for k in PrimitiveKind::ALL {
         let Some(p) = representative(k) else {
             continue;
         };
-        let g = worst_gradient(&field_of(p), 1.0, 24);
+        let doc = doc_of(p.clone());
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&doc));
+        let g = worst_gradient(&Field::new(&doc), 1.0, 24);
         assert!(
-            g <= SLACK,
-            "«{}» tem ‖∇f‖ = {g:.4} — acima de 1 o campo sobe mais depressa que a distância, e a \
-             marcha ATRAVESSA a superfície com o passo de hoje",
-            k.key()
+            passo * g <= SLACK,
+            "«{}»: passo {passo:.4} × ‖∇f‖ {g:.4} = {:.4} — acima de 1 a marcha ATRAVESSA a \
+             superfície",
+            k.key(),
+            passo * g
         );
     }
+}
+
+/// ⛔ **O CONTROLE do gate acima, e sem ele o produto passaria por ser pequeno.**
+///
+/// ⚠️ Se `safe_march_step` devolvesse um número minúsculo para tudo, o produto seria seguro em toda
+/// a linha e o gate deixaria de medir. Esta metade exige o contrário: quem **não** infla tem de
+/// andar a passo INTEIRO — é o `CLAUDE.md` §0 aplicado ao passo (*o caminho lento não define o teto
+/// do rápido*), e é a propriedade que a W56f construiu.
+#[test]
+fn the_shapes_that_do_not_inflate_still_march_at_full_step() {
+    let mut inteiros = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else {
+            continue;
+        };
+        let passo = ph2d_field_eval::safe_march_step(&doc_of(p.clone()));
+        if ph2d_field::fillet_inflates(&p) {
+            assert!(
+                passo < 1.0,
+                "«{}» infla e mesmo assim anda a passo inteiro",
+                k.key()
+            );
+        } else {
+            assert!(
+                (passo - 1.0).abs() < 1.0e-6,
+                "«{}» não infla e anda a {passo:.4} — o caminho lento a definir o teto do rápido",
+                k.key()
+            );
+            inteiros += 1;
+        }
+    }
+    assert!(
+        inteiros >= 4,
+        "o controle perdeu o sujeito: {inteiros} formas a passo inteiro"
+    );
 }
 
 /// ⭐⭐⭐ **A CAIXA DO MUNDO CONTÉM A PEÇA** — e uma mutação sobrevivente pediu este gate.
@@ -263,14 +338,84 @@ fn the_biggest_fillet_still_leaves_a_body() {
             );
             p = escrita;
         }
-        let f = field_of(p);
+        // ⛔⛔ **A PERGUNTA MUDOU NA W103, e a antiga estava ERRADA — não «apertada demais».**
+        //
+        // ⚠️ Ela era `f(0,0,0) < 0`: *«o centro da peça está dentro»*. Isso é uma afirmação sobre
+        // sólidos **maciços**, e o [`Primitive::BoxFrame`] tem o miolo **vazio de propósito** — o
+        // gate reprovou-o a dizer *«a parede inverteu, e a validação deixou passar»*, que é uma
+        // causa que não existia. *Uma sonda que amostra UM ponto escolhido a olho carrega, sem o
+        // dizer, a forma que o autor tinha em mente.*
+        //
+        // ⭐ A pergunta derivada faz o mesmo trabalho sem essa premissa: **conta** quantas amostras
+        // de uma grelha caem dentro, com filete zero e com o filete máximo. `n1 > 0` é «ainda há
+        // peça»; `n1 <= n0` é «o filete comeu, não cresceu» — e é este segundo lado que apanha a
+        // parede invertida que a redação antiga NOMEAVA e nunca media.
+        let n1 = inside_count(&p);
+        let n0 = {
+            // ⚠️ Pela porta do RAIO e não pelo `set_dim`: o zero é a aresta viva, e é ela que dá a
+            // referência contra a qual o filete tem de tirar material.
+            let mut shape = ph2d_field::NodeShape::Leaf(original.clone());
+            ph2d_field::set_shape_radius(&mut shape, 0, 0.0).expect("aresta viva é sempre válida");
+            let ph2d_field::NodeShape::Leaf(sem) = shape else {
+                unreachable!("entrou folha, sai folha")
+            };
+            inside_count(&sem)
+        };
         assert!(
-            f.at(0.0, 0.0, 0.0) < 0.0,
-            "«{}»: com o maior filete que o documento aceita ({quase:.4}) o centro da peça está \
-             FORA — a parede inverteu, e a validação deixou passar",
+            n1 > 0,
+            "«{}»: com o maior filete que o documento aceita ({quase:.4}) NÃO sobrou peça nenhuma \
+             — a validação deixou passar um filete que apaga a forma",
+            k.key()
+        );
+        // ⛔⛔⛔ **ESTRITAMENTE MENOR, e é esta desigualdade que apanha o filete INERTE.**
+        //
+        // ⚠️ A W101 e a W102 shiparam o cone, o prisma, a cunha e a estrela com um `round` que
+        // **não fazia nada** (`+0,0 %` de volume, campo bit a bit igual) ou que fazia a peça
+        // **crescer** (`+41,0 %` na cunha). Nenhum gate reprovava, porque nenhum comparava a peça
+        // COM o filete contra a peça SEM ele — mediam-se propriedades da forma filetada, e um campo
+        // que ignora o filete continua a ser uma forma correcta. *Um `<=` teria deixado passar as
+        // duas inertes; a inércia é precisamente a igualdade.*
+        assert!(
+            n1 < n0,
+            "«{}»: o filete de {quase:.4} não tirou NADA ({n0} amostras dentro sem ele, {n1} com \
+             ele) — ou ele é inerte, ou o recuo da fonte tem o sinal trocado",
             k.key()
         );
     }
+}
+
+/// Quantas amostras de uma grelha do bordo da peça caem **dentro** dela.
+///
+/// ⚠️ **A grelha sai do [`ph2d_field::bounding_radius`]**, e não de um número escrito aqui: uma
+/// caixa fixa mediria a fração da caixa em peças de tamanhos diferentes, e a comparação de duas
+/// formas deixaria de querer dizer alguma coisa.
+fn inside_count(p: &Primitive) -> u32 {
+    use fidget::shape::EzShape;
+    // ⚠️ **A finura sai do FILETE, não do gosto** — e a primeira versão (`24`) reprovou a gaiola por
+    // uma razão que não existia: com a viga a `0,12` e o passo a `0,060`, cabiam **duas** amostras
+    // na secção, e um filete que come `21 %` dela não movia nenhuma. *Uma grelha que não resolve a
+    // feature mede a grelha.* A `64` o passo é `0,023`, e a diferença aparece.
+    const N: i32 = 64;
+    // ⚠️ **Em FATIA, e não ponto a ponto**: a mesma grelha por [`Field::at`] custava **18 s** neste
+    // gate, e um teste que ficou lento é uma medição de custo que ninguém pediu. A fita é a mesma; o
+    // que muda é quantas vezes se atravessa a fronteira do avaliador.
+    let r = f64::from(ph2d_field::bounding_radius(p)) * 1.05;
+    let c = |v: i32| ((f64::from(v) / f64::from(N)).mul_add(2.0, -1.0) * r) as f32;
+    let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+    for i in 0..=N {
+        for j in 0..=N {
+            for k in 0..=N {
+                xs.push(c(i));
+                ys.push(c(j));
+                zs.push(c(k));
+            }
+        }
+    }
+    let shape = ph2d_field_eval::Engine::from(ph2d_field_eval::compile(&doc_of(p.clone())));
+    let tape = shape.ez_float_slice_tape();
+    let mut eval = ph2d_field_eval::Engine::new_float_slice_eval();
+    let out = eval.eval(&tape, &xs, &ys, &zs).expect("avalia a grelha");
+    u32::try_from(out.iter().filter(|v| **v < 0.0).count()).unwrap_or(u32::MAX)
 }
 
 /// ⛔ **O CONTROLE, e sem ele o gate acima não vale nada.**

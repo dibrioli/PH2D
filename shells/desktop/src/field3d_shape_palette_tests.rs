@@ -1,7 +1,7 @@
 //! Os gates da PALETA de formas (W100) — ver [`super`].
 
 use super::{build, item_id, slot_of_pick};
-use crate::field3d_shapes::{Family, Make, SHAPES};
+use crate::field3d_shapes::{Family, Make, SHAPES, Shape};
 
 /// O rótulo do item com este id, se ele estiver no modelo.
 ///
@@ -116,23 +116,51 @@ fn what_needs_a_selection_says_so_and_only_then() {
 
 /// ⭐ **Uma família sem formas não vira cabeçalho órfão.**
 ///
-/// ⚠️ É o que deixa a [`Family::Plates`] nascer vazia à espera do lote dela — e é a mesma lei que a
-/// paleta de componentes aplica às categorias sem componente oferecível.
+/// # ⛔ O sujeito deste gate era um ACIDENTE, e a W103 tirou-lho
+///
+/// Ele percorria o catálogo do produto à procura de uma família vazia, e media a que calhava estar
+/// vazia — a [`Family::Plates`], que a W100 criou à espera de um lote. A estrela entrou nela e
+/// **nenhuma família ficou vazia**: o gate passou a reprovar a dizer *«perdi o sujeito»*, que é o
+/// desenho certo (⛔ um gate que se cala quando deixa de medir é pior do que nenhum) — mas a
+/// resposta não é apagá-lo nem esperar pela próxima família vazia.
+///
+/// ⭐ Com o catálogo por **argumento** ([`super::build_from`]), o sujeito **constrói-se**: a fixtura
+/// é uma lista com formas de duas famílias, e as outras quatro são o que ele mede. *Um gate cujo
+/// sujeito é o estado de hoje perde-o no dia em que o produto fica completo.*
 #[test]
 fn an_empty_family_paints_no_header() {
-    let model = build(true, true);
+    let magras: Vec<Shape> = SHAPES
+        .iter()
+        .filter(|s| s.family == Family::Blocks || s.family == Family::Round)
+        .map(|s| Shape {
+            key: s.key,
+            family: s.family,
+            make: s.make,
+        })
+        .collect();
+    assert!(magras.len() >= 2, "a fixtura precisa de formas para pintar");
+    let model = super::build_from(&magras, true, true);
     let vazias: Vec<_> = Family::ALL
         .iter()
-        .filter(|f| !SHAPES.iter().any(|s| s.family == **f))
+        .filter(|f| !magras.iter().any(|s| s.family == **f))
         .collect();
-    assert!(
-        !vazias.is_empty(),
-        "o gate perdeu o sujeito: nenhuma família está vazia hoje, então ele não mede nada"
+    assert_eq!(
+        vazias.len(),
+        4,
+        "a fixtura tem de deixar quatro famílias vazias"
     );
     for f in vazias {
         assert!(
             !model.groups.iter().any(|g| g.title == f.title()),
-            "a família {f:?} está vazia e mesmo assim pintou um grupo"
+            "a família {f:?} está vazia na fixtura e mesmo assim pintou um grupo"
+        );
+    }
+    // ⛔ **O CONTROLE**: as duas que TÊM formas pintam. Sem ele, um `build_from` que não pintasse
+    // grupo nenhum passaria.
+    for f in [Family::Blocks, Family::Round] {
+        assert!(
+            model.groups.iter().any(|g| g.title == f.title()),
+            "a família {f:?} tem formas na fixtura e não pintou grupo"
         );
     }
 }

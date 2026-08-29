@@ -37,8 +37,10 @@ pub(crate) enum Family {
     Round,
     /// Anéis e tubos — o que tem um furo no meio por construção.
     Rings,
-    /// ⭐ **Chapas** — um contorno 2D de **fórmula** puxado em Z. Vazia hoje; é o lote que traz o
-    /// catálogo vetorial (estrela, cruz, coração, engrenagem…) para cá.
+    /// ⭐ **Chapas** — um contorno 2D de **fórmula** puxado em Z. ⚠️ **Nasceu vazia na W100 e a
+    /// estrela abriu-a na W103**; o que falta dela é o que a composição não faz (a auditoria do
+    /// [doc 08 §4](../../../docs/3DModeling/08_formas_por_formula.md) mediu que cruz, lua, gota e
+    /// engrenagem já se fazem com o que existe — a engrenagem é *um dente + `Radial`*).
     Plates,
     /// O que sai de um **desenho** do editor vetorial.
     Drawn,
@@ -281,6 +283,43 @@ fn a_torus_arc(r: f32) -> Primitive {
     }
 }
 
+/// ⭐⭐ **A estrela nasce de CINCO pontas** (W103) — é a que se desenha quando se diz «estrela», e
+/// é o número **ímpar** que nenhuma união de polígonos exprime (uma de 6 são dois triângulos; uma de
+/// 5 não é nada que se possa compor).
+///
+/// ⚠️ **A razão interna é `0,4`, perto do `1/φ² = 0,382`** do pentagrama — abaixo disso as pontas
+/// ficam agulhas e o filete padrão deixa de caber; acima, a forma lê-se como um decágono.
+///
+/// ⚠️ **Baixa de propósito** (`0,35 r`): ela é a primeira das [`Family::Plates`], e uma chapa lê-se
+/// como estrela num ângulo qualquer — uma coluna de estrela não.
+fn a_star(r: f32) -> Primitive {
+    Primitive::Star {
+        points: 5,
+        outer: r,
+        inner: r * 0.4,
+        half_height: r * 0.35,
+        round: round_of(r),
+    }
+}
+
+/// ⚠️ A viga nasce a **30 %** da meia-extensão: mais fina desaparece à distância a que a peça
+/// nasce, mais grossa lê-se como uma caixa com furos.
+fn a_box_frame(r: f32) -> Primitive {
+    Primitive::BoxFrame {
+        half: [r; 3],
+        thickness: r * 0.3,
+        round: round_of(r),
+    }
+}
+
+/// ⚠️ **Nasce com os três semi-eixos DIFERENTES** — iguais seria uma esfera, e a porta ao lado já a
+/// tem: o default de uma forma tem de mostrar o que ela faz de diferente.
+fn an_ellipsoid(r: f32) -> Primitive {
+    Primitive::Ellipsoid {
+        radii: [r, r * 0.55, r * 0.8],
+    }
+}
+
 /// ⭐⭐⭐ **A LISTA.** Acrescentar uma forma é acrescentar **uma linha** aqui.
 ///
 /// ⚠️ **A ordem daqui é a ordem DENTRO do grupo** da paleta, e nada mais: nenhum consumidor lê a
@@ -335,6 +374,22 @@ pub(crate) const SHAPES: &[Shape] = &[
         key: "panel.model3d.add.wedge",
         family: Family::Blocks,
         make: Make::Formula(a_wedge),
+    },
+    Shape {
+        key: "panel.model3d.add.box_frame",
+        family: Family::Blocks,
+        make: Make::Formula(a_box_frame),
+    },
+    Shape {
+        key: "panel.model3d.add.ellipsoid",
+        family: Family::Round,
+        make: Make::Formula(an_ellipsoid),
+    },
+    // ⭐⭐ **A PRIMEIRA CHAPA** (W103) — a família nasceu vazia na W100 à espera dela.
+    Shape {
+        key: "panel.model3d.add.star",
+        family: Family::Plates,
+        make: Make::Formula(a_star),
     },
     Shape {
         key: "panel.model3d.add.torus",

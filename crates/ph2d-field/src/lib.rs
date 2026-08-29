@@ -41,7 +41,9 @@ pub use profile::{
     DEFAULT_PROFILE_RESOLUTION, FillRule, MAX_PROFILE_RESOLUTION, Profile, ProfileError, coarsen,
     coarsen_to_normal_error,
 };
-pub use radius::{Bound, bounding_radius, characteristic_size, round_limit, set_shape_radius};
+pub use radius::{
+    Bound, bounding_radius, characteristic_size, fillet_inflates, round_limit, set_shape_radius,
+};
 pub use xform::Xform;
 
 use serde::{Deserialize, Serialize};
@@ -87,8 +89,12 @@ use serde::{Deserialize, Serialize};
 /// prisma **mudou de forma**, não só a lista cresceu: um documento v7 leria o `half_height` dele
 /// como `top`, e a peça mudaria em silêncio.
 ///
+/// v9: entraram a [`Primitive::Star`], o [`Primitive::BoxFrame`] e o [`Primitive::Ellipsoid`]. São
+/// variantes **acrescentadas no fim** do `enum` — nenhum índice existente se move —, e o degrau sobe
+/// pela lei do módulo, como o v7.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 8;
+pub const FIELD_DOC_VERSION: u32 = 9;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -205,6 +211,51 @@ pub enum Primitive {
     /// **união** deles acima — uma escolha feita ao MONTAR a árvore, em Rust, e não com uma
     /// ramificação dentro do campo (ver `ops::sd_torus_arc`).
     TorusArc { major: f32, minor: f32, angle: f32 },
+    /// ⭐⭐⭐ **Estrela de `points` pontas puxada em Z** (W103) — `outer` é o raio das PONTAS e
+    /// `inner` o dos VALES.
+    ///
+    /// ⚠️ **É a única da fila que a composição não exprime, e o motivo é a PARIDADE.** Uma estrela
+    /// de 6 pontas é a união de dois triângulos, e uma de 4 é a de dois losangos — mas uma de **5**
+    /// não é a união de polígono nenhum, porque nenhum divisor de 5 dá um polígono regular
+    /// rodado. *Uma equivalência que só vale para metade dos valores de um controlo não é uma
+    /// equivalência: é uma armadilha à espera do número ímpar.*
+    ///
+    /// ⭐ **O interior é uma UNIÃO de peças convexas** (o polígono dos vales + uma língua por
+    /// ponta), e não uma interseção: uma estrela é **não-convexa** por definição, e a lei das
+    /// meias-fatias da W101 só constrói convexos. Ver `ops::sd_star`.
+    Star {
+        points: u32,
+        outer: f32,
+        inner: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// ⭐⭐ **A GAIOLA de uma caixa** (W103) — as 12 arestas com secção quadrada de lado
+    /// `thickness`, e o miolo vazio.
+    ///
+    /// ⚠️ **Faz-se por composição — com QUATRO objectos** (a caixa menos três caixas atravessadas)
+    /// — e é por isso que ela é uma primitiva: a forma é **uma**, e uma peça em que ela ocupa
+    /// quatro linhas da Hierarquia obriga o artista a mexer em três números para engrossar uma
+    /// aresta. *Compor é a resposta certa quando a composição é o que o artista pensa; aqui ele
+    /// pensa «moldura».*
+    BoxFrame {
+        half: [f32; 3],
+        thickness: f32,
+        round: f32,
+    },
+    /// ⭐⭐⭐ **Elipsóide de semi-eixos `radii`** (W103).
+    ///
+    /// ⚠️ **A nota que dizia «não há como achatar, a escala do módulo é uniforme de propósito»
+    /// respondia a OUTRA pergunta.** Ela é sobre o [`Xform::scale`], e ali continua certa: uma pose
+    /// com escala por eixo estragaria `‖∇f‖ = 1` em toda a árvore abaixo dela. Uma **primitiva** com
+    /// três raios não toca nisso — ela é uma folha, e a folha responde por si.
+    ///
+    /// ⚠️ **Não substitui a [`Primitive::Sphere`], e a diferença é a QUALIDADE DO CAMPO**, não o
+    /// número de controlos: a esfera é distância **exata**, e este é um subestimador (a distância
+    /// exacta a um elipsóide resolve uma quártica — é por isso que a referência publica
+    /// aproximações). Duas linhas do catálogo para a mesma forma justificam-se quando uma delas é
+    /// exacta; a do cone e do tronco justificavam-se por defaults.
+    Ellipsoid { radii: [f32; 3] },
 }
 
 /// O menor número de lados que um prisma admite — abaixo disto não há polígono.
@@ -249,6 +300,37 @@ pub const MIN_PRISM_SIDES: u32 = 3;
 /// começa a doer.
 pub const MAX_PRISM_SIDES: u32 = 32;
 
+/// O menor número de pontas de uma estrela — com duas não há ponta nenhuma, há uma lente.
+pub const MIN_STAR_POINTS: u32 = 3;
+
+/// ⭐⭐ **O TETO de pontas de uma estrela — e ele NÃO é o do prisma, porque uma ponta custa QUATRO
+/// semiplanos.**
+///
+/// Uma estrela de `n` pontas é o disco dos vales unido a `n` pipas de quatro semiplanos cada —
+/// `4n`, contra `n` de um prisma do mesmo número. A sonda
+/// [`measure_star_points`](../../ph2d-field-eval/tests/measure_star_points.rs) mediu, com a **mesma
+/// régua do prisma** (o cilindro exato = `1,00×`):
+///
+/// | pontas | semiplanos | nós | ns/ponto | × o cilindro |
+/// |---|---|---|---|---|
+/// | 3 | 12 | 88 | 2,78 | 1,28× |
+/// | 5 | 20 | 137 | 3,50 | 1,61× |
+/// | 8 | 32 | 191 | 4,64 | 2,13× |
+/// | 12 | 48 | 288 | 6,42 | 2,95× |
+/// | **16** | **64** | **357** | **7,96** | **3,66×** |
+/// | 24 | 96 | 555 | 11,24 | 5,17× |
+/// | 32 | 128 | 750 | 14,52 | 6,68× |
+///
+/// ⭐ **O número sai de um preço que este módulo já aceitou**, e não de um gosto: o
+/// [`MAX_PRISM_SIDES`] shipa a `3,80×` o cilindro. A estrela chega a esse preço às **16** pontas
+/// (`3,66×`) e passa-o às 24 (`5,17×`). ⇒ 16.
+///
+/// ⚠️ **E aqui o teto TIRA alguma coisa, ao contrário do prisma.** Um prisma de 64 lados é um
+/// cilindro, e o cilindro exato está na porta ao lado — acima do teto o artista não perde nada. Uma
+/// estrela de 24 pontas continua a ser uma estrela de 24 pontas, e não há segunda porta para ela.
+/// *Um limite que retira tem de o dizer.*
+pub const MAX_STAR_POINTS: u32 = 16;
+
 /// ⭐⭐⭐ **A FAMÍLIA de uma primitiva, sem os números dela** (2026-08-26) — a lista que um gate pode
 /// percorrer.
 ///
@@ -279,11 +361,14 @@ pub enum PrimitiveKind {
     Prism,
     Wedge,
     TorusArc,
+    Star,
+    BoxFrame,
+    Ellipsoid,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 11] = [
+    pub const ALL: [PrimitiveKind; 14] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -295,6 +380,9 @@ impl PrimitiveKind {
         PrimitiveKind::Prism,
         PrimitiveKind::Wedge,
         PrimitiveKind::TorusArc,
+        PrimitiveKind::Star,
+        PrimitiveKind::BoxFrame,
+        PrimitiveKind::Ellipsoid,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -312,6 +400,9 @@ impl PrimitiveKind {
             PrimitiveKind::Prism => "prism",
             PrimitiveKind::Wedge => "wedge",
             PrimitiveKind::TorusArc => "torus_arc",
+            PrimitiveKind::Star => "star",
+            PrimitiveKind::BoxFrame => "box_frame",
+            PrimitiveKind::Ellipsoid => "ellipsoid",
         }
     }
 }
@@ -333,6 +424,9 @@ impl Primitive {
             Primitive::Prism { .. } => PrimitiveKind::Prism,
             Primitive::Wedge { .. } => PrimitiveKind::Wedge,
             Primitive::TorusArc { .. } => PrimitiveKind::TorusArc,
+            Primitive::Star { .. } => PrimitiveKind::Star,
+            Primitive::BoxFrame { .. } => PrimitiveKind::BoxFrame,
+            Primitive::Ellipsoid { .. } => PrimitiveKind::Ellipsoid,
         }
     }
 }
@@ -813,6 +907,62 @@ fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
                     node: idx,
                     what: "angle",
                 });
+            }
+            Ok(())
+        }
+        Primitive::Star {
+            points,
+            outer,
+            inner,
+            half_height,
+            round,
+        } => {
+            // ⚠️ **COAGIDA na porta como a contagem de lados** — a UI nunca oferece fora da faixa,
+            // então um valor de fora só chega por um documento estragado, e recusar ali rejeitaria
+            // a peça inteira por causa de um número que o documento sabe arredondar.
+            if !(MIN_STAR_POINTS..=MAX_STAR_POINTS).contains(&points) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "points",
+                });
+            }
+            positive(outer, "outer")?;
+            positive(inner, "inner")?;
+            // ⚠️ **O vale TEM de estar dentro da ponta**, e isto é validade e não gosto: com
+            // `inner >= outer` as línguas invertem-se e a união devolve **o polígono dos vales** —
+            // uma estrela que, ao arrastar um número, deixa de ser uma estrela **sem dizer nada**.
+            if inner >= outer {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "inner",
+                });
+            }
+            positive(half_height, "half_height")?;
+            round_fits(round, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::BoxFrame {
+            half,
+            thickness,
+            round,
+        } => {
+            for h in half {
+                positive(h, "half")?;
+            }
+            positive(thickness, "thickness")?;
+            // ⚠️ **Uma aresta mais grossa do que a meia-extensão fecha a gaiola** — as vigas
+            // opostas encontram-se e a moldura vira uma caixa maciça. O `>` (e não `>=`) é
+            // deliberado: com a igualdade elas tocam-se e o miolo some, que é a forma-limite.
+            if thickness > half[0].min(half[1]).min(half[2]) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "thickness",
+                });
+            }
+            round_fits(round, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::Ellipsoid { radii } => {
+            for r in radii {
+                positive(r, "radius")?;
             }
             Ok(())
         }

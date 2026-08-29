@@ -180,7 +180,19 @@ pub fn inflation_depth(doc: &FieldDoc) -> u32 {
                     .count(),
             )
             .unwrap_or(u32::MAX),
-            NodeKind::Leaf(_) => 0,
+            // ⭐⭐⭐ **UMA PRIMITIVA TAMBÉM PODE INFLAR — e esta linha valia `0` para todas até à
+            // W103** (era `NodeKind::Leaf(_) => 0`).
+            //
+            // ⛔ O filete do cone, do prisma, da cunha e da estrela é uma **interseção arredondada**
+            // (é a única saída quando as paredes não são ortogonais), e ela infla exactamente como a
+            // junta entre duas formas: medido `‖∇f‖ = 1,1943` num cone de declive `0,47`. Enquanto
+            // aquele filete era **inerte** — e era, até esta wave — a linha estava certa por
+            // acidente; no dia em que ele passou a fazer alguma coisa, ela passou a mentir.
+            //
+            // ⚠️ *É o MESMO defeito que o report do Enio de 2026-08-29 pagou, um nível abaixo: um
+            // produtor de inflação que a marcha não conta.* A pergunta atravessa a porta do
+            // documento ([`ph2d_field::fillet_inflates`]) para a lista ficar num sítio só.
+            NodeKind::Leaf(p) => u32::from(ph2d_field::fillet_inflates(p)),
         };
         depth[i] = below + here;
     }

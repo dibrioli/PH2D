@@ -59,16 +59,24 @@ fn why_not(shape: &Shape, live_sculpt: bool, profile: bool) -> Option<&'static s
     })
 }
 
-/// ⭐ **O modelo da paleta**, agrupado por família.
-///
-/// ⚠️ **Um grupo vazio não é pintado** — é o que deixa a [`Family::Plates`] nascer vazia à espera do
-/// lote dela sem um cabeçalho órfão na tela.
+/// ⭐ **O modelo da paleta**, agrupado por família — sobre o catálogo do produto.
 pub(crate) fn build(live_sculpt: bool, profile: bool) -> PaletteModel {
+    build_from(SHAPES, live_sculpt, profile)
+}
+
+/// ⭐⭐ **O mesmo modelo, sobre um catálogo DADO** — e o argumento existe por causa de um gate.
+///
+/// ⚠️ **Um grupo vazio não é pintado**, e essa lei tinha um gate cujo sujeito era um **acidente**: a
+/// [`Family::Plates`] estava vazia, e ele media-a. Na W103 a estrela entrou nela, **nenhuma família
+/// ficou vazia**, e o gate passou a não medir coisa nenhuma (ele reprovava a dizê-lo, que é o
+/// desenho certo — mas a resposta não é apagá-lo). *Um gate cujo sujeito é o estado de hoje perde-o
+/// no dia em que o produto fica completo.* Com o catálogo por argumento, o sujeito **constrói-se**.
+pub(crate) fn build_from(shapes: &[Shape], live_sculpt: bool, profile: bool) -> PaletteModel {
     let mut groups = Vec::new();
     for family in Family::ALL {
         let mut ready = Vec::new();
         let mut blocked = Vec::new();
-        for shape in SHAPES.iter().filter(|s| s.family == family) {
+        for shape in shapes.iter().filter(|s| s.family == family) {
             let label = ph2d_i18n::tr(shape.key).to_string();
             let id = item_id(shape.key);
             match why_not(shape, live_sculpt, profile) {

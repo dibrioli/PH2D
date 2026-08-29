@@ -9581,3 +9581,166 @@ cone. O número fica como limite de **produto** (é onde o filete deixa de ter p
 construção ⇒ mesma conclusão»* é raciocínio, não medição.
 
 **Smoke:** cena **`=10`** — pirâmide · tronco de pirâmide · cunha · arco de meia volta, lado a lado.
+
+---
+
+## §101 — W103: ⭐⭐⭐ ESTRELA · GAIOLA · ELIPSÓIDE — a fila fecha, e o filete de QUATRO formas era mentira (29/08)
+
+**A wave** era o resto da fila do [doc 08 §4.2](08_formas_por_formula.md): estrela de N pontas,
+moldura de caixa e elipsóide — os três últimos itens que a composição não exprime. **O que ela
+devolveu** foi maior do que os três: um gate derivado apanhou que o `round` do **cone**, do
+**prisma**, da **cunha** e da recém-nascida **estrela** não fazia o que dizia.
+
+### §101.1 — ⛔⛔⛔ O ACHADO: `offset(max(A, B), r)` NÃO arredonda nada
+
+A W101 escreveu a *lei das três formas* — «um sólido de parede reta é a interseção de uma laje com
+meias-fatias» — e arredondou-a pela receita da caixa: **encolher a fonte de `r` e deslocar de volta**.
+⚠️ A álgebra desmente a receita numa linha:
+
+```
+{ max(A, B) − r < 0 }  ≡  { A < r } ∩ { B < r }
+```
+
+— a interseção das duas peças **dilatadas separadamente**, e não a dilatação da interseção. Cada
+peça é um semiespaço (uma laje, uma parede), e **dilatar um semiespaço dá outro semiespaço, sem
+canto para arredondar**. O que o recuo tira, o deslocamento repõe.
+
+⭐ **Por que funciona na caixa e no cilindro:** ali a fonte é o `box_raw`/`cylinder_raw`, que é a
+distância **exata** (o termo `length` das partes positivas), e a dilatação de uma distância exata É
+o corpo com os cantos redondos. *A receita nunca foi «encolher e deslocar»: era «encolher uma
+distância EXATA e deslocar».*
+
+Medido (amostras dentro da peça, sem filete → com o filete máximo que o documento aceita):
+
+| forma | dentro sem filete | com o filete máximo | Δ |
+|---|---|---|---|
+| caixa | 9 639 | 6 311 | **−34,5 %** |
+| cilindro | 16 859 | 12 203 | **−27,6 %** |
+| ⛔ **cone** | 7 259 | 7 259 | **+0,0 %** (campo bit a bit igual) |
+| ⛔ **prisma** | 7 119 | 7 119 | **+0,0 %** |
+| ⛔ **cunha** | 4 811 | 6 783 | **+41,0 %** |
+| ⛔ **estrela** (nascida nesta wave) | 6 327 | 8 607 | **+36,0 %** |
+
+⚠️ **A cunha tinha um segundo erro por cima do primeiro:** recuar um semiespaço é **somar** `r` ao
+campo dele, e o `sd_wedge` **subtraía** — com o `offset` de fora, o plano do corte acabava `2·round`
+fora do sítio autorado.
+
+⚠️ **A nota da W101 descrevia o sintoma e lia-o como virtude:** *«o `max` + `offset` é
+auto-corretivo — a silhueta é exatamente `ρ ≤ a + m·z` para qualquer `round`»*. É verdade, e é
+precisamente a assinatura de um filete que não existe. *Uma invariância que se celebra sem perguntar
+o que ela implica é uma medição lida ao contrário.*
+
+### §101.2 — ⭐ A cura era a porta que já existia
+
+`slab_and_walls` passa a fechar a laje contra as paredes com **`intersection(.., Blended::Exact(r))`**
+— a mesma junção arredondada que o artista escolhe entre duas formas. As paredes ficam **onde foram
+autoradas** (nada de encolher e repor), e o aro sai com o raio pedido. A cunha passa a ser
+`intersection(sd_box(half, round), plano, Exact(round))`, com o plano **pela origem**.
+
+Depois da cura: cone **−21,3 %**, prisma **−26,8 %**, cunha **−48,3 %**, estrela **−5,8 %**, gaiola
+**−11,1 %**. Todos tiram material, nenhum cresce.
+
+### §101.3 — ⚠️ E o filete que passou a existir INFLA — a marcha tinha de saber
+
+Uma interseção arredondada infla o gradiente: medido **`‖∇f‖ = 1,1943`** num cone de declive `0,47`,
+que é exatamente o `√(1 − cos φ)` do canto de ângulo interno `φ`. ⛔ O `inflation_depth` valia **`0`
+para toda folha** (`NodeKind::Leaf(_) => 0`) — enquanto aquele filete era inerte a linha estava certa
+**por acidente**; no dia em que ele passou a fazer alguma coisa, ela passou a mentir.
+
+⇒ `ph2d_field::fillet_inflates(&Primitive)` (lista fechada: uma primitiva nova é erro de compilação)
+e a folha passa a contar. ⚠️ *É o MESMO defeito que o report do Enio de 2026-08-29 pagou
+([§99](#99--o-smoke-da-w98)), um nível abaixo: um produtor de inflação que a marcha não conta.*
+
+⚠️ **Preço:** toda peça com cone/prisma/cunha/estrela **com filete** passa a marchar a `1/√2` em vez
+de `1,0` — e as formas do catálogo nascem com filete. ⏳ A alavanca nomeada é uma escada mais fina do
+que potências de `√2` (o passo que o cone de facto pede é `1/1,1943 = 0,837`, não `0,707`); não foi
+construída aqui.
+
+### §101.4 — ⭐⭐ O CENSO mudou de pergunta duas vezes, e as duas por medição
+
+1. **`f(0,0,0) < 0`** (*«o centro da peça está dentro»*) reprovou a **gaiola**, que é oca de
+   propósito, acusando *«a parede inverteu»* — uma causa que não existia. *Uma sonda que amostra um
+   ponto escolhido a olho carrega, sem o dizer, a forma que o autor tinha em mente.* ⇒ passou a
+   **contar amostras dentro**, com e sem filete: `n1 > 0` («ainda há peça») e **`n1 < n0`**
+   («o filete tirou alguma coisa»). ⭐ É este `<` estrito que apanha a inércia — um `<=` teria
+   deixado passar as duas.
+2. **`‖∇f‖ ≤ 1,02`** deixou de ser a pergunta certa quando o filete do cone passou a existir. ⛔
+   Baixar a barra seria afrouxar o gate; a resposta é perguntar ao módulo **qual o passo que ele vai
+   usar** (`safe_march_step`) e exigir que o **produto** `passo × ‖∇f‖` seja seguro — estritamente
+   mais forte, e auto-atualizável. Com o controle irmão: quem **não** infla tem de andar a passo
+   **inteiro** (o §0 aplicado ao passo).
+3. A grelha do censo era `24³` e a viga da gaiola cabia em **duas** amostras — um filete que come
+   `21 %` da secção não movia nenhuma. *Uma grelha que não resolve a feature mede a grelha.* ⇒ `64³`,
+   **em fatia** (a mesma grelha ponto a ponto custava **18 s** neste gate).
+
+### §101.5 — As três formas
+
+- ⭐⭐ **Estrela** (`Star { points, outer, inner, half_height, round }`) — é a **união** do disco dos
+  vales com uma **pipa por ponta** (quatro semiplanos: as duas arestas da ponta + o sector).
+  ⚠️ **Uma união precisa de SOBREPOSIÇÃO:** `min` de duas peças que se **tocam sem se sobrepor** vale
+  exatamente **zero** na costura, que é um ponto **interior** ao sólido — e um `0` interior é lido
+  como fronteira por quem amostra numa grade. ⛔ A decomposição óbvia (polígono dos vales + um
+  triângulo por ponta) é exatamente uma **partição**. ⭐ O disco de raio `inner` cabe inteiro na
+  estrela (o raio da fronteira nunca desce abaixo do vale) e cobre a costura **com volume**.
+  ⚠️ Teto **medido**: `MAX_STAR_POINTS = 16`, o número que paga `3,66×` o cilindro — o preço que o
+  `MAX_PRISM_SIDES` já tinha aceite (`3,80×`). ⚠️ E aqui o teto **tira** alguma coisa, ao contrário
+  do prisma: um prisma acima do teto é um cilindro e há um cilindro exato ao lado; uma estrela de 24
+  pontas não tem segunda porta.
+- ⭐ **Gaiola** (`BoxFrame { half, thickness, round }`) — as 12 arestas em **três** caixas dobradas
+  por `abs` nos dois eixos perpendiculares a cada família. ⚠️ A dobra só é exata com a caixa inteira
+  do lado positivo ⇒ `thickness <= min(half)`, e o documento recusa acima. As vigas **sobrepõem-se**
+  nos oito cantos, então o `min` não tem costura.
+- ⭐⭐⭐ **Elipsóide** (`Ellipsoid { radii }`) — ⚠️ **a nota que o dava por impossível respondia a
+  OUTRA pergunta.** Ela é sobre o `Xform::scale`, e ali continua certa (uma pose com escala por eixo
+  estraga `‖∇f‖ = 1` em toda a árvore abaixo). Uma **primitiva** com três raios é uma folha, e a
+  folha responde por si.
+
+  ⭐ **A fórmula publicada foi MEDIDA e REJEITADA**, não preterida:
+
+  | elipsóide | `f(centro)` correto | a NOSSA | pior `‖∇f‖` | a do IQ | pior `‖∇f‖` |
+  |---|---|---|---|---|---|
+  | 1:1 | −0,450000 | **−0,450000** | 1,0001 | −1,000000 | 1,0002 |
+  | 1:2 | −0,225000 | **−0,225000** | 1,0001 | −1,000000 | **1,3973** |
+  | 1:4 | −0,112500 | **−0,112500** | 1,0001 | −1,000000 | **1,8598** |
+  | 1:8 | −0,056250 | **−0,056250** | 1,0001 | −1,000000 | 1,0001 |
+
+  ⛔ O gradiente dela chega a **1,86** (um campo que sobe mais depressa que a distância faz a marcha
+  **atravessar**), e `f(centro)` dá **−1 para qualquer elipsóide**: no centro `k0` e `k1` são os dois
+  zero, o piso do `sqrt` transforma o `0/0` em `1e-15/1e-15`, e sai a constante `−1` — 18× a
+  profundidade real de uma peça de meia-altura `0,056`. *O ponto singular dela é a origem, que é
+  exatamente o ponto que toda grade centrada amostra.*
+
+  ⭐ A nossa é a esfera unitária no espaço escalado **remedida por `min(s)`**: `1`-Lipschitz por
+  construção, conjunto zero **exato**, direção do gradiente **exata**; o que se perde é a magnitude,
+  entre `min(s)/max(s)` e `1`. ⚠️ **O recurso, medido:** a marcha pelo eixo maior gasta `1` passo
+  numa esfera, `28` a `1:4`, `101` a `1:16`, `324` a `1:64` e `562` a `1:128` — contra `MAX_STEPS =
+  400`. ⛔ **Nenhum teto foi escrito por causa disto, e é deliberado:** a forma está correta em todos
+  eles (malha e exportação não dependem da marcha), e limitar a largura de uma peça porque o
+  previsualizador fica lento é deixar o caminho mais lento definir o produto (`CLAUDE.md` §0).
+
+### §101.6 — Provas de mutação: 10 de 10 mortas
+
+| mutação | gate que a matou |
+|---|---|
+| o aro do cone/prisma volta a ser inerte (`max` cru) | `the_biggest_fillet_still_leaves_a_body` |
+| o plano da cunha volta a recuar (o bug da W102) | idem |
+| o filete do cone deixa de se declarar inflacionário | `every_primitive_honours_the_march` |
+| a marcha volta a ignorar o filete da folha | idem |
+| a normal do semiplano da estrela aponta ao contrário | `the_tips_reach_the_outer_radius_and_the_valleys_the_inner_one` |
+| **o disco que cobre a costura das pipas desaparece** | `a_five_point_star_is_not_a_ten_sided_polygon` (*«a origem tem de estar dentro»*) |
+| o elipsóide deixa de ser remedido pelo menor semi-eixo | `every_primitive_honours_the_march` |
+| os raios do elipsóide entram por outra ordem | `an_ellipsoid_is_exactly_zero_on_its_own_surface` |
+| a viga da gaiola centra-se no meio em vez de na aresta | `a_box_frame_is_hollow_and_its_twelve_edges_are_solid` |
+| a coerção ponta/vale da estrela troca de sentido | `dragging_the_tip_down_past_the_valley_carries_the_valley_with_it` |
+
+### §101.7 — O que mais mudou de sítio
+
+- `FIELD_DOC_VERSION` **8 → 9** (três variantes no fim do `enum`).
+- ⭐ A **`Family::Plates`** deixou de estar vazia: a estrela é a primeira chapa.
+  ⚠️ O gate `an_empty_family_paints_no_header` tinha como sujeito um **acidente** (a família que
+  calhava estar vazia) e reprovou a dizê-lo. ⇒ `build_from(shapes, ..)`: o sujeito **constrói-se**.
+  *Um gate cujo sujeito é o estado de hoje perde-o no dia em que o produto fica completo.*
+- ⚠️ **A única parede deste módulo que é OUTRO CAMPO**: o vale da estrela não pode passar a ponta.
+  Ela **coage nos dois sentidos** (`keep_below`/`keep_above`) — recusar pararia um arrasto do outro
+  controlo sem dizer porquê, num campo em que o artista nem estava a tocar.
+- Cena de smoke **`=11`** (estrela · gaiola · elipsóide, lado a lado).

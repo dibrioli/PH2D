@@ -209,3 +209,49 @@ não reconferir não é tempo, é construir o que já existe.*
 | **Espiral** | ⛔ classe **D**: a distância a uma espiral de Arquimedes não é fechada |
 
 ⇒ **A fila real é de ~7 itens, não de 47.** O resto ou já se faz, ou é desenho.
+
+---
+
+## §5 — ⭐⭐⭐ A FILA FECHOU (W103, 29/08)
+
+Os três itens que sobravam do §4.2 estão construídos, e o que fica de fora fica **com o motivo**:
+
+| item do §4.2 | estado |
+|---|---|
+| Pirâmide / tronco de pirâmide | ✅ W102 — o prisma com o topo estreitado |
+| Cunha / rampa | ✅ W102 |
+| Arco de toro | ✅ W102 |
+| **Estrela de N pontas** | ✅ **W103** — união do disco dos vales com uma pipa por ponta; `3..16` pontas |
+| **Moldura de caixa** | ✅ **W103** — três caixas dobradas por `abs`, uma primitiva em vez de quatro objectos |
+| **Elipse / elipsóide** | ✅ **W103** — ⚠️ a recusa respondia a outra pergunta (ver abaixo) |
+| Espiral | ⛔ classe **D**, e continua: a distância a uma espiral de Arquimedes não é fechada. **Fica desenhada** |
+
+### §5.1 — ⚠️ A recusa do elipsóide respondia a OUTRA pergunta
+
+Ela dizia: *«a escala do módulo é uniforme de propósito (`‖∇f‖ = 1` é a fundação) ⇒ não há como
+achatar»*. Isso é verdade sobre o [`Xform::scale`], e ali continua a valer — uma pose com escala por
+eixo estraga a fundação em toda a árvore abaixo dela. **Uma primitiva com três raios não toca
+nisso:** ela é uma folha, e a folha responde por si (`f(p/s)·min(s)` é 1-Lipschitz por construção).
+
+*Uma recusa medida responde UMA pergunta; reconfira-a quando a sua for outra.*
+
+### §5.2 — O que uma forma nova deste módulo custa hoje
+
+Uma linha no catálogo (`field3d_shapes.rs`), uma variante no `Primitive` com os seus cinco braços
+fechados (`dims` · `set_dim` · `round_limit` · `characteristic_size` · `bounding_radius` ·
+`scale_primitive` · `fillet_inflates`), a fórmula em `ops.rs`, e o rótulo i18n. **O censo derivado
+faz o resto**: as quatro perguntas do
+[`the_census_of_every_primitive`](../../crates/ph2d-field-eval/tests/the_census_of_every_primitive.rs)
+passam a valer para ela sem uma linha de mudança, e um `Primitive` novo é **erro de compilação** até
+alguém dizer com que números ela se mede.
+
+---
+
+## ⛔ Recusas MEDIDAS (§5)
+
+| Recusa | Motivo medido |
+|---|---|
+| Fórmula publicada do elipsóide (`k0·(k0−1)/k1`) | `‖∇f‖ = 1,86` (a marcha atravessa) e `f(centro) = −1` para **qualquer** elipsóide, por `0/0` na origem (doc 06 §101.5) |
+| Teto de excentricidade do elipsóide | a forma está **correta**; só a marcha viva degrada (`324` passos a `1:64` contra `MAX_STEPS = 400`) — limitar a peça pelo previsualizador é o §0 ao contrário |
+| Polígono dos vales **+ um triângulo por ponta** | é uma **partição**: `min` de peças que se tocam sem se sobrepor dá `0` no interior do sólido (doc 06 §101.5) |
+| `MAX_STAR_POINTS` acima de 16 | `24` pontas custam `5,17×` o cilindro, contra o `3,80×` que o `MAX_PRISM_SIDES` fixou como preço aceite |

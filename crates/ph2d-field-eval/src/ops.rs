@@ -71,13 +71,24 @@ pub fn offset(a: &Tree, r: f64) -> Tree {
     a.clone() - Tree::constant(r)
 }
 
-fn box_raw(hx: f64, hy: f64, hz: f64) -> Tree {
-    let qx = Tree::x().abs() - Tree::constant(hx);
-    let qy = Tree::y().abs() - Tree::constant(hy);
-    let qz = Tree::z().abs() - Tree::constant(hz);
+/// A caixa de meias-extensões `h` **em coordenadas dadas** — a fórmula do IQ, com as três
+/// coordenadas como argumento em vez de `x`/`y`/`z`.
+///
+/// ⭐ É isso que deixa o [`sd_box_frame`] escrever uma viga **no espaço dobrado** (`|y|`, `|z|`) sem
+/// uma segunda fórmula de caixa: dobrar por `abs` é uma isometria por peça, então a distância no
+/// espaço dobrado É a distância às quatro cópias espelhadas — desde que a caixa fique inteira do
+/// lado positivo, que é o que a parede da espessura garante.
+fn box_at(px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]) -> Tree {
+    let qx = px.abs() - Tree::constant(h[0]);
+    let qy = py.abs() - Tree::constant(h[1]);
+    let qz = pz.abs() - Tree::constant(h[2]);
     let outside = length3(&qx.max(0.0), &qy.max(0.0), &qz.max(0.0));
     let inside = qx.max(qy.clone()).max(qz.clone()).min(0.0);
     outside + inside
+}
+
+fn box_raw(hx: f64, hy: f64, hz: f64) -> Tree {
+    box_at(&Tree::x(), &Tree::y(), &Tree::z(), [hx, hy, hz])
 }
 
 /// Caixa de meias-extensões `half`, arestas arredondadas em `round`, **do tamanho pedido**.
@@ -138,9 +149,32 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
 /// ortogonais, então o termo exterior (`length` das partes positivas) é exato pelo Pitágoras. Aqui
 /// a parede inclina, o Pitágoras deixaria de valer, e por isso o exterior fica no `max`.
 ///
+/// # ⛔⛔⛔ **E O `round` DESTA FAMÍLIA ERA INERTE — medido na W103, três primitivas depois**
+///
+/// A receita `offset(max(A, B), r)` com as fontes encolhidas **não arredonda nada**, e a álgebra
+/// di-lo numa linha: `{max(A,B) − r < 0}` é `{A < r} ∩ {B < r}` — a interseção das duas peças
+/// **dilatadas separadamente**, e não a dilatação da interseção. Cada peça é um semiespaço (uma laje,
+/// uma parede): dilatar um semiespaço dá outro semiespaço, **sem canto para arredondar**. O que o
+/// recuo tira, o deslocamento repõe — e o aro fica **exatamente tão vivo como estava**.
+///
+/// ⭐ **Por que funciona na caixa e no cilindro:** ali a fonte é o `box_raw`/`cylinder_raw`, que é a
+/// distância **exata** (o termo `length` das partes positivas), e a dilatação de uma distância exata
+/// É o corpo com os cantos redondos. *A receita nunca foi «encolher e deslocar»: era «encolher uma
+/// distância EXATA e deslocar».*
+///
+/// ⚠️ Medido (amostras dentro da peça, sem filete → com o filete máximo): caixa `−34,5 %`, cilindro
+/// `−27,6 %`, **cone `+0,0 %`**, **prisma `+0,0 %`** — bit a bit o mesmo campo —, e a cunha
+/// **`+41,0 %`**, que é o mesmo defeito mais um sinal trocado no plano do corte (recuar um
+/// semiespaço é **somar** `r`, e o `sd_wedge` subtraía).
+///
+/// ⭐ **A cura é a porta que já existia:** a interseção com `Blended::Exact(r)` — a mesma que o
+/// artista escolhe entre duas formas. As paredes ficam **onde foram autoradas** (nada de encolher e
+/// repor), e o aro sai com o raio pedido.
+///
 /// `walls` são as meias-fatias já **normalizadas** (gradiente unitário); `half_height` é a laje em Z.
-fn slab_and_walls(walls: Tree, half_height: f64) -> Tree {
-    (Tree::z().abs() - Tree::constant(half_height)).max(walls)
+fn slab_and_walls(walls: Tree, half_height: f64, round: f64) -> Tree {
+    let slab = Tree::z().abs() - Tree::constant(half_height);
+    intersection(&slab, &walls, Blended::Exact(round))
 }
 
 /// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
@@ -156,19 +190,17 @@ fn tapered_wall(radial: &Tree, bottom: f64, top: f64, half_height: f64) -> Tree 
 
 /// Cone reto no eixo Z, de `bottom` a `top`, com o aro arredondado em `round`.
 ///
-/// ⚠️ **O recuo da parede NÃO é `bottom − round`** — ele é perpendicular à parede inclinada, e por
-/// isso desce `a` de `round·√(1+m²)` mantendo a **mesma inclinação**. Escrever `bottom − round`
-/// devolveria um cone raso maior do que o pedido, e o erro cresce com a inclinação. A conta vive
-/// numa porta só ([`ph2d_field::radius::cone_round_limit`] é a irmã que a valida).
+/// ⚠️ **As paredes ficam ONDE FORAM AUTORADAS** — nada de encolher e repor. A W101 recuava
+/// `a` de `round·√(1+m²)` e deslocava de volta, e a nota dizia que o `max` + `offset` era
+/// *«auto-corretivo»*: a silhueta saía exatamente a autorada **para qualquer `round`**. ⛔ Era esse o
+/// sintoma de que o filete não fazia nada — ver [`slab_and_walls`].
 pub fn sd_cone(bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
-    let h = half_height - round;
-    let a = (bottom + top) * 0.5;
-    let m = (top - bottom) / (2.0 * half_height);
-    let a2 = a - round * (1.0 + m * m).sqrt();
-    // A inclinação é preservada, então as pontas da reta recuada saem dela e da altura nova.
-    let (b2, t2) = (a2 - m * h, a2 + m * h);
     let radial = length2(&Tree::x(), &Tree::y());
-    offset(&slab_and_walls(tapered_wall(&radial, b2, t2, h), h), round)
+    slab_and_walls(
+        tapered_wall(&radial, bottom, top, half_height),
+        half_height,
+        round,
+    )
 }
 
 /// Cápsula no eixo Z: o segmento de `−half_height` a `+half_height`, engrossado em `radius`.
@@ -194,23 +226,19 @@ pub fn sd_capsule(radius: f64, half_height: f64) -> Tree {
 pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
     let n = sides.max(3);
     let k = f64::from(std::f32::consts::PI / n as f32).cos();
-    // O recuo do filete é perpendicular à parede inclinada — a conta do [`sd_cone`], no apótema.
-    let (a, m) = (
-        (bottom + top) * 0.5 * k,
-        (top - bottom) * k / (2.0 * half_height),
-    );
-    let h = half_height - round;
-    let a2 = a - round * (1.0 + m * m).sqrt();
-    let (b2, t2) = (a2 - m * h, a2 + m * h);
+    let (b, t) = (bottom * k, top * k);
     let mut walls: Option<Tree> = None;
     for i in 0..n {
         let ang = std::f64::consts::TAU * (f64::from(i) + 0.5) / f64::from(n);
         let radial = Tree::x() * Tree::constant(ang.cos()) + Tree::y() * Tree::constant(ang.sin());
-        let d = tapered_wall(&radial, b2, t2, h);
+        let d = tapered_wall(&radial, b, t, half_height);
         walls = Some(walls.map_or_else(|| d.clone(), |w: Tree| w.max(d.clone())));
     }
     let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
-    offset(&slab_and_walls(walls, h), round)
+    // ⚠️ **As quinas VERTICAIS ficam vivas** (o `max` entre paredes), e só o **aro** arredonda: é o
+    // que o `round` desta primitiva promete, e é a mesma divisão do [`ph2d_field::Primitive::Extrude`]
+    // (a quina do contorno tem outro dono).
+    slab_and_walls(walls, half_height, round)
 }
 
 /// Cunha: a caixa de meias-extensões `half` cortada pelo plano que liga `(−hx, +hz)` a `(+hx, −hz)`.
@@ -222,7 +250,7 @@ pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64)
 /// quinas onde a face recta encontra a inclinada — a mesma troca do [`sd_cone`], com o mesmo
 /// `‖∇f‖ ≤ 1` por definição.
 pub fn sd_wedge(half: [f64; 3], round: f64) -> Tree {
-    let (hx, hy, hz) = (half[0], half[1], half[2]);
+    let (hx, _hy, hz) = (half[0], half[1], half[2]);
     let d = (hx * hx + hz * hz).sqrt();
     // Degenerada (uma meia-extensão a zero) não chega aqui: o documento recusa.
     let (nx, nz) = if d > f64::MIN_POSITIVE {
@@ -230,14 +258,12 @@ pub fn sd_wedge(half: [f64; 3], round: f64) -> Tree {
     } else {
         (1.0, 0.0)
     };
-    // ⚠️ A normal já é unitária, então recuar o plano de `round` é subtrair `round` — e não
-    // `round·√(1+m²)`: aquele factor é o do cone, onde a coordenada não estava normalizada.
-    let plano =
-        Tree::x() * Tree::constant(nx) + Tree::z() * Tree::constant(nz) - Tree::constant(round);
-    offset(
-        &box_raw(hx - round, hy - round, hz - round).max(plano),
-        round,
-    )
+    // ⛔ **O plano NÃO recua** — ele passa pela origem, e é isso que a primitiva promete. A W102
+    // subtraía `round` aqui *«porque a normal já é unitária»*, e subtrair **cresce** um semiespaço:
+    // com o `offset` de fora o corte acabava `2·round` fora do sítio, e a peça inteira ficava
+    // `+41 %` maior (medido na W103). Ver [`slab_and_walls`], que é o mesmo defeito na outra ponta.
+    let plano = Tree::x() * Tree::constant(nx) + Tree::z() * Tree::constant(nz);
+    intersection(&sd_box(half, round), &plano, Blended::Exact(round))
 }
 
 /// Arco de toro no plano XY, centrado no `+X`, com abertura total `angle`.
@@ -269,6 +295,163 @@ pub fn sd_torus_arc(major: f64, minor: f64, angle: f64) -> Tree {
 }
 
 /// União dura: `min(a, b)`. É aqui que nasce a quina viva.
+/// O semiplano cuja fronteira passa por `a` e `b`, **negativo do lado esquerdo** de `a → b`.
+///
+/// ⚠️ A normal é **unitária** — é o que faz o `max` das quatro de um quadrilátero continuar
+/// 1-Lipschitz, e é a diferença entre uma distância e um número que só tem o sinal certo.
+fn half_plane(a: [f64; 2], b: [f64; 2]) -> Tree {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    let len = (dx * dx + dy * dy).sqrt();
+    // Degenerada não chega aqui: o documento recusa `inner >= outer`, e `points >= 3`.
+    let (nx, ny) = if len > f64::MIN_POSITIVE {
+        (dy / len, -dx / len)
+    } else {
+        (1.0, 0.0)
+    };
+    Tree::x() * Tree::constant(nx) + Tree::y() * Tree::constant(ny)
+        - Tree::constant(nx * a[0] + ny * a[1])
+}
+
+/// ⭐⭐⭐ **Estrela de `points` pontas puxada em Z** — o **DISCO dos vales unido a uma pipa por
+/// ponta**, e cada pipa é um convexo de quatro semiplanos.
+///
+/// # ⚠️ Por que uma UNIÃO, e por que ela precisa de SOBREPOSIÇÃO
+///
+/// A lei da W101 (*«sólido de parede reta = laje ∩ meias-fatias»*) constrói **convexos**, e uma
+/// estrela não é um. A saída é o `min` — e ela traz uma armadilha que a interseção não tem: `min`
+/// de duas peças que se **tocam sem se sobrepor** vale **exatamente zero** na costura, que é um
+/// ponto **interior** ao sólido. Um `0` interior é lido como fronteira por quem amostra numa grade,
+/// e sai uma superfície fantasma dentro da peça.
+///
+/// ⛔ A decomposição óbvia — o polígono dos vales **mais** um triângulo por ponta — é exatamente uma
+/// **partição**: a base de cada triângulo é uma aresta do polígono, e os dois campos anulam-se lá.
+/// ⭐ A cura é a peça de enchimento ser o **disco de raio `inner`**: ele cabe inteiro na estrela (o
+/// raio da fronteira nunca desce abaixo do vale) e cobre, com volume, a costura de cada pipa — que
+/// é o segmento do centro ao vale. *Duas peças que se sobrepõem num volume não têm costura de
+/// campo; duas que se encostam têm-na sempre.*
+///
+/// # O filete é o do ARO, e o limite dele é a erosão da TAMPA
+///
+/// Como no prisma, o `round` arredonda a aresta entre a parede e as tampas; as pontas do contorno
+/// ficam vivas. A pegada do filete na tampa é exatamente a **erosão 2D** da estrela por `round` — e
+/// é por isso que o limite dele é o ponto em que essa erosão deixa de ser uma estrela (a ponta e o
+/// vale encontram-se no mesmo raio): ver [`ph2d_field::radius::star_round_limit`].
+pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64) -> Tree {
+    let n = points.max(3);
+    let beta = std::f64::consts::PI / f64::from(n);
+    let polar = |r: f64, a: f64| [r * a.cos(), r * a.sin()];
+    let mut shape = length2(&Tree::x(), &Tree::y()) - Tree::constant(inner);
+    for k in 0..n {
+        let phi = std::f64::consts::TAU * f64::from(k) / f64::from(n);
+        let tip = polar(outer, phi);
+        let (before, after) = (polar(inner, phi - beta), polar(inner, phi + beta));
+        // As duas arestas da ponta, no sentido anti-horário do contorno.
+        let kite = half_plane(before, tip).max(half_plane(tip, after));
+        // ⚠️ E o SECTOR, que é o que impede a cunha da ponta de sair pelo lado oposto da peça — a
+        // mesma dupla de semiplanos pela origem do [`sd_torus_arc`], com abertura `2π/n < π`.
+        let (a1, a2) = (phi - beta, phi + beta);
+        let h1 = Tree::x() * Tree::constant(a1.sin()) - Tree::y() * Tree::constant(a1.cos());
+        let h2 = Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos());
+        shape = shape.min(kite.max(h1).max(h2));
+    }
+    // ⚠️ **Só o ARO arredonda**, como no prisma: as pontas do contorno ficam vivas.
+    slab_and_walls(shape, half_height, round)
+}
+
+/// ⭐⭐ **A gaiola de uma caixa** — as 12 arestas de secção quadrada, em **três** vigas dobradas.
+///
+/// ⭐ Cada família de quatro vigas paralelas é **uma** caixa no espaço dobrado por `abs` nos dois
+/// eixos perpendiculares a ela ([`box_at`]) — 3 caixas em vez de 12, e a distância é a mesma porque
+/// o reflexo é uma isometria. ⚠️ A dobra só é exata com a caixa inteira do lado positivo, o que
+/// pede `thickness <= min(half)`; o documento recusa acima disso.
+///
+/// ⚠️ **As vigas SOBREPÕEM-SE nos oito cantos** (um cubo de lado `thickness − 2·round`), então o
+/// `min` não tem costura de campo — ver a nota do [`sd_star`], que teve de a construir de propósito.
+pub fn sd_box_frame(half: [f64; 3], thickness: f64, round: f64) -> Tree {
+    // ⚠️ **A LINHA DE CENTRO da viga não se mexe com o filete**: encolher a moldura de `round` baixa
+    // a meia-extensão e a meia-espessura na mesma medida, e os dois `round` cancelam-se em
+    // `half − thickness/2`. É isso que faz a viga dilatada voltar à espessura pedida.
+    let e = thickness * 0.5 - round;
+    let c = [
+        half[0] - thickness * 0.5,
+        half[1] - thickness * 0.5,
+        half[2] - thickness * 0.5,
+    ];
+    let (ax, ay, az) = (Tree::x().abs(), Tree::y().abs(), Tree::z().abs());
+    let fold = |a: &Tree, k: f64| a.clone() - Tree::constant(k);
+    let beams = [
+        box_at(
+            &Tree::x(),
+            &fold(&ay, c[1]),
+            &fold(&az, c[2]),
+            [half[0] - round, e, e],
+        ),
+        box_at(
+            &fold(&ax, c[0]),
+            &Tree::y(),
+            &fold(&az, c[2]),
+            [e, half[1] - round, e],
+        ),
+        box_at(
+            &fold(&ax, c[0]),
+            &fold(&ay, c[1]),
+            &Tree::z(),
+            [e, e, half[2] - round],
+        ),
+    ];
+    let frame = beams[0].clone().min(beams[1].clone()).min(beams[2].clone());
+    offset(&frame, round)
+}
+
+/// ⭐⭐⭐ **Elipsóide** — a esfera unitária no espaço escalado, **remedida pelo menor semi-eixo**.
+///
+/// # ⚠️ A fórmula publicada foi MEDIDA e REJEITADA, e não preterida
+///
+/// A distância exata a um elipsóide resolve uma **quártica**; por isso a referência (IQ,
+/// *distance functions*) publica `k0·(k0−1)/k1`, com `k0 = |p/r|` e `k1 = |p/r²|`. Ela é bem mais
+/// **apertada** que esta — logo mais barata de marchar —, e a sonda
+/// [`measure_ellipsoid_against_the_published_formula`](../../tests/measure_star_points.rs) mediu as
+/// duas onde importa:
+///
+/// | elipsóide | `f(centro)` correto | a NOSSA | pior `‖∇f‖` | a do IQ | pior `‖∇f‖` |
+/// |---|---|---|---|---|---|
+/// | 1:1 | −0,450000 | **−0,450000** | 1,0001 | −1,000000 | 1,0002 |
+/// | 1:2 | −0,225000 | **−0,225000** | 1,0001 | −1,000000 | **1,3973** |
+/// | 1:4 | −0,112500 | **−0,112500** | 1,0001 | −1,000000 | **1,8598** |
+/// | 1:8 | −0,056250 | **−0,056250** | 1,0001 | −1,000000 | 1,0001 |
+///
+/// ⛔ **Duas coisas a reprovam, e as duas são fatais.** O gradiente dela chega a **1,86** — um campo
+/// que sobe mais depressa do que a distância faz a marcha de esferas **atravessar a superfície**, que
+/// é o único erro que ela não perdoa. E `f(centro)` dá **−1 para qualquer elipsóide**: no centro
+/// `k0` e `k1` são os dois zero, o [`LENGTH_FLOOR`] transforma o `0/0` em `1e-15/1e-15`, e o
+/// resultado é a constante `−1` — 18× a profundidade real de uma peça de meia-altura `0,056`. *O
+/// ponto singular dela é a origem, que é exatamente o ponto que toda grade centrada amostra.*
+///
+/// ⭐ **Esta é a construção com prova:** `f(p/s)` é `1/min(s)`-Lipschitz, então `f(p/s)·min(s)` é
+/// **1-Lipschitz por construção** (medido: `1,0001`, que é o erro da diferença central). O conjunto
+/// zero é **exato** (é `Σ(pᵢ/sᵢ)² = 1`, a definição do elipsóide) e a **direção do gradiente também**
+/// (`∂ᵢ ∝ pᵢ/sᵢ²` é a normal verdadeira); o que se perde é só a **magnitude**, que fica entre
+/// `min(s)/max(s)` e `1`. Subestimar custa **passos de marcha**, nunca correção.
+///
+/// ⚠️ **E esse é o recurso, medido:** a marcha pelo eixo maior gasta `1` passo numa esfera, `28` a
+/// `1:4`, `101` a `1:16`, `324` a `1:64` e `562` a `1:128` — contra o orçamento de `MAX_STEPS = 400`
+/// do traçador. ⛔ **Nenhum teto é escrito por causa disto**, e a decisão é deliberada: a forma está
+/// **correta** em todos eles (a malha e a exportação não dependem da marcha), e limitar a largura de
+/// uma peça porque o previsualizador fica lento é deixar o caminho mais lento definir o produto
+/// (`CLAUDE.md` §0). Quem chegar a `1:64` sabe agora que a alavanca é o `MAX_STEPS`.
+///
+/// ⚠️ Ele **não substitui** a [`ph2d_field::Primitive::Sphere`], que é exata.
+pub fn sd_ellipsoid(radii: [f64; 3]) -> Tree {
+    let m = radii[0].min(radii[1]).min(radii[2]);
+    let over = |t: Tree, r: f64| t * Tree::constant(1.0 / r);
+    let unit = length3(
+        &over(Tree::x(), radii[0]),
+        &over(Tree::y(), radii[1]),
+        &over(Tree::z(), radii[2]),
+    ) - Tree::constant(1.0);
+    unit * Tree::constant(m)
+}
+
 pub fn union_sharp(a: &Tree, b: &Tree) -> Tree {
     a.min(b.clone())
 }

@@ -107,6 +107,25 @@ pub(crate) fn primitive(p: &Primitive) -> Tree {
             minor,
             angle,
         } => ops::sd_torus_arc(f64::from(major), f64::from(minor), f64::from(angle)),
+        Primitive::Star {
+            points,
+            outer,
+            inner,
+            half_height,
+            round,
+        } => ops::sd_star(
+            points,
+            f64::from(outer),
+            f64::from(inner),
+            f64::from(half_height),
+            f64::from(round),
+        ),
+        Primitive::BoxFrame {
+            half,
+            thickness,
+            round,
+        } => ops::sd_box_frame(half.map(f64::from), f64::from(thickness), f64::from(round)),
+        Primitive::Ellipsoid { radii } => ops::sd_ellipsoid(radii.map(f64::from)),
     }
 }
 

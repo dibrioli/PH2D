@@ -13,7 +13,7 @@
 | Pergunta | Resposta | Onde |
 |---|---|---|
 | Um raio por **grupo de arestas** de uma primitiva (as 4 verticais de uma caixa) | ⭐ **SIM**, e é barato e exacto | §3 |
-| Um raio por **aresta individual** de uma primitiva (as 12 de uma caixa) | ⚠️ **Provavelmente**, com preço por medir | §4 |
+| Um raio por **aresta individual** de uma primitiva (as 12 de uma caixa) | ⭐ **SIM** — `1,21×` no relógio, `‖∇f‖ = 1`, zero continuidade a defender. **O preço agora é a INTERFACE** | §4 |
 | Um raio por **aresta do RESULTADO** de uma booleana (o fluxo do CAD) | ⛔ **NÃO** sem mudar de representação — e traria uma doença junto | §5 |
 | Um raio por **vértice** | ⚠️ **Não é um item à parte: é a consequência do de aresta** | §6 |
 
@@ -75,19 +75,74 @@ saem **esféricos**. Três barras arredondadas dão **cilindros** nas arestas e 
 
 ---
 
-## §4 — Por aresta INDIVIDUAL numa primitiva: provavelmente sim, preço por medir
+## §4 — ⭐⭐⭐ Por aresta INDIVIDUAL numa primitiva: **MEDIDO (28/08), e é mais barato do que parecia**
 
-O passo seguinte é natural: cada barra é uma **secção rectangular 2D**, e um rectângulo 2D com **4
-raios de canto diferentes** é forma canónica (é o `border-radius` do CSS, e há SDF publicado). Três
-barras × 4 cantos = **as 12 arestas, cada uma com o seu raio**.
+*(o Enio pediu esta medição em 28/08; era o degrau que estava por medir)*
 
-⚠️ **O que ainda não está medido**, e tem de estar antes de alguém prometer isto:
-- o custo (cada barra passa a ter uma selecção por quadrante);
-- se o campo continua **contínuo** na fronteira entre dois quadrantes de raios diferentes — deve
-  continuar, porque os arredondamentos não se tocam enquanto `r < h`, mas *«deve»* não é um número.
+### §4.1 — A construção não tem SELECÇÃO nenhuma, e é isso que apaga o problema
 
-⛔ E vale para **primitivas**, onde as arestas têm nome **estrutural** (*«a aresta +X+Y desta
-caixa»*). Não vale para o resultado de uma booleana — §5.
+A forma canónica (`sdRoundedBox` 2D) escolhe o raio pelo **quadrante** e aplica uma fórmula só —
+isso pede um `select` na álgebra da árvore, e um `select` à mão pede uma constante de inclinação
+**inventada**, que o cabeçalho do `ops.rs` proíbe.
+
+⭐ **Em vez disso, cada canto é um termo exacto por si, e o rectângulo é a intersecção dos quatro:**
+`canto(c, r) = ‖max(p − c, 0)‖ + min(max(dᵤ, dᵥ), 0) − r`. Ele vale três coisas de uma vez — no
+quadrante dele é o arco; ao longo de cada face **degenera exactamente na distância àquela face**; e
+no lado oposto é uma constante que o `max` ignora.
+
+⇒ **não há região de transição, logo não há continuidade a defender** — a pergunta que a §4 anterior
+tinha em aberto **dissolveu-se com a construção**, em vez de precisar de resposta.
+
+⚠️ **A 1.ª redacção esquecia o termo interior** (`min(max(dᵤ,dᵥ), 0)`): sem ele o campo vale `−r`
+dentro da peça em vez da distância, e com `r = 0` vale **zero**. O oráculo leu `0,300` de erro. É o
+mesmo termo que o `cylinder_raw` desta crate já escreve, pela mesma razão.
+
+### §4.2 — ⭐⭐⭐ A contagem de nós era a RÉGUA ERRADA
+
+| construção | nós | × | **ns/ponto** | **× no relógio** |
+|---|---|---|---|---|
+| caixa viva | 28 | — | — | — |
+| raio uniforme (**hoje**) | 30 | `1,00×` | `17,38` | `1,00×` |
+| 3 raios (**por grupo**) | 58 | `1,93×` | `17,96` | **`1,03×`** |
+| 12 raios (**por aresta**) | 210 | `7,00×` | `21,03` | **`1,21×`** |
+
+> ⭐⭐⭐ **Sete vezes os nós é 1,21× o relógio.** A fita corre com JIT em oito faixas de SIMD, e o que
+> custa é o **caminho crítico**, não a contagem: os quatro termos de canto são **independentes** e
+> enchem faixas que estavam paradas. *Uma contagem de nós é um limite superior grosseiro do relógio,
+> e aqui ele erra por 6×.*
+
+⚠️ Estável em **3 corridas** (`1,21` · `1,21` · `1,23`, absolutos a `0,2 %`), a `load ~5–8`. É uma
+**razão** medida no mesmo processo, back-to-back, com mediana de 7 — a forma mais robusta disponível
+nesta máquina. ⚠️ E é o custo da **primitiva sozinha**: numa peça real ela é um nó entre vários, e a
+marcha paga o caminho inteiro ⇒ na cena o efeito é **menor** que isto.
+
+### §4.3 — E a capacidade funciona, com o controlo que importa
+
+| afirmação | medido |
+|---|---|
+| `‖∇f‖` com os 12 raios **todos diferentes** | **`1,0000`** — continua a ser uma distância |
+| 12 raios iguais ≡ a caixa por grupo | `< 2e-6` (o oráculo do degrau) |
+| arredondar **UMA** aresta | Δ `> 0,02` nela · **`< 1e-6`** nas outras **onze** |
+
+⭐ O controlo é a metade que importa: um gate que só medisse *«a aresta pedida mudou»* passaria com
+«arredondar tudo».
+
+### §4.4 — ⚠️ Então o obstáculo mudou de sítio: agora é a INTERFACE
+
+Com `1,21×` na primitiva e zero problema de continuidade, **o motor deixou de ser o preço**. O que
+sobra é como o artista escolhe:
+
+- ⛔ **12 sliders numa caixa é inusável** — e um `Extrude` com um contorno de 40 pontos teria 40+
+  arestas verticais, o que torna a lista impossível por construção.
+- ⇒ o gesto que isto pede é *«aponto a aresta no canvas e escrevo o número»*, que precisa de
+  **apanhar aresta na vista 3D**. Para uma **primitiva** isso é construível (as arestas têm nome
+  estrutural e posição derivável da forma); é trabalho de UI, não de campo.
+- ⭐ E há uma pista já paga: as arestas verticais de um `Extrude` **são as quinas do contorno 2D**,
+  que já têm raio por vértice no editor vetorial (*Live Corners*). Aquele caminho pode já responder
+  metade da pergunta para as formas de perfil — **não medido**.
+
+⛔ Tudo isto vale para **primitivas**, onde a aresta tem nome estrutural. Não vale para o resultado
+de uma booleana — §5.
 
 ---
 
@@ -138,8 +193,10 @@ pergunta que o por-aresta cria.
    cilindro (o aro de cima e o de baixo). É exacto, mantém `‖∇f‖ = 1`, custa `1,93×` **só** quando os
    raios diferem, e o caso uniforme fica byte-idêntico. ⭐ E o painel **não muda**: as linhas de
    número saem do `params_of`, como o `Joint` da W98.
-2. ⏳ **MEDIR ANTES DE PROMETER: por aresta individual.** O caminho existe (rectângulo 2D com 4
-   raios); faltam o custo e a continuidade. Uma sonda de meio dia responde.
+2. ⭐ **MEDIDO (28/08) — e o motor está liberado: por aresta individual custa `1,21×`** na primitiva
+   e `‖∇f‖ = 1`. ⚠️ **O que ficou por resolver mudou de sítio:** não é o campo, é **apanhar a aresta
+   na vista 3D** — 12 sliders numa caixa é inusável, e um perfil de 40 pontos torna a lista
+   impossível. ⇒ o degrau seguinte é de **UI**, não de matemática.
 3. ⛔ **RECUSAR: por aresta do resultado de uma booleana.** Não é preço, é representação — e traz o
    problema do nome persistente, que é a doença que não temos.
 4. ⏸️ **ADIAR: por vértice.** Ele é a consequência do (2), e desenhá-lo antes seria responder a uma
@@ -154,3 +211,5 @@ pergunta que o por-aresta cria.
 | Fillet por aresta selecionada no **resultado** de uma booleana | a aresta não existe na representação, e nomeá-la de forma durável é o *persistent naming*, não resolvido em CAD nenhum (§5) |
 | Substituir o `sd_box` pela construção de três barras | ela diverge no **vértice** (`+0,03371`): canto de Steinmetz contra esférico ⇒ mudaria toda peça já feita. A cura é usá-la **só** quando os raios diferem (§3) |
 | Raio que varia com a posição (`r(p)`) para arredondar uma aresta e não a vizinha | mata a exactidão do raio entregue e obriga a marcha a abrandar em toda peça (§5) |
+| Escolher o raio por **quadrante** com um `select` (a forma canónica do `sdRoundedBox`) | pede uma constante de inclinação **inventada**, e cria uma região de transição em que o campo muda de lei. A intersecção de quatro termos de canto dá o mesmo sem nenhuma das duas (§4.1) |
+| Ler o preço na **contagem de nós** | `7,00×` os nós são `1,21×` o relógio — o SIMD enche faixas paradas com os termos independentes. *Errou por 6×* (§4.2) |

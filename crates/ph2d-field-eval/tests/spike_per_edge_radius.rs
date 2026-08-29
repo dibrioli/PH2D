@@ -52,6 +52,50 @@ fn per_edge_group(h: [f64; 3], r: [f64; 3]) -> Tree {
     ax.max(ay).max(az)
 }
 
+/// ⭐⭐⭐ **A caixa com um raio POR ARESTA** — os 12, cada um o seu (a medição do «degrau 2»).
+///
+/// # ⭐ A construção não tem SELECÇÃO nenhuma, e é isso que a torna barata de raciocinar
+///
+/// A tentação é a forma canónica do `sdRoundedBox` 2D — escolher o raio pelo **quadrante** e depois
+/// aplicar uma fórmula só. Isso pede um `select` na álgebra da árvore, e um `select` construído à
+/// mão pede uma constante de inclinação **inventada** — o que o cabeçalho do [`ph2d_field_eval::ops`]
+/// proíbe.
+///
+/// ⭐ Em vez disso, **cada canto é um termo exacto por si**, e o rectângulo é a **intersecção dos
+/// quatro**:
+///
+/// `canto(c, r) = ‖max(p − c, 0)‖ − r`, com `c` no canto recuado de `r`.
+///
+/// Ele vale as três coisas de uma vez: no quadrante dele é o arco de raio `r`; ao longo de cada face
+/// degenera **exactamente** na distância àquela face; e no lado oposto é uma constante negativa que o
+/// `max` ignora. ⇒ nenhuma escolha por região, nenhuma descontinuidade a defender, e só `abs`/`max`/
+/// `length` — o vocabulário que o `ops.rs` já tem.
+fn per_edge(h: [f64; 3], r: [[f64; 4]; 3]) -> Tree {
+    // Uma barra de secção `(u, v)` com **quatro** raios de canto: `[++, +−, −+, −−]`.
+    let bar = |u: &Tree, v: &Tree, hu: f64, hv: f64, rr: [f64; 4]| -> Tree {
+        let canto = |su: f64, sv: f64, rc: f64| -> Tree {
+            let du = u.clone() * Tree::constant(su) - Tree::constant(hu - rc);
+            let dv = v.clone() * Tree::constant(sv) - Tree::constant(hv - rc);
+            let fora = (du.clone().max(0.0).square() + dv.clone().max(0.0).square())
+                .max(1.0e-30)
+                .sqrt();
+            // ⚠️ **O TERMO INTERIOR, e a 1.ª redacção não o tinha.** Sem ele `‖max(d,0)‖` é **zero**
+            // em todo o interior, e o campo dentro da peça vale `−rc` (uma constante) em vez da
+            // distância — com `rc = 0` vale **zero**, e o oráculo leu `0,300` de erro. É o mesmo
+            // termo que o `cylinder_raw` desta crate já escreve, pela mesma razão.
+            fora + du.max(dv).min(0.0) - Tree::constant(rc)
+        };
+        canto(1.0, 1.0, rr[0])
+            .max(canto(1.0, -1.0, rr[1]))
+            .max(canto(-1.0, 1.0, rr[2]))
+            .max(canto(-1.0, -1.0, rr[3]))
+    };
+    let (x, y, z) = (Tree::x(), Tree::y(), Tree::z());
+    bar(&y, &z, h[1], h[2], r[0])
+        .max(bar(&z, &x, h[2], h[0], r[1]))
+        .max(bar(&x, &y, h[0], h[1], r[2]))
+}
+
 fn field(t: Tree) -> Field {
     Field::from_tree(&t)
 }
@@ -199,5 +243,198 @@ fn measure_the_price_of_a_radius_per_edge_group() {
         let mut ctx = fidget::context::Context::new();
         let _ = ctx.import(&t);
         println!("{nome:>22} | {:13}", ctx.len());
+    }
+}
+
+// ───────── DEGRAU 2: um raio por ARESTA INDIVIDUAL (12 numa caixa) ─────────
+
+/// ⭐⭐⭐ **COM OS 12 RAIOS IGUAIS AOS 3 DO GRUPO, ELA É A MESMA CAIXA** — o oráculo do degrau 2.
+///
+/// ⚠️ A construção por canto e a construção por barra são **duas expressões diferentes** da mesma
+/// forma. Se elas divergissem aqui, a de 12 raios não seria uma generalização da de 3 — seria uma
+/// terceira forma, com outro raio entregue.
+#[test]
+fn twelve_equal_radii_are_the_three_group_box() {
+    let h = [0.5, 0.35, 0.4];
+    for r in [0.0_f64, 0.06, 0.15] {
+        let a = field(per_edge_group(h, [r; 3]));
+        let b = field(per_edge(h, [[r; 4]; 3]));
+        let mut pior = 0.0f64;
+        for p in grid(1.1, 22) {
+            let d = (a.at(p[0], p[1], p[2]) - b.at(p[0], p[1], p[2])).abs();
+            if d.is_finite() {
+                pior = pior.max(d);
+            }
+        }
+        assert!(
+            pior < 2.0e-6,
+            "raio {r}: por canto difere de por grupo em {pior:.3e}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UMA ARESTA SÓ, e as outras ONZE ficam vivas** — a afirmação que o degrau 2 existe para
+/// fazer.
+///
+/// ⚠️ **O controlo é a metade que importa.** Um gate que só medisse *«a aresta pedida mudou»* passaria
+/// com «arredondar tudo». O que se afirma é que as **outras onze** ficam byte-a-byte na quina viva.
+#[test]
+fn exactly_one_of_the_twelve_edges_is_rounded() {
+    let h = [0.5, 0.5, 0.5];
+    let viva = field(uniform(h, 0.0));
+    // Só a aresta paralela a Z no canto (+x, +y).
+    let mut r = [[0.0f64; 4]; 3];
+    r[2][0] = 0.2;
+    let uma = field(per_edge(h, r));
+
+    let d = |p: [f64; 3]| uma.at(p[0], p[1], p[2]) - viva.at(p[0], p[1], p[2]);
+    assert!(
+        d([0.5, 0.5, 0.0]) > 0.02,
+        "a aresta escolhida (+x,+y ∥ Z) não foi arredondada: Δ = {:.4}",
+        d([0.5, 0.5, 0.0])
+    );
+    // As outras três paralelas a Z, e uma de cada um dos outros dois grupos.
+    for (nome, p) in [
+        ("(+x,−y) ∥ Z", [0.5, -0.5, 0.0]),
+        ("(−x,+y) ∥ Z", [-0.5, 0.5, 0.0]),
+        ("(−x,−y) ∥ Z", [-0.5, -0.5, 0.0]),
+        ("(+y,+z) ∥ X", [0.0, 0.5, 0.5]),
+        ("(+z,+x) ∥ Y", [0.5, 0.0, 0.5]),
+    ] {
+        assert!(
+            d(p).abs() < 1.0e-6,
+            "a aresta {nome} NÃO pediu raio e mudou: Δ = {:.3e}",
+            d(p)
+        );
+    }
+}
+
+/// ⚠️ **O CAMPO CONTINUA A SER UMA DISTÂNCIA com os 12 raios diferentes** — a pergunta que decide se
+/// isto pode entrar no produto.
+///
+/// ⭐ E ela é a razão de a construção não ter selecção: um `select` entre dois raios criaria uma
+/// região de transição em que o campo **muda de lei**, e é ali que o gradiente sobe. Sem selecção,
+/// não há transição a defender.
+#[test]
+fn the_per_edge_box_is_still_a_distance() {
+    let h = [0.5, 0.35, 0.4];
+    // Doze raios todos diferentes — a pior disposição possível para uma descontinuidade.
+    let r = [
+        [0.05, 0.10, 0.15, 0.02],
+        [0.08, 0.03, 0.12, 0.18],
+        [0.20, 0.06, 0.01, 0.14],
+    ];
+    let f = field(per_edge(h, r));
+    let mut pior = 0.0f64;
+    let mut onde = [0.0f64; 3];
+    for p in grid(1.2, 34) {
+        let g = f.gradient_norm(p[0], p[1], p[2], 1.0e-4);
+        if g.is_finite() && g > pior {
+            pior = g;
+            onde = p;
+        }
+    }
+    println!("  ‖∇f‖ pior da caixa por ARESTA: {pior:.4} em {onde:?}");
+    assert!(
+        pior < 1.02,
+        "a caixa por aresta lê ‖∇f‖ = {pior:.4} em {onde:?} — ela obrigaria a marcha inteira a \
+         abrandar"
+    );
+}
+
+/// **O PREÇO do degrau 2, em nós de árvore.** `#[ignore]`: é medição.
+#[test]
+#[ignore]
+fn measure_the_price_of_a_radius_per_edge() {
+    let h = [0.5, 0.35, 0.4];
+    println!("  construção             | nós | × a caixa arredondada");
+    let base = {
+        let mut c = fidget::context::Context::new();
+        let _ = c.import(&uniform(h, 0.1));
+        c.len() as f64
+    };
+    for (nome, t) in [
+        ("caixa viva", uniform(h, 0.0)),
+        ("raio uniforme (hoje)", uniform(h, 0.1)),
+        ("3 raios (por grupo)", per_edge_group(h, [0.06, 0.14, 0.22])),
+        (
+            "12 raios (por aresta)",
+            per_edge(
+                h,
+                [
+                    [0.05, 0.10, 0.15, 0.02],
+                    [0.08, 0.03, 0.12, 0.18],
+                    [0.20, 0.06, 0.01, 0.14],
+                ],
+            ),
+        ),
+    ] {
+        let mut ctx = fidget::context::Context::new();
+        let _ = ctx.import(&t);
+        let n = ctx.len();
+        println!("{nome:>23} | {n:3} | {:.2}×", n as f64 / base);
+    }
+}
+
+/// ⭐⭐⭐ **O PREÇO EM RELÓGIO, que é o que o quadro paga** — e ele não é a contagem de nós.
+///
+/// ⚠️ **`7,00×` os nós NÃO é `7,00×` o tempo.** A fita corre com JIT em oito faixas de SIMD, e o que
+/// custa é o caminho crítico, não o número de nós — muitos dos 210 são independentes e enchem faixas
+/// que estavam paradas. *Uma contagem de nós é um limite superior grosseiro do relógio.*
+///
+/// `#[ignore]`: é medição, e ⚠️ **nenhuma leitura de relógio desta workstation vale acima de
+/// `load ~5`**.
+#[test]
+#[ignore]
+fn measure_the_clock_price_of_a_radius_per_edge() {
+    use fidget::shape::EzShape;
+    let h = [0.5, 0.35, 0.4];
+    const N: usize = 1 << 18;
+    let coord =
+        |i: usize, k: usize| -1.2 + 2.4 * (((i * 7919 + k * 104_729) % 1024) as f32) / 1024.0;
+    let xs: Vec<f32> = (0..N).map(|i| coord(i, 0)).collect();
+    let ys: Vec<f32> = (0..N).map(|i| coord(i, 1)).collect();
+    let zs: Vec<f32> = (0..N).map(|i| coord(i, 2)).collect();
+
+    println!("  construção             | nós |    ns/ponto | × a caixa arredondada");
+    let mut base = 0.0f64;
+    for (nome, t) in [
+        ("raio uniforme (hoje)", uniform(h, 0.1)),
+        ("3 raios (por grupo)", per_edge_group(h, [0.06, 0.14, 0.22])),
+        (
+            "12 raios (por aresta)",
+            per_edge(
+                h,
+                [
+                    [0.05, 0.10, 0.15, 0.02],
+                    [0.08, 0.03, 0.12, 0.18],
+                    [0.20, 0.06, 0.01, 0.14],
+                ],
+            ),
+        ),
+    ] {
+        let mut ctx = fidget::context::Context::new();
+        let _ = ctx.import(&t);
+        let nos = ctx.len();
+        let shape = ph2d_field_eval::Engine::from(t);
+        let tape = shape.ez_float_slice_tape();
+        let mut eval = ph2d_field_eval::Engine::new_float_slice_eval();
+        // ⚠️ Uma corrida a frio antes de medir: a primeira paga o `mmap` da fita.
+        let _ = eval.eval(&tape, &xs, &ys, &zs).expect("avalia");
+        // ⭐ A MEDIANA de 7, e não a média: uma corrida presa atrás do escalonador arrasta a média
+        // e não move a mediana.
+        let mut amostras: Vec<f64> = (0..7)
+            .map(|_| {
+                let t0 = std::time::Instant::now();
+                let _ = eval.eval(&tape, &xs, &ys, &zs).expect("avalia");
+                t0.elapsed().as_secs_f64() * 1.0e9 / N as f64
+            })
+            .collect();
+        amostras.sort_by(f64::total_cmp);
+        let ns = amostras[3];
+        if base == 0.0 {
+            base = ns;
+        }
+        println!("{nome:>23} | {nos:3} | {ns:8.3} ns | {:.2}×", ns / base);
     }
 }

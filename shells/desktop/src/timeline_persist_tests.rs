@@ -484,3 +484,107 @@ fn an_empty_project_opens_with_the_default_four_second_composition() {
         "e o clip 0 (a aba Keys) também abre com 4 s autorados"
     );
 }
+
+/// ⭐⭐⭐ **RENOMEAR um objeto animado NÃO desliga a animação dele** — e nem através do arquivo.
+///
+/// # ⚠️ Este gate existe porque a AUSÊNCIA dele deixou uma nota mentir durante uma fase inteira
+///
+/// O plano da F1 carregava *«a outra metade do passo 5: renomear um objeto animado desliga o
+/// binding»* como trabalho pendente, e o `CLAUDE.md` §5 dizia o mesmo. **As duas estavam erradas**:
+/// o passo 5b trocou o substrato para o [`ph2d_ecs::StableId`] e o doc do módulo até o diz. O que
+/// faltava não era o comportamento — era **o gate que o afirma**, e por isso a nota pôde envelhecer
+/// sem que nada a contradissesse. *Um comentário não é uma prova; um gate é.*
+///
+/// ⚠️ **O rename acontece DEPOIS da serialização**, de propósito: é a travessia do arquivo que a
+/// nota acusava, e testá-lo só em memória mediria a metade fácil.
+///
+/// (Mutação: pôr a chave do `StableId` a resolver `None` no `upkeep` ⇒ a binding fica `missing` e
+/// este gate fica RED.)
+#[test]
+fn renaming_an_animated_object_does_not_unbind_it() {
+    let mut sim = SimWorld::new();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    let mut timeline = TimelineState::new();
+    key(&mut timeline, hero.to_bits());
+    upkeep(&mut timeline, sim.world_mut());
+    let id = ph2d_ecs::stable_id_of(sim.world(), hero).expect("o upkeep atribuiu identidade");
+    let bytes = serialize(&mut timeline, sim.world_mut()).expect("serializa");
+
+    // A sessão seguinte: o MESMO objeto (mesma identidade) com **outro nome**.
+    let mut sim2 = SimWorld::new();
+    let again = sim2
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("o heroi")))
+        .id();
+    sim2.world_mut().entity_mut(again).insert(id);
+
+    let mut loaded = install_from_project(&bytes).expect("install");
+    assert!(
+        !upkeep(&mut loaded, sim2.world_mut()),
+        "a animacao foi purgada — o objeto esta' vivo, so' mudou de nome"
+    );
+    let b = &loaded.doc.bindings()[0];
+    assert!(
+        !b.missing,
+        "renomear desligou a binding. O artista renomeia uma camada e a animacao dela para de \
+         existir, sem aviso nenhum na tela"
+    );
+    assert_eq!(
+        b.entity,
+        again.to_bits(),
+        "a binding recolou no objeto errado depois do rename"
+    );
+}
+
+/// ⚠️ **E o NOME sozinho já não basta** — a metade que prova que o substrato de facto mudou.
+///
+/// Um objeto com o nome certo e **identidade diferente** é outro objeto. Antes do passo 5b ele
+/// teria capturado a animação; hoje a binding fica dormente em vez de dirigir a pose de um
+/// estranho. *É a mesma lei dos homónimos, vista pelo outro lado.*
+#[test]
+fn a_stranger_with_the_old_name_does_not_capture_the_animation() {
+    let mut sim = SimWorld::new();
+    let hero = sim
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    let mut timeline = TimelineState::new();
+    key(&mut timeline, hero.to_bits());
+    upkeep(&mut timeline, sim.world_mut());
+    let bytes = serialize(&mut timeline, sim.world_mut()).expect("serializa");
+
+    let id = ph2d_ecs::stable_id_of(sim.world(), hero).expect("identidade");
+    // Outra sessão: alguém chamado "hero", mas com OUTRA identidade.
+    //
+    // ⚠️⚠️ **A identidade é escrita À MÃO, e a 1.ª versão deste gate não o fazia** — dois mundos
+    // novos alocam `StableId` a partir do mesmo contador, então o `assign_missing_stable_ids`
+    // dava ao estranho **exactamente o id do herói** e o gate reprovava sobre produto correto.
+    // *Uma fixtura cujos dois objetos concordam por acidente não consegue distingui-los.*
+    let mut sim2 = SimWorld::new();
+    let stranger = sim2
+        .world_mut()
+        .spawn((ph2d_ecs::Transform::IDENTITY, Name::new("hero")))
+        .id();
+    sim2.world_mut()
+        .entity_mut(stranger)
+        .insert(ph2d_ecs::StableId(id.0 + 1_000));
+    let mut loaded = install_from_project(&bytes).expect("install");
+    upkeep(&mut loaded, sim2.world_mut());
+    // ⚠️ **A asserção é sobre TODAS as bindings, e não sobre a `[0]`** — e a 1.ª versão indexava
+    // uma lista que a purga já tinha esvaziado, então ela rebentava sobre produto **correto**. O
+    // desfecho legítimo aqui são dois, e os dois passam: a binding é purgada (o objeto de
+    // identidade 1 não existe neste mundo) **ou** fica dormente. O que nenhum deles pode fazer é
+    // colar-se ao homónimo. *Um gate que só sabe ler um dos desfechos certos reprova metade deles.*
+    assert!(
+        loaded
+            .doc
+            .bindings()
+            .iter()
+            .all(|b| b.missing || b.entity != stranger.to_bits()),
+        "um estranho com o nome antigo capturou a animacao — o substrato ainda e' o NOME, e \
+         renomear passa a ser uma forma de roubar a animacao de outro objeto"
+    );
+}

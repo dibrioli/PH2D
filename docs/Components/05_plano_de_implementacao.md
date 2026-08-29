@@ -255,6 +255,21 @@ prova de mutação (duplicar blob ⇒ vermelho).
      refrescava; a binding refrescava-o sempre. ⇒ A **condição de pronto (3) mede a física**, e o que
      a troca cura na timeline é **outra coisa**: dois objetos com o mesmo nome faziam a animação
      **DESAPARECER** (dormente, sem badge nem erro). Gate novo: `two_homonyms_no_longer_hide_the_animation`.
+   - ⭐⭐⭐ **E em 2026-08-27 a nota do ROTEADOR ainda dizia o contrário — três dias depois de o
+     trabalho estar pago.** O `CLAUDE.md` §5 carregava *«a F1 continua PELA METADE: a física aponta
+     por identidade, a timeline ainda não — renomear um objeto animado desliga o binding»*, que está
+     errado **nas duas metades** (a 5a fechou em 24/08, a 5b em 25/08). ⚠️ **A causa é a ausência de
+     um GATE:** o comportamento certo existia e nada o afirmava, então a frase falsa podia envelhecer
+     sem que uma corrida a contradissesse. *Um comentário não é uma prova; um doc de plano também
+     não.* ⇒ dois gates novos em [`timeline_persist_tests.rs`](../../shells/desktop/src/timeline_persist_tests.rs):
+     `renaming_an_animated_object_does_not_unbind_it` (o rename **atravessa o arquivo**, que é a
+     metade que a nota acusava) e `a_stranger_with_the_old_name_does_not_capture_the_animation` (o
+     nome sozinho já não basta — a prova de que o substrato de facto mudou). Duas mutações, duas
+     mortes, com o controlo do filtro feito só sobre os gates novos.
+   - ⚠️ **E as duas fixturas mordiam antes de medir:** dois `SimWorld` novos alocam `StableId` a
+     partir do mesmo contador, então o «estranho» nascia com **exactamente** o id do herói e o gate
+     reprovava sobre produto correto; e a asserção indexava `bindings()[0]` numa lista que a **purga**
+     já tinha esvaziado — *um gate que só sabe ler um dos desfechos certos reprova metade deles*.
    - ⛔ **`frame_solve.rs:139/218/251` NÃO pertence a este passo, e não deve mudar.** Ali o
      `stable_name_id` hasheia **o texto que o autor escreveu** (`Expr::Attr("Ball.x")` — o
      `resolve_link` parte a string no `.`), não uma referência guardada. Trocá-lo por `StableId` poria

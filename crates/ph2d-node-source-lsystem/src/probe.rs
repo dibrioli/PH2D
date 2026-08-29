@@ -82,6 +82,13 @@ pub fn probe_growth_ratio(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -
     measure_ratio(axiom, rules, &probe_params(5.0, overrides))
 }
 
+/// **OS PESOS QUE O PARSER DE FACTO DEVOLVE** — a porta de sonda que impede um gate de
+/// escrever o próprio oráculo.
+///
+/// ⚠️ O gate `variation_gives_three_weighted_rules_whose_weights_close_at_one` lia os pesos do
+/// texto com um `str::parse::<f32>()` PRÓPRIO, e por isso ficava verde em `v = 1,0`: o texto
+/// somava `1,0` (`0.000 + 0.500 + 0.500`) enquanto o motor somava `2,0` (o `(0.000)` virava o
+/// neutro). **Dois leitores do mesmo texto, e o gate escolheu o que não está no produto.**
 #[must_use]
 pub fn probe_rule_weights(rules: &str) -> Vec<f32> {
     grammar::parse_rules(rules)

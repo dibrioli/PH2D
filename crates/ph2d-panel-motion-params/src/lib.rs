@@ -427,12 +427,6 @@ impl Panel for MotionParamsPanel {
     }
 }
 
-/// True while any pooled param row is being interacted with — a slider dragged /
-/// focused, a chip focused, or a standalone number box (Angle / Seed) focused.
-/// The shell reads this as the undo-bracket edge (open on the false→true
-/// transition, commit one step on true→false), so a whole slider drag — or a
-/// whole type-into-the-angle-box — is a single undo step (M1.P1).
-#[must_use]
 /// Desenha a barra de rolagem e **publica** o par `content_h`/`visible_h` que o dispatch da roda
 /// consome.
 ///

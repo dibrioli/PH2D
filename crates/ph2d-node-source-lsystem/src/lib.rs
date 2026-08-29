@@ -669,14 +669,6 @@ pub fn grammar_for(
     )
 }
 
-/// **OS PESOS QUE O PARSER DE FACTO DEVOLVE** — a porta de sonda que impede um gate de
-/// escrever o próprio oráculo.
-///
-/// ⚠️ O gate `variation_gives_three_weighted_rules_whose_weights_close_at_one` lia os pesos do
-/// texto com um `str::parse::<f32>()` PRÓPRIO, e por isso ficava verde em `v = 1,0`: o texto
-/// somava `1,0` (`0.000 + 0.500 + 0.500`) enquanto o motor somava `2,0` (o `(0.000)` virava o
-/// neutro). **Dois leitores do mesmo texto, e o gate escolheu o que não está no produto.**
-
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

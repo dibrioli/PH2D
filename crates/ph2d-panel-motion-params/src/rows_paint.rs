@@ -40,17 +40,6 @@ use kinds::{
     paint_source_row, paint_toggle_row,
 };
 
-/// Paint each param row from `body_top` down, registering hit rects as it goes.
-///
-/// Devolve, além dos widgets que a fase mutável registra, **a ALTURA que de fato usou**.
-///
-/// ⚠️ Ela existe porque o painel **não rola**: um teto de linhas alto o bastante para caber todo
-/// param do registry (`MAX_PARAM_ROWS`, medido pelo censo na shell) só é honesto se essas linhas
-/// couberem na altura do inspector — senão a linha 14 deixa de ser cortada pelo `.take()` e passa
-/// a ser cortada pela borda da tela, que é a MESMA invisibilidade por outra porta. Quem responde
-/// *"quanto isto ocupou?"* é o pintor, uma vez; um segundo cálculo de altura ao lado dele
-/// divergiria no dia em que uma linha composta mudar de tamanho.
-#[allow(clippy::too_many_arguments)]
 /// **QUE WIDGET CADA ESPÉCIE DE ROW PINTA** — o `match` que o [`paint_rows`] delega.
 ///
 /// ⚠️ Separado pelo teto de FUNÇÃO (HR-18, 200 LOC em `ph2d-panel-*`), no corte que a
@@ -238,6 +227,17 @@ fn paint_one_row(
     y
 }
 
+/// Paint each param row from `body_top` down, registering hit rects as it goes.
+///
+/// Devolve, além dos widgets que a fase mutável registra, **a ALTURA que de fato usou**.
+///
+/// ⚠️ Ela existe porque o painel **não rola**: um teto de linhas alto o bastante para caber todo
+/// param do registry (`MAX_PARAM_ROWS`, medido pelo censo na shell) só é honesto se essas linhas
+/// couberem na altura do inspector — senão a linha 14 deixa de ser cortada pelo `.take()` e passa
+/// a ser cortada pela borda da tela, que é a MESMA invisibilidade por outra porta. Quem responde
+/// *"quanto isto ocupou?"* é o pintor, uma vez; um segundo cálculo de altura ao lado dele
+/// divergiria no dia em que uma linha composta mudar de tamanho.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_rows(
     rows: &[ParamRow],
     inner_x: f32,

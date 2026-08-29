@@ -42,7 +42,8 @@ pub(crate) fn paint_instance_card(
     // ⚠️ **A altura é MEDIDA antes de pintar**, e não somada enquanto se desenha: o fundo do cartão
     // tem de ser desenhado PRIMEIRO (senão cobre o texto), e por isso ele precisa de saber onde
     // acaba. *Um fundo pintado depois do conteúdo é o conteúdo apagado.*
-    let rows = 2 + info.overridden.len() + usize::from(info.orphans > 0);
+    let variant_rows = usize::from(!info.variants.is_empty());
+    let rows = 2 + info.overridden.len() + usize::from(info.orphans > 0) + variant_rows;
     let card_h = CARD_PAD * 2.0 + line * rows as f32;
     let card = Rect::new(x, y, w, card_h);
     fill_rounded_rect(
@@ -93,6 +94,35 @@ pub(crate) fn paint_instance_card(
             tw,
             resolve(ColorToken::Text1, theme),
         );
+        ty += line;
+    }
+
+    // ⭐⭐⭐ **A fileira das VARIANTES** (F5, critério 2) — que versão do componente esta cópia é.
+    //
+    // ⚠️ **Ela só existe com DUAS ou mais**, e a decisão está a montante (o construtor devolve a
+    // lista vazia): um chip único, já escolhido, não escolhe nada. *Um valor que não leva a lado
+    // nenhum não é oferecido.*
+    if !info.variants.is_empty() {
+        let n = info.variants.len();
+        let gap = Spacing::Xs.px();
+        let cw = ((tw - gap * (n.saturating_sub(1)) as f32) / n as f32).max(0.0);
+        for (i, v) in info.variants.iter().enumerate() {
+            let Some(&id) = ids::INSP_INSTANCE_VARIANT.get(i) else {
+                break;
+            };
+            let host = Rect::new(tx + (cw + gap) * i as f32, ty, cw, line);
+            hit_index.register(id, host);
+            let button = Button::new(id, v.label.clone())
+                // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira
+                // mostra as opções e esconde a resposta.
+                .kind(if v.current {
+                    ButtonKind::Accent
+                } else {
+                    ButtonKind::Default
+                })
+                .visual(store.button_visual(id));
+            paint_button(&button, host, scene, text_system, theme);
+        }
         ty += line;
     }
 

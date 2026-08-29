@@ -97,6 +97,20 @@ pub(crate) fn instantiate_master(
     // ⭐⭐ **Os DOCUMENTOS possuídos** (F4.6) — a cópia profunda salta-os de propósito, e sem esta
     // metade uma peça vetorial nasce **sem geometria nenhuma**: uma linha na Hierarquia que não
     // desenha um pixel. Ver [`crate::instance_docs`], onde a lista dos quatro está declarada.
+    // ⭐⭐ **A cópia nasce SEM excepções, e isto só passou a importar com as VARIANTES** (F5).
+    //
+    // A cópia profunda leva o `ObjectInstance` verbatim, e num mestre comum ele não existe. Numa
+    // **variante** existe — são as excepções dela contra a base, chaveadas pelas peças da BASE. A
+    // cópia é instância da variante, e as peças dela ligam-se às peças da VARIANTE: aquelas chaves
+    // não alcançam nada e ficariam a acumular em toda instância de toda variante. ⚠️ Inertes, mas
+    // é lixo com cara de excepção — o cartão do Inspector lê aquele conjunto.
+    //
+    // ⛔ **E não é «herdar»**: o valor que a variante autorou já está nos componentes das peças
+    // dela, e a cópia leva-o pelos bytes. A excepção é a pergunta *«de quem é este componente»*, e
+    // numa cópia recém-nascida a resposta é *da receita*, para todos.
+    sim.world_mut()
+        .entity_mut(copy.root)
+        .remove::<ph2d_ecs::ObjectInstance>();
     let report = crate::instance_docs::clone_owned_documents(sim, registry, docs, &copy);
     report.warn("instanciar");
     let pieces = copy.copies();

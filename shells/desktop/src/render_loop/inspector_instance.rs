@@ -63,13 +63,61 @@ pub(super) fn build_instance_info(
     // uma lista que ninguém consegue ler duas vezes.
     overridden.sort();
 
+    let (variants, variants_beyond) =
+        root_master.map_or_else(Default::default, |id| variant_family(sim, id));
+
     Some(InspectorInstanceInfo {
         entity_bits: entity.to_bits(),
         master_name,
         overridden,
         orphans: inst.orphans.len(),
         root_bits: root.to_bits(),
+        variants,
+        variants_beyond,
     })
+}
+
+/// ⭐⭐ **A família de `current`** — todo mestre vivo com que a troca tem um mapa determinístico.
+///
+/// ⚠️ **O critério é o MAPA, e não uma marca**: um mestre entra aqui exactamente quando
+/// [`crate::instance_variant::piece_map`] o alcança, que é a mesma pergunta que a troca faz. *Duas
+/// respostas a «isto é uma variante disto?» divergem no dia em que uma delas for escrita sozinha* —
+/// e o sintoma seria um chip que o artista clica e que recusa.
+///
+/// ⚠️ **Com menos de dois a lista sai VAZIA**: um chip único que já está escolhido não escolhe
+/// nada, e a fileira não se pinta.
+fn variant_family(
+    sim: &mut SimWorld,
+    current: u64,
+) -> (Vec<ph2d_editor::screens::hero::VariantChoice>, usize) {
+    use ph2d_editor::screens::hero::VariantChoice;
+    // Ordenado por `StableId` — a ordem de autoria, e a única que é a mesma em toda máquina.
+    let masters: Vec<u64> = {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<&ph2d_ecs::StableId, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+        let mut v: Vec<u64> = q.iter(sim.world()).map(|s| s.0).collect();
+        v.sort_unstable();
+        v
+    };
+    let mut all: Vec<VariantChoice> = Vec::new();
+    for id in masters {
+        if id != current && crate::instance_variant::piece_map(sim, current, id).is_none() {
+            continue;
+        }
+        all.push(VariantChoice {
+            master: id,
+            label: master_named(sim, id).unwrap_or_else(|| "component".to_string()),
+            current: id == current,
+        });
+    }
+    if all.len() < 2 {
+        return (Vec::new(), 0);
+    }
+    let cap = ph2d_editor::ids::MAX_INSTANCE_VARIANTS;
+    let beyond = all.len().saturating_sub(cap);
+    all.truncate(cap);
+    (all, beyond)
 }
 
 /// O `Name` da entidade cujo `StableId` é `id`.

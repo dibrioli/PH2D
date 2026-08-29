@@ -33,6 +33,8 @@
 #![forbid(unsafe_code)]
 
 pub mod action_bus;
+/// A fila do [`action_bus`] — irmão por assunto, ver o cabeçalho de lá.
+mod action_bus_queue;
 pub mod floating_panel;
 pub mod frame_label;
 pub mod gizmo;

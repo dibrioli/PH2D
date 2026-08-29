@@ -82,6 +82,37 @@ fn clear_orphans_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> boo
     true
 }
 
+/// ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2) — que versão do componente esta cópia é.
+///
+/// ⚠️ **O painel manda o `StableId` do mestre, e não o índice do chip.** O índice é uma posição
+/// numa lista que o construtor refaz por quadro; se ela reordenar entre o pintar e o clicar, o
+/// artista escolhe `Large` e recebe `Medium` — **sem erro nenhum**. *A identidade viaja; a posição
+/// fica no painel.*
+fn variant_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let WidgetEvent::Click(id) = ev else {
+        return false;
+    };
+    let Some(info) = crate::state::current_inspector_instance() else {
+        return false;
+    };
+    let Some(i) = ids::INSP_INSTANCE_VARIANT.iter().position(|&v| v == id) else {
+        return false;
+    };
+    let Some(choice) = info.variants.get(i) else {
+        return false;
+    };
+    // ⚠️ Clicar na vigente é um **no-op silencioso**, e não uma recusa a falar: o artista carregou
+    // no botão que diz onde ele já está.
+    if choice.current {
+        return true;
+    }
+    host.bus_mut().push(EditorAction::InspectorSwapVariant {
+        root_bits: info.root_bits,
+        master: choice.master,
+    });
+    true
+}
+
 fn add_component_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if ev != WidgetEvent::Click(ids::INSP_ADD_COMPONENT) {
         return false;
@@ -139,6 +170,7 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
     clear_orphans_click,
+    variant_click,
     section_color_click,
 ];
 

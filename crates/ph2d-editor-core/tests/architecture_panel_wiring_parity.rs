@@ -321,3 +321,175 @@ fn hit_indexed_ids_are_registered() {
         offenders.join("\n  ")
     );
 }
+
+/// ⭐⭐⭐ **A metade CEGA do gate acima: os chips guiados por TABELA** (achado 2026-08-27).
+///
+/// # O buraco, e como ele apareceu
+///
+/// O [`hit_indexed_ids_are_registered`] só vê `ids::<IDENT>` passado **literalmente** como 1.º
+/// argumento de `.register(` — o doc dele diz-no com todas as letras (*"Loop-variable first args
+/// (no `ids::` literal) are skipped"*). Uma fileira de chips escreve-se assim:
+///
+/// ```ignore
+/// for (i, v) in items.iter().enumerate() {
+///     let Some(&id) = ids::INSP_INSTANCE_VARIANT.get(i) else { break };
+///     hit_index.register(id, host);   // <- primeiro argumento é uma VARIÁVEL
+/// }
+/// ```
+///
+/// ⇒ apagar o `populate` daquela tabela **não** o punha vermelho. Medido por mutação: ela
+/// SOBREVIVEU, com o controlo do filtro feito primeiro (a 1.ª corrida deu «ok» sobre **zero**
+/// testes, que é a armadilha própria da prova de mutação).
+///
+/// ⚠️ **É exactamente a família que esta casa já pagou três vezes** (o `+` da F3, os chips da
+/// booleana do Vector, o *Clear* dos órfãos): *um controlo pintado e não registado nunca é
+/// focável, logo o Down/Up nunca dispara* — e o report do artista é indistinguível de um botão que
+/// nunca foi pintado.
+///
+/// # ⚠️ Porque é uma CATRACA e não um allowlist
+///
+/// A varredura achou **9** tabelas por registar em **4** painéis, todos de outras linhas. O doc do
+/// gate irmão diz o que fazer com isso — *"deciding that is their owners' call, not a physics
+/// wave's, so they are NAMED … instead of being allowlisted here by someone who did not write
+/// them"*. ⇒ elas ficam **nomeadas e datadas** nesta lista, que é uma catraca no molde dos tetos de
+/// LOC da casa: **ela só encolhe**. Um chip guiado por tabela **novo** já não pode nascer morto, e
+/// os 9 continuam a ser dívida com endereço em vez de dívida invisível.
+///
+/// ⭐ **E a catraca apanhou-me a mim primeiro:** a lista começou com 11, e a metade
+/// «só encolhe» deste gate disse que **duas** delas não descreviam nada — a minha sonda de
+/// varredura era mais larga que a regra que ficou. *Uma lista de dívida sem quem a confira
+/// enche-se de dívida que não existe.*
+const TABLE_PARITY_PENDING: &[(&str, &str)] = &[
+    // Medidos em 2026-08-27 pela `line/components`. ⛔ Não acrescente linhas aqui para passar um
+    // chip novo — a lista é do que já estava por registar nesse dia.
+    ("ph2d-panel-bgremoval", "BGR_SWATCHES"),
+    ("ph2d-panel-color-equalization", "CEQ_POSTERIZE_LEVELS"),
+    ("ph2d-panel-color-equalization", "CEQ_QUANTIZE_COLORS"),
+    ("ph2d-panel-inspector", "INSP_JOINT_AXIS_GROUP"),
+    ("ph2d-panel-painter-layers", "PAINTER_BRUSH_RANDOMIZE_CHIPS"),
+    (
+        "ph2d-panel-painter-layers",
+        "PAINTER_BRUSH_RANDOMIZE_SLIDERS",
+    ),
+    ("ph2d-panel-painter-layers", "PAINTER_BRUSH_SYMMETRY_AXES"),
+    (
+        "ph2d-panel-painter-layers",
+        "PAINTER_WATERCOLOR_PAPER_PARAMS",
+    ),
+    ("ph2d-panel-painter-layers", "PAINTER_WETPAINT_TOOL_IDS"),
+];
+
+/// As tabelas `ids::<IDENT>` que `src` **indexa** (`.get(i)`, `[i]`, `.iter()`).
+///
+/// ⚠️ Indexar uma tabela de `NodeId` em código de pintura é, por construção, pintar uma fileira de
+/// controlos: não há outro uso para um `NodeId` num painel.
+fn indexed_id_tables(src: &str) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    let needle = "ids::";
+    let mut rest = src;
+    while let Some(pos) = rest.find(needle) {
+        let tail = &rest[pos + needle.len()..];
+        let end = tail
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+            .unwrap_or(tail.len());
+        let (ident, after) = (&tail[..end], &tail[end..]);
+        let indexed = after.starts_with(".get(")
+            || after.starts_with(".iter()")
+            || (after.starts_with('[') && !after.starts_with("[]"));
+        // SCREAMING_CASE só: uma função `ids::foo_id(i)` não é uma tabela.
+        if indexed
+            && !ident.is_empty()
+            && ident
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+        {
+            out.insert(ident.to_string());
+        }
+        rest = after;
+    }
+    out
+}
+
+#[test]
+fn table_driven_chips_are_registered_too() {
+    let root = crates_root();
+    let pending: BTreeSet<(&str, &str)> = TABLE_PARITY_PENDING.iter().copied().collect();
+
+    let mut global_registered: BTreeSet<String> = BTreeSet::new();
+    for rel in GLOBAL_REGISTRATION_FILES {
+        if let Ok(body) = std::fs::read_to_string(root.join(rel)) {
+            global_registered.extend(referenced_ids(&body));
+        }
+    }
+
+    let mut offenders: Vec<String> = Vec::new();
+    let mut seen: BTreeSet<(String, String)> = BTreeSet::new();
+    for dir in panel_dirs(&root) {
+        let name = dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("?")
+            .to_string();
+        let mut reg_src = String::new();
+        let mut names: Vec<String> = vec!["seam.rs".to_string()];
+        if let Ok(rd) = std::fs::read_dir(dir.join("src")) {
+            for e in rd.flatten() {
+                let f = e.file_name().to_string_lossy().to_string();
+                if f.starts_with("populate") && f.ends_with(".rs") {
+                    names.push(f);
+                }
+            }
+        }
+        names.sort();
+        for f in &names {
+            if let Ok(s) = std::fs::read_to_string(dir.join("src").join(f)) {
+                reg_src.push_str(&s);
+                reg_src.push('\n');
+            }
+        }
+        if reg_src.is_empty() {
+            continue;
+        }
+        let paint_src = read_paint_sources(&dir);
+        if paint_src.is_empty() || !paint_src.contains(".register(") {
+            continue;
+        }
+        let mut registered = referenced_ids(&reg_src);
+        registered.extend(global_registered.iter().cloned());
+        for table in indexed_id_tables(&paint_src) {
+            if registered.contains(&table) {
+                continue;
+            }
+            seen.insert((name.clone(), table.clone()));
+            if pending.contains(&(name.as_str(), table.as_str())) {
+                continue;
+            }
+            offenders.push(format!("{name}: ids::{table}"));
+        }
+    }
+
+    offenders.sort();
+    assert!(
+        offenders.is_empty(),
+        "fileiras de chips guiadas por TABELA, pintadas e hit-indexadas mas NAO registadas no \
+         `populate.rs` do painel -> `is_focusable()==false` -> mortas sob o dedo:\n  {}\n\n\
+         cura: `for &id in &ids::X {{ store.register(id, InteractiveState::Button {{ .. }}); }}` \
+         no `populate.rs`. O gate irmao `hit_indexed_ids_are_registered` NAO ve isto: ele so' le\
+         `.register(ids::LITERAL, ..)`, e uma fileira passa a variavel do laco.",
+        offenders.join("\n  ")
+    );
+
+    // ⚠️ **A catraca só encolhe** — uma linha do `TABLE_PARITY_PENDING` que já não corresponde a
+    // nada é uma dívida paga que ninguém apagou, e a próxima pessoa lê-a como se ainda existisse.
+    let stale: Vec<String> = TABLE_PARITY_PENDING
+        .iter()
+        .filter(|(p, t)| !seen.contains(&((*p).to_string(), (*t).to_string())))
+        .map(|(p, t)| format!("{p}: ids::{t}"))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "estas linhas do TABLE_PARITY_PENDING ja' nao descrevem nada — a divida foi paga e a \
+         catraca tem de descer:\n  {}",
+        stale.join("\n  ")
+    );
+}

@@ -83,7 +83,17 @@ pub(crate) fn make_master(
     }
     // ⚠️ A pergunta é sobre a entidade **e os ancestrais dela**: uma peça no meio de uma cópia
     // também está «dentro de uma instância».
-    if belongs_to_an_instance(sim, entity) {
+    //
+    // ⭐⭐⭐ **A RAIZ de uma instância é a excepção, e é ela que faz uma VARIANTE** (F5, critério
+    // 2). Marcar a raiz de uma cópia como receita deixa-a `MasterRoot` **e** `InstanceOf` ao mesmo
+    // tempo: ela continua a seguir a base e passa a ser a receita das cópias dela — que é a
+    // *Prefab Variant* do Unity e o `IsA` do flecs. O sync já a alcança sem uma linha nova (ele
+    // procura *toda* entidade cujo elo aponta para um mestre vivo), e a sonda de 2026-08-27 mediu
+    // a cadeia inteira a fechar **num passe**.
+    //
+    // ⛔ Uma peça **no meio** continua recusada, e pela razão de sempre: um `MasterRoot` a meio de
+    // uma cópia viva encurta a sub-árvore de edição e some da tela.
+    if belongs_to_an_instance(sim, entity) && instance_root_of(sim, entity) != Some(entity) {
         return Err(VerbRefusal::InsideAnInstance);
     }
     let parent = sim.world().get::<ph2d_ecs::ChildOf>(entity).map(|c| c.0);
@@ -313,10 +323,16 @@ pub(crate) fn drain(
     let entity = Entity::from_bits(entity_bits);
     match verb {
         Verb::Make => match make_master(sim, registry, entity, docs) {
-            Ok(_) => {
-                toasts.push(Toast::success(
-                    "Made a component — an instance took its place",
-                ));
+            // ⭐ **A voz diz QUAL dos dois aconteceu** (F5): uma receita que nasce de uma copia
+            // continua ligada a' base, e o artista tem de saber disso antes de a editar - senao ele
+            // muda a variante e ve a mudanca sumir no quadro em que a base for editada.
+            Ok((master, _)) => {
+                let variant = sim.world().get::<ph2d_ecs::InstanceOf>(master).is_some();
+                toasts.push(Toast::success(if variant {
+                    "Made a variant \u{2014} it still follows its base"
+                } else {
+                    "Made a component \u{2014} an instance took its place"
+                }));
                 true
             }
             Err(VerbRefusal::AlreadyAMaster) => {

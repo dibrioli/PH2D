@@ -3318,6 +3318,8 @@ impl crate::App {
             let mut anim_edits: Vec<(u64, ph2d_editor::AnimFieldEdit)> = Vec::new();
             // ⭐ O `+` do Inspector (F3): quem pediu a paleta neste quadro.
             let mut add_component_for: Option<u64> = None;
+            // ⭐ A troca de variante pedida neste quadro: `(raiz da instância, StableId do mestre)`.
+            let mut swap_variant: Option<(u64, u64)> = None;
             let mut physics_edits: Vec<(u64, ph2d_editor::PhysicsFieldEdit)> = Vec::new();
             // §12 joints (W3). Kept out of `inspector_commits::dispatch`: that
             // signature is already the length its own doc-comment warns about,
@@ -4371,6 +4373,15 @@ impl crate::App {
                                 "Cleared {n} unused override(s)"
                             )));
                         }
+                    }
+                    // ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2).
+                    //
+                    // ⚠️ **ADIADO para depois do dreno**, ao contrário do irmão acima, e a razão é
+                    // uma só: a troca precisa do **eco** (`self.instance_echo`) para o esquecer, e
+                    // aqui dentro o `self` já está emprestado. *Um gesto que precisa de mais do que
+                    // o ponto de aplicação tem, adia-se — não se duplica o estado.*
+                    EditorAction::InspectorSwapVariant { root_bits, master } => {
+                        swap_variant = Some((root_bits, master));
                     }
 
                     // §11 Physics Body. Fans out over a BulkSelect like its
@@ -9930,6 +9941,46 @@ impl crate::App {
                     toasts.push(Toast::warning(crate::painter_lock::REFUSAL));
                     hierarchy_select_intent = None;
                     self.title_dirty = true;
+                }
+            }
+            // ⭐⭐⭐ **A troca de VARIANTE, aplicada** (ADR-0164 / F5, critério 2).
+            //
+            // ⚠️ **Aqui, e não no dreno do Inspector**, porque é aqui que o `sim` e o **eco** estão
+            // os dois à mão — a troca tem de o esquecer, senão o passe seguinte lê a diferença
+            // contra o mestre NOVO como *«a instância mexeu-se»* e congela a cópia com o valor do
+            // mestre VELHO ([`crate::instance_variant::swap`]).
+            if let Some((root_bits, master)) = swap_variant {
+                match crate::instance_variant::swap(
+                    sim,
+                    &mut self.instance_echo,
+                    ph2d_ecs::Entity::from_bits(root_bits),
+                    master,
+                ) {
+                    Ok(r) => {
+                        toasts.push(Toast::success(if r.dropped > 0 {
+                            format!(
+                                "Switched variant \u{2014} {} override(s) kept, {} piece(s) unused",
+                                r.overrides_kept, r.dropped
+                            )
+                        } else {
+                            format!(
+                                "Switched variant \u{2014} {} override(s) kept",
+                                r.overrides_kept
+                            )
+                        }));
+                        self.title_dirty = true;
+                    }
+                    // ⚠️ **Todo caminho negativo fala.** Um chip que come o clique em silêncio é
+                    // pior que um ausente — a mesma lei que o menu dos verbos paga.
+                    Err(crate::instance_variant::SwapRefusal::Already) => {}
+                    Err(crate::instance_variant::SwapRefusal::Unrelated) => {
+                        toasts.push(Toast::warning(
+                            "These components are not related \u{2014} switching would lose every override",
+                        ));
+                    }
+                    Err(_) => {
+                        toasts.push(Toast::warning("That is not a copy of a component"));
+                    }
                 }
             }
             if hierarchy::dispatch(

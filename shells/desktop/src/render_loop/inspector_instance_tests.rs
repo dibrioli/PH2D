@@ -217,3 +217,143 @@ fn the_orphans_are_counted_and_the_gesture_touches_only_them() {
         "o gesto apagou uma excepcao VIVA — isso e' o *Revert to Master* com outro nome"
     );
 }
+
+/// ⭐⭐ **A fileira de variantes lista a FAMÍLIA, e marca a vigente** (F5, critério 2).
+///
+/// ⚠️ **O oráculo é o conjunto de `StableId`s, e não a contagem**: um construtor que devolvesse
+/// «duas» com o mestre errado lá dentro passaria num gate que contasse.
+#[test]
+fn the_card_lists_the_family_and_marks_the_current_one() {
+    let (mut sim, r, base, variant) = family();
+    let inst = instantiate(&mut sim, &r, base);
+    let info =
+        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+    let got: Vec<u64> = info.variants.iter().map(|v| v.master).collect();
+    let (base_id, variant_id) = (sid(&sim, base), sid(&sim, variant));
+    assert!(
+        got.contains(&base_id) && got.contains(&variant_id),
+        "a familia nao tem os dois mestres: {got:?}"
+    );
+    assert_eq!(
+        info.variants.iter().filter(|v| v.current).count(),
+        1,
+        "a fileira tem de dizer onde a copia esta'"
+    );
+    assert!(
+        info.variants
+            .iter()
+            .any(|v| v.current && v.master == base_id),
+        "a vigente marcada nao e' o mestre da copia"
+    );
+}
+
+/// ⛔ **Um mestre SOZINHO não pinta fileira nenhuma** — *um valor que não leva a lado nenhum não é
+/// oferecido*.
+///
+/// ⚠️ E o gate mede a AUSÊNCIA no sítio em que ela decide: com um chip único e já escolhido, a
+/// fileira ocuparia uma linha do cartão para não permitir gesto nenhum.
+#[test]
+fn a_lonely_master_offers_no_variant_row() {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let master = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::Name::new("Solo"),
+            ph2d_ecs::MasterRoot,
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let inst = instantiate(&mut sim, &r, master);
+    let info =
+        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+    assert!(
+        info.variants.is_empty(),
+        "um mestre sem familia ofereceu chips: {:?}",
+        info.variants
+    );
+}
+
+/// ⛔ **Um mestre NÃO aparentado fica de fora da fileira** — o construtor filtra pela MESMA
+/// pergunta que a troca faz, e é isso que impede um chip que recusa ao ser clicado.
+#[test]
+fn an_unrelated_master_is_not_offered_as_a_variant() {
+    let (mut sim, r, base, _variant) = family();
+    let other = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::Name::new("Other"),
+            ph2d_ecs::MasterRoot,
+        ))
+        .id();
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let inst = instantiate(&mut sim, &r, base);
+    let info =
+        super::build_instance_info(&mut sim, &r, Some(inst.to_bits())).expect("e' instancia");
+    let other_id = sid(&sim, other);
+    assert!(
+        !info.variants.iter().any(|v| v.master == other_id),
+        "um mestre sem antepassado comum foi oferecido — o chip recusaria ao ser clicado"
+    );
+}
+
+fn sid(sim: &ph2d_ecs::SimWorld, e: ph2d_ecs::Entity) -> u64 {
+    sim.world().get::<ph2d_ecs::StableId>(e).expect("sid").0
+}
+
+fn instantiate(
+    sim: &mut ph2d_ecs::SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+    master: ph2d_ecs::Entity,
+) -> ph2d_ecs::Entity {
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    crate::instantiate::instantiate_master(
+        sim,
+        r,
+        master,
+        None,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        crate::instantiate::ArtLink::Own,
+    )
+    .expect("instanciou")
+}
+
+/// Uma base com uma peça, e uma variante DERIVADA dela (um mestre que também é instância).
+fn family() -> (
+    ph2d_ecs::SimWorld,
+    ph2d_ecs::scene::ComponentRegistry,
+    ph2d_ecs::Entity,
+    ph2d_ecs::Entity,
+) {
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let r = crate::init::build_component_registry();
+    let base = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Transform::IDENTITY,
+            ph2d_ecs::Name::new("Base"),
+            ph2d_ecs::MasterRoot,
+        ))
+        .id();
+    sim.world_mut().spawn((
+        ph2d_ecs::Transform::IDENTITY,
+        ph2d_ecs::Name::new("Box"),
+        ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+        ph2d_ecs::ChildOf(base),
+    ));
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    let copy = instantiate(&mut sim, &r, base);
+    sim.world_mut()
+        .entity_mut(copy)
+        .insert(ph2d_ecs::MasterRoot);
+    ph2d_ecs::assign_master_pieces(sim.world_mut());
+    (sim, r, base, copy)
+}

@@ -35,6 +35,18 @@ pub fn populate(store: &mut WidgetStore) {
             state: ph2d_editor_core::widget::ButtonState::Normal,
         },
     );
+    // ⭐⭐ **Os chips de VARIANTE** (F5, critério 2) — a tabela inteira, e não só as que a cópia
+    // vigente mostra: o `populate` corre uma vez e a lista muda com a selecção. ⚠️ Registar só as
+    // pintadas repõe exactamente a costura que o `hit_indexed_ids_are_registered` apanhou aqui há
+    // um bloco: um chip pintado e não registado **nunca** é focável, logo o Down/Up nunca dispara.
+    for &id in &ids::INSP_INSTANCE_VARIANT {
+        store.register(
+            id,
+            ph2d_editor_core::interaction::InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
     populate_transform_editor(store);
     populate_visibility_editor(store);
     populate_render_strategy(store);

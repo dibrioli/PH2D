@@ -267,8 +267,15 @@ fn make_master_refuses_a_master_and_a_piece_of_an_instance() {
     let master = spawn_master(&mut sim);
     assert_eq!(make(&mut sim, &r, master), Err(VerbRefusal::AlreadyAMaster));
     let inst = instantiate(&mut sim, &r, master, None).expect("instancia");
-    assert_eq!(make(&mut sim, &r, inst), Err(VerbRefusal::InsideAnInstance));
-    // ⚠️ E uma PEÇA no meio da cópia também: a pergunta é sobre os ANCESTRAIS.
+    // ⚠️⚠️ **A RAIZ da cópia SAIU desta lista em 2026-08-27, e a saída é a F5.**
+    //
+    // Ela era recusada com o mesmo `InsideAnInstance`, e o doc do verbo já dizia porquê: *«a
+    // resposta certa é a da F5 (aninhamento), não um mestre a meio de uma cópia»*. Marcar a raiz
+    // faz dela uma **variante** — receita das cópias dela, instância da base —, que é o critério 2
+    // da F5. Quem o afirma é
+    // `the_root_of_a_copy_becomes_a_variant_and_a_piece_still_cannot`, e ele mede **as duas
+    // metades**, porque a cura foi estreitar a condição e não apagá-la.
+    // ⚠️ E uma PEÇA no meio da cópia continua recusada: a pergunta é sobre os ANCESTRAIS.
     assert_eq!(
         {
             let arm = piece(&sim, inst, "Arm");

@@ -155,3 +155,77 @@ fn a_bifurcacao_para_o_caminho_novo_e_uma_so() {
         "e chama o caminho novo uma vez so'"
     );
 }
+
+/// ⭐⭐⭐ **GATE — «furo» conta as DUAS formas de a casca não fechar.**
+///
+/// ⛔⛔ Até 2026-08-28 a chave da frente de [`super::worse`] contava só as arestas de
+/// **bordo**. Uma aresta **não-manifold** — três faces a tocá-la — passava invisível, e
+/// o artista vê o mesmo entalhe escuro nos dois casos: o ficheiro que ele exportou nesse
+/// dia tinha `19 786` quads impecáveis e **`2` arestas não-manifold** num ponto só.
+///
+/// ⚠️ **As duas fixturas têm o MESMO número de arestas de bordo**, e é isso que faz este
+/// gate discriminar: sob a lei antiga elas **empatam** na chave da frente e a escolha cai
+/// para o enviesamento — que é dado aqui **perfeito na peça não-manifold e péssimo na
+/// limpa**, exactamente o desempate que produzia a peça furada. *Um gate cujas fixturas
+/// diferem em duas coisas não prova nada sobre nenhuma delas.*
+#[test]
+fn a_escolha_ve_a_aresta_nao_manifold_e_nao_so_o_bordo() {
+    // ⭐ TRÊS quads a partilhar a aresta `(0,1)` — 9 arestas de bordo e 1 não-manifold.
+    let tripla = ph2d_mesh::Mesh::from_parts(
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [1.0, -1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [1.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+        ],
+        vec![
+            ph2d_mesh::Face::quad(0, 1, 2, 3),
+            ph2d_mesh::Face::quad(1, 0, 5, 4),
+            ph2d_mesh::Face::quad(0, 1, 6, 7),
+        ],
+    )
+    .expect("a fixtura e' construida aqui");
+    // ⭐ TRÊS triângulos soltos — 9 arestas de bordo e ZERO não-manifold.
+    let soltos = ph2d_mesh::Mesh::from_parts(
+        (0..9)
+            .map(|i| [i as f32, (i % 3) as f32, 0.0])
+            .collect::<Vec<_>>(),
+        vec![
+            ph2d_mesh::Face::tri(0, 1, 2),
+            ph2d_mesh::Face::tri(3, 4, 5),
+            ph2d_mesh::Face::tri(6, 7, 8),
+        ],
+    )
+    .expect("a fixtura e' construida aqui");
+
+    // ⛔ O CONTROLE: sob a régua ANTIGA as duas são indistinguíveis.
+    assert_eq!(
+        super::boundary_edges(&tripla),
+        super::boundary_edges(&soltos),
+        "⛔ as duas fixturas tem de EMPATAR no bordo, senao este gate nao isola a \
+         aresta nao-manifold"
+    );
+    assert_eq!(
+        super::open_edges(&tripla),
+        super::boundary_edges(&tripla) + 1,
+        "⛔ a fixtura tripla tem de CONTER exactamente uma aresta nao-manifold"
+    );
+    assert_eq!(
+        super::open_edges(&soltos),
+        super::boundary_edges(&soltos),
+        "⛔ a fixtura de triangulos soltos nao pode ter nenhuma"
+    );
+
+    // ⭐⭐ E a escolha: a não-manifold perde **mesmo com a forma perfeita** contra uma
+    // limpa horrível. Sob a lei antiga esta asserção é FALSA — o empate no bordo levava
+    // a decisão para o `>60`, e ali a não-manifold ganhava.
+    assert!(
+        super::worse(&tripla, 0, 0.0, &soltos, 999, 89.0),
+        "⛔ uma aresta NAO-MANIFOLD tem de contar como furo -- o artista ve o mesmo \
+         entalhe escuro que uma aresta de bordo lhe da'"
+    );
+}

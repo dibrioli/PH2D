@@ -201,7 +201,20 @@ impl Sculpt3dScene {
         // `ph2d_quadflow::edge_for_detail`. Um tamanho absoluto vindo do painel é
         // destrutivo numa malha grossa e conservador numa fina, e foi o defeito
         // que o smoke do Enio fotografou (2026-08-19).
-        let edge = ph2d_quadflow::edge_for_detail(mesh, detail);
+        // ⭐⭐⭐ **A MESMA CONTAGEM DOS IRMÃOS, e depois a CERCA deste motor.**
+        //
+        // ⛔ **Um slider, um significado:** o `Detail` é a mesma linha do painel para os
+        // dois motores, então ele pede a mesma contagem nos dois — ver
+        // [`ph2d_quadflow::MAX_QUADS`], e a medição dos três apertos que a motivou.
+        //
+        // ⚠️ **A cerca deste motor CONTINUA e é dele:** a extração por retícula rasga
+        // quando o quad é mais fino que o triângulo de entrada (a foto de 2026-08-19, um
+        // ciclo de 352 lados com 58 % do volume perdido), e é isso que
+        // [`ph2d_quadflow::resolvable_edge_range`] declara. ⇒ a contagem entra e a faixa
+        // **apara**. *Quando a cerca morde, este motor deixa de ser idempotente — e é a
+        // cerca dele que o diz, não o slider.*
+        let (floor, ceiling) = ph2d_quadflow::resolvable_edge_range(mesh);
+        let edge = ph2d_quadflow::edge_for_detail_by_count(mesh, detail).clamp(floor, ceiling);
         let scale = ph2d_quadflow::ScaleField::adaptive(mesh, edge, adaptive);
         let (orient, pos) = ph2d_quadflow::solve_fields(mesh, &scale);
         // ⚠️ **NÃO HÁ passe de relaxação aqui, e a ausência é MEDIDA.** Eu

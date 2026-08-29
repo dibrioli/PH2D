@@ -152,6 +152,100 @@ muda de resultado ao ser optimizada não foi optimizada, foi substituída*; (2) 
 do gate de determinismo **sobreviveu** por não ser observável (mexia no raio de reprojecção,
 que é só um piso de busca) — *uma mutação que não muda o resultado não testa nada*.
 
+## §8-ter — ⛔⛔⛔ «PIORA SEVERA, pontas com baixa resolução e furos» (Enio, 28/08, com foto)
+
+⭐⭐⭐ **A primeira coisa que a medição disse é que NÃO foi a volta da performance.** As três
+mudanças do §8-bis foram revertidas uma a uma pela porta (`PH2D_G3_PATIENCE=99999` ·
+`PH2D_RETOPO_SERIAL=1` · `PH2D_EXTRACT_FINISH=0`, e as três juntas) sobre a peça que ele
+mandou: **as cinco configurações devolvem a MESMA malha, ao vértice.** ⇒ *o defeito é
+anterior a elas, e vinha a ser fotografado como se fosse novo.*
+
+### O defeito: **o botão não é IDEMPOTENTE**
+
+O alvo saía de `ph2d_quadflow::edge_for_detail_with`, cujo **piso** é
+`0,75 × aresta_média(malha_da_cena)`. Isso é honesto na primeira passagem — *não se resolve
+mais fino do que a entrada tesselou* — e é uma armadilha na segunda: **depois de uma
+retopologia a malha da cena É a saída**, então o piso sobe com ela e o mesmo ponto do slider
+passa a pedir quads cada vez maiores.
+
+Medido na `sculpt_t002` do artista (`19 786` quads), `Detail` **parado** em `0,50`:
+
+| aperto | alvo | quads | contra a entrada |
+|---|---|---|---|
+| entrada | — | `19 786` | — |
+| 1.º | `0,0891` | `1 747` | `−91 %` |
+| 2.º | `0,1614` | `520` | `−97 %` |
+| 3.º | `0,2161` | ⛔ **`281`** | ⛔ **`−98,6 %`** |
+
+⚠️ **A `281` uma ponta tem duas ou três faces** — é literalmente *«pontas com baixa
+resolução»*. *Um slider parado que devolve três densidades é um slider que não tem
+significado.*
+
+### A cura: a faixa passa a ser **CONTADA**, e a âncora é a **ÁREA**
+
+`ph2d_quadflow::edge_for_detail_by_count` — `MIN_QUADS` (`100`, que já era o teto grosso e já
+era absoluto) até **`MAX_QUADS = 25 000`**, geométrico, e o lado do quad é `√(área/contagem)`.
+⭐ **A área é da superfície, não da tesselação**, então re-perguntar sobre a própria saída pede
+a mesma coisa. É também o que as três referências fazem (ZRemesher: *Target Polygons Count* ·
+QuadriFlow: *Number of Faces* · Instant Meshes: alvo de vértices) — **nenhuma** deriva a faixa
+da malha que tem na mão.
+
+Medido, os mesmos três apertos depois da cura:
+
+| aperto | alvo | quads | forma |
+|---|---|---|---|
+| 1.º | `0,0973` | `1 377` | — |
+| 2.º | `0,0965` | `1 413` | — |
+| 3.º | `0,0957` | **`1 494`** | aspecto `1,06` · enviesamento **`2,8°`** · `>60` **`0`** · `16` irregulares |
+
+⭐ **A deriva que fica (`+8,5 %` em três apertos) é a ÁREA a crescer** — o acabamento alisa a
+peça e a área sobe —, e o gate mede exactamente isso: a barra é `|√(área₁/área₀) − 1|`, ⛔ **não**
+um número escolhido. *A 1.ª redacção usou `½·Δárea`, a aproximação de 1.ª ordem, e reprovou por
+`0,02` ponto percentual — uma barra aproximada mede o erro da aproximação.*
+
+⚠️ **O `MAX_QUADS` tem DOIS recursos, e o segundo não é o relógio:** a `24 190` quads a cadeia
+sai limpa (`χ = 2`, zero bordo) em `35 s`; acima disso a `line/3DModeling` mediu a escada
+inteira e o degrau `Max` saiu com `316` arestas de bordo e `6` não-manifold depois de
+`27 min 29 s`. ⇒ *o tecto fica no ponto mais fino medido LIMPO, e quem o quiser subir mede a
+topologia, não o relógio.*
+
+⚠️ **O motor `Fast` recebe a mesma contagem e depois a CERCA dele** (`resolvable_edge_range`):
+a extracção por retícula dele rasga com quads mais finos que o triângulo de entrada (a foto de
+2026-08-19). *Quando a cerca morde, aquele motor deixa de ser idempotente — e é a cerca dele
+que o diz, não o slider.*
+
+### O segundo defeito: **«furo» só contava METADE**
+
+O ficheiro que o artista exportou tem `19 786` quads impecáveis (valência máxima `5`, `21`
+irregulares, área de face `p99/p50 = 1,8`) e **`2` arestas não-manifold num ponto só**, com três
+vértices de valência `2`–`3`. Em qualquer visualizador isso é o mesmo entalhe escuro que um
+buraco.
+
+⛔ E a chave da frente de `worse` — a que escolhe entre as tentativas — contava **só as arestas
+de bordo**. Uma aresta não-manifold passava invisível, e o campo alinhado produz exactamente
+isso (medido antes: `sculpt_hooked`, `1` não-manifold contra `0` do liso, com o alinhado a
+ganhar por `0,2°`). ⇒ `open_edges = bordo + não-manifold`, e é ele que decide **e** que arma a
+3.ª tentativa.
+
+⚠️ **Isto é preventivo na peça dele:** hoje as duas tentativas dão `0` não-manifold, então a
+cura não é observável ali. O gate é que a torna afirmável — as duas fixturas **empatam** no
+bordo e diferem só na aresta não-manifold, e a peça suja leva enviesamento **perfeito** contra
+uma limpa horrível: *sob a lei antiga a asserção é falsa.*
+
+### ⏳ O que fica ABERTO, nomeado
+
+⛔ **`Follow Curvature` não tem consumidor no motor de omissão** (`let _ = adaptive;`): a
+densidade é uniforme sobre a superfície, então uma ponta fina recebe quads do mesmo tamanho que
+a barriga. O painel **declara** isso (`RetopoMode::uses_adaptive`), mas *densidade adaptativa é
+a feature que responde a «pontas com baixa resolução» pelo lado da forma*, e ela não existe
+nesta cadeia — o campo de escala teria de variar e o G3 de quantizar em cima disso.
+
+⚠️ **O motor `Fast` do menu devolve, na peça dele, `437` quads + `150` faces que não são quads,
+`188` de `514` vértices irregulares e valência até `9`** — contra `1 494` quads, `100 %` quads e
+`16` irregulares do de omissão. *Ele está a um clique do botão, com o nome que um artista
+alcança depois de ouvir que o bom é lento.* A decisão de o retirar do painel é do dono do
+produto (ele já disse em 25/08 que *«o antigo não apresenta resultados úteis»*).
+
 ## §9 — Portão de fecho
 
 | | |
@@ -164,3 +258,15 @@ que é só um piso de busca) — *uma mutação que não muda o resultado não t
 | `cargo clippy --all-targets` nas três + no shell | ⭐ limpo |
 | `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |
 | `scripts/doc-index.sh --check` | ⭐ 14 índices em dia (+ o de `docs/3D/handoffs/`, à mão, com a contagem **derivada do `ls`**) |
+
+⭐ **E a re-corrida depois do §8-ter** (a idempotência e o `open_edges`):
+
+| | |
+|---|---|
+| `cargo test -p ph2d-quadflow -p ph2d-quadchain -p ph2d-quadfill` | ⭐ verde (`32` + `5` + `23` + as suites de integração, `0` falhas) |
+| `cargo test -p ph2d-host-desktop --bins retopo` | ⭐ verde (`6`) |
+| `cargo clippy -p ph2d-quadflow -p ph2d-host-desktop --all-targets` | ⭐ limpo |
+| `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |
+| **prova de mutação** — `worse` volta a contar só o bordo | ⭐ MORREU |
+| **prova de mutação** — o alvo volta a sair da aresta média da malha | ⭐ MORREU |
+| **fim-a-fim** — três apertos na peça do artista | ⭐ `1 377 → 1 413 → 1 494` (era `1 747 → 520 → 281`) |

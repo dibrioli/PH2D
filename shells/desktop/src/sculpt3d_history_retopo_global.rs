@@ -114,11 +114,13 @@ impl Sculpt3dScene {
         // a do slider. É o que se vê no 3.º clique seguido (mediana `0,16×`), e a
         // cura é grosseirar o layout — não trocar esta linha. Ver `PLAN.md`
         // §4-septdecies.
-        let target = ph2d_quadflow::edge_for_detail_with(
-            &reference,
-            detail,
-            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
-        );
+        //
+        // ⭐⭐⭐ **E DESDE 2026-08-28 ELE É UMA CONTAGEM** — ver
+        // [`ph2d_quadflow::MAX_QUADS`]. O piso de `edge_for_detail_with` é a **aresta média
+        // da malha da cena**, e depois de uma retopologia essa malha é a SAÍDA: o mesmo
+        // ponto do slider passava a pedir quads cada vez maiores (medido: `19 786 -> 1 747
+        // -> 520 -> 281` em três apertos). *Ancorar na ÁREA torna o botão idempotente.*
+        let target = ph2d_quadflow::edge_for_detail_by_count(&reference, detail);
 
         // ── F2. O campo cruzado com decisão inteira global.
         let mut dual = ph2d_crossfield::Dual::build(&work);

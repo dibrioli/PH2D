@@ -579,3 +579,242 @@ fn the_ear_does_not_ship_an_edge_across_the_piece() {
         );
     }
 }
+
+/// ⭐⭐⭐ **SONDA — A PEÇA DO ARTISTA PELO BOTÃO, e não por uma cópia da ordem dele.**
+///
+/// ⛔ **Ela existe porque as outras sondas desta linha NÃO são o botão.** O
+/// [`ph2d_quadchain::quads_from_mesh`] remalha para o `target_edge` que recebe e corre a
+/// cadeia **uma** vez; o botão remalha com [`ph2d_remesh_iso::ALPHA`] **fixo**, tira o alvo
+/// do slider ([`ph2d_quadflow::edge_for_detail_with`]) e corre **duas ou três** tentativas
+/// que uma medição escolhe. *Duas ordens diferentes com o mesmo nome dão dois números, e o
+/// que o artista vê é o da que ele carrega.*
+///
+/// ⚠️ Ela chama [`crate::sculpt3d::Sculpt3dScene::quad_remesh`] — a **porta** —, então
+/// nenhuma lei é reescrita aqui.
+///
+/// ```text
+/// \
+///   env PH2D_PIECE=/caminho/peca.obj PH2D_DETAIL=0.5 \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   the_artists_piece_through_the_button -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- a peca do artista pelo BOTAO (PH2D_PIECE=<obj>)"]
+fn the_artists_piece_through_the_button() {
+    let Ok(path) = std::env::var("PH2D_PIECE") else {
+        eprintln!("sem PH2D_PIECE -- nada a medir");
+        return;
+    };
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter on this machine -- nothing to assert");
+        return;
+    };
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    let piece = ph2d_mesh::import_obj(&text)
+        .unwrap_or_else(|e| panic!("{path} nao e' um OBJ deste leitor: {e:?}"))
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("{path} nao tem peca dentro"))
+        .mesh;
+    let detail: f32 = std::env::var("PH2D_DETAIL")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.5);
+    let adapt: f32 = std::env::var("PH2D_ADAPT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+
+    // ⭐⭐ **O CONTROLO vem ANTES de acusar a cadeia** — se a entrada já é aberta ou
+    // não-manifold, o que sai dela não foi a cadeia que abriu.
+    census("ENTRADA", &piece);
+
+    let mut scene = crate::sculpt3d::Sculpt3dScene::new(&gpu.device, piece.clone(), 1.0);
+    scene.viewport = (900, 700);
+    // ⭐⭐⭐ **A FASE ZERO, medida ao lado do alvo que o slider pede.** ⛔ *Uma cadeia cuja
+    // malha de trabalho é mais grossa que o alvo não pode entregar a densidade pedida* — e
+    // as duas grandezas nunca tinham sido impressas na mesma linha.
+    {
+        let reference = scene.mesh().clone();
+        let target = ph2d_quadflow::edge_for_detail_with(
+            &reference,
+            detail,
+            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
+        );
+        let mut work = reference.clone();
+        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        work.triangulate();
+        eprintln!(
+            "   CENA: {} verts {} faces | aresta media {:.5} | alvo do slider {:.5}",
+            reference.vert_count(),
+            reference.face_count(),
+            ph2d_quadflow::mean_edge(&reference),
+            target,
+        );
+        eprintln!(
+            "   F1 (ALPHA={:.4}): {} verts {} faces | aresta media {:.5} | ALVO/F1 = {:.2}x",
+            ph2d_remesh_iso::ALPHA,
+            work.vert_count(),
+            work.face_count(),
+            ph2d_quadflow::mean_edge(&work),
+            target / ph2d_quadflow::mean_edge(&work),
+        );
+        census("F1", &work);
+    }
+    // ⭐⭐⭐ **QUAL das duas portas** — o painel tem um dropdown, e o `Global` é o de
+    // omissão ([`ph2d_panel_sculpt3d::state::RetopoMode`]). ⛔ `PH2D_PROBE_LOCAL=1` corre a
+    // outra. *Chamar a `quad_remesh` directamente é correr o motor LOCAL, que é o que o
+    // artista tem quando o dropdown diz `Fast` — e não o que ele tem por omissão.*
+    let local = std::env::var("PH2D_PROBE_LOCAL").as_deref() == Ok("1");
+    eprintln!(
+        "   MOTOR: {}",
+        if local { "Fast (local)" } else { "Even Grid (global)" }
+    );
+    // ⭐⭐⭐ **QUANTOS CLIQUES** — o artista carrega outra vez quando o resultado parece
+    // errado, e o alvo do 2.º clique sai da malha que o 1.º deixou. *Um botão cujo repetir
+    // destrói a peça é um defeito de produto, não uma escolha do artista.*
+    let presses: usize = std::env::var("PH2D_PRESSES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+    let mut r = None;
+    for press in 1..=presses {
+        let clock = std::time::Instant::now();
+        let one = if local {
+            scene.quad_remesh(detail, adapt)
+        } else {
+            scene.quad_remesh_global(detail, adapt)
+        }
+        .unwrap_or_else(|e| panic!("o botao recusou no clique {press}: {e:?}"));
+        eprintln!(
+            "   CLIQUE {press}: alvo {:.5} -> {} quads ({} nao-quads) em {:.0} ms",
+            one.edge,
+            one.quads,
+            one.non_quads,
+            clock.elapsed().as_secs_f32() * 1000.0,
+        );
+        census(&format!("  apos {press}"), scene.mesh());
+        r = Some(one);
+    }
+    let r = r.expect("pelo menos um clique");
+    let out = scene.mesh().clone();
+
+    eprintln!(
+        "BOTAO d={detail:.2} a={adapt:.2} -> {} quads ({} nao-quads) [campo {}]",
+        r.quads,
+        r.non_quads,
+        if r.aligned { "alinhado" } else { "liso" }
+    );
+    eprintln!(
+        "   alvo {:.5} | aresta mediana {:.2}x max {:.2}x | a maior atravessa {:.1} % da peca",
+        r.edge,
+        r.edge_median_ratio,
+        r.edge_max_ratio,
+        100.0 * r.edge_max_span
+    );
+    eprintln!(
+        "   forma: aspecto p50 {:.2} p99 {:.2} | enviesamento p50 {:.1} p99 {:.1} | >60 {} | dobras {}",
+        r.shape.aspect_p50,
+        r.shape.aspect_p99,
+        r.shape.skew_p50,
+        r.shape.skew_p99,
+        r.shape.skew_over_60,
+        r.folded,
+    );
+    census("SAIDA", &out);
+    holes("SAIDA", &out);
+}
+
+/// A contagem de arestas de uma malha — bordo, não-manifold e `χ`.
+fn census(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    use std::collections::BTreeMap;
+    let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *n.entry((a.min(b), a.max(b))).or_default() += 1;
+        }
+    }
+    // ⚠️ A valência conta **arestas únicas**, não incidências de face.
+    let mut deg: BTreeMap<u32, usize> = BTreeMap::new();
+    for (a, b) in n.keys() {
+        *deg.entry(*a).or_default() += 1;
+        *deg.entry(*b).or_default() += 1;
+    }
+    let bordo = n.values().filter(|c| **c == 1).count();
+    let nm = n.values().filter(|c| **c > 2).count();
+    let chi = mesh.vert_count() as i64 - n.len() as i64 + mesh.face_count() as i64;
+    let worst = deg.values().copied().max().unwrap_or(0);
+    let irregular = deg.values().filter(|d| **d != 4).count();
+    eprintln!(
+        "   {tag}: {} verts {} faces | X = {chi} | {bordo} bordo | {nm} nao-manifold | \
+         valencia max {worst} | {irregular} irregulares",
+        mesh.vert_count(),
+        mesh.face_count(),
+    );
+}
+
+/// **ONDE os furos estão** — um por linha, com o perímetro e o centro.
+///
+/// ⚠️ *Uma contagem de arestas de bordo diz que há furo; ela não diz que ele está na
+/// PONTA*, que foi a palavra do artista.
+fn holes(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    use std::collections::BTreeMap;
+    let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            *n.entry((a.min(b), a.max(b))).or_default() += 1;
+        }
+    }
+    let open: Vec<(u32, u32)> = n
+        .into_iter()
+        .filter(|(_, c)| *c == 1)
+        .map(|(e, _)| e)
+        .collect();
+    if open.is_empty() {
+        return;
+    }
+    // Componentes ligados das arestas abertas — cada um é um furo.
+    let mut next: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
+    for &(a, b) in &open {
+        next.entry(a).or_default().push(b);
+        next.entry(b).or_default().push(a);
+    }
+    let pos = mesh.positions();
+    let mut seen: std::collections::BTreeSet<u32> = std::collections::BTreeSet::new();
+    let mut loops = 0usize;
+    for &start in next.keys() {
+        if !seen.insert(start) {
+            continue;
+        }
+        let mut stack = vec![start];
+        let mut verts = vec![start];
+        while let Some(v) = stack.pop() {
+            for &w in next.get(&v).map_or(&[][..], Vec::as_slice) {
+                if seen.insert(w) {
+                    verts.push(w);
+                    stack.push(w);
+                }
+            }
+        }
+        let mut c = [0.0f32; 3];
+        for &v in &verts {
+            let p = pos[v as usize];
+            for k in 0..3 {
+                c[k] += p[k];
+            }
+        }
+        let inv = 1.0 / verts.len() as f32;
+        loops += 1;
+        eprintln!(
+            "   {tag}: furo #{loops} com {} vertices, centro ({:.3}, {:.3}, {:.3})",
+            verts.len(),
+            c[0] * inv,
+            c[1] * inv,
+            c[2] * inv,
+        );
+    }
+}

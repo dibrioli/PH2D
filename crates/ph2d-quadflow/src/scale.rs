@@ -357,6 +357,92 @@ pub fn edge_for_detail_with(mesh: &Mesh, detail: f32, floor_in_input_edges: f32)
     ceiling * (floor / ceiling).powf(d)
 }
 
+/// ⭐⭐⭐ **A CONTAGEM DE QUADS DO EXTREMO FINO** — o outro fim da faixa de
+/// [`MIN_QUADS`], e a metade que faz o slider dizer **a mesma coisa em todo aperto**.
+///
+/// # ⛔⛔⛔ Por que a faixa passou a ser CONTADA em vez de derivada da malha
+///
+/// Até 2026-08-28 o alvo saía de [`edge_for_detail_with`], cujo piso é
+/// `floor_in_input_edges · mean_edge(mesh)` — **uma medida da malha que está na cena**.
+/// Isso é honesto na primeira passagem (*não se resolve mais fino do que a entrada
+/// tesselou*) e é uma armadilha na segunda: depois de uma retopologia a malha da cena
+/// **é** a saída, então o piso sobe com ela e o mesmo ponto do slider pede quads cada vez
+/// maiores.
+///
+/// Medido 2026-08-28 na peça do artista (`sculpt_t002`, 19 786 quads), `Detail` parado em
+/// `0,50`, três apertos seguidos do mesmo botão:
+///
+/// | aperto | alvo | quads | perda |
+/// |---|---|---|---|
+/// | entrada | — | **19 786** | — |
+/// | 1.º | `0,0891` | `1 747` | `−91 %` |
+/// | 2.º | `0,1614` | `520` | `−97 %` |
+/// | 3.º | `0,2161` | ⛔ **`281`** | ⛔ **`−98,6 %`** |
+///
+/// ⭐ *Um slider parado que devolve três densidades é um slider que não tem significado* —
+/// e foi isto que o artista fotografou e chamou de «pontas com baixa resolução».
+///
+/// ⚠️ **A ÁREA é o que não se move.** O teto de [`MIN_QUADS`] já era absoluto
+/// (`√(área/100)`); o piso é que era relativo. Ancorar os **dois** na área da superfície
+/// torna o botão **idempotente**: a mesma posição do slider pede a mesma contagem, venha o
+/// aperto de uma escultura ou de uma grade que este botão acabou de escrever.
+///
+/// ⚠️ **De que recurso é este número: do RELÓGIO, e de mais nada.** Medido no botão (as
+/// duas tentativas, peça do artista):
+///
+/// | contagem pedida | quads | `χ` · bordo | enviesamento p50 | relógio |
+/// |---|---|---|---|---|
+/// | `~1 800` | `1 747` | `2` · `0` | `3,7°` | **`8,6 s`** |
+/// | `~13 600` | `13 595` | `2` · `0` | `3,9°` | `22,3 s` |
+/// | ⭐ `~24 200` | `24 190` | `2` · `0` | `4,5°` | ⚠️ `35,1 s` |
+///
+/// ⭐ **A forma NÃO se degrada com a densidade** — o `χ` fecha e o enviesamento anda `0,8°`
+/// em 14× a contagem. *O extremo fino não é um precipício de qualidade; é uma espera.*
+///
+/// ⛔⛔ **E acima daqui há um SEGUNDO recurso, medido por outra linha: a TOPOLOGIA.** A
+/// `line/3DModeling` implementou a escada inteira de densidades de exportação e o degrau
+/// `Max` saiu com `316` arestas de bordo e `6` não-manifold depois de `27 min 29 s` —
+/// *o limite da cadeia não é só o tempo*. ⇒ este número fica no ponto mais fino **medido
+/// limpo** (`24 190` quads, `χ = 2`, zero bordo), e não no ponto em que o relógio ainda
+/// se aguenta. ⚠️ **Quem quiser subi-lo mede a topologia, não o relógio.**
+pub const MAX_QUADS: f32 = 25_000.0;
+
+/// **QUANTOS QUADS um `detail` de `0..1` pede** — absoluto, ancorado na ÁREA.
+///
+/// `0` é [`MIN_QUADS`] e `1` é [`MAX_QUADS`], com interpolação **geométrica** pela mesma
+/// razão de [`edge_for_detail`]: um knob de TAMANHO tem de andar em razão constante.
+#[must_use]
+pub fn quads_for_detail(detail: f32) -> f32 {
+    // ⚠️ **`clamp` NÃO fecha o `NaN`** — a mesma armadilha de [`edge_for_detail_with`], e o
+    // `NaN` cai no extremo GROSSO de propósito: é o único lado que não destrói a peça.
+    let d = if detail.is_nan() {
+        0.0
+    } else {
+        detail.clamp(0.0, 1.0)
+    };
+    MIN_QUADS * (MAX_QUADS / MIN_QUADS).powf(d)
+}
+
+/// ⭐⭐⭐ **O LADO DO QUAD, IDEMPOTENTE** — ver [`MAX_QUADS`].
+///
+/// ⚠️ **Ele lê da malha uma coisa só: a ÁREA**, que é da *superfície* e não da tesselação.
+/// É isso que faz dois apertos seguidos pedirem a mesma coisa.
+///
+/// ⛔ **Ele NÃO substitui [`edge_for_detail_with`]**, que continua a responder outra
+/// pergunta — *"o mais fino que ESTA malha resolve"* — e é a que o motor local precisa de
+/// fazer, porque a extração por retícula dele rasga quando o quad é mais fino que o
+/// triângulo de entrada.
+#[must_use]
+pub fn edge_for_detail_by_count(mesh: &Mesh, detail: f32) -> f32 {
+    let area = surface_area(mesh);
+    let quads = quads_for_detail(detail);
+    if area.is_finite() && area > 0.0 && quads >= 1.0 {
+        (area / quads).sqrt().max(MIN_EDGE)
+    } else {
+        MIN_EDGE
+    }
+}
+
 /// O piso do lado de um quad, em unidades de objeto.
 ///
 /// ⚠️ **Guarda de RECURSO e não de gosto:** o inverso da escala multiplica cada

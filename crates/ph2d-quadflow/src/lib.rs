@@ -76,8 +76,8 @@ pub use orientation::{
 };
 pub use position::{PositionField, compat_position_extrinsic_4, position_round_4, solve_position};
 pub use scale::{
-    FLOOR_IN_INPUT_EDGES, GLOBAL_FLOOR_IN_INPUT_EDGES, MAX_ADAPTIVE_RATIO, MIN_QUADS, ScaleField,
-    edge_for_detail, edge_for_detail_with, mean_edge, resolvable_edge_range,
-    resolvable_edge_range_with, surface_area,
+    FLOOR_IN_INPUT_EDGES, GLOBAL_FLOOR_IN_INPUT_EDGES, MAX_ADAPTIVE_RATIO, MAX_QUADS, MIN_QUADS,
+    ScaleField, edge_for_detail, edge_for_detail_by_count, edge_for_detail_with, mean_edge,
+    quads_for_detail, resolvable_edge_range, resolvable_edge_range_with, surface_area,
 };
 pub use solve::solve_fields;

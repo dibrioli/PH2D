@@ -282,3 +282,83 @@ fn at_the_floor_the_adaptive_field_can_only_grow_upwards() {
          onde a forma e' chapada"
     );
 }
+
+/// ⭐⭐⭐ **O SLIDER PEDE A MESMA COISA DEPOIS DE ELE PRÓPRIO TER CORRIDO** — a
+/// idempotência, e ela é a cura de um defeito que o artista fotografou.
+///
+/// ⛔ **O CONTROLE vem no mesmo teste, e é o que torna isto afirmável:** a lei
+/// antiga ([`super::edge_for_detail_with`]) tem o piso na **aresta média da malha**,
+/// então re-perguntar sobre a saída pede quads muito maiores. A lei nova
+/// ([`super::edge_for_detail_by_count`]) só lê a **área**, que é da superfície.
+///
+/// ⚠️ **A segunda malha é a MESMA superfície com outra tesselação** — um toro com
+/// um quarto das faces. *Uma fixtura que mudasse a forma mediria outra coisa.*
+#[test]
+fn the_detail_slider_asks_for_the_same_density_after_a_retopology() {
+    let fine = fixture();
+    let coarse = shapes::torus(16, 6, 1.0, 0.22);
+    let area = (super::surface_area(&fine), super::surface_area(&coarse));
+    let mean = (super::mean_edge(&fine), super::mean_edge(&coarse));
+    eprintln!(
+        "[quadflow] area {:.4} vs {:.4} ({:+.1} %) | aresta media {:.5} vs {:.5} ({:.2}x)",
+        area.0,
+        area.1,
+        100.0 * (area.1 / area.0 - 1.0),
+        mean.0,
+        mean.1,
+        mean.1 / mean.0,
+    );
+    for detail in [0.25f32, 0.5, 0.75] {
+        let a = super::edge_for_detail_by_count(&fine, detail);
+        let b = super::edge_for_detail_by_count(&coarse, detail);
+        // ⚠️ **A barra é DERIVADA, não escolhida:** o alvo é `√(área/contagem)` e a
+        // contagem é a mesma nos dois, logo a única deriva possível é `√` da razão das
+        // áreas — um toro grosseiro corta as curvas e tem menos área. ⛔ A 1.ª redacção
+        // usou `½·Δárea` (a aproximação de 1.ª ordem) e reprovou por `0,02` ponto
+        // percentual: *uma barra aproximada mede o erro da aproximação.*
+        let drift = (b / a - 1.0).abs();
+        let bar = ((area.1 / area.0).sqrt() - 1.0).abs() + 1.0e-4;
+        eprintln!("  d={detail:.2}: alvo {a:.5} -> {b:.5} ({:+.2} %)", 100.0 * (b / a - 1.0));
+        assert!(
+            drift <= bar,
+            "d={detail:.2}: o alvo mudou {:.2} % entre duas tesselacoes da MESMA superficie \
+             (barra {:.2} %, que e' a diferenca de area) -- o slider deixou de ser idempotente",
+            100.0 * drift,
+            100.0 * bar,
+        );
+    }
+    // ⛔ **O CONTROLE** — a lei antiga move-se muito mais que a área, e é isso que o
+    // artista viu como `19 786 -> 1 747 -> 520 -> 281` quads em três apertos.
+    let old_fine = super::edge_for_detail_with(&fine, 0.5, super::GLOBAL_FLOOR_IN_INPUT_EDGES);
+    let old_coarse = super::edge_for_detail_with(&coarse, 0.5, super::GLOBAL_FLOOR_IN_INPUT_EDGES);
+    eprintln!(
+        "  CONTROLE (lei antiga) d=0,50: {old_fine:.5} -> {old_coarse:.5} ({:.2}x)",
+        old_coarse / old_fine
+    );
+    assert!(
+        old_coarse / old_fine > 1.5,
+        "o CONTROLE nao reproduz o defeito ({:.2}x) -- sem ele este gate nao afirma nada",
+        old_coarse / old_fine
+    );
+}
+
+/// ⭐ **A CONTAGEM ANDA EM RAZÃO CONSTANTE e cobre a faixa declarada.**
+///
+/// ⚠️ *Um knob de TAMANHO tem de andar em razão constante* — a mesma lei de
+/// [`super::edge_for_detail`], e sem este gate a interpolação podia virar linear sem
+/// que nada reprovasse.
+#[test]
+fn the_quad_count_spans_the_declared_range_geometrically() {
+    assert!((super::quads_for_detail(0.0) - super::MIN_QUADS).abs() <= 1.0e-3);
+    assert!((super::quads_for_detail(1.0) - super::MAX_QUADS).abs() <= 1.0e-1);
+    // ⚠️ **`NaN` cai no extremo GROSSO** — o único lado que não destrói a peça.
+    assert!((super::quads_for_detail(f32::NAN) - super::MIN_QUADS).abs() <= 1.0e-3);
+    let step = super::quads_for_detail(0.5) / super::quads_for_detail(0.25);
+    let next = super::quads_for_detail(0.75) / super::quads_for_detail(0.5);
+    eprintln!("[quadflow] razao por quarto de curso: {step:.4} e {next:.4}");
+    assert!(
+        (step / next - 1.0).abs() <= 1.0e-3,
+        "a interpolacao deixou de ser geometrica ({step:.4} contra {next:.4}) -- metade do \
+         curso passaria a morar numa oitava so'"
+    );
+}

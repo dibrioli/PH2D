@@ -82,11 +82,14 @@ impl Sculpt3dScene {
 
         // ⭐ **O alvo sai da malha que o artista trouxe** — a mesma lei do irmão, e a
         // alternativa (derivá-lo da remalhada) foi medida e mata o slider.
-        let target = ph2d_quadflow::edge_for_detail_with(
-            &reference,
-            detail,
-            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
-        );
+        // ⭐⭐⭐ **O ALVO É UMA CONTAGEM, e a contagem sai da ÁREA** — ver
+        // [`ph2d_quadflow::MAX_QUADS`]. ⛔⛔ Até 2026-08-28 ele saía de
+        // `edge_for_detail_with`, cujo piso é a **aresta média da malha da cena**: depois
+        // de uma retopologia essa malha é a SAÍDA, então o mesmo ponto do slider pedia
+        // quads cada vez maiores. Medido na peça do artista com o `Detail` parado em
+        // `0,50`: `19 786 -> 1 747 -> 520 -> 281` quads em três apertos, `−98,6 %`.
+        // *Foi isto que ele fotografou e chamou de «pontas com baixa resolução».*
+        let target = ph2d_quadflow::edge_for_detail_by_count(&reference, detail);
 
         // ── F2 + F3 + G1 + G2.
         let mut dual = ph2d_crossfield::Dual::build(&work);
@@ -328,7 +331,7 @@ impl Sculpt3dScene {
         // ⚠️ **E ela é segura por CONSTRUÇÃO:** entra pelo mesmo [`worse`], logo só vence
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
-        let (relief_won, (out, e, _shift_frac_max, shape)) = if boundary_edges(&out) > 0
+        let (relief_won, (out, e, _shift_frac_max, shape)) = if open_edges(&out) > 0
             && let Ok(f) = attempt(ph2d_crossfield::ALIGN_WEIGHT, true)
             && worse(
                 &out,
@@ -444,6 +447,15 @@ fn edges(mesh: &Mesh) -> (f32, f32) {
 /// (*«furos nas pontas»*). *Uma ordem que pusesse o enviesamento à frente escolheria a peça
 /// mais bonita com um buraco na ponta.*
 ///
+/// ⛔⛔ **E «furo» conta as DUAS formas de a casca não fechar, desde 2026-08-28.** Até essa
+/// data esta ordem via só as arestas de **bordo**; uma aresta **não-manifold** — três faces a
+/// tocá-la — passava invisível, e o campo alinhado produz exactamente isso (medido:
+/// `sculpt_hooked`, `1` não-manifold contra `0` do liso, com o alinhado a ganhar por
+/// `0,2°` de enviesamento). ⚠️ **O artista vê o mesmo entalhe escuro nos dois casos** — e o
+/// ficheiro que ele exportou em 28/08 tinha `19 786` quads impecáveis com **`2` arestas
+/// não-manifold** num ponto só, três vértices de valência `2`–`3`. *Uma chave de desempate
+/// que não vê metade do defeito escolhe a peça furada com toda a razão do mundo.*
+///
 /// ⚠️ **O desempate final é por `total_cmp`** e não por `<`: um `NaN` numa das medianas
 /// tornaria a comparação não-reflexiva e a escolha dependeria da ordem dos argumentos.
 fn worse(
@@ -454,7 +466,7 @@ fn worse(
     b_over60: usize,
     b_skew: f32,
 ) -> bool {
-    let (a_holes, b_holes) = (boundary_edges(a_mesh), boundary_edges(b_mesh));
+    let (a_holes, b_holes) = (open_edges(a_mesh), open_edges(b_mesh));
     if a_holes != b_holes {
         return a_holes > b_holes;
     }
@@ -465,6 +477,20 @@ fn worse(
 }
 
 fn boundary_edges(mesh: &Mesh) -> usize {
+    edge_census(mesh).0
+}
+
+/// ⭐⭐⭐ **AS DUAS FORMAS DE A CASCA NÃO FECHAR, somadas** — a chave da frente de [`worse`].
+///
+/// ⚠️ **Uma aresta de bordo e uma não-manifold dão o MESMO report** (*«furos»*), e nenhuma
+/// régua desta linha as somava: a escolha entre tentativas via só a primeira.
+fn open_edges(mesh: &Mesh) -> usize {
+    let (bordo, nm) = edge_census(mesh);
+    bordo + nm
+}
+
+/// `(arestas de bordo, arestas não-manifold)` — uma face só, ou mais de duas.
+fn edge_census(mesh: &Mesh) -> (usize, usize) {
     use std::collections::BTreeMap;
     let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
     for f in mesh.faces() {
@@ -474,7 +500,10 @@ fn boundary_edges(mesh: &Mesh) -> usize {
             *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
         }
     }
-    n.values().filter(|c| **c == 1).count()
+    (
+        n.values().filter(|c| **c == 1).count(),
+        n.values().filter(|c| **c > 2).count(),
+    )
 }
 
 /// Vértices com valência diferente de 4 — a grandeza que o pivô existiu para

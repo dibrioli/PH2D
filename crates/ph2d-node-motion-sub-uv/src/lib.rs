@@ -37,6 +37,9 @@
 //! desligada ⇒ o param · comprimento 1 ⇒ **broadcast** · comprimento `n` ⇒ um índice por
 //! elemento.
 
+mod holds;
+pub use holds::HOLDS_KEY;
+
 use ph2d_node_registry::{NodeRegistry, ParamUiHint, ParamWidget, RegistryError};
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_nodegraph::cook::EvalCtx;
@@ -183,12 +186,22 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
         var suv_base = params.cell;\n\
         if (HAS_cell_v) { suv_base = read_cell_v(i); }\n\
         let suv_k = suv_base + params.speed * params.playhead + params.stagger * f32(i);\n\
-        write_uv_cell(i, suv_cell(suv_k, suv_cols, suv_rows));\n",
+        write_uv_cell(i, suv_cell(suv_hold(suv_k, suv_cols * suv_rows), suv_cols, suv_rows));\n",
     wgsl_lib: "\
         fn suv_axis(v: f32) -> f32 {\n\
         \x20   // A MESMA coacao da porta da CPU: arredonda, depois clampa em [1, MAX].\n\
         \x20   let r = select(ceil(v - 0.5), floor(v + 0.5), v >= 0.0);\n\
         \x20   return clamp(r, 1.0, 256.0);\n\
+        }\n\
+        fn suv_hold(k: f32, cells: f32) -> f32 {\n\
+        \x20   // A DURACAO DESIGUAL POR QUADRO. A tabela leva `-1` em toda a entrada\n\
+        \x20   // quando nada foi autorado, e ai este ramo devolve `k` intacto: o\n\
+        \x20   // caminho que sempre shipou, byte a byte. Ver `holds.rs`.\n\
+        \x20   var ph = 0.0;\n\
+        \x20   if (k == k && abs(k) < 1.0e30 && cells > 0.0) { ph = suv_floor_mod(k / cells, 1.0); }\n\
+        \x20   let v = suv_hold_sample(ph);\n\
+        \x20   if (v < 0.0) { return k; }\n\
+        \x20   return floor(v * cells);\n\
         }\n\
         fn suv_floor_mod(x: f32, n: f32) -> f32 {\n\
         \x20   // O `rem_euclid` que o WGSL nao tem. O `%` dele leva o sinal do\n\
@@ -231,6 +244,14 @@ const GPU_KERNEL: GpuKernel = GpuKernel {
     applicable: None,
 };
 
+/// O canal de LUT deste nó — o nome dá o acessor `suv_hold_sample` que o WGSL chama.
+static LUTS: &[ph2d_nodegraph::gpu::LutSpec] = &[ph2d_nodegraph::gpu::LutSpec {
+    name: holds::HOLD_LUT_NAME,
+    text_key: holds::HOLDS_KEY,
+    resolution: holds::HOLD_LUT_RESOLUTION,
+    fill: holds::fill_hold_lut,
+}];
+
 static PARAM_HINTS: &[ParamUiHint] = &[
     ParamUiHint {
         param: "cols",
@@ -265,6 +286,17 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         max: MAX_CELL_SPEED,
         step: 0.5,
         widget: ParamWidget::Slider,
+    },
+    // ⚠️ **PESOS RELATIVOS, nunca milissegundos** — ver [`holds`]. O tempo do ciclo continua
+    // a ser `células / speed`; a lista só o redistribui, e é isso que impede uma segunda
+    // resposta a *«quão rápido»* ao lado do `Cells / Second`.
+    ParamUiHint {
+        param: holds::HOLDS_KEY,
+        label: "Frame Holds",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Text,
     },
     ParamUiHint {
         param: "stagger",
@@ -306,6 +338,7 @@ impl NodeOp for MotionSubUv {
         let speed = ctx.param("speed");
         let stagger = ctx.param("stagger");
         let t = ctx.playhead() as f32;
+        let text_holds = ctx.text_param(holds::HOLDS_KEY).unwrap_or("").to_string();
         // A ESCADA da porta: vazia ⇒ o param · 1 ⇒ broadcast · n ⇒ por elemento.
         let port: Vec<f32> = match ctx.input(1).get("v") {
             Some(Column::Scalar(v)) => v.clone(),
@@ -320,6 +353,11 @@ impl NodeOp for MotionSubUv {
             out
         };
         let n = out.count();
+        // A tabela dos *holds*, uma vez por cozimento — ver [`holds`] para por que a CPU
+        // AMOSTRA em vez de calcular exacto (a lei é um degrau, e exacto-contra-tabelado
+        // difere por uma célula inteira na fronteira).
+        let lut = holds::table(&text_holds);
+        let cell_count = cols * rows;
         let cells = (0..n)
             .map(|i| {
                 let seed = match port.len() {
@@ -327,7 +365,8 @@ impl NodeOp for MotionSubUv {
                     1 => port[0],
                     _ => port.get(i).copied().unwrap_or(base),
                 };
-                cell_xform(seed + speed * t + stagger * i as f32, cols, rows)
+                let k = seed + speed * t + stagger * i as f32;
+                cell_xform(holds::held_index(&lut, k, cell_count), cols, rows)
             })
             .collect();
         out.set(CELL_COLUMN.to_string(), Column::Vec4(cells));
@@ -352,6 +391,11 @@ pub fn register(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     // recurso. Sem isto o curso de 1..256 movia 1,7 células por pixel de arrasto.
     reg.register_param_hard_max(MANIFEST.id, HARD_MAX);
     reg.register_gpu_kernel(MANIFEST.id, GPU_KERNEL);
+    // O canal de LUT dos *holds*: o sequenciador amostra o text param no cozimento e liga a
+    // tabela, para o `suv_hold` a ler NO DEVICE. ⛔ A alternativa — `applicable: false` a
+    // derrubar o nó para a CPU quando há holds — é proibida por lei do módulo (§5), e aqui
+    // seria pior do que noutro sítio: este é o nó de flipbook, o mais barato de correr.
+    reg.register_luts(MANIFEST.id, LUTS);
     Ok(())
 }
 

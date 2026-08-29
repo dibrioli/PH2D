@@ -294,33 +294,36 @@ fn the_fraction_is_still_alive_where_something_old_survives() {
         b > a + 1e-4 && b < c - 1e-4,
         "com `F` terminal a meia geracao tem de ficar ENTRE as duas inteiras: {a} / {b} / {c}"
     );
-    // ⛔⛔ **E NA GRAMÁTICA DE REFINAMENTO ELA CONTINUA INERTE POR OMISSÃO** — veredito do
-    // dono do produto, 2026-08-29: *"os que vc tentou corrigir não ficarão bons"*.
+    // ⭐⭐⭐ **E NA GRAMÁTICA DE REFINAMENTO ELA TAMBÉM ESTÁ VIVA, E É LINEAR** — 2026-08-29.
     //
-    // A âncora que a faria interpolar **existe e está medida** (ver a metade de baixo deste
-    // gate), mas o que ela produz não é crescer: é a figura **desdobrar-se**, e os números
-    // dizem-no — `9 %`/`9 %`/`17 %`/`31 %` de pior passo contra os `5–8 %` de quem cresce pela
-    // ponta. ⇒ o degrau inteiro é o produto, e a lei nova vive atrás do `Grow Angle`.
+    // ⚠️⚠️ **Esta metade já afirmou as DUAS coisas contrárias, e as duas eram honestas no dia
+    // em que foram escritas.** Primeiro `assert_eq!` (*"a fracção não tem sujeito"*), enquanto
+    // não se sabia de onde ela devia partir. Depois `assert_eq!` outra vez, quando o dono do
+    // produto previu que não ficaria bom. Agora a interpolação: ele smokou, retirou a
+    // previsão, e apontou o defeito que restava — *"não é linear"*.
+    //
+    // A régua aqui é a que a queixa dele pede: a **DERIVADA**. Não basta a meia geração ficar
+    // entre as duas inteiras (isso já era verdade quando a curva subia a `3,05` e voltava a
+    // `3,00`) — o passo tem de ser CONSTANTE ao longo da travessia.
     let r = |g| height(&probe_build("F", "F -> F[+F]F[-F]F", g, &[]));
-    assert_eq!(
-        r(4.25).to_bits(),
-        r(4.75).to_bits(),
-        "por omissao, numa gramatica que reescreve tudo o passo e' INTEIRO"
+    const N: usize = 16;
+    let hs: Vec<f32> = (0..=N).map(|k| r(4.0 + k as f32 / N as f32)).collect();
+    let d: Vec<f32> = hs.windows(2).map(|w| w[1] - w[0]).collect();
+    let (lo, hi) = (
+        d.iter().copied().fold(f32::MAX, f32::min),
+        d.iter().copied().fold(f32::MIN, f32::max),
     );
-    // ⭐ **E o CONTROLE que impede isto de ser a ausência da feature**: com o `Grow Angle`
-    // ligado, ela interpola. Sem esta metade, arrancar a âncora inteira deixaria o gate verde.
-    let on = |g| {
-        height(&probe_build(
-            "F",
-            "F -> F[+F]F[-F]F",
-            g,
-            &[(param::CONTINUOUS_ANGLE, 1.0)],
-        ))
-    };
-    let (lo, mid, hi) = (on(4.0), on(4.5), on(5.0));
+    let mean = d.iter().sum::<f32>() / d.len() as f32;
+    assert!(mean > 1e-4, "a planta tem de CRESCER na travessia: {hs:?}");
+    assert!(lo > 0.0, "nenhum passo pode ANDAR PARA TRAS: {d:?}");
+    // ⚠️ **A ondulação, que é a queixa dele em número.** Antes da normalização a Koch dava
+    // `2,3×` e o Dragon `4,2×`; depois, `0,0×`. A barra em `0,25×` é folgada face ao que a
+    // medição dá e aperta muito face ao que ela apanhava.
+    let ripple = (hi - lo) / mean;
     assert!(
-        mid > lo + 1e-4 && mid < hi - 1e-4,
-        "com o Grow Angle ligado a meia geracao tem de ficar ENTRE as duas: {lo}/{mid}/{hi}"
+        ripple < 0.25,
+        "a rampa ondula {ripple:.2}x — o crescimento nao e' linear, que foi o report do Enio \
+         de 2026-08-29. Passos: {d:?}"
     );
 }
 

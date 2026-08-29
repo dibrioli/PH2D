@@ -68,18 +68,11 @@ pub(crate) struct Setup {
     pub tropism: f32,
     /// Para onde o tropismo puxa (graus).
     pub tropism_angle: f32,
-    /// **O comprimento da geração mais nova estica com a fracção** (*Continuous length* do
-    /// Houdini). É a lei que anima uma gramática que cresce pela PONTA.
-    pub(crate) continuous_length: bool,
-    /// **E a viragem dela ABRE com a fracção** (*Continuous angles*). É a lei que anima uma
-    /// gramática de REFINAMENTO, que não tem ponta nenhuma para esticar.
-    pub(crate) continuous_angle: bool,
-    /// ⭐⭐⭐ **DE ONDE O COMPRIMENTO DA GERAÇÃO NOVA PARTE**, numa gramática de refinamento —
-    /// o factor que a põe, com as viragens fechadas, exactamente por cima da anterior.
+    /// **Quanto da viragem da geração mais nova já ABRIU** — `1` = aberta, `0` = fechada.
     ///
-    /// **MEDIDO** por quem chama (o [`crate::build`] percorre as duas cadeias), nunca contado
-    /// a partir da gramática: a razão é geométrica. `1.0` = sem âncora (o neutro).
-    pub(crate) anchor: f32,
+    /// Irmã do `youngest.1` (que é a mesma pergunta para o COMPRIMENTO). As duas chegam
+    /// resolvidas: quem as calcula é o [`crate::build`], porque escolhê-las exige MEDIR.
+    pub(crate) angle_frac: f32,
     /// A geração mais nova e quanto dela já cresceu, `(geração, fracção)`. `fracção = 1`
     /// significa geração inteira.
     pub youngest: (u16, f32),
@@ -170,7 +163,7 @@ impl Out {
 
 /// Os símbolos que fazem nascer um elemento — os únicos cuja idade decide se há crescimento
 /// para mostrar. Um `[`, um `+` ou um `!` da geração nova não são um rebento.
-fn draws_or_marks(sym: u8) -> bool {
+pub(crate) fn draws_or_marks(sym: u8) -> bool {
     matches!(sym, b'F' | b'G' | b'f' | b'g' | b'J' | b'K' | b'M')
 }
 
@@ -287,97 +280,13 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         0,
         b'^',
     );
-    // ⭐⭐⭐ **A FRACÇÃO SÓ SE APLICA SE HOUVER ALGO VELHO PARA CONTRASTAR.**
-    //
-    // ⚠️ **Report do Enio, 2026-08-28: *"a cada ramo que vai nascer tudo se apaga e aparece de
-    // vez"*** — e a medição dá-lhe razão: com a gramática clássica `F -> F[+F]F[-F]F` a altura
-    // da planta CAI a 25 % em cada cruzamento de geração e volta a subir (13,5 → 10,1 → 40,5
-    // → 30,4). Não é a fracção estar partida: é ela não ter sujeito.
-    //
-    // O mecanismo: aquela regra reescreve **o próprio símbolo que desenha**, então ao fim de
-    // cada passagem **todo** módulo de desenho é da geração mais nova — «o rebento» é a planta
-    // inteira, e escalar «o rebento» escala tudo. A lei estava certa e o conjunto a que ela se
-    // aplica estava vazio de contraste.
-    //
-    // ⇒ Se nenhum módulo de desenho for VELHO, a geração é INTEIRA. A planta passa a saltar
-    // entre inteiros (que é honesto: aquela gramática de facto refina a planta toda, e triplica
-    // de altura a cada passagem) em vez de encolher para nada e voltar — *um passo é uma
-    // mudança, um pisca-pisca é uma mentira sobre o que crescer parece*.
-    //
-    // ⛔ **A alternativa NÃO foi construída, e está nomeada:** escalar a planta INTEIRA por um
-    // factor que a faça coincidir com a geração anterior em `frac = 0` faria mesmo uma
-    // gramática de refinamento animar (ela dá um *zoom* auto-semelhante). Custa uma segunda
-    // derivação para medir a razão, e muda o que `Generations` quer dizer — é decisão de
-    // produto, não uma correcção.
-    // ⭐⭐⭐ **E A ALTERNATIVA NOMEADA ACIMA ERA A CURA ERRADA** — pesquisa de 2026-08-29, a
-    // pedido do Enio (*"acho que o ideal é o crescimento suave. como fazem os grandes apps?"*).
-    //
-    // O L-System SOP do Houdini tem **DOIS** interruptores, não um: *Continuous angles* e
-    // *Continuous length* — e a documentação dele diz o que escalam: *"the angles rotated by
-    // the last generation's turtle operations are scaled by the amount into the generation,
-    // and the lengths taken by the last generation's turtle operations are scaled by the
-    // amount into the generation"*.
-    //
-    // ⇒ **São duas leis para as duas famílias, e eu tinha construído uma só.** Medido pela
-    // bancada (`examples/preset_report.rs`, razão de expansão por geração):
-    //
-    // | família | razão | o que cresce | a lei que a anima |
-    // |---|---|---|---|
-    // | Tree · Fern · Wild · Sprig | `1,63 → 1,06` (converge para 1) | a PONTA | o **comprimento** estica |
-    // | Bush · Koch | **`3,00` em toda geração** | a figura INTEIRA | o **ângulo** abre |
-    // | Weed · Dragon | `2,03` · `~1,41` | idem | idem |
-    //
-    // Uma gramática de refinamento não tem ponta que estique — mas as dobras NOVAS dela podem
-    // **abrir** de `0` até ao ângulo cheio, e aí a figura desdobra-se em vez de aparecer.
-    // *A fracção não tinha sujeito porque eu estava a procurá-lo na grandeza errada.*
-    let has_old_drawing = chain
-        .iter()
-        .any(|m| m.born != set.youngest.0 && draws_or_marks(m.sym));
-    // ⭐⭐⭐ **DUAS LEIS, E O `has_old_drawing` ESCOLHE ENTRE ELAS** — a cura do report do Enio
-    // de 2026-08-29 (*"acho que o ideal é o crescimento suave"*).
-    //
-    // | família | de onde o comprimento novo PARTE | porquê |
-    // |---|---|---|
-    // | cresce pela PONTA (há desenho velho) | **`0`** | um rebento sai do nada e estica |
-    // | REFINA (não há) | **`1/spread`** | os `spread` sub-segmentos deitados em fila cobrem EXACTAMENTE o segmento que substituíram |
-    //
-    // ⚠️⚠️ **É a âncora `1/spread` que faltava, e é por isso que o `Step Scale` sozinho não
-    // curava**: ele aplica uma CONSTANTE, e o que a travessia precisa é de um LERP ancorado na
-    // taxa de expansão medida. Com as viragens novas fechadas e o passo a `1/spread`, a
-    // geração `n+1` desenha-se **por cima** da `n`; a partir daí a fracção abre as viragens e
-    // estica o passo, e a figura desdobra-se em vez de saltar.
-    //
-    // ⚠️ Numa gramática de refinamento o `+`/`-` da geração anterior **SOBREVIVE** (nenhuma
-    // regra o reescreve — só o `F` é reescrito), então fechar as viragens NOVAS deixa a forma
-    // antiga de pé. Foi essa a peça que a leitura do código deu e a intuição não.
-    let frac = set.youngest.1;
-    let (len_frac, ang_frac) = if has_old_drawing {
-        // A lei de sempre (a cura do pisca-pisca de 28/08): o rebento estica de zero. O ângulo
-        // é inerte aqui por construção — a viragem nova é seguida de um não-terminal que ainda
-        // não desenha nada.
-        (frac, frac)
-    } else {
-        // A lei do REFINAMENTO: o passo parte da ÂNCORA MEDIDA, e as viragens abrem.
-        //
-        // ⛔ **A âncora NÃO se conta a partir da gramática, e tentei.** A `F -> F[+F]F[-F]F`
-        // põe **5** módulos de desenho por cada um e a figura cresce **3,00×** — dois deles
-        // estão dentro de parênteses e não estendem o caminho. A Koch põe 5 sem parênteses
-        // nenhum e cresce **3,00×** na mesma, porque as viragens a dobram. *A razão é
-        // geométrica; contar símbolos dá 5 onde a resposta é 3.*
-        // ⛔⛔ **VEREDITO DO DONO DO PRODUTO, 2026-08-29: *"os que vc tentou corrigir não
-        // ficarão bons"*** — e a medição concorda com ele. Mesmo com a âncora, os quatro ficam
-        // em `9 %`/`9 %`/`17 %`/`31 %` de pior passo contra os `5–8 %` dos que crescem pela
-        // ponta; e o que se vê não é crescer, é a figura **desdobrar-se**, que é outro gesto.
-        // ⇒ a lei fica atrás do `Grow Angle`, que shipa **DESLIGADO**: com ele desligado o
-        // caminho é byte-idêntico ao que sempre houve (o degrau inteiro).
-        if set.continuous_angle {
-            (set.anchor + (1.0 - set.anchor) * frac, frac)
-        } else {
-            (1.0, 1.0)
-        }
-    };
-    let len_frac = if set.continuous_length { len_frac } else { 1.0 };
-    let youngest = (set.youngest.0, len_frac);
+    // ⚠️ **A tartaruga não DECIDE mais nada sobre o crescimento** — ela recebe as duas
+    // fracções já resolvidas e desenha. A lei mudou-se para o [`crate::build`] em 2026-08-29
+    // porque ela passou a precisar de MEDIR (percorrer a geração anterior e a nova), e uma lei
+    // que mede não cabe dentro do laço que ela mede. *Quem decide precisa do que o desenho
+    // custa; quem desenha só precisa de dois números.*
+    let youngest = set.youngest;
+    let ang_frac = set.angle_frac;
     let mut stack: Vec<State> = Vec::new();
     let mut i = 0usize;
     while i < chain.len() {

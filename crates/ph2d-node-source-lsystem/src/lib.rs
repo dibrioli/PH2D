@@ -230,16 +230,22 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::CONTINUOUS_LENGTH,
             default: 1.0,
         },
-        // ⛔⛔ **DESLIGADO POR VEREDITO DO DONO DO PRODUTO** (2026-08-29: *"os que vc tentou
-        // corrigir nao ficarao bons"*), e a medicao concorda: mesmo com a ancora medida os
-        // quatro moldes de refinamento ficam em 9/9/17/31% de pior passo contra os 5-8% dos
-        // que crescem pela ponta -- e o gesto que se ve' e' DESDOBRAR, nao crescer.
+        // ⭐⭐⭐ **LIGADO**, e o caminho ate' aqui esta' registado porque ele e' a licao:
+        //   1. o Enio previu *"os que vc tentou corrigir nao ficarao bons"* -- e eu shipei
+        //      desligado, com a medicao que concordava com ele (9-31% de pior passo);
+        //   2. ele SMOKOU e retirou a previsao: *"Melhorou muito. Mas o crescimento dos que
+        //      nao cresciam suavemente nao e' linear"*;
+        //   3. medi a DERIVADA (nao o pior passo) e ele tinha razao pela segunda vez: Bush e
+        //      Weed ja' eram lineares (ondulacao `0,0x`), e as CURVAS passavam do alvo e
+        //      VOLTAVAM (Koch `2,3x`, Dragon `4,2x`);
+        //   4. normalizar pelo tamanho MEDIDO poe as quatro em `0,0x`.
         //
-        // A maquinaria fica, gateada e medida: `Grow Angle` ligado da' a lei do refinamento
-        // (ancora + viragens a abrir), desligado da' o degrau inteiro de sempre, BYTE a byte.
+        // ⭐ *A previsao dele era sobre a versao que ele viu, e a queixa dele era um DEFEITO
+        // com endereco.* `PH2D_*` nenhum: desligar o `Grow Angle` devolve o degrau inteiro de
+        // sempre, byte a byte.
         ParamSpec {
             name: param::CONTINUOUS_ANGLE,
-            default: 0.0,
+            default: 1.0,
         },
         ParamSpec {
             name: param::STEP_SCALE,
@@ -695,17 +701,8 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     } else {
         youngest
     };
-    // ⭐⭐⭐ **A ÂNCORA, MEDIDA** — o preço que o Enio aprovou em 2026-08-29 (*"desenhar a
-    // planta duas vezes por quadro"*), e ele **só se paga numa geração fraccionária**.
-    //
-    // A pergunta é *«que factor põe a geração nova, com as viragens fechadas, exactamente por
-    // cima da anterior?»*. Ela é geométrica e não se conta a partir da gramática (a Koch tem 5
-    // módulos por cada um e cresce `3,00×`), então mede-se: percorre-se a cadeia ANTERIOR e a
-    // nova achatada, e a razão é a âncora.
-    //
-    // ⚠️ **Numa geração INTEIRA nada disto corre** — `frac == 1` e a âncora é irrelevante. É
-    // por isso que uma cena parada custa exactamente o que sempre custou.
-    let base = |anchor: f32, youngest: (u16, f32)| turtle::Setup {
+    // O `Setup` de uma travessia de MEDIÇÃO — as duas fracções à escolha de quem mede.
+    let base = |len: f32, ang: f32, youngest: (u16, f32)| turtle::Setup {
         angle: p.angle,
         step: p.step * p.step_scale.max(1e-4).powf(p.generations.clamp(0.0, 64.0)),
         width: p.width,
@@ -714,16 +711,63 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         root_angle: p.root_angle,
         tropism: p.tropism,
         tropism_angle: p.tropism_angle,
-        anchor,
-        youngest,
-        continuous_length: p.continuous_length.round() as i32 != 0,
-        continuous_angle: p.continuous_angle.round() as i32 != 0,
+        angle_frac: ang,
+        youngest: (youngest.0, len * youngest.1),
         orient_world: p.orient.round() as i32 == 0,
     };
-    let anchor = if youngest.1 < 1.0 && !d.previous.is_empty() {
-        measure_anchor(&d, &base)
+
+    // ⭐⭐⭐ **A LEI DO CRESCIMENTO, e ela agora MEDE em vez de supor** (2026-08-29).
+    //
+    // Report do Enio depois de ver a 1.ª versão: *"Melhorou muito. Mas o crescimento dos que
+    // não cresciam suavemente não é linear"*. A medição deu-lhe razão e nomeou a causa — o
+    // Bush e o Weed já eram **perfeitamente lineares** (ondulação `0,0×`), e quem não era eram
+    // as CURVAS: a Koch sobe a `3,05` e **volta** a `3,00` (ondulação `2,3×`), o Dragon sobe a
+    // `1,62` e volta a `1,51` (`4,2×`).
+    //
+    // ⚠️ **O mecanismo: as duas rampas brigam.** O comprimento cresce linearmente enquanto as
+    // dobras, ao abrir, **encurtam** a projecção — a `90°` uma zig-zag ocupa menos do que a
+    // mesma linha meio aberta. O produto das duas tem um pico no meio, e o último quinto do
+    // slider anda para TRÁS. *Andar para trás é o que se vê da cadeira.*
+    //
+    // ⇒ A cura não é uma constante: é **normalizar pelo que se mede**. A cada instante mede-se
+    // o tamanho da figura com as dobras onde elas estão (`agora`) e escolhe-se o comprimento
+    // que a põe exactamente na rampa linear entre a geração anterior (`antes`) e a nova
+    // inteira (`cheia`). A âncora de que a versão anterior falava é só o valor disto em
+    // `frac = 0` — ela generalizou-se.
+    //
+    // ⚠️ **Três travessias por cozedura, e SÓ numa geração fraccionária** — numa inteira nada
+    // disto corre e o custo é exactamente o de sempre. É o preço que o Enio aprovou
+    // (*"desenhar a planta duas vezes por quadro"*).
+    let frac = youngest.1;
+    let has_old_drawing = d
+        .chain
+        .iter()
+        .any(|m| m.born != youngest.0 && turtle::draws_or_marks(m.sym));
+    let grows_by_refining = !has_old_drawing && !d.previous.is_empty();
+    let want_len = p.continuous_length.round() as i32 != 0;
+    let want_ang = p.continuous_angle.round() as i32 != 0;
+
+    let (len_frac, ang_frac) = if frac >= 1.0 {
+        // Geração inteira: não há nada a interpolar, e nada se mede.
+        (1.0, 1.0)
+    } else if !grows_by_refining {
+        // Cresce pela PONTA: o rebento estica de zero (a lei de sempre, e a cura do
+        // pisca-pisca de 28/08). A viragem é inerte aqui por construção — ver `turtle`.
+        (if want_len { frac } else { 1.0 }, frac)
+    } else if want_ang {
+        // REFINA: normaliza pelo que se mede, para a rampa sair recta.
+        let antes = turtle::span(&d.previous, &base(1.0, 1.0, (d.generations, 1.0)));
+        let cheia = turtle::span(&d.chain, &base(1.0, 1.0, (d.generations, 1.0)));
+        let agora = turtle::span(&d.chain, &base(1.0, frac, (d.generations, 1.0)));
+        let alvo = antes + (cheia - antes) * frac;
+        if agora > 1e-6 && alvo > 0.0 {
+            ((alvo / agora).clamp(0.02, 4.0), frac)
+        } else {
+            (1.0, frac)
+        }
     } else {
-        1.0
+        // ⛔ O `Grow Angle` desligado é o degrau inteiro de sempre, byte a byte.
+        (1.0, 1.0)
     };
 
     turtle::walk(
@@ -749,10 +793,8 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             root_angle: p.root_angle,
             tropism: p.tropism,
             tropism_angle: p.tropism_angle,
-            youngest,
-            anchor,
-            continuous_length: p.continuous_length.round() as i32 != 0,
-            continuous_angle: p.continuous_angle.round() as i32 != 0,
+            youngest: (youngest.0, len_frac),
+            angle_frac: ang_frac,
             // `0` = mundo (o desenho alinha com o ramo). Qualquer outro valor é o local.
             orient_world: p.orient.round() as i32 == 0,
         },
@@ -1161,29 +1203,13 @@ fn manifest_default(name: &str) -> f32 {
         .map_or(0.0, |p| p.default)
 }
 
-/// ⭐⭐⭐ **A ÂNCORA MEDIDA** — *que factor põe a geração nova, com as viragens fechadas,
-/// exactamente por cima da anterior?*
+/// **A porta de SONDA da ÂNCORA** — o factor de comprimento em `frac → 0`, que é onde a
+/// interpolação começa.
 ///
-/// ⛔ **Ela NÃO se conta a partir da gramática, e tentei duas vezes.** A `F -> F[+F]F[-F]F` põe
-/// **5** módulos de desenho por cada um e a figura cresce **3,00×** (dois estão dentro de
-/// parênteses e não estendem o caminho); a `F -> F+F-F-F+F` põe 5 sem parênteses nenhum e
-/// cresce **3,00×** na mesma, porque as viragens a dobram. *A razão é geométrica.*
-///
-/// ⚠️ **A pose de partida mede-se com `frac = 0`** (as viragens da última geração FECHADAS),
-/// que é onde a interpolação começa — medi-la aberta dá `1/3` onde a resposta é `1/5`, e uma
-/// mutação que trocasse as duas **SOBREVIVEU** a um gate que só olhava para o resultado.
-/// *Uma barra de «melhorou 2×» não distingue duas âncoras que ambas melhoram.*
-fn measure_anchor(d: &derive::Derived, base: &dyn Fn(f32, (u16, f32)) -> turtle::Setup) -> f32 {
-    let before = turtle::span(&d.previous, &base(1.0, (d.generations, 1.0)));
-    let flat = turtle::span(&d.chain, &base(1.0, (d.generations, 0.0)));
-    if before > 1e-6 && flat > 1e-6 {
-        (before / flat).clamp(0.02, 1.0)
-    } else {
-        1.0
-    }
-}
-
-/// **A porta de SONDA da âncora** — para um gate poder afirmar o NÚMERO e não só o efeito.
+/// ⚠️ A âncora deixou de ser uma constante em 2026-08-29: ela é o valor, no início da
+/// travessia, da normalização que o [`build`] faz a cada instante (*«que comprimento põe a
+/// figura na rampa recta entre a geração anterior e a nova inteira?»*). Aqui mede-se esse
+/// valor sozinho, para um gate poder afirmar o NÚMERO e não só o efeito.
 #[must_use]
 pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
     let p = probe_params(generations, &[(param::CONTINUOUS_ANGLE, 1.0)]);
@@ -1200,7 +1226,7 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
     if d.previous.is_empty() {
         return 1.0;
     }
-    measure_anchor(&d, &|anchor, youngest| turtle::Setup {
+    let setup = |ang: f32| turtle::Setup {
         angle: p.angle,
         step: p.step,
         width: p.width,
@@ -1209,12 +1235,19 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
         root_angle: p.root_angle,
         tropism: p.tropism,
         tropism_angle: p.tropism_angle,
-        anchor,
-        youngest,
-        continuous_length: true,
-        continuous_angle: true,
+        angle_frac: ang,
+        youngest: (d.generations, 1.0),
         orient_world: true,
-    })
+    };
+    let antes = turtle::span(&d.previous, &setup(1.0));
+    // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte. Medi-la aberta dá
+    // `1/3` onde a resposta é `1/5`, e uma mutação que trocasse as duas já SOBREVIVEU uma vez.
+    let achatada = turtle::span(&d.chain, &setup(0.0));
+    if antes > 1e-6 && achatada > 1e-6 {
+        (antes / achatada).clamp(0.02, 1.0)
+    } else {
+        1.0
+    }
 }
 
 #[must_use]

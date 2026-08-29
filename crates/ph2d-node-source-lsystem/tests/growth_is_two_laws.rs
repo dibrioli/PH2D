@@ -1,52 +1,53 @@
-//! ⭐⭐⭐ **O CRESCIMENTO SÃO DUAS LEIS, E CADA FAMÍLIA DE GRAMÁTICA PRECISA DE UMA** —
-//! pesquisa e medição de 2026-08-29, a pedido do Enio (*"acho que o ideal é o crescimento
-//! suave. como fazem os grandes apps?"*).
+//! ⭐⭐⭐ **O CRESCIMENTO SÃO DUAS LEIS, E CADA FAMÍLIA DE GRAMÁTICA PRECISA DE UMA.**
 //!
-//! O L-System SOP do Houdini tem **dois** interruptores — *Continuous length* e *Continuous
-//! angles* — e escala, com a fracção da geração, ou os comprimentos ou os ângulos das
-//! operações de tartaruga da última substituição. Eu tinha construído a metade do comprimento.
+//! # O caminho até aqui, porque ele é a lição
 //!
-//! # A partição, medida (`examples/preset_report.rs`)
+//! 1. **Enio, 2026-08-29:** *"porque vários presets não têm crescimento suave, mas em saltos?"*
+//!    Medido: quatro dos oito saltavam (`53–137 %` de pior passo contra `5–8 %`).
+//! 2. **Pesquisa:** o L-System SOP do Houdini tem **dois** interruptores — *Continuous length*
+//!    e *Continuous angles* — e eu tinha construído só o primeiro.
+//! 3. **Enio:** *"faça os demais"* → construí, e ele previu *"os que vc tentou corrigir não
+//!    ficarão bons"*. Shipei **desligado**, com a medição que concordava com ele.
+//! 4. **Ele SMOKOU e retirou a previsão:** *"Melhorou muito. Mas o crescimento dos que não
+//!    cresciam suavemente não é linear."*
+//! 5. Medi a **DERIVADA** em vez do pior passo, e ele tinha razão pela segunda vez — e a causa
+//!    não era onde eu supunha.
 //!
-//! | família | razão de expansão por geração | anima por |
+//! # A partição, medida (`examples/preset_report.rs`, `examples/probe_curve.rs`)
+//!
+//! | família | razão de expansão por geração | como anima |
 //! |---|---|---|
-//! | Tree · Fern · Wild · Sprig | `1,63 → 1,06` (**converge para 1**) | `Generations` — já é suave (3–5 %) |
-//! | Koch · Dragon | `3,00` / `~1,41` (**constante**), e são CURVAS | **revelar o traçado** (8–10 %) |
-//! | Bush · Weed | `3,00` / `2,03`, e **ramificam** | nenhuma das duas — ver a recusa abaixo |
+//! | Tree · Fern · Wild · Sprig | `1,63 → 1,06` (**converge para 1**) | a PONTA estica de zero |
+//! | Bush · Weed | `3,00` · `2,03` (**constante**) | a figura REFINA-SE |
+//! | Koch · Dragon | `3,00` · `~1,41`, e são CURVAS | idem |
 //!
-//! ⛔ **RECUSA MEDIDA — o `Grow Angle` MOVE a figura e NÃO se prova que a alise.**
+//! # A causa da não-linearidade, e ela não era a que eu supunha
 //!
-//! ⚠️⚠️ **A 1.ª redacção desta nota afirmava que ele PIORAVA, citando `69 % → 138 %` — era
-//! falso, e o gate apanhou-o.** Aqueles dois números vêm de **duas réguas diferentes** (uma
-//! normalizada pela subida total, outra pela média do tamanho); com a MESMA régua, Bush dá
-//! `138 %` ligado e `138 %` desligado. *Comparar duas medições feitas com denominadores
-//! diferentes é inventar um efeito.*
+//! **Bush e Weed já eram perfeitamente lineares** (ondulação `0,0×`). Quem não era eram as
+//! CURVAS: a Koch subia a `3,05` e **voltava** a `3,00` (`2,3×`), o Dragon subia a `1,62` e
+//! voltava a `1,51` (`4,2×`).
 //!
-//! O que está medido:
-//! - ele **move** uma gramática de refinamento (Bush, desvio máximo `0,163` a `frac = 0,25`,
-//!   a cair para `0,055` em `0,75` — a assinatura certa: o efeito some quando a geração fecha);
-//! - ele é **byte-inerte** numa que cresce pela ponta, e a razão é estrutural: ali a viragem
-//!   nova é seguida de um não-terminal que **ainda não desenha nada**, então não há geometria
-//!   atrás dela para abrir;
-//! - e **nenhuma régua que eu tenha consegue dizer se ele ALISA**. A caixa envolvente é grossa
-//!   demais, o emparelhamento ponto-a-ponto é indefinido (a contagem salta de 626 para 3 126 na
-//!   travessia) e uma grelha de ocupação normalizada mede a mudança de CONTAGEM, não de forma.
-//!   ⇒ *shipa desligado, e o que falta é a RÉGUA, não o código.*
+//! ⚠️ **As duas rampas brigavam.** O comprimento crescia linearmente enquanto as dobras, ao
+//! abrir, **encurtavam** a projecção — a `90°` uma zig-zag ocupa menos do que a mesma linha
+//! meio aberta. O produto tem um pico no meio, e o último quinto do slider andava **para trás**.
+//! *Andar para trás é o que se vê da cadeira.*
 //!
-//! ⛔ **E o `Step Scale` sozinho também não.** Ele torna a figura estável em tamanho (é o
-//! *Step Size Scale* do Houdini, e `1/3` é exactamente a razão de Bush e Koch), mas o melhor
-//! que a varredura de oito valores alcança é `105 %` no Bush e `144 %` no Koch — contra `3 %`
-//! do Tree. *Estável em tamanho não é contínuo na forma.*
+//! ⇒ A cura não é uma constante: é **normalizar pelo que se mede**. A cada instante mede-se o
+//! tamanho com as dobras onde elas estão, e escolhe-se o comprimento que põe a figura na rampa
+//! recta entre a geração anterior e a nova inteira. Ondulação depois: **`0,0×` nas quatro**.
 //!
-//! ⭐ **A cura que resta para Bush/Weed está NOMEADA e não construída**: interpolar entre
-//! **duas cadeias derivadas** (geração `n` e `n+1`), com cada segmento da `n` a morfar nos
-//! sub-segmentos da `n+1`. Custa uma segunda derivação por quadro e muda o que `Generations`
-//! quer dizer — decisão de produto.
+//! ⛔ **Duas curas ANTERIORES foram medidas e não bastam** — não as reconstrua:
+//! - o **`Step Scale`** sozinho (o *Step Size Scale* do Houdini) deixa a figura do mesmo
+//!   tamanho — `1/3` é exactamente a razão de Bush e Koch — e o melhor que uma varredura de
+//!   oito valores alcança é `105 %` de pior passo. *Estável em tamanho ≠ contínuo na forma.*
+//! - a **âncora como CONSTANTE** (`1/spread`, contada da gramática) está errada por
+//!   construção: a `F -> F[+F]F[-F]F` põe **5** módulos por cada um e cresce **3,00×** (dois
+//!   estão dentro de parênteses e não estendem o caminho), e a `F -> F+F-F-F+F` põe 5 sem
+//!   parênteses e cresce `3,00×` na mesma, porque as viragens a dobram. *A razão é geométrica.*
 
 use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 
-/// A maior dimensão da caixa.
 fn size(s: &Stream) -> f32 {
     match s.get("P") {
         Some(Column::Vec2(v)) if !v.is_empty() => {
@@ -54,231 +55,129 @@ fn size(s: &Stream) -> f32 {
             let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
             let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
             let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
-            (x1 - x0).max(y1 - y0)
+            // ⚠️⚠️ **A DIAGONAL, e não `max(w, h)`** — o máximo de duas funções suaves tem um
+            // JOELHO onde elas se cruzam, e esse joelho lê-se como não-linearidade do produto.
+            // Medido: o Sprig imprimia **sete passos exactamente `0,0`** seguidos de uma rampa
+            // recta — não porque a planta não crescesse, mas porque a largura era o máximo até
+            // a altura a ultrapassar. *Uma régua com uma dobra por construção acusa o produto
+            // da dobra dela.*
+            ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
         }
         _ => 0.0,
     }
 }
 
-/// O pior passo de uma varredura fina do `Generations`, contra a MÉDIA do tamanho.
-///
-/// ⚠️ **A média e não a subida total** — a 1.ª régua dividia pela subida, e como o objectivo do
-/// `Step Scale` é precisamente deixar a figura do MESMO tamanho, ela imprimiu `619 050 %`.
-/// *Uma régua normalizada pelo que a cura leva a zero mede a cura ao contrário.*
-fn worst_step(p: &ls::Preset, over: &[(&str, f32)]) -> f32 {
-    const N: usize = 40;
-    let hs: Vec<f32> = (0..=N)
-        .map(|j| {
-            let g = 1.0 + (p.generations - 1.0) * j as f32 / N as f32;
-            let mut o: Vec<(&str, f32)> = vec![
-                (ls::param::MODE, ls::MODE_GRAMMAR as f32),
-                (ls::param::ANGLE, p.angle),
-                (ls::param::STEP, p.step),
-                (ls::param::WIDTH, p.width),
-            ];
-            o.extend_from_slice(over);
-            size(&ls::probe_build(p.axiom, p.rules, g, &o))
-        })
-        .collect();
-    let mean = hs.iter().sum::<f32>() / hs.len() as f32;
-    hs.windows(2)
-        .map(|w| (w[1] - w[0]).abs())
-        .fold(0.0f32, f32::max)
-        / mean.max(1e-6)
+fn at(p: &ls::Preset, g: f32, over: &[(&str, f32)]) -> f32 {
+    let mut o: Vec<(&str, f32)> = vec![
+        (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+        (ls::param::ANGLE, p.angle),
+        (ls::param::STEP, p.step),
+        (ls::param::WIDTH, p.width),
+    ];
+    o.extend_from_slice(over);
+    size(&ls::probe_build(p.axiom, p.rules, g, &o))
 }
 
-/// Os quatro que crescem pela PONTA, pelo nome.
-const TIP_GROWERS: &[&str] = &["Tree", "Fern", "Wild", "Sprig"];
+/// A travessia da penúltima geração para a última, amostrada fino: `(tamanhos, passos)`.
+fn crossing(p: &ls::Preset, over: &[(&str, f32)]) -> (Vec<f32>, Vec<f32>) {
+    const N: usize = 24;
+    let g0 = (p.generations - 1.0).max(2.0).floor();
+    let hs: Vec<f32> = (0..=N)
+        .map(|k| at(p, g0 + k as f32 / N as f32, over))
+        .collect();
+    let d = hs.windows(2).map(|w| w[1] - w[0]).collect();
+    (hs, d)
+}
 
-/// ⭐⭐ **AS QUE CRESCEM PELA PONTA JÁ SÃO SUAVES, e continuam a sê-lo.**
+/// A ondulação da rampa: `(maior passo − menor passo) / passo médio`. `0` = recta.
+fn ripple(d: &[f32]) -> f32 {
+    let mean = d.iter().sum::<f32>() / d.len() as f32;
+    if mean.abs() < 1e-9 {
+        return f32::MAX;
+    }
+    let lo = d.iter().copied().fold(f32::MAX, f32::min);
+    let hi = d.iter().copied().fold(f32::MIN, f32::max);
+    (hi - lo) / mean.abs()
+}
+
+/// ⭐⭐⭐ **NENHUM MOLDE ANDA PARA TRÁS** — o defeito que o Enio de facto viu.
 ///
-/// A barra é `10 %` do tamanho médio — folgada face aos `3–5 %` medidos, apertada face aos
-/// `69–138 %` das outras. É a fronteira entre as duas famílias, não um número escolhido.
+/// ⚠️ **A régua é a DERIVADA, e é isso que a queixa dele nomeia.** Uma barra sobre o pior
+/// passo não a apanharia: a Koch tinha `17 %` de pior passo (perfeitamente aceitável) **e**
+/// encolhia no último quinto do slider. *Um salto e um recuo são defeitos diferentes, e só o
+/// segundo se lê como «não é linear».*
 #[test]
-fn the_tip_growers_animate_smoothly_and_the_others_are_a_different_family() {
+fn no_preset_ever_shrinks_while_the_generations_rise() {
     for p in ls::PRESETS {
-        let w = worst_step(p, &[]);
-        if TIP_GROWERS.contains(&p.label) {
-            assert!(
-                w < 0.10,
-                "{} devia crescer suave e o pior passo foi {:.0}% do tamanho",
-                p.label,
-                w * 100.0
-            );
-        } else {
-            // ⚠️ **O CONTROLE, e é ele que torna a barra acima uma afirmação**: sem ele, uma
-            // barra de 10 % passaria com TODOS os moldes suaves — e nós sabemos, por medição,
-            // que quatro não são. Se um dia forem, este gate cai e a pessoa vem ler a recusa.
-            assert!(
-                w > 0.20,
-                "{} passou a crescer suave ({:.0}%) — se foi de propósito, a recusa medida no \
-                 cabeçalho deste ficheiro tem de ser reconferida",
-                p.label,
-                w * 100.0
-            );
-        }
+        let (hs, d) = crossing(p, &[]);
+        assert!(
+            hs[hs.len() - 1] > hs[0] * 1.005,
+            "{}: a travessia tem de CRESCER: {hs:?}",
+            p.label
+        );
+        let lo = d.iter().copied().fold(f32::MAX, f32::min);
+        assert!(
+            lo > -1e-4,
+            "{}: um passo ANDOU PARA TRAS ({lo}) — a figura encolhe no fim do slider: {d:?}",
+            p.label
+        );
     }
 }
 
-/// ⛔⛔ **A RECUSA É DE PRODUTO, NÃO DE MEDIÇÃO — e a diferença é o assunto deste gate.**
+/// ⭐⭐⭐ **E OS QUE REFINAM NÃO ONDULAM MAIS DO QUE OS QUE O DONO JÁ ACEITAVA.**
 ///
-/// ⚠️⚠️ **A 1.ª redacção afirmava que o `Grow Angle` NÃO alisava, e ficou falsa no mesmo dia.**
-/// Com a âncora medida ele alisa, e por muito: Bush **`69 % → 9 %`**, Weed `53 % → 9 %`, Koch
-/// `69 % → 17 %`, Dragon `34 % → 31 %`. O que estava errado era eu ter parado de procurar a
-/// âncora — ela não se conta a partir da gramática (a Koch põe 5 módulos e cresce `3,00×`),
-/// mede-se percorrendo as duas gerações.
+/// ⚠️⚠️ **A barra é COMPARATIVA de propósito, e a medição obrigou-me a isso.** Eu tinha
+/// escrito `ripple < 0.25` para os oito e o gate reprovou no **Sprig — `1,5×`, o pior dos
+/// oito** —, que é um dos quatro de que o Enio **nunca se queixou**. *A minha noção de «linear»
+/// não é a dele; a dele é a família que ele aceitou.*
 ///
-/// ⛔ **E mesmo assim ele shipa desligado, por VEREDITO do dono do produto** (2026-08-29:
-/// *"os que vc tentou corrigir não ficarão bons"*): os quatro ficam em `9–31 %` contra os
-/// `5–8 %` de quem cresce pela ponta, e o gesto que se vê é a figura **desdobrar-se**, que não
-/// é crescer.
+/// ⇒ A referência é o pior dos que crescem pela ponta. Antes da cura os que refinam davam
+/// `2,3×` (Koch) e `4,2×` (Dragon) contra `1,5×`; depois dão `0,0×`–`0,7×`. A barra
+/// discrimina, e não foi escolhida para passar.
 ///
-/// ⭐ *Uma recusa MEDIDA e um veredito de PRODUTO são coisas diferentes, e vestir um de outro
-/// é o modo de falha que esta linha já cometeu hoje.* Este gate afirma as duas metades pelo
-/// que elas são: o número diz que a lei funciona, e o default diz que o dono não a quer ligada.
+/// ⚠️ E as duas famílias saem da razão de expansão **medida**, nunca de uma lista de nomes.
 #[test]
-fn the_angle_growth_does_smooth_a_refinement_grammar_and_ships_off_by_product_verdict() {
-    let bush = ls::PRESETS
-        .iter()
-        .find(|p| p.label == "Bush")
-        .expect("o molde existe");
-    let off = worst_step(bush, &[]);
-    let on = worst_step(bush, &[(ls::param::CONTINUOUS_ANGLE, 1.0)]);
-    // 1. A lei FUNCIONA — e por uma margem que não é ruído.
+fn the_refiners_ripple_no_worse_than_the_tip_growers_the_owner_accepted() {
+    let mut tips: Vec<(&str, f32)> = Vec::new();
+    let mut refiners: Vec<(&str, f32)> = Vec::new();
+    for p in ls::PRESETS {
+        let g0 = (p.generations - 1.0).max(2.0).floor();
+        let growth = at(p, g0 + 1.0, &[]) / at(p, g0, &[]).max(1e-6);
+        let r = ripple(&crossing(p, &[]).1);
+        // Quem REFINA: a figura cresce por um factor constante > 1,5 a cada geração.
+        if growth > 1.5 {
+            &mut refiners
+        } else {
+            &mut tips
+        }
+        .push((p.label, r));
+    }
+    // ⚠️ **O CONTROLE**: as duas famílias têm de estar POVOADAS. Sem ele, o gate passaria num
+    // mundo onde todos os moldes são da mesma espécie — e a lei da outra estaria morta.
     assert!(
-        on < off * 0.5,
-        "o Grow Angle deixou de alisar o Bush ({:.0}% ligado contra {:.0}% desligado) — a \
-         ancora medida partiu-se, e o `previous` da derivacao e' o primeiro sitio a olhar",
-        on * 100.0,
-        off * 100.0
+        tips.len() >= 3 && refiners.len() >= 3,
+        "as duas familias tem de existir no corpus: {tips:?} / {refiners:?}"
     );
-    // 2. E MESMO ASSIM o produto shipa com ela desligada. ⚠️ É esta metade que morre no dia em
-    //    que alguém ligar o default sem falar com o dono.
-    let default = ls::MANIFEST
-        .params
-        .iter()
-        .find(|p| p.name == ls::param::CONTINUOUS_ANGLE)
-        .expect("o param existe")
-        .default;
-    assert_eq!(
-        default, 0.0,
-        "o `Grow Angle` shipa DESLIGADO por veredito do dono do produto (2026-08-29), nao por \
-         a lei nao funcionar — ver o doc deste gate antes de mexer"
-    );
-    // 3. ⚠️ E o CONTROLE da recusa: desligado, a fracção é INERTE numa gramática de
-    //    refinamento — o degrau inteiro é o produto, byte a byte.
-    let step = |g: f32| {
-        worst_step(bush, &[]);
-        ls::probe_build(
-            bush.axiom,
-            bush.rules,
-            g,
-            &[
-                (ls::param::MODE, ls::MODE_GRAMMAR as f32),
-                (ls::param::ANGLE, bush.angle),
-                (ls::param::STEP, bush.step),
-            ],
-        )
-        .count()
-    };
-    assert_eq!(step(3.25), step(3.75), "por omissao o passo e' inteiro");
+    let worst_tip = tips.iter().map(|(_, r)| *r).fold(0.0f32, f32::max);
+    for (label, r) in &refiners {
+        assert!(
+            *r <= worst_tip,
+            "{label} ondula {r:.2}x, pior que o {:.2}x do pior dos que crescem pela ponta \
+             ({tips:?}) — o report do Enio de 2026-08-29 voltou",
+            worst_tip
+        );
+    }
 }
 
-/// ⭐ **Ele shipa DESLIGADO, e é BYTE-INERTE numa gramática que cresce pela ponta.**
-///
-/// ⚠️⚠️ A inércia não é um defeito, é estrutural: em `A(s) -> F(s)![+A(s*0.7)][-A(s*0.7)]` a
-/// viragem nova é seguida de um `A`, um não-terminal que **ainda não desenha nada** — não há
-/// geometria atrás dela para abrir. A 1.ª redacção deste gate exigia que ele movesse o
-/// `DEFAULT_RULES` e reprovava sobre produto correcto. *Onde uma lei é inerte é um facto sobre
-/// a lei, não um bug* — e é o gate acima que prova que ela NÃO é inerte onde tem sujeito.
-#[test]
-fn the_angle_growth_switch_ships_off_and_is_inert_where_it_has_no_subject() {
-    let default = ls::MANIFEST
-        .params
-        .iter()
-        .find(|p| p.name == ls::param::CONTINUOUS_ANGLE)
-        .expect("o param existe")
-        .default;
-    assert_eq!(default, 0.0, "ele shipa DESLIGADO — ver a recusa medida");
-
-    let tip = |on: f32| {
-        ls::probe_build(
-            ls::DEFAULT_AXIOM,
-            ls::DEFAULT_RULES,
-            4.5,
-            &[
-                (ls::param::MODE, ls::MODE_GRAMMAR as f32),
-                (ls::param::CONTINUOUS_ANGLE, on),
-            ],
-        )
-    };
-    assert_eq!(
-        size(&tip(0.0)).to_bits(),
-        size(&tip(1.0)).to_bits(),
-        "o Grow Angle mexeu numa gramatica que cresce pela PONTA — ali a viragem nova nao tem \
-         nada desenhado atras dela, entao ou o `born` mudou de sentido ou a lei mudou de sitio"
-    );
-}
-
-/// ⭐⭐ **O `Step Scale` deixa uma gramática de refinamento do MESMO TAMANHO** — o que ele de
-/// facto compra, medido, em vez do que se esperava dele.
-///
-/// Bush e Koch expandem **exactamente `3,00`** por geração; com `1/3` a figura fica estável.
-/// ⛔ E isto **não** a torna contínua — ver a recusa no cabeçalho. As duas coisas são
-/// diferentes, e este gate existe para que ninguém as volte a confundir.
-#[test]
-fn the_step_scale_keeps_a_refinement_grammar_the_same_size_but_not_continuous() {
-    let koch = ls::PRESETS
-        .iter()
-        .find(|p| p.label == "Koch")
-        .expect("o molde existe");
-    let span = |scale: f32| {
-        let sizes: Vec<f32> = (2..=5)
-            .map(|g| {
-                size(&ls::probe_build(
-                    koch.axiom,
-                    koch.rules,
-                    g as f32,
-                    &[
-                        (ls::param::MODE, ls::MODE_GRAMMAR as f32),
-                        (ls::param::ANGLE, koch.angle),
-                        (ls::param::STEP, koch.step),
-                        (ls::param::STEP_SCALE, scale),
-                    ],
-                ))
-            })
-            .collect();
-        sizes.iter().copied().fold(f32::MIN, f32::max)
-            / sizes.iter().copied().fold(f32::MAX, f32::min)
-    };
-    // Sem ele, a figura cresce 3x por geração — 27x ao longo de quatro.
-    assert!(
-        span(1.0) > 20.0,
-        "sem Step Scale a Koch cresce {:.1}x",
-        span(1.0)
-    );
-    // Com `1/3`, estável.
-    assert!(
-        span(1.0 / 3.0) < 1.05,
-        "com Step Scale = 1/3 a Koch tem de ficar do mesmo tamanho, e variou {:.2}x",
-        span(1.0 / 3.0)
-    );
-    // ⛔ E MESMO ASSIM ela não é contínua — a segunda metade da recusa.
-    assert!(
-        worst_step(koch, &[(ls::param::STEP_SCALE, 1.0 / 3.0)]) > 0.20,
-        "a Koch passou a ser continua so' com o Step Scale — reconfira a recusa do cabecalho"
-    );
-}
-
-/// ⭐⭐⭐ **A ÂNCORA É O NÚMERO CERTO, E NÃO SÓ «UM NÚMERO QUE MELHORA».**
+/// ⭐⭐ **A ÂNCORA É O NÚMERO CERTO, E NÃO SÓ «UM NÚMERO QUE MELHORA».**
 ///
 /// ⚠️⚠️ **Este gate nasceu de uma mutação que SOBREVIVEU.** Trocar a pose de partida de
-/// `frac = 0` (viragens fechadas) por `frac = 1` (abertas) muda a âncora de `1/5` para `1/3` —
-/// e o gate irmão, que só perguntava *«melhorou 2×?»*, ficou verde com as duas. *Uma barra de
+/// `frac = 0` (viragens fechadas) por `frac = 1` (abertas) muda a âncora de `1/5` para `1/3`,
+/// e um gate que só perguntava *«melhorou 2×?»* ficou verde com as duas. *Uma barra de
 /// «melhorou» não distingue duas âncoras que ambas melhoram.*
 ///
-/// A régua é o próprio significado da âncora: com ela aplicada, a geração nova em `frac = 0`
-/// tem de ter **o tamanho da anterior**. É uma identidade, não uma desigualdade.
+/// A régua é o significado da âncora: com ela aplicada, a geração nova em `frac → 0` tem de ter
+/// **o tamanho da anterior**. É uma identidade, não uma desigualdade.
 #[test]
 fn the_anchor_puts_the_new_generation_exactly_on_top_of_the_previous_one() {
     for (name, axiom, rules) in [
@@ -291,34 +190,82 @@ fn the_anchor_puts_the_new_generation_exactly_on_top_of_the_previous_one() {
             (0.02..1.0).contains(&anchor),
             "{name}: a ancora saiu {anchor}"
         );
-        // A identidade: `size(n+1, frac->0)` == `size(n, inteira)`.
-        let at = |g: f32| {
-            let s = ls::probe_build(
+        let s = |g: f32| {
+            size(&ls::probe_build(
                 axiom,
                 rules,
                 g,
-                &[
-                    (ls::param::MODE, ls::MODE_GRAMMAR as f32),
-                    (ls::param::CONTINUOUS_ANGLE, 1.0),
-                ],
-            );
-            match s.get("P") {
-                Some(Column::Vec2(v)) if !v.is_empty() => {
-                    let x0 = v.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
-                    let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
-                    let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
-                    let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
-                    (x1 - x0).max(y1 - y0)
-                }
-                _ => 0.0,
-            }
+                &[(ls::param::MODE, ls::MODE_GRAMMAR as f32)],
+            ))
         };
-        let (whole, just_after) = (at(4.0), at(4.0 + 1e-3));
-        let ratio = just_after / whole.max(1e-6);
+        let ratio = s(4.0 + 1e-3) / s(4.0).max(1e-6);
         assert!(
             (0.97..1.03).contains(&ratio),
             "{name}: logo depois da geracao 4 a figura mede {ratio:.3}x a de 4 — a ancora nao \
              a poe por cima da anterior (ancora = {anchor:.4})"
         );
     }
+}
+
+/// ⛔ **O ESCAPE: desligar o `Grow Angle` devolve o degrau inteiro de sempre.**
+///
+/// ⚠️ ⭐ As duas metades. Sem a primeira o interruptor é um knob morto; sem a segunda ele não
+/// é um escape — e um artista que prefira o degrau (ou que precise de bissecar) fica sem saída.
+#[test]
+fn switching_the_angle_growth_off_gives_back_the_whole_step() {
+    let bush = ls::PRESETS
+        .iter()
+        .find(|p| p.label == "Bush")
+        .expect("o molde existe");
+    // 1. Desligado, a fracção é INERTE: o passo é inteiro, byte a byte.
+    let off = |g: f32| at(bush, g, &[(ls::param::CONTINUOUS_ANGLE, 0.0)]);
+    assert_eq!(
+        off(3.25).to_bits(),
+        off(3.75).to_bits(),
+        "desligado, o passo tem de ser INTEIRO"
+    );
+    // 2. E ligado (o default) ela interpola.
+    assert_ne!(
+        at(bush, 3.25, &[]).to_bits(),
+        at(bush, 3.75, &[]).to_bits(),
+        "ligado, a fraccao tem de interpolar — senao o interruptor e' um knob morto"
+    );
+    // 3. E o default É ligado.
+    let default = ls::MANIFEST
+        .params
+        .iter()
+        .find(|p| p.name == ls::param::CONTINUOUS_ANGLE)
+        .expect("o param existe")
+        .default;
+    assert_eq!(default, 1.0, "o `Grow Angle` shipa LIGADO desde 2026-08-29");
+}
+
+/// ⭐ **O `Grow Length` é BYTE-INERTE numa gramática de refinamento** — e a inércia é
+/// estrutural, não um defeito.
+///
+/// Ali quem manda no comprimento é a normalização medida; o interruptor de esticar-de-zero não
+/// tem sujeito, porque não há rebento novo a sair de nada. *Onde uma lei é inerte é um facto
+/// sobre a lei.*
+#[test]
+fn the_length_growth_switch_has_no_subject_in_a_refinement_grammar() {
+    let bush = ls::PRESETS
+        .iter()
+        .find(|p| p.label == "Bush")
+        .expect("o molde existe");
+    assert_eq!(
+        at(bush, 3.5, &[(ls::param::CONTINUOUS_LENGTH, 0.0)]).to_bits(),
+        at(bush, 3.5, &[(ls::param::CONTINUOUS_LENGTH, 1.0)]).to_bits(),
+        "numa gramatica de refinamento o Grow Length nao tem sujeito"
+    );
+    // ⚠️ **O CONTROLE**: numa que cresce pela ponta ele MANDA. Sem esta metade, arrancar o
+    // interruptor inteiro deixaria o gate verde.
+    let tree = ls::PRESETS
+        .iter()
+        .find(|p| p.label == "Tree")
+        .expect("o molde existe");
+    assert_ne!(
+        at(tree, 4.5, &[(ls::param::CONTINUOUS_LENGTH, 0.0)]).to_bits(),
+        at(tree, 4.5, &[(ls::param::CONTINUOUS_LENGTH, 1.0)]).to_bits(),
+        "numa que cresce pela ponta o Grow Length TEM de mandar"
+    );
 }

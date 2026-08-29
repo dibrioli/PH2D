@@ -387,6 +387,13 @@ pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64
     let n = points.max(3);
     let beta = std::f64::consts::PI / f64::from(n);
     let polar = |r: f64, a: f64| [r * a.cos(), r * a.sin()];
+    // ⛔ **E o disco NÃO recua com o filete** — foi tentado e a medição disse que é inerte.
+    //
+    // A hipótese era boa: a fronteira dele passa exactamente pelos vales, e a curva onde o `min`
+    // troca entre ele e as pipas cai dentro do alcance da mistura do aro. ⚠️ Só que, **com a folga
+    // do sector no sítio**, recuá-lo `2·round` deixa a leitura da sonda **byte a byte igual**
+    // (`1,0 %` · `25,4°` a meio filete, `0,0 %` · `13,6°` no máximo, com e sem). *Uma segunda cura
+    // que não move o número é mais uma coisa para manter, não meia cura.*
     let disco = length2(&Tree::x(), &Tree::y()) - Tree::constant(inner);
     let mut pontas: Option<Tree> = None;
     for k in 0..n {
@@ -402,9 +409,25 @@ pub fn sd_star(points: u32, outer: f64, inner: f64, half_height: f64, round: f64
         );
         // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
         // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
+        //
+        // ⭐⭐⭐ **E ELE TEM DE TER FOLGA** (W104-bis). Sem folga, o plano do sector passa **pelo
+        // vale**, que é um ponto da SUPERFÍCIE: ali o `max` do sector com a aresta troca de ramo em
+        // cima da peça, e as duas pipas que a união vai fundir chegam ao encontro **as duas com um
+        // vinco de campo**. Afastando os dois planos de `round`, as pipas passam a **sobrepor-se**
+        // no vale em vez de se tocarem, e o único constrangimento activo lá é a aresta a sério.
+        //
+        // ⚠️ **O tecto da folga é geométrico e a medição bate-o**: os dois planos afastados cruzam-se
+        // a `δ/sin β` do centro **do lado oposto** da ponta, e acima de `inner` essa intrusão sai da
+        // peça. Com `δ = round` isso está sempre garantido, porque `star_round_limit < inner·sin β`
+        // por construção — e a varredura confirma: a `2·round` a forma parte, exactamente onde a
+        // conta diz.
         let (a1, a2) = (phi - beta, phi + beta);
-        let h1 = Tree::x() * Tree::constant(a1.sin()) - Tree::y() * Tree::constant(a1.cos());
-        let h2 = Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos());
+        let folga = Tree::constant(round.min(inner * beta.sin()));
+        let h1 = Tree::x() * Tree::constant(a1.sin())
+            - Tree::y() * Tree::constant(a1.cos())
+            - folga.clone();
+        let h2 =
+            Tree::x() * Tree::constant(-a2.sin()) + Tree::y() * Tree::constant(a2.cos()) - folga;
         let pipa = ponta.max(h1).max(h2);
         // ⭐⭐⭐ **O VALE é uma quina CÔNCAVA**, e uma quina côncava arredonda-se ACRESCENTANDO
         // material no entalhe — o dual de De Morgan do mesmo arco.

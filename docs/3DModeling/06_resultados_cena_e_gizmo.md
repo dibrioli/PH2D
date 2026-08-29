@@ -9875,3 +9875,69 @@ existe na álgebra de campos desta casa.
 casara alguma coisa, então uma mutação que **reprovava** lia-se como *«filtro casou zero»* — seis das
 sete apareceram assim na primeira ronda. *Um controle de filtro tem de contar os passados **e** os
 reprovados.*
+
+---
+
+## §103 — W104-bis: ⭐⭐ AS MEIAS-LUAS NOS VALES DA ESTRELA — o corte do sector passava PELO vale (29/08)
+
+**O 2.º smoke da W104** (Enio, com foto): *«muito bom. apenas a estrela tem resultado ruim»* — as
+setas apontam para os cinco **vales**, onde havia uma meia-lua a cada um.
+
+### §103.1 — A causa: um plano auxiliar em cima da superfície
+
+Cada ponta da estrela é uma **pipa**: a cunha da ponta cortada por dois planos de **sector** (as
+divisórias que impedem a cunha de sair pelo lado oposto da peça). ⛔ Esses planos passam pela
+origem **e pelo vale** — e o vale é um ponto da **superfície**. Ali o `max` da cunha com o sector
+troca de ramo em cima da peça, e as duas pipas que a união vai fundir chegam ao encontro **cada uma
+com um vinco de campo**. O traçado sombreia pela normal do campo ⇒ a meia-lua.
+
+⭐ **A cura é dar FOLGA aos dois planos**: afastados de `round`, as pipas passam a **sobrepor-se** no
+vale em vez de se tocarem, e o único constrangimento activo lá é a aresta a sério.
+
+⚠️ **O tecto da folga é geométrico, e a medição bate-o**: os dois planos afastados cruzam-se a
+`δ/sin β` do centro **do lado oposto** da ponta, e acima de `inner` essa intrusão sai da peça. Com
+`δ = round` está sempre garantido — `star_round_limit < inner·sin β` por construção — e a varredura
+confirma: a `2·round` a forma parte, exactamente onde a conta diz.
+
+| folga | pior salto de normal (filete a metade / no máximo) | a forma |
+|---|---|---|
+| `0` (a W104) | `36,8°` / `35,0°` | OK |
+| **`1·round`** | **`25,4°` / `13,6°`** | **OK** |
+| `2·round` | 25,4° / 13,6° | ⛔ parte |
+| `3·round` | 25,4° / 87,4° | ⛔ parte |
+
+### §103.2 — ⛔ E a segunda cura foi medida e é INERTE
+
+A outra hipótese era o **disco** de enchimento interior, cuja fronteira passa exactamente pelos
+vales: recuá-lo `2·round` tira a curva de troca de dentro do alcance da mistura do aro. ⚠️ Com a
+folga do sector no sítio, recuá-lo deixa a leitura **byte a byte igual** (`1,0 %` · `25,4°` a meio
+filete, `0,0 %` · `13,6°` no máximo, com e sem). *Uma segunda cura que não move o número é mais uma
+coisa para manter, não meia cura.* ⇒ o disco fica como estava.
+
+### §103.3 — ⛔⛔ O gate de CONTAGEM não defendia a cura, e duas mutações provaram-no
+
+A folga **suaviza** sem mudar quantos pontos passam a barra de vinco: a fração fica em `1,0 %` com e
+sem ela ⇒ apagar a folga **sobrevivia** ao `the_fillet_reaches_every_edge_of_every_shape`. *Uma
+barra de contagem mede quantos sítios estão maus, e nunca quão mau é o pior.*
+
+⚠️ E uma barra global do **pior ângulo** não serve: ela é sensível à densidade da amostragem (o cone
+lê `11,8°` na tabela e `23,9°` na finura do gate) e, no filete máximo, o cone é uma forma
+**degenerada** — o filete come a tampa inteira e deixa um polo. ⇒ o gate novo é **dirigido**:
+`the_valley_of_a_star_meets_the_cap_without_a_crease` mede o pior salto **na região que o report
+nomeia** e traz o mecanismo no nome. Medido `13,6°`; sem a folga, `33,9°`; barra `20°`.
+
+⚠️ **E ele obrigou a travessia a mudar de contrato**: perguntar *«qual o pior salto NESTA região»*
+sobre a lista já **filtrada** de vincos mede o pior **vinco**, e quando a cura funciona a lista fica
+vazia — o gate passaria por **não ter olhado**. ⇒ a travessia devolve **todos** os pontos de
+superfície com o salto de cada um, e quem filtra é quem pergunta. O controle (`≥ 20` amostras na
+região) mata as duas mutações que exploram exactamente isso.
+
+### §103.4 — O que fica
+
+⏳ O `1,0 %` que sobra a meio filete está **nas pontas**, e não nos vales: a normal salta `25,3°`
+sobre `0,004` de arco, que é a curvatura de um filete ~2,3× mais **apertado** que o número pedido —
+a dependência do ângulo do §102.4, a aparecer como leitura marginal na barra de vinco. ⛔ Não é uma
+aresta viva, e as duas curas para ela continuam medidas e rejeitadas.
+
+**Provas de mutação: 4 de 4 mortas** — a folga apagada · a folga sem tecto (a forma parte) · a região
+do controle esvaziada · a travessia a voltar a filtrar.

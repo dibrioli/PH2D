@@ -77,8 +77,13 @@ fn normals(batch: &mut impl FnMut(&[[f64; 3]]) -> Vec<f64>, pts: &[[f64; 3]]) ->
         .collect()
 }
 
-/// ⭐ **A TRAVESSIA, uma só** — devolve os pontos sobre um vinco (com o ângulo de cada) e quantas
-/// amostras chegaram à superfície.
+/// ⭐ **A TRAVESSIA, uma só** — devolve **todos** os pontos que chegaram à superfície, cada um com o
+/// maior salto de normal que se mede à volta dele.
+///
+/// ⚠️ **Todos, e não só os que passam a barra de vinco**, e a diferença nasceu de uma mutação: um
+/// gate que pergunte *«qual o pior salto NESTA região»* sobre a lista já filtrada mede o pior
+/// **vinco**, e quando a cura funciona a lista fica vazia — o gate passa por não ter olhado. Quem
+/// filtra é quem pergunta.
 ///
 /// ⚠️ **A tabela e o gate correm esta MESMA travessia com finuras diferentes**, e a razão é medida:
 /// a `4096 × 6` o gate custava **6 s** em debug, e um teste que ficou lento é uma medição de custo
@@ -153,10 +158,7 @@ fn traverse(p: &Primitive, seeds: usize, ring: usize) -> (Vec<([f64; 3], f64)>, 
     let anel_n = normals(&mut batch, &anel);
     let dentro = batch(&pts);
 
-    // ⚠️ O pior ângulo é sobre **TODAS** as amostras, e não só sobre as que passam a barra: quando
-    // nada a passa, «o pior é zero» seria a leitura errada — o número que interessa ali é *quão
-    // perto do vinco a superfície ainda chega*.
-    let (mut vincos, mut total, mut pior) = (Vec::new(), 0_usize, 0.0_f64);
+    let (mut pontos, mut total, mut pior) = (Vec::new(), 0_usize, 0.0_f64);
     for (i, n) in normais.iter().enumerate() {
         // ⚠️ Só conta o ponto que **chegou** à superfície: uma semente que não convergiu mediria a
         // normal de um sítio qualquer.
@@ -171,21 +173,28 @@ fn traverse(p: &Primitive, seeds: usize, ring: usize) -> (Vec<([f64; 3], f64)>, 
             maior = maior.max(dot.acos().to_degrees());
         }
         pior = pior.max(maior);
-        if maior > CREASE_DEG {
-            vincos.push((pts[i], maior));
-        }
+        pontos.push((pts[i], maior));
     }
-    vincos.sort_by(|a, b| b.1.total_cmp(&a.1));
-    (vincos, total, pior)
+    pontos.sort_by(|a, b| b.1.total_cmp(&a.1));
+    (pontos, total, pior)
+}
+
+/// Os pontos que passam a barra de vinco — o filtro que cada consumidor aplica por si.
+fn only_creases(pontos: &[([f64; 3], f64)]) -> Vec<([f64; 3], f64)> {
+    pontos
+        .iter()
+        .filter(|(_, a)| *a > CREASE_DEG)
+        .copied()
+        .collect()
 }
 
 /// `(% da superfície sobre um vinco, pior ângulo, amostras que chegaram à superfície)`.
 fn probe_with(p: &Primitive, seeds: usize, ring: usize) -> (f64, f64, usize) {
-    let (vincos, total, pior) = traverse(p, seeds, ring);
+    let (pontos, total, pior) = traverse(p, seeds, ring);
     let frac = if total == 0 {
         f64::NAN
     } else {
-        100.0 * vincos.len() as f64 / total as f64
+        100.0 * only_creases(&pontos).len() as f64 / total as f64
     };
     (frac, pior, total)
 }
@@ -195,7 +204,7 @@ fn main_probe(p: &Primitive) -> (f64, f64, usize) {
 }
 
 fn crease_points(p: &Primitive) -> Vec<([f64; 3], f64)> {
-    traverse(p, 4096, 6).0
+    only_creases(&traverse(p, 4096, 6).0)
 }
 
 fn tangents(n: [f64; 3]) -> ([f64; 3], [f64; 3]) {
@@ -438,5 +447,60 @@ fn the_fillet_reaches_every_edge_of_every_shape() {
     assert!(
         com_aresta >= 5,
         "a sonda só viu aresta viva em {com_aresta} formas — ela deixou de ver arestas"
+    );
+}
+
+/// ⭐⭐⭐ **O VALE DA ESTRELA ENCONTRA A TAMPA SEM VINCO** — o gate do 2.º smoke do Enio
+/// (*«apenas a estrela tem resultado ruim»*, com meias-luas nos cinco vales).
+///
+/// # ⛔ Por que ele é DIRIGIDO, e não mais uma barra global
+///
+/// A cura — dar **folga** aos planos do sector, para que eles deixem de passar **pelo vale**, que é
+/// um ponto da superfície — **suaviza** sem mudar quantos pontos passam a barra de vinco: a fração
+/// fica em `1,0 %` com e sem ela, e **duas mutações sobreviveram** ao gate de contagem. *Uma barra de
+/// contagem mede quantos sítios estão maus, e nunca quão mau é o pior.*
+///
+/// ⚠️ E uma barra global do **pior ângulo** não serve: ela é sensível à densidade da amostragem (o
+/// cone lê `11,8°` na tabela e `23,9°` na finura do gate) e, no filete máximo, o cone é uma forma
+/// **degenerada** — o filete come a tampa inteira e deixa um polo. ⇒ o gate aponta ao sítio que o
+/// report nomeia, mede o **pior salto de normal** ali, e diz o mecanismo no nome.
+///
+/// Medido: **`13,6°`** com a folga, **`35,0°`** sem ela.
+#[test]
+fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
+    let (outer, inner, meia_altura) = (0.45_f64, 0.18, 0.25);
+    let base = Primitive::Star {
+        points: 5,
+        outer: outer as f32,
+        inner: inner as f32,
+        half_height: meia_altura as f32,
+        round: 0.0,
+    };
+    let p = with_round(&base, 0.999).expect("a estrela tem filete");
+    let (pontos, _, _) = traverse(&p, 2048, 6);
+    // O vértice de 3 vias: o vale, à altura da tampa. São cinco, e a simetria di-lo — basta medir a
+    // vizinhança de **todos** eles de uma vez, por raio e altura.
+    let beta = std::f64::consts::PI / 5.0;
+    let (mut pior_no_vale, mut na_regiao) = (0.0_f64, 0_usize);
+    for (c, ang) in &pontos {
+        let raio = (c[0] * c[0] + c[1] * c[1]).sqrt();
+        // A meia-lua vivia entre o raio do vale e um pouco além dele, junto à tampa.
+        if raio < inner * 1.6 && c[2].abs() > meia_altura * 0.7 {
+            na_regiao += 1;
+            pior_no_vale = pior_no_vale.max(*ang);
+        }
+    }
+    let _ = beta;
+    // ⛔ **O CONTROLE, e ele é o que impede o gate de passar por não ter olhado.** Um balde que
+    // ninguém enche lê-se como perfeito: se a amostragem deixar de cair na região do vale,
+    // `pior_no_vale` fica em zero e a afirmação abaixo passa **sem medir nada**.
+    assert!(
+        na_regiao >= 20,
+        "a sonda pôs {na_regiao} amostras na região do vale — poucas para afirmar o que se segue"
+    );
+    assert!(
+        pior_no_vale < 20.0,
+        "no encontro do vale com a tampa a normal salta {pior_no_vale:.1}° — as duas pipas chegam \
+         ao vale cada uma com o vinco do seu plano de sector, e a união funde os dois vincos"
     );
 }

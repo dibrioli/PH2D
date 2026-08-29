@@ -208,6 +208,15 @@ fn every_param_group_entry_names_a_param_the_node_declares() {
         } {
             declared.extend(op.manifest().params.iter().map(|p| p.name.to_string()));
         }
+        // ⚠️⚠️ **E os HINTS, que é onde os TEXT params vivem** — o `ParamSpec` é `f32`, então
+        // um `axiom`/`rules`/`curve` não está no manifesto, e o snapshot acima só traz as rows
+        // do estado em que este nó acabou de nascer. Um param **gateado** (o `source.lsystem`
+        // esconde a gramática no modo `Guided`, que é o default) não aparece em nenhum dos
+        // dois, e o censo acusava a seção dele de nomear um param inexistente.
+        // *Um censo que mede um estado não pode julgar uma tabela que vale em todos.*
+        if let Some(hints) = motion.registry.param_ui(id) {
+            declared.extend(hints.iter().map(|h| h.param.to_string()));
+        }
         for g in groups {
             if !declared.contains(g.param) {
                 bad.push(format!("{ty}: a seção {:?} nomeia {:?}", g.group, g.param));

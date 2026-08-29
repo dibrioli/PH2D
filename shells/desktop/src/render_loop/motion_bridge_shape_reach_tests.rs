@@ -105,6 +105,11 @@ const ALWAYS_READ: &[(&str, &str, &str)] = &[
         "branches",
         "a lista de ramos É o esqueleto que o nó constrói",
     ),
+    (
+        "motion.sub_uv",
+        "holds",
+        "o ritmo por quadro é lido em TODO modo — vazio é a ausência de ritmo, não outro modo,          e a sentinela da LUT cobre a tabela inteira exactamente para isso",
+    ),
 ];
 
 /// Todo param de forma do registry, com o widget que o veste.
@@ -121,6 +126,10 @@ fn shape_params(reg: &NodeRegistry) -> Vec<(&'static str, &'static str)> {
                     | ParamWidget::Gradient
                     | ParamWidget::Palette
                     | ParamWidget::Text
+                    // ⚠️ **O `File` viaja no MESMO canal de texto** (um caminho é uma string
+                    // no `Graph`, doc 32), então ele é um param de forma como os outros — e
+                    // ficar de fora fazia o `ALWAYS_READ` dele parecer uma entrada órfã.
+                    | ParamWidget::File { .. }
             ) {
                 out.push((m.name, h.param));
             }

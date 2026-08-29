@@ -329,30 +329,29 @@ fn every_plant_declares_the_grammar_mode_it_authors() {
     );
 }
 
-/// ⭐⭐⭐ **A PLANTA GUIADA DA CENA DESENHA, AO BIT, O QUE A GRAMÁTICA DE FÁBRICA DESENHA.**
+/// ⭐⭐⭐ **A COLUNA GUIADA DESENHA O QUE OS SLIDERS DELA DIZEM, AO BIT.**
 ///
-/// ⚠️ É a afirmação mais forte que esta wave pode fazer: *os sliders não são uma segunda
-/// planta parecida — eles exprimem a MESMA*. O guiado emite `A(s*length_scale)` e a fábrica
-/// traz o literal `0.7`; com o slider em [`GUIDED_LENGTH_SCALE`] as duas expressões são a
-/// mesma, e a derivação e a tartaruga fazem as mesmas contas na mesma ordem.
+/// ⚠️⚠️ **A 1.ª redacção comparava-a com a gramática de FÁBRICA**, e isso só era verdade
+/// enquanto a coluna deixava os quatro sliders nos defaults — que era exactamente o defeito
+/// que o crítico de completude da auditoria de 2026-08-29 nomeou: *o smoke da feature era uma
+/// configuração em que a feature é indistinguível da sua ausência.* Assim que a coluna passou
+/// a demonstrar `Branches = 3` e `Trunk Segments = 2`, aquele gate ficou vermelho — e a
+/// vermelhidão **é a cura**, não a regressão.
+///
+/// ⇒ O oráculo passou a ser a gramática que a própria coluna manda fazer
+/// ([`ls::grammar_for`]), lida dos params do grafo REAL. A afirmação de identidade contra a
+/// gramática de fábrica não se perdeu: mudou de casa para
+/// `crates/ph2d-node-source-lsystem/tests/presets_frame_themselves.rs`, onde é uma lei do nó
+/// em vez de uma propriedade desta cena.
 ///
 /// ⚠️ **Ao BIT e não «parecido»**: uma barra frouxa aceitaria outra associação de
-/// multiplicações, que é como o `rig.fk` já apanhou 1 ULP nesta crate. E a coluna 4 depende
-/// disto — ela copia a 1 por gramática, e o gate da gravidade compara as duas.
-///
-/// ⚠️⚠️ **A 1.ª redacção deste gate SOBREVIVEU a apagar a linha do `length_scale` da CENA**
-/// (mutação MS9): ela montava os dois lados com `probe_build` e a constante escrita à mão, e
-/// por isso media a **LEI** — que continuava verdadeira — em vez da cena. *Um gate sobre uma
-/// cena tem de cozinhar a cena;* aqui o lado guiado sai do grafo real e o oráculo lê os
-/// params **do mesmo grafo**, para que a única coisa escrita à mão seja a gramática que a
-/// coluna 4 usa.
+/// multiplicações, que é como o `rig.fk` já apanhou 1 ULP nesta crate.
 #[test]
 fn the_guided_plant_draws_exactly_what_the_factory_grammar_draws() {
     let k = PLANTS
         .iter()
         .position(|p| p.guided)
         .expect("ha' uma guiada");
-    let (axiom, rules) = (PLANTS[k].axiom, PLANTS[k].rules);
 
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
@@ -367,16 +366,28 @@ fn the_guided_plant_draws_exactly_what_the_factory_grammar_draws() {
         other => panic!("esperava instancias, veio {other:?}"),
     };
 
-    // E o ORÁCULO lê os params DO MESMO NÓ — só a gramática é que vem de fora.
+    // E o ORÁCULO lê os params DO MESMO NÓ — nada escrito à mão aqui.
     let over = doc
         .graph
         .node_param_overrides(node)
         .cloned()
         .unwrap_or_default();
-    let gens = over
-        .get(ls::param::GENERATIONS)
-        .copied()
-        .expect("a cena poe as geracoes");
+    let v = |name: &str, fallback: f32| over.get(name).copied().unwrap_or(fallback);
+    let (axiom, rules) = ls::grammar_for(
+        v(ls::param::BRANCHES, 2.0),
+        v(ls::param::SEGMENTS, 1.0),
+        v(ls::param::VARIATION, 0.0),
+        v(ls::param::BEND, 0.0),
+    );
+    // ⚠️ **O CONTROLE que impede este gate de ser uma tautologia**: a coluna tem de estar de
+    // facto a demonstrar alguma coisa. Com os quatro nos defaults, o oráculo seria a gramática
+    // de fábrica e o gate voltaria a medir a ausência da feature.
+    assert!(
+        (v(ls::param::BRANCHES, 2.0) - 2.0).abs() > 0.5
+            || (v(ls::param::SEGMENTS, 1.0) - 1.0).abs() > 0.5,
+        "a coluna guiada voltou aos defaults — ela deixou de DEMONSTRAR o modo guiado"
+    );
+
     let mut authored: Vec<(&str, f32)> = vec![(ls::param::MODE, ls::MODE_GRAMMAR as f32)];
     for name in [
         ls::param::SEED,
@@ -386,11 +397,15 @@ fn the_guided_plant_draws_exactly_what_the_factory_grammar_draws() {
         ls::param::STEP,
         ls::param::LENGTH_SCALE,
     ] {
-        if let Some(v) = over.get(name) {
-            authored.push((name, *v));
+        if let Some(x) = over.get(name) {
+            authored.push((name, *x));
         }
     }
-    let oracle = ls::probe_build(axiom, rules, gens, &authored);
+    let gens = over
+        .get(ls::param::GENERATIONS)
+        .copied()
+        .expect("a cena poe as geracoes");
+    let oracle = ls::probe_build(axiom, &rules, gens, &authored);
 
     assert_eq!(
         guided.count(),
@@ -407,8 +422,7 @@ fn the_guided_plant_draws_exactly_what_the_factory_grammar_draws() {
         assert_eq!(
             u.map(f32::to_bits),
             w.map(f32::to_bits),
-            "o elemento {i} difere: {u:?} contra {w:?} — a coluna guiada da cena deixou de \
-             exprimir a gramatica de fabrica"
+            "o elemento {i} difere: {u:?} contra {w:?}"
         );
     }
 }

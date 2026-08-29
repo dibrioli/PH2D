@@ -190,6 +190,19 @@ fn growth_orientation_is_not_a_skeleton_and_that_is_the_trade() {
     let reg = registry();
     let mut g = Graph::new();
     let l = g.add_node("source.lsystem");
+    // ⚠️⚠️ **ESTE TESTE ESTAVA A MEDIR OUTRA PLANTA** — auditoria de 2026-08-29. Ele é o único
+    // do ficheiro que não passa pelo `both_sides`, e por isso não declarava o modo; desde que o
+    // `Mode` nasce `Guided`, os dois `set_text_param` abaixo **não eram lidos**. Medido: a
+    // gramática que ele NOMEIA dá `126` elementos e `62` bifurcações, e o que ele de facto
+    // media eram `8` elementos e `3` bifurcações — byte-idênticos ao guiado com texto vazio.
+    // O ⚠️⚠️ do `both_sides`, dez linhas acima, descreve exactamente esta armadilha, e este
+    // teste ficou de fora dele. *Um aviso escrito ao lado do sítio que ele descreve não é uma
+    // defesa — só um censo é.*
+    g.set_param(
+        l,
+        ph2d_node_source_lsystem::param::MODE,
+        ph2d_node_source_lsystem::MODE_GRAMMAR as f32,
+    );
     g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, "F");
     g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, "F -> F[+F]F[-F]F");
     g.set_param(l, ph2d_node_source_lsystem::param::GENERATIONS, 3.0);
@@ -215,5 +228,47 @@ fn growth_orientation_is_not_a_skeleton_and_that_is_the_trade() {
         "no modo de crescimento o rig.fk TEM de re-resolver a planta noutro sitio — se ele nao \
          mexesse, ou o default deixou de ser `Growth` ou a coluna `rot` deixou de ser o angulo \
          de mundo, e a forma carimbada voltou a sair em pe'"
+    );
+}
+
+/// ⭐⭐⭐ **O CENSO que impede a terceira vez** — todo `source.lsystem` deste ficheiro que
+/// escreve uma gramática TEM de declarar o modo.
+///
+/// ⚠️ Em 2026-08-29 o default do nó passou a ser `Guided`, e o `both_sides` ganhou um ⚠️⚠️ a
+/// dizê-lo. Mesmo assim o `growth_orientation_is_not_a_skeleton_and_that_is_the_trade` ficou
+/// de fora e passou a medir 8 elementos em vez de 126 — **verde, sobre outra planta**.
+/// *Um aviso escrito ao lado do sítio que ele descreve protege quem já o leu; um censo
+/// protege quem não leu.*
+///
+/// Ele lê o FONTE deste ficheiro, que é a pergunta que o texto responde exactamente: *escreve
+/// um `RULES_PARAM` e não escreve o `MODE`?*
+#[test]
+fn every_fixture_in_this_file_that_authors_a_grammar_declares_the_mode() {
+    // ⚠️ O `file!()` é relativo à RAIZ da workspace e o cwd de um teste é a pasta do crate —
+    // ler `file!()` directamente dá `NotFound`. O nome sai dele (nunca escrito duas vezes), a
+    // pasta sai do `CARGO_MANIFEST_DIR`.
+    let name = std::path::Path::new(file!())
+        .file_name()
+        .expect("o ficheiro tem nome");
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join(name);
+    let src = std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("o ficheiro le-se a si mesmo ({}): {e}", path.display()));
+    let writes_rules = src
+        .matches("set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM")
+        .count();
+    let declares_mode = src
+        .matches("ph2d_node_source_lsystem::param::MODE,")
+        .count();
+    // ⚠️ O CONTROLE: se a varredura casar ZERO, ela responde «está tudo bem» para sempre.
+    assert!(
+        writes_rules >= 2,
+        "a varredura so' achou {writes_rules} fixturas a escrever gramatica — ela esta' partida"
+    );
+    assert!(
+        declares_mode >= writes_rules,
+        "{writes_rules} fixturas escrevem uma gramatica e so' {declares_mode} declaram o modo \
+         — a que nao declara mede a derivada dos sliders, nao o texto que escreveu"
     );
 }

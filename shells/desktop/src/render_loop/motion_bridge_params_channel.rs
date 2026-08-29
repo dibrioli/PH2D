@@ -187,18 +187,57 @@ pub(in crate::render_loop::motion_bridge) fn apply_lsystem_preset(
     if type_name != ph2d_node_source_lsystem::MANIFEST.name {
         return;
     }
-    let table = ph2d_node_source_lsystem::PRESETS;
-    let Some((_, axiom, rules)) = table.get(preset.round().max(0.0) as usize) else {
+    let Some(p) = ph2d_node_source_lsystem::PRESETS.get(preset.round().max(0.0) as usize) else {
+        // ⚠️ O `PRESET_CUSTOM` cai aqui, e o silêncio é a lei: *"nenhum destes"* não escreve
+        // nada. Ele é o rótulo em que o selector aterra quando outra coisa mexeu no texto.
         return;
     };
     motion
         .doc
         .graph
-        .set_text_param(nid, ph2d_node_source_lsystem::AXIOM_PARAM, *axiom);
+        .set_text_param(nid, ph2d_node_source_lsystem::AXIOM_PARAM, p.axiom);
     motion
         .doc
         .graph
-        .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, *rules);
+        .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, p.rules);
+    // ⭐⭐⭐ **E O ENQUADRAMENTO** — auditoria de 2026-08-29. Um molde que escrevesse só o
+    // texto entregava a curva de Koch a **25°** (ela é 90 por definição) e a **1290 unidades**
+    // de mundo, numa coluna de ~4: o dono do produto viu «resultado questionável» em sete dos
+    // oito, e era isto. Os quatro números vivem na tabela, medidos, e são escritos no MESMO
+    // passo de undo que o próprio molde.
+    for (name, v) in [
+        (ph2d_node_source_lsystem::param::ANGLE, p.angle),
+        (ph2d_node_source_lsystem::param::GENERATIONS, p.generations),
+        (ph2d_node_source_lsystem::param::STEP, p.step),
+        (ph2d_node_source_lsystem::param::WIDTH, p.width),
+    ] {
+        motion.doc.graph.set_param(nid, name, v);
+    }
+}
+
+/// **O selector aterra em `Custom`** — chamado por todo escritor de texto que NÃO é um molde.
+///
+/// ⚠️ Sem isto o `Preset` mente. Ele é um `ParamSpec` persistido que o `build` **nunca lê**:
+/// todo o efeito de um molde vive nesta shell, então o número guardado é o eco de um gesto
+/// passado. Três escritores mudam o texto sem lhe tocar — o [`bake_lsystem_grammar`], a edição
+/// à mão da caixa, e uma cena —, e o estado de chegada NORMAL (abrir em `Guided`, converter)
+/// deixava o selector a dizer «Tree» sobre uma planta **76 % mais alta**. Pior: clicar em
+/// «Tree» era mudo, porque o despacho exige que o valor MUDE para correr o molde.
+///
+/// ⇒ *Um selector só pode nomear um molde enquanto o texto for o daquele molde.*
+pub(in crate::render_loop::motion_bridge) fn mark_lsystem_custom(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+) {
+    if type_name != ph2d_node_source_lsystem::MANIFEST.name {
+        return;
+    }
+    motion.doc.graph.set_param(
+        nid,
+        ph2d_node_source_lsystem::param::PRESET,
+        ph2d_node_source_lsystem::PRESET_CUSTOM as f32,
+    );
 }
 
 /// ⭐⭐⭐ **ASSAR o modo guiado no texto** — o que acontece quando o artista muda `Mode` de
@@ -217,8 +256,19 @@ pub(in crate::render_loop::motion_bridge) fn apply_lsystem_preset(
 ///
 /// ⚠️ **Só na TRANSIÇÃO, e é o call site que a mede.** Se isto corresse a cada edição com o
 /// modo já em `Grammar`, cada mexida num slider escondido reescreveria por cima do que o
-/// artista digitou. O caminho de volta (`Grammar → Guided`) **não apaga nada**: o texto fica
-/// intacto, e voltar a `Grammar` devolve-o.
+/// artista digitou.
+///
+/// ⚠️⚠️ **E a nota que aqui estava MENTIA** (auditoria de 2026-08-29): ela dizia que *"o
+/// caminho de volta não apaga nada: o texto fica intacto, e voltar a `Grammar` devolve-o"*.
+/// Não devolve — o `bake` dispara em **toda** transição `Guided → Grammar`, então
+/// `Grammar → Guided → Grammar` reescreve por cima da gramática autorada.
+///
+/// ⇒ **E é assim que tem de ser, não é o defeito.** Enquanto o artista esteve em `Guided`, o
+/// que ele viu no ecrã foi a planta dos sliders; devolver-lhe um texto que desenha OUTRA
+/// coisa faria a conversão mudar a peça, que é precisamente o que uma conversão não pode
+/// fazer. O preço é a gramática autorada, e a rede é o undo (**um** `Ctrl+Z` por transição —
+/// a escrita cai no mesmo laço de intents e o registo é por diff pós-quadro).
+/// ⛳ *Se o dono do produto preferir o contrário, é decisão dele e não desta função.*
 ///
 /// ⚠️ **Corre dentro do MESMO passo de undo** que o `set_param` do modo — o `Ctrl+Z` devolve
 /// o par (modo, texto) de uma vez. É a mesma nota do [`apply_lsystem_preset`].
@@ -246,6 +296,8 @@ pub(in crate::render_loop::motion_bridge) fn bake_lsystem_grammar(
         .doc
         .graph
         .set_text_param(nid, ph2d_node_source_lsystem::RULES_PARAM, &rules);
+    // O texto assado não é molde nenhum — ver [`mark_lsystem_custom`].
+    mark_lsystem_custom(motion, nid, type_name);
 }
 
 #[cfg(test)]

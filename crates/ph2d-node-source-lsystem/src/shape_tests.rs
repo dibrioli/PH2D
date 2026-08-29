@@ -149,26 +149,49 @@ fn the_bend_shows_up_once_per_segment_and_only_when_it_is_not_zero() {
 /// escolha de regra fica enviesada de uma maneira que ninguém autorou: o `pick` normaliza
 /// pelo total, então um total de `1,3` faria o `Variation` mexer também na PROPORÇÃO entre
 /// as duas alternativas.
+/// ⚠️⚠️ **A 1.ª redacção deste gate ESCREVIA O PRÓPRIO ORÁCULO, e ficava verde exactamente
+/// no caso partido** (auditoria de 2026-08-29). Ela lia os pesos do texto com um
+/// `str::parse::<f32>()` seu, e em `v = 1,0` o texto somava `1,0`
+/// (`0.000 + 0.500 + 0.500`) — enquanto **o motor** somava `2,0`, porque o `(0.000)` não
+/// passava a guarda `v > 0.0` e virava o neutro. *Dois leitores do mesmo texto, e o gate
+/// escolheu o que não está no produto.*
+///
+/// ⇒ O oráculo passou a ser [`crate::probe_rule_weights`], que chama o `parse_rules` do
+/// produto. E a contagem deixou de ser `3` fixo: em `v = 1,0` a regra nominal **não é
+/// escrita**, porque um peso zero é a ausência da regra.
 #[test]
-fn variation_gives_three_weighted_rules_whose_weights_close_at_one() {
+fn the_weights_the_engine_reads_always_close_at_one() {
     assert_eq!(rules(&factory()).matches("A(s) ->").count(), 1);
-    for v in [0.1f32, 0.5, 1.0] {
+    for v in [0.1f32, 0.5, 0.999, 1.0] {
         let r = rules(&sh(2.0, 1.0, v, 0.0));
-        assert_eq!(r.matches("A(s) ->").count(), 3, "v = {v}: {r}");
-        let total: f32 = r
-            .split("A(s) -> (")
-            .skip(1)
-            .map(|t| {
-                t.split(')')
-                    .next()
-                    .expect("o peso fecha")
-                    .parse::<f32>()
-                    .expect("o peso e um numero")
-            })
-            .sum();
+        let w = crate::probe_rule_weights(&r);
+        assert!(
+            w.len() >= 2,
+            "v = {v}: o motor le' {} regras em {r}",
+            w.len()
+        );
+        let total: f32 = w.iter().sum();
         assert!(
             (total - 1.0).abs() < 2e-3,
-            "v = {v}: os pesos somam {total}"
+            "v = {v}: o MOTOR soma {total} (o texto e' {r})"
+        );
+        // ⚠️ E nenhuma das que o motor lê pode ter peso zero — um intervalo vazio no sorteio
+        // é uma regra que o texto anuncia e que nunca sai.
+        assert!(w.iter().all(|x| *x > 0.0), "v = {v}: peso zero em {r}");
+        // ⭐⭐ **E O TEXTO NÃO ANUNCIA UMA REGRA QUE O MOTOR DESCARTA.**
+        //
+        // ⚠️ Sem esta metade o gate media só o motor, e uma mutação que devolvesse o
+        // produtor a escrever `(0.000)` **SOBREVIVIA**: o parser (que hoje falha fechado)
+        // limpava a sujidade e a soma continuava a fechar. Mas o texto assado é o que o
+        // artista vai LER em `Grammar` para aprender a notação — uma regra lá dentro que
+        // nunca sai ensina-lhe uma coisa falsa. *Contar o que foi feito não é contar o que
+        // foi entregue.*
+        assert_eq!(
+            r.matches("A(s) ->").count(),
+            w.len(),
+            "v = {v}: o texto anuncia {} regras e o motor le' {} — {r}",
+            r.matches("A(s) ->").count(),
+            w.len()
         );
     }
 }

@@ -272,7 +272,31 @@ pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
         let Some(pred) = parse_pred(pred_src) else {
             continue;
         };
-        let cond = cond_src.and_then(|c| ph2d_expr_parse::parse(c).ok());
+        // ⚠️⚠️ **FALHA FECHADA, como o predecessor logo acima** — auditoria de 2026-08-29.
+        //
+        // A 1.ª redacção era `cond_src.and_then(|c| parse(c).ok())`, e um `None` lê-se a
+        // jusante (`derive.rs`) como *«esta regra não TEM condição»*. Ou seja: **qualquer erro
+        // de digitação numa condição removia o travão**, em silêncio, e a regra passava a
+        // disparar sempre. Medido, com uma gramática e um caractere de diferença, a 14
+        // gerações:
+        //
+        // | condição | módulos |
+        // |---|---|
+        // | (sem condição) | 16 384 |
+        // | `n < 6` — compila | **32** |
+        // | `n <= 6` — NÃO compila | 16 384 ← **512×**, e byte-a-byte «sem condição» |
+        // | vazia · truncada | 16 384 |
+        //
+        // *Três sub-campos da mesma regra tinham três políticas de erro diferentes.* Agora têm
+        // uma: o que não se entende **descarta a regra**, que é o que já acontecia com o
+        // predecessor — a planta muda de forma em vez de perder um travão em silêncio.
+        let cond = match cond_src {
+            None => None,
+            Some(c) => match ph2d_expr_parse::parse(c) {
+                Ok(e) => Some(e),
+                Err(_) => continue,
+            },
+        };
 
         // ── cauda: [(peso)] sucessor ──
         let t = tail.trim_start();
@@ -280,12 +304,24 @@ pub(crate) fn parse_rules(src: &str) -> Vec<Rule> {
             Some(after) => match after.split_once(')') {
                 Some((w, rest)) => match w.trim().parse::<f32>() {
                     Ok(v) if v.is_finite() && v > 0.0 => (v, rest),
-                    // ⚠️ Um `(…)` que não é um número é a lista de argumentos de um módulo
-                    // sem letra — malformado. A cauda fica inteira e o parser de sucessor
-                    // lida com ela; o peso é o neutro.
-                    _ => (1.0, t),
+                    // ⚠️⚠️ **E aqui a falha ABERTA custava DUAS vezes.** O `_ => (1.0, t)` dava
+                    // ao peso ilegível o neutro `1,0` — o **maior** de três pesos típicos, logo
+                    // a regra mal escrita passava a ser a mais provável — **e** devolvia a
+                    // cauda com os parênteses lá dentro, que o `parse_succ` interpreta como
+                    // símbolos. Medido, com uma regra só, 4 gerações:
+                    //
+                    // | cauda | módulos | caixa |
+                    // |---|---|---|
+                    // | `F[+F]F` (controlo) | 82 | 2,59 × 8,00 |
+                    // | `(0.001) F[+F]F` legal | 82 | 2,59 × 8,00 |
+                    // | `(40%) F[+F]F` | **1** | **0,00 × 0,00** ← a planta INTEIRA apagada |
+                    // | `(-0.5) F[+F]F` | 82 | 5,15 × 3,59 ← outra planta |
+                    //
+                    // O `%` é o **corte** e o `-`/`+` viram a tartaruga: o texto do peso vira
+                    // desenho. ⇒ mesma política do predecessor e da condição.
+                    _ => continue,
                 },
-                None => (1.0, t),
+                None => continue,
             },
             None => (1.0, t),
         };

@@ -63,6 +63,13 @@ const GROW_MIN: f32 = 1.0;
 /// ALTURA da planta, então o número aqui responde a *«dá para ver?»* e não a *«funciona?»*.
 const GRAVITY: f32 = 35.0;
 
+/// Quantos rebentos a coluna guiada abre — **3, e não o default 2**, para que a coluna
+/// DEMONSTRE o slider em vez de o deixar no valor que já existia.
+const GUIDED_BRANCHES: f32 = 3.0;
+/// E quanto de tronco limpo antes da primeira bifurcação — o outro slider que só este modo
+/// tem, e o que mais muda a silhueta.
+const GUIDED_SEGMENTS: f32 = 2.0;
+
 /// ⭐ **O número que torna a planta GUIADA idêntica à gramática de fábrica.**
 ///
 /// O modo guiado emite `A(s*length_scale)`; a gramática de fábrica traz o literal `0.7` lá
@@ -99,7 +106,7 @@ pub(crate) struct Plant {
 /// entre elas uma afirmação sobre a estocástica em vez de sobre duas gramáticas.
 pub(crate) const PLANTS: &[Plant] = &[
     Plant {
-        label: "1. GUIADA por sliders",
+        label: "1. GUIADA: 3 ramos, tronco de 2",
         axiom: ls::DEFAULT_AXIOM,
         rules: ls::DEFAULT_RULES,
         generations: 6.0,
@@ -214,6 +221,15 @@ pub(crate) fn build_lsystem_demo_document(
         // ignorados, a cena a compilar e a não provar nada.
         if p.guided {
             g.set_param(l, ls::param::MODE, ls::MODE_GUIDED as f32);
+            // ⭐⭐ **E ELA MEXE NOS SLIDERS QUE SÃO O MODO** — achado do crítico de completude
+            // da auditoria de 2026-08-29: a 1.ª versão desta coluna deixava `Branches`,
+            // `Trunk Segments`, `Variation` e `Bend` nos DEFAULTS, então ela desenhava
+            // exactamente a planta que o nó já fazia antes da feature existir. *Um smoke em
+            // que a feature é indistinguível da ausência dela ensina que ela não foi
+            // construída* — e o gate que havia (`every_plant_declares_the_grammar_mode...`)
+            // media a DECLARAÇÃO, não a demonstração.
+            g.set_param(l, ls::param::BRANCHES, GUIDED_BRANCHES);
+            g.set_param(l, ls::param::SEGMENTS, GUIDED_SEGMENTS);
             // ⭐ **E este é o número que torna a derivada IDÊNTICA à gramática de fábrica.**
             // O guiado emite `A(s*length_scale)`; a gramática de fábrica tem o literal `0.7`
             // lá dentro. Com o slider em `0,7` as duas expressões são a mesma, e o gate

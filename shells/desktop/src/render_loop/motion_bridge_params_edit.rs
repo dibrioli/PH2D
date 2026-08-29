@@ -161,10 +161,18 @@ pub(super) fn apply_param_edits(
                 // channel (docs/Motion Nodes/32-33).
                 MotionParamIntent::SetTextParam { node, param, value } => {
                     let nid = NodeId(node);
-                    if motion.doc.graph.node(nid).is_none() {
+                    let Some(inst) = motion.doc.graph.node(nid) else {
                         continue;
-                    }
+                    };
+                    // ⭐ Editar a gramática à mão faz o selector de moldes aterrar em `Custom`
+                    // — ele nomeava um molde cujo texto já não estava lá (auditoria 29/08).
+                    let type_name = (param == ph2d_node_source_lsystem::AXIOM_PARAM
+                        || param == ph2d_node_source_lsystem::RULES_PARAM)
+                        .then(|| inst.type_name.clone());
                     motion.doc.graph.set_text_param(nid, param, value);
+                    if let Some(tn) = type_name {
+                        super::mark_lsystem_custom(motion, nid, &tn);
+                    }
                     motion.pump.mark_dirty();
                     nid
                 }

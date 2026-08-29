@@ -184,10 +184,17 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::ORIENT,
             default: 0.0,
         },
-        // O molde carregado: um `0` é a árvore de fábrica, que é o que um nó novo já é.
+        // ⚠️⚠️ **O default é o `Custom`, e não o molde `0`** — auditoria de 2026-08-29.
+        // Desde que o `Mode` nasce `Guided`, «o que um nó novo já é» deixou de ser a gramática
+        // do Tree e passou a ser a derivada dos sliders (`grammar_for(2,1,0,0)`), que é OUTRA
+        // planta — 76 % mais alta, medido. Um selector a dizer «Tree» sobre ela é o painel a
+        // mentir sobre o próprio estado, que é exactamente o que o gate
+        // `the_first_preset_is_what_a_fresh_node_already_is` dizia proibir enquanto a premissa
+        // dele era verdadeira. *O `Custom` é a resposta honesta a «que molde é este?» quando
+        // não é nenhum.*
         ParamSpec {
             name: param::PRESET,
-            default: 0.0,
+            default: PRESET_CUSTOM as f32,
         },
         // ⚠️ **`0` = `Guided`, e o default é a resposta ao report de 2026-08-29.** Um nó
         // recém-dropado abre com sliders de forma; a gramática está a UM clique, e é ela
@@ -270,31 +277,206 @@ pub const ORIENT_LABELS: &[&str] = &["Growth", "Local"];
 /// prova o contrário.* A cura é o [`crate::shape`]: os moldes ficam, mas atrás deles passa a
 /// haver um modo GUIADO, que é o default.
 ///
+/// ⚠️⚠️ **E UM MOLDE NÃO É SÓ UM TEXTO** — auditoria de 2026-08-29, sobre o report do Enio
+/// (*"o modo tree funciona aparentemente bem. os demais tem resultado questionável"*).
+///
+/// A 1.ª tabela escrevia **só** o axioma e as regras, e deixava por escrever tudo o resto que
+/// aquela figura EXIGE. Medido, com os defaults do painel, pela bancada
+/// [`examples/preset_report.rs`](../../examples/preset_report.rs):
+///
+/// | molde  | `maior/step` | tamanho de mundo | o que ficava a mentir |
+/// |---|---|---|---|
+/// | Tree   |   2,7 | 1,34 | — |
+/// | Fern   |   3,9 | 1,93 | — |
+/// | Wild   |   3,7 | 1,84 | — |
+/// | Sprig  |   3,4 | 1,68 | o `Angle` é **byte-inerte** (família C da auditoria) |
+/// | Dragon |  25,2 | 12,59 | pede **90°** e chegava a 25 |
+/// | Weed   |  60,1 | 30,07 | — |
+/// | Bush   | 243,0 | 121,50 | — |
+/// | Koch   | 2581,8 | **1290,90** | pede **90°**; 322× a coluna da cena |
+///
+/// ⭐ **963× entre dois itens do mesmo selector**, e uma coluna da cena `=108` tem ~4 unidades.
+///
+/// ⇒ O molde passa a carregar o **enquadramento**: o ângulo que a figura exige, as gerações em
+/// que ela se lê, e o par `step`/`width` que a põe do mesmo tamanho dos irmãos.
+///
+/// ⚠️ **O `step` e o `width` CONTAM-SE, não se escolhem.** A razão `maior_dimensão / step` é
+/// invariante à escala, então o passo sai de `step = step_base · alvo ÷ razão_medida`, com o
+/// **alvo = mediana dos quatro que o dono já aceitou** (`3,522`). Os oito enquadram hoje em
+/// **1,76 unidades de mundo**, medido. E o `width` sai de `0,321 · step` — a razão da única
+/// configuração que ele aprovou (a coluna da cena `=108`, `width 0,09` sobre `step 0,28`).
+/// Sem ela a cura seria meia: a Koch a 4 gerações tem **626** elementos, e o renderer desenha
+/// cada um como um ponto de raio `size` — com o `width` de fábrica saía um borrão sólido.
+///
+/// ⛔ **O TEXTO de cada molde fica INTOCADO**, e é uma recusa deliberada: `F -> F+F-F-F+F` é a
+/// notação de Lindenmayer, e reescrevê-la em forma paramétrica (para ganhar o `!` e o `"`)
+/// tornaria o molde incompatível com o que se copia de um tutorial. O preço declarado é que
+/// nos quatro clássicos o `Width Scale` e o `Length Scale` **não têm consumidor** — é o que o
+/// campo [`Preset::reads`] declara, e é o painel que os esconde.
+///
 /// ⚠️ **O molde `0` é o de fábrica**, para um nó recém-dropado e o selector concordarem.
-pub const PRESETS: &[(&str, &str, &str)] = &[
-    ("Tree", DEFAULT_AXIOM, DEFAULT_RULES),
-    (
-        "Fern",
-        "A(step)",
-        "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)",
-    ),
-    ("Bush", "F", "F -> F[+F]F[-F]F"),
-    ("Weed", "X", "X -> F[+X]F[-X]+X ; F -> FF"),
-    (
-        "Wild",
-        "A(step)",
-        "A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)] ; \
-         A(s) -> (0.35) F(s)![+A(s*0.66)]-A(s*0.78) ; \
-         A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)]",
-    ),
-    ("Koch", "F", "F -> F+F-F-F+F"),
-    ("Dragon", "F", "F -> F+G ; G -> F-G"),
-    ("Sprig", "A(step)", "A(s) -> F(s)[+J][-J]!A(s*0.8) ; J -> J"),
+pub struct Preset {
+    pub label: &'static str,
+    pub axiom: &'static str,
+    pub rules: &'static str,
+    /// O ângulo que a figura EXIGE. Koch e Dragon são `90` **por definição**, não por gosto.
+    pub angle: f32,
+    /// As gerações em que a figura se lê. Um dragão só é um dragão a partir de ~10.
+    pub generations: f32,
+    /// O passo que põe esta figura do tamanho dos irmãos — DERIVADO, ver a nota acima.
+    pub step: f32,
+    /// E a espessura que a mantém uma linha em vez de um borrão — `0,321 · step`.
+    pub width: f32,
+    /// **Que knobs de interpretação este texto de facto LÊ.** Uma gramática sem `!` ignora o
+    /// `Width Scale`; uma sem `"` ignora o `Length Scale`. O painel esconde o que o molde não
+    /// lê, em vez de o pintar inerte.
+    pub reads: Reads,
+}
+
+/// Os símbolos de interpretação que uma gramática contém — e portanto os knobs que ela honra.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Reads {
+    /// Contém `!` ⇒ o `Width Scale` age.
+    pub width_scale: bool,
+    /// Contém `"` ⇒ o `Length Scale` age.
+    pub length_scale: bool,
+}
+
+impl Reads {
+    /// ⚠️ **DERIVADO do texto, nunca declarado à mão** — um campo escrito à mão seria uma
+    /// segunda resposta à mesma pergunta, e envelheceria na primeira vez que alguém editasse
+    /// uma regra. Há gate a comparar os dois (`what_each_preset_reads_is_derived_from_its_text`).
+    #[must_use]
+    pub const fn of(rules: &str) -> Self {
+        let b = rules.as_bytes();
+        let (mut i, mut bang, mut quote) = (0usize, false, false);
+        while i < b.len() {
+            if b[i] == b'!' {
+                bang = true;
+            }
+            if b[i] == b'"' {
+                quote = true;
+            }
+            i += 1;
+        }
+        Self {
+            width_scale: bang,
+            length_scale: quote,
+        }
+    }
+}
+
+/// ⚠️ **O ÍNDICE `CUSTOM` é o último, e ele não é um molde** — é *"nenhum destes"*.
+///
+/// Sem ele o selector MENTE: `preset` é um `ParamSpec` persistido que o `build` **nunca lê**,
+/// e três escritores mudam o texto sem lhe tocar (o `bake` do modo guiado, a edição à mão da
+/// caixa, e uma cena). O estado de chegada normal — abrir em `Guided` e converter — deixava o
+/// selector a dizer «Tree» sobre uma planta **76% mais alta**, com o clique em «Tree» mudo
+/// (a guarda de igualdade do despacho). *Um número que é o eco de um gesto passado não é um
+/// facto sobre a planta.*
+pub const PRESET_CUSTOM: usize = PRESETS.len();
+
+pub const PRESETS: &[Preset] = &[
+    Preset {
+        label: "Tree",
+        axiom: DEFAULT_AXIOM,
+        rules: DEFAULT_RULES,
+        angle: 25.0,
+        generations: 5.0,
+        step: 0.658,
+        width: 0.212,
+        reads: Reads::of(DEFAULT_RULES),
+    },
+    Preset {
+        label: "Fern",
+        axiom: "A(step)",
+        rules: "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)",
+        angle: 25.0,
+        generations: 5.0,
+        step: 0.456,
+        width: 0.147,
+        reads: Reads::of("A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)"),
+    },
+    // ABOP fig. 1.24: o arbusto clássico lê-se a **4** gerações (a 5 são 3 126 módulos), e o
+    // ângulo do livro é 25,7°.
+    Preset {
+        label: "Bush",
+        axiom: "F",
+        rules: "F -> F[+F]F[-F]F",
+        angle: 25.7,
+        generations: 4.0,
+        step: 0.022,
+        width: 0.007,
+        reads: Reads::of("F -> F[+F]F[-F]F"),
+    },
+    // ABOP fig. 1.24d — 20°.
+    Preset {
+        label: "Weed",
+        axiom: "X",
+        rules: "X -> F[+X]F[-X]+X ; F -> FF",
+        angle: 20.0,
+        generations: 5.0,
+        step: 0.029,
+        width: 0.009,
+        reads: Reads::of("X -> F[+X]F[-X]+X ; F -> FF"),
+    },
+    Preset {
+        label: "Wild",
+        axiom: "A(step)",
+        rules: "A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)] ; \
+                A(s) -> (0.35) F(s)![+A(s*0.66)]-A(s*0.78) ; \
+                A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)]",
+        angle: 25.0,
+        generations: 5.0,
+        step: 0.478,
+        width: 0.154,
+        reads: Reads::of("A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)]"),
+    },
+    // ⚠️ A ilha de Koch quadrática é **90° por definição** — a 25 ela não é a figura, é um
+    // risco. Foi o que o dono do produto viu.
+    Preset {
+        label: "Koch",
+        axiom: "F",
+        rules: "F -> F+F-F-F+F",
+        angle: 90.0,
+        generations: 4.0,
+        step: 0.022,
+        width: 0.007,
+        reads: Reads::of("F -> F+F-F-F+F"),
+    },
+    // ⚠️ A curva do dragão: 90°, e só se lê como dragão a partir de ~10 iterações.
+    Preset {
+        label: "Dragon",
+        axiom: "F",
+        rules: "F -> F+G ; G -> F-G",
+        angle: 90.0,
+        generations: 12.0,
+        step: 0.019,
+        width: 0.006,
+        reads: Reads::of("F -> F+G ; G -> F-G"),
+    },
+    // ⚠️ O `[+F(s*0.35)J]` e não o `[+J]` da 1.ª redacção: uma MARCA lê o osso do PAI e não o
+    // rumo da tartaruga (`turtle.rs`, com gate), então `[+J][-J]` punha as duas folhas
+    // exactamente no mesmo ponto — e o molde saía uma linha recta de largura `0,00`, com o
+    // `Angle` byte-inerte. A folha precisa de um ramo a levá-la.
+    Preset {
+        label: "Sprig",
+        axiom: "A(step)",
+        rules: "A(s) -> F(s)[+F(s*0.35)J][-F(s*0.35)J]!A(s*0.8) ; J -> J",
+        angle: 25.0,
+        generations: 5.0,
+        step: 0.524,
+        width: 0.168,
+        reads: Reads::of("A(s) -> F(s)[+F(s*0.35)J][-F(s*0.35)J]!A(s*0.8) ; J -> J"),
+    },
 ];
 
-/// Os rótulos dos moldes — derivados de [`PRESETS`] por um gate, nunca escritos duas vezes.
+/// Os rótulos do selector — **derivados** de [`PRESETS`], mais o `Custom` do fim.
+///
+/// ⚠️ Uma `const` não pode iterar, então isto é escrito e há gate a exigir que cada entrada
+/// bata com `PRESETS[k].label` e que o último seja o `Custom`.
 pub const PRESET_LABELS: &[&str] = &[
-    "Tree", "Fern", "Bush", "Weed", "Wild", "Koch", "Dragon", "Sprig",
+    "Tree", "Fern", "Bush", "Weed", "Wild", "Koch", "Dragon", "Sprig", "Custom",
 ];
 
 /// O axioma de fábrica: um módulo `A` que carrega o `step` do painel.
@@ -677,7 +859,9 @@ static PARAM_HINTS: &[ParamUiHint] = &[
         param: param::PRESET,
         label: "Preset",
         min: 0.0,
-        max: (PRESETS.len() - 1) as f32,
+        // ⚠️ **`PRESET_LABELS`, e não `PRESETS`** — a lista tem uma entrada a mais, o
+        // [`PRESET_CUSTOM`], que não é um molde e sim *"nenhum destes"*.
+        max: (PRESET_LABELS.len() - 1) as f32,
         step: 1.0,
         widget: ParamWidget::Enum {
             labels: PRESET_LABELS,
@@ -749,7 +933,35 @@ static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: param::MODE,
         values: &[MODE_GUIDED],
     },
+    // ⭐⭐ **O knob que a GRAMÁTICA ESCOLHIDA não lê não é pintado** — a outra metade da cura
+    // dos moldes (auditoria 2026-08-29). Uma gramática sem `!` ignora o *Width Scale*; uma sem
+    // `"` ignora o *Length Scale*. Medido: o `Length Scale` está **inerte nos 8/8 moldes**
+    // (bbox bit-idêntica a `0,10` e a `1,50`) e **vivo** no `Custom` — que é onde o modo
+    // guiado e a gramática assada aterram, e onde ele mexe a peça de `0,05` para `10,60`.
+    // ⇒ *o knob não está morto: ele MORRE quando um molde é escolhido*, e é o molde que é o
+    // sujeito do gate, nunca o modo.
+    ph2d_node_registry::ParamGate {
+        param: param::WIDTH_SCALE,
+        when: param::PRESET,
+        values: PRESETS_READING_WIDTH_SCALE,
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::LENGTH_SCALE,
+        when: param::PRESET,
+        values: PRESETS_READING_LENGTH_SCALE,
+    },
 ];
+
+/// Os índices de molde cuja gramática contém `!` — mais o [`PRESET_CUSTOM`].
+///
+/// ⚠️ **Escrito à mão e GATEADO contra a derivação** (`Reads::of`), como os `PRESET_LABELS`:
+/// uma `const` não pode iterar uma tabela, então a defesa contra as duas respostas divergirem
+/// é o gate `the_read_gates_agree_with_what_each_grammar_contains`, não a boa vontade.
+static PRESETS_READING_WIDTH_SCALE: &[i32] = &[0, 1, 4, 7, PRESET_CUSTOM as i32];
+
+/// Os índices cuja gramática contém `"`. **Nenhum molde o tem** — só o `Custom`, que é onde o
+/// modo guiado e o texto assado vivem.
+static PRESETS_READING_LENGTH_SCALE: &[i32] = &[PRESET_CUSTOM as i32];
 
 /// **AS SEÇÕES** — quatro perguntas, e cada uma responde-se sem ler as outras.
 ///
@@ -819,6 +1031,21 @@ pub fn grammar_for(
             bend,
         }),
     )
+}
+
+/// **OS PESOS QUE O PARSER DE FACTO DEVOLVE** — a porta de sonda que impede um gate de
+/// escrever o próprio oráculo.
+///
+/// ⚠️ O gate `variation_gives_three_weighted_rules_whose_weights_close_at_one` lia os pesos do
+/// texto com um `str::parse::<f32>()` PRÓPRIO, e por isso ficava verde em `v = 1,0`: o texto
+/// somava `1,0` (`0.000 + 0.500 + 0.500`) enquanto o motor somava `2,0` (o `(0.000)` virava o
+/// neutro). **Dois leitores do mesmo texto, e o gate escolheu o que não está no produto.**
+#[must_use]
+pub fn probe_rule_weights(rules: &str) -> Vec<f32> {
+    grammar::parse_rules(rules)
+        .iter()
+        .map(|r| r.weight)
+        .collect()
 }
 
 #[must_use]

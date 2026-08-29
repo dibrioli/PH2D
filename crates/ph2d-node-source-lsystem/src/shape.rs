@@ -183,9 +183,28 @@ pub fn rules(sh: &Shape) -> String {
         return format!("A(s) -> {}", body(sh, 1.0));
     }
     let half = v * 0.5;
+    let nominal = 1.0 - v;
+    // ⚠️⚠️ **UM PESO ZERO É A AUSÊNCIA DA REGRA, e escrevê-la é dizer a mesma coisa em duas
+    // linguagens que discordam** (auditoria de 2026-08-29).
+    //
+    // Os pesos saem com `{:.3}`, então em `Variation = 1,00` — **o máximo do slider** — o
+    // `1 − v` sai como o literal `(0.000)`. Enquanto o parser falhava ABERTO, aquele literal
+    // não passava a guarda `v > 0.0` e virava o neutro **`1,0`**, o maior dos três: o extremo
+    // do slider devolvia exactamente o MEIO dele (largura média em 200 sementes: `v = 0,500`
+    // dava `0,9735` e `v = 1,000` dava `0,9734`, contra `0,9368` em `v = 0,995`).
+    //
+    // O parser já falha fechado, então hoje a regra seria descartada e o resultado estaria
+    // certo por acidente. **Isto fecha-o do lado do produtor**: o texto assado que o artista
+    // vai LER em `Grammar` não pode conter uma regra que o motor ignora.
+    if nominal < 5e-4 {
+        return format!(
+            "A(s) -> ({half:.3}) {} ; A(s) -> ({half:.3}) {}",
+            body(sh, 1.0 + JITTER),
+            body(sh, 1.0 - JITTER)
+        );
+    }
     format!(
-        "A(s) -> ({:.3}) {} ; A(s) -> ({half:.3}) {} ; A(s) -> ({half:.3}) {}",
-        1.0 - v,
+        "A(s) -> ({nominal:.3}) {} ; A(s) -> ({half:.3}) {} ; A(s) -> ({half:.3}) {}",
         body(sh, 1.0),
         body(sh, 1.0 + JITTER),
         body(sh, 1.0 - JITTER),

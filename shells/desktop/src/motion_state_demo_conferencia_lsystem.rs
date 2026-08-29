@@ -23,8 +23,9 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
   estavam a fazer. E' a maneira mais facil de aprender a linguagem: mexa nos
   sliders, troque o modo, e leia.
 
-  1. A ARVORE FEITA POR SLIDERS -- nao ha' texto nenhum nela. O tronco e' grosso e as
-     pontas sao finas, e ninguem desenhou isso: a espessura escorre pelos ramos.
+  1. A ARVORE FEITA POR SLIDERS -- nao ha' texto nenhum nela. Ela abre TRES ramos e tem
+     dois passos de tronco antes da primeira bifurcacao: sao dois dos quatro botoes do
+     modo Guided, e e' por isso que ela nao se parece com a numero 4.
   2. e 3. A MESMA REGRA, sementes diferentes. Elas TEM de sair diferentes uma da
      outra: e' o que quer dizer «esta planta sorteia como se ramifica».
   4. A PLANTA 1 COM GRAVIDADE. As pontas vergam para baixo. Compare com a 1: a
@@ -49,7 +50,13 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
     · «Generations» em qualquer planta: arraste devagar -- ela tem de CRESCER, nao saltar.
     · «Angle» abre e fecha os ramos. A seccao «Lean & Look» (fechada, clique para abrir)
       tem a gravidade e o re-sortear.
-    · Nas plantas de gramatica ha' ainda o «Preset»: oito receitas prontas.
+    · Nas plantas de gramatica ha' ainda o «Preset»: oito receitas prontas. Percorra as
+      oito -- TODAS tem de sair do mesmo tamanho e caber no ecra. (Ate' 29/08 cinco delas
+      saiam entre 8 e 300 vezes maiores do que a moldura.)
+    · Escolha «Koch» ou «Dragon»: eles nao sao plantas, sao desenhos geometricos, e o
+      «Angle» deles salta para 90 graus sozinho -- e' o angulo que aquelas figuras exigem.
+    · Depois de escolher um molde, mexa no texto: o «Preset» passa a dizer «Custom».
+      Clique no molde outra vez e ele volta.
 
   DEU ERRADO se:
     · a 2 e a 3 sairem IGUAIS (a semente deixou de valer);
@@ -58,7 +65,9 @@ pub(crate) fn lsystem_family(doc: &mut MotionDoc, registry: &NodeRegistry) -> Ve
     · a 5 APAGAR-SE e voltar de vez a cada ramo novo (era o defeito de 28/08);
     · a PLANTA 1 mostrar caixas de texto (ela e' a guiada -- nao devia ter nenhuma);
     · mexer em «Branches» ou «Trunk Segments» na 1 nao mudar nada;
-    · trocar a 1 para «Grammar» deixar as caixas VAZIAS, ou mostrar outra planta;
+    · trocar a 1 para «Grammar» deixar as caixas VAZIAS, ou desenhar outra planta;
+    · algum «Preset» sair muito maior ou muito menor que os outros sete;
+    · o «Preset» continuar a dizer o nome de um molde depois de voce mexer no texto;
     · alguma planta sair como uma bola de pontos do mesmo tamanho (a espessura morreu);
     · alguma planta sair de cabeca para baixo, ou fora do ecra;
     · o app engasgar ao arrastar «Generations» ate ao fim."

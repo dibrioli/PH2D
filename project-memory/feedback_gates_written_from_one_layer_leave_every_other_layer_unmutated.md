@@ -44,6 +44,26 @@ gate nenhum.
 - ⛔ Cinco sobreviventes com o mesmo mecanismo não são cinco buracos — são **um**, e remendá-los um
   a um deixa o sexto para a wave seguinte.
 
+## ⚠️ O caso irmão, no MESMO dia: entradas de input em vez de camadas
+
+W100, e o smoke do Enio: *«o modal não funciona, não fecha. Os modelos do modal não são criados.»*
+**Um mecanismo, dois sintomas.** O módulo 3D reclama o ponteiro **antes** do despacho de chrome, e
+reclama todo gesto que começa dentro do rectângulo que ele desenhou — a paleta cobre-o. O clique
+morria ali, e é o handler da paleta que regista o pick **e** que a fecha.
+
+Eu tinha curado a metade do **teclado** na mesma wave (achei-a a raciocinar sobre a ordem do
+roteador) e **shipei a do ponteiro partida**. As entradas eram quatro — tecla, clique, movimento,
+roda — e eu gateei a que estava a construir.
+
+⚠️ **E a guarda que parecia cobrir isto respondia «não»:** o `cursor_over_hero_chrome` pergunta *«há
+um PAINEL por cima?»*, e um painel publica um rect. **Um modal de tela cheia não é um painel** — não
+publica rect nenhum. *Uma guarda que faz a pergunta quase certa é mais perigosa do que nenhuma,
+porque parece cobrir o caso.*
+
+⇒ **Sempre que um módulo agarra input antes do despacho de chrome, ele deve uma pergunta ao modal**,
+e a pergunta vive numa **porta com nome** que todas as entradas leem (aqui `field3d_yields_to_modal`)
+— com o **soltar** deliberadamente de fora, porque um gesto em curso tem de poder acabar.
+
 Ver [[feedback-i-write-the-right-guard-and-do-not-gate-it]] ·
 [[feedback-a-claim-no-mutation-can-kill-is-a-claim-about-nothing]] ·
 [[reference-topic-mutation-proofs]] · [[reference-topic-gate-discipline]]

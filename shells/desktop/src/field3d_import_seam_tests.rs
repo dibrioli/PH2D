@@ -64,6 +64,55 @@ fn the_sculpt_button_asks_for_a_file_instead_of_making_a_shape() {
     );
 }
 
+/// ⭐⭐⭐ **A FORMA ESCOLHIDA NA PALETA NASCE NA PEÇA** — a segunda metade da costura da W100.
+///
+/// # ⛔ Ela faltava, e o smoke do Enio disse-o
+///
+/// *«os modelos do modal não são criados»*. A causa nº 1 estava no ponteiro (a janela 3D roubava o
+/// clique), mas **nenhum gate atravessava a metade de baixo**: da escolha até o nó existir. Um gate
+/// só do lado da oferta é a `DIRETIVA_IMPLEMENTACAO` §1 outra vez — *o botão chega ao canal? o canal
+/// chega ao mundo?*
+///
+/// ⚠️ **Entra pela porta de PRODUÇÃO** (`ask_shape`, a caixa de correio que o dreno do pick enche) e
+/// mede o **mundo**, não um retorno de função.
+#[test]
+fn a_shape_picked_in_the_palette_is_born_in_the_part() {
+    let _ = ph2d_panel_model3d::drain_intents();
+    let mut sim = a_world();
+    crate::field3d_scene::sync_scene(&mut sim, Some(&scene(2)), 0.0);
+    let root = the_root(&mut sim);
+    let antes = ph2d_field_ecs::walk(sim.world(), root).len();
+
+    // ⚠️ Pela CHAVE, nunca por uma posição — ver a lição do gate abaixo.
+    let slot = crate::field3d_shapes::slot_of("panel.model3d.add.cone").expect("o cone");
+    crate::field3d_smoke::ask_shape(slot);
+    crate::field3d_scene::sync_scene(&mut sim, None, 0.0);
+
+    let root = the_root(&mut sim);
+    let nos = ph2d_field_ecs::walk(sim.world(), root);
+    assert_eq!(
+        nos.len(),
+        antes + 1,
+        "a escolha da paleta tinha de fazer nascer UM nó"
+    );
+    // ⭐ **E é a forma CERTA.** Sem esta metade, um `shape_at` que devolvesse sempre uma caixa
+    // passava — e o artista escolheria «Cone» a vida toda para receber caixas.
+    let ha_cone = nos.iter().any(|(e, _)| {
+        sim.world()
+            .get::<ph2d_field_ecs::FieldNode>(*e)
+            .is_some_and(|n| {
+                matches!(
+                    n.shape,
+                    ph2d_field::NodeShape::Leaf(ph2d_field::Primitive::Cone { .. })
+                )
+            })
+    });
+    assert!(
+        ha_cone,
+        "nasceu um nó e ele não é um cone — a escolha não chegou ao construtor"
+    );
+}
+
 /// ⭐ **O slot da escultura APONTA para a escultura** — e o gate não pode perguntá-lo à constante.
 ///
 /// ⚠️ **Uma prova de mutação passou VERDE e é por isso que este gate existe.** Trocar

@@ -47,7 +47,7 @@ impl App {
         // ⚠️ A tecla que ABRE não é afetada: ela é capturada num quadro em que a paleta ainda não
         // existe (o pedido atravessa por caixa de correio e a paleta abre na ponte, no quadro
         // seguinte) — a mesma nota que o `keyboard.rs` já tinha escrito para o `A` do Motion.
-        if self.command_palette_open() {
+        if self.field3d_yields_to_modal() {
             return false;
         }
         // ADR-0161 W4: `Home` repõe a vista da janela 3D de modelagem — a volta que a

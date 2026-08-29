@@ -130,7 +130,8 @@ fn an_empty_family_paints_no_header() {
     }
 }
 
-/// ⭐⭐⭐ **COM A PALETA ABERTA, O ROTEADOR DE TECLAS DO 3D SE CALA** — e este gate lê a FONTE.
+/// ⭐⭐⭐ **COM A PALETA ABERTA, AS QUATRO ENTRADAS DO 3D CALAM-SE** — teclado, clique, movimento e
+/// roda. Este gate lê a FONTE.
 ///
 /// # ⚠️ Por que a fonte, e não o comportamento
 ///
@@ -140,25 +141,60 @@ fn an_empty_family_paints_no_header() {
 /// do sculpt3d não é alcançável de um teste, e a mesma resposta que o `interact_menu_tests` do
 /// Motion dá: *quando o comportamento não é alcançável, meça a ESTRUTURA que o produz*.
 ///
-/// # ⛔ O que ela defende
+/// # ⛔ O defeito que o Enio viu, e a metade que este gate não tinha
 ///
-/// `field3d_keys` corre **antes** da captura modal da paleta, e a guarda de cada tecla é o ponteiro
-/// sobre a janela 3D — que continua verdadeiro com o modal por cima. Sem esta linha, escrever
-/// «capsule» na busca dispara o `S` (escalar) e o `A` (reabrir), e as letras nunca chegam ao campo.
-/// ⚠️ E ela tem de vir **antes do primeiro tratador**: depois de um deles, a tecla dele já foi
-/// comida.
+/// A 1.ª versão cobria **só o teclado** — e o smoke devolveu o resto: *«o modal não funciona, não
+/// fecha. Os modelos do modal não são criados.»* **Um mecanismo, dois sintomas**: o
+/// `field3d_pointer_down` corre antes do despacho de chrome e reclama todo gesto que começa dentro
+/// da área que a janela 3D desenhou — a paleta cobre-a. O clique nunca chegava ao handler dela, que
+/// é quem regista o pick **e** quem a fecha.
+///
+/// ⚠️ *Eu gateei a entrada que estava a construir (a tecla `A`) e não a família dela.* O gate passa
+/// a varrer as **quatro**, e a quinta que nascer sem a pergunta reprova aqui.
+///
+/// ⚠️ O **soltar** fica de fora de propósito: um gesto já em curso tem de poder acabar. Ver
+/// `field3d_yields_to_modal`.
 #[test]
 fn the_field3d_keys_stand_down_while_the_palette_is_open() {
-    let src = include_str!("input_dispatch/keyboard_field3d.rs");
-    let guarda = src
-        .find("if self.command_palette_open() {")
+    /// O corpo de uma função, do `fn nome` até ao `fn ` seguinte.
+    fn corpo<'a>(src: &'a str, nome: &str) -> &'a str {
+        let ini = src
+            .find(nome)
+            .unwrap_or_else(|| panic!("a entrada `{nome}` tem de existir"));
+        let resto = &src[ini + nome.len()..];
+        &resto[..resto.find("\n    pub(crate) fn ").unwrap_or(resto.len())]
+    }
+    const PORTA: &str = "self.field3d_yields_to_modal()";
+    let input = include_str!("field3d_input.rs");
+    for entrada in [
+        "fn field3d_pointer_down(",
+        "fn field3d_pointer_move(",
+        "fn field3d_wheel(",
+    ] {
+        assert!(
+            corpo(input, entrada).contains(PORTA),
+            "`{entrada}` não pergunta `{PORTA}` — com a paleta aberta ela rouba o gesto, e o \
+             sintoma é «o modal não faz nada»"
+        );
+    }
+    // ⚠️ E o teclado, cuja guarda tem de vir **antes do primeiro tratador**: depois de um deles, a
+    // tecla dele já foi comida.
+    let teclas = include_str!("input_dispatch/keyboard_field3d.rs");
+    let guarda = teclas
+        .find(PORTA)
         .expect("o roteador de teclas do 3D tem de se calar com a paleta aberta");
-    let primeiro = src
+    let primeiro = teclas
         .find("if self.field3d_home_key(code)")
         .expect("o primeiro tratador de tecla");
     assert!(
         guarda < primeiro,
         "a guarda da paleta vem DEPOIS do primeiro tratador - a tecla dele já foi comida"
+    );
+    // ⛔ **O CONTROLE**: o SOLTAR NÃO a pergunta, e é deliberado. Sem esta metade, alguém
+    // «uniformiza» as quatro para cinco e deixa o arrasto pousado para sempre.
+    assert!(
+        !corpo(input, "fn field3d_pointer_up(").contains(PORTA),
+        "o soltar tem de ficar de fora — um gesto em curso tem de poder acabar"
     );
 }
 

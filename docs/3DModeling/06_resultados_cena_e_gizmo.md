@@ -9325,3 +9325,63 @@ de compilação.
 primitiva e torna estruturalmente impossível duas primitivas partilharem um botão.
 
 **Smoke:** cena **`=9`** — as quatro lado a lado, com o filete que nasceram a ter.
+
+---
+
+## §98 — ⛔⛔ O SMOKE DA W100: o modal não fechava e não criava nada — UM mecanismo, dois sintomas (29/08)
+
+Enio, 2026-08-29: *«o modal não funciona, não fecha. Os modelos do modal não são criados.»*
+
+### §98.1 — A causa, confirmada lendo o código e não suposta
+
+`field3d_pointer_down` corre **antes** do despacho de chrome (`input_dispatch.rs`, o bloco *«a janela
+3D de modelagem toma o botão para navegar»*), e o `begin()` dele devolve `false` **só** quando o
+clique cai **fora** do rectângulo que o viewport desenhou. Dentro dele, começa uma órbita e devolve
+`true` ⇒ o despacho **retorna cedo**.
+
+⇒ **A paleta cobre esse rectângulo.** O clique no item nunca chegava ao handler dela — e é esse
+handler que faz as **duas** coisas: `set_command_pick` (a escolha) e `close_command_palette` (o
+fecho). *Um mecanismo, os dois sintomas que o Enio relatou.*
+
+### §98.2 — ⚠️ A guarda que parecia cobrir isto fazia a pergunta QUASE certa
+
+O `field3d_pointer_down` já perguntava `cursor_over_hero_chrome` — *«há um painel por cima?»* — e a
+nota dela explica que ela existe precisamente para a cena não engolir cliques na UI. Mas um painel
+publica um `panel_rect`, e **um modal de tela cheia não é um painel**: ele não publica rect nenhum, e
+a pergunta respondia *«não»* com o modal a tapar tudo.
+
+*Uma guarda que faz a pergunta quase certa é mais perigosa do que nenhuma, porque parece cobrir o
+caso.*
+
+### §98.3 — ⭐ A cura: uma PORTA com nome, quatro leitores
+
+`App::field3d_yields_to_modal` — e ela é lida pelo **clique**, pelo **movimento**, pela **roda** e
+pelo **roteador de teclas**. ⛔ A lei escrita em quatro sítios seria a lei escrita em nenhum: a quinta
+entrada nasceria surda, e o sintoma dela seria este mesmo.
+
+⚠️ **O SOLTAR fica de fora, de propósito.** Não se pode *começar* um gesto através do modal, mas um
+gesto **já em curso** tem de poder acabar — guardá-lo deixaria o `Drag` pousado para sempre e a peça
+a orbitar sozinha ao fechar a paleta. O gate tem essa metade como **controle explícito**.
+
+### §98.4 — ⚠️ Eu tinha curado METADE deste defeito na mesma wave
+
+A §96.5 conta a metade do **teclado**, que eu achei a raciocinar sobre a ordem do roteador — e
+**shipei a do ponteiro partida**. As entradas eram quatro e eu gateei a que estava a construir.
+*Achar uma metade de uma família é motivo para procurar as outras, não para dar a família por
+fechada.*
+
+### §98.5 — E a costura de BAIXO também não tinha gate
+
+Nenhum gate atravessava *da escolha até o nó existir*. Ele existe agora
+(`a_shape_picked_in_the_palette_is_born_in_the_part`), entra pela porta de produção (`ask_shape`) e
+mede o **mundo** — incluindo que o nó que nasce é **um cone**, e não uma caixa que um `shape_at`
+preguiçoso devolvesse sempre.
+
+⚠️ **Ele passa desde o primeiro dia**, e isso é informação: a metade de baixo estava certa, e a
+causa era mesmo só o ponteiro.
+
+### §98.6 — ⛔ Um IRMÃO por curar, que não é desta linha
+
+O `sculpt3d_pointer_down` corre **antes** deste no mesmo despacho e tem exactamente a mesma forma:
+com o `Ctrl+K` ou a biblioteca do Motion abertos sobre o módulo de escultura armado, o clique morre
+ali. A `line/sculpt3d` é a dona daquele módulo.

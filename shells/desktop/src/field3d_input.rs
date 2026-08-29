@@ -249,7 +249,43 @@ pub(crate) fn fly_to_view(s: &mut Smoke, view: crate::field3d_views::Standard) {
 
 impl App {
     /// O ponteiro desceu. Devolve `true` se a janela 3D tomou o gesto.
+    /// ⭐⭐⭐ **O MÓDULO 3D CALA-SE ENQUANTO UM MODAL DE TELA CHEIA ESTÁ ABERTO** — teclado, ponteiro
+    /// e roda.
+    ///
+    /// # ⛔ O defeito, e por que ele apanhou as duas metades
+    ///
+    /// Smoke do Enio (2026-08-29): *«o modal não funciona, não fecha. Os modelos do modal não são
+    /// criados.»* **Um mecanismo, dois sintomas.** O `field3d_pointer_down` corre **antes** do
+    /// despacho de chrome (`input_dispatch.rs`) e reclama todo gesto que começa **dentro da área que
+    /// a janela 3D desenhou** — e a paleta cobre o ecrã inteiro, essa área incluída. ⇒ o clique no
+    /// item nunca chegava ao handler da paleta: ela não registava o pick (**nada era criado**) e não
+    /// se fechava (**quem a fecha é o mesmo handler**).
+    ///
+    /// ⚠️ **A guarda que já existia não bastava, e é instrutivo porquê:** o
+    /// `cursor_over_hero_chrome` pergunta *«há um painel por cima?»*, e um painel publica um
+    /// `panel_rect`. Um **modal** não é um painel — ele não publica rect nenhum, e a pergunta
+    /// respondia «não» com o modal a tapar tudo.
+    ///
+    /// ⭐ **Uma porta, quatro leitores** (`pointer_down`, `pointer_move`, `wheel`, `field3d_keys`).
+    /// A lei escrita em quatro sítios seria a lei escrita em nenhum: a quinta entrada nasceria
+    /// surda, e o sintoma dela seria este mesmo — *«o modal não faz nada»*.
+    ///
+    /// ⚠️ **O SOLTAR fica de FORA, de propósito.** Não se pode *começar* um gesto através do modal,
+    /// mas um gesto **já em curso** tem de poder acabar: guardar o `up` deixaria o `Drag` pousado
+    /// para sempre e a peça a orbitar sozinha ao fechar a paleta.
+    ///
+    /// ⚠️ **E há um IRMÃO por curar, que não é desta linha:** o `sculpt3d_pointer_down` corre
+    /// **antes** deste no mesmo despacho e tem exactamente a mesma forma — com o `Ctrl+K` ou a
+    /// biblioteca do Motion abertos sobre o módulo de escultura armado, o clique morre ali. A
+    /// `line/sculpt3d` é a dona daquele módulo; está nomeado no handoff.
+    pub(crate) fn field3d_yields_to_modal(&self) -> bool {
+        self.command_palette_open()
+    }
+
     pub(crate) fn field3d_pointer_down(&mut self, button: winit::event::MouseButton) -> bool {
+        if self.field3d_yields_to_modal() {
+            return false;
+        }
         let pos = self.last_pointer;
         // ⚠️ **A moldura do app não é da cena.** A mesma lei do `sculpt3d_pointer_down`, e pelo
         // mesmo motivo medido lá: painel é só uma espécie de UI — a faixa do topo e o rail não
@@ -274,6 +310,11 @@ impl App {
     /// O ponteiro moveu. **Só consome com um arrasto em curso** — senão a janela 3D engoliria todo
     /// hover do app 2D.
     pub(crate) fn field3d_pointer_move(&mut self, x: f32, y: f32) -> bool {
+        // ⛔ Ver [`Self::field3d_yields_to_modal`]: com a paleta aberta o rato é dela. Um arrasto
+        // em curso simplesmente não avança — e o soltar, que não é guardado, fecha-o em paz.
+        if self.field3d_yields_to_modal() {
+            return false;
+        }
         // ⚠️ **O `Ctrl` é lido AQUI, todo movimento** — o `winit` não o manda no evento de
         // movimento, e o shell já o guarda. Ver `Smoke::snapping` sobre por que ele não é congelado
         // na pegada.
@@ -546,6 +587,11 @@ impl App {
 
     /// A roda aproxima. `steps` em linhas de roda.
     pub(crate) fn field3d_wheel(&mut self, steps: f32) -> bool {
+        // ⛔ Ver [`Self::field3d_yields_to_modal`]: a paleta ROLA, e sem esta linha a roda dela
+        // aproximava a peça por baixo em vez de percorrer a lista.
+        if self.field3d_yields_to_modal() {
+            return false;
+        }
         let pos = self.last_pointer;
         // A pergunta é feita INTEIRA e neste arquivo de propósito — quem decide de quem é o gesto é
         // o módulo da cena, não o roteador (a nota do `sculpt3d_wheel`).

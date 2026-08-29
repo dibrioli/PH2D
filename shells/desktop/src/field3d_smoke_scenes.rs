@@ -358,6 +358,64 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(4),
             )
         }
+        9 => {
+            println!(
+                "[field-smoke] cena 9 — AS TRÊS FORMAS NOVAS (W101): cone fechado · tronco de cone \
+                 · cápsula · prisma de 6 lados, todos com o filete que nasceram a ter"
+            );
+            // ⚠️ **Lado a lado e no MESMO tamanho**, de propósito: a cena existe para se ver o que
+            // cada uma é, e uma delas maior que as outras leria como a forma sendo diferente.
+            let x = |v: f32| Xform {
+                translation: [v, 0.0, 0.0],
+                ..Xform::IDENTITY
+            };
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Cone {
+                            bottom: 0.26,
+                            top: 0.0,
+                            half_height: 0.32,
+                            round: 0.026,
+                        },
+                        x(-0.82),
+                    ),
+                    leaf(
+                        Primitive::Cone {
+                            bottom: 0.26,
+                            top: 0.13,
+                            half_height: 0.32,
+                            round: 0.026,
+                        },
+                        x(-0.27),
+                    ),
+                    leaf(
+                        Primitive::Capsule {
+                            radius: 0.16,
+                            half_height: 0.26,
+                        },
+                        x(0.27),
+                    ),
+                    leaf(
+                        Primitive::Prism {
+                            sides: 6,
+                            radius: 0.26,
+                            half_height: 0.32,
+                            round: 0.026,
+                        },
+                        x(0.82),
+                    ),
+                    // ⚠️ **União de ARESTA VIVA** (`Blend::Sharp`): elas não se tocam, e um filete
+                    // de junção aqui seria um número que não faz nada — a cena mostraria um
+                    // controlo que o artista concluiria estar partido.
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
+                    ),
+                ],
+                NodeId(4),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

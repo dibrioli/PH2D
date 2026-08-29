@@ -41,6 +41,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.sphere" => "Sphere",
         "panel.model3d.add.cylinder" => "Cylinder",
         "panel.model3d.add.torus" => "Torus",
+        // ⭐⭐ O LOTE DA W101. ⚠️ "Cone" e "Truncated Cone" são a MESMA primitiva com defaults
+        // diferentes — o rótulo diz a forma que nasce, não o tipo interno.
+        "panel.model3d.add.cone" => "Cone",
+        "panel.model3d.add.cone_truncated" => "Truncated Cone",
+        "panel.model3d.add.capsule" => "Capsule",
+        // ⚠️ **Sem o número de lados no rótulo.** Ele nasce hexagonal e o primeiro controlo do
+        // painel são os lados — pôr "Hexagonal Prism" aqui prometeria uma forma fixa, e o artista
+        // procuraria "Octagonal Prism" numa lista que nunca o terá.
+        "panel.model3d.add.prism" => "Prism",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -138,6 +147,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.dim.depth" => "Depth",
         "field.dim.radius" => "Radius",
         "field.dim.thickness" => "Thickness",
+        // ⭐ AS DIMENSÕES DA W101. ⚠️ "Bottom"/"Top" e não "R1"/"R2": o artista vê a peça e sabe
+        // qual é o fundo; um índice obriga-o a experimentar para descobrir.
+        "field.dim.radius_bottom" => "Bottom Radius",
+        "field.dim.radius_top" => "Top Radius",
+        // ⚠️ **"Length" e não "Height"** para a cápsula: é o comprimento do SEGMENTO, e a peça mede
+        // mais do que isso (mais um raio em cada ponta). Chamar-lhe altura prometeria o tamanho
+        // total, que o número não é.
+        "field.dim.length" => "Length",
+        "field.dim.sides" => "Sides",
         // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
         // dita pelo nome dela.
         // ⚠️ **"Fillet" é o arredondamento da forma DELA PRÓPRIA** — as 12 arestas de uma caixa, o

@@ -20,8 +20,15 @@ impl FieldDoc {
             NodeKind::Leaf(p) => match p {
                 Primitive::Box { round, .. }
                 | Primitive::Cylinder { round, .. }
-                | Primitive::Extrude { round, .. } => Some(*round),
-                _ => None,
+                | Primitive::Extrude { round, .. }
+                | Primitive::Cone { round, .. }
+                | Primitive::Prism { round, .. } => Some(*round),
+                // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
+                // caía no braço vazio e o painel dizia que ela não tinha nenhum.
+                Primitive::Sphere { .. }
+                | Primitive::Torus { .. }
+                | Primitive::Revolve { .. }
+                | Primitive::Capsule { .. } => None,
             },
             // Uma escultura não tem aresta autorada: o `round` dela é a malha.
             NodeKind::Sampled { .. } => None,
@@ -120,8 +127,15 @@ impl NodeShape {
             NodeShape::Leaf(p) => match p {
                 Primitive::Box { round, .. }
                 | Primitive::Cylinder { round, .. }
-                | Primitive::Extrude { round, .. } => Some(*round),
-                _ => None,
+                | Primitive::Extrude { round, .. }
+                | Primitive::Cone { round, .. }
+                | Primitive::Prism { round, .. } => Some(*round),
+                // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
+                // caía no braço vazio e o painel dizia que ela não tinha nenhum.
+                Primitive::Sphere { .. }
+                | Primitive::Torus { .. }
+                | Primitive::Revolve { .. }
+                | Primitive::Capsule { .. } => None,
             },
         }
     }
@@ -184,9 +198,14 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
             match p {
                 Primitive::Box { round, .. }
                 | Primitive::Cylinder { round, .. }
-                | Primitive::Extrude { round, .. } => *round = radius,
+                | Primitive::Extrude { round, .. }
+                | Primitive::Cone { round, .. }
+                | Primitive::Prism { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
-                Primitive::Sphere { .. } | Primitive::Torus { .. } | Primitive::Revolve { .. } => {}
+                Primitive::Sphere { .. }
+                | Primitive::Torus { .. }
+                | Primitive::Revolve { .. }
+                | Primitive::Capsule { .. } => {}
             }
             Ok(())
         }
@@ -212,8 +231,70 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         // Só a meia-altura: um `round` maior que a meia-largura do perfil é uma ABERTURA, não um
         // erro (ver a nota de [`Primitive::Extrude`]).
         Primitive::Extrude { half_height, .. } => Some(*half_height),
-        Primitive::Sphere { .. } | Primitive::Torus { .. } | Primitive::Revolve { .. } => None,
+        Primitive::Sphere { .. }
+        | Primitive::Torus { .. }
+        | Primitive::Revolve { .. }
+        | Primitive::Capsule { .. } => None,
+        // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
+        //
+        // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular
+        // baixa `a` de `round·√(1+m²)`. No limite, a parede recuada passa pelo **eixo**: dali para
+        // cima não há mais parede lateral para arredondar.
+        //
+        // # ⚠️ Este limite NÃO é uma parede de validade — a medição refutou a redação anterior
+        //
+        // Ela dizia que sem o `√(1+m²)` *«um cone raso com filete sairia MAIOR do que o pedido»*, e
+        // uma mutação que o apagasse **sobreviveu com razão**. Sondado com `round` a `1,4×` o
+        // limite (e acima da própria meia-altura):
+        //
+        // | round | raio máximo | meia-altura | `‖∇f‖` |
+        // |---|---|---|---|
+        // | `0,2575` (o limite) | `0,4497` | `0,3498` | `1,0000` |
+        // | `0,3990` (**1,55× o limite**) | `0,4497` | `0,3498` | `1,0000` |
+        //
+        // (autorados: raio `0,4500`, meia-altura `0,3500`.)
+        //
+        // ⭐ **O `max` + `offset` é auto-corretivo**: o que o recuo tira, o deslocamento repõe, e a
+        // silhueta é **exatamente** `ρ ≤ a + m·z` para qualquer `round`. É a diferença para a caixa
+        // e o cilindro, onde o termo axial **inverte** de sinal com uma meia-extensão negativa (a
+        // nota do [`crate::Primitive::Extrude`] diz-o) — ali o limite é validade, aqui é **produto**.
+        //
+        // ⇒ o número fica, porque é o ponto onde o filete deixa de ter parede para comer e o
+        // controle deixaria de fazer alguma coisa; ⛔ mas nenhum gate o pode defender como
+        // correção, e inventar um seria escrever uma afirmação sobre nada.
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            ..
+        } => Some(cone_round_limit(*bottom, *top, *half_height)),
+        // ⚠️ **O apótema, não o circunraio**: a parede de um prisma está a `radius·cos(π/n)` do
+        // eixo, e usar o circunraio deixaria o filete comer a parede antes de o limite o dizer.
+        Primitive::Prism {
+            sides,
+            radius,
+            half_height,
+            ..
+        } => Some(half_height.min(radius * apothem_ratio(*sides))),
     }
+}
+
+/// A razão apótema/circunraio de um polígono regular de `n` lados — `cos(π/n)`.
+///
+/// ⚠️ **Uma função e não um literal por forma**: ela tem três leitores (o limite do filete acima, o
+/// tamanho característico e a fórmula do campo), e a mesma conta escrita três vezes é a lei escrita
+/// em três sítios, que este módulo já pagou.
+#[must_use]
+pub fn apothem_ratio(sides: u32) -> f32 {
+    (std::f32::consts::PI / sides.max(crate::MIN_PRISM_SIDES) as f32).cos()
+}
+
+/// Até onde o filete de um [`Primitive::Cone`] pode ir — ver a nota em [`round_limit`].
+#[must_use]
+pub fn cone_round_limit(bottom: f32, top: f32, half_height: f32) -> f32 {
+    let a = (bottom + top) * 0.5;
+    let m = (top - bottom) / (2.0 * half_height);
+    half_height.min(a / (1.0 + m * m).sqrt())
 }
 
 /// **O tamanho característico de uma primitiva** — a menor dimensão que a define.
@@ -247,6 +328,26 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
             let (min, max) = profile.bounds();
             (max[0] - min[0]).min(max[1] - min[1]) * 0.5
         }
+        // ⚠️ **O raio MAIOR, não o menor**: num cone fechado o `top` é zero, e a menor dimensão
+        // seria zero — um filete de escala zero, num nó cuja peça é perfeitamente visível. *A
+        // escala do documento é o tamanho da peça, e uma ponta não é o tamanho dela.*
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            ..
+        } => bottom.max(*top).min(*half_height),
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => radius.min(*half_height),
+        // ⚠️ O apótema, pela razão do [`round_limit`]: é a parede que está mais perto do eixo.
+        Primitive::Prism {
+            sides,
+            radius,
+            half_height,
+            ..
+        } => (radius * apothem_ratio(*sides)).min(*half_height),
     }
 }
 
@@ -336,5 +437,26 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
                 min[1].abs().max(max[1].abs()),
             )
         }
+        // O ponto mais afastado é uma das duas quinas do aro — a maior das duas.
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            ..
+        } => hyp(bottom.max(*top), *half_height),
+        // ⚠️ **`half_height + radius`, e não a hipotenusa**: a ponta da cápsula está no EIXO, a
+        // `h + r` do centro, e ela é o ponto mais afastado. Uma hipotenusa daria `√(h²+r²)`, que é
+        // MENOR — e um raio de contenção pequeno demais corta a peça na caixa do mundo.
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => half_height + radius,
+        // ⚠️ O `radius` de um prisma é o CIRCUNRAIO (a quina), então ele já é a distância máxima no
+        // plano — nenhum `cos` entra aqui.
+        Primitive::Prism {
+            radius,
+            half_height,
+            ..
+        } => hyp(*radius, *half_height),
     }
 }

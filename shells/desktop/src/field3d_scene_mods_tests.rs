@@ -220,6 +220,63 @@ fn the_copy_count_is_an_integer_row_with_a_floor_of_one() {
     assert_eq!(count_row(world).value, 4.0, "e a recusa deixa como estava");
 }
 
+/// ⭐⭐⭐ **O PISO DE UMA CONTAGEM É DO DOCUMENTO, e nem toda contagem começa em 1** (W101).
+///
+/// # ⚠️ Ele nasceu de uma MUTAÇÃO QUE SOBREVIVEU
+///
+/// O piso vivia como o literal `1.0` no `field3d_scene_panel.rs`, e a mutação que o repõe passou a
+/// suíte inteira. Com ele, o slider dos **lados de um prisma** descia a 1, a porta do documento
+/// coagia para 3, e o controle **saltava para trás debaixo do dedo**. *Uma faixa que oferece o que a
+/// porta recusa é uma affordance que mente* — e o gate irmão acima só media a matriz, cujo piso
+/// **é** 1, o que o deixava cego a esta.
+///
+/// ⚠️ **Os dois gates têm de existir**: um sozinho não separa *«o piso é 1»* de *«o piso é o que o
+/// documento diz»*, e é essa a diferença que a mutação explora.
+#[test]
+fn the_side_count_of_a_prism_floors_where_the_document_says() {
+    use ph2d_field::{MAX_PRISM_SIDES, MIN_PRISM_SIDES, Param, Primitive};
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let root = ph2d_field_ecs::spawn_doc(world, &scene(2), "Model");
+    let prisma = ph2d_field_ecs::add_leaf(
+        world,
+        root,
+        Primitive::Prism {
+            sides: 6,
+            radius: 0.4,
+            half_height: 0.4,
+            round: 0.04,
+        },
+        [0.0; 3],
+    )
+    .expect("o prisma nasce");
+
+    let sides_row = |world: &bevy_ecs::world::World| {
+        crate::field3d_scene::panel::param_rows(world, Some(prisma), 2.5)
+            .into_iter()
+            .find(|r| r.param == Param::Dim(0))
+            .expect("a linha dos lados")
+    };
+    let row = sides_row(world);
+    assert!(
+        row.integral,
+        "os lados são uma contagem, não um comprimento"
+    );
+    assert_eq!(
+        row.lo, MIN_PRISM_SIDES as f32,
+        "o piso do slider tem de ser o do DOCUMENTO ({MIN_PRISM_SIDES}) — abaixo dele não há \
+         polígono, e a porta coage"
+    );
+    assert_eq!(row.bound.value(), MAX_PRISM_SIDES as f32, "e o teto também");
+    // ⛔ **O CONTROLE**: um piso escrito à mão que calhasse de ser 3 passaria o de cima. A matriz,
+    // no mesmo painel, continua a começar em 1 — os dois pisos são diferentes porque são de duas
+    // grandezas diferentes.
+    assert_ne!(
+        MIN_PRISM_SIDES, 1,
+        "se o piso do prisma fosse 1 este gate deixava de separar as duas leis"
+    );
+}
+
 /// ⚠️ **A tabela que escolhe as resoluções de exportação** — triângulos e relógio, por profundidade.
 ///
 /// ⭐ Um campo tem resolução **infinita**; uma malha não. Exportar é a primeira vez que este módulo

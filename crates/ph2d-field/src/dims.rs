@@ -136,13 +136,27 @@ pub enum Span {
     /// do documento — hoje, o custo de marcha que a inclinação paga
     /// ([`crate::mods::MAX_TAPER_SLOPE`]).
     Walls(f32),
-    /// ⭐ **Uma CONTAGEM**: inteira, de 1 a `max`. Quantas cópias uma matriz tem.
+    /// ⭐ **Uma CONTAGEM**: inteira, de `min` a `max`. Quantas cópias uma matriz tem, quantos lados
+    /// um prisma tem.
     ///
     /// ⚠️ É uma faixa **própria** e não uma `Positive` disfarçada, porque três coisas mudam de uma
     /// vez: o passo do arrasto é **1** (e não um centésimo do curso), o número mostra-se **sem
-    /// casas decimais** (não existe meia cópia), e o piso é **1** e não zero (zero cópias é a peça a
-    /// desaparecer, e apagar já tem botão).
-    Count { max: u32 },
+    /// casas decimais** (não existe meia cópia), e o piso não é zero.
+    ///
+    /// ⚠️ **O `min` é um campo desde a W101**, e ele nasceu de um caso concreto: uma matriz começa
+    /// em **1** (zero cópias é a peça a desaparecer, e apagar já tem botão) e um prisma começa em
+    /// **3** (abaixo disso não há polígono). Com o piso fixo em `1`, o slider do prisma descia a 1,
+    /// a escrita era recusada, e o controle **saltava para trás debaixo do dedo** — *uma recusa é
+    /// informação, mas uma faixa que oferece o que a porta recusa é uma affordance que mente.*
+    Count { min: u32, max: u32 },
+    /// ⭐ **Positiva OU ZERO**, com o teto vindo da vista — a irmã da [`Span::Positive`] com o zero
+    /// dentro.
+    ///
+    /// ⚠️ Ela existe por **uma** grandeza, e ela é a razão de ser da forma: o raio do TOPO de um
+    /// [`crate::Primitive::Cone`], cujo zero **é o cone fechado**. Com `Positive` o documento recusa
+    /// o zero e a forma que dá nome à primitiva fica indigitável; com `Free` o slider oferece
+    /// negativo, que não quer dizer nada.
+    FromZero,
 }
 
 /// Uma grandeza editável de um nó.
@@ -238,6 +252,78 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         // número aqui prometeria mexer numa coisa que só o editor vetorial autora. Ver
         // [`Primitive::Revolve`].
         Primitive::Revolve { .. } => Vec::new(),
+        // ⭐⭐ **O topo é o único número deste arquivo cujo piso é ZERO** (W101) — `Span::Positive`
+        // proíbe o zero, e o zero é o **cone fechado**. `Span::Walls` também não serve (aceitaria
+        // negativo), então a faixa é `From { lo: 0 }`: *a forma que dá nome à primitiva não pode
+        // ser indigitável*.
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            round,
+        } => vec![
+            Dim {
+                key: "field.dim.radius_bottom",
+                value: *bottom,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.radius_top",
+                value: *top,
+                span: Span::FromZero,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            round_dim(*round),
+        ],
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            // ⚠️ **A altura é a do SEGMENTO, não a da peça** — a cápsula mede `2·(h + r)` de ponta a
+            // ponta. Publicar o total faria o número saltar ao mexer no raio, que é a linha de
+            // cima: *um controle que se mexe sozinho quando se mexe noutro é o que faz o artista
+            // deixar de confiar no painel.*
+            Dim {
+                key: "field.dim.length",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+        ],
+        Primitive::Prism {
+            sides,
+            radius,
+            half_height,
+            round,
+        } => vec![
+            Dim {
+                key: "field.dim.sides",
+                value: *sides as f32,
+                span: Span::Count {
+                    min: crate::MIN_PRISM_SIDES,
+                    max: crate::MAX_PRISM_SIDES,
+                },
+            },
+            Dim {
+                key: "field.dim.radius",
+                value: *radius,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half_height * 2.0,
+                span: Span::Positive,
+            },
+            round_dim(*round),
+        ],
     }
 }
 
@@ -257,7 +343,16 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
 /// forma. [`FieldError::RoundTooLarge`] quando é o próprio filete que não cabe.
 pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result<(), FieldError> {
     let bad = |what: &'static str| FieldError::NonPositive { node, what };
-    if !value.is_finite() || value <= 0.0 {
+    // ⭐⭐ **QUEM DECIDE SE O ZERO PASSA É A FAIXA DECLARADA** (W101), e não uma excepção escrita
+    // aqui.
+    //
+    // ⚠️ Esta guarda dizia `value <= 0.0` para tudo, e isso tornava o **cone fechado**
+    // indigitável: o raio de topo zero é a forma que dá nome à primitiva. Uma excepção
+    // `if é_cone && index == 1` curaria o caso e não a família — a próxima grandeza cujo zero
+    // significa alguma coisa voltaria a bater na mesma linha. A [`Span`] já sabe a resposta
+    // (`FromZero`), e ela vem do mesmo sítio que o painel lê.
+    let zero_ok = matches!(dims(p).get(index).map(|d| d.span), Some(Span::FromZero));
+    if !value.is_finite() || value < 0.0 || (value == 0.0 && !zero_ok) {
         return Err(bad("dim"));
     }
     let half = value * 0.5;
@@ -270,10 +365,31 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         | (Primitive::Extrude { half_height, .. }, 0) => *half_height = half,
         (Primitive::Torus { major, .. }, 0) => *major = value,
         (Primitive::Torus { minor, .. }, 1) => *minor = value,
+        (Primitive::Cone { bottom, .. }, 0) => *bottom = value,
+        // ⚠️ **O único destino de um zero neste arquivo** — ver a guarda acima.
+        (Primitive::Cone { top, .. }, 1) => *top = value,
+        (Primitive::Cone { half_height, .. }, 2)
+        | (Primitive::Capsule { half_height, .. }, 1)
+        | (Primitive::Prism { half_height, .. }, 2) => *half_height = half,
+        (Primitive::Capsule { radius, .. }, 0) | (Primitive::Prism { radius, .. }, 1) => {
+            *radius = value;
+        }
+        (Primitive::Prism { sides, .. }, 0) => {
+            // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
+            // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
+            // porta (um ficheiro estragado), e recusar ali rejeitaria a peça inteira. É o
+            // **documento** quem arredonda: um valor fracionário vindo de fora vira uma contagem,
+            // não meio lado.
+            *sides = (value.round() as u32).clamp(crate::MIN_PRISM_SIDES, crate::MAX_PRISM_SIDES);
+        }
         // O filete é o último de cada forma que o tem — e ele passa pela lei do filete, que já
         // sabe recusar o que não cabe.
         (
-            p @ (Primitive::Box { .. } | Primitive::Cylinder { .. } | Primitive::Extrude { .. }),
+            p @ (Primitive::Box { .. }
+            | Primitive::Cylinder { .. }
+            | Primitive::Extrude { .. }
+            | Primitive::Cone { .. }
+            | Primitive::Prism { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);
@@ -300,11 +416,20 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
             limit,
         });
     }
+    // ⚠️ **EXAUSTIVO, e o `_ => {}` que estava aqui era uma armadilha** (W101): uma primitiva nova
+    // COM filete caía no braço vazio, o `round_limit` dela respondia, o `set_round` dizia `Ok` — e
+    // o número **nunca era escrito**. Um slider que se mexe e não faz nada é a falha mais cara de
+    // diagnosticar, porque não deixa rasto. Com a lista fechada, a próxima é erro de compilação.
     match p {
         Primitive::Box { round, .. }
         | Primitive::Cylinder { round, .. }
-        | Primitive::Extrude { round, .. } => *round = value,
-        _ => {}
+        | Primitive::Extrude { round, .. }
+        | Primitive::Cone { round, .. }
+        | Primitive::Prism { round, .. } => *round = value,
+        Primitive::Sphere { .. }
+        | Primitive::Torus { .. }
+        | Primitive::Revolve { .. }
+        | Primitive::Capsule { .. } => {}
     }
     Ok(())
 }
@@ -320,17 +445,25 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
     // exatamente no limite encolheria a fonte a zero. A margem é uma fração do próprio limite, e
     // não um épsilon absoluto — numa peça de 0,01 um épsilon fixo seria o limite inteiro.
     let ceiling = limit * (1.0 - ROUND_MARGIN);
+    // ⚠️ Exaustivo pela razão do [`set_round`] — um braço `_` deixaria a primitiva nova com um
+    // filete que a peça já não comporta, e a validação recusaria o documento inteiro no gesto
+    // seguinte.
     match p {
         Primitive::Box { round, .. }
         | Primitive::Cylinder { round, .. }
-        | Primitive::Extrude { round, .. } => {
+        | Primitive::Extrude { round, .. }
+        | Primitive::Cone { round, .. }
+        | Primitive::Prism { round, .. } => {
             if *round > ceiling {
                 *round = ceiling.max(0.0);
                 return true;
             }
             false
         }
-        _ => false,
+        Primitive::Sphere { .. }
+        | Primitive::Torus { .. }
+        | Primitive::Revolve { .. }
+        | Primitive::Capsule { .. } => false,
     }
 }
 
@@ -389,6 +522,38 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
         }
         // Um torno é só o perfil: não há nada aqui que este módulo possua.
         Primitive::Revolve { .. } => return false,
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            round,
+        } => {
+            *bottom *= factor;
+            // ⚠️ **O topo escala como os outros, e o zero fica zero** — é o que mantém um cone
+            // fechado fechado ao redimensionar. Uma escala que somasse seria a que o abriria.
+            *top *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => {
+            *radius *= factor;
+            *half_height *= factor;
+        }
+        Primitive::Prism {
+            sides: _,
+            radius,
+            half_height,
+            round,
+        } => {
+            // ⚠️ **A contagem NÃO escala** — ela não é um comprimento. Multiplicá-la faria um
+            // hexágono virar um dodecágono ao aumentar a peça, que é mudar a forma e não o tamanho.
+            *radius *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
     }
     true
 }

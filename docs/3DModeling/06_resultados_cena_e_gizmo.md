@@ -5743,6 +5743,9 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 
 | O quê | Estado | Onde |
 |---|---|---|
+| ✅⭐⭐⭐ **A PALETA DE FORMAS** (`+ Add shape…` / tecla `A`) — o catálogo sai do painel e entra no modal genérico da casa | a fileira de chips cortava em **8** e já tinha 8; ⛔ morreram as 4 constantes derivadas do fim da lista, que faziam *Extrude* abrir o diálogo de escultura ao acrescentar no fim | §96 |
+| ✅⭐⭐ **CONE · TRONCO DE CONE · CÁPSULA · PRISMA** — o 1.º lote da fila do Enio | uma lei só (`max` de meias-fatias, 1-Lipschitz por definição); ⚠️ **5 mutações sobreviveram à 1.ª ronda**, todas por eu gatear o campo e não a API do documento | §97 |
+| ⏳ **O RESTO DA FILA: as 47 do catálogo vetorial + 11 sólidas** | a `Family::Plates` nasce **vazia** à espera do lote que traz as 2D de fórmula (estrela, cruz, coração, **engrenagem**); as sólidas que faltam estão no doc 08 | [doc 08](08_formas_por_formula.md) |
 | ✅⭐⭐⭐ **A pré-visualização ALCANÇA 60 Hz** — mediana `~12 ms` contra `16,7`, e independente do `Resolution` | o item nº 1 desde a §70. ⛔ **o `14,2 ms` da §90 foi medido com a câmera PARADA** (corrigido na §91.1); num arrasto real o quadro custa `10`–`27 ms` | §90.4, §91.1 |
 | ✅⭐⭐⭐ **A TRAVADINHA do Enio: a cache despejava `1 700` fitas debaixo do cadeado** | ⭐ `94 %` do preço era a **árvore**, que na rota do produto é lastro. Máximo do regime `364,6 → 21,7 ms` (`17×`), despejo no cadeado `~3 000×` mais barato | §91.2–§91.4 |
 | ✅⭐ **A lei do cancelamento perguntava ao TAMANHO** desde a W73 | ⭐ passa a perguntar à **espécie**: numa hesitação de um quadro o erro angular vai de `2,97°` para `1,50°` | §91.7 |
@@ -9055,3 +9058,270 @@ junta, e de que tamanho»*; o `Op` e o `fold_verb` (*«quem se junta a quem»*) 
 
 ⛔ *Split, nunca allowlist.* A conta das três waves: `field3d_scene_panel.rs` · `field3d_smoke.rs`
 (pré-existente) · `field3d_scene_tests.rs` · `ph2d-field/src/lib.rs`.
+
+---
+
+## §96 — W100: ⭐⭐⭐ A PALETA DE FORMAS — a fileira cortava em 8 e já tinha 8 (28/08)
+
+Enio, 2026-08-28, depois de receber a lista de 47 formas do catálogo vetorial mais 15 sólidas
+([doc 08](08_formas_por_formula.md)): *«escolha e vamos começar. Ao final quero todas. Encontre um
+modo inteligente de organizar na UI»*.
+
+### §96.1 — ⛔ A fileira não era uma escolha de gosto: ela NÃO TEM ONDE CABER
+
+`paint_chips` corta em `MAX_MODES` = **8** (`.take(MAX_MODES as usize)`), e o `SHAPES` tinha
+**exactamente 8**. ⇒ a forma nº 9 seria **pintada e morta**, ou nem pintada, e **nenhum gate deste
+módulo notava**: todos contavam a lista de origem, nunca o que sobrevivia ao corte.
+
+*Um limite de registo que corta em silêncio é o mesmo defeito que o `MAX_ROWS` já tinha nomeado no
+painel — e ali o rodapé DIZ quantas linhas não couberam. Aqui não dizia nada.*
+
+### §96.2 — ⭐⭐⭐ A resposta já existia nesta casa, e já shipou três vezes
+
+O `ph2d_editor_core::widget::command_palette` é **genérico por desenho** (o próprio doc-comment
+dele: *«reusable by any future browse-everything picker»*): conhece só um `PaletteModel` — título +
+categorias coloridas + itens com um `NodeId` opaco — e quem abriu mapeia o id de volta. Já tem
+scrim, cascata de entrada, **busca com um predicado servindo o filtro pintado *e* o `Enter`**,
+sub-clusters, rolagem e promoção a duas colunas.
+
+| consumidor | catálogo | desde |
+|---|---|---|
+| biblioteca de nós do Motion | 86 tipos | — |
+| `Ctrl+K` global | comandos | — |
+| `+` do Inspector (ADR-0166/F3) | 108 componentes | 2026-08 |
+| **`+ Add shape…` / `A`** | 12 formas, 62 na fila | **W100** |
+
+⭐ E o que ela compra além do espaço é o que faz um catálogo grande ser *usável*: **a busca é o único
+acesso que não fica mais lento quando a lista cresce.** `A` · três letras · `Enter`.
+
+⚠️ O dreno é **condicional** (`take_command_pick_if`) porque o canal tem agora **quatro**
+consumidores — um `take` incondicional engoliria o pick de outro, com o sintoma a ser *«às vezes não
+faz nada»*.
+
+### §96.3 — ⛔ O que MORREU: as quatro constantes derivadas do fim da lista
+
+`EXTRUDE_SLOT = SHAPES.len() - 4` … `SCULPT_SCENE_SLOT = SHAPES.len() - 1`. O comentário delas
+mandava, com todas as letras, acrescentar formas *«antes das esculturas»*:
+
+> ⚠️ Elas entram **antes** das esculturas de propósito: os slots delas são derivados do FIM da
+> lista (`len()-2`, `len()-1`), e é essa derivação que faz acrescentar aqui não partir nada.
+
+⇒ **acrescentar no fim fazia o botão *Extrude* abrir o diálogo de escultura, sem erro nenhum.** Com
+o construtor na própria linha (`Make::Formula(fn(f32) -> Primitive)`) a posição deixou de significar
+coisa nenhuma, e a colisão **deixou de ser exprimível**.
+
+*Uma forma nova passa a ser UMA LINHA da tabela* — que é o que uma fila de 62 precisa.
+
+### §96.4 — ⭐ O ganho de PRODUTO: o indisponível aparece, e diz porquê
+
+A lei da W34 (*o painel oferece exactamente o que o gesto faz*) tirava da fileira as três formas que
+dependem da selecção (`Extrude`, `Revolve`, `Sculpt from scene`) — e com isso o artista **não podia
+saber que elas existem**. Na paleta elas ficam, num sub-grupo cujo título nomeia a condição, e o
+rótulo carrega o gesto que as destranca (*"pick a closed outline in the vector editor first"*).
+
+⚠️ E a disponibilidade é **reconferida no momento do pick**, não só ao abrir: entre abrir a paleta e
+escolher um item o artista pode ter largado o contorno. *Uma affordance que envelheceu não pode
+virar um gesto que falha em silêncio.*
+
+### §96.5 — ⛔⛔ DEFEITO PRÉ-EXISTENTE, curado de caminho: o roteador de teclas comia a busca
+
+`field3d_keys` corre **antes** da captura modal da paleta (`keyboard.rs`), e a guarda de cada tecla
+é o **ponteiro sobre a janela 3D** — que continua verdadeira com o modal por cima. ⇒ escrever
+«capsule» na busca disparava o `S` (escalar) e o `A` (reabrir), e as letras nunca chegavam ao campo.
+
+⚠️ **A família é maior do que a tecla que a revelou, e é pré-existente:** `G`/`R`/`S`, `I`, `Q` e
+`Home` já eram comidos com o `Ctrl+K` ou a biblioteca do Motion abertos sobre o módulo armado.
+Curado na **entrada** do roteador — apanha as seis e a próxima.
+
+⚠️ O gate é de **fonte** (`the_field3d_keys_stand_down_while_the_palette_is_open`), e não de
+comportamento: a guarda pergunta ao `HeroScreen`, que segura uma *surface* de janela real; num teste
+o `gfx` é `None`, a guarda devolve sempre `false`, e **um teste de comportamento passaria com ela
+apagada**. *Quando o comportamento não é alcançável, meça a ESTRUTURA que o produz.*
+
+### §96.6 — As provas de mutação
+
+| mutação | resultado |
+|---|---|
+| `available` sempre verdadeiro | **MORTA** (3 gates) |
+| `slot_of_pick` aceita qualquer id | **MORTA** (2 gates) |
+| `why_not` cala-se sempre | **MORTA** |
+| o bloqueado vem primeiro no grupo | **MORTA** |
+| o roteador de teclas não se cala | **MORTA** |
+| `shape_at` constrói tudo | **MORTA** (2 gates) |
+
+⚠️ **E a armadilha do restauro mordeu outra vez:** o `shutil.move` de volta **preserva o mtime**, o
+cargo deu a árvore por inalterada, e a corrida seguinte usou o binário **mutado** — dois vermelhos
+sobre código correcto. A cura é `touch` nos ficheiros restaurados. Já estava em
+[`project-memory`](../../project-memory/feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md);
+*uma memória lida depois do sintoma poupa o diagnóstico, não o susto.*
+
+**Smoke:** o pill **MODEL**, depois o botão **`+ Add shape… (A)`** ou a tecla `A` com o rato sobre a
+peça.
+
+---
+
+## §97 — W101: ⭐⭐⭐ CONE, CÁPSULA E PRISMA — uma lei só, e o `max` que a torna segura (29/08)
+
+O primeiro lote da fila do Enio (*«ao final quero todas»*). Três primitivas, **quatro** entradas na
+paleta — o cone e o tronco de cone são a **mesma** primitiva com defaults diferentes.
+
+### §97.1 — ⛔ Primeiro, a medição que impediu construir o que já existia
+
+A lei do §5.0 manda medir se a composição já exprime o item **antes** de o construir. O módulo tem
+um modificador **`Taper`**. ⇒ *um cone é um cilindro com Taper?* **Não**, e por três razões medidas:
+
+| | |
+|---|---|
+| **eixo** | o `Taper` age em **Y** (`Tree::y()`); o cilindro aponta em **Z** ⇒ ele afina a peça **atravessada** |
+| **ápice** | o `TAPER_FLOOR = 0.01` existe para *«pôr o ápice bem fora de qualquer peça enquadrada»* ⇒ ele **não fecha** |
+| **exactidão** | é o único modificador que **não** devolve distância exacta (divide por `1 + 0,8·\|slope\|`) |
+
+*Uma equivalência que exige mudar o eixo, não fechar a ponta e perder a exactidão não é uma
+equivalência.*
+
+### §97.2 — ⭐⭐⭐ A LEI: a parede é uma RETA, e `max` de 1-Lipschitz é 1-Lipschitz
+
+O `sdCappedCone` publicado é exacto em toda a parte e paga com **ramificações**
+(`(q.y<0)?r1:r2`, e o sinal). Esta crate compila para uma fita da `fidget`, e as ramificações que ela
+tem (`compare`/`and`/`or`) produzem funções **descontínuas** — o gradiente por diferenciação
+automática deixa de existir na fronteira delas, e quem o consome é a extracção da malha (sem normal
+não há QEF) e a marcha. É a mesma razão do `LENGTH_FLOOR`, um nível acima.
+
+⇒ **`slab_and_walls`**: a interseção de uma laje em Z com meias-fatias normalizadas.
+
+| propriedade | vale? |
+|---|---|
+| exacto **na superfície** | ✅ o zero de `max` é a fronteira da interseção |
+| exacto **no interior** | ✅ a distância à parede mais próxima é o `max` das perpendiculares |
+| exterior | **subestima** junto às quinas onde duas paredes não são ortogonais |
+| `‖∇f‖ ≤ 1` | ✅ **por definição** — o máximo de 1-Lipschitz é 1-Lipschitz |
+
+Subestimar é **seguro** para a marcha (nunca ultrapassa) e custa passos, não correcção. ⇒ *o passo
+da marcha não muda por causa destas formas*, e o gate `every_primitive_honours_the_march` mede-o
+forma a forma, **derivado de `PrimitiveKind::ALL`**.
+
+⚠️ É a mesma aritmética do `box_raw`, com uma diferença: ali as três paredes são **ortogonais**, e o
+termo exterior é exacto pelo Pitágoras. Aqui a parede inclina, e por isso o exterior fica no `max`.
+
+⭐ **A cápsula é a excepção e não perde nada:** a distância a um segmento é a distância ao ponto dele
+mais próximo, e *«o mais próximo»* é o `z` **preso** ao intervalo — `min(max(z, −h), h)`, sem uma
+ramificação.
+
+### §97.3 — ⭐⭐ O RECUO DO FILETE NUMA PAREDE INCLINADA não é `bottom − round`
+
+A receita do filete recua cada parede **na perpendicular**. Nas tampas isso é `h − round`, como no
+cilindro. Na parede inclinada — a reta `ρ = a + m·z` — recuá-la de `round` baixa `a` de
+**`round·√(1+m²)`**, mantendo a mesma inclinação. Escrever `bottom − round` devolve um cone raso
+**maior** do que o pedido, e o erro cresce com a inclinação.
+
+O mesmo `√(1+m²)` entra no `round_limit`: o filete cabe até `min(h, a/√(1+m²))`. Sem ele, o
+documento **aceita** um filete que inverte a parede, e o que sai é uma peça **vazia**, validada, sem
+uma palavra.
+
+### §97.4 — ⚠️ O `MAX_PRISM_SIDES`: a medição refutou o doc que eu tinha acabado de escrever
+
+A primeira redacção dizia, com confiança: *«o custo **não** é o recurso — o preço por ponto mal se
+mexe com os lados»*, citando o `spike_formula_vs_profile` (`7,00×` os nós dando `1,21×` o relógio).
+⛔ **Falso aqui.** A sonda `measure_prism_sides`, máquina calma:
+
+| lados | ns/ponto | × o cilindro | desvio da quina |
+|---|---|---|---|
+| 3 | 1,62 | **0,92×** | 50,00 % |
+| 6 | 1,92 | 1,09× | 13,40 % |
+| 12 | 2,74 | 1,56× | 3,41 % |
+| 16 | 3,36 | 1,91× | 1,92 % |
+| 24 | 4,62 | 2,62× | 0,86 % |
+| **32** | 6,69 | **3,80×** | **0,48 %** |
+| 48 | 10,17 | 5,77× | 0,21 % |
+| 64 | 13,11 | 7,43× | 0,12 % |
+| 96 | 19,27 | 10,93× | 0,05 % |
+
+⚠️ **Porque a conclusão anterior não transferia:** ali a árvore era funda e o que custava era o
+*caminho crítico*, que o SIMD escondia. Aqui as paredes são uma **cadeia de `max`** — o caminho
+crítico cresce **linearmente** com `n`. *Uma recusa medida responde UMA pergunta; reconfira-a quando
+a sua for outra.*
+
+⇒ **O teto é onde as DUAS curvas dizem o mesmo:** a 32 a quina desvia `0,48 %` (sub-pixel) e paga-se
+`3,80×` por algo indistinguível de um cilindro **exacto e mais barato**.
+
+⭐ E um bónus: **o prisma triangular é mais barato que o cilindro** (`0,92×`) — três planos não têm
+`sqrt` nenhum, e a secção circular tem um. *A forma «simples» e a forma «barata» não são a mesma
+lista.*
+
+⚠️ **A sonda teve de aprender a olhar para além da cerca:** a primeira versão media pelo documento e
+**entrou em pânico a 48 lados**, porque o `FieldDoc::new` recusa acima do teto — que é o número que
+ela existe para justificar. *Uma sonda que só alcança o lado de dentro do limite não pode dizer que
+o limite está no sítio certo.*
+
+### §97.5 — ⛔⛔ CINCO MUTAÇÕES SOBREVIVERAM À PRIMEIRA RONDA, e as cinco são a mesma forma
+
+| mutação | 1.ª ronda | o que faltava |
+|---|---|---|
+| a parede do cone não normaliza | MORTA | — |
+| a cápsula não prende o `z` ao segmento | MORTA | — |
+| o prisma põe a parede na QUINA | MORTA | — |
+| o prisma usa o circunraio como parede | MORTA | — |
+| a faixa deixa de decidir o zero | MORTA | — |
+| **o recuo da parede ignora a inclinação** | ⛔ **SOBREVIVEU** | nenhum gate media um cone **com filete** |
+| **o `round_limit` ignora a inclinação** | ⛔ **SOBREVIVEU, e com razão** | não havia o que defender — ver abaixo |
+| **o `bounding_radius` da cápsula vira hipotenusa** | ⛔ **SOBREVIVEU** | nada media a caixa do mundo |
+| **o piso da contagem volta a `1`** | ⛔ **SOBREVIVEU** | nada media o piso do slider |
+| **o `set_round` esquece as formas novas** | ⛔ **SOBREVIVEU** | nada escrevia o filete pela porta |
+
+⭐⭐⭐ **Quatro das cinco têm o mesmo mecanismo: eu gateei o CAMPO (a forma sai certa) e não a API do
+DOCUMENTO** — `bounding_radius`, `set_round`, o piso do painel, e o filete do cone (todos os meus
+gates de cone usavam `round = 0`). *Escrevi a guarda certa e não a gateei*, pela terceira vez neste
+repo ([memória](../../project-memory/feedback_i_write_the_right_guard_and_do_not_gate_it.md)).
+
+⭐⭐ **E a quinta não era um buraco: era uma AFIRMAÇÃO FALSA MINHA.** O `round_limit` do cone leva um
+`√(1+m²)`, e o meu doc dizia que sem ele *«um cone raso com filete sairia MAIOR do que o pedido»*.
+Sondado com `round` a **1,55× o limite** (e acima da própria meia-altura):
+
+| round | raio máximo | meia-altura | `‖∇f‖` |
+|---|---|---|---|
+| `0,2575` (o limite) | `0,4497` | `0,3498` | `1,0000` |
+| `0,3990` | `0,4497` | `0,3498` | `1,0000` |
+
+(autorados: raio `0,4500`, meia-altura `0,3500`.) ⇒ **o `max` + `offset` é auto-corretivo**: o que o
+recuo tira, o deslocamento repõe, e a silhueta é *exatamente* `ρ ≤ a + m·z` para qualquer `round`. É
+a diferença para a caixa e o cilindro, onde o termo axial **inverte** com uma meia-extensão negativa.
+⇒ o número fica (é onde o filete deixa de ter parede para comer — limite de **produto**), e a nota
+foi reescrita: *nenhum gate o pode defender como correção, e inventar um seria escrever uma
+afirmação sobre nada.*
+
+⚠️ **A sonda que descobriu isto era CEGA na primeira versão:** ela media só o raio, e a falha
+esperada era em ALTURA. *Pergunte que número a resposta contrária imprimiria* — e depois meça-o.
+
+A cura das outras quatro é **um censo derivado de `PrimitiveKind::ALL`**
+([`the_census_of_every_primitive.rs`](../../crates/ph2d-field-eval/tests/the_census_of_every_primitive.rs)),
+com quatro perguntas — o campo ainda é distância · a caixa do mundo contém a peça · o maior filete
+aceite ainda deixa peça · e o controle que prova que a sonda vê. ⭐ **Uma primitiva nova é erro de
+compilação ali**, e as três perguntas passam a valer para ela sem uma linha de mudança.
+
+⚠️ E o gate da caixa do mundo teve de aprender que o `bounding_radius` de uma esfera **é** a
+superfície: pedir campo estritamente positivo ali reprovaria a forma mais apertada e correcta que
+existe. A afirmação verdadeira é *«nada da peça fica ALÉM do raio»*, e amostra-se um cabelo para
+fora.
+
+⛔⛔ **E o gate do filete SOBREVIVEU à sua própria mutação, por um vazamento no arnês:** ele testava
+as **duas portas** do filete (`set_shape_radius`, do gizmo, e `dims::set_dim`, do painel) num laço
+que acumulava — a 1.ª porta escrevia, e a 2.ª passava com o valor já lá. *Um arnês que acumula
+estado entre casos testa o primeiro caso duas vezes.* Cada porta parte do original agora, e as duas
+mutações morrem.
+
+### §97.6 — ⭐ E dois `_ => {}` que eram armadilhas, fechados
+
+O `set_round` e o `clamp_round` tinham braços vazios: uma primitiva nova **com** filete caía neles, o
+`round_limit` respondia, o `set_round` dizia `Ok` — e o número **nunca era escrito**. Um slider que
+se mexe e não faz nada é a falha mais cara de diagnosticar. Listas fechadas agora; a próxima é erro
+de compilação.
+
+### §97.7 — A régua do censo de alcance mudou pela SEGUNDA vez
+
+`every_primitive_the_engine_can_make_has_a_button` já foi (1) uma lista literal, (2)
+`key.ends_with(kind.key())`. A W101 partiu a segunda com uma linha honesta: o
+`add.cone_truncated` constrói um `PrimitiveKind::Cone` e **não acaba em «cone»**. ⇒ hoje a régua é
+`Make::builds()` — o **facto**, não a convenção de nome —, o que aceita duas portas para a mesma
+primitiva e torna estruturalmente impossível duas primitivas partilharem um botão.
+
+**Smoke:** cena **`=9`** — as quatro lado a lado, com o filete que nasceram a ter.

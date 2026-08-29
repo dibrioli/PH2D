@@ -240,6 +240,7 @@ pub fn params_of(world: &World, entity: Entity) -> Vec<(Param, Dim)> {
                 // são do documento — o piso é o joelho que a W54 mediu e o teto é o custo do
                 // traçado assente (ver [`ph2d_field::MAX_PROFILE_RESOLUTION`]).
                 span: Span::Count {
+                    min: 1,
                     max: ph2d_field::MAX_PROFILE_RESOLUTION,
                 },
             },

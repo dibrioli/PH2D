@@ -18,47 +18,59 @@
 /// disponíveis"*. A pergunta certa para esta fileira é outra — *o painel oferece tudo o que o motor
 /// sabe fazer?* — e a exclusão da outra lei escondia-a.
 ///
-/// ⭐ A régua é o **construtor de nome** do documento (`ph2d_field_ecs::shape_name`), que é a lista
-/// que o motor de facto tem: uma primitiva nova aparece aqui **sozinha**, no dia em que nascer.
+/// ⭐ A régua é [`ph2d_field::PrimitiveKind::ALL`] — a lista que o motor de facto tem, e que o
+/// compilador obriga a crescer: uma primitiva nova aparece aqui **sozinha**, no dia em que nascer.
+///
+/// ⚠️ **Ela já foi duas coisas piores.** Até 26/08 era uma lista **literal** (*«uma de cada,
+/// construída à mão»*) e a contagem no fim só a defendia de si mesma — um `Primitive` novo ficava
+/// sem botão e este gate ficava **verde**. Depois passou a ser `key.ends_with(kind.key())`, uma
+/// **convenção de nome**, que a W101 partiu (ver abaixo).
 #[test]
 fn every_primitive_the_engine_can_make_has_a_button() {
     use crate::field3d_shapes::SHAPES;
     use ph2d_field::PrimitiveKind;
-    // ⭐⭐⭐ **DERIVADA, e não escrita à mão** (2026-08-26).
+    // ⭐⭐⭐ **A RÉGUA É O QUE O CONSTRUTOR DEVOLVE, e não o nome da chave** (W101).
     //
-    // ⛔ Até aqui esta lista era literal — *«uma de cada, construída à mão: é a enumeração que o
-    // `Primitive` não oferece»* — e a contagem no fim só a defendia **de si mesma**. O doc deste
-    // gate promete que *«uma primitiva nova aparece aqui sozinha»* e isso era **falso**: um
-    // `Primitive` novo compilava, ficava sem botão, e este gate ficava **verde**. Hoje a enumeração
-    // existe ([`PrimitiveKind`]) e a corrente fecha no compilador.
-    let mut seen: Vec<usize> = Vec::new();
+    // ⛔ Ela era `s.key.ends_with(k.key())` — uma **convenção de nome** —, e a W101 partiu-a com
+    // uma linha honesta: o `panel.model3d.add.cone_truncated` constrói um `PrimitiveKind::Cone` e
+    // não acaba em «cone». Uma régua de string reprova sobre um catálogo correto e, pior, **aprova**
+    // uma chave que calhe de acabar bem sem construir nada daquilo.
+    //
+    // ⭐ Perguntar ao `shape_at` é perguntar o FACTO: *que forma é que este botão faz?* Isso mata a
+    // convenção, aceita duas portas para a mesma primitiva (que é o que o cone e o tronco são), e
+    // torna estruturalmente impossível duas primitivas partilharem um botão — um slot constrói
+    // exatamente uma. *A metade do gate que defendia isso deixou de ter o que defender.*
+    let construido: Vec<Option<PrimitiveKind>> = SHAPES.iter().map(|s| s.make.builds()).collect();
     for k in PrimitiveKind::ALL {
-        let slot = SHAPES.iter().position(|s| s.key.ends_with(k.key()));
         assert!(
-            slot.is_some(),
-            "o motor sabe fazer «{}» e o painel não oferece botão nenhum para ela — é uma feature \
-             completa e invisível, que é o defeito que a W53 pagou",
+            construido.contains(&Some(k)),
+            "o motor sabe fazer «{}» e o catálogo não tem linha nenhuma que a construa — é uma \
+             feature completa e invisível, que é o defeito que a W53 pagou",
             k.key()
         );
-        // ⛔ **E um botão PRÓPRIO.** Sem esta metade, duas famílias com a mesma chave passavam: a
-        // segunda encontrava o botão da primeira e o gate dizia que estava tudo alcançável — uma
-        // prova de mutação mostrou-o.
-        let slot = slot.expect("acabou de ser afirmado");
-        assert!(
-            !seen.contains(&slot),
-            "«{}» aponta para o mesmo botão de outra família (slot {slot}) — duas formas a partilhar \
-             um botão é uma delas inalcançável",
-            k.key()
-        );
-        seen.push(slot);
     }
-    // …e o controle: o painel não promete o que o motor não tem.
-    assert_eq!(
-        SHAPES.len(),
-        PrimitiveKind::ALL.len() + 2,
-        "o painel oferece formas a mais ou a menos — além das {} primitivas, só as DUAS esculturas",
-        PrimitiveKind::ALL.len()
-    );
+    // ⭐⭐⭐ **…e o CONTROLE, re-derivado na W101 porque a premissa dele DISSOLVEU.**
+    //
+    // ⚠️ Ele dizia `SHAPES.len() == PrimitiveKind::ALL.len() + 2` — *«além das primitivas, só as
+    // duas esculturas»* —, e isso pressupunha **uma porta por primitiva**. O `Cone` e o `Truncated
+    // Cone` são a MESMA primitiva com dois defaults, e a contagem passou a reprovar sobre um
+    // catálogo correto. ⛔ Afrouxá-la para `>=` seria apagar o controle; a cura é perguntar o que
+    // ele de facto defendia: *o painel não promete o que o motor não tem*.
+    //
+    // ⇒ toda linha do catálogo ou **nomeia** uma primitiva, ou é uma das quatro que não saem de um
+    // raio (as duas de perfil, as duas esculturas). Uma chave inventada não cai em nenhum dos dois.
+    for (i, shape) in SHAPES.iter().enumerate() {
+        let escultura = matches!(
+            shape.make,
+            crate::field3d_shapes::Make::Sculpt | crate::field3d_shapes::Make::SculptScene
+        );
+        assert!(
+            construido[i].is_some() || escultura,
+            "{} não produz primitiva nenhuma e não é uma escultura — o painel promete uma forma \
+             que o motor não tem",
+            shape.key
+        );
+    }
 }
 
 /// ⭐ **As duas formas de perfil só são oferecíveis com um contorno FECHADO escolhido** — a lei da

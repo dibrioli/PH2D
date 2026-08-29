@@ -190,11 +190,20 @@ pub(crate) fn param_rows(
                 // duas pontas colapsam no próprio valor — não há para onde arrastar — e a linha
                 // segue marcada para o painel a pintar como facto.
                 Span::Locked => (d.value, Bound::Wrap(d.value)),
-                // ⭐ **Contagem**: as duas pontas são do DOCUMENTO — o piso é 1 porque zero cópias
-                // é a peça a desaparecer (e apagar já tem botão), e o teto é o da matriz.
-                Span::Count { max } => (1.0, Bound::Hard(max as f32)),
+                // ⭐ **Contagem**: as duas pontas são do DOCUMENTO — uma matriz começa em 1 (zero
+                // cópias é a peça a desaparecer, e apagar já tem botão) e um prisma em 3 (abaixo
+                // não há polígono).
+                //
+                // ⚠️ **O piso era o literal `1.0` aqui** (W101): com ele, o slider dos lados descia
+                // a 1, a porta do documento coagia para 3, e o controle **saltava para trás
+                // debaixo do dedo**. *Uma faixa que oferece o que a porta recusa é uma affordance
+                // que mente* — e o piso é um facto do documento, não deste arquivo.
+                Span::Count { min, max } => (min as f32, Bound::Hard(max as f32)),
                 // Simétrica e fechada pelo documento: as duas pontas são paredes.
                 Span::Walls(max) => (-max, Bound::Hard(max)),
+                // ⭐ **Positiva OU zero** — o teto é da vista, como a `Positive`, e a diferença toda
+                // está no piso: aqui o zero é uma resposta (o cone fechado), não uma recusa.
+                Span::FromZero => (0.0, Bound::Soft(view_span)),
             };
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),

@@ -153,6 +153,7 @@ impl Unary {
                     key: "field.mod.count",
                     value: count as f32,
                     span: Span::Count {
+                        min: 1,
                         max: MAX_ARRAY_COUNT,
                     },
                 },
@@ -176,6 +177,7 @@ impl Unary {
                 key: "field.mod.count",
                 value: count as f32,
                 span: Span::Count {
+                    min: 1,
                     max: MAX_ARRAY_COUNT,
                 },
             }],

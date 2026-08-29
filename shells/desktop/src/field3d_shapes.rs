@@ -110,6 +110,39 @@ pub(crate) enum Make {
     SculptScene,
 }
 
+impl Make {
+    /// ⭐⭐⭐ **QUE PRIMITIVA esta porta produz** — `None` quando ela não produz nenhuma.
+    ///
+    /// # ⚠️ Por que ela existe, e o que substituiu
+    ///
+    /// A pergunta *«toda primitiva que o motor sabe fazer tem uma porta?»* era respondida por
+    /// `key.ends_with(kind.key())` — uma **convenção de nome**. A W101 partiu-a com uma linha
+    /// honesta: o `add.cone_truncated` produz um [`ph2d_field::PrimitiveKind::Cone`] e não acaba em
+    /// «cone». Pior do que reprovar sobre um catálogo correto, uma régua de string **aprova** uma
+    /// chave que calhe de acabar bem sem construir nada daquilo.
+    ///
+    /// ⚠️ **E o `shape_at` sozinho também não chega:** ele constrói de um raio, e o `Extrude` /
+    /// `Revolve` não saem de um raio — nem por isso deixam de produzir uma primitiva. É o `Make`
+    /// que sabe, porque é ele que escolhe a porta.
+    ///
+    /// ⚠️ Uma **escultura não é uma primitiva** (`NodeShape::Sampled`), e por isso é `None` — não
+    /// é uma lacuna a preencher.
+    ///
+    /// ⚠️ **`cfg(test)` pela razão do [`slot_of`]**: em produção ninguém pergunta *«que família é
+    /// esta porta?»* — quem cria já tem a forma na mão. Quem pergunta é o censo de alcance, e ele
+    /// não pode perguntá-lo a uma convenção de nome.
+    #[cfg(test)]
+    pub(crate) fn builds(self) -> Option<ph2d_field::PrimitiveKind> {
+        match self {
+            // ⚠️ O raio é arbitrário: o que se pergunta é a FAMÍLIA, e ela não depende do tamanho.
+            Make::Formula(f) => Some(f(1.0).kind()),
+            Make::Extrude => Some(ph2d_field::PrimitiveKind::Extrude),
+            Make::Revolve => Some(ph2d_field::PrimitiveKind::Revolve),
+            Make::Sculpt | Make::SculptScene => None,
+        }
+    }
+}
+
 /// Uma linha do catálogo.
 pub(crate) struct Shape {
     /// A chave i18n do rótulo — **e a identidade da forma na paleta** (o item é o hash dela).
@@ -156,6 +189,56 @@ fn a_torus(r: f32) -> Primitive {
     }
 }
 
+/// ⭐⭐ **O cone FECHADO** (W101) — `top = 0` é o ápice, e é a forma que dá nome à primitiva.
+///
+/// ⚠️ **Ele nasce COM filete, e a primeira versão desta função dizia o contrário com uma razão
+/// inventada.** Eu escrevi que *«o filete que caberia num cone fechado seria fino ao ponto de não
+/// se ver»* — o gate `every_new_shape_that_can_round_is_born_round` reprovou, e a conta refutou-me:
+/// com `bottom = r` e `half_height = 1,2 r`, o [`ph2d_field::radius::cone_round_limit`] dá
+/// **`0,4615 r`** e o default é `0,1 r` — cabe com folga de 4,6×. *Um palpite com cara de medição é
+/// o que este repo mais paga.*
+fn a_cone(r: f32) -> Primitive {
+    Primitive::Cone {
+        bottom: r,
+        top: 0.0,
+        half_height: r * 1.2,
+        round: round_of(r),
+    }
+}
+
+/// ⭐⭐ **O cone TRUNCADO** — a MESMA primitiva, com outro default.
+///
+/// ⚠️ **Duas linhas do catálogo, uma fórmula.** Elas não são formas diferentes: são o mesmo sólido
+/// com o raio de topo em sítios diferentes, e o artista converte uma na outra arrastando um número.
+/// Duas primitivas dariam duas fórmulas para a mesma superfície, e a segunda é a que envelhece.
+///
+fn a_truncated_cone(r: f32) -> Primitive {
+    Primitive::Cone {
+        bottom: r,
+        top: r * 0.5,
+        half_height: r * 1.2,
+        round: round_of(r),
+    }
+}
+
+fn a_capsule(r: f32) -> Primitive {
+    Primitive::Capsule {
+        radius: r * 0.6,
+        half_height: r,
+    }
+}
+
+/// ⭐ O prisma nasce **hexagonal** — é o polígono que um modelador desenha mais vezes (porcas,
+/// flanges, favos), e é longe o bastante do triângulo e do círculo para a forma se ler à primeira.
+fn a_prism(r: f32) -> Primitive {
+    Primitive::Prism {
+        sides: 6,
+        radius: r,
+        half_height: r * 1.2,
+        round: round_of(r),
+    }
+}
+
 /// ⭐⭐⭐ **A LISTA.** Acrescentar uma forma é acrescentar **uma linha** aqui.
 ///
 /// ⚠️ **A ordem daqui é a ordem DENTRO do grupo** da paleta, e nada mais: nenhum consumidor lê a
@@ -175,6 +258,26 @@ pub(crate) const SHAPES: &[Shape] = &[
         key: "panel.model3d.add.cylinder",
         family: Family::Round,
         make: Make::Formula(a_cylinder),
+    },
+    Shape {
+        key: "panel.model3d.add.cone",
+        family: Family::Round,
+        make: Make::Formula(a_cone),
+    },
+    Shape {
+        key: "panel.model3d.add.cone_truncated",
+        family: Family::Round,
+        make: Make::Formula(a_truncated_cone),
+    },
+    Shape {
+        key: "panel.model3d.add.capsule",
+        family: Family::Round,
+        make: Make::Formula(a_capsule),
+    },
+    Shape {
+        key: "panel.model3d.add.prism",
+        family: Family::Blocks,
+        make: Make::Formula(a_prism),
     },
     Shape {
         key: "panel.model3d.add.torus",

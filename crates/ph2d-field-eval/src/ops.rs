@@ -111,6 +111,96 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
     length2(&q, &Tree::z()) - Tree::constant(minor)
 }
 
+/// ⭐⭐⭐ **A LEI DAS TRÊS FORMAS DA W101, numa frase:** *um sólido de parede reta é a interseção de
+/// uma laje com meias-fatias, e `max` de funções 1-Lipschitz é 1-Lipschitz.*
+///
+/// # ⚠️ Por que ela existe, e por que NÃO é a fórmula da referência
+///
+/// O `sdCappedCone` publicado é **exato em toda parte**, e paga por isso com **ramificações**
+/// (`(q.y<0)?r1:r2`, e o sinal `(cb.x<0 && ca.y<0)?-1:1`). Esta crate compila para uma fita da
+/// `fidget`, e as ramificações que ela tem — `compare`/`and`/`or` — produzem funções
+/// **descontínuas**: o gradiente por diferenciação automática deixa de existir na fronteira delas, e
+/// quem consome esse gradiente é a extração da malha (sem normal não há QEF) e a marcha. É a mesma
+/// razão pela qual o [`LENGTH_FLOOR`] existe, um nível acima.
+///
+/// ⭐ **O que se perde e o que se ganha, dito com precisão.** `max(a, b)` de duas distâncias exatas
+/// é:
+/// - **exato na superfície** — o zero de `max` é exatamente a fronteira da interseção;
+/// - **exato no interior** — a distância à parede mais próxima é o `max` das perpendiculares;
+/// - **um SUBESTIMADOR no exterior**, junto às quinas onde duas paredes não são ortogonais.
+///
+/// Subestimar é **seguro** para a marcha de esferas (nunca ultrapassa) e custa passos, não
+/// correção. E `‖∇f‖ ≤ 1` não é esperança: o máximo de funções 1-Lipschitz é 1-Lipschitz, por
+/// definição. ⇒ *o passo da marcha não muda por causa destas formas* — e o gate
+/// `every_primitive_honours_the_march` mede-o, forma a forma, derivado de `PrimitiveKind::ALL`.
+///
+/// ⚠️ **É a MESMA aritmética que o `box_raw` faz**, com uma diferença: ali as três paredes são
+/// ortogonais, então o termo exterior (`length` das partes positivas) é exato pelo Pitágoras. Aqui
+/// a parede inclina, o Pitágoras deixaria de valer, e por isso o exterior fica no `max`.
+///
+/// `walls` são as meias-fatias já **normalizadas** (gradiente unitário); `half_height` é a laje em Z.
+fn slab_and_walls(walls: Tree, half_height: f64) -> Tree {
+    (Tree::z().abs() - Tree::constant(half_height)).max(walls)
+}
+
+/// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
+///
+/// `radial` é a coordenada radial da secção (o `length2(x,y)` de um cone, o `|x|` de uma parede
+/// plana), e a reta vai de `bottom` em `z = −h` a `top` em `z = +h`.
+fn tapered_wall(radial: &Tree, bottom: f64, top: f64, half_height: f64) -> Tree {
+    let a = (bottom + top) * 0.5;
+    let m = (top - bottom) / (2.0 * half_height);
+    (radial.clone() - Tree::constant(a) - Tree::z() * Tree::constant(m))
+        / Tree::constant((1.0 + m * m).sqrt())
+}
+
+/// Cone reto no eixo Z, de `bottom` a `top`, com o aro arredondado em `round`.
+///
+/// ⚠️ **O recuo da parede NÃO é `bottom − round`** — ele é perpendicular à parede inclinada, e por
+/// isso desce `a` de `round·√(1+m²)` mantendo a **mesma inclinação**. Escrever `bottom − round`
+/// devolveria um cone raso maior do que o pedido, e o erro cresce com a inclinação. A conta vive
+/// numa porta só ([`ph2d_field::radius::cone_round_limit`] é a irmã que a valida).
+pub fn sd_cone(bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
+    let h = half_height - round;
+    let a = (bottom + top) * 0.5;
+    let m = (top - bottom) / (2.0 * half_height);
+    let a2 = a - round * (1.0 + m * m).sqrt();
+    // A inclinação é preservada, então as pontas da reta recuada saem dela e da altura nova.
+    let (b2, t2) = (a2 - m * h, a2 + m * h);
+    let radial = length2(&Tree::x(), &Tree::y());
+    offset(&slab_and_walls(tapered_wall(&radial, b2, t2, h), h), round)
+}
+
+/// Cápsula no eixo Z: o segmento de `−half_height` a `+half_height`, engrossado em `radius`.
+///
+/// ⭐ **Exata em toda parte, e sem uma ramificação** — a distância a um segmento é a distância ao
+/// ponto dele mais próximo, e «o mais próximo» é o `z` **preso** ao intervalo, que é
+/// `min(max(z, −h), h)`. É a única das três da W101 que não perde nada.
+pub fn sd_capsule(radius: f64, half_height: f64) -> Tree {
+    let clamped = Tree::z().max(-half_height).min(half_height);
+    length3(&Tree::x(), &Tree::y(), &(Tree::z() - clamped)) - Tree::constant(radius)
+}
+
+/// Prisma regular de `sides` lados no eixo Z, `radius` sendo o **circunraio**.
+///
+/// ⭐ **`sides` meias-fatias, uma por parede** — cada uma é um plano com gradiente unitário, e o
+/// `max` delas é o polígono. ⚠️ A quina fica na direção de `2πk/n` e a parede é perpendicular a
+/// `π/n + 2πk/n`, à distância **apótema** = `radius·cos(π/n)`: uma parede na direção da quina daria
+/// um polígono rodado de meio setor.
+pub fn sd_prism(sides: u32, radius: f64, half_height: f64, round: f64) -> Tree {
+    let n = sides.max(3);
+    let apothem = radius * f64::from(std::f32::consts::PI / n as f32).cos() - round;
+    let mut walls: Option<Tree> = None;
+    for k in 0..n {
+        let a = std::f64::consts::TAU * (f64::from(k) + 0.5) / f64::from(n);
+        let d = Tree::x() * Tree::constant(a.cos()) + Tree::y() * Tree::constant(a.sin())
+            - Tree::constant(apothem);
+        walls = Some(walls.map_or_else(|| d.clone(), |w: Tree| w.max(d.clone())));
+    }
+    let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
+    offset(&slab_and_walls(walls, half_height - round), round)
+}
+
 /// União dura: `min(a, b)`. É aqui que nasce a quina viva.
 pub fn union_sharp(a: &Tree, b: &Tree) -> Tree {
     a.min(b.clone())

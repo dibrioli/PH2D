@@ -73,6 +73,32 @@ pub(crate) fn primitive(p: &Primitive) -> Tree {
             round,
         } => profile::sd_extrude(profile, f64::from(half_height), f64::from(round)),
         Primitive::Revolve { ref profile } => profile::sd_revolve(profile),
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            round,
+        } => ops::sd_cone(
+            f64::from(bottom),
+            f64::from(top),
+            f64::from(half_height),
+            f64::from(round),
+        ),
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => ops::sd_capsule(f64::from(radius), f64::from(half_height)),
+        Primitive::Prism {
+            sides,
+            radius,
+            half_height,
+            round,
+        } => ops::sd_prism(
+            sides,
+            f64::from(radius),
+            f64::from(half_height),
+            f64::from(round),
+        ),
     }
 }
 

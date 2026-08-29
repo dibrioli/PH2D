@@ -15,7 +15,7 @@ use ph2d_field::{NodeKind, Op};
 
 /// Quantas cenas o roteador promete. ⚠️ **Sobe com o `match`**, e a nota do `main.rs` e a do
 /// `field3d_smoke.rs` sobem com ela — as três dizem a mesma coisa e o gate abaixo prende-as.
-const CENAS: u32 = 8;
+const CENAS: u32 = 9;
 
 /// ⭐ **Todas as cenas do roteador CONSTROEM**, e nenhuma é a cena 1 disfarçada.
 ///

@@ -77,8 +77,13 @@ use serde::{Deserialize, Serialize};
 /// variante nova num `enum` **e** mudança de significado de um número: um documento v5 leria o
 /// alcance de um orgânico como se fosse raio, e a peça mudaria de forma em silêncio.
 ///
+/// v7: o [`Primitive`] ganhou **três formas** ([`Primitive::Cone`], [`Primitive::Capsule`],
+/// [`Primitive::Prism`]). São variantes **acrescentadas no fim** do `enum`, então nenhum índice
+/// existente se move e um documento v6 continua a ler-se certo — o degrau sobe na mesma, pela lei
+/// do módulo: *um número que se lê errado em silêncio é pior do que um load que recusa em voz alta*.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 6;
+pub const FIELD_DOC_VERSION: u32 = 7;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -135,7 +140,85 @@ pub enum Primitive {
     /// que cruza o eixo auto-intersecta, e o campo que sai disso deixa de ser uma distância. O
     /// documento recusa ([`FieldError::ProfileCrossesAxis`]) em vez de produzir a forma errada.
     Revolve { profile: Profile },
+    /// ⭐⭐ **Cone reto no eixo Z, possivelmente TRUNCADO** (W101) — raio `bottom` em
+    /// `−half_height`, `top` em `+half_height`, com o **aro** arredondado em `round`.
+    ///
+    /// ⚠️ **Um cone e um tronco de cone são a MESMA forma**, e por isso são a mesma primitiva:
+    /// `top = 0` fecha num ápice. Duas variantes dariam duas fórmulas para a mesma superfície — e
+    /// a segunda é a que envelhece. A paleta oferece as **duas portas**, com defaults diferentes;
+    /// o artista converte uma na outra arrastando um número.
+    ///
+    /// ⚠️ **Z, como o [`Primitive::Cylinder`]** — um cone é o cilindro cuja parede inclina, e um
+    /// eixo diferente faria a mesma peça mudar de orientação ao trocar de forma.
+    Cone {
+        bottom: f32,
+        top: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// ⭐ **Cápsula no eixo Z** — o segmento de `−half_height` a `+half_height` engrossado em
+    /// `radius`.
+    ///
+    /// ⚠️ **Não tem `round`, e a ausência é a forma**: ela já é o cilindro com as tampas
+    /// arredondadas ao máximo possível, e um segundo raio não teria onde agir. É a mesma razão da
+    /// [`Primitive::Sphere`].
+    Capsule { radius: f32, half_height: f32 },
+    /// ⭐⭐ **Prisma regular de `sides` lados no eixo Z**, com `radius` sendo o **circunraio** (a
+    /// distância do eixo a uma quina), e o aro arredondado em `round`.
+    ///
+    /// ⚠️ **Circunraio e não apótema**, e a escolha tem consequência visível: com o circunraio, um
+    /// prisma de `n` lados **inscreve-se** no cilindro do mesmo `radius`, então subir os lados
+    /// converge para ele por dentro. Com o apótema convergiria por fora, e trocar um cilindro por
+    /// um prisma faria a peça **crescer**.
+    Prism {
+        sides: u32,
+        radius: f32,
+        half_height: f32,
+        round: f32,
+    },
 }
+
+/// O menor número de lados que um prisma admite — abaixo disto não há polígono.
+pub const MIN_PRISM_SIDES: u32 = 3;
+
+/// ⭐⭐⭐ **O TETO de lados de um prisma — e a medição REFUTOU a razão que eu ia escrever.**
+///
+/// # ⚠️ O erro, porque ele é instrutivo
+///
+/// A primeira redação deste doc dizia, com confiança: *«o custo **não** é o recurso — o preço por
+/// ponto mal se mexe com os lados»*, e citava o `spike_formula_vs_profile`, que tinha medido `7,00×`
+/// os nós a dar `1,21×` o relógio. ⛔ **É falso aqui.** A sonda
+/// [`measure_prism_sides`](../../ph2d-field-eval/tests/measure_prism_sides.rs) mediu:
+///
+/// | lados | ns/ponto | × o cilindro | desvio da quina |
+/// |---|---|---|---|
+/// | 3 | 1,62 | **0,92×** | 50,00 % |
+/// | 6 | 1,92 | 1,09× | 13,40 % |
+/// | 12 | 2,74 | 1,56× | 3,41 % |
+/// | 16 | 3,36 | 1,91× | 1,92 % |
+/// | 24 | 4,62 | 2,62× | 0,86 % |
+/// | **32** | 6,69 | **3,80×** | **0,48 %** |
+/// | 64 | 13,11 | 7,43× | 0,12 % |
+/// | 96 | 19,27 | 10,93× | 0,05 % |
+///
+/// ⚠️ **Porque a conclusão anterior não transferia:** ali a árvore era funda e o que custava era o
+/// *caminho crítico*, que o SIMD escondia. Aqui as paredes são uma **cadeia de `max`** — o caminho
+/// crítico cresce **linearmente** com `n`, e o relógio segue-o. *Uma recusa medida responde UMA
+/// pergunta; reconfira-a quando a sua for outra.*
+///
+/// ⭐ **E o triângulo é MAIS BARATO que o cilindro** (`0,92×`): três planos não têm `sqrt` nenhum, e
+/// a secção circular tem um. *A forma «simples» e a forma «barata» não são a mesma lista.*
+///
+/// # ⭐ O teto é onde as DUAS curvas dizem o mesmo
+///
+/// Um prisma de muitos lados **é** um cilindro, e este app tem o cilindro **exato e mais barato**. A
+/// 32 lados a quina desvia `0,48 %` do raio — sub-pixel em qualquer enquadramento razoável — e
+/// paga-se `3,71×` por isso. ⇒ acima de 32 o artista pede um cilindro, não o recebe, e paga a mais.
+///
+/// ⚠️ *Um limite legítimo diz de que recurso ele é* (CLAUDE.md §0). Este é dos **dois** ao mesmo
+/// tempo, e é isso que o torna o sítio certo: a forma deixa de se distinguir exatamente onde o preço
+/// começa a doer.
+pub const MAX_PRISM_SIDES: u32 = 32;
 
 /// ⭐⭐⭐ **A FAMÍLIA de uma primitiva, sem os números dela** (2026-08-26) — a lista que um gate pode
 /// percorrer.
@@ -162,17 +245,23 @@ pub enum PrimitiveKind {
     Torus,
     Extrude,
     Revolve,
+    Cone,
+    Capsule,
+    Prism,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 6] = [
+    pub const ALL: [PrimitiveKind; 9] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
         PrimitiveKind::Torus,
         PrimitiveKind::Extrude,
         PrimitiveKind::Revolve,
+        PrimitiveKind::Cone,
+        PrimitiveKind::Capsule,
+        PrimitiveKind::Prism,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -185,6 +274,9 @@ impl PrimitiveKind {
             PrimitiveKind::Torus => "torus",
             PrimitiveKind::Extrude => "extrude",
             PrimitiveKind::Revolve => "revolve",
+            PrimitiveKind::Cone => "cone",
+            PrimitiveKind::Capsule => "capsule",
+            PrimitiveKind::Prism => "prism",
         }
     }
 }
@@ -201,6 +293,9 @@ impl Primitive {
             Primitive::Torus { .. } => PrimitiveKind::Torus,
             Primitive::Extrude { .. } => PrimitiveKind::Extrude,
             Primitive::Revolve { .. } => PrimitiveKind::Revolve,
+            Primitive::Cone { .. } => PrimitiveKind::Cone,
+            Primitive::Capsule { .. } => PrimitiveKind::Capsule,
+            Primitive::Prism { .. } => PrimitiveKind::Prism,
         }
     }
 }
@@ -607,6 +702,50 @@ fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
                 return Err(FieldError::ProfileCrossesAxis { node: idx, min_x });
             }
             Ok(())
+        }
+        // ⚠️ **O `top` pode ser ZERO, e é o cone fechado** — só ele entre todos os números deste
+        // arquivo. Exigir `> 0` proibiria a forma que dá nome à primitiva.
+        Primitive::Cone {
+            bottom,
+            top,
+            half_height,
+            round,
+        } => {
+            positive(bottom, "bottom")?;
+            if !top.is_finite() || top < 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "top",
+                });
+            }
+            positive(half_height, "half_height")?;
+            round_fits(round, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::Capsule {
+            radius,
+            half_height,
+        } => {
+            positive(radius, "radius")?;
+            positive(half_height, "half_height")
+        }
+        Primitive::Prism {
+            sides,
+            radius,
+            half_height,
+            round,
+        } => {
+            // ⚠️ **A contagem é COAGIDA na porta, não recusada**: um prisma de 2 lados não é uma
+            // forma degenerada que o artista queira ver recusada — é um valor que a UI nunca
+            // oferece e que só um documento estragado traz. Recusar aqui rejeitaria a peça inteira.
+            if !(MIN_PRISM_SIDES..=MAX_PRISM_SIDES).contains(&sides) {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "sides",
+                });
+            }
+            positive(radius, "radius")?;
+            positive(half_height, "half_height")?;
+            round_fits(round, round_limit(p).unwrap_or(0.0))
         }
     }
 }

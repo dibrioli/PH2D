@@ -45,9 +45,10 @@ pub(crate) fn publish_snapshot(
             active: *f == frame,
         })
         .collect();
-    let (live_sculpt, profile) =
-        with_smoke(|s| (s.has_live_sculpt, s.profile_pick.is_some())).unwrap_or((false, false));
-    let adds = adds_for(live_sculpt, profile);
+    // ⚠️ **O retrato deixou de carregar a disponibilidade das formas** (W100): quem a lê é a paleta,
+    // no instante em que abre. Publicá-la aqui seria um espelho a envelhecer entre o quadro em que
+    // o painel pinta e o quadro em que o artista escolhe.
+    let adds = adds_for();
     let ops = ops_for(world, selection);
     let (verbs, verb_subject) = super::verb::verbs_for(world, selection);
     let characters = super::verb::characters_for(world, selection);
@@ -209,45 +210,6 @@ pub(crate) fn param_rows(
         .collect()
 }
 
-/// ⭐ **As formas que se podem acrescentar**, na ordem do seletor.
-///
-/// ⚠️ **É a fonte da contagem**, como o `Mode::ALL`: acrescentar uma primitiva aqui faz o painel
-/// seguir sem uma linha de mudança.
-pub(crate) const SHAPES: [&str; 8] = [
-    "panel.model3d.add.box",
-    "panel.model3d.add.sphere",
-    "panel.model3d.add.cylinder",
-    "panel.model3d.add.torus",
-    // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
-    //
-    // ⚠️ Elas entram **antes** das esculturas de propósito: os slots delas são derivados do FIM da
-    // lista (`len()-2`, `len()-1`), e é essa derivação que faz acrescentar aqui não partir nada.
-    "panel.model3d.add.extrude",
-    "panel.model3d.add.revolve",
-    "panel.model3d.add.sculpt",
-    "panel.model3d.add.sculpt_scene",
-];
-
-/// ⭐ **As duas formas que saem de um perfil DESENHADO**, e os slots delas — derivados, como os das
-/// esculturas.
-pub(crate) const EXTRUDE_SLOT: usize = SHAPES.len() - 4;
-pub(crate) const REVOLVE_SLOT: usize = SHAPES.len() - 3;
-
-/// ⭐ **A posição da escultura no seletor** — e ela é DERIVADA, nunca escrita.
-///
-/// ⚠️ O `shape_at` devolve `None` neste slot de propósito (uma escultura não é uma primitiva), e
-/// quem o trata é o braço do `AddShape`. Um literal `4` ali sobreviveria a acrescentar uma primitiva
-/// no meio da lista e passaria a abrir o diálogo no botão errado — **sem erro nenhum**.
-pub(crate) const SCULPT_SLOT: usize = SHAPES.len() - 2;
-
-/// ⭐ **A posição da escultura VIVA da cena** (W39) — a que não passa pelo disco. Derivada pela
-/// mesma razão da irmã acima.
-///
-/// ⚠️ **Ela só é OFERECIDA quando há uma escultura na cena** (a lei da W34): um botão que diz
-/// *"trazer a escultura"* sem escultura nenhuma é a affordance que mente.
-pub(crate) const SCULPT_SCENE_SLOT: usize = SHAPES.len() - 1;
-
-/// As ações sobre o objeto escolhido, na ordem do seletor.
 /// ⭐ **Os modificadores oferecidos, e quais o nó já tem** — interruptores, não ações.
 ///
 /// ⚠️ **A lista é derivada de [`ph2d_field::UnaryKind::ALL`]**, que é a fonte da contagem: um
@@ -383,35 +345,10 @@ pub(crate) fn new_shape_size(half_extent: f32) -> f32 {
     (half_extent * 0.25).max(f32::MIN_POSITIVE)
 }
 
-/// A primitiva que cada posição do seletor cria, no tamanho do enquadramento.
-///
-/// ⚠️ **Todas nascem com o `round` que têm direito**, e não a zero: este é o módulo cujo argumento é
-/// o arredondamento, e uma caixa de aresta viva ao nascer esconderia exatamente aquilo que ele faz
-/// melhor do que o Blender. O valor é uma fração do tamanho, então ele cabe sempre.
-pub(crate) fn shape_at(slot: usize, r: f32) -> Option<Primitive> {
-    let round = r * 0.1;
-    Some(match slot {
-        0 => Primitive::Box {
-            half: [r; 3],
-            round,
-        },
-        1 => Primitive::Sphere { radius: r },
-        2 => Primitive::Cylinder {
-            radius: r,
-            half_height: r * 1.2,
-            round,
-        },
-        3 => Primitive::Torus {
-            major: r,
-            minor: r * 0.35,
-        },
-        // ⚠️ **As formas de PERFIL e as ESCULTURAS não saem daqui** (W53/W22/W39): elas não são
-        // construíveis a partir de um raio — precisam do contorno desenhado ou de um arquivo, que
-        // vivem fora do mundo. Quem as trata é o braço próprio do `AddShape`, e o gate
-        // `the_sculpt_slot_points_at_the_sculpt_button` prende as quatro exceções.
-        _ => return None,
-    })
-}
+// ⚠️ **O `shape_at` mudou-se para [`crate::field3d_shapes`]** (W100), com o catálogo inteiro: cada
+// forma passou a trazer o **próprio construtor**, então não há mais um `match slot` para viver aqui.
+// *Um `match` posicional sobrevive a acrescentar no fim e parte-se em silêncio ao inserir no meio* —
+// e o que vem por aí é uma lista de 60.
 
 pub(crate) fn op_at(slot: usize) -> Option<Op> {
     Some(match slot {
@@ -422,26 +359,27 @@ pub(crate) fn op_at(slot: usize) -> Option<Op> {
     })
 }
 
-/// ⭐ **As formas que se podem acrescentar AGORA** — e uma delas não está sempre disponível.
+/// ⭐⭐⭐ **A PORTA DE CRIAR — um botão** (W100), que abre a paleta de formas.
 ///
-/// ⚠️ **A escultura da CENA sai da lista quando não há cena esculpida** (W39): é a lei da W34
-/// aplicada à única forma cuja disponibilidade não é constante — *um botão que diz «trazer a
-/// escultura» sem escultura nenhuma é a affordance que mente*. As outras cinco são sempre
-/// possíveis: uma caixa não depende de nada.
+/// # ⚠️ Ela era uma fileira com o catálogo inteiro, e não podia continuar a ser
 ///
-/// ⚠️ **Função pura**, pela razão do `next_isolation`: o facto vive no `Smoke`, que só nasce com o
-/// módulo armado e cujo estado é `thread_local` — armá-lo num gate contaminaria os vizinhos.
-pub(crate) fn adds_for(live_sculpt: bool, profile: bool) -> Vec<ph2d_panel_model3d::ModeChip> {
-    SHAPES
-        .iter()
-        .enumerate()
-        // ⚠️ **As formas de perfil só aparecem com um contorno FECHADO escolhido** (a lei da W34):
-        // um botão *Extrude* sem nada para extrudar é a affordance que mente — e o gesto teria de
-        // falhar em silêncio ou com um aviso, que é pior do que não estar lá.
-        .filter(|(i, _)| (*i != EXTRUDE_SLOT && *i != REVOLVE_SLOT) || profile)
-        .filter(|(i, _)| *i != SCULPT_SCENE_SLOT || live_sculpt)
-        .map(|(_, key)| ph2d_panel_model3d::ModeChip { key, active: false })
-        .collect()
+/// O `paint_chips` corta em `MAX_MODES` = **8**, e o catálogo já tinha **8**: a forma nº 9 sairia da
+/// tela **sem uma palavra**. E são 47 do catálogo vetorial mais 15 sólidas na fila (doc 08). O que
+/// resolve isto já existe nesta casa e já shipou três vezes — a paleta genérica do
+/// `ph2d-editor-core` —, e é para lá que a lista foi ([`crate::field3d_shape_palette`]).
+///
+/// ⭐ **A disponibilidade continua a ser respeitada, e ficou MELHOR:** as três formas que dependem
+/// da seleção sumiam da fileira, e com isso o artista não podia saber que existem. Na paleta elas
+/// aparecem com a **razão** ao lado.
+///
+/// ⚠️ **Devolve uma FILEIRA de um chip** e não um `bool` — ver [`ph2d_panel_model3d::ModelSnapshot`]
+/// `adds`: o `paint_chips` já sabe desenhar, medir e registar; um botão avulso seria um caminho de
+/// pintura novo neste painel.
+pub(crate) fn adds_for() -> Vec<ph2d_panel_model3d::ModeChip> {
+    vec![ph2d_panel_model3d::ModeChip {
+        key: "panel.model3d.add.open",
+        active: false,
+    }]
 }
 
 /// ⭐ **Quais operações fazem sentido AGORA** — e vazio quando nenhuma faz.

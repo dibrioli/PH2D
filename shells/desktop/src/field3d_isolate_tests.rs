@@ -237,45 +237,53 @@ fn a_born_group_says_so() {
 
 // ─────────────────────── W39: a escultura da CENA (sem disco) ───────────────────────
 
-/// ⭐ **O botão da escultura da cena só é OFERECIDO quando há cena esculpida** — a lei da W34
-/// aplicada à única forma cuja disponibilidade não é constante.
+/// ⭐ **A escultura da cena só é oferecível quando há cena esculpida** — a lei da W34 aplicada à
+/// única forma cuja disponibilidade não é constante.
+///
+/// ⚠️ **Ela mede o CATÁLOGO desde a W100**, e não mais a fileira do painel: a fileira virou um botão
+/// que abre a paleta, e a filtragem mudou-se para lá. A lei é a mesma; o sujeito é que deixou de ser
+/// uma lista de chips.
 #[test]
 fn the_scene_sculpture_button_appears_only_when_there_is_one() {
-    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SHAPES, adds_for};
+    use crate::field3d_shapes::{SHAPES, available, slot_of};
 
+    let cena = slot_of("panel.model3d.add.sculpt_scene").expect("a escultura da cena existe");
     // ⚠️ **O perfil fica LIGADO nos dois lados**, de propósito: este gate mede a filtragem da
     // escultura da cena, e deixar a outra a variar junto mediria as duas ao mesmo tempo — um gate
     // que muda de significado quando outra feature entra.
-    let without = adds_for(false, true);
-    assert_eq!(
-        without.len(),
-        SHAPES.len() - 1,
-        "sem escultura na cena, a lista perde exactamente uma forma"
+    assert!(
+        !available(&SHAPES[cena], false, true),
+        "sem escultura na cena, ela não é oferecível"
     );
     assert!(
-        !without.iter().any(|c| c.key == SHAPES[SCULPT_SCENE_SLOT]),
-        "…e a que falta é a da cena"
+        available(&SHAPES[cena], true, true),
+        "com escultura na cena, ela é"
     );
-
-    let with = adds_for(true, true);
-    assert_eq!(with.len(), SHAPES.len(), "com escultura, estão todas");
-    assert!(
-        with.iter().any(|c| c.key == SHAPES[SCULPT_SCENE_SLOT]),
-        "…incluindo a da cena"
-    );
+    // ⚠️ **E o CONTROLE**: nenhuma outra forma muda de disponibilidade com essa condição — sem ele,
+    // um `available` que devolvesse `live_sculpt` para tudo passaria a metade de cima.
+    let mudam = SHAPES
+        .iter()
+        .filter(|s| available(s, false, true) != available(s, true, true))
+        .count();
+    assert_eq!(mudam, 1, "só a escultura da cena depende de haver uma");
 }
 
-/// ⚠️ **As duas posições derivadas não podem colidir.** As duas saem de `SHAPES.len()`, e um `-2`
-/// trocado por um `-1` faria o botão do arquivo e o da cena serem o mesmo slot — o diálogo abriria
-/// no botão errado, **sem erro nenhum**. É a razão de o `SCULPT_SLOT` já ser derivado, uma wave
-/// depois e com um irmão ao lado.
+/// ⚠️ **As duas esculturas são duas formas distintas, e cada uma faz a sua coisa.**
+///
+/// ⭐ **Este gate mudou de sujeito na W100, e a mudança é o ganho:** ele defendia duas constantes
+/// derivadas do fim da lista (`SHAPES.len() - 2` e `- 1`), onde um `-2` trocado por `-1` faria o
+/// botão do arquivo e o da cena serem o **mesmo** slot — o diálogo abriria no botão errado, sem erro
+/// nenhum. Hoje cada linha traz o próprio [`crate::field3d_shapes::Make`], então a colisão que ele
+/// defendia **não é exprimível**; o que sobra medir é que as duas continuam a existir e a ser
+/// diferentes.
 #[test]
 fn the_two_sculpture_slots_are_distinct_and_in_range() {
-    use crate::field3d_scene::panel::{SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES};
-    assert_ne!(SCULPT_SLOT, SCULPT_SCENE_SLOT);
-    assert!(SCULPT_SLOT < SHAPES.len() && SCULPT_SCENE_SLOT < SHAPES.len());
-    assert_eq!(SHAPES[SCULPT_SLOT], "panel.model3d.add.sculpt");
-    assert_eq!(SHAPES[SCULPT_SCENE_SLOT], "panel.model3d.add.sculpt_scene");
+    use crate::field3d_shapes::{Make, SHAPES, slot_of};
+    let arquivo = slot_of("panel.model3d.add.sculpt").expect("a do arquivo existe");
+    let cena = slot_of("panel.model3d.add.sculpt_scene").expect("a da cena existe");
+    assert_ne!(arquivo, cena);
+    assert!(matches!(SHAPES[arquivo].make, Make::Sculpt));
+    assert!(matches!(SHAPES[cena].make, Make::SculptScene));
 }
 
 /// ⚠️ **A chave da cena e o prefixo que o resolvedor procura têm de casar.** São dois literais, e

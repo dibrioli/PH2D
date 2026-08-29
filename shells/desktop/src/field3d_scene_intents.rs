@@ -17,11 +17,14 @@ use super::*;
 /// Devolve **o que passou a estar selecionado**: `created` é o nó que um gesto fez nascer (entra
 /// com o que a importação de escultura já tenha criado neste quadro), e `cleared` diz que a seleção
 /// aponta para algo que deixou de existir.
+///
+/// ⚠️ **Ela deixou de receber a RAIZ e a CÂMERA na W100**, e a perda é a notícia: os dois só
+/// serviam para *nascer uma forma*, que passou a entrar por [`add_shape`] — o painel já não escolhe
+/// forma nenhuma, ele abre a paleta. *Um parâmetro que ninguém lê é uma pergunta que o leitor
+/// seguinte tenta responder.*
 pub(super) fn apply(
     world: &mut bevy_ecs::world::World,
-    root: bevy_ecs::entity::Entity,
     selection: &[bevy_ecs::entity::Entity],
-    cam: ph2d_field_render::Orbit,
     mut created: Option<u64>,
 ) -> (Option<u64>, bool) {
     let mut cleared = false;
@@ -39,40 +42,14 @@ pub(super) fn apply(
                     });
                 }
             }
-            // ⭐ **Criar** — perto do que está selecionado, no tamanho do enquadramento.
-            // ⭐ **A escultura da CENA** (W39) — o mesmo salto do irmão abaixo, sem o disco no meio.
-            ph2d_panel_model3d::ModelIntent::AddShape { slot }
-                if slot == panel::SCULPT_SCENE_SLOT =>
-            {
-                crate::field3d_smoke::ask_scene_sculpt();
-            }
-            // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
+            // ⭐⭐⭐ **CRIAR abre a PALETA** (W100) — e ela é a mesma do `Ctrl+K` e do `+` do
+            // Inspector.
             //
-            // ⚠️ **Só ANOTA**, como as esculturas: cozer o contorno precisa da **cena vetorial**, e
-            // esta função recebe o **mundo**. Mesma divisão, mesma razão.
-            ph2d_panel_model3d::ModelIntent::AddShape { slot }
-                if slot == panel::EXTRUDE_SLOT || slot == panel::REVOLVE_SLOT =>
-            {
-                crate::field3d_smoke::ask_profile_shape(if slot == panel::EXTRUDE_SLOT {
-                    crate::field3d_smoke::ProfileShape::Extrude
-                } else {
-                    crate::field3d_smoke::ProfileShape::Revolve
-                });
-            }
-            ph2d_panel_model3d::ModelIntent::AddShape { slot } if slot == panel::SCULPT_SLOT => {
-                // ⚠️ **Só ANOTA.** Escolher um arquivo é um diálogo, e esta função recebe o mundo —
-                // a mesma divisão que a exportação já faz, e pela mesma razão.
-                crate::field3d_smoke::ask_import();
-            }
-            ph2d_panel_model3d::ModelIntent::AddShape { slot } => {
-                if let Some(prim) = shape_at(slot, new_shape_size(cam.half_extent)) {
-                    let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
-                    if let Ok(e) = ph2d_field_ecs::add_leaf(world, parent, prim, cam.target) {
-                        // ⭐ A forma nova fica SELECIONADA: é o que põe o gizmo em cima dela sem
-                        // ninguém ter de a procurar na Hierarquia.
-                        created = Some(e.to_bits());
-                    }
-                }
+            // ⚠️ **Só ANOTA**, como a exportação e as esculturas: a paleta vive no `HeroScreen`, e
+            // esta função recebe o **mundo**. Mesma divisão, mesma razão — e o pick volta noutro
+            // quadro, por [`add_shape`], que é a porta única de nascer uma forma.
+            ph2d_panel_model3d::ModelIntent::OpenShapes => {
+                crate::field3d_smoke::ask_shape_palette();
             }
             // ⭐ **As ações sobre o objeto escolhido** — e o `slot` resolve-se em **chave**.
             //
@@ -289,4 +266,71 @@ pub(super) fn apply(
         }
     }
     (created, cleared)
+}
+
+/// ⭐⭐⭐ **A PORTA de nascer uma forma** (W100) — a paleta escolheu, e é aqui que a escolha vira
+/// peça. Devolve o nó criado, quando ele nasce **neste** quadro.
+///
+/// # ⚠️ Por que é uma função, e não um braço do `match` acima
+///
+/// A escolha chega da **paleta**, que vive no `HeroScreen` e é drenada onde o mundo está
+/// ([`super::ecs_bridge`]) — não é um pedido do painel, exatamente como a tecla do isolamento não
+/// é. Deixá-la reentrar pela fila de intents obrigaria a shell a empurrar para uma fila que é do
+/// painel; escrevê-la duas vezes seria a segunda porta. *Uma escolha, uma função.*
+///
+/// # ⚠️ Cada `Make` decide, e nenhum número decide
+///
+/// Três das cinco **só anotam**: cozer um contorno precisa da cena vetorial e abrir um arquivo
+/// precisa de um diálogo, e nenhuma das duas coisas está aqui. É a mesma divisão da exportação.
+/// ⛔ E é o [`Make`] que as separa, nunca a posição no catálogo — as constantes derivadas do fim da
+/// lista (`SHAPES.len() - 4`…) morreram com a W100 porque a lista vai crescer.
+pub(super) fn add_shape(
+    world: &mut bevy_ecs::world::World,
+    root: bevy_ecs::entity::Entity,
+    selection: &[bevy_ecs::entity::Entity],
+    cam: ph2d_field_render::Orbit,
+    slot: usize,
+) -> Option<u64> {
+    use crate::field3d_shapes::Make;
+    let shape = crate::field3d_shapes::SHAPES.get(slot)?;
+    // ⚠️ **A disponibilidade é reconferida AQUI**, e não só na paleta: entre abrir a paleta e
+    // escolher um item o artista pode ter largado o contorno, e a paleta é um retrato do instante
+    // em que abriu. *Uma affordance que envelheceu não pode virar um gesto que falha em silêncio.*
+    let (live_sculpt, profile) = crate::field3d_smoke::palette_conditions();
+    if !crate::field3d_shapes::available(shape, live_sculpt, profile) {
+        crate::field3d_notice::say(format!(
+            "{}: not available right now",
+            ph2d_i18n::tr(shape.key)
+        ));
+        return None;
+    }
+    match shape.make {
+        Make::Formula(_) => {
+            let prim = crate::field3d_shapes::shape_at(slot, new_shape_size(cam.half_extent))?;
+            let parent = where_to_add(world, root, selection.first().map(|e| e.to_bits()));
+            // ⭐ A forma nova fica SELECIONADA: é o que põe o gizmo em cima dela sem ninguém ter de
+            // a procurar na Hierarquia.
+            ph2d_field_ecs::add_leaf(world, parent, prim, cam.target)
+                .ok()
+                .map(|e| e.to_bits())
+        }
+        // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
+        Make::Extrude => {
+            crate::field3d_smoke::ask_profile_shape(crate::field3d_smoke::ProfileShape::Extrude);
+            None
+        }
+        Make::Revolve => {
+            crate::field3d_smoke::ask_profile_shape(crate::field3d_smoke::ProfileShape::Revolve);
+            None
+        }
+        Make::Sculpt => {
+            crate::field3d_smoke::ask_import();
+            None
+        }
+        // ⭐ **A escultura da CENA** (W39) — o mesmo salto, sem o disco no meio.
+        Make::SculptScene => {
+            crate::field3d_smoke::ask_scene_sculpt();
+            None
+        }
+    }
 }

@@ -28,20 +28,27 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // escolha — quem já modela sabe o que elas querem dizer sem experimentar.
         "panel.model3d.frame.global" => "Global",
         "panel.model3d.frame.local" => "Local",
-        // As formas que se acrescentam. ⚠️ São AÇÕES, não modos: o rótulo diz a forma, e o gesto
-        // cria uma. Um "Add Box" seria a palavra "Add" repetida quatro vezes num painel estreito.
-        "panel.model3d.add.box" => "+ Box",
-        "panel.model3d.add.sphere" => "+ Sphere",
-        "panel.model3d.add.cylinder" => "+ Cylinder",
-        "panel.model3d.add.torus" => "+ Torus",
+        // ⭐⭐⭐ A PORTA DE CRIAR (W100) — um botão, que abre a paleta de formas.
+        //
+        // ⚠️ As reticências dizem "isto abre alguma coisa" (a convenção que o `Sculpt…` já usava), e
+        // o atalho vai no rótulo pela razão das vistas nomeadas: é a única forma de a tecla ser
+        // descoberta por quem não sabe que ela existe.
+        "panel.model3d.add.open" => "+ Add shape… (A)",
+        // As formas do catálogo. ⚠️ **Sem o "+"** desde a W100: elas deixaram de ser botões de uma
+        // fileira e passaram a ser ITENS de uma paleta, onde o "+" seria ruído repetido em 60
+        // linhas — o verbo já está no título do modal ("Add Shape").
+        "panel.model3d.add.box" => "Box",
+        "panel.model3d.add.sphere" => "Sphere",
+        "panel.model3d.add.cylinder" => "Cylinder",
+        "panel.model3d.add.torus" => "Torus",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
-        // quatro criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença
-        // antes do clique.
-        "panel.model3d.add.sculpt" => "+ Sculpt…",
+        // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
+        // clique.
+        "panel.model3d.add.sculpt" => "Sculpt…",
         // ⚠️ **Sem reticências**, ao contrário da irmã acima: aquela abre um diálogo, esta não
         // pergunta nada — traz a escultura que já está na cena. A convenção do "…" é o que diz a
-        // diferença antes do clique, e é a mesma lição que o rótulo do `+ Sculpt…` registou.
-        "panel.model3d.add.sculpt_scene" => "+ Sculpt from scene",
+        // diferença antes do clique, e é a mesma lição que o rótulo do `Sculpt…` registou.
+        "panel.model3d.add.sculpt_scene" => "Sculpt from scene",
         // As booleanas. ⚠️ "Subtract" e não "Difference": a palavra do documento descreve a
         // operação, e a do botão descreve o que o artista quer FAZER.
         "panel.model3d.op.union" => "Union",
@@ -173,8 +180,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.kind.extrude" => "Extrude",
         // ⭐⭐ AS FORMAS DE PERFIL (W53) — o desenho do editor vetorial vira peça. É o fluxo do
         // MoI, e o motor delas está construído e medido desde a W3; faltava o botão.
-        "panel.model3d.add.extrude" => "+ Extrude",
-        "panel.model3d.add.revolve" => "+ Revolve",
+        "panel.model3d.add.extrude" => "Extrude",
+        "panel.model3d.add.revolve" => "Revolve",
         // ⭐ As seis VISTAS NOMEADAS (W47). O atalho vai no rótulo: é a única forma de a tecla ser
         // descoberta por quem não sabe que ela existe.
         "panel.model3d.view.front" => "Front (1)",

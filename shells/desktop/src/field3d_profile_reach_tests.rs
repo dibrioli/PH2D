@@ -22,7 +22,7 @@
 /// que o motor de facto tem: uma primitiva nova aparece aqui **sozinha**, no dia em que nascer.
 #[test]
 fn every_primitive_the_engine_can_make_has_a_button() {
-    use crate::field3d_scene::panel::SHAPES;
+    use crate::field3d_shapes::SHAPES;
     use ph2d_field::PrimitiveKind;
     // ⭐⭐⭐ **DERIVADA, e não escrita à mão** (2026-08-26).
     //
@@ -33,7 +33,7 @@ fn every_primitive_the_engine_can_make_has_a_button() {
     // existe ([`PrimitiveKind`]) e a corrente fecha no compilador.
     let mut seen: Vec<usize> = Vec::new();
     for k in PrimitiveKind::ALL {
-        let slot = SHAPES.iter().position(|s| s.ends_with(k.key()));
+        let slot = SHAPES.iter().position(|s| s.key.ends_with(k.key()));
         assert!(
             slot.is_some(),
             "o motor sabe fazer «{}» e o painel não oferece botão nenhum para ela — é uma feature \
@@ -61,44 +61,63 @@ fn every_primitive_the_engine_can_make_has_a_button() {
     );
 }
 
-/// ⭐ **Os dois botões de perfil só aparecem com um contorno FECHADO escolhido** — a lei da W34
-/// aplicada à segunda família cuja disponibilidade não é constante.
+/// ⭐ **As duas formas de perfil só são oferecíveis com um contorno FECHADO escolhido** — a lei da
+/// W34 aplicada à segunda família cuja disponibilidade não é constante.
+///
+/// ⚠️ **Mede o CATÁLOGO desde a W100**, como a irmã da escultura da cena: a fileira de chips virou
+/// um botão que abre a paleta, e a filtragem mudou-se para lá.
 #[test]
 fn the_profile_buttons_appear_only_with_a_closed_outline_selected() {
-    use crate::field3d_scene::panel::{EXTRUDE_SLOT, REVOLVE_SLOT, SHAPES, adds_for};
-    let without = adds_for(false, false);
+    use crate::field3d_shapes::{SHAPES, available, slot_of};
+    let ex = slot_of("panel.model3d.add.extrude").expect("extrude existe");
+    let rev = slot_of("panel.model3d.add.revolve").expect("revolve existe");
     assert!(
-        !without
-            .iter()
-            .any(|c| c.key == SHAPES[EXTRUDE_SLOT] || c.key == SHAPES[REVOLVE_SLOT]),
-        "sem contorno escolhido, «Extrude» e «Revolve» são botões que não têm o que extrudar"
+        !available(&SHAPES[ex], false, false) && !available(&SHAPES[rev], false, false),
+        "sem contorno escolhido, «Extrude» e «Revolve» não têm o que extrudar"
     );
-    let with = adds_for(false, true);
     assert!(
-        with.iter().any(|c| c.key == SHAPES[EXTRUDE_SLOT])
-            && with.iter().any(|c| c.key == SHAPES[REVOLVE_SLOT]),
-        "com um contorno escolhido, os dois têm de aparecer"
+        available(&SHAPES[ex], false, true) && available(&SHAPES[rev], false, true),
+        "com um contorno escolhido, as duas têm de estar disponíveis"
     );
+    // ⛔ **O CONTROLE**: exatamente DUAS formas seguem o contorno — sem ele, um `available` que
+    // devolvesse `profile` para tudo passaria as duas afirmações acima.
+    let seguem = SHAPES
+        .iter()
+        .filter(|s| available(s, false, false) != available(s, false, true))
+        .count();
+    assert_eq!(seguem, 2, "só as duas de perfil dependem do contorno");
 }
 
-/// ⚠️ **Os quatro slots derivados não colidem** — os dois do perfil e os dois da escultura saem todos
-/// de `SHAPES.len()`, e um `-3` trocado por um `-4` faria dois botões serem o mesmo. É a mesma
-/// família de cerca que o `SCULPT_SLOT` já tinha, com o dobro dos membros.
+/// ⭐⭐⭐ **CADA forma constrói a SUA, e a posição não decide nada** (W100).
+///
+/// # ⚠️ O que este gate defendia, e por que a cerca mudou de sítio
+///
+/// Ele defendia **quatro constantes derivadas do fim da lista** (`SHAPES.len() - 4` … `- 1`): um
+/// `-3` trocado por um `-4` faria dois botões serem o mesmo, e o comentário delas mandava, com
+/// todas as letras, acrescentar formas *«antes das esculturas»* — ⛔ **acrescentar no fim fazia o
+/// *Extrude* abrir o diálogo de escultura, sem erro nenhum.**
+///
+/// ⭐ Com o construtor na própria linha ([`crate::field3d_shapes::Make`]) essa colisão **deixou de
+/// ser exprimível**. O que fica a medir é a propriedade que a substituiu: *nenhuma posição é lida
+/// para saber o que uma forma é* — e isso lê-se exigindo que cada `Make` não-fórmula apareça
+/// **exatamente uma vez**, que é o que uma lista de 60 linhas copiadas-e-coladas pode partir.
 #[test]
 fn the_four_derived_slots_are_distinct_and_in_range() {
-    use crate::field3d_scene::panel::{
-        EXTRUDE_SLOT, REVOLVE_SLOT, SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES,
-    };
-    let slots = [EXTRUDE_SLOT, REVOLVE_SLOT, SCULPT_SLOT, SCULPT_SCENE_SLOT];
-    for (i, a) in slots.iter().enumerate() {
-        assert!(*a < SHAPES.len(), "o slot {a} está fora da lista");
-        for b in slots.iter().skip(i + 1) {
-            assert_ne!(a, b, "dois slots derivados caíram no mesmo botão");
-        }
+    use crate::field3d_shapes::{Make, SHAPES};
+    /// O predicado que reconhece **uma** porta não-fórmula. ⚠️ Um `type` e não o tipo cru: o clippy
+    /// recusa a assinatura literal, e um alias diz melhor o que ela é.
+    type Porta = (&'static str, fn(&Make) -> bool);
+    let porta: [Porta; 4] = [
+        ("Extrude", |m| matches!(m, Make::Extrude)),
+        ("Revolve", |m| matches!(m, Make::Revolve)),
+        ("Sculpt", |m| matches!(m, Make::Sculpt)),
+        ("SculptScene", |m| matches!(m, Make::SculptScene)),
+    ];
+    for (nome, quantos) in porta.map(|(n, p)| (n, SHAPES.iter().filter(|s| p(&s.make)).count())) {
+        assert_eq!(
+            quantos, 1,
+            "o catálogo tem {quantos} linhas com o `Make::{nome}` - duas fariam a segunda ser \
+             inalcançável, e zero faria a feature desaparecer em silêncio"
+        );
     }
-    // E cada um aponta para a chave que o nome dele promete.
-    assert!(SHAPES[EXTRUDE_SLOT].ends_with("extrude"));
-    assert!(SHAPES[REVOLVE_SLOT].ends_with("revolve"));
-    assert!(SHAPES[SCULPT_SLOT].ends_with("sculpt"));
-    assert!(SHAPES[SCULPT_SCENE_SLOT].ends_with("sculpt_scene"));
 }

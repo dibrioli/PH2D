@@ -101,10 +101,15 @@ pub(crate) fn apply_event(
                 true
             }
         }
+        // ⭐⭐⭐ **UM botão, e ele ABRE a paleta** (W100) — ver [`crate::ModelIntent::OpenShapes`].
+        //
+        // ⚠️ O `slot` continua a ser conferido contra a fileira publicada, e não é cerimónia: a
+        // família de ids tem `MAX_MODES` slots registados sempre, então um clique num id que o
+        // retrato deste quadro não pintou é alcançável — e sem a guarda ele viraria um pedido.
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_add_button).is_some() => {
             let slot = slot_in(id, ids::model3d_add_button).unwrap_or(0);
             slot < state::current().adds.len() && {
-                state::push_intent(ModelIntent::AddShape { slot });
+                state::push_intent(ModelIntent::OpenShapes);
                 true
             }
         }

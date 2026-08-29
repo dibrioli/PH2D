@@ -350,6 +350,41 @@ thread_local! {
     static SCENE_SCULPT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// ⭐⭐ **O pedido de ABRIR A PALETA de formas** (W100) — o botão do painel e a tecla `A`.
+///
+/// ⚠️ Ele atravessa por aqui pela razão de sempre: a paleta vive no `HeroScreen` (é chrome), e o
+/// intent do painel é drenado dentro da ponte com o **mundo**. *Uma porta, dois pedintes* — e aqui
+/// os dois pedintes são literalmente dois (o chip e a tecla).
+pub(crate) fn take_shape_palette_request() -> bool {
+    SHAPE_PALETTE.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_shape_palette() {
+    SHAPE_PALETTE.with(|c| c.set(true));
+}
+
+thread_local! {
+    static SHAPE_PALETTE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// ⭐⭐ **A FORMA que a paleta escolheu**, à espera de nascer — a volta do pedido acima.
+///
+/// ⚠️ **São dois saltos e não um, e o motivo é o mundo**: quem drena o pick da paleta tem o
+/// `HeroScreen` e não tem o `&mut World`; quem tem o mundo é a ponte com a cena. O que fica
+/// pendurado aqui é a **posição no catálogo**, que o próximo quadro transforma em nó — o mesmo
+/// caminho, e a mesma razão, do `take_pending_sculpt`.
+pub(crate) fn take_shape_request() -> Option<usize> {
+    SHAPE_PICK.with(std::cell::Cell::take)
+}
+
+pub(crate) fn ask_shape(slot: usize) {
+    SHAPE_PICK.with(|c| c.set(Some(slot)));
+}
+
+thread_local! {
+    static SHAPE_PICK: std::cell::Cell<Option<usize>> = const { std::cell::Cell::new(None) };
+}
+
 pub(super) fn armed_scene() -> Option<u32> {
     if let Ok(v) = std::env::var("PH2D_FIELD_SMOKE") {
         return Some(v.parse().unwrap_or(1));

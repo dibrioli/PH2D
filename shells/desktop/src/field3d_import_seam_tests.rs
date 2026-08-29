@@ -41,9 +41,15 @@ fn the_sculpt_button_asks_for_a_file_instead_of_making_a_shape() {
     let root = the_root(&mut sim);
     let before = ph2d_field_ecs::walk(sim.world(), root).len();
 
-    ph2d_panel_model3d::state::push_intent_for_test(ph2d_panel_model3d::ModelIntent::AddShape {
-        slot: crate::field3d_scene::panel::SCULPT_SLOT,
-    });
+    // ⚠️ **O gesto entra pela porta de PRODUÇÃO** (W100): a paleta escolhe e deixa a posição na
+    // caixa de correio, que a ponte com a cena drena. ⛔ Encenar um `add_leaf` à mão mediria o ECS,
+    // não a costura.
+    //
+    // ⚠️ **E a posição é procurada pela CHAVE, nunca por uma constante** — a lição está no doc deste
+    // arquivo, mais abaixo: *um teste que lê a constante que testa não testa a constante*, e uma
+    // prova de mutação passou verde por causa disso.
+    let slot = crate::field3d_shapes::slot_of("panel.model3d.add.sculpt").expect("a escultura");
+    crate::field3d_smoke::ask_shape(slot);
     crate::field3d_scene::sync_scene(&mut sim, None, 0.0);
 
     assert!(
@@ -70,41 +76,24 @@ fn the_sculpt_button_asks_for_a_file_instead_of_making_a_shape() {
 /// acrescentar uma primitiva no meio da lista.
 #[test]
 fn the_sculpt_slot_points_at_the_sculpt_button() {
-    use crate::field3d_scene::panel::{
-        EXTRUDE_SLOT, REVOLVE_SLOT, SCULPT_SCENE_SLOT, SCULPT_SLOT, SHAPES, shape_at,
-    };
-    assert_eq!(
-        SHAPES[SCULPT_SLOT], "panel.model3d.add.sculpt",
-        "o slot da escultura aponta para o botão errado"
+    use crate::field3d_shapes::{Make, SHAPES, shape_at, slot_of};
+    let slot = slot_of("panel.model3d.add.sculpt").expect("a escultura tem linha no catálogo");
+    assert!(
+        matches!(SHAPES[slot].make, Make::Sculpt),
+        "a chave da escultura caiu numa linha que constrói outra coisa"
     );
-    // ⭐ **A escultura da CENA é a segunda não-primitiva** (W39), e este gate apanhou-a no minuto
-    // em que ela entrou — que é exactamente o trabalho dele. ⚠️ A lista de exceções é **derivada**
-    // das constantes, nunca escrita: uma porta nova entra aqui ou o gate reprova, que é a ordem
-    // certa.
-    //
-    // ⭐ **E ele voltou a apanhar, na W53:** as duas formas de PERFIL também não são primitivas que
-    // um slot saiba construir — elas precisam do contorno desenhado, que vive na cena vetorial. O
-    // gate reprovou no minuto em que elas entraram, exatamente como o comentário acima previa.
-    let not_primitives = [SCULPT_SLOT, SCULPT_SCENE_SLOT, EXTRUDE_SLOT, REVOLVE_SLOT];
-    assert_eq!(
-        SHAPES[SCULPT_SCENE_SLOT], "panel.model3d.add.sculpt_scene",
-        "o slot da escultura da cena aponta para o botão errado"
+    assert!(
+        shape_at(slot, 0.5).is_none(),
+        "uma escultura não é uma primitiva — o `shape_at` tem de recusar"
     );
-    for slot in not_primitives {
-        assert!(
-            shape_at(slot, 0.5).is_none(),
-            "uma escultura não é uma primitiva — o `shape_at` tem de recusar o slot {slot}"
-        );
-    }
-    for (i, key) in SHAPES.iter().enumerate() {
-        if not_primitives.contains(&i) {
-            continue;
-        }
-        assert!(
-            shape_at(i, 0.5).is_some(),
-            "o slot {i} ({key}) tem de dar uma forma — senão o botão é inerte"
-        );
-    }
+    // ⭐ **E o CONTROLE, que é o que faz a afirmação de cima valer:** as formas de fórmula
+    // constroem. Sem ele, um `shape_at` que devolvesse `None` sempre passaria — e o sintoma seria
+    // *"nenhum botão faz nada"*.
+    let caixa = slot_of("panel.model3d.add.box").expect("a caixa tem linha");
+    assert!(
+        shape_at(caixa, 0.5).is_some(),
+        "a caixa tem de dar uma forma — senão o botão é inerte"
+    );
 }
 
 /// ⭐ **A escultura carregada vira um NÓ, e o avaliador resolve-o** — a costura inteira.

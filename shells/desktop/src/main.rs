@@ -150,6 +150,10 @@ mod field3d_profile_live;
 /// ADR-0161 W23 — o REGRESSO: um projeto carregado regenera cada escultura do arquivo que a nomeia.
 mod field3d_reload;
 mod field3d_scene;
+/// ADR-0161 W100 — a PALETA de formas: o catálogo grande entra pelo modal genérico da casa.
+mod field3d_shape_palette;
+/// ADR-0161 W100 — o CATÁLOGO de formas: rótulo, família e construtor, uma linha por forma.
+mod field3d_shapes;
 mod field3d_smoke;
 /// ADR-0161 W26 — o NUMERO digitado no meio do gesto do gizmo (o `G X 0,5` do Blender).
 mod field3d_typed;

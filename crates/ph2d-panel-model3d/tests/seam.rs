@@ -495,7 +495,9 @@ fn the_selectors_never_answer_for_each_other() {
         vec![
             ModelIntent::SetGizmoMode { slot: 1 },
             ModelIntent::SetGizmoFrame { slot: 1 },
-            ModelIntent::AddShape { slot: 1 },
+            // ⚠️ **Sem `slot`, e essa é a diferença** (W100): esta fileira deixou de escolher uma
+            // forma e passou a ABRIR a paleta, onde a escolha acontece.
+            ModelIntent::OpenShapes,
             ModelIntent::ApplyOp { slot: 1 },
             ModelIntent::ToggleMod { slot: 1 },
             ModelIntent::Export { slot: 1 },

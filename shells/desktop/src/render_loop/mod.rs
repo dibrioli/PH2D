@@ -9850,6 +9850,33 @@ impl crate::App {
                     toasts.push(ph2d_editor::Toast::info(msg));
                 }
             }
+            // ⭐⭐⭐ **A PALETA DE FORMAS, as DUAS pontas** (W100) — abrir para quem pediu, e mandar
+            // ao mundo o que ela escolheu. Irmã por assunto do `component_attach`, que faz o mesmo
+            // com o `+` do Inspector.
+            //
+            // ⚠️ **Aberta DEPOIS dos dois `note_*` acima**, e a ordem é load-bearing: o modelo dela
+            // carrega a disponibilidade de *Extrude*/*Revolve*/*Sculpt from scene*, e construí-lo
+            // antes das notas deste quadro mostraria a resposta do quadro anterior — visível
+            // exatamente no gesto que importa (escolher o contorno e abrir a paleta a seguir).
+            if crate::field3d_smoke::take_shape_palette_request() {
+                let (live_sculpt, profile) = crate::field3d_smoke::palette_conditions();
+                hero.store
+                    .open_command_palette(crate::field3d_shape_palette::build(
+                        live_sculpt,
+                        profile,
+                    ));
+            }
+            // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e o dreno é **CONDICIONAL**:
+            // este canal já tinha TRÊS consumidores (a biblioteca do Motion, o `Ctrl+K` e o `+` do
+            // Inspector), e um `take` incondicional engoliria o pick de outro — com o sintoma a ser
+            // *«às vezes não faz nada»*.
+            if let Some(id) = hero
+                .store
+                .take_command_pick_if(|id| crate::field3d_shape_palette::slot_of_pick(id).is_some())
+                && let Some(slot) = crate::field3d_shape_palette::slot_of_pick(id)
+            {
+                crate::field3d_smoke::ask_shape(slot);
+            }
             // ⭐ **E o que o módulo tem a DIZER** (W23 + W25): a escultura que não voltou do
             // arquivo, e a peça que não cozinha. A ponte com a cena descobre as duas ao cozer o
             // documento, e a fila de avisos é daqui. Sem esta linha as duas falham em silêncio — a

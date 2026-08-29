@@ -32,6 +32,24 @@ impl App {
         let PhysicalKey::Code(code) = physical_key else {
             return false;
         };
+        // ⛔⛔ **COM A PALETA ABERTA, NENHUMA TECLA DAQUI EXISTE** (W100).
+        //
+        // ⚠️ **Este roteador corre ANTES da captura modal da paleta** (ver `keyboard.rs`), e a
+        // guarda de cada tecla é o **ponteiro sobre a janela 3D** — que continua verdadeira com o
+        // modal por cima. ⇒ escrever «capsule» na busca disparava o `S` (escalar), o `A`
+        // (reabrir) e o `U`… e as letras nunca chegavam ao campo.
+        //
+        // ⚠️ **A família é MAIOR do que a tecla que a revelou, e é PRÉ-EXISTENTE:** `G`/`R`/`S`,
+        // `I`, `Q` e `Home` já eram comidos com o `Ctrl+K` ou a biblioteca do Motion abertos sobre
+        // o módulo armado. Curar **na entrada do roteador** apanha as seis e a próxima — um remendo
+        // dentro do `field3d_add_key` curaria só a que se viu.
+        //
+        // ⚠️ A tecla que ABRE não é afetada: ela é capturada num quadro em que a paleta ainda não
+        // existe (o pedido atravessa por caixa de correio e a paleta abre na ponte, no quadro
+        // seguinte) — a mesma nota que o `keyboard.rs` já tinha escrito para o `A` do Motion.
+        if self.command_palette_open() {
+            return false;
+        }
         // ADR-0161 W4: `Home` repõe a vista da janela 3D de modelagem — a volta que a
         // rotação LIVRE torna necessária (ela inclina o horizonte, de propósito).
         // Inerte sem o smoke armado; ver a nota de `field3d_home_key` sobre o dia em
@@ -76,6 +94,16 @@ impl App {
         // chip da fileira desaparece com a raiz escolhida, e sem esta tecla a peça isolada não
         // tinha volta. Mesma guarda de ponteiro das outras.
         if self.field3d_isolate_key(code) {
+            return true;
+        }
+
+        // ADR-0161 W100: `A` abre a PALETA DE FORMAS — a mesma tecla e o mesmo widget da biblioteca
+        // de nós do Motion. Mesma guarda de ponteiro das outras: uma letra solta sem ela roubaria
+        // todo `a` digitado num campo de texto.
+        //
+        // ⚠️ **Por último no roteador**, e a ordem é a mesma lei do `field3d_typed_key`: com uma
+        // entrada numérica aberta no meio de um gesto do gizmo, a tecla pertence a ela.
+        if self.field3d_add_key(code) {
             return true;
         }
         false

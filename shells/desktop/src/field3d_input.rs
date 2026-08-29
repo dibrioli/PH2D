@@ -472,6 +472,36 @@ impl App {
         .unwrap_or(false)
     }
 
+    /// ⭐⭐ **`A` ABRE A PALETA DE FORMAS** (W100) — a porta rápida do catálogo.
+    ///
+    /// ⚠️ **`A` e não outra letra**, e a escolha tem precedente nesta casa: é a tecla que abre a
+    /// biblioteca de nós do Motion, e a paleta é literalmente o **mesmo** widget. Uma segunda letra
+    /// para o mesmo modal seria o app a ensinar duas coisas onde há uma. (O `Shift+A` do Blender
+    /// abre um menu, não uma paleta com busca — a analogia mais próxima é a do Motion.)
+    ///
+    /// ⚠️ **Sem modificador nenhum**, e com a guarda de ponteiro das irmãs: sem ela, um `A` num
+    /// campo de texto abriria um modal por cima do que se está a escrever. E é por isso que o `G`,
+    /// `R` e `S` já a têm — a letra solta é a mais perigosa de todas.
+    pub(crate) fn field3d_add_key(&mut self, code: winit::keyboard::KeyCode) -> bool {
+        if code != winit::keyboard::KeyCode::KeyA
+            || self.modifiers.shift_key()
+            || self.modifiers.control_key()
+            || self.modifiers.alt_key()
+            || self.modifiers.super_key()
+        {
+            return false;
+        }
+        let pos = self.last_pointer;
+        with_smoke(|s| {
+            if !over_window(s, pos) {
+                return false;
+            }
+            crate::field3d_smoke::ask_shape_palette();
+            true
+        })
+        .unwrap_or(false)
+    }
+
     /// ⭐ **O número digitado no meio do gesto** (W26) — o `G X 0,5` do Blender.
     ///
     /// ⚠️ **Ela vem ANTES da tecla de verbo** no roteador, e a ordem é a lei: com uma entrada aberta,

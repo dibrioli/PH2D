@@ -16,7 +16,7 @@
 //! precisa de uma cópia própria de qualquer forma.
 
 use ph2d_ecs::SimWorld;
-use ph2d_field::{Blend, FieldDoc, NodeShape, Op, Primitive};
+use ph2d_field::{Blend, FieldDoc, NodeShape, Op};
 use ph2d_field_ecs::{FieldNode, FieldObject};
 
 use crate::field3d_smoke::with_smoke;
@@ -395,8 +395,15 @@ pub(crate) fn sync_scene_and_birth(
             "Isolation off: the whole part is back".into()
         });
     }
+    // ⭐⭐⭐ **A FORMA QUE A PALETA ESCOLHEU** (W100) — drenada aqui, e não no `intents`, porque
+    // **não é um pedido do painel**: o pick vem do modal do `HeroScreen` e chega noutro quadro. É o
+    // mesmo caminho da escultura importada, logo acima, e pela mesma razão — só esta função tem o
+    // mundo. A voz é a mesma do botão: uma porta só (`intents::add_shape`).
+    if let Some(slot) = crate::field3d_smoke::take_shape_request() {
+        created = intents::add_shape(world, root, selection, cam, slot).or(created);
+    }
     // ⭐ **O que o painel PEDE** vive no irmão — ver [`field3d_scene_intents`](self::intents).
-    let (created, cleared) = intents::apply(world, root, selection, cam, created);
+    let (created, cleared) = intents::apply(world, selection, created);
     // ⭐⭐ **O DESENHO CONTINUA A SER A FONTE** (W55) — as formas de perfil vivas voltam a sair do
     // contorno, antes do cozimento deste quadro.
     //
@@ -493,7 +500,7 @@ mod verb;
 #[path = "field3d_scene_acts.rs"]
 mod acts;
 pub(crate) use acts::link_badges;
-pub(crate) use panel::{new_shape_size, op_at, publish_snapshot, shape_at};
+pub(crate) use panel::{new_shape_size, op_at, publish_snapshot};
 pub(crate) use verb::verb_at;
 
 /// **Onde uma forma nova entra** — perto do que está selecionado.

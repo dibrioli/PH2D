@@ -97,8 +97,11 @@ pub struct ModelSnapshot {
     pub modes: Vec<ModeChip>,
     /// ⭐ Os referenciais de eixo (global / local), na mesma forma e pela mesma razão.
     pub frames: Vec<ModeChip>,
-    /// ⭐ As formas que se podem **acrescentar**. ⚠️ Nenhuma fica «ativa»: são ações, não um modo —
-    /// clicar numa cria uma forma e o seletor volta ao mesmo sítio.
+    /// ⭐ **A porta de criar** — hoje **um** chip, que abre a paleta de formas (W100).
+    ///
+    /// ⚠️ Continua a ser uma fileira e não um `bool`, e não é indecisão: o `paint_chips` já sabe
+    /// desenhar, medir e registar uma fileira, e um botão avulso seria um sexto caminho de pintura
+    /// neste arquivo. Nenhum fica «ativo»: é uma ação, não um modo.
     pub adds: Vec<ModeChip>,
     /// ⭐ As operações booleanas.
     ///
@@ -208,8 +211,14 @@ pub enum ModelIntent {
     SetGizmoMode { slot: usize },
     /// Trocar o referencial dos eixos, pela **posição** no seletor.
     SetGizmoFrame { slot: usize },
-    /// Acrescentar uma forma à peça, pela **posição** no seletor.
-    AddShape { slot: usize },
+    /// ⭐⭐⭐ **ABRIR a paleta de formas** (W100) — e repare que ele **não traz forma nenhuma**.
+    ///
+    /// ⚠️ Ele substituiu um `AddShape { slot }`, e a diferença é a que faz o catálogo poder
+    /// crescer: a fileira de chips corta em `MAX_MODES` (8) e já tinha 8, então a forma nº 9 seria
+    /// pintada e morta. Quem escolhe passa a ser a paleta genérica da casa (a mesma do `Ctrl+K` e
+    /// do `+` do Inspector), que tem busca, categorias e rolagem — e o pick volta pelo canal dela,
+    /// não por aqui. *Um painel de dock não é sítio para um catálogo de 60 itens.*
+    OpenShapes,
     /// Aplicar uma operação booleana ao que está selecionado, pela **posição** no seletor.
     ApplyOp { slot: usize },
     /// ⭐⭐ **Escrever o verbo da forma escolhida**, pela **posição** no seletor — e a posição `0` é

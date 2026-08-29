@@ -130,12 +130,36 @@ depois da cura: **10,06 s**.
 ⚠️ E um gate desta jornada era uma **tautologia** apanhada por mutação: ele media a rotação
 com uma função que devolve `[0°, 45°]` **por construção**, logo não podia falhar.
 
+## §8-bis — ⛔⛔⛔ «MUITO DEMORADO» (Enio, no smoke) — e o botão ficou **5,4×** mais rápido
+
+O smoke validou a qualidade (*«melhor que o plugin padrão ouro do Blender»*) e reprovou o
+relógio. ⭐ **A primeira coisa a fazer com um veredito de produto é transformá-lo num
+número** — `cargo run --release -p ph2d-quadchain --example chain_time -- <peça>.obj`, que
+corre a **mesma função que o botão**. Detalhe e tabelas: `ACHADO…` §14–§16.
+
+| o desperdício | o que era | a cura | ganho |
+|---|---|---|---|
+| ⛔ `Mesh::rebuild()` **a cada uma das 726 rondas** do acabamento — reconstrói adjacência, curvatura e **octree** da saída, que uma relaxação não muda e não lê | `11,5 s` de `17,7 s` (`65 %`) | o laço corre sobre **buffers** e a `Mesh` é publicada **uma vez**, no fim (a porta única não é violada), e a ronda é **paralela e determinística** | **7,6×**, saída **idêntica** |
+| ⛔ o G3 gastava **`8 000` rondas sem saída nenhuma**, e a partir da ~`2 750` o movimento é ruído de `f32` que não desce mais | `45 %`–`58 %` da cadeia | `WELD_PATIENCE = 256` rondas sem descer — *a mesma lei que o acabamento já tinha pago* | até **3,3×**, topologia **idêntica** |
+| ⛔ as **duas tentativas** do botão em **série**, tratadas como uma «troca de qualidade por espera» | `2×` a cadeia inteira | `rayon::join` — elas são **independentes** | **1,87×**, saída **idêntica** |
+
+⇒ **o botão na `sculpt_eared`: `~35 s` → `~6,5 s`.** ⭐⭐ E **nenhum** dos três trocou
+qualidade por relógio: os três eram desperdício.
+
+⚠️ **Duas armadilhas que a jornada pagou aqui:** (1) a 1.ª versão do laço paralelo somava
+normais de Newell próprias e **o resultado mudou** (`726` rondas → `724`) — *uma relaxação que
+muda de resultado ao ser optimizada não foi optimizada, foi substituída*; (2) a 1.ª mutação
+do gate de determinismo **sobreviveu** por não ser observável (mexia no raio de reprojecção,
+que é só um piso de busca) — *uma mutação que não muda o resultado não testa nada*.
+
 ## §9 — Portão de fecho
 
 | | |
 |---|---|
 | `cargo test -p ph2d-quadfill` | ⭐ verde (21 + 16 nas suites de integração, 0 falhas) |
-| `cargo test -p ph2d-quadchain` | ⭐ verde (5, **10,06 s**) |
+| `cargo test -p ph2d-quadchain` | ⭐ verde (5) |
+| `cargo test -p ph2d-gridmap` | ⭐ verde (60) |
+| `cargo test -p ph2d-host-desktop --bins retopo` | ⭐ verde (5) |
 | `cargo test -p ph2d-remesh-iso` | ⭐ verde (9) |
 | `cargo clippy --all-targets` nas três + no shell | ⭐ limpo |
 | `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |

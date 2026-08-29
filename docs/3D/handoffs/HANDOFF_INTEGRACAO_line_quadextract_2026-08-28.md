@@ -232,6 +232,35 @@ cura não é observável ali. O gate é que a torna afirmável — as duas fixtu
 bordo e diferem só na aresta não-manifold, e a peça suja leva enviesamento **perfeito** contra
 uma limpa horrível: *sob a lei antiga a asserção é falsa.*
 
+### ⭐⭐⭐ E o varrimento de densidade achou a divergência entre as DUAS portas
+
+Ao medir onde pôr o `MAX_QUADS`, a varredura correu pela porta da `ph2d-quadchain`
+(`quads_from_mesh`), que remalha o **F1 para o alvo** (`phase_zero`, a correcção de
+2026-08-25). O botão **não** faz isso: ele remalha com `ph2d_remesh_iso::ALPHA` **fixo** e
+deixa a extracção resolver mais fino que a malha de trabalho. As duas portas divergem, e a
+divergência é enorme:
+
+| quads pedidos | pela `quadchain` (F1 **no alvo**) | pelo **botão** (F1 em `ALPHA`) |
+|---|---|---|
+| `~1 800` | `χ = 2` · `0` bordo · `11,7 s` | `χ = 2` · `0` bordo · `8,6 s` |
+| `~4 600` | ⚠️ `χ = 1` · **`8`** bordo · `19,1 s` | — |
+| `~9 000` | ⛔ `χ = 0` · **`12`** bordo · `1` não-manifold · `39,0 s` | — |
+| `~13 600` | — | ⭐ `χ = 2` · `0` bordo · `22,3 s` |
+| `~18 100` | ⛔⛔ `χ = −11` · **`64`** bordo · `4` não-manifold · **`289 s`** | — |
+| `~24 200` | — | ⭐ `χ = 2` · **`0`** bordo · `35,1 s` |
+| `~35 500` | ⛔⛔⛔ `χ = −27` · **`162`** bordo · `3` não-manifold · **`827 s`** | — |
+
+⭐⭐ **Uma malha de trabalho mais FINA não é mais informação: é onde a topologia se perde**, e
+paga `23×` o relógio para o fazer (`827 s` contra `35 s` por densidades comparáveis). O
+`quads_or_keep` já tinha a tabela que diz isto para a *entrada*; esta diz o mesmo para a
+**fase zero**.
+
+⚠️ **Isto é um LEAD para outra linha, não trabalho desta:** a `line/3DModeling` tem uma recusa
+medida — *«os níveis de exportação NÃO podem mandar na densidade dos quads: o degrau `Max`
+custou `27 min 29 s` para sair com `316` arestas de bordo e `6` não-manifold»* — e o caminho
+dela é o `quads_or_keep`, ou seja **exactamente esta porta**. *A parede de topologia que eles
+mediram pode ser a fase zero a seguir o alvo, e não a extracção.*
+
 ### ⏳ O que fica ABERTO, nomeado
 
 ⛔ **`Follow Curvature` não tem consumidor no motor de omissão** (`let _ = adaptive;`): a

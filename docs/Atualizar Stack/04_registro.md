@@ -284,8 +284,41 @@ As linhas ficaram num `main` anterior e o `target/` de cada uma está frio.
 |---|---|---|---|
 | **wgpu 30** | `vello 0.10` pede `^29.0.3`; forçar dá duas cópias e o vello recusa o nosso `Device` | 2026-08-29 | `01_inventario.md` §3 |
 | ~~**rapier «migrou para glam»**~~ | ⛔⛔ **ESTA RECUSA ESTAVA ERRADA E FOI RETIRADA** — ver a linha abaixo | 2026-08-29 | — |
-| **`linesweeper` 0.4** | parte o POWER STROKE: 6 gates esperavam `1` forma e recebiam `32`/`60`/`128`/`173` (o `128` = `RIBBON_SAMPLES`). A 0.4 mudou **duas** convenções de uma vez — saída «aproximada» por omissão e **direção invertida** — e declara-se *early beta* | 2026-08-29 | `crates/ph2d-vec-boolean/Cargo.toml` (a nota traz as **3 hipóteses já eliminadas**) |
+| ~~**`linesweeper` 0.4**~~ | ⭐ **RESOLVIDO no mesmo dia — a causa era NOSSA.** Ver abaixo | 2026-08-29 | `crates/ph2d-vec-boolean/src/expand.rs`, doc de `Region::of` |
 | | | | |
+
+### ⭐⭐⭐ A recusa nº 3 (`linesweeper`) foi RESOLVIDA — e o defeito era do nosso lado
+
+**A recusa dizia:** *«a 0.4 mudou duas convenções ao mesmo tempo — saída aproximada por omissão e
+direção de winding invertida — e parte o power stroke; ela declara-se early beta.»* Ela nomeava a
+biblioteca como culpada e listava três hipóteses já eliminadas.
+
+⛔ **Nenhuma das duas convenções era a causa.** Medido no motor cru, sobre uma fita de 128
+quadriláteros de largura variável:
+
+| chamada | 0.3.0 | 0.4.0 |
+|---|---|---|
+| `binary_op(a, **a**, NonZero, Union)` — o que fazíamos | 1 grupo | **128 grupos** |
+| `binary_op(a, **∅**, NonZero, Union)` | 1 grupo | **1 grupo** |
+| `contours_correct` (o modo «antigo») sobre a auto-união | — | **128** |
+
+**A causa:** `Region::of` regularizava por `A ∪ A = A` e passava o **mesmo** caminho como os dois
+operandos, pondo **cada aresta na varredura com multiplicidade 2**. A partir da 0.4, uma
+multiplicidade **par** faz o motor deixar de dissolver a aresta interna que dois quadriláteros
+vizinhos partilham — e cada quad sai como contorno próprio.
+
+⚠️ **É paridade, e mede-se como paridade:** `k` cópias coincidentes dão **1** peça para `k` ímpar e
+**uma peça por face** para `k` par. A mesma região desenhada como um hexágono (sem aresta interna)
+dá 1 para todo `k`. E é **livre de escala** — a obliquidade varrida por **12 ordens de grandeza**
+reprova nas nove sob auto-união e acerta em todas sob `A ∪ ∅`. ⇒ **não era tolerância.**
+
+⭐ **A cura é uma linha**, e o doc-comment que estava por cima dela **declarava a armadilha**: ele
+dizia, em texto, que a identidade `A ∪ A = A` era a razão do desenho.
+
+⚠️ **A lição:** a recusa foi escrita a olhar para o que a **biblioteca** mudou, porque foi a
+biblioteca que se moveu. Mas uma quebra é o encontro de duas coisas, e o lado que não se moveu
+também é suspeito — *o nosso lado dependia de uma propriedade que nunca foi prometida, e só se
+tornou visível quando a outra metade mudou.*
 
 ### ⛔⛔⛔ A recusa nº 2 estava ERRADA — e o modo de falha é o mais caro que existe
 

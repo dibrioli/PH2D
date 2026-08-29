@@ -16,29 +16,25 @@ authors.workspace = true
 # do wrapper provado `ph2d-vector-kurbo` (lift, não herança de arquitetura).
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 kurbo = "0.13"
-# ⛔ TETO POR RECUSA MEDIDA — fica em 0.3. Medido 2026-08-29 (`docs/Atualizar Stack/`, F5).
+# ⭐ SUBIDO para 0.4 em 2026-08-29, e a causa da recusa anterior era NOSSA.
 #
-# O `linesweeper 0.4` (2026-06-14) mudou DUAS convenções ao mesmo tempo, e ele próprio se
-# declara *early beta*:
-#   1. o modo de saída "aproximado" passou a ser o PADRÃO — as garantias fortes de
-#      ordenação/aninhamento que a 0.3 dava ficaram atrás de `Topology::contours_correct`;
-#   2. «the winding direction conventions have changed; output curves have been reversed».
+# Esta linha esteve fixada em 0.3 por uma recusa medida: o `linesweeper 0.4` partia o POWER
+# STROKE — seis gates a contar formas recebiam 128/60/32/175 peças onde esperavam 1, e o produto
+# sairia como centenas de fragmentos em vez de uma fita.
 #
-# Subir parte o POWER STROKE: seis gates caem de uma vez, todos a contar formas —
-# `the_ink_is_one_connected_piece_with_no_loops` esperava `1` e recebia `173`,
-# `the_ink_is_thicker_where_the_profile_says` recebia `128` (= `RIBBON_SAMPLES`).
-# O produto sairia como centenas de peças soltas em vez de uma fita.
+# ⛔ A recusa culpava as duas convenções que a 0.4 mudou (o modo de saída aproximado por omissão
+# e a inversão do sentido de winding). MEDIDO: nenhuma das duas. A causa estava em `expand.rs`,
+# no `Region::of`, que regularizava por `A ∪ A = A` e portanto passava o MESMO caminho como os
+# dois operandos — pondo cada aresta na varredura com multiplicidade 2. A partir da 0.4, uma
+# multiplicidade PAR faz o motor deixar de dissolver a aresta interna que dois quadriláteros
+# vizinhos da fita partilham. `A ∪ ∅` regulariza igual e entra com multiplicidade 1.
 #
-# ⚠️ O QUE JÁ FOI MEDIDO, para a próxima tentativa não repetir:
-#   · usar `Topology::contours_correct` em vez de `binary_op` **não muda nada** — os números
-#     saem idênticos (60/32/173/128/128). Não é o aninhamento aproximado.
-#   · a porta (`engine::binary_grouped`) está CORRECTA para os casos simples: 2 quadrados
-#     sobrepostos dão 1 grupo, e a área com sinal sai igual à da entrada (orientação preservada).
-#   · 3 quads que partilham a aresta INTEIRA fundem em 1 grupo; 3 sobrepostos também.
-#   ⇒ o motor funde. O defeito está na interacção entre a fita REAL (perfil variável, caminho
-#     curvo, `Closing::AsDrawn`) e as convenções novas — e é aí que a próxima janela deve
-#     instrumentar, não no `engine.rs`.
+# ⚠️ O par (esta versão, aquela linha) é INDIVISÍVEL: sob 0.3 a mudança de `expand.rs` é
+# byte-idêntica, então nenhuma mutação a mata sozinha. O mecanismo, a varredura de paridade e as
+# oito hipóteses eliminadas estão no doc de `Region::of`.
 #
-# ⛔ Isto NÃO é armengo: é recusa MEDIDA com mecanismo. O armengo seria baixar as barras dos
-# seis gates ou shipar a fita partida. Reabrir é uma tarefa PRÓPRIA, com gates próprios.
-linesweeper = "0.3"
+# ⚠️ MUDA A REPRESENTAÇÃO da geometria de saída (não a forma): a 0.4 preserva os arcos como
+# cúbicas, então um `outline_stroke` de ponta redonda volta com **6 vértices em vez de 141**
+# (área igual a 1,1e-14, caixa idêntica). Quem editar os pontos de uma tinta assada vê outra
+# coisa; nenhum golden do repo conta vértices de tinta.
+linesweeper = "0.4"

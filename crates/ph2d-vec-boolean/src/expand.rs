@@ -88,11 +88,35 @@ struct Region {
 impl Region {
     /// O conjunto que `bez` delimita sob `rule`, regularizado.
     ///
-    /// A união de um conjunto com ELE MESMO é ele mesmo — e é essa identidade que serve de
-    /// porta de entrada: o sweep resolve as auto-interseções (que o traço de um caminho que
-    /// se cruza sempre tem) e orienta o que sai.
+    /// A união de um conjunto com o **VAZIO** é ele mesmo — e é essa identidade que serve de porta
+    /// de entrada: o sweep resolve as auto-interseções (que o traço de um caminho que se cruza
+    /// sempre tem) e orienta o que sai.
+    ///
+    /// # ⛔ O 2.º operando é o VAZIO, e não `bez` outra vez
+    ///
+    /// A identidade `A ∪ A = A` também serve, e era o que estava escrito aqui. Mas ela põe **cada
+    /// aresta na varredura com multiplicidade 2** — e a partir do `linesweeper` 0.4 uma
+    /// multiplicidade **par** faz o motor deixar de dissolver a aresta INTERNA que dois quadriláteros
+    /// vizinhos da fita partilham. O *power stroke* saía com **um contorno por quad**: 128, 60, 32,
+    /// 175 peças soltas onde o produto quer **uma** fita.
+    ///
+    /// ⚠️ **É paridade, e foi medida como paridade:** `k` cópias coincidentes da mesma geometria dão
+    /// **1** peça para `k` ímpar e **uma peça por face** para `k` par. A mesma região desenhada como
+    /// um hexágono só (sem aresta interna) dá 1 para todo `k`. E é **livre de escala** — com a
+    /// obliquidade varrida por **12 ordens de grandeza** (`0,5` a `1e-12`) a auto-união reprova nas
+    /// nove e `A ∪ ∅` acerta em todas. ⇒ **não é tolerância**, é a regra de multiplicidade.
+    ///
+    /// ⚠️ Sob a 0.3 as duas formas são **byte-idênticas**, e é por isso que esta linha e o pin da
+    /// versão **têm de viajar juntos**: sozinha, ela é um no-op que nenhuma mutação mata.
+    ///
+    /// ⛔ O que **não** era a causa (cada um medido, e cada um a hipótese óbvia): o modo de saída
+    /// aproximado que a 0.4 tornou padrão (`contours_correct` dá os mesmos 128) · a inversão do
+    /// sentido de winding (emitir os quads na convenção nova dá 64 grupos, ainda errado) · a
+    /// `FillRule` · o `BinaryOp` · a tolerância · a nossa porta (o defeito reproduz-se no
+    /// `binary_op` cru, sem uma linha nossa) · e a `Region::combine`, que compõe **dois conjuntos
+    /// diferentes** e por isso nunca teve o problema.
     fn of(bez: &BezPath, rule: LsFillRule) -> Option<Self> {
-        let groups = binary_grouped(bez, bez, rule, BinaryOp::Union)?;
+        let groups = binary_grouped(bez, &BezPath::new(), rule, BinaryOp::Union)?;
         Some(Self { groups })
     }
 

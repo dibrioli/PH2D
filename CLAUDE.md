@@ -766,30 +766,41 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   receita e deixa uma cópia no lugar; *Instantiate* põe outra; **editar a receita muda todas as cópias no mesmo quadro**;
   editar UMA cópia vira **excepção** (e *Apply to Master* promove-a, *Detach* solta, *Revert* devolve **mantendo a
   posição**). Duplicar passou a levar a **subárvore inteira** com identidade nova — e a junta da cópia prende **os corpos
-  dela**. ⚠️ **A cópia profunda SALTA quatro componentes de propósito** (os `owned_document` do catálogo): copiar o id de
-  um documento possuído 1:1 poria duas entidades a escrever nele, e duplicar uma sprite pintada devolvia um sósia que
-  apaga a tinta do original — *a cópia rasa acertava nisto por acidente*. ⚠️ **`MasterPiece` é DERIVADO, nunca gravado**
+  dela**. ⚠️ **A cópia profunda SALTA TRÊS dos quatro `owned_document`** (`PaintedDoc` · `BakedForm` · `FlipObjectRef`,
+  declarados em `DROPPED`): copiar o id de um documento possuído 1:1 poria duas entidades a escrever nele, e duplicar
+  uma sprite pintada devolvia um sósia que apaga a tinta do original — *a cópia rasa acertava nisto por acidente*.
+  ⚠️ **O `VecPathRef` SAIU dessa lista na F4.6a** — saltá-lo não deixava a peça «sem o vínculo», deixava-a **sem
+  geometria nenhuma**; hoje o documento é **clonado** com o par no mapa `path ⟺ entidade`, e o gate é um censo de DOIS
+  lados: um bridge novo que não venha à lista **não compila**. ⚠️ **`MasterPiece` é DERIVADO, nunca gravado**
   (só o `MasterRoot` viaja), e o passe tem **duas** metades obrigatórias: marcar sem desmarcar deixa uma peça arrastada
   para fora do mestre **invisível ao solver, em silêncio**. ⚠️ **`deep_copy_subtree` não instancia** — a porta do produto
   é o `instantiate.rs`, com gate a mantê-la com **um** chamador. ⭐ E um **objeto vazio ou um grupo** finalmente se pega
   no canvas (um anel que é o corpo dele, não uma marca de selecção).
-  **Aberto:** ⚠️⚠️ **a F1 continua PELA METADE:** a física aponta por identidade (renomear um corpo **não** solta a
-  junta), a **timeline ainda não** — renomear um objeto animado desliga o binding, e nada na tela explica a diferença.
-  Falta a outra metade do passo 5 (`stable_name_id` da timeline) · ⭐⭐ **A NOTA DE QUE O `physics_ecs_c9` ESTAVA «POR
-  RE-CAPTURAR» ERA FALSA, e foi medida na integração de 26/08:** ele **não tem baseline fixado em lado nenhum** — o
-  `spike.yml` corre o binário `physics_ecs_c9` nos **três** sistemas, guarda um artefato por OS e o
-  `determinism-compare` faz `sort -u | wc -l` **entre eles**. ⇒ *Não há o que re-capturar: uma mudança de snapshot move
-  os três igualmente e a comparação continua a passar.* O risco real é **outro** — que os três **discordem**, e isso só o
-  CI mede. ⚠️ Ele **não corre na varredura impactada** (zero menções no log do gate), então localmente prova-se só o que
-  se pode: o binário **corre e é estável** na árvore fundida (mesmo hash em 2 de 2 corridas). ⚠️ A `line/components`
-  sabia disto e desenhou para isso — *«dar os mesmos ids em qualquer máquina, senão o `physics_ecs_c9` diverge entre os
-  3 OS»* ([`instantiate.rs`](crates/ph2d-ecs/src/instantiate.rs)) ·
-  ⏳ **F4.6** (o `VecInstance` subsumido) e **F4.7** (a lane do `physics_ecs_c9` com mestre+instância) · ⏳ **nada na tela
-  MOSTRA que campo está overridado** — o artista sabe pelo comportamento e pelos verbos, não por um sinal · ⛔ **a pose de
-  repouso de uma peça DINÂMICA não propaga, e é DECLARADO** (o dono do `Transform` de um corpo dinâmico é o solver
-  sempre): mover o braço da receita não move o das instâncias, nem depois de um Reset — gate com o nome inteiro ·
+  **Aberto:** ⭐⭐ **as INSTÂNCIAS têm VARIANTES** (27/08, F5 critério 2): *Make Component* sobre uma cópia faz uma
+  **variante** que segue a base, e a troca base↔variante **preserva as excepções** por re-key lido dos **próprios elos**
+  — ⛔ sem nomes, sem caminhos, sem heurística, que é o que a separa do `ByName`/`ByHierarchy` do Unity · ⭐ o **cartão
+  no topo do Inspector** diz o que a cópia **É** (*Instance* / *Variant of*), o que ela possui e os órfãos — ⚠️ a nota
+  de que *«nada na tela MOSTRA que campo está overridado»* **fechou aqui** · ⚠️ **a F1 FECHOU nas DUAS metades** (a
+  física em 24/08, a timeline em 25/08): renomear um objeto animado **não** desliga o binding, com gate
+  (`renaming_an_animated_object_does_not_unbind_it` + `a_stranger_with_the_old_name_does_not_capture_the_animation`) —
+  *a frase pôde envelhecer três dias porque nenhum gate a contradizia* ·
+  ⏳ **F5 critério 4** (*Apply to inner master* apagar o override nos níveis intermediários) e a troca para um mestre
+  **NÃO aparentado** (3 modos + relatório, ⛔ nunca automática) · ⏳ **a F4.6c DESBLOQUEOU e passou a CONTER uma fatia:**
+  portar os **eixos de propriedade** (`Size=Small, State=Idle`) do `vec_variants.rs` para o cartão geral **antes** de
+  apagar os 24 ficheiros do `VecInstance` — *um porte que apaga uma feature não é um porte* · ⏳ **F6–F8** ·
+  ⚠️ **O `physics_ecs_c9` NÃO tem baseline a re-capturar e NÃO corre na varredura impactada** — o `spike.yml` compara os
+  **três OS entre si**, então o risco real é eles **discordarem**, e só o CI o mede; a **F4.7 FECHOU** e acrescentou-lhe
+  a lane de mestre+instância, que localmente só se prova pelo que dá (corre e é estável, mesmo hash em 2 de 2) ·
+  ⛔ **a pose de repouso de uma peça DINÂMICA não propaga, e é DECLARADO** (o dono do `Transform` de um corpo dinâmico é
+  o solver sempre): mover o braço da receita não move o das instâncias, nem depois de um Reset — gate com o nome inteiro ·
+  ⚠️ **`hit_indexed_ids_are_registered` era CEGO aos chips guiados por TABELA** (só lê `.register(ids::LITERAL, …)`, e a
+  mutação que apagava o `populate` deles **SOBREVIVEU**): o gate irmão `table_driven_chips_are_registered_too` fecha-o,
+  com **catraca de 9 tabelas por registar em 4 painéis de OUTRAS linhas** — ⛔ **ela só ENCOLHE**, e quem registar um
+  desses chips tem de apagar a linha correspondente (o gate tem a metade *«já não descreve nada»*) ·
   F2-F8 do [plano vivo](docs/Components/05_plano_de_implementacao.md).
-  **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to 99"* —
+  **Smokes:** abrir um `.ph2dproj` gravado ANTES de 24/08 (tem de dizer *"Project migrated from format 95 to N"*, com
+  **N = o `PROJECT_SCHEMA` de hoje** — ⛔ não o copie para cá, leia-o em
+  [`project_schema.rs`](shells/desktop/src/project_schema.rs), porque esta linha já o teve errado —
   ⚠️ **um v97 ou v98 é RECUSADO**, e é a decisão da `line/Vector` levada até ao fim: sem `ProjectFileV97` congelado não
   há forma honesta de ler aqueles bytes) ·
   reordenar irmãos na Hierarquia + Ctrl+Z · renomear um corpo com junta (`PH2D_PHYSICS_SMOKE=6` ou `=67`) · copiar um
@@ -800,7 +811,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   implementação refutou) · [handoff de 26/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F4_2026-08-26.md)
   (⚠️ o §3 tem **doze** dessas, e o §4 as premissas que a F4 refutou — entre elas a lei que **nenhum documento tinha**:
   *o que não PROPAGA não se REMAPEIA*, achada por uma **mutação que SOBREVIVEU** porque nenhum gate corria o passe duas
-  vezes antes de medir)
+  vezes antes de medir) · [handoff de 27/08](docs/Components/handoffs/HANDOFF_INTEGRACAO_line_components_F5_2026-08-27.md)
+  (⚠️ o §7 traz as **quatro** correcções que esta seção precisou, e o §8.2 as **quatro fixturas que mordiam ANTES de
+  medirem o produto**)
 
 - **Image Tools — os utilitários de bitmap** (⚠️ **~30 k LOC que esta seção nunca mencionou**, achado
   da auditoria de 2026-08-18): `ph2d-tool-color-equalization` (10.291) · `ph2d-tool-bgremoval` (8.377) ·

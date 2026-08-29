@@ -25,6 +25,14 @@ extend-ignore-identifiers-re = [
     # `factores` — pt-PT de «fatores», num doc-comment do `ph2d-field-eval` sobre compor
     # limites (*«encadear misturas pode compor os factores»*). O typos quer o inglês `factors`.
     "^factores$",
+    # `projecte` — pt-PT do imperativo de «projetar», num doc-comment do `action_bus_queue`
+    # (*«ao criar foundational, projecte-o para isolamento»*). O typos le^-a como `projectile`,
+    # que trocaria uma ORDEM ao leitor por um substantivo de balistica.
+    "^projecte$",
+    # `DEMONSTRE` — pt-BR, o imperativo de «demonstrar», num doc-comment das cenas do L-System
+    # (*«DEMONSTRE o slider em vez de o deixar no valor que ja' existia»*). O typos quer o ingles
+    # `DEMONSTRATE`. ⚠️ SO' na forma maiuscula, que e' a unica que ele assinala.
+    "^DEMONSTRE$",
     # `vectores` — a MESMA família (pt-PT de «vetores»), num doc-comment do `ph2d-mesh`
     # sobre a média de eixos (*«uma média de eixos feita como média de vectores cancela
     # exactamente onde os dois mais concordam»*). O typos quer o inglês `vectors`.

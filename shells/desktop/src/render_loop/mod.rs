@@ -3301,6 +3301,9 @@ impl crate::App {
             // ⭐ A TINTA do traço (plano 35, wave D) — irmã do `pending_vec_fill_kind`, e drenada no
             // MESMO sítio, porque as duas podem precisar de abrir o diálogo da arte.
             let mut pending_vec_stroke_kind: Option<ph2d_panel_vector::StrokePaintKind> = None;
+            // ⭐ O PINCEL (plano 36, W4): o gesto que arma a arte, e a lei dos knobs.
+            let mut pending_brush_pick = false;
+            let mut pending_brush: Option<crate::vec_stroke_paint::BrushCmd> = None;
             // Linear-gradient angle (degrees) from the Angle slider (track·360).
             let mut pending_vec_grad_angle: Option<f64> = None;
             let mut pending_vec_grad_add = false;
@@ -3715,6 +3718,12 @@ impl crate::App {
                             } else if let Some(k) = crate::input_dispatch::vec_fill_kind_for_id(*id)
                             {
                                 pending_vec_fill_kind = Some(k);
+                            } else if *id == ph2d_editor::ids::VECTOR_BRUSH_PICK_SHAPE {
+                                // ⭐ Arma; a FONTE (a forma com o pincel) é capturada no drain,
+                                // porque o clique seguinte muda a seleção.
+                                pending_brush_pick = true;
+                            } else if let Some(c) = crate::vec_stroke_paint::cmd_for_id(*id) {
+                                pending_brush = Some(c);
                             } else if let Some(k) = crate::vec_stroke_paint::kind_for_id(*id) {
                                 // ⭐ A TINTA do traço (plano 35, wave D). Ela mexe no DOCUMENTO,
                                 // entao o clique e' da shell — o painel so' mostra qual chip acende.
@@ -3916,6 +3925,12 @@ impl crate::App {
                                 // Plano 22: FRAÇÃO do comprimento do caminho, ja' no dominio do
                                 // documento (o painel nao converte -- track e valor coincidem).
                                 pending_textpath_offset = Some(*v);
+                            } else if let Some(c) =
+                                crate::vec_stroke_paint::slider_cmd_for_id(*id, *v)
+                            {
+                                // ⭐ Os knobs do PINCEL (plano 36, W4). O `event.rs` do painel já
+                                // converteu o track para o domínio do documento — aqui `*v` é valor.
+                                pending_brush = Some(c);
                             } else if let Some((slot, knob)) =
                                 ph2d_panel_vector::texture_pattern::texpat_knob_of(*id)
                             {
@@ -5702,6 +5717,22 @@ impl crate::App {
             }
             // Picker do motivo (Enio 2026-07-23): o botão só ARMOU; a FONTE é o motivo selecionado (a
             // `can_pick` já garantiu um só, ainda solto). O clique seguinte no canvas escolhe o guia.
+            // ⭐⭐⭐ O PINCEL (plano 36, W4): a lei primeiro, o arm depois — a mesma ordem do padrão.
+            if let Some(cmd) = pending_brush {
+                crate::vec_stroke_paint::apply(
+                    vec_scene,
+                    &mut self.vec_history,
+                    &self.vec_pen,
+                    cmd,
+                );
+            }
+            if pending_brush_pick && let Some(host) = self.vec_pen.selected() {
+                self.vec_path_pick = Some(crate::vec_pick::PathPick::BrushArt(host));
+                eprintln!(
+                    "[ph2d-vec] brush: pick armado -- clique na FORMA que vai ser a arte do \
+                     contorno (vazio = desiste)"
+                );
+            }
             if let Some(slot) = pending_texpat_pick
                 && let Some(host) = self.vec_pen.selected()
             {
@@ -7225,6 +7256,25 @@ impl crate::App {
             // ⭐ **O DIAGNÓSTICO da selecção** (`PH2D_PATTERN_LOG=1`) — aqui, depois dos drenos,
             // porque é aqui que a cena é o que o artista vê. Por EVENTO: só quando a selecção muda.
             crate::texture_pattern_edit::log_selection(vec_scene, &self.vec_pen);
+            // ⭐ A lei do PINCEL da selecção (plano 36, W4) — `None` esconde a secção *Brush*.
+            ph2d_panel_vector::set_current_brush(
+                self.vec_pen
+                    .selected()
+                    .and_then(|sel| vec_scene.path(sel))
+                    .and_then(|p| p.stroke.as_ref())
+                    .and_then(ph2d_vec_scene::StrokeSpec::brush)
+                    .map(|b| ph2d_panel_vector::BrushRow {
+                        // ⚠️ *"Tem arte?"* é uma pergunta sobre a CENA, não sobre o campo: um id que
+                        // aponta para uma forma apagada é um pincel sem arte, e o rótulo do botão
+                        // tem de o dizer.
+                        has_art: b.art.is_some_and(|a| vec_scene.path(a).is_some()),
+                        spacing: b.spacing,
+                        scale: b.scale,
+                        offset: b.offset,
+                        rotation_deg: b.rotation_deg,
+                        flip: b.flip,
+                    }),
+            );
             ph2d_panel_vector::state::set_stroke_paint_kind(
                 crate::vec_stroke_paint::selected_stroke_paint_kind(vec_scene, &self.vec_pen),
             );

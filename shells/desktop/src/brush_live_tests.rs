@@ -26,7 +26,7 @@ fn cena(aponta_para_si: bool) -> (VecScene, VecPathId, VecPathId) {
     if let Some(p) = scene.path_mut(hospedeira) {
         let mut s = StrokeSpec::new(Rgba8::new(1, 2, 3, 255), 0.5);
         s.paint = StrokePaint::Brush(Box::new(BrushStroke {
-            art: alvo,
+            art: Some(alvo),
             ..BrushStroke::default()
         }));
         p.stroke = Some(s);

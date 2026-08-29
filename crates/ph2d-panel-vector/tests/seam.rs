@@ -647,7 +647,11 @@ fn every_section_header_is_registered_as_collapsible() {
         // 2026-08-28: *"cada seção deve ter seus ajustes próprios"*). ⚠️ **IRMÃ da *Stroke*, e não
         // aninhada dentro dela**: uma dobra não aninha, e a 1.ª redacção estourou o `SectionFold`
         // (*"aberto e nunca fechado"*). ⚠️ O `39` foi **CONTADO** (o gate imprimiu `left: 39`).
-        39,
+        // +1 (plano 36 wave W4): BRUSH — a arte que PERCORRE o contorno. ⚠️ **Secção PRÓPRIA, e
+        // não um alvo da família do padrão**: os knobs são OUTROS (avanço e escala RELATIVA contra
+        // reticulado, fase e repetição), e metade dos de cada um ficaria morta na outra. ⚠️ O `40`
+        // foi **CONTADO** (o gate imprimiu `left: 40`), como manda esta nota desde o `31`.
+        40,
         "a lista de secoes mudou — confira que o paint pinta um header para cada uma"
     );
     for &id in ids::VECTOR_SECTIONS {

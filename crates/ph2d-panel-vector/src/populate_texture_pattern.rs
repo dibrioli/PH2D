@@ -32,6 +32,62 @@ const TEXPAT_SHIFT_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do docum
 /// registado nas duas secções sozinho. ⛔ Uma lista escrita à mão aqui seria a terceira cópia dos
 /// controlos, e a que deixa um chip *pintado e MORTO sob o rato* — o defeito que esta casa já
 /// pagou com 36 células de física e dez chips do Painter.
+/// ⭐⭐⭐ Os sliders da secção **BRUSH** (plano 36, W4).
+///
+/// ⚠️ **Os mapas são os MESMOS que o `paint` usa para o track e que o `event` aplica** — a fronteira
+/// única. Três cópias divergiriam no dia em que uma faixa mudasse, e o sintoma seria a barra e o
+/// número a discordarem sob o dedo.
+/// Passo dos campos do **Size** e do **Spacing** — os dois são multiplicadores adimensionais, e
+/// `0,05` é 5 % por tecla: fino o bastante para afinar, grosso o bastante para atravessar a faixa.
+const BRUSH_MULT_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento
+/// Passo do campo do **Offset**, em unidades de mundo — acompanha o dos multiplicadores.
+const BRUSH_OFFSET_STEP: f64 = 0.05; // LITERAL-PX-OK: passo no domínio do documento
+/// Passo do campo da **Rotation**, em GRAUS — 1° por tecla é o passo que se autora, como no padrão.
+const BRUSH_ROTATION_STEP: f64 = 1.0; // LITERAL-PX-OK: passo no domínio do documento
+
+pub(super) fn populate_brush(store: &mut WidgetStore) {
+    use crate::paint_sections::brush as b;
+    for (sid, nid, max, passo) in [
+        (
+            ids::VECTOR_BRUSH_SCALE,
+            ids::VECTOR_BRUSH_SCALE_NUM,
+            b::BRUSH_SCALE_MAX,
+            BRUSH_MULT_STEP,
+        ),
+        (
+            ids::VECTOR_BRUSH_SPACING,
+            ids::VECTOR_BRUSH_SPACING_NUM,
+            b::BRUSH_SPACING_MAX,
+            BRUSH_MULT_STEP,
+        ),
+        (
+            ids::VECTOR_BRUSH_ROTATION,
+            ids::VECTOR_BRUSH_ROTATION_NUM,
+            b::BRUSH_ROTATION_MAX,
+            BRUSH_ROTATION_STEP,
+        ),
+    ] {
+        slider_chip(store, sid, nid, b::unipolar(1.0, max), 1.0, max as f32, 0.0);
+        store.set_number_range(nid, 0.0, max, passo);
+    }
+    // O **Offset** é BIPOLAR: `0.5` = zero, e o negativo põe a arte do outro lado da linha.
+    slider_chip(
+        store,
+        ids::VECTOR_BRUSH_OFFSET,
+        ids::VECTOR_BRUSH_OFFSET_NUM,
+        b::bipolar(0.0, b::BRUSH_OFFSET_MAX),
+        0.0,
+        (2.0 * b::BRUSH_OFFSET_MAX) as f32,
+        -b::BRUSH_OFFSET_MAX as f32,
+    );
+    store.set_number_range(
+        ids::VECTOR_BRUSH_OFFSET_NUM,
+        -b::BRUSH_OFFSET_MAX,
+        b::BRUSH_OFFSET_MAX,
+        BRUSH_OFFSET_STEP,
+    );
+}
+
 pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
     use crate::ids::TexPatKnob as K;
     for slot in 0..ids::TEXPAT_SLOTS {

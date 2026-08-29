@@ -356,6 +356,10 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "orquestrador puro desde a F5; a moldura vive no `paint_body.rs` e cada secao emite o a11y dela",
     ),
     (
+        "ph2d-panel-vector/src/paint_brush.rs",
+        "a seccao BRUSH (plano 36 W4) pinta SO' por `slider_row`/`checkbox_row`/`action_button` do proprio painel, que delegam nos primitivos canonicos e registam o hit — nao ha' widget nem semantica propria aqui. ⚠️ A irma `paint_texture_pattern.rs` passa este gate por COINCIDENCIA (nomeia `ph2d_a11y::NodeId` numa assinatura de helper), nao por fiar a11y: a delegacao das duas e' a mesma, e esta e' a declaracao honesta dela",
+    ),
+    (
         "ph2d-panel-audio-editor/src/paint_sections_chrome.rs",
         "chrome de secção extraído do `paint_sections.rs` pelo cap de LOC — pinta pelo `paint_section_header` canónico e regista o hit pelo `ClippedHits` do painel; sem semântica própria",
     ),

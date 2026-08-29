@@ -71,6 +71,8 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // Pattern on Path (plano 23): os quatro botões + os dois sliders, num irmão pelo teto de LOC.
     super::patternpath::populate_patternpath(store);
     super::texture_pattern::populate_texture_pattern(store);
+    // ⭐ E os sliders do PINCEL (plano 36, W4) — o irmão, e pela mesma porta.
+    super::texture_pattern::populate_brush(store);
     // Contour (pesquisa `20_*` #9): os três comandos, os dois pares exclusivos e os três sliders.
     super::contour::populate_contour(store);
     // Filters (FX raster, plano 24): os quatro chips de tipo + os quatro pares slider/campo.
@@ -192,6 +194,11 @@ pub(super) fn populate_ops(store: &mut WidgetStore) {
     // cinco. Sem este registo os dois chips pintam, ACENDEM sob o rato e o `Click` morre no painel.
     button(store, ids::VECTOR_STROKE_KIND_SOLID);
     button(store, ids::VECTOR_STROKE_KIND_PATTERN);
+    button(store, ids::VECTOR_STROKE_KIND_BRUSH);
+    // ⭐ A secção BRUSH (plano 36, W4). Sem o registo eles pintam, ACENDEM sob o rato e o Click
+    // morre no painel — o defeito que esta casa ja' pagou com 36 celulas de fisica.
+    button(store, ids::VECTOR_BRUSH_PICK_SHAPE);
+    button(store, ids::VECTOR_BRUSH_FLIP);
     button(store, ids::VECTOR_GRAD_ADD_POINT);
     button(store, ids::VECTOR_GRAD_REMOVE_POINT);
     button(store, ids::VECTOR_GRAD_ADD_STOP);

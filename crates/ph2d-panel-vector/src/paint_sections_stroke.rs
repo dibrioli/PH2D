@@ -65,6 +65,16 @@ impl BodyCtx<'_> {
                         "Pattern",
                         k == state::StrokePaintKind::Pattern,
                     ),
+                    // ⭐⭐⭐ **A 3.ª tinta** (plano 36, W4) — a arte que PERCORRE a linha.
+                    //
+                    // ⚠️ **Clicar ARMA o gesto de duas mãos**, e não abre um diálogo: a arte de um
+                    // pincel é uma FORMA do documento (o motor copia geometria), e o tipo
+                    // (`BrushStroke::art: VecPathId`) torna a alternativa inexprimível.
+                    (
+                        ids::VECTOR_STROKE_KIND_BRUSH,
+                        "Brush",
+                        k == state::StrokePaintKind::Brush,
+                    ),
                 ],
                 y,
             );

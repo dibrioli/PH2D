@@ -70,3 +70,20 @@ pub fn set_stroke_paint_kind(v: Option<StrokePaintKind>) {
 pub(crate) fn stroke_paint_kind() -> Option<StrokePaintKind> {
     STROKE_PAINT_KIND.with(Cell::get)
 }
+
+thread_local! {
+    /// ⭐ A lei do PINCEL da selecção (plano 36, W4). `None` = a secção **Brush** nem sobe.
+    static CURRENT_BRUSH: Cell<Option<crate::paint_sections::brush::BrushRow>> =
+        const { Cell::new(None) };
+}
+
+/// Publica a lei do pincel deste quadro (`None` esconde a secção).
+pub fn set_current_brush(row: Option<crate::paint_sections::brush::BrushRow>) {
+    CURRENT_BRUSH.with(|c| c.set(row));
+}
+
+/// A lei do pincel neste quadro (`None` ⇒ a secção **Brush** nem sobe).
+#[must_use]
+pub(crate) fn current_brush() -> Option<crate::paint_sections::brush::BrushRow> {
+    CURRENT_BRUSH.with(Cell::get)
+}

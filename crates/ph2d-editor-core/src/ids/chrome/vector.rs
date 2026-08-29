@@ -686,3 +686,11 @@ pub const VECTOR_STROKE_KIND_SOLID: NodeId = hash_node_id("vector.stroke.kind.so
 /// condição da costura (*a sequência tem de levar a algum lugar*), a mesma que o chip *Pattern* do
 /// preenchimento já honra.
 pub const VECTOR_STROKE_KIND_PATTERN: NodeId = hash_node_id("vector.stroke.kind.pattern");
+
+/// ⭐⭐⭐ **Brush** — a arte PERCORRE o contorno (plano 36, W4), a 3.ª tinta do traço.
+///
+/// ⚠️ **Clicar aqui ARMA o gesto de duas mãos**, e não abre um diálogo de ficheiro: a arte de um
+/// pincel é uma **forma do documento** (o motor copia geometria), não uma imagem. É a mesma porta
+/// que o *Use Shape…* do padrão já usa, e a razão está no tipo — `BrushStroke::art` é um
+/// `VecPathId`.
+pub const VECTOR_STROKE_KIND_BRUSH: NodeId = hash_node_id("vector.stroke.kind.brush");

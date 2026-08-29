@@ -94,6 +94,11 @@ mod patternpath;
 #[path = "paint_texture_pattern.rs"]
 pub mod texture_pattern;
 
+/// ⭐⭐⭐ **A secção BRUSH** (plano 36, W4) — irmã da do padrão pelo teto de LOC, e o corte é por
+/// MODELO: um pincel tem avanço e escala relativa, um padrão tem reticulado, fase e repetição.
+#[path = "paint_brush.rs"]
+pub mod brush;
+
 /// A seção **Contour** (pesquisa `20_*` #9) — módulo irmão (teto de 600 LOC).
 #[path = "paint_contour.rs"]
 mod contour;
@@ -231,6 +236,9 @@ impl BodyCtx<'_> {
         // — uma dobra não aninha, e o `return` de uma secção vazia deixaria a de fora por fechar.
         // *A UI que se quer ali é uma secção a seguir, não uma secção dentro.*
         y = self.step(y, |s, y| s.texture_pattern_section(1, y));
+        // ⭐⭐⭐ E a do PINCEL (plano 36, W4), ao lado da do padrão do traço: as duas descrevem a
+        // mesma linha, e só sobe a que o traço de facto tem.
+        y = self.step(y, Self::brush_section);
         y = self.step(y, |b, y| b.fill_style(snap, y));
         y = self.step(y, Self::fill_type_section);
         // A lei do PADRÃO fica colada ao selector que a escolhe: o artista carrega no chip

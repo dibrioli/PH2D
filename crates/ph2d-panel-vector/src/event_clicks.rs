@@ -295,6 +295,10 @@ pub(super) fn forwards_plain_click(id: ph2d_a11y::NodeId) -> bool {
         // então o clique é da shell, como o da fileira do preenchimento logo acima.
         || id == ids::VECTOR_STROKE_KIND_SOLID
         || id == ids::VECTOR_STROKE_KIND_PATTERN
+        || id == ids::VECTOR_STROKE_KIND_BRUSH
+        // ⭐ A secção BRUSH (plano 36, W4): o picker da arte e o `Flip`.
+        || id == ids::VECTOR_BRUSH_PICK_SHAPE
+        || id == ids::VECTOR_BRUSH_FLIP
         // ⭐⭐ **AS DUAS secções PATTERN** (plano 35, wave F) — a do preenchimento e a do traço.
         //
         // ⚠️ **Percorridas pela MESMA lista que as PINTA** (`TexPatKnob::ALL` × os slots): um knob

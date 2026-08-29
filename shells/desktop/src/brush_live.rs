@@ -36,7 +36,11 @@ pub(crate) fn resolve(scene: &VecScene) -> BrushArts {
         else {
             continue;
         };
-        if let Some(art) = art_of(scene, path.id, b.art) {
+        let Some(alvo) = b.art else {
+            // ⚠️ Um pincel SEM arte escolhida: nada a resolver, e a linha pinta a cor de recurso.
+            continue;
+        };
+        if let Some(art) = art_of(scene, path.id, alvo) {
             out.insert(path.id, art);
         }
     }

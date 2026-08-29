@@ -120,7 +120,7 @@ depois dos efeitos vivos (cantos vivos, largura viva, booleana), pela mesma raz�
 | **W2** ✅ | O **motor**: correr o `pattern_along` sobre o próprio contorno, com **fit** de emenda pela porta da `dash_fit` — **0,423 ms / 200 cópias**, 19× sob o *kill* | `ph2d-vec-scene` |
 | **W3** ✅ | O **desenho**: as cópias emitidas, com o guarda de ciclo estrutural e a queda para a cor de recurso | `ph2d-vec-render` + shell |
 | **W3-bis** | O **tracejado**: a arte reinicia em cada traço (a lei do Illustrator), pelas fatias `[start, end]` que o `PatternSpec` já tem | `ph2d-vec-render` |
-| **W4** | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (tamanho · espaçamento · offset normal/tangencial · flip), irmã das outras duas | `ph2d-panel-vector` + shell |
+| **W4** ✅ | A UI: a 3.ª opção da fileira *Type* + a secção **Brush** (Size · Spacing · Rotation · Offset · Flip) + o gesto de duas mãos | `ph2d-panel-vector` + shell |
 | **W5** | As **QUINAS**: os 4 modos do Illustrator medidos lado a lado, e o nosso escolhido **com a tabela** | `ph2d-vec-scene` |
 | **W6** | Persistência + smoke + gates + mutações | shell |
 
@@ -327,3 +327,57 @@ reprovou na varredura e passou **3/3 sozinho**, com **zero** ficheiros de físic
 **duas medianas de relógio**, que é a forma que o `CLAUDE.md` §5.0 declara ser a família inteira —
 *"todo gate que compara duas medianas de um RECURSO é candidato, e a lista nunca estará completa"*.
 Fica registado aqui para a próxima janela não o caçar.
+
+---
+
+## §9 — W4 fechada: **a UI** (2026-08-28)
+
+### §9.1 — ⭐⭐ Um gate achou um defeito de MODELO: `art` tem de ser um `Option`
+
+`VecPathId::default()` é um id **VÁLIDO** — a primeira forma de uma cena pode tê-lo. Com um id cru,
+*"sem arte"* e *"a arte é aquela forma"* seriam **os mesmos bytes**, e a porta que escreve a arte
+recusava-a **em silêncio** por «já é esse valor».
+
+⇒ `BrushStroke::art: Option<VecPathId>`. É a lei que esta casa já pagou noutro sítio:
+*um zero de «não medido» e um de «perfeito» são o mesmo byte.*
+
+⚠️ **E `Some(id)` não garante que a forma existe** — ela pode ter sido apagada. *"Tem arte?"* é uma
+pergunta à **CENA**; o campo só diz o que foi **autorado**. É por isso que o rótulo do botão
+(*Pick Shape…* × *Change Shape…*) sai de `vec_scene.path(a).is_some()`, e não do campo.
+
+⚠️ **O `PROJECT_SCHEMA` fica em 102**, e a razão é escrita: a variante `Brush` **nasceu nesta wave**
+e nenhum ficheiro a pode carregar — a forma interna dela assentou antes de existir um byte gravado.
+*A escada mede «um ficheiro antigo passa a ser lido errado», e aqui não há ficheiro antigo.*
+
+### §9.2 — ⛔ Sem diálogo de ficheiro: a arte é uma FORMA
+
+Clicar `Brush` **arma o gesto de duas mãos** (o `PathPick::BrushArt`), e não abre um `rfd`. O motor
+copia GEOMETRIA, e o tipo torna a alternativa inexprimível — a mesma decisão da W1, agora visível na
+UI. ⭐ *A porta do produto segue o tipo, em vez de o tipo seguir a porta.*
+
+### §9.3 — ⚠️ Duas leis da casa apanharam o ficheiro novo, e as duas curas são reais
+
+| Gate | O que ele pediu |
+|---|---|
+| `no_magic_numeric_in_widget_or_screens` | os três `0.05` de passo ganharam **nome** e o marcador `LITERAL-PX-OK`, como o irmão do padrão já fazia |
+| `every_widget_file_wires_a11y` | a secção delega em `slider_row`/`checkbox_row`/`action_button` do próprio painel ⇒ entrou no `PANEL_A11Y_DELEGATE_OK` **com a justificação**. ⚠️ E a nota regista que a **irmã `paint_texture_pattern.rs` passa por COINCIDÊNCIA** (nomeia `ph2d_a11y::NodeId` numa assinatura de helper), não por fiar a11y — *a delegação das duas é a mesma; só uma estava declarada* |
+
+### §9.4 — As três provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| o guarda «uma forma não é o próprio pincel» desligado | `a_shape_can_never_author_itself_as_its_own_brush` |
+| `Spacing` a escrever no campo do `Scale` | `every_brush_knob_writes_its_own_field_and_only_its_own` |
+| o `if` de igualdade removido (passo espúrio de undo) | idem |
+
+⚠️ O gate dos knobs traz a metade que importa: **os outros quatro campos ficam INTACTOS**. Sem ela,
+ele ficaria verde sobre uma porta que reconstrói o pincel do zero — e o artista veria os outros
+knobs saltarem para o default.
+
+### §9.5 — ⚠️ Três flakes de recurso numa corrida, e o CONJUNTO mudou entre corridas
+
+`the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` · `only_the_lower_row_breathes_…` ·
+`a_wet_move_costs_what_the_footprint_costs_…` — os três **nomeados** no `CLAUDE.md` §5.0, todos
+**5/5 verdes sozinhos**, e o diff sem uma linha de Flip, áudio ou Painter. ⭐ E o sinal que o §5.0
+descreve apareceu inteiro: *num grupo, o conjunto de reprovadas MUDA entre corridas do mesmo
+binário* — a corrida anterior reprovou outros dois.

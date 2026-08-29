@@ -32,7 +32,7 @@ fn arte(w: f64, h: f64) -> VecPath {
 
 fn pincel() -> BrushStroke {
     BrushStroke {
-        art: VecPathId::from(1u64),
+        art: Some(VecPathId::from(1u64)),
         fallback: Rgba8::new(1, 2, 3, 255),
         spacing: 1.0,
         offset: 0.0,

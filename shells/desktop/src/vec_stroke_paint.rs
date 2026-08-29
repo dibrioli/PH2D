@@ -127,6 +127,126 @@ pub(crate) fn set_kind(
     true
 }
 
+/// ⭐⭐⭐ **Põe a ARTE de um pincel** (plano 36, W4) — a porta do gesto de duas mãos.
+///
+/// ⚠️ Resolve por **ID** e não pela selecção, pela mesma razão que o picker do padrão: o alvo é
+/// capturado no *arm*, e o clique seguinte cai noutra forma, que passa a ser a selecionada. Ler a
+/// selecção aqui apontaria o pincel para a forma errada.
+///
+/// ⛔ **Uma forma não pode ser o próprio pincel** — a recusa é a primeira linha, e há uma segunda,
+/// PURA, no `brush_live`. *Duas metades porque as duas portas existem: esta autora, aquela resolve.*
+///
+/// `true` se o documento mudou (um passo de undo).
+pub(crate) fn set_art(
+    scene: &mut VecScene,
+    history: &mut History,
+    host: ph2d_vec_scene::VecPathId,
+    art: ph2d_vec_scene::VecPathId,
+) -> bool {
+    if art == host {
+        return false;
+    }
+    let Some(cur) = scene
+        .path(host)
+        .and_then(|p| p.stroke.as_ref())
+        .and_then(ph2d_vec_scene::StrokeSpec::brush)
+    else {
+        return false;
+    };
+    if cur.art == Some(art) {
+        return false;
+    }
+    let mut next = cur.clone();
+    next.art = Some(art);
+    let pre = scene.clone();
+    let Some(s) = scene.path_mut(host).and_then(|p| p.stroke.as_mut()) else {
+        return false;
+    };
+    s.paint = StrokePaint::Brush(Box::new(next));
+    history.push_undo(pre);
+    true
+}
+
+/// **O que a secção *Brush* pede ao documento** (plano 36, W4).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum BrushCmd {
+    /// Multiplica a altura derivada da largura do traço.
+    Scale(f64),
+    /// Multiplica a largura do motivo para dar o avanço.
+    Spacing(f64),
+    /// Desvio ao longo da normal, em unidades de mundo.
+    Offset(f64),
+    /// Orientação do motivo sobre a curva, em GRAUS.
+    Rotation(f64),
+    /// A arte do outro lado da curva.
+    Flip,
+}
+
+/// Aplica `cmd` ao pincel da forma selecionada. No-op silencioso quando não há forma, quando o
+/// traço não é um pincel, ou quando o valor já era esse.
+///
+/// ⚠️ **O `if` de igualdade no fim é o que impede um passo espúrio** quando o slider re-publica o
+/// valor que já lá estava — a mesma disciplina da porta do padrão.
+pub(crate) fn apply(
+    scene: &mut VecScene,
+    history: &mut History,
+    pen: &PenTool,
+    cmd: BrushCmd,
+) -> bool {
+    let Some(sel) = pen.selected() else {
+        return false;
+    };
+    let Some(cur) = scene
+        .path(sel)
+        .and_then(|p| p.stroke.as_ref())
+        .and_then(ph2d_vec_scene::StrokeSpec::brush)
+    else {
+        return false;
+    };
+    let mut next = cur.clone();
+    match cmd {
+        BrushCmd::Scale(v) => next.scale = v,
+        BrushCmd::Spacing(v) => next.spacing = v,
+        BrushCmd::Offset(v) => next.offset = v,
+        BrushCmd::Rotation(v) => next.rotation_deg = v,
+        BrushCmd::Flip => next.flip = !next.flip,
+    }
+    if &next == cur {
+        return false;
+    }
+    let pre = scene.clone();
+    let Some(s) = scene.path_mut(sel).and_then(|p| p.stroke.as_mut()) else {
+        return false;
+    };
+    s.paint = StrokePaint::Brush(Box::new(next));
+    history.push_undo(pre);
+    true
+}
+
+/// O comando que este `NodeId` nomeia (`None` se não é um clique da secção *Brush*).
+#[must_use]
+pub(crate) fn cmd_for_id(id: ph2d_editor::NodeId) -> Option<BrushCmd> {
+    (id == ph2d_editor::ids::VECTOR_BRUSH_FLIP).then_some(BrushCmd::Flip)
+}
+
+/// O comando de um SLIDER da secção *Brush* (`None` se não é dela). ⚠️ O `event.rs` do painel já
+/// converteu o track para o domínio do documento — aqui `v` é valor.
+#[must_use]
+pub(crate) fn slider_cmd_for_id(id: ph2d_editor::NodeId, v: f64) -> Option<BrushCmd> {
+    use ph2d_editor::ids as i;
+    if id == i::VECTOR_BRUSH_SCALE {
+        Some(BrushCmd::Scale(v))
+    } else if id == i::VECTOR_BRUSH_SPACING {
+        Some(BrushCmd::Spacing(v))
+    } else if id == i::VECTOR_BRUSH_OFFSET {
+        Some(BrushCmd::Offset(v))
+    } else if id == i::VECTOR_BRUSH_ROTATION {
+        Some(BrushCmd::Rotation(v))
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 #[path = "vec_stroke_paint_tests.rs"]
 mod tests;

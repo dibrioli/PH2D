@@ -27,6 +27,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // duas secções chamadas "Pattern" no mesmo painel, o artista fica sem saber qual e' qual —
         // que e' o defeito que a fileira `Fill | Stroke` tinha, so' que pintado.
         "panel.vector.section.texpat_stroke" => "Stroke Pattern",
+        // ⭐⭐⭐ O PINCEL (plano 36) — a arte que PERCORRE o contorno, contra a tinta que ele revela.
+        "panel.vector.section.brush" => "Brush",
+        "panel.vector.brush.flip" => "Flip Side",
         "panel.vector.section.contour" => "Contour",
         "panel.vector.section.effects" => "Effects",
         "panel.vector.fx.falloff.modulates" => "modulates the effect below",

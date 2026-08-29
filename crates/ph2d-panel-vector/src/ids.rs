@@ -119,6 +119,13 @@ pub use ph2d_editor_core::ids::{
     VECTOR_ANCHOR_V_CENTER, VECTOR_ANCHOR_V_END, VECTOR_ANCHOR_V_START, VECTOR_ANCHOR_V_STRETCH,
     VECTOR_SECTION_ANCHORS,
 };
+/// ⭐⭐⭐ **A secção BRUSH** (plano 36, W4) — knobs PRÓPRIOS, e não mais um alvo da família do padrão:
+/// um pincel tem avanço e escala relativa, um padrão tem reticulado, fase e modo de repetição.
+pub use ph2d_editor_core::ids::{
+    VECTOR_BRUSH_FLIP, VECTOR_BRUSH_OFFSET, VECTOR_BRUSH_OFFSET_NUM, VECTOR_BRUSH_PICK_SHAPE,
+    VECTOR_BRUSH_ROTATION, VECTOR_BRUSH_ROTATION_NUM, VECTOR_BRUSH_SCALE, VECTOR_BRUSH_SCALE_NUM,
+    VECTOR_BRUSH_SPACING, VECTOR_BRUSH_SPACING_NUM, VECTOR_SECTION_BRUSH, VECTOR_STROKE_KIND_BRUSH,
+};
 /// Os campos da RELAÇÃO do conector (a seção só existe com um conector na seleção).
 pub use ph2d_editor_core::ids::{
     VECTOR_CONNECTOR_CORNER, VECTOR_CONNECTOR_CURVE, VECTOR_CONNECTOR_JETTY,

@@ -542,7 +542,7 @@ fn so_traco_com_pincel(art: ph2d_vec_scene::VecPathId) -> ph2d_vec_scene::VecSce
     let mut scene = ph2d_vec_scene::VecScene::default();
     let mut s = StrokeSpec::new(ph2d_vec_scene::Rgba8::new(200, 30, 30, 255), 1.0);
     s.paint = StrokePaint::Brush(Box::new(ph2d_vec_scene::BrushStroke {
-        art,
+        art: Some(art),
         fallback: ph2d_vec_scene::Rgba8::new(200, 30, 30, 255),
         ..ph2d_vec_scene::BrushStroke::default()
     }));

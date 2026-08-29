@@ -22,7 +22,7 @@ use super::paint_pattern_tests::stroke_com_padrao;
 
 fn pincel() -> StrokeSpec {
     let b = crate::BrushStroke {
-        art: crate::VecPathId::from(42u64),
+        art: Some(crate::VecPathId::from(42u64)),
         fallback: Rgba8::new(11, 22, 33, 200),
         spacing: 1.25,
         offset: -0.5,
@@ -78,7 +78,7 @@ fn the_brush_survives_the_save() {
     let bytes = postcard::to_allocvec(&s).expect("serializa");
     let back: StrokeSpec = postcard::from_bytes(&bytes).expect("desserializa");
     let b = back.brush().expect("continua a ser um pincel");
-    assert_eq!(b.art, crate::VecPathId::from(42u64));
+    assert_eq!(b.art, Some(crate::VecPathId::from(42u64)));
     assert_eq!(b.fallback, Rgba8::new(11, 22, 33, 200));
     assert!((b.spacing - 1.25).abs() < 1e-12, "spacing");
     assert!((b.offset + 0.5).abs() < 1e-12, "offset");
@@ -105,9 +105,12 @@ fn the_brush_survives_the_save() {
 #[test]
 fn a_brush_can_only_name_a_shape_never_an_image() {
     let b = crate::BrushStroke::default();
-    // Compila porque `art` é um `VecPathId`. ⛔ Se alguém o trocar por `PatternSource`, esta linha
-    // deixa de compilar e o gate fala.
-    let _: crate::VecPathId = b.art;
+    // Compila porque `art` é um `Option<VecPathId>`. ⛔ Se alguém o trocar por `PatternSource`, esta
+    // linha deixa de compilar e o gate fala.
+    let _: Option<crate::VecPathId> = b.art;
+    // ⭐ E o `None` é REPRESENTÁVEL: *"sem arte"* não pode ser o mesmo byte que *"a arte é a forma
+    // de id zero"* — um gate da W4 achou exactamente isso, e é por isso que o campo é um `Option`.
+    assert_eq!(crate::BrushStroke::default().art, None);
 }
 
 /// ⚠️ **O PINCEL escala com a largura do traço; o PADRÃO não** — e as duas leis são deliberadas.

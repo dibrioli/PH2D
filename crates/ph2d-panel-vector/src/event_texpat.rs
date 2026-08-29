@@ -53,3 +53,31 @@ pub(super) fn texpat_slider_event(
         _ => None,
     }
 }
+
+/// `Some(consumido)` se `id` é um slider da secção **Brush** (plano 36, W4); `None` se não é dela.
+///
+/// ⚠️ **Os mapas são os MESMOS que o `paint` usa para o track e que o `populate` dá ao chip
+/// numérico** — a fronteira única, como no padrão.
+pub(super) fn brush_slider_event(
+    host: &mut dyn PanelHostInternal,
+    id: ph2d_a11y::NodeId,
+) -> Option<bool> {
+    use crate::ids;
+    use crate::paint_sections::brush as b;
+    if id == ids::VECTOR_BRUSH_SCALE {
+        return Some(forward_track(host, id, 1.0, |t| t * b::BRUSH_SCALE_MAX));
+    }
+    if id == ids::VECTOR_BRUSH_SPACING {
+        return Some(forward_track(host, id, 1.0, |t| t * b::BRUSH_SPACING_MAX));
+    }
+    if id == ids::VECTOR_BRUSH_ROTATION {
+        return Some(forward_track(host, id, 0.0, |t| t * b::BRUSH_ROTATION_MAX));
+    }
+    // BIPOLAR: `0.5` = zero.
+    if id == ids::VECTOR_BRUSH_OFFSET {
+        return Some(forward_track(host, id, 0.5, |t| {
+            t.mul_add(2.0 * b::BRUSH_OFFSET_MAX, -b::BRUSH_OFFSET_MAX)
+        }));
+    }
+    None
+}

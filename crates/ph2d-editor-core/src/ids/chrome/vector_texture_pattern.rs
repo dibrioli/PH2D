@@ -132,3 +132,32 @@ impl TexPatKnob {
 pub fn texpat_id(slot: usize, knob: TexPatKnob) -> NodeId {
     super::painter::fnv_node_id_runtime(&format!("vector.texpat.{slot}.{knob:?}"))
 }
+
+// ── A secção BRUSH (plano 36, W4) ─────────────────────────────────────────────
+//
+// ⚠️ **Secção PRÓPRIA, e não mais um alvo da família do padrão.** Os knobs são OUTROS: um pincel
+// tem avanço e escala relativa; um padrão tem reticulado, fase e modo de repetição. Metade dos de
+// cada um ficaria morta na outra — que é exactamente o defeito que a wave F do plano 35 curou ao
+// separar as duas secções do padrão.
+/// Secção **BRUSH** — a arte que percorre o contorno.
+pub const VECTOR_SECTION_BRUSH: NodeId = hash_node_id("vector.section.brush");
+/// **Use Shape…** — arma o gesto de duas mãos: o clique seguinte no canvas escolhe a ARTE.
+pub const VECTOR_BRUSH_PICK_SHAPE: NodeId = hash_node_id("vector.brush.pick");
+/// **Spacing** — multiplica a largura do motivo para dar o avanço por cópia.
+pub const VECTOR_BRUSH_SPACING: NodeId = hash_node_id("vector.brush.spacing");
+/// O campo numérico gémeo do [`VECTOR_BRUSH_SPACING`].
+pub const VECTOR_BRUSH_SPACING_NUM: NodeId = hash_node_id("vector.brush.spacing.num");
+/// **Size** — multiplica a altura DERIVADA da largura do traço (`1` = a arte tem a altura da faixa).
+pub const VECTOR_BRUSH_SCALE: NodeId = hash_node_id("vector.brush.scale");
+/// O campo numérico gémeo do [`VECTOR_BRUSH_SCALE`].
+pub const VECTOR_BRUSH_SCALE_NUM: NodeId = hash_node_id("vector.brush.scale.num");
+/// **Offset** — desvio ao longo da NORMAL, positivo para a esquerda do sentido de marcha.
+pub const VECTOR_BRUSH_OFFSET: NodeId = hash_node_id("vector.brush.offset");
+/// O campo numérico gémeo do [`VECTOR_BRUSH_OFFSET`].
+pub const VECTOR_BRUSH_OFFSET_NUM: NodeId = hash_node_id("vector.brush.offset.num");
+/// **Rotation** — orientação do motivo sobre a curva, em GRAUS.
+pub const VECTOR_BRUSH_ROTATION: NodeId = hash_node_id("vector.brush.rotation");
+/// O campo numérico gémeo do [`VECTOR_BRUSH_ROTATION`].
+pub const VECTOR_BRUSH_ROTATION_NUM: NodeId = hash_node_id("vector.brush.rotation.num");
+/// **Flip** — a arte do outro lado da curva, a percorrê-la ao contrário.
+pub const VECTOR_BRUSH_FLIP: NodeId = hash_node_id("vector.brush.flip");

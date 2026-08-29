@@ -138,6 +138,10 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if id == ids::VECTOR_PATTERNPATH_ROTATION {
         return Some(forward_track(host, id, 0.5, crate::rotation_from_track));
     }
+    // ⭐ Os sliders do PINCEL (plano 36, W4) — irmãos dos do padrão, e pela mesma porta.
+    if let Some(consumed) = texpat::brush_slider_event(host, id) {
+        return Some(consumed);
+    }
     if let Some(consumed) = texpat::texpat_slider_event(host, id) {
         return Some(consumed);
     }

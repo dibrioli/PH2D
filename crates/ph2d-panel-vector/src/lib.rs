@@ -159,17 +159,19 @@ pub mod state;
 pub mod state_symmetry;
 
 pub use paint_connector::{ConnectorSnapshot, set_current_connector};
+/// ⭐⭐⭐ A lei que a secção **Brush** desenha (plano 36, W4).
+pub use paint_sections::brush::BrushRow;
 pub use state::{
     FILTER_DETAIL_MAX, FalloffRole, FillKind, FilterKindView, FilterRowView, FontPreview,
     FxParamView, FxRowView, PathFillRule, RAMP_PREVIEW_N, StrokePaintKind, TextAxisSlot,
     TexturePatternRow, VectorPanelState, expand_join, expand_side, last_content_h, last_visible_h,
-    selected_stop, set_current_contour, set_current_contour_can_add, set_current_convertible,
-    set_current_effects, set_current_envelope_mode, set_current_envelope_presets, set_current_fill,
-    set_current_fill_rule, set_current_filter_can_add, set_current_filters,
-    set_current_grad_influence, set_current_grad_jitter, set_current_guides,
-    set_current_has_envelope, set_current_path_closed, set_current_patternpath,
-    set_current_patternpath_can_link, set_current_patternpath_can_pick, set_current_pivot_edit,
-    set_current_selection_count, set_current_shape_focus, set_current_snap,
+    selected_stop, set_current_brush, set_current_contour, set_current_contour_can_add,
+    set_current_convertible, set_current_effects, set_current_envelope_mode,
+    set_current_envelope_presets, set_current_fill, set_current_fill_rule,
+    set_current_filter_can_add, set_current_filters, set_current_grad_influence,
+    set_current_grad_jitter, set_current_guides, set_current_has_envelope, set_current_path_closed,
+    set_current_patternpath, set_current_patternpath_can_link, set_current_patternpath_can_pick,
+    set_current_pivot_edit, set_current_selection_count, set_current_shape_focus, set_current_snap,
     set_current_snap_position, set_current_text, set_current_text_align, set_current_text_axes,
     set_current_text_font, set_current_text_font_previews, set_current_text_seed,
     set_current_text_visible, set_current_text_wrap, set_current_textpath,

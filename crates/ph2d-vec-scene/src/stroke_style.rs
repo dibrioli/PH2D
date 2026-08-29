@@ -124,8 +124,17 @@ impl StrokeAlign {
 /// isso. *A mesma pergunta tem respostas contrárias nos dois modelos, e é por isso que são dois.*
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BrushStroke {
-    /// A **forma** do documento que se repete ao longo do contorno.
-    pub art: crate::VecPathId,
+    /// A **forma** do documento que se repete ao longo do contorno. `None` = ainda não escolhida.
+    ///
+    /// ⭐⭐ **`Option`, e um gate achou porquê:** `VecPathId::default()` é um id **VÁLIDO** — a
+    /// primeira forma de uma cena pode tê-lo. Com um id cru, *"sem arte"* e *"a arte é aquela
+    /// forma"* seriam **os mesmos bytes**, e a porta que escreve a arte recusava-a em silêncio por
+    /// «já é esse valor». É a lei que esta casa já pagou noutro sítio: *um zero de «não medido» e um
+    /// de «perfeito» são o mesmo byte.*
+    ///
+    /// ⚠️ E `Some(id)` **não** garante que a forma existe — ela pode ter sido apagada. *"Tem arte?"*
+    /// é uma pergunta à CENA; este campo só diz o que foi **autorado**.
+    pub art: Option<crate::VecPathId>,
     /// A cor que a linha pinta enquanto a arte não resolve (apagada, ou um id que não existe).
     ///
     /// ⚠️ **Desenhar NADA seria pior** — uma linha invisível não se distingue de uma forma sem
@@ -152,7 +161,7 @@ pub struct BrushStroke {
 impl Default for BrushStroke {
     fn default() -> Self {
         Self {
-            art: crate::VecPathId::default(),
+            art: None,
             fallback: Rgba8::new(0, 0, 0, 255),
             spacing: 1.0,
             offset: 0.0,

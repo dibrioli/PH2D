@@ -2342,6 +2342,18 @@ impl App {
                     ph2d_vec_scene::PatternSource::Shape(guide),
                 )
             }
+            // ⭐⭐⭐ **A ARTE de um PINCEL** (plano 36, W4): a fonte é a forma COM o pincel, o clicado
+            // é a forma que passa a ser o motivo repetido ao longo do contorno dela.
+            //
+            // ⚠️ O `guide == pick.source()` logo acima já barra o ciclo — e a `brush_live::art_of`
+            // barra-o outra vez, porque o documento pode chegar lá por outro caminho (um save, um
+            // replay). *Duas metades porque as duas portas existem.*
+            crate::vec_pick::PathPick::BrushArt(host) => crate::vec_stroke_paint::set_art(
+                &mut gfx.vec_scene,
+                &mut self.vec_history,
+                host,
+                guide,
+            ),
             // **O vínculo da row** (W8b.3): a fonte é o WIDGET, o clicado é a forma dirigida.
             crate::vec_pick::PathPick::WidgetBind(widget) => {
                 crate::vec_widget_edit::bind(&mut gfx.sim, &self.vec_entities, widget, guide)

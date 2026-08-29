@@ -44,6 +44,12 @@ pub(crate) enum PathPick {
     /// *qual delas eu estava a editar quando armei* é tão parte da captura quanto *qual forma*.
     /// Reler o alvo no clique leria a preferência de uma sessão que pode ter mudado no meio.
     TexturePatternArt(VecPathId, ph2d_vec_render::PatternSlot),
+    /// ⭐⭐⭐ Uma forma à espera da forma que vai ser a ARTE do PINCEL dela (plano 36, W4).
+    ///
+    /// ⚠️ **A arte de um pincel é uma FORMA, e por isso não há diálogo de ficheiro** — o motor copia
+    /// GEOMETRIA. É o mesmo gesto de duas mãos do `TexturePatternArt`, com outro sujeito: ali a
+    /// forma clicada vira a arte de um PADRÃO, aqui a de um PINCEL, e as duas leis são contrárias.
+    BrushArt(VecPathId),
     /// Um WIDGET autorado (W8b.3) à espera da forma que a row dele vai DIRIGIR.
     ///
     /// ⚠️ Cabe aqui pela mesma razão do `InstanceMain`: o gesto é o MESMO, e o que muda é só o que
@@ -59,6 +65,7 @@ impl PathPick {
             PathPick::PatternMotif(id)
             | PathPick::TextObject(id)
             | PathPick::InstanceMain(id)
+            | PathPick::BrushArt(id)
             | PathPick::WidgetBind(id) => id,
             PathPick::TexturePatternArt(id, _) => id,
         }

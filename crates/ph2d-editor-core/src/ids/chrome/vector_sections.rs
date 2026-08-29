@@ -54,6 +54,8 @@ pub const VECTOR_SECTIONS: &[NodeId] = &[
     super::vector_texture_pattern::VECTOR_SECTION_TEXPAT,
     // ⭐ E a irmã do TRAÇO (plano 35, wave F): *"cada seção deve ter seus ajustes próprios"*.
     super::vector_texture_pattern::VECTOR_SECTION_TEXPAT_STROKE,
+    // ⭐ E a do PINCEL (plano 36, W4) — knobs PRÓPRIOS: avanço e escala relativa, não reticulado.
+    super::vector_texture_pattern::VECTOR_SECTION_BRUSH,
     super::vector_contour::VECTOR_SECTION_CONTOUR,
     // FX raster (plano 24) — distinto de EFFECTS (deformadores vetoriais, ADR-0132).
     super::vector_filters::VECTOR_SECTION_FILTERS,

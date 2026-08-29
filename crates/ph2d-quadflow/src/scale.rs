@@ -109,6 +109,37 @@ impl ScaleField {
     /// mandar.*
     #[must_use]
     pub fn adaptive_with(mesh: &Mesh, edge: f32, strength: f32, floor_in_input_edges: f32) -> Self {
+        let floor = resolvable_edge_range_with(mesh, floor_in_input_edges).0;
+        Self::adaptive_between(mesh, edge, strength, floor)
+    }
+
+    /// ⭐⭐⭐ **A MESMA LEI, com a cerca da GRADAÇÃO e mais nenhuma** — para quem extrai de
+    /// um mapa em vez de uma retícula.
+    ///
+    /// ⛔⛔ **Ela existe por uma medição de 2026-08-28, e é o §0.0 do `CLAUDE.md` outra
+    /// vez:** o piso de [`Self::adaptive_with`] é `floor_in_input_edges × aresta_média(malha)`
+    /// — a cerca do motor **local**, cuja extracção por retícula rasga quando o quad é mais
+    /// fino que o triângulo de entrada. A cadeia **global** não extrai de retícula nenhuma:
+    /// ela mede `24 190` quads limpos sobre uma malha de trabalho de `4 110` triângulos.
+    ///
+    /// ⚠️ **E emprestada, aquela cerca não aperta a adaptação: ela APAGA-A.** Medido na peça
+    /// do artista, com `Detail` fino (alvo `0,0324`) sobre uma malha de trabalho de aresta
+    /// média `0,0897`: o piso dá `0,0673`, e como ele é maior que `edge × √R` os dois
+    /// extremos da banda colapsam no mesmo número — o campo sai **`0,06728..0,06728`**,
+    /// constante ao bit, e depois da renormalização é **exactamente** o alvo escalar. *As
+    /// três posições do knob davam saída byte-idêntica, e o defeito não era o knob.*
+    ///
+    /// ⭐ A cerca que fica é a que este consumidor de facto tem: a **razão de gradação**
+    /// ([`MAX_ADAPTIVE_RATIO`]), *«duas células cujas escalas diferem por mais do que isto
+    /// deixam de ter aresta comum»*.
+    #[must_use]
+    pub fn adaptive_graded(mesh: &Mesh, edge: f32, strength: f32) -> Self {
+        Self::adaptive_between(mesh, edge, strength, MIN_EDGE)
+    }
+
+    /// A lei, com o piso já resolvido — ver [`Self::adaptive_with`] e
+    /// [`Self::adaptive_graded`], que só diferem em **qual cerca** trazem.
+    fn adaptive_between(mesh: &Mesh, edge: f32, strength: f32, floor: f32) -> Self {
         let edge = edge.max(MIN_EDGE);
         let s = strength.clamp(0.0, 1.0);
         if s == 0.0 {
@@ -155,7 +186,6 @@ impl ScaleField {
         // BAIXO fica sem curso — não há folga sob o piso. Isso é o recurso a
         // dizer o que é, não uma perda: a adaptação para CIMA (quads maiores onde
         // a forma é chapada) continua inteira, e é ela que o `hi` carrega.
-        let floor = resolvable_edge_range_with(mesh, floor_in_input_edges).0;
         let lo = (edge / MAX_ADAPTIVE_RATIO.sqrt()).max(floor);
         let hi = (edge * MAX_ADAPTIVE_RATIO.sqrt()).max(lo);
         let per_vertex = curv

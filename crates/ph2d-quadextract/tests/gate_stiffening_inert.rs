@@ -61,7 +61,7 @@ fn stiffening_at_zero_passes_is_the_old_path() {
     v.sort_by(f32::total_cmp);
     let h = v[v.len() / 2];
 
-    let (_, rep) = round_welded(&mesh, &cut, &combed, h, RoundOptions::default(), &singular);
+    let (_, rep) = round_welded(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), RoundOptions::default(), &singular);
     eprintln!(
         "esfera com vinco: {} passagens de endurecimento · virados {} ⇒ {}",
         rep.stiffen_passes, rep.folded_before, rep.folded_after

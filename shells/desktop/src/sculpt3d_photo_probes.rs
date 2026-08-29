@@ -628,6 +628,7 @@ fn the_artists_piece_through_the_button() {
     // ⭐⭐ **O CONTROLO vem ANTES de acusar a cadeia** — se a entrada já é aberta ou
     // não-manifold, o que sai dela não foi a cadeia que abriu.
     census("ENTRADA", &piece);
+    islands("ENTRADA", &piece);
 
     let mut scene = crate::sculpt3d::Sculpt3dScene::new(&gpu.device, piece.clone(), 1.0);
     scene.viewport = (900, 700);
@@ -722,7 +723,141 @@ fn the_artists_piece_through_the_button() {
         r.folded,
     );
     census("SAIDA", &out);
+    islands("SAIDA", &out);
+    relief_density("SAIDA", &out);
     holes("SAIDA", &out);
+}
+
+/// ⭐⭐⭐ **AS ILHAS** — componentes ligados por aresta, e o que cada uma pesa.
+///
+/// ⛔ **Ela existe por uma foto (Enio, 28/08, «faces completamente soltas»):** a peça dele
+/// saiu com o casco fechado (`χ = 2`, zero bordo, zero não-manifold) **e** uma ilha de
+/// **duas** faces a flutuar — o MESMO quadrado emitido duas vezes, um virado ao contrário
+/// do outro. ⚠️ *Nenhuma régua desta linha a via: todas mediam a malha inteira como um
+/// objecto só.*
+fn islands(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    use std::collections::BTreeMap;
+    let mut owners: BTreeMap<(u32, u32), Vec<usize>> = BTreeMap::new();
+    for (fi, f) in mesh.faces().iter().enumerate() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            owners.entry((a.min(b), a.max(b))).or_default().push(fi);
+        }
+    }
+    let mut parent: Vec<usize> = (0..mesh.face_count()).collect();
+    fn find(parent: &mut [usize], mut x: usize) -> usize {
+        while parent[x] != x {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        x
+    }
+    for fs in owners.values() {
+        for w in fs.windows(2) {
+            let (a, b) = (find(&mut parent[..], w[0]), find(&mut parent[..], w[1]));
+            if a != b {
+                parent[a] = b;
+            }
+        }
+    }
+    let mut size: BTreeMap<usize, usize> = BTreeMap::new();
+    for i in 0..mesh.face_count() {
+        let r = find(&mut parent[..], i);
+        *size.entry(r).or_default() += 1;
+    }
+    let mut counts: Vec<usize> = size.values().copied().collect();
+    counts.sort_unstable_by(|a, b| b.cmp(a));
+    eprintln!("   {tag}: {} ilha(s) -> {:?}", counts.len(), &counts[..counts.len().min(6)]);
+    if counts.len() > 1 {
+        let pos = mesh.positions();
+        for (root, n) in &size {
+            if *n > counts[0] / 2 {
+                continue;
+            }
+            let mut c = [0.0f32; 3];
+            let mut m = 0usize;
+            for i in 0..mesh.face_count() {
+                if find(&mut parent[..], i) != *root {
+                    continue;
+                }
+                for &v in mesh.faces()[i].verts() {
+                    let p = pos[v as usize];
+                    for k in 0..3 {
+                        c[k] += p[k];
+                    }
+                    m += 1;
+                }
+            }
+            let inv = 1.0 / m.max(1) as f32;
+            eprintln!(
+                "      ilha SOLTA de {n} faces em ({:.3}, {:.3}, {:.3})",
+                c[0] * inv,
+                c[1] * inv,
+                c[2] * inv
+            );
+        }
+    }
+}
+
+/// ⭐⭐⭐ **A DENSIDADE SEGUE A FORMA?** — o expoente de `aresta ∼ curvatura^n`.
+///
+/// ⛔ **Ela é a régua do report de 2026-08-28** (*«as pontas finas… têm menos densidade de
+/// faces e perdem detalhes»*), e nenhuma régua desta linha a tinha: todas mediam a aresta
+/// **global** (mediana, máxima), que não muda quando a grade ignora a forma.
+///
+/// `0` = grade **uniforme** · negativo = mais fina onde a forma aperta. ⚠️ A faixa de
+/// curvatura entre a 1.ª e a 8.ª banda sai ao lado, porque *um expoente sobre uma faixa de
+/// `1,1×` não diz nada.*
+fn relief_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    let curv = mesh.curvatures();
+    let pos = mesh.positions();
+    let mut rows: Vec<(f32, f32)> = Vec::with_capacity(mesh.face_count());
+    for f in mesh.faces() {
+        let v = f.verts();
+        let mut k = 0.0f32;
+        let mut e = 0.0f32;
+        for i in 0..v.len() {
+            k += curv.get(v[i] as usize).copied().unwrap_or(0.0).abs();
+            let (a, b) = (pos[v[i] as usize], pos[v[(i + 1) % v.len()] as usize]);
+            let d = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+            e += d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt();
+        }
+        let n = v.len() as f32;
+        if k > 1.0e-9 {
+            rows.push((k / n, e / n));
+        }
+    }
+    if rows.len() < 64 {
+        eprintln!("   {tag}: poucas faces com curvatura para medir o expoente");
+        return;
+    }
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let bands = 8usize;
+    let mut xs: Vec<f64> = Vec::new();
+    let mut ys: Vec<f64> = Vec::new();
+    for b in 0..bands {
+        let (lo, hi) = (b * rows.len() / bands, (b + 1) * rows.len() / bands);
+        let seg = &rows[lo..hi];
+        let mut ks: Vec<f32> = seg.iter().map(|r| r.0).collect();
+        let mut es: Vec<f32> = seg.iter().map(|r| r.1).collect();
+        ks.sort_by(f32::total_cmp);
+        es.sort_by(f32::total_cmp);
+        xs.push(f64::from(ks[ks.len() / 2]).ln());
+        ys.push(f64::from(es[es.len() / 2]).ln());
+    }
+    let mx = xs.iter().sum::<f64>() / xs.len() as f64;
+    let my = ys.iter().sum::<f64>() / ys.len() as f64;
+    let num: f64 = xs.iter().zip(&ys).map(|(x, y)| (x - mx) * (y - my)).sum();
+    let den: f64 = xs.iter().map(|x| (x - mx) * (x - mx)).sum();
+    eprintln!(
+        "   {tag}: aresta ~ curvatura^{:.3}  (0 = UNIFORME) | faixa de curvatura {:.1}x | \
+         banda fina {:.5} vs chapada {:.5}",
+        if den > 0.0 { num / den } else { 0.0 },
+        (xs[xs.len() - 1] - xs[0]).exp(),
+        ys[ys.len() - 1].exp(),
+        ys[0].exp(),
+    );
 }
 
 /// A contagem de arestas de uma malha — bordo, não-manifold e `χ`.

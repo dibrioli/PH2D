@@ -28,7 +28,7 @@ fn the_weld_measures_what_elimination_cannot_reach() {
             &mesh,
             &cut,
             &combed,
-            h,
+            crate::solve::Step::uniform(h),
             crate::round::RoundOptions::default(),
             &singular,
         );

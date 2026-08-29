@@ -121,11 +121,10 @@ fn our_welded_map_closes_its_seams_at_the_floor_of_f32() {
     e.sort_by(f32::total_cmp);
     let h = e[e.len() / 2];
 
-    let (map, _) = ph2d_gridmap::round_welded(
-        &mesh,
+    let (map, _) = ph2d_gridmap::round_welded(&mesh,
         &cut,
         &combed,
-        h,
+        ph2d_gridmap::Step::uniform(h),
         ph2d_gridmap::RoundOptions::default(),
         &singular,
     );

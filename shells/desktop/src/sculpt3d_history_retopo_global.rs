@@ -214,6 +214,8 @@ impl Sculpt3dScene {
             edge_max_span: r.edge_max / span(&reference),
             shape: r.shape,
             folded: r.folded,
+            // ⚠️ **`0` é um FACTO**: o F5 monta patch a patch, não extrai isolinhas.
+            mirrored: 0,
             aligned,
             // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
             // tentativa alinhada e só cai para a lisa se ela **RECUSAR** — nunca por
@@ -388,7 +390,7 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
     format!(
         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
          {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
-         em {:.0} ms{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
+         em {:.0} ms{}{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
         r.verts,
         r.quads,
         r.non_quads,
@@ -430,6 +432,15 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
                 r.folded,
                 100.0 * r.folded as f64 / (r.quads + r.non_quads).max(1) as f64
             )
+        },
+        // ⭐⭐⭐ **AS ALMOFADAS** — ver `QuadRemeshReport::mirrored`. ⛔ Sem esta palavra,
+        // uma face solta a flutuar numa ponta é **invisível em todas as outras colunas**, e
+        // a única forma de a detectar era o artista fotografar a tela. *Foi o que aconteceu
+        // em 2026-08-28.*
+        if r.mirrored == 0 {
+            String::new()
+        } else {
+            format!(" -- {} almofada(s) descartada(s)", r.mirrored)
         },
         // ⭐⭐ **QUAL CAMPO correu.** A cadeia global tenta o campo
         // ALINHADO ao relevo e cai para o só-suavidade quando o

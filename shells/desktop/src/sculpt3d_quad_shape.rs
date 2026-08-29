@@ -404,6 +404,7 @@ fn the_report_carries_the_shape_of_every_quad() {
         // histórico do `retopo_line`, que é o que ela sempre exerceu.
         measured: false,
         folded: 0,
+        mirrored: 0,
     };
     let text = crate::sculpt3d::history::retopo_global::retopo_line(&line);
     assert!(

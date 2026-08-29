@@ -83,7 +83,7 @@ fn the_crossings_predict_how_a_translation_moves_a_copy() {
 fn an_eliminated_seam_link_is_closed_to_the_floor_of_f32() {
     let mut mesh = ph2d_mesh::shapes::uv_sphere(24, 36, 1.0);
     let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
-    let (map, _) = solve_welded(&mesh, &cut, &combed, h, 2_000);
+    let (map, _) = solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 2_000);
     let (w, _) = weld(&cut, &combed);
     let sr = seam_residual(&w, &map);
     let biggest = map
@@ -133,7 +133,7 @@ fn the_welded_system_beats_the_penalised_one_on_both_columns() {
     ] {
         let (cut, combed, h, _) = crate::round::tests::chain(&mut mesh);
         let t = std::time::Instant::now();
-        let (_, pen) = solve_with(&mesh, &cut, &combed, h, SEAM_WEIGHT, PENALISED_ROUNDS);
+        let (_, pen) = solve_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), SEAM_WEIGHT, PENALISED_ROUNDS);
         eprintln!(
             "{name}\n  PENALIZADO (w={SEAM_WEIGHT}, {:.1}s): angulo p50 {:.2}° | escala {:.3} \
              | costura p50 {:.4} max {:.4}",
@@ -145,7 +145,7 @@ fn the_welded_system_beats_the_penalised_one_on_both_columns() {
         );
         for rounds in [500usize, 2_000, 8_000] {
             let t = std::time::Instant::now();
-            let (map, r) = solve_welded(&mesh, &cut, &combed, h, rounds);
+            let (map, r) = solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), rounds);
             let (w, _) = weld(&cut, &combed);
             let sr = seam_residual(&w, &map);
             eprintln!(

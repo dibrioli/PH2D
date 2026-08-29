@@ -275,6 +275,82 @@ nesta cadeia — o campo de escala teria de variar e o G3 de quantizar em cima d
 alcança depois de ouvir que o bom é lento.* A decisão de o retirar do painel é do dono do
 produto (ele já disse em 25/08 que *«o antigo não apresenta resultados úteis»*).
 
+## §8-quater — ⛔⛔⛔ «FACES SOLTAS, BURACOS, e as pontas perdem detalhe» (Enio, 28/08, 2 fotos)
+
+O segundo report do mesmo dia, depois da cura da idempotência: *«melhorou. mas ainda temos
+problemas em pontas finas. faces completamente soltas, buracos. As pontas finas que deveriam
+ser relativamente mais densas que as áreas lisas têm menos densidade de faces e perdem
+detalhes.»*
+
+### ⭐⭐⭐ A face solta: **o mesmo quadrado emitido DUAS vezes, um virado ao contrário**
+
+O ficheiro que ele exportou (`23 630` quads) mede-se assim:
+
+| régua | valor |
+|---|---|
+| arestas de bordo · não-manifold | `0` · `0` |
+| `χ` | ⚠️ **`3`** |
+| **componentes ligados por aresta** | ⛔⛔ **`2` — de `23 628` e de `2`** |
+| a ilha | `[68,69,70,71]` e `[71,70,69,68]`, em `(−1,03 · 1,00 · 0,86)`, arestas `3×` a mediana |
+
+⭐⭐ **É uma ALMOFADA: duas faces coincidentes, costas com costas, a flutuar sobre uma ponta.**
+⚠️ **Nenhuma régua desta linha a via** — `χ` conta os dois lados de uma almofada e dá `2`, o
+bordo é zero, o não-manifold é zero, e a contagem de quads *sobe*. *Uma almofada é uma
+superfície fechada legítima; o que ela não é, é parte desta.*
+
+⭐ **A causa é uma DOBRA do mapa:** uma região coberta duas vezes com orientações opostas dá
+dois percursos de célula sobre os mesmos nós. ⇒ a extracção passa a descartar **os dois**
+(`CellStats::mirrored_cells`, e o log do botão diz *«N almofada(s) descartada(s)»*), com a
+chave a ser o **ciclo sem sentido** — roda para o menor nó e fica com o menor entre o anel e
+o seu inverso. ⚠️ **A cura é PREVENTIVA na peça dele:** a partir do ficheiro que ele mandou a
+cadeia não reproduz a dobra (`PH2D_EXTRACT_MIRROR=0` e o default dão saída idêntica), e é o
+gate que a torna afirmável.
+
+### ⛔⛔⛔ A densidade nas pontas: CONSTRUÍDA, MEDIDA e **NÃO ADOPTADA**
+
+⭐ **Ele tem razão, e há número:** na saída dele o expoente de `aresta ∼ curvatura^n` é
+**`−0,003`** sobre uma faixa de curvatura de **`9,4×`** — a grade é rigorosamente uniforme.
+*Nenhuma régua desta linha media isto:* todas olhavam a aresta **global** (mediana, máxima),
+que não se mexe quando a grade ignora a forma.
+
+⭐⭐ **O substrato foi construído e fica:** o passo do mapa deixou de ser um número e passou a
+ser um campo — `ph2d_gridmap::Step { h, per_vertex }`, consumido no único sítio onde o passo
+entra no sistema (o gradiente alvo de cada triângulo). A extracção é **agnóstica** a isto: ela
+lê isolinhas **inteiras**, e um passo que varia deforma o mapa sem mexer no que é inteiro.
+
+⚠️ **E a 1.ª medição não distinguia «o campo é constante» de «o campo não chegou»** — as três
+posições do knob davam saída **byte-idêntica**. A instrumentação disse qual: o campo saía
+`0,06728..0,06728`. ⭐ **O §0.0 outra vez:** `ScaleField::adaptive_with` tem o piso em
+`0,75 × aresta_média(malha)`, que é a cerca do motor **local** (a extracção por retícula dele
+rasga com quads mais finos que o triângulo de entrada); emprestada à cadeia global — que mede
+`24 190` quads limpos sobre `4 110` triângulos — ela **não aperta a adaptação, apaga-a**. ⇒
+`ScaleField::adaptive_graded`, a mesma lei com a cerca que este consumidor de facto tem (a
+razão de gradação).
+
+Com o campo a chegar de verdade:
+
+| `Follow Curvature` | campo entregue | expoente da SAÍDA | apertada / chapada | quads | `>60°` |
+|---|---|---|---|---|---|
+| `0` | — | `+0,047` | `1,167` | `13 289` | `3` |
+| `0,5` | `0,0243..0,0486` (`2×`) | `+0,024` | `1,133` | `11 963` | `3` |
+| `1,0` | `0,0162..0,0648` (**`4×`**) | `+0,014` | `1,090` | ⚠️ `11 302` | ⛔ `6` |
+
+⭐⭐⭐ **Pede-se `400 %` e a saída move-se `7 %`, pagando `15 %` da contagem e o dobro das faces
+péssimas.**
+
+⚠️ **O MECANISMO:** o G3 resolve um mapa **escalar por patch** cujo gradiente se aproxima de
+`direcção / h`. Com `h` constante esse alvo é **integrável**; com `h` a variar deixa de o ser
+(o rotacional deixa de ser nulo), e a projecção de mínimos quadrados fica com a parte
+integrável — que é, quase exactamente, o campo uniforme. *A adaptação não é ignorada: é
+projectada fora.*
+
+⭐ **A cura publicada tem nome e é outra maquinaria:** o factor de escala tem de ser **conforme
+por construção** — resolver `Δ log h` contra a curvatura de Gauss e usar `h = h₀·e^{−s}`, que é
+integrável por definição (a família *«integer-grid maps with prescribed sizing»*). É uma wave
+com espec própria.
+
+⇒ **O `Follow Curvature` continua a nascer em `0` e o caminho de omissão é byte-idêntico.**
+
 ## §9 — Portão de fecho
 
 | | |
@@ -299,3 +375,14 @@ produto (ele já disse em 25/08 que *«o antigo não apresenta resultados úteis
 | **prova de mutação** — `worse` volta a contar só o bordo | ⭐ MORREU |
 | **prova de mutação** — o alvo volta a sair da aresta média da malha | ⭐ MORREU |
 | **fim-a-fim** — três apertos na peça do artista | ⭐ `1 377 → 1 413 → 1 494` (era `1 747 → 520 → 281`) |
+
+⭐ **E a re-corrida depois do §8-quater** (a almofada e o campo de passo):
+
+| | |
+|---|---|
+| `cargo test -p ph2d-quadextract -p ph2d-quadflow -p ph2d-quadchain -p ph2d-gridmap` | ⭐ verde (`60` + `32` + as suites, `0` falhas) |
+| `cargo test -p ph2d-host-desktop --bins retopo` · `--bins densidade` | ⭐ verde (`7` · `1`) |
+| `cargo clippy` nas cinco crates `--all-targets` | ⭐ limpo (`0` avisos) |
+| `scripts/cleanroom-sweep.sh` sobre todo o diff | ⭐ limpo (vassoura de 56 entradas) |
+| **prova de mutação** — a chave do ciclo deixa de olhar o sentido inverso | ⭐ MORREU |
+| **prova de mutação** — a renormalização da contagem sai | ⭐ MORREU |

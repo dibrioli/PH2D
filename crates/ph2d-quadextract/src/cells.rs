@@ -70,6 +70,23 @@ pub(crate) struct CellStats {
     pub merged_groups: usize,
     /// Quads emitidos.
     pub quads: usize,
+    /// ⭐⭐⭐ **CÉLULAS ESPELHADAS — o mesmo anel de nós percorrido nos DOIS sentidos.**
+    ///
+    /// ⛔⛔ **Ela existe por uma foto (Enio, 2026-08-28, «faces completamente soltas»).** A
+    /// peça dele saiu com o casco **fechado e perfeito** (`χ = 2`, zero bordo, zero
+    /// não-manifold, `23 628` faces) **mais** uma ilha de **duas** faces a flutuar numa
+    /// ponta: `[68,69,70,71]` e `[71,70,69,68]` — *o mesmo quadrado emitido duas vezes, um
+    /// virado ao contrário do outro*, com arestas `3×` a mediana da peça.
+    ///
+    /// ⚠️ **Nenhuma régua desta linha a via**, e todas passavam: `χ` conta os dois lados de
+    /// uma almofada e dá `2`, o bordo é zero, o não-manifold é zero, e a contagem de quads
+    /// sobe. *Uma almofada é uma superfície fechada legítima — o que ela não é, é parte
+    /// desta.*
+    ///
+    /// ⭐ **A causa é uma DOBRA do mapa:** uma região coberta duas vezes com orientações
+    /// opostas dá dois percursos de célula sobre os mesmos nós. ⇒ nenhum dos dois é uma
+    /// face da superfície, e os dois caem.
+    pub mirrored_cells: usize,
     /// Bígonos e monógonos, que colapsam.
     pub degenerate_cells: usize,
     /// ⛔ Células que sobraram com três cantos distintos — o teorema diz que não
@@ -202,12 +219,32 @@ pub(crate) fn build(
     }
     st.merged_groups = acc.iter().filter(|(_, c)| *c > 1).count();
 
+    // ⭐⭐⭐ **AS CÉLULAS ESPELHADAS CAEM ANTES DE VIRAREM FACE** — ver
+    // [`CellStats::mirrored_cells`]. A chave é o ciclo **sem sentido**: roda-se o anel para
+    // começar no menor nó, compara-se com o mesmo tratamento do anel invertido, e fica o
+    // menor dos dois. ⚠️ Duas células com a mesma chave são a mesma região do mapa contada
+    // duas vezes — *e os DOIS lados caem, porque uma almofada não tem lado certo.*
+    let rings: Vec<Vec<u32>> = cells.iter().map(|c| reduce_ring(c, &mut uf)).collect();
+    let mut seen: std::collections::BTreeMap<Vec<u32>, usize> = std::collections::BTreeMap::new();
+    for r in &rings {
+        *seen.entry(undirected_key(r)).or_default() += 1;
+    }
+    // ⚠️ **`PH2D_EXTRACT_MIRROR=0` devolve a almofada** — é o A/B, e é o que permite dizer
+    // que a cura disparou nesta peça em vez de o supor. Lida **uma vez**, fora do laço.
+    let drop_mirrored = std::env::var("PH2D_EXTRACT_MIRROR").as_deref() != Ok("0");
+
     // ── A malha: só os nós que uma célula sobrevivente usa.
     let mut slot = vec![u32::MAX; nodes.len()];
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut faces: Vec<Face> = Vec::new();
-    for cell in &cells {
-        let ring = reduce_ring(cell, &mut uf);
+    for ring in &rings {
+        let ring = ring.clone();
+        if seen.get(&undirected_key(&ring)).copied().unwrap_or(0) > 1 {
+            st.mirrored_cells += 1;
+            if drop_mirrored {
+                continue;
+            }
+        }
         st.ring_distinct[ring.len().min(16)] += 1;
         match ring.len() {
             4 => {}
@@ -244,6 +281,30 @@ pub(crate) fn build(
     }
 
     Ok((Mesh::from_parts(positions, faces)?, st))
+}
+
+/// ⭐ **A CHAVE DE UM CICLO SEM SENTIDO** — roda para começar no menor nó e devolve o menor
+/// entre o anel e o seu inverso.
+///
+/// ⚠️ *Sem a inversão a chave distinguiria as duas metades de uma almofada, que é
+/// exactamente o par que se quer ver como um.*
+fn undirected_key(ring: &[u32]) -> Vec<u32> {
+    if ring.is_empty() {
+        return Vec::new();
+    }
+    let rot = |v: &[u32]| -> Vec<u32> {
+        let at = v
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, x)| **x)
+            .map_or(0, |(i, _)| i);
+        v[at..].iter().chain(&v[..at]).copied().collect()
+    };
+    let fwd = rot(ring);
+    let mut back: Vec<u32> = ring.to_vec();
+    back.reverse();
+    let rev = rot(&back);
+    if rev < fwd { rev } else { fwd }
 }
 
 enum Trip {
@@ -407,4 +468,36 @@ fn probe_fans(topo: &Topo, ports: &Ports) -> (usize, [usize; 4], [usize; 4]) {
         }
     }
     (collapsed, clean, folded)
+}
+
+#[cfg(test)]
+mod mirror_tests {
+    use super::undirected_key;
+
+    /// ⭐⭐⭐ **A CHAVE VÊ O CICLO E IGNORA O SENTIDO** — as duas metades de uma almofada
+    /// têm de colidir, e dois quads diferentes não.
+    ///
+    /// ⛔ **A fixtura é o par real que o artista fotografou** (2026-08-28): a peça dele saiu
+    /// com o casco fechado e perfeito **mais** `[68,69,70,71]` e `[71,70,69,68]` a flutuar
+    /// numa ponta — *o mesmo quadrado emitido duas vezes, um virado ao contrário do outro*.
+    #[test]
+    fn the_key_sees_the_cycle_and_ignores_the_direction() {
+        let a = undirected_key(&[68, 69, 70, 71]);
+        let b = undirected_key(&[71, 70, 69, 68]);
+        assert_eq!(a, b, "⛔ as duas metades de uma almofada tem de dar a MESMA chave");
+        // ⚠️ E a rotação também não conta: o mesmo ciclo começado noutro canto é o mesmo.
+        assert_eq!(a, undirected_key(&[70, 71, 68, 69]));
+        assert_eq!(a, undirected_key(&[69, 68, 71, 70]));
+        // ⛔ **O CONTROLE, e sem ele a chave podia ser uma constante:** dois quads que
+        // partilham três nós e diferem no quarto são células DIFERENTES.
+        assert_ne!(
+            a,
+            undirected_key(&[68, 69, 70, 99]),
+            "⛔ a chave nao pode colidir para aneis diferentes"
+        );
+        // ⛔ E a ORDEM importa quando não é uma inversão: `[68,70,69,71]` percorre outro
+        // ciclo sobre os mesmos quatro nós.
+        assert_ne!(a, undirected_key(&[68, 70, 69, 71]));
+        assert!(undirected_key(&[]).is_empty());
+    }
 }

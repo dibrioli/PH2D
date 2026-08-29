@@ -62,7 +62,7 @@ use crate::comb::Combed;
 use crate::cut::CutMesh;
 use crate::gauge;
 use crate::solve::{
-    Assembly, GridMap, SEAM_WEIGHT, SolveReport, assemble, measure, solve_with, turn2,
+    Assembly, GridMap, SEAM_WEIGHT, SolveReport, Step, assemble, measure, solve_with, turn2,
 };
 
 /// ⭐ O relatório do arredondamento — ver o módulo irmão.
@@ -194,17 +194,17 @@ pub fn round_to_integers(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     opts: RoundOptions,
     singular: &[u32],
 ) -> (GridMap, RoundReport) {
-    let (mut map, before) = solve_with(mesh, cut, combed, h, opts.weight, opts.rounds);
+    let (mut map, before) = solve_with(mesh, cut, combed, step, opts.weight, opts.rounds);
     let mut rep = RoundReport {
         seam_before: (before.seam_p50, before.seam_max),
         ..RoundReport::default()
     };
     let mut solve_rep = SolveReport::default();
-    let a = assemble(mesh, cut, combed, h, &mut solve_rep);
+    let a = assemble(mesh, cut, combed, step, &mut solve_rep);
     let mut r = Relaxer::new(&a, cut, combed, opts.weight);
 
     // ── 1. FIXAR O CALIBRE: as costuras de árvore vão a zero **de graça**.
@@ -372,7 +372,7 @@ pub fn round_to_integers(
     rep.singular_copies = moved;
     rep.ambiguous_seams = refused;
 
-    measure(&a, cut, combed, &map, h, &mut solve_rep);
+    measure(&a, cut, combed, &map, step.h, &mut solve_rep);
     rep.seam_after = (solve_rep.seam_p50, solve_rep.seam_max);
     rep.shift_frac_max = map
         .shift

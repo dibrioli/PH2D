@@ -19,7 +19,7 @@ fn chain_welded(
         mesh,
         &cut,
         &combed,
-        h,
+        crate::solve::Step::uniform(h),
         RoundOptions {
             welded_rounds: rounds,
             ..RoundOptions::default()

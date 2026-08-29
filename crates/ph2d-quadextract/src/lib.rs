@@ -309,6 +309,11 @@ pub struct ExtractReport {
     pub degenerate_cells: usize,
     /// ⛔ Células com três cantos — o teorema diz que não existem.
     pub triangles: usize,
+    /// ⭐⭐⭐ **Células ESPELHADAS que caíram** — ver
+    /// [`crate::cells::CellStats::mirrored_cells`]. Uma dobra do mapa cobre a mesma região
+    /// duas vezes com orientações opostas, e o par sai como uma **almofada solta**: dois
+    /// quads coincidentes, casco fechado, `χ = 2`, invisível a toda outra régua.
+    pub mirrored_cells: usize,
 }
 
 /// ⭐⭐⭐ **A EXTRACÇÃO.**
@@ -414,6 +419,7 @@ pub fn extract(
         quads: cs.quads,
         degenerate_cells: cs.degenerate_cells,
         triangles: cs.triangles,
+        mirrored_cells: cs.mirrored_cells,
     };
     Ok((mesh, report))
 }

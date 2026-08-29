@@ -84,7 +84,7 @@ pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
 pub use gauge::{Gauge, GaugeReport};
 pub use marks::{MarkReport, arc_marks};
 pub use round::{RoundOptions, RoundReport, round_to_integers};
-pub use solve::{GridMap, SolveReport, rounded_shifts, solve, solve_pinned, solve_with};
+pub use solve::{GridMap, SolveReport, Step, rounded_shifts, solve, solve_pinned, solve_with};
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
 pub use weld_round::{arcline_enabled, round_welded, welded_enabled};

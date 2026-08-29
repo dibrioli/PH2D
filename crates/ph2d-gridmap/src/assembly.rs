@@ -12,13 +12,79 @@ use crate::comb::Combed;
 use crate::cut::CutMesh;
 use crate::solve::{GridMap, Partner, SolveReport, Tri, cross, dot, sub, unit};
 
+/// ⭐⭐⭐ **O PASSO DA GRADE — um número, ou um CAMPO por vértice.**
+///
+/// ⛔⛔ **Ele existe por um report do artista (2026-08-28): «as pontas finas, que deveriam
+/// ser relativamente mais densas que as áreas lisas, têm menos densidade de faces e perdem
+/// detalhes».** E a medição confirma-o com um número: na saída dele o expoente de
+/// `aresta ∼ curvatura^n` é **`−0,003`** sobre uma faixa de curvatura de **`9,4×`** — *a
+/// grade é rigorosamente uniforme, e onde a forma aperta nove vezes mais os quads têm
+/// exactamente o mesmo tamanho.*
+///
+/// ⭐ **O passo entra no sistema num sítio só** — o gradiente alvo de cada triângulo, que
+/// era `direcção / h`. Torná-lo `direcção / h(x)` é a *sizing field* clássica da família, e
+/// é o que o *Adaptive Size* do ZBrush e a escala por curvatura do Instant Meshes fazem.
+/// ⚠️ **A extracção é AGNÓSTICA a isto:** ela lê as isolinhas **inteiras** do mapa, e um
+/// passo que varia deforma o mapa sem mexer no que é inteiro.
+///
+/// ⚠️ **A gradação tem de ser LIMITADA**, e a cerca já existia noutra crate com a razão
+/// escrita: `ph2d_quadflow::MAX_ADAPTIVE_RATIO` (*«duas células cujas escalas diferem por
+/// mais do que isto deixam de ter aresta comum — a grade rasga em vez de transitar»*).
+#[derive(Clone, Copy, Debug)]
+pub struct Step<'a> {
+    /// O passo médio pedido — o valor quando não há campo, e o que as réguas usam.
+    pub h: f32,
+    /// O passo **por vértice da malha de trabalho**. Vazio = uniforme.
+    pub per_vertex: &'a [f32],
+}
+
+impl Step<'static> {
+    /// O passo constante — o que todo chamador de antes de 2026-08-28 pede.
+    #[must_use]
+    pub const fn uniform(h: f32) -> Self {
+        Self {
+            h,
+            per_vertex: &[],
+        }
+    }
+}
+
+impl Step<'_> {
+    /// ⭐ O passo **deste triângulo** — a média dos três vértices, ou o escalar.
+    ///
+    /// ⚠️ **A média e não o mínimo:** o mínimo faria um vértice apertado encolher o
+    /// triângulo inteiro e a gradação deixaria de ser suave — que é exactamente o que a
+    /// cerca da razão máxima existe para impedir.
+    fn at(&self, v: &[u32]) -> f32 {
+        if self.per_vertex.is_empty() {
+            return self.h;
+        }
+        let mut sum = 0.0f32;
+        let mut n = 0u32;
+        for &i in v {
+            if let Some(x) = self.per_vertex.get(i as usize)
+                && x.is_finite()
+                && *x > 0.0
+            {
+                sum += *x;
+                n += 1;
+            }
+        }
+        if n == 0 {
+            self.h
+        } else {
+            sum / n as f32
+        }
+    }
+}
+
 /// Prepara os triângulos de um patch.
 pub(crate) fn prepare(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
     p: usize,
-    h: f32,
+    step: Step<'_>,
 ) -> (Vec<Tri>, usize) {
     let pos = mesh.positions();
     let mut out = Vec::with_capacity(cut.tris[p].len());
@@ -53,6 +119,10 @@ pub(crate) fn prepare(
         let x = [dot(d, e1), dot(d, e2)];
         // ⭐ `Y = n × X` lê-se no plano como `R(x, y) = (−y, x)` — ver [`turn2`].
         let y = [-x[1], x[0]];
+        // ⭐⭐⭐ **O passo é DESTE triângulo** — ver [`Step`]. ⚠️ Os índices são os da malha
+        // de trabalho (`v`), e não os locais do patch: o campo é uma propriedade da
+        // superfície, e o corte é uma re-indexação dela.
+        let h = step.at(v).max(1.0e-9);
         out.push(Tri {
             v: *t,
             g,
@@ -90,13 +160,13 @@ pub(crate) fn assemble(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     rep: &mut SolveReport,
 ) -> Assembly {
     let np = cut.tris.len();
     let mut tris: Vec<Vec<Tri>> = Vec::with_capacity(np);
     for p in 0..np {
-        let (t, s) = prepare(mesh, cut, combed, p, h);
+        let (t, s) = prepare(mesh, cut, combed, p, step);
         rep.triangles += t.len();
         rep.skipped += s;
         tris.push(t);

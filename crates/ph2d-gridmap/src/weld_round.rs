@@ -35,7 +35,7 @@ use ph2d_mesh::Mesh;
 use crate::comb::Combed;
 use crate::cut::CutMesh;
 use crate::round::{RoundOptions, RoundReport};
-use crate::solve::{GridMap, SolveReport, assemble};
+use crate::solve::{GridMap, SolveReport, Step, assemble};
 use crate::weld::{seam_residual, weld};
 use crate::weld_flat::Var;
 use crate::weld_solve::WeldRelaxer;
@@ -166,11 +166,11 @@ pub fn round_welded(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     opts: RoundOptions,
     singular: &[u32],
 ) -> (GridMap, RoundReport) {
-    let (mut map, mut before) = solve_welded(mesh, cut, combed, h, opts.welded_rounds);
+    let (mut map, mut before) = solve_welded(mesh, cut, combed, step, opts.welded_rounds);
     let (w, _) = weld(cut, combed);
     // ⭐⭐⭐ **AS AMARRAS DOS ARCOS — o 2.º passe** (`PH2D_GRIDMAP_ARCLINE=1`).
     //
@@ -199,7 +199,7 @@ pub fn round_welded(
             mesh,
             cut,
             combed,
-            h,
+            step,
             opts.welded_rounds,
             Some(&t),
             Some((&eqs, &cyc)),
@@ -226,7 +226,7 @@ pub fn round_welded(
         ..RoundReport::default()
     };
     let mut solve_rep = SolveReport::default();
-    let a = assemble(mesh, cut, combed, h, &mut solve_rep);
+    let a = assemble(mesh, cut, combed, step, &mut solve_rep);
     let mut r = WeldRelaxer::new(&a, &w, cut, combed);
     if let Some(t) = &ties {
         r.attach_ties(t);
@@ -595,7 +595,7 @@ pub fn round_welded(
         w.derive(&mut map, c);
     }
 
-    crate::solve::measure(&a, cut, combed, &map, h, &mut solve_rep);
+    crate::solve::measure(&a, cut, combed, &map, step.h, &mut solve_rep);
     rep.seam_after = (solve_rep.seam_p50, solve_rep.seam_max);
     rep.seam = seam_residual(&w, &map);
     crate::weld::holonomy(&w, &map, &mut rep.weld);

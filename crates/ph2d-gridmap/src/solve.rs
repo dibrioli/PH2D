@@ -229,12 +229,13 @@ pub struct SolveReport {
 #[path = "assembly.rs"]
 mod assembly;
 pub(crate) use assembly::{Assembly, assemble, poisson_numerator};
+pub use assembly::Step;
 
 /// ⭐⭐⭐ **RESOLVE O MAPA.** `h` é o passo alvo da grade, na unidade da peça.
 #[must_use]
 #[allow(clippy::too_many_lines)]
 pub fn solve(mesh: &Mesh, cut: &CutMesh, combed: &Combed, h: f32) -> (GridMap, SolveReport) {
-    solve_with(mesh, cut, combed, h, SEAM_WEIGHT, ROUNDS)
+    solve_with(mesh, cut, combed, Step::uniform(h), SEAM_WEIGHT, ROUNDS)
 }
 
 /// ⭐ **O MESMO, com o peso e as rondas explícitos.**
@@ -248,11 +249,11 @@ pub fn solve_with(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     weight: f32,
     rounds: usize,
 ) -> (GridMap, SolveReport) {
-    run(mesh, cut, combed, h, weight, rounds, None)
+    run(mesh, cut, combed, step, weight, rounds, None)
 }
 
 /// ⭐⭐⭐ **O MESMO, com as translações das costuras PREGADAS.**
@@ -265,12 +266,12 @@ pub fn solve_pinned(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     weight: f32,
     rounds: usize,
     shift: &[[f32; 2]],
 ) -> (GridMap, SolveReport) {
-    run(mesh, cut, combed, h, weight, rounds, Some(shift))
+    run(mesh, cut, combed, step, weight, rounds, Some(shift))
 }
 
 /// ⭐ **AS TRANSLAÇÕES ARREDONDADAS**, e a distância que cada uma andou.
@@ -378,7 +379,7 @@ fn run(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     weight: f32,
     rounds: usize,
     pinned: Option<&[[f32; 2]]>,
@@ -390,7 +391,7 @@ fn run(
         partners,
         denom,
         by_vert,
-    } = assemble(mesh, cut, combed, h, &mut rep);
+    } = assemble(mesh, cut, combed, step, &mut rep);
 
     let mut map = GridMap {
         uv: cut
@@ -494,7 +495,11 @@ fn run(
         cut,
         combed,
         &map,
-        h,
+        // ⚠️ **A régua usa o passo MÉDIO**, e não o campo: `align` normaliza um erro de
+        // gradiente por um comprimento, e um comprimento por triângulo faria a mediana
+        // dela depender da distribuição do campo em vez do erro. *A régua tem de medir a
+        // mesma coisa quando o campo muda.*
+        step.h,
         &mut rep,
     );
     (map, rep)

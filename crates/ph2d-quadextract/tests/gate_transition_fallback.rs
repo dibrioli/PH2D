@@ -53,11 +53,10 @@ fn run(mesh: &Mesh) -> ph2d_quadextract::ExtractReport {
     let layout = ph2d_trace::trace_patches(mesh, &dual, &field);
     let (cut, _) = cut_along_patches(mesh, &layout);
     let (combed, _) = comb_patches(mesh, &layout, &cut);
-    let (map, _) = round_welded(
-        mesh,
+    let (map, _) = round_welded(mesh,
         &cut,
         &combed,
-        median_edge(mesh),
+        ph2d_gridmap::Step::uniform(median_edge(mesh)),
         RoundOptions::default(),
         &singular,
     );

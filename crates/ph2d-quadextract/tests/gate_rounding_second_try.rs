@@ -62,11 +62,10 @@ fn the_second_try_is_off_and_the_ruler_is_alive() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = cut_along_patches(&mesh, &layout);
     let (combed, _) = comb_patches(&mesh, &layout, &cut);
-    let (_, rep) = round_welded(
-        &mesh,
+    let (_, rep) = round_welded(&mesh,
         &cut,
         &combed,
-        median_edge(&mesh),
+        ph2d_gridmap::Step::uniform(median_edge(&mesh)),
         RoundOptions::default(),
         &singular,
     );

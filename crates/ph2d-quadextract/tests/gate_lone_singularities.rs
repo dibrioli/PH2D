@@ -68,7 +68,7 @@ fn run(mesh: &Mesh, pin_lone: bool) -> (ph2d_gridmap::GridMap, usize) {
         pin_lone_singularities: pin_lone,
         ..RoundOptions::default()
     };
-    let (map, rep) = round_welded(mesh, &cut, &combed, median_edge(mesh), opts, &singular);
+    let (map, rep) = round_welded(mesh, &cut, &combed, ph2d_gridmap::Step::uniform(median_edge(mesh)), opts, &singular);
     (map, rep.singular_loose_pinned)
 }
 

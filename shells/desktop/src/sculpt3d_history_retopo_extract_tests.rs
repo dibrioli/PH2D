@@ -229,3 +229,92 @@ fn a_escolha_ve_a_aresta_nao_manifold_e_nao_so_o_bordo() {
          entalhe escuro que uma aresta de bordo lhe da'"
     );
 }
+
+/// ⭐⭐⭐ **GATE — a densidade SEGUE A FORMA, e a contagem não se mexe.**
+///
+/// ⛔ Report do artista (2026-08-28): *«as pontas finas, que deveriam ser relativamente mais
+/// densas que as áreas lisas, têm menos densidade de faces e perdem detalhes»*. A régua é o
+/// campo de passo que [`super::sizing_field`] entrega.
+///
+/// ⚠️ **As três metades do contrato, e a do meio é a que se esquece:** (1) com o knob a zero
+/// o campo é **vazio** — a saída é a de sempre, e não «quase»; (2) com o knob a um o passo é
+/// **menor onde a curvatura é maior**; (3) a **contagem prevista não muda**, senão o slider
+/// que passou a pedir uma contagem volta a mentir.
+#[test]
+fn a_densidade_segue_a_curvatura_sem_mudar_a_contagem() {
+    // ⚠️ Um toro: o tubo aperta e o buraco interior é chato. ⛔ Uma esfera tem curvatura
+    // CONSTANTE — a fixtura não conteria o fenómeno.
+    let work = ph2d_mesh::shapes::torus(64, 24, 1.0, 0.22);
+    let target = ph2d_quadflow::edge_for_detail_by_count(&work, 0.5);
+
+    // (1) O knob a zero é a AUSÊNCIA do campo, não um campo constante.
+    assert!(
+        super::sizing_field(&work, target, 0.0).is_empty(),
+        "⛔ com `Follow Curvature` a zero o campo tem de ser VAZIO -- e' isso que faz o \
+         passo ser o escalar de sempre"
+    );
+
+    let field = super::sizing_field(&work, target, 1.0);
+    assert_eq!(field.len(), work.vert_count());
+
+    // (2) Menor onde aperta: correlaciona o passo com a curvatura, por bandas.
+    let curv = work.curvatures();
+    let mut rows: Vec<(f32, f32)> = (0..work.vert_count())
+        .map(|v| (curv[v].abs(), field[v]))
+        .collect();
+    rows.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let n = rows.len();
+    let flat: f32 = rows[..n / 4].iter().map(|r| r.1).sum::<f32>() / (n / 4) as f32;
+    let tight: f32 = rows[3 * n / 4..].iter().map(|r| r.1).sum::<f32>() / (n - 3 * n / 4) as f32;
+    eprintln!(
+        "[retopo] passo medio: chapado {flat:.5} · apertado {tight:.5} ({:.2}x) | alvo {target:.5}",
+        flat / tight
+    );
+    assert!(
+        tight < flat,
+        "⛔ o passo tem de ser MENOR onde a curvatura e' maior (apertado {tight:.5}, \
+         chapado {flat:.5})"
+    );
+
+    // (3) A contagem prevista não se mexe — a adaptação MOVE os quads, não os cria.
+    let count = |h: &dyn Fn(usize) -> f32| -> f64 {
+        let pos = work.positions();
+        let mut acc = 0.0f64;
+        for f in work.faces() {
+            let v = f.verts();
+            for k in 1..v.len() - 1 {
+                let (a, b, c) = (
+                    pos[v[0] as usize],
+                    pos[v[k] as usize],
+                    pos[v[k + 1] as usize],
+                );
+                let (u, w) = (
+                    [b[0] - a[0], b[1] - a[1], b[2] - a[2]],
+                    [c[0] - a[0], c[1] - a[1], c[2] - a[2]],
+                );
+                let nn = [
+                    u[1].mul_add(w[2], -(u[2] * w[1])),
+                    u[2].mul_add(w[0], -(u[0] * w[2])),
+                    u[0].mul_add(w[1], -(u[1] * w[0])),
+                ];
+                let tri =
+                    f64::from(nn[0].mul_add(nn[0], nn[1].mul_add(nn[1], nn[2] * nn[2])).sqrt())
+                        * 0.5;
+                let hh = f64::from(
+                    (h(v[0] as usize) + h(v[k] as usize) + h(v[k + 1] as usize)) / 3.0,
+                );
+                acc += tri / (hh * hh);
+            }
+        }
+        acc
+    };
+    let uniform = count(&|_| target);
+    let adapted = count(&|v| field[v]);
+    eprintln!("[retopo] contagem prevista: uniforme {uniform:.0} · adaptada {adapted:.0}");
+    assert!(
+        (adapted / uniform - 1.0).abs() <= 0.02,
+        "⛔ a adaptacao mudou a CONTAGEM em {:.1} % (uniforme {uniform:.0}, adaptada \
+         {adapted:.0}) -- ela move os quads, nao os cria, senao o slider volta a mentir",
+        100.0 * (adapted / uniform - 1.0)
+    );
+}

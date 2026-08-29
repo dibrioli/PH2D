@@ -506,9 +506,9 @@ fn main() {
         ..base_opts
     };
     let (map, r) = if welded {
-        ph2d_gridmap::round_welded(&mesh, &cut, &combed, h, opts, &singular)
+        ph2d_gridmap::round_welded(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts, &singular)
     } else {
-        ph2d_gridmap::round_to_integers(&mesh, &cut, &combed, h, opts, &singular)
+        ph2d_gridmap::round_to_integers(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts, &singular)
     };
     println!(
         "  caminho: {}",
@@ -574,11 +574,10 @@ entrada fraccionarios · pior |coef| {:.3}",
     // CONSTRUCAO, e a extraccao recebe fraccionarias.*
     if ph2d_gridmap::arcline_enabled() {
         let (w_d, _) = ph2d_gridmap::weld(&cut, &combed);
-        let (m_d, _) = ph2d_gridmap::solve_welded(
-            &mesh,
+        let (m_d, _) = ph2d_gridmap::solve_welded(&mesh,
             &cut,
             &combed,
-            h,
+            ph2d_gridmap::Step::uniform(h),
             ph2d_gridmap::weld_solve_driver::ROUNDS,
         );
         let t_d = ph2d_gridmap::arcline::build_arc_ties(&cut, &w_d, &m_d);
@@ -620,11 +619,10 @@ entrada fraccionarios · pior |coef| {:.3}",
     // vive atrás de uma env.
     if std::env::var("PH2D_ARC_GROUP_SCAN").as_deref() == Ok("1") {
         let (w_scan, _) = ph2d_gridmap::weld(&cut, &combed);
-        let (m_scan, _) = ph2d_gridmap::solve_welded(
-            &mesh,
+        let (m_scan, _) = ph2d_gridmap::solve_welded(&mesh,
             &cut,
             &combed,
-            h,
+            ph2d_gridmap::Step::uniform(h),
             ph2d_gridmap::weld_solve_driver::ROUNDS,
         );
         let all = ph2d_gridmap::arcline::build_arc_ties(&cut, &w_scan, &m_scan);
@@ -634,7 +632,7 @@ entrada fraccionarios · pior |coef| {:.3}",
             &mesh,
             &cut,
             &combed,
-            h,
+            ph2d_gridmap::Step::uniform(h),
             ph2d_gridmap::weld_solve_driver::ROUNDS,
             None,
             None,
@@ -651,7 +649,7 @@ entrada fraccionarios · pior |coef| {:.3}",
                 &mesh,
                 &cut,
                 &combed,
-                h,
+                ph2d_gridmap::Step::uniform(h),
                 ph2d_gridmap::weld_solve_driver::ROUNDS,
                 Some(&only),
                 None,
@@ -831,7 +829,7 @@ entrada fraccionarios · pior |coef| {:.3}",
                 //
                 // ⛔ Se o contínuo já desalinha, a cura não é na escada — é no G3.
                 let (cont, _) =
-                    ph2d_gridmap::solve_welded(&mesh, &cut, &combed, h, opts.welded_rounds);
+                    ph2d_gridmap::solve_welded(&mesh, &cut, &combed, ph2d_gridmap::Step::uniform(h), opts.welded_rounds);
                 let ac = ph2d_gridmap::measure_arc_quantization(&cut, &cont, &q.arc);
                 println!(
                     "  ⭐⭐⭐ ANTES do arredondamento (o G3 continuo): ⛔ {} de {} nao sao isolinhas \

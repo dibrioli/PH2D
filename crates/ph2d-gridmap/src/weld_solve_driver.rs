@@ -11,7 +11,7 @@ use ph2d_mesh::Mesh;
 
 use crate::comb::Combed;
 use crate::cut::CutMesh;
-use crate::solve::{GridMap, SolveReport, assemble, measure};
+use crate::solve::{GridMap, SolveReport, Step, assemble, measure};
 use crate::weld::{WeldReport, weld};
 use crate::weld_flat::{ClosureSystem, FlatReport};
 use crate::weld_solve::WeldRelaxer;
@@ -253,10 +253,10 @@ pub fn solve_welded(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     rounds: usize,
 ) -> (GridMap, WeldSolveReport) {
-    solve_welded_with(mesh, cut, combed, h, rounds, None, None)
+    solve_welded_with(mesh, cut, combed, step, rounds, None, None)
 }
 
 /// ⭐⭐⭐ **O MESMO, com as AMARRAS DOS ARCOS ligadas.**
@@ -272,12 +272,12 @@ pub fn solve_welded_with(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     rounds: usize,
     ties: Option<&crate::arcline::ScalarTies>,
     arcs: Option<(&[crate::arcline::ArcEquation], &[usize])>,
 ) -> (GridMap, WeldSolveReport) {
-    solve_welded_settling(mesh, cut, combed, h, rounds, WELD_SETTLE, ties, arcs)
+    solve_welded_settling(mesh, cut, combed, step, rounds, WELD_SETTLE, ties, arcs)
 }
 
 /// O mesmo, com o limiar de assentamento **à vista** — ver [`WELD_SETTLE`].
@@ -290,7 +290,7 @@ pub fn solve_welded_settling(
     mesh: &Mesh,
     cut: &CutMesh,
     combed: &Combed,
-    h: f32,
+    step: Step<'_>,
     rounds: usize,
     settle: f32,
     ties: Option<&crate::arcline::ScalarTies>,
@@ -299,7 +299,7 @@ pub fn solve_welded_settling(
     let mut rep = WeldSolveReport::default();
     let (w, wrep) = weld(cut, combed);
     rep.weld = wrep;
-    let mut a = assemble(mesh, cut, combed, h, &mut rep.solve);
+    let mut a = assemble(mesh, cut, combed, step, &mut rep.solve);
     let jumped: Vec<bool> = (0..cut.seams.len())
         .map(|s| combed.jump.get(s).copied().flatten().is_some())
         .collect();
@@ -427,7 +427,7 @@ pub fn solve_welded_settling(
         rep.stiffen_passes = pass + 1;
         a.stiffen(&folded, stiffen_factor());
     }
-    measure(&a, cut, combed, &map, h, &mut rep.solve);
+    measure(&a, cut, combed, &map, step.h, &mut rep.solve);
     crate::weld::holonomy(&w, &map, &mut rep.weld);
     (map, rep)
 }

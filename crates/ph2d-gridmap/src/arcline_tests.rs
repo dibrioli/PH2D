@@ -107,9 +107,9 @@ fn the_ties_switch_is_inert_when_off() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (a, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (a, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (b, _) =
-        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, h, 4, None, None);
+        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4, None, None);
     assert_eq!(a.shift, b.shift);
     assert_eq!(a.uv.len(), b.uv.len());
     for (ra, rb) in a.uv.iter().zip(&b.uv) {
@@ -132,12 +132,12 @@ fn the_ties_change_the_map_when_on() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (base, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (base, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &base);
     assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
     let (tied, rep) =
-        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, h, 4, Some(&ties), None);
+        crate::weld_solve_driver::solve_welded_with(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4, Some(&ties), None);
     assert!(
         rep.tie_groups > 0,
         "nenhum grupo entrou: {} recusados",
@@ -172,7 +172,7 @@ fn the_equation_residual_matches_the_geometric_reading() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
-    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(0.2), 6);
     let (w, _) = crate::weld::weld(&cut, &combed);
 
     let eqs = super::arc_equations(&cut, &w, &map);
@@ -212,7 +212,7 @@ fn every_arc_coefficient_is_plus_or_minus_one() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
-    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 6);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(0.2), 6);
     let (w, _) = crate::weld::weld(&cut, &combed);
     for eq in super::arc_equations(&cut, &w, &map) {
         for (v, ax, k) in eq.terms {
@@ -256,12 +256,12 @@ fn the_tie_denominator_never_falls_below_the_effective_curvature() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &map);
 
     let mut rep = crate::solve::SolveReport::default();
-    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let a = crate::solve::assemble(&mesh, &cut, &combed, crate::solve::Step::uniform(h), &mut rep);
     let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
     r.attach_ties(&ties);
     let groups = r.tie_counts().0;
@@ -371,12 +371,12 @@ fn no_tied_scalar_is_also_written_by_the_class_relaxation() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &map);
 
     let mut rep = crate::solve::SolveReport::default();
-    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let a = crate::solve::assemble(&mesh, &cut, &combed, crate::solve::Step::uniform(h), &mut rep);
     let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
     r.attach_ties(&ties);
     let groups = r.tie_counts().0;
@@ -422,7 +422,7 @@ fn keeping_a_subset_of_groups_keeps_those_groups_intact() {
     let layout = ph2d_trace::trace_patches(&mesh, &dual, &field);
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
-    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, 0.2, 4);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(0.2), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let all = super::build_arc_ties(&cut, &w, &map);
     assert!(
@@ -474,7 +474,7 @@ fn the_ties_do_not_stop_the_translations_from_landing_on_integers() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.2;
-    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &map);
     assert!(ties.groups() > 0, "a esfera tem de dar grupos de amarra");
@@ -502,7 +502,7 @@ fn the_ties_do_not_stop_the_translations_from_landing_on_integers() {
     // ⭐ E a raiz de todo grupo tem de ser CANDIDATA da escada — a 2.ª metade, lida onde
     // ela vive: se `tie_roots` estiver vazia, o `weld_round` não tem o que empurrar.
     let mut rep = crate::solve::SolveReport::default();
-    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let a = crate::solve::assemble(&mesh, &cut, &combed, crate::solve::Step::uniform(h), &mut rep);
     let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
     r.attach_ties(&ties);
     assert_eq!(
@@ -544,13 +544,13 @@ fn no_arc_cycle_owner_is_left_stale_after_applying_them() {
     let (cut, _) = crate::cut::cut_along_patches(&mesh, &layout);
     let (combed, _) = crate::comb::comb_patches(&mesh, &layout, &cut);
     let h = 0.15;
-    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, h, 4);
+    let (mut map, _) = crate::weld_solve_driver::solve_welded(&mesh, &cut, &combed, crate::solve::Step::uniform(h), 4);
     let (w, _) = crate::weld::weld(&cut, &combed);
     let ties = super::build_arc_ties(&cut, &w, &map);
     let eqs = super::arc_equations(&cut, &w, &map);
 
     let mut rep = crate::solve::SolveReport::default();
-    let a = crate::solve::assemble(&mesh, &cut, &combed, h, &mut rep);
+    let a = crate::solve::assemble(&mesh, &cut, &combed, crate::solve::Step::uniform(h), &mut rep);
     let mut r = crate::weld_solve::WeldRelaxer::new(&a, &w, &cut, &combed);
     r.attach_ties(&ties);
     r.attach_arc_cycles(&eqs, ties.cycle_equations());

@@ -111,6 +111,13 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// esfera com bico — que não é um sólido estrelado — acusava os dois motores
     /// de dobrar sem que nenhum dos dois tivesse dobrado.
     pub folded: usize,
+    /// ⭐⭐⭐ **ALMOFADAS que a extracção deitou fora** — ver
+    /// [`ph2d_quadextract::ExtractReport::mirrored_cells`]. Uma dobra do mapa cobre a mesma
+    /// região duas vezes com orientações opostas e o par sai como **duas faces coincidentes
+    /// e soltas** — foi a foto do artista de 2026-08-28. ⚠️ *Ela é invisível a toda outra
+    /// coluna desta linha*: `χ` conta os dois lados de uma almofada e dá `2`, o bordo é
+    /// zero, o não-manifold é zero.
+    pub mirrored: usize,
     /// ⭐⭐ **O campo desta corrida obedeceu ao RELEVO?**
     ///
     /// ⛔ **Ele existe porque a cadeia global tem uma REDE**, e uma rede silenciosa
@@ -259,6 +266,9 @@ impl Sculpt3dScene {
             // *"não dobra"* por não ter quem contasse — que é o mesmo defeito do
             // `irregular: MAX` acima, só que silencioso.
             folded: ph2d_quadfill::folded_against(mesh, &q.mesh),
+            // ⚠️ **`0` é um FACTO aqui**: este motor não extrai de mapa nenhum, então não há
+            // dobra de mapa que possa gerar uma almofada.
+            mirrored: 0,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

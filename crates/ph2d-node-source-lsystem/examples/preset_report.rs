@@ -212,6 +212,7 @@ fn main() {
     }
 
     derive_framing();
+    growth_report();
 
     println!("\n== A ESPESSURA ESCORRE? (size do 1o elemento contra o ultimo) ==");
     for ls::Preset {
@@ -300,4 +301,97 @@ fn derive_framing() {
         );
     }
     println!("\n   (a espessura que acompanha e' `{WIDTH_OVER_STEP:.3} x step`)");
+}
+
+/// **O CRESCIMENTO, molde a molde** — a pergunta do Enio de 2026-08-29:
+/// *"porque vários presets não têm crescimento suave, mas em saltos? é normal?"*
+///
+/// Duas grandezas DIFERENTES, e a bancada separa-as:
+///  1. **suavidade** — quanto do percurso total cabe no pior passo. Uniforme = `1/N`; um
+///     salto = `1,00`.
+///  2. **congelamento** — a partir de que ponto do slider a planta deixa de mudar de todo
+///     (o orçamento de módulos saturou e a derivação larga a geração inteira que não coube).
+#[allow(dead_code)]
+fn growth_report() {
+    const N: usize = 24;
+    let base = |p: &ls::Preset| -> Vec<(&'static str, f32)> {
+        vec![
+            ("angle", p.angle),
+            ("step", p.step),
+            ("width", p.width),
+            ("width_scale", default_of("width_scale")),
+            ("length_scale", default_of("length_scale")),
+            ("root_angle", default_of("root_angle")),
+            ("seed", default_of("seed")),
+            ("mode", ls::MODE_GRAMMAR as f32),
+        ]
+    };
+    println!("\n== CRESCIMENTO: e' suave, ou aos saltos? ==");
+    println!("   (varredura de 1,0 ate' as geracoes que o molde declara, em {N} passos)");
+    println!(
+        "{:8} {:>10} {:>12} {:>10}   {}",
+        "molde", "reescreve", "pior_passo", "congela_em", "veredito"
+    );
+    for p in ls::PRESETS {
+        // A gramática reescreve o símbolo que DESENHA? É esta a pergunta que separa as duas
+        // famílias — e ela lê-se do texto.
+        let redraws = p
+            .rules
+            .split(';')
+            .filter_map(|r| r.split("->").next())
+            .any(|head| {
+                let h = head.trim().trim_start_matches(|c: char| !c.is_alphabetic());
+                h.starts_with('F') || h.starts_with('G')
+            });
+        let hs: Vec<f32> = (0..=N)
+            .map(|k| {
+                let g = 1.0 + (p.generations - 1.0) * k as f32 / N as f32;
+                let s = shoot(p.axiom, p.rules, g, &base(p));
+                s.w.max(s.h)
+            })
+            .collect();
+        let rise = hs[N] - hs[0];
+        let worst = hs
+            .windows(2)
+            .map(|w| (w[1] - w[0]).abs())
+            .fold(0.0, f32::max);
+        // E onde ele congela: o primeiro `g` (em passos de 0,25 ate' 12) apos o qual o tamanho
+        // deixa de mudar.
+        let mut frozen = None;
+        let mut prev = -1.0f32;
+        let mut since = 0;
+        let mut at = 0.0f32;
+        let mut g = 1.0f32;
+        while g <= 12.0 {
+            let s = shoot(p.axiom, p.rules, g, &base(p));
+            let v = s.w.max(s.h);
+            if (v - prev).abs() < 1e-6 {
+                since += 1;
+                if since == 1 {
+                    at = g;
+                }
+                if since >= 8 {
+                    frozen = Some(at);
+                    break;
+                }
+            } else {
+                since = 0;
+            }
+            prev = v;
+            g += 0.25;
+        }
+        let frac = if rise.abs() > 1e-6 { worst / rise } else { 1.0 };
+        println!(
+            "{:8} {:>10} {:>11.0}% {:>10}   {}",
+            p.label,
+            if redraws { "o DESENHO" } else { "so' a PONTA" },
+            frac * 100.0,
+            frozen.map_or("nunca".to_string(), |g| format!("{g:.2}")),
+            if frac > 0.5 { "SALTA" } else { "suave" }
+        );
+    }
+    println!(
+        "\n   (uniforme em {N} passos seria {:.0}%)",
+        100.0 / N as f32
+    );
 }

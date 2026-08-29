@@ -91,6 +91,57 @@ pub struct WeldSolveReport {
 /// de 1, e não de um passo isolado a estourar.*
 const RANK_REL: f32 = 1.0e-6;
 
+/// ⭐ **De quantas em quantas rondas a rede de não-finitos varre o mapa** — ver o uso.
+///
+/// ⚠️ **É um número de DIAGNÓSTICO, não de produto:** ele decide a precisão com que a
+/// «ronda em que estourou» é conhecida, e nada mais. A `1` (o que estava) a varredura
+/// custava `O(V)` em toda ronda de toda peça sã.
+const NONFINITE_PROBE: usize = 64;
+
+/// ⭐⭐⭐ **QUANDO O CONTÍNUO DESISTE** — o maior movimento de uma ronda, em **células da
+/// grade**.
+///
+/// ⛔⛔⛔ **O laço não tinha saída nenhuma: ele gastava [`ROUNDS`] sempre.** Medido em
+/// 2026-08-28 na `sculpt_wrinkled` (densidade do botão), variando só o tecto de rondas:
+///
+/// | rondas | aspecto p50 / p99 | enviesamento p50 / p99 |
+/// |---|---|---|
+/// | **8 000** (o que shipava) | `1,10` / `1,49` | `4,5°` / `32,0°` |
+/// | 4 000 | `1,10` / `1,49` | `4,5°` / `32,0°` |
+/// | 2 000 | `1,10` / `1,50` | `4,6°` / `32,1°` |
+/// | 1 000 | `1,09` / `1,42` | `4,4°` / `31,3°` |
+/// | ⭐ 500 | `1,09` / `1,45` | **`4,2°`** / `31,4°` |
+///
+/// ⇒ **as `8 000` não compram nada** — a saída com `500` é igual ou ligeiramente melhor, e a
+/// diferença está dentro da banda de caos do guloso. ⚠️ *Mas um tecto de rondas é uma cerca
+/// cujo tamanho muda com a peça* (a taxa de convergência de Gauss–Seidel escala com `N`), e
+/// foi essa a lição que o acabamento já pagou: **a lei é o assentamento**, o tecto é a rede.
+///
+/// ⭐ O número é em células porque é isso que o mapa mede, e o passo seguinte **arredonda
+/// para inteiros**: um movimento abaixo disto não pode mudar nenhuma decisão a jusante.
+pub const WELD_SETTLE: f32 = 1.0e-6;
+
+/// ⭐⭐⭐ **QUANTAS RONDAS SEM DESCER ANTES DE DESISTIR** — e é esta que manda, não a
+/// [`WELD_SETTLE`].
+///
+/// ⛔⛔⛔ **Medido 2026-08-28, `sculpt_wrinkled`, a curva do maior movimento:**
+///
+/// ```text
+///   ronda    0 : 5,33e-1        ronda 2000 : 1,25e-5
+///   ronda  500 : 1,09e-2        ronda 2500 : 3,25e-6
+///   ronda 1000 : 1,09e-3        ronda 2750 : 3,27e-6   ← o PATAMAR
+///   ronda 1500 : 1,02e-4        ronda 3000..8000 : 3,271e-6, constante
+/// ```
+///
+/// ⇒ **a partir da ronda ~2 750 o movimento é ruído de `f32` e não desce mais.** As últimas
+/// `5 250` rondas (`66 %`) reciclam o mesmo número. ⚠️ *Um limiar absoluto não apanha isto —
+/// o patamar fica ACIMA de qualquer limiar honesto e depende da peça.* A lei que apanha é a
+/// mesma que o acabamento já pagou: **desistir quando deixa de melhorar.**
+pub const WELD_PATIENCE: usize = 256;
+
+/// Quanto é preciso descer para contar como descida — abaixo disto é o mesmo número.
+const DESCENT: f32 = 0.999;
+
 /// A porta de teste da [`solve2`] — ela é livre e privada, e o gate da folga de posto
 /// precisa de a chamar directamente.
 #[cfg(test)]
@@ -226,6 +277,25 @@ pub fn solve_welded_with(
     ties: Option<&crate::arcline::ScalarTies>,
     arcs: Option<(&[crate::arcline::ArcEquation], &[usize])>,
 ) -> (GridMap, WeldSolveReport) {
+    solve_welded_settling(mesh, cut, combed, h, rounds, WELD_SETTLE, ties, arcs)
+}
+
+/// O mesmo, com o limiar de assentamento **à vista** — ver [`WELD_SETTLE`].
+///
+/// ⚠️ **Ele é um parâmetro e não uma variável de ambiente** pela lição que o acabamento
+/// pagou em 2026-08-28: um limiar relativo só se calibra na composição em que corre, e uma
+/// varredura tem de passar pela **porta** para não medir outro programa.
+#[allow(clippy::too_many_arguments)]
+pub fn solve_welded_settling(
+    mesh: &Mesh,
+    cut: &CutMesh,
+    combed: &Combed,
+    h: f32,
+    rounds: usize,
+    settle: f32,
+    ties: Option<&crate::arcline::ScalarTies>,
+    arcs: Option<(&[crate::arcline::ArcEquation], &[usize])>,
+) -> (GridMap, WeldSolveReport) {
     let mut rep = WeldSolveReport::default();
     let (w, wrep) = weld(cut, combed);
     rep.weld = wrep;
@@ -282,6 +352,18 @@ pub fn solve_welded_with(
                     .filter(|t| !t[0].is_finite() || !t[1].is_finite())
                     .count()
         };
+        // ⚠️ **A leitura da variável de ambiente sai do laço** — `env::var` aloca, e no
+        // caminho quente ela custava uma alocação por ronda por peça.
+        let trace = std::env::var("PH2D_G3_TRACE").as_deref() == Ok("1");
+        // ⚠️ **A paciência é varrível pela porta** (`PH2D_G3_PATIENCE`), lida UMA vez: a
+        // lição do `EXTRACT_SETTLE` é que um limiar só se calibra na composição em que corre,
+        // e uma varredura que não passa pela porta mede outro programa. O default é a
+        // constante, que é o que o produto usa.
+        let patience: usize = std::env::var("PH2D_G3_PATIENCE")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(WELD_PATIENCE);
+        let (mut best_move, mut stuck) = (f32::INFINITY, 0usize);
         for round in 0..rounds {
             let parts = r.sweep_parts(&mut map);
             rep.last_move = parts.iter().copied().fold(0.0f32, f32::max);
@@ -292,7 +374,42 @@ pub fn solve_welded_with(
             // ⭐ A RONDA EM QUE O CONTÍNUO ESTOURA — *«3119 no fim» e «0 na 1.ª» não
             // distinguem uma deriva lenta de um rebentamento súbito*, e a cura de cada
             // uma é outra. ⭐⭐ E o ESCRITOR que a produziu, que é o que escolhe a cura.
-            if rep.nonfinite_round == 0 && count_bad(&map) > 0 {
+            //
+            // ⛔⛔ **A varredura NÃO pode correr em toda ronda, e corria** (medido
+            // 2026-08-28): o `count_bad` percorre `uv` e `shift` inteiros, e a condição
+            // avaliava-o **`8 000` vezes** em toda peça sã — uma sonda de diagnóstico no
+            // caminho quente, exactamente o defeito que o acabamento tinha com o `rebuild`.
+            //
+            // ⭐ O sintoma BARATO é o movimento: um `NaN` num `uv` nasce de um passo `NaN`,
+            // e esse aparece em `parts`. ⚠️ **Ele não é suficiente sozinho** — um `uv` pode
+            // virar `inf` por *overflow* de `f32` com um passo finito —, e por isso a
+            // varredura continua a correr, **periodicamente**. *A ronda fica conhecida a
+            // menos de [`NONFINITE_PROBE`], que é folga de sobra para distinguir uma deriva
+            // lenta de um rebentamento súbito — que é o que esta coluna existe para dizer.*
+            // ⭐⭐ **Assentou: as rondas seguintes não podem mudar nada.** Ver
+            // [`WELD_SETTLE`]. ⚠️ Só depois de a ronda ser contada e o `last_move` escrito —
+            // o relatório tem de descrever a corrida que de facto houve.
+            if trace && (round < 8 || round % 250 == 0) {
+                eprintln!("      G3 ronda {round}: last_move {:.3e}", rep.last_move);
+            }
+            // ⭐⭐⭐ **Assentou, OU deixou de descer** — ver [`WELD_SETTLE`].
+            if rep.last_move <= settle {
+                break;
+            }
+            if rep.last_move < best_move * DESCENT {
+                best_move = rep.last_move;
+                stuck = 0;
+            } else {
+                stuck += 1;
+                if stuck >= patience {
+                    break;
+                }
+            }
+            let bad_step = parts.iter().any(|v| !v.is_finite());
+            if rep.nonfinite_round == 0
+                && (bad_step || round % NONFINITE_PROBE == 0)
+                && count_bad(&map) > 0
+            {
                 rep.nonfinite_round = round + 1;
                 rep.nonfinite_move = rep.last_move;
                 rep.nonfinite_who = parts.iter().position(|v| !v.is_finite()).unwrap_or(4);

@@ -57,6 +57,23 @@ fn main() {
                 "   * acabamento: {} rondas, 1a aceite {}, ficou {} (cega {})",
                 r.finish.rounds, r.finish.first, r.finish.kept, r.finish.blind
             );
+            // ⭐ χ e o bordo — a topologia é o veto DURO, e uma tabela de forma sem eles
+            // não decide nada.
+            let mut edges = std::collections::BTreeMap::new();
+            for f in out.faces() {
+                let v = f.verts();
+                for k in 0..v.len() {
+                    let (a, b) = (v[k], v[(k + 1) % v.len()]);
+                    *edges.entry((a.min(b), a.max(b))).or_insert(0usize) += 1;
+                }
+            }
+            let bordo = edges.values().filter(|&&c| c == 1).count();
+            let nm = edges.values().filter(|&&c| c > 2).count();
+            let chi = out.vert_count() as i64 - edges.len() as i64 + out.face_count() as i64;
+            println!(
+                "   TOPOLOGIA: X = {chi} | {bordo} bordo | {nm} nao-manifold | {} quads {} nao-quads",
+                r.quads, r.non_quads
+            );
             println!(
                 "   forma: aspecto p50 {:.2} | enviesamento p50 {:.1} p99 {:.1} | {} faces",
                 r.shape.aspect_p50,

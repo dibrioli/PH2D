@@ -571,3 +571,82 @@ orelha; `618`/`614` e `1,07 / 2,7° / 27,4°` na enrugada. *Os mesmos números d
 
 ⇒ **o maior termo passa a ser o G3/G5 (o mapa): `45 %`–`58 %`**, `2,9`–`3,0 s`. Ele é
 pré-existente (`8 000` rondas de Gauss–Seidel no `ph2d-gridmap`) e é o próximo alvo.
+
+---
+
+## §15 — ⛔⛔⛔ E o G3 gastava **`8 000` rondas** sem saída nenhuma
+
+Com o acabamento `7,6×` mais rápido, o maior termo passou a ser o **mapa** (`G3/G5`,
+`45 %`–`58 %`). Ele corre `ROUNDS = 8 000` varreduras de Gauss–Seidel — **e o laço não tinha
+saída**: nem por assentamento, nem por nada.
+
+### §15.1 — A curva, e o patamar
+
+`PH2D_G3_TRACE=1`, `sculpt_wrinkled` na densidade do botão, o maior movimento por ronda (em
+**células da grade**):
+
+```text
+  ronda    0 : 5,33e-1        ronda 2000 : 1,25e-5
+  ronda  500 : 1,09e-2        ronda 2500 : 3,25e-6
+  ronda 1000 : 1,09e-3        ronda 2750 : 3,27e-6   ← o PATAMAR
+  ronda 1500 : 1,02e-4        ronda 3000 .. 8000 : 3,271e-6, CONSTANTE
+```
+
+⇒ **a partir da ronda ~`2 750` o movimento é ruído de `f32` e não desce mais.** As últimas
+`5 250` rondas — `66 %` do maior termo da cadeia — reciclam o mesmo número.
+
+⚠️ **Um limiar absoluto não apanha isto:** o patamar fica *acima* de qualquer limiar honesto
+(`1e-6` nunca é atingido, e ligar essa saída não mudou o relógio em nada) e o seu valor
+depende da peça. ⭐ **A lei que apanha é a que o acabamento já tinha pago: desistir quando
+deixa de MELHORAR** (`WELD_PATIENCE = 256` rondas sem descer `0,1 %`).
+
+### §15.2 — E as `8 000` não compravam qualidade
+
+Varrendo só o tecto de rondas (`PH2D_G3_ROUNDS`), `sculpt_wrinkled`:
+
+| rondas | aspecto p50 / p99 | enviesamento p50 / p99 |
+|---|---|---|
+| **8 000** (o que shipava) | `1,10` / `1,49` | `4,5°` / `32,0°` |
+| 4 000 | `1,10` / `1,49` | `4,5°` / `32,0°` |
+| 2 000 | `1,10` / `1,50` | `4,6°` / `32,1°` |
+| 1 000 | `1,09` / `1,42` | `4,4°` / `31,3°` |
+| 500 | `1,09` / `1,45` | **`4,2°`** / `31,4°` |
+
+⇒ parar mais cedo dá o **mesmo ou melhor**, dentro da banda de caos que o próprio doc do
+solver descreve.
+
+### §15.3 — ⛔ E uma cura que quase não valeu nada, medida na mesma
+
+O laço também chamava `count_bad(&map)` — uma varredura `O(V)` de `uv` e `shift` — **em toda
+ronda de toda peça sã**, só para saber em que ronda o mapa estouraria. ⭐ Hoje ela corre
+quando um dos escritores devolve um passo não-finito **ou** a cada `NONFINITE_PROBE = 64`
+rondas (a rede, porque um `uv` pode virar `inf` por *overflow* com um passo finito).
+⚠️ **Medido: valeu `3 %`.** *A sonda não era o gargalo — o gargalo era o próprio sweep* —, e
+saber isso custou uma medição e evitou atribuir o ganho ao sítio errado.
+
+### §15.4 — ⭐⭐⭐ O A/B, com a TOPOLOGIA ao lado
+
+`PH2D_G3_PATIENCE=99999` reproduz o que shipava (`8 000` rondas sempre).
+
+| peça | total | G3/G5 | forma (aspecto / p50 / p99) | topologia |
+|---|---|---|---|---|
+| `sculpt_eared` | `6 404 →` **`6 180`** | `2 994 →` **`2 744`** | `1,04 / 2,9 / 13,6` → **idêntica** | `χ=2 · 0 bordo · 0 n-m` |
+| `sculpt_wrinkled` | `4 916 →` **`3 142`** | `2 901 →` **`1 084`** | `1,07 / 2,7 / 27,4` → `1,06 / 2,6 / 27,9` | `χ=2 · 0 · 0` |
+| `sculpt_hooked` | `4 220 →` **`2 438`** | `2 586 →` **`785`** | `1,05 / 2,3 / 29,4` → `1,05 / 2,4 / 29,2` | `χ=2 · 0 · 0` |
+| `sphere_uv` | `4 599 →` **`3 026`** | `2 818 →` **`1 264`** | `1,05 / 2,7 / 14,1` → **idêntica** | `χ=2 · 0 · 0` |
+
+⭐⭐ **A topologia é idêntica e fechada nas quatro** — `χ = 2`, zero bordo, zero não-manifold,
+`100 %` quads —, que é o veto **duro**. A forma é idêntica em duas e move-se em milésimos nas
+outras duas, **para os dois lados** (a enrugada melhora a mediana e piora a cauda; o gancho o
+contrário) — dentro da banda de caos que o doc do solver já descrevia.
+
+### §15.5 — O somatório das duas voltas de hoje
+
+| peça | original | ⭐ **agora** | |
+|---|---|---|---|
+| `sculpt_eared` | 17 713 ms | **6 180 ms** | **2,9×** |
+| `sculpt_wrinkled` | 8 030 ms | **3 142 ms** | **2,6×** |
+
+⚠️ **E o botão continua a correr a cadeia DUAS vezes** — é a maior alavanca que sobra, e ela
+não exige escolher entre as duas tentativas: elas são independentes e podem correr **em
+paralelo**.

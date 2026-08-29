@@ -418,6 +418,72 @@ a contar as células **antes** da fusão, e a jusante `faces − quads` deu `usi
 log imprimiu `18446744073709551613`. *Corrigido na mesma wave, e nomeado aqui porque a
 subtracção sem sinal é o modo de falha que não avisa.*
 
+## §8-sexies — ⭐⭐⭐ AS TRÊS MALHAS DO ARTISTA, e a amputação tem UM dono
+
+Em 2026-08-29 ele mandou, pela primeira vez, **a entrada**: `sculpt_antes.obj`, mais a nossa
+saída (`sculpt_Depois.obj`) e a de uma ferramenta de terceiros do Blender
+(`Sculpt_Blender.obj`, *QRemeshify*). ⭐ *Ler a SAÍDA de uma ferramenta é lícito e é o que
+esta linha já faz com o oráculo; o código dela não se abre sem triagem de licença.*
+
+| | faces | `χ` · bordo · n-manif. | irregulares | aresta mediana | ⭐ **alcance** |
+|---|---|---|---|---|---|
+| entrada | `13 824` | `2` · `0` · `0` | `2` | `0,0327` | **`2,355`** |
+| ⭐ nossa | `15 426` | `2` · `0` · ⚠️ `1` | `48` | `0,0319` | ⚠️ **`1,963`** (`−16,6 %`) |
+| QRemeshify | ⭐ `8 291` | `2` · `0` · `0` | `86` | `0,0462` | **`2,045`** (`−13,2 %`) |
+
+⚠️ **O alcance quase empata — e não é aí que a diferença se vê.** Ela está na **secção** do
+espinho, medida em bandas ao longo do eixo do mais longo:
+
+| `t/L` | | raio local | faces na banda | aresta |
+|---|---|---|---|---|
+| `0,60` | entrada | `0,193` | `5` | `0,188` |
+| | nossa | `0,123` | `43` | `0,033` |
+| | ⭐ QRemeshify | `0,178` | `40` | `0,034` |
+| `0,72` | entrada | `0,138` | `4` | `0,255` |
+| | ⛔ **nossa** | ⛔ **`0,091`** (`−34 %`) | `9` | `0,060` |
+| | ⭐ **QRemeshify** | ⭐ **`0,144`** | ⭐ **`46`** | `0,028` |
+| `0,84` | ⛔ nossa | — (já não há espinho) | — | — |
+| | ⭐ QRemeshify | `0,123` | `17` | `0,028` |
+
+⭐⭐⭐ **Nós AFINAMOS a agulha; eles mantêm-na e gastam faces nela.** A `0,72` do comprimento
+eles põem `46` faces contra as nossas `9`, com a aresta a `0,028` contra `0,060`. E a
+densidade deles **segue a forma**: aresta na ponta / no corpo é **`0,64×`** neles e `0,90×`
+em nós (expoente `aresta ∼ curvatura`: `−0,120` contra `−0,069`). *Com metade das faces no
+total.*
+
+### ⭐⭐⭐ E a amputação tem UM dono: a FASE ZERO
+
+| peça | alcance entrada → fase zero |
+|---|---|
+| `espinhos σ = 0,30` | `2,022 → 1,989` (`−1,6 %`) |
+| `espinhos σ = 0,10` | `2,021 → 1,903` (`−5,8 %`) |
+| `espinhos σ = 0,07` | `2,021 → 1,760` (`−12,9 %`) |
+| `espinhos σ = 0,05` | `2,020 → 1,701` (`−15,8 %`) |
+| ⛔ **`sculpt_antes` do artista** | **`2,355 → 1,981`** (⛔ **`−15,9 %`**) |
+
+⭐⭐ **A nossa saída final alcança `1,963`** — ou seja **a cadeia inteira a jusante perde mais
+`0,018`, e a remalha isotrópica perde `0,374`.** *A amputação acontece antes de o campo
+cruzado existir.*
+
+⚠️ **E a fixtura sintética SEMPRE conteve o fenómeno** — o que faltava era a régua. As
+mesmas peças que saíam `χ = 2` limpas (§8-quinquies) perdem `13`–`16 %` de alcance quando a
+agulha afina. *Não foi a fixtura que falhou: foi medir topologia onde o defeito é métrico.*
+
+### ⏳ A wave seguinte, já especificada
+
+⛔ **A cura é em `ph2d-remesh-iso`, e a hipótese tem forma:** a relaxação tangencial com
+reprojecção encolhe um tubo cujo **raio local** é comparável à aresta alvo — uma projecção
+ao ponto mais próximo, numa agulha mais fina que o espaçamento, pode aterrar **do outro
+lado**. ⇒ a régua da wave é o **alcance** e o **raio local por banda** (as duas acima), a
+fixtura é `espinhos:6` com `σ = 0,05`–`0,07`, e a barra é o que a ferramenta de terceiros
+mostra ser possível: raio local preservado a `0,72` do comprimento.
+
+⭐ **E isto CORRIGE a nota do §8-quater:** lá escreveu-se que a densidade adaptativa foi
+«medida e não adoptada» porque a projecção a lava. Isso continua verdade **do mecanismo que
+se tentou** — e a saída do QRemeshify prova que o **objectivo** é alcançável (`0,64×` de
+aresta na ponta, com metade das faces). *«Inalcançável» era uma afirmação sobre a nossa
+tentativa, não sobre o problema* (`CLAUDE.md` §0.0).
+
 ## §9 — Portão de fecho
 
 | | |

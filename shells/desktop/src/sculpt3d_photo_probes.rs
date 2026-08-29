@@ -1062,5 +1062,27 @@ fn does_phase_zero_keep_the_topology() {
         work.triangulate();
         census("  fase zero", &work);
         islands("  fase zero", &work);
+        // ⭐⭐⭐ **O RAIO MÁXIMO é a régua da AMPUTAÇÃO** — o que a ponta perde mede-se em
+        // distância ao centro, e nenhuma régua de topologia a vê.
+        let reach = |m: &ph2d_mesh::Mesh| -> f32 {
+            let pos = m.positions();
+            let n = pos.len().max(1) as f32;
+            let mut c = [0.0f32; 3];
+            for q in pos {
+                for k in 0..3 {
+                    c[k] += q[k] / n;
+                }
+            }
+            pos.iter().fold(0.0f32, |acc, q| {
+                let d = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
+                acc.max(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt())
+            })
+        };
+        eprintln!(
+            "  ALCANCE: entrada {:.4} -> fase zero {:.4} ({:+.1} %)",
+            reach(&piece),
+            reach(&work),
+            100.0 * (reach(&work) / reach(&piece) - 1.0)
+        );
     }
 }

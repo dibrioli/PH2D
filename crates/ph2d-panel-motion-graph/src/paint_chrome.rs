@@ -67,6 +67,16 @@ fn chrome_hit_id(id: u16) -> NodeId {
     fnv_id(&format!("motion_graph/chrome/{id}"))
 }
 
+/// O mesmo id, para o gate de costura que mede a PINTURA (`tests/seam_chip_tooltips.rs`).
+///
+/// ⚠️ Existe porque o gate tem de perguntar ao store pelo id **que o hover consulta** — uma
+/// segunda derivação do id no teste provaria que o teste concorda consigo mesmo, e não que a
+/// dica é alcançável.
+#[must_use]
+pub fn chrome_hit_id_for_tests(id: u16) -> NodeId {
+    chrome_hit_id(id)
+}
+
 /// Draw the split divider (at the scene boundary) + the SplitH / SplitV / Fit
 /// toolbar, pushing their hit rects. `center` is the scene half of the center
 /// band; the graph (`rect`) sits below it (horizontal split) or to its right
@@ -123,6 +133,36 @@ pub(crate) fn chip_specs(state: ChromeState, vertical: bool) -> [(u16, IconId, b
         // so a graph that has stopped offering to fix things says so on its face.
         (CHROME_NODE_HELP, IconId::Help, node_help),
     ]
+}
+
+/// **A DICA de cada chip** — o que ele faz, e a tecla quando existe uma.
+///
+/// ⚠️ **Uma TABELA pura, ao lado da `chip_specs`, e não um `match` no meio do painter.** As duas
+/// respondem sobre o MESMO conjunto (*que chips existem* · *o que cada um diz*), e um gate exige
+/// que elas concordem — um chip novo sem dica é vermelho, em vez de um botão mudo que só um
+/// smoke apanha. Foi um report do Enio (2026-08-28: *"coloque dicas no hover dos botões
+/// posicionados no canto inferior esquerdo do canvas"*), e é a mesma lei do rótulo de porta:
+/// **um ícone sem nome só é legível para quem já sabe o que ele faz.**
+///
+/// ⚠️ **A tecla é NOMEADA só onde ela existe.** `Fit`, `Knife`, `Probe` e `Group` têm atalho no
+/// `keymap.rs`; os outros cinco não têm nenhum, e inventar um sufixo ali ensinaria uma tecla
+/// que não faz nada. ⛔ O `F2` que os doc-comments acima citam é *"fase 2"*, não a tecla F2 —
+/// que neste painel é **Rename**.
+pub(crate) fn chip_tooltip(id: u16) -> &'static str {
+    match id {
+        CHROME_SPLIT_H => "Split horizontally",
+        CHROME_SPLIT_V => "Split vertically",
+        CHROME_FIT => "Fit view \u{00b7} F",
+        CHROME_BACKDROP => "Add group backdrop",
+        CHROME_KNIFE => "Knife \u{00b7} K \u{00b7} drag across wires to cut",
+        CHROME_PROBE => "Probe \u{00b7} P \u{00b7} click a node to read its stream",
+        CHROME_GROUP => "Group / Ungroup \u{00b7} Ctrl+G",
+        CHROME_ARRANGE => "Auto-arrange the graph",
+        CHROME_NODE_HELP => "Node help on/off \u{00b7} badges + auto-fix",
+        // ⚠️ Inalcançável: o gate `every_chip_carries_a_tooltip` varre a `chip_specs` inteira.
+        // Um braço vazio aqui seria um chip mudo a passar despercebido.
+        _ => "",
+    }
 }
 
 pub(crate) fn draw_split_chrome(
@@ -200,13 +240,74 @@ pub(crate) fn draw_split_chrome(
             resolve(ColorToken::Text1, theme),
             CHIP_ICON_STROKE,
         );
-        hits.push((chrome_hit_id(id), GraphHitKind::Chrome { id }, chip));
+        let hit = chrome_hit_id(id);
+        // A DICA, no mesmo sítio em que o chip nasce: quem acrescentar um chip aqui vê a
+        // linha ao lado, e o gate cobra a que faltar.
+        ctx.host.store_mut().set_tooltip(hit, chip_tooltip(id));
+        hits.push((hit, GraphHitKind::Chrome { id }, chip));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **TODO CHIP DA BARRA TEM DICA** — o censo, varrendo a `chip_specs` inteira.
+    ///
+    /// ⚠️ É a metade que impede o botão mudo: um chip novo entra na `chip_specs` (senão nem é
+    /// pintado) e este gate cobra a linha correspondente na `chip_tooltip`. Sem ele, o braço
+    /// `_ => ""` da tabela absorveria o chip novo em silêncio — que é exactamente o modo de
+    /// falha que uma tabela com braço de omissão tem.
+    ///
+    /// ⚠️ **E o CONTROLE: o censo tem de ter visto os nove.** Um laço sobre uma lista vazia
+    /// passa — *um zero de «não medido» e um de «tudo certo» são o mesmo byte*.
+    #[test]
+    fn every_chip_carries_a_tooltip() {
+        let chips = chip_specs(state(false), false);
+        assert_eq!(chips.len(), 9, "a barra tem nove chips");
+        for (id, icon, _) in chips {
+            let tip = chip_tooltip(id);
+            assert!(
+                !tip.is_empty(),
+                "o chip {id} ({icon:?}) e' pintado e nao diz o que faz — um icone sem nome so' \
+                 e' legivel para quem ja' sabe o que ele faz"
+            );
+        }
+    }
+
+    /// **A DICA NOMEIA A TECLA SÓ ONDE ELA EXISTE.**
+    ///
+    /// ⚠️ Os quatro atalhos vêm do `keymap.rs` da shell (`F`, `K`, `P`, `Ctrl+G`). Os outros
+    /// cinco chips não têm tecla nenhuma, e um sufixo inventado ali ensinaria uma tecla que não
+    /// faz nada — o mesmo defeito que um rótulo que promete o que o modelo não entrega.
+    #[test]
+    fn a_tooltip_names_a_key_only_where_one_exists() {
+        for (id, key) in [
+            (CHROME_FIT, "F"),
+            (CHROME_KNIFE, "K"),
+            (CHROME_PROBE, "P"),
+            (CHROME_GROUP, "Ctrl+G"),
+        ] {
+            assert!(
+                chip_tooltip(id).contains(key),
+                "o chip {id} tem atalho `{key}` e a dica tem de o dizer: {:?}",
+                chip_tooltip(id)
+            );
+        }
+        // O CONTROLE: os que NÃO têm tecla não fingem ter — nenhum separador de atalho.
+        for id in [
+            CHROME_SPLIT_H,
+            CHROME_SPLIT_V,
+            CHROME_BACKDROP,
+            CHROME_ARRANGE,
+        ] {
+            assert!(
+                !chip_tooltip(id).contains('\u{00b7}'),
+                "o chip {id} nao tem atalho — a dica nao pode anunciar um: {:?}",
+                chip_tooltip(id)
+            );
+        }
+    }
 
     fn state(node_help: bool) -> ChromeState {
         ChromeState {

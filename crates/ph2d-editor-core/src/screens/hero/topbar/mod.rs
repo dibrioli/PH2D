@@ -130,12 +130,52 @@ pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
 /// store's generic tooltip side-table — populate it via
 /// `WidgetStore::set_tooltip(id, text)` from any painter / populate
 /// pass.
+/// ⚠️ **`viewport` porque a dica tem de CABER, e até 2026-08-28 ela não cabia.** O comentário
+/// abaixo prometia *"if that would clip the right edge of the viewport, fall back to
+/// right-aligning"* e o código **não tinha esse recuo** — nem o vertical. Enquanto todo
+/// consumidor era o top bar (colado ao TOPO, e portanto sempre com espaço por baixo) a ausência
+/// não aparecia; os chips do grafo estão no **canto inferior-esquerdo**, onde as duas faltam ao
+/// mesmo tempo: a dica caía por baixo da janela e para fora da margem esquerda. *Um comentário
+/// que descreve um recuo que o código não tem é pior que nenhum: ele faz o próximo leitor
+/// procurar o defeito noutro lugar.*
+/// **ONDE a dica cabe** — a lei da colocação, numa função pura porque é a única forma de a
+/// gatear: dentro do painter ela não é alcançável de um teste, e uma mutação que a desligasse
+/// compilava e passava a suíte inteira.
+///
+/// Duas regras, e as duas eram **prometidas por comentário e ausentes do código** até
+/// 2026-08-28:
+///
+/// 1. **Horizontal:** centrada no alvo, depois trazida para dentro do viewport. O primeiro chip
+///    da barra do grafo fica a `8 px` da margem esquerda, e uma dica de `160 px` centrada nele
+///    começaria **fora** da janela.
+/// 2. **Vertical:** por BAIXO quando cabe, por CIMA quando não cabe. Os chips estão no canto
+///    **inferior**-esquerdo — por baixo deles não há janela nenhuma.
+///
+/// ⚠️ **A preferência continua a ser por baixo**, e isso é deliberado: é onde o top bar a
+/// desenha desde sempre, e uma regra que escolhesse *"o lado com mais espaço"* moveria dicas
+/// que já estão certas. *Uma cura que muda o que já funcionava é uma segunda mudança
+/// escondida na primeira.*
+#[must_use]
+pub fn tooltip_rect(target: Rect, pill_w: f32, pill_h: f32, gap: f32, viewport: Rect) -> Rect {
+    let x = (target.x + (target.w - pill_w) * 0.5)
+        .min(viewport.x + viewport.w - pill_w)
+        .max(viewport.x);
+    let below = target.y + target.h + gap;
+    let y = if below + pill_h <= viewport.y + viewport.h {
+        below
+    } else {
+        (target.y - gap - pill_h).max(viewport.y)
+    };
+    Rect::new(x, y, pill_w, pill_h)
+}
+
 pub fn paint_hover_tooltip(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
     hit_index: &HitIndex,
     store: &WidgetStore,
+    viewport: Rect,
 ) {
     let Some(id) = store.hot_id() else {
         return;
@@ -166,15 +206,7 @@ pub fn paint_hover_tooltip(
     let measured_w = text_system.layout(text, font_size, f32::INFINITY).width();
     let pill_w = (measured_w + Spacing::Xl.px()).max(60.0); // LITERAL-PX-OK: tooltip pill min width (chrome-specific)
     let pill_h = (font_size + 10.0).max(22.0); // LITERAL-PX-OK: tooltip pill height composite + min (chrome-specific)
-    // Center over the target; if that would clip the right edge of
-    // the viewport, fall back to right-aligning to the target.
-    let tip_x = target_rect.x + (target_rect.w - pill_w) * 0.5;
-    let tip_rect = Rect::new(
-        tip_x,
-        target_rect.y + target_rect.h + Spacing::Sm.px(),
-        pill_w,
-        pill_h,
-    );
+    let tip_rect = tooltip_rect(target_rect, pill_w, pill_h, Spacing::Sm.px(), viewport);
     let tip = Tooltip::new(NodeId(0), text);
     paint_tooltip(&tip, tip_rect, scene, text_system, theme);
 }
@@ -383,3 +415,75 @@ use cluster_painter::{
 };
 pub use image_action_row::image_action_a11y_nodes;
 use image_action_row::{image_action_pills, paint_image_action_row};
+
+#[cfg(test)]
+mod tooltip_placement_tests {
+    use super::*;
+
+    const VP: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1200.0,
+        h: 800.0,
+    };
+    const GAP: f32 = 8.0;
+
+    /// **O CASO NORMAL não se mexeu** — um alvo no topo continua a receber a dica POR BAIXO e
+    /// CENTRADA. É o controle da wave inteira: o top bar já estava certo, e uma cura que o
+    /// movesse seria uma regressão disfarçada.
+    #[test]
+    fn a_target_with_room_below_keeps_the_tooltip_below_and_centred() {
+        let target = Rect::new(600.0, 10.0, 40.0, 28.0);
+        let got = tooltip_rect(target, 160.0, 22.0, GAP, VP);
+        assert!(
+            (got.y - (10.0 + 28.0 + GAP)).abs() < 1e-3,
+            "por baixo: {got:?}"
+        );
+        assert!(
+            (got.x - (600.0 + (40.0 - 160.0) * 0.5)).abs() < 1e-3,
+            "centrada: {got:?}"
+        );
+    }
+
+    /// **UM ALVO COLADO AO FUNDO RECEBE A DICA POR CIMA** — os chips da barra do grafo.
+    ///
+    /// ⚠️ Sem isto a dica é desenhada abaixo da janela: **invisível**, que é o mesmo que não
+    /// existir. E era o estado do código enquanto todo consumidor vivia no topo.
+    #[test]
+    fn a_target_at_the_bottom_gets_the_tooltip_above() {
+        // Um chip de 24 px encostado ao fundo, como a barra do grafo o desenha.
+        let target = Rect::new(600.0, VP.h - 32.0, 24.0, 24.0);
+        let got = tooltip_rect(target, 160.0, 22.0, GAP, VP);
+        assert!(
+            got.y + got.h <= target.y - GAP + 1e-3,
+            "a dica tem de ficar ACIMA do chip: {got:?} contra {target:?}"
+        );
+        assert!(got.y >= VP.y, "e dentro da janela: {got:?}");
+    }
+
+    /// **UM ALVO NA MARGEM ESQUERDA NÃO EMPURRA A DICA PARA FORA** — o primeiro chip da barra.
+    ///
+    /// ⚠️ Este é o recuo que o comentário do painter **prometia** (*"fall back to
+    /// right-aligning"*) e que o código não tinha. Um comentário que descreve um recuo ausente
+    /// manda o próximo leitor procurar o defeito noutro lugar.
+    #[test]
+    fn a_target_at_the_left_edge_keeps_the_tooltip_inside() {
+        let target = Rect::new(8.0, 400.0, 24.0, 24.0);
+        let got = tooltip_rect(target, 200.0, 22.0, GAP, VP);
+        assert!(got.x >= VP.x - 1e-3, "nao pode comecar fora: {got:?}");
+        assert!(got.x + got.w <= VP.x + VP.w + 1e-3);
+    }
+
+    /// **E na margem DIREITA também** — o par do anterior, e é o par que faz a lei (um clamp
+    /// só de um lado passa por metade dos casos).
+    #[test]
+    fn a_target_at_the_right_edge_keeps_the_tooltip_inside() {
+        let target = Rect::new(VP.w - 32.0, 400.0, 24.0, 24.0);
+        let got = tooltip_rect(target, 200.0, 22.0, GAP, VP);
+        assert!(
+            got.x + got.w <= VP.x + VP.w + 1e-3,
+            "nao pode acabar fora: {got:?}"
+        );
+        assert!(got.x >= VP.x - 1e-3);
+    }
+}

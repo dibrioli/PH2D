@@ -574,7 +574,14 @@ pub fn paint_hero_screen(
         );
     }
     // Tooltip overlay on top of all chrome (Phase 3 polish).
-    topbar::paint_hover_tooltip(scene, text_system, hero.theme, &hero.hit_index, &hero.store);
+    topbar::paint_hover_tooltip(
+        scene,
+        text_system,
+        hero.theme,
+        &hero.hit_index,
+        &hero.store,
+        layout.viewport,
+    );
     // Context menu overlay — last so the floating menu sits above
     // every panel, including the floating BlenderColorPicker.
     context_menu_overlay::paint_context_menu_overlay(

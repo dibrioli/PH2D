@@ -19,6 +19,8 @@ mod hits;
 mod interact;
 mod paint;
 mod paint_chrome;
+/// O id de hit de um chip da barra, para o gate de costura que mede a pintura.
+pub use paint_chrome::chrome_hit_id_for_tests;
 mod probe;
 mod rename;
 mod snapshot;

@@ -9,7 +9,7 @@
 > um doc descreve o mundo **no dia em que foi escrito** e não é atualizado depois. Use-os
 > para responder *"por que isto ficou assim?"* — nunca para decidir a próxima ação.
 
-**101 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
+**102 arquivos** · **4** citados pelo `CLAUDE.md` (marcados **◆**) · **2** são handoffs (registro **morto**).
 
 | # | | Arquivo | Papel | Assunto |
 |---|---|---|---|---|
@@ -105,6 +105,7 @@
 | 89 | ◆ | [89_plano_conferencia_dos_nos.md](89_plano_conferencia_dos_nos.md) | plano | 89 — PLANO DE CONFERÊNCIA DOS NÓS (o super-upgrade, nó a nó) |
 | 90 | ◆ | [90_caca_aos_knobs_mortos.md](90_caca_aos_knobs_mortos.md) | — | 90 · A CAÇA AOS KNOBS MORTOS — a tabela verificada |
 | 91 | ◆ | [91_os_tetos_que_ninguem_mediu.md](91_os_tetos_que_ninguem_mediu.md) | — | 91 · OS TETOS QUE NINGUÉM MEDIU — o bloco Z |
+| 92 |   | [92_o_que_o_mini_cavalry_tem_e_nos_nao.md](92_o_que_o_mini_cavalry_tem_e_nos_nao.md) | — | 92 — O que o Mini Cavalry tem e nós não |
 | — | ◆ | [BUGS_motion_nodes.md](BUGS_motion_nodes.md) | bugs | Bugs do módulo Motion Nodes — registro + soluções |
 | — |   | [referencia_catalogo_nodes_minicavalry.md](referencia_catalogo_nodes_minicavalry.md) | referência | Mini Cavalry — Referência de Nós (autor) |
 | — |   | [referencia_design_node_graph_ph2d_v1.md](referencia_design_node_graph_ph2d_v1.md) | referência | PH2D — Sistema de Nós — Design Canônico |

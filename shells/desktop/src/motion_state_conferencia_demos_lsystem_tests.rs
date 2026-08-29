@@ -129,3 +129,53 @@ fn the_trunk_is_thicker_than_the_twigs_all_the_way_to_the_sink() {
         "a espessura tem de variar da raiz a' ponta: {min} a {max}"
     );
 }
+/// ⭐⭐ **A QUINTA PLANTA ANDA COM O RELÓGIO** — a leitura mais importante da cena, e a que
+/// ninguém estava a afirmar.
+///
+/// ⚠️ **Este gate nasceu de um report de «não há movimento»** (Enio, 2026-08-28). O report era
+/// sobre OUTRA cena, mas a pergunta ficou de pé: *o que é que aqui prova que a planta 5 cresce?*
+/// Nada. A cena imprimia a promessa no terminal e o resto era confiança.
+///
+/// A régua é a CONTAGEM de elementos: com o `Generations` ligado a um relógio, a planta ganha e
+/// perde gerações inteiras ao longo do ciclo, e a contagem tem de variar. E o CONTROLE são as
+/// outras quatro, que têm de ficar **exactamente** paradas — senão o que se estaria a medir era
+/// o cook a ser não-determinista.
+#[test]
+fn only_the_fifth_plant_moves_with_the_clock() {
+    use ph2d_nodegraph::cook::Cook;
+    use ph2d_nodegraph::value::CookValue;
+    let mut reg = NodeRegistry::new();
+    ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
+    let mut doc = MotionDoc::default();
+    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let mut cook = Cook::new();
+    let counts_at = |cook: &mut Cook, t: f64| -> Vec<usize> {
+        sinks
+            .iter()
+            .map(
+                |s| match &cook.cook(&doc.graph, &reg, *s, t).expect("coze")[0] {
+                    CookValue::Instances(st) => st.count(),
+                    other => panic!("esperava instancias, veio {other:?}"),
+                },
+            )
+            .collect()
+    };
+    let base = counts_at(&mut cook, 0.0);
+    let mut moved = vec![false; sinks.len()];
+    for k in 1..=8 {
+        let now = counts_at(&mut cook, f64::from(k) * 0.35);
+        for (i, (a, b)) in base.iter().zip(&now).enumerate() {
+            if a != b {
+                moved[i] = true;
+            }
+        }
+    }
+    let last = sinks.len() - 1;
+    assert!(
+        moved[last],
+        "a planta 5 tem de CRESCER com o relogio — o `Generations` dela esta' ligado a um LFO"
+    );
+    for (i, m) in moved.iter().enumerate().take(last) {
+        assert!(!m, "a planta {} devia estar parada e mexeu-se", i + 1);
+    }
+}

@@ -50,6 +50,9 @@ use art::{
 #[path = "motion_object_smoke_times.rs"]
 pub(crate) mod times;
 
+/// A cena do **RITMO** (`=11`) — os *holds* do `motion.sub_uv`, com o metrónomo ao lado.
+#[path = "motion_object_smoke_holds.rs"]
+pub(crate) mod holds;
 /// O modo `=9` — o ESTILO DO SINK (doc 89, folha 17). Irmão pelo mesmo corte: ele traz
 /// oito cadeias próprias e um segundo objecto, e este despachante está no teto de LOC.
 #[path = "motion_object_smoke_sink.rs"]
@@ -191,7 +194,7 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 
 /// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
 /// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto · `9` o
-/// ESTILO DO SINK (doc 89 folha 17).
+/// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV).
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -244,6 +247,14 @@ impl crate::App {
             // `geometry_id` desde o ADR-0154 e a linha vai para o passe vectorial, onde
             // não existe `anchor`, `sampling`, `uv_xform` nem `sub_order` — os params
             // nunca chegavam ao lowering que os lê. Um Flip ASSA numa tile.
+            // O RITMO (`=11`): dois flipbooks, o mesmo `speed`, e só um com poses seguras.
+            // ⚠️ A arte é a MESMA da `=9` — quatro quadrantes de cores distintas — porque é a
+            // única fixtura desta casa em que uma célula de sub-UV é inconfundível.
+            11 if f == 3 => {
+                let gfx = self.gfx.as_mut().expect("gfx");
+                holds::spawn_art(&mut gfx.flip);
+            }
+            11 if f == 6 => holds::run(self.gfx.as_mut().expect("gfx")),
             9 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 sink::spawn_flip_art(&mut gfx.flip);

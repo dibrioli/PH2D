@@ -211,6 +211,9 @@ pub(crate) mod conferencia_demos_drizzle;
 
 #[path = "motion_state_conferencia_demos_deform.rs"]
 pub(crate) mod conferencia_demos_deform;
+/// A cena do L-SYSTEM (`=108`) — cinco plantas, uma dimensão isolada em cada.
+#[path = "motion_state_conferencia_demos_lsystem.rs"]
+pub(crate) mod conferencia_demos_lsystem;
 #[path = "motion_state_conferencia_demos_text.rs"]
 pub(crate) mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

@@ -116,6 +116,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_sim_spawn::register(reg)?;
     ph2d_node_sim_step::register(reg)?;
     ph2d_node_sim_zone::register(reg)?;
+    ph2d_node_source_lsystem::register(reg)?;
     ph2d_node_source_object::register(reg)?;
     ph2d_node_source_text::register(reg)?;
     ph2d_node_util_reroute::register(reg)?;

@@ -27,6 +27,17 @@ fn the_three_instance_ceilings_agree() {
         ("motion.trail", ph2d_node_motion_trail::MAX_INSTANCES),
         ("fx.drop_shadow", ph2d_node_fx_drop_shadow::MAX_INSTANCES),
         ("fx.rgb_split", ph2d_node_fx_rgb_split::MAX_INSTANCES),
+        // ⚠️ **O `source.lsystem` limita MÓDULOS e não linhas — e é a MESMA grandeza um nível
+        // acima.** A tartaruga emite no máximo um elemento por módulo (mais a raiz), então o
+        // orçamento da cadeia é o que decide quantas linhas este nó entrega ao caminho de CPU.
+        // A varredura dele (`measure_lsystem_ceiling.rs`) chegou a este número por outro
+        // caminho — 38,8 % de um quadro para derivar — e concorda com o *"cerca de um terço"*
+        // que decidiu os outros três. ⭐ *Duas medições independentes no mesmo sítio.*
+        //
+        // ⚠️ Ele emite no máximo `MAX_MODULES + 1` linhas: a raiz que a tartaruga planta antes
+        // do primeiro símbolo não vem da cadeia, logo não é contada pelo orçamento dela. UMA
+        // linha de folga, escrita aqui para o «mesmo número» não ser lido como mais do que é.
+        ("source.lsystem", ph2d_node_source_lsystem::MAX_MODULES),
     ];
     for (name, c) in ceilings {
         assert_eq!(

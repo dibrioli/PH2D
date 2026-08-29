@@ -501,6 +501,9 @@ mod fx_modes;
 /// O anuncio da cena `=92` — a corda, a mola, a cauda e a escada (folhas 03 e 07).
 #[path = "motion_state_demo_conferencia_ladder.rs"]
 mod ladder;
+/// O anuncio da cena `=108` — as cinco plantas do L-System (doc 92 §2 item 1).
+#[path = "motion_state_demo_conferencia_lsystem.rs"]
+mod lsystem;
 /// O anuncio da cena `=89` — o emissor que deixa rasto (folha 01, o P1).
 #[path = "motion_state_demo_conferencia_plume.rs"]
 mod plume;
@@ -529,6 +532,7 @@ pub(super) use echo::echo_family;
 pub(super) use forces::forces_family;
 pub(super) use fx_modes::fx_modes_family;
 pub(super) use ladder::ladder_family;
+pub(super) use lsystem::lsystem_family;
 pub(super) use plume::plume_family;
 pub(super) use sibling::sibling_family;
 pub(super) use slice::slice_family;

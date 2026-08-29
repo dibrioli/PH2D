@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-node-source-lsystem"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }
+# ⚠️ A UMA gramática de expressão do repo (ADR-0144). Um L-System PARAMÉTRICO precisa
+# de aritmética nos argumentos do sucessor (`A(x*0.7)`) e de condições (`x > 0.1`), e
+# escrever um segundo parser seria a segunda resposta à mesma pergunta — com a
+# desvantagem extra de o artista ter de aprender duas linguagens no mesmo app.
+ph2d-expr = { path = "../ph2d-expr" }
+ph2d-expr-parse = { path = "../ph2d-expr-parse" }

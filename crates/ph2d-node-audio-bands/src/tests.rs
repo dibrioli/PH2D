@@ -384,11 +384,22 @@ fn every_param_is_painted_including_the_file() {
             p.name
         );
     }
+    // ⚠️⚠️ **Era `ParamWidget::Text` e ficou vermelho quando o BOTÃO nasceu** (2026-08-29):
+    // um caminho de ficheiro autorado por digitação é um campo em que o artista tem de saber
+    // escrever um caminho absoluto de cor. O widget é hoje o `File`, que abre o diálogo.
+    //
+    // ⭐ E a régua afirma o **KIND**, não a lista de extensões: a cerca deste nó é ESTRUTURAL
+    // (ele não depende de crate de áudio nenhuma), então ele **não pode saber** o que este
+    // build decodifica. Quem sabe é a shell, que resolve o kind no diálogo.
     assert!(
-        hints
-            .iter()
-            .any(|h| h.param == FILE_KEY && matches!(h.widget, ParamWidget::Text)),
-        "`{FILE_KEY}` e' um campo de TEXTO"
+        hints.iter().any(|h| h.param == FILE_KEY
+            && matches!(
+                h.widget,
+                ParamWidget::File {
+                    kind: ph2d_node_registry::FileKind::Audio
+                }
+            )),
+        "`{FILE_KEY}` tem de ser um BOTAO de ficheiro que declara o kind `Audio`"
     );
 }
 

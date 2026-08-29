@@ -33,6 +33,9 @@ use gradient::fill_multipoint;
 pub mod pattern;
 
 #[cfg(test)]
+#[path = "pattern_stroke_tests.rs"]
+mod pattern_stroke_tests;
+#[cfg(test)]
 mod pattern_tests;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 

@@ -65,7 +65,25 @@ pub(crate) fn draw_stroke_with(
                         let d = ph2d_vec_scene::dash_for(&p, s);
                         (Cow::Owned(p), d)
                     }
-                    StrokePiece::Symbol { path: geo } | StrokePiece::Fill { path: geo } => {
+                    // ⚠️⚠️ **Um marcador ABERTO traça-se; um CHEIO preenche-se** — e a 1.ª redacção
+                    // desta wave tratou os dois como preenchimento, o que fazia uma seta aberta
+                    // sair **maciça** assim que o traço ganhava padrão. A distinção é do
+                    // `stroke_plan` (`Marker::is_filled`), e quem pinta só a obedece; ela existe
+                    // idêntica no ramo sólido logo abaixo. *Duas cópias da lista de peças divergem
+                    // no primeiro ajuste — e esta divergiu antes de o ajuste chegar.*
+                    StrokePiece::Symbol { path: geo } => {
+                        stroke_uniform::stroke_uniform(
+                            target,
+                            &Stroke::new(s.width),
+                            transform,
+                            &brush,
+                            &build_bezpath(&geo),
+                        );
+                        continue;
+                    }
+                    // ⚠️ As pontas ficam **SÓLIDAS de propósito** (a cor de recurso): um motivo
+                    // dentro de um triângulo de 3 px não se lê. Só a FAIXA recebe o ladrilho.
+                    StrokePiece::Fill { path: geo } => {
                         target.inner_mut().fill(
                             Fill::NonZero,
                             transform,

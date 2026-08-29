@@ -121,6 +121,18 @@ fn the_scene_contains_a_patterned_stroke_and_a_shape_with_both() {
         src.contains("fn contorno_com_padrao("),
         "a porta do contorno com padrao sumiu da cena - a wave D nao tem o que smokar"
     );
+    // ⛔⛔ **E TODO padrão desta cena nasce ancorado NUMA FORMA** (report de 28/08): o construtor
+    // ancora na origem do MUNDO por omissão, e numa faixa fina isso faz a fase sob o contorno não
+    // ter relação nenhuma com a forma. ⚠️ Os dois construtores EXIGEM o canto (o compilador
+    // garante-o); o que este gate impede é passá-lo à mão em vez de o derivar da mesma conta que
+    // desenha a forma.
+    let ancoras = src.matches("canto(").count();
+    let tintas = src.matches("Some(pattern(").count() + src.matches("contorno_com_padrao(").count();
+    assert!(
+        ancoras >= tintas,
+        "{tintas} tintas de padrao na cena e so' {ancoras} cantos derivados - alguma nasce na \
+         origem do mundo, e a fase dela nao tem relacao com a forma"
+    );
     assert_eq!(
         src.matches("stroke: Some(contorno_com_padrao(").count(),
         2,

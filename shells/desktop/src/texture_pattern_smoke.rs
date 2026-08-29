@@ -87,6 +87,26 @@ fn art_rgba() -> Vec<u8> {
     px
 }
 
+/// ⛔⛔ **ONDE UM PADRÃO DESTA CENA NASCE** — o canto da FORMA, nunca a origem do mundo.
+///
+/// ⚠️ É a mesma lei que o produto obedece (`texture_pattern_pick::default_placement` devolve o `lo`
+/// da caixa) e que um report do Enio já pagou uma vez, em 27/08: com o `Clamp`, um ladrilho na
+/// origem do mundo fazia a forma amostrar `uv` a centenas de texels e sair **em branco**.
+///
+/// ⚠️⚠️ **E numa FAIXA FINA ela morde mesmo em `Tile`** (report de 28/08): a fase do reticulado sob
+/// um contorno passa a não ter relação nenhuma com a forma, então mover um nó desliza a arte por
+/// baixo da linha e — em `Mirror` — troca a paridade do espelho. *O que num preenchimento é uma
+/// fase invisível, numa banda de 20 % da forma é a aparência inteira.*
+///
+/// ⚠️⚠️ **E ele é uma conta SEPARADA da do [`rect`], de propósito.** A 1.ª redacção fazia o `rect`
+/// derivar daqui — *uma porta, dois consumidores* — e o gate que os comparava virou **tautologia**:
+/// a mutação `[cx - half, cy]` **sobreviveu**, porque a forma seguia o canto para onde ele fosse.
+/// *Concordância só se mede entre duas afirmações independentes; derivar as duas de uma anula o
+/// instrumento.* Aqui a geometria é a verdade e este canto tem de a acertar — e há gate a medi-lo.
+fn canto(cx: f64, cy: f64, half: f64) -> [f64; 2] {
+    [cx - half, cy - half]
+}
+
 fn rect(cx: f64, cy: f64, half: f64) -> Vec<VecVertex> {
     [
         [cx - half, cy - half],
@@ -106,6 +126,7 @@ fn lei(
     mode: PatternMode,
     fallback: [u8; 3],
     lado: f64,
+    origem: [f64; 2],
 ) -> PatternFill {
     let mut f = PatternFill::new(
         source,
@@ -115,11 +136,27 @@ fn lei(
     f.kind = kind;
     f.offset_denom = 2;
     f.mode = mode;
+    // ⛔ O canto da FORMA — ver [`canto`]. Sem isto a cena mede um objecto que o produto nunca
+    // produz, porque a autoria real ancora na forma (`default_placement`).
+    f.origin = origem;
     f
 }
 
-fn pattern(source: PatternSource, kind: TileKind, mode: PatternMode, fallback: [u8; 3]) -> Paint {
-    Paint::Pattern(Box::new(lei(source, kind, mode, fallback, BOX / 3.0)))
+fn pattern(
+    source: PatternSource,
+    kind: TileKind,
+    mode: PatternMode,
+    fallback: [u8; 3],
+    origem: [f64; 2],
+) -> Paint {
+    Paint::Pattern(Box::new(lei(
+        source,
+        kind,
+        mode,
+        fallback,
+        BOX / 3.0,
+        origem,
+    )))
 }
 
 /// ⭐⭐ **UM CONTORNO COM PADRÃO** (plano 35) — a faixa recebe o ladrilho.
@@ -131,18 +168,29 @@ fn pattern(source: PatternSource, kind: TileKind, mode: PatternMode, fallback: [
 /// cópias nos `8,8` de contorno de uma destas formas).
 ///
 /// ⛔ E ela **não** manda no padrão: engrossar a linha muda a faixa, nunca o motivo (plano 35 §2.3).
-fn contorno_com_padrao(source: PatternSource, mode: PatternMode, fallback: [u8; 3]) -> StrokeSpec {
+fn contorno_com_padrao(
+    source: PatternSource,
+    kind: TileKind,
+    fallback: [u8; 3],
+    origem: [f64; 2],
+) -> StrokeSpec {
     let lado = BOX / 6.0;
     let mut s = StrokeSpec::new(
         Rgba8::new(fallback[0], fallback[1], fallback[2], 255),
         lado * 1.2,
     );
+    // ⛔ **`Tile`, e não `Mirror`** (report de 28/08). O espelho é uma lei legítima e já se
+    // demonstra na 4.ª forma da fileira de cima, onde há reticulado que se leia; numa faixa de 20 %
+    // da forma vê-se **uma fatia** do reticulado, e a paridade do espelho troca ao mover um nó —
+    // o que se lê como *"o contorno inverteu"*. ⚠️ *Uma cena de smoke escolhe o modo que deixa a
+    // FEATURE visível, não o que exercita mais código.*
     s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(lei(
         source,
-        TileKind::Grid,
-        mode,
+        kind,
+        PatternMode::Tile,
         fallback,
         lado,
+        origem,
     )));
     s
 }
@@ -180,7 +228,7 @@ fn build(app: &mut crate::App) {
         scene.push_path(VecPath {
             verts: rect(x(i), 0.0, half),
             closed: true,
-            fill: Some(pattern(source, kind, mode, fb)),
+            fill: Some(pattern(source, kind, mode, fb, canto(x(i), 0.0, half))),
             stroke: Some(contorno()),
             ..VecPath::default()
         });
@@ -201,6 +249,7 @@ fn build(app: &mut crate::App) {
             TileKind::Grid,
             PatternMode::Tile,
             [80, 100, 120],
+            canto(x(4), 0.0, half),
         )),
         stroke: Some(contorno()),
         ..VecPath::default()
@@ -225,6 +274,7 @@ fn build(app: &mut crate::App) {
             TileKind::BrickRow,
             PatternMode::Tile,
             [70, 90, 110],
+            canto(x(4), -3.0, half),
         )),
         stroke: Some(contorno()),
         ..VecPath::default()
@@ -237,7 +287,12 @@ fn build(app: &mut crate::App) {
         verts: rect(x(0), -3.0, half),
         closed: true,
         fill: None,
-        stroke: Some(contorno_com_padrao(source, PatternMode::Tile, [40, 40, 55])),
+        stroke: Some(contorno_com_padrao(
+            source,
+            TileKind::Grid,
+            [40, 40, 55],
+            canto(x(0), -3.0, half),
+        )),
         ..VecPath::default()
     });
 
@@ -252,11 +307,16 @@ fn build(app: &mut crate::App) {
             TileKind::Grid,
             PatternMode::Tile,
             [100, 100, 120],
+            canto(x(1), -3.0, half),
         )),
+        // ⚠️ **Reticulado DIFERENTE do preenchimento** (tijolo contra grade): é o que mostra que as
+        // duas tintas carregam leis independentes, e mostra-o de forma **estável** — ao contrário
+        // do espelho, cuja paridade troca ao mover um nó (report de 28/08).
         stroke: Some(contorno_com_padrao(
             source,
-            PatternMode::Mirror,
+            TileKind::BrickRow,
             [40, 55, 40],
+            canto(x(1), -3.0, half),
         )),
         ..VecPath::default()
     });
@@ -270,6 +330,7 @@ fn build(app: &mut crate::App) {
             TileKind::Grid,
             PatternMode::Tile,
             [120, 80, 110],
+            canto(x(5) + half, 0.0, half),
         )),
         stroke: Some(contorno()),
         ..VecPath::default()
@@ -307,10 +368,70 @@ fn select_hero(app: &mut crate::App) {
          tem de continuar la', e a largura/cor dele tem de responder ao painel. \
          ⭐⭐ E EMBAIXO A' ESQUERDA, DUAS FORMAS NOVAS: a 1a e' SO' CONTORNO, e o contorno dela e' \
          feito da arte (sem preenchimento nenhum). A 2a tem padrao NOS DOIS -- grade no miolo, \
-         espelhado no contorno. Selecione a 2a: a seccao Stroke ganha a fileira **Type** \
+         TIJOLO no contorno (reticulados diferentes, para se ver que sao duas leis independentes). \
+         Mova os NOS destas duas com a ferramenta Node: a arte fica ANCORADA na forma e nao \
+         inverte -- ela desliza por baixo da faixa como um papel de parede que a linha revela. Selecione a 2a: a seccao Stroke ganha a fileira **Type** \
          (Solid | Pattern) e a seccao Pattern ganha, no topo, a fileira **Target** \
          (Fill | Stroke) -- e' ela que diz qual dos dois os knobs abaixo estao a editar. Na 1a \
          forma o Target NAO aparece, porque com um alvo so' nao ha' escolha. Engrosse o contorno \
          com a barra Width: a faixa engrossa e o MOTIVO nao muda de tamanho."
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BOX, canto, lei, rect};
+    use ph2d_vec_pattern::{PatternMode, TileKind};
+    use ph2d_vec_scene::{PatternFill, PatternSource, Rgba8};
+
+    /// ⛔⛔ **UM PADRÃO NASCE ONDE A FORMA COMEÇA** — report do Enio, 2026-08-28.
+    ///
+    /// ⚠️ **O default do construtor é a origem do MUNDO**, e é dele que esta cena tem de fugir: com
+    /// a arte ancorada em `[0,0]` e a forma a três unidades dali, a fase do reticulado sob o
+    /// contorno não tem relação nenhuma com a forma. Num preenchimento isso é invisível; numa faixa
+    /// de 20 % da forma é a aparência inteira, e mover um nó desliza a arte por baixo da linha.
+    ///
+    /// ⭐ **Uma porta, dois consumidores:** o canto que o [`rect`] começa a desenhar É o canto em
+    /// que o padrão nasce. Duas contas divergiriam no dia em que uma das formas mudasse de sítio.
+    #[test]
+    fn a_pattern_is_born_where_its_shape_starts() {
+        let (cx, cy, half) = (3.0, -1.5, 1.1);
+        let c = canto(cx, cy, half);
+        let v = rect(cx, cy, half);
+        // ⚠️ **A régua é uma PROPRIEDADE da geometria, não uma repetição da conta**: o canto é
+        // menor ou igual a todo vértice, e É um deles. A 1.ª redacção comparava `v[0].anchor` com
+        // `canto(..)` e uma mutação SOBREVIVEU, porque o `rect` derivava do `canto` — a forma
+        // seguia-o para onde ele fosse. *Só duas contas independentes se podem contradizer.*
+        assert!(
+            v.iter().all(|p| p.anchor[0] >= c[0] && p.anchor[1] >= c[1]),
+            "o canto do padrao nao e' o MINIMO da forma: {c:?} contra {:?}",
+            v.iter().map(|p| p.anchor).collect::<Vec<_>>()
+        );
+        assert!(
+            v.iter().any(|p| p.anchor == c),
+            "o canto do padrao nao e' um vertice da forma"
+        );
+        let f = lei(
+            PatternSource::Shape(1),
+            TileKind::Grid,
+            PatternMode::Tile,
+            [1, 2, 3],
+            BOX / 6.0,
+            c,
+        );
+        assert_eq!(f.origin, c, "a lei nao carrega o canto que recebeu");
+        // ⚠️ **CONTROLO — o default é a origem do MUNDO.** Sem ele, este gate ficaria verde num dia
+        // em que o construtor passasse a ancorar sozinho, e a cena deixaria de provar o que prova.
+        assert_eq!(
+            PatternFill::new(
+                PatternSource::Shape(1),
+                [0.5, 0.5],
+                Rgba8::new(1, 2, 3, 255)
+            )
+            .origin,
+            [0.0, 0.0],
+            "o construtor deixou de nascer na origem do mundo - este gate perdeu o sujeito"
+        );
+        assert_ne!(c, [0.0, 0.0], "a fixtura tem de estar LONGE da origem");
+    }
 }

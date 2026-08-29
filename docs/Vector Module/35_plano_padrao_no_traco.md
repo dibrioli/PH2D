@@ -340,3 +340,81 @@ a lei fica idêntica nos dois; (b) só a ALFA atravessa, e a cor do padrão só 
 | `onto`: a `fallback` não recebe a cor | `the_colour_still_reaches_a_patterned_stroke_through_its_fallback` |
 | `onto`: o `alpha` não recebe a opacidade | `the_stroke_opacity_reaches_a_patterned_stroke` |
 | `set_kind`: o padrão nasce com o `alpha` do construtor | `the_opacity_survives_the_paint_switch_in_both_directions` |
+
+---
+
+## §8 — ⛔⛔ O REPORT DE 2026-08-28 (2.º, com foto): *"ao mudar a posição dos nós ... o stroke inverte"*
+
+### §8.1 — ⭐ A MEDIÇÃO ILIBOU a colocação, e foi ela que apontou a causa
+
+Sonda `measure_what_a_node_move_does_to_the_stroke_pattern`
+([`pattern_tests.rs`](../../crates/ph2d-vec-render/src/pattern_tests.rs), `#[ignore]`), com os
+números **exactos** da cena de smoke:
+
+| | bbox | `placement` | peças |
+|---|---|---|---|
+| nós originais | `(0,0)..(2.2,2.2)` | `[0.3667, 0, 0, 0.3667, 0, 0]` | `["Line(emprestada)"]` |
+| **nó movido** | `(0,0)..(3.52,2.2)` | `[0.3667, 0, 0, 0.3667, 0, 0]` | `["Line(emprestada)"]` |
+
+⇒ **byte-idêntico.** O `placement_in` devolve a colocação AUTORADA em todo modo que não seja
+`Clamp`, então mover um nó não move o reticulado. *Uma hipótese cara (o traçado, o memo, o
+enquadramento) morreu numa sonda de dez linhas.*
+
+### §8.2 — ⛔ A causa 1: a CENA ancorava os padrões na origem do MUNDO
+
+`PatternFill::new` nasce com `origin: [0,0]`, e a cena **nunca o escrevia** — enquanto o produto
+ancora no canto da forma (`texture_pattern_pick::default_placement` devolve o `lo` da caixa).
+
+⚠️ **É a MESMA lei que um report do Enio já pagou em 27/08** (*"clamp deixa tudo em branco"*), e ela
+volta aqui com outro sintoma: num **preenchimento** a fase do reticulado é invisível, porque a forma
+mostra o reticulado inteiro; numa **faixa de 20 % da forma** vê-se uma *fatia* dele, e a fase é a
+aparência inteira. ⇒ *o mesmo defeito muda de gravidade com o tamanho do sujeito.*
+
+### §8.3 — ⛔ A causa 2: `Mirror` numa faixa fina
+
+A 2.ª forma nova usava `PatternMode::Mirror` no traço — escolhido para *"ser diferente do
+preenchimento"*. O espelho troca a paridade a cada célula: com a fase solta (§8.2), mover um nó
+fazia a arte sob a banda **virar do avesso**. É literalmente *"inverte"*.
+
+⇒ hoje as duas formas usam `Tile`, e a diferença entre as duas tintas passou a ser o **reticulado**
+(grade no miolo, tijolo no contorno) — visível e **estável** sob edição. ⚠️ *Uma cena de smoke
+escolhe o modo que deixa a FEATURE visível, não o que exercita mais código.*
+
+### §8.4 — ⛔ A causa 3 (minha, da wave B): um marcador ABERTO era PREENCHIDO
+
+O ramo do padrão tratava `StrokePiece::Symbol` e `StrokePiece::Fill` como a mesma coisa. O
+`stroke_plan` distingue-os por `Marker::is_filled`: um marcador aberto **traça-se**. ⇒ uma seta
+aberta saía **maciça** assim que o traço ganhava padrão.
+
+⭐ **A régua é a IGUALDADE com o ramo sólido** (`the_pattern_branch_draws_the_same_pieces_as_the_solid_one`),
+e não uma contagem à mão: *o que* desenhar é decisão do `stroke_plan`, e quem pinta só obedece.
+
+### §8.5 — ⚠️⚠️ O gate que eu escrevi era uma TAUTOLOGIA, e a mutação disse-o
+
+A 1.ª cura fez o `rect` **derivar** do `canto` (*"uma porta, dois consumidores"*) e o gate comparava
+os dois. A mutação `canto = [cx - half, cy]` **SOBREVIVEU**: a forma seguia o canto para onde ele
+fosse.
+
+⇒ o `rect` voltou a ser uma conta independente, e a régua passou a ser uma **propriedade da
+geometria** (*o canto é ≤ todo vértice e É um deles*). *Concordância só se mede entre duas
+afirmações independentes; derivar as duas de uma porta anula o instrumento* —
+[[feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing]].
+
+### §8.6 — ⏳ O que FICA, e é a lei do módulo (não um defeito)
+
+Com a âncora na forma e sem espelho, mover um nó **não inverte** nada — mas a arte **desliza** por
+baixo da faixa, porque um padrão é *papel de parede no espaço da forma que a banda revela*. É a lei
+declarada do módulo para preenchimentos, aplicada a uma banda fina.
+
+⛔ **O motivo que percorre a linha e roda com ela é OUTRA feature, e já existe**: o
+[Pattern Along Path](23_plano_pattern_along_path.md) (plano 23). Confundi-los seria dar dois nomes à
+mesma coisa e uma palavra a duas (§1). Se o Enio quiser esse comportamento no contorno, a pergunta
+é de produto e a maquinaria está construída.
+
+### §8.7 — As três provas de mutação
+
+| Mutação | Gate que morreu |
+|---|---|
+| `Symbol` traçado com metade da largura | `the_pattern_branch_draws_the_same_pieces_as_the_solid_one` |
+| `lei`: `f.origin = [0.0, 0.0]` | `a_pattern_is_born_where_its_shape_starts` |
+| `canto`: `[cx - half, cy]` | idem (⚠️ **sobreviveu** à 1.ª redacção do gate — §8.5) |

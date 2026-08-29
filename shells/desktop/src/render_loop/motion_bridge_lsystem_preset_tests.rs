@@ -436,3 +436,200 @@ fn clicking_the_preset_that_is_already_lit_puts_it_back() {
     );
     assert_eq!(preset_of(&motion, n), 1);
 }
+
+/// ⭐⭐⭐ **O ENQUADRAMENTO CHEGA PELO CAMINHO REAL, E NÃO SÓ PELA FUNÇÃO INTERNA.**
+///
+/// ⚠️ Report do Enio, 2026-08-29: *"dragon é bem menor que os outros"*. O `Dragon` só se lê
+/// como dragão a **12** gerações (os irmãos vivem em 4–5), então se o `generations` do molde
+/// não chegar ele fica `20×` mais pequeno — e o gate irmão
+/// `picking_a_preset_also_writes_the_framing_it_needs` não o via, porque chama a função
+/// INTERNA e salta a guarda de igualdade do despacho.
+#[test]
+fn the_framing_survives_the_real_dispatch_and_the_dragon_gets_its_twelve_generations() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::MODE,
+            value: f64::from(ls::MODE_GRAMMAR),
+        },
+    );
+    for (k, p) in ls::PRESETS.iter().enumerate() {
+        dispatch(
+            &mut motion,
+            MotionParamIntent::SetParam {
+                node: n.0,
+                param: ls::param::PRESET,
+                value: k as f64,
+            },
+        );
+        for (name, want) in [
+            (ls::param::ANGLE, p.angle),
+            (ls::param::GENERATIONS, p.generations),
+            (ls::param::STEP, p.step),
+            (ls::param::WIDTH, p.width),
+        ] {
+            assert_eq!(
+                param_value(&motion, n, name),
+                want,
+                "{}: o `{name}` nao sobreviveu ao despacho",
+                p.label
+            );
+        }
+    }
+}
+
+/// ⭐⭐ **E O QUE O ARTISTA VÊ SAI DO MESMO TAMANHO** — a régua no PRODUTO, não nos params.
+///
+/// ⚠️ Os quatro números certos ainda podem dar oito plantas de tamanhos diferentes; o gate de
+/// enquadramento da crate mede-os com o `probe_build`, e este mede-os **depois do despacho**,
+/// que é o único caminho que a mão do artista percorre.
+#[test]
+fn every_preset_picked_by_hand_draws_the_same_size() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::MODE,
+            value: f64::from(ls::MODE_GRAMMAR),
+        },
+    );
+    let mut sizes: Vec<(&str, f32)> = Vec::new();
+    for (k, p) in ls::PRESETS.iter().enumerate() {
+        dispatch(
+            &mut motion,
+            MotionParamIntent::SetParam {
+                node: n.0,
+                param: ls::param::PRESET,
+                value: k as f64,
+            },
+        );
+        let over: Vec<(&str, f32)> = [
+            ls::param::ANGLE,
+            ls::param::STEP,
+            ls::param::WIDTH,
+            ls::param::MODE,
+        ]
+        .iter()
+        .map(|name| (*name, param_value(&motion, n, name)))
+        .collect();
+        let s = ls::probe_build(
+            &text_of(&motion, n, ls::AXIOM_PARAM),
+            &text_of(&motion, n, ls::RULES_PARAM),
+            param_value(&motion, n, ls::param::GENERATIONS),
+            &over,
+        );
+        let d = match s.get("P") {
+            Some(ph2d_nodegraph::attr::Column::Vec2(v)) if !v.is_empty() => {
+                let x0 = v.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
+                let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
+                let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
+                let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
+                ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
+            }
+            _ => 0.0,
+        };
+        sizes.push((p.label, d));
+    }
+    let mut sorted: Vec<f32> = sizes.iter().map(|(_, d)| *d).collect();
+    sorted.sort_by(f32::total_cmp);
+    let median = (sorted[3] + sorted[4]) * 0.5;
+    for (label, d) in &sizes {
+        let r = d / median;
+        assert!(
+            (0.65..1.55).contains(&r),
+            "{label} sai {r:.2}x a mediana ({d:.2} contra {median:.2}) — o artista ve' um \
+             molde muito maior ou muito menor que os irmaos. Todos: {sizes:?}"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **UM FIO NÃO PODE FAZER UM MOLDE SAIR 10× MAIS PEQUENO** — a cura do report de
+/// 2026-08-29 (*"dragon é bem menor que os outros"*).
+///
+/// ⚠️ O `EvalCtx::param` resolve o CONDUZIDO primeiro, então um fio no `Generations` ganha ao
+/// número que o molde escreve. Com a cena `=108` a conduzir aquele param de `1` a `6` e o
+/// `Dragon` a precisar de **12**, o molde escrevia e a planta ficava presa em `0,21` de
+/// diagonal contra os `2,17` que ela devia ter.
+#[test]
+fn a_wire_never_keeps_a_preset_from_reaching_its_own_numbers() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    let lfo = motion.doc.graph.add_node("value.lfo");
+    motion
+        .doc
+        .graph
+        .drive_param(n, ls::param::GENERATIONS, (lfo, 0))
+        .expect("o Generations aceita fio");
+    assert!(
+        motion
+            .doc
+            .graph
+            .param_sources(n)
+            .is_some_and(|s| s.contains_key(ls::param::GENERATIONS)),
+        "CONTROLE: o fio tem de estar la' antes"
+    );
+
+    let dragon = ls::PRESETS
+        .iter()
+        .position(|p| p.label == "Dragon")
+        .expect("o molde existe");
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::PRESET,
+            value: dragon as f64,
+        },
+    );
+    assert!(
+        motion
+            .doc
+            .graph
+            .param_sources(n)
+            .is_none_or(|s| !s.contains_key(ls::param::GENERATIONS)),
+        "o fio tem de ser SOLTO — senao o molde escreve 12 e a planta coze a 6"
+    );
+    assert_eq!(
+        param_value(&motion, n, ls::param::GENERATIONS),
+        ls::PRESETS[dragon].generations
+    );
+}
+
+/// ⚠️ **E ele NÃO solta o que não estorva** — um fio no `Seed` ou no `Tropism` é trabalho do
+/// artista, e um molde que o destruísse seria pior que o defeito que ele cura.
+#[test]
+fn the_preset_leaves_alone_the_wires_it_does_not_need() {
+    let mut motion = MotionState::new();
+    let n = motion.doc.graph.add_node("source.lsystem");
+    let lfo = motion.doc.graph.add_node("value.lfo");
+    for name in [ls::param::SEED, ls::param::TROPISM] {
+        motion
+            .doc
+            .graph
+            .drive_param(n, name, (lfo, 0))
+            .expect("aceita fio");
+    }
+    dispatch(
+        &mut motion,
+        MotionParamIntent::SetParam {
+            node: n.0,
+            param: ls::param::PRESET,
+            value: 3.0,
+        },
+    );
+    for name in [ls::param::SEED, ls::param::TROPISM] {
+        assert!(
+            motion
+                .doc
+                .graph
+                .param_sources(n)
+                .is_some_and(|s| s.contains_key(name)),
+            "o fio do `{name}` nao estorva molde nenhum e tem de FICAR"
+        );
+    }
+}

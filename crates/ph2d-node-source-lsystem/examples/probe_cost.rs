@@ -19,7 +19,10 @@ fn ms(axiom: &str, rules: &str, g: f32, over: &[(&str, f32)]) -> (f32, usize) {
 
 fn main() {
     println!("orcamento de um quadro: 16,67 ms\n");
-    println!("{:26} {:>8} {:>10} {:>10} {:>9}", "caso", "elems", "inteira", "fraccao", "x");
+    println!(
+        "{:26} {:>8} {:>10} {:>10} {:>9}",
+        "caso", "elems", "inteira", "fraccao", "x"
+    );
     for p in ls::PRESETS {
         let over: Vec<(&str, f32)> = vec![
             (ls::param::MODE, ls::MODE_GRAMMAR as f32),

@@ -145,6 +145,7 @@ pub(super) fn apply_param_edits(
                     }
                     if let Some(tn) = preset_pick {
                         super::apply_lsystem_preset(motion, nid, &tn, value as f32);
+                        drop_preset_drivers(motion, nid, &tn, toasts);
                     }
                     if let Some(tn) = bake_grammar {
                         super::bake_lsystem_grammar(motion, nid, &tn);
@@ -328,6 +329,66 @@ fn drop_hidden_drivers(
         )
     }));
     for name in &hidden {
+        motion.doc.graph.undrive_param(nid, name);
+    }
+    motion.pump.mark_dirty();
+}
+
+/// ⭐⭐⭐ **UM MOLDE SÓ VALE SE OS NÚMEROS DELE CHEGAREM** — e um FIO ganha a um param escrito.
+///
+/// ⚠️ Report do Enio, 2026-08-29: *"dragon é bem menor que os outros"*. O mecanismo: o
+/// `Dragon` só se lê como dragão a **12** gerações (os irmãos vivem em 4–5), a cena `=108`
+/// **conduz** o `Generations` da quinta planta por um LFO de `1` a `6`, e o `EvalCtx::param`
+/// resolve o CONDUZIDO primeiro. O molde escrevia `12` e a planta cozinhava a `≤6` — **10×
+/// mais pequena**, com o botão a parecer partido.
+///
+/// ⇒ Aplicar um molde **solta os fios dos quatro números que ele escreve**, e diz qual. É a
+/// mesma lei (e o mesmo toast) do [`drop_hidden_drivers`]: *um molde é um ESTADO completo, e
+/// um controle que não pode chegar ao seu valor é um botão mudo.*
+///
+/// ⚠️ Só os QUATRO do enquadramento — um fio no `Seed` ou no `Tropism` não estorva molde
+/// nenhum, e soltá-lo seria destruir trabalho do artista sem razão.
+fn drop_preset_drivers(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    type_name: &str,
+    toasts: &mut ph2d_editor::ToastQueue,
+) {
+    if type_name != ph2d_node_source_lsystem::MANIFEST.name {
+        return;
+    }
+    use ph2d_node_source_lsystem::param;
+    const FRAMING: &[&str] = &[param::ANGLE, param::GENERATIONS, param::STEP, param::WIDTH];
+    let driven: Vec<String> = motion
+        .doc
+        .graph
+        .param_sources(nid)
+        .into_iter()
+        .flatten()
+        .map(|(name, _)| name.clone())
+        .filter(|name| FRAMING.contains(&name.as_str()))
+        .collect();
+    if driven.is_empty() {
+        return;
+    }
+    let hints = motion
+        .doc
+        .graph
+        .node(nid)
+        .and_then(|i| motion.registry.param_ui(i.type_id()));
+    let labels: Vec<&str> = driven
+        .iter()
+        .map(|name| {
+            hints
+                .and_then(|hs| hs.iter().find(|h| h.param == *name))
+                .map_or(name.as_str(), |h| h.label)
+        })
+        .collect();
+    toasts.push(ph2d_editor::Toast::info(format!(
+        "Unlinked {} - the preset needs its own",
+        labels.join(", ")
+    )));
+    for name in &driven {
         motion.doc.graph.undrive_param(nid, name);
     }
     motion.pump.mark_dirty();

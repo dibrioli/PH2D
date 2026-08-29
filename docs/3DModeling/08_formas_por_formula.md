@@ -165,3 +165,47 @@ forma nova da lista multiplica por eles de graça.** Uma engrenagem é *um dente
 | Dizer que *«desenhado é caro»* sem o número de arestas | com 6 lados é `1,27×`. O caro é **liso**, não desenhado (§1.1) |
 | Comparar uma esfera de fórmula com uma extrusão de 96 lados | mede a complexidade da FORMA, não o caminho — a leitura honesta é a mesma forma pelos dois modos (§1.2) |
 | Espiral por fórmula | a distância a uma espiral de Arquimedes não tem forma fechada (§2.1) |
+
+---
+
+## §4 — ⭐⭐⭐ A AUDITORIA de 29/08: quantas das 47 o módulo JÁ exprime
+
+O §5.0 do `CLAUDE.md` manda medir se a composição já exprime o item **antes** de o construir. Com o
+lote da W101 no lugar (cone · tronco · cápsula · prisma de N lados), a lista encolhe muito.
+
+### §4.1 — ⛔ O que NÃO se deve construir, porque já se faz hoje
+
+| Forma do catálogo | Como se faz **hoje** |
+|---|---|
+| **Diamond / rombo** | **prisma de 4 lados** (o circunraio é a diagonal) |
+| **HexagonFlat** | **prisma de 6 lados** |
+| Polygon (3–128) | **prisma de N lados** (até 32 — acima disso é um cilindro, §MAX_PRISM_SIDES) |
+| Rectangle · RoundRect (raio uniforme) | **caixa**, com `Fillet` |
+| **Cross / plus** | duas caixas em **união** |
+| **Moon** | cilindro **menos** cilindro deslocado |
+| **Junction** | cilindro ∪ cruz |
+| **Cloud · Thought** | ⭐ esferas com junta **Organic** — sai *melhor* que desenhada |
+| **Drop / gota** | esfera ∪ cone, junta `Organic` |
+| PredefinedProcess · NoteBracket · Banner · Tag | caixas em união/subtracção |
+| ArrowRight · Chevron · Bolt · Check · Shield | caixa(s) ∪ **prisma de 3 lados** rodado |
+| Cylinder (o símbolo) · Delay · Display | caixa ∪ cilindro |
+| IsoCube · IsoCone · IsoPyramid | são **desenhos** de sólidos — em 3D usa-se o sólido |
+| **Gear** | ⭐⭐ um dente (caixa ou tronco) + o modificador **`Radial`**, que já existe |
+
+⚠️ **A engrenagem saiu da fila de construção por isto** — ela era o item que a §3 chamava de maior
+alavanca, e a alavanca **já estava montada**: o `Radial` é do módulo desde a W12. *O que se perde ao
+não reconferir não é tempo, é construir o que já existe.*
+
+### §4.2 — ⭐ O que continua a faltar, e por que cada um não é composição
+
+| Falta | Por que a composição não chega |
+|---|---|
+| **Pirâmide / tronco de pirâmide** | é o **prisma com o topo mais estreito** — não há como estreitar um prisma hoje (o `Taper` age em Y, é inexacto, e o `TAPER_FLOOR` impede o ápice) |
+| **Cunha / rampa** | é uma caixa **cortada por um plano inclinado**, e não há primitiva de plano — cortar com uma caixa gigante rodada é um objecto a mais e um número sem sentido |
+| **Arco de toro** | um sector angular precisa de dois semiplanos; hoje seriam **duas caixas gigantes** rodadas à mão |
+| **Estrela de N pontas** (N ímpar) | uma estrela de 6 é dois triângulos; **uma de 5 não é união de polígonos nenhuns** |
+| **Elipse / elipsóide** | a escala do módulo é **uniforme de propósito** (`‖∇f‖ = 1` é a fundação) ⇒ não há como achatar |
+| **Moldura de caixa** (a gaiola) | caixa menos três caixas — faz-se, mas com **4 objectos** para uma forma que é 1 |
+| **Espiral** | ⛔ classe **D**: a distância a uma espiral de Arquimedes não é fechada |
+
+⇒ **A fila real é de ~7 itens, não de 47.** O resto ou já se faz, ou é desenho.

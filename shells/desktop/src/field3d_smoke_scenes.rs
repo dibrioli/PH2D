@@ -399,7 +399,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     leaf(
                         Primitive::Prism {
                             sides: 6,
-                            radius: 0.26,
+                            bottom: 0.26,
+                            top: 0.26,
                             half_height: 0.32,
                             round: 0.026,
                         },
@@ -408,6 +409,62 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     // ⚠️ **União de ARESTA VIVA** (`Blend::Sharp`): elas não se tocam, e um filete
                     // de junção aqui seria um número que não faz nada — a cena mostraria um
                     // controlo que o artista concluiria estar partido.
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],
+                    ),
+                ],
+                NodeId(4),
+            )
+        }
+        10 => {
+            println!(
+                "[field-smoke] cena 10 — O LOTE DA W102: pirâmide · tronco de pirâmide · cunha · \
+                 arco de toro (meia volta), lado a lado"
+            );
+            let x = |v: f32| Xform {
+                translation: [v, 0.0, 0.0],
+                ..Xform::IDENTITY
+            };
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Prism {
+                            sides: 4,
+                            bottom: 0.26,
+                            top: 0.0,
+                            half_height: 0.34,
+                            round: 0.026,
+                        },
+                        x(-0.82),
+                    ),
+                    leaf(
+                        Primitive::Prism {
+                            sides: 4,
+                            bottom: 0.26,
+                            top: 0.13,
+                            half_height: 0.32,
+                            round: 0.026,
+                        },
+                        x(-0.27),
+                    ),
+                    leaf(
+                        Primitive::Wedge {
+                            half: [0.26, 0.18, 0.21],
+                            round: 0.013,
+                        },
+                        x(0.27),
+                    ),
+                    leaf(
+                        Primitive::TorusArc {
+                            major: 0.26,
+                            minor: 0.073,
+                            angle: std::f32::consts::PI,
+                        },
+                        x(0.82),
+                    ),
+                    // ⚠️ Aresta viva na junção, como a cena 9: elas não se tocam, e um filete de
+                    // junção seria um número que não faz nada.
                     combine(
                         Op::Union(Blend::Sharp),
                         vec![NodeId(0), NodeId(1), NodeId(2), NodeId(3)],

@@ -85,11 +85,25 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             radius: 0.25,
             half_height: 0.4,
         },
+        // ⚠️ **ESTREITADO**, e não o prisma recto: um prisma de paredes verticais não testaria o
+        // `√(1+m²)` da parede inclinada, que é o termo que a W102 acrescentou.
         PrimitiveKind::Prism => Primitive::Prism {
             sides: 6,
-            radius: 0.45,
+            bottom: 0.45,
+            top: 0.18,
             half_height: 0.3,
             round: 0.05,
+        },
+        PrimitiveKind::Wedge => Primitive::Wedge {
+            half: [0.45, 0.3, 0.35],
+            round: 0.05,
+        },
+        // ⚠️ **Meia volta e um pouco**, de propósito: é o lado do `min` do sector, e um arco de menos
+        // de meia volta nunca lá chegaria.
+        PrimitiveKind::TorusArc => Primitive::TorusArc {
+            major: 0.4,
+            minor: 0.15,
+            angle: std::f64::consts::PI as f32 * 1.3,
         },
     })
 }

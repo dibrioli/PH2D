@@ -243,7 +243,8 @@ fn the_side_count_of_a_prism_floors_where_the_document_says() {
         root,
         Primitive::Prism {
             sides: 6,
-            radius: 0.4,
+            bottom: 0.4,
+            top: 0.4,
             half_height: 0.4,
             round: 0.04,
         },

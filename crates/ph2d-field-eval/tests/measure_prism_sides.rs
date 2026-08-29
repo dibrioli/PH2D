@@ -80,12 +80,13 @@ fn measure_prism_sides() {
         let (nos, ns) = if n <= ph2d_field::MAX_PRISM_SIDES {
             cost(Primitive::Prism {
                 sides: n,
-                radius: 0.45,
+                bottom: 0.45,
+                top: 0.45,
                 half_height: 0.3,
                 round: 0.05,
             })
         } else {
-            cost_of(ph2d_field_eval::ops::sd_prism(n, 0.45, 0.3, 0.05))
+            cost_of(ph2d_field_eval::ops::sd_prism(n, 0.45, 0.45, 0.3, 0.05))
         };
         let desvio = 1.0 - (std::f64::consts::PI / f64::from(n)).cos();
         let cerca = if n > ph2d_field::MAX_PRISM_SIDES {

@@ -155,7 +155,8 @@ fn a_prism_wears_its_radius_on_the_corner() {
         let r = 0.45_f64;
         let f = field_of(Primitive::Prism {
             sides: n,
-            radius: r as f32,
+            bottom: r as f32,
+            top: r as f32,
             half_height: 0.3,
             round: 0.0,
         });
@@ -197,4 +198,177 @@ fn the_prism_ceiling_is_where_the_corner_stops_showing() {
          pela razão que o doc dá",
         ph2d_field::MAX_PRISM_SIDES
     );
+}
+
+// ─────────────────────── W102: a pirâmide, a cunha e o arco ───────────────────────
+
+/// ⭐⭐⭐ **A PIRÂMIDE é o prisma com o topo a zero** — e a secção interpola linearmente, como o cone.
+///
+/// ⚠️ A régua é o **apótema** medido a várias alturas (a parede está a `raio·cos(π/n)` do eixo),
+/// contra a reta que os dois raios autorados definem. É a mesma lei do cone, e é isso que prova que
+/// a fórmula é **uma** — não duas parecidas.
+/// # ⚠️ A metade do FILETE veio de uma mutação que sobreviveu — a MESMA que o cone já tinha tido
+///
+/// A primeira versão media só `round = 0`, e trocar o recuo perpendicular da parede
+/// (`round·√(1+m²)`) pelo ingénuo (`round`) **passava**. O erro é `0,0014` numa barra de `0,001`:
+/// mede-se, e vê-se. *Gatear a forma sem filete é gatear metade do módulo cujo argumento é o filete*
+/// — escrito na W101 e repetido na W102.
+#[test]
+fn a_pyramid_is_the_prism_whose_top_closes() {
+    let (b, t, h, n) = (0.45_f64, 0.0_f64, 0.4_f64, 4_u32);
+    let k = (std::f64::consts::PI / f64::from(n)).cos();
+    // A direcção do meio da parede (meio sector).
+    let a = std::f64::consts::PI / f64::from(n);
+    let (px, py) = (a.cos(), a.sin());
+    let parede = |f: &Field, z: f64| {
+        let (mut lo, mut hi) = (0.0_f64, 4.0_f64);
+        for _ in 0..60 {
+            let mid = 0.5 * (lo + hi);
+            if f.at(px * mid, py * mid, z) < 0.0 {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        0.5 * (lo + hi)
+    };
+    // ⭐ **Com e sem filete.** ⚠️ O caso com filete usa um TRONCO e não a pirâmide fechada: junto ao
+    // ápice o filete arqueia tudo, e a lei da reta vale onde a parede é a parede.
+    for (topo, round) in [(t, 0.0_f64), (0.18, 0.05)] {
+        let f = field_of(Primitive::Prism {
+            sides: n,
+            bottom: b as f32,
+            top: topo as f32,
+            half_height: h as f32,
+            round: round as f32,
+        });
+        for frac in [-0.5_f64, -0.25, 0.0, 0.25, 0.5] {
+            let z = frac * h;
+            let esperado = (0.5 * (b + topo) + (topo - b) / (2.0 * h) * z) * k;
+            let medido = parede(&f, z);
+            assert!(
+                (medido - esperado).abs() < 1.0e-3,
+                "filete {round}: a {frac:+.2} da meia-altura a parede está a {medido:.4} e a reta \
+                 pede {esperado:.4} — arredondar não pode mudar o tamanho"
+            );
+        }
+    }
+    let f = field_of(Primitive::Prism {
+        sides: n,
+        bottom: b as f32,
+        top: t as f32,
+        half_height: h as f32,
+        round: 0.0,
+    });
+    // ⭐ E ela FECHA: a 1 % do topo a secção é ~1 % da base.
+    let quase = parede(&f, h * 0.99);
+    assert!(
+        quase < b * 0.02,
+        "a 1 % do ápice a parede está a {quase:.4}"
+    );
+}
+
+/// ⭐⭐ **A CUNHA é cheia num lado e a zero no outro**, e o corte passa pela origem.
+///
+/// ⚠️ **A metade que faz o gate valer é a terceira**: sem ela, uma caixa inteira (sem corte nenhum)
+/// passaria as duas primeiras.
+#[test]
+fn a_wedge_is_full_on_one_side_and_gone_on_the_other() {
+    let (hx, hy, hz) = (0.45_f64, 0.3, 0.35);
+    let f = field_of(Primitive::Wedge {
+        half: [hx as f32, hy as f32, hz as f32],
+        round: 0.0,
+    });
+    // No lado cheio, o canto de cima está dentro.
+    assert!(
+        f.at(-hx * 0.9, 0.0, hz * 0.9) < 0.0,
+        "o canto alto do lado cheio tem de estar DENTRO"
+    );
+    // No lado vazio, o mesmo canto está fora.
+    assert!(
+        f.at(hx * 0.9, 0.0, hz * 0.9) > 0.0,
+        "o canto alto do lado fino tem de estar FORA — senão não há corte"
+    );
+    // ⭐ E o plano passa pela ORIGEM: o centro está exactamente na superfície do corte, que aqui é o
+    // ponto mais fundo do sólido nessa direcção.
+    assert!(
+        f.at(0.0, 0.0, 0.0) <= 0.0,
+        "o centro do nó tem de estar dentro (ou na superfície) — o corte passa por ele"
+    );
+    // ⛔ **O CONTROLE**: um pouco acima do centro já está fora, senão o corte não passa pela origem.
+    assert!(
+        f.at(0.0, 0.0, hz * 0.2) > 0.0,
+        "acima do centro tem de estar fora — o plano do corte passa pela origem"
+    );
+    // ⭐⭐⭐ **E OS DOIS CANTOS DO CORTE ESTÃO NA SUPERFÍCIE** — é o que fixa a INCLINAÇÃO do plano.
+    //
+    // ⚠️ Veio de uma mutação que sobreviveu: trocar `(hz/d, hx/d)` por `(hx/d, hz/d)` inclina o
+    // plano de outra maneira e **passa as quatro afirmações acima**, porque nenhuma delas mede um
+    // ponto cuja resposta dependa da inclinação. *Um gate que só olha «cheio de um lado, vazio do
+    // outro» aceita qualquer corte que separe os dois lados.*
+    for (x, z) in [(-hx, hz), (hx, -hz)] {
+        assert!(
+            f.at(x, 0.0, z).abs() < 1.0e-4,
+            "o canto ({x:.2}, {z:.2}) tinha de estar NA superfície — é ele que fixa a inclinação"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O ARCO cobre exactamente o ângulo pedido** — e a régua é o azimute onde o tubo existe.
+///
+/// ⚠️ **Os dois lados do sector são medidos**: até meia volta ele é interseção, acima é união, e um
+/// gate que só olhasse um dos regimes deixaria o outro sem defesa. *Um valor não é uma família.*
+#[test]
+fn a_torus_arc_covers_exactly_the_angle_asked() {
+    for angle in [
+        std::f64::consts::FRAC_PI_2,
+        std::f64::consts::PI,
+        std::f64::consts::PI * 1.5,
+    ] {
+        let (major, minor) = (0.4_f64, 0.12);
+        let f = field_of(Primitive::TorusArc {
+            major: major as f32,
+            minor: minor as f32,
+            angle: angle as f32,
+        });
+        let dentro = |t: f64| f.at(major * t.cos(), major * t.sin(), 0.0) < 0.0;
+        // No meio do sector: dentro. Um cabelo fora dele: fora.
+        assert!(
+            dentro(0.0),
+            "ângulo {angle:.3}: o centro do arco tem de existir"
+        );
+        assert!(
+            dentro(angle * 0.5 - 0.05),
+            "ângulo {angle:.3}: perto da ponta ainda é arco"
+        );
+        assert!(
+            !dentro(angle * 0.5 + 0.05),
+            "ângulo {angle:.3}: passada a ponta o tubo tem de acabar"
+        );
+        // ⭐ E o lado oposto — o que o sector NÃO cobre.
+        assert!(
+            !dentro(std::f64::consts::PI),
+            "ângulo {angle:.3}: o lado oposto não pode existir num arco de menos de uma volta"
+        );
+    }
+}
+
+/// ⭐ **Uma volta inteira é o toro inteiro** — e o corte não é construído.
+///
+/// ⚠️ Sem esta afirmação, um `angle` de `2π` cairia no ramo do sector e deixaria uma **fenda
+/// invisível** que o artista só descobria ao exportar.
+#[test]
+fn a_full_sweep_is_the_whole_torus() {
+    let f = field_of(Primitive::TorusArc {
+        major: 0.4,
+        minor: 0.12,
+        angle: std::f32::consts::TAU,
+    });
+    for i in 0..64 {
+        let t = std::f64::consts::TAU * f64::from(i) / 64.0;
+        assert!(
+            f.at(0.4 * t.cos(), 0.4 * t.sin(), 0.0) < 0.0,
+            "uma volta inteira não pode ter fenda nenhuma (azimute {t:.3})"
+        );
+    }
 }

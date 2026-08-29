@@ -33,7 +33,13 @@ pub fn shape_name(shape: &NodeShape) -> &'static str {
             // do topo reescreveria, sozinho, uma coisa que é dele.
             Primitive::Cone { .. } => "Cone",
             Primitive::Capsule { .. } => "Capsule",
+            // ⚠️ **Um prisma estreitado continua a chamar-se «Prism» na Hierarquia**, pela mesma
+            // razão do cone truncado: o nome é a identidade do objecto e o artista renomeia-o; um
+            // nome que mudasse ao arrastar o raio do topo reescreveria, sozinho, uma coisa que é
+            // dele.
             Primitive::Prism { .. } => "Prism",
+            Primitive::Wedge { .. } => "Wedge",
+            Primitive::TorusArc { .. } => "Torus Arc",
         },
     }
 }

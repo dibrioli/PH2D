@@ -233,9 +233,51 @@ fn a_capsule(r: f32) -> Primitive {
 fn a_prism(r: f32) -> Primitive {
     Primitive::Prism {
         sides: 6,
-        radius: r,
+        bottom: r,
+        top: r,
         half_height: r * 1.2,
         round: round_of(r),
+    }
+}
+
+/// ⭐⭐ **A pirâmide é o prisma com o topo a ZERO** (W102) — a mesma primitiva, outro default.
+///
+/// ⚠️ Ela nasce de **base quadrada**: é a pirâmide que alguém desenha quando diz «pirâmide», e o
+/// primeiro controlo do painel são os lados para quem quiser outra.
+fn a_pyramid(r: f32) -> Primitive {
+    Primitive::Prism {
+        sides: 4,
+        bottom: r,
+        top: 0.0,
+        half_height: r * 1.3,
+        round: round_of(r),
+    }
+}
+
+fn a_truncated_pyramid(r: f32) -> Primitive {
+    Primitive::Prism {
+        sides: 4,
+        bottom: r,
+        top: r * 0.5,
+        half_height: r * 1.2,
+        round: round_of(r),
+    }
+}
+
+fn a_wedge(r: f32) -> Primitive {
+    Primitive::Wedge {
+        half: [r, r * 0.7, r * 0.8],
+        round: round_of(r) * 0.5,
+    }
+}
+
+/// ⭐ O arco nasce em **meia volta** — é o ângulo em que a forma se lê como arco à primeira (um
+/// quarto parece um canto, uma volta quase inteira parece um toro com um defeito).
+fn a_torus_arc(r: f32) -> Primitive {
+    Primitive::TorusArc {
+        major: r,
+        minor: r * 0.28,
+        angle: std::f32::consts::PI,
     }
 }
 
@@ -280,9 +322,29 @@ pub(crate) const SHAPES: &[Shape] = &[
         make: Make::Formula(a_prism),
     },
     Shape {
+        key: "panel.model3d.add.pyramid",
+        family: Family::Blocks,
+        make: Make::Formula(a_pyramid),
+    },
+    Shape {
+        key: "panel.model3d.add.pyramid_truncated",
+        family: Family::Blocks,
+        make: Make::Formula(a_truncated_pyramid),
+    },
+    Shape {
+        key: "panel.model3d.add.wedge",
+        family: Family::Blocks,
+        make: Make::Formula(a_wedge),
+    },
+    Shape {
         key: "panel.model3d.add.torus",
         family: Family::Rings,
         make: Make::Formula(a_torus),
+    },
+    Shape {
+        key: "panel.model3d.add.torus_arc",
+        family: Family::Rings,
+        make: Make::Formula(a_torus_arc),
     },
     // ⭐⭐ **AS FORMAS DE PERFIL** (W53) — o desenho do editor vetorial vira peça.
     Shape {

@@ -181,24 +181,91 @@ pub fn sd_capsule(radius: f64, half_height: f64) -> Tree {
     length3(&Tree::x(), &Tree::y(), &(Tree::z() - clamped)) - Tree::constant(radius)
 }
 
-/// Prisma regular de `sides` lados no eixo Z, `radius` sendo o **circunraio**.
+/// Prisma regular de `sides` lados no eixo Z, possivelmente **ESTREITADO** — `bottom` e `top` são os
+/// **circunraios** das duas pontas.
 ///
-/// ⭐ **`sides` meias-fatias, uma por parede** — cada uma é um plano com gradiente unitário, e o
-/// `max` delas é o polígono. ⚠️ A quina fica na direção de `2πk/n` e a parede é perpendicular a
-/// `π/n + 2πk/n`, à distância **apótema** = `radius·cos(π/n)`: uma parede na direção da quina daria
-/// um polígono rodado de meio setor.
-pub fn sd_prism(sides: u32, radius: f64, half_height: f64, round: f64) -> Tree {
+/// ⭐ **`sides` meias-fatias, uma por parede**, e cada uma é a **mesma reta inclinada** do cone
+/// ([`tapered_wall`]) medida numa direção fixa em vez do raio. ⚠️ A quina fica na direção de `2πk/n`
+/// e a parede é perpendicular a `π/n + 2πk/n`, à distância **apótema** = `raio·cos(π/n)`: uma parede
+/// na direção da quina daria um polígono rodado de meio setor.
+///
+/// ⭐⭐ **Com `top == bottom` é o prisma; com `top == 0` é uma PIRÂMIDE** — a mesma fórmula, e é
+/// isso que faz a pirâmide não ser uma segunda resposta à mesma pergunta.
+pub fn sd_prism(sides: u32, bottom: f64, top: f64, half_height: f64, round: f64) -> Tree {
     let n = sides.max(3);
-    let apothem = radius * f64::from(std::f32::consts::PI / n as f32).cos() - round;
+    let k = f64::from(std::f32::consts::PI / n as f32).cos();
+    // O recuo do filete é perpendicular à parede inclinada — a conta do [`sd_cone`], no apótema.
+    let (a, m) = (
+        (bottom + top) * 0.5 * k,
+        (top - bottom) * k / (2.0 * half_height),
+    );
+    let h = half_height - round;
+    let a2 = a - round * (1.0 + m * m).sqrt();
+    let (b2, t2) = (a2 - m * h, a2 + m * h);
     let mut walls: Option<Tree> = None;
-    for k in 0..n {
-        let a = std::f64::consts::TAU * (f64::from(k) + 0.5) / f64::from(n);
-        let d = Tree::x() * Tree::constant(a.cos()) + Tree::y() * Tree::constant(a.sin())
-            - Tree::constant(apothem);
+    for i in 0..n {
+        let ang = std::f64::consts::TAU * (f64::from(i) + 0.5) / f64::from(n);
+        let radial = Tree::x() * Tree::constant(ang.cos()) + Tree::y() * Tree::constant(ang.sin());
+        let d = tapered_wall(&radial, b2, t2, h);
         walls = Some(walls.map_or_else(|| d.clone(), |w: Tree| w.max(d.clone())));
     }
     let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
-    offset(&slab_and_walls(walls, half_height - round), round)
+    offset(&slab_and_walls(walls, h), round)
+}
+
+/// Cunha: a caixa de meias-extensões `half` cortada pelo plano que liga `(−hx, +hz)` a `(+hx, −hz)`.
+///
+/// ⭐ **O plano passa pela ORIGEM** — o ponto médio daqueles dois é o centro do nó —, e por isso ele
+/// é `(hz·x + hx·z)/√(hx²+hz²)` sem termo constante.
+///
+/// ⚠️ **`max` da caixa com o plano**: exacto na superfície e no interior, e um subestimador junto às
+/// quinas onde a face recta encontra a inclinada — a mesma troca do [`sd_cone`], com o mesmo
+/// `‖∇f‖ ≤ 1` por definição.
+pub fn sd_wedge(half: [f64; 3], round: f64) -> Tree {
+    let (hx, hy, hz) = (half[0], half[1], half[2]);
+    let d = (hx * hx + hz * hz).sqrt();
+    // Degenerada (uma meia-extensão a zero) não chega aqui: o documento recusa.
+    let (nx, nz) = if d > f64::MIN_POSITIVE {
+        (hz / d, hx / d)
+    } else {
+        (1.0, 0.0)
+    };
+    // ⚠️ A normal já é unitária, então recuar o plano de `round` é subtrair `round` — e não
+    // `round·√(1+m²)`: aquele factor é o do cone, onde a coordenada não estava normalizada.
+    let plano =
+        Tree::x() * Tree::constant(nx) + Tree::z() * Tree::constant(nz) - Tree::constant(round);
+    offset(
+        &box_raw(hx - round, hy - round, hz - round).max(plano),
+        round,
+    )
+}
+
+/// Arco de toro no plano XY, centrado no `+X`, com abertura total `angle`.
+///
+/// ⭐⭐ **A escolha entre interseção e união é feita ao MONTAR a árvore**, em Rust — não com uma
+/// ramificação dentro do campo. Até meia volta o sector é a interseção de dois semiplanos; acima
+/// dela é a **união** deles (o complemento de um sector estreito). ⚠️ Uma `compare` da `fidget` daria
+/// uma função **descontínua**, e o gradiente por diferenciação automática deixaria de existir na
+/// fronteira dela — é a razão pela qual toda esta crate evita ramificar.
+///
+/// ⚠️ `angle >= 2π` devolve o toro inteiro: não há dois semiplanos que exprimam «tudo», e inventar
+/// um corte de `2π − ε` deixaria uma fenda invisível que o artista descobria ao exportar.
+pub fn sd_torus_arc(major: f64, minor: f64, angle: f64) -> Tree {
+    let torus = sd_torus(major, minor);
+    if angle >= std::f64::consts::TAU {
+        return torus;
+    }
+    let h = angle * 0.5;
+    let (s, c) = (h.sin(), h.cos());
+    // Dentro do sector os dois são ≤ 0.
+    let n1 = Tree::x() * Tree::constant(-s) + Tree::y() * Tree::constant(c);
+    let n2 = Tree::x() * Tree::constant(-s) + Tree::y() * Tree::constant(-c);
+    let setor = if angle <= std::f64::consts::PI {
+        n1.max(n2)
+    } else {
+        n1.min(n2)
+    };
+    torus.max(setor)
 }
 
 /// União dura: `min(a, b)`. É aqui que nasce a quina viva.

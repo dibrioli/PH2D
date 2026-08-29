@@ -22,13 +22,15 @@ impl FieldDoc {
                 | Primitive::Cylinder { round, .. }
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
-                | Primitive::Prism { round, .. } => Some(*round),
+                | Primitive::Prism { round, .. }
+                | Primitive::Wedge { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
-                | Primitive::Capsule { .. } => None,
+                | Primitive::Capsule { .. }
+                | Primitive::TorusArc { .. } => None,
             },
             // Uma escultura não tem aresta autorada: o `round` dela é a malha.
             NodeKind::Sampled { .. } => None,
@@ -129,13 +131,15 @@ impl NodeShape {
                 | Primitive::Cylinder { round, .. }
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
-                | Primitive::Prism { round, .. } => Some(*round),
+                | Primitive::Prism { round, .. }
+                | Primitive::Wedge { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
-                | Primitive::Capsule { .. } => None,
+                | Primitive::Capsule { .. }
+                | Primitive::TorusArc { .. } => None,
             },
         }
     }
@@ -200,12 +204,14 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Cylinder { round, .. }
                 | Primitive::Extrude { round, .. }
                 | Primitive::Cone { round, .. }
-                | Primitive::Prism { round, .. } => *round = radius,
+                | Primitive::Prism { round, .. }
+                | Primitive::Wedge { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
-                | Primitive::Capsule { .. } => {}
+                | Primitive::Capsule { .. }
+                | Primitive::TorusArc { .. } => {}
             }
             Ok(())
         }
@@ -234,7 +240,8 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. } => None,
+        | Primitive::Capsule { .. }
+        | Primitive::TorusArc { .. } => None,
         // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
         //
         // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular
@@ -270,12 +277,31 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         } => Some(cone_round_limit(*bottom, *top, *half_height)),
         // ⚠️ **O apótema, não o circunraio**: a parede de um prisma está a `radius·cos(π/n)` do
         // eixo, e usar o circunraio deixaria o filete comer a parede antes de o limite o dizer.
+        // ⚠️ **O apótema do LADO MAIS LARGO**, e a inclinação entra como no cone: o prisma
+        // estreitado tem a parede inclinada, e recuá-la de `round` na perpendicular custa
+        // `round·√(1+m²)`. A conta é a mesma porta do cone, com o apótema no lugar do raio.
         Primitive::Prism {
             sides,
-            radius,
+            bottom,
+            top,
             half_height,
             ..
-        } => Some(half_height.min(radius * apothem_ratio(*sides))),
+        } => {
+            let k = apothem_ratio(*sides);
+            Some(cone_round_limit(bottom * k, top * k, *half_height))
+        }
+        // ⚠️ **A parede inclinada da cunha é a que manda**, e ela recua `round·√(1+m²)` com
+        // `m = hx/hz` — a mesma lei do cone, noutro plano. O `min` com as três meias-extensões
+        // fecha as faces rectas.
+        Primitive::Wedge { half, .. } => {
+            let d = (half[0] * half[0] + half[2] * half[2]).sqrt();
+            let plano = if d > f32::MIN_POSITIVE {
+                half[0] * half[2] / d
+            } else {
+                0.0
+            };
+            Some(half[0].min(half[1]).min(half[2]).min(plano))
+        }
     }
 }
 
@@ -344,10 +370,13 @@ pub fn characteristic_size(p: &Primitive) -> f32 {
         // ⚠️ O apótema, pela razão do [`round_limit`]: é a parede que está mais perto do eixo.
         Primitive::Prism {
             sides,
-            radius,
+            bottom,
+            top,
             half_height,
             ..
-        } => (radius * apothem_ratio(*sides)).min(*half_height),
+        } => (bottom.max(*top) * apothem_ratio(*sides)).min(*half_height),
+        Primitive::Wedge { half, .. } => half[0].min(half[1]).min(half[2]),
+        Primitive::TorusArc { minor, .. } => *minor,
     }
 }
 
@@ -454,9 +483,17 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         // ⚠️ O `radius` de um prisma é o CIRCUNRAIO (a quina), então ele já é a distância máxima no
         // plano — nenhum `cos` entra aqui.
         Primitive::Prism {
-            radius,
+            bottom,
+            top,
             half_height,
             ..
-        } => hyp(*radius, *half_height),
+        } => hyp(bottom.max(*top), *half_height),
+        // A cunha cabe na caixa de que ela é uma metade.
+        Primitive::Wedge { half, .. } => {
+            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
+        }
+        // ⚠️ **Um ARCO cabe no toro inteiro**, e é o bordo honesto: apertá-lo pelo sector exigiria
+        // a caixa de um sector de anel, e um bordo menor **corta a peça** sem dizer nada.
+        Primitive::TorusArc { major, minor, .. } => major + minor,
     }
 }

@@ -90,15 +90,23 @@ pub(crate) fn primitive(p: &Primitive) -> Tree {
         } => ops::sd_capsule(f64::from(radius), f64::from(half_height)),
         Primitive::Prism {
             sides,
-            radius,
+            bottom,
+            top,
             half_height,
             round,
         } => ops::sd_prism(
             sides,
-            f64::from(radius),
+            f64::from(bottom),
+            f64::from(top),
             f64::from(half_height),
             f64::from(round),
         ),
+        Primitive::Wedge { half, round } => ops::sd_wedge(half.map(f64::from), f64::from(round)),
+        Primitive::TorusArc {
+            major,
+            minor,
+            angle,
+        } => ops::sd_torus_arc(f64::from(major), f64::from(minor), f64::from(angle)),
     }
 }
 

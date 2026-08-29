@@ -3,15 +3,23 @@
 use super::{build, item_id, slot_of_pick};
 use crate::field3d_shapes::{Family, Make, SHAPES};
 
-/// Todos os rótulos do modelo, num saco só.
-fn labels(model: &ph2d_editor::widget::command_palette::PaletteModel) -> Vec<String> {
+/// O rótulo do item com este id, se ele estiver no modelo.
+///
+/// ⚠️ **Por ID e não por prefixo de rótulo**, e a diferença mordeu na W102: a primeira versão
+/// perguntava `l.starts_with(rotulo)`, e o rótulo `"Torus"` é **prefixo** de `"Torus Arc"` — o gate
+/// acusou o toro de trazer uma razão que era do arco. *Uma régua de prefixo sobre nomes de produto
+/// parte no dia em que alguém acrescenta a variante.*
+fn label_of(
+    model: &ph2d_editor::widget::command_palette::PaletteModel,
+    id: ph2d_editor::NodeId,
+) -> Option<String> {
     model
         .groups
         .iter()
         .flat_map(|g| g.subs.iter())
         .flat_map(|s| s.items.iter())
+        .find(|i| i.id == id)
         .map(|i| i.label.clone())
-        .collect()
 }
 
 /// ⭐⭐⭐ **TODA forma do catálogo é alcançável pela paleta** — a lei da W34 (*o painel oferece
@@ -87,10 +95,9 @@ fn what_needs_a_selection_says_so_and_only_then() {
     let com = build(true, true);
     for shape in SHAPES {
         let rotulo = ph2d_i18n::tr(shape.key);
-        let bloqueada = labels(&sem)
-            .into_iter()
-            .any(|l| l.starts_with(rotulo) && l.len() > rotulo.len());
-        let livre = labels(&com).into_iter().any(|l| l == rotulo);
+        let id = item_id(shape.key);
+        let bloqueada = label_of(&sem, id).is_some_and(|l| l != rotulo);
+        let livre = label_of(&com, id).is_some_and(|l| l == rotulo);
         assert!(livre, "{} devia estar limpa com tudo disponível", shape.key);
         match shape.make {
             Make::Formula(_) | Make::Sculpt => assert!(

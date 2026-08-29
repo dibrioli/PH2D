@@ -298,9 +298,12 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 span: Span::Positive,
             },
         ],
+        // ⭐⭐ **As duas pontas fazem dele a pirâmide** (W102) — a mesma lista do
+        // [`Primitive::Cone`], com a contagem de lados à frente.
         Primitive::Prism {
             sides,
-            radius,
+            bottom,
+            top,
             half_height,
             round,
         } => vec![
@@ -313,9 +316,14 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 },
             },
             Dim {
-                key: "field.dim.radius",
-                value: *radius,
+                key: "field.dim.radius_bottom",
+                value: *bottom,
                 span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.radius_top",
+                value: *top,
+                span: Span::FromZero,
             },
             Dim {
                 key: "field.dim.height",
@@ -323,6 +331,47 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 span: Span::Positive,
             },
             round_dim(*round),
+        ],
+        Primitive::Wedge { half, round } => vec![
+            Dim {
+                key: "field.dim.width",
+                value: half[0] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.depth",
+                value: half[1] * 2.0,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.height",
+                value: half[2] * 2.0,
+                span: Span::Positive,
+            },
+            round_dim(*round),
+        ],
+        Primitive::TorusArc {
+            major,
+            minor,
+            angle,
+        } => vec![
+            Dim {
+                key: "field.dim.radius",
+                value: *major,
+                span: Span::Positive,
+            },
+            Dim {
+                key: "field.dim.thickness",
+                value: *minor,
+                span: Span::Positive,
+            },
+            // ⚠️ **Uma PAREDE do documento, e não do gesto**: acima de uma volta o sector deixa de
+            // ser exprimível, e o número deixaria de querer dizer alguma coisa.
+            Dim {
+                key: "field.dim.angle",
+                value: *angle,
+                span: Span::Wall(std::f32::consts::TAU),
+            },
         ],
     }
 }
@@ -368,12 +417,19 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         (Primitive::Cone { bottom, .. }, 0) => *bottom = value,
         // ⚠️ **O único destino de um zero neste arquivo** — ver a guarda acima.
         (Primitive::Cone { top, .. }, 1) => *top = value,
-        (Primitive::Cone { half_height, .. }, 2)
-        | (Primitive::Capsule { half_height, .. }, 1)
-        | (Primitive::Prism { half_height, .. }, 2) => *half_height = half,
-        (Primitive::Capsule { radius, .. }, 0) | (Primitive::Prism { radius, .. }, 1) => {
+        (Primitive::Cone { half_height, .. }, 2) | (Primitive::Capsule { half_height, .. }, 1) => {
+            *half_height = half
+        }
+        (Primitive::Capsule { radius, .. }, 0) | (Primitive::TorusArc { major: radius, .. }, 0) => {
             *radius = value;
         }
+        (Primitive::Prism { bottom, .. }, 1) => *bottom = value,
+        (Primitive::Prism { top, .. }, 2) => *top = value,
+        (Primitive::Prism { half_height, .. }, 3) => *half_height = half,
+        (Primitive::Wedge { half: h, .. }, i @ 0..=2) => h[i] = half,
+        (Primitive::TorusArc { minor, .. }, 1) => *minor = value,
+        // ⚠️ **COAGE no teto**, como a contagem de lados: acima de uma volta o sector não existe.
+        (Primitive::TorusArc { angle, .. }, 2) => *angle = value.min(std::f32::consts::TAU),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -389,7 +445,8 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Cylinder { .. }
             | Primitive::Extrude { .. }
             | Primitive::Cone { .. }
-            | Primitive::Prism { .. }),
+            | Primitive::Prism { .. }
+            | Primitive::Wedge { .. }),
             i,
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);
@@ -425,11 +482,13 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Cylinder { round, .. }
         | Primitive::Extrude { round, .. }
         | Primitive::Cone { round, .. }
-        | Primitive::Prism { round, .. } => *round = value,
+        | Primitive::Prism { round, .. }
+        | Primitive::Wedge { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. } => {}
+        | Primitive::Capsule { .. }
+        | Primitive::TorusArc { .. } => {}
     }
     Ok(())
 }
@@ -453,7 +512,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Cylinder { round, .. }
         | Primitive::Extrude { round, .. }
         | Primitive::Cone { round, .. }
-        | Primitive::Prism { round, .. } => {
+        | Primitive::Prism { round, .. }
+        | Primitive::Wedge { round, .. } => {
             if *round > ceiling {
                 *round = ceiling.max(0.0);
                 return true;
@@ -463,7 +523,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
-        | Primitive::Capsule { .. } => false,
+        | Primitive::Capsule { .. }
+        | Primitive::TorusArc { .. } => false,
     }
 }
 
@@ -544,15 +605,33 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
         }
         Primitive::Prism {
             sides: _,
-            radius,
+            bottom,
+            top,
             half_height,
             round,
         } => {
             // ⚠️ **A contagem NÃO escala** — ela não é um comprimento. Multiplicá-la faria um
             // hexágono virar um dodecágono ao aumentar a peça, que é mudar a forma e não o tamanho.
-            *radius *= factor;
+            *bottom *= factor;
+            *top *= factor;
             *half_height *= factor;
             *round *= factor;
+        }
+        Primitive::Wedge { half, round } => {
+            for h in half.iter_mut() {
+                *h *= factor;
+            }
+            *round *= factor;
+        }
+        Primitive::TorusArc {
+            major,
+            minor,
+            angle: _,
+        } => {
+            // ⚠️ **O ÂNGULO não escala** — ele é adimensional. Multiplicá-lo faria o arco fechar-se
+            // ao aumentar a peça, que é mudar a forma e não o tamanho (a mesma lei da contagem).
+            *major *= factor;
+            *minor *= factor;
         }
     }
     true

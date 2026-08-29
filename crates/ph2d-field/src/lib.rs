@@ -82,8 +82,13 @@ use serde::{Deserialize, Serialize};
 /// existente se move e um documento v6 continua a ler-se certo — o degrau sobe na mesma, pela lei
 /// do módulo: *um número que se lê errado em silêncio é pior do que um load que recusa em voz alta*.
 ///
+/// v8: o [`Primitive::Prism`] passou a ter **duas pontas** (`bottom`/`top`, o que o torna também a
+/// pirâmide e o tronco dela), e entraram a [`Primitive::Wedge`] e o [`Primitive::TorusArc`]. ⚠️ O
+/// prisma **mudou de forma**, não só a lista cresceu: um documento v7 leria o `half_height` dele
+/// como `top`, e a peça mudaria em silêncio.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 7;
+pub const FIELD_DOC_VERSION: u32 = 8;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -163,19 +168,43 @@ pub enum Primitive {
     /// arredondadas ao máximo possível, e um segundo raio não teria onde agir. É a mesma razão da
     /// [`Primitive::Sphere`].
     Capsule { radius: f32, half_height: f32 },
-    /// ⭐⭐ **Prisma regular de `sides` lados no eixo Z**, com `radius` sendo o **circunraio** (a
-    /// distância do eixo a uma quina), e o aro arredondado em `round`.
+    /// ⭐⭐ **Prisma regular de `sides` lados no eixo Z, possivelmente ESTREITADO** — `bottom` é o
+    /// **circunraio** em `−half_height` e `top` o de `+half_height`, com o aro arredondado em
+    /// `round`.
     ///
     /// ⚠️ **Circunraio e não apótema**, e a escolha tem consequência visível: com o circunraio, um
-    /// prisma de `n` lados **inscreve-se** no cilindro do mesmo `radius`, então subir os lados
-    /// converge para ele por dentro. Com o apótema convergiria por fora, e trocar um cilindro por
-    /// um prisma faria a peça **crescer**.
+    /// prisma de `n` lados **inscreve-se** no cilindro do mesmo raio, então subir os lados converge
+    /// para ele por dentro. Com o apótema convergiria por fora, e trocar um cilindro por um prisma
+    /// faria a peça **crescer**.
+    ///
+    /// ⭐⭐⭐ **É o irmão POLIGONAL do [`Primitive::Cone`], e a simetria é a feature** (W102): com
+    /// `top == bottom` é o prisma de sempre, com `top == 0` é uma **pirâmide**, e no meio é um
+    /// **tronco de pirâmide**. Uma primitiva à parte para a pirâmide daria uma segunda fórmula para
+    /// a mesma superfície — e a segunda é a que envelhece.
     Prism {
         sides: u32,
-        radius: f32,
+        bottom: f32,
+        top: f32,
         half_height: f32,
         round: f32,
     },
+    /// ⭐⭐ **Cunha: uma caixa cortada por um plano inclinado** — cheia em `−x`, a zero em `+x`.
+    ///
+    /// ⚠️ **Não é composição, e o motivo é a ausência de um PLANO**: cortar uma caixa com outra
+    /// caixa gigante rodada dá a forma certa e deixa na peça um objecto que não é a peça, com um
+    /// tamanho que não quer dizer nada. *Uma equivalência que exige uma terceira entidade não é uma
+    /// equivalência.*
+    ///
+    /// ⭐ O plano do corte passa pela **origem** — ele liga `(−hx, +hz)` a `(+hx, −hz)`, e o ponto
+    /// médio desses dois é o centro do nó.
+    Wedge { half: [f32; 3], round: f32 },
+    /// ⭐⭐ **Arco de toro no plano XY** — o toro cortado a `angle` radianos, centrado no `+X`.
+    ///
+    /// ⚠️ `angle >= 2π` é o toro inteiro, e o corte **não é construído** (não há dois semiplanos que
+    /// exprimam «tudo»). Abaixo disso o sector é a interseção de dois semiplanos até `π` e a
+    /// **união** deles acima — uma escolha feita ao MONTAR a árvore, em Rust, e não com uma
+    /// ramificação dentro do campo (ver `ops::sd_torus_arc`).
+    TorusArc { major: f32, minor: f32, angle: f32 },
 }
 
 /// O menor número de lados que um prisma admite — abaixo disto não há polígono.
@@ -248,11 +277,13 @@ pub enum PrimitiveKind {
     Cone,
     Capsule,
     Prism,
+    Wedge,
+    TorusArc,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 9] = [
+    pub const ALL: [PrimitiveKind; 11] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -262,6 +293,8 @@ impl PrimitiveKind {
         PrimitiveKind::Cone,
         PrimitiveKind::Capsule,
         PrimitiveKind::Prism,
+        PrimitiveKind::Wedge,
+        PrimitiveKind::TorusArc,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -277,6 +310,8 @@ impl PrimitiveKind {
             PrimitiveKind::Cone => "cone",
             PrimitiveKind::Capsule => "capsule",
             PrimitiveKind::Prism => "prism",
+            PrimitiveKind::Wedge => "wedge",
+            PrimitiveKind::TorusArc => "torus_arc",
         }
     }
 }
@@ -296,6 +331,8 @@ impl Primitive {
             Primitive::Cone { .. } => PrimitiveKind::Cone,
             Primitive::Capsule { .. } => PrimitiveKind::Capsule,
             Primitive::Prism { .. } => PrimitiveKind::Prism,
+            Primitive::Wedge { .. } => PrimitiveKind::Wedge,
+            Primitive::TorusArc { .. } => PrimitiveKind::TorusArc,
         }
     }
 }
@@ -730,7 +767,8 @@ fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
         }
         Primitive::Prism {
             sides,
-            radius,
+            bottom,
+            top,
             half_height,
             round,
         } => {
@@ -743,9 +781,40 @@ fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldError> {
                     what: "sides",
                 });
             }
-            positive(radius, "radius")?;
+            positive(bottom, "bottom")?;
+            // ⚠️ Zero é a **pirâmide** — a mesma excepção do [`Primitive::Cone`], e pela mesma razão.
+            if !top.is_finite() || top < 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "top",
+                });
+            }
             positive(half_height, "half_height")?;
             round_fits(round, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::Wedge { half, round } => {
+            for h in half {
+                positive(h, "half")?;
+            }
+            round_fits(round, round_limit(p).unwrap_or(0.0))
+        }
+        Primitive::TorusArc {
+            major,
+            minor,
+            angle,
+        } => {
+            positive(major, "major")?;
+            positive(minor, "minor")?;
+            // ⚠️ **O ângulo é o único número deste arquivo cujo teto importa tanto quanto o piso**:
+            // acima de `2π` o sector deixa de ser exprimível por semiplanos, e a porta coage em vez
+            // de recusar (o slider pára lá, e só um documento estragado traz mais).
+            if !angle.is_finite() || angle <= 0.0 {
+                return Err(FieldError::NonPositive {
+                    node: idx,
+                    what: "angle",
+                });
+            }
+            Ok(())
         }
     }
 }

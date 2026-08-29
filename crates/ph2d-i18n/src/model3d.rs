@@ -50,6 +50,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // painel são os lados — pôr "Hexagonal Prism" aqui prometeria uma forma fixa, e o artista
         // procuraria "Octagonal Prism" numa lista que nunca o terá.
         "panel.model3d.add.prism" => "Prism",
+        // ⭐⭐ O LOTE DA W102. ⚠️ A pirâmide e o tronco são o MESMO prisma com o topo estreitado —
+        // o rótulo diz a forma que nasce, não o tipo interno.
+        "panel.model3d.add.pyramid" => "Pyramid",
+        "panel.model3d.add.pyramid_truncated" => "Truncated Pyramid",
+        "panel.model3d.add.wedge" => "Wedge",
+        "panel.model3d.add.torus_arc" => "Torus Arc",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -156,6 +162,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // total, que o número não é.
         "field.dim.length" => "Length",
         "field.dim.sides" => "Sides",
+        // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o
+        // número cru, e o rótulo não promete unidade nenhuma.
+        "field.dim.angle" => "Sweep",
         // ⚠️ "Fillet" e não "Round": é a palavra que um modelador usa, e é a promessa do módulo
         // dita pelo nome dela.
         // ⚠️ **"Fillet" é o arredondamento da forma DELA PRÓPRIA** — as 12 arestas de uma caixa, o

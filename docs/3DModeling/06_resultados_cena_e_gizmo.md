@@ -9457,3 +9457,127 @@ que esta linha paga essa frase em dois dias (a outra: o teclado curado e o ponte
 escrito depois, e por isso a prova dele **é** a mutação.
 
 **Smoke:** a mesma peça do report — 4 formas num grupo, uma junta em cada, e **rodar**.
+
+---
+
+## §100 — W102: ⭐⭐⭐ PIRÂMIDE · CUNHA · ARCO DE TORO — e a auditoria que encolheu a fila de 47 para 7 (29/08)
+
+### §100.1 — ⛔ Primeiro a medição, e ela mudou o que se ia construir
+
+O §5.0 manda medir se a composição já exprime o item **antes** de o construir. Com o lote da W101 no
+lugar, a auditoria ([doc 08 §4](08_formas_por_formula.md)) leu:
+
+| | |
+|---|---|
+| **Diamond · Hexagon · Polygon(N)** | são o **prisma de N lados** — já se fazem |
+| **Cross · Junction · Moon · Cloud · Drop · setas · balões · fluxograma** | são **composições** de caixa/cilindro/esfera/prisma com as booleanas que já existem |
+| ⭐⭐ **Gear** | *um dente + o modificador `Radial`* — e o `Radial` é do módulo desde a W12 |
+| **IsoCube · IsoCone · IsoPyramid** | são **desenhos** de sólidos; em 3D usa-se o sólido |
+
+⚠️ **A ENGRENAGEM saiu da fila por isto**, e ela era o item que a §3 daquele doc chamava de *maior
+alavanca*. A alavanca já estava montada. *O que se perde ao não reconferir não é tempo, é construir o
+que já existe.*
+
+⇒ **A fila real é de ~7 itens, não de 47.**
+
+### §100.2 — ⭐⭐⭐ A PIRÂMIDE não é uma primitiva nova: é o prisma com o topo estreitado
+
+`Primitive::Prism` passa a ter **duas pontas** (`bottom`/`top`), exactamente como o `Cone`. ⇒
+
+| `top` | o que sai |
+|---|---|
+| `== bottom` | o prisma de sempre |
+| `== 0` | uma **pirâmide** |
+| entre os dois | um **tronco de pirâmide** |
+
+⭐ **É a mesma simetria do par `Cone`/`Truncated Cone`**, e a fórmula é **uma**: a parede de cada
+lado é o mesmo [`tapered_wall`] do cone, medido numa direcção fixa em vez do raio. Uma primitiva à
+parte para a pirâmide daria uma segunda fórmula para a mesma superfície, e a segunda é a que
+envelhece.
+
+⚠️ **O recuo do filete leva o mesmo `√(1+m²)`**, com o **apótema** no lugar do raio — a porta é a
+mesma (`cone_round_limit`), e uma cópia da conta seria a lei escrita em dois sítios.
+
+### §100.3 — A cunha, e por que ela não é composição
+
+Uma caixa cortada por um plano inclinado. ⛔ Cortar com **outra caixa gigante rodada** dá a forma
+certa e deixa na peça um objecto que não é a peça, com um tamanho que não quer dizer nada. *Uma
+equivalência que exige uma terceira entidade não é uma equivalência.*
+
+⭐ O plano do corte passa pela **origem** — ele liga `(−hx, +hz)` a `(+hx, −hz)`, e o ponto médio
+desses dois é o centro do nó —, então ele é `(hz·x + hx·z)/√(hx²+hz²)` sem termo constante.
+
+⚠️ **O recuo do filete aqui é `− round` e não `− round·√(1+m²)`**: a normal já está normalizada. O
+factor do cone existe porque ali a coordenada radial **não** estava.
+
+### §100.4 — ⭐⭐ O arco de toro, e a ramificação que fica em RUST
+
+Um sector angular precisa de dois semiplanos, e a forma de os juntar **muda com o ângulo**:
+
+| ângulo | sector |
+|---|---|
+| `≤ π` | **interseção** dos dois semiplanos |
+| `> π` | **união** deles (o complemento de um sector estreito) |
+| `≥ 2π` | **sem corte** — devolve o toro inteiro |
+
+⭐⭐ **A escolha é feita ao MONTAR a árvore, em Rust** — não com uma `compare` dentro do campo. Uma
+ramificação da `fidget` produz uma função **descontínua**, e o gradiente por diferenciação automática
+deixaria de existir na fronteira dela: é a razão pela qual toda esta crate evita ramificar (a mesma
+do `LENGTH_FLOOR`).
+
+⚠️ **O caso da volta inteira tem gate próprio** (`a_full_sweep_is_the_whole_torus`): um `2π` que
+caísse no ramo do sector deixaria uma **fenda invisível** que o artista só descobria ao exportar.
+
+### §100.5 — ⚠️ Uma régua minha partiu, e o gate apanhou-a
+
+O `what_needs_a_selection_says_so_and_only_then` comparava rótulos por **prefixo**
+(`l.starts_with(rotulo)`), e o rótulo `"Torus"` é prefixo de `"Torus Arc"` — o gate acusou o toro de
+trazer uma razão que era do arco. ⇒ a régua passou a ser o **id** do item, que é exacto.
+
+*Uma régua de prefixo sobre nomes de produto parte no dia em que alguém acrescenta a variante* — e
+foi o primeiro dia.
+
+### §100.6 — As provas de mutação, e as DUAS que a primeira ronda não matou
+
+| mutação | 1.ª ronda | 2.ª |
+|---|---|---|
+| o prisma ignora o estreitamento | **MORTA** | — |
+| o plano da cunha não passa pela origem | **MORTA** | — |
+| o sector usa sempre a interseção | **MORTA** | — |
+| a volta inteira cai no sector | **MORTA** | — |
+| **a cunha corta pelo eixo errado** | ⛔ sobreviveu | **MORTA** |
+| **o recuo do prisma esquece a inclinação** | ⛔ sobreviveu | **MORTA** |
+| o limite do filete do prisma usa o circunraio | ⛔ sobreviveu | **e com razão** |
+
+⚠️ **A da cunha é instrutiva:** o gate afirmava *«cheio de um lado, vazio do outro»* e **nenhuma das
+quatro afirmações media um ponto cuja resposta dependesse da INCLINAÇÃO** — trocar `(hz/d, hx/d)` por
+`(hx/d, hz/d)` dá outro plano que separa os mesmos dois lados. A cura é afirmar que os **dois cantos
+do corte estão na superfície**, que é o que fixa a inclinação.
+
+⛔⛔ **E a do prisma é a MESMA que o cone já tinha tido**: os meus gates usavam `round = 0`, e o recuo
+perpendicular da parede (`round·√(1+m²)`) ficava sem gate nenhum. *Escrevi a memória sobre isto na
+W101 e repeti-o na W102.*
+
+⚠️ **E o mecanismo pelo qual eu não vi:** o gate com filete que eu julgava ter escrito **nunca
+entrou**. O script de edição abortou num `assert` a meio e **perdeu as três edições em memória** —
+só a da cunha foi reaplicada depois, à mão. É a armadilha já registada
+([memória](../../project-memory/feedback_python_replace_silent_noop_after_fmt.md)), e a cura é a
+ferramenta `Edit`, que falha alto.
+
+### §100.7 — ⭐ A que sobrevive é a mesma NÃO-AFIRMAÇÃO do cone, e foi MEDIDA
+
+O `round_limit` do prisma leva o mesmo `√(1+m²)`. Sondado com o filete a **1,5× o limite**:
+
+| round | parede | meia-altura | `‖∇f‖` |
+|---|---|---|---|
+| `0,2164` (o limite) | `0,2227` | `0,3999` | `1,0000` |
+| `0,3341` (**1,5×**) | `0,2227` | `0,3999` | `1,0000` |
+
+(autorados: parede `0,2227`, meia-altura `0,4000`.) ⇒ o `max` + `offset` **autocorrige**, como no
+cone. O número fica como limite de **produto** (é onde o filete deixa de ter parede para comer), e
+⛔ nenhum gate o pode defender como correção.
+
+⚠️ **Medido, e não deduzido por analogia com o cone** — o prisma tem `n` paredes e não uma, e *«mesma
+construção ⇒ mesma conclusão»* é raciocínio, não medição.
+
+**Smoke:** cena **`=10`** — pirâmide · tronco de pirâmide · cunha · arco de meia volta, lado a lado.

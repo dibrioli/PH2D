@@ -51,6 +51,193 @@ use kinds::{
 /// *"quanto isto ocupou?"* é o pintor, uma vez; um segundo cálculo de altura ao lado dele
 /// divergiria no dia em que uma linha composta mudar de tamanho.
 #[allow(clippy::too_many_arguments)]
+/// **QUE WIDGET CADA ESPÉCIE DE ROW PINTA** — o `match` que o [`paint_rows`] delega.
+///
+/// ⚠️ Separado pelo teto de FUNÇÃO (HR-18, 200 LOC em `ph2d-panel-*`), no corte que a
+/// pergunta desenha: lá fica *a travessia da lista* (a dobra que atravessa iterações, o
+/// recorte, o avanço do `y`), aqui *o que uma row é*. ⚠️ E o `y` entra e SAI: uma row de
+/// caixa gasta uma altura, um editor de curva gasta a sua — quem soma é o chamador.
+#[allow(clippy::too_many_arguments)]
+fn paint_one_row(
+    row: &ParamRow,
+    i: usize,
+    inner_x: f32,
+    inner_w: f32,
+    chip_w: f32,
+    y: f32,
+    row_gap: f32,
+    label_font: f32,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    curve_widgets: &mut CurveWidgets,
+    gradient_widgets: &mut ColourRowWidgets,
+) -> f32 {
+    let mut y = y;
+    match row {
+        // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
+        // just the label and the live value. Nothing is registered, so nothing can be
+        // dragged; the artist unplugs the wire to take the knob back.
+        ParamRow::Scalar(row) if row.driven_by.is_some() => {
+            paint_driven_row(
+                row,
+                inner_x,
+                inner_w,
+                y,
+                label_font,
+                scene,
+                text_system,
+                theme,
+            );
+            y += ROW_H_PX + row_gap;
+        }
+        ParamRow::Scalar(row) => {
+            y = paint_scalar_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                chip_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Color(row) => {
+            y = paint_color_row(
+                row,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                label_font,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Toggle(row) => {
+            y = paint_toggle_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Enum(row) => {
+            y = paint_enum_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
+            // As rows-CAIXA: uma altura de row, um `Rect` explícito.
+            let used = number::paint_box_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            )
+            .expect("o braço e a porta casam por construção");
+            y += used + row_gap;
+        }
+        ParamRow::Channels(row) => {
+            y = paint_channels_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::File(row) => {
+            y = kinds::paint_file_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Source(row) => {
+            y = paint_source_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                row_gap,
+                y,
+                store,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+            );
+        }
+        ParamRow::Curve(_) | ParamRow::Palette(_) | ParamRow::Gradient(_) => {
+            // Os editores de várias linhas — cada um devolve a própria altura.
+            let used = editors::paint_editor_row(
+                row,
+                i,
+                inner_x,
+                inner_w,
+                y,
+                label_font,
+                hit_index,
+                scene,
+                text_system,
+                theme,
+                curve_widgets,
+                gradient_widgets,
+            )
+            .expect("o braço e a porta casam por construção");
+            y += used + row_gap;
+        }
+    }
+    y
+}
+
 pub(crate) fn paint_rows(
     rows: &[ParamRow],
     inner_x: f32,
@@ -115,165 +302,23 @@ pub(crate) fn paint_rows(
                 theme,
             );
         }
-        match row {
-            // A DRIVEN param (doc 58): the wire decides the number, so there is no widget —
-            // just the label and the live value. Nothing is registered, so nothing can be
-            // dragged; the artist unplugs the wire to take the knob back.
-            ParamRow::Scalar(row) if row.driven_by.is_some() => {
-                paint_driven_row(
-                    row,
-                    inner_x,
-                    inner_w,
-                    y,
-                    label_font,
-                    scene,
-                    text_system,
-                    theme,
-                );
-                y += ROW_H_PX + row_gap;
-            }
-            ParamRow::Scalar(row) => {
-                y = paint_scalar_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    chip_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Color(row) => {
-                y = paint_color_row(
-                    row,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    label_font,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Toggle(row) => {
-                y = paint_toggle_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Enum(row) => {
-                y = paint_enum_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Angle(_) | ParamRow::Seed(_) | ParamRow::Text(_) => {
-                // As rows-CAIXA: uma altura de row, um `Rect` explícito.
-                let used = number::paint_box_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                )
-                .expect("o braço e a porta casam por construção");
-                y += used + row_gap;
-            }
-            ParamRow::Channels(row) => {
-                y = paint_channels_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::File(row) => {
-                y = kinds::paint_file_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Source(row) => {
-                y = paint_source_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    row_gap,
-                    y,
-                    store,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                );
-            }
-            ParamRow::Curve(_) | ParamRow::Palette(_) | ParamRow::Gradient(_) => {
-                // Os editores de várias linhas — cada um devolve a própria altura.
-                let used = editors::paint_editor_row(
-                    row,
-                    i,
-                    inner_x,
-                    inner_w,
-                    y,
-                    label_font,
-                    hit_index,
-                    scene,
-                    text_system,
-                    theme,
-                    &mut curve_widgets,
-                    &mut gradient_widgets,
-                )
-                .expect("o braço e a porta casam por construção");
-                y += used + row_gap;
-            }
-        }
+        y = paint_one_row(
+            row,
+            i,
+            inner_x,
+            inner_w,
+            chip_w,
+            y,
+            row_gap,
+            label_font,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+            &mut curve_widgets,
+            &mut gradient_widgets,
+        );
     }
     // A última seção não tem cabeçalho seguinte que a feche — o fim da lista é a fronteira dela.
     if let Some(f) = fold {

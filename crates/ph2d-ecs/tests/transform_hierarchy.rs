@@ -18,7 +18,7 @@ fn extract_pairs(
     state: &mut TransformPropagationState,
     worklist: &mut WorklistBuf,
 ) -> Vec<(bevy_ecs::entity::Entity, GlobalTransform)> {
-    present.world_mut().clear_entities();
+    present.clear();
     ph2d_ecs::extract!(*sim => *present, |sim_w, present_w| {
         propagate_transforms_into_present(sim_w, state, present_w, worklist);
     });
@@ -217,7 +217,7 @@ fn entities_without_transform_are_skipped() {
 
 #[test]
 fn despawn_root_cascades_via_child_of() {
-    // bevy_ecs 0.18 `ChildOf` relationship makes despawning the root
+    // bevy_ecs 0.19 `ChildOf` relationship makes despawning the root
     // automatically despawn all descendants. propagate_transforms
     // should then emit zero pairs.
     let mut sim = SimWorld::new();

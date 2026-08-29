@@ -50,7 +50,7 @@ impl SiblingOrder {
 /// A chave de ordenação de um filho: o número explícito, ou o fim da fila.
 ///
 /// ⚠️ O desempate é o `Entity::index()` e **não** o `to_bits()` — medido nesta wave, o
-/// `to_bits` do bevy 0.18 inverte a ordem de criação (ver o cabeçalho de
+/// `to_bits` do bevy inverte a ordem de criação (ver o cabeçalho de
 /// [`crate::stable_id`]). Ele só morde entre filhos que ainda não têm número, e só até a
 /// varredura correr.
 #[must_use]

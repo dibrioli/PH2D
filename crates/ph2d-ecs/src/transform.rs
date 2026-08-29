@@ -25,7 +25,7 @@
 //! - Roots are sorted by `Entity::to_bits()` before the DFS seeds.
 //! - Children are read via [`bevy_ecs::hierarchy::Children`] and
 //!   pushed in reverse so the DFS visits them in `Children`-declared
-//!   order (which `bevy_ecs` 0.18 preserves as insertion order).
+//!   order (which `bevy_ecs` 0.19 preserves as insertion order).
 //! - No floating-point reordering inside `Transform::compose`.
 //! - Final hash of `GlobalTransform.matrix` over the present world is
 //!   bit-identical across Linux/Mac/Windows — verified in
@@ -500,7 +500,7 @@ impl TransformPropagationState {
 /// instance / audio source / debug overlay).
 ///
 /// `present_w` is **not** cleared by this function — callers decide.
-/// (Most callers do `present_w.clear_entities()` before calling, but
+/// (Most callers call [`crate::PresentWorld::clear`] before calling, but
 /// the editor extract phase may want to preserve some entities.)
 ///
 /// **Determinism guarantees** (HR-5):
@@ -508,7 +508,7 @@ impl TransformPropagationState {
 ///   the DFS seeds them, then popped LIFO so the smallest id is
 ///   processed first.
 /// - Children are read in the order `bevy_ecs::hierarchy::Children`
-///   returns them (insertion order in 0.18) and pushed in **reverse**
+///   returns them (insertion order in 0.19) and pushed in **reverse**
 ///   onto the worklist so the DFS visits them in original order.
 /// - `Transform::compose` is deterministic (no FMA, no SIMD reordering).
 ///

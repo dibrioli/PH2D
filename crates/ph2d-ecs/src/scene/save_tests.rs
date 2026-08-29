@@ -33,8 +33,15 @@ fn the_snapshot_survives_a_respawn_byte_for_byte() {
         .expect("captura");
 
     // O restore do undo: despawna tudo e re-spawna — `Entity` novos, `to_bits` novos.
+    // ⚠️ `Without<IsResource>`: no bevy_ecs 0.19 os recursos são entidades, e despawná-las
+    // **entra em pânico** (`Entity despawned: 0v0 is invalid`). O undo de verdade
+    // (`shells/desktop/src/undo.rs`) nunca teve este defeito — ele filtra por `With<Transform>`,
+    // que é positivo e por isso nunca as alcançou. Este teste imitava o undo pela FORMA e não
+    // pela GARANTIA, e foi só aqui que a diferença apareceu.
     let editable: Vec<Entity> = {
-        let mut q = sim.world_mut().query::<Entity>();
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<Entity, bevy_ecs::query::Without<bevy_ecs::resource::IsResource>>();
         q.iter(sim.world()).collect()
     };
     for e in editable {

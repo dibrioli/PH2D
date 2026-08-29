@@ -230,7 +230,7 @@ pub enum EditorAction {
     HierDuplicate { row: ph2d_a11y::NodeId },
 
     /// Despawn the entity backing the hierarchy row. Payload: the
-    /// row's `NodeId`. Cascades through bevy_ecs 0.18's `ChildOf`
+    /// row's `NodeId`. Cascades through bevy_ecs 0.19's `ChildOf`
     /// relation, taking descendants with it. Also clears
     /// `gizmo_selection` if it pointed at the deleted entity.
     /// Raised by the row's right-click → Delete menu entry.

@@ -142,10 +142,19 @@ pub fn master_root_of(world: &World, entity: crate::Entity) -> Option<crate::Ent
 }
 
 /// ⚠️ Só para gates: quantas entidades a ponte **veria** hoje — a conta que o filtro muda.
+///
+/// ⚠️ **`Without<IsResource>` é o que a mantém a descrever a PONTE.** No `bevy_ecs` 0.19 um
+/// `Without<X>` de um componente nosso **não** exclui as entidades-recurso (elas não têm `X`),
+/// então esta régua passaria a contar recursos como se fossem peças — medido: **4 onde há 1**.
+/// A ponte da física não as vê porque **toda** consulta dela exige um componente positivo
+/// (`&RigidBody`, `&Collider`, …); uma régua que se diz espelho dela tem de excluí-las à mão.
 #[must_use]
 #[doc(hidden)]
 pub fn count_simulatable(world: &mut World) -> usize {
-    let mut q = world.query_filtered::<crate::Entity, Without<MasterPiece>>();
+    let mut q = world.query_filtered::<crate::Entity, (
+        Without<MasterPiece>,
+        Without<bevy_ecs::resource::IsResource>,
+    )>();
     q.iter(world).count()
 }
 

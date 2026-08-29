@@ -221,7 +221,7 @@ impl std::fmt::Display for ApplyError {
 impl std::error::Error for ApplyError {}
 
 fn entity_from_bits(bits: u64) -> Entity {
-    // bevy_ecs 0.18: `Entity::from_bits(u64) -> Entity` (panic-free).
+    // bevy_ecs 0.19: `Entity::from_bits(u64) -> Entity` (panic-free).
     Entity::from_bits(bits)
 }
 

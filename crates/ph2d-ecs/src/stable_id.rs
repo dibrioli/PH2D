@@ -44,11 +44,11 @@
 //!   da sequência de gestos, que é a premissa sob a qual o `world_to_snapshot` promete
 //!   *"byte output is invariant given the same spawn sequence"*.
 //!
-//! # ⚠️ MEDIDO nesta wave: `to_bits()` NÃO é a ordem de criação no bevy 0.18
+//! # ⚠️ MEDIDO nesta wave: `to_bits()` NÃO é a ordem de criação no bevy (0.18 **e** 0.19)
 //!
 //! A 1.ª versão desta varredura copiou o `sort_unstable_by_key(|e| e.to_bits())` do
 //! [`crate::assign_missing_root_order`] a acreditar que ele congelava a ordem de SPAWN. Três
-//! entidades criadas em sequência saíram com os ids **`3, 2, 1`** — o `to_bits` do 0.18
+//! entidades criadas em sequência saíram com os ids **`3, 2, 1`** — o `to_bits` do bevy
 //! **inverte** a ordem de criação (a codificação guarda o índice de forma a caber o nicho de
 //! `Option<Entity>`).
 //!
@@ -158,7 +158,7 @@ impl StableIdCounter {
 ///
 /// Gémea de [`crate::assign_missing_root_order`], com a mesma razão (ver o cabeçalho do
 /// módulo) e **uma chave diferente**: as sem-id recebem números na ordem de
-/// [`Entity::index`], que é a ordem de SPAWN — ⚠️ e **não** a de `to_bits()`, que o bevy 0.18
+/// [`Entity::index`], que é a ordem de SPAWN — ⚠️ e **não** a de `to_bits()`, que o bevy
 /// entrega invertida (medido; há gate). É a mesma premissa de determinismo que o
 /// `world_to_snapshot` já assume: *"byte output is invariant given the same spawn sequence"*.
 ///
@@ -206,7 +206,7 @@ pub fn assign_missing_stable_ids(world: &mut World) -> bool {
     let changed = !missing.is_empty();
     // A ordem de SPAWN — congelá-la é o que faz a atribuição ser função do gesto, e não da
     // ordem em que o archetype por acaso lista as entidades.
-    // ⚠️ `index()`, **não** `to_bits()`: medido nesta wave, o `to_bits` do bevy 0.18 sai
+    // ⚠️ `index()`, **não** `to_bits()`: medido nesta wave, o `to_bits` do bevy sai
     // INVERTIDO em relação à criação (ver o cabeçalho do módulo).
     missing.sort_unstable_by_key(|e| e.index());
     for e in missing {

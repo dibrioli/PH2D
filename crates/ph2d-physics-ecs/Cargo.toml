@@ -20,11 +20,11 @@ path = "src/bin/physics_ecs_c9/main.rs"
 [dependencies]
 # The ECS this bridge reads components from and writes Transform back to.
 ph2d-ecs = { path = "../ph2d-ecs" }
-# Direct bevy_ecs (same 0.18 as ph2d-ecs) to name + CACHE a `QueryState`
+# Direct bevy_ecs (same 0.19 as ph2d-ecs) to name + CACHE a `QueryState`
 # in the bridge — building the query fresh every frame allocates; the
 # cached state is the zero-alloc idiom (mirrors `TransformPropagationState`
 # in ph2d-ecs). Not a determinism-risk dep.
-bevy_ecs = "0.18"
+bevy_ecs = "0.19"
 # The rapier2d wrapper — the ONLY crate that touches rapier + owns the
 # `enhanced-determinism` feature pin. This bridge stays rapier-free
 # (holds only the re-exported handle types), so determinism is guarded

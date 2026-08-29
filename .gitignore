@@ -108,3 +108,10 @@ scripts/prompt-deck-sync.py
 # Obsidian per-machine workspace state for the docs/3D vault (the notes are versioned, the pane layout is not).
 docs/3D/.obsidian/
 __pycache__/
+
+# Despejos de diagnóstico que testes `#[ignore]` escrevem no diretório CORRENTE quando ninguém
+# lhes dá um destino. ⚠️ Medido 2026-08-29: uma corrida de `cargo nextest --run-ignored` deixou
+# `field-com-aa.ppm` e `field-sem-aa.ppm` dentro de `crates/ph2d-field-render/` — o
+# `dump_frame` usa `PH2D_FIELD_DUMP` e cai em `.` sem ela. Um artefacto no meio do fonte faz o
+# `git status` mentir, que é precisamente o que o §0.4 do CLAUDE.md proíbe `git add -A` por causar.
+*.ppm

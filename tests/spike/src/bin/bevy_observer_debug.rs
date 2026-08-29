@@ -1,4 +1,4 @@
-//! Investigação focada do bug observer bevy 0.18 detectado em C11.
+//! Investigação focada do bug observer bevy 0.18 detectado em C11 (relido na 0.19).
 //!
 //! Test 1 (sabidamente OK): spawn solo + despawn → observer fires.
 //! Test 2 (sabidamente FAIL): fixture cheia → observer não fires.
@@ -51,7 +51,7 @@ fn run_test<F: FnOnce(&mut World)>(label: &str, body: F) -> usize {
 }
 
 fn main() {
-    println!("=== Bevy 0.18 observer behavior probe ===\n");
+    println!("=== Bevy observer behavior probe ===\n");
 
     run_test("T1: spawn(Health) + despawn — minimal", |w| {
         let e = w.spawn(Health(42)).id();
@@ -156,7 +156,11 @@ fn main() {
             for _ in 0..60 {
                 sched.run(w);
             }
-            let mut q = w.query::<Entity>();
+            // ⚠️ `Without<IsResource>`: no bevy_ecs 0.19 os recursos sao entidades, e despawnar
+            // uma delas entra em panico. Um `query::<Entity>()` cru aqui apanharia-as.
+            let mut q = w
+                .query_filtered::<Entity, bevy_ecs::query::Without<bevy_ecs::resource::IsResource>>(
+                );
             let to_despawn: Vec<Entity> = q.iter(w).filter(|e| *e != p).take(5).collect();
             for e in to_despawn {
                 w.despawn(e);

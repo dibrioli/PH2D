@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! ph2d-ecs — wrapper sobre `bevy_ecs` 0.18 implementing ADR-0021
+//! ph2d-ecs — wrapper sobre `bevy_ecs` 0.19 implementing ADR-0021
 //! (simulation ↔ presentation boundary) and ADR-0025 (GameObject =
 //! Entity + Components, hierarchy via `ChildOf`).
 //!

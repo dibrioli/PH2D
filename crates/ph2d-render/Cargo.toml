@@ -25,7 +25,7 @@ ph2d-asset-ktx2 = { path = "../ph2d-asset-ktx2" }
 # KTX2 Fase 2 (W2.T2): SpriteSource::CookedTexture stores a LogicalTextureId.
 # ph2d-asset does not depend on ph2d-render → no cycle.
 ph2d-asset = { path = "../ph2d-asset" }
-bevy_ecs = "0.18"
+bevy_ecs = "0.19"
 wgpu = "28"
 bytemuck = { version = "1", features = ["derive", "extern_crate_alloc"] }
 # Typed color wrapper (SrgbRgba) — Wave 11 migration (ADR-0042 §6 #2):

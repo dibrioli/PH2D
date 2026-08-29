@@ -51,7 +51,7 @@ fn steady_state_propagation_zero_allocs() {
     // caches + query state internals. dhat counts everything; we
     // measure delta between warmup and steady state.
     for _ in 0..3 {
-        present.world_mut().clear_entities();
+        present.clear();
         ph2d_ecs::extract!(sim => present, |sim_w, present_w| {
             propagate_transforms_into_present(sim_w, &mut state, present_w, &mut worklist);
         });
@@ -60,7 +60,7 @@ fn steady_state_propagation_zero_allocs() {
 
     // Steady state — 10 more frames.
     for _ in 0..10 {
-        present.world_mut().clear_entities();
+        present.clear();
         ph2d_ecs::extract!(sim => present, |sim_w, present_w| {
             propagate_transforms_into_present(sim_w, &mut state, present_w, &mut worklist);
         });
@@ -72,7 +72,7 @@ fn steady_state_propagation_zero_allocs() {
     let delta_blocks = steady.total_blocks - warmup.total_blocks;
     let delta_bytes = steady.total_bytes - warmup.total_bytes;
 
-    // PresentWorld::clear_entities + spawn cycle in bevy_ecs may
+    // PresentWorld::clear + spawn cycle in bevy_ecs may
     // touch internal Vec capacity — we allow a small budget for
     // archetype churn but flag anything larger as a regression.
     // Tuned: <= 64 allocations across 10 frames = avg < 7 per frame,

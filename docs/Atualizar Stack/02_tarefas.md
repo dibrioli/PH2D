@@ -279,6 +279,15 @@ bloco G é descobrir tarde.
 
 # Bloco C — GPU e texto (20 tarefas) · 🔴 **muda pixel**
 
+> ⛔⛔ **LEIA O [`04_registro.md` §8](04_registro.md) ANTES DE EXECUTAR ESTE BLOCO.** Ele foi
+> conferido contra o código-fonte real das crates (2026-08-29) e **quatro tarefas estão erradas**:
+> **C10** e **C13** mandam editar mudanças que **não existem** (34 e 3 edições que não são
+> necessárias), **C16** e **C17** já tinham acontecido antes da versão que usamos, e o **C22**
+> manda o dono procurar uma mudança de gradiente que é **byte-idêntica**. Em troca, o registo
+> nomeia **cinco quebras de texto** que este bloco não previu e que são erro de compilação.
+
+
+
 **As seis crates deste bloco sobem JUNTAS ou não sobem.** `vello`, `wgpu`, `naga`, `skrifa`,
 `parley`, `fontique` estão amarradas (`01` §3). Subir uma sozinha dá duas cópias e o `vello` recusa
 o nosso `Device`.
@@ -440,6 +449,15 @@ cd /home/enio/Documentos/Projetos/PH2D && env PH2D_FLIP_HARDNESS_SMOKE=1 cargo r
 
 # Bloco D — `bevy_ecs` 0.18 → 0.19 (14 tarefas) · 🟡 grande e mecânico
 
+> ⛔⛔ **A CLASSIFICAÇÃO ACIMA ESTÁ AO CONTRÁRIO — leia o [`04_registro.md` §8](04_registro.md).**
+> Medido contra a fonte da 0.19: **zero renomes nos atingem** e a workspace inteira compila sem uma
+> alteração. **Nove** das 14 tarefas têm **zero sítios**. O que sobra é 100 % **comportamental e
+> silencioso** — 5 sítios, nenhum com erro de compilação —, e a **D13 descreve o perigo ao
+> contrário**: `clear_entities()` não «limpa recursos», ela **corrompe o registo deles**.
+> *Este bloco era risco puro descrito como volume.*
+
+
+
 ⚠️ **185 ficheiros.** Mas é **um** salto de versão, e quase tudo é renome com erro de compilação.
 O trabalho é volume, não risco.
 
@@ -524,9 +542,15 @@ o mesmo. A discordância entre OS só o CI mede.
 
 ⚠️ **Sete versões.** 47 ficheiros, 145 menções, uma crate declarante (`ph2d-physics`).
 
-⛔ **REFUTADO — não planeje para isto:** o `CHANGELOG` do `master` anuncia a migração de `nalgebra`
-para `glam` na 0.32. **Nenhuma versão publicada faz isso** (`01` §7). Continuamos em `nalgebra`, que
-sobe de 0.34 para 0.35.
+⛔⛔⛔ **ESTE PARÁGRAFO ESTAVA ERRADO — e era a premissa do bloco inteiro. Ver
+[`04_registro.md` §6 e §8](04_registro.md).**
+~~O `CHANGELOG` do `master` anuncia a migração de `nalgebra` para `glam` na 0.32. Nenhuma versão
+publicada faz isso; continuamos em `nalgebra`.~~
+**A rapier 0.32+ migrou mesmo.** A dependência chama-se **`glamx`**, e a busca que produziu esta
+recusa procurou a string `glam`. `parry2d 0.30.2` já não exporta `Point`, `Isometry` nem
+`Translation`. ⇒ **este bloco é uma migração de biblioteca de matemática em 47 ficheiros**, não um
+bump — e existe uma **paragem intermédia em `rapier2d 0.31.0`** (a última em `nalgebra` puro) que
+entrega E9..E13 sem tocar num `Vector2`.
 
 ## E1 — subir
 **Onde:** [`crates/ph2d-physics/Cargo.toml:22`](../../crates/ph2d-physics/Cargo.toml)

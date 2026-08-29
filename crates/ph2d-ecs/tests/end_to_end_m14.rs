@@ -67,8 +67,8 @@ fn full_pipeline_cook_spawn_propagate_snapshot_restore() {
     let mut prop_state = TransformPropagationState::new(sim.world_mut());
     let mut worklist = WorklistBuf::new();
     let mut present = PresentWorld::new();
+    present.clear();
     ph2d_ecs::extract!(sim => present, |sim_w, present_w| {
-        present_w.clear_entities();
         propagate_transforms_into_present(sim_w, &mut prop_state, present_w, &mut worklist);
     });
     let mut q = present

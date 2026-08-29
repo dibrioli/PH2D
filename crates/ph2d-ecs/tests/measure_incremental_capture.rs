@@ -152,7 +152,7 @@ fn the_capture_costs_the_edit_not_the_world() {
 /// Um número que varia por entidade — para a escrita ser uma mudança REAL, e não absorvida pela
 /// comparação de bytes (que é o que este bench NÃO quer medir).
 fn rand_like(e: bevy_ecs::entity::Entity) -> u32 {
-    // ⚠️ `EntityIndex` não é `u32` no bevy 0.18 — a mesma pedra que a F1 já apanhou.
+    // ⚠️ `EntityIndex` não é `u32` no bevy 0.19 — a mesma pedra que a F1 já apanhou.
     (e.to_bits() as u32)
         .wrapping_mul(2_654_435_761)
         .wrapping_add(1)

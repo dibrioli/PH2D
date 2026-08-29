@@ -149,7 +149,7 @@ fn a_bound_source_still_composes_before_its_reader() {
 /// ⚠️ The fixture separates the two implementations, and the measurement is what told me
 /// how. I assumed `to_bits` put the index in the low half ascending, and built an
 /// elaborate despawn/respawn to overtake it — under which the two rules still AGREED and
-/// the mutation survived. Measured, `bevy_ecs` 0.18 gives a LATER spawn a LOWER `to_bits`
+/// the mutation survived. Measured, `bevy_ecs` gives a LATER spawn a LOWER `to_bits`
 /// (`4294967295` then `4294967294`) while the table walk visits it SECOND. So a plain pair
 /// is all it takes: first-in-the-walk is `x = 3`, lowest-bits is `x = 9`.
 #[test]

@@ -25,10 +25,10 @@ ph2d-field = { path = "../ph2d-field" }
 # que dá persistência e undo de graça.
 ph2d-ecs = { path = "../ph2d-ecs" }
 
-# ⚠️ `bevy_ecs` DIRETO, na mesma 0.18 da `ph2d-ecs`, e não por gosto: o
+# ⚠️ `bevy_ecs` DIRETO, na mesma 0.19 da `ph2d-ecs`, e não por gosto: o
 # `derive(Component)` expande para caminhos `bevy_ecs::…`, então a crate tem de
 # o ter em escopo. É a mesma razão pela qual a `ph2d-physics-ecs` o declara.
-bevy_ecs = "0.18"
+bevy_ecs = "0.19"
 
 serde = { version = "1", features = ["derive"] }
 

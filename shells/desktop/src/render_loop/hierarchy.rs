@@ -295,7 +295,7 @@ pub(super) fn dispatch(
         // Onda 2 fix: if the clicked row is part of the multi-
         // selection, delete EVERY selected sprite (Photoshop / Figma
         // convention — multi-select right-click → Delete affects the
-        // whole group). Otherwise just the clicked row. bevy_ecs 0.18
+        // whole group). Otherwise just the clicked row. bevy_ecs 0.19
         // `ChildOf` cascade despawns descendants.
         let to_delete: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
             hero.gizmo.iter_selected().collect()

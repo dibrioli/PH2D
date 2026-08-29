@@ -16,7 +16,7 @@ authors.workspace = true
 # ⚠️ E' uma FOLHA (serde + ph2d-spring + ph2d-anim, com gate a le'-la): a mesma lei corre no
 # editor e no runtime do jogo, que e' a razao de ela existir fora da shell.
 ph2d-morph-machine = { path = "../ph2d-morph-machine" }
-bevy_ecs = "0.18"
+bevy_ecs = "0.19"
 # ADR-0072 §2.1: o `NamedAnchor` guarda a lista inline (4 âncoras cobrem ~99% dos sprites) e o
 # `AnchorData::Dict` guarda os pares ordenados inline (8). ⚠️ NÃO é dependência nova no projeto —
 # a `ph2d-vector-doc`, a `-font` e a `ph2d-editor-core` já a usam, com a mesma versão e a mesma

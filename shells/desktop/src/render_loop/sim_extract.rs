@@ -318,7 +318,7 @@ pub(super) fn run(
     // carrying `(SimRef, GlobalTransform)` plus an optional
     // `RenderInstance` for sprite-bearing entities.
     let atlas = renderer.atlas();
-    present.world_mut().clear_entities();
+    present.clear();
     // Canonical sorting pipeline (W3.T3.8): the old per-frame DFS
     // counter is replaced by the full 7-stage order (SortingLayer / Z /
     // YSort / SortingGroup / ShowBehindParent / DFS). We can't know an

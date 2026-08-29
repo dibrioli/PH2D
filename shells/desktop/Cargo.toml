@@ -409,7 +409,7 @@ fontique = "0.6"
 # bevy_ecs is required as a direct dep so `#[derive(Component)]` can
 # resolve its `::bevy_ecs::*` absolute paths. The shell is the
 # application layer and is the only place we tolerate this leak.
-bevy_ecs = "0.18"
+bevy_ecs = "0.19"
 # image: shell uses for procedural-PNG-fixture generation at first
 # launch (so M6 has real files to consume). Same dep ph2d-asset
 # pulls — workspace Cargo.lock unifies version.

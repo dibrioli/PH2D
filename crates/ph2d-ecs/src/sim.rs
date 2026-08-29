@@ -2,6 +2,9 @@
 //! state. ADR-0021 enforcement layer.
 
 use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::query::Without;
+use bevy_ecs::resource::IsResource;
 use bevy_ecs::world::World;
 
 /// Marker trait for components that belong in [`SimWorld`].
@@ -51,8 +54,14 @@ impl SimWorld {
     /// Convenience: count of all entities in the sim world (test/debug only).
     /// Takes `&mut self` because `bevy_ecs::World::query` mutates internal
     /// query cache state.
+    ///
+    /// ⚠️ `Without<IsResource>` — no `bevy_ecs` 0.19 os recursos **são entidades**, e este mundo
+    /// tem-nos de verdade (`StableIdCounter`, `SortingLayers`, e um interno do próprio bevy). Sem
+    /// o filtro esta função passaria a contar *«entidades do jogo mais o número de recursos
+    /// registados»*, que é uma grandeza que ninguém quis e que muda quando alguém acrescenta um
+    /// recurso a três camadas de distância.
     pub fn entity_count(&mut self) -> usize {
-        let mut q = self.inner.query::<bevy_ecs::entity::Entity>();
+        let mut q = self.inner.query_filtered::<Entity, Without<IsResource>>();
         q.iter(&self.inner).count()
     }
 }

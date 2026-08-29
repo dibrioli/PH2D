@@ -1,4 +1,4 @@
-//! C11 spike — bevy_ecs 0.18 fixture.
+//! C11 spike — bevy_ecs 0.19 fixture.
 //!
 //! Cena mínima conforme docs/spike/2026-05-plan.md L130-138:
 //! 200 entities (1 parent + 199 children), 1 hierarquia via ChildOf,
@@ -12,7 +12,7 @@
 //! - Stack trace quality: panic forcado + RUST_BACKTRACE=1
 //!
 //! Observação importante (LLM-friction medida durante spike):
-//! - bevy_ecs 0.18 renomeou `Trigger<OnRemove, T>` → `On<Remove, T>`,
+//! - bevy_ecs 0.18 renomeou `Trigger<OnRemove, T>` → `On<Remove, T>` (mantido na 0.19),
 //!   `iter_entities()` → `query::<Entity>().iter(&world)`. Sem
 //!   release notes claras na crates.io page; descoberta via grep
 //!   no source.

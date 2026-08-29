@@ -125,11 +125,15 @@ fn a_zero_seed_still_never_hands_out_none() {
     assert!(!id.is_none(), "0 e' 'nenhum', nunca um objeto");
 }
 
-/// ⚠️ **A prova MEDIDA de que `to_bits()` não é a ordem de criação no bevy 0.18.**
+/// ⚠️ **A prova MEDIDA de que `to_bits()` não é a ordem de criação no bevy.**
 ///
 /// Este teste existe para que ninguém volte a trocar o `index()` da varredura por `to_bits()`
 /// "para ficar igual ao `assign_missing_root_order`". Com `to_bits` as três entidades saíam
-/// com os ids **`3, 2, 1`** — o `to_bits` do 0.18 **inverte** a ordem de criação.
+/// com os ids **`3, 2, 1`** — o `to_bits` **inverte** a ordem de criação.
+///
+/// ⭐ **Reconferido na subida para o `bevy_ecs` 0.19.1 (2026-08-29): continua a inverter.** É
+/// por isso que este gate não foi reescrito — ele é a única coisa que responde à pergunta, e a
+/// resposta dele não mudou. *A nota envelheceu no número da versão, não no facto.*
 ///
 /// ⛔ Isto **não** acusa o `RootOrder` de nada: lá a chave é a mesma que a árvore usa, e o
 /// que importa é concordarem. Aqui o id é lido por humanos e pela migração da F1.
@@ -146,7 +150,8 @@ fn to_bits_is_not_creation_order_which_is_why_the_sweep_uses_index() {
     );
     assert!(
         a.to_bits() > b.to_bits(),
-        "MEDIDO no bevy 0.18: o to_bits INVERTE a criacao ({} vs {}). Se esta asserção \
+        "MEDIDO no bevy 0.18 e RECONFERIDO na 0.19: o to_bits INVERTE a criacao ({} vs {}). \
+         Se esta asserção \
          falhar, o bevy mudou a codificacao — releia o cabecalho de `stable_id.rs` antes de \
          mexer na chave da varredura.",
         a.to_bits(),

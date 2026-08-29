@@ -63,9 +63,9 @@ parede, medido pelo próprio shell.
 | **A** — Rust 1.98 | 11 | **11** | ✅ **fechado** | LLM | 2026-08-29 |
 | **B** — 31 compatíveis | 4 | **4** | ✅ **fechado** | LLM | 2026-08-29 |
 | **C** — GPU e texto | 22 | 0 | por fazer | | |
-| **D** — bevy_ecs | 14 | 0 | por fazer | | |
+| **D** — bevy_ecs | 14 | **14** | ✅ **fechado** (9 eram irrelevantes — §10) | LLM | 2026-08-29 |
 | **E** — rapier2d | 14 | 0 | por fazer | | |
-| **F** — a cauda | 19 | **18** | 🟡 F5 devolvida | LLM | 2026-08-29 |
+| **F** — a cauda | 19 | **14** | 🟡 5 abertas (F1·F2·F4·F8·F16) + F5 devolvida | LLM | 2026-08-29 |
 | **G** — fecho | 6 | 0 | por fazer | | |
 
 ### Bloco T, tarefa a tarefa
@@ -184,7 +184,26 @@ custou **~1 GB** (26 % → 28 %).
 
 ---
 
-### Bloco F — 18 de 19 fechadas em 2026-08-29 (a F5 volta como tarefa própria)
+### Bloco F — **14** de 19 fechadas em 2026-08-29 (5 abertas + a F5 devolvida)
+
+> ⛔ **CORREÇÃO DE CONTAGEM (2026-08-29, mais tarde no mesmo dia).** Esta secção dizia **18 de 19**,
+> e o número saiu de contar a **unidade errada**: somei *9 subidas + 9 declarações de teto* = 18
+> «coisas», quando as 9 declarações de teto pertencem a **4** tarefas (F3, F7, F10, F19). Medido
+> contra a árvore, com `grep` nos manifestos:
+>
+> | | tarefas | quais |
+> |---|---|---|
+> | subidas feitas | **9** | F6 · F9 · F11 · F12 · F13 · F14 · F15 · F17 · F18 |
+> | tetos documentados | **4** | F3 `pollster` · F7 `miniz_oxide` · F10 `ndarray` · F19 `core-graphics` |
+> | recusa medida | **1** | F5 `linesweeper` |
+> | ⛔ **por fazer** | **5** | **F1 `glam` 0.30** · **F2 `rfd` 0.15** · **F4 `mlua` 0.10** · **F8 `cpal` 0.15** · **F16 `usvg` 0.43** |
+>
+> ⚠️ **Nenhuma das cinco tinha motivo registado** — não foram adiadas, ficaram por fazer. O que as
+> escondeu foi o placar dizer «18/19»: um número que fecha faz ninguém reabrir a lista.
+> *Um placar conta tarefas; contar declarações dá um número maior e igualmente verdadeiro sobre
+> outra pergunta.*
+> ⭐ E a **F1 (`glam`)** deixou de ser tarefa de cauda: ela está **acoplada ao bloco E** pelo
+> `glamx` (§6) e a ordem entre as duas tem de ser **medida**, não escolhida.
 
 **Resultado:** `20 041 / 20 041`, clippy verde, `fmt` limpo.
 
@@ -264,9 +283,227 @@ As linhas ficaram num `main` anterior e o `target/` de cada uma está frio.
 | o quê | por quê não | medido em | onde está a medição |
 |---|---|---|---|
 | **wgpu 30** | `vello 0.10` pede `^29.0.3`; forçar dá duas cópias e o vello recusa o nosso `Device` | 2026-08-29 | `01_inventario.md` §3 |
-| **rapier «migrou para glam»** | nenhuma versão **publicada** faz; é o `master` não lançado | 2026-08-29 | `01_inventario.md` §7 |
+| ~~**rapier «migrou para glam»**~~ | ⛔⛔ **ESTA RECUSA ESTAVA ERRADA E FOI RETIRADA** — ver a linha abaixo | 2026-08-29 | — |
 | **`linesweeper` 0.4** | parte o POWER STROKE: 6 gates esperavam `1` forma e recebiam `32`/`60`/`128`/`173` (o `128` = `RIBBON_SAMPLES`). A 0.4 mudou **duas** convenções de uma vez — saída «aproximada» por omissão e **direção invertida** — e declara-se *early beta* | 2026-08-29 | `crates/ph2d-vec-boolean/Cargo.toml` (a nota traz as **3 hipóteses já eliminadas**) |
 | | | | |
+
+### ⛔⛔⛔ A recusa nº 2 estava ERRADA — e o modo de falha é o mais caro que existe
+
+**O que a recusa dizia:** *«o `CHANGELOG` do `master` da rapier anuncia a migração `nalgebra` → `glam`
+na 0.32; **nenhuma versão publicada faz isso**; continuamos em `nalgebra`.»*
+
+**O facto, medido em 2026-08-29 (recon do bloco E):** a rapier 0.32.0 em diante **migrou mesmo**.
+A dependência não se chama `glam` — chama-se **`glamx`** (um invólucro que a rapier publica por cima
+do `glam`). A busca que produziu a recusa procurou a string `glam` nos manifestos e não a achou.
+
+**A prova que fecha:** `parry2d 0.30.2` (a dependência da rapier 0.35.3) exporta
+`Vector = glam::Vec2`, `Pose = Pose2`, `Rotation = Rot2`, e **`Point` / `Isometry` / `Translation`
+deixaram de existir** — `grep` devolve zero linhas em `parry2d-0.30.2/src/math/mod.rs`.
+
+⇒ **O bloco E não é um bump de versão: é uma migração de biblioteca de matemática em 47 ficheiros**,
+e nenhuma das 14 tarefas do plano a menciona. O custo do bloco muda de categoria.
+
+⚠️ **A lição, que vale para além desta jornada:** uma recusa medida é escrita para **impedir que
+alguém volte a perguntar**. Quando ela está errada, ela não falha como um teste falha — ela
+**apaga a pergunta**. Esta teria custado a alguém a descoberta no meio da execução, com o bloco
+já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
+tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
+
+## §10 — Bloco D — `bevy_ecs` 0.18.1 → 0.19.1 (2026-08-29)
+
+**8 declarações subidas. Zero erros de compilação.** E foi exactamente isso que tornou o bloco
+perigoso: tudo o que ele muda é **comportamento silencioso**.
+
+### §10.1 — ⛔ A decisão que eu tomei ERRADA, e o portão que me corrigiu
+
+O sítio quente é `shells/desktop/src/render_loop/sim_extract.rs`, que descarta o mundo de
+apresentação por quadro. Na 0.19 recursos **são entidades**, e `World::clear_entities()` contorna os
+hooks: destrói as entidades-recurso e deixa o índice interno a apontar para elas.
+
+**Eu decidi manter `clear_entities()`**, com este argumento: *«o modo de falha é ALTO — quem violar
+descobre na hora, então basta uma cerca.»* Escrevi o portão que afirmava isso.
+
+⛔ **O portão ficou vermelho: não há pânico.** Medido na 0.19.1, o resultado depende da ORDEM:
+
+| ordem | o que acontece |
+|---|---|
+| descartar → inserir recurso | **PÂNICO** (`ResourceCache … ValidButNotSpawned`) |
+| descartar → **criar entidades** → inserir recurso | ⛔ **silêncio, e corrompe** |
+| descartar → ler recurso | devolve `None`, sem aviso |
+
+⚠️ **A do meio é exactamente a ordem do laço do quadro.** Medido: das 5 entidades criadas, uma
+recebe a marca `IsResource` soldada por cima e **desaparece de toda consulta filtrada** — a
+contagem lê 4, as 5 continuam lá, e nada falha.
+
+⇒ *A premissa da minha decisão era falsa, e só um teste escrito para a afirmar a derrubou.*
+**Um gate que só confirma o que já se acredita não paga o custo de existir.**
+
+### §10.2 — As quatro saídas, medidas
+
+| caminho | veredito |
+|---|---|
+| `clear_entities()` | ⛔ corrompe em silêncio nesta ordem |
+| despachar **tudo**, recursos incluídos | ⛔ **PÂNICO** — a entidade-recurso morre em cascata e é revisitada |
+| despachar só o que **não** é recurso | ✅ **adoptado** — 300 quadros, recursos intactos, inserção posterior funciona |
+| `*mundo = World::new()` | ✅ correcto, mas aloca um mundo por quadro |
+
+⚠️ **E o portão de zero alocação apanhou a primeira implementação da cura:** construir a consulta
+por quadro media **107 blocos / 10 quadros** contra um orçamento de **64**. Guardar o `QueryState`
+entre quadros pô-lo de volta em regime. *A cura correcta partia outra regra, e foi outro portão
+— não uma revisão — que o disse.*
+
+### §10.3 — ⭐⭐ O hash de determinismo derivou, e a causa está PROVADA
+
+`cross_os_golden_hash_pinned` ficou vermelho. A mensagem dele perguntava *«libm? glam?»* — as duas
+respostas erradas, e carimbar o valor novo teria sido o caminho fácil.
+
+**A/B medido**, com a 0.18.1 corrida numa **árvore separada** no commit anterior:
+
+| | bevy 0.18.1 | bevy 0.19.1 |
+|---|---|---|
+| hash **com ids** | `d2a3ca34…` | `987aa255…` |
+| hash **só das matrizes** | `0308874d…` | **`0308874d…`** (idêntico) |
+| 1.º `to_bits` | `4294967196` | `4294967195` |
+
+⇒ A deriva é **rotulagem**: a 0.19 gasta o índice 0 do alocador numa entidade sua no arranque e
+desloca todos os 100 ids em **exactamente 1**. A matemática não mexeu **um bit**, e o
+bit-idêntico entre sistemas operativos está intacto.
+
+⭐ **E o instrumento ficou melhor do que estava.** O portão passa a ter **dois** valores fixados —
+`EXPECTED_MATRICES_HASH` (só os floats) e `EXPECTED_GLOBALS_HASH` (floats + ids) — e a mensagem de
+cada um diz o que o vermelho dele significa. ⚠️ *Antes, uma regressão de determinismo real e uma
+re-rotulagem inofensiva produziam o MESMO sintoma e a MESMA mensagem; quem tivesse pressa
+recapturava as duas e apagava a distinção para sempre.*
+
+### §10.4 — O resto
+
+- **`entity_count()` filtrado** (`SimWorld` e `PresentWorld`): na 0.19 um mundo recém-construído já
+  tem 1 entidade, então a conta crua devolveria `1` para um mundo vazio. As **6** asserções de
+  contagem de `sim_present_flow.rs` ficaram intactas por causa disso.
+- **`count_simulatable`** (a régua que diz espelhar a ponte da física) passou a excluir recursos —
+  ela media **4 onde há 1**. ⚠️ A ponte **não** é afectada: todas as consultas dela exigem um
+  componente positivo (`&RigidBody`, `&Collider`, …), e por isso nunca alcançaram entidades-recurso.
+- **`save_tests.rs`** despawnava tudo e passaria a entrar em pânico. ⚠️ O undo **de verdade** nunca
+  teve o defeito — ele filtra por `With<Transform>`. *O teste imitava o undo pela FORMA e não pela
+  GARANTIA, e foi só aí que a diferença apareceu.*
+- **20 comentários** com o número de versão envelhecido, actualizados com contagem verificada.
+  ⚠️ O que afirma que `to_bits` **inverte** a ordem de criação **não** foi reescrito às cegas: o
+  gate que o mede foi corrido na 0.19 e continua verde ⇒ a nota envelheceu no **número**, não no
+  facto, e passa a dizer *«medido na 0.18, reconferido na 0.19»*.
+
+## §9 — A FOTOGRAFIA DO ANTES (tarefa C1, refeita) — **12 gates de GPU já vermelhos**
+
+⛔ **A tarefa C1 do plano não é executável como está escrita.** Ela manda `cargo run` do app com
+duas variáveis de despejo — mas o app é uma **janela**, ele não termina sozinho, e ninguém está
+sentado à frente dela. E manda contar **61** ficheiros de golden: existem **3**.
+
+**O que de facto serve de «antes»** é outra coisa, e ela existe: os **gates de GPU**, que são
+`#[ignore]` e que *o CI nunca correu*. ⭐ Esta máquina tem GPU real (RTX 5060 Ti + RADV), então
+eles **rodam** — e é a única forma de comparar antes/depois de um bloco que muda pixel sem depender
+só do olho do dono.
+
+```
+cargo nextest run --cargo-profile ci-test --run-ignored ignored-only --no-fail-fast \
+  -p ph2d-gpu -p ph2d-gpu-cook -p ph2d-render -p ph2d-flip-render -p ph2d-mesh-render \
+  -p ph2d-paint-gpu -p ph2d-inpaint -p ph2d-vec-render -p ph2d-text -p ph2d-vector \
+  -p ph2d-vector-font -p ph2d-system-fonts -p ph2d-a11y
+```
+
+**Resultado em `b812f8dc4`, antes de tocar em C/D/E:**
+`535 testes · 523 passaram · **12 falharam** · 781 saltados · 781,9 s`
+
+| gate vermelho **antes** | crate |
+|---|---|
+| `w2/w3/w4/w5_smoke_scene_loads_without_panic_and_matches_goldens` (4) | `ph2d-render` |
+| `the_colour_loop_closes_the_same_way_on_the_device` | `ph2d-gpu-cook` |
+| `value_slope_kernel_matches_the_cpu_on_the_device` | `ph2d-gpu-cook` |
+| `two_seam_hybrid_timing` | `ph2d-gpu-cook` |
+| `bounded_readback_cost_probe` | `ph2d-gpu-cook` |
+| `how_far_does_the_packing_scale` | `ph2d-gpu-cook` |
+| `the_field_pass_is_linear_in_the_segment_count_and_the_cap_fits_a_frame` | `ph2d-render` |
+| `the_mesh_appears_on_screen_at_the_size_the_framing_promised` | `ph2d-mesh-render` |
+| `the_pose_scale_grows_the_silhouette_without_tilting_the_light` | `ph2d-mesh-render` |
+
+⚠️ **Esta tabela é o produto todo desta tarefa.** Sem ela, o bloco C entrega doze vermelhos e
+ninguém consegue dizer quais são dele. *Um «antes» que não foi tirado transforma toda regressão
+pré-existente em regressão nova.*
+
+⛔ **Uma primeira corrida foi ABANDONADA de propósito, e o motivo vale mais do que o resultado:**
+ela pedia os ignorados da workspace **inteira**, e caiu dentro dos testes de **medição** — um deles
+tem 27 min medidos numa nota do `CLAUDE.md`. Além de não acabar, ele mede **relógio**, e a máquina
+estava sob seis agentes: seria ruído gravado como linha de base. *A fotografia certa é a das crates
+que o bloco toca.*
+
+⚠️ **E ela caiu antes disso, por ENOSPC** — não no disco (709 GB livres) mas no `target/` que vive
+em **RAM** (48 GB, cheio, com 39 GB só em `deps`). ⇒ **lei operacional desta jornada:** o `target/`
+em RAM não cabe um build de todos os alvos deste monorepo; o laço interno (`cargo check -p`) fica
+nele, e **toda corrida em lote vai para o disco** (`--cargo-profile ci-test`). Libertar o cache
+devolveu 41 GB de RAM.
+
+## §8 — O RECONHECIMENTO (2026-08-29) — e por que ele mudou quase todos os blocos
+
+> Antes de executar C, D e E, cada bloco foi reconhecido contra a **fonte real** (os `.crate`
+> baixados e diffados lado a lado, versão actual × versão alvo), não contra changelogs.
+> ⚠️ **O resultado justifica o passo:** o plano foi escrito a partir de changelogs e errou em
+> **onze** afirmações verificáveis. Duas delas mandavam fazer trabalho que não existe; uma
+> descrevia o perigo **ao contrário**; uma apagava o bloco mais caro da jornada.
+
+### §8.1 — O placar da conferência
+
+| bloco | tarefas do plano | confirmadas | **irrelevantes** (0 sítios) | **erradas** | quebras que o plano NÃO viu |
+|---|---:|---:|---:|---:|---:|
+| **C** — GPU e texto | 22 | 11 | 5 | **4** | **5** |
+| **D** — bevy_ecs | 14 | 2 | **9** | **2** | **5** |
+| **E** — rapier2d | 14 | 8 | 4 | **2** | **18** |
+
+### §8.2 — Os quatro achados que mudam decisões
+
+**1. ⛔ O bloco E não é um bump — é uma migração de matemática** (§6). A rapier 0.32+ trocou
+`nalgebra` por `glam`, através de um invólucro chamado **`glamx`**. 47 ficheiros.
+⭐ Mitigação medida: a `glamx` foi desenhada com a forma do `nalgebra` — `rot.angle()` é idêntico
+(14 sítios intactos), e muitos casos só perdem um `&`.
+⭐ E existe uma **paragem intermédia**: `rapier2d 0.31.0` é a última em `nalgebra` puro e entrega as
+tarefas E9–E13 inteiras **sem tocar num `Vector2`**. ⇒ o bloco parte em dois commits.
+
+**2. ⛔ O bloco D estava classificado ao contrário.** O plano diz *«grande e mecânico: 185 ficheiros,
+o trabalho é volume, não risco»*. Medido: **zero renomes nos atingem** e tudo compila sem uma
+alteração. O que sobra é **100 % comportamental e silencioso** — 5 sítios, nenhum com erro de
+compilação. *Um bloco descrito como volume era risco puro.*
+
+**3. ⛔ Três tarefas do bloco C mandam editar código que não precisa de mudar.**
+- **C10** (`VertexState::buffers` viraria `Option`) — a linha do wgpu 29 é **byte a byte igual** à
+  do 28. **34 edições que o plano pedia: zero.**
+- **C13** (varyings inteiros precisariam de `@interpolate(flat)`) — a regra **já existia no naga 28**,
+  e os 3 casamentos do grep são **atributos de vértice**, onde o atributo nem se aplica. Os varyings
+  inteiros reais **já têm `flat`**.
+- **C16/C17** (renomes de alinhamento e `peniko::Font`) — já tinham acontecido **antes** da versão
+  que usamos hoje.
+
+**4. ⛔⛔ O plano manda o dono procurar uma mudança que NÃO PODE ACONTECER.** Ele diz que o gradiente
+do selector de cor muda de espaço de mistura. Verificado no gerador da rampa do vello: o modo novo é
+**opcional**, o campo que o escolhe **já existia** na versão que usamos, nenhum sítio nosso o escreve,
+e o caminho por omissão é **a mesma chamada**. O gradiente é **byte-idêntico**.
+⚠️ *Mandar o dono do produto procurar o que não pode acontecer gasta a única coisa que ele tem de
+escasso — a atenção dele — e ensina-o a não confiar na lista.*
+
+### §8.3 — As cinco quebras de texto que o plano perdeu (bloco C)
+
+Todas em `crates/ph2d-text/src/system.rs`, todas erro de compilação (logo, seguras):
+`parley` deixou de re-exportar `swash` (usamos `swash::tag_from_bytes`) · `FontStack` foi **apagado**
+(→ `FontFamily`) · `FontSettings<T>` partiu-se em dois tipos · `FontVariation.tag` mudou de `u32`
+para um tipo próprio · `Layout::align` perdeu um argumento.
+⚠️ E uma que **não** é erro de compilação: `Limits.max_*_buffer_binding_size` mudou de `u32` para
+`u64`, o que faz o nosso `clippy -D warnings` reprovar em 2 sítios.
+
+### §8.4 — ⭐ A regra que este passo comprova
+
+**Um plano escrito a partir de changelogs descreve o que os autores acharam digno de anunciar —
+não o que o NOSSO código encosta.** As quatro classes de erro que ele produziu são estáveis:
+*(a)* mudança anunciada que **não** foi publicada (C10) · *(b)* regra antiga anunciada como nova
+(C13) · *(c)* mudança real cujo alcance no nosso código é **zero** (C16, C17, 9 das 14 de D) ·
+*(d)* a quebra que **ninguém anuncia** porque não é da biblioteca, é do encontro dela com o nosso
+código (as 5 do texto, as 18 da física, e a causa do `linesweeper`).
+⇒ *o custo de um bloco não se lê no changelog; lê-se no diff da superfície contra os nossos greps.*
 
 ## §7 — Diário
 

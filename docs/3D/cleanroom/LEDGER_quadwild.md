@@ -1047,3 +1047,103 @@ inteira — existem sob **MPL-2.0**, licença **já aceite** pelo `deny.toml` de
 ⇒ **PARADO e REPORTADO ao Enio**, conforme a ordem embutida no passo 1 do BLOCO-E — e foi
 dessa paragem que saiu o ADR-0167.
 As três rotas, com preço medido: [`TRIAGEM_quad_remesh.md` §5](TRIAGEM_quad_remesh.md).
+
+---
+
+## ⭐ ADENDO-E nº2 — «feições finas e pontiagudas» (2026-08-30)
+
+> ⚠️ **Este é o primeiro acto desta linha que LÊ FONTE DE ALGORITMO DO ALVO GPL.**
+> Até 2026-08-24 a travessia integral estava deliberadamente NÃO iniciada (ver
+> *Cobertura da travessia* acima): a rota escolhida era clean-room dos *papers*, e
+> a leitura do copyleft teria sido contaminação paga por uma rota que podia nunca
+> abrir. O adendo abre-a com **alcance dirigido e rígido**, não integral.
+
+| campo | valor |
+|---|---|
+| Papel | **E** (Especificador), subagente da janela `7499b0f4-218e-489b-879b-1e5a1c8b851f` |
+| id do subagente | `agent-a7e34b679201487c0` |
+| transcript (⛔ **zona contaminada** — I nunca lê) | `~/.claude/projects/-home-enio-Documentos-Projetos-PH2D/7499b0f4-218e-489b-879b-1e5a1c8b851f/subagents/agent-a7e34b679201487c0.jsonl` |
+| aberto em | 2026-08-30, **antes** da primeira leitura de fonte |
+| Degrau | **T2** (GPL-3.0; a concessão do §2 da GPLv3, transcrita no topo deste ledger, cobre ler/modificar/correr em privado — nenhum acto aqui é *convey*) |
+| Alcance (⛔ **bound rígido**, não alargar) | UMA pergunta: como é que o alvo trata uma feição **fina e pontiaguda** cuja espessura é menor que o passo alvo da grade. Três sub-perguntas: (a) adapta a densidade perto da ponta, e em que FASE · (b) tem protecção explícita contra **amputar** a ponta · (c) o que impede a saída de **partir em componentes desligados** |
+| ⛔ Fora do alcance | travessia integral · triagem · busca de patente · vassoura completa (todos já feitos ou deliberadamente adiados) |
+| Espec produzida | `docs/3D/cleanroom/SPEC_feicoes_finas.md` |
+| Rascunhos | `~/Referencias/draft/` (⛔ nunca no repo, nunca em `/tmp`, nunca no scratchpad) |
+| ⛔ Oráculo | **NÃO compilado, NÃO corrido** nesta sessão (ordem do despacho) |
+
+### Consequência de papel, registrada
+
+Este subagente **leu algoritmo GPL** e está, por construção, contaminado. Ele **não escreve
+código de produto** (§3.E). A janela-mãe permanece limpa: o único canal de volta é o
+**contrato de retorno** (frase fixa + ≤5 linhas de factos funcionais), varrido pelo sweep
+antes da entrega.
+
+### Cobertura da travessia dirigida (2026-08-30)
+
+⚠️ **Alcance dirigido, não integral** — a cobertura integral continua a NÃO ser o insumo
+(ADR-0167: clean-room dos *papers*). O que se leu, e só isto:
+
+| área do alvo | o que se procurou |
+|---|---|
+| binário de linha de comando + funções de condução | ordem das fases; de onde sai cada número |
+| ficheiros de configuração do produto (6) | os defaults como factos de comportamento |
+| remalhador de preparação (o nosso F1) | a lei da adaptação e as guardas geométricas |
+| biblioteca de remalhagem isotrópica (o motor de baixo) | o factor adaptativo exacto, os limiares, a guarda de desvio |
+| gestor de preparação da malha | as limpezas, os limiares, a ordem |
+| alisador do campo | se a densidade entra pelo campo (⇒ **não entra**) |
+| condutor da quantização + parâmetros da biblioteca de retalhos | piso de subdivisão, paridade, alisamentos |
+| solucionador por programação inteira · solucionador por fluxo | os limites inferiores das variáveis |
+| montagem + limpeza da malha de quads | conectividade, doublets, reprojecção |
+| mapeamento retalho→molde | como o interior é decidido; o que acontece fora do domínio |
+| classificador de vértices do traçado | a armadilha nomeada no §5.1 da espec |
+| ferramenta de métricas | o que a referência mede sobre si própria |
+| *paper* de 2021 (§3, §4.2, §4.3, §6.1, §8.1) + fio público de perguntas | o racional dos autores |
+
+**Total: 21 ficheiros** (13 de fonte/config do alvo · 1 *paper* · 1 fio público · 6 ficheiros de
+configuração). ⛔ **NÃO lido, de propósito:** traçado do layout em profundidade · construção do
+campo · o solucionador de fluxo por dentro · a geração dos moldes · toda a camada de visualização.
+
+⛔ **O oráculo NÃO foi compilado nem corrido** nesta sessão (ordem do despacho). Todos os números
+da espec vêm de leitura de fonte, de configuração e da literatura pública.
+
+### Vassoura (§7.1) — ALARGADA por este adendo
+
+⭐ **+38 entradas** (de 56 para **94**), todas identificadores internos que **esta** travessia de
+facto viu, e nenhuma delas presente na árvore antes. As duas de maior valor são **typos do alvo**
+(um no nome de uma classe de preparação, outro num macro de admissibilidade de retalho) — a espécie
+que o §7.1 pede em primeiro lugar.
+
+⛔ **Duas candidatas foram DELIBERADAMENTE NÃO acrescentadas, e o motivo fica escrito:**
+
+| candidata | por que fica de fora |
+|---|---|
+| o nome de uma classe de remalhagem | ⚠️ **colide com o nome de um PRODUTO DIFERENTE** que o [`PLAN.md`](../quad-remesh/PLAN.md) discute e recusa por licença. Acrescentá-la produziria **falso positivo** sobre prosa legítima, e um instrumento que grita sobre nada deixa de ser lido. |
+| o nome do ficheiro de configuração do perfil orgânico | ⚠️ **já está na árvore** — em `docs/3D/quad-remesh/PLAN.md` e num **doc-comment de crate de produto** (`ph2d-remesh-iso`). Acrescentá-la poria a árvore vermelha até alguém curar, e a cura é **decisão do R** (o nome é público — vem do `README` do alvo — mas o §4.2 proíbe nomes de ficheiro do alvo). ⇒ **encaminhado, não silenciado.** |
+
+### ⛔⛔ ACHADO deste adendo — proveniência FALSA numa constante de produto
+
+`crates/ph2d-remesh-iso/src/lib.rs` declara `ALPHA = 0.02` e o doc-comment atribui o número a um
+preset do oráculo. ⛔ **Naquele preset, esse número não é um comprimento de remalhagem em nenhuma
+das duas leituras possíveis** (é a mistura regularidade↔isometria da quantização no binário que
+produz os resultados publicados, e o peso de alinhamento à curvatura no programa de campo separado).
+O valor pode continuar certo — o doc diz que foi **medido**, com tabela — mas a **frase de
+proveniência está errada**. ⇒ mecanismo e cura no [§6.4 da espec](SPEC_feicoes_finas.md); a cura é
+uma linha de doc-comment e é do Implementador.
+⚠️ **Não é vazamento de parede** — é defeito de proveniência (§4.3.2), e a casa já o proíbe (§0.0).
+
+### Sweep (§7.1) deste adendo, com CONTROLO POSITIVO
+
+| alvo | resultado |
+|---|---|
+| ⭐ controlo positivo (entrada **nova** semeada num ficheiro) | ✅ **✗ exit 1** — a cobertura nova funciona |
+| `SPEC_feicoes_finas.md` + o texto do REPORT final | ✅ **✓ limpo, exit 0** (94 entradas) |
+| árvore rastreada inteira (**8 715** ficheiros) | ⛔ **✗ exit 1 — 4 hits**, e são **EXACTAMENTE** os do [§R-pré2.3](#r-pré23) / [§R-pré2.9](#r-pré29): 1 no `LEDGER` (zona contaminada, esperado) e 3 na `TRIAGEM`. **Estado PRÉ-EXISTENTE, inalterado por este adendo**, e os dois ficheiros estão ⛔-marcados e negados ao Implementador. |
+
+### Espec entregue
+
+| campo | valor |
+|---|---|
+| caminho | `docs/3D/cleanroom/SPEC_feicoes_finas.md` |
+| natureza | ⚠️ **descritiva**, não prescritiva — ela responde a UMA pergunta e o §6 dela separa o que é nosso do que é do alvo |
+| auditoria R-pré | ⏳ **PENDENTE** — não é condição de abrir wave (a espec não manda construir nada), mas é condição de **importar** qualquer recomendação do §6.2 dela |
+

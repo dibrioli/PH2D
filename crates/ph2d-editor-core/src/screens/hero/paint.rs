@@ -124,7 +124,22 @@ pub fn paint_hero_screen(
     // **Quais colunas laterais estão ocupadas** — a área de desenho (e com ela as réguas) cresce
     // para dentro de uma coluna fechada. É o mesmo padrão do `dock_timeline_into_motion` logo
     // abaixo: o layout é uma função pura do que lhe dizem, e ESTE é o sítio que sabe.
-    let docks = crate::screens::layout::DockSides::resolve(|k| hero.is_panel_visible(k));
+    // **Quais colunas laterais estão ocupadas** — perguntado aos rects que os painéis
+    // PUBLICARAM no quadro anterior, nunca a uma lista de nomes: são 20 crates a publicar, e a
+    // lista de cinco que aqui esteve estava errada exactamente no modo que importava.
+    // A sonda serve só para saber ONDE ficam as duas colunas — a geometria delas não depende
+    // dos flags —, e o `side_columns` devolve-as ordenadas por `x`, que é o que torna o
+    // `mirrored` inofensivo aqui.
+    let probe = HeroLayout::for_viewport_docked(
+        viewport,
+        hero.view.ui_mirrored,
+        rail_w,
+        hero.view.center_split,
+        crate::screens::layout::DockSides::BOTH,
+    );
+    let published: Vec<_> = hero.store.panel_rects().collect();
+    let (left_col, right_col) = probe.side_columns();
+    let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
     let mut layout = HeroLayout::for_viewport_docked(
         viewport,
         hero.view.ui_mirrored,

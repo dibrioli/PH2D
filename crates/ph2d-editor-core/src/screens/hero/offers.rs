@@ -30,23 +30,34 @@ impl HeroScreen {
     /// **As réguas estão vivas neste frame?** — a PORTA ÚNICA da W6.2, perguntada pelo paint
     /// (para desenhar as faixas) e pelo gesto (para decidir se um press nelas cria uma guia).
     ///
-    /// São DUAS condições e nenhuma basta sozinha:
-    /// - o interruptor do artista (`view.rulers_visible`), que é também o *lock* das guias;
-    /// - **a ferramenta vetorial estar em mãos.**
+    /// **UMA condição: o interruptor do artista** (`view.rulers_visible`), que é também o *lock*
+    /// das guias.
     ///
-    /// ⚠️ **A segunda condição é uma CORREÇÃO, não uma restrição de escopo.** A faixa da régua
-    /// **ocupa** a borda do canvas (o modelo de sobreposição), e o gesto dela corre antes de
-    /// toda ferramenta — então uma régua permanente comeria o pen-down do PAINTER nos 20 px de
-    /// cima: o artista pincelaria ali e nasceria uma guia. Hoje quem consome guias é só o snap
-    /// vetorial, então uma faixa presente noutra ferramenta seria custo sem contrapartida.
+    /// ⛔⛔ **Havia uma segunda — «a ferramenta vetorial em mãos» — e ela CAIU em 2026-08-30, por
+    /// ordem do Enio:** *«as réguas devem funcionar em todos os modos e layouts, e não apenas
+    /// para vector».*
     ///
-    /// ⚠️ E ela **preserva o invariante que importa**: *visível ⇔ vivo*. Uma faixa que
-    /// aparecesse sem responder — ou que respondesse sem aparecer — é a forma exata do chrome
-    /// morto sob o mouse que esta codebase varre a cada wave.
+    /// ⭐ **A cerca era legítima e o substrato dela dissolveu-se no mesmo dia.** Ela existia por
+    /// duas razões, e as duas deixaram de valer:
     ///
-    /// O dia em que o gizmo de sprite consumir guias, esta função é o único lugar a mudar.
+    /// 1. *«a faixa OCUPA a borda do canvas e o gesto corre antes de toda ferramenta ⇒ uma régua
+    ///    permanente comeria o pen-down do Painter nos 20 px de cima»*. O defeito real ali era a
+    ///    faixa ser **invisível** — ela nascia debaixo do trilho e da barra, e o artista carregava
+    ///    no que parecia um botão e recebia uma guia. Desde que a régua é uma **região da área de
+    ///    desenho** ([`crate::screens::layout::HeroLayout::draw_area`]) a faixa está **à vista**,
+    ///    e carregar numa régua visível para criar uma guia é o comportamento de todo DCC. ⇒ o que
+    ///    sobra não é um roubo, é a régua a fazer o que uma régua faz.
+    /// 2. *«só o snap vetorial consome guias, logo a faixa noutra ferramenta é custo sem
+    ///    contrapartida»* — juízo de **produto**, e o dono do produto decidiu ao contrário.
+    ///
+    /// ⚠️ **O preço que fica, nomeado:** com as réguas ligadas, os 20 px de cima e da esquerda da
+    /// área de desenho deixam de ser pintáveis em **qualquer** ferramenta. É o mesmo preço que o
+    /// Photoshop e o Blender cobram, a área é pannable, e o interruptor desliga-o.
+    ///
+    /// ⚠️ E o invariante que importa continua: *visível ⇔ vivo* — as duas metades perguntam a
+    /// **esta** função, e a faixa em si tem a porta [`crate::ruler::live_bands`].
     #[must_use]
     pub fn rulers_live(&self) -> bool {
-        self.view.rulers_visible && self.is_panel_visible("vector")
+        self.view.rulers_visible
     }
 }

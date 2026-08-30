@@ -1392,31 +1392,49 @@ fn every_painted_rail_button_is_dispatched_by_somebody() {
 
 // ── A PORTA das réguas (plano 25 §9, a W6.2) ────────────────────────────────
 
-/// **Visível ⇔ vivo**, e as duas condições, nenhuma bastando sozinha.
+/// **Visível ⇔ vivo**, e agora com UMA condição — o interruptor do artista.
 ///
-/// ⚠️ A segunda metade — a ferramenta vetorial em mãos — é uma CORREÇÃO, não escopo escolhido:
-/// a faixa da régua **ocupa** a borda do canvas e o gesto dela corre antes de toda ferramenta,
-/// então uma régua permanente comeria o pen-down do **Painter** nos 20 px de cima (o artista
-/// pincela ali e nasce uma guia). Este gate existe porque a mutação que apaga essa metade
-/// sobrevivia a todos os outros — a correção estava shipada e desguardada.
+/// ⛔ A 2.ª metade (*a ferramenta vetorial em mãos*) CAIU em 2026-08-30, por ordem do Enio:
+/// *«as réguas devem funcionar em todos os modos e layouts, e não apenas para vector»*.
+///
+/// ⚠️ **Ela era uma cerca com motivo escrito, e o motivo dissolveu-se no mesmo dia:** a faixa
+/// «comia o pen-down do Painter» porque nascia **invisível**, debaixo do trilho e da barra —
+/// o artista carregava no que parecia um botão e recebia uma guia. Desde que a régua é uma
+/// região da [`crate::screens::layout::HeroLayout::draw_area`], a faixa está à vista, e
+/// carregar numa régua visível para criar uma guia é o que todo DCC faz.
+///
+/// ⚠️ O preço que fica, nomeado: com as réguas ligadas, os 20 px de cima e da esquerda da área
+/// de desenho não são pintáveis em ferramenta nenhuma. É o preço do Photoshop, a área é
+/// pannable, e o interruptor desliga-o.
 #[test]
-fn the_rulers_are_live_only_with_the_vector_tool_and_the_toggle_on() {
+fn the_rulers_are_live_in_every_mode_and_only_the_toggle_stops_them() {
     let mut hero = HeroScreen::new(NodeId(1));
     hero.view.rulers_visible = true;
 
-    hero.panel_visibility.insert("vector", false);
+    // Sem ferramenta nenhuma declarada: as reguas VIVEM na mesma.
     assert!(
-        !hero.rulers_live(),
-        "sem a ferramenta vetorial a faixa não existe — senão ela come o pen-down do Painter"
+        hero.rulers_live(),
+        "as reguas valem em todos os modos — nao ha' ferramenta a gatea'-las"
     );
 
-    hero.panel_visibility.insert("vector", true);
-    assert!(hero.rulers_live(), "com a ferramenta e o interruptor, viva");
+    // E nenhuma ferramenta as apaga, nem a que as costumava exigir.
+    for tool in ["vector", "painter", "sculpt3d", "model3d", "flip"] {
+        hero.panel_visibility.insert(tool, true);
+        assert!(
+            hero.rulers_live(),
+            "a ferramenta '{tool}' nao pode apagar as reguas"
+        );
+        hero.panel_visibility.insert(tool, false);
+        assert!(
+            hero.rulers_live(),
+            "nem a AUSENCIA da ferramenta '{tool}' as pode apagar"
+        );
+    }
 
     hero.view.rulers_visible = false;
     assert!(
         !hero.rulers_live(),
-        "o interruptor do artista continua mandando — é ele o *lock* das guias"
+        "o interruptor do artista continua mandando — e' ele o *lock* das guias"
     );
 }
 

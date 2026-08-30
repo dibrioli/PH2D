@@ -31,7 +31,7 @@
 
 use ph2d_editor_core::ruler;
 use ph2d_editor_core::screens::layout::{
-    DockSides, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroLayout, LEFT_DOCK_PANELS, rail_w,
+    DockSides, HERO_VIEWPORT_H, HERO_VIEWPORT_W, HeroLayout, rail_w,
 };
 use ph2d_editor_core::zones::Rect;
 
@@ -54,21 +54,33 @@ fn docked_chrome(l: &HeroLayout, docks: DockSides, _mirrored: bool) -> Vec<(&'st
         ("top_bar", l.top_bar),
         ("left_rail", l.left_rail),
         ("bottom_hud", l.bottom_hud),
-        // ⭐⭐ A coluna do TAKEOVER entra SEMPRE, e nao atras de um flag. A 1a versao deste
-        // oraculo perguntava `if docks.right`, isto e', partilhava com o produto a premissa que
-        // devia estar sob julgamento — e quando a lista de inquilinos estava errada, o painel
-        // saia da exclusao E da acusacao ao mesmo tempo, e o gate devolvia 0.0 por nao olhar.
-        // `l.inspector` E' o rect da coluna, esteja la' quem estiver.
-        ("takeover_column", l.inspector),
     ];
-    if docks.hierarchy_open {
-        v.push(("hierarchy", l.hierarchy));
+    // ⚠️ Por POSICAO, nunca por nome: o `mirrored` troca a Hierarchy com o dock de takeover, e
+    // pedir «o rect da Hierarchy» chamando-lhe «a coluna da esquerda» e' o erro que o
+    // compilador nao ve'.
+    let (left_col, right_col) = l.side_columns();
+    if docks.left {
+        v.push(("coluna_esquerda", left_col));
+    }
+    if docks.right {
+        v.push(("coluna_direita", right_col));
     }
     v
 }
 
-fn all_dock_states() -> [DockSides; 2] {
-    [DockSides::BOTH, DockSides::NONE]
+fn all_dock_states() -> [DockSides; 4] {
+    [
+        DockSides::BOTH,
+        DockSides::NONE,
+        DockSides {
+            left: true,
+            right: false,
+        },
+        DockSides {
+            left: false,
+            right: true,
+        },
+    ]
 }
 
 /// **A LEI.** Nas duas orientações e nos quatro estados de coluna, nenhuma das duas faixas de
@@ -188,157 +200,6 @@ fn the_ruler_no_longer_steals_the_click_from_the_top_bar_and_the_rail() {
     );
 }
 
-/// **CENSO — a coluna da ESQUERDA tem UM inquilino, e é isso que sustenta a
-/// [`LEFT_DOCK_PANELS`].**
-///
-/// ⛔⛔ Este gate substitui um que estava ERRADO por construção (auditoria de 2026-08-30). O
-/// anterior varria o `layout.rs` por `let X = inspector;` e concluía que a coluna da direita
-/// tinha **cinco** inquilinos. Ela tem **dezassete**: os outros doze não têm alias nenhum no
-/// `layout.rs` — eles lêem `ctx.layout.inspector` directamente, de **outra crate**, e o painel
-/// **Vector** é um deles. O censo tinha a *forma* de uma conferência de dois lados e media um
-/// subconjunto que não era a pergunta.
-///
-/// ⇒ a coluna da direita deixou de ter lista (é sempre reservada, ver [`DockSides`]) e o que
-/// ficou por defender é a da esquerda, cuja lista **de facto** tem um nome. Este censo pergunta
-/// ao que o produto faz: *que crates de painel desenham no rect de cada coluna?*
-#[test]
-fn the_left_dock_column_still_has_exactly_one_tenant() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("crates/");
-    let mut left: Vec<String> = Vec::new();
-    let mut right: Vec<String> = Vec::new();
-    for entry in std::fs::read_dir(root).expect("ler crates/") {
-        let dir = entry.expect("entry").path();
-        let Some(name) = dir.file_name().and_then(|n| n.to_str()).map(str::to_owned) else {
-            continue;
-        };
-        if !name.starts_with("ph2d-panel-") {
-            continue;
-        }
-        let src = dir.join("src");
-        let mut takes_left = false;
-        let mut takes_right = false;
-        let mut stack = vec![src];
-        while let Some(d) = stack.pop() {
-            let Ok(rd) = std::fs::read_dir(&d) else {
-                continue;
-            };
-            for e in rd.flatten() {
-                let p = e.path();
-                if p.is_dir() {
-                    stack.push(p);
-                    continue;
-                }
-                if p.extension().and_then(|x| x.to_str()) != Some("rs") {
-                    continue;
-                }
-                let Ok(txt) = std::fs::read_to_string(&p) else {
-                    continue;
-                };
-                for raw in txt.lines() {
-                    let l = raw.trim_start();
-                    if l.starts_with("//") {
-                        continue; // ⚠️ descascar comentarios: documentar a cura nao pode acusar
-                    }
-                    // O rect INTEIRO da coluna, nunca uma dimensao dela (`.inspector.w` e' o
-                    // que a widget-gallery le' para casar a largura, e nao ocupa a coluna).
-                    if l.contains("layout.hierarchy;") {
-                        takes_left = true;
-                    }
-                    if l.contains("layout.inspector;") || l.contains("layout.padding;") {
-                        takes_right = true;
-                    }
-                }
-            }
-        }
-        if takes_left {
-            left.push(name.clone());
-        }
-        if takes_right {
-            right.push(name);
-        }
-    }
-    left.sort();
-    right.sort();
-
-    assert!(
-        !left.is_empty() && !right.is_empty(),
-        "controlo positivo falhou: a varredura nao achou inquilino nenhum em nenhuma coluna \
-         (esquerda={left:?}, direita={right:?}) — a forma do codigo mudou e este censo deixou \
-         de medir o que diz"
-    );
-    assert_eq!(
-        left,
-        vec!["ph2d-panel-hierarchy".to_string()],
-        "a coluna da ESQUERDA ganhou um segundo inquilino. A LEFT_DOCK_PANELS ({:?}) passa a \
-         ter o MESMO defeito que matou a lista da direita: um painel que a tome sem estar la' \
-         faz a area de desenho crescer para dentro dele. Ou acrescente a chave, ou torne a \
-         coluna sempre reservada, como a da direita.",
-        LEFT_DOCK_PANELS
-    );
-    assert!(
-        right.len() > 1,
-        "a coluna da DIREITA passou a ter um inquilino so' ({right:?}). O motivo de ela ser \
-         SEMPRE reservada era ser um slot de takeover multi-inquilino; com um dono unico, \
-         vale a pena voltar a perguntar pela visibilidade dele"
-    );
-}
-
-/// **A porta pergunta pela HIERARCHY, e a coluna do takeover não tem estado.**
-///
-/// ⚠️ Sem este teste, trocar o ramo de [`DockSides::resolve`] deixa a suite verde: a lei
-/// geométrica constrói os `DockSides` à mão e nunca passa por aqui.
-#[test]
-fn the_dock_sides_ask_about_the_hierarchy_and_the_takeover_column_has_no_state() {
-    assert_eq!(
-        DockSides::resolve(|k| k == "hierarchy"),
-        DockSides::BOTH,
-        "com a Hierarchy aberta a coluna dela e' reservada"
-    );
-    assert_eq!(
-        DockSides::resolve(|_| false),
-        DockSides::NONE,
-        "com a Hierarchy fechada a area reclama a coluna dela"
-    );
-    // ⭐ E a coluna do takeover NAO responde a ninguem: qualquer inquilino dela — o Inspector,
-    // o Vector, o Physics… — deixa a resposta igual. E' o teorema do doc de `DockSides`.
-    for tenant in ["inspector", "vector", "physics", "sculpt3d", "audio_editor"] {
-        assert_eq!(
-            DockSides::resolve(|k| k == tenant),
-            DockSides::NONE,
-            "'{tenant}' vive na coluna do takeover, que nao tem estado — e a Hierarchy esta' \
-             fechada neste caso"
-        );
-    }
-}
-
-/// ⭐⭐⭐ **O TEOREMA que autoriza reservar sempre a coluna da direita, gateado no fonte.**
-///
-/// *Régua viva ⇒ painel Vector visível ⇒ coluna da direita ocupada.* Se uma das duas metades
-/// deixar de valer, reservar a coluna sempre passa a ser um palpite conservador em vez de uma
-/// dedução — e o custo (a régua acabar 318 px antes da borda) deixa de ser zero.
-#[test]
-fn the_rulers_only_live_while_the_takeover_column_is_occupied() {
-    const OFFERS: &str = include_str!("../src/screens/hero/offers.rs");
-    assert!(
-        OFFERS.contains("self.view.rulers_visible && self.is_panel_visible(\"vector\")"),
-        "a porta `rulers_live` mudou de condicao. O teorema que autoriza reservar sempre a \
-         coluna da direita e' 'regua viva => painel Vector visivel => coluna ocupada'; se a \
-         regua passar a viver noutro modo, releia o doc de `DockSides` antes de shipar"
-    );
-    let vector_paint = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("crates/")
-        .join("ph2d-panel-vector/src/paint.rs");
-    let src = std::fs::read_to_string(&vector_paint).expect("ph2d-panel-vector/src/paint.rs");
-    assert!(
-        src.contains("ctx.layout.inspector;"),
-        "o painel Vector deixou de desenhar no rect da coluna da direita — a segunda metade do \
-         teorema caiu"
-    );
-}
-
 /// **Uma área estreita demais não pinta régua NEM responde a uma** — a porta única
 /// [`ruler::live_bands`].
 ///
@@ -430,5 +291,90 @@ fn the_bottom_strip_reservation_is_wired_and_runs_after_the_motion_dock() {
         timeline > dock && flip > dock,
         "a reserva corre ANTES do `dock_timeline_into_motion`, que move o rect do timeline — \
          reservaria o sitio errado"
+    );
+}
+
+/// ⭐⭐⭐ **A ocupação das colunas vem do que os painéis PUBLICARAM, não de uma lista.**
+///
+/// ⛔ Esta é a 3.ª tentativa. A 1.ª foi uma lista de cinco chaves que **esquecia o painel
+/// Vector** — e por isso falhava exactamente no único modo em que a régua então existia. A 2.ª
+/// foi um teorema (*régua viva ⇒ Vector visível ⇒ coluna ocupada*) que **durou um dia**: o Enio
+/// pediu as réguas em todos os modos e a primeira implicação evaporou-se.
+///
+/// A 3.ª não tem lista nem dedução: cruza os rects publicados com os rects das colunas. Um
+/// inquilino novo, um *bridge* novo ou um painel que ninguém previu respondem sozinhos.
+#[test]
+fn the_columns_are_occupied_by_what_was_published_not_by_a_list_of_names() {
+    let l = HeroLayout::for_viewport_docked(
+        reference_viewport(),
+        false,
+        rail_w(),
+        ph2d_editor_core::screens::layout::CenterSplit::None,
+        DockSides::BOTH,
+    );
+    let (left_col, right_col) = l.side_columns();
+
+    assert_eq!(
+        DockSides::from_published(left_col, right_col, []),
+        DockSides::NONE,
+        "sem nada publicado, nenhuma coluna esta' ocupada"
+    );
+    assert_eq!(
+        DockSides::from_published(left_col, right_col, [right_col]),
+        DockSides {
+            left: false,
+            right: true
+        },
+        "o rect da coluna da direita ocupa a coluna da direita — e SO' ela"
+    );
+    assert_eq!(
+        DockSides::from_published(left_col, right_col, [left_col, right_col]),
+        DockSides::BOTH
+    );
+
+    // ⭐ O caso que mata a lista: um painel que NENHUMA lista conhece — desde que publique o
+    // rect da coluna, ele ocupa-a. E' o painel Vector, o Physics, o Sculpt3D, e o proximo.
+    let inquilino_desconhecido = Rect::new(right_col.x, right_col.y, right_col.w, right_col.h);
+    assert!(
+        DockSides::from_published(left_col, right_col, [inquilino_desconhecido]).right,
+        "um inquilino que nenhuma lista nomeia ocupa a coluna na mesma — e' o ponto todo"
+    );
+
+    // ⚠️ E um painel FLUTUANTE que so' rocA a coluna nao a toma: sem isto a regua saltaria
+    // enquanto o artista arrasta um popover por cima.
+    let rocar = Rect::new(
+        right_col.x + right_col.w * 0.8,
+        right_col.y,
+        right_col.w,
+        40.0,
+    );
+    assert!(
+        !DockSides::from_published(left_col, right_col, [rocar]).right,
+        "um rect que so' rocA a coluna nao a ocupa"
+    );
+}
+
+/// **As RÉGUAS vivem em TODO modo** (Enio, 2026-08-30) — a porta pergunta uma coisa só.
+///
+/// ⛔ Havia uma segunda condição (`is_panel_visible("vector")`) e ela caiu. O gate fica para que
+/// o regresso dela seja uma decisão e não um descuido: era uma cerca com motivo escrito, e o
+/// motivo (a faixa nascer INVISÍVEL debaixo do chrome) foi curado pela área de desenho.
+#[test]
+fn the_rulers_are_not_scoped_to_one_tool() {
+    const OFFERS: &str = include_str!("../src/screens/hero/offers.rs");
+    let body = OFFERS
+        .split("pub fn rulers_live(&self) -> bool {")
+        .nth(1)
+        .expect("a porta `rulers_live`");
+    let body = &body[..body.find('}').expect("o corpo da porta")];
+    assert!(
+        body.contains("self.view.rulers_visible"),
+        "a porta deixou de perguntar pelo interruptor do artista"
+    );
+    assert!(
+        !body.contains("is_panel_visible"),
+        "as reguas voltaram a ser escopadas a uma ferramenta. O Enio pediu-as em TODOS os modos \
+         e layouts (2026-08-30); se ha' motivo novo para as escopar, ele nao pode ser o antigo \
+         (a faixa invisivel debaixo do chrome), que a area de desenho curou"
     );
 }

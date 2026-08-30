@@ -10,7 +10,14 @@ authors.workspace = true
 [lib]
 
 [dependencies]
-mlua = { version = "0.10", features = ["luau"] }
+# ⚠️ 0.12: os re-exports da raiz foram refactorados — `ThreadStatus` mudou-se para
+# `mlua::thread` e o `Compiler` para `mlua::chunk`. Os ~70 outros usos (create_function,
+# set_app_data, app_data_ref, gc_step, sandbox, globals, Thread::resume/status) tem
+# assinatura IDENTICA, conferida no fonte das duas versoes.
+# ⚠️ A unica mudanca de comportamento medida: o `mlua::Integer` do Luau vai de i32 para
+# i64 (o `2^53` era `Number` e passa a `Integer`). As chaves de tabela stringificam
+# igual nas duas ⇒ sem deriva no `StateTable`.
+mlua = { version = "0.12", features = ["luau"] }
 # blake3 used for source-content hashing — drives the reset+restore
 # decision in `ScriptHost::load_script` (HR-16: hot-reload only when
 # bytes actually changed, not on every save).

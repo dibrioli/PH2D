@@ -13,7 +13,8 @@
 //! Fonte do script: composição sintética de gameplay típico (~3 KB de Luau).
 
 use flate2::{Compression, write::GzEncoder};
-use mlua::{Compiler, Lua};
+use mlua::Lua;
+use mlua::chunk::Compiler;
 use std::io::Write;
 use std::time::Instant;
 

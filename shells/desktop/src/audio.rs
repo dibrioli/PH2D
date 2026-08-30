@@ -7,10 +7,7 @@
 //! available the editor runs silently (degrade-gracefully, like `gilrs`).
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{FromSample, SizedSample};
-use ph2d_audio::{
-    AudioEngine, AudioFormat, AudioRenderer, BusId, PlayParams, SUB_BUS_COUNT, VoiceId,
-};
+use ph2d_audio::{AudioEngine, AudioFormat, BusId, PlayParams, SUB_BUS_COUNT, VoiceId};
 
 // HR-18 (600-LOC shell cap) split: the Audio Editor runtime and the test-signal
 // generators live in descendant submodules (they still reach `AudioSystem`'s
@@ -36,9 +33,12 @@ mod fx_params_table;
 pub(crate) mod fx_presets;
 #[cfg(feature = "panel-audio-editor")]
 use editor::AudioEditorRuntime;
+/// A ESCOLHA DO DISPOSITIVO e a escrita nele — irmão por assunto e pelo teto de 600 LOC.
+mod device;
 mod signals;
 /// A VOZ DO SOM DE UI (D1) — irmão por assunto e pelo teto de 600 LOC.
 mod ui_voice;
+use device::{build_stream, pick_writable_config, supported_by_us};
 use signals::{blip_loop, pluck_loop, sine_tone, swell_loop};
 
 /// The desktop audio system: the control handle + the live output stream.
@@ -126,7 +126,9 @@ impl AudioSystem {
     pub(crate) fn new() -> Option<AudioSystem> {
         let host = cpal::default_host();
         let device = host.default_output_device()?;
-        let name = device.name().unwrap_or_else(|_| "<unknown>".to_string());
+        // ⚠️ cpal 0.18: `Device::name()` foi REMOVIDO; o nome passa pelo `Display`, que
+        // não falha (um dispositivo sem nome legível imprime o que o backend tem).
+        let name = device.to_string();
         let supported = match device.default_output_config() {
             Ok(c) => c,
             Err(e) => {
@@ -134,16 +136,51 @@ impl AudioSystem {
                 return None;
             }
         };
+        // ⭐ **Se o formato POR OMISSÃO não nos serve, procuramos um que sirva — em vez de
+        // desligar o som.**
+        //
+        // ⚠️ Isto deixou de ser hipotético com o `cpal` 0.18: a heurística que escolhe o
+        // formato por omissão passou a ordenar **todos** os formatos (`F32` > `F64` >
+        // inteiros descendentes), então hardware que devolvia `I16` pode passar a devolver
+        // `I32` ou `I24`. O caminho antigo respondia a isso **caindo para o silêncio com
+        // uma linha em `stderr`** — e um app mudo com um aviso que ninguém lê é
+        // indistinguível, para o artista, de um app partido.
+        //
+        // A pergunta certa não é *«o padrão serve?»* mas *«o dispositivo tem algum que
+        // sirva?»*, e ela é barata: a lista já existe. Preferência `F32` > `I16` > `U16`,
+        // porque é a ordem em que perdemos menos ao converter o nosso mix `f32`.
+        let supported = if supported_by_us(supported.sample_format()) {
+            supported
+        } else {
+            let offered = supported.sample_format();
+            let rate = supported.sample_rate();
+            match device
+                .supported_output_configs()
+                .ok()
+                .and_then(|ranges| pick_writable_config(ranges, rate))
+            {
+                Some(c) => {
+                    eprintln!(
+                        "audio: o dispositivo oferece {offered:?} por omissao, que nao sabemos \
+                         escrever; a usar {:?} a {} Hz",
+                        c.sample_format(),
+                        c.sample_rate()
+                    );
+                    c
+                }
+                None => {
+                    eprintln!(
+                        "audio: nenhum formato escrevivel (o padrao e' {offered:?} e a lista do \
+                         dispositivo nao tem F32/I16/U16); running silent"
+                    );
+                    return None;
+                }
+            }
+        };
         let sample_format = supported.sample_format();
-        if !matches!(
-            sample_format,
-            cpal::SampleFormat::F32 | cpal::SampleFormat::I16 | cpal::SampleFormat::U16
-        ) {
-            eprintln!("audio: unsupported sample format {sample_format:?}; running silent");
-            return None;
-        }
         let native: cpal::StreamConfig = supported.config();
-        let rate = native.sample_rate.0;
+        // ⚠️ cpal 0.18: `SampleRate` deixou de ser um newtype e passou a ser `u32`.
+        let rate = native.sample_rate;
         // Prefer a STEREO stream even on multi-channel (5.1/7.1) devices. Writing
         // our stereo mix into only FL/FR of a raw 8-channel stream bypasses
         // PipeWire's stereo→surround routing/upmix and is inaudible on some 7.1
@@ -155,11 +192,13 @@ impl AudioSystem {
         // `build_stream` moves it into the callback.
         let mut candidates: Vec<cpal::StreamConfig> = Vec::new();
         if native.channels > 2 {
-            let mut stereo = native.clone();
+            let mut stereo = native;
             stereo.channels = 2;
             candidates.push(stereo);
         }
-        candidates.push(native.clone());
+        // ⚠️ cpal 0.18: `StreamConfig` é `Copy` — um `.clone()` aqui é
+        // `clippy::clone_on_copy`, que este repositório trata como erro.
+        candidates.push(native);
 
         let mut opened: Option<(AudioEngine, cpal::Stream, AudioFormat, usize)> = None;
         for config in &candidates {
@@ -171,14 +210,16 @@ impl AudioSystem {
             };
             let (engine, renderer) = AudioEngine::new(format);
             let our_channels = format.channel_count();
+            // `*config`: o `StreamConfig` é `Copy` na 0.18 e a assinatura passou a
+            // recebê-lo por valor.
             let built = match sample_format {
                 cpal::SampleFormat::F32 => {
-                    build_stream::<f32>(&device, config, renderer, dev_channels, our_channels)
+                    build_stream::<f32>(&device, *config, renderer, dev_channels, our_channels)
                 }
                 cpal::SampleFormat::I16 => {
-                    build_stream::<i16>(&device, config, renderer, dev_channels, our_channels)
+                    build_stream::<i16>(&device, *config, renderer, dev_channels, our_channels)
                 }
-                _ => build_stream::<u16>(&device, config, renderer, dev_channels, our_channels),
+                _ => build_stream::<u16>(&device, *config, renderer, dev_channels, our_channels),
             };
             match built {
                 Ok(stream) => {
@@ -532,51 +573,6 @@ impl AudioSystem {
             Err(e) => eprintln!("audio: play failed ({e})"),
         }
     }
-}
-
-/// Build the output stream for device sample type `T`. The mixer renders into a
-/// reused `f32` scratch (mono/stereo per `our_channels`), which is then
-/// converted + scattered into the device's `dev_channels` layout. Mirrors the
-/// cpal `beep.rs` reference (DIRETIVA §1) for the `T::from_sample` conversion.
-fn build_stream<T>(
-    device: &cpal::Device,
-    config: &cpal::StreamConfig,
-    mut renderer: AudioRenderer,
-    dev_channels: usize,
-    our_channels: usize,
-) -> Result<cpal::Stream, cpal::BuildStreamError>
-where
-    T: SizedSample + FromSample<f32>,
-{
-    let err_fn = |e| eprintln!("audio: stream error: {e}");
-    // Owned by the callback; sized once (when the block size stabilizes), then
-    // reused — no allocation in the warm hot path (HR-3).
-    let mut scratch: Vec<f32> = Vec::new();
-    device.build_output_stream(
-        config,
-        move |data: &mut [T], _: &cpal::OutputCallbackInfo| {
-            let frames = data.len() / dev_channels.max(1);
-            let needed = frames * our_channels;
-            if scratch.len() != needed {
-                scratch.resize(needed, 0.0);
-            }
-            renderer.render(&mut scratch, frames);
-            for f in 0..frames {
-                for c in 0..dev_channels {
-                    let s = if our_channels == 1 {
-                        scratch[f]
-                    } else if c < 2 {
-                        scratch[f * 2 + c]
-                    } else {
-                        0.0
-                    };
-                    data[f * dev_channels + c] = T::from_sample(s);
-                }
-            }
-        },
-        err_fn,
-        None,
-    )
 }
 
 #[cfg(test)]

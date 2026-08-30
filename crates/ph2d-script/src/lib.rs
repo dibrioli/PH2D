@@ -37,7 +37,8 @@ pub use lateral::{PodValue, StateTable};
 pub use messaging::{EntityId, Handler, Message, MessageBus, MessageId};
 pub use registry::register_script_components;
 
-use mlua::{Function, IntoLuaMulti, Lua, Thread, ThreadStatus, Value};
+use mlua::thread::ThreadStatus;
+use mlua::{Function, IntoLuaMulti, Lua, Thread, Value};
 
 pub struct ScriptRuntime {
     lua: Lua,

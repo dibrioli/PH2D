@@ -342,6 +342,55 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
 
+## §12 — A cauda do bloco F que tinha ficado por fazer (2026-08-29)
+
+As **cinco** que o placar escondia (§«Bloco F», correcção de contagem). A **F16** (`usvg`) entrou
+no bloco C porque é ela que solta o `kurbo`; a **F1** (`glam`) fica para depois do bloco E, porque
+as duas estão acopladas (§6).
+
+### F2 — `rfd` 0.15 → 0.17 · **zero mudanças de código**
+As 8 assinaturas que usamos são idênticas. ⭐ **E a subida corta 41 pacotes do grafo:** a 0.17.0
+trocou o backend do diálogo de ficheiro de `ashpd`(zbus) por `libdbus` via `dlopen`, e o `zbus`
+inteiro sai. ⛔ **Teto confirmado:** é este crate que prende o `pollster` em `^0.4`.
+⚠️ O transporte D-Bus passa a ser uma `.so` do sistema aberta em runtime — **um humano tem de abrir
+`Save`, `Save As…`, `Open Project…` e `Import…` uma vez cada**; nenhum teste alcança um diálogo.
+
+### F4 — `mlua` 0.10 → 0.12 · **duas linhas de `use`**
+`ThreadStatus` mudou-se para `mlua::thread` e o `Compiler` para `mlua::chunk`. Os ~70 outros usos
+têm assinatura idêntica.
+⚠️ **Uma quebra que o reconhecimento não viu:** `gc_step_kbytes(kb)` deixou de existir. A substituta
+(`gc_step()`) **não recebe orçamento** — ele mudou de sítio, do ponto de chamada para o **modo do
+coletor**. Isso é a forma certa (*um orçamento por-chamada era uma resposta por-quadro a uma
+pergunta de configuração*), e a sonda de spike que o media passa a imprimir números **não
+comparáveis** com os de antes. É sonda, não gate; ninguém depende do valor.
+⭐ **E um comentário cuja RAZÃO morreu sem a decisão morrer:** o texto dizia *«o `Integer` do Luau é
+`i32`, estreito demais para o `to_bits()`»*; na 0.12 ele é `i64`. O que segura a escolha é o outro
+argumento, que também estava escrito ali. *Um motivo que morre não torna a decisão errada — torna-a
+uma decisão que precisa do motivo que sobreviveu.*
+
+### F8 — `cpal` 0.15 → 0.18 (**três majors**) · 7 edições, 1 ficheiro
+`Device::name()` removido (→ `Display`) · `SampleRate` deixou de ser newtype (→ `u32`) ·
+`StreamConfig` virou `Copy` (os `.clone()` viram erro de clippy) · o descritor passa **por valor** ·
+`BuildStreamError` unificou-se em `cpal::Error`.
+
+⭐ **A subida CURA uma violação do HR-3 que existia.** O comentário do `scratch` diz *«sized once …
+no allocation in the warm hot path»*; sob a 0.15 o bloco por callback era **variável**
+(1881/4410) e ele redimensionava **26 vezes em 32 callbacks**. A 0.18 entrega **512 constante** ⇒
+redimensiona **uma**. ⚠️ Em troca, o orçamento por callback cai de ~85 ms para **~10,7 ms** — **8×
+menos folga** para o jitter do mixer de 42 efeitos.
+
+⭐⭐ **E fechou-se um caminho que levava ao silêncio sem sinal.** O código perguntava *«o formato
+POR OMISSÃO serve?»* e, se não, desligava o som com uma linha em `stderr`. A 0.18 torna isso
+provável: a heurística do formato por omissão passou a ordenar **todos** os formatos, então
+hardware que devolvia `I16` pode passar a devolver `I32`/`I24`. ⇒ a pergunta passa a ser **«o
+dispositivo tem ALGUM que sirva?»** (`pick_writable_config`, preferência `F32` > `I16` > `U16`,
+mantendo a taxa que o dispositivo escolheria). *Um app mudo com um aviso que ninguém lê é, para o
+artista, indistinguível de um app partido.*
+
+⚠️ **A verificação honesta do áudio não é um log.** A cerca da casa (*«elos verdes = elo FORA»*)
+diz que um canal pode estar mudo no PipeWire, fora do processo. O passo que prova é gravar o
+monitor do sink e medir a frequência.
+
 ## §11 — Bloco C — GPU e texto (2026-08-29)
 
 **19 linhas de manifesto**, e as seis crates subiram **juntas** como o bloco exigia:

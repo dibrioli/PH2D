@@ -454,7 +454,18 @@ ph2d-audio-opus = { path = "../../crates/ph2d-audio-opus" }
 # model. It carries the whole DeepFilterNet dependency; the RT mixer (`ph2d-audio`) must never
 # reach it (gate `no_ml_runtime_reaches_the_mixer`).
 ph2d-audio-ml = { path = "../../crates/ph2d-audio-ml", optional = true }
-cpal = "0.15"
+# ⚠️ 0.18 (TRES majors) — a saida de audio real. Mudancas MEDIDAS nesta maquina,
+# mesmo codigo nas duas versoes:
+#   taxa por omissao      44 100 -> 48 000 Hz
+#   frames por callback   1881/4410 VARIAVEL -> 512 CONSTANTE
+#   perda de dispositivo  error_callback + continue (ciclo infinito)
+#                         -> `DeviceNotAvailable` + return (cala e sai)
+# ⭐ E ela CURA uma violacao do HR-3 que existia: com buffer variavel, o `scratch`
+# redimensionava 26 vezes em 32 callbacks e o comentario dizia "sized once, no
+# allocation in the warm hot path". Com 512 fixo, redimensiona 1 vez.
+# ⚠️ O orcamento por callback cai de ~85 ms para ~10,7 ms — 8x menos folga para o
+# jitter do mixer de 42 efeitos.
+cpal = "0.18"
 # arboard: system clipboard read/write for the Cmd+C/V/X handlers in
 # ph2d-editor's dispatch. Constructed once at startup; pasted text is
 # fed back to the store via `apply_clipboard_paste`.
@@ -467,7 +478,15 @@ bumpalo = "3"
 # Cross-platform (macOS / Windows / Linux); modal `pick_files()`
 # blocks the main thread for the duration of the dialog — acceptable
 # for a user-initiated import flow.
-rfd = "0.15"
+# ⭐ 0.17: a 0.17.0 trocou o backend XDG-portal de `ashpd`(zbus) por `libdbus` via
+# `dlopen` ⇒ **41 pacotes saem do grafo** (o `zbus` inteiro). Zero mudanca de codigo:
+# as 8 assinaturas que usamos sao identicas entre 0.15.4 e 0.17.2.
+# ⛔ TETO: e' ELE que prende o `pollster` em `^0.4` (confirmado no `Cargo.toml` da
+# 0.17.2, sob a feature `xdg-portal`, que esta' no default). O `pollster 1.0` existe
+# e nao e' alcancavel enquanto o rfd nao passar de 0.4.
+# ⚠️ O transporte D-Bus passa a ser uma `.so` do sistema aberta em runtime; o
+# fallback para o `zenity` cobre tambem "libdbus ausente", sem panico.
+rfd = "0.17"
 
 # core-graphics: macOS-only live cursor query. winit 0.30 does NOT
 # emit `CursorMoved` during external file drag operations, so the

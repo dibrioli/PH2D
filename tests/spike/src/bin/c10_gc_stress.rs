@@ -33,16 +33,24 @@ fn main() -> mlua::Result<()> {
     let lua: &Lua = runtime.lua();
     let tick_alloc: Function = lua.globals().get("tick_alloc")?;
 
-    // Luau default GC mode is incremental; gc_step_kbytes runs one step.
-    // Per-frame step budget chosen to keep heap stable under per-tick allocation.
+    // Luau default GC mode is incremental; `gc_step` runs one step.
+    //
+    // ⚠️ **`gc_step_kbytes(kb)` deixou de existir no `mlua` 0.12**, e a substituta não
+    // recebe orçamento: `gc_step()` faz *"um passo básico, que em modo incremental
+    // corresponde ao **tamanho de passo corrente**"*. O orçamento mudou de sítio — passou
+    // do ponto de chamada para o **modo do coletor** (`gc_set_mode` +
+    // `GcIncParams::step_size`), o que é a forma certa: um budget passado por chamada era
+    // uma resposta por-quadro a uma pergunta que é de configuração.
+    // ⇒ os números que esta sonda imprime **não são comparáveis** com os de uma corrida
+    // anterior à subida: ela media passos de 1 KB e passa a medir o passo por omissão do
+    // Luau. Isto é uma sonda de spike, não um gate — ninguém depende do valor.
 
     let mut pauses_ms: Vec<f64> = Vec::with_capacity(FRAMES);
     for _ in 0..FRAMES {
         let _: i64 = tick_alloc.call(())?;
         let t0 = Instant::now();
-        // Step the collector; arg = number of bytes/units to collect.
-        // 1024 is a reasonable per-frame budget step.
-        lua.gc_step_kbytes(1)?;
+        // Um passo do coletor, no tamanho que o modo corrente define.
+        lua.gc_step()?;
         let elapsed = t0.elapsed();
         pauses_ms.push(elapsed.as_secs_f64() * 1000.0);
     }

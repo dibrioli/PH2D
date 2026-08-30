@@ -140,11 +140,16 @@ impl PodValue {
             PodValue::Number(n) => Ok(LuaValue::Number(n)),
             PodValue::String(s) => s.into_lua(lua),
             PodValue::Entity(e) => {
-                // Entity ids round-trip as Lua numbers (f64). Luau's
-                // `Integer` is i32 — too narrow for `Entity::to_bits()`
-                // which is u64. f64 holds the full 53-bit safe-integer
-                // range, which is more than enough for any realistic
-                // bevy_ecs entity (id 32-bit + generation 32-bit).
+                // Entity ids round-trip as Lua numbers (f64).
+                // ⚠️ **A razão original ENVELHECEU e a escolha não.** O texto aqui
+                // dizia *"o `Integer` do Luau é `i32` — estreito demais para o
+                // `to_bits()`, que é `u64`"*; no `mlua` 0.12 o `Integer` do Luau é
+                // **`i64`**, então esse argumento caiu. O que fica de pé é o outro,
+                // e é o que manda: `f64` cobre os 53 bits seguros, que chegam e
+                // sobram para qualquer entidade real (índice 32 bits + geração 32),
+                // e trocar a representação agora mudaria o tipo que todo script já
+                // escrito recebe. *Um motivo que morre não torna a decisão errada —
+                // torna-a uma decisão que precisa do motivo que sobreviveu.*
                 // The Luau side treats this as an opaque handle (HR-8);
                 // any arithmetic on it is the script author's bug.
                 Ok(LuaValue::Number(e as f64))

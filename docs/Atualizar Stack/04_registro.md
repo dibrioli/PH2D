@@ -832,6 +832,32 @@ adaptador por software** responde à pergunta antes de tocar no CI: **se passare
 é trivial e seguro; se falharem, o preço fica medido.** *Uma decisão que se pode medir não se
 decide.*
 
+## §25 — ⛔ A mudança do cache de compilação está BLOQUEADA (2026-08-30)
+
+O Enio pediu, num runbook de seis passos, que o `~/.cache/sccache` (**85 GB**, 127 mil ficheiros)
+saísse do disco do sistema para um subvolume `@sccache` no disco dos projectos, montado por fstab
+em `/home/enio/.cache/sccache`, **sem symlink**.
+
+⛔ **Não foi feito, e o motivo é único:** `sudo -n` responde *«uma senha é necessária»*, e ele
+retirou-se antes de a dar. Os passos 3 e 4 (criar o subvolume no sítio certo, editar o `fstab`,
+montar) são todos root.
+
+⚠️ **Medido, e é o que torna a alternativa insuficiente:** `btrfs subvolume create` **funciona sem
+root** nesta máquina (testado e revertido), mas `btrfs subvolume delete` **não** — e, sobretudo, o
+**mount** continua a ser root. Sem o mount, o cache ficaria dentro da árvore de projectos, que é
+exactamente o que o runbook proíbe em maiúsculas (*«ali o cache entraria em todo backup e em todo
+`du` da árvore de projectos»*).
+
+✅ **O passo 6, que ele marcou como independente, foi feito:** `rm -rf ~/.cache/paru/*` libertou
+**8,0 GB**.
+
+| | |
+|---|---|
+| `df -h /home` no fim | **26%** (238 G de 950 G) |
+| esperado pelo runbook, com o sccache movido | ~16% |
+
+⇒ **a diferença é exactamente o sccache.** O runbook fica pronto a correr; falta uma senha.
+
 ## §24 — O LEDGER da jornada das curas (2026-08-30)
 
 > Ordem do Enio, depois de ler a caça: *«os defeitos precisam ser corrigidos. Vamos buscar a

@@ -32,6 +32,9 @@
 
 pub mod dispatch;
 pub mod drag;
+/// ⭐ **O que ATRAVESSA um painel** (plano `docs/Components/07`, B1) — a carga de um arrasto que
+/// sai do painel que o começou. Ver o cabeçalho do módulo.
+pub mod drag_payload;
 pub mod event;
 pub mod flip_strip;
 pub mod hit;

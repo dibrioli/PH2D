@@ -115,9 +115,21 @@ pub const STEPPER_HOLD_INITIAL_DELAY_NS: u128 = 250_000_000;
 /// ~33 ticks per second, a comfortable fast-but-readable rate.
 pub const STEPPER_REPEAT_INTERVAL_NS: u128 = 30_000_000;
 
+/// ⭐ **O limiar de MÃO PARADA do app** — quanto o cursor tem de andar, a partir do `Down`, para
+/// o gesto deixar de poder ser um clique.
+///
+/// ⚠️ **Ele nasce em 2026-08-30 e não é um número novo: é o que já estava aqui**, declarado como
+/// se fosse só do scrub de caixa numérica. O arrasto da biblioteca de assets fez a pergunta pela
+/// segunda vez, e a resposta é a mesma — *«a mão andou o suficiente para isto não ser um
+/// toque?»*. ⇒ uma constante, dois consumidores; se algum dia precisarem de divergir, isso é uma
+/// decisão que alguém escreve, e não uma deriva.
+pub const DRAG_THRESHOLD_PX: f32 = 4.0;
+
 /// Distance (in physical px) the cursor must move from the Down
 /// position before a NumberInput drag flips into slider mode.
-pub const NUMBER_INPUT_DRAG_THRESHOLD_PX: f32 = 4.0;
+///
+/// ⚠️ **É o [`DRAG_THRESHOLD_PX`]** — ver o doc dele.
+pub const NUMBER_INPUT_DRAG_THRESHOLD_PX: f32 = DRAG_THRESHOLD_PX;
 
 /// Pixels-per-step rates for the drag-slider mode (Blender-style).
 ///

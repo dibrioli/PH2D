@@ -34,7 +34,11 @@ use ph2d_editor::interaction::drag_payload::DragPayload;
 /// ⚠️ **Um Prefab e uma Imagem respondem à MESMA pergunta por caminhos diferentes** — o elo
 /// (`InstanceOf`) contra o conteúdo (`SpritePixels`) — e é por isso que a resposta é uma função só:
 /// duas funções divergiriam no dia em que uma delas ganhasse um filtro.
-pub(crate) fn users_of(sim: &mut SimWorld, asset: DragPayload) -> Vec<u64> {
+pub(crate) fn users_of(
+    sim: &mut SimWorld,
+    asset: DragPayload,
+    atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+) -> Vec<u64> {
     let mut out: Vec<(u64, u64)> = match asset {
         DragPayload::Prefab { stable_id } => {
             let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
@@ -44,11 +48,19 @@ pub(crate) fn users_of(sim: &mut SimWorld, asset: DragPayload) -> Vec<u64> {
                 .collect::<Vec<_>>()
         }
         DragPayload::Image { asset } => {
+            // ⚠️ **Pela MESMA porta que o índice usa** ([`crate::asset_index_build::texture_of`]) —
+            // uma sprite de átlas não carrega `SpritePixels`, e perguntar só por ele fazia o
+            // *Select users* devolver **zero** sobre toda imagem importada. *A pergunta «que
+            // textura é esta?» tem um dono, e ele não é este ficheiro.*
             let wanted = ph2d_asset::AssetId::from_digest(asset);
-            let mut q = sim.world_mut().query::<(Entity, &SpritePixels)>();
+            let mut q =
+                sim.world_mut()
+                    .query::<(Entity, Option<&SpritePixels>, Option<&ph2d_render::Sprite>)>();
             q.iter(sim.world())
-                .filter(|(_, px)| px.0 == wanted)
-                .map(|(e, _)| e)
+                .filter(|(_, px, spr)| {
+                    crate::asset_index_build::texture_of(*px, *spr, atlas_assets) == Some(wanted)
+                })
+                .map(|(e, _, _)| e)
                 .collect::<Vec<_>>()
         }
     }
@@ -99,6 +111,8 @@ pub(crate) fn drain(
     toasts: &mut ph2d_editor::ToastQueue,
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     place_step: [f32; 2],
+    // ⭐ `célula do átlas → AssetId` — ver [`crate::asset_index_build::texture_of`].
+    atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     select_out: &mut Option<u64>,
 ) -> bool {
     match (verb, asset) {
@@ -132,7 +146,7 @@ pub(crate) fn drain(
 
         // ── Quem usa isto ──────────────────────────────────────────────────────────────────────
         (AssetCardAction::SelectUsers, _) => {
-            let users = users_of(sim, asset);
+            let users = users_of(sim, asset, atlas_assets);
             if users.is_empty() {
                 toasts.push(Toast::info(match asset {
                     DragPayload::Prefab { .. } => "No copies of this prefab in the scene",
@@ -169,7 +183,7 @@ pub(crate) fn drain(
         }
         (AssetCardAction::RemoveFromLibrary, DragPayload::Image { .. }) => {
             // ⚠️ O número é o corpo da recusa — ver o cabeçalho do módulo.
-            let n = users_of(sim, asset).len();
+            let n = users_of(sim, asset, atlas_assets).len();
             toasts.push(Toast::info(format!(
                 "This image is in the library because {n} object(s) use it \u{2014} change those to remove it"
             )));

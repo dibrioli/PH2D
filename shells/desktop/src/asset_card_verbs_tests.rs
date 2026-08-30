@@ -3,6 +3,7 @@
 use super::users_of;
 use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, SpritePixels, StableId, Transform};
 use ph2d_editor::interaction::drag_payload::DragPayload;
+use std::collections::BTreeMap;
 
 /// ⭐⭐⭐ **Uma PEÇA DE RECEITA não é um utilizador** (auditoria de 2026-08-30, achado nº 1).
 ///
@@ -55,6 +56,9 @@ fn a_recipe_piece_is_not_a_user_because_the_artist_cannot_reach_it() {
         DragPayload::Image {
             asset: *tex.as_bytes(),
         },
+        // ⚠️ Mapa VAZIO: estes dois gates medem o caminho do `SpritePixels`, e um mapa cheio faria
+        // a resposta certa sair pelo outro braço.
+        &BTreeMap::new(),
     );
     assert!(
         users.contains(&on_canvas.to_bits()),
@@ -95,10 +99,45 @@ fn an_object_born_this_frame_still_counts_as_a_user() {
         DragPayload::Image {
             asset: *tex.as_bytes(),
         },
+        // ⚠️ Mapa VAZIO: estes dois gates medem o caminho do `SpritePixels`, e um mapa cheio faria
+        // a resposta certa sair pelo outro braço.
+        &BTreeMap::new(),
     );
     assert!(
         users.contains(&newborn.to_bits()),
         "o recém-nascido tem de contar: {users:?}"
     );
     assert_eq!(users.len(), 2);
+}
+
+/// ⭐⭐⭐ **UMA SPRITE DE ÁTLAS conta como utilizador** — e a 1.ª versão não a via.
+///
+/// ⛔ O `Select users` perguntava só pelo `SpritePixels`, que é o carimbo da MINORIA: toda imagem
+/// importada e todo canvas novo vivem no **átlas**. Consequência: *«Nothing is using this image»*
+/// sobre uma imagem que o artista acabou de pôr na cena.
+///
+/// **Mutação que deve sangrar:** voltar a `query::<(Entity, &SpritePixels)>()`.
+#[test]
+fn an_atlas_sprite_counts_as_a_user_of_the_image_it_shows() {
+    let mut sim = SimWorld::new();
+    let db = ph2d_asset::AssetDb::new();
+    let tex = db.insert_image_rgba8(2, 2, vec![5u8; 16]);
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("Imported"),
+            ph2d_render::Sprite::atlas(7, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+        ))
+        .id();
+    let mut atlas = BTreeMap::new();
+    atlas.insert(7u32, tex);
+    let users = users_of(
+        &mut sim,
+        DragPayload::Image {
+            asset: *tex.as_bytes(),
+        },
+        &atlas,
+    );
+    assert_eq!(users, vec![e.to_bits()], "a sprite de átlas TEM de contar");
 }

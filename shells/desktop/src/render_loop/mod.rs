@@ -10822,6 +10822,7 @@ impl crate::App {
                 instance_verb_row,
                 instance_verb_stable_id,
                 asset_card_verb,
+                atlas_asset_map,
                 delete_row,
                 hierarchy_row_click,
                 hierarchy_select_intent,

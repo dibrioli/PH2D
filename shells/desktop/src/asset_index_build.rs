@@ -111,12 +111,26 @@ thread_local! {
 /// ⚠️ **`visible == false` não publica nada, e é a decisão:** o índice é uma travessia do mundo,
 /// e pagá-la com o painel fechado seria trabalho que ninguém lê. ⛔ O preço de o publicar não é
 /// zero e está medido no handoff — é por isso que a guarda existe em vez de «é barato».
-pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool) {
+pub(crate) fn publish_for_frame(
+    sim: &mut SimWorld,
+    db: &AssetDb,
+    atlas_assets: &BTreeMap<u32, AssetId>,
+    visible: bool,
+) {
     if !visible {
         return;
     }
-    let index = SWATCHES
-        .with(|sw| LIBRARY.with(|lib| build(sim, db, &mut sw.borrow_mut(), &mut lib.borrow_mut())));
+    let index = SWATCHES.with(|sw| {
+        LIBRARY.with(|lib| {
+            build(
+                sim,
+                db,
+                atlas_assets,
+                &mut sw.borrow_mut(),
+                &mut lib.borrow_mut(),
+            )
+        })
+    });
     ph2d_panel_asset_browser::set_current_index(index);
 }
 
@@ -127,6 +141,9 @@ pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool)
 pub(crate) fn build(
     sim: &mut SimWorld,
     db: &AssetDb,
+    // ⭐⭐ `célula do atlas → AssetId`, preenchido pelo import / canvas novo / load — **nunca pelo
+    // arranque**. É o que separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
+    atlas_assets: &BTreeMap<u32, AssetId>,
     swatches: &mut CardArt,
     remembered: &mut TextureLibrary,
 ) -> AssetIndex {
@@ -214,15 +231,38 @@ pub(crate) fn build(
     // trouxe. ⇒ o `tracked_paths()` deixou de ser fonte de ENTRADAS e passou a ser só fonte de
     // NOMES para as que qualificam.
     //
-    // ⇒ **Uma textura é um asset quando uma ENTIDADE a referencia** — isto é, quando o artista a
-    // importou, pintou ou editou (o `SpritePixels` é o carimbo dessas oito portas).
+    // ⇒ **Uma textura é um asset quando uma ENTIDADE a referencia.**
+    //
+    // ⛔⛔⛔ **E «referencia» tem DUAS formas, não uma — a 1.ª versão só conhecia a segunda, e o
+    // resultado foi o report do Enio de 2026-08-30: *«as imagens não aparecem no painel nem
+    // importando nem criando as imagens no app»*.**
+    //
+    // | forma | quem a tem | o carimbo |
+    // |---|---|---|
+    // | **atlas** | o caminho NORMAL de todo import e de todo canvas novo | `Sprite { source: Atlas { key } }` + o `atlas_asset_map[key]` |
+    // | **individual** | só o que não coube no atlas (16 bits, sobredimensionado) ou foi promovido | `SpritePixels(AssetId)` |
+    //
+    // ⚠️ **O `SpritePixels` é o carimbo da MINORIA**, e o `spawn_sprite` di-lo por escrito: ele só o
+    // insere no ramo `PackedSource::Individual`, porque *«uma sprite de atlas grava-se pelo
+    // `atlas_asset_map`; um `SpritePixels` a mais fá-la-ia ser gravada duas vezes»*. Eu li aquele
+    // carimbo como *«o artista trouxe isto»* quando ele significa *«esta sprite tem textura
+    // própria»* — e o caso comum não tem.
+    //
+    // ⭐⭐ **E o `atlas_asset_map` é a resposta EXACTA à pergunta que a 1.ª cura fazia**, sem o
+    // efeito colateral: ele é preenchido pelo **import**, pelo **canvas novo** e pelo **load do
+    // projecto**, e ⛔ **nunca pelo arranque** — as 16 do átlas de demonstração entram no `AssetDb`
+    // pelo `atlas_loader` e **não** neste mapa. *A cura anterior acertava no sintoma pelo
+    // predicado errado; esta acerta pela proveniência, que é o que a pergunta sempre foi.*
     let mut loose: Vec<(u64, Entity, AssetId)> = {
-        let mut q = sim.world_mut().query::<(Entity, &SpritePixels)>();
+        let mut q = sim
+            .world_mut()
+            .query::<(Entity, Option<&SpritePixels>, Option<&ph2d_render::Sprite>)>();
         let mut v: Vec<(u64, Entity, AssetId)> = q
             .iter(sim.world())
-            .map(|(e, sp)| {
+            .filter_map(|(e, px, spr)| {
+                let id = texture_of(px, spr, atlas_assets)?;
                 let order = sim.world().get::<StableId>(e).map_or(u64::MAX, |s| s.0);
-                (order, e, sp.0)
+                Some((order, e, id))
             })
             .collect();
         v.sort_unstable_by_key(|(order, _, _)| *order);
@@ -319,6 +359,39 @@ fn texture_entry(
     }
     entry.thumb = thumb_for(db, id, swatches, budget);
     entry
+}
+
+/// ⭐⭐⭐ **QUE TEXTURA esta entidade referencia** — e a resposta tem DUAS formas.
+///
+/// ⛔⛔ **É a porta que faltava, e a ausência dela custou o report do Enio de 2026-08-30**
+/// (*«as imagens não aparecem no painel nem importando nem criando as imagens no app»*): eu
+/// escrevi *«uma textura é um asset quando uma entidade a referencia»* e implementei só metade
+/// disso — o `SpritePixels`, que é o carimbo da MINORIA.
+///
+/// | forma | quem a tem |
+/// |---|---|
+/// | `SpritePixels(id)` | só o que não coube no átlas (16 bits, sobredimensionado) ou foi promovido |
+/// | célula de átlas + `atlas_asset_map` | o caminho NORMAL de todo import e de todo canvas novo |
+///
+/// ⚠️ **O `atlas_assets` é o que separa proveniência de presença:** ele é preenchido pelo import,
+/// pelo canvas novo e pelo load do projecto, e ⛔ **nunca pelo arranque** — as 16 do átlas de
+/// demonstração ficam de fora sem um caso especial.
+///
+/// ⚠️ **UMA porta, dois leitores** — o índice (*«que assets existem?»*) e o
+/// [`crate::asset_card_verbs::users_of`] (*«quem usa isto?»*). A 1.ª versão respondia a segunda
+/// pergunta com a metade errada, e o *Select users* numa imagem importada devolvia **zero**.
+pub(crate) fn texture_of(
+    pixels: Option<&SpritePixels>,
+    sprite: Option<&ph2d_render::Sprite>,
+    atlas_assets: &BTreeMap<u32, AssetId>,
+) -> Option<AssetId> {
+    if let Some(p) = pixels {
+        return Some(p.0);
+    }
+    match sprite?.source {
+        ph2d_render::SpriteSource::Atlas { key } => atlas_assets.get(&key).copied(),
+        _ => None,
+    }
 }
 
 /// A raiz **e toda a descendência** — a mesma definição de «peça» do `assign_master_pieces`.

@@ -29,6 +29,9 @@ pub(super) fn drain_card_verb(
     vec_entities: &mut crate::vec_entities::VecEntityMap,
     camera: &ph2d_render::Camera2d,
     window_size: ph2d_host::WindowSize,
+    // ⭐ `célula do átlas → AssetId` — o que separa *«o artista trouxe isto»* de *«o boot pôs
+    // isto no `AssetDb`»*. Ver [`crate::asset_index_build::texture_of`].
+    atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     title_dirty: &mut bool,
 ) -> Option<u64> {
     // ⚠️ Um `select_out` PRÓPRIO: ele é exclusivo dos outros verbos por gesto, mas partilhar a
@@ -55,6 +58,7 @@ pub(super) fn drain_card_verb(
                 );
                 [dx as f32, dy as f32]
             },
+            atlas_assets,
             &mut card_select,
         )
     {

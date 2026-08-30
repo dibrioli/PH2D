@@ -1058,6 +1058,9 @@ pub(super) fn publish(
     crate::asset_index_build::publish_for_frame(
         sim,
         asset_db,
+        // ⭐⭐ Ele já chegava a esta função — o que faltava era chegar ao índice. É o mapa que
+        // separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
+        atlas_asset_map,
         hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
     );
     // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.

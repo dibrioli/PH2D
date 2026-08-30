@@ -46,24 +46,32 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         3 => build(app),
         // O painel precisa de um quadro pintado antes de os cartões existirem no hit-index.
         20 => open_panel(app),
-        30 => find_card(app),
-        34 => right_click_card(app),
+        25 => new_image(app),
+        28 => report_library(app),
+        // ⚠️ **O filtro é apertado ANTES de procurar o cartão**, e não é conforto: a grade ordena
+        // por NOME, então assim que a cena passou a criar uma imagem o cartão 0 deixou de ser o
+        // prefab e os dois passos seguintes mediram o asset errado. *Um roteiro que assume a
+        // posição de um cartão mede a ordenação, não o verbo.* O chip é um gesto real, e apertá-lo
+        // exercita a fileira de filtros de passagem.
+        29 => click_kind_chip(app),
+        32 => find_card(app),
+        36 => right_click_card(app),
         // ⚠️ **Um quadro entre o menu abrir e o item ser apertado.** O overlay só regista os
         // rect das linhas quando as pinta, e apertar no mesmo quadro em que ele abre acerta em
         // nada — que é um falso NEGATIVO deste instrumento, não um defeito do produto.
-        37 => click_menu_row(
+        39 => click_menu_row(
             app,
             ph2d_editor::ids::CTX_MENU_ASSET_SELECT_USERS,
             "Select users",
         ),
-        40 => report_selection(app),
-        44 => right_click_card(app),
-        47 => click_menu_row(
+        42 => report_selection(app),
+        46 => right_click_card(app),
+        49 => click_menu_row(
             app,
             ph2d_editor::ids::CTX_MENU_ASSET_REMOVE,
             "Remove from Library",
         ),
-        50 => report_removed(app),
+        52 => report_removed(app),
         _ => {}
     }
 }
@@ -140,16 +148,78 @@ fn open_panel(app: &mut crate::App) {
     }
 }
 
+/// ⭐⭐⭐ **Cria uma imagem pela porta do PRODUTO e conta se ela chega à biblioteca.**
+///
+/// ⛔⛔ Report do Enio (2026-08-30): *«as imagens não aparecem no painel nem importando nem criando
+/// as imagens no app»*. O roteiro anterior só punha um PREFAB na cena, então a metade das texturas
+/// nunca era exercida — *um instrumento que não encena o caso não mede a ausência dele*.
+///
+/// ⚠️ **O `spawn_blank_canvas` é o caminho do *New Image…*, e é o caso NORMAL:** ele empacota no
+/// **átlas** (não em textura própria) e regista a proveniência no `atlas_asset_map`. Era
+/// exactamente esta forma que a lei da etapa A não via.
+fn new_image(app: &mut crate::App) {
+    // ⚠️ A escala vem do PROJECTO, que é onde a única conversão px→m deste app vive.
+    let ppm = app
+        .gfx
+        .as_ref()
+        .and_then(|g| g.hero_screen.as_ref())
+        .map_or(100.0, |h| h.project.pixels_per_meter);
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    let cell = gfx.next_import_cell;
+    gfx.next_import_cell += 1;
+    let out = crate::image_import::spawn_blank_canvas(
+        &mut gfx.sim,
+        &mut gfx.renderer,
+        &gfx.asset_db,
+        cell,
+        64,
+        2, // fundo branco
+        ph2d_core::Vec2::new(2.0, 0.0),
+        ppm,
+        &mut gfx.atlas_asset_map,
+    );
+    eprintln!(
+        "[asset-menu] f=25 imagem nova pela porta do produto (célula {cell} do átlas): {}",
+        match &out {
+            Ok((name, _)) => format!("«{name}»"),
+            Err(e) => format!("FALHOU: {e}"),
+        }
+    );
+}
+
+/// Quantos cartões a biblioteca publicou — a metade que o report do Enio mede.
+fn report_library(_app: &mut crate::App) {
+    let (n, kinds) = ph2d_panel_asset_browser::probe_index_summary();
+    eprintln!("[asset-menu] f=28 a biblioteca tem {n} asset(s): {kinds}");
+}
+
+/// Aperta o chip **Prefab** da fileira de filtros — para o cartão 0 ser o prefab, quaisquer que
+/// sejam os outros assets da biblioteca.
+fn click_kind_chip(app: &mut crate::App) {
+    // O chip `1` é o `AssetKind::ALL[0]` = Prefab (o `0` é o «All»).
+    let id = ph2d_editor::ids::ASSET_KIND[1];
+    match app.smoke_find_widget(id) {
+        Some((x, y)) => {
+            app.smoke_pointer_down(x, y);
+            app.smoke_pointer_up();
+            eprintln!("[asset-menu] f=29 chip de filtro `Prefab` apertado em ({x}, {y})");
+        }
+        None => eprintln!("[asset-menu] f=29 ⚠️ o chip `Prefab` NÃO está no hit-index"),
+    }
+}
+
 /// Onde está o primeiro cartão. ⚠️ **Pelo hit-index**, que é a única prova de que ele é agarrável.
 fn find_card(app: &mut crate::App) {
     let id = ph2d_editor::ids::asset_cell_id(0);
     match app.smoke_find_widget(id) {
         Some((x, y)) => {
             CARD_AT.with(|c| c.set((x, y)));
-            eprintln!("[asset-menu] f=30 cartão 0 no hit-index em ({x}, {y})");
+            eprintln!("[asset-menu] f=32 cartão 0 no hit-index em ({x}, {y})");
         }
         None => eprintln!(
-            "[asset-menu] f=30 ⚠️ o cartão 0 NÃO está no hit-index — ou o painel não abriu, ou a \
+            "[asset-menu] f=32 ⚠️ o cartão 0 NÃO está no hit-index — ou o painel não abriu, ou a \
              grade não pintou, ou as células não estão registadas"
         ),
     }
@@ -193,7 +263,7 @@ fn report_selection(app: &mut crate::App) {
         .and_then(|g| g.hero_screen.as_ref())
         .map_or(0, |h| h.gizmo.iter_selected().count());
     eprintln!(
-        "[asset-menu] f=40 `Select users` — {n} objecto(s) seleccionado(s) {}",
+        "[asset-menu] f=42 `Select users` — {n} objecto(s) seleccionado(s) {}",
         if n >= 1 {
             "(esperado ≥ 1)"
         } else {
@@ -215,7 +285,7 @@ fn report_removed(app: &mut crate::App) {
         q.iter(gfx.sim.world()).any(|s| s.0 == want)
     };
     eprintln!(
-        "[asset-menu] f=50 `Remove from Library` — a receita {want} ainda está na biblioteca: {} \
+        "[asset-menu] f=52 `Remove from Library` — a receita {want} ainda está na biblioteca: {} \
          (esperado: nao)",
         if still { "⚠️ SIM" } else { "nao" }
     );

@@ -172,3 +172,29 @@ impl AssetBrowserState {
         Self::kind_for_chip(i).map_or("All", AssetKind::label)
     }
 }
+
+/// **Só para os roteiros de smoke:** quantos assets o índice publicado tem, e de que famílias.
+///
+/// ⚠️ Ela existe porque a pergunta do report do Enio — *«as imagens aparecem no painel?»* — não é
+/// alcançável de um `#[test]` (o índice é publicado por um quadro real, com `AppGfx` na mão) nem
+/// legível de um pixel. *Uma cena que não sabe dizer o que a grade tem só sabe dizer que não
+/// estourou.*
+#[must_use]
+pub fn probe_index_summary() -> (usize, String) {
+    with_index(|ix| {
+        let counts = ix.counts();
+        let text = counts
+            .iter()
+            .map(|(k, n)| format!("{} x{n}", k.label()))
+            .collect::<Vec<_>>()
+            .join(", ");
+        (
+            ix.len(),
+            if text.is_empty() {
+                "vazio".into()
+            } else {
+                text
+            },
+        )
+    })
+}

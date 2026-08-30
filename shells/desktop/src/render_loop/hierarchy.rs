@@ -69,6 +69,8 @@ pub(super) fn dispatch(
         ph2d_editor::interaction::drag_payload::DragPayload,
         ph2d_editor::action_bus::AssetCardAction,
     )>,
+    // ⭐ `célula do átlas → AssetId`, para o *Select users* achar uma imagem importada.
+    atlas_assets: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -358,6 +360,7 @@ pub(super) fn dispatch(
         vec_entities,
         camera,
         window_size,
+        atlas_assets,
         &mut title_dirty,
     );
     // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita

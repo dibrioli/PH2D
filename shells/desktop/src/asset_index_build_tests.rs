@@ -10,6 +10,14 @@ use ph2d_asset_index::AssetKind;
 use ph2d_ecs::{ChildOf, Transform};
 
 /// Um mundo com uma receita de duas peças, a de baixo com pixels próprios.
+/// Um mapa de atlas VAZIO — o estado de um mundo em que ninguém importou nada.
+///
+/// ⚠️ **Ele é o CONTROLE dos gates de import:** se um deles passasse com o mapa vazio, ele não
+/// estaria a medir o caminho do atlas.
+fn no_atlas() -> BTreeMap<u32, AssetId> {
+    BTreeMap::new()
+}
+
 fn world_with_one_component(db: &AssetDb) -> (SimWorld, AssetId) {
     let mut sim = SimWorld::new();
     let pixels = vec![0u8; 4 * 4 * 4];
@@ -41,7 +49,7 @@ fn one_walk_returns_both_families() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &mut cache, &mut lib);
+    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
     let counts = index.counts();
     assert_eq!(counts.get(&AssetKind::Component), Some(&1));
     assert_eq!(counts.get(&AssetKind::Texture), Some(&1));
@@ -54,7 +62,7 @@ fn the_component_declares_the_texture_and_the_texture_names_its_owner() {
     let (mut sim, id) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &mut cache, &mut lib);
+    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
     let tex = AssetRef::Texture {
         asset: *id.as_bytes(),
     };
@@ -71,7 +79,7 @@ fn deleting_the_master_removes_it_from_the_next_build() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &mut cache, &mut lib)
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
             .counts()
             .get(&AssetKind::Component),
         Some(&1)
@@ -83,7 +91,7 @@ fn deleting_the_master_removes_it_from_the_next_build() {
         q.iter(sim.world()).next().unwrap()
     };
     sim.world_mut().entity_mut(root).remove::<MasterRoot>();
-    let after = build(&mut sim, &db, &mut cache, &mut lib);
+    let after = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
     assert_eq!(after.counts().get(&AssetKind::Component), None);
 }
 
@@ -149,12 +157,12 @@ fn two_builds_of_the_same_world_agree_entry_for_entry() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache, &mut lib)
+    let a: Vec<AssetRef> = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
         .entries()
         .iter()
         .map(|e| e.key)
         .collect();
-    let b: Vec<AssetRef> = build(&mut sim, &db, &mut cache, &mut lib)
+    let b: Vec<AssetRef> = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
         .entries()
         .iter()
         .map(|e| e.key)
@@ -177,7 +185,7 @@ fn textures_the_boot_loaded_but_nobody_placed_are_not_assets() {
     let mut sim = SimWorld::new();
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &mut cache, &mut lib);
+    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
     assert!(
         index.is_empty(),
         "o painel mostrou {} assets que ninguem colocou la'",
@@ -196,7 +204,7 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &mut cache, &mut lib)
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
             .counts()
             .get(&AssetKind::Texture),
         Some(&1)
@@ -209,7 +217,7 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
     };
     sim.world_mut().despawn(victim);
 
-    let after = build(&mut sim, &db, &mut cache, &mut lib);
+    let after = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
     assert_eq!(
         after.counts().get(&AssetKind::Texture),
         Some(&1),
@@ -234,11 +242,12 @@ fn hiding_an_object_changes_nothing_in_the_library() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let before: Vec<(String, String, [u8; 4])> = build(&mut sim, &db, &mut cache, &mut lib)
-        .entries()
-        .iter()
-        .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
-        .collect();
+    let before: Vec<(String, String, [u8; 4])> =
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
+            .entries()
+            .iter()
+            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+            .collect();
 
     // Esconde a raiz — a mesma marca que o olho da Hierarquia escreve.
     let root = {
@@ -251,11 +260,12 @@ fn hiding_an_object_changes_nothing_in_the_library() {
         .entity_mut(root)
         .insert(ph2d_ecs::Visibility { hidden: true });
 
-    let after: Vec<(String, String, [u8; 4])> = build(&mut sim, &db, &mut cache, &mut lib)
-        .entries()
-        .iter()
-        .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
-        .collect();
+    let after: Vec<(String, String, [u8; 4])> =
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
+            .entries()
+            .iter()
+            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+            .collect();
     assert_eq!(before, after, "esconder mudou o que o painel mostra");
 }
 
@@ -281,14 +291,14 @@ fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &mut cache, &mut lib)
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
             .counts()
             .get(&AssetKind::Component),
         Some(&1)
     );
     sim.world_mut().despawn(copy);
     assert_eq!(
-        build(&mut sim, &db, &mut cache, &mut lib)
+        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
             .counts()
             .get(&AssetKind::Component),
         Some(&1),
@@ -327,5 +337,59 @@ fn the_frame_budget_stops_the_burst_and_a_cache_hit_does_not_spend_it() {
     assert!(
         thumb_for(&db, a, &mut cache, &mut budget).is_some(),
         "um acerto na memória não pode ser travado pelo orçamento"
+    );
+}
+
+/// ⭐⭐⭐ **UMA IMAGEM IMPORTADA APARECE NA BIBLIOTECA — e a de ARRANQUE não.**
+///
+/// ⛔⛔ Report do Enio (2026-08-30): *«as imagens não aparecem no painel nem importando nem criando
+/// as imagens no app»*. A causa era a minha lei da etapa A: eu tratava o `SpritePixels` como *«o
+/// artista trouxe isto»*, e ele significa *«esta sprite tem textura PRÓPRIA»* — o caminho normal de
+/// todo import e de todo canvas novo é o **atlas**, que não o carrega.
+///
+/// ⚠️ **A fixtura tem as DUAS metades de propósito**, e é isso que a torna um oráculo em vez de uma
+/// afirmação: a mesma forma de sprite (célula de atlas), uma com proveniência de import e outra
+/// sem. Um filtro que devolvesse tudo, ou nada, reprova.
+///
+/// **Mutação que deve sangrar:** trocar o `atlas_assets.get(&key)` por `None`.
+#[test]
+fn an_imported_atlas_sprite_is_in_the_library_and_a_boot_one_is_not() {
+    let db = AssetDb::new();
+    let imported = db.insert_image_rgba8(4, 4, vec![1u8; 64]);
+    let from_boot = db.insert_image_rgba8(4, 4, vec![2u8; 64]);
+    let mut sim = SimWorld::new();
+    // A que o artista importou: célula 7, e o mapa NOMEIA a proveniência dela.
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("Imported"),
+        StableId(1),
+        ph2d_render::Sprite::atlas(7, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+    ));
+    // A do átlas de demonstração: célula 3, e o mapa **não** a conhece — o `atlas_loader` do
+    // arranque não escreve nele.
+    sim.world_mut().spawn((
+        Transform::IDENTITY,
+        Name::new("BootDemo"),
+        StableId(2),
+        ph2d_render::Sprite::atlas(3, [1.0, 1.0], [1.0, 1.0, 1.0, 1.0]),
+    ));
+    let mut atlas = BTreeMap::new();
+    atlas.insert(7u32, imported);
+
+    let mut cache = CardArt::new();
+    let mut lib = TextureLibrary::default();
+    let index = build(&mut sim, &db, &atlas, &mut cache, &mut lib);
+    let keys: Vec<AssetRef> = index.entries().iter().map(|e| e.key).collect();
+    assert!(
+        keys.contains(&AssetRef::Texture {
+            asset: *imported.as_bytes()
+        }),
+        "a imagem IMPORTADA tem de estar na biblioteca: {keys:?}"
+    );
+    assert!(
+        !keys.contains(&AssetRef::Texture {
+            asset: *from_boot.as_bytes()
+        }),
+        "a do átlas de demonstração NÃO pode estar — ninguém a trouxe"
     );
 }

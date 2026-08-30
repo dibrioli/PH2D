@@ -12,6 +12,10 @@ const F: f32 = b'F' as f32;
 /// `sym` de uma âncora de instância (folha).
 const J: f32 = b'J' as f32;
 
+/// A ponta SEM afinamento — o valor de fábrica, e o que estes gates medem quando o
+/// assunto deles não é a ponta.
+const NO_TAPER: f32 = 0.0;
+
 fn w(n: usize, v: f32) -> Vec<[f32; 2]> {
     vec![[v, v]; n]
 }
@@ -25,7 +29,7 @@ fn w(n: usize, v: f32) -> Vec<[f32; 2]> {
 fn a_straight_stem_is_one_ribbon_and_not_a_pile_of_rectangles() {
     let p = [[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]];
     let parent = [-1.0, 0.0, 1.0, 2.0];
-    let b = branches(&p, &parent, &w(4, 1.0), &[F; 4]);
+    let b = branches(&p, &parent, &w(4, 1.0), &[F; 4], NO_TAPER);
     assert_eq!(b.len(), 1, "uma haste a direito tem de dar UMA fita: {b:?}");
     assert_eq!(
         b[0].points,
@@ -56,7 +60,7 @@ fn a_fork_gives_three_ribbons_and_the_children_start_at_the_parents_point() {
     ];
     let parent = [-1.0, 0.0, -1.0, 1.0, 1.0];
     let sym = [F, F, J, F, F];
-    let b = branches(&p, &parent, &w(5, 1.0), &sym);
+    let b = branches(&p, &parent, &w(5, 1.0), &sym, NO_TAPER);
     assert_eq!(b.len(), 3, "tronco + dois filhos: {b:?}");
     // O tronco pára na bifurcação.
     assert_eq!(b[0].points, vec![[0.0, 0.0], [0.0, 1.0]]);
@@ -71,23 +75,85 @@ fn a_fork_gives_three_ribbons_and_the_children_start_at_the_parents_point() {
     }
 }
 
-/// ⭐ **O filho nunca é mais grosso que o pai onde nasce** — a lei do SpeedTree.
+/// ⭐⭐⭐ **O filho ABRE na largura do pai** — e é isso que fecha a forquilha.
 ///
-/// ⚠️ E vale nos DOIS sentidos: um filho fino não engrossa a junção (senão o `min` seria um
-/// `max` disfarçado), e um filho grosso não a faz exceder o pai.
+/// ⚠️⚠️ **Esta lei MUDOU no smoke de 2026-08-30**, e o report nomeia o que a anterior produzia:
+/// *"não há continuidade perfeita entre um tronco e seus ramos"*. Ela era `min(pai, filho)`, e
+/// com o mínimo um galho fino nasce **fino no meio da silhueta grossa do tronco** — as duas
+/// superfícies encostam-se num degrau. Tomando a largura do PAI, os dois contornos coincidem
+/// naquele ponto e o galho afina para a largura dele ao longo do primeiro passo (o **colar**).
+///
+/// ⚠️ **A restrição do SpeedTree continua honrada, e é a segunda metade deste gate:** *o raio
+/// nunca EXCEDE o do pai ali* — um filho mais grosso é aparado. Igualar satisfaz a restrição;
+/// o `min` era a leitura conservadora dela, não a lei.
 #[test]
-fn the_child_is_never_thicker_than_its_parent_where_it_is_born() {
+fn the_child_opens_at_its_parents_width_and_never_exceeds_it() {
     let p = [[0.0, 0.0], [0.0, 1.0], [-1.0, 2.0], [1.0, 2.0]];
     let parent = [-1.0, 0.0, 1.0, 1.0];
     // O pai (índice 1) tem largura 4; um filho fino (1) e um filho grosso (9).
     let size = vec![[4.0, 4.0], [4.0, 4.0], [1.0, 1.0], [9.0, 9.0]];
-    let b = branches(&p, &parent, &size, &[F; 4]);
+    let b = branches(&p, &parent, &size, &[F; 4], NO_TAPER);
     let junction: Vec<f32> = b[1..].iter().map(|x| x.widths[0]).collect();
     assert_eq!(
         junction,
-        vec![1.0, 4.0],
-        "na junção vale o MENOR entre pai e filho — o fino fica fino, o grosso é aparado no pai"
+        vec![4.0, 4.0],
+        "os dois filhos têm de ABRIR na largura do pai (4) — o fino para não deixar degrau, \
+         o grosso porque ali não pode excedê-lo"
     );
+    // ⚠️ E o filho fino tem de AFINAR logo a seguir: se ficasse na largura do pai o galho
+    // inteiro engrossava, que é o defeito oposto e igualmente visível.
+    assert_eq!(
+        b[1].widths[1], 1.0,
+        "o colar é só o primeiro ponto: no seguinte já vale a largura do próprio galho"
+    );
+}
+
+/// ⭐⭐ **A PONTA AFINA quando lhe pedem** — a outra metade do report de 2026-08-30 (*"as pontas
+/// não têm opção de afinar"*).
+///
+/// ⚠️ **Os três estados numa afirmação só**, porque cada um sozinho passa com a lei errada:
+/// `0` devolve a largura de sempre, `1` leva a ponta a zero, e um valor no meio fica no meio.
+#[test]
+fn the_tip_tapers_by_exactly_what_was_asked_and_zero_changes_nothing() {
+    let p = [[0.0, 0.0], [0.0, 1.0], [0.0, 2.0]];
+    let parent = [-1.0, 0.0, 1.0];
+    let tip = |taper: f32| {
+        let b = branches(&p, &parent, &w(3, 4.0), &[F; 3], taper);
+        *b[0].widths.last().expect("a fita tem largura")
+    };
+    assert_eq!(tip(0.0), 4.0, "sem afinamento a ponta é a de sempre");
+    assert_eq!(tip(1.0), 0.0, "afinamento total leva a ponta a zero");
+    assert_eq!(tip(0.25), 3.0, "um quarto tira um quarto");
+}
+
+/// ⭐⭐⭐ **Só a ponta TERMINAL afina — uma bifurcação NÃO.**
+///
+/// ⚠️ É a metade que separa esta lei de um bug: um ramo que acaba numa forquilha **passa a
+/// espessura aos filhos**, e afiná-lo ali abriria um buraco no meio da árvore — exactamente o
+/// defeito que a outra metade desta wave veio fechar. *Um afinamento aplicado ao fim do ramo em
+/// vez de ao fim do RAMO SEM CONTINUAÇÃO destrói a junção que se acabou de curar.*
+#[test]
+fn a_fork_is_not_a_tip_and_does_not_taper() {
+    //      2   3
+    //       \ /
+    //        1
+    //        |
+    //        0
+    let p = [[0.0, 0.0], [0.0, 1.0], [-1.0, 2.0], [1.0, 2.0]];
+    let parent = [-1.0, 0.0, 1.0, 1.0];
+    let b = branches(&p, &parent, &w(4, 4.0), &[F; 4], 1.0);
+    assert_eq!(
+        *b[0].widths.last().expect("o tronco tem largura"),
+        4.0,
+        "o tronco acaba numa BIFURCAÇÃO: afiná-lo abriria um buraco na forquilha"
+    );
+    for child in &b[1..] {
+        assert_eq!(
+            *child.widths.last().expect("o galho tem largura"),
+            0.0,
+            "os galhos acabam em PONTA: esses afinam"
+        );
+    }
 }
 
 /// ⭐ **Uma folha não parte o tronco em dois.**
@@ -100,7 +166,7 @@ fn a_leaf_hanging_off_the_trunk_does_not_cut_it_in_two() {
     let p = [[0.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 2.0]];
     let parent = [-1.0, 0.0, 1.0, 1.0];
     let sym = [F, F, J, F];
-    let b = branches(&p, &parent, &w(4, 1.0), &sym);
+    let b = branches(&p, &parent, &w(4, 1.0), &sym, NO_TAPER);
     assert_eq!(b.len(), 1, "a folha não é uma bifurcação: {b:?}");
     assert_eq!(b[0].points.len(), 3, "o tronco continua inteiro");
 }
@@ -116,7 +182,7 @@ fn the_profile_is_measured_along_the_arc_and_not_by_index() {
     // Passos de 3 e 1: o ponto do meio está a 75 % do arco, não a 50 %.
     let p = [[0.0, 0.0], [3.0, 0.0], [4.0, 0.0]];
     let parent = [-1.0, 0.0, 1.0];
-    let b = branches(&p, &parent, &w(3, 1.0), &[F; 3]);
+    let b = branches(&p, &parent, &w(3, 1.0), &[F; 3], NO_TAPER);
     let f = b[0].arc_fractions();
     assert_eq!(f[0], 0.0);
     assert!(
@@ -132,7 +198,7 @@ fn the_profile_is_measured_along_the_arc_and_not_by_index() {
 fn a_single_point_branch_is_not_emitted() {
     let p = [[0.0, 0.0], [0.0, 0.0]];
     let parent = [-1.0, 0.0];
-    let b = branches(&p, &parent, &w(2, 1.0), &[F, J]);
+    let b = branches(&p, &parent, &w(2, 1.0), &[F, J], NO_TAPER);
     assert!(b.is_empty(), "um ponto só não faz fita: {b:?}");
 }
 
@@ -172,7 +238,7 @@ fn a_real_branching_plant_becomes_few_ribbons_not_one_per_segment() {
     };
     let (p, parent, size, sym) = (get2("P"), get1("parent"), get2("size"), get1("sym"));
     let elements = p.len();
-    let b = branches(&p, &parent, &size, &sym);
+    let b = branches(&p, &parent, &size, &sym, NO_TAPER);
 
     assert!(!b.is_empty(), "uma planta que bifurca tem de dar fitas");
     assert!(

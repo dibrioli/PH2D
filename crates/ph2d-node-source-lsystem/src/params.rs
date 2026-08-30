@@ -28,6 +28,7 @@ pub(crate) struct Params {
     pub(crate) step_scale: f32,
     pub(crate) growth: f32,
     pub(crate) geometry: f32,
+    pub(crate) tip_taper: f32,
 }
 
 impl Params {
@@ -81,6 +82,7 @@ impl Params {
             step_scale: get(param::STEP_SCALE),
             growth: get(param::GROWTH),
             geometry: get(param::GEOMETRY),
+            tip_taper: get(param::TIP_TAPER),
         }
     }
 
@@ -109,6 +111,7 @@ impl Params {
             param::STEP_SCALE => self.step_scale,
             param::GROWTH => self.growth,
             param::GEOMETRY => self.geometry,
+            param::TIP_TAPER => self.tip_taper,
             _ => 0.0,
         }
     }

@@ -192,9 +192,67 @@ fn every_declared_param_has_a_hint_and_every_hint_has_a_home() {
         let text = h.param == AXIOM_PARAM || h.param == RULES_PARAM;
         assert!(declared || text, "o hint {} nao tem param nenhum", h.param);
     }
+    // ⚠️⚠️ **A LEI MUDOU DE GRANDEZA em 2026-08-30, e não foi para afrouxar.**
+    //
+    // Ela era `params + 2 <= 24`: a CONTAGEM DECLARADA. Com o `Geometry` e o `Tip Taper` o nó
+    // passou a declarar 25, e a barra reprovou — mas o que o painel não consegue pintar são as
+    // linhas **VISÍVEIS AO MESMO TEMPO**, e este nó esconde metade delas por modo (os
+    // `PARAM_GATES`: os textos somem no guiado, os números de forma somem na gramática, o
+    // `Tip Taper` só existe em `Branches`).
+    //
+    // ⇒ passa a medir o **PIOR CASO sobre todas as combinações** dos três params que decidem
+    // visibilidade. É a grandeza que de facto quebra: uma linha declarada e nunca visível não
+    // custa slot nenhum; uma linha visível além do 24.º **não é pintada**, e o artista fica sem
+    // gesto para lá chegar.
+    //
+    // ⚠️ **MEDIDO em 2026-08-30: o pior caso são `22` linhas de `24`** (modo guiado, geometria
+    // `Branches`, molde `Custom`) ⇒ **duas de folga**. O terceiro param novo que seja visível
+    // nessa combinação é o que estoura, e é aqui que ele reprova — com o nome dos três valores
+    // que compõem o pior caso, para quem chegar não ter de os procurar.
+    //
+    // ⚠️ E leva o próprio CONTROLE: sem gates o pior caso é a contagem declarada outra vez, e um
+    // `PARAM_GATES` esvaziado por engano tem de reprovar aqui em vez de passar a medir nada.
+    assert!(!PARAM_GATES.is_empty(), "sem gates não há o que medir");
+    let visible = |mode: i32, geometry: i32, preset: i32| {
+        let value_of = |name: &str| match name {
+            n if n == param::MODE => mode,
+            n if n == param::GEOMETRY => geometry,
+            n if n == param::PRESET => preset,
+            _ => 0,
+        };
+        let shown = |name: &str| {
+            PARAM_GATES
+                .iter()
+                .filter(|g| g.param == name)
+                .all(|g| g.values.contains(&value_of(g.when)))
+        };
+        MANIFEST.params.iter().filter(|p| shown(p.name)).count()
+            + [AXIOM_PARAM, RULES_PARAM]
+                .iter()
+                .filter(|n| shown(n))
+                .count()
+    };
+    let mut worst = 0usize;
+    let mut worst_at = (0, 0, 0);
+    for mode in 0..MODE_LABELS.len() as i32 {
+        for geometry in 0..GEOMETRY_LABELS.len() as i32 {
+            for preset in 0..PRESET_LABELS.len() as i32 {
+                let n = visible(mode, geometry, preset);
+                if n > worst {
+                    worst = n;
+                    worst_at = (mode, geometry, preset);
+                }
+            }
+        }
+    }
     assert!(
-        MANIFEST.params.len() + 2 <= ph2d_panel_motion_params_row_cap(),
-        "o no declara mais linhas do que o painel pinta"
+        worst <= ph2d_panel_motion_params_row_cap(),
+        "o painel pinta {} linhas e o pior caso VISÍVEL do nó são {worst} \
+         (mode={}, geometry={}, preset={}) — as que passam do teto ficam inalcançáveis",
+        ph2d_panel_motion_params_row_cap(),
+        worst_at.0,
+        worst_at.1,
+        worst_at.2
     );
 }
 

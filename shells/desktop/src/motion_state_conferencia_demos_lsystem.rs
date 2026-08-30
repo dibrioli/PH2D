@@ -248,6 +248,18 @@ pub(crate) fn build_lsystem_demo_document(
         g.set_param(l, ls::param::WIDTH, TRUNK_W);
         g.set_param(l, ls::param::STEP, 0.28);
 
+        // ⭐ **A SEGUNDA PLANTA AFINA AS PONTAS** — o knob que nasceu do report de 2026-08-30
+        // (*"as pontas não têm opção de afinar"*).
+        //
+        // ⚠️ **Só ela, e é o ponto:** a `1` e a `3` correm a MESMA gramática estocástica com
+        // sementes diferentes, então pôr o afinamento numa e não na outra dá o par lado a lado
+        // — *uma cena que só mostra o estado novo não ensina o que ele mudou*. O param nasce em
+        // `0` no nó (o carácter da ponta é decisão de quem vê), e é aqui que ele ganha um
+        // exemplo em vez de um slider por descobrir.
+        if k == 1 {
+            g.set_param(l, ls::param::TIP_TAPER, 1.0);
+        }
+
         // ⭐ **A QUINTA CRESCE.** O `Generations` é dirigido por um relógio, e é a única
         // maneira de ver a fracção: com o número a subir continuamente, o rebento novo
         // ESTICA a partir do ramo que já lá estava, em vez de a planta saltar de tamanho.

@@ -38,6 +38,18 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
             labels: GEOMETRY_LABELS,
         },
     },
+    // ⭐ **O AFINAMENTO DA PONTA** — report do Enio (2026-08-30): *"as pontas não têm opção de
+    // afinar"*. ⚠️ Só existe no modo `Branches` (ver [`PARAM_GATES`]): em `Segments` cada osso
+    // é um retângulo próprio e não há ponta que afinar — um knob inerte ali ensinaria a
+    // desconfiar dos vivos.
+    ParamUiHint {
+        param: param::TIP_TAPER,
+        label: "Tip Taper",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
     // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
     ParamUiHint {
         param: param::MODE,
@@ -257,6 +269,12 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
 /// ⚠️ **O `Preset` fica com a GRAMÁTICA**, e não com os sliders: um molde É uma gramática, e
 /// escolher um no guiado escreveria num texto que ninguém está a ler.
 pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
+    // ⭐ A ponta só afina onde há fita.
+    ph2d_node_registry::ParamGate {
+        param: param::TIP_TAPER,
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
     ph2d_node_registry::ParamGate {
         param: AXIOM_PARAM,
         when: param::MODE,
@@ -331,6 +349,7 @@ pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     // ⚠️ Na secção da FORMA, e no topo dela: *o que a planta é na tela* é a mesma família de
     // pergunta que *quantos ramos* e *que ângulo* — e não a de *de onde vem a gramática*.
     ph2d_node_registry::ParamGroup::new(param::GEOMETRY, "Shape"),
+    ph2d_node_registry::ParamGroup::new(param::TIP_TAPER, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),

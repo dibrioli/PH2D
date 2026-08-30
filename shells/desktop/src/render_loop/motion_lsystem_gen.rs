@@ -168,6 +168,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             &v1(&sk, "parent"),
             &v2(&sk, "size"),
             &v1(&sk, "sym"),
+            // ⭐ O afinamento da ponta vem do PAINEL, e chega aqui pela mesma escada resolvida
+            // que cunha a chave — senão a fita seria construída com um valor e memoizada com
+            // outro.
+            get(ls::param::TIP_TAPER),
         );
         jobs.push((key, bs));
     }

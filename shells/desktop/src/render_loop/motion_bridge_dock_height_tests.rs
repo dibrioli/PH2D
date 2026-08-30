@@ -506,7 +506,12 @@ fn the_dock_overflow_is_named_not_discovered() {
         // dobrou nenhuma porque escolher QUAL é decisão de quem vê o painel: as três (*Shape*,
         // *Grammar*, *Growth*) são a primeira coisa que um artista mexe, e esconder uma para
         // ganhar 11 px trocaria uma rolagem de um dedo por um clique em todo arranque.
-        ("source.lsystem", 675.0),
+        //
+        // ⚠️ **RE-MEDIDO no mesmo dia: `675 → 709`**, ao ganhar o `Tip Taper` (o segundo report
+        // do smoke). São `45 px` sobre o corpo, ou seja **uma linha e meia** — e a metade da
+        // frase acima que dizia *"menos de meia linha"* já não descreve isto. O gate exigiu a
+        // re-medição em vez de a deixar passar, que é a razão de a altura viver na lista.
+        ("source.lsystem", 709.0),
     ];
     let body = inspector_body_h();
     let census = height_census();

@@ -171,6 +171,7 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
         // nó devolve fitas. Uma porta de sonda que abrisse no modo novo passaria a medir outra
         // coisa, com todos os gates verdes.
         geometry: GEOMETRY_SEGMENTS as f32,
+        tip_taper: 0.0,
     };
     for (n, v) in overrides {
         match *n {

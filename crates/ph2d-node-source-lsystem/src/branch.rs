@@ -28,12 +28,24 @@
 //!
 //! No cpfg, `[` guarda *"o último ponto de controlo antes do ramo"* e o filho **liga-se a
 //! ele**. É por isso que uma bifurcação não tem buraco. Aqui a polilinha de um ramo filho
-//! **começa na posição do pai**, e a largura nesse ponto é `min(largura_do_pai,
-//! largura_do_filho)` — a lei do SpeedTree, *o filho nunca é mais grosso que o pai no ponto
-//! onde nasceu*.
+//! **começa na posição do pai E com a largura do pai**, e afina para a largura própria ao longo
+//! do primeiro passo — o **colar** que faz as duas silhuetas coincidirem naquele ponto.
+//!
+//! ⚠️⚠️ **A largura da junção era `min(pai, filho)` e o smoke reprovou-a** (Enio, 2026-08-30:
+//! *"não há continuidade perfeita entre um tronco e seus ramos"*): com o mínimo, um galho fino
+//! nasce **fino no meio da silhueta grossa do tronco**, e o degrau vê-se. *A restrição do
+//! SpeedTree é «o raio nunca EXCEDE o do pai ali» — igualar satisfá-la, e o `min` era a minha
+//! leitura conservadora dela, não a lei.*
 //!
 //! ⚠️ **Isso não muda nada de autorado**: aquele ponto não existia antes desta wave (não havia
 //! fita nenhuma), então a regra escolhe um número NOVO, não substitui um número do artista.
+//!
+//! # ⭐ E a PONTA afina, se lhe pedirem
+//!
+//! O `tip_taper` leva a largura do ÚLTIMO ponto de um ramo **terminal** a zero. `0` devolve a
+//! ponta de sempre, byte a byte. É o *taper* que o Blender Sapling (*"taper the tip to become
+//! thinner and thinner"*) e o SpeedTree têm — e sem ele um raminho acaba como um palito
+//! cortado a direito, que foi a outra metade do mesmo report.
 //!
 //! # ⚠️ Só `F` e `G` entram numa fita
 //!
@@ -114,7 +126,13 @@ fn parent_of(parent: &[f32], i: usize) -> i32 {
 /// Colunas mais curtas que `p` leem-se com o neutro (`parent = -1`, `size = 1`, `sym = F`), que
 /// é o caso de quem chamar isto com um esqueleto sem `sym`.
 #[must_use]
-pub fn branches(p: &[[f32; 2]], parent: &[f32], size: &[[f32; 2]], sym: &[f32]) -> Vec<Branch> {
+pub fn branches(
+    p: &[[f32; 2]],
+    parent: &[f32],
+    size: &[[f32; 2]],
+    sym: &[f32],
+    tip_taper: f32,
+) -> Vec<Branch> {
     let n = p.len();
     // Sem `sym` tudo desenha — é o esqueleto genérico (o do `rig.*`), que não tem alfabeto.
     let draws_i = |i: usize| sym.get(i).copied().is_none_or(draws);
@@ -152,22 +170,52 @@ pub fn branches(p: &[[f32; 2]], parent: &[f32], size: &[[f32; 2]], sym: &[f32]) 
 
         let mut points = Vec::new();
         let mut widths = Vec::new();
-        // ⭐ A JUNÇÃO: o filho começa no ponto do pai, e ali não é mais grosso que ele.
+        // ⭐⭐ **A JUNÇÃO: o filho começa no ponto do pai E COM A LARGURA DO PAI.**
+        //
+        // ⚠️ **Era `min(pai, filho)` até ao smoke de 2026-08-30, e o report do Enio nomeia
+        // exactamente o que isso produz:** *"não há continuidade perfeita entre um tronco e
+        // seus ramos"*. Com o mínimo, um galho fino nasce fino **no meio da silhueta grossa do
+        // tronco** — as duas superfícies encostam-se num degrau, e o degrau vê-se.
+        //
+        // Tomando a largura do PAI ali, os dois contornos coincidem naquele ponto e a união
+        // fecha: o galho abre num **colar** e afina para a largura dele ao longo do primeiro
+        // passo. É o que a referência descreve — o SpeedTree crava que *"o raio nunca pode
+        // exceder o do pai no ponto onde o galho nasceu"*, e IGUALAR satisfaz a restrição; o
+        // `min` era a minha leitura conservadora dela, não a lei.
         if par_ok {
             let par = par as usize;
             points.push(p[par]);
-            widths.push(width_i(par).min(width_i(start)));
+            widths.push(width_i(par));
         }
 
         let mut cur = start;
+        let terminal;
         loop {
             points.push(p[cur]);
             widths.push(width_i(cur));
             let next = only_kid[cur];
             if next == NO_PARENT || kids[cur] != 1 {
+                // ⭐ **Uma ponta é TERMINAL quando nada continua a partir dela** — não quando o
+                // ramo acaba. Um ramo que acaba numa BIFURCAÇÃO passa a espessura aos filhos, e
+                // afiná-lo ali abriria um buraco no meio da árvore.
+                terminal = kids[cur] == 0;
                 break;
             }
             cur = next as usize;
+        }
+
+        // ⭐ **O AFINAMENTO DA PONTA** (report do Enio, 2026-08-30: *"as pontas não têm opção de
+        // afinar"*). `0` devolve a largura de sempre — **byte a byte** —, `1` leva a ponta a
+        // zero. É o *taper* que o Blender Sapling e o SpeedTree têm, e é por isso que uma
+        // referência desenha um raminho e não um palito cortado.
+        //
+        // ⚠️ **Só na ponta TERMINAL**, e só no ÚLTIMO ponto: o afinamento é uma propriedade do
+        // fim do ramo, não uma segunda lei de largura a competir com o `!` da gramática.
+        if terminal
+            && tip_taper > 0.0
+            && let Some(w) = widths.last_mut()
+        {
+            *w *= (1.0 - tip_taper).clamp(0.0, 1.0);
         }
 
         // ⚠️ Um ramo de UM ponto não é uma fita. Acontece de verdade: uma raiz cuja única

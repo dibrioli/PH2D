@@ -298,6 +298,13 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::GEOMETRY,
             default: GEOMETRY_BRANCHES as f32,
         },
+        // ⭐ **O afinamento da ponta** (report do Enio, 2026-08-30). ⚠️ **Nasce em `0`**: com
+        // ele a fita é byte a byte a que shipou de manhã, e quem decide o LOOK é quem o vê —
+        // o modo `Branches` já foi ordem dele, o carácter da ponta ainda não.
+        ParamSpec {
+            name: param::TIP_TAPER,
+            default: 0.0,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -328,6 +335,7 @@ pub mod param {
     pub const STEP_SCALE: &str = "step_scale";
     pub const GROWTH: &str = "growth";
     pub const GEOMETRY: &str = "geometry";
+    pub const TIP_TAPER: &str = "tip_taper";
 }
 
 /// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.

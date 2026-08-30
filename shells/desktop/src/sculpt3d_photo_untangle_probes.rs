@@ -8,6 +8,73 @@
 
 use ph2d_untangle::Element;
 
+/// ⭐⭐⭐ **A OBRA GRANDE, medida** — a injectividade como objectivo, nas variáveis reduzidas.
+///
+/// ⚠️ **É a irmã honesta da [`seam_free_probe`]**, que media a mesma ideia por **projecção** e
+/// estagnava a oscilar. Aqui a costura é a **variável**, e não há nada a desfazer.
+pub(super) fn injective_probe(
+    work: &ph2d_mesh::Mesh,
+    cut: &ph2d_gridmap::CutMesh,
+    combed: &ph2d_gridmap::Combed,
+    target: f32,
+) {
+    let (mut map, _) = ph2d_gridmap::solve_welded(
+        work,
+        cut,
+        combed,
+        ph2d_gridmap::Step::uniform(target),
+        ph2d_gridmap::RoundOptions::default().welded_rounds,
+    );
+    let (w, _) = ph2d_gridmap::weld(cut, combed);
+    let relogio = std::time::Instant::now();
+    // ⚠️ **O orçamento entra pela env** porque a 1.ª medição gastou-o TODO
+    // (`64 externas / 2048 internas` = exactamente os tectos) — e um número que bate no tecto não
+    // diz onde o método pára, diz onde o relógio parou. *`33` truncado e `33` convergido são a
+    // mesma impressão e duas conclusões opostas.*
+    let base = ph2d_untangle::Settings::default();
+    let set = ph2d_untangle::Settings {
+        max_outer: std::env::var("PH2D_INJ_OUTER")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.max_outer),
+        max_inner: std::env::var("PH2D_INJ_INNER")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(base.max_inner),
+        ..base
+    };
+    // ⚠️ **O MESMO passo que resolveu o mapa** — o repouso da energia vive em unidades de
+    // célula, e uma sonda que passasse outro passo mediria outro problema.
+    let rep = ph2d_gridmap::make_injective(
+        work,
+        cut,
+        &w,
+        &mut map,
+        ph2d_gridmap::Step::uniform(target),
+        set,
+    );
+    eprintln!(
+        "  OBRA GRANDE (injectividade nas variaveis reduzidas): dobras {} -> {}  |  min det \
+         {:.3e} -> {:.3e}  |  {} externas / {} internas  |  {:.0} ms  --  {}",
+        rep.flipped_before,
+        rep.flipped_after,
+        rep.min_det.0,
+        rep.min_det.1,
+        rep.outer,
+        rep.inner,
+        relogio.elapsed().as_secs_f64() * 1000.0,
+        if rep.flipped_after == 0 {
+            "⭐⭐⭐ ZERA"
+        } else if rep.flipped_after * 4 < rep.flipped_before {
+            "⭐ desce MUITO"
+        } else if rep.flipped_after < rep.flipped_before {
+            "⚠️ desce"
+        } else {
+            "⛔ NAO desce"
+        }
+    );
+}
+
 /// ⭐⭐⭐ **A COSTURA LIVRE, por PROJECÇÃO** — o teste de viabilidade da obra grande.
 pub(super) fn seam_free_probe(
     work: &ph2d_mesh::Mesh,

@@ -208,7 +208,36 @@ pub fn round_welded(
         before = r2;
         t
     });
+    // ⭐⭐⭐ **A INJECTIVIDADE COMO OBJECTIVO — sobre o mapa CONTÍNUO, nas RAÍZES das classes.**
+    //
+    // ⚠️ **Aqui e não depois da escada, e a aritmética é que o decide** (2026-08-30, peça do
+    // artista, `Detail 0,85`): o mapa contínuo sai com `120` dobras e o final com `149` ⇒
+    // **`80 %` delas nascem AQUI**. O [`crate::untangle_pass`], que corre depois com os
+    // inteiros presos, não lhes chega por construção.
+    //
+    // ⛔⛔ **E não é o mesmo que desemaranhar o contínuo**, que já foi medido e recusado
+    // (`149 → 169` no mapa final): aquele passe prende a **fronteira** de cada retalho e
+    // distorce o interior para a satisfazer. Este desce nas **raízes das classes** — a
+    // costura é a variável, logo o mapa que sai continua a ser GP **por construção**, e a
+    // escada recebe um mapa legítimo em vez de um mapa torcido.
+    //
+    // ⛔ **Nasce DESLIGADO** (`PH2D_GRIDMAP_INJECTIVE=1` liga). Sem a env o mapa é
+    // byte-idêntico ao de sempre — e há gate.
+    let rep_injective = if crate::injective_solve::enabled() {
+        crate::injective_solve::make_injective(
+            mesh,
+            cut,
+            &w,
+            &mut map,
+            step,
+            ph2d_untangle::Settings::default(),
+        )
+    } else {
+        crate::injective_solve::InjectiveReport::default()
+    };
+
     let mut rep = RoundReport {
+        injective: rep_injective,
         tie_groups: before.tie_groups,
         tie_refused: before.tie_refused,
         tie_refused_why: before.tie_refused_why,

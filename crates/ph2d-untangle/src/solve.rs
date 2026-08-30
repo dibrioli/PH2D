@@ -13,7 +13,7 @@ const MEMORY: usize = 8;
 ///
 /// ⚠️ Um alias e não um `struct`: o par **é** a memória, e envolvê-lo num tipo com nomes
 /// acrescentaria uma indirecção sem acrescentar uma pergunta.
-type History = Vec<(Vec<[f64; 2]>, Vec<[f64; 2]>)>;
+pub type History = Vec<(Vec<[f64; 2]>, Vec<[f64; 2]>)>;
 
 /// O que o chamador pode afinar.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -109,14 +109,14 @@ pub fn untangle(
         let mut e_now = energy_and_gradient(elements, uv, eps, set.lambda, &mut grad);
         for _ in 0..set.max_inner {
             rep.inner += 1;
-            let dir = two_loop(&hist, &grad, locked);
+            let dir = lbfgs_direction(&hist, &grad, locked);
             let slope: f64 = dir
                 .iter()
                 .zip(grad.iter())
                 .map(|(d, g)| d[0].mul_add(g[0], d[1] * g[1]))
                 .sum();
             // ⛔⛔ **O SINAL, e ele mordeu nos DOIS sítios ao mesmo tempo** (2026-08-30):
-            // [`two_loop`] devolve `H·∇F`, que é direcção de **subida**; a descida é `−p`, e
+            // [`lbfgs_direction`] devolve `H·∇F`, que é direcção de **subida**; a descida é `−p`, e
             // ela só é válida quando `⟨−p, ∇F⟩ < 0`, ou seja **`slope > 0`**. A 1.ª redacção
             // tinha `slope >= 0` a disparar o ramo de recuo **e** passava `+grad` como direcção
             // — logo toda iteração subia, a busca linear recusava tudo e o laço saía no
@@ -186,7 +186,11 @@ fn dot(a: &[[f64; 2]], b: &[[f64; 2]]) -> f64 {
 }
 
 /// A recursão de dois laços do L-BFGS. Devolve a direcção **de subida** (o chamador nega).
-fn two_loop(hist: &History, grad: &[[f64; 2]], locked: &[bool]) -> Vec<[f64; 2]> {
+///
+/// ⚠️ **Pública desde 2026-08-30**: a `ph2d-gridmap` desce no espaço reduzido das costuras com
+/// a MESMA descida. *Duas implementações de L-BFGS na mesma árvore divergiriam no dia em que uma
+/// delas fosse corrigida.*
+pub fn lbfgs_direction(hist: &History, grad: &[[f64; 2]], locked: &[bool]) -> Vec<[f64; 2]> {
     let mut q: Vec<[f64; 2]> = grad.to_vec();
     for (i, l) in locked.iter().enumerate() {
         if *l {

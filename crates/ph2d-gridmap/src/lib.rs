@@ -60,13 +60,15 @@ pub mod comb;
 pub mod corners;
 pub mod cut;
 pub mod gauge;
+/// ⭐⭐⭐ **A COSTURA SOLDADA** — a restrição entra por eliminação — ver o módulo.
+/// ⭐⭐⭐ **O PASSE DE DESEMARANHAMENTO** — desfaz as dobras do mapa contínuo — ver
+/// [`untangle_pass`].
+/// ⭐⭐⭐ **A INJECTIVIDADE COMO OBJECTIVO DA FASE** — ver [`injective_solve`].
+pub mod injective_solve;
 pub mod marks;
 /// ⭐⭐⭐ **G5 — o arredondamento inteiro** que a extracção exige — ver o módulo.
 pub mod round;
 pub mod solve;
-/// ⭐⭐⭐ **A COSTURA SOLDADA** — a restrição entra por eliminação — ver o módulo.
-/// ⭐⭐⭐ **O PASSE DE DESEMARANHAMENTO** — desfaz as dobras do mapa contínuo — ver
-/// [`untangle_pass`].
 pub mod untangle_pass;
 pub mod weld;
 /// ⭐⭐⭐ **OS FECHOS PLANOS** — o sistema linear das translações — ver o módulo.
@@ -85,6 +87,7 @@ pub use comb::{CombReport, Combed, comb_patches, jumps_only};
 pub use corners::corner_map;
 pub use cut::{CutMesh, CutReport, Seam, cut_along_patches};
 pub use gauge::{Gauge, GaugeReport};
+pub use injective_solve::{InjectiveReport, make_injective};
 pub use marks::{MarkReport, arc_marks};
 pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, Step, rounded_shifts, solve, solve_pinned, solve_with};

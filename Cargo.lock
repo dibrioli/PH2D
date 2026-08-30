@@ -5284,6 +5284,7 @@ dependencies = [
  "ph2d-quantize",
  "ph2d-remesh-iso",
  "ph2d-trace",
+ "ph2d-untangle",
 ]
 
 [[package]]
@@ -5452,6 +5453,7 @@ dependencies = [
  "ph2d-ui-codegen",
  "ph2d-ui-state",
  "ph2d-ui-testkit",
+ "ph2d-untangle",
  "ph2d-vec-blend",
  "ph2d-vec-boolean",
  "ph2d-vec-connect",
@@ -7960,6 +7962,10 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-vector",
 ]
+
+[[package]]
+name = "ph2d-untangle"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-vec-blend"

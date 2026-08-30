@@ -43,7 +43,7 @@
 
 mod solve;
 
-pub use solve::{Report, Settings, untangle};
+pub use solve::{History, Report, Settings, lbfgs_direction, untangle};
 
 /// Um triângulo do domínio, com o referencial de repouso já invertido.
 ///
@@ -163,7 +163,9 @@ pub fn flipped(elements: &[Element], uv: &[[f64; 2]]) -> usize {
 /// ⚠️ **Uma passagem e não duas**, porque toda a maquinaria por elemento (`J`, `det`, `χ`) é
 /// partilhada pelas duas respostas — e uma segunda travessia seria a mesma conta com o dobro do
 /// relógio e uma segunda oportunidade de divergir da primeira.
-pub(crate) fn energy_and_gradient(
+/// ⚠️ **Pública desde 2026-08-30** — a `ph2d-gridmap` precisa dela para descer no espaço
+/// **reduzido** das costuras (a energia é a mesma; o que muda é a variável).
+pub fn energy_and_gradient(
     elements: &[Element],
     uv: &[[f64; 2]],
     eps: f64,
@@ -224,8 +226,8 @@ pub(crate) fn energy_and_gradient(
     total
 }
 
-/// A energia sozinha — o que a busca linear precisa.
-pub(crate) fn energy(elements: &[Element], uv: &[[f64; 2]], eps: f64, lambda: f64) -> f64 {
+/// A energia sozinha — o que uma busca linear precisa. ⚠️ Pública pela mesma razão.
+pub fn energy(elements: &[Element], uv: &[[f64; 2]], eps: f64, lambda: f64) -> f64 {
     let mut total = 0.0;
     for el in elements {
         let j = el.jacobian(uv);

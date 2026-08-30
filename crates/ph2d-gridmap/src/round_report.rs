@@ -17,6 +17,14 @@ pub struct RoundReport {
     /// medido»: o passe corre sempre (salvo `PH2D_GRIDMAP_UNTANGLE=0`) e conta antes de
     /// decidir se mexe.
     pub untangled: crate::untangle_pass::UntangleReport,
+    /// ⭐⭐⭐ **O QUE A RESOLUÇÃO INJECTIVA FEZ AO MAPA CONTÍNUO** — ver
+    /// [`crate::injective_solve::make_injective`].
+    ///
+    /// ⚠️ **É outra fase e outra pergunta que a [`Self::untangled`]**, e as duas colunas
+    /// existem separadas de propósito: aquela mede o que se salva **depois** da escada, com
+    /// os inteiros presos; esta mede o mapa **antes** dela, onde `80 %` das dobras nascem.
+    /// *Somá-las diria que o mesmo defeito foi curado duas vezes.*
+    pub injective: crate::injective_solve::InjectiveReport,
     /// Quantas componentes inteiras foram pregadas.
     pub pinned: usize,
     /// ⭐⭐⭐ **Quantas fecharam no degrau 1** (Gauss–Seidel local). *É a régua que

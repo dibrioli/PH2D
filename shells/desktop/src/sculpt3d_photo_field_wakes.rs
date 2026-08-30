@@ -400,6 +400,7 @@ fn does_the_field_wake_up_at_a_thin_tip() {
     // ⛔ *Se isto não zerar, a obra grande está condenada e poupa-se* — é a lei de medir se a
     // cura tem sujeito antes de a construir.
     seam_free_probe(&work, &cut, &combed, target);
+    injective_probe(&work, &cut, &combed, target);
 
     untangle_probe(&work, &cut, &map);
 
@@ -429,4 +430,4 @@ fn does_the_field_wake_up_at_a_thin_tip() {
 #[path = "sculpt3d_photo_untangle_probes.rs"]
 mod untangle_probes;
 
-use untangle_probes::{flips_of, seam_free_probe, untangle_probe};
+use untangle_probes::{flips_of, injective_probe, seam_free_probe, untangle_probe};

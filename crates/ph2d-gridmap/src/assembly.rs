@@ -52,7 +52,12 @@ impl Step<'_> {
     /// ⚠️ **A média e não o mínimo:** o mínimo faria um vértice apertado encolher o
     /// triângulo inteiro e a gradação deixaria de ser suave — que é exactamente o que a
     /// cerca da razão máxima existe para impedir.
-    fn at(&self, v: &[u32]) -> f32 {
+    ///
+    /// ⚠️ **Pública desde 2026-08-30**: a [`crate::injective_solve`] mede a energia num
+    /// referencial de repouso que tem de estar **em unidades de célula**, e a conversão é
+    /// exactamente este passo. *Reimplementá-la lá seria uma segunda média a divergir desta.*
+    #[must_use]
+    pub fn at(&self, v: &[u32]) -> f32 {
         if self.per_vertex.is_empty() {
             return self.h;
         }

@@ -636,3 +636,78 @@ uma convenção de sinal invertida leria «tudo dobrado» com toda a confiança 
 ⏳ **A wave seguinte tem alvo, régua e barra:** levar `[0,75 · 0,90)` de `3,12 %` ao nível do corpo
 (`0,14 %`), com a torção `p99` da mesma casca ao lado (`169° → ~35°`). ⛔ E **não** a percentagem
 global de dobras, que já é `0,3 %` e não se move com isto.
+
+---
+
+## §8-quindecies — ⭐⭐⭐ A OBRA GRANDE EXISTE E O MAPA CONTÍNUO ZERA — e o produto sai PIOR
+
+**Crates novas/tocadas:** `ph2d-untangle` (exporta `energy`, `energy_and_gradient`,
+`lbfgs_direction`, `History`) · `ph2d-gridmap` (`injective_solve.rs` novo, `Step::at` público,
+`RoundReport::injective`, chamada em `round_welded` atrás de `PH2D_GRIDMAP_INJECTIVE`) ·
+`shells/desktop` (a sonda passa o passo).
+
+### §8-quindecies.1 — A mudança de variável, que é a obra
+
+`ph2d_gridmap::make_injective` desce a energia de barreira regularizada **nas raízes das classes
+de costura**. Cada cópia é `uv = R^k · raiz + t`, com `k` e `t` extraídos **UMA vez** do mapa
+consistente que entra (⛔ não reconstruídos da `Weld`: `t` é a composição de translações ao longo
+do caminho até à raiz, e recalculá-la aqui seria uma segunda aritmética a divergir da primeira).
+
+⇒ **todo estado que a descida visita satisfaz a costura EXACTAMENTE.** Não há projecção a
+desfazer o trabalho — que era o mecanismo do planalto oscilante da sonda anterior
+(`seam_free_probe`, §11 do plano). Gate: `a_costura_sai_exacta_porque_ela_e_a_variavel`, que
+verifica **cópia a cópia** que ela continua a ser a imagem da raiz.
+
+### §8-quindecies.2 — ⛔⛔⛔ O DEFEITO DE UNIDADES que escondeu o resultado inteiro
+
+A 1.ª redacção construía o referencial de repouso a partir do triângulo 3D **em unidades do
+mundo**. O termo `g(J) = (det²J + 1)/det J` é minimizado em **`det J = 1`** ⇒ ele pedia *uma
+célula por unidade de área do mundo*, contra o alvo do G3 de *uma célula por `h`* (`h ≈ 0,038`).
+
+| | dobras no contínuo | `min det` | iterações | relógio |
+|---|---|---|---|---|
+| repouso em unidades do MUNDO | `120 → 33` | `−1,977e3 → −1,581e1` | `64` externas (**o tecto**) | `4,6 s` |
+| ⭐⭐⭐ repouso em CÉLULAS | **`120 → 0`** | ⭐ **`−2,870 → +1,245e−4`** | **`5`** de `64` | ⭐ **`352 ms`** |
+
+⚠️ **E uma varredura de orçamento inteira foi gasta a medir o problema errado** (§12 do plano:
+`64×32` `33` · `256×32` `32` · `64×128` `40` · `256×128` `31`). O `33` foi lido como *«o limite do
+método»* e era **o limite de uma unidade errada** — §0.0 do `CLAUDE.md`: *um limite legítimo diz
+de que recurso ele é.* Da varredura sobrevive só a forma da célula `64×128`: **mais trabalho no
+eixo errado piora** (`40` contra `33`), porque quem faz o `ε` encolher é o laço **externo**.
+
+⭐ **Gate: `a_energia_nao_tem_opiniao_sobre_a_densidade`** — a régua é a **invariância** (ampliar a
+malha `s×` e o passo `s×` tem de dar o mesmo `uv`), com **controle** (sem escalar o passo tem de
+divergir). ⚠️ E `s` tem de ser **potência de dois**: com `s = 7` o gate reprova por aritmética
+(`√(49a)` ≠ `7·√a` por um ULP, e a descida a partir de emaranhado é caótica — um ULP vira `0,15`
+na saída). *Uma invariância exacta exige uma transformação exacta.*
+
+### §8-quindecies.3 — ⛔⛔⛔ O A/B ponta a ponta, e a aritmética que localiza o dano
+
+A tabela viva mora no doc de [`injective_solve::enabled`] — é onde alguém a lê antes de ligar
+isto. Resumo: quads `9 598 → 14 521` · enviesamento p50 `6,4° → 21,3°` · `>60°` `2 → 1 191` ·
+defeitos locais `0,48 % → 4,83 %` · `χ` `1 → 0` · faces dobradas na extracção **`22 → 415`**.
+
+⭐⭐⭐ **O mapa que entra na escada tem ZERO dobras e a extracção devolve `415` faces dobradas.**
+*Um input impecável a produzir um output pior põe o dano a jusante sem margem de interpretação* —
+nenhuma sonda extra é precisa. A escada gulosa prega os inteiros um a um e re-relaxa entre pregos;
+a partir de outro ponto de partida faz outras escolhas, e piores.
+
+⚠️ **Segundo mecanismo, de desenho:** o G3 minimiza `‖∇f − R/h‖²`, que fixa a escala **e a
+ORIENTAÇÃO contra o campo cruzado**. A barreira fixa a escala (`g`) e a conformidade (`f`), e
+**não tem termo nenhum a amarrar o mapa ao campo** ⇒ as linhas de grade rodam. É isso que o
+enviesamento lê.
+
+⇒ ⭐⭐ **A obra seguinte:** a barreira entra **somada** ao objectivo do G3
+(`‖∇f − R/h‖² + w · barreira`), nunca a substituí-lo. É o que o §10 do plano pedia; o que esta
+jornada entrega é a **maquinaria** dela, toda gateada.
+
+⚠️ **Duas colunas MELHORARAM e não se apagam:** pontas cortadas `2 → 1` de `12` (a queixa do
+dono) e cobertura p50 `0,271 % → 0,061 %` (**`4,4×`** de fidelidade). *A direcção está certa.*
+
+### §8-quindecies.4 — O que shipa
+
+⛔ **DESLIGADO.** `PH2D_GRIDMAP_INJECTIVE=1` liga; sem ela o botão é **byte-idêntico**. Sete
+gates, entre eles os dois lados do interruptor: `nasce_desligado_e_a_tabela_da_recusa_esta_ao_lado`
+(o default **e** os números que o justificam) e `a_porta_do_produto_esta_atras_da_env` (que o
+caminho do produto **consulta** o interruptor, e que a chamada corre **antes** da escada — *um
+interruptor que o produto não consulta é decorativo*).

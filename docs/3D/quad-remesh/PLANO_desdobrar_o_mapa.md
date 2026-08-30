@@ -429,3 +429,134 @@ um estado que a restrição tenha de desfazer**. *A sonda mediu um espantalho da
 ⇒ ⏳ **A viabilidade continua por decidir**, e o instrumento que a decide é a própria obra. ⚠️ O
 que esta medição compra é o **limite inferior**: mesmo com a costura a lutar, `45 %` das dobras do
 contínuo cedem em `102 ms`. *Não é uma promessa; é um piso.*
+
+---
+
+## §12 — ⭐⭐⭐ A OBRA GRANDE EXISTE, E O §11 ESTAVA CERTO SOBRE O ESPANTALHO
+
+`ph2d_gridmap::make_injective` desce a energia de barreira regularizada **nas raízes das classes
+de costura**. A costura é a **variável**, não uma restrição imposta por cima: cada cópia é
+`uv = R^k · raiz + t`, com `k` e `t` extraídos **uma vez** do mapa consistente que entra. ⇒ todo
+estado que a descida visita satisfaz a costura **exactamente**, e não há projecção nenhuma a
+desfazer o trabalho.
+
+Peça do artista, `Detail 0,85`, a mesma régua dos dois lados:
+
+| | dobras no mapa contínuo | relógio |
+|---|---|---|
+| §11, a costura por **projecção** (o espantalho) | `120 → 66`, e depois **oscila** | `102 ms` |
+| ⭐⭐⭐ **§12, a costura por ELIMINAÇÃO (a obra)** | **`120 → 33`** | `4,6 s` |
+
+**`−72,5 %`**, sem oscilação, e o pior determinante melhora **duas ordens de grandeza**
+(`−1,977e3 → −1,581e1`). ⇒ **o §11 estava certo ao recusar o veredito da sonda**: o planalto com
+oscilação era o instrumento a lutar consigo próprio, e não um limite da liberdade que a costura
+deixa.
+
+### ⭐⭐ E ela CONVERGIU — a varredura do orçamento decide, e o eixo que manda é o `ε`
+
+⛔ A 1.ª medição gastou o orçamento **todo** (`64` externas / `2048` internas = exactamente os
+tectos). *`33` truncado e `33` convergido são a mesma impressão e duas conclusões opostas* — daí a
+varredura, pela env (`PH2D_INJ_OUTER` / `PH2D_INJ_INNER`):
+
+| externas | internas | **dobras** | `min det` final | relógio |
+|---|---|---|---|---|
+| ⭐ **`64`** | **`32`** | `33` | `−1,581e1` | ⭐ **`4,6 s`** |
+| `256` | `32` | `32` | `−6,544e0` | `20,3 s` |
+| ⛔⛔ `64` | `128` | ⛔ **`40`** | `−1,138e1` | `16,9 s` |
+| `256` | `128` | `31` | `−8,259e0` | `72,0 s` |
+
+⭐⭐⭐ **`16×` o orçamento compra DUAS dobras e paga `15,7×` o relógio.** O método assentou em
+`31`–`33`; ele não estava truncado em nenhum sentido útil.
+
+⛔⛔ **E a linha `64 × 128` é o achado desta varredura: mais trabalho no eixo ERRADO piora o
+resultado** (`40` contra `33`, com `4×` as iterações internas). *A célula que discorda é a que
+escolhe* — as internas gastam-se a resolver com precisão uma barreira ainda **esborratada**,
+porque quem faz o `ε` encolher é o laço **externo**. ⇒ ⭐ **o motor desta obra é o calendário do
+`ε`, não a descida**, e o ponto de operação de omissão (`Settings::default`) está certo por
+medição e não por herança.
+
+### ⚠️ O que a obra NÃO entrega
+
+`31`–`33` dobras **não é zero**, e a propriedade que a literatura promete é `det+` em todo o
+elemento. ⇒ **a obra reduz o defeito; ela não o elimina**, e a diferença tem de estar escrita onde
+alguém a leia antes de prometer uma malha injectiva a jusante.
+
+⚠️ **Correcção de método, e vale para toda a varredura acima:** o binário foi **reconstruído a
+meio** dela (as duas primeiras linhas correram num binário e as duas últimas noutro, com o ramo
+novo do produto pelo meio). O ramo nasce atrás de `PH2D_GRIDMAP_INJECTIVE` e a varredura não a
+põe, logo ele é **inerte** — mas *«inerte» é uma afirmação, e por isso a linha `64 × 32` foi
+**re-corrida no binário final** como controlo.
+
+---
+
+## §13 — ⛔⛔⛔ CORRECÇÃO AO §12: os números dele saíam de um DEFEITO DE UNIDADES
+
+⚠️ **Tudo o que o §12 mede está certo sobre o código que ele correu, e esse código tinha um bug
+de escala.** O referencial de repouso de cada elemento era construído a partir do triângulo 3D
+**em unidades do mundo**, e o termo `g(J) = (det²J + 1)/det J` da energia é minimizado em
+**`det J = 1`** ⇒ ele pedia *uma célula por unidade de área do mundo*, quando o alvo do G3 é *uma
+célula por `h`*, com `h ≈ 0,038`. **A barreira lutava contra a densidade pedida, e a varredura de
+orçamento do §12 mediu o empate dessa luta.**
+
+⭐ Com o repouso **em unidades de célula** (dividido pelo passo do triângulo, pela porta
+`Step::at`), a mesma peça, o mesmo dia:
+
+| | dobras no contínuo | `min det` | iterações | relógio |
+|---|---|---|---|---|
+| §12 (repouso em unidades do mundo) | `120 → 33` | `−1,977e3 → −1,581e1` | `64` externas (**o tecto**) | `4,6 s` |
+| ⭐⭐⭐ **§13 (repouso em CÉLULAS)** | **`120 → 0`** | ⭐ **`−2,870 → +1,245e−4`** | **`5`** de `64` | ⭐ **`352 ms`** |
+
+⭐⭐⭐ **O mapa contínuo fica LOCALMENTE INJECTIVO** — a propriedade `det+` que a literatura
+promete —, converge (gasta `5` das `64` externas: *não é truncagem*), e custa **`13×` menos**
+relógio, porque chegar é mais barato que bater no tecto.
+
+⇒ ⚠️ **A varredura de orçamento do §12 fica REGISTADA e SEM VALOR PREDITIVO**: ela mediu o
+planalto de um problema mal posto. *Uma varredura de afinação sobre um objectivo errado escolhe o
+melhor ponto de um mapa que não se quer.* A lição que sobrevive é a forma da célula `64 × 128`
+(mais trabalho no eixo errado piora), que é sobre o método e não sobre as unidades.
+
+⇒ ⭐⭐ **E é o §0.0 do `CLAUDE.md` outra vez:** *um limite legítimo diz de que recurso ele é.* O
+`33` foi lido como *«o limite do método»* e era **o limite de uma unidade errada**.
+
+## §14 — ⛔⛔⛔ E COM O MAPA PERFEITO O PRODUTO SAI PIOR — a escada é a culpada, por aritmética
+
+A/B ponta a ponta pelo botão, peça do artista, `Detail 0,85` (a tabela viva mora no doc de
+[`ph2d_gridmap::injective_solve::enabled`], que é onde alguém a lê antes de ligar isto):
+
+| coluna | controlo | com a obra |
+|---|---|---|
+| quads | `9 598` | ⛔ `14 521` |
+| enviesamento p50 | `6,4°` | ⛔ **`21,3°`** |
+| faces `>60°` | `2` | ⛔ **`1 191`** |
+| defeitos locais | `0,48 %` | ⛔ **`4,83 %`** |
+| `χ` · bordo | `1` · `4` | ⛔ `0` · `12` |
+| faces dobradas na extracção | `22` | ⛔ **`415`** |
+| ⭐ pontas cortadas | `2` de `12` | ⭐ **`1` de `12`** |
+| ⭐ cobertura p50 | `0,271 %` | ⭐ **`0,061 %`** |
+
+⭐⭐⭐ **A localização do defeito não precisa de mais nenhuma sonda:** o mapa que entra na escada
+tem **zero** dobras e o que sai da extracção tem **`415`** faces dobradas. *Um input impecável a
+produzir um output pior põe o dano a jusante, sem margem para interpretação.* A escada gulosa
+prega os inteiros um a um e re-relaxa entre pregos — a partir de outro ponto de partida ela faz
+outras escolhas, e piores.
+
+### ⚠️ E há um SEGUNDO mecanismo, este de desenho
+
+O G3 minimiza `‖∇f − R/h‖²`, que fixa **a escala e a ORIENTAÇÃO contra o campo cruzado**. A
+energia de barreira fixa a escala (termo `g`) e a conformidade (termo `f`), e **não tem termo
+nenhum a amarrar o mapa ao campo** ⇒ as linhas de grade podem rodar em relação a ele. *É isso que
+o enviesamento lê.*
+
+⇒ ⭐⭐ **A obra seguinte está NOMEADA, e não é esta:** a barreira entra **somada** ao objectivo do
+G3 — `‖∇f − R/h‖² + w · barreira` —, nunca a **substituí-lo**. É literalmente o que o §10 pedia
+(*propriedade do objectivo que a fase optimiza*), e o que esta jornada construiu e provou é a
+**maquinaria** dela, toda gateada: a costura como **variável** (a costura sai exacta, com gate
+que verifica cópia a cópia), o **calendário de `ε`**, o **repouso em células** (com gate de
+invariância de escala) e a prova de que, a partir de emaranhado, ela **chega a zero**.
+
+⚠️ **Duas colunas MELHORARAM e não se apagam:** a peça perde **menos** pontas (`1` contra `2` —
+que é a queixa do dono) e a fidelidade à escultura fica **`4,4×`** melhor. *A direcção está
+certa; o que falta é não pagar por ela na forma dos quads.*
+
+⇒ ⛔ **Shipa DESLIGADO** (`PH2D_GRIDMAP_INJECTIVE=1` liga), e o caminho de omissão é
+byte-idêntico — há gate a afirmar as duas metades (o interruptor **e** que o produto o consulta).

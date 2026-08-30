@@ -202,7 +202,12 @@ As famílias que ela achou, e as curas:
 - a **normalização por instante**: escolhe-se o comprimento que põe a figura na rampa recta.
   Ondulação **`0,0×`** nas quatro.
 - o param **`Growth`** (0..1, default **1,0 = no-op EXACTO**): remapeia as gerações resolvendo
-  `r^g = r + t·(r^G − r)`. Arrasto: Bush `1,8 → 1,0` · Weed `2,1 → 0,7` · Koch `1,9 → 1,0` ·
+  `r^g = r + t·(r^G − r)`.
+  ⛔ **CORRECÇÃO de 2026-08-30: dois dos quatro números do arrasto abaixo já não reproduzem.**
+  A régua da lei mudou (passou a ser invariante à rotação — ver o handoff de 30/08) e a janela
+  de amostragem também. Medido hoje: Bush `1,84×` ✅ · Koch `1,85×` ✅ · Weed **`1,33×`** (o doc
+  dizia `2,1`) · Dragon **`1,07×`** (dizia `3,7`). *Nenhum instrumento da árvore reproduz hoje
+  os dois últimos.* Arrasto (redacção original): Bush `1,8 → 1,0` · Weed `2,1 → 0,7` · Koch `1,9 → 1,0` ·
   Dragon `3,7 → 1,9`, e os que crescem pela ponta **intactos**.
 - o **fio que fazia um molde sair 10× mais pequeno**: o `EvalCtx::param` resolve o conduzido
   primeiro, então um fio no `Generations` ganhava ao número do molde. ⇒ aplicar um molde solta
@@ -217,7 +222,7 @@ No tecto (`262 145` módulos) a fracção custa **`1,0×`** a geração inteira 
 |---|---|
 | **inventar uma sintaxe amigável** para a gramática | `F[+F]F` é a notação de Lindenmayer — trocá-la torna o nó incompatível com o que se copia de qualquer tutorial |
 | **reescrever Koch/Dragon/Bush em forma paramétrica** (para ganharem `!` e `"`) | o mesmo motivo; o preço declarado é o campo `reads`, que **esconde** os knobs que aquela gramática não lê |
-| o **`Step Scale`** sozinho como cura do salto | estabiliza o TAMANHO (`1/3` é exactamente a razão de Bush e Koch) e o melhor que uma varredura de oito valores alcança é **`105 %`** de pior passo. *Estável em tamanho ≠ contínuo na forma* |
+| o **`Step Scale`** sozinho como cura do salto | estabiliza o TAMANHO (`1/3` é a razão do Bush; ⛔ **a Koch é `3,0028` desde que a régua mudou em 2026-08-30**, logo «exactamente» já não vale para ela) e o melhor que uma varredura de oito valores alcança é **`105 %`** de pior passo. *Estável em tamanho ≠ contínuo na forma* |
 | a **âncora como constante** contada da gramática | dá `5` onde a resposta é `3` — ver 7.3 |
 | acrescentar **`>=`/`<=`** ao `ph2d-expr-parse` como cura da condição que evapora | ele é o parser partilhado do ADR-0144 (a timeline também o usa), e a condição evaporava **por igual** quando estava vazia ou truncada. O defeito era a política de erro |
 | **normalizar a saída** para caber no ecrã | um *fit* divide o `step` para fora e mata o slider — a faixa passaria a ser derivada do objecto que ela reescreve |

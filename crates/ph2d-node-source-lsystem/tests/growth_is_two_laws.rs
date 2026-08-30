@@ -48,23 +48,73 @@
 use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 
+/// Quantas direções o OBSERVADOR amostra. ⚠️ **`64`, e o produto usa `16`** — de propósito:
+/// um oráculo que partilhasse o `K` não veria uma mudança de `K`.
+const OBSERVER_DIRECTIONS: usize = 64;
+
+/// ⭐⭐⭐ **O TAMANHO, POR UM OBSERVADOR INVARIANTE À ROTAÇÃO — e as duas réguas anteriores
+/// estavam na MESMA família do defeito.**
+///
+/// ⚠️⚠️ **Report do Enio, 2026-08-30** (*"em dragon enquanto cresce parece piscar"*): a lei do
+/// crescimento normalizava `max(w, h)`, que não é invariante à rotação, e a curva do dragão
+/// **roda `45°` por geração**. Quando a caixa trocava de lado longo o tamanho verdadeiro
+/// **estagnava e depois arrancava** — menor passo do arrasto a `4,5 %` do passo médio.
+///
+/// ⛔ **E este gate estava VERDE.** A janela é metade da razão (ele amostrava UMA travessia de
+/// geração e o recuo do Dragon vivia na anterior — ver [`whole_slider`]); a outra metade é
+/// esta régua, e ⚠️ **a 1.ª redacção desta nota dizia que a diagonal era CEGA, e a mutação
+/// refutou-a**: ela é **falsa acusadora**.
+///
+/// Matriz medida em 2026-08-30 (produto × observador × janela):
+///
+/// | produto | observador | janela | `no_refiner_stalls` |
+/// |---|---|---|---|
+/// | curado | Cauchy | 3 gerações | ✅ Dragon `55,2 %` |
+/// | régua `max(w,h)` | Cauchy | 3 gerações | ❌ Dragon `5,2 %` |
+/// | régua `max(w,h)` | Cauchy | 1 travessia | ❌ |
+/// | **curado** | **diagonal** | 3 gerações | ❌ **Dragon `25,6 %` — FALSO** |
+///
+/// ⇒ *uma figura que roda tem a caixa a respirar sem mudar de tamanho*, então qualquer régua
+/// alinhada aos eixos lê a rotação como uma paragem — e condena o produto certo. A diagonal
+/// cura o joelho de `max(w, h)` (a correcção de 2026-08-29, que continua certa) e **não** cura
+/// a rotação: a AABB de um quadrado varia `41 %` ao rodá-lo `45°`.
+///
+/// ⇒ o observador é a **largura média de Cauchy**: `média_u(max⟨P,u⟩ − min⟨P,u⟩)`. Sem
+/// centroide — as duas réguas invariantes que o têm foram medidas e rejeitadas (ver
+/// `turtle::mean_width`) — e com trigonometria REAL e `K = 64` contra os `16` do produto.
+///
+/// ⛔⛔ **E é preciso ser honesto sobre o que isso NÃO compra**, porque a 1.ª redacção desta
+/// nota exagerou-o (*«para ser um oráculo e não uma segunda cópia da mesma construção»*) e a
+/// auditoria adversarial de 2026-08-30 corrigiu-a: isto é a MESMA lei com mais resolução, não
+/// uma segunda opinião — a largura média converge em `O(1/K²)`, então `K = 64` é o `K = 16` com
+/// o erro dividido por 16. ⚠️ **A independência DESCEU nesta mudança**: no `HEAD` o observador
+/// era a diagonal da caixa, uma construção genuinamente diferente do `max(w, h)` do produto.
+///
+/// ⇒ o que impede este ficheiro de se auto-aprovar não é o observador: são os gates que
+/// afirmam a LEI na porta onde ela vive (`turtle_tests::the_ruler_is_the_mean_width_…`) e a
+/// POSE em vez do tamanho (`turtle_tests::the_newest_generation_opens_its_folds_…`) — os dois
+/// nasceram daquela auditoria, e sem eles duas mutações sobreviviam a 85 testes.
 fn size(s: &Stream) -> f32 {
-    match s.get("P") {
-        Some(Column::Vec2(v)) if !v.is_empty() => {
-            let x0 = v.iter().map(|q| q[0]).fold(f32::MAX, f32::min);
-            let x1 = v.iter().map(|q| q[0]).fold(f32::MIN, f32::max);
-            let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
-            let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
-            // ⚠️⚠️ **A DIAGONAL, e não `max(w, h)`** — o máximo de duas funções suaves tem um
-            // JOELHO onde elas se cruzam, e esse joelho lê-se como não-linearidade do produto.
-            // Medido: o Sprig imprimia **sete passos exactamente `0,0`** seguidos de uma rampa
-            // recta — não porque a planta não crescesse, mas porque a largura era o máximo até
-            // a altura a ultrapassar. *Uma régua com uma dobra por construção acusa o produto
-            // da dobra dela.*
-            ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
-        }
-        _ => 0.0,
+    let Some(Column::Vec2(v)) = s.get("P") else {
+        return 0.0;
+    };
+    if v.is_empty() {
+        return 0.0;
     }
+    let mut total = 0.0f64;
+    for k in 0..OBSERVER_DIRECTIONS {
+        let a = std::f32::consts::PI * k as f32 / OBSERVER_DIRECTIONS as f32;
+        let (c, sn) = (a.cos(), a.sin());
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for q in v {
+            let t = q[0] * c + q[1] * sn;
+            lo = lo.min(t);
+            hi = hi.max(t);
+        }
+        total += f64::from(hi - lo);
+    }
+    (total / OBSERVER_DIRECTIONS as f64) as f32
 }
 
 fn at(p: &ls::Preset, g: f32, over: &[(&str, f32)]) -> f32 {
@@ -89,6 +139,29 @@ fn crossing(p: &ls::Preset, over: &[(&str, f32)]) -> (Vec<f32>, Vec<f32>) {
     (hs, d)
 }
 
+/// ⭐⭐⭐ **O SLIDER INTEIRO, e não uma travessia** — a segunda cegueira do report de
+/// 2026-08-30.
+///
+/// [`crossing`] amostra a penúltima→última geração, e o recuo do Dragon vivia em `10,60`–`10,76`
+/// com o slider a chegar a `12`: **o gate media um intervalo em que o defeito não estava**.
+/// *Uma janela de amostragem é uma afirmação sobre onde o defeito pode viver.*
+///
+/// ⚠️ As **três** últimas gerações, ao passo do slider (`0,02`), que é o que a mão de facto
+/// atravessa. As anteriores desenham figuras que o molde não enquadra.
+fn whole_slider(p: &ls::Preset) -> (Vec<f32>, Vec<f32>) {
+    let (g0, _) = window(p);
+    let n = ((p.generations - g0) / 0.02).round() as usize;
+    let hs: Vec<f32> = (0..=n).map(|k| at(p, g0 + k as f32 * 0.02, &[])).collect();
+    let d = hs.windows(2).map(|w| w[1] - w[0]).collect();
+    (hs, d)
+}
+
+/// `(primeira geração do arrasto, quantas gerações ele atravessa)`.
+fn window(p: &ls::Preset) -> (f32, usize) {
+    let g0 = (p.generations - 3.0).max(1.0);
+    (g0, (p.generations - g0).round() as usize)
+}
+
 /// A ondulação da rampa: `(maior passo − menor passo) / passo médio`. `0` = recta.
 fn ripple(d: &[f32]) -> f32 {
     let mean = d.iter().sum::<f32>() / d.len() as f32;
@@ -109,7 +182,9 @@ fn ripple(d: &[f32]) -> f32 {
 #[test]
 fn no_preset_ever_shrinks_while_the_generations_rise() {
     for p in ls::PRESETS {
-        let (hs, d) = crossing(p, &[]);
+        // ⚠️ O SLIDER INTEIRO — ver [`whole_slider`]: com a travessia só, este gate ficou
+        // verde sobre o recuo que o Enio viu em 2026-08-30.
+        let (hs, d) = whole_slider(p);
         assert!(
             hs[hs.len() - 1] > hs[0] * 1.005,
             "{}: a travessia tem de CRESCER: {hs:?}",
@@ -180,22 +255,61 @@ fn the_refiners_ripple_no_worse_than_the_tip_growers_the_owner_accepted() {
 /// **o tamanho da anterior**. É uma identidade, não uma desigualdade.
 #[test]
 fn the_anchor_puts_the_new_generation_exactly_on_top_of_the_previous_one() {
-    for (name, axiom, rules) in [
-        ("arbusto (com ramos)", "F", "F -> F[+F]F[-F]F"),
-        ("koch (curva pura)", "F", "F -> F+F-F-F+F"),
-        ("duplicacao", "F", "F -> FF"),
+    for (name, axiom, rules, angle, exact) in [
+        (
+            "arbusto (com ramos)",
+            "F",
+            "F -> F[+F]F[-F]F",
+            25.7,
+            Some(1.0 / 3.0),
+        ),
+        ("koch (curva pura)", "F", "F -> F+F-F-F+F", 90.0, Some(0.2)),
+        ("duplicacao", "F", "F -> FF", 25.0, Some(0.5)),
+        (
+            "dragao (roda 45 graus)",
+            "F",
+            "F -> F+G ; G -> F-G",
+            90.0,
+            Some(0.5),
+        ),
+        // ⭐⭐ **A fixtura que NÃO é auto-semelhante** — a auditoria de 2026-08-30 mostrou que
+        // as três de cima são exactamente aquelas em que a régua não pode importar: numa
+        // gramática auto-semelhante achatar a geração nova devolve a anterior **a escala**, e
+        // duas réguas homogéneas de grau 1 dão o MESMO número. O Weed não é cópia a escala e a
+        // âncora dele **varia com a geração** (`0,401 → 0,451 → 0,476 → 0,488`), o que a torna
+        // a única do corpus que uma troca de régua move.
+        (
+            "weed (nao auto-semelhante)",
+            "X",
+            "X -> F[+X]F[-X]+X ; F -> FF",
+            20.0,
+            None,
+        ),
     ] {
-        let anchor = ls::probe_anchor(axiom, rules, 4.0);
+        let anchor = ls::probe_anchor(axiom, rules, 4.0, &[(ls::param::ANGLE, angle)]);
         assert!(
             (0.02..1.0).contains(&anchor),
             "{name}: a ancora saiu {anchor}"
         );
+        // ⭐ **O ORÁCULO ANALÍTICO**, onde ele existe: achatada, a regra põe `n` unidades em
+        // linha, logo a âncora é `1/n` — `F[+F]F[-F]F` põe **3** (as duas dos ramos não
+        // esticam a linha), `F+F-F-F+F` põe 5, `FF` e `F+G` põem 2. ⛔ Uma faixa larga aceitava
+        // qualquer lei; isto aceita UMA resposta.
+        if let Some(want) = exact {
+            assert!(
+                (anchor - want).abs() < 1e-4,
+                "{name}: a ancora tem de ser {want}, deu {anchor}"
+            );
+        }
         let s = |g: f32| {
             size(&ls::probe_build(
                 axiom,
                 rules,
                 g,
-                &[(ls::param::MODE, ls::MODE_GRAMMAR as f32)],
+                &[
+                    (ls::param::MODE, ls::MODE_GRAMMAR as f32),
+                    (ls::param::ANGLE, angle),
+                ],
             ))
         };
         let ratio = s(4.0 + 1e-3) / s(4.0).max(1e-6);
@@ -439,6 +553,152 @@ fn the_measured_ratio_agrees_with_what_the_mathematics_says() {
             r(of(name)),
             1.0,
             "{name} converge e tem de devolver o neutro exacto"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **NENHUMA GRAMÁTICA DE REFINAMENTO PÁRA A MEIO DO SLIDER** — o report do Enio de
+/// 2026-08-30 (*"em dragon enquanto cresce (aumentando Generations) parece piscar"*).
+///
+/// ⚠️ **Encolher e PARAR são defeitos diferentes**, e é por isso que este gate não é o
+/// [`no_preset_ever_shrinks_while_the_generations_rise`]: o Dragon nunca encolhia sob o
+/// observador invariante — ele **estagnava** (menor passo a `4,5 %` do médio) e depois
+/// arrancava. Uma barra sobre o sinal do passo é cega a isso.
+///
+/// ⛔ **A barra COMPARATIVA foi medida e rejeitada.** «Nenhum que refina pára pior que o pior
+/// dos que crescem pela ponta» aceitaria tudo: o **Sprig pára por completo** (`0,0 %`) e é
+/// geometria verdadeira — o tronco dele converge por `0,8^n`, então as gerações finais
+/// engrossam a planta sem alargar o envelope. *Uma família cujo pior caso é `0` não é
+/// referência para nada.*
+///
+/// ⇒ barra absoluta, com **os dois lados medidos ao lado dela**.
+#[test]
+fn no_refiner_stalls_while_the_generations_rise() {
+    // ⚠️ **A FOLGA, e a medição que a escolheu.** O menor passo MEDIDO divide-se pelo que a
+    // razão da própria gramática permite; medido, essa razão é `1,00` (Bush), `0,99` (Koch),
+    // `1,03` (Weed) e **`0,86`** (Dragon, o mais apertado — a curvatura de dentro de uma
+    // geração). Com `0,5` sobra `1,7×` de margem no pior, e o defeito de 2026-08-30 ficava a
+    // **`0,08`** do inerente. *A barra é derivada; só esta folga é escolhida, e os dois lados
+    // dela estão medidos.*
+    const SLACK: f32 = 0.5;
+    let mut seen: Vec<(&str, f32, f32)> = Vec::new();
+    for p in ls::PRESETS {
+        let r = ls::probe_growth_ratio(p.axiom, p.rules, &[(ls::param::ANGLE, p.angle)]);
+        if r <= 1.0 {
+            continue;
+        }
+        let (_, gens) = window(p);
+        let (_, d) = whole_slider(p);
+        let mean = d.iter().sum::<f32>() / d.len() as f32;
+        let lo = d.iter().copied().fold(f32::MAX, f32::min);
+        seen.push((p.label, lo / mean * 100.0, inherent_floor(r, gens)));
+    }
+    assert!(seen.len() >= 3, "o corpus tem de ter refinadores: {seen:?}");
+    for (label, pct, floor) in &seen {
+        assert!(
+            *pct >= floor * SLACK,
+            "{label}: o menor passo do arrasto e' {pct:.1} % do passo medio, e a razao desta \
+             gramatica permitia {floor:.1} % — a figura PARA e depois arranca, que e' o \
+             «piscar» de 2026-08-30. Todos (molde, medido, inerente): {seen:?}"
+        );
+    }
+}
+
+/// ⭐⭐ **O MENOR PASSO QUE A PRÓPRIA GRAMÁTICA PERMITE**, em % do passo médio — a barra
+/// DERIVADA, e não um número escolhido (§0.0).
+///
+/// A lei põe cada geração numa recta do tamanho anterior ao novo, logo dentro da geração `n`
+/// o declive é `r^n·(r − 1)`. Sobre `g` gerações de arrasto o menor declive é o de `n = 0` e a
+/// média é `(Σ_{n<g} r^n)/g`, então o `(r − 1)` cancela e sobra `g / Σ r^n`.
+///
+/// ⚠️ **Isto é o preço da rampa por geração, não um defeito** — uma sequência exponencial
+/// amostrada por troços tem os troços com declives diferentes por construção, e é exactamente
+/// isso que o param `Growth` remapeia. Aqui ele só serve de PISO à barra: um molde que cresce
+/// `3×` por geração nunca terá o passo tão uniforme como um que cresce `√2×`.
+///
+/// ⚠️ **A folga do gate absorve erro de MODELO, não só de máquina** (auditoria de 2026-08-30):
+/// o `r` vem de [`ls::probe_growth_ratio`], que o mede nas gerações `4→6`, enquanto a janela do
+/// arrasto é `generations−3 .. generations` — para o Dragon (`12`) os dois intervalos são
+/// **disjuntos**, e a razão dele oscila. Medido, o quociente `medido/inerente` é `1,00` no
+/// Bush, `0,99` na Koch, `1,03` no Weed e **`0,86`** no Dragon: dos `2×` de folga do `SLACK`,
+/// `14 %` já estão gastos antes de o produto entrar.
+fn inherent_floor(r: f32, g: usize) -> f32 {
+    let sum: f32 = (0..g).map(|n| r.powi(n as i32)).sum();
+    g as f32 / sum * 100.0
+}
+
+/// ⭐⭐⭐ **A FAMÍLIA VEM DA ESTRUTURA, E AS DUAS LEIS RESPONDEM PELA MESMA PORTA.**
+///
+/// ⛔⛔ Isto substitui um gate que media a folga de um LIMIAR — e o limiar morreu em
+/// 2026-08-30 porque se esgotou: quando a régua passou a ser invariante à rotação, o modo
+/// **GUIADO (o default do nó)** caiu a `0,017 %` dele, e mexer o `Length Scale` de `0,89` para
+/// `0,90` (o default do painel) saltava o tamanho **`+15,4 %`**. Varridas 8 100 combinações
+/// dos knobs, o guiado chega a `1,4294` e o refinador mais fraco do corpus a `1,4791` —
+/// **`3,5 %`** de separação. *Duas classes que se tocam não se separam por um número.*
+///
+/// As três metades, e nenhuma é opcional:
+#[test]
+fn the_family_comes_from_the_structure_and_the_two_laws_agree() {
+    // 1. ⭐ O ORÁCULO: quem reescreve TODO o módulo que desenha refina; quem tem um `F`
+    //    terminal cresce pela ponta. Escrito à mão de propósito — é a resposta, não a medição.
+    let expected: &[(&str, bool)] = &[
+        ("Tree", false),
+        ("Fern", false),
+        ("Bush", true),
+        ("Weed", true),
+        ("Wild", false),
+        ("Koch", true),
+        ("Dragon", true),
+        ("Sprig", false),
+    ];
+    assert_eq!(
+        expected.len(),
+        ls::PRESETS.len(),
+        "um molde novo tem de declarar a familia aqui"
+    );
+    for (p, (label, want)) in ls::PRESETS.iter().zip(expected) {
+        assert_eq!(&p.label, label, "a ordem do oraculo segue a dos moldes");
+        let got = ls::probe_grows_by_refining(p.axiom, p.rules, &[(ls::param::ANGLE, p.angle)]);
+        assert_eq!(got, *want, "{label}: familia errada");
+    }
+    // ⚠️ **O CONTROLE**: as duas famílias têm de existir no corpus.
+    let refiners = expected.iter().filter(|(_, r)| *r).count();
+    assert!(
+        refiners >= 3 && expected.len() - refiners >= 3,
+        "o corpus tem de povoar as duas familias"
+    );
+
+    // 2. ⭐⭐ **O MODO GUIADO É DA PONTA** — o caso que o limiar classificava mal, e o `F` da
+    //    gramática que ele deriva é terminal por construção.
+    let guided = ls::shape::rules(&ls::shape::Shape {
+        branches: 2.0,
+        segments: 1.0,
+        variation: 0.0,
+        bend: 0.0,
+    });
+    for ls_scale in [0.5f32, 0.7, 0.89, 0.90, 0.95, 1.0] {
+        assert!(
+            !ls::probe_grows_by_refining(
+                ls::shape::AXIOM,
+                &guided,
+                &[(ls::param::LENGTH_SCALE, ls_scale)]
+            ),
+            "o guiado com Length Scale {ls_scale} tem de ser da PONTA — foi ali que o limiar \
+             partiu o produto ao meio"
+        );
+    }
+
+    // 3. ⭐⭐⭐ **A MESMA PORTA**: a decisão que a remapagem do `Growth` toma tem de ser a
+    //    que o desenho toma. A consequência OBSERVÁVEL da decisão do desenho é que numa
+    //    gramática de refinamento o `Grow Length` é byte-inerte (quem manda no comprimento
+    //    é a normalização medida); numa da ponta ele MANDA.
+    for (p, (label, want)) in ls::PRESETS.iter().zip(expected) {
+        let with = |v: f32| at(p, p.generations - 0.5, &[(ls::param::CONTINUOUS_LENGTH, v)]);
+        let length_switch_is_inert = with(0.0).to_bits() == with(1.0).to_bits();
+        assert_eq!(
+            length_switch_is_inert, *want,
+            "{label}: a remapagem do Growth diz «refina = {want}» e o DESENHO diz o contrario \
+             — as duas leis voltaram a ter respostas proprias"
         );
     }
 }

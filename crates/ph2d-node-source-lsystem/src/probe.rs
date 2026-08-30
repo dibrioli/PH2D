@@ -26,8 +26,16 @@ fn manifest_default(name: &str) -> f32 {
 /// figura na rampa recta entre a geração anterior e a nova inteira?»*). Aqui mede-se esse
 /// valor sozinho, para um gate poder afirmar o NÚMERO e não só o efeito.
 #[must_use]
-pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
-    let p = probe_params(generations, &[(param::CONTINUOUS_ANGLE, 1.0)]);
+pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&str, f32)]) -> f32 {
+    // ⚠️ **Ela RECEBE os overrides desde 2026-08-30** — media sempre a `25°`, e a Koch e o
+    // Dragon são `90°` **por definição**. É o mesmo defeito que a irmã
+    // [`probe_growth_ratio`] já tinha corrigido, e que ficou nesta porta: *uma sonda que não
+    // recebe o estado mede outro produto.* Escapava por acidente (a âncora de uma gramática
+    // auto-semelhante é uma razão de ESCALA, e escala não vê ângulo) e deixaria de escapar na
+    // primeira que não o fosse.
+    let mut ov: Vec<(&str, f32)> = vec![(param::CONTINUOUS_ANGLE, 1.0)];
+    ov.extend_from_slice(overrides);
+    let p = probe_params(generations, &ov);
     let params = |n: &str| p.by_name(n);
     let (gens, _) = generation_plan(p.generations);
     let d = derive::derive(
@@ -54,10 +62,18 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
         youngest: (d.generations, 1.0),
         orient_world: true,
     };
-    let antes = turtle::span(&d.previous, &setup(1.0));
-    // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte. Medi-la aberta dá
-    // `1/3` onde a resposta é `1/5`, e uma mutação que trocasse as duas já SOBREVIVEU uma vez.
-    let achatada = turtle::span(&d.chain, &setup(0.0));
+    let antes = turtle::mean_width(&d.previous, &setup(1.0));
+    // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte.
+    //
+    // ⛔⛔ **A NOTA QUE AQUI ESTAVA FOI REFUTADA em 2026-08-30** (auditoria adversarial). Ela
+    // dizia *«medi-la aberta dá `1/3` onde a resposta é `1/5`»* — com a régua invariante à
+    // rotação as duas dão `1/3` (`0,333333` fechada contra `0,333289` aberta, **`0,013 %`**),
+    // e a mutação que troca `setup(0.0)` por `setup(1.0)` **volta a sobreviver**. *A largura
+    // média é quase cega ao dobrar; era a caixa de eixo que via aquela diferença.*
+    //
+    // ⇒ quem guarda esta linha é a fixtura do Weed no gate da âncora (não auto-semelhante), e
+    // a pose tem gate próprio em `turtle_tests::the_newest_generation_opens_its_folds…`.
+    let achatada = turtle::mean_width(&d.chain, &setup(0.0));
     if antes > 1e-6 && achatada > 1e-6 {
         (antes / achatada).clamp(0.02, 1.0)
     } else {
@@ -80,6 +96,27 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32) -> f32 {
 #[must_use]
 pub fn probe_growth_ratio(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> f32 {
     measure_ratio(axiom, rules, &probe_params(5.0, overrides))
+}
+
+/// **A razão CRUA, antes do limiar** — e o limiar em si, para um gate poder medir a FOLGA com
+/// que ele parte o corpus em vez de só confiar nela.
+///
+/// ⚠️ Uma régua nova reembaralha as duas famílias em silêncio: o limiar continua a devolver
+/// `1,0` para um lado e o número para o outro, e nada acusa se a fronteira passar a cortar no
+/// meio de um grupo. *Um limiar sem os dois lados medidos é um palpite com cara de medição.*
+#[must_use]
+pub fn probe_growth_ratio_raw(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> f32 {
+    growth::raw_ratio(axiom, rules, &probe_params(5.0, overrides))
+}
+
+/// **A FAMÍLIA, pela porta do produto** — `true` = refina, `false` = cresce pela ponta.
+///
+/// ⚠️ Ela substituiu `probe_still_multiplies`: até 2026-08-30 a família saía de um limiar
+/// sobre a razão medida, e ele **esgotou-se** (o modo guiado ficou a `0,017 %` dele). Ver
+/// `derive::Derived::grows_by_refining` para os números que o mataram.
+#[must_use]
+pub fn probe_grows_by_refining(axiom: &str, rules: &str, overrides: &[(&str, f32)]) -> bool {
+    growth::raw_ratio_and_family(axiom, rules, &probe_params(5.0, overrides)).1
 }
 
 /// **OS PESOS QUE O PARSER DE FACTO DEVOLVE** — a porta de sonda que impede um gate de

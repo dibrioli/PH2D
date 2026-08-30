@@ -305,6 +305,45 @@ pub(crate) struct Derived {
     pub generations: u16,
 }
 
+impl Derived {
+    /// ⭐⭐⭐ **REFINA, ou CRESCE PELA PONTA? — a pergunta estrutural, e agora é UMA PORTA.**
+    ///
+    /// Um que cresce pela ponta guarda os módulos que desenham das gerações antigas (o `F` de
+    /// `A(s) -> F(s)![+A(s*k)]` é **terminal**: nenhuma regra o reescreve); um que refina
+    /// reescreve tudo, logo **todo módulo que desenha nasceu na última geração**.
+    ///
+    /// # ⛔⛔ Isto era um LIMIAR sobre a razão medida, e o limiar esgotou-se (2026-08-30)
+    ///
+    /// A `measure_ratio` decidia a família por `razão >= 1,25`. Quando a régua passou a ser
+    /// invariante à rotação, a razão do modo **GUIADO — o default do nó** — caiu de `1,3091`
+    /// para **`1,2502`**, ou seja **`0,017 %`** acima do limiar: mexer o `Length Scale` de
+    /// `0,89` para `0,90` (o default do painel!) saltava o tamanho **`+15,4 %`**.
+    ///
+    /// ⚠️ E não havia limiar melhor: varridas **8 100** combinações dos knobs do guiado, o
+    /// máximo dele é **`1,4294`**, e o refinador mais fraco do corpus (Dragon) é **`1,4791`**
+    /// — **`3,5 %`** de separação. *Um discriminador cujas duas classes se tocam não é um
+    /// discriminador, e afinar o número só muda de que lado cai o precipício.*
+    ///
+    /// ⇒ a pergunta passa a ser respondida pela ESTRUTURA, que é **exacta** e não tem
+    /// fronteira: e a mesma resposta serve a lei do comprimento (em [`crate::build`]) e a
+    /// remapagem do `Growth` (em [`crate::growth::measure_ratio`]), que a respondiam de duas
+    /// maneiras diferentes. *Uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.*
+    ///
+    /// A bancada que achou o precipício e que prova que ele morreu é
+    /// [`examples/probe_cliff.rs`](../../examples/probe_cliff.rs).
+    ///
+    /// ⚠️ E o lado certo para o guiado está MEDIDO, não deduzido: no arrasto do `Growth` ele
+    /// dá desvio `2,1 %` como ponta contra `8,8 %` como refinador — o modelo exponencial
+    /// **piora-o**, que é exactamente o que a nota do limiar já dizia sobre o Tree e o Wild.
+    pub(crate) fn grows_by_refining(&self) -> bool {
+        !self.previous.is_empty()
+            && !self
+                .chain
+                .iter()
+                .any(|m| m.born != self.generations && crate::turtle::draws_or_marks(m.sym))
+    }
+}
+
 /// **Deriva `gens` gerações** a partir de `axiom`, parando ao fim do orçamento.
 pub(crate) fn derive(
     axiom: &[Module],

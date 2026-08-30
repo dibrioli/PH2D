@@ -24,6 +24,12 @@ fn size(p: &ls::Preset, g: f32) -> f32 {
             let y0 = v.iter().map(|q| q[1]).fold(f32::MAX, f32::min);
             let y1 = v.iter().map(|q| q[1]).fold(f32::MIN, f32::max);
             // A DIAGONAL: `max(w, h)` tem um joelho onde os dois eixos se cruzam.
+            // ⛔ **E ela NÃO é a régua do produto desde 2026-08-30** — a lei do crescimento
+            // iguala a largura média de Cauchy (`turtle::mean_width`), e uma auditoria mediu
+            // que a diagonal **reprova o produto CURADO** (lê `25,6 %` de pior passo no Dragon
+            // onde o honesto lê `55,2 %`), porque uma figura que roda tem a caixa a respirar
+            // sem mudar de tamanho. Esta bancada mede outra grandeza de propósito — é a que a
+            // linha usava — e quem quiser a do produto tem `examples/probe_flicker.rs`.
             ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
         }
         _ => 0.0,

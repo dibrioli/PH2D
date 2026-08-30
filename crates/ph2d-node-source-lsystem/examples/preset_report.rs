@@ -137,6 +137,11 @@ fn main() {
         println!();
     }
 
+    // ⚠️ **A maior dimensao da CAIXA, que desde 2026-08-30 ja' nao e' a regua da lei do
+    // crescimento** (essa e' a largura media de Cauchy, `turtle::mean_width`). Aqui ela e' a
+    // certa: o que esta seccao mede e' o ENQUADRAMENTO dos moldes, e enquadrar e' uma pergunta
+    // sobre quanto da tela a figura ocupa -- que e' a caixa. *Duas nocoes de «tamanho» em
+    // ficheiros vizinhos, e cada uma esta' certa na sua pergunta.*
     println!("\n== TAMANHO: a maior dimensao da caixa, por geracao ==");
     print!("{:8}", "molde");
     for g in 1..=8 {

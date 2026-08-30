@@ -554,12 +554,19 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
     // ⚠️ **Três travessias por cozedura, e SÓ numa geração fraccionária** — numa inteira nada
     // disto corre e o custo é exactamente o de sempre. É o preço que o Enio aprovou
     // (*"desenhar a planta duas vezes por quadro"*).
+    //
+    // ⭐⭐⭐ **E O QUE SE MEDE MUDOU EM 2026-08-30** — a régua deixou de ser a caixa alinhada
+    // aos eixos e passou a ser invariante à rotação, porque o dragão RODA enquanto cresce e a
+    // lei estava a normalizar a orientação em vez do tamanho. O mecanismo, os números e as três
+    // hipóteses refutadas vivem onde o assunto vive: [`growth`] (o §2026-08-30) e
+    // [`turtle::mean_width`]. *A lei desta função não mudou uma linha; mudou a GRANDEZA que ela
+    // iguala.*
+
     let frac = youngest.1;
-    let has_old_drawing = d
-        .chain
-        .iter()
-        .any(|m| m.born != youngest.0 && turtle::draws_or_marks(m.sym));
-    let grows_by_refining = !has_old_drawing && !d.previous.is_empty();
+    // ⚠️ **A MESMA PORTA que a remapagem do `Growth` usa** — ver [`derive::Derived::grows_by_refining`]:
+    // até 2026-08-30 esta pergunta era respondida aqui pela estrutura e lá por um limiar sobre
+    // a razão medida, e as duas respostas discordavam no modo GUIADO.
+    let grows_by_refining = d.grows_by_refining();
     let want_len = p.continuous_length.round() as i32 != 0;
     let want_ang = p.continuous_angle.round() as i32 != 0;
 
@@ -572,9 +579,9 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
         (if want_len { frac } else { 1.0 }, frac)
     } else if want_ang {
         // REFINA: normaliza pelo que se mede, para a rampa sair recta.
-        let antes = turtle::span(&d.previous, &base(1.0, 1.0, (d.generations, 1.0)));
-        let cheia = turtle::span(&d.chain, &base(1.0, 1.0, (d.generations, 1.0)));
-        let agora = turtle::span(&d.chain, &base(1.0, frac, (d.generations, 1.0)));
+        let antes = turtle::mean_width(&d.previous, &base(1.0, 1.0, (d.generations, 1.0)));
+        let cheia = turtle::mean_width(&d.chain, &base(1.0, 1.0, (d.generations, 1.0)));
+        let agora = turtle::mean_width(&d.chain, &base(1.0, frac, (d.generations, 1.0)));
         let alvo = antes + (cheia - antes) * frac;
         if agora > 1e-6 && alvo > 0.0 {
             ((alvo / agora).clamp(0.02, 4.0), frac)
@@ -593,14 +600,24 @@ fn build(axiom_src: &str, rules_src: &str, p: &Params) -> ph2d_nodegraph::attr::
             // O PASSO ENCOLHE POR GERACAO (*Step Size Scale* do Houdini) -- e' o que
             // torna uma gramatica de REFINAMENTO um refinamento em vez de um crescimento.
             //
-            // Medido: `F -> F[+F]F[-F]F` e `F -> F+F-F-F+F` expandem EXACTAMENTE `3,00` em
-            // toda geracao; com `step_scale = 1/3` a figura fica do mesmo tamanho e so'
-            // ganha detalhe. As que crescem pela ponta convergem para `~1,06` e nao
-            // precisam dele -- por isso o default e' `1,0`, o neutro EXACTO.
+            // Medido: `F -> F[+F]F[-F]F` e `F -> F+F-F-F+F` expandem `3,000` e `3,003` por
+            // geracao, logo `step_scale = 1/3` deixa a figura ~do mesmo tamanho e so' lhe da'
+            // detalhe. As que crescem pela ponta ficam entre `1,053` e `1,154` e nao precisam
+            // dele -- por isso o default e' `1,0`, o neutro EXACTO.
+            //
+            // ⛔ **Os `3,00`/`1,06` que aqui estavam eram da regua ANTIGA.** A auditoria de
+            // 2026-08-30 apanhou-os: a Koch e' `3,0028` com a regua invariante (a caixa de eixo
+            // dava `3,000000` exacto), e o `1,06` descrevia UM dos quatro que crescem pela
+            // ponta -- o mais forte esta' 9 % acima dele. ⚠️ Ou seja a regua nova troca `0,09 %`
+            // de exactidao na razao por invariancia a rotacao: e' um bom negocio, e nao estava
+            // escrito em lado nenhum.
             //
             // O expoente e' o `generations` FRACCIONARIO e nao o `ceil`: com o inteiro o
             // passo daria um degrau em cada travessia, que e' o defeito que isto cura.
-            // Um `powf` e' transcendental (HR-5) e corre UMA vez por cozedura, nunca por
+            // Um `powf` e' transcendental (HR-5) e corre DUAS vezes por cozedura na rota
+            // fraccionaria (o `base()` fundido pelo compilador + este `Setup` final -- contado
+            // na asm pela auditoria de 2026-08-30, que refutou o «UMA vez» que aqui estava),
+            // nunca por
             // elemento -- a mesma cerca (e o mesmo lado dela) da avaliacao de expressoes.
             step: p.step * p.step_scale.max(1e-4).powf(generations.clamp(0.0, 64.0)),
             width: p.width,

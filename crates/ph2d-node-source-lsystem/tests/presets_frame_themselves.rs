@@ -70,6 +70,10 @@ fn bbox(s: &Stream) -> (f32, f32) {
 /// do `step` a três casas — não de um número escolhido para o teste passar.
 #[test]
 fn every_preset_frames_itself_like_its_siblings() {
+    // ⚠️ **A régua aqui é a CAIXA (`max(w, h)`), e continua certa** — desde 2026-08-30 a lei do
+    // crescimento usa outra (a largura média de Cauchy), mas a pergunta deste gate é o
+    // ENQUADRAMENTO: quanto da tela o molde ocupa, que é a caixa. Ele corre em gerações
+    // INTEIRAS, onde a lei do crescimento é inerte.
     const K: f32 = 1.6;
     let sizes: Vec<(&str, f32)> = ls::PRESETS
         .iter()

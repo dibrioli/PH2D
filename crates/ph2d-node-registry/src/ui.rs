@@ -192,6 +192,11 @@ pub enum ParamWidget {
 pub enum FileKind {
     /// A sound file, whatever this build can decode (`audio.bands`).
     Audio,
+    /// **Uma TABELA de números** — CSV/TSV e o que mais a shell souber ler (`source.table`,
+    /// `value.table`). ⚠️ A espécie diz *o que o nó quer*, e as extensões que a satisfazem são
+    /// da shell: o nó não depende do leitor, e é essa cerca que impede a análise de entrar no
+    /// cook.
+    Table,
 }
 
 impl FileKind {
@@ -201,7 +206,28 @@ impl FileKind {
     /// (`every_file_kind_the_registry_declares_has_a_filter`) also checks its LENGTH against
     /// the arms the shell's exhaustive `match` covers — a variant added without a line here
     /// would otherwise be censused by nobody.
-    pub const ALL: &'static [FileKind] = &[FileKind::Audio];
+    pub const ALL: &'static [FileKind] = &[FileKind::Audio, FileKind::Table];
+}
+
+/// ⭐⭐⭐ **A CHAVE do canal externo de uma tabela — porta ÚNICA, e vive AQUI por isso.**
+///
+/// Três sítios a montam: o `source.table`, o `value.table` e a shell que publica. ⚠️ **Duas
+/// grafias nunca se encontrariam e o nó ficaria vazio para sempre, sem erro nenhum** — o modo de
+/// falha mais caro que este canal tem, e o `audio.bands` já o pagou uma vez (a chave do `eval`
+/// resolvia o param conduzido e a da shell não; todas as bandas planas, sem um aviso).
+///
+/// ⛔ Ela não vive numa das crates de nó porque a outra teria de depender dela; não vive no
+/// leitor porque **nenhum nó pode depender do leitor** (é essa cerca que mantém a análise fora
+/// do cook). O registo é a dependência que os três já têm.
+///
+/// ⚠️ O caminho vai por ÚLTIMO e sem prefixo de comprimento porque nada o segue: não há um
+/// segundo campo com que ele possa forjar uma fronteira.
+#[must_use]
+pub fn table_external_key(path: &str) -> String {
+    let mut k = String::with_capacity(path.len() + 6);
+    k.push_str("table:");
+    k.push_str(path);
+    k
 }
 
 impl ParamWidget {

@@ -214,6 +214,9 @@ pub(crate) mod conferencia_demos_deform;
 /// A cena do L-SYSTEM (`=108`) — cinco plantas, uma dimensão isolada em cada.
 #[path = "motion_state_conferencia_demos_lsystem.rs"]
 pub(crate) mod conferencia_demos_lsystem;
+/// A cena da TABELA (`=109`) — as duas leituras de um ficheiro de dados, lado a lado.
+#[path = "motion_state_conferencia_demos_table.rs"]
+pub(crate) mod conferencia_demos_table;
 #[path = "motion_state_conferencia_demos_text.rs"]
 pub(crate) mod conferencia_demos_text;
 #[path = "motion_state_conferencia_demos_time.rs"]

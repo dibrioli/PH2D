@@ -34,6 +34,11 @@ struct Census {
     store: usize,
     /// Chaves publicadas no canal externo do cook.
     externals: usize,
+    /// ⚠️ **Tabelas vivas no `TableCache`** — acrescentado em 2026-08-30 porque ele é um
+    /// acumulador NOVO que este censo não via: o doc dele dizia *"um despejo entraria no dia em
+    /// que isto medisse alguma coisa"*, e nada media. *Um cache que nenhum censo conta é um
+    /// cache cujo crescimento ninguém pode ver.*
+    tables: usize,
 }
 
 /// Corre UM quadro na ordem do produto e mede.
@@ -54,6 +59,7 @@ fn frame(state: &mut MotionState, sinks: &[ph2d_nodegraph::graph::NodeId], sec: 
     Census {
         store: state.shape_store.len(),
         externals: state.pump.cook.externals().len(),
+        tables: state.table_cache.len(),
     }
 }
 

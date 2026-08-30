@@ -533,9 +533,13 @@ pub(super) use forces::forces_family;
 pub(super) use fx_modes::fx_modes_family;
 pub(super) use ladder::ladder_family;
 pub(super) use lsystem::lsystem_family;
+
+#[path = "motion_state_demo_conferencia_table.rs"]
+mod table;
 pub(super) use plume::plume_family;
 pub(super) use sibling::sibling_family;
 pub(super) use slice::slice_family;
 pub(super) use stamp::stamp_family;
+pub(super) use table::table_family;
 pub(super) use value::value_family;
 pub(super) use vary::vary_family;

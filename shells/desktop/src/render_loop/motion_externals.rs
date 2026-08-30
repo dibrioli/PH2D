@@ -40,6 +40,8 @@ pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
     // As bandas de áudio — função do ARQUIVO e do PLAYHEAD (doc 63 §6), e a única
     // das três que muda com o relógio.
     super::motion_audio_gen::publish(motion, seconds);
+    // A TABELA — função do FICHEIRO e de mais nada, então não recebe o relógio (doc 63 §6).
+    super::motion_table_gen::publish(motion);
     // ⚠️ **E VARRE o que ninguém pediu neste quadro** — depois das três, nunca no meio:
     // a forma e o texto internam no MESMO store, e varrer entre elas apagaria as
     // geometrias que a seguinte ainda ia pedir. Um param de forma conduzido por um

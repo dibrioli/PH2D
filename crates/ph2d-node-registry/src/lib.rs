@@ -20,6 +20,7 @@ use ph2d_nodegraph::node::{NodeManifest, NodeOp, NodeTypeId};
 use std::collections::BTreeMap;
 
 mod ui;
+pub use ui::table_external_key;
 pub use ui::{
     Coupling, FileKind, NodeSilhouette, NodeUiCategory, NodeUiManifest, ParamChannelRange,
     ParamGate, ParamGateAbove, ParamGateText, ParamGroup, ParamHardMax, ParamUiHint, ParamWidget,

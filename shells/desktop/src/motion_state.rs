@@ -305,6 +305,9 @@ pub(crate) struct MotionState {
     /// As analises de audio vivas (`audio.bands`) — a FFT roda AQUI, uma vez por
     /// `(arquivo, analise)`, e nunca dentro do cook (doc 63 §6).
     pub(crate) band_cache: crate::render_loop::motion_audio_gen::BandCache,
+    /// As TABELAS lidas (`source.table`, `value.table`) — o disco é lido AQUI, uma vez por
+    /// ficheiro, e nunca dentro do cook (a mesma lei do `band_cache`, doc 63 §6).
+    pub(crate) table_cache: crate::render_loop::motion_table_gen::TableCache,
     /// **The node-help system on/off** (ADR-0155, Enio 2026-08-04). The ONE flag the
     /// setup diagnoser rides: the auto-heal, the ⚠ inert badges and the advisories all
     /// read it (`motion_bridge_heal`), so turning it off makes the graph stop offering to
@@ -418,6 +421,7 @@ impl MotionState {
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),
             band_cache: crate::render_loop::motion_audio_gen::BandCache::default(),
+            table_cache: crate::render_loop::motion_table_gen::TableCache::default(),
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.
             node_help_enabled: true,
         }

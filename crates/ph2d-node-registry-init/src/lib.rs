@@ -118,6 +118,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_sim_zone::register(reg)?;
     ph2d_node_source_lsystem::register(reg)?;
     ph2d_node_source_object::register(reg)?;
+    ph2d_node_source_table::register(reg)?;
     ph2d_node_source_text::register(reg)?;
     ph2d_node_util_reroute::register(reg)?;
     ph2d_node_value_attribute::register(reg)?;
@@ -141,6 +142,7 @@ pub fn register_all_nodes(reg: &mut NodeRegistry) -> Result<(), RegistryError> {
     ph2d_node_value_smooth::register(reg)?;
     ph2d_node_value_step::register(reg)?;
     ph2d_node_value_switch::register(reg)?;
+    ph2d_node_value_table::register(reg)?;
     ph2d_node_value_time::register(reg)?;
     ph2d_node_value_unary::register(reg)?;
     ph2d_node_value_wave::register(reg)?;

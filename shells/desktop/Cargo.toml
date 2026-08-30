@@ -448,6 +448,9 @@ ph2d-audio-decode = { path = "../../crates/ph2d-audio-decode" }
 ph2d-audio-edit = { path = "../../crates/ph2d-audio-edit", optional = true }
 ph2d-audio-encode = { path = "../../crates/ph2d-audio-encode", optional = true }
 ph2d-node-audio-bands = { path = "../../crates/ph2d-node-audio-bands" }
+ph2d-table = { path = "../../crates/ph2d-table" }
+ph2d-node-source-table = { path = "../../crates/ph2d-node-source-table" }
+ph2d-node-value-table = { path = "../../crates/ph2d-node-value-table" }
 # ⚠️ **NAO e mais opcional, e a razao e um CONSUMIDOR novo:** o `audio.bands`
 # (doc 63 §3) le o espectro de um arquivo para dirigir geometria, e ele nao e do
 # editor de audio. Decodificar um arquivo e olhar o espectro dele deixaram de ser

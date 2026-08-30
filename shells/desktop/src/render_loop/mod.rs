@@ -320,6 +320,7 @@ pub(crate) mod motion_glow_layer;
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.
 pub(crate) mod motion_shape_gen;
+pub(crate) mod motion_table_gen;
 pub(crate) mod motion_text_gen;
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
 pub(crate) mod off_canvas;

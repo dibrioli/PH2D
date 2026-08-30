@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-node-value-table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⚠️ **O `ph2d-table` NÃO entra aqui, e a ausência É a arquitetura** — o mesmo desenho do
+# `audio.bands` (doc 63 §6). Este nó não abre ficheiros, não sabe o que é um separador e não
+# tem opinião sobre cabeçalhos: ele lê um stream que a shell publicou. A contenção é
+# ESTRUTURAL — sem a dependência ele não CONSEGUE ler um disco —, e o gate
+# `a_node_that_reads_a_file_cannot_even_depend_on_the_reader` lê este ficheiro.
+[dependencies]
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-node-registry = { path = "../ph2d-node-registry" }

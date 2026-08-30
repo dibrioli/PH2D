@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⚠️ **ZERO dependências, e a ausência É a arquitetura.** Este é o LEITOR: ele
+# recebe TEXTO e devolve colunas. Não abre ficheiros, não conhece caminhos, e
+# nenhum nó do grafo depende dele — o gate `a_node_that_reads_a_file_cannot_even_depend_on_the_reader`
+# lê os `Cargo.toml` dos dois nós para o provar. A contenção é ESTRUTURAL, o mesmo
+# desenho do `audio.bands` (doc 63 §6: *"a FFT NUNCA entra no cook"*).
+[dependencies]

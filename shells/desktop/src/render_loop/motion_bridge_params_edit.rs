@@ -29,6 +29,21 @@ use crate::render_loop::motion_bridge::{backdrops, color, gpu, subgraph};
 /// ⚠️ **`toasts` porque uma edição pode SOLTAR um fio** (`drop_hidden_drivers`): trocar a
 /// espécie de uma forma esconde os knobs que ela não lê, e um fio que os conduzia tem de cair
 /// — em voz alta, nunca em silêncio.
+/// **Esquece a tabela daquele caminho — se aquele param for mesmo de tabela.**
+///
+/// ⚠️ Porta ÚNICA das duas rotas que escrevem um caminho (escolher pelo botão · digitar no
+/// campo). Duas cópias divergiriam, e a que o artista usasse seria a que ficou por curar.
+fn forget_table_if_it_is_one(
+    motion: &mut MotionState,
+    nid: ph2d_nodegraph::graph::NodeId,
+    param: &str,
+    path: &str,
+) {
+    if params_file::kind_of(motion, nid, param) == Some(ph2d_node_registry::FileKind::Table) {
+        motion.table_cache.forget(path);
+    }
+}
+
 pub(super) fn apply_param_edits(
     motion: &mut MotionState,
     store: &ph2d_editor::interaction::WidgetStore,
@@ -170,6 +185,13 @@ pub(super) fn apply_param_edits(
                     let type_name = (param == ph2d_node_source_lsystem::AXIOM_PARAM
                         || param == ph2d_node_source_lsystem::RULES_PARAM)
                         .then(|| inst.type_name.clone());
+                    // ⭐⭐ **O caminho DIGITADO recarrega tanto quanto o escolhido.** Uma
+                    // auditoria mediu o buraco: escrever o caminho à mão ANTES de o ficheiro
+                    // existir memoizava-o como vazio **para sempre**, e a marca de ausência do
+                    // painel — que corre `Path::exists()` ao vivo — deixava de acusar; o nó
+                    // desenhava nada e nada dizia porquê. *Uma lei implementada num braço do
+                    // `match` e não no outro é meia lei.*
+                    forget_table_if_it_is_one(motion, nid, param, &value);
                     motion.doc.graph.set_text_param(nid, param, value);
                     if let Some(tn) = type_name {
                         super::mark_lsystem_custom(motion, nid, &tn);
@@ -199,6 +221,18 @@ pub(super) fn apply_param_edits(
                     let Some(path) = params_file::pick(motion, nid, param) else {
                         continue;
                     };
+                    // ⭐⭐ **ESCOLHER É RECARREGAR** — o *Reload File* do TouchDesigner, preso
+                    // ao controlo que já existe. O cache de tabelas é endereçado pelo CAMINHO,
+                    // então re-escolher o mesmo ficheiro acertaria no cache e o artista, que
+                    // acabou de o gravar no Excel, veria os números velhos **sem nada a dizer
+                    // porquê**. ⛔ Um observador de disco foi recusado: um ficheiro que se relê
+                    // sozinho faz o mesmo projeto, no mesmo instante, desenhar coisas
+                    // diferentes, e o scrub deixa de ser exacto. Recarregar é um GESTO.
+                    // ⚠️ **Condicionado à ESPÉCIE.** A 1.ª redacção esquecia a tabela em TODA
+                    // escolha de ficheiro, inclusive a de um `.wav` — e o cache de áudio não tem
+                    // `forget` nenhum, então re-escolher um som re-analisado no Reaper continua
+                    // a não recarregar. *Um braço, duas espécies, e só uma curada.*
+                    forget_table_if_it_is_one(motion, nid, param, &path);
                     motion.doc.graph.set_text_param(nid, param, path);
                     motion.pump.mark_dirty();
                     nid

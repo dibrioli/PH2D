@@ -118,6 +118,7 @@ ph2d-node-sim-step = { path = "../ph2d-node-sim-step" }
 ph2d-node-sim-zone = { path = "../ph2d-node-sim-zone" }
 ph2d-node-source-lsystem = { path = "../ph2d-node-source-lsystem" }
 ph2d-node-source-object = { path = "../ph2d-node-source-object" }
+ph2d-node-source-table = { path = "../ph2d-node-source-table" }
 ph2d-node-source-text = { path = "../ph2d-node-source-text" }
 ph2d-node-util-reroute = { path = "../ph2d-node-util-reroute" }
 ph2d-node-value-attribute = { path = "../ph2d-node-value-attribute" }
@@ -141,6 +142,7 @@ ph2d-node-value-slope = { path = "../ph2d-node-value-slope" }
 ph2d-node-value-smooth = { path = "../ph2d-node-value-smooth" }
 ph2d-node-value-step = { path = "../ph2d-node-value-step" }
 ph2d-node-value-switch = { path = "../ph2d-node-value-switch" }
+ph2d-node-value-table = { path = "../ph2d-node-value-table" }
 ph2d-node-value-time = { path = "../ph2d-node-value-time" }
 ph2d-node-value-unary = { path = "../ph2d-node-value-unary" }
 ph2d-node-value-wave = { path = "../ph2d-node-value-wave" }

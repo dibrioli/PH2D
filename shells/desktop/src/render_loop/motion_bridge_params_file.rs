@@ -34,6 +34,10 @@ use ph2d_node_registry::{FileKind, ParamWidget};
 pub(crate) fn file_filter(kind: FileKind) -> (&'static str, &'static [&'static str]) {
     match kind {
         FileKind::Audio => ("Audio", crate::audio::decode_any::AUDIO_IMPORT_EXTS),
+        // ⚠️ **As extensões são da SHELL, e o leitor é um só** (`ph2d_table::parse`): ele deteta
+        // o separador, então `.csv` e `.tsv` são o MESMO caminho de código — a lista aqui diz o
+        // que o diálogo oferece, nunca o que o leitor sabe.
+        FileKind::Table => ("Table", crate::render_loop::motion_table_gen::TABLE_EXTS),
     }
 }
 

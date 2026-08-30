@@ -5390,11 +5390,13 @@ dependencies = [
  "ph2d-node-registry-init",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
+ "ph2d-node-source-table",
  "ph2d-node-source-text",
  "ph2d-node-util-reroute",
  "ph2d-node-value-attribute",
  "ph2d-node-value-pattern",
  "ph2d-node-value-switch",
+ "ph2d-node-value-table",
  "ph2d-nodegraph",
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
@@ -5436,6 +5438,7 @@ dependencies = [
  "ph2d-sculpt3d",
  "ph2d-sdf",
  "ph2d-sprite-sheet",
+ "ph2d-table",
  "ph2d-text",
  "ph2d-timeline",
  "ph2d-token-math",
@@ -6644,6 +6647,7 @@ dependencies = [
  "ph2d-node-sim-zone",
  "ph2d-node-source-lsystem",
  "ph2d-node-source-object",
+ "ph2d-node-source-table",
  "ph2d-node-source-text",
  "ph2d-node-sync",
  "ph2d-node-util-reroute",
@@ -6668,6 +6672,7 @@ dependencies = [
  "ph2d-node-value-smooth",
  "ph2d-node-value-step",
  "ph2d-node-value-switch",
+ "ph2d-node-value-table",
  "ph2d-node-value-time",
  "ph2d-node-value-unary",
  "ph2d-node-value-wave",
@@ -6780,6 +6785,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-source-object"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-source-table"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -6973,6 +6986,14 @@ dependencies = [
 
 [[package]]
 name = "ph2d-node-value-switch"
+version = "0.0.0"
+dependencies = [
+ "ph2d-node-registry",
+ "ph2d-nodegraph",
+]
+
+[[package]]
+name = "ph2d-node-value-table"
 version = "0.0.0"
 dependencies = [
  "ph2d-node-registry",
@@ -7649,6 +7670,10 @@ dependencies = [
  "fontique",
  "ph2d-vector-font",
 ]
+
+[[package]]
+name = "ph2d-table"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-telemetry"

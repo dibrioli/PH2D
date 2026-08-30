@@ -40,6 +40,27 @@ fn registry() -> NodeRegistry {
 /// sempre»* e *«ninguém olhou»*, e é a única coisa que a próxima pessoa consegue conferir.
 const ALWAYS_READ: &[(&str, &str, &str)] = &[
     (
+        "source.table",
+        "file",
+        "o nó É a tabela: sem ficheiro ele não tem o que desenhar, e não há modo nenhum",
+    ),
+    (
+        "value.table",
+        "file",
+        "idem -- e é o MESMO ficheiro que o `source.table` lê, pela mesma chave",
+    ),
+    (
+        "value.table",
+        "time",
+        "a coluna do TEMPO é o que faz a tabela ser uma curva em vez de uma lista; sem ela o \
+         nó não sabe em que instante amostrar, e ele não tem modo que a dispense",
+    ),
+    (
+        "value.table",
+        "value",
+        "a coluna cujo número sai -- o nó lê-a em todo instante",
+    ),
+    (
         "value.curve",
         "curve",
         "o nó É a curva -- não há modo em que ele não a leia",

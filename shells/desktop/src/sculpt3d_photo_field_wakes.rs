@@ -357,6 +357,35 @@ fn does_the_field_wake_up_at_a_thin_tip() {
     // ⛔ **É uma versão RESTRITA de propósito**, e o resultado discrimina nos dois sentidos: se
     // as dobras caírem, a cura existe e o preço é conhecido; se ficarem, elas vivem **na
     // fronteira** dos retalhos e a wave é outra.
+    // ⭐⭐⭐ **ONDE NASCEM AS DOBRAS: no solver CONTÍNUO ou na ESCADA?** — o facto que decide
+    // onde a wave seguinte ataca, e que nunca foi medido.
+    //
+    // ⚠️ **A MESMA régua nos dois lados** ([`ph2d_untangle::flipped`] sobre os triângulos locais
+    // do corte): um A/B com duas réguas inventaria um efeito, e este módulo já pagou isso.
+    {
+        let (continuo, _) = ph2d_gridmap::solve_welded(
+            &work,
+            &cut,
+            &combed,
+            ph2d_gridmap::Step::uniform(target),
+            ph2d_gridmap::RoundOptions::default().welded_rounds,
+        );
+        let (a, b) = (
+            flips_of(&work, &cut, &continuo),
+            flips_of(&work, &cut, &map),
+        );
+        eprintln!(
+            "  ONDE NASCEM AS DOBRAS: continuo (G3) {a}  ->  final (pos-escada) {b}  --  {}",
+            if b > a {
+                "⛔ a ESCADA acrescenta"
+            } else if b < a {
+                "⭐ a escada REMOVE"
+            } else {
+                "⚠️ a escada nao mexe: elas nascem TODAS no continuo"
+            }
+        );
+    }
+
     untangle_probe(&work, &cut, &map);
 
     // ⚠️ **As DUAS contagens são impressas** — a dobra é a MINORIA, e uma convenção de sinal
@@ -378,6 +407,56 @@ fn does_the_field_wake_up_at_a_thin_tip() {
             n, positivos[b], negativos[b], dobras
         );
     }
+}
+
+/// Quantos triângulos do mapa estão dobrados — a régua partilhada pelos dois lados do A/B.
+fn flips_of(
+    work: &ph2d_mesh::Mesh,
+    cut: &ph2d_gridmap::CutMesh,
+    map: &ph2d_gridmap::GridMap,
+) -> usize {
+    let pos = work.positions();
+    let mut total = 0;
+    for (p, tris) in cut.tris.iter().enumerate() {
+        let (Some(origin), Some(uvp)) = (cut.origin.get(p), map.uv.get(p)) else {
+            continue;
+        };
+        let elements: Vec<_> = tris
+            .iter()
+            .filter_map(|t| element_for(pos, origin, *t))
+            .collect();
+        let uv: Vec<[f64; 2]> = uvp
+            .iter()
+            .map(|c| [f64::from(c[0]), f64::from(c[1])])
+            .collect();
+        total += ph2d_untangle::flipped(&elements, &uv);
+    }
+    total
+}
+
+/// O elemento de um triângulo, com o repouso achatado isometricamente.
+fn element_for(pos: &[[f32; 3]], origin: &[u32], t: [u32; 3]) -> Option<ph2d_untangle::Element> {
+    let q: Vec<[f64; 3]> = t
+        .iter()
+        .map(|&l| {
+            let g = *origin.get(l as usize).unwrap_or(&0) as usize;
+            let v = pos.get(g).copied().unwrap_or([0.0; 3]);
+            [f64::from(v[0]), f64::from(v[1]), f64::from(v[2])]
+        })
+        .collect();
+    let e1 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
+    let e2 = [q[2][0] - q[0][0], q[2][1] - q[0][1], q[2][2] - q[0][2]];
+    let l1 = e1[0]
+        .mul_add(e1[0], e1[1].mul_add(e1[1], e1[2] * e1[2]))
+        .sqrt();
+    if !l1.is_finite() || l1 <= 0.0 {
+        return None;
+    }
+    let u = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+    let x = e2[0].mul_add(u[0], e2[1].mul_add(u[1], e2[2] * u[2]));
+    let sq = e2[0].mul_add(e2[0], e2[1].mul_add(e2[1], e2[2] * e2[2])) - x * x;
+    let y = if sq > 0.0 { sq.sqrt() } else { 0.0 };
+    ph2d_untangle::Element::from_rest(t, [0.0, 0.0], [l1, 0.0], [x, y])
 }
 
 /// ⭐⭐⭐ **O DESEMARANHADOR SOBRE O NOSSO MAPA** — retalho a retalho, fronteira presa.

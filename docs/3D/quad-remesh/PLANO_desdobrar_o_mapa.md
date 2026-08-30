@@ -350,3 +350,46 @@ As dobras que sobram vivem **na fronteira dos retalhos** — o que a versão res
 ⇒ **libertar as variáveis de costura** pelo conjunto reduzido do `ClosureSystem`. ⭐ E a hipótese
 mais forte, dado o achado acima: **a injectividade tem de entrar DENTRO da escada** (anti-flip por
 prego), não como um passe antes ou depois dela.
+
+---
+
+## §10 — ⛔⛔⛔ ONDE NASCEM AS DOBRAS: a minha hipótese do §9 está REFUTADA
+
+O §9 apostava que *«a injectividade tem de entrar DENTRO da escada»*. Medido, com a **mesma
+régua** dos dois lados:
+
+| | contínuo (G3) | final (pós-escada) | a escada acrescenta |
+|---|---|---|---|
+| `Detail 0,85` | ⛔ **`120`** | `149` | `+29` (**`24 %`**) |
+| `Detail 0,50` | ⛔ **`73`** | `88` | `+15` (**`21 %`**) |
+
+⭐⭐⭐ **Quatro em cada cinco dobras já nascem no solver CONTÍNUO.** A escada é a minoria.
+
+### E as três curas possíveis estão TODAS medidas — nenhuma sozinha chega
+
+| cura | onde | veredito |
+|---|---|---|
+| **endurecimento local** (pesar o triângulo virado) | dentro do G3 | ⛔ **construído, medido e REJEITADO em 2026-08-25** (`STIFFEN_PASSES = 0`, tabela no doc dele). A literatura concorda: sem garantia |
+| **desemaranhar ANTES da escada** | entre G3 e a escada | ⛔ **pior**: a escada re-dobra e re-dobra MAIS (`149 → 169`) |
+| **desemaranhar DEPOIS da escada** | no fim | ⚠️ **funciona e shipa desligado** (§9): `+56 %` de relógio para um ganho que o dono não vê |
+
+⇒ ⭐⭐⭐ **A conclusão é aritmética, e é arquitectural:** curar só a escada deixa `120`; curar só o
+contínuo deixa `29` — **e curar o contínuo e depois arredondar dá `169`, pior que não curar nada**.
+*Nenhum passe colocado em sítio nenhum resolve isto.*
+
+⇒ **A injectividade tem de ser uma propriedade do OBJECTIVO que a fase inteira optimiza**, e não um
+passe antes, dentro ou depois dela. Hoje o G3 minimiza `‖∇f − R/h‖²` — uma Poisson por mínimos
+quadrados **sem termo nenhum de injectividade** —, e é exactamente isso que a literatura substitui.
+
+⚠️ **E a objecção que o doc do endurecimento levanta NÃO se aplica a esta rota:** ele conclui
+*«no domínio não se cura pesando triângulos: é uma propriedade do CAMPO»*, e tem razão **sobre
+pesar triângulos**. A energia com barreira não pesa nada — ela **muda o objectivo**, e traz a
+garantia que o peso não tinha. *Uma recusa medida responde UMA pergunta; esta é outra.*
+
+### ⏳ A wave seguinte, com alvo e com o preço à vista
+
+**Substituir o objectivo do G3** pela energia regularizada do §3, sobre o **mesmo conjunto reduzido
+de variáveis** do `ClosureSystem` (que é o que preserva a `GP`). ⚠️ **É a obra grande desta linha:**
+troca uma relaxação linear por uma descida não-linear na fase mais central da cadeia. ⛔ E o preço
+tem de ser medido contra o relógio do artista **antes** de shipar — o passe de `§9` já mostrou que
+`+56 %` é fácil de gastar.

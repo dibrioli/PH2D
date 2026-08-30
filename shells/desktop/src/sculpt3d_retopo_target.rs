@@ -110,6 +110,7 @@ pub(super) fn sizing_field(work: &Mesh, target: f32, adaptive: f32) -> Vec<f32> 
         .unwrap_or(SIZING_SMOOTH_ROUNDS);
     {
         let (cru, amostra) = ph2d_quadfill::tip_body_ratio(work.positions(), &per_vertex);
+        // ⛔ `amostra == 0` é NÃO MEDIDO — ver o doc da porta.
         eprintln!(
             "[sculpt3d] densidade adaptativa {adaptive:.2}: PEDE CRU razao ponta/corpo \
              {cru:.3} (amostra da ponta: {amostra} vertices)"

@@ -374,6 +374,14 @@ mod tests;
 /// Devolve `(razão, quantos pontos na casca da ponta)` — ⚠️ **a contagem vai
 /// junto**: uma mediana de 12 amostras não é uma medição, e sem o denominador ao
 /// lado ninguém sabe distinguir as duas.
+///
+/// ⛔⛔ **`n == 0` significa NÃO MEDIDO, e a razão vem `0,0` — que se lê como o
+/// melhor resultado possível.** Achado por auditoria em 2026-08-30: quando todos os
+/// pontos estão à MESMA distância do centro (um ponto só, ou uma peça sem relevo
+/// nenhum) eles caem todos na casca `0` e a casca da ponta fica vazia. *Um zero de
+/// «não medido» e um zero de «perfeito» são o mesmo byte* — a lição que esta linha
+/// já pagou nas duas réguas de valência. ⇒ **quem imprime tem de olhar a contagem
+/// antes do número**, e há gate a exigi-lo.
 #[must_use]
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn tip_body_ratio(points: &[[f32; 3]], values: &[f32]) -> (f32, usize) {

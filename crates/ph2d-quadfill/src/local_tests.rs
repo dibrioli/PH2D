@@ -275,3 +275,67 @@ fn a_torcao_nao_depende_da_diagonal_escolhida() {
         );
     }
 }
+
+/// ⭐⭐⭐ **AUDITORIA — a régua tem de dizer `1,0` numa peça SEM pontas.**
+///
+/// ⛔⛔ **É a lente que decide se o número que eu reporto é medição ou ruído.** Numa
+/// esfera lisa todos os pontos estão à mesma distância do centro, logo caem todos na
+/// casca de fora: o «corpo» e a «ponta» passam a ser a MESMA população, e a razão
+/// tem de ser exactamente `1`. *Se ela desviasse aqui, todo desvio numa peça com
+/// pontas seria indistinguível do artefacto da própria régua.*
+#[test]
+fn a_regua_diz_um_numa_peca_sem_pontas() {
+    let mesh = ph2d_mesh::shapes::uv_sphere(48, 32, 1.0);
+    let cent: Vec<[f32; 3]> = mesh
+        .faces()
+        .iter()
+        .map(|f| {
+            let v = f.verts();
+            let mut c = [0.0f32; 3];
+            for &i in v {
+                let p = mesh.positions()[i as usize];
+                for k in 0..3 {
+                    c[k] += p[k];
+                }
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let n = v.len() as f32;
+            [c[0] / n, c[1] / n, c[2] / n]
+        })
+        .collect();
+    let uns = vec![1.0f32; cent.len()];
+    let (r, amostra) = super::tip_body_ratio(&cent, &uns);
+    assert!(
+        (r - 1.0).abs() < 1.0e-6,
+        "um campo CONSTANTE tem de dar razao 1,0 e deu {r} -- se a regua desvia com o \
+         campo constante, ela mede a forma da peca e nao a densidade"
+    );
+    assert!(amostra > 0, "a casca da ponta nao pode ficar vazia");
+}
+
+/// ⚠️ **AUDITORIA — entradas degeneradas não podem inventar um número.**
+///
+/// ⛔ Uma razão devolvida sobre lista vazia ou desemparelhada seria lida como
+/// medição pelo consumidor, que a imprime ao lado do alvo `0,59`.
+#[test]
+fn a_regua_recusa_entrada_degenerada_em_vez_de_inventar() {
+    assert_eq!(super::tip_body_ratio(&[], &[]), (0.0, 0));
+    let p = vec![[0.0f32, 0.0, 0.0]];
+    assert_eq!(
+        super::tip_body_ratio(&p, &[]),
+        (0.0, 0),
+        "pontos e valores desemparelhados tem de dar ZERO, nao um numero plausivel"
+    );
+    // ⛔⛔ **Um ponto só: a casca da PONTA fica VAZIA**, e é isso que a auditoria de
+    // 30/08 achou. Todas as distâncias são `0`, logo todos os pontos caem na casca
+    // `0` e a razão sai `0,0` — *que se lê como o melhor resultado possível*.
+    // ⇒ o contrato é: **`n == 0` quer dizer NÃO MEDIDO**, e quem imprime olha a
+    // contagem antes do número.
+    let (r, n) = super::tip_body_ratio(&p, &[0.5]);
+    assert!(r.is_finite(), "um ponto so' deu {r}, que nao e' finito");
+    assert_eq!(
+        n, 0,
+        "⛔ com todos os pontos ao mesmo raio a casca da ponta e' VAZIA, e a contagem \
+         tem de o dizer -- senao a razao 0,0 passa por excelente"
+    );
+}

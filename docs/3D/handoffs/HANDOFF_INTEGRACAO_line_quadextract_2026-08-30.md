@@ -170,6 +170,38 @@ tabela na mão.
   oráculo está indisponível até ele voltar.
 - ⏳ o motor **`Fast`** do menu continua a um clique, com a saída pior (herdado).
 
+## §8-bis — ⭐ A AUDITORIA (antes do smoke, pela regra de 30/08) achou UM buraco
+
+**Lente «a régua mente numa entrada degenerada?»** — e ela mentia:
+
+⛔⛔ Quando **todos** os pontos estão à mesma distância do centro (um ponto só, ou uma peça sem
+relevo nenhum), eles caem todos na casca `0`, a casca da ponta fica **vazia**, e
+`tip_body_ratio` devolve **`0,0`** — que impresso ao lado do alvo `0,59` **lê-se como o melhor
+resultado possível**.
+
+⇒ o contrato passa a ser: **`n == 0` quer dizer NÃO MEDIDO**, está no doc da porta, tem gate
+(`a_regua_recusa_entrada_degenerada_em_vez_de_inventar`) e **os dois consumidores olham a
+contagem antes do número** (o da entrega imprime `NAO MEDIDA`).
+
+⚠️ *É a terceira vez que esta linha paga «um zero de não-medido e um de perfeito são o mesmo
+byte»* — as duas anteriores foram as réguas de valência (o balde que nunca era preenchido) e o
+`edge_max` cego ao quad de `0,02 × 0,30`.
+
+⭐ **A outra lente passou:** numa esfera lisa a razão dá `1,000000` — *se a régua desviasse com o
+campo constante, todo desvio numa peça com pontas seria indistinguível do artefacto dela.*
+
+## §8-ter — A prova de que o caminho de OMISSÃO não se mexeu
+
+| `Follow Curvature = 0`, peça do artista, `Detail 0,85` | |
+|---|---|
+| quads | `9 188` (idêntico antes e depois da wave) |
+| forma | aspecto p50 `1,06` p99 `1,38` · envies. p50 `3,4` p99 `21,6` · `>60° = 2` |
+| razão ponta/corpo | `1,533` |
+
+⚠️ **A única reprovada do portão é a flake de carga já nomeada no `CLAUDE.md` §5.0**
+(`only_the_lower_row_breathes_and_it_moves_with_the_playhead`, demos de áudio): verde **3 de 3**
+sozinha, e o diff toca **zero** ficheiros de áudio.
+
 ## §9 — Ponto cego novo na ferramenta do laço interno
 
 `scripts/cargo-check-narrow.sh` corre `cargo check -p` **sem `--all-targets`** ⇒ não compila

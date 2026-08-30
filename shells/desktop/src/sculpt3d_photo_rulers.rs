@@ -472,8 +472,16 @@ pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
     // ninguém pode dividir um pelo outro.
     let raiz_area: Vec<f32> = faces.iter().map(|f| area(f).sqrt()).collect();
     let (razao, amostra) = ph2d_quadfill::tip_body_ratio(&cent, &raiz_area);
-    eprintln!(
-        "   {tag}: ENTREGA razao ponta/corpo {razao:.3}  (alvo derivado do oraculo \
-         aprovado: 0,59 · <1 afina na ponta, >1 engrossa) [amostra da ponta: {amostra} faces]"
-    );
+    // ⛔⛔ **A CONTAGEM decide se há número.** Com a casca da ponta vazia a razão vem
+    // `0,0`, que ao lado do alvo `0,59` se lê como o melhor resultado possível — ver
+    // o doc de [`ph2d_quadfill::tip_body_ratio`]. *Um zero de «não medido» e um de
+    // «perfeito» são o mesmo byte.*
+    if amostra == 0 {
+        eprintln!("   {tag}: ENTREGA razao ponta/corpo NAO MEDIDA (casca da ponta vazia)");
+    } else {
+        eprintln!(
+            "   {tag}: ENTREGA razao ponta/corpo {razao:.3}  (alvo derivado do oraculo \
+             aprovado: 0,59 · <1 afina na ponta, >1 engrossa) [amostra da ponta: {amostra} faces]"
+        );
+    }
 }

@@ -89,6 +89,22 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         67 => repro_after(app),
         69 => remove_the_unused_image(app),
         71 => repro_after(app),
+        // ── ⭐⭐ RENOMEAR E APAGAR UM CATÁLOGO ────────────────────────────────────────────
+        // ⚠️ **No FIM, depois de tudo o que mede a grade.** Apagar o catálogo devolve o cartão a
+        // *Unassigned*, e correr isto antes do `report_grid` faria aquele passo contar o efeito
+        // deste — a mesma armadilha que já mordeu esta cena uma vez.
+        74 => right_click_catalog_row(app),
+        // Um quadro entre abrir o menu e apertar o item: o overlay só regista o que pintou.
+        77 => click_menu_row(
+            app,
+            ph2d_editor::ids::CTX_MENU_CATALOG_RENAME,
+            "Rename\u{2026}",
+        ),
+        79 => type_new_name(app),
+        82 => report_catalogs(app, "depois de renomear"),
+        85 => right_click_catalog_row(app),
+        88 => click_menu_row(app, ph2d_editor::ids::CTX_MENU_CATALOG_DELETE, "Delete"),
+        91 => report_catalogs(app, "depois de apagar"),
         _ => {}
     }
 }
@@ -459,4 +475,48 @@ fn report_grid(app: &mut crate::App) {
 pub(crate) fn repro_after(_app: &mut crate::App) {
     let (n, k) = ph2d_panel_asset_browser::probe_index_summary();
     eprintln!("[repro] DEPOIS de apagar: {n} asset(s) — {k}");
+}
+
+/// Botão direito na linha do catálogo — o gesto que abre o menu de DUAS entradas.
+fn right_click_catalog_row(app: &mut crate::App) {
+    match app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) {
+        Some((x, y)) => {
+            app.smoke_secondary_click(x, y);
+            eprintln!("[catalog] botão direito na linha do catálogo em ({x}, {y})");
+        }
+        None => eprintln!("[catalog] ⚠️ a linha do catálogo NÃO está no hit-index"),
+    }
+}
+
+/// ⭐⭐⭐ **Escreve o nome novo e carrega no Enter** — pelo teclado, no campo que o menu abriu.
+///
+/// ⚠️ **O campo tem de estar FOCADO para receber**, e é isso que este passo mede: se o `Rename…`
+/// não semeou o foco, os caracteres caem no chão e o nome fica o antigo. *Escrever no buffer pelo
+/// estado passaria com o campo morto.*
+fn type_new_name(app: &mut crate::App) {
+    let focused = app
+        .gfx
+        .as_ref()
+        .and_then(|g| g.hero_screen.as_ref())
+        .map(|h| h.store().focus_id() == Some(ph2d_editor::ids::ASSET_CATALOG_RENAME))
+        .unwrap_or(false);
+    eprintln!("[catalog] f=79 o campo de renomear tem o foco: {focused}");
+    app.smoke_type("Heroes");
+    app.smoke_key_enter();
+    eprintln!("[catalog] f=79 escrito «Heroes» + Enter");
+}
+
+/// O que a taxonomia PUBLICADA tem agora — nome e quantos assets em cada gaveta.
+fn report_catalogs(_app: &mut crate::App, when: &str) {
+    let cats = ph2d_panel_asset_browser::probe_catalogs();
+    if cats.is_empty() {
+        eprintln!("[catalog] {when}: nenhum catálogo");
+        return;
+    }
+    let text = cats
+        .iter()
+        .map(|(p, n)| format!("«{p}» x{n}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    eprintln!("[catalog] {when}: {text}");
 }

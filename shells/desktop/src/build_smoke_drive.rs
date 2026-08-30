@@ -52,6 +52,33 @@ impl crate::App {
         }
     }
 
+    /// ⭐⭐ **Escreve num campo focado — pelo caminho do TECLADO**, não pelo `WidgetStore`.
+    ///
+    /// ⚠️ Escrever no buffer directamente mediria o pintor: um campo que nasce sem foco, ou que o
+    /// perde para outro widget, aceitaria o texto na mesma e o roteiro passaria. Esta porta é a
+    /// mesma do carácter que vem do `winit` (`forward_text_to_hero`), então **um campo sem foco
+    /// não recebe nada** — que é exactamente o defeito que se quer ver.
+    pub(crate) fn smoke_type(&mut self, text: &str) {
+        for ch in text.chars() {
+            crate::forwarding::forward_text_to_hero(self.gfx.as_mut(), ch);
+        }
+    }
+
+    /// Enter — o que faz um campo de uma linha gravar (`Submit` + `Blur`).
+    pub(crate) fn smoke_key_enter(&mut self) {
+        for state in [
+            winit::event::ElementState::Pressed,
+            winit::event::ElementState::Released,
+        ] {
+            self.key_input(
+                winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Enter),
+                state,
+                false,
+                None,
+            );
+        }
+    }
+
     pub(crate) fn smoke_undo(&mut self, redo: bool) {
         self.smoke_key_z(redo, true);
         self.smoke_key_z(redo, false);

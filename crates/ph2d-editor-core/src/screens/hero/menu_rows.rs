@@ -285,6 +285,12 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         // Prefab ou uma Imagem. As duas famílias respondem aos três — e as recusas NOMEIAM o
         // motivo, que numa Imagem é sempre o mesmo facto: ela está na biblioteca porque um objecto
         // a usa, então *«tirar»* teria de tirá-la dos objectos, que é outro gesto.
+        // ⭐⭐ A linha de catálogo. ⚠️ Só DOIS itens, e nenhum deles é *«criar»* — criar é o `+` do
+        // cabeçalho da coluna, que não precisa de um sujeito.
+        ContextMenuKind::CatalogRow { .. } => &[
+            (ids::CTX_MENU_CATALOG_RENAME, "Rename\u{2026}", None),
+            (ids::CTX_MENU_CATALOG_DELETE, "Delete", None),
+        ],
         ContextMenuKind::AssetCard { .. } => &[
             (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
             (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),

@@ -26,7 +26,9 @@
 
 #![forbid(unsafe_code)]
 
+mod catalog_rename;
 mod event;
+mod event_catalog;
 pub mod ids;
 mod paint;
 /// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
@@ -44,8 +46,8 @@ pub const PANEL_ID: &str = "asset_browser";
 pub use paint::{default_rect, probe_query};
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, catalog_row_pick,
-    last_content_h, last_visible_h, payload_at, probe_first_texture, probe_index_summary,
-    set_current_catalogs, set_current_index,
+    last_content_h, last_visible_h, payload_at, probe_catalogs, probe_first_texture,
+    probe_index_summary, set_current_catalogs, set_current_index,
 };
 
 use ph2d_a11y::NodeId;

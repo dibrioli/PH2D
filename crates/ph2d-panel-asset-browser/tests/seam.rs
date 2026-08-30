@@ -412,3 +412,244 @@ fn a_card_menu_whose_cell_no_longer_paints_anything_does_nothing() {
     assert_eq!(out, EventOutcome::Ignored);
     assert_eq!(host.bus().len(), 0);
 }
+
+// ── ⭐⭐ O MENU DA LINHA DE CATÁLOGO (etapa D) ───────────────────────────────────────────────────
+
+/// O gémeo do [`stage_card_menu`] para uma linha da coluna.
+fn stage_catalog_menu(host: &mut MockPanelHost, row: ph2d_a11y::NodeId) {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::CatalogRow { row },
+    });
+    host.store_mut().close_context_menu();
+}
+
+/// Uma taxonomia com um catálogo, publicada, e a coluna a dizer que pintou as três linhas.
+fn stage_one_catalog() -> ph2d_asset_index::CatalogId {
+    use ph2d_panel_asset_browser::CatalogPick;
+    let mut tree = ph2d_asset_index::CatalogTree::default();
+    let id = tree.create("Heroes");
+    ph2d_panel_asset_browser::set_current_catalogs(tree);
+    ph2d_panel_asset_browser::state::probe_set_painted_rows(vec![
+        CatalogPick::All,
+        CatalogPick::Unassigned,
+        CatalogPick::One(id),
+    ]);
+    id
+}
+
+/// ⭐⭐ **Toda linha do menu de um catálogo FAZ alguma coisa.**
+///
+/// ⚠️ **«Fazer» aqui não é «pôr no barramento»** — o *Rename…* abre um campo, que é estado do
+/// painel, e um gate que exigisse uma acção declararia morto o item mais vivo dos dois. A pergunta
+/// certa é *o clique deixou o mundo diferente?*, e as duas respostas legítimas são o barramento e
+/// o campo aberto.
+///
+/// ⚠️ A fonte é a TABELA que o overlay pinta, como no menu do cartão: um item novo entra neste
+/// gate no dia em que é pintado.
+///
+/// **Mutação que deve sangrar:** apagar o braço do `CTX_MENU_CATALOG_RENAME` no `event.rs`.
+#[test]
+fn every_catalog_row_menu_entry_does_something() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    let rows = menu_rows(ContextMenuKind::CatalogRow {
+        row: ids::catalog_row_id(2),
+    });
+    assert!(
+        !rows.is_empty(),
+        "a tabela do menu do catálogo está vazia — este gate mediria nada"
+    );
+
+    let mut dead: Vec<&str> = Vec::new();
+    for (id, label, _) in rows {
+        let (mut host, mut st) = open_host();
+        stage_one_catalog();
+        stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+        let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
+        if out != EventOutcome::Consumed || (host.bus().is_empty() && st.renaming.is_none()) {
+            dead.push(label);
+        }
+    }
+    assert!(
+        dead.is_empty(),
+        "linhas do menu do catálogo que são PINTADAS e não fazem nada: {dead:?}.\n\
+         Ligue cada uma no braço `CTX_MENU_CATALOG_*` de \
+         `crates/ph2d-panel-asset-browser/src/event.rs`."
+    );
+}
+
+/// ⛔ **`All` e `Unassigned` não são catálogos.** Elas são linhas fixas da coluna, e um *Delete*
+/// sobre elas teria de apagar o quê? O braço desiste, e é isso que o mantém sem um caso especial
+/// no dreno do shell.
+///
+/// **Mutação que deve sangrar:** aceitar qualquer `CatalogPick` no braço em vez de só o `One`.
+#[test]
+fn the_menu_over_a_fixed_row_does_nothing() {
+    for row in [0usize, 1] {
+        let (mut host, mut st) = open_host();
+        stage_one_catalog();
+        stage_catalog_menu(&mut host, ids::catalog_row_id(row));
+        let out = host.apply_panel_event::<AssetBrowserPanel>(
+            &mut st,
+            WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_DELETE),
+        );
+        assert_eq!(out, EventOutcome::Ignored, "a linha fixa {row} agiu");
+        assert_eq!(host.bus().len(), 0);
+        assert!(st.renaming.is_none());
+    }
+}
+
+/// ⭐⭐ **Apagar o catálogo ESCOLHIDO devolve a grade a `All`.**
+///
+/// ⚠️ Sem isto a grade continuaria a filtrar por uma gaveta que já não existe: zero cartões, e
+/// nada na tela a explicar porquê. *Um filtro cujo sujeito morreu não é um filtro vazio, é um
+/// painel partido.*
+///
+/// **Mutação que deve sangrar:** apagar o `state.pick = CatalogPick::All` do braço.
+#[test]
+fn deleting_the_chosen_catalog_returns_the_grid_to_all() {
+    use ph2d_editor_core::action_bus::CatalogVerb;
+    use ph2d_panel_asset_browser::CatalogPick;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    st.pick = CatalogPick::One(id);
+    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    let out = host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_DELETE),
+    );
+    assert_eq!(out, EventOutcome::Consumed);
+    assert_eq!(
+        st.pick,
+        CatalogPick::All,
+        "a grade ficou a filtrar por um fantasma"
+    );
+    let drained: Vec<_> = host.bus_mut().drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::AssetCatalogVerb(CatalogVerb::Delete {
+            id: id.0
+        })]
+    );
+}
+
+/// ⚠️ **O `Rename…` NÃO manda nada — ele abre o campo.** O nome só atravessa o barramento no
+/// `Submit`/`Blur`, e é aí que ele é comparado com o actual.
+///
+/// **Mutação que deve sangrar:** fazer o braço do rename empurrar um `CatalogVerb::Rename` logo.
+#[test]
+fn rename_opens_the_field_and_the_name_only_travels_on_submit() {
+    use ph2d_editor_core::action_bus::CatalogVerb;
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::widget::TextInputState;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
+    );
+    assert_eq!(st.renaming.map(|r| r.id), Some(id), "o campo não abriu");
+    assert_eq!(
+        host.bus().len(),
+        0,
+        "o rename mandou o nome antes de haver nome"
+    );
+
+    // O que o campo teria depois de o artista escrever.
+    host.store_mut().register(
+        ids::ASSET_CATALOG_RENAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: "Villains".into(),
+            caret: 8,
+            selection_anchor: None,
+        },
+    );
+    let out = host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Submit(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(out, EventOutcome::Consumed);
+    let drained: Vec<_> = host.bus_mut().drain().collect();
+    assert_eq!(
+        drained,
+        vec![EditorAction::AssetCatalogVerb(CatalogVerb::Rename {
+            id: id.0,
+            name: "Villains".into(),
+        })]
+    );
+    assert!(
+        st.renaming.is_none(),
+        "o campo ficou aberto depois de gravar"
+    );
+
+    // ⚠️ **O par Enter→(Submit, Blur) é idempotente** — o segundo evento não acha campo nenhum.
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Blur(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(host.bus().len(), 0, "o Blur mandou o nome uma segunda vez");
+}
+
+/// ⚠️ **Um nome IGUAL ao actual não levanta acção** — ela marcaria o projecto sujo por nada, e o
+/// dreno faria um `rename` que não muda um byte.
+///
+/// **Mutação que deve sangrar:** apagar o `if text == current` do `commit`.
+#[test]
+fn renaming_to_the_same_name_dispatches_nothing() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::widget::TextInputState;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
+    );
+    assert_eq!(st.renaming.map(|r| r.id), Some(id));
+    host.store_mut().register(
+        ids::ASSET_CATALOG_RENAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: "  Heroes  ".into(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Submit(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(
+        host.bus().len(),
+        0,
+        "renomear para o mesmo nome (com espaços) sujou o projecto"
+    );
+}
+
+/// ⚠️ **O Esc abandona sem gravar.**
+#[test]
+fn escape_abandons_the_rename() {
+    let (mut host, mut st) = open_host();
+    stage_one_catalog();
+    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
+    );
+    let out = host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Cancel(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(out, EventOutcome::Consumed);
+    assert!(st.renaming.is_none());
+    assert_eq!(host.bus().len(), 0);
+}

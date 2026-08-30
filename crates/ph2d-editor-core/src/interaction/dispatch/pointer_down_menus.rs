@@ -94,6 +94,12 @@ pub(super) fn handle_down_menus(
         // para fora do corpo, ou o painel fechado, já não tem célula nenhuma e este ramo não
         // dispara. *Uma segunda lista aqui seria a resposta que envelhece.*
         let asset_cell_id = hit_id.filter(|id| store.is_asset_cell(*id));
+        // ⭐⭐ E a linha de catálogo (etapa D). ⚠️ **Aqui a pergunta é à ESCADA de ids**, e não a um
+        // censo — a escada vive nesta crate (`ids::catalog_row_index`) e o cartão não podia usá-la
+        // porque o id de uma CÉLULA é publicado com o índice do payload. O efeito é o mesmo: o
+        // `hit_id` só existe se a coluna registou aquele rect neste quadro, então uma linha rolada
+        // para fora — ou a coluna colapsada — não chega cá.
+        let catalog_row = hit_id.filter(|id| crate::ids::catalog_row_index(*id).is_some());
         // W3.E4: right-click a timeline key — its dope-sheet diamond or its graph
         // anchor — to retune the interpolation leaving it; a track row's LABEL
         // opens the whole-track menu instead (Delete Track). Resolved before the
@@ -175,6 +181,12 @@ pub(super) fn handle_down_menus(
                 x: event.x,
                 y: event.y,
                 kind: ContextMenuKind::HierarchyRow { row },
+            });
+        } else if let Some(row) = catalog_row {
+            store.open_context_menu(ContextMenuRequest {
+                x: event.x,
+                y: event.y,
+                kind: ContextMenuKind::CatalogRow { row },
             });
         } else if let Some(cell) = asset_cell_id {
             store.open_context_menu(ContextMenuRequest {

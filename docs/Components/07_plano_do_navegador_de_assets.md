@@ -278,3 +278,67 @@ sobra depois de a grade guardar **um cartão inteiro**, e colapsa a zero quando 
 mode* e passou a ser o interruptor da coluna. ⛔ O split **vertical** não fica: uma árvore de
 catálogos é uma lista **vertical**, e uma faixa horizontal desperdiça a largura e mata a altura
 que a lista precisa.
+
+## §11 — ETAPA D — **arrumar**: o que a coluna de catálogos entregou (2026-08-30)
+
+### §11.1 — O que existe agora
+
+| Gesto | Onde | Lei |
+|---|---|---|
+| Abrir/fechar a coluna | botão *só-grade* no cabeçalho | é **vista** — não atravessa o barramento |
+| `+ Catalog` | topo da coluna, **fora do recorte da lista** | nasce dentro do escolhido; o nome é **gerado e único** (`Catalog`, `Catalog 2`, …) |
+| Escolher | clique na linha | **vista**; a grade filtra pelo escopo expandido |
+| Arrastar um cartão para a linha | queda | `CatalogVerb::Assign` |
+| **Renomear** | botão direito → *Rename…* | campo em linha, **o nome inteiro seleccionado** |
+| **Apagar** | botão direito → *Delete* | apaga o catálogo **e os descendentes**; ⛔ nunca um asset |
+
+`All` e `Unassigned` são **linhas**, não estados escondidos num chip — e o menu sobre elas
+**não faz nada** (gate `the_menu_over_a_fixed_row_does_nothing`): elas não têm nome para mudar
+nem gaveta para apagar.
+
+### §11.2 — ⭐⭐⭐ O defeito que só o SMOKE viu: o campo abria a ACRESCENTAR
+
+A 1.ª versão copiou o molde do `marker_rename` da Timeline, que semeia o campo com o cursor **no
+fim e sem selecção**. Medido em produto pela cena `=78`:
+
+| Passo | Esperado | Medido |
+|---|---|---|
+| abrir *Rename…* sobre `Catalog`, escrever `Heroes`, Enter | `Heroes` | **`CatalogHeroes`** |
+
+⚠️ **Nenhum dos 24 gates de costura o via** — eles medem o que o `Submit` **manda**, e a semente é
+escrita pelo **pintor**. ⇒ a lei mudou-se para uma função com nome (`catalog_rename::seed_state`)
+e ganhou gate; a cura é `selection_anchor: Some(0)` com o cursor no fim, que é o que o Finder, o
+Blender e o Unity fazem. *Um campo aberto pelo item «Rename…» já sabe que o artista quer OUTRO
+nome; acrescentar continua a uma seta de distância, substituir passa a estar a zero.*
+
+⛔ **E o molde da Timeline NÃO foi «corrigido» de passagem** — lá o campo tem dois modos (rótulo ·
+sinal) e a decisão é dele; mexer-lhe daqui seria mudar produto de outra linha sem smoke.
+
+### §11.3 — As leis que a etapa pagou
+
+- **A escada de ids lê-se nos dois sentidos, por UMA porta.** `catalog_row_index` estava escrita
+  **três** vezes (o `event.rs` do painel, o `catalog_row_pick` do estado, e a 4.ª cópia ia nascer
+  no despachante do botão direito) — hoje é `ph2d_editor_core::ids::catalog_row_index`, com gate
+  de ida-e-volta. *Uma lei escrita em N sítios ainda não é uma lei — só uma PORTA é.*
+- **O sujeito do menu resolve-se pelo CENSO DO QUADRO, nunca pela escada.** O id é posicional; o
+  menu abre no `Down` e é despachado num `Click` posterior, e a lista pode ter mudado no meio.
+- **Apagar o catálogo ESCOLHIDO devolve a grade a `All`.** Sem isso ela filtraria por uma gaveta
+  que já não existe: zero cartões e nada na tela a explicar porquê.
+- **O `Rename…` não manda nada** — ele abre o campo. O nome atravessa o barramento no
+  `Submit`/`Blur`, e **um nome igual ao actual não levanta acção** (sujaria o projecto por nada).
+- **Quem recusa um nome ilegal é o DRENO, e em voz alta** (vazio ou com `/`). Duplicar a regra no
+  painel daria duas respostas à mesma pergunta.
+- **O corte do `event.rs` foi por RESPONSABILIDADE.** Os seis gestos da taxonomia levaram o
+  `apply_event` a 222 LOC contra o tecto de 200 ⇒ módulo irmão `event_catalog.rs`, ⛔ nunca uma
+  entrada de tolerância. A guarda do painel fechado fica no chamador, e por isso não se repete.
+
+### §11.4 — ⏳ O que fica aberto nesta etapa
+
+- **A segunda busca (D1)** — a busca da grade fala de assets e **não filtra a coluna**, de
+  propósito. São duas perguntas.
+- **Mover um catálogo** (arrastar linha para linha) — hoje a hierarquia só se autora pelo `+`
+  dentro do escolhido. Renomear com `/` é **recusado** justamente para não esconder um *mover*
+  dentro de um *renomear*.
+- **O undo da taxonomia** — ela é do **projecto** e não do `ProjectState`, então estes verbos não
+  produzem passo de undo; o que eles compram é o projecto marcado como sujo. Dívida declarada no
+  `project_catalogs`.

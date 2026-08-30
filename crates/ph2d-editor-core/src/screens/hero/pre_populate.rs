@@ -420,6 +420,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_ASSET_INSTANTIATE,
         ids::CTX_MENU_ASSET_SELECT_USERS,
         ids::CTX_MENU_ASSET_REMOVE,
+        ids::CTX_MENU_CATALOG_RENAME,
+        ids::CTX_MENU_CATALOG_DELETE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_PAPER,

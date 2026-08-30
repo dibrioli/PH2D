@@ -143,6 +143,11 @@ pub enum ContextMenuKind {
     /// resolve `célula → asset` **no clique** e, se já não houver nada ali, **diz que não há** — a
     /// mesma guarda que a queda por `StableId` já tem.
     AssetCard { cell: NodeId },
+    /// ⭐⭐ **Botão direito numa LINHA DE CATÁLOGO** da coluna do navegador (wave A3).
+    ///
+    /// ⚠️ Carrega a LINHA pelo mesmo motivo que a irmã carrega a célula: o `CatalogId` é `u128` e
+    /// vive no `ph2d-asset-index`, que esta camada não conhece. Quem converte é o painel.
+    CatalogRow { row: NodeId },
     /// New-image modal (Cmd/Ctrl+N): a centered dialog with a row of square-size buttons
     /// (`CTX_MENU_NEW_IMAGE_SIZES`) + background choices (`CTX_MENU_NEW_IMAGE_BGS`) + a Create button
     /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
@@ -296,6 +301,7 @@ impl ContextMenuKind {
         Self::SceneList,
         Self::HierarchyRow { row: NodeId(1) },
         Self::AssetCard { cell: NodeId(1) },
+        Self::CatalogRow { row: NodeId(1) },
         Self::NewImageDialog,
         Self::SheetSizeDialog,
         Self::FalloffPointHandle,

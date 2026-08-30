@@ -169,6 +169,21 @@ pub struct AssetBrowserState {
     pub show_catalogs: bool,
     /// Que linha da coluna está escolhida.
     pub pick: CatalogPick,
+    /// ⭐ O catálogo a ser renomeado agora, se houver. Ver [`crate::catalog_rename`].
+    ///
+    /// ⚠️ **É VISTA** — como a linha escolhida, morre com a sessão e não atravessa o
+    /// barramento. O que atravessa é o nome, no fim.
+    pub renaming: Option<CatalogRename>,
+}
+
+/// O campo de renomear aberto: **quem**, e se o buffer já foi semeado.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CatalogRename {
+    /// O catálogo. ⚠️ **Identidade, nunca índice de linha** — criar ou apagar outro catálogo
+    /// reordena a coluna, e um índice guardado passaria a apontar para o vizinho.
+    pub id: ph2d_asset_index::CatalogId,
+    /// O 1.º quadro já semeou o buffer e tomou o foco?
+    pub opened: bool,
 }
 
 /// Lado mínimo de um cartão — abaixo disto o nome deixa de caber numa linha, e um cartão sem nome
@@ -191,6 +206,7 @@ impl Default for AssetBrowserState {
             // usa, e o gesto de a fechar é um clique.
             show_catalogs: true,
             pick: CatalogPick::All,
+            renaming: None,
         }
     }
 }
@@ -270,7 +286,29 @@ pub fn probe_first_texture() -> Option<[u8; 32]> {
 /// entre o quadro que pintou e a mão que largou. Mesma lei do `payload_at` dos cartões.
 #[must_use]
 pub fn catalog_row_pick(id: ph2d_a11y::NodeId) -> Option<CatalogPick> {
-    let i = (0..ph2d_editor_core::ids::MAX_CATALOG_ROWS)
-        .find(|i| ph2d_editor_core::ids::catalog_row_id(*i) == id)?;
-    painted_row_at(i)
+    painted_row_at(ph2d_editor_core::ids::catalog_row_index(id)?)
+}
+
+/// **Só para os roteiros de smoke:** os caminhos dos catálogos publicados, e quantos assets estão
+/// arrumados em cada um.
+///
+/// ⚠️ **Ela lê a taxonomia PUBLICADA**, que é a mesma de que a coluna deriva as linhas — e não a
+/// do shell. É isso que a torna capaz de acusar o buraco que interessa: um verbo que muda o
+/// documento e não chega ao painel imprime aqui o nome ANTIGO.
+#[must_use]
+pub fn probe_catalogs() -> Vec<(String, usize)> {
+    with_catalogs(|t| {
+        t.catalogs()
+            .iter()
+            .map(|c| (c.path.clone(), t.count_in(c.id)))
+            .collect()
+    })
+}
+
+/// **Só para os gates:** encena as linhas que a coluna pintou neste quadro.
+///
+/// ⚠️ O gémeo do [`probe_set_painted`], e pela mesma razão: o menu resolve o sujeito pelo CENSO do
+/// quadro, e sem esta porta um gate teria de pintar a coluna para lhe dar um sujeito.
+pub fn probe_set_painted_rows(rows: Vec<CatalogPick>) {
+    set_painted_rows(rows);
 }

@@ -94,36 +94,6 @@ pub(crate) fn apply_event(
             Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
         },
 
-        // ── ⭐⭐ A COLUNA DE CATÁLOGOS (etapa D) ────────────────────────────────────────────────
-        //
-        // ⚠️ **A linha escolhida é VISTA, e o catálogo é DOCUMENTO.** Escolher não levanta acção
-        // nenhuma — ela vive no estado do painel e morre com a sessão. Criar, renomear, apagar e
-        // atribuir são o documento, e esses atravessam o barramento.
-        WidgetEvent::Click(id) if id == ids::ASSET_CATALOG_TOGGLE => {
-            state.show_catalogs = !state.show_catalogs;
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if id == ids::ASSET_CATALOG_NEW => {
-            // ⭐ O catálogo nasce DENTRO do escolhido — é o que o Blender faz, e é o que torna a
-            // hierarquia alcançável sem um campo de caminho.
-            let parent = match state.pick {
-                crate::state::CatalogPick::One(c) => Some(c.0),
-                _ => None,
-            };
-            host.bus_mut()
-                .push(EditorAction::AssetCatalogVerb(CatalogVerb::New { parent }));
-            EventOutcome::Consumed
-        }
-        WidgetEvent::Click(id) if catalog_row_index(id).is_some() => {
-            if let Some(i) = catalog_row_index(id)
-                && let Some(pick) = crate::state::painted_row_at(i)
-            {
-                state.pick = pick;
-                reset_scroll(host);
-            }
-            EventOutcome::Consumed
-        }
-
         // ── ⭐⭐ O MENU DO CARTÃO (etapa C) ─────────────────────────────────────────────────────
         //
         // ⚠️ **Consumir o pedido de menu é destrutivo, e por isso a guarda é o ID primeiro.** O
@@ -174,16 +144,15 @@ pub(crate) fn apply_event(
             }
         }
 
-        _ => EventOutcome::Ignored,
+        // ── ⭐⭐ OS CATÁLOGOS (etapa D) ────────────────────────────────────────────────────────
+        //
+        // ⚠️ **Um módulo irmão, e não uma entrada de tolerância**: a coluna trouxe seis gestos (o
+        // interruptor, o `+`, a escolha, o menu de dois itens e as duas metades do campo de
+        // renomear) e o `apply_event` passou o tecto de 200 LOC. O corte é por RESPONSABILIDADE —
+        // tudo o que fala de taxonomia vive junto —, e a guarda do painel fechado fica ANTES desta
+        // linha, logo continua a valer para os seis.
+        other => crate::event_catalog::apply(state, host, other),
     }
-}
-
-/// O índice da linha de catálogo, se `id` for uma.
-///
-/// ⚠️ **Varre a tabela de ids como o irmão dos cartões**, e pela mesma razão: o id é posicional na
-/// lista VISÍVEL, e é isso que faz a linha debaixo do dedo ser a que o artista vê.
-fn catalog_row_index(id: ph2d_a11y::NodeId) -> Option<usize> {
-    (0..ids::MAX_CATALOG_ROWS).find(|i| ids::catalog_row_id(*i) == id)
 }
 
 /// O verbo que este id de menu representa. ⚠️ **Uma tabela, não três `if`** — ela é o par exacto
@@ -213,7 +182,7 @@ fn cell_target_of(id: ph2d_a11y::NodeId) -> Option<AssetRef> {
 
 /// Mudar o que a lista contém tem de voltar ao topo — senão a rolagem aponta para uma linha que a
 /// lista nova não tem, e a grade parece vazia sobre um resultado que existe.
-fn reset_scroll(host: &mut dyn PanelHostInternal) {
+pub(crate) fn reset_scroll(host: &mut dyn PanelHostInternal) {
     host.store_mut()
         .set_panel_scroll(ph2d_editor_core::ids::ASSET_PANEL, 0.0);
 }

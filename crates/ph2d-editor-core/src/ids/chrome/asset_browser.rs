@@ -92,6 +92,17 @@ pub const ASSET_CATALOG_UNASSIGNED: NodeId = hash_node_id("asset_browser.catalog
 /// sobre a coluna já é interceptada pelo painel que a contém.
 pub const ASSET_CATALOG_COL: NodeId = hash_node_id("asset_browser.catalog.col");
 
+/// O campo de renomeação in-place de uma linha de catálogo.
+///
+/// ⚠️ **Um id FIXO, e não um por linha:** só uma renomeação existe de cada vez, e o texto vive no
+/// `WidgetStore` como o de qualquer campo — é isso que faz a rota global de foco alimentá-lo e o
+/// `text_entry_focused` do shell suprimir os atalhos enquanto se escreve, sem gate extra.
+///
+/// ⛔ Ele **não pode ter tabelas laterais** (cor, z, rolagem, tooltip): a abertura usa o `register`
+/// que SUBSTITUI, e isso só é seguro porque o id não as tem — a mesma nota que o rename da
+/// Hierarquia carrega.
+pub const ASSET_CATALOG_RENAME: NodeId = hash_node_id("asset_browser.catalog.rename");
+
 /// Quantas linhas de catálogo o painel regista, no máximo. ⚠️ Mesmo teto e mesma razão do
 /// [`MAX_ASSET_CELLS`]: cada linha é um `NodeId` no store e um rect no `HitIndex`.
 pub const MAX_CATALOG_ROWS: usize = 256;
@@ -100,6 +111,20 @@ pub const MAX_CATALOG_ROWS: usize = 256;
 #[must_use]
 pub fn catalog_row_id(index: usize) -> NodeId {
     asset_fnv_node_id(&format!("asset_browser.catalog.row.{index}"))
+}
+
+/// ⭐⭐ **A leitura INVERSA da escada** — `id` é uma linha de catálogo, e qual?
+///
+/// ⚠️ **Ela existe porque a mesma varredura estava escrita TRÊS vezes** (o `event.rs` do painel, o
+/// `catalog_row_pick` do estado dele, e o despachante do botão direito que a ia escrever a quarta).
+/// *Uma lei escrita em N sítios ainda não é uma lei — só uma PORTA é.*
+///
+/// ⚠️ **Ela responde sobre o ESPAÇO de ids, não sobre o que foi pintado**: quem precisa da linha
+/// viva pergunta ao censo do quadro (`catalog_row_pick`). Para o hit-test isto basta e é exacto —
+/// o `HitIndex` só contém rects registados neste quadro.
+#[must_use]
+pub fn catalog_row_index(id: NodeId) -> Option<usize> {
+    (0..MAX_CATALOG_ROWS).find(|i| catalog_row_id(*i) == id)
 }
 
 /// O gémeo de runtime do `hash_node_id`, **a PORTA e não uma cópia**
@@ -122,6 +147,24 @@ mod tests {
     fn the_runtime_hasher_agrees_with_the_const_one() {
         assert_eq!(asset_fnv_node_id("asset_browser.panel"), ASSET_PANEL);
         assert_eq!(asset_fnv_node_id("asset_browser.search"), ASSET_SEARCH);
+    }
+
+    /// ⭐⭐ **A escada lê-se nos dois sentidos, e os dois sentidos concordam.**
+    ///
+    /// ⚠️ Esta varredura estava escrita **três** vezes fora daqui, e a 4.ª cópia ia nascer no
+    /// despachante do botão direito. Um gate sobre a PORTA é o que torna as cópias desnecessárias
+    /// — e é o que apanha um `catalog_row_id` que mude de esquema sem o inverso o acompanhar.
+    ///
+    /// **Mutação que deve sangrar:** trocar o `find` por `Some(0)`.
+    #[test]
+    fn the_catalog_row_ladder_round_trips() {
+        for i in [0usize, 1, 2, 7, MAX_CATALOG_ROWS - 1] {
+            assert_eq!(catalog_row_index(catalog_row_id(i)), Some(i));
+        }
+        // ⛔ E um id que não é da escada não é uma linha — nem o do painel, nem o da linha logo
+        // acima do tecto.
+        assert_eq!(catalog_row_index(ASSET_PANEL), None);
+        assert_eq!(catalog_row_index(catalog_row_id(MAX_CATALOG_ROWS)), None);
     }
 
     /// Duas células diferentes são dois ids diferentes — e a célula 0 não colide com nenhum dos

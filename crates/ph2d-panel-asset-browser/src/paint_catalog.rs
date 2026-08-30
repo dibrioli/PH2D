@@ -104,7 +104,7 @@ fn rows(needle: &str) -> Vec<Row> {
 /// pilha, então o par dela é exacto mesmo dentro do recorte de outra região. Sem o segundo canal,
 /// uma linha rolada para fora continua clicável e o artista filtra por um catálogo que não vê.
 pub(crate) fn paint(
-    state: &AssetBrowserState,
+    state: &mut AssetBrowserState,
     ctx: &mut PaintCtx,
     rect: Rect,
     body_top: f32,
@@ -169,12 +169,19 @@ pub(crate) fn paint(
     ctx.scene.push_clip(&rect_to_vello(list_rect));
     ctx.host.hit_index_mut().push_clip(list_rect);
     let mut painted: Vec<CatalogPick> = Vec::new();
+    // ⚠️ **O `y` da linha a renomear sai deste laço**, e não de uma segunda conta: o campo tem de
+    // ficar exactamente onde a linha está, e duas contas divergem no dia em que a lista mudar.
+    let renaming = state.renaming.map(|r| r.id);
+    let mut rename_y: Option<f32> = None;
     for (i, r) in list.iter().enumerate() {
         if i >= ids::MAX_CATALOG_ROWS {
             break;
         }
         let y = list_rect.y + row_h * i as f32 - scroll;
         painted.push(r.pick);
+        if renaming.is_some_and(|id| r.pick == CatalogPick::One(id)) {
+            rename_y = Some(y);
+        }
         // Fora do corpo: nada a pintar e — mais importante — nada a registar.
         if y + row_h < list_rect.y || y > list_rect.y + list_rect.h {
             continue;
@@ -232,6 +239,7 @@ pub(crate) fn paint(
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
     crate::state::set_painted_rows(painted);
+    crate::catalog_rename::paint(state, ctx, list_rect, row_h, rename_y);
 
     // A barra, DEPOIS do recorte — ela tem de sobreviver ao clip do corpo.
     if scrollbar_is_needed(content_h, list_rect.h) {

@@ -41,3 +41,14 @@ pub const CTX_MENU_ASSET_REMOVE: NodeId = hash_node_id("ctx_menu_asset_remove");
 /// cartão por `cell`. Partilhar o id faria o guarda de um painel consumir o pedido do outro.
 pub const CTX_MENU_HIER_REMOVE_FROM_LIBRARY: NodeId =
     hash_node_id("ctx_menu_hier_remove_from_library");
+
+// ── ⭐⭐ O menu de uma LINHA DE CATÁLOGO (wave A3) ───────────────────────────────────────────────
+//
+// ⚠️ **Ids próprios, e não os do cartão:** os dois menus despacham por sujeitos diferentes (uma
+// célula · uma linha), e partilhar um id faria o guarda de um consumir o pedido do outro.
+
+/// Renomear o catálogo — abre o campo in-place sobre a linha.
+pub const CTX_MENU_CATALOG_RENAME: NodeId = hash_node_id("ctx_menu_catalog_rename");
+/// Apagar o catálogo **e os descendentes**. ⛔ Nunca apaga um asset — eles voltam a *Unassigned*, e
+/// a voz di-lo.
+pub const CTX_MENU_CATALOG_DELETE: NodeId = hash_node_id("ctx_menu_catalog_delete");

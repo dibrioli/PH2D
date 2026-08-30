@@ -32,7 +32,7 @@ use ph2d_tool_registry::hash_node_id;
 
 use ph2d_a11y::NodeId;
 
-use crate::algorithm::{UpscaleResult, upscale_lanczos3, upscale_nearest, upscale_xbr};
+use crate::algorithm::{UpscaleResult, upscale_epx, upscale_lanczos3, upscale_nearest};
 use crate::params::{UpscaleAlgorithm, UpscaleParams, UpscaleUiEdit, UpscaleUiSnapshot};
 
 // NodeId range for the Upscale docked panel.
@@ -40,7 +40,11 @@ use crate::params::{UpscaleAlgorithm, UpscaleParams, UpscaleUiEdit, UpscaleUiSna
 // touched, keeping the tool drop-in.
 const NODE_ALGO_LANCZOS3: NodeId = hash_node_id("upscale.algo.lanczos3");
 const NODE_ALGO_NEAREST: NodeId = hash_node_id("upscale.algo.nearest");
-const NODE_ALGO_XBR: NodeId = hash_node_id("upscale.algo.xbr");
+// ⚠️ The hash STRING stays `upscale.algo.xbr` on purpose: it is an
+// opaque routing key, and changing it would move the `NodeId` (and with
+// it every hit-index / a11y reference) for zero product gain. The name
+// the artist reads is the panel's label, and that one was corrected.
+const NODE_ALGO_EPX: NodeId = hash_node_id("upscale.algo.xbr");
 const NODE_SCALE: NodeId = hash_node_id("upscale.scale");
 const NODE_SCALE_NUM: NodeId = hash_node_id("upscale.scale.num");
 const NODE_APPLY: NodeId = hash_node_id("upscale.apply");
@@ -56,8 +60,8 @@ pub mod ids {
     pub const UPS_ALGO_LANCZOS3: NodeId = super::NODE_ALGO_LANCZOS3;
     /// Algorithm segmented selection — Nearest neighbour.
     pub const UPS_ALGO_NEAREST: NodeId = super::NODE_ALGO_NEAREST;
-    /// Algorithm segmented selection — xBR (Scale2x/3x/4x in v1).
-    pub const UPS_ALGO_XBR: NodeId = super::NODE_ALGO_XBR;
+    /// Algorithm segmented selection — EPX (edge-directed pixel art).
+    pub const UPS_ALGO_EPX: NodeId = super::NODE_ALGO_EPX;
     /// Scale slider (normalized 0..1, mapped via
     /// `params::slider_to_scale`).
     pub const UPS_SCALE: NodeId = super::NODE_SCALE;
@@ -164,6 +168,8 @@ impl UpscaleTool {
                 .params
                 .algorithm
                 .project_scale(self.params.scale_factor),
+            source_w: self.source_w,
+            source_h: self.source_h,
         }
     }
 
@@ -205,7 +211,7 @@ impl UpscaleTool {
         match self.params.algorithm {
             UpscaleAlgorithm::Lanczos3 => upscale_lanczos3(pixels, w, h, factor),
             UpscaleAlgorithm::Nearest => upscale_nearest(pixels, w, h, factor),
-            UpscaleAlgorithm::Xbr => upscale_xbr(pixels, w, h, factor),
+            UpscaleAlgorithm::Epx => upscale_epx(pixels, w, h, factor),
         }
     }
 }
@@ -257,8 +263,8 @@ impl Tool for UpscaleTool {
             PanelEvent::Click(id) if id == NODE_ALGO_NEAREST => {
                 self.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Nearest));
             }
-            PanelEvent::Click(id) if id == NODE_ALGO_XBR => {
-                self.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+            PanelEvent::Click(id) if id == NODE_ALGO_EPX => {
+                self.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
             }
             // Scale slider — `v` is the normalized track `0..1`,
             // mapped to a scale factor via `slider_to_scale`. The
@@ -379,12 +385,75 @@ mod tests {
         assert!(!t.take_pending_apply());
     }
 
+    /// ⭐⭐ **The gate for "the chip prints the request, not the
+    /// delivery".** It measures the VALUE arriving at the two
+    /// consumers, not focusability and not that the click reaches the
+    /// tool: for every integer stop of the slider, the number the panel
+    /// prints (`effective_factor` / `effective_output_size`, the door
+    /// the paint calls) must equal the size `run_full_resolution`
+    /// actually bakes.
+    ///
+    /// Before this pass, `4×…16×` all baked `4×` while the readout said
+    /// `16×` — the artist confirmed with their eyes and was wrong.
+    #[test]
+    fn the_readout_and_the_bake_agree_at_every_stop() {
+        use crate::params::{effective_factor, effective_output_size, scale_to_slider};
+        for alg in [
+            UpscaleAlgorithm::Lanczos3,
+            UpscaleAlgorithm::Nearest,
+            UpscaleAlgorithm::Epx,
+        ] {
+            for stop in 1..=16u32 {
+                let mut t = UpscaleTool::default();
+                t.set_source_snapshot(
+                    bytemuck::allocation::cast_vec(solid_rgba(7, 5, [10, 20, 30])),
+                    7,
+                    5,
+                );
+                t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(alg));
+                t.apply_ui_edit(UpscaleUiEdit::Scale(stop as f32));
+
+                let track = scale_to_slider(stop as f32);
+                let printed = effective_factor(alg, track);
+                let readout = effective_output_size(alg, track, 7, 5);
+
+                let mut out = Vec::new();
+                let baked = t.run_full_resolution(&mut out);
+
+                assert_eq!(
+                    readout, baked,
+                    "{alg:?} @ {stop}x: the panel would print {readout:?} and the bake made {baked:?}"
+                );
+                assert!(
+                    (printed - t.ui_snapshot().effective_factor).abs() < f32::EPSILON,
+                    "{alg:?} @ {stop}x: the panel's door and the snapshot disagree"
+                );
+            }
+        }
+    }
+
+    /// The size readout needs the source dims, and they must be the
+    /// tool's live ones — a readout fed by a constant is a readout that
+    /// lies as soon as the artist selects a different sprite.
+    #[test]
+    fn the_snapshot_carries_the_live_source_size() {
+        let mut t = UpscaleTool::default();
+        assert_eq!((t.ui_snapshot().source_w, t.ui_snapshot().source_h), (0, 0));
+        t.set_source_snapshot(
+            bytemuck::allocation::cast_vec(solid_rgba(13, 7, [1, 2, 3])),
+            13,
+            7,
+        );
+        let s = t.ui_snapshot();
+        assert_eq!((s.source_w, s.source_h), (13, 7));
+    }
+
     #[test]
     fn algorithm_edit_persists() {
         let mut t = UpscaleTool::default();
         assert_eq!(t.params.algorithm, UpscaleAlgorithm::Lanczos3);
-        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
-        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Xbr);
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
+        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Epx);
     }
 
     #[test]
@@ -407,8 +476,8 @@ mod tests {
         let mut t = UpscaleTool::default();
         t.handle_panel_event(PanelEvent::Click(NODE_ALGO_NEAREST));
         assert_eq!(t.params.algorithm, UpscaleAlgorithm::Nearest);
-        t.handle_panel_event(PanelEvent::Click(NODE_ALGO_XBR));
-        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Xbr);
+        t.handle_panel_event(PanelEvent::Click(NODE_ALGO_EPX));
+        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Epx);
         t.handle_panel_event(PanelEvent::Click(NODE_ALGO_LANCZOS3));
         assert_eq!(t.params.algorithm, UpscaleAlgorithm::Lanczos3);
     }
@@ -437,11 +506,11 @@ mod tests {
     #[test]
     fn deactivate_clears_pending_but_keeps_params() {
         let mut t = UpscaleTool::default();
-        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
         t.apply_ui_edit(UpscaleUiEdit::Scale(4.0));
         t.apply_ui_edit(UpscaleUiEdit::Apply);
         t.on_deactivate();
-        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Xbr);
+        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Epx);
         assert!((t.params.scale_factor - 4.0).abs() < f32::EPSILON);
         assert!(!t.take_pending_apply());
     }
@@ -452,7 +521,7 @@ mod tests {
         let mut t = UpscaleTool::default();
         t.set_source_snapshot(bytemuck::allocation::cast_vec(vec![100u8; 4 * 4 * 4]), 4, 4);
         t.apply_ui_edit(UpscaleUiEdit::Scale(2.0));
-        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
         assert!(RasterEditTool::current_preview(&mut t).is_none());
     }
 
@@ -503,9 +572,9 @@ mod tests {
         // visually snap back to defaults.
         let mut t = UpscaleTool::default();
         // Dirty the state — simulate a prior session.
-        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
         t.apply_ui_edit(UpscaleUiEdit::Scale(8.0));
-        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Xbr);
+        assert_eq!(t.params.algorithm, UpscaleAlgorithm::Epx);
         assert!((t.params.scale_factor - 8.0).abs() < f32::EPSILON);
         // Drain any stray reset flag first.
         let _ = t.take_pending_panel_reset();
@@ -554,7 +623,7 @@ mod tests {
         assert!(RasterEditTool::current_preview(&mut t).is_none());
         RasterEditTool::set_source(&mut t, solid_rgba(4, 4, [128, 128, 128]), 4, 4);
         assert!(RasterEditTool::current_preview(&mut t).is_none());
-        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Xbr));
+        t.apply_ui_edit(UpscaleUiEdit::SetAlgorithm(UpscaleAlgorithm::Epx));
         assert!(RasterEditTool::current_preview(&mut t).is_none());
     }
 

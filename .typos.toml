@@ -33,6 +33,13 @@ extend-ignore-identifiers-re = [
     # (*«DEMONSTRE o slider em vez de o deixar no valor que ja' existia»*). O typos quer o ingles
     # `DEMONSTRATE`. ⚠️ SO' na forma maiuscula, que e' a unica que ele assinala.
     "^DEMONSTRE$",
+    # `auxiliar` — português (pt-PT e pt-BR), em doc-comments de dois gates do
+    # `shells/desktop` que dizem *«cada gate move o RECT, nunca um `bool` auxiliar»*. O
+    # typos quer o inglês `auxiliary`. A frase é sobre a DISCIPLINA do gate (medir o
+    # efeito real em vez de uma bandeira de conveniência), e trocá-la por uma palavra
+    # inglesa no meio de uma frase portuguesa não a corrige — desfigura-a.
+    # ⚠️ Ancorada, como as irmãs: só a palavra inteira, nunca uma subcadeia.
+    "^auxiliar$",
     # `vectores` — a MESMA família (pt-PT de «vetores»), num doc-comment do `ph2d-mesh`
     # sobre a média de eixos (*«uma média de eixos feita como média de vectores cancela
     # exactamente onde os dois mais concordam»*). O typos quer o inglês `vectors`.
@@ -42,6 +49,10 @@ extend-ignore-identifiers-re = [
     # trazia o `participante(s)` abaixo. *Uma contagem escrita à mão numa lista que N linhas
     # estendem em paralelo envelhece antes de ser lida* — conte a lista, não confie na frase.
     "^vectores$",
+    # A MESMA palavra em CAIXA ALTA, para ênfase num doc-comment do `ph2d-tokens`
+    # (*«uma preferência de TEXTO escolhia o AA dos VECTORES do artista»*). O typos trata
+    # as caixas como identificadores distintos — foi o mesmo par que o `PROJECTO`.
+    "^VECTORES$",
     # `participantes` — português, e é uma CITAÇÃO verbatim do Enio (2026-08-25) sobre a máquina
     # de estados do Morph: *«todas as peças participantes são alinhadas numa mesma posição»*. O
     # typos quer o inglês `participants`; trocá-la reescreveria as palavras do dono, que é o que um

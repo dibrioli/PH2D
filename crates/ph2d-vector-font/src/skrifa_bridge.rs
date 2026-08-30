@@ -194,6 +194,46 @@ mod tests {
         VariableFont::new(data).expect("InterVariable parses")
     }
 
+    /// ⛔⛔ **[`MAX_AXES`] não trunca — e a premissa contrária custaria uma cura no ficheiro
+    /// errado.**
+    ///
+    /// A caça aos controlos mortos de 2026-08-30 apanhou o *7.º eixo em diante* do painel de
+    /// texto: o painel pinta uma fileira por eixo publicado, sem tecto, e o registo de ids tem
+    /// seis slots — do 7.º em diante o campo mostra `0` com o nome real do eixo ao lado. Este
+    /// gate existe para dizer, em voz alta, que **o número desta crate não é esse tecto**: aqui o
+    /// `8` é a capacidade INLINE de um `SmallVec`, e um vector com 12 elementos tem 12 elementos —
+    /// ele só deixa de caber na pilha.
+    ///
+    /// ⚠️ A fixtura é sintética de propósito: a fonte empacotada tem **2** eixos (medido), então
+    /// nenhuma fonte que este repo carrega pode falsificar esta afirmação — e é exactamente por
+    /// isso que ninguém a tinha verificado.
+    #[test]
+    fn the_inline_capacity_is_not_a_ceiling() {
+        let many: SmallVec<[FontAxis; MAX_AXES]> = (0..12u8)
+            .map(|i| {
+                FontAxis::new(
+                    "synthetic",
+                    AxisTag::new([b'A', b'X', b'0' + i / 10, b'0' + i % 10]),
+                    0.0,
+                    0.0,
+                    1.0,
+                )
+            })
+            .collect();
+        assert_eq!(
+            many.len(),
+            12,
+            "MAX_AXES ({MAX_AXES}) truncou uma fonte de 12 eixos — se isto for verdade um dia, o \
+             tecto do painel deixa de ser o unico corte e esta crate passa a perder eixos em \
+             silencio"
+        );
+        assert!(
+            many.spilled(),
+            "fixture: 12 > MAX_AXES ({MAX_AXES}), entao o vector TEM de ter derramado para a \
+             heap; se nao derramou, este gate nao exercitou o caso que ele afirma"
+        );
+    }
+
     #[test]
     fn inter_exposes_weight_axis() {
         let font = inter();

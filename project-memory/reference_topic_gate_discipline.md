@@ -49,3 +49,15 @@ metadata:
 - [[feedback_dropping_ownership_blinds_every_comparator_that_reads_that_side]] — elidir um dado faz o detector que o lê responder "mudou" para sempre
 - [[feedback_a_correct_number_can_carry_a_false_story]] — um número medido corretamente pode sustentar uma explicação ERRADA: o gate fica verde e a afirmação do produto é falsa
 - [[feedback_a_probe_that_sums_two_signals_cannot_say_which_failed]] — sonda AGREGADA (tinta da cena, soma, hash) fica verde enquanto qualquer emissor funcionar; conte os emissores antes de a escrever
+- [[feedback_a_slack_term_in_a_ceiling_is_the_size_of_the_blind_spot]] — a folga num tecto É o tamanho do ponto cego; meça a DIFERENÇA, não o tecto
+- [[feedback_a_cost_only_defect_is_invisible_to_every_output_gate]] — defeito só de CUSTO não move nenhuma saída: contador no produto, lido num binário só
+- [[feedback_a_test_that_got_slow_is_a_cost_measurement_nobody_asked_for]] — um teste que ficou lento É uma medição de custo; leia-a em vez de a tolerar
+- [[feedback_a_loop_that_republishes_the_whole_object_every_round_pays_for_what_it_never_reads]] — laço que republica o objecto inteiro paga o que nunca lê
+- [[feedback_a_gate_on_the_reported_quantity_is_green_when_the_product_divides_by_the_other]] — gate sobre o que o relatório PUBLICA ≠ o que o produto DIVIDE; derive do efeito
+- [[feedback_a_denominator_above_the_curvature_is_slow_below_is_inf]] — denominador acima da curvatura é lento; abaixo é `inf`
+- [[feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing]] — uma afirmação que mutação nenhuma mata é uma afirmação sobre nada
+- [[feedback_a_model_change_must_re_ask_what_every_gate_still_measures]] — mudar o modelo re-pergunta o que CADA gate ainda mede
+- [[feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives]] — afirmação de segurança precisa da metade JUSTA, senão a mutação conservadora sobrevive
+- [[feedback_counting_the_work_done_is_not_counting_the_work_delivered]] — FEITO ≠ ENTREGUE: a sonda vai no CONSUMIDOR, não no produtor
+- [[feedback_a_gate_on_the_mark_i_chose_is_green_when_the_marks_premise_is_false]] — gate sobre a MARCA que escolhi ≠ gate sobre o FIM
+- [[feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two]] — duas boas hipóteses a falhar refutam a FAMÍLIA, não as duas

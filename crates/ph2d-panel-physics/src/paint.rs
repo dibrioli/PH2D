@@ -42,6 +42,8 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     let rect: Rect = ctx.layout.inspector;
     let theme = ctx.host.theme();
     let snapshot = state::current();
+    // A lente do pintor recomeça a cada quadro — ver `state::PAINTED_SECTION_HEADERS`.
+    state::begin_painted_section_headers();
 
     // Publish the rect so wheel/click dispatch can route to this panel.
     ctx.host

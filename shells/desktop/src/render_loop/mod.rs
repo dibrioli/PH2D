@@ -20,6 +20,10 @@
 mod audio_overlay;
 mod audio_pieces;
 mod audio_spectrogram;
+/// **O dreno do painel autorado** — um braço por variante do `AuthoredIntent`, e nenhum curinga.
+/// Irmão porque o `FOLLOW-UP` do topo deste arquivo já o pedia, e porque o `if let` que ele
+/// substitui matava **seis famílias de widget** de uma vez (2026-08-30).
+pub(crate) mod authored_intents;
 pub(crate) mod autokey_pass;
 pub(crate) mod bgremoval_preview;
 mod color_equalization_bridge;
@@ -314,6 +318,8 @@ pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_text_gen;
 /// A pergunta *«esta entidade está na cena?»* que o extract faz — ver o módulo.
 pub(crate) mod off_canvas;
+/// O `OnScreenEnabler` a decidir alguma coisa: *«só corre/aparece quando está no ecrã»*.
+pub(crate) mod on_screen_gate;
 /// The Deform Transform gizmo (whole-region bounding box), split from `painter_bridge_overlays` (Wave 2).
 pub(crate) mod painter_bridge_deform_gizmo;
 pub(crate) mod painter_bridge_queries;
@@ -2624,15 +2630,21 @@ impl crate::App {
         // era um controle MORTO**: um aperto não tem valor no store, então este canal é o único
         // que o carrega, e ninguém o lia.
         //
-        // ⚠️ **Só o `Fired` vira sinal.** Um slider e um toggle já dizem o que valem pelo
-        // `WidgetStore`, que é quem dirige a arte (`vec_widget_drive`); publicá-los também aqui
-        // poria o mesmo facto em dois fios — a divergência que este repo passa a vida a curar.
-        // Os outros são drenados e descartados, e é o dreno que era a metade que faltava.
+        // ⛔⛔ **E o dreno tinha UM BRAÇO SÓ.** Esta linha dizia *"só o `Fired` vira sinal … os
+        // outros são drenados e descartados"*, e a segunda metade era o defeito a descrever-se a
+        // si mesmo: as variantes `Choice` e `Text` caíam fora e morriam no fim do quadro, o que
+        // mata **seis famílias de widget** de uma vez (Tabs, SegmentedAdaptive, RadioGroup,
+        // Dropdown, TextInput, NumberInput). O sintoma é *«o chip acende e nada muda»*.
+        //
+        // ⚠️ O `match` com um braço nomeado por variante — incluindo as caladas, com o motivo — e
+        // a escolha entre dar carga à origem e compor o NOME vivem no irmão, junto dos gates.
+        //
+        // ⚠️ **A CHAMADA fica AQUI e não lá**, e isso é medido: o gate
+        // `the_authored_intent_queue_has_a_drain_and_it_runs_before_the_signal_drain` lê a ORDEM
+        // do quadro pela POSIÇÃO deste literal dentro deste arquivo (virar < drenar < ler). Levar
+        // a chamada para o irmão apaga a única lente que aquela lei tem.
         for intent in ph2d_panel_authored::drain_intents() {
-            if let ph2d_panel_authored::AuthoredIntent::Fired { key } = intent {
-                self.signals
-                    .publish(ph2d_runtime::Signal::from_control(&key));
-            }
+            authored_intents::publish(&mut self.signals, &intent);
         }
         // **O DRENO — o único lugar do app onde um sinal encontra quem escuta.**
         //
@@ -7910,6 +7922,23 @@ impl crate::App {
                     self.vec_text_last_target = target_id;
                     ph2d_panel_vector::set_current_text_seed(target.as_ref().map(|t| t.sliders));
                 }
+                // ⛔ **E o FACTO que a fileira Weight precisava, e que ninguém publicava:** *esta
+                // fonte expõe `wght`?* Sem `fvar` o `skrifa` ignora a localização de eixo, então
+                // numa fonte ESTÁTICA aquele slider era pintado e **inerte**.
+                //
+                // ⚠️ **Ele NÃO é derivável dos `slots` abaixo**, e a tentação é exactamente o que
+                // estava refutado: aquela lista é *"os eixos ALÉM do peso"*, então uma fonte
+                // variável **só de peso** (a `Cantarell-VF` desta máquina, `fvar = ['wght']`)
+                // publica-a vazia e ainda assim tem um Weight vivo. Duas perguntas, duas
+                // publicações.
+                //
+                // ⚠️ Calculado **dentro do `visible`**, e junto dos eixos, porque
+                // `has_weight_axis` resolve a família — e resolver uma família do sistema constrói
+                // o catálogo do fontique (50–200 ms). Fora do modo Text isso seria pago por quadro
+                // para responder a uma pergunta que a secção escondida não faz.
+                ph2d_panel_vector::set_current_text_has_weight(
+                    visible && crate::vec_font::has_weight_axis(family.as_deref()),
+                );
                 // Eixos de variação da fonte do alvo (nome + range + valor).
                 let slots = if visible {
                     let descs = crate::vec_font::variation_axes(family.as_deref());

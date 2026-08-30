@@ -73,6 +73,18 @@ pub struct LayoutItem {
     /// nada, e não tinha como saber que faltava ligar o fluxo no PAI. Foi o report do Enio no
     /// smoke da cena `=66`.
     pub in_flow: bool,
+    /// **O pai dispõe em GRADE?** ⚠️ `true` ⇒ `grow`/`shrink` **não são pintados**.
+    ///
+    /// ⛔ Eles vivem no trait de **flex** do `taffy` e a grade consome outro: medido em
+    /// 2026-08-30, `flex_grow` aparece **zero** vezes em `taffy/src/compute/grid/` e **13** em
+    /// `compute/flexbox.rs`. Numa moldura `Grid` os dois números viajam até ao motor e são
+    /// descartados lá — a segunda espécie de knob morto (*o consumidor projecta o valor fora*),
+    /// que nenhuma sonda de «quem lê este campo?» vê, porque ele **é** lido.
+    ///
+    /// ⚠️ A lei já estava escrita duas vezes neste módulo — para o filho `absolute` (*«quem não
+    /// está no fluxo não reparte sobra nenhuma»*) e para o `columns` do `VecLayout` (*«o painel
+    /// não o pinta onde ele não move um pixel»*). Esta é a terceira aplicação da mesma.
+    pub parent_is_grid: bool,
 }
 
 thread_local! {

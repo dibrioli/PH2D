@@ -439,7 +439,15 @@ pub(crate) fn paint_protect_brush(
         y += falloff_h + row_gap;
     }
 
-    if snapshot.protect_brush_armed || snapshot.has_protect_mask {
+    // ⚠️ **The two lenses are now ONE.** This row used to be painted
+    // under `protect_brush_armed || has_protect_mask` (an OR) while the
+    // consumer that actually draws the overlay required
+    // `show_mask && has_protect_mask` (an AND) — so arming the brush
+    // revealed a button that did nothing until the first dab, and the
+    // dead window was the FIRST state the artist reaches. The predicate
+    // is now derived from the consumer's own law
+    // (`params::mask_overlay_renders`), so it cannot drift again.
+    if snapshot.mask_overlay_toggle_is_reachable() {
         let show_state = if snapshot.show_mask {
             (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
         } else {

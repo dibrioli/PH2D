@@ -73,6 +73,42 @@ pub const fn filter_tag_magnifies_by_point(filter_tag: u8) -> bool {
     matches!(filter_tag, 1 | 3 | 5)
 }
 
+/// **A lei de MINIFICAÇÃO entre níveis de mip de uma tag, PURA — `true` = mistura trilinear.**
+///
+/// `3 NearestMipmap · 4 LinearMipmap · 5 NearestAniso · 6 LinearAniso` misturam dois níveis; o
+/// `1 Nearest` e o `2 Linear` escolhem um só (as texturas de sprite têm cadeia de mip desde a
+/// Fase 2, então «Nearest mip» é efectivamente nível único), e o `0 Inherit` cai com eles.
+///
+/// Irmã da [`filter_tag_magnifies_by_point`], e extraída pela MESMA razão: enquanto ela vivia
+/// dentro do `sampler_from_tags`, medi-la exigia um `wgpu::Device`.
+pub const fn filter_tag_blends_mips(filter_tag: u8) -> bool {
+    matches!(filter_tag, 3..=6)
+}
+
+/// **A lei de ANISOTROPIA de uma tag, PURA** — quantas amostras o sampler pode tomar ao longo do
+/// eixo de maior compressão. `1` = isotrópico (o neutro do wgpu), `16` = o máximo universal
+/// wgpu/Metal.
+///
+/// # ⛔⛔ Só a tag `6 LinearAniso` pode pedir anisotropia, e isso NÃO é uma escolha nossa
+///
+/// A regra é do wgpu (e do Metal por baixo): `anisotropy_clamp > 1` exige `mag_filter`,
+/// `min_filter` **e** `mipmap_filter` os três em `Linear`. A tag `5 NearestAniso` amplia por
+/// PONTO por definição — é isso que o nome dela promete ao artista —, logo *ampliar por ponto* e
+/// *pedir anisotropia* são pedidos **contraditórios**, e o que a máquina pode entregar é um dos
+/// dois.
+///
+/// ⇒ O sampler que a `5` produz é **campo a campo idêntico** ao da `3 NearestMipmap`, e há gate a
+/// prová-lo ([`the_near_aniso_mode_is_the_near_mip_mode`]). Ela não é um modo caro, nem um modo
+/// por implementar: ela é um item de menu que **não pode existir**, e o remate desta cura é
+/// retirá-la do selector — ⚠️ trabalho em `ph2d-ecs` (o enum) e `ph2d-panel-inspector` (os
+/// rótulos), **crates que esta linha não possui**. Este gate é a rede que impede que ela volte a
+/// ser reintroduzida como se fosse um modo distinto.
+///
+/// [`the_near_aniso_mode_is_the_near_mip_mode`]: self::tests::the_near_aniso_mode_is_the_near_mip_mode
+pub const fn filter_tag_anisotropy(filter_tag: u8) -> u16 {
+    if filter_tag == 6 { 16 } else { 1 }
+}
+
 /// O maior tag de filtro que `ph2d_ecs::FilterMode::from_tag` sabe distinguir.
 ///
 /// ⚠️ **Existe para quem OFERECE filtros num menu.** Um consumidor que clampasse
@@ -99,17 +135,12 @@ pub fn sampler_from_tags(device: &wgpu::Device, filter_tag: u8, repeat_tag: u8) 
     } else {
         wgpu::FilterMode::Linear
     };
-    // Trilinear (Linear mip blend) for every mipmapped/aniso variant now
-    // that the sprite textures carry a real mip chain; plain Nearest(1)/
-    // Linear(2) keep Nearest mip selection (effectively single-level).
-    let mipmap_filter = match filter_tag {
-        3..=6 => wgpu::MipmapFilterMode::Linear,
-        _ => wgpu::MipmapFilterMode::Nearest,
+    let mipmap_filter = if filter_tag_blends_mips(filter_tag) {
+        wgpu::MipmapFilterMode::Linear
+    } else {
+        wgpu::MipmapFilterMode::Nearest
     };
-    // Anisotropy needs mag+min+mipmap ALL Linear (wgpu/Metal rule), so only
-    // LinearAniso(6) qualifies; NearestAniso(5) keeps point mag/min and
-    // falls back to 1× (it still gets the trilinear mip blend above).
-    let anisotropy_clamp = if filter_tag == 6 { 16 } else { 1 };
+    let anisotropy_clamp = filter_tag_anisotropy(filter_tag);
     // RepeatMode: 1 Disabled (clamp) · 2 Enabled (repeat) · 3 Mirror
     // (0 Inherit → clamp fallback).
     let address = match repeat_tag {
@@ -157,6 +188,61 @@ mod tests {
         assert_eq!(
             RepeatMode::from_tag(REPEAT_TAG_MAX + 1),
             RepeatMode::Inherit
+        );
+    }
+
+    /// ⛔⛔ **`Near+Aniso` (tag 5) É `Near+Mip` (tag 3) — o mesmo sampler, campo a campo.**
+    ///
+    /// O menu *Texture Filter* do Inspector oferece sete modos e **seis** são distinguíveis. A
+    /// `5 NearestAniso` promete anisotropia sobre ampliação por ponto, e o wgpu recusa a
+    /// combinação: `anisotropy_clamp > 1` exige `mag`+`min`+`mipmap` os três `Linear`. Ver
+    /// [`filter_tag_anisotropy`] para o mecanismo.
+    ///
+    /// # Por que a régua são as TRÊS leis, e não o `Sampler`
+    ///
+    /// ⚠️ Um `wgpu::Sampler` precisa de `Device` — precisa de **adapter**, logo o gate seria
+    /// `#[ignore]` e o CI nunca o correria (a família documentada no CLAUDE.md §5.0). As três leis
+    /// puras SÃO o descritor: elas são os únicos campos que o `filter_tag` decide (o endereçamento
+    /// vem do `repeat_tag`, e o resto é `Default`). Comparar as leis é comparar o descritor, sem
+    /// GPU nenhuma.
+    ///
+    /// ⚠️ **E o gate afirma as duas metades.** Sem a segunda — que os outros pares de tags
+    /// vizinhas **diferem** — um `filter_tag_anisotropy` que devolvesse `1` para tudo passaria, e
+    /// um que devolvesse sempre o mesmo `mipmap_filter` também.
+    #[test]
+    fn the_near_aniso_mode_is_the_near_mip_mode() {
+        // As três leis que o `filter_tag` decide, na ordem em que o descritor as consome.
+        let law = |tag: u8| {
+            (
+                filter_tag_magnifies_by_point(tag),
+                filter_tag_blends_mips(tag),
+                filter_tag_anisotropy(tag),
+            )
+        };
+        const NEAREST_MIPMAP: u8 = 3;
+        const NEAREST_ANISO: u8 = 5;
+        assert_eq!(
+            law(NEAREST_ANISO),
+            law(NEAREST_MIPMAP),
+            "a tag 5 (Near+Aniso) deixou de ser indistinguivel da 3 (Near+Mip). Se isto ficou \
+             VERMELHO porque o wgpu passou a aceitar anisotropia com ampliacao por ponto, a nota \
+             de `filter_tag_anisotropy` caducou e a opcao pode voltar ao selector"
+        );
+        assert_eq!(
+            filter_tag_anisotropy(NEAREST_ANISO),
+            1,
+            "o modo Near+Aniso pediu anisotropia: o wgpu rejeita `anisotropy_clamp > 1` sem os \
+             tres filtros Lineares, e a validacao mata a criacao do sampler"
+        );
+
+        // A metade JUSTA: as leis distinguem de facto os modos que SÃO distintos.
+        assert_ne!(law(1), law(NEAREST_MIPMAP), "Nearest e Near+Mip colidiram");
+        assert_ne!(law(2), law(4), "Linear e Lin+Mip colidiram");
+        assert_ne!(law(4), law(6), "Lin+Mip e Lin+Aniso colidiram");
+        assert_eq!(
+            filter_tag_anisotropy(6),
+            16,
+            "o unico modo que PODE pedir anisotropia deixou de a pedir"
         );
     }
 

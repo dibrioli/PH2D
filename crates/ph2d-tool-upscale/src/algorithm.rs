@@ -12,12 +12,12 @@
 //!   dst_h`). Per-pixel weight normalization keeps edge brightness
 //!   stable when the kernel partially overhangs the source. Accepts
 //!   any factor.
-//! - [`upscale_xbr`] — edge-aware corner replacement. Implemented as
-//!   Scale2x / Scale3x / Scale4x (Mazzoleni 2001 — the canonical free
-//!   pixel-art-friendly algorithm, with corner-replacement rules close
-//!   to the first pass of Hyllian xBR). Integer factor only (clamps
-//!   to `{2, 3, 4}`; values outside the set fall through to Scale2x).
-//!   A full Hyllian xBR is tracked as a fan-out follow-up vertical.
+//! - [`upscale_epx`] — edge-directed corner replacement (EPX / Scale2x
+//!   family, Johnson 1992 / Mazzoleni 2001) evaluated as a *continuous*
+//!   reconstruction, so it accepts **any** factor. Byte-identical to
+//!   Scale2x at `2×`. ⛔ It is NOT Hyllian xBR and no longer claims to
+//!   be — the previous version clamped to `{2, 3, 4}`, which left
+//!   `4×…16×` of the slider dead while the chip printed the raw value.
 //!
 //! All three operate on straight-alpha RGBA8 (`length = w * h * 4`)
 //! and return `(Vec<u8>, dst_w, dst_h)`. No external image deps —
@@ -286,58 +286,22 @@ fn clamp_u8(v: f32) -> u8 {
 }
 
 // ──────────────────────────────────────────────────────────────────
-// xBR (implemented as Scale2x / Scale3x / Scale4x, Mazzoleni 2001)
+// EPX — edge-directed pixel-art upscale at ANY factor
+//
+// ⚠️ The kernel, its Scale2x oracle gates and its rationale live in the
+// sibling [`crate::algorithm_epx`]; they are re-exported here so every
+// caller still reaches the three algorithms through one module.
 // ──────────────────────────────────────────────────────────────────
 
-/// Edge-aware corner-replacement upscale.
-///
-/// `factor` clamps to `{2, 3, 4}` — the algorithm only defines those
-/// three integer scales. Anything outside falls through to Scale2x
-/// (the safest default; xBR is meant for pixel art and the user has
-/// asked for "an integer enlargement").
-///
-/// Each output block of `f × f` pixels is decided by the 3×3 source
-/// neighbourhood centred on the corresponding source pixel `E`:
-///
-/// ```text
-///   A B C
-///   D E F
-///   G H I
-/// ```
-///
-/// Scale2x rules (Mazzoleni 2001):
-/// - If `B != H && D != F`:
-///   - TL = `D == B ? D : E`
-///   - TR = `B == F ? F : E`
-///   - BL = `D == H ? D : E`
-///   - BR = `H == F ? F : E`
-/// - Else: all four output pixels = `E` (flat-region fast path).
-///
-/// Scale3x / Scale4x extend the same idea to 3×3 and 4×4 output
-/// blocks; Scale4x is identical to running Scale2x twice (and is
-/// implemented as such here, which matches the canonical
-/// Allegro-/MAME-shipped version).
-///
-/// Pixel-equality test: byte-exact RGBA8 match (the canonical
-/// definition; perceptual / YUV-thresholded variants would belong to
-/// a follow-up vertical that migrates to full Hyllian xBR).
-pub fn upscale_xbr(pixels: &[SrgbRgba], src_w: u32, src_h: u32, factor: f32) -> UpscaleResult {
-    let rgba: &[u8] = bytemuck::cast_slice(pixels);
-    debug_assert_eq!(rgba.len(), (src_w as usize) * (src_h as usize) * 4);
-    let f = match factor.round() as i32 {
-        ..=2 => 2u32,
-        3 => 3u32,
-        _ => 4u32,
-    };
-    match f {
-        2 => scale2x(rgba, src_w, src_h),
-        3 => scale3x(rgba, src_w, src_h),
-        _ => {
-            let pass1 = scale2x(rgba, src_w, src_h);
-            scale2x(&pass1.pixels, pass1.width, pass1.height)
-        }
-    }
-}
+// ⚠️ A CHILD module, not a sibling: a descendant sees this module's
+// private items, so `read_px` / `write_px` / `scale2x` / `scale3x` stay
+// private instead of being promoted to `pub(crate)` just to be reached.
+// Promoting them would newly expose raw `&[u8]` colour data to the whole
+// crate, which `arch_color_space_typed` is right to refuse.
+#[path = "algorithm_epx.rs"]
+pub mod epx;
+
+pub use epx::{epx_resample, upscale_epx};
 
 /// Read a source pixel with mirror-edge handling. Returns an RGBA8
 /// 4-byte array.
@@ -355,6 +319,14 @@ fn write_px(dst: &mut [u8], dw: u32, x: u32, y: u32, px: [u8; 4]) {
 }
 
 /// Scale2x — Mazzoleni 2001. Doubles each axis.
+///
+/// ⚠️ **Test-only ORACLE, deliberately not on the product path.** The
+/// product runs [`epx_resample`] at every factor; this block emitter is
+/// kept so `epx_at_two_is_byte_identical_to_scale2x` compares the
+/// continuous law against an *independent construction* rather than
+/// against itself. A gate that compares a thing to a rearrangement of
+/// itself is blind to a shared mutation.
+#[cfg(test)]
 fn scale2x(rgba: &[u8], sw: u32, sh: u32) -> UpscaleResult {
     let dw = sw * 2;
     let dh = sh * 2;
@@ -396,6 +368,11 @@ fn scale2x(rgba: &[u8], sw: u32, sh: u32) -> UpscaleResult {
 /// Scale3x — Mazzoleni 2001. Triples each axis. Same per-block
 /// decision as Scale2x but emits a 3×3 output decided by the full
 /// 3×3 source neighbourhood (corners + edges + centre).
+///
+/// ⚠️ **Test-only ORACLE** — see [`scale2x`]. The product's declared
+/// divergence from this one (the four conditional *edge* cells) is what
+/// `epx_at_three_matches_scale3x_corner_cells` pins.
+#[cfg(test)]
 fn scale3x(rgba: &[u8], sw: u32, sh: u32) -> UpscaleResult {
     let dw = sw * 3;
     let dh = sh * 3;
@@ -595,95 +572,11 @@ mod tests {
         }
     }
 
-    // ── xBR (Scale2x / Scale3x / Scale4x) ──────────────────────────
-
-    #[test]
-    fn xbr_clamps_factor_to_two_three_four() {
-        let src = solid(2, 2, [0, 0, 0]);
-        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 1.0).width, 4); // → Scale2x
-        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 2.0).width, 4);
-        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 3.0).width, 6);
-        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 4.0).width, 8);
-        assert_eq!(upscale_xbr(&pack(src.clone()), 2, 2, 7.5).width, 8); // → Scale4x
-    }
-
-    #[test]
-    fn xbr_flat_input_replicates_all_pixels() {
-        // Flat-region fast path: every output pixel must equal source E.
-        let src = solid(4, 4, [80, 80, 80]);
-        let r = upscale_xbr(&pack(src.clone()), 4, 4, 2.0);
-        assert_eq!((r.width, r.height), (8, 8));
-        for y in 0..8 {
-            for x in 0..8 {
-                assert_eq!(px(&r.pixels, 8, x, y), [80, 80, 80, 255]);
-            }
-        }
-    }
-
-    #[test]
-    fn xbr_diagonal_edge_gets_corner_blended() {
-        // 3×3 input: a diagonal step from top-left red to bottom-right
-        // black. The corner-replacement rule must turn the centre
-        // pixel's BL into red (the rule `D == H` triggers).
-        //
-        //   R R K          E=K at (2,2): B=K H=., D=., F=. — flat path.
-        //   R . K          E=. at (1,1): B=R H=. D=R F=K — edge.
-        //   . . K
-        //
-        // Test the centre pixel's 2×2 output: BL must be R (the
-        // `D == H` rule when both are R), BR must be K (`H == F`).
-        let r = [255, 0, 0, 255];
-        let k = [0, 0, 0, 255];
-        let e = [128, 128, 128, 255];
-        let row = |a: [u8; 4], b: [u8; 4], c: [u8; 4]| {
-            let mut v = Vec::with_capacity(12);
-            v.extend_from_slice(&a);
-            v.extend_from_slice(&b);
-            v.extend_from_slice(&c);
-            v
-        };
-        let mut src = row(r, r, k);
-        src.extend(row(r, e, k));
-        src.extend(row(e, e, k));
-        let out = upscale_xbr(&pack(src.clone()), 3, 3, 2.0);
-        assert_eq!((out.width, out.height), (6, 6));
-        // Centre source pixel `(1,1) = e`. Its 2×2 output sits at
-        // dst (2..4, 2..4). With B=r, H=e, D=r, F=k:
-        //   B != H ✓  D != F ✓  → edge rules fire.
-        //   TL = (D == B = r) → r
-        //   TR = (B == F? r == k no) → e
-        //   BL = (D == H? r == e no) → e
-        //   BR = (H == F? e == k no) → e
-        assert_eq!(px(&out.pixels, 6, 2, 2), r, "TL of centre block");
-        assert_eq!(px(&out.pixels, 6, 3, 2), e, "TR of centre block");
-        assert_eq!(px(&out.pixels, 6, 2, 3), e, "BL of centre block");
-        assert_eq!(px(&out.pixels, 6, 3, 3), e, "BR of centre block");
-    }
-
-    #[test]
-    fn xbr_scale3x_produces_3x3_blocks_per_source_pixel() {
-        let src = solid(2, 2, [200, 200, 200]);
-        let r = upscale_xbr(&pack(src.clone()), 2, 2, 3.0);
-        assert_eq!((r.width, r.height), (6, 6));
-        // Flat → every pixel matches source.
-        for y in 0..6 {
-            for x in 0..6 {
-                assert_eq!(px(&r.pixels, 6, x, y), [200, 200, 200, 255]);
-            }
-        }
-    }
-
-    #[test]
-    fn xbr_scale4x_chains_two_scale2x_passes() {
-        let src = solid(3, 3, [40, 40, 40]);
-        let r = upscale_xbr(&pack(src.clone()), 3, 3, 4.0);
-        assert_eq!((r.width, r.height), (12, 12));
-        for y in 0..12 {
-            for x in 0..12 {
-                assert_eq!(px(&r.pixels, 12, x, y), [40, 40, 40, 255]);
-            }
-        }
-    }
+    // ⚠️ The EPX gates (the Scale2x oracle, the whole-course gate, the
+    // not-an-alias gate) live in `algorithm_epx.rs`, next to the kernel
+    // they measure. `scale2x` / `scale3x` stay HERE as `pub(crate)`
+    // test-only oracles: they are an independent construction, which is
+    // the only reason the parity gate means anything.
 
     // ── Mirror index ───────────────────────────────────────────────
 

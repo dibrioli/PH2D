@@ -9,9 +9,7 @@ use ph2d_editor_core::NodeId;
 use ph2d_editor_core::grid_snap::{GridKind, GridSnapState};
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
-use ph2d_editor_core::widget::{
-    Button, ButtonKind, ButtonState, ColorSwatch, paint_button, paint_color_swatch,
-};
+use ph2d_editor_core::widget::{Button, ButtonKind, ButtonState, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_grid::snap::SnapTarget;
 use ph2d_grid::square::SquareNeighborhood;
@@ -413,49 +411,11 @@ pub(crate) fn set_neighborhood_for_active_kind(
     }
 }
 
-/// Color row — single clickable swatch tile that opens the
-/// BlenderColorPicker bound to `GS_COLOR_PICKER` when clicked.
-/// Replaces the prior 3× NumberInput (R / G / B) layout per Enio's
-/// 2026-05-15 redesign.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn paint_color_swatch_row(
-    row: Rect,
-    scene: &mut VectorScene,
-    text_system: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    store: &WidgetStore,
-    state: &GridSnapState,
-) {
-    let label_font = ph2d_tokens::TypeToken::Base.px();
-    // Square swatch igual `widget::showcase::color` ("Tint" sample)
-    // — Enio 2026-05-25: "O seletor de cor está fora do padrão do
-    // seletor de cor do painel Widget Gallery. Corrija."
-    let swatch_size = ph2d_editor_core::widget::SwatchSize::Md;
-    let swatch_px = swatch_size.px();
-    paint_text(
-        text_system,
-        scene,
-        "Color",
-        row.x,
-        row.y + (row.h - label_font) * 0.5,
-        label_font,
-        row.w - swatch_px - Spacing::Sm.px(),
-        resolve(ColorToken::Text2, theme),
-    );
-    let swatch_rect = Rect::new(
-        row.x + row.w - swatch_px,
-        row.y + (row.h - swatch_px) * 0.5,
-        swatch_px,
-        swatch_px,
-    );
-    let rgba = store
-        .widget_color(ids::GS_COLOR_PICKER)
-        .unwrap_or(state.color_rgba);
-    let cs = ColorSwatch::new(ids::GS_COLOR_PICKER, "", rgba).size(swatch_size);
-    paint_color_swatch(&cs, swatch_rect, scene, theme);
-    hit_index.register(ids::GS_COLOR_PICKER, swatch_rect);
-}
+// ⛔ **`paint_color_swatch_row` foi apagada em 2026-08-30 com a fileira que a chamava.**
+// O motivo inteiro está no sítio da chamada (`paint_body_sections.rs`): o RGB escolhido
+// nunca alcançava o canvas — `grid_snap::render::grid_line_color` deriva o R/G/B do fundo
+// (lei do Enio, 2026-07-02, intocada) e lê do utilizador **só o alfa**, que já tem o seu
+// próprio slider *Opacity* uma fileira acima.
 
 /// Stable mapping: GridKind → reserved option NodeId, in
 /// `GridKind::all()` order. Used by both populate (hit-test

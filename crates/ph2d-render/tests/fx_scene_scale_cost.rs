@@ -98,7 +98,7 @@ fn frame(
 ) {
     for (i, &(w, h)) in dims.iter().enumerate() {
         scratch
-            .render_to_intermediate(gpu, &art[i], (w, h), Color::TRANSPARENT, false)
+            .render_to_intermediate(gpu, &art[i], (w, h), Color::TRANSPARENT)
             .expect("scratch render");
         if run_stack {
             stack.run(
@@ -283,7 +283,7 @@ fn frame_batched(
     ops: &[FxOpGpu],
 ) {
     scratch
-        .render_to_intermediate(gpu, art, (aw, ah), Color::TRANSPARENT, false)
+        .render_to_intermediate(gpu, art, (aw, ah), Color::TRANSPARENT)
         .expect("atlas render");
     let src = scratch.intermediate_texture();
     for (i, out) in outs.iter().enumerate() {

@@ -149,3 +149,51 @@ fn the_same_animation_playing_for_real_does_speak() {
     // A tocar E sob pintura: a condução é da cena, não da pré-visualização.
     assert_eq!(run(&mut sim, 15, &painted).len(), 1);
 }
+
+/// ⭐⭐⭐ **O `OnScreenEnabler` PARA O RELÓGIO — no consumidor, com o valor que o artista digitou.**
+///
+/// ⛔⛔ Até 2026-08-30 o [`ph2d_ecs::OnScreenEnabler::contains`] tinha **zero chamadores de
+/// produção**: os cinco campos da §8 do Inspector gravavam no `.ph2dproj` e não decidiam coisa
+/// nenhuma. Este gate é a metade de *«só CORRE quando está no ecrã»* (a de *«só APARECE»* mora no
+/// [`super::super::off_canvas::draws_this_frame`]).
+///
+/// ⚠️ **Ele carrega no tique REAL e mede o FRAME**, não um `bool` auxiliar: a única entrada é a
+/// geometria do rect, e a única saída é a célula em que a sprite ficou. Um gate que escrevesse
+/// «pausado = true» mediria o `bool` — e o defeito era exactamente que o rect nunca era lido.
+///
+/// ⚠️ **A metade justa vem primeiro** (o mesmo rect, com a sprite DENTRO dele): sem ela, uma
+/// implementação que pausasse tudo passaria.
+///
+/// **Mutação:** apagar o `if paused.contains(&entity) { continue; }` do
+/// [`super::tick_sprite_animations`] ⇒ RED.
+#[test]
+fn a_sprite_that_left_its_enabler_rect_stops_advancing() {
+    use ph2d_ecs::{EnableMode, OnScreenEnabler};
+    // O rect autorado, e as duas poses: uma dentro, uma fora.
+    const RECT: [f32; 4] = [0.0, 0.0, 10.0, 10.0];
+    let mut frames = Vec::new();
+    for (what, x) in [("dentro", 5.0f32), ("fora", 100.0f32)] {
+        let (mut sim, e) = scene("", "", None);
+        {
+            let mut ent = sim.world_mut().entity_mut(e);
+            ent.insert(OnScreenEnabler::new(RECT, EnableMode::PauseProcessing));
+            if let Some(mut t) = ent.get_mut::<Transform>() {
+                t.translation.x = x;
+            }
+        }
+        // 15 tiques = 250 ms = mais de uma volta de 4 células a 50 ms.
+        let _ = run(&mut sim, 15, &[]);
+        let frame = sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap().frame;
+        frames.push((what, frame));
+    }
+    assert_ne!(
+        frames[0].1, 0,
+        "a sprite DENTRO do rect nem andou — sem esta metade o gate abaixo nao mede nada, porque \
+         uma implementacao que pausasse toda a gente passaria"
+    );
+    assert_eq!(
+        frames[1].1, 0,
+        "a sprite FORA do rect que ela propria declara continuou a animar: o `contains` do \
+         OnScreenEnabler nao chega ao tique. Frames medidos: {frames:?}"
+    );
+}

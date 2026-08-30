@@ -26,6 +26,18 @@ thread_local! {
     static INTENTS: RefCell<Vec<PhysicsIntent>> = const { RefCell::new(Vec::new()) };
     static LAST_CONTENT_H: Cell<f32> = const { Cell::new(0.0) };
     static LAST_VISIBLE_H: Cell<f32> = const { Cell::new(0.0) };
+    /// ⭐⭐ **A LENTE DO PINTOR** — todo cabeçalho de secção que o último `paint` desenhou.
+    ///
+    /// Não é conveniência de teste: é a metade do censo que nenhuma lista escrita à mão pode
+    /// dar. O dreno de dobra tem a sua lente (`rows::is_section_header`); esta é a do pintor, e
+    /// o gate `every_painted_section_header_folds` (tests/seam.rs) morre quando as duas
+    /// divergirem — que é exactamente como o `PHYSICS_SEC_LAYERS` viveu morto.
+    ///
+    /// ⚠️ Escrita pelo `paint::body::header`, o **único** sítio deste painel que desenha um
+    /// `SectionHeader`, e limpa no início de cada `paint`: uma lente que acumula quadros
+    /// responderia por um painel que já não está na tela.
+    static PAINTED_SECTION_HEADERS: RefCell<Vec<ph2d_a11y::NodeId>> =
+        const { RefCell::new(Vec::new()) };
 }
 
 /// What the panel needs to know about the world this frame.
@@ -156,6 +168,22 @@ pub fn last_content_h() -> f32 {
 /// See [`last_content_h`].
 pub fn last_visible_h() -> f32 {
     LAST_VISIBLE_H.with(|c| c.get())
+}
+
+/// Every section header the last [`crate::paint`] drew, in paint order — see
+/// [`PAINTED_SECTION_HEADERS`].
+pub fn last_painted_section_headers() -> Vec<ph2d_a11y::NodeId> {
+    PAINTED_SECTION_HEADERS.with(|c| c.borrow().clone())
+}
+
+/// Start a fresh paint's ledger. Called once, at the top of `paint`.
+pub(crate) fn begin_painted_section_headers() {
+    PAINTED_SECTION_HEADERS.with(|c| c.borrow_mut().clear());
+}
+
+/// Record one header the painter just drew.
+pub(crate) fn note_painted_section_header(id: ph2d_a11y::NodeId) {
+    PAINTED_SECTION_HEADERS.with(|c| c.borrow_mut().push(id));
 }
 
 pub(crate) fn set_last_content_h(v: f32) {

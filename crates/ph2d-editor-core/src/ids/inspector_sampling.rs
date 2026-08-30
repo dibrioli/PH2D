@@ -14,7 +14,13 @@ use super::*;
 
 /// W3 §9 Sampling — section accent color dot.
 pub const INSP_LIVE_SAMPLING_COLOR: NodeId = hash_node_id("insp_live_sampling_color");
-/// **Texture Filter segmented items — um por variante de `FilterMode`, tags `0..=6`.**
+/// **Texture Filter segmented items — um por TAG de `FilterMode`, `0..=6`.**
+///
+/// ⚠️ **Por TAG, e não «por variante»** — a frase anterior dizia variante e envelheceu em
+/// 2026-08-30, quando a `NearestAniso` foi retirada do enum: o array **continua com sete**,
+/// porque a POSIÇÃO é a tag e a tag é o formato de ficheiro. Quem decide o que é OFERECIDO é
+/// o `FILTER_LABELS` do painel (`[Option<&str>; 7]`, `None` = buraco), não o tamanho desta
+/// lista. ⛔ Encurtá-la faria o `zip` casar o rótulo `n+1` com o id `n`, em silêncio.
 ///
 /// ⚠️ **A POSIÇÃO É A TAG.** O despacho (`event_ordering.rs`) faz
 /// `position(|&o| o == id).map(SamplingFieldEdit::Filter)`, e a shell fecha com

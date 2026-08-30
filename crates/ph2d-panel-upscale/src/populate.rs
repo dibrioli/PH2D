@@ -3,7 +3,7 @@
 //!
 //! Layout:
 //! - 3 segmented buttons for the algorithm selector
-//!   (Lanczos3 / Nearest / xBR).
+//!   (Lanczos3 / Nearest / EPX).
 //! - 1 slider + 1 NumberInput chip for the scale factor, wired via
 //!   [`WidgetStore::link_slider_number_mapped`] with the affine
 //!   projection `factor = track*(MAX-MIN) + MIN`. Chip stores the
@@ -26,7 +26,7 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         ids::UPS_ALGO_LANCZOS3,
         ids::UPS_ALGO_NEAREST,
-        ids::UPS_ALGO_XBR,
+        ids::UPS_ALGO_EPX,
         ids::UPS_APPLY,
         ids::UPS_CANCEL,
         ids::UPS_RESET,
@@ -86,8 +86,8 @@ pub fn populate(store: &mut WidgetStore) {
         "Nearest \u{00b7} keeps hard pixel edges \u{00b7} pixel art / tile sprites",
     );
     store.set_tooltip(
-        ids::UPS_ALGO_XBR,
-        "xBR \u{00b7} edge-aware pixel-art upscale \u{00b7} 2x / 3x / 4x only",
+        ids::UPS_ALGO_EPX,
+        "EPX \u{00b7} edge-directed pixel-art upscale \u{00b7} any whole factor 1x-16x",
     );
 }
 
@@ -102,7 +102,7 @@ mod tests {
         for id in [
             ids::UPS_ALGO_LANCZOS3,
             ids::UPS_ALGO_NEAREST,
-            ids::UPS_ALGO_XBR,
+            ids::UPS_ALGO_EPX,
             ids::UPS_APPLY,
             ids::UPS_CANCEL,
         ] {

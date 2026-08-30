@@ -50,10 +50,40 @@ fn populate_src() -> (PathBuf, String) {
         .and_then(Path::parent)
         .expect("a raiz da workspace")
         .to_path_buf();
-    let p = root.join("crates/ph2d-panel-inspector/src/populate_physics.rs");
-    let s = std::fs::read_to_string(&p)
-        .unwrap_or_else(|e| panic!("o registro das faixas da §14 tem de ser legivel: {p:?}: {e}"));
-    (p, s)
+    // ⛔ **Não NOMEIE um ficheiro — leia a crate.** Este gate lia
+    // `populate_physics.rs` pelo nome, e em 2026-08-30 aquele ficheiro estourou o
+    // cap de 600 LOC e foi cortado por responsabilidade: as fileiras do §14 Player
+    // mudaram-se para `populate_player.rs` e o gate passou a ler um ficheiro que já
+    // não as tinha. Ele ficou **vermelho por um corte legítimo**, que é a forma
+    // barata deste defeito — a cara seria ter ficado VERDE sobre um registo ausente.
+    //
+    // A lição já estava escrita no `architecture_panel_wiring_parity` desta casa
+    // (*«um gate que enumerava um nome de ficheiro…»*). A população certa é a crate
+    // inteira: onde as fileiras moram é decisão de quem organiza o código, e não um
+    // facto que um teste deva conhecer.
+    let dir = root.join("crates/ph2d-panel-inspector/src");
+    let mut s = String::new();
+    let mut n = 0usize;
+    for e in std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("o `src` do Inspector tem de ser legivel: {dir:?}: {e}"))
+        .flatten()
+    {
+        let p = e.path();
+        if p.extension().is_some_and(|x| x == "rs") {
+            s.push_str(&std::fs::read_to_string(&p).unwrap_or_default());
+            s.push('\n');
+            n += 1;
+        }
+    }
+    // Metade JUSTA: um `read_dir` que devolvesse nada daria uma string vazia, e uma
+    // string vazia não contém nenhuma das fileiras — o que este gate leria como
+    // «nenhuma diverge».
+    assert!(
+        n >= 5,
+        "so' {n} ficheiro(s) `.rs` em {dir:?} — a varredura partiu-se e este gate estaria a \
+         medir a sua propria fixtura"
+    );
+    (dir, s)
 }
 
 /// **O DEFAULT registado, e o que o gesto `Add` de facto escreve.**
@@ -88,11 +118,33 @@ fn seeded_rows() -> Vec<(&'static str, f32)> {
 /// como FALHA ALTA: uma varredura vazia é indistinguível de um gate verde.
 fn field(src: &str, id: &str, n: usize) -> Option<f32> {
     let needle = format!("ids::{id},");
-    let line = src.lines().find(|l| l.contains(&needle))?;
-    let open = line.find('(')?;
-    let close = line[open..].find(')')? + open;
-    let fields: Vec<&str> = line[open + 1..close].split(',').map(str::trim).collect();
-    fields.get(n)?.replace('_', "").parse::<f32>().ok()
+    // ⛔ **TODAS as linhas que casam, não a primeira.** Enquanto este gate lia UM ficheiro,
+    // `find` bastava. Ao passar a ler a crate inteira (2026-08-30, depois de um corte por LOC ter
+    // mudado as fileiras de casa), a mesma agulha passou a casar em DOIS sítios com formas
+    // diferentes: a tabela de faixas do `populate_player` — `(id, default, min, max, step)` — e a
+    // de sincronização do `sync_physics` — `(id, info.float_height)`. A primeira que aparecia
+    // dependia da ordem do `read_dir`, que não é ordem nenhuma.
+    //
+    // ⚠️ **E o modo de falha era o BOM**: a tupla de dois campos não tem o campo `n`, o parse
+    // devolvia `None` e o chamador tratava-o como falha alta. Se as duas tuplas tivessem a mesma
+    // ARIDADE, este gate teria lido silenciosamente o número errado — que é a diferença entre
+    // ficar vermelho por um alcance largo e ficar VERDE sobre a resposta errada.
+    //
+    // A régua passa a ser a FORMA: a linha certa é a que traz uma tupla com campo `n` legível.
+    for line in src.lines().filter(|l| l.contains(&needle)) {
+        let Some(open) = line.find('(') else { continue };
+        let Some(close) = line[open..].find(')').map(|c| c + open) else {
+            continue;
+        };
+        let fields: Vec<&str> = line[open + 1..close].split(',').map(str::trim).collect();
+        if let Some(v) = fields
+            .get(n)
+            .and_then(|f| f.replace('_', "").parse::<f32>().ok())
+        {
+            return Some(v);
+        }
+    }
+    None
 }
 
 /// **O que o painel SEMEIA tem de ser o que o gesto escreve.**

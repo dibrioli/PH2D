@@ -32,6 +32,7 @@ mod paint;
 mod paint_histogram;
 mod paint_sections;
 mod populate;
+mod rows;
 pub mod state;
 
 pub use state::{last_content_h, last_visible_h, set_current_histogram, set_current_snapshot};

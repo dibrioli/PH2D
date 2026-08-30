@@ -92,7 +92,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     || id == ids::EQS_RASTERIZE_AFTER
                     || id == ids::EQS_ALG_LANCZOS
                     || id == ids::EQS_ALG_NEAREST
-                    || id == ids::EQS_ALG_XBR
+                    || id == ids::EQS_ALG_EPX
                     || id == ids::EQS_APPLY
                     || id == ids::EQS_RESET
             ) =>

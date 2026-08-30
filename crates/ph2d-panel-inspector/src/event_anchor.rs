@@ -79,23 +79,32 @@ pub(crate) fn apply_anchor_event(
         return false;
     }
 
-    // As duas caixas de VISIBILIDADE — do dono das âncoras.
+    // A caixa de VISIBILIDADE do dono das âncoras — **uma**, e já não duas.
+    //
+    // ⛔⛔ **A «Show anchors at runtime» saiu daqui em 2026-08-30, com o bloqueador NOMEADO:** não
+    // existe modo de jogo (`shells/game` / Runtime R1, adiado pelo dono do produto), então
+    // `AnchorVisibility::at_runtime` gravava e **não tinha um único leitor**. Ela continua pintada
+    // (a cinzento, com a razão no rótulo) e registada `Disabled`, e o campo continua no modelo para
+    // não partir ficheiros gravados — o que sai é a PROMESSA.
+    //
+    // ⚠️ **A recusa vive AQUI também, e não só no registo `Disabled`.** Um `Toggled` sintético
+    // alcança o braço sem passar pelo `is_focusable`, e é exactamente a lacuna que o braço do
+    // `INSP_MOUNT_SNAP` acima documenta. Sem esta linha o valor voltava a mudar por uma porta que
+    // ninguém vê.
+    //
+    // ⚠️ **A IRMÃ fica** — «Always show anchors» tem consumidor vivo (`anchor_overlay`).
     if let WidgetEvent::Toggled(id) = ev
-        && matches!(
-            id,
-            ids::INSP_ANCHOR_VIS_EDITOR | ids::INSP_ANCHOR_VIS_RUNTIME
-        )
+        && id == ids::INSP_ANCHOR_VIS_EDITOR
     {
         let on = matches!(
             host.store().checkbox(id).map(|(_, v)| v),
             Some(CheckboxValue::Checked)
         );
-        let edit = if id == ids::INSP_ANCHOR_VIS_EDITOR {
-            AnchorFieldEdit::VisibilityInEditor(on)
-        } else {
-            AnchorFieldEdit::VisibilityAtRuntime(on)
-        };
-        push(host, info.entity_bits, edit);
+        push(
+            host,
+            info.entity_bits,
+            AnchorFieldEdit::VisibilityInEditor(on),
+        );
         return true;
     }
 

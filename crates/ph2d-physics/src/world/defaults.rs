@@ -26,6 +26,33 @@
 
 use rapier2d::dynamics::{RigidBodyActivation, RigidBodySet};
 
+/// ⭐ **O valor que [`BodyDefaults::sleep_angular_threshold`] carrega quando adormecer está
+/// DESLIGADO** — e não é um número escolhido: é o que a própria `rapier2d` escreve em
+/// `RigidBodyActivation::cannot_sleep()` (`rigid_body_components.rs`, `-1.0`).
+///
+/// # O mecanismo, medido na `rapier2d` 0.35.3
+///
+/// `RigidBodyActivation::update_energy` decide, para um corpo `Dynamic`:
+///
+/// ```text
+/// let angular_ok = if max_extent > 0.0 {            // tem collider  ⇒ toda entidade real
+///     self.angular_threshold >= 0.0 && sq_angvel < FRAC_PI_2 * FRAC_PI_2
+/// } else {                                          // sem collider
+///     sq_angvel < self.angular_threshold * self.angular_threshold.abs()
+/// };
+/// can_sleep = angular_ok && drift * 0.5 < linear_threshold * dt;
+/// ```
+///
+/// ⇒ com o limiar **negativo**, `angular_ok` é `false` em **todos** os ramos, `can_sleep` é
+/// `false`, e o temporizador `time_since_can_sleep` é zerado a cada passo: o corpo **nunca dorme**.
+/// Com o limiar **não-negativo** o corpo pode dormir, e a barra angular é um `π/2` **fixo** dentro
+/// da rapier — a nossa magnitude não é lida.
+///
+/// ⛔ **Não escolha outro negativo por gosto.** Qualquer `< 0` produz o mesmo comportamento hoje;
+/// este é o que a referência usa, e é o que faz um `.ph2dproj` nosso ler igual a um corpo que a
+/// rapier própria configurou.
+pub const SLEEP_SPIN_DISABLED: f32 = -1.0;
+
 /// World-level defaults stamped onto every body [`super::PhysicsWorld::spawn_body`]
 /// creates, and re-stamped onto every live body by
 /// [`super::PhysicsWorld::set_body_defaults`].
@@ -64,11 +91,19 @@ pub struct BodyDefaults {
     /// rapier. O doc do campo deles di-lo: *«this raw threshold only applies to collider-less
     /// bodies»*. Na 0.28 era `sq_angvel < limiar²`, e o knob mandava.
     ///
-    /// ⚠️ **Consequência de produto, e é decisão do Enio:** o campo *sleep spin threshold* do
-    /// painel de física **não faz nada** hoje. Ele grava, viaja no `.ph2dproj` e é inerte. As três
-    /// saídas — deixá-lo (e dizê-lo no rótulo), escondê-lo, ou fazer a rotação entrar por outra via
-    /// — mudam a superfície do painel, e nenhuma é escolha de quem implementa.
-    /// *Um controlo que não move nada é o defeito que esta casa já pagou noutros painéis.*
+    /// ⭐⭐ **RESOLVIDO em 2026-08-30 — a saída escolhida foi «o controlo exprime o que o motor
+    /// lê».** O campo FICA (ele é persistido; apagá-lo partiria todo `.ph2dproj` gravado) e o
+    /// **slider** do painel de física morreu: o que o artista vê agora é um **interruptor**, porque
+    /// o que a rapier lê deste `f32` é **um bit**. Ver [`SLEEP_SPIN_DISABLED`] para o que cada lado
+    /// do sinal significa, e `PhysicsSettings::sleep_enabled` (`ph2d-physics-ecs`) para a porta.
+    ///
+    /// ⚠️ **A magnitude não é «quase morta», é morta com uma excepção nomeada:** ela ainda decide
+    /// para um corpo **sem collider** (`max_extent == 0`), que é o ramo `else` do trecho acima.
+    /// Nenhuma entidade da cena está nesse ramo — um corpo sem collider não colide com nada —, e é
+    /// por isso que o interruptor não perde nada que alguém possa ver.
+    ///
+    /// *Um controlo que não move nada é o defeito que esta casa já pagou noutros painéis;
+    /// a autoridade de um número expira com a versão da biblioteca que o consome.*
     pub sleep_angular_threshold: f32,
     /// How long a body must stay under both thresholds before sleeping, in seconds.
     /// **Nosso: `2,0`** · rapier 0.28: `2,0` · **rapier 0.35: `0,5`** (ver [`BodyDefaults::ours`]).

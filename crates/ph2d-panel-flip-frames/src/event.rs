@@ -12,8 +12,18 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::tool::PanelEvent;
 
-/// Os botões/toggles da barra + o X, todos encaminhados como `Click`.
-const BUTTONS: [ph2d_a11y::NodeId; 19] = [
+/// Os botões/toggles da barra, todos encaminhados como `Click`.
+///
+/// ⛔ **O X NÃO está aqui, e a ausência é a cura.** Ele esteve, e era exactamente por isso que
+/// clicar nele não fazia nada: estar nesta lista significa *«empurra um `PanelEvent::Click` no
+/// barramento e alguém no shell decide»* — e nenhum dos três drenos (`flip_layers.rs`,
+/// `flip_strip.rs`, `ph2d-tool-flip/tool.rs`) tinha braço para ele. O botão pintava, acendia sob
+/// o dedo, consumia o clique e **terminava no vazio**.
+///
+/// Fechar um painel não é edição de documento nem de transporte — é do próprio painel, e o
+/// `TimelinePanel` já escrevia a lei (`host.set_panel_visible(ID, false)`). Ver o braço em
+/// [`apply_event`].
+const BUTTONS: [ph2d_a11y::NodeId; 18] = [
     ids::FLIP_PREV_DRAWING,
     ids::FLIP_PLAY,
     ids::FLIP_NEXT_DRAWING,
@@ -32,7 +42,6 @@ const BUTTONS: [ph2d_a11y::NodeId; 19] = [
     ids::FLIP_TWEEN_ADD,
     ids::FLIP_TWEEN_FADE,
     ids::FLIP_TWEEN_PAIRS,
-    ids::FLIP_STRIP_CLOSE,
 ];
 
 /// As caixas numéricas — encaminhadas como `SetValue` (o valor vem da store).
@@ -64,6 +73,17 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     let consumed = match ev {
+        // **O X esconde a tira** — a mesma lei que o `TimelinePanel` já escrevia para o X dele.
+        // ⚠️ Este braço vem ANTES do `BUTTONS`, e o id saiu daquela lista: encaminhar um fecho
+        // pelo barramento pede um braço no shell que nunca existiu, e o botão morria em silêncio
+        // (catraca `the_painted_control_reaches_a_consumer`, entrada `FLIP_STRIP_CLOSE`).
+        WidgetEvent::Click(id) if id == ids::FLIP_STRIP_CLOSE => {
+            host.set_panel_visible(
+                <crate::FlipFramesPanel as ph2d_editor_core::panel::Panel>::ID,
+                false,
+            );
+            true
+        }
         WidgetEvent::Click(id) if BUTTONS.contains(&id) => {
             seam_reset_button(host, id);
             host.bus_mut()

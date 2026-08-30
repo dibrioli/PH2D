@@ -241,13 +241,7 @@ fn probe_fx_render_and_look() {
             &bp,
         );
         scratch
-            .render_to_intermediate(
-                &gpu,
-                &shape,
-                (W, H),
-                vello::peniko::Color::TRANSPARENT,
-                false,
-            )
+            .render_to_intermediate(&gpu, &shape, (W, H), vello::peniko::Color::TRANSPARENT)
             .expect("scratch render");
         Some(scratch)
     } else {

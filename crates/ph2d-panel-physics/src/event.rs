@@ -112,12 +112,10 @@ pub(crate) fn apply_event(
         }
         // Section headers fold. Panel-local view state, so it never becomes an
         // intent — the shell has no opinion about which sections are open.
-        WidgetEvent::Click(id)
-            if id == ids::PHYSICS_SEC_DEBUG
-                || id == ids::PHYSICS_SEC_INTERACT
-                || id == ids::PHYSICS_SEC_JOINT
-                || rows::SECTIONS.iter().any(|s| s.id == id) =>
-        {
+        // ⛔ Este braço listava TRÊS nomes à mão + a tabela, e o quarto cabeçalho pintado
+        //    (`PHYSICS_SEC_LAYERS`) caía no `_ => false`: pintado, registado, e mudo ao clique.
+        //    Hoje pergunta à MESMA lista que `populate` regista.
+        WidgetEvent::Click(id) if rows::is_section_header(id) => {
             seam_reset_button(host, id);
             // ⚠️ A PORTA ÚNICA — este bloco era `set_collapsed(id, !is_collapsed(id))` escrito à
             //    mão, que é literalmente o corpo do `toggle_collapsed`. Três cópias privadas da
@@ -142,6 +140,17 @@ pub(crate) fn apply_event(
                 layer_matrix: m.rows(),
                 ..settings
             }));
+            true
+        }
+        // ⭐ **O interruptor de adormecer** (2026-08-30). Era um slider sobre
+        // `sleep_angular_threshold`, e a `rapier2d` 0.35 lê desse campo só o SINAL — o slider
+        // mentia em todo o seu curso. A escrita vai pela porta `with_sleep_enabled`, nunca por uma
+        // comparação com zero aqui: a lei do sinal mora num sítio (`ph2d-physics-ecs`).
+        WidgetEvent::Click(id) if id == ids::PHYSICS_SLEEP_SPIN => {
+            seam_reset_button(host, id);
+            let settings = state::current().settings;
+            let on = settings.sleep_enabled();
+            state::push_intent(PhysicsIntent::SetSettings(settings.with_sleep_enabled(!on)));
             true
         }
         WidgetEvent::Click(id) if id == ids::PHYSICS_SHOW_COLLIDERS => {

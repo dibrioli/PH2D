@@ -96,13 +96,28 @@ pub const FILTER_PARAM: &str = "filter";
 /// vê os dois) conta os tags que o `from_tag` distingue e exige esta lista do
 /// mesmo tamanho. Menos rótulos ⇒ um modo inalcançável; mais ⇒ um item de menu que
 /// o `sink_style` clampa de volta.
+/// ⛔ **O slot `5` era «Nearest Aniso» e MENTIA.** O `wgpu` recusa `anisotropy_clamp > 1` sem os
+/// três filtros `Linear`, logo *ampliar por ponto* e *pedir anisotropia* são pedidos
+/// contraditórios: o sampler dele era **campo a campo** o do `3 Nearest Mip` (medido e gateado —
+/// `ph2d-render::image_filter::the_near_aniso_mode_is_the_near_mip_mode`), e desde 2026-08-30 o
+/// `FilterMode::from_tag` lê a tag `5` **como** `NearestMipmap`. Escolher aquele item dava o modo
+/// do vizinho, com outro nome.
+///
+/// ⚠️ **A POSIÇÃO É A TAG e a tag é o formato de ficheiro** — encurtar esta lista mudaria em
+/// silêncio o modo de todo grafo já gravado. ⛔ Não reaproveite o slot.
+///
+/// ⏳ **A cura completa não cabe aqui.** O Inspector resolveu-a com `[Option<&str>; 7]`, em que
+/// `None` = *não oferecido*; este selector é um `ParamWidget::Enum { labels: &[&str] }` do
+/// `NodeManifest`, e dar-lhe um buraco muda a assinatura que **dezenas** de node-crates escrevem.
+/// Fica nomeado no registo (§24.2). O que se faz aqui é a metade barata: **o rótulo deixa de
+/// prometer anisotropia**.
 pub const FILTER_LABELS: [&str; 7] = [
     "Project",
     "Nearest",
     "Linear",
     "Nearest Mip",
     "Linear Mip",
-    "Nearest Aniso",
+    "Nearest Mip (legacy)",
     "Linear Aniso",
 ];
 

@@ -42,7 +42,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         WidgetEvent::Click(id)
             if id == ids::UPS_ALGO_LANCZOS3
                 || id == ids::UPS_ALGO_NEAREST
-                || id == ids::UPS_ALGO_XBR =>
+                || id == ids::UPS_ALGO_EPX =>
         {
             reset_button(host, id);
             host.bus_mut()

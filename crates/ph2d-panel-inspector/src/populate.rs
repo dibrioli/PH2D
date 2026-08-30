@@ -65,7 +65,7 @@ pub fn populate(store: &mut WidgetStore) {
     super::populate_physics::populate_physics(store);
     super::populate_physics::populate_joint(store);
     super::populate_physics::populate_wheel(store);
-    super::populate_physics::populate_player(store);
+    super::populate_player::populate_player(store);
 }
 
 /// W3 §8 Visibility section: register the segmented + bitmask + toggle ids

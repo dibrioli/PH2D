@@ -1095,3 +1095,142 @@ fn a_hint_that_wraps_pushes_what_follows_it_down() {
          {short_h}): o avanço voltou a ser fixo"
     );
 }
+
+/// ⭐⭐⭐ **O CENSO DAS DUAS LENTES — todo cabeçalho que o PINTOR desenha tem de DOBRAR.**
+///
+/// ⛔⛔ **Este é o gate que faltava, e a prova é o `PHYSICS_SEC_LAYERS`:** ele esteve morto
+/// durante toda a vida da secção *Collision Layers*, e **nenhum instrumento deste repo o via**.
+/// Ele estava registado (logo focalizável, e o `architecture_panel_wiring_parity` ficava verde),
+/// o clique chegava ao painel (logo a costura passava), e a `folding_a_section_never_touches_the_world`
+/// acima varre `rows::SECTIONS` — a tabela das CINCO secções guiadas por rows, que não o contém.
+/// *A terceira pergunta da costura não é «o clique chega?», é «alguém responde?».*
+///
+/// # Por que um CENSO e não uma lista
+///
+/// A lista escrita à mão foi **a causa**: três módulos escreviam a sua própria cópia da mesma
+/// enumeração de cabeçalhos e a do `event.rs` tinha um a menos. Um gate com uma quarta cópia
+/// herdaria o mesmo defeito — ele ficaria verde exactamente no caso em que a lista dele
+/// concordasse com a errada.
+///
+/// Então as duas lentes são MEDIDAS:
+///
+/// | lente | de onde sai |
+/// |---|---|
+/// | o que o painel PINTA | `state::last_painted_section_headers()`, escrito pelo único `header()` do pintor |
+/// | o que o painel RESPONDE | um clique real no rect real, e a dobra que ele produz (ou não) |
+///
+/// ⚠️ **Um `arrange` por cabeçalho**: dobrar um encolhe a secção e os de baixo sobem, então
+/// reutilizar o mesmo host mediria rects que a dobra anterior invalidou.
+#[test]
+fn every_painted_section_header_folds() {
+    let (mut probe, mut probe_state) = arrange(PhysicsSettings::default());
+    let _ = probe.paint::<PhysicsPanel>(&mut probe_state, VIEWPORT);
+    let painted_headers = state::last_painted_section_headers();
+
+    assert!(
+        painted_headers.len() >= rows::SECTIONS.len() + rows::HAND_PAINTED_SECTIONS.len(),
+        "a lente do pintor devolveu {} cabecalhos e o painel tem pelo menos {} — ou o `paint` \
+         nao correu, ou o `header()` deixou de os anotar e este censo passou a medir nada",
+        painted_headers.len(),
+        rows::SECTIONS.len() + rows::HAND_PAINTED_SECTIONS.len()
+    );
+
+    for id in painted_headers {
+        let (mut host, mut st) = arrange(PhysicsSettings::default());
+        let painted = host.paint::<PhysicsPanel>(&mut st, VIEWPORT);
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == id)
+            .map(|(_, r)| *r)
+            .unwrap_or_else(|| panic!("o cabecalho {id:?} foi pintado e nao registou hit-rect"));
+        assert!(
+            !host.store().is_collapsed(id),
+            "fixture: {id:?} ja' nascia dobrado, entao este caso nao mede a dobra"
+        );
+        let _ = drain_intents();
+
+        for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut st, ev);
+        }
+
+        assert!(
+            host.store().is_collapsed(id),
+            "CABECALHO MORTO: {id:?} pinta o chevron, regista o hit-rect, recebe o clique — e nao \
+             dobra. O dreno de `event.rs` nao o alcanca (`rows::is_section_header`), que e' \
+             exactamente como o PHYSICS_SEC_LAYERS viveu morto ate' 2026-08-30"
+        );
+        assert!(
+            drain_intents().is_empty(),
+            "dobrar {id:?} publicou uma mudanca de mundo — uma dobra e' vista, nunca documento"
+        );
+    }
+}
+
+/// ⭐⭐ **O INTERRUPTOR DE ADORMECER escreve o SINAL, e é isso que a rapier lê.**
+///
+/// ⛔⛔ Este controlo era um **slider** `0..10` sobre `sleep_angular_threshold`, e desde a
+/// `rapier2d` 0.35 o motor lê desse campo **apenas o sinal** (`>= 0` = pode dormir · `< 0` = nunca
+/// dorme). *O número não mudou; o CONSUMO mudou* — arrastar de `0,1` para `2,0` não movia um bit
+/// da simulação, medido em `ph2d-physics::the_magnitude_of_the_spin_threshold_reaches_nobody`.
+///
+/// O gate mede o **valor a chegar ao consumidor**, e nos dois sentidos: um interruptor que só
+/// soubesse desligar passaria num gate de um lado só.
+///
+/// ⚠️ E afirma a metade que o desenho paga: **não há mais slider nem chip** para este campo. Sem
+/// isto, alguém que re-acrescentasse a `Row` teria dois controlos a escrever o mesmo campo com
+/// leis diferentes, e o gate de cima continuaria verde.
+#[test]
+fn the_sleep_switch_writes_the_sign_the_solver_reads() {
+    assert!(
+        rows::row_for(ids::PHYSICS_SLEEP_SPIN).is_none(),
+        "o `sleep_angular_threshold` voltou a ter uma Row de slider+chip: a rapier 0.35 le' dele \
+         o SINAL, entao um slider promete um curso que o solver ignora"
+    );
+
+    for start_on in [true, false] {
+        let settings = PhysicsSettings::default().with_sleep_enabled(start_on);
+        assert_eq!(
+            settings.sleep_enabled(),
+            start_on,
+            "fixture: a semente nao ficou no estado pedido"
+        );
+        let (mut host, mut st) = arrange(settings);
+        let painted = host.paint::<PhysicsPanel>(&mut st, VIEWPORT);
+        let rect = painted
+            .iter()
+            .rev()
+            .find(|(pid, _)| *pid == ids::PHYSICS_SLEEP_SPIN)
+            .map(|(_, r)| *r)
+            .expect("o interruptor de adormecer e' pintado na seccao Sleep");
+        let _ = drain_intents();
+
+        for ev in host.click_at(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5) {
+            let _ = host.apply_panel_event::<PhysicsPanel>(&mut st, ev);
+        }
+
+        let got = drain_intents()
+            .iter()
+            .find_map(|it| match it {
+                PhysicsIntent::SetSettings(s) => Some(*s),
+                _ => None,
+            })
+            .expect("o clique no interruptor de adormecer nao levantou intent nenhum");
+        assert_eq!(
+            got.sleep_enabled(),
+            !start_on,
+            "o interruptor estava em {start_on} e o clique publicou {} \
+             (campo = {}) — ele nao alterna",
+            got.sleep_enabled(),
+            got.sleep_angular_threshold
+        );
+        assert_eq!(
+            got.sleep_linear_threshold, settings.sleep_linear_threshold,
+            "o interruptor de adormecer mexeu no limiar de VELOCIDADE"
+        );
+        assert_eq!(
+            got.time_until_sleep, settings.time_until_sleep,
+            "o interruptor de adormecer mexeu no atraso"
+        );
+    }
+}

@@ -60,35 +60,27 @@ use std::path::{Path, PathBuf};
 /// `(tipo, variante, motivo)`. Uma entrada que já não é detectada é uma dívida
 /// paga que ninguém apagou, e o gate cobra-a (§ *stale* no fim).
 const UNCONSUMED_PENDING: &[(&str, &str, &str)] = &[
-    // ⚠️ As DUAS primeiras têm o outro fio DECLARADO no `render_loop`: um slider
-    // e um toggle dizem o que valem pelo `WidgetStore`, que é quem dirige a arte
-    // (`shells/desktop/src/vec_widget_drive.rs`). Publicá-los também como sinal
-    // poria o mesmo facto em dois fios. Ficam na catraca porque a régua desta
-    // sonda não vê aquele fio, não porque estejam mortos.
-    (
-        "AuthoredIntent",
-        "Value",
-        "o valor vive no WidgetStore e a arte le'-o por vec_widget_drive (outro fio, declarado)",
-    ),
-    (
-        "AuthoredIntent",
-        "Flag",
-        "idem Value: o estado vive no WidgetStore, nao no intent",
-    ),
-    // ⛔ Estas DUAS são a dívida a sério, e o preço é seis famílias de widget:
-    // `Tabs`, `SegmentedAdaptive`, `RadioGroup`, `Dropdown` publicam `Choice`;
-    // `TextInput`/`NumberInput` publicam `Text`. O dreno em
-    // `shells/desktop/src/render_loop/mod.rs` só cobre `Fired`.
-    (
-        "AuthoredIntent",
-        "Text",
-        "MORTA: TextInput/NumberInput autorados publicam e o dreno so' cobre Fired",
-    ),
-    (
-        "AuthoredIntent",
-        "Choice",
-        "MORTA: Tabs/SegmentedAdaptive/RadioGroup/Dropdown publicam e o dreno so' cobre Fired",
-    ),
+    // ═══ DÍVIDA PAGA em 2026-08-30 — as QUATRO entradas `AuthoredIntent` saíram ═══
+    //
+    // O dreno era um `if let AuthoredIntent::Fired { key } = intent` em
+    // `shells/desktop/src/render_loop/mod.rs`, e matava **seis famílias de widget** de uma vez:
+    // `Tabs` · `SegmentedAdaptive` · `RadioGroup` · `Dropdown` publicam `Choice`;
+    // `TextInput`/`NumberInput` publicam `Text`. O chip acendia e nada mudava.
+    //
+    // Hoje é um `match` com **braço NOMEADO para cada variante**, em
+    // `render_loop/authored_intents.rs` — e o `Choice` publica um sinal cujo NOME compõe a fileira
+    // com a opção (`blend/multiply`). ⭐ A alternativa (dar carga ao `SignalOrigin::Control`) foi
+    // medida e recusada por DUAS razões: o enum é `Copy` e uma `String` mata-o, e o contrato
+    // declarado da crate diz *«o CONTRATO é o nome — um consumidor casa numa string e nunca
+    // precisa perguntar a origem»*. `Contact` e `Animation` já recusam carga pela mesma lei.
+    //
+    // ⚠️ `Value`, `Flag` e `Text` ficam com braços **nomeados e vazios**, com o motivo escrito em
+    // cada um: os dois primeiros têm outro fio declarado (o `WidgetStore`, que dirige a arte por
+    // `vec_widget_drive`), e o `Text` cala-se porque um nome que o artista digita é um espaço de
+    // nomes ilimitado — o valor já chega ao store; o que falta é CONSUMIDOR, não produtor.
+    // ⇒ um braço nomeado-e-vazio lê como consumido por esta régua, que é um limite declarado no
+    // cabeçalho deste ficheiro. O que impede a próxima variante de cair em silêncio é o `match`
+    // exaustivo mais o gate `the_drain_names_every_authored_intent_variant`, no shell.
     // ⛔ A fila de SPAWN do `ph2d-script`: as quatro sao produzidas pelas ligacoes
     // Luau (`host.rs`) e `drain_spawns()` nao tem chamador nenhum fora dos testes
     // da propria crate. E' a mesma ausencia que o CLAUDE.md ja' nomeia — o

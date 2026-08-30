@@ -4,7 +4,7 @@
 //! Right-docked in the Inspector geometry slot; visible only while the
 //! `upscale` tool is active (the shell drives `panel_visible("upscale")`
 //! from the active-tool id). Holds the algorithm segmented control
-//! (Lanczos3 / Nearest / xBR), a scale slider (1×–16×) paired with a
+//! (Lanczos3 / Nearest / EPX), a scale slider (1×–16×) paired with a
 //! number chip, and Cancel / Apply.
 //!
 //! The authoritative [`UpscaleTool`] lives in the shell's `ToolRegistry`,

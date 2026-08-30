@@ -172,7 +172,6 @@ mod tests {
         }
         for id in [
             ids::WET_TUNING_PANEL,
-            ids::WET_TUNING_SCROLL,
             ids::WET_TUNING_GROUP_HEADERS[5],
             ids::WET_TUNING_PAPER_EYE,
             ids::WET_TUNING_KM_MIXING,

@@ -156,6 +156,7 @@ fn a_wider_label_pushes_its_field_further_right() {
         in_flow: true,
         grow: 0.0,
         shrink: 1.0,
+        parent_is_grid: false,
     }));
     // "Gap" e "Grow" são os dois campos da coluna ESQUERDA — mesma origem de célula, então o x
     // deles é a calha e mais nada.
@@ -446,6 +447,7 @@ fn the_item_rows_follow_the_child_and_coexist_with_the_frame_block() {
         in_flow: true,
         grow: 0.0,
         shrink: 0.0,
+        parent_is_grid: false,
     }));
     assert!(painted(ids::VECTOR_LAYOUT_ITEM_GROW));
     assert!(painted(ids::VECTOR_LAYOUT_ITEM_SHRINK));
@@ -483,6 +485,7 @@ fn a_selected_child_alone_still_gets_its_two_rows() {
         in_flow: true,
         grow: 1.0,
         shrink: 0.0,
+        parent_is_grid: false,
     }));
     assert!(painted(ids::VECTOR_LAYOUT_ITEM_GROW));
     assert!(
@@ -567,6 +570,7 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         shrink: 0.0,
         absolute: false,
         in_flow: true,
+        parent_is_grid: false,
     }));
     click_reaches_bus(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE, "o toggle Absolute");
     // No fluxo, os dois números existem.
@@ -580,6 +584,7 @@ fn the_absolute_toggle_is_live_and_hides_grow_and_shrink() {
         shrink: 0.0,
         absolute: true,
         in_flow: true,
+        parent_is_grid: false,
     }));
     assert!(
         !painted(ids::VECTOR_LAYOUT_ITEM_GROW) && !painted(ids::VECTOR_LAYOUT_ITEM_SHRINK),
@@ -629,6 +634,7 @@ fn the_item_block_explains_itself_when_the_parent_does_not_flow() {
         shrink: 0.0,
         absolute: false,
         in_flow: false,
+        parent_is_grid: false,
     }));
     assert!(
         !painted(ids::VECTOR_LAYOUT_ITEM_ABSOLUTE)

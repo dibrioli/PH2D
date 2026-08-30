@@ -3,7 +3,7 @@
 //!
 //! Layout:
 //! - **3 mode buttons** (Max / Fixed / Grid), **3 algorithm buttons**
-//!   (Lanczos / Nearest / xBR), **3 toggle buttons**
+//!   (Lanczos / Nearest / EPX), **3 toggle buttons**
 //!   (Arrange-on-grid / upscale-if-smaller / rasterize-after),
 //!   **Cancel / Apply** — all plain buttons.
 //! - **Fixed-mode W/H chips** (`EQS_FIXED_W`, `EQS_FIXED_H`) — standalone
@@ -41,7 +41,7 @@ pub fn populate(store: &mut WidgetStore) {
         ids::EQS_RASTERIZE_AFTER,
         ids::EQS_ALG_LANCZOS,
         ids::EQS_ALG_NEAREST,
-        ids::EQS_ALG_XBR,
+        ids::EQS_ALG_EPX,
         ids::EQS_CANCEL,
         ids::EQS_APPLY,
         ids::EQS_RESET,
@@ -134,7 +134,7 @@ mod tests {
             ids::EQS_RASTERIZE_AFTER,
             ids::EQS_ALG_LANCZOS,
             ids::EQS_ALG_NEAREST,
-            ids::EQS_ALG_XBR,
+            ids::EQS_ALG_EPX,
             ids::EQS_CANCEL,
             ids::EQS_APPLY,
         ] {

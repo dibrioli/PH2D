@@ -254,6 +254,45 @@ fn the_dead_empty_face_paints_nothing_at_all() {
     }
 }
 
+/// ⛔⛔⛔ **E a face morta não deixou REGISTO para trás** — a metade que faltava, e que deixou o
+/// `INSP_PLAYER_ADD` a existir no `WidgetStore` de toda sessão durante duas waves.
+///
+/// O gate acima mede *«ninguém o PINTA»*; este mede *«ninguém o REGISTA»*, e são coisas
+/// diferentes. Um id registado e nunca pintado não faz barulho nenhum — o artista não o vê, o
+/// clique nunca lá cai — **mas faz toda sonda futura de controlos mortos mentir**: a régua lê
+/// «registado» e conta-o como controlo, e a acusação que ela emite aponta para um botão que já não
+/// existe. Foi assim que o instrumento
+/// `ph2d-editor-core/tests/the_painted_control_reaches_a_consumer.rs` o apanhou em 2026-08-30.
+///
+/// ⚠️ **A metade justa vem primeiro:** os irmãos VIVOS do mesmo `register_button_ids` continuam
+/// registados. Sem ela, apagar a chamada inteira passaria.
+///
+/// **Mutação:** repor `ids::INSP_PLAYER_ADD` na lista do `populate_physics.rs` ⇒ RED.
+#[test]
+fn the_dead_empty_face_leaves_no_registration_behind() {
+    let host = MockPanelHost::with_panel_and_shared_chrome::<InspectorPanel>();
+    for id in [
+        ids::INSP_PLAYER_REMOVE,
+        ids::INSP_PLAYER_FIT,
+        ids::INSP_PLAYER_CLEAR_RUN,
+        ids::INSP_PLAYER_RESTORE_RUN,
+        ids::INSP_PLAYER_FIT_CROUCH,
+    ] {
+        assert!(
+            host.store().get(id).is_some(),
+            "{id:?} deixou de ser registado — este gate mede a AUSENCIA de um orfao, e sem os \
+             irmaos vivos ele passaria com a chamada inteira apagada"
+        );
+    }
+    assert!(
+        host.store().get(ids::INSP_PLAYER_ADD).is_none(),
+        "`INSP_PLAYER_ADD` continua registado. O botao que ele nomeia saiu do produto na F3 \
+         (ADR-0166) com a face vazia que o continha: ninguem o pinta e ninguem lhe responde. \
+         Um registo orfao e' lixo que faz toda sonda de controlos mortos apontar para um botao \
+         inexistente."
+    );
+}
+
 /// **Todos os números levantam a própria edição** — a varredura.
 ///
 /// Uma tabela e não oito testes: uma row nova que esqueça o arm faz esta lista

@@ -341,6 +341,32 @@ jobs:
               ;;
           esac
 
+      # ⛔⛔ **Um adaptador de GPU para o corredor** — medido em 2026-08-30
+      # (`docs/Atualizar Stack/04_registro.md` §21).
+      #
+      # `ph2d-render` tem **52 testes de GPU SEM `#[ignore]`** que o CI corria e que
+      # devolviam cedo por não haver adaptador — contando como APROVADOS sem executarem
+      # nada. Metade deles (28) já tentava anunciar-se com `eprintln!`, e ninguém os
+      # ouvia: o nextest deita fora a saída de um teste que PASSA. *Skip gracioso não é
+      # verde.* O gate `gpu_gates_are_not_vacuous` transforma isso em UM vermelho
+      # legível, e a mensagem dele nomeia as duas saídas honestas. Esta é a primeira:
+      # **dar um adaptador**, para que os 52 passem a valer alguma coisa.
+      #
+      # - **Linux**: `mesa-vulkan-drivers` traz o **lavapipe** (raster Vulkan por
+      #   software). Não é hardware, mas é um `Device` real — e as pipelines de compute
+      #   do Vello exigem os limites de nível desktop, que o lavapipe anuncia.
+      # - **macOS**: os runners Apple Silicon já expõem Metal; nada a instalar.
+      # - **Windows**: o WARP (adaptador D3D12 por software) já está na imagem, e o
+      #   `request_adapter` devolve-o mesmo com `force_fallback_adapter: false` quando é
+      #   o único.
+      #
+      # ⚠️ **A saída de renúncia continua a existir e é UMA, digitada:**
+      # `PH2D_ALLOW_NO_GPU=1`. Se um destes três OS não conseguir um adaptador, é aqui
+      # que a perda se escreve — por OS, com o motivo —, nunca alargando o silêncio.
+      - name: Give the runner a GPU adapter (Linux — lavapipe)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y mesa-vulkan-drivers
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:

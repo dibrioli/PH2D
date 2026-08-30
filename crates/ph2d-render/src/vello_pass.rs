@@ -142,39 +142,50 @@ impl VelloPass {
     /// stays available via [`intermediate_view`](Self::intermediate_view)
     /// so a downstream compositor can read it as a texture binding.
     ///
-    /// `prefer_msaa` selects between `AaConfig::Msaa16` (more samples
-    /// per pixel; smoother glyph edges in unhinted text renderings) and
-    /// the default `AaConfig::Area` (analytical coverage; smoother for
-    /// thin vector strokes). Shells read the current text-rendering
-    /// preset's `prefer_msaa` flag before calling.
+    /// ⛔ **A escolha de anti-aliasing NÃO é um parâmetro desta função,
+    /// e não pode voltar a sê-lo.** Ela é `AaConfig::Area`, sempre.
+    ///
+    /// O `AaConfig` do Vello vive em `RenderParams` e vale para o
+    /// **PASSE INTEIRO** — não há caminho de desenho a que se aplique
+    /// separadamente. Este passe carrega o chrome do editor **e** a arte
+    /// vectorial do documento no mesmo `Scene`, portanto quem escolhe o
+    /// AA escolhe-o para os vectores do artista.
+    ///
+    /// Até 2026-08-30 esta função aceitava `prefer_msaa: bool`, e o
+    /// shell lia-o do preset de TEXTO em uso
+    /// (`TextRendering::CrispHeavyPlus`) — um preset de tipografia a
+    /// decidir a rasterização das formas. O preço já estava medido e
+    /// escrito duas linhas abaixo desta assinatura: MSAA16 stippla
+    /// traços finos (1–1,5 px) em ângulos quase-axiais. Report do dono
+    /// do produto: «manchas animadas parecendo TV antiga» à volta das
+    /// formas vectoriais (`docs/Atualizar Stack/04_registro.md` §22.2).
+    ///
+    /// ⚠️ A alternativa real — chrome e documento em **dois passes**,
+    /// cada um com o seu `AaConfig` — é **arquitectura** (segundo alvo,
+    /// segundo `Renderer`, mais uma composição), não uma bandeira nesta
+    /// assinatura. O `AaSupport::all()` no construtor fica: ele é o que
+    /// mantém essa porta aberta sem custo.
+    ///
+    /// Gate: `the_pass_aa_is_never_chosen_by_a_text_preference`.
     pub fn render_to_intermediate(
         &mut self,
         gpu: &GpuContext,
         scene: &Scene,
         size: (u32, u32),
         bg_color: Color,
-        prefer_msaa: bool,
     ) -> Result<(), String> {
         self.ensure_size(gpu, size);
         let params = RenderParams {
             base_color: bg_color,
             width: self.last_size.0,
             height: self.last_size.1,
-            // Default: `Area` analytical coverage. MSAA16 produced
-            // visible stippling on thin (1-1.5 px) vector strokes at
-            // near-axis angles — `Area` integrates coverage analytically
-            // per pixel, smoother for thin strokes and cheaper.
-            // CrispHeavyPlus opts INTO `Msaa16` because at body sizes
-            // with `hint=off`, more samples per pixel smooths the glyph
-            // edges noticeably without re-introducing stipple (glyphs
-            // aren't 1-1.5 px strokes at near-axis angles — the
-            // problem case is vectors). Renderer is initialized with
-            // `AaSupport::all()` so both are available.
-            antialiasing_method: if prefer_msaa {
-                AaConfig::Msaa16
-            } else {
-                AaConfig::Area
-            },
+            // `Area` analytical coverage, sem alternativa. MSAA16
+            // produced visible stippling on thin (1-1.5 px) vector
+            // strokes at near-axis angles — `Area` integrates coverage
+            // analytically per pixel, smoother for thin strokes AND
+            // cheaper. Ver o doc-comment acima para o porquê de isto
+            // não ser um parâmetro.
+            antialiasing_method: AaConfig::Area,
         };
         self.renderer
             .render_to_texture(
@@ -288,7 +299,7 @@ impl VelloPass {
         if size.0 == 0 || size.1 == 0 {
             return Ok(Vec::new());
         }
-        self.render_to_intermediate(gpu, scene, size, Color::TRANSPARENT, false)?;
+        self.render_to_intermediate(gpu, scene, size, Color::TRANSPARENT)?;
         let (w, h) = self.last_size;
         // 256-byte row alignment for texture→buffer copies.
         let unpadded = w * 4;

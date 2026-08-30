@@ -142,6 +142,10 @@ fn track_slider_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Opti
     if let Some(consumed) = texpat::brush_slider_event(host, id) {
         return Some(consumed);
     }
+    // ⭐ A CONTAGEM de cópias da simetria radial (e o chip ligado a ela) — ver `event_symmetry`.
+    if let Some(consumed) = symmetry::segments_slider_event(host, id) {
+        return Some(consumed);
+    }
     if let Some(consumed) = texpat::texpat_slider_event(host, id) {
         return Some(consumed);
     }
@@ -452,52 +456,6 @@ fn pick_marker(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool 
     true
 }
 
-/// Grava a junção escolhida para o **Offset Path** e ENGOLE o clique.
-///
-/// Panel-local de propósito: escolher a quina não edita o documento (só o clique em "Offset
-/// Path" edita), então ela para aqui em vez de virar um `ToolPanelEvent` que a shell teria
-/// de guardar num 2º lugar — e dois lugares guardando a mesma escolha divergem.
-fn pick_expand_join(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
-    seam_reset_button(host, id);
-    if let Some(j) = expand_join_index(id) {
-        state::set_expand_join(j);
-    }
-    true
-}
-
-/// O índice da junção do Offset Path que este id escolhe (`0` Miter · `1` Round · `2`
-/// Bevel), ou `None` se o id não é um dos três chips. Porta única: o `apply_event` a
-/// consulta para saber se ATENDE o clique, e [`pick_expand_join`] para saber o QUE gravar —
-/// duas perguntas, uma tabela.
-fn expand_join_index(id: ph2d_a11y::NodeId) -> Option<u8> {
-    match id {
-        _ if id == ids::VECTOR_EXPAND_JOIN_MITER => Some(0),
-        _ if id == ids::VECTOR_EXPAND_JOIN_ROUND => Some(1),
-        _ if id == ids::VECTOR_EXPAND_JOIN_BEVEL => Some(2),
-        _ => None,
-    }
-}
-
-/// **Qual contorno o Offset Path move** — panel-local, o irmão do [`pick_expand_join`].
-fn pick_expand_side(host: &mut dyn PanelHostInternal, id: ph2d_a11y::NodeId) -> bool {
-    seam_reset_button(host, id);
-    if let Some(s) = expand_side_index(id) {
-        state::set_expand_side(s);
-    }
-    true
-}
-
-/// O índice do lado do Offset (`0` Outer · `1` Inner · `2` Both), ou `None`. Porta única,
-/// como a da junção.
-fn expand_side_index(id: ph2d_a11y::NodeId) -> Option<u8> {
-    match id {
-        _ if id == ids::VECTOR_EXPAND_SIDE_OUTER => Some(0),
-        _ if id == ids::VECTOR_EXPAND_SIDE_INNER => Some(1),
-        _ if id == ids::VECTOR_EXPAND_SIDE_BOTH => Some(2),
-        _ => None,
-    }
-}
-
 /// **Uma linha do picker de TOKEN foi escolhida:** fecha o chip e encaminha a escolha.
 ///
 /// ⚠️ O light-dismiss NÃO dispara aqui — o clique é DENTRO do popover —, então sem o fecho o card
@@ -545,6 +503,19 @@ mod texpat;
 
 #[path = "event_filters.rs"]
 mod filters;
+
+/// ⭐ **O slider de SEGMENTS da simetria radial** — irmão pelo mesmo teto, e pelo mesmo corte.
+/// Ele nasceu aqui porque o controlo estava MORTO: quatro sítios a declará-lo, pintá-lo e
+/// registá-lo, e **zero** braços de evento (caça de 2026-08-30, ver o módulo).
+#[path = "event_symmetry.rs"]
+mod symmetry;
+
+/// **Os dois selectores do Offset Path** — irmão pelo mesmo teto. Eles saíram deste ficheiro
+/// quando a porta da simetria acima o levou ao cap de 600: *levar só o novo deixaria o número
+/// onde estava, e ficar no mesmo sítio não é encolher.*
+#[path = "event_expand.rs"]
+mod expand;
+use expand::{expand_join_index, expand_side_index, pick_expand_join, pick_expand_side};
 
 /// **O COMMIT do campo de nome de um sinal** (item 4 do estudo dos contêineres) — extraído do
 /// [`apply_event`] pelo teto de 200 LOC por função.

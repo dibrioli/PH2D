@@ -10,12 +10,12 @@
 //!   exact source grid; the only algorithm that gives "honest pixel
 //!   art" output when the user wants no filtering at all. Accepts
 //!   non-integer factors (the destination has rectangular runs).
-//! - [`UpscaleAlgorithm::Xbr`] — edge-aware corner replacement (here
-//!   implemented as Scale2x/3x/4x, Mazzoleni 2001 — the canonical
-//!   free pixel-art-friendly upscaler with corner-blending behaviour
-//!   close to Hyllian xBR's first-pass rules; a full Hyllian xBR is
-//!   tracked as a fan-out follow-up). Integer factors only — clamps
-//!   to 2 / 3 / 4 when the slider sits between them.
+//! - [`UpscaleAlgorithm::Epx`] — edge-directed corner replacement
+//!   (EPX / Scale2x family, Johnson 1992 / Mazzoleni 2001), evaluated
+//!   as a continuous reconstruction so **every** integer stop from 1 to
+//!   [`SCALE_FULL_SCALE`] is a different image. ⛔ It is not Hyllian
+//!   xBR; see [`crate::algorithm::upscale_epx`] for the honest scope
+//!   and the reason the old "xBR" label was removed.
 //!
 //! Scale range: 1.0–[`SCALE_FULL_SCALE`] × (default
 //! [`DEFAULT_SCALE_FACTOR`] = 2.0). Values <1 are clamped to 1; values
@@ -45,36 +45,68 @@ pub enum UpscaleAlgorithm {
     Lanczos3,
     /// Pixel replication. Preserves the source grid exactly.
     Nearest,
-    /// Edge-aware corner replacement (Scale2x/3x/4x as v1; see module
-    /// docs). Integer factors only.
-    Xbr,
+    /// Edge-directed corner replacement (EPX family; see module docs).
+    /// Snaps to whole factors — every integer `1..=SCALE_FULL_SCALE`.
+    Epx,
 }
 
 impl UpscaleAlgorithm {
-    /// Whether the algorithm requires an integer scale factor. xBR
-    /// clamps to `{2, 3, 4}` regardless of the slider value; the other
-    /// two accept the slider value as-is.
-    pub fn requires_integer_factor(self) -> bool {
-        matches!(self, UpscaleAlgorithm::Xbr)
+    /// Whether the algorithm snaps the slider to a whole factor.
+    ///
+    /// EPX does: a pixel-art enlargement at `2.5×` gives runs of two
+    /// and three destination pixels for neighbouring source pixels,
+    /// which is the artefact pixel artists pick this mode to avoid.
+    /// ⚠️ Snapping to an INTEGER is not the same as snapping to a SET —
+    /// the old code clamped to `{2, 3, 4}` and killed `4×…16×`.
+    pub fn snaps_to_whole_factor(self) -> bool {
+        matches!(self, UpscaleAlgorithm::Epx)
     }
 
-    /// Project the slider's continuous scale factor onto the closest
-    /// value the algorithm actually supports.
+    /// **THE door** — project the slider's continuous scale factor onto
+    /// the value the algorithm will actually run at.
+    ///
+    /// Every consumer goes through here: `run_full_resolution` (what
+    /// Apply bakes), the panel's chip, and the panel's size readout.
+    /// That is what makes the chip's text and the baked image the same
+    /// number by construction rather than by two people agreeing.
     ///
     /// - `Lanczos3`, `Nearest`: clamp to `[MIN_SCALE_FACTOR,
     ///   SCALE_FULL_SCALE]`, otherwise pass through.
-    /// - `Xbr`: clamp to `{2, 3, 4}` (rounded to nearest).
+    /// - `Epx`: the same clamp, then round to a whole factor.
     pub fn project_scale(self, slider: f32) -> f32 {
         let clamped = slider.clamp(MIN_SCALE_FACTOR, SCALE_FULL_SCALE);
         match self {
             UpscaleAlgorithm::Lanczos3 | UpscaleAlgorithm::Nearest => clamped,
-            UpscaleAlgorithm::Xbr => match clamped.round() as i32 {
-                ..=2 => 2.0,
-                3 => 3.0,
-                _ => 4.0,
-            },
+            UpscaleAlgorithm::Epx => clamped.round(),
         }
     }
+}
+
+/// Slider track (`0..=1`) → the factor the algorithm will actually run
+/// at, through [`UpscaleAlgorithm::project_scale`].
+///
+/// ⚠️ **The panel MUST print this, never `slider_to_scale(track)`.**
+/// A chip that prints the request instead of the delivery is the most
+/// expensive shape of a dead control: the artist confirms it with their
+/// eyes and is wrong.
+pub fn effective_factor(algorithm: UpscaleAlgorithm, track: f32) -> f32 {
+    algorithm.project_scale(slider_to_scale(track))
+}
+
+/// Destination size the tool will bake, given a source size and the
+/// live slider track. Same door as the chip — one projection, two
+/// readouts.
+pub fn effective_output_size(
+    algorithm: UpscaleAlgorithm,
+    track: f32,
+    src_w: u32,
+    src_h: u32,
+) -> (u32, u32) {
+    let f = effective_factor(algorithm, track);
+    (
+        ((src_w as f32 * f).round() as u32).max(1),
+        ((src_h as f32 * f).round() as u32).max(1),
+    )
 }
 
 /// Linear scale factor → normalized slider track `0.0..=1.0` (inverse
@@ -118,14 +150,22 @@ impl Default for UpscaleParams {
 /// `ph2d_panel_upscale::set_current_upscale_snapshot`.
 ///
 /// `scale_factor` is the slider value (continuous); `effective_factor`
-/// is the value the algorithm will actually use (xBR snaps to
-/// `{2, 3, 4}`). The panel paints the slider against `scale_factor`
-/// and shows `effective_factor` as the "output size" readout.
+/// is the value the algorithm will actually use ([`Epx`] rounds to a
+/// whole factor). The panel paints the slider knob against
+/// `scale_factor`, prints `effective_factor` in the chip, and prints
+/// `source_w × source_h` alongside the projected output size.
+///
+/// ⚠️ `source_w` / `source_h` are `0` until the host pushes a snapshot
+/// — the readout says so rather than inventing a size.
+///
+/// [`Epx`]: UpscaleAlgorithm::Epx
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct UpscaleUiSnapshot {
     pub algorithm: UpscaleAlgorithm,
     pub scale_factor: f32,
     pub effective_factor: f32,
+    pub source_w: u32,
+    pub source_h: u32,
 }
 
 impl Default for UpscaleUiSnapshot {
@@ -136,6 +176,8 @@ impl Default for UpscaleUiSnapshot {
             algorithm,
             scale_factor,
             effective_factor: algorithm.project_scale(scale_factor),
+            source_w: 0,
+            source_h: 0,
         }
     }
 }
@@ -186,13 +228,61 @@ mod tests {
         assert!((s - 2.5).abs() < f32::EPSILON);
     }
 
+    /// ⭐ **The 80 %-dead-course gate, at the projection.** EPX snaps to
+    /// a WHOLE factor, never to a SET: every integer stop from
+    /// `MIN_SCALE_FACTOR` to `SCALE_FULL_SCALE` must survive the
+    /// projection as itself. The old code answered `4.0` for everything
+    /// from `3.5` up.
     #[test]
-    fn xbr_clamps_to_integer_two_three_four() {
-        assert_eq!(UpscaleAlgorithm::Xbr.project_scale(1.0), 2.0);
-        assert_eq!(UpscaleAlgorithm::Xbr.project_scale(1.4), 2.0);
-        assert_eq!(UpscaleAlgorithm::Xbr.project_scale(2.6), 3.0);
-        assert_eq!(UpscaleAlgorithm::Xbr.project_scale(3.5), 4.0);
-        assert_eq!(UpscaleAlgorithm::Xbr.project_scale(7.0), 4.0);
+    fn epx_snaps_to_a_whole_factor_and_keeps_every_integer_stop() {
+        for f in (MIN_SCALE_FACTOR as u32)..=(SCALE_FULL_SCALE as u32) {
+            let want = f as f32;
+            assert_eq!(
+                UpscaleAlgorithm::Epx.project_scale(want),
+                want,
+                "integer stop {f} was projected away — the slider is dead there"
+            );
+        }
+        // Between stops it rounds, and it rounds to the NEAR stop, not
+        // to a member of some fixed set.
+        assert_eq!(UpscaleAlgorithm::Epx.project_scale(2.6), 3.0);
+        assert_eq!(UpscaleAlgorithm::Epx.project_scale(7.4), 7.0);
+        assert_eq!(UpscaleAlgorithm::Epx.project_scale(12.6), 13.0);
+        // Out of range still clamps.
+        assert_eq!(UpscaleAlgorithm::Epx.project_scale(0.1), MIN_SCALE_FACTOR);
+        assert_eq!(UpscaleAlgorithm::Epx.project_scale(99.0), SCALE_FULL_SCALE);
+    }
+
+    /// ⭐ **The chip must print the DELIVERY, not the request.**
+    /// [`effective_factor`] is the door both the chip and the bake
+    /// read; this pins that it disagrees with the raw slider reading
+    /// exactly where the algorithm snaps.
+    #[test]
+    fn effective_factor_is_the_projection_not_the_raw_track() {
+        let track = scale_to_slider(7.4);
+        let raw = slider_to_scale(track);
+        assert!((raw - 7.4).abs() < 1e-3, "raw track reads {raw}");
+        // Lanczos3 passes the request through.
+        assert!((effective_factor(UpscaleAlgorithm::Lanczos3, track) - raw).abs() < 1e-3);
+        // EPX delivers 7, and the chip has to say 7.
+        assert_eq!(effective_factor(UpscaleAlgorithm::Epx, track), 7.0);
+    }
+
+    #[test]
+    fn effective_output_size_reads_through_the_same_door() {
+        let track = scale_to_slider(7.4);
+        assert_eq!(
+            effective_output_size(UpscaleAlgorithm::Epx, track, 64, 32),
+            (448, 224)
+        );
+        assert_eq!(
+            effective_output_size(UpscaleAlgorithm::Epx, track, 64, 32),
+            {
+                let f = effective_factor(UpscaleAlgorithm::Epx, track);
+                (((64.0 * f) as u32), ((32.0 * f) as u32))
+            },
+            "the readout must be derived from the door, never re-computed"
+        );
     }
 
     #[test]

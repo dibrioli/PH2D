@@ -119,7 +119,7 @@ pub fn run_pipeline(
     // Stage 1 — CLAHE (writes through into `out`). Skipped at the
     // identity clip limit so the per-tile CDF reconstruction can't
     // tint the image when CLAHE is effectively off.
-    if params.clip_limit > crate::params::CLIP_LIMIT_MIN {
+    if params.clahe_stage_runs() {
         clahe(rgba, w, h, params.clip_limit, params.tile_grid_size, out);
     } else {
         out.copy_from_slice(rgba);
@@ -184,7 +184,7 @@ pub fn run_pipeline(
     // Stage 6 — Posterize (Floyd-Steinberg dithering optional). Always
     // CPU — the error-diffusion sweep is strict raster-scan. Runs after
     // all colour-shift stages so it operates on the final palette.
-    if params.posterize_levels >= POSTERIZE_LEVELS_MIN {
+    if params.posterize_stage_runs() {
         posterize(
             out,
             w,

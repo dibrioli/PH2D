@@ -370,6 +370,11 @@ pub fn tr(key: &str) -> &'static str {
         "panel.physics.contact_hz" => "Contact Hz",
         "panel.physics.linear_damping" => "Linear",
         "panel.physics.angular_damping" => "Angular",
+        // ⚠️ *"Enabled"*, e não *"Spin"*: o campo que este interruptor escreve é o
+        // `sleep_angular_threshold`, mas a `rapier` 0.35 lê dele **o sinal**, não a magnitude —
+        // `>= 0` = os corpos podem dormir, `< 0` = nunca dormem. O rótulo tem de prometer o que o
+        // modelo entrega, e o que ele entrega é dormir, não rodar.
+        "panel.physics.sleep_enabled" => "Enabled",
         "panel.physics.sleep_speed" => "Speed",
         "panel.physics.sleep_spin" => "Spin",
         "panel.physics.sleep_delay" => "Delay",

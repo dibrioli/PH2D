@@ -311,12 +311,15 @@ impl FxLive {
                 }
             },
         };
+        // ⚠️ O 5.º argumento (`prefer_msaa`) saiu em 2026-08-30: o modo de AA do passe deixou de
+        // ser escolhido por uma preferência de TEXTO — ele é `AaConfig::Area` sempre, porque o
+        // `AaConfig` do Vello é por PASSE e o MSAA16 stippla traços vectoriais finos (§22.2 do
+        // registo da subida). Este sítio de chamada não estava na lista que a wave esperava.
         if let Err(e) = scratch.render_to_intermediate(
             gpu,
             scratch_scene.inner(),
             (batch.w, batch.h),
             Color::TRANSPARENT,
-            false,
         ) {
             eprintln!("[fx] scratch render: {e}");
             return false;

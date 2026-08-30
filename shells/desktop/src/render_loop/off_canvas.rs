@@ -12,7 +12,54 @@
 //! A decisão precisa de nome próprio — ela vive dentro de um closure que pede um renderer, e uma
 //! mutação que a desligasse compilaria e passaria a suíte inteira.
 
-use ph2d_ecs::{Entity, World};
+use ph2d_ecs::{Entity, VisibilityLayer, World};
+
+/// ⭐⭐⭐ **«Esta entidade DESENHA neste quadro?»** — a porta única do extract, e as **três** razões
+/// pelas quais ela pode não desenhar.
+///
+/// ⚠️ **A terceira nasceu em 2026-08-30** (o `OnScreenEnabler`) e as duas primeiras já existiam
+/// soltas dentro do closure do [`super::sim_extract`]. Juntá-las aqui não é arrumação: enquanto a
+/// decisão morava no fio, **nenhuma mutação a matava de forma observável** — é exactamente a razão
+/// que o doc do [`is_off_canvas`] já dava para o primeiro par, e a chegada de um terceiro motivo é
+/// o momento em que ela deixa de ser opinião.
+///
+/// | razão | pergunta | quem a autora |
+/// |---|---|---|
+/// | [`is_off_canvas`] | o olho da Hierarquia · a peça de uma receita | o artista · o ADR-0164 |
+/// | [`layer_visible`] | a máscara de camadas cruza a da câmara? | as 32 caixas da §8 |
+/// | [`super::on_screen_gate::hides`] | ela saiu do rect que ela declara? | os 5 campos da §8 |
+///
+/// `world_pos` é a pose de mundo que o extract já tem em mãos (o `GlobalTransform` do quadro).
+#[must_use]
+pub(crate) fn draws_this_frame(
+    sim: &World,
+    entity: Entity,
+    cull_mask: u32,
+    world_pos: [f32; 2],
+) -> bool {
+    !is_off_canvas(sim, entity)
+        && layer_visible(sim, entity, cull_mask)
+        && !super::on_screen_gate::hides(sim, entity, world_pos)
+}
+
+/// ⭐ **A metade das CAMADAS** (W3.T3.12) — *«a máscara desta entidade cruza a da câmara?»*.
+///
+/// Ausência do componente = visível a toda câmara ([`VisibilityLayer::ALL`]), que é a lei do
+/// Godot e o que o Inspector mostra numa grade toda marcada.
+///
+/// ⛔⛔ **HOJE NENHUMA CÂMARA AUTORA UMA MÁSCARA**: o `Camera2d::cull_mask` só existe como o
+/// literal `u32::MAX` em todo o repo (medido 2026-08-30), então **31 dos 32 bits são inertes** e a
+/// grade da §8 comporta-se como um interruptor «esconder» que exige desmarcar as 32 caixas uma a
+/// uma. ⚠️ **O buraco é do lado do AUTOR, não deste consumidor** — a superfície que falta (uma
+/// entrada de menu *View* com o filtro de camadas do viewport) mora em `ph2d-editor-core`
+/// (`src/ids/menus.rs` + `screens/hero/menu_rows.rs` + `screens/hero/chrome/view_toggles.rs`), fora
+/// desta linha. O gate `two_different_cull_masks_give_two_different_scenes` prende este lado para
+/// que a wave do autor encontre a metade dela já provada.
+#[must_use]
+pub(crate) fn layer_visible(sim: &World, entity: Entity, cull_mask: u32) -> bool {
+    sim.get::<VisibilityLayer>(entity)
+        .is_none_or(|vl| vl.visible_to(cull_mask))
+}
 
 /// ⭐⭐ **«Esta entidade está FORA da tela?»** — a pergunta que decide se ela emite instância.
 ///
@@ -72,8 +119,98 @@ pub(crate) fn is_unedited_recipe(sim: &World, entity: Entity) -> bool {
 
 #[cfg(test)]
 mod off_canvas_tests {
-    use super::is_off_canvas;
-    use ph2d_ecs::{ChildOf, MasterRoot, Name, SimWorld, Transform, Visibility};
+    use super::{draws_this_frame, is_off_canvas};
+    use ph2d_ecs::{
+        ChildOf, EnableMode, MasterRoot, Name, OnScreenEnabler, SimWorld, Transform, Visibility,
+        VisibilityLayer,
+    };
+
+    /// ⭐⭐⭐ **O gate que o `cull_mask` nunca teve: DUAS máscaras, DUAS cenas.**
+    ///
+    /// Uma afirmação de que o campo foi escrito não mediria nada — o defeito era precisamente um
+    /// campo escrito que ninguém lia. Este gate carrega na decisão que o extract de facto toma:
+    /// com a MESMA entidade e o MESMO mundo, duas máscaras de câmara diferentes dão duas respostas
+    /// diferentes a *«esta sprite emite instância?»*.
+    ///
+    /// ⚠️ **A metade justa vem primeiro** (a máscara que cruza), senão uma implementação que
+    /// recusasse sempre passaria.
+    ///
+    /// **Mutação:** trocar o `layer_visible` de [`super::draws_this_frame`] por `true` ⇒ RED.
+    #[test]
+    fn two_different_cull_masks_give_two_different_scenes() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Backdrop"),
+                VisibilityLayer(0b01),
+            ))
+            .id();
+        let w = sim.world();
+        assert!(
+            draws_this_frame(w, e, 0b01, [0.0, 0.0]),
+            "a camara que INCLUI a camada da entidade nao a desenhou"
+        );
+        assert!(
+            !draws_this_frame(w, e, 0b10, [0.0, 0.0]),
+            "a camara que EXCLUI a camada da entidade continuou a desenha-la: as 32 caixas da §8 \
+             nao chegam ao passe"
+        );
+    }
+
+    /// ⚠️ **A ausência do componente é «visível a toda câmara»** — a lei do Godot, e o que a grade
+    /// toda marcada do Inspector promete. Sem esta metade, uma cura que tratasse a ausência como
+    /// `0` apagaria toda a cena.
+    #[test]
+    fn an_entity_without_a_layer_is_visible_to_every_camera() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Plain")))
+            .id();
+        assert!(draws_this_frame(sim.world(), e, 0b1000, [0.0, 0.0]));
+    }
+
+    /// ⭐ **As TRÊS razões passam pela mesma porta** — o olho, a camada e o rect. Um consumidor que
+    /// só perguntasse a primeira é o que existia antes desta wave.
+    ///
+    /// **Mutação:** apagar o termo `on_screen_gate::hides` de [`super::draws_this_frame`] ⇒ RED.
+    #[test]
+    fn the_door_answers_for_the_eye_the_layer_and_the_rect() {
+        for (what, decorate) in [
+            (
+                "o olho",
+                (|w: &mut ph2d_ecs::World, e| {
+                    w.entity_mut(e).insert(Visibility::hidden());
+                }) as fn(&mut ph2d_ecs::World, ph2d_ecs::Entity),
+            ),
+            ("a camada", |w, e| {
+                w.entity_mut(e).insert(VisibilityLayer(0));
+            }),
+            ("o rect", |w, e| {
+                w.entity_mut(e).insert(OnScreenEnabler::new(
+                    [0.0, 0.0, 1.0, 1.0],
+                    EnableMode::HideVisible,
+                ));
+            }),
+        ] {
+            let mut sim = SimWorld::new();
+            let e = sim
+                .world_mut()
+                .spawn((Transform::IDENTITY, Name::new("Thing")))
+                .id();
+            assert!(
+                draws_this_frame(sim.world(), e, u32::MAX, [50.0, 50.0]),
+                "{what}: a entidade ja' nao desenhava antes da razao ser posta"
+            );
+            decorate(sim.world_mut(), e);
+            assert!(
+                !draws_this_frame(sim.world(), e, u32::MAX, [50.0, 50.0]),
+                "{what} nao chegou a' porta do extract"
+            );
+        }
+    }
 
     /// ⭐⭐⭐ **A RECEITA INTEIRA sai da tela — a raiz e as peças.**
     ///

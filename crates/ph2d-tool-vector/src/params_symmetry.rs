@@ -17,3 +17,23 @@ pub fn symmetry_kind_id(k: ph2d_symmetry::SymmetryKind) -> ph2d_a11y::NodeId {
         K::Radial => ph2d_editor_core::ids::VECTOR_SYM_KIND_RADIAL,
     }
 }
+
+/// **A contagem de cópias que um `SetValue` da fileira *Segments* autora.**
+///
+/// ⚠️ O painel já converteu o track na fronteira dele, então `v` chega no domínio do DOCUMENTO —
+/// aqui não há mapa nenhum, só a **cerca do vocabulário**: um número fora de `MIN..=MAX` (ou um
+/// `NaN` vindo de aritmética degenerada a montante) não pode entrar no estilo, porque o estilo é
+/// o que viaja para a `SymmetrySpec` e para o ficheiro.
+///
+/// ⛔ **Presa e não recusada:** `SymmetrySpec::segments()` já prende na leitura, e um estilo que
+/// guardasse `0` enquanto o kernel desenha `3` seria a segunda resposta a *"quantas cópias?"* —
+/// exactamente o par que este módulo existe para não deixar nascer.
+#[must_use]
+pub fn segments_from_value(v: f64) -> u32 {
+    if !v.is_finite() {
+        return ph2d_symmetry::MIN_SEGMENTS;
+    }
+    let lo = f64::from(ph2d_symmetry::MIN_SEGMENTS);
+    let hi = f64::from(ph2d_symmetry::MAX_SEGMENTS);
+    v.round().clamp(lo, hi) as u32
+}

@@ -41,13 +41,27 @@ fn the_paint_pass_draws_the_empty_object_ring() {
 
 /// **A RECEITA sai da tela pelo extract** — sem este fio, *Criar componente* volta a deixar dois
 /// objetos empilhados quando a receita é um grupo.
+///
+/// ⚠️ **A ÂNCORA MUDOU em 2026-08-30, e a lei não.** O extract passou a fazer as **três** perguntas
+/// de *«esta entidade desenha?»* por uma porta só (`off_canvas::draws_this_frame`, que chama o
+/// `is_off_canvas` como primeiro termo) — a cura dos dois controlos mortos da §8 Visibility, cujo
+/// mecanismo está em `the_draw_pass_asks_the_door_that_has_the_gates.rs`. Reancorar era obrigatório:
+/// *mudar o modelo re-pergunta o que cada gate ainda mede.*
 #[test]
 fn the_extract_asks_whether_the_entity_is_on_the_canvas() {
     let src = fs::read_to_string("src/render_loop/sim_extract.rs").expect("sim_extract.rs");
     assert!(
-        src.contains("off_canvas::is_off_canvas("),
+        src.contains("off_canvas::draws_this_frame("),
         "o extract deixou de perguntar se a entidade esta' na cena — uma receita que seja um \
          GRUPO volta a desenhar as pecas dela por cima da instancia"
+    );
+    // ⚠️ **E a porta continua a fazer a pergunta desta lei.** Sem esta metade, um
+    // `draws_this_frame` que tivesse perdido o termo do `is_off_canvas` passaria: a asserção acima
+    // mede o CHAMADOR, e a lei vive no chamado.
+    let door = fs::read_to_string("src/render_loop/off_canvas.rs").expect("off_canvas.rs");
+    assert!(
+        door.contains("!is_off_canvas(sim, entity)"),
+        "a porta `draws_this_frame` deixou de perguntar pelo olho/receita"
     );
     // ⚠️ O controlo NEGATIVO: a leitura crua de `Visibility` era a resposta ANTIGA, e ela não
     // pode voltar ao lado da nova — duas respostas para a mesma pergunta, e a primeira ganha.

@@ -15,11 +15,11 @@
 //!   Permanent bake. Activated by `rasterize_after = true`.
 //! - **Pre-upscale path.** When `upscale_if_smaller = true` and the
 //!   sprite's current visual size is below the target on either axis,
-//!   one of {Lanczos3, Nearest, xBR-fallback} grows the source to ≥
-//!   target before the fit-or-raster stage runs. xBR is integer-only;
-//!   if the user picked xBR with a non-integer factor, falls back to
-//!   Lanczos3 for correctness (logged via the `algorithm_used` field on
-//!   the output for the toast).
+//!   one of {Lanczos3, Nearest, EPX} grows the source to ≥ target
+//!   before the fit-or-raster stage runs. ⚠️ **None of the three falls
+//!   back to another** — each takes the fit's exact destination size,
+//!   non-uniform ratios included. (EPX used to, which made it a
+//!   permanent alias.)
 //!
 //! All kernels live inside this crate — zero external dep on `image` or
 //! similar (per HANDOFF_image_tools_4 §"Zero deps externas"). Cross-tool
@@ -203,11 +203,10 @@ fn equalize_one(s: &SpriteInput, tw: u32, th: u32, params: &EqualizeSizesParams)
 // Upscale kernels
 // ─────────────────────────────────────────────────────────────────────
 
-/// Grow `rgba` to at least `(min_w, min_h)`. Each algorithm picks its own
-/// natural output size: Nearest uses the smallest integer factor that
-/// satisfies both axes; Lanczos3 uses the exact requested size (smooth
-/// kernel handles non-integer); xBR with a non-integer factor falls back
-/// to Lanczos3 (per the briefing's correctness rule).
+/// Grow `rgba` to at least `(min_w, min_h)`. Nearest uses the smallest
+/// integer factor that satisfies both axes; Lanczos3 and EPX take the
+/// exact requested size. ⚠️ **No algorithm delegates to another** — a
+/// mode that delegates is a mode that never runs.
 fn upscale_to_at_least(
     rgba: &[u8],
     w: u32,
@@ -237,32 +236,30 @@ fn upscale_to_at_least(
                 dh.max(min_h),
             )
         }
-        UpscaleAlgorithm::Xbr => {
-            // Integer factor only; pick the smallest integer that fits both axes.
-            let f = fx.max(fy).ceil() as u32;
-            let int_fits = (fx - fx.round()).abs() < 1e-4 && (fy - fy.round()).abs() < 1e-4;
-            if int_fits {
-                // v1: xBR proper kernel is ~300-500 LOC and lives in the
-                // ph2d-tool-upscale crate (parallel agent). Until that
-                // dep lands, the public api still exists — but the
-                // implementation falls back to nearest at the integer
-                // factor, the closest kin to xBR's pixel-respecting
-                // intent (also flagged in algorithm_used for the toast).
-                nearest_upscale(rgba, w, h, f.max(1))
-            } else {
-                let dw = (w as f32 * fx).round() as u32;
-                let dh = (h as f32 * fy).round() as u32;
-                lanczos3_resample(
-                    bytemuck::cast_slice(rgba),
-                    w,
-                    h,
-                    dw.max(min_w),
-                    dh.max(min_h),
-                )
-            }
+        UpscaleAlgorithm::Epx => {
+            // ⚠️ Was a PERMANENT ALIAS: an integer ratio fell through to
+            // `nearest_upscale` and a fractional one to
+            // `lanczos3_resample`, so picking this mode never once
+            // produced its own pixels. The comment said "until that dep
+            // lands"; the dep had landed the same day and this crate
+            // does not depend on it (each Image Tools drop-crate owns
+            // its kernels by charter — Lanczos3 and Nearest are
+            // duplicated here for the same reason).
+            // The kernel takes exact destination dims, so a NON-UNIFORM
+            // fit — the normal case here, `fx != fy` — is honoured
+            // directly instead of being rounded onto one integer factor.
+            let dw = ((w as f32 * fx).round() as u32).max(min_w);
+            let dh = ((h as f32 * fy).round() as u32).max(min_h);
+            (epx_resample(rgba, w, h, dw, dh), dw, dh)
         }
     }
 }
+
+// ⚠️ CHILD module, not sibling — a descendant sees private items, so
+// nothing here is promoted just to be reached (`arch_color_space_typed`).
+#[path = "algorithm_epx.rs"]
+mod epx;
+use epx::epx_resample;
 
 /// Integer-factor nearest-neighbor replication. Pixel-art-safe (no
 /// filtering at all).
@@ -554,6 +551,9 @@ mod tests {
             scale_y: sy,
         }
     }
+
+    // ⚠️ The EPX gates (the Scale2x oracle, the not-an-alias gate) live
+    // in `algorithm_epx.rs`, next to the kernel they measure.
 
     #[test]
     fn empty_input_returns_empty_output() {

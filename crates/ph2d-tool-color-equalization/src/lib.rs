@@ -49,6 +49,7 @@ pub mod lut;
 pub mod lut_presets;
 pub mod manifest;
 pub mod params;
+pub mod stage;
 pub mod tool;
 
 pub use manifest::MANIFEST;

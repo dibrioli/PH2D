@@ -34,7 +34,7 @@ pub use world::cast::CastHit;
 pub use world::character::{CharacterHit, CharacterMove, CharacterParams};
 pub use world::checkpoint::{PhysicsCheckpoint, PhysicsCheckpointRing};
 pub use world::contacts::{ContactReport, PeakKey, PeakSample};
-pub use world::defaults::BodyDefaults;
+pub use world::defaults::{BodyDefaults, SLEEP_SPIN_DISABLED};
 pub use world::effector::{zone_force_world, zone_force_world_at, zone_spin_sign};
 pub use world::grab::HoldSpec;
 pub use world::ik::{IkChain, IkLink, IkOptions, IkPose};

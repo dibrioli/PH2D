@@ -114,14 +114,8 @@ fn registering_a_texture_and_drawing_it_renders_without_panic() {
         brush.as_ref(),
         vello::kurbo::Affine::translate((10.0, 10.0)),
     );
-    vp.render_to_intermediate(
-        &gpu,
-        &scene,
-        (256, 256),
-        vello::peniko::Color::TRANSPARENT,
-        false,
-    )
-    .expect("render with an overridden image");
+    vp.render_to_intermediate(&gpu, &scene, (256, 256), vello::peniko::Color::TRANSPARENT)
+        .expect("render with an overridden image");
 }
 
 /// **O caminho INTEIRO da shell, com DOIS renderers** (o "panic ao abrir"): um scratch renderiza
@@ -147,13 +141,7 @@ fn the_two_renderer_scratch_blur_register_render_path_does_not_panic() {
         &vello::kurbo::Rect::new(12.0, 12.0, 52.0, 52.0),
     );
     scratch
-        .render_to_intermediate(
-            &gpu,
-            &shape,
-            (w, h),
-            vello::peniko::Color::TRANSPARENT,
-            false,
-        )
+        .render_to_intermediate(&gpu, &shape, (w, h), vello::peniko::Color::TRANSPARENT)
         .expect("scratch render");
 
     // 2. Roda a pilha sobre o intermediate do scratch numa textura de saída.
@@ -180,14 +168,8 @@ fn the_two_renderer_scratch_blur_register_render_path_does_not_panic() {
         brush.as_ref(),
         vello::kurbo::Affine::translate((20.0, 20.0)),
     );
-    main.render_to_intermediate(
-        &gpu,
-        &scene,
-        (256, 256),
-        vello::peniko::Color::TRANSPARENT,
-        false,
-    )
-    .expect("main render with the blurred FX image");
+    main.render_to_intermediate(&gpu, &scene, (256, 256), vello::peniko::Color::TRANSPARENT)
+        .expect("main render with the blurred FX image");
 }
 
 /// **O RESIZE re-registra (dims corretas), não faz override** — o "panic ao zoom / deforma ao
@@ -216,14 +198,8 @@ fn re_registering_on_resize_does_not_overrun() {
         brush.as_ref(),
         vello::kurbo::Affine::translate((10.0, 10.0)),
     );
-    main.render_to_intermediate(
-        &gpu,
-        &scene,
-        (256, 256),
-        vello::peniko::Color::TRANSPARENT,
-        false,
-    )
-    .expect("render after resize re-register");
+    main.render_to_intermediate(&gpu, &scene, (256, 256), vello::peniko::Color::TRANSPARENT)
+        .expect("render after resize re-register");
 }
 
 /// **O halo é do EFEITO e a FORMA sobrevive por cima** — a semântica que faz o degrau ser

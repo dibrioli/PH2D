@@ -19,5 +19,11 @@ pub use ph2d_editor_core::ids::{
     PHYSICS_PULL_RADIUS_NUM, PHYSICS_RESET_DEFAULTS, PHYSICS_RESTORE_RUN, PHYSICS_SEC_INTERACT,
     PHYSICS_SEC_JOINT, PHYSICS_SEC_LAYERS, PHYSICS_SHOW_COLLIDERS, PHYSICS_SLEEP_DELAY,
     PHYSICS_SLEEP_DELAY_NUM, PHYSICS_SLEEP_SPEED, PHYSICS_SLEEP_SPEED_NUM, PHYSICS_SLEEP_SPIN,
-    PHYSICS_SLEEP_SPIN_NUM, PHYSICS_SUBSTEPS, PHYSICS_SUBSTEPS_NUM, physics_layer_cell_index,
+    PHYSICS_SUBSTEPS, PHYSICS_SUBSTEPS_NUM, physics_layer_cell_index,
 };
+
+// ⚠️ **`PHYSICS_SLEEP_SPIN_NUM` saiu desta lista em 2026-08-30** e a ausência é a nota: ele era o
+// chip numérico do slider *Spin*, e o slider virou um interruptor (`paint::body`), que não tem
+// chip. O `NodeId` continua declarado em `ph2d-editor-core` — **crate que esta linha não possui**
+// —, onde ele é agora um const órfão: ninguém o regista, ninguém o pinta, ninguém lhe pergunta
+// nada. Apagá-lo de lá (e da tabela do `node_id_collisions`) é o remate desta cura.

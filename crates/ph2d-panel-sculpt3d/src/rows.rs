@@ -10,7 +10,6 @@
 //! [`ROWS`]; acrescentar um knob é acrescentar uma linha, e ele nasce pintado,
 //! registrado, vivo e varrido.
 
-use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids;
 use ph2d_sculpt3d::Verb;
 
@@ -44,6 +43,14 @@ pub use topology::TOPOLOGY;
 mod alpha;
 use alpha::{MAX_AXIS_ELEV_F32, degrees, directional_alpha, stamp_alpha};
 
+/// **QUAIS SEÇÕES existem e que CABEÇALHOS elas têm** — ver o doc do módulo.
+///
+/// ⚠️ Nenhum caminho de chamador muda: `rows::SECTIONS`, `rows::rows()`,
+/// `rows::row_for()` e `rows::section_headers()` continuam onde estavam.
+#[path = "rows_sections.rs"]
+mod sections;
+pub use sections::{BUTTON_SECTIONS, SECTIONS, row_for, rows, section_headers};
+
 pub use types::{Place, Row, Section};
 
 /// O teto da pista de **Extract Smooth**, em passadas.
@@ -61,6 +68,34 @@ const MAX_EXTRACT_SMOOTH: f32 = 8.0; // LITERAL-PX-OK: contagem de passadas MEDI
 /// *sempre* ganhasse uma exceção.
 pub(super) fn always(_: &Sculpt3dUi) -> bool {
     true
+}
+
+/// **O DAB LÊ A DISTÂNCIA COM ESTE PINCEL EM MÃOS?** — a porta da row de
+/// [`Dureza`](BRUSH), e a MESMA que a largura do campo já segue
+/// (`RefMode::field`).
+///
+/// ⚠️ **A dureza é o `apply_hardness_to_distances`: ela remapeia a distância que
+/// a curva do dab lê.** Com um campo elástico armado (`RefMode::L` + um verbo que
+/// declare `elastic_field`) não existe curva do dab — o suporte é o
+/// `kelvinlet::rim_landing`, que é uma indicadora com aterrissagem, e o
+/// `shaped_distance` **não é chamado**. Medido pela porta do produto em
+/// `ph2d-sculpt3d/tests/measure_where_the_curve_knobs_reach.rs`
+/// (`neither_curve_knob_reaches_an_elastic_field`): dois valores de dureza dão o
+/// mesmo barro **ao bit**, e o MESMO verbo no `s-mode` os separa.
+///
+/// ⚠️ **A pergunta é feita à porta do MOTOR, nunca a uma lista de verbos aqui** —
+/// o `stroke_dab_core` escolhe o regime exatamente onde essa porta devolve
+/// `Some`, e uma segunda cópia da pergunta é como a próxima nasce desalinhada.
+/// É a mesma frase que o `paint_elastic_scales_row` já carrega.
+///
+/// ⚠️ **E ela vale só para a DUREZA, não para o Falloff ao lado.** O seletor de
+/// curva é inerte nos mesmos regimes (e num terceiro, o do `Verb::Mask`) e é
+/// pintado assim mesmo, por uma cerca com motivo escrito:
+/// `the_basic_level_never_hides_the_curve_that_shapes_the_dab` porta a decisão do
+/// Blender — *o `FalloffPanel` é dobrado, nunca ausente*. Ver o bloco no
+/// `paint/brush.rs`, que traz as duas recusas medidas.
+pub(super) fn shapes_the_distance(u: &Sculpt3dUi) -> bool {
+    u.brush.mode.field(u.brush.verb).is_none()
 }
 
 /// O pincel: o que se ajusta antes de encostar no barro.
@@ -117,7 +152,11 @@ static BRUSH: &[Row] = &[
         decimals: 2,
         get: |u| u.brush.hardness,
         set: |u, v| u.brush.hardness = v,
-        show: always,
+        // ⚠️ **Ela some onde o dab não LÊ a distância** — ver
+        // [`shapes_the_distance`]. Era `always`, e sob um campo elástico isso
+        // eram dois controles (pista + chip) que não movem um vértice: medido
+        // ao bit em `measure_where_the_curve_knobs_reach`.
+        show: shapes_the_distance,
         // ⚠️ **O caso mais limpo de Pro que esta tabela tem:** o valor de fábrica
         // é `0`, que é o NEUTRO do próprio original (o
         // `apply_hardness_to_distances` abre com `if (hardness == 0.0f) return;`),
@@ -542,46 +581,3 @@ static BRUSH: &[Row] = &[
         place: Place::AfterExtract,
     },
 ];
-
-/// Toda seção que tem rows de slider, em ordem de pintura.
-///
-/// ⚠️ **Nem toda seção do painel está aqui** — Tool, Symmetry e Scene são botões
-/// e rádios, não knobs contínuos, e forçá-las nesta tabela pediria uma `Row` que
-/// soubesse ser um botão. Elas são pintadas pelo `paint/body.rs`, que é quem
-/// conhece a ordem completa.
-///
-/// ⚠️ **A Topology ENTROU quando ganhou o primeiro knob contínuo** (a resolução
-/// do remesh), e o que a traz para cá não é a pintura — ela continua sendo
-/// desenhada à mão, porque o resto dela são botões — e sim as outras três listas:
-/// `populate`, `event` e a varredura de costura percorrem esta tabela, então uma
-/// row que mora nela nasce registrada, viva sob o mouse e varrida. Uma row
-/// pintada à mão FORA daqui seria o controle morto que esta casa varre a cada
-/// wave.
-pub static SECTIONS: &[Section] = &[
-    Section {
-        id: ids::SCULPT3D_SEC_BRUSH,
-        title: "panel.sculpt3d.section.brush",
-        rows: BRUSH,
-    },
-    Section {
-        id: ids::SCULPT3D_SEC_SHADING,
-        title: "panel.sculpt3d.section.shading",
-        rows: shading::SHADING,
-    },
-    Section {
-        id: ids::SCULPT3D_SEC_TOPOLOGY,
-        title: "panel.sculpt3d.section.topology",
-        rows: topology::TOPOLOGY,
-    },
-];
-
-/// Toda row, achatada — o que `populate`, `event` e a varredura de costura
-/// percorrem.
-pub fn rows() -> impl Iterator<Item = &'static Row> {
-    SECTIONS.iter().flat_map(|s| s.rows.iter())
-}
-
-/// A row a que um id pertence, se alguma (a pista ou o chip dela).
-pub fn row_for(id: NodeId) -> Option<&'static Row> {
-    rows().find(|r| r.slider == id || r.chip == id)
-}

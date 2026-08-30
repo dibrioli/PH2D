@@ -281,6 +281,15 @@ pub(crate) fn selected_item(
             .world()
             .get::<ChildOf>(e)
             .is_some_and(|c| sim.world().get::<VecLayout>(c.parent()).is_some()),
+        // ⚠️ **A pergunta é do PAI, não do filho** — `grow`/`shrink` são o trait de flex do
+        // `taffy`, e uma moldura `Grid` consome outro; os dois números viajam e são descartados
+        // lá. É a mesma leitura de uma linha acima (o `in_flow`), com a direcção em vez da
+        // presença.
+        parent_is_grid: sim.world().get::<ChildOf>(e).is_some_and(|c| {
+            sim.world()
+                .get::<VecLayout>(c.parent())
+                .is_some_and(|l| l.dir == LayoutDir::Grid)
+        }),
     })
 }
 

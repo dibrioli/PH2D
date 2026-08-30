@@ -632,8 +632,13 @@ eixo?» onde o consumidor pergunta «qual **direcção**?» / «a fonte tem `fva
 **registei**?». ⚠️ E em três deles a regra certa **já está escrita no mesmo ficheiro**, para o
 controlo vizinho.
 
-⛔ **Curados aqui:** o **6** (a cena) e o **3** (o texto deixa de recomendar o inerte). Os outros
-nove mudam a superfície do painel — **decisão do Enio**, devolvida com o mecanismo de cada um.
+⛔ **Curados no dia da caça:** o **6** (a cena) e o **3** (o texto deixa de recomendar o inerte).
+
+⚠️⚠️ **A frase que estava aqui — *«os outros nove mudam a superfície do painel, decisão do Enio»* —
+está OBSOLETA desde 2026-08-30.** O Enio respondeu *«os defeitos precisam ser corrigidos. Vamos
+buscar a perfeição»* e depois delegou a decisão (*«use o critério: a busca do estado da arte, do
+padrão ouro»*). **Os nove foram atacados na mesma jornada** — o ledger, com o que ficou e por quê,
+está no **§24**.
 
 ### §19.2-bis — ⛔ E os PAINÉIS DE FERRAMENTA: mais 23 defeitos, sobre ~377 controlos seguidos
 
@@ -826,6 +831,224 @@ escrita à mão. `PH2D_ALLOW_NO_GPU=1` renuncia: **uma** saída explícita em ve
 adaptador por software** responde à pergunta antes de tocar no CI: **se passarem, ligar o corredor
 é trivial e seguro; se falharem, o preço fica medido.** *Uma decisão que se pode medir não se
 decide.*
+
+## §24 — O LEDGER da jornada das curas (2026-08-30)
+
+> Ordem do Enio, depois de ler a caça: *«os defeitos precisam ser corrigidos. Vamos buscar a
+> perfeição»*, e depois, ao retirar-se: *«use o critério: a busca do estado da arte, do padrão
+> ouro… Não se importe com os custos. Resolva!»*.
+>
+> Nove frentes paralelas em crates disjuntas. **Toda cura tem um gate que mede o VALOR A CHEGAR AO
+> CONSUMIDOR** — não focalizabilidade, não «o clique chega à ferramenta» —, e **toda tem prova de
+> mutação no PRODUTO**, nunca no teste.
+
+### §24.1 — O que a jornada mudou de facto
+
+| frente | curas | achados que ninguém tinha nomeado |
+|---|---|---|
+| **Vector** | Symmetry›Segments ligado (4 mutações) | a UI do pincel de contorno **já existia inteira** — faltavam 2 braços |
+| **Dreno / painel autorado** | 3 censos novos (a ida-e-volta da selecção) | ⭐ o dreno **não estava** no painel: está no shell. Premissa central do briefing refutada |
+| **Ferramentas de imagem** | 6 (xBR·escala·Show mask·4 fileiras do CEQ) | ⭐⭐ o `xBR` **não podia ser xBR** sem a referência ⇒ renomeado **`EPX`** em todo lado. *Um rótulo que promete o que não entrega é o defeito, não o algoritmo* |
+| **Sculpt3D / Grid / Flip** | Hardness sob campo elástico · cabeçalho Bake · censo de cabeçalhos | ⛔ o Falloff sob Mask é **inalcançável** (a referência não o aplica; 10⁶× de divergência medida) |
+| **Render / Texto / Física** | Sleep vira interruptor · `Near+Aniso` medido idêntico · cabeçalho Layers · tecto de eixos | ⛔ 3 premissas refutadas, entre elas: a regra da secção AXES **esconderia um Weight vivo** numa fonte só-de-peso |
+| **Shell / Inspector** | cull_mask com porta+gates · On-Screen Enabler com consumidor · anchors-runtime estacionado | ⛔ `INPUT_MAP_SURFACE` é **falso positivo** (término por AUSÊNCIA); o `VisibilityLayer` **não alcança a cadeia vectorial** |
+| **AA do passe** | `prefer_msaa` **removido** (4 mutações, 2 lentes) | ⚠️ a wave esperava 1 sítio de chamada e havia **10** |
+| **eu** | catraca 10→2 · censo de folgas de LOC · `WidgetEvent::SelectionChanged` · X da tira do Flip · 7.º eixo · refluxo sobre caminho · cor do Grid · `WET_TUNING_SCROLL` | ⭐ o censo de folgas achou **3 obsoletas** na 1.ª corrida, uma congelada havia 3 meses |
+
+### §24.2 — ⛔ O que NÃO foi curado, com o mecanismo
+
+- **`Falloff` com o verbo Mask** — a referência (Blender) não aplica a curva ao canal de máscara;
+  forçá-lo diverge **10⁶×** do kernel gateado. A inércia fica **medida ao lado da fileira**, e a
+  fileira fica visível: há uma cerca documentada (`FalloffPanel`) que manda mostrá-la sempre.
+- **`Flip › Min Width` / `Response`** — mortos por álgebra (a pressão entra como literal `1.0`), e
+  **não há grandeza real para lhes dar**: o `winit` escreve `force: None` nos três backends e o
+  amostrador do Flip decima por **distância**, sem relógio. Fica um gate que **fica vermelho no dia
+  em que alguém ligar uma grandeza a sério**.
+- **`Visibility Layer`** — o consumidor foi curado e gateado; o **AUTOR não existe** (nada atribui
+  `Camera2d::cull_mask`). O bloqueador é executável:
+  `nothing_authors_a_camera_cull_mask_yet_and_that_is_the_named_blocker`.
+- **`Show anchors at runtime`** e **`SpawnCommand`** — o mesmo bloqueador nomeado, `shells/game`/R1,
+  adiado pelo dono. O controlo fica **estacionado com a razão à vista** e um gate que o traz de
+  volta no dia em que a shell existir.
+- **`Follow Curvature`** (a espécie *«o consumidor projecta o valor fora»*) — a cura publicada é o
+  factor de escala conforme, que é wave com espec própria (§5 do `CLAUDE.md`).
+
+### §24.3 — ⚠️ Duas coisas que este ledger corrige nele próprio
+
+1. **A frase «decisão do Enio» do §19.2 envelheceu em horas.** Ela era verdadeira quando escrita e
+   falsa no dia seguinte — *uma nota que delega uma decisão tem de ser reconferida assim que a
+   decisão chega*.
+2. **Três agentes reportaram o mesmo bloqueio de ambiente** (`/mnt/ramtarget` a 100%), e dois
+   contornaram-no com um `CARGO_TARGET_DIR` no disco. ⇒ **o tmpfs de 48 GB não chega para três
+   frentes a compilar `--all-targets`**, e isso não é código: é a bancada. Fica escrito porque a
+   próxima jornada paralela vai bater no mesmo.
+
+## §23 — ⛔⛔ O CI corre **26 dos 313** membros da workspace (2026-08-30)
+
+Medido lendo o passo `workspace unit tests (multi-package nextest)` do `spike.yml`: ele não é
+`--workspace`, é uma **lista de 26 `-p` escrita à mão**.
+
+| | |
+|---|---:|
+| membros da workspace (`crates/*`, `tools/*`, `shells/desktop`, `tests/spike`) | **313** |
+| pacotes que o `nextest` do CI corre | **26 (8%)** |
+
+⛔ **Ficam de FORA, entre outros:** `ph2d-editor-core` (os **53** gates de arquitectura + o
+`architecture_msrv_is_the_pinned_toolchain` + o novo `architecture_stack_versions_doc_matches_the_lockfile`),
+`ph2d-tool-painter` (**136 k LOC**), `ph2d-physics`, `ph2d-physics-ecs`, `ph2d-timeline`, todos os
+`ph2d-panel-*` e `shells/desktop`.
+
+⇒ *«a suíte está verde» e «o CI está verde» são afirmações sobre populações muito diferentes.* O
+portão de fecho local corre **20 065** testes; o CI corre uma fracção deles.
+
+### §23.1 — ⚠️ E a lista estreita **não é preguiça**: é uma cerca MEDIDA
+
+O `spike.yml` traz o histórico ao lado do `timeout-minutes: 90`: uma build **fria** no Windows
+recompila o grafo inteiro **incluindo dav1d/rav1e** e passou de 45 min; e *«um job cancelado NUNCA
+corre o save do rust-cache»*, logo um estouro deixa o cache frio para sempre — «laço de frio
+permanente». Alargar para `--workspace` nos três OS reabre exactamente isso.
+
+### §23.2 — ⏳ A cura tem um BLOQUEADOR nomeado, e não é o tempo de CI
+
+A forma óbvia — **workspace inteira no Linux** (o runner mais barato, que *«absorve uma build fria
+sob o tecto»*) e a lista estreita no macOS/Windows, que existem para provar *link* cross-OS e o hash
+de determinismo — bate numa parede que este repo já documentou:
+
+⛔ **a família de falso-positivos de CARGA** (`CLAUDE.md` §5.0). São gates que dividem dois relógios
+ou contam alocações; eles reprovam sob paralelismo e passam sozinhos. Um runner GitHub de 2 vCPU a
+correr 20 065 testes é o pior caso possível para eles, e o conjunto que reprova **muda entre
+corridas do mesmo binário**.
+
+⇒ **alargar a cobertura do CI exige primeiro curar essa família** — trocar cada régua de razão por
+uma que meça uma propriedade independente da máquina. Enquanto isso não acontecer, alargar troca
+«8% medido» por «100% vermelho intermitente», que é pior. *A cura é a régua, não o corredor.*
+
+## §22 — O report do Enio: «manchas animadas parecendo TV antiga» à volta das formas vectoriais (2026-08-30)
+
+> Report em duas mensagens: *«um pequeno bug/artefato nas formas vetorias: vejo ao redor aquelas
+> manchas animadas parecendo TV antiga»* e, depois, *«os artefatos parecem ter relação com a tool
+> Width»*.
+
+### §22.1 — O que foi MEDIDO (e o que não foi)
+
+| | |
+|---|---|
+| cena `PH2D_BUILD_SMOKE=42` (Width Tool), ferramenta **Select**, canvas em repouso | ⭐ **bit-estável**: a única região que muda entre quadros é `188×9 px` — a barra de estado |
+| reprodução com a ferramenta **Width activa** | ⛔ **não conseguida**. O `ydotool` desta máquina usa a faixa absoluta `0..65535`, não pixels (achado: pedir `y=152` põe o ponteiro a `2,5 px` do topo) — e depois de corrigir a conversão a janela do app não voltou a ser alcançável pelo compositor |
+| adaptador de GPU nesta máquina | RTX 5060 Ti + iGPU por RADV, Vulkan 1.4.357 — os gates de GPU **correm** aqui |
+
+⚠️ **Portanto: a causa NÃO está confirmada.** O que se segue são três mecanismos **reais**, cada um
+com endereço, que produzem exactamente esta classe de sintoma. Dois deles são defeitos por si só,
+independentemente de serem *este* defeito.
+
+### §22.2 — ⛔⛔ Mecanismo A: um preset de TEXTO escolhe o anti-aliasing de TODA a cena
+
+`shells/desktop/src/render_loop/present.rs:424` lê `text_rendering().params().prefer_msaa` e passa-o
+ao `vello_pass`. Ele decide o `AaConfig` do **passe inteiro** — chrome **e** arte vectorial.
+
+⭐⭐ **E o nosso próprio código diz o que isso custa**, em dois sítios:
+
+- `ph2d-tokens/src/typography.rs:213` — *«pode stipplar strokes vetoriais finos»*.
+- `ph2d-render/src/vello_pass.rs:165` — *«MSAA16 produced visible stippling on thin (1-1.5 px)
+  vector strokes at near-axis angles»*.
+
+⇒ **o sintoma reportado está escrito no código, com o nome, ao lado da bandeira que o liga.**
+
+⚠️⚠️ **E a justificação escrita concede o defeito e aplica-o na mesma frase:** *«CrispHeavyPlus opts
+INTO Msaa16 … without re-introducing stipple (glyphs aren't 1-1.5 px strokes at near-axis angles —
+**the problem case is vectors**)»*. O raciocínio está certo sobre os **glifos** e esquece que o
+`AaConfig` do Vello é **por passe**, não por caminho: a mesma escolha cai sobre os vectores do mesmo
+quadro. *Uma premissa que nomeia a vítima e conclui que não há vítima.*
+
+O `CrispHeavyPlus` é alcançável por menu (`TextRendering::next()` cicla
+`Default → CrispHeavy → CrispHeavyPlus`) e é o único preset com `prefer_msaa: true`. **O default
+não o liga**, o que é consistente com o artefacto ser intermitente e ligado ao que o artista tenha
+tocado na sessão.
+
+### §22.3 — ⛔⛔ Mecanismo B: usamos o caminho do Vello que ele próprio desaconselha
+
+`vello_pass.rs` chama `Renderer::render_to_texture`. O doc-comment do **upstream**, sobre a função
+que ela usa por baixo (`vello-0.10.0/src/render.rs:97`):
+
+> *«This function is not recommended when the scene can be complex, as it does not implement robust
+> dynamic memory.»*
+
+E os buffers da fase grosseira são **constantes escritas à mão**
+(`vello_encoding-0.10.0/src/config.rs:398`):
+
+> *«The following buffer sizes have been hand picked to accommodate the vello test scenes as well as
+> paris-30k. These should instead get derived from the scene layout using reasonable heuristics.»*
+>
+> `tiles = lines = seg_counts = segments = 1<<21` · `ptcl = 1<<23`
+
+⇒ **quando a cena estoura um deles, a fase fina lê fora do alcance e pinta lixo — sem erro, sem
+aviso, e diferente a cada quadro.** É a assinatura canónica de «estática de TV que anima». A leitura
+dos contadores (`BumpAllocators`) que detectaria isto **só acontece com a feature `debug_layers`**
+do Vello, que não compilamos: `let robust = cfg!(feature = "debug_layers")`.
+
+⚠️ **E é aqui que a pista do Enio encaixa:** a largura viva **re-coze por quadro** e a fita passa por
+um *sweep* booleano (`ph2d-vec-boolean::power_stroke` → `Region::of` → `drop_slivers`), que emite
+muito mais geometria que um traço uniforme. *A ferramenta que ele nomeia é a que mais aproxima a
+cena do tecto não medido.*
+
+### §22.3-bis — ⛔ Duas hipóteses REFUTADAS por medição (e valem tanto como as que ficam)
+
+**(i) «o assador da fita deixa LASCAS».** Era a suspeita mais natural: `power_stroke` fecha em
+`Region::of(NonZero)` → `drop_slivers`, que varre peças com **área ≤ 1e-4 do total** — logo uma a
+`1,1e-4` **sobrevive** e seria tinta solta à volta do traço. Medido
+([`measure_power_stroke_slivers.rs`](../../crates/ph2d-vec-boolean/tests/measure_power_stroke_slivers.rs))
+sobre a senoide adversária (curvatura que troca de sinal, onde o doc do `drop_slivers` diz que as
+lascas nascem), varrendo os **3 perfis não-uniformes do catálogo × 5 larguras**:
+
+| | resultado |
+|---|---|
+| peças devolvidas | **1**, nas 15 células |
+| menor/maior área | **1,000000** |
+| menor área ÷ piso do `drop_slivers` | **10 000×** |
+
+⇒ *não há lasca nenhuma, nem perto do piso.* A hipótese cai.
+
+**(ii) «o assador não é determinístico».** É a única forma de a fita **animar** com o documento
+parado, e agora tem gate: `the_ribbon_is_a_pure_function_of_its_input` coze duas vezes a mesma
+entrada e compara **âncora a âncora, bit a bit**. ⭐ Verde — e passa a ser uma propriedade NOSSA:
+o `linesweeper` guarda a ordem dos pares num `FxHashMap` (semente fixa), e no dia em que uma subida
+o trocar por um `HashMap` com semente aleatória este gate fica vermelho **aqui**, em vez de virar
+cintilação no canvas de alguém.
+
+⇒ **Com (i) e (ii) fora, a parte «animada» do report não pode vir da geometria da fita.** Sobram os
+mecanismos A (o AA do passe) e B (o estouro silencioso dos buffers do Vello), que são os dois sobre
+a **rasterização**, não sobre a forma.
+
+### §22.4 — Mecanismo C (menor, e visível na fotografia)
+
+Na captura de `=42`, o traço **verde ondulado** sai visivelmente **facetado** — a fita é achatada com
+`tolerance(bez) = diagonal_da_bbox × REL_TOL`, que é grosseira quando a forma é vista de perto. Não
+produz ruído, mas é qualidade de borda por resolver e vale a nota.
+
+### §22.5 — O que foi feito, e o que fica
+
+- ✅ **O mecanismo A foi CURADO no mesmo dia.** O campo `prefer_msaa` saiu do
+  `TextRenderingParams`, o argumento saiu do `render_to_intermediate`, e o passe usa
+  `AaConfig::Area` **como constante**. O `CrispHeavyPlus` fica com os três ingredientes que são de
+  facto sobre texto. *Uma bandeira que serve dois consumidores com necessidades opostas não é uma
+  preferência, é um bug de desenho.*
+  Gate: `the_pass_aa_is_never_chosen_by_a_text_preference` — censo de **6 277** ficheiros, **duas**
+  lentes (o valor **e** a forma), **4 mutações, 4 mortas**.
+  ⭐⭐ **E a 2.ª lente existe por uma delas:** a mutação que punha `Area` nos DOIS braços de um `if`
+  passava na 1.ª lente — *o defeito não é o valor `Msaa16`, é a decisão ser tomada por quem não
+  devia decidir*. A 4.ª (um `bool` de nome inocente na assinatura, com a constante intacta) revelou
+  ainda um buraco no meu próprio parse: ele parava no primeiro `)` — dentro de `size: (u32, u32)` —
+  e **cortava a lista antes do último parâmetro**, que é exactamente onde a bandeira vivia.
+  ⚠️ **A wave esperava UM sítio de chamada e havia DEZ** (o interno, seis gates de FX, o `present.rs`
+  e o `fx_live.rs`).
+- ⛔⛔ **MAS isto NÃO prova que era o defeito do Enio, e a distinção é honesta:** o MSAA16 stippla de
+  forma **estável entre quadros**, e o report diz *«manchas ANIMADAS»*. ⇒ o que foi corrigido é um
+  defeito de desenho real, com o preço escrito no nosso próprio código; **o mecanismo B (§22.3)
+  continua o candidato mais forte para a parte que anima**, e continua por medir.
+- **A cura do mecanismo B** é um diagnóstico que leia os `BumpAllocators` e diga, em UMA corrida, se
+  algum buffer estourou — o que transforma o próximo report de mistério em número.
+- ⚠️ **O que falta para fechar** é **um** dado que só o Enio tem: qual preset de texto estava activo,
+  e se o ruído aparece com o `Default`. Sem isso, A e B ficam os dois em aberto.
 
 ## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
 

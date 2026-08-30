@@ -54,7 +54,11 @@ pub(super) fn symmetry_controls(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
-    store.link_slider_number_mapped(
+    // ⚠️ **`_integer` e não o contínuo**: a unidade pintada é uma CONTAGEM de cópias, e sem o
+    // snap um `6,5` digitado ficava preso no chip enquanto o rótulo (`{n:.0}`) mostrava `6` — o
+    // achado #3 da auditoria de 2026-05-28, que o chip de Segments do Painter já honra. A faixa é
+    // a mesma que o `track_to_segments` inverte, que é o que faz a ida-e-volta fechar.
+    store.link_slider_number_mapped_integer(
         ids::VECTOR_SYM_SEGMENTS,
         ids::VECTOR_SYM_SEGMENTS_NUM,
         SEGMENTS_SCALE,

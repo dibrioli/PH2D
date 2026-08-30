@@ -9,8 +9,8 @@
 use crate::ids;
 use crate::layout::{ROW_H, row_gap};
 use crate::paint_helpers::{
-    paint_color_swatch_row, paint_kind_button_grid, paint_labeled_segmented_row,
-    paint_section_label, paint_target_button_stack,
+    paint_kind_button_grid, paint_labeled_segmented_row, paint_section_label,
+    paint_target_button_stack,
 };
 use crate::paint_kinds::paint_kind_config;
 use crate::paint_rows::{
@@ -186,20 +186,25 @@ pub(crate) fn paint_display_section(
     }
     y += ROW_H + row_gap();
 
-    let color_row = Rect::new(inner_x, y, inner_w, ROW_H);
-    {
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_color_swatch_row(
-            color_row,
-            ctx.scene,
-            ctx.text_system,
-            theme,
-            hit_index,
-            store,
-            state,
-        );
-    }
-    y += ROW_H + row_gap();
+    // ⛔⛔ **A fileira «Color» saiu em 2026-08-30 — ela era um controlo que MENTIA e uma SEGUNDA
+    // porta para uma grandeza que já tinha a sua.**
+    //
+    // O RGB escolhido nunca alcançava o canvas: `grid_snap::render::grid_line_color` lê **só**
+    // `color_rgba[3]` e deriva o R/G/B do fundo do canvas (`ColorToken::Bg0`, deslocado em
+    // luminância). A lei é do Enio, 2026-07-02, e está escrita no doc daquela função — *«o grid
+    // sempre lê como um contraste relativo subtil, seja qual for o tema»*. ⚠️ **Ela FICA
+    // intocada:** uma cor escolhida à mão pode ser ilegível sobre o fundo, e ele escolheu a
+    // robustez.
+    //
+    // O que sobrava do controlo era o ALFA — e o painel já tem um slider **Opacity** logo acima,
+    // que o renderer multiplica (`base_alpha × opacity`). *Duas portas para uma grandeza é
+    // exactamente o que este repo evita*, e a segunda vinha embrulhada num selector de cor cujo
+    // quadradinho pintava o RGB escolhido: o artista via vermelho no painel e cinzento no canvas.
+    //
+    // ⚠️ **O `state.color_rgba` FICA no modelo e o renderer continua a multiplicar o alfa dele** —
+    // tirá-lo mudaria a aparência de todo projecto já gravado com alfa ≠ 255, que é uma
+    // regressão silenciosa. Ele passa a ser o que sempre foi de facto: uma constante do estilo.
+    // Gate: `the_grid_panel_offers_no_colour_it_cannot_deliver`.
 
     let layer_idx = if state.grid_in_front { 0 } else { 1 };
     {

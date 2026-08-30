@@ -21,3 +21,8 @@ metadata:
 - [[feedback_a_flattening_curve_may_need_more_points]] — curva que achata pode precisar de mais pontos: 4 diziam «2º mecanismo», 6 diziam «é a causa»
 - [[feedback_two_proofs_of_the_same_optimum_cannot_disagree]] — duas provas do mesmo ótimo não podem discordar: gate a INVARIANTE (a partição), não o resultado
 - [[feedback_proven_optimal_is_a_claim_about_the_objective_not_the_answer]] — «ótimo provado» é afirmação sobre o OBJETIVO: custo linear não separa «esmagar» de «espalhar»
+- [[feedback_a_quality_bar_copied_from_another_doc_loses_the_density_it_was_measured_at]] — barra citada de outro doc perde a DENSIDADE: conte as faces dos DOIS lados antes de comparar
+- [[feedback_a_relative_stopping_threshold_is_repriced_by_whatever_runs_before_it]] — limiar RELATIVO de paragem é re-precificado pelo passo anterior; calibre-o no programa que o corre
+- [[feedback_first_accepted_and_best_are_two_numbers_and_a_give_up_rule_must_use_the_first]] — 1ª ACEITE ≠ MELHOR: a paciência conta desde a primeira, senão apaga o maior ganho
+- [[feedback_a_blind_smoother_converges_to_a_mesh_that_forgot_the_field]] — alisador CEGO converge para uma grade que esqueceu o campo; alinhe ao relevo
+- [[feedback_a_smooth_fixture_cannot_tell_two_smoothers_apart_the_pointed_one_can]] — 3 fixturas lisas empatam 2 alisadores; a que tem PONTA é a que escolhe

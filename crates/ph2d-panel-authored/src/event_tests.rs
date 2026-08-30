@@ -179,3 +179,70 @@ fn a_list_control_says_which_option_is_marked() {
         "a faixa de abas emitiu um gesto sem dizer QUAL aba"
     );
 }
+
+/// **AS QUATRO da família, pelo gesto que o artista de facto faz: clicar NA OPÇÃO.**
+///
+/// ⚠️ **O irmão acima testa `Tabs` e mais nada, e clica na ROW.** As duas coisas o tornam mais
+/// fraco do que parece: a row de um controle de lista devolve a marca que já lá estava (o gesto
+/// não escolheu nada), e as outras três famílias — `RadioGroup`, `SegmentedAdaptive`, `Dropdown`
+/// — atravessam portas diferentes (`set_index` tem um braço por variante, e só o `Dropdown`
+/// fecha a lista) **sem gate nenhum**. Três quartos da família estavam por medir.
+///
+/// ⚠️ **E o caminho é o OUTRO:** clicar numa opção entra pelo [`crate::rows::option_for`], que é
+/// resolvido **antes** da row de propósito — uma opção não tem `key` própria, então cair no
+/// caminho da row daria `Ignored` com a lista pintada e o clique a chegar.
+///
+/// ⛔ **As duas metades são medidas, e nenhuma sozinha basta:**
+///
+/// * o **intent** carrega o índice ESCOLHIDO (o que o dreno leva a um consumidor);
+/// * a **marca no store** move-se (o que o `paint` lê no quadro seguinte para acender o chip).
+///
+/// Sem a segunda, um `select_in` que devolvesse `false` para uma variante passaria despercebido —
+/// o intent sairia na mesma e o artista veria o chip **não acender**, que foi exactamente o report
+/// de 2026-08-09.
+///
+/// ⚠️ **Nada é registado à mão aqui**: o `MockPanelHost::with_panel` corre o `populate` do painel
+/// sobre a tabela VIVA que o [`row_of`] publicou, então o estado de cada tipo é o que o produto
+/// lhe dá. Semear um `InteractiveState` no teste seria a segunda resposta a *"com que estado esta
+/// row nasce?"*, e ela ficaria verde sobre um registo que o app não faz.
+#[test]
+fn every_list_family_marks_the_option_that_was_clicked() {
+    for kind in [
+        WidgetKind::Tabs,
+        WidgetKind::RadioGroup,
+        WidgetKind::SegmentedAdaptive,
+        WidgetKind::Dropdown,
+    ] {
+        let _ = drain_intents();
+        let (row_id, row_key) = row_of(kind);
+        // A 3.ª das três opções que o `row_of` publica — nunca a 0, que é a que o `populate`
+        // semeia: um gate sobre o índice inicial é verde mesmo com a escrita morta.
+        let opt_id = crate::ids::authored_option_id(&row_key, 2);
+        let mut host = MockPanelHost::with_panel::<AuthoredPanel>();
+        let mut st = AuthoredPanelState;
+        let outcome = apply_event(&mut st, &mut host, WidgetEvent::Click(opt_id));
+        let out = drain_intents();
+        crate::rows::set_live_rows(None);
+
+        assert_eq!(
+            outcome,
+            EventOutcome::Consumed,
+            "{kind:?}: o clique na opcao nao foi consumido — ele cai no despacho generico, que \
+             nao tem braco para escolher"
+        );
+        assert_eq!(
+            out,
+            vec![AuthoredIntent::Choice {
+                key: row_key,
+                index: 2,
+            }],
+            "{kind:?}: a opcao clicada nao chegou ao intent com o INDICE dela"
+        );
+        assert_eq!(
+            crate::rows::selected_of(host.store().get(row_id)),
+            Some(2),
+            "{kind:?}: o intent saiu certo e a MARCA nao se mexeu — o chip continua aceso na \
+             opcao antiga, que e' o report de 2026-08-09"
+        );
+    }
+}

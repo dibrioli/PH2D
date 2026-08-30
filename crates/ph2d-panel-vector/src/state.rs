@@ -170,6 +170,12 @@ thread_local! {
     /// no modo `Fixed`.
     static CURRENT_TEXT_WRAP: Cell<Option<f64>> = const { Cell::new(None) };
     static CURRENT_TEXT_AXES: RefCell<Vec<TextAxisSlot>> = const { RefCell::new(Vec::new()) };
+    /// **A fonte corrente expõe o eixo `wght`?** — a TERCEIRA pergunta da tipografia, e a que
+    /// faltava. ⚠️ Ela **não** é derivável do [`CURRENT_TEXT_AXES`]: aquela lista é *"os eixos
+    /// ALÉM do peso"*, então uma variável só-de-peso publica-a VAZIA e continua a ter um Weight
+    /// vivo. Nasce `false` de propósito — *um painel a quem ninguém disse nada não promete um
+    /// controlo que não faz nada*; a shell publica-a a cada quadro, ao lado dos eixos.
+    static CURRENT_TEXT_HAS_WEIGHT: Cell<bool> = const { Cell::new(false) };
     static WANT_FONT_PREVIEWS: Cell<bool> = const { Cell::new(false) };
     /// Live snapshot published by the host before each `paint`. `None` until
     /// the first push (panel paints defaults).

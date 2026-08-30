@@ -11,28 +11,68 @@ use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::ChildOf;
 use bevy_ecs::world::World;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Per-node texture filter (Godot per-node filter, spec §9.1).
 /// Hierarchical: `Inherit` reads the nearest ancestor override, then
 /// the project default.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// # ⛔⛔ A tag `5` existe no ARQUIVO e não existe no ENUM — e a falta é a cura
+///
+/// Ela era `NearestAniso`, e era um item de menu **fisicamente inalcançável**: o wgpu (e o Metal
+/// por baixo) exige `mag`+`min`+`mipmap` os três `Linear` para `anisotropy_clamp > 1`, enquanto
+/// *ampliar por ponto* é precisamente o que o nome dela promete ao artista. ⇒ O sampler que ela
+/// produzia era **campo a campo idêntico** ao da `3 NearestMipmap`, e há gate a prová-lo do outro
+/// lado ([`ph2d_render::image_filter`]`::tests::the_near_aniso_mode_is_the_near_mip_mode`).
+///
+/// ⚠️ **Os números NÃO se renumeraram, e essa é a metade que protege o disco.** A tag é o formato:
+/// o `TextureFilter` viaja no `.ph2dproj` como **postcard** pelo registry de cena (um byte, medido),
+/// e a lei de anisotropia do renderer é escrita sobre o literal `6`
+/// ([`ph2d_render::image_filter::filter_tag_anisotropy`]). Encolher o `LinearAniso` para `5` faria
+/// duas coisas em silêncio: todo ficheiro gravado com `Lin+Aniso` passaria a ler outro modo, e o
+/// único modo que **pode** pedir anisotropia deixaria de a pedir.
+///
+/// ⇒ O `LinearAniso` fica em `6` por discriminante explícito, o `5` é lido por
+/// [`Self::from_tag`] como `NearestMipmap` (que é o que ele **já era** na máquina), e o `serde`
+/// desta enum passa pela tag em vez do índice de variante — vide o `impl Serialize` abaixo.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum FilterMode {
     /// Defer to the ancestor / project default (component default).
     #[default]
-    Inherit,
+    Inherit = 0,
     /// No filtering — ideal pixel-art.
-    Nearest,
+    Nearest = 1,
     /// Bilinear — ideal vector UI / smooth.
-    Linear,
+    Linear = 2,
     /// Mipmapped, nearest within mip.
-    NearestMipmap,
+    NearestMipmap = 3,
     /// Mipmapped, linear within mip (trilinear).
-    LinearMipmap,
-    /// Anisotropic + nearest.
-    NearestAniso,
-    /// Anisotropic + linear.
-    LinearAniso,
+    LinearMipmap = 4,
+    // ⛔ 5 = `NearestAniso`, RETIRADO — vide o doc do enum. O buraco é deliberado e o
+    //    `from_tag` responde por ele; ⛔ não o reaproveite para um modo novo, senão todo ficheiro
+    //    gravado antes de hoje passa a desenhar outra coisa.
+    /// Anisotropic + linear. ⚠️ **O único modo que pode pedir anisotropia**, e o `6` é lido como
+    /// literal pela lei do renderer.
+    LinearAniso = 6,
+}
+
+/// **O `serde` desta enum é a TAG, nunca o índice de variante** — e é isso que deixa uma variante
+/// sair sem partir um ficheiro gravado.
+///
+/// ⚠️ **Medido antes de escrever** (`postcard`, 2026-08-30): a codificação de índice de variante é
+/// um varint `u32`, que para `0..=6` é **um byte igual ao índice** — exactamente o que
+/// `serialize_u8` emite. ⇒ para todo valor que alguma vez foi gravado, os bytes são os **mesmos**;
+/// o que muda é que passam a ser os mesmos *por lei* em vez de por coincidência de ordenação.
+impl Serialize for FilterMode {
+    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u8(self.tag())
+    }
+}
+
+impl<'de> Deserialize<'de> for FilterMode {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(Self::from_tag(u8::deserialize(d)?))
+    }
 }
 
 /// Per-node texture filter override.
@@ -97,19 +137,23 @@ impl FilterMode {
     }
 
     /// Enum discriminant as a `u8` tag (Inspector §9 segmented / snapshot
-    /// / the renderer's packed sampling key). `0 Inherit … 6 LinearAniso`.
+    /// / the renderer's packed sampling key). `0 Inherit … 6 LinearAniso`, **com o `5` vago**.
     pub const fn tag(self) -> u8 {
         self as u8
     }
 
     /// Inverse of [`Self::tag`]; out-of-range → `Inherit`.
+    ///
+    /// ⚠️ **O `5` é o tag APOSENTADO e continua a LER** — ele era `NearestAniso`, e cai em
+    /// `NearestMipmap`, que é o sampler que a máquina de facto lhe dava. *Um ficheiro gravado com
+    /// ele abre desenhando exactamente o que desenhava antes desta cura;* recusá-lo, ou deixá-lo
+    /// cair no `Inherit`, seria mudar o que o artista vê ao abrir um projecto velho.
     pub const fn from_tag(tag: u8) -> Self {
         match tag {
             1 => FilterMode::Nearest,
             2 => FilterMode::Linear,
-            3 => FilterMode::NearestMipmap,
+            3 | 5 => FilterMode::NearestMipmap,
             4 => FilterMode::LinearMipmap,
-            5 => FilterMode::NearestAniso,
             6 => FilterMode::LinearAniso,
             _ => FilterMode::Inherit,
         }
@@ -255,17 +299,101 @@ mod tests {
         );
     }
 
-    #[test]
-    fn modes_serde_round_trip() {
-        for m in [
+    /// **Toda variante VIVA de [`FilterMode`], exaustiva por construção** — acrescentar ou tirar
+    /// uma torna o `match` abaixo não-exaustivo e isto deixa de compilar.
+    fn every_live_mode() -> Vec<FilterMode> {
+        let all = vec![
             FilterMode::Inherit,
             FilterMode::Nearest,
             FilterMode::Linear,
             FilterMode::NearestMipmap,
             FilterMode::LinearMipmap,
-            FilterMode::NearestAniso,
             FilterMode::LinearAniso,
-        ] {
+        ];
+        for m in &all {
+            // ⚠️ Sem braço `_`, de propósito: é este `match` que faz uma variante nova parar o
+            // build em vez de nascer sem entrada nas duas leis abaixo.
+            match m {
+                FilterMode::Inherit
+                | FilterMode::Nearest
+                | FilterMode::Linear
+                | FilterMode::NearestMipmap
+                | FilterMode::LinearMipmap
+                | FilterMode::LinearAniso => {}
+            }
+        }
+        all
+    }
+
+    /// ⛔⛔ **O TAG APOSENTADO CONTINUA A LER, E LÊ O QUE SEMPRE DESENHOU.**
+    ///
+    /// A `5` era `NearestAniso` e a máquina dava-lhe o sampler da `3`. Um ficheiro gravado com ela
+    /// tem de abrir desenhando o mesmo — nem recusa, nem queda para `Inherit` (que trocaria pixel
+    /// duro por interpolação em silêncio, no controlo cuja razão de existir é o pixel duro).
+    #[test]
+    fn the_retired_tag_still_reads_and_lands_on_the_mode_it_always_was() {
+        const RETIRED: u8 = 5;
+        assert_eq!(
+            FilterMode::from_tag(RETIRED),
+            FilterMode::NearestMipmap,
+            "o tag 5 (o antigo Near+Aniso) deixou de ler como Near+Mip — todo .ph2dproj gravado \
+             com ele passa a desenhar outra coisa ao abrir"
+        );
+        // E pelo ARQUIVO, que é onde o defeito de facto aparece: um byte `5` no blob do
+        // `TextureFilter` continua a chegar como `NearestMipmap`.
+        let gravado: Vec<u8> = vec![RETIRED];
+        assert_eq!(
+            postcard::from_bytes::<TextureFilter>(&gravado)
+                .expect("um TextureFilter gravado com o tag aposentado tem de DESSERIALIZAR")
+                .0,
+            FilterMode::NearestMipmap
+        );
+        // ⚠️ **A metade JUSTA:** nenhuma variante viva reclama o `5`. Sem ela, este gate ficaria
+        // verde num enum que simplesmente renumerou tudo para baixo.
+        for m in every_live_mode() {
+            assert_ne!(
+                m.tag(),
+                RETIRED,
+                "{m:?} ocupou o tag aposentado — o buraco no 5 e' o que mantem o 6 no sitio"
+            );
+        }
+    }
+
+    /// ⛔⛔ **O FORMATO DE ARQUIVO É A TAG** — golden byte a byte, e o `6` é load-bearing.
+    ///
+    /// ⚠️ O `serde` derivado escreveria o **índice de variante**, e tirar a `NearestAniso` do meio
+    /// puxaria o `LinearAniso` de `6` para `5` **sem uma linha de erro**: todo ficheiro com
+    /// `Lin+Aniso` passaria a ler `Near+Mip`, e a lei de anisotropia do renderer (escrita sobre o
+    /// literal `6`) deixaria de encontrar quem a pede. É por isso que o `impl Serialize` é manual.
+    #[test]
+    fn the_wire_format_is_the_tag_of_the_mode_not_its_position() {
+        for m in every_live_mode() {
+            assert_eq!(
+                postcard::to_allocvec(&m).unwrap(),
+                vec![m.tag()],
+                "{m:?} nao se grava como o proprio tag"
+            );
+        }
+        // O golden que importa, escrito por extenso: o único modo que pode pedir anisotropia.
+        assert_eq!(
+            postcard::to_allocvec(&TextureFilter(FilterMode::LinearAniso)).unwrap(),
+            vec![6u8],
+            "o Lin+Aniso saiu do byte 6 — a lei `filter_tag_anisotropy` do renderer le' esse \
+             literal, entao o unico modo anisotropico do app fica sem quem o peca"
+        );
+        // ⚠️ **A metade JUSTA:** modos distintos gravam bytes distintos. Sem ela, um `serialize`
+        // que emitisse sempre `0` passaria as duas asserções de cima na variante `Inherit`.
+        let mut vistos: Vec<Vec<u8>> = Vec::new();
+        for m in every_live_mode() {
+            let b = postcard::to_allocvec(&m).unwrap();
+            assert!(!vistos.contains(&b), "{m:?} grava os bytes de outro modo");
+            vistos.push(b);
+        }
+    }
+
+    #[test]
+    fn modes_serde_round_trip() {
+        for m in every_live_mode() {
             let b = postcard::to_allocvec(&m).unwrap();
             assert_eq!(postcard::from_bytes::<FilterMode>(&b).unwrap(), m);
         }

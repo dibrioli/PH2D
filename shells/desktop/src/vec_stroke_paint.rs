@@ -30,6 +30,12 @@ pub(crate) fn kind_for_id(id: ph2d_editor::NodeId) -> Option<StrokePaintKind> {
         Some(StrokePaintKind::Solid)
     } else if id == ph2d_editor::ids::VECTOR_STROKE_KIND_PATTERN {
         Some(StrokePaintKind::Pattern)
+    } else if id == ph2d_editor::ids::VECTOR_STROKE_KIND_BRUSH {
+        // ⭐⭐⭐ **O terceiro chip** (plano 36, W4). ⚠️ **Faltar AQUI é pior que faltar no
+        // `set_kind`:** sem este braço o clique nem chega à porta do documento — ele cai no
+        // despacho e desaparece, e o único sintoma é um chip que não acende. *Um controlo nunca
+        // pintado e um morto sob o dedo dão o MESMO report.*
+        Some(StrokePaintKind::Brush)
     } else {
         None
     }
@@ -90,13 +96,23 @@ pub(crate) fn set_kind(
         (StrokePaintKind::Solid, StrokePaint::Solid(_))
         | (StrokePaintKind::Pattern, StrokePaint::Pattern(_))
         | (StrokePaintKind::Brush, StrokePaint::Brush(_)) => return false,
-        // ⏳ **O PINCEL ainda não se cria por aqui** (plano 36: o modelo é a W1, a criação é a W4).
+        // ⭐⭐⭐ **O PINCEL NASCE AQUI** (plano 36, W4) — e a recusa que estava nesta linha era o
+        // que tornava a secção *Brush* inteira inalcançável: ela só é pintada quando o traço JÁ é
+        // um pincel, e a **única** porta para o ser é este chip. *Um defeito circular: o painel
+        // esperava pelo estado que só o painel podia criar.*
         //
-        // ⚠️ **Recusar em voz baixa é o certo, e não um `todo!()`:** esta porta é o dreno de um
-        // clique, e um panic aqui derrubaria o app se alguém publicasse o chip antes da hora. ⛔ E
-        // um `_ => return false` genérico calaria também os casos de cima — *o enum é fechado
-        // precisamente para que a próxima variante me traga aqui.*
-        (StrokePaintKind::Brush, _) => return false,
+        // ⚠️ **`art: None` é legítimo por TIPO** — um pincel sem arte escolhida desenha a
+        // `fallback`, e a arte entra depois pelo gesto de duas mãos (`set_art`). Exigi-la aqui
+        // faria o chip abrir um diálogo de ficheiro, que é precisamente o que o plano 36 recusa.
+        //
+        // ⚠️⚠️ **A `fallback` carrega a cor ACTUAL, pela MESMA lei que o braço `Pattern` escreve
+        // abaixo** — o default de `BrushStroke` é preto opaco, então sem esta linha a linha do
+        // artista **salta para preto** no clique, e voltar a `Solid` devolveria preto em vez da cor
+        // dele. *Ir e voltar não pode piscar para uma cor arbitrária.*
+        (StrokePaintKind::Brush, _) => StrokePaint::Brush(Box::new(ph2d_vec_scene::BrushStroke {
+            fallback: cur.color(),
+            ..ph2d_vec_scene::BrushStroke::default()
+        })),
         // ⚠️ A cor que fica é a `fallback` do padrão — a que a linha já mostrava.
         (StrokePaintKind::Solid, _) => StrokePaint::Solid(cur.color()),
         (StrokePaintKind::Pattern, _) => {
@@ -244,6 +260,200 @@ pub(crate) fn slider_cmd_for_id(id: ph2d_editor::NodeId, v: f64) -> Option<Brush
         Some(BrushCmd::Rotation(v))
     } else {
         None
+    }
+}
+
+/// ⭐⭐⭐ **O CHIP `Brush` DEIXA DE SER MORTO — e o que se mede é o VALOR A CHEGAR AO CONSUMIDOR.**
+///
+/// # O defeito, e por que ele era circular
+///
+/// Faltavam **dois** braços, não um: o `kind_for_id` não mapeava o `VECTOR_STROKE_KIND_BRUSH` (o
+/// clique nem chegava à porta do documento) e o `set_kind` recusava-o (`=> return false`). A secção
+/// *Brush* do painel só é pintada quando o traço **já é** um pincel — e a única porta para o ser é
+/// este chip. ⇒ *o painel esperava pelo estado que só ele podia criar*, e o resto da UI (o botão da
+/// arte, os quatro sliders, o Flip) estava construído, registado e inalcançável.
+///
+/// # Por que estes gates e não «`set_kind` devolveu `true`»
+///
+/// ⚠️ Um `true` diz que a porta correu, não o que ela escreveu. O que os dois consumidores a
+/// jusante de facto perguntam é: `StrokeSpec::brush()` (é sobre esse `Option` que o shell mapeia o
+/// `BrushRow` — `None` **esconde a secção**) e [`selected_stroke_paint_kind`] (que acende o chip).
+/// São essas duas perguntas que se fazem aqui, mais a **cor**, que é onde o defeito silencioso
+/// morava.
+#[cfg(test)]
+mod brush_kind_gates {
+    use super::*;
+    use ph2d_vec_scene::{Rgba8, StrokeSpec, VecPath, VecPathId, VecVertex};
+
+    /// Uma forma com traço **sólido** numa cor que não é nenhum default (⚠️ nem preto, nem opaca:
+    /// é contra o preto opaco do `BrushStroke::default()` que a cura se mede).
+    fn forma_com_traco_solido(cor: Rgba8) -> (VecScene, ph2d_vec_edit::PenTool, VecPathId) {
+        let mut scene = VecScene::default();
+        let id = scene.push_path(VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            stroke: Some(StrokeSpec::new(cor, 0.5)),
+            ..VecPath::default()
+        });
+        let mut pen = ph2d_vec_edit::PenTool::default();
+        pen.select_many(&[id]);
+        (scene, pen, id)
+    }
+
+    /// **O clique no chip chega à porta do documento.**
+    ///
+    /// ⚠️ Este é o braço cuja falta é INVISÍVEL a todo gate sobre o `set_kind`: sem ele o despacho
+    /// simplesmente não reconhece o id, e a porta nunca é chamada.
+    #[test]
+    fn the_brush_chip_is_reachable_by_its_node_id() {
+        assert_eq!(
+            kind_for_id(ph2d_editor::ids::VECTOR_STROKE_KIND_BRUSH),
+            Some(StrokePaintKind::Brush),
+            "o chip Brush nao e' mapeado — o clique cai no despacho e desaparece, e o unico \
+             sintoma e' um chip que nao acende"
+        );
+        // ⛔ E nenhum vizinho o reclama: seria a fileira do traço a comer o clique do outro.
+        assert_eq!(
+            kind_for_id(ph2d_editor::ids::VECTOR_FILL_KIND_PATTERN),
+            None
+        );
+        assert_eq!(kind_for_id(ph2d_editor::ids::VECTOR_BRUSH_FLIP), None);
+    }
+
+    /// ⭐⭐ **O VALOR QUE CHEGA AO CONSUMIDOR: um pincel com a cor que a linha já tinha.**
+    ///
+    /// ⚠️ **A cor é a metade que falharia em silêncio.** `BrushStroke::default().fallback` é
+    /// **preto opaco**; sem carregar a `cur.color()` a linha do artista salta para preto no clique,
+    /// e voltar a `Solid` devolveria preto — porque `StrokeSpec::color()` lê a `fallback`. É a
+    /// mesma lei que o braço `Pattern` já escrevia ao lado.
+    #[test]
+    fn clicking_the_brush_chip_leaves_a_brush_paint_carrying_the_colour_it_had() {
+        let cor = Rgba8::new(11, 22, 33, 128);
+        let (mut scene, pen, id) = forma_com_traco_solido(cor);
+        let mut h = History::default();
+        let kind = kind_for_id(ph2d_editor::ids::VECTOR_STROKE_KIND_BRUSH)
+            .expect("o chip tem de mapear — vide o gate irmao");
+        assert!(
+            set_kind(&mut scene, &mut h, &pen, kind, None),
+            "o chip Brush nao muda o documento — a seccao Brush fica inalcancavel para sempre"
+        );
+        let s = scene
+            .path(id)
+            .and_then(|p| p.stroke.as_ref())
+            .expect("a forma tem traco");
+        let b = s.brush().expect(
+            "o traco nao e' um pincel — e' este `Option` que o shell mapeia para o `BrushRow`, \
+             entao `None` aqui ESCONDE a seccao Brush inteira",
+        );
+        assert_eq!(
+            b.fallback, cor,
+            "o pincel nasceu com a cor de recurso ERRADA (o default e' preto opaco): a linha \
+             salta de cor no clique, e voltar a Solid devolve preto"
+        );
+        assert_eq!(
+            b.art, None,
+            "a arte nasce por escolher — o chip ARMA o gesto de duas maos, nao abre um dialogo"
+        );
+        assert_eq!(h.undo_len(), 1, "trocar a tinta e' UM passo de undo");
+        // ⚠️ **Ir e VOLTAR não pisca**: a cor do artista sobrevive à ida ao pincel.
+        assert!(set_kind(
+            &mut scene,
+            &mut h,
+            &pen,
+            StrokePaintKind::Solid,
+            None
+        ));
+        assert_eq!(
+            scene
+                .path(id)
+                .and_then(|p| p.stroke.as_ref())
+                .map(StrokeSpec::color),
+            Some(cor),
+            "a volta ao solido nao devolveu a cor — o pincel comeu-a"
+        );
+    }
+
+    /// ⭐⭐⭐ **A SECÇÃO BRUSH PASSA A SER ALCANÇÁVEL** — as duas perguntas que a fazem subir.
+    ///
+    /// ⚠️ As duas são as **mesmas expressões** que o shell corre por quadro
+    /// (`render_loop`: `…stroke.as_ref().and_then(StrokeSpec::brush).map(|b| BrushRow {…})` e
+    /// `set_stroke_paint_kind(selected_stroke_paint_kind(…))`). Perguntá-las aqui é medir a
+    /// costura, não uma paráfrase dela.
+    ///
+    /// ⚠️ **O CONTROLO é a primeira metade**: antes do clique as duas respondem que a secção não
+    /// sobe. Sem ele o gate ficaria verde num produto em que ela está sempre visível.
+    #[test]
+    fn the_brush_section_becomes_reachable_only_after_the_chip_is_clicked() {
+        let (mut scene, pen, id) = forma_com_traco_solido(Rgba8::new(200, 40, 40, 255));
+        // CONTROLO — o estado de partida: chip aceso é o `Solid`, e a secção NÃO sobe.
+        assert_eq!(
+            selected_stroke_paint_kind(&scene, &pen),
+            Some(StrokePaintKind::Solid)
+        );
+        assert!(
+            scene
+                .path(id)
+                .and_then(|p| p.stroke.as_ref())
+                .and_then(StrokeSpec::brush)
+                .is_none(),
+            "a seccao Brush ja' subia num traco solido"
+        );
+        let mut h = History::default();
+        assert!(set_kind(
+            &mut scene,
+            &mut h,
+            &pen,
+            kind_for_id(ph2d_editor::ids::VECTOR_STROKE_KIND_BRUSH).expect("o chip mapeia"),
+            None,
+        ));
+        // ⇒ o chip acende no Brush …
+        assert_eq!(
+            selected_stroke_paint_kind(&scene, &pen),
+            Some(StrokePaintKind::Brush),
+            "o chip nao acende no Brush depois do clique — o artista clica e nada muda na tela"
+        );
+        // … e a secção sobe (é este `Some` que vira `BrushRow`).
+        assert!(
+            scene
+                .path(id)
+                .and_then(|p| p.stroke.as_ref())
+                .and_then(StrokeSpec::brush)
+                .is_some(),
+            "a seccao Brush continua escondida — o botao da arte, os 4 sliders e o Flip ficam \
+             construidos e inalcancaveis, que e' o defeito CIRCULAR desta wave"
+        );
+        // ⚠️ E os knobs dela já escrevem: a secção não nasce decorativa.
+        assert!(apply(&mut scene, &mut h, &pen, BrushCmd::Scale(3.0)));
+    }
+
+    /// ⚠️ **Pedir o pincel que já lá está é um no-op** — senão cada clique reconstruiria o pincel e
+    /// a arte, os quatro knobs e o Flip saltariam para o default.
+    #[test]
+    fn asking_for_the_brush_it_already_has_preserves_the_whole_law() {
+        let (mut scene, pen, id) = forma_com_traco_solido(Rgba8::new(7, 8, 9, 255));
+        let mut h = History::default();
+        assert!(set_kind(
+            &mut scene,
+            &mut h,
+            &pen,
+            StrokePaintKind::Brush,
+            None
+        ));
+        assert!(apply(&mut scene, &mut h, &pen, BrushCmd::Rotation(45.0)));
+        let antes = scene.path(id).and_then(|p| p.stroke.as_ref()).cloned();
+        let passos = h.undo_len();
+        assert!(
+            !set_kind(&mut scene, &mut h, &pen, StrokePaintKind::Brush, None),
+            "pedir o pincel que ja' la' esta' gravou um passo"
+        );
+        assert_eq!(
+            scene.path(id).and_then(|p| p.stroke.as_ref()).cloned(),
+            antes,
+            "o pincel foi reconstruido — os knobs saltam para o default a cada clique no chip"
+        );
+        assert_eq!(h.undo_len(), passos);
     }
 }
 

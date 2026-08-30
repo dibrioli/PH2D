@@ -47,8 +47,15 @@ pub enum WidgetEvent {
     TextChanged(NodeId),
     Focus(NodeId),
     Blur(NodeId),
-    /// Tabs / Dropdown / TreeView — selected index changed.
-    SelectionChanged(NodeId),
+    // ⛔ **Não reintroduza uma `SelectionChanged(NodeId)` sem o consumidor na mesma wave.**
+    // Ela existiu aqui, declarada «Tabs / Dropdown / TreeView — selected index changed», com
+    // UMA ocorrência em todo o repositório: a própria declaração. Nunca foi construída nem
+    // casada. E a razão não é esquecimento — é que a selecção deste sistema **não viaja por
+    // evento**: o `apply_click` (`dispatch/focus.rs`) declara-o no fonte, *«caller observes via
+    // store.get(id)»*, e quem marca a opção é o painel, lendo o `WidgetStore`. Uma variante que
+    // duplicasse esse facto daria duas fontes de verdade para a mesma pergunta.
+    // Removida em 2026-08-30; o gate `every_widget_event_variant_has_a_producer_and_a_reader`
+    // impede que a próxima entre sem leitor.
     /// Eyedropper pick request — emitted when the user clicks
     /// anywhere outside the eyedropper button while eyedropper mode
     /// is pending. The host should sample the rendered pixel at

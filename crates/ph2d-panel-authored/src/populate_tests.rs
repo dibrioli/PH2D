@@ -37,6 +37,93 @@ fn every_kind_agrees_with_itself_about_being_a_control() {
     }
 }
 
+/// **O CENSO DA FAMÍLIA DE LISTA** — a lista que um LAÇO itera contra o `match` que a lê.
+///
+/// ⚠️ **O irmão acima ([`every_kind_agrees_with_itself_about_being_a_control`]) prova que
+/// `initial` e `is_control` concordam, e isso NÃO é esta pergunta.** Um controle de opções passa
+/// por mais duas portas que nenhum outro atravessa, e as duas são escritas com um `_ =>` no fim:
+/// [`crate::rows::selected_of`] (*qual está marcada?*) e o `set_index` sob
+/// [`crate::rows::select_in`] (*marca esta*). Quem decide **que rows sequer têm opções** não é
+/// nenhuma delas — é um LAÇO sobre `WidgetKind::takes_options()`, em três sítios
+/// ([`options`], [`crate::rows::option_for`], [`retire_vanished`]).
+///
+/// ⛔ **É a lei que o repo já pagou noutro sítio: *um `match` exaustivo não guarda a lista que um
+/// laço itera*.** Os dois `match` da seleção **não são exaustivos** — têm `_ => None` / `_ =>
+/// return false` —, então uma quinta família de lista compila em silêncio: o `takes_options`
+/// passa a dizer `true`, o `populate` regista as N opções como botões, o `paint` desenha-as e
+/// dá-lhes retângulo de hit, o clique CHEGA ao painel — e o `select_in` devolve `false`, o
+/// `apply_event` cai no `Ignored`, e a marca nunca se move. **Pintado, vivo sob o dedo, e morto.**
+/// É a mesma forma do dreno de um braço só, um nível abaixo.
+///
+/// A régua é dos DOIS lados, e é isso que a torna um censo em vez de uma amostra:
+///
+/// 1. `takes_options()` ⟺ a porta de LEITURA responde para o estado que aquele tipo nasce a ter;
+/// 2. a porta de ESCRITA move a marca que a de leitura devolve (ida-e-volta, não duas leituras);
+/// 3. e o [`crate::rows::clamp_selection_to`] — a terceira consumidora do mesmo `set_index` —
+///    conhece a mesma variante. Sem ela, a reconciliação por quadro fica muda para o tipo novo e
+///    o índice guardado aponta para uma opção que o artista apagou.
+///
+/// ⚠️ **A metade JUSTA é a contagem.** Sem ela, um catálogo em que `takes_options()` respondesse
+/// `false` a tudo passaria este gate por vácuo — verde a afirmar nada. O baseline medido em
+/// 2026-08-30 é **4** (`Tabs` · `RadioGroup` · `SegmentedAdaptive` · `Dropdown`), e ele só sobe.
+#[test]
+fn every_kind_that_takes_options_has_both_doors_of_the_selection() {
+    let mut family = 0usize;
+    for kind in WidgetKind::ALL {
+        let takes = kind.takes_options();
+        let Some(mut live) = initial(kind) else {
+            assert!(
+                !takes,
+                "{kind:?} toma opcoes e o `initial` nem o regista — as opcoes ganhariam \
+                 retangulo de hit sobre uma row que o store nao conhece"
+            );
+            continue;
+        };
+        // (1) as duas respostas à mesma pergunta.
+        assert_eq!(
+            takes,
+            crate::rows::selected_of(Some(&live)).is_some(),
+            "{kind:?}: `WidgetKind::takes_options` e `rows::selected_of` discordam sobre se este \
+             tipo tem uma OPCAO MARCADA. O laco do `populate` segue a primeira e o `event` segue \
+             a segunda: com `takes=true` e leitura muda, o clique na opcao cai no `Ignored`; ao \
+             contrario, o `event` inventa uma escolha numa row sem opcoes"
+        );
+        if !takes {
+            continue;
+        }
+        family += 1;
+        // (2) a porta de ESCRITA move o que a de leitura devolve.
+        assert!(
+            crate::rows::select_in(&mut live, 2),
+            "{kind:?}: `rows::select_in` recusou marcar — o `set_index` nao tem braco para a \
+             variante que o `initial` deste tipo produz, e escolher uma opcao vira um no-op"
+        );
+        assert_eq!(
+            crate::rows::selected_of(Some(&live)),
+            Some(2),
+            "{kind:?}: escreveu-se a marca 2 e a porta de leitura devolveu outra coisa — o \
+             controle desenha uma opcao e reporta outra"
+        );
+        // (3) a terceira consumidora do mesmo `set_index`.
+        assert!(
+            crate::rows::clamp_selection_to(&mut live, 2),
+            "{kind:?}: a marca 2 sobrevive a uma row com 2 opcoes — a reconciliacao por quadro \
+             ficou muda para este tipo"
+        );
+        assert_eq!(
+            crate::rows::selected_of(Some(&live)),
+            Some(1),
+            "{kind:?}: o clamp nao encolheu para a ULTIMA opcao que a row consegue oferecer"
+        );
+    }
+    assert_eq!(
+        family, 4,
+        "a familia de LISTA mudou de tamanho (baseline 2026-08-30: 4). Se um tipo entrou, ele tem \
+         de atravessar as tres portas acima antes de este numero subir; se um saiu, o gate deixou \
+         de medir o que dizia medir"
+    );
+}
+
 /// **Toda row que responde está REGISTADA.**
 ///
 /// ⚠️ Um widget pintado, hit-registrado e ausente do store tem o clique descartado **em silêncio**

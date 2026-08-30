@@ -55,25 +55,43 @@ impl BodyCtx<'_> {
             &format!("{val:.2}"),
             y,
         );
-        // Weight (`wght` axis) slider — the variable-font weight.
-        let wtrack = self
-            .store
-            .slider(ids::VECTOR_TEXT_WEIGHT)
-            .map(|(_, v)| v)
-            .unwrap_or_else(|| text_weight_to_slider(DEFAULT_TEXT_WEIGHT));
-        let wval = self
-            .store
-            .number_value(ids::VECTOR_TEXT_WEIGHT_NUM)
-            .unwrap_or(DEFAULT_TEXT_WEIGHT);
-        y = self.slider_row(
-            "Weight",
-            ids::VECTOR_TEXT_WEIGHT,
-            ids::VECTOR_TEXT_WEIGHT_NUM,
-            wtrack,
-            wval,
-            &format!("{}", wval.round() as i64),
-            y,
-        );
+        // Weight (`wght` axis) slider — o peso da fonte VARIÁVEL, e **só** quando ela é variável
+        // NO PESO.
+        //
+        // ⛔ **Sem `fvar` o `skrifa` ignora a localização de eixo**, então numa fonte estática este
+        // slider era pintado, arrastável e **inerte** — a espécie de controlo morto que gate
+        // nenhum deste repo apanha (ele está registado, focável e o handler existe; o que não
+        // existe é efeito).
+        //
+        // ⛔ **A regra da secção AXES NÃO serve aqui, e isso está medido:** ela é
+        // `names.is_empty()`, e `names` exclui o `wght` por construção — numa fonte variável **só
+        // de peso** (a espécie mais comum) aquela lista é vazia, a AXES esconde-se com razão, e a
+        // mesma regra esconderia um Weight vivo. A pergunta certa é a TERCEIRA — *a fonte publica
+        // `wght`?* —, ninguém a publicava, e quem a sabe é a shell (`vec_font::has_weight_axis`).
+        //
+        // ⚠️ **O registo continua incondicional** (`populate`), como o dos slots de eixo: quem
+        // decide se a fileira aparece é o pintor, e o par slider↔chip fica ligado para o dia em
+        // que o artista trocar para uma fonte variável **no mesmo quadro**.
+        if state::text_has_weight_axis() {
+            let wtrack = self
+                .store
+                .slider(ids::VECTOR_TEXT_WEIGHT)
+                .map(|(_, v)| v)
+                .unwrap_or_else(|| text_weight_to_slider(DEFAULT_TEXT_WEIGHT));
+            let wval = self
+                .store
+                .number_value(ids::VECTOR_TEXT_WEIGHT_NUM)
+                .unwrap_or(DEFAULT_TEXT_WEIGHT);
+            y = self.slider_row(
+                "Weight",
+                ids::VECTOR_TEXT_WEIGHT,
+                ids::VECTOR_TEXT_WEIGHT_NUM,
+                wtrack,
+                wval,
+                &format!("{}", wval.round() as i64),
+                y,
+            );
+        }
         // Read-only string preview (the active session's text, or a hint when empty).
         let text = state::current_text().unwrap_or_default();
         let (shown, color) = if text.trim().is_empty() {
@@ -226,6 +244,19 @@ impl BodyCtx<'_> {
     /// `Mass: Auto | Manual` do editor de áudio — *duas portas para uma grandeza* é o que se
     /// evita, e aqui a grandeza tem presença E valor.
     fn wrap_rows(&mut self, y: f32) -> f32 {
+        // ⛔ **Um texto que CAVALGA um caminho não tem caixa para refluir dentro.**
+        // O motor diz-o na guarda: `wrapped_lines` só honra o `wrap_width` com
+        // `matches!(placement, TextPlacement::At(_))` — num `OnPath` o texto segue o arco e o
+        // número é descartado. O painel oferecia as duas fileiras à mesma, e o artista escolhia
+        // *Fixed* e arrastava uma largura que não movia um pixel.
+        //
+        // ⚠️ A lei já estava escrita neste módulo, para o BOTÃO de prender: *«um botão que não
+        // faz nada é pior que um botão que falta, e este é o único jeito de o painel saber a
+        // diferença»* (`state_textpath.rs`). Ela vale igual para um slider.
+        // Gate: `seam_text_wrap_on_path`.
+        if state::linked() {
+            return y;
+        }
         let wrap = state::current_text_wrap();
         let mut y = self.segmented(
             "Width",
@@ -273,7 +304,14 @@ impl BodyCtx<'_> {
         if collapsed {
             return y;
         }
-        for (i, name) in names.iter().enumerate() {
+        // ⛔ **O `take` é a cura, e ele vale para QUALQUER tecto.** Sem ele o pintor desenhava uma
+        // linha por eixo publicado pela fonte, enquanto o registo (`populate`), o mapa id→índice
+        // (`state::axis_index_of`) e a publicação da shell param todos em
+        // `MAX_TEXT_VARIATION_AXES`. Do 7.º em diante (o tecto era 6) o campo saía com o **nome
+        // real do eixo** e o valor `0`, alcançável com a Roboto Flex. *As duas lentes têm de ser
+        // a mesma* — subir o tecto sozinho só mudaria onde o defeito começa.
+        // Gate: `the_panel_never_paints_an_axis_row_nobody_registers`.
+        for (i, name) in names.iter().take(ids::MAX_TEXT_VARIATION_AXES).enumerate() {
             y = self.labeled_number_field(name, ids::vector_text_axis_id(i), 1.0, y);
         }
         y
@@ -288,3 +326,7 @@ impl BodyCtx<'_> {
         self.hit_index.register(id, rect);
     }
 }
+
+#[cfg(test)]
+#[path = "paint_text_weight_tests.rs"]
+mod weight_tests;

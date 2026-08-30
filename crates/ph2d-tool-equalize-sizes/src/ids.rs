@@ -62,7 +62,10 @@ pub const EQS_RASTERIZE_AFTER: NodeId = hash_node_id("eqsizes.rasterize_after");
 // ── Upscale algorithm (3-way radio, visible when upscale_if_smaller) ─
 pub const EQS_ALG_LANCZOS: NodeId = hash_node_id("eqsizes.alg_lanczos");
 pub const EQS_ALG_NEAREST: NodeId = hash_node_id("eqsizes.alg_nearest");
-pub const EQS_ALG_XBR: NodeId = hash_node_id("eqsizes.alg_xbr");
+/// ⚠️ The hash STRING stays `eqsizes.alg_xbr`: it is an opaque routing
+/// key and moving it would move the `NodeId` for zero product gain. The
+/// name the artist reads is the panel's label, and that one is "EPX".
+pub const EQS_ALG_EPX: NodeId = hash_node_id("eqsizes.alg_xbr");
 
 // ── Apply / Cancel / Reset ───────────────────────────────────────────
 pub const EQS_APPLY: NodeId = hash_node_id("eqsizes.apply");

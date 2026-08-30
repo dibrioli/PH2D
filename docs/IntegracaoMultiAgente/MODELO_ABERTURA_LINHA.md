@@ -60,6 +60,11 @@ FASE 1 — SETUP (execute já, sem pedir confirmação; reporte cada ✗):
         "mergiraf not found"? NÃO é bloqueio: git faz fallback pro merge
         embutido. Reporte a linha do ✗ e siga (Enio instala depois).
 8. Leia INTEIRAS (dentro da worktree):
+      docs/IntegracaoMultiAgente/STACK_VERSOES.md       → tudo (1 pagina)
+        as versoes que voce usa: Rust 1.98/edition 2024, wgpu 29,
+        vello 0.10, parley 0.11, rapier2d 0.35, bevy_ecs 0.19 -- e as
+        tres regras que um agente novo erra. NUNCA escreva uma versao
+        de memoria: `bash scripts/stack-audit.sh --tetos` responde.
       docs/IntegracaoMultiAgente/DIRETRIZ.md            → §0, §1.5, §2, §6
       docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md  → tudo
         (e RELEIA a cada passo do trabalho, como ela manda)

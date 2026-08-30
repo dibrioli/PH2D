@@ -59,6 +59,9 @@ fn measure_the_label_gutters() {
         in_flow: true,
         grow: 0.0,
         shrink: 0.0,
+        // ⚠️ `false` de propósito: esta sonda mede as CALHAS, e um pai em grade esconde as
+        // fileiras de Grow/Shrink — a fixtura tem de conter o que ela vai medir.
+        parent_is_grid: false,
     }));
     let off = rect(ids::VECTOR_LAYOUT_DIR_OFF).expect("o chip Off");
     let wrap = rect(ids::VECTOR_LAYOUT_DIR_WRAP).expect("o chip Wrap");

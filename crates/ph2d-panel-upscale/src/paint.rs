@@ -21,7 +21,7 @@
 
 use crate::state::{self, UpscalePanelState, set_last_content_h, set_last_visible_h};
 use crate::{UpscalePanel, ids};
-use ph2d_editor_core::paint::rect_to_vello;
+use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
@@ -36,7 +36,9 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing, Theme};
-use ph2d_tool_upscale::params::{UpscaleAlgorithm, scale_to_slider, slider_to_scale};
+use ph2d_tool_upscale::params::{
+    UpscaleAlgorithm, effective_factor, effective_output_size, scale_to_slider,
+};
 
 /// Label column width for the slider row.
 const LABEL_COL_W: f32 = 64.0; // LITERAL-PX-OK: panel grid metric (per-panel label gutter width)
@@ -167,9 +169,9 @@ fn paint_body_sections(
             ids::UPS_ALGO_NEAREST,
         ),
         (
-            "xBR",
-            snapshot.algorithm == UpscaleAlgorithm::Xbr,
-            ids::UPS_ALGO_XBR,
+            "EPX",
+            snapshot.algorithm == UpscaleAlgorithm::Epx,
+            ids::UPS_ALGO_EPX,
         ),
     ];
     let seg_rect = Rect::new(inner_x, y, inner_w, row_h);
@@ -191,11 +193,18 @@ fn paint_body_sections(
     // ("2.00×") is paint-only via `display_override`, projected from
     // the live slider track — NOT consulted from the chip's stored
     // value (which lives in track space too).
+    //
+    // ⚠️ **The chip prints the DELIVERY, not the request.** It reads
+    // `effective_factor`, the same door `run_full_resolution` uses, so
+    // an algorithm that snaps (EPX rounds to a whole factor) shows the
+    // number it will really bake. Printing `slider_to_scale(track)`
+    // here — which is what this line used to do — is the most expensive
+    // shape of a dead control: the artist confirms it and is wrong.
     let track = store
         .slider(ids::UPS_SCALE)
         .map(|(_, v)| v)
         .unwrap_or_else(|| scale_to_slider(snapshot.scale_factor));
-    let factor_display = format!("{:.2}×", slider_to_scale(track));
+    let factor_display = format!("{:.2}×", effective_factor(snapshot.algorithm, track));
     let used = paint_slider_with_chip_layout_adaptive(
         Rect::new(inner_x, y, inner_w, row_h),
         "Scale",
@@ -213,6 +222,40 @@ fn paint_body_sections(
         theme,
     );
     y += used + row_gap;
+
+    // ── Output size readout ────────────────────────────────────────
+    // ⚠️ This panel's module doc has promised an "Output: W × H px"
+    // readout since the panel existed, and NOTHING painted it. It is
+    // derived from the same door as the chip
+    // (`effective_output_size` → `project_scale` → what Apply bakes),
+    // so the three can never disagree; a readout computed here from the
+    // raw track would be a second answer to the same question.
+    let readout = if snapshot.source_w == 0 || snapshot.source_h == 0 {
+        "Output: select a sprite".to_string()
+    } else {
+        let (ow, oh) = effective_output_size(
+            snapshot.algorithm,
+            track,
+            snapshot.source_w,
+            snapshot.source_h,
+        );
+        format!(
+            "Output: {ow} \u{00d7} {oh} px  \u{00b7}  from {} \u{00d7} {}",
+            snapshot.source_w, snapshot.source_h
+        )
+    };
+    let readout_font = ph2d_tokens::TypeToken::Xs.px();
+    paint_text(
+        text_system,
+        scene,
+        &readout,
+        inner_x,
+        y,
+        readout_font,
+        inner_w,
+        resolve(ph2d_tokens::ColorToken::Text2, theme),
+    );
+    y += readout_font + row_gap;
 
     // ── Reset (ghost, full width) row ──────────────────────────────
     let btn_gap = Spacing::Sm.px();

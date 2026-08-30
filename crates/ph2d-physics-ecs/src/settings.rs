@@ -131,6 +131,30 @@ pub const MAX_AIR_DRAG: f32 = 10.0;
 /// the simulation off.
 pub const MAX_SLEEP_THRESHOLD: f32 = 10.0;
 
+/// **A sanidade do interruptor de adormecer** — a UMA porta pela qual o
+/// [`PhysicsSettings::sleep_angular_threshold`] entra.
+///
+/// Duas leis, e a segunda é a que faltava:
+///
+/// 1. o lado **ligado** continua a ser clampado por [`MAX_SLEEP_THRESHOLD`] — um ficheiro
+///    hand-editado não entrega ao solver um número que ninguém mediu;
+/// 2. o lado **desligado** colapsa em [`ph2d_physics::SLEEP_SPIN_DISABLED`], em vez de ser
+///    esmagado para `0.0`. ⛔ *O `clamp(0.0, MAX)` antigo tornava metade dos estados do campo
+///    inalcançável* — a rapier lê o sinal, e a porta de entrada não deixava um sinal negativo
+///    passar, logo *«nunca dorme»* não era exprimível de lado nenhum do produto.
+///
+/// ⚠️ `NaN` cai no ramo ligado (`>= 0.0` é falso para `NaN`… e por isso ele cai no ramo
+/// DESLIGADO): explicitado aqui porque um `NaN` que chegasse à rapier como limiar faria toda
+/// comparação de sono ser falsa — que é precisamente *«nunca dorme»*. O colapso é fiel.
+#[must_use]
+fn sanitize_sleep_spin(v: f32) -> f32 {
+    if v >= 0.0 {
+        v.min(MAX_SLEEP_THRESHOLD)
+    } else {
+        ph2d_physics::SLEEP_SPIN_DISABLED
+    }
+}
+
 /// How long a body must stay under both thresholds before sleeping (seconds).
 ///
 /// Semantic: dez segundos significam *«efectivamente nunca»* sem uma infinidade que o artista não
@@ -166,7 +190,21 @@ pub struct PhysicsSettings {
     pub angular_damping: f32,
     /// Speed below which a body may sleep.
     pub sleep_linear_threshold: f32,
-    /// Spin below which a body may sleep.
+    /// ⭐⭐ **O interruptor de adormecer, guardado como o `f32` que a rapier quer.**
+    ///
+    /// ⚠️ **Não é «a rotação abaixo da qual um corpo dorme» — essa frase caducou na `rapier2d`
+    /// 0.35.** Para todo corpo com collider (isto é, toda entidade da cena) a rapier lê deste
+    /// número **apenas o sinal**: `>= 0` = o corpo pode dormir · `< 0` = nunca dorme. O mecanismo,
+    /// com o trecho da 0.35.3 ao lado, está em [`ph2d_physics::SLEEP_SPIN_DISABLED`].
+    ///
+    /// ⛔ **O campo fica `f32` e fica aqui** ainda que o produto o trate como um bit: ele viaja no
+    /// `.ph2dproj` e o postcard é **posicional** — trocá-lo por um `bool` mudaria o significado de
+    /// todos os bytes seguintes em cada ficheiro já gravado. Ler o sinal é gratuito e não parte
+    /// nada: todo projecto gravado até 2026-08-30 tem aqui um valor `>= 0` (o `clamped` antigo
+    /// forçava-o), que é exactamente *«pode dormir»*, que é o que aqueles projectos faziam.
+    ///
+    /// A porta é [`Self::sleep_enabled`] / [`Self::with_sleep_enabled`]; ⛔ não compare este campo
+    /// com zero à mão, ou a lei fica escrita em dois sítios e deixa de ser lei.
     pub sleep_angular_threshold: f32,
     /// Time under both thresholds before a body sleeps, seconds.
     pub time_until_sleep: f32,
@@ -244,11 +282,46 @@ impl PhysicsSettings {
             linear_damping: self.linear_damping.clamp(0.0, MAX_DAMPING),
             angular_damping: self.angular_damping.clamp(0.0, MAX_DAMPING),
             sleep_linear_threshold: self.sleep_linear_threshold.clamp(0.0, MAX_SLEEP_THRESHOLD),
-            sleep_angular_threshold: self.sleep_angular_threshold.clamp(0.0, MAX_SLEEP_THRESHOLD),
+            // ⚠️ **Sanidade que PRESERVA O SINAL**, e não um `clamp(0.0, ..)`. O clamp antigo
+            // tornava o lado «nunca dorme» inalcançável — o campo tinha dois estados e a porta de
+            // entrada só deixava passar um deles. Ver o doc do campo.
+            sleep_angular_threshold: sanitize_sleep_spin(self.sleep_angular_threshold),
             time_until_sleep: self.time_until_sleep.clamp(0.0, MAX_TIME_UNTIL_SLEEP),
             air_drag: self.air_drag.clamp(0.0, MAX_AIR_DRAG),
             // Symmetrized, not merely copied — see the field docs.
             layer_matrix: LayerMatrix::from_rows(self.layer_matrix).rows(),
+        }
+    }
+
+    /// ⭐ **Podem os corpos deste mundo adormecer?** — a única pergunta que a `rapier2d` 0.35 faz
+    /// ao [`Self::sleep_angular_threshold`], e portanto a única que o painel pode oferecer.
+    ///
+    /// ⚠️ **Um `>= 0.0`, não um `> 0.0`:** é o teste que a rapier faz, literalmente. Um limiar de
+    /// `0,0` significa *«pode dormir»* lá dentro (a barra angular é o `π/2` fixo dela), e um
+    /// `> 0.0` aqui leria ao contrário um projecto gravado com o slider no mínimo.
+    #[must_use]
+    pub fn sleep_enabled(self) -> bool {
+        self.sleep_angular_threshold >= 0.0
+    }
+
+    /// O sentido inverso de [`Self::sleep_enabled`] — o que o interruptor do painel escreve.
+    ///
+    /// ⚠️ **Ligar repõe o default do produto, não a magnitude anterior.** Guardar a magnitude para
+    /// a devolver seria lembrar um número que **nenhum consumidor lê** (ver o doc do campo): a
+    /// única coisa que sobreviveria o ciclo desligar→ligar é um valor invisível. Desligar escreve
+    /// [`ph2d_physics::SLEEP_SPIN_DISABLED`], que é o que a própria rapier escreve em
+    /// `RigidBodyActivation::cannot_sleep()`.
+    #[must_use]
+    pub fn with_sleep_enabled(self, on: bool) -> Self {
+        Self {
+            sleep_angular_threshold: if on {
+                // O default do PRODUTO (`BodyDefaults::ours`), não o da rapier: é o valor que
+                // todo `.ph2dproj` gravado já carrega, então ligar devolve o mundo ao que era.
+                BodyDefaults::ours().sleep_angular_threshold
+            } else {
+                ph2d_physics::SLEEP_SPIN_DISABLED
+            },
+            ..self
         }
     }
 

@@ -106,6 +106,25 @@ pub(super) fn paint_brush_tail(
     // falloff), e com um campo elastico activo a curva inteira e' `kelvinlet::rim_landing`. Nesses
     // casos **este selector nao molda nada**.
     //
+    // ⭐ **E a inercia deixou de ser uma AFIRMACAO e passou a ser MEDIDA**, pela porta do produto:
+    // `ph2d-sculpt3d/tests/measure_where_the_curve_knobs_reach.rs` roda o MESMO gesto com duas
+    // curvas e compara o barro (e o canal) **ao bit** nos tres regimes, com o controle positivo do
+    // `Verb::Draw` ao lado. *Um comentario que diz «isto e' inerte» envelhece calado; um gate que o
+    // mede sangra no dia em que deixar de ser verdade.*
+    //
+    // ⛔ **A CURA DE PRIMEIRA ESCOLHA — fazer o consumidor USAR o valor — foi TENTADA nos dois
+    // regimes e MEDIDA a partir, nas duas vezes:**
+    //
+    // | regime | mutacao no produto | gate existente que sangrou | numero |
+    // |---|---|---|---|
+    // | `Verb::Mask` | `mask_weight(t) * falloff.weight(t)` | `the_mask_channel_reproduces_the_reference_kernel` | divergencia **1,201e-1** contra a barra de `1,192e-7` — 10⁶× |
+    // | campo elastico | `rim_landing(t) * falloff.weight(shaped_distance(t))` | `the_stroke_delivers_what_the_kernel_promises` | o traco poe **−6,9e-6** onde o campo manda **−3,8e-4** (55× menos barro) |
+    //
+    // ⇒ No canal, o `Falloff` mediria *uma tool contra a curva de OUTRA* — a mascara tem curva
+    // propria na referencia (`Masking.js:66-69`) e o `Verb::Mask` nasce com a quartica, que a
+    // referencia nao aplica. No campo, o perfil **JA' E'** o falloff, e compor os dois o aplica
+    // duas vezes: o agarre morre. As duas recusas sao de LEI, nao de gosto.
+    //
     // ⛔ **Escondê-lo mesmo assim foi TENTADO no mesmo dia e REVERTIDO**, porque o gate
     // `the_basic_level_never_hides_the_curve_that_shapes_the_dab` o apanhou — e o doc dele carrega
     // a decisao, com referencia: no Blender o `FalloffPanel` e' painel de primeira classe e um
@@ -113,9 +132,15 @@ pub(super) fn paint_brush_tail(
     // uma curva»*. ⭐ *Uma fileira inerte num estado nao e' o mesmo que uma fileira morta* — e a
     // diferenca entre as duas e' uma decisao de produto que ja' foi tomada, com argumento.
     //
+    // ⚠️ **A row da DUREZA ao lado NAO herda esta cerca**, e desde 2026-08-30 ela segue a porta do
+    // motor (`rows::shapes_the_distance`): a dureza e' inerte SO' sob campo elastico — no `Mask`
+    // ela chega, porque o `shaped_distance` roda ANTES da curva do canal, tal como o
+    // `apply_hardness_to_distances` roda antes do `BKE_brush_calc_curve_factors`. *Duas fileiras
+    // vizinhas, a mesma aparencia, e regimes de morte diferentes: so' a medicao as separa.*
+    //
     // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do
     // Blender. A saida que nao viola a cerca e' desenha-la **desactivada** com a razao a' vista,
-    // que e' desenho novo e nao existe hoje.
+    // que e' desenho novo (e um rotulo i18n novo) e nao existe hoje.
     let selected = Falloff::ALL
         .iter()
         .position(|&f| f == snap.ui.brush.falloff)

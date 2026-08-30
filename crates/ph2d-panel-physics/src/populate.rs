@@ -104,13 +104,11 @@ pub fn populate(store: &mut WidgetStore) {
     // Section headers are interactive (the chevron folds them), so they are
     // registered like any other control — a painted chevron that nobody
     // registered is an affordance that does nothing.
-    for section in rows::SECTIONS {
-        button(store, section.id);
+    // ⚠️ A UMA lista (`rows::section_header_ids`), e não os quatro nomes soltos que aqui estavam:
+    // eles eram a 1.ª de três cópias da mesma enumeração, e a 3.ª (o `event.rs`) tinha três.
+    for id in rows::section_header_ids() {
+        button(store, id);
     }
-    button(store, ids::PHYSICS_SEC_INTERACT);
-    button(store, ids::PHYSICS_SEC_JOINT);
-    button(store, ids::PHYSICS_SEC_LAYERS);
-    button(store, ids::PHYSICS_SEC_DEBUG);
 
     // The 36 matrix cells. Registered in a loop, which is exactly why the seam
     // test clicks every one of them: `architecture_panel_wiring_parity` cannot
@@ -124,6 +122,11 @@ pub fn populate(store: &mut WidgetStore) {
     // panel's `event.rs` does not forward, so it would be registered and dead
     // (the painter-layers sculpt segments carry the same warning).
     button(store, ids::PHYSICS_SHOW_COLLIDERS);
+    // ⭐ **O interruptor de adormecer** (2026-08-30) — registado como Button, e não pelo laço das
+    // `rows`, porque ele deixou de ser um slider: a `rapier2d` 0.35 lê do
+    // `sleep_angular_threshold` apenas o SINAL. Mesma família do «Show Colliders» acima, e ⛔ pela
+    // mesma razão não é um `Checkbox`: este painel não encaminha `Toggled`.
+    button(store, ids::PHYSICS_SLEEP_SPIN);
     // Os dois verbos de FITA (W25). Registrados sempre, pintados só quando há o
     // que descartar ou o que devolver: registrar é barato e a alternativa —
     // registrar condicionalmente — faria o botão nascer morto sob o mouse no

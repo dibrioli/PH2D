@@ -95,15 +95,13 @@ pub fn populate(store: &mut WidgetStore) {
     // Os cabeçalhos são interativos (o chevron os dobra), então são registrados
     // como qualquer outro controle — um chevron pintado que ninguém registrou é
     // uma affordance que não faz nada.
-    for section in rows::SECTIONS {
-        button(store, section.id);
-    }
-    for id in [
-        ids::SCULPT3D_SEC_TOOL,
-        ids::SCULPT3D_SEC_SYMMETRY,
-        ids::SCULPT3D_SEC_SCENE,
-        ids::SCULPT3D_SEC_BAKE,
-    ] {
+    //
+    // ⚠️ **A lista é a de [`rows::section_headers`], e é a MESMA que o
+    // `event::is_section_header` percorre.** Enquanto eram duas listas à mão,
+    // esta registrava quatro cabeçalhos de botão e aquela comparava três: o
+    // `SCULPT3D_SEC_BAKE` nascia registrado, focável e **sem braço** — a dobra
+    // pintada que não acontece.
+    for id in rows::section_headers() {
         button(store, id);
     }
 

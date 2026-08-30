@@ -183,9 +183,9 @@ impl Tool for EqualizeSizesTool {
                     UpscaleAlgorithm::Nearest,
                 ));
             }
-            PanelEvent::Click(id) if id == ids::EQS_ALG_XBR => {
+            PanelEvent::Click(id) if id == ids::EQS_ALG_EPX => {
                 self.apply_ui_edit(EqualizeSizesUiEdit::SetUpscaleAlgorithm(
-                    UpscaleAlgorithm::Xbr,
+                    UpscaleAlgorithm::Epx,
                 ));
             }
             // ── Apply (arms the latch the shell drains next frame) ───
@@ -285,8 +285,8 @@ mod tests {
         let mut t = EqualizeSizesTool::default();
         t.handle_panel_event(PanelEvent::Click(ids::EQS_ALG_NEAREST));
         assert_eq!(t.params().upscale_algorithm, UpscaleAlgorithm::Nearest);
-        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALG_XBR));
-        assert_eq!(t.params().upscale_algorithm, UpscaleAlgorithm::Xbr);
+        t.handle_panel_event(PanelEvent::Click(ids::EQS_ALG_EPX));
+        assert_eq!(t.params().upscale_algorithm, UpscaleAlgorithm::Epx);
         t.handle_panel_event(PanelEvent::Click(ids::EQS_ALG_LANCZOS));
         assert_eq!(t.params().upscale_algorithm, UpscaleAlgorithm::Lanczos3);
     }

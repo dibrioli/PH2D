@@ -374,13 +374,7 @@ fn the_source_carries_straight_alpha_not_premultiplied() {
         &vello::kurbo::Circle::new((128.0, 128.0), 96.0),
     );
     scratch
-        .render_to_intermediate(
-            &gpu,
-            &scene,
-            (w, h),
-            vello::peniko::Color::TRANSPARENT,
-            false,
-        )
+        .render_to_intermediate(&gpu, &scene, (w, h), vello::peniko::Color::TRANSPARENT)
         .expect("render");
     let px = readback(&gpu, scratch.intermediate_texture(), w, h);
 

@@ -79,6 +79,25 @@ fn rect_of(rects: &[(NodeId, Rect)], id: NodeId) -> Rect {
         .1
 }
 
+/// O mesmo passe, devolvendo o índice de hit INTEIRO — é ele que responde *«o que está sob este
+/// ponto?»*, e a resolução dele (o ÚLTIMO rectângulo que cobre o ponto) é a lei que a ordem de
+/// registo do pintor explora. Uma lista de registos não a reproduz sem a reimplementar.
+fn painted_hit_index(store: &WidgetStore, map: &ph2d_input::InputMap) -> HitIndex {
+    let mut hit = HitIndex::default();
+    let mut scene = VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    chrome::paint_input_map_window(
+        &mut scene,
+        &mut text,
+        Theme::Forge,
+        &mut hit,
+        store,
+        map,
+        VIEWPORT,
+    );
+    hit
+}
+
 fn row_of(map: &ph2d_input::InputMap, name: &str) -> usize {
     map.actions()
         .iter()
@@ -188,3 +207,87 @@ fn arming_an_action_paints_a_sign_without_moving_a_single_row() {
 // ⇒ a lei mora numa função com gate próprio,
 // `layout::tests::the_title_strip_names_the_action_it_is_listening_to`, e o pintor tem **um**
 // sítio a chamá-la.
+
+/// ⛔⛔ **O FUNDO DO CARTÃO ABSORVE O CLIQUE — a lei que o pintor PROMETIA num comentário e que
+/// gate nenhum media.**
+///
+/// A nota em `chrome/input_map.rs`, ao lado do `hit_index.register(ids::INPUT_MAP_SURFACE, rect)`,
+/// diz que sem ele *"clicar no espaço vazio ENTRE dois controlos da janela caía no canvas por
+/// baixo: com o pincel na mão, o artista **pintava** enquanto arrumava os controlos"*. Era uma
+/// afirmação sem instrumento: apagar aquela linha não movia um único gate deste ficheiro.
+///
+/// # A régua é a AUSÊNCIA, e é por isso que ela é uma varredura
+///
+/// ⚠️ O término deste id **não é** um braço de `match` — é o `None` do `HitIndex`. Todo caminho de
+/// canvas do shell pergunta a mesma coisa (`over_canvas_or_gizmo` em `vec_text_reopen.rs`:
+/// `hit_index.hit(x, y)` → `None` = canvas cru; e o `on_canvas` de `input_dispatch.rs`), então o
+/// que decide se a janela é uma JANELA ou um DESENHO é se existe algum ponto dentro dela que
+/// resolve para `None`.
+///
+/// ⇒ um único ponto de sonda não serve: o buraco vive **entre** controlos, e onde ele fica muda
+/// com o número de acções. A varredura é uma grelha densa sobre o cartão inteiro.
+///
+/// # As três metades
+///
+/// 1. **nenhum** ponto dentro do cartão cai no canvas;
+/// 2. **algum** ponto é respondido pelo próprio fundo — o controlo POSITIVO. Sem ele, uma janela
+///    cujos controlos por acaso cobrissem tudo passaria sem que o fundo existisse, e a primeira
+///    acção nova reabriria o defeito;
+/// 3. e um ponto **fora** do cartão continua a ser canvas — o controlo NEGATIVO. Sem ele, um
+///    `HitIndex` que respondesse a tudo passaria a metade (1), e o gate estaria a medir a forma
+///    dos dados em vez do produto.
+///
+/// ⚠️ **O cartão é medido pela porta do próprio pintor** (`input_map_window_size`), nunca pelo
+/// rectângulo que o registo publica: derivá-lo do registo faria a metade (1) medir *"o fundo cobre
+/// o fundo"*, que é verdade mesmo quando ele não cobre a janela.
+///
+/// **Mutação que deve sangrar:** apagar o `hit_index.register(ids::INPUT_MAP_SURFACE, rect)`.
+#[test]
+fn no_point_inside_the_window_falls_through_to_the_canvas() {
+    let (store, map) = opened();
+    let hit = painted_hit_index(&store, &map);
+    // A MESMA conta que o pintor faz — e que a shell usa para a roda e o arrasto.
+    let (w, h, _) = chrome::input_map_window_size(&map, VIEWPORT.h);
+    let (x0, y0) = (VIEWPORT.x + 48.0, VIEWPORT.y + 48.0);
+
+    // Grelha densa, recuada 1 px da borda: o limite exacto é do desenho, não do gesto.
+    const STEPS: usize = 40;
+    let mut through: Vec<(f32, f32)> = Vec::new();
+    let mut absorbed_by_the_card = 0usize;
+    for iy in 0..STEPS {
+        for ix in 0..STEPS {
+            #[allow(clippy::cast_precision_loss)]
+            let fx = (ix as f32 + 0.5) / STEPS as f32;
+            #[allow(clippy::cast_precision_loss)]
+            let fy = (iy as f32 + 0.5) / STEPS as f32;
+            let (px, py) = (x0 + 1.0 + fx * (w - 2.0), y0 + 1.0 + fy * (h - 2.0));
+            match hit.hit(px, py) {
+                None => through.push((px, py)),
+                Some(id) if id == ids::INPUT_MAP_SURFACE => absorbed_by_the_card += 1,
+                Some(_) => {}
+            }
+        }
+    }
+
+    assert!(
+        through.is_empty(),
+        "{} de {} pontos DENTRO da janela do Input Map caem no canvas por baixo (o primeiro em \
+         {:?}). Com o pincel na mao, arrumar os controlos PINTA — um cartao flutuante que deixa \
+         passar o que nao consome nao e' uma janela, e' um desenho",
+        through.len(),
+        STEPS * STEPS,
+        through[0]
+    );
+    assert!(
+        absorbed_by_the_card > 0,
+        "nenhum ponto foi respondido pelo FUNDO: ou ele nao esta' registado, ou os controlos \
+         cobrem o cartao inteiro por acaso — e nesse caso a metade acima e' verde sem o fundo \
+         existir, e a proxima accao criada reabre o defeito"
+    );
+    assert_eq!(
+        hit.hit(x0 - 4.0, y0 + h * 0.5),
+        None,
+        "um ponto FORA do cartao deixou de ser canvas — a sonda esta' a medir um indice que \
+         responde a tudo, e a metade de cima nao prova nada"
+    );
+}

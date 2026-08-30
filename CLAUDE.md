@@ -48,6 +48,7 @@
 | **Você ASSUMIU uma linha que já existe** (troca de janela / retomada pós-integração) | [MODELO_TROCA_DE_AGENTE_NA_LINHA.md](docs/IntegracaoMultiAgente/MODELO_TROCA_DE_AGENTE_NA_LINHA.md) — **`cd` + `pwd` + `git branch --show-current` ANTES de ler qualquer arquivo.** A janela abre na raiz (=`main`) e o mesmo path relativo existe nas 2 árvores: editar a errada compila e commita **sem erro** |
 | **Build lento / quero voar** | DIRETRIZ §6 (stack de velocidade) — §2 abaixo é o resumo |
 | **Dúvida de stack / Hard Rule** | SKILL_Stack §HR-1..18 (cite por ID) |
+| **«Que versão de Rust/wgpu/vello eu uso?»** | [`STACK_VERSOES.md`](docs/IntegracaoMultiAgente/STACK_VERSOES.md) — **uma página, gateada contra o `Cargo.lock`** (o gate `architecture_stack_versions_doc_matches_the_lockfile` a mantém honesta). Rust **1.98**/edition 2024 · `wgpu` **29** · `vello` **0.10** · `parley` **0.11** · `rapier2d` **0.35** · `bevy_ecs` **0.19** |
 | **Subir dependência · «dá para atualizar X?»** | ⚠️ **`bash scripts/stack-audit.sh --tetos` ANTES de responder** — «o mais recente possível» ≠ «o mais recente»: hoje **8** crates são seguradas por outra (o `vello` prende o `wgpu` em 29, o `parley` prende o `skrifa` e o `accesskit`, o `rfd` prende o `pollster`…), e forçar não dá erro de resolução — dá **duas cópias**, e um `Device`/`NodeId` de uma não serve à outra. Plano vivo: [`docs/Atualizar Stack/`](docs/Atualizar%20Stack/) |
 | **Física / corpo rígido / colisão** | [ADR-0131](docs/architecture/decisions/0131-physics-global-runtime-truth-rapier-ecs-bridge.md) (o *porquê*) + tracker [`docs/Physics/handoffs/HANDOFF_line_physics.md`](docs/Physics/handoffs/HANDOFF_line_physics.md) (estado) + [`00_plano_waves.md`](docs/Physics/00_plano_waves.md) (waves) + [`BUGS_physics.md`](docs/Physics/BUGS_physics.md) (bugs cuja causa enganava) |
 | **Fim de dia · o disco encheu · "por que o target é tão grande?"** | [DIRETIVA_FIM_DE_DIA.md](docs/IntegracaoMultiAgente/DIRETIVA_FIM_DE_DIA.md) — os 3 portões antes de apagar, e a **§2-bis** com a decomposição MEDIDA do target (54% é `incremental/`) e as 3 regras que atacam o pico. ⚠️ **Primeiro `bash scripts/btrfs-health.sh`**: «disco cheio» com 500 GB livres é a **metadata do btrfs** sem espaço para crescer — `df` não a vê, apagar target não cura, e a cura (balance) é root → [runbook](docs/DevOps/BTRFS_METADATA_E_SWAP.md) |
@@ -164,6 +165,21 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   **chega à ferramenta**, nunca que a escrita dela chega a um efeito.
   ⭐ O único painel **42/42 limpo** é o gerado por **tabela** — *um painel derivado de uma tabela
   não tem onde esconder um knob morto.*
+  ⚠️ **E há uma TERCEIRA coisa que se lê igual e cuja cura é OPOSTA: o id ÓRFÃO.** Um `const`
+  declarado que ninguém pinta nem regista é **lixo** (cura: apagar); um pintado e registado cujo
+  valor não chega a consumidor é **morto** (cura: ligar o braço). A sonda vê os dois iguais, e
+  tratar um órfão como morto leva alguém a construir consumidor para um widget que não existe.
+  ⇒ pergunte primeiro *isto chega a ser PINTADO?* (2 dos 10 acusados em 30/08 eram órfãos).
+  ⛔ E um `HitIndex::register` cujo efeito é **BLOQUEAR** (o fundo de uma janela flutuante) tem
+  término por **AUSÊNCIA** — nenhuma varredura de términos positivos o vê, e ensiná-la a aceitar o
+  padrão branquearia os cabeçalhos de secção genuinamente mortos, que têm a mesma forma.
+- ⛔⛔ **Uma catraca sem censo de obsolescência não desce: ela vira LICENÇA.** Toda lista de dívida
+  tolerada deste repo declara-se «só encolhe», e nenhuma encolhe sozinha. Medido 30/08: a lista de
+  folgas de LOC por **função** tinha o censo; a de **ficheiros** não tinha, e ao escrevê-lo ele
+  acusou **três** entradas obsoletas na primeira corrida — uma delas congelada em `660` havia três
+  meses sobre um ficheiro de **536** linhas. ⇒ ao criar uma tolerância, escreva no mesmo commit o
+  teste que pergunta *o alvo ainda existe? ainda estoura? a folga ainda o descreve?* — com a
+  metade justa, senão uma varredura partida devolve zero obsoletas e lê-se como aprovado.
 - ⛔⛔ **Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente** — a
   ausente não é acreditada. Medido em 2026-08-30: a `=15` prometia que a bola sem CCD atravessa a
   parede, e as duas paravam **no mesmo sítio** desde a `rapier` 0.35 (que varre contra cenário

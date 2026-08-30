@@ -44,6 +44,25 @@ pub use glyph_to_network::{GlyphOutline, PathCommand, outline_to_network, outlin
 pub use skrifa_bridge::{FontFaceError, VariableFont};
 
 /// Max axes carried inline before spilling to the heap (ADR-0066 §2.7 cap).
+///
+/// ⚠️⚠️ **ISTO NÃO É UM TECTO DE EIXOS — é uma decisão de ALOCAÇÃO**, e a distinção foi paga em
+/// 2026-08-30: uma fonte com 12 eixos passa por aqui com **os 12**, o `SmallVec` apenas deixa de
+/// ser inline. ⛔ Quem procurar «o número que corta os eixos» e encontrar este vai mudar o número
+/// errado — o corte real está no REGISTO de ids de quem os pinta
+/// (`ph2d_editor_core::ids::MAX_TEXT_VARIATION_AXES`), e há gate a afirmar a não-truncagem aqui
+/// ([`skrifa_bridge::tests::the_inline_capacity_is_not_a_ceiling`]).
+///
+/// # A medição (2026-08-30) — quantos eixos publicam as fontes que este app alcança
+///
+/// | corpus | faces | máximo de `fvar.axisCount` |
+/// |---|---|---|
+/// | a fonte empacotada (`ph2d-text/fonts/InterVariable.ttf`) | 1 | **2** (`wght`, `opsz`) |
+/// | as faces instaladas nesta workstation (`fc-list`) | 927 | **2** (3 variáveis ao todo) |
+///
+/// ⚠️ **E o corpus instalado NÃO é o tecto do produto:** o painel de texto tem *Import Font…*, que
+/// aceita qualquer `.ttf`/`.otf` do disco. O `fvar.axisCount` é um `uint16` no formato, e fontes
+/// paramétricas correntes (Roboto Flex, Amstelvar, Decovar) publicam mais de dez. *Um tecto
+/// derivado do que está instalado mede a máquina de quem mediu, não o que o produto aceita.*
 pub const MAX_AXES: usize = 8;
 
 /// A glyph index within a font. Our own newtype (not `skrifa::GlyphId`) so the

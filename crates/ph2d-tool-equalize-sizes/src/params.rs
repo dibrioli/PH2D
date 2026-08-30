@@ -37,9 +37,12 @@ pub enum TargetMode {
     GridUnit,
 }
 
-/// Three upscale algorithms exposed when `upscale_if_smaller` is on. xBR
-/// is integer-factor only; the tool falls back to Lanczos3 for the
-/// non-integer remainder if the user picks xBR with a fractional ratio.
+/// Three upscale algorithms exposed when `upscale_if_smaller` is on.
+///
+/// ⚠️ All three take the fit's exact destination size, including the
+/// non-uniform case (`fx != fy`), which is the normal one here. None of
+/// them falls back to another — [`UpscaleAlgorithm::Epx`] used to, and
+/// that made it a permanent alias with nothing to show for itself.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum UpscaleAlgorithm {
     /// Sinc-based 6×6 kernel. Default. Excellent for photos and gradient
@@ -49,8 +52,13 @@ pub enum UpscaleAlgorithm {
     /// Pixel replication. Preserves the exact pixel grid; only correct
     /// choice for pixel art when the user wants no filtering.
     Nearest,
-    /// Edge-aware corner blending (Hyllian 2011). Integer factors only.
-    Xbr,
+    /// Edge-directed corner replacement (EPX / Scale2x family, Johnson
+    /// 1992 / Mazzoleni 2001), evaluated continuously so it honours any
+    /// destination size. ⛔ This is deliberately NOT labelled "xBR"
+    /// anymore: it never was xBR, and until this pass it was not even
+    /// an implementation — it aliased Nearest or Lanczos3 depending on
+    /// whether the fit ratio happened to be a whole number.
+    Epx,
 }
 
 /// Projection of the tool's state for the typed panel to paint. Pushed

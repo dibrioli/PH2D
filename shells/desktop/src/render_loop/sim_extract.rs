@@ -20,8 +20,7 @@ use ph2d_ecs::sort_key::{SortInput, SortScratch, compute_sort_ranks_into};
 use ph2d_ecs::{
     ChildOf, ClipChildren, ClipMode, Entity, FilterMode, Mask2D, MaskInteraction, MaskMode,
     PresentWorld, RepeatMode, SimRef, SimWorld, Transform, TransformPropagationState, UvTransform,
-    VisibilityLayer, WorklistBuf, World, propagate_transforms, resolve_texture_filter,
-    resolve_texture_repeat,
+    WorklistBuf, World, propagate_transforms, resolve_texture_filter, resolve_texture_repeat,
 };
 use ph2d_render::{RenderInstance, Sprite, SpriteRenderer};
 
@@ -338,15 +337,13 @@ pub(super) fn run(
             worklist,
             |sim, present, sim_entity, gt| {
                 let mut builder = present.spawn((SimRef(sim_entity), gt));
-                // O olho da Hierarquia (`Visibility`) **e** as peças de uma RECEITA, numa porta
-                // só — ver [`super::off_canvas::is_off_canvas`], onde estão as duas razões e o
-                // defeito que a segunda cura.
-                let hidden = super::off_canvas::is_off_canvas(sim, sim_entity);
-                // W3.T3.12 visibility-layer cull: skip a sprite whose
-                // `VisibilityLayer` is disjoint from the camera cull_mask.
-                let culled = sim
-                    .get::<VisibilityLayer>(sim_entity)
-                    .is_some_and(|vl| !vl.visible_to(cull_mask));
+                // ⭐⭐⭐ **UMA porta, TRÊS razões** — o olho da Hierarquia / a peça de uma receita,
+                // a máscara de camadas contra a da câmara, e o rect do `OnScreenEnabler`. As três
+                // vivem em [`super::off_canvas::draws_this_frame`], onde cada uma tem gate e prova
+                // de mutação; soltas aqui dentro do closure, nenhuma delas era observável.
+                let t = gt.translation();
+                let drawn =
+                    super::off_canvas::draws_this_frame(sim, sim_entity, cull_mask, [t.x, t.y]);
                 let override_for_entity = preview_overrides
                     .iter()
                     .copied()
@@ -361,8 +358,7 @@ pub(super) fn run(
                 // RenderInstance → invisible, the same shape as a
                 // hidden/culled sprite (the W2.T2 skip-guard's behavior, now
                 // resolved per-sprite instead of blanket).
-                if !hidden
-                    && !culled
+                if drawn
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
                     let p = gt.translation();

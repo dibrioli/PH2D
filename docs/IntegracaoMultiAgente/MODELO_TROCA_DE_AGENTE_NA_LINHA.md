@@ -72,6 +72,12 @@ FASE 2 — ESTADO (leia, nesta ordem, DENTRO da worktree):
    foi tentado e re-litigar decisão fechada.
 6. docs/IntegracaoMultiAgente/DIRETIVA_IMPLEMENTACAO.md — inteira, e
    RELEIA a cada passo, como ela manda.
+6b. docs/IntegracaoMultiAgente/STACK_VERSOES.md — 1 pagina. As versoes
+   que voce usa (Rust 1.98/edition 2024 · wgpu 29 · vello 0.10 ·
+   parley 0.11 · rapier2d 0.35 · bevy_ecs 0.19) e as tres regras que
+   um agente novo erra. Uma linha reaberta e' onde uma versao de
+   memoria mais mente: o handoff que voce herdou pode ser anterior a'
+   subida do stack.
 7. As REGRAS PERMANENTES DA SESSÃO (A–I) do
    docs/IntegracaoMultiAgente/MODELO_ABERTURA_LINHA.md — elas valem
    IGUAIS para você. Não estão copiadas aqui de propósito: duas cópias

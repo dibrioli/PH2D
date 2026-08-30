@@ -183,7 +183,13 @@ pub(super) fn dispatch(
         });
 
         // (BgR-specific) Protection-mask overlay tint, gated on Show-Mask.
-        if bgremoval_is_active && bg.show_mask() && bg.has_protect_mask() {
+        //
+        // ⚠️ **A LEI VEM DA PORTA, e não é soletrada aqui.** Ela era a conjunção escrita à mão, e
+        // esta era a última das cópias: o painel decide se o interruptor sequer é alcançável pela
+        // mesma pergunta (`ph2d_tool_bgremoval::params::mask_overlay_renders`), e duas escritas da
+        // mesma lei podem divergir — o interruptor ofereceria o que o canvas não pinta.
+        // *Uma lei escrita em dois sítios ainda não é uma lei; só uma PORTA é.*
+        if bgremoval_is_active && bg.mask_overlay_renders() {
             let (mask, mw, mh) = bg.protect_mask_source();
             let accent = ColorToken::Accent.resolve(theme);
             if let Some((tw, th, buf)) =
@@ -527,4 +533,67 @@ fn build_protect_tint(mask: &[u8], mw: u32, mh: u32, rgb: [u8; 3]) -> Option<(u3
         }
     }
     if any { Some((tw, th, out)) } else { None }
+}
+
+/// ⛔ **CENSO: a lei do overlay da máscara só se pergunta pela PORTA** — *"o tint desenha agora?"*
+/// tem **uma** resposta (`BgRemovalTool::mask_overlay_renders`) e a visibilidade do interruptor é
+/// derivada dela; o que duas escritas produziram está em `seam_show_mask_reachability.rs`.
+/// ⚠️ **Lê o fonte SEM comentários**, senão a prosa que **cita** a expressão proibida para a
+/// explicar reprovaria o gate. *Um gate que lê a prosa sobre a lei mede o autor, não o código.*
+#[cfg(test)]
+mod show_mask_census {
+    /// Todo `.rs` sob `shells/desktop/src/`, já sem as linhas de comentário.
+    fn shell_code() -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        let mut stack = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")];
+        while let Some(dir) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for e in entries.flatten() {
+                let p = e.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if p.extension().and_then(|s| s.to_str()) == Some("rs")
+                    && let Ok(t) = std::fs::read_to_string(&p)
+                {
+                    let c = t.lines().filter(|l| !l.trim_start().starts_with("//"));
+                    let code = c.collect::<Vec<_>>().join("\n");
+                    out.push((p.display().to_string(), code));
+                }
+            }
+        }
+        out
+    }
+
+    /// ⚠️⚠️ **Agulha MONTADA** — a 1.ª corrida deste censo reprovou o ficheiro que o hospeda, por
+    /// achar a própria lista; e a metade JUSTA, por extenso, lia-se a si mesma e ficaria verde sem
+    /// overlay nenhum. *Uma sonda que se lê a si mesma mede a sonda.*
+    fn needle(a: &str, b: &str) -> String {
+        [a, b].concat()
+    }
+
+    #[test]
+    fn the_mask_overlay_law_is_never_spelled_out_again_in_the_shell() {
+        let files = shell_code();
+        assert!(!files.is_empty(), "o censo nao encontrou fonte nenhum");
+        for (path, code) in &files {
+            for cru in [needle("show", "_mask()"), needle("has_protect", "_mask()")] {
+                assert!(
+                    !code.contains(&cru),
+                    "{path}: `{cru}` e' a lei soletrada a' mao. Quem DESENHA pergunta a PORTA \
+                     (`mask_overlay` + `_renders()`); o acessor cru e' o PEDIDO do artista, nao a \
+                     resposta. *Uma lei escrita em dois sitios ainda nao e' uma lei; so' uma \
+                     PORTA e'.*"
+                );
+            }
+        }
+        // ⚠️ **A metade JUSTA:** a porta é de facto chamada — senão o censo ficava verde no dia em
+        // que alguém apagasse o overlay (*ausência lê-se igual a obediência*).
+        let porta = needle("bg.mask_overlay", "_renders()");
+        assert!(
+            files.iter().any(|(_, c)| c.contains(&porta)),
+            "ninguem na shell pergunta a' porta — o tint da mascara deixou de ter consumidor"
+        );
+    }
 }

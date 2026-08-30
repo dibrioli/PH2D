@@ -11,7 +11,7 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::screens::hero::{AnchorFieldEdit, InspectorAnchorInfo, InspectorAnchorRow};
-use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::widget::{CheckboxState, CheckboxValue};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_anchor};
 use ph2d_ui_testkit::MockPanelHost;
@@ -526,42 +526,129 @@ fn the_reset_button_only_fires_when_the_object_is_off_anchor() {
     );
 }
 
-/// **(16) As duas caixas de visibilidade chegam ao barramento, cada uma na sua variante.**
+/// **(16) A caixa de visibilidade VIVA chega ao barramento na variante dela.**
 ///
-/// ⚠️ Trocá-las compila. É o mesmo risco do par `Bounds`/`Center`, e é por isso que o teste mede
-/// as duas — uma só provaria que *alguma* chegou.
+/// ⚠️ Trocá-la pela irmã compila. É o mesmo risco do par `Bounds`/`Center`.
+///
+/// ⛔⛔ **A «Show anchors at runtime» saiu desta lista em 2026-08-30** — ver
+/// [`the_runtime_box_is_parked_until_a_game_runtime_exists`], que agora afirma o CONTRÁRIO sobre
+/// ela e diz porquê.
 #[test]
-fn the_two_visibility_boxes_reach_the_bus_as_themselves() {
-    for (id, on, expect) in [
-        (
-            ids::INSP_ANCHOR_VIS_EDITOR,
-            true,
-            AnchorFieldEdit::VisibilityInEditor(true),
-        ),
-        (
-            ids::INSP_ANCHOR_VIS_RUNTIME,
-            true,
-            AnchorFieldEdit::VisibilityAtRuntime(true),
-        ),
-        (
-            ids::INSP_ANCHOR_VIS_EDITOR,
-            false,
-            AnchorFieldEdit::VisibilityInEditor(false),
-        ),
+fn the_live_visibility_box_reaches_the_bus_as_itself() {
+    for (on, expect) in [
+        (true, AnchorFieldEdit::VisibilityInEditor(true)),
+        (false, AnchorFieldEdit::VisibilityInEditor(false)),
     ] {
         set_current_inspector_anchor(Some(info()));
         let (mut host, mut state) = fresh(0);
         host.set_checkbox_value(
-            id,
+            ids::INSP_ANCHOR_VIS_EDITOR,
             if on {
                 CheckboxValue::Checked
             } else {
                 CheckboxValue::Unchecked
             },
         );
-        host.apply_panel_event::<InspectorPanel>(&mut state, WidgetEvent::Toggled(id));
+        host.apply_panel_event::<InspectorPanel>(
+            &mut state,
+            WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_EDITOR),
+        );
         assert_eq!(edits(&mut host), vec![expect]);
     }
+}
+
+/// ⛔⛔⛔ **(16-bis) A caixa «Show anchors at runtime» está PARADA, e o bloqueador tem nome.**
+///
+/// Ela gravava `AnchorVisibility::at_runtime` no `.ph2dproj` e **não tinha um único leitor** —
+/// porque não existe modo de jogo (`shells/game` / Runtime R1, adiado por decisão do dono do
+/// produto). Um controlo que promete e não entrega é pior que um ausente: o ausente não é
+/// acreditado.
+///
+/// O gate mede as **três** metades da cura, e a quarta — a irmã VIVA — no fim:
+///
+/// 1. ela continua **pintada** (o artista vê que a capacidade existe e está parada);
+/// 2. o registo é `Disabled` ⇒ `is_focusable` recusa-a, então o dedo não a alterna;
+/// 3. um `Toggled` **sintético** (a porta que salta o `is_focusable`) não levanta edição nenhuma;
+/// 4. ⚠️ a irmã «Always show anchors» continua a levantar a dela — parar as duas por simetria
+///    apagaria uma feature que funciona.
+///
+/// **Mutação:** repor o `INSP_ANCHOR_VIS_RUNTIME` no `matches!` do `event_anchor.rs` ⇒ RED em (3);
+/// registá-la `Normal` no `populate_anchor.rs` ⇒ RED em (2).
+#[test]
+fn the_runtime_box_is_parked_until_a_game_runtime_exists() {
+    set_current_inspector_anchor(Some(info()));
+    let (mut host, mut state) = fresh(0);
+    let painted = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    assert!(
+        painted
+            .iter()
+            .any(|(id, _)| *id == ids::INSP_ANCHOR_VIS_RUNTIME),
+        "a caixa parada deixou de ser pintada — retirá-la da tela em silêncio é a outra metade do \
+         mesmo defeito: ninguém fica a saber que a capacidade existe e está bloqueada"
+    );
+    assert_eq!(
+        host.store()
+            .checkbox(ids::INSP_ANCHOR_VIS_RUNTIME)
+            .map(|(s, _)| s),
+        Some(CheckboxState::Disabled),
+        "a caixa parada esta' registada como alcancavel: o `is_focusable` deixa o dedo alterna-la \
+         e o cinzento passa a ser decoracao"
+    );
+
+    set_current_inspector_anchor(Some(info()));
+    let (mut host, mut state) = fresh(0);
+    host.set_checkbox_value(ids::INSP_ANCHOR_VIS_RUNTIME, CheckboxValue::Checked);
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_RUNTIME),
+    );
+    assert!(
+        edits(&mut host).is_empty(),
+        "um Toggled sintetico ainda escreve `at_runtime` — a recusa tem de viver no braco tambem, \
+         nao so' no registo"
+    );
+
+    set_current_inspector_anchor(Some(info()));
+    let (mut host, mut state) = fresh(0);
+    host.set_checkbox_value(ids::INSP_ANCHOR_VIS_EDITOR, CheckboxValue::Checked);
+    host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::Toggled(ids::INSP_ANCHOR_VIS_EDITOR),
+    );
+    assert_eq!(
+        edits(&mut host),
+        vec![AnchorFieldEdit::VisibilityInEditor(true)],
+        "a caixa IRMA' — que tem consumidor vivo no `anchor_overlay` — foi parada junto"
+    );
+}
+
+/// ⭐⭐⭐ **O BLOQUEADOR, escrito como um teste que falha no dia em que ele cai.**
+///
+/// A caixa acima está parada por UMA razão nomeada: `shells/game` não existe. No dia em que
+/// alguém o criar, este gate fica vermelho e obriga quem o criou a voltar aqui e decidir — ligar
+/// a caixa, ou reescrever a razão.
+///
+/// ⚠️ **A pergunta é feita ao DISCO, não a uma nota.** Uma nota a dizer «bloqueado por R1»
+/// envelhece em silêncio; um `Path::exists` não.
+#[test]
+fn the_parked_box_comes_back_the_day_the_game_shell_exists() {
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("workspace root");
+    let game = repo.join("shells").join("game");
+    assert!(
+        !game.exists(),
+        "`{}` passou a existir. O bloqueador da caixa «Show anchors at runtime» era exactamente \
+         *«nao ha' modo de jogo»* — reveja `populate_anchor.rs`, `event_anchor.rs` e o \
+         `RUNTIME_BOX_LABEL` do `sections/anchor_mount_row.rs` antes de apagar esta linha.",
+        game.display()
+    );
+    assert!(
+        repo.join("shells").join("desktop").is_dir(),
+        "a sonda nao esta' a olhar para a raiz da workspace — sem esta metade ela responderia \
+         «nao existe» para sempre, sobre qualquer caminho"
+    );
 }
 
 /// **(17) O botão de reset e as duas caixas pintam-se exatamente quando devem.**

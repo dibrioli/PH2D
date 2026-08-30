@@ -284,16 +284,20 @@ pub(crate) fn apply_event(
     EventOutcome::from_bool(consumed)
 }
 
-/// As seis seções — as TRÊS com tabela de rows mais as três de botões.
+/// As SETE seções — as três com tabela de rows mais as quatro de botões.
 ///
-/// ⚠️ A Topology mudou de lado quando ganhou a pista da resolução: ela sai da
-/// lista à mão porque o laço de `SECTIONS` já a cobre, e mantê-la nas duas seria
-/// registrar o mesmo cabeçalho duas vezes.
+/// ⚠️ **A lista é DERIVADA ([`rows::section_headers`]), e era escrita à mão.**
+/// Medido em 2026-08-30: ela dizia `SEC_TOOL || SEC_SYMMETRY || SEC_SCENE` e o
+/// `populate.rs` registrava esses três **mais o `SCULPT3D_SEC_BAKE`** — o
+/// cabeçalho da seção Bake pintava o chevron, era hit-indexado, era focável, e o
+/// clique dele caía no `_ => false` deste mesmo `match`. *Um chevron que promete
+/// dobrar e não dobra é pior que um cabeçalho sem chevron*, e a única coisa que
+/// separava os dois estados era qual das duas listas alguém tinha atualizado.
+///
+/// ⚠️ **É o irmão exato do `PHYSICS_SEC_LAYERS`** (mesma forma, outra crate) que
+/// a caça de 2026-08-30 pôs na catraca do `the_painted_control_reaches_a_consumer`.
 fn is_section_header(id: ph2d_a11y::NodeId) -> bool {
-    rows::SECTIONS.iter().any(|s| s.id == id)
-        || id == ids::SCULPT3D_SEC_TOOL
-        || id == ids::SCULPT3D_SEC_SYMMETRY
-        || id == ids::SCULPT3D_SEC_SCENE
+    rows::section_headers().any(|h| h == id)
 }
 
 /// **O que um clique na fileira de PADRÃO arma** — extraído do `apply_event`.

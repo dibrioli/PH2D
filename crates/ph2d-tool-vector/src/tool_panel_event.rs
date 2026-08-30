@@ -121,6 +121,17 @@ impl VectorTool {
             }
             PanelEvent::Click(id) if id == ids::VECTOR_SYM_FUSE_OFF => self.symmetry.fuse = false,
             PanelEvent::Click(id) if id == ids::VECTOR_SYM_FUSE_ON => self.symmetry.fuse = true,
+            // ⭐⭐ **QUANTAS cópias a rosácea faz** — o braço que faltava, e o controlo estava
+            // **MORTO** por isso (caça de 2026-08-30). O id era declarado, registado, pintado e
+            // contado pelo censo de focalizabilidade, e o valor não tinha para onde ir: o artista
+            // arrastava a barra, o chip mudava, e a contagem ficava pregada no `6` do default.
+            //
+            // ⚠️ **Nenhum `apply_to_selected` aqui.** A simetria é um MODO de desenho: as cópias
+            // são desenho enquanto ela está ligada, e o Apply é que as consolida. Restilar a
+            // selecção a partir daqui reescreveria a `SymmetrySpec` de uma forma que já fechou.
+            PanelEvent::SetValue(id, v) if id == ids::VECTOR_SYM_SEGMENTS => {
+                self.symmetry.segments = crate::params::segments_from_value(v);
+            }
             // **Forma** — o 5º pill. Re-arma o gesto na forma ATIVA do catálogo (não a
             // troca): é o caminho de volta ao desenho depois de um desvio pelo Select,
             // e é o pill que ACENDE enquanto se desenha (antes o modo Shape não tinha

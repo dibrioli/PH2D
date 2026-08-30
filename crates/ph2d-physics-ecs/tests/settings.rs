@@ -250,3 +250,55 @@ fn out_of_range_settings_are_clamped_on_the_way_in() {
         "negative drag reached the solver (it would ACCELERATE bodies)"
     );
 }
+
+/// ⭐⭐ **O INTERRUPTOR DE ADORMECER ATRAVESSA A PORTA — os dois lados.**
+///
+/// ⚠️ **A porta era o sítio onde o estado «nunca dorme» morria.** O `clamped()` levava o
+/// `sleep_angular_threshold` por um `clamp(0.0, MAX)`, e a `rapier2d` 0.35 lê deste campo **o
+/// sinal**: um clamp para não-negativo apaga metade dos estados do campo *antes de o solver os
+/// ver*. Não era um limite de recurso — era um estado do produto tornado inalcançável por uma
+/// linha escrita quando a magnitude ainda mandava.
+///
+/// Os dois lados, porque um gate só do lado desligado ficaria verde sob um `clamped` que devolvesse
+/// `SLEEP_SPIN_DISABLED` para tudo:
+///
+/// | escrito | `sleep_enabled()` | o que a rapier faz |
+/// |---|---|---|
+/// | `SLEEP_SPIN_DISABLED` (`-1,0`) | `false` | `angular_ok = false` sempre ⇒ nunca dorme |
+/// | o default do produto (`0,5`) | `true` | pode dormir (barra angular = `π/2` fixo dela) |
+///
+/// ⚠️ E o **tecto continua a valer do lado ligado** — a sanidade preserva o sinal, não o abandona.
+///
+/// Mutação que tem de sangrar: `sanitize_sleep_spin` voltar a ser `clamp(0.0, MAX_SLEEP_THRESHOLD)`.
+#[test]
+fn the_sleep_switch_survives_the_door_on_both_sides() {
+    let mut bridge = PhysicsBridge::new();
+
+    bridge.set_settings(PhysicsSettings::default().with_sleep_enabled(false));
+    let off = bridge.settings();
+    assert!(
+        !off.sleep_enabled(),
+        "desligar adormecer nao sobreviveu a porta: o campo chegou como {} \
+         (a rapier le o SINAL, e este e' >= 0 ⇒ os corpos voltam a dormir)",
+        off.sleep_angular_threshold
+    );
+
+    bridge.set_settings(off.with_sleep_enabled(true));
+    let on = bridge.settings();
+    assert!(
+        on.sleep_enabled(),
+        "voltar a ligar adormecer nao sobreviveu a porta: {}",
+        on.sleep_angular_threshold
+    );
+
+    // O tecto do lado ligado continua a ser imposto aqui, e nao no slider que ja' nao existe.
+    bridge.set_settings(PhysicsSettings {
+        sleep_angular_threshold: 1_000.0,
+        ..PhysicsSettings::default()
+    });
+    assert_eq!(
+        bridge.settings().sleep_angular_threshold,
+        ph2d_physics_ecs::MAX_SLEEP_THRESHOLD,
+        "preservar o sinal nao pode ter desligado o tecto do lado positivo"
+    );
+}

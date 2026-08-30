@@ -22,20 +22,37 @@ use ph2d_editor_core::screens::hero::InspectorSamplingInfo;
 use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::{SegmentedAdaptive, SegmentedOption, paint_segmented_adaptive};
 
-/// **Um rótulo por variante de `ph2d_ecs::FilterMode`, na ordem das tags `0..=6`.**
+/// **Um rótulo por TAG de `ph2d_ecs::FilterMode`, indexado pela tag `0..=6` — `None` = a tag não é
+/// oferecida.**
 ///
 /// ⚠️ Hardcoded aqui de propósito — o painel é chrome e não depende do `ph2d-ecs` (mesma razão do
-/// `BLEND_LABELS` da §10). Quem guarda as duas contagens honestas é o gate
-/// `the_filter_segmented_offers_every_mode_the_engine_has`, no shell, que é a única crate que vê
-/// as duas.
-pub const FILTER_LABELS: [&str; 7] = [
-    "Inherit",
-    "Nearest",
-    "Linear",
-    "Near+Mip",
-    "Lin+Mip",
-    "Near+Aniso",
-    "Lin+Aniso",
+/// `BLEND_LABELS` da §10). Quem guarda as duas listas honestas é o gate
+/// `the_filter_segmented_offers_exactly_the_modes_that_render_differently`, no shell, que é a única
+/// crate que vê o painel **e** as leis do renderer.
+///
+/// # ⛔⛔ Por que isto é `Option` e não uma lista mais curta
+///
+/// **A POSIÇÃO É A TAG** — o despacho (`event_ordering.rs`) deriva o que escrever de
+/// `INSP_SAMPLE_FILTER.position(|&o| o == id)`, e aquele array vive no `ph2d-editor-core` com as
+/// sete entradas. Encurtar esta lista faria o `zip` casar o rótulo `n+1` com o id `n`: o segmento
+/// rotulado *«Lin+Aniso»* passaria a escrever a tag do vizinho, **sem uma linha de erro**. O buraco
+/// explícito é o que mantém as duas listas indexadas pela mesma coisa.
+///
+/// # ⛔ O buraco no `5`
+///
+/// Era *«Near+Aniso»*, e é um item de menu **fisicamente inalcançável**: o wgpu recusa
+/// `anisotropy_clamp > 1` sem os três filtros `Linear`, e *ampliar por ponto* é o que aquele nome
+/// promete. O sampler dela é campo a campo o da `3 Near+Mip` — dois segmentos com nomes diferentes
+/// e o mesmo desenho, que é a doença que a §4 desta seção já mediu com os rótulos repetidos.
+pub const FILTER_LABELS: [Option<&str>; 7] = [
+    Some("Inherit"),
+    Some("Nearest"),
+    Some("Linear"),
+    Some("Near+Mip"),
+    Some("Lin+Mip"),
+    // ⛔ 5 — `Near+Aniso`, RETIRADO. ⚠️ Não reaproveite o slot: a tag é o formato de arquivo.
+    None,
+    Some("Lin+Aniso"),
 ];
 
 /// **Um rótulo por variante de `ph2d_ecs::RepeatMode`**, na ordem das tags `0..=3`.
@@ -50,7 +67,11 @@ pub const REPEAT_LABELS: [&str; 4] = ["Inherit", "Clamp", "Repeat", "Mirror"];
 /// concordasse (auditoria `docs/Sprite_projeto/20` §3.3).
 const NOTHING_LIT: usize = usize::MAX;
 
-/// **Qual segmento acende para uma tag de filtro.** Identidade, porque a posição **é** a tag.
+/// **Qual segmento acende para uma tag de filtro** — a contagem dos rótulos oferecidos ABAIXO
+/// dela, porque a lista pintada salta o buraco do `5`.
+///
+/// Devolve [`NOTHING_LIT`] para uma tag que não é oferecida (o `5` aposentado, ou qualquer coisa
+/// fora de alcance): o `SegmentedAdaptive` trata isso como *nenhum segmento aceso*.
 ///
 /// # Por que isto é uma função nomeada e não uma expressão
 ///
@@ -58,11 +79,18 @@ const NOTHING_LIT: usize = usize::MAX;
 /// Uma expressão dentro do pintor **não é observável de fora** — nenhum teste podia perguntar-lhe
 /// nada, porque a seleção não sai no `paint`. Com nome, ela responde.
 ///
-/// O `min` que sobrou não é o mesmo: com um segmento por variante ele só é alcançável por uma tag
-/// que o `FilterMode` não tem, e o gate `the_position_in_the_segmented_is_the_tag_itself` (shell)
-/// prende as duas contagens. *O clamp deixou de ser a regra e passou a ser a rede.*
+/// # ⛔ E por que o `min` MORREU
+///
+/// Com um buraco na lista, um clamp acenderia o **último** segmento (*«Lin+Aniso»*) para uma tag
+/// que não é ele — a mesma família do `.min(2)` que acendia *«Linear»* sobre pixel duro. *Um clamp
+/// é uma rede enquanto a lista é densa; sobre uma lista com buraco ele volta a ser uma mentira.*
+/// Não acender nada é a resposta honesta, e é a afordância que esta seção já usa para «misto».
 pub(crate) fn filter_selected_index(filter_tag: u8) -> usize {
-    usize::from(filter_tag).min(FILTER_LABELS.len() - 1)
+    let tag = usize::from(filter_tag);
+    if FILTER_LABELS.get(tag).copied().flatten().is_none() {
+        return NOTHING_LIT;
+    }
+    FILTER_LABELS[..tag].iter().filter(|l| l.is_some()).count()
 }
 
 /// Label-above row with two NumberInputs (X / Y) for a UV scale/offset
@@ -186,10 +214,13 @@ pub(crate) fn paint_sampling_section(
     let seg = SegmentedAdaptive::new(
         ids::INSP_LIVE_SAMPLING_SECTION,
         "Texture Filter",
+        // ⚠️ **`zip` com o array INTEIRO e depois `filter_map`** — o par `(id, rótulo)` tem de ser
+        // formado ANTES de descartar o buraco, senão o rótulo `n+1` casa com o id `n` e o segmento
+        // passa a escrever o modo do vizinho (vide o doc de `FILTER_LABELS`).
         ids::INSP_SAMPLE_FILTER
             .iter()
             .zip(FILTER_LABELS)
-            .map(|(&id, label)| SegmentedOption::new(id, label))
+            .filter_map(|(&id, label)| label.map(|l| SegmentedOption::new(id, l)))
             .collect(),
     )
     .selected(if info.mixed.filter {
@@ -285,29 +316,62 @@ pub(crate) fn paint_sampling_section(
 mod tests {
     use super::*;
 
-    /// **Cada tag acende o SEU segmento** — a identidade que o `.min(2)` quebrava.
+    /// **A lista OFERECIDA, na ordem em que o pintor a monta** — a mesma expressão do
+    /// `paint_sampling_section`, para o teste falar da mesma coisa que o ecrã.
+    fn oferecidos() -> Vec<&'static str> {
+        FILTER_LABELS.iter().flatten().copied().collect()
+    }
+
+    /// **Cada tag acende o SEU segmento** — a identidade que o `.min(2)` quebrava, agora contada
+    /// por cima do buraco do `5`.
     ///
     /// ⚠️ Este é o teste que não podia existir enquanto a regra era uma expressão dentro do
     /// pintor: a seleção não sai no `paint`, por isso nenhum gate de costura a alcançava. Ele
     /// mata a mutação exata que shipou (`.min(2)` → tags 3 e 5 acendendo «Linear»).
+    ///
+    /// ⚠️ **E mede o RÓTULO, não o índice.** Um gate sobre o número passaria numa lista
+    /// re-ordenada; o que o artista lê é o nome que acende.
     #[test]
-    fn every_filter_tag_lights_its_own_segment() {
-        for tag in 0..FILTER_LABELS.len() {
+    fn every_offered_filter_tag_lights_the_segment_that_carries_its_own_label() {
+        let offered = oferecidos();
+        for (tag, label) in FILTER_LABELS.iter().enumerate() {
+            let Some(label) = label else { continue };
             let t = u8::try_from(tag).expect("as tags cabem num u8");
+            let i = filter_selected_index(t);
             assert_eq!(
-                filter_selected_index(t),
-                tag,
-                "a tag {tag} acende o segmento «{}» em vez do seu — foi assim que as tags 3 e 5 \
-                 (que o renderer desenha com pixel duro) acenderam «Linear» durante meses",
-                FILTER_LABELS[filter_selected_index(t)]
+                offered.get(i).copied(),
+                Some(*label),
+                "a tag {tag} («{label}») acende o segmento {i} («{}») — foi assim que as tags 3 e \
+                 5 (que o renderer desenha com pixel duro) acenderam «Linear» durante meses",
+                offered.get(i).copied().unwrap_or("<fora de alcance>")
             );
         }
     }
 
-    /// **Uma tag impossível não escolhe às cegas** — ela cai no último segmento em vez de indexar
-    /// fora do array. A rede, não a regra.
+    /// ⛔ **O TAG APOSENTADO NÃO ACENDE NADA** — nem o vizinho, nem o último.
+    ///
+    /// ⚠️ Um clamp devolveria o **último** segmento (*«Lin+Aniso»*) e o painel voltaria a afirmar
+    /// um modo que não é o do objecto — a mesma família do `.min(2)`. E o `5` não é hipotético: é
+    /// o que um `.ph2dproj` gravado antes desta cura tem escrito.
     #[test]
-    fn a_tag_the_engine_cannot_produce_is_clamped_not_indexed_out_of_range() {
-        assert_eq!(filter_selected_index(200), FILTER_LABELS.len() - 1);
+    fn the_retired_and_the_impossible_tags_light_nothing() {
+        const RETIRED: u8 = 5;
+        assert!(
+            FILTER_LABELS[RETIRED as usize].is_none(),
+            "o slot aposentado voltou a ter rotulo"
+        );
+        assert_eq!(filter_selected_index(RETIRED), NOTHING_LIT);
+        assert_eq!(filter_selected_index(200), NOTHING_LIT);
+        // ⚠️ **A metade JUSTA:** as tags que EXISTEM continuam a acender alguma coisa. Sem ela um
+        // `filter_selected_index` que devolvesse sempre `NOTHING_LIT` passaria este gate.
+        for (tag, label) in FILTER_LABELS.iter().enumerate() {
+            if label.is_some() {
+                assert_ne!(
+                    filter_selected_index(tag as u8),
+                    NOTHING_LIT,
+                    "a tag {tag} e' oferecida e nao acende segmento nenhum"
+                );
+            }
+        }
     }
 }

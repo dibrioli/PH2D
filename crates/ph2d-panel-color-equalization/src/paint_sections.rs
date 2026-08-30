@@ -16,7 +16,6 @@
 
 use crate::ids;
 use crate::state::{self, PendingDropdownPopover};
-use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::widget::{
@@ -27,12 +26,7 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_tool_color_equalization::lut_presets::LutPreset;
-use ph2d_tool_color_equalization::params::{
-    ColorEqualizationUiSnapshot, brightness_to_slider, clip_limit_to_slider, contrast_to_slider,
-    exposure_to_slider, lut_intensity_to_slider, lut_mix_to_slider, saturation_to_slider,
-    sharpen_amount_to_slider, sharpen_radius_to_slider, temperature_to_slider, tile_grid_to_slider,
-    tint_to_slider, vibrance_to_slider,
-};
+use ph2d_tool_color_equalization::params::ColorEqualizationUiSnapshot;
 use ph2d_vector::VectorScene;
 
 /// Shared layout metrics for every section helper, mirroring the locals
@@ -47,125 +41,14 @@ pub(crate) struct SectionLayout {
     pub label_col_w: f32,
 }
 
-// ── Slider rows (13 rows) ─────────────────────────────────────────────
-
-struct SliderRow {
-    label: &'static str,
-    slider_id: NodeId,
-    chip_id: NodeId,
-    snap_track: f32,
-    snap_chip: f64,
-    chip_display: String,
-}
-
-fn build_slider_rows(snapshot: &ColorEqualizationUiSnapshot) -> [SliderRow; 13] {
-    [
-        SliderRow {
-            label: "Clip",
-            slider_id: ids::CEQ_CLIP_LIMIT,
-            chip_id: ids::CEQ_CLIP_LIMIT_NUM,
-            snap_track: clip_limit_to_slider(snapshot.clip_limit),
-            snap_chip: snapshot.clip_limit as f64,
-            chip_display: format!("{:.2}", snapshot.clip_limit),
-        },
-        SliderRow {
-            label: "Tile Grid",
-            slider_id: ids::CEQ_TILE_GRID,
-            chip_id: ids::CEQ_TILE_GRID_NUM,
-            snap_track: tile_grid_to_slider(snapshot.tile_grid_size),
-            snap_chip: snapshot.tile_grid_size as f64,
-            chip_display: snapshot.tile_grid_size.to_string(),
-        },
-        SliderRow {
-            label: "Exposure",
-            slider_id: ids::CEQ_EXPOSURE,
-            chip_id: ids::CEQ_EXPOSURE_NUM,
-            snap_track: exposure_to_slider(snapshot.exposure),
-            snap_chip: snapshot.exposure as f64,
-            chip_display: format!("{:+.2} EV", snapshot.exposure),
-        },
-        SliderRow {
-            label: "Temperature",
-            slider_id: ids::CEQ_TEMPERATURE,
-            chip_id: ids::CEQ_TEMPERATURE_NUM,
-            snap_track: temperature_to_slider(snapshot.temperature),
-            snap_chip: snapshot.temperature as f64,
-            chip_display: format!("{:+.2}", snapshot.temperature),
-        },
-        SliderRow {
-            label: "Tint",
-            slider_id: ids::CEQ_TINT,
-            chip_id: ids::CEQ_TINT_NUM,
-            snap_track: tint_to_slider(snapshot.tint),
-            snap_chip: snapshot.tint as f64,
-            chip_display: format!("{:+.2}", snapshot.tint),
-        },
-        SliderRow {
-            label: "Brightness",
-            slider_id: ids::CEQ_BRIGHTNESS,
-            chip_id: ids::CEQ_BRIGHTNESS_NUM,
-            snap_track: brightness_to_slider(snapshot.brightness),
-            snap_chip: snapshot.brightness as f64,
-            chip_display: format!("{:+.2}", snapshot.brightness),
-        },
-        SliderRow {
-            label: "Contrast",
-            slider_id: ids::CEQ_CONTRAST,
-            chip_id: ids::CEQ_CONTRAST_NUM,
-            snap_track: contrast_to_slider(snapshot.contrast),
-            snap_chip: snapshot.contrast as f64,
-            chip_display: format!("{:.2}", snapshot.contrast),
-        },
-        SliderRow {
-            label: "Vibrance",
-            slider_id: ids::CEQ_VIBRANCE,
-            chip_id: ids::CEQ_VIBRANCE_NUM,
-            snap_track: vibrance_to_slider(snapshot.vibrance),
-            snap_chip: snapshot.vibrance as f64,
-            chip_display: format!("{:+.2}", snapshot.vibrance),
-        },
-        SliderRow {
-            label: "Saturation",
-            slider_id: ids::CEQ_SATURATION,
-            chip_id: ids::CEQ_SATURATION_NUM,
-            snap_track: saturation_to_slider(snapshot.saturation),
-            snap_chip: snapshot.saturation as f64,
-            chip_display: format!("{:+.2}", snapshot.saturation),
-        },
-        SliderRow {
-            label: "Sharpen",
-            slider_id: ids::CEQ_SHARPEN_AMOUNT,
-            chip_id: ids::CEQ_SHARPEN_AMOUNT_NUM,
-            snap_track: sharpen_amount_to_slider(snapshot.sharpen_amount),
-            snap_chip: snapshot.sharpen_amount as f64,
-            chip_display: format!("{:.2}", snapshot.sharpen_amount),
-        },
-        SliderRow {
-            label: "Radius",
-            slider_id: ids::CEQ_SHARPEN_RADIUS,
-            chip_id: ids::CEQ_SHARPEN_RADIUS_NUM,
-            snap_track: sharpen_radius_to_slider(snapshot.sharpen_radius),
-            snap_chip: snapshot.sharpen_radius as f64,
-            chip_display: format!("{:.2}", snapshot.sharpen_radius),
-        },
-        SliderRow {
-            label: "LUT Intensity",
-            slider_id: ids::CEQ_LUT_INTENSITY,
-            chip_id: ids::CEQ_LUT_INTENSITY_NUM,
-            snap_track: lut_intensity_to_slider(snapshot.lut_intensity),
-            snap_chip: snapshot.lut_intensity as f64,
-            chip_display: format!("{:.2}", snapshot.lut_intensity),
-        },
-        SliderRow {
-            label: "LUT Mix",
-            slider_id: ids::CEQ_LUT_MIX,
-            chip_id: ids::CEQ_LUT_MIX_NUM,
-            snap_track: lut_mix_to_slider(snapshot.lut_mix),
-            snap_chip: snapshot.lut_mix as f64,
-            chip_display: format!("{:.2}", snapshot.lut_mix),
-        },
-    ]
-}
+// ── Slider rows (13 rows) — the TABLE lives in `rows.rs` ─────────────
+//
+// Split out when the `show` gate landed and pushed this file past its
+// frozen 660-LOC allowance: an allowance is a debt, not a budget.
+// ⚠️ The allowance entry in `architecture_panel_loc_cap.rs` now reads
+// 660 for a 540-LOC file and should be lowered — that file is outside
+// this line's ownership, so it is reported instead of edited.
+use crate::rows::build_slider_rows;
 
 /// Eleven+two labeled slider+chip rows (Phase 1/2 stages — clip, tile
 /// grid, exposure, temperature, tint, brightness, contrast, vibrance,
@@ -184,6 +67,12 @@ pub(crate) fn paint_slider_rows_section(
     let rows = build_slider_rows(snapshot);
     let mut y = y_in;
     for row in &rows {
+        // ⚠️ A row whose stage is not running is not painted AND not
+        // hit-indexed: a control the artist can see and move must be a
+        // control something reads.
+        if !(row.show)(snapshot) {
+            continue;
+        }
         let track = store
             .slider(row.slider_id)
             .map(|(_, v)| v)
@@ -288,7 +177,17 @@ pub(crate) fn paint_posterize_quantize_section(
     y_in: f32,
 ) -> f32 {
     let gap = Spacing::Sm.px();
-    let half = ((layout.inner_w - gap) * 0.5).max(0.0);
+    // ⚠️ **The Dither toggle shares this row with Posterize, and only
+    // Posterize is unconditional** — it is the stage's own on-switch.
+    // With Posterize off, `posterize(..)` never runs and the toggle
+    // reaches nothing, so the dropdown takes the full width rather than
+    // leaving a live-looking button beside an empty half.
+    let dither_reachable = snapshot.posterize_stage_runs();
+    let half = if dither_reachable {
+        ((layout.inner_w - gap) * 0.5).max(0.0)
+    } else {
+        layout.inner_w
+    };
     // Mini-label acima de cada dropdown (Enio 2026-05-26: "Esses
     // dropdown precisam de labels para o usuário saber do que se
     // trata"). Font Xs / cor Text2 / pequeno gap, igual o padrão
@@ -333,91 +232,102 @@ pub(crate) fn paint_posterize_quantize_section(
     }
 
     // Dither toggle (right half) — paint label "Dither" acima também
-    // pra parity visual com Posterize/Quantize.
-    paint_text(
-        text_system,
-        scene,
-        "Dither",
-        layout.inner_x + half + gap,
-        y_in,
-        mini_label_font,
-        half,
-        resolve(ColorToken::Text2, theme),
-    );
-    let dith_rect = Rect::new(layout.inner_x + half + gap, chip_y, half, layout.row_h);
-    let dith_active = snapshot.posterize_dithering;
-    let dith_kind = if dith_active {
-        ButtonKind::Accent
-    } else {
-        ButtonKind::Default
-    };
-    let dith_btn_state = if dith_active {
-        (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
-    } else {
-        store.button_visual(ids::CEQ_POSTERIZE_DITHERING)
-    };
-    let dith_label = if dith_active { "Dither: On" } else { "Dither" };
-    let dith_button = Button::new(ids::CEQ_POSTERIZE_DITHERING, dith_label)
-        .kind(dith_kind)
-        .visual(dith_btn_state);
-    paint_button(&dith_button, dith_rect, scene, text_system, theme);
-    hit_index.register(ids::CEQ_POSTERIZE_DITHERING, dith_rect);
+    // pra parity visual com Posterize/Quantize. Only exists once
+    // Posterize has a stage for it to modify.
+    if dither_reachable {
+        paint_text(
+            text_system,
+            scene,
+            "Dither",
+            layout.inner_x + half + gap,
+            y_in,
+            mini_label_font,
+            half,
+            resolve(ColorToken::Text2, theme),
+        );
+        let dith_rect = Rect::new(layout.inner_x + half + gap, chip_y, half, layout.row_h);
+        let dith_active = snapshot.posterize_dithering;
+        let dith_kind = if dith_active {
+            ButtonKind::Accent
+        } else {
+            ButtonKind::Default
+        };
+        let dith_btn_state = if dith_active {
+            (ButtonState::Pressed, ph2d_editor_core::motion::SETTLED)
+        } else {
+            store.button_visual(ids::CEQ_POSTERIZE_DITHERING)
+        };
+        let dith_label = if dith_active { "Dither: On" } else { "Dither" };
+        let dith_button = Button::new(ids::CEQ_POSTERIZE_DITHERING, dith_label)
+            .kind(dith_kind)
+            .visual(dith_btn_state);
+        paint_button(&dith_button, dith_rect, scene, text_system, theme);
+        hit_index.register(ids::CEQ_POSTERIZE_DITHERING, dith_rect);
+    }
 
     let mut y = chip_y + layout.row_h + layout.row_gap;
 
     // Dither Strength + Grain sliders (Enio 2026-05-26). Pintados como
     // duas linhas slider+chip adaptativos (mesmo padrão de Phase 1/2).
-    let dither_strength_track = store
-        .slider(ids::CEQ_POSTERIZE_DITHER_STRENGTH)
-        .map(|(_, v)| v)
-        .unwrap_or(snapshot.posterize_dither_strength01);
-    let dither_strength_chip = store
-        .number_value(ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM)
-        .unwrap_or(snapshot.posterize_dither_strength as f64);
-    let dither_strength_display = format!("{:.2}", snapshot.posterize_dither_strength);
-    let used = paint_slider_with_chip_layout_adaptive(
-        Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
-        "Dither Strength",
-        dither_strength_track,
-        dither_strength_chip,
-        Some(&dither_strength_display),
-        ids::CEQ_POSTERIZE_DITHER_STRENGTH,
-        ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
-        layout.label_col_w,
-        layout.chip_w,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    y += used + layout.row_gap;
+    //
+    // ⭐ Both values are handed to `posterize(..)` and read only inside
+    // its dither sub-pass. They need TWO facts to matter — Posterize on
+    // AND Dither on — and the panel is born with `posterize_levels == 0`,
+    // so the artist reaches two live-looking sliders in the first second
+    // over a stage that never runs.
+    if snapshot.dither_stage_runs() {
+        let dither_strength_track = store
+            .slider(ids::CEQ_POSTERIZE_DITHER_STRENGTH)
+            .map(|(_, v)| v)
+            .unwrap_or(snapshot.posterize_dither_strength01);
+        let dither_strength_chip = store
+            .number_value(ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM)
+            .unwrap_or(snapshot.posterize_dither_strength as f64);
+        let dither_strength_display = format!("{:.2}", snapshot.posterize_dither_strength);
+        let used = paint_slider_with_chip_layout_adaptive(
+            Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
+            "Dither Strength",
+            dither_strength_track,
+            dither_strength_chip,
+            Some(&dither_strength_display),
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH,
+            ids::CEQ_POSTERIZE_DITHER_STRENGTH_NUM,
+            layout.label_col_w,
+            layout.chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        y += used + layout.row_gap;
 
-    let dither_grain_track = store
-        .slider(ids::CEQ_POSTERIZE_DITHER_GRAIN)
-        .map(|(_, v)| v)
-        .unwrap_or(snapshot.posterize_dither_grain01);
-    let dither_grain_chip = store
-        .number_value(ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM)
-        .unwrap_or(snapshot.posterize_dither_grain as f64);
-    let dither_grain_display = format!("{}", snapshot.posterize_dither_grain);
-    let used = paint_slider_with_chip_layout_adaptive(
-        Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
-        "Dither Grain",
-        dither_grain_track,
-        dither_grain_chip,
-        Some(&dither_grain_display),
-        ids::CEQ_POSTERIZE_DITHER_GRAIN,
-        ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
-        layout.label_col_w,
-        layout.chip_w,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    y += used + layout.row_gap;
+        let dither_grain_track = store
+            .slider(ids::CEQ_POSTERIZE_DITHER_GRAIN)
+            .map(|(_, v)| v)
+            .unwrap_or(snapshot.posterize_dither_grain01);
+        let dither_grain_chip = store
+            .number_value(ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM)
+            .unwrap_or(snapshot.posterize_dither_grain as f64);
+        let dither_grain_display = format!("{}", snapshot.posterize_dither_grain);
+        let used = paint_slider_with_chip_layout_adaptive(
+            Rect::new(layout.inner_x, y, layout.inner_w, layout.row_h),
+            "Dither Grain",
+            dither_grain_track,
+            dither_grain_chip,
+            Some(&dither_grain_display),
+            ids::CEQ_POSTERIZE_DITHER_GRAIN,
+            ids::CEQ_POSTERIZE_DITHER_GRAIN_NUM,
+            layout.label_col_w,
+            layout.chip_w,
+            store,
+            hit_index,
+            scene,
+            text_system,
+            theme,
+        );
+        y += used + layout.row_gap;
+    }
 
     // Quantize label + dropdown chip — full width.
     paint_text(

@@ -74,6 +74,28 @@ pub(crate) fn tick_sprite_animations(
     if dt == 0 {
         return out;
     }
+    // ⭐⭐ **O `OnScreenEnabler` a PAUSAR de facto** (2026-08-30) — *«só corre quando está no
+    // ecrã»*, que é metade do que aqueles cinco campos da §8 prometem. A outra metade (o
+    // `HideVisible`) mora no extract.
+    //
+    // ⚠️ **Colhido ANTES do laço mutável, e não dentro dele**: a decisão precisa de ler a
+    // hierarquia inteira (`world_transform` + os ancestrais) enquanto o laço já tem `&mut` sobre o
+    // mundo. ⚠️ **E a lista sai vazia numa cena sem um único enabler**, então o caminho comum é
+    // uma varredura de componente e o quadro é byte-idêntico ao de antes desta cura.
+    let paused: Vec<ph2d_ecs::Entity> = {
+        let w = sim.world_mut();
+        let mut carriers = w.query::<&ph2d_ecs::OnScreenEnabler>();
+        if carriers.iter(w).next().is_none() {
+            Vec::new()
+        } else {
+            let mut animated = w.query::<(ph2d_ecs::Entity, &SpriteAnimator)>();
+            let ids: Vec<ph2d_ecs::Entity> = animated.iter(w).map(|(e, _)| e).collect();
+            let read: &ph2d_ecs::World = w;
+            ids.into_iter()
+                .filter(|e| super::on_screen_gate::processing_paused(read, *e))
+                .collect()
+        }
+    };
     let world = sim.world_mut();
     // ⭐ **`&mut SpriteGrid` e já não `&mut Sprite`** (ADR-0164 F1 passo 6): o índice de célula
     // mudou-se para a grelha. E o filtro passa a ser uma LEI — uma sprite sem grelha não tem
@@ -100,6 +122,13 @@ pub(crate) fn tick_sprite_animations(
         // a sprite volta a obedecer-lhe. O que corre aqui é a pré-visualização.
         let painted =
             crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, entity);
+        // ⚠️ **A pausa do enabler vem ANTES da pré-visualização**, e é deliberado: uma sprite que
+        // saiu do rect que ela própria declara não corre — nem sequer para a célula que a
+        // ferramenta mostra ao lado —, senão o «só corre quando está no ecrã» teria uma excepção
+        // que ninguém escreveu em lado nenhum.
+        if paused.contains(&entity) {
+            continue;
+        }
         if !animator.playing && !painted {
             continue;
         }

@@ -330,9 +330,9 @@ fn paint_body_sections(
                     snapshot.upscale_algorithm == UpscaleAlgorithm::Nearest,
                 ),
                 (
-                    "xBR",
-                    ids::EQS_ALG_XBR,
-                    snapshot.upscale_algorithm == UpscaleAlgorithm::Xbr,
+                    "EPX",
+                    ids::EQS_ALG_EPX,
+                    snapshot.upscale_algorithm == UpscaleAlgorithm::Epx,
                 ),
             ],
             store,

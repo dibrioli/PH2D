@@ -184,6 +184,21 @@ pub(crate) fn paint_mount_row(
     cur_y + Spacing::Sm.px()
 }
 
+/// ⛔⛔ **O rótulo da caixa PARADA, e o bloqueador vai NELE.**
+///
+/// A caixa «Show anchors at runtime» gravava, viajava no `.ph2dproj` e **não tinha um único
+/// leitor** — o próprio `mount_smoke.rs` o declarava desde 2026-08-22. O bloqueador tem nome:
+/// **não existe modo de jogo** (`shells/game` / Runtime R1, adiado por decisão do dono do
+/// produto), e sem ele não há «runtime» onde uma âncora se possa mostrar.
+///
+/// ⚠️ **A razão vai no RÓTULO e não só na dica de hover**: uma dica só aparece a quem já pousou o
+/// rato, e quem lê «Show anchors at runtime» a cinzento sem explicação conclui que o app está
+/// avariado. *Um controlo parado sem a razão à vista é a mesma promessa por outras palavras.*
+///
+/// ⛔ **O campo FICA no modelo** (`ph2d_ecs::AnchorVisibility::at_runtime`): apagá-lo partiria
+/// todo ficheiro já gravado. O que sai é a **promessa**, não o dado.
+pub(crate) const RUNTIME_BOX_LABEL: &str = "Show anchors at runtime (no game runtime yet)";
+
 /// **As duas caixas de VISIBILIDADE**, do dono das âncoras (Enio, 2026-08-23). Devolve o `y`.
 ///
 /// ⚠️ **Elas são do PAI, e por isso ficam ao pé da lista dele** — não da linha «Rides Parent
@@ -191,6 +206,11 @@ pub(crate) fn paint_mount_row(
 /// caixas na metade errada faria três.
 ///
 /// ⛔ Não se pintam quando não há âncoras nenhumas: não há o que manter visível.
+///
+/// ⚠️ **A segunda caixa nasce PARADA** (`CheckboxState::Disabled`) — ver [`RUNTIME_BOX_LABEL`].
+/// ⛔ **A IRMÃ está VIVA e não se lhe toca:** «Always show anchors» tem consumidor
+/// (`render_loop::anchor_overlay`, `PlanMode::AlwaysVisible`) e é o que faz as âncoras aparecerem
+/// no editor. Parar as duas por simetria apagaria uma feature que funciona.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_visibility_rows(
     scene: &mut VectorScene,
@@ -215,26 +235,24 @@ pub(crate) fn paint_visibility_rows(
         ),
         (
             ids::INSP_ANCHOR_VIS_RUNTIME,
-            "Show anchors at runtime",
+            RUNTIME_BOX_LABEL,
             info.vis_at_runtime,
         ),
     ] {
         let cb_h = CHECK_H;
         let rect = Rect::new(x, cur_y, w, cb_h);
         hit_index.register(id, rect);
-        paint_checkbox(
-            &Checkbox::new(id, label)
-                .visual(store.checkbox_visual(id))
-                .value(if on {
-                    CheckboxValue::Checked
-                } else {
-                    CheckboxValue::Unchecked
-                }),
-            rect,
-            scene,
-            text_system,
-            theme,
-        );
+        let mut cb = Checkbox::new(id, label)
+            .visual(store.checkbox_visual(id))
+            .value(if on {
+                CheckboxValue::Checked
+            } else {
+                CheckboxValue::Unchecked
+            });
+        if id == ids::INSP_ANCHOR_VIS_RUNTIME {
+            cb = cb.state(CheckboxState::Disabled);
+        }
+        paint_checkbox(&cb, rect, scene, text_system, theme);
         cur_y += cb_h + Spacing::Xs.px();
     }
     cur_y + Spacing::Xs.px()

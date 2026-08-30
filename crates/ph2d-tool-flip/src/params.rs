@@ -516,6 +516,81 @@ mod pressure_tests {
         }
     }
 
+    /// **OS DOIS KNOBS SÓ SE SEPARAM ABAIXO DA PRESSÃO CHEIA — e o gesto de hoje
+    /// entrega pressão CHEIA.**
+    ///
+    /// ⚠️ **É uma identidade algébrica, não uma afinação:** `factor = min +
+    /// (1 − min)·pr^γ`, e em `pr = 1` isso é `min + (1 − min) = 1` **para todo
+    /// `min` e todo `γ`**. Logo, enquanto a amostra que chega valer `1`, os
+    /// sliders *Min Width* e *Response* são **inertes por construção** — nenhum
+    /// par de valores é distinguível, em nenhuma malha, com nenhum pincel.
+    ///
+    /// ⛔ **O BLOQUEADOR TEM ENDEREÇO, e não é «falta tablet».** A porta é
+    /// chamada (`shells/desktop/src/flip_draw.rs`, `stroke_from_samples` →
+    /// `pressure_width_factor`); o que é literal é a ENTRADA — o gesto empurra
+    /// `1.0` em `FlipDraw::begin` e `FlipDraw::extend`
+    /// (`flip_draw.rs:467` e `:484`). Duas coisas faltam, e as duas moram no
+    /// SHELL, fora desta crate:
+    ///
+    /// 1. **Pressão de caneta real** — indisponível hoje: o `winit` escreve
+    ///    `force: None` nos três backends, medição já registrada pela
+    ///    `line/Vector` em `shells/desktop/src/vec_pencil_input.rs`.
+    /// 2. **Qualquer outra grandeza do gesto** (a VELOCIDADE do traço é a
+    ///    candidata óbvia) — o amostrador do Flip decima por DISTÂNCIA e não
+    ///    carrega relógio nenhum, então não há hoje de onde tirar `ds/dt`.
+    ///
+    /// ⇒ *Um `Min Width` que responde a algo real é produto; um que responde a
+    /// `1.0` é mentira* — e este gate é o que torna a mentira MEDIDA em vez de
+    /// suposta. **Quem ligar uma grandeza real ao gesto apaga a segunda metade
+    /// deste gate**, e não antes.
+    ///
+    /// ⚠️ **A primeira metade é a fixture que CONTÉM o fenômeno**, e é ela que
+    /// impede este gate de virar um gate sobre nada: com pressão variando, dois
+    /// `Min Width` dão traços de larguras diferentes, ponto a ponto.
+    #[test]
+    fn the_pressure_knobs_only_separate_below_full_pressure() {
+        // A LEI, sobre uma fixture que contém o fenômeno: pressões variadas —
+        // o que uma caneta de verdade entrega ao longo de um traço.
+        let samples = [0.0_f32, 0.15, 0.35, 0.5, 0.75, 0.9];
+        let widest = samples
+            .iter()
+            .map(|&p| {
+                (pressure_width_factor(p, 0.05, 0.5) - pressure_width_factor(p, 0.60, 0.5)).abs()
+            })
+            .fold(0.0_f32, f32::max);
+        assert!(
+            widest > 0.1,
+            "dois `Min Width` deram o MESMO traço sob pressão variável \
+             (maior diferença {widest}) — o piso deixou de chegar à largura"
+        );
+        let by_response = samples
+            .iter()
+            .map(|&p| {
+                (pressure_width_factor(p, 0.05, 0.0) - pressure_width_factor(p, 0.05, 1.0)).abs()
+            })
+            .fold(0.0_f32, f32::max);
+        assert!(
+            by_response > 0.1,
+            "duas `Response` deram o MESMO traço sob pressão variável \
+             (maior diferença {by_response}) — a curva deixou de chegar"
+        );
+
+        // ⛔ E O BLOQUEADOR, medido: na pressão que o gesto de hoje entrega, a
+        // grade INTEIRA dos dois knobs colapsa em `1.0` — exatamente, não «quase».
+        for &min in &[0.0_f32, 0.05, 0.25, 0.5, 0.75, 1.0] {
+            for &resp in &[0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+                let f = pressure_width_factor(1.0, min, resp);
+                assert_eq!(
+                    f, 1.0,
+                    "com pr=1 (o literal que o `flip_draw` empurra) o par \
+                     (min={min}, response={resp}) tinha de colapsar em 1.0 e deu {f} — \
+                     se isto ficou vermelho, ALGUÉM LIGOU uma grandeza real ao gesto \
+                     e esta metade do gate cumpriu o papel dela: apague-a"
+                );
+            }
+        }
+    }
+
     #[test]
     fn pressure_and_min_are_clamped() {
         // Fora de `[0,1]` não estoura: a pressão e o piso são clampados.

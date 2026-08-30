@@ -417,11 +417,20 @@ impl crate::App {
                 //   doesn't paint stays α=0 and the compositor reveals
                 //   `game_rt_ldr` through it.
                 //
-                // AA selection: the current TextRendering preset's
-                // `prefer_msaa` flag drives whether Vello uses MSAA16
-                // (smoother glyph edges; CrispHeavyPlus) or its
-                // default Area analytical coverage (Default + CrispHeavy).
-                let prefer_msaa = ph2d_editor::paint::text_rendering().params().prefer_msaa;
+                // ⛔ **O shell NÃO escolhe o anti-aliasing deste passe, e
+                // nunca mais o lê de uma preferência de texto.** Até
+                // 2026-08-30 esta linha era
+                // `text_rendering().params().prefer_msaa`, e ia direita
+                // para `render_to_intermediate`. O `AaConfig` do Vello é
+                // por PASSE, e este passe carrega o chrome **e** a arte
+                // vectorial do documento no mesmo `Scene` — logo o preset
+                // de tipografia escolhia a rasterização das formas do
+                // artista. `Msaa16` stippla traços finos (1-1,5 px) em
+                // ângulos quase-axiais: «manchas animadas parecendo TV
+                // antiga» (`docs/Atualizar Stack/04_registro.md` §22.2).
+                // A decisão vive agora dentro do `ph2d-render`, é
+                // `AaConfig::Area` e não é parametrizável. Dois passes
+                // (chrome / documento) seria arquitectura, não uma flag.
                 // GPU pass profiler: Vello submits internally (its passes are out of
                 // reach), so bracket the whole call with marker submits — queue order
                 // makes `end − begin` cover everything Vello enqueued. No-op when off.
@@ -434,7 +443,6 @@ impl crate::App {
                     vector_scene.inner(),
                     (window_size.width, window_size.height),
                     VelloColor::TRANSPARENT,
-                    prefer_msaa,
                 ) {
                     eprintln!("M14.5 vello_pass.render_to_intermediate error: {e}");
                 }

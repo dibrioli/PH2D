@@ -54,7 +54,6 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
         ids::INSP_ANCHOR_BOUNDS_ON,
         ids::INSP_ANCHOR_CENTER_ON,
         ids::INSP_ANCHOR_VIS_EDITOR,
-        ids::INSP_ANCHOR_VIS_RUNTIME,
     ] {
         store.register(
             id,
@@ -64,6 +63,28 @@ pub(crate) fn populate_anchors(store: &mut WidgetStore) {
             },
         );
     }
+    // ⛔⛔ **A caixa «Show anchors at runtime» nasce PARADA, e o bloqueador tem nome:** não existe
+    // modo de jogo (`shells/game` / Runtime R1, adiado por decisão do dono do produto). Ela
+    // gravava no `.ph2dproj` e não tinha um único leitor — ver
+    // [`crate::sections::anchor_mount_row::RUNTIME_BOX_LABEL`], onde está a razão inteira.
+    //
+    // ⚠️ **Parada no REGISTO e não só na pintura**: o `is_focusable` do despachante lê o estado do
+    // store, então uma caixa pintada a cinzento e registada `Normal` continuaria a alternar sob o
+    // dedo — o cinzento seria decoração. ⚠️ Ela FICA registada (em vez de sair do store) porque o
+    // gate `every_painted_id_is_reachable` mede *«o que se pinta está registado»*, e um id pintado
+    // sem registo é a família de defeito que ele existe para apanhar.
+    store.register(
+        ids::INSP_ANCHOR_VIS_RUNTIME,
+        InteractiveState::Checkbox {
+            state: CheckboxState::Disabled,
+            value: CheckboxValue::Unchecked,
+        },
+    );
+    store.set_tooltip(
+        ids::INSP_ANCHOR_VIS_RUNTIME,
+        "Parked: this app has no game runtime yet, so there is no runtime for anchors to show in. \
+         The setting is kept in the file so saved projects still load.",
+    );
     for id in ids::INSP_ANCHOR_POS
         .iter()
         .chain(std::iter::once(&ids::INSP_ANCHOR_ROT))

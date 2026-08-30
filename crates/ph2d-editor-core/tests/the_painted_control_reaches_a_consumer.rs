@@ -63,6 +63,12 @@
 //! - **Efeito confinado ao PINTOR**: um filtro/dobra/rolagem que o próprio
 //!   `paint` lê e aplica (o `HIER_SEARCH`) lê como morto e está vivo. Está na
 //!   catraca, com o motivo.
+//! - **O término que é uma AUSÊNCIA.** Um id registado no `HitIndex` só para o canvas **não**
+//!   receber o clique (o fundo de um cartão flutuante) é consumido por `hit(..).is_none()`, que
+//!   não é um uso do id em lado nenhum. Ele lê como morto e está vivo — o `INPUT_MAP_SURFACE` da
+//!   catraca é essa espécie, medida em 2026-08-30. ⛔ Ensinar a régua a aceitar *«registado num
+//!   `HitIndex` e mais nada»* **branquearia os seis cabeçalhos mortos** que têm a mesma forma: o
+//!   que os separa é a INTENÇÃO, e nenhuma varredura de fonte a lê.
 //! - **Braço que existe e não faz nada** (`X => {}`): mede alcance, não efeito.
 //! - **A cadeia de saltos**: o gate exige que o id seja perguntado em ALGUM
 //!   sítio; não segue o `PanelEvent` até ao `FlipDoc`.
@@ -87,57 +93,48 @@ use std::path::{Path, PathBuf};
 /// **Catraca de dívida conhecida — ela só ENCOLHE.** `(id, motivo)`.
 /// Uma linha que já não é detectada é uma dívida paga que ninguém apagou.
 const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
-    // ⛔ MORTOS confirmados à mão (caça de 2026-08-30).
-    (
-        "VECTOR_SYM_SEGMENTS",
-        "MORTO: slider Radial>Segments do painel Vector. Declarado, pintado, registado e ligado \
-         ao chip — e ZERO bracos no repo. Cai no catch-all de `ph2d-panel-vector/src/event.rs`.",
-    ),
-    (
-        "VECTOR_SYM_SEGMENTS_NUM",
-        "MORTO com o irmao acima: o chip numerico do mesmo slider (link mapeado, mesmo destino).",
-    ),
-    (
-        "FLIP_STRIP_CLOSE",
-        "MORTO: o X da tira do Flip. Esta' na lista BUTTONS de \
-         `ph2d-panel-flip-frames/src/event.rs`, que ENCAMINHA `PanelEvent::Click(id)`; os tres \
-         drenos (flip_layers.rs, flip_strip.rs, ph2d-tool-flip/tool.rs) nao tem braco nenhum.",
-    ),
-    (
-        "PHYSICS_SEC_LAYERS",
-        "MORTO: o cabecalho da seccao Collision layers. `populate.rs` regista-o como Button ao \
-         lado de SEC_DEBUG/SEC_INTERACT/SEC_JOINT, e o `event.rs` compara SO' esses tres — o \
-         chevron pinta a promessa de dobrar e nao dobra.",
-    ),
+    // ═══ DÍVIDAS PAGAS em 2026-08-30, na mesma jornada que as descobriu ═══
+    //
+    // Sete entradas saíram desta lista **porque os controlos foram LIGADOS**, cada um com o seu
+    // gate e a sua prova de mutação. Ficam nomeadas aqui, sem célula, para que a próxima leitura
+    // não as procure e para que o padrão delas se veja de uma vez:
+    //
+    //   `VECTOR_SYM_SEGMENTS` + `_NUM` — o slider Radial>Segments passou a ter braço de evento e
+    //       a contagem chega à roseta (`seam_symmetry_segments.rs`, 4 mutações).
+    //   `PHYSICS_SEC_LAYERS`  — o cabeçalho dobra; a lista de cabeçalhos passou a ser UMA
+    //       (`every_painted_section_header_folds`, censo das duas lentes).
+    //   `SCULPT3D_SEC_BAKE`   — irmão exacto do anterior, mesma cura, mesmo censo.
+    //   `FLIP_STRIP_CLOSE`    — o X da tira FECHA a tira, pela mesma lei que o X da timeline já
+    //       escrevia (`close_button_seam.rs`). Ele saiu da lista `BUTTONS`: encaminhar um fecho
+    //       pelo barramento pedia um braço no shell que nunca existiu.
+    //   `INSP_PLAYER_ADD`     — registo ÓRFÃO de um botão que saiu do produto na F3; apagado.
+    //   `WET_TUNING_SCROLL`   — id ÓRFÃO (a barra real é a `WET_TUNING_SCROLLBAR_ID`); apagado.
+    //
+    // ⚠️ **Os dois últimos são de OUTRA espécie, e a distinção é a cura:** um id declarado que
+    // ninguém pinta nem regista é **lixo** — cura-se apagando. Um id pintado e registado cujo
+    // valor não chega a consumidor nenhum é um **knob morto** — cura-se ligando o braço. Esta
+    // régua vê as duas iguais, e foi por isso que os órfãos apareceram numa caça a mortos.
+    //
+    // ═══ O QUE FICA ═══
     (
         "PAINTER_BRUSH_STROKE_SAVE_OBJECT",
         "MORTO POR DECISAO, declarado no fonte: `paint_stroke.rs` diz *\"clicking it is a \
          deliberate no-op (no route in the tool)\"* ate' o formato de objecto existir. Fica aqui \
          para que o dia em que alguem o ligar apague esta linha.",
     ),
-    (
-        "SCULPT3D_SEC_BAKE",
-        "MORTO, irmao exacto do PHYSICS_SEC_LAYERS: `populate.rs` regista o cabecalho da seccao \
-         Bake como Button, `paint/body.rs` pinta-lhe o chevron, e `is_section_header()` do \
-         `event.rs` lista TOOL/SYMMETRY/SCENE + `rows::SECTIONS` (BRUSH/SHADING/TOPOLOGY) — o \
-         BAKE nao esta' em lado nenhum. A dobra e' pintada e nao acontece.",
-    ),
-    (
-        "INPUT_MAP_SURFACE",
-        "MORTO: hit-rect do fundo da janela Input Map, registado em \
-         `screens/hero/chrome/input_map.rs` e consultado por ninguem. O gate irmao \
-         `architecture_panel_wiring_parity` nao o ve — ele so' varre crates `ph2d-panel-*`.",
-    ),
-    (
-        "INSP_PLAYER_ADD",
-        "REGISTO ORFAO: `populate_physics.rs` ainda o regista, e `sections/player.rs` diz que ele \
-         SAIU na F3 (ADR-0166) com a face vazia que o continha. Ninguem o pinta.",
-    ),
-    (
-        "WET_TUNING_SCROLL",
-        "ID ORFAO: o painel Wet Tuning rola pelo `WET_TUNING_SCROLLBAR_ID` (widget/scrollbar.rs); \
-         este const so' aparece no mapa de rotulos de `rows.rs`, sem widget por tras.",
-    ),
+    // ⚠️⚠️ **`INPUT_MAP_SURFACE` saiu daqui em 2026-08-30, e a história vale mais que a linha.**
+    // Ele entrou como MORTO, foi RECLASSIFICADO como *vivo por um término que esta régua não tem*
+    // — o término dele é a **AUSÊNCIA**: todo caminho de canvas do shell só corre com o índice de
+    // hit VAZIO sob o cursor, então **estar registado É a resposta** (medido: apagando o
+    // `register`, **1189 de 1600** pontos dentro do cartão caem no canvas por baixo) — e saiu de
+    // vez quando a superfície ganhou consumidor NOMEADO (`chrome_hit.rs::chrome_claims`), que é
+    // um término positivo e que a régua passou a ver sozinha.
+    //
+    // ⛔ **A lição fica:** a régua só reconhece términos POSITIVOS (`id == X`, braço de `match`,
+    // chave de tabela). Um `HitIndex::register` cujo efeito é *bloquear* lê exactamente como um
+    // *registado e esquecido* — e ensinar a régua a aceitar o padrão branquearia os cabeçalhos de
+    // secção genuinamente mortos, que têm a mesma forma. Foi por isso que ele ficou na catraca em
+    // vez de passar a um allowlist enquanto a distinção não existiu.
     // ⚠️ VIVO, mas invisível a ESTA régua — o ponto cego está declarado no
     // cabeçalho (§ *efeito confinado ao pintor*). Fica na catraca em vez de num
     // allowlist separado para que uma segunda ocorrência da mesma forma seja

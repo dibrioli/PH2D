@@ -188,6 +188,32 @@ pub(crate) fn variation_axes(family: Option<&str>) -> Vec<AxisDesc> {
         .collect()
 }
 
+/// **A fonte corrente publica o eixo `wght`?** — o FACTO de que a fileira *Weight* do painel
+/// depende, e que ninguém publicava.
+///
+/// # A pergunta certa é a TERCEIRA, e as duas óbvias estão refutadas
+///
+/// Sem tabela `fvar` o `skrifa` ignora a localização de eixo (`font.axes().location(..)` sobre um
+/// conjunto vazio devolve o default), então numa fonte ESTÁTICA o slider de Weight é **inerte** —
+/// pintado, arrastável, e sem efeito nenhum na letra.
+///
+/// ⛔ **A cura óbvia — copiar a regra da secção AXES — está REFUTADA por medição.** A AXES some
+/// com `names.is_empty()`, e `names` vem de [`variation_axes`], **que filtra o `wght` fora**. Numa
+/// fonte variável **só de peso** — a espécie mais comum, e há uma nesta máquina
+/// (`/usr/share/fonts/cantarell/Cantarell-VF.otf`, `fvar = ['wght']`) — aquela lista fica vazia, a
+/// AXES esconde-se **com razão**, e a mesma regra esconderia um Weight **vivo e correcto**.
+///
+/// ⇒ *"há eixos ALÉM do peso?"* e *"há o eixo do peso?"* são duas perguntas, e o painel só tinha
+/// resposta para a primeira. Esta é a segunda, e ela sai do `fvar` da fonte — nunca da lista que
+/// já o excluiu.
+#[must_use]
+pub(crate) fn has_weight_axis(family: Option<&str>) -> bool {
+    resolve(family)
+        .axes()
+        .iter()
+        .any(|a| a.tag() == AxisTag::WEIGHT)
+}
+
 /// A lista `(tag, default)` dos eixos extras de `family` — o estado inicial de
 /// `VecTextEdit::extra_axes` / o default corrente da shell quando a família muda.
 #[must_use]
@@ -257,6 +283,88 @@ mod tests {
             seed.iter()
                 .zip(&axes)
                 .all(|((t, v), d)| *t == d.tag && *v == d.default)
+        );
+    }
+
+    /// Quantas famílias do sistema o gate abaixo parseia. Cada uma custa um parse (cacheado), e
+    /// o que ele afirma é uma LEI sobre todas — não a existência de uma peça rara.
+    const SCAN_LIMIT: usize = 120;
+
+    /// **A lista de eixos NUNCA responde à pergunta do peso — e é essa a lei que faltava.**
+    ///
+    /// A cura óbvia para o *Weight* inerte era copiar a regra da secção AXES (`axes.is_empty()`).
+    /// Este gate refuta-a sem precisar de presumir que existe uma fonte só-de-peso na máquina:
+    /// sobre **toda** família do sistema, `variation_axes` é `axes()` MENOS o `wght`. Logo, numa
+    /// fonte cujo único eixo é o peso a lista é **vazia** e o peso está **vivo** — as duas
+    /// perguntas divergem por construção, e não por acaso de corpus.
+    ///
+    /// ⚠️ E ele afirma a metade que o painel não pode afirmar: [`has_weight_axis`] tem de ler o
+    /// `fvar` da fonte, e não a lista já filtrada.
+    #[test]
+    fn the_extra_axes_list_can_never_answer_the_weight_question() {
+        // A embutida: variável, COM peso, e o peso não entra na lista de extras.
+        assert!(
+            has_weight_axis(None),
+            "a InterVariable embutida deixou de expor `wght` — ou a leitura do fvar partiu"
+        );
+
+        let mut scanned = 0usize;
+        let mut statics = 0usize;
+        let mut weight_only = 0usize;
+        for name in pickable_families().iter().flatten().take(SCAN_LIMIT) {
+            let axes = resolve(Some(name)).axes();
+            let has_w = axes.iter().any(|a| a.tag() == AxisTag::WEIGHT);
+            let extra = variation_axes(Some(name));
+            assert_eq!(
+                has_weight_axis(Some(name)),
+                has_w,
+                "`has_weight_axis` discorda do `fvar` de {name} — ele deixou de ler a fonte"
+            );
+            assert!(
+                extra.iter().all(|a| a.tag != AxisTag::WEIGHT),
+                "o `wght` de {name} vazou para a lista de eixos EXTRAS (ele tem slider próprio)"
+            );
+            assert_eq!(
+                extra.len(),
+                axes.len() - usize::from(has_w),
+                "a lista de eixos extras de {name} não é `axes` menos o peso. Se ela passar a \
+                 incluí-lo, a secção AXES duplica o Weight; se passar a tirar mais alguma coisa, \
+                 um eixo real fica inalcançável."
+            );
+            if axes.is_empty() {
+                statics += 1;
+                assert!(
+                    !has_weight_axis(Some(name)),
+                    "{name} é ESTÁTICA e foi dada como tendo peso — o slider ficaria inerte"
+                );
+            }
+            if has_w && axes.len() == 1 {
+                weight_only += 1;
+                assert!(
+                    extra.is_empty() && has_weight_axis(Some(name)),
+                    "{name} é variável SÓ no peso: a lista de extras tem de ser vazia (a AXES \
+                     esconde-se) e o peso tem de continuar vivo"
+                );
+            }
+            scanned += 1;
+        }
+
+        // A metade JUSTA: sem ela um sistema sem fontes passaria provando nada.
+        assert!(
+            scanned > 0,
+            "nenhuma família do sistema foi parseada — este gate não mediu nada"
+        );
+        // A fixtura do DEFEITO tem de existir de facto. ⚠️ Ela é universal (toda instalação com
+        // fontconfig/CoreText tem estáticas); se um dia não for, o gate diz-o em voz alta em vez
+        // de ficar verde por vacuidade.
+        assert!(
+            statics > 0,
+            "nenhuma das {scanned} famílias parseadas é ESTÁTICA — a fixtura do defeito não \
+             existe nesta máquina, e o ramo `!has_weight_axis` nunca foi exercido"
+        );
+        eprintln!(
+            "[vec_font] {scanned} famílias parseadas · {statics} estáticas · \
+             {weight_only} variáveis só-de-peso"
         );
     }
 

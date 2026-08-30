@@ -210,9 +210,34 @@ impl BgRemovalTool {
     }
 
     /// Whether the painted protection mask should be shown as an on-canvas
-    /// tint overlay (shell gates its overlay on this).
+    /// tint overlay — the artist's *request*, not the answer.
+    ///
+    /// ⚠️ Callers deciding whether to DRAW must use
+    /// [`Self::mask_overlay_renders`], never this on its own: a request
+    /// with no painted mask draws nothing, and the panel's row
+    /// visibility is derived from the same law.
     pub fn show_mask(&self) -> bool {
         self.show_mask
+    }
+
+    /// Whether the protection-mask tint overlay renders right now —
+    /// **the single door** for every consumer, through
+    /// [`crate::params::mask_overlay_renders`].
+    ///
+    /// ⚠️ **Já não há segunda cópia.** O overlay de canvas em
+    /// `shells/desktop/src/render_loop/bgremoval_preview.rs` soletrava a
+    /// conjunção à mão (`bg.show_mask() && bg.has_protect_mask()`) e passou
+    /// por esta porta em 2026-08-30; o censo
+    /// `show_mask_census::the_mask_overlay_law_is_never_spelled_out_again_in_the_shell`
+    /// (naquele ficheiro) fica vermelho se alguém a reescrever. O painel já ia
+    /// pela metade derivada — ver `mask_overlay_toggle_is_reachable`.
+    ///
+    /// ⛔ E a lei em si era um defeito: o que PINTA a fileira era um `OR` e o que
+    /// a CONSOME um `AND`, então armar o pincel mostrava o botão e ele só
+    /// funcionava depois de haver pixel pintado — *a janela morta era o primeiro
+    /// estado que o artista alcançava*.
+    pub fn mask_overlay_renders(&self) -> bool {
+        crate::params::mask_overlay_renders(self.show_mask, self.has_protect_mask())
     }
 
     /// Whether the in-progress protection drag is an erase drag.

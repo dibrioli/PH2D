@@ -289,7 +289,7 @@ pub struct BgRemovalUiSnapshot {
     pub falloff: BrushFalloff,
     /// Whether the painted protection mask is shown as an on-canvas tint
     /// overlay. Drives the Show-Mask toggle's pressed look + the shell's
-    /// overlay gate.
+    /// overlay gate — both through [`mask_overlay_renders`].
     pub show_mask: bool,
     /// Whether the "Separate Islands" toggle is on. Drives the toggle
     /// button's pressed look + gates the Min-Px slider's visibility.
@@ -347,6 +347,51 @@ impl Default for BgRemovalUiSnapshot {
             add_area_armed: false,
             has_force_remove_mask: false,
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The mask-overlay door — ONE law, and the row's reachability DERIVED
+// from it rather than restated
+// ─────────────────────────────────────────────────────────────────────
+
+/// **THE law**: the protection-mask tint overlay renders iff the artist
+/// asked for it *and* there is a painted mask to draw.
+///
+/// `has_mask` is not negotiable — with an empty mask the overlay has
+/// nothing to tint, so the consumer must refuse. The toggle is the only
+/// free variable.
+///
+/// Consumers: the shell's canvas overlay
+/// (`shells/desktop/src/render_loop/bgremoval_preview.rs`) and, through
+/// [`mask_overlay_toggle_is_reachable`], the panel's Show-mask row.
+pub const fn mask_overlay_renders(show_mask: bool, has_mask: bool) -> bool {
+    show_mask && has_mask
+}
+
+/// Whether the Show-mask toggle is worth painting: **it is reachable
+/// exactly when flipping it changes what [`mask_overlay_renders`]
+/// answers.**
+///
+/// ⚠️ **DERIVED, never restated.** The defect this replaces was two
+/// lenses on one law: the panel painted the row under
+/// `protect_brush_armed || has_protect_mask` (an OR) while the consumer
+/// required `show_mask && has_protect_mask` (an AND). Arming the brush
+/// therefore revealed a button that did nothing until the first dab —
+/// *and the dead window was exactly the first state the artist reaches.*
+/// Writing this as `has_mask` would fix today's bug and leave the two
+/// free to drift again; deriving it means a change to the law above
+/// moves the row's visibility in the same edit.
+pub fn mask_overlay_toggle_is_reachable(has_mask: bool) -> bool {
+    mask_overlay_renders(true, has_mask) != mask_overlay_renders(false, has_mask)
+}
+
+impl BgRemovalUiSnapshot {
+    /// Whether the panel should paint the Show-mask row this frame.
+    /// Thin projection of [`mask_overlay_toggle_is_reachable`] so the
+    /// paint site cannot spell the predicate itself.
+    pub fn mask_overlay_toggle_is_reachable(&self) -> bool {
+        mask_overlay_toggle_is_reachable(self.has_protect_mask)
     }
 }
 

@@ -38,6 +38,7 @@ mod populate;
 mod populate_anchor;
 mod populate_anim;
 mod populate_physics;
+mod populate_player;
 mod sections;
 pub mod state;
 mod sync;

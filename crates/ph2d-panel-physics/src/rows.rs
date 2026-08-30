@@ -204,17 +204,16 @@ static SLEEP: &[Row] = &[
         get: |s| s.sleep_linear_threshold,
         set: |s, v| s.sleep_linear_threshold = v,
     },
-    Row {
-        label: "panel.physics.sleep_spin",
-        slider: ids::PHYSICS_SLEEP_SPIN,
-        chip: ids::PHYSICS_SLEEP_SPIN_NUM,
-        min: 0.0,
-        max: MAX_SLEEP_THRESHOLD,
-        step: 0.05, // LITERAL-PX-OK: drag step of a dimensionless physical knob, not a design metric
-        decimals: 2,
-        get: |s| s.sleep_angular_threshold,
-        set: |s, v| s.sleep_angular_threshold = v,
-    },
+    // ⛔⛔ **A row «Spin» SAIU daqui em 2026-08-30, e o campo dela não.**
+    //
+    // Ela era um slider `0..10` sobre `sleep_angular_threshold`, e desde a `rapier2d` 0.35 esse
+    // campo é lido **pelo sinal**: arrastar de `0,1` para `2,0` não muda um bit da simulação
+    // (medido — `the_magnitude_of_the_spin_threshold_reaches_nobody`, em `ph2d-physics`). O
+    // controlo passou a ser o **interruptor** que `paint::body::paint_sections` desenha no fim
+    // desta secção, e o mecanismo está em `ph2d_physics::SLEEP_SPIN_DISABLED`.
+    //
+    // ⚠️ **O campo continua a existir** em `PhysicsSettings` — ele viaja no `.ph2dproj` e o
+    // postcard é posicional (ver o doc dele). O que morreu foi a promessa de que ele era contínuo.
     Row {
         label: "panel.physics.sleep_delay",
         slider: ids::PHYSICS_SLEEP_DELAY,
@@ -256,6 +255,45 @@ pub static SECTIONS: &[Section] = &[
         rows: SLEEP,
     },
 ];
+
+/// ⭐⭐ **As secções cujo CORPO é pintado à mão** — as que não são uma tabela de rows.
+///
+/// Elas existem porque o que está debaixo delas não é um `Row`: uma grelha de 36 células, dois
+/// rádios de ferramenta, uma dica que quebra de linha. O **cabeçalho**, porém, é o mesmo widget e
+/// tem a mesma dívida que os outros: registar, pintar, e **dobrar ao clique**.
+///
+/// ⛔⛔ **É por não haver esta lista que o `PHYSICS_SEC_LAYERS` esteve MORTO.** Cada um dos três
+/// módulos escrevia a sua própria cópia da mesma enumeração — `populate` registava quatro nomes,
+/// `paint::body` pintava quatro cabeçalhos, e `event` comparava **três**. O chevron da secção
+/// *Collision Layers* pintava a promessa de dobrar e não dobrava, e nenhum gate do repo o via:
+/// ele estava registado (logo focalizável) e o clique chegava (logo a costura passava).
+/// *Três cópias da mesma pergunta é como a quarta nasce sem resposta.*
+///
+/// ⚠️ A ORDEM aqui é a ordem de pintura de [`super::paint::body::paint_sections`], e é a que o
+/// censo do seam usa para dizer qual cabeçalho falhou.
+pub static HAND_PAINTED_SECTIONS: &[NodeId] = &[
+    ids::PHYSICS_SEC_INTERACT,
+    ids::PHYSICS_SEC_JOINT,
+    ids::PHYSICS_SEC_LAYERS,
+    ids::PHYSICS_SEC_DEBUG,
+];
+
+/// **Todo cabeçalho de secção deste painel, na ordem em que ele é pintado** — as [`SECTIONS`]
+/// guiadas por tabela seguidas das [`HAND_PAINTED_SECTIONS`].
+///
+/// A UMA lista que `populate` regista e `event` despacha. Uma secção nova entra por um dos dois
+/// lados e fica viva por construção.
+pub fn section_header_ids() -> impl Iterator<Item = NodeId> {
+    SECTIONS
+        .iter()
+        .map(|s| s.id)
+        .chain(HAND_PAINTED_SECTIONS.iter().copied())
+}
+
+/// Whether `id` is a section header this panel owns — o que o dreno de dobra pergunta.
+pub fn is_section_header(id: NodeId) -> bool {
+    section_header_ids().any(|s| s == id)
+}
 
 /// Every row, flattened — what `populate`, `event` and the seam sweep walk.
 pub fn rows() -> impl Iterator<Item = &'static Row> {

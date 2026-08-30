@@ -145,11 +145,17 @@ pub const FONT_MONO: &str = "'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, m
 ///   mais cheias, qualidade "Linear/Notion-pro".
 /// - `CrispHeavyPlus` — variação experimental de CrispHeavy (2026-05-25
 ///   "tempero final"): mesmo boost + hint=off de CrispHeavy, mas com
-///   **half-pixel snap-X** (preserva ~50 % do kerning), **letter-spacing
-///   -0.01 em em corpos ≤16 px** (aperta a densidade que ExtraBold abre)
-///   e **MSAA16 no Vello pass** (em vez de AaConfig::Area). Pensada
-///   para A/B test contra `CrispHeavy` — se ficar perceptualmente
-///   melhor, promove pra default e descarta o canonical `CrispHeavy`.
+///   **half-pixel snap-X** (preserva ~50 % do kerning) e
+///   **letter-spacing -0.01 em em corpos ≤16 px** (aperta a densidade
+///   que ExtraBold abre). Pensada para A/B test contra `CrispHeavy` —
+///   se ficar perceptualmente melhor, promove pra default e descarta o
+///   canonical `CrispHeavy`.
+///
+/// ⛔ **Um preset de texto NÃO escolhe o anti-aliasing do passe.** O
+/// `CrispHeavyPlus` tinha um 4.º ingrediente (`Msaa16` no Vello pass) e
+/// ele foi retirado em 2026-08-30 — a nota no fim de
+/// [`TextRenderingParams`] diz o mecanismo. Nenhum preset novo pode
+/// trazê-lo de volta.
 ///
 /// Adicionar preset = (a) novo variant aqui, (b) caso novo em
 /// [`Self::params`] / [`Self::id`] / [`Self::display_name`] / [`Self::next`].
@@ -163,7 +169,7 @@ pub enum TextRendering {
     /// axis variable flowing sem quantização do autohinter.
     CrispHeavy,
     /// Experimental: CrispHeavy + half-pixel snap-X + letter-spacing
-    /// -0.01em em corpos ≤16 px + MSAA16 no Vello pass. A/B vs CrispHeavy.
+    /// -0.01em em corpos ≤16 px. A/B vs CrispHeavy.
     CrispHeavyPlus,
 }
 
@@ -207,12 +213,34 @@ pub struct TextRenderingParams {
     /// aperta a densidade horizontal — útil em presets com ExtraBold
     /// para compensar o "abrir" natural do weight. `0.0` = sem ajuste.
     pub letter_spacing_em_dense: f32,
-    /// Quando `true`, o Vello pass usa `AaConfig::Msaa16` em vez de
-    /// `AaConfig::Area`. Trade-off: mais amostras por pixel (edges
-    /// de glyph com hint=off ficam mais suaves) mas pode stipplar
-    /// strokes vetoriais finos. Read pelo shell antes de chamar
-    /// `vello_pass.render_to_intermediate`.
-    pub prefer_msaa: bool,
+    //
+    // ⛔ AQUI VIVIA `prefer_msaa: bool` (removido 2026-08-30). NÃO o
+    // reintroduza, nem com outro nome.
+    //
+    // O `AaConfig` do Vello é escolhido **por PASSE**, não por caminho
+    // de desenho: `RenderParams::antialiasing_method` vale para tudo o
+    // que aquele `Scene` contém. O nosso passe de chrome carrega o
+    // chrome **e** a arte vectorial do documento no MESMO `Scene`, logo
+    // uma preferência de TEXTO escolhia o AA dos VECTORES do artista.
+    //
+    // O preço estava escrito no nosso próprio código, ao lado da
+    // bandeira que o ligava: «MSAA16 produced visible stippling on thin
+    // (1-1.5 px) vector strokes at near-axis angles»
+    // (`ph2d-render/src/vello_pass.rs`). O `CrispHeavyPlus` ligava
+    // `Msaa16` e a justificação concedia o defeito na mesma frase
+    // («the problem case is vectors») — certa sobre os glifos, cega
+    // quanto a `AaConfig` ser por passe. Report do dono do produto:
+    // «manchas animadas parecendo TV antiga» à volta das formas
+    // vectoriais (`docs/Atualizar Stack/04_registro.md` §22.2).
+    //
+    // ⇒ a arte do documento manda no passe (`AaConfig::Area`, que é
+    // analítico, melhor em traço fino e mais barato), e este preset
+    // fica com os três ingredientes que são de facto sobre texto:
+    // snap-X, letter-spacing denso e o boost de peso.
+    //
+    // ⚠️ A alternativa real — chrome e documento em DOIS passes, cada
+    // um com o seu `AaConfig` — é arquitectura (segundo alvo, segundo
+    // `Renderer`, composição), **não** uma bandeira neste struct.
 }
 
 /// Tier limits para [`crisp_weight_boost_for`] (px). Discrete tiers
@@ -262,7 +290,6 @@ impl TextRendering {
                 snap_x: SnapX::None,
                 hint: true,
                 letter_spacing_em_dense: 0.0,
-                prefer_msaa: false,
             },
             Self::CrispHeavy => TextRenderingParams {
                 weight_boost_body: 300,
@@ -275,7 +302,6 @@ impl TextRendering {
                 // → CrispHeavy fica visualmente "pro" (ExtraBold real).
                 hint: false,
                 letter_spacing_em_dense: 0.0,
-                prefer_msaa: false,
             },
             Self::CrispHeavyPlus => TextRenderingParams {
                 // Mesmo boost de CrispHeavy.
@@ -288,9 +314,10 @@ impl TextRendering {
                 // Aperta densidade dos corpos pequenos compensando o
                 // "abrir" do ExtraBold.
                 letter_spacing_em_dense: -0.01,
-                // MSAA16 no Vello pass — mais amostras por pixel,
-                // edges de glyph (com hint=off) mais suaves.
-                prefer_msaa: true,
+                // ⛔ Este preset ligava `AaConfig::Msaa16` no passe do
+                // Vello. Retirado em 2026-08-30 — ver a nota longa no
+                // fim de `TextRenderingParams`: o `AaConfig` é por
+                // PASSE, e este passe também carrega os vectores.
             },
         }
     }
@@ -390,7 +417,6 @@ mod tests {
         assert_eq!(p.snap_x, SnapX::None);
         assert!(p.hint);
         assert_eq!(p.letter_spacing_em_dense, 0.0);
-        assert!(!p.prefer_msaa);
     }
 
     #[test]
@@ -404,24 +430,27 @@ mod tests {
             !p.hint,
             "CrispHeavy MUST disable hint — see typography docstring"
         );
-        assert!(!p.prefer_msaa, "CrispHeavy stays on AaConfig::Area");
     }
 
     #[test]
-    fn crisp_heavy_plus_differs_from_heavy_in_three_axes() {
+    fn crisp_heavy_plus_differs_from_heavy_in_two_axes() {
         // The whole point of CrispHeavyPlus: same boost as CrispHeavy
-        // but 3 axes flipped to A/B-test the "tempero final".
+        // but 2 axes flipped to A/B-test the "tempero final".
+        //
+        // ⚠️ Eram TRÊS até 2026-08-30. O terceiro era `prefer_msaa`, e
+        // ele não era sobre texto: escolhia o `AaConfig` do PASSE
+        // inteiro, vectores do artista incluídos. Ver a nota no fim de
+        // `TextRenderingParams`.
         let h = TextRendering::CrispHeavy.params();
         let p = TextRendering::CrispHeavyPlus.params();
         // Same boost (so the A/B isolates the 3 changes, not the weight).
         assert_eq!(p.weight_boost_body, h.weight_boost_body);
         assert_eq!(p.weight_boost_dense, h.weight_boost_dense);
         assert_eq!(p.weight_boost_mid, h.weight_boost_mid);
-        // 3 axes flipped.
+        // 2 axes flipped.
         assert_ne!(p.snap_x, h.snap_x, "Plus must use Half snap, not Full");
         assert_eq!(p.snap_x, SnapX::Half);
         assert!(p.letter_spacing_em_dense < 0.0, "Plus tightens body");
-        assert!(p.prefer_msaa, "Plus must enable MSAA");
     }
 
     #[test]

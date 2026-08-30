@@ -273,6 +273,109 @@ fn relaxing_the_sleep_settings_wakes_a_body_sleep_already_froze() {
     );
 }
 
+/// ⭐⭐ **Claim 4d — do limiar de ROTAÇÃO a rapier 0.35 lê o SINAL, e o sinal chega.**
+///
+/// O par deste gate com o 4e abaixo é a régua inteira: *o que o motor lê* e *o que ele ignora*.
+/// Sem os dois lados, um `apply_to` que escrevesse uma constante qualquer não-negativa passaria
+/// aqui e ficaria por apanhar.
+///
+/// A cena é a mesma da 4b (bola + chão, ela assenta e dorme). A única diferença entre as duas
+/// corridas é o SINAL de `sleep_angular_threshold`:
+///
+/// | `sleep_angular_threshold` | `angular_ok` | resultado |
+/// |---|---|---|
+/// | `0,5` (o nosso default) | `sq_angvel < (π/2)²` | dorme |
+/// | [`SLEEP_SPIN_DISABLED`] (`-1,0`) | `false` **sempre** | nunca dorme |
+///
+/// ⚠️ **Oráculo diferencial de propósito** (a lição do 4b): ele afirma que as duas corridas
+/// DISCORDAM em espécie — `Some` contra `None` —, e não um tique absoluto que uma afinação de
+/// solver possa mover.
+///
+/// Mutação que tem de sangrar: `apply_to` não escrever `act.angular_threshold` (os dois casos
+/// caem no `0,5` da rapier ⇒ os dois dormem).
+#[test]
+fn the_spin_threshold_reaches_rapier_as_a_switch() {
+    let sleeps = first_sleep_tick(BodyDefaults::ours(), Floor::Yes, 600);
+    let never = first_sleep_tick(
+        BodyDefaults {
+            sleep_angular_threshold: ph2d_physics::SLEEP_SPIN_DISABLED,
+            ..BodyDefaults::ours()
+        },
+        Floor::Yes,
+        600,
+    );
+    assert!(
+        sleeps.is_some(),
+        "fixture: com o limiar LIGADO (o nosso default {}) a bola assentada tem de dormir, \
+         senão o outro lado deste gate não prova nada",
+        BodyDefaults::ours().sleep_angular_threshold
+    );
+    assert_eq!(
+        never,
+        None,
+        "com o limiar em {} a rapier põe `angular_ok = false` em todos os ramos e o corpo NUNCA \
+         pode dormir — ele dormiu no tique {never:?}, logo o sinal não chegou ao solver",
+        ph2d_physics::SLEEP_SPIN_DISABLED
+    );
+}
+
+/// ⛔⛔ **Claim 4e — a MAGNITUDE do limiar de rotação não chega a ninguém, e é por isso que o
+/// controlo deixou de ser um slider.**
+///
+/// Este gate é a **medição** que justifica a cura de 2026-08-30, e ele é escrito para poder
+/// FALHAR: se uma versão futura da rapier voltar a ler a magnitude para corpos com collider, as
+/// duas corridas passam a divergir e este teste fica vermelho — que é exactamente a notificação
+/// que se quer (*a autoridade de um número expira com a versão da biblioteca que o consome*).
+///
+/// `0,1` e `2,0` são os dois extremos que o slider morto oferecia. Comparadas tique a tique, as
+/// duas trajectórias são **byte-idênticas**, e as duas adormecem no MESMO tique.
+///
+/// ⚠️ A comparação é da trajectória inteira, não do ponto final: uma bola assentada acaba no
+/// mesmo sítio sob qualquer limiar, e um oráculo de ponto final já ficou verde sob mutação real
+/// neste mesmo ficheiro (ver `applying_the_defaults_at_their_default_value_moves_nothing`).
+#[test]
+fn the_magnitude_of_the_spin_threshold_reaches_nobody() {
+    let spin_of = |v: f32| BodyDefaults {
+        sleep_angular_threshold: v,
+        ..BodyDefaults::ours()
+    };
+    let mut low = PhysicsWorld::new();
+    let mut high = PhysicsWorld::new();
+    low.set_body_defaults(spin_of(0.1));
+    high.set_body_defaults(spin_of(2.0));
+    low.add_static_cuboid(0.0, 0.0, 50.0, 0.1);
+    high.add_static_cuboid(0.0, 0.0, 50.0, 0.1);
+    let a = low.spawn_body(ball(1.0));
+    let b = high.spawn_body(ball(1.0));
+
+    let mut ever_slept = false;
+    for tick in 0..600 {
+        low.step();
+        high.step();
+        let ya = low.body_pose(a).unwrap().translation.y;
+        let yb = high.body_pose(b).unwrap().translation.y;
+        assert_eq!(
+            ya.to_bits(),
+            yb.to_bits(),
+            "tique {tick}: um limiar de rotação de 0,1 e um de 2,0 deram trajectórias \
+             DIFERENTES ({ya} contra {yb}) — a magnitude voltou a ser lida, e o interruptor \
+             do painel de física tem de voltar a ser um slider"
+        );
+        let sa = low.bodies().get(a).unwrap().is_sleeping();
+        assert_eq!(
+            sa,
+            high.bodies().get(b).unwrap().is_sleeping(),
+            "tique {tick}: as duas bolas discordaram sobre estar a dormir"
+        );
+        ever_slept |= sa;
+    }
+    assert!(
+        ever_slept,
+        "fixture: nenhuma das duas bolas chegou a dormir em 600 tiques, então este gate \
+         comparou duas quedas e não duas decisões de sono"
+    );
+}
+
 /// Whether the fixture has ground to settle on.
 #[derive(Copy, Clone, PartialEq)]
 enum Floor {

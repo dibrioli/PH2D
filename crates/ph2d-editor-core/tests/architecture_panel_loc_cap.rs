@@ -24,30 +24,30 @@ const PANEL_FN_LOC_CAP: usize = 200;
 /// (relative path under `crates/`, allowed LOC, why). Driving every
 /// entry to zero is the goal; new entries require Coord-A sign-off.
 const FILE_OVERAGE_OK: &[(&str, usize, &str)] = &[
-    // Enio 2026-05-26: paint_sections.rs cresceu com Dither Strength +
-    // Dither Grain sliders (2 rows novas dentro de
-    // paint_posterize_quantize_section). Split em paint_helpers.rs é
-    // follow-up; mantém o cap visível enquanto isso.
-    (
-        "ph2d-panel-color-equalization/src/paint_sections.rs",
-        660,
-        "Enio 2026-05-26 dither strength+grain rows — split deferred",
-    ),
+    // ⛔ **A folga de 660 do `ph2d-panel-color-equalization/src/paint_sections.rs` saiu em
+    // 2026-08-30 — o ficheiro tem 536 LOC e está sob o cap desde que a wave das fileiras
+    // gateadas o cortou para `rows.rs`.** Ela estava congelada desde 2026-05-26 (*«split em
+    // paint_helpers.rs é follow-up»*), o split aconteceu por outro motivo, e a dívida ficou
+    // escrita durante três meses sobre um ficheiro que já não a devia.
+    //
+    // ⚠️ **Ninguém a teria notado:** o `fn_overage_allowlist_has_no_stale_entries` cobria só as
+    // FUNÇÕES; esta lista, a dos FICHEIROS, não tinha censo de obsolescência nenhum. Agora tem —
+    // `file_overage_allowlist_has_no_stale_entries`, mais abaixo. *Uma catraca sem quem a faça
+    // descer sobe sozinha.*
+    //
+    // ⚠️ **E ele achou mais DUAS na primeira corrida** — o `ph2d-panel-painter-layers/src/event.rs`
+    // estava tolerado a `601` e tem **570** (voltou a caber no cap; entrada apagada), e o
+    // `paint_adjust.rs` estava congelado em `829` e tem **823** (apertado para a medida). Nenhuma
+    // das três teria sido notada por leitura.
+    // ────────────────────────────────────────────────────────────────────────────────────────
     // Coord 2026-06-04 ship-prep: Painter W4 adjustment panels (Curves/Levels/
     // B&W/Selective Color/Gradient Map) grew this orchestrator. Per-adjustment
-    // sibling split is a Painter-impl follow-up; frozen at the ship-canonical 829.
+    // sibling split is a Painter-impl follow-up. ⚠️ Apertado 829 → 823 em 2026-08-30 pelo censo
+    // novo: a folga vale o TAMANHO MEDIDO, nunca o histórico.
     (
         "ph2d-panel-painter-layers/src/paint_adjust.rs",
-        829,
+        823,
         "Painter W4 bespoke adjustment panels — per-adjustment split deferred (Painter impl follow-up)",
-    ),
-    // Deform Wave 1: the monolithic Click-dispatch match gained ONE predicate call
-    // (`is_deform_click`) to forward the Deform panel's clicks. The file was already at the 600 cap;
-    // splitting the giant dispatch match is a separate refactor. Frozen at 601.
-    (
-        "ph2d-panel-painter-layers/src/event.rs",
-        601,
-        "Deform Wave 1 added one is_deform_click() call to the at-cap dispatch match; match split deferred",
     ),
 ];
 
@@ -647,4 +647,71 @@ fn strip_test_modules(src: &str) -> String {
         i = k + 1;
     }
     out
+}
+
+/// **A lista de folgas por FICHEIRO só ENCOLHE — e alguém tem de a medir.**
+///
+/// Espelho exacto do [`fn_overage_allowlist_has_no_stale_entries`], que existia só para as
+/// funções. A ausência custou três meses: a folga de `660` do
+/// `ph2d-panel-color-equalization/src/paint_sections.rs` sobreviveu ao split que a tornou
+/// desnecessária, sobre um ficheiro de **536** LOC — e nada no repo perguntava.
+///
+/// ⚠️ *Uma dívida congelada que ninguém remede não é uma dívida: é uma licença.* Este gate faz
+/// as três perguntas que a tornam mensurável — o ficheiro ainda existe? ainda passa o cap? a
+/// folga ainda descreve o tamanho dele?
+#[test]
+fn file_overage_allowlist_has_no_stale_entries() {
+    let crates_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut measured: Vec<(String, usize)> = Vec::new();
+    for panel_dir in collect_panel_dirs(&crates_root) {
+        let src = panel_dir.join("src");
+        if !src.is_dir() {
+            continue;
+        }
+        let crate_name = panel_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        visit_files(&src, &mut |path| {
+            let body = fs::read_to_string(path).expect("read panel file");
+            let rel = path
+                .strip_prefix(&panel_dir)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|_| path.display().to_string());
+            measured.push((format!("{crate_name}/{rel}"), body.lines().count()));
+        });
+    }
+
+    // ⚠️ Metade JUSTA: um `collect_panel_dirs` partido devolveria zero ficheiros, e zero
+    // entradas obsoletas lê-se como aprovado.
+    assert!(
+        measured.len() > 100,
+        "o censo achou {} ficheiros de painel — a varredura partiu-se e este gate estaria a \
+         medir-se a si próprio",
+        measured.len()
+    );
+
+    let mut stale: Vec<String> = Vec::new();
+    for (key, allowed, _) in FILE_OVERAGE_OK {
+        match measured.iter().find(|(k, _)| k == key).map(|(_, loc)| *loc) {
+            None => stale.push(format!("{key} — o ficheiro já não existe")),
+            Some(loc) if loc <= PANEL_FILE_LOC_CAP => stale.push(format!(
+                "{key} — tem {loc} LOC, já está sob o cap de {PANEL_FILE_LOC_CAP}"
+            )),
+            Some(loc) if loc < *allowed => stale.push(format!(
+                "{key} — tem {loc} LOC, e a folga continua congelada em {allowed}"
+            )),
+            Some(_) => {}
+        }
+    }
+
+    assert!(
+        stale.is_empty(),
+        "folgas de LOC por ficheiro que já não descrevem nada:\n  {}\n\n\
+         A catraca SÓ DESCE: aperte a folga até ao tamanho medido, ou apague a entrada se o \
+         ficheiro passou a caber no cap. ⛔ Nunca a suba — o caminho para um ficheiro grande \
+         demais é o corte por RESPONSABILIDADE, nunca a licença.",
+        stale.join("\n  ")
+    );
 }

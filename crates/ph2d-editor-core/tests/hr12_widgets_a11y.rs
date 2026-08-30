@@ -345,6 +345,26 @@ const WIDGET_DELEGATE_MARKERS: &[&str] = &[
 /// da categoria (b) está a justificar a isenção com um facto que não se verifica, e o gate — que
 /// só lê o par `(caminho, razão)` — não sabe a diferença.
 const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
+    // ⛔⛔ **Este ficheiro passava por SUBCADEIA, e a remoção de uma fileira revelou-o.**
+    // Ele nunca nomeou um primitivo canónico: o que casava era `paint_color_swatch_row` — o
+    // helper LOCAL — contendo `paint_color_swatch` como substring. Quando a fileira «Color» do
+    // Grid saiu (2026-08-30: o RGB nunca alcançava o canvas), o falso verde caiu junto.
+    //
+    // ⚠️ **A delegação é REAL, só que TRANSITIVA**: ele chama `paint_show_overlay_row`,
+    // `paint_opacity_slider_row`, `paint_labeled_segmented_row` e `paint_kind_button_grid`, que
+    // vivem nos irmãos `paint_rows.rs`/`paint_helpers.rs` e nomeiam `paint_toggle(` e
+    // `paint_button(`. O modelo deste gate é *«o ficheiro NOMEIA um primitivo»*, e um salto a mais
+    // não cabe nele.
+    //
+    // ⚠️⚠️ **E isso não é um caso isolado — foi MEDIDO: 25 ficheiros de painel passam hoje SÓ por
+    // subcadeia** (`paint_number_input_row` a casar `paint_number_input`, `paint_dropdown_chip` a
+    // casar `paint_dropdown`, …). ⛔ Apertar a régua para exigir a CHAMADA (`marcador(`) acusaria
+    // os 25 injustamente: eles delegam de verdade, um salto mais longe. A cura honesta é o gate
+    // seguir **um salto de delegação** dentro da crate — obra própria, com o número já medido.
+    (
+        "ph2d-panel-grid-snap/src/paint_body_sections.rs",
+        "orquestrador de seccoes: delega nos irmaos `paint_rows`/`paint_helpers`, que nomeiam `paint_toggle(`/`paint_button(`. Passava por subcadeia (`paint_color_swatch_row`) ate' a fileira Color sair",
+    ),
     // ⭐ **O `paint.rs` do Inspector passou a ser ORQUESTRADOR PURO em 2026-08-27** (ADR-0164 / F5):
     // a moldura do corpo — superfície, alças, cabeçalho, clip, cantos — saiu inteira para o
     // `paint_body.rs` quando a seção COMPONENT o empurrou acima do tecto de LOC. ⚠️ Ele deixou de

@@ -13,8 +13,19 @@ use super::{NodeId, hash_node_id};
 
 /// The panel surface itself (rect publish + z-order + scroll owner).
 pub const WET_TUNING_PANEL: NodeId = hash_node_id("wet_tuning.panel");
-/// The panel's scrollbar.
-pub const WET_TUNING_SCROLL: NodeId = hash_node_id("wet_tuning.scroll");
+// ⛔ **`WET_TUNING_SCROLL` foi apagado em 2026-08-30 — ele era um ÓRFÃO, não um controlo.**
+// Declarado *«The panel's scrollbar»*, tinha UMA referência em todo o repositório: a lista de
+// ids do teste de colisão do próprio painel. Nunca foi pintado nem registado.
+//
+// A barra de rolagem deste painel é a `widget::scrollbar::WET_TUNING_SCROLLBAR_ID` — um id
+// **numerado à mão** (`NodeId(837)`), como todas as irmãs docked, e de propósito: a nota naquele
+// ficheiro explica que o *thumb* precisa de id próprio para o dispatch rotear o arrasto sem
+// aliasing entre os painéis que partilham a coluna.
+//
+// ⚠️ *Um id declarado que ninguém pinta nem regista não é um knob morto — é lixo, e faz toda
+// sonda futura mentir sobre a superfície do painel.* A cura de um órfão é apagá-lo; a de um
+// morto é ligar o braço. Confundir as duas espécies foi o que fez este id aparecer numa caça a
+// controlos mortos (catraca `the_painted_control_reaches_a_consumer`).
 /// The panel's close button — forwards the SAME Tuning toggle the basic
 /// section owns (visibility is the tool's authored fact).
 pub const WET_TUNING_CLOSE: NodeId = hash_node_id("wet_tuning.close");

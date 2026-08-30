@@ -16,8 +16,13 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 use crate::rows;
 use crate::state::PhysicsSnapshot;
 
-/// Paint every section, then the debug rows. Returns the y it ended at.
-pub(super) fn paint_sections(
+/// **As secções guiadas por TABELA** — as cinco de [`rows::SECTIONS`], cujo corpo é uma lista de
+/// `Row`. Devolve o `y` seguinte.
+///
+/// Irmã de [`paint_sections`] pelo tecto de 200 LOC por função, e o corte é de RESPONSABILIDADE:
+/// aqui o corpo de uma secção é **derivado** da tabela; lá em cima cada corpo é uma coisa
+/// diferente (uma grelha de 36 células, dois rádios, uma dica que quebra).
+fn table_sections(
     ctx: &mut PaintCtx,
     snapshot: &PhysicsSnapshot,
     x: f32,
@@ -26,12 +31,36 @@ pub(super) fn paint_sections(
 ) -> f32 {
     let mut y = y_in;
     let row_gap = Spacing::Sm.px();
-
     for section in rows::SECTIONS {
         let (fold, next_y) = header(ctx, section.id, tr(section.title), x, w, y);
         y = next_y;
         if let Some(fold) = fold {
             let mut inner = y;
+            // ⭐ **O interruptor mestre da secção Sleep**, no topo dela — o idioma do modificador
+            // do Blender: a secção diz o que faz, o 1.º controlo diz se ela está a fazê-lo.
+            //
+            // ⛔⛔ **Ele é um INTERRUPTOR porque é isso que a `rapier2d` 0.35 lê.** O
+            // `sleep_angular_threshold` era um slider `0..10` aqui, e desde a 0.35 o motor lê
+            // dele **o sinal**: `>= 0` = os corpos podem dormir · `< 0` = nunca dormem
+            // (`ph2d_physics::SLEEP_SPIN_DISABLED` traz o trecho). Arrastar de `0,1` para `2,0`
+            // não movia um bit — medido em `ph2d-physics`,
+            // `the_magnitude_of_the_spin_threshold_reaches_nobody`.
+            //
+            // ⚠️ **O rótulo é `panel.physics.sleep_enabled` → *"Enabled"***, e não o da secção nem
+            // o do slider morto (*"Spin"*), que era a única opção que MENTIA: o sinal não fala de
+            // rotação nenhuma, fala de dormir. (A chave nasceu em 2026-08-30, no mesmo dia que
+            // este interruptor; a linha anterior aqui dizia que ela não existia.)
+            if section.id == ids::PHYSICS_SEC_SLEEP {
+                inner = toggle(
+                    ctx,
+                    ids::PHYSICS_SLEEP_SPIN,
+                    tr("panel.physics.sleep_enabled"),
+                    snapshot.settings.sleep_enabled(),
+                    x,
+                    w,
+                    inner,
+                ) + row_gap;
+            }
             for row in section.rows {
                 let value = (row.get)(&snapshot.settings);
                 let used = super::paint_row(ctx, row, value, x, w, inner);
@@ -41,6 +70,19 @@ pub(super) fn paint_sections(
         }
         y += Spacing::Md.px();
     }
+    y
+}
+
+/// Paint every section, then the debug rows. Returns the y it ended at.
+pub(super) fn paint_sections(
+    ctx: &mut PaintCtx,
+    snapshot: &PhysicsSnapshot,
+    x: f32,
+    w: f32,
+    y_in: f32,
+) -> f32 {
+    let row_gap = Spacing::Sm.px();
+    let mut y = table_sections(ctx, snapshot, x, w, y_in);
 
     // The Interaction tool (W-Hand). BEFORE the layer matrix and after the world
     // sliders, on purpose: it is the section an artist reaches for while a scene
@@ -231,6 +273,10 @@ fn header(
 ) -> (Option<SectionFold>, f32) {
     let theme = ctx.host.theme();
     let h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    // ⚠️ O ÚNICO sítio deste painel que desenha um `SectionHeader`, e por isso o único que pode
+    // responder «que cabeçalhos existem?» sem uma lista escrita à mão. Ver
+    // `state::PAINTED_SECTION_HEADERS`.
+    crate::state::note_painted_section_header(id);
     let collapsed = ctx.host.store().is_collapsed(id);
     let rect = Rect::new(x, y, w, h);
     let header = SectionHeader::new(id, title)

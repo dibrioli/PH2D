@@ -61,9 +61,26 @@ pub fn vector_text_font_option_id(index: usize) -> NodeId {
 }
 
 /// Max variation-axis number fields the Text panel shows (besides the dedicated
-/// Weight slider) — one per non-`wght` axis the current font exposes. 6 covers every
-/// registered axis a real variable font ships (`wdth`/`slnt`/`opsz`/`ital`/`GRAD`/…).
-pub const MAX_TEXT_VARIATION_AXES: usize = 6;
+/// Weight slider) — one per non-`wght` axis the current font exposes.
+///
+/// ⚠️ **Este número é o TECTO DE TODOS OS CONSUMIDORES, e o painel tem de o honrar.** Até
+/// 2026-08-30 ele era `6` e o pintor não o consultava: ele desenhava uma linha por eixo que a
+/// fonte publicasse, **sem tecto**. Do 7.º em diante o campo saía com o **nome real do eixo** ao
+/// lado e o valor `0` — porque o registo (`populate`), o mapa id→índice (`state`) e a publicação
+/// da shell param todos aqui. *Um campo com o nome certo e nenhum leitor é a pior forma deste
+/// defeito: ele convence.* Alcançável com a Roboto Flex, que publica ~12 eixos além do `wght`.
+///
+/// **De que recurso ele é:** não dos ids — eles são hasheados em runtime
+/// (`fnv_node_id_runtime`) e um slot a mais custa uma iteração. É do **orçamento de linhas do
+/// painel**, a mesma grandeza que já governa o resto do chrome.
+///
+/// **Por que 16:** o OpenType regista exactamente **cinco** tags de eixo (`ital`, `opsz`, `slnt`,
+/// `wdth`, `wght`) — quatro depois de tirar o `wght`, que tem slider próprio. O resto são eixos
+/// personalizados, e `fvar.axisCount` é `uint16`, logo o formato não dá tecto nenhum. `16` = os 4
+/// registados + 12 personalizados, que cobre com folga a fonte variável mais rica que se envia
+/// hoje. ⏳ **A perda que fica, nomeada:** uma fonte com mais de 16 eixos além do `wght` perde os
+/// excedentes — mas perde-os **em silêncio e sem mentir**, em vez de os pintar mortos.
+pub const MAX_TEXT_VARIATION_AXES: usize = 16;
 
 /// NodeId for the `index`-th variation-axis field in the Text panel — bound to the
 /// `index`-th non-`wght` axis of the current font (its name/range/value published by

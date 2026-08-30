@@ -413,17 +413,36 @@ fn every_command_reaches_the_shell() {
     }
 }
 
-/// **Dobrar uma seção é local do painel** — nunca alcança a cena.
+/// **TODO cabeçalho PINTADO dobra — e dobrar é local do painel**, nunca alcança
+/// a cena.
+///
+/// ⚠️ **A lista é DERIVADA ([`rows::section_headers`]), e a versão anterior era
+/// escrita à mão com SEIS ids.** O painel pinta SETE cabeçalhos, e o que faltava
+/// na lista era exatamente o que faltava no `is_section_header` do `event.rs`: o
+/// `SCULPT3D_SEC_BAKE`. Um gate que enumera à mão o mesmo conjunto que o produto
+/// enumera à mão fica verde sobre a linha que os dois esqueceram — *duas listas
+/// e um gate são três respostas à mesma pergunta, e a que o artista toca é a que
+/// envelhece*.
+///
+/// ⚠️ **A metade da PINTURA é a que torna a derivação honesta.** Sem ela, um id
+/// acrescentado ao `section_headers()` e nunca desenhado passaria (registrado e
+/// despachado, mas invisível); com ela, o gate exige que cada cabeçalho da porta
+/// única seja de facto um chevron na tela.
 #[test]
-fn folding_a_section_never_touches_the_scene() {
-    for id in [
-        ids::SCULPT3D_SEC_TOOL,
-        ids::SCULPT3D_SEC_BRUSH,
-        ids::SCULPT3D_SEC_SYMMETRY,
-        ids::SCULPT3D_SEC_TOPOLOGY,
-        ids::SCULPT3D_SEC_SHADING,
-        ids::SCULPT3D_SEC_SCENE,
-    ] {
+fn every_painted_section_header_folds_and_never_touches_the_scene() {
+    let (mut host, mut state) = arrange(Sculpt3dUi::default());
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    let heads: Vec<_> = rows::section_headers().collect();
+    assert!(
+        heads.len() >= 7,
+        "a fixture perdeu o fenômeno: só {} cabeçalho(s) na porta única",
+        heads.len()
+    );
+    for id in heads {
+        assert!(
+            painted.iter().any(|(pid, _)| *pid == id),
+            "o cabeçalho {id:?} está na porta única e ninguém o pinta"
+        );
         let (mut host, mut state) = arrange(Sculpt3dUi::default());
         let outcome = host.apply_panel_event::<Sculpt3dPanel>(&mut state, WidgetEvent::Click(id));
         assert_eq!(
@@ -1749,6 +1768,88 @@ fn the_hardness_row_writes_the_field_the_kernel_reads() {
     assert!(
         (row.max - 1.0).abs() < 1e-6,
         "a pista da dureza tem de alcançar o disco duro"
+    );
+}
+
+/// **A DUREZA É OFERECIDA ONDE O DAB LÊ A DISTÂNCIA, E EM LUGAR NENHUM MAIS.**
+///
+/// ⚠️ **A metade negativa é a wave, e ela é o INVERSO da fileira abaixo.** A
+/// largura do campo existe *onde o campo corre*; a dureza existe *onde ele NÃO
+/// corre* — porque com um campo armado a curva do dab é o
+/// `kelvinlet::rim_landing` e o `shaped_distance` não é chamado. As duas leem a
+/// MESMA porta do motor (`RefMode::field`), e é isso que impede a segunda de
+/// nascer desalinhada da primeira.
+///
+/// ⚠️ **A inércia foi MEDIDA pela porta do produto antes de a fileira sumir** —
+/// `ph2d-sculpt3d/tests/measure_where_the_curve_knobs_reach.rs`, gate
+/// `neither_curve_knob_reaches_an_elastic_field`: dois valores de dureza dão o
+/// mesmo barro **ao bit** sob campo, e o MESMO verbo no `s-mode` os separa. Sem
+/// essa medição isto seria esconder um controle por palpite, que é exatamente o
+/// que a cerca do Falloff (`the_basic_level_never_hides_the_curve_that_shapes_the_dab`)
+/// já cobrou uma vez nesta mesma seção.
+///
+/// ⚠️ **PRO nas duas metades**, pela razão que o `a_conditional_row_is_absent_with_the_wrong_tool`
+/// já documenta: a dureza é uma row de Pro, então em Basic a metade negativa
+/// passaria pelo motivo ERRADO.
+#[test]
+fn the_hardness_row_is_offered_only_where_the_dab_reads_the_distance() {
+    let armed = |mode: RefMode| {
+        let mut ui = Sculpt3dUi {
+            ui_level: UiLevel::Pro,
+            ..Default::default()
+        };
+        ui.set_mode_of(Verb::Move, mode);
+        ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Move);
+        ui
+    };
+
+    // A fixture tem de conter o fenômeno, e a premissa é DECLARADA.
+    let with_field = armed(RefMode::L);
+    assert!(
+        with_field.brush.mode.field(with_field.brush.verb).is_some(),
+        "a fixture perdeu a premissa: o Move em L tem de declarar campo"
+    );
+    let (mut host, mut state) = arrange(with_field);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    for id in [ids::SCULPT3D_HARDNESS, ids::SCULPT3D_HARDNESS_NUM] {
+        assert!(
+            !painted.iter().any(|(pid, _)| *pid == id),
+            "{id:?} foi pintado sob um campo elástico — ali a curva é o \
+             `rim_landing` e o `shaped_distance` nem é chamado"
+        );
+    }
+
+    // CONTROLE 1 — o MESMO verbo no `s-mode`: o dab lê a distância, a row volta.
+    let without = armed(RefMode::S);
+    assert!(
+        without.brush.mode.field(without.brush.verb).is_none(),
+        "a fixture perdeu o controle: o Move em S não pode declarar campo"
+    );
+    let (mut host, mut state) = arrange(without);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        painted
+            .iter()
+            .any(|(pid, _)| *pid == ids::SCULPT3D_HARDNESS),
+        "o `s-mode` do MESMO verbo lê a dureza e a fileira não foi pintada"
+    );
+
+    // CONTROLE 2 — o verbo que PINTA O CANAL a lê (o `shaped_distance` roda
+    // antes da curva própria da máscara), e é a assimetria que separa esta row
+    // do Falloff ao lado dela.
+    let mut ui = Sculpt3dUi {
+        ui_level: UiLevel::Pro,
+        ..Default::default()
+    };
+    ph2d_panel_sculpt3d::state::switch_verb(&mut ui, Verb::Mask);
+    let (mut host, mut state) = arrange(ui);
+    let painted = host.paint::<Sculpt3dPanel>(&mut state, VIEWPORT);
+    assert!(
+        painted
+            .iter()
+            .any(|(pid, _)| *pid == ids::SCULPT3D_HARDNESS),
+        "a máscara LÊ a dureza (ela remapeia a distância que a curva do canal \
+         consome) e a fileira sumiu"
     );
 }
 

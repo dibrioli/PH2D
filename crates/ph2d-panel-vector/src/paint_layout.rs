@@ -68,7 +68,14 @@ impl BodyCtx<'_> {
             // ⚠️ E elas NÃO existem para um filho absoluto: ele saiu do fluxo, logo não reparte
             // sobra nenhuma, e dois números que não movem um pixel são o controlo morto que esta
             // política existe para impedir.
-            if !it.absolute {
+            //
+            // ⚠️ **E também não existem sob uma moldura em GRADE.** `grow`/`shrink` são o trait
+            // de FLEX do `taffy`, e a grade consome outro — medido: `flex_grow` aparece **zero**
+            // vezes em `taffy/src/compute/grid/` contra **13** em `compute/flexbox.rs`. Ali os
+            // dois números chegam ao motor e são descartados: é a segunda espécie de knob morto
+            // (*o consumidor projecta o valor fora*), e a única forma de a apanhar é perguntar ao
+            // pai. Gate: `seam_layout_grid_item`.
+            if !it.absolute && !it.parent_is_grid {
                 y = self.number_row(
                     "Grow",
                     ids::VECTOR_LAYOUT_ITEM_GROW,

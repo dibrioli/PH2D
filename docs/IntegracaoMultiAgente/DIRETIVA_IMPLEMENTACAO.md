@@ -18,6 +18,13 @@
       você trabalha DENTRO do worktree da sua linha (`line/<módulo>`), `git rebase main` antes de
       começar a jornada (DIRETRIZ §1.5). `constrained` (Mac 8 GiB) = **Modo C**: shared tree,
       disciplina git da DIRETRIZ §7 vale INTEIRA. Esta diretiva vale igual nos dois modos.
+- [ ] **Sabe em que STACK está?** [`STACK_VERSOES.md`](STACK_VERSOES.md) — uma página, gateada
+      contra o `Cargo.lock`: Rust **1.98** / edition **2024** · `wgpu` **29** · `vello` **0.10** ·
+      `parley` **0.11** · `rapier2d` **0.35** (matemática `glam`/`glamx`, ⛔ sem `Point`/`Isometry`) ·
+      `bevy_ecs` **0.19**. ⛔ **Nunca escreva uma versão de memória**, e nunca responda «dá para
+      atualizar X?» sem `bash scripts/stack-audit.sh --tetos`: 8 crates são seguradas por outra, e
+      forçar não dá erro de resolução — dá **duas cópias**, e um `Device`/`NodeId` de uma não serve
+      à outra.
 - [ ] Leia o **tracker único** do módulo (1 por módulo; o resto é histórico arquivado).
 - [ ] Sua mudança cruza foundational / shell / outra crate? **O consumidor faz parte DESTE work item.**
       Proibido armar flag/evento órfão e "fiar depois" — é a causa nº 1 de feature morta (eyedropper, pills).

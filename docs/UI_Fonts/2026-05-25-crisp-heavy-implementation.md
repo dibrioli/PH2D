@@ -716,7 +716,25 @@ privado. Cache key estendido com `letter_spacing_px_bits: u32` —
 spacings diferentes → entries cacheadas separadas. Single place que
 empurra todas as `StyleProperty` no parley builder.
 
-### 15.5 MSAA per-frame — `vello_pass.render_to_intermediate` agora aceita `prefer_msaa: bool`
+### 15.5 MSAA per-frame — `prefer_msaa: bool` ⛔ **REVERTIDO em 2026-08-30**
+
+> ⛔⛔ **Esta secção descreve algo que já NÃO existe.** O `prefer_msaa` saiu do
+> `TextRenderingParams` e do `render_to_intermediate`; o passe usa `AaConfig::Area` como
+> **constante**, e o `CrispHeavyPlus` ficou com os três ingredientes que são de facto sobre texto.
+>
+> **O mecanismo:** o `AaConfig` do Vello é **por PASSE**, não por caminho de desenho — a mesma
+> escolha cai sobre os glifos **e** sobre a arte vectorial do mesmo quadro. A justificação escrita
+> aqui e no `vello_pass.rs` concedia o defeito e aplicava-o na mesma frase: *«glyphs aren't
+> 1-1.5 px strokes at near-axis angles — **the problem case is vectors**»*. O raciocínio estava
+> certo sobre os glifos e esquecia que os vectores partilham o passe.
+>
+> Contexto: o dono do produto reportou *«manchas animadas parecendo TV antiga»* à volta das formas
+> vectoriais (2026-08-30). ⚠️ **Isto não está provado ser a causa** — o MSAA stippla de forma
+> estável entre quadros, e o report diz *animadas*. O que está provado é que a coupling existia.
+> Registo completo: `docs/Atualizar Stack/04_registro.md` §22.
+> Gate: `ph2d-render/tests/the_pass_aa_is_never_chosen_by_a_text_preference.rs`.
+>
+> O resto desta secção fica como **história** — ela explica por que a bandeira nasceu.
 
 O Vello `Renderer` já era inicializado com `AaSupport::all()`
 ([vello_pass.rs:50](../../crates/ph2d-render/src/vello_pass.rs#L50)),

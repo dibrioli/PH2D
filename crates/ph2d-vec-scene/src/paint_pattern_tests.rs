@@ -230,13 +230,16 @@ fn clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law() {
     // Clamp: enquadra — a origem vira o canto da forma e a cópia COBRE a caixa.
     f.mode = PatternMode::Clamp;
     let m = f.placement_in([1, 1], [8, 16], bbox);
-    assert_eq!(
-        [m[4], m[5]],
-        [100.0, 50.0],
-        "a copia nao foi ao canto da forma"
-    );
+    // ⚠️⚠️ **O canto medido é a BASE do ladrilho (`py = th`), e não a linha 0** — desde a cura da
+    // inversão vertical (`ph2d_vec_pattern::place_tests::the_tile_is_not_upside_down`, report do
+    // Enio de 2026-08-30). A linha `0` do assado é o **topo** do desenho e a âncora é o canto
+    // **inferior** da caixa: este teste media o par errado, e passava porque o produto os casava —
+    // que era precisamente o defeito. *Uma régua que mede o canto que o código escolheu confirma a
+    // escolha, não a lei.*
+    let base = [m[2] * 16.0 + m[4], m[3] * 16.0 + m[5]];
+    assert_eq!(base, [100.0, 50.0], "a copia nao assenta no canto da forma");
     // O canto oposto do ladrilho: `size` reescalado para cobrir 40x40 com aspecto 1:2 ⇒ [40, 80].
-    let far = [m[0] * 8.0 + m[4], m[3] * 16.0 + m[5]];
+    let far = [m[0] * 8.0 + base[0], m[5]];
     assert!(
         (far[0] - 140.0).abs() < 1e-9 && far[1] >= 90.0 - 1e-9,
         "a copia nao COBRE a caixa: canto oposto {far:?}"

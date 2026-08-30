@@ -1186,3 +1186,47 @@ transitório ensina o artista a ignorar avisos.*
 | limpar o vínculo no apagar | destrói o reticulado autorado sem ninguém pedir; e o undo já cobre | §W11.2 |
 | avisar também na fonte-IMAGEM | a ausência lá é **transitória** (a carregar) | §W11.3 |
 | dar ao pincel o mesmo aviso | contradiz a lei escrita de que ali um id morto **é** «sem arte» | §W11.5 |
+
+---
+
+## §W12 — ⛔⛔⛔ **O PADRÃO SAÍA DE CABEÇA PARA BAIXO** (report do Enio com foto, 2026-08-30)
+
+### §W12.1 — Duas convenções certas, casadas ao contrário
+
+- O **assado** põe a linha `0` do ladrilho no **topo do ecrã**, sob uma câmara de Y invertido. Isso é
+  deliberado e tem gate próprio (`the_baked_tile_is_upright`).
+- A **colocação** ancora no `origin`, que é o `lo` da caixa da forma — o canto **INFERIOR** esquerdo,
+  porque no mundo o Y aponta para cima (`default_placement`).
+
+⇒ mapear a linha `0` na âncora punha o **topo** do desenho no **fundo** da célula, com as linhas
+seguintes a subir: um **espelho vertical exacto**. Nenhuma das duas convenções está errada; o
+defeito era o casamento.
+
+⚠️ **Valia para TODA estampa** — imagem e forma —, e não só para o grupo. O grupo apenas a tornou
+óbvia: um triângulo com um círculo é assimétrico na vertical de uma forma que uma arte anterior não
+era.
+
+### §W12.2 — A cura, e porque ela não desloca nada
+
+O eixo das linhas passa a apontar para **baixo**, e a **base** do ladrilho (`py = th`) é que assenta
+na âncora:
+
+```
+[cos·sx, sin·sx, sin·sy, −cos·sy, ox − sin·hy, oy + cos·hy]   com hy = período_y × células
+```
+
+⭐ **A caixa de mundo não muda**: continua a ser `origem .. origem + período × células`. O que se
+inverte é *qual linha cai em cima* ⇒ a cura **espelha o desenho dentro da mesma caixa**, sem mover
+padrão nenhum.
+
+### §W12.3 — ⚠️ Três gates mediam o CANTO que o código escolhera
+
+`the_tile_corners_land_on_the_period`, `a_rotation_turns_the_tile_and_nothing_else` e
+`clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law` afirmavam todos que a linha
+`0` cai na âncora — a própria escolha que era o defeito. Eles **passavam porque o produto os
+casava**.
+
+*Uma régua que mede o canto que o código escolheu confirma a escolha, não a lei.* Os três passam a
+medir a **base** (a âncora) e o **eixo**, que é o que tem de valer independentemente de qual linha
+do assado fica em cima. **2 mutações, 2 mortas** (o eixo a voltar para cima · a base a deixar de
+assentar na âncora).

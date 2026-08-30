@@ -85,12 +85,25 @@ pub fn placement(
     let sx = period[0] * f64::from(cells[0].max(1)) / tw;
     let sy = period[1] * f64::from(cells[1].max(1)) / th;
     let (sin, cos) = angle.sin_cos();
+    // ⛔⛔⛔ **O EIXO DAS LINHAS APONTA PARA BAIXO** (report do Enio, 2026-08-30: *"o padrão está de
+    // cabeça para baixo"*).
+    //
+    // A linha `0` do assado é o **topo** do desenho — o assador põe lá o canto de cima, sob uma
+    // câmara de Y invertido, e tem gate a prová-lo (`the_baked_tile_is_upright`). A âncora desta
+    // colocação é o canto **INFERIOR** esquerdo da caixa da forma (`default_placement` devolve o
+    // `lo`). ⇒ com `+sy` a linha 0 caía no fundo e as seguintes subiam: um espelho vertical exacto.
+    //
+    // ⚠️ **A caixa de mundo NÃO muda** — continua a ser `origem .. origem + período x células`. O
+    // que se inverte é qual linha cai em cima, e é por isso que a cura não desloca padrão nenhum:
+    // ela espelha-o **dentro** da mesma caixa. A base (`py = th`) assenta na âncora, e a linha `0`
+    // fica uma altura de ladrilho acima dela.
+    let hy = sy * th;
     [
         cos * sx,
         sin * sx,
-        -sin * sy,
-        cos * sy,
-        origin[0],
-        origin[1],
+        sin * sy,
+        -cos * sy,
+        origin[0] - sin * hy,
+        origin[1] + cos * hy,
     ]
 }

@@ -22,12 +22,16 @@ fn close(a: [f64; 2], b: [f64; 2]) -> bool {
 #[test]
 fn the_tile_corners_land_on_the_period() {
     let m = placement([30.0, 20.0], [1, 3], [7.0, -4.0], 0.0, [64, 192]);
+    // ⚠️⚠️ **O canto da ÂNCORA é a BASE do ladrilho (`py = th`), e não a linha 0** — desde a cura da
+    // inversão vertical (ver `the_tile_is_not_upside_down`). A âncora é o canto **inferior** da
+    // caixa da forma, e a linha `0` do assado é o **topo** do desenho: casá-los era o espelho que o
+    // Enio reportou. ⚠️ A CAIXA de mundo não mudou — este gate mede-a nos dois cantos opostos.
     assert!(
-        close(apply(m, [0.0, 0.0]), [7.0, -4.0]),
-        "o canto e' a origem"
+        close(apply(m, [0.0, 192.0]), [7.0, -4.0]),
+        "a base do ladrilho assenta na ancora"
     );
     assert!(
-        close(apply(m, [64.0, 192.0]), [7.0 + 30.0, -4.0 + 60.0]),
+        close(apply(m, [64.0, 0.0]), [7.0 + 30.0, -4.0 + 60.0]),
         "o ladrilho mede um periodo na horizontal e TRES na vertical"
     );
 }
@@ -49,12 +53,21 @@ fn the_bake_resolution_does_not_move_the_pattern() {
 fn a_rotation_turns_the_tile_and_nothing_else() {
     let ang = std::f64::consts::FRAC_PI_2;
     let m = placement([10.0, 10.0], [1, 1], [3.0, 3.0], ang, [10, 10]);
-    let far = apply(m, [10.0, 0.0]);
+    // ⚠️ O eixo X do ladrilho mede-se **a partir da âncora**, que é a BASE (`py = th`) — ver
+    // `the_tile_corners_land_on_the_period`. A 1.ª redacção media a partir da linha `0`, e por isso
+    // mudou de valor com a cura da inversão vertical: *ela media um CANTO, e a propriedade é o
+    // EIXO*.
+    let base = apply(m, [0.0, 10.0]);
+    let far = apply(m, [10.0, 10.0]);
+    assert!(
+        close(base, [3.0, 3.0]),
+        "a base assenta na ancora: {base:?}"
+    );
     assert!(
         close(far, [3.0, 13.0]),
         "um quarto de volta poe o eixo x em +y, deu {far:?}"
     );
-    let d = ((far[0] - 3.0).powi(2) + (far[1] - 3.0).powi(2)).sqrt();
+    let d = ((far[0] - base[0]).powi(2) + (far[1] - base[1]).powi(2)).sqrt();
     assert!((d - 10.0).abs() < 1e-9, "a rotacao nao pode mudar a medida");
 }
 
@@ -108,5 +121,47 @@ fn the_world_gap_becomes_pixels_through_the_arts_own_scale() {
     assert_eq!(
         gap_px_from_world([5.0, 5.0], [0.0, 0.0], [256, 256]),
         [0, 0]
+    );
+}
+
+/// ⛔⛔⛔ **O LADRILHO NÃO SAI DE CABEÇA PARA BAIXO** (report do Enio, 2026-08-30, com foto: *"o
+/// padrão está de cabeça para baixo"*).
+///
+/// # A inversão, e onde ela nasce
+///
+/// O assado põe a **linha 0** do ladrilho no **topo do ecrã** — que num mundo de Y para cima é o
+/// **maior** Y (`motion_object_bake`: *"the bbox min corner (the top-left under the Y-flipped
+/// camera) lands at the tile origin (0,0) = row 0 = screen-top"*, com gate próprio). A âncora da
+/// colocação, por outro lado, é o canto **INFERIOR** esquerdo da caixa da forma
+/// (`texture_pattern_pick::default_placement` devolve o `lo`).
+///
+/// ⇒ mapear a linha 0 na âncora punha o **topo** do desenho no **fundo** da célula, e as linhas
+/// seguintes a subir: um espelho vertical exacto. Era isso que se via.
+///
+/// # ⚠️ A caixa NÃO muda — só o sentido
+///
+/// O rectângulo de mundo que o ladrilho ocupa continua a ser `origem .. origem + período x células`.
+/// O que se inverte é **qual linha do assado cai em cima**. É por isso que a cura não desloca
+/// padrão nenhum: ela espelha-o dentro da mesma caixa.
+#[test]
+fn the_tile_is_not_upside_down() {
+    let m = placement([30.0, 20.0], [1, 3], [7.0, -4.0], 0.0, [64, 192]);
+    let topo = apply(m, [0.0, 0.0]);
+    let fundo = apply(m, [0.0, 192.0]);
+    assert!(
+        topo[1] > fundo[1],
+        "a linha 0 do assado (o TOPO do desenho) caiu em y={} e a ultima em y={} - o padrao sai \
+         espelhado na vertical, que e' exactamente o report do Enio",
+        topo[1],
+        fundo[1]
+    );
+    // ⚠️ E a caixa fica onde estava: a cura e' um espelho DENTRO dela, nao um deslocamento.
+    assert!(
+        close(fundo, [7.0, -4.0]),
+        "a base do ladrilho deixou de assentar na ancora: {fundo:?}"
+    );
+    assert!(
+        close(topo, [7.0, -4.0 + 60.0]),
+        "o topo do ladrilho nao esta' a um periodo x celulas da ancora: {topo:?}"
     );
 }

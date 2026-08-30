@@ -62,3 +62,74 @@ impl WidgetStore {
         self.asset_drag.take()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::drag_payload::ASSET_DRAG_THRESHOLD_PX;
+    use ph2d_a11y::NodeId;
+
+    fn store() -> WidgetStore {
+        WidgetStore::default()
+    }
+
+    /// ⭐ **O ciclo inteiro**: semear, andar, armar, terminar.
+    #[test]
+    fn the_drag_arms_after_the_threshold_and_ends_once() {
+        let mut s = store();
+        assert!(s.asset_drag().is_none(), "nasce sem arrasto");
+        s.begin_asset_drag(DragPayload::Prefab { stable_id: 3 }, 10.0, 10.0);
+        assert!(
+            !s.asset_drag().expect("semeado").armed,
+            "ainda e' um clique"
+        );
+        s.update_asset_drag(10.0 + ASSET_DRAG_THRESHOLD_PX + 1.0, 10.0);
+        let d = s.asset_drag().expect("em curso");
+        assert!(d.armed, "passou o limiar e nao armou");
+        assert_eq!(d.payload, DragPayload::Prefab { stable_id: 3 });
+        let ended = s.end_asset_drag().expect("terminar devolve o arrasto");
+        assert!(ended.armed);
+        assert!(
+            s.end_asset_drag().is_none(),
+            "terminar duas vezes nao pode devolver duas quedas"
+        );
+    }
+
+    /// ⛔ **Um gesto parado termina NÃO ARMADO** — e o chamador tem de o distinguir de *«não havia
+    /// arrasto»*, senão o clique do cartão desaparece.
+    #[test]
+    fn a_still_gesture_ends_unarmed_and_is_not_the_same_as_no_drag() {
+        let mut s = store();
+        s.begin_asset_drag(DragPayload::Image { asset: [1; 32] }, 5.0, 5.0);
+        s.update_asset_drag(5.0, 5.0);
+        let ended = s.end_asset_drag().expect("houve um gesto");
+        assert!(!ended.armed, "parado nao arma");
+    }
+
+    /// ⚠️ **Andar sem ter semeado é um no-op** — um `Move` sem `Down` não pode inventar um arrasto.
+    #[test]
+    fn moving_without_a_down_invents_nothing() {
+        let mut s = store();
+        s.update_asset_drag(100.0, 100.0);
+        assert!(s.asset_drag().is_none());
+    }
+
+    /// ⭐ Os cartões são publicados por quadro, e **esvaziar a lista fecha a porta**: um `Down` no
+    /// sítio onde o painel ESTAVA não pode arrancar um arrasto.
+    #[test]
+    fn the_cell_census_is_republished_and_closes_when_the_panel_hides() {
+        let mut s = store();
+        let a = NodeId(4242);
+        assert!(
+            !s.is_asset_cell(a),
+            "nada e' cartao antes de alguem o dizer"
+        );
+        s.set_asset_cell_ids([a].into_iter().collect());
+        assert!(s.is_asset_cell(a));
+        s.set_asset_cell_ids(std::collections::BTreeSet::new());
+        assert!(
+            !s.is_asset_cell(a),
+            "o painel fechou e o cartao continua a existir"
+        );
+    }
+}

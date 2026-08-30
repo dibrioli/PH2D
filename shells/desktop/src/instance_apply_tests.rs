@@ -11,6 +11,10 @@
 //! eles.
 
 use super::{VerbRefusal, detach};
+// ⚠️ **As fixturas NÃO são re-declaradas** — elas montam um ragdoll inteiro e uma segunda cópia
+// divergiria da primeira em silêncio. O que se re-declara são os embrulhos de cinco linhas
+// (`reg`/`apply`/`pass`), que é o precedente do `instance_place_tests.rs`.
+use super::tests::{paint, piece, ragdoll, tint};
 use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
 use crate::instance_sync::{MasterEcho, sync_instances};
 use ph2d_ecs::{Entity, InstanceOf, ObjectInstance, SimWorld};

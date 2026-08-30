@@ -76,7 +76,10 @@ fn make(
 }
 
 /// ⚠️ **Sem documentos vetoriais** — o ragdoll é feito de sprites. Ver `crate::instance_docs`.
-fn ragdoll(sim: &mut SimWorld, r: &ph2d_ecs::scene::ComponentRegistry) -> (Entity, Vec<Entity>) {
+pub(super) fn ragdoll(
+    sim: &mut SimWorld,
+    r: &ph2d_ecs::scene::ComponentRegistry,
+) -> (Entity, Vec<Entity>) {
     let (mut sc, mut mp) = crate::instance_docs::empty_docs();
     spawn_ragdoll_scene(
         sim,
@@ -111,7 +114,7 @@ fn instantiate(
     )
 }
 
-fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
+pub(super) fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
     let mut stack = vec![root];
     while let Some(e) = stack.pop() {
         if e != root && sim.world().get::<Name>(e).is_some_and(|n| n.0 == name) {
@@ -124,14 +127,14 @@ fn piece(sim: &SimWorld, root: Entity, name: &str) -> Entity {
     panic!("nao ha' peca chamada {name:?}");
 }
 
-fn tint(sim: &SimWorld, e: Entity) -> [f32; 4] {
+pub(super) fn tint(sim: &SimWorld, e: Entity) -> [f32; 4] {
     sim.world()
         .get::<ph2d_render::Sprite>(e)
         .expect("sprite")
         .tint
 }
 
-fn paint(sim: &mut SimWorld, e: Entity, c: [f32; 4]) {
+pub(super) fn paint(sim: &mut SimWorld, e: Entity, c: [f32; 4]) {
     let mut spr = sim
         .world()
         .get::<ph2d_render::Sprite>(e)

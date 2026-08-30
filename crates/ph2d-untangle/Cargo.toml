@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-untangle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O DESEMARANHADOR DE MAPAS -- a energia regularizada que torna um mapa
+# localmente injectivo A PARTIR de um estado ja' dobrado.
+#
+# ⚠️ Ele existe porque a MEDICAO o nomeou (2026-08-30): o mapa da cadeia de quads
+# dobra 3,12 % dos triangulos no OMBRO de um espinho contra 0,14 % no corpo -- 23x
+# -- e e' isso que a extraccao emite como face a 177 graus e gravata.
+#
+# ⚠️ Clean-room a partir da literatura publica (Garanzha, Kaporin, Kudryavtseva,
+# Protais, Ray, Sokolov 2021; Schueller et al. 2013). Nenhuma linha traduzida de
+# fonte de alvo restrito -- ver docs/3D/quad-remesh/PLANO_desdobrar_o_mapa.md.
+
+[dependencies]

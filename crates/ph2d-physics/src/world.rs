@@ -43,6 +43,8 @@ pub mod rope_route;
 pub mod sensors;
 pub mod shape;
 mod shapes;
+/// Os números do solver e as recusas medidas ao lado deles (docs dele).
+mod solver_params;
 mod step;
 pub mod sweep;
 pub mod tuning;
@@ -305,96 +307,7 @@ impl PhysicsWorld {
     pub const DEFAULT_CONTACT_HZ: f32 = 120.0;
 
     pub fn new() -> Self {
-        let integration_parameters = IntegrationParameters {
-            dt: Self::DEFAULT_DT / Self::DEFAULT_SUBSTEPS as f32,
-            // ⚠️ **O `damping_ratio` tem de vir escrito, e não do `..default()`.** Os dois
-            // coeficientes viraram UM struct na rapier 0.31, então preencher só a frequência
-            // não é possível — e o `5.0` aqui é exactamente o que o default da 0.28 dava, que
-            // é o número que o doc acima diz ter sido MEDIDO (subir para 20 esticou a
-            // recuperação de 9 para 30 quadros). *Uma constante que era implícita passou a ser
-            // nossa; escrevê-la é o que impede o dia em que o upstream a muda por baixo.*
-            contact_softness: rapier2d::dynamics::SpringCoefficients {
-                natural_frequency: Self::DEFAULT_CONTACT_HZ,
-                damping_ratio: 5.0,
-            },
-            // ⛔ **Um padrão da rapier mudou na 0.31 e ele MUDA O TATO: as iterações
-            // internas de estabilização caíram de `2` para `1`.** Fica fixado no valor de
-            // sempre, pelo critério da casa: *um padrão que muda o TATO é conteúdo autorado
-            // — há cenas ajustadas contra ele —, enquanto um que muda a ARQUITECTURA do
-            // solver se aceita, porque não há como o fixar.* Este é uma constante, e fixá-lo
-            // custa uma linha.
-            //
-            // ⭐ **O que elas compram está MEDIDO, e não é o que se supõe.** A leitura
-            // óbvia é *«mais estabilização = pilha em repouso mais quieta»*. O que o gate
-            // `the_same_gesture_hangs_only_the_one_with_a_reach` mostra é outra coisa: ele
-            // põe um personagem contra uma parede **sem beirada ao alcance**, e ele tem de
-            // **escorregar**. Com `1` iteração ele deixou de escorregar de todo
-            // (`1,727 → 1,750` em dois segundos, contra os `0,15 m` que a barra mede); com
-            // `2` o escorregar volta e o gate fica verde. ⇒ estas iterações são
-            // **load-bearing para o ATRITO**, não só para o tremor de uma pilha.
-            // *Uma parede que segura quem não se agarrou não é economia de cálculo: é outra
-            // regra de jogo.*
-            //
-            // ⛔⛔ **E uma hipótese REFUTADA, registada para não voltar:** a 0.29 introduziu
-            // um `friction_model` configurável cujo padrão (`Simplified`) resolve uma
-            // restrição de atrito por grupo de **4 contatos** em vez de uma por contacto — o
-            // candidato óbvio para explicar a mudança no escorregar contra a parede. **Ele é
-            // `#[cfg(feature = "dim3")]`**: não existe em 2D, e nunca nos alcançou. *O
-            // compilador matou a hipótese antes da medição — e é por isso que se escreve o
-            // palpite em código em vez de o assumir.*
-            num_internal_stabilization_iterations: 2,
-            // ⛔⛔ **SETE constantes da 0.35 mudam o TATO, e ficam fixadas no valor de sempre.**
-            // O critério é o mesmo do bloco: *um padrão que muda o tato é conteúdo autorado — há
-            // cenas ajustadas contra ele —, e um que muda a ARQUITECTURA do solver aceita-se,
-            // porque não há como o fixar.* Estas são constantes; fixá-las custa uma linha cada.
-            //
-            // ⚠️ **`static_contact_softness` é um CONCEITO NOVO, e é o mais perigoso da lista.**
-            // Até aqui **todo** contacto usava os nossos `DEFAULT_CONTACT_HZ`. A 0.35 partiu-os em
-            // dois grupos: dinâmico↔dinâmico (`contact_softness`) e **contra corpos fixos**
-            // (`static_contact_softness`, cujo padrão é 60 Hz / 10). O chão e as paredes são
-            // fixos ⇒ ajustar só o primeiro deixaria **o contacto que mais importa** a metade da
-            // rigidez que o slider «Contact Hz» do painel promete. *Uma lei escrita num sítio
-            // quando o modelo tem dois não é uma lei.*
-            static_contact_softness: rapier2d::dynamics::SpringCoefficients {
-                natural_frequency: Self::DEFAULT_CONTACT_HZ,
-                damping_ratio: 5.0,
-            },
-            // 0.001 → 0.005: os corpos afundariam **5×** mais uns nos outros em repouso.
-            normalized_allowed_linear_error: 0.001,
-            // 10 → 3: uma sobreposição funda sairia **3,3× mais devagar**.
-            normalized_max_corrective_velocity: 10.0,
-            // 0,002 → 0,02: contatos detectados **10× mais cedo**; corpos parecendo flutuar um
-            // fio acima da superfície.
-            normalized_prediction_distance: 0.002,
-            // ⚠️ **Sem tecto → 400 u/s.** A 0.35 passou a limitar a velocidade linear. Em queda
-            // livre a `9,81` isso levaria ~41 s a morder, mas o `blast::explode` divide impulso
-            // por massa: um corpo leve com uma explosão forte era ilimitado e passaria a bater no
-            // tecto **sem aviso**. `Real::MAX` desarma-o, que é o que sempre valeu aqui.
-            normalized_max_linear_velocity: rapier2d::math::Real::MAX,
-            // Duas reduções de trabalho no narrow phase que a 0.35 liga por omissão. Elas mudam a
-            // TRAJECTÓRIA dentro da tolerância do solver — e portanto o hash `physics_ecs_c9`.
-            // Ficam desligadas: o custo que elas poupam não foi medido, e o que elas mexem foi.
-            contact_clustering: false,
-            contact_recycling: false,
-            // ⛔⛔ **DOIS campos novos ficam no padrão da 0.35, e a recusa é MEDIDA.**
-            //
-            // `friction_in_bias_pass: false` é a regra nova *«sem atrito ao aplicar o viés»*, e o
-            // doc da rapier diz o que ela compra: *«load-bearing for tall stacks: friction
-            // reacting to bias velocities pumps their coherent lean mode until they topple»*.
-            // ⚠️ Ligá-lo a `true` **cura um gate** desta crate (`compound::a_part_moved_while_the
-            // _clock_runs_takes_its_collider_along`) — e o gate é sobre uma peça composta a levar
-            // o collider, não sobre atrito. ⇒ *seria comprar de volta um defeito que eles
-            // corrigiram, para curar um sintoma que não é o dele.* Bissectado: dos dois campos,
-            // este é o único que muda alguma coisa aqui.
-            //
-            // `warmstart_joints: false` fica pela razão oposta — medido, ligá-lo **não muda um
-            // único gate**. Ele é capacidade nova (*«melhora a convergência de conjuntos de
-            // juntas rígidas»*), e ligar o que não se mediu a precisar não é afinação, é ruído.
-            //
-            // ⚠️ *A régua desta decisão não é «o teste fica verde»: é «o que a plataforma
-            // corrigiu de propósito, aceita-se».*
-            ..IntegrationParameters::default()
-        };
+        let integration_parameters = solver_params::integration_parameters();
         Self {
             bodies: RigidBodySet::new(),
             colliders: ColliderSet::new(),

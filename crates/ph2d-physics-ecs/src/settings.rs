@@ -118,8 +118,14 @@ pub const MAX_AIR_DRAG: f32 = 10.0;
 
 /// Speed below which a body may fall asleep (m/s and rad/s).
 ///
-/// Semantic, not resource: the threshold is compared against a body's own
-/// velocity, so the ceiling is "faster than anything you would call at rest".
+/// Semantic, not resource: o tecto é *«mais rápido do que qualquer coisa a que se chame
+/// repouso»*.
+///
+/// ⚠️ **A frase que aqui estava — «é comparado com a VELOCIDADE do corpo» — deixou de ser
+/// verdade na `rapier2d` 0.35.** Ela compara agora uma **deriva de pose por passo** do ponto mais
+/// afastado do corpo (translação + rotação dobrada lá dentro), e essa deriva inclui as **correcções
+/// de posição do solver**, que nunca aparecem nas velocidades. O tecto de `10` continua folgado, o
+/// que salva o número — mas a justificação que o derivava já não vale.
 /// 10 m/s is a body crossing a 1000 px screen in one second at the project's
 /// default 100 px/m — past that you are not describing rest, you are switching
 /// the simulation off.
@@ -127,9 +133,13 @@ pub const MAX_SLEEP_THRESHOLD: f32 = 10.0;
 
 /// How long a body must stay under both thresholds before sleeping (seconds).
 ///
-/// Semantic: rapier's own default is 2 s. Ten seconds is five times that — long
-/// enough to mean "effectively never" without an infinity the artist cannot
-/// type back out of.
+/// Semantic: dez segundos significam *«efectivamente nunca»* sem uma infinidade que o artista não
+/// consiga voltar a escrever.
+///
+/// ⚠️ **A âncora que aqui estava caducou:** o default da rapier era `2 s` na 0.28 e é **`0,5 s`**
+/// desde a 0.35, então dez segundos são hoje **20×**, não cinco. ⛔ Quem re-derivar este tecto da
+/// frase antiga obtém `2,5`. O nosso `time_until_sleep` continua em `2,0 s` **por medição** — ver
+/// `BodyDefaults::ours`.
 pub const MAX_TIME_UNTIL_SLEEP: f32 = 10.0;
 
 /// The world's authored physics settings.
@@ -210,8 +220,11 @@ impl Default for PhysicsSettings {
     }
 }
 
-/// rapier's own solver iteration count. `PhysicsWorld` never calls
-/// `set_solver_iterations`, so this is what every simulation has been running.
+/// rapier's own solver iteration count — `4` na 0.28 e na 0.35.
+///
+/// ⚠️ **A 2.ª metade da frase antiga era falsa e contradizia este próprio ficheiro:** ela dizia
+/// que *«o `PhysicsWorld` nunca chama `set_solver_iterations`»*, e o `apply_to` mais abaixo
+/// chama-o. Isto é o valor de PARTIDA, não o que corre sempre.
 pub const DEFAULT_SOLVER_ITERATIONS: u32 = 4;
 
 impl PhysicsSettings {

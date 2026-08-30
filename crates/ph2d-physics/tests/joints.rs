@@ -458,22 +458,49 @@ fn a_motor_that_is_too_weak_cannot_lift_its_own_arm() {
             while d < -std::f32::consts::PI {
                 d += std::f32::consts::TAU;
             }
-            total += d.abs();
+            // ⚠️ **SOMA COM SINAL, não `d.abs()`** — ver o bloco abaixo do `travelled`.
+            total += d;
             prev = a;
         }
-        total
+        total.abs()
     }
     // 4 rad/s for 5 s is 20 rad if the motor keeps its word.
+    //
+    // ⛔⛔ **A régua deste gate somava `d.abs()`, e isso é CAMINHO PERCORRIDO — enquanto a
+    // afirmação dele («não consegue levantar o braço para lá da horizontal») é sobre POSIÇÃO.**
+    // Um braço parado a tremer acumula caminho sem sair do sítio, e foi assim que o gate passou
+    // durante anos: com o `sleep_linear_threshold` em `0,4` o braço **adormecia**, o tremor parava
+    // de somar, e o número ficava pequeno **por o corpo ter congelado, não por o motor ser fraco**.
+    //
+    // Medido em 2026-08-29, ao baixar o limiar de sono para o valor MEDIDO (`0,05`, ver
+    // `BodyDefaults::ours`), com o braço agora acordado durante os 5 s:
+    //
+    // | motor | caminho `Σ|d|` | rotação líquida `|Σd|` |
+    // |---|---|---|
+    // | `100 N·m` | `19,97 rad` | `19,97` (dá ~3 voltas) |
+    // | ⛔ `0,1 N·m` | **`1,2288 rad`** | ⭐ **`0,0016 rad` = `0,1°`** |
+    //
+    // ⇒ **O tecto de força SEMPRE foi respeitado** — o braço não se mexe `0,1°`. O que estava
+    // errado era a régua. ⭐ *Um gate que passa porque o corpo adormeceu está a medir o sono, não
+    // a lei que diz medir.*
+    //
+    // A soma **com sinal** responde às duas perguntas com uma régua só: o tremor cancela-se
+    // (é simétrico), e uma volta completa **não** volta a zero, porque `d` já vem desembrulhado.
+    // ⚠️ `Σ|d|` não servia para o fraco e `Σd` embrulhado não serviria para o forte.
     let strong = travelled(100.0);
     let weak = travelled(0.1);
     assert!(
         strong > 18.0,
         "a motor with force to spare should have turned ~20 rad; it managed {strong:.2}"
     );
+    // Barra: `0,1 rad` = `5,7°`. É **60×** a medição (`0,0016`) e **15×** mais apertada que a
+    // afirmação que defende (levantar «para lá da horizontal» são `1,57 rad` a partir de pendurado)
+    // — ⛔ e a mutação que ela apanha é a de sempre: um tecto de força ignorado põe o braço a dar
+    // voltas, e `|Σd|` passa de `0,0016` para `~20`.
     assert!(
-        weak < 1.0,
+        weak < 0.1,
         "a motor capped at 0.1 N·m must not be able to lift a 0.2 kg arm past \
-         horizontal, but it travelled {weak:.2} rad — the force ceiling is \
+         horizontal, but it turned {weak:.4} rad NET — the force ceiling is \
          decorative and every motor is secretly infinite"
     );
 }

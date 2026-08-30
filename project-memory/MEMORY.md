@@ -106,6 +106,8 @@
 - [Gates escritos de UMA camada: as outras ficam sem mutação — conte as camadas](feedback_gates_written_from_one_layer_leave_every_other_layer_unmutated.md) — e o irmão: um MODAL de tela cheia não é um painel, e quem agarra input antes do chrome deve-lhe uma pergunta
 - [Gate que compara DUAS construções é cego à mutação partilhada — a lei pede ORÁCULO](feedback_a_gate_that_compares_two_constructions_is_blind_to_a_shared_mutation.md)
 - [Restore com mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) · [metade nova torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md)
+- [Frequência e amortecimento são UMA mola — nunca adopte metade de um par](feedback_frequency_and_damping_are_one_spring_never_adopt_half_a_tuning_pair.md)
+- [Fixar constante de AFINAÇÃO numa reescrita de motor PODE SER a mudança](feedback_pinning_a_tuning_constant_through_an_engine_rewrite_can_be_the_change.md)
 - [Changelog descreve o que ANUNCIARAM, não o que o nosso código encosta](feedback_a_changelog_describes_what_the_authors_announced_not_what_our_code_touches.md) · [tipo que força uma decisão paga-se quando a plataforma deixa de a forçar](feedback_a_type_that_forces_a_decision_today_pays_when_the_platform_stops_forcing_it.md)
 - [Reproduza o resultado alheio antes do seu insumo](feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md)
 - [Oráculo (9)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)

@@ -113,6 +113,24 @@ impl VelloPass {
         self.renderer.register_texture(texture)
     }
 
+    /// **Diz ao Vello que os pixels desta textura MUDARAM desde o último render.**
+    ///
+    /// ⛔⛔ **Sem isto, um re-cozimento na MESMA textura é invisível.** Até à `vello` 0.8 o atlas de
+    /// imagens era **limpo a cada render** (`Resolver::resolve` chamava `image_cache.clear()`),
+    /// então toda textura registada era re-copiada de graça e ninguém precisava de avisar ninguém.
+    /// A **0.10 tornou o atlas PERSISTENTE**: o `get_or_insert` de uma imagem residente só empurra
+    /// o upload **se ela estiver marcada suja**, e o `register_texture` marca-a suja **uma vez**,
+    /// no registo. ⇒ escrever pixels novos na mesma textura deixa o atlas a servir os **velhos**,
+    /// e o doc do upstream di-lo pelo nome: *«stale image data from the atlas may be used»*.
+    ///
+    /// ⚠️ *A afirmação «re-cozinhar escreve na mesma textura, então o Vello reusa o slot» era
+    /// verdadeira por construção na 0.8 e passou a ser um defeito na 0.10 — sem uma linha nossa
+    /// mudar.* É a família das compensações que a biblioteca corrigiu por baixo, ao contrário: uma
+    /// **ausência** que a biblioteca passou a exigir.
+    pub fn mark_texture_dirty(&mut self, image: &vello::peniko::ImageData) {
+        self.renderer.mark_override_image_dirty(image);
+    }
+
     /// Unregister a texture previously registered via [`Self::register_texture`] (the filter was
     /// removed / the shape deleted) — frees the atlas slot.
     pub fn unregister_texture(&mut self, image: vello::peniko::ImageData) {

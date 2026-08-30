@@ -342,6 +342,211 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
 
+## §17 — ⛔⛔⛔ O SMOKE DO ENIO ACHOU O QUE 981 TESTES NÃO VIAM (2026-08-29)
+
+**Report, com foto:** *«na física: a caixa parou antes de assentar corretamente no chão, só a baixa
+pequena. Talvez entrou em repouso precocemente.»* — e o resto dos módulos passou.
+
+### §17.1 — A hipótese dele estava certa, e o botão não era o que parecia
+
+⭐⭐⭐ **A lei que este defeito escreve:** *preservar uma constante de AFINAÇÃO através de uma
+reescrita de MOTOR não é conservador — pode ser ELA a mudança.*
+
+O `sleep_linear_threshold` foi **fixado** no `0,4` da `rapier` 0.28, com a justificação — escrita, e
+até aqui boa — de *«não mudar o tato em silêncio»*. Mas o solver foi **reescrito**: um corpo assenta
+por outro caminho e passa a cair abaixo de `0,4 m/s` **a meio do assentamento**. Adormece ali,
+torto, e não acorda mais. ⚠️ *A `rapier` baixou o dela para `0,05` — 8× — e nós tínhamos fixado
+exactamente o valor que ela abandonou.*
+
+**Medição** (cena de smoke `=4`, 12 corpos, 20 s a 60 Hz; um corpo assente num chão plano deve
+ficar em `~0°`):
+
+| limiar / atraso | pior ângulo | congelados 10 s→20 s | deriva |
+|---|---|---|---|
+| ⛔ `0,4` / `2,0 s` — **o que fixámos** | **`2,320°`** | 12/12 | `0` |
+| ⭐ `0,05` / `2,0 s` — **o que shipa** | `0,04455°` | 12/12 | `0` |
+| `0,05` / `0,5 s` (a rapier inteira) | `0,04454°` | 12/12 | `0` |
+| ⛔ `0,4` / `0,5 s` | **`7,621°`** | 12/12 | `0` |
+| **controle: proibido dormir** | `0,04455°` | **0/12** | `1,15e-7` |
+
+⭐⭐ **O CONTROLE é o que faz disto uma cura e não uma troca.** Com `0,05` os corpos **adormecem
+mesmo** (12/12 congelados, deriva **exactamente zero**) e a pose em que adormecem é a de **nunca
+dormir** a menos de `1e-5` de grau. ⇒ *dormir passou a ser de graça.* Sem o controle, *«igual a não
+dormir»* podia ser a tautologia de nada ter adormecido.
+
+⚠️ **O ATRASO não é a alavanca, e encurtá-lo sozinho piora 3×** (`7,62°`). O `time_until_sleep`
+fica nos nossos `2,0 s`: medido, não muda a pose com o limiar certo, e erra para o lado de ficar
+acordado. *Muda-se o que a medição exige, e nada mais.*
+
+⚠️ **A lição sobre a lição:** o argumento original continua válido — estes valores são
+**persistidos** (o `PhysicsSettings` é `serde` e viaja no `.ph2dproj`) e têm de ser **escritos**,
+não lidos de uma fonte que se move. O errado não era escrever o número; era escolher, para o
+escrever, o número de **um motor que já não existe**. *Um valor fixado herda a autoridade da versão
+de onde veio, e essa autoridade caduca com ela.*
+
+### §17.2 — ⛔ O buraco de gate, que é o achado maior
+
+**Nenhum dos 981 testes da física media a POSE em repouso.** Mediam velocidade, penetração, energia,
+hashes de determinismo — nenhum perguntava *«em que ÂNGULO ele parou?»*. Por isso a suíte inteira
+ficou verde sobre uma pilha visivelmente torta, e foi preciso um humano a olhar para uma foto.
+
+O gate novo é [`resting_pose.rs`](../../crates/ph2d-physics-ecs/tests/resting_pose.rs), e a barra
+dele **não é um número escolhido: é um oráculo medido na mesma corrida** — a pose de uma simulação
+a que se *proíbe* dormir. Um número mágico envelheceria com o solver; este re-mede-se sozinho.
+
+⚠️ **E ele tem as DUAS metades, de propósito:**
+- **(a)** o produto tem de **mesmo adormecer** (12/12 bit-a-bit parados) — senão um futuro que
+  curasse o ângulo **desligando o sono** passaria;
+- **(b)** e tem de adormecer na **mesma pose** do oráculo — senão o valor de sempre passaria.
+
+**Prova de mutação:** repondo `0,4`, o gate reprova com `2,32049°` contra `0,04455°`; restaurado,
+verde; ficheiro byte-a-byte igual ao backup. A folga de `0,05°` sobre o oráculo é `1000×` a
+diferença medida e ainda assim **`46×` menor** que o defeito que apanha.
+
+### §17.3 — ⭐⭐ E a cura destapou um TERCEIRO defeito: um gate que passava porque o corpo dormia
+
+Baixar o limiar partiu **dois** testes. O primeiro era o censo dos valores (esperava a decisão
+antiga — actualizado, com uma metade nova: se a `rapier` voltar a subir o dela, o nosso `0,05` fica,
+porque é uma **medição** nossa e não um espelho).
+
+⛔⛔ **O segundo era `a_motor_that_is_too_weak_cannot_lift_its_own_arm`, e ele estava verde pela
+razão errada há muito tempo.** A afirmação: *«um motor limitado a `0,1 N·m` não pode levantar um
+braço de `0,2 kg` para lá da horizontal»*. A régua: `Σ|d|` — **caminho percorrido**.
+
+⚠️ **Caminho e posição não são a mesma grandeza.** Um braço parado a tremer acumula caminho sem
+sair do sítio. Com o limiar em `0,4` o braço **adormecia**, o tremor deixava de somar, e o número
+ficava pequeno — *por o corpo ter congelado, não por o motor ser fraco*.
+
+| motor | caminho `Σ\|d\|` | rotação líquida `\|Σd\|` |
+|---|---|---|
+| `100 N·m` | `19,97 rad` | `19,97` (dá ~3 voltas) |
+| ⛔ `0,1 N·m` | **`1,2288 rad`** | ⭐ **`0,0016 rad` = `0,1°`** |
+
+⇒ **O tecto de força SEMPRE foi respeitado** — o braço não se mexe um décimo de grau. O que estava
+errado era a régua. ⭐⭐ *Um gate que passa porque o corpo adormeceu está a medir o sono, não a lei
+que diz medir.*
+
+A cura é somar **com sinal**: o tremor cancela-se (é simétrico) e uma volta completa **não** volta a
+zero, porque o passo já vem desembrulhado. ⚠️ `Σ|d|` não servia para o fraco, e um `Σd` embrulhado
+não serviria para o forte — **uma régua só responde às duas perguntas**, e a barra passou de
+`1,0` para `0,1 rad` (`60×` a medição, `15×` mais apertada que a afirmação que defende).
+
+⚠️ **Isto é o padrão a levar desta sessão:** o defeito visível (uma caixa torta) e o defeito
+invisível (um gate verde por acidente) tinham a **mesma** causa, e só o segundo teria sobrevivido a
+mais uma jornada.
+
+## §18 — A AUDITORIA da família inteira (2026-08-29, por ordem do Enio)
+
+*«Aproveite que descobriu essa diferença e faça auditoria completa buscando mudanças.»* Duas frentes
+em paralelo: os números fixados na física, e o resto do repo à procura de **defaults de terceiros
+transcritos** e de **compensações escritas à mão para defeitos que a biblioteca corrigiu**.
+
+### §18.1 — ⛔⛔ Achado 1: uma forma filtrada CONGELA na primeira cozedura
+
+O maior, e é visível. Até à `vello` 0.8 o atlas de imagens era **limpo a cada render**, então uma
+textura registada era re-copiada de graça e re-cozinhar nela «simplesmente funcionava» — o nosso doc
+afirmava-o, e era **verdadeiro por construção**. A **0.10 tornou o atlas persistente**: uma imagem
+residente só volta a subir se estiver marcada **suja**, e o `register_texture` marca-a uma vez.
+
+⇒ mover a forma, mudar a cor do preenchimento, mexer num knob do filtro: o memo erra, a GPU
+**recoze certo**, e a tela **não muda**. Só refresca quando a caixa muda de **TAMANHO**.
+⚠️ *Uma afirmação verdadeira por construção passou a ser um defeito sem uma linha nossa mudar* —
+é a família das compensações, ao contrário: uma **ausência** que a biblioteca passou a exigir.
+
+**Cura:** `VelloPass::mark_texture_dirty`, chamada no único sítio que re-coze.
+**Gate:** [`every_recook_tells_vello_the_pixels_changed.rs`](../../shells/desktop/tests/every_recook_tells_vello_the_pixels_changed.rs)
+— ⚠️ **um censo de FONTE, e a razão está escrita nele:** provar isto a sério exige dois renders com
+o conteúdo mudado entre eles e um adaptador de GPU, e os gates de GPU desta casa são `#[ignore]`,
+logo o CI nunca os corre. O censo defende a **emparelhação** (quem escreve numa textura registada
+avisa quem a lê) e tem a metade que impede um `mark_texture_dirty` no-op.
+
+### §18.2 — ⛔ Achado 2: o slider *Contact Hz* movia METADE do mundo
+
+A 0.35 partiu a rigidez do contacto em duas — dinâmico↔dinâmico e corpo↔**cenário fixo**. A subida
+honrou-o **onde o mundo nasce** (o construtor) e esqueceu-o **onde ele muda** (os dois setters do
+painel). ⇒ o artista arrastava *Contact Hz* e **o chão ficava rígido para sempre**.
+
+⚠️ **A lei já estava escrita, três linhas acima do defeito:** *«uma lei escrita num sítio quando o
+modelo tem dois não é uma lei»*. Escrevê-la **sem a gatear** é o que a deixou envelhecer num turno.
+A cura não foi escrever a linha duas vezes — foi uma **porta** (`write_contact_springs`), mais um
+**censo** que apanha o terceiro sítio, o que ainda não foi escrito (provado por mutação: uma escrita
+plantada noutro ficheiro é nomeada por linha).
+
+### §18.3 — ⛔ Achado 3: uma garantia falsa que derruba o editor
+
+`entity_from_bits` trazia o comentário *«`Entity::from_bits(u64) -> Entity` (panic-free)»*. O doc do
+`bevy_ecs` diz à letra: *«this method will likely panic if given `u64` values that did not come from
+`to_bits`»* — os 32 bits baixos são um nicho `NonZero`, e `from_bits(0)` **aborta o processo**.
+⚠️ A afirmação **já era falsa na 0.18**; a subida **re-carimbou o número na linha sem re-medir a
+frase**. Hoje é `try_from_bits` → `ApplyError::BadEntityBits`, com gate nas duas direcções.
+⚠️ **Alcance medido: latente** — todos os produtores de hoje passam o `to_bits()` de uma selecção
+viva. O que se curou foi a **garantia**, e uma garantia falsa é o que faz o próximo produtor não olhar.
+
+### §18.4 — ⭐⭐⭐ Recusa MEDIDA: a `rapier` dobrou o amortecimento do contacto e nós ficamos onde estamos
+
+A auditoria marcou o `contact_softness.damping_ratio = 5.0` como SUSPEITO — a 0.35 subiu o dela para
+`10.0` com um mecanismo escrito: *«softer contacts settle deeper under load … wedging and creeping
+instead of resting»*, que é **exactamente** o sintoma do smoke. Medido:
+
+| afinação | pior ângulo em repouso | afundamento máx |
+|---|---|---|
+| ⭐ **a nossa: `120 Hz` / `ζ 5`** | **`0,04455°`** | **`0,000264`** |
+| só o `ζ` deles: `120 Hz` / `ζ 10` | ⛔ **`24,28°`** | `0,000201` |
+| o par INTEIRO deles: `30 Hz` / `ζ 10` | `0,27936°` | ⛔ `0,003780` |
+
+⭐⭐ **A frequência e o amortecimento são UMA MOLA — adoptar metade de um par de afinação mistura
+duas afinações.** Com o nosso `f = 120` (4× o deles), o `ζ = 10` dá `24°`: **545× pior**, e parte
+o gate de penetração. Com o par inteiro deles a pilha assenta mas afunda **14×** mais.
+⇒ *a nossa afinação ganha nos DOIS eixos; a recomendação deles é sobre a mola deles.*
+⚠️ Reconferir **se e só se** o `DEFAULT_CONTACT_HZ` mudar.
+
+### §18.5 — ⚠️ Um knob MORREU sem ninguém mexer nele
+
+`sleep_angular_threshold` vale `0,5` nas três versões da rapier — **o número nunca mudou, o consumo
+mudou**. Na 0.35, um corpo **com collider** (todos, numa cena real) passa por
+`angular_threshold >= 0.0 && sq_angvel < (π/2)²`: lê-se **só o sinal**, e a barra é um `π/2` fixo.
+⇒ o campo *sleep spin threshold* do painel **não faz nada**, grava e viaja no ficheiro.
+⛔ **As três saídas mudam a superfície do painel — decisão do Enio**, devolvida com o mecanismo.
+
+### §18.5-bis — ⚠️ O teto de 700 LOC, pela QUINTA vez, e sempre pelo mesmo motivo
+
+Cinco vezes nesta jornada um ficheiro estourou o teto — `pipeline_build.rs`, `audio.rs`, `world.rs`
+duas vezes, e agora `world.rs` outra vez — e **nunca por código**: sempre pelas tabelas de medição e
+pelas recusas escritas ao lado das constantes.
+
+⭐ **Elas são o valor, não o peso.** Uma constante sem a tabela ao lado é um palpite à espera de um
+smoke, e esta subida cobrou isso **três vezes num dia** (o limiar de sono, o `damping_ratio`, o
+knob angular). ⇒ o corte é sempre por **responsabilidade**, nunca subindo o teto: nasceu
+[`world/solver_params.rs`](../../crates/ph2d-physics/src/world/solver_params.rs) — *«os números com
+que o solver corre, e por que cada um é o que é»* — e o `world.rs` caiu de `711` para `594`.
+
+### §18.5-ter — ⭐⭐ O censo apanhou a MINHA refactorização, uma hora depois de o escrever
+
+O corte do §18.5-bis moveu o construtor do `world.rs` para o `solver_params.rs` — e o censo escrito
+no §18.2, cuja lista de sítios legítimos dizia *«`world.rs` (o construtor) ou `tuning.rs` (a
+porta)»*, **reprovou**. ⭐ *É o comportamento certo, e a lição é a lista:* mover a construção é
+exactamente o instante em que a lei se perde, e uma lista de nomes de ficheiro não sabe disso.
+
+⇒ a lista passou a trazer a **razão** ao lado de cada nome — *«as duas molas têm de ser visíveis uma
+à outra na linha em que são escritas»* — para que o próximo a mover o construtor saiba **o que**
+está a preservar, e não só que há um teste a reclamar.
+
+### §18.6 — ⭐ O que a auditoria FECHOU (ausências confirmadas, e elas valem)
+
+`SamplerDescriptor` (12 sítios, todos `..Default::default()`, default byte-idêntico 28↔29) ·
+`Limits` (partimos do default e **subimos** por `.max()`; os ~7 `8192` continuam certos) ·
+`SurfaceConfiguration` · `PrimitiveState`/`MultisampleState`/`DepthStencilState` (exaustivos ⇒ campo
+novo é erro de compilação) · `InstanceDescriptor` · a tabela de `TextureFormat::sample_type` (109
+linhas **byte-idênticas** entre 28 e 29) · **compensação de meio pixel: NÃO EXISTE** em nenhum dos
+sítios de `draw_image` ⇒ **não há dupla correcção** · **negação do `y_offset`: NÃO EXISTE** nos dois
+únicos chamadores de `positioned_glyphs` ⇒ **não há dupla negação** · `kurbo`/`taffy`/`usvg`/`cpal`/
+`bevy_ecs`/`mlua`/`criterion`/`image`/`symphonia`: zero transcrições · os dois workarounds do
+`linesweeper` **continuam necessários**, re-verificados no fonte 0.4 · **família «workaround para bug
+de biblioteca»: ZERO ocorrências** em todo o repo fora da física.
+
+⭐ *Uma ausência confirmada fecha a família e vale tanto como um achado* — sem isto, a próxima
+jornada varre tudo outra vez.
+
 ## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
 
 ### §16.1 — Feito

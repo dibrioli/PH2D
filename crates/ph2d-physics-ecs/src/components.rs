@@ -148,6 +148,11 @@ pub struct Collider {
     /// Mass density (kg/m² in 2D). Feeds rapier's mass computation for
     /// dynamic bodies; ignored for static. Default `1.0` matches the
     /// wrapper's `add_dynamic_circle` default.
+    ///
+    /// ⚠️ **Não é o default da rapier, e a coincidência de hoje é acidente:** o
+    /// `Collider::default_density` dela era `100.0` na 0.28 e passou a `1.0` na 0.35 — **100×**.
+    /// Nunca o chamamos (censo em 2026-08-29: zero ocorrências na árvore), então a mudança não nos
+    /// alcança; mas quem ler `1.0` não deve concluir que estamos a espelhar a rapier.
     pub density: f32,
     /// Bounciness, `0..=1`. `0` = a beanbag (all energy absorbed), `1` = a
     /// superball that returns to the height it was dropped from. **Default

@@ -20,8 +20,13 @@
 //! 2. o [`FxStackPass`] roda a PILHA (op₁ → op₂ → … → resolve) na GPU para cada forma, lendo a
 //!    célula dela, para uma textura de SAÍDA;
 //! 3. essa textura é registrada no renderer PRINCIPAL por um **id ESTÁVEL**
-//!    ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, então o Vello reusa o
-//!    slot do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
+//!    ([`VelloPass::register_texture`]); re-cozinhar escreve NA MESMA textura, o Vello reusa o slot
+//!    do atlas (zero churn de id, zero upload de CPU) e o `dispatch` a desenha no z da forma.
+//!    ⛔⛔ **E avisa-se o Vello, com [`VelloPass::mark_texture_dirty`].** Até à `vello` 0.8 o atlas
+//!    era **limpo a cada render** e este passo não existia — a frase acima bastava. A **0.10 tornou
+//!    o atlas persistente**: sem a marca, os pixels novos **não chegam à tela** e a forma congela na
+//!    primeira cozedura, refrescando só quando muda de TAMANHO. *Uma afirmação que era verdadeira
+//!    por construção passou a ser um defeito, sem uma linha nossa mudar.*
 //!
 //! # Por que UM render, e não `n`
 //!
@@ -377,6 +382,12 @@ impl FxLive {
             ];
             let (w, h) = (job.key.w, job.key.h);
             stack.run_from(gpu, src, org, &pfx.tex, w, h, &job.key.ops, &geom);
+            // ⛔⛔ **O aviso ao Vello, e ele é obrigatório desde a `vello` 0.10.** O atlas de
+            // imagens deixou de ser limpo a cada render: sem esta marca, os pixels que a linha
+            // acima acabou de escrever **não chegam à tela** — a forma congela na primeira
+            // cozedura e só refresca quando muda de TAMANHO (aí o `ensure_output` re-regista).
+            // Ver [`VelloPass::mark_texture_dirty`]. Gate: `fx_live_marks_every_recook_dirty`.
+            vello_pass.mark_texture_dirty(&pfx.image);
             dump.maybe(gpu, job.id, &pfx.tex, w, h, &job.key.ops, &geom);
         }
         true

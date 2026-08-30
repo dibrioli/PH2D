@@ -156,7 +156,7 @@ pub fn apply_editor_commands(
                 let entry = registry
                     .get_by_id(type_id)
                     .ok_or(ApplyError::Registry(RegistryError::UnknownTypeId(type_id)))?;
-                let bevy_entity = entity_from_bits(entity);
+                let bevy_entity = entity_from_bits(entity)?;
                 (entry.insert_from_bytes)(sim_w, bevy_entity, &data)
                     .map_err(ApplyError::Registry)?;
             }
@@ -175,21 +175,21 @@ pub fn apply_editor_commands(
                 let entry = registry
                     .get_by_id(type_id)
                     .ok_or(ApplyError::Registry(RegistryError::UnknownTypeId(type_id)))?;
-                let bevy_entity = entity_from_bits(entity);
+                let bevy_entity = entity_from_bits(entity)?;
                 (entry.remove)(sim_w, bevy_entity);
             }
             EditorCommand::Despawn { entity } => {
-                let bevy_entity = entity_from_bits(entity);
+                let bevy_entity = entity_from_bits(entity)?;
                 let _ = sim_w.despawn(bevy_entity);
             }
             EditorCommand::Reparent { entity, new_parent } => {
-                let bevy_entity = entity_from_bits(entity);
+                let bevy_entity = entity_from_bits(entity)?;
                 let mut e = sim_w
                     .get_entity_mut(bevy_entity)
                     .map_err(|_| ApplyError::EntityMissing(bevy_entity))?;
                 match new_parent {
                     Some(p) => {
-                        e.insert(ChildOf(entity_from_bits(p)));
+                        e.insert(ChildOf(entity_from_bits(p)?));
                     }
                     None => {
                         e.remove::<ChildOf>();
@@ -205,6 +205,24 @@ pub fn apply_editor_commands(
 pub enum ApplyError {
     Registry(RegistryError),
     EntityMissing(Entity),
+    /// Os bits não são um [`Entity::to_bits`] desta execução.
+    ///
+    /// ⛔⛔ **Esta variante existe porque um comentário garantia o contrário.** Ele dizia
+    /// *«`Entity::from_bits(u64) -> Entity` (panic-free)»* — e o doc do `bevy_ecs` diz, à letra,
+    /// *«this method will likely panic if given `u64` values that did not come from
+    /// `to_bits`»*: os 32 bits baixos caem num nicho `NonZero`, e `from_bits(0)` **aborta o
+    /// processo**. ⚠️ A afirmação já era falsa na 0.18; a subida para a 0.19 **re-carimbou o
+    /// número na linha sem re-medir a frase**.
+    ///
+    /// ⇒ Um id obsoleto — reproduzido depois de um respawn de undo, vindo de um comando
+    /// persistido, ou simplesmente a zero — derrubava o editor inteiro em vez de devolver o erro
+    /// que todo o código à volta foi escrito para tratar.
+    ///
+    /// ⚠️ **Alcance medido em 2026-08-29: latente.** Todos os produtores de hoje
+    /// (`inspector_commits.rs`, `action_bus.rs`) passam o `to_bits()` de uma selecção viva. O que
+    /// se cura aqui é a **garantia**, não um crash observado — e uma garantia falsa é o que faz o
+    /// próximo produtor não olhar.
+    BadEntityBits(u64),
 }
 
 impl std::fmt::Display for ApplyError {
@@ -214,15 +232,67 @@ impl std::fmt::Display for ApplyError {
             Self::EntityMissing(e) => {
                 write!(f, "apply_editor_commands: entity {:?} missing", e)
             }
+            Self::BadEntityBits(bits) => {
+                write!(
+                    f,
+                    "apply_editor_commands: {bits:#018x} is not a live entity id"
+                )
+            }
         }
     }
 }
 
 impl std::error::Error for ApplyError {}
 
-fn entity_from_bits(bits: u64) -> Entity {
-    // bevy_ecs 0.19: `Entity::from_bits(u64) -> Entity` (panic-free).
-    Entity::from_bits(bits)
+/// ⚠️ **FALÍVEL de propósito** — ver [`ApplyError::BadEntityBits`]. O `Entity::from_bits` do
+/// `bevy_ecs` **entra em pânico** com bits que não vieram de um `to_bits`; a versão que devolve
+/// `Option` é a `try_from_bits`.
+fn entity_from_bits(bits: u64) -> Result<Entity, ApplyError> {
+    Entity::try_from_bits(bits).ok_or(ApplyError::BadEntityBits(bits))
+}
+
+#[cfg(test)]
+mod bad_bits_tests {
+    use super::*;
+    use crate::SimWorld;
+
+    /// **Bits que não são de uma entidade viva devolvem ERRO, nunca derrubam o processo.**
+    ///
+    /// ⛔ O `Entity::from_bits` do `bevy_ecs` entra em pânico com bits inválidos — e o comentário
+    /// que este gate substitui garantia que ele era *«panic-free»*. `0` é o caso canónico: os 32
+    /// bits baixos são um nicho `NonZero`.
+    #[test]
+    fn invalid_entity_bits_are_an_error_not_a_panic() {
+        let mut sim = SimWorld::new();
+        let reg = ComponentRegistry::new();
+        let queue = EditorCommandQueue::new();
+        queue.push(EditorCommand::Despawn { entity: 0 }).unwrap();
+        let r = apply_editor_commands(sim.world_mut(), &queue, &reg);
+        assert!(
+            matches!(r, Err(ApplyError::BadEntityBits(0))),
+            "bits invalidos tinham de virar `BadEntityBits`, e vieram: {r:?}"
+        );
+    }
+
+    /// A metade JUSTA: bits **válidos** continuam a passar. Sem ela, uma cura que recusasse tudo
+    /// passaria o gate acima.
+    #[test]
+    fn live_entity_bits_still_work() {
+        let mut sim = SimWorld::new();
+        let reg = ComponentRegistry::new();
+        let e = sim.world_mut().spawn_empty().id();
+        let queue = EditorCommandQueue::new();
+        queue
+            .push(EditorCommand::Despawn {
+                entity: e.to_bits(),
+            })
+            .unwrap();
+        let r = apply_editor_commands(sim.world_mut(), &queue, &reg);
+        assert!(
+            r.is_ok(),
+            "bits de uma entidade VIVA tinham de passar: {r:?}"
+        );
+    }
 }
 
 #[cfg(test)]

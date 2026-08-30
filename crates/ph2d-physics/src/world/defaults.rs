@@ -46,9 +46,29 @@ pub struct BodyDefaults {
     pub angular_damping: f32,
     /// Linear speed below which a body may fall asleep (normalized — rapier
     /// multiplies it by `IntegrationParameters::length_unit`).
-    /// **Nosso: `0,4`** · rapier 0.28: `0,4` · **rapier 0.35: `0,05`** (ver [`BodyDefaults::ours`]).
+    /// **Nosso: `0,05` (MEDIDO)** · rapier 0.28: `0,4` · rapier 0.35: `0,05` — ver
+    /// [`BodyDefaults::ours`], secção «o limiar de sono»: fixar o `0,4` da 0.28 fazia corpos
+    /// adormecerem **tortos**, a meio do assentamento.
     pub sleep_linear_threshold: f32,
-    /// Angular speed below which a body may fall asleep. **`0,5` nas duas** — inalterado.
+    /// Angular speed below which a body may fall asleep. **`0,5` nas três versões da rapier.**
+    ///
+    /// ⛔⛔ **O NÚMERO nunca mudou; o CONSUMO dele mudou, e hoje este knob está MORTO para toda
+    /// entidade real.** Na `rapier2d` 0.35 (`rigid_body_components.rs::update_energy`), um corpo
+    /// **com collider** (`max_extent > 0` — isto é, todos os que existem numa cena) passa por:
+    ///
+    /// ```text
+    /// self.angular_threshold >= 0.0 && sq_angvel < FRAC_PI_2 * FRAC_PI_2
+    /// ```
+    ///
+    /// ⇒ do nosso valor lê-se **apenas o sinal**; a barra a sério é um `π/2` **fixo** dentro da
+    /// rapier. O doc do campo deles di-lo: *«this raw threshold only applies to collider-less
+    /// bodies»*. Na 0.28 era `sq_angvel < limiar²`, e o knob mandava.
+    ///
+    /// ⚠️ **Consequência de produto, e é decisão do Enio:** o campo *sleep spin threshold* do
+    /// painel de física **não faz nada** hoje. Ele grava, viaja no `.ph2dproj` e é inerte. As três
+    /// saídas — deixá-lo (e dizê-lo no rótulo), escondê-lo, ou fazer a rotação entrar por outra via
+    /// — mudam a superfície do painel, e nenhuma é escolha de quem implementa.
+    /// *Um controlo que não move nada é o defeito que esta casa já pagou noutros painéis.*
     pub sleep_angular_threshold: f32,
     /// How long a body must stay under both thresholds before sleeping, in seconds.
     /// **Nosso: `2,0`** · rapier 0.28: `2,0` · **rapier 0.35: `0,5`** (ver [`BodyDefaults::ours`]).
@@ -96,6 +116,44 @@ impl BodyDefaults {
     ///
     /// ⇒ A partir daqui os valores são **nossos**, escritos, e a `rapier()` fica como oráculo.
     /// Uma peça que hoje treme dois segundos antes de assentar continua a tremer dois segundos.
+    ///
+    /// # ⛔⛔ O limiar de sono: fixar o `0,4` foi ERRADO, e o smoke provou-o
+    ///
+    /// A regra acima — *«preservar o número preserva o tato»* — tem um buraco, e ele apareceu no
+    /// smoke do Enio em 2026-08-29 (foto: uma caixa parada **inclinada**, sem assentar no chão):
+    ///
+    /// ⭐⭐⭐ **Preservar uma constante de AFINAÇÃO através de uma reescrita de MOTOR não é
+    /// conservador — pode ser ELA a mudança.** O `0,4` era o limiar da 0.28 e afinava o solver da
+    /// 0.28. O solver da 0.35 é outro: um corpo assenta por um caminho diferente, e passa a cair
+    /// abaixo de `0,4 m/s` **a meio do assentamento**. Ele adormece ali, torto, e não acorda mais.
+    /// *A `rapier` baixou o dela para `0,05` — 8× — e nós tínhamos fixado exactamente o valor que
+    /// ela abandonou.*
+    ///
+    /// **A medição** (cena de smoke 4 — 12 corpos, 3 tamanhos, 20 s a 60 Hz; ângulo em graus, e
+    /// um corpo assente num chão plano deve ficar em `~0`):
+    ///
+    /// | limiar / atraso | pior ângulo | corpos congelados | deriva 10 s→20 s |
+    /// |---|---|---|---|
+    /// | ⛔ `0,4` / `2,0 s` — **o que fixámos** | **`2,320°`** | 12/12 | `0` |
+    /// | ⭐ `0,05` / `2,0 s` — **o que shipa** | **`0,04455°`** | 12/12 | `0` |
+    /// | `0,05` / `0,5 s` (a rapier inteira) | `0,04454°` | 12/12 | `0` |
+    /// | ⛔ `0,4` / `0,5 s` | **`7,621°`** | 12/12 | `0` |
+    /// | **controle: SEM sono** | **`0,04455°`** | **0/12** | `1,15e-7` |
+    ///
+    /// ⭐⭐ **O CONTROLE é o que torna isto uma cura e não uma troca.** Com `0,05` os corpos
+    /// **adormecem mesmo** — 12 de 12 congelados, deriva **exactamente zero** entre o segundo 10 e
+    /// o 20 — e a pose em que adormecem é a de **nunca dormir** a menos de `1e-5` de grau. Sem o
+    /// controle, *«igual a não dormir»* podia ser a tautologia de nada ter adormecido.
+    ///
+    /// ⚠️ **O ATRASO não é a alavanca, e encurtá-lo sozinho PIORA 3×** (`7,62°`). ⇒ o
+    /// `time_until_sleep` fica nos nossos `2,0 s`: medido, ele não muda a pose com o limiar certo,
+    /// e é o lado que erra por ficar acordado. *Muda-se o que a medição exige, e nada mais.*
+    ///
+    /// ⚠️ **E a lição sobre a lição:** o parágrafo acima continua válido — estes valores são
+    /// **persistidos** e têm de ser **escritos**, não lidos de uma fonte que se move. O que estava
+    /// errado não era escrever o número; era escolher, para o escrever, o número de um motor que
+    /// já não existe. *Um valor fixado herda a autoridade da versão de onde veio, e essa
+    /// autoridade caduca com ela.*
     #[must_use]
     pub fn ours() -> Self {
         Self {
@@ -104,7 +162,9 @@ impl BodyDefaults {
             linear_damping: 0.0,
             angular_damping: 0.0,
             // ⚠️ Os três de adormecer são NOSSOS desde 2026-08-29 — ver o doc acima.
-            sleep_linear_threshold: 0.4,
+            // ⛔⛔ **O `0,05` é MEDIDO, e substituiu um `0,4` que era o da rapier 0.28** — ver
+            // [`BodyDefaults::ours`] §«o limiar de sono».
+            sleep_linear_threshold: 0.05,
             sleep_angular_threshold: 0.5,
             time_until_sleep: 2.0,
         }
@@ -229,12 +289,30 @@ mod tests {
         );
 
         // Onde divergimos DE PROPÓSITO, com os números escritos.
+        //
+        // ⚠️ **O limiar linear já NÃO diverge, e isso é o registo de um defeito.** Ele valeu `0,4`
+        // (o da rapier 0.28) entre 2026-08-29 e o mesmo dia, até um smoke do Enio mostrar uma
+        // pilha adormecida **torta**: fixar uma constante de afinação através de uma reescrita de
+        // solver não é conservador. Medido, `0,05` dá a pose de quem nunca dorme a menos de `1e-5`
+        // de grau — ver [`BodyDefaults::ours`], secção «o limiar de sono», e o gate de produto
+        // `a_settled_stack_falls_asleep_lying_flat_not_halfway_there`.
         assert_eq!(
             (o.sleep_linear_threshold, o.time_until_sleep),
-            (0.4, 2.0),
-            "os limiares de adormecer sao NOSSOS desde 2026-08-29 e valem 0,4 e 2,0 s. Eles estao \
-             gravados em todo `.ph2dproj`, entao muda-los aqui faz uma cena nova comportar-se \
-             diferente de um projecto salvo -- o defeito que a `ours()` existe para impedir."
+            (0.05, 2.0),
+            "o limiar de adormecer e' MEDIDO (0,05) e o atraso e' NOSSO (2,0 s). O limiar coincide \
+             hoje com o da rapier 0.35 por MEDICAO, nao por heranca: a tabela esta' no doc de \
+             `ours()`. O atraso fica em 2,0 porque a medicao mostrou que ele nao muda a pose com o \
+             limiar certo -- e encurta-lo sozinho PIORA 3x."
+        );
+        // ⛔ E a metade que o par acima não cobre: se um dia a rapier voltar a subir o dela, o
+        // nosso `0,05` tem de ficar — ele é uma medição nossa, não um espelho.
+        assert!(
+            o.sleep_linear_threshold <= r.sleep_linear_threshold,
+            "a rapier subiu o limiar dela para {} e o nosso e' {}. O nosso e' MEDIDO: um corpo tem \
+             de adormecer na mesma pose de quem nao dorme. Se quiser adoptar o dela, meça primeiro \
+             com o gate `a_settled_stack_falls_asleep_lying_flat_not_halfway_there`.",
+            r.sleep_linear_threshold,
+            o.sleep_linear_threshold
         );
         assert_eq!(
             o.sleep_angular_threshold, r.sleep_angular_threshold,

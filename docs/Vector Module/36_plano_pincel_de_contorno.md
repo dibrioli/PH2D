@@ -813,3 +813,234 @@ ali que se vê o ritmo **por lado**.
 
 ⭐ Ela é a **irmã da `=77`** e existe por causa dela: aquela é feita só de curvas suaves, e a
 mensagem dela dizia porquê.
+
+---
+
+## §12 — W6: **A OPACIDADE** — a barra que duas das três tintas não obedeciam (2026-08-30)
+
+### §12.1 — O buraco, medido antes de desenhar
+
+A barra *Opacity* (uma no *Fill*, outra no *Stroke*) tem uma **casa** diferente em cada espécie de
+tinta. Medido no início da wave:
+
+| tinta | a casa | escrita? | LIDA? |
+|---|---|---|---|
+| `Solid` (traço e preenchimento) | a alfa da cor | sim | sim |
+| `Pattern` no **traço** | `PatternFill::alpha` | sim (plano 35) | sim |
+| `Pattern` no **preenchimento** | idem | ⛔ **não** | sim |
+| `Brush` no traço | — | sim, na `fallback` | ⛔ **não** |
+
+⇒ **dois buracos, e de espécies DIFERENTES** — que é exactamente a distinção que o `CLAUDE.md` §5
+nomeia:
+
+- **O padrão do preenchimento não era ESCRITO.** A guarda que o protegia era certa e incompleta:
+  `matches!(p.fill, None | Some(Paint::Solid(_)))` impedia um pick de esmagar um gradiente (report do
+  Enio, 2026-07-08) e, **na mesma linha**, deixava o padrão sem nenhum caminho de escrita.
+  *Proteger uma tinta de ser destruída não é a mesma coisa que ela ser editável.*
+- **O pincel era escrito e NÃO era lido.** O `StrokeStyle::onto` já punha a alfa na `fallback` desde
+  a W1, e a `fallback` só se vê **enquanto a arte não resolve** ⇒ com arte, o artista arrastava a
+  barra de ponta a ponta sem mudar um pixel. É *o consumidor que projecta o valor fora*, e ⛔ nenhuma
+  sonda de *«quem lê este campo?»* o vê: ele **é** lido.
+
+**Red-first medido:** `255` onde se pediu `128`, nos quatro gates do motor.
+
+### §12.2 — A lei: *uma opacidade, uma casa*
+
+A frase já estava escrita no `paint_bind::fade` e no `vector_bridge_style` para o padrão; a W6
+completa a tabela.
+
+| tinta | a casa | porquê |
+|---|---|---|
+| `Solid` | a alfa da cor | não há outro sítio |
+| `Pattern` | `PatternFill::alpha` (`f32`) + `fallback.a` em sincronia | o amostrador do Vello quer um `f32` |
+| **`Brush`** | **`fallback.a`, e mais nada** | as cópias são geometria `Rgba8`; não há amostrador |
+
+⛔ **O pincel NÃO ganhou um campo `alpha` próprio, e a assimetria é a resposta certa.** Um campo novo
+seria uma **segunda casa** para o mesmo número, e pagaria um degrau do `VEC_SCENE_SCHEMA_VERSION` por
+nada. ⭐ E há um sinal de que o sítio está certo: **a dívida declarada no `paint_bind` fechou sem uma
+linha lá.** Ela dizia *«um pincel desvanece a cor de recurso, e as CÓPIAS ainda não»*; com o motor a
+ler `fallback.a`, escalar a `fallback` passou a **ser** escalar as cópias.
+
+### §12.3 — Onde a cura entrou (quatro sítios, três deles uma PORTA)
+
+1. **`ph2d_vec_scene::brush_copies`** — desvanece a arte escalada **uma vez** (`O(1)`, não
+   `O(cópias)`) por `crate::paint_bind::fade`, que passou a `pub(crate)`. ⭐ *Desvanecer toda a tinta
+   de um `VecPath` é uma pergunta só*, e uma 2.ª cópia dela divergiria na primeira espécie de tinta
+   nova. ⚠️ **Sem guarda de `< 255`:** `(255·255 + 127)/255` é `255`, logo o topo da barra é a
+   identidade **pela própria conta** — um `if` a proteger o que a aritmética já protege é uma segunda
+   lei a manter em sincronia.
+2. **`style::recolour_pattern`** — a cor + a opacidade num padrão, **uma porta com dois consumidores**
+   (o traço pelo `onto`, o preenchimento pelo `apply_fill_colour`). A prova de que ela serve os dois:
+   a mutação que lhe tira o `alpha` mata **3** gates, um deles pré-existente.
+3. **`style::apply_fill_colour`** — *o que um pick faz a esta tinta*, e **detector e escritor de uma
+   vez** (chamada num clone, responde *«difere?»*). ⚠️ A versão anterior tinha a decisão escrita
+   **duas** vezes — a condição do `differs` e o `else if` do escritor — e a do padrão faltava numa
+   delas. ⭐ A extracção absorveu a decisão inteira: o `new_fill: Option<Rgba8>` pré-digerido
+   (`alfa 0 => None`) ficou **morto**, e era a convenção do *sólido* aplicada **antes de saber a
+   espécie da tinta**.
+4. **`style::seed_fill_from_paint`** — o espelho: o que a ferramenta ADOTA ao seleccionar.
+
+⛔⛔ **As duas metades do preenchimento de padrão são independentes, e a de cima sozinha é PIOR que o
+buraco.** Sem a semente, o `seed_style_from_selection` deixava um padrão passar (`Some(_) => {}`) e a
+ferramenta ficava com a cor e a alfa da forma **anterior**; com a porta de escrita aberta, a primeira
+mexida em qualquer controlo jogaria essa alfa alheia no padrão. ⚠️ E a semente lê o **`alpha`**, não a
+`fallback.a`: um ficheiro gravado antes da W6 tem a `fallback` opaca e o `alpha` autorado noutro
+sítio, e o que se DESENHA é o `alpha`. *Semear pelo campo que não se vê poria a barra a mentir sobre
+o ficheiro do artista.*
+
+### §12.4 — As duas fronteiras que a wave declarou
+
+- ⭐ **Alfa zero num padrão ESCONDE-O; não o apaga.** Num sólido, alfa zero significa *«sem
+  preenchimento»* e a tinta desaparece — a convenção que a ponte já usa nos dois sentidos, e não é
+  desta wave mudá-la. Num padrão a mesma leitura destruiria a grade, o ladrilho, a rotação e a fonte
+  por um arrasto acidental até ao fundo. *Uma convenção herdada aplica-se onde não custa nada; onde
+  custa, ela é a pergunta.*
+- ⛔ **Um gradiente continua intocável.** A W6 abriu uma porta de escrita; escrita como *«tudo o que
+  não é sólido recebe a cor»* teria reaberto a regressão de 2026-07-08. Há gate.
+- ⭐ **A opacidade MULTIPLICA a da arte, nunca a substitui** (arte a `200` sob barra a `128` sai a
+  `100`). Substituir daria `128` e **subiria** a opacidade de uma arte que o artista fez translúcida.
+
+### §12.5 — Os gates e as provas
+
+**Motor** (`brush_opacity_tests.rs`, 5): `the_opacity_slider_reaches_the_brush_copies` ·
+`a_fully_opaque_brush_leaves_the_art_byte_identical` (o controlo) ·
+`the_opacity_scales_the_arts_own_alpha_it_does_not_replace_it` · `the_arts_own_stroke_fades_with_its_fill` ·
+`the_live_fade_reaches_the_copies_through_the_fallback`.
+
+**Ponte** (`vector_bridge_opacity_tests.rs`, 8): as duas do pincel (a escrita + *o detector concorda
+com o escritor*), `the_fill_opacity_reaches_a_patterned_fill`,
+`dragging_a_patterns_opacity_to_zero_hides_it_instead_of_deleting_it`,
+`a_gradient_fill_is_still_never_clobbered_by_a_pick`, `an_open_path_takes_no_fill`,
+`selecting_a_patterned_fill_seeds_the_opacity_from_what_is_drawn`,
+`seeding_a_pattern_and_writing_it_back_changes_nothing`.
+
+**Cena** (`paint_opacity_smoke_tests.rs`, 7).
+
+⚠️ **Red-first não era estruturalmente possível para três das quatro curas** — as funções não
+existiam, logo o gate não compilava contra o código velho. ⇒ **oito provas de mutação, oito mortes**,
+com o controlo verde no fim de cada uma:
+
+| mutação | matou |
+|---|---|
+| as cópias não desvanecem | 4 |
+| o padrão do preenchimento não recebe a opacidade | 2 |
+| `recolour_pattern` escreve a cor e **não** o `alpha` | **3** (um pré-existente) |
+| a semente lê a `fallback` em vez do que se DESENHA | 1 |
+| um gradiente deixa de estar protegido | 1 |
+| as três colunas da cena nascem todas opacas | 2 |
+| as faixas claras vão para cima das formas | 1 |
+| o herói passa a ser o índice literal | 1 |
+
+### §12.6 — O smoke: `PH2D_BUILD_SMOKE=79`
+
+Duas fileiras de três — em cima a **estampa**, em baixo o **pincel** —, a mesma tinta em `100 %`,
+`50 %` e `15 %`.
+
+⚠️⚠️ **A FAIXA CLARA por trás de cada fileira é load-bearing.** Sobre um fundo neutro, *mais
+transparente* e *mais escuro* desenham-se quase igual, e a cena provaria o defeito tão bem quanto a
+cura. Há gate a exigir que a faixa esteja empilhada **antes** de toda forma que ela torna legível —
+e a régua é a **relação** (a faixa que cobre o centro da forma vem antes dela), ⛔ nunca o índice `0`.
+
+⭐ **A coluna opaca é o CONTROLO**: uma cura que escurecesse tudo por sistema daria três valores
+distintos na mesma ordem e passaria sem essa linha.
+
+⭐ **O herói é DERIVADO** (*a primeira forma com estampa*), nunca um índice — as faixas e a arte do
+pincel nascem antes, e um literal poria o painel na secção errada no dia em que a cena ganhasse mais
+uma forma, **sem erro nenhum**.
+
+⚠️ **A arte da estampa é opaca por inteiro**, ao contrário da da `=76`: ali o alfa da arte é o
+sujeito; aqui seria uma **segunda** fonte de transparência a somar-se à que a cena mede.
+
+⚠️ **E o enquadramento é uma cerca com gate** — não uma medição do viewport, e está declarado como
+tal: a barra é a extensão da `=76`, que o Enio já smokou. Ela apanhou a 1.ª redacção dos três `ROW_*`
+(a faixa clara é `1,2 ×` a altura das formas e saía `0,58` acima do topo provado visível).
+
+⛔ **Recusas MEDIDAS desta wave**
+
+| recusa | mecanismo |
+|---|---|
+| `BrushStroke::alpha` como campo próprio | segunda casa para o mesmo número + degrau de `VEC_SCENE_SCHEMA_VERSION` por nada; a `fallback.a` já recebia a barra (§12.2) |
+| guarda `if a < 255` antes do `fade` | o topo já é a identidade **pela conta**; o `if` seria uma 2.ª lei a manter em sincronia (§12.3) |
+| alfa zero apagar um padrão, como faz num sólido | destruiria grade, ladrilho, rotação e fonte por um arrasto acidental (§12.4) |
+| a porta de escrita como *«tudo o que não é sólido recebe a cor»* | reabriria a regressão do gradiente de 2026-07-08 (§12.4) |
+| semear a barra pela `fallback.a` | um ficheiro pré-W6 tem a `fallback` opaca e o `alpha` autorado — a barra mentiria sobre o ficheiro (§12.3) |
+
+### §12.7 — A lente que procurou o QUARTO buraco, e não o achou
+
+A wave curou dois consumidores. A pergunta de auditoria é *«há um terceiro sítio onde a opacidade
+atravessa e se perde?»* — e o candidato óbvio é o **nascimento** de uma tinta: a fileira *Type*
+(`vec_stroke_paint.rs`), que troca `Solid ⟷ Pattern ⟷ Brush`.
+
+⭐ **Não há buraco: os três braços já carregam a alfa.** O braço `Pattern` escreve
+`f.alpha = cur.color().a / 255` com a lei nomeada (*"uma opacidade, uma casa — inclusive no
+nascimento"*), e o braço `Brush` escreve `fallback: cur.color()`, **que inclui a alfa**, com o
+comentário a explicar que sem ela a linha *saltaria para preto*.
+
+⚠️ **Mas a razão pela qual o braço `Brush` estava certo era OUTRA** — ele preservava a **cor**, e a
+alfa vinha junto por acidente de tipo. Até esta wave essa alfa não tinha consumidor nenhum, então a
+correcção era invisível: ir e voltar preservava um número que não desenhava nada. *Uma linha pode
+estar certa por um motivo e passar a estar certa por dois.*
+
+### §12.8 — O que a W6 NÃO tocou, declarado
+
+- **`VEC_SCENE_SCHEMA_VERSION` não se mexe** (fica em `17`): nenhum campo novo, nenhuma variante
+  nova. ⇒ o `PROJECT_SCHEMA` também não.
+- **O caminho opaco é byte-idêntico**: `fade(art, 255)` é a identidade pela conta, e há gate
+  (`a_fully_opaque_brush_leaves_the_art_byte_identical`).
+- **O gradiente** e o **caminho aberto** continuam a recusar um pick, cada um com gate.
+
+### §12.9 — A mudança de comportamento que a semente traz, nomeada
+
+⚠️ **Escolher uma forma com estampa passa a SEMEAR a ferramenta** (cor de recurso + a opacidade que
+ela desenha). Consequência visível: desenhar uma forma **nova** logo a seguir herda essa cor, em vez
+da última que o artista escolheu à mão.
+
+⭐ **É a lei que o preenchimento SÓLIDO já obedece** — *"a ponte LÊ na selecção o que ESCREVE no
+apply"* —, e é ela que faz a barra *Opacity* mostrar a verdade. A alternativa (não semear) é
+precisamente o defeito que esta wave cura: a barra ficava a mostrar o valor da forma **anterior**.
+
+⛔ **O gradiente continua a não semear** (`None`): ele tem alça própria, e o `apply` também não lhe
+toca — as duas metades continuam a concordar.
+
+⚠️ **Caso de borda declarado:** uma estampa a opacidade `0` semeia alfa `0`, e a forma seguinte nasce
+**sem preenchimento**. É o mesmo que um sólido a `0` já fazia, e a convenção não muda aqui.
+
+### §12.10 — As quatro condições de alcance, conferidas
+
+| condição | veredito |
+|---|---|
+| o componente EXISTE | `ids::VECTOR_FILL_OPACITY` / `VECTOR_STROKE_OPACITY` |
+| é PINTADO e REGISTADO | `paint_sections.rs` pinta a fileira **incondicionalmente** (não depende da espécie da tinta) e o `populate_style.rs` regista o par slider+caixa |
+| o clique CHEGA ao barramento | `event.rs` roteia os dois ids |
+| a SEQUÊNCIA leva a algum lugar | ⛔ **era aqui que falhava**, nas duas tintas — e é o que a W6 fecha |
+
+*O knob estava pintado, registado e alcançável pelo dedo. O que faltava era o último passo, que
+nenhuma sonda deste repo pergunta.*
+
+### §12.11 — O portão de fecho, e a família de flake outra vez
+
+`20 191` testes, **`20 187` verdes**. As `4` vermelhas são **flakes de recurso sob fan-out**, e a
+evidência é a que o `CLAUDE.md` §5.0 nomeia, inteira:
+
+| sinal | leitura |
+|---|---|
+| o **CONJUNTO de reprovadas MUDOU entre duas corridas do mesmo binário** | a 1.ª varredura reprovou `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`, que na 2.ª passou; estas quatro passaram na 1.ª | 
+| as quatro passam **sozinhas** (`--test-threads=1`) | `4/4` |
+| o diff não tem **uma linha** nas crates delas | `ph2d-mesh` · `ph2d-timeline` · `ph2d-vec-boolean` · `ph2d-wet-paint` |
+| três das quatro já estão **nomeadas** na lista do §5.0 | `the_region_refresh_…` · `the_cost_of_depth_…` · `a_round_live_offset_…` (o caso canónico) |
+
+⭐ **A quarta — `glaze_layering_costs_a_ratio_not_an_order_of_magnitude` (`ph2d-wet-paint`) — é um
+membro NOVO, e traz a prova mais limpa que esta linha já viu:** o **irmão** dela,
+`pigment_mixing_costs_a_ratio_not_an_order_of_magnitude`, corre no mesmo ficheiro, mede a mesma
+espécie de razão e **passou na MESMA corrida**. *Dois gates gémeos a discordar dentro do mesmo
+binário não podem ambos estar a medir o código.*
+
+⚠️ **E o §5.0 diz para parar de as contar uma a uma** — a forma que se lê é o MECANISMO (um gate que
+divide dois relógios), não o nome. Esta fica registada aqui porque a corrida a produziu, não porque a
+lista precise de crescer.
+
+⚠️⚠️ **NOTA DE PROCESSO, e é a 4.ª vez nesta linha:** a 1.ª re-corrida destas quatro compilou em
+`/home/enio/Documentos/Projetos/PH2D/crates/…` — **a árvore primária**. A `cwd` do shell escorrega
+para o primário entre chamadas, e o mesmo caminho relativo existe nas duas árvores, então o comando
+**corre sem erro nenhum** e mede a árvore errada. ⇒ *todo comando começa com o `cd` absoluto da
+worktree*, mesmo quando o anterior já lá estava.

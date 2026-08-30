@@ -25,7 +25,7 @@ use ph2d_editor::{HeroScreen, ToolId, ToolRegistry};
 use ph2d_tool_vector::VectorDrawConfig;
 use ph2d_vec_edit::{History, PenStyle, PenTool, ShapeTool};
 use ph2d_vec_render::GradHandle;
-use ph2d_vec_scene::{Paint, VecScene};
+use ph2d_vec_scene::VecScene;
 
 /// O estilo do traço (o registro que o painel edita, o detector e o escritor — juntos de
 /// propósito). Módulo irmão pelo teto de LOC; o doc dele explica por que os três não se
@@ -33,7 +33,8 @@ use ph2d_vec_scene::{Paint, VecScene};
 #[path = "vector_bridge_style.rs"]
 mod style;
 use style::{
-    RECOLOR_PRE, rgba, seed_style_from_selection, selected_grad_color, set_selected_grad_color,
+    RECOLOR_PRE, apply_fill_colour, rgba, seed_style_from_selection, selected_grad_color,
+    set_selected_grad_color,
 };
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
 /// **restiliza de verdade** em vez de contar caminhos — o artista vê cores, não listas.
@@ -289,7 +290,10 @@ pub(super) fn dispatch(
             pen.selected_paths().to_vec()
         };
         let new_stroke = rgba(stroke);
-        let new_fill = if fill[3] == 0 { None } else { Some(rgba(fill)) };
+        // ⭐ **A cor de preenchimento viaja CRUA daqui para baixo** (W6). Ela era pré-digerida num
+        // `Option<Rgba8>` — `alfa 0 => None` —, o que era a convenção do SÓLIDO aplicada antes de
+        // saber a espécie da tinta; num padrão a mesma leitura destruiria a grade e o ladrilho.
+        // *Uma decisão tomada antes de conhecer o sujeito é uma decisão tomada pelo caso errado.*
         let new_w = tool.stroke_width_px() * px_to_world;
         // A ficha ÚNICA do traço: a mesma que detecta a mudança e a que a grava (as pontas,
         // o tamanho e o arredondamento delas viajam aqui — um campo só num dos dois lados
@@ -314,12 +318,13 @@ pub(super) fn dispatch(
                 // Recolour the selected gradient slot (point / ramp stop).
                 p.fill.as_ref().and_then(|f| selected_grad_color(f, h)) != Some(rgba(fill))
             } else {
-                // No gradient handle selected → a fill pick only replaces a Solid /
-                // None fill; it must NEVER clobber a gradient (use Fill Type → Solid
-                // for that). Guards the linear/radial→solid regression (Enio 2026-07-08).
-                p.closed
-                    && matches!(p.fill, None | Some(Paint::Solid(_)))
-                    && p.fill.as_ref().map(Paint::primary_color) != new_fill
+                // ⭐ Sem alça de gradiente, o que um pick faz depende da ESPÉCIE da tinta, e a lei
+                // inteira vive numa porta só (`apply_fill_colour`): gradiente intocável, padrão
+                // recolorido e desvanecido, sólido/vazio substituído. Perguntar é aplicá-la num
+                // clone — *a decisão escrita aqui e no escritor eram duas leis a manter iguais à
+                // mão, e a do padrão faltava numa delas.*
+                let mut sondagem = p.fill.clone();
+                apply_fill_colour(&mut sondagem, p.closed, rgba(fill))
             };
             stroke_differs || fill_differs
         };
@@ -354,10 +359,10 @@ pub(super) fn dispatch(
                     if let Some(paint) = path.fill.as_mut() {
                         set_selected_grad_color(paint, h, rgba(fill));
                     }
-                } else if path.closed && matches!(path.fill, None | Some(Paint::Solid(_))) {
-                    // Otherwise a fill pick sets a SOLID fill — but only over a solid /
-                    // empty fill, never over a gradient.
-                    path.fill = new_fill.map(Paint::solid);
+                } else {
+                    // A MESMA porta que o `differs` sondou — nunca uma segunda cópia da decisão.
+                    let closed = path.closed;
+                    apply_fill_colour(&mut path.fill, closed, rgba(fill));
                 }
             }
         }
@@ -406,6 +411,10 @@ pub(super) fn dispatch(
     // canvas gestures (pen vs shape) + size the shapes without a downcast.
     tool.draw_config()
 }
+
+#[cfg(test)]
+#[path = "vector_bridge_opacity_tests.rs"]
+mod opacity_tests;
 
 #[cfg(test)]
 #[path = "vector_bridge_tests.rs"]

@@ -395,5 +395,14 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::brush_corner_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ A OPACIDADE das DUAS tintas (=79, plano 36 W6) — irmã `paint_opacity_smoke`.
+    // ⚠️ Ela fecha o trio `76`/`77`/`78`: aquelas mostram **o que** cada tinta desenha, esta mostra
+    // que a barra *Opacity* as **alcança**. Até 30/08 duas das três casas da opacidade não tinham
+    // consumidor — numa estampa a barra do preenchimento nem sequer era escrita, e num pincel era
+    // escrita e ninguém a lia.
+    if level == 79 {
+        crate::paint_opacity_smoke::frame(app, f);
+        return true;
+    }
     false
 }

@@ -139,7 +139,12 @@ impl VecPath {
 /// A razão é o VIÉS: truncar erra sempre para BAIXO, e uma cadeia de desvanecimentos escureceria
 /// meio nível de cada vez. O gate mede onde o erro se vê — `100 * 130/255` é 50,98, que arredonda
 /// para 51 e trunca para 50.
-fn fade(p: &mut VecPath, a: u8) {
+///
+/// ⭐⭐ **É `pub(crate)` desde a W6 porque ela tem um SEGUNDO consumidor:** o
+/// [`crate::brush_stroke::brush_copies`] desvanece a arte de um pincel com esta função. *Desvanecer
+/// toda a tinta de um `VecPath` é uma pergunta só, e uma segunda cópia dela divergiria na primeira
+/// espécie de tinta nova* — foi a razão de o `ArcPath` existir, um nível abaixo.
+pub(crate) fn fade(p: &mut VecPath, a: u8) {
     let scale = |c: &mut Rgba8| c.a = ((u32::from(c.a) * u32::from(a) + 127) / 255) as u8;
     match p.fill.as_mut() {
         Some(Paint::Solid(c)) => scale(c),
@@ -170,12 +175,17 @@ fn fade(p: &mut VecPath, a: u8) {
             pat.alpha = (pat.alpha * f32::from(a) / 255.0).clamp(0.0, 1.0);
             scale(&mut pat.fallback);
         }
-        // ⏳ **UM PINCEL desvanece a cor de recurso, e as CÓPIAS ainda não** (plano 36, W1).
+        // ⭐⭐⭐ **UM PINCEL desvanece pela cor de recurso, e as CÓPIAS SEGUEM-NA** (plano 36, W6).
         //
-        // As cópias são `VecPath` com a tinta DELAS — o desvanecimento delas mora em quem as
-        // desenha, e esse caminho nasce na W2. ⚠️ **Declarado aqui de propósito:** o compilador
-        // trouxe-me a este braço (o enum é fechado), e escrever um `_ => {}` calaria a metade que
-        // falta. *Uma metade nomeada é uma dívida; uma metade silenciosa é um defeito.*
+        // ⚠️ **A linha não mudou; o que mudou foi quem a lê.** Até 2026-08-30 esta linha era uma
+        // **dívida declarada** — *"as cópias são `VecPath` com a tinta delas, e o desvanecimento
+        // delas mora em quem as desenha"*. Hoje `brush_copies` lê `fallback.a` como a opacidade do
+        // pincel, então escalar a `fallback` **é** escalar as cópias. *Quando a cura de um buraco
+        // apaga o comentário que o declarava sem lhe tocar, o desenho está no sítio certo.*
+        //
+        // ⚠️ E é por isso que um pincel **não** ganhou um `alpha` próprio como o padrão: ali o
+        // campo existe porque o amostrador do Vello quer um `f32`; aqui as cópias são geometria
+        // `Rgba8`, e um segundo número seria uma segunda casa para a mesma opacidade.
         Some(crate::StrokePaint::Brush(b)) => scale(&mut b.fallback),
         None => {}
     }

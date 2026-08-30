@@ -212,9 +212,22 @@ pub fn brush_copies(
     width: f64,
     dash: Option<[f64; 2]>,
 ) -> Vec<VecPath> {
-    let Some(escalada) = art_at_height(art, brush_height(b, width)) else {
+    let Some(mut escalada) = art_at_height(art, brush_height(b, width)) else {
         return Vec::new();
     };
+    // ⭐⭐⭐ **A OPACIDADE DO PINCEL, aplicada UMA VEZ na arte** (W6) — e não cópia a cópia: todas
+    // saem do mesmo molde, então desvanecer o molde custa `O(1)` em vez de `O(cópias)`.
+    //
+    // ⚠️ **A casa da opacidade de um pincel é a alfa da cor de RECURSO**, e não um campo próprio: a
+    // barra *Opacity* já lá escrevia, e o que faltava era um consumidor
+    // ([`crate::brush_opacity_tests`] tem a tabela das três tintas). É também o que mantém a
+    // transparência **igual dos dois lados da resolução da arte** — a forma não salta quando a arte
+    // carrega.
+    //
+    // ⚠️ **Sem guarda de `< 255`, de propósito:** `(255·255 + 127)/255` é `255`, logo o topo da
+    // barra é a identidade **pela própria conta**. Um `if` a proteger o que a aritmética já protege
+    // é uma segunda lei a manter em sincronia com a primeira.
+    crate::paint_bind::fade(&mut escalada, b.fallback.a);
     let Some(arc) = ArcPath::from_contour(&guia.verts, guia.closed) else {
         return Vec::new();
     };
@@ -310,3 +323,7 @@ mod tests;
 #[cfg(test)]
 #[path = "brush_corner_tests.rs"]
 mod corner_tests;
+
+#[cfg(test)]
+#[path = "brush_opacity_tests.rs"]
+mod opacity_tests;

@@ -92,10 +92,20 @@ impl StrokeStyle {
             // ⭐ **A MESMA lei do padrão** (plano 35 §7.2): a ficha possui uma COR, nunca a TINTA.
             // Um pincel guarda a cor de recurso, e é ela que a swatch mostra.
             //
-            // ⚠️ **E aqui NÃO há opacidade a escrever**, ao contrário do padrão: as cópias do
-            // pincel são `VecPath` com a tinta DELAS, e o desvanecimento delas mora em quem as
-            // desenha. *A mesma pergunta tem respostas diferentes nos dois modelos, e é por isso
-            // que o enum é fechado — ele trouxe-me a este braço.*
+            // ⭐⭐⭐ **E a OPACIDADE vai junto, dentro da própria cor** (plano 36, W6). Esta linha
+            // não mudou; o que mudou foi quem lê a `fallback`.
+            //
+            // ⚠️ **A redacção anterior estava errada no ponto que decidia o produto:** ela dizia
+            // *"aqui NÃO há opacidade a escrever ... o desvanecimento das cópias mora em quem as
+            // desenha"*. A 1.ª metade descrevia o modelo (uma casa só) e a 2.ª uma AUSÊNCIA — e o
+            // que se lia era que a barra *Opacity* estava tratada. Não estava: ela escrevia a
+            // alfa aqui e **ninguém a consumia**, então o artista arrastava-a de ponta a ponta sem
+            // mudar um pixel. Hoje `ph2d_vec_scene::brush_copies` desvanece a arte por
+            // `fallback.a`. *Uma nota que descreve o modelo certo e uma ausência ao lado lê-se
+            // como se a ausência estivesse coberta.*
+            //
+            // ⇒ um pincel **não** tem `alpha` próprio, ao contrário do padrão: ali o campo existe
+            // porque o amostrador quer um `f32`; aqui a opacidade é a alfa desta cor e mais nada.
             StrokePaint::Brush(b) => {
                 let mut b = b.clone();
                 b.fallback = self.color;
@@ -103,7 +113,6 @@ impl StrokeStyle {
             }
             StrokePaint::Pattern(p) => {
                 let mut p = p.clone();
-                p.fallback = self.color;
                 // ⚠️⚠️ **A OPACIDADE também**, e ela é a metade que se vê: com um ladrilho o desenho
                 // lê o `alpha` do padrão, e a alfa da `fallback` só aparece enquanto a arte não
                 // resolve (`ph2d-vec-render/src/stroke_draw.rs`). Escrever só a cor deixaria a
@@ -116,7 +125,11 @@ impl StrokeStyle {
                 // ⚠️ **Uma opacidade, uma casa:** num traço sólido ela vive na alfa da cor, num de
                 // padrão no `alpha` dele, com a `fallback` em sincronia. Duas casas divergiriam no
                 // dia em que uma delas ganhasse um knob próprio.
-                p.alpha = f32::from(self.color.a) / 255.0;
+                //
+                // ⭐ **E a conta mora numa PORTA desde a W6** ([`recolour_pattern`]): o
+                // preenchimento faz exactamente isto do outro lado, e duas cópias do `a/255`
+                // divergiriam no dia em que uma ganhasse um arredondamento.
+                recolour_pattern(&mut p, self.color);
                 StrokePaint::Pattern(p)
             }
         };
@@ -132,6 +145,97 @@ impl StrokeStyle {
             marker_scale: self.marker_scale,
             marker_round: self.marker_round,
         }
+    }
+}
+
+/// ⭐⭐⭐ **A COR — e a OPACIDADE que a alfa dela carrega — escritas num PADRÃO** (plano 36, W6).
+///
+/// A porta única do `alpha` de um [`ph2d_vec_scene::PatternFill`]: o traço chega aqui pelo
+/// [`StrokeStyle::onto`], o preenchimento pelo [`apply_fill_colour`]. Uma segunda cópia da conta
+/// `a/255` divergiria no dia em que uma delas ganhasse um arredondamento.
+///
+/// Devolve **se mudou alguma coisa**, o que a torna detector e escritor de uma vez — quem só quer
+/// perguntar chama-a num clone. É a disciplina do [`StrokeStyle`] (um campo num lado e não no outro
+/// é um controlo que mexe o número e não muda a tela) reduzida a uma função só: não há dois lados
+/// que possam divergir.
+///
+/// ⚠️ **Uma opacidade, uma casa:** o `alpha` é o que se DESENHA e a `fallback.a` é o instante
+/// pré-resolução; as duas descem juntas para que a forma não salte quando o ladrilho carrega.
+fn recolour_pattern(pat: &mut ph2d_vec_scene::PatternFill, c: Rgba8) -> bool {
+    let alpha = f32::from(c.a) / 255.0;
+    let mudou = pat.fallback != c || (pat.alpha - alpha).abs() > f32::EPSILON;
+    pat.fallback = c;
+    pat.alpha = alpha;
+    mudou
+}
+
+/// ⭐⭐⭐ **O QUE UM PICK DE PREENCHIMENTO FAZ A ESTA TINTA** — a porta única do `differs` e do
+/// escritor (plano 36, W6).
+///
+/// Devolve se mudou alguma coisa; chamada num clone, responde *"isto difere?"*. **Um lugar só**,
+/// porque a versão anterior tinha a decisão escrita duas vezes — a condição do `differs` e o `else
+/// if` do escritor — e as duas tinham de ser mantidas iguais à mão.
+///
+/// # As três leis, e de onde vem cada uma
+///
+/// - ⛔ **Um gradiente é INTOCÁVEL** (Enio, 2026-07-08): a alça dele endereça uma parada, e um pick
+///   sem alça esmagaria a rampa inteira numa cor. A porta de sair de um gradiente é a fileira
+///   *Fill Type*, e só ela.
+/// - ⭐ **Um PADRÃO recebe a cor de recurso E a opacidade, e SOBREVIVE** (W6). ⚠️ A guarda antiga —
+///   *"só substitui um `Solid`/vazio"* — mantinha-o a salvo de ser destruído e, na mesma linha,
+///   deixava-o **sem nenhum caminho de escrita**: a barra *Fill Opacity* andava de ponta a ponta
+///   sem mudar um pixel. *Proteger uma tinta de ser destruída não é a mesma coisa que ela ser
+///   editável.*
+/// - **Um `Solid`/vazio** é substituído, e **alfa zero apaga o preenchimento** — a convenção que a
+///   ponte já usa nos dois sentidos. ⚠️ Ela **não** se estende ao padrão: ali destruiria a grade, o
+///   ladrilho, a rotação e a fonte por um arrasto acidental até ao fundo da barra, e a leitura útil
+///   é *invisível, mas lá*. *Uma convenção herdada aplica-se onde não custa nada; onde custa, ela é
+///   a pergunta.*
+pub(crate) fn apply_fill_colour(fill: &mut Option<Paint>, closed: bool, c: Rgba8) -> bool {
+    if !closed {
+        return false;
+    }
+    match fill {
+        // ⭐ O PADRÃO: cor + opacidade, e a tinta sobrevive.
+        Some(Paint::Pattern(p)) => recolour_pattern(p, c),
+        // ⛔ Gradientes (linear, radial, multi-ponto): quietos.
+        Some(_) if !matches!(fill, Some(Paint::Solid(_))) => false,
+        // Sólido ou vazio: substituído, com alfa zero a significar "sem preenchimento".
+        _ => {
+            let novo = (c.a != 0).then_some(c);
+            if fill.as_ref().map(Paint::primary_color) == novo {
+                return false;
+            }
+            *fill = novo.map(Paint::solid);
+            true
+        }
+    }
+}
+
+/// ⭐⭐ **O que a ferramenta ADOTA do preenchimento de uma forma recém-selecionada** — `None` = não
+/// adota nada (plano 36, W6).
+///
+/// Espelho exacto do [`apply_fill_colour`]: o que aquele ESCREVE, este LÊ. ⚠️ **As duas metades são
+/// independentes e uma sem a outra é pior que o buraco:** escrever sem semear faz a primeira mexida
+/// em qualquer controlo jogar na forma a alfa da forma **anterior**; semear sem escrever deixa a
+/// barra a mostrar o valor certo e a não o mudar.
+///
+/// ⚠️ **Num padrão a semente lê o `alpha`, e não a `fallback.a`.** Esta ponte mantém os dois em
+/// sincronia, mas um documento gravado antes da W6 tem a `fallback` opaca e o `alpha` autorado
+/// noutro sítio — e o que se DESENHA é o `alpha`. *Semear pelo campo que não se vê poria a barra a
+/// mentir sobre o ficheiro do artista.*
+///
+/// ⛔ **Um gradiente fica QUIETO** (`None`): ele tem alça própria, e esmagá-lo numa cor só seria a
+/// selecção a destruir o que o artista autorou.
+pub(crate) fn seed_fill_from_paint(fill: Option<&Paint>) -> Option<[u8; 4]> {
+    match fill {
+        Some(Paint::Solid(c)) => Some([c.r, c.g, c.b, c.a]),
+        Some(Paint::Pattern(p)) => {
+            let a = (p.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+            Some([p.fallback.r, p.fallback.g, p.fallback.b, a])
+        }
+        None => Some([0, 0, 0, 0]),
+        Some(_) => None,
     }
 }
 
@@ -279,13 +383,13 @@ pub(crate) fn seed_style_from_selection(
     let Some(path) = target.and_then(|id| scene.paths().iter().find(|p| p.id == id)) else {
         return;
     };
-    // O preenchimento SÓLIDO vira a swatch de Fill; alfa 0 é o "sem preenchimento" que a
-    // ponte já usa no caminho inverso. Um gradiente fica QUIETO — ele tem alça própria, e
-    // esmagá-lo numa cor só seria a seleção destruindo o que o artista autorou.
-    match &path.fill {
-        Some(ph2d_vec_scene::Paint::Solid(c)) => tool.adopt_fill([c.r, c.g, c.b, c.a]),
-        None => tool.adopt_fill([0, 0, 0, 0]),
-        Some(_) => {}
+    // O preenchimento vira a swatch de Fill — SÓLIDO pela cor, PADRÃO pela cor de recurso mais a
+    // opacidade que ele DESENHA (W6); alfa 0 é o "sem preenchimento" que a ponte já usa no caminho
+    // inverso. Um gradiente fica QUIETO — ele tem alça própria, e esmagá-lo numa cor só seria a
+    // seleção destruindo o que o artista autorou. A lei inteira vive no [`seed_fill_from_paint`],
+    // que é o espelho do [`apply_fill_colour`].
+    if let Some(c) = seed_fill_from_paint(path.fill.as_ref()) {
+        tool.adopt_fill(c);
     }
     let Some(stroke) = path.stroke.as_ref() else {
         return;

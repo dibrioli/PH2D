@@ -109,9 +109,11 @@ fn announce(app: &mut crate::App) {
     );
     eprintln!(
         "[guides] REGUAS agora: {} — ⚠️ elas vivem com a ferramenta VECTOR em mãos, e não \
-         por escopo escolhido: a faixa OCUPA a borda do canvas e o gesto dela corre antes de \
-         toda ferramenta, então uma régua permanente comeria o pen-down do Painter nos 20 px \
-         de cima.",
+         por escopo escolhido: a faixa OCUPA a borda da área de desenho e o gesto dela corre \
+         antes de toda ferramenta, então uma régua permanente comeria o pen-down do Painter \
+         nos 20 px de cima do desenho. ⚠️ Isto CONTINUA a valer depois de 2026-08-30: mudar as \
+         faixas para dentro da área tirou-as de cima do CHROME (o trilho e a barra deixaram de \
+         perder o clique), mas elas continuam por cima do DESENHO, que é onde o pincel vive.",
         if app.rulers_visible() {
             "vivas"
         } else {
@@ -119,8 +121,12 @@ fn announce(app: &mut crate::App) {
         }
     );
     eprintln!("[guides] o roteiro (pegue a ferramenta VECTOR primeiro):");
-    eprintln!("  0. As duas faixas graduadas aparecem nas bordas de cima e da esquerda. Sem a");
-    eprintln!("     ferramenta Vector elas somem — e as guias FICAM, visíveis e magnéticas.");
+    eprintln!("  0. As duas faixas graduadas aparecem nas bordas da ÁREA DE DESENHO — a de");
+    eprintln!("     cima logo abaixo da barra do topo, a da esquerda logo à direita do painel");
+    eprintln!("     Hierarchy (ou do trilho, se ele estiver fechado). ⚠️ Desde 2026-08-30 elas");
+    eprintln!("     NÃO nascem na borda da janela: ali o trilho tapava 87,8% da régua esquerda");
+    eprintln!("     e a barra 29,4% da de cima. Feche a Hierarchy e a régua acompanha.");
+    eprintln!("     Sem a ferramenta Vector elas somem — e as guias FICAM, visíveis e magnéticas.");
     eprintln!("  1. CRIAR — arraste de dentro da faixa de cima para baixo: nasce uma guia");
     eprintln!("     HORIZONTAL. Da faixa da esquerda para a direita, uma VERTICAL.");
     eprintln!("  2. MOVER — pegue uma das duas que já estão lá e arraste. Um Ctrl+Z depois");

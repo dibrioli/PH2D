@@ -80,12 +80,31 @@ uma pinta, não comparando valores. **Não medido.**
 |---|---|---|---|
 | **1. fundir os 16 apelidos do Timeline** | 83 → **67** | **zero** | duplicação provada |
 | **2. rever os 34 dos nós** | 67 → ? | a medir | produto |
-| **3. reduzir os temas** | 4 → 2 | perde-se `workshop`/`blueprint` | ⚠️ **produto — e o `blueprint` é o ÚNICO com painéis ancorados** |
+| **3. reduzir os temas** | 4 → 2 | perde-se `workshop`/`blueprint` | ⚠️ **produto** |
 
-⛔⛔ **O degrau 3 tem uma armadilha nomeada:** o tema `blueprint` é hoje o único que liga
-`PanelLayout::Sidebar` (`theme.rs:54`). **Apagá-lo antes de libertar o layout do tema apaga o
-único modo ancorado do app.** ⇒ a ordem é: **primeiro separar layout de paleta, só depois mexer
-nos temas.**
+### ⛔⛔ CORRECÇÃO (2026-08-30) — a armadilha que este parágrafo anunciava **NÃO EXISTE**
+
+A 1ª redacção dizia: *"o `blueprint` é hoje o único que liga `PanelLayout::Sidebar`
+(`theme.rs:54`); apagá-lo antes de libertar o layout do tema apaga o único modo ancorado do
+app"* — e daí saía uma **trava dura** na ordem de arranque
+([`spec/02 §3`](../spec/02_o_que_falta_para_comecar.md)).
+
+**Medido: `PanelLayout` não tem UM leitor de produção.** As únicas ocorrências em toda a árvore
+são a declaração (`ph2d-tokens/src/theme.rs:27`), o produtor (`Theme::panel_layout`, `:51-56`),
+o re-export (`ph2d-tokens/src/lib.rs:97`) e o `#[test]` do próprio ficheiro (`:115-116`).
+`screens/layout.rs` **nem sequer importa o tipo**. ⇒ o `Theme::Blueprint` produz hoje
+**exactamente o mesmo layout** que o `Forge`.
+
+⭐ **Não há modo ancorado a perder, porque não há modo ancorado.** O degrau 3 não depende do
+degrau «separar layout de paleta» — depende só do veredito de produto do Enio sobre quantos
+temas quer.
+
+⚠️ **E o erro tem uma forma que vale nomear:** eu li o *produtor* de um valor e concluí a
+existência de um *consumidor*. `Theme::panel_layout()` devolve `Sidebar` — a função existe, o
+valor é correcto, e **ninguém pergunta**. É a espécie que o `CLAUDE.md` §5.0 chama de **id
+ÓRFÃO** (declarado e nunca lido) e não de **knob morto** (lido e descartado), e as curas são
+opostas: um órfão apaga-se ou liga-se, um morto liga-se. *Confirmar que um valor é PRODUZIDO
+não é medir que ele é CONSUMIDO.*
 
 ## §6 — O impacto no total
 

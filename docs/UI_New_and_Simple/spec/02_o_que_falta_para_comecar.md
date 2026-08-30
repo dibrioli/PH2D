@@ -57,10 +57,16 @@ de que os painéis passam a ser derivados.
                                        └── I. cortar os temas 4 → 2
 ```
 
-### ⛔⛔ As três travas duras
+### ⛔⛔ As travas duras — eram três, **são duas**
 
-1. **`I` depois de `H`.** O tema `blueprint` é hoje o **único** que liga `PanelLayout::Sidebar`.
-   Cortar os temas antes de libertar o layout da paleta **apaga o único modo ancorado do app**.
+1. ~~**`I` depois de `H`.** O tema `blueprint` é hoje o **único** que liga
+   `PanelLayout::Sidebar`.~~ ⛔ **REFUTADA em 2026-08-30, pela medição que devia tê-la sustentado
+   desde o início:** `PanelLayout` **não tem um leitor de produção** — só a declaração, o
+   produtor, o re-export e o `#[test]` do próprio ficheiro; `screens/layout.rs` nem importa o
+   tipo. Não há modo ancorado a perder. Mecanismo e a lição
+   ([`medicoes/03 §5`](../medicoes/03_o_censo_de_cor.md)): *confirmar que um valor é PRODUZIDO
+   não é medir que ele é CONSUMIDO.* ⇒ **`I` não depende de `H`**; depende do veredito do Enio
+   sobre quantos temas quer.
 2. **`E` inclui remover a fuga do gizmo.** Ela é o remédio do sintoma; com os painéis fora da
    vista, passaria a fugir de uma moldura que já não a alcança.
 3. **`G` é onde a área se ganha, não em `E`.** Medido: ancorar dá **49,6 %** de canvas com tudo
@@ -113,6 +119,57 @@ sozinho** quando o corte acontece.
 ⚠️ **E cobrou duas correcções minhas** — uma afirmação de precisão que o gate refutou (delegar o
 estreito ao largo custava **1 ULP**), e dois tetos de LOC que eu estourei e curei por corte, não
 por excepção.
+
+---
+
+---
+
+## §6-bis — ✅ O degrau `D` FECHOU (2026-08-30): as réguas são regiões
+
+O primeiro degrau do modelo de áreas está no `main` da linha. `HeroLayout::draw_area` é o que
+sobra da janela depois de o chrome **docado** tirar a sua faixa, e as duas réguas passaram a ser
+regiões dela.
+
+| | antes | depois |
+|---|---:|---:|
+| régua da esquerda tapada | **87,8 %** | **0,0 %** |
+| régua de cima tapada | **29,4 %** | **0,0 %** |
+
+⭐ **Custou menos do que o §3 previa, e a razão é medível:** `ruler::top_band`/`left_band`/`hit`
+já recebiam um rect por argumento, `ruler::in_band` já filtrava os traços fora da faixa, e a
+**projecção deriva de `window_w`/`window_h`, nunca do rect** (`grid::world_bounds`). ⇒ a régua
+mudou-se **sem levar a projecção consigo** — um traço marcado em 100 continua a cair no mesmo
+pixel. *Uma régua que se mudasse e apontasse para outro sítio seria pior do que uma tapada.*
+
+### ⛔⛔ E a wave achou um SEGUNDO defeito, de INPUT, que nenhuma sonda deste repo via
+
+A régua **não está no `HitIndex`**. O gesto da guia é geométrico (`ruler::hit`) e corre em
+`input_dispatch.rs` **antes** do hit-test de chrome, com um `return` quando acerta. Enquanto o
+hospedeiro foi a viewport inteira:
+
+- um press nos **6 px de cima de qualquer botão da barra** (banda `y ∈ [0,20]`, barra em `y=14`),
+- ou nos **3 px da esquerda de qualquer chip do trilho** (banda `x ∈ [0,20]`, chip em `x=17`),
+
+**nascia uma guia em vez de carregar no botão** — só em modo Vector (`rulers_live` exige
+`panel_visible("vector")`). ⚠️ Os gates de costura do repo perguntam todos ao `HitIndex`, onde a
+régua não está: por isso 15 gates verdes conviviam com isto. *Uma superfície que faz hit-test
+FORA do índice é invisível a toda a família de portões que o repo tem.*
+
+### ⭐ O preço da `E`/`A2` ficou MEDIDO, e é maior do que o §3 dizia
+
+O §3 tratava `A` como uma peça só. Ela são duas, e a segunda é cara:
+
+- **As regiões de CHROME** (feito) — rects, barato.
+- **A CENA mudar-se para dentro da região** — o sub-rectângulo da cena é ancorado em `(0,0)`
+  **por construção em toda a cadeia**: `CenterSplit::scene_viewport` devolve `[0, 0, w, h·t]` e
+  **todo** consumidor lê só as DIMS (`field_gizmo::scene_window_wh` → `scene_camera_window` →
+  `pan_scene_camera`, mais `uniform_for_subrect`/`set_viewport` no render). ⇒ **dar origem à cena
+  é uma mudança na porta única do mundo↔tela**, não um rect. É a obra da docagem, e é onde o
+  orçamento da `E` de facto está.
+
+⚠️ Enquanto isso não acontecer, um painel **arrastado à mão** continua a poder tapar a régua: o
+que a wave cura é o chrome **docado**. A cerca que o proíbe é a `allowed_slots`/`can_float` da D1
+(a `E`), não esta.
 
 ---
 

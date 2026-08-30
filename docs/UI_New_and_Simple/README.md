@@ -113,6 +113,26 @@ que não é melhor do que hoje**.
 ⚠️ *A pergunta «pose 2D ou 3D?» que estava aqui foi **respondida pela D9** — e a medição que eu
 oferecia para a decidir ficou cancelada com ela.*
 
+## ✅ A implementação COMEÇOU (2026-08-30) — o degrau `D` do modelo de áreas
+
+**As réguas deixaram de partilhar coordenada com o chrome.** `HeroLayout::draw_area` é o que
+sobra da janela depois de o chrome **docado** tirar a sua faixa, e as duas réguas são regiões
+dela: **87,8 % → 0 %** (esquerda) e **29,4 % → 0 %** (cima). Detalhe e o preço da fase seguinte:
+[`spec/02 §6-bis`](spec/02_o_que_falta_para_comecar.md).
+
+⛔ **E a wave achou um defeito de INPUT que nenhuma sonda deste repo via:** a régua não está no
+`HitIndex` e o gesto dela corre antes do hit-test de chrome — os 6 px de cima de cada botão da
+barra e os 3 px da esquerda de cada chip do trilho **criavam uma guia em vez de carregar no
+botão**, em modo Vector. Curado pela mesma mudança.
+
+⚠️ **Duas notas destes documentos foram REFUTADAS pela própria medição:**
+1. *«o `blueprint` é o único tema que liga `PanelLayout::Sidebar`»* — **`PanelLayout` não tem um
+   leitor de produção.** A trava dura nº 1 da ordem de arranque não existe
+   ([`medicoes/03 §5`](medicoes/03_o_censo_de_cor.md)).
+2. *«o degrau `A` não depende de nada»* — depende, em metade: mover a **cena** para dentro da
+   área exige dar-lhe uma ORIGEM, e a cadeia inteira ancora o sub-rectângulo dela em `(0,0)` por
+   construção. É onde o orçamento da docagem de facto está.
+
 ## O que esta etapa NÃO fez
 
 - ⚠️ **Deixou de ser só documentação em 2026-08-30:** a **unidade de ângulo** (Settings →

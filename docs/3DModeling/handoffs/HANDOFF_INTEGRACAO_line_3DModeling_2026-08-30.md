@@ -244,3 +244,82 @@ passaria a depender do perfil. Wave própria, com o preço medido.
 fica em `1,0` e a região torcida pede `~σ×` mais passos. O instrumento existe (`march::EXHAUSTED`) e
 **ainda não foi corrido sobre um operador que encolce localmente** — é a medição que decide se algum
 teto se mexe.
+
+## §6 — W107-bis: o smoke da torção, e as três coisas que ele devolveu
+
+O Enio smokou três vezes, e **cada report achou um defeito diferente do que a foto parecia dizer**.
+
+### §6.1 — «nada aparece torcido» (1.ª vez) — a SIMETRIA da secção
+
+O campo estava certo nos três caminhos de avaliação. ⭐⭐⭐ **Uma torção só se vê módulo a simetria da
+secção**, e eu demonstrei-a nas formas que a escondem. Medido a `0,25` voltas/un (112° no total),
+variação da silhueta ao longo da altura:
+
+| secção | simetria | variação |
+|---|---|---:|
+| cilindro | contínua | **`+0,0 %`** |
+| prisma 6 | 60° | `+11,9 %` |
+| caixa quadrada | 90° | `+37,3 %` |
+| **caixa 3:1** | 180° | **`+146,0 %`** |
+
+⇒ a cena 14 passa a ser uma barra chata, com a tabela ao lado. *Uma cena que demonstra a feature na
+forma que a esconde é pior que nenhuma.*
+
+### §6.2 — «nada torcido» (2.ª vez, com foto de três barras IDÊNTICAS) — o `spawn_doc`
+
+⛔⛔⛔ O `cook` lê **quatro** componentes e o `spawn_doc` escrevia **dois**: `FieldMods` e `FieldVerb`
+evaporavam no instante em que um documento virava objetos. **A casca, o afastamento, os espelhos, as
+matrizes e a inclinação caíam pela mesma porta desde que o `FieldMods` existe** — nenhuma cena de
+smoke trazia modificadores, e por isso ninguém o viu.
+
+⚠️ **E os meus dois testes não o apanharam porque mediam as duas PONTAS**: o `add_mod` (que escreve o
+componente direto) e os avaliadores (que recebem o documento pronto). *Faltava medir a travessia
+entre elas.* ⇒ o gate é uma **ida e volta** (`doc → spawn_doc → cook → doc`), que não tem lista de
+componentes nenhuma e aceita a quinta de graça.
+
+⭐ E o censo das cenas estava parado em `10` com o roteador em `13`: as cenas 11, 12 e 13 nasceram sem
+nenhum gate lhes tocar. Hoje a contagem **prova-se** pelas duas pontas.
+
+### §6.3 — «muito dura a transição» — a CURVATURA, não a normal
+
+Medida atravessando o fim da banda, a **normal é contínua** (`0,787°` a um passo de `0,005`,
+proporcional ⇒ sem salto). O que salta é a **curvatura**: o giro da normal passa de `0,0` para
+`157,3 °/un`. *G1 sem ser G2, e o olho lê a taxa.*
+
+`Unary::Twist` ganha `falloff` (o ombro), por `soft_clamp = smin(smax(z, lo, w), hi, w)` — declive
+sempre em `[0,1]` ⇒ **o tecto `σ` não se mexe e o ombro é de graça**. Joelho medido em `0,22` numa
+barra de meia-altura `0,62`.
+
+⛔ **E a sonda mentiu primeiro:** a 1.ª leu `2 695 °/un` — **o mesmo número para o ombro `0,00`,
+`0,06` e `0,12`**. *Um valor que não se mexe quando a cura se mexe é da sonda.* Ela apanhava a quina
+da barra; hoje mede em 24 direcções e fica com a mediana.
+
+## §7 — W107-ter: o orçamento não via o encolhimento LOCAL
+
+Risco que este handoff nomeou no §5.6 e deixou por medir. Medido: **18 raios esgotavam** o orçamento
+numa barra a uma volta por unidade — largados em silêncio, pixel de fundo.
+
+O divisor vive no operador (certo: no `gradient_bound` penalizaria a cena inteira), logo o passo fica
+em `1,0` e a região torcida pede `σ×` mais passos. ⇒ o passo continua cheio e o **orçamento** cresce:
+`budget = MAX_STEPS · shrink / step`. `field_shrink` é o **máximo sobre os nós**, e o
+`stack::step_divisor` tem **dois leitores** (quem aplica e quem preça), como o `bounds::step_mod`.
+
+### §7.1 — ⛔⛔ E o detector de FUROS enganou-me pela segunda vez
+
+Ele contava `335` furos naquela barra. Uma fita torcida tem silhueta **não convexa**: de três-quartos
+vê-se o fundo entre as voltas, cercado de peça na linha e na coluna. *Ele mede a silhueta, não a
+marcha* — e a primeira vez foi com uma fixtura em espiral, com a nota escrita e não lida.
+
+⭐ A régua certa não precisa de oráculo: **um passo seguro nunca atravessa, logo encurtá-lo não pode
+achar mais peça**. Com o passo a um quarto, `0` pixels mudam em `0,0`/`0,5`/`1,0`/`2,0` voltas.
+
+## §8 — Aberto depois desta jornada
+
+⏳ **BEND** — a matemática está derivada (`σ = max(1, 1/(1−κ·x))`, parede `κ·W < 1` e `|φ| < 2π`, bola
+de bordo por **sector** e não a ingénua, que explode quando `κ → 0`) e o substrato está pago.
+⏳ **Eixo escolhível e origem** do deformador — as quatro referências têm-nos; aqui o eixo é o Z pela
+lei da casa.
+⏸️ **Bias** (distribuição não-linear ao longo do eixo) — só o 3ds Max o tem; o `σ` passaria a depender
+do perfil. Wave própria, com o preço medido.
+⏳ **O `doc 06` está em 612 KB** e precisa do corte (`doc-split.py`), que obriga a reancorar as
+citações que o `CLAUDE.md` §5 faz.

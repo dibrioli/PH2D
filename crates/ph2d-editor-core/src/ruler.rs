@@ -102,6 +102,29 @@ pub fn left_band(canvas: Rect) -> Rect {
     Rect::new(canvas.x, canvas.y, RULER_PX, canvas.h)
 }
 
+/// **As duas faixas, ou NENHUMA** — a porta única do predicado *«esta área comporta réguas?»*.
+///
+/// ⛔⛔ **Achado da auditoria de 2026-08-30: o desenho tinha esta guarda e o hit-test NÃO.**
+/// O `paint_rulers` saía cedo com `canvas.w <= RULER_PX`, mas o [`hit`] só perguntava
+/// `contains`. Numa área com `0 < w <= RULER_PX` a régua **respondia sem aparecer** — uma tira
+/// invisível a consumir o press e a criar guias —, que é a violação nominal do invariante que
+/// este módulo declara noutro sítio: *visível ⇔ vivo*.
+///
+/// ⚠️ **E a wave das áreas tornou-a alcançável.** Enquanto a régua era ancorada na janela, a
+/// condição exigia uma janela de 20 px (inalcançável); ancorada na área de desenho, ela exige
+/// uma janela de **735 px de largura** — um tamanho que existe. *O rect encolheu e o predicado
+/// não o acompanhou.*
+///
+/// ⇒ os dois lados passam a ler **esta** função: eles já liam o mesmo rect, e continuavam a ler
+/// predicados diferentes.
+#[must_use]
+pub fn live_bands(canvas: Rect) -> Option<(Rect, Rect)> {
+    if canvas.w <= RULER_PX || canvas.h <= RULER_PX {
+        return None; // área menor que a própria régua: nada legível cabe
+    }
+    Some((top_band(canvas), left_band(canvas)))
+}
+
 /// Sobre qual régua o ponteiro está, se alguma.
 ///
 /// ⚠️ O **canto** (onde as duas faixas se cruzam) pertence à de CIMA, e a escolha é arbitrária
@@ -109,13 +132,14 @@ pub fn left_band(canvas: Rect) -> Rect {
 /// horizontal ou vertical conforme a ordem em que os dois `if` foram escritos.
 #[must_use]
 pub fn hit(canvas: Rect, p: (f32, f32)) -> Option<RulerAxis> {
+    let (top, left) = live_bands(canvas)?;
     if !contains(canvas, p) {
         return None;
     }
-    if contains(top_band(canvas), p) {
+    if contains(top, p) {
         return Some(RulerAxis::Top);
     }
-    contains(left_band(canvas), p).then_some(RulerAxis::Left)
+    contains(left, p).then_some(RulerAxis::Left)
 }
 
 fn contains(r: Rect, p: (f32, f32)) -> bool {
@@ -183,15 +207,16 @@ pub fn paint_rulers(
     display: LengthDisplay,
 ) {
     let canvas = view.canvas;
-    if canvas.w <= RULER_PX || canvas.h <= RULER_PX {
-        return; // canvas menor que a própria régua: nada legível cabe
-    }
+    // A MESMA porta que o `hit` pergunta — ver [`live_bands`].
+    let Some((top, left_b)) = live_bands(canvas) else {
+        return;
+    };
     let bg = resolve(ColorToken::Bg1, theme);
     let line = resolve(ColorToken::Border, theme);
     let text = resolve(ColorToken::Text2, theme);
 
-    fill_rounded_rect(scene, top_band(canvas), 0.0, bg);
-    fill_rounded_rect(scene, left_band(canvas), 0.0, bg);
+    fill_rounded_rect(scene, top, 0.0, bg);
+    fill_rounded_rect(scene, left_b, 0.0, bg);
 
     paint_axis(
         scene,

@@ -72,7 +72,15 @@ pub(crate) fn press_plan(
     if let Some(r) = ruler::hit(canvas, p) {
         return GuidePress::Spawn(r, guide_pos_under(view, r, p));
     }
-    if !contains(canvas, p) {
+    // ⚠️ **AGARRAR alcança a JANELA, nascer e morrer alcançam só a FAIXA.** A guia é desenhada
+    // na cena, que é *full-bleed*: ela existe visualmente também por baixo dos painéis. Quando a
+    // faixa se mudou para a área de desenho (2026-08-30), este predicado foi com ela por
+    // arrasto — e uma guia largada sobre um painel passou a ser **inagarrável**, sem comando de
+    // limpar guias em lado nenhum: irrecuperável. O alcance do agarrar é restaurado ao que
+    // sempre foi (a janela), e ele já é estreito por outro motivo — só dispara com uma guia a
+    // menos de `GRAB_PX`.
+    let window = ph2d_editor::zones::Rect::new(0.0, 0.0, view.window_w, view.window_h);
+    if !contains(window, p) {
         return GuidePress::Pass;
     }
     let world = [

@@ -124,9 +124,7 @@ pub fn paint_hero_screen(
     // **Quais colunas laterais estão ocupadas** — a área de desenho (e com ela as réguas) cresce
     // para dentro de uma coluna fechada. É o mesmo padrão do `dock_timeline_into_motion` logo
     // abaixo: o layout é uma função pura do que lhe dizem, e ESTE é o sítio que sabe.
-    let docks = crate::screens::layout::DockSides::resolve(hero.view.ui_mirrored, |k| {
-        hero.is_panel_visible(k)
-    });
+    let docks = crate::screens::layout::DockSides::resolve(|k| hero.is_panel_visible(k));
     let mut layout = HeroLayout::for_viewport_docked(
         viewport,
         hero.view.ui_mirrored,
@@ -145,6 +143,16 @@ pub fn paint_hero_screen(
         && hero.is_panel_visible(super::PANEL_TIMELINE)
     {
         layout.dock_timeline_into_motion();
+    }
+    // ⛔ **As faixas do FUNDO também comem a área de desenho** (auditoria de 2026-08-30): o
+    // `timeline` nasce exactamente no `area_x0` e ocupa 240 px no fundo da banda, então a régua
+    // da esquerda corria por baixo dele. Depois do `dock_timeline_into_motion`, de propósito —
+    // ele MOVE o rect do timeline, e reservar antes reservaria o sítio errado.
+    if hero.is_panel_visible(super::PANEL_TIMELINE) {
+        layout.reserve_bottom_strip(layout.timeline);
+    }
+    if hero.is_panel_visible("flip_frames") {
+        layout.reserve_bottom_strip(layout.flip_strip);
     }
     // Apply user-driven panel drag offsets to the Inspector +
     // Hierarchy rects. The offsets live on the WidgetStore's

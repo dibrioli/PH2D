@@ -180,67 +180,71 @@ impl CenterSplit {
 /// flutuar no meio do desenho, e não a reservar quando ele ESTÁ lá devolve o defeito que a
 /// área existe para curar. O sítio que sabe a resposta é o mesmo que constrói o layout
 /// (`screens/hero/paint.rs`), e é lá que a pergunta é feita.
+///
+/// ⛔⛔ **SÓ HÁ UM CAMPO, e a ausência do segundo é a correcção de uma REGRESSÃO
+/// (auditoria de 2026-08-30).** A 1.ª versão tinha um `right: bool` alimentado por uma lista de
+/// cinco chaves (`["inspector", "bgremoval", "padding", "painter_sidebar", "painter_layers"]`).
+/// A lista estava **errada**, e errada exactamente no modo que importa:
+///
+/// - ao pegar na ferramenta Vector, o *bridge* dela põe `panel_visible("inspector") = false`
+///   (`shells/desktop/src/render_loop/vector_bridge.rs`) e o **painel Vector** passa a desenhar
+///   no rect do dock direito (`ph2d-panel-vector/src/paint.rs`, `ctx.layout.inspector`);
+/// - `"vector"` não estava na lista ⇒ `right` dava `false` ⇒ a área crescia **para dentro do
+///   painel** e a régua de cima ficava **31,2 % tapada** — *pior* que os 29,4 % que esta wave
+///   dizia ter curado —, com o gesto da guia a roubar os 20 px de cima do cabeçalho dele.
+///
+/// ⭐⭐ **A cura não é uma lista maior: são DEZASSETE as crates de painel que desenham no rect
+/// do dock direito** (`ctx.layout.inspector` / `ctx.layout.padding`) — é um slot de *takeover*
+/// com inquilinos mutuamente exclusivos, não um painel. Uma lista de dezassete nomes mantida à
+/// mão numa crate que não os conhece apodrece no primeiro painel novo.
+///
+/// ⭐⭐⭐ **A cura é um TEOREMA:** a única coisa que hoje lê a `draw_area` é a régua, e
+/// `HeroScreen::rulers_live()` exige `panel_visible("vector")` — logo *régua viva ⇒ painel
+/// Vector visível ⇒ coluna da direita ocupada*. Reservá-la **sempre** custa zero ao único
+/// consumidor, e é imune a qualquer inquilino futuro. ⇒ o campo desapareceu.
+///
+/// ⚠️ **A coluna da ESQUERDA fica, e por medição:** ela tem **um** inquilino
+/// (`ph2d-panel-hierarchy` é a única crate a ler `layout.hierarchy`), com chave `"hierarchy"`.
+/// Há gate a defender essa contagem — se aparecer um segundo, o [`LEFT_DOCK_PANELS`] passa a
+/// ter o mesmo defeito que a lista da direita tinha.
+/// ⚠️ **O campo nomeia o PAINEL, não o lado** — e a assimetria é o achado. A coluna do
+/// *takeover* é sempre reservada (o teorema acima) e só a coluna da **Hierarchy** pode ficar
+/// vazia; qual das duas ela é depende do `mirrored`, que quem constrói o layout já sabe. Um
+/// campo chamado `left` obrigaria cada chamador a fazer essa inversão à mão — e é essa a
+/// metade que se escreve ao contrário sem o compilador reclamar.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct DockSides {
-    /// A coluna da ESQUERDA — a Hierarchy, ou o Inspector sob `mirrored`.
-    pub left: bool,
-    /// A coluna da DIREITA — o Inspector, ou a Hierarchy sob `mirrored`.
-    pub right: bool,
+    /// A **Hierarchy** está aberta? A coluna dela é a única que a área de desenho pode
+    /// reclamar.
+    pub hierarchy_open: bool,
 }
 
-/// As chaves de visibilidade dos painéis que partilham a **coluna da DIREITA** — todos
-/// desenham no mesmo rect ([`HeroLayout::inspector`], de que os outros quatro são aliases), e a
-/// coluna está ocupada se **algum** deles estiver visível.
+/// A chave de visibilidade do **único** inquilino da coluna da esquerda.
 ///
-/// ⚠️ **Um alias novo que não venha para esta lista deixaria a área de desenho crescer para
-/// dentro de um painel que está lá** — e o defeito reapareceria só naquela ferramenta. Há gate a
-/// contar os dois lados (`the_dock_column_census_matches_the_layout_aliases`): o nome do campo
-/// **é** a chave de visibilidade, então a lista é conferível contra o próprio construtor.
-pub const RIGHT_DOCK_PANELS: [&str; 5] = [
-    "inspector",
-    "bgremoval",
-    "padding",
-    "painter_sidebar",
-    "painter_layers",
-];
-
-/// A chave da **coluna da ESQUERDA**. Uma só, hoje.
+/// ⚠️ **A contagem é load-bearing e tem gate**: `ph2d-panel-hierarchy` é hoje a única crate que
+/// lê `layout.hierarchy`. Um segundo inquilino (o padrão de *takeover* que a coluna da DIREITA
+/// tem) faria esta lista herdar exactamente o defeito que matou a lista da direita — ver o
+/// doc-comment de [`DockSides`].
 pub const LEFT_DOCK_PANELS: [&str; 1] = ["hierarchy"];
 
 impl DockSides {
-    /// As duas colunas abertas — o estado do mockup de referência, e o que os construtores
+    /// As duas colunas ocupadas — o estado do mockup de referência, e o que os construtores
     /// que **não perguntam** assumem (`for_viewport` e irmãos, usados por fixtures e testes de
     /// geometria de chrome, que pintam os dois painéis).
     pub const BOTH: Self = Self {
-        left: true,
-        right: true,
+        hierarchy_open: true,
     };
-    /// Nenhuma coluna aberta — a área de desenho vai do trilho à borda direita.
+    /// A Hierarchy fechada. ⚠️ A coluna do *takeover* **não tem estado** — é sempre reservada
+    /// (o teorema no doc de [`DockSides`]).
     pub const NONE: Self = Self {
-        left: false,
-        right: false,
+        hierarchy_open: false,
     };
 
-    /// **Pergunta ao hospedeiro quais colunas estão ocupadas** — a porta única, e o sítio onde
-    /// a inversão do `mirrored` mora.
-    ///
-    /// ⚠️ **Sob `mirrored` as colunas TROCAM de painel** (o construtor faz o mesmo com os `x`),
-    /// e é essa a metade que se escreve ao contrário sem o compilador reclamar: `left` aqui
-    /// significa *a coluna da esquerda*, nunca *a Hierarchy*.
+    /// **Pergunta ao hospedeiro se a Hierarchy está aberta** — a porta única.
     #[must_use]
-    pub fn resolve(mirrored: bool, visible: impl Fn(&str) -> bool) -> Self {
-        let hierarchy = LEFT_DOCK_PANELS.iter().any(|k| visible(k));
-        let inspector = RIGHT_DOCK_PANELS.iter().any(|k| visible(k));
-        if mirrored {
-            Self {
-                left: inspector,
-                right: hierarchy,
-            }
-        } else {
-            Self {
-                left: hierarchy,
-                right: inspector,
-            }
+    pub fn resolve(visible: impl Fn(&str) -> bool) -> Self {
+        Self {
+            hierarchy_open: LEFT_DOCK_PANELS.iter().any(|k| visible(k)),
         }
     }
 }
@@ -505,15 +509,18 @@ impl HeroLayout {
         // antes da coluna da direita; verticalmente é a banda de chrome, que já exclui a barra
         // de topo e o HUD. ⚠️ Uma coluna fechada não é reservada: a área cresce para dentro
         // dela, senão a régua da esquerda ficaria a flutuar sobre o desenho.
-        let area_x0 = if docks.left {
-            left_col_right + EDGE_PAD
-        } else {
-            viewport.x + rail_w
-        };
-        let area_x1 = if docks.right {
-            right_col_left - EDGE_PAD
-        } else {
-            viewport.x + viewport.w
+        //
+        // ⚠️ A coluna do **takeover** é sempre reservada; só a da **Hierarchy** pode ser
+        // reclamada, e o `mirrored` diz qual das duas ela é.
+        let hier_on_left = !mirrored;
+        let (area_x0, area_x1) = match (hier_on_left, docks.hierarchy_open) {
+            // Hierarchy à esquerda e aberta ⇒ as duas colunas ocupadas.
+            (true, true) => (left_col_right + EDGE_PAD, right_col_left - EDGE_PAD),
+            // Hierarchy à esquerda e fechada ⇒ a área reclama a coluna dela, até ao trilho.
+            (true, false) => (viewport.x + rail_w, right_col_left - EDGE_PAD),
+            // Espelhado: o takeover está à esquerda (sempre reservado); a Hierarchy à direita.
+            (false, true) => (left_col_right + EDGE_PAD, right_col_left - EDGE_PAD),
+            (false, false) => (left_col_right + EDGE_PAD, viewport.x + viewport.w),
         };
         let draw_area = Rect::new(area_x0, chrome_top, (area_x1 - area_x0).max(0.0), chrome_h);
         let timeline = Rect::new(
@@ -586,6 +593,30 @@ impl HeroLayout {
             h,
         );
         self.timeline = self.motion_timeline_slot;
+    }
+
+    /// **Uma faixa docada no FUNDO come a altura da área de desenho** — e sem isto a régua da
+    /// esquerda corre por baixo dela.
+    ///
+    /// ⛔ **Achado da auditoria de 2026-08-30:** o `timeline` nasce em
+    /// `timeline_x = left_col_right + EDGE_PAD`, que é **literalmente** o `area_x0`, e tem
+    /// `TIMELINE_DOCK_H = 240` de altura no fundo da banda. Com os dois docks abertos ele
+    /// partilhava **4 800 px² (20 × 240)** com a régua da esquerda — a mesma família de defeito
+    /// que a wave existe para curar, num dock que o próprio ficheiro chama de *«General timeline
+    /// dock»*. O `flip_strip` é o irmão dele.
+    ///
+    /// ⚠️ Idempotente e inerte para uma faixa vazia ou que já esteja abaixo da área. Chame-a uma
+    /// vez por faixa **visível** — quem sabe da visibilidade é o `screens/hero/paint.rs`, como no
+    /// [`Self::dock_timeline_into_motion`].
+    pub fn reserve_bottom_strip(&mut self, strip: Rect) {
+        if strip.w <= 0.0 || strip.h <= 0.0 {
+            return;
+        }
+        let area_bottom = self.draw_area.y + self.draw_area.h;
+        if strip.y >= area_bottom {
+            return; // a faixa está fora da área — nada a reclamar
+        }
+        self.draw_area.h = (strip.y - self.draw_area.y).max(0.0);
     }
 
     /// **A região em que um popover flutuante pode nascer** — a BANDA DE CHROME, e nunca a janela

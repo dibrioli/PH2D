@@ -528,6 +528,56 @@ fn stack_xml_emits_documented_spec_version() {
 // CONVENTION (audit-6 Lens B HIGH): keep `const GOLDEN_BLAKE3`
 // inside the fn body. See ph2d-imageio-png/src/lib.rs for full
 // rationale.
+/// **O irmão LINUX do golden acima — e a razão dele é a lição de 2026-08-30.**
+///
+/// Naquele dia o `ship.sh` local passou verde inteiro (fmt, clippy, machete, deny, audit, typos,
+/// 5 índices, 20 156/20 156 testes) e o CI reprovou: a subida do `zip` (`2.4.2 → 8.6.0`, seis
+/// majors) mudou os bytes do arquivo ORA, e **o único golden que existia era o de macOS**. O
+/// portão que devia apanhar a deriva só corria numa plataforma que ninguém tem à mão.
+///
+/// ⇒ *«Multi-pin deferred»* deixou de ser adiável no instante em que custou um ciclo de CI. Este
+/// pin faz a mesma pergunta na plataforma onde o desenvolvimento acontece, e por isso a resposta
+/// chega **antes** do push.
+///
+/// ⛔⛔ **E ao capturá-lo, uma premissa do golden vizinho caiu.** O doc dele diz, desde 2026-05,
+/// que o pin é de plataforma única porque *«DEFLATE level + SIMD divergence between targets emits
+/// different (still-valid) ORA archives»*. **Não é (mais) verdade:** este hash, medido em Linux
+/// x86_64, é **byte a byte o mesmo** que o job `macos-latest` (aarch64) imprimiu no run
+/// 33297268336. Duas arquitecturas, dois sistemas, os mesmos bytes.
+///
+/// ⚠️ Isso não torna o pin um invariante entre plataformas — **um teste não prova uma família** —,
+/// e por isso os dois ficam separados, cada um a medir a sua. Mas retira a razão que mantinha o
+/// *«multi-pin deferred»*: a divergência que o justificava não foi observada. Se um dia os dois
+/// hashes voltarem a divergir, é aqui que se lê que já estiveram iguais.
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+#[test]
+fn export_golden_blake3_local_drift_pinned_linux_x86_64() {
+    let stack = LayerStack {
+        version: 1,
+        canvas_width: 2,
+        canvas_height: 2,
+        layers: vec![make_pixel_layer("L1", [200, 100, 50, 255])],
+        color_profile: ColorProfile::Srgb,
+    };
+    let opts = ExportOpts {
+        format: ExportFormat::Ora,
+        ..ExportOpts::default()
+    };
+    let bytes = OraExporter
+        .export(&DecodedImage::Layered(stack), &opts)
+        .expect("ORA golden export");
+    const GOLDEN_BLAKE3: &str =
+        // ⭐⭐ **Capturado em 2026-08-30 nesta máquina (Linux x86_64) — e é o MESMO valor que o job
+        // de macOS-aarch64 imprimiu no run 33297268336.** Duas arquitecturas, dois sistemas, os
+        // mesmos bytes.
+        "c02d54755c2800976a26514678d03db9c1afd22e052cdb13c4b81a0f89e4e457";
+    assert_eq!(
+        blake3::hash(&bytes).to_hex().to_string(),
+        GOLDEN_BLAKE3,
+        "LOCAL drift (Linux x86_64): ORA export blake3 drifted"
+    );
+}
+
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 #[test]
 fn export_golden_blake3_local_drift_pinned_macos_silicon() {
@@ -547,9 +597,26 @@ fn export_golden_blake3_local_drift_pinned_macos_silicon() {
         .expect("ORA golden export");
     let hash = blake3::hash(&bytes);
     const GOLDEN_BLAKE3: &str =
-        // Re-captured 2026-05-26 after H1 fix (added composite-op/
-        // opacity/visibility attrs to root <stack> — spec compliance).
-        "16a0899379c45a3d9b4bf7c18c39f6ccede6155261ba70ed813d0dccc3195520";
+        // Re-captured 2026-08-30: o `zip` saltou **seis majors** na subida do stack
+        // (`2.4.2 → 8.6.0`) e o `flate2` foi `1.1.9 → 1.1.10`. Os dois estão no caminho de bytes
+        // que este golden fixa, e o próprio doc acima já o antecipava (*«ORA touches ZIP DEFLATE
+        // + image PNG encoder + hand-written XML»*).
+        //
+        // ⚠️ **A deriva foi verificada BENIGNA antes de ser re-fixada, não depois:** a suíte
+        // inteira do `ph2d-imageio-ora` passa **18/18** (estrutura, `stack.xml`, versão de spec,
+        // ida-e-volta, recusas), e o irmão `export_is_byte_exact_deterministic` passou **no mesmo
+        // job de macOS** — o arquivo continua válido e reprodutível; só o conteúdo comprimido
+        // mudou. *Um golden que se re-fixa sem essa verificação deixa de ser um portão e passa a
+        // ser um carimbo.*
+        //
+        // ⛔ **Este valor NÃO foi capturado nesta máquina** — o teste é `cfg(macos, aarch64)` e o
+        // desenvolvimento é em Linux. Ele veio do job `macos-latest` do run
+        // https://github.com/dibrioli/PH2D/actions/runs/33297268336 (`left:` da asserção). Quem
+        // quiser confirmá-lo precisa de um Apple Silicon ou de outro run.
+        //
+        // (Antes: `16a0899379c45a3d9b4bf7c18c39f6ccede6155261ba70ed813d0dccc3195520`,
+        // re-capturado em 2026-05-26 depois do H1 — composite-op/opacity/visibility na `<stack>`.)
+        "c02d54755c2800976a26514678d03db9c1afd22e052cdb13c4b81a0f89e4e457";
     assert_eq!(
         hash.to_hex().to_string(),
         GOLDEN_BLAKE3,

@@ -84,6 +84,7 @@
 - [Fase medida sozinha melhora e piora o produto — meça pela PORTA](feedback_a_phase_measured_alone_can_improve_and_make_the_pipeline_worse.md) · [correlação perfeita ainda é N amostras](feedback_a_perfect_correlation_across_the_whole_corpus_is_still_n_samples.md)
 - [N fontes: comparação CRUZADA](feedback_n_sources_need_the_cross_check_not_n_self_checks.md)
 - [Ofício de gate (32)](reference_topic_gate_discipline.md)
+- [A cerca fica no lado PERIGOSO, não nos dois](feedback_the_fence_goes_on_the_dangerous_side_not_on_both.md)
 - [Folga num teto = tamanho do ponto cego; meça a DIFERENÇA](feedback_a_slack_term_in_a_ceiling_is_the_size_of_the_blind_spot.md) · [defeito só de CUSTO: contador no produto, lido num binário só](feedback_a_cost_only_defect_is_invisible_to_every_output_gate.md) · [teste que ficou lento = medição de custo](feedback_a_test_that_got_slow_is_a_cost_measurement_nobody_asked_for.md) · [laço que republica o objecto paga o que não lê](feedback_a_loop_that_republishes_the_whole_object_every_round_pays_for_what_it_never_reads.md)
 - [Gate sobre o que o relatório PUBLICA ≠ o que o produto DIVIDE — derive do efeito](feedback_a_gate_on_the_reported_quantity_is_green_when_the_product_divides_by_the_other.md) · [Denominador acima da curvatura é lento; abaixo é `inf`](feedback_a_denominator_above_the_curvature_is_slow_below_is_inf.md)
 - [«Todos menos o dono»: a RAIZ é quem fica sem dono](feedback_the_member_that_must_move_is_the_one_left_without_an_owner.md)
@@ -93,7 +94,6 @@
 - [Mapa que o tick apaga se ABRE, não se procura](feedback_a_map_the_tick_clears_must_be_opened_not_looked_up.md) · [máquina de runtime nasce SEMEADA pelo mundo](feedback_a_runtime_machine_must_be_seeded_by_the_world_it_drives.md)
 - [A 4ª pergunta de seam é a SEQUÊNCIA](feedback_the_three_ui_seam_questions_miss_the_fourth_the_sequence.md)
 - [Pintar/agarrar: UMA porta](feedback_paint_and_hit_test_must_project_through_one_door.md) · [hit-test próprio herda a REGIÃO](feedback_a_consumer_that_bypasses_the_hit_index_inherits_the_region_question.md) · [blindar o hit-index muda as sondas](feedback_shielding_the_hit_index_changes_what_every_probe_measures.md)
-- [Costura de UI (13)](reference_topic_ui_seam_discipline.md)
 - [Declarar cura a MENSAGEM, não o congelamento — o compositor é o 2.º observador](feedback_whoever_freezes_the_loop_declares_it_and_a_computation_freezes_too.md)
 - [Costura de UI (13)](reference_topic_ui_seam_discipline.md) · [seção partilhada regride quem chegou primeiro](feedback_a_shared_section_header_is_a_regression_to_whoever_arrived_first.md)
 - [Ler a regra ≠ lado certo dela](feedback_reading_the_rule_is_not_the_same_as_being_on_the_right_side_of_it.md) · [clique ALTERNA, retângulo SOMA](feedback_a_click_toggles_a_marquee_adds_and_the_asymmetry_is_the_law.md)
@@ -101,14 +101,12 @@
 - [Fileira condicional: CHAVE, não índice](feedback_a_conditional_row_turns_every_index_based_dispatch_into_a_silent_bug.md) · [«acabou» lê igual a «pausado»](feedback_stopped_because_it_ended_reads_the_same_as_stopped_by_hand.md)
 - [Seed dono do VALOR, dispatch do ESTADO](feedback_the_seed_owns_the_value_the_dispatch_owns_the_state.md) · [desigualdade ≠ oráculo](feedback_an_inequality_accepts_a_whole_interval_only_an_oracle_accepts_an_answer.md)
 - [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [mudar o modelo re-pergunta o que cada gate mede](feedback_a_model_change_must_re_ask_what_every_gate_still_measures.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
-- [FEITO ≠ ENTREGUE — sonda no consumidor](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) · [2 falhas refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md)
-- [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md)
-- [Gates escritos de UMA camada: as outras ficam sem mutação — conte as camadas](feedback_gates_written_from_one_layer_leave_every_other_layer_unmutated.md) — e o irmão: um MODAL de tela cheia não é um painel, e quem agarra input antes do chrome deve-lhe uma pergunta
-- [Afirmação que mutação nenhuma mata](feedback_a_claim_no_mutation_can_kill_is_a_claim_about_nothing.md) · [segurança precisa da metade JUSTA](feedback_a_safety_claim_needs_its_fairness_half_or_a_conservative_mutation_survives.md)
 - [FEITO ≠ ENTREGUE — sonda no consumidor](feedback_counting_the_work_done_is_not_counting_the_work_delivered.md) · [gate sobre a MARCA ≠ sobre o FIM](feedback_a_gate_on_the_mark_i_chose_is_green_when_the_marks_premise_is_false.md) · [2 falhas refutam a FAMÍLIA](feedback_two_good_hypotheses_failing_refutes_the_family_not_the_two.md)
-- [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
+- [Provas de mutação (7) — 3 controles no arnês](reference_topic_mutation_proofs.md) · [escrevo a guarda certa e não a gateio (3×)](feedback_i_write_the_right_guard_and_do_not_gate_it.md) · [filtro que casa ZERO imprime «SOBREVIVEU»](feedback_a_mutation_proof_needs_a_control_on_its_own_filter.md)
+- [Gates escritos de UMA camada: as outras ficam sem mutação — conte as camadas](feedback_gates_written_from_one_layer_leave_every_other_layer_unmutated.md) — e o irmão: um MODAL de tela cheia não é um painel, e quem agarra input antes do chrome deve-lhe uma pergunta
 - [Gate que compara DUAS construções é cego à mutação partilhada — a lei pede ORÁCULO](feedback_a_gate_that_compares_two_constructions_is_blind_to_a_shared_mutation.md)
 - [Restore com mtime deixa o cargo STALE](feedback_a_mutation_restore_that_preserves_mtime_leaves_cargo_stale.md) · [metade nova torna a antiga inobservável](feedback_a_new_half_can_make_the_old_half_unobservable.md)
+- [Changelog descreve o que ANUNCIARAM, não o que o nosso código encosta](feedback_a_changelog_describes_what_the_authors_announced_not_what_our_code_touches.md) · [tipo que força uma decisão paga-se quando a plataforma deixa de a forçar](feedback_a_type_that_forces_a_decision_today_pays_when_the_platform_stops_forcing_it.md)
 - [Reproduza o resultado alheio antes do seu insumo](feedback_reproduce_the_foreign_tools_own_result_before_feeding_it_yours.md)
 - [Oráculo (9)](reference_topic_oracle_discipline.md) · [fixture (6)](reference_topic_fixture_discipline.md) · [onde os objetos NASCEM](feedback_where_new_objects_are_born_is_the_fixture_your_gates_are_missing.md)
 - [Protocolo de auditoria (6)](reference_topic_audit_protocol.md)
@@ -129,6 +127,7 @@
 
 ## Arquitetura / norte / perf
 - [Conteúdo de asset é PARTILHADO; per-objeto é QUAL asset](feedback_the_content_of_an_asset_is_shared_only_which_asset_is_per_object.md)
+- [«O mais recente possível» ≠ «o mais recente»: conte os TETOS](feedback_the_newest_possible_is_not_the_newest_count_the_ceilings_first.md) · [duas cópias podem ser o MECANISMO, não resíduo](feedback_two_copies_of_a_dependency_can_be_the_mechanism_not_the_residue.md)
 - [Dois motores, um estado](feedback_two_engines_one_state_is_worse_than_a_slow_engine.md) · [contrato congelado escolhe a arquitetura](feedback_frozen_contract_can_pick_the_architecture.md)
 - [Tipo em N sítios → componente opcional](feedback_widely_constructed_type_favors_optional_component_over_appended_field.md) · [a representação apaga o caso especial](feedback_the_representation_can_delete_the_special_case.md)
 - [Invariante na DERIVAÇÃO](feedback_enforce_the_invariant_at_the_derivation_not_at_each_gesture.md) · [marca de evento é canal próprio](feedback_a_transient_event_marker_is_its_own_channel.md)

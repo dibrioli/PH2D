@@ -42,7 +42,7 @@ crates/ph2d-painter-brush/
   tests/architecture_painter_contract_surface.rs  # caps de ADR-0043 + 0044
 ```
 
-Dep `ph2d-gpu` (wgpu 28 wrapper) carrega o pipeline GPU; `bytemuck` garante Pod+Zeroable de `Stamp`. Sem dep direta de `ph2d-editor-core` — o crate `ph2d-tool-painter` (ADR-0043) consome `Brush`/`BrushHandle`/`StampPipeline` e cuida do binding com Tool/RasterEditTool.
+Dep `ph2d-gpu` (wgpu 28 wrapper *— hoje **wgpu 29.0.4**, [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)*) carrega o pipeline GPU; `bytemuck` garante Pod+Zeroable de `Stamp`. Sem dep direta de `ph2d-editor-core` — o crate `ph2d-tool-painter` (ADR-0043) consome `Brush`/`BrushHandle`/`StampPipeline` e cuida do binding com Tool/RasterEditTool.
 
 ### 2.2 `Brush` struct — modelo de cap duplo (top-level + sub-structs)
 

@@ -9,6 +9,39 @@
 
 ---
 
+## ⚠️ EMENDA 1 — 2026-08-29: o pin SUBIU, e a rejeição da §4.5 foi REVOGADA
+
+> **Emendado por:** [ADR-0168 — O stack sobe até os TETOS](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md) (Accepted, 2026-08-29).
+> **O corpo abaixo fica intacto de propósito** — é ele que explica *por que* o pin existiu. O que
+> mudou está aqui, e **só aqui**.
+
+| o que o corpo diz (2026-05-29) | o que vale HOJE (2026-08-29) |
+|---|---|
+| `vello` **0.8** (§2.1 · §2.11 · §3.2 · §4.3) | **`vello 0.10.0`** |
+| `wgpu` **28** (§2.1 · §2.11) | **`wgpu 29.0.4`** — uma só cópia na árvore |
+| §4.5 «Vello 0.9 / wgpu 29 upstream (**rejeitada** — pin deliberado)» | ⛔ **a rejeição foi REVOGADA** — a alternativa foi **adoptada e já ultrapassada** (estamos acima de 0.9 no vello) |
+| «Upgrade plano em **W18 FREEZE event**» (§2.1 · §3.2) | o upgrade aconteceu na jornada `chore/stack-upgrade-2026-08`; **não há W18 FREEZE pendente** |
+
+⛔ **Os dois caps de VERSÃO da tabela §2.11 estão SUPERSEDIDOS** — `Vello version pin = 0.8` e
+`wgpu version pin = 28` **não descrevem o repo desde 2026-08-29**, e não são para restaurar. Os
+outros quatro caps daquela tabela (frame budget 3.5 ms · LRU boolean 50 MB · resolução SDF ·
+tamanho máximo do linesweeper) **não foram tocados** por esta emenda e seguem valendo.
+
+⭐ **O teto de hoje, MEDIDO em 2026-08-29** (ADR-0168 §1): o `vello 0.10.0` é a versão **mais
+recente publicada** e pede `wgpu ^29.0.3`; o `wgpu 30.0.1` existe e é **inalcançável** enquanto isso
+durar. O `vello` é o **único** terceiro a segurar o `wgpu` nesta árvore — nenhum `egui`, nenhum
+`wgpu-profiler`. ⇒ *A recusa cai no dia em que sair um `vello` > 0.10.0 que peça `wgpu ^30`; nada
+mais precisa de mudar do nosso lado.* ⚠️ Forçar o `wgpu` 30 hoje **não dá erro de resolução** — dá
+**duas cópias**, e o `Device`/`TextureFormat` que a `vello_pass.rs` atravessa deixa de compilar.
+
+⚠️ Este ADR já aparece no índice como **⛔ superseded por [ADR-0108](0108-vector-reposition-rive-referenced-native-editor-first.md)**
+(o cutover vetorial aposentou a *ambição operacional* de 0056..0068). A emenda fica mesmo assim,
+porque o render Vello é o que a ADR-0108 **re-funda** em vez de apagar: o pipeline descrito abaixo
+continua a ser o que desenha, e é por isso que um pin falso aqui ainda pode fazer alguém reverter o
+stack inteiro.
+
+---
+
 ## 1. Contexto
 
 Vector Module deve renderizar em **frame budget 3.5 ms** (HR-4 sub-budget Render) com **paridade visual cross-platform** + **infinite zoom** + **integração runtime de jogo**. Decisões fundamentais:
@@ -23,6 +56,10 @@ Vector Module deve renderizar em **frame budget 3.5 ms** (HR-4 sub-budget Render
 ## 2. Decisão
 
 ### 2.1 Vello 0.8 pinado (paridade SKILL_Stack §5)
+
+> ⛔ **HISTÓRICO — este pin JÁ NÃO VALE. Veja a EMENDA 1 no topo deste ficheiro.** Desde
+> **2026-08-29** o repo está em **`vello 0.10.0` + `wgpu 29.0.4`** ([ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)),
+> e não há W18 FREEZE pendente. O parágrafo abaixo é o registo da decisão de 2026-05-29.
 
 Pin deliberado **Vello 0.8** + **wgpu 28** (não upstream 0.9/29). Upgrade plano em W18 FREEZE event (vide §11.C Antigravity 2ª iter L2F2 — pin preserved).
 
@@ -138,10 +175,15 @@ Gate `tests/budget/vector_frame_budget_scenarios.rs`.
 
 ### 2.11 Caps congelados
 
+> ⛔ **AS DUAS PRIMEIRAS LINHAS DESTA TABELA ESTÃO SUPERSEDIDAS — veja a EMENDA 1 no topo deste
+> ficheiro.** Desde **2026-08-29** o pin é **`vello 0.10.0` + `wgpu 29.0.4`**
+> ([ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+> **Os outros quatro caps continuam válidos.**
+
 | Cap | Valor | Razão |
 |---|---|---|
-| Vello version pin | **0.8** | Paridade SKILL_Stack §5; upgrade plano W18 FREEZE event |
-| wgpu version pin | **28** | Paridade Vello 0.8 |
+| Vello version pin | **0.8** | ⛔ **SUPERSEDIDO (2026-08-29 → 0.10.0, ADR-0168)** · era: paridade SKILL_Stack §5; upgrade plano W18 FREEZE event |
+| wgpu version pin | **28** | ⛔ **SUPERSEDIDO (2026-08-29 → 29.0.4, ADR-0168)** · era: paridade Vello 0.8 |
 | Frame budget render sub-allocation | **3.5 ms** | HR-4 |
 | Boolean cache LRU | **50 MB** | Balance speed vs memory |
 | SDF resolution default | **2× canvas DPI** | ADR-0065 detalha |
@@ -190,7 +232,13 @@ Escrever próprio compute pipeline. **Por que rejeitada**: Vello 0.8 é state-of
 
 Clipper2 é mature. **Por que rejeitada**: quebra em near-tangent / coincident edges (real-world vector art hits constantly). Linesweeper Joe Neeman aborda esses casos com ordering-first approach. Fallback Clipper considerado em emergência apenas.
 
-### 4.5 Vello 0.9 / wgpu 29 upstream (rejeitada — pin deliberado)
+### 4.5 Vello 0.9 / wgpu 29 upstream (rejeitada — pin deliberado) · ⛔ REJEIÇÃO REVOGADA (2026-08-29)
+
+> ⛔ **ESTA REJEIÇÃO NÃO VALE MAIS — veja a EMENDA 1 no topo deste ficheiro.** A alternativa foi
+> **adoptada e já ultrapassada**: em **2026-08-29** o repo subiu para **`vello 0.10.0` + `wgpu 29.0.4`**
+> ([ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+> O parágrafo abaixo é o registo de por que a rejeição fazia sentido em 2026-05-29 — **não é uma
+> instrução corrente, e não é motivo para reverter o stack.**
 
 Antigravity 2ª iter L2F2 sugeriu upgrade. **Por que rejeitada parcial**: SKILL_Stack §5 pin é deliberado para paridade Painter + MSRV. Upgrade W18 FREEZE event coordenado.
 

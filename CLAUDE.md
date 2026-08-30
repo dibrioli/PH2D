@@ -139,6 +139,14 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   dos markdowns eram inalcançáveis a partir deste roteador. ⛔ `docs/Pixel Art/` e `docs/Tilling/`
   ficam de fora **por decisão do Enio** (estão no `.gitignore`: MVPs paralelos ainda sem associação
   com o PH2D) — o §5 não as mencionar **não é buraco, é o produto de uma decisão**.
+- ⚠️ **O stack subiu em 2026-08-29** (`wgpu` 29 · `vello` 0.10 · `parley` 0.11 · `bevy_ecs` 0.19 ·
+  `rapier2d` **0.35**, cuja matemática deixou de ser `nalgebra` e passou a `glam`/`glamx` — o vocabulário
+  vive em [`rmath.rs`](crates/ph2d-physics/src/rmath.rs) e ⛔ `Point`/`Isometry`/`Translation` **não
+  existem**). ⛔ **O que NÃO subiu ficou por MEDIÇÃO, não por preguiça** — o `wgpu` 30 é inalcançável
+  enquanto o `vello` pedir `^29.0.3`, e unificar o `glam` desligaria o SIMD de 8 crates de desenho:
+  [ADR-0168](docs/architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)
+  + [registo](docs/Atualizar%20Stack/04_registro.md). ⚠️ **Antes de responder «dá para atualizar X?»,
+  corra `bash scripts/stack-audit.sh --tetos`** — o `ship.sh` já o imprime antes do veredito de push.
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
 - ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
   «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,
@@ -180,6 +188,10 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [`ph2d-tool-painter`](crates/ph2d-tool-painter/) — uma delas com doc a dizer-se *"imune à deriva
   da máquina"* por medir uma RAZÃO, que é precisamente o que o fan-out quebra) ·
   `only_the_lower_row_breathes_and_it_moves_with_the_playhead` (demos de áudio, «max delta 0») ·
+  `an_abandoned_march_returns_nothing_and_returns_fast`
+  ([`ph2d-field-render`](crates/ph2d-field-render/src/tests.rs) — mede um relógio de desistência) ·
+  `emitter_sim_ceiling_probe` ([`ph2d-gpu-cook`](crates/ph2d-gpu-cook/tests/gpu_cpu_parity_sim.rs) —
+  ⚠️ **`#[ignore]`, logo o CI nunca o correu**; os dois medidos em 2026-08-29, na subida do stack) ·
   a família `flip_smooth::resample_measurement::precisao::orcamento` — **3 testes** em
   [`flip_fit_budget_tests.rs`](shells/desktop/src/flip_fit_budget_tests.rs), medida 22/08 pela
   `line/3DModeling` e confirmada 23/08 pela `line/sculpt3d`, com a falha a MUDAR de teste entre

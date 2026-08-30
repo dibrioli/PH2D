@@ -9,7 +9,7 @@
 
 | # | Status | Decisão |
 |---|---|---|
-| [0003](0003-ecs-choice.md) | Accepted (rev2) | Escolha de ECS — bevy_ecs 0.18 |
+| [0003](0003-ecs-choice.md) | Accepted (rev2) | Escolha de ECS — bevy_ecs 0.18 *(hoje **0.19** — ADR-0168)* |
 | [0019](0019-spike-scripting-output.md) | Accepted | Output do spike de scripting (2026-05) |
 | [0020](0020-amendment-1.md) | Accepted (2026-05-29) | ADR-0020 Amendment 1 — Metal Direct Overlay + `PlatformHost::register_metal_overlay()` extension |
 | [0020](0020-surface-lifecycle.md) | Accepted | Surface lifecycle e device-lost recovery |

@@ -59,7 +59,7 @@ disallowed-types = [
 
 **Aceitas:**
 - LLM gerando código vai topar com erro cedo se usar `HashMap` em simulation crate. Erro mensagem clara via `reason` no clippy.toml.
-- `bevy_ecs::EntityHashMap` torna-se padrão para lookup por Entity (já é o canônico em bevy_ecs 0.18 idiomatic).
+- `bevy_ecs::EntityHashMap` torna-se padrão para lookup por Entity (já é o canônico em bevy_ecs 0.18 idiomatic) *(hoje **0.19** — ADR-0168; o `EntityHashMap` continua a ser o canónico)*.
 - Custo zero em runtime (lint, não código gerado).
 
 **Negadas:**

@@ -20,6 +20,15 @@ os ângulos. É o degrau que separa "um editor de física" de "um editor de anim
 personagem", e o `rapier2d 0.28` já traz o miolo matemático
 (`Multibody::inverse_kinematics`, mínimos quadrados amortecidos sobre o jacobiano).
 
+> ⚠️ **Emenda (2026-08-29 — [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)):**
+> hoje é **`rapier2d 0.35.3`**, e o `Multibody::inverse_kinematics` continua a ser o miolo — a
+> decisão deste ADR não muda. ⛔ **Mas o vocabulário matemático mudou:** `Point`/`Isometry`/
+> `Translation` **já não existem** (a rapier passou de `nalgebra` para `glam` via `glamx 0.3`), e a
+> casa fala `Pose` · `Rotation` · `Vector` — ver a **EMENDA 1 da
+> [ADR-0131](0131-physics-global-runtime-truth-rapier-ecs-bridge.md)** e a porta
+> [`crates/ph2d-physics/src/rmath.rs`](../../../crates/ph2d-physics/src/rmath.rs). Um exemplo de
+> código deste ADR escrito no vocabulário antigo **não compila**.
+
 ## 2 — A tensão de arquitetura
 
 O módulo simula com **`ImpulseJoint`**: cada joint é uma *restrição* que o solver negocia a cada

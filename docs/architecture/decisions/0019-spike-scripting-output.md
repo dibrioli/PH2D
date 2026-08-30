@@ -17,8 +17,8 @@ Premissa existencial: **LLM como único programador**. Critérios C8/C15/C16 tes
 
 Detalhes:
 
-1. **ECS canônico:** `bevy_ecs = "0.18"` (ratificado em [ADR-0003-rev2](0003-ecs-choice.md), pós-correção do bug de fixture C11).
-2. **Linguagem de scripting:** Luau strict via `mlua 0.10` (feature `luau`). Bytecode pré-compilado no ship build (Compiler O2, debug=0).
+1. **ECS canônico:** `bevy_ecs = "0.18"` (ratificado em [ADR-0003-rev2](0003-ecs-choice.md), pós-correção do bug de fixture C11). *(hoje **0.19.1** — ADR-0168.)*
+2. **Linguagem de scripting:** Luau strict via `mlua 0.10` (feature `luau`). Bytecode pré-compilado no ship build (Compiler O2, debug=0). *(hoje **mlua 0.12** — ADR-0168.)*
 3. **Hot reload:** reset+restore Defold-style via `postcard` + `blake3`. Determinístico em 100/100 ciclos.
 4. **Mensageria:** estilo Defold com hash interning, FIFO same-sender→same-target. Schema opcional em dev.
 5. **Bridge Luau↔WASM:** Luau chama Rust; Rust chama wasmtime (single FFI boundary). Marshalling primitivo p99 = 0.21µs.
@@ -74,6 +74,11 @@ Detalhes completos em [`docs/spike/2026-05-report.md`](../../spike/2026-05-repor
 
 - **§11.7 reescrito** refletindo Luau + bevy_ecs + reset+restore + coroutines + WASM bridge. Status mudou de "EM REVISÃO" para "Ratificado por spike 2026-05".
 - **§5 stack canônico** mantém versões pinadas (mlua 0.10, bevy_ecs 0.18, wasmtime 44).
+  > ⛔ **NÃO é o estado de hoje.** Essas eram as versões pinadas em **2026-05-08**, o dia do spike.
+  > Desde **2026-08-29** a §5 traz **`mlua 0.12` · `bevy_ecs 0.19` · `wasmtime 48`**
+  > ([ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+  > ⚠️ **Leia a §5 do `SKILL_Stack`, nunca esta linha, para saber onde o stack está** — um ADR
+  > descreve o dia em que foi escrito.
 - **HR-16 e HR-17** já estavam integradas em §9; spike validou (HR-16 via storage lateral em C4; HR-17 via fixture compilation em C8).
 
 ## Aprendizados não previstos

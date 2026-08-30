@@ -6,6 +6,12 @@
 **Implementador:** Claude Opus 4.7 (1M context)
 **Depende de:** [ADR-0003 (bevy_ecs 0.18)](0003-ecs-choice.md), [ADR-0021 (Sim ↔ Present)](0021-simulation-presentation-boundary.md), [ADR-0019 (Luau ratificado)](0019-spike-scripting-output.md)
 
+> ⚠️ **Emenda (2026-08-29 — [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)):
+> onde este ADR escreve `bevy_ecs 0.18`, leia hoje `bevy_ecs` **`0.19.1`** — nas seis ocorrências
+> (cabeçalho · §Contexto · §Decisão · tabela de vocabulário · §Hierarquia · §Referências).**
+> ⭐ **O modelo de GameObject não mudou por causa disso**, e o facto que ele apoia continua exacto:
+> o `ChildOf` é relationship *built-in* do `bevy_ecs` — era em 0.18, é em 0.19. Só o número caducou.
+
 ## Contexto
 
 O SKILL e os ADRs anteriores fixaram o **substrato** (`bevy_ecs 0.18` + dois worlds com extract one-way) e a **linguagem de gameplay** (Luau strict via mlua), mas não definiram a **fachada de autoria** — o que o usuário do editor e o scripter Luau veem como "uma coisa no mundo". Sem essa decisão, três caminhos disputam:

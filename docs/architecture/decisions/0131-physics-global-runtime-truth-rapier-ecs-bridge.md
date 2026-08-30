@@ -14,6 +14,28 @@
 
 ---
 
+## ⚠️ EMENDA 1 — 2026-08-29: caducou o NÚMERO **e** o VOCABULÁRIO
+
+> **Emendado por:** [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md).
+> Onde este ADR escreve **`rapier2d 0.28`**, leia hoje **`rapier2d 0.35.3`** (com `parry2d 0.30.2`).
+>
+> ⛔ **E não é só o número — a matemática deixou de ser `nalgebra`.** A dimforge trocou para o
+> `glam` (via `glamx 0.3`), e o `parry` **apagou** os tipos `Point`, `Isometry` e `Translation`.
+> O vocabulário da casa passou a **`Pose` · `Rotation` · `Vector` · `Real`**, com a tabela de
+> tradução e o aviso numa porta só:
+> [`crates/ph2d-physics/src/rmath.rs`](../../../crates/ph2d-physics/src/rmath.rs).
+> ⚠️ Um trecho escrito contra o vocabulário antigo **não compila** — e o risco maior é o que
+> compila: `Point` e `Vector` são hoje **o mesmo tipo**, então a rede que o compilador dava contra
+> confundir *um lugar* com *um deslocamento* **desapareceu** (mecanismo no `rmath.rs`).
+>
+> ⭐ **A decisão deste ADR não mudou**: runtime-truth + bake opcional, ponte ECS,
+> `enhanced-determinism` ON e o gate de hash cross-OS continuam exactamente como escritos abaixo.
+> ⛔ E a ADR-0168 **recusou por medição** desligar o `enhanced-determinism` (parte o
+> `physics_ecs_c9` entre os três sistemas) e unificar o `glam` em 0.33 (imporia `scalar-math` a
+> oito crates de desenho, por zero usos medidos).
+
+---
+
 ## Contexto
 
 O PH2D é uma **Power House Game Engine 2D** com subsistemas peer que têm painel próprio — Painter,

@@ -342,6 +342,49 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
 
+## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
+
+### §16.1 — Feito
+
+- **G1** — [ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md),
+  que regista **as recusas**, não as subidas.
+- **G2** — o `stack-audit.sh` virou **passo** no `ship.sh`, imprimindo a saída **inteira** antes do
+  veredito de push. ⚠️ **Não como um `run`/`✓`:** ele sai `0` sempre, e um ✓ diria só *«correu»*.
+- **G5** — uma linha no §5.0 do `CLAUDE.md` + os **dois membros novos** da família de flakes de
+  carga (`an_abandoned_march_returns_nothing_and_returns_fast` ·
+  `emitter_sim_ceiling_probe`, este ⚠️ `#[ignore]`, logo o CI nunca o correu).
+- **G6** — cinco memórias, cada uma uma lição que sobrevive a este stack.
+- **A varredura de afirmações caducadas** — ~70 sítios em 4 frentes paralelas. Os dois achados que
+  não eram números: ⛔ o **ADR-0059** tinha uma tabela de *«caps congelados»* a dizer `vello 0.8 /
+  wgpu 28` e uma §4.5 a listar *«vello 0.9 / wgpu 29 — rejeitada»* — **um ADR aceite a proibir o
+  estado em que o repo está hoje**; e o `SKILL_Stack` declarava o `rodio` como dependência do
+  áudio, quando ele **não existe na árvore**.
+  ⭐ **Ausência confirmada, e vale:** o `CLAUDE.md` estava **limpo**, e **nenhuma Hard Rule
+  HR-1..HR-18 cita versão** — o contágio por ID que se temia não existe.
+
+### §16.2 — ⏳ Aberto, e de quem é
+
+| item | de quem | nota |
+|---|---|---|
+| **G3** — `./scripts/ship.sh` inteiro | ⛔ **Enio** | é o portão de paridade com o CI; correr ≠ pushar, mas o push é dele (§0.7) |
+| **G4** — rebase das 6 worktrees | ⛔ **Enio** | as linhas estão em `main` anterior e o `target/` delas está frio; ordem explícita dele |
+| **o smoke** | ⛔ **Enio** | ver §16.3 — é onde ele aprende o que mudou |
+| `MEMORY.md` acima do teto | LLM, wave própria | **25,0 KB / 148 linhas** contra o teto declarado de ~17 KB / 140. ⚠️ **Já estava assim antes desta jornada**; ela deixou-o **menor** do que o encontrou (fundidas 4 linhas duplicadas, com prova de que os **226 alvos únicos** são idênticos antes e depois). Compactá-lo a sério é obra separada |
+| 3 notas de **re-verificação** deixadas nos docs | quem tocar no módulo | o `y_offset` do glifo (parley 0.11 inverteu o sinal), o meio-pixel do vello e a forma do `QueryPipeline` — a versão nova pode ter mudado a **conclusão**, não só o número |
+
+### §16.3 — ⚠️ O que o smoke tem de olhar, e por quê
+
+Cada item é uma mudança de plataforma que **compila** e só se vê na tela:
+
+1. **Imagens meio pixel fora do sítio** — o `vello` 0.9 corrigiu a amostragem; o que estava
+   compensado à mão passa a estar deslocado. Mais visível na pré-visualização de pixel art.
+2. **«Smooth» ficou mais nítido** — o `ImageQuality::High` passou a ser bicúbico a sério (Mitchell).
+3. **Acentos** — o `parley` 0.11 inverteu o sinal do `y_offset` do glifo.
+4. **Os diálogos de ficheiro** (`rfd` 0.17) — *Save*, *Save As…*, *Open Project…*, *Import…*.
+5. **Som de verdade** (`cpal` 0.18).
+6. **O tato da física** (`rapier` 0.35, solver reescrito) — sobretudo pilhas em repouso.
+7. **Plataforma cinemática a carregar** — ~4% de atraso medido, registado no §14.
+
 ## §15 — ⛔⛔ A tarefa **F1** (`glam` 0.30 → 0.33) é uma RECUSA MEDIDA (2026-08-29)
 
 O plano mandava unificar o `glam`. **Não deve ser feito**, e a razão só apareceu depois do bloco E.

@@ -1,4 +1,4 @@
-# ADR-0003: Escolha de ECS — bevy_ecs 0.18
+# ADR-0003: Escolha de ECS — bevy_ecs 0.18 *(hoje **0.19** — ADR-0168)*
 
 **Status:** Accepted (rev2)
 **Data:** 2026-05-08 (rev2 abertura), 2026-05-08 (rev2 decisão)
@@ -15,6 +15,11 @@ Como a decisão é arquitetural e custa semanas para reverter, o critério C11 d
 ## Decisão
 
 **ECS canônico = `bevy_ecs = "0.18"`**, conforme proposto originalmente. flecs-rs descartado para uso canônico.
+
+> ⚠️ **Emenda (2026-08-29 — [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)):
+> o NÚMERO caducou, a DECISÃO não.** O ECS canónico continua a ser o `bevy_ecs`; a versão pinada
+> hoje é **`0.19.1`**. Tudo o que este ADR mede **em** 0.18 (o C11, o binary size, a nomenclatura
+> de observers) é registo correcto do dia da decisão e **fica como está**.
 
 ## Justificativa baseada em medição (C11)
 
@@ -60,7 +65,7 @@ LLM-as-sole-developer (Claude 4.7+) experimentou ambos APIs durante implementaç
 ## Consequências
 
 **Aceitas:**
-- `crates/ph2d-ecs` será populado com wrapper sobre `bevy_ecs = "0.18"`.
+- `crates/ph2d-ecs` será populado com wrapper sobre `bevy_ecs = "0.18"` *(hoje **0.19.1** — ADR-0168)*.
 - `Plugin` model canônico em PH2D segue o `bevy_ecs::plugin::Plugin`.
 - Componentes ECS serão `#[derive(Component)]` do bevy_ecs.
 - Lifecycle hooks via `Component::on_add` / `on_remove` (não via observers — vide bug não-resolvido abaixo).
@@ -82,7 +87,7 @@ LLM-as-sole-developer (Claude 4.7+) experimentou ambos APIs durante implementaç
 
 ## Alternativas consideradas
 
-### bevy_ecs 0.18 (escolhida)
+### bevy_ecs 0.18 (escolhida) *(hoje **0.19** — ADR-0168)*
 - **Pró:** Rust puro sem `unsafe` FFI; scheduler paralelo automático; comunidade Rust gamedev majoritária; lifecycle hooks via `Component::on_remove` em 0.18; training data abundante para LLM (treinado até janeiro 2026); Reflect maduro; binary size mais enxuto.
 - **Contra:** API evolui rápido (breaking changes em cada minor); observers de lifecycle têm comportamento não-óbvio em fixtures complexas (vide bug Semana 1, pendente investigação).
 
@@ -103,7 +108,7 @@ LLM-as-sole-developer (Claude 4.7+) experimentou ambos APIs durante implementaç
 
 ## Próximos passos
 
-1. Atualizar SKILL §5 — `bevy_ecs = "0.18"` permanece (já está). Adicionar nota de "Decisão ratificada por ADR-0003-rev2".
+1. Atualizar SKILL §5 — `bevy_ecs = "0.18"` permanece (já está). Adicionar nota de "Decisão ratificada por ADR-0003-rev2". *(⚠️ a §5 está hoje em **`bevy_ecs 0.19`** — ADR-0168.)*
 2. Popular `crates/ph2d-ecs/src/lib.rs` com wrapper minimal (Plugin trait, World re-export, schedule helpers).
 3. Remover `tests/spike/src/bin/c11_flecs.rs` e dep `flecs_ecs` do `tests/spike/Cargo.toml` ao final do spike (preservar até ADR-0019 final).
 4. Investigar observer bug de bevy 0.18 na Semana 2 (parte de C4 hot reload setup).

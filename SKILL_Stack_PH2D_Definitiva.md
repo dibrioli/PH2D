@@ -57,7 +57,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 > ⚠️ **Antes de confiar num «Enforced by» de qualquer HR, leia o aviso no topo do §9:**
 > **12 das 18** nomeiam um executor que não existe com aquele nome (auditoria 2026-08-18).
 
-**Versão deste documento:** 2.15 — 2026-08-18 (auditoria multiagêntica: índice endereçável, os «Enforced by» conferidos contra o disco, os 4 tetos de LOC separados, 56 caminhos reapontados). O histórico das versões está no `git log` deste arquivo.
+**Versão deste documento:** 2.16 — 2026-08-29 (a **§5 inteira reconferida contra o `Cargo.lock`** após a subida de stack: toolchain 1.98, wgpu 29, vello 0.10, parley 0.11, bevy_ecs 0.19, rapier 0.35 — e três estados errados corrigidos: `linesweeper` e `taffy` estavam wired e a tabela dizia «planejada», o `rodio` nunca existiu). Anterior: 2.15 — 2026-08-18 (auditoria multiagêntica: índice endereçável, os «Enforced by» conferidos contra o disco, os 4 tetos de LOC separados, 56 caminhos reapontados). O histórico das versões está no `git log` deste arquivo.
 
 **Operação multi-agente:** o modo é **função do hardware** (DIRETRIZ v8.2; `bash scripts/hw-profile.sh` decide): tier `workstation` (Linux 128 GB) = **Modo L** — N linhas paralelas por `git worktree`, sem Coordenador de plantão (DIRETRIZ §1.5). **Integração e ship NÃO são autônomos — só por ordem EXPLÍCITA do Enio:** cada linha fecha o módulo, escreve um **handoff de integração** (§1.5.9) e PARA; o Enio junta os handoffs e abre **um agente integrador dedicado** que resolve todos os conflitos e funde via `--ff-only` + gate testado (§1.5.3–1.5.4). No Modo L, **foundational deixou de ser serial** ([ADR-0107](docs/architecture/decisions/0107-concurrent-foundational-lines-tested-gate-syntactic-merge.md)): qualquer linha toca foundational (com cuidado) sob merge sintático (Mergiraf, `scripts/mergiraf-setup.sh`) + **gate da árvore combinada** (`scripts/foundational-integrate.sh`) — e **ao CRIAR foundational novo, projete-o para isolamento** (módulo irmão / ponto de extensão append-only) pra várias linhas estenderem sem colidir; só contrato congelado e mesmo-símbolo de tipo-núcleo seguem seriais. tier `constrained` (Mac mini 8 GiB, sessões de smoke/hotfix) = **Modo C** — 1 Coordenador único + N Implementadores em shared tree (DIRETRIZ §1.1–1.4 + §7). Detalhe completo em [`docs/IntegracaoMultiAgente/DIRETRIZ.md`](docs/IntegracaoMultiAgente/DIRETRIZ.md). Narrativa histórica completa do problema multi-agente e as 4 waves de solução em [`docs/archive/multi-agente-pre-v6.0/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md`](docs/archive/multi-agente-pre-v6.0/Migracao/PARALLEL_AGENTS_PROBLEM_AND_SOLUTION.md).
 **Idioma canônico do projeto:** português brasileiro (código em inglês, comentários em inglês curto, conversa de design em pt-BR).
@@ -87,7 +87,7 @@ Lido cedo porque o resto do documento usa.
 - **IME** — Input Method Editor. Composição de texto para CJK, indispensável em produtos sérios.
 - **Lockstep** — modo de netcode determinístico onde todos clientes simulam o mesmo input, peer-to-peer.
 - **MCP** — Model Context Protocol (Anthropic). Servidor embutido que expõe operações da engine a LLMs.
-- **MSRV** — Minimum Supported Rust Version. Aqui: **1.95**, que é a própria toolchain pinada. ⚠️ O `1.92` que esta linha declarou por meses era FALSO: as deps (cranelift/wasmtime) exigem 1.94 e o nosso código usa `if let` guards, estáveis em 1.95 — e o job de CI que devia pegar isso **nunca rodou 1.92** (o `rust-toolchain.toml` vence o `rustup default`). Medido e corrigido em 2026-08-18; o invariante *MSRV == pin* é hoje o gate `architecture_msrv_is_the_pinned_toolchain`.
+- **MSRV** — Minimum Supported Rust Version. Aqui: **1.98**, que é a própria toolchain pinada. ⚠️ O `1.92` que esta linha declarou por meses era FALSO: as deps (cranelift/wasmtime) exigiam 1.94 e o nosso código usa `if let` guards, estáveis em 1.95 — e o job de CI que devia pegar isso **nunca rodou 1.92** (o `rust-toolchain.toml` vence o `rustup default`). Medido e corrigido em 2026-08-18, quando o pin era **1.95**; o pin subiu para **1.98** na subida de stack de 2026-08-29 e o MSRV foi junto, porque o invariante *MSRV == pin* é hoje o gate `architecture_msrv_is_the_pinned_toolchain`.
 - **MSL/SPIR-V** — Metal Shading Language e SPIR-V (alvos de compilação a partir de WGSL via naga).
 - **Platform-agnostic** — código que não conhece o SO. Toda interação com SO passa por trait `PlatformHost`.
 - **PlatformHost** — trait expondo serviços do SO (FS, IME, file picker, gamepad, áudio device, etc.) para o core.
@@ -133,34 +133,36 @@ Tabela definitiva. Hardware abaixo disso não é alvo — feature won't fix.
 
 ## 5. Stack canônico (versões pinadas)
 
-Versões verificadas em **2026-05-09** (pós-M11). Toolchain: `rust-toolchain.toml` channel `1.95`, MSRV `1.95` (= o pin, medido em 2026-08-18), resolver `"3"`. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
+Versões verificadas em **2026-08-29** (pós-subida do stack; conferidas linha a linha contra o `Cargo.lock`, que é a fonte — a verificação anterior era de 2026-05-09/pós-M11). Toolchain: `rust-toolchain.toml` channel `1.98`, MSRV `1.98` (= o pin; o invariante é gate desde 2026-08-18), resolver `"3"`. Adicionar dep fora desta tabela exige justificativa em PR + ADR se for não-trivial.
+
+⚠️ **«O mais recente possível» ≠ «o mais recente»:** rode **`bash scripts/stack-audit.sh --tetos`** antes de responder «dá para subir X?» — hoje **7** crates são seguradas por outra (o `vello` prende o `wgpu`; o `parley` prende o `skrifa` e o `accesskit`; o `rfd` prende o `pollster`), e forçar não dá erro de resolução, dá **duas cópias**.
 
 | Camada | Tecnologia | Crate / Lib | Versão | Status / Notas |
 |---|---|---|---|---|
-| Linguagem core | Rust 2024 edition | — | MSRV **1.95** (= a toolchain pinada) | `unsafe` requer justificativa em comentário; resolver = "3" |
-| GPU abstração | wgpu | `wgpu` | `28` | **Downgrade de 29 → 28 em M11** para alinhar com vello 0.8. Único path; sem fallback OpenGL |
-| GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `28` | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` (não wired ainda; M14+) |
-| Shading runtime | WGSL via naga | `naga` | acompanha `wgpu 28` | Backends: SPIR-V, MSL, HLSL, GLSL |
+| Linguagem core | Rust 2024 edition | — | MSRV **1.98** (= a toolchain pinada) | `unsafe` requer justificativa em comentário; resolver = "3" |
+| GPU abstração | wgpu | `wgpu` | `29.0.4` | ⚠️ **É um TETO, e o dono dele é o `vello 0.10`, que pede `^29.0.3`:** o `wgpu 30.0.1` existe e é **inalcançável** enquanto o vello não subir (`scripts/stack-audit.sh --tetos` imprime o dono). *Histórico:* a M11 fez o caminho inverso — **downgrade 29 → 28** para alinhar com o vello 0.8. Único path; sem fallback OpenGL |
+| GPU baixo nível (interop shell) | wgpu-hal | `wgpu-hal` | `29.0.4` (acompanha o `wgpu`) | Apenas em FFI shell↔core, isolado em `ph2d-gpu::interop` (não wired ainda; M14+) |
+| Shading runtime | WGSL via naga | `naga` | `29.0.4` (acompanha o `wgpu`) | Backends: SPIR-V, MSL, HLSL, GLSL |
 | Shading autoria avançada | Slang (opcional) | `shader-slang` | `0.1.x` (experimental) | Não wired ainda |
-| Vetorial GPU | Vello | `vello` | `0.8` (**alpha**, `default-features = false` + `wgpu`) | Rasterização 100% compute. Acessado via `vello::kurbo` / `vello::peniko` re-exports (kurbo 0.12, peniko 0.6) — declarar como dep direta arrisca version skew. Risco arquitetural — ver ADR-0004 |
-| Curvas / Bézier | kurbo | `kurbo` | `0.12` (via `vello::kurbo`) | Hit-test, offset, fitting. Boolean ops via `linesweeper`, NÃO `kurbo::PathOps` (não existe) |
-| Boolean ops vetorial | linesweeper | `linesweeper` | `beta` | Não wired ainda; M13+ |
-| Text shaping | parley + harfrust + skrifa | `parley` | `0.6` (alpha) | Shaping, BiDi, fallback. Integra nativamente com Vello via `parley::Layout` + `vello::Scene` |
-| Text editing widget | parley editor (ou custom) | `parley` | `0.6` | IME passa pelo `PlatformHost` (HR-1); não wired ainda |
-| ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.18` | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003-rev2 (Accepted) |
-| Math | glam | `glam` | `0.30` | SIMD habilitado |
+| Vetorial GPU | Vello | `vello` | `0.10.0` (**alpha**, `default-features = false` + `wgpu`) | Rasterização 100% compute. Acessado via `vello::kurbo` / `vello::peniko` re-exports (**kurbo 0.13.1, peniko 0.6.1**) — declarar como dep direta arrisca version skew. ⚠️ É ele que **segura o `wgpu` em 29** (linha acima). Risco arquitetural — ver ADR-0004 |
+| Curvas / Bézier | kurbo | `kurbo` | `0.13` (via `vello::kurbo`) | Hit-test, offset, fitting. Boolean ops via `linesweeper`, NÃO `kurbo::PathOps` (não existe) |
+| Boolean ops vetorial | linesweeper | `linesweeper` | `0.4` | ✅ **WIRED** em [`ph2d-vec-boolean`](crates/ph2d-vec-boolean/) (o único portão) + `shells/desktop` — ADR-0108 Fase 1. ⚠️ Esteve fixado em `0.3` por uma **recusa medida** que culpava as convenções novas da 0.4 (saída aproximada por omissão, sentido de winding) — MEDIDO em 2026-08-29: **a causa era nossa** (`Region::of` regularizava por `A ∪ A = A` e punha cada aresta com multiplicidade **2**; da 0.4 em diante uma multiplicidade PAR deixa de dissolver a aresta interna, e o power stroke saía em centenas de fragmentos). O par (versão, `expand.rs`) é **indivisível** |
+| Text shaping | parley + harfrust + skrifa | `parley` | `0.11.1` (alpha) | Shaping, BiDi, fallback. Integra nativamente com Vello via `parley::Layout` + `vello::Scene`. ⚠️ Ele **segura** o `skrifa` (`^0.44.0`) e o `accesskit` (`^0.24.0`) |
+| Text editing widget | parley editor (ou custom) | `parley` | `0.11.1` | IME passa pelo `PlatformHost` (HR-1); não wired ainda |
+| ECS | bevy_ecs (standalone) | `bevy_ecs` | `0.19` (lock `0.19.1`) | Sem o resto do Bevy. Plano de upgrade documentado em ADR-0003-rev2 (Accepted, escrito quando o pin era `0.18`) |
+| Math | glam | `glam` | `0.30.10` | SIMD habilitado. ⚠️ **Não é a única cópia na árvore:** o `rapier2d 0.35` traz um `glam 0.33.6` **transitivo** via `glamx 0.3` (linha dos rígidos) — os dois convivem de propósito, e um `Vec2` de um **não** é o do outro |
 | Janela / input desktop | winit | `winit` | `0.30` | **Apenas** em shell desktop; nunca no core. iOS/Android usam shells nativas |
-| UI layout | taffy / custom zones | `taffy` (planejada) / [`ph2d-editor::zones`](crates/ph2d-editor-core/src/zones.rs) (M12) | `0.10` (planejada) / 4-zone próprio (atual) | Layout 4-zonas Procreate-inspired escrito direto em ph2d-editor (ADR-0023). taffy entra se complexidade demandar (M13+) |
-| Acessibilidade | AccessKit | `accesskit` | `0.24` | M12 wired em [`ph2d-a11y`](crates/ph2d-a11y/). Adapters por OS (`accesskit_macos`/`accesskit_windows`/`accesskit_unix`) ficam em shells |
-| Rígidos | Rapier 2D | `rapier2d` | `0.28` (`default-features = false` + `dim2`/`f32`/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10 |
+| UI layout | taffy / custom zones | `taffy` / [`ph2d-editor::zones`](crates/ph2d-editor-core/src/zones.rs) (M12) | `0.14` (wired) / 4-zone próprio (atual) | ✅ O `taffy` **deixou de ser planejado**: ele é o motor de **auto layout** do vetor ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)), confinado à crate-folha [`ph2d-vec-layout`](crates/ph2d-vec-layout/) — a **única** porta dele na árvore (`default-features = false` + `std`/`taffy_tree`/`flexbox`/`grid`). O chrome do editor segue nas 4 zonas próprias (ADR-0023) |
+| Acessibilidade | AccessKit | `accesskit` | `0.24.1` | M12 wired em [`ph2d-a11y`](crates/ph2d-a11y/). Adapters por OS (`accesskit_macos`/`accesskit_windows`/`accesskit_unix`) ficam em shells. ⚠️ Teto: o `0.25.0` existe, seguro pelo `parley` |
+| Rígidos | Rapier 2D | `rapier2d` | `0.35` (`default-features = false` + `dim2`/`f32`/**`std`**/`enhanced-determinism`) | Determinístico em modo lockstep, fixed timestep. M10. ⚠️ **O `std` é obrigatório e não é decoração:** sem ele a crate compila e **186 gates desaparecem sem erro nenhum**. ⚠️ **A matemática do rapier deixou de ser `nalgebra`:** da 0.35 em diante ele calcula em **`glam` via `glamx 0.3`** (é daí que vem a 2ª cópia de `glam` na linha do Math) |
 | Soft body / cloth / rope | XPBD próprio em compute | `ph2d-physics-soft` (interno, **stub**) | — | Müller 2020. Modo determinístico via fallback CPU (ver §11.5). M13+ |
 | Fluidos | FLIP/PIC híbrido em compute | `ph2d-fluids` (interno, **stub**) | — | Não-determinístico por padrão; opt-out em modos com rollback. M13+ |
 | Iluminação | Radiance Cascades 2D | `ph2d-light` (interno, **stub**) | — | Sannikov 2023; Holographic RC (2025) em roadmap. M13+ |
-| Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.10` (feature `luau`) | Runtime por mundo; GC incremental p99 ~0.005ms (medido C10). Ratificado ADR-0019. M7 wired |
-| Hot path script | WASM | `wasmtime` | `44` (planejada) | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA. Não wired ainda; M13+ |
+| Scripting (gameplay) | Luau strict via mlua | `mlua` | `0.12` (feature `luau`) | Runtime por mundo; GC incremental p99 ~0.005ms (medido C10 sobre a `0.10` de então). Ratificado ADR-0019. M7 wired |
+| Hot path script | WASM | `wasmtime` | `48` | Winch (rápido instantiate) padrão; Cranelift opt-in para AAA. **Não wired no produto** — hoje só em `tests/spike/`; M13+ |
 | Networking transporte | QUIC | `quinn` | `0.11` (planejada) | Desktop/mobile. Não wired (`ph2d-net` é stub) |
 | Networking web | WebTransport-over-HTTP/3 | `web-transport-quinn` | `0.11` (planejada) | Crate auxiliar — quinn puro NÃO é WebTransport |
-| Áudio mixer | rodio + cpal | `rodio`, `cpal` | atual (planejadas) | `ph2d-audio` é stub. M13+ |
+| Áudio mixer | mixer próprio + cpal | `cpal` | `0.18` | ✅ **Wired na shell desktop** — o `cpal` é o dono do device do SO (HR-1) e a nossa mixagem enche o buffer do callback dele. ⚠️ **O `rodio` NÃO existe na árvore** (esta linha o listou como planejado por meses) e o **`ph2d-audio` já não é stub** — vide o rack de 42 efeitos em `ph2d-audio-edit` e as crates irmãs (`-decode`/`-encode`/`-spectral`/`-stream`/`-ml`/`-opus`) |
 | Gamepad | gilrs (desktop), nativo (mobile) | `gilrs` | `0.11` | M8 wired em shells/desktop |
 | Serialização binária | postcard | `postcard` | `1` | Assets, snapshots, save files |
 | Serialização texto | serde JSON | `serde`, `serde_json` | atual | Apenas dev (cenas, configs); não shipping |
@@ -168,6 +170,7 @@ Versões verificadas em **2026-05-09** (pós-M11). Toolchain: `rust-toolchain.to
 | Logging | tracing | `tracing`, `tracing-subscriber` | `0.1`/atual | Spans estruturados |
 | Profiling in-app | puffin | `puffin` | atual (planejada) | Editor overlay; sem release |
 | Profiling externo | tracy | `tracy-client` | atual (planejada) | Apenas com feature `tracy` |
+| Bench | criterion | `criterion` | `0.8` (`default-features = false`) | Dev-dep. Frame budget bench (§16); baseline em git, regressão > 5% falha no CI |
 | Erros | thiserror (libs) / anyhow (apps) | `thiserror`, `anyhow` | `2`/`1` | Nunca panic em código de produção (HR-4 implica) |
 | Alocação em pool | bumpalo | `bumpalo` | atual | Hot path; reset por frame |
 | Channels | crossbeam-channel | `crossbeam-channel` | atual | Comunicação entre threads (game/render/audio/IO) |
@@ -220,26 +223,26 @@ Estado real verificado em **2026-05-09**. Legenda: ✅ implementado e wired no s
 
 ```
 _PH2D_definitiva/
-├── Cargo.toml                    # workspace (resolver "3", edition 2024, MSRV 1.95)
-├── rust-toolchain.toml           # toolchain channel 1.95
+├── Cargo.toml                    # workspace (resolver "3", edition 2024, MSRV 1.98)
+├── rust-toolchain.toml           # toolchain channel 1.98
 ├── clippy.toml                   # workspace lints (HashMap ban per ADR-0022)
 ├── deny.toml                     # cargo-deny licenses + bans + advisories
 ├── crates/
 │   ├── ph2d-core/                # ✅ M2 — math (glam), FixedStep, MemoryBudget, panic hook
 │   ├── ph2d-host/                # ✅ M1 — trait PlatformHost (HostHandler, KeyEvent, PointerEvent)
-│   ├── ph2d-ecs/                 # ✅ M4 — bevy_ecs 0.18 + SimWorld/PresentWorld + extract! macro (ADR-0021)
-│   ├── ph2d-gpu/                 # ✅ M3 — wgpu 28 wrapper (GpuContext, SurfaceContext, FrameTarget, TransientPool) — ADR-0020
+│   ├── ph2d-ecs/                 # ✅ M4 — bevy_ecs 0.19 + SimWorld/PresentWorld + extract! macro (ADR-0021)
+│   ├── ph2d-gpu/                 # ✅ M3 — wgpu 29 wrapper (GpuContext, SurfaceContext, FrameTarget, TransientPool) — ADR-0020
 │   ├── ph2d-render/              # ✅ M5 — sprite renderer + VelloPass overlay (1000-sprite demo)
-│   ├── ph2d-vector/              # ✅ M11 — vello 0.8 wrapper (VectorScene); re-exporta kurbo + peniko
-│   ├── ph2d-text/                # ✅ M11 — parley 0.6 wrapper (TextSystem)
+│   ├── ph2d-vector/              # ✅ M11 — vello 0.10 wrapper (VectorScene); re-exporta kurbo + peniko
+│   ├── ph2d-text/                # ✅ M11 — parley 0.11 wrapper (TextSystem)
 │   ├── ph2d-sdf/                 # ⏳ stub — SDFs animados, raymarching (M13+)
 │   ├── ph2d-light/               # ⏳ stub — Radiance Cascades (M13+)
-│   ├── ph2d-physics/             # ✅ M10 — rapier2d 0.28 + enhanced-determinism + cross-OS hash test
+│   ├── ph2d-physics/             # ✅ M10 — rapier2d 0.35 + std + enhanced-determinism + cross-OS hash test
 │   ├── ph2d-physics-soft/        # ⏳ stub — XPBD compute + fallback CPU (M13+)
 │   ├── ph2d-fluids/              # ⏳ stub — FLIP/PIC compute (M13+)
 │   ├── ph2d-audio/               # ⏳ stub — mixer, DSP, voice management (M13+)
 │   ├── ph2d-asset/               # ✅ M6 — AssetDb (blake3 content-addressed) + AssetWatcher + ReloadEvent
-│   ├── ph2d-script/              # ✅ M7 — Luau (mlua 0.10) ScriptHost + Scheduler + reset+restore
+│   ├── ph2d-script/              # ✅ M7 — Luau (mlua 0.12) ScriptHost + Scheduler + reset+restore
 │   ├── ph2d-net/                 # ⏳ stub — QUIC + WebTransport, rollback, lockstep (M13+)
 │   ├── ph2d-input/               # ✅ M8 — pure-data Event/InputState/Pencil (gilrs adapter na shell)
 │   ├── ph2d-tokens/              # ✅ M12 — design tokens semânticos (color/type/spacing) — ADR-0023
@@ -250,7 +253,7 @@ _PH2D_definitiva/
 │   ├── ph2d-save/                # ⏳ stub — snapshot, replay, migration (M13+)
 │   └── ph2d-telemetry/           # ⏳ stub — crash reporting, opt-in metrics (M13+)
 ├── shells/
-│   ├── desktop/                  # ✅ winit 0.30 + wgpu 28 demo bin (integra M1/M5/M6/M7/M8/M12)
+│   ├── desktop/                  # ✅ winit 0.30 + wgpu 29 demo bin (integra M1/M5/M6/M7/M8/M12)
 │   ├── ipad/                     # ⏳ não criada — Xcode project + SwiftUI + UIPencil + GameController (M14+)
 │   ├── android/                  # ⏳ não criada — Gradle + Kotlin (M14+)
 │   └── web/                      # ⏳ não criada — TS bootstrap + wasm-pack + Service Worker (M14+)
@@ -568,7 +571,7 @@ Render graph é declarativo. Adicione passes via `RenderGraphBuilder`, nunca cha
 ### 11.2 Vetorial e SDF
 Vello renderiza qualquer path Bézier que `kurbo::BezPath` produz.
 
-Para **edição vetorial**, use `ph2d-vector::Document` (Bézier paths + transforms + boolean ops). Boolean ops via `linesweeper` (estável o suficiente para uso, mas marcado alpha — features que dependem disso herdam o status).
+Para **edição vetorial**, use `ph2d-vector::Document` (Bézier paths + transforms + boolean ops). Boolean ops via `linesweeper 0.4`, **wired** e confinado a [`ph2d-vec-boolean`](crates/ph2d-vec-boolean/) (ainda marcado alpha — features que dependem disso herdam o status). ⚠️ Da `0.4` em diante a saída **preserva arcos como cúbicas**: um `outline_stroke` de ponta redonda volta com **6 vértices em vez de 141** (área igual a `1,1e-14`, caixa idêntica) — muda a *representação*, não a forma.
 
 **Hit-testing:** use método `nearest()` do trait `kurbo::ParamCurveNearest` em cada segmento (não existe `kurbo::nearest` como função livre). Nunca rasterize-then-pick.
 
@@ -615,7 +618,7 @@ Emissivos vêm de canal alfa de sprites + emission textures. Sombras derivam do 
 - **Não-determinístico** (reduções em compute). Em modo determinístico: desligado.
 
 ### 11.6 Áudio
-`rodio` para mixing de alto nível, `cpal` para device backend.
+Mixer próprio para o alto nível, `cpal 0.18` para device backend. ⚠️ **O `rodio` foi planejado e nunca entrou** — não existe na árvore; quem mixa é código nosso (`ph2d-audio` + o rack de `ph2d-audio-edit`), e o `cpal` só é dono do device do SO.
 
 - Mixer roda em thread separada (callback do `cpal`).
 - HR-3 vale dobrado aqui: alocar no callback = glitch garantido.
@@ -625,10 +628,10 @@ Emissivos vêm de canal alfa de sprites + emission textures. Sombras derivam do 
 
 ### 11.7 Scripting
 
-**Status:** Ratificado por spike 2026-05 (vide [ADR-0019](docs/architecture/decisions/0019-spike-scripting-output.md)). Linguagem canônica: **Luau strict via mlua 0.10** (não TypeScript/QuickJS). ECS canônico: `bevy_ecs = "0.18"` ([ADR-0003-rev2](docs/architecture/decisions/0003-ecs-choice.md)).
+**Status:** Ratificado por spike 2026-05 (vide [ADR-0019](docs/architecture/decisions/0019-spike-scripting-output.md)). Linguagem canônica: **Luau strict via mlua 0.12** (não TypeScript/QuickJS). ECS canônico: `bevy_ecs = "0.19"` ([ADR-0003-rev2](docs/architecture/decisions/0003-ecs-choice.md), escrito sobre a `0.18`).
 
 **Luau runtime (canônico):**
-- `mlua 0.10` com feature `luau`. Runtime por mundo (single-player) ou por sessão (multiplayer authoritative server).
+- `mlua 0.12` com feature `luau`. Runtime por mundo (single-player) ou por sessão (multiplayer authoritative server).
 - Sandbox em dois níveis: trusted (project scripts) vs untrusted (asset scripts).
 - Bytecode pré-compilado no ship build (Compiler com `optimization_level=2`, `debug_level=0`). Cold start 1.5–2× mais rápido que source. **Nota:** size com gzip on-top é equiparável ou pior que source gzipped — bytecode otimiza time + anti-tamper, não size.
 - GC incremental: `gc_step_kbytes(1)` por frame mantém p99 < 0.01ms (medido em fixture 10k tabelas). HR-9 cumprido folgadamente.
@@ -648,7 +651,7 @@ Emissivos vêm de canal alfa de sprites + emission textures. Sombras derivam do 
 **WASM (hot path):**
 - Para systems CPU-bound (pathfinding, AI, simulação custom): payload primitivo Luau→Rust→wasmtime mede p99 = 0.21µs (folgadíssimo vs threshold 1µs em C12).
 - Bindings via `wit-bindgen` + Component Model. NÃO `wasm-bindgen` (esse é específico de browser/JS host).
-- Wasmtime 44 com Winch (instanciação ~µs, código menos otimizado, default) vs Cranelift (instanciação lenta, código rápido, opt-in via feature `wasm-aot`).
+- Wasmtime 48 com Winch (instanciação ~µs, código menos otimizado, default) vs Cranelift (instanciação lenta, código rápido, opt-in via feature `wasm-aot`). ⚠️ A medição acima é do spike (wasmtime 44 de então); no produto ele **ainda não está wired** — hoje só `tests/spike/` o traz.
 - Bridge canônica: **Luau chama Rust; Rust chama WASM** (single FFI boundary).
 
 **Performance trade-off (medido C2):**
@@ -692,7 +695,7 @@ Retained-mode próprio em Vello + parley. Não egui no produto final (HR-7).
 
 **Out of scope até M13+:** QuickMenu radial (ADR-0023 §6), gesture-mapping editor UI (§4), Single-Touch Companion overlay, dock complexo, timeline, node graph editor, text editor widget — todos viram após design system canônico estabilizar.
 
-**Layout solver:** zones próprias por enquanto (matemática trivial 4-zonas); `taffy` 0.10 entra se complexidade demandar (formulários longos, listas virtualizadas).
+**Layout solver:** zones próprias no chrome do editor (matemática trivial 4-zonas). ⚠️ O `taffy` **já entrou na árvore** — `0.14`, mas por outra porta: o auto layout do **documento vetorial** ([ADR-0153](docs/architecture/decisions/0153-vector-auto-layout-is-taffy-behind-one-leaf-crate-and-the-pose-is-derived.md)), confinado a [`ph2d-vec-layout`](crates/ph2d-vec-layout/). Se o chrome vier a precisar dele (formulários longos, listas virtualizadas), o motor já está pago.
 
 Input passa pelo trait do `ph2d-input` que abstrai mouse/touch/Pencil pure-data. Shell desktop usa `gilrs` adapter (M8). Pencil pressure/tilt são primeiros-classe — não emulados como mouse.
 
@@ -1254,7 +1257,7 @@ Listar com motivo de rejeição.
 |---|---|---|
 | ADR-0001 | Editor é a engine | esperado (HR-7 cobre por enquanto) |
 | ADR-0002 | Rust + Vello + wgpu como pilar | esperado (§5 + §6 cobrem por enquanto) |
-| ADR-0003-rev2 | ECS choice — bevy_ecs 0.18 | **Accepted** ([0003-ecs-choice.md](docs/architecture/decisions/0003-ecs-choice.md)) |
+| ADR-0003-rev2 | ECS choice — bevy_ecs (escrito em 0.18; hoje **0.19**) | **Accepted** ([0003-ecs-choice.md](docs/architecture/decisions/0003-ecs-choice.md)) |
 | ADR-0004 | Vello em alpha: risco aceito e mitigações | esperado |
 | ADR-0005 | ~~TypeScript como gameplay primário~~ Luau ratificado | superseded por ADR-0019 |
 | ADR-0006 | MCP first-class + governance | esperado (HR-10/HR-11 cobrem; ph2d-mcp skeleton em [crates/ph2d-mcp/](crates/ph2d-mcp/)) |

@@ -337,7 +337,7 @@ impl PhysicsWorld {
             //
             // ⛔⛔ **E uma hipótese REFUTADA, registada para não voltar:** a 0.29 introduziu
             // um `friction_model` configurável cujo padrão (`Simplified`) resolve uma
-            // restrição de atrito por grupo de **4 contactos** em vez de uma por contacto — o
+            // restrição de atrito por grupo de **4 contatos** em vez de uma por contacto — o
             // candidato óbvio para explicar a mudança no escorregar contra a parede. **Ele é
             // `#[cfg(feature = "dim3")]`**: não existe em 2D, e nunca nos alcançou. *O
             // compilador matou a hipótese antes da medição — e é por isso que se escreve o
@@ -363,7 +363,7 @@ impl PhysicsWorld {
             normalized_allowed_linear_error: 0.001,
             // 10 → 3: uma sobreposição funda sairia **3,3× mais devagar**.
             normalized_max_corrective_velocity: 10.0,
-            // 0,002 → 0,02: contactos detectados **10× mais cedo**; corpos parecendo flutuar um
+            // 0,002 → 0,02: contatos detectados **10× mais cedo**; corpos parecendo flutuar um
             // fio acima da superfície.
             normalized_prediction_distance: 0.002,
             // ⚠️ **Sem tecto → 400 u/s.** A 0.35 passou a limitar a velocidade linear. Em queda

@@ -40,6 +40,13 @@ crates/ph2d-vector-runtime/
     └── dormant_fracture_smoke.rs
 ```
 
+> ⚠️ **Emenda (2026-08-29 — [ADR-0168](0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)):**
+> o `ecs_bridge.rs` acima diz «`bevy_ecs 0.18` integration» — hoje o ECS é **`bevy_ecs 0.19.1`**.
+> ⚠️ Nota de alcance: esta árvore de crate **nunca foi construída** — a
+> [ADR-0108](0108-vector-reposition-rive-referenced-native-editor-first.md) aposentou a ambição
+> operacional desta linha (e a [ADR-0131](0131-physics-global-runtime-truth-rapier-ecs-bridge.md)
+> declara explicitamente que **não herda** o collider-gen/fratura daqui).
+
 ### 2.2 State machine model (Rive-inspired)
 
 ```rust

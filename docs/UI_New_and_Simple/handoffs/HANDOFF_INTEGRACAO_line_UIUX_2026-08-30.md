@@ -28,6 +28,7 @@ virou **código**.
 | 6 | `7378d8b1f` | ⛔⛔ **a auditoria achou uma REGRESSÃO minha** — os quatro defeitos, curados (§3-bis) |
 | 7 | `24e25728c` | a auditoria corrigiu um **número** meu (87,8 → **86,8 %**) — 13 sítios |
 | 8 | `14df4796c` | o portão de fecho com o número **honesto**, e duas flakes novas nomeadas |
+| 9 | `41ff3fb48` | ⭐ **as RÉGUAS valem em TODOS os modos** (Enio) — e isso dissolveu o teorema do #7 (§3-ter) |
 
 ---
 
@@ -178,6 +179,87 @@ da régua é `x ∈ [0, 20]` — **não se tocam**. O número é `17 784 / 20 48
 ⭐ A conclusão não muda (o trilho sozinho já faz 85 %), mas o dígito tinha viajado para nove
 documentos, dois doc-comments, um gate e o roteiro de um smoke antes de alguém o reconferir.
 **Um termo a mais numa soma sobrevive a toda leitura que confia no total.**
+
+---
+
+## §3-ter — As réguas saem do escopo Vector, e a 3.ª tentativa das colunas
+
+**Enio, 2026-08-30:** *«as réguas devem funcionar em todos os modos e layouts e não apenas para
+vector».* `rulers_live()` passa a ter **uma** condição: o interruptor do artista.
+
+⚠️ **A cerca que caiu era legítima, e o substrato dela dissolveu-se no mesmo dia.** Ela dizia que
+uma régua permanente comeria o pen-down do Painter nos 20 px de cima. O defeito real ali era a
+faixa ser **invisível** (nascia debaixo do trilho e da barra); com ela dentro da `draw_area` está
+à vista, e carregar numa régua visível para criar uma guia é o que todo DCC faz.
+**Preço nomeado:** os 20 px de cima e da esquerda da área deixam de ser pintáveis em qualquer
+ferramenta — o preço do Photoshop, e o interruptor desliga-o.
+
+### ⛔⛔ E isto matou o TEOREMA do §3-bis, com horas de vida
+
+A cura da regressão dizia *«régua viva ⇒ Vector visível ⇒ coluna da direita ocupada»*. A primeira
+implicação evaporou-se. *Quem move o número que tornava algo inalcançável reconfere a nota*
+(`CLAUDE.md` §0.0) — e quem o moveu fui eu.
+
+⭐⭐⭐ **A 3.ª tentativa é a que a auditoria já recomendava: pergunta-se ao que ACONTECEU.** Todo
+painel publica o próprio rect por quadro (`set_panel_rect`) e limpa-o quando some — 20 crates.
+`DockSides::from_published` cruza os rects publicados com o rect da coluna. **Não há lista**, logo
+não há lista a apodrecer. Preço: **um quadro** de atraso. `COLUMN_TAKEN_FRAC = 0.5` impede que um
+flutuante que só roça a coluna a reserve. `HeroLayout::side_columns()` devolve-as **ordenadas por
+`x`** — é o que torna o `mirrored` inofensivo, e eu escrevi a versão errada primeiro.
+
+⛔ Tecto de LOC estourado por mim (711/700), curado por **corte**: `screens/dock_sides.rs`.
+
+---
+
+## §3-quater — ⏳ A PRÓXIMA WAVE: ancorar as colunas (medida, não começada)
+
+**Enio, com foto (2026-08-30):** *«Funciona, mas legal não ficou. Acho que só fica legal depois de
+fixar os painéis nas laterais, jogar os botões laterais para outro lugar (a princípio podemos
+apenas escondê-los pois devem passar para área de cima do canvas como na godot)».*
+
+### O que a medição diz
+
+⭐⭐ **UM bloco governa 16 painéis.** `screens/hero/paint.rs` aplica o *offset* de arrasto e o
+*resize-delta* a `layout.inspector` / `layout.hierarchy` e depois **espelha o rect arrastado** para
+os quatro aliases. Os 16 painéis que lêem `ctx.layout.inspector`/`.padding`/`.painter_layers`
+recebem já o rect movido — *arrastar o Inspector arrasta os dezasseis, sem que nenhum saiba*.
+⇒ curar ali cura os 16 **sem tocar numa linha das crates deles**.
+
+| frente | sítios |
+|---|---|
+| desligar a flutuação das colunas | **1** bloco (`paint.rs`) + **3** braços (`interaction/dispatch/blender.rs`) |
+| tirar as alças do `HitIndex` | 3 registos no Inspector + 3 na Hierarchy + 4 `store.register` no `pre_populate.rs` — ⚠️ **têm de sair EM PAR**, senão o `architecture_panel_wiring_parity` acende (ou pior: ficam mortas sob o dedo) |
+| flutuantes VERDADEIROS, a decidir 1 a 1 | **5** crates (`authored`, `grid-snap`, `wet-tuning`, `timeline`, `widget-gallery`) + o `audio_overlay` do shell — é a *«flutuação DECLARADA»* da D1 |
+| quinas | **1** linha (`panel_chrome.rs`, `Radius::Sm`) — ⛔ e **nenhum gate a defende**: a mudança mais visível do trabalho é a única sem rede |
+| *flush* da barra/HUD | ⚠️ `EDGE_PAD` serve **quatro** propósitos hoje (borda da janela · x dos painéis · timeline · `draw_area`) — zerá-lo global seria quatro decisões numa. O corte honesto é separar *pad de borda* de *gap entre colunas* |
+| gates a ficar vermelhos | **9 certos**, 7 prováveis/de compilação |
+| sombra | **não existe** — o efeito de vidro é só o alfa do `PanelBg` |
+
+⛔ **Duas armadilhas nomeadas:**
+1. **`PANEL_RADIUS` (16 px, token `chrome.panel-radius`) NÃO tem consumidor de pintura** — o raio
+   real é `Radius::Sm` (6). Quem cortar quinas «pelo token» vai ao número errado.
+2. **`popover_region()` está ancorado no `left_rail`** — mover ou esconder o trilho move a banda
+   em que sete popovers do painel Vector nascem, e há gate a medi-la.
+
+### E os botões do trilho
+
+⭐ **Esconder o trilho NÃO os torna inalcançáveis** — o **menu radial** (`P` segurado) projecta a
+secção do meio de `rail_entries`, e a **paleta global** projecta a lista inteira. Mas o destino
+que o Enio nomeou é a **barra por cima do canvas**, e o porte tem um achado que o barateia:
+
+⭐⭐ **`paint_topbar_rail_chip` já É o mesmo chip na horizontal** — declarado no código como cópia
+verbatim do chip do trilho, a ler as **mesmas** constantes (`LABEL_VISUAL_EXTENT_PX`,
+`LABEL_TO_CHIP_GAP_PX`), com o rótulo **por cima** em vez de rodado, e com o hit registado no rect
+em repouso. Falta-lhe: visibilidade (`pub(super)`), os braços `Compound`/`Swatch`/`Divider`, o
+`active`, e a orientação do flyout.
+
+⛔ **O que o porte tem de curar de caminho:** o pintor e o registo de hit do trilho são **dois
+laços separados sobre a mesma lista, com a aritmética escrita duas vezes e SEM GATE** — um eixo
+horizontal no pintor e vertical no hit compilaria e passaria a suíte inteira. A porta que falta é
+`entry_rects(rail, rect, size) -> Vec<(NodeId, Rect)>`, consumida pelos dois.
+
+⚠️ E o menu radial **depende de haver exactamente três `Divider` e de a secção 2 ser as
+ferramentas** — mudar a ordem muda o radial em silêncio.
 
 ---
 

@@ -527,3 +527,38 @@ doc-comment deslocaria a profundidade e esconderia tudo o que viesse depois.
 ⭐ **Com fixtura das três formas:** o laço `for forma in ["MultiresStack", "Extract", "Shattered"]`
 prende as três, então uma regressão para o parser antigo reprova pelo nome da forma que ele
 deixou de ler — *e não por um campo com nome estranho, que foi o sintoma que custou o diagnóstico.*
+
+---
+
+## §8-duodecies — ⭐⭐⭐ A foto do ZOOM tem número, e o defeito NÃO está no ápice
+
+**O report:** foto aproximada de UM espinho, cinco setas — fendas escuras junto à ponta, faces
+emaranhadas, uma aba escura a sair da superfície. É o item que o `CLAUDE.md` §5 tem em ⏳ ABERTO
+com a nota *«NENHUMA RÉGUA O VÊ»*.
+
+⭐ **Vê-se agora, medindo a torção por CASCA RADIAL** (`Detail 0,85` + `Follow Curvature 1`, a peça
+do artista):
+
+| `r / Rmax` | faces | torção p50 | p99 | máx | `>90°` | gravatas | lascas |
+|---|---|---|---|---|---|---|---|
+| `[0,00 · 0,50)` | `3 221` | `1,7°` | `32,2°` | `180,0°` | `4` | `0` | `2` |
+| `[0,50 · 0,75)` | `5 226` | `1,1°` | `35,4°` | `180,0°` | `11` | `3` | `3` |
+| ⛔ **`[0,75 · 0,90)`** | **`149`** | ⛔ **`10,2°`** | ⛔ **`169,1°`** | `177,1°` | `3` | **`1`** | `3` |
+| `[0,90 · 1,00]` | `27` | `12,8°` | `43,9°` | `43,9°` | `0` | `0` | `0` |
+
+⭐⭐ **O pior não é o ÁPICE — é o OMBRO do espinho** (`0,75`–`0,90`): a torção mediana é `6×`–`9×`
+a do corpo, e é ali que mora a gravata e as dobras de `169°`–`177°`. *Uma face dobrada a `177°`
+desenha-se como a fenda escura da foto; uma gravata desenha-se como a aba.* No ápice a malha está
+**torcida mas não dobrada** (máx `43,9°`).
+
+⚠️ **E é por isso que toda régua mediana é cega:** as duas cascas exteriores somam `176` faces de
+`8 623` — **2 %**. Uma mediana de milhares não se move com elas, e foi essa a nota que este §5
+carregava sem número.
+
+⚠️ **A segunda leitura da tabela é uma FOME DE RESOLUÇÃO:** a casca do ápice tem `27` faces. Não é
+que a grade lá seja má — é que quase não há grade. *A transferência de densidade (§8-octies) e este
+defeito são o mesmo problema visto de dois lados.*
+
+⇒ **A wave seguinte tem alvo e régua:** levar a torção `p99` da casca `[0,75 · 0,90)` de `169°` ao
+nível do corpo (`~35°`), com a contagem de faces das cascas exteriores ao lado — ⛔ e **não** a
+mediana global, que já está em `1,1°` e não tem para onde melhorar.

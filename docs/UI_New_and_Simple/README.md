@@ -42,6 +42,7 @@ E três defeitos concretos, com foto:
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |
+| ⭐ **Modo vs Layout vs Ferramenta — os TRÊS eixos** | [`pesquisa/04_modo_layout_e_ferramenta.md`](pesquisa/04_modo_layout_e_ferramenta.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento
@@ -75,25 +76,32 @@ O resumo que decide o que podemos fazer:
 
 ## Estado (2026-08-30)
 
-✅ **Etapa 1 fechada.** Medição feita, referências baixadas e triadas, diagnóstico escrito, e as
-**três decisões estruturais tomadas pelo Enio** ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)):
-painéis **ancorados com flutuação declarada** · comandos em **barra global + cabeçalho por área**
-· modos **por tarefa**.
+✅ **Etapa 1 fechada** e **cinco decisões tomadas pelo Enio**
+([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)): painéis **ancorados com flutuação
+declarada** · comandos em **barra global + cabeçalho por área** · **Layouts por tarefa** (e
+⚠️ **Modos são per-objecto** — D3 corrigida por ele) · **encaixes fixos** · **a régua entra na
+área de desenho**.
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
-- **51,0 % do canvas é chrome** no viewport de referência — que é o iPad Pro 12,9". A régua da
+- **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da
   esquerda está **87,8 % tapada**, e ⚠️ **por causa do rail, não dos painéis**.
 - **16 dos 83 slots de cor são apelidos puros** — todos os 16 `timeline-*`. Fundi-los é uma
   mudança de **zero pixels**.
 
-⏳ **Próximo:** as três decisões convergem numa peça só — **o modelo de ÁREAS/REGIÕES** — e é
-essa que a spec tem de desenhar primeiro. Ver [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md),
-secção final.
+✅ **Rascunho 1 da spec escrito** — [`spec/01_modelo_de_areas.md`](spec/01_modelo_de_areas.md):
+**seis encaixes** (número *derivado*: os 12 do Godot dariam 89,6 % da largura no nosso alvo),
+o que um painel **declara** (portado do `EditorDock` MIT), as **regiões** de uma área, e o
+orçamento medido — **94,4 % de tela com os lados recolhidos**, contra ⛔ **49,6 % com tudo aberto,
+que não é melhor do que hoje**.
+
+⏳ **Próximo:** as perguntas em aberto estão no
+[`spec/01_modelo_de_areas.md §7`](spec/01_modelo_de_areas.md) — a lista de Layouts, que modos
+declara cada tipo de objecto, e como partir o `DrawMode` nos dois eixos.
 
 ## O que esta etapa NÃO fez
 
-- Não escreveu spec. **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado
-  é o `.gitignore`, para manter `referencias/` fora do git.
-- Não decidiu nada sozinha: as três decisões são do Enio, e o que fica em aberto está nomeado em
-  [`pesquisa/03_diagnostico_e_principios.md §7`](pesquisa/03_diagnostico_e_principios.md) e nos
-  `⏳` de cada medição.
+- **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado é o `.gitignore`,
+  para manter `referencias/` fora do git.
+- Não decidiu nada sozinha: as cinco decisões são do Enio, e o que fica em aberto está nomeado
+  nos `⏳` de cada documento.
+- ⚠️ **A spec é RASCUNHO** — o §7 dela lista seis coisas por decidir, e a §8 o que ⛔ não fazer.

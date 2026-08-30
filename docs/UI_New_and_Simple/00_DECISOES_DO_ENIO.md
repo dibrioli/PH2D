@@ -75,25 +75,49 @@ iPad (1024 pontos de altura) isso é caro, e soma-se aos 51 % de largura já med
 
 ---
 
-## D3 — Modos: **por TAREFA**, como o Blender
+## D3 — **LAYOUTS por tarefa** · e MODOS são per-objecto (⚠️ **CORRIGIDA**)
 
-> Desenhar, Modelar, Esculpir, Animar, Programar — não Vetor/Movimento/Flip/Escultura.
+> **Correcção do Enio, 2026-08-30:** *"Aí como no Blender há duas coisas: Layout e Mode. Alguns
+> objetos têm modo de edição próprio como vector, cujas tools são completamente específicas e onde
+> toda a tela vai mudar. Já Editor 2D, Editor de texto, Runtime, são layouts."*
 
-**O que isto fixa:**
-- Um Modo **é um layout de áreas**, não um interruptor de módulo. É a leitura literal do HIG do
-  Blender: *"editors are own modes with own shortcuts and tools — almost like different
-  applications"* (`editors.md`).
-- A **mesma ferramenta aparece em várias tarefas** — é isso que impede a explosão que nos deu
-  **29 pills**.
-- ⭐ Casa com a frase do próprio Enio na abertura: *"teremos uma enorme quantidade de tools que
-  são verdadeiros apps completos aninhados."*
+⛔ **A minha pergunta original tratava Modo e Layout como a mesma coisa, e estava errada.** Os
+manuais confirmam o Enio, e há um **terceiro** eixo que os dois motores separam e nós não. O
+estudo completo, com as citações, está em
+[`pesquisa/04_modo_layout_e_ferramenta.md`](pesquisa/04_modo_layout_e_ferramenta.md).
 
-⚠️ **Consequência:** o rail de 29 pills deixa de ser o selector de modo. O que lá fica (se ficar)
-é outra coisa — ferramentas **dentro** da tarefa activa.
+### Os três eixos
 
-⚠️ **E há um custo escondido, nomeado agora:** um módulo hoje é ligado/desligado por um toggle
-próprio (8 `*_toggle.rs` em `chrome/`). Se o modo passa a ser tarefa, **quem decide que módulos
-estão vivos é o layout da tarefa** — os 8 toggles mudam de dono ou desaparecem. Não medido.
+| eixo | quem decide | onde vive | o que muda |
+|---|---|---|---|
+| **Layout** | o **utilizador** | barra de cima (abas) | que **áreas** existem e que editor está em cada |
+| **Modo** | ⭐ o **TIPO DO OBJECTO** seleccionado | cabeçalho da **área** | ferramentas, atalhos, aspecto da vista, e **que outros editores funcionam** |
+| **Ferramenta** | o utilizador, dentro do modo | **toolbar** da área | o **gesto** do ponteiro |
+
+**O que a decisão fixa:**
+- **A escolha «por tarefa» vale, e é sobre LAYOUTS** — poucos e largos, escolhidos pelo
+  utilizador, abas na barra de cima. *Editor 2D · Editor de Texto · Runtime · …* (exemplos dele).
+- ⛔ **Modos NÃO são uma lista global e não se escolhem.** Cada **tipo de objecto** declara os
+  seus. Blender: *"Which modes are available depends on the object's type."* Só o modo **Object**
+  é universal.
+- ⭐⭐ **A costura entre os dois é UM CAMPO OPCIONAL** — o Workspace do Blender tem
+  `Mode: "switch to this Mode when activating the workspace"`. Ortogonais, com um atalho
+  declarado; **não acoplados**.
+
+⚠️ **E a mesma confusão está no nosso código, medida:** o `DrawMode` do vetor tem 14 variantes que
+são, lidas pelos nossos próprios doc-comments, **2 modos (`Select`=Object, `Node`=Edit) + 12
+ferramentas** — todas as doze justificam-se por *"o gesto é outro"*, que é a definição de
+ferramenta, não de modo. ⇒ hoje **não se consegue exprimir «Edit + ferramenta Fillet»**.
+
+⚠️ Os **29 pills** ordenam-se assim: ~19 **ferramentas** · 2 **layout** (mostrar Hierarquia /
+Inspetor → menu *Ver*) · 3 ⛔ **uma preferência** (tamanho do botão → Preferências).
+
+⚠️ E os **9 toggles de módulo** são a coisa mais próxima de Layouts que temos — mas são
+interruptores **independentes** (2⁹ = 512 combinações), não um selector *um-de-N*.
+
+⏳ **Fica por decidir:** a lista de Layouts · que modos declara cada tipo de objecto nosso · se
+adoptamos o campo `Mode` do Workspace · e **como partir o `DrawMode` nos dois eixos sem partir o
+que funciona** (14 variantes vivas, com gates — não desenhado).
 
 ---
 

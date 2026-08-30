@@ -11,13 +11,25 @@
 
 ## §1 — O que é uma Área
 
-Três níveis, o vocabulário do Blender (`paradigms.md`), com os nomes que vamos usar:
+Três níveis de **espaço**, o vocabulário do Blender (`paradigms.md`), com os nomes que vamos usar:
 
 | nível | é | exemplo |
 |---|---|---|
-| **Layout** | a janela inteira, arrumada para uma **tarefa** (D3) | *Desenhar*, *Modelar*, *Animar* |
+| **Layout** | a janela inteira, arrumada para uma **tarefa** (D3) | *Editor 2D*, *Editor de Texto*, *Runtime* |
 | **Área** | um rectângulo que hospeda **um editor** | o canvas 2D, a linha do tempo, o grafo de nós |
 | **Região** | uma faixa **dentro** de uma área | cabeçalho, ferramentas, régua, conteúdo |
+
+⚠️ **E há dois eixos de ESTADO que não são espaço, e não se confundem com estes**
+([`pesquisa/04`](../pesquisa/04_modo_layout_e_ferramenta.md)):
+
+| eixo | quem decide | onde o selector vive |
+|---|---|---|
+| **Modo** | ⭐ o **tipo do objecto** seleccionado | cabeçalho da **área** |
+| **Ferramenta** | o utilizador, dentro do modo | **toolbar** da área |
+
+⭐⭐ **É por isso que o cabeçalho e a toolbar são regiões obrigatórias do `CENTER`** (§4): são os
+donos declarados desses dois selectores. Um modelo de áreas que não lhes desse sítio empurrá-los-ia
+de volta para a barra de cima — que é como chegámos aos 29 pills.
 
 ⭐ **A lei que faz isto funcionar (D5): regiões são IRMÃS numa fila, nunca camadas empilhadas.**
 Uma área reparte a sua largura entre as regiões; elas não se sobrepõem porque **não partilham
@@ -188,13 +200,19 @@ dedo é gordo?»*. ⏳ **Proposta:** dois números independentes, `pixel_scale` 
 
 ## §7 — O que fica por decidir
 
-1. **⏳ Quais são as tarefas (D3)?** *Desenhar · Modelar · Esculpir · Animar · Programar* foi o que
-   propus na pergunta; o Enio escolheu a **forma**, não a lista. A lista é dele.
-2. **⏳ O que acontece aos 8 toggles de módulo** (`vector_toggle`, `motion_toggle`, …) quando o
-   modo passa a ser tarefa. Ver [`00_DECISOES_DO_ENIO.md` D3](../00_DECISOES_DO_ENIO.md).
-3. **⏳ O trilho de ferramentas é uma região do `CENTER` — mas os 29 pills de hoje não cabem lá.**
-   Quantos sobrevivem, e quantos são na verdade selectores de modo que a D3 absorve? Não medido.
-4. **⏳ Migração.** São **2 073 ids** e **25 painéis**. A ordem de conversão não está desenhada, e
+1. **⏳ A lista de Layouts.** O Enio escolheu a **forma** («por tarefa»), não a lista, e deu três
+   exemplos: *Editor 2D · Editor de Texto · Runtime*.
+2. **⏳ Que modos declara cada TIPO de objecto nosso** — `VecPath`, malha 3D, sprite, objecto
+   Flip, peça SDF, corpo de física. ⭐ Não é uma lista global: é uma propriedade de cada tipo
+   ([`pesquisa/04 §5`](../pesquisa/04_modo_layout_e_ferramenta.md)).
+3. **⏳ Adoptamos o campo `Mode` do Workspace?** (*"switch to this Mode when activating"* — o
+   atalho que liga os dois eixos sem os acoplar.)
+4. **⏳ Como partir o `DrawMode`** nos dois eixos. São **2 modos + 12 ferramentas** achatados num
+   enum de 14 variantes vivas, com gates. ⚠️ Hoje **não se exprime «Edit + ferramenta Fillet»**.
+   Não desenhado.
+5. **⏳ Os 9 toggles de módulo** (`vector_toggle`, `motion_toggle`, …) são interruptores
+   independentes — 2⁹ combinações. Um Layout é *um-de-N*. Como se converte um no outro?
+6. **⏳ Migração.** São **2 073 ids** e **25 painéis**. A ordem de conversão não está desenhada, e
    ⚠️ o §1 do estado medido avisa: *uma superfície desse tamanho não se redesenha à mão.*
 
 ---

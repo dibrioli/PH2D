@@ -24,6 +24,11 @@ clone() { # nome url licenca [subdir...]
 clone blender-developer-docs https://projects.blender.org/blender/blender-developer-docs.git \
       "CC-BY-SA 4.0 (DOCS; o CÓDIGO do Blender é GPL — não é lido aqui)" \
       docs/features/interface
+# ⭐ O MANUAL do Blender — a fonte de Workspaces (layouts) e Modes (per-objecto).
+# ⚠️ O HIG (acima) NAO cobre isto: o `modal_interfaces.md` dele e' um esboco vazio.
+clone blender-manual https://projects.blender.org/blender/blender-manual.git \
+      "CC-BY-SA 4.0 (DOCS)" \
+      manual/interface manual/scene_layout manual/editors
 clone godot-contributing-docs https://github.com/godotengine/godot-contributing-docs.git "CC-BY 4.0"
 clone godot-docs https://github.com/godotengine/godot-docs.git "CC-BY 4.0" \
       tutorials/ui getting_started/introduction contributing/development/editor

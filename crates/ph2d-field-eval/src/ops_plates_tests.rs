@@ -26,14 +26,22 @@ const H: f64 = 0.2;
 #[test]
 fn every_plate_is_a_slab_of_the_height_it_was_given() {
     let casos: [(&str, fidget::context::Tree, [f64; 2]); 8] = [
-        ("engrenagem", sd_gear(8, 0.6, 0.9, 0.5, H, 0.0), [0.0, 0.0]),
-        ("cruz", sd_cross(0.8, 0.25, H, 0.0), [0.0, 0.0]),
-        ("coracao", sd_heart(0.5, H, 0.0), [0.0, 0.2]),
-        ("lua", sd_moon(0.8, 0.6, 0.45, H, 0.0), [-0.5, 0.0]),
-        ("gota", sd_drop(0.4, 1.0, H, 0.0), [0.0, 0.0]),
-        ("fatia", sd_pie(0.8, 0.7, H, 0.0), [0.0, 0.4]),
-        ("trapezio", sd_trapezoid(0.7, 0.3, 0.5, H, 0.0), [0.0, 0.0]),
-        ("vesica", sd_vesica(0.7, 0.35, H, 0.0), [0.0, 0.0]),
+        (
+            "engrenagem",
+            sd_gear(8, 0.6, 0.9, 0.5, H, 0.0, 0.0),
+            [0.0, 0.0],
+        ),
+        ("cruz", sd_cross(0.8, 0.25, H, 0.0, 0.0), [0.0, 0.0]),
+        ("coracao", sd_heart(0.5, H, 0.0, 0.0), [0.0, 0.2]),
+        ("lua", sd_moon(0.8, 0.6, 0.45, H, 0.0, 0.0), [-0.5, 0.0]),
+        ("gota", sd_drop(0.4, 1.0, H, 0.0, 0.0), [0.0, 0.0]),
+        ("fatia", sd_pie(0.8, 0.7, H, 0.0, 0.0), [0.0, 0.4]),
+        (
+            "trapezio",
+            sd_trapezoid(0.7, 0.3, 0.5, H, 0.0, 0.0),
+            [0.0, 0.0],
+        ),
+        ("vesica", sd_vesica(0.7, 0.35, H, 0.0, 0.0), [0.0, 0.0]),
     ];
     for (nome, t, dentro) in casos {
         let [x, y] = dentro;
@@ -68,7 +76,7 @@ fn every_plate_is_a_slab_of_the_height_it_was_given() {
 #[test]
 fn a_gear_actually_has_teeth() {
     let (n, root, outer) = (8_u32, 0.6, 0.9);
-    let t = sd_gear(n, root, outer, 0.5, H, 0.0);
+    let t = sd_gear(n, root, outer, 0.5, H, 0.0, 0.0);
     let passo = std::f64::consts::TAU / f64::from(n);
     for k in 0..n {
         let phi = passo * f64::from(k);
@@ -108,7 +116,7 @@ fn a_gear_actually_has_teeth() {
 #[test]
 fn a_cross_has_four_arms_and_four_notches() {
     let (arm, w) = (0.8, 0.2);
-    let t = sd_cross(arm, w, H, 0.0);
+    let t = sd_cross(arm, w, H, 0.0, 0.0);
     // As quatro pontas, quase no fim do braço: dentro.
     for p in [
         [arm - 0.02, 0.0],
@@ -138,7 +146,7 @@ fn a_cross_has_four_arms_and_four_notches() {
 #[test]
 fn a_heart_has_a_cleft_on_top_and_a_point_below() {
     let s = 0.5;
-    let t = sd_heart(s, H, 0.0);
+    let t = sd_heart(s, H, 0.0, 0.0);
     // A ponta de baixo: o vértice do losango em `(0, −s)`.
     assert!(
         at(&t, [0.0, -s, 0.0]).abs() < 1.0e-6,
@@ -170,7 +178,7 @@ fn a_heart_has_a_cleft_on_top_and_a_point_below() {
 #[test]
 fn a_moon_has_a_bite_taken_out_of_it() {
     let (r, bite, off) = (0.8, 0.6, 0.45);
-    let t = sd_moon(r, bite, off, H, 0.0);
+    let t = sd_moon(r, bite, off, H, 0.0, 0.0);
     // O lado oposto à mordida: cheio.
     assert!(
         at(&t, [-r + 0.05, 0.0, 0.0]) < 0.0,
@@ -191,7 +199,7 @@ fn a_moon_has_a_bite_taken_out_of_it() {
 #[test]
 fn a_drop_is_round_below_and_pointed_above() {
     let (r, h) = (0.4, 1.0);
-    let t = sd_drop(r, h, H, 0.0);
+    let t = sd_drop(r, h, H, 0.0, 0.0);
     // O fundo é o círculo.
     assert!(
         at(&t, [0.0, -r, 0.0]).abs() < 1.0e-6,
@@ -234,7 +242,7 @@ fn a_drop_is_round_below_and_pointed_above() {
 #[test]
 fn a_pie_keeps_only_its_wedge() {
     let (r, ang) = (0.8, 0.6);
-    let t = sd_pie(r, ang, H, 0.0);
+    let t = sd_pie(r, ang, H, 0.0, 0.0);
     // No eixo da bissectriz (+Y), dentro do raio: cheio.
     assert!(at(&t, [0.0, r * 0.5, 0.0]) < 0.0);
     assert!(at(&t, [0.0, r * 1.2, 0.0]) > 0.0, "fora do raio e' vazio");
@@ -252,7 +260,7 @@ fn a_pie_keeps_only_its_wedge() {
 #[test]
 fn a_trapezoid_narrows_on_one_axis_only() {
     let (b, tp, hw) = (0.7, 0.3, 0.5);
-    let t = sd_trapezoid(b, tp, hw, H, 0.0);
+    let t = sd_trapezoid(b, tp, hw, H, 0.0, 0.0);
     // Na base (`y = −hw`) a meia-largura é `b`; no topo é `tp`.
     assert!(at(&t, [b - 0.02, -hw + 0.02, 0.0]) < 0.0, "a base e' larga");
     assert!(
@@ -274,7 +282,7 @@ fn a_trapezoid_narrows_on_one_axis_only() {
 #[test]
 fn a_vesica_is_a_lens_with_two_points() {
     let (r, off) = (0.7, 0.35);
-    let t = sd_vesica(r, off, H, 0.0);
+    let t = sd_vesica(r, off, H, 0.0, 0.0);
     assert!(at(&t, [0.0, 0.0, 0.0]) < 0.0, "o meio da lente e' cheio");
     // As pontas em `y = ±√(r²−off²)`.
     let yp = (r * r - off * off).sqrt();
@@ -297,14 +305,14 @@ fn a_vesica_is_a_lens_with_two_points() {
 #[test]
 fn every_new_plate_marches_safely() {
     let casos: [(&str, fidget::context::Tree); 8] = [
-        ("engrenagem", sd_gear(8, 0.6, 0.9, 0.5, H, 0.0)),
-        ("cruz", sd_cross(0.8, 0.25, H, 0.0)),
-        ("coracao", sd_heart(0.5, H, 0.0)),
-        ("lua", sd_moon(0.8, 0.6, 0.45, H, 0.0)),
-        ("gota", sd_drop(0.4, 1.0, H, 0.0)),
-        ("fatia", sd_pie(0.8, 0.7, H, 0.0)),
-        ("trapezio", sd_trapezoid(0.7, 0.3, 0.5, H, 0.0)),
-        ("vesica", sd_vesica(0.7, 0.35, H, 0.0)),
+        ("engrenagem", sd_gear(8, 0.6, 0.9, 0.5, H, 0.0, 0.0)),
+        ("cruz", sd_cross(0.8, 0.25, H, 0.0, 0.0)),
+        ("coracao", sd_heart(0.5, H, 0.0, 0.0)),
+        ("lua", sd_moon(0.8, 0.6, 0.45, H, 0.0, 0.0)),
+        ("gota", sd_drop(0.4, 1.0, H, 0.0, 0.0)),
+        ("fatia", sd_pie(0.8, 0.7, H, 0.0, 0.0)),
+        ("trapezio", sd_trapezoid(0.7, 0.3, 0.5, H, 0.0, 0.0)),
+        ("vesica", sd_vesica(0.7, 0.35, H, 0.0, 0.0)),
     ];
     const TETO: f64 = 1.02;
     for (nome, t) in casos {

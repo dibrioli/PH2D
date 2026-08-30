@@ -58,6 +58,7 @@ fn measure_star_points() {
         radius: 0.45,
         half_height: 0.3,
         round: 0.05,
+        chamfer: 0.0,
     });
     println!("  forma                  | semiplanos |  nós |  ns/ponto | × o cilindro");
     println!(
@@ -75,9 +76,10 @@ fn measure_star_points() {
                 inner: 0.18,
                 half_height: 0.3,
                 round: 0.02,
+                chamfer: 0.0,
             })
         } else {
-            cost_of(ph2d_field_eval::ops::sd_star(n, 0.45, 0.18, 0.3, 0.02))
+            cost_of(ph2d_field_eval::ops::sd_star(n, 0.45, 0.18, 0.3, 0.02, 0.0))
         };
         let cerca = if n > ph2d_field::MAX_STAR_POINTS {
             " (fora da cerca)"
@@ -100,6 +102,7 @@ fn measure_star_points() {
                 half: [0.45, 0.45, 0.45],
                 thickness: 0.13,
                 round: 0.02,
+                chamfer: 0.0,
             },
         ),
         (

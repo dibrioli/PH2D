@@ -265,6 +265,7 @@ fn the_edge_detector_sees_a_sharp_crease_inside_the_mask() {
             Primitive::Box {
                 half: [0.45; 3],
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -311,6 +312,7 @@ fn measure_trace_cost() {
                 radius: 0.22,
                 half_height: 0.78,
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform {
                 rotation: axis,
@@ -378,6 +380,7 @@ fn measure_profile_trace_cost() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -426,6 +429,7 @@ fn measure_antialias_cost() {
                 radius: 0.22,
                 half_height: 0.78,
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform {
                 rotation: axis,
@@ -491,6 +495,7 @@ fn dump_frame() {
                 radius: 0.22,
                 half_height: 0.78,
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform {
                 rotation: axis,
@@ -1084,6 +1089,7 @@ fn the_ceiling_of_any_profile_cure() {
         radius: 0.5,
         half_height: 0.2,
         round: 0.0,
+        chamfer: 0.0,
     });
     println!("um cilindro analítico: {base:.1} ms  (o piso: marcha, normais, anti-serrilhado)");
     println!("arestas | traçado | fração que é o PERFIL | teto de uma cura de {{k}}x no perfil");
@@ -1094,6 +1100,7 @@ fn the_ceiling_of_any_profile_cure() {
             profile: p,
             half_height: 0.2,
             round: 0.0,
+            chamfer: 0.0,
         });
         let frac = (ms - base) / ms;
         println!(
@@ -1129,6 +1136,7 @@ fn the_tiled_march_draws_the_same_image_as_the_row_march() {
                 profile: prof(ngon_probe(168, 0.5)),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         ),
@@ -1138,6 +1146,7 @@ fn the_tiled_march_draws_the_same_image_as_the_row_march() {
                 profile: prof(ngon_probe(96, 0.45)),
                 half_height: 0.3,
                 round: 0.04,
+                chamfer: 0.0,
             },
             Xform {
                 translation: [0.1, -0.05, 0.08],
@@ -1288,6 +1297,7 @@ fn the_table_of_what_the_tiled_march_buys() {
                         .expect("perfil"),
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1350,6 +1360,7 @@ fn a_tile_region_is_much_smaller_than_the_piece() {
                     .expect("perfil"),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -1435,6 +1446,7 @@ fn the_table_of_what_a_depth_slab_would_buy() {
                     profile,
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1539,6 +1551,7 @@ fn the_table_of_which_half_the_tiled_frame_pays() {
                         .expect("perfil"),
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1626,6 +1639,7 @@ fn the_table_of_what_a_full_march_step_would_buy() {
                         .expect("perfil"),
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1691,6 +1705,7 @@ fn the_table_of_where_the_tile_assembly_goes() {
                         .expect("perfil"),
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1806,6 +1821,7 @@ fn the_table_of_what_the_shape_of_the_outline_does() {
                     profile,
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -1880,6 +1896,7 @@ fn every_sample_lies_inside_the_region_that_built_its_tape() {
                     .expect("perfil"),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -2041,6 +2058,7 @@ fn the_table_of_how_many_depth_slabs() {
                     profile: Profile::new(vec![ring], FillRule::NonZero, 1e-3).expect("perfil"),
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -2117,6 +2135,7 @@ fn the_table_of_whether_an_inner_ray_enters_first() {
                     .expect("perfil"),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -2184,6 +2203,7 @@ fn a_depth_slab_keeps_fewer_edges_than_the_whole_tube() {
                 profile,
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -2262,6 +2282,7 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
     let bx = Primitive::Box {
         half: [0.4, 0.3, 0.25],
         round: 0.0,
+        chamfer: 0.0,
     };
     let one = |p: Primitive, mods: Vec<Unary>| {
         let mut n = Node::new(Xform::IDENTITY, NodeKind::Leaf(p));
@@ -2276,6 +2297,7 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
                     NodeKind::Leaf(Primitive::Box {
                         half: [0.6, 0.3, 0.3],
                         round: 0.0,
+                        chamfer: 0.0,
                     }),
                 ),
                 Node::new(
@@ -2283,6 +2305,7 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
                     NodeKind::Leaf(Primitive::Box {
                         half: [0.3, 0.6, 0.3],
                         round: 0.0,
+                        chamfer: 0.0,
                     }),
                 ),
                 Node::new(
@@ -2305,6 +2328,7 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
                 Primitive::Box {
                     half: [0.4, 0.3, 0.25],
                     round: 0.12,
+                    chamfer: 0.0,
                 },
                 vec![],
             ),
@@ -2327,6 +2351,7 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
                         .expect("perfil"),
                     half_height: 0.25,
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 vec![],
             ),
@@ -2594,6 +2619,7 @@ fn the_table_of_whether_a_hull_culls_better_than_its_box() {
                     profile,
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -2718,6 +2744,7 @@ fn the_hull_contains_every_ray_of_its_own_tile() {
                     .expect("perfil"),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -2829,6 +2856,7 @@ fn the_hull_culls_strictly_better_than_its_box() {
                 profile,
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,
@@ -2954,6 +2982,7 @@ fn measure_the_edge_pass_share() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -3022,6 +3051,7 @@ fn measure_how_many_trees_a_frame_specialises() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -3084,6 +3114,7 @@ fn measure_the_tile_that_fits_a_small_image() {
                 profile,
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -3157,6 +3188,7 @@ fn measure_what_the_tape_budget_buys() {
                         profile,
                         half_height: 0.4,
                         round: 0.06,
+                        chamfer: 0.0,
                     },
                     Xform::IDENTITY,
                 )],
@@ -3231,6 +3263,7 @@ fn measure_where_the_frame_goes_and_how_many_slabs_it_wants() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -3332,6 +3365,7 @@ fn measure_the_shape_of_the_march() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -3483,6 +3517,7 @@ fn the_stencil_never_moves_the_silhouette() {
             Primitive::Box {
                 half: [0.5, 0.4, 0.45],
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -3539,6 +3574,7 @@ fn measure_what_the_four_sample_normal_changes() {
             profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
             half_height: 0.4,
             round: 0.06,
+            chamfer: 0.0,
         }
     };
     let pieces: Vec<(&str, Primitive)> = vec![
@@ -3547,6 +3583,7 @@ fn measure_what_the_four_sample_normal_changes() {
             Primitive::Box {
                 half: [0.5, 0.4, 0.45],
                 round: 0.0,
+                chamfer: 0.0,
             },
         ),
         (
@@ -3554,6 +3591,7 @@ fn measure_what_the_four_sample_normal_changes() {
             Primitive::Box {
                 half: [0.5, 0.4, 0.45],
                 round: 0.08,
+                chamfer: 0.0,
             },
         ),
         ("esfera", Primitive::Sphere { radius: 0.6 }),
@@ -3579,6 +3617,7 @@ fn measure_what_the_four_sample_normal_changes() {
                 .expect("perfil"),
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
         ),
         (
@@ -3587,6 +3626,7 @@ fn measure_what_the_four_sample_normal_changes() {
                 radius: 0.5,
                 half_height: 0.4,
                 round: 0.0,
+                chamfer: 0.0,
             },
         ),
     ];
@@ -3706,6 +3746,7 @@ fn cache_piece(n: usize) -> ph2d_field::FieldDoc {
                 profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -3891,6 +3932,7 @@ fn measure_whether_the_preview_decimation_eats_corners() {
                     profile: p,
                     half_height: 0.4,
                     round: 0.02,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -3964,6 +4006,7 @@ fn measure_how_many_contour_edges_are_visible() {
                     profile: p,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -4424,6 +4467,7 @@ fn measure_what_the_tape_cache_buys() {
                     profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -4568,6 +4612,7 @@ fn measure_whether_one_frames_tape_serves_the_next() {
                 profile,
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -5066,6 +5111,7 @@ fn measure_whether_the_jit_contends_on_its_own() {
                 profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -5186,6 +5232,7 @@ fn measure_where_the_parallel_frame_stops_scaling() {
                     profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -5407,6 +5454,7 @@ fn measure_the_floor_that_the_tile_size_puts_under_the_frame() {
                 profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -5491,6 +5539,7 @@ fn measure_who_the_march_samples_belong_to() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -5622,6 +5671,7 @@ fn measure_the_two_knobs_of_the_moving_frame() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -5676,6 +5726,7 @@ fn measure_what_the_safe_step_costs() {
             Primitive::Box {
                 half: h,
                 round: 0.0,
+                chamfer: 0.0,
             },
             at,
         )
@@ -5811,6 +5862,7 @@ fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
             kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,

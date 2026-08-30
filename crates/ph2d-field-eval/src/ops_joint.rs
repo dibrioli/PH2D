@@ -33,6 +33,46 @@ use crate::ops::{self, Blended};
 use fidget::context::Tree;
 use ph2d_field::Joint;
 
+/// ⭐⭐⭐ **OS DOIS RECUOS DE UMA ARESTA, com os campos NOMEADOS** — e o nome é a razão de o tipo
+/// existir.
+///
+/// # ⛔⛔ Ele nasceu de um defeito que os gates apanharam, e a lição é sobre a ASSINATURA
+///
+/// A 1.ª versão desta família passava `(chamfer: f64, round: f64)` — dois `f64` adjacentes, do mesmo
+/// tipo, com significados opostos. Uma reordenação mecânica de parâmetros trocou-os em **oito das
+/// nove** chamadas, e o resultado compilou: as formas passaram a ser **chanfradas com o número do
+/// filete**, e a peça saía com aresta viva onde o artista pediu arco.
+///
+/// ⚠️ **Cinco gates da sonda de arestas apanharam-no** (`measure_sharp_edges`), o que é a prova de
+/// que valia a pena tê-los — mas o defeito **não podia** ter existido. *Dois argumentos do mesmo
+/// tipo, adjacentes e trocáveis, são um erro à espera de uma refactoração;* com os campos nomeados,
+/// a troca é **erro de compilação**.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Edge {
+    /// O raio do arco. O que o painel chama **Fillet**.
+    pub round: f64,
+    /// O recuo do corte reto a 45°, ao longo de cada face. O que o painel chama **Chamfer**.
+    pub chamfer: f64,
+}
+
+impl Edge {
+    /// A aresta viva: os dois recuos a zero.
+    pub const SHARP: Self = Self {
+        round: 0.0,
+        chamfer: 0.0,
+    };
+
+    /// A aresta que um [`Joint`] do documento descreve. ⚠️ **É aqui que o `f32` do documento vira o
+    /// `f64` do avaliador**, para as duas famílias — a aresta de uma forma e a costura entre cópias.
+    #[must_use]
+    pub fn of(joint: Joint) -> Self {
+        Self {
+            round: f64::from(joint.fillet),
+            chamfer: f64::from(joint.chamfer),
+        }
+    }
+}
+
 /// ⭐⭐⭐ **A INTERSECÇÃO com chanfro e depois filete** — a aresta convexa de uma forma.
 ///
 /// A intersecção chanfrada é `max(max(a,b), (a+b+c)·√½)` — o dual de De Morgan do
@@ -50,16 +90,17 @@ use ph2d_field::Joint;
 /// [`crate::gradient_bound`] já paga por um arredondamento exacto. Quem der chanfro a uma primitiva
 /// tem de o dizer ao `ph2d_field::fillet_inflates`, senão a marcha anda a passo cheio sobre um campo
 /// que sobe mais depressa que a distância — e o sintoma é a peça furada.
-pub fn intersection_joint(a: &Tree, b: &Tree, joint: Joint) -> Tree {
-    if joint.chamfer <= 0.0 {
+pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
+    let (chamfer, fillet) = (e.chamfer, e.round);
+    if chamfer <= 0.0 {
         // ⭐ **O caminho de sempre, ao bit** — nem um nó a mais na árvore.
-        return ops::intersection(a, b, Blended::Exact(f64::from(joint.fillet)));
+        return ops::intersection(a, b, Blended::Exact(fillet));
     }
-    let plano = corte(a, b, f64::from(joint.chamfer), Sentido::Interseccao);
-    if joint.fillet <= 0.0 {
+    let plano = corte(a, b, chamfer, Sentido::Interseccao);
+    if fillet <= 0.0 {
         return a.max(b.clone()).max(plano);
     }
-    let r = Blended::Exact(f64::from(joint.fillet));
+    let r = Blended::Exact(fillet);
     ops::intersection(&ops::intersection(a, &plano, r), b, r)
 }
 
@@ -67,15 +108,16 @@ pub fn intersection_joint(a: &Tree, b: &Tree, joint: Joint) -> Tree {
 ///
 /// O espelho exacto da [`intersection_joint`], e a razão de as duas viverem lado a lado: um artista
 /// que aprendeu os dois números numa aresta de forma lê-os iguais na costura entre duas cópias.
-pub fn union_joint(a: &Tree, b: &Tree, joint: Joint) -> Tree {
-    if joint.chamfer <= 0.0 {
-        return ops::union(a, b, Blended::Exact(f64::from(joint.fillet)));
+pub fn union_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
+    let (chamfer, fillet) = (e.chamfer, e.round);
+    if chamfer <= 0.0 {
+        return ops::union(a, b, Blended::Exact(fillet));
     }
-    let plano = corte(a, b, f64::from(joint.chamfer), Sentido::Uniao);
-    if joint.fillet <= 0.0 {
+    let plano = corte(a, b, chamfer, Sentido::Uniao);
+    if fillet <= 0.0 {
         return a.min(b.clone()).min(plano);
     }
-    let r = Blended::Exact(f64::from(joint.fillet));
+    let r = Blended::Exact(fillet);
     ops::union(&ops::union(a, &plano, r), b, r)
 }
 
@@ -114,7 +156,7 @@ pub fn union_between_copies(a: &Tree, b: &Tree, joint: Joint, distinct: &Tree) -
     if joint.is_sharp() {
         return duro;
     }
-    let misturado = union_joint(a, b, joint);
+    let misturado = union_joint(a, b, Edge::of(joint));
     duro.clone() + distinct.clone() * (misturado - duro)
 }
 

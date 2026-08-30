@@ -294,6 +294,7 @@ fn where_the_curvature_breaks_are() {
         inner: 0.18,
         half_height: 0.25,
         round: 0.0,
+        chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("tem filete");
     let (pontos, _, _) = traverse(&p, 4096, 6);
@@ -459,12 +460,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Box => Primitive::Box {
             half: [0.4, 0.3, 0.25],
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Sphere => Primitive::Sphere { radius: 0.5 },
         PrimitiveKind::Cylinder => Primitive::Cylinder {
             radius: 0.4,
             half_height: 0.3,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Torus => Primitive::Torus {
             major: 0.4,
@@ -476,6 +479,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             top: 0.12,
             half_height: 0.35,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Capsule => Primitive::Capsule {
             radius: 0.25,
@@ -487,16 +491,19 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             top: 0.18,
             half_height: 0.3,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Wedge => Primitive::Wedge {
             half: [0.45, 0.3, 0.35],
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::TorusArc => Primitive::TorusArc {
             major: 0.4,
             minor: 0.15,
             angle: std::f32::consts::PI * 1.3,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Star => Primitive::Star {
             points: 5,
@@ -504,11 +511,13 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             inner: 0.18,
             half_height: 0.25,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::BoxFrame => Primitive::BoxFrame {
             half: [0.45, 0.35, 0.4],
             thickness: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Ellipsoid => Primitive::Ellipsoid {
             radii: [0.5, 0.2, 0.35],
@@ -520,6 +529,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Octahedron => Primitive::Octahedron {
             radius: 0.45,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::RoundCone => Primitive::RoundCone {
             bottom: 0.35,
@@ -530,12 +540,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             radius: 0.45,
             cut: 0.15,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::HollowDome => Primitive::HollowDome {
             radius: 0.45,
             cut: 0.1,
             thickness: 0.1,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Link => Primitive::Link {
             major: 0.3,
@@ -546,6 +558,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             radius: 0.45,
             angle: 0.7,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Gear => Primitive::Gear {
             teeth: 7,
@@ -554,17 +567,20 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             tooth: 0.45,
             half_height: 0.15,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Cross => Primitive::Cross {
             arm: 0.45,
             width: 0.14,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Heart => Primitive::Heart {
             size: 0.3,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Moon => Primitive::Moon {
             radius: 0.45,
@@ -572,18 +588,21 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             offset: 0.2,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Drop => Primitive::Drop {
             radius: 0.22,
             height: 0.55,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Pie => Primitive::Pie {
             radius: 0.45,
             angle: 1.0,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Trapezoid => Primitive::Trapezoid {
             bottom: 0.45,
@@ -591,12 +610,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             half_width: 0.3,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
         PrimitiveKind::Vesica => Primitive::Vesica {
             radius: 0.45,
             offset: 0.25,
             half_height: 0.12,
             round: 0.0,
+            chamfer: 0.0,
         },
     })
 }
@@ -668,6 +689,7 @@ fn where_the_creases_are() {
                 top: 0.18,
                 half_height: 0.3,
                 round: 0.0,
+                chamfer: 0.0,
             },
         ),
         (
@@ -678,6 +700,7 @@ fn where_the_creases_are() {
                 top: 0.45,
                 half_height: 0.3,
                 round: 0.0,
+                chamfer: 0.0,
             },
         ),
         (
@@ -688,6 +711,7 @@ fn where_the_creases_are() {
                 inner: 0.18,
                 half_height: 0.25,
                 round: 0.0,
+                chamfer: 0.0,
             },
         ),
     ] {
@@ -868,6 +892,7 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
         inner: inner as f32,
         half_height: meia_altura as f32,
         round: 0.0,
+        chamfer: 0.0,
     };
     let p = with_round(&base, 0.999).expect("a estrela tem filete");
     let (pontos, _, _) = traverse(&p, 2048, 6);
@@ -992,6 +1017,7 @@ fn measure_drop_round_limit() {
         height: 0.55,
         half_height: 0.12,
         round: 0.0,
+        chamfer: 0.0,
     };
     let limite = ph2d_field::round_limit(&base).expect("a gota tem filete");
     println!(

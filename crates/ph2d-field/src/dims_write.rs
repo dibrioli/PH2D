@@ -38,7 +38,13 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
     // `if é_cone && index == 1` curaria o caso e não a família — a próxima grandeza cujo zero
     // significa alguma coisa voltaria a bater na mesma linha. A [`Span`] já sabe a resposta
     // (`FromZero`), e ela vem do mesmo sítio que o painel lê.
-    let zero_ok = matches!(dims(p).get(index).map(|d| d.span), Some(Span::FromZero));
+    let zero_ok = matches!(
+        dims(p).get(index).map(|d| d.span),
+        // ⭐ A `WallFromZero` é a faixa dos DOIS RECUOS de uma aresta, e o zero **é** a aresta viva —
+        // o estado de nascimento do chanfro e o destino de quem quer desfazer um filete. Ver o doc
+        // dela para o defeito pré-existente que isto cura.
+        Some(Span::FromZero | Span::WallFromZero(_))
+    );
     if !value.is_finite() || value < 0.0 || (value == 0.0 && !zero_ok) {
         return Err(bad("dim"));
     }
@@ -186,6 +192,13 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
         ) if Some(i) == round_index(p) => {
             return set_round(p, node, value);
         }
+        // ⭐ **O chanfro entra pelo MESMO portão do filete** — a mesma pergunta à [`dims`], o mesmo
+        // braço exaustivo, a mesma parede. ⚠️ E ele vem DEPOIS na guarda porque as duas fileiras têm
+        // índices distintos: a de cima só casa a do filete, e sem esta o slider do chanfro cairia no
+        // `_ => Err(bad("dim"))` — o slider pinta, arrasta, e o `let _ =` do shell engole o erro.
+        (p, i) if Some(i) == chamfer_index(p) => {
+            return set_chamfer(p, node, value);
+        }
         _ => return Err(bad("dim")),
     }
     Ok(())
@@ -205,6 +218,73 @@ fn keep_above(value: f32, floor: f32) -> f32 {
 /// Onde fica o filete na lista desta forma, se ela tiver um.
 fn round_index(p: &Primitive) -> Option<usize> {
     dims(p).iter().position(|d| d.key == "field.dim.round")
+}
+
+/// Onde fica o **chanfro**, se ela tiver um.
+///
+/// ⭐ **A pergunta é feita à [`dims`], e não a uma lista escrita à mão** — é isso que faz uma forma
+/// nova receber o slider sem uma linha aqui, e é a razão de este arquivo não ter uma segunda
+/// enumeração das 21 primitivas com aresta.
+fn chamfer_index(p: &Primitive) -> Option<usize> {
+    dims(p).iter().position(|d| d.key == "field.dim.chamfer")
+}
+
+/// ⭐⭐⭐ **Escreve o CHANFRO de uma forma** (Enio, 2026-08-30).
+///
+/// ⚠️ **A parede é a MESMA do filete** ([`round_limit`]), e não uma escolhida: os dois recuam a
+/// superfície a partir da mesma quina.
+///
+/// ⚠️ **EXAUSTIVO, pela razão que a [`set_round`] já pagou na W101**: uma primitiva nova com aresta
+/// que caísse num braço vazio teria o slider a mexer-se sem escrever nada — *a falha mais cara de
+/// diagnosticar, porque não deixa rasto*.
+fn set_chamfer(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
+    let limit = round_limit(p).ok_or(FieldError::NonPositive {
+        node,
+        what: "chamfer",
+    })?;
+    if value >= limit {
+        return Err(FieldError::RoundTooLarge {
+            node,
+            round: value,
+            limit,
+        });
+    }
+    match p {
+        Primitive::Box { chamfer, .. }
+        | Primitive::Cylinder { chamfer, .. }
+        | Primitive::Extrude { chamfer, .. }
+        | Primitive::Cone { chamfer, .. }
+        | Primitive::Prism { chamfer, .. }
+        | Primitive::Wedge { chamfer, .. }
+        | Primitive::Star { chamfer, .. }
+        | Primitive::BoxFrame { chamfer, .. }
+        | Primitive::Octahedron { chamfer, .. }
+        | Primitive::CutSphere { chamfer, .. }
+        | Primitive::HollowDome { chamfer, .. }
+        | Primitive::SolidAngle { chamfer, .. }
+        | Primitive::Gear { chamfer, .. }
+        | Primitive::Cross { chamfer, .. }
+        | Primitive::Heart { chamfer, .. }
+        | Primitive::Moon { chamfer, .. }
+        | Primitive::Drop { chamfer, .. }
+        | Primitive::Pie { chamfer, .. }
+        | Primitive::Trapezoid { chamfer, .. }
+        | Primitive::Vesica { chamfer, .. }
+        | Primitive::TorusArc { chamfer, .. } => *chamfer = value,
+        Primitive::Sphere { .. }
+        | Primitive::Torus { .. }
+        | Primitive::Revolve { .. }
+        | Primitive::Capsule { .. }
+        | Primitive::RoundCone { .. }
+        | Primitive::Link { .. }
+        | Primitive::Ellipsoid { .. } => {
+            return Err(FieldError::NonPositive {
+                node,
+                what: "chamfer",
+            });
+        }
+    }
+    Ok(())
 }
 
 fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError> {
@@ -271,32 +351,40 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
     // filete que a peça já não comporta, e a validação recusaria o documento inteiro no gesto
     // seguinte.
     match p {
-        Primitive::Box { round, .. }
-        | Primitive::Cylinder { round, .. }
-        | Primitive::Extrude { round, .. }
-        | Primitive::Cone { round, .. }
-        | Primitive::Prism { round, .. }
-        | Primitive::Wedge { round, .. }
-        | Primitive::Star { round, .. }
-        | Primitive::BoxFrame { round, .. }
-        | Primitive::Octahedron { round, .. }
-        | Primitive::CutSphere { round, .. }
-        | Primitive::HollowDome { round, .. }
-        | Primitive::SolidAngle { round, .. }
-        | Primitive::Gear { round, .. }
-        | Primitive::Cross { round, .. }
-        | Primitive::Heart { round, .. }
-        | Primitive::Moon { round, .. }
-        | Primitive::Drop { round, .. }
-        | Primitive::Pie { round, .. }
-        | Primitive::Trapezoid { round, .. }
-        | Primitive::Vesica { round, .. }
-        | Primitive::TorusArc { round, .. } => {
-            if *round > ceiling {
-                *round = ceiling.max(0.0);
-                return true;
+        Primitive::Box { round, chamfer, .. }
+        | Primitive::Cylinder { round, chamfer, .. }
+        | Primitive::Extrude { round, chamfer, .. }
+        | Primitive::Cone { round, chamfer, .. }
+        | Primitive::Prism { round, chamfer, .. }
+        | Primitive::Wedge { round, chamfer, .. }
+        | Primitive::Star { round, chamfer, .. }
+        | Primitive::BoxFrame { round, chamfer, .. }
+        | Primitive::Octahedron { round, chamfer, .. }
+        | Primitive::CutSphere { round, chamfer, .. }
+        | Primitive::HollowDome { round, chamfer, .. }
+        | Primitive::SolidAngle { round, chamfer, .. }
+        | Primitive::Gear { round, chamfer, .. }
+        | Primitive::Cross { round, chamfer, .. }
+        | Primitive::Heart { round, chamfer, .. }
+        | Primitive::Moon { round, chamfer, .. }
+        | Primitive::Drop { round, chamfer, .. }
+        | Primitive::Pie { round, chamfer, .. }
+        | Primitive::Trapezoid { round, chamfer, .. }
+        | Primitive::Vesica { round, chamfer, .. }
+        | Primitive::TorusArc { round, chamfer, .. } => {
+            // ⭐⭐ **OS DOIS RECUOS são limitados, e não só o filete** (Enio, 2026-08-30).
+            //
+            // ⛔ Sem a segunda metade, encolher uma peça chanfrada deixava o chanfro acima da parede
+            // e a `validate_primitive` passava a **recusar o documento inteiro** no gesto seguinte —
+            // exactamente a armadilha que o doc do `set_round` nomeia para um braço `_`.
+            let mut mexeu = false;
+            for v in [&mut *round, &mut *chamfer] {
+                if *v > ceiling {
+                    *v = ceiling.max(0.0);
+                    mexeu = true;
+                }
             }
-            false
+            mexeu
         }
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
@@ -310,282 +398,3 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
 
 /// A folga entre o filete máximo e a parede, em fração da parede. Ver [`clamp_round`].
 const ROUND_MARGIN: f32 = 1.0e-3;
-
-/// ⭐ **Escala uma primitiva multiplicando as DIMENSÕES dela**, e não a pose.
-///
-/// # Por que uma folha não usa `Xform::scale`
-///
-/// ⚠️ **Uma folha escalada teria DUAS verdades sobre o mesmo tamanho visível**: a largura que o
-/// painel mostra e o fator da pose. Uma caixa de 1 de largura escalada 2× mede 2 na tela e continua
-/// a dizer «1» — e o artista não tem como saber qual das duas o próximo gesto vai mexer.
-///
-/// Multiplicar as dimensões dá **exatamente a mesma forma** (a escala uniforme é isso, aplicada ao
-/// campo) com **um** número a mudar — o que o painel já mostra.
-///
-/// ⚠️ Um grupo é o contrário: ele **não tem dimensões próprias**, então o fator da pose é a única
-/// resposta, e ali ele não compete com nada.
-///
-/// Devolve `false` para um fator não-positivo ou não-finito, sem tocar na forma.
-pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
-    if !factor.is_finite() || factor <= 0.0 {
-        return false;
-    }
-    match p {
-        Primitive::Box { half, round } => {
-            for h in half.iter_mut() {
-                *h *= factor;
-            }
-            *round *= factor;
-        }
-        Primitive::Sphere { radius } => *radius *= factor,
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            round,
-        } => {
-            *radius *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Torus { major, minor } => {
-            *major *= factor;
-            *minor *= factor;
-        }
-        Primitive::Extrude {
-            half_height, round, ..
-        } => {
-            // ⚠️ O **perfil** não é escalado: ele é o desenho, e o dono dele é o editor vetorial. O
-            // que esta escala mexe é a altura da extrusão e o aro — as duas grandezas que este
-            // módulo autora. Escalar um perfil aqui seria reescrever, em silêncio, um documento de
-            // outro módulo.
-            *half_height *= factor;
-            *round *= factor;
-        }
-        // Um torno é só o perfil: não há nada aqui que este módulo possua.
-        Primitive::Revolve { .. } => return false,
-        Primitive::Cone {
-            bottom,
-            top,
-            half_height,
-            round,
-        } => {
-            *bottom *= factor;
-            // ⚠️ **O topo escala como os outros, e o zero fica zero** — é o que mantém um cone
-            // fechado fechado ao redimensionar. Uma escala que somasse seria a que o abriria.
-            *top *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Capsule {
-            radius,
-            half_height,
-        } => {
-            *radius *= factor;
-            *half_height *= factor;
-        }
-        Primitive::Prism {
-            sides: _,
-            bottom,
-            top,
-            half_height,
-            round,
-        } => {
-            // ⚠️ **A contagem NÃO escala** — ela não é um comprimento. Multiplicá-la faria um
-            // hexágono virar um dodecágono ao aumentar a peça, que é mudar a forma e não o tamanho.
-            *bottom *= factor;
-            *top *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Wedge { half, round } => {
-            for h in half.iter_mut() {
-                *h *= factor;
-            }
-            *round *= factor;
-        }
-        Primitive::TorusArc {
-            major,
-            minor,
-            angle: _,
-            round,
-        } => {
-            *round *= factor;
-            // ⚠️ **O ÂNGULO não escala** — ele é adimensional. Multiplicá-lo faria o arco fechar-se
-            // ao aumentar a peça, que é mudar a forma e não o tamanho (a mesma lei da contagem).
-            *major *= factor;
-            *minor *= factor;
-        }
-        Primitive::Star {
-            points: _,
-            outer,
-            inner,
-            half_height,
-            round,
-        } => {
-            // ⚠️ **A contagem de pontas NÃO escala** — a lei da contagem de lados: multiplicá-la
-            // faria uma estrela de 5 virar uma de 10 ao aumentar a peça, que é mudar a forma.
-            *outer *= factor;
-            *inner *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::BoxFrame {
-            half,
-            thickness,
-            round,
-        } => {
-            for h in half.iter_mut() {
-                *h *= factor;
-            }
-            // ⚠️ **A espessura escala com o resto**, e é o que mantém a proporção da gaiola: uma
-            // moldura ampliada com a viga fina seria outra peça, não a mesma maior.
-            *thickness *= factor;
-            *round *= factor;
-        }
-        Primitive::Ellipsoid { radii } => {
-            for r in radii.iter_mut() {
-                *r *= factor;
-            }
-        }
-        // ─────────────────────────── W106 ───────────────────────────
-        // ⚠️ **Toda grandeza de COMPRIMENTO escala; contagens e ÂNGULOS não.** Um ângulo
-        // multiplicado por um factor abriria a fatia ao ampliar a peça, o que não é ampliar — é
-        // outra forma. É a mesma lei que deixa `sides` e `points` em paz.
-        Primitive::Octahedron { radius, round } => {
-            *radius *= factor;
-            *round *= factor;
-        }
-        Primitive::RoundCone {
-            bottom,
-            top,
-            half_height,
-        } => {
-            *bottom *= factor;
-            *top *= factor;
-            *half_height *= factor;
-        }
-        Primitive::CutSphere { radius, cut, round } => {
-            *radius *= factor;
-            // ⚠️ O corte é uma POSIÇÃO em Z, e escala com a peça — senão ampliar uma cúpula
-            // transforma-a numa esfera quase inteira.
-            *cut *= factor;
-            *round *= factor;
-        }
-        Primitive::HollowDome {
-            radius,
-            cut,
-            thickness,
-            round,
-        } => {
-            *radius *= factor;
-            *cut *= factor;
-            *thickness *= factor;
-            *round *= factor;
-        }
-        Primitive::Link {
-            major,
-            minor,
-            length,
-        } => {
-            *major *= factor;
-            *minor *= factor;
-            *length *= factor;
-        }
-        Primitive::SolidAngle { radius, round, .. } => {
-            *radius *= factor;
-            *round *= factor;
-        }
-        // ⚠️ `teeth` e `tooth` ficam: um é contagem, o outro é uma FRAÇÃO do passo.
-        Primitive::Gear {
-            root,
-            outer,
-            half_height,
-            round,
-            ..
-        } => {
-            *root *= factor;
-            *outer *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Cross {
-            arm,
-            width,
-            half_height,
-            round,
-        } => {
-            *arm *= factor;
-            *width *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Heart {
-            size,
-            half_height,
-            round,
-        } => {
-            *size *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Moon {
-            radius,
-            bite,
-            offset,
-            half_height,
-            round,
-        } => {
-            *radius *= factor;
-            *bite *= factor;
-            *offset *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Drop {
-            radius,
-            height,
-            half_height,
-            round,
-        } => {
-            *radius *= factor;
-            *height *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Pie {
-            radius,
-            half_height,
-            round,
-            ..
-        } => {
-            *radius *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Trapezoid {
-            bottom,
-            top,
-            half_width,
-            half_height,
-            round,
-        } => {
-            *bottom *= factor;
-            *top *= factor;
-            *half_width *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-        Primitive::Vesica {
-            radius,
-            offset,
-            half_height,
-            round,
-        } => {
-            *radius *= factor;
-            *offset *= factor;
-            *half_height *= factor;
-            *round *= factor;
-        }
-    }
-    true
-}

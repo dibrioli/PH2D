@@ -21,16 +21,32 @@ use crate::{Primitive, round_limit};
 /// controles — e um arrasto a meio passaria a escrever noutro número.
 #[must_use]
 pub fn dims(p: &Primitive) -> Vec<Dim> {
+    // ⭐⭐⭐ **O CHANFRO, ao lado do filete e ANTES dele** (Enio, 2026-08-30: *«poderíamos ter os
+    // 2, com chamfer antes de fillet para a possibilidade de arredondar as bordas geradas por
+    // chamfer»*). A ordem na lista É a ordem em que as duas operações acontecem na forma.
+    //
+    // ⚠️ **A MESMA parede do filete**, e não uma escolhida: os dois recuam a superfície a partir da
+    // mesma quina, e um chanfro maior do que o `round_limit` come a forma pelo mesmo mecanismo. Uma
+    // segunda parede aqui seria uma segunda resposta a *«até onde esta aresta aguenta»*.
+    let chamfer_dim = |value: f32| Dim {
+        key: "field.dim.chamfer",
+        value,
+        span: round_limit(p).map_or(Span::FromZero, Span::WallFromZero),
+    };
     let round_dim = |value: f32| Dim {
         key: "field.dim.round",
         value,
         // ⚠️ `Positive` só sobra para uma forma que tenha filete e não tenha meia-extensão de onde
         // derivar a parede — não existe hoje, e a alternativa (um `expect`) transformaria uma
         // primitiva nova num pânico em vez de num slider sem teto.
-        span: round_limit(p).map_or(Span::Positive, Span::Wall),
+        span: round_limit(p).map_or(Span::FromZero, Span::WallFromZero),
     };
     match p {
-        Primitive::Box { half, round } => vec![
+        Primitive::Box {
+            half,
+            round,
+            chamfer,
+        } => vec![
             Dim {
                 key: "field.dim.width",
                 value: half[0] * 2.0,
@@ -46,6 +62,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half[2] * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Sphere { radius } => vec![Dim {
@@ -57,6 +74,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             radius,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -68,6 +86,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Torus { major, minor } => vec![
@@ -83,13 +102,17 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             },
         ],
         Primitive::Extrude {
-            half_height, round, ..
+            half_height,
+            round,
+            chamfer,
+            ..
         } => vec![
             Dim {
                 key: "field.dim.height",
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         // ⚠️ Um torno **não tem dimensões próprias**: a forma dele é o contorno desenhado, e um
@@ -105,6 +128,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             top,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius_bottom",
@@ -121,6 +145,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Capsule {
@@ -150,6 +175,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             top,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.sides",
@@ -174,9 +200,14 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
-        Primitive::Wedge { half, round } => vec![
+        Primitive::Wedge {
+            half,
+            round,
+            chamfer,
+        } => vec![
             Dim {
                 key: "field.dim.width",
                 value: half[0] * 2.0,
@@ -192,6 +223,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half[2] * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::TorusArc {
@@ -199,6 +231,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             minor,
             angle,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -217,6 +250,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *angle,
                 span: Span::Wall(std::f32::consts::TAU),
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         // ⭐⭐ **DOIS RAIOS, como o Illustrator** (W103) — e não um raio mais uma razão. ⚠️ A razão
@@ -229,6 +263,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             inner,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.points",
@@ -255,12 +290,14 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::BoxFrame {
             half,
             thickness,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.width",
@@ -284,6 +321,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *thickness,
                 span: Span::Wall(half[0].min(half[1]).min(half[2])),
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         // ⚠️ **As mesmas três chaves da caixa**, e a escolha é deliberada: o artista mede uma peça
@@ -312,12 +350,17 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
         //
         // ⚠️ **O `round` é sempre o ÚLTIMO** de quem o tem: é a convenção que o `round_index`
         // assume, e quebrá-la faz o filete de uma forma escrever noutro campo.
-        Primitive::Octahedron { radius, round } => vec![
+        Primitive::Octahedron {
+            radius,
+            round,
+            chamfer,
+        } => vec![
             Dim {
                 key: "field.dim.radius",
                 value: *radius,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::RoundCone {
@@ -341,7 +384,12 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 span: Span::Positive,
             },
         ],
-        Primitive::CutSphere { radius, cut, round } => vec![
+        Primitive::CutSphere {
+            radius,
+            cut,
+            round,
+            chamfer,
+        } => vec![
             Dim {
                 key: "field.dim.radius",
                 value: *radius,
@@ -352,6 +400,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *cut,
                 span: Span::Free,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::HollowDome {
@@ -359,6 +408,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             cut,
             thickness,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -375,6 +425,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *thickness,
                 span: Span::Wall(*radius * 2.0),
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Link {
@@ -402,6 +453,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             radius,
             angle,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -413,6 +465,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: *angle,
                 span: Span::Wall(std::f32::consts::PI),
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Gear {
@@ -422,6 +475,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             tooth,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.teeth",
@@ -448,6 +502,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Cross {
@@ -455,6 +510,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             width,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.length",
@@ -471,12 +527,14 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Heart {
             size,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.size",
@@ -488,6 +546,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Moon {
@@ -496,6 +555,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             offset,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -517,6 +577,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Drop {
@@ -524,6 +585,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             height,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -540,6 +602,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Pie {
@@ -547,6 +610,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             angle,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -563,6 +627,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Trapezoid {
@@ -571,6 +636,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             half_width,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.width",
@@ -592,6 +658,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
         Primitive::Vesica {
@@ -599,6 +666,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
             offset,
             half_height,
             round,
+            chamfer,
         } => vec![
             Dim {
                 key: "field.dim.radius",
@@ -615,6 +683,7 @@ pub fn dims(p: &Primitive) -> Vec<Dim> {
                 value: half_height * 2.0,
                 span: Span::Positive,
             },
+            chamfer_dim(*chamfer),
             round_dim(*round),
         ],
     }

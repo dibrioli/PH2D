@@ -57,6 +57,7 @@ fn a_star(round: f32) -> Primitive {
         inner: INNER as f32,
         half_height: HALF_H as f32,
         round,
+        chamfer: 0.0,
     }
 }
 
@@ -219,6 +220,7 @@ fn a_frame(round: f32) -> Primitive {
         half: [FH[0] as f32, FH[1] as f32, FH[2] as f32],
         thickness: THICK as f32,
         round,
+        chamfer: 0.0,
     }
 }
 
@@ -401,6 +403,7 @@ fn a_star_with_its_valley_outside_its_tip_is_refused() {
         inner: 0.3,
         half_height: 0.2,
         round: 0.0,
+        chamfer: 0.0,
     };
     assert!(
         FieldDoc::new(
@@ -415,6 +418,7 @@ fn a_star_with_its_valley_outside_its_tip_is_refused() {
         half: [0.3, 0.3, 0.3],
         thickness: 0.31,
         round: 0.0,
+        chamfer: 0.0,
     };
     assert!(
         FieldDoc::new(

@@ -73,6 +73,7 @@ fn a_drawn_shape() -> (SimWorld, Vec<Entity>) {
         profile: a_square(),
         half_height: 0.1,
         round: 0.0,
+        chamfer: 0.0,
     })
 }
 

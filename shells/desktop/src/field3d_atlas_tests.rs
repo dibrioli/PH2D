@@ -41,6 +41,7 @@ fn peca() -> FieldDoc {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

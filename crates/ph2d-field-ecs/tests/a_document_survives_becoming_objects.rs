@@ -30,6 +30,7 @@ fn peca_completa(com_mods: bool) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.34, 0.11, 0.6],
             round: 0.02,
+            chamfer: 0.0,
         }),
     );
     let mut b = Node::new(
@@ -114,6 +115,7 @@ fn every_modifier_kind_survives_the_round_trip() {
             NodeKind::Leaf(Primitive::Box {
                 half: [0.3, 0.2, 0.4],
                 round: 0.0,
+                chamfer: 0.0,
             }),
         );
         n.mods = vec![Unary::born(k, 0.3)];

@@ -14,6 +14,7 @@ fn barra(turns: f32, lower: f32, upper: f32, falloff: f32) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.34, 0.11, 0.62],
             round: 0.02,
+            chamfer: 0.0,
         }),
     );
     n.mods.push(Unary::Twist {

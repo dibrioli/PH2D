@@ -65,6 +65,7 @@ fn measure_the_grid_box_against_the_real_piece() {
             one(Primitive::Box {
                 half: [0.4, 0.4, 0.02],
                 round: 0.0,
+                chamfer: 0.0,
             }),
         ),
         ("duas esferas afastadas", two_apart()),
@@ -111,6 +112,7 @@ fn the_reported_size_is_the_mesh_that_shipped_not_the_grid_that_built_it() {
     let doc = one(Primitive::Box {
         half: [0.4, 0.4, 0.02],
         round: 0.0,
+        chamfer: 0.0,
     });
     let mesh = mesh_of(&doc, 7);
     let said = super::piece_size(&mesh);

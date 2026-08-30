@@ -29,7 +29,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum Primitive {
     /// Caixa de meias-extensões `half`, com as 12 arestas arredondadas em `round`.
-    Box { half: [f32; 3], round: f32 },
+    Box {
+        half: [f32; 3],
+        round: f32,
+        chamfer: f32,
+    },
     /// Esfera. Não tem aresta, logo não tem `round`.
     Sphere { radius: f32 },
     /// Cilindro no eixo **Z** (outro eixo se obtém pela rotação do nó), com o aro das tampas
@@ -38,6 +42,7 @@ pub enum Primitive {
         radius: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// Toro no plano XY: `major` é o raio do anel, `minor` a espessura do tubo.
     Torus { major: f32, minor: f32 },
@@ -51,6 +56,7 @@ pub enum Primitive {
         profile: Profile,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **O perfil girado em torno do eixo Y.** O `x` do perfil é a distância ao eixo e o `y` é a
     /// altura.
@@ -81,6 +87,7 @@ pub enum Primitive {
         top: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// ⭐ **Cápsula no eixo Z** — o segmento de `−half_height` a `+half_height` engrossado em
     /// `radius`.
@@ -108,6 +115,7 @@ pub enum Primitive {
         top: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// ⭐⭐ **Cunha: uma caixa cortada por um plano inclinado** — cheia em `−x`, a zero em `+x`.
     ///
@@ -118,7 +126,11 @@ pub enum Primitive {
     ///
     /// ⭐ O plano do corte passa pela **origem** — ele liga `(−hx, +hz)` a `(+hx, −hz)`, e o ponto
     /// médio desses dois é o centro do nó.
-    Wedge { half: [f32; 3], round: f32 },
+    Wedge {
+        half: [f32; 3],
+        round: f32,
+        chamfer: f32,
+    },
     /// ⭐⭐ **Arco de toro no plano XY** — o toro cortado a `angle` radianos, centrado no `+X`.
     ///
     /// ⚠️ `angle >= 2π` é o toro inteiro, e o corte **não é construído** (não há dois semiplanos que
@@ -135,6 +147,7 @@ pub enum Primitive {
         /// mediu `30 %` da superfície deste arco sobre um vinco de `88°`, e esta era a única forma
         /// do catálogo com aresta autorada e **sem o slider que a trata**.
         round: f32,
+        chamfer: f32,
     },
     /// ⭐⭐⭐ **Estrela de `points` pontas puxada em Z** (W103) — `outer` é o raio das PONTAS e
     /// `inner` o dos VALES.
@@ -154,6 +167,7 @@ pub enum Primitive {
         inner: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// ⭐⭐ **A GAIOLA de uma caixa** (W103) — as 12 arestas com secção quadrada de lado
     /// `thickness`, e o miolo vazio.
@@ -167,6 +181,7 @@ pub enum Primitive {
         half: [f32; 3],
         thickness: f32,
         round: f32,
+        chamfer: f32,
     },
     /// ⭐⭐⭐ **Elipsóide de semi-eixos `radii`** (W103).
     ///
@@ -194,7 +209,11 @@ pub enum Primitive {
     // `ph2d_field_eval::ops_solids` e `::ops_plates`.
     // ─────────────────────────────────────────────────────────────────────────────────────────
     /// **Octaedro regular** — `radius` é o CIRCUNRAIO (centro a vértice), como no prisma.
-    Octahedron { radius: f32, round: f32 },
+    Octahedron {
+        radius: f32,
+        round: f32,
+        chamfer: f32,
+    },
     /// **Cone de pontas arredondadas** — o casco convexo de duas esferas, no eixo Z.
     ///
     /// ⚠️ Sem `round`, como a cápsula: já é todo arco. E `|bottom − top| < 2·half_height` é
@@ -205,7 +224,12 @@ pub enum Primitive {
         half_height: f32,
     },
     /// **Esfera cortada** por um plano em `z = cut` — uma cúpula, um botão.
-    CutSphere { radius: f32, cut: f32, round: f32 },
+    CutSphere {
+        radius: f32,
+        cut: f32,
+        round: f32,
+        chamfer: f32,
+    },
     /// **Cúpula oca** — a casca de raio médio `radius` e espessura `thickness`, cortada em `cut`.
     ///
     /// ⚠️ **Não é a [`Primitive::CutSphere`] menos outra:** seriam duas entidades e dois raios que
@@ -215,12 +239,18 @@ pub enum Primitive {
         cut: f32,
         thickness: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Elo de corrente** — o toro esticado: o eixo é um estádio de raio `major` com dois trechos
     /// rectos de `length` para cada lado, engrossado em `minor`.
     Link { major: f32, minor: f32, length: f32 },
     /// **Ângulo sólido** — a fatia cónica de uma esfera, meia-abertura `angle` em torno de `+Z`.
-    SolidAngle { radius: f32, angle: f32, round: f32 },
+    SolidAngle {
+        radius: f32,
+        angle: f32,
+        round: f32,
+        chamfer: f32,
+    },
     /// ⭐⭐⭐ **Engrenagem** — a forma que o Enio nomeou, e que tinha sido cortada da fila por ser
     /// *«um dente mais o modificador radial»*.
     ///
@@ -233,6 +263,7 @@ pub enum Primitive {
         tooth: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Cruz / mais** — `arm` é o meio-comprimento do braço e `width` a meia-largura dele.
     Cross {
@@ -240,12 +271,14 @@ pub enum Primitive {
         width: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Coração** — `size` é o meio-lado do losango que forma a ponta de baixo.
     Heart {
         size: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Lua / crescente** — o disco `radius` menos o disco `bite` deslocado de `offset` em `+X`.
     Moon {
@@ -254,6 +287,7 @@ pub enum Primitive {
         offset: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Gota** — o disco `radius` com uma ponta tangente a `height` acima do centro.
     Drop {
@@ -261,6 +295,7 @@ pub enum Primitive {
         height: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Fatia de disco** — `radius` e a meia-abertura `angle`, centrada em `+Y`.
     Pie {
@@ -268,6 +303,7 @@ pub enum Primitive {
         angle: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Trapézio** — `bottom` e `top` são as meias-larguras das duas bases.
     ///
@@ -278,6 +314,7 @@ pub enum Primitive {
         half_width: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
     /// **Vesica / lente** — a interseção de dois discos `radius` afastados de `2·offset`.
     Vesica {
@@ -285,6 +322,7 @@ pub enum Primitive {
         offset: f32,
         half_height: f32,
         round: f32,
+        chamfer: f32,
     },
 }
 

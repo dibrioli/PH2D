@@ -42,6 +42,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                     kind: NodeKind::Leaf(Primitive::Box {
                         half: [0.3, 0.2, 0.25],
                         round: 0.05,
+                        chamfer: 0.0,
                     }),
                     mods: Vec::new(),
                     verb: None,
@@ -52,6 +53,7 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         radius: 0.25,
                         half_height: 0.5,
                         round: 0.0,
+                        chamfer: 0.0,
                     }),
                     mods: Vec::new(),
                     verb: None,

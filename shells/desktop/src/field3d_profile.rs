@@ -90,6 +90,7 @@ pub(crate) fn from_selection(
                 // **verticais** já veio do editor vetorial. *Uma quina, um dono* — e inventar um
                 // raio aqui seria dar ao módulo uma opinião sobre um desenho que não é dele.
                 round: 0.0,
+                chamfer: 0.0,
             },
             ProfileShape::Revolve => Primitive::Revolve { profile },
         };

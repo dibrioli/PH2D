@@ -231,6 +231,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // dita pelo nome dela.
         // ⚠️ **"Fillet" é o arredondamento da forma DELA PRÓPRIA** — as 12 arestas de uma caixa, o
         // aro de um cilindro. Ele existe numa peça de uma forma só.
+        // ⭐⭐⭐ **O CHANFRO, e ele vem ANTES do filete na fileira** (Enio, 2026-08-30: *«poderíamos
+        // ter os 2, com chamfer antes de fillet para a possibilidade de arredondar as bordas geradas
+        // por chamfer»*). A ordem na lista **é** a ordem em que as duas operações acontecem na forma:
+        // o corte reto primeiro, o arco por cima do que ele deixou.
+        //
+        // ⚠️ **A palavra é a mesma do chip de carácter** (`panel.model3d.character.chamfer`), e é de
+        // propósito: os dois medem a mesma coisa — o recuo ao longo de cada face —, e um artista que
+        // aprendeu a palavra num sítio não pode encontrar outra no seguinte.
+        "field.dim.chamfer" => "Chamfer",
         "field.dim.round" => "Fillet",
         // ⭐⭐⭐ **O RAIO DA JUNÇÃO** (W98) — como esta forma se encontra com o resultado das
         // anteriores. ⚠️ **Palavra própria, e não "Fillet" outra vez:** desde o verbo por forma, uma

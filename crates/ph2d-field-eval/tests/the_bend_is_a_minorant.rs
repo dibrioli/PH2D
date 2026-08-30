@@ -17,6 +17,7 @@ fn vara(turns: f32, lower: f32, upper: f32) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.16, 0.16, 0.7],
             round: 0.02,
+            chamfer: 0.0,
         }),
     );
     if turns != 0.0 {
@@ -129,6 +130,7 @@ fn a_bend_of_zero_is_the_piece_untouched() {
         NodeKind::Leaf(Primitive::Box {
             half: [0.16, 0.16, 0.7],
             round: 0.02,
+            chamfer: 0.0,
         }),
     );
     n.mods.push(Unary::Bend {
@@ -165,6 +167,7 @@ fn asking_for_more_bend_than_the_piece_allows_saturates_instead_of_breaking() {
         NodeKind::Leaf(Primitive::Box {
             half: [0.6, 0.6, 0.6],
             round: 0.0,
+            chamfer: 0.0,
         }),
     );
     n.mods.push(Unary::Bend {

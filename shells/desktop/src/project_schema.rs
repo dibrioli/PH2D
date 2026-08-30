@@ -429,4 +429,14 @@
 /// que o avisa é o `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field`.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v103 é **recusado em voz alta**.
-pub(crate) const PROJECT_SCHEMA: u32 = 109;
+/// # 109 -> 110 — o CHANFRO em toda forma com aresta (pedido do Enio, 2026-08-30)
+///
+/// As **21 primitivas** que têm `round` ganharam um `chamfer` ao lado dele, e o
+/// `FIELD_DOC_VERSION` subiu **14 -> 15**. ⚠️ Sobe por arrasto pelo mesmo caminho do 104: a
+/// `Primitive` viaja, posicionalmente, dentro do blob do componente `ph2d_field_ecs::FieldNode`.
+///
+/// ⭐ **E este degrau os DOIS goldens de forma apanham** (`151 -> 159` e `86 -> 90`), ao contrário
+/// dos v11-v13 do `FIELD_DOC_VERSION` — as fixturas deles instanciam primitivas.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
+pub(crate) const PROJECT_SCHEMA: u32 = 110;

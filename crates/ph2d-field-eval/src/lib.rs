@@ -20,7 +20,9 @@ pub mod bounds;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;
+pub mod ops_bool;
 pub mod ops_joint;
+pub(crate) mod ops_norm;
 pub mod ops_plates;
 pub mod ops_solids;
 pub mod profile;
@@ -475,6 +477,7 @@ fn specialised_profile(
             profile,
             half_height,
             round,
+            chamfer,
         } => {
             // ⭐⭐⭐ **A região do EXTRUDE é o casco, não a caixa dele** (W59): o `(u, v)` dele é
             // `(x, y)`, então a pegada real do tubo no plano do perfil é o **polígono** dos cantos
@@ -496,6 +499,7 @@ fn specialised_profile(
                 &flat,
                 f64::from(*half_height),
                 f64::from(*round),
+                f64::from(*chamfer),
             ))
         }
         Primitive::Revolve { profile } => {

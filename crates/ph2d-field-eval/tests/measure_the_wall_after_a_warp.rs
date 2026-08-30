@@ -26,6 +26,7 @@ fn caixa(mods: Vec<Unary>) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.5, 0.5, 0.5],
             round: 0.0,
+            chamfer: 0.0,
         }),
     );
     n.mods = mods;

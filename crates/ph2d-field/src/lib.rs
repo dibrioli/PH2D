@@ -29,6 +29,7 @@
 
 pub mod blend;
 pub mod dims;
+pub mod dims_scale;
 pub mod mods;
 pub mod mods_dims;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
@@ -51,7 +52,8 @@ pub use profile::{
     coarsen_to_normal_error,
 };
 pub use radius::{
-    Bound, bounding_radius, characteristic_size, fillet_inflates, round_limit, set_shape_radius,
+    Bound, bounding_radius, chamfer_of, characteristic_size, fillet_inflates, round_limit,
+    round_of, set_shape_radius,
 };
 pub use xform::Xform;
 
@@ -127,8 +129,17 @@ use serde::{Deserialize, Serialize};
 /// Ele existe agora: `the_shape_of_a_saved_modifier_stack_is_pinned`, com a fixtura **derivada** de
 /// [`UnaryKind::ALL`], para que um modificador novo entre nela sozinho.
 ///
+/// v15: as **21 primitivas com aresta** ganharam o `chamfer` (Enio, 2026-08-30: *«em todas as peças
+/// temos fillet para as bordas arredondadas mas não temos um slider para chamfer»*). É campo novo em
+/// variantes existentes, e postcard é **posicional** — um documento v14 leria o campo seguinte de
+/// cada forma como o chanfro dela.
+///
+/// ⚠️ **Este degrau OS DOIS goldens de forma apanham**, ao contrário dos v11–v13: as fixturas deles
+/// instanciam primitivas (uma caixa e uma extrusão), e o que lhes faltava era instanciar
+/// **modificadores** — que é o buraco que a v14 fechou.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 14;
+pub const FIELD_DOC_VERSION: u32 = 15;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

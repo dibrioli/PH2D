@@ -24,6 +24,7 @@ fn a_world_axis_spin_stays_on_the_world_axis_under_a_rotated_parent() {
                 kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
                     half: [0.3, 0.1, 0.1],
                     round: 0.02,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,

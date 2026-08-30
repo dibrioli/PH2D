@@ -31,6 +31,7 @@ fn extrusion(n: usize) -> FieldDoc {
         profile,
         half_height: 0.4,
         round: 0.0,
+        chamfer: 0.0,
     })
 }
 
@@ -96,6 +97,7 @@ fn measure_formula_against_drawn() {
         cost(&doc(Primitive::Box {
             half: [0.4; 3],
             round: 0.0,
+            chamfer: 0.0,
         })),
     );
     linha(
@@ -103,6 +105,7 @@ fn measure_formula_against_drawn() {
         cost(&doc(Primitive::Box {
             half: [0.4; 3],
             round: 0.08,
+            chamfer: 0.0,
         })),
     );
     linha(
@@ -111,6 +114,7 @@ fn measure_formula_against_drawn() {
             radius: 0.4,
             half_height: 0.5,
             round: 0.0,
+            chamfer: 0.0,
         })),
     );
     linha(
@@ -140,6 +144,7 @@ fn measure_the_same_shape_by_both_routes() {
         radius: 0.5,
         half_height: 0.4,
         round: 0.0,
+        chamfer: 0.0,
     }));
     println!("  o MESMO cilindro pelos dois caminhos");
     println!("  caminho                     |  nós |  ns/ponto | × a fórmula");

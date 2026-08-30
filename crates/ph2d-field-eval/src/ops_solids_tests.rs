@@ -54,7 +54,7 @@ fn pior_gradiente(t: &fidget::context::Tree, raio: f64, n: i32) -> f64 {
 /// resposta toda a gente sabe, nenhum gate abaixo quer dizer nada.
 #[test]
 fn the_ruler_can_tell_inside_from_outside() {
-    let t = sd_octahedron(1.0, 0.0);
+    let t = sd_octahedron(1.0, 0.0, 0.0);
     assert!(at(&t, [0.0, 0.0, 0.0]) < 0.0, "o centro tem de ser dentro");
     assert!(at(&t, [5.0, 0.0, 0.0]) > 0.0, "longe tem de ser fora");
 }
@@ -66,7 +66,7 @@ fn the_ruler_can_tell_inside_from_outside() {
 #[test]
 fn the_octahedron_puts_its_vertex_at_the_radius() {
     let r = 1.3;
-    let t = sd_octahedron(r, 0.0);
+    let t = sd_octahedron(r, 0.0, 0.0);
     for v in [[r, 0.0, 0.0], [-r, 0.0, 0.0], [0.0, r, 0.0], [0.0, 0.0, -r]] {
         assert!(
             at(&t, v).abs() < 1.0e-6,
@@ -182,7 +182,7 @@ fn a_round_cone_touches_both_of_its_spheres() {
 #[test]
 fn a_cut_sphere_keeps_what_is_below_the_cut() {
     let (r, cut) = (1.0, 0.3);
-    let t = sd_cut_sphere(r, cut, 0.0);
+    let t = sd_cut_sphere(r, cut, 0.0, 0.0);
     // O pólo de baixo continua na superfície; o de cima foi-se.
     assert!(at(&t, [0.0, 0.0, -r]).abs() < 1.0e-6);
     assert!(at(&t, [0.0, 0.0, r]) > 0.0, "o polo de cima foi cortado");
@@ -202,7 +202,7 @@ fn a_cut_sphere_keeps_what_is_below_the_cut() {
 #[test]
 fn a_hollow_dome_is_hollow() {
     let (r, cut, t_esp) = (1.0, 0.0, 0.15);
-    let t = sd_cut_hollow_sphere(r, cut, t_esp, 0.0);
+    let t = sd_cut_hollow_sphere(r, cut, t_esp, 0.0, 0.0);
     // O centro da esfera está VAZIO (fora do sólido).
     assert!(
         at(&t, [0.0, 0.0, 0.0]) > 0.0,
@@ -257,7 +257,7 @@ fn a_link_is_a_stretched_torus() {
 #[test]
 fn a_solid_angle_keeps_only_its_cone() {
     let (r, ang) = (1.0_f64, 0.6_f64);
-    let t = sd_solid_angle(r, ang, 0.0);
+    let t = sd_solid_angle(r, ang, 0.0, 0.0);
     // No eixo, dentro do raio: dentro. Fora do raio: fora.
     assert!(at(&t, [0.0, 0.0, r * 0.5]) < 0.0);
     assert!(at(&t, [0.0, 0.0, r * 1.5]) > 0.0);
@@ -285,12 +285,12 @@ fn a_solid_angle_keeps_only_its_cone() {
 #[test]
 fn every_new_solid_marches_safely() {
     let casos: [(&str, fidget::context::Tree); 6] = [
-        ("octaedro", sd_octahedron(0.8, 0.0)),
+        ("octaedro", sd_octahedron(0.8, 0.0, 0.0)),
         ("cone redondo", sd_round_cone(0.5, 0.2, 0.6)),
-        ("esfera cortada", sd_cut_sphere(0.9, 0.2, 0.0)),
-        ("cupula oca", sd_cut_hollow_sphere(0.9, 0.0, 0.12, 0.0)),
+        ("esfera cortada", sd_cut_sphere(0.9, 0.2, 0.0, 0.0)),
+        ("cupula oca", sd_cut_hollow_sphere(0.9, 0.0, 0.12, 0.0, 0.0)),
         ("elo", sd_link(0.5, 0.15, 0.35)),
-        ("angulo solido", sd_solid_angle(0.9, 0.7, 0.0)),
+        ("angulo solido", sd_solid_angle(0.9, 0.7, 0.0, 0.0)),
     ];
     // A folga é de AMOSTRAGEM: a norma sai de diferenças finitas com `eps = 1e-4`, e numa quina o
     // quociente lê ligeiramente acima de 1 sem que o campo o esteja.

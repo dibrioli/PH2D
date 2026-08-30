@@ -154,11 +154,12 @@ fn sd_profile_inner(profile: &Profile, u: &Tree, v: &Tree, axis_seam: bool) -> T
 /// desaparece. É o comportamento correto de arredondar com esse raio, e é o mesmo que qualquer CAD
 /// faz — não é um caso de erro, e por isso o documento não o recusa.
 #[must_use]
-pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64) -> Tree {
+pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64, chamfer: f64) -> Tree {
     extrude_from(
         &sd_profile(profile, &Tree::x(), &Tree::y()),
         half_height,
         round,
+        chamfer,
     )
 }
 
@@ -168,8 +169,19 @@ pub fn sd_extrude(profile: &Profile, half_height: f64, round: f64) -> Tree {
 /// especializada sem uma segunda cópia desta receita. *Duas cópias da casca divergiriam no dia em
 /// que o filete mudasse, e só uma das formas de perfil o notaria.*
 #[must_use]
-pub fn extrude_from(flat: &Tree, half_height: f64, round: f64) -> Tree {
+pub fn extrude_from(flat: &Tree, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let flat = flat.clone();
+    if chamfer > 0.0 {
+        // ⭐ **O aro é a junta de DUAS peças** — a parede (o contorno) e a laje —, e é a mesma forma
+        // que o [`crate::ops::slab_and_walls`] usa para o resto da família. ⚠️ O caminho abaixo fica
+        // intocado: com `chamfer = 0` esta forma nem é construída.
+        let laje = Tree::z().abs() - Tree::constant(half_height);
+        return crate::ops_joint::intersection_joint(
+            &flat,
+            &laje,
+            crate::ops_joint::Edge { round, chamfer },
+        );
+    }
     if round <= 0.0 {
         // ⚠️ Caminho DURO de propósito, pelo mesmo motivo do `ops::union`: com `round = 0` a versão
         // arredondada é algebricamente idêntica, e paga dois nós a mais **por amostra** — e o

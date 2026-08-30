@@ -29,7 +29,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             Ok(())
         }
     };
-    let round_fits = |round: f32, limit: f32| -> Result<(), FieldError> {
+    let um_recuo = |round: f32, limit: f32| -> Result<(), FieldError> {
         if !round.is_finite() || round < 0.0 || round >= limit {
             Err(FieldError::RoundTooLarge {
                 node: idx,
@@ -40,25 +40,40 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             Ok(())
         }
     };
+    // ⭐⭐ **OS DOIS RECUOS DE UMA ARESTA** (Enio, 2026-08-30) — o chanfro e o filete, contra a MESMA
+    // parede. Os dois recuam a superfície a partir da mesma quina, e um chanfro que a atravessa
+    // apaga a forma pelo mesmo mecanismo que um filete grande demais.
+    //
+    // ⚠️ **É uma porta e não duas chamadas em cada braço**: são 21 primitivas, e uma que esquecesse
+    // a segunda linha aceitaria um número que o resto do módulo assume validado.
+    let round_fits = |round: f32, chamfer: f32, limit: f32| -> Result<(), FieldError> {
+        um_recuo(chamfer, limit)?;
+        um_recuo(round, limit)
+    };
     match *p {
-        Primitive::Box { half, round } => {
+        Primitive::Box {
+            half,
+            round,
+            chamfer,
+        } => {
             for h in half {
                 positive(h, "half")?;
             }
             // ⚠️ O limite é a MENOR meia-extensão: a receita do arredondamento encolhe a caixa em
             // `round` nos três eixos, e uma delas ficando ≤ 0 não é "quase" — é uma caixa que
             // deixou de existir naquele eixo, e o campo que sai disso não é uma distância.
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Sphere { radius } => positive(radius, "radius"),
         Primitive::Cylinder {
             radius,
             half_height,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Torus { major, minor } => {
             positive(major, "major")?;
@@ -68,6 +83,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             profile: _,
             half_height,
             round,
+            chamfer,
         } => {
             positive(half_height, "half_height")?;
             // ⚠️ O limite é a meia-altura, e **só** ela. Um `round` maior do que a meia-largura do
@@ -78,7 +94,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             //
             // Na altura não é assim: com `round ≥ half_height` o termo axial inverte de sinal e o
             // sólido deixa de existir — isso não é abertura, é uma forma que ninguém pediu.
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Revolve { ref profile } => {
             let min_x = profile.bounds().0[0];
@@ -94,6 +110,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             top,
             half_height,
             round,
+            chamfer,
         } => {
             positive(bottom, "bottom")?;
             if !top.is_finite() || top < 0.0 {
@@ -103,7 +120,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                 });
             }
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Capsule {
             radius,
@@ -118,6 +135,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             top,
             half_height,
             round,
+            chamfer,
         } => {
             // ⚠️ **A contagem é COAGIDA na porta, não recusada**: um prisma de 2 lados não é uma
             // forma degenerada que o artista queira ver recusada — é um valor que a UI nunca
@@ -137,23 +155,28 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                 });
             }
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
-        Primitive::Wedge { half, round } => {
+        Primitive::Wedge {
+            half,
+            round,
+            chamfer,
+        } => {
             for h in half {
                 positive(h, "half")?;
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::TorusArc {
             major,
             minor,
             angle,
             round,
+            chamfer,
         } => {
             positive(major, "major")?;
             positive(minor, "minor")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))?;
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))?;
             // ⚠️ **O ângulo é o único número deste arquivo cujo teto importa tanto quanto o piso**:
             // acima de `2π` o sector deixa de ser exprimível por semiplanos, e a porta coage em vez
             // de recusar (o slider pára lá, e só um documento estragado traz mais).
@@ -171,6 +194,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             inner,
             half_height,
             round,
+            chamfer,
         } => {
             // ⚠️ **COAGIDA na porta como a contagem de lados** — a UI nunca oferece fora da faixa,
             // então um valor de fora só chega por um documento estragado, e recusar ali rejeitaria
@@ -193,12 +217,13 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                 });
             }
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::BoxFrame {
             half,
             thickness,
             round,
+            chamfer,
         } => {
             for h in half {
                 positive(h, "half")?;
@@ -213,7 +238,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "thickness",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Ellipsoid { radii } => {
             for r in radii {
@@ -225,9 +250,13 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         // ⚠️ **Cada uma recusa em VOZ ALTA o que produziria a forma errada em silêncio.** Um
         // documento que existe está válido — é a invariante desta crate, e é ela que faz o painel
         // poder oferecer o que oferece.
-        Primitive::Octahedron { radius, round } => {
+        Primitive::Octahedron {
+            radius,
+            round,
+            chamfer,
+        } => {
             positive(radius, "radius")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⛔⛔ **A cerca que a fórmula EXIGE:** com `|bottom − top| >= 2·half_height` uma esfera
         // contém a outra, a tangente comum **não existe** e o `a` do denominador vai a zero. Não é
@@ -250,7 +279,12 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
         }
         // ⚠️ `cut >= radius` não deixa peça nenhuma; `cut <= −radius` é a esfera inteira e é
         // legítimo (o corte fica fora dela).
-        Primitive::CutSphere { radius, cut, round } => {
+        Primitive::CutSphere {
+            radius,
+            cut,
+            round,
+            chamfer,
+        } => {
             positive(radius, "radius")?;
             if cut >= radius {
                 return Err(FieldError::NonPositive {
@@ -258,13 +292,14 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "cut",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::HollowDome {
             radius,
             cut,
             thickness,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(thickness, "thickness")?;
@@ -275,7 +310,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "thickness",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Link {
             major,
@@ -304,10 +339,11 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             radius,
             angle,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(angle, "angle")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⚠️ **A ponta do dente TEM de passar o corpo**, senão não há dente — e uma engrenagem sem
         // dentes é um disco com um nome errado.
@@ -318,6 +354,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             tooth,
             half_height,
             round,
+            chamfer,
         } => {
             if !(MIN_GEAR_TEETH..=MAX_GEAR_TEETH).contains(&teeth) {
                 return Err(FieldError::NonPositive {
@@ -339,7 +376,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "tooth",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⚠️ **O braço tem de passar a largura dele**, senão a cruz é um quadrado.
         Primitive::Cross {
@@ -347,6 +384,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             width,
             half_height,
             round,
+            chamfer,
         } => {
             positive(arm, "arm")?;
             positive(width, "width")?;
@@ -357,16 +395,17 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "width",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Heart {
             size,
             half_height,
             round,
+            chamfer,
         } => {
             positive(size, "size")?;
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⚠️ **A mordida tem de deixar crescente:** com `bite >= radius + offset` ela come o disco
         // inteiro e não sobra peça nenhuma.
@@ -376,6 +415,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             offset,
             half_height,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(bite, "radius")?;
@@ -386,7 +426,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "bite",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⚠️ **A ponta tem de estar FORA da bolha** — de dentro dela não há tangente.
         Primitive::Drop {
@@ -394,6 +434,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             height,
             half_height,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(half_height, "half_height")?;
@@ -403,18 +444,19 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "height",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Pie {
             radius,
             angle,
             half_height,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(angle, "angle")?;
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         Primitive::Trapezoid {
             bottom,
@@ -422,12 +464,13 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             half_width,
             half_height,
             round,
+            chamfer,
         } => {
             positive(bottom, "width")?;
             positive(top, "width")?;
             positive(half_width, "half_width")?;
             positive(half_height, "half_height")?;
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
         // ⚠️ **O afastamento tem de ser MENOR que o raio**, senão os dois discos não se cruzam e a
         // lente é vazia.
@@ -436,6 +479,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
             offset,
             half_height,
             round,
+            chamfer,
         } => {
             positive(radius, "radius")?;
             positive(half_height, "half_height")?;
@@ -445,7 +489,7 @@ pub(crate) fn validate_primitive(idx: u32, p: &Primitive) -> Result<(), FieldErr
                     what: "offset",
                 });
             }
-            round_fits(round, round_limit(p).unwrap_or(0.0))
+            round_fits(round, chamfer, round_limit(p).unwrap_or(0.0))
         }
     }
 }

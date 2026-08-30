@@ -40,7 +40,7 @@
 
 use fidget::context::Tree;
 
-use crate::ops::{Blended, intersection, length2, length3, sharp_corner_radius};
+use crate::ops::{length2, length3, sharp_corner_radius};
 
 /// ⭐⭐ **OCTAEDRO regular** — `radius` é a distância do centro a um VÉRTICE.
 ///
@@ -60,7 +60,7 @@ use crate::ops::{Blended, intersection, length2, length3, sharp_corner_radius};
 ///
 /// ⚠️ O meio-ângulo da quina é `54,7°` (as normais vizinhas fazem `70,53°`), logo **obtuso**: o
 /// [`sharp_corner_radius`] deixa-o intocado, que é o que a medição da W104-ter pede.
-pub fn sd_octahedron(radius: f64, round: f64) -> Tree {
+pub fn sd_octahedron(radius: f64, round: f64, chamfer: f64) -> Tree {
     // A face é `x + y + z = radius` no octante positivo; normalizada, `(x+y+z−r)/√3`.
     let r = radius;
     let inv = 1.0 / 3.0_f64.sqrt();
@@ -78,7 +78,21 @@ pub fn sd_octahedron(radius: f64, round: f64) -> Tree {
                     * Tree::constant(inv);
                 faces = Some(faces.map_or_else(
                     || f.clone(),
-                    |w: Tree| intersection(&w, &f, Blended::Exact(raio)),
+                    // ⚠️ **O filete entra COMPENSADO e o chanfro entra CRU**, e a assimetria é
+                    // medida: a compensação existe porque o operador de filete só é um arco a 90°
+                    // (ver `ops::sd_star`), e o plano do chanfro **é** exacto — ele recua `c` em
+                    // cada face seja qual for o ângulo. Compensar os dois daria um chanfro que não
+                    // entrega o número pedido.
+                    |w: Tree| {
+                        crate::ops_joint::intersection_joint(
+                            &w,
+                            &f,
+                            crate::ops_joint::Edge {
+                                round: raio,
+                                chamfer,
+                            },
+                        )
+                    },
                 ));
             }
         }
@@ -148,10 +162,10 @@ pub fn sd_round_cone(bottom: f64, top: f64, half_height: f64) -> Tree {
 /// ⚠️ **A fórmula publicada tem um bordo de raio fixo; esta tem um KNOB.** Ela resolve a aresta com
 /// `length(q − bordo)`, que é um arco de raio zero; aqui a aresta é a única viva da forma e o
 /// artista escolhe o raio dela.
-pub fn sd_cut_sphere(radius: f64, cut: f64, round: f64) -> Tree {
+pub fn sd_cut_sphere(radius: f64, cut: f64, round: f64, chamfer: f64) -> Tree {
     let esfera = length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius);
     let plano = Tree::z() - Tree::constant(cut);
-    intersection(&esfera, &plano, Blended::Exact(round))
+    crate::ops_joint::intersection_joint(&esfera, &plano, crate::ops_joint::Edge { round, chamfer })
 }
 
 /// ⭐⭐ **CÚPULA OCA** — uma tigela, um capacete, uma antena.
@@ -171,11 +185,17 @@ pub fn sd_cut_sphere(radius: f64, cut: f64, round: f64) -> Tree {
 /// eixo, o ramo do bordo dá `√(w² + (z−h)²)` e o da casca dá `|z − r|`, e como `h < r` o **segundo é
 /// menor** — o `min` escolheria o ramo errado exactamente onde a referência escolhe o outro.
 /// *Verifiquei num ponto antes de acreditar na simplificação.*
-pub fn sd_cut_hollow_sphere(radius: f64, cut: f64, thickness: f64, round: f64) -> Tree {
+pub fn sd_cut_hollow_sphere(
+    radius: f64,
+    cut: f64,
+    thickness: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
     let casca = (length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius)).abs()
         - Tree::constant(thickness * 0.5);
     let plano = Tree::z() - Tree::constant(cut);
-    intersection(&casca, &plano, Blended::Exact(round))
+    crate::ops_joint::intersection_joint(&casca, &plano, crate::ops_joint::Edge { round, chamfer })
 }
 
 /// ⭐⭐⭐ **ELO DE CORRENTE** — a forma que nada neste catálogo exprime, e a que mais se nota quando
@@ -213,12 +233,12 @@ pub fn sd_link(major: f64, minor: f64, length: f64) -> Tree {
 /// ⛔ **A projecção com o pé PRESO ao arco (a da referência) foi escrita e descartada**: ela dá a
 /// distância exacta à aresta, e `length` é sempre positiva — faltava-lhe o **sinal**, que só voltava
 /// com um `compare` sobre a posição. *Uma expressão exacta sem sinal não é um campo com sinal.*
-pub fn sd_solid_angle(radius: f64, angle: f64, round: f64) -> Tree {
+pub fn sd_solid_angle(radius: f64, angle: f64, round: f64, chamfer: f64) -> Tree {
     let (s, c) = (angle.sin(), angle.cos());
     let rho = length2(&Tree::x(), &Tree::y());
     let esfera = length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius);
     let cone = rho * Tree::constant(c) - Tree::z() * Tree::constant(s);
-    intersection(&esfera, &cone, Blended::Exact(round))
+    crate::ops_joint::intersection_joint(&esfera, &cone, crate::ops_joint::Edge { round, chamfer })
 }
 
 #[cfg(test)]

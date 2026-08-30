@@ -44,6 +44,7 @@ fn torcida(turns: f32, lower: f32, upper: f32) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.6, 0.6, 0.35],
             round: 0.0,
+            chamfer: 0.0,
         }),
     );
     if turns != 0.0 {
@@ -177,6 +178,7 @@ fn a_twist_of_zero_is_the_piece_untouched() {
         NodeKind::Leaf(Primitive::Box {
             half: [0.6, 0.6, 0.35],
             round: 0.0,
+            chamfer: 0.0,
         }),
     );
     let limpa = FieldDoc::new(vec![n.clone()], NodeId(0)).expect("peça");

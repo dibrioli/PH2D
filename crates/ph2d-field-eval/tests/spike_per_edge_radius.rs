@@ -20,7 +20,7 @@ use ph2d_field_eval::Field;
 /// A caixa de sempre, com o raio uniforme — o **oráculo**, já medido a `0,00 %` pelos gates da
 /// crate.
 fn uniform(h: [f64; 3], r: f64) -> Tree {
-    ph2d_field_eval::ops::sd_box(h, r)
+    ph2d_field_eval::ops::sd_box(h, r, 0.0)
 }
 
 /// **A caixa com um raio por GRUPO de arestas** — `rx` para as 4 paralelas a X, e assim por diante.

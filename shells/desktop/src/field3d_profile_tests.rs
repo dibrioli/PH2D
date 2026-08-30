@@ -78,6 +78,7 @@ fn the_table_that_chose_the_tolerance() {
             profile: prof.clone(),
             half_height: 0.2,
             round: 0.0,
+            chamfer: 0.0,
         });
         let cam0 = Orbit::from_yaw_pitch(0.72, 0.52);
         let mut ext_ms = Vec::new();
@@ -182,6 +183,7 @@ fn the_table_that_chose_the_resolution_ceiling() {
                     profile: prof,
                     half_height: 0.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: Vec::new(),
                 verb: None,
@@ -276,6 +278,7 @@ fn the_table_of_where_the_banding_knee_moves_with_zoom() {
                         profile: prof,
                         half_height: 0.2,
                         round: 0.0,
+                        chamfer: 0.0,
                     }),
                     mods: Vec::new(),
                     verb: None,
@@ -422,6 +425,7 @@ fn the_table_of_the_sharpest_corner() {
                     profile: prof.clone(),
                     half_height: 0.2,
                     round: 0.03,
+                    chamfer: 0.0,
                 },
                 ph2d_field::Xform::IDENTITY,
             )],

@@ -44,13 +44,13 @@ fn ns_por_ponto(t: &fidget::context::Tree, amostras: usize) -> f64 {
 #[ignore = "sonda: imprime o preco por contagem de dentes"]
 fn measure_gear_teeth() {
     const N: usize = 20_000;
-    let cilindro = ops::sd_cylinder(0.8, 0.2, 0.0);
+    let cilindro = ops::sd_cylinder(0.8, 0.2, 0.0, 0.0);
     let (nc, tc) = (nodes(&cilindro), ns_por_ponto(&cilindro, N));
     println!("\ncilindro: {nc} nos, {tc:.2} ns/ponto  (a referencia que o prisma usa)\n");
     // ⭐⭐⭐ **AS DUAS BARRAS QUE A CASA JÁ ACEITOU** — e é contra elas que este teto se mede, não
     // contra um número novo. O prisma shipa a `MAX_PRISM_SIDES` e a estrela a `MAX_STAR_POINTS`.
-    let prisma = ops::sd_prism(ph2d_field::MAX_PRISM_SIDES, 0.8, 0.8, 0.2, 0.0);
-    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0);
+    let prisma = ops::sd_prism(ph2d_field::MAX_PRISM_SIDES, 0.8, 0.8, 0.2, 0.0, 0.0);
+    let estrela = ops::sd_star(ph2d_field::MAX_STAR_POINTS, 0.9, 0.5, 0.2, 0.0, 0.0);
     // ⚠️ **Medidas na MESMA corrida que a engrenagem** — comparar com um número colhido noutra
     // corrida somaria os dois ruídos (a lição do A/B desta casa).
     let (np, tp) = (nodes(&prisma), ns_por_ponto(&prisma, N));
@@ -72,7 +72,7 @@ fn measure_gear_teeth() {
     );
     println!("{:>46}", "^ e x a ESTRELA no tecto dela");
     for n in [6_u32, 8, 12, 16, 24, 32, 48, 64] {
-        let g = ops_plates::sd_gear(n, 0.6, 0.9, 0.5, 0.2, 0.0);
+        let g = ops_plates::sd_gear(n, 0.6, 0.9, 0.5, 0.2, 0.0, 0.0);
         let (nn, tt) = (nodes(&g), ns_por_ponto(&g, N));
         println!(
             "{n:>7} {nn:>8} {tt:>12.0} {:>13.2}x {:>12.2}x",

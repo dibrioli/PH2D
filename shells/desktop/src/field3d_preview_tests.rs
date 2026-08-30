@@ -377,6 +377,7 @@ fn both_frames_coarsen_but_the_moving_one_coarsens_more() {
                 profile,
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,

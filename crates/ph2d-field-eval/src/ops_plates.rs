@@ -97,6 +97,7 @@ pub fn sd_gear(
     tooth: f64,
     half_height: f64,
     round: f64,
+    chamfer: f64,
 ) -> Tree {
     let n = teeth.max(3);
     let passo = std::f64::consts::TAU / f64::from(n);
@@ -130,7 +131,7 @@ pub fn sd_gear(
     slab_and_walls(
         &union(&corpo, &dentes, Blended::Exact(round)),
         half_height,
-        round,
+        crate::ops_joint::Edge { round, chamfer },
     )
 }
 
@@ -139,7 +140,7 @@ pub fn sd_gear(
 /// ⚠️ **É composição — duas caixas — e entra na mesma.** O que a primitiva compra é o **número**: a
 /// largura do braço é um valor, e com duas caixas são dois que têm de concordar. E as quatro quinas
 /// **côncavas** arredondam de uma vez, com o mesmo `round` das convexas.
-pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     // ⚠️ **Os braços chegam JÁ arredondados** — ver [`rect_round`]: as oito quinas verticais deles
     // não são aro, e o `slab_and_walls` não lhes toca.
     let horizontal = rect_round(arm, width, round);
@@ -147,7 +148,7 @@ pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64) -> Tree {
     slab_and_walls(
         &union(&horizontal, &vertical, Blended::Exact(round)),
         half_height,
-        round,
+        crate::ops_joint::Edge { round, chamfer },
     )
 }
 
@@ -159,7 +160,7 @@ pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64) -> Tree {
 ///
 /// ⚠️ **A cova entre os dois lóbulos é uma quina CÔNCAVA**, e é ela que dá o carácter da forma — por
 /// isso a união é arredondada e não crua.
-pub fn sd_heart(size: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_heart(size: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     // ⚠️⚠️ **O losango é um QUADRADO RODADO, e não um `|x|+|y|` dobrado** — e a diferença é o
     // filete. A forma dobrada é um `max` de quatro semiespaços, e a W104 mediu que dilatar isso é
     // **inerte**: as quatro quinas ficavam vivas (a sonda leu `2,8 %` da superfície sobre um vinco
@@ -193,7 +194,11 @@ pub fn sd_heart(size: f64, half_height: f64, round: f64) -> Tree {
         &direito,
         Blended::Exact(round),
     );
-    slab_and_walls(&corpo, half_height, round)
+    slab_and_walls(
+        &corpo,
+        half_height,
+        crate::ops_joint::Edge { round, chamfer },
+    )
 }
 
 /// ⭐ **LUA / crescente** — o disco `radius` menos um disco `bite` deslocado de `offset` em `+X`.
@@ -203,11 +208,22 @@ pub fn sd_heart(size: f64, half_height: f64, round: f64) -> Tree {
 ///
 /// ⚠️ As duas pontas do crescente são quinas agudas onde os dois círculos se cruzam, e o `round`
 /// alcança-as: a subtracção arredondada é o dual do mesmo arco.
-pub fn sd_moon(radius: f64, bite: f64, offset: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_moon(
+    radius: f64,
+    bite: f64,
+    offset: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
     let cheio = disco(radius);
     let mordida = disco_em(offset, 0.0, bite);
     let crescente = intersection(&cheio, &crate::ops::neg(&mordida), Blended::Exact(round));
-    slab_and_walls(&crescente, half_height, round)
+    slab_and_walls(
+        &crescente,
+        half_height,
+        crate::ops_joint::Edge { round, chamfer },
+    )
 }
 
 /// ⭐ **GOTA / ovo** — um disco de raio `radius` e uma ponta a `height` acima dele.
@@ -215,7 +231,7 @@ pub fn sd_moon(radius: f64, bite: f64, offset: f64, half_height: f64, round: f64
 /// ⭐ **Um disco unido a um triângulo TANGENTE.** ⚠️ Se o triângulo apenas tocasse o disco, a união
 /// teria a costura fantasma que a estrela pagou; aqui os flancos são as **tangentes** ao disco a
 /// partir da ponta, e por isso a junção é lisa **por geometria** e não por mistura.
-pub fn sd_drop(radius: f64, height: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_drop(radius: f64, height: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let bolha = disco(radius);
     let h = height.max(radius * 1.01);
     // As tangentes ao círculo a partir de `(0, h)`: o ângulo entre a tangente e o eixo é `asin(r/h)`.
@@ -242,7 +258,11 @@ pub fn sd_drop(radius: f64, height: f64, half_height: f64, round: f64) -> Tree {
     let bico = intersection(&cone, &corte, Blended::Exact(0.0));
     // ⚠️ A união é CRUA de propósito: as tangentes encontram o círculo **sem quina**, e arredondar
     // ali abriria um sulco onde não há aresta.
-    slab_and_walls(&bolha.min(bico), half_height, round)
+    slab_and_walls(
+        &bolha.min(bico),
+        half_height,
+        crate::ops_joint::Edge { round, chamfer },
+    )
 }
 
 /// ⭐ **FATIA / sector de disco** — `radius` e a meia-abertura `angle`, centrada em `+Y`.
@@ -250,7 +270,7 @@ pub fn sd_drop(radius: f64, height: f64, half_height: f64, round: f64) -> Tree {
 /// ⚠️ **A ramificação vive em RUST**, como no [`crate::ops::sd_torus_arc`]: até `π` o sector é a
 /// **interseção** dos dois semiplanos, acima é a **união** deles. Uma ramificação dentro do campo
 /// seria uma segunda forma escondida na primeira.
-pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let d = disco(radius);
     let a = angle.clamp(0.01, std::f64::consts::PI - 0.01);
     // Os dois semiplanos que limitam o sector, com a bissectriz em `+Y`.
@@ -274,7 +294,7 @@ pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64) -> Tree {
     slab_and_walls(
         &intersection(&d, &sector, Blended::Exact(round)),
         half_height,
-        round,
+        crate::ops_joint::Edge { round, chamfer },
     )
 }
 
@@ -282,7 +302,14 @@ pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64) -> Tree {
 ///
 /// ⚠️ **Não é o prisma de 4 lados estreitado**: aquele estreita nos **dois** eixos (é uma pirâmide
 /// truncada), e um trapézio estreita **num** — a secção continua a ser um rectângulo em Z.
-pub fn sd_trapezoid(bottom: f64, top: f64, half_width: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_trapezoid(
+    bottom: f64,
+    top: f64,
+    half_width: f64,
+    half_height: f64,
+    round: f64,
+    chamfer: f64,
+) -> Tree {
     // Os dois flancos inclinados, normalizados, mais as duas bases.
     let m = (top - bottom) / (2.0 * half_width);
     let norm = 1.0 / (1.0 + m * m).sqrt();
@@ -293,20 +320,20 @@ pub fn sd_trapezoid(bottom: f64, top: f64, half_width: f64, half_height: f64, ro
     slab_and_walls(
         &intersection(&flanco, &bases, Blended::Exact(round)),
         half_height,
-        round,
+        crate::ops_joint::Edge { round, chamfer },
     )
 }
 
 /// ⭐ **VESICA / lente** — a interseção de dois discos de raio `radius` afastados de `2·offset`.
 ///
 /// As duas pontas são quinas agudas, e é delas que a forma vive.
-pub fn sd_vesica(radius: f64, offset: f64, half_height: f64, round: f64) -> Tree {
+pub fn sd_vesica(radius: f64, offset: f64, half_height: f64, round: f64, chamfer: f64) -> Tree {
     let a = disco_em(-offset, 0.0, radius);
     let b = disco_em(offset, 0.0, radius);
     slab_and_walls(
         &intersection(&a, &b, Blended::Exact(round)),
         half_height,
-        round,
+        crate::ops_joint::Edge { round, chamfer },
     )
 }
 

@@ -68,6 +68,7 @@ fn measure_prism_sides() {
         radius: 0.45,
         half_height: 0.3,
         round: 0.05,
+        chamfer: 0.0,
     });
     println!("  forma                  |  nós |  ns/ponto | × o cilindro | desvio da quina");
     println!(
@@ -84,9 +85,12 @@ fn measure_prism_sides() {
                 top: 0.45,
                 half_height: 0.3,
                 round: 0.05,
+                chamfer: 0.0,
             })
         } else {
-            cost_of(ph2d_field_eval::ops::sd_prism(n, 0.45, 0.45, 0.3, 0.05))
+            cost_of(ph2d_field_eval::ops::sd_prism(
+                n, 0.45, 0.45, 0.3, 0.05, 0.0,
+            ))
         };
         let desvio = 1.0 - (std::f64::consts::PI / f64::from(n)).cos();
         let cerca = if n > ph2d_field::MAX_PRISM_SIDES {

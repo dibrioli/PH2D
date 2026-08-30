@@ -69,6 +69,7 @@ fn a_cone_interpolates_its_two_radii() {
             top: t as f32,
             half_height: h as f32,
             round: round as f32,
+            chamfer: 0.0,
         });
         // ⚠️ **A faixa é a do MEIO**, e não as pontas: junto às tampas o filete arqueia a
         // silhueta de propósito (é o que ele é), e a lei da reta vale onde a parede é a parede.
@@ -97,6 +98,7 @@ fn a_closed_cone_ends_in_a_point() {
         top: 0.0,
         half_height: h as f32,
         round: 0.0,
+        chamfer: 0.0,
     });
     // Um cabelo acima do topo, no eixo: fora.
     assert!(
@@ -159,6 +161,7 @@ fn a_prism_wears_its_radius_on_the_corner() {
             top: r as f32,
             half_height: 0.3,
             round: 0.0,
+            chamfer: 0.0,
         });
         // A parede está a `r·cos(π/n)` do eixo, na direção de meio setor.
         let apotema = r * (std::f64::consts::PI / f64::from(n)).cos();
@@ -241,6 +244,7 @@ fn a_pyramid_is_the_prism_whose_top_closes() {
             top: topo as f32,
             half_height: h as f32,
             round: round as f32,
+            chamfer: 0.0,
         });
         for frac in [-0.5_f64, -0.25, 0.0, 0.25, 0.5] {
             let z = frac * h;
@@ -259,6 +263,7 @@ fn a_pyramid_is_the_prism_whose_top_closes() {
         top: t as f32,
         half_height: h as f32,
         round: 0.0,
+        chamfer: 0.0,
     });
     // ⭐ E ela FECHA: a 1 % do topo a secção é ~1 % da base.
     let quase = parede(&f, h * 0.99);
@@ -278,6 +283,7 @@ fn a_wedge_is_full_on_one_side_and_gone_on_the_other() {
     let f = field_of(Primitive::Wedge {
         half: [hx as f32, hy as f32, hz as f32],
         round: 0.0,
+        chamfer: 0.0,
     });
     // No lado cheio, o canto de cima está dentro.
     assert!(
@@ -331,6 +337,7 @@ fn a_torus_arc_covers_exactly_the_angle_asked() {
             minor: minor as f32,
             angle: angle as f32,
             round: 0.0,
+            chamfer: 0.0,
         });
         let dentro = |t: f64| f.at(major * t.cos(), major * t.sin(), 0.0) < 0.0;
         // No meio do sector: dentro. Um cabelo fora dele: fora.
@@ -365,6 +372,7 @@ fn a_full_sweep_is_the_whole_torus() {
         minor: 0.12,
         angle: std::f32::consts::TAU,
         round: 0.0,
+        chamfer: 0.0,
     });
     for i in 0..64 {
         let t = std::f64::consts::TAU * f64::from(i) / 64.0;

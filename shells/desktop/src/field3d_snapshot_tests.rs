@@ -36,6 +36,7 @@ fn a_doc() -> FieldDoc {
             kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,

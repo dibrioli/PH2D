@@ -28,6 +28,7 @@ fn elbow(blend: Blend) -> FieldDoc {
                 Primitive::Box {
                     half: [1.0, 0.5, 0.5],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::at(0.0, -0.5, 0.0),
             ),
@@ -35,6 +36,7 @@ fn elbow(blend: Blend) -> FieldDoc {
                 Primitive::Box {
                     half: [0.5, 1.0, 0.5],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::at(-0.5, 0.0, 0.0),
             ),
@@ -84,6 +86,7 @@ fn an_exact_external_round_delivers_the_radius_asked() {
                 Primitive::Box {
                     half: [half as f32; 3],
                     round: r as f32,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -138,6 +141,7 @@ fn a_difference_removes_material_and_the_hole_wall_is_where_it_should_be() {
                 Primitive::Box {
                     half: [0.5; 3],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             ),
@@ -146,6 +150,7 @@ fn a_difference_removes_material_and_the_hole_wall_is_where_it_should_be() {
                     radius: 0.2,
                     half_height: 2.0,
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             ),
@@ -225,6 +230,7 @@ fn a_rotation_turns_the_shape_and_keeps_the_distance() {
             Primitive::Box {
                 half: [0.5, 0.1, 0.1],
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform {
                 rotation: [0.0, 0.0, s, s],
@@ -439,6 +445,7 @@ fn an_extruded_polygon_is_the_cylinder_it_approximates() {
             profile: prof,
             half_height: h as f32,
             round: 0.0,
+            chamfer: 0.0,
         }));
         let s = sagitta(n, r);
 
@@ -464,6 +471,7 @@ fn an_extruded_polygon_is_the_cylinder_it_approximates() {
             radius: r as f32,
             half_height: h as f32,
             round: 0.0,
+            chamfer: 0.0,
         }));
         let mut worst = 0.0_f64;
         for i in -6..=6 {
@@ -572,6 +580,7 @@ fn the_sign_survives_the_notch_of_a_concave_profile() {
             profile: profile_of(vec![l.clone()], fill),
             half_height: 10.0,
             round: 0.0,
+            chamfer: 0.0,
         }));
         // Dentro do braço de baixo, e dentro do braço da esquerda: −0,5 nos dois.
         for (x, y) in [(0.5, 0.5), (1.5, 0.5), (0.5, 1.5)] {
@@ -608,6 +617,7 @@ fn the_closing_edge_of_a_contour_exists() {
         profile: profile_of(vec![tri], FillRule::NonZero),
         half_height: 10.0,
         round: 0.0,
+        chamfer: 0.0,
     }));
     let v = f.at(-0.25, 0.5, 0.0);
     assert!(
@@ -631,11 +641,13 @@ fn the_two_fill_rules_disagree_exactly_where_the_winding_says_so() {
         profile: profile_of(both_ccw.clone(), FillRule::EvenOdd),
         half_height: 10.0,
         round: 0.0,
+        chamfer: 0.0,
     }));
     let solid = Field::new(&doc_of(Primitive::Extrude {
         profile: profile_of(both_ccw, FillRule::NonZero),
         half_height: 10.0,
         round: 0.0,
+        chamfer: 0.0,
     }));
     let (h, s) = (hole.at(0.0, 0.0, 0.0), solid.at(0.0, 0.0, 0.0));
     assert!(
@@ -655,6 +667,7 @@ fn the_two_fill_rules_disagree_exactly_where_the_winding_says_so() {
         profile: profile_of(vec![square(1.0), inner_cw], FillRule::NonZero),
         half_height: 10.0,
         round: 0.0,
+        chamfer: 0.0,
     }));
     let c = carved.at(0.0, 0.0, 0.0);
     assert!(
@@ -680,6 +693,7 @@ fn an_extruded_rim_delivers_the_radius_asked() {
             profile: profile_of(vec![square], FillRule::NonZero),
             half_height: h as f32,
             round: r as f32,
+            chamfer: 0.0,
         }));
         // O centro do arco do aro, na secção (x, z): fica DENTRO, a `r` da superfície.
         let centre = f.at(a - r, 0.0, h - r);
@@ -716,6 +730,7 @@ fn measure_profile_tree_size() {
             profile: prof,
             half_height: 0.4,
             round: 0.05,
+            chamfer: 0.0,
         }));
         let mut ctx = fidget::context::Context::new();
         let _ = ctx.import(&tree);
@@ -1476,6 +1491,7 @@ fn probe_sharp_edge_capture() {
                 Primitive::Box {
                     half: [half as f32; 3],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -1542,6 +1558,7 @@ fn extraction_fixtures() -> Vec<(&'static str, FieldDoc)> {
                 radius: 0.22,
                 half_height: 0.78,
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform {
                 rotation: rot,
@@ -1556,6 +1573,7 @@ fn extraction_fixtures() -> Vec<(&'static str, FieldDoc)> {
             doc_of(Primitive::Box {
                 half: [0.45; 3],
                 round: 0.08,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -1563,6 +1581,7 @@ fn extraction_fixtures() -> Vec<(&'static str, FieldDoc)> {
             doc_of(Primitive::Box {
                 half: [0.45; 3],
                 round: 0.0,
+                chamfer: 0.0,
             }),
         ),
         ("esfera", doc_of(Primitive::Sphere { radius: 0.6 })),
@@ -1591,6 +1610,7 @@ fn extraction_fixtures() -> Vec<(&'static str, FieldDoc)> {
                 profile: profile_of(vec![ngon(9, 0.42, [0.0, 0.0])], FillRule::NonZero),
                 half_height: 0.3,
                 round: 0.04,
+                chamfer: 0.0,
             }),
         ),
         ("torno em copo", doc_of(Primitive::Revolve { profile: cup })),
@@ -1756,6 +1776,7 @@ fn a_live_edge_lands_on_the_edge_not_on_the_grid() {
         let doc = doc_of(Primitive::Box {
             half: [half as f32; 3],
             round: 0.0,
+            chamfer: 0.0,
         });
         let m = crate::extract::extract(&doc, &Registry::new(), depth).expect("malha");
 
@@ -1884,6 +1905,7 @@ fn the_numeric_law_is_the_same_law_as_the_tree() {
                         radius: 0.3,
                         half_height: 0.8,
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::IDENTITY,
                 )
@@ -1962,6 +1984,7 @@ fn an_unknown_sculpture_reads_as_empty_space() {
                 radius: 0.3,
                 half_height: 0.8,
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )
@@ -2176,6 +2199,7 @@ fn the_exported_mesh_is_closed() {
                     Primitive::Box {
                         half: [0.5, 0.35, 0.4],
                         round: 0.08,
+                        chamfer: 0.0,
                     },
                     Xform::at(1.7, 0.0, -0.9),
                 )],
@@ -2272,6 +2296,7 @@ fn the_table_that_says_where_a_profile_spends_its_time() {
         radius: 0.5,
         half_height: 0.2,
         round: 0.0,
+        chamfer: 0.0,
     }));
     println!("arestas |  ms/{N} pts |  ns/ponto | x cilindro | ns/ponto/aresta");
     println!(
@@ -2284,6 +2309,7 @@ fn the_table_that_says_where_a_profile_spends_its_time() {
             profile: p,
             half_height: 0.2,
             round: 0.0,
+            chamfer: 0.0,
         }));
         let ns = ms * 1e6 / N as f64;
         println!(
@@ -2306,6 +2332,7 @@ fn the_table_that_says_where_a_profile_spends_its_time() {
             profile: p,
             half_height: 0.2,
             round: 0.0,
+            chamfer: 0.0,
         });
         let mut ms = Vec::new();
         for _ in 0..5 {
@@ -2349,6 +2376,7 @@ fn the_specialised_document_agrees_inside_its_region() {
                 profile: profile_of(vec![ring(168, 0.5)], FillRule::NonZero),
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -2358,6 +2386,7 @@ fn the_specialised_document_agrees_inside_its_region() {
                     profile: profile_of(vec![ring(168, 0.5)], FillRule::NonZero),
                     half_height: 0.2,
                     round: 0.03,
+                    chamfer: 0.0,
                 },
                 Xform {
                     translation: [0.13, -0.07, 0.21],
@@ -2414,6 +2443,7 @@ fn the_specialised_document_agrees_inside_its_region() {
                 ),
                 half_height: 0.15,
                 round: 0.0,
+                chamfer: 0.0,
             });
             let mut nodes = d.nodes().to_vec();
             nodes[0].mods = vec![Unary::Array {
@@ -2434,6 +2464,7 @@ fn the_specialised_document_agrees_inside_its_region() {
                     profile: profile_of(vec![ring(120, 0.45)], FillRule::NonZero),
                     half_height: 0.25,
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
                 mods: vec![Unary::Shell { thickness: 0.06 }],
                 verb: None,
@@ -2608,6 +2639,7 @@ fn the_bounding_box_follows_the_axis_of_the_mirror() {
                     Primitive::Box {
                         half: [0.1; 3],
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::at(at[0], at[1], at[2]),
                 ),
@@ -2636,6 +2668,7 @@ fn the_bounding_box_follows_the_axis_of_the_mirror() {
                     Primitive::Box {
                         half: [0.1; 3],
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::at(at[0], at[1], at[2]),
                 ),
@@ -2710,6 +2743,7 @@ fn pair(op: Op) -> FieldDoc {
                 Primitive::Box {
                     half: [0.6, 0.3, 0.3],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::at(-0.2, 0.0, 0.0),
             ),
@@ -2717,6 +2751,7 @@ fn pair(op: Op) -> FieldDoc {
                 Primitive::Box {
                     half: [0.3, 0.6, 0.3],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::at(0.2, 0.0, 0.0),
             ),
@@ -2749,6 +2784,7 @@ fn the_table_of_who_inflates_the_gradient() {
     let bx = Primitive::Box {
         half: [0.4, 0.3, 0.25],
         round: 0.0,
+        chamfer: 0.0,
     };
     let cases: Vec<(&str, FieldDoc)> = vec![
         ("Box", leaves(bx.clone())),
@@ -2757,6 +2793,7 @@ fn the_table_of_who_inflates_the_gradient() {
             leaves(Primitive::Box {
                 half: [0.4, 0.3, 0.25],
                 round: 0.1,
+                chamfer: 0.0,
             }),
         ),
         ("Sphere", leaves(Primitive::Sphere { radius: 0.5 })),
@@ -2766,6 +2803,7 @@ fn the_table_of_who_inflates_the_gradient() {
                 radius: 0.4,
                 half_height: 0.3,
                 round: 0.0,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -2774,6 +2812,7 @@ fn the_table_of_who_inflates_the_gradient() {
                 radius: 0.4,
                 half_height: 0.3,
                 round: 0.1,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -2789,6 +2828,7 @@ fn the_table_of_who_inflates_the_gradient() {
                 profile: profile.clone(),
                 half_height: 0.25,
                 round: 0.0,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -2797,6 +2837,7 @@ fn the_table_of_who_inflates_the_gradient() {
                 profile: profile.clone(),
                 half_height: 0.25,
                 round: 0.1,
+                chamfer: 0.0,
             }),
         ),
         (
@@ -2907,6 +2948,7 @@ fn the_table_of_the_gradient_across_the_parameter() {
     let bx = Primitive::Box {
         half: [0.4, 0.3, 0.25],
         round: 0.0,
+        chamfer: 0.0,
     };
     let show = |name: &str, vals: Vec<(String, FieldDoc)>| {
         let cells: Vec<String> = vals
@@ -3031,6 +3073,7 @@ fn the_table_of_the_gradient_across_the_parameter() {
                             .expect("perfil"),
                         half_height: 0.25,
                         round: r,
+                        chamfer: 0.0,
                     }),
                 )
             })
@@ -3080,6 +3123,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
     let bx = Primitive::Box {
         half: [0.4, 0.3, 0.25],
         round: 0.0,
+        chamfer: 0.0,
     };
     let mut cases: Vec<(String, FieldDoc)> = Vec::new();
     for r in [0.0f32, 0.1] {
@@ -3088,6 +3132,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
             leaves(Primitive::Box {
                 half: [0.4, 0.3, 0.25],
                 round: r,
+                chamfer: 0.0,
             }),
         ));
         cases.push((
@@ -3096,6 +3141,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
                 radius: 0.4,
                 half_height: 0.3,
                 round: r,
+                chamfer: 0.0,
             }),
         ));
         cases.push((
@@ -3105,6 +3151,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
                     .expect("perfil"),
                 half_height: 0.25,
                 round: r,
+                chamfer: 0.0,
             }),
         ));
     }
@@ -3325,6 +3372,7 @@ fn the_specialisation_actually_consumes_the_hull() {
                 profile,
                 half_height: 0.2,
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -3453,6 +3501,7 @@ fn the_scorecard_of_the_extracted_mesh() {
                     Primitive::Box {
                         half: [0.4, 0.4, 0.4],
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::IDENTITY,
                 )],
@@ -3490,6 +3539,7 @@ fn the_scorecard_of_the_extracted_mesh() {
                         Primitive::Box {
                             half: [0.4, 0.4, 0.4],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -3518,6 +3568,7 @@ fn the_scorecard_of_the_extracted_mesh() {
                             .expect("perfil"),
                         half_height: 0.25,
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::IDENTITY,
                 )],
@@ -3716,6 +3767,7 @@ fn the_skew_belongs_to_the_grid_not_to_the_piece() {
                 Primitive::Box {
                     half: [0.35, 0.35, 0.35],
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 rot,
             )],
@@ -3788,6 +3840,7 @@ fn the_quad_chain_turns_our_mesh_into_oracle_class() {
                     Primitive::Box {
                         half: [0.35, 0.35, 0.35],
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform {
                         rotation: [
@@ -4002,6 +4055,7 @@ fn measure_what_the_chain_gains_from_a_finer_grid() {
                         Primitive::Box {
                             half: [0.30, 0.12, 0.12],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -4009,6 +4063,7 @@ fn measure_what_the_chain_gains_from_a_finer_grid() {
                         Primitive::Box {
                             half: [0.12, 0.30, 0.12],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -4125,6 +4180,7 @@ fn measure_the_ladder_that_keeps_the_ratio() {
                         Primitive::Box {
                             half: [0.30, 0.12, 0.12],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -4132,6 +4188,7 @@ fn measure_the_ladder_that_keeps_the_ratio() {
                         Primitive::Box {
                             half: [0.12, 0.30, 0.12],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -4229,6 +4286,7 @@ fn measure_building_the_tape_against_marching_it() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -4371,6 +4429,7 @@ fn measure_the_four_tapes_of_one_specialisation() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -4475,6 +4534,7 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
             Primitive::Box {
                 half: h,
                 round: 0.0,
+                chamfer: 0.0,
             },
             at,
         )
@@ -4618,6 +4678,7 @@ fn the_bound_sums_squares_and_a_live_joint_takes_the_max() {
             Primitive::Box {
                 half: h,
                 round: 0.0,
+                chamfer: 0.0,
             },
             at,
         )
@@ -4762,6 +4823,7 @@ fn a_mirror_on_an_operation_folds_an_off_centre_child() {
             Primitive::Box {
                 half: [0.12, 0.12, 0.12],
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::at(at[0], at[1], at[2]),
         );
@@ -4859,6 +4921,7 @@ fn measure_the_query_against_the_specialised_tape() {
                     profile,
                     half_height: 0.4,
                     round: 0.06,
+                    chamfer: 0.0,
                 },
                 Xform::IDENTITY,
             )],
@@ -4973,6 +5036,7 @@ fn a_cached_tape_carries_no_tree_on_the_product_path() {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

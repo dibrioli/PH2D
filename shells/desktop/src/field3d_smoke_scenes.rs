@@ -92,6 +92,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     Primitive::Box {
                         half: [0.45; 3],
                         round: 0.08,
+                        chamfer: 0.0,
                     },
                     Xform::IDENTITY,
                 )],
@@ -108,6 +109,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         Primitive::Box {
                             half: [0.5; 3],
                             round: 0.06,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -116,6 +118,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.24,
                             half_height: 1.2,
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -150,6 +153,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             profile,
                             half_height: 0.14,
                             round: 0.03,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -158,6 +162,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.07,
                             half_height: 1.0,
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::at(0.18, -0.24, 0.0),
                     ),
@@ -166,6 +171,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.07,
                             half_height: 1.0,
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::at(-0.225, 0.20, 0.0),
                     ),
@@ -237,6 +243,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.20,
                             half_height: 1.2,
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform {
                             rotation: [s, 0.0, 0.0, s],
@@ -271,6 +278,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     radius: 0.15,
                     half_height: 1.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform::at(-0.22, 0.0, 0.0),
             );
@@ -281,6 +289,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     radius: 0.15,
                     half_height: 1.2,
                     round: 0.0,
+                    chamfer: 0.0,
                 },
                 Xform {
                     translation: [0.3, 0.0, 0.0],
@@ -296,6 +305,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         Primitive::Box {
                             half: [0.55, 0.3, 0.4],
                             round: 0.04,
+                            chamfer: 0.0,
                         },
                         Xform::IDENTITY,
                     ),
@@ -329,6 +339,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     Primitive::Box {
                         half: [0.16, 0.5, 0.16],
                         round: 0.0,
+                        chamfer: 0.0,
                     },
                     Xform::at(x, 0.0, 0.0),
                 );
@@ -344,6 +355,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         Primitive::Box {
                             half: [1.1, 0.12, 0.35],
                             round: 0.0,
+                            chamfer: 0.0,
                         },
                         Xform::at(0.0, -0.5, 0.0),
                     ),
@@ -377,6 +389,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             top: 0.0,
                             half_height: 0.32,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(-0.82),
                     ),
@@ -386,6 +399,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             top: 0.13,
                             half_height: 0.32,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(-0.27),
                     ),
@@ -403,6 +417,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             top: 0.26,
                             half_height: 0.32,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(0.82),
                     ),
@@ -435,6 +450,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             top: 0.0,
                             half_height: 0.34,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(-0.82),
                     ),
@@ -445,6 +461,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             top: 0.13,
                             half_height: 0.32,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(-0.27),
                     ),
@@ -452,6 +469,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         Primitive::Wedge {
                             half: [0.26, 0.18, 0.21],
                             round: 0.013,
+                            chamfer: 0.0,
                         },
                         x(0.27),
                     ),
@@ -461,6 +479,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             minor: 0.073,
                             angle: std::f32::consts::PI,
                             round: 0.026,
+                            chamfer: 0.0,
                         },
                         x(0.82),
                     ),
@@ -492,6 +511,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             inner: 0.12,
                             half_height: 0.10,
                             round: 0.020,
+                            chamfer: 0.0,
                         },
                         x(-0.62),
                     ),
@@ -500,6 +520,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             half: [0.26, 0.26, 0.26],
                             thickness: 0.078,
                             round: 0.020,
+                            chamfer: 0.0,
                         },
                         x(0.0),
                     ),
@@ -537,6 +558,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         Primitive::Octahedron {
                             radius: 0.28,
                             round: 0.03,
+                            chamfer: 0.0,
                         },
                         at(0.0),
                     ),
@@ -553,6 +575,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.27,
                             cut: 0.10,
                             round: 0.03,
+                            chamfer: 0.0,
                         },
                         at(2.0),
                     ),
@@ -562,6 +585,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             cut: 0.04,
                             thickness: 0.05,
                             round: 0.012,
+                            chamfer: 0.0,
                         },
                         at(3.0),
                     ),
@@ -578,6 +602,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             radius: 0.30,
                             angle: 0.6,
                             round: 0.03,
+                            chamfer: 0.0,
                         },
                         at(5.0),
                     ),
@@ -619,6 +644,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             tooth: 0.45,
                             half_height: 0.07,
                             round: 0.012,
+                            chamfer: 0.0,
                         },
                         at(0.0),
                     ),
@@ -628,6 +654,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             width: 0.08,
                             half_height: 0.07,
                             round: 0.02,
+                            chamfer: 0.0,
                         },
                         at(1.0),
                     ),
@@ -636,6 +663,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             size: 0.17,
                             half_height: 0.07,
                             round: 0.02,
+                            chamfer: 0.0,
                         },
                         at(2.0),
                     ),
@@ -646,6 +674,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             offset: 0.13,
                             half_height: 0.07,
                             round: 0.012,
+                            chamfer: 0.0,
                         },
                         at(3.0),
                     ),
@@ -655,6 +684,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             height: 0.36,
                             half_height: 0.07,
                             round: 0.02,
+                            chamfer: 0.0,
                         },
                         at(4.0),
                     ),
@@ -664,6 +694,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             angle: 1.0,
                             half_height: 0.07,
                             round: 0.02,
+                            chamfer: 0.0,
                         },
                         at(5.0),
                     ),
@@ -674,6 +705,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             half_width: 0.17,
                             half_height: 0.07,
                             round: 0.02,
+                            chamfer: 0.0,
                         },
                         at(6.0),
                     ),
@@ -683,6 +715,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             offset: 0.15,
                             half_height: 0.07,
                             round: 0.012,
+                            chamfer: 0.0,
                         },
                         at(7.0),
                     ),
@@ -729,6 +762,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     Primitive::Box {
                         half: [0.34, 0.11, 0.62],
                         round: 0.02,
+                        chamfer: 0.0,
                     },
                     Xform {
                         translation: [x, 0.0, 0.0],
@@ -776,6 +810,119 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(3),
             )
         }
+        15 => {
+            println!(
+                "[field-smoke] cena 15 — O CHANFRO (Enio, 30/08): caixa VIVA · CHANFRADA · \
+                 chanfrada e depois FILETADA. As três medem o mesmo; só a aresta muda."
+            );
+            // ⚠️ **Três caixas IGUAIS**, pela lei da cena 14: uma aresta mostrada sozinha não diz se
+            // ela foi chanfrada — diz que a forma é assim. A da esquerda é a régua.
+            //
+            // ⭐ O recuo é `0,10` numa caixa de meia-extensão `0,34`: quase um terço da face, que é
+            // onde o corte a 45° se lê de longe sem esconder a forma.
+            let caixa = |x: f32, chamfer: f32, round: f32| {
+                leaf(
+                    Primitive::Box {
+                        half: [0.34, 0.34, 0.34],
+                        round,
+                        chamfer,
+                    },
+                    Xform {
+                        translation: [x, 0.0, 0.0],
+                        ..Xform::IDENTITY
+                    },
+                )
+            };
+            FieldDoc::new(
+                vec![
+                    caixa(-0.85, 0.0, 0.0),
+                    caixa(0.0, 0.10, 0.0),
+                    // ⭐⭐ **A TERCEIRA é o pedido inteiro** — *«chamfer antes de fillet para a
+                    // possibilidade de arredondar as bordas geradas por chamfer»*. O corte a 45°
+                    // cria duas arestas novas por quina, e o arco de `0,03` come as duas.
+                    caixa(0.85, 0.10, 0.03),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2)],
+                    ),
+                ],
+                NodeId(3),
+            )
+        }
+        16 => {
+            println!(
+                "[field-smoke] cena 16 — A COSTURA ENTRE AS CÓPIAS (Enio, 30/08): coroa de 8 tubos, \
+                 costura VIVA · FILETADA · CHANFRADA"
+            );
+            // ⚠️ **Os tubos TÊM de se cruzar**, senão não há vinco para costurar: com o braço a
+            // `0,30` e o raio a `0,17`, os centros de duas cópias vizinhas ficam a `0,23` e as
+            // secções sobrepõem-se — é a mesma fixtura da foto do Enio, uma coroa de tubos.
+            //
+            // ⚠️ **A forma tem de estar fora do eixo NO ESPAÇO DO MODIFICADOR**, e a pilha corre
+            // ANTES da pose do nó: é por isso que a coroa vive no GRUPO e o tubo é filho posado
+            // dele. Pôr a pose no próprio nó-folha repetiria um cilindro centrado — invariante à
+            // rotação — e a cena mostraria um tubo só.
+            let anel = |x: f32, joint: ph2d_field::Joint, filho: u32| {
+                let mut g = ph2d_field::Node::new(
+                    Xform {
+                        translation: [x, 0.0, 0.0],
+                        ..Xform::IDENTITY
+                    },
+                    ph2d_field::NodeKind::Combine {
+                        op: Op::Union(Blend::Sharp),
+                        children: vec![NodeId(filho)],
+                    },
+                );
+                g.mods = vec![ph2d_field::Unary::Radial { count: 8, joint }];
+                g
+            };
+            let tubo = || {
+                leaf(
+                    Primitive::Cylinder {
+                        radius: 0.17,
+                        half_height: 0.30,
+                        round: 0.03,
+                        chamfer: 0.0,
+                    },
+                    Xform {
+                        translation: [0.30, 0.0, 0.0],
+                        ..Xform::IDENTITY
+                    },
+                )
+            };
+            FieldDoc::new(
+                vec![
+                    tubo(),
+                    anel(-0.95, ph2d_field::Joint::SHARP, 0),
+                    tubo(),
+                    anel(
+                        0.0,
+                        ph2d_field::Joint {
+                            chamfer: 0.0,
+                            fillet: 0.09,
+                        },
+                        2,
+                    ),
+                    tubo(),
+                    // ⭐ O chanfro morde `1,71×` o que o filete morde com o mesmo número — é a
+                    // FORMA dele, medida em `the_four_characters`. Aqui os dois levam `0,09` de
+                    // propósito: é a diferença de carácter que a cena mostra, não a de tamanho.
+                    anel(
+                        0.95,
+                        ph2d_field::Joint {
+                            chamfer: 0.09,
+                            fillet: 0.0,
+                        },
+                        4,
+                    ),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(1), NodeId(3), NodeId(5)],
+                    ),
+                ],
+                NodeId(6),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"
@@ -786,6 +933,7 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                         radius: 0.22,
                         half_height: 0.78,
                         round: 0.05,
+                        chamfer: 0.0,
                     },
                     Xform {
                         rotation: rot,

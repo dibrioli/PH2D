@@ -62,6 +62,7 @@ fn peca(mods: Vec<Unary>) -> FieldDoc {
         NodeKind::Leaf(Primitive::Box {
             half: [0.35, 0.35, 0.30],
             round: 0.0,
+            chamfer: 0.0,
         }),
     );
     n.mods = mods;
@@ -221,6 +222,7 @@ fn the_bound_contains_the_piece_even_far_from_the_origin() {
             NodeKind::Leaf(Primitive::Box {
                 half: [0.2; 3],
                 round: 0.0,
+                chamfer: 0.0,
             }),
         );
         n.mods = mods;

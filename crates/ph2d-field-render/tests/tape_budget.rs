@@ -44,6 +44,7 @@ fn profile_piece(edges: usize) -> FieldDoc {
                 profile,
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

@@ -20,6 +20,7 @@ fn seed() -> FieldDoc {
             kind: ph2d_field::NodeKind::Leaf(Primitive::Box {
                 half: [0.2; 3],
                 round: 0.0,
+                chamfer: 0.0,
             }),
             mods: Vec::new(),
             verb: None,

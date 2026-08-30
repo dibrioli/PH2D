@@ -169,6 +169,7 @@ fn a_box(r: f32) -> Primitive {
     Primitive::Box {
         half: [r; 3],
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -181,6 +182,7 @@ fn a_cylinder(r: f32) -> Primitive {
         radius: r,
         half_height: r * 1.2,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -205,6 +207,7 @@ fn a_cone(r: f32) -> Primitive {
         top: 0.0,
         half_height: r * 1.2,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -220,6 +223,7 @@ fn a_truncated_cone(r: f32) -> Primitive {
         top: r * 0.5,
         half_height: r * 1.2,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -239,6 +243,7 @@ fn a_prism(r: f32) -> Primitive {
         top: r,
         half_height: r * 1.2,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -253,6 +258,7 @@ fn a_pyramid(r: f32) -> Primitive {
         top: 0.0,
         half_height: r * 1.3,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -263,6 +269,7 @@ fn a_truncated_pyramid(r: f32) -> Primitive {
         top: r * 0.5,
         half_height: r * 1.2,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -270,6 +277,7 @@ fn a_wedge(r: f32) -> Primitive {
     Primitive::Wedge {
         half: [r, r * 0.7, r * 0.8],
         round: round_of(r) * 0.5,
+        chamfer: 0.0,
     }
 }
 
@@ -281,6 +289,7 @@ fn a_torus_arc(r: f32) -> Primitive {
         minor: r * 0.28,
         angle: std::f32::consts::PI,
         round: r * 0.28 * 0.35,
+        chamfer: 0.0,
     }
 }
 
@@ -300,6 +309,7 @@ fn a_star(r: f32) -> Primitive {
         inner: r * 0.4,
         half_height: r * 0.35,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -310,6 +320,7 @@ fn a_box_frame(r: f32) -> Primitive {
         half: [r; 3],
         thickness: r * 0.3,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -334,6 +345,7 @@ fn an_octahedron(r: f32) -> Primitive {
     Primitive::Octahedron {
         radius: r,
         round: round_of(r),
+        chamfer: 0.0,
     }
 }
 
@@ -353,6 +365,7 @@ fn a_cut_sphere(r: f32) -> Primitive {
         radius: r,
         cut: r * 0.35,
         round: round_of(r) * 0.5,
+        chamfer: 0.0,
     }
 }
 
@@ -371,6 +384,7 @@ fn a_hollow_dome(r: f32) -> Primitive {
         cut: r * 0.15,
         thickness,
         round: thickness * 0.25,
+        chamfer: 0.0,
     }
 }
 
@@ -388,6 +402,7 @@ fn a_solid_angle(r: f32) -> Primitive {
         radius: r,
         angle: 0.6,
         round: round_of(r) * 0.5,
+        chamfer: 0.0,
     }
 }
 
@@ -401,6 +416,7 @@ fn a_gear(r: f32) -> Primitive {
         tooth: 0.45,
         half_height: r * 0.25,
         round: round_of(r) * 0.3,
+        chamfer: 0.0,
     }
 }
 
@@ -410,6 +426,7 @@ fn a_cross(r: f32) -> Primitive {
         width: r * 0.3,
         half_height: r * 0.25,
         round: round_of(r) * 0.5,
+        chamfer: 0.0,
     }
 }
 
@@ -418,6 +435,7 @@ fn a_heart(r: f32) -> Primitive {
         size: r * 0.6,
         half_height: r * 0.25,
         round: round_of(r) * 0.4,
+        chamfer: 0.0,
     }
 }
 
@@ -430,6 +448,7 @@ fn a_moon(r: f32) -> Primitive {
         offset: r * 0.45,
         half_height: r * 0.25,
         round: round_of(r) * 0.3,
+        chamfer: 0.0,
     }
 }
 
@@ -439,6 +458,7 @@ fn a_drop(r: f32) -> Primitive {
         height: r * 1.3,
         half_height: r * 0.25,
         round: round_of(r) * 0.4,
+        chamfer: 0.0,
     }
 }
 
@@ -449,6 +469,7 @@ fn a_pie(r: f32) -> Primitive {
         angle: 1.0,
         half_height: r * 0.25,
         round: round_of(r) * 0.4,
+        chamfer: 0.0,
     }
 }
 
@@ -459,6 +480,7 @@ fn a_trapezoid(r: f32) -> Primitive {
         half_width: r * 0.6,
         half_height: r * 0.25,
         round: round_of(r) * 0.4,
+        chamfer: 0.0,
     }
 }
 
@@ -468,6 +490,7 @@ fn a_vesica(r: f32) -> Primitive {
         offset: r * 0.55,
         half_height: r * 0.25,
         round: round_of(r) * 0.3,
+        chamfer: 0.0,
     }
 }
 

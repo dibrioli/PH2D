@@ -29,6 +29,7 @@ fn profile_piece(edges: usize) -> FieldDoc {
                 profile: Profile::new(vec![contour], FillRule::NonZero, 1e-4).expect("perfil"),
                 half_height: 0.4,
                 round: 0.06,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

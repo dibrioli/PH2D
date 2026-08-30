@@ -242,6 +242,10 @@ pub(crate) fn param_rows(
                 // ⭐ **Positiva OU zero** — o teto é da vista, como a `Positive`, e a diferença toda
                 // está no piso: aqui o zero é uma resposta (o cone fechado), não uma recusa.
                 Span::FromZero => (0.0, Bound::Soft(view_span)),
+                // ⭐⭐ **Parede do documento E zero alcançável** — a faixa dos dois recuos de uma
+                // aresta. ⚠️ O mapeamento é o mesmo da `Wall`; o que muda é do outro lado, na porta
+                // de escrita, que agora aceita o zero que este slider sempre ofereceu.
+                Span::WallFromZero(w) => (0.0, Bound::Hard(w)),
             };
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),

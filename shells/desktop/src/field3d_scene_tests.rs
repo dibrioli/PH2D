@@ -208,7 +208,11 @@ fn a_refused_edit_publishes_the_value_the_document_actually_kept() {
     let row = snap
         .rows
         .iter()
-        .find(|r| r.param == ph2d_field::Param::Dim(3))
+        // ⚠️ **Pela CHAVE, e não pelo índice** — o `Dim(3)` era o filete até a aresta ganhar o
+        // chanfro (2026-08-30), e um teste que endereça uma fileira por posição passa a medir a
+        // vizinha em silêncio. *A mesma armadilha que o `field` de um `Param::Mod` tem, um nível
+        // acima.*
+        .find(|r| r.key == "field.dim.round")
         .expect("o filete");
     assert!(
         (row.value - before).abs() < 1e-6,
@@ -254,9 +258,13 @@ fn the_panel_shows_the_dimensions_of_what_is_selected() {
             "field.dim.width",
             "field.dim.height",
             "field.dim.depth",
+            // ⭐ **O CHANFRO vem ANTES do filete** (Enio, 2026-08-30) — a ordem na lista é a ordem
+            // em que as duas operações acontecem na aresta: o corte reto primeiro, o arco por cima
+            // do que ele deixou.
+            "field.dim.chamfer",
             "field.dim.round",
         ],
-        "uma caixa tem a POSE (posição e rotação) e quatro dimensões, nesta ordem"
+        "uma caixa tem a POSE (posição e rotação) e CINCO dimensões, nesta ordem"
     );
     // ⛔ **E NÃO tem `Scale`**: numa folha o tamanho visível são as dimensões, e mostrar as duas
     // coisas daria dois controles para a mesma coisa — sem forma de saber qual o gesto seguinte

@@ -107,9 +107,30 @@ pub enum Span {
     /// Positiva e sem parede: uma largura, um raio, uma escala. O documento recusa `≤ 0`; o teto é
     /// o alcance da **vista**.
     Positive,
-    /// Positiva, com **parede** do documento: o filete. Acima de `wall` a fonte encolhida deixaria
-    /// de existir e o campo deixaria de ser uma distância.
+    /// Positiva, com **parede** do documento. Acima de `wall` a forma degenera — um dente de
+    /// engrenagem de largura zero, uma moldura sem espessura. ⛔ **O zero NÃO passa**, e é essa a
+    /// diferença para a [`Span::WallFromZero`].
     Wall(f32),
+    /// ⭐⭐⭐ **Com parede E com o zero dentro** — a faixa dos DOIS RECUOS de uma aresta, o filete e o
+    /// chanfro.
+    ///
+    /// # ⛔ Ela cura um defeito PRÉ-EXISTENTE, e a lei que o nomeia já estava neste arquivo
+    ///
+    /// O filete usava [`Span::Wall`], e o painel mapeia essa faixa para um slider que **começa em
+    /// zero** — mas a porta de escrita recusa o zero, porque `Wall` promete «positiva». ⇒ o artista
+    /// arredondava uma aresta e **não conseguia desarredondá-la**: o controle descia até ao fundo e
+    /// o número parava logo acima dele, sem dizer porquê.
+    ///
+    /// ⚠️ É exactamente o que o doc da [`Span::Count`] já descreve, e por isso ela ganhou o `min`:
+    /// *«uma faixa que oferece o que a porta recusa é uma affordance que mente»*. A cura ali foi um
+    /// piso declarado; aqui é o zero declarado.
+    ///
+    /// ⭐ E para o **chanfro** isto não é conforto: zero é o estado de nascimento dele, e uma faixa
+    /// que não o alcança faria um knob que só liga.
+    ///
+    /// ⛔ **A `Wall` fica como está**, e a distinção é o que ela protege: num dente de engrenagem ou
+    /// numa espessura de moldura o zero é a forma a deixar de existir, não um estado que se pede.
+    WallFromZero(f32),
     /// Simétrica e sem parede nenhuma: uma **posição**. As duas pontas são o alcance da vista, e a
     /// de baixo é negativa — a origem não é um canto do mundo.
     Free,
@@ -172,7 +193,8 @@ pub struct Dim {
 #[path = "dims_write.rs"]
 mod dims_write;
 
-pub use dims_write::{clamp_round, scale_primitive, set_dim};
+pub use crate::dims_scale::scale_primitive;
+pub use dims_write::{clamp_round, set_dim};
 
 /// ⭐ A tabela por-forma — ver [`dims_table`].
 #[path = "dims_table.rs"]

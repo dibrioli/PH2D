@@ -222,6 +222,7 @@ fn two_boxes() -> (
             NodeKind::Leaf(Primitive::Box {
                 half: [0.4; 3],
                 round: 0.05,
+                chamfer: 0.0,
             }),
         )
     };

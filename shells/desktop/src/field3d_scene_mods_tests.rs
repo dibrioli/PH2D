@@ -69,6 +69,7 @@ fn a_shell_is_born_as_a_fraction_of_the_part_not_a_fixed_number() {
                 ph2d_field::NodeKind::Leaf(Primitive::Box {
                     half: [half; 3],
                     round: 0.0,
+                    chamfer: 0.0,
                 }),
             )],
             ph2d_field::NodeId(0),
@@ -252,6 +253,7 @@ fn the_side_count_of_a_prism_floors_where_the_document_says() {
             top: 0.4,
             half_height: 0.4,
             round: 0.04,
+            chamfer: 0.0,
         },
         [0.0; 3],
     )

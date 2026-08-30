@@ -59,12 +59,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Box => Primitive::Box {
             half: [0.4, 0.3, 0.25],
             round: 0.08,
+            chamfer: 0.0,
         },
         PrimitiveKind::Sphere => Primitive::Sphere { radius: 0.5 },
         PrimitiveKind::Cylinder => Primitive::Cylinder {
             radius: 0.4,
             half_height: 0.3,
             round: 0.08,
+            chamfer: 0.0,
         },
         PrimitiveKind::Torus => Primitive::Torus {
             major: 0.4,
@@ -80,6 +82,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             top: 0.12,
             half_height: 0.35,
             round: 0.06,
+            chamfer: 0.0,
         },
         PrimitiveKind::Capsule => Primitive::Capsule {
             radius: 0.25,
@@ -93,10 +96,12 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             top: 0.18,
             half_height: 0.3,
             round: 0.05,
+            chamfer: 0.0,
         },
         PrimitiveKind::Wedge => Primitive::Wedge {
             half: [0.45, 0.3, 0.35],
             round: 0.05,
+            chamfer: 0.0,
         },
         // ⚠️ **Meia volta e um pouco**, de propósito: é o lado do `min` do sector, e um arco de menos
         // de meia volta nunca lá chegaria.
@@ -105,6 +110,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             minor: 0.15,
             angle: std::f64::consts::PI as f32 * 1.3,
             round: 0.04,
+            chamfer: 0.0,
         },
         // ⚠️ **CINCO pontas**, que é o número ímpar: com um par, metade das paredes cai sobre a
         // outra metade por simetria, e uma costura entre pipas vizinhas nunca seria varrida em
@@ -115,11 +121,13 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             inner: 0.18,
             half_height: 0.25,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::BoxFrame => Primitive::BoxFrame {
             half: [0.45, 0.35, 0.4],
             thickness: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         // ⚠️ **Os três semi-eixos DIFERENTES**: com dois iguais o campo é o de um esferóide, e a
         // razão `min/max` — que é exatamente o que esta forma subestima — só aparece num par.
@@ -132,6 +140,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Octahedron => Primitive::Octahedron {
             radius: 0.45,
             round: 0.06,
+            chamfer: 0.0,
         },
         // ⚠️ **Raios DIFERENTES**: com dois iguais ele degenera na cápsula, e o termo tangente —
         // que é tudo o que esta forma acrescenta — nunca seria exercitado.
@@ -145,12 +154,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             radius: 0.45,
             cut: 0.15,
             round: 0.05,
+            chamfer: 0.0,
         },
         PrimitiveKind::HollowDome => Primitive::HollowDome {
             radius: 0.45,
             cut: 0.1,
             thickness: 0.1,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::Link => Primitive::Link {
             major: 0.3,
@@ -161,6 +172,7 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             radius: 0.45,
             angle: 0.7,
             round: 0.05,
+            chamfer: 0.0,
         },
         // ⚠️ **Sete dentes**, que é ímpar pela razão da estrela: com um par, metade dos flancos cai
         // sobre a outra metade por simetria e uma costura entre dentes vizinhos nunca seria varrida
@@ -172,17 +184,20 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             tooth: 0.45,
             half_height: 0.15,
             round: 0.02,
+            chamfer: 0.0,
         },
         PrimitiveKind::Cross => Primitive::Cross {
             arm: 0.45,
             width: 0.14,
             half_height: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::Heart => Primitive::Heart {
             size: 0.3,
             half_height: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::Moon => Primitive::Moon {
             radius: 0.45,
@@ -190,18 +205,21 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             offset: 0.2,
             half_height: 0.12,
             round: 0.02,
+            chamfer: 0.0,
         },
         PrimitiveKind::Drop => Primitive::Drop {
             radius: 0.22,
             height: 0.55,
             half_height: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::Pie => Primitive::Pie {
             radius: 0.45,
             angle: 1.0,
             half_height: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         // ⚠️ **Bases DIFERENTES**: iguais seria uma caixa, e o flanco inclinado — o `√(1+m²)` que
         // esta forma tem — não seria exercitado.
@@ -211,12 +229,14 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
             half_width: 0.3,
             half_height: 0.12,
             round: 0.03,
+            chamfer: 0.0,
         },
         PrimitiveKind::Vesica => Primitive::Vesica {
             radius: 0.45,
             offset: 0.25,
             half_height: 0.12,
             round: 0.02,
+            chamfer: 0.0,
         },
     })
 }
@@ -578,5 +598,301 @@ fn the_probe_can_see_a_field_that_climbs_too_fast() {
     assert!(
         g > 1.5,
         "a sonda leu ‖∇f‖ = {g:.4} num campo que sobe ao DOBRO da distância — ela não mede nada"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ O CHANFRO — pedido do Enio, 2026-08-30
+//
+// > *«em todas as peças temos fillet para as bordas arredondadas mas não temos um slider para
+// > chamfer. Poderíamos ter os 2, com chamfer antes de fillet para a possibilidade de arredondar as
+// > bordas geradas por chamfer»*
+//
+// ⚠️ As três perguntas do censo valem para ele **sem uma linha de fixtura nova**, porque a lista é a
+// mesma [`representative`] — que é a razão de o censo existir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Esta forma com o chanfro posto a `fracao` da parede que o documento declara.
+fn com_chanfro(mut p: Primitive, fracao: f32) -> Option<Primitive> {
+    let limite = ph2d_field::round_limit(&p)?;
+    let alvo = limite * fracao;
+    let i = ph2d_field::dims(&p)
+        .iter()
+        .position(|d| d.key == "field.dim.chamfer")?;
+    ph2d_field::set_dim(&mut p, 0, i, alvo).ok()?;
+    Some(p)
+}
+
+/// ⭐⭐⭐ **O CHANFRO MUDA TODA FORMA QUE O OFERECE** — e é a régua que separa um slider de um knob
+/// morto.
+///
+/// ⚠️ **A lista é derivada** de [`PrimitiveKind::ALL`], então uma primitiva nova entra aqui sozinha.
+/// ⛔ Uma lista escrita à mão teria deixado de fora exactamente a forma cujo construtor esqueceu de
+/// ler o número — que é o defeito que este gate existe para apanhar, e que a W104 já pagou uma vez
+/// com o `round` do cone e do prisma **inertes** (`+0,0 %` de volume, campo bit a bit igual).
+#[test]
+fn every_shape_that_offers_a_chamfer_is_changed_by_it() {
+    let mut testadas = 0;
+    let mut mudas = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let Some(chanfrada) = com_chanfro(p.clone(), 0.5) else {
+            continue;
+        };
+        testadas += 1;
+        let (vivo, cortado) = (inside_count(&p), inside_count(&chanfrada));
+        // O chanfro **tira** material da quina: a contagem tem de descer, e não só mexer.
+        let queda = f64::from(vivo.saturating_sub(cortado)) / f64::from(vivo.max(1)) * 100.0;
+        if queda < 0.05 {
+            mudas.push(format!("{k:?} ({vivo} -> {cortado}, {queda:.3} %)"));
+        }
+    }
+    assert!(
+        testadas >= 20,
+        "o censo só chegou a {testadas} formas com aresta — a lista derivada partiu-se"
+    );
+    assert!(
+        mudas.is_empty(),
+        "estas formas oferecem o slider do chanfro e não são cortadas por ele: {mudas:?}"
+    );
+}
+
+/// ⭐⭐⭐ **O CHANFRO HONRA A MARCHA, em toda forma que o oferece** — o produto `passo × ‖∇f‖`.
+///
+/// # ⛔ A 1.ª redacção deste gate media o gradiente CRU, e a resposta foi um achado
+///
+/// Ela afirmava que *o chanfro sozinho nunca infla* — «um `max` de funções 1-Lipschitz é
+/// 1-Lipschitz» — e o censo refutou-a com o número que este arquivo já tinha escrito: **`1,1943` no
+/// cone**, o `√(1 − cos φ)` do canto. *O plano do chanfro herda o ângulo das duas faces que ele
+/// corta*, e a demonstração só vale enquanto as normais são ortogonais — que é precisamente o que
+/// uma parede inclinada não é.
+///
+/// ⇒ a pergunta certa é a mesma que o [`every_primitive_honours_the_march`] já faz: **o produto**.
+/// O `ph2d_field::fillet_inflates` passou a distinguir as quatro exactas (peças ortogonais, o
+/// chanfro sozinho lê `1,0000`) das dezassete de parede inclinada (qualquer recuo infla).
+#[test]
+fn a_chamfer_honours_the_march_on_every_shape() {
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let Some(mut chanfrada) = com_chanfro(p, 0.5) else {
+            continue;
+        };
+        // ⭐ Sem filete: é o chanfro sozinho que está sob teste. ⚠️ E o zero **passa** desde a
+        // `Span::WallFromZero` — antes dela esta linha era silenciosamente recusada e o gate media
+        // os dois recuos juntos.
+        let i = ph2d_field::dims(&chanfrada)
+            .iter()
+            .position(|d| d.key == "field.dim.round")
+            .expect("uma forma com chanfro tem filete");
+        ph2d_field::set_dim(&mut chanfrada, 0, i, 0.0).expect("o zero é a aresta viva");
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&doc_of(chanfrada.clone())));
+        let g = worst_gradient(&field_of(chanfrada), 1.0, 24);
+        assert!(
+            passo * g <= SLACK,
+            "{k:?}: passo {passo:.4} x ‖∇f‖ {g:.4} = {:.4} — a marcha atravessa a superfície",
+            passo * g
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O PASSO DA MARCHA PAGA PELO PAR** — a metade que impede a peça de furar.
+///
+/// ⛔ A caixa, o cilindro, a extrusão e a moldura arredondavam por **deslocamento** e por isso o
+/// `ph2d_field::fillet_inflates` respondia `false` para elas. Com um chanfro pedido elas passam a ser
+/// uma **intersecção**, e o filete por cima infla como em qualquer outra. *Uma lei medida envelhece
+/// no dia em que alguém acrescenta um produtor novo do mesmo efeito.*
+#[test]
+fn the_march_pays_for_a_chamfer_with_a_fillet_on_top() {
+    // A caixa é uma das quatro exactas — é nela que a resposta MUDA.
+    let caixa = |round: f32, chamfer: f32| Primitive::Box {
+        half: [0.4, 0.3, 0.25],
+        round,
+        chamfer,
+    };
+    let passo = |p: Primitive| ph2d_field_eval::safe_march_step(&doc_of(p));
+    let cheio = passo(caixa(0.0, 0.0));
+    assert!(
+        (cheio - 1.0).abs() < 1e-6,
+        "uma caixa viva anda o passo cheio, andou {cheio}"
+    );
+    assert!(
+        (passo(caixa(0.05, 0.0)) - 1.0).abs() < 1e-6,
+        "a caixa FILETADA arredonda por deslocamento e continua a andar o passo cheio"
+    );
+    assert!(
+        (passo(caixa(0.0, 0.05)) - 1.0).abs() < 1e-6,
+        "o chanfro sozinho é um `max` de 1-Lipschitz e também não custa passo"
+    );
+    let par = passo(caixa(0.05, 0.05));
+    assert!(
+        (par - 1.0 / std::f32::consts::SQRT_2).abs() < 1e-6,
+        "com os DOIS a caixa passa a arredondar por intersecção e o passo tem de cair para 1/√2, \
+         caiu para {par}"
+    );
+}
+
+/// ⭐⭐⭐ **O RECUO ENTREGUE É O NÚMERO PEDIDO** — a régua que os quatro caracteres desta casa
+/// partilham, medida na forma em que ela é inequívoca.
+///
+/// Uma caixa chanfrada em `c` tem de perder a quina a **exactamente** `c` de distância, ao longo de
+/// cada uma das duas faces. ⚠️ Um chanfro que entregasse `0,71×` do pedido mentiria uma fracção
+/// fixa, sempre — e trocar entre o chip *Chamfer* e este slider mudaria o tamanho da peça.
+#[test]
+fn the_chamfer_sets_back_exactly_what_it_promises() {
+    const H: f64 = 0.4;
+    for c in [0.05f64, 0.10, 0.15] {
+        let f = field_of(Primitive::Box {
+            half: [H as f32; 3],
+            round: 0.0,
+            chamfer: c as f32,
+        });
+        // Caminhamos na face `x = H` (fora dela o campo é positivo) e achamos onde a face acaba.
+        let mut fim = 0.0f64;
+        for i in 0..=4000 {
+            let y = f64::from(i) / 4000.0 * H;
+            // Na face plana o campo em `(H, y, 0)` é exactamente zero.
+            if f.at(H, y, 0.0).abs() <= 1e-6 {
+                fim = y;
+            }
+        }
+        let recuo = H - fim;
+        assert!(
+            (recuo - c).abs() < 2e-3,
+            "chanfro pedido {c:.3}: a face acaba a {recuo:.5} da quina, e tinha de acabar a {c:.3}"
+        );
+    }
+}
+
+/// ⭐ **O FILETE POR CIMA morde as arestas que o chanfro criou** — que é literalmente o pedido.
+#[test]
+fn the_fillet_bites_the_edges_the_chamfer_made() {
+    let caixa = |round: f32| Primitive::Box {
+        half: [0.4; 3],
+        round,
+        chamfer: 0.12,
+    };
+    let (so_chanfro, com_filete) = (inside_count(&caixa(0.0)), inside_count(&caixa(0.05)));
+    assert!(
+        com_filete < so_chanfro,
+        "o filete tem de tirar mais material nas arestas novas do chanfro: {so_chanfro} -> \
+         {com_filete}"
+    );
+}
+
+/// ⭐⭐⭐ **OS DOIS RECUOS DE UMA ARESTA VOLTAM A ZERO** — e este gate cura um defeito
+/// **pré-existente** que o chanfro tornou impossível de ignorar.
+///
+/// # ⛔ O defeito, e a lei que já estava escrita a nomeá-lo
+///
+/// O filete usava [`ph2d_field::Span::Wall`], e o painel mapeia essa faixa para um slider que **começa em
+/// zero**. A porta de escrita, porém, recusava o zero — `Wall` promete «positiva». ⇒ o artista
+/// arredondava uma aresta e **não conseguia desarredondá-la**: o controle descia até ao fundo e o
+/// número parava logo acima dele, sem dizer porquê.
+///
+/// ⚠️ O doc da [`ph2d_field::Span::Count`] já descrevia exactamente esta família — *«uma faixa que oferece
+/// o que a porta recusa é uma affordance que mente»* — e foi por isso que ela ganhou um `min`. O que
+/// faltava era aplicar a mesma lei ao outro lado da faixa.
+///
+/// ⭐ Para o **chanfro** isto não seria conforto: zero é o estado de nascimento dele, e um knob que
+/// só liga é um knob que prende o artista.
+///
+/// ⚠️ **A lista é derivada** de [`PrimitiveKind::ALL`] — uma forma nova entra sozinha.
+#[test]
+fn both_recesses_of_an_edge_can_go_back_to_zero() {
+    let mut presas = Vec::new();
+    let mut testadas = 0;
+    for k in PrimitiveKind::ALL {
+        let mut p = match representative(k) {
+            Some(p) => p,
+            None => continue,
+        };
+        let mut tem_aresta = false;
+        for chave in ["field.dim.chamfer", "field.dim.round"] {
+            let Some(i) = ph2d_field::dims(&p).iter().position(|d| d.key == chave) else {
+                continue;
+            };
+            tem_aresta = true;
+            let limite = ph2d_field::round_limit(&p).expect("tem parede");
+            // Primeiro liga-se o recuo, senão o gate mede o estado em que ele já estava.
+            ph2d_field::set_dim(&mut p, 0, i, limite * 0.5).expect("ligar o recuo");
+            if ph2d_field::set_dim(&mut p, 0, i, 0.0).is_err() {
+                presas.push(format!("{k:?}/{chave}"));
+            } else {
+                assert!(
+                    (ph2d_field::dims(&p)[i].value).abs() < 1e-9,
+                    "{k:?}/{chave}: a porta disse Ok e o número não foi a zero"
+                );
+            }
+        }
+        if tem_aresta {
+            testadas += 1;
+        }
+    }
+    assert!(
+        testadas >= 20,
+        "só {testadas} formas com aresta — a lista derivada partiu-se"
+    );
+    assert!(
+        presas.is_empty(),
+        "estes recuos não voltam a zero, e o slider do painel oferece o zero: {presas:?}"
+    );
+}
+
+/// ⭐⭐ **ESCALAR UMA FORMA ESCALA OS DOIS RECUOS DELA** — o filete **e** o chanfro.
+///
+/// ⚠️ Os dois são **comprimentos da peça**, e um deles fixo faria a aresta mudar de carácter ao
+/// redimensionar: uma caixa de `1` com chanfro de `0,1` tem um corte de 10 % da face; a mesma caixa
+/// levada a `4` teria um corte de 2,5 %, e o artista veria a quina «endurecer» sozinha.
+///
+/// ⛔ **O compilador apontou este defeito** — 17 avisos de `chamfer` não usado no `scale_primitive`,
+/// um por forma. *Um aviso de variável não usada num `match` exaustivo é o compilador a dizer que
+/// alguém acrescentou um campo e esqueceu metade do trabalho.*
+///
+/// ⚠️ **A lista é derivada** de [`PrimitiveKind::ALL`].
+#[test]
+fn scaling_a_shape_scales_both_recesses() {
+    const FATOR: f32 = 3.0;
+    let mut paradas = Vec::new();
+    let mut testadas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let Some(mut p) = com_chanfro(base, 0.5) else {
+            continue;
+        };
+        testadas += 1;
+        let antes: Vec<(&str, f32)> = ph2d_field::dims(&p)
+            .iter()
+            .filter(|d| d.key == "field.dim.round" || d.key == "field.dim.chamfer")
+            .map(|d| (d.key, d.value))
+            .collect();
+        assert!(
+            ph2d_field::scale_primitive(&mut p, FATOR),
+            "{k:?}: a escala foi recusada"
+        );
+        let depois: Vec<(&str, f32)> = ph2d_field::dims(&p)
+            .iter()
+            .filter(|d| d.key == "field.dim.round" || d.key == "field.dim.chamfer")
+            .map(|d| (d.key, d.value))
+            .collect();
+        for ((chave, a), (_, b)) in antes.iter().zip(depois.iter()) {
+            // ⚠️ Um recuo que já era zero continua zero — a régua é a RAZÃO, e ela só existe
+            // sobre um número que estava ligado.
+            if *a <= 0.0 {
+                continue;
+            }
+            if ((b / a) - FATOR).abs() > 1e-3 {
+                paradas.push(format!("{k:?}/{chave} {a:.5} -> {b:.5} (x{:.3})", b / a));
+            }
+        }
+    }
+    assert!(
+        testadas >= 20,
+        "só {testadas} formas com aresta — a lista derivada partiu-se"
+    );
+    assert!(
+        paradas.is_empty(),
+        "estes recuos não acompanharam a escala da forma: {paradas:?}"
     );
 }

@@ -492,6 +492,28 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
 ///
 /// # Por que a resposta não é a mesma para todas
 ///
+/// ⭐ **O chanfro desta forma, ou `0` se ela não tiver aresta.**
+///
+/// ⚠️ **Derivado da [`crate::dims`], e não de uma segunda lista escrita à mão** — as 21 primitivas
+/// com aresta já estão enumeradas em três sítios desta crate, e uma quarta cópia divergiria no dia
+/// em que a vigésima segunda nascesse.
+#[must_use]
+pub fn chamfer_of(p: &Primitive) -> f32 {
+    crate::dims(p)
+        .iter()
+        .find(|d| d.key == "field.dim.chamfer")
+        .map_or(0.0, |d| d.value)
+}
+
+/// O filete desta forma, pela mesma porta do [`chamfer_of`].
+#[must_use]
+pub fn round_of(p: &Primitive) -> f32 {
+    crate::dims(p)
+        .iter()
+        .find(|d| d.key == "field.dim.round")
+        .map_or(0.0, |d| d.value)
+}
+
 /// Há **duas** maneiras de arredondar uma aresta convexa neste módulo, e elas têm campos diferentes:
 ///
 /// - **encolher uma distância EXATA e deslocá-la** (`box_raw`, `cylinder_raw`): a dilatação de uma
@@ -510,33 +532,50 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
 /// *«aresta viva»*, e é o estado que não pode custar passo nenhum.
 #[must_use]
 pub fn fillet_inflates(p: &Primitive) -> bool {
+    let (r, c) = (round_of(p), chamfer_of(p));
     match p {
-        // As duas exatas: a fonte encolhe e o deslocamento repõe, com o `length` do canto a fazer
-        // o arredondamento de verdade.
+        // ⭐ **As QUATRO exactas**: a fonte encolhe e o deslocamento repõe, com o `length` do canto a
+        // fazer o arredondamento de verdade — e as peças delas são **ortogonais** (as três lajes de
+        // uma caixa, a parede e a tampa de um cilindro).
+        //
+        // ⭐⭐ **O chanfro SOZINHO não as infla**, e a razão é geométrica: o plano a 45° tem gradiente
+        // `(∇a + ∇b)/√2`, que com `∇a ⊥ ∇b` é unitário. Medido: `1,0000` a `ε = 1e-5`.
+        //
+        // ⛔ **Os DOIS juntos inflam**: com um chanfro pedido a forma deixa de ser um deslocamento e
+        // passa a ser uma **intersecção**, e o filete por cima arredonda como em qualquer outra.
+        // Medido `1,4140` — o `√2` deste balde.
         // ⚠️ **A gaiola entra aqui**: ela é a união de três caixas, cada uma pela receita da caixa,
         // e o `min` de uma união não infla.
         Primitive::Box { .. }
         | Primitive::Cylinder { .. }
         | Primitive::Extrude { .. }
-        | Primitive::BoxFrame { .. } => false,
-        // As quatro de parede não-ortogonal, que arredondam pela interseção.
-        Primitive::Cone { round, .. }
-        | Primitive::Prism { round, .. }
-        | Primitive::Wedge { round, .. }
-        | Primitive::Star { round, .. }
-        | Primitive::Octahedron { round, .. }
-        | Primitive::CutSphere { round, .. }
-        | Primitive::HollowDome { round, .. }
-        | Primitive::SolidAngle { round, .. }
-        | Primitive::Gear { round, .. }
-        | Primitive::Cross { round, .. }
-        | Primitive::Heart { round, .. }
-        | Primitive::Moon { round, .. }
-        | Primitive::Drop { round, .. }
-        | Primitive::Pie { round, .. }
-        | Primitive::Trapezoid { round, .. }
-        | Primitive::Vesica { round, .. }
-        | Primitive::TorusArc { round, .. } => *round != 0.0,
+        | Primitive::BoxFrame { .. } => r != 0.0 && c != 0.0,
+        // ⭐⭐⭐ **As de parede NÃO-ORTOGONAL: QUALQUER um dos dois recuos infla** (2026-08-30).
+        //
+        // ⛔ A 1.ª redacção desta wave dizia que o chanfro sozinho nunca inflava, e o censo
+        // refutou-a com o número que este arquivo já tinha escrito: **`1,1943` no cone**, o
+        // `√(1 − cos φ)` do canto. *O plano do chanfro herda o ângulo das duas faces que ele corta* —
+        // e a demonstração «um `max` de 1-Lipschitz é 1-Lipschitz» só vale enquanto as normais são
+        // ortogonais, que é precisamente o que uma parede inclinada não é.
+        Primitive::Cone { .. }
+        | Primitive::Prism { .. }
+        | Primitive::Wedge { .. }
+        | Primitive::Star { .. }
+        | Primitive::Octahedron { .. }
+        | Primitive::CutSphere { .. }
+        | Primitive::HollowDome { .. }
+        | Primitive::SolidAngle { .. }
+        | Primitive::Gear { .. }
+        | Primitive::Cross { .. }
+        | Primitive::Heart { .. }
+        | Primitive::Moon { .. }
+        | Primitive::Drop { .. }
+        | Primitive::Pie { .. }
+        | Primitive::Trapezoid { .. }
+        | Primitive::Vesica { .. }
+        | Primitive::TorusArc { .. } => r != 0.0 || c != 0.0,
+        // ⚠️ **Lista FECHADA**: uma primitiva nova é erro de compilação aqui, e quem a escrever tem
+        // de dizer se as peças dela são ortogonais.
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }

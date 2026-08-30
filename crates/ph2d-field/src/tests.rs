@@ -13,6 +13,7 @@ fn cube(half: f32, round: f32) -> Node {
     leaf(Primitive::Box {
         half: [half; 3],
         round,
+        chamfer: 0.0,
     })
 }
 
@@ -87,6 +88,7 @@ fn a_round_that_does_not_fit_in_the_smallest_half_is_refused() {
         vec![leaf(Primitive::Box {
             half: [0.5, 0.5, 0.06],
             round: 0.08,
+            chamfer: 0.0,
         })],
         NodeId(0),
     )
@@ -103,6 +105,7 @@ fn a_round_that_fits_exactly_under_the_limit_is_accepted() {
         vec![leaf(Primitive::Box {
             half: [0.5, 0.5, 0.06],
             round: 0.059,
+            chamfer: 0.0,
         })],
         NodeId(0),
     )
@@ -194,7 +197,11 @@ fn the_shape_of_a_saved_field_is_pinned() {
         // ⭐ **148 → 151 na v5** (W97), e a conta é a mesma: cada nó ganhou o VERBO
         // (`Node::verb: Option<Op>`), e um `Option::None` em postcard custa **um byte de
         // discriminante**. Três nós, três bytes. ⚠️ A versão subiu de 4 para 5 no mesmo commit.
-        151,
+        //
+        // ⭐ **151 → 159 na v15** (Enio, 2026-08-30): as 21 primitivas com aresta ganharam o
+        // `chamfer`, que é um `f32` **fixo em 4 bytes**. Duas caixas, oito bytes. ⚠️ A `Combine` não
+        // se mexe — ela não é uma forma —, e é isso que faz a conta bater exactamente.
+        159,
         "a forma serializada mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -443,6 +450,7 @@ fn an_extrusion_bounds_the_round_by_the_height_and_not_by_the_profile() {
             profile: a_profile(),
             half_height: 2.0,
             round: 1.5,
+            chamfer: 0.0,
         })],
         NodeId(0),
     );
@@ -456,6 +464,7 @@ fn an_extrusion_bounds_the_round_by_the_height_and_not_by_the_profile() {
             profile: a_profile(),
             half_height: 0.3,
             round: 0.3,
+            chamfer: 0.0,
         })],
         NodeId(0),
     ) {
@@ -479,6 +488,7 @@ fn the_shape_of_a_saved_profile_is_pinned() {
             profile: a_profile(),
             half_height: 0.4,
             round: 0.05,
+            chamfer: 0.0,
         })],
         NodeId(0),
     )
@@ -489,7 +499,9 @@ fn the_shape_of_a_saved_profile_is_pinned() {
         // ⚠️ MEDIDO na criação do gate (2026-08-19): 4 pontos × 2 × f32 + o cabeçalho da árvore.
         // **84 → 85 na v3**: um nó, um byte de comprimento da pilha vazia. Ver o gate irmão.
         // **85 → 86 na v5** (W97): um nó, um byte do `Option::None` do verbo. A mesma conta.
-        86,
+        // ⭐ **86 → 90 na v15**: o `Primitive::Extrude` ganhou o `chamfer`, um `f32` fixo. Um nó,
+        // quatro bytes.
+        90,
         "a forma serializada do perfil mudou — suba FIELD_DOC_VERSION e escreva a migração, \
          não re-pine este número"
     );
@@ -595,11 +607,13 @@ fn the_bound_the_panel_shows_is_the_bound_the_document_enforces() {
         Primitive::Box {
             half: [0.4, 0.3, 0.5],
             round: 0.0,
+            chamfer: 0.0,
         },
         Primitive::Cylinder {
             radius: 0.25,
             half_height: 0.7,
             round: 0.0,
+            chamfer: 0.0,
         },
     ] {
         let limit = round_limit(&p).expect("estas primitivas têm round");
@@ -662,13 +676,21 @@ fn a_box_reports_full_extents_not_half_ones() {
     let mut b = Primitive::Box {
         half: [0.5, 0.25, 0.1],
         round: 0.05,
+        chamfer: 0.0,
     };
     let d = crate::dims(&b);
-    assert_eq!(d.len(), 4);
+    // ⭐ **CINCO desde 2026-08-30** — a aresta passou a ter dois recuos, o chanfro e o filete, e a
+    // ordem na lista é a ordem em que eles acontecem na forma (o corte reto primeiro).
+    assert_eq!(d.len(), 5);
     assert!((d[0].value - 1.0).abs() < 1e-6, "largura inteira");
     assert!((d[1].value - 0.5).abs() < 1e-6);
     assert!((d[2].value - 0.2).abs() < 1e-6);
-    assert!((d[3].value - 0.05).abs() < 1e-6, "o filete é ele próprio");
+    assert_eq!(
+        d[3].key, "field.dim.chamfer",
+        "o chanfro vem ANTES do filete"
+    );
+    assert_eq!(d[4].key, "field.dim.round");
+    assert!((d[4].value - 0.05).abs() < 1e-6, "o filete é ele próprio");
 
     crate::set_dim(&mut b, 0, 0, 3.0).expect("largura válida");
     let Primitive::Box { half, .. } = b else {
@@ -688,18 +710,32 @@ fn shrinking_a_shape_shrinks_its_fillet_instead_of_refusing() {
     let mut b = Primitive::Box {
         half: [0.5; 3],
         round: 0.4,
+        chamfer: 0.0,
     };
     // Encolhe a caixa muito abaixo do filete de 0,4.
     crate::set_dim(&mut b, 0, 0, 0.2).expect("encolher é legítimo");
     assert!(crate::clamp_round(&mut b), "o filete tinha de ser limitado");
 
-    let Primitive::Box { half, round } = b else {
+    let Primitive::Box {
+        half,
+        round,
+        chamfer,
+    } = b
+    else {
         panic!("continua caixa")
     };
     assert!((half[0] - 0.1).abs() < 1e-6);
+    let parede = crate::round_limit(&b).expect("a caixa tem parede");
     assert!(
-        round < crate::round_limit(&b).expect("a caixa tem parede"),
+        round < parede,
         "o filete {round} tem de ficar ABAIXO da parede — «igual» já é inválido"
+    );
+    // ⭐ **E o CHANFRO também** (2026-08-30): os dois recuam a superfície a partir da mesma quina, e
+    // um deles acima da parede faria a `validate_primitive` recusar o documento inteiro no gesto
+    // seguinte — o slider de baixo a invalidar a peça por causa do de cima.
+    assert!(
+        chamfer < parede,
+        "o chanfro {chamfer} tem de ficar ABAIXO da parede, como o filete"
     );
     // E o documento aceita-a: é essa a prova de que o limite foi ao sítio certo.
     FieldDoc::new(
@@ -723,6 +759,7 @@ fn writing_a_non_positive_dimension_is_refused_and_leaves_the_shape_alone() {
         radius: 0.3,
         half_height: 0.5,
         round: 0.05,
+        chamfer: 0.0,
     };
     for bad in [0.0f32, -1.0, f32::NAN] {
         assert!(crate::set_dim(&mut c, 0, 0, bad).is_err(), "{bad} passou");
@@ -759,12 +796,14 @@ fn every_shape_with_a_fillet_exposes_it_with_its_wall() {
         Primitive::Box {
             half: [0.4; 3],
             round: 0.05,
+            chamfer: 0.0,
         },
         Primitive::Sphere { radius: 0.3 },
         Primitive::Cylinder {
             radius: 0.3,
             half_height: 0.5,
             round: 0.05,
+            chamfer: 0.0,
         },
         Primitive::Torus {
             major: 0.4,
@@ -782,14 +821,28 @@ fn every_shape_with_a_fillet_exposes_it_with_its_wall() {
         if let Some(d) = crate::dims(&p).iter().find(|d| d.key == "field.dim.round") {
             assert_eq!(
                 d.span,
-                crate::Span::Wall(crate::round_limit(&p).expect("tem parede"))
+                crate::Span::WallFromZero(crate::round_limit(&p).expect("tem parede"))
             );
         }
-        // ⚠️ Nenhuma dimensão que NÃO é o filete tem parede: inventar um teto para a largura de uma
-        // caixa seria escrever um limite que a física não pede.
+        // ⭐⭐ **O CHANFRO tem a MESMA parede do filete** (2026-08-30), e não uma escolhida: os dois
+        // recuam a superfície a partir da mesma quina, e um chanfro acima do `round_limit` come a
+        // forma pelo mesmo mecanismo. ⚠️ Uma segunda parede seria uma segunda resposta a *«até onde
+        // esta aresta aguenta»*, e as duas divergiriam na primeira forma que mudasse de fórmula.
+        if let Some(d) = crate::dims(&p)
+            .iter()
+            .find(|d| d.key == "field.dim.chamfer")
+        {
+            assert_eq!(
+                d.span,
+                crate::Span::WallFromZero(crate::round_limit(&p).expect("tem parede")),
+                "{p:?}: o chanfro tem de partilhar a parede do filete"
+            );
+        }
+        // ⚠️ Nenhuma dimensão que NÃO é um dos dois recuos tem parede: inventar um teto para a
+        // largura de uma caixa seria escrever um limite que a física não pede.
         for d in crate::dims(&p)
             .iter()
-            .filter(|d| d.key != "field.dim.round")
+            .filter(|d| d.key != "field.dim.round" && d.key != "field.dim.chamfer")
         {
             assert_eq!(
                 d.span,

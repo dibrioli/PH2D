@@ -12,6 +12,7 @@ fn caixa() -> FieldDoc {
             Primitive::Box {
                 half: [0.6, 0.6, 0.35],
                 round: 0.0,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

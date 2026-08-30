@@ -175,6 +175,7 @@ fn each_viewport_stores_the_rect_the_layout_gave_it() {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -239,6 +240,7 @@ fn every_still_viewport_settles_not_only_the_active_one() {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -310,6 +312,7 @@ fn the_active_viewport_gets_its_image_first() {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],
@@ -470,6 +473,7 @@ fn the_real_gesture_moves_the_divider_and_does_not_drift() {
             Primitive::Box {
                 half: [0.4, 0.3, 0.2],
                 round: 0.05,
+                chamfer: 0.0,
             },
             Xform::IDENTITY,
         )],

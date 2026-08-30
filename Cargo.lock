@@ -5049,6 +5049,7 @@ version = "0.0.0"
 name = "ph2d-field"
 version = "0.0.0"
 dependencies = [
+ "ph2d-i18n",
  "postcard",
  "serde",
 ]

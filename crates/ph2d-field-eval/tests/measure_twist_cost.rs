@@ -27,8 +27,8 @@ fn measure_twist_cost() {
     let doc = caixa();
     let cru = ph2d_field_eval::compile(&doc);
     println!(
-        "\n{:>10} | {:>9} | {}",
-        "voltas/un", "k rad/un", "max |grad| por divisor"
+        "\n{:>10} | {:>9} | max |grad| por divisor",
+        "voltas/un", "k rad/un"
     );
     print!("{:>10} | {:>9} |", "", "");
     for safety in SAFETIES {
@@ -76,7 +76,8 @@ fn measure_twist_with_a_constant_divisor() {
     for turns in [0.0f64, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0, 1.5, 2.0] {
         let k = turns * std::f64::consts::TAU;
         let sigma = ph2d_field_eval::probe_twist_sigma(k * R);
-        let f = Field::from_tree(&ph2d_field_eval::probe_twist_const(&cru, k, sigma));
+        let f = Field::from_tree(&ph2d_field_eval::probe_twist_band(&cru, k, -9.0, 9.0, R));
+        let _ = sigma;
         let mut hi = 0.0f64;
         for i in 0..29 {
             for j in 0..29 {

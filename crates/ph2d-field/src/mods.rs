@@ -100,6 +100,24 @@ pub enum Unary {
     /// eles têm número, e uma matriz por eixo é outra pergunta (três botões × dois números). O que
     /// o Enio pediu foi o espelho.
     MirrorZ,
+    /// ⭐⭐⭐ **Torção**: a peça roda em torno do **Z local**, `turns` voltas por unidade de altura,
+    /// e só entre `lower` e `upper`.
+    ///
+    /// ⚠️ **Z, e não X** — a razão do [`Unary::Radial`], não a coerência com os espelhos: é o eixo em
+    /// que um cilindro aponta, e uma coluna torcida torce-se em torno do eixo dela.
+    ///
+    /// ⚠️ **Por unidade, e não «sobre a peça»** — é a forma do [`Unary::Taper`]: um número «sobre a
+    /// peça» mudaria de significado ao esticar a forma, e o artista veria o gesto desfazer-se.
+    ///
+    /// ⚠️ **Os LIMITES não são enfeite.** Sem eles um deformador só sabe agir na peça inteira, e não
+    /// há como torcer só o topo — que é o gesto. Eles estão nas quatro referências (Blender, 3ds Max,
+    /// Houdini, ZBrush) e, como as dimensões, vivem em **unidades locais** e não em fracções da
+    /// caixa: uma fracção mudaria de significado quando outro modificador crescesse a peça.
+    ///
+    /// ⚠️ **É o SEGUNDO operador que não devolve uma distância exata** — ver [`ph2d_field_eval`],
+    /// onde o divisor que o torna conservador está medido, e onde a medição **refutou a forma dele**,
+    /// não apenas a constante.
+    Twist { turns: f32, lower: f32, upper: f32 },
 }
 
 /// Quantas cópias uma matriz consegue ter.
@@ -181,6 +199,30 @@ impl Unary {
                     max: MAX_ARRAY_COUNT,
                 },
             }],
+            // ⚠️ **Os dois sentidos** (como a inclinação): torcer para um lado e para o outro são os
+            // dois gestos, e o teto é do CUSTO da marcha — ver [`MAX_TWIST_TURNS`].
+            // ⚠️ E os limites são **posições** (`Span::Free`): a origem não é um canto do mundo.
+            Unary::Twist {
+                turns,
+                lower,
+                upper,
+            } => vec![
+                crate::Dim {
+                    key: "field.mod.turns",
+                    value: turns,
+                    span: Span::Walls(MAX_TWIST_TURNS),
+                },
+                crate::Dim {
+                    key: "field.mod.from",
+                    value: lower,
+                    span: Span::Free,
+                },
+                crate::Dim {
+                    key: "field.mod.to",
+                    value: upper,
+                    span: Span::Free,
+                },
+            ],
         }
     }
 
@@ -223,6 +265,24 @@ impl Unary {
             }
             (Unary::Taper { slope }, 0) => {
                 *slope = value.clamp(-MAX_TAPER_SLOPE, MAX_TAPER_SLOPE);
+            }
+            // ⚠️ **Aceita zero e negativo**: a faixa é dos dois lados e o zero é a peça intacta.
+            // Recusar aqui faria o `FieldDoc::new` recusar a PEÇA INTEIRA quando o documento se
+            // revalida — a armadilha que o `Offset` já nomeia acima.
+            (Unary::Twist { turns, .. }, 0) => {
+                *turns = value.clamp(-MAX_TWIST_TURNS, MAX_TWIST_TURNS);
+            }
+            // ⚠️ **A banda COAGE em vez de recusar**, e as duas pontas são simétricas na lei: quem
+            // escreve um `from` acima do `to` empurra o outro, em vez de ver o número saltar para
+            // trás debaixo do dedo. *Uma porta que recusa uma ordem legítima ensina o artista a não
+            // usar o controle.*
+            (Unary::Twist { lower, upper, .. }, 1) => {
+                *lower = value;
+                *upper = upper.max(value);
+            }
+            (Unary::Twist { lower, upper, .. }, 2) => {
+                *upper = value;
+                *lower = lower.min(value);
             }
             (Unary::Radial { count }, 0) => {
                 if value < 1.0 {
@@ -268,6 +328,19 @@ impl Unary {
             // Zero é o ponto neutro: a peça intacta, e o sítio de onde se começa a arrastar.
             UnaryKind::Taper => Unary::Taper { slope: 0.0 },
             UnaryKind::Radial => Unary::Radial { count: 6 },
+            // ⚠️ **Nasce TORCIDA, e não em zero.** O `Offset` e a inclinação nascem no ponto neutro
+            // porque «sem afastamento» e «sem saída de molde» são estados que o artista quer ter;
+            // «sem torção» é o modificador a não fazer nada — e um chip que não muda um pixel lê-se
+            // como morto. É a lei do [`UnaryKind::Radial`] nascer com **seis** cópias e não duas: o
+            // menor valor em que o gesto se explica sozinho.
+            //
+            // ⚠️ **E a banda nasce a cobrir a peça** — uma banda estreita torceria uma fatia e
+            // deixaria o resto rígido, e o chip voltaria a parecer morto.
+            UnaryKind::Twist => Unary::Twist {
+                turns: TWIST_BIRTH_TURNS,
+                lower: -fraction(TWIST_BIRTH_SPAN),
+                upper: fraction(TWIST_BIRTH_SPAN),
+            },
         }
     }
 
@@ -283,6 +356,7 @@ impl Unary {
             Unary::Array { .. } => UnaryKind::Array,
             Unary::Taper { .. } => UnaryKind::Taper,
             Unary::Radial { .. } => UnaryKind::Radial,
+            Unary::Twist { .. } => UnaryKind::Twist,
         }
     }
 }
@@ -328,6 +402,31 @@ const ARRAY_BIRTH_SPAN: f32 = 2.0;
 /// o que um draft de moldagem pede (1° a 5°) e suficiente para dar forma.
 pub const MAX_TAPER_SLOPE: f32 = 1.0;
 
+/// **Até onde a torção vai**, em voltas por unidade — e o recurso é o **custo da marcha**.
+///
+/// ⚠️ Como a inclinação, ela deforma o domínio e o campo que sai é um **bound conservador**: o valor
+/// é dividido pelo tecto espectral do mapa inverso, e a marcha paga isso em passos. ⭐ Ao contrário
+/// da inclinação, **não há constante ajustada** — a álgebra fecha e a tabela confirma
+/// (`measure_twist_cost`: `‖∇f‖` entre `0,70` e `0,96` de zero a duas voltas por unidade).
+///
+/// ⚠️ **O teto honesto é do produto `k·R`, e não do ângulo** — uma vara fina aguenta dez voltas pelo
+/// preço que um disco gordo paga por um quarto. Este número é a ponta que o **slider** oferece; o
+/// preço de cada peça é o divisor, e ele é derivado do bordo dela.
+pub const MAX_TWIST_TURNS: f32 = 2.0;
+
+/// Com quantas voltas por unidade uma torção nasce.
+///
+/// ⚠️ **Visível no primeiro quadro**, que é a lei do [`SHELL_BIRTH_FRACTION`] e a do `Radial` nascer
+/// com seis cópias: um quarto de volta por unidade dá ~90° numa peça da altura do enquadramento — o
+/// degrau em que a torção se lê imediatamente sem desfigurar a forma.
+const TWIST_BIRTH_TURNS: f32 = 0.25;
+
+/// Que fração da menor peça a banda de uma torção nova cobre, para cada lado.
+///
+/// ⚠️ **Larga de propósito**: uma banda que nasça estreita torce uma fatia e deixa o resto rígido —
+/// o chip volta a parecer morto, que é exactamente o que o [`TWIST_BIRTH_TURNS`] existe para evitar.
+const TWIST_BIRTH_SPAN: f32 = 4.0;
+
 /// A **natureza** de um modificador, sem o número dele — o que um botão nomeia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnaryKind {
@@ -339,12 +438,18 @@ pub enum UnaryKind {
     Taper,
     MirrorY,
     MirrorZ,
+    Twist,
 }
 
 impl UnaryKind {
     /// ⭐ **A fonte da contagem.** O painel deriva os botões daqui, como já faz com `Mode::ALL` — um
     /// modificador novo acrescenta-se aqui e o painel segue sem uma linha de mudança.
-    pub const ALL: [UnaryKind; 8] = [
+    /// ⚠️ **E a lista é GATEADA desde 2026-08-30** — até aí ela era um array de tamanho fixo que só
+    /// dava erro de compilação a quem mexesse no `8`: acrescentar uma variante ao `enum` e esquecer
+    /// esta linha **compilava limpo** e deixava o modificador **inalcançável** (sem chip, sem slot,
+    /// sem clique). Quem a prova completa é o `every_modifier_kind_is_in_the_list`, com o
+    /// [`UnaryKind::index`] exaustivo ao lado.
+    pub const ALL: [UnaryKind; 9] = [
         UnaryKind::Shell,
         UnaryKind::Offset,
         UnaryKind::Mirror,
@@ -353,6 +458,7 @@ impl UnaryKind {
         UnaryKind::Array,
         UnaryKind::Radial,
         UnaryKind::Taper,
+        UnaryKind::Twist,
     ];
 
     /// A chave i18n do botão que o acrescenta.
@@ -367,6 +473,28 @@ impl UnaryKind {
             UnaryKind::Array => "panel.model3d.mod.array",
             UnaryKind::Radial => "panel.model3d.mod.radial",
             UnaryKind::Taper => "panel.model3d.mod.taper",
+            UnaryKind::Twist => "panel.model3d.mod.twist",
+        }
+    }
+
+    /// ⭐ **A posição desta natureza na [`UnaryKind::ALL`]** — a metade que torna aquela lista
+    /// PROVÁVEL.
+    ///
+    /// ⚠️ O `match` é exaustivo de propósito: uma variante nova **não compila** até alguém lhe dar um
+    /// índice, e o gate compara os dois lados. *Um array de tamanho fixo, sozinho, só apanha quem
+    /// mexe no número.*
+    #[must_use]
+    pub fn index(self) -> usize {
+        match self {
+            UnaryKind::Shell => 0,
+            UnaryKind::Offset => 1,
+            UnaryKind::Mirror => 2,
+            UnaryKind::MirrorY => 3,
+            UnaryKind::MirrorZ => 4,
+            UnaryKind::Array => 5,
+            UnaryKind::Radial => 6,
+            UnaryKind::Taper => 7,
+            UnaryKind::Twist => 8,
         }
     }
 }

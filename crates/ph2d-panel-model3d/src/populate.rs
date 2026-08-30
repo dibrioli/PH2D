@@ -28,9 +28,19 @@ pub const MAX_ROWS: usize = 64;
 /// Quantos verbos (e quantos referenciais) um seletor consegue mostrar.
 ///
 /// ⚠️ Mesma natureza do [`MAX_ROWS`]: é um limite de **registro**, porque o `populate` corre antes
-/// de o gizmo existir. Hoje `Mode::ALL` tem três; oito é folga sem custo (cada slot é um `NodeId`
-/// no store), e a contagem de verdade continua a ser a do shell.
-pub const MAX_MODES: u32 = 8;
+/// de o gizmo existir. Cada slot é um `NodeId` no store, e o custo é `famílias × MAX_MODES`.
+///
+/// ⛔⛔ **ESTE NÚMERO ERA UMA MINA, e ela quase disparou** (2026-08-30): ele estava em `8`, e o
+/// `ph2d_field::UnaryKind::ALL` tinha **exactamente 8**. O modificador seguinte nasceria com o chip
+/// **não pintado** (`paint.rs` faz `.take(MAX_MODES)`) e **sem id registado** — e `apply_click` faz
+/// `match store.get_mut(id)`, que devolve `None`: *o evento nunca nasce*. ⚠️ Nenhum portão o via: o
+/// `every_painted_button_answers_a_real_click` varre **o que o painel pintou**, e um chip que nunca
+/// é pintado não entra na varredura.
+///
+/// ⭐ **A fileira WRAPPA** (`segmented_row_counts`), então o teto nunca foi visual — é só registo.
+/// `16` é o dobro da maior família de hoje, e quem prova que ele chega é o
+/// `the_panel_registers_a_slot_for_every_modifier`, que compara os dois lados.
+pub const MAX_MODES: u32 = 16;
 
 /// ⭐⭐ **AS FAMÍLIAS DE BOTÕES DO PAINEL, NUMA LISTA SÓ** (W48).
 ///

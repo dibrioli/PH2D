@@ -135,6 +135,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // a de modelagem nomeia o QUE ACONTECE (a secção afina). Quem usa isto aqui está a dar
         // forma, não a projetar um molde.
         "panel.model3d.mod.taper" => "Taper",
+        // ⚠️ "Twist" e não "Torsion": a palavra do artista é a do gesto (Blender, 3ds Max, Houdini e
+        // ZBrush chamam-lhe todos Twist), e a de engenharia nomeia a tensão, não a forma.
+        "panel.model3d.mod.twist" => "Twist",
         // ⭐ A porta de SAÍDA, por resolução. ⚠️ Os rótulos dizem o NÍVEL e não o número de
         // triângulos: o número depende da peça, e prometê-lo no botão seria uma promessa que só o
         // resultado pode fazer — é o toast que o diz, depois de sair.
@@ -148,6 +151,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "field.mod.count" => "Copies",
         "field.mod.spacing" => "Spacing",
         "field.mod.slope" => "Slope",
+        // ⭐ A torção conta-se em VOLTAS por unidade, e não em graus: é a moeda da forma (uma volta
+        // é uma volta em qualquer escala), e o grau obrigaria o slider a andar de 0 a 720.
+        "field.mod.turns" => "Turns",
+        // ⚠️ "From"/"To" e não "Lower"/"Upper": a banda é uma FAIXA ao longo do eixo, e o artista
+        // lê-a como um intervalo. (O Blender diz "Limits", o 3ds Max "Upper/Lower Limit" — os dois
+        // nomeiam a cerca; aqui nomeia-se o intervalo, que é o que a linha mostra.)
+        "field.mod.from" => "From",
+        "field.mod.to" => "To",
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",

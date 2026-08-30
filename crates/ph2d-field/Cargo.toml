@@ -26,6 +26,9 @@ authors.workspace = true
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
+# ⚠️ SÓ no gate `every_modifier_kind_names_itself_and_its_numbers`: um documento não traduz nada,
+# mas quem prova que cada modificador tem rótulo tem de ver os dois lados. O `src/` não lhe toca.
+ph2d-i18n = { path = "../ph2d-i18n" }
 # postcard: SÓ no gate `the_shape_of_a_saved_field_is_pinned`. O `src/` não o
 # toca ⇒ machete-safe, o padrão que a `ph2d-mesh` já usa.
 #

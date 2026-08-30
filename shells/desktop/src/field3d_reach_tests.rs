@@ -219,7 +219,14 @@ const ROWS: &[Row] = &[
         name: "modificadores",
         read: |s| !s.mods.is_empty(),
         intent: |slot| ModelIntent::ToggleMod { slot },
-        slots: 4,
+        // ⛔⛔ **ERA UM `4` ESCRITO À MÃO, e estava desactualizado havia quatro modificadores**
+        // (2026-08-30): a fileira tinha **oito** naturezas e este gate varria as primeiras quatro —
+        // o `MirrorZ`, o `Array`, o `Radial` e a inclinação **nunca** foram alcançados por ele.
+        //
+        // ⚠️ As três fileiras vizinhas derivam, e uma delas até escreve *«derivado do `ACTS`, nunca
+        // um literal»* — *a lição estava escrita ao lado do defeito, e o defeito sobreviveu porque
+        // ninguém a aplicou à linha de cima.*
+        slots: ph2d_field::UnaryKind::ALL.len(),
     },
     Row {
         name: "ações",

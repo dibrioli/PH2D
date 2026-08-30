@@ -2554,7 +2554,8 @@ fn the_specialisation_gives_up_under_every_modifier_that_remaps_coordinates() {
             | UnaryKind::MirrorZ
             | UnaryKind::Array
             | UnaryKind::Radial
-            | UnaryKind::Taper => true,
+            | UnaryKind::Taper
+            | UnaryKind::Twist => true,
         }
     };
     for k in UnaryKind::ALL {

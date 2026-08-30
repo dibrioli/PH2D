@@ -703,6 +703,57 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(8),
             )
         }
+        14 => {
+            println!(
+                "[field-smoke] cena 14 — A TORÇÃO (W107): coluna reta · torcida inteira · torcida \
+                 só do meio para cima (a BANDA)"
+            );
+            // ⚠️ **Três colunas IGUAIS**, e é isso que faz a cena responder: uma torção mostrada
+            // sozinha não diz se ela torceu — diz que a forma é assim. A da esquerda é a régua.
+            let coluna = |x: f32, mods: Vec<ph2d_field::Unary>| {
+                let mut n = leaf(
+                    Primitive::Box {
+                        half: [0.20, 0.20, 0.62],
+                        round: 0.02,
+                    },
+                    Xform {
+                        translation: [x, 0.0, 0.0],
+                        ..Xform::IDENTITY
+                    },
+                );
+                n.mods = mods;
+                n
+            };
+            FieldDoc::new(
+                vec![
+                    coluna(-0.62, Vec::new()),
+                    coluna(
+                        0.0,
+                        vec![ph2d_field::Unary::Twist {
+                            turns: 0.5,
+                            lower: -9.0,
+                            upper: 9.0,
+                        }],
+                    ),
+                    // ⭐ A BANDA: abaixo de `z = 0` a coluna fica intacta, e acima do topo dela o
+                    // ângulo **congela** — a ponta roda como corpo rígido, que é o que as quatro
+                    // referências fazem.
+                    coluna(
+                        0.62,
+                        vec![ph2d_field::Unary::Twist {
+                            turns: 0.9,
+                            lower: 0.0,
+                            upper: 0.42,
+                        }],
+                    ),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2)],
+                    ),
+                ],
+                NodeId(3),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

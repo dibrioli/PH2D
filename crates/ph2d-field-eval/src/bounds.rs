@@ -263,8 +263,11 @@ pub fn step_mod(b: Ball, m: Unary) -> Ball {
                 radius: b.radius + span * 0.5,
             }
         }
-        // A matriz radial gira em torno do Z local: o bordo é o círculo que o centro descreve.
-        Unary::Radial { .. } => {
+        // ⭐ **A torção varre em torno do Z local, e a bola dela é a MESMA da matriz radial** — cada
+        // fatia de `z` é uma rotação em torno da origem, logo `‖(x,y)‖` e `z` são preservados. Uma
+        // bola já centrada no eixo fica **inalterada ao bit**; uma descentrada varre o círculo que o
+        // centro descreve. *Não se escreve lei nova: aponta-se para a que existe.*
+        Unary::Radial { .. } | Unary::Twist { .. } => {
             let arm = b.center[0].hypot(b.center[1]);
             Ball {
                 center: [0.0, 0.0, b.center[2]],

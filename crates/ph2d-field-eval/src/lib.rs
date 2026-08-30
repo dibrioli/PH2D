@@ -38,11 +38,11 @@ pub fn probe_twist(tree: &Tree, k: f64, safety: f64) -> Tree {
     stack::twist_with(tree, k, safety)
 }
 
-/// A irmã da [`probe_twist`] com o divisor CONSTANTE.
+/// A irmã da [`probe_twist`] com a lei que SHIPA — banda e divisor constante.
 #[doc(hidden)]
 #[must_use]
-pub fn probe_twist_const(tree: &Tree, k: f64, divisor: f64) -> Tree {
-    stack::twist_const(tree, k, divisor)
+pub fn probe_twist_band(tree: &Tree, k: f64, lower: f64, upper: f64, reach: f64) -> Tree {
+    stack::twist(tree, k, lower, upper, reach)
 }
 
 /// O tecto espectral da torção — ver `stack::twist`.
@@ -451,7 +451,9 @@ fn remaps_coordinates(m: &Unary) -> bool {
         | Unary::MirrorZ
         | Unary::Array { .. }
         | Unary::Radial { .. }
-        | Unary::Taper { .. } => true,
+        | Unary::Taper { .. }
+        // ⚠️ A torção remapeia o domínio: uma especialização que errasse a pré-imagem **fura**.
+        | Unary::Twist { .. } => true,
     }
 }
 

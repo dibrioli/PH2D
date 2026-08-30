@@ -41,6 +41,19 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
             Unary::Radial { count } => radial(&acc, count),
             Unary::Taper { slope } => taper(&acc, f64::from(slope)),
+            // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
+            // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
+            Unary::Twist {
+                turns,
+                lower,
+                upper,
+            } => twist(
+                &acc,
+                f64::from(turns) * std::f64::consts::TAU,
+                f64::from(lower),
+                f64::from(upper),
+                axis_reach(ball),
+            ),
         };
         ball = crate::bounds::step_mod(ball, *m);
     }
@@ -51,7 +64,6 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
 ///
 /// ⚠️ O centro de uma bola pode estar fora do eixo (um `Array` empurra-o), e o que conta é o ponto
 /// mais distante: `‖(cx, cy)‖ + raio`.
-#[allow(dead_code)]
 pub(crate) fn axis_reach(b: crate::bounds::Ball) -> f64 {
     f64::from(b.center[0].hypot(b.center[1]) + b.radius.max(0.0))
 }
@@ -133,25 +145,38 @@ const TAPER_SAFETY: f64 = 2.0;
 /// `t = 1`. *A derivação à mão do irmão já tinha sido refutada uma vez por medir a coisa errada; aqui
 /// a álgebra fecha, e a tabela confirma.*
 ///
-/// Dividir por `σ_max` **pontualmente** torna o campo um minorante onde o tecto é justo, mas o
-/// divisor varia com o ponto e a derivada dele reentra em `∇g` — exactamente o que fez o `1 + |s|`
-/// do [`taper`] falhar. Por isso o divisor leva um [`TWIST_SAFETY`], e ele é **medido**.
-
-pub(crate) fn twist(inner: &Tree, k: f64) -> Tree {
-    twist_with(inner, k, TWIST_SAFETY)
-}
-
-/// A mesma lei com o divisor CONSTANTE — ver a varredura em `measure_twist_cost`.
+/// # ⛔⛔ E a MEDIÇÃO refutou a FORMA do divisor, não apenas a constante
 ///
-/// ⚠️ **Constante e não pontual, e a diferença é medida:** um divisor que varia com o ponto reentra
-/// em `∇(f/d) = ∇f/d − f·∇d/d²`, e o segundo termo cresce com o próprio divisor — subir a margem
-/// PIORAVA o gradiente (`1,00 → 1,78` contra `4,00 → 2,55` a uma volta por unidade). Uma constante
-/// não tem gradiente, e o tecto passa a ser exactamente `σ_max(k·R)/c`.
-pub(crate) fn twist_const(inner: &Tree, k: f64, divisor: f64) -> Tree {
-    if k == 0.0 || !k.is_finite() {
+/// Dividir por `σ_max(k·r)` **no ponto** parece mais apertado e é **pior**: o divisor varia com o
+/// ponto e a derivada dele reentra em `∇(f/d) = ∇f/d − f·∇d/d²`, e o segundo termo cresce **com o
+/// próprio divisor**. Medido a uma volta por unidade, com a margem a subir:
+/// `1,78 · 2,11 · 2,32 · 2,51 · 2,55` — *subir a margem PIORA*.
+///
+/// ⭐ O divisor **constante** `σ_max(k·R)` — com `R` o alcance do eixo, lido do bordo — não tem
+/// gradiente próprio, e a tabela fecha **sem constante ajustada**:
+///
+/// | voltas/un | `σ(k·R)` | `‖∇f‖` |
+/// |---:|---:|---:|
+/// | 0,05 | `1,1421` | `0,9617` |
+/// | 0,30 | `2,0802` | `0,8167` |
+/// | 1,00 | `5,5129` | `0,7068` |
+/// | 2,00 | `10,7559` | `0,7039` |
+///
+/// ⚠️ **É a diferença com o [`taper`], e ela é do OPERADOR e não do cuidado:** ali o divisor tem de
+/// ser medido porque a escala varia com `y` **dentro** da conta; aqui a álgebra fecha e a medição só
+/// confirma. *Uma constante ajustada é o que se escreve quando a demonstração não fecha — e quando
+/// ela fecha, escrevê-la à mesma seria esconder que fechou.*
+pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64, reach: f64) -> Tree {
+    if k == 0.0 || !k.is_finite() || !(lower.is_finite() && upper.is_finite()) {
+        // ⭐ **IDENTIDADE AO BIT** — sem o curto-circuito a árvore ganharia `cos(0)`/`sin(0)` e o
+        // valor mudaria por arredondamento em toda peça já gravada.
         return inner.clone();
     }
-    let angle = Tree::z() * Tree::constant(-k);
+    // ⚠️ **A BANDA é um `clamp` do `z` que entra no ÂNGULO**, e não um corte no campo: fora dela a
+    // peça roda como corpo rígido (o ângulo congela), que é o que as quatro referências fazem. Um
+    // corte no campo partiria a peça em três sólidos.
+    let banda = Tree::z().max(lower.min(upper)).min(upper.max(lower));
+    let angle = banda * Tree::constant(-k);
     let (c, s) = (angle.clone().cos(), angle.sin());
     let (x, y) = (Tree::x(), Tree::y());
     let untwisted = inner.remap_xyz(
@@ -159,7 +184,7 @@ pub(crate) fn twist_const(inner: &Tree, k: f64, divisor: f64) -> Tree {
         x * s + y * c,
         Tree::z(),
     );
-    untwisted / Tree::constant(divisor.max(1.0))
+    untwisted / Tree::constant(twist_sigma(k.abs() * reach.abs()))
 }
 
 /// O tecto espectral do jacobiano do mapa inverso da torção, em `t = k·r`. Ver [`twist`].
@@ -187,13 +212,6 @@ pub(crate) fn twist_with(inner: &Tree, k: f64, safety: f64) -> Tree {
         + crate::ops::safe_sqrt(Tree::constant(1.0) + t.square() * Tree::constant(0.25));
     untwisted / (Tree::constant(1.0) + (sigma - Tree::constant(1.0)) * Tree::constant(safety))
 }
-
-/// Quanto o excesso do tecto da torção é multiplicado antes de dividir — **medido**.
-///
-/// ⚠️ Escrito como `1 + SAFETY·(σ − 1)` e não como `SAFETY·σ`: o operador tem de degenerar na
-/// **identidade ao bit** em `k = 0` (`σ = 1`), senão toda peça já gravada muda de forma no dia em que
-/// o modificador nascer.
-const TWIST_SAFETY: f64 = 1.0;
 
 /// ⭐ **A matriz radial**: `count` cópias em coroa, em torno do **Z**.
 ///

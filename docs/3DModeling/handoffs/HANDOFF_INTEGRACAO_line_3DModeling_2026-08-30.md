@@ -161,3 +161,86 @@ Commit `50b0c6a50`.
 
 Suíte do binário do shell: **4 083 verdes**. `cargo check --workspace --all-targets` limpo.
 Clippy limpo nas crates tocadas.
+
+## §5 — W107: a TORÇÃO, o primeiro deformador de espaço desde a inclinação
+
+O vocabulário de modificadores tinha **oito** entradas e nenhum deformador além do `Taper` — sem
+recusa medida em doc nenhum. Um deformador multiplica-se pelas 28 formas e por toda booleana de graça.
+
+### §5.1 — A lei, e ela fecha em álgebra
+
+O ponto vai para o espaço não torcido rodando `(x,y)` por `−k·z`; cada fatia de `z` sofre uma
+**rotação** (isometria), logo não há escala a desfazer. O jacobiano do mapa inverso tem as duas
+primeiras colunas ortonormais e a terceira igual a `(k·q_y, −k·q_x, 1)`; com `t = k·r`:
+
+```text
+σ_max(J) = t/2 + √(1 + t²/4)
+```
+
+⛔ **Não é `√(1 + t²)`.** Os dois termos podem **alinhar-se**, e por isso somam-se linearmente e não
+em quadratura — `1,618` contra `1,414` em `t = 1`, e até `13,4 %` de diferença em `t ≈ 0,7`. *Treze
+por cento acima da distância verdadeira não fica lento: fura.*
+
+### §5.2 — ⛔⛔ A medição refutou a FORMA do divisor, não apenas a constante
+
+Dividir por `σ(k·r)` **no ponto** parece mais apertado e é pior: o divisor varia com o ponto e a
+derivada dele reentra em `∇(f/d) = ∇f/d − f·∇d/d²`. Medido a uma volta por unidade, com a margem a
+subir: `1,78 · 2,11 · 2,32 · 2,51 · 2,55` — **subir a margem PIORA**.
+
+O divisor **constante** `σ(k·R)` não tem gradiente próprio, e fecha **sem constante ajustada**:
+
+| voltas/un | `σ(k·R)` | `‖∇f‖` |
+|---:|---:|---:|
+| 0,05 | `1,1421` | `0,9617` |
+| 0,30 | `2,0802` | `0,8167` |
+| 1,00 | `5,5129` | `0,7068` |
+| 2,00 | `10,7559` | `0,7039` |
+
+⭐ **É a diferença com o `taper`, e ela é do OPERADOR e não do cuidado:** ali a escala varia com `y`
+**dentro** da conta e o `2` teve de sair da tabela; aqui a álgebra fecha e a medição só confirma.
+
+### §5.3 — O que a feature contém
+
+`Unary::Twist { turns, lower, upper }` — voltas por **unidade** (a forma do `Taper`; um número «sobre
+a peça» mudaria de sentido ao esticá-la), em torno do **Z** (o eixo do `Radial`, pela razão dele).
+⭐ **Os LIMITES não são enfeite:** sem eles um deformador só sabe agir na peça inteira, e não há
+«torcer só o topo». A banda é um `clamp` do `z` que entra no **ângulo** — fora dela a peça roda como
+corpo rígido; um corte no campo parti-la-ia em três sólidos. Nasce **torcida** (`0,25` voltas/un) com
+a banda a cobrir a peça: um chip que não muda um pixel lê-se como morto. `FIELD_DOC_VERSION` **11**.
+
+### §5.4 — ⛔⛔ E o divisor mudava a UNIDADE do campo — defeito PRÉ-EXISTENTE
+
+| pilha | parede pedida | ANTES | DEPOIS |
+|---|---:|---:|---:|
+| `Shell` sozinho | `0,060` | `0,060` | `0,060` |
+| `Taper 1,00` + `Shell` | `0,060` | `0,180` (`3,00×` = `1+2·declive`) | **`0,060`** |
+| `Twist 1,00` + `Shell` | `0,060` | `0,337` (`5,62×` = `σ(k·R)`) | **`0,060`** |
+
+Os dois factores batem a fórmula **exactamente**, o que fecha o diagnóstico: não é erro numérico, é a
+unidade. ⚠️ A **inclinação carrega isto desde a W18** — o `Offset` e o raio de um filete depois dela
+erram pelo mesmo factor. A cura é o divisor **acumular e aplicar-se uma vez, no fim da pilha**.
+
+### §5.5 — Três buracos de infraestrutura que o censo achou
+
+| buraco | o que acontecia | cura |
+|---|---|---|
+| `UnaryKind::ALL` era um array de tamanho fixo | acrescentar variante e esquecer a lista **compila limpo** e o modificador nasce inalcançável | `UnaryKind::index()` exaustivo + `every_modifier_kind_is_in_the_list` |
+| `MAX_MODES = 8` com a `ALL` em **8** | o chip seguinte nasceria não-pintado e **sem id no store**: `apply_click` devolve `None`, o evento nunca nasce | sobe para `16`, com gate dos **dois** lados (incluindo a metade que exige **folga**) |
+| `field3d_reach_tests` com `slots: 4` | desactualizado havia **quatro** modificadores — `MirrorZ`, `Array`, `Radial` e `Taper` nunca foram alcançados | derivado de `UnaryKind::ALL.len()` |
+
+⚠️ O `MAX_MODES` nunca foi um teto **visual**: a fileira **wrappa** (`segmented_row_counts`).
+
+### §5.6 — Aberto, nomeado
+
+⏳ **BEND** — a matemática está derivada e o substrato pago (o bordo já anda ao lado da árvore):
+`σ = max(1, 1/(1−κ·x))`, com uma **parede demonstrável** (`ângulo × meia-largura < comprimento`, e
+`< 2π` pela representação) e uma bola de bordo que **não** se preserva (a conta ingénua explode a
+grade de exportação a ângulos pequenos: use o sector, `√(R² + 4ρ(ρ+R)sin²(α/2))`).
+⏳ **Eixo escolhível** e **origem** do deformador — as quatro referências têm-nos; aqui o eixo é o Z
+pela lei da casa, e a discussão fica escrita.
+⏸️ **Bias** (distribuição não-linear ao longo do eixo) — só o 3ds Max o tem, e o Houdini não; o `σ`
+passaria a depender do perfil. Wave própria, com o preço medido.
+⏳ **O orçamento de passos não vê um encolhimento LOCAL**: com o divisor no operador, `scene.step`
+fica em `1,0` e a região torcida pede `~σ×` mais passos. O instrumento existe (`march::EXHAUSTED`) e
+**ainda não foi corrido sobre um operador que encolce localmente** — é a medição que decide se algum
+teto se mexe.

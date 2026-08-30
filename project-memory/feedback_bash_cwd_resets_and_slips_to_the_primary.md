@@ -143,6 +143,11 @@ comando não protege um script que corre depois de outro comando ter mudado a cw
 sessão o `cd` estava lá, no comando anterior.
 
 
+⚠️⚠️ **Refinamento (2026-08-30, ~10ª escorregada numa sessão só): o tell MAIS RÁPIDO de todos é `git log` a mostrar commits que você não reconhece.** Numa auditoria da própria linha, um `grep` numa árvore escorregada devolveu **10 leituras directas ao `WidgetStore`** num ficheiro cuja cura (a W9 daquela manhã) as tinha apagado; o gate que as proíbe respondeu *"no test target"*, e o `ls` do ficheiro dele deu **inexistente**. Três sinais a apontar todos para a mesma conclusão errada — *"o gate que eu shipei está vazio e a cura foi revertida"* — e cheguei a correr `git show --stat` do commit para caçar quem a tinha apagado.
+⭐ **O que fechou o caso em UM comando foi `git log --oneline -3`:** ele imprimiu commits de `docs(registo)` e `fix(ci)` que não eram meus — os do `main`. *Uma busca vazia mente, um `ls` inexistente mente, um `no test target` mente; o topo do log não.*
+⇒ Ao investigar um defeito **na sua própria linha**, o primeiro comando não é o `grep` — é `pwd && git branch --show-current && git log --oneline -1`. E há um invariante que resolve sozinho: **se o defeito é «a minha cura de hoje desapareceu», a hipótese nº 1 é a CWD, nunca a reversão** — trabalho commitado não evapora, e a árvore primária *nunca* teve a cura.
+
+
 ## ⛔⛔⛔ Adenda 2026-08-31 (8.ª) — a escorregadela numa corrida de LEITURA devolve **VERDE**
 
 Todos os tells desta memória **falham alto**: erro de build, busca vazia, símbolo que o compilador

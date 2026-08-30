@@ -525,3 +525,92 @@ fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
     );
     state::set_current_texture_pattern(0, None);
 }
+
+/// ⛔⛔ **A DICA QUEBRA EM VÁRIAS LINHAS, e o que vem a seguir desce por TODAS elas** (plano 33, W11).
+///
+/// Foi por isto que ela é `paint_text_block` e não `paint_text`: o 9-slice pagou este defeito com um
+/// smoke do Enio em 2026-08-22 — *"estas dicas quebram em duas linhas num painel estreito, e avançar
+/// `label_font` por elas escrevia o rótulo seguinte por cima"*.
+///
+/// # ⛔⛔⛔ A 1.ª redacção deste gate era INCAPAZ de apanhar isso, e a mutação provou-o
+///
+/// Ela comparava um viewport largo com um estreito — e **o painel não segue o viewport**: a sonda
+/// `measure_where_the_hint_wraps` imprime `55,56` de deslocamento em TODAS as larguras, de `1600` a
+/// `420`. Com `paint_text` o número seria outro, mas seria o mesmo nas duas pontas ⇒ a comparação
+/// dava igual nos dois mundos e a mutação **sobreviveu**. *Um gate comparativo não vê um defeito
+/// que afecta os dois lados da comparação por igual.*
+///
+/// # A régua, derivada
+///
+/// O oráculo é **uma FILEIRA do próprio painel**: a distância entre os dois botões de arte, que são
+/// consecutivos. Se a dica desloca mais do que isso, ela ocupou mais de uma linha — que é
+/// exactamente a propriedade. ⛔ Um número escrito à mão aqui envelheceria com a tipografia.
+#[test]
+fn the_hint_pushes_what_follows_it_through_every_line_it_wraps_to() {
+    let topo = |id, sumiu: bool| -> f32 {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(0);
+        r.art_missing = sumiu;
+        state::set_current_texture_pattern(0, Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
+            .expect("o botao e' pintado")
+            .y
+    };
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_panel_vector::texture_pattern::kid;
+    // Uma FILEIRA: os dois botoes de arte sao consecutivos.
+    let fileira = topo(kid(0, K::PickShape), false) - topo(kid(0, K::Source), false);
+    assert!(
+        fileira > 1.0,
+        "as duas fileiras de arte colapsaram: {fileira}"
+    );
+
+    let deslocamento = topo(kid(0, K::Source), true) - topo(kid(0, K::Source), false);
+    assert!(
+        deslocamento > fileira + 0.5,
+        "a dica deslocou {deslocamento}, que nao passa UMA fileira ({fileira}) - ela quebra em mais          de uma linha no painel real, entao um avanco de uma linha so' escreve a fileira seguinte          POR CIMA dela"
+    );
+    state::set_current_texture_pattern(0, None);
+}
+
+/// Sonda: em que largura de viewport a dica QUEBRA? Imprime o deslocamento por largura.
+#[test]
+#[ignore = "sonda: imprime, nao afirma"]
+fn measure_where_the_hint_wraps() {
+    for largura in [
+        1600.0_f32, 1200.0, 1000.0, 900.0, 800.0, 700.0, 600.0, 520.0, 460.0, 420.0,
+    ] {
+        let viewport = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: largura,
+            h: 900.0,
+        };
+        let topo = |sumiu: bool| -> Option<f32> {
+            state::set_current_fill(Some(FillKind::Pattern), None);
+            let mut r = row(0);
+            r.art_missing = sumiu;
+            state::set_current_texture_pattern(0, Some(r));
+            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut st = VectorPanelState;
+            host.painted_rect::<VectorPanel>(
+                &mut st,
+                viewport,
+                ph2d_panel_vector::texture_pattern::kid(
+                    0,
+                    ph2d_panel_vector::ids::TexPatKnob::Source,
+                ),
+            )
+            .map(|r| r.y)
+        };
+        match (topo(false), topo(true)) {
+            (Some(a), Some(b)) => {
+                println!("viewport {largura:>6.0} -> deslocamento {:>6.2}", b - a)
+            }
+            _ => println!("viewport {largura:>6.0} -> o botao nao e' pintado"),
+        }
+    }
+    state::set_current_texture_pattern(0, None);
+}

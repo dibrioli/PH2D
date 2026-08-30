@@ -45,10 +45,22 @@ pub enum AssetKind {
 
 impl AssetKind {
     /// O rótulo que a UI mostra. ⚠️ Inglês — a UI deste app é inglesa (HR-15 / memória).
+    ///
+    /// ⭐⭐ **É «Prefab» e não «Component», por decisão do Enio (2026-08-30: *«não acha que
+    /// componente é um nome ruim?»*), e o argumento é uma COLISÃO real dentro deste app:** o
+    /// Inspector chama **componente** ao `Transform`, ao `Sprite`, ao `RigidBody` — é o modelo
+    /// inteiro do [ADR-0166](../../docs/architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md)
+    /// (*«components attach through one palette»*). Usar a mesma palavra para *«um objecto guardado
+    /// na biblioteca»* punha duas coisas diferentes com o mesmo nome na mesma UI.
+    ///
+    /// ⚠️ **E «Prefab» não é uma escolha de gosto — é a palavra da FAMÍLIA que este app já fala.**
+    /// O cartão do Inspector já diz *Instance of* e *Variant of*, que é o vocabulário da Unity
+    /// (Prefab · Prefab Instance · Prefab Variant). ⛔ O Figma diz *Component* e pode: ele não tem
+    /// componentes de ECS para colidir.
     #[must_use]
     pub fn label(self) -> &'static str {
         match self {
-            AssetKind::Component => "Component",
+            AssetKind::Component => "Prefab",
             AssetKind::Texture => "Image",
         }
     }

@@ -164,7 +164,7 @@ pub(crate) fn make_master(
     // deste app é o `stable_name_id` (o hash do `Name`), então um binding de timeline apontado ao
     // nome antigo passa a resolver para a cópia — que é o objeto que continua na cena.
     if let Some(base_id) = base_link {
-        let base_name = master_named(sim, base_id).unwrap_or_else(|| "Component".to_string());
+        let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
         let vname =
             crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));
@@ -395,21 +395,19 @@ pub(crate) fn drain(
                 toasts.push(Toast::success(if variant {
                     "Made a variant \u{2014} it still follows its base"
                 } else {
-                    "Made a component \u{2014} an instance took its place"
+                    "Made a prefab \u{2014} an instance took its place"
                 }));
                 true
             }
             Err(VerbRefusal::AlreadyAMaster) => {
-                toasts.push(Toast::info("This is already a component"));
+                toasts.push(Toast::info("This is already a prefab"));
                 false
             }
             // ⚠️ **Braço por braço, e sem `_`**: a recusa nova (`InsideAMaster`) chegou aqui com um
             // catch-all que dizia *«Inside an instance»* — a frase errada sobre a coisa errada. Um
             // `match` exaustivo é o que obriga a próxima recusa a escolher a sua voz.
             Err(VerbRefusal::InsideAMaster) => {
-                toasts.push(Toast::warning(
-                    "Inside a component — components cannot nest yet",
-                ));
+                toasts.push(Toast::warning("Inside a prefab — prefabs cannot nest yet"));
                 false
             }
             Err(VerbRefusal::InsideAnInstance | VerbRefusal::NotAnInstance) => {
@@ -468,7 +466,7 @@ pub(crate) fn drain(
                     false
                 }
                 Err(_) => {
-                    toasts.push(Toast::warning("Not a component — pick the master row"));
+                    toasts.push(Toast::warning("Not a prefab — pick the prefab row"));
                     false
                 }
             }

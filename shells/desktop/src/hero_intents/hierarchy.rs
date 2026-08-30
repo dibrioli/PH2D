@@ -261,7 +261,7 @@ pub(crate) fn drain_reparent(
     // ⭐ A única fala deste dreno — ver o doc: sem ela o objecto sai da cena em silêncio.
     if into_a_recipe {
         toasts.push(ph2d_editor::Toast::warning(
-            "Moved into a component — it shows while the component row is selected",
+            "Moved into a prefab — it shows while the prefab row is selected",
         ));
     }
     false

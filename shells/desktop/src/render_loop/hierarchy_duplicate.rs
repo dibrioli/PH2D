@@ -167,7 +167,7 @@ pub(super) fn drain(
     toasts.push(if recipe {
         Toast::success("Duplicated as a plain object — use Make Component for a second component")
     } else if inside {
-        Toast::warning("Duplicated inside the component — it shows while the component is selected")
+        Toast::warning("Duplicated inside the prefab — it shows while the prefab is selected")
     } else {
         Toast::success("Duplicated entity")
     });

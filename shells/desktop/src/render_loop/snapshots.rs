@@ -250,6 +250,38 @@ pub(super) fn publish(
             &mut live.snapshot,
         );
         let (ordered, mut entries) = live.bridge.sync_from_snapshot(&live.snapshot);
+        // ⭐⭐⭐ **UMA RECEITA NÃO É UMA LINHA DA CENA** (report do Enio, 2026-08-30: *«se apagar o
+        // objeto de origem na hierarquia, some no painel»* + *«o original deve ficar apenas no
+        // painel»*).
+        //
+        // O *Make Component* marca como receita o objecto escolhido e põe uma cópia no lugar. A
+        // receita já não se DESENHA — mas continuava a ser uma linha da Hierarquia, e apagá-la de
+        // lá destruía o asset. ⇒ ela sai da lista: o sítio dela é a biblioteca.
+        //
+        // ⭐ **E a lei é a MESMA do canvas**, não uma segunda: o
+        // [`super::off_canvas::is_unedited_recipe`] já responde *«esta entidade é peça de uma
+        // receita que ninguém está a editar agora?»*, e é o que o extract usa para não a desenhar.
+        // Uma cópia dessa regra aqui divergiria no dia em que a edição de receita mudasse.
+        //
+        // ⚠️ **A receita que está a ser EDITADA volta à lista** — senão a forma do mestre seria
+        // impossível de mudar, que é a metade que o `is_unedited_recipe` protege.
+        let hidden_rows: std::collections::BTreeSet<ph2d_editor::NodeId> = ordered
+            .iter()
+            .copied()
+            .filter(|id| {
+                live.bridge.entity_for(*id).is_some_and(|bits| {
+                    super::off_canvas::is_unedited_recipe(
+                        sim.world(),
+                        ph2d_ecs::Entity::from_bits(bits),
+                    )
+                })
+            })
+            .collect();
+        let ordered: Vec<ph2d_editor::NodeId> = ordered
+            .into_iter()
+            .filter(|id| !hidden_rows.contains(id))
+            .collect();
+        entries.retain(|id, _| !hidden_rows.contains(id));
         // Fase 0 hotfix: mark every multi-selection row's
         // `HierarchyEntity.selected` BEFORE the panel paints, so
         // the row painter highlights N rows instead of just the

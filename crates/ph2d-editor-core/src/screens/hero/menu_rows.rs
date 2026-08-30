@@ -257,7 +257,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // ⭐ **A família da INSTÂNCIA** (ADR-0164 / F4.5), na ordem do gesto: criar a receita ·
             // pôr outra cópia · promover a excepção · devolvê-la · cortar o vínculo.
             // ⚠️ Todos respondem numa linha a que não se aplicam — a tabela é plana.
-            (ids::CTX_MENU_HIER_MAKE_COMPONENT, "Make Component", None),
+            (ids::CTX_MENU_HIER_MAKE_COMPONENT, "Make Prefab", None),
             (ids::CTX_MENU_HIER_INSTANTIATE, "Instantiate", None),
             (
                 ids::CTX_MENU_HIER_INSTANTIATE_LINKED,

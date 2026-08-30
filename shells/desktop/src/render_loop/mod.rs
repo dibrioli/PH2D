@@ -10772,7 +10772,7 @@ impl crate::App {
                         ));
                     }
                     Err(_) => {
-                        toasts.push(Toast::warning("That is not a copy of a component"));
+                        toasts.push(Toast::warning("That is not a copy of a prefab"));
                     }
                 }
             }

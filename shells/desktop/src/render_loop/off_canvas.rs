@@ -258,4 +258,65 @@ mod off_canvas_tests {
         sim.world_mut().entity_mut(e).insert(Visibility::hidden());
         assert!(is_off_canvas(sim.world(), e), "o olho fechado nao escondeu");
     }
+
+    // ── ⭐⭐⭐ A RECEITA NÃO É UMA LINHA DA CENA (report do Enio, 2026-08-30) ──────────────────────
+    //
+    // *«Se apagar o objeto de origem na hierarquia, some no painel»* + *«o original deve ficar
+    // apenas no painel»*. A receita já não se DESENHAVA; o que faltava era a **Hierarquia** ler a
+    // mesma resposta. ⛔ Estes gates vivem AQUI, ao lado da lei, e não no consumidor: uma segunda
+    // cópia da regra divergiria no dia em que a edição de receita mudasse.
+
+    /// ⭐ Uma receita que ninguém edita não é linha da cena — nem a raiz, nem as peças.
+    #[test]
+    fn an_unedited_recipe_is_not_a_scene_row() {
+        let mut sim = SimWorld::new();
+        let root = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Ragdoll"), MasterRoot))
+            .id();
+        let arm = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Arm"), ChildOf(root)))
+            .id();
+        ph2d_ecs::assign_master_pieces(sim.world_mut());
+        assert!(
+            super::is_unedited_recipe(sim.world(), root),
+            "a raiz da receita continua na lista da cena"
+        );
+        assert!(
+            super::is_unedited_recipe(sim.world(), arm),
+            "uma PECA da receita continua na lista da cena"
+        );
+    }
+
+    /// ⚠️ **Mas a que está a ser EDITADA volta** — senão a forma do mestre é impossível de mudar.
+    #[test]
+    fn the_recipe_being_edited_comes_back_to_the_list() {
+        let mut sim = SimWorld::new();
+        let root = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Ragdoll"),
+                MasterRoot,
+                ph2d_ecs::MasterEditing,
+            ))
+            .id();
+        ph2d_ecs::assign_master_pieces(sim.world_mut());
+        assert!(
+            !super::is_unedited_recipe(sim.world(), root),
+            "a receita em edicao tem de aparecer, senao ela nao se edita"
+        );
+    }
+
+    /// ⛔ E um objecto normal **nunca** sai da lista — a cerca do outro lado.
+    #[test]
+    fn an_ordinary_object_is_always_a_row() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Crate")))
+            .id();
+        assert!(!super::is_unedited_recipe(sim.world(), e));
+    }
 }

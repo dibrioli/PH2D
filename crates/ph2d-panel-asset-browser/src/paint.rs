@@ -321,7 +321,7 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
         let msg = if !is_published() {
             "Loading assets\u{2026}"
         } else if total == 0 {
-            "No assets yet \u{2014} right-click an object and choose Make Component"
+            "No assets yet \u{2014} right-click an object and choose Make Prefab"
         } else {
             "Nothing matches this search"
         };

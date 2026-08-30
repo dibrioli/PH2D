@@ -653,3 +653,84 @@ fn escape_abandons_the_rename() {
     assert!(st.renaming.is_none());
     assert_eq!(host.bus().len(), 0);
 }
+
+/// ⭐⭐ **O campo aberto é PINTADO e REGISTADO** — a metade positiva, sem a qual a seguinte
+/// mediria nada.
+///
+/// ⚠️ Ela lê o que o PAINT registou, que é o que o artista pode agarrar. Um campo que existe só no
+/// estado é um campo que ninguém alcança.
+#[test]
+fn the_open_rename_field_is_registered_by_the_paint() {
+    use ph2d_editor_core::zones::Rect;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    st.renaming = Some(ph2d_panel_asset_browser::state::CatalogRename { id, opened: false });
+    let rects = host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+    assert!(
+        rects.iter().any(|(i, _)| *i == ids::ASSET_CATALOG_RENAME),
+        "o campo de renomear não foi registado — ele existe no estado e não sob o dedo"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        Some(ids::ASSET_CATALOG_RENAME),
+        "o campo abriu sem tomar o foco — as teclas iriam para outro sítio"
+    );
+}
+
+/// ⛔⛔ **Fechar a coluna LEVA o campo com ela.**
+///
+/// ⚠️ O `paint` da coluna sai cedo quando a largura é zero (o botão *só-grade*, ou um painel
+/// estreitado até o cartão já não caber). Sem a limpeza simétrica o campo deixa de ser pintado e
+/// registado, **mas o `WidgetStore` continua com o foco nele** — e a partir daí escrever no app não
+/// faz nada em lado nenhum. *Quem esconde uma região limpa o que ela publicou.*
+///
+/// **Mutação que deve sangrar:** apagar o `catalog_rename::abandon` do ramo `w <= 0.0`.
+#[test]
+fn collapsing_the_column_takes_the_rename_field_with_it() {
+    use ph2d_editor_core::zones::Rect;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    st.renaming = Some(ph2d_panel_asset_browser::state::CatalogRename { id, opened: false });
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    host.paint::<AssetBrowserPanel>(&mut st, viewport);
+    assert_eq!(host.store().focus_id(), Some(ids::ASSET_CATALOG_RENAME));
+
+    // O botão *só-grade*.
+    st.show_catalogs = false;
+    let rects = host.paint::<AssetBrowserPanel>(&mut st, viewport);
+    assert!(
+        !rects.iter().any(|(i, _)| *i == ids::ASSET_CATALOG_RENAME),
+        "a coluna fechou e o campo continuou registado"
+    );
+    assert!(
+        st.renaming.is_none(),
+        "o campo ficou aberto com a coluna fechada"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        None,
+        "o campo invisível continuou a comer as teclas"
+    );
+}
+
+/// ⚠️ **O `abandon` só larga o foco se ele for NOSSO** — pisar o foco de outro widget seria trocar
+/// um defeito por outro. O controlo desta lei, sem o qual a anterior passaria com um
+/// `set_focus(None)` incondicional.
+#[test]
+fn abandoning_the_rename_does_not_steal_someone_elses_focus() {
+    use ph2d_editor_core::zones::Rect;
+
+    let (mut host, mut st) = open_host();
+    stage_one_catalog();
+    // Ninguém está a renomear; o foco é da busca.
+    host.store_mut().set_focus(Some(ids::ASSET_SEARCH));
+    st.show_catalogs = false;
+    host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+    assert_eq!(
+        host.store().focus_id(),
+        Some(ids::ASSET_SEARCH),
+        "fechar a coluna roubou o foco de um campo alheio"
+    );
+}

@@ -113,6 +113,10 @@ pub(crate) fn paint(
     let w = col_w(state, rect, pad);
     if w <= 0.0 {
         crate::state::set_painted_rows(Vec::new());
+        // ⛔ **A coluna colapsada leva o campo de renomear com ela** — senão ele fica focado e
+        // invisível, e escrever no app deixa de fazer nada em lado nenhum. Mesma lei do
+        // `clear_sub_scroll_region` abaixo: quem esconde uma região limpa o que ela publicou.
+        crate::catalog_rename::abandon(state, ctx.host.store_mut());
         // ⚠️ **Limpeza simétrica:** sem ela a roda continuaria a ser comida no sítio onde a coluna
         // esteve — o mesmo contrato que o `clear_panel_rect` do painel fechado.
         ctx.host

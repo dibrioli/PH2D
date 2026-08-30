@@ -45,9 +45,9 @@ pub const PANEL_ID: &str = "asset_browser";
 
 pub use paint::{default_rect, probe_query};
 pub use state::{
-    AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, catalog_row_pick,
-    last_content_h, last_visible_h, payload_at, probe_catalogs, probe_first_texture,
-    probe_index_summary, set_current_catalogs, set_current_index,
+    AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, CatalogRename,
+    catalog_row_pick, last_content_h, last_visible_h, payload_at, probe_catalogs,
+    probe_first_texture, probe_index_summary, set_current_catalogs, set_current_index,
 };
 
 use ph2d_a11y::NodeId;

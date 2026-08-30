@@ -160,6 +160,21 @@ pub(crate) fn commit(state: &mut AssetBrowserState, store: &WidgetStore) -> Opti
     Some((r.id.0, text))
 }
 
+/// ⭐⭐ **Abandona o campo E LARGA O FOCO** — a metade que o `cancel` não pode fazer.
+///
+/// ⛔⛔ Sem ela, fechar a coluna (o botão *só-grade*) ou estreitá-la até ela colapsar deixava um
+/// campo **focado e invisível a comer as teclas**: o `paint` da coluna sai cedo quando a largura é
+/// zero, então o campo deixa de ser pintado e registado, mas o `WidgetStore` continua com o foco
+/// nele — e a partir daí escrever no app não faz nada em lado nenhum.
+///
+/// ⚠️ **O foco só se larga se for NOSSO** — pisar o foco de outro widget seria trocar um defeito
+/// por outro.
+pub(crate) fn abandon(state: &mut AssetBrowserState, store: &mut WidgetStore) {
+    if state.renaming.take().is_some() && store.focus_id() == Some(ids::ASSET_CATALOG_RENAME) {
+        store.set_focus(None);
+    }
+}
+
 /// Abandona sem gravar (Esc).
 pub(crate) fn cancel(state: &mut AssetBrowserState) {
     state.renaming = None;

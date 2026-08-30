@@ -9,7 +9,7 @@ use crate::AssetBrowserPanel;
 use crate::ids;
 use crate::state::AssetBrowserState;
 use ph2d_asset_index::{AssetRef, SortBy};
-use ph2d_editor_core::action_bus::{AssetCardAction, CatalogVerb, EditorAction};
+use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};

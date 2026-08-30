@@ -626,18 +626,46 @@ fn the_remesh_refuses_with_the_stack_built_instead_of_flattening_it() {
         .nth(1)
         .and_then(|t| t.split("\n}").next())
         .expect("o enum das recusas tem corpo");
-    let causes: Vec<&str> = body
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.starts_with("///") && !l.starts_with("//") && l.contains('('))
-        .chain(
-            body.lines()
-                .map(str::trim)
-                .filter(|l| !l.starts_with("//") && l.ends_with(',') && !l.contains('(')),
-        )
-        .filter_map(|l| l.split(['(', ',']).next())
-        .filter(|l| !l.is_empty())
-        .collect();
+    // ⛔⛔ **O PARSER TEM DE SABER LER O ENUM QUE ELE MEDE.** Até 2026-08-30 ele conhecia
+    // **duas** formas de variante — unitária (`Nome,`) e tupla (`Nome(T)`) —, e a primeira
+    // variante com **campos nomeados** (`Shattered { pieces, was }`) partiu-o: ele colhia
+    // `pieces: usize` e `was: usize` como se fossem causas, e reprovava a exigir uma frase em
+    // `explain` para um CAMPO. *Um gate que não sabe ler a própria entrada acusa um defeito que
+    // não existe — e, pior, fica cego ao que existe: a variante real nunca chegava à lista.*
+    //
+    // ⇒ A regra passa a ser **estrutural, e cobre as três formas**: uma variante é uma linha no
+    // nível **zero** de chavetas do corpo do enum, começada por maiúscula. ⚠️ As chavetas só se
+    // contam em linhas que não são comentário — um `{` dentro de um doc-comment deslocaria a
+    // profundidade e escondia tudo o que viesse a seguir.
+    let mut depth = 0i32;
+    let mut causes: Vec<String> = Vec::new();
+    for line in body.lines() {
+        let t = line.trim();
+        let comentario = t.starts_with("//");
+        if depth == 0 && !comentario && t.chars().next().is_some_and(|c| c.is_ascii_uppercase()) {
+            let name: String = t
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if !name.is_empty() {
+                causes.push(name);
+            }
+        }
+        if !comentario {
+            depth += i32::try_from(t.matches('{').count()).unwrap_or(0)
+                - i32::try_from(t.matches('}').count()).unwrap_or(0);
+        }
+    }
+    // ⚠️ **E as TRÊS formas têm de estar representadas**, senão a correcção acima seria uma
+    // afirmação sem fixtura: o enum tem hoje uma unitária, uma de tupla e uma de campos
+    // nomeados, e é isso que faz este laço provar alguma coisa.
+    for forma in ["MultiresStack", "Extract", "Shattered"] {
+        assert!(
+            causes.iter().any(|c| c == forma),
+            "a variante `{forma}` nao entrou na lista: o parser das causas deixou de ler uma \
+             das tres formas de variante -- {causes:?}"
+        );
+    }
     assert!(
         causes.len() >= 3,
         "o enum das recusas encolheu para {} variantes: {causes:?}",

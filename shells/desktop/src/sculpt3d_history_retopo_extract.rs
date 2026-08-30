@@ -13,43 +13,20 @@
 //! byte-idêntica ao que sempre foi — a bifurcação continua a ser **uma só**, na
 //! primeira linha dela, e há gate a contá-la.
 //!
-//! # ⚠️ O que a medição diz HOJE, e é por isso que ele está desligado
-//!
-//! Medido em 2026-08-24, cadeia inteira com a **fase zero** honrada:
-//!
-//! | peça | dobras do mapa | quads | `χ` | ⭐ aspecto p50 | ⭐ enviesamento p50 |
-//! |---|---|---|---|---|---|
-//! | ⭐ esfera fina (96×144) | **0 %** | `2 102` | ⚠️ `−5` | ⭐ **`1,10`** | ⭐ **`6,8°`** |
-//! | toro (alça) | `3,3 %` | `1 495` | ⛔ `−20` | `1,29` | `5,8°` |
-//! | esfera lisa (24×36) | ⛔ `11 %` | `410` | ⛔ `−14` | `2,02` | `22,1°` |
-//!
-//! ⭐⭐ **A forma da esfera fina está DENTRO da barra do oráculo** (`1,08`–`1,22` de
-//! aspecto, `4,8°`–`7,1°` de enviesamento). ⛔ **O que falta é a topologia**, e a
-//! causa está medida e é a montante: o mapa contínuo do G3 entrega até `11 %` de
-//! triângulos dobrados e uma translação de costura a meia célula de um inteiro,
-//! contra `0,02 %`–`0,2 %` e `3,5e-15` dos mapas de referência. *A extracção e o
-//! arredondamento não são o bloqueador; o solver contínuo é.*
-//!
-//! # ⭐⭐⭐ E ESSA CAUSA FOI CURADA (2026-08-24) — a costura entra por ELIMINAÇÃO
+//! # ⚠️ A COSTURA entra por ELIMINAÇÃO, e foi isso que fechou a casca (2026-08-24)
 //!
 //! O G3 **pesava** a costura; hoje ela é uma restrição eliminada
-//! ([`ph2d_gridmap::round_welded`]). ⇒ o resíduo da costura deixa de ser uma célula
-//! inteira e passa a ser **zero**, e a casca fecha. Medido na cadeia inteira, nas duas
-//! peças que o artista de facto olhou:
+//! ([`ph2d_gridmap::round_welded`]) — o resíduo deixa de ser uma célula inteira e passa a ser
+//! **zero**. Medido A/B em 5 peças fechadas: bordo `30`–`78` → **`0`**, `χ` `−4`..`−13` →
+//! **`+2`**, e `3`–`4×` mais rápido. ⚠️ **A regressão que fica tem nome e cura publicada** (as
+//! faces com canto pior que `60°` sobem; *local stiffening*, §5.4 do mesmo *paper*) e ficou
+//! **fora daquela wave de propósito**: com dois mecanismos dentro, uma regressão de forma fica
+//! sem dono.
 //!
-//! | peça | | arestas de bordo | células más | `χ` | aspecto p50 | enviesamento p50 | `>60°` |
-//! |---|---|---|---|---|---|---|---|
-//! | enrugada | penalizado | ⛔ `46` | `19 de 2 041` | ⛔ `−8` | `1,15` | `5,7°` | `4` |
-//! | enrugada | ⭐ **soldado** | ⭐ **`0`** | ⭐ **`0`** | ⭐ **`+2`** | `1,15` | `6,3°` | ⚠️ `11` |
-//! | orelha | penalizado | ⛔ `50` | `33 de 2 071` | ⛔ `−6` | `1,12` | `7,1°` | `7` |
-//! | orelha | ⭐ **soldado** | ⭐ **`0`** | ⭐ **`0`** | ⭐ **`+2`** | `1,14` | ⚠️ `8,2°` | `7` |
-//!
-//! ⚠️ **A regressão que fica tem nome e uma cura publicada:** as faces com canto pior
-//! que `60°` sobem de `4` para `11` na enrugada, e o enviesamento da orelha passa o
-//! tecto do oráculo por `1,1°`. O mecanismo é o *local stiffening* do mesmo *paper*
-//! (§5.4) — pesar por triângulo o que ficou distorcido e re-resolver. ⛔ **Não é desta
-//! wave, de propósito:** com dois mecanismos dentro, uma regressão de forma fica sem
-//! dono.
+//! ⚠️ **As tabelas, as 5 recusas medidas e a pergunta devolvida ao dono vivem no handoff**
+//! (`docs/3D/handoffs/HANDOFF_INTEGRACAO_line_seamelim_2026-08-24.md` e o `§8-bis` do
+//! `…_quadextract_2026-08-24.md`) — *este doc é um roteador, e cada linha dele é paga por todo
+//! agente que abrir o ficheiro.*
 //!
 //! ⚠️ **`PH2D_GRIDMAP_WELD=0` volta ao G3 penalizado**, dentro deste caminho — é a
 //! forma de bissecar.
@@ -477,10 +454,40 @@ impl Sculpt3dScene {
             (relief_won, (out, e, _shift_frac_max, shape))
         };
 
+        // ⭐⭐⭐ **O VETO — a peça não pode sair PARTIDA.** Ver [`rulers::shattered`].
+        //
+        // ⛔⛔⛔ **Report do artista com foto, 2026-08-30** (*«péssimo»*): um quad a flutuar solto
+        // ao lado de uma ponta. ⚠️ **Reproduzido ao carregar no botão uma SEGUNDA vez** sobre a
+        // saída da primeira (`Detail 0,85` + `Follow Curvature 1`, a configuração que a janela
+        // anterior lhe recomendou): `2` peças — um pedaço solto de `22` faces —, `χ` de `2` para
+        // `4`, e a ponta mais longa cortada de `−0,2 %` para **`−35,0 %`**. Um clique só sai
+        // `1` peça e `χ = 2`; *é a re-entrada que parte.*
+        //
+        // ⛔ **O veto é ABSOLUTO e vem DEPOIS da escada**, e não é uma quinta candidata: o
+        // [`worse`] sabe dizer qual das tentativas é a melhor e **nunca** compara com a malha que
+        // o artista já tinha. Quando todas partem a peça, a melhor delas ainda é uma peça
+        // partida — *e o mínimo do produto é o artista não perder a escultura porque a
+        // retopologia falhou*, que é a mesma lei que pôs o `catch_unwind` acima.
+        //
+        // ⚠️ **Ele não fecha a porta ao caso legítimo:** é RELATIVO (`saiu > entrou`), então uma
+        // cena que já tem dois objectos soltos continua a poder sair com dois.
+        if let Some((pieces, was)) = rulers::shattered(&out, &reference) {
+            return Err(RemeshRefusal::Shattered { pieces, was });
+        }
+
         // ⭐⭐⭐ **A PONTA, uma a uma** — ver [`ph2d_quadfill::tip_survival`]. Contra a
         // `reference` (a escultura que entrou), **não** a `work`: o artista compara com o
         // que ele esculpiu, e a fase zero já é parte da cadeia que se está a julgar.
         let tips = ph2d_quadfill::tip_survival(&reference, &out);
+        // ⭐⭐⭐ **E QUANTO DA ESCULTURA FICOU PARA TRÁS** — ver [`ph2d_quadfill::coverage`].
+        //
+        // ⚠️ **A direcção é `entrada → saída` e é a lei inteira:** a inversa — *«a malha nova
+        // está pousada na escultura?»* — é a que os dois lados já medem, e ela dá **zero** sobre
+        // uma peça com a ponta comida. *Eu medi a errada primeiro, no mesmo dia.*
+        //
+        // ⚠️ **Contra a `reference` pela mesma razão que a [`ph2d_quadfill::tip_survival`]:** o
+        // artista compara com o que esculpiu, e a fase zero é parte da cadeia que se julga.
+        let cover = ph2d_quadfill::coverage(&reference, &out);
         let (edge_median, edge_max) = edges(&out);
         let report = QuadRemeshReport {
             verts: out.vert_count(),
@@ -506,6 +513,9 @@ impl Sculpt3dScene {
             tips_cut: tips.cut,
             tips_total: tips.total,
             tips_worst_pct: tips.worst_pct,
+            coverage_shell_p50: cover.shell_p50,
+            coverage_shell_worst: cover.shell_worst,
+            coverage_samples: cover.samples,
             // ⭐⭐⭐ **`aligned` diz QUAL CAMPO produziu esta malha** — é o sentido que o
             // `retopo_line` lhe dá. ⛔ Até 2026-08-26 este caminho punha aqui a
             // **exactidão do arredondamento** (`shift_frac_max == 0.0`), que é outra

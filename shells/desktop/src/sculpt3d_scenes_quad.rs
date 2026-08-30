@@ -113,7 +113,12 @@ fn announce_extract() {
          [sculpt3d]        quads tem de ficar PARECIDA nas duas. Ate' 28/08 ela derretia\n\
          [sculpt3d]        (19786 -> 1747 -> 520 -> 281 com o slider parado), porque o `Detail`\n\
          [sculpt3d]        se media na peca que o proprio botao acabara de reescrever. Se voltar\n\
-         [sculpt3d]        a derreter, diga -- essa e' a unica das tres que ainda me surpreende."
+         [sculpt3d]        a derreter, diga -- essa e' a unica das tres que ainda me surpreende.\n\
+         [sculpt3d]        ⚠️ E COM O `Detail` ALTO, a 2a vez pode dizer `partiu a peca em N\n\
+         [sculpt3d]        pedacos soltos` e NAO fazer nada. ⭐ ISSO E' O CERTO, nao um defeito:\n\
+         [sculpt3d]        a 2a passagem partia mesmo a peca (um pedaco de 22 faces a flutuar --\n\
+         [sculpt3d]        foi a foto de 30/08) e agora o botao recusa em vez de a estragar. A\n\
+         [sculpt3d]        sua escultura fica como estava; desfaca e clique UMA vez."
     );
 }
 

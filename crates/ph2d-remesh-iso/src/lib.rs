@@ -75,10 +75,18 @@
 
 use ph2d_mesh::{Birth, Mesh, RegionScratch, Remap};
 
-/// **A fração da diagonal da caixa que vira o lado do triângulo** — MEDIDA.
+/// **A fração da diagonal da caixa que vira o lado do triângulo** — MEDIDA, e a tabela que
+/// a confirma sobre o cubo está no doc do módulo.
 ///
-/// É o `alpha` do preset `basic_setup_Organic.txt` do oráculo. Ver o doc do
-/// módulo para a tabela que o confirma sobre o cubo.
+/// ⛔⛔ **A PROVENIÊNCIA que esta linha alegava era FALSA, e saiu em 2026-08-30.** Ela
+/// atribuía o número a um preset do alvo restrito. O número existe lá, e ⛔ **não é um
+/// comprimento de remalhagem em leitura nenhuma**: num dos programas é a mistura
+/// *regularidade ↔ isometria* do objectivo da quantização, no outro é o peso de alinhamento à
+/// curvatura de um alisador de campo.
+///
+/// ⚠️ **O valor fica porque foi medido AQUI; a frase é que tinha de sair.** *Um número com
+/// proveniência falsa lê-se como número com medição*, e o próximo agente que quisesse afinar a
+/// densidade iria buscar autoridade a um knob que controla outra coisa.
 pub const ALPHA: f32 = 0.02;
 
 /// **A histerese entre partir e colapsar** — a lei clássica `[4/5, 4/3]`.

@@ -329,3 +329,201 @@ procurava `−21`. A fixtura passou a usar um valor sem ambiguidade.
 `scripts/cargo-check-narrow.sh` corre `cargo check -p` **sem `--all-targets`** ⇒ não compila
 `#[cfg(test)]` nenhum, e imprimiu *«compila»* sobre um `use` que não resolvia. É a **quarta**
 variante da mesma cegueira (memória actualizada). ⇒ ao mexer em código de teste, `--all-targets`.
+
+---
+
+## §8-sexies — ⛔⛔⛔ «PÉSSIMO» (Enio, 30/08, 3.ª foto) — a peça SOLTA reproduz-se, e é a RE-ENTRADA
+
+**O report:** a mesma foto de espinhos, sete setas vermelhas — um quad a flutuar **solto** acima de
+uma ponta cortada, outro a flutuar longe da peça, e pontas amputadas em baixo. Palavra dele:
+*«péssimo. é preciso investigar o código original.»*
+
+### A reprodução, e o que ela CORRIGE do que eu disse antes
+
+| configuração | quads | `χ` | bordo · não-manif. | ⭐ **peças** | pontas cortadas |
+|---|---|---|---|---|---|
+| `Detail 0,50` · knob `0` · **1 clique** | `1 353` | `3` | `0` · `2` | `1` | `2 de 12` (pior `−21,5 %`) |
+| `Detail 0,85` · knob `1` · **1 clique** | `8 623` | ⭐ `2` | `0` · `0` | `1` | `1 de 12` (pior `−6,4 %`) |
+| ⛔⛔ `Detail 0,85` · knob `1` · **2 cliques** | `7 483` | ⛔ `4` | `0` · `0` | ⛔ **`2`** — solta de `22` faces | ⛔ `2 de 12` (pior **`−35,0 %`**) |
+| `Detail 0,50` · knob `0` · **2 cliques** | `1 454` | `1` | `6` · `0` | `1` | `2 de 12` (pior `−24,4 %`) |
+
+⇒ ⭐⭐⭐ **É a RE-ENTRADA numa configuração fina que parte a peça**, e um clique só não o faz.
+⚠️ **E o roteiro que a janela anterior lhe deu convidava a isso** (*«clique · Ctrl+Z · mude os
+knobs · clique»*): um artista que não desfaz está no caso de dois cliques, que é exactamente o que
+ele fotografou.
+
+### ⛔⛔ Por que NENHUMA régua o via — e a acusação é ao `open_edges`
+
+Um pedaço que se desprende sai **fechado**: leva as suas arestas com ele, cada uma com as duas
+faces. ⇒ `bordo = 0`, `não-manifold = 0`, e a chave da frente do [`worse`] — que o doc dela chama
+de *«as DUAS formas de a casca não fechar»* — **dá zero nas duas peças**. *Uma superfície fechada
+pode conter uma segunda superfície fechada, e contar arestas nunca o revela.*
+
+⚠️ **A minha 1.ª medição foi na direcção errada, e deu «limpo»:** medi a distância de cada face da
+SAÍDA à escultura, e o pior era `3,4 ×` a aresta de entrada em toda a parte. Verdade, e
+irrelevante — ver §8-septies.
+
+### A cura, em duas metades
+
+1. **`rulers::components`** (união por **ARESTA**, não por vértice) entra como **2.ª chave** do
+   `worse`, atrás dos furos. ⛔ **A ordem é uma decisão:** os furos ficam à frente porque *foi isso
+   que se mediu*, e **não existe medição que ordene um estilhaço contra um furo**. O gate
+   `os_furos_continuam_a_decidir_antes_das_pecas` prende a ordem.
+2. ⭐⭐⭐ **`rulers::shattered` é um VETO absoluto, DEPOIS da escada** — `RemeshRefusal::Shattered`.
+   *O `worse` escolhe entre tentativas e **nunca** compara com a malha que o artista já tinha;
+   quando todas partem a peça, a melhor delas ainda é uma peça partida.* É a mesma lei que pôs o
+   `catch_unwind` naquele ficheiro: **o artista não perde a escultura porque a retopologia falhou.**
+
+⚠️ **O veto é RELATIVO (`saiu > entrou`)**, então uma cena com dois objectos soltos continua a poder
+sair com dois. ⚠️ **E não sobre-bloqueia:** medido, os dois cliques a `Detail 0,50` **não** partem a
+peça e passam na mesma.
+
+**Verificado:** clique 2 a `0,85`+knob devolve `Shattered { pieces: 2, was: 1 }` e a escultura do
+clique 1 fica intacta. Os dois cliques únicos são **byte a byte o que eram**.
+
+---
+
+## §8-septies — ⭐⭐⭐ A COBERTURA: a régua que NINGUÉM tem, e a DIREÇÃO é a lei inteira
+
+O subagente-E atravessou o alvo restrito com uma pergunta de três alíneas
+([`SPEC_feicoes_finas.md`](../cleanroom/SPEC_feicoes_finas.md), commit `4283c385e`, sweep verde).
+A resposta à alínea (b) é o achado:
+
+> ⛔ **Não há protecção anti-amputação nem régua de fidelidade nenhuma — nem no produto nem nos
+> instrumentos de medição do alvo.** Eles medem topologia e qualidade de forma por face. **Nenhuma
+> distância à entrada. Nenhuma cobertura. Nenhum Hausdorff.**
+
+⇒ *a nossa amputação de `−20 %` a `−35 %` é invisível a **toda** régua que os dois lados têm hoje*,
+e a espec nomeia a construção que falta (§6.2 item 1). Ela existe agora:
+**`ph2d_quadfill::coverage(entrada, saída)`**.
+
+### ⚠️ A DIREÇÃO é tudo
+
+| direcção | o que responde | numa ponta amputada |
+|---|---|---|
+| **saída → entrada** | *«a malha nova está pousada na escultura?»* | ⛔ **`0` — passa** |
+| ⭐ **entrada → saída** | *«a escultura toda foi coberta?»* | ⭐ **grande — acusa** |
+
+O gate `uma_ponta_amputada_acusa_numa_direccao_e_e_invisivel_na_outra` prova as duas metades na
+mesma fixtura (uma pirâmide e a mesma pirâmide com a ponta cortada e tapada — **os vértices do topo
+cortado caem exactamente sobre as arestas da inteira**, e é por isso que a direcção inversa mede
+`0`).
+
+### ⭐ E a CASCA é o que a torna acionável — medido na peça do artista
+
+| `r / Rmax` | `Detail 0,50` | `Detail 0,85` + knob |
+|---|---|---|
+| `[0,00 · 0,50)` | `0,44 %` | `0,17 %` |
+| `[0,50 · 0,75)` | `0,50 %` | `0,19 %` |
+| `[0,75 · 0,90)` | `2,72 %` | `0,21 %` |
+| ⭐ `[0,90 · 1,00]` | ⛔ **`6,01 %`** (pior `9,46 %`) | ⭐ **`0,095 %`** (pior `3,05 %`) |
+
+⇒ **monótono no raio, e `63×` entre as duas configurações** — e a régua chega lá **sem saber o que
+é uma ponta**, ao contrário da `tip_survival`, que tem de achar um ápice primeiro.
+`COVERAGE_DEFECT = 2 %` fica `7×` acima da limpa e `3×` abaixo da amputada.
+
+⚠️ **Distância ao TRIÂNGULO, exacta** (ponto-a-triângulo fechado + grelha por caixa envolvente).
+Amostrar por vértices sobre-estima em até meia aresta de quad — *na peça dele, da ordem do próprio
+defeito*: a versão por amostras lia `0,280 %` onde a exacta lê `0,095 %`.
+
+⭐ **Ela fala SÓ onde a `tip_survival` está muda** (`tips_cut == 0`), porque duas frases para o
+mesmo defeito é ruído — e o que ela acrescenta é o caso que a outra **não pode** ver: uma perda numa
+crista ou numa saliência larga não tem ápice.
+
+---
+
+## §8-octies — ⛔⛔ A cura que a espec do alvo REFUTOU antes de eu a construir
+
+A alínea (a) devolveu um mecanismo tentador: o alvo da remalhagem de preparação do alvo restrito
+**não é dado pelo utilizador** — é derivado da malha, e tem um termo de **esfericidade** que faz uma
+peça espinhosa nascer `2×`–`5×` mais fina **na malha inteira**.
+
+```
+esfericidade = π^(1/3)·(6V)^(2/3)/A        L₀ = aresta do equilátero de área (A/2000)·esf²
+                                           L₁ = aresta do equilátero de área (A/10000)
+alvo = min(L₀, L₁)
+```
+
+⛔⛔ **Medido na peça do artista antes de escrever uma linha: a esfericidade dela é `0,84`**, e o
+ramo espinhoso (`L₀`) só ganha abaixo de `0,45`. ⇒ **o termo não dispararia**, e a regra poria a
+peça em `L₁` — `1,49×` mais fino que o nosso `ALPHA × diagonal`, não `2×`–`5×`.
+
+⭐ *Uma bola de espinhos com corpo gordo tem esfericidade ALTA:* os espinhos são finos e contribuem
+pouca área e pouco volume. **O descritor é global e cego a uma protuberância fina num corpo
+redondo** — que é exactamente a peça do report. ⇒ **não adoptado**, e a espec já o avisava (§6.2
+item 4: *«isto é um GLOBAL, e o report do Enio é LOCAL»*).
+
+⚠️ **E a espec nomeia o que medir ANTES de tentar densidade outra vez** (§6.2 item 5): *o nosso
+campo **acorda** numa ponta fina — há singularidade ali? — e o traçado **reage**?* Se não, densidade
+não salva a ponta; encarece a peça inteira. **É a wave seguinte, e a régua para a julgar existe
+agora.**
+
+---
+
+## §8-nonies — ⛔ PROVENIÊNCIA FALSA numa constante NOSSA (achado colateral do E)
+
+`ph2d_remesh_iso::ALPHA` atribuía o `0,02` a um preset do alvo restrito. ⛔ **Nesse alvo o número
+não é um comprimento de remalhagem em leitura nenhuma** — num programa é a mistura
+*regularidade ↔ isometria* da quantização, no outro o peso de alinhamento à curvatura de um
+alisador de campo.
+
+⚠️ **O valor fica** (o doc dele diz que foi MEDIDO, com tabela sobre o cubo); **a frase saiu.**
+*Um número com proveniência falsa lê-se como número com medição*, e quem quisesse afinar a
+densidade iria buscar autoridade a um knob que controla outra coisa.
+
+---
+
+## §8-decies — ⏳ O ABERTO, reconciliado no fim da jornada
+
+O §8 acima foi escrito a meio do dia. O que MUDOU depois dele:
+
+- ✅ **A peça solta tem cura** (§8-sexies): `components` na escolha + `shattered` como veto. ⛔ O
+  que **não** está curado é a causa — *por que a re-entrada numa configuração fina parte a peça* —
+  e o veto é uma rede, não uma explicação.
+- ✅ **A régua de cobertura existe** (§8-septies) e é a que a espec do alvo nomeia como ausente
+  dos dois lados. ⏳ **Ela ainda não DECIDE:** o `worse` não a consulta. *Uma régua que só imprime
+  não é uma régua que decide* — foi essa exactamente a lição que a contagem de componentes cobrou
+  hoje, dois dias depois de a sonda dela ter sido construída. **A wave seguinte põe a cobertura na
+  escolha entre candidatas**, e o corpus para a julgar é o `ph2d-quadbench`, que continua ausente.
+- ⏳ **A transferência continua rota**, e o §8-octies fecha a saída fácil: o descritor global de
+  esfericidade do alvo **não dispararia** nesta peça (`0,84`, e o ramo fino só ganha abaixo de
+  `0,45`). ⇒ resta o factor de escala conforme, e **antes dele** a medição que a espec pede: *o
+  nosso campo acorda numa ponta fina, e o traçado reage?*
+- ⏳ **O `Detail` de fábrica (`0,50`) é o pior ponto do slider nesta peça** e é onde o artista
+  clica primeiro: `2` pontas amputadas, `χ = 3` com `2` não-manifold, cobertura de casca `6,0 %`.
+  A `0,85` com o knob: `χ = 2` limpo, cobertura `0,095 %`. ⛔ **Mexer no default é decisão do
+  dono** (custa `6×` os quads e `1,6×` o relógio) — a cura desta jornada foi o botão **dizê-lo**.
+- ⏳ o `ph2d-quadbench` continua ausente desta máquina · o motor **`Fast`** continua a um clique
+  com a saída pior (herdados, sem mudança).
+- ⏳ **NÃO MEDIDO: um 2.º clique com o `Detail` DIFERENTE.** A reprodução do §8-sexies usa as
+  **mesmas** definições nas duas passagens (é o que a sonda permite). O fluxo natural do artista
+  — clicar, olhar, mexer no slider, clicar — pode ou não estilhaçar, e disso depende se o veto é
+  invisível ou se ele obriga a um `Ctrl+Z` a cada tentativa. ⚠️ **A recusa já manda desfazer**,
+  então o pior caso é chato, não destrutivo; mas o número falta e a sonda precisa de aceitar
+  `Detail` por clique.
+
+---
+
+## §8-undecies — ⛔⛔ O PORTÃO DE FECHO achou um gate que não sabia LER o enum que mede
+
+`the_remesh_refuses_with_the_stack_built_instead_of_flattening_it` (em
+`shells/desktop/tests/`, logo **fora** do que `cargo test --bins` alcança — a 6.ª vez que essa
+distinção morde esta linha) reprovou com:
+
+> a causa `pieces: usize` não tem frase própria em `explain`
+
+⭐ **A `Shattered { pieces, was }` é a PRIMEIRA variante com campos nomeados daquele enum.** O
+parser de causas conhecia **duas** formas — unitária (`Nome,`) e tupla (`Nome(T)`) — e sobre a
+terceira colhia os **campos** como se fossem variantes, e **perdia a variante real**. ⇒ ele
+exigia uma frase em `explain` para um campo e, ao mesmo tempo, **deixava de exigir** a frase da
+causa nova: *acusava um defeito que não existe e ficava cego ao que existe.*
+
+⛔ **A cura NÃO foi trocar a variante por uma tupla** — `Shattered(usize, usize)` faria o gate
+passar sem o tocar, e dois `usize` nessa ordem são exactamente o par que alguém troca. ⇒ **o
+parser passou a ser estrutural**: uma variante é uma linha no nível **zero** de chavetas do corpo,
+começada por maiúscula. ⚠️ E as chavetas contam-se **só fora de comentários** — um `{` num
+doc-comment deslocaria a profundidade e esconderia tudo o que viesse depois.
+
+⭐ **Com fixtura das três formas:** o laço `for forma in ["MultiresStack", "Extract", "Shattered"]`
+prende as três, então uma regressão para o parser antigo reprova pelo nome da forma que ele
+deixou de ler — *e não por um campo com nome estranho, que foi o sintoma que custou o diagnóstico.*

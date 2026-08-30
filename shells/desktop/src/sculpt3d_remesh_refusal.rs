@@ -73,6 +73,23 @@ pub(in crate::sculpt3d) enum RemeshRefusal {
     /// mapa com uma coordenada não finita. *Uma variante partilhada faria o artista
     /// ler a cura da outra fase.*
     Extract(ph2d_quadextract::ExtractError),
+    /// **A RETOPOLOGIA ESTILHAÇOU A PEÇA** — a saída tem mais pedaços do que a entrada.
+    ///
+    /// ⛔⛔⛔ **Report do artista com foto, 2026-08-30** (*«péssimo»*): um quad a flutuar
+    /// solto ao lado de uma ponta. Reproduzido ao carregar no botão uma **segunda** vez
+    /// sobre a saída da primeira: `2` peças, um pedaço solto de `22` faces, e a ponta mais
+    /// longa cortada de `−0,2 %` para `−35,0 %`.
+    ///
+    /// ⚠️ **Caso próprio e não um [`Self::Quad`] reaproveitado:** aqui a malha é bem
+    /// formada — fechada, sem bordo, sem não-manifold —, e é por isso que nenhuma das
+    /// recusas que existiam a alcança. *O defeito não é a malha estar mal construída; é ela
+    /// ter deixado de ser UMA peça.*
+    Shattered {
+        /// Quantos pedaços a retopologia devolveu.
+        pieces: usize,
+        /// Quantos a escultura tinha.
+        was: usize,
+    },
 }
 
 impl RemeshRefusal {
@@ -134,6 +151,15 @@ impl RemeshRefusal {
                 "a extraccao do mapa de grade inteira recusou, e a escultura fica como esta': \
                  {e} -- ponha PH2D_RETOPO_EXTRACT=0 para voltar ao caminho de sempre"
             ),
+            // ⚠️ **A frase nomeia o que o artista VÊ** (pedaço solto a flutuar) e o conserto que
+            // de facto o resolve. ⛔ *«tente outro Detail»* sozinho seria adivinhar: medido na
+            // peça dele, a re-entrada parte a peça em qualquer ponto do slider, e o que a cura é
+            // **não voltar a carregar sobre a saída** — daí o Ctrl+Z vir primeiro.
+            Self::Shattered { pieces, was } => format!(
+                "a retopologia partiu a peca em {pieces} pedacos soltos (ela entrou com {was}), e \
+                 a escultura fica como esta' -- desfaca (Ctrl+Z) ate' voltar a' escultura \
+                 original antes de carregar outra vez, ou baixe o Detail"
+            ),
         }
     }
 
@@ -154,7 +180,8 @@ impl RemeshRefusal {
             | Self::Layout(_)
             | Self::Quantize(_)
             | Self::Fill(_)
-            | Self::Extract(_) => false,
+            | Self::Extract(_)
+            | Self::Shattered { .. } => false,
         }
     }
 }

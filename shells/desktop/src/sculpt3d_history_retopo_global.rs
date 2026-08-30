@@ -219,7 +219,12 @@ impl Sculpt3dScene {
             doublets: 0,
             // ⚠️ O motor LOCAL não mede pontas: ele não é o caminho de omissão, e uma
             // coluna a zero num relatório lê-se como «nenhuma cortada».
+            // ⚠️ **A cadeia LOCAL não mede nenhuma das duas**, e o `0` aqui é «não medido» —
+            // ver `QuadRemeshReport::coverage_samples`, que é o campo que o diz em voz alta.
             tips_cut: 0,
+            coverage_shell_p50: 0.0,
+            coverage_shell_worst: 0.0,
+            coverage_samples: 0,
             tips_total: 0,
             tips_worst_pct: 0.0,
             aligned,
@@ -467,14 +472,29 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
         // 0,50` as duas pontas mais longas perdem `20 %`, e a `0,85` com o `Follow
         // Curvature` a mesma peça devolve a maior a **`−0,2 %`**. *Sem esta frase, subir o
         // `Detail` é um palpite que ninguém tem razão para dar.*
-        if r.tips_cut == 0 {
-            String::new()
-        } else {
+        // ⭐⭐⭐ **E A SEGUNDA RÉGUA FALA SÓ ONDE A PRIMEIRA ESTÁ MUDA** — ver
+        // `QuadRemeshReport::coverage_shell_p50`.
+        //
+        // ⚠️ **Duas frases para o mesmo defeito é ruído**, e na peça do artista as duas
+        // disparam juntas. A cobertura acrescenta o caso que a contagem de pontas **não pode**
+        // ver: a [`ph2d_quadfill::tip_survival`] tem de ACHAR um ápice primeiro (máximo local
+        // do raio), então uma perda numa aresta, numa crista ou numa saliência larga sai com
+        // `tips_cut == 0`. *A régua geral só se pronuncia quando a específica se calou.*
+        if r.tips_cut > 0 {
             format!(
                 " -- ⚠️ {} de {} ponta(s) AMPUTADA(S) (a pior {:.0} %); suba o `Detail` \
                  ou ligue o `Follow Curvature`",
                 r.tips_cut, r.tips_total, r.tips_worst_pct
             )
+        } else if r.coverage_samples > 0 && r.coverage_shell_p50 > ph2d_quadfill::COVERAGE_DEFECT {
+            format!(
+                " -- ⚠️ a borda da peca ficou {:.1} % POR COBRIR (a pior {:.1} %); suba o \
+                 `Detail` ou ligue o `Follow Curvature`",
+                100.0 * r.coverage_shell_p50,
+                100.0 * r.coverage_shell_worst
+            )
+        } else {
+            String::new()
         },
         // ⭐⭐ **QUAL CAMPO correu.** A cadeia global tenta o campo
         // ALINHADO ao relevo e cai para o só-suavidade quando o

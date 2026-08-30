@@ -37,6 +37,8 @@
 
 /// ⭐⭐ **O INTERIOR DE UM PATCH SEGUE O CAMPO** — ver [`aligned`].
 pub mod aligned;
+/// ⭐⭐⭐ **QUANTO DA ESCULTURA FICOU PARA TRÁS** — a direcção que ninguém mede — ver [`coverage`].
+pub mod coverage;
 /// ⭐ **A FORMA DO DOMÍNIO** — o polígono da fronteira — ver [`domain`].
 mod domain;
 /// **O PREENCHIMENTO de um patch** — o leque e a grade — ver [`fan`].
@@ -45,8 +47,9 @@ pub mod fan;
 mod finish;
 /// ⭐⭐⭐ **O ACABAMENTO DA CADEIA DE EXTRACÇÃO** — ver [`finish_extract`].
 pub mod finish_extract;
-/// ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE** — LSCM — ver [`lscm`].
+/// ⭐⭐⭐ **A RÉGUA LOCAL** — um quad de cada vez, e uma ponta de cada vez — ver [`local`].
 pub mod local;
+/// ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE** — LSCM — ver [`lscm`].
 mod lscm;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
 mod param;
@@ -72,6 +75,7 @@ pub mod stitch;
 mod weights;
 
 pub use aligned::{INTERIOR, Interior};
+pub use coverage::{COVERAGE_DEFECT, COVERAGE_SHELL, Coverage, coverage};
 pub use finish::smooth;
 pub use finish_extract::{
     EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,

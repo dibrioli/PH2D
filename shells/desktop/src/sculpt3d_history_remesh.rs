@@ -141,6 +141,23 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     pub tips_total: usize,
     /// A pior perda, em percentagem (negativa).
     pub tips_worst_pct: f32,
+    /// ⭐⭐⭐ **QUANTO DA ESCULTURA FICOU POR COBRIR, na casca exterior** — a mediana, em
+    /// fracção da diagonal da peça. Ver [`ph2d_quadfill::coverage`].
+    ///
+    /// ⛔⛔ **É a direcção que ninguém mede**, e a ausência está confirmada nos DOIS lados:
+    /// nem as réguas desta linha nem as do padrão-ouro medem distância à ENTRADA. *Uma ponta
+    /// comida sai fechada, com quads bonitos, e passa em tudo.*
+    ///
+    /// ⚠️ **Ela é mais geral que a [`Self::tips_cut`]:** aquela tem de ACHAR um ápice primeiro
+    /// (máximo local do raio) e por isso só vê o que se parece com uma ponta; esta responde
+    /// *«a escultura toda foi coberta?»* sem saber o que é uma ponta. Medido na peça do
+    /// artista: `6,02 %` no `Detail` de fábrica contra `0,28 %` a `0,85` + `Follow Curvature`.
+    pub coverage_shell_p50: f32,
+    /// A pior falta na casca — o mesmo denominador.
+    pub coverage_shell_worst: f32,
+    /// Vértices medidos. ⛔⛔ **`0` = NÃO MEDIDO**, nunca «perfeito» — ver
+    /// [`ph2d_quadfill::Coverage::samples`].
+    pub coverage_samples: usize,
     /// ⭐⭐ **O campo desta corrida obedeceu ao RELEVO?**
     ///
     /// ⛔ **Ele existe porque a cadeia global tem uma REDE**, e uma rede silenciosa
@@ -297,6 +314,10 @@ impl Sculpt3dScene {
             tips_cut: 0,
             tips_total: 0,
             tips_worst_pct: 0.0,
+            // ⚠️ `0` = NÃO MEDIDO — ver `QuadRemeshReport::coverage_samples`.
+            coverage_shell_p50: 0.0,
+            coverage_shell_worst: 0.0,
+            coverage_samples: 0,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

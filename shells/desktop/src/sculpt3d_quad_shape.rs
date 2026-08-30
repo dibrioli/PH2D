@@ -392,6 +392,10 @@ fn the_report_carries_the_shape_of_every_quad() {
         tips_cut: 0,
         tips_total: 0,
         tips_worst_pct: 0.0,
+        // ⚠️ `0` amostras = NÃO MEDIDO, e é o que mantém esta fixtura calada sobre cobertura.
+        coverage_shell_p50: 0.0,
+        coverage_shell_worst: 0.0,
+        coverage_samples: 0,
         verts: 0,
         quads: r.quads,
         non_quads: r.non_quads,

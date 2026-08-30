@@ -177,6 +177,19 @@ fn the_artists_piece_through_the_button() {
         r.shape.skew_over_60,
         r.folded,
     );
+    // ⭐⭐⭐ **A COBERTURA que o botão de facto reporta** — pelo relatório, e não recalculada
+    // aqui: *uma sonda que refaz a conta mede a sonda, não o produto.*
+    eprintln!(
+        "   COBERTURA (casca): p50 {:.3} % | pior {:.3} % | amostras {} {}",
+        100.0 * r.coverage_shell_p50,
+        100.0 * r.coverage_shell_worst,
+        r.coverage_samples,
+        if r.coverage_samples == 0 {
+            "⛔ NAO MEDIDO"
+        } else {
+            ""
+        }
+    );
     census("SAIDA", &out);
     islands("SAIDA", &out);
     local_shape("SAIDA", &out);

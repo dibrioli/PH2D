@@ -523,6 +523,9 @@ fn a_linha_do_artista_nomeia_as_pontas_amputadas() {
         tips_cut: 0,
         tips_total: 12,
         tips_worst_pct: -0.4,
+        coverage_shell_p50: 0.0,
+        coverage_shell_worst: 0.0,
+        coverage_samples: 500,
     };
     let calada = crate::sculpt3d::history::retopo_global::retopo_line(&base);
     assert!(

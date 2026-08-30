@@ -314,6 +314,25 @@ nome; acrescentar continua a uma seta de distância, substituir passa a estar a 
 ⛔ **E o molde da Timeline NÃO foi «corrigido» de passagem** — lá o campo tem dois modos (rótulo ·
 sinal) e a decisão é dele; mexer-lhe daqui seria mudar produto de outra linha sem smoke.
 
+### §11.2-bis — ⛔⛔ E o campo tinha DUAS portas por onde ficar focado e invisível
+
+Um painel tem **duas** maneiras de desaparecer, e a limpeza estava escrita em zero delas:
+
+| Porta | O que o ramo já largava | O que faltava |
+|---|---|---|
+| a coluna **colapsa** (`col_w == 0`: botão *só-grade*, ou painel estreitado) | a região de rolagem, as linhas pintadas | **o campo** |
+| o **painel fecha** (`!panel_visible`) | o rect do painel, as células, a lista pintada | **o campo** |
+
+Em qualquer das duas o campo deixava de ser pintado e registado, **e o `WidgetStore` continuava
+com o foco nele** — a partir daí escrever no app não fazia nada em lado nenhum, sem nada na tela a
+dizer porquê. ⚠️ *Uma limpeza escrita num sítio só ainda não é uma limpeza.*
+
+⚠️ `catalog_rename::abandon` larga o foco **só se ele for nosso** — pisar o foco de outro widget
+seria trocar um defeito por outro, e há gate de controlo sobre isso.
+
+⭐ O gate da segunda porta usa o `paint_hidden` do testkit, que existe precisamente porque *nenhum
+gate deste repo alcançava o ramo escondido de um painel*.
+
 ### §11.3 — As leis que a etapa pagou
 
 - **A escada de ids lê-se nos dois sentidos, por UMA porta.** `catalog_row_index` estava escrita
@@ -342,3 +361,60 @@ sinal) e a decisão é dele; mexer-lhe daqui seria mudar produto de outra linha 
 - **O undo da taxonomia** — ela é do **projecto** e não do `ProjectState`, então estes verbos não
   produzem passo de undo; o que eles compram é o projecto marcado como sujo. Dívida declarada no
   `project_catalogs`.
+
+### §11.5 — A auditoria de 2 lentes da etapa D (2026-08-30) — **13 achados, todos fechados**
+
+#### O que ela achou no PRODUTO
+
+| # | Achado | Mecanismo | Cura |
+|---|---|---|---|
+| **A** | ⛔⛔ o polegar da barra da coluna era **pintado num rect e agarrado noutro, 30 px acima** | o pintor recebia `col`, o `thumb_rect` do chamador recebia `list_rect`; e a fronteira do `is_needed` era perguntada **duas vezes com denominadores diferentes** ⇒ numa janela de 30 px o `register` corria sobre uma barra que ninguém desenhara (**polegar invisível e agarrável**) | `paint_scrollbar` passa a **devolver o polegar que desenhou**; o chamador regista **esse**. Uma banda, uma altura, uma porta |
+| **B** | a **terceira** porta do campo órfão | o ramo *«o catálogo desapareceu»* escrevia `renaming = None` à mão e não largava o foco — as outras duas já chamavam o `abandon` | `abandon` nas três |
+| **D** | `catalog_row_index` punha **256 `format!` + 256 FNV no caminho de TODO botão direito do app** | o `pointer_down_menus` avalia-a incondicionalmente no ramo `Secondary`, logo canvas/hierarquia/timeline pagavam o MISS. ⚠️ **o gate de zero-alocação era estruturalmente cego**: só despacha `Move` com o botão **primário** | escada assada uma vez (`LazyLock`) — tira o `format!` também do laço que pinta |
+
+⚠️ **A é PRÉ-EXISTENTE** (nasceu na wave A3) e o irmão que serve de controlo está no **mesmo par de
+ficheiros** e fazia o certo. *Uma lei escrita duas vezes acerta numa e falha na outra.*
+
+#### O que ela achou nos GATES — três passavam por coincidência
+
+| # | Gate | Porque era verde |
+|---|---|---|
+| **C** | `abandoning_the_rename_does_not_steal_someone_elses_focus` | a fixtura punha `renaming = None`, e o `.take()` **curto-circuita antes** de a cláusula do foco ser avaliada ⇒ ele controlava um `set_focus(None)` incondicional, não a cláusula que diz controlar |
+| **J** | `the_menu_over_a_fixed_row_does_nothing` | o oráculo é «nada aconteceu» ⇒ passava com o censo do quadro **vazio**; faltava o controlo positivo |
+| **K** | `renaming_to_the_same_name_dispatches_nothing` | `commit` devolve `None` por **duas** causas (nome igual · catálogo não encontrado) e o gate não as separava ⇒ a cláusula era creditada por uma ausência |
+
+Mais **H** (o elo semente→rótulo sem gate: `seed_state("")` sobrevivia a tudo — *a metade exacta que
+o smoke apanhara em produto*), **I** (o Esc é o par `Cancel`+`Blur` e o gate mandava só um) e **M**
+(a escada não afirmava que os ids do MENU não são linhas — e a arm da escada vem **antes** da do
+menu, logo uma colisão engoliria o `Rename…` em silêncio).
+
+#### ⭐⭐ **E** — o gate de paridade **nem lia o ficheiro**
+
+O `read_paint_sources` só varre ficheiros cujo nome contém `paint` ou que vivem sob `sections/`, e o
+módulo chamava-se `catalog_rename.rs` ⇒ o `register` dele era **invisível**. ⛔ **A regra não foi
+alargada** — alargá-la arrasta quatro ids de painéis de **outras linhas** (o doc do próprio gate já
+os NOMEIA, entre eles o `TIMELINE_CLIP_RENAME_INPUT`, o gémeo exacto deste campo), e essa decisão é
+dos donos deles. ⇒ o módulo foi **renomeado para dentro do alcance da regra**
+(`paint_catalog_rename.rs`) — e o gate, mal passou a vê-lo, acusou logo o que faltava: o campo não
+estava no `populate.rs`, logo **não era focável de nascença**. *Entrar no alcance de um gate é a
+forma barata de descobrir o que ele já sabia.*
+
+#### O que ela mediu e **ILIBOU** (não confunda com «não olhou»)
+
+- **O `consume_last_context_menu` antes de conhecer o sujeito é inócuo** — `last_context_menu` é um
+  slot único que o `close_context_menu` **sobrescreve**, e os dois ids só nascem desta arm ⇒
+  consumi-lo sobre uma linha fixa descarta **o pedido dele próprio**.
+- **A taxonomia publicada não está atrasada no instante que importa** — a publicação corre **antes**
+  do dreno dos verbos no mesmo quadro, e a semente e o `current` saem da **mesma** leitura.
+- **A ordem das arms está certa**: a guarda `panel_visible` vem antes do `other =>` que delega os
+  gestos de catálogo. ⚠️ Efeito colateral que vale saber: o `DoubleClick` é apanhado **inteiro** pela
+  arm dos cartões, então *«duplo-clique renomeia»* (o gesto do Finder) exigiria abrir aquela arm.
+- **O `rename_y` colhido ANTES do `continue` está certo** e é melhor do que o doc prometia — rolar
+  para baixo cola o campo ao bordo inferior em vez de o atirar para o topo. **O doc é que foi
+  corrigido.**
+
+#### ⏳ O que fica NOMEADO e não curado
+
+Quando o dreno **recusa** o nome (vazio ou com `/`), o campo já fechou e **o texto escrito
+perde-se** — há toast a explicar, mas o artista tem de reabrir e reescrever. Curá-lo é manter o
+campo aberto sobre uma recusa, o que exige o dreno responder ao painel; hoje ele só fala por toast.

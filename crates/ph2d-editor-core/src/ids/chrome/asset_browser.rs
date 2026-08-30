@@ -98,19 +98,45 @@ pub const ASSET_CATALOG_COL: NodeId = hash_node_id("asset_browser.catalog.col");
 /// `WidgetStore` como o de qualquer campo — é isso que faz a rota global de foco alimentá-lo e o
 /// `text_entry_focused` do shell suprimir os atalhos enquanto se escreve, sem gate extra.
 ///
-/// ⛔ Ele **não pode ter tabelas laterais** (cor, z, rolagem, tooltip): a abertura usa o `register`
-/// que SUBSTITUI, e isso só é seguro porque o id não as tem — a mesma nota que o rename da
-/// Hierarquia carrega.
+/// ⛔ Ele **não pode ter tabelas laterais que o `register` deixe para trás** (cor, z, rolagem,
+/// tooltip): a abertura usa o `register` que SUBSTITUI, e isso só é seguro porque o id não as tem
+/// — a mesma nota que o rename da Hierarquia carrega.
+///
+/// ⚠️ **O `cancel_on_escape` NÃO é uma dessas, e a distinção é o que salva a nota** (auditada em
+/// 2026-08-30): ele é um conjunto *insert-only* que ninguém esvazia, então marcá-lo uma vez basta
+/// e um `register` a seguir não o perde. *Uma tabela lateral só é perigosa se o `register` a
+/// dessincronizar.*
 pub const ASSET_CATALOG_RENAME: NodeId = hash_node_id("asset_browser.catalog.rename");
 
 /// Quantas linhas de catálogo o painel regista, no máximo. ⚠️ Mesmo teto e mesma razão do
 /// [`MAX_ASSET_CELLS`]: cada linha é um `NodeId` no store e um rect no `HitIndex`.
 pub const MAX_CATALOG_ROWS: usize = 256;
 
+/// A escada inteira, assada **uma vez**.
+///
+/// ⛔⛔ **Sem ela a leitura inversa punha 256 `format!` + 256 FNV no caminho de TODO botão direito
+/// do app** (achado da auditoria de 2026-08-30): o `pointer_down_menus` avalia-a
+/// incondicionalmente dentro do ramo `Secondary`, portanto o canvas, a hierarquia e a timeline
+/// pagavam o caso do MISS. ⚠️ **E o gate de zero-alocação era estruturalmente cego a isso** — o
+/// `interaction_no_alloc` só despacha `Move` com o botão **primário**.
+///
+/// ⚠️ Ela também tira o `format!` do **laço que pinta** a coluna, que corria por quadro.
+static CATALOG_ROWS: std::sync::LazyLock<Vec<NodeId>> = std::sync::LazyLock::new(|| {
+    (0..MAX_CATALOG_ROWS)
+        .map(|i| asset_fnv_node_id(&format!("asset_browser.catalog.row.{i}")))
+        .collect()
+});
+
 /// O id da linha `index` da coluna — **posicional na lista visível**, como o cartão.
+///
+/// ⚠️ Fora da escada (`index >= MAX_CATALOG_ROWS`) ele continua a ser calculado, porque a resposta
+/// tem de existir para o gate que afirma que ela **não** é uma linha.
 #[must_use]
 pub fn catalog_row_id(index: usize) -> NodeId {
-    asset_fnv_node_id(&format!("asset_browser.catalog.row.{index}"))
+    match CATALOG_ROWS.get(index) {
+        Some(id) => *id,
+        None => asset_fnv_node_id(&format!("asset_browser.catalog.row.{index}")),
+    }
 }
 
 /// ⭐⭐ **A leitura INVERSA da escada** — `id` é uma linha de catálogo, e qual?
@@ -124,7 +150,7 @@ pub fn catalog_row_id(index: usize) -> NodeId {
 /// o `HitIndex` só contém rects registados neste quadro.
 #[must_use]
 pub fn catalog_row_index(id: NodeId) -> Option<usize> {
-    (0..MAX_CATALOG_ROWS).find(|i| catalog_row_id(*i) == id)
+    CATALOG_ROWS.iter().position(|c| *c == id)
 }
 
 /// O gémeo de runtime do `hash_node_id`, **a PORTA e não uma cópia**
@@ -165,6 +191,15 @@ mod tests {
         // acima do tecto.
         assert_eq!(catalog_row_index(ASSET_PANEL), None);
         assert_eq!(catalog_row_index(catalog_row_id(MAX_CATALOG_ROWS)), None);
+        // ⛔⛔ **E os ids do MENU não são linhas.** A arm da escada vem ANTES da arm do menu no
+        // `event_catalog`, então uma colisão de hash engoliria o `Rename…`/`Delete` **em
+        // silêncio** — o clique escolheria uma linha em vez de renomear. (Auditoria de 30/08.)
+        for menu in [
+            crate::ids::CTX_MENU_CATALOG_RENAME,
+            crate::ids::CTX_MENU_CATALOG_DELETE,
+        ] {
+            assert_eq!(catalog_row_index(menu), None);
+        }
     }
 
     /// Duas células diferentes são dois ids diferentes — e a célula 0 não colide com nenhum dos

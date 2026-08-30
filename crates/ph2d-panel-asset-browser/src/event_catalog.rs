@@ -76,7 +76,7 @@ pub(crate) fn apply(
                 return EventOutcome::Ignored;
             };
             if id == ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME {
-                crate::catalog_rename::open(state, cid);
+                crate::paint_catalog_rename::open(state, cid);
             } else {
                 // ⚠️ **A linha escolhida volta a `All` se era ESTA** — senão a grade ficaria a
                 // filtrar por um catálogo que já não existe, e o artista veria zero cartões sem
@@ -97,7 +97,7 @@ pub(crate) fn apply(
         // Enter (`Submit`) e o clique-fora (`Blur`) gravam — o `take` lá dentro faz do segundo do
         // par um no-op; o Esc (`Cancel`) abandona.
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if id == ids::ASSET_CATALOG_RENAME => {
-            if let Some((cid, name)) = crate::catalog_rename::commit(state, host.store()) {
+            if let Some((cid, name)) = crate::paint_catalog_rename::commit(state, host.store()) {
                 host.bus_mut()
                     .push(EditorAction::AssetCatalogVerb(CatalogVerb::Rename {
                         id: cid,
@@ -107,7 +107,7 @@ pub(crate) fn apply(
             EventOutcome::Consumed
         }
         WidgetEvent::Cancel(id) if id == ids::ASSET_CATALOG_RENAME => {
-            crate::catalog_rename::cancel(state);
+            crate::paint_catalog_rename::cancel(state);
             EventOutcome::Consumed
         }
         _ => EventOutcome::Ignored,

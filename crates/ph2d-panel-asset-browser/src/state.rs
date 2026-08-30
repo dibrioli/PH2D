@@ -169,7 +169,7 @@ pub struct AssetBrowserState {
     pub show_catalogs: bool,
     /// Que linha da coluna está escolhida.
     pub pick: CatalogPick,
-    /// ⭐ O catálogo a ser renomeado agora, se houver. Ver [`crate::catalog_rename`].
+    /// ⭐ O catálogo a ser renomeado agora, se houver. Ver [`crate::paint_catalog_rename`].
     ///
     /// ⚠️ **É VISTA** — como a linha escolhida, morre com a sessão e não atravessa o
     /// barramento. O que atravessa é o nome, no fim.

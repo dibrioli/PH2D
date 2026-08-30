@@ -90,6 +90,18 @@ pub fn is_needed(content_h: f32, visible_h: f32) -> bool {
 /// `Text3` sob o ponteiro (L 0.600, o passo neutro seguinte da mesma familia de matiz) ->
 /// `Accent` enquanto se arrasta. O `Accent` fica **reservado ao arrasto**, que e a lei que ja
 /// shipava: se o hover ja o usasse, agarrar deixaria de ter resposta.
+/// ⭐⭐⭐ **E ele DEVOLVE o polegar que desenhou** (2026-08-30) — a metade que faltava para o
+/// chamador poder registar **exactamente** o que se vê.
+///
+/// ⛔⛔ A doença medida, no navegador de assets: o pintor recebia o rect da COLUNA e o
+/// `thumb_rect` do chamador recebia o rect da LISTA, **30 px abaixo** ⇒ o polegar desenhava-se num
+/// sítio e agarrava-se noutro. ⚠️ E a fronteira do `is_needed` era perguntada **duas vezes com
+/// denominadores diferentes**: numa janela de 30 px o `if` do chamador abria, este `return` cedo
+/// não pintava nada, e o `register` corria na mesma ⇒ **polegar invisível e agarrável**.
+///
+/// ⇒ `None` = não havia barra a desenhar (e então não há nada a registar). ⚠️ Devolver não obriga
+/// ninguém: os 27 chamadores antigos ignoram o valor e continuam a compilar. *O que ele compra é
+/// que o sítio que QUER acertar já não precisa de repetir a conta.*
 pub fn paint_scrollbar(
     body_rect: Rect,
     scroll_y: f32,
@@ -98,9 +110,9 @@ pub fn paint_scrollbar(
     visual: (ScrollbarState, f32),
     scene: &mut VectorScene,
     theme: Theme,
-) {
+) -> Option<Rect> {
     if !is_needed(content_h, visible_h) {
-        return;
+        return None;
     }
     let track = track_rect(body_rect);
     // Subtle track tint so the rail itself reads against the panel
@@ -119,6 +131,7 @@ pub fn paint_scrollbar(
         (SCROLLBAR_W * 0.5).min(thumb.h * 0.5),
         thumb_color(visual, theme),
     );
+    Some(thumb)
 }
 
 /// **A cor de um polegar, e a unica resposta a essa pergunta no app.**

@@ -33,9 +33,13 @@ pub(crate) fn open(state: &mut AssetBrowserState, id: CatalogId) {
     state.renaming = Some(CatalogRename { id, opened: false });
 }
 
-/// Pinta o campo aberto (nada a fazer sem um). `row_y` é o topo da linha do catálogo neste
-/// quadro — `None` quando ela não foi pintada (rolada para fora), e aí o campo cola-se ao
-/// bordo do corpo em vez de desaparecer.
+/// Pinta o campo aberto (nada a fazer sem um).
+///
+/// `row_y` é o topo da linha do catálogo neste quadro — **colhido mesmo para uma linha rolada
+/// para fora do corpo**, e é o `safe_clamp` que a prende ao bordo. ⚠️ **A 1.ª redacção desta nota
+/// dizia o contrário** (*«`None` quando ela não foi pintada»*) e o código sempre fez o melhor dos
+/// dois: com um `None` o campo **saltaria para o topo** ao rolar para baixo, em vez de deslizar
+/// até ao bordo inferior. `None` fica para o caso em que o catálogo não está na lista de todo.
 pub(crate) fn paint(
     state: &mut AssetBrowserState,
     ctx: &mut PaintCtx,
@@ -46,10 +50,12 @@ pub(crate) fn paint(
     let Some(mut r) = state.renaming else {
         return;
     };
-    // O catálogo pode ter desaparecido (apagado aqui ou noutra janela) — abandona em vez de
-    // renomear um id que já não tem dono.
+    // ⛔⛔ **A TERCEIRA porta** (auditoria de 2026-08-30): o catálogo pode ter desaparecido —
+    // apagado aqui, ou por um undo — e largar só o ESTADO deixava o foco preso num campo que
+    // ninguém mais pinta. As outras duas (coluna colapsada · painel fechado) já chamavam o
+    // `abandon`; esta escrevia `renaming = None` à mão e ficava a meio da lei.
     let Some(seed) = with_catalogs(|t| t.get(r.id).map(|c| c.label().to_string())) else {
-        state.renaming = None;
+        abandon(state, ctx.host.store_mut());
         return;
     };
     let theme = ctx.host.theme();

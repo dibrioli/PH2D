@@ -489,6 +489,15 @@ fn every_catalog_row_menu_entry_does_something() {
 /// **Mutação que deve sangrar:** aceitar qualquer `CatalogPick` no braço em vez de só o `One`.
 #[test]
 fn the_menu_over_a_fixed_row_does_nothing() {
+    // ⚠️ **O controlo POSITIVO da fixtura** (auditoria de 2026-08-30): o oráculo deste gate é
+    // «nada aconteceu», e sem esta linha ele ficaria verde se o `probe_set_painted_rows` não
+    // tivesse efeito nenhum — *uma fixtura sem o fenómeno passa em qualquer lei.*
+    stage_one_catalog();
+    assert_eq!(
+        ph2d_panel_asset_browser::catalog_row_pick(ids::catalog_row_id(0)),
+        Some(ph2d_panel_asset_browser::CatalogPick::All),
+        "o censo do quadro não chegou — este gate mediria nada"
+    );
     for row in [0usize, 1] {
         let (mut host, mut st) = open_host();
         stage_one_catalog();
@@ -633,6 +642,34 @@ fn renaming_to_the_same_name_dispatches_nothing() {
         0,
         "renomear para o mesmo nome (com espaços) sujou o projecto"
     );
+
+    // ⚠️ **A metade que separa as DUAS causas do `None`** (auditoria de 2026-08-30): o `commit`
+    // devolve `None` tanto para «nome igual» como para «catálogo não encontrado», e sem este
+    // controlo a cláusula `text == current` estava a ser creditada por uma ausência. Mesma
+    // fixtura, texto diferente ⇒ tem de despachar.
+    stage_catalog_menu(&mut host, ids::catalog_row_id(2));
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_CATALOG_RENAME),
+    );
+    host.store_mut().register(
+        ids::ASSET_CATALOG_RENAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Focused,
+            text: "Villains".into(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Submit(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(
+        host.bus().len(),
+        1,
+        "um nome DIFERENTE não despachou — o `None` do commit tem outra causa"
+    );
 }
 
 /// ⚠️ **O Esc abandona sem gravar.**
@@ -652,6 +689,17 @@ fn escape_abandons_the_rename() {
     assert_eq!(out, EventOutcome::Consumed);
     assert!(st.renaming.is_none());
     assert_eq!(host.bus().len(), 0);
+    // ⚠️ **O despachante emite o PAR `Cancel` + `Blur`** (`dispatch/key.rs`), e o gate tem de o
+    // reproduzir: sem isto ele não prova que o segundo do par não grava o que o Esc abandonou.
+    host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Blur(ids::ASSET_CATALOG_RENAME),
+    );
+    assert_eq!(
+        host.bus().len(),
+        0,
+        "o Blur que acompanha o Esc gravou o nome abandonado"
+    );
 }
 
 /// ⭐⭐ **O campo aberto é PINTADO e REGISTADO** — a metade positiva, sem a qual a seguinte
@@ -676,6 +724,20 @@ fn the_open_rename_field_is_registered_by_the_paint() {
         Some(ids::ASSET_CATALOG_RENAME),
         "o campo abriu sem tomar o foco — as teclas iriam para outro sítio"
     );
+    // ⚠️ **E o ELO semente→rótulo**, que a auditoria de 2026-08-30 achou sem gate: a `seed_state`
+    // tem gate em isolamento, e nada afirmava que o `paint` lhe passa o NOME DO CATÁLOGO. A
+    // mutação `seed_state("")` sobrevivia a tudo — e é exactamente a metade que o smoke apanhou
+    // em produto.
+    let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
+        text,
+        selection_anchor,
+        ..
+    }) = host.store().get(ids::ASSET_CATALOG_RENAME)
+    else {
+        panic!("o campo não é um campo de texto no store");
+    };
+    assert_eq!(text, "Heroes", "o campo abriu com o nome errado");
+    assert_eq!(*selection_anchor, Some(0), "o nome não abriu seleccionado");
 }
 
 /// ⛔⛔ **Fechar a coluna LEVA o campo com ela.**
@@ -716,22 +778,64 @@ fn collapsing_the_column_takes_the_rename_field_with_it() {
 }
 
 /// ⚠️ **O `abandon` só larga o foco se ele for NOSSO** — pisar o foco de outro widget seria trocar
-/// um defeito por outro. O controlo desta lei, sem o qual a anterior passaria com um
-/// `set_focus(None)` incondicional.
+/// um defeito por outro.
+///
+/// ⛔⛔ **A 1.ª versão deste «controlo» não controlava nada** (auditoria de 2026-08-30): ela punha
+/// `renaming = None`, e aí o `.take()` curto-circuita **antes** de a cláusula do foco ser avaliada
+/// — a mutação que a apaga sobrevivia. A fixtura tem de ter o campo **ABERTO** e o foco **noutro
+/// widget** ao mesmo tempo; é o único estado em que a cláusula decide alguma coisa.
+///
+/// **Mutação que deve sangrar:** `if state.renaming.take().is_some() { store.set_focus(None); }`.
 #[test]
 fn abandoning_the_rename_does_not_steal_someone_elses_focus() {
     use ph2d_editor_core::zones::Rect;
 
     let (mut host, mut st) = open_host();
-    stage_one_catalog();
-    // Ninguém está a renomear; o foco é da busca.
+    let id = stage_one_catalog();
+    // O campo está ABERTO e o foco é de outro widget — o estado em que a cláusula decide.
+    st.renaming = Some(ph2d_panel_asset_browser::CatalogRename { id, opened: true });
     host.store_mut().set_focus(Some(ids::ASSET_SEARCH));
     st.show_catalogs = false;
     host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+    assert!(st.renaming.is_none(), "o campo tem de fechar na mesma");
     assert_eq!(
         host.store().focus_id(),
         Some(ids::ASSET_SEARCH),
         "fechar a coluna roubou o foco de um campo alheio"
+    );
+}
+
+/// ⛔⛔ **A TERCEIRA porta: o catálogo desapareceu debaixo do campo.**
+///
+/// ⚠️ As outras duas (coluna colapsada · painel fechado) já chamavam o `abandon`; este ramo
+/// escrevia `renaming = None` à mão e ficava a meio da lei — o campo deixava de ser pintado e o
+/// foco ficava preso nele, o que trava **todos os atalhos do app** (`text_entry_focused`).
+///
+/// **Mutação que deve sangrar:** trocar o `abandon` daquele `else` por `state.renaming = None`.
+#[test]
+fn a_rename_whose_catalog_vanished_releases_the_focus_too() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_panel_asset_browser::CatalogPick;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    st.renaming = Some(ph2d_panel_asset_browser::CatalogRename { id, opened: false });
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    host.paint::<AssetBrowserPanel>(&mut st, viewport);
+    assert_eq!(host.store().focus_id(), Some(ids::ASSET_CATALOG_RENAME));
+
+    // A taxonomia perde o catálogo — apagado aqui, ou por um undo.
+    ph2d_panel_asset_browser::set_current_catalogs(ph2d_asset_index::CatalogTree::default());
+    ph2d_panel_asset_browser::state::probe_set_painted_rows(vec![
+        CatalogPick::All,
+        CatalogPick::Unassigned,
+    ]);
+    host.paint::<AssetBrowserPanel>(&mut st, viewport);
+    assert!(st.renaming.is_none(), "o campo sobreviveu ao catálogo");
+    assert_eq!(
+        host.store().focus_id(),
+        None,
+        "o catálogo morreu e o foco ficou preso no campo — os atalhos do app ficam mudos"
     );
 }
 
@@ -763,5 +867,52 @@ fn closing_the_panel_takes_the_rename_field_with_it() {
         host.store().focus_id(),
         None,
         "o campo de um painel fechado continuou a comer as teclas"
+    );
+}
+
+/// ⛔⛔ **O polegar da barra da coluna é agarrável ONDE ELE ESTÁ DESENHADO.**
+///
+/// ⚠️ O defeito medido pela auditoria de 2026-08-30: o pintor recebia o rect da **coluna** e a
+/// geometria do hit recebia o rect da **lista**, 30 px abaixo (o cabeçalho do `+ Catalog`) — o
+/// polegar desenhava-se num sítio e só respondia noutro. A cura é o pintor **devolver** o rect que
+/// desenhou, e o chamador registar esse.
+///
+/// ⚠️ **A régua é uma PROPRIEDADE, não uma re-derivação**: o polegar tem de cair dentro do corpo
+/// da lista (abaixo do cabeçalho), que é o que um `col` passado ao pintor viola. Re-calcular aqui
+/// o `thumb_rect` seria um oráculo feito com a função sob teste.
+///
+/// **Mutação que deve sangrar:** passar `col` ao `paint_scrollbar` em vez de `list_rect`.
+#[test]
+fn the_catalog_scrollbar_thumb_is_grabbable_where_it_is_drawn() {
+    use ph2d_editor_core::zones::Rect;
+    use ph2d_panel_asset_browser::CatalogPick;
+
+    // Catálogos que cheguem para a lista transbordar o corpo.
+    let mut tree = ph2d_asset_index::CatalogTree::default();
+    let mut rows = vec![CatalogPick::All, CatalogPick::Unassigned];
+    for i in 0..60 {
+        rows.push(CatalogPick::One(tree.create(&format!("C{i}"))));
+    }
+    ph2d_panel_asset_browser::set_current_catalogs(tree);
+    ph2d_panel_asset_browser::state::probe_set_painted_rows(rows);
+
+    let (mut host, mut st) = open_host();
+    let rects = host.paint::<AssetBrowserPanel>(&mut st, Rect::new(0.0, 0.0, 1600.0, 900.0));
+    let thumb = rects
+        .iter()
+        .find(|(i, _)| *i == ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID)
+        .map(|(_, r)| *r)
+        .expect("a barra da coluna não foi registada com 60 catálogos");
+    let first_row = rects
+        .iter()
+        .find(|(i, _)| *i == ids::catalog_row_id(0))
+        .map(|(_, r)| *r)
+        .expect("a coluna não pintou linha nenhuma");
+    assert!(
+        thumb.y >= first_row.y - 0.5,
+        "o polegar está registado ACIMA da 1.ª linha da lista (y={}, linha={}) — ele foi desenhado \
+         a partir da coluna e agarrado a partir do corpo",
+        thumb.y,
+        first_row.y
     );
 }

@@ -52,16 +52,80 @@ impl crate::App {
         }
     }
 
-    /// ⭐⭐ **Escreve num campo focado — pelo caminho do TECLADO**, não pelo `WidgetStore`.
+    /// ⭐⭐⭐ **Escreve num campo focado — pelo `key_input` INTEIRO**, não pelo `WidgetStore` nem
+    /// pelo atalho do carácter.
     ///
-    /// ⚠️ Escrever no buffer directamente mediria o pintor: um campo que nasce sem foco, ou que o
-    /// perde para outro widget, aceitaria o texto na mesma e o roteiro passaria. Esta porta é a
-    /// mesma do carácter que vem do `winit` (`forward_text_to_hero`), então **um campo sem foco
-    /// não recebe nada** — que é exactamente o defeito que se quer ver.
+    /// ⚠️ Escrever no buffer directamente mediria o pintor: um campo que nasce sem foco aceitaria o
+    /// texto na mesma e o roteiro passaria.
+    ///
+    /// ⛔⛔ **E a 1.ª versão parava a meio caminho** (auditoria de 2026-08-30): ela chamava o
+    /// `forward_text_to_hero` — a porta certa para o carácter, mas **só ela** —, e por isso saltava
+    /// o `handle_editor_key` que corre a SEGUIR no mesmo evento. Ou seja: ela não media que
+    /// escrever *«Heroes»* num campo **não dispara também os atalhos** de `H`/`e`/`r`/`o`/`s`. E é
+    /// precisamente essa costura (`text_entry_focused`) de que o doc daquele id se gaba. ⇒ hoje
+    /// cada tecla entra pelo `key_input`, com o `text` que o `winit` entregaria.
+    ///
+    /// ⚠️ Só letras minúsculas e maiúsculas — é o que os nomes dos roteiros precisam, e inventar
+    /// um mapa de teclado inteiro aqui seria construir o que não se usa.
     pub(crate) fn smoke_type(&mut self, text: &str) {
         for ch in text.chars() {
-            crate::forwarding::forward_text_to_hero(self.gfx.as_mut(), ch);
+            let Some(code) = Self::smoke_letter_key(ch) else {
+                continue;
+            };
+            if ch.is_ascii_uppercase() {
+                self.modifiers = winit::keyboard::ModifiersState::SHIFT;
+            }
+            for st in [
+                winit::event::ElementState::Pressed,
+                winit::event::ElementState::Released,
+            ] {
+                self.key_input(
+                    winit::keyboard::PhysicalKey::Code(code),
+                    st,
+                    false,
+                    (st == winit::event::ElementState::Pressed)
+                        .then(|| winit::keyboard::SmolStr::new(ch.to_string())),
+                );
+            }
+            self.modifiers = winit::keyboard::ModifiersState::empty();
         }
+    }
+
+    /// A tecla física de uma letra. ⛔ `None` para tudo o resto — o chamador salta.
+    fn smoke_letter_key(ch: char) -> Option<winit::keyboard::KeyCode> {
+        use winit::keyboard::KeyCode as K;
+        const LETTERS: [winit::keyboard::KeyCode; 26] = [
+            K::KeyA,
+            K::KeyB,
+            K::KeyC,
+            K::KeyD,
+            K::KeyE,
+            K::KeyF,
+            K::KeyG,
+            K::KeyH,
+            K::KeyI,
+            K::KeyJ,
+            K::KeyK,
+            K::KeyL,
+            K::KeyM,
+            K::KeyN,
+            K::KeyO,
+            K::KeyP,
+            K::KeyQ,
+            K::KeyR,
+            K::KeyS,
+            K::KeyT,
+            K::KeyU,
+            K::KeyV,
+            K::KeyW,
+            K::KeyX,
+            K::KeyY,
+            K::KeyZ,
+        ];
+        let lower = ch.to_ascii_lowercase();
+        lower
+            .is_ascii_lowercase()
+            .then(|| LETTERS[(lower as u8 - b'a') as usize])
     }
 
     /// Enter — o que faz um campo de uma linha gravar (`Submit` + `Blur`).

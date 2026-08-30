@@ -501,6 +501,11 @@ fn type_new_name(app: &mut crate::App) {
         .map(|h| h.store().focus_id() == Some(ph2d_editor::ids::ASSET_CATALOG_RENAME))
         .unwrap_or(false);
     eprintln!("[catalog] f=79 o campo de renomear tem o foco: {focused}");
+    // ⭐⭐ **E a costura de que o doc do id se gaba**: com um campo focado, o shell suprime os
+    // atalhos sozinho. Escrever «Heroes» passa por `H`, `e`, `r`, `o` e `s` — teclas que noutro
+    // contexto são comandos — e é isto que diz se elas ficaram caladas.
+    let suppressed = app.text_entry_focused();
+    eprintln!("[catalog] f=79 os atalhos do app estão suprimidos: {suppressed} (esperado: true)");
     app.smoke_type("Heroes");
     app.smoke_key_enter();
     eprintln!("[catalog] f=79 escrito «Heroes» + Enter");

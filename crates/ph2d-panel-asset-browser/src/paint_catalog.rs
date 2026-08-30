@@ -24,7 +24,7 @@ use crate::state::{AssetBrowserState, CatalogPick, with_catalogs};
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::widget::{ButtonState, scrollbar_is_needed, scrollbar_thumb_rect};
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
 
@@ -116,7 +116,7 @@ pub(crate) fn paint(
         // ⛔ **A coluna colapsada leva o campo de renomear com ela** — senão ele fica focado e
         // invisível, e escrever no app deixa de fazer nada em lado nenhum. Mesma lei do
         // `clear_sub_scroll_region` abaixo: quem esconde uma região limpa o que ela publicou.
-        crate::catalog_rename::abandon(state, ctx.host.store_mut());
+        crate::paint_catalog_rename::abandon(state, ctx.host.store_mut());
         // ⚠️ **Limpeza simétrica:** sem ela a roda continuaria a ser comida no sítio onde a coluna
         // esteve — o mesmo contrato que o `clear_panel_rect` do painel fechado.
         ctx.host
@@ -243,19 +243,32 @@ pub(crate) fn paint(
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
     crate::state::set_painted_rows(painted);
-    crate::catalog_rename::paint(state, ctx, list_rect, row_h, rename_y);
+    crate::paint_catalog_rename::paint(state, ctx, list_rect, row_h, rename_y);
 
-    // A barra, DEPOIS do recorte — ela tem de sobreviver ao clip do corpo.
-    if scrollbar_is_needed(content_h, list_rect.h) {
-        let track = ph2d_editor_core::widget::scrollbar_track_rect(list_rect);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let visual = ctx.host.store().scrollbar_visual_for(
-            ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
-            Some(ids::ASSET_CATALOG_COL),
-        );
-        ph2d_editor_core::widget::paint_scrollbar(
-            col, scroll, content_h, body_h, visual, ctx.scene, theme,
-        );
+    // ⭐⭐⭐ **A barra, DEPOIS do recorte** — e ela regista **o polegar que o pintor devolveu**.
+    //
+    // ⛔⛔ Esta chamada tinha TRÊS números onde há um só (achado da auditoria de 2026-08-30): o
+    // pintor recebia `col` e a geometria do hit recebia `list_rect` — **30 px de desvio**, o
+    // polegar desenhado num sítio e agarrável noutro —, e o `visible_h` era `body_h` num e
+    // `list_rect.h` no outro. Pior: a fronteira era perguntada duas vezes com denominadores
+    // diferentes, e na janela entre elas o `register` corria sobre uma barra que o pintor não
+    // desenhara ⇒ polegar **invisível e agarrável**.
+    //
+    // ⇒ **uma banda (`list_rect`), uma altura, e o rect vem de quem pintou.** *Pintar e agarrar
+    // têm de projectar pela mesma porta.*
+    let visual = ctx.host.store().scrollbar_visual_for(
+        ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
+        Some(ids::ASSET_CATALOG_COL),
+    );
+    if let Some(thumb) = ph2d_editor_core::widget::paint_scrollbar(
+        list_rect,
+        scroll,
+        content_h,
+        list_rect.h,
+        visual,
+        ctx.scene,
+        theme,
+    ) {
         ctx.host
             .hit_index_mut()
             .register(ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID, thumb);

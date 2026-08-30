@@ -97,4 +97,23 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // ⭐⭐ **O campo de renomear nasce aqui, VAZIO e sem foco** — e o `paint` do
+    // [`crate::paint_catalog_rename`] semeia-o com o nome quando ele abre.
+    //
+    // ⛔ Sem esta entrada o `is_focusable` do despachante é **falso**, e um campo que se pinta e se
+    // hit-testa sem ser focável está morto sob o dedo — a classe dos *vector pills*. ⚠️ A auditoria
+    // de 2026-08-30 mostrou que **o gate de paridade nem lia o ficheiro dele**: o
+    // `read_paint_sources` só varre `paint*`/`sections/`, e o módulo chamava-se `catalog_rename.rs`
+    // ⇒ ele foi **renomeado para entrar no alcance da regra**, ⛔ nunca a regra alargada para o
+    // apanhar (alargá-la arrastaria quatro ids de painéis de OUTRAS linhas, e essa decisão é dos
+    // donos deles — o doc do gate já o diz).
+    store.register(
+        ids::ASSET_CATALOG_RENAME,
+        InteractiveState::TextInput {
+            state: ph2d_editor_core::widget::TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
 }

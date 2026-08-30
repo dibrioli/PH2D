@@ -26,7 +26,6 @@ use ph2d_editor_core::widget::panel_chrome::{
 use ph2d_editor_core::widget::{
     ASSET_BROWSER_SCROLLBAR_ID, Button, ButtonKind, Slider, SliderOrientation, TextInput,
     TextInputState, paint_button, paint_scrollbar, paint_slider, paint_text_input_with_buffer,
-    scrollbar_is_needed, scrollbar_thumb_rect, scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Density, Radius, Spacing, StrokeToken, TypeToken};
@@ -84,7 +83,7 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         // defeito da coluna colapsada por uma SEGUNDA porta: fechar o painel deixava um campo
         // focado e invisível a comer as teclas do app inteiro. *Uma limpeza escrita num sítio só
         // ainda não é uma limpeza — o painel tem duas maneiras de desaparecer.*
-        crate::catalog_rename::abandon(state, ctx.host.store_mut());
+        crate::paint_catalog_rename::abandon(state, ctx.host.store_mut());
         return;
     }
     let base = match state.rect {
@@ -448,14 +447,14 @@ fn paint_grid(
     crate::state::set_last_visible_h(body_h);
 
     // A barra, e o clamp da rolagem.
-    if scrollbar_is_needed(content_h, body_h) {
-        let track = scrollbar_track_rect(body);
-        let thumb = scrollbar_thumb_rect(track, scroll, content_h, body_h);
-        let visual = ctx
-            .host
-            .store()
-            .scrollbar_visual_for(ASSET_BROWSER_SCROLLBAR_ID, Some(ids::ASSET_PANEL));
-        paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme);
+    // ⚠️ **O irmão da coluna passa pela MESMA porta** — ele já era consistente, e ler o rect de
+    // quem pintou é o que o impede de deixar de o ser.
+    let visual = ctx
+        .host
+        .store()
+        .scrollbar_visual_for(ASSET_BROWSER_SCROLLBAR_ID, Some(ids::ASSET_PANEL));
+    if let Some(thumb) = paint_scrollbar(body, scroll, content_h, body_h, visual, ctx.scene, theme)
+    {
         ctx.host
             .hit_index_mut()
             .register(ASSET_BROWSER_SCROLLBAR_ID, thumb);

@@ -291,6 +291,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_CATALOG_RENAME, "Rename\u{2026}", None),
             (ids::CTX_MENU_CATALOG_DELETE, "Delete", None),
         ],
+        // ⭐⭐ O cartão da biblioteca: **três itens, na ordem do gesto** — usar · ver quem usa ·
+        // tirar. ⚠️ **Este comentário voltou para cima da arm que ele descreve** (auditoria de
+        // 2026-08-30): a arm do catálogo foi inserida no meio dele, e o leitor caía num «Três
+        // itens» imediatamente acima de uma arm com DOIS, com a arm do cartão a ficar sem nota
+        // nenhuma. *Um comentário separado do seu item muda de dono.*
         ContextMenuKind::AssetCard { .. } => &[
             (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
             (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),

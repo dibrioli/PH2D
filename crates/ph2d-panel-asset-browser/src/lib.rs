@@ -26,7 +26,6 @@
 
 #![forbid(unsafe_code)]
 
-mod catalog_rename;
 mod event;
 mod event_catalog;
 pub mod ids;
@@ -35,6 +34,7 @@ mod paint;
 /// [`paint`], ver o cabeçalho de lá.
 /// ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) — irmão por assunto do [`paint`].
 mod paint_catalog;
+mod paint_catalog_rename;
 mod paint_thumb;
 mod populate;
 pub mod state;

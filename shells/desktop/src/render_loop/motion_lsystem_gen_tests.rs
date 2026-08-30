@@ -52,17 +52,26 @@ fn key_of(state: &mut MotionState, n: ph2d_nodegraph::graph::NodeId) -> String {
     )
 }
 
-/// ⭐⭐⭐ **A shell publica FITAS, e são menos que os ossos.**
+/// ⭐⭐⭐ **UMA planta é UMA instância, com UMA geometria.**
 ///
-/// É o report do Enio medido do lado que desenha: uma planta que bifurca tem de sair como um
-/// punhado de objectos contínuos, não como um por segmento.
+/// ⚠️⚠️ **A lei apertou depois do *"ficamos com 4 fps"* (Enio, 2026-08-30).** Ela era *"menos
+/// fitas que ossos"* — verdadeira e frouxa: a 1.ª redacção publicava **uma instância por RAMO**,
+/// cada uma com geometria distinta, e o renderer tesselava as `3 124` **todo o quadro** (o cache
+/// dele é por `geometry_id` e por quadro). Menos que os ossos, e na mesma inutilizável.
+///
+/// ⇒ a afirmação passa a ser o NÚMERO EXACTO: `1`. É também a leitura mais fiel do report que
+/// abriu esta wave — *"não crescem como um objeto só"*.
 #[test]
 fn a_plant_in_branches_mode_publishes_fewer_ribbons_than_it_has_bones() {
     let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
     let key = key_of(&mut state, n);
     publish(&mut state, 0.0);
     let ribbons = published(&state, &key).expect("a shell tem de publicar sob a chave do no'");
-    assert!(ribbons > 0, "nenhuma fita publicada");
+    assert_eq!(
+        ribbons, 1,
+        "uma planta tem de sair como UMA instância — {ribbons} seria uma tesselação por ramo, \
+         todo o quadro"
+    );
 
     // Quantos ossos a mesma planta tem, pela porta do próprio nó.
     let resolved =
@@ -129,4 +138,58 @@ fn a_node_dropped_from_the_palette_is_born_in_branches_mode() {
     );
     // ⚠️ E o VALOR de `Segments` continua a ser `0`: um documento salvo guarda o índice.
     assert_eq!(ls::GEOMETRY_SEGMENTS, 0);
+}
+
+/// ⛔⛔⛔ **UMA PLANTA QUE NÃO MUDOU NÃO CONSTRÓI NADA** — o gate que nasceu do *"ficamos com
+/// 4 fps"* (Enio, 2026-08-30).
+///
+/// A membrana tinha o memo certo e **não o usava**: chamava o construtor da fita e só depois o
+/// entregava ao `intern`, que não o teria chamado. Cada quadro re-corria o varrimento booleano
+/// de todos os ramos de todas as plantas.
+///
+/// ⚠️ **A régua é uma CONTAGEM, não um relógio** — de propósito. Um gate de tempo entra na
+/// família de flakes de recurso sob fan-out do `CLAUDE.md` §5.0; o número de geometrias
+/// guardadas é determinístico e diz exactamente a mesma coisa: *se nada mudou, nada se
+/// construiu*.
+///
+/// ⚠️ E corre a VARREDURA entre as duas publicações, que é a segunda metade: sem o
+/// `handle_for` a marcar as chaves como vivas, o fim do quadro apagaria as geometrias que estão
+/// a ser desenhadas e a reconstrução voltava por outra porta — com o memo intacto.
+#[test]
+fn republishing_an_unchanged_plant_builds_no_geometry_and_survives_the_sweep() {
+    let (mut state, _n) = plant(ls::GEOMETRY_BRANCHES);
+
+    let before = super::ribbons_built();
+    publish(&mut state, 0.0);
+    let built = state.shape_store.len();
+    let first_pass = super::ribbons_built() - before;
+    assert!(built > 0, "a 1.ª publicação tem de construir as fitas");
+    assert!(first_pass > 0, "a 1.ª publicação tem de CONSTRUIR fitas");
+    let dropped = state.shape_store.sweep();
+    assert!(
+        dropped.is_empty(),
+        "a varredura do 1.º quadro apagou {} geometrias que acabaram de ser pedidas",
+        dropped.len()
+    );
+
+    let before_second = super::ribbons_built();
+    publish(&mut state, 0.0);
+    let second_pass = super::ribbons_built() - before_second;
+    assert_eq!(
+        second_pass, 0,
+        "a 2.ª publicação da MESMA planta CONSTRUIU {second_pass} fitas (a 1.ª construiu \
+         {first_pass}) — o memo está lá e não está a ser usado"
+    );
+    assert_eq!(
+        state.shape_store.len(),
+        built,
+        "e nada de novo foi guardado"
+    );
+    let dropped = state.shape_store.sweep();
+    assert!(
+        dropped.is_empty(),
+        "a varredura do 2.º quadro apagou {} geometrias ainda em uso — falta marcá-las vivas",
+        dropped.len()
+    );
+    assert_eq!(state.shape_store.len(), built, "nada se perdeu no caminho");
 }

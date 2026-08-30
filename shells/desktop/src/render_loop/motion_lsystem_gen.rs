@@ -36,6 +36,35 @@ use crate::motion_state::MotionState;
 /// de diagnóstico abaixo diz quando ele morde.
 const MAX_RIBBONS: usize = 4096;
 
+// **QUANTAS FITAS FORAM DE FACTO CONSTRUÍDAS** — a sonda que o gate do memo precisava e não
+// tinha.
+//
+// ⛔⛔ **A 1.ª régua deste gate media `VecPathStore::len()` e a mutação SOBREVIVEU:** o
+// `intern` deduplica por chave, então uma fita construída à toa é **descartada em silêncio** e
+// a contagem de guardadas não se mexe. *O `len` conta o que foi GUARDADO; o desperdício é o que
+// foi CONSTRUÍDO e deitado fora, e são grandezas diferentes.*
+//
+// ⚠️ Mesmo desenho que o `MotionFx::dirt_rebinds` já ship pela mesma razão: um custo que só
+// aparece quando alguém o CONTA.
+//
+// ⚠️⚠️ **POR THREAD, e não global — apanhado pelo próprio gate.** Com um `AtomicUsize` de
+// processo o contador soma as construções dos OUTROS testes que correm em paralelo, e a
+// segunda publicação media `62` onde a resposta é `0`. *Um contador global medido dentro de
+// uma suíte paralela mede a suíte, não o caso.* Na shell o laço de desenho é uma thread só,
+// então a contagem por thread é a mesma que a de processo — sem a corrida.
+thread_local! {
+    static RIBBONS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Quantas fitas o processo já construiu (ver [`RIBBONS_BUILT`]).
+///
+/// ⚠️ `cfg(test)` no ACESSOR e não no contador: o `fetch_add` fica sempre (é um add relaxado,
+/// e tirá-lo faria o produto medido divergir do produto que ship).
+#[cfg(test)]
+pub(crate) fn ribbons_built() -> usize {
+    RIBBONS_BUILT.with(std::cell::Cell::get)
+}
+
 /// Uma coluna `Vec2` do esqueleto, ou vazia.
 fn v2(s: &Stream, name: &str) -> Vec<[f32; 2]> {
     match s.get(name) {
@@ -52,14 +81,18 @@ fn v1(s: &Stream, name: &str) -> Vec<f32> {
     }
 }
 
-/// **A fita de um ramo** — a linha de centro em coordenadas LOCAIS e o perfil de largura.
+/// **A fita de um ramo**, em coordenadas locais à PLANTA — os contornos preenchidos que ela
+/// contribui para a geometria da planta inteira.
 ///
-/// ⚠️ **Local, e a origem é o primeiro ponto do ramo.** A pose vive na instância (`P`), como em
-/// toda a casa: assim um `motion.move` a jusante desloca o ramo INTEIRO como um objeto — que é
-/// literalmente o que o report pediu (*"crescer como um objeto só"*) — e duas plantas iguais em
-/// sítios diferentes partilham a geometria.
-fn ribbon(b: &ls::branch::Branch) -> Option<VecPath> {
-    let base = *b.points.first()?;
+/// ⚠️⚠️ **A origem é a da PLANTA, e não a do ramo — e a diferença é o relógio.** A 1.ª redacção
+/// dava um `VecPath` por ramo, cada um com origem própria, e a planta saía como N instâncias
+/// com N geometrias DISTINTAS. O desenho tesselá-las-ia **todas, todo o quadro** (o cache do
+/// renderer é por `geometry_id` e por quadro), e foi isso — mais o memo que não era usado — que
+/// deu o *"ficamos com 4 fps"*. Uma planta é UM objecto: um `VecPath` composto, uma tesselação.
+fn ribbon(b: &ls::branch::Branch, origin: [f32; 2]) -> Option<Vec<VecPath>> {
+    RIBBONS_BUILT.with(|c| c.set(c.get() + 1));
+    let base = origin;
+    b.points.first()?;
     let mut centre = VecPath {
         verts: b
             .points
@@ -110,7 +143,7 @@ fn ribbon(b: &ls::branch::Branch) -> Option<VecPath> {
     // que é o caso COMUM, não a excepção. Chamar só o de largura variável fazia a planta inteira
     // desaparecer, com a membrana a publicar contagem `0` e nada vermelho em lado nenhum.
     let profile = WidthStops::new(stops);
-    let mut out = if profile.is_uniform() {
+    let out = if profile.is_uniform() {
         ph2d_vec_boolean::outline_stroke(&centre)
     } else {
         ph2d_vec_boolean::power_stroke(&centre, &profile)
@@ -118,18 +151,38 @@ fn ribbon(b: &ls::branch::Branch) -> Option<VecPath> {
     if out.is_empty() {
         return None;
     }
-    // ⚠️ **Um `VecPath` COMPOSTO, não N instâncias.** O varrimento pode devolver mais de um
-    // contorno (uma cúspide onde a curvatura aperta mais que a largura); publicá-los como
-    // instâncias separadas faria um ramo ser dois objectos, que é o defeito que esta wave veio
-    // curar, um nível abaixo.
-    let mut first = out.remove(0);
-    for extra in out {
-        first.subpaths.push(ph2d_vec_scene::Contour {
-            verts: extra.verts,
-            closed: extra.closed,
-        });
+    Some(out)
+}
+
+/// **A geometria de uma PLANTA INTEIRA** — um `VecPath` composto com um contorno por ramo.
+///
+/// ⚠️ **Uma tesselação por planta, não uma por ramo.** Ver [`ribbon`] para o número que obrigou
+/// a isto.
+///
+/// ⚠️ **`FillRule::NonZero`**: os ramos SOBREPÕEM-SE na junção de propósito (é o colar que fecha
+/// a forquilha), e com par-ímpar a sobreposição viraria um BURACO — exactamente o defeito que o
+/// colar veio curar, de volta por outra porta.
+fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<VecPath> {
+    let mut contours: Vec<ph2d_vec_scene::Contour> = Vec::new();
+    for b in branches {
+        for c in ribbon(b, origin).into_iter().flatten() {
+            contours.push(ph2d_vec_scene::Contour {
+                verts: c.verts,
+                closed: c.closed,
+            });
+        }
     }
-    Some(first)
+    if contours.is_empty() {
+        return None;
+    }
+    let first = contours.remove(0);
+    Some(VecPath {
+        verts: first.verts,
+        closed: first.closed,
+        subpaths: contours,
+        fill_rule: ph2d_vec_scene::FillRule::NonZero,
+        ..VecPath::default()
+    })
 }
 
 /// **Publica as fitas** de cada `source.lsystem` em modo `Branches`.
@@ -177,28 +230,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     }
 
     for (key, bs) in jobs {
-        let mut p = Vec::with_capacity(bs.len());
-        let mut ids = Vec::with_capacity(bs.len());
-        let mut sizes = Vec::with_capacity(bs.len());
         let clipped = bs.len() > MAX_RIBBONS;
-        for (i, b) in bs.iter().take(MAX_RIBBONS).enumerate() {
-            // A chave de CADA fita é a do nó mais o índice do ramo — o store guarda uma
-            // geometria por ramo, e duas plantas idênticas partilham as duas.
-            let bkey = format!("{key}\u{2}{i}");
-            let Some(base) = b.points.first().copied() else {
-                continue;
-            };
-            let handle = {
-                let built = ribbon(b);
-                match built {
-                    Some(path) => motion.shape_store.intern(&bkey, || path),
-                    None => continue,
-                }
-            };
-            p.push(base);
-            sizes.push([1.0f32, 1.0]);
-            ids.push(handle as f32);
-        }
         if clipped {
             // ⚠️ **Um tecto que morde em silêncio lê-se como *«a planta está incompleta»***, e a
             // causa é indistinguível de uma gramática errada. Ver [`MAX_RIBBONS`].
@@ -207,16 +239,45 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
                 bs.len()
             );
         }
-        let n = p.len();
-        let stream = Stream::new(n)
-            .with("P", Column::Vec2(p))
-            .with("size", Column::Vec2(sizes))
-            .with("geometry_id", Column::Scalar(ids))
-            .with(
-                "Index",
-                Column::Scalar((0..n).map(|i| i as f32).collect::<Vec<_>>()),
-            )
-            .with("Count", Column::Scalar(vec![n as f32; n]));
+        let used = &bs[..bs.len().min(MAX_RIBBONS)];
+        // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
+        // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
+        // sítios diferentes partilham UMA geometria.
+        let Some(origin) = used.first().and_then(|b| b.points.first().copied()) else {
+            motion.pump.cook.set_external(key, Stream::new(0));
+            continue;
+        };
+        // ⛔⛔ **PERGUNTAR ANTES DE CONSTRUIR — e a 1.ª redacção fazia o contrário.**
+        //
+        // Report do Enio (2026-08-30): *"ficamos com 4 fps"*. Ela chamava o construtor e só
+        // depois entregava o resultado ao `intern`, que **não** o teria chamado com a chave já
+        // internada. O memo estava lá, correcto, e **nunca era usado**: cada quadro re-corria o
+        // varrimento booleano de todos os ramos de todas as plantas (medido: **3 124 fitas por
+        // quadro** só na fixtura do gate).
+        //
+        // ⚠️ *Um `intern(chave, || construir())` só poupa se o `construir` for PREGUIÇOSO;
+        // passar-lhe um valor já construído é escrever o memo e pagar na mesma.* O
+        // `source.shape` sempre fez `intern(&key, || build_shape_path(&p))` — a diferença está
+        // inteira no `||`.
+        //
+        // ⚠️ O `handle_for` é a metade de CONSULTA e **marca a chave como viva** (o doc dele diz
+        // porquê): sem isso a varredura do fim do quadro apagaria exactamente as geometrias que
+        // estão a ser desenhadas, e a reconstrução voltava por outra porta.
+        let handle = match motion.shape_store.handle_for(&key) {
+            Some(h) => Some(h),
+            None => {
+                plant_geometry(used, origin).map(|path| motion.shape_store.intern(&key, || path))
+            }
+        };
+        let stream = match handle {
+            Some(h) => Stream::new(1)
+                .with("P", Column::Vec2(vec![origin]))
+                .with("size", Column::Vec2(vec![[1.0f32, 1.0]]))
+                .with("geometry_id", Column::Scalar(vec![h as f32]))
+                .with("Index", Column::Scalar(vec![0.0]))
+                .with("Count", Column::Scalar(vec![1.0])),
+            None => Stream::new(0),
+        };
         motion.pump.cook.set_external(key, stream);
     }
 }

@@ -65,21 +65,20 @@ fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> Ordering
     )
 }
 
-/// ⭐ **A §7 aparece se, e só se, o objeto tiver ALGUM componente de ordenação** (ADR-0166 / F3).
+/// **Este objeto tem autoria de AMOSTRAGEM?** — a lista da §9 (ADR-0166 / F3).
 ///
-/// ⚠️ **A lista é a dos componentes que a seção EDITA** — a mesma que o [`ordering_fields`] lê e a
-/// [`apply_ordering_edit`] escreve. Uma lista mais curta esconderia uma seção com autoria dentro;
-/// uma mais longa (o `ClipChildren`, que é da mesma família e a §7 não toca) abriria a seção sobre
-/// um componente que ela não mostra.
+/// ⚠️ **A lista é a dos componentes que a seção EDITA.** Uma lista mais curta esconderia uma seção
+/// com autoria dentro; uma mais longa abriria a seção sobre um componente que ela não mostra.
 ///
-/// ⚠️ Antes da F3 esta seção era publicada para **toda** entidade com `Transform`, e o Inspector de
-/// um objeto vazio mostrava doze seções de zeros. *Ausência de autoria não é «zeros».*
-
-/// **Este objeto tem autoria de AMOSTRAGEM?** — a lista da §9.
+/// ⚠️ **A irmã da §7 (`has_any_ordering`) foi APAGADA em 2026-08-30**: a seção de ordenação deixou
+/// de ser gateada por presença — ela vale para todo objeto (decisão do Enio; o porquê está no
+/// [`build_ordering_info`]) —, e um censo sem consumidor é código morto a envelhecer. As duas
+/// listas que restam são as que ainda decidem.
 ///
-/// ⚠️ A irmã da §7 (`has_any_ordering`) **foi apagada em 2026-08-30**: a seção de ordenação deixou
-/// de ser gateada por presença (ela vale para todo objeto — decisão do Enio), e um censo sem
-/// consumidor é código morto a envelhecer. As duas listas que restam são as que ainda decidem.
+/// ⚠️ Antes da F3 **todas** as seções eram publicadas para toda entidade com `Transform`, e o
+/// Inspector de um objeto vazio mostrava doze seções de zeros. *Ausência de autoria não é
+/// «zeros»* — e a §7 é a excepção porque ali a ausência **não é ausência de facto**, é o facto a
+/// vir da árvore.
 pub(super) fn has_any_sampling(world: &World, entity: Entity) -> bool {
     world.get::<TextureFilter>(entity).is_some()
         || world.get::<TextureRepeat>(entity).is_some()

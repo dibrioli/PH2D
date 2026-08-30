@@ -26,6 +26,8 @@ virou **código**.
 | 4 | `b4035fbd2` | ⭐ **As RÉGUAS viram REGIÕES da área de desenho** |
 | 5 | `9f6db8566` | duas notas minhas **refutadas**, o roteiro do smoke corrigido, gate novo dos apelidos de cor |
 | 6 | `7378d8b1f` | ⛔⛔ **a auditoria achou uma REGRESSÃO minha** — os quatro defeitos, curados (§3-bis) |
+| 7 | `24e25728c` | a auditoria corrigiu um **número** meu (87,8 → **86,8 %**) — 13 sítios |
+| 8 | `14df4796c` | o portão de fecho com o número **honesto**, e duas flakes novas nomeadas |
 
 ---
 

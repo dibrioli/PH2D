@@ -601,3 +601,38 @@ traçado. Os suspeitos que restam são o **mapa** (G3/G5) e o **acabamento**, so
 está correctamente isolado mas é geometricamente extremo (um cone com `~14` faces por retalho na
 casca exterior). ⏳ **A próxima medição é a das DOBRAS DO MAPA por casca radial** — o relatório já
 conta `27` dobras na peça inteira e ninguém sabe onde elas estão.
+
+---
+
+## §8-quaterdecies — ⭐⭐⭐ AS DOBRAS DO MAPA CONCENTRAM-SE NO OMBRO: o defeito tem morada
+
+Com o campo e o traçado **ilibados** (§8-terdecies), a mesma sonda mede as **dobras do mapa** por
+casca — um triângulo cuja imagem no domínio se vira do avesso. Passo **uniforme** (o caminho de
+fábrica), peça do artista, `Detail 0,85`:
+
+| `r / Rmax` | triângulos | ⛔ dobras | % |
+|---|---|---|---|
+| `[0,00 · 0,50)` | `7 162` | `54` | `0,754 %` |
+| `[0,50 · 0,75)` | `13 979` | `19` | `0,136 %` |
+| ⛔⛔ **`[0,75 · 0,90)`** | `577` | **`18`** | ⛔ **`3,120 %`** |
+| `[0,90 · 1,00]` | `136` | `1` | `0,735 %` |
+
+⭐⭐⭐ **`23×` a banda do corpo, e é EXACTAMENTE a casca onde a torção `p99` é `169°`**
+(§8-duodecies). A cadeia de prova fecha:
+
+```
+campo ACORDA (4 singularidades)  ->  traçado PARTE (31 arestas de parede)
+   ->  ⛔ o MAPA DOBRA (3,12 %, 23× o corpo)  ->  extracção emite face dobrada/gravata
+   ->  a foto do zoom
+```
+
+⇒ ⭐ **O defeito é do MAPA (G3/G5) sobre um retalho de ombro** — correctamente isolado pelo
+traçado, mas geometricamente extremo (um cone com poucas faces). ⛔ **Não é do campo, não é do
+traçado, e não é de licença.**
+
+⚠️ **As duas contagens de sinal saem no log de propósito** (`+7108 / −54`): a dobra é a MINORIA, e
+uma convenção de sinal invertida leria «tudo dobrado» com toda a confiança do mundo.
+
+⏳ **A wave seguinte tem alvo, régua e barra:** levar `[0,75 · 0,90)` de `3,12 %` ao nível do corpo
+(`0,14 %`), com a torção `p99` da mesma casca ao lado (`169° → ~35°`). ⛔ E **não** a percentagem
+global de dobras, que já é `0,3 %` e não se move com isto.

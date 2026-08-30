@@ -181,4 +181,72 @@ fn does_the_field_wake_up_at_a_thin_tip() {
             "⭐ o campo VE' a ponta -- a cura nao esta' aqui"
         }
     );
+
+    // ⭐⭐⭐ **E ONDE ESTÃO AS DOBRAS DO MAPA?** — o suspeito seguinte, depois de o campo e o
+    // traçado estarem ilibados. O relatório do botão conta as dobras da peça inteira e
+    // **nunca disse onde**; uma dobra é um triângulo cuja imagem no domínio se vira do
+    // avesso, e é o mecanismo que produz uma face de `177°` de torção.
+    //
+    // ⚠️ **Passo UNIFORME de propósito** — é o caminho de fábrica (`Follow Curvature = 0`), e
+    // o campo por-vértice vive num módulo privado do botão. *Medir o caminho que o artista
+    // tem por omissão vale mais do que medir o que ele tem de ligar.*
+    let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
+    let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
+    let cones: Vec<u32> = index
+        .iter()
+        .enumerate()
+        .filter(|(_, k)| **k != 0)
+        .filter_map(|(v, _)| u32::try_from(v).ok())
+        .collect();
+    let (map, _) = ph2d_gridmap::round_welded(
+        &work,
+        &cut,
+        &combed,
+        ph2d_gridmap::Step::uniform(target),
+        ph2d_gridmap::RoundOptions::default(),
+        &cones,
+    );
+    let (tri_idx, uv) = ph2d_gridmap::corner_map(&cut, &map);
+    let mut positivos = [0usize; 4];
+    let mut negativos = [0usize; 4];
+    for (t, w) in tri_idx.iter().zip(uv.iter()) {
+        let area = (w[1][0] - w[0][0]).mul_add(
+            w[2][1] - w[0][1],
+            -((w[2][0] - w[0][0]) * (w[1][1] - w[0][1])),
+        );
+        let mut c = [0.0f32; 3];
+        for &i in t {
+            let p = pos[i as usize];
+            for k in 0..3 {
+                c[k] += p[k] / 3.0;
+            }
+        }
+        let Some(b) = band_of(radius(&c) / rmax.max(f32::MIN_POSITIVE)) else {
+            continue;
+        };
+        if area < 0.0 {
+            negativos[b] += 1;
+        } else {
+            positivos[b] += 1;
+        }
+    }
+    // ⚠️ **As DUAS contagens são impressas** — a dobra é a MINORIA, e uma convenção de sinal
+    // invertida leria «tudo dobrado» com toda a confiança do mundo.
+    eprintln!("  DOBRAS DO MAPA por casca (a dobra e' a MINORIA; as duas contagens saem):");
+    for (b, (lo, hi)) in BANDS.iter().enumerate() {
+        let n = positivos[b] + negativos[b];
+        if n == 0 {
+            continue;
+        }
+        let dobras = negativos[b].min(positivos[b]);
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "contagem de triangulos para uma percentagem de diagnostico"
+        )]
+        let pct = 100.0 * dobras as f64 / n as f64;
+        eprintln!(
+            "  [{lo:.2},{hi:.2}) {:8} tri  (+{} / -{})  dobras {:5} = {pct:.3} %",
+            n, positivos[b], negativos[b], dobras
+        );
+    }
 }

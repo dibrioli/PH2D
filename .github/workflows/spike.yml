@@ -70,7 +70,16 @@ jobs:
         with:
           shared-key: lint
 
-      - name: Install libudev-dev + libasound2-dev (gilrs → libudev-sys, cpal → alsa-sys; Linux only)
+      - name: Install libudev-dev + libasound2-dev + libfontconfig1-dev (Linux only)
+        # ⛔⛔ **O `libfontconfig1-dev` entrou em 2026-08-30, e a ausência dele derrubou o run
+        # 33297068885 inteiro** (`failed to run custom build command for
+        # yeslogic-fontconfig-sys v6.0.1` ⇒ lint ✗ ⇒ os quatro jobs a jusante SKIPPED).
+        # Ele chega por `parley 0.11 → fontique 0.11 → yeslogic-fontconfig-sys`, ou seja **com a
+        # subida do stack**, e é **invisível na máquina de quem desenvolve**: qualquer desktop
+        # Linux com Vello a correr já tem os headers do fontconfig, então o `ship.sh` local passa
+        # verde sobre um CI que não compila. *Uma dependência de SISTEMA nova é o único tipo de
+        # quebra que o portão local não pode ver.*
+        #
         # ⚠️ **Um mirror lento não pode DERRUBAR o run.** Medido em 2026-08-17/18:
         # este passo travou 9 min num job e 42 min noutro, sempre no mesmo
         # `Get: … noble-security`, e os dois foram mortos pelo `timeout-minutes` sem
@@ -82,7 +91,7 @@ jobs:
             sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
             sleep 5
           done
-          sudo apt-get install -y libudev-dev libasound2-dev
+          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev
 
       # ph2d-imageio-avif (W3.T4) builds dav1d + rav1e from vendored
       # source: meson+ninja build dav1d, nasm assembles the x86 SIMD.
@@ -303,7 +312,7 @@ jobs:
         with:
           shared-key: ${{ matrix.os }}
 
-      - name: Install libudev-dev + libasound2-dev (gilrs → libudev-sys, cpal → alsa-sys; Linux only)
+      - name: Install libudev-dev + libasound2-dev + libfontconfig1-dev (Linux only)
         if: runner.os == 'Linux'
         # ⚠️ **Um mirror lento não pode DERRUBAR o run.** Medido em 2026-08-17/18:
         # este passo travou 9 min num job e 42 min noutro, sempre no mesmo
@@ -316,7 +325,7 @@ jobs:
             sudo timeout 120 apt-get update && break || echo "apt-get update lento (tentativa $i)"
             sleep 5
           done
-          sudo apt-get install -y libudev-dev libasound2-dev
+          sudo apt-get install -y libudev-dev libasound2-dev libfontconfig1-dev
 
       # ph2d-imageio-avif (W3.T4, ADR-0054 §5.18) builds dav1d + rav1e
       # from vendored source: meson+ninja compile dav1d, nasm assembles

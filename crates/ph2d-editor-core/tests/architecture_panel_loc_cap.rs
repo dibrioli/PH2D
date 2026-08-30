@@ -117,11 +117,19 @@ const FN_OVERAGE_OK: &[(&str, &str, usize, &str)] = &[
     (
         "ph2d-panel-inspector/src/sections/transform.rs",
         "paint_transform_section",
-        268,
+        226,
         "was frozen at a mis-measured 212; truly 281 → 279 quando o botão de reset passou a ler o \
          par `(estado, t)` do store numa chamada em vez de três linhas → 277 → 268 quando a F4b \
          a fez cruzar e a geometria partilhada por TODA row (a largura de um chip e o empilhar da \
-         seção) saiu para `chip_metrics`. Per-row split segue diferido (needs smoke)",
+         seção) saiu para `chip_metrics`. Ratcheted a 226 em 2026-08-30 (`line/UIUX`): a UNIDADE \
+         DE ANGULO acrescentou o rótulo e o passo por-unidade e levou-a a 277, e o CABEÇALHO saiu \
+         inteiro para `paint_header_and_begin_fold` — título, ponto de cor, botão de reset e a \
+         abertura da dobra são um assunto só, e não têm nada a ver com as quatro linhas de campo \
+         que vêm depois. É a forma que a própria mensagem deste gate sugere (cada ajudante recebe \
+         os mutáveis do quadro + `y`, e devolve `y`), e é o `per-row split segue diferido` desta \
+         nota a começar a acontecer. Levar só as três linhas novas devolveria o número a 268 \
+         exactos, e ficar no mesmo sítio não é encolher — por isso o corte foi o bloco inteiro, e \
+         a folga desceu 42",
     ),
     // (A tolerancia do inspector `sync_sprite_fields` (202) esta' GONE: a linha `Emissive`
     // (plano `docs/Sprite_projeto/18` W8) empurrou-a para 223, e os DOIS sliders-com-chip da sprite

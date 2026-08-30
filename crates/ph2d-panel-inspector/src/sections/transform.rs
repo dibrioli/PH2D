@@ -20,63 +20,12 @@ pub(crate) fn paint_transform_section(
     let row_gap = Spacing::Sm.px();
     let label_color = resolve(ColorToken::Text2, theme);
 
-    // Canonical section header (ALL-CAPS + collapse chevron + color-dot
-    // slot per UI canon — `docs/UI_Padrao/components/section_header.md`).
-    // Reset is an ICON button (user feedback 2026-05-24).
-    //
-    // Order LEFT → RIGHT: title · reset icon · color dot. The color
-    // dot lives at the FAR right (panel border), reset icon sits
-    // just to its left. Pre-2026-05-24 the order was reversed; user
-    // requested the swap.
-    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let reset_size = header_h; // square icon button matching header height
-    let color_id = ids::INSP_LIVE_TRANSFORM_COLOR;
-    let rgba = store
-        .widget_color(color_id)
-        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
-    // Header rect spans the FULL panel width so paint_section_header
-    // anchors the color dot at the right edge (panel border).
-    let header = section_header(store, ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
-    let header_rect = Rect::new(x, y, w, header_h);
-    // Reserve for the color dot at the right edge (≈ Md pad + 14 px
-    // dot diameter) — the reset icon slots just to the LEFT of it.
-    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: color dot diameter (2 * radius 7)
-    paint_section_header(&header, header_rect, scene, text_system, theme);
-    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
-    {
-        hit_index.register(color_id, circle_rect);
-    }
-    let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
-    let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
-    hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
-    paint_icon_button(
-        reset_rect,
-        IconGlyph::Builtin(IconId::Reset),
-        IconButtonStyle::Plain,
-        reset_state,
-        scene,
-        theme,
-    );
-    // Collapsed → return after painting just the header. Body fields
-    // (Position / Rotation / Scale) are skipped so the section
-    // visually folds to a single row. Click on the header toggles
-    // back via the dispatch (apply_click → toggle_collapsed).
-    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
-    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
-    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
-    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
-    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
-    let Some(fold) = SectionFold::begin(
-        store,
-        ids::INSP_LIVE_TRANSFORM_SECTION,
-        x,
-        w,
-        y + header_h,
-        scene,
-        hit_index,
-    ) else {
-        return y + header_h;
-    };
+    // O cabeçalho da secção + a dobra do corpo. Ver [`paint_header_and_begin_fold`].
+    let (header_h, fold) =
+        match paint_header_and_begin_fold(scene, text_system, theme, hit_index, store, x, w, y) {
+            Ok(v) => v,
+            Err(collapsed_y) => return collapsed_y,
+        };
     // No inner separator — the orchestrator (paint.rs) draws ONE
     // separator AFTER this section's content. Pre-2026-05-24 this fn
     // also painted a separator between title and params, which broke
@@ -214,6 +163,10 @@ pub(crate) fn paint_transform_section(
         total_h
     };
 
+    // A unidade de ângulo: rótulo e passo. Mecanismo em [`labels_for`] e [`step_for`].
+    let angle = current_display_angle();
+    let (rot_label, skew_label) = labels_for(angle);
+    let angle_step = step_for(angle);
     let unit = current_display_unit();
     let (pos_label, pos_step) = match unit {
         ph2d_editor_core::project::DisplayUnit::Meters => ("Position (m)", 0.01_f64), // LITERAL-PX-OK: NumberInput step
@@ -242,11 +195,11 @@ pub(crate) fn paint_transform_section(
         text_system,
         hit_index,
         cur_y,
-        "Rotation (°)",
+        rot_label,
         ids::INSP_TRANSFORM_ROT,
         "",
         ColorToken::Text3,
-        1.0,
+        angle_step,
         None,
     );
     cur_y += h_rot + row_gap;
@@ -271,12 +224,17 @@ pub(crate) fn paint_transform_section(
         text_system,
         hit_index,
         cur_y,
-        "Skew (\u{00b0})",
+        skew_label,
         ids::INSP_TRANSFORM_SKEW_X,
         "X",
         ColorToken::Danger,
-        1.0, // LITERAL-PX-OK: skew degrees NumberInput step
-        Some((ids::INSP_TRANSFORM_SKEW_Y, "Y", ColorToken::Success, 1.0)), // LITERAL-PX-OK: skew degrees NumberInput step
+        angle_step,
+        Some((
+            ids::INSP_TRANSFORM_SKEW_Y,
+            "Y",
+            ColorToken::Success,
+            angle_step,
+        )),
     );
     cur_y += h_skew + SECTION_BOTTOM_PAD_PX;
 
@@ -321,4 +279,184 @@ fn chip_metrics(
     let two_chip_w =
         ((chips_avail_w_section - 2.0 * (axis_col_w + tag_box_gap) - col_gap) / 2.0).max(0.0); // no MIN_W floor here — never overflow rect
     (section_narrow, two_chip_w)
+}
+
+/// **O cabeçalho da secção Transform, e a dobra do corpo.**
+///
+/// # Por que é uma função própria
+///
+/// Corte por responsabilidade, cobrado pelo teto de LOC quando a unidade de ângulo
+/// acrescentou linhas ao pintor: *desenhar o título, o ponto de cor, o botão de reset e
+/// abrir (ou não) a dobra* é um assunto só, e não tem nada a ver com as quatro linhas de
+/// campo que vêm depois. ⭐ É exactamente a forma que a mensagem do gate sugere — *"cada
+/// ajudante recebe os mutáveis do quadro + `y`, e devolve `y`"*.
+///
+/// ⚠️ **O `Err` não é um erro** — é o caminho da secção RECOLHIDA, e carrega o `y` de
+/// saída. Um `Option` perderia esse número, e o chamador teria de o recalcular a partir de
+/// um `header_h` que só existe aqui dentro.
+#[allow(clippy::too_many_arguments)]
+fn paint_header_and_begin_fold(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> Result<(f32, SectionFold), f32> {
+    // Canonical section header (ALL-CAPS + collapse chevron + color-dot
+    // slot per UI canon — `docs/UI_Padrao/components/section_header.md`).
+    // Reset is an ICON button (user feedback 2026-05-24).
+    //
+    // Order LEFT → RIGHT: title · reset icon · color dot. The color
+    // dot lives at the FAR right (panel border), reset icon sits
+    // just to its left. Pre-2026-05-24 the order was reversed; user
+    // requested the swap.
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let reset_size = header_h; // square icon button matching header height
+    let color_id = ids::INSP_LIVE_TRANSFORM_COLOR;
+    let rgba = store
+        .widget_color(color_id)
+        .unwrap_or([0x88, 0x88, 0x88, 0xff]); // LITERAL-COLOR-OK: neutral default for unconfigured section accent
+    // Header rect spans the FULL panel width so paint_section_header
+    // anchors the color dot at the right edge (panel border).
+    let header = section_header(store, ids::INSP_LIVE_TRANSFORM_SECTION, "Transform").color(rgba);
+    let header_rect = Rect::new(x, y, w, header_h);
+    // Reserve for the color dot at the right edge (≈ Md pad + 14 px
+    // dot diameter) — the reset icon slots just to the LEFT of it.
+    let color_slot_w = Spacing::Md.px() + 14.0; // LITERAL-PX-OK: color dot diameter (2 * radius 7)
+    paint_section_header(&header, header_rect, scene, text_system, theme);
+    if let Some(circle_rect) = ph2d_editor_core::widget::color_circle_hit_rect(&header, header_rect)
+    {
+        hit_index.register(color_id, circle_rect);
+    }
+    let reset_rect = Rect::new(x + w - color_slot_w - reset_size, y, reset_size, reset_size);
+    let reset_state = store.button_visual(ids::INSP_TRANSFORM_RESET);
+    hit_index.register(ids::INSP_TRANSFORM_RESET, reset_rect);
+    paint_icon_button(
+        reset_rect,
+        IconGlyph::Builtin(IconId::Reset),
+        IconButtonStyle::Plain,
+        reset_state,
+        scene,
+        theme,
+    );
+    // Collapsed → return after painting just the header. Body fields
+    // (Position / Rotation / Scale) are skipped so the section
+    // visually folds to a single row. Click on the header toggles
+    // back via the dispatch (apply_click → toggle_collapsed).
+    // ⚠️ **A DOBRA do corpo** — o escopo recorta a cena E o hit, e escala o `y` de saída, para
+    //    que tudo o que está por baixo suba junto. Ver `SectionFold`.
+    // ⚠️ **Pergunta o `t`, e NUNCA o `is_collapsed`:** ao clicar para fechar o flag semântico vira
+    //    neste mesmo quadro enquanto o `t` ainda desce, então um corpo gateado no flag sumiria de
+    //    repente por baixo de um chevron a rodar — as duas metades a discordar outra vez.
+    let Some(fold) = SectionFold::begin(
+        store,
+        ids::INSP_LIVE_TRANSFORM_SECTION,
+        x,
+        w,
+        y + header_h,
+        scene,
+        hit_index,
+    ) else {
+        return Err(y + header_h);
+    };
+    Ok((header_h, fold))
+}
+
+/// **Os rótulos das duas linhas de ângulo, na unidade activa.**
+///
+/// # ⛔ O report que a criou (Enio, 2026-08-30, com foto)
+///
+/// *"no inspector nao mudou as labels"*. A 1.ª entrega da unidade de ângulo trocava o
+/// **valor** e deixava o rótulo fixo em `(°)`. ⚠️ **É pior do que não ter a feature:** a
+/// caixa passava a mostrar `1.5708` debaixo de uma etiqueta a dizer GRAUS, que se lê como
+/// *"o objecto rodou 1,5 grau"*. *Um rótulo que mente é pior que um rótulo ausente.*
+///
+/// ⚠️ Função pura de propósito: o painter resolve isto dentro do `paint`, onde um teste
+/// não chega sem uma surface real. Tirá-la para aqui é o que a torna **gateável** — e o
+/// gate existe porque a 1.ª entrega trocou o valor e deixou o rótulo a dizer `(°)`.
+#[must_use]
+fn labels_for(angle: ph2d_editor_core::project::DisplayAngle) -> (&'static str, &'static str) {
+    match angle {
+        ph2d_editor_core::project::DisplayAngle::Degrees => {
+            ("Rotation (\u{00b0})", "Skew (\u{00b0})")
+        }
+        ph2d_editor_core::project::DisplayAngle::Radians => ("Rotation (rad)", "Skew (rad)"),
+    }
+}
+
+/// **O passo do stepper na unidade activa — quanto vale UM GRAU nela.**
+///
+/// ⭐ Derivado, não escolhido: em graus dá `1.0` (o valor que estava fixo aqui, logo o
+/// caminho de omissão é byte-idêntico) e em radianos dá `0,01745`. ⛔ Deixá-lo em `1.0`
+/// faria cada clique do stepper saltar **57°** em radianos.
+#[must_use]
+fn step_for(angle: ph2d_editor_core::project::DisplayAngle) -> f64 {
+    f64::from(angle.from_radians(1.0_f32.to_radians()))
+}
+
+#[cfg(test)]
+mod angle_unit_tests {
+    use super::{labels_for, step_for};
+    use ph2d_editor_core::project::DisplayAngle;
+
+    /// ⛔⛔ **O ROTULO segue a unidade** — o report do Enio de 2026-08-30, com foto:
+    /// *"no inspector nao mudou as labels"*.
+    ///
+    /// A 1.a entrega da unidade de angulo trocava o VALOR e deixava o rotulo fixo em
+    /// `(°)`. ⚠️ **E' pior do que nao ter a feature:** a caixa passava a mostrar `1.5708`
+    /// debaixo de uma etiqueta que dizia GRAUS, que se le^ como *"o objecto rodou 1,5
+    /// grau"*. *Um rotulo que mente e' pior que um rotulo ausente.*
+    ///
+    /// ⚠️ A regua vive aqui como uma funcao pura para poder ser gateada -- o painter
+    /// resolve o par no `paint`, onde um teste nao chega sem uma surface real.
+    #[test]
+    fn the_row_labels_follow_the_active_angle_unit() {
+        assert_eq!(
+            labels_for(DisplayAngle::Degrees),
+            ("Rotation (\u{00b0})", "Skew (\u{00b0})")
+        );
+        assert_eq!(
+            labels_for(DisplayAngle::Radians),
+            ("Rotation (rad)", "Skew (rad)")
+        );
+        // ⛔ O controlo: os dois pares tem de DISCORDAR, senao a funcao e' decorativa.
+        assert_ne!(
+            labels_for(DisplayAngle::Degrees),
+            labels_for(DisplayAngle::Radians)
+        );
+    }
+
+    /// ⭐⭐ **O PASSO segue a unidade, e era o SEGUNDO defeito do mesmo report.**
+    ///
+    /// O passo estava fixo em `1.0`. Em graus e' um grau; em radianos **um clique do
+    /// stepper saltaria 57°** -- o controlo ficaria inutilizavel exactamente no modo que
+    /// a feature acabou de abrir. *Trocar a regua sem trocar o passo entrega um controlo
+    /// pior do que o de antes.*
+    ///
+    /// ⚠️ **O passo e' DERIVADO: e' quanto vale UM GRAU na unidade activa.** Nao e' um
+    /// numero escolhido -- e' a mesma lei que a irma do comprimento ja' obedece sem a
+    /// dizer (`0,01 m` e `1 px` sao o mesmo deslocamento a` escala de fabrica).
+    #[test]
+    fn the_stepper_moves_the_same_amount_in_either_unit() {
+        let deg = step_for(DisplayAngle::Degrees);
+        let rad = step_for(DisplayAngle::Radians);
+        // ⭐ Em graus tem de dar exactamente 1.0 -- e' o valor que estava fixo aqui, logo
+        // o caminho de omissao fica byte-identico.
+        assert!(
+            (deg - 1.0).abs() < 1e-9,
+            "o passo em graus tem de continuar 1.0, e deu {deg}"
+        );
+        // E o de radianos tem de ser o MESMO angulo fisico.
+        assert!(
+            (rad - f64::from(1.0_f32.to_radians())).abs() < 1e-9,
+            "um passo em radianos tem de valer um grau, e deu {rad}"
+        );
+        assert!(
+            rad < deg,
+            "o numero em radianos e' menor -- a unidade e' maior"
+        );
+    }
 }

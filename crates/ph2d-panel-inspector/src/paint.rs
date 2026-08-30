@@ -32,7 +32,9 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     sync_inspector_from_snapshots(inspector_state, ctx.host);
     let display_unit = ctx.host.project().display_unit;
     let ppm = ctx.host.project().pixels_per_meter;
+    let display_angle = ctx.host.project().display_angle;
     state::set_current_display_unit(display_unit, ppm);
+    state::set_current_display_angle(display_angle);
     let theme = ctx.host.theme();
     // Splitting the borrows: paint_inspector wants &mut hit_index,
     // &WidgetStore, &mut Scene, &mut TextSystem — all from disjoint
@@ -59,6 +61,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         );
     }
     state::set_current_display_unit(display_unit, ppm); // keep symmetric with legacy
+    state::set_current_display_angle(display_angle);
     // Publish content_h + clamp scroll right after paint so
     // `dispatch_wheel` sees the new bounds on the very next event.
     let content_h = last_inspector_content_h();

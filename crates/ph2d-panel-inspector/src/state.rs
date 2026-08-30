@@ -200,6 +200,16 @@ thread_local! {
         const { std::cell::Cell::new(ph2d_editor_core::project::DisplayUnit::Meters) };
     pub(crate) static CURRENT_PIXELS_PER_METER: std::cell::Cell<f32> =
         const { std::cell::Cell::new(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER) };
+
+    /// Per-paint display ANGLE — a irmã do [`CURRENT_DISPLAY_UNIT`], pelas mesmas duas
+    /// razões: o **rótulo** da linha (`Rotation (°)` contra `Rotation (rad)`) e o **passo**
+    /// do stepper.
+    ///
+    /// ⚠️ **Publicada no paint, e não passada por parâmetro** — é o padrão que a unidade de
+    /// comprimento já usa, e a razão dele: a `paint_row` do Transform tem dez argumentos e
+    /// acrescentar dois por unidade nova é como se ganha uma assinatura que ninguém lê.
+    pub(crate) static CURRENT_DISPLAY_ANGLE: std::cell::Cell<ph2d_editor_core::project::DisplayAngle> =
+        const { std::cell::Cell::new(ph2d_editor_core::project::DisplayAngle::Degrees) };
 }
 
 pub fn set_current_inspector_sprite(info: Option<InspectorSpriteInfo>) {
@@ -414,6 +424,14 @@ pub(crate) fn current_display_unit() -> ph2d_editor_core::project::DisplayUnit {
 
 pub(crate) fn current_pixels_per_meter() -> f32 {
     CURRENT_PIXELS_PER_METER.with(|c| c.get())
+}
+
+pub fn set_current_display_angle(angle: ph2d_editor_core::project::DisplayAngle) {
+    CURRENT_DISPLAY_ANGLE.with(|c| c.set(angle));
+}
+
+pub(crate) fn current_display_angle() -> ph2d_editor_core::project::DisplayAngle {
+    CURRENT_DISPLAY_ANGLE.with(|c| c.get())
 }
 
 /// Pack a linear/sRGB f32 RGBA in `[0, 1]` into `[u8; 4]` for the

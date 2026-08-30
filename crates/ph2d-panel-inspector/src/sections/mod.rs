@@ -7,7 +7,7 @@
 //! submodule opens with a single `use super::*;`. No logic moved — every
 //! section painter is verbatim from the pre-split `sections.rs`.
 
-pub(crate) use crate::state::current_display_unit;
+pub(crate) use crate::state::{current_display_angle, current_display_unit};
 pub(crate) use ph2d_a11y::NodeId;
 pub(crate) use ph2d_editor_core::icons::IconId;
 pub(crate) use ph2d_editor_core::ids;

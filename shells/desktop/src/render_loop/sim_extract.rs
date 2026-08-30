@@ -251,6 +251,50 @@ pub(crate) struct PreviewOverride {
 /// Sim tick → extract pass. Caller provides the destructured
 /// `AppGfx` refs.
 #[allow(clippy::too_many_arguments)]
+/// ⭐⭐ **A REGRA: esta entidade ocupa um rank como FORMA VETORIAL?** (ADR-0154 Fase 2)
+///
+/// `Some(id)` = sim, e este é o `VecPathRef` dela; `None` = não é forma (é sprite, ou não desenha
+/// nada).
+///
+/// ⚠️ **`Sprite` VENCE, e a assimetria é deliberada.** Uma entidade com os dois é uma sprite que
+/// referencia um path (proveniência de autoria, não geometria a desenhar) — contá-la duas vezes
+/// dar-lhe-ia dois ranks e o objecto apareceria em duas faixas.
+///
+/// ⚠️ **A visibilidade NÃO se pergunta aqui**: quem a decide é o `off_canvas::draws_this_frame`, no
+/// chamador, pela mesma porta dos sprites. *Uma segunda pergunta de visibilidade aqui seria a
+/// segunda resposta que diverge.*
+pub(super) fn vector_participant(sim: &World, entity: Entity) -> Option<u64> {
+    if sim.get::<Sprite>(entity).is_some() {
+        return None;
+    }
+    sim.get::<ph2d_ecs::VecPathRef>(entity).map(|vp| vp.0)
+}
+
+/// ⭐⭐ **A CONVERSÃO: dos ranks que o ordenador decidiu para a ordem que o presente lê.**
+///
+/// ⛔ Ela não reordena nada — é leitura. E é uma função com nome, e não um laço inline, porque é
+/// aqui que mora o defeito silencioso: **um rank de SPRITE que não seja registado** deixa aquele
+/// índice no preenchimento por omissão, e uma forma que caia nele seria desenhada como sprite —
+/// isto é, não seria desenhada.
+pub(super) fn build_frame_order(
+    sort_inputs: &[SortInput],
+    vector_inputs: &[(Entity, u64)],
+    scratch: &SortScratch,
+    out: &mut crate::draw_bands::FrameOrder,
+) {
+    out.clear();
+    for input in sort_inputs {
+        if let Some(rank) = scratch.rank(input.entity) {
+            let path = vector_inputs
+                .iter()
+                .find(|(e, _)| *e == input.entity)
+                .map(|(_, id)| *id);
+            out.record(rank, path);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) fn run(
     dt: f32,
     sim: &mut SimWorld,
@@ -287,7 +331,17 @@ pub(super) fn run(
     // uma vista, não conteúdo. Um componente entraria no undo, no save e no snapshot — e o artista
     // reabriria o projeto com a folha aberta, sem se lembrar de a ter aberto.
     sheet_preview: Option<ph2d_ecs::Entity>,
+    // ⭐⭐ **A ordem TOTAL deste quadro** (ADR-0154 Fase 2) — as duas famílias numa lista só,
+    // indexada pelo rank que o `compute_sort_ranks_into` acabou de decidir. O presente parte-a em
+    // faixas e desenha faixa a faixa, alternando de motor.
+    //
+    // ⚠️ **Out-param e não valor de retorno**: esta função já devolve por escrita em `present`, e
+    // um `Vec` novo por quadro seria uma alocação por quadro (HR-3) — o `clear` mantém a
+    // capacidade.
+    order_out: &mut crate::draw_bands::FrameOrder,
 ) {
+    // As formas vetoriais que entraram na ordem, na travessia: `(entidade, VecPathRef.0)`.
+    let mut vector_inputs: Vec<(ph2d_ecs::Entity, u64)> = Vec::new();
     // Sim tick: bouncing motion. Single substep per frame for the
     // M5 demo (we don't yet honor the FixedStep substep count for
     // gameplay — that lands in M10 with the physics integrator).
@@ -358,6 +412,26 @@ pub(super) fn run(
                 // RenderInstance → invisible, the same shape as a
                 // hidden/culled sprite (the W2.T2 skip-guard's behavior, now
                 // resolved per-sprite instead of blanket).
+                // ⭐⭐⭐ **A FORMA VETORIAL ENTRA NA MESMA ORDEM** (ADR-0154 Fase 2, report do
+                // Enio de 2026-08-30). Ela não emite `RenderInstance` nenhum — o Vello desenha-a —,
+                // mas ocupa o **lugar** dela na ordem total, e é isso que faltava: as duas famílias
+                // eram ordenadas por dois pipelines independentes e coladas por um `over` fixo.
+                //
+                // ⚠️ **Tem de ser AQUI, dentro da travessia**, e não num laço à parte: o
+                // `compute_sort_ranks_into` exige os `inputs` em **DFS pre-order**, e é essa ordem
+                // que semeia o `draw_order` e o desempate entre irmãos. Um laço de query por fora
+                // daria a ordem do arquétipo, que muda com qualquer `insert`.
+                //
+                // ⚠️ E ela passa pela MESMA porta de visibilidade (`drawn`): uma forma escondida
+                // pelo olho da Hierarquia não pode ocupar um rank, senão ela abre uma faixa que
+                // não desenha nada e paga a colagem à mesma.
+                if drawn && let Some(id) = vector_participant(sim, sim_entity) {
+                    vector_inputs.push((sim_entity, id));
+                    sort_inputs.push(SortInput {
+                        entity: sim_entity,
+                        world_pos: t,
+                    });
+                }
                 if drawn
                     && let Some(spr) = sim.get::<Sprite>(sim_entity)
                 {
@@ -722,6 +796,14 @@ pub(super) fn run(
         // `(z_order, texture_id)`; ranks are unique so the texture_id
         // tie-break never fires.
         compute_sort_ranks_into(sort_scratch, sim_w, sort_inputs);
+        // ⭐⭐ **A ORDEM TOTAL, na forma de que o presente precisa** (ADR-0154 Fase 2). Ela é a
+        // LEITURA do que o ordenador decidiu — nada aqui reordena.
+        //
+        // ⚠️ Percorre-se `sort_inputs` (a lista de entrada, em DFS) e não `vector_inputs` sozinha:
+        // o rank de um SPRITE também tem de ser registado, senão a família daquele rank fica no
+        // preenchimento por omissão e uma forma vetorial que caia lá seria desenhada como sprite —
+        // isto é, não seria desenhada.
+        build_frame_order(sort_inputs, &vector_inputs, sort_scratch, order_out);
         let mut q = present_w.query::<(&SimRef, &mut RenderInstance)>();
         for (sim_ref, mut ri) in q.iter_mut(present_w) {
             if let Some(rank) = sort_scratch.rank(sim_ref.0) {
@@ -922,5 +1004,123 @@ mod cascade_tint_tests {
             cascade_tint_with_ancestors(w, e, w.get::<Sprite>(e).unwrap()),
             w.get::<Sprite>(e).unwrap().collapsed_tint()
         );
+    }
+}
+
+#[cfg(test)]
+mod band_rule_tests {
+    use super::*;
+    use crate::draw_bands::Family;
+    use ph2d_ecs::{Name, RootOrder, SimWorld, Transform, VecPathRef};
+
+    /// ⭐ Uma forma vetorial ocupa um rank.
+    #[test]
+    fn a_vector_path_entity_participates_in_the_order() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Shape"),
+                VecPathRef(42),
+                RootOrder(0),
+            ))
+            .id();
+        assert_eq!(vector_participant(sim.world(), e), Some(42));
+    }
+
+    /// ⛔ **Uma SPRITE não é uma forma**, mesmo que carregue um `VecPathRef` — aquele campo é
+    /// proveniência de autoria. Contá-la nas duas famílias dar-lhe-ia dois ranks.
+    #[test]
+    fn a_sprite_is_never_counted_as_a_shape_even_carrying_a_path_ref() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Image"),
+                Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+                VecPathRef(42),
+            ))
+            .id();
+        assert_eq!(vector_participant(sim.world(), e), None);
+    }
+
+    /// Um objecto vazio não ocupa rank nenhum.
+    #[test]
+    fn a_plain_object_participates_as_neither() {
+        let mut sim = SimWorld::new();
+        let e = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Empty")))
+            .id();
+        assert_eq!(vector_participant(sim.world(), e), None);
+    }
+
+    /// ⭐⭐ **A conversão regista TODOS os ranks, não só os das formas.**
+    ///
+    /// **Mutação que deve sangrar:** saltar o `record` quando `path.is_none()` — o buraco encheria
+    /// com `Sprite` por omissão e o gate abaixo passaria por acidente; por isso a fixtura põe uma
+    /// FORMA no rank alto, que o preenchimento por omissão erraria.
+    #[test]
+    fn the_conversion_records_every_rank_not_only_the_shapes() {
+        let mut sim = SimWorld::new();
+        let img = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Image"), RootOrder(0)))
+            .id();
+        let shape = sim
+            .world_mut()
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Shape"),
+                VecPathRef(7),
+                RootOrder(1),
+            ))
+            .id();
+        let inputs: Vec<SortInput> = [img, shape]
+            .into_iter()
+            .map(|entity| SortInput {
+                entity,
+                world_pos: ph2d_core::Vec2::ZERO,
+            })
+            .collect();
+        let mut scratch = SortScratch::new();
+        ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
+        let mut order = crate::draw_bands::FrameOrder::default();
+        build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+
+        // ⛔ **`complete()`, e não `families` cru** — é ele que distingue «não registado» de
+        // «sprite», e foi a ausência dessa distinção que deixou a 1.ª prova de mutação SOBREVIVER.
+        assert_eq!(
+            order.complete(),
+            Some(vec![Family::Sprite, Family::Vector]),
+            "a conversao perdeu um rank ou trocou uma familia: {:?}",
+            order.families
+        );
+        assert!(order.has_vectors());
+    }
+
+    /// ⚠️ **Ela é IDEMPOTENTE** — o `clear` é dela, e sem ele um segundo quadro empilharia as
+    /// formas do primeiro e abriria faixas que não desenham nada.
+    #[test]
+    fn running_the_conversion_twice_gives_the_same_order() {
+        let mut sim = SimWorld::new();
+        let shape = sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, Name::new("Shape"), VecPathRef(7)))
+            .id();
+        let inputs = vec![SortInput {
+            entity: shape,
+            world_pos: ph2d_core::Vec2::ZERO,
+        }];
+        let mut scratch = SortScratch::new();
+        ph2d_ecs::sort_key::compute_sort_ranks_into(&mut scratch, sim.world(), &inputs);
+        let mut order = crate::draw_bands::FrameOrder::default();
+        build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+        let first = order.complete();
+        build_frame_order(&inputs, &[(shape, 7)], &scratch, &mut order);
+        assert_eq!(order.complete(), first);
+        assert_eq!(order.vector_ranks.len(), 1, "as formas empilharam");
     }
 }

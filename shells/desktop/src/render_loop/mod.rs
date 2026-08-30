@@ -1144,6 +1144,7 @@ impl crate::App {
             worklist,
             sort_scratch,
             sort_inputs,
+            frame_order,
             hero_live,
             next_import_cell,
             // A identidade estável do documento pintado é carimbada no SAVE (`project_painter`), que é
@@ -2736,6 +2737,7 @@ impl crate::App {
             default_filter,
             ph2d_ecs::RepeatMode::Disabled,
             sheet_preview,
+            frame_order,
         );
 
         // Sprite-layer clear color = backdrop visible in the canvas

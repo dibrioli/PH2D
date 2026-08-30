@@ -127,6 +127,9 @@ mod dither_smoke;
 /// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
 mod donated_form;
+/// ⭐⭐⭐ **As FAIXAS de desenho** (ADR-0154 Fase 2) — a lei que põe vetor e sprite na MESMA ordem
+/// total, e parte essa ordem nas passagens que o presente desenha.
+mod draw_bands;
 mod driven_row_smoke;
 mod echo_family_smoke;
 /// `PH2D_EMISSIVE_SMOKE` — a sprite como fonte de luz (plano `docs/Sprite_projeto/18` W8).

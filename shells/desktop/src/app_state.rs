@@ -245,6 +245,13 @@ pub(crate) struct AppGfx {
     /// stays allocation-free after warm-up (HR-3).
     pub(crate) sort_scratch: ph2d_ecs::sort_key::SortScratch,
     pub(crate) sort_inputs: Vec<ph2d_ecs::sort_key::SortInput>,
+    /// ⭐⭐ **A ordem TOTAL do quadro** (ADR-0154 Fase 2) — as duas famílias (sprite e forma
+    /// vetorial) numa lista só, indexada pelo rank. Preenchida pelo `sim_extract` a partir do
+    /// ordenador único; lida pelo presente, que a parte em faixas de desenho.
+    ///
+    /// ⚠️ Vive aqui pela razão do `sort_inputs` ao lado: ela é reusada e limpa por quadro, para o
+    /// caminho quente ficar sem alocação depois do aquecimento (HR-3).
+    pub(crate) frame_order: crate::draw_bands::FrameOrder,
     /// M14.4a live-bridge state. Present in the default editor mode
     /// (i.e. always unless `PH2D_M5_DEMO=1` switched to the legacy
     /// untouched.

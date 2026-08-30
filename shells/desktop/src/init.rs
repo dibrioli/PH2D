@@ -523,6 +523,7 @@ pub(crate) fn build_initial_state(
         worklist,
         sort_scratch: ph2d_ecs::sort_key::SortScratch::new(),
         sort_inputs: Vec::new(),
+        frame_order: crate::draw_bands::FrameOrder::default(),
         hero_live,
         next_import_cell: ph2d_render::FIRST_IMPORT_KEY,
         sheets: std::collections::BTreeMap::new(),

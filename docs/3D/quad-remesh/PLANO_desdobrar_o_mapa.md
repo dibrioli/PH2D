@@ -261,3 +261,54 @@ O §4 punha o desemaranhador em segundo. Ele passa a **primeiro**, porque:
 
 ⛔ **Sem essa previsão escrita antes, curar o `det+` e ver o SoG melhorar não provaria nada** — é a
 diferença entre uma medição e uma coincidência lida a favor.
+
+---
+
+## §8 — ⭐⭐⭐ O DESEMARANHADOR EXISTE, E DESFAZ `62,4 %` DAS NOSSAS DOBRAS EM `193 ms`
+
+**A crate:** [`ph2d-untangle`](../../../crates/ph2d-untangle/) — clean-room da literatura pública,
+`8` gates. Os dois que decidem: *desemaranha a partir de um estado **já** dobrado* (com controlo de
+que a fixtura contém o fenómeno) e *dois interiores que **trocam de lugar** desemaranham* — o
+`desk-reject` que a literatura usa contra qualquer método que se diga injectivo.
+
+⛔ **E um gate apanhou um defeito meu que teria sido lido como afinação:** o `two_loop` devolve
+direcção de **subida**, e eu tinha a condição de recuo **invertida** *e* passava `+∇F` como
+direcção — toda iteração subia, a busca linear recusava tudo, e o laço saía com a malha
+**intacta**. ⭐ *O gate do gradiente ficou **verde** durante isso* — e é exactamente para o que ele
+existe: **separar a matemática da descida**. Sem ele, o sintoma («não desemaranha») teria mandado
+procurar o erro na derivada, que estava certa.
+
+### A medição na peça do artista (`Detail 0,85`), retalho a retalho, fronteira presa
+
+| | |
+|---|---|
+| retalhos com dobra | `28` |
+| ⭐ **dobras** | **`149` → `56`** |
+| retalhos que não fecharam | `16` |
+| ⭐ **relógio** | **`193 ms`** |
+
+⭐⭐⭐ **`62,4 %` das dobras desaparecem sem tocar na costura**, e o preço é `193 ms` contra uma
+cadeia de `15`–`25 s` — **menos de `1,3 %`**.
+
+⚠️ **A forma da prova:** desemaranhar **por retalho com a fronteira do retalho presa** deixa as
+transições de carta **intactas** ⇒ a propriedade `GP` que a obra de 24/08 comprou fica preservada
+**por construção**, não por promessa.
+
+### ⚠️ E as que sobram estão NOMEADAS
+
+As `56` que ficam vivem **na fronteira dos retalhos** — são precisamente as que a versão restrita
+não pode mover. ⇒ **A wave seguinte é libertar as variáveis de costura**, e o caminho já está
+escrito no §3: o `ClosureSystem` da obra A exprime a costura por **eliminação de variável**, então
+o conjunto reduzido dele é exactamente o espaço em que o desemaranhador pode trabalhar **sem**
+perder a `GP`.
+
+### ⛔ DUAS RÉGUAS, DUAS POPULAÇÕES — a reconciliar antes de citar um número sozinho
+
+| régua | conta o quê | dá |
+|---|---|---|
+| dobras por casca (§6) | a **minoria de sinal** sobre os triângulos do `corner_map` | `92` |
+| o desemaranhador | `det J ≤ 0` sobre os triângulos **locais do corte** | `149` |
+
+⚠️ **Os dois `A/B` são internamente consistentes** (cada um mede antes e depois com a *sua* régua),
+e é por isso que o `62,4 %` vale. ⛔ **Mas os dois números absolutos não são comparáveis**, e
+citá-los lado a lado sem esta nota seria a armadilha do denominador que este módulo já pagou.

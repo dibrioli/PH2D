@@ -529,6 +529,11 @@ ph2d-node-motion-bezier-warp = { path = "../../crates/ph2d-node-motion-bezier-wa
 # testemunha honesta disso são os retângulos que o próprio painel registrou (uma segunda
 # aritmética de altura ao lado dele divergiria no dia em que uma linha composta mudar).
 ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
+# ⭐⭐⭐ O DESEMARANHADOR, para a SONDA que mede se ele desfaz as dobras do NOSSO mapa.
+# ⚠️ `dev-dependency` de propósito: ele ainda NÃO está no produto, e declará-lo como
+# dependência normal diria o contrário a quem lê o manifesto. Ver
+# `docs/3D/quad-remesh/PLANO_desdobrar_o_mapa.md`.
+ph2d-untangle = { path = "../../crates/ph2d-untangle" }
 # O sink de render, para o arch-gate do modo de composição (doc 89, folha 17). A
 # shell é o único lugar que enxerga as DUAS folhas — o nó que declara o param e o
 # substrato que o lê — e nenhuma delas pode depender da outra, então o acordo entre

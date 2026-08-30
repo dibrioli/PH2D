@@ -345,6 +345,20 @@ fn does_the_field_wake_up_at_a_thin_tip() {
         );
     }
 
+    // ⭐⭐⭐ **E O DESEMARANHADOR DESFAZ AS DOBRAS DO NOSSO MAPA?** — a pergunta que decide se a
+    // wave vale a pena, feita **antes** de tocar no produto.
+    //
+    // ⚠️ **O corte já dá as variáveis certas:** `cut.tris[p]` são os triângulos de um retalho em
+    // índices LOCAIS e `map.uv[p]` são as coordenadas desses mesmos locais. ⇒ desemaranhar
+    // **retalho a retalho, com a fronteira do retalho presa**, preserva a costura
+    // **exactamente** — as transições de carta não são tocadas, logo a propriedade `GP` que
+    // custou a obra de 24/08 fica intacta por construção.
+    //
+    // ⛔ **É uma versão RESTRITA de propósito**, e o resultado discrimina nos dois sentidos: se
+    // as dobras caírem, a cura existe e o preço é conhecido; se ficarem, elas vivem **na
+    // fronteira** dos retalhos e a wave é outra.
+    untangle_probe(&work, &cut, &map);
+
     // ⚠️ **As DUAS contagens são impressas** — a dobra é a MINORIA, e uma convenção de sinal
     // invertida leria «tudo dobrado» com toda a confiança do mundo.
     eprintln!("  DOBRAS DO MAPA por casca (a dobra e' a MINORIA; as duas contagens saem):");
@@ -362,6 +376,116 @@ fn does_the_field_wake_up_at_a_thin_tip() {
         eprintln!(
             "  [{lo:.2},{hi:.2}) {:8} tri  (+{} / -{})  dobras {:5} = {pct:.3} %",
             n, positivos[b], negativos[b], dobras
+        );
+    }
+}
+
+/// ⭐⭐⭐ **O DESEMARANHADOR SOBRE O NOSSO MAPA** — retalho a retalho, fronteira presa.
+///
+/// ⚠️ **O repouso é o triângulo 3D achatado ISOMETRICAMENTE** (`p0` na origem, `p1` no eixo
+/// `x`): ele preserva os comprimentos das arestas, então a energia mede a distorção **do mapa**
+/// e não a de um achatamento que já distorce.
+///
+/// ⚠️ **A fronteira do retalho fica presa** — é a metade que mantém a costura intacta.
+fn untangle_probe(
+    work: &ph2d_mesh::Mesh,
+    cut: &ph2d_gridmap::CutMesh,
+    map: &ph2d_gridmap::GridMap,
+) {
+    use std::collections::BTreeMap;
+    let pos = work.positions();
+    let (mut antes, mut depois, mut desistiu, mut patches) = (0usize, 0usize, 0usize, 0usize);
+    let relogio = std::time::Instant::now();
+    for (p, tris) in cut.tris.iter().enumerate() {
+        let (Some(origin), Some(uvp)) = (cut.origin.get(p), map.uv.get(p)) else {
+            continue;
+        };
+        if tris.is_empty() || uvp.is_empty() {
+            continue;
+        }
+        // As arestas com UMA face só são a fronteira do retalho.
+        let mut n: BTreeMap<(u32, u32), usize> = BTreeMap::new();
+        for t in tris {
+            for k in 0..3 {
+                let (a, b) = (t[k], t[(k + 1) % 3]);
+                *n.entry(if a < b { (a, b) } else { (b, a) }).or_default() += 1;
+            }
+        }
+        let mut locked = vec![false; uvp.len()];
+        for (e, c) in &n {
+            if *c == 1 {
+                locked[e.0 as usize] = true;
+                locked[e.1 as usize] = true;
+            }
+        }
+        let mut elements = Vec::with_capacity(tris.len());
+        for t in tris {
+            let q: Vec<[f64; 3]> = t
+                .iter()
+                .map(|&l| {
+                    let g = origin[l as usize] as usize;
+                    [
+                        f64::from(pos[g][0]),
+                        f64::from(pos[g][1]),
+                        f64::from(pos[g][2]),
+                    ]
+                })
+                .collect();
+            let e1 = [q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2]];
+            let e2 = [q[2][0] - q[0][0], q[2][1] - q[0][1], q[2][2] - q[0][2]];
+            let l1 = e1[0]
+                .mul_add(e1[0], e1[1].mul_add(e1[1], e1[2] * e1[2]))
+                .sqrt();
+            if l1 <= 0.0 {
+                continue;
+            }
+            let u = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+            let x = e2[0].mul_add(u[0], e2[1].mul_add(u[1], e2[2] * u[2]));
+            let sq = e2[0].mul_add(e2[0], e2[1].mul_add(e2[1], e2[2] * e2[2])) - x * x;
+            let y = if sq > 0.0 { sq.sqrt() } else { 0.0 };
+            if let Some(el) = ph2d_untangle::Element::from_rest(*t, [0.0, 0.0], [l1, 0.0], [x, y]) {
+                elements.push(el);
+            }
+        }
+        let mut uv: Vec<[f64; 2]> = uvp
+            .iter()
+            .map(|c| [f64::from(c[0]), f64::from(c[1])])
+            .collect();
+        let f0 = ph2d_untangle::flipped(&elements, &uv);
+        if f0 == 0 {
+            continue;
+        }
+        patches += 1;
+        let rep = ph2d_untangle::untangle(
+            &elements,
+            &mut uv,
+            &locked,
+            ph2d_untangle::Settings::default(),
+        );
+        antes += rep.flipped_before;
+        depois += rep.flipped_after;
+        if rep.gave_up {
+            desistiu += 1;
+        }
+    }
+    eprintln!(
+        "  DESEMARANHADOR (retalho a retalho, fronteira presa): {patches} retalho(s) com dobra  \
+         |  dobras {antes} -> {depois}  |  {desistiu} sem fechar  |  {:.0} ms",
+        relogio.elapsed().as_secs_f64() * 1000.0
+    );
+    if antes > 0 {
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "contagem de dobras para uma percentagem de diagnostico"
+        )]
+        let pct = 100.0 * (antes - depois) as f64 / antes as f64;
+        eprintln!(
+            "  ⇒ {pct:.1} % das dobras desfeitas SEM tocar na costura -- {}",
+            if depois == 0 {
+                "⭐ TODAS: a cura existe e o preco esta' medido"
+            } else {
+                "⚠️ as que sobram vivem na FRONTEIRA dos retalhos, e sao outra wave"
+            }
         );
     }
 }

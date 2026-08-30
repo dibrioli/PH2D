@@ -131,6 +131,18 @@ pub enum ContextMenuKind {
     /// is deferred (needs inline TextInput state-machine) and not
     /// surfaced in this menu yet.
     HierarchyRow { row: NodeId },
+    /// ⭐⭐ **Botão direito num CARTÃO da biblioteca de assets** (plano 07, etapa C).
+    ///
+    /// ⚠️ **Carrega a CÉLULA, não o asset** — e isso é a cerca desta crate: o endereço de um asset
+    /// é um `StableId` **ou** 32 bytes de blake3, vocabulário de
+    /// [`crate::interaction::drag_payload::DragPayload`] para cima e do `ph2d-asset-index` para
+    /// baixo. Quem converte `cell → endereço` é o painel, que é a única crate que conhece os dois.
+    ///
+    /// ⚠️ **A janela de obsolescência é a mesma do [`Self::HierarchyRow`]**: o menu abre no `Down` e
+    /// é despachado num `Click` posterior, e no meio a grade pode ter mudado de conteúdo. O painel
+    /// resolve `célula → asset` **no clique** e, se já não houver nada ali, **diz que não há** — a
+    /// mesma guarda que a queda por `StableId` já tem.
+    AssetCard { cell: NodeId },
     /// New-image modal (Cmd/Ctrl+N): a centered dialog with a row of square-size buttons
     /// (`CTX_MENU_NEW_IMAGE_SIZES`) + background choices (`CTX_MENU_NEW_IMAGE_BGS`) + a Create button
     /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
@@ -283,6 +295,7 @@ impl ContextMenuKind {
         Self::RenamePaletteDialog,
         Self::SceneList,
         Self::HierarchyRow { row: NodeId(1) },
+        Self::AssetCard { cell: NodeId(1) },
         Self::NewImageDialog,
         Self::SheetSizeDialog,
         Self::FalloffPointHandle,

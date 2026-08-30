@@ -9,8 +9,9 @@ use crate::AssetBrowserPanel;
 use crate::ids;
 use crate::state::AssetBrowserState;
 use ph2d_asset_index::{AssetRef, SortBy};
-use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 
 pub(crate) fn apply_event(
@@ -93,7 +94,62 @@ pub(crate) fn apply_event(
             Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
         },
 
+        // ── ⭐⭐ O MENU DO CARTÃO (etapa C) ─────────────────────────────────────────────────────
+        //
+        // ⚠️ **Consumir o pedido de menu é destrutivo, e por isso a guarda é o ID primeiro.** O
+        // `consume_last_context_menu` TIRA o pedido do store; se este braço corresse sobre um
+        // `Click` alheio, ele engoliria o menu da Hierarquia e o item que o artista apertou lá
+        // deixaria de achar a linha. Os três ids só nascem deste menu, então quando um deles
+        // chega o pedido pendente é, por construção, o `AssetCard`.
+        WidgetEvent::Click(id) if card_verb_of(id).is_some() => {
+            let Some(verb) = card_verb_of(id) else {
+                return EventOutcome::Ignored;
+            };
+            let Some(req) = host.store_mut().consume_last_context_menu() else {
+                return EventOutcome::Ignored;
+            };
+            let ph2d_editor_core::interaction::ContextMenuKind::AssetCard { cell } = req.kind
+            else {
+                return EventOutcome::Ignored;
+            };
+            // ⚠️ **A janela de obsolescência fecha AQUI, e em voz alta.** O menu abriu no `Down` e
+            // este `Click` é posterior; se a grade mudou de conteúdo no meio, a célula já não
+            // desenha asset nenhum — e o `None` **não** se trata como *«nada a fazer»*, senão o
+            // artista conclui que o item está partido. O shell é quem fala, então o silêncio aqui
+            // é o `Ignored` de um menu que já não tem sujeito.
+            match cell_target_of(cell) {
+                Some(AssetRef::Component { stable_id }) => {
+                    host.bus_mut().push(EditorAction::AssetCardVerb {
+                        asset: DragPayload::Prefab { stable_id },
+                        verb,
+                    });
+                    EventOutcome::Consumed
+                }
+                Some(AssetRef::Texture { asset }) => {
+                    host.bus_mut().push(EditorAction::AssetCardVerb {
+                        asset: DragPayload::Image { asset },
+                        verb,
+                    });
+                    EventOutcome::Consumed
+                }
+                None => EventOutcome::Ignored,
+            }
+        }
+
         _ => EventOutcome::Ignored,
+    }
+}
+
+/// O verbo que este id de menu representa. ⚠️ **Uma tabela, não três `if`** — ela é o par exacto
+/// da tabela que o overlay pinta (`menu_rows`), e é o que faz um verbo novo ter de aparecer nos
+/// dois sítios ou em nenhum.
+fn card_verb_of(id: ph2d_a11y::NodeId) -> Option<AssetCardAction> {
+    use ph2d_editor_core::ids as core_ids;
+    match id {
+        i if i == core_ids::CTX_MENU_ASSET_INSTANTIATE => Some(AssetCardAction::Instantiate),
+        i if i == core_ids::CTX_MENU_ASSET_SELECT_USERS => Some(AssetCardAction::SelectUsers),
+        i if i == core_ids::CTX_MENU_ASSET_REMOVE => Some(AssetCardAction::RemoveFromLibrary),
+        _ => None,
     }
 }
 

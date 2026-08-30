@@ -55,6 +55,7 @@ mod inspector_slice;
 mod live_sections;
 mod menus;
 mod menus_hierarchy;
+mod menus_asset;
 mod menus_timeline;
 
 pub use chrome::*;
@@ -70,4 +71,5 @@ pub use inspector_slice::*;
 pub use live_sections::*;
 pub use menus::*;
 pub use menus_hierarchy::*;
+pub use menus_asset::*;
 pub use menus_timeline::*;

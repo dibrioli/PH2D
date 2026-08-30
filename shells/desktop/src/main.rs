@@ -51,6 +51,9 @@ mod ase_import;
 /// A cena de smoke do import do `.ase` (`PH2D_ASE_SMOKE=1`) — ela ESCREVE o ficheiro e larga-o
 /// pela porta do produto, para o smoke não precisar do Aseprite instalado.
 mod ase_smoke;
+/// ⭐⭐ **Os três verbos do menu de um cartão** (plano `docs/Components/07`, etapa C) — e as três
+/// RECUSAS, que são o corpo dele: o painel não tem voz, então quem decide e fala é o shell.
+mod asset_card_verbs;
 /// ⭐⭐⭐ **O arrasto da biblioteca, ligado ao ponteiro** (plano `docs/Components/07`, etapa B) —
 /// a fiação `Down`/`Move`/`Up`. ⚠️ A LEI da queda vive no `asset_drop`, e é pura.
 mod asset_drag_wire;
@@ -307,6 +310,8 @@ mod instance_structure;
 /// ⭐ **O SYNC VIVO mestre → instância** (ADR-0164 / F4.3).
 mod instance_sync;
 mod instance_sync_docs;
+/// ⭐⭐ **TIRAR DA BIBLIOTECA** — a lei das duas metades (a receita dissolve-se, ou volta à cena).
+mod instance_unmake;
 mod instance_variant;
 /// ⭐ **Os VERBOS de instância** (ADR-0164 / F4.5) — criar componente, destacar, aplicar ao mestre.
 mod instance_verbs;

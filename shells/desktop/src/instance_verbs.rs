@@ -346,6 +346,10 @@ pub(crate) enum Verb {
     Detach,
     /// *Apply to Master* — a excepção vira o padrão.
     Apply,
+    /// ⭐⭐ *Remove from Library* — a receita deixa de ser receita (report do Enio, 2026-08-30:
+    /// *«não dá para tirar um asset da biblioteca»*). A lei das duas metades vive em
+    /// [`crate::instance_unmake`], que é onde ela se lê inteira.
+    Unmake,
 }
 
 /// ⭐ **O dreno dos quatro** — resolve a entidade, corre o verbo e **responde ao artista**.
@@ -496,6 +500,31 @@ pub(crate) fn drain(
             }
             Err(_) => {
                 toasts.push(Toast::warning("Not part of an instance"));
+                false
+            }
+        },
+        // ⭐⭐ **Tirar da biblioteca.** ⚠️ **A voz diz QUAL das duas metades aconteceu** — elas
+        // deixam a cena em estados diferentes (uma não muda nada do que se vê, a outra faz
+        // aparecer um objecto), e um artista que lesse a mesma frase nas duas concluiria que a
+        // segunda inventou uma cópia.
+        Verb::Unmake => match crate::instance_unmake::unmake_master(sim, entity) {
+            Ok(crate::instance_unmake::Unmade::Dissolved { copies }) => {
+                toasts.push(Toast::success(format!(
+                    "Removed from library \u{2014} {copies} copy(ies) are now independent"
+                )));
+                true
+            }
+            Ok(crate::instance_unmake::Unmade::Returned { root_bits }) => {
+                // ⭐ Ela **apareceu**: a selecção segue-a, senão o artista fica com um objecto novo
+                // na cena e nenhuma pista de qual é.
+                *select_out = Some(root_bits);
+                toasts.push(Toast::success(
+                    "Removed from library \u{2014} it had no copies, so it came back to the canvas",
+                ));
+                true
+            }
+            Err(_) => {
+                toasts.push(Toast::warning("That is not in the library"));
                 false
             }
         },

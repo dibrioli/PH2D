@@ -55,6 +55,8 @@ pub const CTX_MENU_HIER_DETACH: NodeId = hash_node_id("ctx_menu_hier_detach");
 /// ⭐ **Aplicar ao mestre** — a excepção vira o padrão (ADR-0164 / F4.5).
 pub const CTX_MENU_HIER_APPLY_TO_MASTER: NodeId = hash_node_id("ctx_menu_hier_apply_to_master");
 pub const CTX_MENU_HIER_ADD_CHILD: NodeId = hash_node_id("ctx_menu_hier_add_child");
+// ⭐⭐ Os ids do menu de um CARTÃO da biblioteca vivem no irmão `menus_asset.rs` — ver o cabeçalho
+// dele para a lei da tabela plana e para quem redige as recusas.
 /// ⭐⭐⭐ **Agrupar** (Enio, 2026-08-30) — a seleção passa a ser **um objeto** na Hierarquia.
 ///
 /// ⚠️ **O verbo já existia e era invisível.** `Ctrl+G` / `Ctrl+Shift+G` agrupam e desagrupam desde

@@ -85,6 +85,15 @@ pub(super) fn handle_down_menus(
             }
             .filter(|row| store.is_hierarchy_row(*row))
         });
+        // ⭐⭐ **Botão direito num CARTÃO da biblioteca** (plano 07, etapa C). Resolvido antes do
+        // fallback do painel pela MESMA razão da linha da hierarquia: o alvo vive dentro de um
+        // painel, e o menu largo não pode ganhar do específico.
+        //
+        // ⚠️ **A pergunta é feita ao store, não a uma lista de ids** — o censo de células é
+        // publicado por quadro pelo próprio painel (`set_asset_cells`), então um cartão rolado
+        // para fora do corpo, ou o painel fechado, já não tem célula nenhuma e este ramo não
+        // dispara. *Uma segunda lista aqui seria a resposta que envelhece.*
+        let asset_cell_id = hit_id.filter(|id| store.is_asset_cell(*id));
         // W3.E4: right-click a timeline key — its dope-sheet diamond or its graph
         // anchor — to retune the interpolation leaving it; a track row's LABEL
         // opens the whole-track menu instead (Delete Track). Resolved before the
@@ -167,6 +176,12 @@ pub(super) fn handle_down_menus(
                 y: event.y,
                 kind: ContextMenuKind::HierarchyRow { row },
             });
+        } else if let Some(cell) = asset_cell_id {
+            store.open_context_menu(ContextMenuRequest {
+                x: event.x,
+                y: event.y,
+                kind: ContextMenuKind::AssetCard { cell },
+            });
         } else if let Some(note_index) = note_slot
             && let Some(panel) = panel_under
         {
@@ -194,6 +209,10 @@ pub(super) fn handle_down_menus(
                 && *p != crate::ids::PAINTER_LAYERS_PANEL
                 && *p != crate::ids::TIMELINE_PANEL
                 && *p != crate::grid_snap::ids::GS_PANEL
+                // ⭐ A biblioteca de assets pela mesma lei: é superfície de operação, não de
+                // anotação. Sem esta linha, o botão direito ao lado de um cartão oferecia
+                // *«Create note»* dentro do navegador.
+                && *p != crate::ids::ASSET_PANEL
         }) {
             // `before_section` is filled in by apply_event
             // — only the inspector knows the screen→body

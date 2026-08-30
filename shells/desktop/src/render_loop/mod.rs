@@ -3130,6 +3130,15 @@ impl crate::App {
                 crate::instance_verbs::Verb,
                 Option<[f32; 2]>,
             )> = None;
+            // ⭐⭐ O menu de um CARTÃO da biblioteca (etapa C) — o par `(endereço, verbo)` que o
+            // painel transporta. ⚠️ **Slot próprio, e não o `instance_verb_stable_id`:** metade
+            // das seis células é uma RECUSA que só o shell sabe redigir (o número de utilizadores
+            // de uma imagem), e dobrá-lo no slot dos verbos de instância obrigaria a inventar um
+            // `Verb` para *«não faça nada e diga porquê»*.
+            let mut asset_card_verb: Option<(
+                ph2d_editor::interaction::drag_payload::DragPayload,
+                ph2d_editor::action_bus::AssetCardAction,
+            )> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
             // Carries the clicked row's `NodeId` (the merged sprite
@@ -4378,6 +4387,11 @@ impl crate::App {
                             crate::instance_verbs::Verb::Place,
                             at,
                         ));
+                    }
+                    // ⭐⭐ **O menu do cartão** (etapa C). ⚠️ `get_or_insert`, como os irmãos: um
+                    // quadro tem um gesto, e o menu fecha ao primeiro clique.
+                    EditorAction::AssetCardVerb { asset, verb } => {
+                        asset_card_verb.get_or_insert((asset, verb));
                     }
                     EditorAction::HierInstantiateLinked { row } => {
                         instance_verb_row
@@ -10796,6 +10810,7 @@ impl crate::App {
                 revert_to_master_row,
                 instance_verb_row,
                 instance_verb_stable_id,
+                asset_card_verb,
                 delete_row,
                 hierarchy_row_click,
                 hierarchy_select_intent,

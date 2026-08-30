@@ -62,6 +62,13 @@ pub(super) fn dispatch(
     // SUJEITO — o navegador endereça a receita pela identidade, e não por uma linha que ela nem
     // tem (uma receita está escondida da Hierarquia por construção).
     instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb, Option<[f32; 2]>)>,
+    // ⭐⭐ **O menu de um CARTÃO da biblioteca** (etapa C) — o par `(endereço, verbo)`. Ele mora
+    // aqui, junto dos outros verbos, porque é aqui que o `sim`, a voz e o gizmo estão os três
+    // emprestados ao mesmo tempo; a decisão e as recusas vivem no `asset_card_verbs`.
+    asset_card_verb: Option<(
+        ph2d_editor::interaction::drag_payload::DragPayload,
+        ph2d_editor::action_bus::AssetCardAction,
+    )>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -338,10 +345,65 @@ pub(super) fn dispatch(
         t.translation.x = world[0];
         t.translation.y = world[1];
     }
+    // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C). ⚠️ Slot próprio, e por isso um
+    // `select_out` próprio: ele é exclusivo dos outros dois por gesto, mas partilhar a variável
+    // faria o mesmo defeito que a nota dos DOIS slots acima descreve.
+    let mut card_select: Option<u64> = None;
+    if let Some((asset, verb)) = asset_card_verb
+        && crate::asset_card_verbs::drain(
+            asset,
+            verb,
+            sim,
+            registry,
+            echo,
+            &mut hero.gizmo,
+            toasts,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene,
+                vec_entities,
+            },
+            {
+                let (dx, dy) = crate::input_dispatch::screen_offset_world(
+                    camera,
+                    window_size,
+                    crate::input_dispatch::PASTE_OFFSET_PX,
+                );
+                [dx as f32, dy as f32]
+            },
+            &mut card_select,
+        )
+    {
+        title_dirty = true;
+    }
     // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
     // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
-    if let Some(bits) = verb_select.or(drop_select) {
+    if let Some(bits) = verb_select.or(drop_select).or(card_select) {
         hero.gizmo.replace_selection(Some(bits));
+    }
+    // ⭐⭐⭐ **A selecção nunca guarda bits de uma entidade que já não existe.**
+    //
+    // ⚠️ **Isto não é defensivo — é a metade que o `Remove from Library` obriga a escrever.** Ele
+    // é o **primeiro** verbo desta família que APAGA entidades (os outros marcam, copiam ou
+    // desligam elos), e uma receita que estivesse seleccionada — pelo modo de edição de mestre —
+    // deixaria o gizmo a desenhar à volta de bits mortos. ⛔ O `HierDelete` cura o caso dele à
+    // mão, linha a linha, e por isso a cura não estava disponível para mais ninguém.
+    let dead: Vec<u64> = hero
+        .gizmo
+        .iter_selected()
+        .filter(|bits| {
+            sim.world()
+                .get_entity(ph2d_ecs::Entity::from_bits(*bits))
+                .is_err()
+        })
+        .collect();
+    if !dead.is_empty() {
+        if hero.gizmo.selection.is_some_and(|s| dead.contains(&s)) {
+            hero.gizmo.selection = None;
+        }
+        hero.gizmo.extra_selection.retain(|b| !dead.contains(b));
+        if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
+            hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
+        }
     }
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);

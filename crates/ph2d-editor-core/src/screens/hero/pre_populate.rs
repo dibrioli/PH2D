@@ -413,6 +413,12 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_DETACH,
         ids::CTX_MENU_HIER_APPLY_TO_MASTER,
         ids::CTX_MENU_HIER_DELETE,
+        // ⭐⭐ O menu do cartão da biblioteca (plano 07, etapa C). Sem registo aqui o
+        // `is_focusable` devolve `false`, o `Down` não fica activo e o `Click` **nunca nasce** —
+        // que é o defeito nº 1 da auditoria da etapa A, uma camada acima.
+        ids::CTX_MENU_ASSET_INSTANTIATE,
+        ids::CTX_MENU_ASSET_SELECT_USERS,
+        ids::CTX_MENU_ASSET_REMOVE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
         ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
         ids::CTX_MENU_HIER_USE_AS_PAPER,

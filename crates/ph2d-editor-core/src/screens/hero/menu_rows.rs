@@ -273,6 +273,18 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_HIER_DETACH, "Detach from Master", None),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
+        // ⭐⭐ **O cartão da biblioteca** (plano 07, etapa C). Três itens, na ordem do gesto:
+        // *usar* · *ver quem usa* · *tirar*.
+        //
+        // ⚠️ **Plana como a da Hierarquia, e pela mesma razão:** ela não sabe se a célula é um
+        // Prefab ou uma Imagem. As duas famílias respondem aos três — e as recusas NOMEIAM o
+        // motivo, que numa Imagem é sempre o mesmo facto: ela está na biblioteca porque um objecto
+        // a usa, então *«tirar»* teria de tirá-la dos objectos, que é outro gesto.
+        ContextMenuKind::AssetCard { .. } => &[
+            (ids::CTX_MENU_ASSET_INSTANTIATE, "Instantiate", None),
+            (ids::CTX_MENU_ASSET_SELECT_USERS, "Select users", None),
+            (ids::CTX_MENU_ASSET_REMOVE, "Remove from Library", None),
+        ],
         // Painter Falloff curve point handle (Blender per-point handle types).
         ContextMenuKind::FalloffPointHandle => &[
             (ids::CTX_MENU_FALLOFF_HANDLE_VECTOR, "Vector", None),

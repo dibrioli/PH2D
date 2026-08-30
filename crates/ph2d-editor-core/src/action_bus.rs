@@ -42,29 +42,6 @@
 //! Each migration removes that field from `HeroScreen` and the
 //! corresponding drain block from `main.rs` / `hero_intents.rs`.
 
-/// Modifier-key context for a [`EditorAction::SelectSprite`] event
-/// (Fase 0b — image-tools multi-select). The hero/panel side resolves
-/// the OS keyboard modifier into this enum before pushing; the shell
-/// dispatches the matching [`crate::screens::hero::GizmoStateGroup`]
-/// API call. Stays a plain enum (no `bitflags`) — modifiers in PH2D
-/// don't compose meaningfully (Shift+Cmd-click on the same element
-/// has no defined semantics in this version).
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum SelectModifier {
-    /// No modifier. Replaces the entire selection with the clicked
-    /// sprite as the new primary. Most common path.
-    #[default]
-    Replace,
-    /// Shift held. Adds the clicked sprite to the selection without
-    /// dropping current sprites. If already selected, no-op (Shift
-    /// re-click is idempotent; use [`Self::Toggle`] for off-on).
-    Add,
-    /// Cmd (macOS) / Ctrl (Linux/Windows) held. Toggles the clicked
-    /// sprite in the selection — adds if absent, removes if present.
-    /// Removing the primary promotes the oldest extra to primary.
-    Toggle,
-}
-
 /// One outbound intent from the editor to the shell. Variants are
 /// added incrementally as `pending_X` fields migrate into the bus.
 /// Each variant carries enough payload that the shell can dispatch
@@ -673,23 +650,32 @@ pub enum EditorAction {
         /// no dia em que o verbo ganhasse um passo.
         at: Option<[f32; 2]>,
     },
-}
-
-/// The three TopBar transport commands. Kept a small copy enum so the
-/// chrome layer stays free of the `Playhead` type (that lives in the shell).
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TransportCmd {
-    /// Start the clock rolling forward (`playhead.play()`).
-    Play,
-    /// Halt the clock where it is (`playhead.pause()`).
-    Pause,
-    /// Rewind the clock to the start and stop (`playhead.rewind()` + pause).
-    Reset,
+    /// ⭐⭐ **UM ITEM DO MENU DE UM CARTÃO** da biblioteca (plano 07, etapa C).
+    ///
+    /// ⚠️⚠️ **Uma acção com o verbo DENTRO, e não três acções — porque o painel não tem voz.**
+    /// O [`crate::panel::PanelHostInternal`] dá store, bus e selecção; **não** dá `ToastQueue`. Um
+    /// painel que decidisse ali *«uma Imagem não se instancia»* teria de recusar em **silêncio**,
+    /// que é exactamente a doença que a tabela plana deste menu existe para evitar. ⇒ o painel
+    /// **transporta** o par (endereço, verbo) e quem **decide e fala** é o shell, que é o único
+    /// lado que sabe quantos objectos usam aquela imagem.
+    AssetCardVerb {
+        /// O endereço do asset no vocabulário de chrome — ver
+        /// [`crate::interaction::drag_payload::DragPayload`], que já existia para o dizer sem esta
+        /// camada aprender o modelo de assets.
+        asset: crate::interaction::drag_payload::DragPayload,
+        /// Qual dos três.
+        verb: AssetCardAction,
+    },
 }
 
 /// ⚠️ A **fila** vive no irmão [`super::action_bus_queue`] e é re-exportada aqui: quem escreve
 /// `action_bus::ActionBus` continua a escrevê-lo. Ver o cabeçalho de lá para o porquê do corte.
 pub use super::action_bus_queue::ActionBus;
+
+/// ⚠️ Os **vocabulários** que as acções carregam vivem no irmão [`super::action_bus_kinds`] e são
+/// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
+/// cabeçalho de lá para o porquê do corte.
+pub use super::action_bus_kinds::{AssetCardAction, SelectModifier, TransportCmd};
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

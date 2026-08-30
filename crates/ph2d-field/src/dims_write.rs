@@ -91,6 +91,65 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             // ⚠️ Coage como a contagem de lados do prisma, e pela mesma razão.
             *points = (value.round() as u32).clamp(crate::MIN_STAR_POINTS, crate::MAX_STAR_POINTS);
         }
+        // ─────────────────────────── W106 ───────────────────────────
+        // ⚠️ **A ORDEM tem de bater com a do `dims_table.rs`** — o índice é a identidade da linha, e
+        // um desalinho faz um arrasto escrever noutro número, em silêncio.
+        //
+        // ⚠️ E o que a tabela mostra **DOBRADO** (uma largura, uma altura) escreve-se como `half`;
+        // o que ela mostra cru (um raio, um ângulo) escreve-se como `value`.
+        (Primitive::Octahedron { radius, .. }, 0)
+        | (Primitive::CutSphere { radius, .. }, 0)
+        | (Primitive::HollowDome { radius, .. }, 0)
+        | (Primitive::SolidAngle { radius, .. }, 0)
+        | (Primitive::Link { major: radius, .. }, 0)
+        | (Primitive::Moon { radius, .. }, 0)
+        | (Primitive::Drop { radius, .. }, 0)
+        | (Primitive::Pie { radius, .. }, 0)
+        | (Primitive::Vesica { radius, .. }, 0) => *radius = value,
+        (Primitive::RoundCone { bottom, .. }, 0) => *bottom = value,
+        (Primitive::RoundCone { top, .. }, 1) => *top = value,
+        (Primitive::RoundCone { half_height, .. }, 2) => *half_height = half,
+        // ⚠️ O corte é uma POSIÇÃO: pode ser negativo, e a guarda de cima deixa-o passar porque a
+        // faixa dele é `Span::Free`.
+        (Primitive::CutSphere { cut, .. }, 1) | (Primitive::HollowDome { cut, .. }, 1) => {
+            *cut = value;
+        }
+        (
+            Primitive::HollowDome {
+                radius, thickness, ..
+            },
+            2,
+        ) => *thickness = keep_below(value, *radius * 2.0),
+        (Primitive::Link { major, minor, .. }, 1) => *minor = keep_below(value, *major),
+        (Primitive::Link { length, .. }, 2) => *length = half,
+        (Primitive::SolidAngle { angle, .. }, 1) | (Primitive::Pie { angle, .. }, 1) => {
+            *angle = value.min(std::f32::consts::PI);
+        }
+        (Primitive::Gear { teeth, .. }, 0) => {
+            // ⚠️ **COAGE, não recusa** — a lei do prisma e da estrela, e pela mesma razão.
+            *teeth = (value.round() as u32).clamp(crate::MIN_GEAR_TEETH, crate::MAX_GEAR_TEETH);
+        }
+        (Primitive::Gear { root, outer, .. }, 1) => *root = keep_below(value, *outer),
+        (Primitive::Gear { root, outer, .. }, 2) => *outer = keep_above(value, *root),
+        (Primitive::Gear { tooth, .. }, 3) => *tooth = keep_below(value, 1.0),
+        (Primitive::Gear { half_height, .. }, 4) => *half_height = half,
+        (Primitive::Cross { arm, .. }, 0) => *arm = half,
+        (Primitive::Cross { arm, width, .. }, 1) => *width = keep_below(half, *arm),
+        (Primitive::Cross { half_height, .. }, 2) => *half_height = half,
+        (Primitive::Heart { size, .. }, 0) => *size = value,
+        (Primitive::Heart { half_height, .. }, 1) => *half_height = half,
+        (Primitive::Moon { bite, .. }, 1) => *bite = value,
+        (Primitive::Moon { offset, .. }, 2) => *offset = value,
+        (Primitive::Moon { half_height, .. }, 3) => *half_height = half,
+        (Primitive::Drop { height, radius, .. }, 1) => *height = keep_above(value, *radius),
+        (Primitive::Drop { half_height, .. }, 2)
+        | (Primitive::Pie { half_height, .. }, 2)
+        | (Primitive::Vesica { half_height, .. }, 2) => *half_height = half,
+        (Primitive::Trapezoid { bottom, .. }, 0) => *bottom = half,
+        (Primitive::Trapezoid { top, .. }, 1) => *top = half,
+        (Primitive::Trapezoid { half_width, .. }, 2) => *half_width = half,
+        (Primitive::Trapezoid { half_height, .. }, 3) => *half_height = half,
+        (Primitive::Vesica { radius, offset, .. }, 1) => *offset = keep_below(value, *radius),
         (Primitive::Prism { sides, .. }, 0) => {
             // ⚠️ **COAGE, não recusa** — a lei do `Unary::Taper`, e pela mesma razão: a faixa já
             // não oferece nada fora de `[MIN, MAX]`, então um valor de fora só chega por outra
@@ -110,6 +169,18 @@ pub fn set_dim(p: &mut Primitive, node: u32, index: usize, value: f32) -> Result
             | Primitive::Wedge { .. }
             | Primitive::Star { .. }
             | Primitive::BoxFrame { .. }
+            | Primitive::Octahedron { .. }
+            | Primitive::CutSphere { .. }
+            | Primitive::HollowDome { .. }
+            | Primitive::SolidAngle { .. }
+            | Primitive::Gear { .. }
+            | Primitive::Cross { .. }
+            | Primitive::Heart { .. }
+            | Primitive::Moon { .. }
+            | Primitive::Drop { .. }
+            | Primitive::Pie { .. }
+            | Primitive::Trapezoid { .. }
+            | Primitive::Vesica { .. }
             | Primitive::TorusArc { .. }),
             i,
         ) if Some(i) == round_index(p) => {
@@ -161,11 +232,25 @@ fn set_round(p: &mut Primitive, node: u32, value: f32) -> Result<(), FieldError>
         | Primitive::Wedge { round, .. }
         | Primitive::Star { round, .. }
         | Primitive::BoxFrame { round, .. }
+        | Primitive::Octahedron { round, .. }
+        | Primitive::CutSphere { round, .. }
+        | Primitive::HollowDome { round, .. }
+        | Primitive::SolidAngle { round, .. }
+        | Primitive::Gear { round, .. }
+        | Primitive::Cross { round, .. }
+        | Primitive::Heart { round, .. }
+        | Primitive::Moon { round, .. }
+        | Primitive::Drop { round, .. }
+        | Primitive::Pie { round, .. }
+        | Primitive::Trapezoid { round, .. }
+        | Primitive::Vesica { round, .. }
         | Primitive::TorusArc { round, .. } => *round = value,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
+        | Primitive::RoundCone { .. }
+        | Primitive::Link { .. }
         | Primitive::Ellipsoid { .. } => {}
     }
     Ok(())
@@ -194,6 +279,18 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Wedge { round, .. }
         | Primitive::Star { round, .. }
         | Primitive::BoxFrame { round, .. }
+        | Primitive::Octahedron { round, .. }
+        | Primitive::CutSphere { round, .. }
+        | Primitive::HollowDome { round, .. }
+        | Primitive::SolidAngle { round, .. }
+        | Primitive::Gear { round, .. }
+        | Primitive::Cross { round, .. }
+        | Primitive::Heart { round, .. }
+        | Primitive::Moon { round, .. }
+        | Primitive::Drop { round, .. }
+        | Primitive::Pie { round, .. }
+        | Primitive::Trapezoid { round, .. }
+        | Primitive::Vesica { round, .. }
         | Primitive::TorusArc { round, .. } => {
             if *round > ceiling {
                 *round = ceiling.max(0.0);
@@ -205,6 +302,8 @@ pub fn clamp_round(p: &mut Primitive) -> bool {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
+        | Primitive::RoundCone { .. }
+        | Primitive::Link { .. }
         | Primitive::Ellipsoid { .. } => false,
     }
 }
@@ -347,6 +446,145 @@ pub fn scale_primitive(p: &mut Primitive, factor: f32) -> bool {
             for r in radii.iter_mut() {
                 *r *= factor;
             }
+        }
+        // ─────────────────────────── W106 ───────────────────────────
+        // ⚠️ **Toda grandeza de COMPRIMENTO escala; contagens e ÂNGULOS não.** Um ângulo
+        // multiplicado por um factor abriria a fatia ao ampliar a peça, o que não é ampliar — é
+        // outra forma. É a mesma lei que deixa `sides` e `points` em paz.
+        Primitive::Octahedron { radius, round } => {
+            *radius *= factor;
+            *round *= factor;
+        }
+        Primitive::RoundCone {
+            bottom,
+            top,
+            half_height,
+        } => {
+            *bottom *= factor;
+            *top *= factor;
+            *half_height *= factor;
+        }
+        Primitive::CutSphere { radius, cut, round } => {
+            *radius *= factor;
+            // ⚠️ O corte é uma POSIÇÃO em Z, e escala com a peça — senão ampliar uma cúpula
+            // transforma-a numa esfera quase inteira.
+            *cut *= factor;
+            *round *= factor;
+        }
+        Primitive::HollowDome {
+            radius,
+            cut,
+            thickness,
+            round,
+        } => {
+            *radius *= factor;
+            *cut *= factor;
+            *thickness *= factor;
+            *round *= factor;
+        }
+        Primitive::Link {
+            major,
+            minor,
+            length,
+        } => {
+            *major *= factor;
+            *minor *= factor;
+            *length *= factor;
+        }
+        Primitive::SolidAngle { radius, round, .. } => {
+            *radius *= factor;
+            *round *= factor;
+        }
+        // ⚠️ `teeth` e `tooth` ficam: um é contagem, o outro é uma FRAÇÃO do passo.
+        Primitive::Gear {
+            root,
+            outer,
+            half_height,
+            round,
+            ..
+        } => {
+            *root *= factor;
+            *outer *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Cross {
+            arm,
+            width,
+            half_height,
+            round,
+        } => {
+            *arm *= factor;
+            *width *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Heart {
+            size,
+            half_height,
+            round,
+        } => {
+            *size *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Moon {
+            radius,
+            bite,
+            offset,
+            half_height,
+            round,
+        } => {
+            *radius *= factor;
+            *bite *= factor;
+            *offset *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Drop {
+            radius,
+            height,
+            half_height,
+            round,
+        } => {
+            *radius *= factor;
+            *height *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Pie {
+            radius,
+            half_height,
+            round,
+            ..
+        } => {
+            *radius *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Trapezoid {
+            bottom,
+            top,
+            half_width,
+            half_height,
+            round,
+        } => {
+            *bottom *= factor;
+            *top *= factor;
+            *half_width *= factor;
+            *half_height *= factor;
+            *round *= factor;
+        }
+        Primitive::Vesica {
+            radius,
+            offset,
+            half_height,
+            round,
+        } => {
+            *radius *= factor;
+            *offset *= factor;
+            *half_height *= factor;
+            *round *= factor;
         }
     }
     true

@@ -26,6 +26,18 @@ impl FieldDoc {
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
                 | Primitive::BoxFrame { round, .. }
+                | Primitive::Octahedron { round, .. }
+                | Primitive::CutSphere { round, .. }
+                | Primitive::HollowDome { round, .. }
+                | Primitive::SolidAngle { round, .. }
+                | Primitive::Gear { round, .. }
+                | Primitive::Cross { round, .. }
+                | Primitive::Heart { round, .. }
+                | Primitive::Moon { round, .. }
+                | Primitive::Drop { round, .. }
+                | Primitive::Pie { round, .. }
+                | Primitive::Trapezoid { round, .. }
+                | Primitive::Vesica { round, .. }
                 | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
@@ -33,6 +45,8 @@ impl FieldDoc {
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
+                | Primitive::RoundCone { .. }
+                | Primitive::Link { .. }
                 | Primitive::Ellipsoid { .. } => None,
             },
             // Uma escultura não tem aresta autorada: o `round` dela é a malha.
@@ -138,6 +152,18 @@ impl NodeShape {
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
                 | Primitive::BoxFrame { round, .. }
+                | Primitive::Octahedron { round, .. }
+                | Primitive::CutSphere { round, .. }
+                | Primitive::HollowDome { round, .. }
+                | Primitive::SolidAngle { round, .. }
+                | Primitive::Gear { round, .. }
+                | Primitive::Cross { round, .. }
+                | Primitive::Heart { round, .. }
+                | Primitive::Moon { round, .. }
+                | Primitive::Drop { round, .. }
+                | Primitive::Pie { round, .. }
+                | Primitive::Trapezoid { round, .. }
+                | Primitive::Vesica { round, .. }
                 | Primitive::TorusArc { round, .. } => Some(*round),
                 // ⚠️ Lista FECHADA desde a W101 (era `_ => None`): uma primitiva nova COM filete
                 // caía no braço vazio e o painel dizia que ela não tinha nenhum.
@@ -145,6 +171,8 @@ impl NodeShape {
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
+                | Primitive::RoundCone { .. }
+                | Primitive::Link { .. }
                 | Primitive::Ellipsoid { .. } => None,
             },
         }
@@ -214,12 +242,26 @@ pub fn set_shape_radius(shape: &mut NodeShape, node: u32, radius: f32) -> Result
                 | Primitive::Wedge { round, .. }
                 | Primitive::Star { round, .. }
                 | Primitive::BoxFrame { round, .. }
+                | Primitive::Octahedron { round, .. }
+                | Primitive::CutSphere { round, .. }
+                | Primitive::HollowDome { round, .. }
+                | Primitive::SolidAngle { round, .. }
+                | Primitive::Gear { round, .. }
+                | Primitive::Cross { round, .. }
+                | Primitive::Heart { round, .. }
+                | Primitive::Moon { round, .. }
+                | Primitive::Drop { round, .. }
+                | Primitive::Pie { round, .. }
+                | Primitive::Trapezoid { round, .. }
+                | Primitive::Vesica { round, .. }
                 | Primitive::TorusArc { round, .. } => *round = radius,
                 // Inalcançável: `round_limit` já devolveu `None` para estas acima.
                 Primitive::Sphere { .. }
                 | Primitive::Torus { .. }
                 | Primitive::Revolve { .. }
                 | Primitive::Capsule { .. }
+                | Primitive::RoundCone { .. }
+                | Primitive::Link { .. }
                 | Primitive::Ellipsoid { .. } => {}
             }
             Ok(())
@@ -250,10 +292,97 @@ pub fn round_limit(p: &Primitive) -> Option<f32> {
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
+        | Primitive::RoundCone { .. }
+        | Primitive::Link { .. }
         | Primitive::Ellipsoid { .. } => None,
         // ⚠️ **O raio do TUBO**: o filete come o aro do corte de dentro para fora, e a `minor` ele
         // teria comido o tubo inteiro — a face cortada deixaria de existir.
         Primitive::TorusArc { minor, .. } => Some(*minor),
+
+        // ─────────────────────────── W106 ───────────────────────────
+        // ⚠️ **Cada uma diz de que RECURSO é o limite** — a menor meia-medida que a aresta come.
+        // Um teto que só dissesse «por segurança» seria um palpite à espera de um smoke (§0.0).
+        //
+        // ⭐ **Toda CHAPA leva `.min(half_height)`**: o aro entre a parede e a tampa é uma aresta
+        // como as outras, e um filete maior que a meia-espessura comeria a chapa inteira.
+
+        // O INRAIO: a receita recua as oito faces de `round`, e a `radius/√3` elas cruzam-se no
+        // centro — o octaedro deixaria de existir.
+        Primitive::Octahedron { radius, .. } => Some(*radius / 3.0_f32.sqrt()),
+        // A aresta é o aro do corte. Ela é comida de dois lados: pela **altura da calota** que
+        // sobra (`radius − cut`) e pelo **raio da tampa** (`√(r²−cut²)`).
+        Primitive::CutSphere { radius, cut, .. } => {
+            Some((radius - cut).min((radius * radius - cut * cut).max(0.0).sqrt()))
+        }
+        // ⚠️ **A PAREDE, não a esfera**: a casca tem `thickness` de espessura, e um filete acima de
+        // metade dela atravessa-a de lado a lado.
+        Primitive::HollowDome { thickness, .. } => Some(*thickness * 0.5),
+        // A aresta é o arco onde a calota encontra o cone. Ela é comida pelo raio e pela abertura:
+        // num ângulo pequeno a fatia é fina, e é a espessura dela que manda.
+        Primitive::SolidAngle { radius, angle, .. } => Some(radius * angle.sin().abs().min(1.0)),
+        // ⚠️ **O DENTE é a peça pequena**, e é ele que o filete come primeiro: metade da largura
+        // dele na base, e a altura dele (`outer − root`). O corpo é sempre maior.
+        Primitive::Gear {
+            teeth,
+            root,
+            outer,
+            tooth,
+            half_height,
+            ..
+        } => {
+            let passo = std::f32::consts::TAU / (*teeth).max(3) as f32;
+            let meia_largura = root * passo * 0.5 * tooth.clamp(0.05, 0.95);
+            Some(meia_largura.min(outer - root).min(*half_height).max(0.0))
+        }
+        // A meia-largura do braço, e a profundidade da cova (`arm − width`).
+        Primitive::Cross {
+            arm,
+            width,
+            half_height,
+            ..
+        } => Some(width.min(arm - width).min(*half_height).max(0.0)),
+        // O lóbulo tem raio `size/√2`; a ponta de baixo é a quina que o filete come.
+        Primitive::Heart {
+            size, half_height, ..
+        } => Some((size * 0.5).min(*half_height)),
+        // ⚠️ **A ESPESSURA do crescente no dorso** — `radius − bite + offset`. É ela que some
+        // primeiro, e não o raio: um crescente fino com um raio grande parte na cintura.
+        Primitive::Moon {
+            radius,
+            bite,
+            offset,
+            half_height,
+            ..
+        } => Some(((radius - bite + offset) * 0.5).max(0.0).min(*half_height)),
+        // A bolha manda: a ponta é tangente e não tem quina para arredondar.
+        Primitive::Drop {
+            radius,
+            half_height,
+            ..
+        } => Some((radius * 0.5).min(*half_height)),
+        // Como no ângulo sólido: o raio e a abertura, o que for menor.
+        Primitive::Pie {
+            radius,
+            angle,
+            half_height,
+            ..
+        } => Some((radius * angle.sin().abs().min(1.0)).min(*half_height)),
+        // A menor das três meias-medidas — a base estreita é a que desaparece.
+        Primitive::Trapezoid {
+            bottom,
+            top,
+            half_width,
+            half_height,
+            ..
+        } => Some(bottom.min(*top).min(*half_width).min(*half_height)),
+        // ⚠️ **A meia-largura da LENTE** (`radius − offset`), não o raio: a vesica é fina de
+        // propósito, e é a espessura dela que o filete come.
+        Primitive::Vesica {
+            radius,
+            offset,
+            half_height,
+            ..
+        } => Some(((radius - offset) * 0.5).max(0.0).min(*half_height)),
         // ⭐⭐ **A INCLINAÇÃO ENTRA NA CONTA, e é onde o filete SATURA** (W101).
         //
         // A parede é a reta `ρ = a + m·z` no plano `(ρ, z)`; recuá-la de `round` na perpendicular
@@ -395,11 +524,25 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         | Primitive::Prism { round, .. }
         | Primitive::Wedge { round, .. }
         | Primitive::Star { round, .. }
+        | Primitive::Octahedron { round, .. }
+        | Primitive::CutSphere { round, .. }
+        | Primitive::HollowDome { round, .. }
+        | Primitive::SolidAngle { round, .. }
+        | Primitive::Gear { round, .. }
+        | Primitive::Cross { round, .. }
+        | Primitive::Heart { round, .. }
+        | Primitive::Moon { round, .. }
+        | Primitive::Drop { round, .. }
+        | Primitive::Pie { round, .. }
+        | Primitive::Trapezoid { round, .. }
+        | Primitive::Vesica { round, .. }
         | Primitive::TorusArc { round, .. } => *round != 0.0,
         Primitive::Sphere { .. }
         | Primitive::Torus { .. }
         | Primitive::Revolve { .. }
         | Primitive::Capsule { .. }
+        | Primitive::RoundCone { .. }
+        | Primitive::Link { .. }
         | Primitive::Ellipsoid { .. } => false,
     }
 }
@@ -420,73 +563,6 @@ pub fn cone_round_limit(bottom: f32, top: f32, half_height: f32) -> f32 {
     let a = (bottom + top) * 0.5;
     let m = (top - bottom) / (2.0 * half_height);
     half_height.min(a / (1.0 + m * m).sqrt())
-}
-
-/// **O tamanho característico de uma primitiva** — a menor dimensão que a define.
-///
-/// É o que dá escala a um raio de mistura: um filete maior do que a peça menor que ele junta
-/// engole-a. Não é uma regra de validade (não existe nenhuma), é a escala do documento.
-///
-/// ⚠️ **Pública porque a mesma pergunta é feita de fora**: quando a árvore vive na cena
-/// (`ph2d-field-ecs`), o limite *suave* de uma operação sai da menor peça sob ela — e ele tem de
-/// ser calculado por esta função, não por uma segunda cópia. É a mesma regra do [`round_limit`].
-#[must_use]
-pub fn characteristic_size(p: &Primitive) -> f32 {
-    match p {
-        Primitive::Box { half, .. } => half[0].min(half[1]).min(half[2]),
-        Primitive::Sphere { radius } => *radius,
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            ..
-        } => radius.min(*half_height),
-        Primitive::Torus { minor, .. } => *minor,
-        Primitive::Extrude {
-            profile,
-            half_height,
-            ..
-        } => {
-            let (min, max) = profile.bounds();
-            half_height.min((max[0] - min[0]).min(max[1] - min[1]) * 0.5)
-        }
-        Primitive::Revolve { profile } => {
-            let (min, max) = profile.bounds();
-            (max[0] - min[0]).min(max[1] - min[1]) * 0.5
-        }
-        // ⚠️ **O raio MAIOR, não o menor**: num cone fechado o `top` é zero, e a menor dimensão
-        // seria zero — um filete de escala zero, num nó cuja peça é perfeitamente visível. *A
-        // escala do documento é o tamanho da peça, e uma ponta não é o tamanho dela.*
-        Primitive::Cone {
-            bottom,
-            top,
-            half_height,
-            ..
-        } => bottom.max(*top).min(*half_height),
-        Primitive::Capsule {
-            radius,
-            half_height,
-        } => radius.min(*half_height),
-        // ⚠️ O apótema, pela razão do [`round_limit`]: é a parede que está mais perto do eixo.
-        Primitive::Prism {
-            sides,
-            bottom,
-            top,
-            half_height,
-            ..
-        } => (bottom.max(*top) * apothem_ratio(*sides)).min(*half_height),
-        Primitive::Wedge { half, .. } => half[0].min(half[1]).min(half[2]),
-        Primitive::TorusArc { minor, .. } => *minor,
-        // ⚠️ **O raio do VALE, não o da ponta** — é a menor dimensão que define a estrela, e é
-        // aquela contra a qual um filete de junção se mede (um filete maior do que o vale engole o
-        // miolo e deixa só as pontas).
-        Primitive::Star {
-            inner, half_height, ..
-        } => inner.min(*half_height),
-        // ⚠️ **A ESPESSURA da viga**, e não a caixa: a peça mais fina de uma gaiola é a aresta, e
-        // um filete de junção da escala da caixa engoliria a moldura inteira.
-        Primitive::BoxFrame { thickness, .. } => *thickness,
-        Primitive::Ellipsoid { radii } => radii[0].min(radii[1]).min(radii[2]),
-    }
 }
 
 /// Até onde uma dimensão pode ir, e **de que natureza é esse limite**.
@@ -521,99 +597,7 @@ impl Bound {
     }
 }
 
-/// ⭐ **O raio de uma esfera, centrada na origem local, que contém a primitiva INTEIRA.**
-///
-/// # Por que uma ESFERA, e não uma caixa
-///
-/// ⚠️ Uma esfera é **invariante à rotação**: subir a cadeia de poses custa `centro' = pose(centro)`
-/// e `raio' = raio · escala`, sem inflar nada. Uma caixa teria de ser re-envolvida a cada nível
-/// rodado — e cada re-envolvimento cresce, então uma peça com três agrupamentos girados acabaria com
-/// uma caixa muito maior do que ela. *A moeda certa para compor bordos é a que a composição não
-/// estraga.*
-///
-/// # ⚠️ Conservador é a direção SEGURA, e a assimetria é o critério
-///
-/// Este número decide a caixa da grade do extrator ([`ph2d_field_eval::extract`]). Um bordo **maior**
-/// do que a peça custa **resolução**; um bordo **menor** **CORTA a peça** e não diz nada. Toda
-/// aproximação aqui erra para cima, de propósito.
-///
-/// ⚠️ O arredondamento de uma caixa/cilindro **não cresce** o bordo: a lei encolhe a fonte e
-/// re-cresce por fora, então a extensão externa continua a ser a que o artista digitou.
-#[must_use]
-pub fn bounding_radius(p: &Primitive) -> f32 {
-    let hyp = |a: f32, b: f32| a.hypot(b);
-    match p {
-        Primitive::Box { half, .. } => {
-            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
-        }
-        Primitive::Sphere { radius } => *radius,
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            ..
-        } => hyp(*radius, *half_height),
-        // O tubo mais afastado do centro está a `major + minor`.
-        Primitive::Torus { major, minor } => major + minor,
-        Primitive::Extrude {
-            profile,
-            half_height,
-            ..
-        } => {
-            let (min, max) = profile.bounds();
-            let r = hyp(
-                min[0].abs().max(max[0].abs()),
-                min[1].abs().max(max[1].abs()),
-            );
-            hyp(r, *half_height)
-        }
-        // ⚠️ O torno gira em torno de **Y**: o raio do sólido é o maior `|x|` do contorno, e a altura
-        // é o maior `|y|`.
-        Primitive::Revolve { profile } => {
-            let (min, max) = profile.bounds();
-            hyp(
-                min[0].abs().max(max[0].abs()),
-                min[1].abs().max(max[1].abs()),
-            )
-        }
-        // O ponto mais afastado é uma das duas quinas do aro — a maior das duas.
-        Primitive::Cone {
-            bottom,
-            top,
-            half_height,
-            ..
-        } => hyp(bottom.max(*top), *half_height),
-        // ⚠️ **`half_height + radius`, e não a hipotenusa**: a ponta da cápsula está no EIXO, a
-        // `h + r` do centro, e ela é o ponto mais afastado. Uma hipotenusa daria `√(h²+r²)`, que é
-        // MENOR — e um raio de contenção pequeno demais corta a peça na caixa do mundo.
-        Primitive::Capsule {
-            radius,
-            half_height,
-        } => half_height + radius,
-        // ⚠️ O `radius` de um prisma é o CIRCUNRAIO (a quina), então ele já é a distância máxima no
-        // plano — nenhum `cos` entra aqui.
-        Primitive::Prism {
-            bottom,
-            top,
-            half_height,
-            ..
-        } => hyp(bottom.max(*top), *half_height),
-        // A cunha cabe na caixa de que ela é uma metade.
-        Primitive::Wedge { half, .. } => {
-            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
-        }
-        // ⚠️ **Um ARCO cabe no toro inteiro**, e é o bordo honesto: apertá-lo pelo sector exigiria
-        // a caixa de um sector de anel, e um bordo menor **corta a peça** sem dizer nada.
-        Primitive::TorusArc { major, minor, .. } => major + minor,
-        // A ponta é o ponto mais afastado no plano, e ela está a `outer` do eixo.
-        Primitive::Star {
-            outer, half_height, ..
-        } => hyp(*outer, *half_height),
-        // A gaiola cabe na caixa de que ela é o esqueleto.
-        Primitive::BoxFrame { half, .. } => {
-            (half[0] * half[0] + half[1] * half[1] + half[2] * half[2]).sqrt()
-        }
-        // ⚠️ **O MAIOR semi-eixo** — o menor daria uma esfera que corta a peça nos outros dois, e a
-        // assimetria desta função é a lei (errar para cima custa resolução, errar para baixo corta).
-        Primitive::Ellipsoid { radii } => radii[0].max(radii[1]).max(radii[2]),
-    }
-}
+/// ⭐ As duas tabelas por-forma — ver [`radius_tables`].
+#[path = "radius_tables.rs"]
+mod radius_tables;
+pub use radius_tables::{bounding_radius, characteristic_size};

@@ -321,6 +321,156 @@ fn an_ellipsoid(r: f32) -> Primitive {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// ⭐⭐⭐ **W106 — as catorze que a fila nunca contou.**
+//
+// ⚠️ **O default de uma forma tem de MOSTRAR o que ela faz de diferente** (a lei que o elipsóide
+// deixou escrita acima): um cone de pontas arredondadas com os dois raios iguais é uma cápsula, e
+// uma engrenagem com o dente rente ao corpo é um disco. Cada um destes números nasce onde a forma
+// se lê como ela própria à distância a que a peça aparece.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+fn an_octahedron(r: f32) -> Primitive {
+    Primitive::Octahedron {
+        radius: r,
+        round: round_of(r),
+    }
+}
+
+/// ⚠️ **Os dois raios DIFERENTES** — iguais seria a cápsula, que tem porta própria.
+fn a_round_cone(r: f32) -> Primitive {
+    Primitive::RoundCone {
+        bottom: r * 0.55,
+        top: r * 0.22,
+        half_height: r * 0.75,
+    }
+}
+
+/// ⚠️ **Corta ACIMA do equador** (`+0,35 r`): a meia-esfera exacta lê-se como uma esfera enterrada,
+/// e o que esta forma tem de mostrar é que sobrou uma tampa plana.
+fn a_cut_sphere(r: f32) -> Primitive {
+    Primitive::CutSphere {
+        radius: r,
+        cut: r * 0.35,
+        round: round_of(r) * 0.5,
+    }
+}
+
+/// ⚠️ Corta **abaixo** do equador, para a tigela ter parede visível de dentro.
+///
+/// ⚠️⚠️ **O `round` NÃO pode nascer a zero**, e foi o gate `every_new_shape_that_can_round_is_born_round`
+/// que mo disse: *este é o módulo cujo argumento **é** o arredondamento*, e uma forma que o aceita e
+/// nasce de aresta viva esconde exactamente o que ele faz melhor que o Blender.
+///
+/// ⚠️ E o teto aqui é a **parede** (`thickness/2`), não o raio da esfera — daí a fracção dele em vez
+/// do [`round_of`], que é dimensionado para uma peça maciça.
+fn a_hollow_dome(r: f32) -> Primitive {
+    let thickness = r * 0.12;
+    Primitive::HollowDome {
+        radius: r,
+        cut: r * 0.15,
+        thickness,
+        round: thickness * 0.25,
+    }
+}
+
+fn a_link(r: f32) -> Primitive {
+    Primitive::Link {
+        major: r * 0.45,
+        minor: r * 0.16,
+        length: r * 0.5,
+    }
+}
+
+/// ⚠️ Meia-abertura de `0,6 rad` (≈ 34°): a `π/2` seria uma meia-esfera e a fatia não se lê.
+fn a_solid_angle(r: f32) -> Primitive {
+    Primitive::SolidAngle {
+        radius: r,
+        angle: 0.6,
+        round: round_of(r) * 0.5,
+    }
+}
+
+/// ⭐ **Doze dentes** — o número em que uma engrenagem se lê como uma engrenagem e não como uma
+/// estrela grossa. ⚠️ O dente sai a `1,35 ×` o corpo: rente demais e ela vira um disco.
+fn a_gear(r: f32) -> Primitive {
+    Primitive::Gear {
+        teeth: 12,
+        root: r * 0.7,
+        outer: r,
+        tooth: 0.45,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.3,
+    }
+}
+
+fn a_cross(r: f32) -> Primitive {
+    Primitive::Cross {
+        arm: r,
+        width: r * 0.3,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.5,
+    }
+}
+
+fn a_heart(r: f32) -> Primitive {
+    Primitive::Heart {
+        size: r * 0.6,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.4,
+    }
+}
+
+/// ⚠️ A mordida é **maior** que o disco e deslocada: é isso que faz um crescente fino em vez de um
+/// disco com um buraco.
+fn a_moon(r: f32) -> Primitive {
+    Primitive::Moon {
+        radius: r,
+        bite: r * 0.9,
+        offset: r * 0.45,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.3,
+    }
+}
+
+fn a_drop(r: f32) -> Primitive {
+    Primitive::Drop {
+        radius: r * 0.5,
+        height: r * 1.3,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.4,
+    }
+}
+
+/// ⚠️ Meia-abertura de `1,0 rad` (≈ 57°): uma fatia de ~115°, que se lê como fatia.
+fn a_pie(r: f32) -> Primitive {
+    Primitive::Pie {
+        radius: r,
+        angle: 1.0,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.4,
+    }
+}
+
+fn a_trapezoid(r: f32) -> Primitive {
+    Primitive::Trapezoid {
+        bottom: r,
+        top: r * 0.45,
+        half_width: r * 0.6,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.4,
+    }
+}
+
+fn a_vesica(r: f32) -> Primitive {
+    Primitive::Vesica {
+        radius: r,
+        offset: r * 0.55,
+        half_height: r * 0.25,
+        round: round_of(r) * 0.3,
+    }
+}
+
 /// ⭐⭐⭐ **A LISTA.** Acrescentar uma forma é acrescentar **uma linha** aqui.
 ///
 /// ⚠️ **A ordem daqui é a ordem DENTRO do grupo** da paleta, e nada mais: nenhum consumidor lê a
@@ -385,6 +535,76 @@ pub(crate) const SHAPES: &[Shape] = &[
         key: "panel.model3d.add.ellipsoid",
         family: Family::Round,
         make: Make::Formula(an_ellipsoid),
+    },
+    Shape {
+        key: "panel.model3d.add.octahedron",
+        family: Family::Blocks,
+        make: Make::Formula(an_octahedron),
+    },
+    Shape {
+        key: "panel.model3d.add.round_cone",
+        family: Family::Round,
+        make: Make::Formula(a_round_cone),
+    },
+    Shape {
+        key: "panel.model3d.add.cut_sphere",
+        family: Family::Round,
+        make: Make::Formula(a_cut_sphere),
+    },
+    Shape {
+        key: "panel.model3d.add.hollow_dome",
+        family: Family::Round,
+        make: Make::Formula(a_hollow_dome),
+    },
+    Shape {
+        key: "panel.model3d.add.solid_angle",
+        family: Family::Round,
+        make: Make::Formula(a_solid_angle),
+    },
+    Shape {
+        key: "panel.model3d.add.link",
+        family: Family::Rings,
+        make: Make::Formula(a_link),
+    },
+    Shape {
+        key: "panel.model3d.add.gear",
+        family: Family::Plates,
+        make: Make::Formula(a_gear),
+    },
+    Shape {
+        key: "panel.model3d.add.cross",
+        family: Family::Plates,
+        make: Make::Formula(a_cross),
+    },
+    Shape {
+        key: "panel.model3d.add.heart",
+        family: Family::Plates,
+        make: Make::Formula(a_heart),
+    },
+    Shape {
+        key: "panel.model3d.add.moon",
+        family: Family::Plates,
+        make: Make::Formula(a_moon),
+    },
+    Shape {
+        key: "panel.model3d.add.drop",
+        family: Family::Plates,
+        make: Make::Formula(a_drop),
+    },
+    Shape {
+        key: "panel.model3d.add.pie",
+        family: Family::Plates,
+        make: Make::Formula(a_pie),
+    },
+    Shape {
+        key: "panel.model3d.add.trapezoid",
+        family: Family::Plates,
+        make: Make::Formula(a_trapezoid),
+    },
+    Shape {
+        key: "panel.model3d.add.vesica",
+        family: Family::Plates,
+        make: Make::Formula(a_vesica),
     },
     // ⭐⭐ **A PRIMEIRA CHAPA** (W103) — a família nasceu vazia na W100 à espera dela.
     Shape {

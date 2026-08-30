@@ -10202,3 +10202,203 @@ chamada por outras linhas, e a maior vizinha é
 uma pré-visualização 3D redesenhada por quadro**, com quatro referências à porta crua. ⛔ **Não
 lhe toco** (isolamento, `CLAUDE.md` §0.2): fica **nomeada**, com o instrumento já construído e
 alcançável por quem for dono dela.
+
+---
+
+## §106 — W106: ⭐⭐⭐ AS CATORZE FORMAS QUE A FILA NUNCA CONTOU — e a auditoria que fechou contra a lista errada (30/08)
+
+Enio, no smoke da paleta, com a foto dos 19 itens:
+
+> *"não entendi o a ou b. Não finalizamos de contruir as formas do catálogo. temos poucas formas"*
+
+⚠️ **Duas correcções minhas de uma vez.** A primeira é de comunicação: ofereci-lhe *«(a) ou (b)»*
+referindo a **minha** mensagem anterior — uma escolha que ele não tinha como mapear em nada que
+visse. A segunda é o assunto desta wave.
+
+### §106.1 — ⛔⛔⛔ A fila fechou contra a LISTA ERRADA
+
+O [doc 08 §4](08_formas_por_formula.md) auditou *«quantas das **47** formas do catálogo vetorial o
+módulo já exprime»* e concluiu, com razão, que quase todas são composição. O **§5** do mesmo
+documento declarou então *«A FILA FECHOU»*.
+
+⛔ **O §2.4 daquele documento tem uma SEGUNDA lista** — *«as 3D que o catálogo vetorial nem podia
+ter»*, **quinze** formas, todas classe A — e ela **nunca foi auditada**. A §4 respondeu uma
+pergunta; o §5 fechou contra a resposta dela; a lista das 3D ficou por contar.
+
+⭐⭐⭐ *Uma auditoria responde a lista que leu. Fechar uma fila contra ela exige provar que era a
+fila toda.*
+
+### §106.2 — ⛔⛔ E o argumento que cortou 40 é do tipo errado para um MENU
+
+> *«Já se faz por composição: a engrenagem é um dente mais o modificador radial, que já existe.»*
+
+Isso responde **«o motor consegue exprimir?»**. A pergunta de uma paleta é **«a pessoa ACHA?»**.
+
+⭐⭐⭐ **Uma forma que exige montagem é uma forma que não está no menu.** Quem abre *Add Shape* à
+procura de uma engrenagem não vai modelar um dente e depois descobrir onde vive a repetição radial.
+
+⚠️ **E a lei já estava escrita NESTE módulo**: o gate
+[`field3d_reach_tests`](../../shells/desktop/src/field3d_reach_tests.rs) afirma que *o painel
+oferece exactamente o que o gesto faz*, e apanha os dois lados (botão mudo · gesto inalcançável). A
+auditoria passou ao lado dele.
+
+⚠️ **E o critério de entrada estava escrito no mesmo doc que o violou** — §3.1: *«o critério é
+quantas vezes o artista as quer, e **não o preço**»*, três parágrafos antes de quarenta serem
+cortadas pelo preço.
+
+### §106.3 — O que entrou: 19 → **33 itens**
+
+| família | antes | agora |
+|---|---:|---:|
+| Blocks | 6 | **7** (+ octaedro) |
+| Round | 6 | **10** (+ cone de pontas arredondadas · esfera cortada · cúpula oca · ângulo sólido) |
+| Rings & tubes | 2 | **3** (+ elo de corrente) |
+| ⭐ **Plates** | **1** | **9** (+ engrenagem · cruz · coração · lua · gota · fatia · trapézio · vesica) |
+| de um desenho · importar | 4 | 4 |
+| **total** | **19** | **33** |
+
+⭐ **A engrenagem é UMA forma com um controlo «Teeth»** — como a estrela tem «Points». Não é uma
+montagem.
+
+### §106.4 — ⭐⭐⭐ As fórmulas foram PROVADAS antes de serem ligadas, e isso apanhou três defeitos
+
+Ligar uma primitiva custa **~13 sítios** (o enum · o `kind` · a `ALL` · as dimensões do painel · a
+escrita delas · o limite de filete · o tamanho característico · o raio delimitador · a escala · a
+validação · o despacho do avaliador · o rótulo · a linha do catálogo · o nome na Hierarquia · o
+censo). ⚠️ **Nenhum deles diz se a fórmula está certa.** ⇒ dezanove gates de geometria correram
+**primeiro**, contra pontos onde a resposta se sabe sem a fórmula (um vértice, um pólo, uma
+tangência):
+
+| defeito | como se manifestaria | quem o apanhou |
+|---|---|---|
+| ⛔ **cone de pontas arredondadas: sinal trocado** no termo radial de `t*` | a forma sairia torcida | o equador da esfera de baixo dava `+0,027` num ponto que está na superfície **por construção** — *um mínimo não pode valer mais do que uma amostra do próprio objectivo* |
+| ⛔ **gota: o cone das tangentes abria para CIMA** | o bico ficava fora da peça | o ponto logo abaixo do ápice lia-se fora |
+| ⛔⛔ **gota: o cone era INFINITO para baixo** | a peça tinha um rabo a descer para sempre | e ⚠️ **nenhum gate de silhueta no plano do equador o veria** — foi preciso perguntar por um ponto bem abaixo da bolha |
+
+⚠️ **Mais duas correcções que o red-first fez no GATE e não no produto** — e as duas são do tipo que
+engana na direcção contrária (*um gate errado sobre produto certo custa o mesmo que um bug*): o
+centro da face de um octaedro é o **ponto** `(r/3, r/3, r/3)` e não `(r/√3, …)` (confundi a
+distância com a coordenada), e os dois equadores de um cone de pontas arredondadas **não são
+simétricos** — o da esfera pequena fica **coberto pela parede**, que àquela altura vale `r₂/a > r₂`.
+
+### §106.5 — ⭐⭐ E o CENSO do módulo apanhou mais três, que os gates de fórmula não podiam ver
+
+| defeito | régua que o viu |
+|---|---|
+| ⛔ **coração: o bordo cortava a peça** (`s·1,207` contra os `s·√2` reais) | `the_bounding_radius_contains_the_piece` — o ponto mais afastado está no **lóbulo**, não no eixo |
+| ⛔ **fatia: o campo subia a `1,50`** contra o `1,41` que um nível de inflação comporta | `every_primitive_honours_the_march` — **três** interseções arredondadas encaixadas compõem a inflação de cada uma |
+| ⛔ **todo slider das 14 era INERTE** | `the_biggest_fillet_still_leaves_a_body` — faltavam os braços do `set_dim`, e *um slider que se mexe e não faz nada é a falha mais cara de diagnosticar, porque não deixa rasto* |
+
+⭐ **A cura da fatia é a lei que a estrela já tinha escrito:** o ápice **corta a seco**. Num ângulo
+apertado ele é um **ponto**, e um arco ali não é o que se vê — o que se vê são as duas quinas onde a
+face plana encontra o arco, e essas ficam arredondadas.
+
+### §106.6 — ⭐⭐ O teto de dentes foi MEDIDO, e a ausência de joelho é o resultado
+
+A tabela vive ao lado da constante ([`MAX_GEAR_TEETH`](../../crates/ph2d-field/src/primitive.rs)), e
+a sonda é [`measure_gear_teeth`](../../crates/ph2d-field-eval/tests/measure_gear_teeth.rs).
+
+⛔ **Não há joelho na contagem de nós:** ela é linear de ponta a ponta (`26,7 · 24,0 · 25,0 · 24,4 ·
+24,4 · 23,2 · 24,1 · 23,2` nós por dente). ⇒ *não existe um número onde a física pare*, e escrever
+«o joelho está em N» seria inventar uma medição que a tabela não deu. O teto é um **orçamento**, e
+o doc di-lo.
+
+⚠️ **Aplicar a barra da estrela à letra daria 16** (`0,91×` dela). Fica em **32** (`1,73×`), e a
+razão é a que o próprio doc do [`MAX_STAR_POINTS`] escreve: *«um limite que RETIRA tem de o dizer»* —
+uma engrenagem de 8 dentes (que é onde ela custa o que a estrela custa) mal se lê como uma.
+
+### §106.7 — ⚠️ CINCO ficheiros passaram o tecto de LOC, e os cinco foram partidos
+
+`dims.rs` · `radius.rs` · `lib.rs` da `ph2d-field` · `lib.rs` da `ph2d-field-eval` — pela **sexta**
+vez esta casa paga este corte, e sempre pelo mesmo motivo: as tabelas medidas e as recusas escritas
+ao lado das constantes são o valor, não o peso. ⚠️ **A cura é partir para irmão, nunca uma entrada
+na allowlist**, e o corte é sempre por **responsabilidade**:
+
+| nasceu | responde a |
+|---|---|
+| `dims_table.rs` | *o que cada forma TEM* (o irmão responde *o que uma dimensão É*) |
+| `radius_tables.rs` | *que tamanho a forma tem* e *que esfera a contém* — duas perguntas **opostas**, que é o que torna o corte natural |
+| `validate_primitive.rs` | *o que cada forma RECUSA* |
+| `primitive_tree.rs` | *qual fórmula cada forma usa* |
+
+### §106.8 — ⭐⭐⭐ E a SONDA DE ARESTAS da W104 acusou CINCO das catorze — duas eram defeito, três são a forma
+
+Fechar o `representative()` da sonda de arestas fez ela cobrir as 28. Ela leu, com o filete a metade
+do limite:
+
+| forma | vinco | veredicto |
+|---|---:|---|
+| **10 das 14** | `0,0 %` | limpas à primeira |
+| ⛔ **cruz** | `4,7 %` · 88° | **DEFEITO — curado** |
+| ⛔ **coração** | `2,8 %` · 86° | **DEFEITO — curado** |
+| ⚠️ ângulo sólido · fatia · gota | `10,9 %` · `1,1 %` · `1,9 %` | **a forma, declarada** |
+
+⭐⭐ **Os dois defeitos eram a MESMA pedra que a W104 apanhou no prisma:** *uma divisão de
+responsabilidade copiada de outra forma é uma aresta órfã quando o segundo dono não existe.* As
+quinas verticais dos braços de uma cruz não são **aro** — o `slab_and_walls` arredonda a aresta
+parede↔tampa e não toca no contorno. No `Extrude` isso está certo (o dono é o editor vetorial, com
+`Live Corners`); aqui não há dono nenhum.
+
+⇒ a cura é a **receita da caixa**: encolher uma distância **exacta** e deslocá-la (`rect_round`).
+⚠️ E o coração precisou de mais: o losango era `(|x|+|y|−s)/√2`, um **`max` de quatro semiespaços**,
+e dilatar isso é **inerte** (a lei da W104). Num referencial **rodado 45°** a mesma região é um
+rectângulo exacto — e a rotação é uma isometria, então a distância é a mesma. `4,7 → 0,0` e
+`2,8 → 0,0`.
+
+### §106.9 — ⚠️ As TRÊS que sobram têm um PONTO, e um ponto não é uma aresta
+
+Um ângulo sólido, uma fatia de tarte e uma gota **têm um ápice** — é o que elas são.
+
+⭐⭐ **A medição prova que é o ápice**, afiando a abertura do ângulo sólido:
+
+| abertura | vinco | pior ângulo |
+|---|---:|---:|
+| `0,3 rad` | **27,5 %** | 83,8° |
+| `0,7 rad` | **10,9 %** | 63,2° |
+
+⛔ **E o CONE FECHADO (`top = 0`) lê `0,0 %`** — medido como controlo. Ele também tem ápice, e escapa
+porque o dele cai **em cima da laje**: a interseção arredondada do `slab_and_walls` apanha-o de
+caminho. O do ângulo sólido está na origem, sem segunda superfície com que o cruzar. ⇒ *não é que um
+ápice não se arredonde; é que se arredonda quando há algo com que o cruzar.*
+
+⛔ A cura não existe neste vocabulário: dilatar o semiespaço do cone é **inerte**, e o `offset` dele
+não é um arco porque `ρ·cos θ − z·sin θ` **subestima** perto do ápice.
+
+### §106.10 — ⚠️ E a GOTA tem uma junção TANGENTE: lisa ao olho, DESCONTÍNUA na curvatura
+
+A régua de curvatura (a que vê o risco no sombreado) leu `4,46` contra uma barra de `2,0`. A causa é
+que uma junção tangente é **G1 e não G2**: a curvatura salta de `1/r` para `0` de um lado ao outro do
+ponto de tangência — o problema clássico de continuidade de todo CAD.
+
+⛔⛔ **A cura óbvia foi MEDIDA e REJEITADA.** A nota do código dizia *«arredondar ali abriria um sulco
+onde não há aresta»*, sem número; o A/B diz que ela é **pior ou igual em toda a faixa**:
+
+| fracção do filete | `min` cru | união arredondada |
+|---|---:|---:|
+| 0,10 | **4,46** | 5,26 |
+| 0,20 | **3,12** | 3,73 |
+| 0,50 | **3,46** | 3,51 |
+
+⛔ **E não é o teto do filete:** varrendo de `0,1` a `0,999` do limite a quebra fica entre `3,12` e
+`4,46` em **toda** a faixa. *Um defeito que não se move com o knob não é uma calibração.*
+
+### §106.11 — ⚠️ As duas tolerâncias nascem COM o censo de obsolescência
+
+O `CLAUDE.md` §5.0 é explícito: *uma catraca sem censo de obsolescência não desce, vira licença*. As
+duas listas (`APEX_EXCEPTION`, `TANGENT_JOIN_EXCEPTION`) nascem com o gate irmão que pergunta, a cada
+corrida, se cada entrada **ainda** estoura a barra normal **e** se continua abaixo da folga que
+declara. Uma que deixe de estourar tem de ser **apagada**.
+
+⚠️ **E as folgas saem do GATE, não da sonda:** a sonda amostra `8192` pontos e o gate `2048×4`, e a
+fatia lê `1,1 %` numa escala e `2,57 %` na outra. *Uma folga calibrada no instrumento errado descreve
+outra coisa.*
+
+### §106.12 — ⚠️ Um OOM deixou um `.rlib` de tamanho ZERO no `target/`
+
+A sonda pesada foi morta pelo kernel (`exit 137`) e a corrida seguinte deu
+`failed to mmap file … memory map must have a non-zero length` — que **se lê como um erro de código**
+e não é. ⇒ `find target/debug/deps -size 0 -delete`, e o comando pesado passa a ir por
+`bash scripts/ph2d-run.sh` (o scope com teto de RAM que o `CLAUDE.md` §2 manda usar). É a irmã da
+memória *«disco cheio corrompe `.o` → mold SIGBUS»*.
+
+**Smoke:** cenas **`=12`** (os seis sólidos) e **`=13`** (as oito chapas), mais a paleta (`A`).

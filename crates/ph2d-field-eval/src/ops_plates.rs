@@ -44,6 +44,24 @@ fn disco_em(cx: f64, cy: f64, r: f64) -> Tree {
     ) - Tree::constant(r)
 }
 
+/// Um rectângulo 2D **com as quatro quinas arredondadas** em `r`.
+///
+/// ⚠️⚠️ **A receita é a da caixa, e é a ÚNICA que funciona aqui:** encolher uma distância **exacta**
+/// e deslocá-la. A W104 mediu que `offset` sobre um `max` de semiespaços é **inerte** — dilatar um
+/// semiespaço dá outro semiespaço, sem canto para arredondar. O [`rect`] é exacto, logo dilatá-lo
+/// **é** o rectângulo de quinas redondas.
+///
+/// ⭐ **Existe porque a sonda de arestas o exigiu:** a cruz lia `4,7 %` da superfície sobre um vinco
+/// de `88°` com o filete a metade do limite. As quinas verticais dos braços estavam **órfãs** — o
+/// `slab_and_walls` arredonda o **aro** (parede↔tampa) e não as arestas do contorno. É a mesma
+/// pedra que a W104 apanhou no prisma: *uma divisão de responsabilidade copiada de outra forma é uma
+/// aresta órfã quando o segundo dono não existe* (no `Extrude` o dono é o editor vetorial; aqui não
+/// há nenhum).
+fn rect_round(hx: f64, hy: f64, r: f64) -> Tree {
+    let r = r.min(hx * 0.999).min(hy * 0.999).max(0.0);
+    crate::ops::offset(&rect(hx - r, hy - r), r)
+}
+
 /// Um rectângulo 2D de meias-extensões `(hx, hy)` — distância **exacta**, dentro e fora.
 fn rect(hx: f64, hy: f64) -> Tree {
     let dx = Tree::x().abs() - Tree::constant(hx);
@@ -122,8 +140,10 @@ pub fn sd_gear(
 /// largura do braço é um valor, e com duas caixas são dois que têm de concordar. E as quatro quinas
 /// **côncavas** arredondam de uma vez, com o mesmo `round` das convexas.
 pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64) -> Tree {
-    let horizontal = rect(arm, width);
-    let vertical = rect(width, arm);
+    // ⚠️ **Os braços chegam JÁ arredondados** — ver [`rect_round`]: as oito quinas verticais deles
+    // não são aro, e o `slab_and_walls` não lhes toca.
+    let horizontal = rect_round(arm, width, round);
+    let vertical = rect_round(width, arm, round);
     slab_and_walls(
         &union(&horizontal, &vertical, Blended::Exact(round)),
         half_height,
@@ -140,9 +160,28 @@ pub fn sd_cross(arm: f64, width: f64, half_height: f64, round: f64) -> Tree {
 /// ⚠️ **A cova entre os dois lóbulos é uma quina CÔNCAVA**, e é ela que dá o carácter da forma — por
 /// isso a união é arredondada e não crua.
 pub fn sd_heart(size: f64, half_height: f64, round: f64) -> Tree {
-    // O losango: o quadrado rodado 45°, `|x| + |y| <= size`, normalizado.
-    let losango = (Tree::x().abs() + Tree::y().abs() - Tree::constant(size))
-        * Tree::constant(1.0 / 2.0_f64.sqrt());
+    // ⚠️⚠️ **O losango é um QUADRADO RODADO, e não um `|x|+|y|` dobrado** — e a diferença é o
+    // filete. A forma dobrada é um `max` de quatro semiespaços, e a W104 mediu que dilatar isso é
+    // **inerte**: as quatro quinas ficavam vivas (a sonda leu `2,8 %` da superfície sobre um vinco
+    // de `86°`). Num referencial rodado 45° a mesma região é um **rectângulo exacto**, e aí a
+    // receita da caixa funciona.
+    //
+    // ⭐ A rotação é uma isometria, então a distância no referencial rodado É a distância.
+    let inv = 1.0 / 2.0_f64.sqrt();
+    let (rx, ry) = (
+        (Tree::x() + Tree::y()) * Tree::constant(inv),
+        (Tree::x() - Tree::y()) * Tree::constant(inv),
+    );
+    let lado = size * inv;
+    let r = round.min(lado * 0.5);
+    let losango = crate::ops::offset(
+        &{
+            let dx = rx.abs() - Tree::constant(lado - r);
+            let dy = ry.abs() - Tree::constant(lado - r);
+            length2(&dx.max(0.0), &dy.max(0.0)) + dx.max(dy).min(0.0)
+        },
+        r,
+    );
     // ⭐ A aresta de cima do losango vai de `(−s, 0)` a `(0, s)`: mede `s·√2`, logo o
     // semicírculo assente nela tem raio `s/√2` e centro no ponto médio `(±s/2, s/2)`.
     let r = size / 2.0_f64.sqrt();
@@ -217,10 +256,20 @@ pub fn sd_pie(radius: f64, angle: f64, half_height: f64, round: f64) -> Tree {
     // Os dois semiplanos que limitam o sector, com a bissectriz em `+Y`.
     let e1 = Tree::x() * Tree::constant(a.cos()) - Tree::y() * Tree::constant(a.sin());
     let e2 = Tree::x() * Tree::constant(-a.cos()) - Tree::y() * Tree::constant(a.sin());
+    // ⚠️⚠️ **O ÁPICE CORTA A SECO** — e o censo do módulo é que o disse: com ele arredondado o
+    // campo subia a `1,50` por unidade contra o `1,41` que a marcha de um nível de inflação
+    // comporta, e o traçador **atravessaria a superfície**.
+    //
+    // ⭐ A causa é o encaixe: três interseções arredondadas uma dentro da outra (os dois
+    // semiplanos · o disco · a laje) compõem a inflação de cada uma. É a mesma lei que a
+    // [`crate::ops::sd_star`] já tinha escrito para o corte de sector dela, e por uma razão de
+    // desenho igualmente boa: num ângulo apertado o ápice é um **ponto**, e um arco ali não é o que
+    // se vê — o que se vê são as duas quinas onde a face plana encontra o arco, e essas ficam
+    // arredondadas.
     let sector = if a <= std::f64::consts::FRAC_PI_2 {
-        intersection(&e1, &e2, Blended::Exact(round))
+        e1.max(e2)
     } else {
-        union(&e1, &e2, Blended::Exact(round))
+        e1.min(e2)
     };
     slab_and_walls(
         &intersection(&d, &sector, Blended::Exact(round)),

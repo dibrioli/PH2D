@@ -519,6 +519,190 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(3),
             )
         }
+        12 => {
+            println!(
+                "[field-smoke] cena 12 — OS SEIS SÓLIDOS DA W106: octaedro · cone de pontas \
+                 arredondadas · esfera cortada · cúpula oca · elo de corrente · ângulo sólido"
+            );
+            // ⚠️ **Em fileira, com a MESMA escala** — é a disposição que deixa comparar formas, e a
+            // razão de ela existir é a mesma da cena 11: um smoke que mostra uma forma de cada vez
+            // não responde *«o catálogo está cheio?»*, que é a pergunta desta wave.
+            let at = |i: f32| Xform {
+                translation: [(i - 2.5) * 0.62, 0.0, 0.0],
+                ..Xform::IDENTITY
+            };
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Octahedron {
+                            radius: 0.28,
+                            round: 0.03,
+                        },
+                        at(0.0),
+                    ),
+                    leaf(
+                        Primitive::RoundCone {
+                            bottom: 0.20,
+                            top: 0.08,
+                            half_height: 0.22,
+                        },
+                        at(1.0),
+                    ),
+                    leaf(
+                        Primitive::CutSphere {
+                            radius: 0.27,
+                            cut: 0.10,
+                            round: 0.03,
+                        },
+                        at(2.0),
+                    ),
+                    leaf(
+                        Primitive::HollowDome {
+                            radius: 0.27,
+                            cut: 0.04,
+                            thickness: 0.05,
+                            round: 0.012,
+                        },
+                        at(3.0),
+                    ),
+                    leaf(
+                        Primitive::Link {
+                            major: 0.16,
+                            minor: 0.06,
+                            length: 0.14,
+                        },
+                        at(4.0),
+                    ),
+                    leaf(
+                        Primitive::SolidAngle {
+                            radius: 0.30,
+                            angle: 0.6,
+                            round: 0.03,
+                        },
+                        at(5.0),
+                    ),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![
+                            NodeId(0),
+                            NodeId(1),
+                            NodeId(2),
+                            NodeId(3),
+                            NodeId(4),
+                            NodeId(5),
+                        ],
+                    ),
+                ],
+                NodeId(6),
+            )
+        }
+        13 => {
+            println!(
+                "[field-smoke] cena 13 — AS OITO CHAPAS DA W106: engrenagem · cruz · coração · \
+                 lua · gota · fatia · trapézio · vesica"
+            );
+            let at = |i: f32| Xform {
+                translation: [
+                    (i % 4.0 - 1.5) * 0.62,
+                    (if i < 4.0 { 0.34 } else { -0.34 }),
+                    0.0,
+                ],
+                ..Xform::IDENTITY
+            };
+            FieldDoc::new(
+                vec![
+                    leaf(
+                        Primitive::Gear {
+                            teeth: 12,
+                            root: 0.19,
+                            outer: 0.27,
+                            tooth: 0.45,
+                            half_height: 0.07,
+                            round: 0.012,
+                        },
+                        at(0.0),
+                    ),
+                    leaf(
+                        Primitive::Cross {
+                            arm: 0.27,
+                            width: 0.08,
+                            half_height: 0.07,
+                            round: 0.02,
+                        },
+                        at(1.0),
+                    ),
+                    leaf(
+                        Primitive::Heart {
+                            size: 0.17,
+                            half_height: 0.07,
+                            round: 0.02,
+                        },
+                        at(2.0),
+                    ),
+                    leaf(
+                        Primitive::Moon {
+                            radius: 0.27,
+                            bite: 0.24,
+                            offset: 0.13,
+                            half_height: 0.07,
+                            round: 0.012,
+                        },
+                        at(3.0),
+                    ),
+                    leaf(
+                        Primitive::Drop {
+                            radius: 0.14,
+                            height: 0.36,
+                            half_height: 0.07,
+                            round: 0.02,
+                        },
+                        at(4.0),
+                    ),
+                    leaf(
+                        Primitive::Pie {
+                            radius: 0.27,
+                            angle: 1.0,
+                            half_height: 0.07,
+                            round: 0.02,
+                        },
+                        at(5.0),
+                    ),
+                    leaf(
+                        Primitive::Trapezoid {
+                            bottom: 0.27,
+                            top: 0.12,
+                            half_width: 0.17,
+                            half_height: 0.07,
+                            round: 0.02,
+                        },
+                        at(6.0),
+                    ),
+                    leaf(
+                        Primitive::Vesica {
+                            radius: 0.28,
+                            offset: 0.15,
+                            half_height: 0.07,
+                            round: 0.012,
+                        },
+                        at(7.0),
+                    ),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![
+                            NodeId(0),
+                            NodeId(1),
+                            NodeId(2),
+                            NodeId(3),
+                            NodeId(4),
+                            NodeId(5),
+                            NodeId(6),
+                            NodeId(7),
+                        ],
+                    ),
+                ],
+                NodeId(8),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

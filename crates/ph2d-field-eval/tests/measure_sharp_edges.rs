@@ -513,6 +513,91 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Ellipsoid => Primitive::Ellipsoid {
             radii: [0.5, 0.2, 0.35],
         },
+        // ─────────────────────────── W106 ───────────────────────────
+        // ⚠️ **Nascem com `round: 0,0`**, como todas as desta sonda: a coluna «SEM filete» é a
+        // referência contra a qual as outras duas se leem, e uma peça que já chegasse arredondada
+        // mediria a diferença errada.
+        PrimitiveKind::Octahedron => Primitive::Octahedron {
+            radius: 0.45,
+            round: 0.0,
+        },
+        PrimitiveKind::RoundCone => Primitive::RoundCone {
+            bottom: 0.35,
+            top: 0.14,
+            half_height: 0.3,
+        },
+        PrimitiveKind::CutSphere => Primitive::CutSphere {
+            radius: 0.45,
+            cut: 0.15,
+            round: 0.0,
+        },
+        PrimitiveKind::HollowDome => Primitive::HollowDome {
+            radius: 0.45,
+            cut: 0.1,
+            thickness: 0.1,
+            round: 0.0,
+        },
+        PrimitiveKind::Link => Primitive::Link {
+            major: 0.3,
+            minor: 0.1,
+            length: 0.25,
+        },
+        PrimitiveKind::SolidAngle => Primitive::SolidAngle {
+            radius: 0.45,
+            angle: 0.7,
+            round: 0.0,
+        },
+        PrimitiveKind::Gear => Primitive::Gear {
+            teeth: 7,
+            root: 0.32,
+            outer: 0.45,
+            tooth: 0.45,
+            half_height: 0.15,
+            round: 0.0,
+        },
+        PrimitiveKind::Cross => Primitive::Cross {
+            arm: 0.45,
+            width: 0.14,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Heart => Primitive::Heart {
+            size: 0.3,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Moon => Primitive::Moon {
+            radius: 0.45,
+            bite: 0.4,
+            offset: 0.2,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Drop => Primitive::Drop {
+            radius: 0.22,
+            height: 0.55,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Pie => Primitive::Pie {
+            radius: 0.45,
+            angle: 1.0,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Trapezoid => Primitive::Trapezoid {
+            bottom: 0.45,
+            top: 0.2,
+            half_width: 0.3,
+            half_height: 0.12,
+            round: 0.0,
+        },
+        PrimitiveKind::Vesica => Primitive::Vesica {
+            radius: 0.45,
+            offset: 0.25,
+            half_height: 0.12,
+            round: 0.0,
+        },
     })
 }
 
@@ -638,6 +723,86 @@ fn where_the_creases_are() {
 /// dez formas com filete, e **`1,4 %` na estrela** — o vértice de 3 vias onde a quina lateral
 /// encontra o aro, o único sítio em que dois filetes se cruzam num ângulo agudo. ⚠️ O ângulo lá é
 /// `35°`, e não `90°`: é uma mistura mais **apertada**, não uma aresta viva.
+/// ⛔⛔ **AS TRÊS QUE TÊM UM PONTO, E UM PONTO NÃO É UMA ARESTA** (W106) — a tolerância declarada,
+/// com o número de cada uma e o mecanismo.
+///
+/// # Porque elas não passam, e porque isso não é um defeito por curar
+///
+/// As três têm um **ápice**: um vértice cónico onde a superfície encontra a si própria. É o que um
+/// cone de gelado, uma fatia de tarte e uma gota **são** — tirá-lo dava outra forma.
+///
+/// ⭐⭐ **A medição prova que é o ápice, e não uma aresta órfã:** afiar a abertura do ângulo sólido
+/// piora o número de forma monótona, exactamente como a nitidez do ponto:
+///
+/// | abertura | % da superfície em vinco | pior ângulo |
+/// |---|---:|---:|
+/// | `0,3 rad` | **27,5 %** | 83,8° |
+/// | `0,7 rad` (o representante) | **10,9 %** | 63,2° |
+///
+/// ⚠️ **E o CONE FECHADO (`top = 0`) lê `0,0 %`** — medido, como controlo. Ele também tem ápice, e
+/// escapa porque o dele cai **em cima da laje**: a interseção arredondada do
+/// [`crate::ops::slab_and_walls`] apanha-o de caminho. O do ângulo sólido está na origem, onde não
+/// há segunda superfície com que o intersectar. ⇒ *não é que um ápice não se arredonde — é que se
+/// arredonda quando há algo com que o cruzar, e aqui não há.*
+///
+/// ⛔ **A cura conhecida não existe neste vocabulário:** dilatar o semiespaço do cone é **inerte**
+/// (a lei da W104), e o `offset` dele não é um arco porque `ρ·cos θ − z·sin θ` **subestima** perto
+/// do ápice (para um ponto no eixo abaixo dele, ela dá `−z·sin θ` onde a distância é `|z|`).
+///
+/// # ⚠️ A catraca, e a metade que a impede de virar LICENÇA
+///
+/// Esta lista **só encolhe**. E o `CLAUDE.md` §5.0 é explícito: *uma catraca sem censo de
+/// obsolescência não desce, vira licença* — por isso o gate irmão
+/// [`the_apex_exception_list_has_no_stale_entries`] pergunta, a cada corrida, se cada entrada
+/// **ainda** estoura a barra. Uma que deixe de estourar tem de ser **apagada**.
+const APEX_EXCEPTION: [(&str, f64); 3] = [
+    // ⚠️ **As folgas saem do que o GATE mede**, e não da tabela da sonda: ela amostra `8192`
+    // pontos e o gate `2048×4`, e a `pie` lê `1,1 %` numa escala e `2,57 %` na outra.
+    // *Uma folga calibrada no instrumento errado descreve outra coisa.*
+    ("solid_angle", 11.0),
+    ("drop", 2.3),
+    ("pie", 2.8),
+];
+
+/// A folga desta forma, se ela for uma das do ápice.
+fn apex_slack(key: &str) -> Option<f64> {
+    APEX_EXCEPTION
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR:** cada entrada do [`APEX_EXCEPTION`] tem de
+/// **ainda** estourar a barra normal, e tem de ficar **abaixo** da folga que declara.
+///
+/// ⚠️ Sem isto, uma entrada cuja causa foi curada fica lá para sempre a autorizar uma aresta viva
+/// que já não existe — e a próxima forma com o mesmo nome herda a licença. Medido nesta casa em
+/// 2026-08-30: a lista de folgas de LOC por ficheiro não tinha censo, e acusou **três** entradas
+/// obsoletas na primeira corrida que o teve.
+#[test]
+fn the_apex_exception_list_has_no_stale_entries() {
+    for (nome, folga) in APEX_EXCEPTION {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let p = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let meio = with_round(&p, 0.5).unwrap_or_else(|| {
+            panic!("«{nome}» deixou de ter filete — a entrada não descreve nada")
+        });
+        let (depois, _, _) = probe_with(&meio, 2048, 4);
+        println!("  [apex] {nome}: {depois:.2} % (folga declarada {folga:.2} %)");
+        assert!(
+            depois >= 2.0,
+            "«{nome}» já cumpre a barra normal ({depois:.1} % < 2 %) — APAGUE a entrada dele da              lista, senão ela vira licença para a próxima forma"
+        );
+        assert!(
+            depois < folga,
+            "«{nome}» piorou para {depois:.1} %, acima da folga declarada de {folga:.1} % — a              catraca SÓ ENCOLHE"
+        );
+    }
+}
+
 #[test]
 fn the_fillet_reaches_every_edge_of_every_shape() {
     let mut com_aresta = 0;
@@ -660,8 +825,11 @@ fn the_fillet_reaches_every_edge_of_every_shape() {
             continue;
         };
         let (depois, pior, _) = probe_with(&meio, 2048, 4);
+        // ⚠️ A barra é `2 %` para toda forma, **menos** as que têm um ápice declarado — ver
+        // [`APEX_EXCEPTION`], e o censo de obsolescência que a impede de virar licença.
+        let barra = apex_slack(k.key()).unwrap_or(2.0);
         assert!(
-            depois < 2.0,
+            depois < barra,
             "«{}»: com o filete a metade do limite ainda há {depois:.1} % da superfície sobre um \
              vinco (pior {pior:.1}°) — o `round` não alcança alguma aresta desta forma",
             k.key()
@@ -746,6 +914,100 @@ fn the_valley_of_a_star_meets_the_cap_without_a_crease() {
 /// Medido no filete máximo: `0,04`–`0,47` em sete formas, e a estrela em **`1,19`** (era **`3,71`**
 /// antes de a ponta dela ser compensada). A barra é `2,0` — abaixo do defeito curado com `1,9×` de
 /// folga, e acima de toda forma boa com `4×`.
+/// ⛔⛔ **A JUNÇÃO TANGENTE: lisa ao olho, DESCONTÍNUA na curvatura** (W106).
+///
+/// # O mecanismo, e porque ele não é um defeito por curar
+///
+/// A gota é uma bolha unida a duas **tangentes**. Uma junção tangente é **G1** — a normal é
+/// contínua, e é por isso que a silhueta não tem quina — mas **não é G2**: a curvatura salta de
+/// `1/r` (o círculo) para `0` (a recta), de um lado ao outro do ponto de tangência. ⭐ Esta régua
+/// mede exactamente esse salto, e é o problema clássico de continuidade que todo CAD tem.
+///
+/// # ⛔⛔ E a cura óbvia foi MEDIDA e REJEITADA
+///
+/// A nota do código dizia *«arredondar ali abriria um sulco onde não há aresta»* — sem número. O
+/// A/B (`min` cru contra [`crate::ops::union`] com [`crate::ops::Blended::Exact`]) diz que ela é
+/// **pior ou igual em toda a faixa**:
+///
+/// | fracção do filete | `min` cru | união arredondada |
+/// |---|---:|---:|
+/// | 0,10 | **4,46** | 5,26 |
+/// | 0,20 | **3,12** | 3,73 |
+/// | 0,30 | **3,34** | 3,58 |
+/// | 0,50 | **3,46** | 3,51 |
+/// | 0,999 | **4,46** | 4,34 |
+///
+/// ⚠️ **E não é o teto do filete:** a sonda [`measure_drop_round_limit`] varreu de `0,1` a `0,999`
+/// do limite e a quebra fica entre `3,12` e `4,46` em **toda** a faixa. *Um defeito que não se move
+/// com o knob não é uma calibração.*
+///
+/// ⚠️ **A catraca SÓ ENCOLHE**, e o censo abaixo impede-a de virar licença.
+const TANGENT_JOIN_EXCEPTION: [(&str, f64); 1] = [("drop", 4.6)];
+
+fn tangent_join_slack(key: &str) -> Option<f64> {
+    TANGENT_JOIN_EXCEPTION
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **O censo de obsolescência da lista acima** — o irmão do
+/// [`the_apex_exception_list_has_no_stale_entries`], e pela mesma razão.
+#[test]
+fn the_tangent_join_exception_list_has_no_stale_entries() {
+    for (nome, folga) in TANGENT_JOIN_EXCEPTION {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let p = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let q = with_max_round(&p).unwrap_or_else(|| {
+            panic!("«{nome}» deixou de ter filete — a entrada não descreve nada")
+        });
+        let (_, media) = curvature_break(&q, 2048);
+        println!("  [tangente] {nome}: {media:.2} (folga {folga:.2})");
+        assert!(
+            media >= 2.0,
+            "«{nome}» já cumpre a barra normal ({media:.2} < 2,0) — APAGUE a entrada dele"
+        );
+        assert!(
+            media < folga,
+            "«{nome}» piorou para {media:.2}, acima da folga de {folga:.2} — a catraca SÓ ENCOLHE"
+        );
+    }
+}
+
+/// ⭐ **SONDA: onde é que o filete da GOTA deixa de ser um filete?**
+///
+/// ⚠️ Ela é a única forma cuja quebra de curvatura **PIORA** com mais filete (`3,46` a metade,
+/// `4,46` no máximo), e isso é o sintoma de um limite generoso demais: acima de certo raio o
+/// arredondamento deixa de acertar numa aresta e passa a **reformar a bolha**.
+///
+/// ⇒ o teto sai daqui, e não de um número escolhido.
+#[test]
+#[ignore = "sonda: escolhe o teto de filete da gota"]
+fn measure_drop_round_limit() {
+    let base = Primitive::Drop {
+        radius: 0.22,
+        height: 0.55,
+        half_height: 0.12,
+        round: 0.0,
+    };
+    let limite = ph2d_field::round_limit(&base).expect("a gota tem filete");
+    println!(
+        "\n  teto actual = {limite:.4}\n{:>10} {:>10} {:>14}",
+        "fracao", "raio", "quebra media"
+    );
+    for f in [0.1_f32, 0.2, 0.3, 0.4, 0.5, 0.7, 0.999] {
+        let Some(q) = with_round(&base, f) else {
+            continue;
+        };
+        let (_, media) = curvature_break(&q, 2048);
+        println!("{f:>10.3} {:>10.4} {media:>14.2}", limite * f);
+    }
+    println!();
+}
+
 #[test]
 fn the_fillet_leaves_no_curvature_ridge() {
     let (mut medidas, mut maior) = (0, 0.0_f64);
@@ -758,8 +1020,11 @@ fn the_fillet_leaves_no_curvature_ridge() {
         };
         let (_, media) = curvature_break(&q, 2048);
         maior = maior.max(media);
+        // ⚠️ A barra é `2,0` para toda forma, **menos** a que tem uma junção TANGENTE declarada —
+        // ver [`TANGENT_JOIN_EXCEPTION`], e o censo que a impede de virar licença.
+        let barra = tangent_join_slack(k.key()).unwrap_or(2.0);
         assert!(
-            media < 2.0,
+            media < barra,
             "«{}»: a quebra de curvatura média é {media:.2} — o filete deixa uma crista, e ela \
              vê-se como um risco no sombreado mesmo sem aresta nenhuma",
             k.key()

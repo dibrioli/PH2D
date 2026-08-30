@@ -212,7 +212,36 @@ não reconferir não é tempo, é construir o que já existe.*
 
 ---
 
-## §5 — ⭐⭐⭐ A FILA FECHOU (W103, 29/08)
+## §5 — ⛔⛔⛔ «A FILA FECHOU» — e ela fechou contra a LISTA ERRADA (corrigido em 30/08)
+
+> ⚠️ **Esta seção afirmou, durante um dia, que a fila estava fechada. Estava errada, e o dono do
+> produto foi quem a corrigiu:** *«Não finalizamos de construir as formas do catálogo. temos poucas
+> formas»* (Enio, 30/08, com a foto da paleta a 19 itens e a família *Plates* com **uma**).
+>
+> **As duas causas, e as duas são instrutivas:**
+>
+> 1. ⛔ **Ela fechou contra a lista errada.** A [§4](#§4) auditou *«quantas das **47** do catálogo
+>    vetorial»* — e o [§2.4](#§24) deste mesmo documento tem uma **segunda** lista, *«as 3D que o
+>    catálogo vetorial nem podia ter»*, **quinze** formas, todas classe A, que **nunca foi
+>    auditada**. O §5 fechou contra a resposta da §4 e deu a fila por terminada.
+>    *Uma auditoria responde a lista que leu; fechar uma fila contra ela exige provar que era a fila toda.*
+>
+> 2. ⛔⛔ **O argumento que cortou 40 é do tipo errado para um MENU.** *«Já se faz por composição»*
+>    responde **«o motor consegue exprimir?»**; a pergunta de uma paleta é **«a pessoa ACHA?»**.
+>    Quem abre *Add Shape* à procura de uma engrenagem não quer descobrir que precisa de modelar um
+>    dente e encontrar o modificador radial. ⚠️ **A lei já estava escrita neste módulo** — o gate
+>    [`field3d_reach_tests`](../../shells/desktop/src/field3d_reach_tests.rs) afirma que *o painel
+>    oferece exactamente o que o gesto faz* — e a auditoria passou ao lado dela.
+>    ⚠️ E o critério de entrada estava escrito na **§3.1 deste mesmo doc**: *«o critério é quantas
+>    vezes o artista as quer, e **não o preço**»* — três parágrafos antes de quarenta serem cortadas
+>    pelo preço.
+>
+> ⇒ **a W106 acrescenta 14 formas** e leva a paleta de 19 para **33 itens**. O mecanismo de cada uma
+> vive em [`ops_solids.rs`](../../crates/ph2d-field-eval/src/ops_solids.rs) e
+> [`ops_plates.rs`](../../crates/ph2d-field-eval/src/ops_plates.rs); a wave está no
+> [doc 06 §105](06_resultados_cena_e_gizmo.md).
+
+## §5-hist — O que a W103 de facto fechou (29/08)
 
 Os três itens que sobravam do §4.2 estão construídos, e o que fica de fora fica **com o motivo**:
 

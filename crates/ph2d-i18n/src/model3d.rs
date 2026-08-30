@@ -63,6 +63,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.model3d.add.star" => "Star",
         "panel.model3d.add.box_frame" => "Box Frame",
         "panel.model3d.add.ellipsoid" => "Ellipsoid",
+        "panel.model3d.add.octahedron" => "Octahedron",
+        "panel.model3d.add.round_cone" => "Round Cone",
+        "panel.model3d.add.cut_sphere" => "Cut Sphere",
+        "panel.model3d.add.hollow_dome" => "Hollow Dome",
+        "panel.model3d.add.link" => "Chain Link",
+        "panel.model3d.add.solid_angle" => "Solid Angle",
+        "panel.model3d.add.gear" => "Gear",
+        "panel.model3d.add.cross" => "Cross",
+        "panel.model3d.add.heart" => "Heart",
+        "panel.model3d.add.moon" => "Moon",
+        "panel.model3d.add.drop" => "Drop",
+        "panel.model3d.add.pie" => "Pie",
+        "panel.model3d.add.trapezoid" => "Trapezoid",
+        "panel.model3d.add.vesica" => "Vesica",
         // ⭐ A ESCULTURA. ⚠️ As reticências são a convenção de "isto abre um diálogo" — as outras
         // criam na hora, esta pergunta qual arquivo, e o rótulo tem de dizer a diferença antes do
         // clique.
@@ -173,6 +187,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ **"Inner Radius" e não "Ratio"**: o documento guarda um raio, e um rótulo de razão
         // prometeria um número entre 0 e 1 que o campo não é.
         "field.dim.radius_inner" => "Inner Radius",
+        "field.dim.radius_outer" => "Outer Radius",
+        "field.dim.teeth" => "Teeth",
+        "field.dim.tooth" => "Tooth Width",
+        "field.dim.cut" => "Cut",
+        "field.dim.size" => "Size",
+        "field.dim.bite" => "Bite",
+        "field.dim.offset" => "Offset",
+        "field.dim.arm" => "Arm",
+        "field.dim.half_width" => "Half Width",
         // ⚠️ Em GRAUS na cabeça do artista, mas o documento guarda radianos — o painel mostra o
         // número cru, e o rótulo não promete unidade nenhuma.
         "field.dim.angle" => "Sweep",

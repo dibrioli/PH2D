@@ -126,6 +126,98 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
         PrimitiveKind::Ellipsoid => Primitive::Ellipsoid {
             radii: [0.5, 0.2, 0.35],
         },
+        // ─────────────────────────── W106 ───────────────────────────
+        // ⚠️ **Cada representante escolhe o caso que EXERCITA a fórmula**, não o mais bonito: um
+        // default cómodo esconde exactamente o termo que a forma acrescentou.
+        PrimitiveKind::Octahedron => Primitive::Octahedron {
+            radius: 0.45,
+            round: 0.06,
+        },
+        // ⚠️ **Raios DIFERENTES**: com dois iguais ele degenera na cápsula, e o termo tangente —
+        // que é tudo o que esta forma acrescenta — nunca seria exercitado.
+        PrimitiveKind::RoundCone => Primitive::RoundCone {
+            bottom: 0.35,
+            top: 0.14,
+            half_height: 0.3,
+        },
+        // ⚠️ Corte ACIMA do equador: em `cut = 0` a tampa é o disco maior e o caso é o mais fácil.
+        PrimitiveKind::CutSphere => Primitive::CutSphere {
+            radius: 0.45,
+            cut: 0.15,
+            round: 0.05,
+        },
+        PrimitiveKind::HollowDome => Primitive::HollowDome {
+            radius: 0.45,
+            cut: 0.1,
+            thickness: 0.1,
+            round: 0.03,
+        },
+        PrimitiveKind::Link => Primitive::Link {
+            major: 0.3,
+            minor: 0.1,
+            length: 0.25,
+        },
+        PrimitiveKind::SolidAngle => Primitive::SolidAngle {
+            radius: 0.45,
+            angle: 0.7,
+            round: 0.05,
+        },
+        // ⚠️ **Sete dentes**, que é ímpar pela razão da estrela: com um par, metade dos flancos cai
+        // sobre a outra metade por simetria e uma costura entre dentes vizinhos nunca seria varrida
+        // em ângulo genérico.
+        PrimitiveKind::Gear => Primitive::Gear {
+            teeth: 7,
+            root: 0.32,
+            outer: 0.45,
+            tooth: 0.45,
+            half_height: 0.15,
+            round: 0.02,
+        },
+        PrimitiveKind::Cross => Primitive::Cross {
+            arm: 0.45,
+            width: 0.14,
+            half_height: 0.12,
+            round: 0.03,
+        },
+        PrimitiveKind::Heart => Primitive::Heart {
+            size: 0.3,
+            half_height: 0.12,
+            round: 0.03,
+        },
+        PrimitiveKind::Moon => Primitive::Moon {
+            radius: 0.45,
+            bite: 0.4,
+            offset: 0.2,
+            half_height: 0.12,
+            round: 0.02,
+        },
+        PrimitiveKind::Drop => Primitive::Drop {
+            radius: 0.22,
+            height: 0.55,
+            half_height: 0.12,
+            round: 0.03,
+        },
+        PrimitiveKind::Pie => Primitive::Pie {
+            radius: 0.45,
+            angle: 1.0,
+            half_height: 0.12,
+            round: 0.03,
+        },
+        // ⚠️ **Bases DIFERENTES**: iguais seria uma caixa, e o flanco inclinado — o `√(1+m²)` que
+        // esta forma tem — não seria exercitado.
+        PrimitiveKind::Trapezoid => Primitive::Trapezoid {
+            bottom: 0.45,
+            top: 0.2,
+            half_width: 0.3,
+            half_height: 0.12,
+            round: 0.03,
+        },
+        PrimitiveKind::Vesica => Primitive::Vesica {
+            radius: 0.45,
+            offset: 0.25,
+            half_height: 0.12,
+            round: 0.02,
+        },
     })
 }
 

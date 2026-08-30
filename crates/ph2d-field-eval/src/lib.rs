@@ -59,87 +59,6 @@ pub fn compile(doc: &FieldDoc) -> Tree {
     built[doc.root().0 as usize].clone()
 }
 
-pub(crate) fn primitive(p: &Primitive) -> Tree {
-    match *p {
-        Primitive::Box { half, round } => ops::sd_box(
-            [f64::from(half[0]), f64::from(half[1]), f64::from(half[2])],
-            f64::from(round),
-        ),
-        Primitive::Sphere { radius } => ops::sd_sphere(f64::from(radius)),
-        Primitive::Cylinder {
-            radius,
-            half_height,
-            round,
-        } => ops::sd_cylinder(f64::from(radius), f64::from(half_height), f64::from(round)),
-        Primitive::Torus { major, minor } => ops::sd_torus(f64::from(major), f64::from(minor)),
-        Primitive::Extrude {
-            ref profile,
-            half_height,
-            round,
-        } => profile::sd_extrude(profile, f64::from(half_height), f64::from(round)),
-        Primitive::Revolve { ref profile } => profile::sd_revolve(profile),
-        Primitive::Cone {
-            bottom,
-            top,
-            half_height,
-            round,
-        } => ops::sd_cone(
-            f64::from(bottom),
-            f64::from(top),
-            f64::from(half_height),
-            f64::from(round),
-        ),
-        Primitive::Capsule {
-            radius,
-            half_height,
-        } => ops::sd_capsule(f64::from(radius), f64::from(half_height)),
-        Primitive::Prism {
-            sides,
-            bottom,
-            top,
-            half_height,
-            round,
-        } => ops::sd_prism(
-            sides,
-            f64::from(bottom),
-            f64::from(top),
-            f64::from(half_height),
-            f64::from(round),
-        ),
-        Primitive::Wedge { half, round } => ops::sd_wedge(half.map(f64::from), f64::from(round)),
-        Primitive::TorusArc {
-            major,
-            minor,
-            angle,
-            round,
-        } => ops::sd_torus_arc(
-            f64::from(major),
-            f64::from(minor),
-            f64::from(angle),
-            f64::from(round),
-        ),
-        Primitive::Star {
-            points,
-            outer,
-            inner,
-            half_height,
-            round,
-        } => ops::sd_star(
-            points,
-            f64::from(outer),
-            f64::from(inner),
-            f64::from(half_height),
-            f64::from(round),
-        ),
-        Primitive::BoxFrame {
-            half,
-            thickness,
-            round,
-        } => ops::sd_box_frame(half.map(f64::from), f64::from(thickness), f64::from(round)),
-        Primitive::Ellipsoid { radii } => ops::sd_ellipsoid(radii.map(f64::from)),
-    }
-}
-
 fn blended(b: Blend) -> ops::Blended {
     match b {
         Blend::Sharp => ops::Blended::Sharp,
@@ -569,3 +488,8 @@ fn axis_gap(lo: f32, hi: f32) -> f32 {
         0.0
     }
 }
+
+/// ⭐ Qual fórmula cada forma usa — ver [`primitive_tree`].
+#[path = "primitive_tree.rs"]
+mod primitive_tree;
+pub(crate) use primitive_tree::primitive;

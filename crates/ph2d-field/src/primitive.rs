@@ -181,6 +181,111 @@ pub enum Primitive {
     /// aproximações). Duas linhas do catálogo para a mesma forma justificam-se quando uma delas é
     /// exacta; a do cone e do tronco justificavam-se por defaults.
     Ellipsoid { radii: [f32; 3] },
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // ⭐⭐⭐ **W106 — as catorze que a fila nunca contou.**
+    //
+    // ⛔ A auditoria de 29/08 fechou a fila contra as **47 formas do catálogo vetorial** e nunca
+    // leu a segunda lista do mesmo documento — *«as 3D que o catálogo vetorial nem podia ter»*.
+    // E o argumento que cortou as outras (*«já se faz por composição»*) responde *«o motor
+    // consegue?»*, não *«a pessoa ACHA?»*: uma forma que exige montagem não está no menu.
+    //
+    // O mecanismo de cada fórmula, com o que foi portado e o que foi recusado, vive em
+    // `ph2d_field_eval::ops_solids` e `::ops_plates`.
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    /// **Octaedro regular** — `radius` é o CIRCUNRAIO (centro a vértice), como no prisma.
+    Octahedron { radius: f32, round: f32 },
+    /// **Cone de pontas arredondadas** — o casco convexo de duas esferas, no eixo Z.
+    ///
+    /// ⚠️ Sem `round`, como a cápsula: já é todo arco. E `|bottom − top| < 2·half_height` é
+    /// obrigatório — acima disso uma esfera contém a outra e não há tangente comum.
+    RoundCone {
+        bottom: f32,
+        top: f32,
+        half_height: f32,
+    },
+    /// **Esfera cortada** por um plano em `z = cut` — uma cúpula, um botão.
+    CutSphere { radius: f32, cut: f32, round: f32 },
+    /// **Cúpula oca** — a casca de raio médio `radius` e espessura `thickness`, cortada em `cut`.
+    ///
+    /// ⚠️ **Não é a [`Primitive::CutSphere`] menos outra:** seriam duas entidades e dois raios que
+    /// têm de concordar. A mesma razão da [`Primitive::BoxFrame`].
+    HollowDome {
+        radius: f32,
+        cut: f32,
+        thickness: f32,
+        round: f32,
+    },
+    /// **Elo de corrente** — o toro esticado: o eixo é um estádio de raio `major` com dois trechos
+    /// rectos de `length` para cada lado, engrossado em `minor`.
+    Link { major: f32, minor: f32, length: f32 },
+    /// **Ângulo sólido** — a fatia cónica de uma esfera, meia-abertura `angle` em torno de `+Z`.
+    SolidAngle { radius: f32, angle: f32, round: f32 },
+    /// ⭐⭐⭐ **Engrenagem** — a forma que o Enio nomeou, e que tinha sido cortada da fila por ser
+    /// *«um dente mais o modificador radial»*.
+    ///
+    /// `root` é o corpo, `outer` a ponta do dente, `tooth` a fração do passo que o dente ocupa.
+    /// ⚠️ O flanco é **recto**, não uma evolvente: para desenhar chega, para transmitir binário não.
+    Gear {
+        teeth: u32,
+        root: f32,
+        outer: f32,
+        tooth: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Cruz / mais** — `arm` é o meio-comprimento do braço e `width` a meia-largura dele.
+    Cross {
+        arm: f32,
+        width: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Coração** — `size` é o meio-lado do losango que forma a ponta de baixo.
+    Heart {
+        size: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Lua / crescente** — o disco `radius` menos o disco `bite` deslocado de `offset` em `+X`.
+    Moon {
+        radius: f32,
+        bite: f32,
+        offset: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Gota** — o disco `radius` com uma ponta tangente a `height` acima do centro.
+    Drop {
+        radius: f32,
+        height: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Fatia de disco** — `radius` e a meia-abertura `angle`, centrada em `+Y`.
+    Pie {
+        radius: f32,
+        angle: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Trapézio** — `bottom` e `top` são as meias-larguras das duas bases.
+    ///
+    /// ⚠️ Não é o prisma de 4 lados estreitado: aquele estreita nos **dois** eixos.
+    Trapezoid {
+        bottom: f32,
+        top: f32,
+        half_width: f32,
+        half_height: f32,
+        round: f32,
+    },
+    /// **Vesica / lente** — a interseção de dois discos `radius` afastados de `2·offset`.
+    Vesica {
+        radius: f32,
+        offset: f32,
+        half_height: f32,
+        round: f32,
+    },
 }
 
 /// O menor número de lados que um prisma admite — abaixo disto não há polígono.
@@ -256,6 +361,57 @@ pub const MIN_STAR_POINTS: u32 = 3;
 /// *Um limite que retira tem de o dizer.*
 pub const MAX_STAR_POINTS: u32 = 16;
 
+/// O menor número de dentes que uma engrenagem admite — abaixo de três não há coroa.
+pub const MIN_GEAR_TEETH: u32 = 3;
+
+/// ⭐⭐⭐ **O TETO de dentes — MEDIDO, e o número está na tabela ao lado** (W106).
+///
+/// A sonda é [`measure_gear_teeth`](../../ph2d-field-eval/tests/measure_gear_teeth.rs), e a régua é
+/// a mesma que escolheu o [`MAX_STAR_POINTS`]: o preço contra o **cilindro**, que é a referência
+/// que o [`MAX_PRISM_SIDES`] usa e shipa a `3,80×`.
+///
+/// ⚠️ **A coluna que decide é a CONTAGEM DE NÓS**, não o relógio: ela é determinística, e um
+/// relógio desta workstation não vale nada acima de `load ~5` (`CLAUDE.md` §5.0). O tempo aparece
+/// ao lado como confirmação, pela mediana de cinco corridas.
+///
+/// | dentes | nós | ns/ponto | × o cilindro | × a ESTRELA no tecto dela |
+/// |---|---|---|---|---|
+/// | 6 | 160 | 5 489 | 3,37× | 0,40× |
+/// | 8 | 192 | 6 718 | 4,13× | 0,50× |
+/// | 12 | 300 | 10 021 | 6,16× | 0,74× |
+/// | 16 | 390 | 12 324 | 7,57× | 0,91× |
+/// | 24 | 586 | 18 526 | 11,38× | 1,37× |
+/// | **32** | **741** | **23 473** | **14,42×** | **1,73×** |
+/// | 48 | 1 155 | 48 467 | 29,78× | 3,57× |
+/// | 64 | 1 482 | 65 407 | 40,20× | 4,82× |
+///
+/// *(referências medidas na MESMA corrida: cilindro `25` nós · prisma no tecto `308` · **estrela no
+/// tecto `423` nós, `8,34×` o cilindro — a forma mais cara que esta casa shipa**.)*
+///
+/// # ⛔ Não há JOELHO na contagem de nós, e dizê-lo é o resultado
+///
+/// A contagem é **linear** de ponta a ponta: `26,7 · 24,0 · 25,0 · 24,4 · 24,4 · 23,2 · 24,1 ·
+/// 23,2` nós por dente. ⇒ *não existe um número onde a física pare*, e um teto aqui é um **orçamento**
+/// e não uma parede. Escrever «o joelho está em N» seria inventar uma medição que a tabela não deu.
+///
+/// A única não-linearidade é o **relógio** entre 32 e 48: `2,06×` o tempo para `1,5×` os dentes,
+/// quando a contagem só sobe `1,56×`. ⚠️ É um sinal fraco (um relógio desta workstation não vale
+/// nada acima de `load ~5`), e por isso ele **confirma** o número em vez de o escolher.
+///
+/// # Por que 32 e não 16
+///
+/// Aplicar a barra da estrela à letra daria **16** (`0,91×` dela). ⛔ Mas o doc do
+/// [`MAX_STAR_POINTS`] escreve a própria regra: *«um limite que RETIRA tem de o dizer»* — e este
+/// retira. Uma engrenagem de 24 ou 32 dentes é uma engrenagem comum; a 8 (que é onde ela custa o
+/// que a estrela custa) ela mal se lê como uma. ⇒ o teto paga **`1,73×`** a forma mais cara da casa,
+/// de propósito, porque *ter dentes é a razão de existir desta forma*.
+///
+/// ⚠️ **E o que este número mede é um LIMITE SUPERIOR:** o traçador especializa a fita por
+/// ladrilho × fatia de profundidade, então um quadro real paga muito menos do que a árvore inteira.
+/// Movê-lo pede a medição do **quadro** com uma cena cheia delas — que não foi feita, e é o que
+/// desbloqueia um teto maior.
+pub const MAX_GEAR_TEETH: u32 = 32;
+
 /// ⭐⭐⭐ **A FAMÍLIA de uma primitiva, sem os números dela** (2026-08-26) — a lista que um gate pode
 /// percorrer.
 ///
@@ -289,11 +445,25 @@ pub enum PrimitiveKind {
     Star,
     BoxFrame,
     Ellipsoid,
+    Octahedron,
+    RoundCone,
+    CutSphere,
+    HollowDome,
+    Link,
+    SolidAngle,
+    Gear,
+    Cross,
+    Heart,
+    Moon,
+    Drop,
+    Pie,
+    Trapezoid,
+    Vesica,
 }
 
 impl PrimitiveKind {
     /// **A fonte da contagem** — quem quiser saber *«que formas o motor sabe fazer?»* pergunta aqui.
-    pub const ALL: [PrimitiveKind; 14] = [
+    pub const ALL: [PrimitiveKind; 28] = [
         PrimitiveKind::Box,
         PrimitiveKind::Sphere,
         PrimitiveKind::Cylinder,
@@ -308,6 +478,20 @@ impl PrimitiveKind {
         PrimitiveKind::Star,
         PrimitiveKind::BoxFrame,
         PrimitiveKind::Ellipsoid,
+        PrimitiveKind::Octahedron,
+        PrimitiveKind::RoundCone,
+        PrimitiveKind::CutSphere,
+        PrimitiveKind::HollowDome,
+        PrimitiveKind::Link,
+        PrimitiveKind::SolidAngle,
+        PrimitiveKind::Gear,
+        PrimitiveKind::Cross,
+        PrimitiveKind::Heart,
+        PrimitiveKind::Moon,
+        PrimitiveKind::Drop,
+        PrimitiveKind::Pie,
+        PrimitiveKind::Trapezoid,
+        PrimitiveKind::Vesica,
     ];
 
     /// O sufixo da chave do botão que a cria — `panel.model3d.add.<key>`.
@@ -328,6 +512,20 @@ impl PrimitiveKind {
             PrimitiveKind::Star => "star",
             PrimitiveKind::BoxFrame => "box_frame",
             PrimitiveKind::Ellipsoid => "ellipsoid",
+            PrimitiveKind::Octahedron => "octahedron",
+            PrimitiveKind::RoundCone => "round_cone",
+            PrimitiveKind::CutSphere => "cut_sphere",
+            PrimitiveKind::HollowDome => "hollow_dome",
+            PrimitiveKind::Link => "link",
+            PrimitiveKind::SolidAngle => "solid_angle",
+            PrimitiveKind::Gear => "gear",
+            PrimitiveKind::Cross => "cross",
+            PrimitiveKind::Heart => "heart",
+            PrimitiveKind::Moon => "moon",
+            PrimitiveKind::Drop => "drop",
+            PrimitiveKind::Pie => "pie",
+            PrimitiveKind::Trapezoid => "trapezoid",
+            PrimitiveKind::Vesica => "vesica",
         }
     }
 }
@@ -352,6 +550,20 @@ impl Primitive {
             Primitive::Star { .. } => PrimitiveKind::Star,
             Primitive::BoxFrame { .. } => PrimitiveKind::BoxFrame,
             Primitive::Ellipsoid { .. } => PrimitiveKind::Ellipsoid,
+            Primitive::Octahedron { .. } => PrimitiveKind::Octahedron,
+            Primitive::RoundCone { .. } => PrimitiveKind::RoundCone,
+            Primitive::CutSphere { .. } => PrimitiveKind::CutSphere,
+            Primitive::HollowDome { .. } => PrimitiveKind::HollowDome,
+            Primitive::Link { .. } => PrimitiveKind::Link,
+            Primitive::SolidAngle { .. } => PrimitiveKind::SolidAngle,
+            Primitive::Gear { .. } => PrimitiveKind::Gear,
+            Primitive::Cross { .. } => PrimitiveKind::Cross,
+            Primitive::Heart { .. } => PrimitiveKind::Heart,
+            Primitive::Moon { .. } => PrimitiveKind::Moon,
+            Primitive::Drop { .. } => PrimitiveKind::Drop,
+            Primitive::Pie { .. } => PrimitiveKind::Pie,
+            Primitive::Trapezoid { .. } => PrimitiveKind::Trapezoid,
+            Primitive::Vesica { .. } => PrimitiveKind::Vesica,
         }
     }
 }

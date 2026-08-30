@@ -469,7 +469,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // SAIU do `ProjectFile` e entrou no `ProjectState`, com as lapides ao lado. ⛔ NAO e'
         // aditivo: um campo saiu do meio de uma estrutura e outro entrou no meio da outra, entao
         // os bytes de um v104 passam a significar outra coisa -- postcard le' torto e cala-se.
-        (113, 13, 18),
+        // PROJECT 113→114: a UNIDADE DE ANGULO (`line/UIUX`). As `SavedSettings` ganharam
+        // `display_angle: u8` -- campo APENDADO ao fim ⇒ quebra dura, o mecanismo do degrau v80.
+        // ⚠️ **Esta tripla NAO ve^ o degrau** (os dois numeros ao lado ficam onde estavam): ela
+        // mede a forma do `FlipDoc` e da `VecScene`, e o que mudou foi o `ProjectFile`. E' o mesmo
+        // cego dos degraus 99 e 100, e esta escrito aqui porque a proxima pessoa olha para a
+        // tripla primeiro.
+        (114, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

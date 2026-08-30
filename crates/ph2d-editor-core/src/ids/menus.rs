@@ -83,6 +83,18 @@ pub const CTX_MENU_SETTINGS_UNIT: NodeId = hash_node_id("ctx_menu_settings_unit"
 pub const CTX_MENU_UNIT_METERS: NodeId = hash_node_id("ctx_menu_unit_meters");
 pub const CTX_MENU_UNIT_PIXELS: NodeId = hash_node_id("ctx_menu_unit_pixels");
 
+/// Top-level Settings entry that opens the Angle-unit submenu
+/// (Degrees / Radians) — **o irmão de `CTX_MENU_SETTINGS_UNIT` para o ÂNGULO**
+/// (Enio, 2026-08-30: *"devemos ter ambas as opções no app"*).
+///
+/// ⚠️ Duas entradas separadas, e não uma «Units» que abrisse as duas: comprimento
+/// e ângulo trocam-se por razões diferentes (a escala do projecto contra o hábito
+/// do artista), e juntá-las obrigaria a um submenu de dois níveis para uma escolha
+/// de dois estados.
+pub const CTX_MENU_SETTINGS_ANGLE: NodeId = hash_node_id("ctx_menu_settings_angle");
+pub const CTX_MENU_ANGLE_DEGREES: NodeId = hash_node_id("ctx_menu_angle_degrees");
+pub const CTX_MENU_ANGLE_RADIANS: NodeId = hash_node_id("ctx_menu_angle_radians");
+
 /// Top-level Settings entry that opens the Image-filter submenu
 /// (Pixel Art / Smooth). Companion of `CTX_MENU_SETTINGS_UNIT`.
 /// Selecting a mode flips the app-wide `ImageFilterMode` — the single

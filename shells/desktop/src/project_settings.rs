@@ -31,7 +31,7 @@
 //! `ProjectSettings` INTEIROS por `PartialEq`: um campo novo que o espelho não
 //! carregue faz o teste falhar, em vez de deixar de persistir em silêncio.
 
-use ph2d_editor::project::{DisplayUnit, ImageFilterMode, ProjectSettings};
+use ph2d_editor::project::{DisplayAngle, DisplayUnit, ImageFilterMode, ProjectSettings};
 
 /// As settings do projeto, na forma que o arquivo guarda.
 ///
@@ -51,6 +51,16 @@ pub(crate) struct SavedSettings {
     display_unit: u8,
     /// [`ImageFilterMode`] como `u8`.
     image_filter: u8,
+    /// [`DisplayAngle`] como `u8` — a unidade em que o artista LÊ um ÂNGULO
+    /// (Enio, 2026-08-30: *"devemos ter ambas as opções no app"*).
+    ///
+    /// ⚠️ **Apendado ao FIM, e isso é uma quebra dura** — o postcard é posicional,
+    /// então um ficheiro v103 lido por este `struct` fica sem bytes no último campo.
+    /// O preço é o degrau `PROJECT_SCHEMA` 103→104, e é o mesmo que o degrau v80
+    /// pagou pela mesma razão. ⛔ `#[serde(default)]` **não** salva um formato
+    /// não-auto-descritivo: ele não sabe que o campo faltou, sabe que os bytes
+    /// acabaram.
+    display_angle: u8,
 }
 
 /// A unidade a partir do byte guardado. **Porta única** da direção inversa.
@@ -62,6 +72,15 @@ const fn display_unit_from_u8(b: u8) -> DisplayUnit {
     match b {
         0 => DisplayUnit::Meters,
         _ => DisplayUnit::Pixels,
+    }
+}
+
+/// A unidade de ÂNGULO a partir do byte guardado — irmã da de comprimento, com a
+/// mesma lei: byte desconhecido cai no default, quem recusa formato é o schema.
+const fn display_angle_from_u8(b: u8) -> DisplayAngle {
+    match b {
+        1 => DisplayAngle::Radians,
+        _ => DisplayAngle::Degrees,
     }
 }
 
@@ -81,6 +100,7 @@ pub(crate) fn collect(p: ProjectSettings) -> SavedSettings {
         snap_rotate_deg: p.snap_rotate_deg,
         display_unit: p.display_unit as u8,
         image_filter: p.image_filter as u8,
+        display_angle: p.display_angle as u8,
     }
 }
 
@@ -97,6 +117,7 @@ pub(crate) fn install(dst: &mut ProjectSettings, saved: &SavedSettings) {
     dst.snap_rotate_deg = saved.snap_rotate_deg;
     dst.display_unit = display_unit_from_u8(saved.display_unit);
     dst.image_filter = image_filter_from_u8(saved.image_filter);
+    dst.display_angle = display_angle_from_u8(saved.display_angle);
 }
 
 #[cfg(test)]
@@ -120,6 +141,9 @@ mod tests {
             snap_rotate_deg: 15.0,
             display_unit: DisplayUnit::Meters,
             image_filter: ImageFilterMode::PixelArt,
+            // ⚠️ **`Radians` de propósito**: o default é `Degrees`, e uma fixture igual ao
+            // default não prova travessia nenhuma — é a lei que o `assert_ne!` abaixo defende.
+            display_angle: DisplayAngle::Radians,
         };
         assert_ne!(
             authored,
@@ -150,6 +174,7 @@ mod tests {
             snap_rotate_deg: 0.0,
             display_unit: 1,
             image_filter: 1,
+            display_angle: 1,
         })
         .expect("serializa");
         let back: SavedSettings = postcard::from_bytes(&bytes).expect("desserializa");

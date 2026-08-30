@@ -112,6 +112,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         ContextMenuKind::SettingsMenu => &[
             (ids::CTX_MENU_SETTINGS_PPM, "Pixels per meter", None),
             (ids::CTX_MENU_SETTINGS_UNIT, "Display unit", None),
+            (ids::CTX_MENU_SETTINGS_ANGLE, "Angle unit", None),
             (ids::CTX_MENU_SETTINGS_FILTER, "Image filter", None),
             (ids::CTX_MENU_SETTINGS_DISPLAY, "Display", None),
             (ids::CTX_MENU_SETTINGS_TEXT, "Text rendering", None),
@@ -136,6 +137,12 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
         ContextMenuKind::SettingsUnitSubmenu => &[
             (ids::CTX_MENU_UNIT_METERS, "Meters", None),
             (ids::CTX_MENU_UNIT_PIXELS, "Pixels", None),
+        ],
+        // Angle-unit submenu — o irmão do de cima, para o ÂNGULO. O armazenamento
+        // continua em radianos; isto só troca o FORMATO.
+        ContextMenuKind::SettingsAngleSubmenu => &[
+            (ids::CTX_MENU_ANGLE_DEGREES, "Degrees", None),
+            (ids::CTX_MENU_ANGLE_RADIANS, "Radians", None),
         ],
         // Image-filter submenu — the single global sampling mode
         // applied to every sprite/texture + the Vello preview.
@@ -373,6 +380,7 @@ pub const TOPBAR_LEAF_MENUS: &[ContextMenuKind] = &[
     ContextMenuKind::ThemeSelector,
     ContextMenuKind::SettingsPpmSubmenu,
     ContextMenuKind::SettingsUnitSubmenu,
+    ContextMenuKind::SettingsAngleSubmenu,
     ContextMenuKind::SettingsFilterSubmenu,
     ContextMenuKind::SettingsDisplaySubmenu,
     ContextMenuKind::SettingsTextSubmenu,
@@ -391,6 +399,7 @@ pub fn menu_title(kind: ContextMenuKind) -> Option<&'static str> {
         ContextMenuKind::ThemeSelector => "Look",
         ContextMenuKind::SettingsPpmSubmenu => "Pixels per meter",
         ContextMenuKind::SettingsUnitSubmenu => "Display unit",
+        ContextMenuKind::SettingsAngleSubmenu => "Angle unit",
         ContextMenuKind::SettingsFilterSubmenu => "Image filter",
         ContextMenuKind::SettingsDisplaySubmenu => "Display",
         ContextMenuKind::SettingsTextSubmenu => "Text rendering",

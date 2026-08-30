@@ -1914,3 +1914,137 @@ fn a_thumb_that_cooled_is_forgotten_by_the_clock_but_not_by_the_painter() {
         "o polegar arrefecido publica {t}, e nao o `0.0` que faz o pintor ficar no repouso"
     );
 }
+
+/// ⭐ **A costura da UNIDADE DE ÂNGULO, ponta a ponta** — o irmão de
+/// `settings_unit_submenu_options_flip_project_display_unit`, e a prova de que o clique
+/// chega ao `project`.
+///
+/// ⚠️ **Verde-de-compilação não prova nada aqui.** As sete pontas de um item de menu
+/// (id · registo · linha · variante de `ContextMenuKind` · handler · dispatch gerado ·
+/// campo) compilam todas isoladas: faltar **uma** dá um item que é pintado, aceita o
+/// clique e **não faz nada**. É este teste que dirige o evento real.
+#[test]
+fn settings_angle_submenu_options_flip_project_display_angle() {
+    let mut hero = HeroScreen::new(NodeId(1));
+    assert_eq!(
+        hero.project.display_angle,
+        crate::project::DisplayAngle::Degrees,
+        "o default tem de ser Degrees — é o que preserva o comportamento anterior ao bit"
+    );
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsAngleSubmenu,
+        });
+    let consumed = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_ANGLE_RADIANS));
+    assert!(consumed, "o clique em Radians tem de ser consumido");
+    assert_eq!(
+        hero.project.display_angle,
+        crate::project::DisplayAngle::Radians,
+        "display_angle tem de virar Radians"
+    );
+    assert!(
+        hero.store.context_menu().is_none(),
+        "o menu tem de fechar depois da escolha"
+    );
+    // E de volta — um selector que só anda para um lado não é um selector.
+    hero.store
+        .open_context_menu(crate::interaction::ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: crate::interaction::ContextMenuKind::SettingsAngleSubmenu,
+        });
+    let _ = hero.apply_event(WidgetEvent::Click(ids::CTX_MENU_ANGLE_DEGREES));
+    assert_eq!(
+        hero.project.display_angle,
+        crate::project::DisplayAngle::Degrees
+    );
+}
+
+/// ⛔ **A entrada do menu tem de ser ALCANÇÁVEL a partir do Settings** — o teste acima
+/// prova que o clique funciona *se* alguém o der, e este prova que há por onde dar.
+///
+/// ⚠️ É a distinção que o `CLAUDE.md` §5.0 cobra: *um controlo nunca pintado e um morto
+/// sob o dedo dão o MESMO report*. Sem esta metade, apagar a linha do `SettingsMenu`
+/// deixaria o teste de cima **verde** sobre uma entrada que ninguém consegue abrir.
+#[test]
+fn the_angle_unit_entry_is_reachable_from_the_settings_menu() {
+    let rows = crate::screens::hero::menu_rows::menu_rows(
+        crate::interaction::ContextMenuKind::SettingsMenu,
+    );
+    assert!(
+        rows.iter()
+            .any(|(id, _, _)| *id == ids::CTX_MENU_SETTINGS_ANGLE),
+        "a entrada 'Angle unit' tem de estar no menu Settings"
+    );
+    let sub = crate::screens::hero::menu_rows::menu_rows(
+        crate::interaction::ContextMenuKind::SettingsAngleSubmenu,
+    );
+    let ids_in_sub: Vec<_> = sub.iter().map(|(id, _, _)| *id).collect();
+    assert!(
+        ids_in_sub.contains(&ids::CTX_MENU_ANGLE_DEGREES)
+            && ids_in_sub.contains(&ids::CTX_MENU_ANGLE_RADIANS),
+        "o submenu tem de oferecer as DUAS opções"
+    );
+}
+
+/// ⭐⭐ **A ida-e-volta cabe de volta no `f32` de origem, AO BIT.**
+///
+/// É o que impede uma caixa que o artista abre e fecha sem tocar de deixar o documento
+/// diferente do que estava. O gate mede o caminho do produto: o `sync` mostra (largo,
+/// porque o `WidgetStore` guarda `f64`) e o `event` escreve de volta (estreito).
+///
+/// ⚠️⚠️ **Este gate reprovou a 1ª implementação, e o defeito era meu.** Eu tinha feito
+/// o caminho estreito delegar no largo — copiando a forma do [`crate::project::DisplayUnit`]
+/// sem medir se ela servia. Serve lá (a regra tem um parâmetro externo e a magnitude é
+/// o perigo) e **não serve aqui**: a `std` já dá `to_radians` nas duas larguras, então
+/// passar pelo `f64` acrescenta uma **segunda arredondagem** — `1 ULP` em
+/// `-2.7182817`. *Arredondar duas vezes não é arredondar melhor.*
+#[test]
+fn the_angle_round_trip_lands_back_on_the_same_bits() {
+    use crate::project::DisplayAngle;
+    // Ângulos que um artista de facto autora, mais dois que não são múltiplos bonitos.
+    for rad in [
+        0.0_f32,
+        std::f32::consts::FRAC_PI_2,
+        std::f32::consts::PI,
+        -std::f32::consts::FRAC_PI_4,
+        0.123_456_79,
+        -2.718_281_7,
+    ] {
+        for unit in [DisplayAngle::Degrees, DisplayAngle::Radians] {
+            let shown = unit.from_radians_f64(f64::from(rad));
+            let back = unit.to_radians(shown as f32);
+            assert_eq!(
+                back.to_bits(),
+                rad.to_bits(),
+                "{unit:?}: {rad} → {shown} → {back} não voltou aos mesmos bits"
+            );
+        }
+    }
+}
+
+/// ⛔ **Radianos NÃO é graus** — o controlo que impede a porta de ser um no-op.
+///
+/// Sem ele, uma implementação em que os dois braços devolvessem o mesmo valor passaria
+/// os outros dois testes: o menu comuta um enum que não muda nada.
+#[test]
+fn the_two_angle_units_actually_disagree() {
+    use crate::project::DisplayAngle;
+    let rad = std::f32::consts::FRAC_PI_2;
+    let as_deg = DisplayAngle::Degrees.from_radians(rad);
+    let as_rad = DisplayAngle::Radians.from_radians(rad);
+    assert!(
+        (as_deg - 90.0).abs() < 1e-4,
+        "meio π em graus são 90, e vieram {as_deg}"
+    );
+    assert!(
+        (as_rad - rad).abs() < 1e-6,
+        "em radianos o valor passa intacto, e veio {as_rad}"
+    );
+    assert!(
+        (as_deg - as_rad).abs() > 1.0,
+        "as duas unidades têm de DISCORDAR, senão o selector é decorativo"
+    );
+}

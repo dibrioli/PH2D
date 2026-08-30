@@ -290,50 +290,7 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         )
         && let Some(info) = state::current_inspector_transform()
     {
-        let unit = host.project().display_unit;
-        let ppm = host.project().pixels_per_meter;
-        let x_disp =
-            host.store()
-                .number_value(ids::INSP_TRANSFORM_POS_X)
-                .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64) as f32;
-        let y_disp =
-            host.store()
-                .number_value(ids::INSP_TRANSFORM_POS_Y)
-                .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64) as f32;
-        let x = unit.to_meters(x_disp, ppm);
-        let y = unit.to_meters(y_disp, ppm);
-        let rot_deg = host
-            .store()
-            .number_value(ids::INSP_TRANSFORM_ROT)
-            .unwrap_or((info.rotation_rad as f64).to_degrees()) as f32;
-        let sx = host
-            .store()
-            .number_value(ids::INSP_TRANSFORM_SCALE_X)
-            .unwrap_or(info.scale[0] as f64) as f32;
-        let sy = host
-            .store()
-            .number_value(ids::INSP_TRANSFORM_SCALE_Y)
-            .unwrap_or(info.scale[1] as f64) as f32;
-        // Skew authored in degrees for UX parity with Rotation; the
-        // ECS-commit boundary converts to radians and clamps to
-        // Transform::SKEW_LIMIT (ADR-0025-amendment-1 §2.5).
-        let skew_x_deg = host
-            .store()
-            .number_value(ids::INSP_TRANSFORM_SKEW_X)
-            .unwrap_or((info.skew_rad[0] as f64).to_degrees()) as f32;
-        let skew_y_deg = host
-            .store()
-            .number_value(ids::INSP_TRANSFORM_SKEW_Y)
-            .unwrap_or((info.skew_rad[1] as f64).to_degrees()) as f32;
-        host.bus_mut().push(EditorAction::InspectorTransformEdit(
-            InspectorTransformInfo {
-                entity_bits: info.entity_bits,
-                translation: [x, y],
-                rotation_rad: rot_deg.to_radians(),
-                scale: [sx, sy],
-                skew_rad: [skew_x_deg.to_radians(), skew_y_deg.to_radians()],
-            },
-        ));
+        crate::event_transform::commit_transform_edit(host, info);
         return true;
     }
     if let WidgetEvent::Click(id) = ev

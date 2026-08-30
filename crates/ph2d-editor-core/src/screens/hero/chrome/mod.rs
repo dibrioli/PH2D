@@ -76,6 +76,7 @@ mod rail_size;
 mod rail_tools;
 mod scene_picker;
 mod sculpt3d_toggle;
+mod settings_angle;
 mod settings_filter;
 mod settings_motion;
 mod settings_ppm;
@@ -153,6 +154,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || io_menu::apply(hero, event)
         || settings_ppm::apply(hero, event)
         || settings_unit::apply(hero, event)
+        || settings_angle::apply(hero, event)
         || settings_filter::apply(hero, event)
         || settings_present::apply(hero, event)
         || settings_motion::apply(hero, event)

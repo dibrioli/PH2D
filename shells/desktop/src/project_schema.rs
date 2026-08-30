@@ -488,4 +488,23 @@
 ///
 /// ⚠️ **A versão do blob continua a mandar na taxonomia**: o `CATALOG_DOC_VERSION` mora dentro dos
 /// bytes, então acrescentar-lhe um campo continua a custar zero aqui.
-pub(crate) const PROJECT_SCHEMA: u32 = 113;
+///
+/// # 113 -> 114 — a UNIDADE DE ÂNGULO (`line/UIUX`)
+///
+/// As `SavedSettings` ganharam `display_angle: u8` — a irmã do `display_unit`, para o pedido do
+/// Enio de 2026-08-30: *"devemos ter ambas as opções no app (px e metros, graus e radianos)"*.
+///
+/// ⚠️ **Campo APENDADO ao fim de uma struct ⇒ quebra dura**, o mesmo mecanismo do degrau v80: o
+/// postcard é posicional, então um v103 lido por este layout fica **sem bytes** no último campo.
+/// ⛔ `#[serde(default)]` **não** o salva — num formato não-auto-descritivo ele não sabe que o
+/// campo faltou, sabe que o *stream* acabou.
+///
+/// ⚠️ **A tripla NÃO vê este degrau**, e é a terceira vez que isso acontece nesta escada (99, 100,
+/// e agora): ela mede a forma do `FlipDoc` e da `VecScene`, e nenhuma das duas mudou — o que mudou
+/// foi o `ProjectFile`. *Está escrito aqui porque a próxima pessoa olha para a tripla primeiro.*
+///
+/// ⭐ **O default preserva o comportamento anterior ao bit:** `DisplayAngle::Degrees` é o que os
+/// sítios faziam com `to_degrees()` escrito à mão. Quem nunca abrir o menu não vê diferença.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08.
+pub(crate) const PROJECT_SCHEMA: u32 = 114;

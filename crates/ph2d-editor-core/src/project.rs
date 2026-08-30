@@ -117,6 +117,131 @@ impl DisplayUnit {
     }
 }
 
+/// User-visible unit for **angle** readouts — the sibling of [`DisplayUnit`],
+/// and it exists for the same reason and obeys the same law.
+///
+/// ⚠️ **Sim values are always stored in RADIANS** (`ph2d_ecs::Transform`:
+/// *"rotation (radians, CCW from +X)"*). This enum only changes how an angle is
+/// FORMATTED for the artist and PARSED back from what they typed. ⛔ Storing
+/// degrees would put a conversion inside every trigonometric call and let
+/// rounding accumulate in the document.
+///
+/// # Por que ela existe (Enio, 2026-08-30)
+///
+/// *"Devemos ter ambas as opções no app (px e metros, graus e radianos)."*
+///
+/// Metade já existia: o [`DisplayUnit`] fazia isto para COMPRIMENTO desde o doc 88.
+/// A outra metade estava a um campo — o `Unit { …, Degrees, Radians, … }` do
+/// `numeric_input_with_unit` já sabia mostrar e ler as duas, e ⛔ **`Unit::Radians`
+/// tinha zero consumidores fora do próprio ficheiro**: o app aceitava `"2.25rad"`
+/// digitado e nunca escrevia um ângulo em radianos. *Meio caminho ligado.*
+///
+/// # ⛔ O que ela NÃO alcança
+///
+/// **Só os ângulos que o artista AUTORA.** Não muda a fase de um oscilador, o ângulo
+/// interno de um gradiente, nem qualquer `to_degrees()` que seja passo de geometria —
+/// esses são matemática, não leitura. *Deixar a unidade escorregar para lá poria um
+/// selector sobre números que não são do artista.*
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DisplayAngle {
+    Degrees,
+    Radians,
+}
+
+impl DisplayAngle {
+    /// Convert a sim-stored **radian** value to the user-visible value in the
+    /// active display angle.
+    ///
+    /// ⚠️⚠️ **Aqui o estreito NÃO delega no largo, e isso DIVERGE do
+    /// [`DisplayUnit`] de propósito.** Ver a nota de [`Self::to_radians`] — a
+    /// divergência foi medida, não escolhida.
+    #[must_use]
+    pub fn from_radians(self, radians: f32) -> f32 {
+        match self {
+            DisplayAngle::Degrees => radians.to_degrees(),
+            DisplayAngle::Radians => radians,
+        }
+    }
+
+    /// The same conversion at `f64` width — para quem já mede em `f64` (o
+    /// `WidgetStore` guarda os valores das caixas em `f64`).
+    #[must_use]
+    pub fn from_radians_f64(self, radians: f64) -> f64 {
+        match self {
+            DisplayAngle::Degrees => radians.to_degrees(),
+            DisplayAngle::Radians => radians,
+        }
+    }
+
+    /// Inverse of [`Self::from_radians`] — convert a value the user typed (in the
+    /// display angle) back to sim-space radians before writing into ECS.
+    ///
+    /// # ⚠️⚠️ Por que este par NÃO delega, ao contrário do [`DisplayUnit`]
+    ///
+    /// O irmão do comprimento faz o estreito chamar o largo, e a razão dele é boa:
+    /// a regra envolve um **parâmetro externo** (`pixels_per_meter`) que tem de ser
+    /// alargado do mesmo modo nas duas larguras, e a magnitude é o perigo
+    /// (`1e8 px` não cabe em `f32`).
+    ///
+    /// ⛔ **Num ângulo, delegar PIORA** — e o número é medido: a `std` já dá a
+    /// regra nas duas larguras (`f32::to_radians` e `f64::to_radians`), então
+    /// passar pelo `f64` no caminho estreito acrescenta uma **segunda
+    /// arredondagem**. Medido sobre 11 ângulos, ida-e-volta `rad → mostrado → rad`:
+    ///
+    /// | volta | pior erro |
+    /// |---|---|
+    /// | pelo `f64` (delegando) | **1 ULP** (`-2.7182817` → `-155.74608` → falha) |
+    /// | em `f32` (directa) | **0 ULP** |
+    ///
+    /// *Arredondar duas vezes não é arredondar melhor.* ⭐ **E o gate que apanhou
+    /// isto foi escrito contra a minha própria afirmação** — a 1ª redacção deste
+    /// doc dizia que o `f64` no meio era o que fazia o round-trip fechar.
+    #[must_use]
+    pub fn to_radians(self, value: f32) -> f32 {
+        match self {
+            DisplayAngle::Degrees => value.to_radians(),
+            DisplayAngle::Radians => value,
+        }
+    }
+
+    /// The same inverse at `f64` width — the mirror of [`Self::from_radians_f64`].
+    #[must_use]
+    pub fn to_radians_f64(self, value: f64) -> f64 {
+        match self {
+            DisplayAngle::Degrees => value.to_radians(),
+            DisplayAngle::Radians => value,
+        }
+    }
+
+    /// Suffix to show alongside a formatted angle (`"°"` / `" rad"`).
+    ///
+    /// ⚠️ **O grau NÃO leva espaço e o radiano leva** — é a convenção tipográfica
+    /// (SI: o `°` é o único símbolo de unidade que se cola ao número), e é a que o
+    /// Blender, o Godot e o Illustrator seguem. O sufixo do parser é outro (`"deg"`
+    /// / `"rad"`, em [`crate::widget::numeric_input_with_unit::Unit`]): *o que se
+    /// escreve e o que se lê não têm de ser a mesma string.*
+    #[must_use]
+    pub fn suffix(self) -> &'static str {
+        match self {
+            DisplayAngle::Degrees => "°",
+            DisplayAngle::Radians => " rad",
+        }
+    }
+
+    /// The matching parser/painter unit of the numeric input widget.
+    ///
+    /// ⭐ **Uma porta, e não um `match` em cada caixa** — é o que impede uma caixa
+    /// de ângulo de mostrar graus enquanto outra mostra radianos.
+    #[must_use]
+    pub fn widget_unit(self) -> crate::widget::Unit {
+        use crate::widget::Unit;
+        match self {
+            DisplayAngle::Degrees => Unit::Degrees,
+            DisplayAngle::Radians => Unit::Radians,
+        }
+    }
+}
+
 /// Map the app-wide [`ImageFilterMode`] (defined in `ph2d-host`) onto
 /// the peniko [`ImageQuality`] used by the Vello image preview
 /// (`VectorScene::draw_image_rgba`). Companion of
@@ -160,6 +285,16 @@ pub struct ProjectSettings {
     /// either way, which is what keeps the cook's fingerprint out of this
     /// setting's reach.
     pub display_unit: DisplayUnit,
+    /// User-visible unit for **angle** readouts (Settings → "Angle unit"). Sim
+    /// storage is always radians; this flips the FORMAT of the angles the artist
+    /// authors — a rotação e o skew do Inspector, e as linhas de ângulo dos
+    /// painéis.
+    ///
+    /// Default **`Degrees`**: é o que o Unity, o Godot e o Blender mostram por
+    /// omissão, e era o que este app fazia com a conversão escrita à mão em cada
+    /// sítio. ⭐ **O default preserva o comportamento anterior ao bit** — quem
+    /// nunca abrir o menu não vê diferença nenhuma.
+    pub display_angle: DisplayAngle,
     /// App-wide image sampling mode (Config → "Image filter"). The
     /// editor stores it so the Settings submenu can show the active
     /// pick with a checkmark; the SHELL is the source of truth for the
@@ -186,6 +321,7 @@ impl Default for ProjectSettings {
             snap_move_meters: DEFAULT_SNAP_MOVE_METERS,
             snap_rotate_deg: DEFAULT_SNAP_ROTATE_DEG,
             display_unit: DisplayUnit::Pixels,
+            display_angle: DisplayAngle::Degrees,
             image_filter: ImageFilterMode::Smooth,
         }
     }

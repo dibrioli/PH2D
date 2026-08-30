@@ -41,6 +41,11 @@ pub(crate) fn sync_inspector_from_snapshots(
     let display_unit = host.project().display_unit;
     let ppm = host.project().pixels_per_meter;
     let pos_for_display = |m: f32| display_unit.from_meters(m, ppm) as f64;
+    // ⭐ **A irmã do `pos_for_display`, para o ÂNGULO** (Enio, 2026-08-30). Antes disto os seis
+    // sítios abaixo escreviam `.to_degrees()` à mão — uma decisão de LEITURA tomada no sítio
+    // errado, exactamente como um `× ppm` fixo seria para o comprimento.
+    let display_angle = host.project().display_angle;
+    let ang_for_display = |rad: f32| display_angle.from_radians_f64(f64::from(rad));
     if entity_changed {
         host.store_mut().set_focus(None);
         let _ = host.store_mut().end_number_input_drag();
@@ -60,30 +65,7 @@ pub(crate) fn sync_inspector_from_snapshots(
         crate::sync_physics::sync_wheel_fields(host);
         crate::sync_physics::sync_player_fields(host);
         if let Some(info) = transform {
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_POS_X,
-                pos_for_display(info.translation[0]),
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_POS_Y,
-                pos_for_display(info.translation[1]),
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_ROT,
-                info.rotation_rad.to_degrees() as f64,
-            );
-            host.store_mut()
-                .set_number_value(ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64);
-            host.store_mut()
-                .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64);
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_SKEW_X,
-                info.skew_rad[0].to_degrees() as f64,
-            );
-            host.store_mut().set_number_value(
-                ids::INSP_TRANSFORM_SKEW_Y,
-                info.skew_rad[1].to_degrees() as f64,
-            );
+            write_transform_rows(host, info, pos_for_display, ang_for_display);
         }
         if let Some(InteractiveState::TextInput {
             state,
@@ -107,6 +89,7 @@ pub(crate) fn sync_inspector_from_snapshots(
             transform,
             name.clone(),
             &pos_for_display,
+            &ang_for_display,
         );
     }
     let pending_visibility_edit = host
@@ -493,49 +476,23 @@ fn is_sprite_color_swatch(id: ph2d_a11y::NodeId) -> bool {
 ///
 /// ⚠️ Vive numa função própria porque o irmão (`entity_changed`) faz a operação CONTRÁRIA
 /// — semear —, e misturá-las levou a função-mãe ao tecto de 200 LOC.
+/// ⚠️⚠️ **DUAS linhas refactoraram a MESMA duplicação, de maneiras diferentes** (integração de
+/// 2026-09-04). Esta função saiu do corpo da mãe porque ele estava no tecto de 200 LOC; a
+/// `line/UIUX` cortou o MESMO código noutro sítio — as **sete linhas** para
+/// [`write_transform_rows`], porque a unidade de ângulo acrescentava a oitava a **cada** cópia.
+/// ⇒ ficam as duas: esta continua a ser a metade «espelhar sem pisar», e delega a parte do
+/// Transform naquela. ⛔ Manter as duas cópias do laço seria repor exactamente a dívida que as
+/// duas linhas foram cortar, cada uma por sua conta.
 fn mirror_live_values_without_stomping_the_edit(
     host: &mut dyn PanelHostInternal,
     transform: Option<ph2d_editor_core::screens::hero::InspectorTransformInfo>,
     name: Option<ph2d_editor_core::screens::hero::InspectorNameInfo>,
     pos_for_display: &dyn Fn(f32) -> f64,
+    ang_for_display: &dyn Fn(f32) -> f64,
 ) {
     if let Some(info) = transform {
-        // Reflect the live Transform into the boxes — but SKIP the box the user is currently
-        // editing (focused for typing OR being drag-scrubbed). Without this guard the box the drag
-        // writes gets overwritten every frame by the round-tripped ECS value (meters↔display unit
-        // isn't bit-exact), so the drag delta is applied against a moving target → the move / rot /
-        // scale TREMBLE on the canvas in real time (Enio 2026-06-26). Mirrors the Sampling /
-        // Visibility blocks below, plus a drag guard so scrub is covered even without focus.
-        let focus = host.store().focus_id();
-        let drag = host.store().number_input_drag().map(|d| d.id);
-        for (id, value) in [
-            (
-                ids::INSP_TRANSFORM_POS_X,
-                pos_for_display(info.translation[0]),
-            ),
-            (
-                ids::INSP_TRANSFORM_POS_Y,
-                pos_for_display(info.translation[1]),
-            ),
-            (
-                ids::INSP_TRANSFORM_ROT,
-                info.rotation_rad.to_degrees() as f64,
-            ),
-            (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
-            (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
-            (
-                ids::INSP_TRANSFORM_SKEW_X,
-                info.skew_rad[0].to_degrees() as f64,
-            ),
-            (
-                ids::INSP_TRANSFORM_SKEW_Y,
-                info.skew_rad[1].to_degrees() as f64,
-            ),
-        ] {
-            if focus != Some(id) && drag != Some(id) {
-                host.store_mut().set_number_value(id, value);
-            }
-        }
+        // ⭐ As sete linhas vivem no irmão — ver a nota no cabeçalho desta função.
+        write_transform_rows(host, info, pos_for_display, ang_for_display);
     }
     let focused = host.store().focus_id() == Some(ids::INSP_ENTITY_NAME);
     let pending_name_edit = host
@@ -557,5 +514,61 @@ fn mirror_live_values_without_stomping_the_edit(
         text.push_str(&info.name);
         *caret = text.len();
         *selection_anchor = None;
+    }
+}
+
+/// ⭐ **As sete linhas do Transform, escritas num sítio só.**
+///
+/// # Por que existe
+///
+/// O corpo do [`sync_inspector_from_snapshots`] escrevia estes sete valores **duas
+/// vezes** — uma no ramo «a selecção mudou» e outra no ramo «é o mesmo objecto» — e as
+/// duas cópias tinham de concordar sobre a unidade de cada linha. ⚠️ *Uma lei escrita em
+/// dois sítios ainda não é uma lei; só uma PORTA é* — e foi o teto de LOC que cobrou a
+/// dívida, ao reprovar quando a unidade de ângulo acrescentou a oitava linha a cada cópia.
+///
+/// # ⚠️ A guarda de foco/arrasto vale nos DOIS ramos, e isso é equivalente
+///
+/// O ramo da selecção-mudou escrevia sem guarda — mas ele **acabou de** chamar
+/// `set_focus(None)` + `end_number_input_drag()` + `end_number_stepper_hold()`, então
+/// `focus` e `drag` são `None` ali e a guarda é sempre verdadeira. Aplicá-la nos dois é
+/// **exactamente** o comportamento que havia, com uma cópia a menos.
+///
+/// A guarda em si é a de sempre (Enio 2026-06-26): a caixa que o utilizador está a
+/// digitar ou a arrastar **não** é reescrita pelo valor do ECS, senão o delta do arrasto
+/// é aplicado contra um alvo em movimento e o objecto TREME no canvas — a ida-e-volta
+/// display↔sim não é bit-exacta para o comprimento.
+fn write_transform_rows(
+    host: &mut dyn PanelHostInternal,
+    info: ph2d_editor_core::screens::hero::InspectorTransformInfo,
+    pos_for_display: impl Fn(f32) -> f64,
+    ang_for_display: impl Fn(f32) -> f64,
+) {
+    let focus = host.store().focus_id();
+    let drag = host.store().number_input_drag().map(|d| d.id);
+    for (id, value) in [
+        (
+            ids::INSP_TRANSFORM_POS_X,
+            pos_for_display(info.translation[0]),
+        ),
+        (
+            ids::INSP_TRANSFORM_POS_Y,
+            pos_for_display(info.translation[1]),
+        ),
+        (ids::INSP_TRANSFORM_ROT, ang_for_display(info.rotation_rad)),
+        (ids::INSP_TRANSFORM_SCALE_X, info.scale[0] as f64),
+        (ids::INSP_TRANSFORM_SCALE_Y, info.scale[1] as f64),
+        (
+            ids::INSP_TRANSFORM_SKEW_X,
+            ang_for_display(info.skew_rad[0]),
+        ),
+        (
+            ids::INSP_TRANSFORM_SKEW_Y,
+            ang_for_display(info.skew_rad[1]),
+        ),
+    ] {
+        if focus != Some(id) && drag != Some(id) {
+            host.store_mut().set_number_value(id, value);
+        }
     }
 }

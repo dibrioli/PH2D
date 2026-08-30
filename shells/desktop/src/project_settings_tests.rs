@@ -100,6 +100,9 @@ fn the_project_scale_and_unit_survive_the_project_file() {
         snap_rotate_deg: 15.0,
         display_unit: ph2d_editor::project::DisplayUnit::Meters,
         image_filter: ph2d_editor::project::ImageFilterMode::PixelArt,
+        // ⚠️ `Radians` porque o default é `Degrees` — este teste atravessa o ARQUIVO INTEIRO
+        // (não só o espelho), e um valor de fábrica passaria mesmo que o campo se perdesse.
+        display_angle: ph2d_editor::project::DisplayAngle::Radians,
     };
     assert_ne!(
         authored,

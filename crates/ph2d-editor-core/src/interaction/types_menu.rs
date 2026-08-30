@@ -90,6 +90,12 @@ pub enum ContextMenuKind {
     /// between meters and pixels. Sim storage stays in meters; this
     /// only changes the FORMAT.
     SettingsUnitSubmenu,
+    /// Submenu opened when the user picks "Angle unit" — flips the
+    /// formatted ANGLE readouts (Inspector rotation/skew, panel angle
+    /// rows) between degrees and radians. Sim storage stays in radians;
+    /// this only changes the FORMAT, exactly like [`Self::SettingsUnitSubmenu`]
+    /// does for length.
+    SettingsAngleSubmenu,
     /// Submenu opened when the user picks "Image filter" — flips the
     /// app-wide [`crate::project::ImageFilterMode`] (Pixel Art /
     /// Smooth) applied to EVERY sprite/texture sample and the Vello
@@ -293,6 +299,7 @@ impl ContextMenuKind {
         Self::SettingsMenu,
         Self::SettingsPpmSubmenu,
         Self::SettingsUnitSubmenu,
+        Self::SettingsAngleSubmenu,
         Self::SettingsFilterSubmenu,
         Self::SettingsDisplaySubmenu,
         Self::SettingsTextSubmenu,

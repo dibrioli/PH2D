@@ -6,7 +6,8 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -75,7 +76,7 @@ pub(crate) fn paint_text_row(
     theme: Theme,
 ) -> f32 {
     let label_font = TypeToken::Sm.px();
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         label,

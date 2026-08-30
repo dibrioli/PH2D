@@ -374,6 +374,28 @@ impl TextSystem {
     /// with the boosted weight. The fix is invisible to callers (same
     /// signature, no new params).
     pub fn prefix_width(&mut self, prefix: &str, font_size: f32) -> f32 {
+        self.prefix_width_weighted(prefix, font_size, FontWeight::MEDIUM)
+    }
+
+    /// [`Self::prefix_width`] no PESO em que o texto vai de facto ser desenhado.
+    ///
+    /// ⚠️ **Existe porque medir num peso e pintar noutro corta curto.** MEDIDO em 2026-08-30
+    /// sobre rótulos reais: o `SemiBold` é **`+0,74 %` a `+1,69 %`** mais largo que o `Medium`
+    /// (⛔ a 1.ª redacção dizia *"~3 %"*, o dobro do que a medição dá; só a própria reticência
+    /// chega perto disso, a `+5,0`–`5,8 %`). ⚠️ **E `1,3 %` de `110 px` é `1,4 px` — um
+    /// caractere na fronteira**, que é exactamente onde o corte existe. Quem corta um rótulo
+    /// com reticências mede antes de pintar:
+    /// medido em `Medium` e pintado em `SemiBold`, o prefixo escolhido transborda a coluna
+    /// exactamente na fronteira em que o corte existe para não transbordar.
+    ///
+    /// ⚠️ Ponto de extensão **append-only**: a `prefix_width` delega aqui com `MEDIUM`, então
+    /// nenhum dos chamadores dela muda de resposta.
+    pub fn prefix_width_weighted(
+        &mut self,
+        prefix: &str,
+        font_size: f32,
+        weight: FontWeight,
+    ) -> f32 {
         if prefix.is_empty() {
             return 0.0;
         }
@@ -382,13 +404,7 @@ impl TextSystem {
         // (now rendering-aware) already returns the correct width.
         if !prefix.ends_with(' ') && !prefix.ends_with('\t') {
             return self
-                .layout_for_rendering(
-                    prefix,
-                    font_size,
-                    f32::INFINITY,
-                    FontWeight::MEDIUM,
-                    rendering,
-                )
+                .layout_for_rendering(prefix, font_size, f32::INFINITY, weight, rendering)
                 .width();
         }
         const SENTINEL: &str = "|";
@@ -396,22 +412,10 @@ impl TextSystem {
         combined.push_str(prefix);
         combined.push_str(SENTINEL);
         let w_with = self
-            .layout_for_rendering(
-                &combined,
-                font_size,
-                f32::INFINITY,
-                FontWeight::MEDIUM,
-                rendering,
-            )
+            .layout_for_rendering(&combined, font_size, f32::INFINITY, weight, rendering)
             .width();
         let w_sentinel = self
-            .layout_for_rendering(
-                SENTINEL,
-                font_size,
-                f32::INFINITY,
-                FontWeight::MEDIUM,
-                rendering,
-            )
+            .layout_for_rendering(SENTINEL, font_size, f32::INFINITY, weight, rendering)
             .width();
         (w_with - w_sentinel).max(0.0)
     }

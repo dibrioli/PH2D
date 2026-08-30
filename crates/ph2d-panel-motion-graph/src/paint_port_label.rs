@@ -46,6 +46,7 @@ use crate::geom::{self, View};
 use crate::snapshot::GraphNodeView;
 use ph2d_editor_core::paint::{paint_text_title, resolve};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_tokens::{ColorToken, Theme};
 
 use super::socket_center;
@@ -60,10 +61,18 @@ const PORT_LABEL_PAD_Y: f32 = 5.0; // LITERAL-PX-OK: port label top inset within
 /// cai abaixo de ~6 px, que não se lê, e cada glifo continua a custar trabalho de texto num
 /// grafo inteiro fora de escala. *Um texto ilegível é custo sem informação.*
 const PORT_LABEL_MIN_ZOOM: f32 = 0.55; // LITERAL-PX-OK: zoom threshold, not a design size
-/// Avanço médio de um caractere a [`PORT_LABEL_SIZE`] — **não há API de medição** neste caminho,
-/// e o precedente é o `CRUMB_CHAR_W` do breadcrumb, que resolve o mesmo problema do mesmo modo.
-/// Serve só para alinhar à DIREITA o rótulo de uma saída; a truncagem verdadeira é do
-/// `paint_text_title`, que recebe a largura máxima.
+/// Avanço médio de um caractere a [`PORT_LABEL_SIZE`]; o precedente é o `CRUMB_CHAR_W` do
+/// breadcrumb, que resolve o mesmo problema do mesmo modo. Serve **só** para alinhar à DIREITA
+/// o rótulo de uma saída.
+///
+/// ⛔⛔ **A nota que aqui estava — *"não há API de medição neste caminho"* — deixou de ser
+/// verdade em 2026-08-30**, quando nasceu a `TextSystem::prefix_width_weighted` (§0.0: *quem
+/// move o número que tornava algo inalcançável tem de reconferir a nota*). O alinhamento à
+/// direita passar a usá-la é trabalho em aberto, e o preço é uma medição por rótulo por quadro.
+///
+/// ⚠️ **E a 2.ª metade da nota antiga (*"a truncagem verdadeira é do `paint_text_title`"*)
+/// também morreu:** aquele ramo passa `f32::INFINITY` desde 2026-08-30 — usar esta ESTIMATIVA
+/// como limite de corte apagava `Out` inteiro (ver a nota no sítio da chamada).
 const LABEL_CHAR_W: f32 = 5.6; // LITERAL-PX-OK: mean advance at PORT_LABEL_SIZE
 
 /// Quantos bytes um rótulo pode ter. Os nomes de porta do catálogo são `[a-z0-9_]` e o mais
@@ -194,7 +203,7 @@ pub(super) fn draw_port_labels(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
     for (i, p) in n.inputs.iter().enumerate() {
         let (_, cy) = socket_center(n, view, false, i);
         let label = PortLabel::of(p.name);
-        paint_text_title(
+        paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
             label.as_str(),
@@ -221,7 +230,15 @@ pub(super) fn draw_port_labels(ctx: &mut PaintCtx, n: &GraphNodeView, view: &Vie
             sx + w - pad - text_w,
             cy - (geom::ROW_H * 0.5 - PORT_LABEL_PAD_Y) * view.zoom,
             size,
-            text_w.max(size),
+            // ⛔⛔ **A SEGUNDA EXCEPÇÃO da varredura de 2026-08-30 — e esta foi uma REGRESSÃO minha,
+            // apanhada pela auditoria.** O `text_w` aqui é `approx_width_px()`, uma ESTIMATIVA
+            // pelo avanço médio (`LABEL_CHAR_W`), e é a MESMA quantidade que POSICIONA o
+            // rótulo (`x = … − text_w`). Como orçamento de quebra uma estimativa curta é
+            // inofensiva (o parley não parte dentro de uma palavra: transborda ~2 px para o
+            // `PORT_LABEL_PAD_X`); como limite de CORTE é fatal — medido, `Out` (estimativa
+            // `16,80`, real `19,07`) saía como **`…`**, o rótulo inteiro a desaparecer.
+            // *Uma grandeza não pode ao mesmo tempo posicionar e limitar: isso é circular.*
+            f32::INFINITY,
             colour,
         );
     }

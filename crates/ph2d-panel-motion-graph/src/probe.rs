@@ -13,10 +13,9 @@
 
 use crate::geom::{self, View};
 use crate::snapshot::{GraphNodeView, ProbeView};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_title, resolve, stroke_polyline, stroke_rounded_rect,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_polyline, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
@@ -69,7 +68,7 @@ pub(crate) fn draw(
         Some(v) => format!("{}: {:.3}", probe.label, v),
         None => format!("{}: —", probe.label),
     };
-    paint_text_title(
+    paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         &reading,

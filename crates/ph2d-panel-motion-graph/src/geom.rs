@@ -95,7 +95,10 @@ const CRUMB_MAX_W: f32 = 140.0; // LITERAL-PX-OK: a long group name is truncated
 /// The width of one crumb. **The draw and the hit rect both come from here** — a
 /// second estimate is how a clickable thing comes to sit somewhere other than where
 /// it was drawn. (There is no text-measure API in this stack, so the width is a
-/// mean-advance estimate; the label is clipped to the same box by `paint_text_title`.)
+/// mean-advance estimate; desde 2026-08-30 o rótulo é **cortado com reticências** ao mesmo
+/// box por `paint_text_title_elided`, não quebrado em duas linhas por `paint_text_title`.
+/// ⚠️ E o *"no text-measure API in this stack"* deixou de ser verdade na mesma data —
+/// `TextSystem::prefix_width_weighted`.)
 pub(crate) fn crumb_w(title: &str) -> f32 {
     (2.0 * CRUMB_PAD_X + title.chars().count() as f32 * CRUMB_CHAR_W).min(CRUMB_MAX_W)
 }

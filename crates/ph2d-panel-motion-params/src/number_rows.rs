@@ -17,7 +17,8 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::{HitIndex, InteractiveState, WidgetStore, format_number};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     DEFAULT_LABEL_W, IconButtonStyle, IconGlyph, NumberInput, NumericInputWithUnit,
@@ -165,7 +166,7 @@ fn row_label(
     theme: Theme,
 ) {
     let font = TypeToken::Base.px();
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         label,

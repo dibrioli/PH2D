@@ -8,10 +8,10 @@
 //! Its own module because `paint.rs` sits at its frozen LOC cap (the gate's
 //! rule is to drive those DOWN, never up).
 
-use ph2d_text::TextSystem;
+use ph2d_text::{FontWeight, TextSystem};
 use ph2d_vector::{Color, VectorScene};
 
-use crate::paint::paint_text;
+use crate::paint::paint_text_weighted;
 
 /// The ellipsis appended to text that does not fit. Inside Inter's coverage
 /// (U+2026 is not one of the arrow / technical blocks the tofu gate rejects).
@@ -35,37 +35,83 @@ pub fn paint_text_elided(
     max_width: f32,
     color: Color,
 ) {
-    if max_width <= 0.0 {
-        return;
-    }
-    if text_system.prefix_width(text, font_size) <= max_width {
-        // `INFINITY`, not `max_width`: it fits, and passing the budget back would
-        // let a sub-pixel measurement disagreement re-introduce the wrap.
-        paint_text(
-            text_system,
-            scene,
-            text,
-            x,
-            y,
-            font_size,
-            f32::INFINITY,
-            color,
-        );
-        return;
-    }
-    let Some(elided) = elide(text_system, text, font_size, max_width) else {
-        return;
-    };
-    paint_text(
+    paint_elided_weighted(
         text_system,
         scene,
-        &elided,
+        text,
         x,
         y,
         font_size,
-        f32::INFINITY,
+        max_width,
         color,
+        FontWeight::MEDIUM,
     );
+}
+
+/// ⭐ [`paint_text_elided`] em **SemiBold** — a irmã de [`paint_text_title`], para o mesmo
+/// motivo pelo qual ela existe.
+///
+/// ⚠️ Sem ela, cortar um TÍTULO obrigava a escolher entre duas regressões silenciosas: pintar
+/// o corte em `Medium` (o título muda de peso e ninguém escreveu isso) ou medir em `Medium` e
+/// pintar em `SemiBold` (o prefixo escolhido transborda ~3 %, exactamente na fronteira em que o
+/// corte existe para não transbordar).
+#[allow(clippy::too_many_arguments)]
+pub fn paint_text_title_elided(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+) {
+    paint_elided_weighted(
+        text_system,
+        scene,
+        text,
+        x,
+        y,
+        font_size,
+        max_width,
+        color,
+        FontWeight::SEMI_BOLD,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn paint_elided_weighted(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    x: f32,
+    y: f32,
+    font_size: f32,
+    max_width: f32,
+    color: Color,
+    weight: FontWeight,
+) {
+    // ⚠️⚠️ **O peso ATRAVESSA, não é escolhido por um `if`.** A 1.ª redacção ramificava em
+    // `weight == SEMI_BOLD`, e uma auditoria adversarial mostrou que era **um braço só**:
+    // um terceiro peso seria MEDIDO nele e PINTADO em Medium, em silêncio — o defeito exacto
+    // que este módulo existe para impedir. Três mutações sobreviveram a 1 100 testes por
+    // causa dele. *Uma lista de pesos é uma lista que alguém esquece; um parâmetro não.*
+    let paint = |ts: &mut TextSystem, sc: &mut VectorScene, t: &str| {
+        paint_text_weighted(ts, sc, t, x, y, font_size, f32::INFINITY, color, weight);
+    };
+    if max_width <= 0.0 {
+        return;
+    }
+    if text_system.prefix_width_weighted(text, font_size, weight) <= max_width {
+        // `INFINITY`, not `max_width`: it fits, and passing the budget back would
+        // let a sub-pixel measurement disagreement re-introduce the wrap.
+        paint(text_system, scene, text);
+        return;
+    }
+    let Some(elided) = elide(text_system, text, font_size, max_width, weight) else {
+        return;
+    };
+    paint(text_system, scene, &elided);
 }
 
 /// The longest `<prefix>…` of `text` that measures within `max_width`, or `None`
@@ -89,8 +135,9 @@ fn elide(
     text: &str,
     font_size: f32,
     max_width: f32,
+    weight: FontWeight,
 ) -> Option<String> {
-    if text_system.prefix_width(ELLIPSIS, font_size) > max_width {
+    if text_system.prefix_width_weighted(ELLIPSIS, font_size, weight) > max_width {
         return None;
     }
     let bounds: Vec<usize> = text.char_indices().map(|(i, _)| i).collect();
@@ -99,7 +146,7 @@ fn elide(
     while lo + 1 < hi {
         let mid = lo + (hi - lo) / 2;
         let candidate = format!("{}{ELLIPSIS}", &text[..bounds[mid]]);
-        if text_system.prefix_width(&candidate, font_size) <= max_width {
+        if text_system.prefix_width_weighted(&candidate, font_size, weight) <= max_width {
             lo = mid;
         } else {
             hi = mid;
@@ -157,7 +204,7 @@ mod tests {
         let long = "Translate Y  #4591";
         let full = text.prefix_width(long, 12.0);
         let budget = full * 0.6;
-        let out = elide(&mut text, long, 12.0, budget).expect("something fits");
+        let out = elide(&mut text, long, 12.0, budget, FontWeight::MEDIUM).expect("something fits");
         assert!(out.ends_with(ELLIPSIS), "{out:?}");
         assert!(long.starts_with(out.trim_end_matches(ELLIPSIS)), "{out:?}");
         assert!(text.prefix_width(&out, 12.0) <= budget, "{out:?} overruns");
@@ -170,7 +217,96 @@ mod tests {
     #[test]
     fn elide_gives_up_when_not_even_the_ellipsis_fits() {
         let mut text = TextSystem::without_system_fonts();
-        assert_eq!(elide(&mut text, "Translate Y", 12.0, 0.5), None);
+        assert_eq!(
+            elide(&mut text, "Translate Y", 12.0, 0.5, FontWeight::MEDIUM),
+            None
+        );
+    }
+
+    /// ⭐⭐⭐ **O CORTE SEGUE O PESO EM QUE VAI SER PINTADO.**
+    ///
+    /// ⚠️⚠️ Nasceu de uma auditoria adversarial (2026-08-30) que achou **três mutações
+    /// sobreviventes a 1 100 testes**: a `elide` a ignorar o `weight` e a medir sempre em
+    /// Medium · o pintor a pintar sempre em Medium · a `paint_text_title_elided` a passar
+    /// `MEDIUM`. Os três testes que existiam passavam `MEDIUM` **e usavam a medição em Medium
+    /// como oráculo** — auto-consistentes, e cegos ao parâmetro novo. *Um parâmetro cujo valor
+    /// novo nenhum teste exercita não tem cobertura: tem sintaxe.*
+    ///
+    /// A régua é a desigualdade, não um número: o SemiBold é mais largo, então para o MESMO
+    /// orçamento ele nunca pode guardar MAIS texto — e em algum ponto guarda MENOS.
+    #[test]
+    fn the_cut_follows_the_weight_it_will_be_painted_in() {
+        let mut text = TextSystem::without_system_fonts();
+        let name = "Tropism Direction";
+        let size = 13.0;
+        let full = text.prefix_width_weighted(name, size, FontWeight::SEMI_BOLD);
+        let kept = |o: &Option<String>| {
+            o.as_deref()
+                .map_or(0, |s| s.trim_end_matches(ELLIPSIS).chars().count())
+        };
+        let mut differed = 0;
+        for k in 1..=120 {
+            let budget = full * k as f32 / 120.0;
+            let m = elide(&mut text, name, size, budget, FontWeight::MEDIUM);
+            let b = elide(&mut text, name, size, budget, FontWeight::SEMI_BOLD);
+            assert!(
+                kept(&b) <= kept(&m),
+                "o SemiBold e' MAIS largo: com o orcamento {budget} ele guardou {} contra {} \
+                 do Medium",
+                kept(&b),
+                kept(&m)
+            );
+            if kept(&b) != kept(&m) {
+                differed += 1;
+            }
+        }
+        // ⚠️ **O CONTROLE, e é ele que mata a mutação**: sem esta metade, medir sempre em
+        // Medium satisfaz a desigualdade acima (`<=` com igualdade em toda a parte).
+        assert!(
+            differed > 0,
+            "o corte deu EXACTAMENTE o mesmo nos dois pesos em 120 orcamentos — o `weight` nao \
+             esta' a chegar a medicao"
+        );
+    }
+
+    /// ⭐⭐ **E O QUE FOI PINTADO TEM O PESO QUE FOI MEDIDO** — a outra metade, que a
+    /// auditoria de 2026-08-30 também deixou sem gate (a mutação *"pinta sempre em Medium"*
+    /// sobrevivia a 1 100 testes).
+    ///
+    /// A régua é a TINTA, lida da cena emitida. ⚠️ **E ela custou duas tentativas:** contar
+    /// `n_paths` e `n_path_segments` dá **zero** nos dois (um glifo não entra na cena como
+    /// caminho, entra por `draw_glyphs`), e contar os glifos dá **17 nos dois** (é a mesma
+    /// string). O que separa os pesos é o **eixo normalizado da fonte VARIÁVEL** —
+    /// `resources.normalized_coords` —, que é literalmente onde o peso viaja.
+    /// ⛔ Não é comparar duas construções: é perguntar à saída.
+    #[test]
+    fn the_ink_carries_the_weight_that_was_measured() {
+        let axes = |bold: bool| {
+            let mut text = TextSystem::without_system_fonts();
+            let mut scene = VectorScene::new();
+            let name = "Tropism Direction";
+            let f = if bold {
+                paint_text_title_elided
+            } else {
+                paint_text_elided
+            };
+            f(
+                &mut text,
+                &mut scene,
+                name,
+                0.0,
+                0.0,
+                13.0,
+                f32::INFINITY,
+                Color::from_rgba8(255, 255, 255, 255),
+            );
+            scene.inner().encoding().resources.normalized_coords.clone()
+        };
+        assert_ne!(
+            axes(true),
+            axes(false),
+            "as duas portas pintaram a MESMA tinta — o peso nao chega ao pintor"
+        );
     }
 
     #[test]
@@ -179,7 +315,7 @@ mod tests {
         let name = "Rotação · ângulo";
         let full = text.prefix_width(name, 12.0);
         for frac in [0.2, 0.4, 0.6, 0.8] {
-            if let Some(out) = elide(&mut text, name, 12.0, full * frac) {
+            if let Some(out) = elide(&mut text, name, 12.0, full * frac, FontWeight::MEDIUM) {
                 // A mid-char cut would have panicked in `elide` already; assert
                 // the surviving prefix is a real prefix of the original.
                 assert!(name.starts_with(out.trim_end_matches(ELLIPSIS)));

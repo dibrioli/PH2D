@@ -9,9 +9,10 @@ use crate::geom;
 use crate::snapshot::{GraphViewSnapshot, menu_rows};
 use crate::state::{Menu, MenuBody};
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_title, rect_to_vello, resolve, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, rect_to_vello, resolve, stroke_rounded_rect,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
@@ -49,7 +50,7 @@ pub(super) fn draw_menu(
         1.0,
         resolve(ColorToken::Border, theme),
     );
-    paint_text_title(
+    paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         header,
@@ -89,7 +90,7 @@ pub(super) fn draw_menu(
             MENU_DOT_R,
             resolve(c.dot, theme),
         );
-        paint_text_title(
+        paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
             c.label,

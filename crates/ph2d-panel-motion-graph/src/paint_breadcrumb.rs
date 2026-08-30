@@ -19,6 +19,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};
 
@@ -69,7 +70,7 @@ pub(crate) fn draw(
                 resolve(ColorToken::Border, theme),
             );
         }
-        paint_text_title(
+        paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
             title,
@@ -88,6 +89,19 @@ pub(crate) fn draw(
         );
         if !here {
             // The separator lives in the gap AFTER this crumb.
+            //
+            // ⛔⛔ **`INFINITY`, e é a EXCEPÇÃO da varredura de 2026-08-30** (em que todo o
+            // resto do chrome do Motion passou a cortar com reticências em vez de quebrar
+            // linha). Um glifo ÚNICO desenhado num intervalo mais estreito do que ele é
+            // **posicionado**, não orçamentado: ele transborda para o padding dos dois lados
+            // de propósito. Cortá-lo aqui APAGA-O — a `/` a `12 px` não cabe nos `4 px` do
+            // `CRUMB_GAP`, e as próprias reticências cabem ainda menos, então o corte devolve
+            // *nada*. ⚠️ Foi apanhado a rever a varredura, não por um gate.
+            //
+            // ⚠️ **Medido depois, e é preciso ser exacto sobre o que a troca compra:** ela é
+            // **neutra ao pixel** hoje (`layout("/", 12, 4)` e `layout("/", 12, ∞)` dão os dois
+            // uma linha de `4,436 px` — um glifo único nunca quebrou aqui). O que ela é: a
+            // guarda contra a elisão, e o sítio onde a razão fica escrita.
             paint_text_title(
                 ctx.text_system,
                 ctx.scene,
@@ -95,7 +109,7 @@ pub(crate) fn draw(
                 chip.x + chip.w,
                 chip.y + CRUMB_TEXT_PAD_Y,
                 geom::CRUMB_TEXT_SIZE,
-                geom::CRUMB_GAP,
+                f32::INFINITY,
                 resolve(ColorToken::Text2, theme),
             );
         }

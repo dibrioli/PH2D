@@ -7,6 +7,7 @@ use super::*;
 use crate::param_file_browse_id;
 use crate::snapshot::scalar_text;
 use crate::{ChannelsRow, ColorRow, EnumRow, ScalarRow, SourceRow, ToggleRow};
+use ph2d_editor_core::text_elide::paint_text_elided;
 
 /// A coluna da DIREITA de uma row dirigida: o ícone de elo mais o nome de quem dirige.
 ///
@@ -43,7 +44,7 @@ pub(super) fn paint_driven_row(
     theme: Theme,
 ) {
     let mid = y + (ROW_H_PX - label_font) * 0.5;
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -59,7 +60,7 @@ pub(super) fn paint_driven_row(
         row.max,
         row.integer,
     );
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         // The SAME formatter the chip uses — a second one would show the same
@@ -92,7 +93,7 @@ pub(super) fn paint_driven_row(
         resolve(ColorToken::Text2, theme),
         ph2d_tokens::StrokeToken::Default.px(),
     );
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         driver,
@@ -173,7 +174,7 @@ pub(super) fn paint_color_row(
     theme: Theme,
 ) -> f32 {
     let swatch_w = SwatchSize::Md.px();
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -209,7 +210,7 @@ pub(super) fn paint_enum_row(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -264,7 +265,7 @@ pub(super) fn paint_channels_row(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -312,7 +313,7 @@ pub(super) fn paint_channels_row(
         // (`CHANNELS_EXTRA_BASE`).
         let ext = row.extra.len().min(MAX_ENUM_OPTIONS);
         if ext > 0 {
-            paint_text(
+            paint_text_elided(
                 text_system,
                 scene,
                 "From stream",
@@ -379,7 +380,7 @@ pub(super) fn paint_source_row(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -392,7 +393,7 @@ pub(super) fn paint_source_row(
     y += TypeToken::Sm.px() + Spacing::Xs.px();
     let n = row.options.len().min(MAX_ENUM_OPTIONS);
     if n > 0 {
-        paint_text(
+        paint_text_elided(
             text_system,
             scene,
             "Drawn shapes",
@@ -514,7 +515,7 @@ pub(super) fn paint_file_row(
         BROWSE_W.min(inner_w),
         ROW_H_PX,
     );
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,
@@ -552,7 +553,7 @@ pub(super) fn paint_file_row(
 
     if row.missing {
         y += Spacing::Xs.px();
-        paint_text(
+        paint_text_elided(
             text_system,
             scene,
             "File not found",

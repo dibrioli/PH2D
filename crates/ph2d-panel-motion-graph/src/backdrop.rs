@@ -25,8 +25,9 @@
 
 use crate::geom::{View, card_h};
 use crate::snapshot::{GraphBackdropView, GraphNodeView};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve, stroke_rounded_rect};
+use ph2d_editor_core::paint::{fill_rounded_rect, resolve, stroke_rounded_rect};
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::widget::panel_chrome::{
     paint_panel_corner_dot, paint_panel_corner_dot_bl, panel_resize_handle_rect,
     panel_resize_handle_rect_bl,
@@ -184,7 +185,7 @@ pub(crate) fn draw(
     // draws, in both bottom corners (the panels are grabbable from either).
     paint_panel_corner_dot(body, ctx.scene, theme);
     paint_panel_corner_dot_bl(body, ctx.scene, theme);
-    paint_text_title(
+    paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         &b.title,

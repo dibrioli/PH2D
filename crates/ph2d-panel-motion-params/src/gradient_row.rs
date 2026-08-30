@@ -27,8 +27,9 @@ use ph2d_color::{
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
 };
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
@@ -182,7 +183,7 @@ pub(crate) fn paint_gradient_row(
     buttons.push((BTN_W, "\u{2212}", param_grad_remove_id(slot)));
     // Um vão por botão: o do primeiro é o que o separa do rótulo.
     let used: f32 = buttons.iter().map(|(bw, _, _)| bw + gap).sum();
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,

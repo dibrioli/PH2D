@@ -63,11 +63,11 @@ use crate::state::{MotionGraphPanelState, ViewState};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::GraphHitKind;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, paint_text_title, rect_to_vello, resolve, stroke_polyline,
-    stroke_rounded_rect,
+    fill_circle, fill_rounded_rect, rect_to_vello, resolve, stroke_polyline, stroke_rounded_rect,
 };
 use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::text_elide::paint_text_title_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_node_registry::NodeUiCategory;
 use ph2d_nodegraph::port::Domain;
@@ -373,7 +373,7 @@ fn draw_card(
 
     // A stamped node's title clips short of its header toggle (doc 86).
     let toggle_w = geom::PREVIEW_TOGGLE_W * f32::from(u8::from(n.preview.is_some()));
-    paint_text_title(
+    paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         &n.display_name,
@@ -403,7 +403,7 @@ fn draw_card(
     // artist authored, and it must not compete with the node's own name.
     if let Some(text) = &n.readout {
         let row_y = sy + (geom::HEADER_H + geom::card_rows(n) * geom::ROW_H) * view.zoom;
-        paint_text_title(
+        paint_text_title_elided(
             ctx.text_system,
             ctx.scene,
             text,

@@ -25,8 +25,9 @@ use ph2d_color::srgb::linear_to_srgb_byte;
 use ph2d_color::{DEFAULT_PALETTE_FALLBACK, parse_palette};
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_text_centered, resolve, stroke_rounded_rect,
 };
+use ph2d_editor_core::text_elide::paint_text_elided;
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
@@ -91,7 +92,7 @@ pub(crate) fn paint_palette_row(
     let colors = working(&row.value);
 
     // ── Header: label (left) + + / − (right) ──
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         &row.label,

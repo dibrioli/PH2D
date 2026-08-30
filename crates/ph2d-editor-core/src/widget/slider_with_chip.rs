@@ -28,8 +28,9 @@
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::paint::{
-    fill_rounded_rect, paint_icon, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
+    fill_rounded_rect, paint_icon, paint_text_centered, resolve, stroke_rounded_rect,
 };
+use crate::text_elide::paint_text_elided;
 use crate::widget::TextInputState;
 use crate::widget::number_input::{stepper_down_rect, stepper_up_rect, stepper_width};
 use crate::zones::Rect;
@@ -133,7 +134,8 @@ pub fn paint_slider_with_chip_layout(
     // Text1 + left-align via `paint_text`; mirroring here so every
     // row layout looks the same regardless of which painter renders it.
     let font = TypeToken::Base.px();
-    paint_text(
+    // ⚠️⚠️ **CORTA, nunca QUEBRA** — altura fixa; ver `architecture_motion_chrome_never_wraps_a_row_label`.
+    paint_text_elided(
         text_system,
         scene,
         label,
@@ -303,7 +305,7 @@ pub fn paint_slider_with_chip_layout_adaptive(
     // Stacked: label on top row, slider+chip on bottom row at full width.
     let font = TypeToken::Base.px();
     let label_row_h = rect.h;
-    paint_text(
+    paint_text_elided(
         text_system,
         scene,
         label,

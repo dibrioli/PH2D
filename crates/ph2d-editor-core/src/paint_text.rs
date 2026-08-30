@@ -108,8 +108,12 @@ pub fn paint_text_title(
     );
 }
 
+/// ⚠️ `pub(crate)` desde 2026-08-30: o [`crate::text_elide`] precisa de pintar no MESMO peso
+/// em que mediu, e a alternativa era um `if weight == SEMI_BOLD { … } else { … }` lá —
+/// **um `if` de um braço só** (§5.0), em que um terceiro peso seria medido num e pintado
+/// noutro, em silêncio. *Uma lista de pesos é uma lista que alguém esquece; um parâmetro não.*
 #[allow(clippy::too_many_arguments)]
-fn paint_text_weighted(
+pub(crate) fn paint_text_weighted(
     text_system: &mut TextSystem,
     scene: &mut VectorScene,
     text: &str,

@@ -189,7 +189,8 @@ impl Sculpt3dScene {
         // mediano.** Os furos vêm primeiro porque são o que o artista **vê** — foi a queixa
         // dele três vezes seguidas.
         let attempt = |w: f32,
-                       features: bool|
+                       features: bool,
+                       adaptive: f32|
          -> Result<
             (
                 ph2d_mesh::Mesh,
@@ -341,19 +342,21 @@ impl Sculpt3dScene {
         //
         // ⚠️ **`AssertUnwindSafe` é honesto aqui:** a `attempt` não escreve em nada partilhado
         // — ela lê `work`/`reference`/`dual` e devolve uma malha nova.
-        let guarded = |w: f32, features: bool| {
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| attempt(w, features)))
-                .unwrap_or(Err(RemeshRefusal::TooCoarseToResolve))
+        let guarded = |w: f32, features: bool, adaptive: f32| {
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                attempt(w, features, adaptive)
+            }))
+            .unwrap_or(Err(RemeshRefusal::TooCoarseToResolve))
         };
         let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
             (
-                guarded(ph2d_crossfield::ALIGN_WEIGHT, false),
-                guarded(0.0, false),
+                guarded(ph2d_crossfield::ALIGN_WEIGHT, false, adaptive),
+                guarded(0.0, false, adaptive),
             )
         } else {
             rayon::join(
-                || guarded(ph2d_crossfield::ALIGN_WEIGHT, false),
-                || guarded(0.0, false),
+                || guarded(ph2d_crossfield::ALIGN_WEIGHT, false, adaptive),
+                || guarded(0.0, false, adaptive),
             )
         };
         let (relief_won, (out, e, _shift_frac_max, shape)) = match (aligned, smooth) {
@@ -391,7 +394,7 @@ impl Sculpt3dScene {
         // onde é melhor. *A terceira candidata não pode piorar a escolha; só pode não ser
         // escolhida.*
         let (relief_won, (out, e, _shift_frac_max, shape)) = if open_edges(&out) > 0
-            && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true)
+            && let Ok(f) = guarded(ph2d_crossfield::ALIGN_WEIGHT, true, adaptive)
             && worse(
                 &out,
                 shape.skew_over_60,
@@ -401,6 +404,75 @@ impl Sculpt3dScene {
                 f.3.skew_p50,
             ) {
             (relief_won, f)
+        } else {
+            (relief_won, (out, e, _shift_frac_max, shape))
+        };
+
+        // ⭐⭐⭐ **A QUARTA TENTATIVA — o campo adaptativo PERDE se abrir a malha.**
+        //
+        // ⛔⛔⛔ **Report do artista, 2026-08-30, com foto: «praticamente uma regressão».** E
+        // era: no `Detail` de FÁBRICA (`0,50`) o `Follow Curvature = 1` levava a peça dele de
+        // `χ = 2 · 0 bordo` para **`χ = 1 · 4 bordo`** — furos onde não havia.
+        //
+        // ⚠️⚠️ **E a wave que o introduziu mediu-o a `Detail 0,85`, onde fica limpo.** *Afinar
+        // e validar num ponto do slider que não é o de fábrica é medir a configuração que
+        // ninguém usa* — a fixtura sintética de espinhos já tinha avisado (bordo `0 → 4`) e a
+        // leitura foi «na peça dele fica limpo», que era verdade só naquele ponto.
+        //
+        // ⇒ **A cura tem a forma da terceira tentativa acima, e a mesma garantia:** se ainda
+        // há furo e o knob estava ligado, corre-se mais uma vez **sem** o campo, e a decisão
+        // passa pelo mesmo [`worse`]. *A adaptação não pode piorar a escolha; só pode não ser
+        // escolhida.* ⭐ Ela é **de graça** quando o knob está desligado (a condição exige
+        // `adaptive > 0`) e quando a saída já fecha.
+        // ⚠️⚠️ **A recaída corre a CORRIDA INTEIRA, não uma variante.** A 1.ª versão
+        // desta guarda pediu **uma** candidata sem campo (a do `w` que tinha vencido) e a
+        // peça continuou com `4` bordo: *a linha de base não é uma corrida, são duas — a
+        // alinhada e a suave — e é o [`worse`] entre elas que dá a malha limpa.* Pedir só
+        // metade do caminho de omissão devolve algo que não é o caminho de omissão.
+        let uniforme = if adaptive > 0.0 && open_edges(&out) > 0 {
+            let (a, b) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
+                (
+                    guarded(ph2d_crossfield::ALIGN_WEIGHT, false, 0.0),
+                    guarded(0.0, false, 0.0),
+                )
+            } else {
+                rayon::join(
+                    || guarded(ph2d_crossfield::ALIGN_WEIGHT, false, 0.0),
+                    || guarded(0.0, false, 0.0),
+                )
+            };
+            match (a, b) {
+                (Ok(a), Ok(b)) => {
+                    if worse(
+                        &a.0,
+                        a.3.skew_over_60,
+                        a.3.skew_p50,
+                        &b.0,
+                        b.3.skew_over_60,
+                        b.3.skew_p50,
+                    ) {
+                        Some((false, b))
+                    } else {
+                        Some((true, a))
+                    }
+                }
+                (Ok(a), Err(_)) => Some((true, a)),
+                (Err(_), Ok(b)) => Some((false, b)),
+                (Err(_), Err(_)) => None,
+            }
+        } else {
+            None
+        };
+        let (relief_won, (out, e, _shift_frac_max, shape)) = if let Some((rw, u)) = uniforme
+            && worse(
+                &out,
+                shape.skew_over_60,
+                shape.skew_p50,
+                &u.0,
+                u.3.skew_over_60,
+                u.3.skew_p50,
+            ) {
+            (rw, u)
         } else {
             (relief_won, (out, e, _shift_frac_max, shape))
         };

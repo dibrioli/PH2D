@@ -421,3 +421,67 @@ fn o_alisamento_converge_mesmo_quando_o_pedido_alterna() {
         );
     }
 }
+
+/// ⭐⭐⭐ **O CAMPO ADAPTATIVO TEM DE PODER PERDER** — e o gate lê o FONTE.
+///
+/// ⛔⛔⛔ **Report do artista, 2026-08-30, com foto: «praticamente uma regressão».** No
+/// `Detail` de FÁBRICA (`0,50`) o `Follow Curvature = 1` levava a peça dele de
+/// `χ = 2 · 0 bordo` para `χ = 1 · 4 bordo` — **furos onde não havia**.
+///
+/// ⚠️⚠️ **A wave que o introduziu mediu a `Detail 0,85`, onde fica limpo.** *Afinar e
+/// validar num ponto do slider que não é o de fábrica é medir a configuração que
+/// ninguém usa.*
+///
+/// ⚠️ **Por que o gate lê o fonte:** a guarda é uma **ausência de dano** ao fim de uma
+/// cadeia que precisa da malha inteira; um gate que a medisse teria de correr o botão
+/// duas vezes por fixtura. E o modo de falha é apagar a recaída — que compila, passa a
+/// suíte inteira, e devolve os furos.
+///
+/// ⚠️ **A 2.ª asserção é a que a 1.ª versão da cura falhou:** ela pedia **uma** candidata
+/// sem campo, e a peça continuou com `4` bordo. *A linha de base não é uma corrida, são
+/// duas* — a alinhada e a suave — e é o `worse` entre elas que dá a malha limpa.
+#[test]
+fn o_campo_adaptativo_recua_quando_abre_a_malha() {
+    let src = include_str!("sculpt3d_history_retopo_extract.rs");
+    assert!(
+        src.contains("if adaptive > 0.0") && src.contains(concat!("open_", "edges(&out) > 0")),
+        "⛔ a recaida do campo adaptativo desapareceu: sem ela o `Follow Curvature` volta a \
+         poder abrir furos que o caminho de omissao nao tem"
+    );
+    let (_, recaida) = src
+        .split_once("let uniforme = if adaptive > 0.0")
+        .expect("a recaida tem de existir e chamar-se assim");
+    let recaida = &recaida[..recaida.len().min(1200)];
+    // ⚠️ **CONTAGEM e não `contains`** — a 1.ª versão deste gate perguntava se as duas
+    // candidatas *apareciam*, e a mutação que apagava metade da corrida **sobreviveu**:
+    // o ramo SERIAL (`PH2D_RETOPO_SERIAL=1`) tem as mesmas duas linhas, então a string
+    // continuava lá. *Um `contains` sobre um fonte com dois ramos mede o ramo que sobrou.*
+    let alinhadas = recaida.matches("ALIGN_WEIGHT").count();
+    let suaves = recaida.matches("guarded(0.0, false, 0.0)").count();
+    assert!(
+        alinhadas >= 2 && suaves >= 2,
+        "⛔ a recaida tem de correr a CORRIDA INTEIRA (a alinhada E a suave) nos DOIS ramos \
+         -- achei {alinhadas} alinhada(s) e {suaves} suave(s). A 1.a versao pediu so' uma \
+         candidata e a peca do artista ficou com 4 bordo"
+    );
+    assert!(
+        recaida.contains("worse("),
+        "⛔ a recaida tem de decidir pelo mesmo `worse`: uma candidata que entra sem passar \
+         por ele pode PIORAR a escolha, e a garantia inteira era que ela so' pode nao vencer"
+    );
+    // ⛔⛔ **E o SENTIDO do `worse`**, que a mutação `!worse(...)` sobreviveu a expor: um
+    // `contains("worse(")` casa igualmente bem com a decisão **invertida**, que trocaria a
+    // malha limpa pela esburacada em todas as peças. *Um gate textual sobre uma condição
+    // não vê a negação dela.*
+    // ⚠️ **A varredura é sobre o FICHEIRO INTEIRO e não sobre a fatia**: a 1.ª versão
+    // olhava `recaida[..1200]`, que **não alcançava** a linha da decisão, e a mutação
+    // sobreviveu. ⛔ **E ela NÃO descasca comentários** — se alguém documentar a cura no
+    // ficheiro do produto escrevendo esse token, este gate fica vermelho sobre código
+    // correcto ([[feedback-a-textual-gate-must-strip-comments-or-documenting-the-cure-fails-it]]).
+    // *A cura, nesse dia, é descascar — não afrouxar.*
+    assert!(
+        !src.contains("!worse("),
+        "⛔ a recaida esta' INVERTIDA: com `!worse` ela adopta a candidata uniforme \
+         exactamente quando a adaptativa era melhor"
+    );
+}

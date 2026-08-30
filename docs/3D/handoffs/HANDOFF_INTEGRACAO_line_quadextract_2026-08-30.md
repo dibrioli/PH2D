@@ -202,6 +202,52 @@ campo constante, todo desvio numa peça com pontas seria indistinguível do arte
 (`only_the_lower_row_breathes_and_it_moves_with_the_playhead`, demos de áudio): verde **3 de 3**
 sozinha, e o diff toca **zero** ficheiros de áudio.
 
+## §8-quater — ⛔⛔⛔ «PRATICAMENTE UMA REGRESSÃO» (Enio, 30/08, com foto) — e era
+
+> *«Ainda muito ruim. Praticamente uma regressão. Faces completamente fora do lugar nas pontas.»*
+
+**Reproduzido, e a causa é minha.** No `Detail` de **FÁBRICA** (`0,50`), na peça dele:
+
+| `Follow Curvature` | quads | `χ` | **bordo** |
+|---|---|---|---|
+| `0` | `1 316` | `2` | `0` |
+| `1` | `1 252` | ⛔ `1` | ⛔ **`4`** |
+
+⚠️⚠️ **A wave que introduziu o knob mediu tudo a `Detail 0,85`, onde fica limpo.** *Afinar e
+validar num ponto do slider que não é o de fábrica é medir a configuração que ninguém usa.*
+⛔ E a fixtura sintética de espinhos **já tinha avisado** (bordo `0 → 4`); a leitura foi *«na peça
+dele fica limpo»* — que era verdade **só naquele ponto**.
+
+### ⭐ A cura: o campo adaptativo tem de poder PERDER
+
+Ela tem a forma que a terceira tentativa da escada já tinha, e a mesma garantia: **se ainda há
+furo e o knob estava ligado, corre-se a corrida outra vez sem o campo, e a decisão passa pelo mesmo
+`worse`.** *A adaptação não pode piorar a escolha; só pode não ser escolhida.*
+
+| | quads | `χ` | bordo | razão ponta/corpo |
+|---|---|---|---|---|
+| `Detail 0,50` · knob `0` | `1 316` | `2` | `0` | `1,060` |
+| `Detail 0,50` · knob `1` | `1 316` | `2` | ⭐ **`0`** | `1,060` — *recua sozinho* |
+| `Detail 0,85` · knob `1` | `8 257` | `2` | `0` | `1,062` — *mantém o ganho* |
+
+⚠️ **Preço:** quando a recaída corre, o clique passa de `5,9 s` para `14,3 s`. É a mesma política
+da terceira tentativa, e é **de graça** com o knob desligado ou com a saída já fechada.
+
+### ⚠️ Três coisas que a cura precisou de aprender, e as três foram mutações
+
+1. **A recaída pedia UMA candidata** (a do `w` vencedor) e a peça continuou com `4` bordo: *a linha
+   de base não é uma corrida, são duas* — a alinhada e a suave — e é o `worse` entre elas que dá a
+   malha limpa.
+2. **O gate usava `contains` num fonte com DOIS ramos** (paralelo e `PH2D_RETOPO_SERIAL`): a
+   mutação que apagava metade da corrida paralela sobrevivia porque a string continuava no ramo
+   serial. ⇒ **contagem**, não `contains`.
+3. **Um `contains("worse(")` casa igualmente com `!worse(`** — a decisão invertida. ⇒ a varredura
+   afirma também a **ausência da negação**, sobre o ficheiro inteiro (a fatia de `1 200` chars não
+   alcançava a linha da decisão).
+
+⚠️ **E ela NÃO descasca comentários:** documentar a cura no ficheiro do produto com esse token
+deixa o gate vermelho sobre código correcto. *Nesse dia a cura é descascar, não afrouxar.*
+
 ## §9 — Ponto cego novo na ferramenta do laço interno
 
 `scripts/cargo-check-narrow.sh` corre `cargo check -p` **sem `--all-targets`** ⇒ não compila

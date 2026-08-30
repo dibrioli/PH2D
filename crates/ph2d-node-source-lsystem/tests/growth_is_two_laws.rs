@@ -702,3 +702,67 @@ fn the_family_comes_from_the_structure_and_the_two_laws_agree() {
         );
     }
 }
+
+/// ⛔⛔ **PENDURAR UMA FOLHA NÃO MUDA A FAMÍLIA DE CRESCIMENTO DA PLANTA.**
+///
+/// A pergunta da família é *«sobrou algum módulo VELHO que DESENHA?»*, e uma marca de instância
+/// (`J`/`K`/`M`) **não desenha** — ela diz onde pousar um objecto. Enquanto a pergunta era a
+/// larga (`F | G | f | g | J | K | M`), acrescentar uma folha a um molde de REFINAMENTO
+/// reclassificava-o como da ponta: um `J` nunca é reescrito, logo **acumula** e sobrevive às
+/// gerações. *A planta era nova e as folhas eram velhas, e a velhice das folhas decidia por ela.*
+///
+/// ⚠️ **Medido em 2026-08-30**, quando os moldes ganharam âncoras de folha: com a pergunta larga
+/// o `Bush` e o `Weed` trocavam de lei de comprimento e de remapagem do `Growth` só por levarem
+/// uma folha. ⇒ a pergunta estreitou-se ([`turtle::draws`]), e este gate é a cerca.
+///
+/// ⚠️ E ele mede **as duas famílias**: uma cura que respondesse sempre «da ponta» passaria com
+/// metade do oráculo.
+#[test]
+fn hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family() {
+    // Um par de cada família, com a regra decorada de uma marca de instância.
+    let cases: [(&str, &str, &str, &str, bool); 4] = [
+        (
+            "Bush",
+            "X",
+            "X -> F[+X]F[-X]+X ; F -> FF",
+            "X -> F[+XJ]F[-X]+X ; F -> FF",
+            true,
+        ),
+        (
+            "Weed",
+            "X",
+            "X -> F[+X]F[-X]+X ; F -> FF",
+            "X -> F[+X]F[-XK]+X ; F -> FF",
+            true,
+        ),
+        (
+            "ponta",
+            "A(step)",
+            "A(s) -> F(s)![+A(s*0.7)][-A(s*0.7)]",
+            "A(s) -> F(s)![+A(s*0.7)J][-A(s*0.7)J]",
+            false,
+        ),
+        (
+            "ponta-M",
+            "A(step)",
+            "A(s) -> F(s)![+A(s*0.7)][-A(s*0.7)]",
+            "A(s) -> F(s)!M[+A(s*0.7)][-A(s*0.7)]",
+            false,
+        ),
+    ];
+    let mut refiners = 0;
+    for (label, axiom, plain, decorated, refines) in cases {
+        assert_eq!(
+            ls::probe_grows_by_refining(axiom, plain, &[]),
+            refines,
+            "{label}: o oraculo descreve mal a gramatica NUA"
+        );
+        assert_eq!(
+            ls::probe_grows_by_refining(axiom, decorated, &[]),
+            refines,
+            "{label}: pendurar uma folha mudou a familia — a pergunta voltou a contar marcas"
+        );
+        refiners += usize::from(refines);
+    }
+    assert_eq!(refiners, 2, "o oraculo tem de povoar as DUAS familias");
+}

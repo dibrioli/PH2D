@@ -113,6 +113,50 @@ impl Reads {
     }
 }
 
+/// **O molde `Tree`** — o de fábrica MAIS as âncoras de folha.
+///
+/// ⛔⛔ **Texto PRÓPRIO, e não o [`DEFAULT_RULES`]** — report do Enio (2026-08-30): *"só apareceu
+/// em seu exemplo, ao trocar o tipo de árvore não aparece mais"*. Os moldes de PLANTA passam a
+/// trazer o `J`, senão o campo *Leaf (J)* fica cheio e não desenha nada — um controlo morto com
+/// o valor lá dentro.
+///
+/// ⚠️ **O `DEFAULT_RULES` fica INTOCADO** porque ele é o ORÁCULO do modo guiado (o gate
+/// `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` compara os dois ao bit) e o
+/// default de fábrica do nó. Pôr a âncora nele obrigaria a pô-la também na derivação guiada, e a
+/// pagar o preço abaixo em toda planta que nunca terá folha.
+///
+/// ⚠️ **A âncora é VISUALMENTE NEUTRA — medido, não deduzido:** ela nasce na posição do PAI e com
+/// a largura dele, então em `Segments` o ponto que ela desenha cai exactamente em cima de um que
+/// já lá estava (sonda de 2026-08-30 sobre esta gramática: `16 → 46` elementos, **`0` posições
+/// novas**).
+///
+/// ⚠️ **O preço é a CONTAGEM, e é ~3×** (`32 → 94` elementos a `g = 5`; `256 → 766` a `g = 8`):
+/// um `J` não é reescrito, então ACUMULA por geração. ⛔ A forma que NÃO acumula — a regra
+/// condicional `A(s) : s <= k -> F(s)J` — foi medida e **muda a planta**: ela termina a recursão
+/// no limiar, e a `g = 8` a árvore fica com `64` elementos em vez de `256`. *Não é a mesma planta
+/// com folhas; é outra planta.*
+///
+/// ⛔⛔ **A âncora só entra nos moldes que CRESCEM PELA PONTA — `Tree`, `Fern`, `Wild`.**
+///
+/// Os que REFINAM (`Bush`, `Weed`) e as CURVAS (`Koch`, `Dragon`) ficam de fora, e é decisão de
+/// PRODUTO com mecanismo medido: numa gramática de refinamento **todo módulo que desenha renasce
+/// a cada geração** e a silhueta inteira muda, enquanto um `J` não é reescrito e ACUMULA — a
+/// `g = 5` o `Bush` fica com uma folha em cada bifurcação que ele já teve, espalhadas pelo tronco
+/// em vez de nas pontas. Numa curva (`Koch`, `Dragon`) não há ponta nenhuma onde pendurar.
+///
+/// ⚠️ **A 1.ª redacção desta nota dava outra razão, e ela DISSOLVEU no mesmo dia:** era que a
+/// âncora mudava a FAMÍLIA de crescimento do molde (dois gates das leis de crescimento trocavam
+/// de valor com o `J` no `Bush`). Isso era um defeito da PERGUNTA, não do molde — ela contava
+/// marcas de instância como se desenhassem —, e a cura foi estreitá-la para
+/// [`crate::turtle::draws`], com gate próprio
+/// (`hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family`). *Quem move o número que
+/// tornava algo inalcançável tem de reconferir a nota* — e o que sobra depois de a reconferir é
+/// só o argumento estético acima, que é do Enio, não meu.
+///
+/// ⇒ o sítio de pedir uma folha num refinador é a gramática do artista, e o painel **diz** quando
+/// o nome está posto e a letra não existe (`motion_lsystem_gen::unanswered_slots`).
+const TREE_WITH_LEAVES: &str = "A(s) -> F(s)![+A(s*0.7)J][-A(s*0.7)J]";
+
 /// ⚠️ **O ÍNDICE `CUSTOM` é o último, e ele não é um molde** — é *"nenhum destes"*.
 ///
 /// Sem ele o selector MENTE: `preset` é um `ParamSpec` persistido que o `build` **nunca lê**,
@@ -127,7 +171,7 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Tree",
         axiom: DEFAULT_AXIOM,
-        rules: DEFAULT_RULES,
+        rules: TREE_WITH_LEAVES,
         angle: 25.0,
         generations: 5.0,
         step: 0.658,
@@ -137,7 +181,7 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Fern",
         axiom: "A(step)",
-        rules: "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)",
+        rules: "A(s) -> F(s)[+B(s*0.55)J]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)J]B(s*0.8)",
         angle: 25.0,
         generations: 5.0,
         step: 0.456,
@@ -170,9 +214,9 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Wild",
         axiom: "A(step)",
-        rules: "A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)] ; \
-                A(s) -> (0.35) F(s)![+A(s*0.66)]-A(s*0.78) ; \
-                A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)]",
+        rules: "A(s) -> (0.4) F(s)![+A(s*0.72)J][-A(s*0.72)J] ; \
+                A(s) -> (0.35) F(s)![+A(s*0.66)J]-A(s*0.78) ; \
+                A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)J]",
         angle: 25.0,
         generations: 5.0,
         step: 0.478,

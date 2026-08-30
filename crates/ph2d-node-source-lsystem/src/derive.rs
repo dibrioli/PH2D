@@ -340,7 +340,7 @@ impl Derived {
             && !self
                 .chain
                 .iter()
-                .any(|m| m.born != self.generations && crate::turtle::draws_or_marks(m.sym))
+                .any(|m| m.born != self.generations && crate::turtle::draws(m.sym))
     }
 }
 

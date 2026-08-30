@@ -154,6 +154,58 @@ geometria; aqui o nome já é a porta de toda a casa, e ela **é alcançável** 
 
 ---
 
+## §5 — O smoke de 30/08: *"só apareceu em seu exemplo, ao trocar o tipo de árvore não aparece mais"*
+
+A letra plantava o objecto e o campo funcionava — mas **só o molde `Sprig` emitia `J`**, e a
+cena `=108` tinha-o na samambaia dela. Trocar o molde no selector trocava a gramática inteira,
+levando a âncora com ela: o campo *Leaf (J)* ficava cheio e nada nascia.
+
+⇒ **duas metades, e as duas são precisas.**
+
+### 5.1 — Os moldes de PLANTA passam a trazer a âncora
+
+`Tree`, `Fern` e `Wild`. Medições que decidiram a forma:
+
+| pergunta | número |
+|---|---|
+| a âncora muda o desenho? | **não** — `16 → 46` elementos em `Segments` e **`0` posições novas** (ela nasce na posição e largura do pai) |
+| o que ela custa | ~**3×** a contagem (`32 → 94` a `g = 5`; `256 → 766` a `g = 8`) — um `J` não é reescrito, logo acumula |
+| a forma que NÃO acumula (`A(s) : s <= k -> F(s)J`) | **muda a planta**: termina a recursão no limiar e a `g = 8` dá `64` elementos em vez de `256`. *Não é a mesma planta com folhas; é outra planta* |
+
+⚠️ **O `DEFAULT_RULES` fica intocado** — ele é o oráculo do modo guiado (há gate a comparar os
+dois ao bit) e o default de fábrica; o molde `Tree` ganhou texto próprio.
+
+⛔ **Os refinadores (`Bush`, `Weed`) e as curvas (`Koch`, `Dragon`) ficam de fora** — decisão de
+produto: num refinador toda a silhueta renasce a cada geração e os `J` acumulados espalhavam
+folhas pelo tronco em vez das pontas; numa curva não há ponta.
+
+### 5.2 — E o painel DIZ quando a letra não existe
+
+A metade geral, para a gramática que o artista escreve: com um nome posto e nenhuma âncora
+daquela letra, sai uma linha a nomear **a cura** (*acrescente um `[J]` no fim de um ramo*), uma
+vez por `(conteúdo da gramática, slot)`. *Um controlo com valor lá dentro e efeito nenhum
+parece ligado — é a pior espécie de morto.*
+
+⚠️ **A lei vive numa função pura** (`unanswered_slots`) porque a outra metade escreve no
+`stderr`, e um gate não lê o `stderr`: o que se gateia é a DECISÃO, não o canal.
+
+### 5.3 — ⛔⛔ E a wave revelou um defeito que já lá estava: a pergunta *«o que é um osso?»* era LARGA
+
+A família de crescimento (`grows_by_refining`) pergunta *«sobrou algum módulo VELHO que
+desenha?»* e lia `F | G | f | g | J | K | M`. Uma marca de instância **não desenha** — e como
+nunca é reescrita, **acumula** ⇒ pendurar uma folha num molde de refinamento reclassificava-o
+como da ponta, trocando-lhe a lei de comprimento **e** a remapagem do `Growth`.
+
+*A planta era nova, as folhas eram velhas, e a velhice das folhas decidia por ela.*
+
+A pergunta estreitou-se para `F | G` (`turtle::draws`), com gate
+(`hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family`, que mede **as duas**
+famílias: uma cura que respondesse sempre «da ponta» passaria com metade do oráculo) e prova
+de mutação. ⭐ E o clippy fechou o ciclo: `draws_or_marks` ficou **sem nenhum leitor** ⇒ era
+lixo, apagado.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -161,6 +213,9 @@ geometria; aqui o nome já é a porta de toda a casa, e ela **é alcançável** 
 | Emitir a fita como quads no próprio interpretador | Separa-se esqueleto de superfície nas quatro referências; e o varrimento serve também os cinco `rig.*` (doc 92 §2 item 8) |
 | Portas de geometria `J`/`K`/`M` à la Houdini | O nó tem `inputs: &[]` e a casa nomeia objectos por **nome** (`fx.glow`, `motion.path`), com chips já alcançáveis no painel. Portas seriam um segundo idioma |
 | Tabela de «objeto por fase de crescimento» | A fase é a regra que dispara; a letra é o objecto. Nenhuma das quatro referências tem tabela de fase — e nós já emitimos `gen` para quem quiser filtrar |
+| Âncora de folha nos moldes que REFINAM (`Bush`, `Weed`) e nas curvas (`Koch`, `Dragon`) | Um `J` acumula e num refinador toda a silhueta renasce ⇒ folhas pelo tronco, não nas pontas; numa curva não há ponta. O sítio de a pedir é a gramática do artista, e o painel **diz** quando o nome está posto e a letra falta |
+| Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
+| Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

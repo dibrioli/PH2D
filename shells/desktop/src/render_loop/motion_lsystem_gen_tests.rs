@@ -459,3 +459,44 @@ fn an_unnamed_or_unpublished_letter_plants_nothing() {
         );
     }
 }
+
+/// ⛔⛔ **O nome posto numa letra que a gramática não emite tem de ser DITO.**
+///
+/// Report do Enio (2026-08-30): *"só apareceu em seu exemplo, ao trocar o tipo de árvore não
+/// aparece mais"*. Os moldes de planta trazem `J`, mas **uma gramática escrita à mão pode não
+/// trazer letra nenhuma** — e aí o campo fica cheio, nada nasce, e o artista não tem como saber
+/// porquê. *Um controlo com valor lá dentro e efeito nenhum parece ligado: é a pior espécie de
+/// morto.*
+///
+/// ⚠️ **A metade que se gateia é a DECISÃO, não o canal** — o aviso sai no `stderr`, que um teste
+/// não lê; por isso a lei vive numa função pura ([`super::unanswered_slots`]) e é ela que se mede.
+#[test]
+fn a_letter_with_a_name_and_no_anchor_is_reported() {
+    let anchor = |slot: usize| super::Anchor {
+        p: [0.0, 0.0],
+        rot: 0.0,
+        slot,
+    };
+    let names = |a: &str, b: &str, c: &str| [a.to_string(), b.to_string(), c.to_string()];
+
+    // Nome posto, letra ausente da gramática ⇒ acusa.
+    assert_eq!(
+        super::unanswered_slots(&names("folha", "", ""), &[]),
+        vec![0],
+        "um nome sem ancora nenhuma tem de ser acusado"
+    );
+    // A letra existe ⇒ cala.
+    assert!(
+        super::unanswered_slots(&names("folha", "", ""), &[anchor(0)]).is_empty(),
+        "com a ancora la' o aviso seria ruido"
+    );
+    // ⚠️ **Por SLOT, nunca «há âncoras?»** — uma gramática com `J` e um nome em `K` é exactamente
+    // o caso do report, e uma régua que só perguntasse «esta planta tem âncoras?» ficaria muda.
+    assert_eq!(
+        super::unanswered_slots(&names("folha", "flor", ""), &[anchor(0)]),
+        vec![1],
+        "o slot que tem ancora cala e o que nao tem acusa"
+    );
+    // Campo vazio nunca acusa: não pedir objecto nenhum é o estado normal.
+    assert!(super::unanswered_slots(&names("", "", ""), &[]).is_empty());
+}

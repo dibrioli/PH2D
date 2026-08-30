@@ -161,10 +161,27 @@ impl Out {
     }
 }
 
-/// Os símbolos que fazem nascer um elemento — os únicos cuja idade decide se há crescimento
-/// para mostrar. Um `[`, um `+` ou um `!` da geração nova não são um rebento.
-pub(crate) fn draws_or_marks(sym: u8) -> bool {
-    matches!(sym, b'F' | b'G' | b'f' | b'g' | b'J' | b'K' | b'M')
+/// **Os símbolos que fazem nascer um OSSO** — os que de facto desenham um segmento, e os únicos
+/// cuja idade decide se há crescimento para mostrar. Um `[`, um `+` ou um `!` da geração nova não
+/// são um rebento.
+///
+/// ⛔⛔ **Esta pergunta já foi LARGA, e a largura era um defeito** (2026-08-30). Ela dizia
+/// `F | G | f | g | J | K | M`, e o único leitor é a família de crescimento
+/// (`derive::Derived::grows_by_refining`), que pergunta *«sobrou algum módulo VELHO que
+/// desenha?»*:
+///
+/// - uma marca de instância (`J`/`K`/`M`) **não desenha** — ela pousa um objecto —, e como
+///   nunca é reescrita ela **acumula**; com a pergunta larga, pendurar uma folha num molde de
+///   REFINAMENTO reclassificava-o como da ponta, trocando-lhe a lei de comprimento e a
+///   remapagem do `Growth`. *A planta era nova, as folhas eram velhas, e a velhice das folhas
+///   decidia por ela.*
+/// - o `f`/`g` **andam sem desenhar** (e cortam a cadeia), logo também não são osso.
+///
+/// A cerca é `hanging_a_leaf_on_a_grammar_does_not_change_its_growth_family`, e a
+/// [`crate::branch`] delega aqui para que uma fita e uma classificação não discordem sobre o
+/// que é um osso.
+pub(crate) fn draws(sym: u8) -> bool {
+    matches!(sym, b'F' | b'G')
 }
 
 /// `(cos, sin, 1/‖(cos, sin)‖)` na direcção `heading` — os **três** separados, e a separação

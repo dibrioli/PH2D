@@ -110,8 +110,12 @@ impl Branch {
 const NO_PARENT: i32 = -1;
 
 /// Este elemento desenha um osso? (⇒ entra numa fita)
+///
+/// ⚠️ **Delega à porta do alfabeto** ([`crate::turtle::draws`]) — a mesma pergunta que decide a
+/// família de crescimento. Escrita duas vezes, uma fita e uma classificação discordariam sobre
+/// o que é um osso.
 fn draws(sym: f32) -> bool {
-    matches!(sym as i32 as u8, b'F' | b'G')
+    crate::turtle::draws(sym as i32 as u8)
 }
 
 /// O índice de pai como inteiro, ou [`NO_PARENT`].

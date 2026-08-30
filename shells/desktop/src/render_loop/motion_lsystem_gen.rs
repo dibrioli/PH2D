@@ -363,6 +363,51 @@ fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) -> Option<Loo
     ))
 }
 
+// **O QUE JÁ FOI DITO** — para o aviso sair uma vez, e não sessenta vezes por segundo.
+//
+// ⚠️ Por thread e por `(chave, slot)`: a chave é de CONTEÚDO, então mudar a gramática dá uma
+// chave nova e o aviso volta a poder sair — que é exactamente quando ele interessa.
+thread_local! {
+    static SAID: std::cell::RefCell<std::collections::BTreeSet<String>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+/// **A METADE PURA da pergunta** — quais slots têm nome e não têm onde nascer.
+///
+/// ⚠️ Ela existe separada porque a outra metade **escreve no `stderr`**, e um gate não lê o
+/// `stderr` de outro processo: *a lei tem de ser alcançável de um teste, ou o que se prova é o
+/// canal e não a decisão.*
+fn unanswered_slots(names: &[String; 3], anchors: &[Anchor]) -> Vec<usize> {
+    (0..names.len())
+        .filter(|&s| !names[s].is_empty() && !anchors.iter().any(|a| a.slot == s))
+        .collect()
+}
+
+/// **DIZ quando um nome está posto e a gramática não tem a letra.**
+///
+/// ⛔⛔ Report do Enio (2026-08-30): *"só apareceu em seu exemplo, ao trocar o tipo de árvore não
+/// aparece mais"*. Os moldes de planta passaram a trazer o `J`, mas **uma gramática escrita pelo
+/// artista pode não ter letra nenhuma** — e aí o campo fica cheio, nada desenha, e não há como
+/// saber porquê. *Um controlo com valor lá dentro e efeito nenhum é a pior espécie de morto: ele
+/// parece ligado.*
+///
+/// ⚠️ **Diz a CURA, não só o sintoma** — a letra que falta é a informação que resolve.
+fn say_if_the_letter_is_missing(key: &str, names: &[String; 3], anchors: &[Anchor]) {
+    for slot in unanswered_slots(names, anchors) {
+        let name = &names[slot];
+        let once = format!("{key} slot {slot}");
+        let fresh = SAID.with(|s| s.borrow_mut().insert(once));
+        if fresh {
+            eprintln!(
+                "[lsystem] «{name}» esta' no slot {letra}, mas a gramatica nao emite nenhum \
+                 `{letra}` — acrescente um (ex.: `[{letra}]` no fim de um ramo) ou o objecto nao \
+                 tem onde nascer",
+                letra = ls::LEAF_SYMBOLS[slot] as char
+            );
+        }
+    }
+}
+
 /// **A planta MAIS as folhas, num stream só.**
 ///
 /// ⚠️ **Mídia MISTA na mesma corrente, e o lowering já a sabe rotear:** uma linha com
@@ -498,7 +543,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             }
         };
         let stream = match handle {
-            Some(h) => plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook),
+            Some(h) => {
+                say_if_the_letter_is_missing(&key, &names, &anchors);
+                plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook)
+            }
             None => Stream::new(0),
         };
         motion.pump.cook.set_external(key, stream);

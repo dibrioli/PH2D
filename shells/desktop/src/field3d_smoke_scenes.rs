@@ -705,15 +705,29 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
         }
         14 => {
             println!(
-                "[field-smoke] cena 14 — A TORÇÃO (W107): coluna reta · torcida inteira · torcida \
-                 só do meio para cima (a BANDA)"
+                "[field-smoke] cena 14 — A TORÇÃO (W107): barra CHATA reta · torcida inteira · \
+                 torcida só do meio para cima (a BANDA)"
             );
             // ⚠️ **Três colunas IGUAIS**, e é isso que faz a cena responder: uma torção mostrada
             // sozinha não diz se ela torceu — diz que a forma é assim. A da esquerda é a régua.
+            //
+            // ⛔⛔ **A SECÇÃO É CHATA, e a 1.ª versão desta cena usava uma QUADRADA — o report do
+            // Enio foi *«nada aparece torcido»*.** Uma torção só se vê **módulo a simetria da
+            // secção**: um quadrado repete-se a cada 90°, um hexágono a cada 60°, e um cilindro é
+            // invisível a qualquer ângulo. Medido a 0,25 voltas/un (112° no total):
+            //
+            // | secção | simetria | variação da silhueta |
+            // |---|---|---:|
+            // | cilindro | contínua | **`+0,0 %`** |
+            // | prisma 6 | 60° | `+11,9 %` |
+            // | caixa quadrada | 90° | `+37,3 %` |
+            // | **caixa 3:1** | **180°** | **`+146,0 %`** |
+            //
+            // *Uma cena de smoke que demonstra a feature na forma que a esconde é pior que nenhuma.*
             let coluna = |x: f32, mods: Vec<ph2d_field::Unary>| {
                 let mut n = leaf(
                     Primitive::Box {
-                        half: [0.20, 0.20, 0.62],
+                        half: [0.34, 0.11, 0.62],
                         round: 0.02,
                     },
                     Xform {
@@ -726,11 +740,14 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
             };
             FieldDoc::new(
                 vec![
-                    coluna(-0.62, Vec::new()),
+                    coluna(-0.85, Vec::new()),
+                    // ⚠️ **`0,35` voltas/un = 156° no total, e o número tem razão:** a secção repete-se
+                    // a cada 180°, então uma torção que passe disso volta a ler-se como um ângulo
+                    // pequeno. *O valor mais legível é o maior que ainda cabe numa meia-volta.*
                     coluna(
                         0.0,
                         vec![ph2d_field::Unary::Twist {
-                            turns: 0.5,
+                            turns: 0.35,
                             lower: -9.0,
                             upper: 9.0,
                         }],
@@ -739,11 +756,11 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                     // ângulo **congela** — a ponta roda como corpo rígido, que é o que as quatro
                     // referências fazem.
                     coluna(
-                        0.62,
+                        0.85,
                         vec![ph2d_field::Unary::Twist {
-                            turns: 0.9,
+                            turns: 0.35,
                             lower: 0.0,
-                            upper: 0.42,
+                            upper: 9.0,
                         }],
                     ),
                     combine(

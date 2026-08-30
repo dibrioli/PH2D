@@ -203,6 +203,10 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
     // ficaria sem controle registado: pintada e morta sob o rato, que é a falha de paridade de
     // fiação na sua forma mais cara.
     for (slot, row) in snapshot.rows.iter().enumerate().take(MAX_ROWS) {
+        // ⭐⭐⭐ **O CABEÇALHO DA SECÇÃO** (report do Enio, 2026-08-30) — ver `ParamRow::section`.
+        if let Some(key) = row.section {
+            y = paint_section(ctx, tr(key), x, w, y);
+        }
         y = paint_row(ctx, row, slot as u32, x, w, y);
     }
     y = paint_footer(ctx, &snapshot, x, w, y);
@@ -425,6 +429,40 @@ fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32
 
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar
 /// seria pior do que nenhuma.
+/// ⭐⭐⭐ **O cabeçalho de uma secção de números** — o nome de quem é dono das linhas abaixo.
+///
+/// # ⛔ O report que o obrigou
+///
+/// Enio, 2026-08-30: *«nada aparece torcido, apesar dos sliders terem algum efeito. O modificador
+/// deveria ter sua própria seção no painel»*. As linhas de um modificador vinham **no fim da mesma
+/// lista** das dimensões da forma, sem nada a separá-las — com uma casca e uma torção empilhadas o
+/// painel mostrava seis números seguidos e nenhum dizia de quem era.
+///
+/// ⚠️ *Um controle que o artista não consegue atribuir lê-se exactamente como uma feature partida:*
+/// ele arrasta o que julga ser o da torção, vê outra coisa mudar, e conclui que a torção não faz
+/// nada.
+///
+/// ⚠️ **Não entra no índice de acerto** — é rótulo, não controle. Um cabeçalho clicável prometeria
+/// recolher a secção, e isso não existe.
+fn paint_section(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
+    let font = TypeToken::Xs.px();
+    let theme = ctx.host.theme();
+    // Uma folga acima separa a secção da anterior; abaixo fica colada às linhas que ela nomeia —
+    // é a proximidade que diz de quem elas são, e não o texto.
+    let top = y + Spacing::Sm.px();
+    let used = paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        text,
+        x,
+        top,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    top + used.max(font) + Spacing::Xs.px()
+}
+
 fn paint_note(ctx: &mut PaintCtx, text: &str, x: f32, w: f32, y: f32) -> f32 {
     let font = TypeToken::Sm.px();
     let theme = ctx.host.theme();

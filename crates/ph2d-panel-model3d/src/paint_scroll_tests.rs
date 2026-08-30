@@ -37,6 +37,7 @@ fn model_with_rows(n: usize) -> state::ModelSnapshot {
                 lo: 0.0,
                 live: true,
                 integral: false,
+                section: None,
                 bound: Bound::Soft(1.0),
             })
             .collect(),

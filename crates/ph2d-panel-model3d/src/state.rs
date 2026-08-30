@@ -77,6 +77,20 @@ pub struct ParamRow {
     /// inventar um seria escrever um limite que a física não pede; [`Bound::Wrap`] é a própria
     /// **representação** — meia volta, num ângulo.
     pub bound: Bound,
+    /// ⭐⭐⭐ **A SECÇÃO a que esta linha pertence** — a chave i18n de um cabeçalho a desenhar
+    /// **antes** dela, ou `None` para continuar a secção anterior (2026-08-30).
+    ///
+    /// # ⛔ O report que a obrigou
+    ///
+    /// Enio: *«nada aparece torcido, apesar dos sliders terem algum efeito. O modificador deveria
+    /// ter sua própria seção no painel»*. As linhas de um modificador eram **acrescentadas ao fim da
+    /// mesma lista** das dimensões da forma, sem nada a separá-las: com uma casca e uma torção
+    /// empilhadas, o painel mostrava seis números seguidos e **nenhum dizia de quem era**.
+    ///
+    /// ⚠️ *Um controle que o artista não consegue atribuir é um controle que ele não usa* — e o
+    /// sintoma lê-se exactamente como uma feature partida: ele arrasta o que julga ser o da torção,
+    /// vê outra coisa mudar, e conclui que a torção não funciona.
+    pub section: Option<&'static str>,
 }
 
 /// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.

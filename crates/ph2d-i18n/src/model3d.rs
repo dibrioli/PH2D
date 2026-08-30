@@ -154,6 +154,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐ A torção conta-se em VOLTAS por unidade, e não em graus: é a moeda da forma (uma volta
         // é uma volta em qualquer escala), e o grau obrigaria o slider a andar de 0 a 720.
         "field.mod.turns" => "Turns",
+        // ⭐ Os cabeçalhos das secções de números. ⚠️ Um modificador nomeia-se pela PRÓPRIA chave
+        // (`panel.model3d.mod.*`), então esta lista só precisa dos dois genéricos.
+        "panel.model3d.section.shape" => "Shape",
+        "panel.model3d.section.modifier" => "Modifier",
         // ⚠️ "From"/"To" e não "Lower"/"Upper": a banda é uma FAIXA ao longo do eixo, e o artista
         // lê-a como um intervalo. (O Blender diz "Limits", o 3ds Max "Upper/Lower Limit" — os dois
         // nomeiam a cerca; aqui nomeia-se o intervalo, que é o que a linha mostra.)

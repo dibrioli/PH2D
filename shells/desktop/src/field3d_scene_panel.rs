@@ -172,6 +172,44 @@ pub(crate) fn param_rows(
     // ⚠️ O valor E as pontas vêm os DOIS do nó (`params_of`). Um painel que guardasse o seu próprio
     // valor teria duas verdades sobre o mesmo número, e a que aparece na tela seria a errada sempre
     // que algo o mudasse de outro lado — um desfazer, um arquivo aberto, o gizmo.
+    // ⭐⭐⭐ **A que SECÇÃO cada linha pertence** (report do Enio, 2026-08-30: *«o modificador deveria
+    // ter sua própria seção no painel»*). Um cabeçalho nasce quando a **natureza** da linha muda:
+    // as dimensões da forma, e depois um por modificador, com o **nome dele**.
+    //
+    // ⚠️ **Derivado do `Param`, e não uma segunda lista** — a ordem já é a do `params_of` (a forma
+    // primeiro, os modificadores por último, na ordem em que correm), e um segundo sítio a decidir
+    // secções divergiria dela no dia em que ela mudasse.
+    let mods = ph2d_field_ecs::mods_of(world, e);
+    let mut anterior: Option<ph2d_field::Param> = None;
+    let secao = move |p: ph2d_field::Param| -> Option<&'static str> {
+        let mesma = match (anterior, p) {
+            // Duas linhas do MESMO modificador continuam a secção dele.
+            (
+                Some(ph2d_field::Param::Mod { slot: a, .. }),
+                ph2d_field::Param::Mod { slot: b, .. },
+            ) => a == b,
+            // Tudo o que não é modificador é a forma, e ela é uma secção só.
+            (Some(a), b) => {
+                !matches!(a, ph2d_field::Param::Mod { .. })
+                    && !matches!(b, ph2d_field::Param::Mod { .. })
+            }
+            (None, _) => false,
+        };
+        anterior = Some(p);
+        if mesma {
+            return None;
+        }
+        match p {
+            ph2d_field::Param::Mod { slot, .. } => mods
+                .get(slot as usize)
+                .map(|m| m.key())
+                // ⚠️ Um slot sem modificador não pode acontecer (as duas listas saem do mesmo nó),
+                // e se acontecer o cabeçalho genérico é melhor do que nenhum.
+                .or(Some("panel.model3d.section.modifier")),
+            _ => Some("panel.model3d.section.shape"),
+        }
+    };
+    let mut secao = secao;
     ph2d_field_ecs::params_of(world, e)
         .into_iter()
         .map(|(param, d)| {
@@ -214,6 +252,7 @@ pub(crate) fn param_rows(
                 bound,
                 live: d.span != Span::Locked,
                 integral: matches!(d.span, Span::Count { .. }),
+                section: secao(param),
             }
         })
         .collect()

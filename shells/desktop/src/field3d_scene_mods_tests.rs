@@ -425,3 +425,85 @@ mod import_seam;
 /// ⚠️ **A sonda da qualidade da malha** vive no irmão — ver [`field3d_mesh_quality_tests`](self::quality).
 #[path = "field3d_mesh_quality_tests.rs"]
 mod quality;
+
+/// ⭐⭐⭐ **CADA MODIFICADOR TEM A SUA SECÇÃO** — report do Enio, 2026-08-30.
+///
+/// *«nada aparece torcido, apesar dos sliders terem algum efeito. O modificador deveria ter sua
+/// própria seção no painel»*
+///
+/// ⛔ As linhas de um modificador eram acrescentadas ao **fim da mesma lista** das dimensões da
+/// forma, sem nada a separá-las. Com uma casca e uma torção empilhadas, o painel mostrava seis
+/// números seguidos e **nenhum dizia de quem era** — e o sintoma lê-se exactamente como uma feature
+/// partida: o artista arrasta o que julga ser o da torção, vê outra coisa mudar, e conclui que a
+/// torção não faz nada.
+#[test]
+fn every_modifier_gets_its_own_section_in_the_panel() {
+    use ph2d_field::{Param, UnaryKind};
+    let mut sim = a_world();
+    let world = sim.world_mut();
+    let alvo = ph2d_field_ecs::spawn_doc(world, &scene(2), "Model");
+    for k in [UnaryKind::Shell, UnaryKind::Twist] {
+        assert!(ph2d_field_ecs::add_mod(world, alvo, k), "{k:?} não entrou");
+    }
+    let linhas = crate::field3d_scene::panel::param_rows(world, Some(alvo), 2.5);
+    let mods = ph2d_field_ecs::mods_of(world, alvo);
+
+    // ⭐ A PRIMEIRA linha abre a secção da forma; as seguintes dela continuam-na.
+    let primeira = linhas.first().expect("há linhas");
+    assert_eq!(
+        primeira.section,
+        Some("panel.model3d.section.shape"),
+        "a primeira linha não abre secção nenhuma — o painel começa sem dizer de quem são os números"
+    );
+
+    // ⭐ Cada modificador abre a SUA, com o nome DELE, e só na primeira linha dele.
+    let mut vistos: Vec<&'static str> = Vec::new();
+    for l in &linhas {
+        match l.param {
+            Param::Mod { slot, field } => {
+                let esperado = mods[slot as usize].key();
+                if field == 0 {
+                    assert_eq!(
+                        l.section,
+                        Some(esperado),
+                        "o modificador do slot {slot} abre a secção com `{:?}` em vez do nome dele",
+                        l.section
+                    );
+                    vistos.push(esperado);
+                } else {
+                    assert_eq!(
+                        l.section, None,
+                        "a linha {field} do slot {slot} abre uma SEGUNDA secção — os números de um \
+                         modificador são um bloco só"
+                    );
+                }
+            }
+            _ => assert!(
+                l.section.is_none() || l.section == Some("panel.model3d.section.shape"),
+                "uma linha da forma abriu a secção `{:?}`",
+                l.section
+            ),
+        }
+    }
+    assert_eq!(
+        vistos.len(),
+        mods.len(),
+        "o nó tem {} modificadores e o painel abriu {} secções",
+        mods.len(),
+        vistos.len()
+    );
+    // ⛔ **O CONTROLE**: os dois nomes têm de ser DIFERENTES, senão o gate passaria com um
+    // cabeçalho genérico repetido — que é o estado que o report descreve.
+    assert_ne!(
+        vistos[0], vistos[1],
+        "os dois modificadores abriram a MESMA secção — o cabeçalho não diz de quem são os números"
+    );
+    // ⭐ E cada nome tem tradução: sem ela o cabeçalho pinta a própria chave.
+    for nome in vistos {
+        assert_ne!(
+            ph2d_i18n::tr(nome),
+            nome,
+            "a secção `{nome}` não tem rótulo"
+        );
+    }
+}

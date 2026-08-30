@@ -41,6 +41,7 @@ fn scene_with_one_union() {
             lo: 0.0,
             live: true,
             integral: false,
+            section: None,
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
             bound: Bound::Soft(0.4),
@@ -209,6 +210,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             lo: 0.0,
             live: true,
             integral: false,
+            section: None,
             bound: Bound::Hard(0.22),
         })
         .collect();
@@ -553,6 +555,7 @@ fn scene_with_one_position_row() {
             lo: FLOOR,
             live: true,
             integral: false,
+            section: None,
             bound: Bound::Soft(CEILING),
         }],
         views: Vec::new(),
@@ -680,6 +683,7 @@ fn an_inert_row_registers_nothing_to_click() {
         lo: -180.0,
         live,
         integral: false,
+        section: None,
         bound: Bound::Wrap(180.0),
     };
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -730,6 +734,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             lo: -180.0,
             live: false,
             integral: false,
+            section: None,
             bound: Bound::Wrap(180.0),
         }],
         views: Vec::new(),

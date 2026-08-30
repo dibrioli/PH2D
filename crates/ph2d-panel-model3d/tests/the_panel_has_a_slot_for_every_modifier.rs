@@ -40,3 +40,19 @@ fn the_slot_budget_still_has_room_for_the_next_modifier() {
          próximo a nascer fica sem chip e sem clique"
     );
 }
+
+/// ⭐⭐ **E o cabeçalho de secção é DESENHADO** — o fio entre o campo e o pixel.
+///
+/// ⚠️ Um `ParamRow::section` preenchido que ninguém pinta é um facto publicado e invisível, que é
+/// exactamente o estado que o report descreve. ⛔ O cabeçalho **não** entra no índice de acerto (é
+/// rótulo, não controle), então nenhum gate de costura o vê — este é textual de propósito, e fixa a
+/// INSTRUÇÃO INTEIRA: uma asserção só sobre o nome da função sobrevive a `if false &&`.
+#[test]
+fn the_row_loop_paints_the_section_header() {
+    let src = std::fs::read_to_string("src/paint.rs").expect("paint.rs");
+    assert!(
+        src.contains("if let Some(key) = row.section {\n            y = paint_section(ctx, tr(key), x, w, y);\n        }"),
+        "o laco das linhas deixou de pintar o cabecalho de seccao — os numeros de um modificador \
+         voltam a ficar no meio dos da forma, sem dizer de quem sao"
+    );
+}

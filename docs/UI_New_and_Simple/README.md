@@ -86,7 +86,8 @@ declarada** · comandos em **barra global + cabeçalho por área** · **Layouts 
 ⚠️ **Modos são per-objecto** — D3 corrigida por ele) · **encaixes fixos** · **a régua entra na
 área de desenho** · a **tabela de modos por tipo de objecto** (D6, com o Flip a ganhar `Draw`
 próprio) · os **8 Layouts** (D7) · **as timelines em todos os modos** (D8) · e ⭐⭐ **a engine é 2.5D**
-(D9): canvas 2D em pixels, com objectos 3D desenhados sobre ele.
+(D9): canvas 2D, com objectos 3D desenhados **entre as camadas** dele — cena em **metros**, arte em
+**pixels**, e ⭐ **as duas réguas escolhíveis** (px/m e graus/rad, D9.2).
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
 - **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da

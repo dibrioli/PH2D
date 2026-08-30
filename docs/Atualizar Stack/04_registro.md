@@ -382,8 +382,19 @@ Cada item é uma mudança de plataforma que **compila** e só se vê na tela:
 3. **Acentos** — o `parley` 0.11 inverteu o sinal do `y_offset` do glifo.
 4. **Os diálogos de ficheiro** (`rfd` 0.17) — *Save*, *Save As…*, *Open Project…*, *Import…*.
 5. **Som de verdade** (`cpal` 0.18).
-6. **O tato da física** (`rapier` 0.35, solver reescrito) — sobretudo pilhas em repouso.
-7. **Plataforma cinemática a carregar** — ~4% de atraso medido, registado no §14.
+6. **O tato da física** (`rapier` 0.35, solver reescrito). ⚠️ **Os números de cena, CONTADOS no
+   roteador** [`physics_smoke.rs`](../../shells/desktop/src/physics_smoke.rs), não de memória:
+   **`=4`** é a pilha alta que assenta e adormece (o doc dela diz *«bodies that come to rest, because
+   Sleep is only observable on something that stops»*) · **`=16`** é a trava de rotação, que esta
+   subida **encontrou partida em silêncio** e curou · **`=15`** é o CCD, que **melhorou** (um corpo
+   rápido já não atravessa cenário fixo mesmo sem a bandeira) · **`=23`** são as plataformas de
+   sentido único, onde vive a escada da caixa que cai (§14.5).
+   ⛔ **A `=25` NÃO é a das pilhas** — é a de contatos. Esta linha já disse `25` numa resposta ao
+   Enio, e o §5.0 do `CLAUDE.md` avisa exactamente disto: *o número da próxima cena de smoke
+   CONTA-SE lendo o roteador, nunca uma nota.*
+7. **Plataforma cinemática a carregar** — **4,4%** de atraso no horizontal, `0,8%` no vertical
+   (tabela no **§14.3-bis**). ⚠️ Esta linha dizia só *«registado no §14»* e o §14 **não as nomeava** —
+   um ponteiro que aponta para uma ausência é a mesma doença que esta jornada passou a caçar.
 
 ## §15 — ⛔⛔ A tarefa **F1** (`glam` 0.30 → 0.33) é uma RECUSA MEDIDA (2026-08-29)
 
@@ -482,6 +493,30 @@ paralelo** sobre conjuntos disjuntos, com o núcleo (`rmath`, `world`) por mim.
 | 1 | media a altura de marcha, que a física real já roçava — barra alargada **com a medição ao lado** |
 | 1 | confiava em **exactidão de bits** que dissolveu, e ameaçava apagar animação do artista |
 | 2 | degradações reais, pequenas, **medidas e registadas** |
+
+### §14.3-bis — ⚠️ As DUAS degradações reais, com o número (o §16.3 apontava para aqui e não as achava)
+
+**1. Quem é levado por uma plataforma CINEMÁTICA fica ~4% atrás dela.** Medido nos dois eixos, com
+o corpo dinâmico como controlo e a plataforma a andar `4,0 m`:
+
+| eixo | dinâmico | cinemático | diferença |
+|---|---|---|---|
+| horizontal | `3,9527` | `3,7777` | `0,1750` (**4,4%**) |
+| vertical | `4,0000` | `3,9666` | `0,0334` (0,8%) |
+
+A barra do gate foi de `0,1` para `0,2` — ⚠️ **e a medição entrou no ficheiro junto com ela**, porque
+alargar uma barra sem a medição é o defeito que aquele gate foi reescrito para impedir (a versão
+anterior, de um lado só, deixava o cinemático ser levado `7,92 m` numa plataforma de `4,0`).
+
+**2. O degrau que o personagem sobe fica um passo da grade curto — num ponto só.** Varrida a coluna
+inteira: `0,15 → 0,20` · **`0,25 → 0,22`** · `0,40 → 0,40` · `0,60 → 0,60`.
+⇒ o `0,25` cai no **cruzamento** entre dois regimes — abaixo dele manda o que a cápsula escorrega
+sozinha por cima de um lábio (~`0,20`), acima dele manda o número autorado. ⭐ *Uma varredura que
+reprova num ponto e acerta nos outros três está a falar daquele ponto, não da barra.*
+⛔ **E a barra continua a morder**, provado: a mutação que ela defende (`autostep: None`) colapsa a
+coluna para `0,06`–`0,10` em **toda** a faixa e reprova nos quatro pontos, o mais frouxo incluído.
+*Alargar uma tolerância só é honesto quando se mostra que a mutação que ela defendia ainda a
+atravessa.*
 
 ### §14.4 — ⛔ A recusa medida
 

@@ -219,3 +219,45 @@ o resultado dela **discrimina**.
 ⚠️ **Nota lateral, e é da literatura:** os `44` cantos a **meia célula** nas duas cascas do corpo
 são o modo de falha que o *paper* nomeia explicitamente (uma singularidade a `+½` não produz quad
 nenhum). Eles são minoria ali — mas existem, e ninguém os tinha visto.
+
+---
+
+## §7 — ⛔⛔ CORRECÇÃO AO §4: a cura do SoG JÁ EXISTE, JÁ ESTÁ LIGADA, e está ESGOTADA
+
+⚠️ **O §4 mandava construir a cura do SoG. O código já a tinha.**
+[`RoundOptions::pin_singularities`] e [`RoundOptions::pin_lone_singularities`] são as duas `true`
+por omissão **desde 2026-08-25**, com a cadeia causal medida ponta a ponta no doc-comment delas —
+*singular não pregado ⇒ imagem fraccionária ⇒ transições fraccionárias ⇒ isolinha cai ao lado ⇒
+órfã ⇒ **aresta de bordo, na ponta***.
+
+⇒ *A lei da casa — «confira o CÓDIGO antes de acreditar numa ausência» — poupou uma obra inteira.*
+**A minha leitura da literatura estava certa e a minha leitura da nossa árvore estava errada.**
+
+### E a medição do RESÍDUO discrimina, com um zero que decide
+
+| `r / Rmax` | singulares | com UMA cópia | ⛔ **fora da grade** | **dos quais com uma cópia** |
+|---|---|---|---|---|
+| `[0,00 · 0,50)` | `104` | `55` | `15` | ⭐ **`0`** |
+| `[0,50 · 0,75)` | `53` | `14` | `12` | ⭐ **`0`** |
+| ⛔ `[0,75 · 0,90)` | `6` | `1` | **`3`** (metade) | ⭐ **`0`** |
+| `[0,90 · 1,00]` | `4` | `3` | ⭐ **`0`** | ⭐ **`0`** |
+
+⭐⭐⭐ **NENHUMA das singularidades fora da grade é «solitária».** As `73` que o corte não duplicou
+— o alvo exacto da cura de 25/08 — estão **todas** na grade, nas quatro cascas. *A cura funcionou
+a 100 % para o que ela mirava, e não há mais nada a ganhar por ali.*
+
+⇒ **O que sobra é outra população:** singularidades **com** fecho, que são pregadas e ainda assim
+derivam — `30` na peça inteira, e no ombro **metade das que lá existem**.
+
+### ⇒ A ordem inverte-se, e agora com prova
+
+O §4 punha o desemaranhador em segundo. Ele passa a **primeiro**, porque:
+
+1. o ramo barato está **esgotado** — não há «pregar mais» a fazer;
+2. o resíduo do SoG vive onde o mapa está **dobrado**, e num sítio dobrado o sistema linear do
+   fecho põe o vértice onde calha ⇒ **o `det+` é o suspeito de causar o resto**;
+3. e isso é uma **previsão testável**: curar o `det+` e **re-medir o SoG**. Se o resíduo cair
+   junto, a ordem causal fica provada; se ficar, é um terceiro mecanismo e tem de ser nomeado.
+
+⛔ **Sem essa previsão escrita antes, curar o `det+` e ver o SoG melhorar não provaria nada** — é a
+diferença entre uma medição e uma coincidência lida a favor.

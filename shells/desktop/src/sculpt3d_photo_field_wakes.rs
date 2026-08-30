@@ -263,6 +263,72 @@ fn does_the_field_wake_up_at_a_thin_tip() {
             }
         }
     }
+    // ⭐⭐⭐ **E A PERGUNTA QUE DISCRIMINA: quem sobra é «não pregado» ou «pregado e à
+    // deriva»?**
+    //
+    // ⛔⛔ **A cura do SoG JÁ EXISTE e JÁ ESTÁ LIGADA** — `RoundOptions::pin_singularities` e
+    // `pin_lone_singularities`, as duas `true` por omissão desde 2026-08-25, com a cadeia causal
+    // medida ponta a ponta no doc delas. ⚠️ *O plano desta jornada propunha construí-la, e o
+    // código já a tinha* — a lei da casa («confira o CÓDIGO antes de acreditar numa ausência»)
+    // poupou a obra.
+    //
+    // ⇒ O que este bloco mede é o **RESÍDUO** dela: um vértice singular que o corte duplicou
+    // tem fecho e é pregado; um com **uma cópia só** era o buraco que a cura de 25/08 fechou.
+    // *Se o que sobra fora da grade for de vértices com MUITAS cópias, a cura não é «pregar
+    // mais» — é outra coisa.*
+    let mut copias: BTreeMap<u32, usize> = BTreeMap::new();
+    for origin in &cut.origin {
+        for &g in origin {
+            *copias.entry(g).or_default() += 1;
+        }
+    }
+    let mut fora: [usize; 4] = [0; 4];
+    let mut fora_sozinhos: [usize; 4] = [0; 4];
+    let mut total_sing: [usize; 4] = [0; 4];
+    let mut sozinhos: [usize; 4] = [0; 4];
+    let mut pior: BTreeMap<u32, f64> = BTreeMap::new();
+    for (t, w) in tri_idx.iter().zip(uv.iter()) {
+        for (canto, &v) in t.iter().enumerate() {
+            if index.get(v as usize).copied().unwrap_or(0) == 0 {
+                continue;
+            }
+            let d = w[canto]
+                .iter()
+                .fold(0.0f64, |acc, x| acc.max((x - x.round()).abs()));
+            let e = pior.entry(v).or_insert(0.0);
+            *e = e.max(d);
+        }
+    }
+    for (&v, &d) in &pior {
+        let Some(b) = band_of(radius(&pos[v as usize]) / rmax.max(f32::MIN_POSITIVE)) else {
+            continue;
+        };
+        let so = copias.get(&v).copied().unwrap_or(0) <= 1;
+        total_sing[b] += 1;
+        if so {
+            sozinhos[b] += 1;
+        }
+        if d > 1e-3 {
+            fora[b] += 1;
+            if so {
+                fora_sozinhos[b] += 1;
+            }
+        }
+    }
+    eprintln!(
+        "  SoG -- QUEM sobra fora da grade (a cura de 25/08 esta' LIGADA; isto e' o residuo):"
+    );
+    for (b, (lo, hi)) in BANDS.iter().enumerate() {
+        if total_sing[b] == 0 {
+            continue;
+        }
+        eprintln!(
+            "  [{lo:.2},{hi:.2}) {:4} singular(es)  {:3} com UMA copia  |  FORA da grade: {:3}  \
+             (dos quais com uma copia: {})",
+            total_sing[b], sozinhos[b], fora[b], fora_sozinhos[b]
+        );
+    }
+
     eprintln!("  SoG -- distancia da SINGULARIDADE ao ponto inteiro (0 = na grade):");
     for (b, (lo, hi)) in BANDS.iter().enumerate() {
         if sog[b].is_empty() {

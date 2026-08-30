@@ -44,8 +44,29 @@ use ph2d_vector::VectorScene;
 /// coisa. Um número aqui faria a fila e a coluna terem chips de tamanhos diferentes no dia em que
 /// alguém mexesse no preset.
 #[must_use]
-pub fn tool_bar_h(size: RailButtonSize) -> f32 {
-    Spacing::Xxs.px() * 2.0 + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX + size.chip_px()
+pub fn tool_bar_h(size: RailButtonSize, lines: usize) -> f32 {
+    let lines = lines.max(1) as f32;
+    Spacing::Xxs.px() * 2.0
+        + lines * (LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX + size.chip_px())
+        + (lines - 1.0) * Spacing::Xs.px()
+}
+
+/// **De quantas linhas a fila precisa nesta área** — a pergunta que o layout faz antes de
+/// reservar a faixa.
+///
+/// ⚠️ **A largura da área não depende da altura da faixa**, logo não há circularidade: o
+/// `frame_layout` resolve o layout uma vez com a faixa a zero, lê a largura, e resolve outra vez
+/// com a altura certa. Duas passagens de aritmética pura.
+#[must_use]
+pub fn tool_bar_lines(
+    store: &WidgetStore,
+    painter_active: bool,
+    image_tools_on: bool,
+    area_w: f32,
+) -> usize {
+    let rail = bar_rail(store, painter_active, image_tools_on);
+    let content_w = (area_w - Spacing::Xs.px() * 2.0).max(0.0);
+    crate::widget::horizontal_lines(&rail, content_w, store.rail_button_size())
 }
 
 /// **O rectângulo em que os chips de facto correm** — a faixa menos o respiro.
@@ -64,13 +85,32 @@ pub fn content_rect(bar: Rect) -> Rect {
     )
 }
 
-/// O rail da fila — a MESMA lista que a coluna pinta.
-fn bar_rail(store: &WidgetStore, painter_active: bool) -> ToolRail {
-    ToolRail::new(
-        NodeId(203),
-        "Editor tools",
-        rail_entries(store, painter_active),
-    )
+/// ⭐ **O rail da fila** — a MESMA lista que a coluna pinta, mais as ferramentas de imagem quando
+/// o modo delas está ligado.
+///
+/// ⛔⛔ **As ferramentas de imagem estão aqui porque ficaram INALCANÇÁVEIS.** Elas eram pintadas
+/// num sítio só — a fila de pills dentro do `paint_top_bar` — e essa barra saiu de cena em
+/// 2026-08-30; a auditoria do mesmo dia mediu que não havia atalho, nem linha de menu, nem
+/// projecção na paleta. ⇒ o **Painter** incluído, e com ele toda a face de pintura desta fila.
+///
+/// ⚠️ **Elas NÃO entram no `rail_entries`**, e é de propósito: com a `F9` ligada o
+/// `paint_top_bar` regista os mesmos ids, e dois rectângulos para um id no mesmo quadro é a
+/// ambiguidade que o `HitIndex` resolve por ordem de pintura — não por significado.
+///
+/// ⚠️ E elas só aparecem com o modo ligado (*Window → Image Tools*), que é a mesma condição que a
+/// shell exige para as ACTIVAR (`Some("image_tools") => hero.image_edit.mode_on`). Oferecer um
+/// chip que o gate a jusante recusa seria a terceira espécie de knob morto.
+#[must_use]
+pub fn bar_rail(store: &WidgetStore, painter_active: bool, image_tools_on: bool) -> ToolRail {
+    let mut entries = rail_entries(store, painter_active);
+    if image_tools_on {
+        let tools = super::topbar::image_tool_rail_entries(store);
+        if !tools.is_empty() {
+            entries.push(crate::widget::ToolRailEntry::Divider);
+            entries.extend(tools);
+        }
+    }
+    ToolRail::new(NodeId(203), "Editor tools", entries)
 }
 
 /// Desenha a fila e regista os alvos.
@@ -83,13 +123,14 @@ pub fn paint_tool_bar(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
     painter_active: bool,
+    image_tools_on: bool,
     motion: &crate::motion::UiMotion,
 ) {
     let bar = layout.tool_bar;
     if bar.w <= 0.0 || bar.h <= 0.0 {
         return;
     }
-    let rail = bar_rail(store, painter_active);
+    let rail = bar_rail(store, painter_active, image_tools_on);
     let size = store.rail_button_size();
     // A faixa inteira leva o fundo do trilho — é o mesmo chrome, deitado.
     scene.fill_rect(
@@ -110,6 +151,12 @@ pub fn paint_tool_bar(
     );
     scene.push_clip(&clip);
     hit_index.push_clip(bar);
+    // ⛔⛔ **O fundo ENGOLE o clique.** Medido pela auditoria de 2026-08-30: sem ele **70,6 %** da
+    // faixa pintada deixava o ponteiro passar para a arte por baixo — incluindo a banda do
+    // RÓTULO de cada chip, que fica por cima dele. É o mesmo `RAIL_BACKDROP` que o trilho
+    // vertical regista desde 2026-07-16, pela mesma razão e depois do mesmo report do Enio.
+    // ⚠️ Antes dos chips, de propósito: o `HitIndex` caminha de trás para a frente.
+    hit_index.register(ids::RAIL_BACKDROP, bar);
     paint_tool_rail_axis(
         &rail,
         content,

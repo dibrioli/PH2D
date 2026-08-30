@@ -278,6 +278,64 @@ pub fn paint_tool_rail_axis(
                     resolve(ColorToken::Text2, theme),
                 );
             }
+            // ⭐ **O chip de CAMINHO** — as ferramentas de imagem, cujo ícone vem do manifesto.
+            // ⚠️ A matriz de tinta é a MESMA do braço `Icon`, e a única diferença é a rota do
+            // glifo (`paint_icon_path` em vez de `paint_icon`): dois chips do mesmo trilho não
+            // podem prometer o mesmo gesto com desenhos diferentes.
+            ToolRailEntry::Glyph {
+                id,
+                path,
+                active,
+                sub,
+                ..
+            } => {
+                let rest_rect = slot_rect;
+                let radius = Radius::Sm.px();
+                let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
+                let is_active = *active || state == ButtonState::Pressed;
+                let t = chip_axis_t(state, is_active, hover_t(*id));
+                let chip_rect = crate::motion::hover_lift(rest_rect, t.unwrap_or(0.0), travels);
+                let bg = match state {
+                    ButtonState::Pressed => ColorToken::AccentSoft,
+                    _ if is_active => ColorToken::AccentSoft,
+                    _ => ColorToken::BgElev,
+                };
+                fill_rounded_rect(scene, chip_rect, radius, resolve(bg, theme));
+                let (border, border_w) = match state {
+                    ButtonState::Hovered | ButtonState::Focused => (ColorToken::BorderEmph, 1.0),
+                    ButtonState::Pressed => (ColorToken::Accent, StrokeToken::Default.px()),
+                    _ if is_active => (ColorToken::Accent, StrokeToken::Default.px()),
+                    _ => (ColorToken::Border, 1.0),
+                };
+                let border_c =
+                    chip_axis_color(t, ColorToken::Border, ColorToken::BorderEmph, border, theme);
+                stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
+                // ⚠️ **O glifo vai pelo pintor CANÓNICO** (`IconButtonStyle::Plain`: sem fundo
+                // nem moldura, só o desenho), e não por um `paint_icon_path` à mão. É a mesma
+                // rota que o chip da barra de topo usa, e existe uma cerca a exigi-la
+                // (`canonical_icon_button`): um caminho de manifesto pintado à mão é como as
+                // pills de Image Tools hand-rolled chrome antes de haver um pintor só.
+                // ⚠️ O `icon_tint` interno reproduz o mesmo mapa Text2/Text1/Accent que o braço
+                // `Icon` resolve à mão.
+                crate::widget::paint_icon_button(
+                    chip_rect,
+                    crate::widget::IconGlyph::Path(path),
+                    crate::widget::IconButtonStyle::Plain,
+                    (state, t.unwrap_or(crate::motion::SETTLED)),
+                    scene,
+                    theme,
+                );
+                paint_sub_label(
+                    text_system,
+                    scene,
+                    sub,
+                    sub_font,
+                    rect.x,
+                    rest_rect,
+                    axis,
+                    resolve(ColorToken::Text2, theme),
+                );
+            }
             ToolRailEntry::Divider => {
                 scene.fill_rect(rect_to_vello(slot_rect), resolve(ColorToken::Border, theme));
             }

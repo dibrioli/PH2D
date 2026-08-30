@@ -33,6 +33,8 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         ContextMenuKind::SettingsMenu
     } else if id == ids::MENUBAR_VIEW_THEME {
         ContextMenuKind::ThemeSelector
+    } else if id == ids::MENUBAR_FILE_SCENES {
+        ContextMenuKind::SceneList
     } else if id == ids::MENUBAR_VIEW_RULERS {
         // ⚠️ **A régua é estado do HERO, não da ferramenta** — o mesmo campo que a caixa do painel
         // do vetor mexe. Duas portas, um valor.

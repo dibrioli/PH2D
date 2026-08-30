@@ -81,6 +81,9 @@ pub enum ContextMenuKind {
     /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
     /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
     MenuBarWindow,
+    /// Ver [`Self::MenuBarFile`]. O **transporte** — e ele existe porque o *Reset* (rebobinar)
+    /// não tinha porta nenhuma depois de os pills saírem.
+    MenuBarRun,
     /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
@@ -313,6 +316,7 @@ impl ContextMenuKind {
         Self::MenuBarEdit,
         Self::MenuBarView,
         Self::MenuBarWindow,
+        Self::MenuBarRun,
         Self::ThemeSelector,
         Self::SaveMenu,
         Self::OpenMenu,

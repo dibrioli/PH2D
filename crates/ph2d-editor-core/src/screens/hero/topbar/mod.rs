@@ -416,6 +416,9 @@ use cluster_painter::{
     paint_topbar_rail_chip,
 };
 pub use image_action_row::image_action_a11y_nodes;
+/// ⭐ As ferramentas de imagem como entradas de trilho — a porta que as traz para a fila
+/// horizontal, depois de a barra de pills sair de cena.
+pub(crate) use image_action_row::image_tool_rail_entries;
 use image_action_row::{image_action_pills, paint_image_action_row};
 
 #[cfg(test)]

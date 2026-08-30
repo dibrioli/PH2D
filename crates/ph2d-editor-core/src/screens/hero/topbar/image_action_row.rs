@@ -152,6 +152,46 @@ pub(super) fn paint_image_action_row(
     }
 }
 
+/// ⭐⭐ **AS FERRAMENTAS DE IMAGEM COMO ENTRADAS DE TRILHO** — a porta que as traz para a fila
+/// horizontal.
+///
+/// ⛔⛔ **Ela existe porque as dez ficaram INALCANÇÁVEIS.** Elas eram pintadas num único sítio —
+/// o [`paint_image_action_row`], dentro do `paint_top_bar` —, e a barra de pills saiu de cena em
+/// 2026-08-30. A auditoria do mesmo dia mediu o resto: não há atalho de teclado, não há linha de
+/// menu, a paleta de comandos não as projecta e a paleta de ferramentas do canvas só corre no
+/// caminho de demo. ⇒ **incluindo o Painter**, e com ele toda a face de pintura desta fila
+/// (`rail_shows_painter_tools` exige `active_tool_id == Some("painter")`, que nunca podia acontecer).
+///
+/// ⚠️ **O sub-rótulo é DERIVADO do nome** (primeira palavra, maiúsculas, 5 caracteres) e não uma
+/// tabela: uma tabela de tags ao lado de uma lista que vem do **registry** seria a lista à mão que
+/// deixa de fora a ferramenta nova. O nome inteiro viaja na etiqueta de acessibilidade.
+pub(crate) fn image_tool_rail_entries(store: &WidgetStore) -> Vec<crate::widget::ToolRailEntry> {
+    use crate::widget::{ButtonState, ToolRailEntry};
+    image_action_pills()
+        .into_iter()
+        .map(|pill| {
+            let label = ph2d_i18n::tr(pill.label_key);
+            let sub: String = label
+                .split_whitespace()
+                .next()
+                .unwrap_or("")
+                .chars()
+                .filter(|c| c.is_alphanumeric())
+                .take(5)
+                .collect::<String>()
+                .to_uppercase();
+            let mut e = match pill.icon {
+                PillIcon::FromManifest(path) => ToolRailEntry::glyph(pill.id, label, path, sub),
+                PillIcon::Legacy(icon) => ToolRailEntry::icon(pill.id, label, icon).with_sub(sub),
+            };
+            if matches!(store.button_state(pill.id), Some(ButtonState::Pressed)) {
+                e = e.active();
+            }
+            e
+        })
+        .collect()
+}
+
 /// Geometry of the Image Tools action pill row for a given layout.
 /// Shared between [`paint_image_action_row`] (paints + hit-registers)
 /// and [`image_action_a11y_nodes`] (publishes AccessKit nodes) so the

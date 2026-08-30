@@ -18,6 +18,7 @@
 //! | 4 | a barra a **flutuar** sobre o desenho em vez de subtrair altura | [`the_bar_subtracts_height_it_never_floats`] |
 
 use bumpalo::Bump;
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{ContextMenuKind, HitIndex, WidgetEvent, dispatch_pointer};
 use ph2d_editor_core::screens::hero::menu_bar::{self, MENUS};
 use ph2d_editor_core::screens::hero::{HeroScreen, ids, menu_rows::menu_rows};
@@ -123,11 +124,13 @@ fn an_unrelated_press_opens_nothing() {
 #[test]
 fn every_other_menu_bar_row_reaches_a_consumer() {
     let mut dead = Vec::new();
-    for kind in [
-        ContextMenuKind::MenuBarFile,
-        ContextMenuKind::MenuBarEdit,
-        ContextMenuKind::MenuBarView,
-    ] {
+    // ⭐ **A lista sai da TABELA**, menos o *Window* — um menu novo entra aqui sozinho. Aqui
+    // estiveram três kinds escritos à mão, e o *Run* (que nasceu depois) não teria sido medido.
+    for kind in MENUS
+        .iter()
+        .map(|(_, _, k)| *k)
+        .filter(|k| *k != ContextMenuKind::MenuBarWindow)
+    {
         for (id, label, _) in menu_rows(kind) {
             let mut h = hero();
             if !h.apply_event(WidgetEvent::Click(*id)) {
@@ -323,4 +326,308 @@ fn the_painted_bar_registers_every_title_where_it_drew_it() {
             "{title}: o alvo entra na área de desenho"
         );
     }
+}
+
+/// ⛔⛔ **AS DUAS BARRAS ENGOLEM O CLIQUE QUE PINTAM.**
+///
+/// `chrome_hit::pointer_over_chrome` é `panel_at().is_some() || hit_index.hit().is_some()`. As
+/// barras não publicam rect de painel, logo tudo depende do `HitIndex` — e elas pintam faixas
+/// **opacas** de ponta a ponta com só os títulos e os chips registados.
+///
+/// ⚠️ Medido pela auditoria de 2026-08-30, antes da cura: **86,9 %** da barra de menus e
+/// **70,6 %** da fila de ferramentas deixavam o ponteiro passar para a arte por baixo — incluindo
+/// a banda do RÓTULO que fica por cima de cada chip. Com o Painter em mãos, isso é tinta
+/// depositada por baixo do chrome.
+///
+/// ⛔ **E o gate que devia ter apanhado isto mede a outra metade:**
+/// `the_chrome_swallows_the_click_it_was_given` afirma que cada consumidor de canvas PERGUNTA ao
+/// `pointer_over_chrome` — todos perguntavam. Ninguém afirmava que o chrome REGISTA um rectângulo
+/// que responda que sim.
+///
+/// *Mutação que sangra:* apagar o `hit_index.register(ids::MENUBAR_BACKDROP, bar)` ou o
+/// `hit_index.register(ids::RAIL_BACKDROP, bar)`.
+#[test]
+fn both_bars_swallow_every_pixel_they_paint() {
+    let mut h = hero();
+    let mut scene = ph2d_vector::VectorScene::new();
+    let mut text = TextSystem::without_system_fonts();
+    let viewport = Rect::new(0.0, 0.0, 1366.0, 1024.0);
+    ph2d_editor_core::screens::hero::paint_hero_screen(&mut h, viewport, &mut scene, &mut text);
+    let l = h.last_layout.expect("o quadro publicou o layout");
+    for (name, band) in [("barra de menus", l.top_bar), ("fila", l.tool_bar)] {
+        assert!(band.w > 0.0 && band.h > 0.0, "{name}: faixa vazia");
+        let mut through = 0usize;
+        let mut total = 0usize;
+        // Uma grelha densa: o buraco não é uma banda contínua, é tudo o que não é chip.
+        let mut y = band.y + 1.0;
+        while y < band.y + band.h {
+            let mut x = band.x + 1.0;
+            while x < band.x + band.w {
+                total += 1;
+                if h.hit_index.hit(x, y).is_none() {
+                    through += 1;
+                }
+                x += 3.0;
+            }
+            y += 3.0;
+        }
+        assert_eq!(
+            through, 0,
+            "{name}: {through} de {total} pontos da faixa PINTADA deixam o clique passar para a \
+             arte por baixo"
+        );
+    }
+}
+
+/// ⭐ **As dezasseis linhas de alternância mostram o próprio estado.**
+///
+/// ⚠️ *«Fiar o clique não é fiar o ESTADO»* — a lei que o `context_menu_overlay` documenta, paga
+/// na unidade de ângulo, e que a 1.ª versão desta barra repetiu **dezasseis vezes**: o menu
+/// *Window* dizia exactamente a mesma coisa com o Vector aberto e fechado.
+#[test]
+fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
+    let mut covered = 0usize;
+    for kind in MENUS.iter().map(|(_, _, k)| *k) {
+        for (id, label, _) in menu_rows(kind) {
+            let is_toggle = kind == ContextMenuKind::MenuBarWindow
+                || *id == ids::RAIL_SHOW_HIERARCHY
+                || *id == ids::RAIL_SHOW_INSPECTOR
+                || *id == ids::MENUBAR_VIEW_RULERS;
+            assert_eq!(
+                menu_bar::row_is_marked_by_button_state(*id),
+                is_toggle,
+                "{label}: a marca de estado não bate com o que a linha É"
+            );
+            covered += usize::from(is_toggle);
+        }
+    }
+    assert_eq!(
+        covered, 16,
+        "esperadas 16 linhas de alternância, vi {covered}"
+    );
+}
+
+/// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
+#[test]
+fn the_rulers_row_publishes_its_state_to_the_store() {
+    use ph2d_editor_core::interaction::InteractiveState;
+    use ph2d_editor_core::widget::ButtonState;
+    let mut h = hero();
+    for on in [true, false, true] {
+        h.view.rulers_visible = on;
+        menu_bar::publish_toggle_state(&mut h);
+        let state = match h.store.get(ids::MENUBAR_VIEW_RULERS) {
+            Some(InteractiveState::Button { state }) => *state,
+            other => panic!("a linha da régua não é um botão: {other:?}"),
+        };
+        assert_eq!(
+            state == ButtonState::Pressed,
+            on,
+            "a marca da régua não segue o interruptor"
+        );
+    }
+}
+
+/// ⛔⛔⛔ **CENSO: todo verbo que a barra de pills carregava tem de ter uma porta que não seja a `F9`.**
+///
+/// A retirada dos pills (2026-08-30) apagou o **único** sítio de onde 29 ids eram alcançáveis, e a
+/// auditoria do mesmo dia contou o que ficou sem porta: o **Painter e as dez ferramentas de
+/// imagem**, a **lista de cenas** (com ela o campo de busca `CTX_SCENE_SEARCH` saiu do produto) e
+/// o **rebobinar** do transporte. Nenhum gate viu — os que existiam mediam *registo* e *despacho*,
+/// duas metades certas de uma pergunta que pressupõe que alguém **pinta** o controlo.
+///
+/// ⚠️ **A fonte é o ficheiro de ids**, não uma lista aqui: um pill novo entra no censo no dia em
+/// que é declarado. As excepções vivem em [`NO_DOOR_PENDING`] **com o motivo medido**, e há a
+/// metade que recusa uma entrada obsoleta.
+///
+/// ⛔ As ferramentas de imagem não são medidas aqui: elas não têm const `TOPBAR_*` (a fila é
+/// derivada do registry), e o gate delas é
+/// `ph2d-tool-registry-init/tests/every_image_tool_is_reachable_without_the_legacy_bar.rs` — a
+/// crate mais barata que instala o registry.
+const NO_DOOR_PENDING: &[(&str, &str)] = &[
+    (
+        "TOPBAR_LEFT_BACKDROP",
+        "FUNDO de agrupador, nao um verbo: o efeito de o registar e' BLOQUEAR o clique.",
+    ),
+    ("TOPBAR_RIGHT_BACKDROP", "idem — fundo de agrupador."),
+    ("TOPBAR_IMAGE_TOOLS_BACKDROP", "idem — fundo de agrupador."),
+    (
+        "TOPBAR_PLAY_TOGGLE",
+        "id ORFAO, PRE-EXISTENTE: nunca e' pintado nem registado em lado nenhum (a auditoria de \
+         2026-08-30 varreu o repo). Nao e' um verbo que perdeu a porta — e' lixo a apagar, e \
+         apaga-lo e' de quem lhe mexer.",
+    ),
+    (
+        "TOPBAR_RIGHT_LAYERS",
+        "MORTO PRE-EXISTENTE: pintado, registado e com tooltip (\"Layers\"), e SEM consumidor \
+         nenhum no repo inteiro — ja' o era antes desta linha existir.",
+    ),
+    (
+        "TOPBAR_RIGHT_ASSETS",
+        "idem — \"Asset library\", sem consumidor.",
+    ),
+    (
+        "TOPBAR_RIGHT_SCRIPT",
+        "idem — \"Code · Luau\", sem consumidor.",
+    ),
+    (
+        "TOPBAR_SAVE_AS",
+        "o VERBO mudou-se: a linha `Save As…` do menu File leva o `CTX_MENU_SAVE_AS`, que e' o id \
+         que o `io_menu` despacha. Este const era so' o pill que abria o menu.",
+    ),
+    (
+        "TOPBAR_THEME",
+        "idem — o menu dele e' o `ThemeSelector`, aberto pela linha `Theme…` do menu View.",
+    ),
+    (
+        "TOPBAR_SETTINGS",
+        "idem — o `SettingsMenu` e' aberto pela linha `Preferences…` do menu Edit.",
+    ),
+    (
+        "TOPBAR_SAVE",
+        "idem — as duas linhas do `SaveMenu` estao no menu File.",
+    ),
+    (
+        "TOPBAR_OPEN",
+        "idem — as duas linhas do `OpenMenu` estao no menu File.",
+    ),
+    (
+        "TOPBAR_PROJECT",
+        "idem — a `SceneList` e' aberta pela linha `Scenes…` do menu File.",
+    ),
+];
+
+#[test]
+fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
+    let src = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ids/chrome/topbar.rs"),
+    )
+    .expect("o ficheiro de ids da barra");
+    // ⚠️ **O SLUG sai da linha, não de `name.to_lowercase()`.** Adivinhar o slug faria um id
+    // declarado com outra convenção cair na lista de acusados por engano — e a acusação
+    // *«não tem porta»* é a mais cara que este gate pode fazer.
+    let declared: Vec<(String, NodeId)> = src
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim().strip_prefix("pub const ")?;
+            let (name, rest) = l.split_once(':')?;
+            if !name.starts_with("TOPBAR_") {
+                return None;
+            }
+            let slug = rest.split_once("hash_node_id(\"")?.1.split_once('"')?.0;
+            // ⚠️ `hash_node_id` é `const fn` sobre `&'static str`; num gate que LÊ o ficheiro o
+            // slug é de tempo de execução, e vazá-lo é o preço honesto (um teste, uma corrida).
+            let slug: &'static str = Box::leak(slug.to_string().into_boxed_str());
+            Some((name.to_string(), ph2d_tool_registry::hash_node_id(slug)))
+        })
+        .collect();
+    assert!(
+        declared.len() >= 20,
+        "só {} ids lidos — o parser deixou de reconhecer a forma do ficheiro",
+        declared.len()
+    );
+    let rows: Vec<NodeId> = MENUS
+        .iter()
+        .flat_map(|(_, _, k)| menu_rows(*k))
+        .map(|(id, ..)| *id)
+        .collect();
+    let mut doorless = Vec::new();
+    for (name, id) in &declared {
+        if NO_DOOR_PENDING.iter().any(|(n, _)| n == name) {
+            continue;
+        }
+        if !rows.contains(id) {
+            doorless.push(name.clone());
+        }
+    }
+    assert!(
+        doorless.is_empty(),
+        "verbos da barra antiga SEM porta fora da `F9` — o artista não tem como lá chegar: \
+         {doorless:?}"
+    );
+    // ⭐ A metade que impede a lista de virar licença: uma entrada que já tem porta sai.
+    let stale: Vec<&str> = NO_DOOR_PENDING
+        .iter()
+        .map(|(n, _)| *n)
+        .filter(|n| declared.iter().any(|(d, id)| d == n && rows.contains(id)))
+        .collect();
+    assert!(
+        stale.is_empty(),
+        "estes já têm linha de menu e continuam na lista de excepções: {stale:?}"
+    );
+}
+
+/// ⛔⛔⛔ **CENSO: a marca de uma linha de alternância tem de MEXER quando ela é clicada.**
+///
+/// `row_is_marked_by_button_state` diz *quais* linhas mostram estado; **este** diz se o estado
+/// mudou. A diferença não é académica: uma linha cujo handler flipa um campo e nunca toca no
+/// `ButtonState` fica marcada a *«desligado»* para sempre, e o menu mente com a cara de quem
+/// funciona.
+///
+/// ⛔⛔ **E ele nasce com DEZ pendentes, todas PRÉ-EXISTENTES.** Nenhum destes dez botões tinha a
+/// marca antes desta barra existir: o laço de reconciliação da shell só percorre os clusters
+/// `image_tools` e `vector_tools` do **registry de ferramentas**, e os *pills* de módulo não estão
+/// em cluster nenhum — `TOPBAR_VECTOR` é `hash_node_id("topbar_vector")`, o manifesto é
+/// `hash_node_id("vector")`. Ninguém escreve o `ButtonState` deles.
+///
+/// ⚠️⚠️ **E isso é mais do que uma marca em falta:** o `chrome::vector_toggle` **LÊ** esse estado
+/// para decidir a direcção (*activar* ou *cancelar*). Com ele preso em `Normal`, o segundo clique
+/// volta a activar em vez de desligar. *Um estado que ninguém escreve e alguém lê não é uma marca
+/// em falta — é um `if` com um lado morto.* Fica NOMEADO aqui; a cura é uma wave de quem for dono
+/// dos toggles de módulo, e a verdade de cada um vive num sítio diferente (visibilidade de painel
+/// para uns, ferramenta activa para outros).
+const MARK_STUCK_PENDING: &[&str] = &[
+    "Vector",
+    "Motion Nodes",
+    "Flip",
+    "Sculpt 3D",
+    "Model 3D",
+    "Audio Mixer",
+    "Audio Editor",
+    "Widget Gallery",
+    "Grid Settings",
+];
+
+#[test]
+fn clicking_a_toggle_row_moves_its_mark() {
+    use ph2d_editor_core::widget::ButtonState;
+    let mut stuck = Vec::new();
+    let mut moved = Vec::new();
+    for (id, label, _) in menu_rows(ContextMenuKind::MenuBarWindow) {
+        let mut h = hero();
+        menu_bar::publish_toggle_state(&mut h);
+        let before = matches!(h.store.button_state(*id), Some(ButtonState::Pressed));
+        let _ = h.apply_event(WidgetEvent::Click(*id));
+        menu_bar::publish_toggle_state(&mut h);
+        let after = matches!(h.store.button_state(*id), Some(ButtonState::Pressed));
+        if before == after {
+            stuck.push(*label);
+        } else {
+            moved.push(*label);
+        }
+    }
+    let new_stuck: Vec<&str> = stuck
+        .iter()
+        .copied()
+        .filter(|l| !MARK_STUCK_PENDING.contains(l))
+        .collect();
+    assert!(
+        new_stuck.is_empty(),
+        "linhas NOVAS cuja marca não mexe depois do clique — o menu mente: {new_stuck:?}"
+    );
+    // ⭐ A metade que impede a lista de virar licença.
+    let cured: Vec<&str> = MARK_STUCK_PENDING
+        .iter()
+        .copied()
+        .filter(|l| moved.contains(l))
+        .collect();
+    assert!(
+        cured.is_empty(),
+        "estas já mexem e continuam na lista de pendentes — apague-as: {cured:?}"
+    );
+    assert!(
+        !moved.is_empty(),
+        "NENHUMA linha mexeu: o controlo positivo caiu, e a lista de pendentes passaria a \
+         esconder uma regressão total"
+    );
 }

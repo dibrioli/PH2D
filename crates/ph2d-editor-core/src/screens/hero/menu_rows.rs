@@ -98,6 +98,7 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 "New Image\u{2026} \u{00b7} Cmd+N",
                 None,
             ),
+            (ids::MENUBAR_FILE_SCENES, "Scenes\u{2026}", None),
             (
                 ids::CTX_MENU_OPEN_PROJECT,
                 "Open Project\u{2026} \u{00b7} Cmd+O",
@@ -150,6 +151,15 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::TOPBAR_AUTHORED, "Authored UI", None),
             (ids::TOPBAR_WIDGET_GALLERY, "Widget Gallery", None),
             (ids::TOPBAR_GRID_SETTINGS, "Grid Settings", None),
+        ],
+        // ⚠️ **O transporte é UM relógio** (`ph2d_core::Playhead`): física, Motion, Timeline e
+        // Flip andam todos nele, e estes três verbos conduzem-nos de uma vez.
+        // ⛔ *Rewind* estava **sem porta** desde a retirada dos pills — o `Espaço` alterna
+        // tocar/pausar e as vírgulas andam quadro a quadro, mas nada rebobinava.
+        ContextMenuKind::MenuBarRun => &[
+            (ids::TOPBAR_PLAY_BUTTON, "Play \u{00b7} Space", None),
+            (ids::TOPBAR_PAUSE, "Pause \u{00b7} Space", None),
+            (ids::TOPBAR_RESET, "Rewind", None),
         ],
         ContextMenuKind::SaveMenu => &[
             (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),

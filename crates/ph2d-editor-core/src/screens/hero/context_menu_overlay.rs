@@ -66,6 +66,20 @@ pub(super) fn id_is_currently_selected(
 ) -> bool {
     use crate::project::{DisplayAngle, DisplayUnit, ImageFilterMode};
     use crate::widget::RailButtonSize;
+    // ⛔⛔ **AS DEZASSEIS LINHAS DE ALTERNÂNCIA DA BARRA DE MENUS** — os treze módulos, os dois
+    // painéis e a régua. Elas nasceram em 2026-08-30 **sem marca nenhuma**: o menu *Window* dizia
+    // exactamente a mesma coisa com o Vector aberto e fechado.
+    //
+    // ⚠️ É a lei que este ficheiro já documenta, paga na unidade de ângulo: *«fiar o clique não é
+    // fiar o ESTADO»* — e a barra repetiu-a dezasseis vezes de uma vez. Antes dela a indicação
+    // existia: o laço de reconciliação da shell força `Pressed` no pill do tool activo, e o pill
+    // lia-o. O pill saiu; a marca não foi com ele para lado nenhum.
+    if super::menu_bar::row_is_marked_by_button_state(id) {
+        return matches!(
+            store.button_state(id),
+            Some(crate::widget::ButtonState::Pressed)
+        );
+    }
     let theme_id = match theme {
         Theme::Forge => ids::CTX_MENU_THEME_FORGE,
         Theme::Workshop => ids::CTX_MENU_THEME_PAINT,

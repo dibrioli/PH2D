@@ -113,6 +113,9 @@ pub fn paint_hero_screen(
     // Stash the viewport so chrome event handlers in `chrome/` can
     // make smart layout decisions (cascade submenu side-flip etc.).
     hero.last_viewport = viewport;
+    // A régua não tem quem lhe mantenha o `ButtonState`; sem isto a linha dela no menu *Ver*
+    // nunca aparece marcada. Ver `menu_bar::publish_toggle_state`.
+    super::menu_bar::publish_toggle_state(hero);
 
     let mut layout = super::frame_layout::frame_layout(hero, viewport);
     // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
@@ -388,6 +391,7 @@ pub fn paint_hero_screen(
             hero.theme,
             &mut hero.hit_index,
             &hero.store,
+            &hero.motion,
         );
     }
     // Publish Inspector + Hierarchy panel rects so wheel-event
@@ -523,6 +527,7 @@ pub fn paint_hero_screen(
             &mut hero.hit_index,
             &hero.store,
             painter_active,
+            hero.image_edit.mode_on,
             &hero.motion,
         );
     }

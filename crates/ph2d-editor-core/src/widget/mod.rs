@@ -158,7 +158,8 @@ pub use toggle::{Toggle, ToggleState, paint_toggle};
 pub use tool_rail::{
     CHIP_X_OFFSET_PX, COMPOUND_TOTAL_H_PX, DIVIDER_GAP_PX, EntrySlot, LABEL_TO_CHIP_GAP_PX,
     LABEL_VISUAL_EXTENT_PX, RailAxis, RailButtonSize, TOOL_CHIP_PX, ToolRail, ToolRailEntry,
-    entry_rects, paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t, tool_rail_width_px,
+    entry_rects, horizontal_lines, line_pitch, paint_tool_rail, paint_tool_rail_axis,
+    paint_tool_rail_t, tool_rail_width_px,
 };
 pub use tooltip::{Tooltip, paint_tooltip};
 pub use tree_view::{TreeNode, TreeView, paint_tree_view};

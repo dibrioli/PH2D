@@ -35,7 +35,8 @@ virou **código**.
 | 13 | `66f460f7c` | ⭐ **os números da régua VERTICAL rodam**, e a régua **encosta** na coluna |
 | 14 | `28f9d95d0` | ⭐ **A BORDA INTEIRA redimensiona a coluna** — seta bidireccional, e os pontinhos saem |
 | 15 | `d15640c62` | ⭐⭐ **A BARRA DE MENUS** — *File · Edit · View · Window*, e ela **realoja** verbos (§10) |
-| 16 | *(a seguir)* | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
+| 16 | `810c1abd4` | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
+| 17 | *(a seguir)* | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
 
 ---
 
@@ -382,9 +383,21 @@ chrome).
 mesmos chips que a coluna tinha e o rótulo **por cima** de cada um. A régua de cima fica **por
 baixo** dela.
 Deu errado se: um chip pintado não pega ao clique · a fila entra por cima da Hierarquia ou do
-Inspector · a régua de cima nasce por baixo da fila · em modo Painter (pegar na ferramenta de
-pintura) o último chip aparece **cortado** — a faixa corta a tinta e o clique juntos, então um
-chip cortado é um chip **inalcançável**.
+Inspector · a régua de cima nasce por baixo da fila · um chip aparece **cortado** na ponta (a
+faixa corta a tinta e o clique juntos, então um chip cortado é um chip **inalcançável** — hoje
+ela **quebra de linha** em vez de cortar).
+
+**As curas da auditoria** (entrega 17):
+1. *Window → Image Tools* — a fila ganha a segunda secção com as **dez ferramentas de imagem**.
+   Escolha o **Painter**: os chips de pintura tomam a fila. (Sem isto o Painter era inalcançável
+   sem `F9`.)
+2. *File → Scenes…* abre a lista de cenas com busca; o menu **Run** tem Play · Pause · **Rewind**.
+3. Abra o menu *Window*: o módulo que está aberto aparece **marcado**. O mesmo em *View* para
+   Hierarchy / Inspector / Rulers.
+4. Com o Painter em mãos, arraste **em cima da barra de menus e da fila**: não pode aparecer tinta
+   nenhuma por baixo delas.
+5. Estreite a janela (ou *Theme… → Rail Buttons: Large*): a fila **quebra para uma segunda linha**
+   em vez de perder botões.
 ⚠️ *Mostrar Hierarquia* e *Mostrar Inspector* **saíram** da fila de propósito — eles são layout,
 não ferramenta, e vivem no menu *View*.
 
@@ -583,3 +596,156 @@ perguntar à porta, logo **já não consegue derivar**, mas uma re-introdução 
 `no_magic_numeric`). E o trilho vertical só pinta sob `F9`.
 
 ---
+
+---
+
+## §12 — ⛔⛔⛔ A AUDITORIA das duas barras: **sete defeitos**, e o pior é o mais barato de descrever
+
+A auditoria correu sobre as entregas 15 e 16 com a suíte **verde e sem avisos**. Esse é o ponto:
+**nada do que se segue era visível a um único gate do repo.**
+
+### §12.1 — ⛔⛔⛔ O PAINTER e as DEZ ferramentas de imagem ficaram INALCANÇÁVEIS
+
+Elas eram pintadas num sítio **só** — `paint_image_action_row`, dentro do `paint_top_bar` — e a
+entrega 12 tirou aquela barra de cena. A auditoria mediu o resto da porta:
+
+| caminho | havia? |
+|---|---|
+| linha de menu | ❌ o *Window* tinha o **modo**, não as ferramentas |
+| paleta de comandos global | ❌ projecta o trilho, os painéis e as rows dos menus-folha |
+| paleta de ferramentas do canvas | ❌ gateada em `hero_screen.is_none()` — o caminho de demo |
+| atalho de teclado | ❌ nenhum handler levanta `ActivateTool` |
+
+⇒ **o Painter era inalcançável, e com ele TODA a face de pintura da fila nova**:
+`rail_shows_painter_tools()` exige `active_tool_id == Some("painter")`, que nunca podia acontecer.
+Os 22 `PAINTER_RAIL_*` e os dois flyouts eram código sem forma de aparecer — *incluindo o trabalho
+de transbordo que esta linha acabara de pagar.*
+
+⭐ **Cura:** as ferramentas entram na **fila**, com o modo ligado (`Window → Image Tools`), como
+uma secção depois de um divisor. Variante nova `ToolRailEntry::Glyph` (o ícone delas é um `BezPath`
+de manifesto, não um `IconId`), pintada pelo **pintor canónico** com `IconButtonStyle::Plain` — há
+uma cerca a exigi-lo (`canonical_icon_button`), e ela apanhou-me à primeira.
+⚠️ Elas **não** entram no `rail_entries`: com a `F9` ligada o `paint_top_bar` regista os mesmos
+ids, e dois rectângulos para um id no mesmo quadro é ambiguidade resolvida por ordem de pintura.
+⭐ E isto cura de lado o *knob morto de 3.ª espécie* que a auditoria também nomeou: a linha
+*Window → Image Tools* consumia o clique e **não tinha efeito observável**; hoje ela faz aparecer
+as ferramentas.
+
+### §12.2 — ⛔⛔⛔ As duas barras NÃO ENGOLIAM o clique: o Painter pintava ATRAVÉS delas
+
+`chrome_hit::pointer_over_chrome` é `panel_at().is_some() || hit_index.hit().is_some()`. As barras
+não publicam rect de painel e registavam **só** os títulos e os chips. Medido a 1920×1024:
+
+| barra | faixa pintada | alvos registados | **passa** |
+|---|---:|---:|---:|
+| menus | 1366 × 28 | 179 px de títulos | **86,9 %** |
+| fila | 1308 × 54 | 20 736 px² | **70,6 %** |
+
+Inclui a banda do **rótulo por cima de cada chip**: clicar no nome do próprio botão não fazia nada
+e ia parar à arte.
+
+⭐ **A cura não é nova** — é o `RAIL_BACKDROP` que o trilho tem desde 2026-07-16, acrescentado
+depois de um report do Enio com este sintoma exacto. A barra nova nasceu sem ele.
+⛔⛔ **E o gate que devia ter apanhado mede a outra metade:**
+`the_chrome_swallows_the_click_it_was_given` afirma que cada consumidor de canvas **PERGUNTA** ao
+`pointer_over_chrome` — todos perguntavam. **Ninguém afirmava que o chrome REGISTA um rectângulo
+que responda que sim.**
+
+### §12.3 — ⛔⛔ O transbordo apagava chips em silêncio, e o meu gate media UMA célula
+
+O `HitIndex::register` **descarta** um rect totalmente cortado ⇒ um chip a mais não ficava
+truncado, ficava **inexistente**. Medido:
+
+| largura | preset | colunas | resultado |
+|---|---|---|---|
+| 1280 | Large | 308/304 | **Undo e Redo desaparecem** |
+| 1366 | Large | 308/304 | **Redo desaparece** |
+| 1920 | Small | 720/720 (o `DOCK_W_MAX`, alcançável a arrastar) | **4 desaparecem** |
+| 1366 | Small | 720/720 | **os dezasseis** |
+
+⛔ **O gate que escrevi media 1366 px, preset `Small`, colunas por omissão** — uma célula.
+*Uma varredura de uma célula não é uma varredura.*
+
+⭐ **Cura: a fila QUEBRA DE LINHA** e a faixa cresce (`horizontal_lines` + `tool_bar_h(size, lines)`).
+⚠️ Não há circularidade: a **largura** da área não depende da **altura** da faixa, então o
+`frame_layout` resolve uma vez com a faixa a zero, lê a largura, e resolve outra vez. O gate novo
+varre **4 larguras × 3 presets × 3 larguras de coluna × 2 modos**.
+
+### §12.4 — ⛔⛔ Verbos sem porta: a lista de cenas e o rebobinar
+
+`TOPBAR_PROJECT` (a `SceneList`, e com ela o campo de busca `CTX_SCENE_SEARCH`) e `TOPBAR_RESET`
+(rebobinar) não tinham **nenhum** caminho fora da `F9`. ⭐ Curados: linha **`File → Scenes…`** e um
+menu **`Run`** (Play · Pause · Rewind) — o transporte é **um** relógio (`Playhead`), e ganhou casa.
+
+⭐⭐ **E nasceu o CENSO que faltava:** `every_topbar_verb_has_a_door_that_is_not_the_legacy_key` lê
+os `TOPBAR_*` **do ficheiro de ids** (o slug sai da própria linha, não de um `to_lowercase()`
+adivinhado) e exige, para cada um, uma linha de menu **ou** uma entrada com o motivo medido — com
+a metade que recusa uma excepção obsoleta. ⚠️ Ele nomeia também **três mortos PRÉ-EXISTENTES**
+(`TOPBAR_RIGHT_LAYERS`/`_ASSETS`/`_SCRIPT`: pintados, registados, com tooltip, e sem consumidor no
+repo inteiro) e **um órfão** (`TOPBAR_PLAY_TOGGLE`, nunca pintado).
+
+### §12.5 — ⛔⛔ Dezasseis linhas de alternância sem estado, e a lei estava escrita no ficheiro ao lado
+
+O menu *Window* dizia **exactamente a mesma coisa** com o Vector aberto e fechado. Antes da barra a
+indicação existia: o laço de reconciliação da shell força `Pressed` no pill do tool activo e o pill
+lia-o. *O pill saiu; a marca não foi com ele para lado nenhum.*
+
+⚠️ O `context_menu_overlay` **documenta esta lei**, paga na unidade de ângulo desta mesma linha:
+*«fiar o clique não é fiar o ESTADO»*. A barra repetiu-a **dezasseis vezes de uma vez**.
+⭐ Cura: `row_is_marked_by_button_state` (a lista dos módulos é **derivada** da tabela do *Window*)
++ `publish_toggle_state`, porque a régua vive no `HeroScreen` e quem pinta a marca só vê o `Store`.
+
+### §12.5-bis — ⛔⛔⛔ E o censo da marca achou um `if` com um LADO MORTO, pré-existente
+
+Curar a marca obrigou a perguntar *«ela MEXE quando se clica?»* — e a resposta foi **não, em dez
+das treze**. A causa: o laço de reconciliação da shell só percorre os clusters `image_tools` e
+`vector_tools` do **registry de ferramentas**, e os pills de módulo não estão em cluster nenhum
+(`TOPBAR_VECTOR` é `hash_node_id("topbar_vector")`; o manifesto é `hash_node_id("vector")`).
+**Ninguém escreve o `ButtonState` deles**, e nunca escreveu.
+
+⚠️⚠️ **E isso é mais do que uma marca em falta:** o `chrome::vector_toggle` **LÊ** esse estado para
+decidir a direcção — *activar* ou *cancelar*. Com ele preso em `Normal`, o segundo clique volta a
+activar em vez de desligar. *Um estado que ninguém escreve e alguém lê não é uma marca em falta: é
+um `if` com um lado morto.*
+
+⛔ **NÃO curado** — é uma wave de quem for dono dos toggles de módulo, e a verdade de cada um vive
+num sítio diferente (visibilidade de painel para uns, ferramenta activa para outros). Fica com
+endereço no censo `clicking_a_toggle_row_moves_its_mark`, que tem as **três** metades: as novas
+reprovam, as pendentes estão nomeadas, e uma pendente que passe a mexer **tem de sair da lista**.
+⭐ Duas foram curadas por serem locais: a **régua** e o **Image Tools**, cuja verdade vive no
+`HeroScreen` e é publicada por `publish_toggle_state`.
+
+### §12.6 — ⛔ O gate do relógio da UI ficou a medir código que a `F9` esconde
+
+`the_chrome_reads_the_ui_clock` afirma que o `paint.rs` passa `&hero.motion` ao `paint_left_rail` e
+ao `paint_top_bar`. **Continua verdade — dentro do ramo `if hero.view.legacy_chrome`.** A barra de
+menus nova não recebia `UiMotion` nenhuma e resolvia a cor pelo `ButtonState` duro: *o defeito para
+o qual o gate foi escrito, reintroduzido na superfície que substituiu a que ele guardava.*
+
+⚠️ **É a família do §11.5 um passo pior:** ali um **corte** desarmou dois gates; aqui foi um
+**ramo** — sem rename e sem ficheiro movido, nada podia falhar alto. Curado: o título lê o eixo, e
+um título com o menu **aberto** fica fora dele (a lei do chip activo).
+
+### §12.7 — ⚠️ Um número meu, errado, num doc-comment
+
+*«Sem eles a fila usa 699 px, com 47 de folga»* — é **678 px, com 68**. O `699` é o que dá se se
+tirarem os dois chips e se **esquecer o divisor que ia com eles**. ⭐ O gate IMPRIME o número certo
+(`--nocapture`); eu fi-lo de cabeça ao lado de um gate que o media. Corrigido, com a lição escrita
+ao lado. (Os outros dois — `779` e `86,8 %` — a auditoria reproduziu e confirmou.)
+
+### §12.8 — O que a auditoria mediu e NÃO achou defeito
+
+Nada no trilho para além do §12.1 · nenhuma catraca de LOC inflacionada (seis entradas
+**desceram**, cada uma paga por extracção) · o `TOPBAR_LEAF_MENUS` correctamente **sem** os kinds
+novos (senão a paleta duplicaria ids) · e a quebra do menu radial por índice foi real, apanhada
+pelo gate dele, e a cura (`tool_section`) é a certa.
+
+### §12.9 — ⏳ O que fica aberto da auditoria
+
+| item | porquê fica |
+|---|---|
+| `the_chip_axis_has_one_door` tem uma lista de **dois** pintores escrita à mão | um terceiro pintor de chip fica descoberto por construção; é derivável e não foi derivado |
+| `the_hero_paint_docks_the_timeline_into_motion` tem um `hero_sources()` **local e não-recursivo** ao lado do partilhado e recursivo | duas respostas a uma pergunta, um commit de idade; falha alto, logo é incómodo e não buraco |
+| `TOPBAR_RIGHT_LAYERS`/`_ASSETS`/`_SCRIPT` mortos e `TOPBAR_PLAY_TOGGLE` órfão | **pré-existentes**, agora com endereço no censo do §12.4 |
+| `cluster_painter::paint_topbar_rail_chip` continua cópia verbatim da matriz de tinta | com o `RailAxis` passa a ser dispensável; é chrome legado a caminho de sair |
+

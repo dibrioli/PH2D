@@ -113,6 +113,21 @@ pub enum ToolRailEntry {
         active: bool,
         sub: String,
     },
+    /// ⭐ **Um chip cujo ícone é um CAMINHO, não um `IconId`** — o que as ferramentas de imagem
+    /// têm: o `icon_fn` do manifesto devolve um `BezPath` de 24×24, e não há entrada no catálogo
+    /// de glifos do editor para elas.
+    ///
+    /// ⚠️ Ela existe porque as dez ferramentas de imagem ficaram **inalcançáveis** quando a barra
+    /// de pills saiu (auditoria de 2026-08-30) — incluindo o **Painter**, e com ele toda a face
+    /// de pintura desta fila. Sem esta variante, trazê-las para a fila obrigaria a uma segunda
+    /// geometria ao lado da porta.
+    Glyph {
+        id: NodeId,
+        label: String,
+        path: ph2d_vector::BezPath,
+        active: bool,
+        sub: String,
+    },
     Divider,
 }
 
@@ -125,9 +140,10 @@ impl ToolRailEntry {
     #[must_use]
     pub fn node_id(&self) -> Option<NodeId> {
         match self {
-            Self::Icon { id, .. } | Self::Compound { id, .. } | Self::Swatch { id, .. } => {
-                Some(*id)
-            }
+            Self::Icon { id, .. }
+            | Self::Compound { id, .. }
+            | Self::Swatch { id, .. }
+            | Self::Glyph { id, .. } => Some(*id),
             Self::Divider => None,
         }
     }
@@ -142,7 +158,8 @@ impl ToolRailEntry {
         match self {
             Self::Icon { label, .. }
             | Self::Compound { label, .. }
-            | Self::Swatch { label, .. } => Some(label),
+            | Self::Swatch { label, .. }
+            | Self::Glyph { label, .. } => Some(label),
             Self::Divider => None,
         }
     }
@@ -194,10 +211,28 @@ impl ToolRailEntry {
         }
     }
 
+    /// Um chip cujo ícone é um caminho de manifesto (as ferramentas de imagem).
+    pub fn glyph(
+        id: NodeId,
+        label: impl Into<String>,
+        path: ph2d_vector::BezPath,
+        sub: impl Into<String>,
+    ) -> Self {
+        Self::Glyph {
+            id,
+            label: label.into(),
+            path,
+            active: false,
+            sub: sub.into(),
+        }
+    }
+
     /// Builder shortcut for the Icon/Swatch variants — flips `active` true.
     pub fn active(mut self) -> Self {
         match &mut self {
-            Self::Icon { active, .. } | Self::Swatch { active, .. } => *active = true,
+            Self::Icon { active, .. }
+            | Self::Swatch { active, .. }
+            | Self::Glyph { active, .. } => *active = true,
             _ => {}
         }
         self
@@ -211,6 +246,7 @@ impl ToolRailEntry {
             Self::Icon { .. } => size.chip_px(),
             Self::Compound { .. } => size.chip_px(),
             Self::Swatch { .. } => size.chip_px(),
+            Self::Glyph { .. } => size.chip_px(),
             Self::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         }
     }
@@ -257,6 +293,47 @@ pub struct EntrySlot {
 ///
 /// ⚠️ **O rect devolvido é o de REPOUSO**, antes do `hover_lift`: o desenho cresce, o alvo não —
 /// um alvo que se move debaixo do dedo é um alvo que foge.
+/// Quanto uma entrada AVANÇA no eixo — a mesma lei nos dois.
+fn entry_advance(entry: &ToolRailEntry, chip_px: f32) -> f32 {
+    match entry {
+        ToolRailEntry::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
+        _ => chip_px,
+    }
+}
+
+/// A distância entre duas LINHAS de uma fila horizontal — rótulo, folga, chip, e o respiro.
+#[must_use]
+pub fn line_pitch(chip_px: f32) -> f32 {
+    LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX + chip_px + Spacing::Xs.px()
+}
+
+/// **Quantas LINHAS uma fila horizontal precisa** para caber em `width`.
+///
+/// ⚠️ Ela existe porque a ALTURA da faixa depende da largura da área, e a largura da área **não**
+/// depende da altura da faixa — não há circularidade, há duas passagens.
+#[must_use]
+pub fn horizontal_lines(rail: &ToolRail, width: f32, size: RailButtonSize) -> usize {
+    if width <= 0.0 {
+        return 1;
+    }
+    let gap = Spacing::Xs.px();
+    let chip_px = size.chip_px();
+    let mut lines = 1usize;
+    let mut along = 0.0_f32;
+    for (index, entry) in rail.entries.iter().enumerate() {
+        if index > 0 {
+            along += gap;
+        }
+        let advance = entry_advance(entry, chip_px);
+        if along + advance > width && along > 0.0 {
+            lines += 1;
+            along = 0.0;
+        }
+        along += advance;
+    }
+    lines
+}
+
 #[must_use]
 pub fn entry_rects(
     rail: &ToolRail,
@@ -272,6 +349,7 @@ pub fn entry_rects(
         RailAxis::Vertical => rect.x + CHIP_X_OFFSET_PX,
         RailAxis::Horizontal => rect.y + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX,
     };
+    let mut cross = cross;
     let mut along = match axis {
         RailAxis::Vertical => rect.y,
         RailAxis::Horizontal => rect.x,
@@ -281,12 +359,29 @@ pub fn entry_rects(
         if index > 0 {
             along += gap;
         }
-        let (r, advance) = match entry {
+        // ⛔⛔ **A FILA QUEBRA DE LINHA quando não cabe** — e o motivo é que o transbordo era
+        // **mudo**: a faixa blinda a tinta E o hit (`push_clip`), e o `HitIndex::register`
+        // DESCARTA um rect totalmente cortado ⇒ um chip a mais não ficava truncado, ficava
+        // **inexistente**, sem nada no ecrã a dizê-lo. Medido em 2026-08-30: a 1280 px com o
+        // preset *Large*, o *Undo* e o *Redo* desapareciam; com as colunas arrastadas ao máximo
+        // (`DOCK_W_MAX`) desapareciam **os dezasseis**.
+        //
+        // ⚠️ Só o eixo HORIZONTAL quebra: a coluna corre no lado longo da janela e nunca teve
+        // este problema, e fazê-la quebrar mudaria uma geometria que ninguém pediu.
+        if axis == RailAxis::Horizontal {
+            let advance = entry_advance(entry, chip_px);
+            if along + advance > rect.x + rect.w && along > rect.x {
+                along = rect.x;
+                cross += line_pitch(chip_px);
+            }
+        }
+        let advance = entry_advance(entry, chip_px);
+        let r = match entry {
             ToolRailEntry::Divider => {
                 // O divisor é uma linha FINA no eixo, centrada no transversal — a mesma lei nos
                 // dois eixos, com `w` e `h` trocados.
                 let len = Spacing::Xl2.px();
-                let line = match axis {
+                match axis {
                     RailAxis::Vertical => Rect::new(
                         rect.x + (rect.w - len) * 0.5,
                         along + DIVIDER_GAP_PX,
@@ -299,16 +394,12 @@ pub fn entry_rects(
                         1.0,
                         len,
                     ),
-                };
-                (line, 1.0 + DIVIDER_GAP_PX * 2.0)
+                }
             }
-            _ => {
-                let chip = match axis {
-                    RailAxis::Vertical => Rect::new(cross, along, chip_px, chip_px),
-                    RailAxis::Horizontal => Rect::new(along, cross, chip_px, chip_px),
-                };
-                (chip, chip_px)
-            }
+            _ => match axis {
+                RailAxis::Vertical => Rect::new(cross, along, chip_px, chip_px),
+                RailAxis::Horizontal => Rect::new(along, cross, chip_px, chip_px),
+            },
         };
         out.push(EntrySlot {
             index,
@@ -352,7 +443,8 @@ impl ToolRail {
         let kids = self.entries.iter().filter_map(|e| match e {
             ToolRailEntry::Icon { id, .. }
             | ToolRailEntry::Compound { id, .. }
-            | ToolRailEntry::Swatch { id, .. } => Some(*id),
+            | ToolRailEntry::Swatch { id, .. }
+            | ToolRailEntry::Glyph { id, .. } => Some(*id),
             ToolRailEntry::Divider => None,
         });
         NodeBuilder::new(Role::Toolbar)
@@ -373,7 +465,8 @@ impl ToolRail {
                     .build(),
             ),
             ToolRailEntry::Compound { id: _, label, .. }
-            | ToolRailEntry::Swatch { id: _, label, .. } => Some(
+            | ToolRailEntry::Swatch { id: _, label, .. }
+            | ToolRailEntry::Glyph { id: _, label, .. } => Some(
                 NodeBuilder::new(Role::Button)
                     .label(label)
                     .bounds(x, y, w, h)

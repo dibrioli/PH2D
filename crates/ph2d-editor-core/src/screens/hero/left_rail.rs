@@ -377,7 +377,11 @@ pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEn
     // ⚠️ **E foi a fila horizontal que forçou a conta:** em modo Painter a lista pedia **779 px**
     // e a área do alvo de referência dá **746** com as duas colunas abertas ⇒ o último verbo
     // (Shapes) ficava **cortado E inalcançável**, em silêncio, porque a faixa blinda o hit. Sem
-    // eles a fila usa 699 px, com 47 de folga. *Um verbo no sítio errado só custa quando o sítio
+    // eles a fila usa **678 px, com 68 de folga** — e ⚠️ **a 1.ª redacção desta nota dizia
+    // "699 px, com 47"**, que é o que dá se se tirarem os dois chips e se **esquecer o divisor
+    // que ia com eles**. O número certo é o que o gate IMPRIME
+    // (`the_row_fits_the_narrowest_area_of_the_reference_target`, `--nocapture`), não o que se
+    // faz de cabeça ao lado de um gate que o mede. *Um verbo no sítio errado só custa quando o sítio
     // certo fica cheio.*
     let mut rail_entries: Vec<ToolRailEntry> = tool_section(store, painter_active);
     rail_entries.push(ToolRailEntry::Divider);

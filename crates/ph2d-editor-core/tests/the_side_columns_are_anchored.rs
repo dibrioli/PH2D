@@ -32,8 +32,6 @@ use ph2d_editor_core::screens::layout::{
 };
 use ph2d_editor_core::zones::Rect;
 
-const PRE_POPULATE: &str = include_str!("../src/screens/hero/pre_populate.rs");
-
 #[path = "common/hero_sources.rs"]
 mod hero_sources;
 
@@ -89,9 +87,14 @@ fn no_layer_still_arms_the_dock_drag_handles() {
         "HIER_DRAG_HANDLE",
         "HIER_RESIZE_HANDLE",
     ] {
-        assert!(
-            !PRE_POPULATE.contains(id),
-            "`{id}` ainda tem `InteractiveState` no pre_populate: focavel, e sem braco"
+        // ⛔ **Ao MÓDULO, não ao ficheiro.** Isto era `include_str!` do `pre_populate.rs`, e ele
+        // é uma lista de `populate_*` — exactamente a forma que se parte quando o tecto de LOC
+        // aperta. Mover um `store.register(INSP_DRAG_HANDLE, …)` para um irmão fazia esta
+        // ausência passar a ser **de graça**, com o gate verde. (A auditoria de 2026-08-30
+        // apanhou-o ao lado, no gate gémeo, depois de o corte do `paint.rs` o ter demonstrado.)
+        hero_sources::assert_hero_never_contains(
+            id,
+            "ainda tem `InteractiveState` algures no hero: focavel, e sem braco",
         );
     }
     // A varredura das crates de painel — a camada que acusou CATORZE de uma vez.

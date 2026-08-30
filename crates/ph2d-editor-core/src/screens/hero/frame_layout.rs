@@ -39,7 +39,10 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
         // bissecção.
         bands.top_bar_h = super::menu_bar::MENU_BAR_H;
         // ⭐ E o trilho deita-se: a faixa sai da ÁREA (entre as colunas), não da janela.
-        bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size());
+        // ⭐ A faixa quebra de linha quando a fila não cabe, então a ALTURA dela sai de uma
+        // contagem — e a contagem precisa da largura da área, que não depende da altura. Duas
+        // passagens: uma com a faixa a zero, para ler a largura; a definitiva a seguir.
+        bands.tool_bar_h = 0.0;
     }
     // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
     // this is identical to the legacy layout there; the Motion bridge sets a split
@@ -63,6 +66,22 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     let published: Vec<_> = hero.store.panel_rects().collect();
     let (left_col, right_col) = probe.side_columns();
     let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
+    if !hero.view.legacy_chrome {
+        let flat = HeroLayout::for_viewport_bands(
+            viewport,
+            hero.view.ui_mirrored,
+            bands,
+            hero.view.center_split,
+            docks,
+        );
+        let lines = super::tool_bar::tool_bar_lines(
+            &hero.store,
+            hero.rail_shows_painter_tools(),
+            hero.image_edit.mode_on,
+            flat.draw_area.w,
+        );
+        bands.tool_bar_h = super::tool_bar::tool_bar_h(hero.store.rail_button_size(), lines);
+    }
     let mut layout = HeroLayout::for_viewport_bands(
         viewport,
         hero.view.ui_mirrored,

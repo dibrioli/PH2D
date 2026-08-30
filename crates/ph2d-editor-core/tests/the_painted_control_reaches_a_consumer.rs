@@ -117,6 +117,18 @@ const NO_CONSUMER_PENDING: &[(&str, &str)] = &[
     //
     // ═══ O QUE FICA ═══
     (
+        "MENUBAR_BACKDROP",
+        "TERMINA POR AUSENCIA, e essa e' a funcao dele: e' o fundo da barra de menus, e o efeito \
+         de o registar no `HitIndex` e' BLOQUEAR — fazer o `chrome_hit::pointer_over_chrome` \
+         responder `true` para os 87% da faixa pintada que nao sao titulo. Sem ele, um pen-down \
+         entre dois titulos deposita tinta na arte escondida por baixo da barra (medido pela \
+         auditoria de 2026-08-30). ⛔ Nenhuma varredura de terminos POSITIVOS o pode ver, e \
+         ensinar esta regua a aceitar o padrao branquearia os cabecalhos de seccao genuinamente \
+         mortos, que tem a mesma forma (CLAUDE.md §5.0). ⚠️ O irmao `RAIL_BACKDROP` escapa a esta \
+         lista so' porque o `left_rail::apply_event` lhe imprime o nome — a mesma especie com \
+         disfarce.",
+    ),
+    (
         "PAINTER_BRUSH_STROKE_SAVE_OBJECT",
         "MORTO POR DECISAO, declarado no fonte: `paint_stroke.rs` diz *\"clicking it is a \
          deliberate no-op (no route in the tool)\"* ate' o formato de objecto existir. Fica aqui \

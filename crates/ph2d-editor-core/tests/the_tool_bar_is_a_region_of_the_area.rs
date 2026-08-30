@@ -45,7 +45,7 @@ fn layout_with_bar() -> HeroLayout {
         ChromeBands {
             rail_w: 0.0,
             top_bar_h: 0.0,
-            tool_bar_h: tool_bar::tool_bar_h(RailButtonSize::default()),
+            tool_bar_h: tool_bar::tool_bar_h(RailButtonSize::default(), 1),
             ..ChromeBands::DEFAULT
         },
         CenterSplit::None,
@@ -115,12 +115,9 @@ fn the_painted_bar_registers_every_chip_where_the_door_says() {
         "sem chrome legado a fila tem de existir"
     );
 
-    // A MESMA lista e o MESMO rect de conteúdo que o pintor usou.
-    let rail = ToolRail::new(
-        NodeId(203),
-        "Editor tools",
-        ph2d_editor_core::screens::hero::left_rail::rail_entries(&h.store, false),
-    );
+    // ⭐ **A MESMA porta que o pintor usou** — `bar_rail`, não uma lista remontada aqui. Uma
+    // segunda montagem seria a tabela paralela que este ficheiro inteiro existe para proibir.
+    let rail = tool_bar::bar_rail(&h.store, false, h.image_edit.mode_on);
     let content = tool_bar::content_rect(l.tool_bar);
     let mut seen = 0usize;
     for slot in entry_rects(
@@ -210,43 +207,71 @@ fn no_two_entries_share_a_pixel_on_either_axis() {
     }
 }
 
-/// ⭐⭐ **A fila CABE na área mais estreita do alvo de referência** — e o gate imprime a folga.
+/// ⛔⛔ **NADA se perde: a fila QUEBRA DE LINHA em vez de apagar chips.**
 ///
-/// ⚠️ **A blindagem torna o transbordo silencioso**: um chip que passe do fim da faixa é cortado
-/// na tinta *e* no hit, logo ele desaparece em vez de se sobrepor à coluna. É o comportamento
-/// certo e é exactamente por isso que precisa de um número — sem ele, o primeiro verbo novo a
-/// entrar na lista apaga o último, e ninguém vê nada acontecer.
+/// ⚠️ **O transbordo era MUDO.** A faixa blinda a tinta E o hit (`push_clip`) e o
+/// `HitIndex::register` **descarta** um rect totalmente cortado ⇒ um chip a mais não ficava
+/// truncado, ficava **inexistente**, sem nada no ecrã a dizê-lo. A auditoria de 2026-08-30 mediu
+/// as células: a **1280 px** com o preset *Large* o *Undo* e o *Redo* desapareciam; com as colunas
+/// arrastadas ao máximo (`DOCK_W_MAX = 720`) desapareciam **os dezasseis**.
 ///
-/// O caso apertado é o modo **Painter** (a lista mais longa) com as duas colunas abertas.
+/// ⛔ **E o gate que aqui estava media UMA célula** — 1366 px, preset `Small`, colunas por
+/// omissão — e passava em todas as outras. *Uma varredura de uma célula não é uma varredura.*
 #[test]
-fn the_row_fits_the_narrowest_area_of_the_reference_target() {
+fn nothing_is_lost_at_any_width_preset_or_column_size() {
     let h = hero();
-    let l = layout_with_bar();
-    let content = tool_bar::content_rect(l.tool_bar);
-    for (mode, painter) in [("objecto", false), ("painter", true)] {
+    for painter in [false, true] {
         let rail = ToolRail::new(
             NodeId(203),
             "Editor tools",
             ph2d_editor_core::screens::hero::left_rail::rail_entries(&h.store, painter),
         );
-        let slots = entry_rects(
-            &rail,
-            content,
-            h.store.rail_button_size(),
-            RailAxis::Horizontal,
-        );
-        let last = slots.last().expect("a fila tem entradas");
-        let used = last.rect.x + last.rect.w - content.x;
-        let slack = content.w - used;
-        println!(
-            "[fila] modo {mode}: usa {used:.0} px de {:.0} — folga {slack:.0} px",
-            content.w
-        );
-        assert!(
-            slack >= 0.0,
-            "modo {mode}: a fila precisa de {used:.0} px e a área dá {:.0} — os últimos verbos \
-             ficam cortados E inalcançáveis",
-            content.w
-        );
+        let chips = rail
+            .entries
+            .iter()
+            .filter(|e| e.node_id().is_some())
+            .count();
+        for w in [1280.0_f32, 1366.0, 1600.0, 1920.0] {
+            for size in [
+                RailButtonSize::Small,
+                RailButtonSize::Medium,
+                RailButtonSize::Large,
+            ] {
+                for dock in [220.0_f32, 308.0, 720.0] {
+                    let area_w = w - dock * 2.0;
+                    let content_w = (area_w - 8.0).max(0.0);
+                    if content_w <= size.chip_px() {
+                        continue; // área menor que um chip: a faixa nem se pinta
+                    }
+                    let lines = ph2d_editor_core::widget::horizontal_lines(&rail, content_w, size);
+                    let content = Rect::new(0.0, 0.0, content_w, 1000.0);
+                    let slots = entry_rects(&rail, content, size, RailAxis::Horizontal);
+                    let painted = slots
+                        .iter()
+                        .filter(|s| s.id.is_some() && s.rect.x + s.rect.w <= content_w + 0.001)
+                        .count();
+                    assert_eq!(
+                        painted,
+                        chips,
+                        "painter={painter} w={w} {size:?} dock={dock}: {} de {chips} chips caem \
+                         FORA da faixa — a blindagem apaga-os sem aviso ({lines} linhas)",
+                        chips - painted
+                    );
+                }
+            }
+        }
     }
+}
+
+/// **E a faixa cresce com as linhas** — senão a quebra só empurra os chips para fora por baixo.
+#[test]
+fn the_band_grows_with_the_number_of_lines() {
+    let one = tool_bar::tool_bar_h(RailButtonSize::default(), 1);
+    let two = tool_bar::tool_bar_h(RailButtonSize::default(), 2);
+    assert!(two > one, "duas linhas não pedem mais altura que uma");
+    let three = tool_bar::tool_bar_h(RailButtonSize::default(), 3);
+    assert!(
+        (three - two - (two - one)).abs() < 0.001,
+        "o passo entre linhas não é constante: {one} {two} {three}"
+    );
 }

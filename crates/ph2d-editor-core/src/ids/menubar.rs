@@ -20,6 +20,26 @@ pub const MENUBAR_EDIT: NodeId = hash_node_id("menubar_edit");
 pub const MENUBAR_VIEW: NodeId = hash_node_id("menubar_view");
 /// Título *Window*.
 pub const MENUBAR_WINDOW: NodeId = hash_node_id("menubar_window");
+/// Título *Run* — o transporte (tocar · pausar · rebobinar).
+///
+/// ⚠️ **Ele existe porque o `Reset` ficou SEM PORTA.** O `Espaço` alterna tocar/pausar e as
+/// vírgulas andam quadro a quadro, mas **rebobinar** só se alcançava pelo pill da barra antiga.
+/// Uma auditoria de 2026-08-30 contou-o entre os verbos que a retirada dos pills deixou órfãos.
+pub const MENUBAR_RUN: NodeId = hash_node_id("menubar_run");
+
+/// ⛔⛔ **O FUNDO da barra — o rectângulo que ENGOLE o clique.**
+///
+/// A barra pinta uma faixa opaca de ponta a ponta e só os títulos eram alvos: medido pela
+/// auditoria de 2026-08-30, **86,9 %** da barra pintada deixava o ponteiro passar para o desenho
+/// por baixo. Com o Painter em mãos, um pen-down entre dois títulos depositava tinta na arte
+/// escondida sob a barra.
+///
+/// ⚠️ **A cura não é nova — é a que o trilho já tinha** (`ids::RAIL_BACKDROP`), acrescentada em
+/// 2026-07-16 depois de um report do Enio com exactamente este sintoma. A barra nova nasceu sem
+/// ela, e nenhum gate a pediu: o `the_chrome_swallows_the_click_it_was_given` mede que cada
+/// consumidor de canvas **PERGUNTA** ao `pointer_over_chrome`, nunca que o chrome REGISTA um
+/// rectângulo que responda que sim.
+pub const MENUBAR_BACKDROP: NodeId = hash_node_id("menubar_backdrop");
 
 /// *New Image…* — o modal que até aqui só a tecla `Cmd/Ctrl+N` alcançava.
 ///
@@ -34,6 +54,12 @@ pub const MENUBAR_EDIT_PREFERENCES: NodeId = hash_node_id("menubar_edit_preferen
 /// *Theme…* — abre o [`crate::interaction::ContextMenuKind::ThemeSelector`], que era alcançável
 /// só pelo pill do tema.
 pub const MENUBAR_VIEW_THEME: NodeId = hash_node_id("menubar_view_theme");
+
+/// *Scenes…* — abre a lista de cenas com busca (`ContextMenuKind::SceneList`).
+///
+/// ⚠️ **Ela ficou SEM PORTA na retirada dos pills**: o `TOPBAR_PROJECT` era o único a abri-la, e
+/// com ele o campo de busca `CTX_SCENE_SEARCH` saiu do produto inteiro.
+pub const MENUBAR_FILE_SCENES: NodeId = hash_node_id("menubar_file_scenes");
 
 /// *Rulers* — o interruptor `HeroScreen::view.rulers_visible`.
 ///

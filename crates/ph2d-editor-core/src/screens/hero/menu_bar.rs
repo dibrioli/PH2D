@@ -24,10 +24,11 @@
 //! | [`paint_menu_bar`] (hit) | que rectângulo registo para cada título |
 //! | `interaction::dispatch::pointer_down_menus` | que menu abre este clique |
 //!
-//! ⛔ **Foi assim de propósito.** O trilho lateral tem a mesma aritmética escrita **duas vezes**
-//! (o pintor em `widget/tool_rail/paint.rs`, o registo de hit em `left_rail.rs`) e nada no repo
-//! liga as duas — um pintor horizontal com um hit vertical compilaria e passaria a suíte inteira.
-//! Uma barra nova não repete isso.
+//! ⛔ **Foi assim de propósito.** O trilho lateral tinha a mesma aritmética escrita **TRÊS**
+//! vezes — o pintor (`widget/tool_rail/paint.rs`), o registo de hit do trilho e o do flyout
+//! (`left_rail.rs`) —, e nada no repo ligava as três: um pintor horizontal com um hit vertical
+//! compilaria e passaria a suíte inteira. ⭐ A wave seguinte curou-o com `widget::entry_rects`;
+//! ⚠️ esta nota dizia *«tem»* e *«duas»*, e ficou errada nas duas metades um commit depois.
 //!
 //! # ⚠️ A banda é a MESMA do chrome legado, e é uma escolha
 //!
@@ -57,7 +58,7 @@ use ph2d_vector::VectorScene;
 pub const MENU_BAR_H: f32 = ROW_H_PX;
 
 /// ⭐ **A TABELA** — título, id, e o menu que ele abre. A fonte única desta barra.
-pub const MENUS: [(NodeId, &str, ContextMenuKind); 4] = [
+pub const MENUS: [(NodeId, &str, ContextMenuKind); 5] = [
     (ids::MENUBAR_FILE, "File", ContextMenuKind::MenuBarFile),
     (ids::MENUBAR_EDIT, "Edit", ContextMenuKind::MenuBarEdit),
     (ids::MENUBAR_VIEW, "View", ContextMenuKind::MenuBarView),
@@ -66,6 +67,7 @@ pub const MENUS: [(NodeId, &str, ContextMenuKind); 4] = [
         "Window",
         ContextMenuKind::MenuBarWindow,
     ),
+    (ids::MENUBAR_RUN, "Run", ContextMenuKind::MenuBarRun),
 ];
 
 /// Os ids de linha que **esta** barra trouxe — os que nenhum outro botão do app alcançava.
@@ -73,8 +75,9 @@ pub const MENUS: [(NodeId, &str, ContextMenuKind); 4] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 4] = [
+pub const OWN_ROWS: [NodeId; 5] = [
     ids::MENUBAR_FILE_NEW,
+    ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
     ids::MENUBAR_VIEW_THEME,
     ids::MENUBAR_VIEW_RULERS,
@@ -108,6 +111,9 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+    // ⛔ O fundo é `Plain`: ele não é um botão, é a superfície que ENGOLE o clique — ver
+    // `ids::MENUBAR_BACKDROP`.
+    store.register(ids::MENUBAR_BACKDROP, InteractiveState::Plain);
     for id in OWN_ROWS {
         store.register(
             id,
@@ -116,6 +122,53 @@ pub fn populate(store: &mut WidgetStore) {
             },
         );
     }
+}
+
+/// ⛔⛔ **O ESTADO da linha *Rulers* vai para o STORE, para o menu o poder mostrar.**
+///
+/// O `context_menu_overlay::id_is_currently_selected` — quem pinta o marcador de *«é este o valor
+/// actual»* — recebe o `WidgetStore`, não o [`super::HeroScreen`]. A régua vive em
+/// `view.rulers_visible`, que ele não alcança; sem esta publicação a linha ficaria **sem marca
+/// para sempre**, e o menu diria a mesma coisa com a régua ligada e desligada.
+///
+/// ⚠️ **É a lei que o próprio ficheiro do overlay documenta**, paga na unidade de ângulo:
+/// *«fiar o clique não é fiar o ESTADO»*. As outras quinze linhas de estado desta barra (os treze
+/// módulos e os dois painéis) já têm o `ButtonState` mantido por quem as despacha — só esta não
+/// tinha ninguém a publicá-la.
+pub fn publish_toggle_state(hero: &mut super::HeroScreen) {
+    // ⚠️ **Duas linhas cuja verdade vive no `HeroScreen`, não no `Store`.** As outras onze do menu
+    // *Window* são publicadas por quem as despacha (ou não são — ver o censo em
+    // `clicking_a_toggle_row_moves_its_mark`, que nomeia as pré-existentes).
+    let pairs = [
+        (ids::MENUBAR_VIEW_RULERS, hero.view.rulers_visible),
+        (ids::TOPBAR_IMAGE_TOOLS, hero.image_edit.mode_on),
+    ];
+    for (id, on) in pairs {
+        if let Some(InteractiveState::Button { state }) = hero.store.get_mut(id) {
+            *state = if on {
+                ButtonState::Pressed
+            } else {
+                ButtonState::Normal
+            };
+        }
+    }
+}
+
+/// **Esta linha mostra o próprio estado pelo `ButtonState`?**
+///
+/// ⭐ A lista dos módulos é **derivada** da tabela do menu *Window* — um módulo novo entra sozinho.
+/// As três nomeadas são as de fora dela.
+#[must_use]
+pub fn row_is_marked_by_button_state(id: NodeId) -> bool {
+    if id == ids::RAIL_SHOW_HIERARCHY
+        || id == ids::RAIL_SHOW_INSPECTOR
+        || id == ids::MENUBAR_VIEW_RULERS
+    {
+        return true;
+    }
+    super::menu_rows::menu_rows(ContextMenuKind::MenuBarWindow)
+        .iter()
+        .any(|(rid, ..)| *rid == id)
 }
 
 /// ⭐ **A PORTA** — onde cada título fica, medido contra o texto real.
@@ -142,6 +195,7 @@ pub fn menu_rects(
 ///
 /// ⚠️ O título cujo menu está **aberto** fica realçado — sem isso, um menu aberto não diz de onde
 /// saiu, e o segundo clique (o que o fecha) parece não ter alvo.
+#[allow(clippy::too_many_arguments)] // o relógio é o 7º, como nos irmãos do chrome
 pub fn paint_menu_bar(
     layout: &HeroLayout,
     scene: &mut VectorScene,
@@ -149,16 +203,32 @@ pub fn paint_menu_bar(
     theme: Theme,
     hit_index: &mut HitIndex,
     store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
 ) {
     let bar = layout.top_bar;
     if bar.w <= 0.0 || bar.h <= 0.0 {
         return;
     }
     scene.fill_rect(rect_to_vello(bar), resolve(ColorToken::Bg1, theme));
+    // ⛔⛔ **PRIMEIRO o fundo, e por isso ele PERDE para os títulos** — o `HitIndex` caminha de
+    // trás para a frente, então o que se regista antes fica por baixo. Sem esta linha a barra
+    // pinta 1366 px de opaco e deixa passar **86,9 %** deles para o desenho.
+    hit_index.register(ids::MENUBAR_BACKDROP, bar);
     let open = store.context_menu().map(|r| r.kind);
     for (id, title, r) in menu_rects(bar, text_system) {
         let state = store.button_state(id).unwrap_or(ButtonState::Normal);
         let is_open = open.is_some_and(|k| MENUS.iter().any(|(mid, _, mk)| *mid == id && *mk == k));
+        // ⛔⛔ **O TÍTULO LÊ O RELÓGIO DA UI.** A 1.ª versão desta barra resolvia a cor pelo
+        // `ButtonState` duro e ficava **imune ao carácter Expressivo/Discreto** — que é
+        // literalmente o defeito para o qual o gate `the_chrome_reads_the_ui_clock` foi escrito
+        // (Enio: *«não percebi nenhuma diferença com expressive»*). Ele continuava VERDE porque
+        // afirma que o **chrome legado** passa o relógio, e o legado só pinta sob `F9`: *um gate
+        // pode ser desarmado por um RAMO, sem um corte nem um rename a fazê-lo falhar alto.*
+        //
+        // ⚠️ **Um título com o menu ABERTO fica FORA do eixo**, pela mesma lei do chip activo do
+        // trilho: *aberto* não é uma quantidade — é o estado que diz *«o menu saiu daqui»*, e
+        // desvanecê-lo faria a barra piscar a resposta enquanto o menu está à vista.
+        let t = crate::widget::chip_axis_t(state, is_open, motion.get(id));
         let bg = match state {
             _ if is_open => Some(ColorToken::AccentSoft),
             ButtonState::Hovered | ButtonState::Focused | ButtonState::Pressed => {
@@ -174,14 +244,8 @@ pub fn paint_menu_bar(
         } else {
             ColorToken::Text1
         };
-        paint_text_centered(
-            text_system,
-            scene,
-            title,
-            r,
-            TypeToken::Sm.px(),
-            resolve(fg, theme),
-        );
+        let fg = crate::widget::chip_axis_color(t, ColorToken::Text2, ColorToken::Text1, fg, theme);
+        paint_text_centered(text_system, scene, title, r, TypeToken::Sm.px(), fg);
         hit_index.register(id, r);
     }
 }
@@ -205,7 +269,10 @@ pub fn close_on_row_click(hero: &mut super::HeroScreen, event: WidgetEvent) {
     if !MENUS.iter().any(|(_, _, k)| *k == kind) {
         return;
     }
-    if id == ids::MENUBAR_EDIT_PREFERENCES || id == ids::MENUBAR_VIEW_THEME {
+    if id == ids::MENUBAR_EDIT_PREFERENCES
+        || id == ids::MENUBAR_VIEW_THEME
+        || id == ids::MENUBAR_FILE_SCENES
+    {
         return;
     }
     if super::menu_rows::menu_rows(kind)

@@ -7902,6 +7902,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-editor",
  "ph2d-editor-core",
+ "ph2d-text",
  "ph2d-tool-bgremoval",
  "ph2d-tool-color-equalization",
  "ph2d-tool-equalize-sizes",
@@ -7919,6 +7920,7 @@ dependencies = [
  "ph2d-tool-trim-transparency",
  "ph2d-tool-upscale",
  "ph2d-tool-vector",
+ "ph2d-vector",
  "toml 1.1.4+spec-1.1.0",
 ]
 

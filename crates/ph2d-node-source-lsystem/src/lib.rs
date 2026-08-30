@@ -57,6 +57,9 @@
 //! (e o mesmo lado dela) do `motion.expression`: este é o lado de apresentação, não o de
 //! jogabilidade.
 
+/// **O esqueleto vira RAMOS** — a metade da lei do varrimento que vive dentro do nó (a outra é
+/// da shell, que tem o motor de traço). Pública porque a shell a chama.
+pub mod branch;
 mod derive;
 mod grammar;
 /// **A LEI DO CRESCIMENTO** — a remapagem do `Growth` e a razão que a ancora (HR-18).

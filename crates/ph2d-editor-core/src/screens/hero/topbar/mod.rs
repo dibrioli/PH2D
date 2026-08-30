@@ -284,8 +284,9 @@ pub fn paint_top_bar(
         // top_bar).
         if image_tools_mode && *id == ids::TOPBAR_IMAGE_TOOLS {
             let chip_px = store.rail_button_size().chip_px();
-            let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-            let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+            // ⚠️ LIDAS do rail, nunca copiadas — ver `LABEL_TO_CHIP_GAP_PX`.
+            let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
+            let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
             let stack_y = layout.viewport.y + Spacing::Xxs.px();
             let chip_y = stack_y + label_band_h + label_to_chip_gap;
             let chip_rect = Rect::new(rect.x + (rect.w - chip_px) * 0.5, chip_y, chip_px, chip_px);
@@ -381,8 +382,9 @@ fn paint_topbar_group_backdrop(
 ) {
     let pad_h = Spacing::Sm.px();
     let pad_v = Spacing::Xxs.px();
-    let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    // ⚠️ LIDAS do rail, nunca copiadas — ver `LABEL_TO_CHIP_GAP_PX`.
+    let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
+    let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
     let bg_h = chip_px + label_to_chip_gap + label_band_h + pad_v * 2.0;
     // Colado no topo da viewport (Enio 2026-05-25).
     let bg_y = viewport_y;

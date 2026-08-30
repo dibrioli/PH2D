@@ -44,10 +44,15 @@ const LABEL_LEFT_PAD: f32 = 3.0; // LITERAL-PX-OK: rotated sub-label edge inset 
 /// Horizontal extent the rotated sub-label occupies on screen
 /// (≈ parley line height for the chosen sub-label font). 11 px
 /// fits the Xs - 2 font (8-9 px) plus its ascender/descender margin.
-const LABEL_VISUAL_EXTENT_PX: f32 = 11.0; // LITERAL-PX-OK: rotated sub-label glyph extent (chrome-specific)
+pub const LABEL_VISUAL_EXTENT_PX: f32 = 11.0; // LITERAL-PX-OK: rotated sub-label glyph extent (chrome-specific)
 /// Gap between the right edge of the rotated sub-label and the
 /// left edge of the chip.
-const LABEL_TO_CHIP_GAP_PX: f32 = 3.0; // LITERAL-PX-OK: sub-label → chip gap (chrome-specific)
+///
+/// ⚠️ **`pub` porque a topbar precisa dele.** Enquanto era privado, o `cluster_painter` tinha
+/// **quatro literais** `11.0`/`3.0` com o comentário *«mirror of rail's …»* — e um espelho não é
+/// uma lei: mudar a constante fazia a topbar discordar do rail **em silêncio**. Gate:
+/// `the_topbar_reads_the_rail_constants_instead_of_mirroring_them`.
+pub const LABEL_TO_CHIP_GAP_PX: f32 = 3.0; // LITERAL-PX-OK: sub-label → chip gap (chrome-specific)
 /// Resulting chip-x offset from the rail's left edge. Public so
 /// `left_rail::paint_left_rail`'s hit-register mirrors this exactly.
 pub const CHIP_X_OFFSET_PX: f32 = LABEL_LEFT_PAD + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX;

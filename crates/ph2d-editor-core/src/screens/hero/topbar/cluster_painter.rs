@@ -88,9 +88,9 @@ pub(super) fn paint_topbar_rail_chip(
     // Label font: same formula as `paint_tool_rail` (line 232):
     //   `(Xs.px() - 2.0).max(Md.px())` → 9 px under the default tokens.
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
-    // Label band height = rail's `LABEL_VISUAL_EXTENT_PX = 11.0`.
-    let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    // ⚠️ LIDAS do rail, nunca copiadas — ver o doc de `LABEL_TO_CHIP_GAP_PX`.
+    let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
+    let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
     // Stack starts at the top of the backdrop (which is glued to the
     // viewport top via `paint_topbar_group_backdrop`). `Xxs` inner pad
     // mirrors what the backdrop reserves on top.
@@ -216,8 +216,8 @@ pub(super) fn paint_top_bar_cluster(
     // to the icon chips, just wider (Enio 2026-05-25: "aparência
     // similar aos botões embora mais largos").
     let chip_px = store.rail_button_size().chip_px();
-    let label_band_h = 11.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_VISUAL_EXTENT_PX
-    let label_to_chip_gap = 3.0_f32; // LITERAL-PX-OK: mirror of rail's LABEL_TO_CHIP_GAP_PX
+    let label_band_h = crate::widget::LABEL_VISUAL_EXTENT_PX;
+    let label_to_chip_gap = crate::widget::LABEL_TO_CHIP_GAP_PX;
     let inner_y = viewport_y + Spacing::Xxs.px() + label_band_h + label_to_chip_gap;
     let inner = Rect::new(rect.x, inner_y, rect.w, chip_px);
     // Wide-chip surface (fill BgElev + border Border 1 px Radius::Sm)

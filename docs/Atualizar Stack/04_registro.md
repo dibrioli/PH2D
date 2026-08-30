@@ -531,6 +531,34 @@ exactamente o instante em que a lei se perde, e uma lista de nomes de ficheiro n
 à outra na linha em que são escritas»* — para que o próximo a mover o construtor saiba **o que**
 está a preservar, e não só que há um teste a reclamar.
 
+### §18.5-quater — ⛔⛔ O censo que eu escrevi caiu na armadilha que ele existia para apanhar
+
+A auditoria deixou **uma** célula por resolver: `LABEL_VISUAL_EXTENT_PX = 11.0`, o único sítio do
+repo que transcreve um número **em pixels derivado do `parley`**. A ir lá, apareceu outra coisa: a
+constante era **privada**, e por isso o `cluster_painter` da topbar tinha **quatro literais** com o
+comentário *«mirror of rail's …»*. ⇒ a causa não era descuido, era a **visibilidade**; mudar a
+constante do rail fazia a topbar desalinhar **em silêncio**. Curado tornando-as `pub`.
+
+⛔⛔ **E o censo que escrevi para o gatear falhou a própria prova de mutação.** Ele procurava a
+LEITURA primeiro e saía por `continue` — e a linha de um espelho **nomeia a constante dentro do
+próprio comentário**, logo era contada como leitura e nunca chegava à verificação. Repor um espelho
+deixava-o **verde**.
+
+⭐⭐ É a lei que esta casa já tinha escrita, aplicada a mim: *«a forma nº 1 de esvaziar um balde sem
+dar por isso é um `continue` a meio de um laço»*. A cura: testar o **espelho primeiro**, e contar a
+leitura sobre o **código** (`linha.split("//").next()`), porque uma menção num comentário não é um
+consumidor.
+
+⭐⭐⭐ **E o censo corrigido achou MAIS QUATRO espelhos, num ficheiro que eu não tinha aberto**
+(`topbar/mod.rs:287-288, 384-385`). Eram 2; eram **6**. *Um gate partido não falha só a mutação —
+ele esconde o trabalho que existe.* Prova de mutação refeita: reprova, **nomeia a linha exacta**,
+restaura byte-a-byte.
+
+⏳ **A pergunta original fica ABERTA e nomeada:** se `11,0` px ainda é a altura de linha que o
+`parley` 0.11.1 + `skrifa` 0.44 dão para aquela fonte àquele tamanho, isso **não foi medido** — exige
+correr o layout. ⚠️ *A ida lá rendeu mais do que a pergunta, mas não a respondeu, e dizer isso é
+metade do valor do registo.*
+
 ### §18.6 — ⭐ O que a auditoria FECHOU (ausências confirmadas, e elas valem)
 
 `SamplerDescriptor` (12 sítios, todos `..Default::default()`, default byte-idêntico 28↔29) ·

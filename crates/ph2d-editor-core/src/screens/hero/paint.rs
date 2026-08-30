@@ -134,7 +134,11 @@ pub fn paint_hero_screen(
         bands.rail_w = hero.store.rail_button_size().rail_width_px();
     } else {
         bands.rail_w = 0.0;
-        bands.top_bar_h = 0.0;
+        // ⭐ **A banda de topo fica, e muda de INQUILINO**: a barra de menus ocupa a faixa que os
+        // pills ocupavam, e por isso a `F9` TROCA as duas em vez de as empilhar — duas faixas
+        // custariam altura permanente ao alvo de 1024 pontos por causa de um interruptor de
+        // bissecção.
+        bands.top_bar_h = super::menu_bar::MENU_BAR_H;
     }
     // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
     // this is identical to the legacy layout there; the Motion bridge sets a split
@@ -451,6 +455,15 @@ pub fn paint_hero_screen(
             &hero.store,
             hero.image_edit.mode_on,
             &hero.motion,
+        );
+    } else {
+        super::menu_bar::paint_menu_bar(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
         );
     }
     // Publish Inspector + Hierarchy panel rects so wheel-event

@@ -250,77 +250,25 @@ pub(super) fn handle_down_menus(
         }
         return true;
     }
-    // Primary click on the TopBar theme cluster opens the
-    // ThemeSelector context menu (4 themes + 3 corner-radius
-    // presets). Anchored just below the cluster's hit rect
-    // so the popover doesn't overlap the cluster itself.
-    // The `Plain` state check disambiguates from other
-    // widgets that may happen to share the TOPBAR_THEME
-    // NodeId numeric value in isolated unit tests (the
-    // hero's real `populate` registers it as Plain).
+    // ⭐⭐ **UMA TABELA, e não N blocos iguais.** Aqui estavam **cinco** cópias do mesmo bloco de
+    // dez linhas — *«se o hit for este id, abre este menu por baixo do rect»* —, uma por pill. A
+    // barra de menus acrescentava mais quatro, e a sexta cópia é onde uma delas nasce com o
+    // `kind` do vizinho por copiar-colar.
+    //
+    // ⚠️ **A âncora é o RECTÂNGULO do alvo, não o cursor**: um menu que abrisse onde o dedo tocou
+    // saltaria de sítio conforme onde no título se carregou.
+    //
+    // ⚠️ O teste de `Button` desambigua de outros widgets que partilhem o valor numérico do
+    // `NodeId` em testes unitários isolados — o `populate` real regista-os todos como `Button`.
     if event.button == ph2d_host::PointerButton::Primary
         && let Some((hit_id, hit_rect)) = hit
-        && hit_id == crate::ids::TOPBAR_THEME
         && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
+        && let Some(kind) = menu_opened_by(hit_id)
     {
         store.open_context_menu(ContextMenuRequest {
             x: hit_rect.x,
-            y: hit_rect.y + hit_rect.h + 4.0,
-            kind: ContextMenuKind::ThemeSelector,
-        });
-        return true;
-    }
-    // Same pattern for the Save chip — Primary opens the
-    // Save / Save As menu anchored below the chip.
-    if event.button == ph2d_host::PointerButton::Primary
-        && let Some((hit_id, hit_rect)) = hit
-        && hit_id == crate::ids::TOPBAR_SAVE
-        && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
-    {
-        store.open_context_menu(ContextMenuRequest {
-            x: hit_rect.x,
-            y: hit_rect.y + hit_rect.h + 4.0,
-            kind: ContextMenuKind::SaveMenu,
-        });
-        return true;
-    }
-    // Open chip — same anchor logic.
-    if event.button == ph2d_host::PointerButton::Primary
-        && let Some((hit_id, hit_rect)) = hit
-        && hit_id == crate::ids::TOPBAR_OPEN
-        && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
-    {
-        store.open_context_menu(ContextMenuRequest {
-            x: hit_rect.x,
-            y: hit_rect.y + hit_rect.h + 4.0,
-            kind: ContextMenuKind::OpenMenu,
-        });
-        return true;
-    }
-    // Settings cluster (gear) — opens the SettingsMenu with
-    // px/m presets. Same anchor convention as Save/Open.
-    if event.button == ph2d_host::PointerButton::Primary
-        && let Some((hit_id, hit_rect)) = hit
-        && hit_id == crate::ids::TOPBAR_SETTINGS
-        && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
-    {
-        store.open_context_menu(ContextMenuRequest {
-            x: hit_rect.x,
-            y: hit_rect.y + hit_rect.h + 4.0,
-            kind: ContextMenuKind::SettingsMenu,
-        });
-        return true;
-    }
-    // Project chip → SceneList popover (search + scenes).
-    if event.button == ph2d_host::PointerButton::Primary
-        && let Some((hit_id, hit_rect)) = hit
-        && hit_id == crate::ids::TOPBAR_PROJECT
-        && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
-    {
-        store.open_context_menu(ContextMenuRequest {
-            x: hit_rect.x,
-            y: hit_rect.y + hit_rect.h + 4.0,
-            kind: ContextMenuKind::SceneList,
+            y: hit_rect.y + hit_rect.h + MENU_ANCHOR_GAP_PX,
+            kind,
         });
         return true;
     }
@@ -380,4 +328,29 @@ pub(super) fn click_belongs_to_the_open_menu(
         }
         _ => false,
     }
+}
+
+/// Folga entre o botão e o menu que ele abre, para o popover não encostar ao alvo.
+const MENU_ANCHOR_GAP_PX: f32 = 4.0; // LITERAL-PX-OK: folga do popover ao alvo que o abriu
+
+/// **Que menu abre este id?** — a tabela que substituiu os cinco blocos gémeos.
+///
+/// ⚠️ Os quatro primeiros são os títulos da **barra de menus** (a barra global da D2); os cinco
+/// seguintes são os pills do chrome legado, que a tecla `F9` ainda devolve. Os dois conjuntos
+/// partilham a lei — *abre o teu menu ancorado por baixo de ti* — e por isso partilham o código.
+fn menu_opened_by(id: ph2d_a11y::NodeId) -> Option<ContextMenuKind> {
+    if let Some((_, _, kind)) = crate::screens::hero::menu_bar::MENUS
+        .iter()
+        .find(|(mid, ..)| *mid == id)
+    {
+        return Some(*kind);
+    }
+    Some(match id {
+        x if x == crate::ids::TOPBAR_THEME => ContextMenuKind::ThemeSelector,
+        x if x == crate::ids::TOPBAR_SAVE => ContextMenuKind::SaveMenu,
+        x if x == crate::ids::TOPBAR_OPEN => ContextMenuKind::OpenMenu,
+        x if x == crate::ids::TOPBAR_SETTINGS => ContextMenuKind::SettingsMenu,
+        x if x == crate::ids::TOPBAR_PROJECT => ContextMenuKind::SceneList,
+        _ => return None,
+    })
 }

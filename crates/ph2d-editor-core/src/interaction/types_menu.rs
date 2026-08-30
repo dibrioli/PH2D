@@ -65,6 +65,22 @@ pub enum ContextMenuKind {
     /// background colors. `panel` is the note's host; `note_index`
     /// is the index into `notes_per_panel[panel]`.
     NoteBackground { panel: NodeId, note_index: u8 },
+    /// ⭐⭐ **Os quatro menus da BARRA DE MENUS** (D2, 2026-08-30) — *File · Edit · View ·
+    /// Window*. Abrem ancorados por baixo do próprio título, pela mesma tabela que os pinta
+    /// ([`crate::screens::hero::menu_bar::MENUS`]).
+    ///
+    /// ⚠️ **Quase toda linha destes menus leva um id que já existia** — a barra é
+    /// **realojamento**, não construção: o *Save* é o `CTX_MENU_SAVE` do `io_menu`, o *Vector* é
+    /// o `TOPBAR_VECTOR` que o pill levava. ⇒ nenhum handler novo para eles, e nenhuma segunda
+    /// tabela de verbos a divergir da primeira.
+    MenuBarFile,
+    /// Ver [`Self::MenuBarFile`].
+    MenuBarEdit,
+    /// Ver [`Self::MenuBarFile`].
+    MenuBarView,
+    /// Ver [`Self::MenuBarFile`]. Hospeda os **toggles de módulo** — os treze que, entre a
+    /// retirada da barra de pills (2026-08-30) e esta barra, só a tecla `F9` alcançava.
+    MenuBarWindow,
     /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
@@ -293,6 +309,10 @@ impl ContextMenuKind {
             panel: NodeId(1),
             note_index: 0,
         },
+        Self::MenuBarFile,
+        Self::MenuBarEdit,
+        Self::MenuBarView,
+        Self::MenuBarWindow,
         Self::ThemeSelector,
         Self::SaveMenu,
         Self::OpenMenu,

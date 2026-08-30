@@ -71,6 +71,7 @@ mod inspector_model_slice;
 /// que uma tela É, este diz o que ela FAZ a cada quadro.
 mod live;
 /// A TABELA de rows de cada menu — a porta única de *«que linhas este menu tem?»*.
+pub mod menu_bar;
 pub mod menu_rows;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;
@@ -494,6 +495,9 @@ impl HeroScreen {
     /// `apply_event` in z-order; first region that consumes the
     /// event wins. Returns true iff some region consumed it.
     pub fn apply_event(&mut self, event: WidgetEvent) -> bool {
+        // ⛔ **Antes de tudo**: uma linha da barra de menus fecha o menu. Tem de ser aqui — o
+        // registo de painéis é caminhado abaixo, e ele consome os treze ids do menu *Window*.
+        menu_bar::close_on_row_click(self, event);
         // ADR-0029 Phase D: legacy fn-pointer dispatch deleted — every
         // in-tree panel lives in `crate::panel::PANEL_REGISTRY` as a
         // typed `Panel<State>`. Walk only the typed registry.

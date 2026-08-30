@@ -30,6 +30,7 @@ pub fn populate_shared(store: &mut WidgetStore) {
     super::pre_populate_blender::populate_blender_picker(store);
     populate_samples(store);
     populate_global_context_menu(store);
+    super::menu_bar::populate(store);
     populate_scrollbars(store);
     populate_hierarchy_chrome(store);
 }

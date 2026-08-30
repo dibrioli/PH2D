@@ -87,6 +87,70 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             // "Show Grid" removed — Grid Settings panel now owns the
             // grid visibility toggle (Display section "Show grid").
         ],
+        // ── A BARRA DE MENUS (D2, 2026-08-30) ────────────────────────────────────────────
+        // ⭐⭐ **Quase toda linha aqui leva um id que JÁ EXISTIA**, e é essa a decisão: a barra
+        // realoja verbos, não os constrói. O `Save` é o do `io_menu`; o `Vector` é o
+        // `TOPBAR_VECTOR` que o pill levava, e o painel do vetor continua a ser quem o despacha.
+        // ⇒ um verbo, um id, um handler — e nenhuma segunda tabela a divergir da primeira.
+        ContextMenuKind::MenuBarFile => &[
+            (
+                ids::MENUBAR_FILE_NEW,
+                "New Image\u{2026} \u{00b7} Cmd+N",
+                None,
+            ),
+            (
+                ids::CTX_MENU_OPEN_PROJECT,
+                "Open Project\u{2026} \u{00b7} Cmd+O",
+                None,
+            ),
+            (
+                ids::CTX_MENU_IMPORT,
+                "Import\u{2026} \u{00b7} Cmd+Shift+I",
+                None,
+            ),
+            (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),
+            (
+                ids::CTX_MENU_SAVE_AS,
+                "Save As\u{2026} \u{00b7} Cmd+Shift+S",
+                None,
+            ),
+        ],
+        // ⚠️ `TOOL_UNDO`/`TOOL_REDO` são os ids do TRILHO, e é de propósito: o verbo é o mesmo, e
+        // duplicá-lo daria dois botões a desfazer coisas diferentes no dia em que um deles fosse
+        // esquecido. Quem despacha continua a ser o `chrome::rail_tools`.
+        ContextMenuKind::MenuBarEdit => &[
+            (ids::TOOL_UNDO, "Undo \u{00b7} Cmd+Z", None),
+            (ids::TOOL_REDO, "Redo \u{00b7} Cmd+Shift+Z", None),
+            (ids::MENUBAR_EDIT_PREFERENCES, "Preferences\u{2026}", None),
+        ],
+        // ⚠️ **Mirror UI / Show Statistics / Corners / Rail Buttons NÃO se repetem aqui** — eles
+        // vivem no `ThemeSelector`, que esta linha abre como categoria. Uma entrada repetida em
+        // dois menus é a tabela paralela outra vez, com o sintoma pior: os dois estados a
+        // discordar à vista.
+        ContextMenuKind::MenuBarView => &[
+            (ids::RAIL_SHOW_HIERARCHY, "Hierarchy", None),
+            (ids::RAIL_SHOW_INSPECTOR, "Inspector", None),
+            (ids::MENUBAR_VIEW_RULERS, "Rulers", None),
+            (ids::MENUBAR_VIEW_THEME, "Theme\u{2026}", None),
+        ],
+        // ⭐ **Os treze toggles de módulo.** Entre a retirada da barra de pills (2026-08-30) e
+        // esta barra, o único caminho até eles era a tecla `F9` — que é um interruptor de
+        // bissecção, não uma porta de produto.
+        ContextMenuKind::MenuBarWindow => &[
+            (ids::TOPBAR_VECTOR, "Vector", None),
+            (ids::TOPBAR_MOTION, "Motion Nodes", None),
+            (ids::TOPBAR_FLIP, "Flip", None),
+            (ids::TOPBAR_PHYSICS, "Physics", None),
+            (ids::TOPBAR_SCULPT3D, "Sculpt 3D", None),
+            (ids::TOPBAR_MODEL3D, "Model 3D", None),
+            (ids::TOPBAR_IMAGE_TOOLS, "Image Tools", None),
+            (ids::TOPBAR_AUDIO_MIXER, "Audio Mixer", None),
+            (ids::TOPBAR_AUDIO_EDITOR, "Audio Editor", None),
+            (ids::TOPBAR_TOKENS, "Design Tokens", None),
+            (ids::TOPBAR_AUTHORED, "Authored UI", None),
+            (ids::TOPBAR_WIDGET_GALLERY, "Widget Gallery", None),
+            (ids::TOPBAR_GRID_SETTINGS, "Grid Settings", None),
+        ],
         ContextMenuKind::SaveMenu => &[
             (ids::CTX_MENU_SAVE, "Save \u{00b7} Cmd+S", None),
             (

@@ -62,6 +62,7 @@ mod image_actions;
 mod image_tools_toggle;
 mod input_map;
 mod io_menu;
+mod menu_bar;
 mod model3d_toggle;
 mod motion_path_handle;
 mod motion_toggle;
@@ -142,6 +143,7 @@ pub use onion_modal::{MAX_GHOSTS, count_to_frac, frac_to_count};
 pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // <ph2d-chrome-sync:dispatch-begin>
     theme::apply(hero, event)
+        || menu_bar::apply(hero, event)
         || radius::apply(hero, event)
         || rail_size::apply(hero, event)
         || view_toggles::apply(hero, event)

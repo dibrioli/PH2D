@@ -276,5 +276,39 @@ Corridos e **verdes** no momento da escrita:
 - `cargo test -p ph2d-tokens --test the_sixteen_timeline_slots_are_pure_aliases` — 1/1
 - `cargo check -p ph2d-host-desktop` — limpo
 
-⏳ **Falta o portão batched da workspace** (`scripts/nextest-impacted.sh` + clippy `--all-targets`
-+ auditoria) e o `rm -rf target/*/incremental` — DIRETRIZ §1.5.9. A linha **não** está fechada.
+### ⛔⛔ E o portão batched deu uma lição sobre si mesmo
+
+A 1.ª corrida do `nextest-impacted.sh` foi invocada com `| tail -25` e devolveu **`exited with
+code 0`**. Ela tinha **reprovado**: `Summary 3497/12017 tests run: 3496 passed, 1 failed`, e
+**8 520 testes nunca correram** porque o nextest cancela na primeira falha.
+
+- **O pipe destruiu o código de saída** — a armadilha que o repo já tem escrita
+  (`project-memory/feedback_pipe_masks_script_exit_code.md`). O script preserva o exit code do
+  cargo *de propósito*, e quem o anulou fui eu, no `| tail`.
+- **A reprovada é um FLAKE DE CARGA já catalogado**:
+  `flip_smooth::resample_measurement::precisao::orcamento::…`, membro nomeado da família no
+  `CLAUDE.md` §5.0 (*«a falha MUDA de teste entre corridas»*).
+- ⇒ re-corrido com `--no-fail-fast`, que é a metade que faz os 8 520 escondidos correrem. *Um
+  vermelho de flake não é só um falso positivo: ele **esconde a suíte**.*
+
+**A corrida honesta: `20 175 testes, 20 171 passaram, 4 falharam, 1 991 saltados` (179 s).**
+As quatro são gates de **razão de um recurso** — a família inteira do §5.0 —, e **nenhuma vive
+numa crate que este diff toca** (`git diff --name-only main..HEAD` não devolve `flip`,
+`ph2d-mesh`, `soft-body` nem `tool-painter`):
+
+| reprovada | sozinha, 3× | nota |
+|---|---|---|
+| `flip_smooth::…::orcamento::the_fit_rebuilds_the_neighbourhood_not_the_whole_stroke` | **3/3 verde** | nomeada no §5.0 |
+| `ph2d-tool-painter::…::the_mask_stroke_cost_does_not_follow_the_canvas` | **3/3 verde** | nomeada no §5.0 |
+| `ph2d-node-motion-soft-body::cap_gates::the_shape_match_is_linear_in_the_mesh` | **3/3 verde** | ⏳ **não** estava na lista — mede a linearidade de dois relógios |
+| `ph2d-mesh::measure_normals::measure_normals_parallel_speedup` | ⚠️ **2/3** | ⏳ **não** estava na lista, e ⭐ **reprova mesmo SOZINHA** |
+
+⭐ **A `measure_normals_parallel_speedup` é o achado desta corrida.** Ela mede um *speedup* de
+paralelismo — uma razão entre dois relógios cujo numerador depende de quantos núcleos o SO lhe
+deu **neste instante** — e reprova **1 em 3** com a máquina calma. Isso põe-na numa espécie
+ligeiramente pior que a família do §5.0: não é «reprova sob fan-out», é «reprova às vezes».
+⛔ Não é desta linha para curar, mas o §5.0 diz que *a lista nunca estará completa* — e estas
+duas são as que ela ganhou hoje.
+
+⏳ Falta o `rm -rf target/*/incremental` e a **UMA linha** no `CLAUDE.md` §5 — DIRETRIZ §1.5.9.
+A linha **não** está fechada, e não há ordem do Enio para integrar.

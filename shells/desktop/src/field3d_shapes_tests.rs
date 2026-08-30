@@ -132,3 +132,203 @@ fn every_new_shape_that_can_round_is_born_round() {
         );
     }
 }
+
+/// ⛔⛔⛔ **O QUE O ARTISTA CRIA MARCHA EM SEGURANÇA?** — o gate que o report do Enio de 30/08
+/// comprou (duas fotos: **rasgos pretos** nas junções da cruz e do cone redondo).
+///
+/// # ⚠️ O buraco que ele fecha
+///
+/// O censo (`the_census_of_every_primitive`) já pergunta *«a marcha é segura?»* — mas sobre o
+/// **representante DELE**, escrito à mão dentro do teste. A paleta cria outra coisa: outros
+/// números, outras proporções, outro `round`. ⇒ *o gate media uma forma que o artista nunca cria.*
+///
+/// ⭐ É a mesma lição que esta casa já tem escrita: **onde os objectos NASCEM é a fixtura que os
+/// gates não têm**. Aqui o sujeito é a [`SHAPES`] com o **construtor de cada linha**, que é
+/// literalmente o que o botão faz.
+///
+/// # A lei
+///
+/// A marcha anda `d · passo` e é segura enquanto `passo · ‖∇f‖ ≤ 1`. Um campo que suba mais
+/// depressa **atravessa** a superfície, e o sintoma é um rasgo preto no meio da peça.
+#[test]
+fn every_shape_the_palette_creates_marches_safely() {
+    use ph2d_field::{FieldDoc, NodeId, Xform};
+    use ph2d_field_eval::{Field, leaf, safe_march_step};
+
+    const R: f32 = 0.5;
+    // Folga de AMOSTRAGEM: a norma sai de diferenças finitas e numa quina lê um pouco acima.
+    const SLACK: f64 = 1.02;
+    let mut medidas = 0;
+    let mut falhas: Vec<String> = Vec::new();
+    for (slot, shape) in SHAPES.iter().enumerate() {
+        let Some(p) = shape_at(slot, R) else { continue };
+        let doc = FieldDoc::new(vec![leaf(p, Xform::IDENTITY)], NodeId(0)).expect("folha válida");
+        let passo = f64::from(safe_march_step(&doc));
+        let f = Field::new(&doc);
+        let (mut pior, mut onde) = (0.0_f64, [0.0_f64; 3]);
+        const N: usize = 34;
+        for i in 0..N {
+            for j in 0..N {
+                for k in 0..N {
+                    let c = |n: usize| (n as f64 / (N - 1) as f64) * 2.8 - 1.4;
+                    let (x, y, z) = (c(i), c(j), c(k));
+                    let g = f.gradient_norm(x, y, z, 1.0e-4);
+                    if g > pior {
+                        pior = g;
+                        onde = [x, y, z];
+                    }
+                }
+            }
+        }
+        medidas += 1;
+        if passo * pior > SLACK {
+            falhas.push(format!(
+                "  «{}»: passo {passo:.4} x |grad| {pior:.4} = {:.4}  (pior em {onde:?})",
+                shape.key.rsplit('.').next().unwrap_or(shape.key),
+                passo * pior
+            ));
+        }
+    }
+    assert!(
+        medidas >= 20,
+        "só {medidas} formas de fórmula foram medidas — o gate perdeu o sujeito"
+    );
+    assert!(
+        falhas.is_empty(),
+        "{} forma(s) que a paleta CRIA atravessam a superfície:\n{}",
+        falhas.len(),
+        falhas.join("\n")
+    );
+}
+
+/// ⛔⛔⛔ **A SONDA QUE MEDE O RASGO, e não um proxy dele** (report do Enio, 30/08 — duas fotos com
+/// setas para buracos pretos nas junções).
+///
+/// # ⚠️ Por que uma sonda de GRADIENTE não chega
+///
+/// `passo × ‖∇f‖ ≤ 1` é a **condição suficiente** para a marcha não atravessar. Ela é medida numa
+/// grelha, e uma grelha de `34³` **não vê** um pico que vive numa película fina à volta de uma
+/// costura. ⇒ esta sonda mede o **sintoma**: lança raios como o traçador lança, e conta aqueles em
+/// que a marcha **falha** uma superfície que a bissecção encontra.
+///
+/// *Um furo é um raio que devia bater e não bateu — mede-se isso, não um limite superior dele.*
+#[test]
+#[ignore = "sonda: conta os raios que a marcha ATRAVESSA"]
+fn measure_marching_holes_on_a_combined_scene() {
+    use ph2d_field::{Blend, FieldDoc, NodeId, NodeKind, Op, Xform};
+    use ph2d_field_eval::{Field, leaf, safe_march_step};
+
+    let combine = |op: Op, children: Vec<NodeId>| ph2d_field::Node {
+        xform: Xform::IDENTITY,
+        kind: NodeKind::Combine { op, children },
+        mods: Vec::new(),
+        verb: None,
+    };
+
+    const R: f32 = 0.5;
+    let em = |x: f32| Xform {
+        translation: [x, 0.0, 0.0],
+        ..Xform::IDENTITY
+    };
+    // Os nomes vêm da paleta, então o que a sonda mede é o que o botão cria.
+    let acha = |chave: &str| {
+        let slot = SHAPES
+            .iter()
+            .position(|s| s.key.ends_with(chave))
+            .unwrap_or_else(|| panic!("«{chave}» não está na paleta"));
+        shape_at(slot, R).unwrap_or_else(|| panic!("«{chave}» não é de fórmula"))
+    };
+
+    // ⭐⭐⭐ **A VARREDURA DA FOLGA** — é ela que reproduz o report. Com as peças AFASTADAS está
+    // tudo limpo (`|grad| = 0,9992`); a queixa do Enio diz *«esta' atras do elipsoide e NAO
+    // COLADO»*, e é aí que as duas superfícies se olham de perto.
+    let mut casos: Vec<(String, Op, f32)> = Vec::new();
+    for folga in [0.60_f32, 0.30, 0.12, 0.05, 0.02, 0.008, 0.002] {
+        casos.push((
+            format!("viva  folga {folga:.3}"),
+            Op::Union(Blend::Sharp),
+            folga,
+        ));
+    }
+    for (nome, verbo, folga) in casos {
+        // O cone redondo tem raio de base `0,275` e a cruz meio-braço `0,5`: encostam-se quando a
+        // distância entre centros é `0,775`.
+        let d = 0.775 + folga;
+        let doc = FieldDoc::new(
+            vec![
+                leaf(acha("cross"), em(-d * 0.5)),
+                leaf(acha("round_cone"), em(d * 0.5)),
+                combine(verbo, vec![NodeId(0), NodeId(1)]),
+            ],
+            NodeId(2),
+        )
+        .expect("cena válida");
+        let passo = f64::from(safe_march_step(&doc));
+        let f = Field::new(&doc);
+
+        // Lança raios paralelos ao eixo Z (como uma câmera ortográfica de frente), varrendo XY.
+        const N: usize = 56;
+        const LONGE: f64 = 3.0;
+        let (mut furos, mut batidas) = (0usize, 0usize);
+        let (mut degenerados, mut menor) = (0usize, f64::INFINITY);
+        // O mesmo `eps` que o traçador usa numa vista normal (meio pixel).
+        const EPS_NORMAL: f64 = 1.5e-3;
+        for i in 0..N {
+            for j in 0..N {
+                let c = |n: usize| (n as f64 / (N - 1) as f64) * 2.4 - 1.2;
+                let (x, y) = (c(i), c(j));
+                // A MARCHA, como o traçador a faz.
+                let mut t = -LONGE;
+                let mut bateu_marcha = false;
+                for _ in 0..512 {
+                    let d = f.at(x, y, t);
+                    if d < 1.0e-4 {
+                        bateu_marcha = true;
+                        break;
+                    }
+                    t += d.max(1.0e-5) * passo;
+                    if t > LONGE {
+                        break;
+                    }
+                }
+                // A VERDADE: amostragem densa + bissecção.
+                const AMOSTRAS: usize = 700;
+                let mut bateu_verdade = false;
+                let mut anterior = f.at(x, y, -LONGE);
+                for k in 1..=AMOSTRAS {
+                    let z = -LONGE + (k as f64 / AMOSTRAS as f64) * 2.0 * LONGE;
+                    let v = f.at(x, y, z);
+                    if anterior > 0.0 && v <= 0.0 {
+                        bateu_verdade = true;
+                        break;
+                    }
+                    anterior = v;
+                }
+                if bateu_verdade {
+                    batidas += 1;
+                    if bateu_marcha {
+                        // ⭐⭐⭐ **A NORMAL no ponto em que a marcha parou.** O traçador lê-a por
+                        // diferença central com um `eps` do tamanho de meio pixel; num campo de
+                        // distância limpa `‖∇f‖ = 1`. ⚠️ Numa costura entre duas superfícies
+                        // QUASE a tocar-se, as duas normais exteriores apontam **uma para a
+                        // outra**, a diferença central soma-as e o resultado **cancela**.
+                        // ⇒ `‖∇f‖ → 0`, e o que sobra é ruído: a normal aponta para qualquer
+                        // lado, inclusive para DENTRO ⇒ o pixel sai **preto**.
+                        let g = f.gradient_norm(x, y, t, EPS_NORMAL);
+                        if g < 0.5 {
+                            degenerados += 1;
+                        }
+                        menor = menor.min(g);
+                    } else {
+                        furos += 1;
+                    }
+                }
+            }
+        }
+        println!(
+            "  [{nome}] passo {passo:.4} — {batidas} raios, {furos} furos, \
+             {degenerados} NORMAIS DEGENERADAS ({:.2} %), menor |grad| = {menor:.4}",
+            100.0 * degenerados as f64 / batidas.max(1) as f64
+        );
+    }
+}

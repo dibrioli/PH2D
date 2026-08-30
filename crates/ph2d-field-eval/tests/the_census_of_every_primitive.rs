@@ -346,26 +346,73 @@ fn the_bounding_radius_contains_the_piece() {
         // afirmação verdadeira é *«nada da peça fica ALÉM do raio de contenção»*.
         let r = f64::from(ph2d_field::bounding_radius(&p)) * 1.001;
         let f = field_of(p);
-        // ⚠️ **Uma grelha de direções, e não os seis eixos**: a ponta de uma cápsula está num eixo,
-        // mas a quina de um prisma de 6 lados não — seis amostras aprovariam metade das formas por
-        // acidente.
-        for i in 0..24 {
-            for j in 0..24 {
-                let theta = std::f64::consts::PI * (f64::from(i) + 0.5) / 24.0;
-                let phi = std::f64::consts::TAU * (f64::from(j) + 0.5) / 24.0;
-                let (x, y, z) = (
-                    r * theta.sin() * phi.cos(),
-                    r * theta.sin() * phi.sin(),
-                    r * theta.cos(),
-                );
-                assert!(
-                    f.at(x, y, z) >= 0.0,
-                    "«{}»: o campo a {r:.4} do centro (o próprio bounding_radius) ainda está DENTRO \
-                     — a caixa do mundo corta a peça, e ninguém diz porquê",
-                    k.key()
-                );
+        // ⛔⛔⛔ **MEDE-SE O ALCANCE DA PEÇA, e não se espera que uma amostra caia nele.**
+        //
+        // As duas versões anteriores deste gate falharam a mesma pergunta, cada uma à sua maneira,
+        // e as duas ficaram VERDES sobre um defeito que chegou à tela (report do Enio, 30/08:
+        // quatro setas para arcos pretos a atravessar uma cruz):
+        //
+        // | tentativa | por que ficou verde |
+        // |---|---|
+        // | `24×24` **direções**, campo `≥ 0` na esfera de raio `r` | exige **acertar na direção** do ponto mais afastado; a quina de um braço fino estava a `75,7°/17,3°` e a grelha passa a `7,5°` e `22,5°` — de raspão pelos dois lados |
+        // | grelha de **pontos** na caixa | a saliência era de `0,003` e o passo da grelha `0,028` — *nenhuma amostra caiu lá dentro* |
+        //
+        // ⭐⭐⭐ *Uma fixtura de amostras prova o que amostrou.* ⇒ aqui **bissecta-se a superfície**
+        // ao longo de cada direção e toma-se o **máximo** dos raios encontrados. Isso mede a
+        // grandeza que a pergunta é — *até onde a peça chega* — em vez de esperar que uma amostra
+        // caia por cima dela, e converge com a densidade de direções em vez de depender da sorte.
+        const DIRS: usize = 96;
+        let mut alcance = 0.0f64;
+        let mut viu_peca = false;
+        for i in 0..DIRS {
+            for j in 0..(DIRS * 2) {
+                let theta = std::f64::consts::PI * (f64::from(u32::try_from(i).unwrap()) + 0.5)
+                    / DIRS as f64;
+                let phi = std::f64::consts::TAU * (f64::from(u32::try_from(j).unwrap()) + 0.5)
+                    / (DIRS * 2) as f64;
+                let d = [
+                    theta.sin() * phi.cos(),
+                    theta.sin() * phi.sin(),
+                    theta.cos(),
+                ];
+                let at = |t: f64| f.at(d[0] * t, d[1] * t, d[2] * t);
+                // ⛔ O CONTROLE, colhido no mesmo varrimento: a peça tem de EXISTIR nalgum sítio.
+                // ⚠️ Não se pergunta pelo centro — o de um toro é **vazio**, e a 1.ª escrita deste
+                // controlo reprovou-o por isso.
+                for n in 1..8 {
+                    if at(r * f64::from(n) / 8.0) < 0.0 {
+                        viu_peca = true;
+                        break;
+                    }
+                }
+                // Fora, à partida: se já está fora em `r`, esta direção não excede.
+                if at(r) >= 0.0 {
+                    // Bissecta entre 0 e r para achar onde a superfície está — mas só interessa
+                    // o caso em que ela passa de r, então salta.
+                    continue;
+                }
+                // ⚠️ Ainda DENTRO em `r` ⇒ a peça excede nesta direção. Acha até onde.
+                let mut lo = r;
+                let mut hi = r * 4.0;
+                for _ in 0..40 {
+                    let mid = 0.5 * (lo + hi);
+                    if at(mid) < 0.0 { lo = mid } else { hi = mid }
+                }
+                alcance = alcance.max(hi);
             }
         }
+        assert!(
+            viu_peca,
+            "«{}»: nenhuma direção encontrou peça — a varredura não tem sujeito",
+            k.key()
+        );
+        assert!(
+            alcance == 0.0,
+            "«{}»: há peça a {alcance:.4} do centro e o bounding_radius diz {:.4} — a caixa do \
+             mundo CORTA a peça, e o corte sai ESFÉRICO (um arco preto a atravessá-la)",
+            k.key(),
+            r / 1.001
+        );
     }
 }
 

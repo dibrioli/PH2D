@@ -258,9 +258,24 @@ pub fn bounding_radius(p: &Primitive) -> f32 {
         Primitive::Gear {
             outer, half_height, ..
         } => hyp(*outer, *half_height),
+        // ⛔⛔⛔ **A LARGURA DO BRAÇO ENTRA, e não entrava** (report do Enio, 30/08, com quatro
+        // setas para arcos pretos). O ponto mais afastado de uma cruz é o **canto** do braço,
+        // `(arm, width, half_height)` — não o meio da ponta dele.
+        //
+        // ⚠️ Medido na cruz que a paleta cria (`arm 0,5 · width 0,15 · half_height 0,125`): a
+        // caixa dizia `0,5154` e o canto está a **`0,5368`** ⇒ a peça era **4,1 % maior do que a
+        // esfera que a contém**, e o traçador corta o que fica de fora. *Um bordo menor do que a
+        // peça CORTA-A e não diz nada* — é a assimetria que o doc desta função já declarava, e eu
+        // caí do lado errado dela.
+        //
+        // ⭐ **O corte é ESFÉRICO, e é isso que o denuncia:** um arco preto a atravessar a peça,
+        // e não uma linha recta. *A forma do artefacto nomeia o recurso que o causou.*
         Primitive::Cross {
-            arm, half_height, ..
-        } => hyp(*arm, *half_height),
+            arm,
+            width,
+            half_height,
+            ..
+        } => hyp(hyp(*arm, *width), *half_height),
         // ⚠️⚠️ **`size·√2`, e o censo do módulo corrigiu-me:** o ponto mais afastado NÃO está no
         // eixo — está no lóbulo. O centro dele fica em `(±s/2, s/2)`, a `s/√2` da origem, e o raio
         // dele é `s/√2` também ⇒ a soma é `s·√2`. A 1.ª escrita somava a altura em vez da

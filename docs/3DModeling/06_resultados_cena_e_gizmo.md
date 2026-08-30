@@ -10402,3 +10402,65 @@ e não é. ⇒ `find target/debug/deps -size 0 -delete`, e o comando pesado pass
 memória *«disco cheio corrompe `.o` → mold SIGBUS»*.
 
 **Smoke:** cenas **`=12`** (os seis sólidos) e **`=13`** (as oito chapas), mais a paleta (`A`).
+
+---
+
+## §107 — W106-bis: ⛔⛔⛔ O ARCO PRETO na cruz — a caixa do mundo era `4,1 %` menor que a peça (30/08)
+
+Enio, com quatro fotos e setas:
+
+> *«veja round cone (está atras do elipsoid e não colado) com artefatos de imagem: cria esse espeço
+> fantasma entre os objetos e em corte do outro lado. Artefatos de render»*
+
+### §107.1 — ⛔ DUAS hipóteses caíram por medição antes de se achar a certa
+
+*A forma do artefacto nomeia o recurso que o causou* — e foi preciso eliminar duas leituras antes de
+chegar lá:
+
+| hipótese | como foi testada | veredicto |
+|---|---|---|
+| **a marcha ATRAVESSA a superfície** | lançar raios como o traçador lança e contar os que falham uma superfície que a bissecção encontra | ⛔ **`0` furos** em `374` raios, nas duas formas de juntar |
+| **a normal DEGENERA na costura** (duas superfícies quase a tocar-se apontam uma para a outra e a diferença central cancela) | varrer a folga entre as peças de `0,60` a `0,002` e medir `‖∇f‖` no ponto em que a marcha parou | ⛔ **`0` degeneradas** em toda a varredura; o menor `‖∇f‖` foi **`0,9988`** |
+
+⚠️ A 2.ª hipótese era boa e tinha até um sítio suspeito no código (`if len <= 0.0`, que só rejeita o
+**exactamente** zero). *Um mecanismo plausível com um sítio suspeito ao lado ainda precisa de ser
+medido* — e este não reproduziu.
+
+### §107.2 — ⭐⭐⭐ A causa: `bounding_radius` da CRUZ ignorava a largura do braço
+
+O ponto mais afastado de uma cruz é o **canto** do braço, `(arm, width, half_height)` — não o meio
+da ponta dele. A conta dizia `hyp(arm, half_height)`:
+
+| | cruz que a paleta cria |
+|---|---|
+| o `bounding_radius` escrito | `0,5154` |
+| o **canto real** do braço | **`0,5368`** |
+| ⇒ | a peça é **`4,1 %` maior que a esfera que a contém** |
+
+⚠️ **E o corte sai ESFÉRICO** — é isso que produz um **arco** preto a atravessar a peça, e não uma
+linha recta. O doc daquela função já declarava a assimetria (*«um bordo maior custa resolução; um
+bordo menor CORTA a peça e não diz nada»*), e eu caí do lado errado dela.
+
+### §107.3 — ⛔⛔⛔ E o portão ficou VERDE sobre o defeito — DUAS vezes, por dois motivos diferentes
+
+| versão do gate | por que ficou verde |
+|---|---|
+| **`24×24` DIREÇÕES**, campo `≥ 0` na esfera de raio `r` | exige **acertar na direção** do ponto mais afastado. A quina estava a `75,7°/17,3°` e a grelha passa a `7,5°` e `22,5°` — **de raspão pelos dois lados** |
+| grelha de **PONTOS** na caixa (a 1.ª cura) | a saliência é de `0,003` e o passo da grelha `0,028` — *nenhuma amostra caiu lá dentro*. ⚠️ **Provado por mutação: ela SOBREVIVEU** |
+
+⭐⭐⭐ **A 3.ª versão mede a GRANDEZA em vez de esperar por uma amostra:** bissecta a superfície ao
+longo de `96 × 192` direções e toma o **máximo** dos raios. *Isso converge com a densidade de
+direções em vez de depender da sorte* — e mata a mutação, nomeando o número:
+*«há peça a `0,4728` e o bounding_radius diz `0,4657`»*.
+
+⚠️ **O controlo dela também estava errado à primeira**: perguntava se o **centro** está dentro da
+peça, e o de um **toro é vazio** — reprovava produto correcto. Hoje o controlo é colhido no mesmo
+varrimento (*alguma direção encontrou peça?*).
+
+### §107.4 — ⚠️ E o portão que faltava: o que o ARTISTA cria
+
+O censo mede o **representante DELE**, escrito à mão dentro do teste. A paleta cria outros números.
+⇒ nasce `every_shape_the_palette_creates_marches_safely`, cujo sujeito é a `SHAPES` com o
+**construtor de cada linha** — literalmente o que o botão faz. *Onde os objectos NASCEM é a fixtura
+que os gates não têm.*
+

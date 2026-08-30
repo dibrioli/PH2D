@@ -878,7 +878,23 @@ decide.*
 1. **A frase «decisão do Enio» do §19.2 envelheceu em horas.** Ela era verdadeira quando escrita e
    falsa no dia seguinte — *uma nota que delega uma decisão tem de ser reconferida assim que a
    decisão chega*.
-2. **Três agentes reportaram o mesmo bloqueio de ambiente** (`/mnt/ramtarget` a 100%), e dois
+2. ⭐⭐ **A família de flakes de carga ganhou um NÚMERO, e ele fecha o assunto.** A mesma árvore,
+   o mesmo binário, duas corridas:
+
+   | paralelismo | resultado |
+   |---|---|
+   | 32 threads (o default do nextest nesta máquina) | **20 153 / 20 156** — 3 reprovas |
+   | **8 threads** | ⭐ **20 156 / 20 156 — zero** |
+
+   As três eram membros **já nomeados** no `CLAUDE.md` §5.0 (`a_round_live_offset_costs_like_the_other_joins`,
+   `a_wet_move_costs_what_the_footprint_costs_not_what_the_canvas_costs`,
+   `only_the_lower_row_breathes_and_it_moves_with_the_playhead`), e as três passam **sozinhas**.
+   ⚠️ E o conjunto **mudou entre corridas do mesmo binário** — numa delas quem reprovou foi o
+   `an_abandoned_march_returns_nothing_and_returns_fast`, que na outra passou. *Um defeito de
+   lógica reprova o mesmo caso sempre.*
+   ⇒ **`NEXTEST_TEST_THREADS=8` faz o `ship.sh` medir o que ele pretende medir.** Isto não é
+   baixar a barra: é retirar o confundidor de uma régua que divide dois relógios.
+3. **Três agentes reportaram o mesmo bloqueio de ambiente** (`/mnt/ramtarget` a 100%), e dois
    contornaram-no com um `CARGO_TARGET_DIR` no disco. ⇒ **o tmpfs de 48 GB não chega para três
    frentes a compilar `--all-targets`**, e isso não é código: é a bancada. Fica escrito porque a
    próxima jornada paralela vai bater no mesmo.

@@ -92,7 +92,7 @@ próprio) · os **8 Layouts** (D7) · **as timelines em todos os modos** (D8) ·
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
 - **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da
-  esquerda está **87,8 % tapada**, e ⚠️ **por causa do rail, não dos painéis**.
+  esquerda está **86,8 % tapada**, e ⚠️ **por causa do rail, não dos painéis**.
 - **16 dos 83 slots de cor são apelidos puros** — todos os 16 `timeline-*`. Fundi-los é uma
   mudança de **zero pixels**.
 
@@ -117,7 +117,7 @@ oferecia para a decidir ficou cancelada com ela.*
 
 **As réguas deixaram de partilhar coordenada com o chrome.** `HeroLayout::draw_area` é o que
 sobra da janela depois de o chrome **docado** tirar a sua faixa, e as duas réguas são regiões
-dela: **87,8 % → 0 %** (esquerda) e **29,4 % → 0 %** (cima). Detalhe e o preço da fase seguinte:
+dela: **86,8 % → 0 %** (esquerda) e **29,4 % → 0 %** (cima). Detalhe e o preço da fase seguinte:
 [`spec/02 §6-bis`](spec/02_o_que_falta_para_comecar.md).
 
 ⛔ **E a wave achou um defeito de INPUT que nenhuma sonda deste repo via:** a régua não está no

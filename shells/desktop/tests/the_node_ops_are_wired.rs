@@ -516,7 +516,7 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
          `grid.view`"
     );
     // ⛔ E, desde 2026-08-30, **não** o `layout.canvas`: ele é a viewport inteira, e ancorar a
-    // régua nele devolve os dois defeitos de uma vez — 87,8 % da régua esquerda tapada pelo
+    // régua nele devolve os dois defeitos de uma vez — 86,8 % da régua esquerda tapada pelo
     // trilho, e o gesto da guia a roubar o clique dos 6 px de cima da barra (ele é geométrico e
     // corre antes do hit-test de chrome). A lei e os dois controlos vivem em
     // `ph2d-editor-core/tests/the_rulers_never_share_a_pixel_with_docked_chrome.rs`.

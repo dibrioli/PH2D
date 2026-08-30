@@ -25,6 +25,7 @@ virou **código**.
 | 3 | `4a3d8c932` | os **rótulos e o PASSO** do Inspector seguem a unidade (a 9.ª ponta, e eram dois defeitos) |
 | 4 | `b4035fbd2` | ⭐ **As RÉGUAS viram REGIÕES da área de desenho** |
 | 5 | `9f6db8566` | duas notas minhas **refutadas**, o roteiro do smoke corrigido, gate novo dos apelidos de cor |
+| 6 | `7378d8b1f` | ⛔⛔ **a auditoria achou uma REGRESSÃO minha** — os quatro defeitos, curados (§3-bis) |
 
 ---
 
@@ -43,7 +44,7 @@ depois: ruler host = layout.draw_area
 
 | | antes | depois |
 |---|---:|---:|
-| régua esquerda tapada (1366 × 1024) | **87,8 %** | **0,0 %** |
+| régua esquerda tapada (1366 × 1024) | **86,8 %** | **0,0 %** |
 | régua de cima tapada | **29,4 %** | **0,0 %** |
 
 ### 3.2 ⭐ Por que custou uma linha e não uma reescrita — três factos MEDIDOS
@@ -81,36 +82,100 @@ comeria o pen-down do Painter nos 20 px de cima»* — e foi por isso que a rég
 Vector. Isso **continua verdade**: a mudança tirou as faixas de cima do **chrome**, não de cima do
 **desenho**.
 
-### 3.4 As colunas
+### 3.4 As colunas — ⛔ **SUPERSEDIDO pelo §3-bis, não leia esta versão**
 
-`DockSides::resolve(mirrored, visible)` é a porta única, e o `mirrored` **troca as colunas** (a
-metade que se escreve ao contrário sem o compilador reclamar — tem gate próprio).
-`RIGHT_DOCK_PANELS` lista as **5** chaves que partilham o dock da direita (o Inspector e os quatro
-aliases: `bgremoval`, `padding`, `painter_sidebar`, `painter_layers`). O nome do campo **é** a
-chave, e há **censo** a conferir a lista contra os `let X = inspector;` do construtor,
-**descascando comentários** (documentar a cura não pode reprovar o portão).
+A 1.ª redacção descrevia um `DockSides { left, right }` alimentado por uma lista de cinco chaves
+e um censo que varria o `layout.rs`. **Os três estavam errados por construção** e foram
+substituídos no commit `7378d8b1f` — o mecanismo, o porquê e a lei que daí saiu estão no
+**§3-bis**. *Um handoff que descreve o desenho revogado ao lado do vigente é a forma de alguém
+reconstruir o revogado.*
 
-⚠️ **Uma coluna fechada não é reservada** — a área cresce para dentro dela, senão a régua da
-esquerda ficaria a flutuar no meio do desenho.
+### 3.5 Gates e provas de mutação
 
-### 3.5 Gates (5 novos) e provas de mutação (5 aplicadas, 5 mortas)
+**9 gates · 8 mutações, 8 mortas.** A tabela e o placar estão no **§3-bis**, que é onde os gates
+de facto ficaram. O gate de fonte do shell
+(`shells/desktop/tests/the_node_ops_are_wired.rs`) proíbe o regresso **pelo nome**:
+`!contains("canvas: layout.canvas,")`.
 
-`crates/ph2d-editor-core/tests/the_rulers_never_share_a_pixel_with_docked_chrome.rs`:
+---
 
-| gate | o que afirma |
-|---|---|
-| `the_rulers_never_share_a_pixel_with_docked_chrome` | 2 orientações × 4 estados de coluna × 2 faixas × N rects ⇒ intersecção **0** |
-| `the_control_the_old_anchor_was_covered_and_the_measure_sees_it` | ⭐ **controlo**: com a âncora antiga, > 80 % / > 20 % tapada |
-| `the_ruler_no_longer_steals_the_click_from_the_top_bar_and_the_rail` | ⭐ **controlo**: `hit` respondia `Some` sobre a barra e o trilho; agora `None` |
-| `the_dock_column_census_matches_the_layout_aliases` | a lista descreve os aliases do construtor |
-| `the_dock_sides_name_a_column_and_the_mirror_swaps_them` | a lei do espelho (que a lei geométrica **não** alcança) |
+## §3-bis — ⛔⛔ A AUDITORIA (4 lentes) achou **quatro** defeitos, e o dominante era meu
 
-Mutações: `draw_area` colapsado no `canvas` (lei ✗) · espelho que não troca colunas (lei do
-espelho ✗) · lista sem `painter_layers` (censo ✗) · as **duas** âncoras do `paint.rs` revertidas
-(gate de fonte do shell ✗ nas duas). Árvore restaurada e verde em cada passo.
+⭐ **Leia esta secção antes de acreditar no §3.** A wave anunciava «0 %» e no modo real deixava
+**31,2 %** — *pior* que os 29,4 % que dizia curar.
 
-O gate de fonte do shell (`shells/desktop/tests/the_node_ops_are_wired.rs`) passa a **proibir o
-regresso pelo nome**: `!contains("canvas: layout.canvas,")`.
+### D1 (dominante, regressão) — `"vector"` fora da lista das colunas
+
+Ao pegar na ferramenta Vector, `shells/desktop/src/render_loop/vector_bridge.rs` põe
+`panel_visible("inspector") = false`, e o **painel Vector** passa a desenhar no rect do dock
+direito (`ph2d-panel-vector/src/paint.rs`, `ctx.layout.inspector`). A minha `RIGHT_DOCK_PANELS`
+de cinco chaves não o continha ⇒ a área crescia **para dentro do painel**.
+⚠️ E `rulers_live()` **exige** `panel_visible("vector")` ⇒ era o **único** modo em que a régua
+existe.
+
+⭐⭐ **A cura não é uma lista maior: são DEZASSETE as crates de painel que desenham naquele
+rect** (`ctx.layout.inspector` / `.padding`) — é um slot de **takeover**, não um painel; doze
+delas não têm alias no `layout.rs` e lêem o campo directamente, de outra crate.
+
+⭐⭐⭐ **A cura é um TEOREMA:** o único consumidor da `draw_area` é a régua, e *régua viva ⇒
+painel Vector visível ⇒ coluna da direita ocupada*. Reservá-la **sempre** custa **zero** ao único
+consumidor e é imune a qualquer inquilino futuro. ⇒ o campo `right` desapareceu; o que sobra é
+`hierarchy_open`, porque **só a coluna da Hierarchy pode ficar vazia** e ela tem **um** inquilino
+medido. Há gate no fonte a defender as duas metades do teorema.
+
+### ⛔ Por que os meus três gates eram cegos — é uma LEI, não um descuido
+
+> **Uma exclusão e o gate que a verifica não podem ler a MESMA lista.**
+
+- **a LEI** partilhava a premissa com o produto (`if docks.right { push(right_panel) }`): com a
+  lista errada, o painel saía da **exclusão** e da **acusação** ao mesmo tempo, e o gate devolvia
+  `0.0` *por não olhar*. Hoje o oráculo põe `l.inspector` **sempre**, seja quem for que lá esteja.
+- **o CENSO** varria `let X = inspector;` no `layout.rs` — tinha a **forma** de uma conferência de
+  dois lados e media um subconjunto que não era a pergunta. Hoje varre as **crates de painel**.
+- **o ESPELHO** iterava a própria lista: auto-referencial.
+
+### D2 — o desenho tinha guarda, o hit-test não
+
+`paint_rulers` saía com `w <= RULER_PX`; o `hit` só perguntava `contains`. Numa área com
+`0 < w <= RULER_PX` a régua **respondia sem aparecer** — o inverso do invariante que
+`offers.rs` declara (*visível ⇔ vivo*). ⚠️ **E a wave tornou-o alcançável:** antes exigia uma
+janela de 20 px (impossível), depois uma de **~735 px de largura**. Cura: `ruler::live_bands`,
+a porta única. *Os dois lados já liam o mesmo rect e continuavam a ler predicados diferentes.*
+
+### D3 (regressão minha, menor) — a guia inagarrável
+
+O predicado do **agarrar** foi com a faixa para a `draw_area` por arrasto, e uma guia largada
+sobre um painel passou a ser inagarrável — **sem comando de limpar guias em lado nenhum**.
+⇒ nascer e morrer alcançam a **faixa**; agarrar alcança a **janela**, como sempre alcançou.
+
+### D4 — o dock do fundo
+
+O `timeline` nasce **exactamente** em `area_x0` e ocupa 240 px no fundo da banda: partilhava
+**4 800 px²** com a régua da esquerda. O próprio `layout.rs` chama-lhe *«General timeline dock»*,
+logo «depois do chrome DOCADO» era impreciso. Cura: `reserve_bottom_strip`, chamada **depois** do
+`dock_timeline_into_motion` (que move o rect — a ordem é load-bearing e tem gate).
+
+### Placar
+
+**9 gates** (eram 5 — três substituídos por errados-por-construção, quatro novos) ·
+**8 mutações, 8 mortas**. As três novas: a coluna do takeover não reservada (**a regressão** ⇒ lei
+vermelha), o `hit` a deixar de perguntar a porta, a fiação da faixa de fundo apagada.
+
+### ⚠️ O que a auditoria nomeou e NÃO foi curado
+
+`clamp_panel_rect` (`hero/paint.rs`) move e alarga os painéis **depois** de a `draw_area` ser
+fixada — um painel **arrastado à mão** ainda tapa a régua. É a `allowed_slots` / `can_float` da
+D1 do Enio (a fase seguinte), não esta.
+
+### ⛔ E a auditoria corrigiu um NÚMERO meu, que eu tinha propagado por nove documentos
+
+A medição original dava a régua esquerda a **87,8 %** tapada, somando *«rail 17 400 + barra 384 +
+HUD 204»*. O termo do HUD é **falso**: o `bottom_hud` é **centrado** (`x ∈ [443, 923]`) e a faixa
+da régua é `x ∈ [0, 20]` — **não se tocam**. O número é `17 784 / 20 480` = **86,8 %**.
+
+⭐ A conclusão não muda (o trilho sozinho já faz 85 %), mas o dígito tinha viajado para nove
+documentos, dois doc-comments, um gate e o roteiro de um smoke antes de alguém o reconferir.
+**Um termo a mais numa soma sobrevive a toda leitura que confia no total.**
 
 ---
 

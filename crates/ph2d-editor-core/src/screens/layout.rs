@@ -301,7 +301,7 @@ pub struct HeroLayout {
     ///
     /// | | tapado por chrome docado |
     /// |---|---:|
-    /// | régua da esquerda ancorada em `canvas` (até 2026-08-30) | **87,8 %** — o trilho cobre-a inteira |
+    /// | régua da esquerda ancorada em `canvas` (até 2026-08-30) | **86,8 %** — o trilho cobre-a inteira |
     /// | régua de cima ancorada em `canvas` | **29,4 %** — a barra de topo |
     /// | as duas ancoradas em `draw_area` | **0,0 %** |
     ///

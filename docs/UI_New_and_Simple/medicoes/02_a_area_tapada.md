@@ -75,9 +75,20 @@ Inspector `(1048,94,304,870)` · HUD `(14,972,1338,34)`.
 | régua | área | tapada por | px² | **%** |
 |---|---:|---|---:|---:|
 | **de cima** (1366 × 20) | 27 320 | barra superior | 8 028 | **29,4 %** |
-| **da esquerda** (20 × 1024) | 20 480 | rail 17 400 + barra 384 + HUD 204 | 17 988 | **⛔ 87,8 %** |
+| **da esquerda** (20 × 1024) | 20 480 | rail 17 400 + barra 384 | 17 784 | **⛔ 86,8 %** |
 
-⭐⭐⭐ **A régua da esquerda está 87,8 % tapada — e o culpado principal não é um painel
+> ⚠️ **CORRECÇÃO (2026-08-30, achada pela auditoria da wave que curou isto).** A 1.ª redacção
+> desta linha somava *«+ HUD 204»* e dava **87,8 %**. O termo do HUD é **falso**: o
+> `bottom_hud` é **centrado** — `x = (1366 − 480)/2 = 443`, logo `x ∈ [443, 923]` — e a faixa da
+> régua esquerda é `x ∈ [0, 20]`. **Não se tocam.** O HUD contribui **zero**, e o número é
+> `(17 400 + 384) / 20 480 = 86,84 %`.
+>
+> ⭐ *A conclusão não muda* (o culpado continua a ser o trilho, com 85 % sozinho) — mas o número
+> tinha sido propagado para nove documentos, dois doc-comments, um gate e o roteiro de um smoke
+> antes de alguém o reconferir. **Um termo a mais numa soma sobrevive a toda leitura que confia
+> no total.**
+
+⭐⭐⭐ **A régua da esquerda está 86,8 % tapada — e o culpado principal não é um painel
 flutuante: é o rail de ferramentas**, que começa em `x = 0`, tem 57 px de largura e cobre os
 20 px da régua ao longo de toda a faixa de chrome.
 

@@ -152,7 +152,7 @@ produzir uma tela que não sabe desfazer, e no iPad arrastar divisórias finas c
 
 **O que isto cura, e é medido** ([`medicoes/02`](medicoes/02_a_area_tapada.md)): hoje
 `left_band = (canvas.x, canvas.y, 20, canvas.h)` com `canvas = (0,0,w,h)`, e o rail também
-começa em `x = 0` ⇒ **87,8 % da régua da esquerda por baixo do rail**. Com a régua dentro da
+começa em `x = 0` ⇒ **86,8 % da régua da esquerda por baixo do rail**. Com a régua dentro da
 área, ela começa **depois** do rail e a sobreposição é **estruturalmente zero**.
 
 **As alternativas recusadas:**

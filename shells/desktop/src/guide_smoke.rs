@@ -124,7 +124,7 @@ fn announce(app: &mut crate::App) {
     eprintln!("  0. As duas faixas graduadas aparecem nas bordas da ÁREA DE DESENHO — a de");
     eprintln!("     cima logo abaixo da barra do topo, a da esquerda logo à direita do painel");
     eprintln!("     Hierarchy (ou do trilho, se ele estiver fechado). ⚠️ Desde 2026-08-30 elas");
-    eprintln!("     NÃO nascem na borda da janela: ali o trilho tapava 87,8% da régua esquerda");
+    eprintln!("     NÃO nascem na borda da janela: ali o trilho tapava 86,8% da régua esquerda");
     eprintln!("     e a barra 29,4% da de cima. Feche a Hierarchy e a régua acompanha.");
     eprintln!("     Sem a ferramenta Vector elas somem — e as guias FICAM, visíveis e magnéticas.");
     eprintln!("  1. CRIAR — arraste de dentro da faixa de cima para baixo: nasce uma guia");

@@ -40,7 +40,7 @@ de que os painéis passam a ser derivados.
 
 ```
     A. modelo de áreas ──┬── D. a régua e o trilho viram REGIÕES da área
-                         │      (cura a foto 1 — 87,8 % tapada)
+                         │      (cura a foto 1 — 86,8 % tapada)
                          │
                          ├── E. painéis declaram allowed_slots
                          │      (cura a foto 2 — e ⚠️ REMOVE a fuga do gizmo
@@ -132,7 +132,7 @@ regiões dela.
 
 | | antes | depois |
 |---|---:|---:|
-| régua da esquerda tapada | **87,8 %** | **0,0 %** |
+| régua da esquerda tapada | **86,8 %** | **0,0 %** |
 | régua de cima tapada | **29,4 %** | **0,0 %** |
 
 ⭐ **Custou menos do que o §3 previa, e a razão é medível:** `ruler::top_band`/`left_band`/`hit`

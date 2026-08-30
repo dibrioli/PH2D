@@ -142,7 +142,7 @@ espec pronta:
 ⭐⭐ **O trilho de ferramentas e a régua são REGIÕES do `CENTER`, não faixas da janela.** É a
 generalização de D5, e é o que apaga o defeito das duas réguas de uma vez:
 
-- Hoje: `rail.x = 0` e `left_band.x = 0` ⇒ 87,8 % tapada.
+- Hoje: `rail.x = 0` e `left_band.x = 0` ⇒ 86,8 % tapada.
 - No modelo: a área dá `[0..57]` ao trilho e `[57..77]` à régua. **Não há sobreposição porque não
   há coordenada partilhada.**
 
@@ -163,7 +163,7 @@ No alvo 1366 × 1024. Trilho 57, régua 20, painel esquerdo 308, direito 304.
 | só a direita | 1062 | 985 | **72,1 %** |
 | **ambos recolhidos** | 1366 | 1289 | **⭐ 94,4 %** |
 
-**Contra hoje:** 51,0 % de chrome, régua esquerda 87,8 % tapada — e ⛔ **recolher os painéis hoje
+**Contra hoje:** 51,0 % de chrome, régua esquerda 86,8 % tapada — e ⛔ **recolher os painéis hoje
 não devolve a régua**, porque o trilho continua em `x = 0`.
 
 ⭐⭐ **Repare no que este modelo compra, e no que NÃO compra.**

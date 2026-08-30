@@ -7,7 +7,7 @@
 //! (`layout.rs`, `let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h)`).
 //! O trilho de ferramentas nasce em `x = viewport.x` e a barra de topo em `y = viewport.y + 14`,
 //! e as duas são pintadas **depois** da régua. ⇒ no viewport de referência (1366 × 1024, que é
-//! o iPad Pro 12,9" — o alvo declarado dos tokens) a régua da esquerda ficava **87,8 % tapada** e
+//! o iPad Pro 12,9" — o alvo declarado dos tokens) a régua da esquerda ficava **86,8 % tapada** e
 //! a de cima **29,4 %** (medição em `docs/UI_New_and_Simple/medicoes/02_a_area_tapada.md`).
 //!
 //! ⭐ **A cura não é uma verificação — é a ausência de coordenada partilhada.** As réguas passam

@@ -318,6 +318,8 @@ mod instance_unmake;
 mod instance_variant;
 /// ⭐ **Os VERBOS de instância** (ADR-0164 / F4.5) — criar componente, destacar, aplicar ao mestre.
 mod instance_verbs;
+/// ⭐ **As travessias que os verbos partilham** — irmão por assunto, ver o cabeçalho de lá.
+mod instance_verbs_walk;
 /// ⭐ **INSTANCIAR** (ADR-0164 / F4.2) — a porta que compõe a cópia profunda com o remap.
 mod instantiate;
 mod integration;

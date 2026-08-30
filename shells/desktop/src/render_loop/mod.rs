@@ -48,6 +48,9 @@ mod gizmo_prune;
 mod gizmo_readout;
 mod hierarchy;
 mod hierarchy_add_root;
+/// ⭐⭐ **O menu de um cartão da biblioteca, e a poda de selecção morta** — irmão por assunto do
+/// [`hierarchy`], ver o cabeçalho de lá.
+mod hierarchy_asset_verbs;
 // ⚠️ **A row *Duplicate*, por ASSUNTO** — o `hierarchy.rs` voltou ao tecto de 600 LOC quando a
 // cópia ganhou as duas leis que lhe faltavam (auditoria §1.4/§1.2). Lá o dreno das intenções, aqui
 // o que duplicar quer dizer.
@@ -336,6 +339,8 @@ pub(crate) mod painter_stamp_device;
 /// "which entity gets a point handle" is gated headless.
 pub(crate) mod point_gizmo;
 mod present;
+/// ⭐⭐⭐ **As faixas de desenho** (ADR-0154 Fase 2) — irmão por assunto do [`present`].
+mod present_bands;
 /// ⚠️ `pub(crate)`: os gates do [`crate::preview_drive`] correm o tique de fora do `render_loop` —
 /// é ele o motor que declara a §11 como pré-visualização, e um gate que o encenasse à mão mediria
 /// a encenação.

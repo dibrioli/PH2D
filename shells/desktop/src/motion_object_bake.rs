@@ -553,10 +553,9 @@ pub(crate) fn bake_rgba_many(
     Some((rgba, wpx, hpx, size))
 }
 
-/// Lado máximo de uma miniatura — ⚠️ **a lei mudou-se para [`crate::thumbnail`]** quando ganhou o
-/// terceiro consumidor (o navegador de assets, 2026-08-30). Re-exportado para os chamadores e os
-/// gates deste módulo continuarem a escrevê-lo como sempre.
-pub(crate) use crate::thumbnail::THUMB_MAX;
+// ⚠️ **O `THUMB_MAX` mudou-se para [`crate::thumbnail`]** com a lei, quando ela ganhou o terceiro
+// consumidor (o navegador de assets, 2026-08-30). ⛔ Ele NÃO é re-exportado aqui: uma re-exportação
+// que só os testes usam é morta no binário, e o clippy diz isso — quem o quer nomeia a porta.
 
 /// A miniatura de um ladrilho assado, no vocabulário do painel do Motion.
 ///

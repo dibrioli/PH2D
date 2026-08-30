@@ -345,66 +345,27 @@ pub(super) fn dispatch(
         t.translation.x = world[0];
         t.translation.y = world[1];
     }
-    // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C). ⚠️ Slot próprio, e por isso um
-    // `select_out` próprio: ele é exclusivo dos outros dois por gesto, mas partilhar a variável
-    // faria o mesmo defeito que a nota dos DOIS slots acima descreve.
-    let mut card_select: Option<u64> = None;
-    if let Some((asset, verb)) = asset_card_verb
-        && crate::asset_card_verbs::drain(
-            asset,
-            verb,
-            sim,
-            registry,
-            echo,
-            &mut hero.gizmo,
-            toasts,
-            &mut crate::instance_docs::OwnedDocs {
-                vec_scene,
-                vec_entities,
-            },
-            {
-                let (dx, dy) = crate::input_dispatch::screen_offset_world(
-                    camera,
-                    window_size,
-                    crate::input_dispatch::PASTE_OFFSET_PX,
-                );
-                [dx as f32, dy as f32]
-            },
-            &mut card_select,
-        )
-    {
-        title_dirty = true;
-    }
+    // ⭐⭐ **O menu de um cartão da biblioteca** (etapa C) — o corpo mudou-se para o irmão
+    // `hierarchy_asset_verbs` quando este ficheiro bateu no tecto de 600 LOC do shell.
+    let card_select = super::hierarchy_asset_verbs::drain_card_verb(
+        asset_card_verb,
+        sim,
+        registry,
+        echo,
+        hero,
+        toasts,
+        vec_scene,
+        vec_entities,
+        camera,
+        window_size,
+        &mut title_dirty,
+    );
     // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
     // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
     if let Some(bits) = verb_select.or(drop_select).or(card_select) {
         hero.gizmo.replace_selection(Some(bits));
     }
-    // ⭐⭐⭐ **A selecção nunca guarda bits de uma entidade que já não existe.**
-    //
-    // ⚠️ **Isto não é defensivo — é a metade que o `Remove from Library` obriga a escrever.** Ele
-    // é o **primeiro** verbo desta família que APAGA entidades (os outros marcam, copiam ou
-    // desligam elos), e uma receita que estivesse seleccionada — pelo modo de edição de mestre —
-    // deixaria o gizmo a desenhar à volta de bits mortos. ⛔ O `HierDelete` cura o caso dele à
-    // mão, linha a linha, e por isso a cura não estava disponível para mais ninguém.
-    let dead: Vec<u64> = hero
-        .gizmo
-        .iter_selected()
-        .filter(|bits| {
-            sim.world()
-                .get_entity(ph2d_ecs::Entity::from_bits(*bits))
-                .is_err()
-        })
-        .collect();
-    if !dead.is_empty() {
-        if hero.gizmo.selection.is_some_and(|s| dead.contains(&s)) {
-            hero.gizmo.selection = None;
-        }
-        hero.gizmo.extra_selection.retain(|b| !dead.contains(b));
-        if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
-            hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
-        }
-    }
+    super::hierarchy_asset_verbs::prune_dead_selection(hero, sim);
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);
         hero.gizmo.replace_selection(Some(bits));

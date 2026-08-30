@@ -182,86 +182,31 @@ impl crate::App {
                 } else {
                     &sprite_extra
                 };
-                // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2, report do Enio de 2026-08-30).
-                //
-                // Sem intercalação (`banded == false`) tudo o que se segue é **byte-idêntico** ao
-                // pipeline de sempre: uma passagem de sprite, o tonemap, o Vello com documento +
-                // chrome, e o compositor a ler a saída do tonemap.
-                //
-                // Com intercalação, o mundo passa a empilhar-se no `world_rt`:
-                //   1. limpa-se o acumulador com a cor do canvas;
-                //   2. desenham-se as faixas ABAIXO da última faixa de sprites;
-                //   3. a última faixa de sprites é o pipeline ABAIXO, inteiro e intocado — é por
-                //      isso que o Flip, a malha 3D, o bloom e o halo do Motion continuam a correr
-                //      exactamente uma vez, sem uma linha movida;
-                //   4. cola-se essa faixa, depois as faixas de vetor que ficam POR CIMA;
-                //   5. o chrome vai para a cena de sempre e o compositor lê o acumulador.
-                let (plan_bands, band_degraded) = frame_order.plan();
-                let banded = crate::draw_bands::needs_banding(&plan_bands);
-                let last_sprite = plan_bands
-                    .iter()
-                    .rposition(|b| b.family == crate::draw_bands::Family::Sprite);
+                // ⭐⭐⭐ **AS FAIXAS DE DESENHO** (ADR-0154 Fase 2) — a lei, os cinco passos e o
+                // porquê de a ÚLTIMA faixa de sprites não se ter movido vivem no cabeçalho do
+                // irmão `present_bands`. Sem intercalação nada disto corre e o quadro é
+                // **byte-idêntico** ao de sempre.
+                let plan = super::present_bands::plan_frame(frame_order);
+                let banded = plan.banded;
                 if banded {
-                    if band_degraded {
-                        // ⛔ Acima do tecto de faixas — a ordem da Fase 1, e ela DIZ.
-                        eprintln!(
-                            "[zorder] cena com mais de {} alternancias vetor/sprite: a ordem cai na da Fase 1",
-                            crate::draw_bands::MAX_BANDS
-                        );
-                    }
-                    world_rt.ensure_size(surface.gpu(), (window_size.width, window_size.height));
-                    // ⚠️ **LINEAR** — a mesma cor que o passe de sprite usa. Quem converte para o
-                    // espaço do desenhista é a porta, e não o chamador (report do Enio: *«o canvas
-                    // escurece»*, que foi exactamente esta escolha feita no sítio errado).
-                    world_rt.clear_linear(surface.gpu(), wgpu::Color { r, g, b, a: 1.0 });
-                    let upto = last_sprite.unwrap_or(plan_bands.len());
-                    let mut doc_i = 0usize;
-                    for band in plan_bands.iter().take(upto) {
-                        match band.family {
-                            crate::draw_bands::Family::Sprite => {
-                                // ⚠️ Sem `extra` e sem `gpu_extra`: o fluxo cozido do Motion não
-                                // tem rank (ele não passa pelo ECS) e pertence à faixa que corre o
-                                // pipeline inteiro — a última.
-                                renderer.render_with_streams(
-                                    game_rt.view(),
-                                    present,
-                                    camera,
-                                    window_size,
-                                    wgpu::Color::TRANSPARENT,
-                                    &[],
-                                    None,
-                                    scene_viewport,
-                                    Some((band.lo, band.hi)),
-                                );
-                                tonemap.run(surface.gpu());
-                                band_blit.blit(
-                                    surface.gpu(),
-                                    world_rt.blend_view(),
-                                    tonemap.output_view(),
-                                    ph2d_render::BandSource::Sprites,
-                                );
-                            }
-                            crate::draw_bands::Family::Vector => {
-                                if let Some(scene) = band_doc_scenes.get(doc_i) {
-                                    if let Err(e) = vello_pass.render_to_intermediate(
-                                        surface.gpu(),
-                                        scene.inner(),
-                                        (window_size.width, window_size.height),
-                                        VelloColor::TRANSPARENT,
-                                    ) {
-                                        eprintln!("[zorder] faixa de vetor falhou: {e}");
-                                    }
-                                    band_blit.blit(
-                                        surface.gpu(),
-                                        world_rt.blend_view(),
-                                        vello_pass.intermediate_view(),
-                                        ph2d_render::BandSource::Vector,
-                                    );
-                                }
-                                doc_i += 1;
-                            }
-                        }
-                    }
+                    super::present_bands::draw_lower_bands(
+                        surface.gpu(),
+                        &plan,
+                        wgpu::Color { r, g, b, a: 1.0 },
+                        super::present_bands::BandGear {
+                            world_rt,
+                            renderer,
+                            game_rt,
+                            present,
+                            camera,
+                            window_size,
+                            scene_viewport,
+                            tonemap,
+                            band_blit,
+                            vello_pass,
+                            band_doc_scenes,
+                        },
+                    );
                 }
                 renderer.render_with_streams(
                     game_rt.view(),
@@ -277,9 +222,7 @@ impl crate::App {
                     extra,
                     motion_gpu,
                     scene_viewport,
-                    last_sprite
-                        .filter(|_| banded)
-                        .map(|i| (plan_bands[i].lo, plan_bands[i].hi)),
+                    plan.rank_window(),
                 );
                 // ⚠️ **A SONDA DO DRIFT** (`PH2D_PAN_DIAG=1`, report do Enio de 2026-08-25) —
                 // DEPOIS do passe, de propósito: o que ela tem de imprimir é o sub-retângulo
@@ -534,45 +477,20 @@ impl crate::App {
                     let g = surface.gpu();
                     ph2d_gpu::pass_profiler::span_begin(&g.device, &g.queue, "render.vello")
                 };
-                // ⭐ **A metade de CIMA das faixas** (ADR-0154 Fase 2) — a última faixa de
-                // sprites (que é o pipeline inteiro acima) e as faixas de vetor que ficam por cima
-                // dela. Depois disto o `vector_scene` só tem o chrome, e ele vai para o
-                // intermediário do Vello como sempre.
+                // ⭐ A metade de CIMA das faixas — ver o cabeçalho do `present_bands`.
                 if banded {
-                    band_blit.blit(
+                    super::present_bands::draw_upper_bands(
                         surface.gpu(),
-                        world_rt.blend_view(),
-                        tonemap.output_view(),
-                        ph2d_render::BandSource::Sprites,
+                        &plan,
+                        super::present_bands::UpperGear {
+                            world_rt,
+                            window_size,
+                            tonemap,
+                            band_blit,
+                            vello_pass,
+                            band_doc_scenes,
+                        },
                     );
-                    let from = last_sprite.map_or(0, |i| i + 1);
-                    let mut doc_i = plan_bands
-                        .iter()
-                        .take(from)
-                        .filter(|b| b.family == crate::draw_bands::Family::Vector)
-                        .count();
-                    for band in plan_bands.iter().skip(from) {
-                        if band.family != crate::draw_bands::Family::Vector {
-                            continue;
-                        }
-                        if let Some(scene) = band_doc_scenes.get(doc_i) {
-                            if let Err(e) = vello_pass.render_to_intermediate(
-                                surface.gpu(),
-                                scene.inner(),
-                                (window_size.width, window_size.height),
-                                VelloColor::TRANSPARENT,
-                            ) {
-                                eprintln!("[zorder] faixa de vetor falhou: {e}");
-                            }
-                            band_blit.blit(
-                                surface.gpu(),
-                                world_rt.blend_view(),
-                                vello_pass.intermediate_view(),
-                                ph2d_render::BandSource::Vector,
-                            );
-                        }
-                        doc_i += 1;
-                    }
                 }
                 if let Err(e) = vello_pass.render_to_intermediate(
                     surface.gpu(),
@@ -592,28 +510,15 @@ impl crate::App {
                 // ⚠️ **O compositor troca de FONTE, e só na mudança de modo.** Ele guarda o
                 // `game_view` num bind group construído uma vez; re-ligá-lo por quadro seria uma
                 // alocação por quadro para um valor que quase nunca muda.
-                if banded != *compositor_reads_world {
-                    compositor.rebind(
-                        surface.gpu(),
-                        if banded {
-                            world_rt
-                                .texture()
-                                .create_view(&wgpu::TextureViewDescriptor {
-                                    label: Some("world RT sample view (sRGB)"),
-                                    format: Some(ph2d_render::WorldRt::SAMPLE_FORMAT),
-                                    ..Default::default()
-                                })
-                        } else {
-                            tonemap
-                                .output_texture()
-                                .create_view(&wgpu::TextureViewDescriptor::default())
-                        },
-                        vello_pass
-                            .intermediate_texture()
-                            .create_view(&wgpu::TextureViewDescriptor::default()),
-                    );
-                    *compositor_reads_world = banded;
-                }
+                super::present_bands::rebind_compositor_if_mode_changed(
+                    surface.gpu(),
+                    banded,
+                    compositor_reads_world,
+                    compositor,
+                    world_rt,
+                    tonemap,
+                    vello_pass,
+                );
                 compositor.run(surface.gpu(), frame.view());
                 // GPU pass profiler frame tail: resolve this frame's timestamp
                 // queries + kick the pipelined readback (prints every 120 frames).

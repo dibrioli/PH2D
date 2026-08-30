@@ -346,7 +346,7 @@ fn every_asset_card_menu_entry_dispatches_something() {
         }]);
         stage_card_menu(&mut host, ids::asset_cell_id(0));
         let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
-        if out != EventOutcome::Consumed || host.bus().len() == 0 {
+        if out != EventOutcome::Consumed || host.bus().is_empty() {
             dead.push(label);
         }
     }

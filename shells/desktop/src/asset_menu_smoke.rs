@@ -32,7 +32,8 @@ use ph2d_editor::NodeId;
 // estar em escopo para o roteiro a poder usar.
 use ph2d_editor::panel::PanelHostInternal;
 
-/// A entidade da receita, guardada entre quadros para os passos a jusante a poderem conferir.
+// A entidade da receita e o sítio do cartão, guardados entre quadros para os passos a jusante
+// os poderem conferir.
 thread_local! {
     static MASTER: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     /// Onde o primeiro cartão foi encontrado — os passos seguintes voltam AQUI, e não à posição

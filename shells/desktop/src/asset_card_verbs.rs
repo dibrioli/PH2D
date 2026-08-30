@@ -62,6 +62,9 @@ pub(crate) fn users_of(sim: &mut SimWorld, asset: DragPayload) -> Vec<u64> {
 ///
 /// ⚠️ **O `Select users` devolve `false` de propósito** — mudar a selecção não é uma edição, e
 /// marcá-la como tal poria um passo de undo sobre um gesto de *ver*.
+// um endereço, um verbo, o mundo, o registo, o eco, o gizmo, a voz, os documentos, o passo e o
+// destino da selecção — a mesma conta do `instance_verbs::drain`, que ele reusa
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn drain(
     asset: DragPayload,
     verb: AssetCardAction,

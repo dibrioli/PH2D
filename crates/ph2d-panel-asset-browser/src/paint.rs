@@ -553,7 +553,7 @@ thread_local! {
     /// id da `Blob` e o atlas serviria os pixels velhos, **sem erro nenhum**.
     static THUMB_TEX: std::cell::RefCell<
         std::collections::BTreeMap<ph2d_asset_index::AssetRef, (ph2d_asset_index::Thumb, ph2d_vector::StableImage)>,
-    > = std::cell::RefCell::new(std::collections::BTreeMap::new());
+    > = const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 /// Desenha a miniatura dentro do quadrado do cartão, **aspecto preservado e centrada**.

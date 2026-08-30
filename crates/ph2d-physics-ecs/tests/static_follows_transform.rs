@@ -90,6 +90,49 @@ fn run(bridge: &mut PhysicsBridge, sim: &mut SimWorld, from: u64, ticks: u64) ->
 ///
 /// Written RED-first: before the fix the ball hung at its old resting height
 /// while the slab was drawn a metre below it.
+///
+/// # ⛔⛔ A premissa «genuinamente ADORMECIDA» não era AFIRMADA — e ela deixou de ser
+/// barata em 2026-08-29
+///
+/// O doc dizia *«assenta até a bola estar genuinamente ADORMECIDA — o estado onde um bug de
+/// acordar se esconde»*, e o teste corria 180 tiques e conferia `rest ≈ 0,8`: uma ALTURA, que
+/// uma bola bem acordada também tem. ⚠️ A subida da `rapier2d` 0.35 baixou o
+/// `sleep_linear_threshold` de `0,4` para **`0,05`** (`8×` mais difícil de adormecer), e esta
+/// fixtura dá **3 s**. *Uma premissa que o gate não afirma é uma premissa que o gate perde em
+/// silêncio.*
+///
+/// ⛔⛔ **E a pose BIT-A-BIT parada — o critério do [`resting_pose`] — NÃO PROVA o sono
+/// AQUI, e isso mediu-se antes de se escrever a linha.** Naquele ficheiro a fixtura é uma
+/// pilha de 12 corpos, que **treme** enquanto está acordada; aqui é **uma bola sobre uma
+/// laje**, e ela fica exactamente parada muito antes de adormecer. Medido em 2026-08-30
+/// (cena replicada em `ph2d-physics`, onde `RigidBody::is_sleeping` é alcançável):
+///
+/// | tique | pose | `|v|` | `is_sleeping` |
+/// |---|---|---|---|
+/// | 32 | **última alteração** | `0` | `false` |
+/// | 33..144 | idêntica ao bit | `0` | **`false`** |
+/// | **145** | idêntica ao bit | `0` | **`true`** ← adormece aqui |
+/// | 180 (o fim do assentamento) | idêntica ao bit | `0` | `true` |
+///
+/// ⇒ *A bola fica bit-a-bit parada no tique 32 e só dorme no 145: o critério sozinho é
+/// satisfeito **113 tiques antes** da premissa.* Uma fixtura de 60 tiques passaria por ele
+/// com a bola bem acordada.
+///
+/// ⭐ **O que fecha é a DURAÇÃO, e ela é derivada do próprio produto:** a `rapier` adormece
+/// um corpo que fique sob os limiares durante [`PhysicsSettings::time_until_sleep`]. Logo,
+/// «parada há mais tiques do que esse tempo» **é** o critério dela, lido de fora. Aqui são
+/// `180 − 32 = 148` tiques de imobilidade contra os `2,0 s = 120` exigidos — e o gate lê o
+/// `time_until_sleep` do produto, de modo que subi-lo (ou encurtar o assentamento) põe este
+/// gate VERMELHO em vez de o deixar perder a premissa em silêncio.
+///
+/// ⚠️ **A conta é CONSERVADORA:** o relógio da `rapier` arranca quando a VELOCIDADE desce
+/// sob o limiar (tique ~25 aqui), antes de a pose congelar, então exigir `148 ≥ 120` pede
+/// mais imobilidade do que ela pede. *Uma inexactidão que subestima é folga.*
+///
+/// ⚠️ **E o limiar não é a alavanca deste gate**, porque a velocidade em repouso é
+/// **exactamente `0`**: qualquer `sleep_linear_threshold > 0` adormece-a, e só a sentinela
+/// `0,0` — que significa *«proibido dormir»* — a impediria. A alavanca real é o par
+/// «janela de assentamento × `time_until_sleep`», que é a que 2026-08-29 mexeu.
 #[test]
 fn a_static_body_dragged_during_play_carries_its_collider() {
     let (mut sim, slab, ball) = resting_scene();
@@ -97,8 +140,40 @@ fn a_static_body_dragged_during_play_carries_its_collider() {
 
     // Let it settle so the ball is genuinely ASLEEP on the slab — the state an
     // artist actually reaches before reaching for the wall, and the state a
-    // wake-up bug hides in.
-    let tick = run(&mut bridge, &mut sim, 0, 180);
+    // wake-up bug hides in. ⚠️ The premise is ASSERTED, not assumed: see the doc.
+    const SETTLE_TICKS: u64 = 180;
+    let mut last_move = 0u64;
+    let mut prev = bridge.body_pose(ball);
+    for t in 1..=SETTLE_TICKS {
+        bridge.dispatch(&mut sim, true, t);
+        let now = bridge.body_pose(ball);
+        if now != prev {
+            last_move = t;
+            prev = now;
+        }
+    }
+    let tick = SETTLE_TICKS;
+    // rapier's own sleep rule, read from outside: under the thresholds for
+    // `time_until_sleep`. A pose that has not moved a single bit is under any
+    // positive threshold, so "still for longer than that" implies asleep.
+    let needed = (bridge.settings().time_until_sleep * 60.0).ceil() as u64;
+    let still = SETTLE_TICKS - last_move;
+    assert!(
+        still >= needed,
+        "fixture: the ball is NOT asleep when the drag happens. It last moved at tick \
+         {last_move}, so it has been motionless for {still} ticks, and rapier needs \
+         {needed} (time_until_sleep = {} s) before it sleeps. This gate is about a WAKE-UP \
+         bug and an awake ball cannot expose one — lengthen SETTLE_TICKS",
+        bridge.settings().time_until_sleep
+    );
+    // And the half that keeps "motionless" from being vacuous: the ball got there by
+    // FALLING, so the scene is not one where nothing ever happened.
+    assert!(
+        last_move > 0,
+        "fixture: the ball never moved at all — it was born at rest, so 'motionless' \
+         says nothing about settling"
+    );
+
     let rest = y_of(&sim, ball);
     assert!(
         (rest - 0.8).abs() < 0.01,

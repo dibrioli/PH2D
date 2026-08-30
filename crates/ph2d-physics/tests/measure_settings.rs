@@ -161,6 +161,20 @@ fn measure_where_damping_stops_meaning_anything() {
 /// constraints are stable a long way past Nyquist, so the shipped ceiling is
 /// derived from THIS table and not from the formula.
 ///
+/// ⛔⛔ **A TABELA ACIMA É PRÉ-`rapier2d` 0.35 E ESTÁ OBSOLETA — re-medida em 2026-08-30.** O solver
+/// foi reescrito na subida daquele dia, e a mesma sonda passou a imprimir **`0,0000 mm` nas SETE
+/// frequências, a de 1920 Hz incluída**. O `0,114 mm` que fundamentava o tecto **já não é
+/// reprodutível**, e o número que hoje o substitui é outro: com os 4 sub-passos que shipam, a
+/// primeira deriva aparece a **3840 Hz** (`0,0606 mm`), e a 1920 Hz só com **um** sub-passo
+/// (`1,106 mm`).
+///
+/// ⚠️ **O tecto continua certo; o que caducou é a medição que o justificava** — e uma justificação
+/// caducada é pior que nenhuma, porque quem a ler re-deriva o tecto de um número que a máquina já
+/// não produz. A tabela nova vive ao lado do gate que a usa
+/// (`ph2d-physics/tests/penetration.rs::a_settled_pile_is_completely_still`), que é quem depende
+/// dela. *Uma medição herda a autoridade da versão em que foi tirada, e essa autoridade caduca
+/// com ela.*
+///
 /// This prints the residual motion of a stack that should be dead still.
 #[test]
 #[ignore = "measurement harness — run explicitly with --release --nocapture"]

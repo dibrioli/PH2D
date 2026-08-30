@@ -131,7 +131,18 @@ pub(super) static SHADING: &[Row] = &[
         decimals: 2,
         get: |u| u.sss,
         set: |u, v| u.sss = v,
-        show: always,
+        // ⛔⛔ **`under_the_rig`, e nao `always`** — corrigido em 2026-08-30. As duas funcoes de
+        // subsuperficie sao chamadas no `mesh.wgsl` nas linhas **898** (`sss_diffuse`) e **904**
+        // (`transmittance`), e o desvio do matcap devolve na **879**. Com `DEFAULT_MATCAP =
+        // Some(0)` — o matcap nasce LIGADO — nenhuma das duas e' alcancada, e o slider era
+        // multiplicado por um neutro.
+        //
+        // ⚠️ **A lei ja' estava escrita neste ficheiro, para os vizinhos:** o doc do
+        // [`under_the_rig`] diz, sobre as duas pistas de lampada, *«seriam dois controles que nao
+        // fazem nada — e nao um pouco: o artista arrastaria o angulo da luz olhando uma escultura
+        // que nao se move»*. Um matcap e' sombreamento funcao apenas da normal de vista; ele nao
+        // le^ o rig **nem a subsuperficie**, pela mesma definicao.
+        show: under_the_rig,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },
@@ -154,7 +165,10 @@ pub(super) static SHADING: &[Row] = &[
         // consultada, então este slider não moveria um pixel — e um controle que
         // não faz nada é o que esta casa varre a cada wave. É a mesma lei do
         // `Plane Offset`, que só existe nos verbos que leem um plano.
-        show: |u| u.sss > 0.0,
+        // ⚠️ **As DUAS condicoes, e nao so' a da forca.** Com um matcap ligado a subsuperficie
+        // inteira e' inalcancavel (ver a nota do `sss`), entao este slider era **duplamente**
+        // inerte no estado em que o painel nasce. Corrigido em 2026-08-30.
+        show: |u| under_the_rig(u) && u.sss > 0.0,
         level: UiLevel::Basic,
         place: Place::Knobs,
     },

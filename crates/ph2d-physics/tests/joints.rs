@@ -907,6 +907,25 @@ fn a_degenerate_slider_axis_falls_back_instead_of_poisoning_the_pose() {
 ///
 /// ⚠️ **A prova de que ele morde:** apagar o `.normalize()` do ramo verdadeiro de `unit_or_x`
 /// deixa este gate VERMELHO e o irmão acima VERDE — que é a definição de a metade que faltava.
+///
+/// # ⛔⛔ E faltava-lhe o CONTROLO POSITIVO — a igualdade sozinha é satisfeita por `0,0 == 0,0`
+///
+/// Até 2026-08-30 este gate media *«os dois percorreram o mesmo»* e *«nenhum é `NaN`»*, e
+/// **nada exigia que algum deles se mexesse**. Um carro parado na âncora satisfaz as duas
+/// afirmações com a normalização por testar. O irmão
+/// [`a_limited_slider_stops_at_the_authored_stroke`] sempre teve esta metade (*«o controlo:
+/// um slider sem limite continua a cair»*) — este não. A linha nova é a dele.
+///
+/// ## Medido e provado por mutação (2026-08-30, `--profile ci-test`)
+///
+/// | mutação em `world/joints.rs::unit_or_x` | `d_unit` | `d_scaled` | quem apanha |
+/// |---|---|---|---|
+/// | — (o que shipa) | `0,500000` | `0,500000` | ⭐ verde |
+/// | apagar o `.normalize()` | `0,500000` | **`0,100000`** | a IGUALDADE (a metade velha) |
+/// | o eixo nunca honrado, sempre o recuo `X` | **`0,000000`** | **`0,000000`** | ⛔ só o **CONTROLO** |
+///
+/// ⇒ A 2ª mutação é literalmente o `0,0 == 0,0` do parágrafo acima: ela **passa** pela
+/// igualdade e pelo `is_finite`, e a única linha que a vê é a que faltava.
 #[test]
 fn a_non_unit_slider_axis_is_normalised_before_it_reaches_the_solver() {
     // O mesmo eixo em duas escalas: um já unitário, o outro cinco vezes maior.
@@ -955,9 +974,24 @@ fn a_non_unit_slider_axis_is_normalised_before_it_reaches_the_solver() {
     let d_unit = travel(unit);
     let d_scaled = travel(scaled);
 
+    println!("slider axis: unit {d_unit:.6} m, scaled {d_scaled:.6} m");
+
     assert!(
         d_unit.is_finite() && d_scaled.is_finite(),
         "nenhum dos dois pode envenenar a pose: {d_unit} / {d_scaled}"
+    );
+    // ⛔⛔ **O CONTROLO POSITIVO, e sem ele este gate era um `0,0 == 0,0`.** A igualdade
+    // abaixo é satisfeita por um carro que nunca saiu da âncora — finito, igual, e com a
+    // normalização por testar. O irmão `a_limited_slider_stops_at_the_authored_stroke`
+    // sempre teve esta metade (*"o controlo: um slider sem limite continua a cair"*); esta
+    // não. Medido 2026-08-30: `d_unit = 0,500000 m` — o carro encosta EXACTAMENTE no
+    // batente de `0,5 m`, então a barra de `0,4 m` tem `20%` de folga e um carro parado
+    // (`0,0`) atravessa-a por inteiro.
+    assert!(
+        d_unit > 0.4,
+        "o controle: o carro tem de correr ate' ao batente, e andou {d_unit:.4} m. Sem esta \
+         metade um carro PARADO daria `0,0 == 0,0` e a igualdade abaixo passaria com a \
+         normalizacao por testar"
     );
     assert!(
         (d_unit - d_scaled).abs() < 0.02,

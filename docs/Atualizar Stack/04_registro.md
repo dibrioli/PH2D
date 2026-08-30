@@ -711,6 +711,122 @@ O que fica é o endereço, o mecanismo e a data de cada um.
   quadro). Quando não cabe, a imagem **não é desenhada, em silêncio** — um modo de falha que na 0.8
   era inalcançável. ⭐ O `StableImage` que cura isto **já existe** e é usado no caminho dos padrões.
 
+## §20 — Os testes que o CI nunca corre: os QUATRO números (2026-08-30)
+
+Varredura dedicada, parada a pedido para libertar a máquina. A cobertura é a **união** de duas
+passagens.
+
+| | |
+|---|---:|
+| `#[ignore]` que existem (o nextest selecciona) | **1 990** |
+| ⭐ que **correram de facto** | **716 (36%)** |
+| que passaram | 706 |
+| que falharam | **11** |
+| ⛔ **por medir — nunca correram** | **1 274 (64%)** |
+
+### §20.1 — ⭐ 64% dos ignorados não são portões: são SONDAS
+
+| família | n | % |
+|---|---:|---:|
+| **sonda / medição — imprime, não afirma** | **1 283** | 64,0% |
+| GPU / precisa de adaptador | 486 | 24,3% |
+| ⚠️ **sem motivo declarado** (`#[ignore]` nu) | **207** | 10,3% |
+| manual / sob demanda | 10 | 0,5% |
+| ⛔ **declaram-se VERMELHOS na própria fonte** | **10** | 0,4% |
+| lento · outros | 10 | 0,5% |
+
+⇒ A conclusão muda o desenho de qualquer instrumento futuro: **a maioria do que está marcado para
+não correr não é um teste falhado à espera de cura — é uma medição que imprime.** Tratá-los todos
+como gates produz um relatório com 1 283 falsos alarmes.
+
+### §20.2 — ⚠️ 428 testes (21%) carregam um salto SILENCIOSO
+
+`let Some(gpu) = try_headless_gpu() else { eprintln!("no GPU adapter — skipping"); return; }`.
+**Nesta máquina há GPU, então eles correram.** ⛔ **No CI, que não tem adaptador, os 428 passam sem
+testar nada** — e contam como aprovados no total da suíte. *Skip gracioso não é verde*, e a lei já
+estava escrita no §5.0 do `CLAUDE.md`; o que faltava era o número.
+
+### §20.3 — Os 11 vermelhos, todos re-corridos SOZINHOS com a máquina calma
+
+**Nenhum é regressão da subida do stack.** Um é membro novo da família de carga
+(`crossing_the_reach_boundary_does_not_step_the_cost` — `5,669×` sob fan-out, verde sozinho); quatro
+**declaram-se vermelhos no próprio `#[ignore]`**; um **panica de propósito** (é um gerador de bytes,
+não um gate); um falha só por lhe faltar uma variável de ambiente; dois são pré-existentes da §9.
+
+⭐ **`probe_rig_limits`** — o candidato mais forte a regressão nova — foi investigado até ao fim:
+falha **determinística** em `0,005 s` num `.expect("corpo vivo")`, com a máquina calma. **Não é
+desta jornada:** a subida tocou naquela crate **um doc-comment**, e o ficheiro do teste e a função
+que ele exercita datam de 24-26/08, **antes** do commit-base. O que o parte é o refactor *«a física
+aponta por IDENTIDADE»*, não a subida.
+
+### §20.4 — ⛔⛔ A corrida prescrita ENVENENAVA-SE, e o número é obsceno
+
+A forma prescrita punha **33 processos de teste × pool de 32 threads = 979 threads em 32 cores**,
+com carga 250-450 — que é **exactamente a condição que fabrica a família de flakes que a tarefa
+existia para separar**. Com `-j 8` e `RAYON_NUM_THREADS=4` (32 threads, carga ~8) a mesma suíte
+correu com tempos reais — **`0,006 s` onde antes dava `30 s`** — e um vermelho virou verde.
+
+⭐⭐ *Quem mede sob fan-out mede o fan-out.* Toda corrida desta suíte passa a nomear o
+paralelismo com que foi tirada.
+
+### §20.5 — ⏳ O que fica POR MEDIR, nomeado
+
+**1 274 de 1 990.** Crates inteiras que nenhuma passagem alcançou: `ph2d-tool-painter` (286) ·
+⚠️ **`ph2d-physics-ecs` (184)** — *a crate que a subida da `rapier` mais mexeu, inteiramente por
+medir* · `ph2d-render` (155) · `ph2d-sculpt3d` (145) · `ph2d-physics` (67) · `ph2d-mesh-render`
+(62) · e a cauda.
+⛔ Inclui **7 dos 12 vermelhos da §9**, que **não** foram re-medidos.
+
+## §21 — ⛔⛔ Os 52 gates de GPU que o CI corre e que NUNCA testam nada (2026-08-30)
+
+### §21.1 — O número que o Enio pediu
+
+**Quantos passavam sem executar nada?**
+- **Nesta máquina: zero** — ela tem **dois** adaptadores (RTX 5060 Ti + o iGPU do Ryzen via RADV), e
+  os 52 correram de facto: `8,07 s`, `2,6-5,3 s` cada, **52/52 verdes**.
+- ⛔ **No CI: os 52, sempre.** E não é conjectura: o próprio repo o diz em
+  `ph2d-gpu/src/context.rs:150` (*«requires a GPU adapter (no GPU on CI)»*), e **nenhum workflow
+  instala adaptador nenhum**. Provado por mutação (`try_headless_gpu → None`): **6/6 PASS em
+  `0,29 s`** contra `3,1-3,4 s` reais. *Verde sem tocar numa GPU.*
+
+⭐⭐⭐ **E o achado maior: a «pista de GPU» que 43 mensagens de `#[ignore]` mandam usar NÃO EXISTE**
+em `.github/workflows/`. As 149 irmãs não estão adiadas para outro corredor — **não correm em lado
+nenhum**. *Um adiamento para um sítio que não existe é um cancelamento com outro nome.*
+
+⚠️ **E há um buraco maior ao lado:** o `ph2d-tool-color-equalization` tem **mais 48** sem `#[ignore]`
+— e essa crate **nem está na lista `-p` do `spike.yml`**. Também não correm em lado nenhum.
+
+### §21.2 — ⭐ A medição que escolheu a cura
+
+**28 dos 52 já tentam anunciar o salto** com `eprintln!("no GPU adapter — skipping")`. **Ninguém os
+ouve:** o nextest captura e **deita fora** a saída de um teste que **passa**.
+
+⇒ *Metade destes gates já tentou curar-se sozinha, e a tentativa era **inaudível por construção***.
+É isso que exclui a opção «anunciar melhor»: **o anúncio tem de vir de um teste que FALHA.**
+
+E exclui também «marcar os 52 com `#[ignore]`»: isso troca um verde falso por **nenhuma leitura**
+numa máquina que **tem** GPU — e 51 dos 52 são **gates**, não sondas (só um imprime sem afirmar).
+
+**A cura:** um gate só —
+[`gpu_gates_are_not_vacuous.rs`](../../crates/ph2d-render/tests/gpu_gates_are_not_vacuous.rs) —
+que falha com uma mensagem que **NOMEIA a contagem**, e a contagem é **derivada do fonte**, nunca
+escrita à mão. `PH2D_ALLOW_NO_GPU=1` renuncia: **uma** saída explícita em vez de 52 implícitas.
+
+### §21.3 — ⏳ A DECISÃO que isto põe ao Enio, e como transformá-la em medição
+
+⚠️ **Este gate põe o CI VERMELHO no próximo push** — é o sinal pretendido. Duas saídas honestas:
+
+| saída | o que compra | o que custa |
+|---|---|---|
+| ⭐ **dar um adaptador ao corredor** (`lavapipe` no Linux, WARP no Windows) | os 52 **e potencialmente as 149** passam a valer alguma coisa **pela primeira vez** | pode expor vermelhos reais que nunca correram; e um raster por software difere do de hardware |
+| `PH2D_ALLOW_NO_GPU=1` no `spike.yml` | o CI fica verde | a perda fica escrita, mas continua a ser uma perda |
+
+⭐⭐ **A escolha não precisa de ser um palpite.** O `lavapipe` **não está instalado** nesta máquina
+(pacote `vulkan-swrast`), e instalá-lo exige `sudo`. Com ele instalado, correr os 52 **contra o
+adaptador por software** responde à pergunta antes de tocar no CI: **se passarem, ligar o corredor
+é trivial e seguro; se falharem, o preço fica medido.** *Uma decisão que se pode medir não se
+decide.*
+
 ## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
 
 ### §16.1 — Feito
@@ -1288,6 +1404,17 @@ cargo nextest run --cargo-profile ci-test --run-ignored ignored-only --no-fail-f
 
 **Resultado em `b812f8dc4`, antes de tocar em C/D/E:**
 `535 testes · 523 passaram · **12 falharam** · 781 saltados · 781,9 s`
+
+⛔⛔ **⚠️ ESTE «ANTES» ESTÁ CONTAMINADO — leia o [§11.5-ter](#1155) antes de usar os 12 como
+linha de base.** A corrida acima apanhou a máquina a **carga 20**, e pelo menos **três** dos doze
+(`how_far_does_the_packing_scale`, `bounded_readback_cost_probe`, `two_seam_hybrid_timing`) são
+sondas de **relógio** que passam sozinhas com a máquina calma — foram re-medidas verdes em 30/08.
+⇒ os vermelhos estáveis são **nove**, não doze.
+
+⭐⭐ *Um «antes» contaminado transforma um flake em regressão para sempre*: quem comparar contra os
+doze vai ver três «curas» que ninguém fez, e um dia vai ver três «regressões» que ninguém causou.
+⚠️ **A fotografia de uma suíte sensível a carga tem de dizer a CARGA a que foi tirada** — e esta
+não dizia.
 
 | gate vermelho **antes** | crate |
 |---|---|

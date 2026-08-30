@@ -229,3 +229,89 @@ pub enum ContextMenuKind {
     /// [`Self::TimelineLane`] carries a lane index).
     TimelineMarker { index: usize },
 }
+
+impl ContextMenuKind {
+    /// **UMA AMOSTRA DE CADA VARIANTE** — a porta que torna este enum ENUMERÁVEL.
+    ///
+    /// # Por que ela existe
+    ///
+    /// Os gates que perguntam *«isto vale para TODO menu?»* — hoje o
+    /// `every_painted_menu_row_is_registered_and_therefore_clickable` — precisavam de uma lista de
+    /// tipos, e escreviam-na à mão. ⛔ **A escrita à mão tinha UMA variante de trinta**
+    /// (`HierarchyRow`), então `SaveMenu`, `OpenMenu`, `SettingsMenu`, `ThemeSelector` e os dez
+    /// menus da timeline eram invisíveis ao gate que dizia cobri-los todos — *um gate que precisa
+    /// de ser actualizado para apanhar o caso novo não apanha caso novo nenhum*, que é exactamente
+    /// o que o doc daquele gate promete não fazer.
+    ///
+    /// # A metade que impede ESTA lista de apodrecer também
+    ///
+    /// ⚠️ Uma lista de amostras é, ela própria, escrita à mão — mover o problema um nível acima não
+    /// é curá-lo. Quem a fecha é o gate `the_sample_list_names_every_variant_of_the_enum`
+    /// (`tests/every_menu_row_is_registered.rs`): ele lê o **fonte deste arquivo**, extrai os nomes
+    /// das variantes do `enum`, e exige que cada um apareça aqui — pelo `Debug` das amostras, não
+    /// por um segundo texto escrito à mão. Uma variante nova nasce vermelha no dia em que é
+    /// declarada.
+    ///
+    /// ⚠️ **As três amostras de `TimelineSegment` não são redundância:** o `menu_rows` daquela
+    /// variante despacha por `scope.menu_table()`, então `Key`, `Column` e `StripFade` pintam
+    /// tabelas DIFERENTES — uma amostra só deixaria duas tabelas por medir. *A unidade que os
+    /// gates varrem é a TABELA, e o tipo é apenas como se chega a ela.*
+    ///
+    /// ⚠️ Os payloads são inertes de propósito (`NodeId(1)`, `0`): nenhum consumidor desta lista
+    /// resolve um alvo — eles perguntam pela FORMA do menu, e a forma não depende de em que linha
+    /// o clique caiu.
+    pub const ALL: &'static [Self] = &[
+        Self::CreateNote {
+            panel: NodeId(1),
+            before_section: None,
+        },
+        Self::SectionOutline { section: NodeId(1) },
+        Self::NoteBackground {
+            panel: NodeId(1),
+            note_index: 0,
+        },
+        Self::ThemeSelector,
+        Self::SaveMenu,
+        Self::OpenMenu,
+        Self::SettingsMenu,
+        Self::SettingsPpmSubmenu,
+        Self::SettingsUnitSubmenu,
+        Self::SettingsFilterSubmenu,
+        Self::SettingsDisplaySubmenu,
+        Self::SettingsTextSubmenu,
+        Self::SettingsMotionSubmenu,
+        Self::RenamePaletteDialog,
+        Self::SceneList,
+        Self::HierarchyRow { row: NodeId(1) },
+        Self::NewImageDialog,
+        Self::SheetSizeDialog,
+        Self::FalloffPointHandle,
+        Self::CurvePointHandle,
+        Self::MotionPathAnchor { target: 0, i: 0 },
+        Self::TimelineSegment {
+            scope: TimelineInterpScope::Key { target: 0, key: 0 },
+        },
+        Self::TimelineSegment {
+            scope: TimelineInterpScope::Column { t_bits: 0 },
+        },
+        Self::TimelineSegment {
+            scope: TimelineInterpScope::StripFade {
+                lane: 0,
+                strip: 0,
+                edge: 0,
+            },
+        },
+        Self::TimelineSegmentEase {
+            scope: TimelineInterpScope::Key { target: 0, key: 0 },
+            mode: 0,
+        },
+        Self::TimelineTrack { target: 0 },
+        Self::TimelineTrackAxis { target: 0 },
+        Self::TimelineTrackPath { target: 0 },
+        Self::TimelineTrackTimeRemap { target: 0 },
+        Self::TimelineExtrap { target: 0, side: 0 },
+        Self::TimelineLane { lane: 0 },
+        Self::TimelineStrip { lane: 0, strip: 0 },
+        Self::TimelineMarker { index: 0 },
+    ];
+}

@@ -14,6 +14,15 @@
 //! comments legitimately use `→ ⊙ ⟹`). Fix a hit by switching to ASCII
 //! (`Cmd+S`, `->`) or the one safe non-ASCII separator `·` (U+00B7,
 //! Latin-1, in-font — the topbar already uses it).
+//!
+//! ⛔ **Ele afirmava `violations.is_empty()` sem afirmar que tinha VISTO alguma coisa** — a mesma
+//! metade que faltava ao irmão `arch_no_char_count_widths.rs`, e pela mesma linha de código: o
+//! `collect_rs` saía em silêncio no `Err` do `read_dir`, e a descoberta dos painéis era um
+//! `if let Ok(…)` sem `else`. Renomear uma raiz esvaziava o corpus e o gate ficava **VERDE com
+//! todos os tofus da árvore**. *Um zero de «não medi» e um de «está limpo» são o mesmo byte.*
+//!
+//! A cura não é um número mágico: o `collect_rs` **falha alto**, e cada raiz da lista tem de
+//! contribuir pelo menos um `.rs` — o piso é a própria lista de raízes, derivada do disco.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,11 +35,15 @@ fn is_tofu(c: char) -> bool {
         || (0x2300..=0x23FF).contains(&cp) // technical symbols: ⌘ ⎕ ⌥ …
 }
 
-/// Collect every `.rs` file under `dir` (recursive).
+/// Collect every `.rs` file under `dir` (recursive) — and **an unreadable
+/// `dir` is an error, never an empty list**.
+///
+/// ⛔ It used `let Ok(..) else { return }`: pointing it at a path that no
+/// longer exists returned `[]`, the caller asserted `violations.is_empty()`,
+/// and the gate went green with the whole tree unscanned.
 fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
+    let entries =
+        fs::read_dir(dir).unwrap_or_else(|e| panic!("could not scan {}: {e}", dir.display()));
     for e in entries.flatten() {
         let p = e.path();
         if p.is_dir() {
@@ -156,29 +169,49 @@ fn no_tofu_glyphs_in_ui_strings() {
     // Wave 10 / Etapa 5.1: panel-* crates paint UI strings (panel titles,
     // toggle labels, section headers). They were a blind spot — any
     // arrow/cmd glyph there rendered as a tofu box in production UI.
-    if let Ok(entries) = fs::read_dir(&crates_root) {
-        let mut panel_srcs: Vec<PathBuf> = entries
-            .flatten()
-            .filter_map(|e| {
-                let path = e.path();
-                let name = path.file_name()?.to_str()?.to_string();
-                if path.is_dir()
-                    && name.starts_with("ph2d-panel-")
-                    && name != "ph2d-panel-registry-init"
-                {
-                    let src = path.join("src");
-                    if src.is_dir() { Some(src) } else { None }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        panel_srcs.sort();
-        scan_roots.extend(panel_srcs);
-    }
+    // ⚠️ **`expect`, not `if let Ok`:** an unreadable `crates/` silently left
+    // the sweep with two roots and ZERO panels — and the panels are the blind
+    // spot this whole block was added to close.
+    let entries = fs::read_dir(&crates_root)
+        .unwrap_or_else(|e| panic!("could not read {}: {e}", crates_root.display()));
+    let mut panel_srcs: Vec<PathBuf> = entries
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            let name = path.file_name()?.to_str()?.to_string();
+            if path.is_dir()
+                && name.starts_with("ph2d-panel-")
+                && name != "ph2d-panel-registry-init"
+            {
+                let src = path.join("src");
+                if src.is_dir() { Some(src) } else { None }
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert!(
+        !panel_srcs.is_empty(),
+        "no `ph2d-panel-*` crate under {} — the discovery broke, and without it this gate scans \
+         half of what it promises",
+        crates_root.display()
+    );
+    panel_srcs.sort();
+    scan_roots.extend(panel_srcs);
+
     let mut files = Vec::new();
     for r in &scan_roots {
+        // ⚠️ **The positive control, root by root.** A root that moved drops out
+        // of the corpus without a word; here it drops out with its name in the
+        // message.
+        let before = files.len();
         collect_rs(r, &mut files);
+        assert!(
+            files.len() > before,
+            "scan root {} yielded not one `.rs` — either it moved, or this gate is scanning the \
+             void",
+            r.display()
+        );
     }
     // This gate's OWN source names the glyphs in comments/strings as
     // examples — skip it so it doesn't flag itself.
@@ -219,4 +252,19 @@ fn detector_flags_arrow_and_cmd_in_strings_only() {
     assert!(tofu_in_strings("/* a \u{2318} b */").is_empty());
     // Negative: the safe middot in a string is fine.
     assert!(tofu_in_strings("\"Tool \u{00b7} Pad\"").is_empty());
+}
+
+/// **A missing scan root FAILS instead of reading as clean** — the control for
+/// the half that was missing.
+///
+/// ⚠️ It is the mutation written as a test: before, pointing [`collect_rs`] at a
+/// path that does not exist returned `[]`, the gate above saw zero violations
+/// and went green with the tree unscanned. Without this control the cure would
+/// be a claim about itself.
+#[test]
+#[should_panic(expected = "could not scan")]
+fn a_missing_scan_root_fails_loud_instead_of_reading_as_clean() {
+    let ghost = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/this-root-does-not-exist");
+    let mut out = Vec::new();
+    collect_rs(&ghost, &mut out);
 }

@@ -80,6 +80,12 @@ reference/
 
 # Wave 10 / slot-env.sh — per-session cargo target dirs (never committed)
 target-slots/
+# ⚠️ **Todo alvo de compilação com prefixo `target-`**, e não só os slots. Em 2026-08-30 um agente
+# criou `target-gpuaudit/` para medir a suíte de GPU sem tocar no `target/` da árvore: o git
+# mostrou-o como não-rastreado (um `git add -A` levá-lo-ia) e o `typos` do `ship.sh` **reprovou**
+# sobre a saída de build de terceiros lá dentro. Uma regra por NOME EXACTO deixa a próxima pasta
+# de fora; o padrão fecha a família.
+target-*/
 
 # Modo L (DIRETRIZ §1.5) — per-line git worktrees live INSIDE the repo so
 # every Claude Code window can open at the repo root. Never tracked by the

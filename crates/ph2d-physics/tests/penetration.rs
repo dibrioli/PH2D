@@ -17,7 +17,7 @@
 //! so the only lever is a smaller `dt` (sub-steps), and the only lever on how
 //! long it lasts is the contact spring frequency.
 
-use ph2d_physics::{BodyDesc, PhysicsWorld, RigidBodyType, ShapeDesc};
+use ph2d_physics::{BodyDefaults, BodyDesc, PhysicsWorld, RigidBodyType, ShapeDesc};
 
 const FLOOR_TOP: f32 = -0.8;
 const HALF: f32 = 0.28;
@@ -138,9 +138,90 @@ fn a_landing_body_is_never_visibly_inside_the_floor_for_more_than_a_frame() {
 
 /// The fix must not be bought with jitter — a settled pile that trembles is
 /// a worse artifact than one that sinks. Measured at zero before and after.
+///
+/// # ⛔⛔ Este gate esteve VERDE pela razão errada, e a cura já estava escrita ao lado
+///
+/// Ele corria 600 tiques (10 s) e só então media — e o [`BodyDefaults::ours`] adormece
+/// um corpo depois de `2,0 s` sob o limiar. **As 30 bolas dormiam**, e um corpo a dormir
+/// não é integrado: o `Δy` era `0,0` **por construção**, a toda frequência de contacto.
+/// *Zero não reprova a não ser que se force o zero a poder falhar.*
+///
+/// ⭐ A cura é a mesma que a sonda irmã [`measure_settings`] já pagou em
+/// `crates/ph2d-physics/tests/measure_settings.rs` (§`stack_of`): **proibir o sono** e
+/// medir uma pilha acordada, que é também o pior caso honesto. Aqui ela vem com a
+/// **metade justa** — a fixtura AFIRMA que os 30 corpos estão acordados no instante em
+/// que a medição começa, senão a proibição podia deixar de morder em silêncio.
+///
+/// ## Medido (2026-08-30, `--profile ci-test`, 30 bolas, tiques 600→690, pior `|Δy|` por tique)
+///
+/// | fixtura | corpos acordados | pior tremor | veredito |
+/// |---|---|---|---|
+/// | ⛔ como estava: sono no default | **0 de 30** | `0,00000 mm` | verde **por construção** |
+/// | ⭐ hoje: sono PROIBIDO | **30 de 30** | `0,00000 mm` (`0e0` cru) | verde por MEDIÇÃO |
+///
+/// ⚠️ **O `x` e a ROTAÇÃO ficam de fora porque foram medidos a zero em TODA a varredura
+/// abaixo** — o tremor desta pilha é puramente vertical. *A régua fica no eixo em que o
+/// defeito existe, e isso mediu-se antes de se escrever.*
+///
+/// # ⛔ A BARRA desceu de `1e-4` para `1e-5` m, e o número saiu de duas medições
+///
+/// Varrida a resposta da pilha ACORDADA a cada botão do solver, um de cada vez (a
+/// varredura correu neste ficheiro e foi removida; os números são de 2026-08-30):
+///
+/// | perturbação | pior tremor | contra a barra antiga (`1e-4`) |
+/// |---|---|---|
+/// | ⭐ o que shipa (`4` sub-passos, `120 Hz`) | `0,00000 mm` | — |
+/// | `ζ` do contacto de `0,5` a `20` | `0,00000 mm` | cego |
+/// | tecto de velocidade correctiva `1` a `1000` | `0,00000 mm` | cego |
+/// | iterações do solver `1` a `8` | `0,00000 mm` | cego |
+/// | sub-passos `1`/`2`/`8` (a `120 Hz`) | `0,00000 mm` | cego |
+/// | ⛔ **`3 840 Hz`+ com os `4` sub-passos** | **`0,0606 mm`** | ⛔ **passava VERDE** |
+/// | ⛔⛔ `1 920 Hz`+ com **`1`** sub-passo | **`1,106 mm`** | vermelho |
+///
+/// ⇒ A barra de `1e-4 m` (`0,1 mm/tique`) ficava **acima** do pior defeito que uma
+/// constante sozinha consegue produzir (`0,0606 mm`): *a folga era o tamanho do ponto
+/// cego*. A nova barra é `1e-5 m` — `6×` abaixo desse defeito e infinitamente acima do
+/// produto, que lê **zero exacto**. ⛔ Não é um número escolhido para caber: é a distância
+/// entre duas medições, e não há valor do produto a acomodar (o produto é `0`).
+///
+/// # ⭐ E o par `(frequência, sub-passos)` é UM RELÓGIO, não dois botões
+///
+/// Nenhum dos dois sozinho treme. `1 920 Hz` com os `4` sub-passos que shipam dá **zero**;
+/// `1` sub-passo com os `120 Hz` que shipam dá **zero**; os dois juntos dão `1,1 mm/tique`.
+/// A Nyquist do sub-passo é `1/(2·dt_sub)` — `120 Hz` com `4` sub-passos, `30 Hz` com `1` —,
+/// e a mola só passa a ser integrada mal quando a frequência atravessa **a do relógio em
+/// que ela corre**. *É o mesmo mecanismo que o `solver_params` já escreveu sobre a
+/// frequência e o amortecimento: adoptar metade de um par de afinação mistura duas
+/// afinações.*
+///
+/// # A prova de que ele morde (mutação no PRODUTO, 2026-08-30)
+///
+/// | mutação | pior tremor | este gate |
+/// |---|---|---|
+/// | — (o que shipa) | `0,00000 mm` | ⭐ verde |
+/// | `PhysicsWorld::DEFAULT_CONTACT_HZ` `120,0` → `3840,0` | `0,06056 mm` | ⛔ **VERMELHO** |
+/// | + `DEFAULT_SUBSTEPS` `4` → `1` (as duas) | `1,10626 mm` | ⛔ **VERMELHO** |
+///
+/// ⚠️ **Com a fixtura antiga NENHUMA das duas mordia** — as bolas dormiam e a leitura era
+/// `0,0` em qualquer afinação, o que é a definição de um gate que não mede nada.
+///
+/// ⛔⛔ **E uma nota herdada está DESACTUALIZADA:** o `measure_settings` diz que uma pilha
+/// proibida de dormir deriva `0,114 mm` a `1920 Hz`. Re-corrido em 2026-08-30 nesta árvore,
+/// aquele arnês imprime `0,0000 mm` **em todas as sete frequências**, a `1920` inclusive.
+/// Aquela tabela é **pré-`rapier2d` 0.35**; o solver foi reescrito por baixo dela.
 #[test]
 fn a_settled_pile_is_completely_still() {
     let mut w = PhysicsWorld::new();
+    // ⛔ **Sono PROIBIDO — e não é conveniência de fixtura.** Ver o doc acima: com o sono
+    // ligado esta medição lê `0,0` sem simular nada. Os três campos são os mesmos que a
+    // sonda `measure_settings::stack_of` usa, sobre os defaults do PRODUTO (`ours`) para
+    // que o amortecimento medido continue a ser o dele.
+    w.set_body_defaults(BodyDefaults {
+        sleep_linear_threshold: 0.0,
+        sleep_angular_threshold: 0.0,
+        time_until_sleep: f32::MAX,
+        ..BodyDefaults::ours()
+    });
     w.spawn_body(BodyDesc {
         body_type: RigidBodyType::Fixed,
         x: 0.0,
@@ -201,6 +282,22 @@ fn a_settled_pile_is_completely_still() {
     for _ in 0..600 {
         w.step();
     }
+    // **A metade JUSTA:** a proibição tem de ter MORDIDO. Sem isto, o dia em que
+    // `set_body_defaults` deixasse de chegar aos corpos devolvia este gate ao zero
+    // garantido, e nada o diria.
+    let (awake, total) = w
+        .bodies()
+        .iter()
+        .filter(|(_, b)| b.is_dynamic())
+        .fold((0usize, 0usize), |(a, t), (_, b)| {
+            (a + usize::from(!b.is_sleeping()), t + 1)
+        });
+    assert_eq!(
+        awake, total,
+        "fixture: os {total} corpos tinham de estar ACORDADOS aos 10 s — um corpo a dormir \
+         nao e' integrado e o tremor deste gate seria 0,0 por construcao ({awake} acordados)"
+    );
+
     let mut prev: Vec<f32> = w.body_snapshots().iter().map(|s| s.y).collect();
     let mut worst = 0.0f32;
     for _ in 0..90 {
@@ -211,8 +308,14 @@ fn a_settled_pile_is_completely_still() {
         }
         prev = now;
     }
+    println!(
+        "settled pile: {awake}/{total} awake, worst {:.5} mm/tick (raw {worst:e} m)",
+        worst * 1000.0
+    );
+    // A barra é DERIVADA — ver a tabela no doc: `6x` abaixo do pior defeito que um botão
+    // sozinho produz (`0,0606 mm`), e o produto lê zero exacto.
     assert!(
-        worst < 1e-4,
+        worst < 1e-5,
         "a settled pile is still moving {:.5} mm/tick — the stiffer contacts bought the \
          penetration back as jitter",
         worst * 1000.0

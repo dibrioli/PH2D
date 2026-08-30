@@ -112,17 +112,62 @@ const SETTLE_SECS: u64 = 2;
 
 /// Quanto o personagem VIAJOU em `secs` segundos sem ninguém tocar nele,
 /// **contados depois de a perna assentar**.
+///
+/// # ⛔⛔ O doc deste ficheiro PROIBIA, palavra por palavra, a régua que o código usava
+///
+/// O gate abaixo dizia — e continua a dizer — *«o oráculo é a DISTÂNCIA PERCORRIDA, não a
+/// posição final … um personagem que sobe e volta terminaria no lugar e o gate diria que
+/// está tudo bem»*. E esta função devolvia `‖fim − início‖`: **a posição final**.
+///
+/// Hoje ela devolve o CAMINHO, `Σ‖pose_t − pose_{t−1}‖` — o que a frase sempre pediu.
+///
+/// ## ⭐ A diferença não é estilo: a régua velha SATURA e a nova CRESCE
+///
+/// Medido em 2026-08-30 no chão PLANO, com o produto mutado para balançar
+/// (`RideConfig::STARTING_POINT.spring_damping` `1,0` → `0,1`):
+///
+/// | janela | caminho (a régua nova) | posição final (a velha) |
+/// |---|---|---|
+/// | 3 s | `0,000067 m` | `0,000003 m` |
+/// | 5 s | `0,000098 m` | `0,000003 m` |
+/// | 10 s | `0,000174 m` | `0,000003 m` |
+/// | 15 s | `0,000250 m` | `0,000003 m` |
+///
+/// ⇒ O caminho é **linear no tempo** (`15,5 µm/s`, que é o regime permanente); a posição
+/// final é **a mesma constante** quer se olhe 3 segundos ou 15. ⛔ *A régua velha não
+/// consegue distinguir um transiente de um regime permanente — que é exactamente a
+/// distinção que este ficheiro existe para fazer* (o report era `3,3 cm/s` **para sempre**),
+/// e é literalmente o que o gate `the_stillness_holds_for_a_minute_not_just_for_ten_seconds`
+/// afirma medir.
+///
+/// ## ⚠️ E as BARRAS não mudaram, porque os números do PRODUTO não mudaram
+///
+/// | chamador | régua velha | régua nova | barra |
+/// |---|---|---|---|
+/// | 10°/20°/30°/40°, 10 s, teto | `0,000000` | `0,000000` | `1e-3` |
+/// | 30°, 60 s, teto | `0,000000` | `0,000000` | `1e-3` |
+/// | 30°, 10 s, default | `0,000000` | `0,000000` | `1e-3` |
+/// | 30°, 10 s, meio curso | `0,038338` | `0,038338` | `0,02..0,06` |
+/// | 0°, 10 s, default | `0,000000` | `0,000000` | `1e-6` |
+///
+/// ⭐ O que shipa fica **bit-a-bit parado** (`0,000000` exacto, não «pequeno»), então as
+/// duas réguas coincidem: sem movimento não há caminho para somar. ⚠️ E a meio curso a
+/// subida é **monótona**, então caminho e deslocamento são o MESMO número — *foi por isso
+/// que o defeito da régua pôde viver aqui sem nunca mudar um resultado.*
+///
+/// ⚠️ **Uma régua só:** esta função delega em [`idle_travel_n`], que é onde a soma vive.
+/// A versão anterior tinha a régua escrita **à mão nas duas**, lado a lado — e uma lei
+/// escrita em dois sítios ainda não é uma lei. ⭐ A conversão não moveu a tabela do
+/// `the_bounce_is_a_fact_of_the_knob_and_the_drift_is_a_fact_of_the_substeps`: ela media
+/// `0,0575` com a régua velha e mede `0,057472` com a nova (razão `8`/`4` = `0,5003`),
+/// porque aquela deriva também é monótona.
 fn idle_travel(slope_deg: f32, secs: u64, damping: f32) -> f32 {
-    let (mut sim, mut bridge) = rig(slope_deg, damping);
-    for t in 1..=SETTLE_SECS * 60 {
-        bridge.dispatch(&mut sim, true, t);
-    }
-    let start = pose(&sim);
-    for t in SETTLE_SECS * 60 + 1..=(SETTLE_SECS + secs) * 60 {
-        bridge.dispatch(&mut sim, true, t);
-    }
-    let end = pose(&sim);
-    ((end.0 - start.0).powi(2) + (end.1 - start.1).powi(2)).sqrt()
+    idle_travel_n(
+        slope_deg,
+        secs,
+        damping,
+        PhysicsSettings::default().substeps,
+    )
 }
 
 /// **O GATE DA WAVE.** Com a perna amortecendo no eixo certo, o personagem
@@ -147,7 +192,27 @@ fn idle_travel(slope_deg: f32, secs: u64, damping: f32) -> f32 {
 /// não é estilo: um personagem que sobe e volta terminaria no lugar e o gate
 /// diria que está tudo bem. O que o artista vê é a viagem.
 ///
-/// **Mutação que deve sangrar:** o eixo do amortecedor de volta ao `up`.
+/// ⛔⛔ **Esta frase estava aqui desde 2026-08-04 e o código fazia o CONTRÁRIO** — a
+/// [`idle_travel`] devolvia `‖fim − início‖` até 2026-08-30. Curado lá, com a tabela que
+/// mostra a régua velha a saturar. *Uma regra escrita no doc do próprio teste não é uma
+/// regra até alguém a ler contra o código.*
+///
+/// ## Medido com a régua nova (2026-08-30, `--profile ci-test`)
+///
+/// | rampa | caminho em 10 s, teto do amortecimento |
+/// |---|---|
+/// | 10° · 20° · 30° · 40° | **`0,000000 m`** (exacto, nos quatro) |
+///
+/// **Mutação que deve sangrar:** o eixo do amortecedor de volta ao `up`
+/// (`ride::damping_axis` a devolver o `up` sempre). Medido 2026-08-30, régua nova:
+///
+/// | rampa | 10° | 20° | 30° | 40° |
+/// |---|---|---|---|---|
+/// | caminho em 10 s | `0,026606` | `0,052459` | `0,076648` | `0,098458` |
+///
+/// ⇒ ⛔ VERMELHO já na de 10°, a **`27×`** a barra de `1e-3`. ⚠️ Os números de hoje são
+/// **menores** que os `0,132 / 0,244 / 0,328` da tabela de 2026-08-04 porque a wave
+/// `gravity_hold` entrou entre as duas medições — a tabela histórica fica como está, datada.
 #[test]
 fn a_full_damper_holds_the_player_still_on_a_walkable_ramp() {
     for &slope in &[10.0_f32, 20.0, 30.0, 40.0] {
@@ -162,6 +227,19 @@ fn a_full_damper_holds_the_player_still_on_a_walkable_ramp() {
 /// ⚠️ **A quietude não se desfaz com o TEMPO** — o defeito era um regime
 /// permanente (3,3 cm/s **para sempre**), não um transiente de assentamento, e
 /// um gate de 10 s não distingue os dois sozinho.
+///
+/// ⛔⛔ **E até 2026-08-30 ele estava a fazer essa distinção com uma régua que NÃO CRESCE
+/// COM O TEMPO.** A [`idle_travel`] devolvia `‖fim − início‖`, e a tabela lá mostra que
+/// sobre um defeito de balanço aquele número lê **a mesma constante a 3 s e a 15 s**.
+/// *Um gate cujo argumento inteiro é «e ao fim de um minuto?» a ler um número que satura
+/// é o caso extremo desta família.* Hoje a régua é o CAMINHO e ela é linear no tempo.
+///
+/// ## Medido (2026-08-30, régua nova, 30°, teto do amortecimento)
+///
+/// | | caminho em 60 s | barra |
+/// |---|---|---|
+/// | ⭐ o que shipa | **`0,000000 m`** | `1e-3` |
+/// | ⛔ mutação `damping_axis` → `up` | `0,459879 m` (**`460×`**) | VERMELHO |
 #[test]
 fn the_stillness_holds_for_a_minute_not_just_for_ten_seconds() {
     let d = idle_travel(30.0, 60, MAX_DAMPING);
@@ -193,6 +271,17 @@ fn the_stillness_holds_for_a_minute_not_just_for_ten_seconds() {
 /// removendo o knob. A segunda mede o knob **abaixado** e exige o resíduo de
 /// volta: é ela que prova que o zero de cima foi **comprado** pelo
 /// amortecimento, e não é vácuo.
+///
+/// ## Medido com a régua do CAMINHO (2026-08-30) — e os números NÃO se mexeram
+///
+/// | | caminho em 10 s a 30° | régua velha (posição final) | barra |
+/// |---|---|---|---|
+/// | ⭐ default (teto) | `0,000000` | `0,000000` | `1e-3` |
+/// | ⭐ meio curso | `0,038338` | `0,038338` | `0,02..0,06` |
+/// | ⛔ mutação `damping_axis` → `up` | `0,076648` (**`77×`**) | — | VERMELHO |
+///
+/// ⚠️ **A subida da rampa é MONÓTONA**, então aqui as duas réguas dão o mesmo número —
+/// é por isso que o defeito da régua nunca reprovou nada e pôde viver 26 dias.
 #[test]
 fn the_shipped_default_leaves_nothing_and_lowering_the_knob_is_what_costs() {
     let d = idle_travel(30.0, 10, RideConfig::STARTING_POINT.spring_damping);
@@ -316,18 +405,26 @@ fn the_leg_still_holds_the_height_it_was_asked_for() {
     }
 }
 
-/// A viagem parada com o número de SUB-PASSOS escolhido.
+/// **A régua, e a única do ficheiro:** o CAMINHO percorrido em `secs` segundos sem ninguém
+/// tocar no personagem, com o número de SUB-PASSOS escolhido — `Σ‖pose_t − pose_{t−1}‖`,
+/// contado depois de a perna assentar.
+///
+/// Ver [`idle_travel`] para por que é o caminho e não o deslocamento, e para a tabela que
+/// mostra a régua velha a saturar.
 fn idle_travel_n(slope_deg: f32, secs: u64, damping: f32, substeps: u32) -> f32 {
     let (mut sim, mut bridge) = rig_n(slope_deg, damping, substeps);
     for t in 1..=SETTLE_SECS * 60 {
         bridge.dispatch(&mut sim, true, t);
     }
-    let start = pose(&sim);
+    let mut prev = pose(&sim);
+    let mut path = 0.0f32;
     for t in SETTLE_SECS * 60 + 1..=(SETTLE_SECS + secs) * 60 {
         bridge.dispatch(&mut sim, true, t);
+        let now = pose(&sim);
+        path += ((now.0 - prev.0).powi(2) + (now.1 - prev.1).powi(2)).sqrt();
+        prev = now;
     }
-    let end = pose(&sim);
-    ((end.0 - start.0).powi(2) + (end.1 - start.1).powi(2)).sqrt()
+    path
 }
 
 /// **O QUIQUE DO POUSO, em milímetros** — quanto a perna sobe acima da altura de

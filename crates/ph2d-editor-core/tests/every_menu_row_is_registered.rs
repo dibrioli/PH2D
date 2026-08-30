@@ -31,22 +31,27 @@
 //! gate que precisa de ser actualizado para apanhar o caso novo não apanha caso novo nenhum. Ele lê
 //! `menu_rows` para **todos** os `ContextMenuKind` que têm tabela, por isso uma linha nova entra
 //! aqui no dia em que é pintada, sem ninguém se lembrar.
+//!
+//! ⛔⛔ **E durante meses ele NÃO fazia isso — o doc acima prometia a propriedade derivada e o
+//! código negava-a.** A lista de tipos era um `vec![]` escrito à mão com **UMA** variante
+//! (`HierarchyRow`) de **trinta**: `SaveMenu`, `OpenMenu`, `SettingsMenu`, `ThemeSelector`, os
+//! quatro modais e os dez menus da timeline eram invisíveis a um gate que se dizia exaustivo.
+//! Apagar `ids::CTX_MENU_SAVE` do `pre_populate` deixava a linha *Save · Cmd+S* pintada e morta,
+//! com este gate VERDE. Hoje a lista é [`ContextMenuKind::ALL`], e o gate irmão
+//! [`the_sample_list_names_every_variant_of_the_enum`] recusa uma variante que não entre lá.
+//!
+//! ⚠️ **Os modais deixaram de precisar de exclusão, e não porque a regra afrouxou:** o `menu_rows`
+//! devolve `&[]` para `NewImageDialog`, `SheetSizeDialog`, `RenamePaletteDialog` e `SceneList`
+//! (eles pintam o próprio corpo, com o próprio registo), então varrê-los custa zero e cobre-os no
+//! dia em que algum ganhar uma row de tabela. *Uma exclusão escrita à mão é mais uma lista a
+//! apodrecer.*
+
+use std::fs;
 
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::interaction::ContextMenuKind;
 use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
-
-/// Os menus cujas linhas são botões simples — clicar despacha uma acção.
-///
-/// ⚠️ **Os modais NÃO entram**: `NewImageDialog`, `SheetSizeDialog` e `RenamePaletteDialog` pintam
-/// campos e radios com o seu próprio registo (o `pre_populate` diz porquê ao lado deles), e exigir
-/// deles a mesma forma seria o gate a inventar uma regra que o produto não tem.
-fn simple_menus() -> Vec<ContextMenuKind> {
-    vec![ContextMenuKind::HierarchyRow {
-        row: ph2d_a11y::NodeId(1),
-    }]
-}
 
 #[test]
 fn every_painted_menu_row_is_registered_and_therefore_clickable() {
@@ -55,8 +60,10 @@ fn every_painted_menu_row_is_registered_and_therefore_clickable() {
     let hero = HeroScreen::new(NodeId(1));
 
     let mut dead: Vec<String> = Vec::new();
-    for kind in simple_menus() {
+    let mut rows_seen = 0usize;
+    for kind in ContextMenuKind::ALL.iter().copied() {
         for (id, label, _) in menu_rows(kind) {
+            rows_seen += 1;
             // ⚠️ **A barra é a do `is_focusable` do despachante**
             // (`interaction/dispatch/focus.rs`), e não uma inventada aqui: o que mata o clique é o
             // ramo `None => false` — um id **ausente** do store não fica `active` no Down e o
@@ -67,10 +74,20 @@ fn every_painted_menu_row_is_registered_and_therefore_clickable() {
             // dezassete, incluindo as que funcionam há meses. *Um gate que acusa o legítimo é
             // desligado na primeira semana; a barra tem de ser a que o produto de facto usa.*
             if hero.store.get(*id).is_none() {
-                dead.push((*label).to_string());
+                dead.push(format!("{label}   (menu {kind:?})"));
             }
         }
     }
+    // ⚠️ **O controle positivo do CORPUS.** Uma lista de amostras que encolhesse — ou um
+    // `menu_rows` que passasse a devolver `&[]` — deixaria este gate verde por VÁCUO, que é a
+    // forma que ele acabou de curar. A barra é derivada: cada tipo pinta pelo menos uma row, menos
+    // os quatro que desenham o próprio corpo.
+    assert!(
+        rows_seen >= ContextMenuKind::ALL.len(),
+        "varri {} tipos de menu e vi só {rows_seen} rows — o corpus está vazio, e um gate que não \
+         vê nada passa sempre",
+        ContextMenuKind::ALL.len()
+    );
     assert!(
         dead.is_empty(),
         "estas linhas de menu sao PINTADAS mas nao estao registadas no `WidgetStore` — o \
@@ -82,4 +99,100 @@ fn every_painted_menu_row_is_registered_and_therefore_clickable() {
          Faltar um dos tres nao da' erro nenhum -- da' um botao que nao faz nada.",
         dead.join("\n  ")
     );
+}
+
+/// **A lista de amostras NOMEIA todas as variantes do enum** — a metade que impede
+/// [`ContextMenuKind::ALL`] de apodrecer como apodreceu o `vec![]` que ela substituiu.
+///
+/// ⚠️ **Os dois lados são DERIVADOS, e de fontes diferentes:** as variantes que EXISTEM saem do
+/// fonte do `enum` (`interaction/types_menu.rs`), e as que a lista COBRE saem do `Debug` das
+/// amostras — não de um segundo texto escrito à mão, que seria a mesma doença um nível acima.
+///
+/// ⛔ **Sem ele, «derive a lista» resolvia-se movendo a lista de sítio.** Uma variante nova entra
+/// no `enum` e este gate fica vermelho a nomeá-la; é a única coisa que faz o
+/// `every_painted_menu_row_is_registered_and_therefore_clickable` valer a promessa do doc dele.
+#[test]
+fn the_sample_list_names_every_variant_of_the_enum() {
+    let src = fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/interaction/types_menu.rs"
+    ))
+    .expect("interaction/types_menu.rs");
+
+    let declared = enum_variants(&src, "ContextMenuKind");
+    let covered: Vec<String> = ContextMenuKind::ALL
+        .iter()
+        .map(|k| {
+            format!("{k:?}")
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect()
+        })
+        .collect();
+
+    let missing: Vec<&String> = declared.iter().filter(|v| !covered.contains(v)).collect();
+    assert!(
+        missing.is_empty(),
+        "estas variantes de `ContextMenuKind` nao tem amostra em `ContextMenuKind::ALL`, entao \
+         TODO gate que varre os menus e' cego a elas:\n  {missing:?}\n\n\
+         Acrescente uma amostra em `interaction/types_menu.rs` (payload inerte basta -- os gates \
+         perguntam pela FORMA do menu, nao pelo alvo do clique).",
+    );
+
+    // …e o outro sentido, que é AO MESMO TEMPO o controle positivo do parser: se o
+    // `enum_variants` deixasse de ler o `enum` (o arquivo muda de nome, o `enum` muda de forma) ele
+    // devolveria `[]`, o `missing` acima ficaria vazio — verde por vácuo, a doença que este gate
+    // veio curar — e é ESTA asserção que dispara, porque `ContextMenuKind::ALL` nunca é vazia.
+    // *Os dois sentidos juntos são igualdade de conjuntos, e é por isso que nenhum piso escrito à
+    // mão faz falta aqui.*
+    let stray: Vec<&String> = covered.iter().filter(|c| !declared.contains(c)).collect();
+    assert!(
+        stray.is_empty(),
+        "estas amostras nao correspondem a variante nenhuma do `enum` — ou o `Debug` mudou, ou o \
+         parser deixou de achar o `enum` (leu {} variantes): {stray:?}",
+        declared.len()
+    );
+}
+
+/// Os nomes das variantes de `enum <name>`, lidos do fonte.
+///
+/// ⚠️ **A profundidade é lida ANTES de a linha ser contada**, e é isso que separa uma variante
+/// (`SectionOutline { section: NodeId },`, no nível de topo do corpo) de um CAMPO dela
+/// (`panel: NodeId,`, um nível abaixo). Contar por indentação seria um proxy que o `rustfmt`
+/// expira; contar chaves é a estrutura.
+fn enum_variants(src: &str, name: &str) -> Vec<String> {
+    let header = format!("pub enum {name} {{");
+    let at = src
+        .find(&header)
+        .unwrap_or_else(|| panic!("não achei `{header}` — o `enum` mudou de forma ou de arquivo"));
+    let body = &src[at + header.len()..];
+
+    let mut depth = 0i32;
+    let mut out = Vec::new();
+    for line in body.lines() {
+        let trimmed = line.trim_start();
+        if depth == 0
+            && !trimmed.starts_with("//")
+            && !trimmed.starts_with('#')
+            && trimmed.starts_with(|c: char| c.is_ascii_uppercase())
+        {
+            out.push(
+                trimmed
+                    .chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect(),
+            );
+        }
+        for c in line.chars() {
+            match c {
+                '{' => depth += 1,
+                '}' => depth -= 1,
+                _ => {}
+            }
+        }
+        if depth < 0 {
+            break; // a chave que fecha o `enum`
+        }
+    }
+    out
 }

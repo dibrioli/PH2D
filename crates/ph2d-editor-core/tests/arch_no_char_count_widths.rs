@@ -16,6 +16,17 @@
 //! `crates/ph2d-panel-*/src/**`. Gate skips comments and the
 //! `text_system` crate itself (where char-counting is part of glyph
 //! iteration, not width measurement).
+//!
+//! ⛔ **Ele afirmava `violations.is_empty()` sem afirmar que tinha VISTO alguma coisa.** O
+//! `collect_rs` saía em silêncio no `Err` do `read_dir` e a descoberta dos painéis era um
+//! `if let Ok(…)` sem `else`: renomear uma raiz — um split de módulo, um `crates/` reorganizado —
+//! esvaziava o corpus e o gate ficava **VERDE com todas as violações na árvore**. *Um balde que
+//! ninguém enche lê-se como perfeito.*
+//!
+//! A metade que faltava tem duas partes, e nenhuma é um número mágico: o `collect_rs` **falha
+//! alto** (uma raiz desta lista existe, ou a lista está errada) e cada raiz varrida tem de
+//! contribuir **pelo menos um `.rs`** — o piso é o comprimento da própria lista de raízes, que é
+//! derivada do disco.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -28,30 +39,47 @@ fn no_chars_count_as_width_proxy() {
         crate_root.join("src/widget"),
         crate_root.join("src/screens"),
     ];
-    if let Ok(entries) = fs::read_dir(&crates_root) {
-        let mut panel_srcs: Vec<PathBuf> = entries
-            .flatten()
-            .filter_map(|e| {
-                let path = e.path();
-                let name = path.file_name()?.to_str()?.to_string();
-                if path.is_dir()
-                    && name.starts_with("ph2d-panel-")
-                    && name != "ph2d-panel-registry-init"
-                {
-                    let src = path.join("src");
-                    if src.is_dir() { Some(src) } else { None }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        panel_srcs.sort();
-        scan_roots.extend(panel_srcs);
-    }
+    // ⚠️ **`expect`, não `if let Ok`:** um `crates/` ilegível deixava a varredura com duas raízes e
+    // ZERO painéis, em silêncio — e os painéis são metade do alcance deste gate.
+    let entries = fs::read_dir(&crates_root)
+        .unwrap_or_else(|e| panic!("não consegui ler {}: {e}", crates_root.display()));
+    let mut panel_srcs: Vec<PathBuf> = entries
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            let name = path.file_name()?.to_str()?.to_string();
+            if path.is_dir()
+                && name.starts_with("ph2d-panel-")
+                && name != "ph2d-panel-registry-init"
+            {
+                let src = path.join("src");
+                if src.is_dir() { Some(src) } else { None }
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert!(
+        !panel_srcs.is_empty(),
+        "nenhuma crate `ph2d-panel-*` em {} — a descoberta partiu, e sem ela este gate varre \
+         metade do que promete",
+        crates_root.display()
+    );
+    panel_srcs.sort();
+    scan_roots.extend(panel_srcs);
 
     let mut files = Vec::new();
     for r in &scan_roots {
+        let before = files.len();
         collect_rs(r, &mut files);
+        // ⚠️ **O controle positivo, raiz a raiz.** Uma raiz que se mudou de sítio some do corpus
+        // sem um aviso; aqui ela some com o nome dela na mensagem.
+        assert!(
+            files.len() > before,
+            "a raiz {} não rendeu um `.rs` sequer — ou ela mudou de sítio, ou este gate está a \
+             varrer o vazio",
+            r.display()
+        );
     }
 
     let mut violations: Vec<String> = Vec::new();
@@ -113,10 +141,14 @@ fn line_uses_as_width(line: &str) -> bool {
         || pre_low.contains("label_w")
 }
 
+/// Todo `.rs` sob `dir`, recursivo — e **um `dir` ilegível é um erro, não um vazio**.
+///
+/// ⛔ Ele fazia `let Ok(..) else { return }`: apontá-lo a um caminho que não existe devolvia uma
+/// lista vazia, o chamador afirmava `violations.is_empty()` e o gate passava com a árvore inteira
+/// por varrer. *A saída silenciosa transformava «não medi» em «está limpo», que são o mesmo byte.*
 fn collect_rs(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
+    let entries =
+        fs::read_dir(dir).unwrap_or_else(|e| panic!("não consegui varrer {}: {e}", dir.display()));
     for e in entries.flatten() {
         let p = e.path();
         if p.is_dir() {
@@ -136,4 +168,17 @@ fn detector_flags_width_misuse_only() {
     // Negative: counting for iteration limit, not width.
     assert!(!line_uses_as_width("if s.chars().count() > 64 { … }"));
     assert!(!line_uses_as_width("let n = s.chars().count();"));
+}
+
+/// **Uma raiz que não existe REPROVA** — o controle da metade que faltava.
+///
+/// ⚠️ É a mutação escrita como teste: antes, apontar o [`collect_rs`] a um caminho inexistente
+/// devolvia `[]`, o gate acima lia zero violações e ficava verde com a árvore por varrer. Sem este
+/// controle a cura seria uma afirmação sobre si mesma.
+#[test]
+#[should_panic(expected = "não consegui varrer")]
+fn a_missing_scan_root_fails_loud_instead_of_reading_as_clean() {
+    let ghost = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/esta-raiz-nao-existe");
+    let mut out = Vec::new();
+    collect_rs(&ghost, &mut out);
 }

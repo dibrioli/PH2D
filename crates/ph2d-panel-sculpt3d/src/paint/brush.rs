@@ -99,6 +99,23 @@ pub(super) fn paint_brush_tail(
     // atrás de um clique para mostrar uma, e quem escolhe uma curva a escolhe
     // COMPARANDO. (O Blender troca para dropdown no painel estreito, mas o `seg`
     // desta casa reflui em vez de transbordar — a razão dele não se aplica.)
+    // ⚠️ **A curva e' pintada SEMPRE, e isso e' uma CERCA — nao um esquecimento.**
+    //
+    // Em 2026-08-30 uma caca aos knobs mortos mediu, e a medicao esta' certa: com o verbo `Mask`
+    // em maos o peso vem de `brush.mask_weight(t)` (que le^ **so'** a `mask_hardness`, nunca o
+    // falloff), e com um campo elastico activo a curva inteira e' `kelvinlet::rim_landing`. Nesses
+    // casos **este selector nao molda nada**.
+    //
+    // ⛔ **Escondê-lo mesmo assim foi TENTADO no mesmo dia e REVERTIDO**, porque o gate
+    // `the_basic_level_never_hides_the_curve_that_shapes_the_dab` o apanhou — e o doc dele carrega
+    // a decisao, com referencia: no Blender o `FalloffPanel` e' painel de primeira classe e um
+    // popover **sempre visivel**; *«ele e' dobrado, nunca ausente: o artista SEMPRE ve^ que existe
+    // uma curva»*. ⭐ *Uma fileira inerte num estado nao e' o mesmo que uma fileira morta* — e a
+    // diferenca entre as duas e' uma decisao de produto que ja' foi tomada, com argumento.
+    //
+    // ⚠️ **Quem quiser mexer nisto mexe no GATE primeiro**, e leva um argumento melhor que o do
+    // Blender. A saida que nao viola a cerca e' desenha-la **desactivada** com a razao a' vista,
+    // que e' desenho novo e nao existe hoje.
     let selected = Falloff::ALL
         .iter()
         .position(|&f| f == snap.ui.brush.falloff)
@@ -198,6 +215,27 @@ pub(super) fn paint_brush_tail(
         );
     }
     y = preview::paint(ctx, snap, x, w, y);
+    paint_per_verb_switches(ctx, snap, x, w, y)
+}
+
+/// **Os interruptores que so' existem para CERTOS verbos** — acumular, so'-as-faces-da-frente, e
+/// a lamina a ler a superficie.
+///
+/// ⚠️ Irmao do [`paint_brush_tail`] por corte de RESPONSABILIDADE, e nao por tamanho: os tres
+/// perguntam ao **motor** se a lei existe para o verbo em maos (`verb.accumulates()`,
+/// `offers_front_faces()`, `verb == MultiplaneScrape`) em vez de a uma lista de nomes aqui — e
+/// e' essa pergunta partilhada que os torna um assunto so'.
+///
+/// ⚠️ Nasceu em 2026-08-30 porque o `paint_brush_tail` passou o teto de 200 LOC ao ganhar o gate
+/// do falloff. **Sexta vez nesta jornada que um teto e' estourado por comentario de medicao** — e,
+/// como as cinco anteriores, curado por corte, nunca subindo o teto.
+fn paint_per_verb_switches(
+    ctx: &mut PaintCtx,
+    snap: &Sculpt3dSnapshot,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
     // **ACUMULAR**, e só onde ele faz alguma coisa. ⚠️ A pergunta é feita à
     // PORTA do motor (`Verb::accumulates`) e não a uma lista de nomes aqui: o
     // aplicador pergunta à mesma para honrar o clique, e duas cópias divergiriam

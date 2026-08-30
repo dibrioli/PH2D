@@ -1223,8 +1223,17 @@ fn the_scatter_track_follows_the_channel_it_belongs_to() {
     // ⚠️ O canal DESLIGADO é o default, e a fixture o declara em vez de o herdar:
     // uma fixture que chega ao estado por omissão inverte de sentido no dia em
     // que o default se move, e segue verde testando o oposto.
+    // ⚠️ **O `matcap` tambem e' DECLARADO, e pela mesma razao que o `sss`.** Ate' 2026-08-30 esta
+    // fixtura herdava-o do default — que e' `Some(0)`, ou seja **ligado** — e sob um matcap a
+    // subsuperficie inteira e' inalcancavel: o `mesh.wgsl` devolve na linha 879 e as duas funcoes
+    // de SSS so' sao chamadas na 898 e na 904. ⇒ a pista passou a seguir tambem o `under_the_rig`,
+    // como as pistas de lampada vizinhas ja' seguiam, e esta fixtura tinha de dizer em que estado
+    // a pergunta faz sentido.
+    // ⭐ E' a disciplina que o comentario acima ja' pregava, aplicada ao segundo campo: *uma
+    // fixtura que chega ao estado por omissao inverte de sentido no dia em que o default se move.*
     let mut ui = Sculpt3dUi {
         sss: 0.0,
+        matcap: None,
         ..Sculpt3dUi::default()
     };
     assert!(

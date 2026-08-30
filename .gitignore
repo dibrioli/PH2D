@@ -121,3 +121,10 @@ __pycache__/
 # `dump_frame` usa `PH2D_FIELD_DUMP` e cai em `.` sem ela. Um artefacto no meio do fonte faz o
 # `git status` mentir, que é precisamente o que o §0.4 do CLAUDE.md proíbe `git add -A` por causar.
 *.ppm
+
+# Referências de UI/UX de TERCEIROS (Godot MIT · Blender-docs CC-BY-SA · GNOME HIG · Adobe
+# Spectrum Apache-2.0), baixadas para estudo pela `line/UIUX`. São ~41 MB de repositórios
+# alheios com licenças alheias — o PAYLOAD não viaja no nosso git; o que viaja é o script que o
+# reconstrói (`docs/UI_New_and_Simple/fetch-referencias.sh`), com a licença de cada alvo ao lado.
+# Mesmo precedente de `docs/Pixel Art/` e `docs/Tilling/`.
+docs/UI_New_and_Simple/referencias/

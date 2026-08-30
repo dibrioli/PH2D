@@ -16,7 +16,7 @@ use super::ids;
 use crate::icons::IconId;
 use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use crate::paint::{fill_rounded_rect, resolve};
-use crate::widget::{ButtonState, CHIP_X_OFFSET_PX, ToolRail, ToolRailEntry, paint_tool_rail_t};
+use crate::widget::{ButtonState, ToolRail, ToolRailEntry, paint_tool_rail_t};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_text::TextSystem;
@@ -72,12 +72,12 @@ const PAINTER_TOOLS: [(NodeId, &str, IconId, &str); 11] = [
 /// The Mask-group flyout options, in flyout order: `(id, a11y label, icon, sub)`. Same chip appearance
 /// as the rail tools. Revealed right of the Mask button. Mask is the default sub-tool (its icon is the
 /// group's default face); Selection is the Procreate-style marquee.
-const PAINTER_MASK_SUBS: [(NodeId, &str, IconId, &str); 2] = [
+pub(super) const PAINTER_MASK_SUBS: [(NodeId, &str, IconId, &str); 2] = [
     (ids::PAINTER_RAIL_MASK, "Mask", IconId::Mask, "MASK"),
     (ids::PAINTER_RAIL_SELECTION, "Select", IconId::Select, "SEL"),
 ];
 
-const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
+pub(super) const PAINTER_SHAPES: [(NodeId, &str, IconId, &str); 5] = [
     (
         ids::PAINTER_RAIL_SHAPE_FREEHAND,
         "Free Hand",
@@ -233,7 +233,7 @@ fn left_rail_chip_name(id: NodeId) -> Option<&'static str> {
 
 /// Build the rail entry for one `(id, label, icon, sub)` tool tuple, flagging it
 /// `active` when its store button state is `Pressed`.
-fn tool_entry(
+pub(super) fn tool_entry(
     store: &WidgetStore,
     (id, label, icon, sub): (NodeId, &str, IconId, &str),
 ) -> ToolRailEntry {
@@ -310,39 +310,19 @@ pub fn paint_left_rail(
     );
 }
 
-/// **As entradas que o rail PINTA** — a lista de verdade, e a única.
+/// ⭐⭐ **A SECÇÃO DAS FERRAMENTAS — uma porta com NOME, e não o índice de uma secção.**
 ///
-/// Separada do desenho porque é ela que o gate anti-botão-morto percorre: todo chip pintado
-/// tem de ser despachado por alguém (`chrome::dispatch_all`). Enquanto a lista só existia
-/// dentro do `paint`, um gate sobre ela teria de ser escrito à mão — e um gate escrito à mão
-/// **drifta**. Foi assim que o botão Redo ficou pintado, clicável e órfão.
-pub(crate) fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEntry> {
-    // Top section: panel visibility toggles (workspace-level controls).
-    let panel_toggles = [
-        (
-            ids::RAIL_SHOW_INSPECTOR,
-            "Show Inspector",
-            IconId::Inspector,
-            "INSP",
-        ),
-        (
-            ids::RAIL_SHOW_HIERARCHY,
-            "Show Hierarchy",
-            IconId::Hierarchy,
-            "HIER",
-        ),
-    ];
-    let mut rail_entries: Vec<ToolRailEntry> = panel_toggles
-        .iter()
-        .map(|(id, label, icon, sub)| {
-            let mut e = ToolRailEntry::icon(*id, *label, *icon).with_sub(*sub);
-            if matches!(store.button_state(*id), Some(ButtonState::Pressed)) {
-                e = e.active();
-            }
-            e
-        })
-        .collect();
-    rail_entries.push(ToolRailEntry::Divider);
+/// ⛔⛔ **O menu radial pedia-a por `split(Divider).nth(1)`.** Em 2026-08-30 os dois toggles de
+/// painel saíram desta lista para o menu *Ver*, o índice `1` passou a apontar para
+/// *espaço/vista*, e o radial — que existe para pôr **as ferramentas** sob a caneta — passou a
+/// oferecer *Frame view*. O gate dele apanhou-o, e a cura não é corrigir o número: é deixar de
+/// haver número.
+///
+/// *«Uma fileira condicional torna todo despacho por ÍNDICE num bug silencioso»* — a mesma lei,
+/// um nível acima: aplicada a SECÇÕES em vez de linhas.
+#[must_use]
+pub fn tool_section(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEntry> {
+    let mut rail_entries: Vec<ToolRailEntry> = Vec::new();
     // Middle section: paint tools in Painter mode, else transform tools.
     if painter_active {
         for tool in PAINTER_TOOLS {
@@ -377,6 +357,29 @@ pub(crate) fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<Too
             rail_entries.push(tool_entry(store, tool));
         }
     }
+    rail_entries
+}
+
+/// **As entradas que o rail PINTA** — a lista de verdade, e a única.
+///
+/// Separada do desenho porque é ela que o gate anti-botão-morto percorre: todo chip pintado
+/// tem de ser despachado por alguém (`chrome::dispatch_all`). Enquanto a lista só existia
+/// dentro do `paint`, um gate sobre ela teria de ser escrito à mão — e um gate escrito à mão
+/// **drifta**. Foi assim que o botão Redo ficou pintado, clicável e órfão.
+pub fn rail_entries(store: &WidgetStore, painter_active: bool) -> Vec<ToolRailEntry> {
+    // ⛔⛔ **Os DOIS toggles de painel saíram desta lista em 2026-08-30, e a razão é a D3.**
+    //
+    // *Mostrar Hierarquia* e *Mostrar Inspector* nunca foram ferramentas — eles não mudam o gesto
+    // do ponteiro, mudam o **layout**. A decisão do Enio já os mandava para o menu *Ver*
+    // (`00_DECISOES_DO_ENIO.md` D3: *«~19 ferramentas · 2 layout → menu Ver»*), e desde a barra de
+    // menus eles estão lá, com os MESMOS ids e o mesmo `chrome::rail_panels` a despachá-los.
+    //
+    // ⚠️ **E foi a fila horizontal que forçou a conta:** em modo Painter a lista pedia **779 px**
+    // e a área do alvo de referência dá **746** com as duas colunas abertas ⇒ o último verbo
+    // (Shapes) ficava **cortado E inalcançável**, em silêncio, porque a faixa blinda o hit. Sem
+    // eles a fila usa 699 px, com 47 de folga. *Um verbo no sítio errado só custa quando o sítio
+    // certo fica cheio.*
+    let mut rail_entries: Vec<ToolRailEntry> = tool_section(store, painter_active);
     rail_entries.push(ToolRailEntry::Divider);
     // Face label reflects the live store state: SPACE toggles
     // Global ↔ Local on click; VIEW cycles Selected → Camera → All.
@@ -457,38 +460,26 @@ fn paint_rail(
         motion.travels(),
     );
 
-    // Hit-rects MUST mirror exactly what `paint_tool_rail` paints — same
-    // `chip_px` and `CHIP_X_OFFSET_PX`. Capture the Shapes chip rect so the
-    // flyout (if open) can anchor to it.
-    let chip_px = store.rail_button_size().chip_px();
-    let mut y = rail_rect.y;
-    let gap = Spacing::Xs.px();
-    let chip_x = rail_rect.x + CHIP_X_OFFSET_PX;
+    // ⭐⭐ **O hit vem da MESMA porta que o pintor usa** (`widget::entry_rects`). Aqui esteve um
+    // segundo laço com a aritmética escrita à mão e o comentário *«Hit-rects MUST mirror exactly
+    // what `paint_tool_rail` paints»* por cima — que é a confissão do defeito: **um espelho não é
+    // uma lei**, e um pintor horizontal com um hit vertical compilaria e passaria a suíte inteira.
     let mut shapes_chip: Option<Rect> = None;
     let mut mask_group_chip: Option<Rect> = None;
-    for (i, entry) in rail.entries.iter().enumerate() {
-        if i > 0 {
-            y += gap;
-        }
-        match entry {
-            ToolRailEntry::Icon { id, .. } => {
-                let chip = Rect::new(chip_x, y, chip_px, chip_px);
-                hit_index.register(*id, chip);
-                if *id == ids::PAINTER_RAIL_SHAPES {
-                    shapes_chip = Some(chip);
-                } else if *id == ids::PAINTER_RAIL_MASK_GROUP {
-                    mask_group_chip = Some(chip);
-                }
-                y += chip_px;
-            }
-            ToolRailEntry::Compound { id, .. } | ToolRailEntry::Swatch { id, .. } => {
-                let chip = Rect::new(chip_x, y, chip_px, chip_px);
-                hit_index.register(*id, chip);
-                y += chip_px;
-            }
-            ToolRailEntry::Divider => {
-                y += crate::widget::DIVIDER_GAP_PX * 2.0 + 1.0;
-            }
+    for slot in crate::widget::entry_rects(
+        &rail,
+        rail_rect,
+        store.rail_button_size(),
+        crate::widget::RailAxis::Vertical,
+    ) {
+        let Some(id) = slot.id else {
+            continue; // o divisor não se clica
+        };
+        hit_index.register(id, slot.rect);
+        if id == ids::PAINTER_RAIL_SHAPES {
+            shapes_chip = Some(slot.rect);
+        } else if id == ids::PAINTER_RAIL_MASK_GROUP {
+            mask_group_chip = Some(slot.rect);
         }
     }
 
@@ -581,17 +572,12 @@ fn paint_rail_flyout(
         &|id| Some(motion.get(id).unwrap_or(0.0)),
         motion.travels(),
     );
-    let chip_px = size.chip_px();
-    let gap = Spacing::Xs.px();
-    let chip_x = flyout_rect.x + CHIP_X_OFFSET_PX;
-    let mut y = flyout_rect.y;
-    for (i, entry) in rail.entries.iter().enumerate() {
-        if i > 0 {
-            y += gap;
-        }
-        if let ToolRailEntry::Icon { id, .. } = entry {
-            hit_index.register(*id, Rect::new(chip_x, y, chip_px, chip_px));
-            y += chip_px;
+    // ⚠️ A TERCEIRA cópia da mesma aritmética vivia aqui. Mesma porta.
+    for slot in
+        crate::widget::entry_rects(&rail, flyout_rect, size, crate::widget::RailAxis::Vertical)
+    {
+        if let Some(id) = slot.id {
+            hit_index.register(id, slot.rect);
         }
     }
 }

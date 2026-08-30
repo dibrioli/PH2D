@@ -35,6 +35,7 @@ mod context_menu_dialogs;
 pub mod context_menu_overlay;
 pub mod file_menu;
 pub mod fixture;
+mod frame_layout;
 pub mod global_palette;
 pub mod panel_ids;
 /// O MODELO do menu radial (E4) — a vista de OITO direcções da mesma lista da paleta.
@@ -50,6 +51,7 @@ pub mod pre_populate_blender;
 pub mod selection;
 pub mod state;
 pub mod style;
+pub mod tool_bar;
 pub mod topbar;
 
 mod inspector_model;

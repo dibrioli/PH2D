@@ -32,8 +32,10 @@ use ph2d_editor_core::screens::layout::{
 };
 use ph2d_editor_core::zones::Rect;
 
-const HERO_PAINT: &str = include_str!("../src/screens/hero/paint.rs");
 const PRE_POPULATE: &str = include_str!("../src/screens/hero/pre_populate.rs");
+
+#[path = "common/hero_sources.rs"]
+mod hero_sources;
 
 fn viewport() -> Rect {
     Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)
@@ -42,6 +44,13 @@ fn viewport() -> Rect {
 /// **O rect que o layout calcula É o rect que a coluna ocupa** — nenhum offset entre os dois.
 #[test]
 fn the_dock_rects_never_pass_through_a_drag_offset() {
+    // ⛔⛔ **A pergunta é ao MÓDULO, não ao ficheiro** — e a diferença não é estilo. Este gate
+    // lia só o `paint.rs`; em 2026-08-30 o tecto de LOC cortou dali o bloco da geometria para o
+    // irmão `frame_layout.rs`, e a partir daí a ausência que ele exige passou a ser **de graça**:
+    // o offset podia voltar no ficheiro ao lado com este gate VERDE.
+    //
+    // ⚠️ *Um gate de AUSÊNCIA que nomeia um ficheiro é desarmado por um corte, e em silêncio* —
+    // ao contrário do irmão de PRESENÇA, que reprova alto. Ver `common/hero_sources.rs`.
     for needle in [
         "blender_picker_offset(ids::INSP_PANEL)",
         "blender_picker_offset(ids::HIER_PANEL)",
@@ -50,10 +59,9 @@ fn the_dock_rects_never_pass_through_a_drag_offset() {
         "clamp_panel_rect(layout.inspector",
         "clamp_panel_rect(layout.hierarchy",
     ] {
-        assert!(
-            !HERO_PAINT.contains(needle),
-            "`{needle}` voltou ao `hero/paint.rs`: a coluna volta a flutuar, e leva os DEZASSEIS \
-             paineis do dock com ela"
+        hero_sources::assert_hero_never_contains(
+            needle,
+            "a coluna volta a flutuar, e leva os DEZASSEIS paineis do dock com ela",
         );
     }
     // ⭐ E o espelho continua a existir — os quatro aliases TE^M de receber o rect, senao os
@@ -65,7 +73,7 @@ fn the_dock_rects_never_pass_through_a_drag_offset() {
         "layout.painter_layers = layout.inspector;",
     ] {
         assert!(
-            HERO_PAINT.contains(alias),
+            hero_sources::hero_file_containing(alias).is_some(),
             "o alias `{alias}` sumiu — o painel dele passa a pintar num rect e a responder noutro"
         );
     }

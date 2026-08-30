@@ -114,83 +114,7 @@ pub fn paint_hero_screen(
     // make smart layout decisions (cascade submenu side-flip etc.).
     hero.last_viewport = viewport;
 
-    // Rail width follows the user's Themes-menu rail-button-size
-    // preset (Small / Medium / Large; default Small). Switching size
-    // shifts Inspector/Hierarchy x-positions accordingly.
-    // ⭐ **As medidas do chrome legado, ou ZERO.** *«Sem chrome legado»* não é um modo que o
-    // layout conheça — são duas bandas a zero, e a aritmética dele é a de sempre.
-    let mut bands = crate::screens::layout::ChromeBands {
-        // ⭐ As larguras das colunas são AUTORADAS — o artista arrasta a borda interior delas
-        // (`DOCK_SEAM_PX`), e o valor vive no `WidgetStore` como qualquer outra escolha de chrome.
-        left_dock_w: hero
-            .store
-            .dock_width(crate::screens::layout::DockSide::Left),
-        right_dock_w: hero
-            .store
-            .dock_width(crate::screens::layout::DockSide::Right),
-        ..crate::screens::layout::ChromeBands::DEFAULT
-    };
-    if hero.view.legacy_chrome {
-        bands.rail_w = hero.store.rail_button_size().rail_width_px();
-    } else {
-        bands.rail_w = 0.0;
-        // ⭐ **A banda de topo fica, e muda de INQUILINO**: a barra de menus ocupa a faixa que os
-        // pills ocupavam, e por isso a `F9` TROCA as duas em vez de as empilhar — duas faixas
-        // custariam altura permanente ao alvo de 1024 pontos por causa de um interruptor de
-        // bissecção.
-        bands.top_bar_h = super::menu_bar::MENU_BAR_H;
-    }
-    // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
-    // this is identical to the legacy layout there; the Motion bridge sets a split
-    // while its tool is active.
-    // **Quais colunas laterais estão ocupadas** — a área de desenho (e com ela as réguas) cresce
-    // para dentro de uma coluna fechada. É o mesmo padrão do `dock_timeline_into_motion` logo
-    // abaixo: o layout é uma função pura do que lhe dizem, e ESTE é o sítio que sabe.
-    // **Quais colunas laterais estão ocupadas** — perguntado aos rects que os painéis
-    // PUBLICARAM no quadro anterior, nunca a uma lista de nomes: são 20 crates a publicar, e a
-    // lista de cinco que aqui esteve estava errada exactamente no modo que importava.
-    // A sonda serve só para saber ONDE ficam as duas colunas — a geometria delas não depende
-    // dos flags —, e o `side_columns` devolve-as ordenadas por `x`, que é o que torna o
-    // `mirrored` inofensivo aqui.
-    let probe = HeroLayout::for_viewport_bands(
-        viewport,
-        hero.view.ui_mirrored,
-        bands,
-        hero.view.center_split,
-        crate::screens::layout::DockSides::BOTH,
-    );
-    let published: Vec<_> = hero.store.panel_rects().collect();
-    let (left_col, right_col) = probe.side_columns();
-    let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
-    let mut layout = HeroLayout::for_viewport_bands(
-        viewport,
-        hero.view.ui_mirrored,
-        bands,
-        hero.view.center_split,
-        docks,
-    );
-    // **The timeline docks INTO the Motion workspace** (W4.T4). Only when both are on screen:
-    // otherwise the graph keeps its full band and the timeline keeps its own dock. The condition
-    // is read from the panel visibility the bridges already publish — the layout stays a pure
-    // function of what it is told, and this is the one place that tells it.
-    //
-    // Before this, `motion_graph` ran down to the chrome and `timeline` was the bottom strip, so
-    // the two occupied the SAME pixels and the timeline (drawn later) painted over the graph.
-    if hero.is_panel_visible(super::PANEL_MOTION_GRAPH)
-        && hero.is_panel_visible(super::PANEL_TIMELINE)
-    {
-        layout.dock_timeline_into_motion();
-    }
-    // ⛔ **As faixas do FUNDO também comem a área de desenho** (auditoria de 2026-08-30): o
-    // `timeline` nasce exactamente no `area_x0` e ocupa 240 px no fundo da banda, então a régua
-    // da esquerda corria por baixo dele. Depois do `dock_timeline_into_motion`, de propósito —
-    // ele MOVE o rect do timeline, e reservar antes reservaria o sítio errado.
-    if hero.is_panel_visible(super::PANEL_TIMELINE) {
-        layout.reserve_bottom_strip(layout.timeline);
-    }
-    if hero.is_panel_visible("flip_frames") {
-        layout.reserve_bottom_strip(layout.flip_strip);
-    }
+    let mut layout = super::frame_layout::frame_layout(hero, viewport);
     // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
     // depois de fixar os painéis nas laterais»*). O rect que o [`HeroLayout`] calculou **é** o
     // rect que elas ocupam — não há offset de arrasto entre os dois.
@@ -580,6 +504,18 @@ pub fn paint_hero_screen(
     let painter_active = hero.rail_shows_painter_tools();
     if hero.view.legacy_chrome {
         paint_left_rail(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+            painter_active,
+            &hero.motion,
+        );
+    } else {
+        // ⭐ **A FILA** — os mesmos chips, deitados, na região que a área lhes reservou.
+        super::tool_bar::paint_tool_bar(
             &layout,
             scene,
             text_system,

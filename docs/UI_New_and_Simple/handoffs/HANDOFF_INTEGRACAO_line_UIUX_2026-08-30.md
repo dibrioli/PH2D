@@ -29,6 +29,13 @@ virou **código**.
 | 7 | `24e25728c` | a auditoria corrigiu um **número** meu (87,8 → **86,8 %**) — 13 sítios |
 | 8 | `14df4796c` | o portão de fecho com o número **honesto**, e duas flakes novas nomeadas |
 | 9 | `41ff3fb48` | ⭐ **as RÉGUAS valem em TODOS os modos** (Enio) — e isso dissolveu o teorema do #7 (§3-ter) |
+| 10 | `a260a30fd` | a wave das réguas-em-todo-modo documentada, e a próxima **medida antes de começada** |
+| 11 | `b7264acfb` | ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** — um bloco governava **dezasseis** painéis |
+| 12 | `cc3dc6b44` | ⭐ **o chrome legado sai de cena e as bandas ficam FLUSH** — 94 px em cima e 60 em baixo de espaço morto |
+| 13 | `66f460f7c` | ⭐ **os números da régua VERTICAL rodam**, e a régua **encosta** na coluna |
+| 14 | `28f9d95d0` | ⭐ **A BORDA INTEIRA redimensiona a coluna** — seta bidireccional, e os pontinhos saem |
+| 15 | `d15640c62` | ⭐⭐ **A BARRA DE MENUS** — *File · Edit · View · Window*, e ela **realoja** verbos (§10) |
+| 16 | *(a seguir)* | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
 
 ---
 
@@ -263,6 +270,8 @@ ferramentas** — mudar a ordem muda o radial em silêncio.
 
 ---
 
+---
+
 ## §4 — ⛔ FRONTEIRA declarada, com o preço medido
 
 **A CENA não se mudou, e continua full-bleed por baixo das réguas.**
@@ -311,14 +320,24 @@ esta wave cura é o chrome **docado**; a cerca que proíbe o resto é a `allowed
 1. **`E` — os seis encaixes + `allowed_slots`/`can_float`** (D1/D4). Inclui **remover a fuga do
    gizmo de navegação** no mesmo trabalho (senão passa a fugir de uma moldura que já não o
    alcança) e **dar origem à cena** (§4).
-2. **`C` — a barra de menus.** Medido: o `screens/hero/topbar/` tem **zero** ocorrências de
-   `open_context_menu`/`ContextMenuKind::` — **a barra de cima não abre menus hoje**. E **não
-   existe cabeçalho de área** em lado nenhum (`area_header`/`AreaHeader`/`editor_header` → zero).
+2. ✅ **`C` — a barra de menus FECHOU** (entrega 15, §10). ⏳ O que ela **não** trouxe: o
+   **cabeçalho por área** continua a não existir (`area_header`/`AreaHeader`/`editor_header` →
+   zero), e é ele que dá destino aos comandos que são do editor e não do app.
 3. **`F` — Layouts + cabeçalho por área**, que é o que dá destino aos 11 comandos de câmera do
    painel 3D Model.
 4. **`G` — esvaziar os painéis** (66 de 74 entradas do painel medido têm outro dono). É aqui que
    a área se ganha, não em `E`.
 5. **`I` — cortar os temas 4 → 2**: **desbloqueado** (§5.1), à espera do veredito do Enio.
+
+### ⏳ O que estas duas waves deixaram aberto, com o preço ao lado
+
+| item | estado |
+|---|---|
+| a fila **transborda** numa janela estreita | há gate com a folga impressa (68 px no alvo de referência, modo Painter). ⛔ A cura quando faltar: **quebrar em duas linhas** (a faixa cresce) ou um menu de transbordo — ⚠️ encolher o chip mente sobre o preset de tamanho |
+| o **cabeçalho por área** (D2, metade 2) | não existe. É o dono declarado do selector de **modo** e das opções do editor |
+| dois gates ainda fazem `include_str!` do `paint.rs` | são de **presença**: falham alto (§11.5) |
+| o hit do trilho **vertical** sem gate comportamental | ele já não consegue derivar (pergunta à porta), e só pinta sob `F9` (§11.6) |
+| o `cluster_painter::paint_topbar_rail_chip` continua a ser uma **cópia verbatim** da matriz de tinta do chip | o doc dele di-lo (*«Matriz copiada verbatim — DO NOT diverge»*). Com o `RailAxis` ele passa a ser dispensável; ⛔ não foi tocado porque é chrome legado a caminho de sair |
 
 ### As três decisões que continuam a ser do Enio
 Como partir o `DrawMode` nos dois eixos · adoptar o campo `Mode` do Workspace · o que acontece
@@ -348,6 +367,26 @@ mudado, que é o que o §3.2 diz que **não** acontece).
 **Unidade de ângulo** (entrega 1-3): menu *Settings → Angle unit*, alternar entre *Degrees* e
 *Radians*; o Inspector muda **rótulo e passo** dos campos de rotação/skew, e a opção activa fica
 **marcada** no submenu.
+
+⚠️ **A partir da entrega 9 as réguas valem em TODO modo** — a nota acima sobre *«pegue a
+ferramenta Vector primeiro»* é histórica.
+
+**A barra de menus** (entrega 15): sem `F9`, no topo, quatro títulos. Cada um abre por baixo de si.
+*Window* tem os treze módulos; *View* tem Hierarchy / Inspector / Rulers / Theme…; *File* tem New
+Image… / Open / Import / Save / Save As…; *Edit* tem Undo / Redo / Preferences….
+Deu errado se: um título não abre, um menu abre por cima do título, ou o menu **fica aberto**
+depois de escolher (o caso apertado são as linhas do *Window*, que os painéis consomem antes do
+chrome).
+
+**A fila de ferramentas** (entrega 16): a faixa horizontal por cima da área de desenho, com os
+mesmos chips que a coluna tinha e o rótulo **por cima** de cada um. A régua de cima fica **por
+baixo** dela.
+Deu errado se: um chip pintado não pega ao clique · a fila entra por cima da Hierarquia ou do
+Inspector · a régua de cima nasce por baixo da fila · em modo Painter (pegar na ferramenta de
+pintura) o último chip aparece **cortado** — a faixa corta a tinta e o clique juntos, então um
+chip cortado é um chip **inalcançável**.
+⚠️ *Mostrar Hierarquia* e *Mostrar Inspector* **saíram** da fila de propósito — eles são layout,
+não ferramenta, e vivem no menu *View*.
 
 ---
 
@@ -396,3 +435,151 @@ duas são as que ela ganhou hoje.
 
 ⏳ Falta o `rm -rf target/*/incremental` e a **UMA linha** no `CLAUDE.md` §5 — DIRETRIZ §1.5.9.
 A linha **não** está fechada, e não há ordem do Enio para integrar.
+
+---
+
+## §10 — A BARRA DE MENUS (commit 15), mecanismo
+
+Enio, 2026-08-30: *«pode tirar também os botões do topo para começarmos a trabalhar a barra
+superior»*. É a obra **`C`** do [`spec/02 §2`](../spec/02_o_que_falta_para_comecar.md) — a barra
+global da **D2**.
+
+### §10.1 — A lei: 25 das 29 linhas levam um id que JÁ EXISTIA
+
+O `Save` é o `CTX_MENU_SAVE` do `chrome::io_menu`. O `Undo` é o `TOOL_UNDO` do trilho. O `Vector` é
+o `TOPBAR_VECTOR` que o pill levava, e quem o despacha continua a ser o mesmo handler. ⇒ nasceram
+**quatro** ids de linha, e só onde não havia porta nenhuma:
+
+| linha nova | o verbo existia, alcançável por |
+|---|---|
+| `New Image…` | só a tecla `Cmd/Ctrl+N` |
+| `Preferences…` | só o pill da engrenagem (retirado) |
+| `Theme…` | só o pill do tema (retirado) |
+| `Rulers` | só uma caixa **dentro do painel do vetor** — que deixou de ser o dono no dia em que as réguas passaram a valer em todos os modos |
+
+### §10.2 — O menu *Window* devolve os treze módulos
+
+⚠️ Entre a retirada dos pills e esta barra, o **único** caminho até Vector / Motion / Flip /
+Physics / Sculpt 3D / Model 3D / Image Tools / Áudio×2 / Tokens / Authored / Galeria / Grelha era a
+tecla `F9`. Uma tecla de bissecção não é uma porta de produto.
+
+### §10.3 — UMA tabela, três consumidores
+
+`menu_bar::MENUS` é a fonte; `menu_bar::menu_rects` é a porta. O pintor, o registo de hit e o
+despacho de ponteiro perguntam à mesma função. ⛔ Em `pointer_down_menus.rs` estavam **cinco**
+cópias do mesmo bloco de dez linhas (uma por pill) e a barra acrescentava mais quatro — a sexta
+cópia é onde uma delas nasce com o `kind` do vizinho por copiar-colar.
+
+### §10.4 — ⛔⛔ O fecho do menu teve de subir para o topo do `apply_event`
+
+O registo de **painéis** é caminhado **antes** do `chrome::dispatch_all`: um
+`Click(TOPBAR_AUDIO_MIXER)` é consumido pelo painel do mixer e o chrome **nunca o vê**. Um fecho
+escrito num handler de chrome ficaria morto exactamente nas treze linhas do menu *Window* — o
+artista escolheria *Audio Mixer*, o painel abriria, e o menu ficaria pousado por cima dele.
+
+### §10.5 — ⛔ Os gates vivem em DUAS crates, e a divisão não é escolha
+
+| linhas | quem despacha | crate que consegue prová-lo |
+|---|---|---|
+| 9 do *Window* + File/Edit/View | `chrome/*` | `ph2d-editor-core` |
+| **Audio Mixer · Audio Editor · Widget Gallery · Grid Settings** | o `event.rs` do próprio painel | `ph2d-panel-registry-init` |
+
+O `test_support::ensure_panel_registry` da `editor-core` é um `{}`. A **1.ª redacção** do gate
+estava toda lá e acusou aquelas quatro de serem botões mortos — código correcto. *Um gate escrito
+de uma camada deixa a outra por medir.*
+
+### §10.6 — ⚠️ Duas correcções que os próprios gates cobraram
+
+1. *«escolher FECHA o menu»* é **falso** para o `New Image…`, que o **substitui** pelo modal. A
+   propriedade honesta é *«este menu deixa de estar aberto»*.
+2. O alvo do gate dos painéis era a string `"audio-mixer"`; o painel chama-se `"audio_mixer"`. Um
+   nome errado lê-se exactamente como *«a costura está morta»*, que é a acusação mais cara que um
+   gate pode fazer. Hoje a pergunta é **derivada**: *que painéis mudaram de visibilidade? exactamente um.*
+
+---
+
+## §11 — A FILA DE FERRAMENTAS (commit 16), mecanismo
+
+Enio, 2026-08-30: *«ainda temos os botões da lateral»* + *«os botões laterais reaparecendo como uma
+barra horizontal por cima do desenho»*.
+
+### §11.1 — ⭐⭐ A porta única da geometria, e a dívida que ela pagou
+
+`widget::entry_rects(rail, rect, size, axis)` responde *«onde cai cada entrada?»*. Antes dela a
+resposta estava escrita **três** vezes — o pintor (`tool_rail/paint.rs`), o hit do trilho
+(`hero/left_rail.rs`) e o hit do flyout — cada um com o seu `let mut y`. O comentário do segundo
+dizia *«Hit-rects MUST mirror exactly what `paint_tool_rail` paints»*, que é a confissão do
+defeito: **um espelho não é uma lei**, e um pintor horizontal com um hit vertical compilaria e
+passaria a suíte inteira.
+
+⚠️ **A ADVANCE é a mesma nos dois eixos** (um chip anda `chip_px`, um divisor anda `1 + 2·gap`); o
+que muda é o eixo em que ela corre e onde fica o rótulo — rodado à esquerda na coluna, direito por
+cima na fila. Há gate a compará-los entrada a entrada.
+
+### §11.2 — A fila é uma REGIÃO da área, não uma faixa da janela
+
+Ela sai de `HeroLayout::tool_bar`, cortado da **área de desenho** (entre as colunas), e a régua
+começa por baixo dela. ⛔ Uma barra de ferramentas à largura do ecrã passaria por cima da
+Hierarquia e do Inspector — que é exactamente o modelo `x = 0` do trilho antigo, o que tapava
+**86,8 %** da régua da esquerda.
+
+### §11.3 — ⛔⛔ O achado: a fila NÃO CABIA, e o transbordo era MUDO
+
+| modo | a fila pede | a área dá (alvo 1366, duas colunas abertas) |
+|---|---:|---:|
+| objecto | 358 px | 746 px |
+| painter (antes) | **779 px** | 746 px ⇒ **−33** |
+
+⚠️ **A faixa blinda a tinta E o hit** (`push_clip` nos dois), o que é o comportamento certo — e é
+por isso que o transbordo é silencioso: o último verbo (*Shapes*) **desaparecia** em vez de se
+sobrepor à coluna. Sem número, o primeiro verbo novo a entrar na lista apaga o último e ninguém vê
+nada acontecer. Há gate com a folga impressa.
+
+⭐ **A cura veio da D3, não de encolher nada:** *Mostrar Hierarquia* e *Mostrar Inspector* **nunca
+foram ferramentas** — eles não mudam o gesto do ponteiro, mudam o **layout**, e a decisão do Enio
+já os mandava para o menu *Ver* (*«~19 ferramentas · 2 layout → menu Ver»*). Saíram da lista do
+trilho; a fila passa a 678 px, com **68 de folga**. *Um verbo no sítio errado só custa quando o
+sítio certo fica cheio.*
+
+### §11.4 — ⛔⛔ E isso partiu o MENU RADIAL, por índice
+
+O radial pedia as ferramentas por `split(Divider).nth(1)` — **a secção do meio**. Com os dois
+toggles fora, o índice `1` passou a apontar para *espaço/vista*, e o menu que existe para pôr **as
+ferramentas** sob a caneta passou a oferecer *Frame view*. O gate dele apanhou-o.
+
+⭐ **A cura não é corrigir o número: é deixar de haver número.** Nasceu
+`left_rail::tool_section(store, painter_active)` — uma porta com **nome** —, e o radial e o
+`rail_entries` pedem-lhe a mesma coisa. *«Uma fileira condicional torna todo despacho por ÍNDICE
+num bug silencioso»*, um nível acima: aplicado a **secções**.
+
+### §11.5 — ⛔⛔ O corte por LOC desarmou DOIS gates, em direcções OPOSTAS
+
+`paint.rs` passou o tecto (708/700) e o bloco da geometria foi cortado para o irmão
+`frame_layout.rs` — *pure code motion*, produto intacto. As duas espécies de gate reagiram de
+maneiras opostas:
+
+| o gate afirma | o que o corte lhe fez |
+|---|---|
+| **presença** (*«alguém chama isto»*) | reprovou **alto**, com uma acusação falsa |
+| **ausência** (*«isto NÃO voltou»*) | ficou **verde e vazio** — a prova mudou-se para fora do alcance dele |
+
+⚠️ **A segunda é a perigosa:** `the_side_columns_are_anchored` exigia que
+`blender_picker_offset(…)` não estivesse no `paint.rs`, e depois do corte essa ausência passou a
+ser **de graça** — o offset podia voltar no ficheiro ao lado com o gate verde.
+
+⇒ nasceu `tests/common/hero_sources.rs`: a pergunta passa a ser sobre o **módulo**
+(*alguém em `screens/hero` faz isto?*), varrendo recursivamente. Dois gates convertidos.
+
+⏳ **Ficam DOIS por converter** — `the_chrome_reads_the_ui_clock` e
+`the_ruler_prints_the_projects_unit` ainda fazem `include_str!` do `paint.rs`. São gates de
+**presença**, logo falham alto: são um incómodo, não um buraco. Converter é trabalho de quem lhes
+mexer a seguir.
+
+### §11.6 — ⚠️ O que NÃO está gateado, nomeado
+
+O registo de hit do trilho **vertical** não tem gate comportamental próprio — ele passou a
+perguntar à porta, logo **já não consegue derivar**, mas uma re-introdução deliberada do offset só
+é apanhada pelo gate de números mágicos (medido: uma mutação com `+5.0` só acorda o
+`no_magic_numeric`). E o trilho vertical só pinta sob `F9`.
+
+---

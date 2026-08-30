@@ -64,18 +64,45 @@ pub fn paint_tool_rail_t(
     hover_t: &dyn Fn(NodeId) -> Option<f32>,
     travels: bool,
 ) {
-    // Chip x is computed from the label column budget so the
-    // label-to-chip gap is exactly `LABEL_TO_CHIP_GAP_PX`, regardless
-    // of how wide the rail itself is set.
-    let chip_x = rect.x + CHIP_X_OFFSET_PX;
+    paint_tool_rail_axis(
+        rail,
+        rect,
+        scene,
+        text_system,
+        theme,
+        store,
+        hover_t,
+        travels,
+        RailAxis::Vertical,
+    );
+}
+
+/// [`paint_tool_rail_t`] **com o eixo**: a coluna de sempre, ou a fila horizontal por cima da área
+/// de desenho.
+///
+/// ⭐⭐ **A geometria não está aqui** — ela vem de [`super::entry_rects`], a mesma porta que o
+/// registo de hit pergunta. Enquanto ela não existia, este laço e o do `hero::left_rail` eram duas
+/// aritméticas gémeas, e *«o hit tem de espelhar exactamente o que o pintor pinta»* era um
+/// comentário, não uma lei.
+///
+/// ⚠️ **O que muda com o eixo é o RÓTULO, e só ele:** rodado à esquerda do chip na coluna, direito
+/// por cima dele na fila. Um rótulo rodado numa fila horizontal comeria a altura da banda.
+#[allow(clippy::too_many_arguments)]
+pub fn paint_tool_rail_axis(
+    rail: &ToolRail,
+    rect: Rect,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    store: &WidgetStore,
+    hover_t: &dyn Fn(NodeId) -> Option<f32>,
+    travels: bool,
+    axis: RailAxis,
+) {
     let sub_font = (TypeToken::Xs.px() - 2.0).max(Spacing::Md.px());
-    let gap = Spacing::Xs.px();
-    let chip_px = store.rail_button_size().chip_px();
-    let mut y = rect.y;
-    for (i, entry) in rail.entries.iter().enumerate() {
-        if i > 0 {
-            y += gap;
-        }
+    let slots = super::entry_rects(rail, rect, store.rail_button_size(), axis);
+    for (slot, entry) in slots.iter().zip(rail.entries.iter()) {
+        let slot_rect = slot.rect;
         match entry {
             ToolRailEntry::Icon {
                 id,
@@ -84,7 +111,7 @@ pub fn paint_tool_rail_t(
                 sub,
                 ..
             } => {
-                let rest_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let rest_rect = slot_rect;
                 let chip_rect = rest_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
@@ -130,23 +157,23 @@ pub fn paint_tool_rail_t(
                 // (sobe `d` e cresce `2d`, logo o centro fica). O que muda é só a largura de layout.
                 // **NÃO foi medido se algum rótulo de hoje chega a re-fluir** (são palavras curtas
                 // contra 36-44 px): entra por ser a mesma lei, não por um sintoma reportado.
-                paint_sub_label_vertical(
+                paint_sub_label(
                     text_system,
                     scene,
                     sub,
                     sub_font,
                     rect.x,
                     rest_rect,
+                    axis,
                     // M14.5 r4: Text2 keeps the label legible on the
                     // canvas-floating chrome without competing with the
                     // chip's primary content (Text3 was invisible on
                     // mid-luminance backdrops).
                     resolve(ColorToken::Text2, theme),
                 );
-                y += chip_px;
             }
             ToolRailEntry::Compound { id, face, sub, .. } => {
-                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let chip_rect = slot_rect;
                 // Halved 2026-05-24 (Lg → Sm, 12 → 6 px) per user
                 // feedback that rail buttons looked too bubbly.
                 let radius = Radius::Sm.px();
@@ -194,17 +221,17 @@ pub fn paint_tool_rail_t(
                     resolve(face_color, theme),
                 );
                 scene.pop_layer();
-                paint_sub_label_vertical(
+                paint_sub_label(
                     text_system,
                     scene,
                     sub,
                     sub_font,
                     rect.x,
                     chip_rect,
+                    axis,
                     // M14.5 r4: see Icon arm note.
                     resolve(ColorToken::Text2, theme),
                 );
-                y += chip_px;
             }
             ToolRailEntry::Swatch {
                 id,
@@ -213,7 +240,7 @@ pub fn paint_tool_rail_t(
                 sub,
                 ..
             } => {
-                let chip_rect = Rect::new(chip_x, y, chip_px, chip_px);
+                let chip_rect = slot_rect;
                 let radius = Radius::Sm.px();
                 let state = store.button_state(*id).unwrap_or(ButtonState::Normal);
                 let is_active = *active || state == ButtonState::Pressed;
@@ -240,30 +267,79 @@ pub fn paint_tool_rail_t(
                     theme,
                 );
                 stroke_rounded_rect(scene, chip_rect, radius, border_w, border_c);
-                paint_sub_label_vertical(
+                paint_sub_label(
                     text_system,
                     scene,
                     sub,
                     sub_font,
                     rect.x,
                     chip_rect,
+                    axis,
                     resolve(ColorToken::Text2, theme),
                 );
-                y += chip_px;
             }
             ToolRailEntry::Divider => {
-                y += DIVIDER_GAP_PX;
-                let line = Rect::new(
-                    rect.x + (rect.w - Spacing::Xl2.px()) * 0.5,
-                    y,
-                    Spacing::Xl2.px(),
-                    1.0,
-                );
-                scene.fill_rect(rect_to_vello(line), resolve(ColorToken::Border, theme));
-                y += 1.0 + DIVIDER_GAP_PX;
+                scene.fill_rect(rect_to_vello(slot_rect), resolve(ColorToken::Border, theme));
             }
         }
     }
+}
+
+/// **O rótulo, no eixo em que este rail corre** — rodado à esquerda do chip numa coluna, direito
+/// por cima dele numa fila.
+///
+/// ⚠️ Uma função só, e não duas chamadas nos braços: os três braços do pintor pedem o rótulo, e a
+/// escolha do eixo repetida três vezes seria três sítios onde um deles fica para trás.
+#[allow(clippy::too_many_arguments)]
+fn paint_sub_label(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    font_size: f32,
+    rail_left_x: f32,
+    chip_rect: Rect,
+    axis: RailAxis,
+    color: ph2d_vector::Color,
+) {
+    match axis {
+        RailAxis::Vertical => paint_sub_label_vertical(
+            text_system,
+            scene,
+            text,
+            font_size,
+            rail_left_x,
+            chip_rect,
+            color,
+        ),
+        RailAxis::Horizontal => {
+            paint_sub_label_above(text_system, scene, text, font_size, chip_rect, color)
+        }
+    }
+}
+
+/// Helper — o rótulo direito, centrado POR CIMA do chip (a fila horizontal).
+///
+/// ⚠️ A banda que ele ocupa é a mesma [`LABEL_VISUAL_EXTENT_PX`] que a coluna reserva para o
+/// rodado — o mesmo número, o mesmo tipo de letra, medido do mesmo sítio. É o que faz a fila e a
+/// coluna terem chips do mesmo tamanho.
+fn paint_sub_label_above(
+    text_system: &mut TextSystem,
+    scene: &mut VectorScene,
+    text: &str,
+    font_size: f32,
+    chip_rect: Rect,
+    color: ph2d_vector::Color,
+) {
+    if text.is_empty() {
+        return;
+    }
+    let band = Rect::new(
+        chip_rect.x,
+        chip_rect.y - LABEL_TO_CHIP_GAP_PX - LABEL_VISUAL_EXTENT_PX,
+        chip_rect.w,
+        LABEL_VISUAL_EXTENT_PX,
+    );
+    crate::paint::paint_text_centered(text_system, scene, text, band, font_size, color);
 }
 
 /// Helper — paint a short uppercase tag vertically (CCW-rotated)

@@ -216,6 +216,110 @@ impl ToolRailEntry {
     }
 }
 
+/// ⭐⭐ **O EIXO em que um rail se dispõe** — a coluna de sempre, ou a fila horizontal por cima da
+/// área de desenho (2026-08-30, o modelo do Godot).
+///
+/// ⚠️ **A ADVANCE é a mesma nos dois** (um chip anda `chip_px`, um divisor anda `1 + 2·gap`); o que
+/// muda é o eixo em que ela corre e onde fica o rótulo — à esquerda do chip na coluna, por cima
+/// dele na fila. Escrever duas aritméticas seria escrever a mesma lei duas vezes, que é
+/// precisamente a dívida que este ficheiro tinha.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum RailAxis {
+    /// A coluna lateral — o rótulo roda 90° e vive à ESQUERDA do chip.
+    #[default]
+    Vertical,
+    /// A fila horizontal — o rótulo fica direito, POR CIMA do chip.
+    Horizontal,
+}
+
+/// **Onde uma entrada do rail cai** — a resposta da porta única [`entry_rects`].
+///
+/// `id` é `None` só para o [`ToolRailEntry::Divider`], e nesse caso `rect` é a LINHA que ele
+/// desenha, não um alvo: um divisor não se clica.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct EntrySlot {
+    /// O índice na lista de entradas — o que o `build_entry_a11y` pede.
+    pub index: usize,
+    /// O id do chip, ou `None` num divisor.
+    pub id: Option<NodeId>,
+    /// O rectângulo do chip em REPOUSO (ou a linha, num divisor).
+    pub rect: Rect,
+}
+
+/// ⭐⭐ **A PORTA ÚNICA da geometria de um rail** — *onde cai cada entrada?*
+///
+/// ⛔⛔ **Ela existe porque a resposta estava escrita TRÊS vezes**, e nada no repo ligava as
+/// cópias: o pintor (`tool_rail/paint.rs`), o registo de hit do trilho (`hero/left_rail.rs`) e o
+/// registo de hit do flyout — cada um com o seu `let mut y`, o seu `gap` e o seu `chip_x`. O
+/// comentário do segundo dizia *«Hit-rects MUST mirror exactly what `paint_tool_rail` paints»*,
+/// que é a confissão do defeito: **um espelho não é uma lei**. Um pintor horizontal com um hit
+/// vertical compilaria e passaria a suíte inteira.
+///
+/// ⚠️ **O rect devolvido é o de REPOUSO**, antes do `hover_lift`: o desenho cresce, o alvo não —
+/// um alvo que se move debaixo do dedo é um alvo que foge.
+#[must_use]
+pub fn entry_rects(
+    rail: &ToolRail,
+    rect: Rect,
+    size: RailButtonSize,
+    axis: RailAxis,
+) -> Vec<EntrySlot> {
+    let gap = Spacing::Xs.px();
+    let chip_px = size.chip_px();
+    // O deslocamento no eixo TRANSVERSAL: na coluna o chip afasta-se da borda esquerda para dar
+    // sítio ao rótulo rodado; na fila ele desce para o rótulo caber por cima.
+    let cross = match axis {
+        RailAxis::Vertical => rect.x + CHIP_X_OFFSET_PX,
+        RailAxis::Horizontal => rect.y + LABEL_VISUAL_EXTENT_PX + LABEL_TO_CHIP_GAP_PX,
+    };
+    let mut along = match axis {
+        RailAxis::Vertical => rect.y,
+        RailAxis::Horizontal => rect.x,
+    };
+    let mut out = Vec::with_capacity(rail.entries.len());
+    for (index, entry) in rail.entries.iter().enumerate() {
+        if index > 0 {
+            along += gap;
+        }
+        let (r, advance) = match entry {
+            ToolRailEntry::Divider => {
+                // O divisor é uma linha FINA no eixo, centrada no transversal — a mesma lei nos
+                // dois eixos, com `w` e `h` trocados.
+                let len = Spacing::Xl2.px();
+                let line = match axis {
+                    RailAxis::Vertical => Rect::new(
+                        rect.x + (rect.w - len) * 0.5,
+                        along + DIVIDER_GAP_PX,
+                        len,
+                        1.0,
+                    ),
+                    RailAxis::Horizontal => Rect::new(
+                        along + DIVIDER_GAP_PX,
+                        rect.y + (rect.h - len) * 0.5,
+                        1.0,
+                        len,
+                    ),
+                };
+                (line, 1.0 + DIVIDER_GAP_PX * 2.0)
+            }
+            _ => {
+                let chip = match axis {
+                    RailAxis::Vertical => Rect::new(cross, along, chip_px, chip_px),
+                    RailAxis::Horizontal => Rect::new(along, cross, chip_px, chip_px),
+                };
+                (chip, chip_px)
+            }
+        };
+        out.push(EntrySlot {
+            index,
+            id: entry.node_id(),
+            rect: r,
+        });
+        along += advance;
+    }
+    out
+}
+
 #[derive(Clone, Debug)]
 pub struct ToolRail {
     pub id: NodeId,
@@ -284,7 +388,7 @@ impl ToolRail {
 
 #[path = "tool_rail/paint.rs"]
 mod paint;
-pub use paint::{paint_tool_rail, paint_tool_rail_t};
+pub use paint::{paint_tool_rail, paint_tool_rail_axis, paint_tool_rail_t};
 
 #[cfg(test)]
 mod tests;

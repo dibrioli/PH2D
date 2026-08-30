@@ -26,7 +26,7 @@
 //! coube é um teto que mente*; este diz onde o resto está.
 
 use super::HeroScreen;
-use crate::widget::{RADIAL_MAX_SECTORS as MAX_SECTORS, RadialItem, ToolRailEntry};
+use crate::widget::{RADIAL_MAX_SECTORS as MAX_SECTORS, RadialItem};
 use ph2d_a11y::NodeId;
 
 /// O id do sector *"More…"* — a porta para a paleta quando a secção não cabe.
@@ -45,12 +45,12 @@ pub const MORE_LABEL: &str = "More...";
 /// Vazia quando o rail não tem secção de ferramentas (não há radial a abrir).
 #[must_use]
 pub fn build_radial_model(hero: &HeroScreen) -> Vec<RadialItem> {
-    let entries = super::left_rail::rail_entries(&hero.store, hero.rail_shows_painter_tools());
-    // A secção do MEIO: entre o primeiro e o segundo divisor.
+    // ⭐ **A secção pede-se pelo NOME**, não pelo índice do divisor. Ela era
+    // `split(Divider).nth(1)`, e no dia em que os dois toggles de painel saíram da lista para o
+    // menu *Ver* o `1` passou a apontar para *espaço/vista*: o radial das FERRAMENTAS passou a
+    // oferecer *Frame view*. O gate apanhou-o; a cura foi deixar de haver número.
+    let entries = super::left_rail::tool_section(&hero.store, hero.rail_shows_painter_tools());
     let tools: Vec<RadialItem> = entries
-        .split(|e| matches!(e, ToolRailEntry::Divider))
-        .nth(1)
-        .unwrap_or(&[])
         .iter()
         .filter_map(|e| {
             Some(RadialItem {

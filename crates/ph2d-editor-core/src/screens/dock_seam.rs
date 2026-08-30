@@ -28,6 +28,12 @@ pub struct ChromeBands {
     pub left_dock_w: f32,
     /// Largura da coluna da DIREITA.
     pub right_dock_w: f32,
+    /// ⭐ Altura da **fila de ferramentas** por cima da área de desenho. `0` = fora.
+    ///
+    /// ⚠️ **Ela sai da ÁREA, não da janela** — ao contrário das outras quatro, que cortam a
+    /// viewport. É a spec §4: a toolbar é uma REGIÃO da área, irmã da régua, e por isso vive entre
+    /// as colunas em vez de atravessar o ecrã.
+    pub tool_bar_h: f32,
 }
 
 impl ChromeBands {
@@ -37,6 +43,10 @@ impl ChromeBands {
         top_bar_h: TOPBAR_H,
         left_dock_w: HIERARCHY_W,
         right_dock_w: INSPECTOR_W,
+        // ⚠️ **ZERO, e é o mockup que o pede**: o `DEFAULT` descreve a referência de desenho, que
+        // tem o trilho VERTICAL. A fila horizontal é o chrome de produção, e quem a mede é o
+        // `hero/paint.rs` — ela depende do preset de tamanho do chip, que é autorado.
+        tool_bar_h: 0.0,
     };
 }
 

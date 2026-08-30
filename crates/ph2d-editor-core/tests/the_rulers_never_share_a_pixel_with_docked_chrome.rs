@@ -40,6 +40,9 @@ fn reference_viewport() -> Rect {
 }
 
 /// Área da intersecção de dois rects (0 quando não se tocam).
+#[path = "common/hero_sources.rs"]
+mod hero_sources;
+
 fn overlap_area(a: Rect, b: Rect) -> f32 {
     let w = (a.x + a.w).min(b.x + b.w) - a.x.max(b.x);
     let h = (a.y + a.h).min(b.y + b.h) - a.y.max(b.y);
@@ -274,23 +277,29 @@ fn a_bottom_dock_takes_the_height_it_occupies_from_the_drawing_area() {
 /// o rect do timeline — reservar antes reservaria o sítio errado.
 #[test]
 fn the_bottom_strip_reservation_is_wired_and_runs_after_the_motion_dock() {
-    const HERO_PAINT: &str = include_str!("../src/screens/hero/paint.rs");
-    let dock = HERO_PAINT
+    // ⚠️ **O ficheiro é PROCURADO, não nomeado** — ver `common/hero_sources.rs`: este gate
+    // nomeava o `paint.rs` e o corte de 2026-08-30 mudou as três linhas para o irmão
+    // `frame_layout.rs`, com a acusação falsa *«ninguém reserva a faixa»*.
+    let (name, hero_paint) =
+        hero_sources::hero_file_containing("layout.dock_timeline_into_motion();")
+            .expect("alguém em screens/hero doca o timeline");
+    let hero_paint = hero_paint.as_str();
+    let dock = hero_paint
         .find("layout.dock_timeline_into_motion();")
         .expect("o timeline docado no Motion");
-    let timeline = HERO_PAINT
+    let timeline = hero_paint
         .find("layout.reserve_bottom_strip(layout.timeline);")
         .expect(
             "o dock do timeline nao e' reservado: a regua da esquerda volta a correr por baixo \
              dele (20 x 240 px2 no viewport de referencia)",
         );
-    let flip = HERO_PAINT
+    let flip = hero_paint
         .find("layout.reserve_bottom_strip(layout.flip_strip);")
         .expect("a tira do Flip nao e' reservada — o irmao do timeline");
     assert!(
         timeline > dock && flip > dock,
-        "a reserva corre ANTES do `dock_timeline_into_motion`, que move o rect do timeline — \
-         reservaria o sitio errado"
+        "{name}: a reserva corre ANTES do `dock_timeline_into_motion`, que move o rect do \
+         timeline — reservaria o sitio errado"
     );
 }
 

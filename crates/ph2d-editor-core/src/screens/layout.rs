@@ -261,6 +261,12 @@ pub struct HeroLayout {
     /// todo consumidor lê só as DIMS) — dar-lhe uma ORIGEM é a obra da docagem (A2), e está
     /// nomeada com esse preço. Aqui a cena continua full-bleed, por baixo das réguas.
     pub draw_area: Rect,
+    /// ⭐ **A fila de ferramentas** — a faixa que os chips do trilho ocupam quando estão na
+    /// horizontal, por cima da área de desenho (Godot). Zero-altura enquanto ninguém a pede.
+    ///
+    /// ⚠️ Ela é irmã da régua, não da barra de menus: sai da **área**, entre as colunas, e não da
+    /// janela inteira.
+    pub tool_bar: Rect,
     /// ⚠️ **Quais colunas estavam OCUPADAS quando este layout foi construído.** O rect de uma
     /// coluna existe sempre (a geometria não depende do estado); o que depende é haver alguém lá.
     /// Sem isto, `dock_seam` oferecia agarre numa coluna vazia — chrome vivo e invisível.
@@ -391,6 +397,7 @@ impl HeroLayout {
             top_bar_h,
             left_dock_w,
             right_dock_w,
+            tool_bar_h,
         } = bands;
         // ⭐⭐ **A BARRA DE TOPO É FLUSH e a BANDA vai até ao fundo** (Enio, 2026-08-30, com
         // quatro setas na foto: *«muitos espaços em todos os lugares»*). Ela era inset em
@@ -508,7 +515,19 @@ impl HeroLayout {
         } else {
             viewport.x + viewport.w
         };
-        let draw_area = Rect::new(area_x0, chrome_top, (area_x1 - area_x0).max(0.0), chrome_h);
+        let area_w = (area_x1 - area_x0).max(0.0);
+        // ⭐⭐ **A FILA DE FERRAMENTAS é uma REGIÃO da área, e por isso corta a ÁREA e não a
+        // janela** (spec §4, D5). Ela e a régua são irmãs numa fila vertical: a fila fica em cima,
+        // a régua começa por baixo dela, e nenhuma das duas pode tapar a outra porque não
+        // partilham coordenada. ⛔ Uma barra de ferramentas que atravessasse o ecrã passaria por
+        // cima das colunas — que é o modelo que o trilho `x = 0` tinha, e o defeito que ele deu.
+        let tool_bar = Rect::new(area_x0, chrome_top, area_w, tool_bar_h.min(chrome_h));
+        let draw_area = Rect::new(
+            area_x0,
+            chrome_top + tool_bar.h,
+            area_w,
+            (chrome_h - tool_bar.h).max(0.0),
+        );
         let timeline = Rect::new(
             timeline_x,
             (chrome_bot - TIMELINE_DOCK_H).max(chrome_top),
@@ -540,6 +559,7 @@ impl HeroLayout {
             bottom_hud,
             canvas,
             draw_area,
+            tool_bar,
             docks,
             center_viewport,
             motion_graph,

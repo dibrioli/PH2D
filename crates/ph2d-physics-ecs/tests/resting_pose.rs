@@ -24,6 +24,11 @@ use ph2d_physics_ecs::{
 /// A cena 4 do smoke, replicada: chão + 12 corpos de três tamanhos em quatro colunas.
 /// ⚠️ **Uma pilha, não um corpo só** — um corpo isolado assenta deitado mesmo com o limiar mau;
 /// é o contato com os vizinhos que produz a velocidade lenta em que o defeito vive.
+/// Os três tamanhos da cena de smoke `=4`. ⚠️ **Constante partilhada de propósito:** a âncora
+/// absoluta lá em baixo precisa de saber qual é o MENOR, e escrevê-lo à mão foi exactamente o
+/// erro que a 1.ª versão dela cometeu (usou o maior e reprovou sobre produto correcto).
+const SIZES: [f32; 3] = [0.7, 0.45, 0.28];
+
 fn pilha() -> (SimWorld, Vec<Entity>) {
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
@@ -41,7 +46,7 @@ fn pilha() -> (SimWorld, Vec<Entity>) {
         },
         Transform::from_translation(Vec2::new(0.0, -1.0)),
     ));
-    let sizes = [0.7f32, 0.45, 0.28];
+    let sizes = SIZES;
     let ids = (0..12u32)
         .map(|i| {
             let s = sizes[(i % 3) as usize];
@@ -70,8 +75,8 @@ fn pilha() -> (SimWorld, Vec<Entity>) {
     (sim, ids)
 }
 
-/// `(pior ângulo em graus, quantos corpos ficaram BIT-A-BIT parados entre os 10 s e os 20 s)`.
-fn assenta(sleep: Option<f32>) -> (f32, usize) {
+/// `(pior ângulo, quantos ficaram BIT-A-BIT parados entre os 10 s e os 20 s, a ALTURA de cada um)`.
+fn assenta(sleep: Option<f32>) -> (f32, usize, Vec<f32>) {
     let (mut sim, ids) = pilha();
     let mut bridge = PhysicsBridge::default();
     // `None` = o oráculo: proibido dormir. O limiar `0` nunca é alcançado por um corpo em contato,
@@ -110,7 +115,13 @@ fn assenta(sleep: Option<f32>) -> (f32, usize) {
         .iter()
         .map(|(_, _, r)| r.to_degrees().abs())
         .fold(0.0f32, f32::max);
-    (pior, parados)
+    // ⛔⛔ **A POSIÇÃO também sai daqui, e a 1.ª versão deitava-a fora.** A `ler()` sempre recolheu
+    // `x` e `y`, e este `fold` só olhava para a rotação ⇒ uma pilha congelada **25 cm acima do
+    // chão**, com rotação nula, passava as duas metades. E isso é a **metade literal** do report
+    // que fez este ficheiro nascer: *«a caixa parou antes de assentar no chão»* — não «parou
+    // torta». Achado por auditoria no mesmo dia, num gate escrito nesse dia.
+    // ⚠️ *Um gate escrito a partir de metade de um report defende metade dele.*
+    (pior, parados, vinte.iter().map(|(_, y, _)| *y).collect())
 }
 
 /// **Medido em 2026-08-29** (o defeito, a cura e o oráculo, na mesma corrida):
@@ -127,8 +138,8 @@ fn assenta(sleep: Option<f32>) -> (f32, usize) {
 /// distância entre duas medições, e a mutação que ela defende (repor o `0,4`) atravessa-a `46×`.
 #[test]
 fn a_settled_stack_falls_asleep_lying_flat_not_halfway_there() {
-    let (oraculo, oraculo_parados) = assenta(None);
-    let (produto, produto_parados) =
+    let (oraculo, oraculo_parados, oraculo_y) = assenta(None);
+    let (produto, produto_parados, produto_y) =
         assenta(Some(PhysicsSettings::default().sleep_linear_threshold));
 
     // A fixtura tem de CONTER o fenómeno: se o oráculo também congelasse, ele não seria um oráculo
@@ -146,6 +157,44 @@ fn a_settled_stack_falls_asleep_lying_flat_not_halfway_there() {
     );
 
     // (b) E tem de dormir na MESMA pose de quem nunca dorme.
+    // (c) ⛔ **E tem de adormecer NO SÍTIO, não só direito.** O oráculo dá a altura de graça — e a
+    // 1.ª versão deste gate recolhia-a sem a comparar.
+    let pior_desvio = produto_y
+        .iter()
+        .zip(&oraculo_y)
+        .map(|(p, o)| (p - o).abs())
+        .fold(0.0f32, f32::max);
+    // ⛔⛔ **E uma ÂNCORA ABSOLUTA, porque a comparação com o oráculo é cega a um desvio GLOBAL.**
+    // A mutação que a auditoria propôs — somar `+0,25 m` a toda pose lida no `readback` —
+    // **SOBREVIVEU** ao par produto↔oráculo: os dois passam pelo mesmo caminho de leitura, logo os
+    // dois sobem, e a diferença não se mexe. ⭐ *Um gate que só compara duas corridas nossas não vê
+    // o que move as duas.*
+    //
+    // O chão tem o centro em `y = −1,0` e meia-altura `0,2` ⇒ topo em **`−0,8`**. O corpo mais
+    // baixo da pilha tem de o tocar. A folga de `0,02 m` é `75×` a penetração medida em repouso
+    // (`0,000264 m`) e `12×` menor que a mutação que apanha.
+    // ⚠️ **DERIVADA, não escrita.** A 1.ª versão desta âncora usou a meia-altura do corpo MAIOR e
+    // reprovou sobre produto correcto — quem fica por baixo numa pilha é o corpo **mais pequeno**.
+    // *Uma âncora absoluta escrita à mão erra sobre o produto certo; derivada da fixtura, não.*
+    const TOPO_DO_CHAO: f32 = -0.8; // centro −1,0 + meia-altura 0,2
+    let menor_meia_altura = SIZES.iter().copied().fold(f32::INFINITY, f32::min) * 0.5;
+    let esperado = TOPO_DO_CHAO + menor_meia_altura;
+    let mais_baixo = produto_y.iter().copied().fold(f32::INFINITY, f32::min);
+    assert!(
+        (mais_baixo - esperado).abs() <= 0.02,
+        "a pilha nao esta' ASSENTE NO CHAO: o corpo mais baixo tem o centro em {mais_baixo:.4} e \
+         deitado no topo do chao teria {esperado:.4}. ⚠️ Uma pilha inteira DESLOCADA e' invisivel \
+         a' comparacao com o oraculo — os dois lados passam pelo mesmo readback, e foi assim que a \
+         mutacao `+0,25 m` no `readback.rs` sobreviveu ao par produto-oraculo."
+    );
+
+    assert!(
+        pior_desvio <= 0.01,
+        "a pilha adormeceu NO SITIO ERRADO: o corpo mais desviado parou {pior_desvio:.4} m do \
+         lugar onde para quem nao dorme. E' a metade literal do report de 2026-08-29 — «a caixa \
+         parou antes de assentar no chao» — e um gate que so' olhe para o ANGULO nao a ve^."
+    );
+
     assert!(
         produto <= oraculo + 0.05,
         "a pilha adormeceu TORTA: pior angulo {produto:.5} graus contra {oraculo:.5} do oraculo \

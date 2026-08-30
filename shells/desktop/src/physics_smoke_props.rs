@@ -255,15 +255,30 @@ impl crate::App {
         let world = gfx.sim.world_mut();
         spawn_floor(world);
 
-        // One lane: a thin, tall static wall and a small ball five metres to its
-        // left, launched right at 160 m/s. `ccd` attaches the CCD marker.
+        // Uma pista: uma parede fina e alta, e uma bola cinco metros a' esquerda dela, lancada
+        // a 160 m/s. O `ccd` anexa o marcador.
+        //
+        // ⛔⛔ **A parede e' CINEMATICA, e a mudanca e' de 2026-08-30.** Ate' a' `rapier2d` 0.31
+        // esta cena usava uma parede **estatica** e mostrava o contraste que a bandeira comprava
+        // entao: *ligar ou desligar a varredura, contra tudo*. A 0.35 passou a varrer todo corpo
+        // rapido contra colliders **fixos de graca** ⇒ com uma parede estatica **as duas bolas
+        // param no mesmo sitio** (medido: `x = −0,2000`, identico), e a mensagem desta cena
+        // prometia que a laranja atravessava.
+        // ⚠️ *Uma cena de smoke que ensina o CONTRARIO do que acontece e' pior que uma cena
+        // ausente: e' aqui que o dono do produto aprende a ferramenta.*
+        //
+        // ⇒ A parede passa a ser **cinematica**, que e' a classe de alvo que a varredura por
+        // omissao **nao** alcanca — exactamente o que o gate
+        // `the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall` ja' mede. O contraste volta
+        // a existir, e passa a demonstrar o que a bandeira compra HOJE.
+        // Mecanismo completo: [`ph2d_physics::BodyDesc::ccd`].
         let mut lane = |y: f32, hue: [f32; 4], label: &str, ccd: bool| {
             world.spawn((
                 Transform::from_translation(Vec2::new(0.0, y)),
                 Sprite::atlas(WHITE_TILE_KEY, [0.1, 2.0], [0.40, 0.42, 0.48, 1.0]),
                 Name::new(format!("Wall {label}")),
                 RigidBody {
-                    kind: BodyKind::Static,
+                    kind: BodyKind::Kinematic,
                 },
                 Collider {
                     shape: ColliderShape::Cuboid {
@@ -307,7 +322,11 @@ impl crate::App {
              STOPS against its wall; the ORANGE Discrete ball is moving too fast to be caught and \
              TUNNELS clean through its wall, flying off screen. Select each and see the \
              Collision: Discrete | Continuous row in §11 (Dynamic-only). It is fast — the story is \
-             in the end state: one wall keeps its ball, the other does not."
+             in the end state: one wall keeps its ball, the other does not.\n\
+             NOTE: both walls are KINEMATIC on purpose. Since rapier 0.35 a fast body is \
+             swept against FIXED scenery for free, so a static wall would stop BOTH balls \
+             and this scene would teach the opposite of what it says. What the flag buys \
+             today is the sweep against MOVING targets — a platform, another character."
         );
     }
 

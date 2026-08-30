@@ -575,6 +575,142 @@ de biblioteca»: ZERO ocorrências** em todo o repo fora da física.
 ⭐ *Uma ausência confirmada fecha a família e vale tanto como um achado* — sem isto, a próxima
 jornada varre tudo outra vez.
 
+## §19 — A AUDITORIA MULTI-AGENTE (2026-08-30, por ordem do Enio)
+
+Seis frentes em paralelo, todas só de leitura: `vello` 0.8→0.10 · `wgpu`/`naga` 28→29 · `parley`
+0.6→0.11 · caça aos knobs mortos · correr os testes que o CI nunca corre · gates verdes pela razão
+errada.
+
+⚠️ **Uma medição sobre o método, primeiro:** as seis abriram sub-auditorias próprias e chegaram a
+**25 agentes**, com a carga da máquina em 250-450. Este repo já tem a lição escrita — *«uma varredura
+de pesquisa recorre; limite-a»* — e ela não foi aplicada. ⛔ **Consequência real:** o disco em RAM de
+48 GB onde vive o `target/debug` encheu e **nenhuma compilação passava**. Curado pelo corte que o
+§2 do `CLAUDE.md` prescreve (`rm -rf target/*/incremental`, +5,4 GB), sem tocar na corrida que estava
+em curso noutro disco. *Da próxima vez o limite entra no pedido.*
+
+### §19.1 — ⛔⛔⛔ A cena de smoke do CCD ensinava o CONTRÁRIO do que acontece
+
+`PH2D_PHYSICS_SMOKE=15` imprimia *«a bola laranja atravessa a parede limpa e sai do ecrã»*. Medido
+com uma sonda que reproduz a cena exacta (160 m/s, r=0,15, parede 0,05×1,0): as duas bolas param em
+**`x = −0,2000`, idêntico**, com e sem gravidade.
+
+A causa é a mesma família de sempre — a `rapier` 0.35 passou a varrer todo corpo rápido contra
+colliders **fixos de graça**, e a parede da cena era `Static`. ⭐ **O doc da biblioteca já estava
+corrigido** (`world/desc.rs` explica-o em detalhe, com dois gates); a **cena** é que não foi.
+
+⇒ A parede passa a ser **cinemática**, que é a classe de alvo que a varredura por omissão não
+alcança — exactamente o que o gate `the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall` já
+mede. O contraste volta a existir e passa a demonstrar o que a bandeira compra **hoje**.
+
+⚠️⚠️ **Esta é a pior classe de defeito deste repo, e o §0.8 diz porquê:** *o smoke é onde o dono do
+produto APRENDE a ferramenta*. Uma cena que ensina o contrário é pior que uma cena ausente — a
+ausente não é acreditada.
+
+### §19.2 — ⛔ Onze controlos MORTOS, de 127 seguidos até ao efeito
+
+A caça seguiu o fio inteiro de cada controlo — *o painel escreve onde · quem lê · o leitor decide,
+ou entrega a uma biblioteca que descarta?* ⚠️ **É o terceiro passo que um `grep` não vê**, e é onde
+os onze vivem.
+
+| # | controlo (o nome na tela) | por que está morto | desde |
+|---|---|---|---|
+| 1 | **Texture Filter › `Near+Aniso`** | o descritor é **campo a campo idêntico** ao `Near+Mip`; o wgpu recusa anisotropia sem os três filtros lineares, logo *ampliar por ponto* e *pedir anisotropia* são contraditórios | motor 20/06, clicável 21/08 |
+| 2 | **Visibility Layer** (32 caixas) | o `cull_mask` da câmara **nunca é atribuído** (só literais `u32::MAX`) ⇒ 31 dos 32 bits são inertes; na prática é um interruptor «esconder» que exige desmarcar as 32 | — |
+| 3 | **Y-Sort › `Pivot`** | `Center` / `Pivot` / `Custom` são **um braço só**; e o texto do Inspector **recomendava-o** para *«ordenar pelos pés do personagem»* | 30/05 |
+| 4 | **Text › `Weight`** em fonte estática | sem `fvar` o `skrifa` ignora a localização; a secção *AXES* esconde-se correctamente, o *Weight* não, porque é excluído da regra que protege os irmãos | — |
+| 5 | **Sleep › `Spin`** | ⭐ **o molde**: o número não mudou, o **consumo** mudou na `rapier` 0.35 — lê-se só o **sinal** | 29/08 |
+| 6 | **Collision › `Discrete\|Continuous`** *na cena de smoke* | §19.1 — a bandeira **não** é morta na biblioteca; era a cena que não a demonstrava | 29/08 |
+| 7 | **Layout › `Grow`/`Shrink`** com moldura em **`Grid`** | vivem no trait de **flex**; a grade consome outro trait (zero ocorrências em `compute/grid/` contra 23 em `flexbox.rs`) | 10/08 |
+| 8 | **Paragraph › `Width`/`Wrap width`** num texto **num caminho** | a guarda exige `TextPlacement::At`; o painel pinta as linhas sem consultar o vínculo | — |
+| 9 | **On-Screen Enabler** + o rect dele (5 campos) | `contains()` tem **zero** chamadores de produção; grava no ficheiro e não faz nada | — |
+| 10 | **Show anchors at runtime** | o único que **se declara** morto no próprio doc; bloqueado no `shells/game` | — |
+| 11 | **Axes › o 7.º em diante** | o painel pinta um por eixo publicado **sem tecto**, o registo tem **exactamente 6** ⇒ o campo mostra `0` com o nome real do eixo ao lado. Alcançável com Roboto Flex (12 eixos) | — |
+
+⭐⭐ **O padrão que os une, e é o que vale guardar:** **cinco** morreram porque *a lente do painel é
+mais larga que a do consumidor* — o painel pergunta «há uma moldura?» / «há um corpo?» / «há um
+eixo?» onde o consumidor pergunta «qual **direcção**?» / «a fonte tem `fvar`?» / «quantos slots
+**registei**?». ⚠️ E em três deles a regra certa **já está escrita no mesmo ficheiro**, para o
+controlo vizinho.
+
+⛔ **Curados aqui:** o **6** (a cena) e o **3** (o texto deixa de recomendar o inerte). Os outros
+nove mudam a superfície do painel — **decisão do Enio**, devolvida com o mecanismo de cada um.
+
+### §19.2-bis — ⛔ E os PAINÉIS DE FERRAMENTA: mais 23 defeitos, sobre ~377 controlos seguidos
+
+A segunda metade da caça cobriu 17 crates de painel (111 k LOC) + 11 de ferramenta de imagem.
+⭐ **Nada disto é regressão da subida** — quase tudo nasceu inerte, e vários **confessam-se** no
+próprio ficheiro. O valor deste bloco é o endereço e o mecanismo de cada um.
+
+**Os que enganam mais (o artista alcança-os e vê que não fazem nada):**
+
+| controlo | mecanismo |
+|---|---|
+| **Vector › Symmetry › Segments** | ⭐ o mais limpo: o id aparece em quatro ficheiros e os quatro são declaração/paint/registo — **zero braços de evento**. Fica pregado no default `6` |
+| **Vector › Stroke › Type › `Brush`** + **a secção Brush inteira** | a porta mapeia só `Solid`/`Pattern`; o `Brush` devolve `None`. ⚠️ A porta **confessa-se** (*«se alguém publicasse o chip antes da hora»*) — e o chip foi publicado. E é **circular**: a secção só aparece quando o traço já é Brush, e a única porta para o ser é o chip morto |
+| **Painel Autorado: SEIS famílias de widget** (Tabs, Segmented, Radio, Dropdown, TextInput, NumberInput) | ⭐⭐ **um dreno de UM braço só** (`if let Fired`): `Choice` e `Text` caem fora e morrem no fim do quadro. O painel de omissão pinta `Blend → Normal/Multiply/Screen`: o chip acende, e nada muda |
+| **Equalize Sizes › `xBR`** | ⭐⭐ **alias permanente** de `Nearest` ou de `Lanczos`, consoante o factor. O comentário diz *«até a dependência aterrar»* — **ela aterrou no mesmo dia**, e a crate nem depende dela. Zero testes cobrem o braço |
+| **Upscale › `Scale` com xBR** | **80% do curso morto** (de 4× a 16×) — e o chip imprime o valor **cru**, não o efectivo. O readout de tamanho que o doc promete **não é pintado em lado nenhum** |
+| **Bg Removal › `Show mask`** | ⭐ **o gate que PINTA é um `OR`, o que CONSOME é um `AND`** — armar o pincel mostra o botão, e ele só funciona depois de haver pixel pintado. *A janela morta é o primeiro estado que o artista alcança* |
+| **Grid Settings › `Color`** | só o **alfa** atravessa; o RGB é reconstruído de um token do tema |
+| **Sculpt3D › `Falloff` com o verbo Mask** · **`Falloff`+`Hardness` nos 5 verbos elásticos** | o painel **já conhece o predicado** — gateia a fileira vizinha com ele — e não gateia estas |
+| **Sculpt3D › `Subsurface`/`Scatter`** | os dois uniforms estão **depois do early-return do matcap**, e o matcap nasce ligado. ⚠️ O painel aplica esta lei exacta aos vizinhos, com as palavras *«o slider seria um controle que não faz nada»* |
+| **Sculpt3D › `Follow Curvature`** | ⭐⭐ **espécie nova: o consumidor PROJECTA o valor fora.** O fio está completo, o valor chega ao solver, e os mínimos quadrados sobre um campo não-integrável descartam-no — pedir 400% move a saída 7%. *Nenhuma sonda de «quem lê este campo?» o vê: ele **é** lido* |
+| **Flip › Min Width / Response** | álgebra: o gesto passa a pressão como literal `1.0` ⇒ `min + (1−min)·1 = 1` para todo `min`. ⚠️ **Não é «à espera de tablet»** — o Flip nem chama o caminho da pressão |
+| **Color Equalization › Tile Grid · LUT Mix · Dither ×2** | quatro fileiras pintadas **sem gate** cujos estágios estão desligados no estado em que o painel nasce |
+
+⭐⭐ **Duas espécies que o doc 90 desta casa não nomeia**, e que valem mais que a lista:
+- **O dreno de um braço só** — não é um clique sem handler; é um handler cujo `if let` não cobre a
+  variante. **Seis famílias inteiras** morrem de uma vez, e a acusação **sobrevive a todo gate de
+  registo** que o repo tem.
+- **O consumidor que projecta o valor fora** — o fio está completo e a matemática descarta-o.
+
+⚠️ **E o instrumento que existe mede outra coisa:** o `architecture_panel_wiring_parity` mede
+*focalizabilidade* (pintado sem estado interactivo ⇒ morto sob o dedo). **Nenhum instrumento deste
+repo pergunta se o VALOR chega a um consumidor** — que é toda esta caça. Os testes de costura
+(`seam_*`) provam que um clique CHEGA à ferramenta, nunca que a escrita dela chega a um efeito:
+**cinco dos 23** são exactamente isso.
+
+⭐ **Achado positivo:** o `ph2d-panel-wet-tuning` está **42/42 limpo** — e é **gerado por tabela**.
+*Um painel derivado de uma tabela não tem onde esconder um knob morto.*
+
+⛔ **Nenhum destes 23 foi curado aqui**: todos mudam o que o artista vê, e essa é decisão do Enio.
+O que fica é o endereço, o mecanismo e a data de cada um.
+
+### §19.3 — ⭐ O que as varreduras FECHARAM (e vale tanto como um achado)
+
+- **`wgpu` 28→29:** de 20 pontos examinados, **17 SEM ALCANCE com evidência dos dois lados** —
+  `SamplerDescriptor` byte-idêntico, alinhamentos idênticos, `life.rs` byte-idêntico, a tabela de
+  `sample_type` byte-idêntica, o lowering de **todos** os built-ins que usamos com diff **vazio**,
+  a política de bounds-check byte-idêntica, `@interpolate(flat)` idêntico.
+- **`naga` 28→29:** os três riscos maiores (o `sign(0.0)` const-folded, `matCx2` em uniform, a ordem
+  do `op=`) **não nos alcançam** — os nossos dois `sign()` recebem valores de execução, temos
+  **zero** matrizes de duas linhas em uniform, e o único `*=` com chamada à direita usa função pura.
+- **`parley` 0.6→0.11:** ⭐ **a análise de causa do texto nítido foi ABSOLVIDA** — não existe
+  compensação de sinal em lado nenhum, e a inversão do `y_offset` foi a **cura** de um defeito
+  nosso (injectávamos uma grandeza Y-up num campo Y-down). E ⭐ **o `LABEL_VISUAL_EXTENT_PX = 11.0`
+  está CERTO, medido**: `(1984+494)/2048 × 9 = 10,8896` ⇒ `11` é o arredondamento para cima, e é
+  invariante aos presets porque o MVAR do Inter não carrega as tags de métrica vertical.
+  ⚠️ *A pergunta que ficou aberta em 29/08 fecha aqui.*
+- **`complex-scripts`: NÃO é regressão** — a feature não existia na 0.6, e a 0.6 também não tinha
+  dicionário. É capacidade nova por tomar.
+
+### §19.4 — ⏳ O que fica ABERTO, nomeado
+
+- ⚠️ **Uma dúzia de gates verdes pela razão errada**, já triados e com a mutação de uma linha
+  escrita para cada. Os piores: um que mede **sono** onde afirma medir **tremor**; três cujo próprio
+  doc proíbe a régua que o código usa; dois que passam por **subcadeia** (`asked.save` casa dentro
+  de `asked.save_as` ⇒ matar o *Save* deixa o gate verde); e **54 testes de GPU sem `#[ignore]`**
+  que *devolvem* quando não há adaptador — e contam como aprovados.
+- ⚠️ **Um segundo motor de texto**, no canvas vectorial, que quebra linha por `split_whitespace()`
+  e **descarta em silêncio** os codepoints sem glifo.
+- ⚠️ **As larguras de texto mudaram** acima de `wght 400` (até `−0,50 px` a 900), porque a
+  conversão de eixo de variação foi reescrita para replicar o HarfBuzz — e o preset que shipa
+  boosta para **800**, exactamente onde o desvio é maior.
+- ⚠️ **O atlas de imagem persistente do `vello` 0.10** guarda ~3 quadros em vez de 1, e a porta
+  `draw_image_rgba*` cunha um **id novo por chamada** (um sítio emite 8 ids da mesma imagem num
+  quadro). Quando não cabe, a imagem **não é desenhada, em silêncio** — um modo de falha que na 0.8
+  era inalcançável. ⭐ O `StableImage` que cura isto **já existe** e é usado no caminho dos padrões.
+
 ## §16 — O bloco G, e o que fica ABERTO (2026-08-29)
 
 ### §16.1 — Feito

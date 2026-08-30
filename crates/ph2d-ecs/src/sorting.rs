@@ -84,8 +84,23 @@ pub enum SortPoint {
     /// Centre of the sprite (default) — uses the world translation.
     #[default]
     Center,
-    /// The sprite pivot (`anchor` applied). Recommended for top-down
-    /// RPG (sort by the character's feet).
+    /// The sprite pivot (`anchor` applied).
+    ///
+    /// ⛔⛔ **HOJE ELE NAO FAZ NADA, e o texto que aqui estava RECOMENDAVA-O** — dizia *«recommended
+    /// for top-down RPG (sort by the character's feet)»*, que e' exactamente o que nao acontece.
+    /// O `sort_key.rs` colapsa `Center | Pivot | Custom` num braco so' e projecta sempre a
+    /// **translacao do mundo**; o `Custom` sobrevive porque revela as linhas *Axis X/Y*, que
+    /// escrevem outro campo — o `Pivot` nao revela nada e produz a MESMA chave que o `Center`.
+    ///
+    /// ⚠️ **Isto nao e' uma regressao da subida do stack: e' assim desde 2026-05-30** (achado pela
+    /// caca aos knobs mortos de 2026-08-30, que seguiu 127 controlos ate' ao efeito). O comentario
+    /// do `sort_key.rs` ja' dizia *«precise pivot offset is a follow-up»* — e o texto do INSPECTOR
+    /// nao dizia. *Um adiamento escrito no motor e recomendado no painel e' uma promessa ao
+    /// artista que ninguem assinou.*
+    ///
+    /// ⛔ Liga-lo a serio exige levar o pivo (a `anchor` e o tamanho da sprite) ate' ao ordenador,
+    /// que hoje so' recebe `world_pos` — e muda a ordem de desenho de toda cena ja' gravada que o
+    /// tenha escolhido. **Decisao de produto**, devolvida com o mecanismo.
     Pivot,
     /// Project onto the arbitrary [`YSort::axis`]. Iso-45° = `Vec2(1, 1)`.
     Custom,

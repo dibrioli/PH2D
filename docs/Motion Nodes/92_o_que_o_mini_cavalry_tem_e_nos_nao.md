@@ -24,6 +24,31 @@ verificações desta varredura mudaram de lado ao serem medidas em vez de adivin
 
 ---
 
+> ⛔⛔ **CORRIGIDO EM 2026-08-30 — a §1 nomeia o MOTOR ERRADO, e a cerca que ela mandava medir
+> foi medida.** Ler a §1 e depois o bloco abaixo; onde discordarem, o bloco ganha (ele saiu do
+> código, ela da leitura de um nome).
+>
+> | o que a §1 diz | o que a medição diz |
+> |---|---|
+> | *"os três `fx.*` que existem são **por-instância**"* | ⛔ **Dois são.** O `fx.glow` é um **passe de imagem INTEIRA**: nó passthrough, a shell acha-o com `from_graph` e corre o `ph2d_render::MotionFx` sobre o alvo do jogo — *"the glow always applies to the whole Motion image regardless of where the node sits"*. É o único precedente de efeito de imagem deste módulo |
+> | *"um `fx.adjust` que aplica um `AdjustmentKind` é **um** nó que abre os 24"* | ⚠️ Abre-os sobre o **compositor de DOCUMENTO** do Painter (`LayerCompositor`), que é moldado por camadas de um `.ph2d`, não por um alvo de render qualquer. Dos 24, **18 já têm kernel de GPU** (12 por-pixel em `gpu_code`, 6 espaciais em `gpu_spatial_code`) — mas nenhum deles é endereçável por textura solta |
+> | — | ⭐⭐⭐ **E há um SEGUNDO motor que a varredura não viu, e é o barato:** a **pilha de FX raster** do módulo vetorial — `ph2d_fx_op::FxOp` (**15** tipos, tabela `FxKindSpec` com os rótulos de cada knob) corrida por `ph2d_render::FxStackPass`, que aceita **`src` e `dst` arbitrários** (`run(gpu, src, dst, w, h, ops, geom)`) e já é GPU-residente com memo e atlas (`shells/desktop/src/fx_live.rs`). Blur · Glow · Drop Shadow · Inner Shadow · Inner Glow · Outline · Feather · Bevel · Color Overlay · Turbulence · Grow/Shrink · Color Adjust · Duotone · Luma to Alpha · Gradient Map |
+>
+> ⇒ **A ponte barata é para a pilha raster, não para o `AdjustmentKind`** — ela já toma qualquer
+> textura, já é uma TABELA (o §5 do `CLAUDE.md`: *"o único painel 42/42 limpo é o gerado por
+> tabela"*), e o `FxOp` é o mesmo tipo que o módulo vetorial autora ⇒ **uma lei, dois autores**.
+>
+> ⚠️ **E a rota por-instância NÃO existe neste módulo, medido:** os dois `fx.*` per-instância
+> fazem o efeito **duplicando instâncias** (fantasmas) — geometria a fingir raster. Não há
+> substrato de pixels por instância a que um filtro se pendure, e inventá-lo é a arquitectura
+> que a §1 chama de *"assador de tiles"*, não uma wave. ⇒ o `fx.adjust` nasce com a forma do
+> `fx.glow`: **um nó passthrough + um passe sobre a imagem do módulo**.
+>
+> ⚠️ **Três itens da §2 FECHARAM desde que esta varredura foi escrita** (medido 2026-08-30, e é
+> por isso que se conta antes de pegar um item): o **1 `lsystem`** (`source.lsystem`), o
+> **2 `dataSource`** (`source.table` + `value.table`) e o **3 `celAnimation`** — este último com
+> a lei da duração desigual já no `motion.sub_uv` (`Frame Holds`, com LUT no device).
+
 ## §1 ⭐⭐⭐ O buraco maior não é um nó: é uma PONTE
 
 **Medido:** o app tem **24 ajustes de imagem** (`AdjustmentKind` em `ph2d-painter-effects`) —

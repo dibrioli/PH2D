@@ -168,7 +168,52 @@ ordem de pintura deixa de ser a resposta, porque deixa de haver sobreposição.*
 
 ---
 
-## O que estas cinco decisões implicam, junto
+## D6 — A tabela de MODOS por tipo de objecto
+
+> Proposta pela linha, corrigida pelo Enio em 2026-08-30 (duas correcções, as duas aplicadas).
+
+| o objecto é | modos que ele declara |
+|---|---|
+| **qualquer coisa** | **Object** (mover / rodar / escalar) |
+| forma vetorial | Object · **Edit** (nós e alças) |
+| malha 3D | Object · Edit · **Sculpt** · **Paint** |
+| peça sólida (Model / SDF) | Object · **Edit** |
+| imagem / sprite | Object · **Paint** · **Mask** |
+| **desenho Flip** | Object · **Draw** · Edit |
+| corpo de física | Object |
+
+### As duas correcções do Enio
+
+1. ⭐ **«O Flip merece modo próprio.»** ⇒ `Draw` é do Flip e **não** é o `Paint` da imagem. É a
+   mesma escolha que o Blender faz — o Grease Pencil tem `Draw Mode` **próprio**, separado dos
+   modos de pintura da malha, e pela mesma razão: *o que se edita é um TRAÇO, não um pixel.*
+
+2. ⏳ **«Uma forma vetorial deveria ter um modo Pintar também, com o módulo painter atuando sobre
+   o vector. Contudo esse feature ainda não existe.»**
+   ⛔ **Por isso ele NÃO entra na tabela acima** — um modo declarado que não pinta é um **controlo
+   morto**, e o `CLAUDE.md` §5.0 tem duas espécies dele catalogadas com o custo medido. O Blender
+   é igual por construção: um modo indisponível **não aparece**, não fica cinzento.
+   ⇒ Fica no mapa da estrada, com endereço: [`pesquisa/05_pintar_sobre_vetor.md`](pesquisa/05_pintar_sobre_vetor.md).
+
+   ⭐⭐ **E a medição achou que METADE já existe:** `Paint::Pattern` com
+   `PatternSource::Image(AssetId)` e `PatternMode::Clamp` (*"uma cópia só"*) já mostra **uma imagem
+   mapeada dentro de uma forma**, hoje; e o `PaintedDoc` — a ponte do Painter — **não exige um
+   `Sprite`** no alvo.
+   ⛔ **O que falta e decide o preço é o mapa ser da FORMA e não do MUNDO:** o `PatternFill`
+   posiciona-se em world-space, logo **editar a forma não leva a tinta com ela**. É o UV do
+   Blender, e é o item caro.
+   ⛔ **E NÃO é o mesmo trabalho do *Flip sai do Flip*** — hipótese minha, **refutada**: aquele é um
+   assado de **sentido único** (para exportar); este tem de ser **durável e reversível**, senão
+   assar o vetor mata o vetor. *Substrato partilhado não implica trabalho partilhado.*
+
+### ⏳ Os Layouts continuam por fechar
+
+Proposta da linha, **ainda não confirmada por ele**: *Desenho 2D · Modelagem 3D · Animação · Nós ·
+Código · Runtime*. Os três exemplos que ele deu foram *Editor 2D · Editor de Texto · Runtime*.
+
+---
+
+## O que estas seis decisões implicam, junto
 
 ⭐⭐ **As três convergem na MESMA peça em falta: um modelo de REGIÃO / ÁREA.**
 

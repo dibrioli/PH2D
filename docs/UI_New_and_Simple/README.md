@@ -43,6 +43,7 @@ E três defeitos concretos, com foto:
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |
 | ⭐ **Modo vs Layout vs Ferramenta — os TRÊS eixos** | [`pesquisa/04_modo_layout_e_ferramenta.md`](pesquisa/04_modo_layout_e_ferramenta.md) |
+| **«Pintar sobre vetor» — metade já existe** | [`pesquisa/05_pintar_sobre_vetor.md`](pesquisa/05_pintar_sobre_vetor.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento

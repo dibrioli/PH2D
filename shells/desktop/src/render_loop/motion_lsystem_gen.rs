@@ -22,19 +22,35 @@
 
 use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
-use ph2d_vec_scene::{VecPath, VecVertex, WidthStop, WidthStops};
+use ph2d_vec_scene::{VecPath, VecVertex};
 
 use crate::motion_state::MotionState;
 
-/// **Quantas fitas um nó publica, no máximo.**
-///
-/// ⚠️ **O recurso é a TESSELAÇÃO, não a memória.** Cada fita é um `VecPath` próprio no store e
-/// paga uma tesselação por quadro em que muda; o tecto de módulos do nó
-/// (`MAX_MODULES = 262 144`) é sobre a CADEIA, e uma cadeia daquele tamanho numa gramática que
-/// bifurca dá dezenas de milhares de ramos. ⏳ **Este número está por MEDIR** — fica no valor
-/// que o nó já declara para instâncias vivas de vetor até alguém correr a varredura, e a linha
-/// de diagnóstico abaixo diz quando ele morde.
-const MAX_RIBBONS: usize = 4096;
+// ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
+//
+// Report do Enio (2026-08-30): *"[lsystem] 9841 ramos passam do tecto de 4096 — a planta sai
+// cortada"*. Ele shipou com o doc a dizer **«este número está por MEDIR»**, que é exactamente o
+// que o `CLAUDE.md` §0.0 proíbe: *um limite que só diz «por segurança» é um palpite à espera de
+// um smoke*. E a justificação que ele DAVA (*«cada fita é um `VecPath` e paga uma tesselação»*)
+// **dissolveu** na mesma jornada, quando a planta passou a ser UMA geometria composta — quem
+// move o número que tornava algo inalcançável tem de reconferir a nota.
+//
+// A medição, com os trilhos analíticos (release, caminho FRIO repetido, gramática
+// `F -> F[+F]F[-F]F`):
+//
+// | gerações | ramos | publicar | por ramo |
+// |---|---|---|---|
+// | 4 | 624 | 0,113 ms | 0,181 µs |
+// | 5 | 3 124 | 0,513 ms | 0,164 µs |
+// | 6 | 15 624 | 1,377 ms | 0,088 µs |
+// | **7** | **78 124** | **7,17 ms** | 0,092 µs |
+// | 8 | 78 124 | 6,75 ms | 0,086 µs |
+//
+// ⭐ **A contagem de ramos JÁ É LIMITADA a montante**, pelo `MAX_MODULES = 262 144` do próprio
+// nó — a `g = 8` a cadeia satura e os ramos param em `78 124`. E nesse ponto a publicação
+// INTEIRA (derivar + decompor + construir as fitas) custa `7,17 ms`, a mesma ordem que o nó já
+// declara para si (*"38,8 % de um quadro"* para a derivação no seu tecto). *O segundo tecto não
+// protegia nada: só cortava a planta.*
 
 // **QUANTAS FITAS FORAM DE FACTO CONSTRUÍDAS** — a sonda que o gate do memo precisava e não
 // tinha.
@@ -89,69 +105,86 @@ fn v1(s: &Stream, name: &str) -> Vec<f32> {
 /// com N geometrias DISTINTAS. O desenho tesselá-las-ia **todas, todo o quadro** (o cache do
 /// renderer é por `geometry_id` e por quadro), e foi isso — mais o memo que não era usado — que
 /// deu o *"ficamos com 4 fps"*. Uma planta é UM objecto: um `VecPath` composto, uma tesselação.
-fn ribbon(b: &ls::branch::Branch, origin: [f32; 2]) -> Option<Vec<VecPath>> {
+///
+/// ⛔⛔ **E os trilhos são construídos AQUI, não pelo `power_stroke` — a 2.ª queda de fps.**
+/// Aquele motor **densifica cada contorno em `RIBBON_SAMPLES = 128` amostras** e corre um
+/// varrimento booleano (`Region::of`) sobre o resultado. É a coisa certa para uma curva com um
+/// perfil liso; para um ramo de **três pontos** com uma parada de largura em cada um, as 128
+/// amostras não acrescentam informação nenhuma e o varrimento custa ~3 µs por ramo — que numa
+/// planta de 9 841 ramos é o quadro inteiro.
+///
+/// ⚠️ **Não é uma segunda lei de traço variável, e a diferença é o PRODUTO:** o `power_stroke`
+/// devolve um contorno REGULARIZADO (auto-intersecções resolvidas, pronto para outra booleana);
+/// aqui a saída é um contorno de PREENCHIMENTO que entra na planta composta sob `NonZero` — a
+/// regra de preenchimento já resolve sobreposição, que é a única coisa que o varrimento
+/// comprava. *A geometria dos trilhos é a mesma: `±w/2` na normal do vértice.*
+fn ribbon(b: &ls::branch::Branch, origin: [f32; 2]) -> Option<ph2d_vec_scene::Contour> {
     RIBBONS_BUILT.with(|c| c.set(c.get() + 1));
-    let base = origin;
-    b.points.first()?;
-    let mut centre = VecPath {
-        verts: b
-            .points
-            .iter()
-            .map(|p| VecVertex::corner([f64::from(p[0] - base[0]), f64::from(p[1] - base[1])]))
-            .collect(),
-        closed: false,
-        ..VecPath::default()
-    };
-
-    // ⚠️ **O perfil é MULTIPLICADOR, e a largura de referência é a MAIOR do ramo.** O
-    // `WidthStop::mult` escala a largura do traço, então o traço vale `w_max` e cada parada
-    // vale `w_i / w_max` — assim a base fica em `1` e a ponta afina. Normalizar pela PRIMEIRA
-    // daria multiplicadores acima de `1` num ramo que engrossa (um `!` que aumenta), e o
-    // motor de traço não é obrigado a gostar disso.
-    let w_max = b.widths.iter().copied().fold(0.0f32, f32::max);
-    // ⚠️ `is_finite` **e** `> 0`: um ramo de largura zero não é uma fita, e um `NaN` vindo de um
-    // param conduzido faria o `mult` de cada parada ser `NaN` — o varrimento devolveria lixo em
-    // vez de vazio.
-    if !w_max.is_finite() || w_max <= 0.0 {
+    let n = b.points.len();
+    if n < 2 || b.widths.len() != n {
         return None;
     }
-    let frac = b.arc_fractions();
-    let stops: Vec<WidthStop> = frac
-        .iter()
-        .zip(&b.widths)
-        .map(|(t, w)| WidthStop {
-            pos: f64::from(*t),
-            mult: f64::from(*w / w_max),
-        })
-        .collect();
-
-    // ⚠️ **A largura do traço é a MAIOR do ramo, e é uma LARGURA (não meia)** — o `power_stroke`
-    // desloca por `±w/2`, então passar a espessura da tartaruga tal e qual dá um ramo com
-    // exactamente a espessura que o `!` da gramática pediu.
-    // ⚠️ A COR aqui é inerte: o `power_stroke` devolve a forma PREENCHIDA da fita, e quem a
-    // pinta é o `tint` da instância a jusante. O branco é o neutro de multiplicação.
-    centre.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-        ph2d_vec_scene::Rgba8::new(255, 255, 255, 255),
-        f64::from(w_max),
-    ));
-
-    // ⚠️⚠️ **DOIS motores, e a pergunta escolhe qual** — apanhado por gate, na 1.ª corrida.
-    //
-    // O `power_stroke` **devolve vazio de propósito** quando o perfil é UNIFORME: *"aí o comando
-    // é o `outline_stroke`, e ter dois botões para a mesma saída seria pior que ter um"* (o doc
-    // dele). E uma planta sem nenhum `!` na gramática tem largura constante em todo o ramo —
-    // que é o caso COMUM, não a excepção. Chamar só o de largura variável fazia a planta inteira
-    // desaparecer, com a membrana a publicar contagem `0` e nada vermelho em lado nenhum.
-    let profile = WidthStops::new(stops);
-    let out = if profile.is_uniform() {
-        ph2d_vec_boolean::outline_stroke(&centre)
-    } else {
-        ph2d_vec_boolean::power_stroke(&centre, &profile)
+    let pt = |i: usize| {
+        [
+            f64::from(b.points[i][0] - origin[0]),
+            f64::from(b.points[i][1] - origin[1]),
+        ]
     };
-    if out.is_empty() {
-        return None;
+    // A direcção de cada SEGMENTO, já normalizada. Um segmento de comprimento zero herda a
+    // direcção do anterior — ele não tem normal própria, e inventar uma poria um pico na fita.
+    let mut dir = Vec::with_capacity(n - 1);
+    let mut last = [1.0f64, 0.0];
+    for i in 0..n - 1 {
+        let (a, c) = (pt(i), pt(i + 1));
+        let (dx, dy) = (c[0] - a[0], c[1] - a[1]);
+        let len = dx.hypot(dy);
+        last = if len > 1e-9 {
+            [dx / len, dy / len]
+        } else {
+            last
+        };
+        dir.push(last);
     }
-    Some(out)
+
+    // ⭐ Os DOIS TRILHOS, a `±w/2` da linha de centro na normal do vértice.
+    let mut left = Vec::with_capacity(n);
+    let mut right = Vec::with_capacity(n);
+    for i in 0..n {
+        let d_in = dir[i.saturating_sub(1)];
+        let d_out = dir[i.min(n - 2)];
+        // A normal do vértice é a bissectriz das duas normais vizinhas; o factor de esquadria
+        // (`1/cos(θ/2)`) devolve a largura pedida MEDIDA PERPENDICULARMENTE ao segmento.
+        let (mx, my) = (d_in[0] + d_out[0], d_in[1] + d_out[1]);
+        let m = mx.hypot(my);
+        let (tx, ty) = if m > 1e-9 {
+            (mx / m, my / m)
+        } else {
+            // Meia-volta exacta: as duas direcções cancelam-se e não há bissectriz. Usa a
+            // normal de entrada — a fita dobra sobre si, e o `NonZero` resolve a sobreposição.
+            (d_in[0], d_in[1])
+        };
+        let (nx, ny) = (-ty, tx);
+        // ⚠️ **A esquadria é CLAMPADA, e o recurso tem nome:** numa quina fechada `1/cos(θ/2)`
+        // vai a infinito, e um vértice no infinito parte a tesselação. `4` é o limite de
+        // esquadria de facto do SVG e do Illustrator (`stroke-miterlimit` nasce em `4`), e
+        // acima dele a ponta é cortada — a sobreposição do `NonZero` fecha o resto.
+        const MITER_MAX: f64 = 4.0;
+        let cos_half = (nx * -d_out[1] + ny * d_out[0]).abs().max(1.0 / MITER_MAX);
+        let h = f64::from(b.widths[i]) * 0.5 / cos_half;
+        let (px, py) = (pt(i)[0], pt(i)[1]);
+        left.push([px + nx * h, py + ny * h]);
+        right.push([px - nx * h, py - ny * h]);
+    }
+
+    // O contorno: um trilho para a frente, o outro para trás. As pontas fecham-se sozinhas
+    // (topo recto) — e uma ponta afinada a zero fecha num PONTO, que é o que se quer.
+    let mut verts: Vec<VecVertex> = Vec::with_capacity(n * 2);
+    verts.extend(left.iter().map(|p| VecVertex::corner(*p)));
+    verts.extend(right.iter().rev().map(|p| VecVertex::corner(*p)));
+    Some(ph2d_vec_scene::Contour {
+        verts,
+        closed: true,
+    })
 }
 
 /// **A geometria de uma PLANTA INTEIRA** — um `VecPath` composto com um contorno por ramo.
@@ -163,15 +196,8 @@ fn ribbon(b: &ls::branch::Branch, origin: [f32; 2]) -> Option<Vec<VecPath>> {
 /// a forquilha), e com par-ímpar a sobreposição viraria um BURACO — exactamente o defeito que o
 /// colar veio curar, de volta por outra porta.
 fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<VecPath> {
-    let mut contours: Vec<ph2d_vec_scene::Contour> = Vec::new();
-    for b in branches {
-        for c in ribbon(b, origin).into_iter().flatten() {
-            contours.push(ph2d_vec_scene::Contour {
-                verts: c.verts,
-                closed: c.closed,
-            });
-        }
-    }
+    let mut contours: Vec<ph2d_vec_scene::Contour> =
+        branches.iter().filter_map(|b| ribbon(b, origin)).collect();
     if contours.is_empty() {
         return None;
     }
@@ -230,16 +256,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
     }
 
     for (key, bs) in jobs {
-        let clipped = bs.len() > MAX_RIBBONS;
-        if clipped {
-            // ⚠️ **Um tecto que morde em silêncio lê-se como *«a planta está incompleta»***, e a
-            // causa é indistinguível de uma gramática errada. Ver [`MAX_RIBBONS`].
-            eprintln!(
-                "[lsystem] {} ramos passam do tecto de {MAX_RIBBONS} — a planta sai cortada",
-                bs.len()
-            );
-        }
-        let used = &bs[..bs.len().min(MAX_RIBBONS)];
+        let used = &bs[..];
         // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
         // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
         // sítios diferentes partilham UMA geometria.

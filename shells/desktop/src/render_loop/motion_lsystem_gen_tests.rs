@@ -193,3 +193,44 @@ fn republishing_an_unchanged_plant_builds_no_geometry_and_survives_the_sweep() {
     );
     assert_eq!(state.shape_store.len(), built, "nada se perdeu no caminho");
 }
+
+/// ⛔⛔ **UMA PLANTA GRANDE SAI INTEIRA** — o report do Enio de 2026-08-30 (*"9841 ramos passam
+/// do tecto de 4096 — a planta sai cortada"*).
+///
+/// ⚠️ **O gate mede a AUSÊNCIA de um segundo tecto**, e a barra não é um número escolhido: é a
+/// contagem que a decomposição devolve. Um corte a `N` ramos passaria despercebido em toda
+/// planta pequena e mutilaria exactamente as grandes — que são as que alguém constrói para ver
+/// se o motor aguenta.
+///
+/// ⚠️ E o limite a sério fica NOMEADO no lado do nó (`MAX_MODULES`), que é onde ele foi medido.
+#[test]
+fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
+    let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+    // Seis gerações desta gramática dão ~15 k ramos — bem acima do tecto que foi removido.
+    state.doc.graph.set_param(n, ls::param::GENERATIONS, 6.0);
+    let before = super::ribbons_built();
+    publish(&mut state, 0.0);
+    let built = super::ribbons_built() - before;
+
+    let resolved =
+        super::super::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
+    let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
+        resolved.get(name).copied().unwrap_or(0.0)
+    });
+    let want = ls::branch::branches(
+        &super::v2(&sk, "P"),
+        &super::v1(&sk, "parent"),
+        &super::v2(&sk, "size"),
+        &super::v1(&sk, "sym"),
+        0.0,
+    )
+    .len();
+    assert!(
+        want > 4096,
+        "a fixtura tem de ser MAIOR que o tecto removido: {want}"
+    );
+    assert_eq!(
+        built, want,
+        "a membrana construiu {built} fitas de {want} — alguma coisa está a cortar a planta"
+    );
+}

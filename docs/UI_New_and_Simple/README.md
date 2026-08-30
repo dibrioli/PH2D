@@ -36,6 +36,7 @@ E três defeitos concretos, com foto:
 |---|---|
 | ⛔ **O que o Enio já DECIDIU** (não re-litigar) | [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md) |
 | ⭐ **A spec — o modelo de áreas** (rascunho 1) | [`spec/01_modelo_de_areas.md`](spec/01_modelo_de_areas.md) |
+| ⭐⭐ **O que falta para COMEÇAR, e em que ordem** | [`spec/02_o_que_falta_para_comecar.md`](spec/02_o_que_falta_para_comecar.md) |
 | **Quanto de UI nós temos, medido** (tokens, ids, painéis, LOC) | [`medicoes/01_o_estado_medido.md`](medicoes/01_o_estado_medido.md) |
 | **Quanto do canvas o chrome tapa** — a foto 1 em número | [`medicoes/02_a_area_tapada.md`](medicoes/02_a_area_tapada.md) |
 | **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |
@@ -114,8 +115,10 @@ oferecia para a decidir ficou cancelada com ela.*
 
 ## O que esta etapa NÃO fez
 
-- **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado é o `.gitignore`,
-  para manter `referencias/` fora do git.
+- ⚠️ **Deixou de ser só documentação em 2026-08-30:** a **unidade de ângulo** (Settings →
+  *Angle unit*) foi implementada a pedido do Enio — `DisplayAngle { Degrees, Radians }`, persistida,
+  4 gates, 3 provas de mutação, `PROJECT_SCHEMA` **103 → 104**. Ver
+  [`spec/02 §6`](spec/02_o_que_falta_para_comecar.md).
 - Não decidiu nada sozinha: as nove decisões são do Enio, e o que fica em aberto está nomeado
   nos `⏳` de cada documento.
 - ⚠️ **A spec é RASCUNHO** — o §7 dela lista o que falta decidir, e a §8 o que ⛔ não fazer.

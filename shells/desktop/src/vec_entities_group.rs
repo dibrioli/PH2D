@@ -9,14 +9,14 @@ use ph2d_ecs::{ChildOf, Entity, Name, RootOrder, SimWorld, Transform, VecPathRef
 
 use super::{next_root_order, top_ancestor};
 
-/// Agrupa as entidades `members` sob uma **entidade comum nova** (nome, `Transform`,
-/// `RootOrder`), preservando a ordem. É o mesmo grupo que os sprites usam — por isso
-/// ele aceita qualquer mistura de tipos (ADR-0110). Devolve o grupo, ou `None` se
-/// sobrar menos de 2 ancestrais de topo distintos.
+/// ⭐ **Os ancestrais de TOPO distintos que estas entidades representam** — a normalização que
+/// agrupar faz: pegar num filho traz o grupo dele junto (aninhamento), não o filho solto.
 ///
-/// Agrupar normaliza para os ancestrais de topo: pegar um filho traz o grupo dele
-/// junto (aninhamento), não o filho solto — a convenção de qualquer editor.
-pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Option<u64> {
+/// ⚠️ Extraída do [`group_entities`] porque ela tem **dois** leitores agora: o próprio verbo, e
+/// quem lhe dá o NOME (`crate::hier_group`), que precisa de contar os membros antes de o chamar.
+/// *Dois caminhos do mesmo grupo são um membro só* — um `Group 2` sobre uma coisa só seria mentira
+/// no primeiro sítio que o artista lê, e contar os `members` crus daria exactamente isso.
+pub(crate) fn top_members(sim: &SimWorld, members: &[u64]) -> Vec<Entity> {
     let mut tops: Vec<Entity> = Vec::new();
     for &bits in members {
         let e = Entity::from_bits(bits);
@@ -28,6 +28,18 @@ pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) 
             tops.push(t);
         }
     }
+    tops
+}
+
+/// Agrupa as entidades `members` sob uma **entidade comum nova** (nome, `Transform`,
+/// `RootOrder`), preservando a ordem. É o mesmo grupo que os sprites usam — por isso
+/// ele aceita qualquer mistura de tipos (ADR-0110). Devolve o grupo, ou `None` se
+/// sobrar menos de 2 ancestrais de topo distintos.
+///
+/// Agrupar normaliza para os ancestrais de topo: pegar um filho traz o grupo dele
+/// junto (aninhamento), não o filho solto — a convenção de qualquer editor.
+pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) -> Option<u64> {
+    let tops = top_members(sim, members);
     if tops.len() < 2 {
         return None;
     }

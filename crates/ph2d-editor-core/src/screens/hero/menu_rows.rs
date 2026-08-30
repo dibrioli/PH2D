@@ -189,6 +189,14 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_HIER_RENAME, "Rename\u{2026}", None),
             (ids::CTX_MENU_HIER_DUPLICATE, "Duplicate", None),
             (ids::CTX_MENU_HIER_ADD_CHILD, "Add Child", None),
+            // ⭐⭐⭐ **AGRUPAR / DESAGRUPAR** (Enio, 2026-08-30), e ficam AQUI de propósito: são a
+            // forma mais **suave** de juntar a seleção num objeto, e o bloco abaixo é o das outras
+            // duas — o Merge FUNDE os pixels e destrói os originais, o Pack ARRANJA-os numa folha.
+            // Lidos em sequência, os três respondem *"quão junto?"* em ordem crescente de dano.
+            //
+            // ⚠️ O par fica junto porque **um verbo cujo inverso não se vê não se usa**.
+            (ids::CTX_MENU_HIER_GROUP, "Group", None),
+            (ids::CTX_MENU_HIER_UNGROUP, "Ungroup", None),
             (ids::CTX_MENU_HIER_MERGE_SPRITES, "Merge Sprites", None),
             // A mesma fusão, mas reversível: cada sprite fica numa camada do Painter. Vizinha da
             // de cima porque a escolha entre as duas só existe neste instante.

@@ -394,6 +394,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_HIER_RENAME,
         ids::CTX_MENU_HIER_DUPLICATE,
         ids::CTX_MENU_HIER_ADD_CHILD,
+        ids::CTX_MENU_HIER_GROUP,
+        ids::CTX_MENU_HIER_UNGROUP,
         ids::CTX_MENU_HIER_MERGE_SPRITES,
         ids::CTX_MENU_HIER_MERGE_TO_LAYERS,
         ids::CTX_MENU_HIER_PACK_SHEET,

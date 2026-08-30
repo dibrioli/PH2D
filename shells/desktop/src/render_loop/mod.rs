@@ -3078,6 +3078,10 @@ impl crate::App {
             // we can fork the copy onto its own texture (independent object) post-dispatch.
             let mut duplicate_made: Option<(u64, u64)> = None;
             let mut add_child_row: Option<NodeId> = None;
+            // ⭐⭐ **Agrupar / desagrupar** (2026-08-30): `(linha clicada, agrupar?)`. Um slot só para
+            // os dois verbos — eles são o mesmo gesto com o sinal trocado, e dois slots deixariam
+            // a porta aberta a alguém drenar os dois no mesmo quadro.
+            let mut group_row: Option<(NodeId, bool)> = None;
             // ⭐ **O `Add` do cabeçalho da Hierarquia** (ADR-0166 / F3) — um objeto vazio na raiz.
             // Sem payload: ele não sai de uma linha, e por isso não tem pai (ver `HierAddRoot`).
             let mut add_root = false;
@@ -4275,6 +4279,12 @@ impl crate::App {
                     }
                     EditorAction::HierAddChild { row } => {
                         add_child_row.get_or_insert(row);
+                    }
+                    EditorAction::HierGroup { row } => {
+                        group_row.get_or_insert((row, true));
+                    }
+                    EditorAction::HierUngroup { row } => {
+                        group_row.get_or_insert((row, false));
                     }
                     EditorAction::HierAddRoot => {
                         add_root = true;
@@ -11149,6 +11159,40 @@ impl crate::App {
             // anchor" the merged sprite parents under.
             // ⚠️ As DUAS entradas do menu caem aqui: «Merge Sprites» e «Merge to Layers». A
             // geometria é a mesma e o modo é a única diferença — ver a chamada abaixo.
+            // ⭐⭐⭐ **AGRUPAR / DESAGRUPAR** (Enio, 2026-08-30) — o alcance de um verbo que já
+            // existia em `Ctrl+G` e que nenhum menu do app nomeava. A lei do sujeito e as frases
+            // vivem em [`crate::hier_group`], puras e gateadas; aqui só se resolve a linha em bits,
+            // se aplica e se diz.
+            if let Some((row, agrupar)) = group_row
+                && let Some(live) = hero_live.as_ref()
+                && let Some(row_bits) = live.bridge.entity_for(row)
+            {
+                let escolhidos: Vec<u64> = hero.gizmo.iter_selected().collect();
+                let sujeito = crate::hier_group::subject(row_bits, &escolhidos);
+                let desfecho = crate::hier_group::apply(sim, &sujeito, agrupar);
+                if let crate::hier_group::Outcome::Grouped { group, .. } = desfecho {
+                    // O grupo novo passa a ser a selecção — o gesto seguinte do artista é sobre
+                    // ELE, e não sobre as peças que acabaram de deixar de ser objectos de topo.
+                    hero.gizmo.selection = Some(group);
+                    hero.gizmo.extra_selection.clear();
+                    // ⚠️ Recolher fica para quando a Hierarquia conhecer a linha — ver o campo.
+                    self.pending_group_collapse = Some(group);
+                }
+                toasts.push(desfecho.toast());
+                self.title_dirty = true;
+            }
+            // ⭐ A segunda metade do recolher: a linha do grupo já existe? Então recolhe-a **uma
+            // vez** e esquece. ⚠️ Sem o `take`, o artista abria o grupo e o quadro seguinte
+            // fechava-o outra vez — um controlo que se desfaz sozinho lê-se como avaria.
+            if let Some(bits) = self.pending_group_collapse
+                && let Some(live) = hero_live.as_ref()
+                && let Some(node) = live.bridge.node_for(bits)
+            {
+                if !hero.store.is_hierarchy_collapsed(node) {
+                    hero.store.toggle_hierarchy_collapsed(node);
+                }
+                self.pending_group_collapse = None;
+            }
             if let Some(row) = merge_sprites_row.or(merge_to_layers_row)
                 && let Some(live) = hero_live.as_ref()
                 && let Some(primary_bits) = live.bridge.entity_for(row)

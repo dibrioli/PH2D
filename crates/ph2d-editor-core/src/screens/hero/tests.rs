@@ -463,27 +463,33 @@ fn simple_row_context_menu_items_are_populate_registered() {
         ids::CTX_MENU_PATH_HANDLE_CORNER,
         ids::CTX_MENU_PATH_HANDLE_SMOOTH,
         ids::CTX_MENU_PATH_HANDLE_SYMMETRIC,
-        // HierarchyRow items — every entry of the per-row menu (`context_menu_overlay`,
-        // `ContextMenuKind::HierarchyRow`). "Use as Brush Shape" shipped dead because it was
-        // hit-painted but OMITTED here (the Grain twin was registered) — Enio 2026-06-25.
-        ids::CTX_MENU_HIER_RENAME,
-        ids::CTX_MENU_HIER_DUPLICATE,
-        ids::CTX_MENU_HIER_ADD_CHILD,
-        ids::CTX_MENU_HIER_MERGE_SPRITES,
-        ids::CTX_MENU_HIER_PACK_SHEET,
-        ids::CTX_MENU_HIER_ARRANGE_SHEET,
-        ids::CTX_MENU_HIER_BAKE_SHEET,
-        ids::CTX_MENU_HIER_EXPORT_SHEET,
-        ids::CTX_MENU_HIER_REMOVE_FROM_SHEET,
-        ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE,
-        ids::CTX_MENU_HIER_USE_AS_BRUSH_TEXTURE,
-        ids::CTX_MENU_HIER_RESET_TRANSFORM,
-        ids::CTX_MENU_HIER_DELETE,
     ] {
         assert!(
             hero.store.contains(id),
             "context-menu row {id:?} must be registered by populate_global_context_menu \
              (else its dispatch Click never fires — the populate-register gotcha)"
+        );
+    }
+    // ⛔⛔⛔ **A LISTA DO HierarchyRow ERA ESCRITA À MÃO, E JÁ TINHA DOIS BURACOS** (2026-08-30).
+    //
+    // O comentário que aqui estava contava a história certa — *"Use as Brush Shape shipped dead
+    // because it was hit-painted but OMITTED here"*, Enio 2026-06-25 — e depois disso o menu ganhou
+    // `Merge to Layers` e `Export Image…`, e **nenhum dos dois entrou nesta lista**. Os dois estão
+    // vivos hoje por sorte, não por gate: um terceiro que nascesse morto passaria igual.
+    //
+    // ⇒ *Uma lista escrita à mão ao lado de uma tabela é duas respostas à mesma pergunta, e a que
+    // envelhece é sempre a escrita à mão.* A lista passa a ser **derivada do próprio menu**: o que
+    // o artista vê é exactamente o que este gate exige, e uma linha nova entra sozinha.
+    for (id, label, _) in
+        super::menu_rows::menu_rows(crate::interaction::ContextMenuKind::HierarchyRow {
+            row: NodeId(1),
+        })
+    {
+        assert!(
+            hero.store.contains(*id),
+            "a linha `{label}` do menu da Hierarquia nao esta' registada pelo \
+             populate_global_context_menu - ela pinta, o ponteiro acende-a, e o Click NUNCA sai \
+             (o gotcha do populate-register). Ela shipa MORTA."
         );
     }
 }

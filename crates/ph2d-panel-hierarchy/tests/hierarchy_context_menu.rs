@@ -283,3 +283,87 @@ fn every_sheet_verb_raises_its_own_action() {
         seen.push(action);
     }
 }
+
+/// ⭐⭐⭐ **AGRUPAR e DESAGRUPAR saem do menu com a LINHA CLICADA** (Enio, 2026-08-30).
+///
+/// O verbo já existia em `Ctrl+G` e **nenhum menu, botão ou rótulo do app o nomeava** — este par de
+/// linhas é o alcance dele. ⚠️ E os dois são acções **distintas**: um só `HierGroup { toggle }`
+/// obrigaria a shell a adivinhar o sentido a partir do estado da selecção, e *agrupar e desagrupar
+/// não são o mesmo gesto com um interruptor* — o artista escolhe qual quer.
+#[test]
+fn the_group_pair_raises_its_own_action_with_the_clicked_row() {
+    for (id, esperado, nome) in [
+        (
+            ids::CTX_MENU_HIER_GROUP,
+            EditorAction::HierGroup {
+                row: NodeId(100_777),
+            },
+            "Group",
+        ),
+        (
+            ids::CTX_MENU_HIER_UNGROUP,
+            EditorAction::HierUngroup {
+                row: NodeId(100_777),
+            },
+            "Ungroup",
+        ),
+    ] {
+        let mut hero = setup_hero();
+        let mut state = HierarchyState::default();
+        let row = NodeId(100_777);
+        stage_hierarchy_row_snapshot(&mut hero, row);
+        let consumed = dispatch(&mut hero, &mut state, WidgetEvent::Click(id));
+        assert!(consumed, "o clique em `{nome}` nao foi consumido");
+        let drained: Vec<_> = hero.bus.drain().collect();
+        assert_eq!(
+            drained,
+            vec![esperado],
+            "`{nome}` nao levantou a accao dele com a linha clicada - a linha e' o SUJEITO EXTRA \
+             que a shell une a' seleccao, e sem ela o verbo nao sabe sobre quem age"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **AS DUAS LINHAS ESTÃO NO MENU** (Enio, 2026-08-30: *"no menu do botão direito da hierarquia
+/// 2 novas opções: agrupar e desagrupar"*).
+///
+/// ⛔⛔ **Este gate existe porque uma MUTAÇÃO SOBREVIVEU.** O irmão
+/// `the_group_pair_raises_its_own_action_with_the_clicked_row` despacha o `Click` pelo id
+/// directamente — ele prova o **roteamento** e é cego à **presença**: apagar a linha `Ungroup` da
+/// tabela do menu deixava-o verde, com o verbo perfeitamente ligado a um item que ninguém vê.
+///
+/// *Um gate que injecta o evento nunca mede se o artista tem por onde o produzir.*
+#[test]
+fn the_menu_offers_group_and_ungroup_by_name() {
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    let rows = menu_rows(ContextMenuKind::HierarchyRow { row: NodeId(1) });
+    for (id, rotulo) in [
+        (ids::CTX_MENU_HIER_GROUP, "Group"),
+        (ids::CTX_MENU_HIER_UNGROUP, "Ungroup"),
+    ] {
+        let achado = rows.iter().find(|(rid, _, _)| *rid == id);
+        let (_, label, _) = achado.unwrap_or_else(|| {
+            panic!(
+                "o menu da Hierarquia nao oferece `{rotulo}` - o verbo existe e continua \
+                 inalcancavel, que e' exactamente o estado de que esta wave partiu"
+            )
+        });
+        assert_eq!(
+            *label, rotulo,
+            "a linha mudou de nome - o artista procura a palavra que os outros editores usam"
+        );
+    }
+    // ⚠️ E ficam JUNTAS: um verbo cujo inverso está noutro sítio do menu não se usa, porque o
+    // artista não sabe como voltar atrás.
+    let pos = |id| {
+        rows.iter()
+            .position(|(rid, _, _)| *rid == id)
+            .expect("presente")
+    };
+    assert_eq!(
+        pos(ids::CTX_MENU_HIER_UNGROUP),
+        pos(ids::CTX_MENU_HIER_GROUP) + 1,
+        "`Ungroup` deixou de ser a linha logo a seguir a `Group`"
+    );
+}

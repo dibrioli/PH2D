@@ -228,7 +228,7 @@ mod group;
 /// o objeto que este clique nomeia, e o que selecioná-lo significa*.
 #[path = "vec_entities_selection.rs"]
 mod selection;
-pub(crate) use group::{group_entities, ungroup_entities};
+pub(crate) use group::{group_entities, top_members, ungroup_entities};
 pub(crate) use selection::{object_selection_for, selection_paths, subtree_paths, top_ancestor};
 
 #[cfg(test)]

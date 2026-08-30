@@ -54,6 +54,8 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_APPLY_TO_MASTER
         || id == ids::CTX_MENU_HIER_DELETE
         || id == ids::CTX_MENU_HIER_RENAME
+        || id == ids::CTX_MENU_HIER_GROUP
+        || id == ids::CTX_MENU_HIER_UNGROUP
         || id == ids::CTX_MENU_HIER_MERGE_SPRITES
         || id == ids::CTX_MENU_HIER_MERGE_TO_LAYERS
         || id == ids::CTX_MENU_HIER_PACK_SHEET
@@ -106,6 +108,10 @@ fn try_context_menu_row(
                 .push(EditorAction::HierResetTransform { row });
         } else if id == ids::CTX_MENU_HIER_DELETE {
             host.bus_mut().push(EditorAction::HierDelete { row });
+        } else if id == ids::CTX_MENU_HIER_GROUP {
+            host.bus_mut().push(EditorAction::HierGroup { row });
+        } else if id == ids::CTX_MENU_HIER_UNGROUP {
+            host.bus_mut().push(EditorAction::HierUngroup { row });
         } else if id == ids::CTX_MENU_HIER_MERGE_SPRITES {
             host.bus_mut().push(EditorAction::HierMergeSprites { row });
         } else if id == ids::CTX_MENU_HIER_MERGE_TO_LAYERS {

@@ -252,6 +252,9 @@ mod guide_smoke;
 mod harmony_smoke;
 mod hero_bridge;
 mod hero_intents;
+/// ⭐⭐⭐ **AGRUPAR / DESAGRUPAR pela Hierarquia** — o alcance de um verbo que já existia em `Ctrl+G`
+/// e que nenhum menu, botão ou rótulo do app nomeava.
+mod hier_group;
 mod hover_highlight;
 /// `Export Image…` — a porta dos 16 exportadores (plano `docs/Sprite_projeto/18` W9).
 mod image_export;
@@ -880,6 +883,7 @@ impl App {
             timeline_insert_key: false,
             autokey: Default::default(),
             last_frame: Instant::now(),
+            pending_group_collapse: None,
             pending_resize: None,
             resize_saved_present_mode: None,
             resize_settle_frames: 0,

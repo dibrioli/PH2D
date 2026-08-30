@@ -562,6 +562,17 @@ pub(crate) struct App {
     /// `render_loop::autokey_pass`).
     pub(crate) autokey: crate::render_loop::autokey_pass::AutokeyState,
     pub(crate) last_frame: Instant,
+    /// ⭐⭐⭐ **O grupo acabado de nascer, à espera de ser RECOLHIDO na Hierarquia** (Enio,
+    /// 2026-08-30: *"na hierarquia deve aparecer como um objeto só"*).
+    ///
+    /// ⚠️ **Diferido porque a ponte deste quadro não o conhece.** O `node_for(bits)` só responde
+    /// depois de a publicação da Hierarquia ver a entidade nova, e ela nasce **durante** o dreno —
+    /// recolher aqui seria recolher um id que ainda não existe, em silêncio. Guarda-se os bits e
+    /// tenta-se a cada quadro até a linha aparecer.
+    ///
+    /// ⚠️ E **só ao NASCER**: recolher um grupo sempre que ele é tocado tiraria do artista a
+    /// decisão de o ter aberto.
+    pub(crate) pending_group_collapse: Option<u64>,
     pub(crate) pending_resize: Option<WindowSize>,
     /// FLUID-DRAG present-mode override: the configured mode saved while a live resize streams (the
     /// drag runs in the backend's best non-blocking mode; restored after the stream settles).

@@ -56,6 +56,12 @@ pub(super) fn dispatch(
     revert_to_master_row: Option<NodeId>,
     // ⭐ Os outros verbos de instância (ADR-0164 / F4.5).
     instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)>,
+    // ⭐ **O MESMO verbo, endereçado por `StableId`** — o canal do navegador de assets (plano
+    // `docs/Components/07`, wave A7). ⚠️ Ele mora aqui, ao lado do irmão, e chama a MESMA
+    // `instance_verbs::drain`: a lei de instanciar continua com um dono só. O que muda é o
+    // SUJEITO — o navegador endereça a receita pela identidade, e não por uma linha que ela nem
+    // tem (uma receita está escondida da Hierarquia por construção).
+    instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb)>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -259,6 +265,33 @@ pub(super) fn dispatch(
                 vec_entities,
             },
             // O passo da cascata: o MESMO de tela que o *Duplicate* usa, convertido pela câmera.
+            {
+                let (dx, dy) = crate::input_dispatch::screen_offset_world(
+                    camera,
+                    window_size,
+                    crate::input_dispatch::PASTE_OFFSET_PX,
+                );
+                [dx as f32, dy as f32]
+            },
+        )
+    {
+        title_dirty = true;
+    }
+    // ⭐ O gémeo por `StableId`. ⚠️ **Ele corre DEPOIS do irmão e os dois não podem estar armados
+    // ao mesmo tempo** — um quadro tem um gesto.
+    if let Some((stable_id, verb)) = instance_verb_stable_id
+        && let Some(entity_bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id)
+        && crate::instance_verbs::drain(
+            verb,
+            sim,
+            registry,
+            echo,
+            entity_bits,
+            toasts,
+            &mut crate::instance_docs::OwnedDocs {
+                vec_scene,
+                vec_entities,
+            },
             {
                 let (dx, dy) = crate::input_dispatch::screen_offset_world(
                     camera,

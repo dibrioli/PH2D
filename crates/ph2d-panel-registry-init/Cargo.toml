@@ -12,6 +12,7 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core               = { path = "../ph2d-editor-core" }
 # <ph2d-panel-sync:deps:begin>
+ph2d-panel-asset-browser = { path = "../ph2d-panel-asset-browser", optional = true }
 ph2d-panel-audio-editor = { path = "../ph2d-panel-audio-editor", optional = true }
 ph2d-panel-audio-mixer = { path = "../ph2d-panel-audio-mixer", optional = true }
 ph2d-panel-authored = { path = "../ph2d-panel-authored", optional = true }
@@ -41,6 +42,9 @@ ph2d-panel-widget-gallery = { path = "../ph2d-panel-widget-gallery", optional = 
 [features]
 default = [
     "panel-widget-gallery", "panel-hierarchy", "panel-inspector", "panel-grid-snap",
+    # ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`). Mesma categoria do de fisica: mundo,
+    # nao tool-gated, DEFAULT_VISIBLE=false — registado sempre, pintado quando o pill Assets pede.
+    "panel-asset-browser",
     "panel-bgremoval", "panel-padding", "panel-vector",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",
@@ -65,6 +69,7 @@ default = [
 # `cargo run -p ph2d-panel-sync` from a scan of `crates/ph2d-panel-*` —
 # do NOT edit between the markers by hand.
 # <ph2d-panel-sync:features:begin>
+panel-asset-browser = ["dep:ph2d-panel-asset-browser"]
 panel-audio-editor = ["dep:ph2d-panel-audio-editor"]
 panel-audio-mixer = ["dep:ph2d-panel-audio-mixer"]
 panel-authored = ["dep:ph2d-panel-authored"]

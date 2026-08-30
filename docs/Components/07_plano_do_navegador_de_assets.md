@@ -11,7 +11,8 @@
 ## 📍 Índice
 [§0 A régua](#0) · [§1 O corte em DUAS etapas, e por quê](#1) · [§2 O que o navegador mostra](#2) ·
 [§3 As decisões de desenho, com a lei que as escolheu](#3) · [§4 Etapa A](#4) · [§5 Etapa B](#5) ·
-[§6 Fora, com motivo](#6) · [§7 A auditoria antes do smoke](#7) · [§8 Riscos MEDIDOS](#8)
+[§6 Fora, com motivo](#6) · [§7 A auditoria antes do smoke](#7) · [§8 Riscos MEDIDOS](#8) ·
+[§9 O que a etapa A entregou](#9)
 
 <a id="0"></a>
 ## §0 — A régua da etapa
@@ -161,3 +162,65 @@ As duas etapas são complexas ⇒ **as duas são auditadas antes de eu sugerir o
    morde, e a A6 tem de o gatear.
 5. ⚠️ **O painel novo entra em 5 sítios de registo** (memória `reference_topic_panel_registration`),
    e o 6.º — o `populate` — é o que mata sob o dedo.
+
+<a id="9"></a>
+## §9 — O que a ETAPA A **entregou**, e o que ficou (2026-08-30)
+
+> ⚠️ Esta secção é o registo da execução, escrito ao fechar. O plano acima **não** foi reescrito —
+> comparar os dois é como se vê o que a implementação refutou.
+
+### §9.1 — Entregue
+
+| Wave | Estado | Onde |
+|---|---|---|
+| **A1** — o vocabulário | ✅ | [`crates/ph2d-asset-index/`](../../crates/ph2d-asset-index/) |
+| **A2** — a junção das duas fontes | ✅ | [`asset_index_build.rs`](../../shells/desktop/src/asset_index_build.rs) |
+| **A3** — catálogos | ⏳ **não** | ver §9.3 |
+| **A4** — o painel + a grade | ✅ | [`crates/ph2d-panel-asset-browser/`](../../crates/ph2d-panel-asset-browser/) |
+| **A5** — busca · ordenações · slider | ✅ (uma busca, não duas — §9.3) | idem |
+| **A6** — miniaturas a sério | ⏳ **não**, e a cor está no lugar delas | ver §9.3 |
+| **A7** — o verbo de USAR | ✅ | `EditorAction::AssetInstantiate` |
+
+### §9.2 — O que a implementação **achou**, e o plano não previa
+
+⛔⛔ **O pill `Assets` da barra de cima JÁ EXISTIA e estava MORTO.** Ele é pintado
+(`cluster_painter.rs`), registado (`topbar::populate`), tem tooltip (*«Asset library»*), tem nome de
+chip — e **nenhum `apply_event` do repositório ramificava nele**. É a espécie exacta que o
+[`CLAUDE.md` §5.0](../../CLAUDE.md) descreve, e a terceira pergunta (*o leitor DECIDE?*) respondia
+**não**.
+
+⚠️ **E os IRMÃOS dele continuam mortos:** `TOPBAR_RIGHT_LAYERS` e `TOPBAR_RIGHT_SCRIPT` têm a mesma
+forma e **não** foram curados aqui — curar um chip cuja feature não existe seria construir o
+consumidor de um widget que não tem o que consumir. Ficam **nomeados**, que é o que faltava.
+
+⚠️ **A cor do cartão é a média ponderada por ALFA, e a primeira versão estava errada.** Uma sprite
+recortada é quase toda transparente: a média crua dela é a cor do **nada** (preto), não a do
+desenho. Gate: `the_swatch_of_a_cut_out_sprite_is_the_colour_of_the_drawing_not_of_the_hole`.
+
+⚠️ **«Vazio» e «por publicar» desenham mensagens diferentes.** Um índice que ninguém encheu
+lê-se como *«não tenho assets»* — é o balde vazio da memória
+[`a_bucket_nobody_fills_reads_as_perfect`](../../project-memory/feedback_a_bucket_nobody_fills_reads_as_perfect.md).
+
+⚠️ **A grade recorta nos DOIS canais** (`scene.push_clip` **e** `HitIndex::push_clip`). Só o
+primeiro é a doença que o painel do Motion pagou: um cartão rolado para fora do corpo continua
+**clicável**, e o artista instancia o que não vê.
+
+⚠️ **`AssetInstantiate` não podia reutilizar `HierInstantiate`, e a razão é o SUJEITO.** Aquela chega
+com uma `row` da Hierarquia; uma receita está **escondida** dela por construção, logo não tem `row`.
+A variante nova endereça pelo `StableId` e chama a **mesma** `instance_verbs::drain`.
+
+### §9.3 — O que ficou, com o motivo
+
+- ⏳ **A3, os catálogos.** É uma etapa própria com o próprio smoke (*criar um catálogo, arrastar um
+  componente para dentro, escolher e ver só ele*) — e é a que traz a **segunda busca** (D1), que sem
+  a árvore não tem sujeito. O modelo já a espera: `AssetEntry::catalog` existe, e o filtro já é
+  honrado pela consulta com gate (`the_catalog_filter_actually_narrows_the_result`).
+- ⏳ **A6, as miniaturas.** Um componente precisa de ser **RENDERIZADO** (offscreen, `GameRt`), e o
+  `vello` 0.10 tem atlas persistente — quem recozinha pixels tem de marcar a textura suja, senão a
+  imagem **congela em silêncio**. É uma wave com medição própria, e o cartão colorido é o que a
+  substitui **com informação** até lá.
+- ⏳ **`Dependencies` / `Owners` no menu de contexto** (D9): o índice **responde** aos dois sentidos
+  com gate, e falta o menu que os mostra.
+- ⏳ **Imagens de 16 bits ficam com a cor neutra** — a média delas pede a descodificação inteira, e
+  pagá-la por um quadrado de 24 px é o oposto do que a cache existe para fazer. Declarado no `_` do
+  `swatch_for`.

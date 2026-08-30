@@ -83,6 +83,10 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // nunca chegava nele. É a **sexta** vez que este arquivo paga o mesmo
     // defeito, e as cinco notas acima já o diziam.
     ids::MODEL3D_PANEL,
+    // ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — e ele entra AQUI porque as seis
+    // notas acima já pagaram esta lição: sem esta linha o painel fica registado, visível, com os
+    // gates verdes, e **nunca pintado**.
+    ids::ASSET_PANEL,
     ids::INSP_BLENDER_PICKER,
     ids::GAL_PANEL,
     ids::AUDIO_MIXER_PANEL,

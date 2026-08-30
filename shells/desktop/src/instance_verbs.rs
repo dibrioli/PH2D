@@ -492,6 +492,19 @@ fn stable_index(sim: &mut SimWorld) -> std::collections::BTreeMap<u64, Entity> {
     q.iter(sim.world()).map(|(e, s)| (s.0, e)).collect()
 }
 
+/// **A entidade que tem este `StableId`**, em bits — a porta do navegador de assets (plano
+/// `docs/Components/07`, wave A7).
+///
+/// ⚠️ **Ela vive AQUI, ao lado do [`stable_index`] que já existia**, e não no shell: uma segunda
+/// travessia `StableId → Entity` escrita noutro ficheiro seria a segunda resposta à mesma
+/// pergunta, e as duas divergiriam no dia em que a identidade mudasse de forma.
+///
+/// ⛔ Devolve `None` para um id que já não existe — é o caso normal, não um erro: o navegador
+/// publica o índice de um quadro, o artista apaga a receita, e o duplo-clique chega a seguir.
+pub(crate) fn entity_for_stable_id(sim: &mut SimWorld, stable_id: u64) -> Option<u64> {
+    stable_index(sim).get(&stable_id).map(|e| e.to_bits())
+}
+
 /// A raiz da instância a que `clicked` pertence — a peça cujo mestre é um [`MasterRoot`].
 ///
 /// ⚠️ Sobe por `ChildOf`, nunca pelo elo: o `InstanceOf` de uma peça aponta para a peça do MESTRE,

@@ -1020,6 +1020,14 @@ pub(super) fn publish(
             hero.project.pixels_per_meter,
         )
     });
+    // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
+    // publicada para o navegador. ⚠️ Só com o painel ABERTO: é uma travessia do mundo, e pagá-la
+    // com o painel fechado é trabalho que ninguém lê.
+    crate::asset_index_build::publish_for_frame(
+        sim,
+        asset_db,
+        hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
+    );
     // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.
     // ⚠️ **`None` quando o selecionado não é peça de cópia nenhuma**, e aí a seção não existe: é a
     // lei da F3 (o Inspector mostra o que o objeto TEM). ⛔ Ao contrário da §5 e da §12, ela NÃO se

@@ -648,6 +648,24 @@ pub enum EditorAction {
     /// Physics, Motion, Timeline and Flip all ride the same clock, so these
     /// three chips drive every time-based subsystem at once.
     Transport(TransportCmd),
+
+    /// ⭐⭐ **Pôr na cena o componente que o artista escolheu no navegador de assets**
+    /// (plano `docs/Components/07`, wave A7 — *o verbo de USAR sem arrastar*).
+    ///
+    /// ⚠️ **Não é a [`Self::HierInstantiate`], e a diferença é o SUJEITO.** Aquela chega com uma
+    /// `row` da Hierarquia, que a ponte do shell resolve numa entidade — e o navegador **não tem
+    /// linhas**: ele endereça a receita pelo `StableId`, que é a identidade que sobrevive ao
+    /// respawn do undo. Reutilizar a variante obrigaria o painel a inventar uma `row` para um
+    /// objecto que pode nem estar visível na Hierarquia (uma receita está escondida por
+    /// construção).
+    ///
+    /// O shell drena resolvendo `stable_id → Entity` e chamando o **mesmo**
+    /// `instance_verbs::drain(Verb::Place, …)` da Hierarquia — a lei de instanciar continua com um
+    /// dono só.
+    AssetInstantiate {
+        /// O `StableId` da raiz da receita.
+        stable_id: u64,
+    },
 }
 
 /// The three TopBar transport commands. Kept a small copy enum so the

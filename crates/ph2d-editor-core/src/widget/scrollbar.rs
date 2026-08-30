@@ -298,9 +298,15 @@ pub const INPUT_MAP_SCROLLBAR_ID: NodeId = NodeId(842);
 /// esconde os controles e não diz nada.** As linhas do fim — o rodapé, e as fileiras de parâmetros
 /// de um documento com vários nós — ficavam inalcançáveis, sem sinal nenhum de que existiam.
 ///
-/// ⚠️ Thumb próprio pelo mesmo motivo dos irmãos acima. Next free id is `844`; re-read the
-/// collision note above before taking it.
+/// ⚠️ Thumb próprio pelo mesmo motivo dos irmãos acima.
 pub const MODEL3D_SCROLLBAR_ID: NodeId = NodeId(843);
+
+/// Barra do **navegador de assets** (plano `docs/Components/07`, wave A4) — a grade de cartões
+/// passa da altura do painel assim que o projecto tem mais de uma dúzia de assets.
+///
+/// ⚠️ Thumb próprio pelo mesmo motivo dos irmãos acima. Next free id is `845`; re-read the
+/// collision note above before taking it.
+pub const ASSET_BROWSER_SCROLLBAR_ID: NodeId = NodeId(844);
 
 #[cfg(test)]
 mod tests {
@@ -406,6 +412,7 @@ mod tests {
             ("MOTION_PARAMS", MOTION_PARAMS_SCROLLBAR_ID),
             ("INPUT_MAP", INPUT_MAP_SCROLLBAR_ID),
             ("MODEL3D", MODEL3D_SCROLLBAR_ID),
+            ("ASSET_BROWSER", ASSET_BROWSER_SCROLLBAR_ID),
             ("DROPDOWN", crate::widget::DROPDOWN_SCROLLBAR_ID),
         ];
         for (i, (na, a)) in ids.iter().enumerate() {

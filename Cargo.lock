@@ -5399,6 +5399,7 @@ dependencies = [
  "ph2d-paint-gpu",
  "ph2d-painter-brush",
  "ph2d-painter-effects",
+ "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
  "ph2d-panel-authored",
@@ -7047,6 +7048,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-asset-browser"
+version = "0.0.0"
+dependencies = [
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-asset-index",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-audio-editor"
 version = "0.0.0"
 dependencies = [
@@ -7281,6 +7297,7 @@ name = "ph2d-panel-registry-init"
 version = "0.0.0"
 dependencies = [
  "ph2d-editor-core",
+ "ph2d-panel-asset-browser",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
  "ph2d-panel-authored",

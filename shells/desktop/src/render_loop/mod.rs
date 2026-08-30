@@ -3108,6 +3108,8 @@ impl crate::App {
             // ⭐ Os outros verbos de instância (ADR-0164 / F4.5) — UM slot, porque eles são
             // exclusivos por construção: o menu fecha ao primeiro clique.
             let mut instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)> = None;
+            // ⭐ O mesmo verbo, endereçado por `StableId` — o canal do navegador de assets.
+            let mut instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb)> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
             // Carries the clicked row's `NodeId` (the merged sprite
@@ -4344,6 +4346,15 @@ impl crate::App {
                     }
                     EditorAction::HierInstantiate { row } => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Place));
+                    }
+                    // ⭐ **O verbo de USAR do navegador de assets** (plano `docs/Components/07`,
+                    // wave A7). ⚠️ O sujeito é o `StableId`, não uma `row`: o navegador não tem
+                    // linhas, e uma receita está **escondida** da Hierarquia por construção — não
+                    // há `row` que a endereçe. A resolução `StableId → Entity` acontece na fase
+                    // da hierarquia, onde o `sim` está emprestado.
+                    EditorAction::AssetInstantiate { stable_id } => {
+                        instance_verb_stable_id
+                            .get_or_insert((stable_id, crate::instance_verbs::Verb::Place));
                     }
                     EditorAction::HierInstantiateLinked { row } => {
                         instance_verb_row
@@ -10721,6 +10732,7 @@ impl crate::App {
                 reset_transform_row,
                 revert_to_master_row,
                 instance_verb_row,
+                instance_verb_stable_id,
                 delete_row,
                 hierarchy_row_click,
                 hierarchy_select_intent,

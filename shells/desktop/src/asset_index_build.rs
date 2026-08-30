@@ -41,6 +41,28 @@ const SWATCH_SAMPLES: usize = 4096;
 /// entre quadros, entre entidades e depois de um undo.
 pub(crate) type SwatchCache = BTreeMap<AssetId, [u8; 4]>;
 
+thread_local! {
+    /// A cache viva da sessão. Ela é `thread_local` e não um campo do `App` porque a chave é o
+    /// **conteúdo** — ela não pertence a um projecto, a uma cena nem a um quadro, e sobrevive
+    /// correctamente a um `Open Project` (os bytes iguais dão a mesma cor).
+    static SWATCHES: std::cell::RefCell<SwatchCache> = const {
+        std::cell::RefCell::new(BTreeMap::new())
+    };
+}
+
+/// ⭐ **A publicação do quadro.** Chamada uma vez por quadro pelo `snapshots::publish`.
+///
+/// ⚠️ **`visible == false` não publica nada, e é a decisão:** o índice é uma travessia do mundo,
+/// e pagá-la com o painel fechado seria trabalho que ninguém lê. ⛔ O preço de o publicar não é
+/// zero e está medido no handoff — é por isso que a guarda existe em vez de «é barato».
+pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool) {
+    if !visible {
+        return;
+    }
+    let index = SWATCHES.with(|c| build(sim, db, &mut c.borrow_mut()));
+    ph2d_panel_asset_browser::set_current_index(index);
+}
+
 /// Reconstrói o índice a partir do mundo + do `AssetDb`.
 ///
 /// ⚠️ **Recebe `&mut SimWorld`** porque `World::query` o exige (o `QueryState` é construído no

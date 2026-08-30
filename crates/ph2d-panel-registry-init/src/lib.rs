@@ -38,6 +38,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     #[allow(unused_mut)]
     let mut reg = ph2d_editor_core::panel::PanelRegistry::new_empty();
     // <ph2d-panel-sync:begin>
+    #[cfg(feature = "panel-asset-browser")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_asset_browser::AssetBrowserPanel,
+    >());
     #[cfg(feature = "panel-audio-editor")]
     reg.push(ErasedPanel::new::<ph2d_panel_audio_editor::AudioEditorPanel>());
     #[cfg(feature = "panel-audio-mixer")]

@@ -257,6 +257,8 @@ ph2d-editor = { path = "../../crates/ph2d-editor" }
 # writes. Gated by the `panel-inspector` feature alongside the
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
+# ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — o shell publica-lhe o índice do quadro.
+ph2d-panel-asset-browser = { path = "../../crates/ph2d-panel-asset-browser" }
 # Audio Mixer panel (Phase 2.3c) — the render_loop bridge publishes live
 # levels via `set_snapshot` + reads `master_muted` to drive the master gain.
 ph2d-panel-audio-mixer = { path = "../../crates/ph2d-panel-audio-mixer", optional = true }

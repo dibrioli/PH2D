@@ -293,7 +293,7 @@ impl AssetIndex {
                     .then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
                     .then(a.seq.cmp(&b.seq))
             }),
-            SortBy::Recent => hits.sort_by(|a, b| b.seq.cmp(&a.seq)),
+            SortBy::Recent => hits.sort_by_key(|e| std::cmp::Reverse(e.seq)),
         }
         hits
     }

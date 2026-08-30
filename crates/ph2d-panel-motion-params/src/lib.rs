@@ -25,6 +25,7 @@ mod rows_paint;
 pub use row_state::*;
 use row_state::{number_input, seed_rows};
 mod shaper_dispatch;
+mod shared_field;
 mod snapshot;
 mod text_rows;
 
@@ -74,6 +75,12 @@ mod tests_seed;
 #[cfg(test)]
 #[path = "lib_file_tests.rs"]
 mod tests_file;
+
+/// O **campo de texto partilhado** do slot — a quinta condição de UI: o widget existe, é
+/// pintado, o clique chega e a sequência leva a algum lado… e ele MOSTRA o que o nó tem.
+#[cfg(test)]
+#[path = "lib_shared_field_tests.rs"]
+mod tests_shared_field;
 
 use events::{on_click, on_text_commit, on_toggled, on_value_changed};
 use number_rows::{

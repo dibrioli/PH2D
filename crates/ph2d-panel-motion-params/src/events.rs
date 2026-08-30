@@ -297,14 +297,11 @@ pub(crate) fn on_text_commit(
 ) -> EventOutcome {
     for slot in 0..snap.rows.len().min(MAX_PARAM_ROWS) {
         if id == param_text_id(slot) {
-            // Both a plain Text row and a Channels row's Custom field write the same
-            // text channel — only the param name differs.
-            let param = match &snap.rows[slot] {
-                ParamRow::Text(row) => row.name,
-                ParamRow::Channels(row) => row.text_param,
-                ParamRow::Source(row) => row.param,
-                ParamRow::File(row) => row.name,
-                _ => return EventOutcome::Ignored,
+            // ⚠️ **Quem é dono do buffer vive em [`crate::shared_field`]**, ao lado da metade
+            // que decide o que o buffer MOSTRA. Elas divergiram uma vez — esta tinha quatro
+            // armas e a outra tinha uma — e a divergência custou o valor de três rows.
+            let Some(param) = crate::shared_field::shared_text_param(&snap.rows[slot]) else {
+                return EventOutcome::Ignored;
             };
             push_param_intent(MotionParamIntent::SetTextParam {
                 node: snap.node,

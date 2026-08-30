@@ -135,3 +135,49 @@ fn the_missing_mark_tells_the_truth_about_all_three_cases() {
 
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
 }
+
+/// ⭐⭐ **A row leva o CAMINHO, não só o veredito sobre ele.**
+///
+/// Report do Enio (2026-08-30): *"O painel não imprime o caminho do CSV em lugar nenhum"*. A
+/// cura mora no painel (`shared_field.rs` semeia o campo partilhado), e esta é a outra ponta da
+/// mesma corrente: *se a ponte não puser o caminho na row, não há nada para o painel mostrar.*
+///
+/// ⚠️ **Este ficheiro tinha um gate sobre a `File` row e ele lia `f.missing` — só o veredito.**
+/// O campo `value` viajava sem ninguém a olhar, e o defeito viveu do outro lado da fronteira
+/// com as duas metades verdes. *Um gate que pergunta «está partido?» nunca pergunta «o quê?».*
+#[test]
+fn the_file_row_carries_the_path_not_only_whether_it_is_missing() {
+    let mut state = MotionState::new();
+    let n = state.doc.graph.add_node("audio.bands");
+    ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
+
+    let value_of = |state: &MotionState| {
+        let snap =
+            super::super::build_params_snapshot(state, ph2d_editor::ProjectSettings::default())
+                .expect("o no selecionado tem params");
+        snap.rows
+            .iter()
+            .find_map(|r| match r {
+                ph2d_panel_motion_params::ParamRow::File(f) => Some(f.value.clone()),
+                _ => None,
+            })
+            .expect("o audio.bands tem uma row de ficheiro")
+    };
+
+    assert_eq!(value_of(&state), "", "sem caminho a row nasce vazia");
+
+    // ⚠️ O caminho é FALSO de propósito: o que se mede aqui é o transporte, e um ficheiro real
+    // faria o gate depender do disco para responder a uma pergunta que não é sobre o disco.
+    let path = "/tmp/ph2d_gate_carries_the_path.wav";
+    state
+        .doc
+        .graph
+        .set_text_param(n, ph2d_node_audio_bands::FILE_KEY, path);
+    assert_eq!(
+        value_of(&state),
+        path,
+        "a ponte descartou o caminho — o painel nao teria o que mostrar"
+    );
+
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}

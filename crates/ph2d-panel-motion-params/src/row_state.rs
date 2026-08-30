@@ -98,9 +98,13 @@ pub(crate) fn seed_rows(store: &mut WidgetStore, rows: &[ParamRow]) {
             store.set_number_range(id, s.min, s.max, 1.0);
             continue;
         }
-        // Text (formula) rows: mirror the doc formula into the field when unfocused.
-        if let ParamRow::Text(t) = row {
-            mirror_text(store, param_text_id(i), &t.value);
+        // ⭐ O campo de texto PARTILHADO do slot: espelha o valor vivo do documento quando não
+        // tem foco. ⚠️ **As quatro rows que o usam**, não só a `Text` — a lista é a de
+        // [`crate::shared_field`], que é a mesma que o `on_text_commit` lê do outro lado.
+        // Até 2026-08-30 esta arma era `ParamRow::Text` e a `Channels`/`Source`/`File` abriam
+        // sempre em branco; como o `Blur` comita, tocar no campo GRAVAVA o vazio.
+        if let Some(v) = crate::shared_field::shared_text_value(row) {
+            mirror_text(store, param_text_id(i), v);
             continue;
         }
         let ParamRow::Scalar(row) = row else { continue };

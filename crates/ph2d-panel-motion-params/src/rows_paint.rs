@@ -508,8 +508,16 @@ mod tests {
             &[],
         );
         let per_row = used / MAX_PARAM_ROWS as f32;
+        // ⚠️⚠️ **ESCALADO PELAS CONTAGENS REAIS, e não pelo dobro.** A 1.ª redacção comparava
+        // `used` com `2 × half_used`, o que assume um tecto PAR — e ela partiu-se no primeiro
+        // ÍMPAR (`24 → 25`, em 2026-08-30): `MAX_PARAM_ROWS / 2` dá `12`, o dobro é `24`, e a
+        // linha que falta vale exactamente `per_row`, que é a tolerância. *A lei — a altura
+        // cresce com as linhas — estava certa; a aritmética da fixtura é que tinha uma premissa
+        // escondida sobre a paridade do número.*
+        #[allow(clippy::cast_precision_loss)]
+        let scaled = half_used * MAX_PARAM_ROWS as f32 / (MAX_PARAM_ROWS / 2) as f32;
         assert!(
-            (used - 2.0 * half_used).abs() < per_row,
+            (used - scaled).abs() < per_row,
             "{MAX_PARAM_ROWS} linhas medem {used} px e {} medem {half_used}: a altura reportada \
              nao esta crescendo com as linhas, entao ela foi clampada em algum lugar — e um \
              painel que reporta menos conteudo do que desenha rola de menos e PERDE a cauda",

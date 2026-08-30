@@ -106,6 +106,35 @@ pub const AXIOM_PARAM: &str = "axiom";
 /// razão de serem de uma linha só (um `\n` corrompe o ficheiro do projeto).
 pub const RULES_PARAM: &str = "rules";
 
+/// **OS TRÊS OBJECTOS QUE AS LETRAS PLANTAM** — `J`, `K` e `M`, na ordem do alfabeto.
+///
+/// Report do Enio (2026-08-29): *"não há modos de escolher objetos para as fases de
+/// crescimento. Exemplo: as folhas."*
+///
+/// ⭐ **É a resposta das quatro referências, e ela é IDÊNTICA:** o *L-System SOP* do Houdini tem
+/// três entradas de geometria chamadas, literalmente, **`J`, `K` e `M`** — *"any geometry
+/// connected to these inputs is created in the sequence by these letters"*. O nosso alfabeto já
+/// tinha as três letras, com o mesmo significado e vindas da mesma fonte (o ABOP); faltava só
+/// dizer **qual** objecto cada uma pousa.
+///
+/// ⚠️ **Um NOME, não uma porta.** O Houdini usa portas porque é um grafo de geometria; aqui o
+/// nome de um objecto da cena é a porta de toda a casa (o `fx.glow`, o `motion.path`, o
+/// `source.object`), e ela **é alcançável** — o painel pinta um [`ParamWidget::Source`], com
+/// chips dos nomes que a app publicou.
+///
+/// ⚠️ **E «por fase de crescimento» resolve-se pela GRAMÁTICA, não por uma tabela de fases:** a
+/// regra que dispara na geração `N` é que emite a letra, e a letra escolhe o objecto. É por isso
+/// que nenhuma das quatro referências tem tabela de fases — e quem quiser filtrar tem a coluna
+/// `gen`, que a tartaruga já emite por elemento.
+pub const LEAF_PARAMS: [&str; 3] = ["leaf_j", "leaf_k", "leaf_m"];
+
+/// As letras que [`LEAF_PARAMS`] serve, na mesma ordem — *o índice é o par*.
+///
+/// ⚠️ **Duas listas com a mesma ordem, e um gate a dizê-lo** (`the_letters_and_their_params_are_
+/// one_list`): a shell percorre uma e o nó declara a outra, e trocar a ordem numa só faria a
+/// flor nascer onde o artista pediu folha — sem erro nenhum.
+pub const LEAF_SYMBOLS: &[u8; 3] = b"JKM";
+
 /// **O tecto da cadeia derivada — MEDIDO**, e ele é o MESMO número que os outros três tetos
 /// de instância desta casa (gate `the_three_instance_ceilings_agree`).
 ///

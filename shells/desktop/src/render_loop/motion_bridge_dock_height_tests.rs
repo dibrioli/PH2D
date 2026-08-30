@@ -511,7 +511,12 @@ fn the_dock_overflow_is_named_not_discovered() {
         // do smoke). São `45 px` sobre o corpo, ou seja **uma linha e meia** — e a metade da
         // frase acima que dizia *"menos de meia linha"* já não descreve isto. O gate exigiu a
         // re-medição em vez de a deixar passar, que é a razão de a altura viver na lista.
-        ("source.lsystem", 709.0),
+        // ⚠️ **RE-MEDIDO outra vez: `709 → 736`**, com as três letras que plantam um objecto
+        // (`Leaf (J)`/`(K)`/`(M)`). ⭐ **A secção *Leaves* nasce DOBRADA, e é isso que se lê no
+        // número**: três linhas custariam ~84 px e o que entrou foram **27** — o cabeçalho da
+        // secção. *Dobrar não tira a linha do orçamento do `MAX_PARAM_ROWS` (o slot existe), mas
+        // tira-a da ALTURA, que é o que o dock mede.*
+        ("source.lsystem", 736.0),
     ];
     let body = inspector_body_h();
     let census = height_census();

@@ -65,6 +65,10 @@ mod objects;
 // The membrane's object-bake wrappers, re-exported so `motion_bridge::publish_objects`
 // / `bake_objects` / `bake_flip_objects` resolve unchanged for the render loop.
 pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
+// A porta que constrói a aparência de um objecto — ver `objects::streams`. Só o gate das
+// FOLHAS a chama, e ela existe para ele não copiar a forma do stream.
+#[cfg(test)]
+pub(super) use objects::streams::appearance_tile;
 // ⚠️ **E o conversor de tile**, que o `motion_glow_layer` usa para a metade vetorial
 // viva chegar ao bright-pass (bug do Enio, 2026-08-20). A MESMA função que a
 // partição de LOD usa — duas vistas da mesma conversão nunca podem divergir.

@@ -289,6 +289,132 @@ fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<V
     })
 }
 
+/// **Uma âncora de instância** — onde uma letra `J`/`K`/`M` pousou.
+///
+/// ⚠️ Ela leva o ÂNGULO, e não só a posição: o doc da tartaruga diz porquê — *"uma marca não
+/// tem osso, mas TEM direcção: ela aponta como o ramo em que pousou"*. Uma folha que ignorasse
+/// isso ficaria toda virada para o mesmo lado numa planta que se abre em leque.
+struct Anchor {
+    p: [f32; 2],
+    rot: f32,
+    /// O índice em [`ls::LEAF_SYMBOLS`] — `0` = `J`, `1` = `K`, `2` = `M`.
+    slot: usize,
+}
+
+/// As âncoras que as três letras plantaram, lidas do esqueleto.
+fn anchors_of(sk: &Stream) -> Vec<Anchor> {
+    let (p, sym, rot) = (v2(sk, "P"), v1(sk, "sym"), v1(sk, "wrot"));
+    p.iter()
+        .zip(sym.iter())
+        .enumerate()
+        .filter_map(|(i, (pos, s))| {
+            let byte = *s as i32 as u8;
+            let slot = ls::LEAF_SYMBOLS.iter().position(|k| *k == byte)?;
+            Some(Anchor {
+                p: *pos,
+                rot: rot.get(i).copied().unwrap_or(0.0),
+                slot,
+            })
+        })
+        .collect()
+}
+
+/// **A aparência de um objecto**, na ordem `(size, tint, uv_rect, texture_id)`.
+type Look = ([f32; 2], [f32; 4], [f32; 4], f32);
+
+/// **O trabalho de uma planta**, já resolvido: `(chave, ramos, âncoras, os três nomes)`.
+type Job = (String, Vec<ls::branch::Branch>, Vec<Anchor>, [String; 3]);
+
+/// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id)`.
+///
+/// ⭐⭐ **Lida do canal externo, e não resolvida outra vez.** O `publish_objects` já pôs a
+/// aparência de cada objecto da cena sob o NOME dele (`render_loop/mod.rs:7317`), e esta
+/// membrana corre depois (`:7341`) — *a ordem é o que torna isto uma leitura em vez de uma
+/// segunda resolução a divergir da primeira*.
+///
+/// `None` quando o nome está vazio, quando ninguém publicou aquele nome, ou quando o que ele
+/// nomeia não é uma sprite. ⚠️ **Não adivinha e não falha**: a folha simplesmente não nasce, e
+/// o quadro seguinte tenta de novo — um nome pode ser escrito antes de a forma existir.
+fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) -> Option<Look> {
+    // ⚠️ **Atalho, NÃO uma guarda de correcção** — e a mutação que o apagou SOBREVIVEU, o que
+    // é a resposta certa: ninguém publica sob a chave vazia, então a busca abaixo já devolveria
+    // `None`. Fica porque poupa uma busca no mapa por slot vazio por planta por quadro, e o
+    // caso comum é os três estarem vazios. *Um `if` que a mutação não mata ou é redundante ou é
+    // não-medido; este é o primeiro, e está escrito.*
+    if name.is_empty() {
+        return None;
+    }
+    let st = &cook.externals().get(name)?.value;
+    let first4 = |c: &str| match st.get(c) {
+        Some(Column::Vec4(v)) => v.first().copied(),
+        _ => None,
+    };
+    Some((
+        match st.get("size") {
+            Some(Column::Vec2(v)) => v.first().copied().unwrap_or([1.0, 1.0]),
+            _ => [1.0, 1.0],
+        },
+        first4("tint").unwrap_or([1.0, 1.0, 1.0, 1.0]),
+        first4("uv_rect")?,
+        match st.get("texture_id") {
+            Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
+            _ => 0.0,
+        },
+    ))
+}
+
+/// **A planta MAIS as folhas, num stream só.**
+///
+/// ⚠️ **Mídia MISTA na mesma corrente, e o lowering já a sabe rotear:** uma linha com
+/// `geometry_id > 0` vai ao passe VECTORIAL (a planta), e as outras são quads amostrados do
+/// atlas (as folhas). Publicá-las em correntes separadas obrigaria o artista a juntá-las com um
+/// `motion.combine` para as mover como uma planta só.
+fn plant_and_leaves(
+    origin: [f32; 2],
+    handle: u32,
+    anchors: &[Anchor],
+    names: &[String; 3],
+    cook: &ph2d_nodegraph::cook::Cook,
+) -> Stream {
+    let looks: Vec<_> = names.iter().map(|n| named_appearance(cook, n)).collect();
+    // A planta é a linha `0`; cada âncora com objecto RESOLVIDO acrescenta uma.
+    let mut p = vec![origin];
+    let mut size = vec![[1.0f32, 1.0]];
+    let mut rot = vec![0.0f32];
+    let mut geom = vec![handle as f32];
+    let mut tint = vec![[1.0f32, 1.0, 1.0, 1.0]];
+    let mut uv = vec![[0.0f32, 0.0, 1.0, 1.0]];
+    let mut tex = vec![0.0f32];
+    for a in anchors {
+        let Some((sz, tn, rect, tid)) = looks[a.slot] else {
+            continue;
+        };
+        p.push(a.p);
+        size.push(sz);
+        rot.push(a.rot);
+        // ⚠️ `0` = SEM geometria vectorial ⇒ a linha vai pelo caminho do quad. É a mesma
+        // convenção que o `source.object` usa para separar um vector vivo de uma sprite.
+        geom.push(0.0);
+        tint.push(tn);
+        uv.push(rect);
+        tex.push(tid);
+    }
+    let n = p.len();
+    Stream::new(n)
+        .with("P", Column::Vec2(p))
+        .with("size", Column::Vec2(size))
+        .with("rotation", Column::Scalar(rot))
+        .with("geometry_id", Column::Scalar(geom))
+        .with("tint", Column::Vec4(tint))
+        .with("uv_rect", Column::Vec4(uv))
+        .with("texture_id", Column::Scalar(tex))
+        .with(
+            "Index",
+            Column::Scalar((0..n).map(|i| i as f32).collect::<Vec<_>>()),
+        )
+        .with("Count", Column::Scalar(vec![n as f32; n]))
+}
+
 /// **Publica as fitas** de cada `source.lsystem` em modo `Branches`.
 ///
 /// ⚠️ **Chamada de [`super::motion_externals::publish_all`]**, ao lado das outras quatro
@@ -306,7 +432,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
 
     // Junta os trabalhos primeiro: o empréstimo do grafo tem de cair antes de mexer no store e
     // no cook (três campos disjuntos do `MotionState`).
-    let mut jobs: Vec<(String, Vec<ls::branch::Branch>)> = Vec::new();
+    let mut jobs: Vec<Job> = Vec::new();
     for id in ids {
         let resolved = super::motion_externals::resolved_params(motion, id, seconds, &ls::MANIFEST);
         let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
@@ -330,10 +456,17 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             // outro.
             get(ls::param::TIP_TAPER),
         );
-        jobs.push((key, bs));
+        // ⭐ As ÂNCORAS que as letras plantaram, e os três nomes que dizem o quê.
+        let anchors = anchors_of(&sk);
+        let names = [
+            text(ls::LEAF_PARAMS[0]),
+            text(ls::LEAF_PARAMS[1]),
+            text(ls::LEAF_PARAMS[2]),
+        ];
+        jobs.push((key, bs, anchors, names));
     }
 
-    for (key, bs) in jobs {
+    for (key, bs, anchors, names) in jobs {
         let used = &bs[..];
         // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
         // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
@@ -365,12 +498,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             }
         };
         let stream = match handle {
-            Some(h) => Stream::new(1)
-                .with("P", Column::Vec2(vec![origin]))
-                .with("size", Column::Vec2(vec![[1.0f32, 1.0]]))
-                .with("geometry_id", Column::Scalar(vec![h as f32]))
-                .with("Index", Column::Scalar(vec![0.0]))
-                .with("Count", Column::Scalar(vec![1.0])),
+            Some(h) => plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook),
             None => Stream::new(0),
         };
         motion.pump.cook.set_external(key, stream);

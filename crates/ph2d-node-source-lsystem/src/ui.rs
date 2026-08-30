@@ -50,6 +50,34 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.01,
         widget: ParamWidget::Slider,
     },
+    // ⭐⭐ **AS TRÊS LETRAS QUE PLANTAM UM OBJECTO** — `J`, `K`, `M` (ver [`LEAF_PARAMS`]).
+    // ⚠️ `ParamWidget::Source`: o painel pinta chips dos nomes que a app publicou, que é o que
+    // separa *exprimível* de *alcançável* — o artista escolhe uma forma desenhada por nome, sem
+    // saber que `J` vale 74.
+    ParamUiHint {
+        param: LEAF_PARAMS[0],
+        label: "Leaf (J)",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
+    ParamUiHint {
+        param: LEAF_PARAMS[1],
+        label: "Leaf (K)",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
+    ParamUiHint {
+        param: LEAF_PARAMS[2],
+        label: "Leaf (M)",
+        min: 0.0,
+        max: 0.0,
+        step: 0.0,
+        widget: ParamWidget::Source,
+    },
     // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
     ParamUiHint {
         param: param::MODE,
@@ -275,6 +303,24 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: param::GEOMETRY,
         values: &[GEOMETRY_BRANCHES],
     },
+    // ⭐ As folhas são plantadas pela membrana das FITAS, que só corre em `Branches`. Em
+    // `Segments` os elementos `J`/`K`/`M` saem no esqueleto com o `sym` — alcançáveis por
+    // composição, mas sem objecto próprio.
+    ph2d_node_registry::ParamGate {
+        param: LEAF_PARAMS[0],
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
+    ph2d_node_registry::ParamGate {
+        param: LEAF_PARAMS[1],
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
+    ph2d_node_registry::ParamGate {
+        param: LEAF_PARAMS[2],
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
     ph2d_node_registry::ParamGate {
         param: AXIOM_PARAM,
         when: param::MODE,
@@ -350,6 +396,12 @@ pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     // pergunta que *quantos ramos* e *que ângulo* — e não a de *de onde vem a gramática*.
     ph2d_node_registry::ParamGroup::new(param::GEOMETRY, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::TIP_TAPER, "Shape"),
+    // ⚠️ **Secção própria e DOBRADA**: a maioria das gramáticas não emite `J`/`K`/`M` nenhum, e
+    // três campos abertos empurrariam o resto do painel para fora do corpo por uma feature que
+    // aquela planta não usa. Quem escreve um `J` na gramática vai procurá-la.
+    ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[0], "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[1], "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[2], "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),

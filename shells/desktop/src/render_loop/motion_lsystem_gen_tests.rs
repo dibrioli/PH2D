@@ -326,3 +326,136 @@ fn no_wedge_is_left_uncovered_where_a_branch_meets_its_parent() {
         joints.len() * 16
     );
 }
+
+/// Uma planta cuja gramática pousa um `J` em cada ponta, com o nome pedido no slot pedido.
+fn plant_with_leaves(names: [&str; 3]) -> (MotionState, ph2d_nodegraph::graph::NodeId) {
+    let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+    state.doc.graph.set_param(n, ls::param::GENERATIONS, 3.0);
+    state.doc.graph.set_text_param(n, ls::AXIOM_PARAM, "F");
+    // Cada ponta ganha as TRÊS letras, para uma fixtura só exercitar os três slots.
+    state
+        .doc
+        .graph
+        .set_text_param(n, ls::RULES_PARAM, "F -> F[+F[JKM]]F[-F[JKM]]");
+    for (i, name) in names.iter().enumerate() {
+        if !name.is_empty() {
+            state.doc.graph.set_text_param(n, ls::LEAF_PARAMS[i], *name);
+        }
+    }
+    (state, n)
+}
+
+/// Publica um objecto nomeado com a aparência que o `publish_objects` publicaria.
+fn publish_object(state: &mut MotionState, name: &str, texture_id: u32) {
+    state.pump.cook.set_external(
+        name.to_string(),
+        super::super::motion_bridge::appearance_tile(
+            [2.0, 3.0],
+            [1.0, 1.0, 1.0, 1.0],
+            [0.25, 0.25, 0.75, 0.75],
+            texture_id,
+        ),
+    );
+}
+
+fn column_v1(state: &MotionState, key: &str, col: &str) -> Vec<f32> {
+    match state
+        .pump
+        .cook
+        .externals()
+        .get(key)
+        .map(|e| e.value.get(col))
+    {
+        Some(Some(Column::Scalar(v))) => v.clone(),
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐⭐⭐ **A LETRA PLANTA O OBJECTO** — o report do Enio de 2026-08-29 (*"deveríamos ter um modo
+/// de escolher o objeto que será exposto em cada fase"*).
+///
+/// ⚠️ A afirmação é a do PRODUTO: as linhas publicadas têm de trazer a **textura daquele
+/// objecto**, e uma por âncora. Um gate que só contasse linhas passaria com folhas invisíveis.
+#[test]
+fn a_named_letter_plants_that_objects_appearance_at_every_anchor() {
+    let (mut state, n) = plant_with_leaves(["folha", "", ""]);
+    publish_object(&mut state, "folha", 7);
+    let key = key_of(&mut state, n);
+    publish(&mut state, 0.0);
+
+    let tex = column_v1(&state, &key, "texture_id");
+    let geom = column_v1(&state, &key, "geometry_id");
+    // A linha 0 é a PLANTA (geometria vectorial); as outras são as folhas.
+    assert!(geom[0] > 0.0, "a linha 0 tem de ser a planta");
+    let leaves = tex
+        .iter()
+        .skip(1)
+        .filter(|t| (**t - 7.0).abs() < 0.5)
+        .count();
+    assert!(
+        leaves > 0,
+        "nenhuma folha plantada — texturas publicadas: {tex:?}"
+    );
+    assert!(
+        geom.iter().skip(1).all(|g| *g == 0.0),
+        "uma folha não pode levar geometria vectorial: {geom:?}"
+    );
+}
+
+/// ⭐⭐ **AS TRÊS LETRAS SÃO TRÊS SLOTS, e cada uma planta o SEU objecto.**
+///
+/// ⚠️ **É o gate que apanha a ordem trocada.** `LEAF_PARAMS` e `LEAF_SYMBOLS` são duas listas
+/// emparelhadas por índice; trocar a ordem numa só faria a flor nascer onde o artista pediu
+/// folha — e a contagem total ficaria igual, então só medir "há folhas" não veria nada.
+#[test]
+fn each_of_the_three_letters_plants_its_own_object() {
+    let (mut state, n) = plant_with_leaves(["j_obj", "k_obj", "m_obj"]);
+    for (name, tid) in [("j_obj", 11u32), ("k_obj", 22), ("m_obj", 33)] {
+        publish_object(&mut state, name, tid);
+    }
+    let key = key_of(&mut state, n);
+    publish(&mut state, 0.0);
+    let tex = column_v1(&state, &key, "texture_id");
+    // A gramática pousa `JKM` em cada sítio, nessa ordem, então as folhas publicadas têm de ser
+    // a repetição de `[11, 22, 33]`.
+    //
+    // ⛔⛔ **A 1.ª redacção deste gate perguntava se as três texturas APARECEM, e a mutação que
+    // troca `J` com `K` SOBREVIVEU** — trocadas, as três continuam a aparecer. *Um teste de
+    // PERTENÇA não vê uma permutação; o que a vê é a SEQUÊNCIA.* E o doc dele dizia, em voz
+    // alta, que apanhava a ordem trocada.
+    let leaves: Vec<f32> = tex.iter().skip(1).copied().collect();
+    assert!(leaves.len() >= 6, "poucas folhas: {leaves:?}");
+    assert_eq!(
+        leaves.len() % 3,
+        0,
+        "cada sítio pousa as três letras: {leaves:?}"
+    );
+    for (i, t) in leaves.iter().enumerate() {
+        let want = [11.0, 22.0, 33.0][i % 3];
+        assert!(
+            (t - want).abs() < 0.5,
+            "a folha {i} devia ser a textura {want} e é {t} — as letras e os params estão \
+             emparelhados pelo ÍNDICE, e a ordem trocou: {leaves:?}"
+        );
+    }
+}
+
+/// ⭐ **Uma letra SEM nome não planta nada** — e um nome que ninguém publicou também não.
+///
+/// ⚠️ *Não adivinha e não falha*: um nome pode ser escrito antes de a forma existir, e o quadro
+/// seguinte tenta de novo. O que não pode é nascer um quad branco no sítio da folha.
+#[test]
+fn an_unnamed_or_unpublished_letter_plants_nothing() {
+    for names in [["", "", ""], ["nao_existe", "", ""]] {
+        let (mut state, n) = plant_with_leaves(names);
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        let geom = column_v1(&state, &key, "geometry_id");
+        assert_eq!(
+            geom.len(),
+            1,
+            "só a planta devia estar publicada, e vieram {} linhas ({names:?})",
+            geom.len()
+        );
+    }
+}

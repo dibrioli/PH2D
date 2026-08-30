@@ -189,7 +189,10 @@ fn every_declared_param_has_a_hint_and_every_hint_has_a_home() {
     }
     for h in PARAM_HINTS {
         let declared = MANIFEST.params.iter().any(|p| p.name == h.param);
-        let text = h.param == AXIOM_PARAM || h.param == RULES_PARAM;
+        // ⚠️ Os text params são CINCO desde 2026-08-30: os dois da gramática e os três das
+        // letras. A lista das folhas é DERIVADA (`LEAF_PARAMS`), não copiada.
+        let text =
+            h.param == AXIOM_PARAM || h.param == RULES_PARAM || LEAF_PARAMS.contains(&h.param);
         assert!(declared || text, "o hint {} nao tem param nenhum", h.param);
     }
     // ⚠️⚠️ **A LEI MUDOU DE GRANDEZA em 2026-08-30, e não foi para afrouxar.**
@@ -229,6 +232,7 @@ fn every_declared_param_has_a_hint_and_every_hint_has_a_home() {
         MANIFEST.params.iter().filter(|p| shown(p.name)).count()
             + [AXIOM_PARAM, RULES_PARAM]
                 .iter()
+                .chain(LEAF_PARAMS.iter())
                 .filter(|n| shown(n))
                 .count()
     };
@@ -261,8 +265,12 @@ fn every_declared_param_has_a_hint_and_every_hint_has_a_home() {
 /// ⚠️ Este crate é uma folha e não pode depender do painel; o censo de verdade
 /// (`the_panel_shows_every_param_of_every_node`) corre na shell e mede TODOS os nós. Este é
 /// só a rede local — se ele e o painel discordarem, é o da shell que manda.
+///
+/// ⚠️ **`24 → 25` em 2026-08-30**, junto com as três letras que plantam um objecto. O número
+/// vive em `ph2d_panel_motion_params::MAX_PARAM_ROWS`, onde está a medição que o justifica
+/// (~11 µs por slot, uma vez por construção de tela).
 const fn ph2d_panel_motion_params_row_cap() -> usize {
-    24
+    25
 }
 
 /// Um `Generations` negativo, `NaN` ou enorme não pode custar nada nem emitir lixo.
@@ -582,4 +590,37 @@ fn the_derived_grammar_still_grows_continuously_with_a_fractional_generation() {
         "um passo de {worst} contra uma subida total de {rise} — isto e um salto, nao um \
          crescimento: {hs:?}"
     );
+}
+
+/// ⭐⭐ **AS TRÊS LETRAS SÃO MESMO ÂNCORAS** — o contrato entre [`LEAF_PARAMS`] e o alfabeto.
+///
+/// ⚠️ **O emparelhamento por índice é compile-enforced** (dois arrays de `3`), mas isso não diz
+/// que as letras EXISTEM: um `LEAF_SYMBOLS` com um `b'Q'` compilaria, o painel ofereceria o
+/// campo, e o artista escreveria um nome que nunca planta nada. *Uma lista bem-formada não é
+/// uma lista verdadeira.*
+///
+/// A régua é o produto: uma gramática que emite a letra tem de devolver um elemento com aquele
+/// `sym`, e ele NÃO pode ter osso (uma âncora é uma marca, não um segmento).
+#[test]
+fn every_leaf_letter_is_an_anchor_the_turtle_actually_emits() {
+    for (i, letter) in LEAF_SYMBOLS.iter().enumerate() {
+        let src = format!("F[{}]", *letter as char);
+        let s = probe_build(&src, "F -> F", 1.0, &[]);
+        let syms = scal(&s, "sym");
+        let lens = scal(&s, "len");
+        let at = syms
+            .iter()
+            .position(|v| *v as i32 as u8 == *letter)
+            .unwrap_or_else(|| {
+                panic!(
+                    "a letra {} ({}) do param `{}` não produz elemento nenhum: {syms:?}",
+                    *letter as char, letter, LEAF_PARAMS[i]
+                )
+            });
+        assert_eq!(
+            lens[at], 0.0,
+            "a marca {} tem de ser uma ÂNCORA (comprimento zero), e veio com osso",
+            *letter as char
+        );
+    }
 }

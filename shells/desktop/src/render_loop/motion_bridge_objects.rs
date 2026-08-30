@@ -81,8 +81,12 @@ pub(crate) use appearance::{Appearance, sprite_appearance};
 #[path = "motion_bridge_objects_appearance_tests.rs"]
 mod appearance_tests;
 
+// ⚠️ `pub(super)` desde 2026-08-30: o gate das FOLHAS do L-System publica um objecto de
+// mentira e tem de o construir com o construtor DO PRODUTO. Uma cópia da forma do stream no
+// teste ficaria verde no dia em que a aparência ganhasse uma coluna — que é o dia em que a
+// folha deixaria de a receber.
 #[path = "motion_bridge_objects_streams.rs"]
-mod streams;
+pub(super) mod streams;
 pub(super) use streams::{appearance_tile, appearance_vector, pose_stream};
 
 /// Publish every **named sprite** into the cook (doc 86 §2).

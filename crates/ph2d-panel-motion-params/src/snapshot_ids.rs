@@ -57,7 +57,25 @@ use ph2d_a11y::NodeId;
 /// `2 × 48` botões a mais por slot de folga. Com o pior caso a saltar de 17 para 24, três
 /// slots de folga deixaram de ser arredondamento. *Um teto colado no pior caso faz o gate
 /// avisar no dia seguinte ao nó crescer — que é para isso que ele existe.*
-pub const MAX_PARAM_ROWS: usize = 24;
+///
+/// ⚠️ **`24 → 25` em 2026-08-30, e o gate avisou no dia seguinte, como prometido.** O
+/// `source.lsystem` ganhou as três letras que plantam um objecto (`Leaf (J)`/`(K)`/`(M)`) e
+/// passou a 25 no pior caso (guiado + `Branches` + molde `Custom`). O preço, medido pela mesma
+/// porta e com o mesmo método do movimento anterior (`MockPanelHost::with_panel`, 200
+/// construções, `--release`, TRÊS leituras por lado porque uma leitura abaixo da linha de base é
+/// ruído e não ganho):
+///
+/// | `MAX_PARAM_ROWS` | leituras (µs/construção) |
+/// |---|---|
+/// | 24 | 186,8 · 188,9 · 180,9 |
+/// | **25** | 205,0 · 198,1 · 198,3 |
+///
+/// ⇒ **~11 µs por slot**, uma vez por construção de tela e **não por quadro** — a mesma unidade
+/// em que o salto do [`MAX_ENUM_OPTIONS`] foi aceite (22,0 → 107,2 µs).
+///
+/// ⚠️ **E continua colado ao pior caso**: `25` é exactamente o que o pior nó pede hoje, sem
+/// folga, pela razão do parágrafo acima.
+pub const MAX_PARAM_ROWS: usize = 25;
 
 /// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
 /// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.

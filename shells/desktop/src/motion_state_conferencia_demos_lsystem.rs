@@ -170,7 +170,10 @@ pub(crate) const PLANTS: &[Plant] = &[
 /// mas uma gramática de REFINAMENTO continua a não ter crescimento para mostrar, e esta coluna
 /// existe para mostrar crescimento. ⇒ a gramática é outra, e a altura dela sobe **sem uma
 /// queda**: `1,31 → 2,18` ao longo de três gerações.
-const FERN: &str = "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)";
+/// ⭐ **O `[J]` é a ÂNCORA DE FOLHA**, e está aqui para o smoke não começar por editar uma
+/// gramática: cada ramo lateral pousa uma marca, e escrever um nome em *Leaves > Leaf (J)*
+/// planta ali o objecto. Sem nome, uma marca não desenha nada — a planta é a de sempre.
+const FERN: &str = "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[J][-B(s*0.72)]B(s*0.8)";
 
 /// Três produções para o mesmo predecessor: uma que se abre, uma que se dobra à esquerda, e
 /// uma que só continua. Os pesos somam livremente — o nó normaliza.

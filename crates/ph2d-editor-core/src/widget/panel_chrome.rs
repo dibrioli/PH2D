@@ -190,14 +190,30 @@ pub const PANEL_RESIZE_HANDLE_SIZE: f32 = PANEL_RESIZE_HANDLE_SIZE_PX;
 /// The corner resize-gripper dots are painted separately by
 /// [`paint_panel_corner_dot`] (BR) + [`paint_panel_corner_dot_bl`]
 /// (BL) AFTER the body so body widgets don't cover them.
+/// ⭐⭐ **Superfície de um painel ANCORADO — quinas RECTAS** (Enio, 2026-08-30: *«fixar os
+/// painéis nas laterais»*).
+///
+/// ⚠️ **O padrão mudou de lado, e é aritmética:** dos ~21 chamadores, **16** desenham numa coluna
+/// docada (`ctx.layout.inspector` / `.padding` / `.painter_layers`) e só **5** flutuam de facto.
+/// Uma quina arredondada encostada à borda da janela deixa uma falha triangular de canvas — logo
+/// o docado é que precisa de recta, e é ele a maioria. Quem flutua declara-o, chamando
+/// [`paint_panel_surface_floating`].
+///
+/// ⚠️ **Isto não revoga a decisão do Enio de 2026-05-25** (*«coloque os raios das quinas dos
+/// painéis igual aos raios das quinas dos botões»*) — ela vale para painéis que **flutuam**, que
+/// é o que todos eram nessa data. O irmão abaixo continua a honrá-la, e a passar pelo
+/// `scale_radius()` do menu Themes.
 pub fn paint_panel_surface(rect: Rect, scene: &mut VectorScene, theme: Theme) {
-    // Mirror the chip radius (Radius::Sm) so panels and topbar/rail
-    // chips share the same corner family. `fill_rounded_rect` runs the
-    // value through `scale_radius()` so the Themes-menu Sharp/Default/
-    // Round preset still applies uniformly. Enio 2026-05-25: "coloque
-    // os raios das quinas dos painéis igual aos raios das quinas dos
-    // botões seguindo a escolha de raio de quinas do menu Themes".
-    let radius = Radius::Sm.px();
+    paint_panel_surface_r(rect, scene, theme, 0.0);
+}
+
+/// Superfície de um painel que **flutua** — quinas na família do chip (`Radius::Sm`), passadas
+/// pelo `scale_radius()` do menu Themes, como desde 2026-05-25.
+pub fn paint_panel_surface_floating(rect: Rect, scene: &mut VectorScene, theme: Theme) {
+    paint_panel_surface_r(rect, scene, theme, Radius::Sm.px());
+}
+
+fn paint_panel_surface_r(rect: Rect, scene: &mut VectorScene, theme: Theme, radius: f32) {
     // PanelBg = BgElev hue/L with ~0.96 alpha → panel reads as
     // floating glass over canvas while text contrast holds.
     fill_rounded_rect(scene, rect, radius, resolve(ColorToken::PanelBg, theme));

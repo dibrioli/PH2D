@@ -20,7 +20,7 @@ use crate::interaction::{HitIndex, InteractiveState, NoteData, WidgetStore};
 use crate::paint::{fill_rounded_rect, paint_text, rect_to_vello, resolve};
 use crate::widget::panel_chrome::{
     HIGHLIGHTER_RGBA, PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot,
-    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use crate::widget::{
     Avatar, AvatarShape, Button, ButtonKind, ButtonState, Card, Checkbox, CheckboxState,

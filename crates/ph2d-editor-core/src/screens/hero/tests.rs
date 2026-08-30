@@ -20,18 +20,33 @@ fn layout_left_rail_below_top_bar() {
     assert!((layout.left_rail.w - style::rail_w()).abs() < f32::EPSILON);
 }
 
+/// **A coluna da esquerda ENCOSTA no trilho** — sem folga, e a folga é o defeito.
+///
+/// ⛔ Este gate afirmava `hierarchy.x > left_rail.right` (estrito, com o `EDGE_PAD` de 14 no
+/// meio). Desde 2026-08-30 as colunas são ANCORADAS (Enio, com foto: *«só fica legal depois de
+/// fixar os painéis nas laterais»*) e a asserção é a **igualdade**: um `>` voltaria a passar com
+/// o cartão a flutuar.
 #[test]
-fn layout_hierarchy_after_rail_by_default() {
+fn layout_hierarchy_is_flush_against_the_rail() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
-    assert!(layout.hierarchy.x > layout.left_rail.x + layout.left_rail.w);
+    let rail_right = layout.left_rail.x + layout.left_rail.w;
+    assert!(
+        (layout.hierarchy.x - rail_right).abs() < f32::EPSILON,
+        "a coluna da esquerda tem de ENCOSTAR no trilho (x={} contra {rail_right})",
+        layout.hierarchy.x
+    );
     assert!((layout.hierarchy.w - style::HIERARCHY_W).abs() < f32::EPSILON);
 }
 
+/// **A coluna da direita ENCOSTA na borda da janela.**
 #[test]
-fn layout_inspector_pinned_right_by_default() {
+fn layout_inspector_is_flush_against_the_window_edge() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
     let right_edge = layout.inspector.x + layout.inspector.w;
-    assert!((right_edge - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
+    assert!(
+        (right_edge - HERO_VIEWPORT_W).abs() < 0.01,
+        "a coluna da direita tem de ENCOSTAR na borda ({right_edge} contra {HERO_VIEWPORT_W})"
+    );
 }
 
 #[test]
@@ -40,19 +55,21 @@ fn layout_canvas_spans_full_viewport_default() {
     // Canvas is the full-viewport backdrop; chrome floats over.
     assert!((layout.canvas.x - layout.viewport.x).abs() < f32::EPSILON);
     assert!((layout.canvas.w - layout.viewport.w).abs() < f32::EPSILON);
-    // Side panels still sit at their canonical positions.
-    assert!(layout.hierarchy.x > layout.left_rail.x + layout.left_rail.w);
+    // As colunas continuam nos sítios canónicos — agora encostadas.
+    let rail_right = layout.left_rail.x + layout.left_rail.w;
+    assert!((layout.hierarchy.x - rail_right).abs() < f32::EPSILON);
     let insp_right = layout.inspector.x + layout.inspector.w;
-    assert!((insp_right - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
+    assert!((insp_right - HERO_VIEWPORT_W).abs() < 0.01);
 }
 
 #[test]
 fn layout_mirror_swaps_sides() {
     let layout = HeroLayout::for_viewport_mirrored(ipad12_viewport(), true);
-    // Mirrored: inspector after rail (left), hierarchy pinned right.
-    assert!(layout.inspector.x > layout.left_rail.x + layout.left_rail.w);
+    // Espelhado: o inspector encosta no trilho, a hierarquia na borda direita.
+    let rail_right = layout.left_rail.x + layout.left_rail.w;
+    assert!((layout.inspector.x - rail_right).abs() < f32::EPSILON);
     let hier_right = layout.hierarchy.x + layout.hierarchy.w;
-    assert!((hier_right - (HERO_VIEWPORT_W - style::EDGE_PAD)).abs() < 0.01);
+    assert!((hier_right - HERO_VIEWPORT_W).abs() < 0.01);
     // Canvas is full-viewport in either orientation.
     assert!((layout.canvas.w - layout.viewport.w).abs() < f32::EPSILON);
 }

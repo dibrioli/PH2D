@@ -13,7 +13,7 @@
 //! the latter follow Hierarchy into its own crate in C.2).
 
 use crate::ids;
-use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
+use crate::interaction::{InteractiveState, WidgetStore};
 use crate::widget::showcase::{
     NOTE_BODY_IDS, NOTE_SLOT_IDS, NOTE_TITLE_IDS, RADIO_GROUP_IDS, SECTION_COLOR_IDS,
     TAB_GROUP_IDS, TREE_LEAF_IDS,
@@ -497,34 +497,6 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
     // panel-agnostic infrastructure tied to the panel rect; they
     // move to the panel's own `populate` if/when the panel crate
     // owns its NodeId allocation.
-    store.register(
-        ids::INSP_DRAG_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_PANEL,
-            kind: BlenderHitKind::DragHandle,
-        },
-    );
-    store.register(
-        ids::HIER_DRAG_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::HIER_PANEL,
-            kind: BlenderHitKind::DragHandle,
-        },
-    );
-    store.register(
-        ids::INSP_RESIZE_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_PANEL,
-            kind: BlenderHitKind::ResizeHandle,
-        },
-    );
-    store.register(
-        ids::HIER_RESIZE_HANDLE,
-        InteractiveState::BlenderHit {
-            parent: ids::HIER_PANEL,
-            kind: BlenderHitKind::ResizeHandle,
-        },
-    );
     // Inspector close (X) button. UI canon post-2026-05-24: every
     // floating panel except Hierarchy carries a close X. Registered as
     // a plain Button so the dispatch's is_focusable + apply_click
@@ -551,20 +523,6 @@ fn populate_hierarchy_chrome(store: &mut WidgetStore) {
 
     // Bottom-LEFT resize handles (post-2026-05-24 chrome canon — every
     // floating panel resizable from EITHER bottom corner).
-    store.register(
-        ids::INSP_RESIZE_HANDLE_BL,
-        InteractiveState::BlenderHit {
-            parent: ids::INSP_PANEL,
-            kind: BlenderHitKind::ResizeHandleBl,
-        },
-    );
-    store.register(
-        ids::HIER_RESIZE_HANDLE_BL,
-        InteractiveState::BlenderHit {
-            parent: ids::HIER_PANEL,
-            kind: BlenderHitKind::ResizeHandleBl,
-        },
-    );
 
     // Every section header that the Inspector + Widget Gallery paint
     // is collapse-toggle eligible. UI canon post-2026-05-24: every

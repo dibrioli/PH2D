@@ -9,10 +9,8 @@ use ph2d_editor_core::ids;
 use ph2d_editor_core::paint::{paint_icon, paint_text, paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
-    panel_resize_handle_rect_bl,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchSize, TOKENS_SCROLLBAR_ID,
@@ -57,15 +55,7 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-        hit_index.register(
-            ids::INSP_RESIZE_HANDLE_BL,
-            panel_resize_handle_rect_bl(rect),
-        );
+        let _hit_index = ctx.host.hit_index_mut();
     }
 
     let title_size = paint_panel_title(

@@ -12,7 +12,7 @@ pub fn paint_showcase_body(
     hit_index: &mut HitIndex,
     store: &WidgetStore,
 ) {
-    paint_panel_surface(rect, scene, theme);
+    crate::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
     // Drag pill + resize gripper hit zones. Visuals are inside
     // `paint_panel_surface` / `paint_panel_corner_dot`; we register
     // the hits here against the gallery's own NodeIds so the

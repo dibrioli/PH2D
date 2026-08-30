@@ -6,9 +6,8 @@ use ph2d_editor_core::paint::{paint_text_block, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
-    panel_drag_handle_rect,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     MODEL3D_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
@@ -88,13 +87,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         .set_panel_rect(ids::MODEL3D_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
-    {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        ctx.host
-            .hit_index_mut()
-            .register(ids::INSP_DRAG_HANDLE, drag_rect);
-    }
+    {}
 
     let title_size = paint_panel_title(
         rect,

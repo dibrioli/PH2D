@@ -105,9 +105,6 @@ fn paint_inspector(
     // pela qual o cabeçalho saiu para o `paint_head` em 2026-08-23.
     let crate::paint_body::BodyFrame {
         rect,
-        drag_handle_rect,
-        resize_handle_rect,
-        resize_handle_bl_rect,
         content_top,
         content_bottom,
         scroll_y,
@@ -363,14 +360,7 @@ fn paint_inspector(
     );
     // ⭐ **O fecho, simétrico do [`crate::paint_body::open_body`]** — os popovers diferidos, o
     // `pop_layer` do clip que ele abriu, os cantos e o re-registo dos hits.
-    crate::paint_body::close_body(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        rect,
-        [drag_handle_rect, resize_handle_rect, resize_handle_bl_rect],
-    );
+    crate::paint_body::close_body(scene, text_system, theme, hit_index, rect);
 }
 
 /// The section separator, callable from `paint_frame`'s extracted section

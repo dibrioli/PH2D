@@ -18,7 +18,7 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_title, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, paint_panel_close_button, paint_panel_corner_dot,
-    paint_panel_corner_dot_bl, paint_panel_surface,
+    paint_panel_corner_dot_bl, paint_panel_surface_floating,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme, TypeToken};
@@ -438,7 +438,7 @@ fn paint_overlays(
 /// so this is the one panel that owns its title placement rather than growing the
 /// chrome for everyone.
 fn paint_chrome(ctx: &mut PaintCtx, theme: Theme, rect: Rect) -> f32 {
-    paint_panel_surface(rect, ctx.scene, theme);
+    paint_panel_surface_floating(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     let title_size = TypeToken::Lg.px();

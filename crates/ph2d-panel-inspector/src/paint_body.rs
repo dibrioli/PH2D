@@ -23,9 +23,6 @@ use ph2d_editor_core::ids;
 /// chama `open_body` e não `layout_body`: o nome diz que há uma metade por fechar.
 pub(crate) struct BodyFrame {
     pub rect: ph2d_editor_core::zones::Rect,
-    pub drag_handle_rect: ph2d_editor_core::zones::Rect,
-    pub resize_handle_rect: ph2d_editor_core::zones::Rect,
-    pub resize_handle_bl_rect: ph2d_editor_core::zones::Rect,
     pub content_top: f32,
     pub content_bottom: f32,
     pub scroll_y: f32,
@@ -42,25 +39,14 @@ pub(crate) fn open_body(
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     store: &ph2d_editor_core::interaction::WidgetStore,
 ) -> BodyFrame {
-    use ph2d_editor_core::widget::panel_chrome::{
-        paint_panel_surface, panel_drag_handle_rect, panel_resize_handle_rect,
-    };
+    use ph2d_editor_core::widget::panel_chrome::paint_panel_surface;
     use ph2d_tokens::Spacing;
     let rect = layout.inspector;
     paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = panel_drag_handle_rect(
-        rect,
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
-        // Inspector has no close button — its visibility is governed by the TopBar toggle.
-        // Reserve nothing on the right so the drag area spans the full width.
-        0.0,
-    );
-    let resize_handle_rect = panel_resize_handle_rect(rect);
-    let resize_handle_bl_rect =
-        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
-    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA,
+    // e o rect dela vem do `HeroLayout` sem passar por offset nenhum. Elas saíram **em par** com
+    // o `InteractiveState::BlenderHit` do `pre_populate.rs` — uma alça registada no `HitIndex`
+    // cujo arrasto não move nada é a forma exacta do controlo morto sob o dedo.
 
     // O cabeçalho — título, subtítulo, fechar e o divisor. Ver `paint_head`.
     let content_top =
@@ -97,9 +83,6 @@ pub(crate) fn open_body(
         .with(|c| c.set(content_top + Spacing::Xs.px()));
     BodyFrame {
         rect,
-        drag_handle_rect,
-        resize_handle_rect,
-        resize_handle_bl_rect,
         content_top,
         content_bottom,
         scroll_y,
@@ -120,8 +103,6 @@ pub(crate) fn close_body(
     theme: ph2d_tokens::Theme,
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     rect: ph2d_editor_core::zones::Rect,
-    // As três alças, na ordem em que o [`close_frame_hits`] as espera.
-    handles: [ph2d_editor_core::zones::Rect; 3],
 ) {
     // **OS TRÊS POPOVERS DIFERIDOS**, pintados por último para ficarem acima de tudo.
     // ⚠️ Saíram do orquestrador em 2026-08-23: os três andam juntos porque partilham UMA lei — o
@@ -130,7 +111,7 @@ pub(crate) fn close_body(
     scene.pop_layer();
     ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot(rect, scene, theme);
     ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
-    close_frame_hits(hit_index, rect, handles[0], handles[1], handles[2]);
+    close_frame_hits(hit_index, rect);
 }
 
 /// ⭐ **O que se re-regista no FIM do quadro, e porquê** — as alças, o X e o `+`.
@@ -151,13 +132,10 @@ pub(crate) fn close_body(
 fn close_frame_hits(
     hit_index: &mut ph2d_editor_core::interaction::HitIndex,
     rect: ph2d_editor_core::zones::Rect,
-    drag_handle_rect: ph2d_editor_core::zones::Rect,
-    resize_handle_rect: ph2d_editor_core::zones::Rect,
-    resize_handle_bl_rect: ph2d_editor_core::zones::Rect,
 ) {
-    hit_index.register(ids::INSP_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::INSP_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram
+    // re-registadas aqui, no fim do quadro, para ganharem o z-order ao corpo; sem braço que as
+    // consuma, re-registá-las seria pintar chrome morto sob o dedo.
     hit_index.register(
         ids::INSP_CLOSE,
         ph2d_editor_core::widget::panel_chrome::panel_close_button_rect(rect),

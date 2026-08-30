@@ -354,16 +354,15 @@ impl HeroLayout {
         let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - Spacing::Md.px();
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
         let left_rail = Rect::new(viewport.x, chrome_top, rail_w, chrome_h);
+        // ⭐⭐ **AS COLUNAS SÃO FLUSH** (Enio, 2026-08-30, com foto): encostadas à borda da janela
+        // de um lado e ao trilho do outro, sem o `EDGE_PAD` que as fazia ler como cartões a
+        // flutuar. ⚠️ **Só ESTA das quatro utilizações do `EDGE_PAD` mudou** — ele continua a
+        // separar a barra de topo da borda, a afastar o timeline e a dar o respiro entre a coluna
+        // e a área de desenho. Zerá-lo global seriam quatro decisões numa.
         let (hierarchy_x, inspector_x) = if mirrored {
-            (
-                viewport.x + viewport.w - EDGE_PAD - HIERARCHY_W,
-                viewport.x + rail_w + EDGE_PAD,
-            )
+            (viewport.x + viewport.w - HIERARCHY_W, viewport.x + rail_w)
         } else {
-            (
-                viewport.x + rail_w + EDGE_PAD,
-                viewport.x + viewport.w - EDGE_PAD - INSPECTOR_W,
-            )
+            (viewport.x + rail_w, viewport.x + viewport.w - INSPECTOR_W)
         };
         let inspector = Rect::new(
             inspector_x,

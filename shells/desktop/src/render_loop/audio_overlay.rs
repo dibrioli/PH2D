@@ -17,8 +17,8 @@ use ph2d_editor::screens::HeroScreen;
 use ph2d_editor::screens::layout::{EDGE_PAD, HIERARCHY_W, INSPECTOR_W, rail_w};
 use ph2d_editor::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, clamp_panel_rect, paint_panel_corner_dot,
-    paint_panel_corner_dot_bl, paint_panel_surface, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_corner_dot_bl, panel_drag_handle_rect, panel_resize_handle_rect,
+    panel_resize_handle_rect_bl,
 };
 use ph2d_editor::zones::Rect;
 use ph2d_text::TextSystem;
@@ -81,7 +81,7 @@ pub(super) fn draw_audio_overlay(
         Radius::Sm.px(),
         resolve(ColorToken::BgElev, theme),
     );
-    paint_panel_surface(rect, scene, theme);
+    ph2d_editor::widget::panel_chrome::paint_panel_surface_floating(rect, scene, theme);
     paint_panel_corner_dot(rect, scene, theme);
     paint_panel_corner_dot_bl(rect, scene, theme);
 

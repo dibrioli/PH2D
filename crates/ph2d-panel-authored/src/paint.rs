@@ -22,8 +22,8 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, clamp_panel_rect,
     paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    paint_panel_surface_floating, paint_panel_title, panel_close_button_rect,
+    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     AUTHORED_SCROLLBAR_ID, DROPDOWN_SCROLLBAR_ID, Dropdown, DropdownOption, SectionFold, SkinParam,
@@ -78,7 +78,7 @@ pub(crate) fn paint(_state: &mut AuthoredPanelState, ctx: &mut PaintCtx) {
     // posição do morto — o id é o hash do RÓTULO, e o `adopt` vê o discriminante bater.
     crate::populate::retire_vanished(ctx.host.store_mut());
 
-    paint_panel_surface(rect, ctx.scene, theme);
+    paint_panel_surface_floating(rect, ctx.scene, theme);
     // ⚠️ O título é o `Name` da moldura, e não uma chave de i18n: ele é dado AUTORADO. Passá-lo
     // por `tr()` procuraria uma chave que não existe e devolveria a própria string, dando a
     // impressão de que este painel é traduzível quando ele é desenhado.

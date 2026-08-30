@@ -28,10 +28,9 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, PAINTER_LAYERS_SCROLLBAR_ID, paint_button, paint_scrollbar,
@@ -77,16 +76,7 @@ pub(crate) fn paint(_state: &mut PainterLayersPanelState, ctx: &mut PaintCtx) {
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared canon — Inspector right-dock).
-    {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let resize_rect = panel_resize_handle_rect(rect);
-        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(core_ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE, resize_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
-    }
+    {}
 
     // Dock view-mode (published by the bridge): Layers/Effects vs Brush props.
     let shows_layers = state::current_dock_shows_layers();
@@ -408,15 +398,6 @@ fn register_header_chrome(ctx: &mut PaintCtx, rect: Rect) {
         close.h,
     );
     let hit = ctx.host.hit_index_mut();
-    hit.register(
-        core_ids::INSP_DRAG_HANDLE,
-        panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE),
-    );
-    hit.register(core_ids::INSP_RESIZE_HANDLE, panel_resize_handle_rect(rect));
-    hit.register(
-        core_ids::INSP_RESIZE_HANDLE_BL,
-        panel_resize_handle_rect_bl(rect),
-    );
     hit.register(core_ids::PAINTER_LAYERS_TOGGLE_DOCK, toggle);
     hit.register(core_ids::PAINTER_LAYERS_CLOSE, close);
 }

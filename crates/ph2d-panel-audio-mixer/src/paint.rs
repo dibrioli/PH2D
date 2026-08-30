@@ -19,15 +19,13 @@ use crate::{
     SUB_METER, SUB_MUTE, SUB_PAN, SUB_SOLO, SUB_TONE, snapshot,
 };
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
     AUDIO_MIXER_SCROLLBAR_ID, LevelMeter, Slider, SliderOrientation, paint_level_meter,
@@ -106,14 +104,7 @@ pub(crate) fn paint(_state: &mut AudioMixerState, ctx: &mut PaintCtx) {
     // Shared dock drag/resize handles (Inspector right-dock canon) — reuse the
     // `INSP_*` ids so the dock slot moves/resizes as one.
     {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let resize_rect = panel_resize_handle_rect(rect);
-        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(core_ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE, resize_rect);
-        hit_index.register(core_ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
+        let _hit_index = ctx.host.hit_index_mut();
     }
 
     let title_size = paint_panel_title(

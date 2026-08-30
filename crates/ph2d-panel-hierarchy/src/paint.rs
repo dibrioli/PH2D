@@ -22,7 +22,7 @@ use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
+    paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     self, HIERARCHY_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState,
@@ -77,19 +77,9 @@ fn paint_hierarchy_body(
 ) -> std::collections::BTreeSet<ph2d_a11y::NodeId> {
     let rect = layout.hierarchy;
     paint_panel_surface(rect, scene, theme);
-    let drag_handle_rect = panel_drag_handle_rect(
-        rect,
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,
-        // Hierarchy header has the Add (+) icon on the right; reserve
-        // wider so drag doesn't shadow the add hit.
-        ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_ADD_RESERVE,
-    );
-    let resize_handle_rect = panel_resize_handle_rect(rect);
-    let resize_handle_bl_rect =
-        ph2d_editor_core::widget::panel_chrome::panel_resize_handle_rect_bl(rect);
-    hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::HIER_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    // ⛔ **A ALÇA DE ARRASTO E AS DUAS DE RESIZE SAÍRAM** (2026-08-30): esta coluna é ANCORADA.
+    // Saíram **em par** com o `InteractiveState::BlenderHit` do `pre_populate.rs` — ver o irmão
+    // em `ph2d-panel-inspector/src/paint_body.rs`.
 
     // Canonical panel title (single source of truth — `panel_chrome`).
     // Reserve ≈ICON_BTN_SIZE on the right for the header Add-button.
@@ -421,9 +411,9 @@ fn paint_hierarchy_body(
     scene.pop_layer();
     paint_panel_corner_dot(rect, scene, theme);
     ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
-    hit_index.register(ids::HIER_DRAG_HANDLE, drag_handle_rect);
-    hit_index.register(ids::HIER_RESIZE_HANDLE, resize_handle_rect);
-    hit_index.register(ids::HIER_RESIZE_HANDLE_BL, resize_handle_bl_rect);
+    // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram
+    // re-registadas aqui, no fim do quadro, para ganharem o z-order ao corpo; sem braço que as
+    // consuma, re-registá-las seria pintar chrome morto sob o dedo.
     let content_h = (y - start_y).max(0.0);
     set_last_hierarchy_content_h(content_h);
 

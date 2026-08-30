@@ -169,76 +169,29 @@ pub fn paint_hero_screen(
     if hero.is_panel_visible("flip_frames") {
         layout.reserve_bottom_strip(layout.flip_strip);
     }
-    // Apply user-driven panel drag offsets to the Inspector +
-    // Hierarchy rects. The offsets live on the WidgetStore's
-    // `blender_picker_offset` side-table (panel-agnostic — the
-    // dispatch's BlenderHitKind::DragHandle path stores the
-    // offset under the `parent` NodeId regardless of widget kind).
-    // Clamp helper lives in `style::clamp_panel_rect` so the floating
-    // panel thunks (widget gallery, grid snap) share the same math.
-    let insp_off = hero.store.blender_picker_offset(ids::INSP_PANEL);
-    let hier_off = hero.store.blender_picker_offset(ids::HIER_PANEL);
-    let insp_resize = hero.store.panel_resize_delta(ids::INSP_PANEL);
-    let hier_resize = hero.store.panel_resize_delta(ids::HIER_PANEL);
-    let (insp_rect, insp_clamped_off, insp_clamped_resize) =
-        style::clamp_panel_rect(layout.inspector, insp_off, insp_resize, viewport);
-    let (hier_rect, hier_clamped_off, hier_clamped_resize) =
-        style::clamp_panel_rect(layout.hierarchy, hier_off, hier_resize, viewport);
-    layout.inspector = insp_rect;
-    layout.hierarchy = hier_rect;
-    // Image-tool panels (BgRemoval, Padding, CEQ, Upscale, Equalize
-    // Sizes) share the right-dock slot with Inspector. Mirror the
-    // resized + dragged rect so they paint at the same position and
-    // size when active. The handles inside those panels parent to
-    // INSP_PANEL too (single dock-slot persistence — resizing CEQ
-    // also resizes the Inspector when the user switches back).
-    layout.bgremoval = insp_rect;
-    layout.padding = insp_rect;
-    // W2.T2.1 Day-7 follow-up: Painter sidebar shares Inspector slot too
-    // (single dock-slot persistence). Sem este propagação, drag/resize não
-    // afetavam o painter_sidebar visualmente + rect publicado divergia do
-    // que dispatch hit-test usava → click vazava pra canvas atrás.
-    layout.painter_sidebar = insp_rect;
-    // W3.T3.4: Painter layers panel shares the Inspector dock slot too —
-    // mirror the resized/dragged rect so its chrome + published panel rect
-    // align with dispatch hit-test (else clicks leak to the canvas behind).
-    layout.painter_layers = insp_rect;
-    if (insp_clamped_off.0 - insp_off.0).abs() > f32::EPSILON
-        || (insp_clamped_off.1 - insp_off.1).abs() > f32::EPSILON
-    {
-        hero.store.set_blender_picker_offset(
-            ids::INSP_PANEL,
-            insp_clamped_off.0,
-            insp_clamped_off.1,
-        );
-    }
-    if (hier_clamped_off.0 - hier_off.0).abs() > f32::EPSILON
-        || (hier_clamped_off.1 - hier_off.1).abs() > f32::EPSILON
-    {
-        hero.store.set_blender_picker_offset(
-            ids::HIER_PANEL,
-            hier_clamped_off.0,
-            hier_clamped_off.1,
-        );
-    }
-    if (insp_clamped_resize.0 - insp_resize.0).abs() > f32::EPSILON
-        || (insp_clamped_resize.1 - insp_resize.1).abs() > f32::EPSILON
-    {
-        hero.store.set_panel_resize_delta(
-            ids::INSP_PANEL,
-            insp_clamped_resize.0,
-            insp_clamped_resize.1,
-        );
-    }
-    if (hier_clamped_resize.0 - hier_resize.0).abs() > f32::EPSILON
-        || (hier_clamped_resize.1 - hier_resize.1).abs() > f32::EPSILON
-    {
-        hero.store.set_panel_resize_delta(
-            ids::HIER_PANEL,
-            hier_clamped_resize.0,
-            hier_clamped_resize.1,
-        );
-    }
+    // ⭐⭐ **AS COLUNAS LATERAIS SÃO ANCORADAS** (Enio, 2026-08-30, com foto: *«só fica legal
+    // depois de fixar os painéis nas laterais»*). O rect que o [`HeroLayout`] calculou **é** o
+    // rect que elas ocupam — não há offset de arrasto entre os dois.
+    //
+    // ⛔ Aqui estava o bloco que lia `blender_picker_offset` + `panel_resize_delta` do Inspector
+    // e da Hierarchy, clampava-os e **escrevia o resultado por cima** de `layout.inspector` /
+    // `layout.hierarchy`. Ele governava **dezasseis** painéis sem que nenhum soubesse: as quatro
+    // linhas de espelho abaixo levam o rect ao `bgremoval`/`padding`/`painter_sidebar`/
+    // `painter_layers`, e outras doze crates lêem `ctx.layout.inspector` directamente. ⇒
+    // *arrastar o Inspector arrastava os dezasseis.*
+    //
+    // ⚠️ **As alças saíram EM PAR com o braço** — o registo no `HitIndex` (nos dois painéis) e o
+    // `InteractiveState::BlenderHit` do `pre_populate`. Deixar uma ponta viva daria a forma
+    // exacta do controlo morto sob o dedo que este repo varre a cada wave: uma alça pintada e
+    // registada cujo arrasto não move nada.
+    //
+    // ⚠️ **A flutuação DECLARADA (D1) não foi tocada:** o Grid Snap, a galeria de widgets, o
+    // `authored`, o `wet-tuning` e o Timeline têm rect **próprio**, com clamp nas crates deles —
+    // continuam a arrastar-se, de propósito.
+    layout.bgremoval = layout.inspector;
+    layout.padding = layout.inspector;
+    layout.painter_sidebar = layout.inspector;
+    layout.painter_layers = layout.inspector;
     hero.hit_index.clear_for_frame();
 
     // M14.5: in live mode (`grid_view` published) the compositor pass

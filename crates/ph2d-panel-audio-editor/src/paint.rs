@@ -16,8 +16,8 @@ use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_centered, rect_to_ve
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
-    panel_close_button_rect,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface_floating,
+    paint_panel_title, panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
     AUDIO_EDITOR_SCROLLBAR_ID, ButtonState, SCROLLBAR_W, TextInputState, paint_scrollbar,
@@ -58,7 +58,7 @@ pub(crate) fn paint(_state: &mut AudioEditorState, ctx: &mut PaintCtx) {
         Radius::Sm.px(),
         resolve(ColorToken::BgElev, theme),
     );
-    paint_panel_surface(rect, ctx.scene, theme);
+    paint_panel_surface_floating(rect, ctx.scene, theme);
     paint_panel_corner_dot(rect, ctx.scene, theme);
     paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 

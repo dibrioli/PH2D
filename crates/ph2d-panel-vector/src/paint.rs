@@ -23,10 +23,9 @@ use crate::{VectorPanel, ids};
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, panel_close_button_rect, panel_drag_handle_rect,
-    panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
     NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, VECTOR_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed,
@@ -281,14 +280,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
     // panels share the right dock slot — the resize delta persists when the
     // user switches between Inspector / image tool.
     {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let resize_rect = panel_resize_handle_rect(rect);
-        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ph2d_editor_core::ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE, resize_rect);
-        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
+        let _hit_index = ctx.host.hit_index_mut();
     }
 
     // Canonical panel title — reserve room on the right for the X close button.

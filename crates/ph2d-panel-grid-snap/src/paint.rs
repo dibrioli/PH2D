@@ -28,7 +28,7 @@ use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::paint::{paint_icon, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_TITLE_BASELINE, clamp_panel_rect, paint_panel_corner_dot, paint_panel_surface,
+    PANEL_TITLE_BASELINE, clamp_panel_rect, paint_panel_corner_dot, paint_panel_surface_floating,
     paint_panel_title, panel_drag_handle_rect, panel_resize_handle_rect,
 };
 use ph2d_editor_core::widget::{
@@ -117,7 +117,7 @@ fn paint_body(
     ppm: f32,
 ) {
     let theme = ctx.host.theme();
-    paint_panel_surface(rect, ctx.scene, theme);
+    paint_panel_surface_floating(rect, ctx.scene, theme);
     let drag_handle_rect = panel_drag_handle_rect(
         rect,
         ph2d_editor_core::widget::panel_chrome::PANEL_HEADER_H_DEFAULT,

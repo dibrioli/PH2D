@@ -26,9 +26,8 @@ use crate::{BgRemovalPanel, ids};
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE,
-    paint_panel_close_button, paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
-    panel_drag_handle_rect, panel_resize_handle_rect, panel_resize_handle_rect_bl,
+    PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
+    paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     BG_REMOVAL_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
@@ -58,16 +57,7 @@ pub(crate) fn paint(_state: &mut BgRemovalPanelState, ctx: &mut PaintCtx) {
 
     // Dock-slot drag + resize handles (shared with Inspector — same
     // right-dock slot; persistence is shared).
-    {
-        let drag_rect =
-            panel_drag_handle_rect(rect, PANEL_HEADER_H_DEFAULT, PANEL_HEADER_CLOSE_RESERVE);
-        let resize_rect = panel_resize_handle_rect(rect);
-        let resize_bl_rect = panel_resize_handle_rect_bl(rect);
-        let hit_index = ctx.host.hit_index_mut();
-        hit_index.register(ph2d_editor_core::ids::INSP_DRAG_HANDLE, drag_rect);
-        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE, resize_rect);
-        hit_index.register(ph2d_editor_core::ids::INSP_RESIZE_HANDLE_BL, resize_bl_rect);
-    }
+    {}
 
     let inner_x = rect.x + PANEL_HEAD_PAD;
     let inner_w = (rect.w - PANEL_HEAD_PAD * 2.0).max(0.0);

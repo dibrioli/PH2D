@@ -35,7 +35,7 @@ use ph2d_editor::zones::Rect as EditorRect;
 use ph2d_field::{Blend, FieldDoc, Node, NodeId, NodeKind, Op, Primitive, Profile, Xform};
 use ph2d_field_render::{Matcap, Orbit, shade};
 use ph2d_vec_scene::{VecPath, VecVertex};
-use ph2d_vector::{Affine, ImageQuality, VectorScene};
+use ph2d_vector::{ImageQuality, VectorScene};
 
 /// O menor traçado que ainda é uma imagem — só para não pedir zero pixels a uma área degenerada.
 const MIN_TRACE: u32 = 16;

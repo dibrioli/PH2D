@@ -5745,7 +5745,8 @@ que gate nenhum defende — e esta nasce sabendo disso, e diz no doc-comment.*
 |---|---|---|
 | ✅⭐⭐⭐ **A PALETA DE FORMAS** (`+ Add shape…` / tecla `A`) — o catálogo sai do painel e entra no modal genérico da casa | a fileira de chips cortava em **8** e já tinha 8; ⛔ morreram as 4 constantes derivadas do fim da lista, que faziam *Extrude* abrir o diálogo de escultura ao acrescentar no fim | §96 |
 | ✅⭐⭐ **CONE · TRONCO DE CONE · CÁPSULA · PRISMA** — o 1.º lote da fila do Enio | uma lei só (`max` de meias-fatias, 1-Lipschitz por definição); ⚠️ **5 mutações sobreviveram à 1.ª ronda**, todas por eu gatear o campo e não a API do documento | §97 |
-| ⏳ **O RESTO DA FILA: as 47 do catálogo vetorial + 11 sólidas** | a `Family::Plates` nasce **vazia** à espera do lote que traz as 2D de fórmula (estrela, cruz, coração, **engrenagem**); as sólidas que faltam estão no doc 08 | [doc 08](08_formas_por_formula.md) |
+| ✅ **A FILA DE FORMAS FECHOU** (era *«as 47 do catálogo vetorial + 11 sólidas»*) | ⚠️ esta linha ficou **obsoleta** durante uma jornada inteira: a auditoria da §100 encolheu a fila de 47 para 7, e a W103 fechou-a com a estrela, a gaiola e o elipsóide. A `Family::Plates` **não** nasce vazia — a estrela vive lá | §100, §101 |
+| ✅⭐⭐⭐ **O ATLAS DE IMAGEM PERSISTENTE da `vello` 0.10** — o módulo enviava `843,8 MB/s` de pixels que não tinham mudado, e punha o atlas no tecto de `8192²` (256 MB de VRAM) | ⛔ **não era quebra: nada chegava a ser descartado** (`não coube = 0`, mesmo com um vizinho de `4096²`). A cura é o `StableImage`, que já existia; a picture é **byte-idêntica por gate** | §105 |
 | ✅⭐⭐⭐ **A pré-visualização ALCANÇA 60 Hz** — mediana `~12 ms` contra `16,7`, e independente do `Resolution` | o item nº 1 desde a §70. ⛔ **o `14,2 ms` da §90 foi medido com a câmera PARADA** (corrigido na §91.1); num arrasto real o quadro custa `10`–`27 ms` | §90.4, §91.1 |
 | ✅⭐⭐⭐ **A TRAVADINHA do Enio: a cache despejava `1 700` fitas debaixo do cadeado** | ⭐ `94 %` do preço era a **árvore**, que na rota do produto é lastro. Máximo do regime `364,6 → 21,7 ms` (`17×`), despejo no cadeado `~3 000×` mais barato | §91.2–§91.4 |
 | ✅⭐ **A lei do cancelamento perguntava ao TAMANHO** desde a W73 | ⭐ passa a perguntar à **espécie**: numa hesitação de um quadro o erro angular vai de `2,97°` para `1,50°` | §91.7 |
@@ -10026,3 +10027,178 @@ mais apertado, garante-o.
 ⚠️ **O 2.º controle nasceu de uma mutação que sobreviveu**: uma sonda que devolvesse sempre zero
 passaria a barra em toda a linha sem olhar para nada. *Uma barra precisa de um piso tanto quanto de
 um tecto.*
+
+---
+
+## §105 — W105: ⭐⭐⭐ O ATLAS DE IMAGEM PERSISTENTE — 843,8 MB/s de pixels que não mudaram (30/08)
+
+**A primeira etapa depois da subida do stack, e ela não veio de um report: veio de ler o que a
+subida deixou aberto.** O [registo §19.4](../Atualizar%20Stack/04_registro.md) nomeia o mecanismo e
+deixa a consequência por medir — *«o atlas de imagem persistente do `vello` 0.10 guarda ~3 quadros
+em vez de 1, e a porta `draw_image_rgba*` cunha um id novo por chamada … quando não cabe, a imagem
+não é desenhada, em silêncio»*. Este módulo é o maior consumidor daquela porta no app: ele emite
+**uma imagem do tamanho da vista, por vista, a cada quadro** — até quatro com a tela dividida.
+
+### §105.1 — O mecanismo, lido no upstream e não adivinhado
+
+`vello_encoding/src/image_cache.rs`, na 0.10:
+
+| | |
+|---|---|
+| o atlas é **quadrado** | nasce a `1024`, **dobra** até `MAX_ATLAS_SIZE = 8192` |
+| a chave é o **id da `Blob`** | `Blob::new` dá um id novo **por chamada** |
+| a residência dura | `EVICT_AFTER_GENERATIONS = 2` passes |
+| o despejo é **reactivo** | só corre quando uma alocação **falha** |
+| crescer | **repack completo**, toda residente marcada suja ⇒ re-envio de tudo |
+| não coube | `xy = None` ⇒ a imagem **não é desenhada**, sem erro |
+
+⚠️ **Até à 0.8 o atlas era limpo a cada render** ⇒ a porta crua era barata *por construção*, e o
+nosso doc dizia-o com razão. *Uma afirmação verdadeira por construção deixou de o ser sem uma linha
+nossa mudar* — é a mesma família do achado §18.1 da subida, do outro lado.
+
+### §105.2 — A régua: o `Resolver`, e não um relógio nem a GPU
+
+As três perguntas (*quanto cresceu · quantos envios · quantos despejos*) decidem-se na **CPU**,
+determinísticas, dentro do `vello_encoding::Resolver` — que é **público**. Medir pelo `Renderer`
+exigiria adaptador de GPU, e os gates de GPU desta casa são `#[ignore]`: o registo §20.2 mediu que
+**428 testes** passam sem testar nada por isso. ⭐ *Uma medição que só corre onde ninguém a corre
+não é uma medição.*
+
+O arnês é [`atlas_probe_tests.rs`](../../crates/ph2d-vector/src/atlas_probe_tests.rs), e espelha o
+app: uma `VectorScene` por quadro, **um** `Resolver` fora do laço (é isso que torna o atlas
+persistente — um `Resolver` por quadro mediria a 0.8).
+
+### §105.3 — A tabela, 60 quadros (≈ um segundo de tela), peça PARADA
+
+| caso | modo | atlas | ids | envios | MB | despejos |
+|---|---|---:|---:|---:|---:|---:|
+| 1 vista `1920×1080` | ⛔ cru | `4096` | 60 | 60 | **474,6** | 56 |
+| | ⭐ estável | `2048` | **1** | **1** | 7,9 | **0** |
+| 4 vistas `960×540` | ⛔ cru | `4096` | 240 | 240 | **474,6** | 220 |
+| | ⭐ estável | `2048` | **4** | **4** | 7,9 | **0** |
+| 1 vista `2560×1440` | ⛔ cru | **`8192`** ← o TECTO | 60 | 60 | **843,8** | 52 |
+| | ⭐ estável | `4096` | **1** | **1** | 14,1 | **0** |
+| 4 vistas `1280×720` | ⛔ cru | `4096` | 240 | 240 | **843,8** | 228 |
+| | ⭐ estável | `4096` | **4** | **4** | 14,1 | **0** |
+
+⇒ numa vista cheia de `2560×1440` o módulo punha o atlas **no tecto** (`8192² × 4 B` = **256 MB**
+de VRAM, permanentes) e empurrava **843,8 MB por segundo** de pixels que **não tinham mudado**.
+
+### §105.4 — ⛔ E a acusação de «imagem descartada em silêncio» foi REFUTADA
+
+A pergunta que separa *desperdício* de *defeito* é se alguém perde a vez. O arnês põe um **segundo
+produtor bem comportado** (um `StableImage`, o vizinho que já faz a coisa certa) a competir, e conta
+os ids **desenhados que nunca chegaram a envio nenhum** — detecção exacta, porque a primeira vez que
+um id consegue lugar o `ImageCache` empurra-o para a lista de envios.
+
+| vizinho, com 1 vista `2560×1440` cru | atlas | **não coube** |
+|---|---:|---:|
+| `512²` · `1024²` · `2048²` · `3072²` · `4096²` | `8192` | **`0`** em todos |
+
+⚠️ **Nada é descartado.** A alocação por guilhotina mais o despejo reactivo aguentam. ⇒ **era
+desperdício, não quebra** — e registá-lo importa: sem esta linha, a próxima leitura procuraria um
+defeito de tela que não existe. *Que número a resposta contrária imprimiria?* `não coube > 0`.
+
+### §105.5 — A cura é a porta que já existia
+
+`StableImage` existe desde o plano 24 e era usado só no caminho dos padrões vectoriais. Faltava-lhe
+**um construtor para bytes pré-multiplicados** (`from_rgba_premultiplied`) — o tipo de alfa viaja
+*dentro* do handle, e o `from_rgba` carimba `Alpha`, o que faria o Vello pré-multiplicar **outra
+vez** e escurecer a borda da peça.
+
+O corte é de **uma linha de desenho e uma de recepção**:
+
+- o handle nasce **onde o traçado chega** (`viewport_pass`), uma vez por **traçado**;
+- o desenho clona-o (`draw_stable_image`) — clone de `Blob` = refcount + **mesmo id**.
+
+⇒ *o id da imagem passa a mudar quando os **pixels** mudam, que é a única altura em que ele devia
+mudar.*
+
+⚠️ **O `dest` em rectângulo compõe exactamente o afim que estava escrito à mão** (`translate` ×
+`scale_non_uniform`), então o enquadramento é byte-idêntico. `ImageQuality::Medium` fica — a nota
+sobre o *ringing* do bicúbico numa aresta anti-serrilhada continua a valer.
+
+⚠️ **`None` do construtor é inalcançável** (o `shade` devolve `w·h·4` por construção) e ainda assim
+não se desembrulha: um `expect` derrubaria a janela por um traçado malformado, e a resposta certa a
+*«a imagem não presta»* é a de sempre — a anterior fica, esticada.
+
+### §105.6 — Os gates, e porque são **três** e não um
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `a_still_viewport_does_not_mint_a_new_image_every_frame` | shell | 120 quadros de peça parada ⇒ **um** id |
+| `a_fresh_trace_does_mint_a_new_image` | shell | ⛔ **o controlo** — um traçado novo **tem** de mudar o id |
+| `redrawing_a_stable_image_uploads_it_once_not_once_per_frame` | `ph2d-vector` | a lei no substrato, via `Resolver` |
+| `the_raw_image_port_mints_a_new_id_on_every_call` | `ph2d-vector` | ⛔ o controlo do controlo — se a porta crua deixar de o fazer, o gate irmão fica verde **por acidente** |
+| `the_two_constructors_do_not_encode_the_same_alpha` | `ph2d-vector` | o tipo de alfa viaja, e enganar-se nele não dá erro |
+| ⭐⭐⭐ `the_stable_draw_encodes_exactly_what_the_raw_premultiplied_port_did` | `ph2d-vector` | **a cura desenha o MESMO** que a porta que substituiu |
+
+⭐⭐⭐ **O último é o que responde *«partiste a imagem?»*, e ele tem ORÁCULO — o código de ontem.**
+Os outros medem o **custo**; nenhum deles diz que o pixel é o mesmo, que é o que um artista repara
+primeiro. Ele compara **três** fluxos do encoding — `draw_data` (qualidade + tipo de alfa),
+`transforms` (o enquadramento, que é a metade que este módulo mudou: um afim explícito virou um
+rectângulo) e `styles` — mais o controlo de que o oráculo não encodou **nada**. ⇒ *a troca é
+invisível na tela por construção, e não por promessa.*
+
+### §105.6-ter — As cinco mutações, 5/5 mortas
+
+| mutação | gate que morreu |
+|---|---|
+| o desenho passa a cunhar id novo por quadro (= a porta crua) | `a_still_viewport_…` (**no SHELL**) |
+| o handle nasce no desenho e não na chegada do traçado | `a_still_viewport_…` |
+| a sonda da cena devolve uma constante | `a_fresh_trace_…` ⇐ *o controlo a fazer o trabalho dele* |
+| o construtor pré-multiplicado carimba alfa reta | `the_two_constructors_…` |
+| o desenho estável reconstrói a `Blob` | `redrawing_a_stable_image_…` |
+
+⚠️ **A 1.ª corrida deu 3/5**, e as duas falhas foram achados e não acidentes: uma SOBREVIVEU
+(§105.6-bis, o gate a perguntar ao estado) e a outra **não aplicou** — o alvo casou `0` vezes porque
+a âncora do arnês tinha um acento mal escrito. *Um `replace` que não casa é um no-op silencioso, e
+sem o `assert` de contagem ele teria sido lido como «matou».*
+
+⚠️ **Uma lei sobre «não muda» é meia lei.** Sozinha, `a_still_viewport…` fica verde num módulo que
+**nunca produza imagem nenhuma** — que é precisamente o modo de falha que ela devia apanhar. Com o
+controlo, as duas dizem *«muda se e só se»*.
+
+⚠️ **O gate tem de parar o prato** (`manual = true`) em **todas** as vistas: o módulo gira sozinho
+por omissão, uma câmera que se mexe pede traçado novo, e o gate mediria a rotação em vez da
+identidade. `manual = true` é também o estado em que o artista de facto trabalha — ele tocou na
+peça, ela parou, e ele **olha** para ela. É aí que a porta crua desperdiçava 100% do que gastava.
+
+### §105.6-bis — ⛔⛔⛔ A 1.ª versão do gate perguntava ao ESTADO, e a mutação SOBREVIVEU
+
+Ela lia `Viewport::frame` — *«o handle que guardaste mudou?»* — através de um
+`Viewport::probe_frame_id`. A mutação *«volta à porta crua»* foi aplicada como **um desenho cru
+acrescentado ao lado** do estável, e o gate ficou **verde**: o handle guardado continuava o mesmo, e
+a cena passava a cunhar uma residente nova por quadro na mesma.
+
+⭐⭐⭐ **A pergunta não é o que o produtor GUARDA, é o que a cena EMITE.** É a mesma lição que a caça
+aos controlos mortos deixou escrita no `CLAUDE.md` §5.0 — *o terceiro passo, o que um `grep` não
+vê, é se o valor chega a um consumidor* — um nível acima: aqui o «consumidor» é o próprio atlas.
+
+⇒ nasceu `VectorScene::probe_image_ids`, que lê os ids de **toda** imagem que a cena vai desenhar,
+e os dois `probe_*` de estado foram **apagados**, com a razão escrita no lugar deles (um deles é uma
+API `pub` que ninguém mais usa: *um id órfão é lixo, e a cura de lixo é apagar*).
+
+⚠️ **Custo:** o `vello_encoding` deixa de ser dependência de desenvolvimento e passa a **normal** —
+nomear `Patch::Image` é preciso na lib, não só nos testes. Zero linhas de compilação a mais (ele já
+vinha pela árvore do `vello`), e a versão continua a ser **a mesma do lockfile**.
+
+⚠️ **E o gate ganhou um controlo interno**: `por_quadro == 1`. Sem ele, uma cena que não emitisse
+imagem nenhuma teria o conjunto de ids **vazio** e passaria a desigualdade por vacuidade — *um balde
+que ninguém enche lê-se como perfeito*.
+
+### §105.7 — A dependência nova, e porque é de DESENVOLVIMENTO
+
+`vello_encoding = "0.10.0"` entra como **dev-dependency** de `ph2d-vector` — a MESMA versão que o
+`vello` 0.10 já traz (conte-a no `Cargo.lock`). Uma versão diferente daria **duas cópias**, e um
+`Blob` de uma não serve ao `ImageCache` da outra. O `vello` não re-exporta o `Resolver`, e o
+`Resolver` é o único caminho de CPU para as três respostas.
+
+### §105.8 — ⏳ ABERTO, e não é meu
+
+O censo do módulo está fechado: **um** sítio desenhava imagem, e está curado. Mas a mesma porta é
+chamada por outras linhas, e a maior vizinha é
+[`ph2d-panel-sculpt3d/src/preview.rs`](../../crates/ph2d-panel-sculpt3d/src/preview.rs) — **também
+uma pré-visualização 3D redesenhada por quadro**, com quatro referências à porta crua. ⛔ **Não
+lhe toco** (isolamento, `CLAUDE.md` §0.2): fica **nomeada**, com o instrumento já construído e
+alcançável por quem for dono dela.

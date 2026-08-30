@@ -26,6 +26,11 @@ pub mod vector_network;
 #[cfg(test)]
 mod scene_tests;
 
+/// ⚠️ **A sonda do atlas de imagem persistente da `vello` 0.10** — e os gates que a acompanham.
+/// Vive aqui, e não numa crate consumidora, porque esta é a única autorizada a importar `vello`.
+#[cfg(test)]
+mod atlas_probe_tests;
+
 pub use scene::{StableImage, VectorScene};
 pub use vector_network::{
     ProceduralFillImage, build_region_path, draw_variable_width_stroke, draw_vector_network,

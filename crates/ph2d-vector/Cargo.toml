@@ -43,3 +43,19 @@ ph2d-color = { path = "../ph2d-color" }
 # T5.1, both `pub`/module-scope) and the ph2d-vector-doc data model. A RUNTIME
 # dep since W5 (was dev-only before the stroke geometry landed).
 glam = "0.30"
+
+# ⚠️ **A versão é a MESMA que o `vello` 0.10 já traz** — conte-a no `Cargo.lock`, nunca aqui. Uma
+# versão diferente daria DUAS cópias, e um `Blob` de uma não serve ao `ImageCache` da outra
+# (CLAUDE.md §5.0, ADR-0168). Como já vem pela árvore do `vello`, declará-la aqui não acrescenta
+# uma linha de compilação.
+#
+# Porque é preciso, em DUAS metades:
+#  - a sonda (`atlas_probe_tests.rs`) precisa do `Resolver`, que o `vello` não re-exporta e que é
+#    o ÚNICO caminho de CPU para «quanto cresceu o atlas · quantos envios · quantos despejos».
+#    Medir isso pelo `Renderer` exigiria adaptador de GPU, e os gates de GPU desta casa são
+#    `#[ignore]` (logo o CI nunca os corre): a medição ficaria por fazer.
+#  - ⭐⭐ o `VectorScene::probe_image_ids` precisa de nomear `Patch::Image` para ler o encoding.
+#    ⚠️ **Ele NÃO é dev-only**, e a razão é uma mutação que SOBREVIVEU: um gate que pergunta ao
+#    ESTADO se o handle mudou fica verde quando alguém acrescenta um desenho pela porta crua ao
+#    lado. A pergunta tem de ser feita à CENA, e a cena vive na lib.
+vello_encoding = "0.10.0"

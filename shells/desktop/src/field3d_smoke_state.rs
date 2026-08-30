@@ -51,7 +51,27 @@ pub(crate) struct Viewport {
     pub(crate) cam: Orbit,
     /// O último quadro pronto — com o tamanho a que foi traçado, para o desenhar sem esticar
     /// enquanto o próximo (já do tamanho novo) não chega.
-    pub(super) frame: Option<(Arc<Vec<u8>>, u32, u32)>,
+    ///
+    /// ⭐⭐⭐ **É um [`StableImage`], e não os bytes crus** (2026-08-30). O handle é construído
+    /// **UMA vez, quando o traçado chega**, e clonado a cada quadro — clone de `Blob` = refcount
+    /// **com o mesmo id**, que é exactamente o que o atlas de imagem **persistente** da `vello`
+    /// 0.10 usa como chave de cache.
+    ///
+    /// ⚠️ **Antes ele guardava `Arc<Vec<u8>>` e o desenho chamava a porta CRUA a cada quadro.** A
+    /// porta crua constrói uma `Blob` nova por chamada, logo um **id novo por quadro** — e na 0.8
+    /// isso era de graça, porque o atlas era limpo a cada render. Medido depois da subida, com uma
+    /// vista a `2560×1440` e a peça **parada**:
+    ///
+    /// | | atlas | envios / 60 quadros | despejos |
+    /// |---|---|---|---|
+    /// | ⛔ a porta crua | **`8192²`** (o TECTO — 256 MB de VRAM) | 60 · **843,8 MB** | 52 |
+    /// | ⭐ este handle | `4096²` (64 MB) | **1** · 14,1 MB | **0** |
+    ///
+    /// ⚠️ **Não era um defeito visível** — a sonda mostra que nada chegava a ser descartado, mesmo
+    /// com um vizinho de `4096²` a competir. Era **desperdício**: 843 MB/s de pixels que não
+    /// mudaram, e um recurso partilhado no tecto.
+    /// (`crates/ph2d-vector/src/atlas_probe_tests.rs`)
+    pub(super) frame: Option<ph2d_vector::StableImage>,
     pub(super) inflight: Option<InFlight>,
     /// Quando o pedido em voo saiu — é o relógio que faz a rotação ser por SEGUNDO.
     pub(super) since: std::time::Instant,
@@ -122,6 +142,12 @@ impl Viewport {
     pub(crate) fn probe_has_frame(&self) -> bool {
         self.frame.is_some()
     }
+
+    // ⛔⛔ **NÃO acrescente aqui um `probe_frame_id`.** Ele existiu, e uma mutação SOBREVIVEU-lhe:
+    // perguntar ao ESTADO se o handle guardado mudou fica verde quando alguém acrescenta, ao lado,
+    // um desenho pela porta crua — o handle continua o mesmo e a cena cunha uma residente nova por
+    // quadro na mesma. A pergunta certa é feita à CENA (`VectorScene::probe_image_ids`), e é o que
+    // o módulo `atlas_tests` (no fim deste ficheiro) usa.
 
     // ⚠️ `cfg(test)` porque ela é uma sonda **de teste** numa crate binária: sem isto o build do
     // produto carrega um método que ninguém chama, e o aviso está certo.
@@ -389,3 +415,9 @@ pub(super) struct MatcapTexels {
 thread_local! {
     pub(super) static STATE: RefCell<Option<Option<Smoke>>> = const { RefCell::new(None) };
 }
+
+/// ⭐ **A identidade da imagem de uma vista** — a lei que o atlas persistente da `vello` 0.10
+/// passou a exigir. Vive colada ao estado porque é sobre o campo [`Viewport::frame`].
+#[cfg(test)]
+#[path = "field3d_atlas_tests.rs"]
+mod atlas_tests;

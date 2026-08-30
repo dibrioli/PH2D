@@ -242,7 +242,21 @@ fn viewport_pass(
                         r.width, r.height, r.millis, r.hits
                     );
                 }
-                smoke.vps[i].frame = Some((Arc::new(r.rgba), r.width, r.height));
+                // ⭐⭐⭐ **O handle nasce AQUI — uma vez por TRAÇADO, não uma vez por quadro.**
+                // É a linha inteira da cura do atlas persistente: o id da imagem passa a mudar
+                // quando os **pixels** mudam, que é a única altura em que ele devia mudar.
+                // ⚠️ `premultiplied` porque é o que o `shade` produz — o mesmo tipo de alfa que a
+                // porta crua declarava. Entrar pelo `from_rgba` faria o Vello pré-multiplicar
+                // **outra vez**, e a borda da peça escureceria.
+                // ⚠️ `None` é inalcançável (o `shade` devolve `w*h*4` por construção) e ainda
+                // assim não se desembrulha: um `expect` aqui derrubaria a janela por um traçado
+                // malformado, e a resposta certa a *«a imagem não presta»* é a de sempre — a
+                // anterior fica, esticada.
+                smoke.vps[i].frame = ph2d_vector::StableImage::from_rgba_premultiplied(
+                    Arc::new(r.rgba),
+                    r.width,
+                    r.height,
+                );
                 smoke.vps[i].inflight = None;
             }
             Err(TryRecvError::Empty) => {}
@@ -406,19 +420,23 @@ fn viewport_pass(
         });
     }
 
-    if let Some((frame, fw, fh)) = &smoke.vps[i].frame {
+    if let Some(frame) = &smoke.vps[i].frame {
         // O quadro cobre a área toda — ele foi traçado com a proporção dela. Enquanto o
         // primeiro traçado do tamanho novo não chega, o anterior estica; é um quadro só, e
         // esticar é melhor do que piscar.
-        scene_out.draw_image_rgba_premultiplied_transformed(
+        //
+        // ⭐ **`draw_stable_image` e não a porta crua** — o handle veio pronto do sítio onde o
+        // traçado chegou, e redesenhá-lo com o **mesmo id** faz o atlas persistente acertar em vez
+        // de re-enviar a imagem inteira. O `dest` em rectângulo compõe exactamente o mesmo afim
+        // que aqui estava escrito à mão (`translate` × `scale_non_uniform`).
+        scene_out.draw_stable_image(
             frame,
-            *fw,
-            *fh,
-            Affine::translate((f64::from(area.x), f64::from(area.y)))
-                * Affine::scale_non_uniform(
-                    f64::from(area.w) / f64::from(*fw),
-                    f64::from(area.h) / f64::from(*fh),
-                ),
+            (
+                f64::from(area.x),
+                f64::from(area.y),
+                f64::from(area.x) + f64::from(area.w),
+                f64::from(area.y) + f64::from(area.h),
+            ),
             // ⚠️ **Bilinear, não bicúbico.** No caso normal o mapeamento é 1:1 e os dois são a
             // identidade — mas o bicúbico **toca** (*ringing*) numa aresta de alto contraste, e
             // agora que a aresta sai anti-serrilhada do traçador, um halo posto pelo filtro

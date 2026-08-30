@@ -52,6 +52,34 @@ impl StableImage {
         })
     }
 
+    /// Como [`Self::from_rgba`], mas para bytes **JÁ pré-multiplicados** — o par estável de
+    /// [`VectorScene::draw_image_rgba_premultiplied_transformed`].
+    ///
+    /// ⚠️ **Não é um detalhe de conveniência: o tipo de alfa viaja DENTRO do handle.** O
+    /// `from_rgba` carimba `ImageAlphaType::Alpha`, e desenhar bytes pré-multiplicados por ele faz
+    /// o Vello multiplicar **outra vez** — a borda escurece e some. Quem produz pela fórmula
+    /// canónica (`ph2d_render::premultiply_rgba8`) tem de entrar por aqui.
+    ///
+    /// ⭐ **Porque existe** (2026-08-30): o traçado 3D produzia um `Arc` novo por traçado e
+    /// desenhava-o pela porta CRUA a cada quadro — id novo por quadro, no atlas **persistente** da
+    /// `vello` 0.10. Medido: uma vista `2560×1440` punha o atlas no tecto de `8192²` (**256 MB** de
+    /// VRAM) e enviava **843,8 MB por segundo** de pixels que não tinham mudado.
+    #[must_use]
+    pub fn from_rgba_premultiplied(rgba: Arc<Vec<u8>>, width: u32, height: u32) -> Option<Self> {
+        if width == 0 || height == 0 || rgba.len() != (width as usize) * (height as usize) * 4 {
+            return None;
+        }
+        Some(Self {
+            data: ImageData {
+                data: Blob::new(rgba),
+                format: ImageFormat::Rgba8,
+                alpha_type: ImageAlphaType::AlphaPremultiplied,
+                width,
+                height,
+            },
+        })
+    }
+
     /// Envolve uma [`ImageData`] JÁ construída — o caso do FX raster GPU-resident (plano 24), em
     /// que a `ImageData` vem do `Renderer::register_texture` do Vello (respaldada por uma textura
     /// da GPU, id estável) em vez de bytes de CPU. Desenhá-la amostra a textura direto, sem upload.
@@ -71,6 +99,10 @@ impl StableImage {
     pub fn height(&self) -> u32 {
         self.data.height
     }
+
+    // ⛔ **Não acrescente aqui um `probe_id` do handle.** Ele existiu por um turno e a mutação que
+    // o devia matar SOBREVIVEU: a identidade que interessa não é a que o produtor GUARDA, é a que
+    // a **cena EMITE** — [`VectorScene::probe_image_ids`].
 }
 
 impl VectorScene {
@@ -98,6 +130,33 @@ impl VectorScene {
 }
 
 impl VectorScene {
+    /// ⚠️ **Só para gates: os ids de TODA imagem que esta cena vai desenhar**, em ordem de emissão.
+    ///
+    /// ⭐⭐ **Existe por causa de uma mutação que SOBREVIVEU.** O primeiro gate desta lei perguntava
+    /// ao **estado** do produtor — *«o handle que guardaste mudou?»* — e ficava verde quando alguém
+    /// acrescentava, ao lado, um desenho pela porta crua: o handle guardado continuava o mesmo, e a
+    /// cena passava a cunhar uma residente nova por quadro na mesma.
+    ///
+    /// ⇒ *a pergunta não é o que o produtor GUARDA, é o que a cena EMITE* — e é a mesma lição que a
+    /// caça aos controlos mortos deixou escrita no `CLAUDE.md` §5.0: **o terceiro passo**, o que um
+    /// `grep` não vê, é se o valor chega a um consumidor.
+    ///
+    /// Devolve `u64` de propósito: nenhum tipo do Vello atravessa a fronteira desta crate.
+    #[must_use]
+    #[doc(hidden)]
+    pub fn probe_image_ids(&self) -> Vec<u64> {
+        self.inner
+            .encoding()
+            .resources
+            .patches
+            .iter()
+            .filter_map(|p| match p {
+                vello_encoding::Patch::Image { image, .. } => Some(image.data.id()),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn new() -> Self {
         Self {
             inner: Scene::new(),

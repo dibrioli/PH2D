@@ -114,6 +114,6 @@ oferecia para a decidir ficou cancelada com ela.*
 
 - **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado é o `.gitignore`,
   para manter `referencias/` fora do git.
-- Não decidiu nada sozinha: as oito decisões são do Enio, e o que fica em aberto está nomeado
+- Não decidiu nada sozinha: as nove decisões são do Enio, e o que fica em aberto está nomeado
   nos `⏳` de cada documento.
 - ⚠️ **A spec é RASCUNHO** — o §7 dela lista o que falta decidir, e a §8 o que ⛔ não fazer.

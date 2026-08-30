@@ -312,3 +312,41 @@ perder a `GP`.
 ⚠️ **Os dois `A/B` são internamente consistentes** (cada um mede antes e depois com a *sua* régua),
 e é por isso que o `62,4 %` vale. ⛔ **Mas os dois números absolutos não são comparáveis**, e
 citá-los lado a lado sem esta nota seria a armadilha do denominador que este módulo já pagou.
+
+---
+
+## §9 — ⛔ O VEREDITO: o desemaranhador funciona, entra na cadeia, e SHIPA DESLIGADO
+
+| coluna | desligado | ⭐ ligado |
+|---|---|---|
+| dobras da saída | `27` | ⭐ **`21`** |
+| aspecto p99 · enviesamento p99 | `1,70` · `33,5°` | ⭐ `1,64` · `30,9°` |
+| faces `>60°` · irregulares | `12` · `50` | ⭐ **`10`** · `48` |
+| `χ` · bordo · não-manifold | `2` · `0` · `0` | `2` · `0` · `0` |
+| ⚠️ gravatas · ponta pior | `1` · `−6,4 %` | ⚠️ `2` · `−6,6 %` |
+| ⛔ relógio | `21,4 s` | ⛔ **`33,4 s`** |
+
+⭐ **Todas as colunas de forma melhoram.** ⛔ **E mesmo assim ele não shipa ligado**, e as três
+razões são medidas: `+56 %` do relógio do artista a cada clique · **não cura a foto** (a torção
+`p99` do ombro anda `35,7° → 34,8°` e o máximo continua em `179°`) · duas colunas pioram.
+
+### ⛔⛔ E o achado que vale mais que a feature: a ESCADA RE-DOBRA
+
+A 1.ª colocação foi **antes** do arredondamento, com uma razão boa escrita ao lado. Medido:
+
+| | dobras no mapa FINAL |
+|---|---|
+| sem o passe | `149` |
+| ⛔ **com o passe antes da escada** | ⛔ **`169`** |
+
+⇒ **A escada de arredondamento re-dobra o mapa — e re-dobra MAIS partindo de um mapa
+desemaranhado.** *Uma restrição imposta numa fase e não na seguinte não é uma restrição; é um
+ponto de partida* — e a mesma frase já estava escrita no `weld_round.rs` §23.18, sobre outro
+assunto, desde Agosto. **A cura foi prender os inteiros, não escolher outra fase.**
+
+### ⏳ A wave seguinte, com alvo
+
+As dobras que sobram vivem **na fronteira dos retalhos** — o que a versão restrita não pode mover.
+⇒ **libertar as variáveis de costura** pelo conjunto reduzido do `ClosureSystem`. ⭐ E a hipótese
+mais forte, dado o achado acima: **a injectividade tem de entrar DENTRO da escada** (anti-flip por
+prego), não como um passe antes ou depois dela.

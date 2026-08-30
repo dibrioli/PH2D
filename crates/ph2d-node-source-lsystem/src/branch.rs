@@ -66,6 +66,14 @@ pub struct Branch {
     pub points: Vec<[f32; 2]>,
     /// A largura em cada ponto — o mesmo comprimento que [`Self::points`].
     pub widths: Vec<f32>,
+    /// **Este ramo NASCE noutro?** — `true` quando o primeiro ponto é o do pai (o colar), e
+    /// `false` numa raiz.
+    ///
+    /// ⚠️ **Existe porque a JUNTA precisa de saber.** Report do Enio (2026-08-30): *"no quarto
+    /// exemplo, pequenas fendas"* — duas fitas que se encontram num ponto têm as pontas
+    /// perpendiculares a DIRECÇÕES DIFERENTES, e entre as duas sobra uma cunha por cobrir. Quem
+    /// desenha fecha-a com uma junta redonda no ponto, e só o sabe fazer onde há junta.
+    pub joins_parent: bool,
 }
 
 impl Branch {
@@ -223,7 +231,11 @@ pub fn branches(
         // polilinha degenerada ao `power_stroke`, que devolve vazio — e um vazio silencioso
         // lê-se como *"o ramo sumiu"*.
         if points.len() >= 2 {
-            out.push(Branch { points, widths });
+            out.push(Branch {
+                points,
+                widths,
+                joins_parent: par_ok,
+            });
         }
     }
     out

@@ -195,9 +195,87 @@ fn ribbon(b: &ls::branch::Branch, origin: [f32; 2]) -> Option<ph2d_vec_scene::Co
 /// ⚠️ **`FillRule::NonZero`**: os ramos SOBREPÕEM-SE na junção de propósito (é o colar que fecha
 /// a forquilha), e com par-ímpar a sobreposição viraria um BURACO — exactamente o defeito que o
 /// colar veio curar, de volta por outra porta.
+/// **A JUNTA REDONDA** de um ramo que nasce noutro — o disco que fecha a cunha.
+///
+/// ⛔⛔ **Report do Enio (2026-08-30), 4.ª planta: *"pequenas fendas"*.** Duas fitas que se
+/// encontram no MESMO ponto e com a MESMA largura ainda deixam um vão: as pontas delas são
+/// perpendiculares a **direcções diferentes**, e entre as duas sobra uma cunha de ângulo `θ` e
+/// raio `w/2` por cobrir. *O colar curou a LARGURA da junção; a ORIENTAÇÃO das duas pontas
+/// ficou por curar, e é ela que se vê como um risco fino.*
+///
+/// ⇒ um disco de raio `w/2` centrado no ponto de junção cobre a cunha **qualquer que seja o
+/// ângulo** — é a *round join* que todo desenhador de traço usa, e a única que não precisa de
+/// saber quanto a curva vira.
+///
+/// ⚠️ **`JOIN_SIDES = 12`, e o recurso é o RAIO EM PIXELS.** Um dodecágono difere de um círculo
+/// em `1 − cos(π/12) = 3,4 %` do raio; nas juntas mais grossas desta cena isso é fracção de
+/// pixel, e nas finas é invisível. Mais lados é geometria paga em toda junta de toda planta.
+fn join_disc(centre: [f64; 2], radius: f64) -> Option<ph2d_vec_scene::Contour> {
+    const JOIN_SIDES: usize = 12;
+    if !(radius.is_finite() && radius > 0.0) {
+        return None;
+    }
+    let verts = (0..JOIN_SIDES)
+        .map(|k| {
+            #[allow(clippy::cast_precision_loss)]
+            let a = std::f64::consts::TAU * k as f64 / JOIN_SIDES as f64;
+            VecVertex::corner([centre[0] + radius * a.cos(), centre[1] + radius * a.sin()])
+        })
+        .collect();
+    Some(ph2d_vec_scene::Contour {
+        verts,
+        closed: true,
+    })
+}
+
+/// **TODO CONTORNO SAI NO MESMO SENTIDO** — a lei sem a qual o `NonZero` faz buracos.
+///
+/// ⛔⛔ **Apanhado pelo gate da fenda, e é uma armadilha de primeira ordem.** Sob `NonZero` duas
+/// voltas de SINAIS OPOSTOS **cancelam**: onde a junta cobria a fita o número de voltas dava
+/// `0`, e a regra de preenchimento abria ali um buraco — *a cura da fenda a produzir uma fenda,
+/// no mesmo sítio*. A fita nasce com o sentido que a normal do vértice lhe dá; o disco nascia
+/// com o sentido do ângulo a crescer. Nada obrigava os dois a concordar.
+///
+/// ⇒ a área com sinal decide, e quem estiver ao contrário é invertido. É `O(n)` sobre pontos
+/// que já estão na mão, e vale para todo contorno futuro sem ninguém ter de se lembrar disto.
+fn face_the_same_way(c: &mut ph2d_vec_scene::Contour) {
+    let n = c.verts.len();
+    if n < 3 {
+        return;
+    }
+    let twice_area: f64 = (0..n)
+        .map(|i| {
+            let a = c.verts[i].anchor;
+            let b = c.verts[(i + 1) % n].anchor;
+            a[0] * b[1] - b[0] * a[1]
+        })
+        .sum();
+    if twice_area < 0.0 {
+        c.verts.reverse();
+    }
+}
+
 fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<VecPath> {
-    let mut contours: Vec<ph2d_vec_scene::Contour> =
-        branches.iter().filter_map(|b| ribbon(b, origin)).collect();
+    let mut contours: Vec<ph2d_vec_scene::Contour> = Vec::with_capacity(branches.len() * 2);
+    for b in branches {
+        if let Some(c) = ribbon(b, origin) {
+            contours.push(c);
+        }
+        // ⭐ A junta, e **só onde há junta**: uma raiz não nasce em ninguém, e um disco na base
+        // arredondaria o pé do tronco — uma mudança de forma que ninguém pediu.
+        if b.joins_parent
+            && let (Some(p0), Some(w0)) = (b.points.first(), b.widths.first())
+            && let Some(c) = join_disc(
+                [f64::from(p0[0] - origin[0]), f64::from(p0[1] - origin[1])],
+                f64::from(*w0) * 0.5,
+            )
+        {
+            contours.push(c);
+        }
+    }
+    for c in &mut contours {
+        face_the_same_way(c);
+    }
     if contours.is_empty() {
         return None;
     }

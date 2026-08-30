@@ -234,3 +234,95 @@ fn a_big_plant_is_published_whole_and_no_second_ceiling_clips_it() {
         "a membrana construiu {built} fitas de {want} — alguma coisa está a cortar a planta"
     );
 }
+
+/// O número de voltas (`NonZero`) de um ponto na geometria composta — o mesmo critério com que
+/// o renderer a preenche.
+fn winding(path: &ph2d_vec_scene::VecPath, q: [f64; 2]) -> i32 {
+    let mut w = 0i32;
+    let contours = std::iter::once((path.verts.as_slice(), path.closed))
+        .chain(path.subpaths.iter().map(|c| (c.verts.as_slice(), c.closed)));
+    for (verts, _closed) in contours {
+        let n = verts.len();
+        for i in 0..n {
+            let a = verts[i].anchor;
+            let b = verts[(i + 1) % n].anchor;
+            // Regra clássica da meia-recta para o número de voltas.
+            if a[1] <= q[1] {
+                if b[1] > q[1] {
+                    let cross = (b[0] - a[0]) * (q[1] - a[1]) - (q[0] - a[0]) * (b[1] - a[1]);
+                    if cross > 0.0 {
+                        w += 1;
+                    }
+                }
+            } else if b[1] <= q[1] {
+                let cross = (b[0] - a[0]) * (q[1] - a[1]) - (q[0] - a[0]) * (b[1] - a[1]);
+                if cross < 0.0 {
+                    w -= 1;
+                }
+            }
+        }
+    }
+    w
+}
+
+/// ⛔⛔⛔ **NENHUMA FENDA NA JUNÇÃO** — o report do Enio de 2026-08-30 (*"no quarto exemplo, com
+/// Custom, pequenas fendas"*), medido.
+///
+/// ⚠️ **A régua é a COBERTURA, não a contagem de contornos.** Um gate que só contasse os discos
+/// ficaria verde com o disco no sítio errado ou com raio zero. Este pergunta o que o olho
+/// pergunta: *este ponto está pintado?* — pelo mesmo critério (`NonZero`) com que o renderer o
+/// preenche.
+///
+/// A afirmação é a propriedade que o disco compra: **todo ponto a menos de `w/2` da junção está
+/// coberto**. É exactamente o que uma cunha por cobrir viola, e a sonda varre um anel inteiro de
+/// direcções para não depender de adivinhar de que lado a cunha caiu.
+#[test]
+fn no_wedge_is_left_uncovered_where_a_branch_meets_its_parent() {
+    let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+    // ⚠️ Quatro gerações, não cinco: a sonda é `O(sondas × vértices)` e a fixtura grande punha
+    // o gate em 18 s. `624` ramos já dão `124` juntas, que é população de sobra para a lei.
+    state.doc.graph.set_param(n, ls::param::GENERATIONS, 4.0);
+    let resolved =
+        super::super::motion_externals::resolved_params(&mut state, n, 0.0, &ls::MANIFEST);
+    let sk = ls::skeleton("F", "F -> F[+F]F[-F]F", |name: &str| {
+        resolved.get(name).copied().unwrap_or(0.0)
+    });
+    let bs = ls::branch::branches(
+        &super::v2(&sk, "P"),
+        &super::v1(&sk, "parent"),
+        &super::v2(&sk, "size"),
+        &super::v1(&sk, "sym"),
+        0.0,
+    );
+    let origin = bs[0].points[0];
+    let path = super::plant_geometry(&bs, origin).expect("a planta tem geometria");
+
+    let joints: Vec<_> = bs.iter().filter(|b| b.joins_parent).collect();
+    assert!(
+        joints.len() > 100,
+        "a fixtura tem de ter juntas: {}",
+        joints.len()
+    );
+    let mut naked = 0usize;
+    for b in &joints {
+        let (p0, w0) = (b.points[0], b.widths[0]);
+        let r = f64::from(w0) * 0.5 * 0.6;
+        for k in 0..16 {
+            let a = std::f64::consts::TAU * f64::from(k) / 16.0;
+            let q = [
+                f64::from(p0[0] - origin[0]) + r * a.cos(),
+                f64::from(p0[1] - origin[1]) + r * a.sin(),
+            ];
+            if winding(&path, q) == 0 {
+                naked += 1;
+            }
+        }
+    }
+    assert_eq!(
+        naked,
+        0,
+        "{naked} sondas de {} caíram em cima de uma FENDA — a cunha entre as duas pontas não \
+         está coberta",
+        joints.len() * 16
+    );
+}

@@ -330,6 +330,42 @@ exprimível (todos apontam para uma); com **uma da cena**, «este tem a sua» **
 todo**. *O geral contém o particular; o particular não contém o geral.* ⚠️ Marcada como **derivada
 do critério**, e ⛔ reversível se o critério mudar.
 
+### D9.2 — **As duas réguas ficam AMBAS no app**: px *e* metros, graus *e* radianos
+
+> **Enio, 2026-08-30:** *"Devemos ter ambas as opções no app (px e metros, graus e radianos)."*
+
+⚠️ Isto **emenda** o que eu escrevi na D9.1, onde tratei «graus» como *a* unidade de autoria. Não é
+*a*: é **uma das duas**, escolhível. A lei que fica de pé é a outra metade do que eu disse —
+**unidade de LEITURA ≠ unidade de ARMAZENAMENTO**: guarda-se metros e radianos, sempre.
+
+⭐⭐ **Metade já ship-a, com a arquitectura certa**
+([`medicoes/05_as_duas_reguas.md`](medicoes/05_as_duas_reguas.md)):
+`DisplayUnit { Meters, Pixels }` tem enum, menu (*Settings → Display unit*), ponte
+(`pixels_per_meter`), persistência no ficheiro e **62 consumidores**. E traz três decisões já
+tomadas **com o motivo escrito**, que a metade em falta herda: fica **fora do `ProjectState`**
+(⚠️ trocar a unidade **não entra no undo**, preço declarado) · **viaja no ficheiro** (*"são knobs
+que ESQUECEM"*) · e o espelho do ficheiro tem **gate de round-trip por `PartialEq` inteiro** —
+⭐ que **já defende o campo que ainda não existe**.
+
+⏳ **E a outra metade está a um campo de distância:** `Unit { Px, Meters, Degrees, Radians,
+Percent }` já existe no widget, com sufixo e parser (há teste: `parse("2.25rad")`). ⛔ **Mas
+`Unit::Radians` tem 5 usos e os cinco estão dentro do próprio ficheiro** — nada no app alguma vez
+**mostra** um ângulo em radianos.
+
+⚠️ **Não é um id órfão nem um knob morto — é uma terceira forma**, e vale distingui-la porque as
+curas diferem: a **entrada já aceita** `rad`, e é a **saída** que nunca o produz. *Meio caminho
+ligado: o app lê radianos e nunca os escreve.*
+
+⇒ Falta **um campo** (`DisplayAngle`), **um menu** (irmão de `settings_unit.rs`, 34 linhas), **o
+campo no espelho** — e o trabalho real: os sítios que hoje fixam `Unit::Degrees` passarem a
+**perguntar**, como os 62 fazem com o comprimento.
+
+⛔ **Armadilha nomeada:** nem todo ângulo é do artista. O `skew_x`/`skew_y`, a **fase** de um
+oscilador e o ângulo de um gradiente também são radianos. A troca vale para os ângulos **autorados**
+e a lista tem de ser explícita — senão a unidade escorrega para leituras onde não significa nada.
+
+---
+
 ### ⛔ E uma correcção minha, no ponto que decidia o desenho
 
 A primeira redacção da D9 e do `pesquisa/06` dizia que o objecto 2D se posiciona **em pixels**.

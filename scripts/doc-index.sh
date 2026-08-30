@@ -64,6 +64,19 @@ MODE = sys.argv[1]
 # ---------------------------------------------------------------------------
 DIRS = [
     dict(
+        dir="docs/UI_New_and_Simple/handoffs",
+        titulo="`UI_New_and_Simple / handoffs` — o registro por jornada da `line/UIUX`",
+        ordem="data",
+        o_que_e=(
+            "O registro de **como** a UI nova foi sendo construída — um arquivo por jornada da "
+            "linha. O **pensamento** (as medições, a triagem de licença das referências, as "
+            "decisões do Enio e a spec) fica um nível acima, em "
+            "[`../README.md`](../README.md).\n>\n"
+            "> ⚠️ Cada handoff descreve o mundo **no dia em que foi escrito**. O estado vivo é o "
+            "`CLAUDE.md` §5."
+        ),
+    ),
+    dict(
         dir="docs/Motion Nodes",
         titulo="`Motion Nodes` — índice do módulo",
         ordem="num",

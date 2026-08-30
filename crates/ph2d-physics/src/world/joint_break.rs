@@ -357,8 +357,7 @@ impl super::PhysicsWorld {
     /// (`RigidBody::additional_solver_iterations`). Nothing in this wrapper sets
     /// one, so the count is global; a body that did would read low here.
     pub(super) fn joint_impulse_to_force(&self) -> f32 {
-        self.integration_parameters.num_solver_iterations.get() as f32
-            / self.integration_parameters.dt
+        self.integration_parameters.num_solver_iterations as f32 / self.integration_parameters.dt
     }
 
     /// **The peak reaction this joint carried over the last tick's sub-steps** —

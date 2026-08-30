@@ -4795,9 +4795,9 @@ dependencies = [
 
 [[package]]
 name = "parry2d"
-version = "0.23.0"
+version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3c2b76147dc43564857a6e31e112f4c6b947ad63398f38a4d6a1a734b9893a1"
+checksum = "ef681740349cec3ab9b5996b03b459b383b6998e1ffcb2804e8b57eb1e8491d9"
 dependencies = [
  "approx",
  "arrayvec",
@@ -4805,7 +4805,8 @@ dependencies = [
  "downcast-rs 2.0.2",
  "either",
  "ena",
- "hashbrown 0.15.5",
+ "foldhash 0.2.0",
+ "hashbrown 0.16.1",
  "indexmap",
  "log",
  "nalgebra 0.34.2",
@@ -8771,9 +8772,9 @@ checksum = "ca45419789ae5a7899559e9512e58ca889e41f04f1f2445e9f4b290ceccd1d08"
 
 [[package]]
 name = "rapier2d"
-version = "0.28.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e4cb5dcf7ddba34b02408fde796237d4349e6b2ef5df7cc7efdfa85bf7c7fbe"
+checksum = "7dbf9046b02ffdaff5a8b65405e5e557d71dfb13e74d335fcf9fd12ad6c503a7"
 dependencies = [
  "approx",
  "arrayvec",
@@ -8789,7 +8790,9 @@ dependencies = [
  "profiling",
  "rustc-hash 2.1.3",
  "simba 0.9.1",
+ "static_assertions",
  "thiserror 2.0.20",
+ "wide 0.7.33",
 ]
 
 [[package]]

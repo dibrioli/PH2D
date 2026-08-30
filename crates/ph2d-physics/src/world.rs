@@ -5,6 +5,8 @@
 //! fixed-step tick (see [`ph2d_core::FixedStep`]).
 
 pub mod blast;
+/// A CONSTRUÇÃO de um corpo — irmão do `collider_build`, e pelo teto de 700 LOC.
+mod body_build;
 pub mod buoyancy;
 /// Consultas de cena (raio/forma) — a perna da cápsula flutuante (docs dele).
 pub mod cast;
@@ -54,8 +56,8 @@ use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
 use rapier2d::dynamics::{
-    CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, LockedAxes,
-    MultibodyJointSet, RigidBody, RigidBodyBuilder, RigidBodyHandle, RigidBodySet, RigidBodyType,
+    CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
+    RigidBodyHandle, RigidBodySet, RigidBodyType,
 };
 use rapier2d::geometry::{BroadPhaseBvh, ColliderHandle, ColliderSet, NarrowPhase};
 use rapier2d::na::{Isometry2, Vector2};
@@ -304,7 +306,42 @@ impl PhysicsWorld {
     pub fn new() -> Self {
         let integration_parameters = IntegrationParameters {
             dt: Self::DEFAULT_DT / Self::DEFAULT_SUBSTEPS as f32,
-            contact_natural_frequency: Self::DEFAULT_CONTACT_HZ,
+            // ⚠️ **O `damping_ratio` tem de vir escrito, e não do `..default()`.** Os dois
+            // coeficientes viraram UM struct na rapier 0.31, então preencher só a frequência
+            // não é possível — e o `5.0` aqui é exactamente o que o default da 0.28 dava, que
+            // é o número que o doc acima diz ter sido MEDIDO (subir para 20 esticou a
+            // recuperação de 9 para 30 quadros). *Uma constante que era implícita passou a ser
+            // nossa; escrevê-la é o que impede o dia em que o upstream a muda por baixo.*
+            contact_softness: rapier2d::dynamics::SpringCoefficients {
+                natural_frequency: Self::DEFAULT_CONTACT_HZ,
+                damping_ratio: 5.0,
+            },
+            // ⛔ **Um padrão da rapier mudou na 0.31 e ele MUDA O TATO: as iterações
+            // internas de estabilização caíram de `2` para `1`.** Fica fixado no valor de
+            // sempre, pelo critério da casa: *um padrão que muda o TATO é conteúdo autorado
+            // — há cenas ajustadas contra ele —, enquanto um que muda a ARQUITECTURA do
+            // solver se aceita, porque não há como o fixar.* Este é uma constante, e fixá-lo
+            // custa uma linha.
+            //
+            // ⭐ **O que elas compram está MEDIDO, e não é o que se supõe.** A leitura
+            // óbvia é *«mais estabilização = pilha em repouso mais quieta»*. O que o gate
+            // `the_same_gesture_hangs_only_the_one_with_a_reach` mostra é outra coisa: ele
+            // põe um personagem contra uma parede **sem beirada ao alcance**, e ele tem de
+            // **escorregar**. Com `1` iteração ele deixou de escorregar de todo
+            // (`1,727 → 1,750` em dois segundos, contra os `0,15 m` que a barra mede); com
+            // `2` o escorregar volta e o gate fica verde. ⇒ estas iterações são
+            // **load-bearing para o ATRITO**, não só para o tremor de uma pilha.
+            // *Uma parede que segura quem não se agarrou não é economia de cálculo: é outra
+            // regra de jogo.*
+            //
+            // ⛔⛔ **E uma hipótese REFUTADA, registada para não voltar:** a 0.29 introduziu
+            // um `friction_model` configurável cujo padrão (`Simplified`) resolve uma
+            // restrição de atrito por grupo de **4 contactos** em vez de uma por contacto — o
+            // candidato óbvio para explicar a mudança no escorregar contra a parede. **Ele é
+            // `#[cfg(feature = "dim3")]`**: não existe em 2D, e nunca nos alcançou. *O
+            // compilador matou a hipótese antes da medição — e é por isso que se escreve o
+            // palpite em código em vez de o assumir.*
+            num_internal_stabilization_iterations: 2,
             ..IntegrationParameters::default()
         };
         Self {
@@ -429,100 +466,6 @@ impl PhysicsWorld {
 
     pub fn step_count(&self) -> u64 {
         self.step_count
-    }
-
-    /// Spawn a body of any [`RigidBodyType`] with one attached collider,
-    /// from a plain [`BodyDesc`]. The general constructor the ECS bridge
-    /// (`ph2d-physics-ecs`) drives — it covers every body×shape combo the
-    /// two convenience helpers above don't (dynamic cuboid, static ball,
-    /// kinematic, …). Returns the body handle; the bridge reads its pose
-    /// back via [`PhysicsWorld::body_pose`].
-    ///
-    /// Additive — the existing helpers, `step`, and the C9 hash are
-    /// untouched, so the cross-OS determinism gate stays byte-identical.
-    pub fn spawn_body(&mut self, desc: BodyDesc) -> RigidBodyHandle {
-        let body = RigidBodyBuilder::new(desc.body_type)
-            .translation(Vector2::new(desc.x, desc.y))
-            .rotation(desc.rotation)
-            // Per-body gravity multiplier (W8). Setting `1.0` explicitly is
-            // rapier's own default, so an unscaled body is byte-identical to
-            // before this existed; the value survives rewind because it rides
-            // the `BodyDesc` the world rebuilds from.
-            .gravity_scale(desc.gravity_scale)
-            // Dominance group (collision priority). `0` is rapier's own default, so a
-            // body authored before this is byte-identical; a higher value makes this
-            // body bulldoze lower-dominance ones (infinite relative mass to them). It
-            // rides the `BodyDesc`, so a rewind re-arms it.
-            .dominance_group(desc.dominance)
-            // Initial velocity (W9), applied at build. `[0,0]`/`0` is rapier's
-            // own default, so a body authored before this is byte-identical; and
-            // because it rides the `BodyDesc`, a rewind to t=0 re-arms the launch.
-            //
-            // ⚠️ A LOCKED translation axis drops its velocity component. rapier's
-            // `LockedAxes` zeroes the axis's inverse mass, so no FORCE can move it
-            // (gravity on a Y-locked body does nothing) — but `RigidBodyVelocity::
-            // integrate` advances the body by its raw `linvel` WITHOUT projecting
-            // out the locked axes, so an explicitly-set initial velocity would drift
-            // a "frozen" body forever (measured: an X-locked body launched at 3 m/s
-            // slid the full 1.5 m in 0.5 s). rapier special-cases only rotation. So
-            // a frozen axis carries no velocity — Unity/Godot's Freeze Position
-            // fully pins the axis, and this makes the lock authoritative.
-            .linvel(Vector2::new(
-                if desc.lock_x { 0.0 } else { desc.linvel[0] },
-                if desc.lock_y { 0.0 } else { desc.linvel[1] },
-            ))
-            .angvel(desc.angvel)
-            // Continuous collision detection. `false` is rapier's own default, so
-            // a body authored before this is byte-identical; enabling it makes the
-            // pipeline sweep this body's motion so a fast one does not tunnel
-            // through thin geometry. It rides the `BodyDesc`, so a rewind re-arms it.
-            .ccd_enabled(desc.ccd)
-            // Constraints (Freeze Rotation / Position X / Position Y). Each flag ORs
-            // in its own axis of the SAME `LockedAxes` bitmask; `empty()` (no flag
-            // set) is rapier's default, so an unconstrained body is byte-identical.
-            // `ROTATION_LOCKED` pins the angular DOF, `TRANSLATION_LOCKED_X/_Y` pin a
-            // translation DOF — a body can freeze any combination. Rides the
-            // `BodyDesc`, so a rewind re-arms every locked axis.
-            .locked_axes({
-                let mut axes = LockedAxes::empty();
-                if desc.lock_rotation {
-                    axes |= LockedAxes::ROTATION_LOCKED;
-                }
-                if desc.lock_x {
-                    axes |= LockedAxes::TRANSLATION_LOCKED_X;
-                }
-                if desc.lock_y {
-                    axes |= LockedAxes::TRANSLATION_LOCKED_Y;
-                }
-                axes
-            })
-            .build();
-        let handle = self.bodies.insert(body);
-        self.stamp_defaults(handle);
-        // Per-body damping override (if any), stamped AFTER the global defaults so it
-        // wins. `None` (the common case) leaves the body on the global drag, so an
-        // un-overridden body is byte-identical to before this existed. Rides the
-        // `BodyDesc`, so a rewind re-arms it.
-        if let Some(d) = desc.damping {
-            self.apply_damping_override(handle, d);
-        }
-        let collider = collider_build::build_collider(&desc);
-        let collider_handle = self
-            .colliders
-            .insert_with_parent(collider, handle, &mut self.bodies);
-        self.stamp_layer(collider_handle, desc.layer as usize);
-        // Force zone (W-Area / W-AreaDrag). `zone_effect` is the single door — it
-        // refuses a solid collider (an area you cannot enter is not an area, and the
-        // narrow phase reports no overlap for it) and an INERT one (no force and no
-        // drag: it would touch nothing and only WAKE bodies, so registering it would
-        // not be byte-neutral). Kept sorted by handle so two overlapping zones apply
-        // in a fixed order.
-        if let Some(effect) = effector::zone_effect(&desc) {
-            self.effectors.push((handle, effect, desc.shape));
-            self.effectors
-                .sort_unstable_by_key(|(h, _, _)| h.into_raw_parts());
-        }
-        handle
     }
 
     /// Teleport a body to `(x, y, rotation)` (world units, radians) and
@@ -669,11 +612,22 @@ impl PhysicsWorld {
 /// `memberships` is the body's own layer bit — which is also how a collider
 /// remembers its layer, so nothing else has to store it. `filter` is that
 /// layer's row of the matrix.
+/// ⚠️ **`InteractionTestMode::And` é o comportamento de sempre, escrito à mão.** A rapier 0.31
+/// acrescentou um terceiro argumento que escolhe como os dois lados se testam: `And` (o `default`,
+/// e o único que existia antes — *ambos os lados têm de aceitar o outro*) ou `Or` (*basta um, e só
+/// se os DOIS pedirem `Or`*).
+///
+/// ⛔ **Passar o `And` explicitamente, em vez de o herdar de um `..Default`, é deliberado:** esta é
+/// a porta ÚNICA das camadas de colisão, e a regra que ela implementa — *«uma camada só interage
+/// com outra se as duas linhas da matriz concordarem»* — é **exactamente** o `And`. Se um dia o
+/// upstream mudar o `default`, a matriz do artista passaria a significar outra coisa **sem uma
+/// linha nossa mudar**. O terceiro argumento é a nossa resposta, não a herança da deles.
 pub(super) fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups {
     let layer = layer.min(layers::MAX_LAYERS - 1);
     InteractionGroups::new(
         Group::from_bits_truncate(1 << layer),
         Group::from_bits_truncate(u32::from(matrix.row(layer))),
+        rapier2d::geometry::InteractionTestMode::And,
     )
 }
 

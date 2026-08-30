@@ -342,6 +342,66 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
 
+## §13 — Bloco E, etapa A — `rapier2d` 0.28 → **0.31.0** (2026-08-29)
+
+**A paragem intermédia que o plano não tinha.** A 0.31.0 é a **última versão em `nalgebra` puro**
+(o `glamx` entra na 0.32), e parar aqui entrega o solver reescrito da 0.29, o `contact_softness`,
+o `InteractionTestMode` e o `CoefficientCombineRule` **sem tocar num único `Vector2`**.
+
+⇒ É isso que faz o `physics_ecs_c9` **isolar** a mudança de solver: um hash que se mexe aqui tem
+uma causa só. Misturar as duas etapas tornaria qualquer diferença impossível de atribuir.
+
+### §13.1 — As seis mudanças de API, e duas são MELHORIAS
+
+| o quê | nota |
+|---|---|
+| `num_solver_iterations` deixou de ser `NonZeroUsize` | ⚠️ **a rede mudou de dono** — a guarda contra o zero era do TIPO e passa a ser nossa. Escrita. |
+| `contact_damping_ratio` + `contact_natural_frequency` → `contact_softness` | ⭐ os dois sempre foram os **dois parâmetros de UMA mola**; como campos soltos dava para escrever um e esquecer o outro |
+| `effective_world_inv_inertia_sqrt` → `effective_world_inv_inertia` | ⭐ a rapier deixou de guardar a **raiz**, e o nosso código elevava-a ao quadrado para desfazer isso. Menos uma ida-e-volta. |
+| `InteractionGroups::new` ganhou um 3.º argumento | ⚠️ escrevemos `And` **à mão** em vez de herdar o `default` — ver §13.2 |
+
+### §13.2 — ⚠️ Por que o `InteractionTestMode::And` vai escrito
+
+A porta das camadas de colisão é **única** (`groups_for`), e a regra que ela implementa é
+*«uma camada só interage com outra se as duas linhas da matriz concordarem»* — que é **exactamente**
+o `And`. Herdá-lo de um `Default` significaria que, no dia em que o upstream mudasse esse default,
+**a matriz que o artista desenhou passaria a querer dizer outra coisa sem uma linha nossa mudar**.
+
+### §13.3 — ⭐⭐ O achado: um corpo com «não gira» voltou a girar
+
+Dois gates caíram, e o defeito é do pior tipo: **a marca continua no inspector e o corpo deixa de
+obedecer**. Medido: um corpo com `lock_rotation` e `angvel = 5` girava **2,5 rad em 0,5 s**.
+
+⭐ **E a resposta já estava escrita no ficheiro.** O comentário do eixo de *translação* dizia, com
+todas as letras: *«a rapier trata só a ROTAÇÃO como caso especial»* — até à 0.28 o solver anulava
+sozinho a velocidade angular de um corpo travado, e por isso só a translação precisava da nossa
+projecção. **O solver reescrito da 0.29 não o faz mais.**
+
+⚠️ *A assimetria nunca foi nossa: era compensação de uma assimetria deles. Quando ela caiu, a nossa
+lei ficou meio escrita.* A cura é a simétrica — um eixo congelado não carrega velocidade, nos dois
+eixos —, que é também o que o Unity e o Godot fazem, e o que o nosso próprio comentário já defendia.
+
+### §13.4 — ⭐⭐ E um gate que passava por SORTE
+
+`a_joint_made_mid_swing_survives_a_reset_unchanged` afirma *«o pino não pode andar ao longo do
+corpo depois de um Reset»* — intenção certa, **régua errada**. Ele comparava *onde a prancha estava
+pendurada* depois de 140 tiques, vivo contra repetido, com uma barra de `0,05 m`.
+
+⛔ **As duas corridas não são a mesma simulação:** a viva cai 40 tiques em queda livre antes de ser
+presa; a repetida nasce presa. Energias diferentes ⇒ amplitudes diferentes ⇒ **dois pêndulos sem
+amortecimento que nunca convergem**. Medido, variando os tiques:
+
+| tiques | 140 | 300 | 600 | 1200 |
+|---|---|---|---|---|
+| \|diferença\| | 0,133 | 0,035 | 0,055 | **0,289** |
+
+A diferença **oscila** — ela é a fase de dois pêndulos fora de sincronia. Que ela ficasse abaixo de
+`0,05` aos 140 tiques era **coincidência**. O solver novo mudou a fase, não o pino.
+
+⇒ A régua passa a ser **a âncora** (`local_a`/`local_b`), que é o que o teste sempre disse querer
+medir e que é um **facto discreto**: ou são os mesmos bytes dos dois lados do Reset, ou não são.
+⚠️ *Uma régua que aceita um INTERVALO pode ser satisfeita por acaso; um oráculo não.*
+
 ## §12 — A cauda do bloco F que tinha ficado por fazer (2026-08-29)
 
 As **cinco** que o placar escondia (§«Bloco F», correcção de contagem). A **F16** (`usvg`) entrou

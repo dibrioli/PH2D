@@ -38,7 +38,10 @@ impl PhysicsWorld {
     /// simulation** — including the cross-OS C9 hash. That is a deliberate
     /// product decision, not a free knob.
     pub fn set_contact_response(&mut self, damping_ratio: f32, max_corrective_velocity: f32) {
-        self.integration_parameters.contact_damping_ratio = damping_ratio;
+        // ⚠️ A rapier 0.31 juntou os dois coeficientes do contacto num `SpringCoefficients`
+        // (`natural_frequency` + `damping_ratio`), que é o que eles sempre foram: os dois
+        // parâmetros de UMA mola. Dois campos soltos deixavam escrever um e esquecer o outro.
+        self.integration_parameters.contact_softness.damping_ratio = damping_ratio;
         self.integration_parameters
             .normalized_max_corrective_velocity = max_corrective_velocity;
     }
@@ -47,7 +50,9 @@ impl PhysicsWorld {
     /// *"increasing this value will make it so that penetrations get fixed
     /// more quickly at the expense of potential jitter due to overshooting"*.
     pub fn set_contact_frequency(&mut self, hz: f32) {
-        self.integration_parameters.contact_natural_frequency = hz;
+        self.integration_parameters
+            .contact_softness
+            .natural_frequency = hz;
     }
 
     /// How many integration sub-steps one [`PhysicsWorld::step`] runs.
@@ -63,8 +68,13 @@ impl PhysicsWorld {
 
     /// Number of solver iterations per step (rapier default `4`). More
     /// iterations resolve a stack's contacts more completely, at linear cost.
+    ///
+    /// ⚠️ **A rapier 0.31 tirou o `NonZeroUsize` daqui** — o campo é `usize` puro. A guarda
+    /// contra o zero deixou de ser do TIPO e passa a ser nossa: um `0` faria o solver não
+    /// resolver contacto nenhum, e é isso que o `if n > 0` impede. *Quando a rede muda de
+    /// dono, ela tem de continuar a existir.*
     pub fn set_solver_iterations(&mut self, n: usize) {
-        if let Some(n) = std::num::NonZeroUsize::new(n) {
+        if n > 0 {
             self.integration_parameters.num_solver_iterations = n;
         }
     }

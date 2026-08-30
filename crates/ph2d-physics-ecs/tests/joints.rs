@@ -609,12 +609,36 @@ fn a_joint_made_mid_swing_survives_a_reset_unchanged() {
     ));
     // ⚠️ A junta nasceu AGORA, autorada por nome — resolve-se aqui, antes do primeiro
     // dispatch que a vai ver. O laço acima já resolveu as anteriores; esta é nova.
+    //
+    // ⛔⛔ **A RÉGUA DESTE GATE MUDOU EM 2026-08-29, e a antiga passava por SORTE.**
+    // Ela comparava *onde a prancha estava pendurada* depois de 140 tiques, vivo contra
+    // repetido, com uma barra de 0,05 m. Mas as duas corridas **não são a mesma
+    // simulação**: a viva cai 40 tiques em queda livre antes de ser presa, a repetida
+    // nasce presa. Energias diferentes ⇒ amplitudes diferentes ⇒ **um pêndulo sem
+    // amortecimento que nunca converge**. Medido, variando os tiques:
+    //
+    //   140 → 0,133   300 → 0,035   600 → 0,055   1200 → 0,289
+    //
+    // A diferença **oscila**: ela é a fase de dois pêndulos fora de sincronia. Que ela
+    // ficasse abaixo de 0,05 aos 140 tiques era coincidência de onde os dois estavam —
+    // e o solver reescrito da rapier 0.29 mudou a fase, não o pino.
+    //
+    // ⇒ A régua passa a ser **a âncora**, que é o que o teste sempre afirmou querer
+    // medir (*«o pino não pode andar ao longo do corpo»*) e que é um FATO discreto:
+    // ou `local_a`/`local_b` são os mesmos bytes dos dois lados do Reset, ou não são.
+    // *Uma régua que aceita um intervalo pode ser satisfeita por acaso; um oráculo não.*
     ph2d_physics_ecs::resolve_body_names(sim.world_mut());
     for tick in 41..=140 {
         bridge.dispatch(&mut sim, true, tick);
     }
     assert_eq!(bridge.joint_count(), 1);
-    let live = dist(pos(&mut sim, "Plank"), [0.0, 6.0]);
+    // ⚠️ **A régua é a ÂNCORA, e não onde a prancha está pendurada.** Ver a nota abaixo:
+    // medir a pose depois de N tiques media a FASE de um pêndulo, não a posição do pino.
+    let pin = named(&mut sim, "Pin");
+    let live = *sim
+        .world()
+        .get::<PhysicsJoint>(pin)
+        .expect("a junta existe");
 
     // Reset, then replay to the same tick. The constraint must be the SAME
     // one — the pin cannot move along the body because the clock went home.
@@ -622,13 +646,27 @@ fn a_joint_made_mid_swing_survives_a_reset_unchanged() {
     for tick in 1..=140 {
         bridge.dispatch(&mut sim, true, tick);
     }
-    let replayed = dist(pos(&mut sim, "Plank"), [0.0, 6.0]);
+    let replayed = *sim
+        .world()
+        .get::<PhysicsJoint>(pin)
+        .expect("a junta sobreviveu ao reset");
+
+    assert_eq!(
+        (live.local_a, live.local_b),
+        (replayed.local_a, replayed.local_b),
+        "o pino ANDOU ao longo do corpo: vivo {:?}/{:?}, depois do Reset {:?}/{:?}. A ancora e' \
+         semeada UMA vez, contra a pose de REPOUSO dos corpos — se ela mudar num Reset, a semente \
+         voltou a correr contra a pose VIVA, que e' exactamente a licao que custou 1,771 m de \
+         deriva.",
+        live.local_a,
+        live.local_b,
+        replayed.local_a,
+        replayed.local_b
+    );
     assert!(
-        (live - replayed).abs() < 0.05,
-        "the plank hung {live:.3} m from the hook live and {replayed:.3} m \
-         after a Reset — the joint was re-derived against a different pose, so \
-         the pin walked {:.3} m along the body with nobody touching it",
-        (live - replayed).abs()
+        live.anchored && replayed.anchored,
+        "a junta tem de ficar com `anchored = true` dos dois lados do Reset — sem isso a proxima \
+         reconciliacao re-deriva a ancora, e ai' o pino anda de novo"
     );
 }
 

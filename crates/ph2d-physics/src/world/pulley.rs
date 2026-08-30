@@ -579,7 +579,11 @@ fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Optio
         let mp = body.mass_properties();
         (
             mp.effective_inv_mass,
-            mp.effective_world_inv_inertia_sqrt * mp.effective_world_inv_inertia_sqrt,
+            // ⭐ **A rapier 0.31 deixou de guardar a RAIZ da inércia inversa.** O campo era
+            // `effective_world_inv_inertia_sqrt` e este sítio elevava-o ao quadrado para
+            // desfazer isso; hoje o valor vem direto. Menos uma ida-e-volta por `sqrt`, e
+            // menos uma oportunidade de alguém esquecer o quadrado.
+            mp.effective_world_inv_inertia,
         )
     } else {
         (Vector2::zeros(), 0.0)

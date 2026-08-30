@@ -827,6 +827,166 @@ fn the_apex_exception_list_has_no_stale_entries() {
     }
 }
 
+/// A mesma forma com o **chanfro** posto a `fracao` da parede, e o filete a `fillet` dela.
+fn with_pair(p: &Primitive, chamfer: f32, fillet: f32) -> Option<Primitive> {
+    let limite = ph2d_field::round_limit(p)?;
+    let mut q = p.clone();
+    for (chave, f) in [("field.dim.chamfer", chamfer), ("field.dim.round", fillet)] {
+        let i = ph2d_field::dims(&q).iter().position(|d| d.key == chave)?;
+        ph2d_field::set_dim(&mut q, 0, i, limite * f).ok()?;
+    }
+    Some(q)
+}
+
+/// ⭐⭐⭐ **O CHANFRO ALCANÇA TODA ARESTA DE TODA FORMA** — a irmã do
+/// [`the_fillet_reaches_every_edge_of_every_shape`], e a régua é OUTRA.
+///
+/// # ⛔ Ele nasceu de um report do Enio (2026-08-30)
+///
+/// *«com um prisma veja que algumas arestas não receberam o fillet»*. As quinas **laterais** de um
+/// prisma fecham num sítio do código e o **aro** noutro; o chanfro tinha sido ligado só ao segundo.
+///
+/// # ⚠️ «Sem vinco» é a régua ERRADA para um chanfro, e medi-lo mostrou-o
+///
+/// Um filete apaga a aresta; um chanfro **troca-a por duas**, de 135° cada. A fracção de superfície
+/// sobre um vinco por isso **não** cai a zero, e uma barra copiada da irmã reprovaria produto
+/// correcto.
+///
+/// ⛔ **E a fracção GLOBAL também não serve**: com o defeito o prisma cortava `22 %` do vinco e
+/// curado corta `62 %`, mas há formas legítimas em `36–40 %` (cúpula, ângulo sólido, engrenagem) —
+/// *um limiar entre `22` e `36` esgota-se na primeira forma nova.*
+///
+/// ⭐ A régua que separa é **por PONTO**: pega-se em cada ponto de vinco da forma **viva** e
+/// pergunta-se se o chanfro o **cortou** (o campo chanfrado é positivo ali). Uma aresta esquecida
+/// deixa os pontos dela dentro, e a contagem cai — seja qual for o tamanho dela.
+#[test]
+fn the_chamfer_reaches_every_edge_of_every_shape() {
+    let mut fracos = Vec::new();
+    let mut testadas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        let Some(pct) = fraccao_cortada(&p) else {
+            continue;
+        };
+        testadas += 1;
+        println!("  [chanfro] {}: {pct:.1} % dos vincos cortados", k.key());
+        // ⚠️ Uma forma com ÁPICE declarado tem piso próprio — ver [`CHANFRO_APICE`] e o censo dele.
+        let barra = chanfro_apice(k.key()).unwrap_or(BARRA_DO_CHANFRO);
+        if pct < barra {
+            fracos.push(format!("{} {pct:.1} %", k.key()));
+        }
+    }
+    assert!(
+        testadas >= 15,
+        "a sonda só achou vinco em {testadas} formas — ela deixou de ver arestas"
+    );
+    assert!(
+        fracos.is_empty(),
+        "nestas formas o chanfro deixou arestas por cortar: {fracos:?} — é o report do Enio de \
+         2026-08-30 (o prisma tinha as quinas LATERAIS fechadas noutro sítio do código)"
+    );
+}
+
+/// A fracção dos pontos de vinco que um chanfro a meia parede tem de cortar.
+///
+/// ⚠️ **MEDIDO, não escolhido**: dezanove das vinte formas ficam entre `92,8 %` e `100 %`, e o
+/// defeito que o Enio viu lia `22 %` (prisma) e `79,9 %` (engrenagem). Ver o gate acima para as duas
+/// réguas que foram medidas e **recusadas** antes desta.
+const BARRA_DO_CHANFRO: f64 = 90.0;
+
+/// ⛔ **As formas cujo vinco NÃO é uma junta** — o ápice de um cone não é uma aresta entre duas
+/// peças, é a degenerescência da própria peça, e nenhum chanfro do aro lhe chega.
+///
+/// ⚠️ **A lista é a mesma do [`APEX_EXCEPTION`] na causa e OUTRA na grandeza** (aquela mede vinco
+/// que sobra, esta mede vinco cortado), então os números não se copiam de uma para a outra —
+/// *uma folga calibrada no instrumento errado descreve outra coisa*. Só o `solid_angle` precisa
+/// dela: a `drop` lê `99,5 %` e a `pie` `99,6 %`, e as duas passam a barra normal.
+const CHANFRO_APICE: [(&str, f64); 1] = [("solid_angle", 35.0)];
+
+/// O piso desta forma, se ela for uma das do ápice.
+fn chanfro_apice(key: &str) -> Option<f64> {
+    CHANFRO_APICE
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, v)| *v)
+}
+
+/// ⛔⛔ **A METADE QUE IMPEDE A CATRACA DE SUBIR** — cada entrada do [`CHANFRO_APICE`] tem de
+/// **ainda** estar abaixo da barra normal (senão a causa foi curada e a entrada virou licença) e
+/// **acima** do piso que declara (senão ela regrediu).
+///
+/// ⚠️ É a lei que esta casa mediu em 2026-08-30: *uma catraca sem censo de obsolescência não desce,
+/// ela vira licença* — a lista de folgas de LOC por ficheiro não o tinha e acusou **três** entradas
+/// obsoletas na primeira corrida que o teve.
+#[test]
+fn the_chamfer_apex_list_has_no_stale_entries() {
+    for (nome, piso) in CHANFRO_APICE {
+        let k = PrimitiveKind::ALL
+            .iter()
+            .find(|k| k.key() == nome)
+            .unwrap_or_else(|| panic!("«{nome}» já não é uma forma — a entrada ficou órfã"));
+        let p = representative(*k).unwrap_or_else(|| panic!("«{nome}» não tem representante"));
+        let pct = fraccao_cortada(&p).unwrap_or_else(|| {
+            panic!("«{nome}» deixou de ter chanfro — a entrada não descreve nada")
+        });
+        println!("  [apice-chanfro] {nome}: {pct:.1} % (piso declarado {piso:.1} %)");
+        assert!(
+            pct < BARRA_DO_CHANFRO,
+            "«{nome}» já cumpre a barra normal ({pct:.1} %) — APAGUE a entrada, senão ela vira \
+             licença para a próxima forma"
+        );
+        assert!(
+            pct >= piso,
+            "«{nome}» regrediu para {pct:.1} %, abaixo do piso declarado de {piso:.1} %"
+        );
+    }
+}
+
+/// A fracção dos pontos de vinco da forma VIVA que o chanfro a meia parede corta.
+fn fraccao_cortada(p: &Primitive) -> Option<f64> {
+    let chanfrada = with_pair(p, 0.5, 0.0)?;
+    let (pontos, _, _) = traverse(p, 2048, 4);
+    let vincos = only_creases(&pontos);
+    if vincos.len() < 20 {
+        return None;
+    }
+    let doc = FieldDoc::new(
+        vec![Node::new(Xform::IDENTITY, NodeKind::Leaf(chanfrada))],
+        NodeId(0),
+    )
+    .ok()?;
+    let f = ph2d_field_eval::Field::new(&doc);
+    let cortados = vincos
+        .iter()
+        .filter(|(q, _)| f.at(q[0], q[1], q[2]) > 1.0e-4)
+        .count();
+    Some(100.0 * cortados as f64 / vincos.len() as f64)
+}
+
+/// **SONDA** — quanto vinco sobra em cada forma com o par ligado, a varrer as fracções.
+#[test]
+#[ignore = "sonda: imprime a tabela que escolhe a barra do gate irmao"]
+fn measure_the_pair_over_every_shape() {
+    println!("\n  forma            |  vivo  | so' chanfro | c=.5 r=.2 | c=.4 r=.4 | c=.3 r=.5");
+    for k in PrimitiveKind::ALL {
+        let Some(p) = representative(k) else { continue };
+        if ph2d_field::round_limit(&p).is_none() {
+            continue;
+        }
+        let (vivo, _, _) = probe_with(&p, 1024, 4);
+        let f =
+            |c: f32, r: f32| with_pair(&p, c, r).map_or(f64::NAN, |q| probe_with(&q, 1024, 4).0);
+        println!(
+            "  {:<16} | {vivo:>6.2} | {:>11.2} | {:>9.2} | {:>9.2} | {:>9.2}",
+            k.key(),
+            f(0.5, 0.0),
+            f(0.5, 0.2),
+            f(0.4, 0.4),
+            f(0.3, 0.5)
+        );
+    }
+}
+
 #[test]
 fn the_fillet_reaches_every_edge_of_every_shape() {
     let mut com_aresta = 0;

@@ -695,40 +695,97 @@ fn a_chamfer_honours_the_march_on_every_shape() {
     }
 }
 
-/// ⭐⭐⭐ **O PASSO DA MARCHA PAGA PELO PAR** — a metade que impede a peça de furar.
+/// ⭐⭐⭐ **TODA FORMA MARCHA EM SEGURANÇA COM OS DOIS RECUOS LIGADOS** — o gate que faltava.
 ///
-/// ⛔ A caixa, o cilindro, a extrusão e a moldura arredondavam por **deslocamento** e por isso o
-/// `ph2d_field::fillet_inflates` respondia `false` para elas. Com um chanfro pedido elas passam a ser
-/// uma **intersecção**, e o filete por cima infla como em qualquer outra. *Uma lei medida envelhece
-/// no dia em que alguém acrescenta um produtor novo do mesmo efeito.*
+/// # ⛔⛔ Ele nasceu de um report do Enio (2026-08-30), e o buraco era do CENSO
+///
+/// *«com um prisma veja que algumas arestas não receberam o fillet e ao rotacionar a aparência da
+/// aresta muda»*. A segunda metade é a assinatura de um campo que **sobe mais depressa que a
+/// distância**: a marcha atravessa a superfície, e o ponto em que ela pára passa a depender da
+/// direcção do raio.
+///
+/// ⚠️ **O gate que existia media o par numa forma só — a caixa.** Medido depois do report, sobre as
+/// **vinte** formas com aresta:
+///
+/// | forma | `passo × ‖∇f‖` antes | depois |
+/// |---|---:|---:|
+/// | `Octahedron` | **`3,4572`** | `0,8165` |
+/// | `Wedge` | `1,8928` | `0,9981` |
+/// | `Prism` | `1,4061` | `0,9860` |
+/// | `Box` | `1,2237` | `1,0000` (passo **cheio**) |
+/// | *(16 de 20 acima de `1`)* | | *(nenhuma)* |
+///
+/// ⇒ *um gate escrito para uma forma deixa as outras dezanove por medir*, que é a mesma família do
+/// `the_fillet_reaches_every_edge_of_every_shape`.
+///
+/// # ⭐ A causa era a CONSTRUÇÃO, e não a feature
+///
+/// A 1.ª versão compunha chanfro-e-filete **misturando duas vezes**
+/// (`intersection(intersection(a, plano, r), b, r)`), e cada nível encaixado soma um quadrado na lei
+/// de Cauchy–Schwarz do [`ph2d_field_eval::gradient_bound`] — `√3` numa caixa, medido a `1,7306`.
+/// Hoje é **encolher, chanfrar, deslocar**: um `max` de 1-Lipschitz é 1-Lipschitz.
 #[test]
-fn the_march_pays_for_a_chamfer_with_a_fillet_on_top() {
-    // A caixa é uma das quatro exactas — é nela que a resposta MUDA.
+fn every_shape_marches_safely_with_both_recesses_on() {
+    let mut furam = Vec::new();
+    let mut testadas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let Some(limite) = ph2d_field::round_limit(&base) else {
+            continue;
+        };
+        let meio = limite * 0.5;
+        let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
+            let mut p = p.clone();
+            let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
+            ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
+            Some(p)
+        };
+        let Some(par) = escreve(&base, "field.dim.round", meio)
+            .and_then(|p| escreve(&p, "field.dim.chamfer", meio))
+        else {
+            continue;
+        };
+        testadas += 1;
+        let d = doc_of(par.clone());
+        let passo = f64::from(ph2d_field_eval::safe_march_step(&d));
+        let g = worst_gradient(&field_of(par), 1.2, 30);
+        if passo * g > SLACK {
+            furam.push(format!("{k:?} {:.4}", passo * g));
+        }
+    }
+    assert!(
+        testadas >= 20,
+        "só {testadas} formas com aresta — a lista derivada partiu-se"
+    );
+    assert!(
+        furam.is_empty(),
+        "estas formas marcham por cima da própria superfície com os dois recuos ligados: {furam:?}"
+    );
+}
+
+/// ⭐⭐ **E as QUATRO EXACTAS andam o passo CHEIO com os dois recuos** — a caixa, o cilindro, a
+/// extrusão e a moldura.
+///
+/// ⚠️ **A 1.ª versão desta wave dizia o contrário e tinha um gate a afirmá-lo**, porque a construção
+/// misturada de facto inflava. *Um gate verde pode pinar um defeito*: aquele estava a defender o
+/// preço de uma escrita errada como se fosse uma propriedade da forma.
+#[test]
+fn the_four_exact_shapes_keep_the_full_step_with_both_recesses() {
     let caixa = |round: f32, chamfer: f32| Primitive::Box {
         half: [0.4, 0.3, 0.25],
         round,
         chamfer,
     };
-    let passo = |p: Primitive| ph2d_field_eval::safe_march_step(&doc_of(p));
-    let cheio = passo(caixa(0.0, 0.0));
-    assert!(
-        (cheio - 1.0).abs() < 1e-6,
-        "uma caixa viva anda o passo cheio, andou {cheio}"
-    );
-    assert!(
-        (passo(caixa(0.05, 0.0)) - 1.0).abs() < 1e-6,
-        "a caixa FILETADA arredonda por deslocamento e continua a andar o passo cheio"
-    );
-    assert!(
-        (passo(caixa(0.0, 0.05)) - 1.0).abs() < 1e-6,
-        "o chanfro sozinho é um `max` de 1-Lipschitz e também não custa passo"
-    );
-    let par = passo(caixa(0.05, 0.05));
-    assert!(
-        (par - 1.0 / std::f32::consts::SQRT_2).abs() < 1e-6,
-        "com os DOIS a caixa passa a arredondar por intersecção e o passo tem de cair para 1/√2, \
-         caiu para {par}"
-    );
+    for (r, c) in [(0.0, 0.0), (0.05, 0.0), (0.0, 0.05), (0.05, 0.05)] {
+        let passo = ph2d_field_eval::safe_march_step(&doc_of(caixa(r, c)));
+        assert!(
+            (passo - 1.0).abs() < 1e-6,
+            "filete {r} + chanfro {c}: a caixa arredonda por DESLOCAMENTO nos dois casos e tem de \
+             andar o passo cheio, andou {passo}"
+        );
+    }
 }
 
 /// ⭐⭐⭐ **O RECUO ENTREGUE É O NÚMERO PEDIDO** — a régua que os quatro caracteres desta casa

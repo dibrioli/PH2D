@@ -538,18 +538,21 @@ pub fn fillet_inflates(p: &Primitive) -> bool {
         // fazer o arredondamento de verdade — e as peças delas são **ortogonais** (as três lajes de
         // uma caixa, a parede e a tampa de um cilindro).
         //
-        // ⭐⭐ **O chanfro SOZINHO não as infla**, e a razão é geométrica: o plano a 45° tem gradiente
-        // `(∇a + ∇b)/√2`, que com `∇a ⊥ ∇b` é unitário. Medido: `1,0000` a `ε = 1e-5`.
+        // ⭐⭐⭐ **NEM o chanfro NEM o par as inflam** — medido `1,0000` nas quatro colunas do censo
+        // (viva · só filete · só chanfro · o par), a `ε = 1e-5`.
         //
-        // ⛔ **Os DOIS juntos inflam**: com um chanfro pedido a forma deixa de ser um deslocamento e
-        // passa a ser uma **intersecção**, e o filete por cima arredonda como em qualquer outra.
-        // Medido `1,4140` — o `√2` deste balde.
+        // ⛔ **A 1.ª versão desta wave dizia que o par inflava, e isso era um defeito da CONSTRUÇÃO,
+        // não uma propriedade da forma:** ela misturava (`intersection(f, plano, Exact(round))`,
+        // encaixado), e cada nível encaixado soma um quadrado na lei de Cauchy–Schwarz — medido
+        // `‖∇f‖ = 1,7306` numa caixa, que é `√3`. Com **encolher-chanfrar-deslocar** não há mistura
+        // nenhuma, e um `max` de 1-Lipschitz é 1-Lipschitz. *O preço não era da feature: era de como
+        // ela estava escrita.*
         // ⚠️ **A gaiola entra aqui**: ela é a união de três caixas, cada uma pela receita da caixa,
         // e o `min` de uma união não infla.
         Primitive::Box { .. }
         | Primitive::Cylinder { .. }
         | Primitive::Extrude { .. }
-        | Primitive::BoxFrame { .. } => r != 0.0 && c != 0.0,
+        | Primitive::BoxFrame { .. } => false,
         // ⭐⭐⭐ **As de parede NÃO-ORTOGONAL: QUALQUER um dos dois recuos infla** (2026-08-30).
         //
         // ⛔ A 1.ª redacção desta wave dizia que o chanfro sozinho nunca inflava, e o censo

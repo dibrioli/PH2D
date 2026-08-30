@@ -106,20 +106,35 @@ pub(crate) fn box_with_edge(
             round,
         );
     }
+    // ⭐⭐⭐ **ENCOLHER, CHANFRAR, DESLOCAR** — a mesma receita do filete, com o chanfro no meio.
+    //
+    // ⛔ A 1.ª versão desta wave misturava: `intersection(f, plano, Exact(round))`, três vezes
+    // encaixadas. Isso **fura a peça**, e o número denuncia o mecanismo — medido `‖∇f‖ = 1,7306`
+    // numa caixa, que é `√3`: a lei de Cauchy–Schwarz do [`crate::gradient_bound`] com os filetes
+    // encaixados a somar **um quadrado cada**. Com o passo em `1/√2` o produto dava `1,2237`, e
+    // acima de `1` a marcha atravessa a superfície — *é isso que «a aparência da aresta muda ao
+    // rotacionar» é*.
+    //
+    // ⭐ Aqui não há mistura nenhuma: a fonte encolhe `round`, os planos do chanfro cortam a fonte
+    // **encolhida**, e o deslocamento repõe tudo. Um `max` de funções 1-Lipschitz é 1-Lipschitz, e
+    // o `− round` é uma constante ⇒ **`‖∇f‖ = 1`, e a marcha anda o passo cheio.**
+    //
+    // ⚠️ E a geometria é a que o pedido descreve: crescer o sólido chanfrado por uma bola de raio
+    // `round` arredonda **todas** as arestas que ele tem — as de face↔chanfro e as de
+    // chanfro↔chanfro —, que é literalmente *«arredondar as bordas geradas por chamfer»*.
+    let dentro = [half[0] - round, half[1] - round, half[2] - round];
     let q = [
-        px.abs() - Tree::constant(half[0]),
-        py.abs() - Tree::constant(half[1]),
-        pz.abs() - Tree::constant(half[2]),
+        px.abs() - Tree::constant(dentro[0]),
+        py.abs() - Tree::constant(dentro[1]),
+        pz.abs() - Tree::constant(dentro[2]),
     ];
-    let mut f = box_at(px, py, pz, half);
+    let mut f = box_at(px, py, pz, dentro);
     for (i, j) in [(0, 1), (1, 2), (0, 2)] {
-        let plano =
-            (q[i].clone() + q[j].clone() + Tree::constant(chamfer)) * Tree::constant(FRAC_1_SQRT_2);
-        // ⚠️ O filete arredonda as arestas que o CHANFRO criou; a aresta viva original já não está
-        // na fronteira, então ele não lhe toca. Ver [`crate::ops_joint::intersection_joint`].
-        f = intersection(&f, &plano, Blended::Exact(round));
+        f = f.max(
+            (q[i].clone() + q[j].clone() + Tree::constant(chamfer)) * Tree::constant(FRAC_1_SQRT_2),
+        );
     }
-    f
+    offset(&f, round)
 }
 
 pub fn sd_sphere(radius: f64) -> Tree {
@@ -368,10 +383,13 @@ pub fn sd_prism(
         walls = Some(walls.map_or_else(
             || d.clone(),
             |w: Tree| {
-                intersection(
+                crate::ops_joint::intersection_joint(
                     &w,
                     &d,
-                    Blended::Exact(sharp_corner_radius(alfa_lateral, round)),
+                    crate::ops_joint::Edge {
+                        round: sharp_corner_radius(alfa_lateral, round),
+                        chamfer,
+                    },
                 )
             },
         ));
@@ -521,10 +539,13 @@ pub fn sd_star(
         let (before, after) = (polar(inner, phi - beta), polar(inner, phi + beta));
         // ⭐⭐⭐ **A PONTA é uma quina CONVEXA**, e arredonda-se com o arco exato de raio `round`
         // (W104, a 1.ª foto do Enio).
-        let ponta = intersection(
+        let ponta = crate::ops_joint::intersection_joint(
             &half_plane(before, tip),
             &half_plane(tip, after),
-            Blended::Exact(sharp_corner_radius(alfa_ponta, round)),
+            crate::ops_joint::Edge {
+                round: sharp_corner_radius(alfa_ponta, round),
+                chamfer,
+            },
         );
         // ⚠️ E o SECTOR **CORTA A SECO**, de propósito: ele não é uma aresta da peça, é a divisória
         // entre duas pipas vizinhas. Arredondá-lo abriria um sulco **dentro** do sólido.
@@ -555,7 +576,9 @@ pub fn sd_star(
         // há para onde acrescentar e nada é acrescentado — o efeito é **só** no vale.
         pontas = Some(pontas.map_or_else(
             || pipa.clone(),
-            |w: Tree| union(&w, &pipa, Blended::Exact(round)),
+            |w: Tree| {
+                crate::ops_joint::union_joint(&w, &pipa, crate::ops_joint::Edge { round, chamfer })
+            },
         ));
     }
     let pontas = pontas.unwrap_or_else(|| Tree::constant(0.0));

@@ -923,6 +923,54 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(6),
             )
         }
+        17 => {
+            println!(
+                "[field-smoke] cena 17 — O PRISMA (report do Enio, 30/08): viva · CHANFRADA · \
+                 chanfrada e FILETADA. Gire a câmera: nenhuma aresta pode mudar de aspecto."
+            );
+            // ⛔⛔ **Ela existe por um report com duas metades, e as duas eram defeitos diferentes**
+            // (*«algumas arestas não receberam o fillet e ao rotacionar a aparência da aresta
+            // muda»*):
+            //
+            // 1. as quinas **LATERAIS** de um prisma fecham num sítio do código e o **aro** noutro,
+            //    e o chanfro tinha sido ligado só ao segundo — ⇒ a sonda por PONTO
+            //    (`the_chamfer_reaches_every_edge_of_every_shape`), que também apanhou a engrenagem;
+            // 2. a composição chanfro-e-filete **misturava duas vezes**, e cada nível encaixado soma
+            //    um quadrado na lei de Cauchy–Schwarz: medido `passo × ‖∇f‖ = 1,4061` num prisma —
+            //    acima de `1` a marcha atravessa a superfície, e o ponto em que ela pára passa a
+            //    depender da direcção do raio. *É literalmente isso que «muda ao rotacionar» é.*
+            //
+            // ⚠️ **Hexagonal de propósito**: num prisma de seis lados as quinas laterais são doze e
+            // ficam todas à vista de uma volta de câmera. Num cubo elas confundem-se com o aro.
+            let prisma = |x: f32, chamfer: f32, round: f32| {
+                leaf(
+                    Primitive::Prism {
+                        sides: 6,
+                        bottom: 0.36,
+                        top: 0.36,
+                        half_height: 0.42,
+                        round,
+                        chamfer,
+                    },
+                    Xform {
+                        translation: [x, 0.0, 0.0],
+                        ..Xform::IDENTITY
+                    },
+                )
+            };
+            FieldDoc::new(
+                vec![
+                    prisma(-0.9, 0.0, 0.0),
+                    prisma(0.0, 0.09, 0.0),
+                    prisma(0.9, 0.09, 0.03),
+                    combine(
+                        Op::Union(Blend::Sharp),
+                        vec![NodeId(0), NodeId(1), NodeId(2)],
+                    ),
+                ],
+                NodeId(3),
+            )
+        }
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"

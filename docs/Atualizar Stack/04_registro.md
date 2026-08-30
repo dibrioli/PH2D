@@ -832,31 +832,55 @@ adaptador por software** responde à pergunta antes de tocar no CI: **se passare
 é trivial e seguro; se falharem, o preço fica medido.** *Uma decisão que se pode medir não se
 decide.*
 
-## §25 — ⛔ A mudança do cache de compilação está BLOQUEADA (2026-08-30)
+## §25 — ✅ A mudança do cache de compilação está FEITA (2026-08-30)
 
-O Enio pediu, num runbook de seis passos, que o `~/.cache/sccache` (**85 GB**, 127 mil ficheiros)
-saísse do disco do sistema para um subvolume `@sccache` no disco dos projectos, montado por fstab
-em `/home/enio/.cache/sccache`, **sem symlink**.
+O `~/.cache/sccache` saiu do disco do sistema para um subvolume `@sccache` no disco dos projectos,
+montado por fstab em `/home/enio/.cache/sccache` — **sem symlink**, como o runbook exigia.
 
-⛔ **Não foi feito, e o motivo é único:** `sudo -n` responde *«uma senha é necessária»*, e ele
-retirou-se antes de a dar. Os passos 3 e 4 (criar o subvolume no sítio certo, editar o `fstab`,
-montar) são todos root.
-
-⚠️ **Medido, e é o que torna a alternativa insuficiente:** `btrfs subvolume create` **funciona sem
-root** nesta máquina (testado e revertido), mas `btrfs subvolume delete` **não** — e, sobretudo, o
-**mount** continua a ser root. Sem o mount, o cache ficaria dentro da árvore de projectos, que é
-exactamente o que o runbook proíbe em maiúsculas (*«ali o cache entraria em todo backup e em todo
-`du` da árvore de projectos»*).
-
-✅ **O passo 6, que ele marcou como independente, foi feito:** `rm -rf ~/.cache/paru/*` libertou
-**8,0 GB**.
-
-| | |
+| passo do runbook | resultado |
 |---|---|
-| `df -h /home` no fim | **26%** (238 G de 950 G) |
-| esperado pelo runbook, com o sccache movido | ~16% |
+| 1. pré-condição (`pgrep -c rustc` = 0, carga < 5) | ✓ zero processos de build, carga **0,12** |
+| 2. `sccache --stop-server` | ✓ (não havia servidor a correr) |
+| 3. subvolume `@sccache` irmão do `@projetos` + `rsync -aHAX` | ✓ **139 804 ficheiros, 91 GB** |
+| 4. verificar ANTES de apagar | ✓ contagens iguais **e** `rsync -aHAXn --checksum` com **0 linhas** |
+| 5. provar | ✓ ver abaixo |
+| 6. `rm -rf ~/.cache/paru/*` | ✓ **8,0 GB** |
+| `df -h /home` | **26% → 17%** (o runbook estimava ~16%; o cache era 91 GB, não 81) |
 
-⇒ **a diferença é exactamente o sccache.** O runbook fica pronto a correr; falta uma senha.
+### §25.1 — A prova foi de FUNCIONAMENTO, não de caminho
+
+`sccache --show-stats` dizer o caminho certo prova apenas que ele o leu. O que fecha a pergunta é
+uma compilação real: `cargo check -p ph2d-token-math` num `--target-dir` limpo deu **23 pedidos de
+compilação, 5 ACERTOS de cache, 0 erros de leitura, 0 erros de escrita** — os acertos vieram do
+cache movido. E `mount -a` sai `0`, o que valida a entrada de fstab sem depender do mount manual.
+
+⚠️ E a exigência que motivou tudo: `du -sh` da árvore de projectos dá **116 GB**. Se o cache
+estivesse lá dentro seriam ~207 GB. Ele está fora do `du` e de qualquer backup da árvore.
+
+### §25.2 — ⛔⛔ E a mudança revelou um defeito que a tornaria INÚTIL
+
+O `sccache --show-stats` dizia **`Max cache size: 10 GiB`** sobre um cache de **91 GB** — nove
+vezes o tecto. Não havia `~/.config/sccache/config` nem `SCCACHE_CACHE_SIZE` no ambiente: era o
+**default**.
+
+⇒ *O `sccache` apara por LRU a cada escrita.* O próximo build teria começado a apagar ~81 GB —
+exactamente o contrário da razão de mover o cache para um disco de 1,9 TB.
+
+**Cura:** `~/.config/sccache/config` com `size = 100 GiB` (acima dos 91 que ele ocupa, num disco
+com 1,7 TB livres — *o recurso que limita é o disco, e ele não está perto*), e o motivo escrito no
+próprio ficheiro. Confirmado: `Max cache size: 100 GiB`.
+
+⚠️ **Isto não foi causado pela mudança — ela só o tornou visível.** O tecto de 10 GiB valia igual
+no disco antigo, e um cache de 91 GB a viver sob um tecto de 10 significa que a poda ou nunca
+correu, ou correu e o cache voltou a crescer entre builds. *Um número que descreve 9× menos que a
+coisa que ele governa não é um limite: é uma bomba-relógio com data de detonação no próximo build.*
+
+### §25.3 — O que fica escrito para a próxima máquina
+
+- Backup do `fstab` anterior em `/etc/fstab.bak-2026-08-30`.
+- A entrada nova espelha a do `@projetos`, incluindo o `nofail` — o disco pode faltar sem impedir
+  o arranque.
+- O subvolume é irmão (`top level 5`), não um directório dentro do `@projetos`.
 
 ## §24 — O LEDGER da jornada das curas (2026-08-30)
 

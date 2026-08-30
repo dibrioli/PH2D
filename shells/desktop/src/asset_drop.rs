@@ -41,6 +41,13 @@ pub(crate) enum DropTarget {
     },
     /// Sobre o chrome (um painel, a barra, o rail) — nada aqui sabe receber um asset.
     Chrome,
+    /// ⭐ **De volta ao painel de onde saiu** — isto é um CANCELAR, não uma recusa.
+    ///
+    /// ⚠️ **A diferença não é cosmética.** Arrastar para fora e voltar é o gesto universal de
+    /// desistir, e ele é *silencioso* em todo o software que o tem. Tratá-lo como recusa daria um
+    /// aviso a quem fez exactamente a coisa certa — e um aviso que aparece quando não há nada
+    /// errado ensina o artista a ignorar os avisos.
+    Source,
 }
 
 /// O que o cursor encontrou no canvas, na forma de que a lei precisa.
@@ -66,6 +73,8 @@ pub(crate) enum DropAction {
     SpawnImage { asset: [u8; 32], world: [f32; 2] },
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
+    /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
+    Cancel,
 }
 
 impl DropAction {
@@ -92,6 +101,9 @@ impl DropAction {
 #[must_use]
 pub(crate) fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
     match (payload, target) {
+        // ⭐ Desistir é silencioso — ver [`DropTarget::Source`].
+        (_, DropTarget::Source) => DropAction::Cancel,
+
         // ⛔ Fora do canvas nada sabe receber — hoje. Quando um campo do Inspector souber, ele
         // entra aqui como alvo próprio, e não como uma excepção espalhada pelo despachante.
         (_, DropTarget::Chrome) => DropAction::Refuse,
@@ -246,6 +258,25 @@ mod tests {
                     "{p:?} sobre {over:?} nao faz nada dentro do canvas"
                 );
             }
+        }
+    }
+
+    /// ⭐ **Voltar ao painel de origem é DESISTIR, e desistir é calado.**
+    ///
+    /// **Mutação que deve sangrar:** mapear `Source` para `Refuse` — o artista faria a coisa certa
+    /// e levaria um aviso.
+    #[test]
+    fn dropping_back_on_the_source_panel_is_a_silent_cancel() {
+        for p in [
+            DragPayload::Prefab { stable_id: 1 },
+            DragPayload::Image { asset: [0; 32] },
+        ] {
+            assert_eq!(resolve(p, DropTarget::Source), DropAction::Cancel);
+            assert_ne!(
+                resolve(p, DropTarget::Source),
+                resolve(p, DropTarget::Chrome),
+                "desistir e recusar nao podem ser a mesma coisa"
+            );
         }
     }
 }

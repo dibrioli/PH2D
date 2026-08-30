@@ -3310,14 +3310,33 @@ impl App {
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         self.any_input_this_frame = true;
+        // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
+        // early-returns e uma mão que sobrevive ao release fica colada no cursor
+        // para sempre; e vale para qualquer botão, porque uma mão não é um
+        // modificador (ver `crate::body_grab::release_body_grab`).
+        if state == ElementState::Released {
+            self.release_body_grab();
+            self.release_body_pose();
+            self.release_body_fk();
+            // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
+            // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
+            self.end_anchor_gizmo_drag();
+        }
         // ⭐⭐⭐ **O ARRASTO DA BIBLIOTECA** (plano `docs/Components/07`, etapa B).
         //
-        // ⚠️ **O `Down` vem cedo e NÃO consome**: enquanto o limiar não for passado isto ainda é um
-        // clique, e o clique do cartão tem de chegar ao painel como sempre (ele escolhe; o
-        // duplo-clique instancia).
+        // ⛔⛔ **E ele vem DEPOIS da soltura das mãos, não antes — a 1.ª versão tinha-o antes e o
+        // comentário logo acima descreve exactamente o defeito que isso cria:** este handler tem
+        // muitos early-returns, e uma mão que sobrevive ao release fica colada ao cursor para
+        // sempre. Eu acrescentei um `return` **à frente** da própria linha que existe para o
+        // evitar. *Ler a regra não é o mesmo que estar do lado certo dela.*
+        //
+        // ⚠️ **O `Down` NÃO consome**: enquanto o limiar não for passado isto ainda é um clique, e
+        // o clique do cartão tem de chegar ao painel como sempre (ele escolhe; o duplo-clique
+        // instancia).
         //
         // ⚠️ **O `Up` consome, e só quando o gesto foi de facto um arrasto.** Sem isso o mesmo
-        // gesto largaria o asset na tela **e** contaria como clique no cartão.
+        // gesto largaria o asset na tela **e** contaria como clique no cartão — o `forward_to_hero`
+        // que emite o `Click` corre mais abaixo neste mesmo handler.
         if button == MouseButton::Left {
             match state {
                 ElementState::Pressed => {
@@ -3331,18 +3350,6 @@ impl App {
                     }
                 }
             }
-        }
-        // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
-        // early-returns e uma mão que sobrevive ao release fica colada no cursor
-        // para sempre; e vale para qualquer botão, porque uma mão não é um
-        // modificador (ver `crate::body_grab::release_body_grab`).
-        if state == ElementState::Released {
-            self.release_body_grab();
-            self.release_body_pose();
-            self.release_body_fk();
-            // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
-            // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
-            self.end_anchor_gizmo_drag();
         }
         // ADR-0150 W1/M2: a cena 3D toma o botão para navegar. Inerte (e
         // portanto invisível) sem cena armada.

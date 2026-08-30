@@ -76,8 +76,11 @@ impl crate::App {
         }
         // ⚠️ **A pergunta «estou sobre chrome?» é a MESMA que o clique faz** (`panel_at`), e não
         // uma segunda: um alvo que discordasse do clique aceitaria quedas em cima de um painel.
-        let over_chrome = hero.store.panel_at(x, y).is_some();
-        let target = if over_chrome {
+        // ⭐ **Voltar ao painel de onde saiu é DESISTIR**, e desistir é calado.
+        let panel = hero.store.panel_at(x, y);
+        let target = if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
+            DropTarget::Source
+        } else if panel.is_some() {
             DropTarget::Chrome
         } else {
             let world = gfx.camera.screen_to_world((x, y), gfx.surface.size());
@@ -109,6 +112,8 @@ impl crate::App {
     /// Executa o que a lei devolveu. ⛔ Sem `_` — uma acção nova tem de vir aqui escolher o que faz.
     fn perform_drop(&mut self, action: DropAction, payload: DragPayload) {
         match action {
+            // ⭐ Desistir não diz nada — ver a lei.
+            DropAction::Cancel => {}
             DropAction::Refuse => {
                 // ⛔ **A recusa VÊ-SE** — largar num sítio que não sabe receber nunca é silêncio.
                 if let Some(gfx) = self.gfx.as_mut() {

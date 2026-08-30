@@ -163,6 +163,13 @@ pub(crate) struct Scene<'a> {
     /// verdadeira, e nele `1,0` é seguro. Medir as duas respostas em processos diferentes não é
     /// medir — a montagem, que não depende disto, mexeu-se `14,4 -> 22,1 ms` entre duas corridas.
     pub(crate) step: f32,
+    /// ⭐⭐ **Quanto o campo ENCOLHE no pior nó** — ver [`ph2d_field_eval::field_shrink`].
+    ///
+    /// ⚠️ Ele viaja **ao lado** do [`Scene::step`] e não dentro dele, e a diferença é o §0: o passo
+    /// manda em **quão longe** cada passo anda (e encurtá-lo castigaria a cena inteira por causa de
+    /// uma peça torcida); este manda em **quantos** passos há orçamento para dar, que é o que a
+    /// região deformada de facto precisa. *Um raio que acaba os passos é largado em silêncio.*
+    pub(crate) shrink: f32,
     /// ⭐⭐ **Com que estêncil a normal é lida** — ver [`Stencil`].
     ///
     /// ⚠️ Ele viaja na cena pela mesma razão que o [`Scene::step`]: a pergunta *"quantas amostras
@@ -320,10 +327,17 @@ pub(crate) fn march_slabs(
         // ⭐ **Sai de graça** porque só ~`130` raios em `102 400` passam sequer dos `400`: um
         // orçamento maior custa o que os raios que dele precisam custam, e não mais.
         //
-        // ⚠️ **Um documento sem inflação continua nos `MAX_STEPS` de sempre, ao bit** (`s = 1` ⇒ a
-        // divisão é a identidade). *A cerca fica no lado perigoso, não nos dois.*
+        // ⚠️ **Um documento sem inflação continua nos `MAX_STEPS` de sempre, ao bit** (`s = 1` e
+        // `shrink = 1` ⇒ as duas contas são a identidade). *A cerca fica no lado perigoso.*
+        //
+        // ⭐⭐ **E o `shrink` entrou em 2026-08-30 pela mesma família:** um deformador divide o campo
+        // no OPERADOR (para não castigar a cena inteira), então o passo fica cheio e a região
+        // deformada pede `σ×` mais passos para lá chegar. Medido numa barra a uma volta por unidade:
+        // **18 raios esgotados e 336 pixels de fundo dentro da peça**.
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let budget = ((MAX_STEPS as f32) / scene.step.clamp(f32::EPSILON, 1.0)).ceil() as usize;
+        let budget = ((MAX_STEPS as f32) * scene.shrink.max(1.0)
+            / scene.step.clamp(f32::EPSILON, 1.0))
+        .ceil() as usize;
         for step in 0..budget {
             if cur.is_empty() {
                 break;

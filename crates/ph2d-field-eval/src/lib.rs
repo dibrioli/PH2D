@@ -26,7 +26,7 @@ pub mod profile;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;
 /// ⭐ A pilha de modificadores de um nó — ver [`stack`].
-mod stack;
+pub(crate) mod stack;
 
 /// ⭐ **A porta da SONDA para a torção** — ela existe porque a lei tem de ser medida **antes** de o
 /// modificador nascer: a constante de segurança dela é o que decide se a peça fura.
@@ -268,7 +268,7 @@ pub use hull::{probe_hull_uv, probe_in_hull};
 
 #[path = "step.rs"]
 mod step;
-pub use step::{gradient_bound, safe_march_step};
+pub use step::{field_shrink, gradient_bound, safe_march_step};
 
 #[cfg(test)]
 mod tests;

@@ -55,10 +55,7 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
             Unary::Radial { count } => radial(&acc, count),
-            Unary::Taper { slope } => {
-                divisor *= taper_divisor(f64::from(slope));
-                taper(&acc, f64::from(slope))
-            }
+            Unary::Taper { slope } => taper(&acc, f64::from(slope)),
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
             // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
             Unary::Twist {
@@ -66,18 +63,15 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 lower,
                 upper,
                 falloff,
-            } => {
-                let k = f64::from(turns) * std::f64::consts::TAU;
-                divisor *= twist_sigma(k.abs() * axis_reach(ball).abs());
-                twist(
-                    &acc,
-                    k,
-                    f64::from(lower),
-                    f64::from(upper),
-                    f64::from(falloff),
-                )
-            }
+            } => twist(
+                &acc,
+                f64::from(turns) * std::f64::consts::TAU,
+                f64::from(lower),
+                f64::from(upper),
+                f64::from(falloff),
+            ),
         };
+        divisor *= step_divisor(*m, ball);
         ball = crate::bounds::step_mod(ball, *m);
     }
     if divisor == 1.0 {
@@ -86,6 +80,33 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
         acc
     } else {
         acc / Tree::constant(divisor)
+    }
+}
+
+/// ⭐⭐⭐ **POR QUANTO UM MODIFICADOR ENCOLHE O CAMPO** — a lei, num sítio só.
+///
+/// Um deformador de espaço devolve um **minorante** da distância, e o preço é este número: o campo
+/// vale `1/divisor` do que valeria. ⚠️ Ele é lido pela [`stacked`] (que o aplica) **e** pela
+/// [`crate::field_shrink`] (que diz à marcha quantos passos a mais isso custa) — *uma lei com dois
+/// leitores é uma porta; escrita duas vezes, são duas respostas que divergem.*
+///
+/// ⚠️ **A bola é a de ANTES deste passo**, como no [`crate::bounds::step_mod`]: é dela que a torção
+/// tira o alcance do eixo.
+pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
+    match m {
+        Unary::Taper { slope } => taper_divisor(f64::from(slope)),
+        Unary::Twist { turns, .. } => {
+            let k = f64::from(turns) * std::f64::consts::TAU;
+            twist_sigma(k.abs() * axis_reach(ball).abs())
+        }
+        // Os outros são exactos: eles lêem o campo, não o remodelam.
+        Unary::Shell { .. }
+        | Unary::Offset { .. }
+        | Unary::Mirror
+        | Unary::MirrorY
+        | Unary::MirrorZ
+        | Unary::Array { .. }
+        | Unary::Radial { .. } => 1.0,
     }
 }
 

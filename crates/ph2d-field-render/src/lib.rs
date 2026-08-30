@@ -366,6 +366,9 @@ fn trace_inner_tiles(
         sharp,
         clip: None,
         step,
+        // ⚠️ Derivado do documento aqui, e não passado por argumento: o `step` entra por fora porque
+        // as sondas o escolhem, e este não tem quem o escolha — ele **é** um facto da peça.
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
         stencil,
     };
 
@@ -480,6 +483,7 @@ pub fn surface_under(
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
         step: ph2d_field_eval::safe_march_step(doc),
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
         stencil: NORMAL_STENCIL,
     };
     let (hit, _, point) = march(&scene, &[screen.plane_at(px[0], px[1])]);
@@ -515,6 +519,7 @@ pub fn surfaces_under(
         sharp: Sharpness::for_frame(cam.half_extent, side),
         clip: None,
         step: ph2d_field_eval::safe_march_step(doc),
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
         stencil: NORMAL_STENCIL,
     };
     let pts: Vec<(f32, f32)> = px.iter().map(|p| screen.plane_at(p[0], p[1])).collect();

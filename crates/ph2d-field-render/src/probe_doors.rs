@@ -43,6 +43,7 @@ pub fn trace_tiled_for_test(
         sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
         clip: Some(bbox),
         step: ph2d_field_eval::safe_march_step(doc),
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
         stencil: NORMAL_STENCIL,
     };
     Some(tiled_trace(
@@ -137,6 +138,7 @@ pub fn trace_tiled_with_cache_for_test(
         sharp: Sharpness::for_frame(cam.half_extent, (width as usize).min(height as usize)),
         clip: Some(bbox),
         step: ph2d_field_eval::safe_march_step(doc),
+        shrink: ph2d_field_eval::field_shrink(doc, reg),
         stencil: NORMAL_STENCIL,
     };
     Some(tiled_trace(

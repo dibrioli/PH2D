@@ -173,6 +173,7 @@ pub(crate) fn tiled_trace(
             sharp: scene.sharp,
             clip: Some(bbox),
             step: scene.step,
+            shrink: scene.shrink,
             stencil: scene.stencil,
         };
         // ⭐⭐⭐ **AS FRONTEIRAS DAS FATIAS** (W56e) — e as duas de FORA são o que torna isto

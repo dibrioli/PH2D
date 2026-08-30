@@ -196,6 +196,44 @@ pub fn gradient_bound(doc: &FieldDoc) -> f32 {
         .sqrt()
 }
 
+/// ⭐⭐⭐ **QUANTO O CAMPO ENCOLHE, no pior nó do documento** (2026-08-30) — o número que diz à
+/// marcha quantos passos a mais um deformador custa.
+///
+/// # ⛔ O defeito que ele cura, e ele é o de 30/08 a entrar por outra porta
+///
+/// O divisor de um deformador vive no **operador**, e é a escolha certa: no [`gradient_bound`] ele
+/// penalizaria a **cena inteira** por causa de uma peça torcida (o §0 ao contrário). A consequência
+/// é que `safe_march_step` fica em `1,0` — o documento não infla — enquanto a região torcida devolve
+/// `1/σ` da distância e pede `~σ×` mais passos para lá chegar.
+///
+/// ⛔ **E um raio que acaba os passos é largado em SILÊNCIO** ([`crate`] não o vê; quem o conta é o
+/// `march::EXHAUSTED`). Medido numa barra a uma volta por unidade, `320²`: **18 raios esgotados e
+/// 336 pixels de fundo dentro da peça**.
+///
+/// ⇒ o passo continua cheio (rápido onde o campo é honesto) e o **orçamento** é que cresce. ⭐ É de
+/// graça pela mesma razão medida em 30/08: um orçamento maior custa o que os raios que dele precisam
+/// custam, e não mais.
+///
+/// ⚠️ **O MÁXIMO sobre os nós, e não o produto pela árvore**: cada nó é dividido pela pilha dele, e
+/// o pior encolhimento que a marcha pode encontrar em qualquer ponto é o do nó mais castigado.
+#[must_use]
+pub fn field_shrink(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> f32 {
+    let balls = crate::bounds::local_balls(doc, reg);
+    let mut pior = 1.0f64;
+    for (i, node) in doc.nodes().iter().enumerate() {
+        let mut ball = balls[i].unwrap_or(crate::bounds::Ball::EMPTY);
+        let mut aqui = 1.0f64;
+        for m in &node.mods {
+            aqui *= crate::stack::step_divisor(*m, ball);
+            ball = crate::bounds::step_mod(ball, *m);
+        }
+        pior = pior.max(aqui);
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    let out = pior as f32;
+    out.max(1.0)
+}
+
 /// **Esta mistura INFLA o gradiente?** — a pergunta de um passo da dobra, num sítio só.
 ///
 /// ⭐⭐⭐ **O CHANFRO conta como um arredondamento exacto** (W99), e o balde é MEDIDO:

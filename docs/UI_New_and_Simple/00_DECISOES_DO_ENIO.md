@@ -97,7 +97,54 @@ estão vivos é o layout da tarefa** — os 8 toggles mudam de dono ou desaparec
 
 ---
 
-## O que estas três decisões implicam, junto
+## D4 — Áreas: **encaixes FIXOS**, como o Godot
+
+> *"Lugares pré-definidos. O artista escolhe QUAL painel vai em cada lugar, e arrasta a
+> divisória — mas não inventa lugares novos."*
+
+**A alternativa recusada:** a divisão livre do Blender (qualquer área corta-se em duas, sem
+limite). ⛔ **Recusada com motivo, não por preguiça:** é muito mais código, o artista consegue
+produzir uma tela que não sabe desfazer, e no iPad arrastar divisórias finas com o dedo é mau.
+
+**O que isto fixa:**
+- A posição de um painel é **um valor de um conjunto finito**. É a forma mais forte do
+  `Constraint`: o erro não é detectado, é **inexprimível**.
+- Vários painéis no mesmo encaixe viram **abas** — que é como um encaixe absorve crescimento sem
+  crescer.
+- ⭐ E torna o layout **serializável de forma trivial**: um layout é `{encaixe → [painéis], posição
+  das divisórias}`. O Godot chama à chave `layout_key` (`editor_dock.h:77`).
+
+⚠️ **Isto resolve a tensão que o §6 do diagnóstico nomeava** («extrema simplicidade» contra
+«altíssima capacidade de ajustes»): o ajuste que fica é **o que**, não **onde**.
+
+---
+
+## D5 — A régua entra na **ÁREA DE DESENHO**
+
+> *"A régua deixa de ser da janela e passa a ser da área do canvas — começa depois do trilho, não
+> por baixo dele."*
+
+É o modelo do Blender: a régua é uma **region** do editor, não do ecrã.
+
+**O que isto cura, e é medido** ([`medicoes/02`](medicoes/02_a_area_tapada.md)): hoje
+`left_band = (canvas.x, canvas.y, 20, canvas.h)` com `canvas = (0,0,w,h)`, e o rail também
+começa em `x = 0` ⇒ **87,8 % da régua da esquerda por baixo do rail**. Com a régua dentro da
+área, ela começa **depois** do rail e a sobreposição é **estruturalmente zero**.
+
+**As alternativas recusadas:**
+- *Empurrar o rail 20 px* — ⛔ custa mais 20 px de largura numa tela onde 51 % já é moldura, e
+  **não cura a régua de cima**, que continua sob a barra superior.
+- *Régua ligável/desligável* — ⛔ quem desenha com medida deixa-a ligada sempre, e para essa
+  pessoa nada muda.
+
+⭐⭐ **E D5 generaliza para o RAIL:** se a régua é uma região da área, o trilho de ferramentas
+também é (Blender: *Toolbar*, região esquerda do editor; Godot: barra da própria viewport). ⇒ os
+dois passam a ser **irmãos numa fila**, não **camadas empilhadas** — e irmãos não se tapam. *A
+ordem de pintura deixa de ser a resposta, porque deixa de haver sobreposição.*
+
+---
+
+## O que estas cinco decisões implicam, junto
 
 ⭐⭐ **As três convergem na MESMA peça em falta: um modelo de REGIÃO / ÁREA.**
 
@@ -108,6 +155,10 @@ estão vivos é o layout da tarefa** — os 8 toggles mudam de dono ou desaparec
 ⇒ **A primeira obra não é nenhuma das três: é o modelo de áreas.** Sem ele, D1 vira painéis
 ancorados sem sítio, D2 vira cabeçalhos sem dono e D3 vira um selector que não sabe o que
 arrumar.
+
+⭐ **E a D4 + D5 dizem-lhe a forma:** áreas com **encaixes enumerados** (D4), e dentro de cada
+área **regiões em fila** — cabeçalho, ferramentas, régua, conteúdo (D5). O rascunho está em
+[`spec/01_modelo_de_areas.md`](spec/01_modelo_de_areas.md).
 
 ⛔ **E a ordem tem uma trava dura**
 ([`medicoes/03 §5`](medicoes/03_o_censo_de_cor.md)): reduzir os temas de 4 para 2 **antes** de

@@ -35,6 +35,7 @@ E três defeitos concretos, com foto:
 | Você quer | Leia |
 |---|---|
 | ⛔ **O que o Enio já DECIDIU** (não re-litigar) | [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md) |
+| ⭐ **A spec — o modelo de áreas** (rascunho 1) | [`spec/01_modelo_de_areas.md`](spec/01_modelo_de_areas.md) |
 | **Quanto de UI nós temos, medido** (tokens, ids, painéis, LOC) | [`medicoes/01_o_estado_medido.md`](medicoes/01_o_estado_medido.md) |
 | **Quanto do canvas o chrome tapa** — a foto 1 em número | [`medicoes/02_a_area_tapada.md`](medicoes/02_a_area_tapada.md) |
 | **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |

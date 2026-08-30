@@ -986,6 +986,16 @@ patologia medida no Godot).
 **Fora (ADR-0165):** similaridade por ML · coleta automática de órfãos (relatório, não colheita) ·
 escopos partilhados. Cor dominante ENTRA (histograma OKLab, uma passagem).
 
+
+⚠️⚠️ **A F6 e a F7 deixaram de ser duas fases — são UMA etapa, e ela parte noutro sítio (30/08).**
+A regra de trabalho nova do Enio (*«cada etapa deve ao fim ter um smoke»*) **proíbe a F6 como fatia
+própria**: o critério dela é headless, sem um pixel, e não existe frase *«faça X e veja Y»*. O corte
+passa a ser pelo **gesto** — **A: achar e usar** · **B: arrastar** —, e a ordem é obrigatória (o
+arrasto é o primeiro deste app a atravessar um painel, e não tem onde ser medido sem o painel).
+⇒ plano vivo da etapa: [`07_plano_do_navegador_de_assets.md`](07_plano_do_navegador_de_assets.md),
+com as 10 decisões de desenho e a lei da [`06`](06_pesquisa_o_navegador_como_interface.md) que
+escolheu cada uma.
+
 ---
 
 ## §F7 — O painel Asset Browser + o arrasto único

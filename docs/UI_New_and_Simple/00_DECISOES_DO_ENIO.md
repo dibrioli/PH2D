@@ -306,12 +306,41 @@ virado?»* (3D). É o modelo de uma camada 3D numa composição 2D.
 objecto** — exactamente a lei da D6 (*os canais dependem do tipo*, como os modos). Os 13 canais 2D
 ficam onde estão.
 
-⏳ **O que a D9 ABRE, e não estava na mesa** (detalhe em
-[`pesquisa/06_a_engine_e_2_5d.md §6`](pesquisa/06_a_engine_e_2_5d.md)): um objecto 3D pode ficar
-**entre** duas camadas 2D ou só por cima? · qual é a unidade do espaço 3D e como se converte em
-pixel (há **três** réguas hoje e ninguém as ligou) · **«deformações»** é *skinning*, *shape keys*
-ou *lattice* — três obras diferentes, ⛔ nomeadas e não desenhadas · uma câmera 3D por objecto ou
-uma da cena?
+### D9.1 — As quatro que a D9 abriu, **respondidas no mesmo dia**
+
+Detalhe e mecanismo em [`pesquisa/06 §6`](pesquisa/06_a_engine_e_2_5d.md).
+
+| | resposta do Enio | o que ela força |
+|---|---|---|
+| **z-index** | *"terá um z-index como o 2d, logo ficará **entre camadas**"* | ⭐ o `ZIndexOverride(i32)` **já existe** (modelado no Godot). ⛔⛔ Mas o 3D **deixa de poder ser um passe final**: tem de desenhar para textura própria e entrar na pilha **como camada** |
+| **unidades** | *"em 3d usaremos **metros**. Para rot **graus**"* | ⭐ **nada a inventar — a cena já é métrica.** Graus é unidade de **autoria**; guarda-se radianos. ⛔ Lacuna: o `Xform` tem escala **uniforme** (`f32`) e precisa de três |
+| **deformações** | *"as **3**"* — esqueleto · poses-alvo · gaiola | três obras independentes, ⛔ **nomeadas e não desenhadas** |
+| **câmera** | *"não sei dizer. Mas será a que dá **mais possibilidades**"* | ⇒ **por objecto**, com uma da cena por omissão — o critério dele decide sozinho (ver abaixo) |
+
+⭐⭐⭐ **O achado do z-index: um primitivo, TRÊS consumidores.** Pôr o 3D entre camadas exige
+renderizá-lo para uma textura que entra na pilha 2D — que é **exactamente** o primitivo que o
+*W-Saída* do Flip já pede (*"é UM buraco, não três"*), e que os 16 exportadores de imagem também
+esperam. ⚠️ E ⛔ **não contradiz a recusa do [`pesquisa/05`](pesquisa/05_pintar_sobre_vetor.md)**:
+lá seria um **assado guardado** (mata a editabilidade), aqui é um **render por quadro** (o objecto
+continua 3D). *Assar e renderizar lêem-se igual e não são a mesma coisa.*
+
+⭐ **A câmera é a única resposta que esta linha DERIVOU** em vez de receber, e o critério do Enio
+decide-a porque a relação não é simétrica: com câmera **por objecto**, «todos partilham a mesma» é
+exprimível (todos apontam para uma); com **uma da cena**, «este tem a sua» **não é exprimível de
+todo**. *O geral contém o particular; o particular não contém o geral.* ⚠️ Marcada como **derivada
+do critério**, e ⛔ reversível se o critério mudar.
+
+### ⛔ E uma correcção minha, no ponto que decidia o desenho
+
+A primeira redacção da D9 e do `pesquisa/06` dizia que o objecto 2D se posiciona **em pixels**.
+**Está errado:** `crates/ph2d-ecs/src/transform.rs:55` diz *"translation (**meters**), rotation
+(**radians**)"*, e o `CLAUDE.md` §5 já o afirmava no módulo de Física (*"o `Transform` já é
+metros"*, ADR-0131).
+
+⭐ A correcção **simplifica**: não há ponte de unidade a inventar entre 2D e 3D — a cena é métrica
+por inteiro, e o pixel é a unidade da **arte**, com o `pixels_per_meter` a ligá-los. As duas frases
+do Enio (*"a unidade principal é o pixel"* e *"em 3d usaremos metros"*) descrevem **dois níveis**,
+não um conflito.
 
 ---
 

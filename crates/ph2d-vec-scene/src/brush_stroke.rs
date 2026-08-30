@@ -254,5 +254,13 @@ pub fn brush_along_path(path: &VecPath, art: &VecPath, s: &StrokeSpec) -> Vec<Ve
 }
 
 #[cfg(test)]
+#[path = "brush_stroke_fixtures.rs"]
+mod fixtures;
+
+#[cfg(test)]
 #[path = "brush_stroke_engine_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "brush_corner_tests.rs"]
+mod corner_tests;

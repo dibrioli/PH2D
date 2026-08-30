@@ -296,41 +296,50 @@ fn the_pen_advances_through_glyphs_that_are_not_drawn() {
     }
 }
 
-/// **Uma parametrização ESTACIONÁRIA não tem direção, e isso custa uma letra.**
+/// ⭐⭐⭐ **UMA PARAMETRIZAÇÃO ESTACIONÁRIA JÁ NÃO CUSTA UMA LETRA** (curado em 2026-08-30).
 ///
-/// No documento uma reta é a cúbica degenerada `(P0,P0,P3,P3)`, cuja derivada é **nula nas
-/// duas pontas** — então `frame_at(0)` de um segmento reto devolve tangente nula, e o texto
-/// (que não pode inventar um rumo) salta ali. Medido: sobre uma reta, `start_offset = 0`
-/// não produz referencial nenhum; `start_offset = 1e-9` já produz.
+/// No documento uma reta é a cúbica degenerada `(P₀, P₀, P₃, P₃)`, cuja derivada é **nula nas duas
+/// pontas** — então `frame_at(0)` de um segmento reto devolvia tangente nula e o texto, que não
+/// pode inventar um rumo, **saltava a primeira letra**.
 ///
-/// ⚠️ **Não está corrigido de propósito, e o preço foi MEDIDO.** A cura é geometricamente
-/// óbvia — a direção de uma reta é a reta, e basta amostrar a derivada um passo para dentro
-/// —, mas ela mora no [`ArcPath::frame_at`], cujo **outro** consumidor é o Zig Zag: ele
-/// amostra EXATAMENTE nas âncoras (`anchor_arcs`), que são precisamente os pontos
-/// estacionários. Aplicar a cura faz sangrar o fingerprint
-/// `the_zigzag_is_byte_identical_across_the_arc_walker_extraction` — ou seja, **muda o
-/// desenho de um efeito que o Enio já aprovou em smoke**. Isso é decisão de produto, não
-/// carona de uma wave de texto.
+/// # ⚠️ Este gate afirmava o CONTRÁRIO, e a inversão foi uma decisão com preço medido
 ///
-/// Este gate existe para o defeito não ser re-descoberto do zero, e para a cura não ser
-/// aplicada sem que alguém veja o que ela custa.
+/// A redacção anterior media o defeito e **defendia-o de propósito**, com o motivo escrito: a cura
+/// mora no `ArcPath::frame_at`, cujo outro consumidor é o Zig Zag, que amostra **exactamente** nas
+/// âncoras — os pontos estacionários. Aplicá-la faz sangrar o *fingerprint* daquele efeito, ou
+/// seja, **muda o desenho de algo que o Enio já aprovou em smoke**. *"Isso é decisão de produto,
+/// não carona de uma wave de texto"*, e o gate existia *"para a cura não ser aplicada sem que
+/// alguém veja o que ela custa"*.
+///
+/// ⭐ **O que ela custa foi medido em 2026-08-30** (plano 36 §11.7): no Zig Zag, **4 de 20**
+/// vértices do caso com quinas, até **1/3 da amplitude** — e o que se move é uma crista que estava
+/// **achatada sobre o caminho**, nas duas pontas e nas quinas. E o que ela compra: o pincel de
+/// contorno deixa de perder `1`–`2` cópias por quadrado, em todo tamanho.
+///
+/// ⇒ a cerca foi lida, o preço foi posto na mesa, e a cura entrou.
 #[test]
-fn a_stationary_parameterisation_has_no_direction_and_the_text_skips_it() {
+fn a_stationary_parameterisation_now_has_a_direction_and_the_text_keeps_the_letter() {
     let path = line_path(4.0);
     let on = |off: f64| TextPlacement::OnPath {
         path: &path,
         start_offset: off,
         flip: false,
     };
-    assert!(
-        caret_frame(&on(0.0), [0.0, 0.0]).is_none(),
-        "a ponta de uma reta degenerada não tem tangente"
+    let na_ponta = caret_frame(&on(0.0), [0.0, 0.0]).expect(
+        "a ponta de uma reta degenerada voltou a nao ter direcao - a cura do `tangent_at` saiu",
     );
-    assert!(
-        caret_frame(&on(1e-9), [0.0, 0.0]).is_some(),
-        "um passo para dentro e a direção existe — a curva TEM rumo, a parametrização é que parou"
-    );
-    // E num ARCO a mesma ponta responde: o defeito é da representação da reta, não do zero.
+    // ⚠️ **E é a MESMA direção de um passo para dentro** — a cura não inventa um rumo, ela usa o
+    // que a reta já é.
+    let adentro = caret_frame(&on(1e-9), [0.0, 0.0]).expect("um passo para dentro");
+    for k in 0..2 {
+        assert!(
+            (na_ponta.x_axis[k] - adentro.x_axis[k]).abs() < 1e-6,
+            "a direcao na ponta ({:?}) discorda da de um passo para dentro ({:?})",
+            na_ponta.x_axis,
+            adentro.x_axis
+        );
+    }
+    // E num ARCO a mesma ponta responde, como sempre respondeu.
     let arc = quarter_arc(3.0);
     let on_arc = TextPlacement::OnPath {
         path: &arc,

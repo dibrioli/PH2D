@@ -73,13 +73,78 @@ pub fn point_at(c: &Cubic, t: f64) -> [f64; 2] {
     ]
 }
 
-/// **A tangente UNITÁRIA em `t`**, ou `None` numa cúspide (velocidade zero — ali não há
-/// direção, e inventar uma é o que produz o pico solto que ninguém sabe de onde veio).
+/// **A tangente UNITÁRIA em `t`**, ou `None` numa cúspide **VERDADEIRA**.
+///
+/// # ⭐⭐⭐ Velocidade zero **não** é o mesmo que direção ausente (2026-08-30)
+///
+/// `B'(t) = 0` era lido como *"aqui não há direção"*, e nas **pontas** de um segmento isso é
+/// falso com uma frequência que não é rara: `B'(0) = 3·(P₁ − P₀)`, e um segmento **RETO**
+/// autorado por dois vértices de quina tem `P₁ = P₀` e `P₃ = P₂` — logo `B'` anula-se nas
+/// **duas** pontas de **todo** segmento reto do repositório. A curva ali é uma reta e a direção
+/// dela é óbvia; o que não existe é a *velocidade*.
+///
+/// ⚠️ **O preço estava medido antes desta cura** (plano 36 §11.1): o pincel de contorno **não
+/// desenhava** `1`–`2` cópias por quadrado — em **todo** tamanho testado, de lado `2` a `20` —,
+/// porque uma cópia cujo centro caísse numa quina era **pulada em silêncio**. O mesmo `None`
+/// atravessa o Trim, o Repeater, o texto em caminho, o Zig Zag e o motion path da timeline.
+///
+/// # A regra, e ela é a canónica de Bézier
+///
+/// Quando `B'` se anula, a direção sai do **polígono de controlo**, saltando os pontos
+/// coincidentes:
+///
+/// | onde | cascata |
+/// |---|---|
+/// | `t = 0` | `P₁ − P₀`, senão `P₂ − P₀`, senão `P₃ − P₀` |
+/// | `t = 1` | `P₃ − P₂`, senão `P₃ − P₁`, senão `P₃ − P₀` |
+///
+/// É equivalente a cair para a primeira derivada não-nula, e diz-se em pontos de controlo
+/// para não haver caso de SINAL — pela esquerda o limite de `B'` é `−B''`, pela direita é
+/// `+B''`, e uma das duas versões desse cuidado está sempre errada.
+///
+/// # ⛔ E a cúspide INTERIOR continua a devolver `None`, de propósito
+///
+/// Com `0 < t < 1` os dois lados existem, e numa cúspide a **marcha inverte**: a reta tangente
+/// é a mesma, o sentido não. Inventar um sentido ali é o que produz *"o pico solto que ninguém
+/// sabe de onde veio"* — a razão original desta função devolver `Option`, e ela fica.
 #[must_use]
 pub fn tangent_at(c: &Cubic, t: f64) -> Option<[f64; 2]> {
-    let d = deriv(c, t);
-    let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
-    (n > 1e-12).then(|| [d[0] / n, d[1] / n])
+    if let Some(u) = unit(deriv(c, t)) {
+        return Some(u);
+    }
+    // `B'(t) = 0`. Numa PONTA a direção existe na mesma — e só numa ponta, porque só ali existe
+    // um único lado de onde vir.
+    //
+    // ⚠️⚠️ **A condição é o POLÍGONO ser degenerado naquela ponta, e NÃO `t == 0`/`t == 1`.**
+    // A 1.ª redacção desta cura testava `t <= 0.0` / `t >= 1.0` e **falhava em metade das
+    // fixturas**, com um mecanismo que só a medição mostra: o prefixo de arco é somado por
+    // quadratura, e o comprimento de um segmento reto de `2` sai `2,000000000000000_4`. Quem
+    // pergunta pelo arco `2,0` cai então no segmento **anterior**, em `t = 0,999999999999999_8`
+    // — perto da ponta, nunca **na** ponta —, e ali `|B'|` vale `~2,6e-15`: abaixo do piso do
+    // versor e **acima** de zero. ⇒ *uma cura escrita sobre a igualdade de um `t` derivado de
+    // uma soma de quadratura é uma cura que passa nos testes de mesa e falha na árvore.*
+    //
+    // ⛔ E a cerca contra «inventar direção» continua a ser exacta: só se entra na cascata quando
+    // aquela ponta **é** degenerada. Numa cúspide interior verdadeira (`P₁ ≠ P₀` e `P₃ ≠ P₂`)
+    // nenhum dos dois ramos abre.
+    let sub = |a: [f64; 2], b: [f64; 2]| [a[0] - b[0], a[1] - b[1]];
+    if t < 0.5 {
+        if unit(sub(c[1], c[0])).is_none() {
+            return unit(sub(c[2], c[0])).or_else(|| unit(sub(c[3], c[0])));
+        }
+    } else if unit(sub(c[3], c[2])).is_none() {
+        return unit(sub(c[3], c[1])).or_else(|| unit(sub(c[3], c[0])));
+    }
+    None
+}
+
+/// O versor de `v`, ou `None` se ele não tem comprimento que se meça.
+///
+/// O piso é `1e-12` **em norma**, o mesmo desde que esta função existe: abaixo dele a divisão
+/// devolve lixo amplificado, e um versor de lixo é pior que a ausência.
+fn unit(v: [f64; 2]) -> Option<[f64; 2]> {
+    let n = (v[0] * v[0] + v[1] * v[1]).sqrt();
+    (n > 1e-12).then(|| [v[0] / n, v[1] / n])
 }
 
 /// `B'(t)` de uma cúbica — a derivada é uma quadrática nos três deltas de controlo.

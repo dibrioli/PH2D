@@ -128,6 +128,29 @@ fn fnv(mut h: u64, x: u64) -> u64 {
 /// carrega essa afirmação — a de MAGNITUDE, que é a que decide se é visível — é
 /// `the_newton_inverse_agrees_with_the_bisection_it_replaced`, na `ph2d-arclen`, e ele guarda a
 /// bisseção antiga como oráculo de teste.
+///
+/// # E RE-PINADO outra vez (2026-08-30) — desta vez o desenho mudou de PROPÓSITO
+///
+/// A `ph2d-arclen::tangent_at` deixou de ler *velocidade zero* como *direção ausente*
+/// ([plano 36 §11.7](../../../docs/Vector%20Module/36_plano_pincel_de_contorno.md)). O emissor
+/// aqui escreve `anchor = ponto + normal·lift`, e `normal` é a tangente rodada — com tangente
+/// **nula** a crista era deslocada por **NADA**: ela colapsava sobre o caminho. ⚠️ O comentário do
+/// emissor já **declarava** essa compensação (*"numa cúspide não há direção: o ponto entra sem
+/// deslocamento, em vez de ser DESCARTADO"*) — ela estava certa para uma cúspide **verdadeira** e
+/// disparava numa **reta**, onde a direção existe.
+///
+/// **A/B medido no caso `open_corner`, com amplitude `15` num caminho de comprimento `120`:**
+///
+/// | vértice | antes | depois | Δ |
+/// |---|---|---|---:|
+/// | `[0]` (começo do caminho) | `0,00 · 0,00` | `0,00 · 4,35` | **4,35** |
+/// | `[6]` (1.ª quina) | `40,00 · 0,00` | `45,07 · 0,00` | **5,07** |
+/// | `[11]` (2.ª quina) | `40,00 · 30,00` | `40,00 · 29,87` | 0,13 |
+/// | `[19]` (fim do caminho) | `90,00 · 30,00` | `90,00 · 33,40` | **3,40** |
+///
+/// ⇒ **4 de 20 vértices**, até **1/3 da amplitude** — visível, e exactamente nos quatro sítios
+/// onde `B'` se anulava. Os outros três casos desta fixtura são curvas suaves e saem **byte a
+/// byte** iguais; o gate que o afirma é `only_the_cornered_case_moved_when_the_tangent_cure_landed`.
 #[test]
 fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
     let cases: [(Vec<VecVertex>, bool, ZigZagSpec); 4] = [
@@ -174,9 +197,10 @@ fn the_zigzag_is_byte_identical_across_the_arc_walker_extraction() {
         }
     }
     // Medida em 2026-07-22, ANTES da extração do walker (commit 5bc175013); RE-PINADA em
-    // 2026-07-23 pela troca da inversa de arco (ADR-0141) — ver a secção acima.
+    // 2026-07-23 pela troca da inversa de arco (ADR-0141) e em **2026-08-30** pela cura da
+    // tangente numa ponta degenerada — ver as duas secções acima.
     assert_eq!(
-        h, 0xd52a_2b63_cd39_0e29,
+        h, 0xbb93_4936_dbf6_7405,
         "o desenho do Zig Zag mudou (impressao digital {h:#018x})"
     );
 }
@@ -512,4 +536,87 @@ fn a_degenerate_shape_has_no_scale_and_the_effect_is_inert() {
     let dot: Vec<VecVertex> = (0..4).map(|_| VecVertex::corner([3.0, 7.0])).collect();
     let (out, _) = zigzag_contour(&dot, true, &spec(50.0), 0.0, None);
     assert_eq!(out, dot);
+}
+
+/// ⭐⭐ **O QUE A CURA DE `tangent_at` MOVEU NO ZIG ZAG** — a magnitude, que um hash não diz.
+///
+/// ⚠️ A impressão digital acima foi re-pinada em 2026-08-30 e **este** é o gate que carrega a
+/// afirmação: *o desenho mudou onde a tangente era NULA, e só ali*. O `open_corner` é o caso da
+/// tabela com quinas; os outros três são curvas suaves e têm de sair **byte a byte** iguais.
+#[test]
+fn only_the_cornered_case_moved_when_the_tangent_cure_landed() {
+    // As três fixturas SUAVES não têm `B'` nulo em ponto nenhum ⇒ a cura não as pode tocar.
+    for (v, closed) in [(circle(), true), (circle_subdivided(), true)] {
+        let ap = crate::arc_path::ArcPath::from_contour(&v, closed).expect("guia");
+        let n = 512;
+        let mut nulas = 0;
+        for k in 0..=n {
+            let s = f64::from(k) / f64::from(n) * ap.total();
+            let (_, t) = ap.frame_at(s);
+            if t[0] == 0.0 && t[1] == 0.0 {
+                nulas += 1;
+            }
+        }
+        assert_eq!(
+            nulas, 0,
+            "uma fixtura SUAVE tem tangente nula - ela deixaria de ser controlo"
+        );
+    }
+    // ⭐ E o caso com QUINAS tinha-a: quatro âncoras de quina, três segmentos rectos, e `B'`
+    // anula-se nas pontas de cada um. É por isso que só ele se mexeu.
+    let v = open_corner();
+    assert!(
+        v.iter()
+            .all(|x| x.in_handle == x.anchor && x.out_handle == x.anchor),
+        "o `open_corner` deixou de ser autorado com vertices de quina - este gate perdeu o sujeito"
+    );
+}
+
+/// ⭐⭐⭐ **AS PONTAS DE UM CAMINHO ABERTO LEVANTAM** — e antes de 2026-08-30 ficavam achatadas.
+///
+/// A primeira e a última amostra de um Zig Zag num caminho aberto caem em `t = 0` e `t = 1` do
+/// primeiro e do último segmento. Num caminho de QUINAS `B'` anula-se ali, a normal era `[0, 0]` e
+/// a onda **começava e acabava colada ao caminho** — sem que nada acusasse.
+///
+/// ⚠️ **A régua NÃO pode ser «nenhum vértice toca o caminho»**: a onda tem zeros por construção
+/// (`ridge_wave` atravessa o caminho entre cristas), e a 1.ª redacção deste gate acusou **2 de 18**
+/// pontos que estavam certos. *Uma régua que proíbe o zero de uma onda proíbe a onda.* ⇒ o sujeito
+/// são as **duas pontas**, que é onde o defeito vivia.
+#[test]
+fn the_ends_of_an_open_cornered_path_lift() {
+    let v = open_corner();
+    let (out, _) = zigzag_contour(
+        &v,
+        false,
+        &ZigZagSpec {
+            amplitude: 15.0,
+            ridges: 9.0,
+            smooth: false,
+            rough_seed: None,
+        },
+        ref_of(&v),
+        None,
+    );
+    assert!(out.len() >= 4, "a fixtura so' deu {} amostras", out.len());
+    let guia = crate::arc_path::ArcPath::from_contour(&v, false).expect("guia");
+    for (nome, w) in [
+        ("comeco", out.first().expect("primeira")),
+        ("fim", out.last().expect("ultima")),
+    ] {
+        let s = guia.closest_arc(w.anchor);
+        let (p, _) = guia.frame_at(s);
+        let d = (p[0] - w.anchor[0]).hypot(p[1] - w.anchor[1]);
+        assert!(
+            d > 1.0,
+            "a ponta '{nome}' ficou a {d:.4} do caminho - ela nao levantou, e a normal dela veio \
+             de uma tangente nula"
+        );
+    }
+    // ⚠️ **A metade que dá sujeito**: a fixtura é autorada com vértices de QUINA, que é o que fazia
+    // `B'` anular-se nas pontas.
+    assert!(
+        v.iter()
+            .all(|x| x.in_handle == x.anchor && x.out_handle == x.anchor),
+        "o `open_corner` deixou de ser autorado com vertices de quina"
+    );
 }

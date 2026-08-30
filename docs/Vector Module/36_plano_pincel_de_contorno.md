@@ -625,3 +625,117 @@ Cena **`=78`** (⛔ o número **conta-se** no `build_smoke_router.rs` na altura,
 um **quadrado**, uma **estrela** e uma forma de **bicos** desenhados com pincel, ao lado das curvas
 suaves da `=77` — e a régua do Enio é a mais simples que há: *a linha dá a volta inteira sem
 buracos nas quinas*.
+
+### §11.7 — ✅ **METADE A FECHADA** (2026-08-30): a reta volta a ter direção
+
+`ph2d-arclen::tangent_at` deixa de ler *velocidade zero* como *direção ausente*. Quando `B'` se
+anula, a direção sai do **polígono de controlo** — mas **só se aquela ponta for degenerada**, que é
+a cerca que impede a cura de invadir a cúspide interior.
+
+**Medido, na mesma sonda, antes e depois:**
+
+| lado do quadrado | esperadas (a lei do encaixe) | emitidas ANTES | emitidas DEPOIS |
+|---:|---:|---:|---:|
+| 2 | 6 | 4 | **6** |
+| 3 | 9 | 8 | **9** |
+| 5 | 15 | 14 | **15** |
+| 7 | 22 | 20 | **22** |
+| 12 | 37 | 36 | **37** |
+| 20 | 62 | 60 | **62** |
+
+E as posições de arco com tangente nula numa volta: **5 → 0** (4001 amostras), e **0 de 4** quinas
+em cada um dos três tamanhos sondados directamente.
+
+⇒ **Zero buracos.** O gate que o fixa é `a_square_gets_every_copy_the_fit_asks_for`, e ele carrega
+a metade que prova que a fixtura contém o fenómeno: *o quadrado é autorado com vértices de quina*.
+
+#### §11.7.1 — ⛔⛔ A 1.ª cura passava nos testes de mesa e FALHAVA NA ÁRVORE
+
+Ela testava `t <= 0.0` / `t >= 1.0`. **O `t` nunca chega à ponta:** o prefixo de arco é somado por
+quadratura, e o comprimento de um segmento reto de `2` sai `2,000000000000000_4` — quem pergunta
+pelo arco `2,0` cai no segmento **anterior**, em `t = 0,999999999999999_8`, onde `|B'| ≈ 2,6e-15`:
+**abaixo** do piso do versor e **acima** de zero.
+
+⚠️ **E o sintoma era selectivo, que é o pior:** com a 1.ª cura o quadrado de lado `7` ficava a zero
+buracos e os de lado `2` e `12` mantinham **4 de 4** quinas sem tangente. *Duas fixturas do mesmo
+desenho, e só uma via o defeito* — se a varredura tivesse um tamanho só, a cura teria sido dada por
+boa.
+
+⇒ a condição passou a ser **«o polígono é degenerado NAQUELA ponta»**, que é um facto do segmento e
+não de um `t` derivado de uma soma.
+
+#### §11.7.2 — ⚠️ E uma MUTAÇÃO sobreviveu porque a fixtura era simétrica
+
+`t < 0.5` → `t <= 0.0` **sobreviveu** ao gate do caso numérico: a fixtura era uma **reta**, e numa
+reta as duas cascatas (`P₂−P₀` e `P₃−P₁`) devolvem a **mesma** direção — cair no ramo errado é
+invisível. ⇒ a fixtura passou a ser **assimétrica** (degenerada só no começo), onde o ramo errado
+devolve `None`.
+
+*As duas lições são a mesma: **uma fixtura simétrica não distingue os dois lados de uma lei que tem
+dois lados.***
+
+**Quatro provas de mutação, todas mortas:** a cascata inteira removida · a ponta final a usar a
+cascata do começo · a cascata a abrir só exactamente na ponta · a cerca da cúspide interior caída.
+
+#### §11.7.3 — O que a metade A **não** resolveu, e é a metade B
+
+O desvio das cópias que existem **não se mexeu** (`1,30×`–`1,64×` da meia-altura), e há `1`–`3`
+cópias por quadrado acima de `1,2×`. Elas são as que **atravessam** a quina: rígidas, colocadas por
+um referencial só, a cortar o canto. ⇒ é aí que entram os quatro modos do §11.3, medidos lado a
+lado.
+
+⚠️ **E a régua da metade B ainda não existe:** o `desvio` mede a distância de cada vértice da cópia
+ao ponto MAIS PRÓXIMO da guia — e numa quina o lado perpendicular está logo ali, então uma cópia que
+saltou para o outro lado do canto lê **`1,00×`**. *A terceira régua desta wave a nascer torta.*
+
+### §11.8 — ⭐⭐⭐ A cura tinha DOIS consumidores a mais, e um deles era uma CERCA COM O PREÇO ESCRITO
+
+`ph2d-arclen` é folha de cinco consumidores. A varredura impactada acusou **dois**:
+
+#### O Zig Zag — a crista estava ACHATADA, e o emissor já o declarava
+
+O emissor escreve `âncora = ponto + normal·lift`, e `normal` é a tangente rodada. Com tangente
+**nula** a crista era deslocada por **nada**: ela colapsava sobre o caminho. ⚠️ E o comentário do
+emissor **já nomeava a compensação** — *"numa cúspide não há direção: o ponto entra sem
+deslocamento, em vez de ser DESCARTADO — descartar tirava uma crista da conta em silêncio"*. Ela
+estava certa para uma cúspide **verdadeira** e disparava numa **reta**.
+
+**A/B medido** (`open_corner`, amplitude `15`, caminho de `120`): **4 de 20** vértices, até
+`5,07` unidades — *1/3 da amplitude* — e exactamente nos quatro sítios onde `B'` se anulava (as
+duas pontas do caminho aberto e as duas quinas). As outras três fixturas são curvas suaves e saem
+**byte a byte** iguais.
+
+⇒ *fingerprint* re-pinado com a tabela ao lado, e dois gates novos:
+`the_ends_of_an_open_cornered_path_lift` e `only_the_cornered_case_moved_when_the_tangent_cure_landed`.
+
+⚠️ **A 1.ª régua deste lado também nasceu torta** — ela proibia *qualquer* vértice de tocar o
+caminho, e acusou **2 de 18** pontos correctos: a onda tem **zeros por construção**. *Uma régua que
+proíbe o zero de uma onda proíbe a onda.* O sujeito são as **duas pontas**.
+
+#### O texto em caminho — ⛔⛔ uma CERCA DE CHESTERTON, e ela pedia exactamente este número
+
+O gate `a_stationary_parameterisation_has_no_direction_and_the_text_skips_it` **media o defeito e
+defendia-o de propósito**, com o motivo escrito:
+
+> *A cura é geometricamente óbvia […] mas ela mora no `ArcPath::frame_at`, cujo outro consumidor é
+> o Zig Zag: ele amostra EXATAMENTE nas âncoras, que são precisamente os pontos estacionários.
+> Aplicar a cura faz sangrar o fingerprint […] ou seja, **muda o desenho de um efeito que o Enio já
+> aprovou em smoke**. Isso é decisão de produto, não carona de uma wave de texto.*
+>
+> *Este gate existe para o defeito não ser re-descoberto do zero, e **para a cura não ser aplicada
+> sem que alguém veja o que ela custa**.*
+
+⭐⭐ **A cerca foi lida, e o que ela pedia agora existe:** o preço está medido (a tabela acima), e o
+que se compra está medido (o pincel deixa de perder `1`–`2` cópias por quadrado, em todo tamanho, e
+o texto deixa de saltar a primeira letra de uma reta). O gate foi **invertido**, com a história e o
+número dentro dele.
+
+⚠️ **É uma mudança visível num desenho aprovado, e por isso vai NOMEADA na resposta ao Enio** — não
+enterrada num diff. *Uma cerca lida e atravessada com o preço na mesa é diferente de uma cerca
+derrubada porque estorvava.*
+
+### §11.9 — E o teto de LOC: o ficheiro de gates partiu-se em TRÊS, por responsabilidade
+
+`brush_stroke_engine_tests.rs` passou de `736` para `472` LOC. O corte não foi por tamanho, foi por
+pergunta: **`brush_stroke_fixtures.rs`** (o que se CONSTRÓI, `pub(super)`) · o ficheiro do motor (o
+que se AFIRMA sobre a lei e o tracejado) · **`brush_corner_tests.rs`** (a W5).

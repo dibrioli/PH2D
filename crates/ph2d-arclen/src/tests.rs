@@ -196,3 +196,220 @@ fn straightish() -> Cubic {
 fn sharp() -> Cubic {
     [[0.0, 0.0], [S, 0.0], [-S, 0.0], [0.0, S]]
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// A DIREÇÃO nas pontas de um segmento com polígono de controlo degenerado (2026-08-30).
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
+/// Um segmento **RETO** como o repositório o autora: dois vértices de quina, cada alça em cima da
+/// própria âncora ⇒ `P₁ = P₀` e `P₃ = P₂`.
+fn reta(a: [f64; 2], b: [f64; 2]) -> Cubic {
+    [a, a, b, b]
+}
+
+/// ⭐⭐⭐ **UMA RETA TEM DIREÇÃO NAS PONTAS** — e antes de 2026-08-30 não tinha.
+///
+/// `B'(0) = 3·(P₁ − P₀)` e `B'(1) = 3·(P₃ − P₂)`, que numa reta autorada são **zero** nos dois
+/// extremos. A curva ali é uma reta; o que se anula é a velocidade, não a direção.
+///
+/// ⚠️ **O preço estava medido** (plano 36 §11.1): o pincel de contorno pulava `1`–`2` cópias por
+/// quadrado, em todo tamanho — o `frame_at` devolvia tangente nula e o `pattern_along` fazia
+/// `continue`. Cinco consumidores partilham esta função.
+#[test]
+fn a_straight_segment_has_a_direction_at_its_endpoints() {
+    let c = reta([0.0, 0.0], [10.0, 0.0]);
+    // A velocidade É zero nas pontas — a fixtura contém o fenómeno.
+    for t in [0.0, 1.0] {
+        let d = super::deriv(&c, t);
+        assert!(
+            d[0].hypot(d[1]) < 1e-12,
+            "a fixtura nao tem o fenomeno: B'({t}) = {d:?} nao e' nulo"
+        );
+    }
+    // E a DIREÇÃO existe, e é a da corda, nas duas pontas e no meio.
+    for t in [0.0, 0.5, 1.0] {
+        let u = tangent_at(&c, t).unwrap_or_else(|| panic!("sem direcao em t = {t}"));
+        assert!(
+            (u[0] - 1.0).abs() < 1e-12 && u[1].abs() < 1e-12,
+            "a direcao em t = {t} nao e' a da corda: {u:?}"
+        );
+    }
+    // ⚠️ **E ela aponta para a FRENTE nos dois extremos.** Pela esquerda o limite de `B'` é `−B''`
+    // e pela direita é `+B''`; uma cura escrita com derivadas e sem o cuidado do sinal devolve a
+    // direção INVERTIDA numa das duas pontas — e o sintoma seria uma cópia virada ao contrário na
+    // última quina, que nenhuma contagem apanha.
+    let ao_contrario = reta([10.0, 0.0], [0.0, 0.0]);
+    let u = tangent_at(&ao_contrario, 1.0).expect("sem direcao");
+    assert!(
+        (u[0] + 1.0).abs() < 1e-12,
+        "a direcao no fim de uma reta invertida nao acompanha a marcha: {u:?}"
+    );
+}
+
+/// ⚠️ **A CASCATA salta os pontos coincidentes** — um segmento com `P₀ = P₁ = P₂` ainda tem
+/// direção, e é a de `P₃ − P₀`.
+#[test]
+fn the_cascade_skips_every_coincident_control_point() {
+    let o = [0.0, 0.0];
+    let c: Cubic = [o, o, o, [0.0, 4.0]];
+    let u = tangent_at(&c, 0.0).expect("sem direcao com tres pontos coincidentes");
+    assert!(
+        u[0].abs() < 1e-12 && (u[1] - 1.0).abs() < 1e-12,
+        "a cascata nao chegou a P3 - P0: {u:?}"
+    );
+    // ⛔ CONTROLO — um segmento com os QUATRO pontos coincidentes não tem direção nenhuma, e
+    // devolver uma seria inventá-la.
+    assert!(
+        tangent_at(&[o, o, o, o], 0.0).is_none(),
+        "um segmento sem comprimento devolveu uma direcao"
+    );
+}
+
+/// ⛔⛔ **A CÚSPIDE INTERIOR CONTINUA A DEVOLVER `None`** — e é esta metade que impede a cura de
+/// virar «inventar uma direção onde não há».
+///
+/// Com `0 < t < 1` os dois lados existem e a **marcha inverte**: a reta tangente é a mesma, o
+/// sentido não. É a razão original de esta função devolver `Option`, e ela fica.
+///
+/// ⚠️ **A 1.ª fixtura deste gate TINHA a cúspide e a varredura NÃO A ENCONTRAVA:** os zeros do
+/// hodógrafo estão em `t = (3 ∓ √3)/6 ≈ 0,2113` e `0,7887`, e uma grade de `k/1000` não passa por
+/// nenhum deles. *Uma cúspide é um ponto isolado — uma varredura amostra tudo menos ele.* ⇒ a
+/// fixtura é avaliada **na raiz exacta**.
+#[test]
+fn a_true_interior_cusp_still_has_no_direction() {
+    // Hodógrafo `3·(6t² − 6t + 1)` no eixo x: os braços de controlo são opostos.
+    //
+    // ⚠️⚠️ **E a 1.ª fixtura NÃO PODIA matar a mutação que importa.** Ela é um laço com
+    // `P₀ = P₃`, e a mutação que troca este `None` por *«inventa a direção da corda»* devolve
+    // `unit(P₃ − P₀) = unit(0) = None` — **a mesma resposta**, por acidente. ⇒ a segunda fixtura
+    // tem `P₃ ≠ P₀` de propósito: ali toda direção inventada é visível.
+    // A condição de `B'(½) = 0` é `P₂ + P₃ = P₀ + P₁`, e é dela que a segunda sai.
+    let laco: Cubic = [[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 0.0]];
+    let r3 = 3.0_f64.sqrt();
+    let aberta: Cubic = [[0.0, 0.0], [4.0, 0.0], [0.0, 1.0], [4.0, -1.0]];
+    for (c, t) in [
+        (laco, (3.0 - r3) / 6.0),
+        (laco, (3.0 + r3) / 6.0),
+        (aberta, 0.5),
+    ] {
+        let c = &c;
+        // A fixtura CONTÉM o fenómeno: a velocidade anula-se ali.
+        let d = super::deriv(c, t);
+        assert!(
+            d[0].hypot(d[1]) < 1e-12,
+            "a raiz {t} nao anula o hodografo: {d:?}"
+        );
+        assert!(
+            tangent_at(c, t).is_none(),
+            "uma cuspide INTERIOR passou a devolver uma direcao em t = {t} - a cura invadiu o \
+             caso que ela nao devia tocar"
+        );
+        // ⚠️ E a cúspide é ISOLADA: um passo ao lado tem direção. Sem esta metade o gate ficaria
+        // verde sobre uma curva degenerada de ponta a ponta.
+        assert!(
+            tangent_at(c, t + 1e-3).is_some() && tangent_at(c, t - 1e-3).is_some(),
+            "a vizinhanca de {t} tambem nao tem direcao - a fixtura nao e' uma cuspide isolada"
+        );
+    }
+}
+
+/// ⭐ **O CAMINHO COMUM É BYTE-IDÊNTICO** — a cura só se vê onde `B'` se anula.
+#[test]
+fn an_ordinary_curve_is_untouched_by_the_cure() {
+    let c: Cubic = [[0.0, 0.0], [1.0, 3.0], [5.0, 3.0], [6.0, 0.0]];
+    for k in 0..=100 {
+        let t = f64::from(k) / 100.0;
+        let d = super::deriv(&c, t);
+        let n = (d[0] * d[0] + d[1] * d[1]).sqrt();
+        assert!(n > 1e-12, "a fixtura tem uma cuspide e nao devia");
+        let esperado = [d[0] / n, d[1] / n];
+        assert_eq!(
+            tangent_at(&c, t),
+            Some(esperado),
+            "a tangente do caminho comum mudou em t = {t}"
+        );
+    }
+}
+
+/// ⚠️⚠️ **AS DUAS PONTAS TÊM CASCATAS DIFERENTES, e numa RETA isso não se vê.**
+///
+/// Numa reta `[a, a, b, b]` a cascata de `t = 0` (`P₁−P₀ → P₂−P₀`) e a de `t = 1`
+/// (`P₃−P₂ → P₃−P₁`) devolvem **a mesma** direção — logo trocá-las é uma mutação que
+/// **sobrevive** a todo gate escrito sobre uma reta.
+///
+/// ⇒ a fixtura é **assimétrica**: degenerada só no FIM, e curva. Ali as duas cascatas dão
+/// direções diferentes, e só a de `t = 1` acompanha a marcha.
+#[test]
+fn the_two_ends_have_different_cascades_and_a_straight_line_hides_it() {
+    // `P₃ = P₂` ⇒ `B'(1) = 0`; o começo é ordinário.
+    let c: Cubic = [[0.0, 0.0], [2.0, 1.0], [6.0, 0.0], [6.0, 0.0]];
+    assert!(
+        super::deriv(&c, 1.0)[0].hypot(super::deriv(&c, 1.0)[1]) < 1e-12,
+        "a fixtura nao e' degenerada no fim"
+    );
+    let u = tangent_at(&c, 1.0).expect("sem direcao no fim");
+    // `P₃ − P₁ = (4, −1)`, normalizado.
+    let esperado = {
+        let n = 4.0_f64.hypot(-1.0);
+        [4.0 / n, -1.0 / n]
+    };
+    assert!(
+        (u[0] - esperado[0]).abs() < 1e-12 && (u[1] - esperado[1]).abs() < 1e-12,
+        "a ponta final nao usou a cascata dela: {u:?} contra {esperado:?}"
+    );
+    // ⚠️ **A metade que dá sujeito ao gate**: a cascata do OUTRO extremo daria outra direção.
+    let do_comeco = {
+        let n = 2.0_f64.hypot(1.0);
+        [2.0 / n, 1.0 / n]
+    };
+    assert!(
+        (u[0] - do_comeco[0]).abs() > 1e-3 || (u[1] - do_comeco[1]).abs() > 1e-3,
+        "as duas cascatas dao a mesma resposta nesta fixtura - trocar uma pela outra passaria"
+    );
+}
+
+/// ⛔⛔ **O `t` NUNCA CHEGA À PONTA — ele chega PERTO dela**, e foi isto que reprovou a 1.ª cura.
+///
+/// O prefixo de arco de um contorno é somado por **quadratura**: o comprimento de um segmento reto
+/// de `2` sai `2,000000000000000_4`. Quem pergunta pelo arco `2,0` cai no segmento **anterior**, em
+/// `t = 0,999999999999999_8` — e ali `|B'| ≈ 2,6e-15`: **abaixo** do piso do versor e **acima** de
+/// zero. Uma cura que testasse `t >= 1.0` não abriria, e o buraco voltava.
+///
+/// ⚠️ **Medido na árvore, não de mesa** (plano 36 §11.2-bis): com a 1.ª cura o quadrado de lado `7`
+/// ficava a zero buracos e os de lado `2` e `12` mantinham `4 de 4` quinas sem tangente. *Duas
+/// fixturas do mesmo desenho, e só uma via o defeito.*
+#[test]
+fn the_parameter_lands_near_the_end_not_on_it_and_the_cure_has_to_reach_there() {
+    // ⚠️⚠️ **A fixtura é ASSIMÉTRICA de propósito, e uma RETA não serviria.** Numa reta as duas
+    // cascatas devolvem a mesma direção, então uma cura que caísse no ramo ERRADO passaria — a
+    // mutação `t < 0.5` -> `t <= 0.0` **sobreviveu** à 1.ª redacção deste gate por isso. Aqui só o
+    // COMEÇO é degenerado: cair no ramo do fim devolve `None`, que é visível.
+    let c: Cubic = [[0.0, 0.0], [0.0, 0.0], [3.0, 1.0], [6.0, 0.0]];
+    let t = f64::EPSILON;
+    // A fixtura CONTÉM o fenómeno: velocidade não-nula, mas abaixo do piso do versor.
+    let d = super::deriv(&c, t);
+    let n = d[0].hypot(d[1]);
+    assert!(
+        n > 0.0 && n < 1e-12,
+        "a fixtura nao reproduz o `t` quase-na-ponta: |B'| = {n:e}"
+    );
+    let u = tangent_at(&c, t).expect("sem direcao a um epsilon do comeco");
+    let esperado = {
+        let m = 3.0_f64.hypot(1.0);
+        [3.0 / m, 1.0 / m]
+    };
+    assert!(
+        (u[0] - esperado[0]).abs() < 1e-9 && (u[1] - esperado[1]).abs() < 1e-9,
+        "a direcao a um epsilon do comeco nao saiu da cascata DELE: {u:?} contra {esperado:?}"
+    );
+    // ⚠️ **A metade que dá sujeito**: o outro extremo NÃO é degenerado, então o ramo do fim não
+    // teria resposta nenhuma para dar aqui.
+    assert!(
+        super::deriv(&c, 1.0)[0].hypot(super::deriv(&c, 1.0)[1]) > 1e-12,
+        "a fixtura ficou degenerada nos dois extremos - a mutacao do ramo volta a ser invisivel"
+    );
+    // E a reta também é servida, pelo mesmo mecanismo (aqui os dois ramos concordam).
+    let r = reta([0.0, 0.0], [10.0, 0.0]);
+    let ur = tangent_at(&r, 1.0 - f64::EPSILON).expect("sem direcao a um epsilon do fim");
+    assert!((ur[0] - 1.0).abs() < 1e-12, "no fim de uma reta: {ur:?}");
+}

@@ -28,6 +28,30 @@ pub mod profile_index;
 /// ⭐ A pilha de modificadores de um nó — ver [`stack`].
 mod stack;
 
+/// ⭐ **A porta da SONDA para a torção** — ela existe porque a lei tem de ser medida **antes** de o
+/// modificador nascer: a constante de segurança dela é o que decide se a peça fura.
+///
+/// ⚠️ `probe_*` e `#[doc(hidden)]`: é interno exposto para ser medido, e não API.
+#[doc(hidden)]
+#[must_use]
+pub fn probe_twist(tree: &Tree, k: f64, safety: f64) -> Tree {
+    stack::twist_with(tree, k, safety)
+}
+
+/// A irmã da [`probe_twist`] com o divisor CONSTANTE.
+#[doc(hidden)]
+#[must_use]
+pub fn probe_twist_const(tree: &Tree, k: f64, divisor: f64) -> Tree {
+    stack::twist_const(tree, k, divisor)
+}
+
+/// O tecto espectral da torção — ver `stack::twist`.
+#[doc(hidden)]
+#[must_use]
+pub fn probe_twist_sigma(t: f64) -> f64 {
+    stack::twist_sigma(t)
+}
+
 use fidget::context::Tree;
 use ph2d_field::{Blend, FieldDoc, Node, NodeKind, Op, Primitive, Unary, Xform};
 pub(crate) use stack::stacked;
@@ -38,8 +62,19 @@ pub type Engine = fidget::jit::JitShape;
 /// Compila o documento numa árvore de avaliação.
 #[must_use]
 pub fn compile(doc: &FieldDoc) -> Tree {
+    compile_with(doc, &hybrid::Registry::default())
+}
+
+/// A mesma compilação com o REGISTO à mão — a porta que o avaliador híbrido e as sondas partilham.
+///
+/// ⚠️ Ele entra porque o bordo de cada nó ([`bounds::local_balls`]) é hoje um **insumo** da pilha de
+/// modificadores: a torção tira dele o divisor que a mantém uma distância honesta. Sem registo, uma
+/// escultura lê como espaço vazio — exactamente o que a árvore já fazia com ela.
+#[must_use]
+pub fn compile_with(doc: &FieldDoc, reg: &hybrid::Registry) -> Tree {
+    let balls = bounds::local_balls(doc, reg);
     let mut built: Vec<Tree> = Vec::with_capacity(doc.nodes().len());
-    for node in doc.nodes() {
+    for (i, node) in doc.nodes().iter().enumerate() {
         // Seguro pela invariante da arena: todo filho já foi construído.
         let inner = match &node.kind {
             NodeKind::Leaf(p) => primitive(p),
@@ -54,7 +89,10 @@ pub fn compile(doc: &FieldDoc) -> Tree {
         // lei: em local, a espessura de uma casca é um número do nó, e a pose de um ancestral
         // escala-a junto com tudo o mais do nó — exatamente como a largura de uma caixa. Aplicá-la
         // depois de `place` faria o único número deste módulo que **não** obedece à cadeia.
-        built.push(place(&stacked(&inner, &node.mods), node.xform));
+        built.push(place(
+            &stacked(&inner, &node.mods, balls[i].unwrap_or(bounds::Ball::EMPTY)),
+            node.xform,
+        ));
     }
     built[doc.root().0 as usize].clone()
 }
@@ -373,6 +411,7 @@ fn compile_in_region_with(
         }
     }
 
+    let balls = bounds::local_balls(doc, &hybrid::Registry::default());
     let mut built: Vec<Tree> = Vec::with_capacity(n);
     for (i, node) in doc.nodes().iter().enumerate() {
         let inner = match &node.kind {
@@ -389,7 +428,10 @@ fn compile_in_region_with(
             NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
             NodeKind::Sampled { .. } => Tree::constant(f64::from(hybrid::ABSENT)),
         };
-        built.push(place(&stacked(&inner, &node.mods), node.xform));
+        built.push(place(
+            &stacked(&inner, &node.mods, balls[i].unwrap_or(bounds::Ball::EMPTY)),
+            node.xform,
+        ));
     }
     built[root].clone()
 }

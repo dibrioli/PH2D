@@ -575,8 +575,11 @@ impl Builder<'_> {
             Tree(Tree),
             Mixed(Plan),
         }
+        // ⭐ O bordo local de cada nó — o insumo que a pilha de modificadores passou a pedir
+        // (a torção tira dele o divisor). Ver [`crate::bounds::local_balls`].
+        let balls = crate::bounds::local_balls(doc, self.reg);
         let mut built: Vec<Built> = Vec::with_capacity(doc.nodes().len());
-        for node in doc.nodes() {
+        for (i, node) in doc.nodes().iter().enumerate() {
             let b = match &node.kind {
                 NodeKind::Sampled { key } => {
                     // ⚠️ Uma folha amostrada **não passa** pela pilha de modificadores nem pelo
@@ -597,7 +600,11 @@ impl Builder<'_> {
                     }
                 }
                 NodeKind::Leaf(p) => Built::Tree(crate::place(
-                    &crate::stacked(&crate::primitive(p), &node.mods),
+                    &crate::stacked(
+                        &crate::primitive(p),
+                        &node.mods,
+                        balls[i].unwrap_or(crate::bounds::Ball::EMPTY),
+                    ),
                     node.xform,
                 )),
                 NodeKind::Combine { op, children } => {
@@ -615,7 +622,11 @@ impl Builder<'_> {
                             })
                             .collect();
                         Built::Tree(crate::place(
-                            &crate::stacked(&crate::combine_trees(*op, &trees), &node.mods),
+                            &crate::stacked(
+                                &crate::combine_trees(*op, &trees),
+                                &node.mods,
+                                balls[i].unwrap_or(crate::bounds::Ball::EMPTY),
+                            ),
                             node.xform,
                         ))
                     } else {

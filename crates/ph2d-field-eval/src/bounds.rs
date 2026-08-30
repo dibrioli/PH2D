@@ -34,6 +34,12 @@ pub struct Ball {
 }
 
 impl Ball {
+    /// A bola de um nó que não ocupa lugar nenhum — o degenerado seguro de um nome desconhecido.
+    pub const EMPTY: Ball = Ball {
+        center: [0.0; 3],
+        radius: 0.0,
+    };
+
     /// A caixa alinhada aos eixos que a contém — o que a grade do extrator precisa.
     #[must_use]
     pub fn aabb(self) -> ([f32; 3], [f32; 3]) {
@@ -88,6 +94,90 @@ pub fn bounding_ball(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> Option<Ba
     of_node(doc, reg, doc.root())
 }
 
+/// ⭐⭐⭐ **A bola LOCAL de cada nó** — antes dos modificadores e antes da pose —, numa passagem só.
+///
+/// ⚠️ **É a mesma lei do [`bounding_ball`], e não uma segunda:** o `of_node` dobra exactamente estas
+/// respostas. Ela existe porque a [`crate::stacked`] precisa de saber **de onde parte** a pilha de
+/// modificadores de um nó, e ninguém lho podia dizer — a torção tira daí o divisor que a mantém uma
+/// distância honesta.
+///
+/// ⚠️ **Uma passagem PARA A FRENTE basta**, e é a mesma invariante que o [`crate::compile`] usa: a
+/// arena garante que todo filho tem índice menor que o do pai.
+#[must_use]
+pub fn local_balls(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> Vec<Option<Ball>> {
+    let mut local: Vec<Option<Ball>> = Vec::with_capacity(doc.nodes().len());
+    let mut placed: Vec<Option<Ball>> = Vec::with_capacity(doc.nodes().len());
+    for node in doc.nodes() {
+        let here = match &node.kind {
+            NodeKind::Leaf(p) => Some(Ball {
+                center: [0.0; 3],
+                radius: ph2d_field::bounding_radius(p),
+            }),
+            NodeKind::Sampled { key } => reg.get(key).map(|f| Ball {
+                center: [0.0; 3],
+                radius: f.bounding_radius(),
+            }),
+            NodeKind::Combine { op, children } => {
+                fold_children(doc, *op, children, |c| placed[c.0 as usize])
+            }
+        };
+        local.push(here);
+        placed.push(here.map(|b| place(with_mods(b, &node.mods), node.xform)));
+    }
+    local
+}
+
+/// ⭐ **A DOBRA dos filhos de um `Combine`**, com o verbo EFECTIVO de cada um — a lei, num sítio só.
+///
+/// ⚠️ **Ela saiu do `of_node` porque ganhou um segundo leitor** ([`local_balls`]): a recursão e a
+/// passagem para a frente respondem à mesma pergunta, e escrevê-la duas vezes seria a forma de as
+/// duas divergirem no dia seguinte.
+///
+/// ⛔ **A pergunta é o verbo do FILHO, não o do grupo** (2026-08-29). O defeito era silencioso e
+/// assimétrico: com o grupo em `Difference` e um filho a pedir `Union`, o bordo ficava só com o
+/// primeiro filho, e o que o segundo **acrescenta** caía fora da caixa do mundo ⇒ a peça sai
+/// **cortada**, sem uma palavra.
+///
+/// ⚠️ O primeiro filho **semeia** e o verbo dele não é perguntado — a lei do `fold_verb`, a mesma
+/// que o `combine_trees` e o `gradient_bound` pagam.
+///
+/// ⚠️ **O raio do filete não entra**, e é medido pela geometria: um arredondamento enche o vinco
+/// côncavo, que fica **dentro** da união dos dois bordos. Ele não cresce a peça.
+fn fold_children(
+    doc: &FieldDoc,
+    op: Op,
+    children: &[NodeId],
+    mut ball_of: impl FnMut(NodeId) -> Option<Ball>,
+) -> Option<Ball> {
+    let mut acc: Option<Ball> = None;
+    for c in children {
+        let Some(ball) = ball_of(*c) else {
+            continue;
+        };
+        let Some(a) = acc else {
+            acc = Some(ball);
+            continue;
+        };
+        let verb = doc.node(*c).and_then(|n| n.verb);
+        acc = Some(match ph2d_field::fold_verb(op, verb) {
+            // ⭐ **O que se corta não acrescenta matéria** — e um cortador enorme e distante
+            // inflaria a caixa da peça inteira.
+            Op::Difference(_) => a,
+            // A interseção cabe em qualquer um dos lados: o MENOR é o bordo mais apertado que
+            // continua a ser um bordo.
+            Op::Intersection(_) => {
+                if a.radius <= ball.radius {
+                    a
+                } else {
+                    ball
+                }
+            }
+            Op::Union(_) => Ball::merge(a, ball),
+        });
+    }
+    acc
+}
+
 fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<Ball> {
     let node = doc.nodes().get(id.0 as usize)?;
     let local = match &node.kind {
@@ -118,33 +208,7 @@ fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<
         // ⚠️ **O raio do filete não entra**, e é medido pela geometria: um arredondamento enche o
         // vinco côncavo, que fica **dentro** da união dos dois bordos. Ele não cresce a peça.
         NodeKind::Combine { op, children } => {
-            let mut acc: Option<Ball> = None;
-            for c in children {
-                let Some(ball) = of_node(doc, reg, *c) else {
-                    continue;
-                };
-                let Some(a) = acc else {
-                    acc = Some(ball);
-                    continue;
-                };
-                let verb = doc.node(*c).and_then(|n| n.verb);
-                acc = Some(match ph2d_field::fold_verb(*op, verb) {
-                    // ⭐ **O que se corta não acrescenta matéria** — e um cortador enorme e distante
-                    // inflaria a caixa da peça inteira.
-                    Op::Difference(_) => a,
-                    // A interseção cabe em qualquer um dos lados: o MENOR é o bordo mais apertado
-                    // que continua a ser um bordo.
-                    Op::Intersection(_) => {
-                        if a.radius <= ball.radius {
-                            a
-                        } else {
-                            ball
-                        }
-                    }
-                    Op::Union(_) => Ball::merge(a, ball),
-                });
-            }
-            acc
+            fold_children(doc, *op, children, |c| of_node(doc, reg, c))
         }
     }?;
     Some(place(with_mods(local, &node.mods), node.xform))
@@ -152,59 +216,67 @@ fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<
 
 /// O que os modificadores fazem ao bordo — **sempre para cima**.
 fn with_mods(ball: Ball, mods: &[Unary]) -> Ball {
-    let mut b = ball;
-    for m in mods {
-        b = match *m {
-            // A parede é centrada na superfície: metade cresce para fora.
-            Unary::Shell { thickness } => Ball {
-                radius: b.radius + thickness.abs() * 0.5,
-                ..b
-            },
-            Unary::Offset { distance } => Ball {
-                radius: b.radius + distance.max(0.0),
-                ..b
-            },
-            // O espelho é num plano do eixo LOCAL: a cópia está com aquela coordenada trocada de
-            // sinal. ⚠️ **Uma função, três eixos** — três braços com a conta escrita à mão seriam
-            // três sítios onde um índice errado dá uma caixa que **corta a peça** em silêncio.
-            Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => {
-                let k = match m {
-                    Unary::Mirror => 0,
-                    Unary::MirrorY => 1,
-                    _ => 2,
-                };
-                let mut c = b.center;
-                c[k] = -c[k];
-                b.merge(Ball {
-                    center: c,
-                    radius: b.radius,
-                })
+    mods.iter().fold(ball, |b, m| step_mod(b, *m))
+}
+
+/// ⭐⭐⭐ **O que UM modificador faz ao bordo** — a lei, num sítio só.
+///
+/// ⚠️ **Ela saiu do `with_mods` porque ganhou um SEGUNDO leitor** (2026-08-30): a pilha de
+/// modificadores ([`crate::stacked`]) precisa de saber, a cada passo, quão longe do eixo a peça vai
+/// — é disso que a torção tira o divisor que a mantém uma distância honesta. *Uma lei com dois
+/// leitores é uma porta; escrita duas vezes, são duas respostas que começam a divergir no dia em que
+/// alguém acrescentar um modificador.*
+#[must_use]
+pub fn step_mod(b: Ball, m: Unary) -> Ball {
+    match m {
+        // A parede é centrada na superfície: metade cresce para fora.
+        Unary::Shell { thickness } => Ball {
+            radius: b.radius + thickness.abs() * 0.5,
+            ..b
+        },
+        Unary::Offset { distance } => Ball {
+            radius: b.radius + distance.max(0.0),
+            ..b
+        },
+        // O espelho é num plano do eixo LOCAL: a cópia está com aquela coordenada trocada de
+        // sinal. ⚠️ **Uma função, três eixos** — três braços com a conta escrita à mão seriam
+        // três sítios onde um índice errado dá uma caixa que **corta a peça** em silêncio.
+        Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => {
+            let k = match m {
+                Unary::Mirror => 0,
+                Unary::MirrorY => 1,
+                _ => 2,
+            };
+            let mut c = b.center;
+            c[k] = -c[k];
+            b.merge(Ball {
+                center: c,
+                radius: b.radius,
+            })
+        }
+        // A matriz linear anda ao longo do X local.
+        Unary::Array { count, spacing } => {
+            let span = f32::from(u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX))
+                * spacing.abs();
+            Ball {
+                center: [b.center[0] + span * 0.5, b.center[1], b.center[2]],
+                radius: b.radius + span * 0.5,
             }
-            // A matriz linear anda ao longo do X local.
-            Unary::Array { count, spacing } => {
-                let span = f32::from(u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX))
-                    * spacing.abs();
-                Ball {
-                    center: [b.center[0] + span * 0.5, b.center[1], b.center[2]],
-                    radius: b.radius + span * 0.5,
-                }
+        }
+        // A matriz radial gira em torno do Z local: o bordo é o círculo que o centro descreve.
+        Unary::Radial { .. } => {
+            let arm = b.center[0].hypot(b.center[1]);
+            Ball {
+                center: [0.0, 0.0, b.center[2]],
+                radius: arm + b.radius,
             }
-            // A matriz radial gira em torno do Z local: o bordo é o círculo que o centro descreve.
-            Unary::Radial { .. } => {
-                let arm = b.center[0].hypot(b.center[1]);
-                Ball {
-                    center: [0.0, 0.0, b.center[2]],
-                    radius: arm + b.radius,
-                }
-            }
-            // A secção cresce `slope` por unidade de altura, e a altura é no máximo o próprio raio.
-            Unary::Taper { slope } => Ball {
-                radius: b.radius * slope.abs().mul_add(b.radius, 1.0),
-                ..b
-            },
-        };
+        }
+        // A secção cresce `slope` por unidade de altura, e a altura é no máximo o próprio raio.
+        Unary::Taper { slope } => Ball {
+            radius: b.radius * slope.abs().mul_add(b.radius, 1.0),
+            ..b
+        },
     }
-    b
 }
 
 /// A esfera vista do referencial do **pai** — e é aqui que a invariância à rotação se paga.

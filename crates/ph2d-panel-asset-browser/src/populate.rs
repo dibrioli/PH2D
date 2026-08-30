@@ -7,25 +7,40 @@
 //! oposta à do knob morto.
 
 use crate::ids;
-use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
+use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, TextInputState};
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    // ⚠️ **O pill do topo entra AQUI.** Ele já estava registado pela `topbar::populate` (é um dos
-    // três chips do grupo da direita), então este registo é idempotente — o que faltava nunca foi
-    // o registo: era o DESPACHO, que este painel passa a ter.
-    for id in [
-        ids::ASSET_CLOSE,
+    // ⛔⛔ **A faixa de arrasto e a alça NÃO são botões, e a AUDITORIA apanhou-me a registá-las
+    // como tal.** O despacho de um painel flutuante não passa pelo `Click`: ele lê
+    // `InteractiveState::BlenderHit { parent, kind }` no `pointer_down`, e é daí que saem o
+    // `begin_blender_drag` e o `begin_panel_resize_bl`. Registadas como `Button` elas ficavam
+    // **pintadas, hit-indexadas e mortas** — o painel abria e **não se podia mover nem
+    // redimensionar**, com toda a suíte verde. É a terceira pergunta do §5.0 outra vez: *o leitor
+    // DECIDE?*
+    store.register(
         ids::ASSET_DRAG_HANDLE,
+        InteractiveState::BlenderHit {
+            parent: ids::ASSET_PANEL,
+            kind: BlenderHitKind::DragHandle,
+        },
+    );
+    store.register(
         ids::ASSET_RESIZE_HANDLE_BL,
-    ] {
-        store.register(
-            id,
-            InteractiveState::Button {
-                state: ButtonState::Normal,
-            },
-        );
-    }
+        InteractiveState::BlenderHit {
+            parent: ids::ASSET_PANEL,
+            kind: BlenderHitKind::ResizeHandleBl,
+        },
+    );
+    // ⚠️ **O pill do topo NÃO entra aqui.** Ele já está registado pela `topbar::populate` (é um dos
+    // três chips do grupo da direita), e o que faltava nunca foi o registo: era o DESPACHO, que
+    // este painel passa a ter.
+    store.register(
+        ids::ASSET_CLOSE,
+        InteractiveState::Button {
+            state: ButtonState::Normal,
+        },
+    );
     for id in ids::ASSET_KIND.iter().take(ids::ASSET_KIND_FILTERS) {
         store.register(
             *id,
@@ -59,7 +74,12 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             orientation: SliderOrientation::Horizontal,
         },
     );
-    // ⛔ **A barra NÃO se regista**, e a ausência é a lei do substrato: um polegar não tem
-    // `InteractiveState` nenhum — o arrasto vive no `scrollbar_drag()` (chaveado pelo PAINEL) e o
-    // hover no `hot_id()` (chaveado pelo POLEGAR). O par visual sai do `scrollbar_visual_for`.
+    // ⛔⛔ **O polegar da barra REGISTA-SE como `Plain`, e a auditoria apanhou-me a omiti-lo.**
+    // Ele não tem estado próprio (o par visual sai do `scrollbar_visual_for`), mas sem uma entrada
+    // no store o `is_focusable` do despachante é **falso** e o `pointer_down` nunca semeia o
+    // arrasto: a barra desenhava, acendia, e **não se podia agarrar**.
+    store.register(
+        ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
+        InteractiveState::Plain,
+    );
 }

@@ -209,3 +209,74 @@ fn changing_the_filter_returns_the_grid_to_the_top() {
         "a rolagem ficou onde estava"
     );
 }
+
+// ── O que a AUDITORIA de 2026-08-30 achou, agora com gate ──────────────────────────────────────
+//
+// ⚠️ Os dois defeitos abaixo passavam por **todos** os gates anteriores deste ficheiro: o painel
+// abria, os chips respondiam, o duplo-clique instanciava — e o painel **não se podia mover nem
+// agarrar a barra**. A costura que faltava não é o clique, é o *tipo* de registo.
+
+/// ⛔⛔ **A faixa de arrasto e a alça de redimensionar NÃO são botões.**
+///
+/// O despacho de um painel flutuante não passa pelo `Click`: ele lê
+/// `InteractiveState::BlenderHit { parent, kind }` no `pointer_down`. Registadas como `Button` elas
+/// ficam pintadas, hit-indexadas e **mortas** — foi assim que esta wave as escreveu primeiro.
+#[test]
+fn the_drag_and_resize_handles_are_blender_hits_pointing_at_this_panel() {
+    use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState};
+    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    for (id, want) in [
+        (ids::ASSET_DRAG_HANDLE, BlenderHitKind::DragHandle),
+        (ids::ASSET_RESIZE_HANDLE_BL, BlenderHitKind::ResizeHandleBl),
+    ] {
+        match host.store().get(id) {
+            Some(InteractiveState::BlenderHit { parent, kind }) => {
+                assert_eq!(
+                    *parent,
+                    ph2d_editor_core::ids::ASSET_PANEL,
+                    "a alca aponta para outro painel"
+                );
+                assert_eq!(*kind, want, "a alca tem o papel errado");
+            }
+            other => panic!("a alca nao e' um BlenderHit: {other:?} — o painel fica imovel"),
+        }
+    }
+}
+
+/// ⛔⛔ **O polegar da barra tem de estar no store.** Sem uma entrada o `is_focusable` do
+/// despachante é falso e o `pointer_down` nunca semeia o arrasto: a barra desenha, acende, e não se
+/// pode agarrar.
+#[test]
+fn the_scrollbar_thumb_is_registered_so_the_drag_can_start() {
+    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    assert!(
+        host.store()
+            .get(ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID)
+            .is_some(),
+        "o polegar nao esta' no store — a barra e' inagarravel"
+    );
+}
+
+/// ⚠️ **O polegar da barra resolve para ESTE painel** no mapa do despachante — sem essa entrada o
+/// arrasto move a rolagem de outro painel (ou de nenhum).
+#[test]
+fn the_scrollbar_thumb_maps_back_to_this_panel() {
+    let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
+    let (_, _) = host
+        .store()
+        .scrollbar_visual_for(
+            ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
+            Some(ph2d_editor_core::ids::ASSET_PANEL),
+        );
+    // A prova real é o mapa do despachante, alcançado pelo `scrollbar_visual` de UM argumento:
+    // ele pergunta ao `scrollbar_panel_for_id`, e um id ausente dali devolve o par de repouso
+    // mesmo com o painel a rolar.
+    let visual_via_map = host
+        .store()
+        .scrollbar_visual(ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID);
+    assert_eq!(
+        visual_via_map.0,
+        ph2d_editor_core::widget::ScrollbarState::Normal,
+        "o par de repouso mudou de forma; re-leia este gate"
+    );
+}

@@ -296,7 +296,12 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     let inner_w = rect.w - pad() * 2.0;
     let cols = ((inner_w + gap()) / (cell + gap())).floor().max(1.0) as usize;
     let rows = cards.len().div_ceil(cols);
-    let content_h = rows as f32 * (card_h + gap()) + Density::Compact.row_h_px();
+    let beyond_h = if beyond > 0 {
+        Density::Compact.row_h_px()
+    } else {
+        0.0
+    };
+    let content_h = rows as f32 * (card_h + gap()) + beyond_h;
 
     // ⛔ **Os DOIS canais de recorte.** Sem o segundo, um cartão rolado para fora continua
     // clicável e o artista instancia o que não vê.
@@ -333,7 +338,12 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
             continue;
         }
         let id = ids::asset_cell_id(i);
-        ctx.host.store_mut().register(
+        // ⛔⛔ **`register_if_absent`, e não `register` — a auditoria apanhou-me a usar o segundo.**
+        // O `register` SUBSTITUI sempre, então o `state: Normal` deste quadro apagaria o `Pressed`
+        // que o `pointer_down` escreveu no quadro anterior: o cartão ficaria a piscar e o clique a
+        // meio caminho. `register` é a chamada certa para fiação de construção, uma vez; um laço
+        // de paint precisa do irmão.
+        ctx.host.store_mut().register_if_absent(
             id,
             InteractiveState::Button {
                 state: ph2d_editor_core::widget::ButtonState::Normal,

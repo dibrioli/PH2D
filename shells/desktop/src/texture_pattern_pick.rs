@@ -28,23 +28,40 @@ use ph2d_vec_scene::{Paint, PatternSource, Rgba8, VecPathId, VecScene};
 /// vira textura de grão e o artista não vê o que escolheu. Três mostra o motivo E a repetição.
 const DEFAULT_TILES_ACROSS: f64 = 3.0;
 
-/// A fonte a usar quando o artista escolhe *Tile* na forma `sel`.
+/// A fonte a usar quando o artista escolhe *Pattern* na forma `sel`.
 ///
 /// - a forma **já** tem padrão -> a fonte dele (trocar de chip e voltar não perde a arte);
-/// - senão -> abre o diálogo. `None` = desistiu, e quem chama **não muda nada**.
+/// - senão -> [`PatternSource::None`]: o padrão nasce **sem arte escolhida**.
+///
+/// # ⛔⛔ Ela ABRIA O DIÁLOGO DE IMAGEM, e isso decidia pelo artista
+///
+/// Report do Enio (2026-08-30): *"ao apertar pattern o usuário é obrigado a selecionar uma img no
+/// dialog. não tem a opção de usar shape até que se use a img em pattern"*.
+///
+/// As duas artes de um padrão nascem por portas **diferentes** — uma imagem por diálogo de ficheiro,
+/// uma forma pelo gesto de duas mãos —, e um chip só pode abrir uma. Abrindo a da imagem, a da forma
+/// ficava **atrás** dela: para usar uma forma era preciso primeiro escolher uma imagem que se ia
+/// deitar fora. *Uma porta que serve dois destinos e conhece um só não é uma porta: é um desvio.*
+///
+/// ⭐ ⇒ o chip deixa de escolher, e quem escolhe é o **painel**, que já pinta *Source…* e
+/// *Use Shape…* lado a lado com a dica por cima — a UI que a W11 construiu para a arte APAGADA
+/// serve, sem uma linha nova, a arte AINDA NÃO ESCOLHIDA.
+///
+/// ⚠️ **PREÇO NOMEADO: o caminho da imagem passa a ter um clique a mais** (chip *Pattern*, depois
+/// *Source…*). É o custo de a escolha ser explícita, e é a decisão desta wave — não um descuido.
+///
+/// ⭐ **E o gesto deixou de poder não fazer nada.** Antes, desistir do diálogo devolvia `None` e o
+/// preenchimento não mudava: o artista carregava em *Pattern* e **a app não fazia nada visível**.
+/// Hoje ele vê sempre a secção nascer, e desfazê-la é um `Ctrl+Z`.
 ///
 /// ⚠️ **Funções livres sobre `&AssetDb`, e não métodos de `App`, e a razão é o EMPRÉSTIMO:** no
 /// quadro, o `self.gfx` está mutavelmente emprestado desde o topo e vive até ao fim — um `&mut
 /// self` aqui não compila. Quem chama passa o `asset_db` que já tem desestruturado.
-pub(crate) fn source_for(
-    assets: &AssetDb,
-    scene: &VecScene,
-    sel: VecPathId,
-) -> Option<PatternSource> {
+pub(crate) fn source_for(scene: &VecScene, sel: VecPathId) -> Option<PatternSource> {
     if let Some(Paint::Pattern(p)) = scene.path(sel).and_then(|p| p.fill.as_ref()) {
         return Some(p.source);
     }
-    pick_source(assets)
+    Some(PatternSource::None)
 }
 
 /// **Abre o diálogo, SEMPRE** — a porta do botão *Source…*, que existe para TROCAR a arte.

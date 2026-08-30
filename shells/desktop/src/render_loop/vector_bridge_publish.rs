@@ -308,7 +308,7 @@ pub(super) fn publish(
                         // ⭐⭐⭐ *"A arte ainda existe?"* é uma pergunta sobre a CENA, não sobre o
                         // campo — a mesma lei que o `BrushRow::has_art` já obedece. E vai pela
                         // porta que ASSA, não por uma consulta escrita aqui.
-                        art_missing: crate::texture_pattern_live::art_is_missing(
+                        art: crate::texture_pattern_live::art_state(
                             scene,
                             sel,
                             &pat.source,

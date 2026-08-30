@@ -168,7 +168,7 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
         // A referência é um ladrilho que FECHA — a dica de costura tem gate próprio.
         wrap_seam_visible: false,
         // E cuja arte EXISTE — o aviso de arte apagada tem gate próprio.
-        art_missing: false,
+        art: ph2d_panel_vector::PatternArt::Ready,
     }
 }
 
@@ -460,7 +460,11 @@ fn the_missing_art_hint_names_the_dead_link() {
     let altura = |sumiu: bool| -> f32 {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
-        r.art_missing = sumiu;
+        r.art = if sumiu {
+            ph2d_panel_vector::PatternArt::Deleted
+        } else {
+            ph2d_panel_vector::PatternArt::Ready
+        };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
@@ -491,7 +495,11 @@ fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
     let topo_do_botao = |sumiu: bool| -> f32 {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
-        r.art_missing = sumiu;
+        r.art = if sumiu {
+            ph2d_panel_vector::PatternArt::Deleted
+        } else {
+            ph2d_panel_vector::PatternArt::Ready
+        };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
@@ -537,7 +545,11 @@ fn the_hint_pushes_what_follows_it_through_every_line_it_wraps_to() {
     let topo = |id, sumiu: bool| -> f32 {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(0);
-        r.art_missing = sumiu;
+        r.art = if sumiu {
+            ph2d_panel_vector::PatternArt::Deleted
+        } else {
+            ph2d_panel_vector::PatternArt::Ready
+        };
         state::set_current_texture_pattern(0, Some(r));
         let mut host = MockPanelHost::with_panel::<VectorPanel>();
         let mut st = VectorPanelState;
@@ -578,7 +590,11 @@ fn measure_where_the_hint_wraps() {
         let topo = |sumiu: bool| -> Option<f32> {
             state::set_current_fill(Some(FillKind::Pattern), None);
             let mut r = row(0);
-            r.art_missing = sumiu;
+            r.art = if sumiu {
+                ph2d_panel_vector::PatternArt::Deleted
+            } else {
+                ph2d_panel_vector::PatternArt::Ready
+            };
             state::set_current_texture_pattern(0, Some(r));
             let mut host = MockPanelHost::with_panel::<VectorPanel>();
             let mut st = VectorPanelState;
@@ -600,4 +616,77 @@ fn measure_where_the_hint_wraps() {
         }
     }
     state::set_current_texture_pattern(0, None);
+}
+
+/// ⭐⭐⭐ **O PAINEL É O ESCOLHEDOR DA ARTE, e ele fala DUAS frases** (report do Enio, 2026-08-30:
+/// *"ao apertar pattern o usuário é obrigado a selecionar uma img no dialog. não tem a opção de
+/// usar shape até que se use a img em pattern"*).
+///
+/// # As duas metades, e nenhuma se mede sozinha
+///
+/// **A 1.ª é a reachability.** Um padrão que acabou de nascer tem de mostrar os DOIS botões de arte
+/// — *Source…* (imagem) e *Use Shape…* (forma do documento). Enquanto o chip escolhia pelo artista,
+/// esta secção só existia **depois** de a escolha estar feita, e a forma ficava atrás da imagem.
+///
+/// **A 2.ª é a frase.** O estado *nunca escolhida* e o estado *foi apagada* pintam o mesmo aviso e
+/// pedem palavras opostas: uma convida, a outra alarma. Se alguém colapsar os dois num bit outra
+/// vez, a igualdade abaixo apanha-o — a sentença passaria a ser a mesma.
+///
+/// ⚠️ **O `Ready` é o CONTROLO:** sem ele, um painel que pintasse o aviso SEMPRE passaria as duas
+/// primeiras afirmações.
+#[test]
+fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
+    let botoes = |art: ph2d_panel_vector::PatternArt| -> (Option<f32>, Option<f32>) {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(0);
+        r.art = art;
+        state::set_current_texture_pattern(0, Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let topo = |host: &mut MockPanelHost, st: &mut VectorPanelState, k| {
+            host.painted_rect::<VectorPanel>(
+                st,
+                VIEWPORT,
+                ph2d_panel_vector::texture_pattern::kid(0, k),
+            )
+            .map(|r| r.y)
+        };
+        (
+            topo(
+                &mut host,
+                &mut st,
+                ph2d_panel_vector::ids::TexPatKnob::Source,
+            ),
+            topo(
+                &mut host,
+                &mut st,
+                ph2d_panel_vector::ids::TexPatKnob::PickShape,
+            ),
+        )
+    };
+    // 1. Acabou de nascer: as DUAS portas estão na tela.
+    let (img, forma) = botoes(ph2d_panel_vector::PatternArt::NotChosen);
+    let img = img.expect(
+        "um padrao sem arte escolhida nao pinta `Source...` - o caminho da imagem fica inalcancavel",
+    );
+    let forma = forma.expect(
+        "um padrao sem arte escolhida nao pinta `Use Shape...` - e' EXACTAMENTE o report de 30/08: \
+         a arte-forma fica atras da arte-imagem",
+    );
+    assert!(forma > img, "as duas portas colapsaram numa posicao so'");
+    // 2. E o aviso empurra-as para baixo — ele existe, e vem ANTES delas.
+    let (pronto, _) = botoes(ph2d_panel_vector::PatternArt::Ready);
+    let pronto = pronto.expect("o botao da arte e' sempre pintado");
+    assert!(
+        img > pronto + 1.0,
+        "o aviso de `NotChosen` nao empurrou os botoes ({img} contra {pronto}) - ou ele nao e' \
+         pintado, ou nao esta' acima do gesto que o resolve"
+    );
+    // 3. ⭐ E as DUAS frases são diferentes. Colapsá-las num bit acusa quem carregou no chip de ter
+    //    apagado uma forma que ele nunca teve.
+    assert_ne!(
+        ph2d_i18n::tr("panel.vector.texpat.art_not_chosen.hint"),
+        ph2d_i18n::tr("panel.vector.texpat.art_missing.hint"),
+        "os dois estados da arte dizem a MESMA frase - um deles esta' a mentir ao artista"
+    );
 }

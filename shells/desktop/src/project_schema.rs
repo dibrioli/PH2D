@@ -366,4 +366,22 @@
 /// transforma num erro de versão em vez de num postcard a falhar longe da causa.
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
-pub(crate) const PROJECT_SCHEMA: u32 = 103;
+/// # 106 — a ARTE de um padrão pode AINDA NÃO TER SIDO ESCOLHIDA (report do Enio, 2026-08-30)
+///
+/// O `PatternSource` ganhou a variante `None` e o `VEC_SCENE_SCHEMA_VERSION` subiu **17 -> 18** —
+/// logo este sobe por arrasto, e a **tripla** de `project_schema_tests` vê o degrau.
+///
+/// ⭐ **Do lado ADITIVO da regra:** a variante é a ÚLTIMA, os índices `0` (`Image`) e `1` (`Shape`)
+/// não se mexem, e nenhum campo mudou de tipo. Um ficheiro v103 lido por v106 estaria **correcto**
+/// byte a byte; o que quebra é o inverso (um v106 com a variante nova lido por código v103 acha um
+/// discriminante que não conhece), e é o número que o transforma num erro de versão em vez de num
+/// postcard a falhar longe da causa.
+///
+/// ⛔ **Sem degrau de migração**, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
+///
+/// ⚠️⚠️ **E o 106 foi CONTADO, não escolhido** (CLAUDE.md §5.0). Medido em 2026-08-30 nas oito
+/// árvores vivas: `main` em **103**, `line/UIUX` em **104**, e a `line/3DModeling` **e** a
+/// `line/components` **as duas em 105** — o mesmo literal em duas linhas, que é a colisão que funde
+/// **muda**, porque o git não sabe o que o número significa. Esta linha toma o primeiro livre acima
+/// do maior. *Quem integrar aquelas duas tem de recontar; este degrau não as desconflita.*
+pub(crate) const PROJECT_SCHEMA: u32 = 106;

@@ -7081,8 +7081,7 @@ impl crate::App {
                 let mut pattern = None;
                 if kind == crate::input_dispatch::VecFillKind::Pattern
                     && let Some(sel) = self.vec_pen.selected()
-                    && let Some(source) =
-                        crate::texture_pattern_pick::source_for(asset_db, vec_scene, sel)
+                    && let Some(source) = crate::texture_pattern_pick::source_for(vec_scene, sel)
                 {
                     let (size, origin) = crate::texture_pattern_pick::default_placement(
                         asset_db, vec_scene, sel, &source,
@@ -7131,13 +7130,20 @@ impl crate::App {
             // ⭐ **A secção PATTERN** (plano 33 W5) — a arte primeiro (ela abre um diálogo, que
             // congela o laço), depois a lei. As duas desaguam na MESMA porta.
             if let Some(slot) = pending_texpat_source
-                && self.vec_pen.selected().is_some()
+                && let Some(sel) = self.vec_pen.selected()
             {
                 // ⚠️ O `source_for` devolve a fonte que a forma JÁ tem quando ela tem uma — e aqui o
                 // artista pediu para TROCAR. O diálogo abre sempre, então o caminho é o directo.
                 if let Some(source) = crate::texture_pattern_pick::pick_source(asset_db) {
-                    pending_texpat =
-                        Some((slot, crate::texture_pattern_edit::TexPatCmd::Source(source)));
+                    // ⭐ **O tamanho a adoptar SE a forma ainda não tinha arte** — quem decide é o
+                    // `apply`; aqui só se MEDE, porque é aqui que o `AssetDb` está. Ver a variante.
+                    let (size, _) = crate::texture_pattern_pick::default_placement(
+                        asset_db, vec_scene, sel, &source,
+                    );
+                    pending_texpat = Some((
+                        slot,
+                        crate::texture_pattern_edit::TexPatCmd::Source(source, size),
+                    ));
                 }
             }
             // ⭐⭐ **O SUJEITO VEIO NO ID DO CONTROLO** (plano 35, wave F): cada secção tem os seus,

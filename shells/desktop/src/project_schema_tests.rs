@@ -439,7 +439,7 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 102→103 + VEC_SCENE 16→17: o PINCEL DE CONTORNO (plano 36, W1). O `StrokePaint`
         // ganhou `Brush(Box<BrushStroke>)` -- variante APENDADA, do lado aditivo da regra, e
         // exactamente o degrau barato que a nota do 102 previu ao desenhar a tinta como enum.
-        (103, 13, 17),
+        (106, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -18,7 +18,7 @@ fn scene_with(f: PatternFill) -> (VecScene, ph2d_vec_edit::PenTool, VecPathId) {
     (scene, pen, id)
 }
 
-fn fill() -> PatternFill {
+pub(super) fn fill() -> PatternFill {
     // ⚠️ Arte NÃO quadrada de propósito: um `size` `[8, 2]` é o único que mostra se o aspecto
     // sobreviveu a um Size novo. Com `[4, 4]` toda aritmética errada passa.
     let mut f = PatternFill::new(
@@ -402,112 +402,6 @@ fn the_shift_command_moves_the_pattern_by_a_fraction_of_one_repeat() {
 // padrão nos dois. É a exigência escrita no §4 do plano — um gate só sobre a primeira passa com a
 // wave inteira por construir.
 
-/// Uma forma com padrão no preenchimento (`no_fill`) e/ou no traço (`no_traco`).
-///
-/// ⚠️ **Os dois padrões são DIFERENTES** (`size` `[8,2]` contra `[3,5]`): com dois iguais, entregar
-/// o padrão errado dá o resultado certo por acidente — a mesma armadilha que a chave do memo da
-/// wave C teve de evitar.
-fn cena_alvos(no_fill: bool, no_traco: bool) -> (VecScene, ph2d_vec_edit::PenTool, VecPathId) {
-    let mut scene = VecScene::default();
-    let cor = Rgba8::new(1, 2, 3, 255);
-    let mut s = ph2d_vec_scene::StrokeSpec::new(cor, 0.5);
-    if no_traco {
-        s.paint = ph2d_vec_scene::StrokePaint::Pattern(Box::new(PatternFill::new(
-            PatternSource::Shape(2),
-            [3.0, 5.0],
-            cor,
-        )));
-    }
-    let id = scene.push_path(VecPath {
-        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
-            .map(VecVertex::corner)
-            .to_vec(),
-        closed: true,
-        fill: no_fill
-            .then(|| Paint::Pattern(Box::new(fill())))
-            .or_else(|| Some(Paint::solid(cor))),
-        stroke: Some(s),
-        ..VecPath::default()
-    });
-    let mut pen = ph2d_vec_edit::PenTool::default();
-    pen.select_many(&[id]);
-    (scene, pen, id)
-}
-
-/// ⭐⭐ **CADA SECÇÃO ESCREVE SÓ NA SUA TINTA** (gate nº 6 do plano 35 §4, na forma da wave F).
-///
-/// ⚠️ **O controle é a outra metade**: com o preenchimento aceso, o traço tem de ficar INTACTO. Sem
-/// ele, uma implementação que escrevesse nos dois passaria.
-#[test]
-fn each_section_writes_only_its_own_paint() {
-    let (mut scene, pen, id) = cena_alvos(true, true);
-    let mut h = ph2d_vec_edit::History::default();
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Stroke,
-        TexPatCmd::Angle(30.0),
-    );
-    assert!(
-        (pattern_at(&scene, id, PatternSlot::Stroke)
-            .expect("o traco tem padrao")
-            .angle
-            - 30f64.to_radians())
-        .abs()
-            < 1e-12,
-        "o angulo nao entrou no TRACO - a seccao editou o outro sujeito"
-    );
-    assert_eq!(
-        pattern_at(&scene, id, PatternSlot::Fill)
-            .expect("o preenchimento tem padrao")
-            .angle,
-        0.0,
-        "escrever no traco mexeu tambem no PREENCHIMENTO"
-    );
-    // E o simétrico, com o outro alvo aceso.
-    apply(
-        &mut scene,
-        &mut h,
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Angle(45.0),
-    );
-    assert!(
-        (pattern_at(&scene, id, PatternSlot::Stroke)
-            .expect("o traco tem padrao")
-            .angle
-            - 30f64.to_radians())
-        .abs()
-            < 1e-12,
-        "escrever no preenchimento mexeu tambem no TRACO"
-    );
-}
-
-/// ⚠️ **A troca de ARTE também honra o SUJEITO** — o botão *Source…* e o picker de forma da
-/// secção do traço escrevem no traço, e não sempre no preenchimento.
-#[test]
-fn changing_the_art_honours_the_subject_too() {
-    let (mut scene, _, id) = cena_alvos(true, true);
-    let mut h = ph2d_vec_edit::History::default();
-    assert!(set_source(
-        &mut scene,
-        &mut h,
-        id,
-        PatternSlot::Stroke,
-        PatternSource::Shape(77)
-    ));
-    assert_eq!(
-        pattern_at(&scene, id, PatternSlot::Stroke).map(|p| p.source),
-        Some(PatternSource::Shape(77))
-    );
-    assert_eq!(
-        pattern_at(&scene, id, PatternSlot::Fill).map(|p| p.source),
-        Some(PatternSource::Shape(1)),
-        "trocar a arte do traco trocou tambem a do preenchimento"
-    );
-}
-
 /// ⭐⭐⭐ **O PAINEL DIZ O MESMO QUE O DESENHO, mesmo com o ângulo a acumular** (auditoria de
 /// 2026-08-30).
 ///
@@ -561,4 +455,68 @@ fn what_the_panel_shows_writes_back_to_the_same_angle() {
             "{graus} deg foi e voltou como {volta} - a leitura e a escrita discordam"
         );
     }
+}
+
+/// ⭐⭐⭐ **ESCOLHER A ARTE PELA PRIMEIRA VEZ ADOPTA O TAMANHO DELA; TROCÁ-LA PRESERVA O DO ARTISTA.**
+///
+/// # Porque a lei tem de existir, e porque tem DUAS metades
+///
+/// Desde 2026-08-30 o chip *Pattern* não escolhe a arte (report do Enio), e o padrão nasce com
+/// [`PatternSource::None`]. Nesse instante o `default_placement` **não tem aspecto nenhum para
+/// preservar** — ele não sabe o que vai ser a arte — e devolve um quadrado. ⇒ sem a 1.ª metade,
+/// escolher a seguir uma imagem `400x100` pintá-la-ia **esticada 4:1**.
+///
+/// ⛔ E sem a 2.ª metade a cura seria pior que o defeito: trocar a arte de um padrão já ajustado
+/// deitaria fora o tamanho que o artista autorou, **em todas as trocas seguintes**.
+///
+/// ⚠️ *Uma metade sozinha aprova o defeito que a outra mede* — é por isso que as duas estão no
+/// mesmo gate, sobre a MESMA forma.
+#[test]
+fn the_first_art_brings_its_size_and_a_swap_keeps_the_authored_one() {
+    let mut nascida = fill();
+    nascida.source = PatternSource::None;
+    nascida.size = [4.0, 4.0]; // o quadrado do nascimento: um marcador, não uma escolha
+    let (mut scene, pen, id) = scene_with(nascida);
+
+    // 1. A PRIMEIRA arte traz o tamanho dela.
+    apply(
+        &mut scene,
+        &mut ph2d_vec_edit::History::default(),
+        &pen,
+        PatternSlot::Fill,
+        TexPatCmd::Source(PatternSource::Shape(VecPathId::default()), [8.0, 2.0]),
+    );
+    assert_eq!(
+        pattern_of(&scene, id).size,
+        [8.0, 2.0],
+        "a primeira arte nao trouxe o tamanho dela - uma imagem 4:1 nasceria esticada num quadrado"
+    );
+
+    // 2. ⚠️ Agora o tamanho E' autorado. O artista ajusta-o…
+    apply(
+        &mut scene,
+        &mut ph2d_vec_edit::History::default(),
+        &pen,
+        PatternSlot::Fill,
+        TexPatCmd::Axis(0, 5.0, false),
+    );
+    let autorado = pattern_of(&scene, id).size;
+    assert_ne!(autorado, [8.0, 2.0], "o controlo nao ajustou nada");
+
+    // 3. …e TROCAR a arte preserva-o, mesmo com outro tamanho a ser oferecido.
+    apply(
+        &mut scene,
+        &mut ph2d_vec_edit::History::default(),
+        &pen,
+        PatternSlot::Fill,
+        TexPatCmd::Source(
+            PatternSource::Image(ph2d_asset::AssetId::from_bytes(b"outra")),
+            [1.0, 99.0],
+        ),
+    );
+    assert_eq!(
+        pattern_of(&scene, id).size,
+        autorado,
+        "trocar a arte reescreveu o tamanho AUTORADO - o ajuste do artista morre a cada troca"
+    );
 }

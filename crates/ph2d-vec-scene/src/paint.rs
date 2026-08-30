@@ -163,6 +163,29 @@ pub enum PatternSource {
     /// another object on the canvas in the same file"*), e o que torna um padrão **vivo**: editar a
     /// forma-fonte re-assa o ladrilho em toda forma que a usa.
     Shape(crate::VecPathId),
+    /// ⭐⭐⭐ **A ARTE AINDA NÃO FOI ESCOLHIDA** (report do Enio, 2026-08-30: *"ao apertar pattern o
+    /// usuário é obrigado a selecionar uma img no dialog. não tem a opção de usar shape até que se
+    /// use a img em pattern"*).
+    ///
+    /// # Porque é um estado do DOCUMENTO, e não uma variável de sessão
+    ///
+    /// As duas artes de um padrão nascem por portas diferentes — uma imagem por diálogo de ficheiro,
+    /// uma forma pelo gesto de duas mãos — e o painel **já pinta as duas lado a lado** (*Source…* e
+    /// *Use Shape…*), com a dica por cima, sempre que a arte falta. O que faltava era o padrão poder
+    /// **existir** enquanto o artista escolhe: sem isto, o chip *Pattern* tinha de decidir por ele, e
+    /// decidia sempre pela imagem — a forma ficava atrás dela.
+    ///
+    /// ⛔ **Uma variável de sessão daria DUAS respostas à pergunta *"esta forma mostra a secção de
+    /// padrão?"***, e elas divergiriam no primeiro ajuste. Aqui a resposta continua a ser uma: o
+    /// preenchimento é (ou não é) um `Paint::Pattern`.
+    ///
+    /// ⚠️ **Ninguém assa isto**, e ninguém devia: a forma pinta a `fallback` e o painel diz porquê —
+    /// o mesmo caminho que a W11 abriu para a arte que foi APAGADA. As duas situações partilham a
+    /// UI e **não** a frase: uma nunca teve arte, a outra perdeu-a.
+    ///
+    /// ⚠️ É a ÚLTIMA variante de propósito: o postcard é posicional, e apendar é o único movimento
+    /// que deixa todo ficheiro já gravado (que só carrega os índices `0` e `1`) continuar a ler-se.
+    None,
 }
 
 /// **Um padrão de textura AUTORADO** — o que o artista mexeu, em unidades de MUNDO.

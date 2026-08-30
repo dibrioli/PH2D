@@ -158,15 +158,25 @@ fn art_pose(art: &[VecPath], pose_of: &dyn Fn(VecPathId) -> Xform) -> Vec<[f64; 
 /// ⚠️ **Só a fonte-FORMA responde `true`.** Uma fonte-IMAGEM que não resolve pode estar apenas a
 /// carregar — os pixels dela viajam no ficheiro desde a W8, e a ausência é transitória por
 /// construção. *Um aviso permanente sobre um estado transitório ensina o artista a ignorar avisos.*
+///
+/// ⛔⛔ **DEVOLVIA UM BIT, e o bit juntava duas coisas** (report do Enio, 2026-08-30): *"a arte
+/// ainda não foi escolhida"* e *"a arte foi apagada"* pedem frases opostas — uma convida, a outra
+/// alarma. Hoje responde o ESTADO, e o painel escolhe a frase.
 #[must_use]
-pub(crate) fn art_is_missing(
+pub(crate) fn art_state(
     scene: &VecScene,
     host: VecPathId,
     source: &PatternSource,
     object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
-) -> bool {
-    matches!(source, PatternSource::Shape(_))
-        && source_shape(scene, host, source, object_of).is_empty()
+) -> ph2d_panel_vector::PatternArt {
+    use ph2d_panel_vector::PatternArt;
+    match source {
+        PatternSource::None => PatternArt::NotChosen,
+        PatternSource::Shape(_) if source_shape(scene, host, source, object_of).is_empty() => {
+            PatternArt::Deleted
+        }
+        PatternSource::Shape(_) | PatternSource::Image(_) => PatternArt::Ready,
+    }
 }
 
 /// Os ladrilhos de padrão da cena, assados e memoizados.
@@ -249,6 +259,9 @@ impl TexturePatternLive {
         let shape = source_shape(scene, id, &pat.source, object_of);
         // ⚠️ Uma fonte-FORMA que não resolve (inexistente, ou a própria forma) nunca chega ao
         // assador: a recusa é PURA e mora na `source_shape`.
+        // ⚠️ A guarda é sobre a fonte do DOCUMENTO que não resolve. A `PatternSource::None` não
+        // entra aqui: ela cai no `art_of`, que devolve `None`, e a entrada é **retirada** do memo —
+        // que é o que faz a forma voltar à `fallback` e o painel dizer porquê.
         if matches!(pat.source, PatternSource::Shape(_)) && shape.is_empty() {
             return;
         }
@@ -339,6 +352,10 @@ fn art_of(
         // ⭐⭐ **W7 — uma FORMA do documento como arte** (o modelo do Figma). O `shape_ok` é o
         // veredito da [`source_shape`]: ela é que diz se a fonte existe e **não é a própria forma**,
         // e é lá que a recusa do ciclo vive — pura, e com gate.
+        // ⚠️ **Sem arte escolhida não há o que assar**, e isto NÃO é um erro: a forma pinta a
+        // `fallback` e o painel diz porquê. Um `eprintln` aqui gritaria uma vez por quadro sobre um
+        // estado que o artista está a ver e a resolver.
+        PatternSource::None => None,
         PatternSource::Shape(id) => {
             if !shape_ok {
                 return None;

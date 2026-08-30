@@ -10,11 +10,15 @@
 use super::*;
 use ph2d_vec_scene::{PatternFill, Rgba8, VecPath, VecVertex};
 
-/// [`art_is_missing`] num mundo **sem ECS**: cada caminho é o próprio objecto.
+/// *"Esta estampa tem arte utilizável?"* num mundo **sem ECS**: cada caminho é o próprio objecto.
 ///
 /// ⚠️ Estes gates medem a lei da ARTE QUE SUMIU, não a expansão de grupo — que tem gates próprios.
+///
+/// ⚠️ A porta passou a responder um ESTADO de três valores em vez de um bit (2026-08-30); estes
+/// gates continuam a perguntar o bit que lhes interessa — *não está pronta* —, e o terceiro estado
+/// tem gate próprio ([`a_pattern_born_without_art_says_so_and_it_is_not_the_deleted_state`]).
 fn art_is_missing_solo(scene: &VecScene, host: VecPathId, source: &PatternSource) -> bool {
-    art_is_missing(scene, host, source, &|id| vec![id])
+    art_state(scene, host, source, &|id| vec![id]) != ph2d_panel_vector::PatternArt::Ready
 }
 
 /// ⭐⭐⭐ **APAGAR A FORMA-FONTE deixa a estampa sem arte, e o app tem de o saber** (plano 33, W11).
@@ -22,8 +26,12 @@ fn art_is_missing_solo(scene: &VecScene, host: VecPathId, source: &PatternSource
 /// # O defeito que isto fecha
 ///
 /// Sem esta pergunta, apagar a forma que serve de arte faz a estampa voltar a **cor chapada** — e
-/// cor chapada é exactamente o que um preenchimento sólido correcto parece. O `PatternSource` não
-/// tem variante vazia, então a secção do painel sobe inteira e normal por cima de um vínculo morto.
+/// cor chapada é exactamente o que um preenchimento sólido correcto parece — a secção do painel
+/// subia inteira e normal por cima de um vínculo morto.
+///
+/// ⚠️ **A nota que estava aqui dizia que *"o `PatternSource` não tem variante vazia"*.** Deixou de
+/// ser verdade em 2026-08-30, e é por isso que este estado tem hoje um IRMÃO que se lê igual e não
+/// é o mesmo: a arte **nunca escolhida**.
 ///
 /// # As quatro respostas, e a terceira é a que uma consulta directa erraria
 ///
@@ -194,7 +202,8 @@ fn a_shape_inside_the_group_it_wears_is_refused() {
          devolve uma recursao infinita"
     );
     assert!(
-        art_is_missing(&scene, host, &PatternSource::Shape(a), &grupo),
+        art_state(&scene, host, &PatternSource::Shape(a), &grupo)
+            != ph2d_panel_vector::PatternArt::Ready,
         "e o painel tem de o DIZER: para o artista, uma estampa que nao pode resolver a arte e' \
          uma estampa sem arte"
     );
@@ -229,5 +238,55 @@ fn editing_any_member_of_the_group_changes_what_the_memo_sees() {
         antes, depois,
         "mexer no IRMAO nao mudou o que a chave ve^ - o ladrilho ficaria parado numa versao \
          anterior do grupo, e o padrao deixaria de ser vivo"
+    );
+}
+
+/// ⭐⭐⭐ **"AINDA NÃO ESCOLHIDA" E "APAGADA" SÃO ESTADOS DIFERENTES** (report do Enio, 2026-08-30).
+///
+/// # Porque isto é um gate e não uma questão de gosto
+///
+/// A porta respondia um `bool`, e o `bool` juntava as duas: quem carregava no chip *Pattern* lia
+/// *"the shape this pattern used as art was deleted"* — uma acusação sobre um estrago que ele não
+/// fez. É a família de *"«pausado» e «terminado» leem-se igual no `playing == false`"*: **um bit que
+/// responde a duas perguntas responde mal a uma delas**, e a que ele responde mal é a que o artista
+/// vê primeiro.
+///
+/// ⚠️ **O terceiro estado é o CONTROLO**: sem `Ready` na mesma varredura, um `art_state` que
+/// devolvesse `NotChosen` para tudo passaria as duas primeiras afirmações.
+#[test]
+fn a_pattern_born_without_art_says_so_and_it_is_not_the_deleted_state() {
+    use ph2d_panel_vector::PatternArt;
+    let mut scene = VecScene::default();
+    let host = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    });
+    let arte = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    });
+    let solo = |s: &VecScene, src: &PatternSource| art_state(s, host, src, &|id| vec![id]);
+
+    // 1. Acabou de nascer: sem arte escolhida.
+    assert_eq!(solo(&scene, &PatternSource::None), PatternArt::NotChosen);
+    // 2. Uma forma que existe: pronta. (O CONTROLO — sem ele, um `NotChosen` constante passaria.)
+    assert_eq!(solo(&scene, &PatternSource::Shape(arte)), PatternArt::Ready);
+    // 3. A mesma forma, apagada: outro estado, e NÃO o do nº 1.
+    scene.remove_path(arte);
+    assert_eq!(
+        solo(&scene, &PatternSource::Shape(arte)),
+        PatternArt::Deleted
+    );
+    assert_ne!(
+        solo(&scene, &PatternSource::Shape(arte)),
+        solo(&scene, &PatternSource::None),
+        "nunca-escolhida e apagada colapsaram num estado so' - o artista que carrega no chip passa \
+         a ser acusado de ter apagado uma forma"
     );
 }

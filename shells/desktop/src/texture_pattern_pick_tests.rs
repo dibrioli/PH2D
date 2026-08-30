@@ -47,3 +47,59 @@ fn a_new_pattern_is_born_over_the_shape_not_at_the_world_origin() {
     let (_, o2) = default_placement(&db, &scene, id2, &source);
     assert_eq!(o2, [-7.0, -3.0]);
 }
+
+/// ⭐⭐⭐ **O CHIP *Pattern* NÃO ESCOLHE A ARTE PELO ARTISTA** (report do Enio, 2026-08-30: *"ao
+/// apertar pattern o usuário é obrigado a selecionar uma img no dialog. não tem a opção de usar
+/// shape até que se use a img em pattern"*).
+///
+/// # A régua, e porque ela não é o valor devolvido
+///
+/// O defeito era um **efeito colateral**: a porta abria um diálogo de ficheiro. Um gate que só
+/// olhasse o valor devolvido ficaria verde com o diálogo ainda lá — e num arnês sem ecrã o diálogo
+/// **bloqueia ou devolve `None`**, o que se leria como "a função não fez nada".
+///
+/// ⇒ o que se afirma é a coisa que só é verdade **sem** diálogo: a porta é PURA. Ela deixou de
+/// receber o `AssetDb` (não há o que descodificar nem inserir), e sem ele **não há forma de ela
+/// produzir uma `PatternSource::Image`** — o tipo diz o que o comentário prometia. Este gate corre
+/// num teste normal, o que por si só prova que ela não abre nada: um `rfd::FileDialog` num arnês
+/// headless não voltaria daqui.
+///
+/// ⚠️ **E a segunda metade importa tanto como a primeira:** trocar de chip e voltar **não perde a
+/// arte**. Sem ela, a cura seria "o chip apaga o que estava lá".
+#[test]
+fn choosing_pattern_on_a_bare_shape_does_not_pick_the_art_for_the_artist() {
+    let mut scene = VecScene::default();
+    let nua = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        ..VecPath::default()
+    });
+    assert_eq!(
+        source_for(&scene, nua),
+        Some(PatternSource::None),
+        "o chip Pattern numa forma sem padrao tem de nascer SEM arte escolhida - se ele escolher, \
+         escolhe sempre a mesma, e a outra arte fica atras dela"
+    );
+    // ⚠️ CONTROLO: numa forma que JÁ tem padrão, a porta devolve a arte que lá está.
+    let vestida = scene.push_path(VecPath {
+        verts: [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0]]
+            .map(VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(ph2d_vec_scene::Paint::Pattern(Box::new(
+            ph2d_vec_scene::PatternFill::new(
+                PatternSource::Shape(nua),
+                [2.0, 2.0],
+                ph2d_vec_scene::Rgba8::new(1, 2, 3, 255),
+            ),
+        ))),
+        ..VecPath::default()
+    });
+    assert_eq!(
+        source_for(&scene, vestida),
+        Some(PatternSource::Shape(nua)),
+        "trocar de chip e voltar perdeu a arte"
+    );
+}

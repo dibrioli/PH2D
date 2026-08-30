@@ -91,8 +91,20 @@ pub(crate) enum TexPatCmd {
     Gap(f64),
     /// A rotação do padrão, em graus.
     Angle(f64),
-    /// Trocar a ARTE, mantendo a lei.
-    Source(PatternSource),
+    /// Trocar a ARTE, mantendo a lei — **e o tamanho a adoptar se ainda não havia arte nenhuma**.
+    ///
+    /// ⛔⛔ **Um `size` escolhido quando a arte ainda não existia NÃO é autorado: é um marcador.**
+    /// Desde que o chip *Pattern* deixou de escolher a arte (report do Enio, 2026-08-30), o padrão
+    /// nasce sem ela — e o `default_placement` não tem aspecto nenhum para preservar, então dá um
+    /// quadrado. Sem esta segunda metade, escolher a seguir uma imagem `400x100` pintá-la-ia
+    /// **esticada 4:1**, que é a primeira coisa que o artista veria e que ele leria como *"a
+    /// ferramenta deformou a minha imagem"*.
+    ///
+    /// ⚠️ **Só conta quando a fonte anterior era [`PatternSource::None`].** Trocar a arte de um
+    /// padrão que já tinha uma **preserva** o tamanho: ali ele É autorado, e re-derivá-lo deitaria
+    /// fora o ajuste do artista. *Quem decide é o `apply`, num sítio só; quem sabe medir a arte é o
+    /// chamador, que tem o `AssetDb`.*
+    Source(PatternSource, [f64; 2]),
 }
 
 /// O reticulado que o índice do painel nomeia. ⚠️ Porta única: o painel oferece por índice, e a
@@ -208,7 +220,12 @@ pub(crate) fn apply(
         }
         TexPatCmd::Gap(v) => next.gap = [v, v],
         TexPatCmd::Angle(deg) => next.angle = deg.to_radians(),
-        TexPatCmd::Source(s) => next.source = s,
+        TexPatCmd::Source(s, tamanho) => {
+            if next.source == PatternSource::None {
+                next.size = tamanho;
+            }
+            next.source = s;
+        }
     }
     if pattern_at(scene, sel, slot) == Some(&next) {
         return;
@@ -240,6 +257,10 @@ pub(crate) fn panel_angle_deg(radians: f64) -> f64 {
 #[cfg(test)]
 #[path = "texture_pattern_edit_tests.rs"]
 mod tests;
+// ⚠️ Irmão por RESPONSABILIDADE: o de cima mede a LEI que um comando escreve, este mede EM QUEM.
+#[cfg(test)]
+#[path = "texture_pattern_edit_subject_tests.rs"]
+mod subject_tests;
 
 thread_local! {
     /// A última forma descrita — o log é por EVENTO, e mudar de selecção é o evento.

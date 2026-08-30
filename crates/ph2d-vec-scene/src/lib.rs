@@ -482,7 +482,7 @@ pub struct VecPath {
 /// o que quebra é o inverso (um v17 com pincel encontra, num binário v16, um índice de variante que
 /// ele não conhece). ⭐ É exactamente o degrau barato que a nota do `PROJECT_SCHEMA` 101 previu ao
 /// desenhar o `StrokePaint` como enum.
-pub const VEC_SCENE_SCHEMA_VERSION: u32 = 17;
+pub const VEC_SCENE_SCHEMA_VERSION: u32 = 18;
 
 /// Reordenação na pilha de render (índice `0` = fundo, último = frente). Uma
 /// operação de documento, mapeada pela shell a partir dos botões Arrange (mirror

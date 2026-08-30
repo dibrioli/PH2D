@@ -99,7 +99,24 @@ pub struct TexturePatternRow {
     /// dentro da `VecScene`, que o undo repõe **verbatim** — desfazer o apagar devolve a forma com
     /// o MESMO id e o vínculo cura-se sozinho (há gate). O que não se recupera é apagar, **gravar**
     /// e só reparar depois.
-    pub art_missing: bool,
+    pub art: PatternArt,
+}
+
+/// **Em que pé está a ARTE de um padrão** — e são TRÊS estados, não dois.
+///
+/// ⛔⛔ Isto era um `bool` (`art_missing`), e o report do Enio de 2026-08-30 mostrou que ele juntava
+/// duas coisas que pedem frases OPOSTAS: *"nunca foi escolhida"* e *"foi apagada"*. É a mesma
+/// família de *"«pausado» e «terminado» leem-se igual no `playing == false`"*: um bit que responde a
+/// duas perguntas responde mal a uma delas.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PatternArt {
+    /// Há arte e ela resolve — o caminho comum, e o único em que a secção não avisa nada.
+    Ready,
+    /// ⭐ **O padrão acabou de nascer e o artista ainda não disse qual é a arte** — o estado que faz
+    /// o painel ser o ESCOLHEDOR, com *Source…* e *Use Shape…* lado a lado.
+    NotChosen,
+    /// A forma que servia de arte foi apagada (W11). Recuperável por undo enquanto a sessão durar.
+    Deleted,
 }
 
 /// Publica a lei do padrão da tinta `slot` (`None` esconde a secção dela).

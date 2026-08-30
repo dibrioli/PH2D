@@ -136,7 +136,7 @@ fn lei() -> ph2d_panel_vector::TexturePatternRow {
         shift_pct: [0.0, 0.0],
         mode: 0,
         wrap_seam_visible: false,
-        art_missing: false,
+        art: ph2d_panel_vector::PatternArt::Ready,
     }
 }
 

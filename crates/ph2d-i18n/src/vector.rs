@@ -52,6 +52,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐⭐⭐ A forma-fonte foi APAGADA (plano 33 W11). ⚠️ A frase diz o que ACONTECEU e o que a
         // estampa esta' a fazer agora — "the art was deleted" sozinho deixaria o artista sem saber
         // porque' a forma ficou de uma cor so'. Os dois botoes de reparacao ficam logo abaixo.
+        // ⭐⭐⭐ **O padrao acabou de nascer e a arte ainda nao foi escolhida** (report do Enio,
+        // 2026-08-30). ⚠️ A frase CONVIDA, e nomeia os dois botoes que estao mesmo por baixo dela —
+        // dizer aqui "the art was deleted" acusaria o artista de um estrago que ele nao fez.
+        "panel.vector.texpat.art_not_chosen.hint" => {
+            "Pick the art for this pattern: an image file with Source..., or a shape from your \
+             drawing with Use Shape..."
+        }
         "panel.vector.texpat.art_missing.hint" => {
             "The shape this pattern used as art was deleted, so it is painting its fallback \
              colour. Undo, or pick art again below."

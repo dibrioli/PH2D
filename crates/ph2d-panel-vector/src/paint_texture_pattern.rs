@@ -72,7 +72,7 @@ impl BodyCtx<'_> {
         }
         let kid = |k| kid(slot, k);
         // ⭐⭐⭐ **A ARTE SUMIU** — dito ANTES dos dois botões que a repõem. Ver [`Self::missing_art_hint`].
-        y = self.missing_art_hint(p.art_missing, y);
+        y = self.missing_art_hint(p.art, y);
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
         y = self.action_button(kid(ids::TexPatKnob::Source), "Source...", y);
@@ -279,13 +279,26 @@ impl BodyCtx<'_> {
     ///
     /// ⚠️ Um pincel na mesma situação **não** ganha aviso: lá o `art` é um `Option`, e a casa já
     /// decidiu que *"um id que aponta para uma forma apagada é um pincel sem arte"* — o rótulo do
-    /// botão muda para *"Pick Shape…"* e diz o estado sozinho. Uma estampa não tem essa saída,
-    /// porque o `PatternSource` **não tem variante vazia**.
-    fn missing_art_hint(&mut self, sumiu: bool, y: f32) -> f32 {
-        if sumiu {
-            return self.hint_line(tr("panel.vector.texpat.art_missing.hint"), y);
+    /// botão muda para *"Pick Shape…"* e diz o estado sozinho.
+    ///
+    /// ⛔⛔ **E a nota que estava aqui dizia que a estampa não podia ter essa saída, *"porque o
+    /// `PatternSource` não tem variante vazia"*.** Ela deixou de ser verdade em 2026-08-30: a
+    /// variante existe (`PatternSource::None`), e é ela que faz este aviso ter **duas frases**.
+    /// *Uma nota que explica uma ausência envelhece no dia em que alguém preenche a ausência.*
+    ///
+    /// ⚠️ As duas frases não são cosmética: *"escolha a arte"* convida, *"a arte foi apagada"*
+    /// alarma. Dizer a segunda a quem acabou de carregar no chip seria acusar o artista de um
+    /// estrago que ele não fez.
+    fn missing_art_hint(&mut self, art: crate::state::PatternArt, y: f32) -> f32 {
+        match art {
+            crate::state::PatternArt::Ready => y,
+            crate::state::PatternArt::NotChosen => {
+                self.hint_line(tr("panel.vector.texpat.art_not_chosen.hint"), y)
+            }
+            crate::state::PatternArt::Deleted => {
+                self.hint_line(tr("panel.vector.texpat.art_missing.hint"), y)
+            }
         }
-        y
     }
 
     fn texpat_seam_hint(&mut self, mode: u8, visivel: bool, y: f32) -> f32 {

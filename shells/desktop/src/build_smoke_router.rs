@@ -387,5 +387,13 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::brush_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ AS QUINAS do pincel (=78, plano 36 W5) — irmã `brush_corner_smoke`.
+    // ⚠️ Ela existe por causa da `=77`: aquela é feita **só de curvas suaves**, e a mensagem dela
+    // dizia porquê — até 30/08 um contorno com quina viva mostrava as cópias a saltar no canto.
+    // Esta é a que prova que fechou, e por isso é feita **só de bicos**.
+    if level == 78 {
+        crate::brush_corner_smoke::frame(app, f);
+        return true;
+    }
     false
 }

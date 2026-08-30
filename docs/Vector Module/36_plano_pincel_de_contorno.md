@@ -739,3 +739,77 @@ derrubada porque estorvava.*
 `brush_stroke_engine_tests.rs` passou de `736` para `472` LOC. O corte não foi por tamanho, foi por
 pergunta: **`brush_stroke_fixtures.rs`** (o que se CONSTRÓI, `pub(super)`) · o ficheiro do motor (o
 que se AFIRMA sobre a lei e o tracejado) · **`brush_corner_tests.rs`** (a W5).
+
+### §11.10 — ✅ **METADE B FECHADA** (2026-08-30): a lei é o **encaixe na PEÇA**, e as quinas partem o contorno
+
+As quatro políticas foram medidas lado a lado com o **desvio de cobertura** — *o quanto a guia que
+uma cópia recebeu se afasta da espinha RÍGIDA que ela deita sobre ela*:
+
+| forma | **A** (hoje: um avanço para a volta) | **B** (quebrar nas quinas, encaixe por trecho) | **B'** (quebrar, avanço global) |
+|---|---:|---:|---:|
+| quadrado 7×7 | `1,273` · 2 fatias más | **`0,000`** | `0,000`, mas **vão de `1,273` na quina** |
+| retângulo 12×4 | `1,280` · 3 más | **`0,000`** | `0,000`, **vão `0,960`** |
+| estrela 5 pontas | `0,919` · 8 más | **`0,000`** | `0,000`, **vão `0,517`** |
+
+*(em múltiplos da meia-altura da arte; o CONTROLO é um círculo de igual perímetro, que paga `0,091`
+— a flecha da corda, o preço inevitável de uma cópia rígida.)*
+
+⇒ **B vence, e não é perto.** O B′ leva a cobertura a zero mas deixa **uma cópia inteira em falta**
+em cada quina, que é visualmente a mesma classe de defeito de hoje.
+
+⭐⭐ **A lei generaliza a W3-bis com a palavra certa:** era *«o avanço encaixa no TRAÇO»*, passa a
+ser **«o avanço encaixa na PEÇA»** — e uma peça é um trecho que a arte tem de preencher de ponta a
+ponta, delimitado por um **vão de tracejado** ou por uma **quina**.
+
+⛔ **E os quatro modos do Illustrator não se medem mais fundo que isto**, porque as diferenças
+entre eles são sobre **o ornamento da quina** (que ladrilho pôr lá), e isso exige um **ladrilho de
+canto autorado** — recusado no §11.3 com o motivo dos próprios fóruns deles. Na régua que nomeia o
+defeito, o B dá **zero**, e nada bate zero.
+
+#### §11.10.1 — O limiar de quina, MEDIDO
+
+`CORNER_MIN_TURN = 1°`, e a vala tem **treze ordens de grandeza**: a viragem máxima de uma âncora
+num círculo e numa elipse `3:1` é `≤ 1e-12°` (zero de máquina — as alças são colineares por
+construção), e num quadrado é `~90°`, numa estrela `~122°`. ⛔ Não é um botão: um limiar exposto
+convidaria a afinar o que a geometria já responde.
+
+⚠️ **Isto só é mensurável desde a metade A**: a viragem sai das **tangentes exactas dos dois
+segmentos** (`tangent_at(anterior, 1)` contra `tangent_at(seguinte, 0)`), e até 30/08 as duas eram
+**nulas** num contorno de quinas — precisamente onde há quina para medir.
+
+#### §11.10.2 — ⛔⛔⛔ TRÊS RÉGUAS SEGUIDAS NASCERAM TORTAS, e a lição é uma só
+
+| # | a régua | o que ela acusou | por quê |
+|---|---|---|---|
+| 1 | desvio das cópias **EMITIDAS** | nada | o defeito era uma cópia **não emitida** |
+| 2 | distância ao ponto **mais próximo da guia inteira** | `1,00×` numa cópia que saltou o canto | numa quina o lado perpendicular está logo ali |
+| 3 | (na cena) distância à **espinha** = dois vértices extremos | `0,96` sobre produto correcto | naquela arte os extremos **não** estão na linha central |
+| 4 | (na cena) *«a guia está coberta por arte?»* | `0,73` sobre produto correcto | a arte é uma **folha**: à altura da linha central mede `0,60` de `1,00` de caixa ⇒ há vão **por desenho**, também numa curva suave |
+
+⭐ **A que funciona pergunta outra coisa:** não *«a linha está coberta»*, mas ***«a arte SEGUE a
+linha?»*** — a guia da fatia contra a espinha rígida daquela cópia. E na cena, a pergunta
+equivalente e barata: ***nenhuma cópia fica centrada em cima de uma quina.***
+
+⚠️ **E a 1.ª versão do gate do produto era CEGA à mutação que importa:** ela reconstruía as fatias a
+partir do `corner_arcs` e media a **sua própria** divisão — desligar o corte no produto **não a
+movia**. *Um gate que compara duas construções é cego à mutação partilhada; a lei pede a SAÍDA.*
+
+#### §11.10.3 — Os gates e as provas
+
+`the_guide_is_covered_by_the_copies_the_product_emitted` (sobre as cópias emitidas) ·
+`the_art_never_cuts_a_corner` · `a_square_gets_every_copy_the_fit_asks_for` (agora **por trecho**) ·
+`a_smooth_vertex_is_not_a_corner` · e na cena `every_shape_in_the_corner_smoke_actually_has_corners`
++ `no_copy_in_the_corner_smoke_sits_on_a_corner`.
+
+**Três provas de mutação, todas mortas:** o corte nas quinas desligado · o encaixe de volta a
+GLOBAL · um vértice suave a contar como quina.
+
+### §11.11 — O smoke: `PH2D_BUILD_SMOKE=78`
+
+Quatro formas de **bicos** — quadrado (90°) · estrela (dez quinas, agudas e reflexas) · triângulo ·
+**retângulo achatado**. ⚠️ **A quarta é a que separa as duas leis**: num quadrado todos os lados
+medem o mesmo e um encaixe global e um por-lado dão quase a mesma coisa; num `12 × 4` divergem, e é
+ali que se vê o ritmo **por lado**.
+
+⭐ Ela é a **irmã da `=77`** e existe por causa dela: aquela é feita só de curvas suaves, e a
+mensagem dela dizia porquê.

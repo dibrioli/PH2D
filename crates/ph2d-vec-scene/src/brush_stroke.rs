@@ -59,6 +59,27 @@ use crate::{BrushStroke, Contour, StrokeSpec, VecPath};
 /// número com o custo onde está.
 const MAX_DASHES: usize = 4096;
 
+/// ⭐⭐⭐ **A viragem a partir da qual uma âncora é uma QUINA** (radianos) — e o número tem treze
+/// ordens de grandeza de folga.
+///
+/// A arte é rígida: uma cópia recebe **um** referencial e deita uma espinha **reta**. Onde o
+/// caminho vira, essa reta corta o canto — a arte sai do pedaço de linha que lhe deram. ⇒ o
+/// contorno é partido nas quinas e **cada trecho encaixa o próprio número inteiro de cópias**.
+///
+/// MEDIDO (`measure_the_turn_at_a_smooth_anchor_against_a_real_corner`), viragem máxima de uma
+/// âncora:
+///
+/// | forma | viragem máxima numa âncora |
+/// |---|---:|
+/// | círculo · elipse 3:1 (vértices SUAVES) | `≤ 1e-12°` — é zero de máquina |
+/// | quadrado | `~90°` |
+/// | estrela de 5 pontas | `~122°` |
+///
+/// ⇒ **1°** separa com folga de `1e-12` a `81`, e o que ele distingue é *"o artista autorou uma
+/// quina"* de *"resíduo de vírgula flutuante num vértice suave"*. ⛔ Não é um botão: um limiar
+/// exposto convidaria a afinar o que a geometria já responde.
+const CORNER_MIN_TURN: f64 = 0.017_453_292_519_943_295; // 1° em radianos
+
 /// **A ALTURA que uma cópia recebe** — derivada da largura da faixa, e multiplicada pelo `scale`.
 ///
 /// ⚠️⚠️ **É aqui que os dois modelos divergem, e é deliberado.** O plano 35 §2.3 fixou que uma
@@ -198,22 +219,47 @@ pub fn brush_copies(
         return Vec::new();
     };
     let total = arc.total();
-    let alvo = dash.map_or(total, |[traco, _]| traco);
+    let cortes = arc.corner_arcs(CORNER_MIN_TURN);
     let mut out = Vec::new();
     for (inicio, fim) in brush_spans(total, dash) {
-        out.extend(pattern_along(
-            &escalada,
-            &arc,
-            &PatternSpec {
-                spacing: b.spacing,
-                offset: b.offset,
-                flip: b.flip,
-                rotation_deg: b.rotation_deg,
-                fit_span: Some(alvo),
-                start_offset: inicio,
-                end_offset: fim,
-            },
-        ));
+        for (p0, p1) in cut_at(inicio, fim, &cortes) {
+            out.extend(pattern_along(
+                &escalada,
+                &arc,
+                &PatternSpec {
+                    spacing: b.spacing,
+                    offset: b.offset,
+                    flip: b.flip,
+                    rotation_deg: b.rotation_deg,
+                    // ⭐⭐⭐ **O avanço encaixa na PEÇA** (W5) — e uma peça é um trecho que a arte
+                    // tem de preencher de ponta a ponta. A W3-bis dizia *"encaixa no TRAÇO"*; a
+                    // quina acrescenta a outra fronteira, e a lei é a mesma frase com a palavra
+                    // certa.
+                    fit_span: Some(p1 - p0),
+                    start_offset: p0,
+                    end_offset: p1,
+                },
+            ));
+        }
+    }
+    out
+}
+
+/// **Parte `[inicio, fim]` em cada corte que caia estritamente dentro dele.**
+///
+/// Os cortes chegam ordenados e em `[0, total]`; um corte na fronteira não parte nada (já é
+/// fronteira). Devolve sempre pelo menos uma peça quando o intervalo tem comprimento.
+fn cut_at(inicio: f64, fim: f64, cortes: &[f64]) -> Vec<(f64, f64)> {
+    let mut out = Vec::new();
+    let mut a = inicio;
+    for &c in cortes {
+        if c > a && c < fim {
+            out.push((a, c));
+            a = c;
+        }
+    }
+    if fim > a {
+        out.push((a, fim));
     }
     out
 }

@@ -102,6 +102,32 @@ impl ArcPath {
         &self.starts[..self.segs.len()]
     }
 
+    /// ⭐⭐⭐ **AS QUINAS: as posições de arco onde o contorno VIRA mais que `limiar`** (radianos).
+    ///
+    /// A viragem é lida das **tangentes exactas dos dois segmentos** que se encontram na âncora —
+    /// `tangent_at(anterior, 1)` contra `tangent_at(seguinte, 0)` —, sem `ε` nenhum. ⚠️ Isso só é
+    /// possível desde 2026-08-30: até então as duas eram **nulas** num contorno autorado com
+    /// vértices de quina, que é precisamente onde há quina para medir
+    /// ([plano 36 §11.7](../../../docs/Vector%20Module/36_plano_pincel_de_contorno.md)).
+    ///
+    /// Num contorno **ABERTO** a primeira âncora não tem lado de entrada — ela é uma PONTA, não uma
+    /// quina, e fica de fora. Num **FECHADO** ela tem, e entra.
+    ///
+    /// ⚠️ Uma âncora sem viragem que se meça (um vértice suave, ou dois segmentos colineares) **não
+    /// é** uma quina: a resposta é o conjunto das que viram, não o das que existem.
+    #[must_use]
+    pub fn corner_arcs(&self, limiar: f64) -> Vec<f64> {
+        let n = self.segs.len();
+        let primeiro = usize::from(!self.closed);
+        (primeiro..n)
+            .filter_map(|i| {
+                let entra = tangent_at(&self.segs[(i + n - 1) % n], 1.0)?;
+                let sai = tangent_at(&self.segs[i], 0.0)?;
+                (crate::arclen::turn_between(entra, sai) >= limiar).then_some(self.starts[i])
+            })
+            .collect()
+    }
+
     /// Onde o comprimento `s` cai: o **ponto** e a **tangente unitária** ali.
     ///
     /// `s` fora de `[0, total]` satura nas pontas (o [`inv_arclen`] já o faz por segmento), o que

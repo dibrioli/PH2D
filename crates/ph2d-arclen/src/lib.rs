@@ -138,6 +138,20 @@ pub fn tangent_at(c: &Cubic, t: f64) -> Option<[f64; 2]> {
     None
 }
 
+/// **O ÂNGULO entre duas direções unitárias, em radianos** — sempre em `[0, π]`.
+///
+/// Existe aqui, e não no consumidor, porque a pergunta *"quanto é que isto virou?"* é da mesma
+/// família de [`tangent_at`] e a resposta tem uma armadilha: `atan2` de cada uma e subtrair dá
+/// `−π..π` e precisa de dobra; o produto interno com `acos` perde precisão perto de `0`. A forma
+/// estável é o `atan2` do **par (produto vectorial, produto interno)**, que é exacta nos dois
+/// extremos.
+#[must_use]
+pub fn turn_between(a: [f64; 2], b: [f64; 2]) -> f64 {
+    let cruz = a[0].mul_add(b[1], -(a[1] * b[0]));
+    let ponto = a[0].mul_add(b[0], a[1] * b[1]);
+    cruz.abs().atan2(ponto)
+}
+
 /// O versor de `v`, ou `None` se ele não tem comprimento que se meça.
 ///
 /// O piso é `1e-12` **em norma**, o mesmo desde que esta função existe: abaixo dele a divisão

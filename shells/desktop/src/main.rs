@@ -75,6 +75,7 @@ mod bool_smoke;
 /// ⭐ **DAR e TIRAR o traço de uma forma** (plano 34) — a porta da caixa *Stroke* do painel. Existe
 /// porque o `restyle_selected_strokes` recusa quem não tem traço, e essa recusa está CERTA: ele
 /// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
+mod brush_corner_smoke;
 mod brush_live;
 mod brush_smoke;
 mod buffer_smoke;

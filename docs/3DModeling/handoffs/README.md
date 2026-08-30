@@ -22,6 +22,7 @@ medida e as provas de mutação ao lado. Esta pasta guarda o que atravessa a **f
 | 2026-08-24 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-24.md) | integração | Handoff de INTEGRAÇÃO — as waves **56e–58d**, 20 commits (DIRETRIZ §1.5.9) |
 | 2026-08-26 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-26.md) | integração | Handoff de INTEGRAÇÃO — as waves **59–80**, 25 commits (DIRETRIZ §1.5.9) |
 | 2026-08-29 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-29.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-29.md) | integração | Handoff de INTEGRAÇÃO — as waves **81–104-ter**, 45 commits (DIRETRIZ §1.5.9) |
+| 2026-08-30 | [HANDOFF_INTEGRACAO_line_3DModeling_2026-08-30.md](HANDOFF_INTEGRACAO_line_3DModeling_2026-08-30.md) | integração | A peça **desaparecia** ao ganhar formas (lei do passo + orçamento), o arco preto da cruz, e a Hierarquia ganha `Delete`/`Ctrl+D` |
 
 ---
 

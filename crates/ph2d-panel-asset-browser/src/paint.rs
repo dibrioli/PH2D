@@ -80,6 +80,11 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
             .store_mut()
             .set_asset_cells(std::collections::BTreeMap::new());
         crate::state::set_painted(Vec::new());
+        // ⛔⛔ **E o campo de renomear é a TERCEIRA coisa que este ramo tem de largar.** É o mesmo
+        // defeito da coluna colapsada por uma SEGUNDA porta: fechar o painel deixava um campo
+        // focado e invisível a comer as teclas do app inteiro. *Uma limpeza escrita num sítio só
+        // ainda não é uma limpeza — o painel tem duas maneiras de desaparecer.*
+        crate::catalog_rename::abandon(state, ctx.host.store_mut());
         return;
     }
     let base = match state.rect {

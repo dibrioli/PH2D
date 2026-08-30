@@ -734,3 +734,34 @@ fn abandoning_the_rename_does_not_steal_someone_elses_focus() {
         "fechar a coluna roubou o foco de um campo alheio"
     );
 }
+
+/// ⛔⛔ **Fechar o PAINEL leva o campo com ele** — a segunda porta pela qual a coluna desaparece.
+///
+/// ⚠️ Ela usa o `paint_hidden` do testkit, que existe precisamente porque *nenhum gate deste repo
+/// conseguia exercitar o ramo escondido de um painel* — e é lá que ele larga os rects velhos, os
+/// gestos a meio e as flags publicadas. Fechar o painel com o campo aberto deixava-o focado e
+/// invisível **a comer as teclas do app inteiro**, não só as deste painel.
+///
+/// **Mutação que deve sangrar:** apagar o `catalog_rename::abandon` do ramo `!panel_visible`.
+#[test]
+fn closing_the_panel_takes_the_rename_field_with_it() {
+    use ph2d_editor_core::zones::Rect;
+
+    let (mut host, mut st) = open_host();
+    let id = stage_one_catalog();
+    st.renaming = Some(ph2d_panel_asset_browser::state::CatalogRename { id, opened: false });
+    let viewport = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    host.paint::<AssetBrowserPanel>(&mut st, viewport);
+    assert_eq!(host.store().focus_id(), Some(ids::ASSET_CATALOG_RENAME));
+
+    host.paint_hidden::<AssetBrowserPanel>(&mut st, viewport);
+    assert!(
+        st.renaming.is_none(),
+        "o campo sobreviveu ao painel fechado"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        None,
+        "o campo de um painel fechado continuou a comer as teclas"
+    );
+}

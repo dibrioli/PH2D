@@ -26,6 +26,7 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef};
 use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, SpritePixels, StableId};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 /// Quantos pixels a média amostra, no máximo.
@@ -48,6 +49,12 @@ thread_local! {
     static SWATCHES: std::cell::RefCell<SwatchCache> = const {
         std::cell::RefCell::new(BTreeMap::new())
     };
+    /// A biblioteca de texturas da sessão — ver [`TextureLibrary`].
+    static LIBRARY: RefCell<TextureLibrary> = const {
+        RefCell::new(TextureLibrary {
+            entries: BTreeMap::new(),
+        })
+    };
 }
 
 /// ⭐ **A publicação do quadro.** Chamada uma vez por quadro pelo `snapshots::publish`.
@@ -59,7 +66,8 @@ pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool)
     if !visible {
         return;
     }
-    let index = SWATCHES.with(|c| build(sim, db, &mut c.borrow_mut()));
+    let index = SWATCHES
+        .with(|sw| LIBRARY.with(|lib| build(sim, db, &mut sw.borrow_mut(), &mut lib.borrow_mut())));
     ph2d_panel_asset_browser::set_current_index(index);
 }
 
@@ -67,7 +75,12 @@ pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool)
 ///
 /// ⚠️ **Recebe `&mut SimWorld`** porque `World::query` o exige (o `QueryState` é construído no
 /// mundo). Ele **não escreve nada** — e há gate a afirmá-lo.
-pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache) -> AssetIndex {
+pub(crate) fn build(
+    sim: &mut SimWorld,
+    db: &AssetDb,
+    swatches: &mut SwatchCache,
+    remembered: &mut TextureLibrary,
+) -> AssetIndex {
     let mut index = AssetIndex::new();
 
     // ── Fonte 1: os COMPONENTES ────────────────────────────────────────────────────────────────
@@ -119,22 +132,15 @@ pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache
 
     // ── Fonte 2: as TEXTURAS ───────────────────────────────────────────────────────────────────
     //
-    // Duas portas, e a ordem entre elas é load-bearing: primeiro as que vieram de um FICHEIRO
-    // (essas têm nome que o artista reconhece), depois as que só existem porque uma sprite as
-    // carrega. ⚠️ O índice é idempotente por endereço, então a segunda porta **não** rebaixa o
-    // nome que a primeira deu — ela substituiria a entrada inteira, e é por isso que ela salta o
-    // que já lá está.
-    for path in db.tracked_paths() {
-        let Some(id) = db.id_for_path(&path) else {
-            continue;
-        };
-        let name = path.file_name().map_or_else(
-            || id.to_hex()[..12].to_string(),
-            |n| n.to_string_lossy().into_owned(),
-        );
-        index.push(texture_entry(db, id, name, swatches));
-    }
-
+    // ⛔⛔ **O `AssetDb` NÃO é a lista de assets do artista, e a 1.ª versão tratava-o como se
+    // fosse.** Report do Enio, 2026-08-30: *«o painel de assets apareceu e está com várias sprites
+    // que ninguém colocou lá»* — eram as 16 do átlas de demonstração que o ARRANQUE carrega de
+    // `./assets/sprites`. Elas estão no `AssetDb` porque o boot as pôs lá, não porque alguém as
+    // trouxe. ⇒ o `tracked_paths()` deixou de ser fonte de ENTRADAS e passou a ser só fonte de
+    // NOMES para as que qualificam.
+    //
+    // ⇒ **Uma textura é um asset quando uma ENTIDADE a referencia** — isto é, quando o artista a
+    // importou, pintou ou editou (o `SpritePixels` é o carimbo dessas oito portas).
     let mut loose: Vec<(u64, Entity, AssetId)> = {
         let mut q = sim.world_mut().query::<(Entity, &SpritePixels)>();
         let mut v: Vec<(u64, Entity, AssetId)> = q
@@ -150,22 +156,62 @@ pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache
     loose.dedup_by_key(|(_, _, id)| *id);
 
     for (_, entity, id) in loose {
-        if index
-            .get(&AssetRef::Texture {
-                asset: *id.as_bytes(),
-            })
-            .is_some()
-        {
-            continue;
-        }
-        let name = sim
-            .world()
-            .get::<Name>(entity)
-            .map_or_else(|| id.to_hex()[..12].to_string(), |n| n.0.clone());
-        index.push(texture_entry(db, id, name, swatches));
+        // ⚠️ O nome de FICHEIRO ganha ao da entidade quando ele existe — é o que o artista
+        // reconhece. O `AssetDb` continua a ser consultado; o que mudou é que ele já não decide
+        // **quem** está na lista.
+        let name = db
+            .tracked_paths()
+            .into_iter()
+            .find(|p| db.id_for_path(p) == Some(id))
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+            .or_else(|| sim.world().get::<Name>(entity).map(|n| n.0.clone()))
+            .unwrap_or_else(|| id.to_hex()[..12].to_string());
+        remembered.remember(id, texture_entry(db, id, name, swatches));
+    }
+
+    // ⭐⭐ **E a BIBLIOTECA LEMBRA.** Report do Enio, 2026-08-30: *«ao deletar o objeto do canvas, o
+    // do painel assets foi deletado»*.
+    //
+    // ⚠️ **Uma textura não é um objecto da cena — ela é CONTEÚDO** (bytes endereçados por blake3).
+    // Derivá-la do mundo a cada quadro fazia da biblioteca um espelho da cena: apagar a sprite que
+    // a usava apagava o asset. *Uma biblioteca que perde o que o artista trouxe não é uma
+    // biblioteca.*
+    //
+    // ⛔ E a memória é **união, nunca subtracção**: o que entrou fica até alguém o mandar sair. A
+    // porta de remover é wave própria — hoje não existe, e uma remoção automática é exactamente o
+    // que este report recusa.
+    for entry in remembered.entries() {
+        index.push(entry.clone());
     }
 
     index
+}
+
+/// ⭐ **A memória da biblioteca de texturas** — o que o artista trouxe, por CONTEÚDO.
+///
+/// ⚠️ Ela é da SESSÃO e não do projecto, e o que a torna correcta é a chave ser o blake3 dos
+/// bytes: reabrir um projecto reencontra as mesmas entradas pelas mesmas sprites. ⛔ Persisti-la
+/// seria conteúdo derivado dentro do arquivo, e ela envelheceria contra o `AssetDb`.
+#[derive(Default)]
+pub(crate) struct TextureLibrary {
+    entries: BTreeMap<AssetId, AssetEntry>,
+}
+
+impl TextureLibrary {
+    /// Regista (ou actualiza) uma textura. ⚠️ **Nunca remove** — ver o bloco acima.
+    fn remember(&mut self, id: AssetId, entry: AssetEntry) {
+        self.entries.insert(id, entry);
+    }
+
+    fn entries(&self) -> impl Iterator<Item = &AssetEntry> {
+        self.entries.values()
+    }
+
+    /// Quantas texturas a biblioteca conhece — para os gates.
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
 }
 
 /// `"3 pieces"` / `"1 piece"` — o detalhe de um componente.
@@ -338,7 +384,8 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
-        let index = build(&mut sim, &db, &mut cache);
+        let mut lib = TextureLibrary::default();
+        let index = build(&mut sim, &db, &mut cache, &mut lib);
         let counts = index.counts();
         assert_eq!(counts.get(&AssetKind::Component), Some(&1));
         assert_eq!(counts.get(&AssetKind::Texture), Some(&1));
@@ -350,7 +397,8 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, id) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
-        let index = build(&mut sim, &db, &mut cache);
+        let mut lib = TextureLibrary::default();
+        let index = build(&mut sim, &db, &mut cache, &mut lib);
         let tex = AssetRef::Texture {
             asset: *id.as_bytes(),
         };
@@ -365,8 +413,9 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
+        let mut lib = TextureLibrary::default();
         assert_eq!(
-            build(&mut sim, &db, &mut cache)
+            build(&mut sim, &db, &mut cache, &mut lib)
                 .counts()
                 .get(&AssetKind::Component),
             Some(&1)
@@ -378,7 +427,7 @@ mod tests {
             q.iter(sim.world()).next().unwrap()
         };
         sim.world_mut().entity_mut(root).remove::<MasterRoot>();
-        let after = build(&mut sim, &db, &mut cache);
+        let after = build(&mut sim, &db, &mut cache, &mut lib);
         assert_eq!(after.counts().get(&AssetKind::Component), None);
     }
 
@@ -419,16 +468,151 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
-        let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache)
+        let mut lib = TextureLibrary::default();
+        let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache, &mut lib)
             .entries()
             .iter()
             .map(|e| e.key)
             .collect();
-        let b: Vec<AssetRef> = build(&mut sim, &db, &mut cache)
+        let b: Vec<AssetRef> = build(&mut sim, &db, &mut cache, &mut lib)
             .entries()
             .iter()
             .map(|e| e.key)
             .collect();
         assert_eq!(a, b);
+    }
+
+    /// ⛔⛔ **O átlas do ARRANQUE não é a biblioteca do artista.** Report do Enio, 2026-08-30:
+    /// *«o painel de assets apareceu e está com várias sprites que ninguém colocou lá»*.
+    ///
+    /// **Mutação que deve sangrar:** voltar a percorrer `db.tracked_paths()` como fonte de
+    /// entradas — que é literalmente o estado em que o painel estava.
+    #[test]
+    fn textures_the_boot_loaded_but_nobody_placed_are_not_assets() {
+        let db = AssetDb::new();
+        // O boot carrega 16 texturas para o `AssetDb`; nenhuma entidade as referencia.
+        for i in 0..16u8 {
+            let _ = db.insert_image_rgba8(4, 4, vec![i; 64]);
+        }
+        let mut sim = SimWorld::new();
+        let mut cache = SwatchCache::new();
+        let mut lib = TextureLibrary::default();
+        let index = build(&mut sim, &db, &mut cache, &mut lib);
+        assert!(
+            index.is_empty(),
+            "o painel mostrou {} assets que ninguem colocou la'",
+            index.len()
+        );
+    }
+
+    /// ⭐⭐ **A biblioteca LEMBRA.** Report do Enio: *«ao deletar o objeto do canvas, o do painel
+    /// assets foi deletado»*.
+    ///
+    /// **Mutação que deve sangrar:** reconstruir as texturas do mundo a cada quadro, sem memória.
+    #[test]
+    fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
+        let db = AssetDb::new();
+        let (mut sim, id) = world_with_one_component(&db);
+        let mut cache = SwatchCache::new();
+        let mut lib = TextureLibrary::default();
+        assert_eq!(
+            build(&mut sim, &db, &mut cache, &mut lib)
+                .counts()
+                .get(&AssetKind::Texture),
+            Some(&1)
+        );
+
+        // O artista apaga a sprite da cena.
+        let victim = {
+            let mut q = sim.world_mut().query::<(Entity, &SpritePixels)>();
+            q.iter(sim.world()).map(|(e, _)| e).next().unwrap()
+        };
+        sim.world_mut().despawn(victim);
+
+        let after = build(&mut sim, &db, &mut cache, &mut lib);
+        assert_eq!(
+            after.counts().get(&AssetKind::Texture),
+            Some(&1),
+            "a textura saiu da biblioteca quando o objecto foi apagado"
+        );
+        assert!(
+            after
+                .get(&AssetRef::Texture {
+                    asset: *id.as_bytes()
+                })
+                .is_some(),
+            "e' a MESMA textura que tem de ficar, pelo endereco de conteudo"
+        );
+        assert_eq!(lib.len(), 1);
+    }
+
+    /// ⛔ **A visibilidade NÃO alcança a biblioteca.** Report do Enio: *«mudei o hide no objeto da
+    /// cena e o objeto do painel foi modificado»*. Esconder é vista; um asset é conteúdo.
+    #[test]
+    fn hiding_an_object_changes_nothing_in_the_library() {
+        let db = AssetDb::new();
+        let (mut sim, _) = world_with_one_component(&db);
+        let mut cache = SwatchCache::new();
+        let mut lib = TextureLibrary::default();
+        let before: Vec<(String, String, [u8; 4])> = build(&mut sim, &db, &mut cache, &mut lib)
+            .entries()
+            .iter()
+            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+            .collect();
+
+        // Esconde a raiz — a mesma marca que o olho da Hierarquia escreve.
+        let root = {
+            let mut q = sim
+                .world_mut()
+                .query_filtered::<Entity, bevy_ecs::prelude::With<MasterRoot>>();
+            q.iter(sim.world()).next().unwrap()
+        };
+        sim.world_mut()
+            .entity_mut(root)
+            .insert(ph2d_ecs::Visibility { hidden: true });
+
+        let after: Vec<(String, String, [u8; 4])> = build(&mut sim, &db, &mut cache, &mut lib)
+            .entries()
+            .iter()
+            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+            .collect();
+        assert_eq!(before, after, "esconder mudou o que o painel mostra");
+    }
+
+    /// ⭐⭐ **Apagar a CÓPIA não apaga a RECEITA.** Report do Enio, 2026-08-30: *«o objeto foi até o
+    /// painel corretamente mas ao deletar o objeto do canvas, o do painel assets foi deletado»*.
+    ///
+    /// ⚠️ Este gate mede o ÍNDICE, que é a metade que eu possuo: dada uma receita viva no mundo, o
+    /// painel mostra-a. Se ele ficar verde e o report persistir, o defeito está no **verbo de
+    /// apagar** (ele leva a receita junto), e não aqui — e é essa a próxima pergunta.
+    #[test]
+    fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
+        let db = AssetDb::new();
+        let (mut sim, _) = world_with_one_component(&db);
+        // A cópia que o *Make Component* deixa no lugar: uma raiz própria, SEM `MasterRoot`.
+        let copy = sim
+            .world_mut()
+            .spawn((
+                ph2d_ecs::Transform::IDENTITY,
+                Name::new("Ragdoll"),
+                StableId(50),
+            ))
+            .id();
+        let mut cache = SwatchCache::new();
+        let mut lib = TextureLibrary::default();
+        assert_eq!(
+            build(&mut sim, &db, &mut cache, &mut lib)
+                .counts()
+                .get(&AssetKind::Component),
+            Some(&1)
+        );
+        sim.world_mut().despawn(copy);
+        assert_eq!(
+            build(&mut sim, &db, &mut cache, &mut lib)
+                .counts()
+                .get(&AssetKind::Component),
+            Some(&1),
+            "apagar a copia tirou a receita do painel"
+        );
     }
 }

@@ -210,8 +210,10 @@ impl crate::App {
                         );
                     }
                     world_rt.ensure_size(surface.gpu(), (window_size.width, window_size.height));
-                    // ⚠️ A cor do canvas em espaço do DESENHISTA — o acumulador é de formato cru.
-                    world_rt.clear(surface.gpu(), wgpu::Color { r, g, b, a: 1.0 });
+                    // ⚠️ **LINEAR** — a mesma cor que o passe de sprite usa. Quem converte para o
+                    // espaço do desenhista é a porta, e não o chamador (report do Enio: *«o canvas
+                    // escurece»*, que foi exactamente esta escolha feita no sítio errado).
+                    world_rt.clear_linear(surface.gpu(), wgpu::Color { r, g, b, a: 1.0 });
                     let upto = last_sprite.unwrap_or(plan_bands.len());
                     let mut doc_i = 0usize;
                     for band in plan_bands.iter().take(upto) {

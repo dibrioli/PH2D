@@ -37,6 +37,7 @@ fn drain(
             vec_entities: &mut mp,
         },
         step,
+        &mut None,
     )
 }
 
@@ -92,6 +93,7 @@ fn a_placed_instance_never_lands_on_top_of_what_it_came_from() {
                     vec_entities: &mut mp,
                 },
                 step,
+                &mut None,
             ),
             "o *Criar componente* nao fez nada"
         );
@@ -111,6 +113,7 @@ fn a_placed_instance_never_lands_on_top_of_what_it_came_from() {
                 vec_entities: &mut mp,
             },
             step,
+            &mut None,
         )
     };
     assert!(place(&mut sim, &mut echo), "o *Instantiate* nao fez nada");

@@ -344,6 +344,7 @@ fn the_two_instantiate_verbs_differ_only_in_which_art_law_the_copy_follows() {
                     vec_entities: &mut mp,
                 },
                 [0.0, 0.0],
+                &mut None,
             ),
             "o verbo {verb:?} nao fez nada"
         );
@@ -558,4 +559,54 @@ fn applying_with_nothing_overridden_answers_zero() {
     let (_master, roots) = ragdoll(&mut sim, &r);
     pass(&mut sim, &r, &bridge, &mut echo);
     assert_eq!(apply(&mut sim, &r, &mut echo, roots[0]), Ok(0));
+}
+
+/// ⭐⭐⭐ **A SELEÇÃO SEGUE A CÓPIA** (report do Enio, 2026-08-30).
+///
+/// O *Make Component* marca o objecto escolhido como RECEITA — e uma receita **não se desenha**.
+/// Deixar a selecção nela punha o artista a mexer num objecto invisível: o gesto seguinte
+/// (apagar, o olho, o Inspector) acertava na receita, e ele via *«ao deletar o objeto do canvas, o
+/// do painel assets foi deletado»* e *«mudei o hide no objeto da cena e o objeto do painel foi
+/// modificado»*.
+///
+/// **Mutação que deve sangrar:** escrever `master` em vez de `instance` no `select_out`.
+#[test]
+fn making_a_component_leaves_the_selection_on_the_copy_not_on_the_recipe() {
+    let mut sim = SimWorld::new();
+    let r = reg();
+    let rig = plain_rig(&mut sim);
+    let mut echo = MasterEcho::default();
+    let mut toasts = ph2d_editor::ToastQueue::default();
+    let mut select = None;
+    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
+    let ok = super::drain(
+        super::Verb::Make,
+        &mut sim,
+        &r,
+        &mut echo,
+        rig.to_bits(),
+        &mut toasts,
+        &mut crate::instance_docs::OwnedDocs {
+            vec_scene: &mut sc,
+            vec_entities: &mut mp,
+        },
+        [0.0, 0.0],
+        &mut select,
+    );
+    assert!(ok, "o verbo recusou");
+    let picked = select.expect("o verbo nao disse para onde a selecao vai");
+    assert_ne!(
+        picked,
+        rig.to_bits(),
+        "a selecao ficou na RECEITA — o artista continua a mexer no que nao ve"
+    );
+    let e = Entity::from_bits(picked);
+    assert!(
+        sim.world().get::<MasterRoot>(e).is_none(),
+        "a selecao caiu num MasterRoot, que e' precisamente a receita"
+    );
+    assert!(
+        sim.world().get::<InstanceOf>(e).is_some(),
+        "a selecao tem de cair na COPIA, que e' uma instancia"
+    );
 }

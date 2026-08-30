@@ -366,6 +366,20 @@ pub(crate) fn drain(
     docs: &mut crate::instance_docs::OwnedDocs<'_>,
     // O passo da cascata, em unidades de MUNDO — ver [`cascade`].
     place_step: [f32; 2],
+    // ⭐⭐⭐ **PARA ONDE A SELEÇÃO TEM DE IR** depois do verbo, se para algum lado.
+    //
+    // ⛔⛔ Report do Enio, 2026-08-30: *«ao deletar o objeto do canvas, o do painel assets foi
+    // deletado»* e *«mudei o hide no objeto da cena e o objeto do painel foi modificado»*. **Os
+    // dois são o MESMO defeito, e não são sobre apagar nem sobre esconder.**
+    //
+    // O *Make Component* marca a entidade ESCOLHIDA como receita e põe uma cópia no lugar. Uma
+    // receita **não se desenha** (o extract salta o `MasterPiece` derivado) ⇒ o artista fica a
+    // olhar para a cópia… **com a receita ainda seleccionada**. Todo gesto seguinte que age sobre
+    // *«a selecção»* — apagar, o olho, o Inspector — acerta no objecto invisível.
+    //
+    // ⇒ a selecção passa a seguir para a **CÓPIA**, que é o que ele vê e continua a editar. É o que
+    // o Figma e a Unity fazem: criar o componente deixa-te a trabalhar na instância.
+    select_out: &mut Option<u64>,
 ) -> bool {
     use ph2d_editor::Toast;
     let entity = Entity::from_bits(entity_bits);
@@ -374,8 +388,10 @@ pub(crate) fn drain(
             // ⭐ **A voz diz QUAL dos dois aconteceu** (F5): uma receita que nasce de uma copia
             // continua ligada a' base, e o artista tem de saber disso antes de a editar - senao ele
             // muda a variante e ve a mudanca sumir no quadro em que a base for editada.
-            Ok((master, _)) => {
+            Ok((master, instance)) => {
                 let variant = sim.world().get::<ph2d_ecs::InstanceOf>(master).is_some();
+                // ⭐ A cópia é o objecto que o artista continua a ver — ver o doc de `select_out`.
+                *select_out = Some(instance.to_bits());
                 toasts.push(Toast::success(if variant {
                     "Made a variant \u{2014} it still follows its base"
                 } else {

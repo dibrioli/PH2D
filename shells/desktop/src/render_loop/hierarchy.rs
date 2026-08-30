@@ -250,6 +250,9 @@ pub(super) fn dispatch(
     }
     // ⭐ **Os outros verbos de instância** (ADR-0164 / F4.5) — o dreno mora com eles, pela razão
     // do *Revert*: é sobre INSTÂNCIAS, e não sobre a mecânica das linhas.
+    // ⭐ Para onde a selecção vai depois de um verbo de instância — hoje só o *Make Component* a
+    // move (ver o doc de `instance_verbs::drain`).
+    let mut verb_select: Option<u64> = None;
     if let Some((row, verb)) = instance_verb_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -273,6 +276,7 @@ pub(super) fn dispatch(
                 );
                 [dx as f32, dy as f32]
             },
+            &mut verb_select,
         )
     {
         title_dirty = true;
@@ -300,9 +304,15 @@ pub(super) fn dispatch(
                 );
                 [dx as f32, dy as f32]
             },
+            &mut verb_select,
         )
     {
         title_dirty = true;
+    }
+    // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
+    // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
+    if let Some(bits) = verb_select {
+        hero.gizmo.replace_selection(Some(bits));
     }
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);

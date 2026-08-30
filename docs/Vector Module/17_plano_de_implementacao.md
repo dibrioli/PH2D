@@ -190,7 +190,8 @@ Smokes do Enio por wave. Cada smoke é o **único critério que vale** para a wa
 ### T0.4 — ADR-0059 Vector renderer pipeline
 
 **Conteúdo obrigatório:**
-- Vello 0.8 integration (re-uses já existing `ph2d-vector` crate, expanded).
+- Vello 0.10 integration (re-uses já existing `ph2d-vector` crate, expanded). *(O plano foi escrito
+  contra `vello 0.8` / `wgpu 28`; hoje é `vello 0.10.0` / `wgpu 29.0.4` — ADR-0168, 2026-08-29.)*
 - GPU stroke expansion (Levien+Uguray 2024 paper, já em Vello).
 - **Pipeline boolean draft+reconcile (resolve crítica C Antigravity):**
   1. Draft naive CPU (Bézier-cúbico clipping, ≤1 ms) — hot-path stylus.

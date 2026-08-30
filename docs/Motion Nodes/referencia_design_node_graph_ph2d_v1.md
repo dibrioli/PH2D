@@ -44,9 +44,9 @@ O sistema de nós herda esses três pilares.
 ### 2.1 PH2D em uma página
 
 - Engine 2D em **Rust 2024**, MSRV 1.92, toolchain 1.95.
-- **Vello 0.8 + wgpu 28** para rasterização vetorial GPU-compute (kurbo paths + peniko paint).
-- **bevy_ecs 0.18** standalone, two-world model **SimWorld** (canônico/determinístico) + **PresentWorld** (presentation/visual), ponte one-way via `extract!` macro (ADR-0021).
-- **Luau** (mlua 0.10) como linguagem gameplay canônica (ADR-0019); ScriptHost por mundo; hot reload reset+restore.
+- **Vello 0.10 + wgpu 29** para rasterização vetorial GPU-compute (kurbo paths + peniko paint).
+- **bevy_ecs 0.19** standalone, two-world model **SimWorld** (canônico/determinístico) + **PresentWorld** (presentation/visual), ponte one-way via `extract!` macro (ADR-0021).
+- **Luau** (mlua 0.12) como linguagem gameplay canônica (ADR-0019); ScriptHost por mundo; hot reload reset+restore.
 - **MCP server** first-class (HR-10); `ph2d-bindgen` gera `.d.luau` + schema MCP das mesmas anotações.
 - **Plataformas:** iOS/macOS/Android/Windows/Linux/Web (todas com WebGPU/Metal/Vulkan/D3D12 — sem fallback legacy).
 - **Editor** próprio em Vello+parley (HR-7 editor=engine); design system canônico já entregue (M12-M13, 32 widgets, hero screen, AccessKit wired).

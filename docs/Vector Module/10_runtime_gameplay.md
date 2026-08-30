@@ -288,9 +288,9 @@ fn vector_render_system(
 }
 ```
 
-### 10.5.3 Bevy_ecs 0.18 compatibility
+### 10.5.3 Bevy_ecs 0.19 compatibility
 
-PH2D usa `bevy_ecs 0.18` standalone (vide SKILL_Stack §5). Vector runtime integra via standard `Component` derive.
+PH2D usa `bevy_ecs 0.19` standalone (vide SKILL_Stack §5). Vector runtime integra via standard `Component` derive.
 
 ---
 

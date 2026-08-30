@@ -183,8 +183,8 @@ A entrega final será construída em Vello (renderer GPU vetorial Linebender) po
 - Sem widget primitivo "checkbox" — eu construo do seu mockup
 
 ✅ **Stack confirmado:**
-- Rust + wgpu 28 + Vello 0.8
-- parley 0.6 (texto)
+- Rust + wgpu 29 + Vello 0.10
+- parley 0.11.1 (texto)
 - AccessKit 0.24 (a11y cross-platform)
 - ph2d-tokens (color/typo/spacing tokens — você pode redefinir)
 

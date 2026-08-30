@@ -192,7 +192,9 @@ impl TextRendering {
 /// tamanhos onde o boost não traz ganho perceptual (>20 px).
 ///
 /// Faixas calibradas para Inter Variable v4.0 sob AA analítico
-/// do Vello 0.8. Soma sobre o `FontWeight` nominal e é clampado
+/// do Vello 0.10 (⚠️ a calibração foi feita na 0.8 — ADR-0168
+/// subiu a casa em 2026-08-29; re-verificar as faixas).
+/// Soma sobre o `FontWeight` nominal e é clampado
 /// para [100, 900] pelo skrifa downstream.
 pub const fn crisp_weight_boost(font_size_px: f32) -> u16 {
     // Faixas discretas evitam micro-shifts visíveis no variable axis.

@@ -38,7 +38,7 @@ A especificação atual demonstra um entendimento profundo de computação gráf
 1. **Topologia de Vector Network (sabor Figma) (§1.2):** Trocar o modelo clássico de caminhos isolados (*paths*) por grafos conexos de vértices e arestas é a decisão correta. Resolver cruzamentos automaticamente e manter Windings e preenchimentos por região isolados elimina a frustração clássica do Illustrator de ter que quebrar caminhos e duplicar segmentos compartilhados.
 2. **Abordagem Node-Native & Live Modifier Stack (§1.3):** Manter modificadores complexos (como booleans, offsets, scatter e roughen) como nós vivos no grafo geométrico (`ph2d-nodegraph`) é uma inovação brutal. Eleva a autoria de ilustração estática a um modelo procedural generativo e animável com controle não-destrutivo completo.
 3. **Runtime de Jogo Separado e Determinístico (§1.4, §3.10):** Criar a crate `ph2d-vector-runtime` isolada do editor, capaz de ser shipada em builds de release com ECS e Luau, destranca vetores como assets reais de gameplay dinâmico, e não meramente como decorações de interface.
-4. **Vello 0.8 e wgpu 28 como Backbone de Render (§3.3):** A escolha de um pipeline baseado estritamente em Compute Shader GPU (prefix-sum e sparse strips do Vello) garante zoom infinito livre de gargalos de CPU clássicos do Skia/Cairo, preservando a portabilidade multiplataforma estrita (`HR-1`).
+4. **Vello 0.10 e wgpu 29 como Backbone de Render (§3.3):** *(a avaliação foi escrita quando eram 0.8 e 28; a casa subiu em 2026-08-29, ADR-0168)* A escolha de um pipeline baseado estritamente em Compute Shader GPU (prefix-sum e sparse strips do Vello) garante zoom infinito livre de gargalos de CPU clássicos do Skia/Cairo, preservando a portabilidade multiplataforma estrita (`HR-1`).
 
 ---
 

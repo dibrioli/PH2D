@@ -11,7 +11,8 @@
 >
 > **Direção CONFIRMADA pelo Enio (não re-litigar):** **runtime-truth + bake opcional.**
 > A simulação é a verdade viva do mundo; assar em keys de timeline é um recurso opt-in por cima.
-> **Stack CONFIRMADA (não escrever do zero):** rigidos = **`rapier2d 0.28`** (`enhanced-determinism`).
+> **Stack CONFIRMADA (não escrever do zero):** rigidos = **`rapier2d 0.28`** (`enhanced-determinism`)
+> *(à data; hoje **0.35** — ADR-0168, 2026-08-29, e a matemática deixou de ser `nalgebra`)*.
 > O solver já existe e já é determinístico cross-OS. Esta linha escreve **integração e autoria**, não solver.
 
 ---
@@ -173,6 +174,7 @@ Não reescreva nada disto. A API do wrapper (399 LOC, `#![forbid(unsafe_code)]`)
   (Linux/Mac/Windows) e exige byte-identidade. **W1 estende ESTE gate para o mundo ligado ao ECS.**
 
 Deps pinadas ([`Cargo.toml`](../../../crates/ph2d-physics/Cargo.toml)): `rapier2d 0.28`
+*(à data; hoje **0.35** — ADR-0168, 2026-08-29)*
 (`default-features=false`, features `dim2`/`f32`/`enhanced-determinism`) + `blake3`.
 ⚠️ **NUNCA ligue `parallel`/`simd-stable`/`simd-nightly`** — os três quebram determinismo cross-OS
 (reordenam somatório float por-plataforma/por-thread). Está documentado no Cargo.toml; respeite.

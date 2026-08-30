@@ -1,13 +1,18 @@
 # 03 — Renderer (Vello + GPU stroke expansion + Linesweeper + SDF Hybrid)
 
-> Spec do **pipeline de renderização** do Vector Module. Vello 0.8 como renderer único (GPU compute, prefix-sum, sparse strips). GPU stroke expansion (Levien+Uguray 2024). Pipeline boolean **draft+reconcile** em 3 modos (resolve crítica C Antigravity). Editor + runtime sharing renderer. Frame budget 3.5 ms (HR-4).
+> Spec do **pipeline de renderização** do Vector Module. Vello 0.10 como renderer único (GPU compute, prefix-sum, sparse strips). GPU stroke expansion (Levien+Uguray 2024). Pipeline boolean **draft+reconcile** em 3 modos (resolve crítica C Antigravity). Editor + runtime sharing renderer. Frame budget 3.5 ms (HR-4).
 >
 > **ADR ratificador:** ADR-0059 (Vector renderer pipeline) + ADR-0065 (SDF Hybrid Pipeline).
 > **Spec gêmeos:** [`01_data_model.md`](01_data_model.md) (data fonte) + [`05_procedural_fill.md`](05_procedural_fill.md) (shader graph fill) + [`10_runtime_gameplay.md`](10_runtime_gameplay.md) (renderer shared with game runtime).
 
 ## 3.1 Vello pipeline overview
 
-### 3.1.1 Vello 0.8 — escolhas chave
+### 3.1.1 Vello 0.10 — escolhas chave
+
+> ⚠️ **As escolhas abaixo foram escritas contra o Vello `0.8`.** A casa está em **`0.10.0`** (com
+> `wgpu 29.0.4`) desde 2026-08-29 ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+> A arquitectura (prefix-sum GPU · sparse strips CPU) não mudou; **as limitações pontuais que esta spec
+> herdou da 0.8, sim** — em especial a amostragem de imagem (ver `33_plano_texture_pattern.md` §0.1).
 
 - **Vello GPU**: **prefix-sum based pipeline** (coarse → fine → ratification → fine rasterize) em compute shaders WGSL. Backbone para todos targets com WebGPU compute (Mac/Win/Linux/iPad/Android/Web).
 - **Vello CPU** (fallback): **sparse strips arch** (Laurenz Stampfl ETH 2025 thesis "High-performance 2D graphics rendering on the **CPU** using sparse strips" — run-length-compressed antialiased boundaries + sparsely represented solid interiors via Rust SIMD: SSE2/AVX/AVX2/AVX512/NEON). **Correção crítica L2F1 Antigravity 2ª iteração 2026-05-28** — sparse strips é literalmente arquitetura CPU-only do Vello, NÃO o pipeline GPU.

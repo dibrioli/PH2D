@@ -206,8 +206,19 @@
 > **Bugs cuja causa ENGANAVA:** [`BUGS_physics.md`](../BUGS_physics.md) — sintoma → causa-raiz →
 > tentativas que falharam → lições. Leia antes de re-diagnosticar qualquer coisa deste módulo.
 >
-> **Norte (não re-litigar):** runtime-truth + bake opcional; rígido primeiro; solver = `rapier2d 0.28`
+> **Norte (não re-litigar):** runtime-truth + bake opcional; rígido primeiro; solver = `rapier2d 0.35`
 > (M10, já determinístico) — esta linha escreve **integração e autoria**, não solver.
+>
+> ⚠️ **O solver subiu de `0.28` para `0.35` em 2026-08-29**
+> ([ADR-0168](../../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+> O norte **não** mudou; o
+> **vocabulário matemático** mudou: a `rapier` trocou `nalgebra` por `glam` (via `glamx 0.3`) e o
+> `parry2d 0.30` **apagou** os tipos `Point`, `Isometry` e `Translation`. Hoje escreve-se
+> `Pose`/`Rotation`/`Vector`, importados de uma porta só —
+> [`crates/ph2d-physics/src/rmath.rs`](../../../crates/ph2d-physics/src/rmath.rs), que carrega o aviso
+> de que ponto e vetor passaram a ser **o mesmo tipo** (a rede do compilador desapareceu).
+> ⇒ **Todo doc deste módulo escrito antes dessa data descreve a API da 0.28**: confira o source antes
+> de orçar qualquer coisa a partir de uma assinatura citada.
 
 ---
 

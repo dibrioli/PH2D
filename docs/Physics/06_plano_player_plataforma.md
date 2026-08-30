@@ -60,7 +60,14 @@ Cenas a partir de **`PH2D_PHYSICS_SMOKE=80`** (a próxima livre).
 
 O buraco que a pesquisa achou: não temos `cast_ray` nem `cast_shape`. Sem isto não há mola.
 
-- `PhysicsWorld::cast_ray_down` / `cast_shape_down` sobre o `QueryPipeline` do rapier 0.28.
+- `PhysicsWorld::cast_ray_down` / `cast_shape_down` sobre o `QueryPipeline` do rapier 0.35.
+- ⚠️⚠️ **RE-VERIFICAR ANTES DE IMPLEMENTAR:** este passo foi desenhado contra a **0.28**, e a casa
+  subiu para a **0.35** em 2026-08-29
+  ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+  A **forma da API do `QueryPipeline` mudou** entre as
+  duas, e a matemática deixou de ser `nalgebra` (é `glam` via `glamx 0.3`; use o vocabulário
+  `Pose`/`Rotation`/`Vector` de [`rmath.rs`](../../crates/ph2d-physics/src/rmath.rs)). Leia o source da
+  0.35 antes de escrever a assinatura destes dois métodos.
 - ⚠️ **O pipeline tem de ser atualizado quando a arena muda**, e esse é o lugar óbvio para
   nascer errado (um cast contra um pipeline velho responde sobre um mundo que não existe
   mais). **Decisão:** atualização no `prepare()` do dispatch, **uma vez por dispatch**, com

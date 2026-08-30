@@ -1,5 +1,22 @@
 # Crisp Heavy — Implementação Completa
 
+> ⚠️⚠️⚠️ **AVISO DE VERSÃO — AS CONCLUSÕES DESTE DOCUMENTO PRECISAM DE RE-VERIFICAÇÃO (2026-08-29).**
+>
+> Esta é a **análise de causa** do texto nítido do chrome, e foi escrita contra **`vello 0.8`** e
+> **`parley 0.6`**. A casa subiu em 2026-08-29 para **`vello 0.10.0`** · **`parley 0.11.1`** ·
+> **`wgpu 29.0.4`** (+ `skrifa 0.44`)
+> ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+>
+> ⛔⛔ **O ponto que obriga à re-verificação, e não é cosmético: sob `parley 0.11` o `y_offset` do
+> glifo INVERTEU DE SINAL.** Toda conclusão daqui que dependa do posicionamento vertical do glifo — o
+> *snap* de baseline, o alinhamento sub-pixel, qualquer comparação A/B feita a olho contra o Blender —
+> foi medida com a convenção **contrária** à de hoje. Um raciocínio que continue a ler bonito pode
+> estar exactamente ao contrário.
+>
+> ⇒ **Antes de citar, honrar ou reconstruir qualquer coisa deste doc: re-meça.** O que se mantém sem
+> dúvida é a *história* (o que foi tentado, o que o Enio aprovou); o que **não** se pode assumir é que
+> o mecanismo descrito ainda seja o mecanismo de hoje.
+
 **Data:** 2026-05-25
 **Status:** SHIPPED (quality "pro" confirmado pelo Enio)
 **Sintoma original:** texto chrome PH2D mais soft que Blender — pedido de opção mais nítida.
@@ -144,7 +161,8 @@ Widths monotonicamente crescentes → **shaping reconhece o axis**. Comando: `ca
 
 **Sintoma:** mesmo com axis correto no shaping (widths variando), CrispHeavy continuava idêntico a Crisp visualmente.
 
-**Root cause:** Vello 0.8 `Scene::draw_glyphs(font: &peniko::Font)` recebe só um handle de fonte (blob + index). Não carrega variation coords. A rasterização nos compute shaders do Vello usa os defaults do font (`wght=400` para Inter Variable) **a menos que** `.normalized_coords(...)` seja chamado no builder.
+**Root cause:** *(diagnosticado na `vello 0.8`; hoje a casa está na **0.10.0** — ⚠️ re-verificar, ver
+o aviso no topo)* Vello `Scene::draw_glyphs(font: &peniko::Font)` recebe só um handle de fonte (blob + index). Não carrega variation coords. A rasterização nos compute shaders do Vello usa os defaults do font (`wght=400` para Inter Variable) **a menos que** `.normalized_coords(...)` seja chamado no builder.
 
 **Fix em [crates/ph2d-editor-core/src/paint.rs](../../crates/ph2d-editor-core/src/paint.rs) — em ambos os painters:**
 ```rust
@@ -488,11 +506,11 @@ Por design do hinting — ambos têm `hint=true`. A 11-12 px, as diferenças de 
 
 ### 7.3 AA adicional pro Crisp Heavy "ainda mais pro"
 
-Enio sugeriu que "um pouco de AA" poderia melhorar Crisp Heavy. Vello 0.8 oferece `AaConfig::Area` (analytical coverage, atual em [vello_pass.rs:132](../../crates/ph2d-render/src/vello_pass.rs#L132)). Alternativas a testar (fora do escopo desta entrega):
+Enio sugeriu que "um pouco de AA" poderia melhorar Crisp Heavy. Vello oferece `AaConfig::Area` (analytical coverage, atual em [vello_pass.rs:132](../../crates/ph2d-render/src/vello_pass.rs#L132)). ⚠️ *Este levantamento é da `vello 0.8`; hoje é a **0.10.0** — re-verificar o que ela passou a oferecer antes de usar esta lista como catálogo.* Alternativas a testar (fora do escopo desta entrega):
 
 - **MSAA8/MSAA16** — mais amostras por pixel; pode "engordar" stems sem distorcer. Custo GPU maior.
 - **Sub-pixel positioning sem hint** — Vello pode receber glyph X com fractional precision; já testamos snap_x=true em Heavy.
-- **Sub-pixel LCD AA** — Vello 0.8 não suporta nativamente. Exigiria render target separado + custom blend pass. Fase 2+ futura (vide plano `2026-05-24-crisp-text-rendering.md` §12).
+- **Sub-pixel LCD AA** — a Vello **0.8** não suportava nativamente (⚠️ **RE-VERIFICAR na `0.10.0`**: é uma ausência afirmada há três meses, e o substrato mudou de versão duas vezes). Exigiria render target separado + custom blend pass. Fase 2+ futura (vide plano `2026-05-24-crisp-text-rendering.md` §12).
 - **Stroke-thicken outline** — em vez de driver pelo wght axis, adicionar 0.3-0.5 px de stroke ao glyph contour antes de fill. Vello suporta stroke via path; integrar com `draw_glyphs` exige investigação.
 
 ---
@@ -603,10 +621,10 @@ Reverter o pipeline INTEIRO (todos os 4 presets) = `git revert` dos commits de C
 ## §13. Referências
 
 - [Plano original — `docs/UI_Plans/2026-05-24-crisp-text-rendering.md`](../UI_Plans/2026-05-24-crisp-text-rendering.md)
-- [parley 0.6 docs (Linebender)](https://docs.rs/parley/0.6.0/parley/) — `StyleProperty::FontVariations`, `Run::normalized_coords`
-- [Vello 0.8 docs](https://docs.rs/vello/0.8.0/vello/) — `Scene::draw_glyphs`, `DrawGlyphs::normalized_coords`, `DrawGlyphs::hint`
+- [parley 0.11.1 docs (Linebender)](https://docs.rs/parley/0.11.1/parley/) — `StyleProperty::FontVariations`, `Run::normalized_coords` · ⚠️ **o doc foi escrito contra a `0.6`, e o `y_offset` do glifo INVERTEU de sinal entre as duas**
+- [Vello 0.10 docs](https://docs.rs/vello/0.10.0/vello/) — `Scene::draw_glyphs`, `DrawGlyphs::normalized_coords`, `DrawGlyphs::hint` *(o doc foi escrito contra a `0.8`)*
 - [Inter Variable v4.0](https://github.com/rsms/inter/releases/tag/v4.0) — SIL OFL bundled em `crates/ph2d-text/fonts/InterVariable.ttf`
-- [vello_encoding 0.8](https://docs.rs/vello_encoding/0.8.0/) — `NormalizedCoord = i16`, `glyph_cache.rs`
+- [vello_encoding 0.10](https://docs.rs/vello_encoding/0.10.0/) — `NormalizedCoord = i16`, `glyph_cache.rs` *(era a `0.8` à data)*
 - [skrifa](https://docs.rs/skrifa/) — autohinter (`HintingInstance`), variation axes
 - ADR M14.5 round 7 — designer-space blending no compositor (não tocado por Crisp Heavy)
 

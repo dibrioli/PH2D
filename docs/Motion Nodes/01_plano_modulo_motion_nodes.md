@@ -289,7 +289,9 @@ doc, 1 passo por gesto — pre no Begin, push no End, molde RECOLOR_PRE). Estado
   stream = anel dashed externo; hover scale 1.35 + glow.
 - **Fios:** CubicBez tangente horizontal (`|dx|·0.5+20`), Catmull-Rom por waypoints; cor =
   Domain da saída; espessura Event 1.4 / resto 2.6 (×zoom); **dashed = `edge.delayed`**
-  (vello 0.8 processa `dash_pattern` — confirmado); taper via `variable_width_band` (polish).
+  (vello 0.10 processa `dash_pattern` — ⚠️ o *"confirmado"* é uma verificação feita na **0.8**;
+  a casa subiu em 2026-08-29, ADR-0168, e ninguém reconfirmou na 0.10); taper via
+  `variable_width_band` (polish).
 - **Activity-fire:** `value_hash` do edge mudou entre cooks → 800ms de glow decadente + dash
   marchando (`dash_offset` por frame) + 2 orbs percorrendo o path (`eval_path_at_arclen`:
   tabela de arclen por segmento + `ParamCurve::eval`).

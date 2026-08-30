@@ -161,9 +161,19 @@ As 28 fontes completas ficam nos relatórios; aqui, cada CLASSE com a resposta d
 
 ---
 
-## §4 — O que o rapier 0.28 tem NATIVO e nós não expomos (lido do source)
+## §4 — O que o rapier 0.35 tem NATIVO e nós não expomos (lido do source)
 
-O `GenericJoint` por baixo de todo tipo: `local_frame1/2` (Isometry — âncora **e rotação de frame**),
+> ⚠️⚠️ **ESTA SEÇÃO PRECISA DE RE-LEITURA DO SOURCE.** Ela foi lida do source da **`rapier2d 0.28`**;
+> hoje a casa está na **0.35** ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md),
+> migração de 2026-08-29). Entre
+> as duas a dimforge trocou a matemática de `nalgebra` para `glam` (via `glamx 0.3`) e o `parry`
+> **apagou** os tipos `Point`, `Isometry` e `Translation` — o vocabulário da casa é hoje
+> `Pose`/`Rotation`/`Vector`, numa porta só ([`rmath.rs`](../../crates/ph2d-physics/src/rmath.rs)).
+> Os nomes de campo e as capacidades listadas abaixo continuam plausíveis, mas **nenhuma linha desta
+> §4 foi reconferida contra a 0.35**: confirme no source antes de orçar qualquer célula dela.
+
+O `GenericJoint` por baixo de todo tipo: `local_frame1/2` (**`Pose`** — `glamx::Pose2`; era `Isometry`
+na 0.28, tipo que já **não existe** — âncora **e rotação de frame**),
 `locked/limit/motor/coupled_axes` (2D: LinX·LinY·AngX), `limits[3]` (min/max), `motors[3]`
 (**`target_vel` E `target_pos`** + stiffness/damping/max_force + `MotorModel`
 AccelerationBased|ForceBased), **`contacts_enabled`**, **`enabled: JointEnabled`**

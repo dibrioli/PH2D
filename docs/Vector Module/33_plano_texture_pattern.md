@@ -14,7 +14,15 @@
 ⚠️ *Quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
 A folha 29 é de 24/08; entre ela e hoje integraram nove linhas. Tudo abaixo foi conferido nesta árvore.
 
-### §0.1 — ⭐⭐⭐ O Vello 0.8 **LADRILHA NATIVAMENTE**, e isto está provado ao nível do BIT
+### §0.1 — ⭐⭐⭐ O Vello **LADRILHA NATIVAMENTE**, e isto está provado ao nível do BIT
+
+> ⚠️⚠️ **ESTA MEDIÇÃO É DA `vello 0.8` / `peniko 0.6`, e a casa está hoje na `vello 0.10.0`**
+> (subida de 2026-08-29, [ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+> Os endereços da tabela abaixo (`vello_encoding-0.8.0`, `vello_shaders-0.8.0`, `peniko-0.6.0`)
+> continuam a ser o que se mediu **naquela versão** — não os apague, mas **não os cite como o estado
+> de hoje**. O facto de fundo (o ladrilho é nativo, `Extend` no *sampler*, sem clip nem rasterização
+> por quadro) é o que sustenta a arquitectura e é o menos provável de ter mudado; **as duas limitações
+> do §0.1.1 abaixo é que quase de certeza mudaram** — leia o aviso lá.
 
 Esta é a medição que decide a arquitectura inteira, e ela **contradiz o desenho que a folha 29
 sugeria** (*"o `MultiPoint` já rasteriza num image-brush — a rota de imagem já existe"*). A rota que
@@ -33,8 +41,24 @@ por quadro.** É *mais barato* que o preenchimento sólido nunca ser, e estritam
 rota do `MultiPoint`, que hoje corre `rasterize_idw` (64×64×N pontos, CPU) **a cada quadro, sem memo**
 ([`gradient.rs:335,441`](../../crates/ph2d-vec-render/src/gradient.rs)).
 
-⚠️ **DUAS limitações medidas do Vello 0.8 que o plano tem de honrar** (não são nossas, e nenhuma é
-bloqueante):
+#### §0.1.1 — As duas limitações da 0.8 — ⚠️⚠️ **PRECISAM DE RE-MEDIÇÃO NA 0.10**
+
+> ⛔⛔ **NÃO TRATE AS DUAS LIMITAÇÕES ABAIXO COMO VERDADE DE HOJE.** Elas foram medidas na
+> **`vello 0.8`**; a casa está na **`0.10.0`** desde 2026-08-29
+> ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)),
+> e **a `0.9` mexeu exactamente nestes dois pontos**:
+> - a **`ImageQuality::High` passou a ser bicúbica a sério** (filtro de Mitchell) — ou seja, o ⛔ do
+>   item 1 (*"não existe, renderiza como medium"*) tem toda a probabilidade de ter **dissolvido**;
+> - o **deslocamento de meio pixel na amostragem foi corrigido** — o artefacto de *meio texel na
+>   costura* do item 2 é o mesmo mecanismo, e pode já não existir.
+>
+> ⇒ **RE-MEÇA os dois contra o `fine.wgsl` da `0.10` antes de honrar, prometer ou recusar seja o que
+> for a partir deles** (`CLAUDE.md` §0.0: *quem move o número que tornava algo inalcançável tem de
+> reconferir a nota* — e quem moveu foi a subida do stack, não este plano). Em particular, a recusa
+> **«⛔ Bicúbico»** do §7 deste documento depende inteiramente do item 1.
+
+⚠️ **DUAS limitações medidas do Vello 0.8 que o plano tinha de honrar** *(medição de 2026-08-27, na
+0.8 — ver o aviso acima)* (não são nossas, e nenhuma é bloqueante):
 
 1. ⛔ **`ImageQuality::High` NÃO existe** — o shader diz-o em texto: *"We don't have an implementation
    for `IMAGE_QUALITY_HIGH` yet, just use the same as medium"*. ⇒ o `High` que o
@@ -597,7 +621,12 @@ que para as formas dele funciona.
   raster; a versão vectorial é outra wave, com outro dono, e o §0.7 explica porquê.
 - ⛔ **Preferência "o padrão anda com a forma?"** — a casa já decidiu (§2.2.1), e a Adobe mostra o
   preço de a transformar numa opção.
-- ⛔ **Bicúbico.** O Vello 0.8 não o tem (§0.1); prometê-lo seria prometer o que o substrato não faz.
+- ⛔ **Bicúbico.** O Vello 0.8 não o tinha (§0.1); prometê-lo seria prometer o que o substrato não faz.
+  ⚠️⚠️ **ESTA RECUSA PRECISA DE SER RECONFERIDA:** a casa está na **`vello 0.10.0`** desde 2026-08-29
+  ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)),
+  e a **`0.9` tornou a `ImageQuality::High` bicúbica a sério** (Mitchell). ⇒ *o substrato passou
+  provavelmente a fazê-lo*, e a recusa que dependia dele **pode ter dissolvido** — meça o `fine.wgsl`
+  da 0.10 antes de repetir esta linha (§0.1.1).
 - ⏸️ **Padrão no TRAÇO** (o Figma tem: *"as a fill or stroke"*) — **a última lacuna de paridade que
   este plano nomeia**, e o preenchimento fechou. ⚠️ **O preço foi MEDIDO em 2026-08-27, e não é o
   que a frase anterior sugeria** (*"o `StrokeSpec` é outra casa"*):

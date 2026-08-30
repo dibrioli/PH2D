@@ -103,7 +103,7 @@ Medido nesta worktree — **61.633 LOC de infraestrutura 3D já existem**:
 |---|---|---|
 | [`ph2d-mesh`](../../crates/ph2d-mesh/) | 20.824 | Malha residente, octree, `Ray`/`Hit`, AABB, adjacência, **`write_stl`/`write_obj`/`write_ply`** e `import_stl`/`import_obj`/`import_ply` |
 | [`ph2d-sculpt3d`](../../crates/ph2d-sculpt3d/) | 30.617 | Vizinho, não dependência — mas prova o padrão drop-crate 3D (ADR-0150) |
-| [`ph2d-mesh-render`](../../crates/ph2d-mesh-render/) | 6.112 | Passe wgpu 28, matcaps, SSAO, SSS, `Camera3d`, **`wire_indices`** (arestas) |
+| [`ph2d-mesh-render`](../../crates/ph2d-mesh-render/) | 6.112 | Passe wgpu 29, matcaps, SSAO, SSS, `Camera3d`, **`wire_indices`** (arestas) |
 | [`ph2d-sdf`](../../crates/ph2d-sdf/) | 3.011 | Remesh por Surface Nets, AO assado |
 | [`ph2d-light`](../../crates/ph2d-light/) | 1.069 | O rig de luz único do app |
 | `shells/desktop/src/sculpt3d_*.rs` | 13 arquivos | **A navegação orbital já mora no shell** — e é o que mantém `Tool=12` fora do caminho |
@@ -244,7 +244,7 @@ contrato. **O port segue esse caminho.** Se alguma wave concluir que não dá: P
 
 | Camada do original | Na PH2D | Gate que a lei exige |
 |---|---|---|
-| WebGL atrás (superfície, aresta de sólido, grade) | `ph2d-mesh-render` (wgpu 28, matcap, SSAO) + `wire_indices` | — |
+| WebGL atrás (superfície, aresta de sólido, grade) | `ph2d-mesh-render` (wgpu 29, matcap, SSAO) + `wire_indices` | — |
 | Canvas 2D à frente (curva, preview, snap, cota) | Vello — o mesmo renderer de todo o editor | — |
 | *"as duas projeções precisam bater"* (`cameraSync.test.ts`, meio pixel) | `Camera3d` ⟷ transform do Vello | ⚠️ **Gate novo obrigatório.** Sem ele, todo erro de câmera vira "o snap não gruda onde eu vejo" |
 

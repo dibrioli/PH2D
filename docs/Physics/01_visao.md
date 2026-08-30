@@ -28,7 +28,7 @@ escolher runtime-truth **não queima ponte nenhuma**.
 ## A parte assustadora já foi paga
 
 Existe [`ph2d-physics`](../../crates/ph2d-physics/src/world.rs) (M10): um wrapper sobre
-**`rapier2d 0.28`** com **`enhanced-determinism` ON** e um **gate de hash cross-OS na CI** (o bin
+**`rapier2d 0.35`** com **`enhanced-determinism` ON** e um **gate de hash cross-OS na CI** (o bin
 `ph2d_physics_c9`). Determinismo bit-a-bit em Linux/Mac/Windows — o que mataria física caseira numa
 matriz de CI com replay-hash — **está resolvido e gateado**. O solver existe e já é determinístico.
 

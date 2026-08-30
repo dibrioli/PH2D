@@ -228,9 +228,17 @@ os sprites **mais** toda geometria vetorial viva, convertida em quad a partir do
 **tile assado**.
 
 ⚠️ **A rota "óbvia" está MEDIDA e recusada:** rasterizar a metade vetorial em alta
-fidelidade num alvo HDR é impossível hoje — o `render_to_texture` do Vello 0.8 escreve
+fidelidade num alvo HDR era impossível — o `render_to_texture` do Vello **0.8** escrevia
 numa storage texture `Rgba8Unorm` (`vello_pass.rs`, textual), e o RT do glow é
 `Rgba16Float`; passar por um intermediário LDR perderia o HDR, que é onde o bloom vive.
+
+⚠️⚠️ **RE-VERIFICAR SOB `vello 0.10`:** esta recusa foi medida na **0.8**, e a casa subiu para a
+**`0.10.0`** em 2026-08-29
+([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)).
+O formato do alvo do `render_to_texture` é exactamente o tipo de coisa que uma subida de duas versões
+mexe — *quem move o número que tornava algo inalcançável tem de reconferir a nota* (`CLAUDE.md` §0.0).
+**Meça o formato aceite pela 0.10 antes de repetir esta recusa** (o resto do raciocínio — o tile basta
+porque o bright-pass é meia-resolução — não depende da versão).
 
 ⚠️ **O que torna o tile suficiente — e não um remendo:** a primeira coisa que o passe
 faz com esse RT é um bright-pass em meia resolução seguido de **seis** reduções de mip.

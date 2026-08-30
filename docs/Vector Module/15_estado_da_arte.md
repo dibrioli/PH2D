@@ -260,7 +260,8 @@ Ranked by "biggest expected payoff for new tool com Rust + node-graph + game-eng
 
 Stack canon decidido pela pesquisa:
 
-- **Renderer**: Vello 0.8 + GPU stroke expansion (Levien+Uguray 2024). Backend único.
+- **Renderer**: Vello 0.10 + wgpu 29 + GPU stroke expansion (Levien+Uguray 2024). Backend único.
+  *(A pesquisa foi escrita com `vello 0.8` / `wgpu 28`; a casa subiu em 2026-08-29, ADR-0168.)*
 - **Boolean**: Linesweeper exato (commit) + SDF GPU Hybrid (real-time, ADR-0065).
 - **Authoring**: Bézier cúbico default + Spiro/Hyperbezier Assist Modes.
 - **Pencil fitter**: Hobby's algorithm (minimum curvature variation).

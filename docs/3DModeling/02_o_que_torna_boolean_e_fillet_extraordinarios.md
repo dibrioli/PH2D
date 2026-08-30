@@ -102,7 +102,7 @@ booleana.** Qualquer plano que gaste o esforço na booleana está mirando na met
 | Espessura / offset de campo | ✅ `thickness.rs` |
 | Malha residente + octree + raio | ✅ `ph2d-mesh` (20.824 LOC) |
 | Render sombreado, matcap, SSAO | ✅ `ph2d-mesh-render` (6.112 LOC) |
-| GPU de propósito geral | ✅ wgpu 28 em toda a casa |
+| GPU de propósito geral | ✅ wgpu 29 em toda a casa |
 | **Booleana e `smooth-min` no campo** | ❌ **não existe — e é o trabalho** |
 | **Contorno que preserva quina** | ❌ o Surface Nets atual **arredonda** a quina |
 

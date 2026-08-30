@@ -334,11 +334,20 @@ Tudo confirmado. Dois detalhes que valem para o plano:
 > (`world/blast.rs:138-147`), e o `queries.rs` tem uma função só (`waterlines`).
 
 Isso é material porque **a cápsula flutuante é um raycast** (ou shapecast) por tick, por
-personagem. O `rapier2d 0.28` traz `QueryPipeline` com `cast_ray` e `cast_shape`
+personagem. O `rapier2d 0.35` traz `QueryPipeline` com `cast_ray` e `cast_shape`
 (`src/pipeline/query_pipeline.rs:167,332`), então é integração e não invenção — mas é
 **infraestrutura nova no wrapper**, com um custo de manutenção próprio (o pipeline precisa
 ser atualizado quando a arena muda) e um lugar óbvio para nascer errado. **O plano tem de
 orçá-la como uma fatia própria, não como um detalhe do controlador.**
+
+> ⚠️⚠️ **RE-VERIFICAR — a FORMA da API do `QueryPipeline` mudou entre a `0.28` e a `0.35`.** Este
+> levantamento foi feito lendo o source da **0.28**; a casa subiu para a **0.35** em 2026-08-29
+> ([ADR-0168](../architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)),
+> e no caminho a `rapier` trocou `nalgebra` por `glam` (via `glamx 0.3`) — o `parry2d 0.30` **apagou**
+> `Point`, `Isometry` e `Translation`, e o vocabulário da casa é hoje `Pose`/`Rotation`/`Vector`
+> ([`rmath.rs`](../../crates/ph2d-physics/src/rmath.rs)). **A capacidade continua lá; as assinaturas e
+> os números de linha citados acima, não necessariamente.** Confira o source da 0.35 antes de orçar
+> esta fatia.
 
 ---
 

@@ -95,7 +95,7 @@
 | **Godot `CharacterBody2D`** | `move_and_slide()` | slide, `floor_max_angle`, `floor_snap_length`, `motion_mode` Grounded/Floating | não; e tem `moving_platform_apply_velocity` porque a plataforma **não** vem de graça |
 | **Unreal `CharacterMovementComponent`** | sweep-based | slide + step-up | `PushForce`, **aproximado**, escrito à mão |
 | **Box2D v3** | — | nada embutido; o manual mostra shapecast-and-slide à mão | — |
-| **rapier 0.28** | `KinematicCharacterController::move_shape` | slide · `autostep` · `snap_to_ground` · `max_slope_climb_angle` · `min_slope_slide_angle` | `solve_character_collision_impulses`, e o **doc dele** diz: *"only approximate as it is not based on a global constraints resolution scheme"* |
+| **rapier 0.35** | `KinematicCharacterController::move_shape` | slide · `autostep` · `snap_to_ground` · `max_slope_climb_angle` · `min_slope_slide_angle` | `solve_character_collision_impulses`, e o **doc dele** diz: *"only approximate as it is not based on a global constraints resolution scheme"* |
 
 ⚠️ **O que foi TENTADO e abandonado é a direção OPOSTA à desta wave.** A cápsula
 flutuante dinâmica (o `bevy-tnua`, o *Very Very Valet* da GDC — as duas referências da

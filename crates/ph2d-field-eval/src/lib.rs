@@ -229,7 +229,7 @@ pub use hull::{probe_hull_uv, probe_in_hull};
 
 #[path = "step.rs"]
 mod step;
-pub use step::{inflation_depth, safe_march_step};
+pub use step::{gradient_bound, safe_march_step};
 
 #[cfg(test)]
 mod tests;

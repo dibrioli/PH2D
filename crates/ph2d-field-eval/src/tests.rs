@@ -4558,14 +4558,18 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
     out
 }
 
-/// ⭐⭐⭐ **A PROFUNDIDADE conta níveis ENCADEADOS, não nós inflantes soltos** (W75).
+/// ⭐⭐⭐ **O TECTO SOMA OS QUADRADOS, e uma junta VIVA toma o máximo** (W75, refeito 2026-08-30).
 ///
 /// ⚠️ **A metade que separa as duas leituras é a dos IRMÃOS:** dois arredondamentos exactos em ramos
-/// diferentes não se compõem — o campo que cada um recebe é distância verdadeira —, e contá-los
-/// daria `2` a uma peça que se marcha com segurança a `1/√2`. *Uma contagem e uma profundidade lêem
-/// igual em toda árvore que seja uma corrente, e só divergem onde a árvore se abre.*
+/// diferentes não se compõem — o campo que cada um recebe é distância verdadeira —, e somá-los
+/// daria `2` a uma peça que se marcha com segurança a `1/√2`.
+///
+/// ⛔⛔ **E a linha da EQUILIBRADA é a que mata a lei antiga**, que contava PROFUNDIDADE: quatro
+/// folhas em `round(round(A,B), round(C,D))` têm profundidade `2` e medem `‖∇f‖ = 1,985` — acima do
+/// `√3` que uma lei por profundidade concederia. *O que conta é quantas folhas chegam ao ponto por
+/// misturas, não quantos níveis a árvore tem.* Ver [`crate::gradient_bound`].
 #[test]
-fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
+fn the_bound_sums_squares_and_a_live_joint_takes_the_max() {
     let bx = |h: [f32; 3], at: Xform| {
         leaf(
             Primitive::Box {
@@ -4582,72 +4586,92 @@ fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
             bx([0.2, 0.4, 0.2], Xform::at(0.2, 0.0, 0.0)),
         ]
     };
+    // O tecto lê-se como `√(soma dos quadrados)`, então a expectativa escreve-se como a SOMA — que é
+    // o que se conta a olho na árvore. ⚠️ A folga é a do `f32` a fazer uma raiz, não uma tolerância
+    // de calibração: a lei é exacta.
+    let tecto = |nodes: Vec<Node>, root: u32, l2: f32, porque: &str| {
+        let doc = FieldDoc::new(nodes, NodeId(root)).expect("peça");
+        let lido = crate::gradient_bound(&doc);
+        assert!(
+            (lido - l2.sqrt()).abs() < 1e-6,
+            "{porque}: tecto lido {lido:.6}, esperado √{l2} = {:.6}",
+            l2.sqrt()
+        );
+    };
 
     let mut n = two();
     n.push(combine(Op::Union(Blend::Sharp), vec![NodeId(0), NodeId(1)]));
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
-        0,
-        "uma junção viva não infla nada"
-    );
+    tecto(n, 2, 1.0, "uma junção viva não infla nada");
 
     let mut n = two();
     n.push(combine(
         Op::Union(Blend::Organic { radius: 0.3 }),
         vec![NodeId(0), NodeId(1)],
     ));
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
-        0,
-        "o carácter orgânico não infla — medido na tabela do `safe_march_step`"
+    tecto(
+        n,
+        2,
+        1.0,
+        "o carácter orgânico não infla — medido na tabela do `safe_march_step`",
     );
 
     let mut n = two();
     n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
-        1,
-        "um exacto é um nível"
-    );
+    tecto(n, 2, 2.0, "duas folhas por um exacto somam `1 + 1`");
 
     // ⭐ **Encadeados**: o de cima recebe o campo já inflado.
     let mut n = two();
     n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
     n.push(bx([0.25; 3], Xform::at(0.0, 0.25, 0.0)));
     n.push(combine(ex(0.2), vec![NodeId(2), NodeId(3)]));
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(4)).expect("peça")),
-        2,
-        "dois exactos na mesma corrente são dois níveis"
+    tecto(n, 4, 3.0, "três folhas na mesma corrente somam `2 + 1`");
+
+    // ⭐⭐⭐ **EQUILIBRADA** — quatro folhas, profundidade DOIS, e o tecto é `√4`.
+    //
+    // ⛔ É esta linha que refuta toda lei escrita sobre a PROFUNDIDADE: uma `√(1+profundidade)`
+    // daria `√3 = 1,732`, e a medição desta árvore é `1,985` (`measure_the_chain_of_fillets`).
+    let mut n = two();
+    n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
+    n.push(bx([0.3, 0.15, 0.15], Xform::at(-0.1, 0.2, 0.0)));
+    n.push(bx([0.15, 0.3, 0.15], Xform::at(0.1, 0.2, 0.0)));
+    n.push(combine(ex(0.2), vec![NodeId(3), NodeId(4)]));
+    n.push(combine(ex(0.2), vec![NodeId(2), NodeId(5)]));
+    tecto(
+        n,
+        6,
+        4.0,
+        "dois pares filetados juntos por um filete somam `2 + 2`",
     );
 
-    // ⭐⭐ **IRMÃOS**: dois exactos, nenhum por cima do outro.
+    // ⭐⭐ **IRMÃOS**: os mesmos dois pares, mas juntos por junta VIVA — ali o tecto é o MÁXIMO.
     let mut n = two();
     n.push(combine(ex(0.2), vec![NodeId(0), NodeId(1)]));
     n.push(bx([0.3, 0.15, 0.15], Xform::at(-0.2, 0.4, 0.0)));
     n.push(bx([0.15, 0.3, 0.15], Xform::at(0.2, 0.4, 0.0)));
     n.push(combine(ex(0.2), vec![NodeId(3), NodeId(4)]));
     n.push(combine(Op::Union(Blend::Sharp), vec![NodeId(2), NodeId(5)]));
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(6)).expect("peça")),
-        1,
-        "dois exactos IRMÃOS não se compõem — cada um recebe distância verdadeira"
+    tecto(
+        n,
+        6,
+        2.0,
+        "dois exactos IRMÃOS não se compõem — cada um recebe distância verdadeira",
     );
 
-    // ⚠️ E um modificador por cima de um exacto **não** acrescenta nível (medido: `1,4142`).
+    // ⚠️ E um modificador por cima de um exacto **não** acrescenta nada (medido: `1,4142`).
     let mut n = two();
     let mut top = combine(ex(0.2), vec![NodeId(0), NodeId(1)]);
     top.mods.push(ph2d_field::Unary::Shell { thickness: 0.05 });
     n.push(top);
-    assert_eq!(
-        inflation_depth(&FieldDoc::new(n, NodeId(2)).expect("peça")),
-        1,
-        "o modificador lê o campo, não o volta a arredondar"
+    tecto(
+        n,
+        2,
+        2.0,
+        "o modificador lê o campo, não o volta a arredondar",
     );
 
     // ⭐⭐⭐ **E um nó de N filhos é uma corrente de `n − 1`** — o `combine_trees` dobra aos pares.
     // ⛔ É a forma da cena 1 do smoke, e ela marchava acima do seguro desde que existe.
-    for n in [2usize, 3, 5] {
+    for n in [2usize, 3, 5, 12] {
         let mut nodes: Vec<Node> = (0..n)
             .map(|i| bx([0.3, 0.15, 0.15], Xform::at(0.2 * i as f32, 0.0, 0.0)))
             .collect();
@@ -4655,12 +4679,13 @@ fn the_depth_counts_chained_rounds_and_not_loose_nodes() {
             .map(|i| NodeId(u32::try_from(i).expect("poucos")))
             .collect();
         nodes.push(combine(ex(0.2), kids));
-        let root = NodeId(u32::try_from(n).expect("poucos"));
-        assert_eq!(
-            inflation_depth(&FieldDoc::new(nodes, root).expect("peça")),
-            u32::try_from(n - 1).expect("poucos"),
-            "uma união exacta de {n} filhos é uma corrente de {} arredondamentos",
-            n - 1
+        let root = u32::try_from(n).expect("poucos");
+        #[allow(clippy::cast_precision_loss)]
+        tecto(
+            nodes,
+            root,
+            n as f32,
+            "uma união exacta de N folhas soma N — e é linear, não exponencial",
         );
     }
 }

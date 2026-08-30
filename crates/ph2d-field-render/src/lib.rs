@@ -114,8 +114,8 @@ use tiles::{SLABS, TILE, tiled_trace};
 
 pub use camera::{DEFAULT_HALF_FOV, Lens, ORTHO_START, Orbit, Screen};
 pub use march::{
-    FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST, STEP_SAMPLES,
-    Stencil,
+    EXHAUSTED, FORKED, HIST, MARCH_RAYS, NORMAL_SAMPLES, SLAB_SAMPLES, SLABS_COUNTED, STEP_HIST,
+    STEP_SAMPLES, Stencil,
 };
 pub use probe_doors::*;
 #[doc(hidden)]

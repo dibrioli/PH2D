@@ -38,6 +38,18 @@ pub static MARCH_RAYS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU
 #[doc(hidden)]
 pub static NORMAL_SAMPLES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
+/// ⭐⭐⭐ **Quantos raios ACABARAM OS PASSOS sem chegar a lado nenhum** (2026-08-30) — o contador que
+/// faltava, e o report do Enio pagou-o.
+///
+/// ⚠️ **Um raio que esgota o [`crate::MAX_STEPS`] é largado em SILÊNCIO**: ele não acerta, não passa
+/// à fatia seguinte, e o pixel dele lê-se como fundo. Enquanto o passo era exponencial no número de
+/// formas (`2^(−(n−1)/2)`), uma cena de 13 peças filetadas gastava o orçamento inteiro antes da
+/// superfície e a peça **desaparecia** — sem um aviso, sem um contador, sem uma linha de log.
+///
+/// *Um caminho de desistência sem instrumento é um defeito que só o artista vê.*
+#[doc(hidden)]
+pub static EXHAUSTED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Quantos degraus o histograma da marcha distingue antes de saturar o último balde.
 pub const HIST: usize = 64;
 
@@ -290,7 +302,29 @@ pub(crate) fn march_slabs(
             }
         };
         landed.clear();
-        for step in 0..MAX_STEPS {
+        // ⭐⭐⭐ **O ORÇAMENTO SAI DO PASSO** (2026-08-30) — porque é o passo que decide quantos são
+        // precisos, e um tecto fixo apaga a peça exactamente onde o passo é curto.
+        //
+        // A marcha aproxima-se geometricamente: `d ← d·(1 − s)`, logo o número de passos até ao
+        // acerto é `∝ 1/s`. Com o tecto FIXO, uma cena com muitas formas filetadas (passo curto por
+        // lei, ver [`ph2d_field_eval::gradient_bound`]) gastava o orçamento antes da superfície e os
+        // raios eram largados — ver [`EXHAUSTED`].
+        //
+        // Medido (espiral de esferas filetadas, `320²`, passo já corrigido):
+        //
+        // | tecto | esgotados | furos | quadro |
+        // |---:|---:|---:|---:|
+        // | `400` (fixo) | `86`–`136` | `1` | `5,14 ms` |
+        // | `1 200` | **`0`** | **`0`** | `5,06 ms` |
+        //
+        // ⭐ **Sai de graça** porque só ~`130` raios em `102 400` passam sequer dos `400`: um
+        // orçamento maior custa o que os raios que dele precisam custam, e não mais.
+        //
+        // ⚠️ **Um documento sem inflação continua nos `MAX_STEPS` de sempre, ao bit** (`s = 1` ⇒ a
+        // divisão é a identidade). *A cerca fica no lado perigoso, não nos dois.*
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let budget = ((MAX_STEPS as f32) / scene.step.clamp(f32::EPSILON, 1.0)).ceil() as usize;
+        for step in 0..budget {
             if cur.is_empty() {
                 break;
             }
@@ -339,6 +373,10 @@ pub(crate) fn march_slabs(
             }
             cur = next;
         }
+        // ⚠️ Quem ainda está em `cur` gastou o orçamento inteiro sem acertar nem sair da fatia — ver
+        // [`EXHAUSTED`]. Ele cai aqui **de propósito** (a alternativa seria inventar um acerto), e o
+        // que não pode é cair sem ser contado.
+        EXHAUSTED.fetch_add(cur.len() as u64, std::sync::atomic::Ordering::Relaxed);
         normals_into(
             &mut eval,
             scene,

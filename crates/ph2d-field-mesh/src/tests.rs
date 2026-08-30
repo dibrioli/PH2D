@@ -334,7 +334,7 @@ fn measure_chamfer_overshoot() {
 /// ⭐⭐⭐ **O GRADIENTE DE UMA ESCULTURA** (W77) — a segunda cerca do passo da marcha que ninguém
 /// tinha medido.
 ///
-/// O `ph2d_field_eval::inflation_depth` classifica uma escultura como **um nível inflante** (passo
+/// O `ph2d_field_eval::gradient_bound` classifica uma escultura como **um nível inflante** (passo
 /// `1/√2`) e o doc dele diz, à letra, que ela *«continua sem medição própria: o campo dela é
 /// interpolado de uma grelha, e ninguém mediu o gradiente da interpolação»*. ⚠️ **A W75 acabou de
 /// mostrar o que uma cerca por medir custa** — arredondamentos encadeados compunham, e a marcha
@@ -405,7 +405,7 @@ fn the_table_of_the_gradient_of_a_sculpture() {
 
 /// ⭐⭐⭐ **O campo de uma escultura não sobe mais depressa do que o passo da marcha supõe** (W77).
 ///
-/// O `ph2d_field_eval::inflation_depth` conta uma escultura como **um nível** (passo `1/√2`), e o doc
+/// O `ph2d_field_eval::gradient_bound` conta uma escultura como **um nível** (passo `1/√2`), e o doc
 /// dele dizia que ninguém tinha medido o gradiente da interpolação. ⛔ **Isso era falso, e o irmão
 /// deste gate provava-o:** [`the_sampled_field_marches_like_a_distance`] media `‖∇f‖` desde sempre —
 /// **numa esfera, numa banda de três células fora da casca**, contra um alvo com folga de `0,2`.

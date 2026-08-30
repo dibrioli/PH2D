@@ -501,7 +501,7 @@ pub fn star_round_limit(points: u32, outer: f32, inner: f32) -> f32 {
 ///   exatamente o `√(1 − cos φ)` do canto de ângulo interno `φ`.
 ///
 /// ⚠️ **A marcha TEM de saber**, e é a mesma lei que o report do Enio de 2026-08-29 pagou: o
-/// `inflation_depth` lia a mistura do **grupo** e não a de cada forma, o passo ficava em `1,0` sobre
+/// o tecto de `‖∇f‖` lia a mistura do **grupo** e não a de cada forma, o passo ficava em `1,0` sobre
 /// um campo de `1,17`, e o raio atravessava a superfície. Uma primitiva que arredonda por interseção
 /// é **outro** produtor da mesma inflação — e o `NodeKind::Leaf` valia `0` para todos.
 ///

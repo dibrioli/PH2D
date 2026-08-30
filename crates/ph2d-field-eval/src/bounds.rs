@@ -108,12 +108,12 @@ fn of_node(doc: &FieldDoc, reg: &crate::hybrid::Registry, id: NodeId) -> Option<
         // `Union`, o bordo ficava só com o primeiro filho, e o que o segundo **acrescenta** caía
         // fora da caixa do mundo ⇒ a peça sai **cortada**, sem uma palavra.
         //
-        // ⚠️ **Irmão do defeito que o Enio viu na marcha** (`step::inflation_depth`), achado ao
+        // ⚠️ **Irmão do defeito que o Enio viu na marcha** (`step::gradient_bound`), achado ao
         // perguntar *«quem MAIS lê a mistura do grupo?»*. *Achar uma metade de uma família é motivo
         // para procurar as outras.*
         //
         // ⚠️ O primeiro filho **semeia** e o verbo dele não é perguntado — a lei do `fold_verb`, a
-        // mesma que o `combine_trees` e o `inflation_depth` pagam.
+        // mesma que o `combine_trees` e o `gradient_bound` pagam.
         //
         // ⚠️ **O raio do filete não entra**, e é medido pela geometria: um arredondamento enche o
         // vinco côncavo, que fica **dentro** da união dos dois bordos. Ele não cresce a peça.

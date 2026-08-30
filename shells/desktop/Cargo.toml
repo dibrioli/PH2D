@@ -586,6 +586,7 @@ default = [
     "panel-timeline",
     "panel-physics",
     "panel-model3d",
+    "panel-asset-browser",
     "panel-wet-tuning",
     "panel-tokens",
     "panel-authored",
@@ -651,6 +652,15 @@ panel-physics        = ["ph2d-panel-registry-init/panel-physics"]
 # gates da propria crate, e NAO ESTA NO REGISTRO — a visibilidade alterna um
 # painel que ninguem pinta.
 panel-model3d        = ["ph2d-panel-registry-init/panel-model3d"]
+# ⛔⛔ **A SEXTA porta de registo de um painel, e ela mata em silêncio** (report do Enio,
+# 2026-08-30: *«clicar no pill Assets não abre nenhuma janela»*). O `ph2d-panel-registry-init`
+# entra aqui com `default-features = false`, então a feature `default` DELE não vale nada: quem
+# decide o que o binário tem é esta lista. O painel existia, estava no registro, tinha 15 gates
+# verdes — e **nunca foi construído**. ⚠️ E o gate que devia apanhá-lo
+# (`build_typed_registry_matches_enabled_features`) corre com os defaults DA CRATE, logo mede
+# outra coisa: *um gate que mede os defaults de uma crate não diz nada sobre o que o binário
+# ship-a*. O gate novo é `every_registry_panel_is_reachable_from_this_shell`.
+panel-asset-browser  = ["ph2d-panel-registry-init/panel-asset-browser"]
 # Painel de TOKENS (plano UI/UX W6). `ph2d-panel-tokens` e' dep direta nao-opcional
 # (`render_loop::tokens_bridge` drena os intents e faz o read-back do picker); esta
 # linha liga a feature do registry-init que compila o painel PARA DENTRO do

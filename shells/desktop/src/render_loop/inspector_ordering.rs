@@ -74,25 +74,19 @@ fn ordering_fields(world: &World, entity: Entity, default_layer: u8) -> Ordering
 ///
 /// ⚠️ Antes da F3 esta seção era publicada para **toda** entidade com `Transform`, e o Inspector de
 /// um objeto vazio mostrava doze seções de zeros. *Ausência de autoria não é «zeros».*
-pub(super) fn has_any_ordering(world: &World, entity: Entity) -> bool {
-    world.get::<ZIndexOverride>(entity).is_some()
-        || world.get::<ZAsRelative>(entity).is_some()
-        || world.get::<ShowBehindParent>(entity).is_some()
-        || world.get::<SortingLayer>(entity).is_some()
-        || world.get::<OrderInLayer>(entity).is_some()
-        || world.get::<YSort>(entity).is_some()
-        || world.get::<SortingGroup>(entity).is_some()
-        || world.get::<TopLevel>(entity).is_some()
-}
 
-/// Ver [`has_any_ordering`] — a §9 Sampling, com a lista dela.
+/// **Este objeto tem autoria de AMOSTRAGEM?** — a lista da §9.
+///
+/// ⚠️ A irmã da §7 (`has_any_ordering`) **foi apagada em 2026-08-30**: a seção de ordenação deixou
+/// de ser gateada por presença (ela vale para todo objeto — decisão do Enio), e um censo sem
+/// consumidor é código morto a envelhecer. As duas listas que restam são as que ainda decidem.
 pub(super) fn has_any_sampling(world: &World, entity: Entity) -> bool {
     world.get::<TextureFilter>(entity).is_some()
         || world.get::<TextureRepeat>(entity).is_some()
         || world.get::<UvTransform>(entity).is_some()
 }
 
-/// Ver [`has_any_ordering`] — a §10 Material & Blend tem **um** componente só.
+/// Ver [`has_any_sampling`] — a §10 Material & Blend tem **um** componente só.
 pub(super) fn has_any_blend(world: &World, entity: Entity) -> bool {
     world.get::<ph2d_ecs::BlendMode>(entity).is_some()
 }
@@ -126,6 +120,24 @@ fn ordering_mixed(
 
 /// Build the §7 ordering snapshot for `entity_bits`, or `None` when the
 /// entity has no `Transform` (not an Inspector-worthy entity).
+///
+/// ⭐⭐ **A §7 é a EXCEPÇÃO da lei da F3, e a excepção é do Enio** (2026-08-30: *«não temos no
+/// inspector a seção onde fixa o Z-index dos objetos, e essa é uma seção que por padrão deve
+/// começar com todos os objetos»*).
+///
+/// ⚠️ **E ela não contradiz o ADR-0166 — ela lê-o até ao fim.** A lei é *«o Inspector mostra o que
+/// o objeto TEM»*, e **todo objeto desenhável TEM uma posição na ordem de desenho**: ela existe
+/// mesmo sem componente nenhum, porque o contador de hierarquia a produz. O que a ausência de
+/// `ZIndexOverride` significa não é *«este objeto não tem Z»* — é *«o Z dele vem da árvore»*, e é
+/// exactamente isso que o campo mostra com um `—`.
+///
+/// ⛔ É a mesma categoria da caixa **«Visible»**, que o [`crate::inspector_presence_tests`] já
+/// declara fora da tabela pela mesma razão: *vale para todo objeto*. A diferença entre as duas
+/// famílias não é «opcional contra obrigatório» — é **componente ANEXADO contra propriedade
+/// INTRÍNSECA**.
+///
+/// ⚠️ [`has_any_ordering`] fica: ele deixou de gatear a seção e continua a responder *«este objeto
+/// tem autoria de ordenação?»*, que é outra pergunta (a que os gates de presença fazem).
 pub(super) fn build_ordering_info(
     world: &World,
     entity_bits: u64,
@@ -134,9 +146,6 @@ pub(super) fn build_ordering_info(
 ) -> Option<InspectorOrderingInfo> {
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
-    if !has_any_ordering(world, entity) {
-        return None;
-    }
     let default_layer = world
         .get_resource::<SortingLayers>()
         .map_or(2, |l| l.default_index());

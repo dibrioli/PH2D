@@ -16,6 +16,15 @@ pub(crate) fn ordering(world: &World, bits: u64) -> bool {
     super::inspector_ordering::build_ordering_info(world, bits, &[], 1).is_some()
 }
 
+/// ⭐ **O `Z Index` que a §7 MOSTRA** — `None` = `—` (vem da árvore).
+///
+/// ⚠️ Ela existe pela mesma razão das irmãs: o builder vive num módulo privado do `render_loop`, e
+/// a lei da §7 precisa de afirmar **o que o campo diz**, não só que a seção existe. *Uma seção
+/// presente com um zero fabricado passaria a metade 1 e mentiria ao artista.*
+pub(crate) fn ordering_z_index(world: &World, bits: u64) -> Option<Option<i32>> {
+    super::inspector_ordering::build_ordering_info(world, bits, &[], 1).map(|i| i.z_index)
+}
+
 pub(crate) fn sampling(world: &World, bits: u64) -> bool {
     super::inspector_ordering::build_sampling_info(world, bits, &[], 1).is_some()
 }

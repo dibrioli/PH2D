@@ -86,25 +86,18 @@ fn player(sim: &SimWorld, b: u64) -> bool {
     crate::render_loop::inspector_presence_probe::player(sim, b)
 }
 
+// ⭐⭐ **A §7 Ordering SAIU desta tabela por decisão do Enio** (2026-08-30: *«essa é uma seção que
+// por padrão deve começar com todos os objetos»*), e a lei dela vive no
+// [`the_ordering_section_belongs_to_every_object`] logo abaixo.
+//
+// ⚠️ **Ela não é uma isenção da lei da F3 — é a leitura completa dela.** *«O Inspector mostra o que
+// o objeto TEM»*, e todo objeto desenhável **tem** uma posição na ordem de desenho: ela existe sem
+// componente nenhum, porque o contador de hierarquia a produz. Ausência de `ZIndexOverride` não é
+// *«este objeto não tem Z»*, é *«o Z dele vem da árvore»* — que é o que o campo mostra com um `—`.
+//
+// ⛔ Mesma categoria da caixa «Visible», já declarada fora da tabela na nota da §8: a fronteira não
+// é «opcional contra obrigatório», é **componente ANEXADO contra propriedade INTRÍNSECA**.
 const CASES: &[Case] = &[
-    Case {
-        section: "§7 Ordering",
-        component: "ZIndexOverride",
-        base: plain,
-        attach: |w, e| {
-            w.entity_mut(e).insert(ph2d_ecs::ZIndexOverride(3));
-        },
-        live: ordering,
-    },
-    Case {
-        section: "§7 Ordering",
-        component: "YSort",
-        base: plain,
-        attach: |w, e| {
-            w.entity_mut(e).insert(ph2d_ecs::YSort::default());
-        },
-        live: ordering,
-    },
     Case {
         section: "§9 Sampling",
         component: "TextureFilter",
@@ -287,4 +280,44 @@ fn an_empty_object_still_shows_transform_and_name() {
             c.section
         );
     }
+}
+
+/// ⭐⭐ **A §7 Ordering vale para TODO objeto** (Enio, 2026-08-30) — e as duas metades, como toda
+/// linha da tabela acima.
+///
+/// **Mutação que deve sangrar:** repor o `if !has_any_ordering(…) { return None; }` no
+/// `build_ordering_info` — que é literalmente o estado em que o smoke a apanhou.
+#[test]
+fn the_ordering_section_belongs_to_every_object() {
+    // Metade 1 — um objeto NU, sem componente de ordenação nenhum, já tem a seção.
+    let mut sim = SimWorld::new();
+    let bare = plain(sim.world_mut());
+    assert!(
+        ordering(&sim, bare.to_bits()),
+        "um objeto sem autoria de ordenacao ficou SEM a secao — o artista nao tem onde por o Z"
+    );
+    // ⚠️ E o que ela mostra é a AUSÊNCIA de autoria, não um zero fabricado: `z_index == None`
+    // é o `—` que significa «vem da árvore».
+    assert_eq!(
+        crate::render_loop::inspector_presence_probe::ordering_z_index(sim.world(), bare.to_bits()),
+        Some(None),
+        "um objeto sem `ZIndexOverride` tem de mostrar `—`, nunca um zero fabricado"
+    );
+
+    // Metade 2 — anexar um override não faz a seção desaparecer, e o valor CHEGA.
+    sim.world_mut()
+        .entity_mut(bare)
+        .insert(ph2d_ecs::ZIndexOverride(3));
+    assert_eq!(
+        crate::render_loop::inspector_presence_probe::ordering_z_index(sim.world(), bare.to_bits()),
+        Some(Some(3)),
+        "a secao sumiu ou o valor autorado nao chegou ao painel"
+    );
+
+    // ⛔ A cerca que fica: uma entidade SEM `Transform` continua fora do Inspector.
+    let nowhere = sim.world_mut().spawn(ph2d_ecs::Name::new("Ghost")).id();
+    assert!(
+        !ordering(&sim, nowhere.to_bits()),
+        "uma entidade sem Transform nao e' um objeto do Inspector"
+    );
 }

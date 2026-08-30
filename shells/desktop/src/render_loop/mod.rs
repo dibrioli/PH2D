@@ -1145,6 +1145,13 @@ impl crate::App {
             sort_scratch,
             sort_inputs,
             frame_order,
+            // ADR-0154 Fase 2 — o acumulador e a colagem são do PRESENTE; aqui só se enche o
+            // `band_doc_scenes` (a codificação do documento por faixa) porque é aqui que as
+            // entradas do `dispatch` existem.
+            world_rt,
+            band_blit: _,
+            band_doc_scenes,
+            compositor_reads_world,
             hero_live,
             next_import_cell,
             // A identidade estável do documento pintado é carimbada no SAVE (`project_painter`), que é
@@ -1965,6 +1972,13 @@ impl crate::App {
                     .create_view(&wgpu::TextureViewDescriptor::default()),
             );
             vello_pass.ensure_size(surface.gpu(), dim);
+            // ADR-0154 Fase 2 — o acumulador acompanha a superfície.
+            //
+            // ⚠️ E o `rebind` logo abaixo repõe o compositor a ler o TONEMAP; a bandeira tem de
+            // acompanhar, senão o presente acha que já está no modo mundo e não re-liga. *Um
+            // cache de «em que modo estou» que o resize não limpa é um quadro preto.*
+            world_rt.ensure_size(surface.gpu(), dim);
+            *compositor_reads_world = false;
             compositor.rebind(
                 surface.gpu(),
                 tonemap
@@ -9798,36 +9812,76 @@ impl crate::App {
                 paint_ctx.text,
                 hero.theme,
             );
-            ph2d_vec_render::dispatch(
+            // ⭐⭐⭐ **AS FAIXAS DO DOCUMENTO** (ADR-0154 Fase 2). Quando a cena INTERCALA vetor e
+            // sprite, o documento deixa de ir para a cena do chrome e passa a ser codificado uma
+            // vez por faixa, em cenas próprias — o presente desenha-as intercaladas com as faixas
+            // de sprite, e o chrome fica por cima de tudo, como sempre.
+            //
+            // ⭐ **A faixa exprime-se ESCONDENDO o resto**, e não filtrando o laço do `dispatch`.
+            // A razão está escrita lá dentro: o `push`/`pop` da camada de recorte vive **fora** do
+            // filtro de escondido, de propósito, para as molduras se emparelharem mesmo quando não
+            // desenham. ⇒ uma forma fora da faixa não desenha **e** a moldura dela continua a
+            // recortar quem cai lá dentro. Filtrar o laço desemparelharia a pilha.
+            //
+            // ⚠️ Sem intercalação isto fica vazio e o documento vai para a cena do chrome, byte a
+            // byte como sempre.
+            // ⭐⭐⭐ **A arte dos PINCÉIS deste quadro, MEMOIZADA** (`line/Vector`, 2026-08-30) —
+            // resolvida aqui pela mesma razão que o ladrilho do padrão o é: a crate de desenho não
+            // alcança a cena, e o guarda de ciclo tem de viver onde se pode medir.
+            //
+            // ⚠️ **Resolvida UMA vez, FORA do laço das faixas** (integração de 2026-09-04): a
+            // `line/Vector` memoizou-a porque sem memo `50` pincéis com grupos de `16` custam
+            // **14,28 ms — 85,5% de um quadro**; a `line/components` pôs o `dispatch` dentro de um
+            // laço por faixa. As duas juntas pagariam a montagem da chave uma vez POR FAIXA, e o
+            // mapa é o mesmo para todas — ele é função da cena, não da faixa.
+            let brush_arts = self.brush_live.resolve(
                 vec_scene,
-                &vec_view,
+                &|id| {
+                    crate::vec_entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
+                },
                 &vec_xf,
-                &vec_live,
-                vec_fx,
-                &vec_skins,
-                vec_patterns,
-                // ⭐ **A arte dos PINCÉIS deste quadro** (plano 36, W3) — resolvida aqui pela
-                // mesma razão que o ladrilho do padrão o é: a crate de desenho não alcança a cena,
-                // e o guarda de ciclo tem de viver onde se pode medir.
-                // ⭐⭐⭐ **MEMOIZADA** (medido 2026-08-30): sem memo, `50` pincéis com grupos de
-                // `16` e arte de geometria viva custam **14,28 ms — 85,5% de um quadro**, e um
-                // pincel só já custa `1,80%`. O `cooked()` é 95–98% disso. A chave contém as cinco
-                // coisas que a resolução lê, a POSE incluída.
-                self.brush_live.resolve(
-                    vec_scene,
-                    &|id| {
-                        crate::vec_entities::object_selection_for(
-                            sim,
-                            vec_scene,
-                            &self.vec_entities,
-                            id,
-                        )
-                    },
-                    &vec_xf,
-                ),
-                cam_affine,
-                vector_scene,
             );
+            band_doc_scenes.clear();
+            let doc_bands = crate::draw_bands::doc_bands_of(frame_order);
+            for band in &doc_bands {
+                let keep = frame_order.vector_ids_in(*band);
+                let mut band_view = vec_view.clone();
+                for path in vec_scene.paths() {
+                    if !keep.contains(&path.id) {
+                        band_view.hidden.push(path.id);
+                    }
+                }
+                let mut target = ph2d_vector::VectorScene::new();
+                ph2d_vec_render::dispatch(
+                    vec_scene,
+                    &band_view,
+                    &vec_xf,
+                    &vec_live,
+                    vec_fx,
+                    &vec_skins,
+                    vec_patterns,
+                    brush_arts,
+                    cam_affine,
+                    &mut target,
+                );
+                band_doc_scenes.push(target);
+            }
+            if !doc_bands.is_empty() {
+                // O documento já foi codificado nas faixas — a cena do chrome fica só com o chrome.
+            } else {
+                ph2d_vec_render::dispatch(
+                    vec_scene,
+                    &vec_view,
+                    &vec_xf,
+                    &vec_live,
+                    vec_fx,
+                    &vec_skins,
+                    vec_patterns,
+                    brush_arts,
+                    cam_affine,
+                    vector_scene,
+                );
+            }
             // ⚠️ **O mapa que foi DESENHADO fica guardado, e é ele que o PICK lê.**
             //
             // O `vec_gizmo_pick` declara no próprio doc que a pergunta *"o que está desenhado

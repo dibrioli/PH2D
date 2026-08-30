@@ -103,6 +103,22 @@ pub(crate) struct AppGfx {
     /// here; the tonemap pass reads here and writes to LDR. Recreated
     /// on resize.
     pub(crate) game_rt: GameRt,
+    /// ⭐⭐ **O ACUMULADOR DO MUNDO** (ADR-0154 Fase 2) — onde as faixas de desenho se empilham na
+    /// ordem que o ordenador decidiu. Só é usado quando a cena de facto INTERCALA vetor e sprite;
+    /// sem isso o quadro corre o caminho de sempre, byte a byte.
+    pub(crate) world_rt: ph2d_render::WorldRt,
+    /// A colagem de uma faixa sobre o acumulador.
+    pub(crate) band_blit: ph2d_render::BandBlit,
+    /// As cenas do DOCUMENTO, uma por faixa de vetor — reusadas entre quadros (HR-3).
+    ///
+    /// ⚠️ Vazio ⇒ o documento foi codificado na cena do chrome, como sempre, e o presente não tem
+    /// faixa de vetor nenhuma a desenhar.
+    pub(crate) band_doc_scenes: Vec<ph2d_vector::VectorScene>,
+    /// O compositor está a ler o acumulador (em vez da saída do tonemap)?
+    ///
+    /// ⚠️ **Ele guarda o `game_view` num bind group construído uma vez**, então trocar a fonte é um
+    /// `rebind`. Esta bandeira faz o rebind acontecer **na mudança de modo**, e não por quadro.
+    pub(crate) compositor_reads_world: bool,
     /// doc 67: the Motion module's own HDR glow pass. Owns a Motion-only
     /// `Rgba16Float` RT + the bloom chain. Runs only when the artist has
     /// authored bloom on the active Motion doc (`fx.bloom.enabled`); otherwise it

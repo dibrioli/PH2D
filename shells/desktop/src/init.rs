@@ -288,6 +288,10 @@ pub(crate) fn build_initial_state(
     // sample views are extracted here at boot; rebound on resize
     // alongside game_rt/tonemap output recreation.
     let game_rt = GameRt::new(surface.gpu(), (size.width, size.height));
+    // ADR-0154 Fase 2: o acumulador do mundo + a colagem de faixa. Inertes enquanto a cena não
+    // intercalar vetor e sprite.
+    let world_rt = ph2d_render::WorldRt::new(surface.gpu(), (size.width, size.height));
+    let band_blit = ph2d_render::BandBlit::new(surface.gpu(), ph2d_render::WorldRt::FORMAT);
     // doc 67: the Motion module's own HDR glow pass, sized to the surface like
     // game_rt. Inert until the artist authors bloom on the active Motion doc.
     let motion_fx = ph2d_render::MotionFx::new(surface.gpu(), (size.width, size.height));
@@ -482,6 +486,10 @@ pub(crate) fn build_initial_state(
         tools,
         layout,
         game_rt,
+        world_rt,
+        band_blit,
+        band_doc_scenes: Vec::new(),
+        compositor_reads_world: false,
         motion_fx,
         tonemap,
         compositor,

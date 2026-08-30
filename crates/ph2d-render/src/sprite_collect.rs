@@ -17,14 +17,34 @@ use ph2d_ecs::PresentWorld;
 /// into the ECS `present` (stream ≠ ECS, ADR-0035). A motion instance has
 /// `z_order = 0`, `texture_id = 0` (atlas), so it joins the base atlas run. Pass
 /// `&[]` for the scene-only path.
+///
+/// ⭐⭐ **`rank_window` é a FAIXA de desenho** (ADR-0154 Fase 2): `Some((lo, hi))` colhe só as
+/// instâncias cujo `z_order` cai em `[lo, hi)`. `None` = tudo, e é **byte-idêntico** ao mundo
+/// pré-faixas.
+///
+/// ⚠️ **O filtro entra ANTES da ordenação, e é sobre o `z_order` — o rank canónico**, o mesmo
+/// número que o `sort_key` carimbou. Filtrar depois de ordenar daria o mesmo conjunto mas obrigaria
+/// o chamador a saber onde a faixa começa no vector ordenado, que é uma segunda resposta à mesma
+/// pergunta.
+///
+/// ⚠️ **O `extra` NÃO é filtrado.** Ele é o fluxo cozido do Motion, que não passa pelo ECS e por
+/// isso não tem rank (`z_order = 0` por construção). Ele pertence à faixa que corre o resto do
+/// pipeline — a última de sprites —, e é lá que o chamador o passa; nas outras faixas ele chega
+/// vazio.
 pub(crate) fn collect_sorted_instances(
     scratch: &mut Vec<RenderInstance>,
     present: &mut PresentWorld,
     extra: &[RenderInstance],
+    rank_window: Option<(u32, u32)>,
 ) {
     scratch.clear();
     let mut q = present.world_mut().query::<&RenderInstance>();
     for inst in q.iter(present.world()) {
+        if let Some((lo, hi)) = rank_window
+            && (inst.z_order < lo || inst.z_order >= hi)
+        {
+            continue;
+        }
         scratch.push(*inst);
     }
     scratch.extend_from_slice(extra);

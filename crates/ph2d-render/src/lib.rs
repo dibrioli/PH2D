@@ -18,6 +18,7 @@
 //! land in M6+ as the asset pipeline + scene scale demand them.
 
 pub mod atlas;
+pub mod band_blit;
 pub mod camera;
 pub(crate) mod clip_pass;
 pub mod compositor;
@@ -83,6 +84,7 @@ pub mod sprite_versioned;
 mod texture_clear;
 pub mod tonemap;
 pub mod vello_pass;
+pub mod world_rt;
 
 pub use atlas::{
     ATLAS_DEFAULT_SIZE_PX, AtlasInsertError, AtlasRegion, DEMO_TILE_COUNT, DEMO_TILE_PX,
@@ -92,6 +94,7 @@ pub use camera::{Camera2d, CameraUniform};
 pub use sink_style::{SinkStyle, StyleReach};
 // A ordem canonica de desenho e' uma LEI do produto, e quem escreve linhas que
 // dependem dela (o lowering de Motion) tem de a poder MEDIR sem uma GPU.
+pub use band_blit::{BandBlit, BandSource};
 pub use compositor::Compositor;
 pub use compressed_pipeline::{
     COMPRESSED_TEXTURE_CACHE_BUDGET_MB, CompressedTexturePipeline, CompressedUploadError,
@@ -132,6 +135,7 @@ pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use sprite::{GpuTexRun, QuadVertex, RenderInstance, Sprite, SpriteSource};
 pub use sprite_collect::sort_render_order;
+pub use world_rt::WorldRt;
 // The wrapper enum + the canonical load path (`load_sprite` +
 // `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
 // `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the

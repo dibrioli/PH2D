@@ -53,6 +53,7 @@ impl SpriteRenderer {
             extra,
             None,
             scene_viewport,
+            None,
         );
     }
 
@@ -77,10 +78,18 @@ impl SpriteRenderer {
         extra: &[RenderInstance],
         gpu_extra: Option<(&wgpu::Buffer, u32, &[crate::GpuTexRun])>,
         scene_viewport: Option<[f32; 4]>,
+        // ⭐⭐ **A FAIXA de desenho** (ADR-0154 Fase 2) — `Some((lo, hi))` desenha só as instâncias
+        // cujo rank cai em `[lo, hi)`. `None` = a cena inteira, **byte-idêntico** ao de sempre.
+        rank_window: Option<(u32, u32)>,
     ) {
         // Collect scene instances + the `extra` slice into `scratch` and sort
         // (extracted to keep this file under its LOC cap; M0.T11).
-        crate::sprite_collect::collect_sorted_instances(&mut self.scratch, present, extra);
+        crate::sprite_collect::collect_sorted_instances(
+            &mut self.scratch,
+            present,
+            extra,
+            rank_window,
+        );
         self.draw_scratch(
             target,
             camera,

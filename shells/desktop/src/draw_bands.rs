@@ -26,11 +26,6 @@
 //! sequência em **corridas** (runs) — as faixas —, e o presente desenha faixa a faixa, alternando
 //! de motor. ⛔ Ele não sabe desenhar nada: é a lei, e é pura.
 
-// ⏳ **O consumidor destas quatro é o LAÇO DO PRESENTE**, que chega na wave a seguir (a
-// segmentação de passe). Até lá o `FrameOrder` já é preenchido por quadro e gateado — o que falta
-// é quem desenha faixa a faixa. ⛔ Este `allow` sai no mesmo commit que o laço.
-#![allow(dead_code)]
-
 /// A que motor um rank pertence.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Family {
@@ -225,6 +220,38 @@ impl FrameOrder {
     /// A cena tem alguma forma vetorial? `false` ⇒ o presente toma o caminho de sempre.
     pub fn has_vectors(&self) -> bool {
         !self.vector_ranks.is_empty()
+    }
+}
+
+/// As faixas de VETOR de um quadro — vazio quando a cena **não** precisa de intercalar.
+///
+/// ⭐ **É esta função que decide se o quadro é banded**, e o critério é *«o plano difere da ordem
+/// da Fase 1?»*: nenhuma faixa (cena vazia), só sprites, só vetores, ou sprites-e-depois-vetores
+/// são exactamente o que o pipeline de sempre desenha — e nesses casos o quadro tem de ficar
+/// **byte-idêntico**, porque toda a arte já feita e todo o golden dependem dele.
+pub(crate) fn doc_bands_of(order: &FrameOrder) -> Vec<Band> {
+    let (bands, _degraded) = order.plan();
+    if !needs_banding(&bands) {
+        return Vec::new();
+    }
+    bands
+        .into_iter()
+        .filter(|b| b.family == Family::Vector)
+        .collect()
+}
+
+/// O plano precisa do laço de faixas, ou o pipeline de sempre já o desenha?
+pub(crate) fn needs_banding(bands: &[Band]) -> bool {
+    match bands {
+        [] => false,
+        [one] => {
+            // ⚠️ Uma faixa só de VETORES **também** é o caminho de sempre: o compositor põe o
+            // vetor por cima de um `game_rt` que não tem sprite nenhum.
+            let _ = one;
+            false
+        }
+        [a, b] => !(a.family == Family::Sprite && b.family == Family::Vector),
+        _ => true,
     }
 }
 
@@ -425,5 +452,47 @@ mod tests {
         o.record(1, Some(9));
         assert_eq!(o.complete(), Some(vec![S, V]));
         assert!(!o.plan().1);
+    }
+
+    /// ⭐ **O caminho de sempre NÃO é banded** — e isto é o que mantém todo o golden byte-idêntico.
+    #[test]
+    fn the_phase_one_orders_do_not_need_banding() {
+        for fams in [
+            vec![],
+            vec![S],
+            vec![V],
+            vec![S, S],
+            vec![S, V],
+            vec![S, S, V, V],
+        ] {
+            let (b, _) = plan(&fams);
+            assert!(!needs_banding(&b), "{fams:?} nao devia precisar de faixas");
+        }
+    }
+
+    /// ⭐⭐ **O caso do report PRECISA** — e é a única diferença entre os dois conjuntos.
+    #[test]
+    fn the_report_case_needs_banding() {
+        for fams in [vec![V, S], vec![S, V, S], vec![V, S, V]] {
+            let (b, _) = plan(&fams);
+            assert!(needs_banding(&b), "{fams:?} tinha de precisar de faixas");
+        }
+    }
+
+    /// `doc_bands_of` devolve **só** as faixas de vetor, e vazio no caminho de sempre.
+    #[test]
+    fn doc_bands_are_the_vector_runs_and_empty_on_the_old_path() {
+        let mut o = FrameOrder::default();
+        o.record(0, None);
+        o.record(1, Some(5));
+        assert!(doc_bands_of(&o).is_empty(), "[S, V] e' o caminho de sempre");
+
+        let mut o = FrameOrder::default();
+        o.record(0, Some(5));
+        o.record(1, None);
+        let b = doc_bands_of(&o);
+        assert_eq!(b.len(), 1);
+        assert_eq!(b[0].family, V);
+        assert_eq!(o.vector_ids_in(b[0]), vec![5]);
     }
 }

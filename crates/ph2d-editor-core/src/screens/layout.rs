@@ -12,7 +12,7 @@
 use crate::zones::Rect;
 use ph2d_tokens::{
     EDGE_PAD_PX, HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIER_ROW_H_PX, HIERARCHY_W_PX,
-    HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, Spacing, TOPBAR_GAP_PX, TOPBAR_H_PX,
+    HUD_BOTTOM_PAD_PX, HUD_H_PX, INSPECTOR_W_PX, TOPBAR_GAP_PX, TOPBAR_H_PX,
 };
 
 /// Default mockup viewport (iPad 12.9 landscape).
@@ -30,7 +30,18 @@ pub fn rail_w() -> f32 {
 }
 pub const INSPECTOR_W: f32 = INSPECTOR_W_PX;
 
-/// Teto de ALTURA do dock do inspector — acima disto ele para de crescer com a janela.
+/// **O ORÇAMENTO de altura que um painel do dock pode assumir** — não a altura dele.
+///
+/// ⛔ **Até 2026-08-30 isto era um TECTO GEOMÉTRICO** (`chrome_h.min(INSPECTOR_MAX_H)`) e era ele
+/// que deixava a coluna da direita a parar **80 px antes do fundo** no viewport de referência —
+/// metade do *«muitos espaços em todos os lugares»* que o Enio apontou com quatro setas. Um tecto
+/// de altura é coisa de painel que FLUTUA; uma coluna ANCORADA vai de ponta a ponta.
+///
+/// ⚠️ **O número fica, e o consumidor dele também** — o `ph2d-panel-motion-params` mede contra
+/// isto quantas linhas cabem, e é a única coisa que o lê. Ele deixa de ser *«a altura do dock»* e
+/// passa a ser *«a altura que um painel pode contar ter»*: conservador no alvo de referência (a
+/// banda tem 960), e ⚠️ **optimista numa janela baixa** — o que já era verdade antes, porque o
+/// `min` dava a banda quando ela era menor. Quem quiser a altura REAL lê `layout.inspector.h`.
 ///
 /// ⚠️ Nomeado (era literal solto no `Rect::new` abaixo) porque um painel docado precisa saber
 /// **quanta altura existe** para decidir se o conteúdo dele cabe: o `motion-params` não rola, e
@@ -344,14 +355,35 @@ impl HeroLayout {
         split: CenterSplit,
         docks: DockSides,
     ) -> Self {
-        let top_bar = Rect::new(
-            viewport.x + EDGE_PAD,
-            viewport.y + EDGE_PAD,
-            (viewport.w - EDGE_PAD * 2.0).max(0.0),
-            TOPBAR_H,
-        );
-        let chrome_top = top_bar.y + top_bar.h + TOPBAR_GAP;
-        let chrome_bot = viewport.y + viewport.h - HUD_BOTTOM_PAD - HUD_H - Spacing::Md.px();
+        Self::for_viewport_bands(viewport, mirrored, rail_w, TOPBAR_H, split, docks)
+    }
+
+    /// ⭐⭐ **O construtor que recebe as BANDAS por medida, e não por modo** (2026-08-30).
+    ///
+    /// `rail_w` e `top_bar_h` são larguras/alturas, não interruptores — *«sem chrome legado»* é
+    /// simplesmente `0.0` nos dois, e o layout não precisa de saber porquê. ⚠️ Um parâmetro
+    /// `legacy_chrome: bool` faria este ficheiro conhecer uma fase de migração; uma medida a
+    /// zero é a mesma aritmética de sempre.
+    #[allow(clippy::too_many_arguments)]
+    pub fn for_viewport_bands(
+        viewport: Rect,
+        mirrored: bool,
+        rail_w: f32,
+        top_bar_h: f32,
+        split: CenterSplit,
+        docks: DockSides,
+    ) -> Self {
+        // ⭐⭐ **A BARRA DE TOPO É FLUSH e a BANDA vai até ao fundo** (Enio, 2026-08-30, com
+        // quatro setas na foto: *«muitos espaços em todos os lugares»*). Ela era inset em
+        // `EDGE_PAD` e a banda de chrome perdia `TOPBAR_GAP` por cima e a reserva do HUD por
+        // baixo — 94 px em cima e 60 em baixo de espaço morto, com as colunas a boiar no meio.
+        //
+        // ⚠️ **O HUD continua a flutuar**, e é de propósito: ele é centrado (`x ∈ [443, 923]` no
+        // alvo de referência) e as colunas vivem nas pontas, logo não se tocam — reservar-lhe uma
+        // faixa custaria a altura das duas colunas para nada.
+        let top_bar = Rect::new(viewport.x, viewport.y, viewport.w, top_bar_h);
+        let chrome_top = top_bar.y + top_bar.h;
+        let chrome_bot = viewport.y + viewport.h;
         let chrome_h = (chrome_bot - chrome_top).max(0.0);
         let left_rail = Rect::new(viewport.x, chrome_top, rail_w, chrome_h);
         // ⭐⭐ **AS COLUNAS SÃO FLUSH** (Enio, 2026-08-30, com foto): encostadas à borda da janela
@@ -364,12 +396,7 @@ impl HeroLayout {
         } else {
             (viewport.x + rail_w, viewport.x + viewport.w - INSPECTOR_W)
         };
-        let inspector = Rect::new(
-            inspector_x,
-            chrome_top,
-            INSPECTOR_W,
-            chrome_h.min(INSPECTOR_MAX_H),
-        );
+        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h);
         // Bg Removal panel shares the Inspector's right-dock x/width;
         // it replaces the Inspector visually while the tool is active.
         let bgremoval = inspector;
@@ -584,13 +611,23 @@ impl HeroLayout {
     /// Largura = a da viewport, de propósito — um popover pode transbordar para o canvas na
     /// horizontal (é o que a lista de 182 px faz por cima da cena), e é só na VERTICAL que ele
     /// saía do sítio.
+    ///
+    /// ⛔⛔ **A âncora MUDOU em 2026-08-30, e a antiga era uma armadilha nomeada.** Ela era o
+    /// `left_rail` — *«ele abrange a banda por construção»* —, e isso deixou de ser verdade no
+    /// instante em que o trilho passou a poder estar **fora**: com `rail_w = 0` o rect dele é
+    /// `(0, 0, 0, h)` e a região virava **a janela inteira**, que é exactamente o defeito que ela
+    /// existe para curar (a 1.ª linha do picker a nascer a 2 px da borda).
+    ///
+    /// ⭐ Hoje ela sai da **coluna do dock**, que é a banda por construção e não por acaso: o
+    /// popover nasce onde o painel dele vive, e o painel vive ali. *Uma região derivada de um
+    /// chrome que pode desaparecer não é uma região — é uma coincidência.*
     #[must_use]
     pub fn popover_region(&self) -> Rect {
         Rect::new(
             self.viewport.x,
-            self.left_rail.y,
+            self.inspector.y,
             self.viewport.w,
-            self.left_rail.h,
+            self.inspector.h,
         )
     }
 }

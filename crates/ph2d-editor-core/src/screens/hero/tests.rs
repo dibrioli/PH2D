@@ -6,17 +6,40 @@ fn ipad12_viewport() -> Rect {
     Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H)
 }
 
+/// **A barra de topo é FLUSH** — encostada às três bordas.
+///
+/// ⛔ Este gate chamava-se `layout_top_bar_inset_from_edge` e afirmava o contrário. O inset de
+/// `EDGE_PAD` era metade dos *«muitos espaços em todos os lugares»* que o Enio apontou com quatro
+/// setas em 2026-08-30.
 #[test]
-fn layout_top_bar_inset_from_edge() {
+fn layout_top_bar_is_flush_with_the_window() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
-    assert!((layout.top_bar.x - style::EDGE_PAD).abs() < f32::EPSILON);
+    assert!((layout.top_bar.x - layout.viewport.x).abs() < f32::EPSILON);
+    assert!((layout.top_bar.y - layout.viewport.y).abs() < f32::EPSILON);
+    assert!((layout.top_bar.w - layout.viewport.w).abs() < f32::EPSILON);
     assert!((layout.top_bar.h - style::TOPBAR_H).abs() < f32::EPSILON);
 }
 
+/// **A banda de chrome COMEÇA onde a barra acaba, sem folga, e vai até ao FUNDO.**
+///
+/// ⛔ Era `left_rail.y > top_bar.bottom` (estrito, com o `TOPBAR_GAP` de 16 no meio) e nada
+/// afirmava o fundo — a banda perdia mais 60 px para uma reserva de HUD que o HUD não usa (ele é
+/// centrado; as colunas vivem nas pontas).
 #[test]
-fn layout_left_rail_below_top_bar() {
+fn layout_chrome_band_touches_the_bar_and_the_bottom() {
     let layout = HeroLayout::for_viewport(ipad12_viewport());
-    assert!(layout.left_rail.y > layout.top_bar.y + layout.top_bar.h);
+    let bar_bottom = layout.top_bar.y + layout.top_bar.h;
+    assert!(
+        (layout.left_rail.y - bar_bottom).abs() < f32::EPSILON,
+        "a banda tem de COMEÇAR no fim da barra ({} contra {bar_bottom})",
+        layout.left_rail.y
+    );
+    let band_bottom = layout.left_rail.y + layout.left_rail.h;
+    let vp_bottom = layout.viewport.y + layout.viewport.h;
+    assert!(
+        (band_bottom - vp_bottom).abs() < f32::EPSILON,
+        "a banda tem de ir até ao FUNDO da janela ({band_bottom} contra {vp_bottom})"
+    );
     assert!((layout.left_rail.w - style::rail_w()).abs() < f32::EPSILON);
 }
 
@@ -228,6 +251,9 @@ fn hero_topbar_save_click_opens_save_menu() {
     // Click(TOPBAR_SAVE) emit, so we assert on the open menu's
     // kind instead.
     let mut hero = HeroScreen::new(NodeId(1));
+    // ⚠️ Este gate testa o CHROME LEGADO, que desde 2026-08-30 nasce desligado (o Enio pediu o
+    // espaço vazio para desenhar a barra nova). Ligá-lo aqui é dizer o que o teste mede.
+    hero.view.legacy_chrome = true;
     let mut scene = VectorScene::new();
     let mut text = TextSystem::without_system_fonts();
     paint_hero_screen(&mut hero, ipad12_viewport(), &mut scene, &mut text);

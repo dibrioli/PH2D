@@ -366,7 +366,9 @@ fn the_multi_output_nodes_are_named_and_every_label_fits() {
 #[test]
 fn the_authored_state_overflow_is_named_too() {
     /// `(tipo, altura no estado autorado)` — medido em 2026-08-27.
-    const AUTHORED_OVERFLOW: &[(&str, f32)] = &[("fx.glow", 674.0)];
+    // ⭐ VAZIA desde 2026-08-30 — ver a nota do `NAMED_OVERFLOW`: o dock cresceu 80 px quando as
+    // colunas foram ancoradas, e o `fx.glow` (674) passou a caber num corpo de 834.
+    const AUTHORED_OVERFLOW: &[(&str, f32)] = &[];
     let body = reach_census_body();
     for (ty, px) in AUTHORED_OVERFLOW {
         let got = authored_height(ty);
@@ -446,34 +448,19 @@ fn the_dock_overflow_is_named_not_discovered() {
     const NAMED_OVERFLOW: &[(&str, f32)] = &[
         ("motion.bezier_warp", 969.0),
         ("motion.spline_wrap", 755.0),
-        // O terceiro, 2026-08-24: uma lista PLANA que passou por 16 px (meia linha) ao ganhar
-        // a cor e a rotação próprias. Sem `ParamGroup`, nenhuma dobra o alcança.
-        ("source.shape", 680.0),
-        // O quarto, 2026-08-30: passou por **11 px** — menos de meia linha — ao ganhar o
-        // selector `Geometry` (`Segments` / `Branches`, doc 95). ⚠️ **É o mais barato de
-        // curar dos quatro e o único que se cura sem produto**: este nó TEM `ParamGroup`s, e
-        // dobrar por omissão qualquer uma das três abertas o traz para dentro do corpo. Não se
-        // dobrou nenhuma porque escolher QUAL é decisão de quem vê o painel: as três (*Shape*,
-        // *Grammar*, *Growth*) são a primeira coisa que um artista mexe, e esconder uma para
-        // ganhar 11 px trocaria uma rolagem de um dedo por um clique em todo arranque.
-        //
-        // ⚠️ **RE-MEDIDO no mesmo dia: `675 → 709`**, ao ganhar o `Tip Taper` (o segundo report
-        // do smoke). São `45 px` sobre o corpo, ou seja **uma linha e meia** — e a metade da
-        // frase acima que dizia *"menos de meia linha"* já não descreve isto. O gate exigiu a
-        // re-medição em vez de a deixar passar, que é a razão de a altura viver na lista.
-        // ⚠️ **RE-MEDIDO outra vez: `709 → 736`**, com as três letras que plantam um objecto
-        // (`Leaf (J)`/`(K)`/`(M)`). ⭐ **A secção *Leaves* nasce DOBRADA, e é isso que se lê no
-        // número**: três linhas custariam ~84 px e o que entrou foram **27** — o cabeçalho da
-        // secção. *Dobrar não tira a linha do orçamento do `MAX_PARAM_ROWS` (o slot existe), mas
-        // tira-a da ALTURA, que é o que o dock mede.*
-        // ⭐ **RE-MEDIDO em 2026-08-31: `736 → 668`, e desta vez o número DESCEU.** Os dois
-        // gates de MODO novos (`Step Scale` e `Grow Angle`, doc 96 §1.2) escondem no modo
-        // guiado — que é o de fábrica, e portanto o que este censo mede — dois knobs que a
-        // gramática derivada não sabe ler. `68 px` são exactamente **duas linhas** do corpo.
-        //
-        // ⚠️ *Um portrait escrito à mão é uma catraca que só sobe até alguém a fazer descer* —
-        // e este gate exigiu a re-medição nas duas direcções, que é a razão de ele existir.
-        ("source.lsystem", 668.0),
+        // ⭐ **`source.shape` (680) e `fx.glow` (674) SAIRAM daqui em 2026-08-30, e nao por
+        // alguem os ter encolhido: o DOCK cresceu.** A coluna da direita era limitada por um
+        // tecto de altura (`INSPECTOR_MAX_H`, coisa de painel que FLUTUA) e passou a ir de ponta
+        // a ponta quando as colunas foram ancoradas — o corpo foi de 754 para 834 px. ⇒ os dois
+        // deixaram de estourar, e o censo deste gate exigiu que saissem. *Uma lista de divida
+        // tolerada que nao encolhe sozinha vira licenca; esta encolheu porque tem censo.*
+        // ⭐⭐ **E o `source.lsystem` SAIU no mesmo instante, medido na arvore combinada**
+        // (integracao de 2026-09-04). Ele chegou da `line/motion-value` a `668` sobre um corpo
+        // de `674`, e a `line/UIUX` ancorou as colunas ⇒ o corpo passou a `754`. As duas linhas
+        // sozinhas estavam certas; **so' a arvore combinada sabe o numero**, e quem o disse foi
+        // o censo deste gate (*«ja' CABE no corpo (668 <= 754) -- tire-o da lista»*), nao eu.
+        // ⚠️ Ele fica escrito aqui porque a nota de 2026-08-31 acima descreve *como* ele desceu
+        // de `736` para `668`, e essa historia continua a valer se algum param voltar.
     ];
     let body = inspector_body_h();
     let census = height_census();

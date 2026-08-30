@@ -31,10 +31,11 @@ fn the_popover_region_is_the_chrome_band_not_the_window() {
         r.y + r.h <= l.viewport.y + l.viewport.h,
         "a regiao passa da borda de baixo da janela"
     );
-    assert!(
-        r.y + r.h < l.viewport.y + l.viewport.h,
-        "a regiao encosta na borda de baixo — a mesma faixa de janela, do outro lado"
-    );
+    // ⛔ Havia aqui um `<` ESTRITO — *«a regiao encosta na borda de baixo»* era o defeito. Ele
+    // media a reserva do HUD, e essa reserva CAIU em 2026-08-30 (o HUD é centrado, as colunas
+    // vivem nas pontas, e reservar-lhe uma faixa custava a altura das duas para nada). A banda
+    // encosta no fundo de propósito agora; o que este gate ainda defende é o TOPO — um popover
+    // não nasce por cima da barra —, que era o defeito medido que o criou.
     // É a banda dos painéis docados: um popover nasce onde o painel dele vive.
     assert!(approx(r.y, l.inspector.y), "topo != topo do inspector");
     assert!(

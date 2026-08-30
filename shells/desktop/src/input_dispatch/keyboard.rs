@@ -102,6 +102,13 @@ impl App {
             timestamp_ns: Self::timestamp_ns(),
         });
 
+        // ⭐ **F9 — o chrome legado volta.** Porquê um interruptor: `crate::legacy_chrome`.
+        if state == ElementState::Pressed
+            && physical_key == PhysicalKey::Code(KeyCode::F9)
+            && self.toggle_legacy_chrome()
+        {
+            return;
+        }
         // O palette de "Add Node" (tela cheia, Motion) é MODAL — enquanto aberto ele COME toda tecla:
         // caracteres imprimíveis vão pro campo de busca, Enter escolhe o topo do filtro, Backspace apaga,
         // Escape fecha. Vem PRIMEIRO (antes dos atalhos de painel/ferramenta) para uma letra digitada nunca

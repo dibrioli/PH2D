@@ -418,7 +418,6 @@ pub fn clamp_panel_rect(
     let new_w = raw_w.min(max_w);
     let new_h_user = raw_h.min(viewport.h.max(MIN_H));
     let clamped_dw = new_w - base.w;
-    let clamped_dh = new_h_user - base.h;
 
     // Horizontal clamp: full containment. Panel.left ≥ viewport.left,
     // panel.right ≤ viewport.right. Since `max_w = viewport.w * 0.7`
@@ -438,6 +437,19 @@ pub fn clamp_panel_rect(
     } else {
         new_h_user
     };
+    // ⛔⛔ **O delta gravado é o VISÍVEL, não o pedido** (2026-08-30). O `clamped_dh` era
+    // `new_h_user - base.h` — a altura que o utilizador PEDIU —, enquanto o rect devolvido leva
+    // `final_h`, a que o clamp de fundo deixou. O doc desta função já prometia o contrário:
+    // *«the callers write the clamped offset/resize back … so subsequent drag-begins capture the
+    // visible offset rather than an accumulated raw value (no rubber-band)»* — e ele fazia-o para
+    // o **offset** e não para a **altura**.
+    //
+    // ⚠️ **O preço aparecia como uma alça MORTA:** com o painel maior do que a folga até ao
+    // fundo, cada arrasto guardava o pedido e o ecrã não se mexia — o artista arrastava e nada
+    // acontecia até ter acumulado a diferença inteira. Só ficou visível quando as colunas foram
+    // ancoradas e o painel passou a nascer com a altura da banda; antes ele cabia, e o ramo nunca
+    // era tomado.
+    let clamped_dh = final_h - base.h;
     (
         Rect::new(base.x + dx, new_y, new_w, final_h),
         (dx, dy),

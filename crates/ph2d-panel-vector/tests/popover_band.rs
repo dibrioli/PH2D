@@ -42,6 +42,11 @@ fn hero_with_vector_panel() -> HeroScreen {
         let _ = ph2d_editor_core::panel::install_panel_registry(reg);
     });
     let mut hero = HeroScreen::new(NodeId(1));
+    // ⚠️ Este gate mede *«um popover nao nasce por cima da BARRA DE TOPO»*, e o oraculo dele e' o
+    // `top_bar` de um layout de referencia. Desde 2026-08-30 a barra nasce FORA (o chrome legado
+    // e' um interruptor, `F9`), entao sem esta linha o teste compararia um layout COM barra
+    // contra uma pintura SEM barra — e reprovaria por medir duas coisas diferentes.
+    hero.view.legacy_chrome = true;
     hero.panel_visibility.insert(VectorPanel::ID, true);
     hero
 }

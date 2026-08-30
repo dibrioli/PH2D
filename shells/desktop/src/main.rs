@@ -346,6 +346,7 @@ mod layout_reorder;
 /// `layout_scroll_gesture`: a roda que rola uma moldura (o motor e' o `layout_live::scroll`).
 mod layout_scroll_gesture;
 mod layout_smoke;
+mod legacy_chrome;
 mod lens_smoke;
 mod line_smoke;
 /// SONDA (`--ignored`): quanto custa MOVER uma forma que tem geometria viva. A §11 do plano 25

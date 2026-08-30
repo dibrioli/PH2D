@@ -76,16 +76,37 @@ fn the_panel_drags_by_its_title_band_and_resizes_by_its_corners() {
     // Bottom-right gripper grows the panel. The drag is UP-and-right so the
     // height SHRINKS (dy negative) — growth downward would hit the viewport
     // clamp (the panel is docked to the inspector's full-height slot).
+    //
+    // ⚠️ **E desde 2026-08-30 esse slot vai de ponta a ponta** (as colunas foram ANCORADAS), logo
+    // o painel NASCE encostado ao clamp de fundo. O 1.º arrasto vertical é absorvido a trazer o
+    // delta gravado até ao visível — que é precisamente o que o `clamp_panel_rect` passou a
+    // fazer, e o que antes ficava por fazer (a alça lia-se como morta). ⇒ a LARGURA responde ao
+    // 1.º arrasto e a ALTURA ao 2.º, e o gate mede os dois.
     let br = (moved.x + moved.w - 4.0, moved.y + moved.h - 4.0);
     drag(&mut host, br.0, br.1, 40.0, -50.0);
+    host.paint::<WetTuningPanel>(&mut st, VIEWPORT);
+    let first = host
+        .store()
+        .panel_rect(core_ids::WET_TUNING_PANEL)
+        .expect("panel rect still published");
+    assert!(
+        (first.w - (moved.w + 40.0)).abs() < 0.5,
+        "a LARGURA nao tem clamp de fundo — o 1.º arrasto tem de a mover: {moved:?} -> {first:?}"
+    );
+    assert!(
+        first.h <= moved.h + 0.5,
+        "o clamp de fundo nunca deixa a altura CRESCER num arrasto para cima: {first:?}"
+    );
+    let br2 = (first.x + first.w - 4.0, first.y + first.h - 4.0);
+    drag(&mut host, br2.0, br2.1, 0.0, -50.0);
     host.paint::<WetTuningPanel>(&mut st, VIEWPORT);
     let resized = host
         .store()
         .panel_rect(core_ids::WET_TUNING_PANEL)
         .expect("panel rect still published");
     assert!(
-        (resized.w - (moved.w + 40.0)).abs() < 0.5 && (resized.h - (moved.h - 50.0)).abs() < 0.5,
-        "corner drag must resize the panel: {moved:?} -> {resized:?}"
+        (resized.h - (first.h - 50.0)).abs() < 0.5,
+        "com o delta gravado ja' no visivel, o 2.º arrasto tem de ENCOLHER 50 px:          {first:?} -> {resized:?}. Se isto falhar, o `clamp_panel_rect` voltou a gravar a altura          PEDIDA em vez da VISIVEL, e a alca volta a ler-se como morta."
     );
     set_current_brush(None);
 }

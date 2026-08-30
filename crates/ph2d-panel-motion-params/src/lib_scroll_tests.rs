@@ -54,6 +54,23 @@ fn paint(host: &mut ph2d_ui_testkit::MockPanelHost) -> Vec<(NodeId, Rect)> {
     host.paint::<MotionParamsPanel>(&mut state, VIEWPORT)
 }
 
+/// ⚠️ **Uma janela BAIXA, para o corpo ser menor que o conteúdo.**
+///
+/// ⛔ Em 2026-08-30 as colunas laterais foram ANCORADAS e o dock deixou de ter tecto de altura
+/// (era `INSPECTOR_MAX_H`, coisa de painel que flutua): o corpo passou de 754 para **954 px**, e
+/// o conteúdo do tecto de linhas (`MAX_PARAM_ROWS`, 834) **passou a caber**. O controlo positivo
+/// do gate abaixo apanhou-o e disse o que era preciso — *ele estaria a medir o nada*.
+///
+/// ⭐ A lei que ele defende **não mudou** (uma linha rolada para cima não pode registar-se sob o
+/// título); o que mudou foi que ela deixou de ser alcançável na janela de referência. Uma janela
+/// baixa recria a condição sem inventar um nó com mais linhas do que o painel aceita — *e é o
+/// caso real: o artista com a janela pequena é quem rola.*
+fn paint_short(host: &mut ph2d_ui_testkit::MockPanelHost) -> Vec<(NodeId, Rect)> {
+    let mut state = MotionParamsPanelState;
+    let short = Rect::new(VIEWPORT.x, VIEWPORT.y, VIEWPORT.w, 620.0);
+    host.paint::<MotionParamsPanel>(&mut state, short)
+}
+
 /// **O painel PUBLICA a altura do CONTEUDO, nunca a da moldura.**
 ///
 /// ⚠️ Este gate chamava-se `a_tall_node_publishes_more_content_than_the_dock_can_show` e o nome
@@ -237,7 +254,7 @@ fn nothing_scrolled_above_the_body_can_still_be_clicked_under_the_title() {
     set_current_params(Some(node_with_rows(MAX_PARAM_ROWS)));
 
     // Onde o corpo COMEÇA: o topo do que se regista com o rolamento em zero.
-    let at_rest = paint(&mut host);
+    let at_rest = paint_short(&mut host);
     let body_top = at_rest.iter().map(|(_, r)| r.y).fold(f32::MAX, f32::min);
     assert!(
         body_top.is_finite(),
@@ -263,7 +280,7 @@ fn nothing_scrolled_above_the_body_can_still_be_clicked_under_the_title() {
     // Rola até ao fim e confere que NADA subiu para a faixa do título.
     host.store_mut()
         .set_panel_scroll(ids::MOTION_PARAMS_PANEL, 10_000.0);
-    let scrolled = paint(&mut host);
+    let scrolled = paint_short(&mut host);
     assert!(
         !scrolled.is_empty(),
         "CONTROLE: o corpo rolado continua a registar o que esta' visivel"

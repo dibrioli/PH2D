@@ -345,6 +345,7 @@ impl HeroScreen {
                 stats_visible: true,
                 grid_visible: true,
                 rulers_visible: true,
+                legacy_chrome: false,
                 center_split: crate::screens::layout::CenterSplit::None,
             },
             panel_visibility: panel_ids::default_panel_visibility(),

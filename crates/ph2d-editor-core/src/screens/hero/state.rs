@@ -83,6 +83,21 @@ pub struct ViewState {
     /// VISÍVEIS e magnéticas com as réguas fora; o que some é a possibilidade de mexer nelas
     /// sem querer.
     pub rulers_visible: bool,
+    /// ⭐⭐ **O CHROME LEGADO — o trilho lateral e os clusters de botões da barra de topo.**
+    ///
+    /// Nasce **desligado** desde 2026-08-30, por pedido do Enio (*«ainda temos os botões da
+    /// lateral… pode tirar também os botões do topo para começarmos a trabalhar a barra
+    /// superior»*): o desenho da barra nova precisa do espaço vazio para ser desenhado.
+    ///
+    /// ⚠️ **É um interruptor e não uma remoção, e a razão está medida:** **nenhum atalho de
+    /// teclado alcança as pílulas de módulo** (Vector, Motion, Flip, Sculpt, Model, Play…) e a
+    /// paleta de comandos é um widget genérico, não um catálogo global. Apagá-las deixaria o
+    /// app sem forma de abrir um módulo, e bloquearia os smokes de todas as outras linhas. Com
+    /// o interruptor, **`F9` devolve tudo**.
+    ///
+    /// ⏳ **A condição de saída:** quando a barra de menus (D2) existir, este campo morre e o
+    /// que ele esconde é apagado de vez. Enquanto ele existir, é dívida **nomeada**.
+    pub legacy_chrome: bool,
     /// Center split between the scene viewport and the Motion Nodes graph
     /// (Motion Nodes M0.T4). Default [`CenterSplit::None`] — no split for any
     /// non-Motion tool. The Motion bridge sets it to the remembered orientation
@@ -98,6 +113,7 @@ impl Default for ViewState {
             stats_visible: true,
             grid_visible: true,
             rulers_visible: true,
+            legacy_chrome: false,
             center_split: crate::screens::layout::CenterSplit::None,
         }
     }

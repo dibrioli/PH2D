@@ -117,7 +117,16 @@ pub fn paint_hero_screen(
     // Rail width follows the user's Themes-menu rail-button-size
     // preset (Small / Medium / Large; default Small). Switching size
     // shifts Inspector/Hierarchy x-positions accordingly.
-    let rail_w = hero.store.rail_button_size().rail_width_px();
+    // ⭐ **As medidas do chrome legado, ou ZERO.** *«Sem chrome legado»* não é um modo que o
+    // layout conheça — são duas bandas a zero, e a aritmética dele é a de sempre.
+    let (rail_w, top_bar_h) = if hero.view.legacy_chrome {
+        (
+            hero.store.rail_button_size().rail_width_px(),
+            crate::screens::layout::TOPBAR_H,
+        )
+    } else {
+        (0.0, 0.0)
+    };
     // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
     // this is identical to the legacy layout there; the Motion bridge sets a split
     // while its tool is active.
@@ -130,20 +139,22 @@ pub fn paint_hero_screen(
     // A sonda serve só para saber ONDE ficam as duas colunas — a geometria delas não depende
     // dos flags —, e o `side_columns` devolve-as ordenadas por `x`, que é o que torna o
     // `mirrored` inofensivo aqui.
-    let probe = HeroLayout::for_viewport_docked(
+    let probe = HeroLayout::for_viewport_bands(
         viewport,
         hero.view.ui_mirrored,
         rail_w,
+        top_bar_h,
         hero.view.center_split,
         crate::screens::layout::DockSides::BOTH,
     );
     let published: Vec<_> = hero.store.panel_rects().collect();
     let (left_col, right_col) = probe.side_columns();
     let docks = crate::screens::layout::DockSides::from_published(left_col, right_col, published);
-    let mut layout = HeroLayout::for_viewport_docked(
+    let mut layout = HeroLayout::for_viewport_bands(
         viewport,
         hero.view.ui_mirrored,
         rail_w,
+        top_bar_h,
         hero.view.center_split,
         docks,
     );
@@ -416,16 +427,22 @@ pub fn paint_hero_screen(
         );
         crate::readout::paint_chip(text_system, scene, text, at, 0.0, hero.theme);
     }
-    paint_top_bar(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-        hero.image_edit.mode_on,
-        &hero.motion,
-    );
+    // ⛔ **O CHROME LEGADO** — os clusters de botões da barra e o trilho lateral. Fora por
+    // omissão desde 2026-08-30 (Enio: *«pode tirar também os botões do topo para começarmos a
+    // trabalhar a barra superior»*), e **`F9` devolve-os**: nenhum atalho de teclado alcança as
+    // pílulas de módulo, então apagá-los deixaria o app sem forma de abrir um módulo.
+    if hero.view.legacy_chrome {
+        paint_top_bar(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+            hero.image_edit.mode_on,
+            &hero.motion,
+        );
+    }
     // Publish Inspector + Hierarchy panel rects so wheel-event
     // dispatch can route to them. Both are static (no drag offset).
     // When a panel is hidden via its left-rail toggle we DROP the
@@ -538,16 +555,18 @@ pub fn paint_hero_screen(
     // active tool is the Painter (mirrored shell-side into `active_tool_id`),
     // which swaps the transform block for the paint tools.
     let painter_active = hero.rail_shows_painter_tools();
-    paint_left_rail(
-        &layout,
-        scene,
-        text_system,
-        hero.theme,
-        &mut hero.hit_index,
-        &hero.store,
-        painter_active,
-        &hero.motion,
-    );
+    if hero.view.legacy_chrome {
+        paint_left_rail(
+            &layout,
+            scene,
+            text_system,
+            hero.theme,
+            &mut hero.hit_index,
+            &hero.store,
+            painter_active,
+            &hero.motion,
+        );
+    }
     if hero.view.stats_visible {
         paint_bottom_hud(&layout, scene, text_system, hero.theme, hero.stats);
     }

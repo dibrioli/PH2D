@@ -820,6 +820,89 @@ fn the_chamfer_sets_back_exactly_what_it_promises() {
     }
 }
 
+/// ⭐⭐⭐ **O FILETE ARREDONDA a aresta do chanfro — ele não a MOVE.**
+///
+/// # ⛔⛔ Ele nasceu do 2.º report do Enio sobre a mesma feature (2026-08-30)
+///
+/// *«não funcionou. o fillet só muda a posição do chamfer»* — e ele estava literalmente certo. A
+/// construção de então («encolher, chanfrar, deslocar») é a receita do filete da caixa, e ela
+/// arredonda o que é **distância exacta**; um plano de chanfro é um **semiespaço**, e deslocar um
+/// semiespaço dá outro semiespaço. É a lei que a W104 já tinha medido e escrito neste módulo, e eu
+/// quebrei-a.
+///
+/// Medido, com o chanfro em `0,12`:
+///
+/// | filete | posição da quina | maior giro da normal |
+/// |---:|---:|---:|
+/// | `0,00` | `0,48083` | `40,2°` |
+/// | `0,02` | `0,47255` | **`45,000°`** |
+/// | `0,08` | `0,44770` | **`45,000°`** |
+///
+/// ⇒ o giro **cravado em `45°`** (uma quina perfeita) enquanto a posição desliza. *O gate que
+/// existia media a MORDIDA — o volume que sai — e um chanfro deslocado tira volume na mesma.*
+///
+/// ⭐ A cura é arredondar as **três** superfícies de uma vez (as duas faces e o plano), com a
+/// [`ph2d_field_eval::ops::intersection_round_n`]. Depois dela o giro cai a `1,3°` e `0,5°`.
+#[test]
+fn the_fillet_rounds_the_chamfer_edge_instead_of_moving_it() {
+    let campo = |round: f32, chamfer: f32| {
+        field_of(Primitive::Box {
+            half: [0.4; 3],
+            round,
+            chamfer,
+        })
+    };
+    // O maior giro da normal entre dois passos, ao longo da secção `z = 0` de um quadrante.
+    let giro = |f: &Field| {
+        let normal = |ang: f64| {
+            let (c, s) = (ang.cos(), ang.sin());
+            let (mut lo, mut hi) = (0.0f64, 2.0);
+            for _ in 0..60 {
+                let m = 0.5 * (lo + hi);
+                if f.at(c * m, s * m, 0.0) <= 0.0 {
+                    lo = m;
+                } else {
+                    hi = m;
+                }
+            }
+            let r = 0.5 * (lo + hi);
+            let (x, y, e) = (c * r, s * r, 1.0e-4);
+            let gx = f.at(x + e, y, 0.0) - f.at(x - e, y, 0.0);
+            let gy = f.at(x, y + e, 0.0) - f.at(x, y - e, 0.0);
+            let m = gx.hypot(gy).max(1.0e-12);
+            (gx / m, gy / m)
+        };
+        let mut pior = 0.0f64;
+        let mut ant = normal(0.0);
+        for i in 1..=900 {
+            let a = std::f64::consts::FRAC_PI_2 * f64::from(i) / 900.0;
+            let cur = normal(a);
+            pior = pior.max(
+                (ant.0 * cur.0 + ant.1 * cur.1)
+                    .clamp(-1.0, 1.0)
+                    .acos()
+                    .to_degrees(),
+            );
+            ant = cur;
+        }
+        pior
+    };
+    let vivo = giro(&campo(0.0, 0.12));
+    assert!(
+        vivo > 20.0,
+        "⛔ o CONTROLE falhou: um chanfro sem filete TEM de deixar uma quina, e o giro leu \
+         {vivo:.2}° — a sonda não está a ver quinas"
+    );
+    for r in [0.02f32, 0.05] {
+        let g = giro(&campo(r, 0.12));
+        assert!(
+            g < 5.0,
+            "com o chanfro em 0,12 e o filete em {r}, o giro da normal é {g:.3}° — o filete está a \
+             MOVER a quina em vez de a arredondar (report do Enio, 2026-08-30)"
+        );
+    }
+}
+
 /// ⭐ **O FILETE POR CIMA morde as arestas que o chanfro criou** — que é literalmente o pedido.
 #[test]
 fn the_fillet_bites_the_edges_the_chamfer_made() {

@@ -24,7 +24,8 @@ pub(crate) use crate::ops_norm::{length2, length3, safe_sqrt};
 // ⚠️ **O `pub use` é o que mantém `ops::union` e `ops::Blended`** — cortar um arquivo não pode
 // custar uma reescrita em cada sítio que o chamava (a mesma lei do `ph2d_field::Primitive`).
 pub use crate::ops_bool::{
-    Blended, difference, intersection, union, union_chamfer, union_round, union_sharp, union_smooth,
+    Blended, difference, intersection, intersection_round_n, union, union_chamfer, union_round,
+    union_round_n, union_sharp, union_smooth,
 };
 
 /// `−a`: o complemento do sólido.
@@ -122,19 +123,20 @@ pub(crate) fn box_with_edge(
     // ⚠️ E a geometria é a que o pedido descreve: crescer o sólido chanfrado por uma bola de raio
     // `round` arredonda **todas** as arestas que ele tem — as de face↔chanfro e as de
     // chanfro↔chanfro —, que é literalmente *«arredondar as bordas geradas por chamfer»*.
-    let dentro = [half[0] - round, half[1] - round, half[2] - round];
     let q = [
-        px.abs() - Tree::constant(dentro[0]),
-        py.abs() - Tree::constant(dentro[1]),
-        pz.abs() - Tree::constant(dentro[2]),
+        px.abs() - Tree::constant(half[0]),
+        py.abs() - Tree::constant(half[1]),
+        pz.abs() - Tree::constant(half[2]),
     ];
-    let mut f = box_at(px, py, pz, dentro);
+    // ⭐ **A caixa e os TRÊS planos, arredondados de uma vez** — ver a nota da
+    // [`crate::ops_bool::intersection_round_n`] para as duas construções recusadas antes desta.
+    let mut pecas = vec![box_at(px, py, pz, half)];
     for (i, j) in [(0, 1), (1, 2), (0, 2)] {
-        f = f.max(
+        pecas.push(
             (q[i].clone() + q[j].clone() + Tree::constant(chamfer)) * Tree::constant(FRAC_1_SQRT_2),
         );
     }
-    offset(&f, round)
+    intersection_round_n(&pecas, round)
 }
 
 pub fn sd_sphere(radius: f64) -> Tree {

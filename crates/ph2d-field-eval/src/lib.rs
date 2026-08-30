@@ -81,7 +81,18 @@ pub fn compile_with(doc: &FieldDoc, reg: &hybrid::Registry) -> Tree {
     for (i, node) in doc.nodes().iter().enumerate() {
         // Seguro pela invariante da arena: todo filho já foi construído.
         let inner = match &node.kind {
-            NodeKind::Leaf(p) => primitive(p),
+            // ⭐ **A folha divide-se pelo divisor da ARESTA dela** — ver `ph2d_field::edge_shrink`.
+            // Com os dois recuos, arredondar as arestas que o chanfro cria exige a mistura, e a
+            // mistura tira o campo de ser uma distância. O divisor devolve-lhe a honestidade
+            // **localmente**, e o orçamento da marcha sobe pelo `field_shrink`.
+            NodeKind::Leaf(p) => {
+                let d = f64::from(ph2d_field::edge_shrink(p));
+                if d > 1.0 {
+                    primitive(p) / Tree::constant(d)
+                } else {
+                    primitive(p)
+                }
+            }
             NodeKind::Combine { op, children } => combine(*op, children, doc.nodes(), &built),
             // ⚠️ **Uma escultura NÃO é exprimível numa árvore** — ver [`hybrid`]. Aqui ela lê como
             // espaço vazio, que é o degenerado seguro: numa união some, numa subtração não corta.

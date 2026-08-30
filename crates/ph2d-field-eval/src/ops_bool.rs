@@ -30,6 +30,69 @@ pub fn union_round(a: &Tree, b: &Tree, r: f64) -> Tree {
     a.min(b.clone()).max(r) - length2(&ux, &uy)
 }
 
+/// ⭐⭐⭐ **A UNIÃO ARREDONDADA DE N SUPERFÍCIES, numa operação só** — e o «numa só» é a razão de ela
+/// existir.
+///
+/// `max(r, min aᵢ) − ‖(r − a₁)⁺, …, (r − aₙ)⁺‖` — a extensão directa da [`union_round`], que é o
+/// caso `n = 2`.
+///
+/// # ⛔⛔ Ela nasceu de um report do Enio (2026-08-30): *«o fillet só muda a posição do chamfer»*
+///
+/// Compor chanfro-e-filete tem três superfícies (as duas faces **e o plano do corte**), e fazê-lo
+/// com duas misturas **encaixadas** paga caro por nada: cada nível soma um quadrado na lei de
+/// Cauchy–Schwarz, e o campo passa a subir mais depressa que a distância — medido `‖∇f‖ = 4,89` num
+/// octaedro, com a marcha a atravessar a superfície.
+///
+/// ⛔ **E a tentativa de a evitar por «encolher-chanfrar-deslocar» NÃO ARREDONDA**, o que é a lei
+/// que a W104 já tinha medido e escrito neste módulo: *deslocar um semiespaço dá outro semiespaço,
+/// sem canto para arredondar*. Medido: com o chanfro em `0,12`, o giro da normal na quina fica
+/// **cravado em `45,000°`** para qualquer filete — só a posição dela desliza. *É exactamente o que o
+/// report diz.*
+///
+/// ⭐ Aqui as três entram **ao mesmo tempo**: o `length` é sobre todas, e num ponto qualquer só as
+/// que estão a menos de `r` contribuem. ⇒ o tecto é `√(quantas estão activas)` — `√2` numa aresta,
+/// `√3` num vértice de três — em vez de crescer com o comprimento da corrente.
+pub fn union_round_n(pecas: &[Tree], r: f64) -> Tree {
+    match pecas {
+        [] => Tree::constant(0.0),
+        [a] => a.clone(),
+        // ⚠️ **Raio zero cai no caminho DURO**, pela razão da [`union`]: com `r = 0` o termo
+        // `(r − aᵢ)⁺` é positivo por DENTRO da peça, e o resultado deixa de ser o `min` exactamente
+        // onde ele tem de ser. *Não é optimização — é correcção*, e foi o que uma corrida do censo
+        // apanhou com o chanfro sozinho.
+        _ if r <= 0.0 => {
+            let mut menor = pecas[0].clone();
+            for p in &pecas[1..] {
+                menor = menor.min(p.clone());
+            }
+            menor
+        }
+        [a, b] => union_round(a, b, r),
+        _ => {
+            let mut menor = pecas[0].clone();
+            for p in &pecas[1..] {
+                menor = menor.min(p.clone());
+            }
+            let mut soma: Option<Tree> = None;
+            for p in pecas {
+                let u = (Tree::constant(r) - p.clone()).max(0.0).square();
+                soma = Some(match soma {
+                    None => u,
+                    Some(acc) => acc + u,
+                });
+            }
+            let dist = soma.map_or_else(|| Tree::constant(0.0), |s| s.max(1.0e-30).sqrt());
+            menor.max(r) - dist
+        }
+    }
+}
+
+/// A intersecção arredondada de N superfícies — o dual de De Morgan da [`union_round_n`].
+pub fn intersection_round_n(pecas: &[Tree], r: f64) -> Tree {
+    let negadas: Vec<Tree> = pecas.iter().map(neg).collect();
+    neg(&union_round_n(&negadas, r))
+}
+
 /// União **suave** (smooth-min polinomial), alcance `k`.
 ///
 /// ⚠️ **NÃO preserva a propriedade de distância**, e o `k` **não é um raio**: medido, entrega 3/4

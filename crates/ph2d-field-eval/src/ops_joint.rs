@@ -96,13 +96,14 @@ pub fn intersection_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
         // ⭐ **O caminho de sempre, ao bit** — nem um nó a mais na árvore.
         return ops::intersection(a, b, Blended::Exact(fillet));
     }
-    // ⭐⭐⭐ **ENCOLHER, CHANFRAR, DESLOCAR** — e não misturar duas vezes.
-    let (ea, eb) = (
-        a.clone() + Tree::constant(fillet),
-        b.clone() + Tree::constant(fillet),
-    );
-    let plano = corte(&ea, &eb, chamfer, Sentido::Interseccao);
-    ea.max(eb).max(plano) - Tree::constant(fillet)
+    let plano = corte(a, b, chamfer, Sentido::Interseccao);
+    if fillet <= 0.0 {
+        return a.max(b.clone()).max(plano);
+    }
+    // ⭐⭐⭐ **AS TRÊS DE UMA VEZ** — as duas faces e o plano do corte. Ver a nota da
+    // [`ops::intersection_round_n`] para as duas construções que foram medidas e recusadas antes
+    // desta (duas misturas encaixadas · encolher-chanfrar-deslocar).
+    ops::intersection_round_n(&[a.clone(), b.clone(), plano], fillet)
 }
 
 /// ⭐⭐⭐ **A UNIÃO com chanfro e depois filete** — o vinco côncavo entre duas peças.
@@ -114,17 +115,12 @@ pub fn union_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
     if chamfer <= 0.0 {
         return ops::union(a, b, Blended::Exact(fillet));
     }
-    // ⭐⭐⭐ **CRESCER, CHANFRAR, ENCOLHER** — o dual exacto da [`intersection_joint`].
-    //
-    // O filete de um vinco CÔNCAVO é o fecho morfológico (`(K ⊕ rB) ⊖ rB`), tal como o de uma quina
-    // convexa é a abertura. ⚠️ **A mesma razão, e o mesmo preço:** misturar duas vezes soma um
-    // quadrado por nível na lei de Cauchy–Schwarz, e o `max`/`min` de 1-Lipschitz é 1-Lipschitz.
-    let (ga, gb) = (
-        a.clone() - Tree::constant(fillet),
-        b.clone() - Tree::constant(fillet),
-    );
-    let plano = corte(&ga, &gb, chamfer, Sentido::Uniao);
-    ga.min(gb).min(plano) + Tree::constant(fillet)
+    let plano = corte(a, b, chamfer, Sentido::Uniao);
+    if fillet <= 0.0 {
+        return a.min(b.clone()).min(plano);
+    }
+    // ⭐ O dual exacto da [`intersection_joint`]: as três de uma vez, pela mesma razão.
+    ops::union_round_n(&[a.clone(), b.clone(), plano], fillet)
 }
 
 /// De que lado o corte a 45° recua — o único sinal que separa as duas leis acima.

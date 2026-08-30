@@ -585,23 +585,11 @@ impl App {
             }
         }
 
-        // M12 demo controls (only on key Down, no repeat).
-        if matches!((state, repeat), (ElementState::Pressed, false))
-            && let PhysicalKey::Code(code) = physical_key
-        {
-            self.handle_editor_key(code);
-        }
-        // ⭐ **SOLTAR `P` ESCOLHE** (estudo de UI viva, E4) — e é a única tecla deste app cuja
-        // SOLTURA significa alguma coisa.
-        //
-        // ⚠️ **Fechar e escolher são a MESMA operação** (`close_radial` devolve o sector aceso), e
-        // separá-las daria a este sítio a chance de fechar sem ler — que é como um menu perde a
-        // escolha do artista em silêncio.
-        if matches!(
-            (state, PhysicalKey::Code(KeyCode::KeyP) == physical_key),
-            (ElementState::Released, true)
-        ) {
-            self.radial_commit();
-        }
+        // ⭐ O que sobra depois de toda a cadeia — ver [`tail`].
+        self.key_tail(state, repeat, physical_key);
     }
 }
+
+/// ⭐ Os dois ramos que correm depois de toda a cadeia — ver [`tail`].
+#[path = "keyboard_tail.rs"]
+mod tail;

@@ -69,19 +69,31 @@ fn organic_blob(rings: usize, segments: usize, radius: f32) -> ph2d_mesh::Mesh {
 
 /// As cenas. ⚠️ **Cada uma imprime o que montou** — se a linha não aparecer no terminal, o smoke
 /// não chegou a construir nada, e a tela vazia é sintoma disso e não da geometria.
-pub(crate) fn scene(n: u32) -> FieldDoc {
-    let combine = |op: Op, children: Vec<NodeId>| Node {
+/// Um nó de **combinação** na identidade — o construtor que toda cena partilha.
+///
+/// ⚠️ **Função e não closure desde 2026-08-30**: as cenas dos dois recuos vivem num arquivo irmão
+/// (tecto de LOC), e uma closure local não atravessa um módulo. *Cortar um arquivo obriga a promover
+/// o que ele partilhava.*
+pub(crate) fn combine(op: Op, children: Vec<NodeId>) -> Node {
+    Node {
         xform: Xform::IDENTITY,
         kind: NodeKind::Combine { op, children },
         mods: Vec::new(),
         verb: None,
-    };
-    let leaf = |p: Primitive, x: Xform| Node {
+    }
+}
+
+/// Um nó **folha** com a pose dada — a irmã da [`combine`].
+pub(crate) fn leaf(p: Primitive, x: Xform) -> Node {
+    Node {
         xform: x,
         kind: NodeKind::Leaf(p),
         mods: Vec::new(),
         verb: None,
-    };
+    }
+}
+
+pub(crate) fn scene(n: u32) -> FieldDoc {
     let s = std::f32::consts::FRAC_1_SQRT_2;
 
     let doc = match n {
@@ -493,484 +505,14 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                 NodeId(4),
             )
         }
-        11 => {
-            println!(
-                "[field-smoke] cena 11 — O LOTE DA W103: estrela de 5 pontas · gaiola de caixa · \
-                 elipsóide, lado a lado"
-            );
-            let x = |v: f32| Xform {
-                translation: [v, 0.0, 0.0],
-                ..Xform::IDENTITY
-            };
-            FieldDoc::new(
-                vec![
-                    leaf(
-                        Primitive::Star {
-                            points: 5,
-                            outer: 0.30,
-                            inner: 0.12,
-                            half_height: 0.10,
-                            round: 0.020,
-                            chamfer: 0.0,
-                        },
-                        x(-0.62),
-                    ),
-                    leaf(
-                        Primitive::BoxFrame {
-                            half: [0.26, 0.26, 0.26],
-                            thickness: 0.078,
-                            round: 0.020,
-                            chamfer: 0.0,
-                        },
-                        x(0.0),
-                    ),
-                    leaf(
-                        Primitive::Ellipsoid {
-                            radii: [0.30, 0.165, 0.24],
-                        },
-                        x(0.62),
-                    ),
-                    // ⚠️ Aresta viva na junção, como as cenas 9 e 10: elas não se tocam, e um filete
-                    // de junção seria um número que não faz nada.
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2)],
-                    ),
-                ],
-                NodeId(3),
-            )
-        }
-        12 => {
-            println!(
-                "[field-smoke] cena 12 — OS SEIS SÓLIDOS DA W106: octaedro · cone de pontas \
-                 arredondadas · esfera cortada · cúpula oca · elo de corrente · ângulo sólido"
-            );
-            // ⚠️ **Em fileira, com a MESMA escala** — é a disposição que deixa comparar formas, e a
-            // razão de ela existir é a mesma da cena 11: um smoke que mostra uma forma de cada vez
-            // não responde *«o catálogo está cheio?»*, que é a pergunta desta wave.
-            let at = |i: f32| Xform {
-                translation: [(i - 2.5) * 0.62, 0.0, 0.0],
-                ..Xform::IDENTITY
-            };
-            FieldDoc::new(
-                vec![
-                    leaf(
-                        Primitive::Octahedron {
-                            radius: 0.28,
-                            round: 0.03,
-                            chamfer: 0.0,
-                        },
-                        at(0.0),
-                    ),
-                    leaf(
-                        Primitive::RoundCone {
-                            bottom: 0.20,
-                            top: 0.08,
-                            half_height: 0.22,
-                        },
-                        at(1.0),
-                    ),
-                    leaf(
-                        Primitive::CutSphere {
-                            radius: 0.27,
-                            cut: 0.10,
-                            round: 0.03,
-                            chamfer: 0.0,
-                        },
-                        at(2.0),
-                    ),
-                    leaf(
-                        Primitive::HollowDome {
-                            radius: 0.27,
-                            cut: 0.04,
-                            thickness: 0.05,
-                            round: 0.012,
-                            chamfer: 0.0,
-                        },
-                        at(3.0),
-                    ),
-                    leaf(
-                        Primitive::Link {
-                            major: 0.16,
-                            minor: 0.06,
-                            length: 0.14,
-                        },
-                        at(4.0),
-                    ),
-                    leaf(
-                        Primitive::SolidAngle {
-                            radius: 0.30,
-                            angle: 0.6,
-                            round: 0.03,
-                            chamfer: 0.0,
-                        },
-                        at(5.0),
-                    ),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![
-                            NodeId(0),
-                            NodeId(1),
-                            NodeId(2),
-                            NodeId(3),
-                            NodeId(4),
-                            NodeId(5),
-                        ],
-                    ),
-                ],
-                NodeId(6),
-            )
-        }
-        13 => {
-            println!(
-                "[field-smoke] cena 13 — AS OITO CHAPAS DA W106: engrenagem · cruz · coração · \
-                 lua · gota · fatia · trapézio · vesica"
-            );
-            let at = |i: f32| Xform {
-                translation: [
-                    (i % 4.0 - 1.5) * 0.62,
-                    (if i < 4.0 { 0.34 } else { -0.34 }),
-                    0.0,
-                ],
-                ..Xform::IDENTITY
-            };
-            FieldDoc::new(
-                vec![
-                    leaf(
-                        Primitive::Gear {
-                            teeth: 12,
-                            root: 0.19,
-                            outer: 0.27,
-                            tooth: 0.45,
-                            half_height: 0.07,
-                            round: 0.012,
-                            chamfer: 0.0,
-                        },
-                        at(0.0),
-                    ),
-                    leaf(
-                        Primitive::Cross {
-                            arm: 0.27,
-                            width: 0.08,
-                            half_height: 0.07,
-                            round: 0.02,
-                            chamfer: 0.0,
-                        },
-                        at(1.0),
-                    ),
-                    leaf(
-                        Primitive::Heart {
-                            size: 0.17,
-                            half_height: 0.07,
-                            round: 0.02,
-                            chamfer: 0.0,
-                        },
-                        at(2.0),
-                    ),
-                    leaf(
-                        Primitive::Moon {
-                            radius: 0.27,
-                            bite: 0.24,
-                            offset: 0.13,
-                            half_height: 0.07,
-                            round: 0.012,
-                            chamfer: 0.0,
-                        },
-                        at(3.0),
-                    ),
-                    leaf(
-                        Primitive::Drop {
-                            radius: 0.14,
-                            height: 0.36,
-                            half_height: 0.07,
-                            round: 0.02,
-                            chamfer: 0.0,
-                        },
-                        at(4.0),
-                    ),
-                    leaf(
-                        Primitive::Pie {
-                            radius: 0.27,
-                            angle: 1.0,
-                            half_height: 0.07,
-                            round: 0.02,
-                            chamfer: 0.0,
-                        },
-                        at(5.0),
-                    ),
-                    leaf(
-                        Primitive::Trapezoid {
-                            bottom: 0.27,
-                            top: 0.12,
-                            half_width: 0.17,
-                            half_height: 0.07,
-                            round: 0.02,
-                            chamfer: 0.0,
-                        },
-                        at(6.0),
-                    ),
-                    leaf(
-                        Primitive::Vesica {
-                            radius: 0.28,
-                            offset: 0.15,
-                            half_height: 0.07,
-                            round: 0.012,
-                            chamfer: 0.0,
-                        },
-                        at(7.0),
-                    ),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![
-                            NodeId(0),
-                            NodeId(1),
-                            NodeId(2),
-                            NodeId(3),
-                            NodeId(4),
-                            NodeId(5),
-                            NodeId(6),
-                            NodeId(7),
-                        ],
-                    ),
-                ],
-                NodeId(8),
-            )
-        }
-        14 => {
-            println!(
-                "[field-smoke] cena 14 — A TORÇÃO (W107): barra CHATA reta · torcida inteira · \
-                 torcida só do meio para cima (a BANDA)"
-            );
-            // ⚠️ **Três colunas IGUAIS**, e é isso que faz a cena responder: uma torção mostrada
-            // sozinha não diz se ela torceu — diz que a forma é assim. A da esquerda é a régua.
-            //
-            // ⛔⛔ **A SECÇÃO É CHATA, e a 1.ª versão desta cena usava uma QUADRADA — o report do
-            // Enio foi *«nada aparece torcido»*.** Uma torção só se vê **módulo a simetria da
-            // secção**: um quadrado repete-se a cada 90°, um hexágono a cada 60°, e um cilindro é
-            // invisível a qualquer ângulo. Medido a 0,25 voltas/un (112° no total):
-            //
-            // | secção | simetria | variação da silhueta |
-            // |---|---|---:|
-            // | cilindro | contínua | **`+0,0 %`** |
-            // | prisma 6 | 60° | `+11,9 %` |
-            // | caixa quadrada | 90° | `+37,3 %` |
-            // | **caixa 3:1** | **180°** | **`+146,0 %`** |
-            //
-            // *Uma cena de smoke que demonstra a feature na forma que a esconde é pior que nenhuma.*
-            let coluna = |x: f32, mods: Vec<ph2d_field::Unary>| {
-                let mut n = leaf(
-                    Primitive::Box {
-                        half: [0.34, 0.11, 0.62],
-                        round: 0.02,
-                        chamfer: 0.0,
-                    },
-                    Xform {
-                        translation: [x, 0.0, 0.0],
-                        ..Xform::IDENTITY
-                    },
-                );
-                n.mods = mods;
-                n
-            };
-            FieldDoc::new(
-                vec![
-                    coluna(-0.85, Vec::new()),
-                    // ⚠️ **`0,35` voltas/un = 156° no total, e o número tem razão:** a secção repete-se
-                    // a cada 180°, então uma torção que passe disso volta a ler-se como um ângulo
-                    // pequeno. *O valor mais legível é o maior que ainda cabe numa meia-volta.*
-                    coluna(
-                        0.0,
-                        vec![ph2d_field::Unary::Twist {
-                            turns: 0.35,
-                            lower: -9.0,
-                            upper: 9.0,
-                            // A banda cobre a peça inteira: não há ombro dentro dela para amaciar.
-                            falloff: 0.0,
-                        }],
-                    ),
-                    // ⭐ A BANDA: abaixo de `z = 0` a coluna fica intacta, e acima do topo dela o
-                    // ângulo **congela** — a ponta roda como corpo rígido, que é o que as quatro
-                    // referências fazem.
-                    coluna(
-                        0.85,
-                        vec![ph2d_field::Unary::Twist {
-                            turns: 0.35,
-                            lower: 0.0,
-                            upper: 9.0,
-                            // ⭐ **O OMBRO** — o report do Enio (*«muito dura a transição»*): sem
-                            // ele o giro da normal salta de `0,0` para `157,3 °/un` no fim da banda.
-                            falloff: 0.22,
-                        }],
-                    ),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2)],
-                    ),
-                ],
-                NodeId(3),
-            )
-        }
-        15 => {
-            println!(
-                "[field-smoke] cena 15 — O CHANFRO (Enio, 30/08): caixa VIVA · CHANFRADA · \
-                 chanfrada e depois FILETADA. As três medem o mesmo; só a aresta muda."
-            );
-            // ⚠️ **Três caixas IGUAIS**, pela lei da cena 14: uma aresta mostrada sozinha não diz se
-            // ela foi chanfrada — diz que a forma é assim. A da esquerda é a régua.
-            //
-            // ⭐ O recuo é `0,10` numa caixa de meia-extensão `0,34`: quase um terço da face, que é
-            // onde o corte a 45° se lê de longe sem esconder a forma.
-            let caixa = |x: f32, chamfer: f32, round: f32| {
-                leaf(
-                    Primitive::Box {
-                        half: [0.34, 0.34, 0.34],
-                        round,
-                        chamfer,
-                    },
-                    Xform {
-                        translation: [x, 0.0, 0.0],
-                        ..Xform::IDENTITY
-                    },
-                )
-            };
-            FieldDoc::new(
-                vec![
-                    caixa(-0.85, 0.0, 0.0),
-                    caixa(0.0, 0.10, 0.0),
-                    // ⭐⭐ **A TERCEIRA é o pedido inteiro** — *«chamfer antes de fillet para a
-                    // possibilidade de arredondar as bordas geradas por chamfer»*. O corte a 45°
-                    // cria duas arestas novas por quina, e o arco de `0,03` come as duas.
-                    caixa(0.85, 0.10, 0.03),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2)],
-                    ),
-                ],
-                NodeId(3),
-            )
-        }
-        16 => {
-            println!(
-                "[field-smoke] cena 16 — A COSTURA ENTRE AS CÓPIAS (Enio, 30/08): coroa de 8 tubos, \
-                 costura VIVA · FILETADA · CHANFRADA"
-            );
-            // ⚠️ **Os tubos TÊM de se cruzar**, senão não há vinco para costurar: com o braço a
-            // `0,30` e o raio a `0,17`, os centros de duas cópias vizinhas ficam a `0,23` e as
-            // secções sobrepõem-se — é a mesma fixtura da foto do Enio, uma coroa de tubos.
-            //
-            // ⚠️ **A forma tem de estar fora do eixo NO ESPAÇO DO MODIFICADOR**, e a pilha corre
-            // ANTES da pose do nó: é por isso que a coroa vive no GRUPO e o tubo é filho posado
-            // dele. Pôr a pose no próprio nó-folha repetiria um cilindro centrado — invariante à
-            // rotação — e a cena mostraria um tubo só.
-            let anel = |x: f32, joint: ph2d_field::Joint, filho: u32| {
-                let mut g = ph2d_field::Node::new(
-                    Xform {
-                        translation: [x, 0.0, 0.0],
-                        ..Xform::IDENTITY
-                    },
-                    ph2d_field::NodeKind::Combine {
-                        op: Op::Union(Blend::Sharp),
-                        children: vec![NodeId(filho)],
-                    },
-                );
-                g.mods = vec![ph2d_field::Unary::Radial { count: 8, joint }];
-                g
-            };
-            let tubo = || {
-                leaf(
-                    Primitive::Cylinder {
-                        radius: 0.17,
-                        half_height: 0.30,
-                        round: 0.03,
-                        chamfer: 0.0,
-                    },
-                    Xform {
-                        translation: [0.30, 0.0, 0.0],
-                        ..Xform::IDENTITY
-                    },
-                )
-            };
-            FieldDoc::new(
-                vec![
-                    tubo(),
-                    anel(-0.95, ph2d_field::Joint::SHARP, 0),
-                    tubo(),
-                    anel(
-                        0.0,
-                        ph2d_field::Joint {
-                            chamfer: 0.0,
-                            fillet: 0.09,
-                        },
-                        2,
-                    ),
-                    tubo(),
-                    // ⭐ O chanfro morde `1,71×` o que o filete morde com o mesmo número — é a
-                    // FORMA dele, medida em `the_four_characters`. Aqui os dois levam `0,09` de
-                    // propósito: é a diferença de carácter que a cena mostra, não a de tamanho.
-                    anel(
-                        0.95,
-                        ph2d_field::Joint {
-                            chamfer: 0.09,
-                            fillet: 0.0,
-                        },
-                        4,
-                    ),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(1), NodeId(3), NodeId(5)],
-                    ),
-                ],
-                NodeId(6),
-            )
-        }
-        17 => {
-            println!(
-                "[field-smoke] cena 17 — O PRISMA (report do Enio, 30/08): viva · CHANFRADA · \
-                 chanfrada e FILETADA. Gire a câmera: nenhuma aresta pode mudar de aspecto."
-            );
-            // ⛔⛔ **Ela existe por um report com duas metades, e as duas eram defeitos diferentes**
-            // (*«algumas arestas não receberam o fillet e ao rotacionar a aparência da aresta
-            // muda»*):
-            //
-            // 1. as quinas **LATERAIS** de um prisma fecham num sítio do código e o **aro** noutro,
-            //    e o chanfro tinha sido ligado só ao segundo — ⇒ a sonda por PONTO
-            //    (`the_chamfer_reaches_every_edge_of_every_shape`), que também apanhou a engrenagem;
-            // 2. a composição chanfro-e-filete **misturava duas vezes**, e cada nível encaixado soma
-            //    um quadrado na lei de Cauchy–Schwarz: medido `passo × ‖∇f‖ = 1,4061` num prisma —
-            //    acima de `1` a marcha atravessa a superfície, e o ponto em que ela pára passa a
-            //    depender da direcção do raio. *É literalmente isso que «muda ao rotacionar» é.*
-            //
-            // ⚠️ **Hexagonal de propósito**: num prisma de seis lados as quinas laterais são doze e
-            // ficam todas à vista de uma volta de câmera. Num cubo elas confundem-se com o aro.
-            let prisma = |x: f32, chamfer: f32, round: f32| {
-                leaf(
-                    Primitive::Prism {
-                        sides: 6,
-                        bottom: 0.36,
-                        top: 0.36,
-                        half_height: 0.42,
-                        round,
-                        chamfer,
-                    },
-                    Xform {
-                        translation: [x, 0.0, 0.0],
-                        ..Xform::IDENTITY
-                    },
-                )
-            };
-            FieldDoc::new(
-                vec![
-                    prisma(-0.9, 0.0, 0.0),
-                    prisma(0.0, 0.09, 0.0),
-                    prisma(0.9, 0.09, 0.03),
-                    combine(
-                        Op::Union(Blend::Sharp),
-                        vec![NodeId(0), NodeId(1), NodeId(2)],
-                    ),
-                ],
-                NodeId(3),
-            )
-        }
+        // ⭐ As quatro do LOTE de formas e da torção vivem no irmão — ver [`lote`].
+        11 => lote::cena_11(),
+        12 => lote::cena_12(),
+        13 => lote::cena_13(),
+        14 => lote::cena_14(),
+        15 => edge::cena_15(),
+        16 => edge::cena_16(),
+        17 => edge::cena_17(),
         _ => {
             println!(
                 "[field-smoke] cena 1 — junção de 3 cilindros: filete interno 0,12 + aros externos 0,05"
@@ -1011,3 +553,11 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
 #[cfg(test)]
 #[path = "field3d_smoke_scene_tests.rs"]
 mod scene_tests;
+
+/// ⭐ As cenas dos dois recuos de uma aresta — ver [`edge`].
+#[path = "field3d_smoke_scenes_edge.rs"]
+mod edge;
+
+/// ⭐ As cenas do lote de formas e da torção — ver [`lote`].
+#[path = "field3d_smoke_scenes_lote.rs"]
+mod lote;

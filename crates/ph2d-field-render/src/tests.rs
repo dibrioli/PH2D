@@ -5901,3 +5901,122 @@ fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
         cache.len()
     );
 }
+
+/// ⭐⭐⭐ **UMA FORMA COM OS DOIS RECUOS DESENHA-SE INTEIRA** — e nenhum raio é largado.
+///
+/// # ⛔⛔ Ele nasceu de uma MUTAÇÃO QUE SOBREVIVEU (2026-08-30)
+///
+/// O campo de uma forma com chanfro **e** filete é um **minorante** — ele tem de ser, porque
+/// arredondar as arestas que o chanfro cria exige a mistura, e a mistura tira o campo de ser uma
+/// distância. A cura é dividi-lo (`ph2d_field::edge_shrink`) e dar à marcha **mais passos** ali.
+///
+/// ⛔ Apagar a segunda metade — o orçamento — deixava **todos** os gates verdes: eles medem
+/// `‖∇f‖` e o passo, e nenhum media o que a marcha de facto **devolve**. O raio que acaba os
+/// passos é largado em **silêncio** (`march::EXHAUSTED` conta-o, e ninguém o lia).
+///
+/// ⚠️ **A régua é o CONTADOR, e não a contagem de pixels**: uma peça pode perder alguns pixels de
+/// silhueta por amostragem, mas um raio esgotado é sempre um defeito — ele significa que o
+/// orçamento não chegou.
+///
+/// # ⛔⛔ UMA MUTAÇÃO SOBREVIVE A ESTE GATE, e ela está aqui escrita em vez de escondida
+///
+/// Apagar a **segunda** metade da cura — o orçamento do `field_shrink` — deixa este gate **verde**,
+/// em toda fixtura que se conseguiu construir: `192²` e `1024²`, dezasseis ângulos, câmera perto e
+/// longe. A razão é aritmética: o divisor da aresta é `4`, a marcha tem `MAX_STEPS = 400`, e nenhuma
+/// destas formas precisa de mais do que isso mesmo com o campo quatro vezes mais curto.
+///
+/// ⇒ **o orçamento fica por CONSTRUÇÃO e não por medição**, e a distinção é a honesta: ele é a mesma
+/// arquitectura que a torção e a dobra usam, onde ela **foi** medida a morder (`18` raios esgotados
+/// e `336` pixels de fundo, numa barra a uma volta por unidade). Aqui não morde — ainda.
+///
+/// ⚠️ **O que ESTE gate de facto defende é a primeira metade** (o divisor): apagá-la mata o
+/// `every_shape_marches_safely_with_both_recesses_on`. *Um gate que se diz a defender duas coisas e
+/// só defende uma é pior do que um que declara qual.*
+#[test]
+fn a_shape_with_both_recesses_draws_whole_and_strands_no_ray() {
+    use ph2d_field::{Node, NodeId, NodeKind, Primitive, Xform};
+    let peca = |round: f32, chamfer: f32| {
+        FieldDoc::new(
+            vec![Node::new(
+                Xform::IDENTITY,
+                NodeKind::Leaf(Primitive::Prism {
+                    sides: 6,
+                    bottom: 0.5,
+                    top: 0.5,
+                    half_height: 0.55,
+                    round,
+                    chamfer,
+                }),
+            )],
+            NodeId(0),
+        )
+        .expect("o prisma")
+    };
+    let cam = Orbit {
+        half_extent: 1.0,
+        ..Orbit::default()
+    };
+    let (w, h) = (192u32, 192u32);
+    let conta = |doc: &FieldDoc| {
+        crate::march::EXHAUSTED.store(0, std::sync::atomic::Ordering::Relaxed);
+        let g = trace(doc, &Registry::new(), &cam, w, h);
+        (
+            g.hits(),
+            crate::march::EXHAUSTED.load(std::sync::atomic::Ordering::Relaxed),
+        )
+    };
+    let (vivos, largados_vivo) = conta(&peca(0.0, 0.0));
+    assert_eq!(
+        largados_vivo, 0,
+        "⛔ o CONTROLE falhou: uma forma VIVA não pode largar raio nenhum"
+    );
+    let (_com_par, largados) = conta(&peca(0.12, 0.12));
+    assert_eq!(
+        largados, 0,
+        "a marcha largou {largados} raios numa forma com os dois recuos — o orçamento não conta o \
+         divisor da aresta (`ph2d_field::edge_shrink`), e o que se vê é peça furada"
+    );
+    // ⚠️⚠️ **A ÁREA não é a régua, e a 1.ª redacção deste gate usava-a**: os dois recuos TIRAM
+    // material de propósito (`0,708` do que a peça viva cobria, com ambos a `0,12`), e uma barra
+    // sobre a área reprovaria produto correcto. *Uma régua que conflaciona «material removido» com
+    // «furo» não distingue a cura do defeito.*
+    //
+    // ⭐ Um prisma é **convexo**, logo a silhueta dele é convexa: uma falha rodeada de acertos só
+    // pode ser um raio que atravessou a superfície. É essa a régua.
+    //
+    // ⚠️⚠️ **E tem de ser a GIRAR.** Uma vista só, de frente, não apanha nada: o campo desonesto
+    // só morde onde o raio **raspa** a superfície, e é por isso que o report do Enio é *«ao
+    // rotacionar a aparência da aresta muda»* e não *«a peça tem um buraco»*.
+    let _ = vivos;
+    let doc = peca(0.12, 0.12);
+    let mut furos = 0;
+    for passo in 0..16 {
+        let a = std::f32::consts::TAU * passo as f32 / 16.0;
+        // Gira em torno do Y (o quaternion de um yaw puro), a partir da vista de omissão.
+        let (sy, cy) = (a * 0.5).sin_cos();
+        let cam = Orbit {
+            half_extent: 1.0,
+            rotation: [0.0, sy, 0.0, cy],
+            ..Orbit::default()
+        };
+        let g = trace(&doc, &Registry::new(), &cam, w, h);
+        let acertou = |x: u32, y: u32| g.hit[(y * w + x) as usize];
+        for y in 1..h - 1 {
+            for x in 1..w - 1 {
+                if !acertou(x, y)
+                    && acertou(x - 1, y)
+                    && acertou(x + 1, y)
+                    && acertou(x, y - 1)
+                    && acertou(x, y + 1)
+                {
+                    furos += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(
+        furos, 0,
+        "a peça saiu com {furos} pixels de FUNDO rodeados de peça — num prisma, que é convexo, isso \
+         só pode ser a marcha a atravessar a superfície"
+    );
+}

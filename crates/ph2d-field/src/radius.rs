@@ -514,6 +514,44 @@ pub fn round_of(p: &Primitive) -> f32 {
         .map_or(0.0, |d| d.value)
 }
 
+/// ⭐⭐⭐ **POR QUANTO O CAMPO DE UMA FORMA ENCOLHE quando ela tem os DOIS recuos** — e por que ele é
+/// um divisor **local** e não um passo mais curto para o documento inteiro.
+///
+/// # ⛔ O report que isto fecha: *«o fillet só muda a posição do chamfer»* (Enio, 2026-08-30)
+///
+/// Arredondar as arestas que um chanfro cria **exige** o operador de mistura — a alternativa
+/// («encolher, chanfrar, deslocar») foi construída, medida e **não arredonda**: o giro da normal na
+/// quina fica cravado em `45,000°` para qualquer filete, e só a posição dela desliza. É a lei que a
+/// W104 já tinha escrito neste módulo — *deslocar um semiespaço dá outro semiespaço*.
+///
+/// ⇒ a mistura fica, e com ela o campo deixa de ser uma distância: medido `‖∇f‖` até **`5,02`** num
+/// prisma com os dois recuos a meia parede.
+///
+/// # ⭐ Por que um DIVISOR e não um passo mais curto
+///
+/// O `ph2d_field_eval::gradient_bound` é do **documento**: baixar o passo ali castiga uma cena
+/// inteira por causa de uma forma chanfrada — o §0 do `CLAUDE.md` ao contrário. O divisor deixa o
+/// campo ser um **minorante honesto** dessa forma, o passo do documento fica cheio, e quem paga é
+/// só a marcha que atravessa aquela peça (o orçamento sobe pelo `field_shrink`, a mesma
+/// arquitectura que a torção e a dobra já usam).
+///
+/// ⚠️ **Os números são MEDIDOS e GATEADOS** — `every_shape_marches_safely_with_both_recesses_on`
+/// varre as vinte formas com aresta e reprova se `passo × ‖∇f‖` passar de `1`. Uma primitiva nova
+/// que os estoure fica **vermelha**, que é a resposta certa.
+///
+/// | família | pior `‖∇f‖` medido | divisor |
+/// |---|---:|---:|
+/// | as quatro **exactas** (caixa · cilindro · extrusão · moldura) | `1,73` | `2` |
+/// | as de parede **não-ortogonal** | `5,02` (prisma) | `4` |
+#[must_use]
+pub fn edge_shrink(p: &Primitive) -> f32 {
+    // ⚠️ Só o PAR encolhe: cada recuo sozinho já está dentro do balde que o `fillet_inflates` paga.
+    if round_of(p) <= 0.0 || chamfer_of(p) <= 0.0 {
+        return 1.0;
+    }
+    if fillet_inflates(p) { 4.0 } else { 2.0 }
+}
+
 /// Há **duas** maneiras de arredondar uma aresta convexa neste módulo, e elas têm campos diferentes:
 ///
 /// - **encolher uma distância EXATA e deslocá-la** (`box_raw`, `cylinder_raw`): a dilatação de uma

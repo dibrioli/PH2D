@@ -243,7 +243,12 @@ pub fn field_shrink(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> f32 {
         let local = balls[i].unwrap_or(crate::bounds::Ball::EMPTY);
         // ⚠️ A MESMA bola que a `stacked` usa — o ENVELOPE da pilha. Ver a nota lá.
         let fim = crate::bounds::envelope(local, &node.mods);
-        let mut aqui = 1.0f64;
+        // ⭐ O divisor da ARESTA da forma entra aqui pela mesma porta dos deformadores — ver
+        // `ph2d_field::edge_shrink`, e o report do Enio de 2026-08-30 que o obrigou.
+        let mut aqui = match &node.kind {
+            NodeKind::Leaf(p) => f64::from(ph2d_field::edge_shrink(p)),
+            _ => 1.0,
+        };
         for m in &node.mods {
             aqui *= crate::stack::step_divisor(*m, fim);
         }

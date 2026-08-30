@@ -456,8 +456,42 @@ jobs:
       # link cross-OS. Was `--release` before; switched to default
       # because the step's purpose is link verification, not
       # producing a distribution binary. Saved ~3-4 min on Windows.
+      #
+      # ⛔⛔ **`-A linker_messages` — e não é silenciar um defeito nosso.** Em 2026-08-30 o job de
+      # macOS reprovou aqui com um aviso do `ld` da Apple:
+      #
+      #   `ld: __eh_frame section too large (max 16MB) to encode dwarf unwind offsets in
+      #    compact unwind table, performance of exception handling might be affected`
+      #
+      # O `CARGO_BUILD_WARNINGS: deny` do workflow promove-o a erro. Três factos decidem:
+      #  1. **Não é o nosso código** — é o formato de *compact unwind* do Mach-O, cujo tecto de
+      #     16 MB o binário de DEBUG deste passo atravessou ao crescer. O artefacto que se envia
+      #     é `--release`, e não passa por aqui.
+      #  2. **O que o passo mede continua medido** — se o `winit`/`wgpu` não ligar, o `ld` FALHA e
+      #     o `cargo build` sai não-zero. Este flag desliga a promoção de *notas* do linker a
+      #     erro, nunca o veredito da ligação.
+      #  3. ⛔ **Não há cura de código.** `panic = "abort"` ou `force-unwind-tables=no` matariam o
+      #     `catch_unwind` de que o produto depende (`ph2d-vec-boolean` usa-o para sobreviver ao
+      #     `unwrap` do `linesweeper`), e reduzir debuginfo não encolhe `__eh_frame`, que é tabela
+      #     de unwind e não informação de depuração.
+      #
+      # ⚠️ **Por que `CARGO_BUILD_WARNINGS: warn` e não um `RUSTFLAGS: -A linker_messages`**, que
+      # seria mais cirúrgico: o `RUSTFLAGS` entra no *fingerprint* do cargo, então um valor
+      # diferente do resto do job recompila o grafo INTEIRO só para este passo — no Windows é o
+      # cenário de build fria que o `timeout-minutes: 90` acima existe para sobreviver, e que
+      # deixa o cache frio para sempre quando estoura. *A cerca mais apertada que custa o cache é
+      # mais larga na prática.*
+      # ⚠️ **E a folga não perde cobertura:** um aviso NOSSO neste binário já é reprovado pelo job
+      # `lint`, que corre `clippy --workspace --all-targets -- -D warnings` sobre o mesmo código.
+      # O que esta linha aceita é o que só aparece na LIGAÇÃO, e só neste alvo.
+      #
+      # ⚠️ **É a segunda quebra SÓ-DE-CI desta jornada**, depois do `libfontconfig1-dev`, e as
+      # duas têm a mesma forma: o portão local corre noutro sistema, com outro linker, e não pode
+      # vê-las. *O `ship.sh` não substitui a matriz; ele só a antecipa onde partilham o alvo.*
       - name: build ph2d-host-desktop (M1 — verifies winit links cross-OS)
         run: cargo build --locked -p ph2d-host-desktop
+        env:
+          CARGO_BUILD_WARNINGS: warn
 
       # Correctness fixtures only — no perf-gated benches in CI.
       # Bench fixtures (c2_1_messaging, c3_coro_timing, c10_gc_stress,

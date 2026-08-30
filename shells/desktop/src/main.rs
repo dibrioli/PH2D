@@ -520,6 +520,9 @@ mod profile_smoke;
 mod project;
 /// **Os canais assados dentro do arquivo** (ADR-0150 W8.7) — gemeo do `project_painter`.
 mod project_baked_form;
+/// **A arte dos padrões dentro do ficheiro de projecto** (plano 33, W4).
+/// ⭐⭐ **A TAXONOMIA da biblioteca dentro do ficheiro** (plano 07, A3) — blob auto-versionado.
+mod project_catalogs;
 /// **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo
 /// (Enio, 2026-08-23). Até aqui o `Ctrl+S` escrevia sempre no mesmo caminho.
 mod project_io;
@@ -538,7 +541,6 @@ mod project_settings;
 /// irmão do `project_painter`, e o chão que faltava debaixo dele: cobre o funil que TODAS as
 /// ferramentas de imagem atravessam, não um produtor só.
 mod project_sprite_pixels;
-/// **A arte dos padrões dentro do ficheiro de projecto** (plano 33, W4).
 mod project_texture_pattern;
 /// **A tabela de COR autorada viaja no arquivo** (plano UI/UX W6) — irmão de `project`
 /// pelo teto de LOC, cortado por assunto.

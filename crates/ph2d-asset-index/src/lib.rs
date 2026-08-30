@@ -32,6 +32,11 @@
 
 #![forbid(unsafe_code)]
 
+/// ⭐⭐ **A TAXONOMIA** (wave A3) — os catálogos e a que catálogo cada asset pertence. Ver o
+/// cabeçalho de lá para o porquê de a hierarquia viver no CAMINHO.
+pub mod catalog;
+pub use catalog::{Catalog, CatalogScope, CatalogTree};
+
 use std::collections::BTreeMap;
 
 /// A que família um asset pertence. A ordem é a de apresentação (`SortBy::Kind`).
@@ -245,8 +250,10 @@ pub struct Query {
     pub text: String,
     /// Restringir a uma família. `None` = todas.
     pub kind: Option<AssetKind>,
-    /// Restringir a um catálogo (A3). `None` = todos.
-    pub catalog: Option<CatalogId>,
+    /// Restringir a um catálogo (A3). ⚠️ **Três estados, e nenhuma combinação impossível** — ver
+    /// [`CatalogScope`]. O escopo chega já EXPANDIDO (o escolhido e os descendentes dele), porque
+    /// a hierarquia vive no caminho e o índice só guarda um id por entrada.
+    pub catalog: CatalogScope,
     /// A ordem.
     pub sort: SortBy,
 }
@@ -328,7 +335,11 @@ impl AssetIndex {
             .entries
             .iter()
             .filter(|e| q.kind.is_none_or(|k| e.kind() == k))
-            .filter(|e| q.catalog.is_none_or(|c| e.catalog == Some(c)))
+            .filter(|e| match &q.catalog {
+                CatalogScope::All => true,
+                CatalogScope::Unassigned => e.catalog.is_none(),
+                CatalogScope::These(ids) => e.catalog.is_some_and(|c| ids.contains(&c)),
+            })
             .filter(|e| e.matches(&needle))
             .collect();
         match q.sort {

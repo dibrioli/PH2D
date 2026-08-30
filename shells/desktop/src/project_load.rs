@@ -396,6 +396,11 @@ impl crate::App {
         // a fonte de cada `Paint::Pattern` do documento nomeia. Sem isto, toda forma com padrão
         // reabriria a pintar a cor de recurso.
         self.install_texture_pattern_art(pattern_art);
+        // ⭐⭐ A taxonomia da biblioteca (plano 07, A3). ⚠️ Um blob ilegível abre VAZIO e diz — ver
+        // `project_catalogs::restore`.
+        if let Some(gfx) = self.gfx.as_mut() {
+            gfx.catalogs = crate::project_catalogs::restore(&file.catalogs);
+        }
         // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez
         // e os N sprites dela reatam a textura partilhada + o retangulo da regiao.
         self.restore_sprite_sheets(sprite_sheets);

@@ -462,7 +462,10 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `FieldMods`, que para esta tripla e' opaco. Quem a defende e' o
         // `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field` (77→82, um byte por
         // modificador). ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
-        (111, 13, 18),
+        // PROJECT 111→112: a TAXONOMIA da biblioteca de assets (plano 07, A3). O `ProjectFile`
+        // ganhou `catalogs: Vec<u8>` -- blob auto-versionado, campo APENDADO, do lado aditivo da
+        // regra. O `FlipDoc` e a `VecScene` nao se mexeram, entao so' o 1.º numero sobe.
+        (112, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

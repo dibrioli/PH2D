@@ -127,6 +127,12 @@ impl crate::App {
                 .map(|h| h.input_map.clone())
                 .unwrap_or_default(),
             pattern_art,
+            // ⭐⭐ A taxonomia da biblioteca (plano 07, A3) — blob auto-versionado.
+            catalogs: self
+                .gfx
+                .as_ref()
+                .map(|g| crate::project_catalogs::collect(&g.catalogs))
+                .unwrap_or_default(),
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

@@ -405,6 +405,7 @@ fn project_file_round_trips_through_postcard() {
         // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
         input_map: super::input_map_tests::authored_input_map(),
         pattern_art: Vec::new(),
+        catalogs: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

@@ -1172,6 +1172,8 @@ impl crate::App {
             sheet_textures,
             next_sheet_id,
             atlas_asset_map,
+            // A wave A3 liga a coluna de catálogos a isto; até lá o índice ainda não a lê.
+            catalogs: _asset_catalogs,
             logical_texture_map,
             component_registry,
             editor_queue,

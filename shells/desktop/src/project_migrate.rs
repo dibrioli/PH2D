@@ -123,6 +123,10 @@ pub(crate) fn migrate_v95_to_v96(old: ProjectFileV95) -> MigratedV95 {
             // `Paint::Pattern` só existe desde o `VEC_SCENE_SCHEMA_VERSION` 15 (plano 33 W3), que é
             // posterior. Vazio aqui não é "não sei": é o que aquele ficheiro de facto tem.
             pattern_art: Vec::new(),
+            // ⚠️ **Um v95 não tem taxonomia nenhuma, e a resposta é o vazio** — os catálogos só
+            // existem desde a v104. Vazio aqui não é *«não sei»*: é o que aquele ficheiro de facto
+            // tem.
+            catalogs: Vec::new(),
         },
         stable_id_counter,
     }

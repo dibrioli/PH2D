@@ -190,6 +190,17 @@ pub(crate) struct ProjectFile {
     ///
     /// Vazio num projecto sem padrão nenhum. Ver [`crate::project_texture_pattern`].
     pub(crate) pattern_art: Vec<u8>,
+    /// ⭐⭐ **A TAXONOMIA da biblioteca de assets** (plano 07, wave A3) — os catálogos e a que
+    /// catálogo cada asset pertence.
+    ///
+    /// ⚠️ **É AUTORIA do projecto, e não preferência de utilizador:** *«existe uma gaveta chamada
+    /// Personagens»* é uma decisão do trabalho. Mesma divisão do `input_map` acima.
+    ///
+    /// ⚠️⚠️ **E este campo passa a ser o ÚLTIMO** — o postcard é posicional, e o aviso do
+    /// `pattern_art` vale agora para ele: um campo novo entra DEPOIS deste, nunca no meio.
+    ///
+    /// Vazio num projecto sem catálogo nenhum. Ver [`crate::project_catalogs`].
+    pub(crate) catalogs: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

@@ -456,4 +456,19 @@
 /// *A nota do 104 previu este dia e nomeou a ferramenta certa.*
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v105 é **recusado em voz alta**.
-pub(crate) const PROJECT_SCHEMA: u32 = 111;
+/// # 111 -> 112 — a TAXONOMIA da biblioteca de assets (plano 07, wave A3)
+///
+/// O `ProjectFile` ganhou `catalogs: Vec<u8>` — um blob **auto-versionado**
+/// (`project_catalogs::CATALOG_DOC_VERSION`) com os catálogos e as atribuições `asset → catálogo`.
+///
+/// ⭐ **Do lado ADITIVO da regra, e mesmo assim o número SOBE.** O campo entra no fim e os índices
+/// anteriores não se mexem, então um v103 lido por v104 estaria correcto até ao último campo — e é
+/// exactamente aí que ele acaba: o postcard chega ao fim dos bytes (`Hit the end of buffer`) e
+/// falha **longe da causa**. O número transforma isso num erro de VERSÃO, que se lê.
+///
+/// ⚠️ **E este é o ÚNICO bump que a taxonomia paga.** A versão do blob mora dentro dele, então
+/// acrescentar um campo à taxonomia — cor de catálogo, ordem manual, o que vier — custa só o
+/// `CATALOG_DOC_VERSION`. É o precedente do `timeline`, do `sculpt` e do `pattern_art`.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 (*«não há projetos salvos»*).
+pub(crate) const PROJECT_SCHEMA: u32 = 112;

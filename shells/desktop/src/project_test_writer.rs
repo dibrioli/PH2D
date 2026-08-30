@@ -52,6 +52,7 @@ pub(super) fn write_project_art(
         stable_id_counter: ph2d_ecs::StableId::FIRST,
         input_map: ph2d_input::InputMap::new(),
         pattern_art,
+        catalogs: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
     std::fs::write(path, bytes).expect("grava o arquivo de projeto");

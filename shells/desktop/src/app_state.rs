@@ -313,6 +313,14 @@ pub(crate) struct AppGfx {
     /// texture preserves every previously-imported sprite. BTreeMap
     /// per HR-5 / ADR-0022.
     pub(crate) atlas_asset_map: BTreeMap<u32, AssetId>,
+    /// ⭐⭐ **A TAXONOMIA da biblioteca de assets** (plano 07, wave A3) — os catálogos e a que
+    /// catálogo cada asset pertence.
+    ///
+    /// ⚠️ **Ela é do PROJECTO, e não da sessão** (ao contrário da `TextureLibrary`, que é memória
+    /// de conteúdo): viaja no `.ph2dproj` pelo blob auto-versionado do
+    /// [`crate::project_catalogs`]. ⛔ E **fora do `ProjectState`**, com a consequência declarada —
+    /// um gesto de catálogo não se desfaz com Ctrl+Z, a mesma dívida que o Input Map ship-ou.
+    pub(crate) catalogs: ph2d_asset_index::CatalogTree,
     /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
     /// with the canonical Transform / Name / Visibility / RootOrder
     /// type registrations via `register_ecs_components`; future crates

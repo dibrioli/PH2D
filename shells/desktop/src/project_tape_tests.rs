@@ -74,6 +74,7 @@ fn a_recorded_run_survives_the_file() {
         stable_id_counter: ph2d_ecs::StableId::FIRST,
         input_map: ph2d_input::InputMap::new(),
         pattern_art: Vec::new(),
+        catalogs: Vec::new(),
     };
     std::fs::write(
         &path,

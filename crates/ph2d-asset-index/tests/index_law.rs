@@ -2,6 +2,7 @@
 //!
 //! ⚠️ Cada um afirma uma LEI que uma implementação plausível quebraria, não que o código compila.
 
+use ph2d_asset_index::CatalogScope;
 use ph2d_asset_index::{AssetEntry, AssetIndex, AssetKind, AssetRef, CatalogId, Query, SortBy};
 
 fn comp(id: u64, name: &str) -> AssetEntry {
@@ -113,12 +114,23 @@ fn the_catalog_filter_actually_narrows_the_result() {
     ix.push(inside);
     ix.push(comp(2, "Unassigned"));
     let q = Query {
-        catalog: Some(cat),
+        catalog: CatalogScope::These(vec![cat]),
         ..Default::default()
     };
     let hits = ix.query(&q);
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].name, "Inside");
+
+    // ⭐ **E o terceiro estado**: *«os que não estão em catálogo nenhum»* é uma pergunta DIFERENTE
+    // de *«todos»*, e sem ela um asset por arrumar fica inalcançável no dia em que existir um
+    // catálogo. **Mutação que deve sangrar:** o braço `Unassigned` devolver `true`.
+    let q = Query {
+        catalog: CatalogScope::Unassigned,
+        ..Default::default()
+    };
+    let hits = ix.query(&q);
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].name, "Unassigned");
 }
 
 /// ⭐ **Os dois sentidos, e só um guardado.** `owners` é DERIVADO por inversão de `deps`; guardar

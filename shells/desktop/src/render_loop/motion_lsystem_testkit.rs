@@ -146,3 +146,12 @@ pub(crate) fn factory_plant_with_leaf(
     publish_object_alpha(&mut state, "folha", 7, premultiplied);
     (state, n)
 }
+
+/// Publica um objecto NOMEADO que é uma FORMA desenhada (vector vivo) — a outra media, a que
+/// pode ir à frente dos galhos.
+pub(crate) fn publish_vector_object(state: &mut MotionState, name: &str, geometry_id: u32) {
+    state.pump.cook.set_external(
+        name.to_string(),
+        super::motion_bridge::appearance_vector([2.0, 3.0], [1.0, 1.0, 1.0, 1.0], geometry_id),
+    );
+}

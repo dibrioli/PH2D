@@ -281,6 +281,70 @@ adivinhar mudaria os pixels de todo objecto Flip com base num palpite.
 
 ---
 
+## §7 — O 3.º smoke de 30/08: a folha ganha CONTROLOS, e um report era do artista
+
+> *"ainda nascem folhas no fim de cada segmento mesmo se o segmento é a raiz ou o caule. Outra
+> coisa: não temos a opção de escolher quantas folhas são desenhadas na frente ou atrás dos
+> galhos, nem as rotações das folhas."* · *"uma opção para livrar as folhas, os frutos do tint
+> que pinta tudo na árvore"* · *"LFO não funciona animando Tropism Angle"*
+
+### 7.1 — Cinco controlos na secção *Leaves*
+
+| controlo | o que faz | default |
+|---|---|---|
+| **First Level** | o 1.º nível de ramo que ganha folha | **3** |
+| **Leaf Angle** | soma-se à direcção do ramo | `0` (a direcção do ramo, **ao bit**) |
+| **Leaf Spread** | abre as folhas umas em relação às outras (sorteio determinístico) | `0` |
+| **Leaves In Front** | a fracção desenhada à frente dos galhos | `0` |
+| **Effects Reach Leaves** | `Keep Own Colour` · `Reached` | **Keep Own Colour** |
+
+⭐ **O `3` não é escolhido, é medido:** as marcas da árvore de fábrica vivem nas profundidades
+`1..5` com contagens `1 · 2 · 4 · 8 · 16`, e as duas setas da foto apontam para os níveis `1`
+(a raiz) e `2` (a primeira forquilha). Começar em `3` deixa `28` folhas de `31` e nenhuma no caule.
+
+⚠️ **Contado da RAIZ, e não da ponta:** a ponta MOVE-SE quando o `Generations` sobe, então *«as
+últimas N camadas»* mudaria de sujeito a cada geração; o tronco é o nível `1` para sempre.
+
+### 7.2 — «À frente» é a ORDEM DAS LINHAS, e só uma FORMA lá chega
+
+⛔⛔ A casa desenha **os sprites antes do vector** (declarado em `render_loop/mod.rs`: *«Fase 1:
+vector over sprite»*), então uma folha que é uma **imagem** fica sempre atrás dos galhos e
+nenhuma ordem de linhas a move. Uma folha que é uma **forma desenhada** vive na mesma passagem
+que a planta, e ali quem manda é a ordem: as de trás antes da linha da planta, as da frente
+depois.
+
+⭐ **Aceitar uma forma como folha era um buraco por si** — o `named_appearance` exigia `uv_rect`,
+que só uma sprite publica, então nomear uma forma do documento não plantava nada e não dizia
+porquê. ⚠️ E o `Leaves In Front` **diz**, uma vez por planta, quando o objecto nomeado é uma
+imagem: sem isso ele seria um knob morto no caso comum.
+
+### 7.3 — A folha fora do tint: a máscara que a casa já fala
+
+O `motion.tint` faz `lerp(existente, alvo, falloff)` ⇒ **`falloff = 0` mantém a cor**. A membrana
+publica `0` nas linhas de folha e `1` na planta. ⚠️ Com `Reached` a coluna **não nasce** — uma
+coluna de uns apagaria um `falloff` que um nó a montante tivesse escrito.
+
+### 7.4 — ⛔ O LFO no *Tropism Angle*: a maquinaria está ILIBADA, com número
+
+Medido: com `Tropism = 30` um `value.lfo` no `Tropism Angle` **move a planta** (altura
+`0,541 → 0,528 → 0,578` em três instantes); com `Tropism = 0` não move nada. Duas causas, as
+duas do lado do artista e nenhuma visível na tela:
+
+1. **`Tropism` nasce em `0`**, e o ângulo é a DIRECÇÃO de uma força de intensidade zero;
+2. **o `value.lfo` nasce com `amplitude = 1`**, e o param é em GRAUS: **±1°**.
+
+⚠️ **Um `ParamGate` não exprime isto** (ele compara com uma lista de INTEIROS, e a condição é
+*«diferente de zero»* num slider contínuo), e esconder a linha seria pior — ela desapareceria no
+estado de fábrica, que é onde ele estava. ⇒ o app **diz**, e só quando há FIO: um `Tropism Angle`
+parado no default é o estado de toda planta, e avisar sobre ele seria ruído por quadro.
+
+⚠️ **E três sondas minhas mediram a coisa errada antes de eu chegar aqui:** a coluna `P` da
+corrente publicada tem a origem e as folhas — **a planta vive na geometria** —, o `key_of` do
+arnês resolve sempre em `t = 0`, e o primeiro condutor que liguei (`motion.oscillator`) não
+produzia número nenhum. *Uma sonda que não move o número não prova que o produto não move.*
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -292,6 +356,7 @@ adivinhar mudaria os pixels de todo objecto Flip com base num palpite.
 | Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |
+| Esconder o `Tropism Angle` quando o `Tropism` é `0` | O `ParamGate` da casa compara com uma lista de INTEIROS e a condição é *«diferente de zero»* num slider contínuo; e a linha desapareceria no estado de FÁBRICA, que é onde o artista estava quando reportou. A cura é o app DIZER, e só quando há fio |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

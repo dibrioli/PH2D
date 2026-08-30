@@ -69,6 +69,8 @@ pub(super) use objects::{bake_flip_objects, bake_objects, publish_objects};
 // FOLHAS a chama, e ela existe para ele não copiar a forma do stream.
 #[cfg(test)]
 pub(super) use objects::streams::appearance_tile;
+#[cfg(test)]
+pub(super) use objects::streams::appearance_vector;
 // ⚠️ **E o conversor de tile**, que o `motion_glow_layer` usa para a metade vetorial
 // viva chegar ao bright-pass (bug do Enio, 2026-08-20). A MESMA função que a
 // partição de LOD usa — duas vistas da mesma conversão nunca podem divergir.

@@ -523,13 +523,24 @@ mod tests {
              painel que reporta menos conteudo do que desenha rola de menos e PERDE a cauda",
             MAX_PARAM_ROWS / 2
         );
-        // E o fato que decide a wave, afirmado em vez de suposto: no teto de HOJE o corpo cabe
-        // no dock com folga, entao a rolagem nunca dispara. O dia em que esta assercao virar
-        // vermelha e o dia em que ela passa a trabalhar — e nao ha nada a consertar nele.
+        // ⭐⭐ **E O DIA CHEGOU: em 2026-08-30 o corpo passou a TRANSBORDAR o dock.**
+        //
+        // Esta asserção dizia *«no teto de hoje o corpo cabe no dock com folga»* e trazia ao
+        // lado a sua própria data de validade: *«o dia em que ela virar vermelha é o dia em
+        // que ela passa a trabalhar — e não há nada a consertar nele»*. Com `MAX_PARAM_ROWS`
+        // a `30` (os cinco controlos de folha do `source.lsystem`) são **1020 px num dock de
+        // 880**.
+        //
+        // ⇒ o que ela afirma passa a ser o **fato novo**, e ele é load-bearing: a partir daqui
+        // a rolagem (doc 88 §B3) **não é mais inerte**, e é `tests_scroll` quem a defende. A
+        // asserção que fica é a que impede o defeito real desta transição — *um painel que
+        // reporta MENOS altura do que desenha rola de menos e perde a cauda* —, e ela é a de
+        // cima, que mede a altura reportada contra as linhas.
         assert!(
-            used < INSPECTOR_MAX_H,
-            "{MAX_PARAM_ROWS} linhas medem {used} px num dock de {INSPECTOR_MAX_H}: o painel \
-             passou a TRANSBORDAR, e a rolagem (doc 88 §B3) deixou de ser inerte"
+            used > INSPECTOR_MAX_H,
+            "{MAX_PARAM_ROWS} linhas medem {used} px e o dock tem {INSPECTOR_MAX_H}: o corpo \
+             voltou a caber. Se um teto DESCEU, esta asserção e a `tests_scroll` mudam juntas \
+             — a rolagem volta a ser inerte e alguém tem de o dizer aqui"
         );
     }
 }

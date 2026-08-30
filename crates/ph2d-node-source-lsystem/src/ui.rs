@@ -78,6 +78,52 @@ pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
         step: 0.0,
         widget: ParamWidget::Source,
     },
+    // ⭐⭐ **OS CINCO CONTROLOS** que o 2.º smoke de 2026-08-30 pediu.
+    ParamUiHint {
+        param: param::LEAF_FIRST_LEVEL,
+        label: "First Level",
+        min: 1.0,
+        // ⚠️ **`12` é o tecto de PROFUNDIDADE que uma planta desta casa alcança** — o
+        // `MAX_MODULES` corta a derivação muito antes de 12 níveis de encaixe numa gramática
+        // que ramifica. Acima disto o knob não teria sujeito.
+        max: 12.0,
+        step: 1.0,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::LEAF_ANGLE,
+        label: "Leaf Angle",
+        min: -180.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: param::LEAF_SPREAD,
+        label: "Leaf Spread",
+        min: 0.0,
+        max: 180.0,
+        step: 1.0,
+        widget: ParamWidget::Angle,
+    },
+    ParamUiHint {
+        param: param::LEAF_FRONT,
+        label: "Leaves In Front",
+        min: 0.0,
+        max: 1.0,
+        step: 0.01,
+        widget: ParamWidget::Slider,
+    },
+    ParamUiHint {
+        param: param::LEAF_EFFECTS,
+        label: "Effects Reach Leaves",
+        min: 0.0,
+        max: (LEAF_EFFECTS_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: LEAF_EFFECTS_LABELS,
+        },
+    },
     // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
     ParamUiHint {
         param: param::MODE,
@@ -402,6 +448,11 @@ pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
     ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[0], "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[1], "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(LEAF_PARAMS[2], "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_FIRST_LEVEL, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_ANGLE, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_SPREAD, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_FRONT, "Leaves").folded(),
+    ph2d_node_registry::ParamGroup::new(param::LEAF_EFFECTS, "Leaves").folded(),
     ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),

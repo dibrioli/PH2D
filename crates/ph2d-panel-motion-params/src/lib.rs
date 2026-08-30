@@ -17,6 +17,9 @@
 mod curve_row;
 mod events;
 mod gradient_row;
+#[cfg(test)]
+#[path = "measure_row_cap.rs"]
+mod measure_row_cap;
 mod number_rows;
 mod palette_row;
 /// O ESTADO de uma row no store — irmão cortado pelo teto de LOC (HR-18).

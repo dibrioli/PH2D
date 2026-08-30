@@ -68,7 +68,13 @@ fn a_marks_weight_only_ever_grows() {
     // para trás no tempo. *Uma fixtura que reimplementa a lei que testa pode estar errada de
     // maneiras que a lei não está.*
     let p = &PRESETS[0];
-    let over = [(param::ANGLE, p.angle), (param::STEP, p.step)];
+    // ⚠️ **O nível mínimo sai do caminho**, senão este gate mediria DUAS leis ao mesmo tempo
+    // e uma folha calada pelo nível leria como uma folha que nunca amadureceu.
+    let over = [
+        (param::ANGLE, p.angle),
+        (param::STEP, p.step),
+        (param::LEAF_FIRST_LEVEL, 1.0),
+    ];
     let mut visto: std::collections::BTreeMap<i64, f32> = Default::default();
     let mut g = 0.5f32;
     while g <= 6.0 {
@@ -132,7 +138,12 @@ fn a_marks_weight_only_ever_grows() {
 #[test]
 fn the_skeleton_publishes_the_mark_opening_weight() {
     let p = &PRESETS[0];
-    let over = [(param::ANGLE, p.angle), (param::STEP, p.step)];
+    // ⚠️ Idem: aqui mede-se a IDADE, e o nível tem gate próprio.
+    let over = [
+        (param::ANGLE, p.angle),
+        (param::STEP, p.step),
+        (param::LEAF_FIRST_LEVEL, 1.0),
+    ];
     let pesos = |g: f32| -> Vec<f32> {
         let s = probe_build(p.axiom, p.rules, g, &over);
         let sym = scal(&s, "sym");
@@ -201,5 +212,152 @@ fn no_two_leaves_land_on_the_same_spot() {
             p.label,
             sitios.len()
         );
+    }
+}
+
+#[test]
+#[ignore = "sonda"]
+fn probe_mark_depths_and_param_count() {
+    println!("params do no': {}", MANIFEST.params.len());
+    for p in PRESETS.iter().take(5) {
+        let s = probe_build(
+            p.axiom,
+            p.rules,
+            p.generations,
+            &[(param::ANGLE, p.angle), (param::STEP, p.step)],
+        );
+        let sym = scal(&s, "sym");
+        let depth = scal(&s, "depth");
+        let mut hist: std::collections::BTreeMap<i64, usize> = Default::default();
+        for i in 0..sym.len() {
+            if crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)) {
+                *hist.entry(depth[i] as i64).or_default() += 1;
+            }
+        }
+        println!("{:<6} marcas por profundidade: {hist:?}", p.label);
+    }
+}
+
+/// ⭐⭐⭐ **NADA DE FOLHA NA RAIZ NEM NO CAULE** — report do Enio (2026-08-30, foto com duas
+/// setas): *"ainda nascem folhas no fim de cada segmento mesmo se o segmento é a raiz ou o
+/// caule"*.
+///
+/// ⚠️ **A afirmação é sobre a FAIXA, não sobre um número:** subir o `First Level` só pode
+/// APAGAR folhas, e as que ficam são exactamente as dos níveis a partir dele. Um gate que só
+/// contasse passaria com a faixa invertida.
+#[test]
+fn no_leaf_grows_on_the_root_or_the_trunk() {
+    let p = &PRESETS[0];
+    let abertas = |first: f32| -> Vec<u16> {
+        let s = probe_build(
+            p.axiom,
+            p.rules,
+            p.generations,
+            &[
+                (param::ANGLE, p.angle),
+                (param::STEP, p.step),
+                (param::LEAF_FIRST_LEVEL, first),
+            ],
+        );
+        let (sym, depth) = (scal(&s, "sym"), scal(&s, "depth"));
+        let grow = match s.get("mark_grow") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("sem `mark_grow`"),
+        };
+        (0..sym.len())
+            .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)) && grow[i] > 0.0)
+            .map(|i| depth[i] as u16)
+            .collect()
+    };
+    // A árvore de fábrica tem marcas nos níveis 1..5 (contagens 1 · 2 · 4 · 8 · 16).
+    let todas = abertas(1.0);
+    assert_eq!(todas.len(), 31, "a fixtura tem de ter as 31 marcas");
+    // ⛔ **O DEFAULT não deixa nada no caule**: as duas setas da foto são os níveis 1 e 2.
+    let padrao = abertas(3.0);
+    assert!(
+        padrao.iter().all(|d| *d >= 3),
+        "o default deixou folha no caule: {padrao:?}"
+    );
+    assert_eq!(padrao.len(), 28, "sobram as dos niveis 3, 4 e 5");
+    // ⚠️ **Monótona na faixa**: subir o nível só apaga.
+    let mut anterior = usize::MAX;
+    for first in 1..=6u16 {
+        let v = abertas(f32::from(first));
+        assert!(
+            v.len() <= anterior,
+            "subir o First Level para {first} ACRESCENTOU folhas: {} -> {}",
+            anterior,
+            v.len()
+        );
+        assert!(
+            v.iter().all(|d| *d >= first),
+            "com First Level {first} sobrou uma folha mais rasa: {v:?}"
+        );
+        anterior = v.len();
+    }
+    assert_eq!(
+        anterior, 0,
+        "acima do nivel mais fundo nao sobra folha nenhuma"
+    );
+}
+
+/// ⭐⭐ **A FOLHA TEM VIRAGEM PRÓPRIA** — report do Enio (2026-08-30): *"nem as rotações das
+/// folhas"*.
+///
+/// ⚠️ **Três afirmações, e a primeira é a que protege o resto:** com os dois em `0` o ângulo é
+/// o do ramo **ao bit** (uma feature nova não pode mexer no que já shipou); o `Leaf Angle` soma
+/// o mesmo a todas; e o `Leaf Spread` abre-as **umas em relação às outras**, dentro da faixa.
+#[test]
+fn a_leaf_has_a_turn_of_its_own() {
+    let p = &PRESETS[0];
+    let angs = |angle: f32, spread: f32| -> Vec<f32> {
+        let s = probe_build(
+            p.axiom,
+            p.rules,
+            p.generations,
+            &[
+                (param::ANGLE, p.angle),
+                (param::STEP, p.step),
+                (param::LEAF_FIRST_LEVEL, 1.0),
+                (param::LEAF_ANGLE, angle),
+                (param::LEAF_SPREAD, spread),
+            ],
+        );
+        let (sym, rot) = (scal(&s, "sym"), scal(&s, "rot"));
+        (0..sym.len())
+            .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)))
+            .map(|i| rot[i])
+            .collect()
+    };
+    let base = angs(0.0, 0.0);
+    assert!(base.len() > 8, "so' {} folhas", base.len());
+    // 1. ⛔ **Identidade ao BIT** com os dois em zero.
+    for (a, b) in base.iter().zip(angs(0.0, 0.0)) {
+        assert_eq!(a.to_bits(), b.to_bits(), "o zero tem de ser o no-op exacto");
+    }
+    // 2. O `Leaf Angle` soma o MESMO a todas.
+    for (a, b) in base.iter().zip(angs(30.0, 0.0)) {
+        assert!(
+            (b - a - 30.0).abs() < 1e-3,
+            "o Leaf Angle tem de somar 30 a esta folha: {a} -> {b}"
+        );
+    }
+    // 3. O `Leaf Spread` abre-as UMAS EM RELAÇÃO ÀS OUTRAS, e dentro da faixa.
+    let abertas = angs(0.0, 60.0);
+    let desvios: Vec<f32> = base.iter().zip(&abertas).map(|(a, b)| b - a).collect();
+    assert!(
+        desvios.iter().all(|d| d.abs() <= 30.0 + 1e-3),
+        "o sorteio saiu da faixa +-30: {desvios:?}"
+    );
+    let (mn, mx) = desvios
+        .iter()
+        .fold((f32::MAX, f32::MIN), |(a, b), d| (a.min(*d), b.max(*d)));
+    assert!(
+        mx - mn > 30.0,
+        "as folhas tem de abrir UMAS EM RELACAO AS OUTRAS, e nao em bloco: {mn}..{mx}"
+    );
+    // ⚠️ **E é DETERMINÍSTICO** — duas derivações iguais dão os mesmos bits.
+    for (a, b) in abertas.iter().zip(angs(0.0, 60.0)) {
+        assert_eq!(a.to_bits(), b.to_bits(), "o sorteio tem de reproduzir");
     }
 }

@@ -27,6 +27,11 @@ fn setup() -> Setup {
         // contrato do `rig.*`, e é ele que exige o ângulo local. O modo de MUNDO (o default do
         // produto) tem gates próprios.
         orient_world: false,
+        leaf_first_level: 0.0,
+        leaf_angle: 0.0,
+        leaf_spread: 0.0,
+        leaf_effects: true,
+        seed: 1.0,
     }
 }
 

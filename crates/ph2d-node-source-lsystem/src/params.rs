@@ -29,6 +29,16 @@ pub(crate) struct Params {
     pub(crate) growth: f32,
     pub(crate) geometry: f32,
     pub(crate) tip_taper: f32,
+    /// ⭐ O primeiro NÍVEL de ramo que ganha folha — ver [`param::LEAF_FIRST_LEVEL`].
+    pub(crate) leaf_first_level: f32,
+    /// A viragem acrescentada à direcção do ramo, em graus.
+    pub(crate) leaf_angle: f32,
+    /// A abertura aleatória à volta dela, em graus (`±spread/2`).
+    pub(crate) leaf_spread: f32,
+    /// A fracção desenhada à frente dos galhos — lida pela SHELL, não pela tartaruga.
+    pub(crate) leaf_front: f32,
+    /// `0` = os efeitos a jusante não alcançam a folha.
+    pub(crate) leaf_effects: f32,
 }
 
 impl Params {
@@ -83,6 +93,11 @@ impl Params {
             growth: get(param::GROWTH),
             geometry: get(param::GEOMETRY),
             tip_taper: get(param::TIP_TAPER),
+            leaf_first_level: get(param::LEAF_FIRST_LEVEL),
+            leaf_angle: get(param::LEAF_ANGLE),
+            leaf_spread: get(param::LEAF_SPREAD),
+            leaf_front: get(param::LEAF_FRONT),
+            leaf_effects: get(param::LEAF_EFFECTS),
         }
     }
 

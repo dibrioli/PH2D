@@ -61,6 +61,11 @@ pub fn probe_anchor(axiom: &str, rules: &str, generations: f32, overrides: &[(&s
         angle_frac: ang,
         youngest: (d.generations, 1.0),
         orient_world: true,
+        leaf_first_level: p.leaf_first_level,
+        leaf_angle: p.leaf_angle,
+        leaf_spread: p.leaf_spread,
+        leaf_effects: p.leaf_effects.round() as i32 != 0,
+        seed: p.seed,
     };
     let antes = turtle::mean_width(&d.previous, &setup(1.0));
     // ⚠️ **Com as dobras FECHADAS** — é a pose de onde a interpolação parte.
@@ -172,6 +177,13 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
         // coisa, com todos os gates verdes.
         geometry: GEOMETRY_SEGMENTS as f32,
         tip_taper: 0.0,
+        // ⚠️ **Os defaults do MANIFESTO, escritos por nome** — uma sonda que os inventasse
+        // mediria outra planta que a do artista.
+        leaf_first_level: 3.0,
+        leaf_angle: 0.0,
+        leaf_spread: 0.0,
+        leaf_front: 0.0,
+        leaf_effects: 0.0,
     };
     for (n, v) in overrides {
         match *n {
@@ -194,6 +206,13 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
             param::TROPISM_ANGLE => p.tropism_angle = *v,
             param::SEED => p.seed = *v,
             param::ORIENT => p.orient = *v,
+            param::TIP_TAPER => p.tip_taper = *v,
+            param::GEOMETRY => p.geometry = *v,
+            param::LEAF_FIRST_LEVEL => p.leaf_first_level = *v,
+            param::LEAF_ANGLE => p.leaf_angle = *v,
+            param::LEAF_SPREAD => p.leaf_spread = *v,
+            param::LEAF_FRONT => p.leaf_front = *v,
+            param::LEAF_EFFECTS => p.leaf_effects = *v,
             other => panic!("probe_params: param desconhecido {other}"),
         }
     }

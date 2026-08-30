@@ -68,14 +68,29 @@ use ph2d_a11y::NodeId;
 /// | `MAX_PARAM_ROWS` | leituras (µs/construção) |
 /// |---|---|
 /// | 24 | 186,8 · 188,9 · 180,9 |
-/// | **25** | 205,0 · 198,1 · 198,3 |
+/// | 25 | 205,0 · 198,1 · 198,3 |
+///
+/// ⚠️ **`25 → 30` em 2026-08-30, a QUARTA vez por medição.** O `source.lsystem` ganhou os cinco
+/// controlos de folha que o 2.º smoke pediu (nível mínimo · ângulo · abertura · fracção à frente
+/// · efeitos) e o pior caso VISÍVEL dele passou a **30** (guiado + `Branches` + molde `Custom`).
+/// Medido pela mesma porta, agora com `500` construções e o **MÍNIMO de 5 leituras** — a
+/// workstation estava a `load 15+` e uma média teria medido a carga:
+///
+/// | `MAX_PARAM_ROWS` | mínimo (µs/construção) |
+/// |---|---|
+/// | 25 | 202,8 |
+/// | **30** | 253,2 |
+///
+/// ⇒ **~10 µs por slot**, o mesmo número que a medição de 2026-08-23 deu (~11). A medição
+/// reproduz-se com `cargo test -p ph2d-panel-motion-params --release measure_screen_build --
+/// --ignored --nocapture` (ver [`crate::measure_row_cap`]).
 ///
 /// ⇒ **~11 µs por slot**, uma vez por construção de tela e **não por quadro** — a mesma unidade
 /// em que o salto do [`MAX_ENUM_OPTIONS`] foi aceite (22,0 → 107,2 µs).
 ///
 /// ⚠️ **E continua colado ao pior caso**: `25` é exactamente o que o pior nó pede hoje, sem
 /// folga, pela razão do parágrafo acima.
-pub const MAX_PARAM_ROWS: usize = 25;
+pub const MAX_PARAM_ROWS: usize = 30;
 
 /// Max named options a single segmented selector paints — an `Enum` row's `labels`, a
 /// `Channels` row's channels **plus its trailing "Custom…"**, and the live-column chips.

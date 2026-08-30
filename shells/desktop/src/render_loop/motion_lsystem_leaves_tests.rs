@@ -432,3 +432,116 @@ fn the_orient_param_reaches_the_leaf() {
         "em Local a folha nao vira nada em relacao ao ramo"
     );
 }
+
+/// ⭐⭐⭐ **A FRACÇÃO «À FRENTE» É A ORDEM DAS LINHAS** — report do Enio (2026-08-30): *"não temos
+/// a opção de escolher quantas folhas são desenhadas na frente ou atrás dos galhos"*.
+///
+/// ⚠️ **A afirmação tem de ser sobre a POSIÇÃO da planta na lista**, e não sobre uma contagem:
+/// a passagem vectorial desenha as linhas por ordem, então o que decide o z é quantas folhas
+/// ficam DEPOIS da linha da planta. Um gate que contasse folhas passaria com todas atrás.
+#[test]
+fn the_front_fraction_puts_leaves_after_the_plant_in_the_row_order() {
+    let leaves_after_plant = |front: f32| -> (usize, usize) {
+        let (mut state, n) = factory_plant_with_leaf(5.0, false);
+        state.doc.graph.set_param(n, ls::param::LEAF_FRONT, front);
+        // ⚠️ **Uma FORMA desenhada**, não uma imagem: uma sprite desenha-se sempre antes do
+        // vector (declarado: «Fase 1: vector over sprite»), e nenhuma ordem a move.
+        publish_vector_object(&mut state, "folha", 77);
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        let geom = column_v1(&state, &key, "geometry_id");
+        let plant = geom
+            .iter()
+            .position(|g| *g > 0.0 && *g != 77.0)
+            .expect("a planta");
+        let depois = geom.iter().skip(plant + 1).filter(|g| **g == 77.0).count();
+        let antes = geom.iter().take(plant).filter(|g| **g == 77.0).count();
+        (antes, depois)
+    };
+    let (antes0, depois0) = leaves_after_plant(0.0);
+    assert!(antes0 > 0, "com 0 as folhas ficam todas atras da planta");
+    assert_eq!(depois0, 0, "com 0 nenhuma folha pode ficar a' frente");
+    let (antes1, depois1) = leaves_after_plant(1.0);
+    assert_eq!(antes1, 0, "com 1 nenhuma folha fica atras");
+    assert_eq!(depois1, antes0, "com 1 todas passam para a frente");
+    // ⚠️ **E o meio é MISTO** — uma lei que só respondesse nos extremos seria um interruptor.
+    let (antes, depois) = leaves_after_plant(0.5);
+    assert!(
+        antes > 0 && depois > 0,
+        "a meio tem de haver folhas dos DOIS lados: {antes} atras, {depois} a' frente"
+    );
+    assert_eq!(antes + depois, antes0, "nenhuma folha se perdeu no caminho");
+}
+
+/// ⭐⭐ **A FOLHA FORA DO TINT DA ÁRVORE** — report do Enio (2026-08-30): *"uma opção para livrar
+/// as folhas, os frutos do tint que pinta tudo na árvore"*.
+///
+/// ⚠️ **A cura é a máscara que a casa já fala** (`motion.tint` faz `lerp(existente, alvo,
+/// falloff)`), e por isso o gate mede a COLUNA e o seu contrário: com os efeitos ligados a
+/// coluna **não nasce**, porque uma coluna de uns apagaria o `falloff` que um nó a montante
+/// tivesse escrito.
+#[test]
+fn the_leaves_can_keep_their_own_colour_when_the_tree_is_tinted() {
+    let falloff = |effects: f32| -> Vec<f32> {
+        let (mut state, n) = factory_plant_with_leaf(5.0, false);
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::LEAF_EFFECTS, effects);
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        column_v1(&state, &key, "falloff")
+    };
+    // `0` = Keep Own Colour (o default): a planta a `1`, cada folha a `0`.
+    let v = falloff(0.0);
+    assert!(!v.is_empty(), "a coluna tem de nascer no modo que a usa");
+    assert_eq!(
+        v.iter().filter(|f| **f == 1.0).count(),
+        1,
+        "so' a planta e' alcancada pelos efeitos: {v:?}"
+    );
+    assert!(
+        v.iter().filter(|f| **f == 0.0).count() > 8,
+        "as folhas tem de sair fora do alcance: {v:?}"
+    );
+    // `1` = Reached: a coluna NÃO nasce ⇒ ausente ⇒ `1` em toda a casa.
+    assert!(
+        falloff(1.0).is_empty(),
+        "com os efeitos ligados a coluna nao pode nascer — ela apagaria um falloff a montante"
+    );
+}
+
+/// ⭐⭐ **UM FIO NUM PARAM INERTE É DITO** — report do Enio (2026-08-30): *"LFO não funciona
+/// animando Tropism Angle"*.
+///
+/// ⚠️ **A régua é a DECISÃO, não o canal** (o aviso sai no `stderr`, que um gate não lê), e ela
+/// tem de reprovar nos DOIS sentidos: calar quando não há fio (senão toda planta de fábrica
+/// gritaria) e calar quando a força existe (senão o aviso mente).
+#[test]
+fn a_wire_on_an_inert_param_is_reported() {
+    use crate::render_loop::motion_lsystem_leaves::say_if_a_wire_drives_an_inert_param as say;
+    // A metade pura é o predicado; aqui mede-se o que ele decide, pela contagem de avisos que
+    // a chave-uma-vez deixa passar.
+    let disse = |driven: &[&str], tropism: f32, chave: &str| -> bool {
+        // Uma chave nova por caso ⇒ o «uma vez só» não mascara a decisão.
+        let antes = crate::render_loop::motion_lsystem_leaves::already_said(chave);
+        say(chave, driven, tropism);
+        !antes && crate::render_loop::motion_lsystem_leaves::already_said(chave)
+    };
+    assert!(
+        disse(&[ls::param::TROPISM_ANGLE], 0.0, "k1"),
+        "fio + forca zero tem de ser dito"
+    );
+    assert!(
+        !disse(&[ls::param::TROPISM_ANGLE], 30.0, "k2"),
+        "com forca a serio o aviso mentiria"
+    );
+    assert!(
+        !disse(&[], 0.0, "k3"),
+        "sem fio, o default de toda planta calaria o aviso"
+    );
+    assert!(
+        !disse(&[ls::param::ANGLE], 0.0, "k4"),
+        "um fio NOUTRO param nao diz nada sobre o tropismo"
+    );
+}

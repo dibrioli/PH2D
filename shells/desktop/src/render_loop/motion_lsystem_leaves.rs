@@ -66,14 +66,23 @@ pub(crate) fn anchors_of(sk: &Stream) -> Vec<Anchor> {
         .collect()
 }
 
-/// **A aparência de um objecto**, na ordem `(size, tint, uv_rect, texture_id, premultiplied)`.
+/// **A aparência de um objecto**, na ordem
+/// `(size, tint, uv_rect, texture_id, premultiplied, geometry_id)`.
 ///
 /// ⚠️ O 5.º campo entrou pelo report de 2026-08-30 (*"o Alpha escurece as bordas da pintura"*):
 /// ele é da TEXTURA, e sem ele o lowering pré-multiplicava outra vez ⇒ `RGB·α²`.
-pub(crate) type Look = ([f32; 2], [f32; 4], [f32; 4], f32, f32);
+pub(crate) type Look = ([f32; 2], [f32; 4], [f32; 4], f32, f32, f32);
 
 /// **O trabalho de uma planta**, já resolvido: `(chave, ramos, âncoras, os três nomes)`.
-pub(crate) type Job = (String, Vec<ls::branch::Branch>, Vec<Anchor>, [String; 3]);
+pub(crate) type Job = (
+    String,
+    Vec<ls::branch::Branch>,
+    Vec<Anchor>,
+    [String; 3],
+    // A fracção desenhada à frente dos galhos, e `true` = as folhas mantêm a cor delas.
+    f32,
+    bool,
+);
 
 /// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id, premul)`.
 ///
@@ -99,12 +108,29 @@ pub(crate) fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) ->
         Some(Column::Vec4(v)) => v.first().copied(),
         _ => None,
     };
+    let first1 = |c: &str| match st.get(c) {
+        Some(Column::Scalar(v)) => v.first().copied(),
+        _ => None,
+    };
+    let size = match st.get("size") {
+        Some(Column::Vec2(v)) => v.first().copied().unwrap_or([1.0, 1.0]),
+        _ => [1.0, 1.0],
+    };
+    let tint = first4("tint").unwrap_or([1.0, 1.0, 1.0, 1.0]);
+    // ⭐⭐ **UMA FORMA DESENHADA TAMBÉM É UMA FOLHA** — e até 2026-08-30 não era: esta função
+    // exigia `uv_rect`, que só uma sprite publica, então nomear uma forma do documento não
+    // plantava nada e nem dizia porquê.
+    //
+    // ⚠️ **E é ela que torna o *Leaves In Front* possível.** A ordem de desenho da casa é
+    // *sprites primeiro, vector depois* (declarada em `mod.rs`: «Fase 1: vector over sprite»),
+    // então uma folha-sprite fica SEMPRE atrás dos galhos. Uma folha-vector vive na mesma
+    // passagem que a planta, e ali quem manda é a ORDEM DAS LINHAS.
+    if let Some(gid) = first1("geometry_id").filter(|g| *g > 0.0) {
+        return Some((size, tint, [0.0, 0.0, 1.0, 1.0], 0.0, 0.0, gid));
+    }
     Some((
-        match st.get("size") {
-            Some(Column::Vec2(v)) => v.first().copied().unwrap_or([1.0, 1.0]),
-            _ => [1.0, 1.0],
-        },
-        first4("tint").unwrap_or([1.0, 1.0, 1.0, 1.0]),
+        size,
+        tint,
         first4("uv_rect")?,
         match st.get("texture_id") {
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
@@ -115,6 +141,8 @@ pub(crate) fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) ->
             Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
             _ => 0.0,
         },
+        // Uma sprite não tem geometria vectorial — é a mesma convenção do `source.object`.
+        0.0,
     ))
 }
 
@@ -136,6 +164,82 @@ pub(crate) fn unanswered_slots(names: &[String; 3], anchors: &[Anchor]) -> Vec<u
     (0..names.len())
         .filter(|&s| !names[s].is_empty() && !anchors.iter().any(|a| a.slot == s))
         .collect()
+}
+
+/// **Este aviso já saiu?** — a metade que torna a decisão mensurável de um teste.
+#[cfg(test)]
+pub(crate) fn already_said(key: &str) -> bool {
+    SAID.with(|s| s.borrow().contains(&format!("{key} inert tropism")))
+}
+
+/// **DIZ quando um FIO conduz um param que outro param mantém inerte.**
+///
+/// ⛔⛔ Report do Enio (2026-08-30): *"LFO não funciona animando Tropism Angle. corrija todos"*.
+/// A medição ilibou a maquinaria — com `Tropism = 30` o LFO no `Tropism Angle` move a planta
+/// (`0,541 → 0,528 → 0,578` de altura em três instantes) — e nomeou **duas** causas, as duas do
+/// artista e nenhuma visível na tela:
+///
+/// 1. **`Tropism` nasce em `0`**, e o `Tropism Angle` é a DIRECÇÃO de uma força cuja
+///    INTENSIDADE é zero. Mexer a direcção de nada continua a ser nada.
+/// 2. **O `value.lfo` nasce com `amplitude = 1`**, e este param é em GRAUS: ±1° é invisível.
+///
+/// ⚠️ **Um `ParamGate` não exprime isto:** ele compara o valor de outro param com uma lista de
+/// INTEIROS, e a condição aqui é *«diferente de zero»* num slider contínuo. E esconder a linha
+/// seria pior — ela desapareceria no estado de fábrica, que é exactamente onde ele estava.
+/// ⇒ o app **diz**, pelo mesmo canal das outras duas mensagens desta jornada.
+///
+/// ⚠️ **Só quando há FIO**, e é isso que a torna silenciosa no uso normal: um `Tropism Angle`
+/// parado no default com `Tropism = 0` é o estado de fábrica de toda planta, e avisar sobre ele
+/// seria ruído em cada quadro de cada cena.
+pub(crate) fn say_if_a_wire_drives_an_inert_param(key: &str, driven: &[&str], tropism: f32) {
+    if tropism != 0.0 || !driven.contains(&ls::param::TROPISM_ANGLE) {
+        return;
+    }
+    let once = format!("{key} inert tropism");
+    if SAID.with(|s| s.borrow_mut().insert(once)) {
+        eprintln!(
+            "[lsystem] ha' um fio a conduzir o «Tropism Angle», mas o «Tropism» esta' em 0 — o \
+             angulo e' a DIRECCAO de uma forca, e uma forca de intensidade zero nao move nada. \
+             Suba o «Tropism». (E um `value.lfo` nasce com amplitude 1, que neste param e' UM \
+             GRAU: suba a amplitude tambem.)"
+        );
+    }
+}
+
+/// **DIZ quando o artista pede folhas à frente e o objecto não pode ir lá.**
+///
+/// ⛔⛔ A casa desenha os **sprites antes do vector** (declarado em `mod.rs`: *«Fase 1: vector
+/// over sprite»*), então uma folha que é uma IMAGEM fica sempre atrás dos galhos e nenhuma
+/// ordem de linhas a move. Uma folha que é uma FORMA DESENHADA vive na mesma passagem que a
+/// planta, e aí a fracção manda.
+///
+/// ⚠️ **Sem isto o `Leaves In Front` seria um knob morto no caso comum** — o artista mexe-o,
+/// nada acontece, e não há nada na tela que explique porquê.
+pub(crate) fn say_if_the_leaf_cannot_go_in_front(
+    key: &str,
+    names: &[String; 3],
+    looks: &[Option<Look>; 3],
+    front: f32,
+) {
+    if front <= 0.0 {
+        return;
+    }
+    for (slot, look) in looks.iter().enumerate() {
+        // Só acusa o que EXISTE e é sprite: um slot vazio já é dito pelo aviso da letra.
+        let Some((.., gid)) = look else { continue };
+        if *gid > 0.0 {
+            continue;
+        }
+        let once = format!("{key} front {slot}");
+        if SAID.with(|s| s.borrow_mut().insert(once)) {
+            eprintln!(
+                "[lsystem] «{}» e' uma IMAGEM, e as imagens desenham-se sempre ATRAS dos galhos \
+                 — o «Leaves In Front» so' alcanca uma FORMA desenhada. Desenhe a folha com a \
+                 caneta e nomeie-a, ou deixe o knob em 0",
+                names[slot]
+            );
+        }
+    }
 }
 
 /// **DIZ quando um nome está posto e a gramática não tem a letra.**
@@ -181,39 +285,95 @@ pub(crate) fn plant_and_leaves(
     anchors: &[Anchor],
     names: &[String; 3],
     cook: &ph2d_nodegraph::cook::Cook,
+    front: f32,
+    keep_own_colour: bool,
 ) -> Stream {
     let looks: Vec<_> = names.iter().map(|n| named_appearance(cook, n)).collect();
-    // A planta é a linha `0`; cada âncora com objecto RESOLVIDO acrescenta uma.
-    let mut p = vec![origin];
-    let mut size = vec![[1.0f32, 1.0]];
-    let mut rot = vec![0.0f32];
-    let mut geom = vec![handle as f32];
-    let mut tint = vec![[1.0f32, 1.0, 1.0, 1.0]];
-    let mut uv = vec![[0.0f32, 0.0, 1.0, 1.0]];
-    let mut tex = vec![0.0f32];
-    let mut premul = vec![0.0f32];
-    for a in anchors {
-        let Some((sz, tn, rect, tid, pm)) = looks[a.slot] else {
+    // **Uma linha**, antes de saber em que ordem ela entra.
+    struct Row {
+        p: [f32; 2],
+        size: [f32; 2],
+        rot: f32,
+        geom: f32,
+        tint: [f32; 4],
+        uv: [f32; 4],
+        tex: f32,
+        premul: f32,
+        falloff: f32,
+    }
+    let plant = Row {
+        p: origin,
+        size: [1.0, 1.0],
+        rot: 0.0,
+        geom: handle as f32,
+        tint: [1.0, 1.0, 1.0, 1.0],
+        uv: [0.0, 0.0, 1.0, 1.0],
+        tex: 0.0,
+        premul: 0.0,
+        falloff: 1.0,
+    };
+    // ⭐⭐ **TRÊS BALDES, e a ordem entre eles É o z** — report do Enio (2026-08-30): *"não temos
+    // a opção de escolher quantas folhas são desenhadas na frente ou atrás dos galhos"*.
+    //
+    // ⚠️ **A casa desenha os sprites ANTES do vector** (declarado em `mod.rs`: *«Fase 1: vector
+    // over sprite»*), então uma folha-SPRITE fica sempre atrás da planta, e nenhuma ordem de
+    // linhas a move. Uma folha-VECTOR vive na mesma passagem que a planta, e ali quem manda é a
+    // ordem: as de trás vêm antes da linha da planta, as da frente depois.
+    let (mut atras, mut frente, mut sprites) = (Vec::new(), Vec::new(), Vec::new());
+    for (i, a) in anchors.iter().enumerate() {
+        let Some((sz, tn, rect, tid, pm, gid)) = looks[a.slot] else {
             continue;
         };
         // ⚠️ **A marca fechada não vira linha nenhuma** — um quad de tamanho `0` custaria o
-        // mesmo que um visível, e a árvore de fábrica traz `62` marcas para `32` pontas.
+        // mesmo que um visível, e a árvore de fábrica traz `62` marcas para `31` pontas.
         if a.grow <= GROW_FLOOR {
             continue;
         }
-        p.push(a.p);
-        size.push([sz[0] * a.grow, sz[1] * a.grow]);
-        rot.push(a.rot);
-        premul.push(pm);
-        // ⚠️ `0` = SEM geometria vectorial ⇒ a linha vai pelo caminho do quad. É a mesma
-        // convenção que o `source.object` usa para separar um vector vivo de uma sprite.
-        geom.push(0.0);
-        tint.push(tn);
-        uv.push(rect);
-        tex.push(tid);
+        let row = Row {
+            p: a.p,
+            size: [sz[0] * a.grow, sz[1] * a.grow],
+            rot: a.rot,
+            // ⚠️ `0` = SEM geometria vectorial ⇒ a linha vai pelo caminho do quad. É a mesma
+            // convenção que o `source.object` usa para separar um vector vivo de uma sprite.
+            geom: gid,
+            tint: tn,
+            uv: rect,
+            tex: tid,
+            premul: pm,
+            // ⭐ **A folha fora do tint da árvore** — `0` faz todo nó que honre a máscara
+            // (`motion.tint` faz `lerp(existente, alvo, falloff)`) deixá-la com a cor que tem.
+            falloff: f32::from(!keep_own_colour),
+        };
+        if gid <= 0.0 {
+            sprites.push(row);
+        } else if is_in_front(i, front) {
+            frente.push(row);
+        } else {
+            atras.push(row);
+        }
     }
-    let n = p.len();
-    Stream::new(n)
+    let n = 1 + atras.len() + frente.len() + sprites.len();
+    let mut p = Vec::with_capacity(n);
+    let (mut size, mut rot, mut geom) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut tint, mut uv, mut tex) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut premul, mut falloff) = (Vec::new(), Vec::new());
+    for r in atras
+        .into_iter()
+        .chain(std::iter::once(plant))
+        .chain(frente)
+        .chain(sprites)
+    {
+        p.push(r.p);
+        size.push(r.size);
+        rot.push(r.rot);
+        geom.push(r.geom);
+        tint.push(r.tint);
+        uv.push(r.uv);
+        tex.push(r.tex);
+        premul.push(r.premul);
+        falloff.push(r.falloff);
+    }
+    let stream = Stream::new(n)
         .with("P", Column::Vec2(p))
         .with("size", Column::Vec2(size))
         // ⛔ **`rot`, e não `rotation`** — é este o nome que a convenção de instâncias lê
@@ -228,7 +388,39 @@ pub(crate) fn plant_and_leaves(
             "Index",
             Column::Scalar((0..n).map(|i| i as f32).collect::<Vec<_>>()),
         )
-        .with("Count", Column::Scalar(vec![n as f32; n]))
+        .with("Count", Column::Scalar(vec![n as f32; n]));
+    // ⚠️ **A coluna só nasce quando ela DIZ alguma coisa.** Uma coluna de uns responderia a uma
+    // pergunta que ninguém fez e apagaria um `falloff` que um nó a montante tivesse escrito —
+    // ausente ⇒ `1` em toda a casa ⇒ byte-idêntico ao que havia antes deste param.
+    if keep_own_colour {
+        stream.with("falloff", Column::Scalar(falloff))
+    } else {
+        stream
+    }
+}
+
+/// **Esta folha vai à FRENTE?** — a fracção do painel, resolvida por marca e sem estado.
+///
+/// ⚠️ **Determinística e ESTÁVEL**: o sorteio é do índice da âncora, não de um contador de
+/// linhas emitidas — senão uma folha que fechasse (peso `0`) reordenaria todas as outras entre
+/// a frente e o fundo, e a árvore piscaria enquanto cresce.
+///
+/// ⚠️ `0` e `1` são exactos nas duas pontas: `hash ∈ [0, 1)`, logo `< 0` nunca e `< 1` sempre.
+fn is_in_front(index: usize, front: f32) -> bool {
+    hash01(index) < front
+}
+
+/// `[0, 1)` a partir de um índice — o mesmo avalanche splitmix que o resto da casa usa.
+fn hash01(i: usize) -> f32 {
+    let mut h = (i as u32)
+        .wrapping_mul(0x9e37_79b9)
+        .wrapping_add(0x1eaf_1eaf);
+    h ^= h >> 16;
+    h = h.wrapping_mul(0x7feb_352d);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x846c_a68b);
+    h ^= h >> 16;
+    (h >> 8) as f32 / (1u32 << 24) as f32
 }
 
 #[cfg(test)]

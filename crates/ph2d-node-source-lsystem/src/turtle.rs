@@ -92,6 +92,20 @@ pub(crate) struct Setup {
     ///
     /// `true` = mundo (o default, o que o desenho quer) · `false` = local (o contrato do rig).
     pub orient_world: bool,
+    /// ⭐ **O primeiro NÍVEL de ramo que ganha folha** — report do Enio (2026-08-30, com foto e
+    /// duas setas): *"ainda nascem folhas no fim de cada segmento mesmo se o segmento é a raiz
+    /// ou o caule"*. Uma marca mais rasa que isto sai com peso `0` e não se desenha.
+    pub leaf_first_level: f32,
+    /// A viragem acrescentada à direcção do ramo, em graus (`0` = a direcção do ramo, ao bit).
+    pub leaf_angle: f32,
+    /// A abertura ALEATÓRIA à volta dela, em graus. Determinística: a marca sorteia pelo mesmo
+    /// hash sem estado que o resto da casa usa, sobre `(seed, índice)`.
+    pub leaf_spread: f32,
+    /// `true` = os nós a jusante alcançam a folha; `false` = ela sai com `falloff = 0` e
+    /// mantém a cor que tem.
+    pub leaf_effects: bool,
+    /// A semente do sorteio da abertura — a mesma do resto do nó.
+    pub seed: f32,
 }
 
 #[derive(Clone, Copy)]
@@ -203,6 +217,24 @@ pub(crate) fn mark_grow(sym: u8, born: u16, youngest: (u16, f32)) -> f32 {
     }
     let (y, f) = youngest;
     if born == y { f } else { 1.0 }
+}
+
+/// **O peso de uma marca DEPOIS do nível mínimo** — a lei acima mais a faixa que o artista
+/// escolheu.
+///
+/// ⛔⛔ Report do Enio (2026-08-30, foto com duas setas): *"ainda nascem folhas no fim de cada
+/// segmento mesmo se o segmento é a raiz ou o caule"*. As setas apontam para as marcas dos
+/// níveis `1` (a raiz) e `2` (a primeira forquilha) — e o nível é a PROFUNDIDADE de encaixe que
+/// o esqueleto já emite.
+///
+/// ⚠️ **Contado da RAIZ e não da ponta**, e a escolha é medida: a ponta MOVE-SE quando o
+/// `Generations` sobe, então *«as últimas N camadas»* mudaria de sujeito a cada geração; o
+/// tronco é o nível `1` para sempre.
+pub(crate) fn mark_weight(sym: u8, born: u16, depth: u16, youngest: (u16, f32), first: u16) -> f32 {
+    if matches!(sym, b'J' | b'K' | b'M') && depth < first {
+        return 0.0;
+    }
+    mark_grow(sym, born, youngest)
 }
 
 /// **Os símbolos que fazem nascer um OSSO** — os que de facto desenham um segmento, e os únicos
@@ -506,12 +538,29 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
                 let par = anchor(&mut st, &mut out, m.born, m.sym);
                 // Uma marca não tem osso, mas TEM direcção: ela aponta como o ramo em que
                 // pousou. Em local isso é `0` (ela não virou nada em relação ao pai).
-                let mark_rot = if set.orient_world { out.wrot[par] } else { 0.0 };
+                // ⭐ **A VIRAGEM DA FOLHA** (report do Enio, 2026-08-30: *"nem as rotações
+                // das folhas"*): a direcção do ramo MAIS o que o artista pediu, mais um
+                // sorteio determinístico dentro da abertura.
+                //
+                // ⚠️ **`0` e `0` dão a direcção do ramo AO BIT** — o `turn` é somado, não
+                // multiplicado, e um `0.0` somado a um `f32` é a identidade exacta.
+                //
+                // ⚠️ **O sorteio é por MARCA, não por ramo**: o índice é o número de
+                // elementos já emitidos, que é único e estável para uma mesma planta. Duas
+                // folhas do mesmo ramo têm de poder abrir para lados diferentes.
+                let spread = if set.leaf_spread == 0.0 {
+                    0.0
+                } else {
+                    (crate::hash::hash3(set.seed.to_bits(), out.parent.len() as u32, 0x1eaf) - 0.5)
+                        * set.leaf_spread
+                };
+                let turn = set.leaf_angle + spread;
+                let mark_rot = if set.orient_world { out.wrot[par] } else { 0.0 } + turn;
                 out.push(
                     par as f32,
                     0.0,
                     mark_rot,
-                    out.wrot[par],
+                    out.wrot[par] + turn,
                     out.p[par],
                     st.width,
                     st.depth,
@@ -542,7 +591,43 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     }
 
     let n = out.parent.len();
-    Stream::new(n)
+    let first = set.leaf_first_level.max(0.0) as u16;
+    let marks: Vec<f32> = (0..n)
+        .map(|i| {
+            mark_weight(
+                out.sym[i] as i32 as u8,
+                out.born[i] as u16,
+                out.depth[i] as u16,
+                set.youngest,
+                first,
+            )
+        })
+        .collect();
+    // ⭐⭐ **A FOLHA FORA DO TINT DA ÁRVORE** — report do Enio (2026-08-30): *"uma opção para
+    // livrar as folhas, os frutos do tint que pinta tudo na árvore"*.
+    //
+    // ⚠️ **Não é um canal novo: é o que a casa inteira já fala.** O `motion.tint` faz
+    // `lerp(existente, alvo, falloff)`, então `falloff = 0` numa linha **mantém a cor que ela
+    // tem** — e o mesmo vale para todo nó que honre essa máscara.
+    //
+    // ⚠️ **Com `Reached` a coluna NÃO NASCE**, e não é economia: uma coluna de uns é uma
+    // resposta a uma pergunta que ninguém fez, e ela apagaria um `falloff` que um nó a
+    // montante tivesse escrito. Ausente ⇒ `1` em toda a casa ⇒ byte-idêntico.
+    let stream = Stream::new(n);
+    let stream = if set.leaf_effects {
+        stream
+    } else {
+        stream.with(
+            "falloff",
+            Column::Scalar(
+                out.sym
+                    .iter()
+                    .map(|s| f32::from(!matches!(*s as i32 as u8, b'J' | b'K' | b'M')))
+                    .collect::<Vec<_>>(),
+            ),
+        )
+    };
+    stream
         .with("P", Column::Vec2(out.p))
         .with("parent", Column::Scalar(out.parent))
         .with("len", Column::Scalar(out.len))
@@ -559,16 +644,7 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         .with("depth", Column::Scalar(out.depth))
         // ⭐ **O peso de abertura de cada marca** — ver [`mark_grow`]. Coluna NOVA: quem não
         // a lê fica byte-idêntico, e ela é `1` para tudo o que não é marca.
-        .with(
-            "mark_grow",
-            Column::Scalar(
-                out.sym
-                    .iter()
-                    .zip(out.born.iter())
-                    .map(|(s, b)| mark_grow(*s as i32 as u8, *b as u16, set.youngest))
-                    .collect::<Vec<_>>(),
-            ),
-        )
+        .with("mark_grow", Column::Scalar(marks))
         .with("gen", Column::Scalar(out.born))
         .with("sym", Column::Scalar(out.sym))
         .with(

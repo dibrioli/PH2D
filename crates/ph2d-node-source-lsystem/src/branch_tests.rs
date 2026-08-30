@@ -224,6 +224,11 @@ fn a_real_branching_plant_becomes_few_ribbons_not_one_per_segment() {
         youngest: (0, 1.0),
         angle_frac: 1.0,
         orient_world: true,
+        leaf_first_level: 0.0,
+        leaf_angle: 0.0,
+        leaf_spread: 0.0,
+        leaf_effects: true,
+        seed: 1.0,
     };
     let nop: &dyn Fn(&str) -> f32 = &|_| 0.0;
     let chain = crate::derive::axiom_modules("F[+F]F[-F]F", nop);

@@ -25,7 +25,8 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 use super::motion_lsystem_leaves::{
-    Job, anchors_of, plant_and_leaves, say_if_the_letter_is_missing,
+    Job, anchors_of, plant_and_leaves, say_if_a_wire_drives_an_inert_param,
+    say_if_the_leaf_cannot_go_in_front, say_if_the_letter_is_missing,
 };
 use crate::motion_state::MotionState;
 
@@ -340,10 +341,32 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             text(ls::LEAF_PARAMS[1]),
             text(ls::LEAF_PARAMS[2]),
         ];
-        jobs.push((key, bs, anchors, names));
+        // ⚠️ **Os nomes conduzidos por FIO** — a lista que separa «o artista pôs um LFO aqui»
+        // de «este param está no default».
+        let driven: Vec<&'static str> = ls::MANIFEST
+            .params
+            .iter()
+            .map(|p| p.name)
+            .filter(|n| {
+                motion
+                    .doc
+                    .graph
+                    .param_sources(id)
+                    .is_some_and(|m| m.contains_key(*n))
+            })
+            .collect();
+        say_if_a_wire_drives_an_inert_param(&key, &driven, get(ls::param::TROPISM));
+        jobs.push((
+            key,
+            bs,
+            anchors,
+            names,
+            get(ls::param::LEAF_FRONT),
+            get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
+        ));
     }
 
-    for (key, bs, anchors, names) in jobs {
+    for (key, bs, anchors, names, front, keep_own_colour) in jobs {
         let used = &bs[..];
         // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
         // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
@@ -377,7 +400,23 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         let stream = match handle {
             Some(h) => {
                 say_if_the_letter_is_missing(&key, &names, &anchors);
-                plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook)
+                say_if_the_leaf_cannot_go_in_front(
+                    &key,
+                    &names,
+                    &std::array::from_fn(|i| {
+                        super::motion_lsystem_leaves::named_appearance(&motion.pump.cook, &names[i])
+                    }),
+                    front,
+                );
+                plant_and_leaves(
+                    origin,
+                    h,
+                    &anchors,
+                    &names,
+                    &motion.pump.cook,
+                    front,
+                    keep_own_colour,
+                )
             }
             None => Stream::new(0),
         };

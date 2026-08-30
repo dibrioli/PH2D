@@ -127,6 +127,11 @@ pub(crate) fn raw_ratio_and_family(axiom_src: &str, rules_src: &str, p: &Params)
                 angle_frac: 1.0,
                 youngest: (d.generations, 1.0),
                 orient_world: true,
+                leaf_first_level: p.leaf_first_level,
+                leaf_angle: p.leaf_angle,
+                leaf_spread: p.leaf_spread,
+                leaf_effects: p.leaf_effects.round() as i32 != 0,
+                seed: p.seed,
             },
         );
         (w, d)

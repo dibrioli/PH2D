@@ -301,3 +301,114 @@ fn the_scrollbar_thumb_maps_back_to_this_panel() {
         "o par de repouso mudou de forma; re-leia este gate"
     );
 }
+
+// ── ⭐⭐ O MENU DO CARTÃO (etapa C) ──────────────────────────────────────────────────────────────
+
+/// Encena um menu de cartão já fechado, como o `pointer_down` faz: abrir estaciona o pedido, e
+/// fechar move-o para o `last_context_menu`, que é de onde o `apply_event` o lê.
+fn stage_card_menu(host: &mut MockPanelHost, cell: ph2d_a11y::NodeId) {
+    use ph2d_editor_core::interaction::{ContextMenuKind, ContextMenuRequest};
+    host.store_mut().open_context_menu(ContextMenuRequest {
+        x: 0.0,
+        y: 0.0,
+        kind: ContextMenuKind::AssetCard { cell },
+    });
+    host.store_mut().close_context_menu();
+}
+
+/// ⭐⭐ **Toda linha do menu de um cartão despacha alguma coisa.**
+///
+/// ⚠️ **A fonte é a TABELA** (`menu_rows(AssetCard)` — a mesma que o overlay pinta), nunca uma
+/// lista aqui dentro: um verbo novo entra neste gate no dia em que é pintado, sem ninguém se
+/// lembrar. É o gémeo exacto do `every_hierarchy_row_menu_entry_dispatches_something`, e existe
+/// pela mesma doença medida: um item pintado e morto lê-se, do lado do artista, como um app
+/// partido.
+///
+/// **Mutação que deve sangrar:** apagar um braço do `card_verb_of` no `event.rs`.
+#[test]
+fn every_asset_card_menu_entry_dispatches_something() {
+    use ph2d_editor_core::interaction::ContextMenuKind;
+    use ph2d_editor_core::screens::hero::menu_rows::menu_rows;
+
+    let rows = menu_rows(ContextMenuKind::AssetCard {
+        cell: ids::asset_cell_id(0),
+    });
+    assert!(
+        !rows.is_empty(),
+        "a tabela do menu do cartão está vazia — este gate mediria nada"
+    );
+
+    let mut dead: Vec<&str> = Vec::new();
+    for (id, label, _) in rows {
+        let (mut host, mut st) = open_host();
+        ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Component {
+            stable_id: 77,
+        }]);
+        stage_card_menu(&mut host, ids::asset_cell_id(0));
+        let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(*id));
+        if out != EventOutcome::Consumed || host.bus().len() == 0 {
+            dead.push(label);
+        }
+    }
+    assert!(
+        dead.is_empty(),
+        "linhas do menu do cartão que são PINTADAS e não despacham nada: {dead:?}.\n\
+         Ligue cada uma no `card_verb_of` de `crates/ph2d-panel-asset-browser/src/event.rs` e \
+         drene a acção no `shells/desktop/src/asset_card_verbs.rs`."
+    );
+}
+
+/// ⚠️ **Uma IMAGEM também despacha os três** — a tabela é plana, e quem recusa (em voz alta) é o
+/// shell. ⛔ Um painel que filtrasse aqui devolveria o silêncio que a tabela plana existe para
+/// evitar, e este gate é o que impede alguém de «optimizar» isso.
+#[test]
+fn an_image_card_dispatches_every_verb_too_because_the_shell_is_who_refuses() {
+    use ph2d_editor_core::action_bus::AssetCardAction;
+    use ph2d_editor_core::interaction::drag_payload::DragPayload;
+
+    for verb in [
+        AssetCardAction::Instantiate,
+        AssetCardAction::SelectUsers,
+        AssetCardAction::RemoveFromLibrary,
+    ] {
+        let id = match verb {
+            AssetCardAction::Instantiate => ph2d_editor_core::ids::CTX_MENU_ASSET_INSTANTIATE,
+            AssetCardAction::SelectUsers => ph2d_editor_core::ids::CTX_MENU_ASSET_SELECT_USERS,
+            AssetCardAction::RemoveFromLibrary => ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE,
+        };
+        let (mut host, mut st) = open_host();
+        ph2d_panel_asset_browser::state::probe_set_painted(vec![AssetRef::Texture {
+            asset: [9; 32],
+        }]);
+        stage_card_menu(&mut host, ids::asset_cell_id(0));
+        let out = host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(id));
+        assert_eq!(out, EventOutcome::Consumed, "{verb:?} morto numa imagem");
+        let drained: Vec<_> = host.bus_mut().drain().collect();
+        assert_eq!(
+            drained,
+            vec![EditorAction::AssetCardVerb {
+                asset: DragPayload::Image { asset: [9; 32] },
+                verb,
+            }],
+            "a imagem tem de chegar ao shell com o endereço dela"
+        );
+    }
+}
+
+/// ⚠️ **O menu que já não tem sujeito não age.** O menu abre no `Down` e é despachado num `Click`
+/// posterior; se a grade mudou de conteúdo no meio, a célula já não desenha asset nenhum — e agir
+/// sobre a célula seguinte seria apagar o prefab errado.
+///
+/// **Mutação que deve sangrar:** trocar o `None => Ignored` por um `unwrap_or` de índice 0.
+#[test]
+fn a_card_menu_whose_cell_no_longer_paints_anything_does_nothing() {
+    let (mut host, mut st) = open_host();
+    ph2d_panel_asset_browser::state::probe_set_painted(Vec::new());
+    stage_card_menu(&mut host, ids::asset_cell_id(0));
+    let out = host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::Click(ph2d_editor_core::ids::CTX_MENU_ASSET_REMOVE),
+    );
+    assert_eq!(out, EventOutcome::Ignored);
+    assert_eq!(host.bus().len(), 0);
+}

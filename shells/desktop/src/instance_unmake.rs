@@ -121,3 +121,7 @@ pub(crate) fn unmake_master(sim: &mut SimWorld, clicked: Entity) -> Result<Unmad
         })
     }
 }
+
+#[cfg(test)]
+#[path = "instance_unmake_tests.rs"]
+mod tests;

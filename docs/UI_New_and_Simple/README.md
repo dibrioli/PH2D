@@ -34,7 +34,10 @@ E três defeitos concretos, com foto:
 
 | Você quer | Leia |
 |---|---|
+| ⛔ **O que o Enio já DECIDIU** (não re-litigar) | [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md) |
 | **Quanto de UI nós temos, medido** (tokens, ids, painéis, LOC) | [`medicoes/01_o_estado_medido.md`](medicoes/01_o_estado_medido.md) |
+| **Quanto do canvas o chrome tapa** — a foto 1 em número | [`medicoes/02_a_area_tapada.md`](medicoes/02_a_area_tapada.md) |
+| **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |
@@ -69,9 +72,27 @@ O resumo que decide o que podemos fazer:
 *O Blender entra aqui como **documento**, nunca como fonte. É por isso que a pasta baixa
 `blender-developer-docs` e não `blender`.*
 
+## Estado (2026-08-30)
+
+✅ **Etapa 1 fechada.** Medição feita, referências baixadas e triadas, diagnóstico escrito, e as
+**três decisões estruturais tomadas pelo Enio** ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)):
+painéis **ancorados com flutuação declarada** · comandos em **barra global + cabeçalho por área**
+· modos **por tarefa**.
+
+Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
+- **51,0 % do canvas é chrome** no viewport de referência — que é o iPad Pro 12,9". A régua da
+  esquerda está **87,8 % tapada**, e ⚠️ **por causa do rail, não dos painéis**.
+- **16 dos 83 slots de cor são apelidos puros** — todos os 16 `timeline-*`. Fundi-los é uma
+  mudança de **zero pixels**.
+
+⏳ **Próximo:** as três decisões convergem numa peça só — **o modelo de ÁREAS/REGIÕES** — e é
+essa que a spec tem de desenhar primeiro. Ver [`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md),
+secção final.
+
 ## O que esta etapa NÃO fez
 
-- Não escreveu spec. Não tocou uma linha de `crates/`.
-- Não decidiu nada: as perguntas abertas estão no fim de
-  [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md), e são
-  do Enio.
+- Não escreveu spec. **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado
+  é o `.gitignore`, para manter `referencias/` fora do git.
+- Não decidiu nada sozinha: as três decisões são do Enio, e o que fica em aberto está nomeado em
+  [`pesquisa/03_diagnostico_e_principios.md §7`](pesquisa/03_diagnostico_e_principios.md) e nos
+  `⏳` de cada medição.

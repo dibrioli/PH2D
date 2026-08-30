@@ -103,6 +103,36 @@ impl AssetRef {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CatalogId(pub u128);
 
+/// ⭐⭐ **A MINIATURA de um cartão** — RGBA8 **reto** (não pré-multiplicado), justo, `w * h * 4`.
+///
+/// ⚠️ **A igualdade é por IDENTIDADE do `Arc`, e é `O(1)` de propósito.** Um cartão redesenha-se a
+/// cada quadro e o painel pergunta *«é a mesma imagem da anterior?»* para não reconstruir a textura
+/// — comparar 37 KB de bytes por cartão, 512 cartões, por quadro, mediria o que a pergunta existe
+/// para evitar. ⇒ quem produz uma miniatura NOVA produz um `Arc` novo; ⛔ **nunca mute um `Arc`
+/// existente em sítio**, porque o `vello` indexa o atlas pelo id da `Blob` e serviria os pixels
+/// velhos, sem erro nenhum.
+///
+/// ⚠️ **Ela é um tipo desta crate FOLHA, e não o `PreviewThumb` do painel do Motion**, embora os
+/// três campos sejam os mesmos: esta crate não conhece painel nenhum, e a **redução** (a lei) tem
+/// dono único em `shells/desktop/src/thumbnail.rs`. *Duas vocabulários sobre uma lei é isolamento;
+/// duas leis seria o defeito.*
+#[derive(Clone, Debug)]
+pub struct Thumb {
+    /// Os bytes, partilhados por contagem de referências.
+    pub rgba: std::sync::Arc<Vec<u8>>,
+    /// Largura em px.
+    pub w: u32,
+    /// Altura em px.
+    pub h: u32,
+}
+
+impl PartialEq for Thumb {
+    fn eq(&self, other: &Self) -> bool {
+        self.w == other.w && self.h == other.h && std::sync::Arc::ptr_eq(&self.rgba, &other.rgba)
+    }
+}
+impl Eq for Thumb {}
+
 /// Uma entrada do índice — o que o navegador desenha.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssetEntry {
@@ -118,6 +148,14 @@ pub struct AssetEntry {
     /// corpo do cartão enquanto a miniatura verdadeira não existe (A6) — *um cartão com a cor da
     /// imagem é informação; um cartão cinzento é um lugar vazio.*
     pub swatch: [u8; 4],
+    /// ⭐⭐ **A miniatura de verdade**, quando existe (wave A6). `None` = o cartão desenha-se com a
+    /// [`Self::swatch`].
+    ///
+    /// ⚠️ **A ausência é informação, não um buraco.** Um **Prefab** sem peça nenhuma com pixels não
+    /// tem imagem que o descreva, e uma imagem de 16 bits ainda não a tem; nos dois casos a cor
+    /// dominante é o que existe, e desenhá-la é honesto. *Um quadrado cinzento é que seria um
+    /// lugar vazio.*
+    pub thumb: Option<Thumb>,
     /// O catálogo a que pertence (A3). `None` = *Unassigned*.
     pub catalog: Option<CatalogId>,
     /// Etiquetas livres (A3).
@@ -141,6 +179,7 @@ impl AssetEntry {
             name: name.into(),
             detail: String::new(),
             swatch: [0x50, 0x50, 0x58, 0xFF],
+            thumb: None,
             catalog: None,
             tags: Vec::new(),
             deps: Vec::new(),

@@ -24,7 +24,7 @@
 //! mesmo nos dois casos, então trocar a lei não mexe no modelo.
 
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef};
+use ph2d_asset_index::{AssetEntry, AssetIndex, AssetRef, Thumb};
 use ph2d_ecs::{Children, Entity, MasterRoot, Name, SimWorld, SpritePixels, StableId};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -34,20 +34,44 @@ use std::collections::BTreeMap;
 /// ⚠️ **É um teto de RELÓGIO, e a conta está aqui:** a média percorre a imagem com passo, então
 /// uma textura de 4096² custa o mesmo que uma de 64² — `4096` amostras, ~4 µs. Sem o passo, a
 /// mesma textura custaria 16,7 M amostras (~14 ms, um quadro inteiro) **por textura**.
-/// ⚠️ E o resultado é guardado por `AssetId` na [`SwatchCache`], então a conta corre **uma vez por
+/// ⚠️ E o resultado é guardado por `AssetId` na [`CardArt`], então a conta corre **uma vez por
 /// conteúdo**, não uma vez por quadro.
 const SWATCH_SAMPLES: usize = 4096;
 
-/// A memória das cores já calculadas — chaveada por CONTEÚDO, que é o que as torna reutilizáveis
+/// ⭐ **A memória do que um cartão DESENHA**, chaveada por CONTEÚDO — o que a torna reutilizável
 /// entre quadros, entre entidades e depois de um undo.
-pub(crate) type SwatchCache = BTreeMap<AssetId, [u8; 4]>;
+///
+/// ⚠️ **Ela é obrigatória, não uma optimização.** A `TextureLibrary` reescreve a entrada de cada
+/// textura **a cada quadro** (é assim que um nome novo chega lá), então sem esta memória a média
+/// de cor e a redução da miniatura correriam 60×/s por textura. A cor tem tecto de amostras; a
+/// miniatura **não pode ter** — ela lê a imagem inteira, e é exactamente por isso que a resposta
+/// se guarda.
+#[derive(Default)]
+pub(crate) struct CardArt {
+    /// A cor dominante já calculada.
+    swatches: BTreeMap<AssetId, [u8; 4]>,
+    /// ⭐⭐ A miniatura já reduzida (wave A6). ⚠️ O `Arc` guardado aqui é o que faz a igualdade
+    /// `O(1)` do [`Thumb`] funcionar a jusante: enquanto o conteúdo não muda, o painel recebe **o
+    /// mesmo ponteiro** e não reconstrói a textura de GPU.
+    thumbs: BTreeMap<AssetId, Thumb>,
+}
+
+impl CardArt {
+    /// Uma memória vazia.
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+}
 
 thread_local! {
     /// A cache viva da sessão. Ela é `thread_local` e não um campo do `App` porque a chave é o
     /// **conteúdo** — ela não pertence a um projecto, a uma cena nem a um quadro, e sobrevive
     /// correctamente a um `Open Project` (os bytes iguais dão a mesma cor).
-    static SWATCHES: std::cell::RefCell<SwatchCache> = const {
-        std::cell::RefCell::new(BTreeMap::new())
+    static SWATCHES: std::cell::RefCell<CardArt> = const {
+        std::cell::RefCell::new(CardArt {
+            swatches: BTreeMap::new(),
+            thumbs: BTreeMap::new(),
+        })
     };
     /// A biblioteca de texturas da sessão — ver [`TextureLibrary`].
     static LIBRARY: RefCell<TextureLibrary> = const {
@@ -78,7 +102,7 @@ pub(crate) fn publish_for_frame(sim: &mut SimWorld, db: &AssetDb, visible: bool)
 pub(crate) fn build(
     sim: &mut SimWorld,
     db: &AssetDb,
-    swatches: &mut SwatchCache,
+    swatches: &mut CardArt,
     remembered: &mut TextureLibrary,
 ) -> AssetIndex {
     let mut index = AssetIndex::new();
@@ -126,6 +150,23 @@ pub(crate) fn build(
         {
             entry.swatch = rgba;
         }
+        // ⭐⭐ **A miniatura de um Prefab é a da PEÇA MAIOR dele** (wave A6).
+        //
+        // ⚠️ **Isto não é o retrato do prefab, e a diferença está declarada.** O retrato a sério é
+        // um render offscreen da sub-árvore, e ele está BLOQUEADO por uma medição: esta função
+        // corre sem `gpu`, sem `renderer` e sem `vello_pass` em mãos (o índice é construído no
+        // `snapshots::publish`), então um retrato teria de nascer noutra fase e ser **consultado**
+        // daqui — o molde é o `ObjectBake::thumbnail_for`, e é wave própria.
+        //
+        // ⭐ O que isto compra hoje: **no caso comum um prefab é UMA peça**, e aí a peça maior *é*
+        // o prefab — a miniatura fica exacta. Num prefab de várias peças ela é parcial, e o que a
+        // torna honesta é a linha de detalhe ao lado dizer *«N pieces»*.
+        //
+        // ⚠️ **Maior por ÁREA do `Sprite`, com desempate pelo `StableId`** — sem o desempate, duas
+        // peças do mesmo tamanho fariam o cartão trocar de imagem entre quadros ao sabor da ordem
+        // de arquétipo.
+        entry.thumb =
+            largest_piece_texture(sim, &pieces).and_then(|id| thumb_for(db, id, swatches));
         entry.deps = deps;
         index.push(entry);
     }
@@ -223,12 +264,7 @@ fn piece_count_label(n: usize) -> String {
     }
 }
 
-fn texture_entry(
-    db: &AssetDb,
-    id: AssetId,
-    name: String,
-    swatches: &mut SwatchCache,
-) -> AssetEntry {
+fn texture_entry(db: &AssetDb, id: AssetId, name: String, swatches: &mut CardArt) -> AssetEntry {
     let mut entry = AssetEntry::new(
         AssetRef::Texture {
             asset: *id.as_bytes(),
@@ -241,6 +277,7 @@ fn texture_entry(
     if let Some(rgba) = swatch_for(db, id, swatches) {
         entry.swatch = rgba;
     }
+    entry.thumb = thumb_for(db, id, swatches);
     entry
 }
 
@@ -266,8 +303,8 @@ fn dimensions(db: &AssetDb, id: AssetId) -> Option<(u32, u32)> {
 }
 
 /// A cor do cartão, com memória por conteúdo.
-fn swatch_for(db: &AssetDb, id: AssetId, cache: &mut SwatchCache) -> Option<[u8; 4]> {
-    if let Some(hit) = cache.get(&id) {
+fn swatch_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<[u8; 4]> {
+    if let Some(hit) = cache.swatches.get(&id) {
         return Some(*hit);
     }
     let asset = db.get(&id)?;
@@ -284,8 +321,67 @@ fn swatch_for(db: &AssetDb, id: AssetId, cache: &mut SwatchCache) -> Option<[u8;
         // sério. *`#[non_exhaustive]` obriga o ramo `_`, então esta ausência é DECLARADA aqui.*
         _ => return None,
     };
-    cache.insert(id, rgba);
+    cache.swatches.insert(id, rgba);
     Some(rgba)
+}
+
+/// A textura da **maior** peça de uma receita — ver o bloco que a chama para o porquê.
+///
+/// ⚠️ Uma peça sem `Sprite` mas com `SpritePixels` conta com área `0`: ela ainda é a única
+/// candidata num prefab que só tenha essa, e devolver `None` ali daria um cartão cinzento sobre um
+/// asset que tem imagem.
+fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
+    let mut best: Option<(u64, u64, AssetId)> = None; // (área em ulps, id de desempate, textura)
+    for &p in pieces {
+        let Some(px) = sim.world().get::<SpritePixels>(p) else {
+            continue;
+        };
+        let area = sim.world().get::<ph2d_render::Sprite>(p).map_or(0.0, |s| {
+            f64::from(s.size[0].abs()) * f64::from(s.size[1].abs())
+        });
+        // A ordem é sobre `f64`, que não é `Ord`; a chave inteira mantém a comparação total **e**
+        // determinística — um `partial_cmp` com `NaN` devolveria `None` e o `max_by` escolheria ao
+        // acaso.
+        let key = (area.max(0.0) * 1e6) as u64;
+        let tie = sim.world().get::<StableId>(p).map_or(u64::MAX, |s| s.0);
+        let cand = (key, tie, px.0);
+        if best.is_none_or(|b| (cand.0, std::cmp::Reverse(cand.1)) > (b.0, std::cmp::Reverse(b.1)))
+        {
+            best = Some(cand);
+        }
+    }
+    best.map(|(_, _, id)| id)
+}
+
+/// ⭐⭐ **A miniatura do cartão, com memória por conteúdo** (wave A6).
+///
+/// ⚠️ **Sem tecto de amostras, ao contrário da cor — e isso é a razão da cache, não um descuido.**
+/// Uma média de cor pode saltar pixels porque a resposta é UM número; uma miniatura é a forma, e
+/// saltar pixels apaga exactamente o que se quer ver. ⇒ ela lê a imagem inteira **uma vez por
+/// conteúdo** e a resposta fica guardada. A `TextureLibrary` reescreve a entrada a cada quadro, e
+/// sem esta memória seria uma passagem completa por textura, 60×/s.
+///
+/// ⚠️ **Devolve sempre o MESMO `Arc` para o mesmo conteúdo** — é isso que deixa o painel decidir
+/// em `O(1)` que a imagem não mudou e não reconstruir a textura de GPU. ⛔ Um `Arc` novo por quadro
+/// faria o `vello` reenviar cada cartão ao atlas **todo o quadro**.
+fn thumb_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<Thumb> {
+    if let Some(hit) = cache.thumbs.get(&id) {
+        return Some(hit.clone());
+    }
+    let asset = db.get(&id)?;
+    // ⚠️ **Aqui a porta é a `image_rgba8`, e não o `match` que a cor usa** — ela cobre as DUAS
+    // variantes (a de 16 bits sai convertida), e é isso que fecha a dívida que o `swatch_for`
+    // declara no `_`: *«uma imagem de 16 bits fica com a cor neutra até a A6 desenhar a miniatura
+    // a sério»*. A conversão custa uma descodificação inteira, que aqui já se paga na mesma — e
+    // **uma vez só**, por conteúdo.
+    let (w, h, pixels) = asset.image_rgba8()?;
+    if w == 0 || h == 0 || pixels.len() < (w as usize) * (h as usize) * 4 {
+        return None;
+    }
+    let (rgba, tw, th) = crate::thumbnail::reduce(&pixels, w, h);
+    let thumb = Thumb { rgba, w: tw, h: th };
+    cache.thumbs.insert(id, thumb.clone());
+    Some(thumb)
 }
 
 /// A média em **luz linear**, ponderada por alfa.
@@ -383,7 +479,7 @@ mod tests {
     fn one_walk_returns_both_families() {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         let index = build(&mut sim, &db, &mut cache, &mut lib);
         let counts = index.counts();
@@ -396,7 +492,7 @@ mod tests {
     fn the_component_declares_the_texture_and_the_texture_names_its_owner() {
         let db = AssetDb::new();
         let (mut sim, id) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         let index = build(&mut sim, &db, &mut cache, &mut lib);
         let tex = AssetRef::Texture {
@@ -412,7 +508,7 @@ mod tests {
     fn deleting_the_master_removes_it_from_the_next_build() {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         assert_eq!(
             build(&mut sim, &db, &mut cache, &mut lib)
@@ -439,7 +535,7 @@ mod tests {
         let mut pixels = vec![0u8; 4 * 4 * 4];
         pixels[0..4].copy_from_slice(&[255, 0, 0, 255]);
         let id = db.insert_image_rgba8(4, 4, pixels);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let rgba = swatch_for(&db, id, &mut cache).expect("uma imagem rgba8 tem cor");
         assert!(rgba[0] > 200, "vermelho esperado, veio {rgba:?}");
         assert!(
@@ -454,11 +550,33 @@ mod tests {
     fn the_swatch_is_computed_once_per_content() {
         let db = AssetDb::new();
         let id = db.insert_image_rgba8(2, 2, vec![9u8; 16]);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let _ = swatch_for(&db, id, &mut cache);
-        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.swatches.len(), 1);
         let _ = swatch_for(&db, id, &mut cache);
-        assert_eq!(cache.len(), 1, "a segunda leitura nao recalcula");
+        assert_eq!(cache.swatches.len(), 1, "a segunda leitura nao recalcula");
+    }
+
+    /// ⭐⭐ **E a MINIATURA também** — a metade que o A6 acrescentou, e a que de facto obriga a
+    /// memória: a cor tem tecto de amostras, a miniatura lê a imagem inteira.
+    ///
+    /// ⚠️ **A barra não é «a cache tem 1 entrada», é «o `Arc` é o MESMO»** — é isso que o painel
+    /// compara em `O(1)` para não reconstruir a textura de GPU. Um cache que devolvesse bytes
+    /// iguais num `Arc` novo passaria na contagem e faria o `vello` reenviar cada cartão ao atlas
+    /// todo o quadro, sem um único gate vermelho.
+    #[test]
+    fn the_thumbnail_is_reduced_once_and_hands_back_the_same_arc() {
+        let db = AssetDb::new();
+        let id = db.insert_image_rgba8(2, 2, vec![9u8; 16]);
+        let mut cache = CardArt::new();
+        let a = thumb_for(&db, id, &mut cache).expect("a miniatura sai de 2x2");
+        assert_eq!(cache.thumbs.len(), 1);
+        let b = thumb_for(&db, id, &mut cache).expect("a segunda leitura acerta na memória");
+        assert_eq!(cache.thumbs.len(), 1, "a segunda leitura nao recalcula");
+        assert!(
+            std::sync::Arc::ptr_eq(&a.rgba, &b.rgba),
+            "o mesmo conteúdo tem de devolver o MESMO ponteiro"
+        );
     }
 
     /// ⚠️ **A ordem NÃO é a de iteração do ECS.** Ela sai do `StableId`, e por isso é a mesma em
@@ -467,7 +585,7 @@ mod tests {
     fn two_builds_of_the_same_world_agree_entry_for_entry() {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache, &mut lib)
             .entries()
@@ -495,7 +613,7 @@ mod tests {
             let _ = db.insert_image_rgba8(4, 4, vec![i; 64]);
         }
         let mut sim = SimWorld::new();
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         let index = build(&mut sim, &db, &mut cache, &mut lib);
         assert!(
@@ -513,7 +631,7 @@ mod tests {
     fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
         let db = AssetDb::new();
         let (mut sim, id) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         assert_eq!(
             build(&mut sim, &db, &mut cache, &mut lib)
@@ -552,7 +670,7 @@ mod tests {
     fn hiding_an_object_changes_nothing_in_the_library() {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         let before: Vec<(String, String, [u8; 4])> = build(&mut sim, &db, &mut cache, &mut lib)
             .entries()
@@ -598,7 +716,7 @@ mod tests {
                 StableId(50),
             ))
             .id();
-        let mut cache = SwatchCache::new();
+        let mut cache = CardArt::new();
         let mut lib = TextureLibrary::default();
         assert_eq!(
             build(&mut sim, &db, &mut cache, &mut lib)

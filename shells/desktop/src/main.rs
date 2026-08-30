@@ -592,6 +592,9 @@ mod texture_pattern_pick;
 /// **A cena de smoke do Texture Pattern** (`PH2D_BUILD_SMOKE=76`, plano 33).
 mod texture_pattern_smoke;
 mod theme;
+/// ⭐ **A REDUÇÃO a uma miniatura de cartão** — uma lei, três consumidores (os dois assadores do
+/// Motion e o navegador de assets). Sem vocabulário de painel, de propósito.
+mod thumbnail;
 mod timeline_onion_smoke;
 #[cfg(test)]
 #[path = "timeline_orphan_tests.rs"]

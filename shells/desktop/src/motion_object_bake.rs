@@ -553,10 +553,20 @@ pub(crate) fn bake_rgba_many(
     Some((rgba, wpx, hpx, size))
 }
 
-/// A small tile side (px) for a card thumbnail — big enough to read the shape,
-/// small enough that the bytes ride the snapshot per frame for free (~37 KB at
-/// 96²). Shared by the vector (A2) and Flip (A3) bakes.
-pub(crate) const THUMB_MAX: u32 = 96;
+/// Lado máximo de uma miniatura — ⚠️ **a lei mudou-se para [`crate::thumbnail`]** quando ganhou o
+/// terceiro consumidor (o navegador de assets, 2026-08-30). Re-exportado para os chamadores e os
+/// gates deste módulo continuarem a escrevê-lo como sempre.
+pub(crate) use crate::thumbnail::THUMB_MAX;
+
+/// A miniatura de um ladrilho assado, no vocabulário do painel do Motion.
+///
+/// ⚠️ **A REDUÇÃO vive em [`crate::thumbnail::reduce`]** e não conhece painel nenhum; o que esta
+/// função acrescenta é só o tipo — que é de `ph2d-panel-motion-graph`, e por isso não podia descer
+/// para uma folha partilhada com o `ph2d-asset-index`.
+pub(crate) fn thumbnail(rgba: &[u8], w: u32, h: u32) -> ph2d_panel_motion_graph::PreviewThumb {
+    let (rgba, w, h) = crate::thumbnail::reduce(rgba, w, h);
+    ph2d_panel_motion_graph::PreviewThumb { rgba, w, h }
+}
 
 #[cfg(test)]
 #[path = "motion_object_bake_tests.rs"]

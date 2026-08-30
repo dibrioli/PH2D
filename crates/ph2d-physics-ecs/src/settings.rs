@@ -187,7 +187,10 @@ impl Default for PhysicsSettings {
     /// that never opened the panel simulating differently than before the panel
     /// existed.
     fn default() -> Self {
-        let b = BodyDefaults::rapier();
+        // ⚠️ `ours()`, não `rapier()`. Estes valores são PERSISTIDOS neste struct (ele é `serde`
+        // e viaja no `.ph2dproj`), então lê-los de uma fonte que se move faria uma cena nova e um
+        // projecto gravado terem tatos diferentes. Ver o doc de `BodyDefaults::ours`.
+        let b = BodyDefaults::ours();
         Self {
             gravity_x: 0.0,
             gravity_y: PhysicsWorld::DEFAULT_GRAVITY_Y,

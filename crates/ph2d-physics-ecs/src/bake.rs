@@ -42,6 +42,32 @@ impl PoseChannel {
     pub const ALL: [PoseChannel; 3] = [PoseChannel::X, PoseChannel::Y, PoseChannel::Rotation];
 }
 
+/// ⭐⭐ **O piso de ruído de um canal — e o número NÃO é escolhido, é o do solver.**
+///
+/// Um canal só vira faixa se a excursão inteira dele passar deste valor. Ele existe porque a
+/// `rapier2d` 0.35 deixou de escrever o `f32` idêntico para um eixo que não move: uma caixa
+/// perfeitamente simétrica largada na vertical percorre **0,21 mm** no horizontal (medido, 58
+/// valores distintos em 90 tiques), e com a igualdade bit-exacta que estava aqui antes isso faria
+/// o *bake* **tomar posse do X e apagar o que o artista animou lá**.
+///
+/// # Por que `1 mm`, e por que ele não é um palpite
+///
+/// É o `normalized_allowed_linear_error` que o mundo instala (`ph2d-physics`, `world.rs`): a
+/// distância que o **próprio solver** declara não corrigir. Um corpo em repouso pode afundar até
+/// aí no vizinho sem que a rapier o considere um erro a resolver.
+///
+/// ⇒ *Movimento abaixo da tolerância de posição do solver não é, pela definição do próprio solver,
+/// movimento.* Qualquer outro número seria uma escolha nossa a defender; este é a **fronteira que a
+/// simulação já traça**, lida no sítio onde ela é escrita.
+///
+/// ⚠️ **Ele é mil vezes maior do que a deriva medida e mil vezes menor do que um gesto**: 0,21 mm
+/// de ruído passa longe por baixo, e o menor movimento que um artista autora — um degrau, um
+/// salto, um empurrão — passa longe por cima. Não há um terceiro caso entre os dois nesta engine.
+///
+/// ⛔ Se um dia a fronteira apertar (o solver passar a corrigir mais fino), este número desce com
+/// ela — e o sítio a olhar é o `normalized_allowed_linear_error`, não este ficheiro.
+const CHANNEL_NOISE_FLOOR: f64 = 0.001;
+
 /// One entity's simulated pose, tick by tick, starting at tick 0.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BakedTrajectory {
@@ -64,11 +90,24 @@ impl BakedTrajectory {
     /// "wrong". The sim has nothing to say about a channel it never moved, so
     /// it says nothing.
     ///
-    /// Constancy is **bit-exact**, deliberately, and not a tolerance: rapier
-    /// writes the identical `f32` for a channel it does not touch, so exact
-    /// equality is the test that lives where the domain is empty. A body that
-    /// jitters by one ulp really did move, and the fit collapses that to two
-    /// keys anyway.
+    /// ⛔⛔ **A constância era BIT-EXACTA, e a premissa que a sustentava DISSOLVEU na
+    /// `rapier2d` 0.35.** O argumento escrito aqui era: *«a rapier escreve o `f32` idêntico para um
+    /// canal que ela não toca, então a igualdade exacta é o teste que vive onde o domínio é
+    /// vazio»*. Ele estava certo — e deixou de estar.
+    ///
+    /// **Medido em 2026-08-29** com a fixtura do gate (uma caixa perfeitamente simétrica largada
+    /// na vertical sobre um chão plano, 90 tiques): o X percorre `2,1 × 10⁻⁴ m` — **0,21 mm** — em
+    /// **58 valores `f32` distintos**. Não é um *ulp* de ruído (o ulp de `1.0f32` é `1,2 × 10⁻⁷`):
+    /// é **1760×** isso. O solver novo quebra a simetria de verdade, ainda que por um valor
+    /// invisível.
+    ///
+    /// ⚠️ **E a consequência é de PRODUTO, não de teste:** com igualdade exacta, assar uma queda
+    /// vertical passaria a **tomar posse do X** — e tomar posse significa substituir, no vão
+    /// assado, o que o artista animou à mão nesse canal. *O gate não estava a proteger um número;
+    /// estava a proteger o trabalho dele.*
+    ///
+    /// ⇒ A régua passa a ser [`CHANNEL_NOISE_FLOOR`], e o número **não é escolhido**: é a
+    /// tolerância que o próprio solver declara.
     ///
     /// ⚠️ **This guards the UNTOUCHED channel only, and the difference matters.**
     /// A channel the solver moved at all is a channel the bake takes ownership
@@ -119,8 +158,21 @@ impl BakedTrajectory {
             .filter(|s| s.0 >= start && s.0 <= end)
             .map(|s| (s.0, f64::from(pick(s))))
             .collect();
-        let first = windowed.first()?.1;
-        if windowed.iter().all(|&(_, v)| v == first) {
+        // ⚠️ **A excursão INTEIRA do canal, contra a tolerância do solver** — ver
+        // [`CHANNEL_NOISE_FLOOR`] para por que deixou de ser igualdade bit-exacta.
+        let mut lo = f64::INFINITY;
+        let mut hi = f64::NEG_INFINITY;
+        for &(_, v) in &windowed {
+            lo = lo.min(v);
+            hi = hi.max(v);
+        }
+        // ⚠️ **A forma POSITIVA é deliberada, e não é gosto do clippy.** Se uma amostra vier `NaN`,
+        // `hi - lo` é `NaN`; a forma negada (`!(hi - lo > piso)`) dá **`true`** e o canal é
+        // declarado constante e **descartado** — que é exactamente a falha que este piso existe
+        // para curar. Escrito assim, um `NaN` dá `false` e o canal **sobrevive** para quem o
+        // consome ver que está partido. *Uma comparação com `NaN` é sempre falsa, e o lado em que
+        // se põe o `!` decide se um canal envenenado é apagado em silêncio ou entregue.*
+        if hi - lo <= CHANNEL_NOISE_FLOOR {
             return None;
         }
         Some(windowed)

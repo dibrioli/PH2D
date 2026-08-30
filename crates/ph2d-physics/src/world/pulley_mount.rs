@@ -11,8 +11,8 @@
 //! Medido em `tests/measure_pulley_tackle.rs`: um bloco de 2 kg equilibra com
 //! **1,00 kg** de contrapeso na talha e **2,00 kg** amarrado direto na corda.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
-use rapier2d::na::{Point2, Vector2};
 
 use super::rope_route::{self, RopeWheel, Tangent};
 use super::{End, end};
@@ -55,9 +55,12 @@ pub(super) fn mount_point(
     bodies: &RigidBodySet,
     handle: RigidBodyHandle,
     local: [f32; 2],
-) -> Option<Point2<f32>> {
+) -> Option<Vector> {
     let body = bodies.get(handle)?;
-    Some(body.position() * Point2::new(local[0], local[1]))
+    // ⚠️ Um **LUGAR** body-local levado ao mundo — `Pose * Vector` é
+    // `transform_point` (roda **e** translada), que é exactamente o que o
+    // `Isometry2 * Point2` do nalgebra fazia. Ver [`crate::rmath`].
+    Some(body.position() * Vector::new(local[0], local[1]))
 }
 
 /// **O eixo MONTADO da roldana `i`** (W3): o corpo que ela carrega, a ponta
@@ -79,10 +82,10 @@ pub(super) fn mounted_axle(
     live: &[RopeWheel],
     legs: &[Tangent],
     i: usize,
-) -> Option<(RigidBodyHandle, End, Vector2<f32>)> {
+) -> Option<(RigidBodyHandle, End, Vector)> {
     let w = live.get(i)?;
     let handle = w.body?;
     let j = rope_route::wheel_jacobian(legs, i)?;
     let e = end(bodies, handle, w.local)?;
-    Some((handle, e, Vector2::new(j[0], j[1])))
+    Some((handle, e, Vector::new(j[0], j[1])))
 }

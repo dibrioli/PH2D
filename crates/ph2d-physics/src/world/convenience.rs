@@ -7,9 +7,9 @@
 //! [`PhysicsWorld::spawn_body`] with a [`super::desc::BodyDesc`], or `bodies_mut` and
 //! the rapier builders directly.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodyBuilder, RigidBodyHandle};
 use rapier2d::geometry::{ColliderBuilder, ColliderHandle};
-use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
 
@@ -26,7 +26,7 @@ impl PhysicsWorld {
         density: f32,
     ) -> (RigidBodyHandle, ColliderHandle) {
         let body = RigidBodyBuilder::dynamic()
-            .translation(Vector2::new(x, y))
+            .translation(Vector::new(x, y))
             .build();
         let body_handle = self.bodies.insert(body);
         self.stamp_defaults(body_handle);
@@ -48,7 +48,7 @@ impl PhysicsWorld {
         half_y: f32,
     ) -> (RigidBodyHandle, ColliderHandle) {
         let body = RigidBodyBuilder::fixed()
-            .translation(Vector2::new(x, y))
+            .translation(Vector::new(x, y))
             .build();
         let body_handle = self.bodies.insert(body);
         self.stamp_defaults(body_handle);
@@ -80,7 +80,7 @@ impl PhysicsWorld {
     pub fn spawn_world_anchor(&mut self, point: [f32; 2]) -> RigidBodyHandle {
         self.bodies.insert(
             RigidBodyBuilder::fixed()
-                .translation(Vector2::new(point[0], point[1]))
+                .translation(Vector::new(point[0], point[1]))
                 .build(),
         )
     }

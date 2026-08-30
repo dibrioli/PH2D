@@ -19,7 +19,17 @@
 use rapier2d::dynamics::{
     FixedJointBuilder, Multibody, PrismaticJointBuilder, RevoluteJointBuilder, RigidBodySet,
 };
-use rapier2d::na::{DVector, Isometry2, Point2, Vector2};
+// ⚠️ **O `DVector` continua a vir do `nalgebra`, e não é resíduo.** A `rapier2d`
+// 0.35 trocou a geometria para o `glam` mas manteve o nalgebra para a álgebra
+// DENSA de dimensão dinâmica: `Multibody::apply_displacements` toma `&[Real]` e
+// `inverse_kinematics` um `&mut rapier2d::math::DVector` — o alias JÁ carrega o `Real`, então
+// ele não leva parâmetro genérico. ⚠️ Entra por `rapier2d::math`, e não por `rapier2d::na`: o
+// gate `the_old_math_vocabulary_is_gone` recusa a segunda porta, e é ela que faz o vocabulário
+// morto voltar em silêncio.
+// Não há equivalente no `glam`, que é uma biblioteca de dimensão fixa.
+use rapier2d::math::DVector;
+
+use crate::rmath::{Pose, Vector};
 
 use super::joints::{JointDesc, JointKind};
 
@@ -34,11 +44,7 @@ use super::ik::{IkLink, LimitedDof};
 ///
 /// Uma fórmula, dois tipos, sem caso especial: é a mesma expressão que o rapier
 /// compõe, resolvida para o lado que falta.
-pub(super) fn joint_coordinate(
-    kind: JointKind,
-    desc: &JointDesc,
-    rel: &Isometry2<f32>,
-) -> Option<f32> {
+pub(super) fn joint_coordinate(kind: JointKind, desc: &JointDesc, rel: &Pose) -> Option<f32> {
     let (f1, f2) = joint_frames(kind, desc)?;
     let j = f1.inverse() * rel * f2;
     match kind {
@@ -56,16 +62,13 @@ pub(super) fn joint_coordinate(
 /// ⚠️ Derivada aqui e não lida do `MultibodyJoint`: são os números que NÓS
 /// passamos ao builder, então derivá-los é reproduzir a nossa própria receita,
 /// enquanto lê-los seria depender de como o rapier a guardou.
-pub(super) fn joint_frames(
-    kind: JointKind,
-    desc: &JointDesc,
-) -> Option<(Isometry2<f32>, Isometry2<f32>)> {
-    let a = Vector2::new(desc.anchor_a[0], desc.anchor_a[1]);
-    let b = Vector2::new(desc.anchor_b[0], desc.anchor_b[1]);
+pub(super) fn joint_frames(kind: JointKind, desc: &JointDesc) -> Option<(Pose, Pose)> {
+    let a = Vector::new(desc.anchor_a[0], desc.anchor_a[1]);
+    let b = Vector::new(desc.anchor_b[0], desc.anchor_b[1]);
     match kind {
         // O `RevoluteJointBuilder` põe só as âncoras: os frames não giram, e é
         // por isso que o ângulo de `local_to_parent` É a coordenada.
-        JointKind::Pin => Some((Isometry2::new(a, 0.0), Isometry2::new(b, 0.0))),
+        JointKind::Pin => Some((Pose::new(a, 0.0), Pose::new(b, 0.0))),
         // O prismático gira `+X` até o eixo do trilho — a rotação que faz a
         // pose relativa NÃO entregar a distância percorrida de graça.
         JointKind::Slider => {
@@ -78,8 +81,8 @@ pub(super) fn joint_frames(
                 }
             };
             Some((
-                Isometry2::new(a, ang(desc.axis_a)),
-                Isometry2::new(b, ang(desc.axis_b)),
+                Pose::new(a, ang(desc.axis_a)),
+                Pose::new(b, ang(desc.axis_b)),
             ))
         }
         _ => None,
@@ -176,11 +179,7 @@ pub(super) fn limit_is_a_coordinate(kind: JointKind) -> bool {
 /// O preço, que é o certo: a ponta deixa de alcançar o alvo quando um limite
 /// está no caminho. Um cotovelo que não dobra para trás é um cotovelo que não
 /// dobra para trás.
-pub(super) fn project_limits(
-    mb: &mut Multibody,
-    limits: &[LimitedDof],
-    scratch: &mut DVector<f32>,
-) {
+pub(super) fn project_limits(mb: &mut Multibody, limits: &[LimitedDof], scratch: &mut DVector) {
     scratch.fill(0.0);
     let mut any = false;
     for l in limits {
@@ -208,8 +207,11 @@ pub(super) fn project_limits(
 /// a resposta conservadora (trava tudo), que é visivelmente errado num smoke em
 /// vez de sutilmente errado.
 pub(super) fn multibody_joint(desc: &JointDesc) -> rapier2d::dynamics::GenericJoint {
-    let a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
-    let b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
+    // ⚠️ Eram `Point2` — hoje ponto e vetor são o MESMO tipo (ver
+    // [`crate::rmath`]). São LUGARES no referencial de cada corpo, e a única
+    // coisa que se faz com eles é entregá-los ao `local_anchor1`/`2`.
+    let a = Vector::new(desc.anchor_a[0], desc.anchor_a[1]);
+    let b = Vector::new(desc.anchor_b[0], desc.anchor_b[1]);
     match desc.kind {
         JointKind::Pin => {
             let mut builder = RevoluteJointBuilder::new()
@@ -353,6 +355,6 @@ pub fn fk_dof(kind: JointKind) -> Option<FkDof> {
 /// frames e devolve a distância percorrida de verdade.
 #[must_use]
 pub fn joint_coordinate_at(desc: &JointDesc, parent: [f32; 3], child: [f32; 3]) -> Option<f32> {
-    let iso = |p: [f32; 3]| Isometry2::new(Vector2::new(p[0], p[1]), p[2]);
+    let iso = |p: [f32; 3]| Pose::new(Vector::new(p[0], p[1]), p[2]);
     joint_coordinate(desc.kind, desc, &(iso(parent).inverse() * iso(child)))
 }

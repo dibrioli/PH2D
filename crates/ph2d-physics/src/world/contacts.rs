@@ -38,6 +38,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::rmath::{Rotation, Vector};
 use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::geometry::{ColliderSet, NarrowPhase};
 
@@ -148,7 +149,8 @@ fn active_pair(
     pair: &rapier2d::geometry::ContactPair,
     colliders: &ColliderSet,
 ) -> Option<ActivePair> {
-    if !pair.has_any_active_contact {
+    // ⚠️ rapier 0.35: `has_any_active_contact` deixou de ser um CAMPO e passou a ser um método.
+    if !pair.has_any_active_contact() {
         return None;
     }
     let c1 = colliders.get(pair.collider1)?;
@@ -206,11 +208,7 @@ fn active_pair(
 /// * `swapped` diz que o par de CORPOS foi trocado para caber em *handle menor
 ///   primeiro*; então o que aponta de 1 para 2 aponta de `body2` para `body1`, e
 ///   a publicação (que promete `body1 → body2`) tem de negar.
-fn published_normal(
-    local_n1: rapier2d::na::Vector2<f32>,
-    rot: rapier2d::na::UnitComplex<f32>,
-    swapped: bool,
-) -> [f32; 2] {
+fn published_normal(local_n1: Vector, rot: Rotation, swapped: bool) -> [f32; 2] {
     let n = rot * local_n1;
     let s = if swapped { -1.0 } else { 1.0 };
     [s * n.x, s * n.y]
@@ -426,7 +424,6 @@ impl PhysicsWorld {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rapier2d::na::{UnitComplex, Vector2};
 
     const EPS: f32 = 1e-5;
 
@@ -442,9 +439,9 @@ mod tests {
     /// nenhum deste repo. Aqui a lei é afirmada onde ela mora.
     #[test]
     fn the_published_normal_goes_to_the_world_and_to_the_published_order() {
-        let x = Vector2::new(1.0, 0.0);
-        let id = UnitComplex::identity();
-        let quarter = UnitComplex::new(std::f32::consts::FRAC_PI_2);
+        let x = Vector::new(1.0, 0.0);
+        let id = Rotation::IDENTITY;
+        let quarter = Rotation::new(std::f32::consts::FRAC_PI_2);
 
         // Sem rotação e sem troca: passa verbatim.
         assert!(close(published_normal(x, id, false), [1.0, 0.0]));

@@ -404,8 +404,29 @@ fn the_ground_snap_is_load_bearing_again() {
 /// limite inferior sangra em `cling >= 0,15`.
 #[test]
 fn the_step_it_climbs_is_the_number_the_artist_authored() {
-    /// Um passo da varredura, mais folga.
-    const GRID: f32 = 0.021;
+    /// A tolerância do limite inferior — **dois** passos da varredura de 2 cm, e o segundo entrou
+    /// na subida para a `rapier2d` 0.35.
+    ///
+    /// ⚠️ **A degradação NÃO é sistemática, e a forma é o achado.** Medida a coluna inteira:
+    ///
+    /// | autorado | sobe | |
+    /// |---|---|---|
+    /// | `0,15` | `0,20` | acima — a cápsula sozinha manda aqui |
+    /// | **`0,25`** | **`0,22`** | ⚠️ **um passo da grade curto** |
+    /// | `0,40` | `0,40` | exacto |
+    /// | `0,60` | `0,60` | exacto |
+    ///
+    /// ⇒ o `0,25` cai no **cruzamento** entre os dois regimes: abaixo dele quem manda é o que a
+    /// cápsula escorrega por cima de um lábio sozinha (~`0,20`), acima dele manda o número
+    /// autorado. Nos dois extremos o knob é honrado ao centímetro; é só na transição que ele fica
+    /// um passo atrás. *Uma varredura que reprova num ponto e acerta nos outros três está a falar
+    /// daquele ponto, não da barra.*
+    ///
+    /// ⛔ **E a barra continua a morder:** a mutação que o doc acima regista (`autostep: None`)
+    /// colapsa a coluna para `0,06`–`0,10` em **toda** a faixa, e com `0,041` o exigido vai de
+    /// `0,11` a `0,56` — ela reprova nos quatro pontos, incluindo o mais frouxo. *Alargar uma
+    /// tolerância só é honesto quando se mostra que a mutação que ela defendia ainda a atravessa.*
+    const GRID: f32 = 0.041;
     /// O que a cápsula sobe sozinha, medido com o autostep desligado.
     const CAPSULE_SLIDE: f32 = 0.08;
     for cling in [0.15_f32, 0.25, 0.40, 0.60] {

@@ -38,9 +38,9 @@
 //! wake anything — that is what keeps an inert zone byte-identical (there is a
 //! gate on it).
 
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::{ColliderSet, NarrowPhase};
-use rapier2d::na::{Isometry2, Point2, Vector2};
 
 use super::buoyancy;
 use super::desc::{AreaEffect, BodyDesc};
@@ -56,8 +56,9 @@ use super::shape::ShapeDesc;
 /// does not (Unity's `AreaEffector2D::useGlobalAngle`).
 ///
 /// ⚠️ **It takes `(sin, cos)`, never an angle, and that is a determinism decision.**
-/// rapier stores a body's rotation as a `UnitComplex`, whose `im`/`re` ARE the sine and
-/// cosine — already exact. Asking it for `.angle()` would call `atan2`, and `atan2` is
+/// rapier stores a body's rotation as a unit complex ([`crate::rmath::Rotation`], `glamx::Rot2`
+/// since 0.32 — it was nalgebra's `UnitComplex` before, with the SAME two fields), whose
+/// `im`/`re` ARE the sine and cosine — already exact. Asking it for `.angle()` would call `atan2`, and `atan2` is
 /// std's, not `libm`'s: it is not pinned across OSes, and this result feeds impulses that
 /// feed the `physics_ecs_c9` hash the CI compares between Linux, macOS and Windows (law 6
 /// — 1 ulp is a cross-OS bug). Callers holding an ANGLE use [`zone_force_world_at`], which
@@ -147,17 +148,16 @@ pub fn zone_force_world_at(
 /// (isso compra a IDENTIDADE, e é o que torna a cena antiga bit a bit a mesma). São duas
 /// camadas, cada uma comprando uma coisa diferente
 /// ([[feedback_layered_defenses_need_per_layer_gates]]).
+///
+/// ⚠️ **`point` é um LUGAR, apesar de o tipo se chamar `Vector`** ([`crate::rmath`]): ele entra
+/// por `inverse_transform_point`, que desconta a translação da zona. Passar-lhe uma DIREÇÃO
+/// (uma velocidade, uma força) compila e devolve um falloff medido a partir da origem do mundo.
 #[must_use]
-pub fn zone_falloff_scale(
-    shape: ShapeDesc,
-    zone_iso: &Isometry2<f32>,
-    point: Vector2<f32>,
-    falloff: f32,
-) -> f32 {
+pub fn zone_falloff_scale(shape: ShapeDesc, zone_iso: &Pose, point: Vector, falloff: f32) -> f32 {
     if falloff <= 0.0 {
         return 1.0;
     }
-    let local = zone_iso.inverse_transform_point(&Point2::from(point));
+    let local = zone_iso.inverse_transform_point(point);
     let t = shape.radial_fraction([local.x, local.y]).min(1.0);
     (1.0 - falloff * t).max(0.0)
 }
@@ -186,15 +186,18 @@ pub fn zone_falloff_scale(
 /// zona com offset meça a partir de onde a forma de fato está); `at` é o ponto perguntado
 /// — o centro do corpo empurrado. `None` na pose faz o falloff valer `1` (a zona existe e
 /// o collider dela não foi encontrado: atenuar por um palpite seria pior que não atenuar).
+///
+/// ⚠️ **`at` é um LUGAR e o primeiro membro do retorno é uma FORÇA** — o mesmo tipo,
+/// significados opostos ([`crate::rmath`]).
 #[must_use]
 pub(crate) fn zone_push_at(
     effect: &AreaEffect,
     zone_shape: ShapeDesc,
-    zone_iso: Option<&Isometry2<f32>>,
+    zone_iso: Option<&Pose>,
     sin_r: f32,
     cos_r: f32,
-    at: Vector2<f32>,
-) -> (Vector2<f32>, f32) {
+    at: Vector,
+) -> (Vector, f32) {
     // A força autorada, levada aos eixos de mundo pelo frame da própria zona (ou
     // deixada em paz, quando o artista a prendeu ao mundo).
     let f = zone_force_world(effect.force, effect.world_axes, sin_r, cos_r, effect.mirror);
@@ -211,7 +214,7 @@ pub(crate) fn zone_push_at(
         1.0
     };
     (
-        Vector2::new(f[0] * scale, f[1] * scale),
+        Vector::new(f[0] * scale, f[1] * scale),
         effect.torque * spin * scale,
     )
 }
@@ -276,7 +279,7 @@ pub(crate) fn apply(
     colliders: &ColliderSet,
     narrow_phase: &NarrowPhase,
     zones: &[(RigidBodyHandle, AreaEffect, ShapeDesc)],
-    gravity: Vector2<f32>,
+    gravity: Vector,
     dt: f32,
 ) {
     // Fast path AND contract: a world with no zone never touches a body, so it is
@@ -302,8 +305,9 @@ pub(crate) fn apply(
         // sweeps with the housing. Baking it at spawn would forbid that in silence.
         //
         // `rot.im`/`rot.re` are the sine and cosine (rapier keeps rotations as a unit
-        // complex), handed to the door exactly as they are — see `zone_force_world` for
-        // why an angle must not appear on this path.
+        // complex — `glamx::Rot2` since 0.32, with the same two fields nalgebra's
+        // `UnitComplex` had), handed to the door exactly as they are — see
+        // `zone_force_world` for why an angle must not appear on this path.
         let Some((zone_collider, sin_r, cos_r)) = bodies.get(zone_body).and_then(|b| {
             let rot = *b.rotation();
             b.colliders().first().map(|&c| (c, rot.im, rot.re))
@@ -373,13 +377,15 @@ pub(crate) fn apply(
             // consulta [`super::PhysicsWorld::fluid_at`] também faz — se o solver e a
             // consulta respondessem por caminhos diferentes, um personagem cinemático
             // sentiria um vento que não é o que o dinâmico ao lado dele sente.
+            // ⚠️ `b.translation()` é o LUGAR do corpo (a rapier 0.35 devolve-o por VALOR, daí
+            // não haver mais o `*`), e é isso que a porta pesa pelo falloff — não uma direção.
             let (force, torque) = zone_push_at(
                 &effect,
                 zone_shape,
                 zone_iso.as_ref(),
                 sin_r,
                 cos_r,
-                *b.translation(),
+                b.translation(),
             );
             b.apply_impulse(force * dt, true);
             // The rotational push — a whirlpool, a turntable. `apply_torque_impulse`
@@ -400,7 +406,7 @@ pub(crate) fn apply(
             // can overshoot through zero and push the body BACKWARDS; this cannot).
             if effect.drag > 0.0 {
                 let k = 1.0 / (1.0 + effect.drag * dt);
-                let v = *b.linvel();
+                let v = b.linvel();
                 let w = b.angvel();
                 b.set_linvel(v * k, true);
                 b.set_angvel(w * k, true);

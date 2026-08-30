@@ -34,9 +34,9 @@
 //! is ONE formula and no special case — and it stays correct for a platform at any
 //! angle meeting a body at any angle.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::{ColliderHandle, ColliderSet, SolverFlags};
-use rapier2d::na::Vector2;
 use rapier2d::pipeline::{
     ActiveHooks, ContactModificationContext, PairFilterContext, PhysicsHooks,
 };
@@ -219,11 +219,11 @@ impl PhysicsHooks for OneWayHooks<'_> {
         // The platform's solid side, in world space: its own local +Y, rotated by its
         // pose. Deriving it from the pose is why a rotated platform is one-way along
         // its OWN axis rather than along the world's.
-        let world_up = plat.position().rotation * Vector2::y();
+        let world_up = plat.position().rotation * Vector::Y;
         // Into collider1's frame, flipped when the platform is collider2 (the normal
         // then points from the body TOWARD the platform). See the module docs.
         let signed = if platform_is_c1 { world_up } else { -world_up };
-        let allowed_local_n1 = c1.position().rotation.inverse_transform_vector(&signed);
+        let allowed_local_n1 = c1.position().rotation.inverse_transform_vector(signed);
 
         // ── A DESCIDA (W12), e o que ela RELATA (W20) ────────────────────────
         // Se o outro collider do par está a atravessar, a plataforma simplesmente
@@ -241,14 +241,14 @@ impl PhysicsHooks for OneWayHooks<'_> {
         // ainda está a fazer trabalho. Ler o cone sem chamar
         // `update_as_oneway_platform` é deliberado — ver [`DropLedger`].
         if dropping {
-            if context.manifold.local_n1.dot(&allowed_local_n1) >= ALLOWED_COS {
+            if context.manifold.local_n1.dot(allowed_local_n1) >= ALLOWED_COS {
                 self.ledger.note(other);
             }
             context.solver_contacts.clear();
             return;
         }
 
-        context.update_as_oneway_platform(&allowed_local_n1, ALLOWED_ANGLE);
+        context.update_as_oneway_platform(allowed_local_n1, ALLOWED_ANGLE);
     }
 }
 

@@ -23,7 +23,7 @@ use rapier2d::geometry::ColliderBuilder;
 fn capsule_body(w: &mut PhysicsWorld, x: f32, y: f32, half_h: f32, radius: f32) -> RigidBodyHandle {
     w.set_gravity(0.0, 0.0);
     let body = RigidBodyBuilder::new(RigidBodyType::Dynamic)
-        .translation(Vector2::new(x, y))
+        .translation(Vector::new(x, y))
         .build();
     let h = w.bodies.insert(body);
     w.stamp_defaults(h);
@@ -159,7 +159,7 @@ fn a_compound_body_sweeps_every_shape_it_has() {
     let body = capsule_body(&mut w, 0.0, 0.0, 0.3, 0.2); // topo em 0,5
     // Uma segunda peça, mais alta: topo em 1,5.
     let arm = ColliderBuilder::cuboid(0.1, 0.5)
-        .translation(Vector2::new(0.0, 1.0))
+        .translation(Vector::new(0.0, 1.0))
         .density(1.0)
         .build();
     let ch = w.colliders.insert_with_parent(arm, body, &mut w.bodies);
@@ -197,7 +197,7 @@ fn a_layer_the_sweeper_does_not_collide_with_is_invisible_to_it() {
     let wall = |w: &mut PhysicsWorld, layer: usize| {
         let b = w.bodies.insert(
             RigidBodyBuilder::new(RigidBodyType::Fixed)
-                .translation(Vector2::new(3.0, 0.0))
+                .translation(Vector::new(3.0, 0.0))
                 .build(),
         );
         let c = ColliderBuilder::cuboid(1.0, 5.0).build();
@@ -238,7 +238,7 @@ fn a_sensor_is_not_something_to_bump_into() {
     let mut w = PhysicsWorld::new();
     let zone = w.bodies.insert(
         RigidBodyBuilder::new(RigidBodyType::Fixed)
-            .translation(Vector2::new(0.0, 3.0))
+            .translation(Vector::new(0.0, 3.0))
             .build(),
     );
     let c = ColliderBuilder::cuboid(8.0, 1.0).sensor(true).build();

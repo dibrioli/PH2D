@@ -8,7 +8,7 @@
 //! lands, not the body origin.
 //!
 //! Red-first and mutation-verified: mutating `spawn_body`'s
-//! `.translation(Vector2::new(desc.offset[0], desc.offset[1]))` to a zero vector
+//! `.translation(Vector::new(desc.offset[0], desc.offset[1]))` to a zero vector
 //! makes the offset body rest at the same height as the centred one, and the
 //! "rests lower" assertion goes RED.
 

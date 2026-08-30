@@ -7,7 +7,9 @@
 //! carrega velocidade**. Ver o comentário dentro de [`PhysicsWorld::spawn_body`] — ele é o registo
 //! de por que essa lei passou a valer também para a ROTAÇÃO na subida para a rapier 0.31.
 
-use rapier2d::prelude::{LockedAxes, RigidBodyBuilder, RigidBodyHandle, nalgebra::Vector2};
+use rapier2d::prelude::{LockedAxes, RigidBodyBuilder, RigidBodyHandle};
+
+use crate::rmath::Vector;
 
 use super::desc::BodyDesc;
 use super::{PhysicsWorld, collider_build, effector};
@@ -24,7 +26,7 @@ impl PhysicsWorld {
     /// untouched, so the cross-OS determinism gate stays byte-identical.
     pub fn spawn_body(&mut self, desc: BodyDesc) -> RigidBodyHandle {
         let body = RigidBodyBuilder::new(desc.body_type)
-            .translation(Vector2::new(desc.x, desc.y))
+            .translation(Vector::new(desc.x, desc.y))
             .rotation(desc.rotation)
             // Per-body gravity multiplier (W8). Setting `1.0` explicitly is
             // rapier's own default, so an unscaled body is byte-identical to
@@ -63,7 +65,7 @@ impl PhysicsWorld {
             // deles.* Quando ela caiu, a nossa lei ficou meio escrita — e o defeito
             // que isso produz é o pior tipo, porque o CAMPO continua marcado no
             // inspector e o corpo simplesmente deixa de obedecer.
-            .linvel(Vector2::new(
+            .linvel(Vector::new(
                 if desc.lock_x { 0.0 } else { desc.linvel[0] },
                 if desc.lock_y { 0.0 } else { desc.linvel[1] },
             ))

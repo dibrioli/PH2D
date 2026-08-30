@@ -154,7 +154,7 @@ fn a_capsule_climbs_a_step_that_stops_a_box() {
         for _ in 0..180 {
             w.step();
         }
-        w.body_pose(body).expect("body").translation.vector.x
+        w.body_pose(body).expect("body").translation.x
     };
 
     let box_x = run(ShapeDesc::Cuboid {

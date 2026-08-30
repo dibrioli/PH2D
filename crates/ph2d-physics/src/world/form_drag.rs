@@ -49,9 +49,14 @@
 //! é viscosidade, *Shape Drag* é resistência de forma, e as duas rows coexistem porque as
 //! duas existem na natureza.
 
+//! ⚠️ **PONTO e VETOR são o MESMO tipo aqui** ([`crate::rmath`]), e este módulo mistura os dois
+//! por construção: o polígono e o ponto de aplicação são LUGARES, a velocidade, a normal e a
+//! força são DESLOCAMENTOS, e o braço de alavanca (`at - com`) é a DIFERENÇA de dois lugares.
+//! Cada uma dessas expressões está anotada abaixo, porque o compilador já não as separa.
+
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
 use rapier2d::geometry::ColliderSet;
-use rapier2d::na::{Point2, Vector2};
 
 /// Amostras por aresta. ⚠️ **Duas, e não uma, por um motivo medido:** no MEIO da aresta
 /// de um corpo simétrico a velocidade de rotação é exatamente tangencial à superfície,
@@ -73,13 +78,14 @@ pub(crate) fn apply(
         let Some(rb) = bodies.get(body) else {
             return;
         };
-        let (v, w) = (*rb.linvel(), rb.angvel());
+        let (v, w) = (rb.linvel(), rb.angvel());
         // Um corpo parado não é resistido por nada — e sair aqui evita acordá-lo à toa.
-        if v.norm_squared() <= 0.0 && w == 0.0 {
+        if v.length_squared() <= 0.0 && w == 0.0 {
             return;
         }
         super::shapes::sorted_shapes(rb, scratch);
-        (*rb.center_of_mass(), v, w)
+        // ⚠️ O primeiro membro é o CENTRO DE MASSA — um LUGAR de mundo, não uma velocidade.
+        (rb.center_of_mass(), v, w)
     };
     let Some(b) = bodies.get_mut(body) else {
         return;
@@ -107,38 +113,51 @@ pub(crate) fn apply(
 ///
 /// Separado do `apply` porque é **pura** — dá para perguntar a ela *"que forças esta
 /// forma sofre nesta pose?"* sem um mundo, que é como os gates a interrogam.
+///
+/// ⚠️ **`poly`, `com` e `linvel` carregam o MESMO tipo e três significados diferentes** (ver
+/// [`crate::rmath`]): `poly` são PONTOS em espaço LOCAL, `com` é um PONTO em espaço de MUNDO
+/// (e é a `pose` que reconcilia os dois espaços), e `linvel` é um DESLOCAMENTO por segundo. A
+/// tupla de saída é `(FORÇA, PONTO de aplicação)`, na ordem que `apply_impulse_at_point` pede.
 #[must_use]
 fn edge_impulses(
-    poly: &[Point2<f32>],
-    pose: &rapier2d::na::Isometry2<f32>,
-    com: Point2<f32>,
-    linvel: Vector2<f32>,
+    poly: &[Vector],
+    pose: &Pose,
+    com: Vector,
+    linvel: Vector,
     angvel: f32,
     k: f32,
     dt: f32,
-) -> Vec<(Vector2<f32>, Point2<f32>)> {
+) -> Vec<(Vector, Vector)> {
     let mut out = Vec::with_capacity(poly.len() * EDGE_SAMPLES);
     for i in 0..poly.len() {
+        // PONTOS levados ao mundo: `pose * ponto` é `transform_point` (rotação **e**
+        // translação) — em `glamx` o `Mul<Vector>` de uma [`Pose`] é exatamente isso.
         let p = pose * poly[i];
         let q = pose * poly[(i + 1) % poly.len()];
+        // PONTO − PONTO = a ARESTA, que é um deslocamento.
         let edge = q - p;
-        let len = edge.norm();
+        let len = edge.length();
         if len <= 0.0 {
             continue;
         }
         // Normal EXTERNA de um polígono CCW: a aresta girada −90°. (`local_polygon`
         // devolve CCW para toda forma — é a convenção das tesselações que ele reusa.)
-        let n = Vector2::new(edge.y, -edge.x) / len;
+        // ⚠️ Dividida pelo `len` já medido, e não por `normalize()`: o `len <= 0.0` acima é a
+        // guarda, e o `normalize` do glam devolve NaN sobre um vetor nulo.
+        let n = Vector::new(edge.y, -edge.x) / len;
         let seg = len / EDGE_SAMPLES as f32;
         for k_i in 0..EDGE_SAMPLES {
             // O meio de cada sub-trecho — ver `EDGE_SAMPLES` para por que não basta um.
             let t = (k_i as f32 + 0.5) / EDGE_SAMPLES as f32;
-            let at = Point2::from(p.coords + edge * t);
+            // PONTO + ARESTA·t = o PONTO de aplicação, sobre a aresta.
+            let at = p + edge * t;
             // A velocidade DAQUELE ponto, não a do corpo: é o termo `ω × r` que faz um
             // corpo girando ser freado pela sua FORMA.
+            // ⚠️ `r` é PONTO − PONTO: o BRAÇO DE ALAVANCA, do centro de massa ao ponto de
+            // aplicação. É a única subtração deste módulo em que os dois lados são lugares.
             let r = at - com;
-            let v_at = linvel + Vector2::new(-angvel * r.y, angvel * r.x);
-            let facing = v_at.dot(&n);
+            let v_at = linvel + Vector::new(-angvel * r.y, angvel * r.x);
+            let facing = v_at.dot(n);
             // Só o que está virado PARA o escoamento resiste. O que está atrás está na
             // esteira, e somá-lo cancelaria o efeito inteiro — a resistência de forma é
             // justamente a assimetria entre frente e esteira.
@@ -147,7 +166,7 @@ fn edge_impulses(
             }
             // ⚠️ Ao longo de `-n` (para dentro do corpo), NÃO de `-v_at`: ver o
             // cabeçalho. Forças paralelas não geram torque nenhum.
-            out.push((n * (-k * seg * facing * v_at.norm() * dt), at));
+            out.push((n * (-k * seg * facing * v_at.length() * dt), at));
         }
     }
     out
@@ -156,15 +175,14 @@ fn edge_impulses(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rapier2d::na::Isometry2;
 
     /// Um retângulo 2×0,5 (um tronco), CCW.
-    fn log() -> Vec<Point2<f32>> {
+    fn log() -> Vec<Vector> {
         vec![
-            Point2::new(1.0, 0.25),
-            Point2::new(-1.0, 0.25),
-            Point2::new(-1.0, -0.25),
-            Point2::new(1.0, -0.25),
+            Vector::new(1.0, 0.25),
+            Vector::new(-1.0, 0.25),
+            Vector::new(-1.0, -0.25),
+            Vector::new(1.0, -0.25),
         ]
     }
 
@@ -173,15 +191,16 @@ mod tests {
         // O fato inteiro: o MESMO tronco, a MESMA velocidade, resistido conforme a
         // secção que ele oferece. De través a face longa (2,0) enfrenta o escoamento;
         // de proa, só a curta (0,5). Quatro vezes a força.
-        let flow = Vector2::new(0.0, -3.0);
-        let sum = |pose: &Isometry2<f32>| {
-            edge_impulses(&log(), pose, Point2::origin(), flow, 0.0, 1.0, 1.0)
+        let flow = Vector::new(0.0, -3.0);
+        let sum = |pose: &Pose| {
+            // `Vector::ZERO` no lugar de `Point2::origin()`: o centro de massa na origem.
+            edge_impulses(&log(), pose, Vector::ZERO, flow, 0.0, 1.0, 1.0)
                 .iter()
-                .fold(Vector2::zeros(), |a, (imp, _)| a + imp)
-                .norm()
+                .fold(Vector::ZERO, |a, (imp, _)| a + imp)
+                .length()
         };
-        let broadside = sum(&Isometry2::identity());
-        let edge_on = sum(&Isometry2::rotation(std::f32::consts::FRAC_PI_2));
+        let broadside = sum(&Pose::IDENTITY);
+        let edge_on = sum(&Pose::rotation(std::f32::consts::FRAC_PI_2));
         assert!(
             (broadside / edge_on - 4.0).abs() < 0.01,
             "de través o tronco tem de sofrer 4x a força de proa (2,0 contra 0,5 de \
@@ -201,10 +220,10 @@ mod tests {
         // Pinado para ninguém "consertar" de volta para um torque inventado, e para o
         // dia em que um lastro deslocar o centro de massa: aí ele aparece sozinho, e é
         // este gate que vai mudar de forma junto.
-        let flow = Vector2::new(0.0, -3.0);
+        let flow = Vector::new(0.0, -3.0);
         for angle in [0.0f32, 0.3, 0.5, 1.0, 2.0] {
-            let pose = Isometry2::rotation(angle);
-            let torque = edge_impulses(&log(), &pose, Point2::origin(), flow, 0.0, 1.0, 1.0)
+            let pose = Pose::rotation(angle);
+            let torque = edge_impulses(&log(), &pose, Vector::ZERO, flow, 0.0, 1.0, 1.0)
                 .iter()
                 .fold(0.0f32, |t, (imp, at)| t + at.x * imp.y - at.y * imp.x);
             assert!(
@@ -220,12 +239,16 @@ mod tests {
         // O segundo fato que só a FORMA conhece: o termo `ω × r` faz as arestas
         // distantes do centro varrerem mais fluido. Um damping angular uniforme dá o
         // mesmo freio para as duas formas; este dá o freio que a forma merece.
-        let spin = |poly: &[Point2<f32>]| {
+        let spin = |poly: &[Vector]| {
             edge_impulses(
                 poly,
-                &Isometry2::identity(),
-                Point2::origin(),
-                Vector2::zeros(),
+                &Pose::IDENTITY,
+                // ⚠️ Os dois `Vector::ZERO` NÃO são a mesma coisa: o primeiro é o centro de
+                // massa (um LUGAR, a origem) e o segundo é a velocidade linear (um
+                // DESLOCAMENTO, nulo). Eram `Point2::origin()` e `Vector2::zeros()`, e o
+                // compilador separava-os — hoje só a posição do argumento os separa.
+                Vector::ZERO,
+                Vector::ZERO,
                 4.0,
                 1.0,
                 1.0,
@@ -236,10 +259,10 @@ mod tests {
         };
         // Um quadrado de MESMA ÁREA que o tronco (2,0 × 0,5 = 1,0 ⇒ lado 1,0).
         let square = vec![
-            Point2::new(0.5, 0.5),
-            Point2::new(-0.5, 0.5),
-            Point2::new(-0.5, -0.5),
-            Point2::new(0.5, -0.5),
+            Vector::new(0.5, 0.5),
+            Vector::new(-0.5, 0.5),
+            Vector::new(-0.5, -0.5),
+            Vector::new(0.5, -0.5),
         ];
         let (long, compact) = (spin(&log()), spin(&square));
         assert!(
@@ -259,12 +282,12 @@ mod tests {
         // Essa componente é **sustentação**, e é o que faz uma placa inclinada planar de
         // lado enquanto cai (uma folha, um cartão). Com a força ao longo de `v` ela é
         // exatamente zero e nada plana.
-        let pose = Isometry2::rotation(0.6);
+        let pose = Pose::rotation(0.6);
         let side: f32 = edge_impulses(
             &log(),
             &pose,
-            Point2::origin(),
-            Vector2::new(0.0, -3.0),
+            Vector::ZERO,
+            Vector::new(0.0, -3.0),
             0.0,
             1.0,
             1.0,
@@ -285,9 +308,9 @@ mod tests {
         // efeito inteiro — a resistência de forma É a assimetria entre frente e esteira.
         let imps = edge_impulses(
             &log(),
-            &Isometry2::identity(),
-            Point2::origin(),
-            Vector2::new(0.0, -3.0),
+            &Pose::IDENTITY,
+            Vector::ZERO,
+            Vector::new(0.0, -3.0),
             0.0,
             1.0,
             1.0,

@@ -18,8 +18,10 @@ use rapier2d::geometry::ColliderBuilder;
 
 /// Um elo: caixa de `2·half_x` por `2·half_y` centrada em `(x, y)`.
 fn link(w: &mut PhysicsWorld, x: f32, y: f32, half_x: f32, half_y: f32) -> RigidBodyHandle {
+    // `Vector` chega pelo `use super::*` — é a `crate::rmath::Vector` que o
+    // `ik.rs` importa.
     let body = RigidBodyBuilder::dynamic()
-        .translation(Vector2::new(x, y))
+        .translation(Vector::new(x, y))
         .build();
     let h = w.bodies.insert(body);
     w.stamp_defaults(h);
@@ -594,10 +596,7 @@ fn the_tree_is_seeded_from_the_pose_the_chain_is_actually_in() {
         // comprimento adiante, ao longo do eixo dele.
         let centre = [origin[0] + 0.5 * c, origin[1] + 0.5 * s];
         let body = w.bodies_mut().get_mut(l.child).expect("link body");
-        body.set_position(
-            rapier2d::na::Isometry2::new(Vector2::new(centre[0], centre[1]), angle),
-            false,
-        );
+        body.set_position(Pose::new(Vector::new(centre[0], centre[1]), angle), false);
         origin = [origin[0] + c, origin[1] + s];
     }
     let before = w.body_pose(tip).expect("tip").translation;

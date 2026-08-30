@@ -139,7 +139,7 @@ fn measure_where_damping_stops_meaning_anything() {
             w.step();
         }
         // Terminal speed under gravity with this damping, vs. undamped 9.81 m/s.
-        let v = w.bodies().get(h).unwrap().linvel().norm();
+        let v = w.bodies().get(h).unwrap().linvel().length();
         println!(
             "  damping {d:>5.1} -> speed after 1 s {v:>7.4} m/s  ({:>6.2}% of free fall)",
             v / 9.81 * 100.0

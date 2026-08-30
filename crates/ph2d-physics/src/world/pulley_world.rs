@@ -13,7 +13,7 @@
 
 use super::rope_route::{self, RopeWheel};
 use super::{PulleyDesc, end};
-use rapier2d::na::Vector2;
+use crate::rmath::Vector;
 
 impl crate::PhysicsWorld {
     /// **Install the pulley table**, replacing whatever was there.
@@ -117,8 +117,8 @@ impl crate::PhysicsWorld {
             &mut scratch,
         )?;
         Some((
-            a.k(Vector2::new(r.dir_a[0], r.dir_a[1])),
-            b.k(Vector2::new(r.dir_b[0], r.dir_b[1])),
+            a.k(Vector::new(r.dir_a[0], r.dir_a[1])),
+            b.k(Vector::new(r.dir_b[0], r.dir_b[1])),
         ))
     }
 
@@ -141,7 +141,7 @@ impl crate::PhysicsWorld {
             desc.wheels(&self.pulley_wheels),
             &mut scratch,
         )?;
-        Some(-a.rate(Vector2::new(r.dir_a[0], r.dir_a[1])))
+        Some(-a.rate(Vector::new(r.dir_a[0], r.dir_a[1])))
     }
 
     /// O comprimento de rota de uma polia **como ela está agora**, para o

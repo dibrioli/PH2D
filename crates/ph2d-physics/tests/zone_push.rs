@@ -126,8 +126,8 @@ fn run(parts: u32, effect: AreaEffect, spin: bool, v0: [f32; 2]) -> (f32, f32, f
     (x, v[0].hypot(v[1]), angvel(&w, body))
 }
 
-fn rapier_vec(v: [f32; 2]) -> rapier2d::na::Vector2<f32> {
-    rapier2d::na::Vector2::new(v[0], v[1])
+fn rapier_vec(v: [f32; 2]) -> ph2d_physics::rmath::Vector {
+    ph2d_physics::rmath::Vector::new(v[0], v[1])
 }
 
 #[test]

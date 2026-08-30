@@ -9,7 +9,7 @@
 //! números simples e o `IntegrationParameters` fica dentro da crate (a mesma
 //! regra que o `lib.rs` enuncia para a superfície pública inteira).
 
-use rapier2d::na::Vector2;
+use crate::rmath::Vector;
 
 use super::PhysicsWorld;
 use super::defaults::BodyDefaults;
@@ -20,7 +20,7 @@ impl PhysicsWorld {
     /// Override gravity. Useful for top-down 2D (set to zero) or
     /// custom worlds.
     pub fn set_gravity(&mut self, x: f32, y: f32) {
-        self.gravity = Vector2::new(x, y);
+        self.gravity = Vector::new(x, y);
     }
 
     /// Contact response tuning, as plain numbers (rapier's

@@ -30,9 +30,9 @@
 //! offset é medido no frame da PEÇA. Sobrescrever a translação em vez de compor
 //! apagaria o offset em silêncio, que é a classe de bug que esta linha já pagou.
 
+use crate::rmath::{Pose, Rotation, Vector};
 use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::geometry::ColliderHandle;
-use rapier2d::na::{Isometry2, UnitComplex, Vector2};
 
 use super::desc::BodyDesc;
 use super::{PhysicsWorld, collider_build};
@@ -61,10 +61,9 @@ impl PhysicsWorld {
         // O que o `build_collider` deixou em `position` é o OFFSET da peça, no
         // frame dela. A pose local entra POR FORA (docs do módulo).
         let offset = *collider.position();
-        let place = Isometry2::from_parts(
-            Vector2::new(local[0], local[1]).into(),
-            UnitComplex::new(local[2]),
-        );
+        // ⚠️ O 1.º argumento era um `Translation2` (daí o `.into()`); no `Pose` do glamx ele é
+        // um `Vector` directo — a translação deixou de ter tipo próprio.
+        let place = Pose::from_parts(Vector::new(local[0], local[1]), Rotation::new(local[2]));
         collider.set_position(place * offset);
         let handle = self
             .colliders

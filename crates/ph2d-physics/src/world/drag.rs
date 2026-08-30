@@ -34,9 +34,14 @@
 //! ⚠️ **Zero is byte-identical to not having this at all** — the early-out below
 //! is what keeps the cross-OS C9 hashes from moving, and there is a gate on it.
 
+//! ⚠️ **PONTO e VETOR são o MESMO tipo** ([`crate::rmath`]), mas este módulo quase não os
+//! mistura: tudo aqui é DESLOCAMENTO (velocidade, força) ou EXTENSÃO (a `Aabb::extents`, que já
+//! é uma diferença de dois cantos). O único lugar que aparece é a pose local do collider, e ela
+//! entra como [`crate::rmath::Pose`] inteira, não decomposta.
+
+use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodySet;
 use rapier2d::geometry::ColliderSet;
-use rapier2d::na::Vector2;
 
 /// Apply one substep of quadratic drag to every dynamic body.
 ///
@@ -61,14 +66,14 @@ pub(crate) fn apply(bodies: &mut RigidBodySet, colliders: &ColliderSet, k: f32, 
         if !body.is_dynamic() {
             continue;
         }
-        let v = *body.linvel();
-        let speed = v.norm();
+        let v = body.linvel();
+        let speed = v.length();
         if speed <= 0.0 {
             continue;
         }
         let length = characteristic_length(body.colliders(), colliders);
         // F = -k · L · |v| · v — quadratic, opposing motion.
-        let force: Vector2<f32> = v * (-k * length * speed);
+        let force: Vector = v * (-k * length * speed);
         // ⚠️ **Impulse (F·dt), not `add_force`.** rapier's `add_force` adds a
         // CONSTANT force that persists until `reset_forces` is called, and the
         // pipeline never calls it — so applying it once per substep accumulated

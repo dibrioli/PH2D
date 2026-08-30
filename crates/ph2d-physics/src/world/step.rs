@@ -124,7 +124,8 @@ impl PhysicsWorld {
             };
             let event_handler = ();
             self.physics_pipeline.step(
-                &self.gravity,
+                // ⚠️ rapier 0.35: a gravidade passa **por valor** (o `Vector` é `Copy`).
+                self.gravity,
                 &self.integration_parameters,
                 &mut self.island_manager,
                 &mut self.broad_phase,

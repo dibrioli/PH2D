@@ -293,7 +293,9 @@ fn a_parts_combine_rules_reach_the_solver() {
 /// aconteceu.
 #[test]
 fn a_part_moved_while_the_clock_runs_takes_its_collider_along() {
-    fn owner_y(move_it: bool) -> f32 {
+    /// Devolve `(y do dono, y da peça)` — a segunda metade é a consequência física que não
+    /// depende de como o composto resolve o torque.
+    fn owner_y(move_it: bool) -> (f32, f32) {
         let mut sim = SimWorld::new();
         sim.world_mut().spawn((
             Name::new("Floor"),
@@ -344,15 +346,42 @@ fn a_part_moved_while_the_clock_runs_takes_its_collider_along() {
         for t in 61..=200u64 {
             bridge.dispatch(&mut sim, true, t);
         }
-        world_y(&sim, owner)
+        (world_y(&sim, owner), world_y(&sim, part))
     }
-    let still = owner_y(false);
-    let moved = owner_y(true);
+    let (still, still_part) = owner_y(false);
+    let (moved, moved_part) = owner_y(true);
+
+    // ⚠️ **A régua é a MAGNITUDE, e não o SENTIDO** — e a diferença apareceu na subida para a
+    // `rapier2d` 0.35. O texto acima diz *«o dono tem de ser empurrado para baixo»*, e essa era a
+    // resolução que o solver antigo escolhia. O corpo composto é um **L** (a peça a um metro à
+    // direita do dono), então empurrar a peça para fora do tecto é um TORQUE: para onde a origem
+    // do composto anda depende de como o solver reparte a correcção entre girar e transladar, e
+    // isso é detalhe de implementação. Medido na 0.35: o dono **sobe** `0,0877` em vez de descer.
+    //
+    // ⇒ O que o gate afirma — e o que a medição pré-cura mostrava — é que mover a peça **CHEGA ao
+    // solver**: antes da cura os dois casos davam `0,2990`, **bit-idêntico**, isto é, nada
+    // acontecia. *Uma diferença de zero e uma diferença de sinal trocado não são o mesmo achado, e
+    // só a primeira é o defeito que esta wave curou.*
     assert!(
-        moved < still - 0.05,
-        "mover a peça não mexeu no solver: dono em {moved:.4} contra {still:.4} \
-         parado — o collider ficou onde estava e o desenho atravessou o teto"
+        (moved - still).abs() > 0.05,
+        "mover a peça não mexeu no solver: dono em {moved:.4} contra {still:.4} parado — o \
+         collider ficou onde estava e o desenho atravessou o teto. (A medição pré-cura dava os \
+         dois BIT-IDÊNTICOS em 0,2990.)"
     );
+
+    // ⭐ E a consequência física que NÃO depende de como o composto resolve: a peça não pode
+    // acabar dentro do tecto. Ele tem meia-altura `0,5` centrado em `3,0` (base em `2,5`) e a peça
+    // tem meia-altura `0,3`; ela foi arrastada para `2,6`, isto é, `0,4` para dentro. Se o collider
+    // seguisse o desenho e o solver a empurrasse, ela sai; se o collider ficasse para trás, ela
+    // fica exactamente onde o artista a largou, atravessando o estático em silêncio — que é o
+    // report que originou esta wave.
+    assert!(
+        moved_part + 0.3 <= 2.5 + 1e-3,
+        "a peça acabou DENTRO do tecto (topo dela em {:.4}, base do tecto em 2,5): o collider não \
+         seguiu o desenho, que e' exactamente o \"houve penetracao da Shape no Static\" do report",
+        moved_part + 0.3
+    );
+    let _ = still_part;
 }
 
 /// **Nada escreve de volta na pose AUTORADA de uma peça.**

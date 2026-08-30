@@ -24,6 +24,9 @@
 //! Continuous Collision Detection and force fields still work via the
 //! underlying Rapier API but have no convenience helpers here.
 
+/// ⛔ **O vocabulário matemático da rapier, num sítio só** — e o aviso de que o PONTO e o
+/// VETOR viraram o mesmo tipo na 0.32. Leia o módulo antes de mexer em matemática de física.
+pub mod rmath;
 pub mod world;
 
 pub use world::blast::{Attract, blast_falloff};

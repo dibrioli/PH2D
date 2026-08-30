@@ -105,8 +105,8 @@
 
 use super::rope_load::{PulleyBreak, PulleyLedger, ledger_axles};
 use super::rope_route::{self, RopeWheel, Tangent};
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
-use rapier2d::na::{Point2, Vector2};
 
 /// A superfície que o MUNDO expõe sobre polias — instalar, medir, consultar.
 ///
@@ -361,7 +361,7 @@ pub fn apply(
         // bizarra que empurra o objeto na direção x das polias"*. Hoje quem cedeu
         // foi a TRAVA, que passou a falar esta mesma direção: colineares, o resíduo
         // entre as duas não tem eixo lateral para onde apontar.
-        let dir_a = Vector2::new(route.dir_a[0], route.dir_a[1]);
+        let dir_a = Vector::new(route.dir_a[0], route.dir_a[1]);
         // ⚠️ **A ponta B entra ENGRENADA** (W4). `weight_b` é `1.0` em toda corda
         // sem tambor diferencial — e `x * 1.0 == x` é exato —, então isto é
         // byte-neutro para tudo que já existia.
@@ -372,7 +372,7 @@ pub fn apply(
         // código próprio, e é o que faz a vantagem mecânica contínua sair de
         // graça: a tensão em B é `weight_b` vezes a de A, porque o impulso lá é
         // `−λ·weight_b·u_b`.
-        let dir_b = Vector2::new(route.dir_b[0], route.dir_b[1]) * route.weight_b;
+        let dir_b = Vector::new(route.dir_b[0], route.dir_b[1]) * route.weight_b;
         // Os tambores. Avança DEPOIS da rota — ela não depende do recolhido — e
         // antes da conta, de modo que o sub-passo que recolhe é o mesmo que
         // corrige; um passo de atraso aqui seria o guincho subindo um sub-passo
@@ -495,21 +495,26 @@ pub fn apply(
 /// do CORPO e responde `rate`/`k` para o versor que a rota entregar.
 struct End {
     /// Onde a corda se prende, em mundo.
-    point: Point2<f32>,
+    ///
+    /// ⚠️ Um **LUGAR**, não um deslocamento — era `Point2` e hoje partilha o tipo
+    /// com os vetores abaixo (ver [`crate::rmath`]). A única conta que o consome é
+    /// `point − center_of_mass` (ponto − ponto = vetor) e o `at` de
+    /// [`push`]; somá-lo a um vetor de direção compilaria e estaria errado.
+    point: Vector,
     /// Do centro de massa para o ponto de amarração — o braço de alavanca.
-    r: Vector2<f32>,
+    r: Vector,
     /// A velocidade DO PONTO (`v + ω × r`), não a do corpo.
-    v: Vector2<f32>,
+    v: Vector,
     /// A inversa de massa efetiva, por eixo. Zero para corpo não-dinâmico.
-    inv_m: Vector2<f32>,
+    inv_m: Vector,
     /// A inversa de inércia efetiva. Zero para corpo não-dinâmico.
     inv_i: f32,
 }
 
 impl End {
     /// A contribuição desta ponta para `Ċ`.
-    fn rate(&self, dir: Vector2<f32>) -> f32 {
-        self.v.dot(&dir)
+    fn rate(&self, dir: Vector) -> f32 {
+        self.v.dot(dir)
     }
 
     /// A contribuição desta ponta para a massa efetiva, na forma **BILINEAR**
@@ -524,7 +529,7 @@ impl End {
     ///
     /// ⚠️ Sobre a inversa de massa por-EIXO, porque é o `effective_inv_mass` que
     /// carrega o Freeze X/Y (cabeçalho do módulo).
-    fn k2(&self, a: Vector2<f32>, b: Vector2<f32>) -> f32 {
+    fn k2(&self, a: Vector, b: Vector) -> f32 {
         let ca = self.r.x * a.y - self.r.y * a.x;
         let cb = self.r.x * b.y - self.r.y * b.x;
         a.x * b.x * self.inv_m.x + a.y * b.y * self.inv_m.y + self.inv_i * ca * cb
@@ -532,7 +537,7 @@ impl End {
 
     /// A contribuição para a massa efetiva quando Jacobiano e impulso são a MESMA
     /// direção — o caso da corda. É `k2(dir, dir)`, por UMA porta.
-    fn k(&self, dir: Vector2<f32>) -> f32 {
+    fn k(&self, dir: Vector) -> f32 {
         self.k2(dir, dir)
     }
 }
@@ -548,7 +553,7 @@ fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Optio
     let angvel = body.angvel();
     // A velocidade do PONTO, não a do corpo: `v + ω × r` (em 2D, `ω × r` é
     // `(−ω·r.y, ω·r.x)`).
-    let v = body.linvel() + Vector2::new(-angvel * r.y, angvel * r.x);
+    let v = body.linvel() + Vector::new(-angvel * r.y, angvel * r.x);
     // ⚠️ **Um corpo não-dinâmico é massa INFINITA para a corda, e o rapier não
     // diz isso pelas mass properties.** Um corpo `Fixed` guarda o
     // `effective_inv_mass` que os colliders dele deram — medido, uma parede de
@@ -586,7 +591,7 @@ fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Optio
             mp.effective_world_inv_inertia,
         )
     } else {
-        (Vector2::zeros(), 0.0)
+        (Vector::ZERO, 0.0)
     };
     Some(End {
         point,
@@ -606,9 +611,11 @@ fn end(bodies: &RigidBodySet, handle: RigidBodyHandle, local: [f32; 2]) -> Optio
 fn push(
     bodies: &mut RigidBodySet,
     handle: RigidBodyHandle,
-    at: Point2<f32>,
+    // ⚠️ `at` é um **LUGAR** e `dir` um **DESLOCAMENTO** — o mesmo tipo desde a
+    // migração para o glam (ver [`crate::rmath`]). Trocá-los compila.
+    at: Vector,
     magnitude: f32,
-    dir: Vector2<f32>,
+    dir: Vector,
 ) {
     if let Some(body) = bodies.get_mut(handle)
         && body.is_dynamic()

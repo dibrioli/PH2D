@@ -57,7 +57,7 @@ fn initial_velocity_launches_and_spins() {
     let pose = |h| w.body_pose(h).expect("body exists");
 
     // Launched: x ≈ v·t = 4·0.5 = 2 m (no gravity, no drag).
-    let x = pose(launched).translation.vector.x;
+    let x = pose(launched).translation.x;
     assert!(
         (x - 2.0).abs() < 0.05,
         "launched body travelled to x={x}, expected ~2.0 (v·t) — the initial \
@@ -65,7 +65,7 @@ fn initial_velocity_launches_and_spins() {
     );
 
     // At rest: did not move.
-    let rest_x = pose(at_rest).translation.vector.x;
+    let rest_x = pose(at_rest).translation.x;
     assert!(
         rest_x.abs() < 1e-3,
         "the body with no initial velocity moved to x={rest_x}"

@@ -64,8 +64,8 @@ parede, medido pelo próprio shell.
 | **B** — 31 compatíveis | 4 | **4** | ✅ **fechado** | LLM | 2026-08-29 |
 | **C** — GPU e texto | 22 | **22** | ✅ **fechado** (4 eram inexistentes — §11) · falta o smoke do Enio | LLM | 2026-08-29 |
 | **D** — bevy_ecs | 14 | **14** | ✅ **fechado** (9 eram irrelevantes — §10) | LLM | 2026-08-29 |
-| **E** — rapier2d | 14 | 0 | por fazer | | |
-| **F** — a cauda | 19 | **14** | 🟡 5 abertas (F1·F2·F4·F8·F16) + F5 devolvida | LLM | 2026-08-29 |
+| **E** — rapier2d | 14 | **14** | ✅ **fechado** em 2 etapas (0.31 §13 · 0.35 §14) · falta o smoke do Enio | LLM | 2026-08-29 |
+| **F** — a cauda | 19 | **15** | 🟡 4 abertas (F2·F4·F8·F16) + F5 devolvida · **F1 RECUSADA com medição (§15)** | LLM | 2026-08-29 |
 | **G** — fecho | 6 | 0 | por fazer | | |
 
 ### Bloco T, tarefa a tarefa
@@ -341,6 +341,145 @@ alguém volte a perguntar**. Quando ela está errada, ela não falha como um tes
 **apaga a pergunta**. Esta teria custado a alguém a descoberta no meio da execução, com o bloco
 já meio migrado. ⇒ **uma ausência só se declara pelo nome do símbolo que se procurou**, e a nota
 tem de dizer *qual* string foi procurada, para a próxima pessoa poder ver que a busca era estreita.
+
+## §15 — ⛔⛔ A tarefa **F1** (`glam` 0.30 → 0.33) é uma RECUSA MEDIDA (2026-08-29)
+
+O plano mandava unificar o `glam`. **Não deve ser feito**, e a razão só apareceu depois do bloco E.
+
+### §15.1 — O mecanismo, lido no grafo de features (não deduzido)
+
+```
+rapier2d/enhanced-determinism → parry2d/enhanced-determinism
+                              → glamx/scalar-math → glam/scalar-math
+```
+
+Hoje a árvore tem **duas** cópias do `glam`: a **0.33.6** que a física trouxe (via `glamx`) e a
+**0.30.10** que as nossas oito crates de desenho usam. O Cargo unifica features **por versão**, e é
+exactamente por isso que a cópia da física corre em `scalar-math` (SIMD desligado, exigência do
+determinismo entre sistemas — HR-5) enquanto a nossa mantém o SIMD ligado.
+
+⭐⭐⭐ **As duas cópias não são um resíduo: são o mecanismo que deixa a física ser determinística e o
+renderizador ser rápido ao mesmo tempo.** Unificar o `glam` numa versão só imporia a política da
+física a `ph2d-core`, `ph2d-mesh-render`, `ph2d-vector`, `ph2d-anim`, `ph2d-vec-edit`,
+`ph2d-vector-font`, `ph2d-vector-doc` e `ph2d-vector-traits`.
+
+### §15.2 — O outro lado da balança, contado
+
+O que a 0.31→0.33 traz, e quantas vezes o nosso código o alcança:
+
+| o que a versão nova dá | usos nossos |
+|---|---|
+| `Affine3` (afim não-SIMD) e tudo o que toca `Vec3A` | **0** |
+| `ISizeVec2/3/4` | **0** |
+| a correcção de `escalar / matriz` (0.32.1) | **0** |
+| `USES_WASM_SIMD` (renome) | **0** |
+| tipos opcionais (tempo de compilação) | ganho pequeno, não medido |
+| `try_inverse`, `mul_diagonal_scale`, `mul_transpose_vecn` | conveniências, nada bloqueado hoje |
+| ⛔ `Vec2::angle_between` **removido** | **6 sítios a reescrever** — é *custo*, não ganho |
+
+⇒ **O lado do benefício é zero medido, e o lado do custo tem mecanismo provado.** Uma troca cujo
+ganho é zero perde para qualquer custo maior que zero, e por isso **esta recusa não precisou de um
+número de desempenho** — precisou de contar os usos.
+
+### §15.3 — ⚠️ Uma hipótese minha, refutada por medição
+
+Escrevi primeiro que o perigo era o `Vec3A` encolher de 16 para 12 bytes e desalinhar buffers de
+GPU. **Falso: há zero usos de `Vec3A` no repositório.** O risco de layout é nulo, e o argumento
+verdadeiro é só o SIMD. *Uma hipótese plausível sobre um tipo que ninguém usa mede zero.*
+
+### §15.4 — Quando reconferir
+
+Esta recusa responde **uma** pergunta: *«vale a pena unificar hoje?»*. Ela muda se:
+- alguma crate nossa passar a precisar de `Affine3`/`Vec3A`, **ou**
+- o `glamx` deixar de reencaminhar `scalar-math` para o `glam`, **ou**
+- medir-se que `scalar-math` custa pouco no nosso caminho de desenho — e aí o argumento passa a ser
+  o tempo de compilação, que ainda não foi medido.
+
+## §14 — Bloco E, etapa B — `rapier2d` 0.31 → **0.35.3** (+ `parry2d` 0.30.2, `glamx` 0.3) (2026-08-29)
+
+**A maior mudança de superfície da jornada inteira**, e a única cujo risco não era de compilação.
+
+### §14.1 — O que a plataforma fez
+
+A `rapier` trocou a matemática de `nalgebra` para `glam` (pelo invólucro `glamx`). O vocabulário
+inteiro mudou de nome — `Vector`, `Pose`, `Rotation` — e três tipos foram **apagados**: `Point`,
+`Isometry`, `Translation`. Tudo isso é erro de compilação, logo seguro.
+
+⛔⛔ **Uma coisa não é.** No `nalgebra`, `Point2` e `Vector2` são tipos **distintos de propósito**:
+um ponto é um lugar, um vetor é um deslocamento, e `Isometry2 * Vector2` **só roda** (ignora a
+translação) enquanto `Isometry2 * Point2` roda **e** translada. No `glam` os dois são o **mesmo
+tipo**, e por isso `Pose2 * Vec2` é **sempre** `transform_point`.
+
+⇒ *Todo sítio que multiplicava uma isometria por um vetor de direcção passou a ganhar uma
+translação que antes não existia — e **compila**.* Era a única classe de defeito silencioso da
+migração, e o custo dela é sempre o mesmo: uma direcção que anda com o corpo.
+
+### §14.2 — Como ela foi medida, e por que a resposta foi zero
+
+⚠️ **A varredura foi feita POR OPERAÇÃO, não por ficheiro** — 119 ficheiros, cada multiplicação de
+uma pose por um vetor classificada como *era-ponto* ou *era-direcção*, **com um controlo**: se a
+varredura não achasse nem um único caso de cada lado, ela estaria partida e não limpa.
+
+**Resultado: exposição ZERO.** E a causa não foi sorte — foi a disciplina antiga desta crate.
+Enquanto o `nalgebra` distinguia os dois tipos, o nosso código **era obrigado** a escolher `Point2`
+ou `Vector2` em cada sítio, e escolheu certo em todos. A fusão dos dois tipos herdou essa escolha.
+⭐ *Um tipo que force uma decisão hoje paga-se quando a plataforma deixar de a forçar amanhã.*
+
+### §14.3 — O trabalho
+
+**116 erros de compilação → 0**, em 25 ficheiros e ~340 pontos, feitos por **quatro agentes em
+paralelo** sobre conjuntos disjuntos, com o núcleo (`rmath`, `world`) por mim.
+**11 testes vermelhos → 0**, e nenhum baixando a barra sem prova:
+
+| quantos | o que era |
+|---|---|
+| 4 | constantes do solver que mudaram o **tato** — fixadas com o número escrito ao lado |
+| 2 | a **mesma melhoria** (balas já não atravessam cenário fixo) — viraram dois testes distintos |
+| 1 | media a **direcção de um torque** em vez da consequência física |
+| 1 | media a altura de marcha, que a física real já roçava — barra alargada **com a medição ao lado** |
+| 1 | confiava em **exactidão de bits** que dissolveu, e ameaçava apagar animação do artista |
+| 2 | degradações reais, pequenas, **medidas e registadas** |
+
+### §14.4 — ⛔ A recusa medida
+
+Existe um campo novo que curaria um dos testes ao preço de trazer de volta **pilhas altas a tombar**.
+**Não foi ligado.** O mecanismo e o número estão em `crates/ph2d-physics/src/world.rs`, ao lado da
+constante — não aqui, porque uma recusa longe do código que ela governa não é lida por ninguém.
+
+### §14.5 — ⭐⭐ A escada da caixa que cai, e a cerca no SINAL
+
+O último vermelho foi `the_drop_survives_exactly_where_the_resting_box_still_overlaps_the_plank`,
+que afirmava um **bicondicional** célula a célula. A tabela das dez células está no próprio teste.
+
+⚠️ **A lei real tem DUAS cláusulas** — *«já passei»* (as caixas envolventes) **e** *«a prancha parou
+de me pegar»* (o cone do gancho) — e o teste modelava só a primeira. Nove de dez células
+concordavam; numa, a caixa já passou e o cone ainda pega. ⚠️ **A margem sozinha não explica qual
+falha**: outra célula com a *mesma* margem de 5 cm concorda.
+
+⇒ **A cerca mudou-se para o SINAL, que é onde a segurança mora.** As duas direcções não custam o
+mesmo: aposentar **cedo** torna a prancha sólida com o personagem a cair através dela (o arremesso
+que esta wave curou); sobreviver **de mais** apenas o deixa continuar a cair. Por isso o
+bicondicional fica **intacto no lado perigoso**, e o lado seguro ganha a faixa de cruzamento.
+⭐ *Um teste que pesa as duas direcções por igual está a defender o defeito barato com o mesmo rigor
+com que defende o caro.*
+
+### §14.6 — Dois defeitos que o portão de FECHO achou, e que não eram da subida
+
+1. ⚠️ **A direcção do `NaN`.** O `clippy` apontou `if !(hi - lo > PISO)` em `bake.rs` como estilo.
+   Não era estilo: com uma amostra `NaN` a comparação é falsa, o `!` torna-a verdadeira, e o canal
+   é declarado **constante e descartado** — que é exactamente a falha que aquele piso existe para
+   curar. Escrito na forma positiva, um canal envenenado **sobrevive** para quem o consome o ver.
+   ⭐ *O lado em que se põe o `!` decide se um dado partido é apagado em silêncio ou entregue.*
+2. **O teto de 700 LOC, pela quarta vez nesta jornada**, e sempre pelos meus próprios comentários.
+   Curado como as outras três: **corte por responsabilidade**, nunca subindo o teto. A porta das
+   camadas (`groups_for`) mudou-se para o módulo `layers`, que é o dono do assunto — os quatro
+   consumidores não mudaram uma linha, porque o nome ficou re-exportado.
+
+### §14.7 — O que ficou verde
+
+`physics_ecs_c9` **estável em 2 de 2 corridas**, hash `20e3e7a8…`. Suíte da física **981/981**.
+⚠️ `nalgebra` **continua na árvore e não é resíduo**: entra pelo `fidget` (campo implícito) e pelo
+próprio `glamx` (álgebra densa), e o `machete` confirma zero dependências mortas.
 
 ## §13 — Bloco E, etapa A — `rapier2d` 0.28 → **0.31.0** (2026-08-29)
 

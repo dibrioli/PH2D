@@ -21,10 +21,21 @@ use ph2d_physics_ecs::{
 };
 
 /// A 0.04 m-thick, 2 m-tall static wall centred at `(0, y)`.
+/// ⚠️ **A parede é CINEMÁTICA e não estática, e isso mudou na `rapier2d` 0.35.**
+///
+/// A 0.35 varre **todo** corpo dinâmico rápido contra colliders **FIXOS**, com ou sem bandeira —
+/// a marca `Ccd` promove-o a *bullet*, que varre também alvos **cinemáticos e dinâmicos**. Contra
+/// uma parede estática, portanto, a marca deixou de fazer diferença: as duas bolas param, e o
+/// CONTROLO deste gate (a bola sem marca tem de atravessar) desapareceria.
+///
+/// ⇒ Sair da classe «fixo» é o que devolve o contraste. *O controlo tem de mudar a CLASSE DO ALVO,
+/// não a velocidade da bola — mexer na velocidade só reescreveria o mesmo gate com outro número.*
+/// A metade de graça (cenário fixo já não é atravessado) tem gate próprio em
+/// `ph2d-physics/tests/ccd.rs`.
 fn wall(sim: &mut SimWorld, y: f32) {
     sim.world_mut().spawn((
         RigidBody {
-            kind: BodyKind::Static,
+            kind: BodyKind::Kinematic,
         },
         Collider {
             shape: ColliderShape::Cuboid {

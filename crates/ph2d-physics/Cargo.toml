@@ -15,18 +15,27 @@ path = "src/bin/c9.rs"
 
 [dependencies]
 # rapier2d with `enhanced-determinism` ON (per HR-5 + plan M10
-# gate). Default features OFF — `parallel`, `simd-stable`,
-# `simd-nightly` all break cross-OS determinism. `dim2` is a
-# crate-level decision (we use rapier2d not rapier3d), `f32` is
-# fine for 2D games.
-# ⚠️ **PARAGEM INTERMEDIA DELIBERADA: 0.31.0 e' a ULTIMA versao em `nalgebra` puro.**
-# A 0.32 troca a matematica para `glam` (atraves do wrapper `glamx`) e `parry2d`
-# deixa de exportar `Point`, `Isometry` e `Translation` — 47 ficheiros nossos.
-# Parar aqui entrega o solver reescrito da 0.29, o `contact_softness`, o
-# `InteractionTestMode` e o `CoefficientCombineRule` **sem tocar num `Vector2`**,
-# e e' isso que faz o `physics_ecs_c9` isolar EXACTAMENTE a mudanca de solver:
-# um hash que se mexe aqui tem uma causa so'. Ver `docs/Atualizar Stack/` §13.
-rapier2d = { version = "0.31", default-features = false, features = ["dim2", "f32", "enhanced-determinism"] }
+# gate). Default features OFF — `parallel` breaks cross-OS determinism.
+# `dim2` is a crate-level decision (we use rapier2d not rapier3d), `f32`
+# is fine for 2D games.
+# ⚠️ **As features `simd-stable` / `simd-nightly` DEIXARAM DE EXISTIR na 0.35** — o SIMD é
+# sempre ligado, através da crate `wide`, e é o `enhanced-determinism` que o fixa. O texto
+# antigo listava as duas como "desligadas por determinismo"; hoje elas não são desligáveis,
+# e o que garante o bit-idêntico é outra coisa: a 0.35 faz o `enhanced-determinism` ligar
+# também `glamx/libm` + `glamx/scalar-math`, ou seja **a base ficou mais forte, não mais
+# fraca**.
+# ⚠️ **A subida fez-se em DUAS etapas, e a intermédia foi deliberada.** A 0.31.0 é a última
+# versão em `nalgebra` puro; a 0.32 troca a matemática para `glam` (através do invólucro
+# `glamx`) e o `parry` deixa de exportar `Point`, `Isometry` e `Translation` — 25 ficheiros
+# nossos. Parar na 0.31 primeiro entregou o solver reescrito da 0.29, o `contact_softness`, o
+# `InteractionTestMode` e o `CoefficientCombineRule` **sem tocar num `Vector2`**, e foi isso
+# que fez o `physics_ecs_c9` ISOLAR a mudança de solver: um hash que se mexeu ali tinha uma
+# causa só. Misturar as duas etapas tornaria qualquer diferença impossível de atribuir.
+# O vocabulário novo e o aviso que ele traz vivem em `src/rmath.rs`.
+#
+# ⚠️ **`std` é obrigatório** e não estava na lista antes: sem ele a 0.35 compila em `alloc` e
+# 186 gates desta crate desaparecem sem uma linha de erro.
+rapier2d = { version = "0.35", default-features = false, features = ["dim2", "f32", "std", "enhanced-determinism"] }
 # blake3 for hashing the deterministic state — same hash family as
 # C9 cross-OS replay (HR-5 alignment).
 blake3 = "1"

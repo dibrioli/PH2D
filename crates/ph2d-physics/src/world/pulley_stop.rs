@@ -88,8 +88,8 @@
 //! como no passe da corda: sem isso um limitador numa cadernal móvel empurraria a
 //! carga contra um eixo de massa infinita que ele não tem.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodySet;
-use rapier2d::na::Vector2;
 
 use super::rope_route::{RopeWheel, Tangent};
 use super::{PulleyDesc, end, push};
@@ -261,14 +261,14 @@ pub(super) fn apply_stops(
         // corda não consegue puxar: ver o cabeçalho.
         // **O GRADIENTE** da folga — radial, do centro da roda para a amarração,
         // com magnitude `d/len ≥ 1`. É por ele que a trava SENTE.
-        let g = Vector2::new(
+        let g = Vector::new(
             (leg.anchor[0] - leg.centre[0]) / leg.len,
             (leg.anchor[1] - leg.centre[1]) / leg.len,
         );
         // **A DIREÇÃO DA CORDA** — da tangência para a amarração, unitária, e a
         // MESMA que a rota entrega ao passe da corda (`RopeRoute::dir_a`/`dir_b`).
         // É por ela que a trava EMPURRA.
-        let u = Vector2::new(
+        let u = Vector::new(
             (leg.anchor[0] - leg.touch[0]) / leg.len,
             (leg.anchor[1] - leg.touch[1]) / leg.len,
         );

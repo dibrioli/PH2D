@@ -42,6 +42,8 @@
 //! Growing it later is a UI change plus a schema bump, not a physics change —
 //! the storage below is the only thing that would move.
 
+use rapier2d::geometry::{Group, InteractionGroups, InteractionTestMode};
+
 /// How many collision layers the editor exposes. See the module docs for why
 /// this is 8 and not rapier's representational 32.
 pub const MAX_LAYERS: usize = 8;
@@ -126,6 +128,30 @@ impl Default for LayerMatrix {
     fn default() -> Self {
         Self::all()
     }
+}
+
+/// `(layer, matrix)` → rapier's `InteractionGroups`. **The single door.**
+///
+/// `memberships` is the body's own layer bit — which is also how a collider
+/// remembers its layer, so nothing else has to store it. `filter` is that
+/// layer's row of the matrix.
+/// ⚠️ **`InteractionTestMode::And` é o comportamento de sempre, escrito à mão.** A rapier 0.31
+/// acrescentou um terceiro argumento que escolhe como os dois lados se testam: `And` (o `default`,
+/// e o único que existia antes — *ambos os lados têm de aceitar o outro*) ou `Or` (*basta um, e só
+/// se os DOIS pedirem `Or`*).
+///
+/// ⛔ **Passar o `And` explicitamente, em vez de o herdar de um `..Default`, é deliberado:** esta é
+/// a porta ÚNICA das camadas de colisão, e a regra que ela implementa — *«uma camada só interage
+/// com outra se as duas linhas da matriz concordarem»* — é **exactamente** o `And`. Se um dia o
+/// upstream mudar o `default`, a matriz do artista passaria a significar outra coisa **sem uma
+/// linha nossa mudar**. O terceiro argumento é a nossa resposta, não a herança da deles.
+pub(crate) fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups {
+    let layer = layer.min(MAX_LAYERS - 1);
+    InteractionGroups::new(
+        Group::from_bits_truncate(1 << layer),
+        Group::from_bits_truncate(u32::from(matrix.row(layer))),
+        InteractionTestMode::And,
+    )
 }
 
 #[cfg(test)]

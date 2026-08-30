@@ -32,8 +32,8 @@
 //!   sensor de chão e o solver discordariam sobre o que é sólido, e essa é
 //!   exatamente a forma de defeito que este módulo inteiro existe para não ter.
 
+use crate::rmath::Vector;
 use rapier2d::geometry::{ColliderHandle, Ray};
-use rapier2d::na::{Point2, Vector2};
 use rapier2d::parry::query::DefaultQueryDispatcher;
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
@@ -138,13 +138,15 @@ impl PhysicsWorld {
         exclude_collider: Option<ColliderHandle>,
         layer: u8,
     ) -> Option<CastHit> {
-        let d = Vector2::new(dir[0], dir[1]);
-        let n = d.norm();
+        let d = Vector::new(dir[0], dir[1]);
+        let n = d.length();
         if !n.is_finite() || n <= f32::EPSILON || !max_dist.is_finite() || max_dist < 0.0 {
             return None;
         }
         let unit = d / n;
-        let ray = Ray::new(Point2::new(origin[0], origin[1]), unit);
+        // ⚠️ `Ray::new` recebe a ORIGEM (um lugar) e a DIREÇÃO (um deslocamento) —
+        // eram `Point2` e `Vector2`, hoje são o MESMO tipo. Ver `crate::rmath`.
+        let ray = Ray::new(Vector::new(origin[0], origin[1]), unit);
 
         let dispatcher = DefaultQueryDispatcher;
         let filter = QueryFilter {

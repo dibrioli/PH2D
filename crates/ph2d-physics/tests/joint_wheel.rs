@@ -353,6 +353,28 @@ fn a_wheels_travel_has_both_stops_and_the_droop_one_proves_it() {
 /// motor (em `AngX`), e os dois não colidem porque são eixos diferentes. Se o
 /// motor tivesse ido para o eixo linear ele **sobrescreveria** a mola — que é
 /// exatamente a razão de uma `Spring` não ter motor nenhum.
+///
+/// # ⛔ A barra era `0,02` e a afirmação era FISICAMENTE FALSA
+///
+/// O texto acima diz *«a altura de marcha não podia depender do motor»*, e isso é verdade sobre os
+/// **eixos do joint**, não sobre o mundo: o chão tem 100 m e atrito `1,0`, então uma roda com
+/// tracção **move o carro**, e um carro a acelerar **transfere peso** — o chassis inclina e a
+/// altura muda. Isso é física real, não acoplamento do solver.
+///
+/// A `rapier2d` 0.35 acopla um pouco mais que a 0.28, e a diferença passou de `< 0,02` para
+/// **`0,0207`** — 3 % acima de uma barra que nunca teve margem. ⚠️ *Uma barra que a física real
+/// já roçava não estava a medir a escolha de eixo; estava a medir quanto o solver de então
+/// acoplava.*
+///
+/// ⇒ O gate passa a ter **duas** metades, e a primeira é a afirmação directa:
+///
+/// 1. **O motor chegou ao eixo ANGULAR** — a roda gira. Se ele tivesse ido para o linear, a roda
+///    não giraria de todo, e é isso que separa os dois casos sem depender de nenhuma tolerância.
+/// 2. **A mola continua a segurar o chassis** — a altura fica perto da parada. A barra é `0,05`,
+///    dimensionada pelo que **separa as duas hipóteses**: a inclinação por tracção medida é
+///    `0,021`, e um motor de velocidade `−6 m/s` no eixo LINEAR não a moveria 5 cm — ele levaria a
+///    suspensão ao batente, porque é isso que um motor de velocidade faz quando ninguém o limita.
+///    *A barra não é uma tolerância de ruído: é o vão entre «inclinou» e «foi sobrescrita».*
 #[test]
 fn the_motor_drives_the_spin_and_leaves_the_suspension_alone() {
     let drive = Some(MotorDesc {
@@ -377,10 +399,24 @@ fn the_motor_drives_the_spin_and_leaves_the_suspension_alone() {
         1.0,
     );
     let (driven, _, _) = settle(&mut w, c, h, 240);
+
+    // **Metade 1 — o motor foi para o eixo ANGULAR.** A roda gira, e é isto que a escolha de eixo
+    // compra. Um motor no eixo linear deixaria o cubo parado.
+    let spin = w.bodies().get(h).expect("o cubo existe").angvel().abs();
     assert!(
-        (quiet - driven).abs() < 0.02,
-        "a altura de marcha não podia depender do motor; parada {quiet:.4} contra \
-         {driven:.4} com tração"
+        spin > 1.0,
+        "a roda mal girou (|ω| = {spin:.4} rad/s) com um motor de velocidade a −6 rad/s: o motor \
+         nao chegou ao eixo ANGULAR, que e' a unica coisa que a escolha de `motor_axis` compra"
+    );
+
+    // **Metade 2 — a mola continua a segurar o chassis.** Ver o doc: a barra separa «inclinou por
+    // tracção» (medido `0,021`) de «a mola foi sobrescrita» (o batente).
+    assert!(
+        (quiet - driven).abs() < 0.05,
+        "a suspensao foi SOBRESCRITA pelo motor: altura parada {quiet:.4} contra {driven:.4} com \
+         tracao. Uma inclinacao por transferencia de peso e' da ordem de 0,02; uma diferenca desta \
+         ordem quer dizer que o motor esta' a agir no eixo LINEAR, que e' exactamente o que a \
+         escolha de `motor_axis` existe para impedir."
     );
 }
 

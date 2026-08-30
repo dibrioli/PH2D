@@ -28,8 +28,8 @@
 //! que é a assinatura exata de *"os controles pararam de funcionar"* (a mesma
 //! lição, medida, do `move_grab`).
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodySet};
-use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
 
@@ -53,7 +53,7 @@ pub(super) fn apply_queued(
             continue;
         }
         body.apply_impulse(
-            Vector2::new(accel[0] * mass * sub_dt, accel[1] * mass * sub_dt),
+            Vector::new(accel[0] * mass * sub_dt, accel[1] * mass * sub_dt),
             true,
         );
     }
@@ -95,7 +95,11 @@ impl PhysicsWorld {
         let Some(rb) = self.bodies.get_mut(handle) else {
             return;
         };
-        let next = rb.translation() + Vector2::new(delta[0], delta[1]);
+        // ⚠️ LUGAR + DESLOCAMENTO = lugar. Os dois lados são hoje o MESMO tipo
+        // (`Vector`), então nada impede escrever `delta + delta` ou somar duas
+        // translações — leia o que a expressão significa, não o que ela aceita.
+        // (`translation()` também deixou de devolver referência: é por valor.)
+        let next = rb.translation() + Vector::new(delta[0], delta[1]);
         rb.set_translation(next, true);
     }
 
@@ -116,7 +120,13 @@ impl PhysicsWorld {
     #[must_use]
     pub fn point_velocity(&self, handle: RigidBodyHandle, point: [f32; 2]) -> Option<[f32; 2]> {
         let b = self.bodies.get(handle)?;
-        let v = b.velocity_at_point(&rapier2d::na::Point2::new(point[0], point[1]));
+        // ⚠️ `point` é um LUGAR em mundo, e o `velocity_at_point` o toma por
+        // VALOR agora (era `&Point2`). O tipo já não distingue lugar de
+        // deslocamento: passar aqui uma velocidade ou um `r` relativo compila e
+        // devolve um número plausível — a conta que o rapier faz é
+        // `v + ω × (point − centro_de_massa)`, logo o argumento tem de ser
+        // ABSOLUTO.
+        let v = b.velocity_at_point(Vector::new(point[0], point[1]));
         Some([v.x, v.y])
     }
 
@@ -141,13 +151,15 @@ impl PhysicsWorld {
         let mass = body.mass();
         if accel != [0.0, 0.0] && mass.is_finite() && mass > 0.0 {
             body.apply_impulse(
-                Vector2::new(accel[0] * mass * dt, accel[1] * mass * dt),
+                Vector::new(accel[0] * mass * dt, accel[1] * mass * dt),
                 true,
             );
         }
         if boost != [0.0, 0.0] {
-            let v = *body.linvel();
-            body.set_linvel(Vector2::new(v.x + boost[0], v.y + boost[1]), true);
+            // `linvel()` devolve por VALOR agora — o `*` que estava aqui era o
+            // deref do `&Vector2` do nalgebra.
+            let v = body.linvel();
+            body.set_linvel(Vector::new(v.x + boost[0], v.y + boost[1]), true);
         }
     }
 
@@ -238,7 +250,7 @@ impl PhysicsWorld {
             return;
         }
         // O `true` é o despertar, pela mesma razão da irmã vertical.
-        body.apply_impulse(Vector2::new(jx, jy), true);
+        body.apply_impulse(Vector::new(jx, jy), true);
     }
 
     /// **A REAÇÃO da 3ª lei** (W6): devolver ao CHÃO o que a perna do player lhe
@@ -300,11 +312,15 @@ impl PhysicsWorld {
         // era **redundante**: medido, a mutação que o remove não move um
         // milímetro, e só remover o `true` daqui é que deixa a jangada dormindo.
         // Duas portas para *"acorde"* é uma a mais.
-        body.apply_impulse_at_point(
-            Vector2::new(jx, jy),
-            rapier2d::na::Point2::new(at[0], at[1]),
-            true,
-        );
+        //
+        // ⛔ **E os dois primeiros argumentos são hoje o MESMO tipo, lado a
+        // lado:** o 1º é um IMPULSO (um deslocamento de quantidade de
+        // movimento), o 2º é o LUGAR onde ele entra. No nalgebra um `Point2` na
+        // 1ª posição não compilava; hoje trocá-los passa em silêncio e o torque
+        // sai da coordenada de mundo do contato — quanto mais longe da origem a
+        // jangada estiver, maior o empurrão fantasma. A ordem é
+        // `(impulso, ponto, acordar)`.
+        body.apply_impulse_at_point(Vector::new(jx, jy), Vector::new(at[0], at[1]), true);
     }
 }
 

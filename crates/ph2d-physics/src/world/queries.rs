@@ -6,8 +6,8 @@
 //! (o que MOVE) e "onde está a superfície desta poça?" (o que se OLHA) não são a mesma
 //! responsabilidade.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodyHandle;
-use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
 use super::buoyancy;
@@ -161,7 +161,7 @@ impl PhysicsWorld {
     /// velocidade que o solver possa integrar contra cada normal.
     #[must_use]
     pub fn fluid_at(&self, handle: RigidBodyHandle) -> FluidAt {
-        let g = self.gravity.norm();
+        let g = self.gravity.length();
         if self.effectors.is_empty() {
             return FluidAt::DRY;
         }
@@ -184,8 +184,8 @@ impl PhysicsWorld {
         let weight = mass * g;
         let mut lift = 0.0f32;
         let mut drag = 0.0f32;
-        let mut push = Vector2::new(0.0f32, 0.0);
-        let here = *rb.translation();
+        let mut push = Vector::new(0.0f32, 0.0);
+        let here = rb.translation();
         let cols = rb.colliders();
         for (i, &ch) in cols.iter().enumerate() {
             let Some(mine) = self.colliders.get(ch) else {
@@ -254,7 +254,7 @@ impl PhysicsWorld {
                     self.gravity,
                     effect.density,
                 ) {
-                    lift += force.norm();
+                    lift += force.length();
                 }
             }
         }

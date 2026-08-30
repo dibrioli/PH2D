@@ -49,20 +49,21 @@ pub mod tuning;
 
 use defaults::BodyDefaults;
 use layers::LayerMatrix;
+/// A porta das camadas mudou-se para o modulo delas (teto de 700 LOC); o nome fica aqui
+/// porque os quatro consumidores a alcancam por `use super::groups_for`.
+pub(super) use layers::groups_for;
 // The descriptors and the shape vocabulary live in sibling modules (LOC),
 // re-exported so callers still see `ph2d_physics::{BodyDesc, ShapeDesc, …}`.
 pub use desc::{AreaEffect, BodyDesc, BodySnapshot, CombineRules, DampingDesc};
-use rapier2d::geometry::{Group, InteractionGroups};
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{
     CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet, RigidBody,
     RigidBodyHandle, RigidBodySet, RigidBodyType,
 };
 use rapier2d::geometry::{BroadPhaseBvh, ColliderHandle, ColliderSet, NarrowPhase};
-use rapier2d::na::{Isometry2, Vector2};
 use rapier2d::pipeline::PhysicsPipeline;
-use rapier2d::prelude::nalgebra;
 
 pub struct PhysicsWorld {
     bodies: RigidBodySet,
@@ -75,7 +76,7 @@ pub struct PhysicsWorld {
     island_manager: IslandManager,
     broad_phase: BroadPhaseBvh,
     narrow_phase: NarrowPhase,
-    gravity: Vector2<f32>,
+    gravity: Vector,
     /// Step counter — exposes a deterministic "tick number" so tests
     /// can advance N steps and report.
     step_count: u64,
@@ -103,7 +104,7 @@ pub struct PhysicsWorld {
     /// reached once and never allocated again. Empty in a world with no
     /// kinematic bodies, which is what keeps `step` byte-identical to the one
     /// that shipped before this existed.
-    kinematic_targets: Vec<(RigidBodyHandle, Isometry2<f32>, Isometry2<f32>)>,
+    kinematic_targets: Vec<(RigidBodyHandle, Pose, Pose)>,
     /// **A aceleração que a perna de um player pede neste tique**, em m/s² —
     /// consumida por SUB-PASSO dentro de [`PhysicsWorld::step`].
     ///
@@ -342,6 +343,56 @@ impl PhysicsWorld {
             // compilador matou a hipótese antes da medição — e é por isso que se escreve o
             // palpite em código em vez de o assumir.*
             num_internal_stabilization_iterations: 2,
+            // ⛔⛔ **SETE constantes da 0.35 mudam o TATO, e ficam fixadas no valor de sempre.**
+            // O critério é o mesmo do bloco: *um padrão que muda o tato é conteúdo autorado — há
+            // cenas ajustadas contra ele —, e um que muda a ARQUITECTURA do solver aceita-se,
+            // porque não há como o fixar.* Estas são constantes; fixá-las custa uma linha cada.
+            //
+            // ⚠️ **`static_contact_softness` é um CONCEITO NOVO, e é o mais perigoso da lista.**
+            // Até aqui **todo** contacto usava os nossos `DEFAULT_CONTACT_HZ`. A 0.35 partiu-os em
+            // dois grupos: dinâmico↔dinâmico (`contact_softness`) e **contra corpos fixos**
+            // (`static_contact_softness`, cujo padrão é 60 Hz / 10). O chão e as paredes são
+            // fixos ⇒ ajustar só o primeiro deixaria **o contacto que mais importa** a metade da
+            // rigidez que o slider «Contact Hz» do painel promete. *Uma lei escrita num sítio
+            // quando o modelo tem dois não é uma lei.*
+            static_contact_softness: rapier2d::dynamics::SpringCoefficients {
+                natural_frequency: Self::DEFAULT_CONTACT_HZ,
+                damping_ratio: 5.0,
+            },
+            // 0.001 → 0.005: os corpos afundariam **5×** mais uns nos outros em repouso.
+            normalized_allowed_linear_error: 0.001,
+            // 10 → 3: uma sobreposição funda sairia **3,3× mais devagar**.
+            normalized_max_corrective_velocity: 10.0,
+            // 0,002 → 0,02: contactos detectados **10× mais cedo**; corpos parecendo flutuar um
+            // fio acima da superfície.
+            normalized_prediction_distance: 0.002,
+            // ⚠️ **Sem tecto → 400 u/s.** A 0.35 passou a limitar a velocidade linear. Em queda
+            // livre a `9,81` isso levaria ~41 s a morder, mas o `blast::explode` divide impulso
+            // por massa: um corpo leve com uma explosão forte era ilimitado e passaria a bater no
+            // tecto **sem aviso**. `Real::MAX` desarma-o, que é o que sempre valeu aqui.
+            normalized_max_linear_velocity: rapier2d::math::Real::MAX,
+            // Duas reduções de trabalho no narrow phase que a 0.35 liga por omissão. Elas mudam a
+            // TRAJECTÓRIA dentro da tolerância do solver — e portanto o hash `physics_ecs_c9`.
+            // Ficam desligadas: o custo que elas poupam não foi medido, e o que elas mexem foi.
+            contact_clustering: false,
+            contact_recycling: false,
+            // ⛔⛔ **DOIS campos novos ficam no padrão da 0.35, e a recusa é MEDIDA.**
+            //
+            // `friction_in_bias_pass: false` é a regra nova *«sem atrito ao aplicar o viés»*, e o
+            // doc da rapier diz o que ela compra: *«load-bearing for tall stacks: friction
+            // reacting to bias velocities pumps their coherent lean mode until they topple»*.
+            // ⚠️ Ligá-lo a `true` **cura um gate** desta crate (`compound::a_part_moved_while_the
+            // _clock_runs_takes_its_collider_along`) — e o gate é sobre uma peça composta a levar
+            // o collider, não sobre atrito. ⇒ *seria comprar de volta um defeito que eles
+            // corrigiram, para curar um sintoma que não é o dele.* Bissectado: dos dois campos,
+            // este é o único que muda alguma coisa aqui.
+            //
+            // `warmstart_joints: false` fica pela razão oposta — medido, ligá-lo **não muda um
+            // único gate**. Ele é capacidade nova (*«melhora a convergência de conjuntos de
+            // juntas rígidas»*), e ligar o que não se mediu a precisar não é afinação, é ruído.
+            //
+            // ⚠️ *A régua desta decisão não é «o teste fica verde»: é «o que a plataforma
+            // corrigiu de propósito, aceita-se».*
             ..IntegrationParameters::default()
         };
         Self {
@@ -355,11 +406,13 @@ impl PhysicsWorld {
             island_manager: IslandManager::new(),
             broad_phase: BroadPhaseBvh::new(),
             narrow_phase: NarrowPhase::new(),
-            gravity: Vector2::new(0.0, Self::DEFAULT_GRAVITY_Y),
+            gravity: Vector::new(0.0, Self::DEFAULT_GRAVITY_Y),
             step_count: 0,
             substeps: Self::DEFAULT_SUBSTEPS,
             base_dt: Self::DEFAULT_DT,
-            body_defaults: BodyDefaults::rapier(),
+            // ⚠️ `ours()`, não `rapier()`: os limiares de adormecer deixaram de ser os dela na
+            // 0.35. Ver o doc de `BodyDefaults::ours`.
+            body_defaults: BodyDefaults::ours(),
             layer_matrix: LayerMatrix::all(),
             air_drag: 0.0,
             kinematic_targets: Vec::new(),
@@ -482,8 +535,8 @@ impl PhysicsWorld {
         wake: bool,
     ) {
         if let Some(b) = self.bodies.get_mut(handle) {
-            b.set_position(Isometry2::new(Vector2::new(x, y), rotation), wake);
-            b.set_linvel(Vector2::zeros(), wake);
+            b.set_position(Pose::new(Vector::new(x, y), rotation), wake);
+            b.set_linvel(Vector::ZERO, wake);
             b.set_angvel(0.0, wake);
         }
     }
@@ -546,7 +599,7 @@ impl PhysicsWorld {
     }
 
     /// Convenience: read the position + orientation of a body.
-    pub fn body_pose(&self, handle: RigidBodyHandle) -> Option<Isometry2<f32>> {
+    pub fn body_pose(&self, handle: RigidBodyHandle) -> Option<Pose> {
         self.bodies.get(handle).map(|b| *b.position())
     }
 
@@ -607,42 +660,20 @@ impl PhysicsWorld {
     }
 }
 
-/// `(layer, matrix)` → rapier's `InteractionGroups`. **The single door.**
-///
-/// `memberships` is the body's own layer bit — which is also how a collider
-/// remembers its layer, so nothing else has to store it. `filter` is that
-/// layer's row of the matrix.
-/// ⚠️ **`InteractionTestMode::And` é o comportamento de sempre, escrito à mão.** A rapier 0.31
-/// acrescentou um terceiro argumento que escolhe como os dois lados se testam: `And` (o `default`,
-/// e o único que existia antes — *ambos os lados têm de aceitar o outro*) ou `Or` (*basta um, e só
-/// se os DOIS pedirem `Or`*).
-///
-/// ⛔ **Passar o `And` explicitamente, em vez de o herdar de um `..Default`, é deliberado:** esta é
-/// a porta ÚNICA das camadas de colisão, e a regra que ela implementa — *«uma camada só interage
-/// com outra se as duas linhas da matriz concordarem»* — é **exactamente** o `And`. Se um dia o
-/// upstream mudar o `default`, a matriz do artista passaria a significar outra coisa **sem uma
-/// linha nossa mudar**. O terceiro argumento é a nossa resposta, não a herança da deles.
-pub(super) fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups {
-    let layer = layer.min(layers::MAX_LAYERS - 1);
-    InteractionGroups::new(
-        Group::from_bits_truncate(1 << layer),
-        Group::from_bits_truncate(u32::from(matrix.row(layer))),
-        rapier2d::geometry::InteractionTestMode::And,
-    )
-}
-
 impl Default for PhysicsWorld {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// `nalgebra` and `Isometry2` re-exports are part of the rapier surface;
-// silence the "unused import" if the lib's surface ever stops needing
-// them while keeping the surface stable.
+// ⚠️ **Este âncora deixou de citar `nalgebra` na subida para a rapier 0.35**, e não por
+// arrumação: a matemática da rapier passou a ser `glam`, e o `nalgebra` continua na árvore
+// **só** para o código SIMD e os jacobianos de multibody dela — não é mais a nossa superfície.
+// O que sobra é o que sempre foi o ponto: manter a superfície de tipos da rapier viva mesmo
+// que a lib pare de a usar, sem que o "unused import" a apague.
 #[allow(dead_code)]
 fn _force_imports_alive() {
-    let _ = std::mem::size_of::<nalgebra::Vector2<f32>>();
+    let _ = std::mem::size_of::<crate::rmath::Pose>();
     let _ = std::mem::size_of::<RigidBodyType>();
 }
 

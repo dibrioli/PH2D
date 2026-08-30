@@ -18,7 +18,7 @@
 //!   rebuild-from-rest produce a *different* constraint than the live spawn
 //!   had; the module doc claimed joints were only ever spawned at rest, and
 //!   that claim was simply false (nothing gated the first spawn).
-//! * The inverse transform is rapier's own (`Isometry2::inverse_transform_point`),
+//! * The inverse transform is rapier's own (`Pose::inverse_transform_point`),
 //!   not trigonometry written here. The solver and the authoring path then agree
 //!   about what "this point, in that body's frame" means by construction, and
 //!   there is no second `sin`/`cos` convention to drift (HR-5).
@@ -33,12 +33,12 @@
 //! editor offers, and — the deciding fact — the checkpoint ring already clones
 //! `ImpulseJointSet`, so a scrub backwards carries joints with no work at all.
 
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{
     FixedJointBuilder, GenericJointBuilder, ImpulseJointHandle, JointAxesMask, JointAxis,
     PrismaticJointBuilder, RevoluteJointBuilder, RigidBodyHandle, RopeJointBuilder,
     SpringJointBuilder,
 };
-use rapier2d::na::{Isometry2, Point2, UnitVector2, Vector2};
 
 // Re-exportado por conveniência dos irmãos que sempre importaram o vocabulário
 // por aqui — a casa dele agora é [`super::joint_desc`], e o `pub use` existe
@@ -50,17 +50,40 @@ use super::{PhysicsWorld, joint_break};
 
 /// A direction as a unit vector, falling back to `+X` when it cannot be one.
 ///
-/// ⚠️ **`UnitVector2::new_normalize` of a zero vector yields `NaN`**, and a `NaN`
-/// axis does not fail loudly — it poisons the solver, and from there the poses,
-/// the readback, and the determinism hash. A joint whose axis was never authored
-/// (or arrived non-finite from a project file) gets the horizontal rail an
-/// unrotated joint means, which is the same value `JointDesc::default` carries.
-pub(super) fn unit_or_x(v: [f32; 2]) -> UnitVector2<f32> {
+/// ⚠️ **`Vector::normalize` of a zero vector yields `NaN`**, and a `NaN` axis
+/// does not fail loudly — it poisons the solver, and from there the poses, the
+/// readback, and the determinism hash. A joint whose axis was never authored (or
+/// arrived non-finite from a project file) gets the horizontal rail an unrotated
+/// joint means, which is the same value `JointDesc::default` carries.
+///
+/// ⚠️ **A garantia era do TIPO e passou a ser DESTA FUNÇÃO** (migração de
+/// 2026-08-29). Ela devolvia um `UnitVector2<f32>`, um *newtype* em que "isto
+/// está normalizado" era parte do tipo, e os builders do rapier **exigiam-no**:
+/// entregar um vetor cru não compilava. Na 0.35 eles tomam um `Vector` (`Vec2`)
+/// e nada no compilador impede que lá chegue um vetor por normalizar — o que sai
+/// é um trilho com escala embutida, num número plausível de que o solver não se
+/// queixa. É a mesma família do ponto-vs-vetor descrita em [`crate::rmath`]: um
+/// tipo que carregava uma promessa foi trocado por um que não carrega nenhuma.
+///
+/// ⇒ **Todo eixo que chega a um `local_axis1`/`local_axis2` tem de vir por
+/// aqui**, e hoje vem: as 10 chamadas de `PrismaticJointBuilder::new`,
+/// `local_axis1` e `local_axis2` da crate estão em [`build_joint`] e em
+/// [`super::ik_coords::multibody_joint`], e as 10 passam por esta porta.
+///
+/// ⚠️ **Metade disto é gateada e a outra metade NÃO é.** O ramo de recuo tem
+/// gate — `a_degenerate_slider_axis_falls_back_instead_of_poisoning_the_pose`
+/// (`tests/joints.rs`) alimenta `[0,0]`, `[NaN,1]` e `[inf,0]`. O ramo que
+/// NORMALIZA não tem: o único gate com eixo diagonal usa `[1/√2, −1/√2]`, que já
+/// é unitário e passaria igual se a chamada a `normalize` fosse apagada. Era
+/// justamente essa metade que o `UnitVector2` segurava de graça.
+pub(super) fn unit_or_x(v: [f32; 2]) -> Vector {
     let len = v[0].hypot(v[1]);
     if len.is_finite() && len > 1e-6 {
-        UnitVector2::new_normalize(Vector2::new(v[0], v[1]))
+        Vector::new(v[0], v[1]).normalize()
     } else {
-        UnitVector2::new_normalize(Vector2::new(1.0, 0.0))
+        // `Vector::X` é `(1, 0)` exato — o mesmo valor que
+        // `new_normalize((1, 0))` dava, sem passar por uma divisão.
+        Vector::X
     }
 }
 
@@ -241,8 +264,12 @@ fn build_joint(
     // The anchors arrive ALREADY local (see [`JointDesc::anchor_a`]), so this
     // function has no opinion about where the bodies are — which is exactly
     // what makes a rebuild reproduce the same constraint.
-    let anchor_a = Point2::new(desc.anchor_a[0], desc.anchor_a[1]);
-    let anchor_b = Point2::new(desc.anchor_b[0], desc.anchor_b[1]);
+    // ⚠️ Eram `Point2`, e hoje um ponto e um vetor são o MESMO tipo (ver
+    // `crate::rmath`). Estes dois são LUGARES no referencial de cada corpo, e a
+    // única coisa que se faz com eles é entregá-los ao `local_anchor1`/`2` — não
+    // há aritmética aqui que a rede do compilador antes cobrisse.
+    let anchor_a = Vector::new(desc.anchor_a[0], desc.anchor_a[1]);
+    let anchor_b = Vector::new(desc.anchor_b[0], desc.anchor_b[1]);
 
     let mut joint: rapier2d::dynamics::GenericJoint = match desc.kind {
         JointKind::Pin => {
@@ -468,8 +495,12 @@ impl PhysicsWorld {
     ///
     /// `pose` is `[x, y, rotation]`, the same triple `BodyDesc` carries.
     pub fn local_anchor_at_pose(pose: [f32; 3], world: [f32; 2]) -> [f32; 2] {
-        let iso = Isometry2::new(Vector2::new(pose[0], pose[1]), pose[2]);
-        let p = iso.inverse_transform_point(&Point2::new(world[0], world[1]));
+        let iso = Pose::new(Vector::new(pose[0], pose[1]), pose[2]);
+        // ⚠️ `inverse_transform_point` toma o ponto **por valor** desde a 0.35
+        // (o `&` caiu), e é ele — não `inverse_transform_vector` — que desfaz a
+        // TRANSLAÇÃO. `world` é um lugar; trocar de porta devolveria a mesma
+        // direção medida da origem do mundo, e compila igual.
+        let p = iso.inverse_transform_point(Vector::new(world[0], world[1]));
         [p.x, p.y]
     }
 
@@ -511,8 +542,10 @@ impl PhysicsWorld {
     /// `transform_point`, so it and `local_anchor_at_pose` round-trip exactly
     /// (`world_from_local(pose, local_anchor_at_pose(pose, w)) == w`).
     pub fn world_from_local_at_pose(pose: [f32; 3], local: [f32; 2]) -> [f32; 2] {
-        let iso = Isometry2::new(Vector2::new(pose[0], pose[1]), pose[2]);
-        let p = iso.transform_point(&Point2::new(local[0], local[1]));
+        let iso = Pose::new(Vector::new(pose[0], pose[1]), pose[2]);
+        // Irmã exata da `local_anchor_at_pose`: ponto por VALOR, e
+        // `transform_point` (que soma a translação), nunca `transform_vector`.
+        let p = iso.transform_point(Vector::new(local[0], local[1]));
         [p.x, p.y]
     }
 
@@ -535,12 +568,12 @@ impl PhysicsWorld {
             .bodies
             .get(a)?
             .position()
-            .inverse_transform_point(&Point2::new(world_a[0], world_a[1]));
+            .inverse_transform_point(Vector::new(world_a[0], world_a[1]));
         let pb = self
             .bodies
             .get(b)?
             .position()
-            .inverse_transform_point(&Point2::new(world_b[0], world_b[1]));
+            .inverse_transform_point(Vector::new(world_b[0], world_b[1]));
         Some(([pa.x, pa.y], [pb.x, pb.y]))
     }
 
@@ -562,21 +595,50 @@ impl PhysicsWorld {
     /// to be apart.
     pub fn joint_anchors(&self, handle: ImpulseJointHandle) -> Option<([f32; 2], [f32; 2])> {
         let j = self.impulse_joints.get(handle)?;
-        // ⚠️ `transform_point`, never `isometry * vector`. Multiplying an
-        // isometry by a *vector* applies the rotation and drops the
-        // translation — that is what a vector IS — so the first version of
-        // this returned local coordinates wearing world coordinates' name.
-        // The overlay would have drawn every joint near the origin.
+        // ⚠️⚠️ **A REGRA: `transform_point` para LUGARES, `transform_vector`
+        // para DIREÇÕES — e o `*` é o primeiro.** Esta é a única nota do
+        // repositório que nomeia a distinção, e ela **INVERTEU** na migração de
+        // 2026-08-29 (`rapier2d` 0.31 → 0.35, nalgebra → glam/glamx): não a leia
+        // pelo texto antigo, que dizia o contrário e estava certo na época.
+        //
+        // **A história, que é o que dá autoridade ao aviso.** Com o `nalgebra`,
+        // o erro era escrever `isometry * vector`: multiplicar por um *vetor*
+        // aplicava a rotação e **largava a translação** — que é o que um vetor
+        // É —, e a primeira versão disto devolvia coordenada local vestida de
+        // coordenada de mundo. O overlay desenharia todo joint perto da origem.
+        // Alguém foi mordido por isso e escreveu-o aqui.
+        //
+        // **O que mudou.** `Point2` e `Vector2` fundiram num só tipo, então o
+        // `*` deixou de poder significar duas coisas e teve de escolher uma:
+        //
+        // |                | nalgebra (era)   | glamx (é)                |
+        // |----------------|------------------|--------------------------|
+        // | `pose * ponto` | roda + translada | roda + translada — igual |
+        // | `pose * vetor` | **roda só**      | **roda + translada**     |
+        //
+        // (`glamx-0.3.0/src/pose2.rs`: `impl Mul<Vec2> for Pose2` chama
+        // `transform_point`.)
+        //
+        // ⇒ **O defeito que este comentário descrevia tornou-se IMPOSSÍVEL, e o
+        // simétrico tornou-se possível:** já não é *«a direção perde a
+        // translação»*, é *«a direção GANHA uma translação que não devia ter»*.
+        // Uma normal, um eixo de junta, um `up` ou a direção de uma mola passados
+        // por `*` saem deslocados pela posição do corpo, num número plausível que
+        // nada denuncia. A cura desses é `transform_vector` — o método, nunca o
+        // operador —, e **nada no compilador distingue os dois usos**: ambos
+        // tomam um `Vector` e devolvem um `Vector`.
+        //
+        // Aqui a âncora é um LUGAR, logo `transform_point`.
         let pa = self
             .bodies
-            .get(j.body1)?
+            .get(j.body1())?
             .position()
-            .transform_point(&j.data.local_anchor1());
+            .transform_point(j.data.local_anchor1());
         let pb = self
             .bodies
-            .get(j.body2)?
+            .get(j.body2())?
             .position()
-            .transform_point(&j.data.local_anchor2());
+            .transform_point(j.data.local_anchor2());
         Some(([pa.x, pa.y], [pb.x, pb.y]))
     }
 }

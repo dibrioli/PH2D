@@ -62,7 +62,7 @@ fn gravity_scale_multiplies_the_bodys_fall() {
     for _ in 0..30 {
         w.step(); // 0.5 s @ 60 Hz
     }
-    let y = |h| w.body_pose(h).expect("body exists").translation.vector.y;
+    let y = |h| w.body_pose(h).expect("body exists").translation.y;
 
     let control_drop = start_y - y(control);
     assert!(

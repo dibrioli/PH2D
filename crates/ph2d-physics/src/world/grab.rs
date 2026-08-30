@@ -49,11 +49,11 @@
 //! devolveria uma âncora órfã com o `grab` desta struct apontando para handles
 //! de outra arena.
 
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{
     FixedJointBuilder, GenericJoint, ImpulseJointHandle, MotorModel, RigidBodyBuilder,
     RigidBodyHandle, RopeJointBuilder, SpringJointBuilder,
 };
-use rapier2d::na::{Isometry2, Point2, Vector2};
 
 use super::PhysicsWorld;
 
@@ -270,7 +270,7 @@ impl PhysicsWorld {
         // não tem entidade, então nada a lê de volta nem a desenha.
         let anchor = self.bodies.insert(
             RigidBodyBuilder::fixed()
-                .translation(Vector2::new(world_point[0], world_point[1]))
+                .translation(Vector::new(world_point[0], world_point[1]))
                 .build(),
         );
         let joint = Self::hold_joint(spec, local, body_rot);
@@ -297,8 +297,14 @@ impl PhysicsWorld {
     /// rotation at the moment of the grab. Both anchors are expressed the same
     /// way in all three: `local_anchor1` is the anchor body's ORIGIN (the anchor
     /// *is* the cursor) and `local_anchor2` is the grab point.
+    ///
+    /// ⚠️ **Os dois âncoras são LUGARES, e o tipo já não o diz** — desde a
+    /// migração para o glam eles são `Vector`, o mesmo tipo de um deslocamento.
+    /// `local_anchor1` é a ORIGEM da âncora, e é por isso que ele é
+    /// `Vector::ZERO` (era `Point2::origin()`): zero ali significa *o ponto
+    /// (0,0) do frame da âncora*, não *nenhum deslocamento*.
     fn hold_joint(spec: HoldSpec, local: [f32; 2], body_rot: f32) -> GenericJoint {
-        let grab = Point2::new(local[0], local[1]);
+        let grab = Vector::new(local[0], local[1]);
         match spec {
             HoldSpec::Spring { stiffness, damping } => {
                 // `rest_length` ZERO: o alvo é *o ponto de pega EM CIMA do
@@ -308,7 +314,7 @@ impl PhysicsWorld {
                 // corpo nem um ulp).
                 SpringJointBuilder::new(0.0, stiffness, damping)
                     .spring_model(MotorModel::AccelerationBased)
-                    .local_anchor1(Point2::origin())
+                    .local_anchor1(Vector::ZERO)
                     .local_anchor2(grab)
                     .build()
                     .into()
@@ -322,15 +328,15 @@ impl PhysicsWorld {
             // (no jump) and holds the attitude the body HAD, which is what
             // "rigid" means.
             HoldSpec::Rigid => FixedJointBuilder::new()
-                .local_frame1(Isometry2::new(Vector2::zeros(), body_rot))
-                .local_frame2(Isometry2::new(Vector2::new(local[0], local[1]), 0.0))
+                .local_frame1(Pose::new(Vector::ZERO, body_rot))
+                .local_frame2(Pose::new(Vector::new(local[0], local[1]), 0.0))
                 .build()
                 .into(),
             // A rope constrains only the DISTANCE, so rotation stays free — and
             // `max_length = 0` is the pin-with-free-spin case, not a degenerate
             // one.
             HoldSpec::Rope { max_length } => RopeJointBuilder::new(max_length.max(0.0))
-                .local_anchor1(Point2::origin())
+                .local_anchor1(Vector::ZERO)
                 .local_anchor2(grab)
                 .build()
                 .into(),
@@ -346,7 +352,7 @@ impl PhysicsWorld {
         };
         if let Some(a) = self.bodies.get_mut(g.anchor) {
             a.set_position(
-                Isometry2::new(Vector2::new(world_point[0], world_point[1]), 0.0),
+                Pose::new(Vector::new(world_point[0], world_point[1]), 0.0),
                 true,
             );
         }

@@ -47,8 +47,8 @@
 //! com o **primeiro**, então a resposta não depende de em que ordem o BVH os
 //! visitou.
 
+use crate::rmath::Vector;
 use rapier2d::dynamics::RigidBodyHandle;
-use rapier2d::na::Vector2;
 use rapier2d::parry::query::{DefaultQueryDispatcher, ShapeCastOptions};
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
 
@@ -90,8 +90,8 @@ impl PhysicsWorld {
         max_dist: f32,
         layer: u8,
     ) -> Option<CastHit> {
-        let d = Vector2::new(dir[0], dir[1]);
-        let n = d.norm();
+        let d = Vector::new(dir[0], dir[1]);
+        let n = d.length();
         if !n.is_finite() || n <= f32::EPSILON || !max_dist.is_finite() || max_dist < 0.0 {
             return None;
         }
@@ -115,7 +115,7 @@ impl PhysicsWorld {
             let Some(c) = self.colliders.get(ch) else {
                 continue;
             };
-            let Some((other, hit)) = pipeline.cast_shape(c.position(), &unit, c.shape(), options)
+            let Some((other, hit)) = pipeline.cast_shape(c.position(), unit, c.shape(), options)
             else {
                 continue;
             };

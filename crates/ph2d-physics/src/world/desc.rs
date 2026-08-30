@@ -304,6 +304,27 @@ pub struct BodyDesc {
     /// inside a body is when it first touches, which no solver undoes after the
     /// fact; this catches the collision that would otherwise be MISSED entirely.
     ///
+    /// # ⛔⛔ O QUE ESTA BANDEIRA COMPRA MUDOU na `rapier2d` 0.35
+    ///
+    /// O parágrafo acima descreve o que ela fazia até à 0.31: *ligava ou desligava a varredura,
+    /// contra tudo*. Na 0.35 o doc do `CCDSolver` diz outra coisa:
+    ///
+    /// > *«Fast dynamic bodies automatically sweep against **fixed** colliders; `ccd_enabled`
+    /// > upgrades to a **bullet** that also sweeps kinematic/dynamic bodies (never other
+    /// > bullets).»*
+    ///
+    /// ⇒ **Contra cenário FIXO a protecção é de graça** — um projéctil já não atravessa uma parede
+    /// estática, com ou sem esta bandeira. Ela passou a comprar a classe de alvo que a varredura
+    /// por omissão não alcança: corpos **cinemáticos e dinâmicos** (uma plataforma em movimento,
+    /// outro personagem). Produto novo, e bom: o modo de falha que um jogo sente primeiro — a bala
+    /// que sai pela parede — deixou de depender de alguém se lembrar de marcar a caixa.
+    ///
+    /// ⚠️ **Ela NÃO virou um knob morto**, e há gate a prová-lo:
+    /// `the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall` mede o contraste contra uma
+    /// parede **cinemática**, e `a_fast_body_no_longer_tunnels_through_fixed_scenery_even_without
+    /// _the_flag` é o oráculo da metade de graça. *Os dois nasceram do mesmo gate antigo, cujo
+    /// CONTROLO deixou de conter o fenómeno — e foi a mensagem dele que o disse.*
+    ///
     /// [`gravity_scale`]: BodyDesc::gravity_scale
     /// [`linvel`]: BodyDesc::linvel
     pub ccd: bool,

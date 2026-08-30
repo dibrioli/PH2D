@@ -69,7 +69,14 @@ use rapier2d::dynamics::{
     InverseKinematicsOption, JointAxesMask, MultibodyJointHandle, MultibodyJointSet,
     RigidBodyHandle,
 };
-use rapier2d::na::{DVector, Isometry2, Vector2};
+// ⚠️ **O `DVector` continua a vir do `nalgebra`, e não é resíduo** — ver a nota
+// gêmea no topo de [`super::ik_coords`]. A geometria virou `glam`; a álgebra
+// densa de dimensão dinâmica que o `Multibody` usa (`inverse_kinematics` toma um
+// `&mut DVector`) ficou onde estava, porque o `glam` é de dimensão
+// fixa e não tem o tipo.
+use rapier2d::math::DVector;
+
+use crate::rmath::{Pose, Vector};
 
 use super::ik_coords::{limit_is_a_coordinate, multibody_joint, project_limits, seed_coordinates};
 use super::joints::JointDesc;
@@ -203,7 +210,7 @@ pub struct IkChain {
     /// Rascunho das coordenadas, reusado entre Moves: o solve roda por
     /// movimento de mouse e alocar um `DVector` por evento é trabalho que não
     /// precisa existir.
-    displacements: DVector<f32>,
+    displacements: DVector,
     /// As juntas que têm limite, com o grau de liberdade que cada uma ocupa.
     /// Vazio quando nenhuma tem — e aí a projeção do §limites é um `for` sobre
     /// nada, byte-idêntico ao mundo sem limites.
@@ -476,7 +483,12 @@ impl PhysicsWorld {
         } else {
             target
         };
-        let pose = Isometry2::new(Vector2::new(goal[0], goal[1]), angle);
+        // ⚠️ `goal` é um LUGAR, e a translação de uma `Pose` é onde a origem do
+        // referencial fica — a leitura não mudou. A aritmética que o produziu
+        // (ponto − ponto = deslocamento; ponto + deslocamento = ponto, logo
+        // acima) corre sobre `[f32; 2]` cru e nunca esteve sob a rede de tipos
+        // do nalgebra, então a fusão ponto/vetor não tirou nada dela.
+        let pose = Pose::new(Vector::new(goal[0], goal[1]), angle);
         let options = InverseKinematicsOption {
             damping: opts.damping,
             max_iters: opts.max_iters,

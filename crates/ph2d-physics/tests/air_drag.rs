@@ -53,7 +53,7 @@ fn terminal_speed(k: f32, side: f32) -> f32 {
     for _ in 0..600 {
         w.step();
     }
-    w.bodies().get(h).expect("alive").linvel().norm()
+    w.bodies().get(h).expect("alive").linvel().length()
 }
 
 /// **The gate that reproduces the smoke.** Bigger falls faster, strictly.
@@ -158,7 +158,7 @@ fn damping_stays_uniform_while_drag_does_not() {
             for _ in 0..600 {
                 w.step();
             }
-            w.bodies().get(h).unwrap().linvel().norm()
+            w.bodies().get(h).unwrap().linvel().length()
         })
         .collect();
     assert_eq!(

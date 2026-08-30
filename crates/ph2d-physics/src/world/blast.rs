@@ -38,8 +38,13 @@
 //! iteração não entra em nenhuma soma de `f32` — o que dispensa a tabela
 //! ordenada por handle que os efetores de zona precisam (HR-5).
 
+//! ⚠️ **PONTO e VETOR são o MESMO tipo** ([`crate::rmath`]). Aqui os dois se cruzam num sítio
+//! só, e é o mesmo nos dois efeitos: `d` é uma **DIFERENÇA de dois lugares** (o centro de massa
+//! e o centro do estouro / do campo), logo é um deslocamento — e é dele que sai a direção do
+//! impulso. Os `center` autorados são `[f32; 2]`, então o compilador nunca os viu como vetores.
+
+use crate::rmath::Vector;
 use rapier2d::dynamics::{RigidBodySet, RigidBodyType};
-use rapier2d::na::Vector2;
 
 use super::PhysicsWorld;
 
@@ -139,18 +144,24 @@ impl PhysicsWorld {
             if body.body_type() != RigidBodyType::Dynamic {
                 continue;
             }
+            // PONTO − PONTO: do estouro ao centro de massa. `center_of_mass()` é um LUGAR (e a
+            // rapier 0.35 devolve-o por valor).
             let com = body.center_of_mass();
-            let d = Vector2::new(com.x - center[0], com.y - center[1]);
-            let dist = d.norm();
+            let d = Vector::new(com.x - center[0], com.y - center[1]);
+            let dist = d.length();
             let w = blast_falloff(dist, radius);
             if w <= 0.0 {
                 continue;
             }
             // ⚠️ A direção de um corpo EXATAMENTE no centro é indefinida.
-            // `normalize` de um vetor nulo é NaN, e um NaN na velocidade envenena
-            // a pose, o `Transform` e o hash determinista (a lição do `clamped()`
-            // do W3). Um corpo no olho do estouro não é empurrado — não há para
-            // onde, e "para cima" seria inventar um eixo.
+            // `normalize` de um vetor nulo é NaN — e continua a ser no glam —, e um
+            // NaN na velocidade envenena a pose, o `Transform` e o hash determinista
+            // (a lição do `clamped()` do W3). Um corpo no olho do estouro não é
+            // empurrado — não há para onde, e "para cima" seria inventar um eixo.
+            //
+            // ⛔ E é por isso que a cura NÃO é `normalize_or_zero()`: ela devolveria um
+            // impulso nulo mas ainda **contaria o corpo como atingido e o acordaria**. O
+            // `continue` é a resposta, e ela é mais forte que o zero.
             if dist <= f32::EPSILON {
                 continue;
             }
@@ -191,9 +202,11 @@ pub(super) fn apply_attract(bodies: &mut RigidBodySet, attract: &Option<Attract>
         if body.body_type() != RigidBodyType::Dynamic {
             continue;
         }
+        // PONTO − PONTO, na ordem CONTRÁRIA à da explosão: do corpo para o foco, porque a
+        // atração puxa para dentro. `com` é um LUGAR (por valor na rapier 0.35).
         let com = body.center_of_mass();
-        let d = Vector2::new(a.center[0] - com.x, a.center[1] - com.y);
-        let dist = d.norm();
+        let d = Vector::new(a.center[0] - com.x, a.center[1] - com.y);
+        let dist = d.length();
         let w = blast_falloff(dist, a.radius);
         if w <= 0.0 || dist <= f32::EPSILON {
             continue;
@@ -206,7 +219,7 @@ pub(super) fn apply_attract(bodies: &mut RigidBodySet, attract: &Option<Attract>
         // E a resistência, pesada pelo MESMO `w` — ver [`Attract::damping`].
         if a.damping > 0.0 {
             let k = 1.0 / (1.0 + a.damping * w * dt);
-            let v = *body.linvel();
+            let v = body.linvel();
             body.set_linvel(v * k, true);
         }
     }

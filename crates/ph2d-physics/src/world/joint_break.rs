@@ -279,10 +279,22 @@ pub(super) fn load_of(j: &ImpulseJoint, inv_dt: f32) -> JointLoad {
 
 /// The world point a break is reported at — the midpoint of the two anchors.
 fn midpoint(j: &ImpulseJoint, bodies: &RigidBodySet) -> Option<[f32; 2]> {
-    let a = bodies.get(j.body1)?;
-    let b = bodies.get(j.body2)?;
-    let pa = a.position().transform_point(&j.data.local_anchor1());
-    let pb = b.position().transform_point(&j.data.local_anchor2());
+    // ⚠️ rapier 0.35: `body1`/`body2` do `ImpulseJoint` passaram de campos públicos a métodos.
+    let a = bodies.get(j.body1())?;
+    let b = bodies.get(j.body2())?;
+    // ⚠️ O `&` caiu na 0.35: `Pose::transform_point` toma o ponto **por valor**,
+    // e `local_anchor1()` devolve um `Vector` (era um `Point2`). As âncoras são
+    // LUGARES, então é `transform_point` — ver a nota longa em
+    // [`super::joints::PhysicsWorld::joint_anchors`], que nomeia a distinção que
+    // o compilador deixou de fazer por nós.
+    let pa = a.position().transform_point(j.data.local_anchor1());
+    let pb = b.position().transform_point(j.data.local_anchor2());
+    // ⚠️ **Isto SOMA dois pontos, e está certo** — um ponto médio é uma
+    // combinação afim, a única soma de pontos com significado geométrico. O
+    // `nalgebra` proibia-a no tipo, e é por isso que a conta está escrita em
+    // ESCALARES em vez de `(pa + pb) * 0.5`. Hoje a forma vetorial compilaria e
+    // daria o mesmo número aqui — mas a razão de a escrever assim não era estilo,
+    // era a única maneira de a exprimir, então fica como está.
     Some([(pa.x + pb.x) * 0.5, (pa.y + pb.y) * 0.5])
 }
 

@@ -800,12 +800,16 @@ fn a_limited_slider_stops_at_the_authored_stroke() {
 
 /// **A degenerate axis does not poison the solver.**
 ///
-/// `UnitVector2::new_normalize` of a zero vector is `NaN`, and a `NaN` axis does
-/// not fail loudly — it flows into the pose, the readback and the determinism
-/// hash. A joint whose axis never got authored (or arrived non-finite from a
-/// project file) gets the horizontal rail an unrotated joint means.
+/// Normalising a zero vector is `NaN`, and a `NaN` axis does not fail loudly — it
+/// flows into the pose, the readback and the determinism hash. A joint whose axis
+/// never got authored (or arrived non-finite from a project file) gets the
+/// horizontal rail an unrotated joint means.
 ///
 /// Mutation: normalise without the guard → the pose reads `NaN` and this goes red.
+///
+/// ⚠️ **Este gate cobre METADE da porta `unit_or_x`** — o ramo do RECUO. A outra
+/// metade (o ramo que NORMALIZA) é a que o irmão abaixo passou a medir; leia lá
+/// por que ela deixou de ser de graça.
 #[test]
 fn a_degenerate_slider_axis_falls_back_instead_of_poisoning_the_pose() {
     for axis in [[0.0, 0.0], [f32::NAN, 1.0], [f32::INFINITY, 0.0]] {
@@ -847,4 +851,93 @@ fn a_degenerate_slider_axis_falls_back_instead_of_poisoning_the_pose() {
             "axis {axis:?} poisoned the pose: {p:?}"
         );
     }
+}
+
+/// ⭐⭐ **UM EIXO NÃO-UNITÁRIO É NORMALIZADO — a metade que o TIPO segurava de graça.**
+///
+/// Até à `rapier2d` 0.31 o eixo de um slider era um `UnitVector2<f32>`: um *newtype* em que
+/// «isto está normalizado» fazia parte do **tipo**, e o builder **exigia-o** — entregar um vetor
+/// cru não compilava. Na 0.35 ele toma um `Vector` (`glam::Vec2`) e nada no compilador impede que
+/// lá chegue um vetor por normalizar.
+///
+/// ⇒ A garantia mudou de dono: era do tipo, passou a ser da porta `unit_or_x`. **E uma garantia
+/// que muda de dono precisa de um gate, senão ela desaparece na primeira refactoração** — foi
+/// exactamente isso que a migração de 2026-08-29 achou: o gate irmão acima cobria só o recuo, e o
+/// único teste com eixo diagonal usava `[1/√2, −1/√2]`, que **já é unitário** e passaria igual se
+/// a chamada a `normalize` fosse apagada.
+///
+/// # Como este mede o que aquele não media
+///
+/// O eixo autorado é `[3, 4]` — norma **5**, escolhido por ser um terno pitagórico, de modo que a
+/// direção normalizada `(0,6 · 0,8)` é exacta em `f32` e o gate não depende de tolerância de
+/// arredondamento. Um slider deixa o carro correr **ao longo** do eixo e prende-o em tudo o resto;
+/// com o eixo por normalizar, o trilho leva uma escala embutida e o carro percorre a mesma
+/// distância física por uma quantidade diferente do parâmetro do limite.
+///
+/// ⇒ A régua é o **limite de curso**: com `limits: [-0,5; 0,5]` e um eixo unitário, o carro pára a
+/// meio metro da âncora. Se o eixo chegar com norma 5, o mesmo limite passa a valer 5× — e a
+/// distância percorrida denuncia-o sem que nada fique `NaN`.
+///
+/// ⚠️ **A prova de que ele morde:** apagar o `.normalize()` do ramo verdadeiro de `unit_or_x`
+/// deixa este gate VERMELHO e o irmão acima VERDE — que é a definição de a metade que faltava.
+#[test]
+fn a_non_unit_slider_axis_is_normalised_before_it_reaches_the_solver() {
+    // O mesmo eixo em duas escalas: um já unitário, o outro cinco vezes maior.
+    let unit = [0.6_f32, 0.8];
+    let scaled = [3.0_f32, 4.0];
+
+    let travel = |axis: [f32; 2]| -> f32 {
+        let mut w = PhysicsWorld::new();
+        let rail = body(
+            &mut w,
+            RigidBodyType::Fixed,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.1 },
+        );
+        let car = body(
+            &mut w,
+            RigidBodyType::Dynamic,
+            0.0,
+            5.0,
+            ShapeDesc::Ball { radius: 0.2 },
+        );
+        join(
+            &mut w,
+            rail,
+            car,
+            JointDesc {
+                kind: JointKind::Slider,
+                anchor_a: [0.0, 5.0],
+                anchor_b: [0.0, 5.0],
+                axis_a: axis,
+                axis_b: axis,
+                limits: Some([-0.5, 0.5]),
+                ..Default::default()
+            },
+        )
+        .expect("the slider builds");
+        for _ in 0..240 {
+            w.step();
+        }
+        let p = pose(&w, car);
+        // Quanto o carro andou a partir da âncora — a gravidade empurra-o até ao limite.
+        ((p[0] - 0.0).powi(2) + (p[1] - 5.0).powi(2)).sqrt()
+    };
+
+    let d_unit = travel(unit);
+    let d_scaled = travel(scaled);
+
+    assert!(
+        d_unit.is_finite() && d_scaled.is_finite(),
+        "nenhum dos dois pode envenenar a pose: {d_unit} / {d_scaled}"
+    );
+    assert!(
+        (d_unit - d_scaled).abs() < 0.02,
+        "o eixo [3, 4] (norma 5) percorreu {d_scaled:.3} m contra os {d_unit:.3} m do [0,6; 0,8] \
+         — o mesmo trilho, a mesma direccao, o mesmo limite de curso. A diferenca so' pode vir de \
+         o eixo ter chegado ao solver POR NORMALIZAR: a `unit_or_x` deixou de normalizar, e a \
+         garantia que o `UnitVector2` dava de graca ate' a` rapier 0.31 morreu sem que nada \
+         ficasse NaN. Leia o doc da `unit_or_x`."
+    );
 }

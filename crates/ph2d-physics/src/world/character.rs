@@ -30,10 +30,10 @@
 //! dinâmico ficava de pé sobre a água, o cinemático bateria numa parede
 //! invisível.
 
+use crate::rmath::{Pose, Vector};
 use rapier2d::control::{CharacterAutostep, CharacterLength, KinematicCharacterController};
 use rapier2d::dynamics::RigidBodyHandle;
 use rapier2d::geometry::{ColliderHandle, SharedShape};
-use rapier2d::na::{Isometry2, Unit, Vector2};
 use rapier2d::parry::query::DefaultQueryDispatcher;
 use rapier2d::parry::shape::Compound;
 use rapier2d::pipeline::{QueryFilter, QueryFilterFlags, QueryPipeline};
@@ -124,7 +124,11 @@ impl PhysicsWorld {
     #[must_use]
     pub fn body_foot_distance(&self, handle: RigidBodyHandle, up: [f32; 2]) -> Option<f32> {
         let body = self.bodies.get(handle)?;
-        let o = body.position().translation.vector;
+        // ⚠️ `pose.translation` JÁ é o vetor (o `.vector` do nalgebra morreu com
+        // o `Translation2`), e `aabb.mins`/`maxs` são hoje `Vector` em vez de
+        // `Point2` — a subtração abaixo continua a ser *canto menos origem*, que
+        // é ponto−ponto = deslocamento, e é o que a projeção em `up` quer.
+        let o = body.position().translation;
         let mut deepest: Option<f32> = None;
         for &ch in body.colliders() {
             let Some(c) = self.colliders.get(ch).filter(|c| !c.is_sensor()) else {
@@ -208,7 +212,7 @@ impl PhysicsWorld {
                     .is_some_and(|c| !c.is_sensor() && Some(*h) != exclude_collider)
             })
             .collect();
-        let (shape, pos): (SharedShape, Isometry2<f32>) = match shapes.as_slice() {
+        let (shape, pos): (SharedShape, Pose) = match shapes.as_slice() {
             [] => return none,
             [one] => {
                 let c = &self.colliders[*one];
@@ -218,12 +222,14 @@ impl PhysicsWorld {
                 // Em coordenadas do CORPO, e a pose do cast é a do corpo: as
                 // formas de um composto já estão dispostas umas em relação às
                 // outras, e é essa disposição que tem de viajar.
-                let parts: Vec<(Isometry2<f32>, SharedShape)> = many
+                let parts: Vec<(Pose, SharedShape)> = many
                     .iter()
                     .map(|h| {
                         let c = &self.colliders[*h];
                         (
-                            *c.position_wrt_parent().unwrap_or(&Isometry2::identity()),
+                            // `Pose` é `Copy`, então o `.copied()` substitui o
+                            // deref do `&Isometry2` que estava aqui.
+                            c.position_wrt_parent().copied().unwrap_or(Pose::IDENTITY),
                             c.shared_shape().clone(),
                         )
                     })
@@ -232,8 +238,18 @@ impl PhysicsWorld {
             }
         };
 
-        let up = Vector2::new(params.up[0], params.up[1]);
-        let up = Unit::try_new(up, 1.0e-6).unwrap_or_else(Vector2::y_axis);
+        let up = Vector::new(params.up[0], params.up[1]);
+        // ⚠️ **A normalização passou a ser NOSSA.** O campo `up` do controlador
+        // era um `Unit<Vector2>` — o TIPO garantia norma 1, e um `up` degenerado
+        // era recusado pelo `Unit::try_new`. Hoje ele é um `Vector` cru: o
+        // compilador aceita qualquer coisa, e um `up` de norma 2 daria um limite
+        // de rampa errado **em silêncio**. A lei é a mesma de antes (normaliza
+        // acima de 1e-6, senão cai no eixo Y, que era o `Vector2::y_axis`).
+        let up = if up.length() > 1.0e-6 {
+            up.normalize()
+        } else {
+            Vector::Y
+        };
         let controller = KinematicCharacterController {
             up,
             slide: true,
@@ -273,13 +289,22 @@ impl PhysicsWorld {
             &queries,
             shape.as_ref(),
             &pos,
-            Vector2::new(wanted[0], wanted[1]),
+            Vector::new(wanted[0], wanted[1]),
             |c| {
                 // ⚠️ **A testemunha 1 é a do CORPO QUE SE MOVE**, e a pose dela é
                 // a `character_pos` — é assim que o próprio rapier a leva para o
                 // mundo no `solve_character_collision_impulses`. Levá-la pela pose
                 // de ENTRADA daria o ponto onde o personagem estava antes de
                 // deslizar, que num tique de contato não é onde ele encostou.
+                //
+                // ⚠️ **É um PONTO, e o tipo já não o diz.** `witness1` era um
+                // `Point2` e hoje é um `Vector`, igual à `normal1` logo abaixo,
+                // que é uma DIREÇÃO. O `Pose * Vector` do glamx é
+                // `transform_point` (roda **e** translada), que é o que este
+                // sítio quer — mas trocar `witness1` por `normal1` aqui passaria
+                // a compilar, e o resultado seria uma normal deslocada pela
+                // posição do personagem. A distinção agora é a leitura, não o
+                // compilador.
                 let p = c.character_pos * c.hit.witness1;
                 hits.push(CharacterHit {
                     body: self.colliders.get(c.handle).and_then(|col| col.parent()),

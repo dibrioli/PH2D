@@ -5,10 +5,9 @@
 //! second — every `BodyDesc` field that describes the SHAPE and its surface, in one
 //! place, so a new collider property has an obvious home.
 
+use crate::rmath::Vector;
 use rapier2d::geometry::{ActiveCollisionTypes, Collider, ColliderBuilder};
-use rapier2d::na::Vector2;
 use rapier2d::pipeline::ActiveHooks;
-use rapier2d::prelude::nalgebra;
 
 use super::desc::BodyDesc;
 use super::oneway;
@@ -37,7 +36,7 @@ pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
         } => {
             let pts: Vec<_> = capsule_vertices(half_height, rx, ry)
                 .into_iter()
-                .map(|[x, y]| nalgebra::Point2::new(x, y))
+                .map(|[x, y]| Vector::new(x, y))
                 .collect();
             ColliderBuilder::convex_polyline(pts).unwrap_or_else(|| {
                 ColliderBuilder::capsule_y(half_height.max(f32::MIN_POSITIVE), rx.max(ry))
@@ -46,7 +45,7 @@ pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
         ShapeDesc::Ellipse { rx, ry } => {
             let pts: Vec<_> = ellipse_vertices(rx, ry)
                 .into_iter()
-                .map(|[x, y]| nalgebra::Point2::new(x, y))
+                .map(|[x, y]| Vector::new(x, y))
                 .collect();
             // `convex_polyline` returns None only on a degenerate ring
             // (an axis scaled to ~0). That is not a shape a real sprite
@@ -107,7 +106,7 @@ pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
         // the body (rapier's default, byte-identical to before this existed);
         // rapier rotates this translation with the body, so an offset foot-box
         // turns with the character. Scale is already folded in by the caller.
-        .translation(Vector2::new(desc.offset[0], desc.offset[1]))
+        .translation(Vector::new(desc.offset[0], desc.offset[1]))
         // One-way (jump-through) platform. The flag reaches the stateless hook as a
         // `user_data` bit, and `MODIFY_SOLVER_CONTACTS` is what makes rapier call
         // the hook for this pair at all — without it the bit is inert. A collider

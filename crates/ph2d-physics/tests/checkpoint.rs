@@ -122,7 +122,7 @@ fn a_scattering_scene_restores_bit_exactly_too() {
             let vx = ((i as f32) - 7.5) * 9.0;
             let vy = ((i % 3) as f32 - 1.0) * 7.0;
             if let Some(b) = w.bodies_mut().get_mut(h) {
-                b.set_linvel(rapier2d::na::Vector2::new(vx, vy), true);
+                b.set_linvel(ph2d_physics::rmath::Vector::new(vx, vy), true);
             }
         }
         w

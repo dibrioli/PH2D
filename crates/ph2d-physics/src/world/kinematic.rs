@@ -11,8 +11,8 @@
 //! one responsibility and they live together here.
 
 use super::PhysicsWorld;
+use crate::rmath::{Pose, Vector};
 use rapier2d::dynamics::{RigidBodyHandle, RigidBodyType};
-use rapier2d::na::{Isometry2, Vector2};
 
 impl PhysicsWorld {
     /// Aim a **kinematic** body at `(x, y, rotation)`: the next [`step`] moves
@@ -65,7 +65,7 @@ impl PhysicsWorld {
             return;
         }
         let start = *b.position();
-        let target = Isometry2::new(Vector2::new(x, y), rotation);
+        let target = Pose::new(Vector::new(x, y), rotation);
         self.kinematic_targets.push((handle, start, target));
     }
 
@@ -111,11 +111,7 @@ impl PhysicsWorld {
 
     /// [`PhysicsWorld::slice_pose`] in rapier's own types — what the sub-step
     /// loop uses.
-    pub(super) fn kinematic_slice(
-        start: &Isometry2<f32>,
-        target: &Isometry2<f32>,
-        f: f32,
-    ) -> Isometry2<f32> {
+    pub(super) fn kinematic_slice(start: &Pose, target: &Pose, f: f32) -> Pose {
         let s = Self::slice_pose(
             [
                 start.translation.x,
@@ -129,6 +125,6 @@ impl PhysicsWorld {
             ],
             f,
         );
-        Isometry2::new(Vector2::new(s[0], s[1]), s[2])
+        Pose::new(Vector::new(s[0], s[1]), s[2])
     }
 }

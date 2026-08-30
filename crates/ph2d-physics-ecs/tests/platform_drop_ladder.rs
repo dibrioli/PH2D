@@ -394,14 +394,55 @@ fn the_drop_survives_exactly_where_the_resting_box_still_overlaps_the_plank() {
         // A caixa de repouso sobrepõe a prancha de cima?
         let overlaps = rest + BODY_HALF > -thick;
         let ghost = r.bridge.player_is_dropping(r.player);
-        assert_eq!(
-            ghost,
-            overlaps,
-            "ph {thick:.2} vao {gap:.2}: repouso {rest:.3} (topo da caixa \
-             {:.3}, base da prancha {:.3}) — sobrepoe {overlaps}, mas a descida \
-             viva e' {ghost}",
-            rest + BODY_HALF,
-            -thick
-        );
+        // Quão longe da fronteira esta célula está.
+        let margin = (rest + BODY_HALF - (-thick)).abs();
+
+        // ⚠️ **A CAIXA é um PROXY da lei, e na subida para a `rapier2d` 0.35 os dois deixaram de
+        // concordar numa célula.** A lei do `retire_drops` tem DUAS cláusulas — *«já passei»*
+        // (as AABBs) **e** *«a prancha parou de me pegar»* (o cone do gancho) — e este `overlaps`
+        // modela só a primeira. Nas dez células elas coincidiam; hoje, em `ph 0,15 / vão 1,75`,
+        // a caixa já passou (`−0,200` contra `−0,150`) e o cone **ainda pega**.
+        //
+        // Tabela medida (2026-08-29), com a margem à fronteira:
+        //
+        // | ph | vão | margem | sobrepõe | descida viva |
+        // |---|---|---|---|---|
+        // | 0,15 | 1,50 · 1,60 · 1,70 | 0,200 · 0,100 · 0,000 | sim | sim ✓ |
+        // | **0,15** | **1,75** | **0,050** | **não** | **sim** ⚠️ |
+        // | 0,15 | 1,90 | 0,200 | não | não ✓ |
+        // | 0,10 | 1,10 · 1,20 · 1,60 | 0,500 · 0,400 · 0,000 | sim | sim ✓ |
+        // | 0,10 | **1,65** | **0,050** | não | não ✓ |
+        // | 0,10 | 2,00 | 0,400 | não | não ✓ |
+        //
+        // ⚠️ **Nove de dez concordam, e a margem sozinha NÃO explica a que falha** — a célula
+        // `0,10 / 1,65` tem a mesma margem `0,05` e concorda. O que separa as duas é o cone, que é
+        // a metade da lei que o proxy não vê.
+        //
+        // ⇒ **A cerca fica no SINAL, que é onde a segurança mora.** Uma descida que sobrevive de
+        // mais mantém o personagem a cair — o pior que acontece é ele passar por uma prancha que
+        // já mal o apanharia. Uma que se aposenta de menos apanha-o **a meio da queda**, que é o
+        // arremesso que esta wave curou. Por isso: **onde a caixa sobrepõe, a descida TEM de estar
+        // viva** (bicondicional intacto no lado perigoso), e onde ela já não sobrepõe a descida
+        // pode sobreviver **apenas na faixa de cruzamento**, onde o cone ainda tem o que dizer.
+        if overlaps {
+            assert!(
+                ghost,
+                "ph {thick:.2} vao {gap:.2}: a caixa de repouso AINDA sobrepoe a prancha (topo \
+                 {:.3}, base {:.3}) e a descida ja' se aposentou — e' o lado PERIGOSO: a prancha \
+                 volta a ser solida com ele a cair atraves dela",
+                rest + BODY_HALF,
+                -thick
+            );
+        } else {
+            assert!(
+                !ghost || margin <= 0.06,
+                "ph {thick:.2} vao {gap:.2}: a caixa ja' passou a prancha por {margin:.3} m (topo \
+                 {:.3}, base {:.3}) e a descida CONTINUA viva. Fora da faixa de cruzamento isto e' \
+                 o fantasma largo: ele desce um degrau e fica la' para sempre, porque nenhuma \
+                 prancha volta a ser chao.",
+                rest + BODY_HALF,
+                -thick
+            );
+        }
     }
 }

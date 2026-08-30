@@ -46,6 +46,7 @@ mod finish;
 /// ⭐⭐⭐ **O ACABAMENTO DA CADEIA DE EXTRACÇÃO** — ver [`finish_extract`].
 pub mod finish_extract;
 /// ⭐⭐⭐ **O ACHATAMENTO DE FRONTEIRA LIVRE** — LSCM — ver [`lscm`].
+pub mod local;
 mod lscm;
 /// **O PATCH ACHATADO** — a grade nasce na superfície, não no espaço — ver [`param`].
 mod param;
@@ -76,6 +77,7 @@ pub use finish_extract::{
     EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,
     finish_extracted_with,
 };
+pub use local::{FaceLocal, LocalShape, QuadKind, local_shape, local_shape_of};
 pub use quality::{
     Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint,
 };

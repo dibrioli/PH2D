@@ -54,3 +54,14 @@ crate certa**: `cargo test -p ph2d-host-desktop --bins` corre **3 834** testes d
 em `shells/desktop/tests/`** — onde vive `shell_files_respect_hr18_loc_cap`, o gate de LOC do próprio
 shell. *Um portão pode correr quase quatro mil testes da crate certa e ainda assim não alcançar o
 gate dela.* ⇒ o comando é `cargo test -p <crate>` **sem** `--bins` (ou `--tests` explícito ao lado).
+
+## ⚠️ A QUARTA variante, 2026-08-30 — e desta vez é a ferramenta que o §2 manda usar
+
+`scripts/cargo-check-narrow.sh` corre `cargo check -p <crate>` **sem `--all-targets`** ⇒ ele **não
+compila `#[cfg(test)]` nenhum**. Medido no mesmo dia: ele imprimiu *«compila»* sobre um ficheiro com
+um `use` que não resolvia, e o erro só apareceu ao correr o teste — três minutos depois.
+
+⚠️ **Isto não desqualifica o script** (o laço interno quer ser rápido, e `--all-targets` no shell
+custa), mas o utilizador tem de saber o que ele **não** responde. ⇒ ao mexer em código de teste
+(sonda, gate, fixtura), o check certo é `cargo check -p <crate> --all-targets`; o script responde
+*«o produto compila?»*, nunca *«a suíte compila?»*.

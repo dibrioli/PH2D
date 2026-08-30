@@ -25,7 +25,7 @@ mod rulers;
 #[path = "sculpt3d_photo_button.rs"]
 mod button;
 
-use rulers::{census, holes, islands, relief_density, spiked_ball};
+use rulers::{census, holes, islands, local, orientation_and_density, relief_density, spiked_ball};
 
 /// ⭐⭐⭐ **VERDE desde 2026-08-22** — a aresta de **56 %** que o artista fotografou
 /// mede hoje **12,4 % · 7,8 % · 5,5 %** nos três níveis do slider, e as dobras

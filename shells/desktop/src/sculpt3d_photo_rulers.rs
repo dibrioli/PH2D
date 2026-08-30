@@ -297,3 +297,170 @@ pub(super) fn holes(tag: &str, mesh: &ph2d_mesh::Mesh) {
         );
     }
 }
+
+/// ⭐⭐⭐ **A RÉGUA LOCAL, impressa** — ver [`ph2d_quadfill::LocalShape`].
+///
+/// ⚠️ **As colunas vêm em PARES de numerador e denominador**, e isso é a razão de
+/// esta sonda existir: *«12 defeitos na ponta»* significa coisas opostas se a ponta
+/// tem `20` faces ou `2 000`. O `QuadShape` resume em percentis e por isso não pode
+/// responder à frase do artista.
+pub(super) fn local(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    let (s, per) = ph2d_quadfill::local_shape(mesh);
+    let n = per.len().max(1);
+    #[allow(clippy::cast_precision_loss)]
+    let pct = |k: usize| 100.0 * k as f32 / n as f32;
+    eprintln!(
+        "   {tag}: LOCAL {} defeito(s) em {} faces ({:.2} %) | gravatas {} torcidas {} lascas {} \
+         | torcao max {:.1} p99 {:.1}",
+        s.defects,
+        per.len(),
+        pct(s.defects),
+        s.bowties,
+        s.warped,
+        s.slivers,
+        s.warp_max,
+        s.warp_p99,
+    );
+    #[allow(clippy::cast_precision_loss)]
+    let densidade = if s.faces_at_tip == 0 {
+        0.0
+    } else {
+        100.0 * s.defects_at_tip as f32 / s.faces_at_tip as f32
+    };
+    eprintln!(
+        "   {tag}: LOCAL na PONTA {}/{} faces ({:.2} %) contra {:.2} % na peca inteira",
+        s.defects_at_tip,
+        s.faces_at_tip,
+        densidade,
+        pct(s.defects),
+    );
+    // ⚠️ **Os piores, com o RAIO ao lado** — sem ele a lista não diz se eles estão
+    // onde o artista aponta.
+    let mut idx: Vec<usize> = (0..per.len()).filter(|&i| per[i].is_defect()).collect();
+    idx.sort_by(|&a, &b| per[b].warp_deg.total_cmp(&per[a].warp_deg));
+    for &i in idx.iter().take(6) {
+        let d = per[i];
+        eprintln!(
+            "      face {i}: torcao {:.1} | {:?} | quadratura {:.3} | raio {:.2}",
+            d.warp_deg, d.kind, d.squareness, d.radial
+        );
+    }
+}
+
+/// ⭐⭐⭐ **A ORIENTAÇÃO e a DENSIDADE POR RAIO** — as duas que sobram depois de a
+/// torção, a gravata e a lasca serem ilibadas (medido 2026-08-30).
+///
+/// ⛔⛔ **A orientação é a que literalmente se lê como BURACO.** Duas faces
+/// vizinhas com enrolamento oposto apontam para lados contrários; num viewport
+/// sombreado uma delas é vista **por dentro** e sai preta. ⚠️ **E nenhuma régua
+/// deste repo a mede:** `χ` não muda, o bordo é zero, o não-manifold conta arestas
+/// com `≠ 2` faces — e aqui as duas faces estão lá. *A assinatura é a aresta
+/// interior percorrida no MESMO sentido pelas duas.*
+///
+/// ⛔ **A densidade por raio é a outra queixa dele** — *«as pontas têm menos
+/// densidade de faces»*. Ela mede a área mediana de face por casca radial: se a
+/// última casca tem faces muito maiores, a ponta é grosseira, e isso não move
+/// nenhuma mediana global.
+pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
+    use std::collections::BTreeMap;
+    let faces = mesh.faces();
+    let pos = mesh.positions();
+
+    // ⚠️ A chave é a aresta NÃO-ORIENTADA; o valor conta cada SENTIDO.
+    let mut dir: BTreeMap<(u32, u32), (usize, usize)> = BTreeMap::new();
+    for f in faces {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k], v[(k + 1) % v.len()]);
+            let e = if a < b { (a, b) } else { (b, a) };
+            let slot = dir.entry(e).or_insert((0, 0));
+            if a < b {
+                slot.0 += 1;
+            } else {
+                slot.1 += 1;
+            }
+        }
+    }
+    let mut inconsistent = 0usize;
+    let mut interior = 0usize;
+    for (fwd, bwd) in dir.values() {
+        if fwd + bwd == 2 {
+            interior += 1;
+            // ⭐ Numa superfície orientada, toda aresta interior é percorrida
+            // **uma vez em cada sentido**. `2/0` ou `0/2` é enrolamento oposto.
+            if *fwd == 2 || *bwd == 2 {
+                inconsistent += 1;
+            }
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let pct = 100.0 * inconsistent as f32 / interior.max(1) as f32;
+    eprintln!(
+        "   {tag}: ORIENTACAO {inconsistent} de {interior} arestas interiores viradas ({pct:.3} %)"
+    );
+
+    // A densidade por casca radial.
+    let mut c = [0.0f64; 3];
+    let cent: Vec<[f32; 3]> = faces
+        .iter()
+        .map(|f| {
+            let v = f.verts();
+            let mut p = [0.0f32; 3];
+            for &i in v {
+                let q = pos[i as usize];
+                for k in 0..3 {
+                    p[k] += q[k];
+                }
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let n = v.len() as f32;
+            [p[0] / n, p[1] / n, p[2] / n]
+        })
+        .collect();
+    for p in &cent {
+        for k in 0..3 {
+            c[k] += f64::from(p[k]);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let n = cent.len().max(1) as f64;
+    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let area = |f: &ph2d_mesh::Face| -> f32 {
+        let v = f.verts();
+        let mut s = [0.0f32; 3];
+        for k in 0..v.len() {
+            let a = pos[v[k] as usize];
+            let b = pos[v[(k + 1) % v.len()] as usize];
+            s[0] += a[1].mul_add(b[2], -(a[2] * b[1]));
+            s[1] += a[2].mul_add(b[0], -(a[0] * b[2]));
+            s[2] += a[0].mul_add(b[1], -(a[1] * b[0]));
+        }
+        0.5 * s[0].mul_add(s[0], s[1].mul_add(s[1], s[2] * s[2])).sqrt()
+    };
+    let d: Vec<f32> = cent
+        .iter()
+        .map(|p| {
+            let q = [p[0] - mid[0], p[1] - mid[1], p[2] - mid[2]];
+            q[0].mul_add(q[0], q[1].mul_add(q[1], q[2] * q[2])).sqrt()
+        })
+        .collect();
+    let far = d.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
+    let mut shells: [Vec<f32>; 5] = Default::default();
+    for (i, f) in faces.iter().enumerate() {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let s = ((d[i] / far) * 5.0).floor().min(4.0) as usize;
+        shells[s].push(area(f).sqrt());
+    }
+    let mut linha = String::new();
+    for (k, s) in shells.iter_mut().enumerate() {
+        s.sort_by(f32::total_cmp);
+        let med = if s.is_empty() { 0.0 } else { s[s.len() / 2] };
+        linha.push_str(&format!(
+            " [{:.1}-{:.1}] {med:.4}×{}",
+            k as f32 * 0.2,
+            (k + 1) as f32 * 0.2,
+            s.len()
+        ));
+    }
+    eprintln!("   {tag}: ARESTA-EQUIVALENTE por casca radial:{linha}");
+}

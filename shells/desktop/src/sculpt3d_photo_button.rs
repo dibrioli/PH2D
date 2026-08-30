@@ -8,7 +8,9 @@
 //! ferramenta errada e o relatório fica plausível. `PH2D_PROBE_LOCAL=1` é o único caminho
 //! para o local, e o default é o que o artista clica.
 
-use super::{census, holes, islands, relief_density, spiked_ball};
+// ⚠️ **`local` ja' e' o nome de uma variavel aqui** (o MOTOR local, `PH2D_PROBE_LOCAL`),
+// e sao coisas diferentes: um e' o motor de retopologia, o outro e' a regua de forma.
+use super::{census, holes, islands, local as local_shape, relief_density, spiked_ball};
 
 /// ⭐⭐⭐ **SONDA — A PEÇA DO ARTISTA PELO BOTÃO, e não por uma cópia da ordem dele.**
 ///
@@ -173,6 +175,7 @@ fn the_artists_piece_through_the_button() {
     );
     census("SAIDA", &out);
     islands("SAIDA", &out);
+    local_shape("SAIDA", &out);
     relief_density("SAIDA", &out);
     // ⭐ **`PH2D_DUMP=<ficheiro>` escreve a saída** — é o que permite medir a SECÇÃO do
     // espinho fora daqui, com a mesma régua que comparou as três malhas do artista.
@@ -272,5 +275,57 @@ fn does_phase_zero_keep_the_topology() {
             reach(&work),
             100.0 * (reach(&work) / reach(&piece) - 1.0)
         );
+    }
+}
+
+/// ⭐⭐⭐ **A RÉGUA LOCAL sobre FICHEIROS, lado a lado** — o CONTROLO que decide se
+/// «torcida» é defeito ou é a superfície.
+///
+/// ⛔⛔ **Sem ele o número não significa nada.** Um quad que cobre uma região
+/// curva é **legitimamente** não-plano: numa ponta afiada a superfície vira
+/// depressa, e a torção mede isso tão bem como mede um defeito. *A pergunta não é
+/// «há torção?», é «há MAIS do que na malha de que ninguém se queixou?».*
+///
+/// ⚠️ **O controlo certo é a saída da ferramenta que o artista ACEITOU** — ele
+/// mandou a peça dele passada pelo QRemeshify e disse *«preserva as pontas»*. Ela
+/// é o denominador honesto; uma barra escolhida por mim não seria.
+///
+/// ```text
+///   PH2D_MESHES=/a.obj,/b.obj \
+///   cargo test -p ph2d-host-desktop --release --bins \
+///   the_local_ruler_across_files -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "sonda -- a regua local sobre N ficheiros (PH2D_MESHES=a.obj,b.obj)"]
+fn the_local_ruler_across_files() {
+    let Ok(list) = std::env::var("PH2D_MESHES") else {
+        eprintln!("sem PH2D_MESHES -- nada a medir");
+        return;
+    };
+    for path in list.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let Ok(text) = std::fs::read_to_string(path) else {
+            eprintln!("── {path}: NAO ABRE");
+            continue;
+        };
+        let Ok(pieces) = ph2d_mesh::import_obj(&text) else {
+            eprintln!("── {path}: NAO E' UM OBJ VALIDO");
+            continue;
+        };
+        let Some(p) = pieces.into_iter().next() else {
+            eprintln!("── {path}: sem pecas");
+            continue;
+        };
+        let name = std::path::Path::new(path)
+            .file_name()
+            .map_or_else(|| path.to_string(), |s| s.to_string_lossy().to_string());
+        eprintln!("── {name}");
+        let mesh = p.mesh;
+        // ⚠️ **A contagem de faces vai JUNTO**, sempre: uma malha mais fina tem
+        // quads menores, e um quad menor cobre menos curvatura — comparar a torção
+        // de duas densidades diferentes sem a dizer é a armadilha de 28/08.
+        eprintln!("   {} verts {} faces", mesh.vert_count(), mesh.face_count());
+        super::census("   ", &mesh);
+        super::local("  ", &mesh);
+        super::orientation_and_density("  ", &mesh);
     }
 }

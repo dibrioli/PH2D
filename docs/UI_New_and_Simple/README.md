@@ -97,14 +97,17 @@ o que um painel **declara** (portado do `EditorDock` MIT), as **regiões** de um
 orçamento medido — **94,4 % de tela com os lados recolhidos**, contra ⛔ **49,6 % com tudo aberto,
 que não é melhor do que hoje**.
 
-⏳ **Próximo:** as perguntas em aberto estão no
-[`spec/01_modelo_de_areas.md §7`](spec/01_modelo_de_areas.md) — a lista de Layouts, que modos
-declara cada tipo de objecto, e como partir o `DrawMode` nos dois eixos.
+⏳ **Próximo — as três que ficaram, e as três são do Enio:**
+1. **Pose 2D ou 3D?** A Timeline aprende um segundo vocabulário, ou o `Transform` sobe para 3D?
+   ⛔ **Não medido** quantos sítios leem `Transform` — sem esse número não há escolha honesta.
+2. **Como partir o `DrawMode`** nos dois eixos (2 modos + 12 ferramentas achatados em 14 variantes
+   vivas, com gates).
+3. **A ordem de migração** — 2 073 ids e 25 painéis.
 
 ## O que esta etapa NÃO fez
 
 - **Não tocou uma linha de `crates/`** — o único ficheiro de código alterado é o `.gitignore`,
   para manter `referencias/` fora do git.
-- Não decidiu nada sozinha: as cinco decisões são do Enio, e o que fica em aberto está nomeado
+- Não decidiu nada sozinha: as oito decisões são do Enio, e o que fica em aberto está nomeado
   nos `⏳` de cada documento.
-- ⚠️ **A spec é RASCUNHO** — o §7 dela lista seis coisas por decidir, e a §8 o que ⛔ não fazer.
+- ⚠️ **A spec é RASCUNHO** — o §7 dela lista o que falta decidir, e a §8 o que ⛔ não fazer.

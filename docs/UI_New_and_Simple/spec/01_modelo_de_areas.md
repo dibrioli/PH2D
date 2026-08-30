@@ -200,16 +200,23 @@ dedo é gordo?»*. ⏳ **Proposta:** dois números independentes, `pixel_scale` 
 
 ## §7 — O que fica por decidir
 
-1. **⏳ A lista de Layouts.** O Enio escolheu a **forma** («por tarefa»), não a lista, e deu três
-   exemplos: *Editor 2D · Editor de Texto · Runtime*.
-2. **⏳ Que modos declara cada TIPO de objecto nosso** — `VecPath`, malha 3D, sprite, objecto
-   Flip, peça SDF, corpo de física. ⭐ Não é uma lista global: é uma propriedade de cada tipo
-   ([`pesquisa/04 §5`](../pesquisa/04_modo_layout_e_ferramenta.md)).
-3. **⏳ Adoptamos o campo `Mode` do Workspace?** (*"switch to this Mode when activating"* — o
-   atalho que liga os dois eixos sem os acoplar.)
-4. **⏳ Como partir o `DrawMode`** nos dois eixos. São **2 modos + 12 ferramentas** achatados num
+✅ **FECHADAS pelo Enio em 2026-08-30** (ver [`00_DECISOES_DO_ENIO.md`](../00_DECISOES_DO_ENIO.md)):
+a **lista de Layouts** (D7 — oito) · os **modos por tipo de objecto** (D6) · e **as timelines em
+todos os modos** (D8, que no modelo é uma linha: a Timeline é uma área do `BOTTOM` em qualquer
+Layout, ligada à **selecção**).
+
+Ficam:
+
+1. **⏳⏳ Pose 2D ou 3D — a maior das três.** O `PropKind` da Timeline tem 13 variantes e nenhuma
+   tem Z, porque o `ph2d_ecs::Transform` é `Vec2` + um `f32`. As duas saídas e os seus preços
+   estão em [`medicoes/04 §6`](../medicoes/04_o_alcance_das_timelines.md); ⛔ **quantos sítios leem
+   `Transform` não foi medido**, e sem esse número a escolha é gosto.
+2. **⏳ A escultura tem de virar ENTIDADE** antes de qualquer timeline a alcançar — hoje é um campo
+   do estado do app, inalcançável por tudo. Molde pronto: o `PaintedDoc`.
+3. **⏳ Como partir o `DrawMode`** nos dois eixos. São **2 modos + 12 ferramentas** achatados num
    enum de 14 variantes vivas, com gates. ⚠️ Hoje **não se exprime «Edit + ferramenta Fillet»**.
-   Não desenhado.
+4. **⏳ Adoptamos o campo `Mode` do Workspace?** (*"switch to this Mode when activating"* — o
+   atalho que liga os dois eixos sem os acoplar.)
 5. **⏳ Os 9 toggles de módulo** (`vector_toggle`, `motion_toggle`, …) são interruptores
    independentes — 2⁹ combinações. Um Layout é *um-de-N*. Como se converte um no outro?
 6. **⏳ Migração.** São **2 073 ids** e **25 painéis**. A ordem de conversão não está desenhada, e

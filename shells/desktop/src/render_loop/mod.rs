@@ -1172,8 +1172,8 @@ impl crate::App {
             sheet_textures,
             next_sheet_id,
             atlas_asset_map,
-            // A wave A3 liga a coluna de catálogos a isto; até lá o índice ainda não a lê.
-            catalogs: _asset_catalogs,
+            // ⭐⭐ A TAXONOMIA da biblioteca (wave A3) — publicada ao painel e mutada pelos verbos.
+            catalogs: asset_catalogs,
             logical_texture_map,
             component_registry,
             editor_queue,
@@ -2829,6 +2829,7 @@ impl crate::App {
                 camera,
                 asset_db,
                 atlas_asset_map,
+                asset_catalogs,
                 sheets,
                 renderer,
                 window_size,
@@ -3142,6 +3143,10 @@ impl crate::App {
             // das seis células é uma RECUSA que só o shell sabe redigir (o número de utilizadores
             // de uma imagem), e dobrá-lo no slot dos verbos de instância obrigaria a inventar um
             // `Verb` para *«não faça nada e diga porquê»*.
+            // ⭐⭐ Os verbos de CATÁLOGO (wave A3). ⚠️ **Um `Vec`, e não um slot único**: ao
+            // contrário dos verbos de instância, dois destes PODEM chegar no mesmo quadro sem
+            // conflito (criar e escolher, por exemplo) — e eles não competem por um sujeito.
+            let mut catalog_verbs: Vec<ph2d_editor::action_bus::CatalogVerb> = Vec::new();
             let mut asset_card_verb: Option<(
                 ph2d_editor::interaction::drag_payload::DragPayload,
                 ph2d_editor::action_bus::AssetCardAction,
@@ -4399,6 +4404,9 @@ impl crate::App {
                     // quadro tem um gesto, e o menu fecha ao primeiro clique.
                     EditorAction::AssetCardVerb { asset, verb } => {
                         asset_card_verb.get_or_insert((asset, verb));
+                    }
+                    EditorAction::AssetCatalogVerb(v) => {
+                        catalog_verbs.push(v);
                     }
                     EditorAction::HierInstantiateLinked { row } => {
                         instance_verb_row
@@ -10808,6 +10816,14 @@ impl crate::App {
                     Err(_) => {
                         toasts.push(Toast::warning("That is not a copy of a prefab"));
                     }
+                }
+            }
+            // ⭐⭐ **Os verbos de catálogo** (wave A3). ⚠️ Eles correm ANTES do `hierarchy::dispatch`
+            // de propósito: a taxonomia não é o mundo, e misturá-los no mesmo bloco daria a
+            // impressão de que um catálogo é um objecto da cena.
+            for v in &catalog_verbs {
+                if crate::asset_catalog_verbs::drain(v, asset_catalogs, toasts) {
+                    self.title_dirty = true;
                 }
             }
             if hierarchy::dispatch(

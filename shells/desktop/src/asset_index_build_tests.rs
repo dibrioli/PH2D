@@ -18,6 +18,11 @@ fn no_atlas() -> BTreeMap<u32, AssetId> {
     BTreeMap::new()
 }
 
+/// Uma taxonomia VAZIA — o estado de um projecto em que ninguém arrumou nada.
+fn no_catalogs() -> ph2d_asset_index::CatalogTree {
+    ph2d_asset_index::CatalogTree::new()
+}
+
 fn world_with_one_component(db: &AssetDb) -> (SimWorld, AssetId) {
     let mut sim = SimWorld::new();
     let pixels = vec![0u8; 4 * 4 * 4];
@@ -49,7 +54,14 @@ fn one_walk_returns_both_families() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let index = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     let counts = index.counts();
     assert_eq!(counts.get(&AssetKind::Component), Some(&1));
     assert_eq!(counts.get(&AssetKind::Texture), Some(&1));
@@ -62,7 +74,14 @@ fn the_component_declares_the_texture_and_the_texture_names_its_owner() {
     let (mut sim, id) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let index = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     let tex = AssetRef::Texture {
         asset: *id.as_bytes(),
     };
@@ -79,9 +98,16 @@ fn deleting_the_master_removes_it_from_the_next_build() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .counts()
-            .get(&AssetKind::Component),
+        build(
+            &mut sim,
+            &db,
+            &no_atlas(),
+            &no_catalogs(),
+            &mut cache,
+            &mut lib
+        )
+        .counts()
+        .get(&AssetKind::Component),
         Some(&1)
     );
     let root = {
@@ -91,7 +117,14 @@ fn deleting_the_master_removes_it_from_the_next_build() {
         q.iter(sim.world()).next().unwrap()
     };
     sim.world_mut().entity_mut(root).remove::<MasterRoot>();
-    let after = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let after = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert_eq!(after.counts().get(&AssetKind::Component), None);
 }
 
@@ -120,9 +153,9 @@ fn the_swatch_is_computed_once_per_content() {
     let id = db.insert_image_rgba8(2, 2, vec![9u8; 16]);
     let mut cache = CardArt::new();
     let _ = swatch_for(&db, id, &mut cache);
-    assert_eq!(cache.swatches.len(), 1);
+    assert_eq!(cache.swatch_len(), 1);
     let _ = swatch_for(&db, id, &mut cache);
-    assert_eq!(cache.swatches.len(), 1, "a segunda leitura nao recalcula");
+    assert_eq!(cache.swatch_len(), 1, "a segunda leitura nao recalcula");
 }
 
 /// ⭐⭐ **E a MINIATURA também** — a metade que o A6 acrescentou, e a que de facto obriga a
@@ -139,10 +172,10 @@ fn the_thumbnail_is_reduced_once_and_hands_back_the_same_arc() {
     let mut cache = CardArt::new();
     let mut budget = THUMB_BUDGET_PX;
     let a = thumb_for(&db, id, &mut cache, &mut budget).expect("a miniatura sai de 2x2");
-    assert_eq!(cache.thumbs.len(), 1);
+    assert_eq!(cache.thumb_len(), 1);
     let b =
         thumb_for(&db, id, &mut cache, &mut budget).expect("a segunda leitura acerta na memória");
-    assert_eq!(cache.thumbs.len(), 1, "a segunda leitura nao recalcula");
+    assert_eq!(cache.thumb_len(), 1, "a segunda leitura nao recalcula");
     assert!(
         std::sync::Arc::ptr_eq(&a.rgba, &b.rgba),
         "o mesmo conteúdo tem de devolver o MESMO ponteiro"
@@ -157,16 +190,30 @@ fn two_builds_of_the_same_world_agree_entry_for_entry() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let a: Vec<AssetRef> = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-        .entries()
-        .iter()
-        .map(|e| e.key)
-        .collect();
-    let b: Vec<AssetRef> = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-        .entries()
-        .iter()
-        .map(|e| e.key)
-        .collect();
+    let a: Vec<AssetRef> = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    )
+    .entries()
+    .iter()
+    .map(|e| e.key)
+    .collect();
+    let b: Vec<AssetRef> = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    )
+    .entries()
+    .iter()
+    .map(|e| e.key)
+    .collect();
     assert_eq!(a, b);
 }
 
@@ -185,7 +232,14 @@ fn textures_the_boot_loaded_but_nobody_placed_are_not_assets() {
     let mut sim = SimWorld::new();
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let index = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert!(
         index.is_empty(),
         "o painel mostrou {} assets que ninguem colocou la'",
@@ -204,9 +258,16 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .counts()
-            .get(&AssetKind::Texture),
+        build(
+            &mut sim,
+            &db,
+            &no_atlas(),
+            &no_catalogs(),
+            &mut cache,
+            &mut lib
+        )
+        .counts()
+        .get(&AssetKind::Texture),
         Some(&1)
     );
 
@@ -217,7 +278,14 @@ fn deleting_the_sprite_does_not_delete_the_texture_from_the_library() {
     };
     sim.world_mut().despawn(victim);
 
-    let after = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let after = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert_eq!(
         after.counts().get(&AssetKind::Texture),
         Some(&1),
@@ -242,12 +310,18 @@ fn hiding_an_object_changes_nothing_in_the_library() {
     let (mut sim, _) = world_with_one_component(&db);
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let before: Vec<(String, String, [u8; 4])> =
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .entries()
-            .iter()
-            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
-            .collect();
+    let before: Vec<(String, String, [u8; 4])> = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    )
+    .entries()
+    .iter()
+    .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+    .collect();
 
     // Esconde a raiz — a mesma marca que o olho da Hierarquia escreve.
     let root = {
@@ -260,12 +334,18 @@ fn hiding_an_object_changes_nothing_in_the_library() {
         .entity_mut(root)
         .insert(ph2d_ecs::Visibility { hidden: true });
 
-    let after: Vec<(String, String, [u8; 4])> =
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .entries()
-            .iter()
-            .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
-            .collect();
+    let after: Vec<(String, String, [u8; 4])> = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    )
+    .entries()
+    .iter()
+    .map(|e| (e.name.clone(), e.detail.clone(), e.swatch))
+    .collect();
     assert_eq!(before, after, "esconder mudou o que o painel mostra");
 }
 
@@ -291,16 +371,30 @@ fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
     assert_eq!(
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .counts()
-            .get(&AssetKind::Component),
+        build(
+            &mut sim,
+            &db,
+            &no_atlas(),
+            &no_catalogs(),
+            &mut cache,
+            &mut lib
+        )
+        .counts()
+        .get(&AssetKind::Component),
         Some(&1)
     );
     sim.world_mut().despawn(copy);
     assert_eq!(
-        build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib)
-            .counts()
-            .get(&AssetKind::Component),
+        build(
+            &mut sim,
+            &db,
+            &no_atlas(),
+            &no_catalogs(),
+            &mut cache,
+            &mut lib
+        )
+        .counts()
+        .get(&AssetKind::Component),
         Some(&1),
         "apagar a copia tirou a receita do painel"
     );
@@ -378,7 +472,7 @@ fn an_imported_atlas_sprite_is_in_the_library_and_a_boot_one_is_not() {
 
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let index = build(&mut sim, &db, &atlas, &mut cache, &mut lib);
+    let index = build(&mut sim, &db, &atlas, &no_catalogs(), &mut cache, &mut lib);
     let keys: Vec<AssetRef> = index.entries().iter().map(|e| e.key).collect();
     assert!(
         keys.contains(&AssetRef::Texture {
@@ -422,12 +516,26 @@ fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
         .id();
     let mut cache = CardArt::new();
     let mut lib = TextureLibrary::default();
-    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let _ = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert_eq!(lib.len(), 1, "a textura entrou pela sprite");
 
     // (a) COM a entidade viva, esquecer não pega — o `build` repõe.
     lib.forget(tex);
-    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let _ = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert_eq!(
         lib.len(),
         1,
@@ -437,6 +545,56 @@ fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
     // (b) Sem a entidade, ela sai e FICA fora.
     sim.world_mut().despawn(e);
     lib.forget(tex);
-    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    let _ = build(
+        &mut sim,
+        &db,
+        &no_atlas(),
+        &no_catalogs(),
+        &mut cache,
+        &mut lib,
+    );
     assert_eq!(lib.len(), 0, "ninguém a usa: ela tem de poder sair");
+}
+
+/// ⭐⭐⭐ **O CATÁLOGO DE UMA ENTRADA vem da taxonomia** — e sem isto o filtro da coluna não tinha
+/// efeito nenhum, com a suíte inteira verde.
+///
+/// ⛔ A árvore guardava a atribuição, o painel expandia o escopo certo, e as entradas do índice
+/// chegavam todas com `catalog: None`: a consulta não casava nenhuma. *O fio estava completo dos
+/// dois lados e não se tocava no meio* — quem o achou foi o roteiro de ponteiro, ao contar os
+/// cartões que a grade de facto desenha.
+///
+/// **Mutação que deve sangrar:** apagar o `entry.catalog = catalogs.catalog_of(..)`.
+#[test]
+fn an_entry_carries_the_catalog_the_taxonomy_gives_it() {
+    let db = AssetDb::new();
+    let (mut sim, tex) = world_with_one_component(&db);
+    let mut cat = ph2d_asset_index::CatalogTree::new();
+    let gaveta = cat.create("Props");
+    // As DUAS famílias: a receita e a textura da peça dela.
+    cat.assign(AssetRef::Component { stable_id: 1 }, gaveta);
+    cat.assign(
+        AssetRef::Texture {
+            asset: *tex.as_bytes(),
+        },
+        gaveta,
+    );
+    let mut cache = CardArt::new();
+    let mut lib = TextureLibrary::default();
+    let index = build(&mut sim, &db, &no_atlas(), &cat, &mut cache, &mut lib);
+    assert!(
+        index.entries().iter().all(|e| e.catalog == Some(gaveta)),
+        "alguma entrada chegou sem o catálogo: {:?}",
+        index
+            .entries()
+            .iter()
+            .map(|e| (e.name.clone(), e.catalog))
+            .collect::<Vec<_>>()
+    );
+    // E a consulta filtra por ele — que é o efeito que o artista vê.
+    let q = ph2d_asset_index::Query {
+        catalog: ph2d_asset_index::CatalogScope::These(vec![gaveta]),
+        ..Default::default()
+    };
+    assert_eq!(index.query(&q).len(), index.len());
 }

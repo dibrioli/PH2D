@@ -110,7 +110,10 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
     }
     paint_chrome(ctx, rect);
     let body_top = paint_controls(state, ctx, rect);
-    paint_grid(state, ctx, rect, body_top);
+    // ⭐⭐ A coluna de catálogos devolve a largura que ocupou — e a grade cede a partir daí. Ver o
+    // cabeçalho do `paint_catalog` para o porquê de a largura ser DERIVADA.
+    let col_w = crate::paint_catalog::paint(state, ctx, rect, body_top);
+    paint_grid(state, ctx, rect, body_top, col_w);
 }
 
 /// Superfície, título, faixa de arrasto, fechar e alça de redimensionar.
@@ -166,7 +169,10 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
     let input = TextInput::new(ids::ASSET_SEARCH, "")
         .placeholder("Search assets\u{2026}")
         .visual((st, ctx.host.store().hover_live(ids::ASSET_SEARCH)));
-    let search_rect = Rect::new(x, y, w, row_h);
+    // ⭐ **O interruptor da coluna vive na fileira da busca, e NÃO dentro da coluna** — senão
+    // fechá-la tornava-o inalcançável. É o que sobrou da decisão D2 do plano (o botão *só-grade*).
+    let toggle_w = Spacing::Xl.px() + Spacing::Md.px();
+    let search_rect = Rect::new(x, y, (w - toggle_w - gap()).max(0.0), row_h);
     paint_text_input_with_buffer(
         &input,
         Some(value.as_str()),
@@ -180,6 +186,17 @@ fn paint_controls(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect) -> 
     ctx.host
         .hit_index_mut()
         .register(ids::ASSET_SEARCH, search_rect);
+    let toggle_rect = Rect::new(x + w - toggle_w, y, toggle_w, row_h);
+    let mut toggle = ph2d_editor_core::widget::Button::new(ids::ASSET_CATALOG_TOGGLE, "\u{2630}");
+    toggle.state = if state.show_catalogs {
+        ph2d_editor_core::widget::ButtonState::Pressed
+    } else {
+        ctx.host.store().button_visual(ids::ASSET_CATALOG_TOGGLE).0
+    };
+    ph2d_editor_core::widget::paint_button(&toggle, toggle_rect, ctx.scene, ctx.text_system, theme);
+    ctx.host
+        .hit_index_mut()
+        .register(ids::ASSET_CATALOG_TOGGLE, toggle_rect);
     y += row_h + gap();
 
     // ── Família + ordenação, numa fileira de chips cada ────────────────────────────────────────
@@ -266,11 +283,21 @@ fn paint_chip_row(
 }
 
 /// A grade de cartões, recortada e rolável.
-fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_top: f32) {
+fn paint_grid(
+    state: &AssetBrowserState,
+    ctx: &mut PaintCtx,
+    rect: Rect,
+    body_top: f32,
+    col_w: f32,
+) {
     let theme = ctx.host.theme();
-    let x = rect.x + pad();
+    // ⚠️⚠️ **OS TRÊS números saem do MESMO `col_w`.** Cortar só o `x` e deixar o `inner_w` com a
+    // largura antiga é o modo de falha silencioso: o `cols` continua a contar sobre a largura
+    // inteira e a última coluna de cartões nasce **debaixo do recorte** — ela não reflui, é
+    // cortada.
+    let x = rect.x + col_w + pad();
     let body_h = (rect.y + rect.h - body_top - pad()).max(0.0);
-    let body = Rect::new(rect.x, body_top, rect.w, body_h);
+    let body = Rect::new(rect.x + col_w, body_top, rect.w - col_w, body_h);
     let scroll = ctx.host.store().panel_scroll(ids::ASSET_PANEL);
 
     let q = Query {
@@ -281,7 +308,8 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
             .unwrap_or_default()
             .to_string(),
         kind: state.kind,
-        catalog: None,
+        // ⭐⭐ **O escopo do catálogo escolhido, expandido no quadro** — ele e os descendentes.
+        catalog: crate::paint_catalog::scope_of(state.pick),
         sort: state.sort,
     };
 
@@ -309,7 +337,7 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     // as pintam (`paint_card`) — não de um múltiplo escolhido à mão.
     let label_h = TypeToken::Sm.px() + Spacing::Xxs.px() + TypeToken::Xs.px() + Spacing::Xs.px();
     let card_h = cell + label_h;
-    let inner_w = rect.w - pad() * 2.0;
+    let inner_w = rect.w - col_w - pad() * 2.0;
     let cols = ((inner_w + gap()) / (cell + gap())).floor().max(1.0) as usize;
     let rows = cards.len().div_ceil(cols);
     let beyond_h = if beyond > 0 {

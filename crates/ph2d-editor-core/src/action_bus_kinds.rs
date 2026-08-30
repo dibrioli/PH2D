@@ -67,3 +67,38 @@ pub enum TransportCmd {
     /// Rewind the clock to the start and stop (`playhead.rewind()` + pause).
     Reset,
 }
+
+/// ⭐⭐ **O que se pode fazer a um catálogo** (plano 07, wave A3).
+///
+/// ⚠️ **Os ids são `u128` CRUS.** Esta camada é chrome e não conhece o `ph2d-asset-index`; quem os
+/// interpreta é o shell, que é o dono da taxonomia. É a mesma cerca do [`AssetCardAction`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CatalogVerb {
+    /// Cria um catálogo dentro de `parent` (ou na raiz). O nome nasce gerado e único — quem o
+    /// escolhe é o gesto seguinte, o renomear.
+    New {
+        /// `None` = na raiz.
+        parent: Option<u128>,
+    },
+    /// Renomeia um catálogo. ⚠️ Só o ÚLTIMO nível — mover é outro gesto, e o modelo recusa um nome
+    /// com separador.
+    Rename {
+        /// Quem.
+        id: u128,
+        /// O rótulo novo.
+        name: String,
+    },
+    /// Apaga um catálogo **e os descendentes**. ⛔ Nunca apaga um asset: eles voltam a
+    /// *Unassigned*.
+    Delete {
+        /// Quem.
+        id: u128,
+    },
+    /// ⭐ Põe um asset num catálogo — o que a queda de um cartão numa linha faz.
+    Assign {
+        /// O endereço do asset, no vocabulário de chrome.
+        asset: crate::interaction::drag_payload::DragPayload,
+        /// O catálogo de destino. `None` = tirar de qualquer catálogo (*Unassigned*).
+        catalog: Option<u128>,
+    },
+}

@@ -54,6 +54,7 @@ impl WidgetStore {
             fold_body_h: core::cell::RefCell::new(BTreeMap::new()),
             hover_live: BTreeMap::new(),
             panel_rects: BTreeMap::new(),
+            sub_scroll_rects: BTreeMap::new(),
             panel_content_h: BTreeMap::new(),
             panel_visible_h: BTreeMap::new(),
             tooltips: BTreeMap::new(),

@@ -256,6 +256,12 @@ pub struct WidgetStore {
     /// under the cursor. Cleared together with `clear_for_frame` on
     /// the hit_index by the host (or hero) at frame start.
     pub(super) panel_rects: BTreeMap<NodeId, Rect>,
+    /// ⭐⭐ **As SUB-REGIÕES roláveis** — uma região dentro de um painel que rola por conta própria.
+    ///
+    /// ⚠️ **Slot próprio, e não o `panel_rects`:** o `panel_at` é consultado por muita gente (o
+    /// menu de contexto, a queda de um asset, a roda) e poluí-lo faria uma sub-região responder
+    /// *«sou um painel»* a todas elas. É a mesma separação que o popover do dropdown já faz.
+    pub(super) sub_scroll_rects: BTreeMap<NodeId, Rect>,
     /// Painter-published total content height per panel (sum of
     /// every section's height + separators). `dispatch_wheel` reads
     /// this to clamp scroll deltas at the upper bound

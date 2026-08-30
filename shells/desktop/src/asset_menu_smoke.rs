@@ -75,10 +75,20 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         // ⚠️ **Depois dos passos do menu, e não no meio deles.** Na 1.ª versão a reprodução corria
         // antes e apagava a cópia que o `Select users` ia contar — *um passo que perturba o que o
         // passo seguinte mede transforma o instrumento num falso acusador.*
-        55 => repro(app),
-        57 => repro_after(app),
-        59 => remove_the_unused_image(app),
-        61 => repro_after(app),
+        // ── ⭐⭐ OS CATÁLOGOS (etapa D) ────────────────────────────────────────────────────
+        // ⚠️ **O filtro volta a `All` antes dos catálogos.** Os passos do menu removeram o único
+        // prefab da biblioteca, e o chip continuava em `Prefab` — a grade ficava vazia e o passo
+        // seguinte media *«não há cartão para arrastar»* sobre produto correcto. *Um roteiro que
+        // não desfaz o que o passo anterior montou acusa o produto do seu próprio estado.*
+        53 => click_all_chip(app),
+        54 => new_catalog(app),
+        57 => drag_card_into_catalog(app),
+        60 => pick_catalog(app),
+        62 => report_grid(app),
+        65 => repro(app),
+        67 => repro_after(app),
+        69 => remove_the_unused_image(app),
+        71 => repro_after(app),
         _ => {}
     }
 }
@@ -372,6 +382,77 @@ fn remove_the_unused_image(app: &mut crate::App) {
             });
         eprintln!("[repro] `Remove from Library` pedido para a imagem sem utilizadores");
     }
+}
+
+/// Volta o filtro de família a `All` — ver a nota no roteador.
+fn click_all_chip(app: &mut crate::App) {
+    if let Some((x, y)) = app.smoke_find_widget(ph2d_editor::ids::ASSET_KIND[0]) {
+        app.smoke_pointer_down(x, y);
+        app.smoke_pointer_up();
+        eprintln!("[catalog] f=53 chip `All` apertado");
+    }
+}
+
+/// ⭐ Cria um catálogo pelo botão `+ Catalog` da coluna — pelo PONTEIRO.
+fn new_catalog(app: &mut crate::App) {
+    match app.smoke_find_widget(ph2d_editor::ids::ASSET_CATALOG_NEW) {
+        Some((x, y)) => {
+            app.smoke_pointer_down(x, y);
+            app.smoke_pointer_up();
+            eprintln!("[catalog] f=54 `+ Catalog` apertado em ({x}, {y})");
+        }
+        None => eprintln!(
+            "[catalog] f=54 ⚠️ o `+ Catalog` NÃO está no hit-index — a coluna não pintou, ou o \
+             botão está morto sob o dedo"
+        ),
+    }
+}
+
+/// ⭐⭐⭐ **Arrasta o cartão para dentro do catálogo** — o gesto que o plano nomeia.
+///
+/// ⚠️ **Três eventos com o botão em baixo, e não um `Click`**: o arrasto só ARMA depois de o cursor
+/// passar o limiar, e um roteiro que saltasse o `Move` mediria um clique.
+fn drag_card_into_catalog(app: &mut crate::App) {
+    // A linha `2` é o primeiro catálogo (a `0` é *All*, a `1` é *Unassigned*).
+    let Some((rx, ry)) = app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) else {
+        eprintln!("[catalog] f=57 ⚠️ a linha do catálogo novo NÃO está no hit-index");
+        return;
+    };
+    let Some((cx, cy)) = app.smoke_find_widget(ph2d_editor::ids::asset_cell_id(0)) else {
+        eprintln!("[catalog] f=57 ⚠️ não há cartão para arrastar");
+        return;
+    };
+    app.smoke_pointer_down(cx, cy);
+    // Dois passos: o primeiro arma (passa o limiar), o segundo pousa na linha.
+    app.smoke_pointer_move(cx - 20.0, cy);
+    app.smoke_pointer_move(rx, ry);
+    app.smoke_pointer_up();
+    eprintln!("[catalog] f=57 cartão arrastado de ({cx}, {cy}) para a linha em ({rx}, {ry})");
+}
+
+/// Escolhe o catálogo — a grade tem de passar a mostrar só o que está lá dentro.
+fn pick_catalog(app: &mut crate::App) {
+    match app.smoke_find_widget(ph2d_editor::ids::catalog_row_id(2)) {
+        Some((x, y)) => {
+            app.smoke_pointer_down(x, y);
+            app.smoke_pointer_up();
+            eprintln!("[catalog] f=60 linha do catálogo escolhida em ({x}, {y})");
+        }
+        None => eprintln!("[catalog] f=60 ⚠️ a linha do catálogo NÃO está no hit-index"),
+    }
+}
+
+/// Quantos cartões a grade desenha AGORA — é isto que prova que o filtro chegou ao efeito.
+fn report_grid(app: &mut crate::App) {
+    let n = (0..8)
+        .filter(|i| {
+            app.smoke_find_widget(ph2d_editor::ids::asset_cell_id(*i))
+                .is_some()
+        })
+        .count();
+    eprintln!(
+        "[catalog] f=62 a grade desenha {n} cartão(ões) com o catálogo escolhido (esperado: 1)"
+    );
 }
 
 /// O que a biblioteca passou a ter, um quadro depois.

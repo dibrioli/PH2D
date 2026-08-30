@@ -69,6 +69,39 @@ pub fn asset_cell_id(index: usize) -> NodeId {
     asset_fnv_node_id(&format!("asset_browser.cell.{index}"))
 }
 
+// ── ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) ────────────────────────────────────────────────────────
+
+/// O interruptor da coluna — o botão *só-grade* que a decisão D2 do plano 07 pedia, e que sobrou
+/// dela depois de a §10 reverter o resto.
+pub const ASSET_CATALOG_TOGGLE: NodeId = hash_node_id("asset_browser.catalog.toggle");
+/// **+ New catalog** — cria um catálogo dentro do escolhido (ou na raiz, se for *All*).
+pub const ASSET_CATALOG_NEW: NodeId = hash_node_id("asset_browser.catalog.new");
+/// A linha **All** — sem filtro.
+pub const ASSET_CATALOG_ALL: NodeId = hash_node_id("asset_browser.catalog.all");
+/// A linha **Unassigned** — os que não estão em catálogo nenhum.
+///
+/// ⚠️ Ela é uma LINHA e não um estado escondido: sem ela, um asset por arrumar fica inalcançável
+/// no dia em que existir um catálogo (ver `CatalogScope`).
+pub const ASSET_CATALOG_UNASSIGNED: NodeId = hash_node_id("asset_browser.catalog.unassigned");
+/// A chave de ROLAGEM da coluna.
+///
+/// ⚠️ **Ela não é um painel, e o nome di-lo.** As tabelas `panel_scroll`/`panel_content_h`/
+/// `panel_visible_h` aceitam qualquer `NodeId` como chave — é o que o popover do dropdown já faz.
+/// ⛔ E é de propósito que ela **não** acaba em `_PANEL`: o gate
+/// `scrollable_panels_intercept_the_wheel` só recolhe identificadores com esse sufixo, e a roda
+/// sobre a coluna já é interceptada pelo painel que a contém.
+pub const ASSET_CATALOG_COL: NodeId = hash_node_id("asset_browser.catalog.col");
+
+/// Quantas linhas de catálogo o painel regista, no máximo. ⚠️ Mesmo teto e mesma razão do
+/// [`MAX_ASSET_CELLS`]: cada linha é um `NodeId` no store e um rect no `HitIndex`.
+pub const MAX_CATALOG_ROWS: usize = 256;
+
+/// O id da linha `index` da coluna — **posicional na lista visível**, como o cartão.
+#[must_use]
+pub fn catalog_row_id(index: usize) -> NodeId {
+    asset_fnv_node_id(&format!("asset_browser.catalog.row.{index}"))
+}
+
 /// O gémeo de runtime do `hash_node_id`, **a PORTA e não uma cópia**
 /// ([`ph2d_tool_registry::hash_node_id_runtime`]).
 ///

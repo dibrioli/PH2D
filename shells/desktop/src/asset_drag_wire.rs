@@ -68,6 +68,9 @@ impl crate::App {
     /// ⚠️ **`false` para um gesto que não passou o limiar** — ele foi um clique, e o cartão tem de
     /// o receber (escolher; e o duplo-clique, instanciar).
     pub(crate) fn asset_drag_up(&mut self, x: f32, y: f32) -> bool {
+        // ⚠️ Resolvido ANTES de pegar o `gfx` mutável — o alvo é uma leitura, e adiá-la para
+        // dentro do bloco mutável seria pedir dois empréstimos do mesmo `self`.
+        let catalog_row = self.catalog_row_under(x, y);
         let Some(gfx) = self.gfx.as_mut() else {
             return false;
         };
@@ -89,7 +92,12 @@ impl crate::App {
         // o HUD e os menus registam só rect de acerto. ⇒ largar sobre a barra de cima caía no ramo
         // do canvas e **re-texturava a sprite escondida por trás dela**, em silêncio.
         let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
-        let target = if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
+        // ⭐⭐ **Uma LINHA DE CATÁLOGO ganha ao «de volta ao painel»** (wave A3), e a ordem é a
+        // lei: sem ela, largar numa gaveta caía no `Source` — *desistir* — e o gesto que o plano
+        // nomeia seria silenciosamente indistinguível de não fazer nada.
+        let target = if let Some(catalog) = catalog_row {
+            DropTarget::CatalogRow { catalog }
+        } else if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
             DropTarget::Source
         } else if !on_canvas {
             DropTarget::Chrome
@@ -101,6 +109,26 @@ impl crate::App {
         let action = crate::asset_drop::resolve(drag.payload, target);
         self.perform_drop(action, drag.payload);
         true
+    }
+
+    /// ⭐ **A linha de catálogo debaixo do cursor**, se houver.
+    ///
+    /// ⚠️ **Pelo HIT-INDEX, que é a única prova de que ela é alcançável** — e pela porta do painel,
+    /// que é quem sabe que linha o índice `i` desenhou neste quadro. Uma tabela de ids aqui seria a
+    /// segunda resposta a *«que catálogo é esta linha?»*.
+    ///
+    /// O `Option` de fora é *«é uma linha de catálogo?»*; o de dentro é *«qual gaveta»* (`None` =
+    /// a linha *Unassigned*).
+    fn catalog_row_under(&self, x: f32, y: f32) -> Option<Option<u128>> {
+        let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
+        let id = hero.hit_index.hit(x, y)?;
+        match ph2d_panel_asset_browser::catalog_row_pick(id)? {
+            ph2d_panel_asset_browser::CatalogPick::One(c) => Some(Some(c.0)),
+            ph2d_panel_asset_browser::CatalogPick::Unassigned => Some(None),
+            // ⛔ A linha **All** não é uma gaveta — largar nela não significa nada, e tratá-la como
+            // *«tira do catálogo»* seria inventar um gesto a partir de um alvo que só filtra.
+            ph2d_panel_asset_browser::CatalogPick::All => None,
+        }
     }
 
     /// O objecto debaixo do cursor, no resumo de que a lei precisa.
@@ -142,6 +170,21 @@ impl crate::App {
             }
             DropAction::SpawnImage { asset, world } => {
                 self.drop_spawn_image(asset, world);
+            }
+            DropAction::Filecatalog { payload, catalog } => {
+                // ⚠️ Pelo BARRAMENTO, como todo verbo de catálogo: quem muta a taxonomia é o dreno,
+                // num sítio só. Mutá-la aqui seria a segunda porta.
+                if let Some(gfx) = self.gfx.as_mut()
+                    && let Some(hero) = gfx.hero_screen.as_mut()
+                {
+                    hero.bus
+                        .push(ph2d_editor::action_bus::EditorAction::AssetCatalogVerb(
+                            ph2d_editor::action_bus::CatalogVerb::Assign {
+                                asset: payload,
+                                catalog,
+                            },
+                        ));
+                }
             }
         }
     }

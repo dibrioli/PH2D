@@ -9,7 +9,7 @@ use crate::AssetBrowserPanel;
 use crate::ids;
 use crate::state::AssetBrowserState;
 use ph2d_asset_index::{AssetRef, SortBy};
-use ph2d_editor_core::action_bus::{AssetCardAction, EditorAction};
+use ph2d_editor_core::action_bus::{AssetCardAction, CatalogVerb, EditorAction};
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
@@ -94,6 +94,36 @@ pub(crate) fn apply_event(
             Some(AssetRef::Texture { .. }) | None => EventOutcome::Ignored,
         },
 
+        // ── ⭐⭐ A COLUNA DE CATÁLOGOS (etapa D) ────────────────────────────────────────────────
+        //
+        // ⚠️ **A linha escolhida é VISTA, e o catálogo é DOCUMENTO.** Escolher não levanta acção
+        // nenhuma — ela vive no estado do painel e morre com a sessão. Criar, renomear, apagar e
+        // atribuir são o documento, e esses atravessam o barramento.
+        WidgetEvent::Click(id) if id == ids::ASSET_CATALOG_TOGGLE => {
+            state.show_catalogs = !state.show_catalogs;
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if id == ids::ASSET_CATALOG_NEW => {
+            // ⭐ O catálogo nasce DENTRO do escolhido — é o que o Blender faz, e é o que torna a
+            // hierarquia alcançável sem um campo de caminho.
+            let parent = match state.pick {
+                crate::state::CatalogPick::One(c) => Some(c.0),
+                _ => None,
+            };
+            host.bus_mut()
+                .push(EditorAction::AssetCatalogVerb(CatalogVerb::New { parent }));
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if catalog_row_index(id).is_some() => {
+            if let Some(i) = catalog_row_index(id)
+                && let Some(pick) = crate::state::painted_row_at(i)
+            {
+                state.pick = pick;
+                reset_scroll(host);
+            }
+            EventOutcome::Consumed
+        }
+
         // ── ⭐⭐ O MENU DO CARTÃO (etapa C) ─────────────────────────────────────────────────────
         //
         // ⚠️ **Consumir o pedido de menu é destrutivo, e por isso a guarda é o ID primeiro.** O
@@ -146,6 +176,14 @@ pub(crate) fn apply_event(
 
         _ => EventOutcome::Ignored,
     }
+}
+
+/// O índice da linha de catálogo, se `id` for uma.
+///
+/// ⚠️ **Varre a tabela de ids como o irmão dos cartões**, e pela mesma razão: o id é posicional na
+/// lista VISÍVEL, e é isso que faz a linha debaixo do dedo ser a que o artista vê.
+fn catalog_row_index(id: ph2d_a11y::NodeId) -> Option<usize> {
+    (0..ids::MAX_CATALOG_ROWS).find(|i| ids::catalog_row_id(*i) == id)
 }
 
 /// O verbo que este id de menu representa. ⚠️ **Uma tabela, não três `if`** — ela é o par exacto

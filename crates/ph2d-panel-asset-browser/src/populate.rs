@@ -82,4 +82,19 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
         InteractiveState::Plain,
     );
+    // ⭐⭐ A coluna de catálogos (wave A3): o polegar dela e os dois botões. ⛔ Sem o registo o
+    // `is_focusable` é falso, o `pointer_down` não semeia e o polegar fica **inagarrável** — o
+    // defeito nº 2 da auditoria da etapa A, e ele não se anuncia.
+    store.register(
+        ph2d_editor_core::widget::ASSET_CATALOG_SCROLLBAR_ID,
+        InteractiveState::Plain,
+    );
+    for id in [ids::ASSET_CATALOG_TOGGLE, ids::ASSET_CATALOG_NEW] {
+        store.register(
+            id,
+            InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
 }

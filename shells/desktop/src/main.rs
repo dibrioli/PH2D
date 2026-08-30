@@ -53,7 +53,11 @@ mod ase_import;
 mod ase_smoke;
 /// ⭐⭐ **Os três verbos do menu de um cartão** (plano `docs/Components/07`, etapa C) — e as três
 /// RECUSAS, que são o corpo dele: o painel não tem voz, então quem decide e fala é o shell.
+/// ⭐⭐ **O que um cartão DESENHA** (a cor, a miniatura) e a memória por conteúdo disso.
+mod asset_card_art;
 mod asset_card_verbs;
+/// ⭐⭐ **Os verbos de CATÁLOGO** (plano 07, wave A3) — criar, renomear, apagar, atribuir.
+mod asset_catalog_verbs;
 /// ⭐⭐⭐ **O arrasto da biblioteca, ligado ao ponteiro** (plano `docs/Components/07`, etapa B) —
 /// a fiação `Down`/`Move`/`Up`. ⚠️ A LEI da queda vive no `asset_drop`, e é pura.
 mod asset_drag_wire;

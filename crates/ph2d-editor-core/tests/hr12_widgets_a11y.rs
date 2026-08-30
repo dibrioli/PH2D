@@ -34,6 +34,22 @@ use std::path::{Path, PathBuf};
 //    `#[cfg(test)]`, porque já está dentro de um). *A enumeração apodrece; a lei não.*
 /// Each entry: (relative path under `src/widget/`, justification).
 const A11Y_OPT_OUT: &[(&str, &str)] = &[
+    // ⛔⛔ **Os dois passavam por COINCIDÊNCIA, e o corte do tecto de LOC revelou-o** (2026-08-30):
+    // o que os fazia casar era `use ph2d_a11y::NodeId` — a importação da ESCADA DE IDS —, não uma
+    // linha de a11y. Ao mover a escada para o irmão, o `scrollbar.rs` ficou sem a importação e o
+    // gate acordou sobre um ficheiro que nunca teve semântica.
+    //
+    // ⚠️ **E a ausência é a decisão:** o polegar de uma barra não é anunciado por leitor de ecrã em
+    // aplicação nenhuma — o que se anuncia é a LISTA que ele rola, e essa tem a11y própria. Dar-lhe
+    // um nó poria um alvo focável entre cada par de linhas.
+    (
+        "scrollbar.rs",
+        "geometria + pintura do polegar: nao ha' semantica a anunciar (o que se anuncia e' a lista que ele rola)",
+    ),
+    (
+        "scrollbar_ids.rs",
+        "so' a escada de ids e os dois gates de unicidade -- nao pinta nem regista nada",
+    ),
     // ⚠️ **A metade de ROLAGEM da paleta** — geometria (quanto cabe, até onde a roda vai) mais UM
     // traço indicador que **não é um controlo**: ele não se arrasta, e a decisão é explícita (um
     // alvo de arrasto ali competiria com as pílulas do cartão pelo mesmo `x`, e a roda já resolve).

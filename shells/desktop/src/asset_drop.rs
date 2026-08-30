@@ -39,6 +39,19 @@ pub(crate) enum DropTarget {
         world: [f32; 2],
         over: Option<DropOver>,
     },
+    /// ⭐⭐ **Sobre uma LINHA DE CATÁLOGO** da coluna do navegador (wave A3).
+    ///
+    /// ⚠️ **Ela é um alvo PRÓPRIO, e não uma excepção dentro do `Chrome`** — é o que o comentário
+    /// do `Chrome` já prometia (*«quando um campo souber receber, ele entra aqui como alvo
+    /// próprio»*). E é a lei D7 do plano: *a queda decide pelo TIPO DO ALVO*.
+    ///
+    /// ⛔ **Sem bandas.** O reparentar da Hierarquia reparte a linha em 30/40/30 porque ali há três
+    /// respostas (irmão-acima · dentro · irmão-abaixo); aqui há **uma** — *põe isto nesta gaveta* —,
+    /// e inventar bandas seria a terceira cópia de uma lei que já está escrita em dois sítios.
+    CatalogRow {
+        /// `None` = a linha *Unassigned* (tirar de qualquer catálogo).
+        catalog: Option<u128>,
+    },
     /// Sobre o chrome (um painel, a barra, o rail) — nada aqui sabe receber um asset.
     Chrome,
     /// ⭐ **De volta ao painel de onde saiu** — isto é um CANCELAR, não uma recusa.
@@ -71,6 +84,13 @@ pub(crate) enum DropAction {
     RetextureSprite { entity_bits: u64, asset: [u8; 32] },
     /// Nasce uma sprite nova em `world`, mostrando `asset`.
     SpawnImage { asset: [u8; 32], world: [f32; 2] },
+    /// ⭐⭐ **Arrumar** — o asset passa a pertencer a `catalog` (`None` = a nenhum).
+    Filecatalog {
+        /// Quem foi largado.
+        payload: DragPayload,
+        /// A gaveta.
+        catalog: Option<u128>,
+    },
     /// ⛔ **Nada acontece, e VÊ-SE.** Ver o doc do módulo.
     Refuse,
     /// ⭐ **Nada acontece, e é SILENCIOSO** — o artista desistiu. Ver [`DropTarget::Source`].
@@ -109,8 +129,16 @@ pub(crate) fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⭐ Desistir é silencioso — ver [`DropTarget::Source`].
         (_, DropTarget::Source) => DropAction::Cancel,
 
-        // ⛔ Fora do canvas nada sabe receber — hoje. Quando um campo do Inspector souber, ele
-        // entra aqui como alvo próprio, e não como uma excepção espalhada pelo despachante.
+        // ⭐⭐ **Uma linha de catálogo aceita as DUAS famílias** — arrumar não olha ao tipo, ao
+        // contrário de instanciar. É a resposta que a lei D7 dá aqui: o ALVO decide, e este alvo
+        // sabe receber qualquer asset.
+        (payload, DropTarget::CatalogRow { catalog }) => {
+            DropAction::Filecatalog { payload, catalog }
+        }
+
+        // ⛔ Fora do canvas e das linhas de catálogo nada sabe receber — hoje. Quando um campo do
+        // Inspector souber, ele entra aqui como alvo próprio, e não como uma excepção espalhada
+        // pelo despachante.
         (_, DropTarget::Chrome) => DropAction::Refuse,
 
         (DragPayload::Prefab { stable_id }, DropTarget::Canvas { world, .. }) => {
@@ -283,5 +311,68 @@ mod tests {
                 "desistir e recusar nao podem ser a mesma coisa"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod catalog_target_tests {
+    use super::*;
+
+    /// ⭐⭐ **Uma linha de catálogo aceita as DUAS famílias** — arrumar não olha ao tipo, ao
+    /// contrário de instanciar.
+    ///
+    /// **Mutação que deve sangrar:** trocar o braço da `CatalogRow` por `Refuse`.
+    #[test]
+    fn a_catalog_row_takes_a_prefab_and_an_image_alike() {
+        for payload in [
+            DragPayload::Prefab { stable_id: 7 },
+            DragPayload::Image { asset: [3; 32] },
+        ] {
+            assert_eq!(
+                resolve(payload, DropTarget::CatalogRow { catalog: Some(9) }),
+                DropAction::Filecatalog {
+                    payload,
+                    catalog: Some(9)
+                },
+                "{payload:?} devia ser arrumado"
+            );
+        }
+    }
+
+    /// ⭐ **A linha *Unassigned* TIRA de qualquer catálogo** — e é isso que a torna um alvo e não um
+    /// mero filtro.
+    #[test]
+    fn the_unassigned_row_takes_the_asset_out_of_its_catalog() {
+        let payload = DragPayload::Image { asset: [1; 32] };
+        assert_eq!(
+            resolve(payload, DropTarget::CatalogRow { catalog: None }),
+            DropAction::Filecatalog {
+                payload,
+                catalog: None
+            }
+        );
+    }
+
+    /// ⚠️ **A linha de catálogo não engoliu o resto**: o canvas continua a instanciar, e o chrome
+    /// continua a recusar. *Um alvo novo que mudasse a resposta dos outros seria uma regressão que
+    /// nenhum gate do alvo novo veria.*
+    #[test]
+    fn the_new_target_did_not_change_the_answers_of_the_old_ones() {
+        let p = DragPayload::Prefab { stable_id: 1 };
+        assert_eq!(
+            resolve(
+                p,
+                DropTarget::Canvas {
+                    world: [2.0, 3.0],
+                    over: None
+                }
+            ),
+            DropAction::PlacePrefab {
+                stable_id: 1,
+                world: [2.0, 3.0]
+            }
+        );
+        assert_eq!(resolve(p, DropTarget::Chrome), DropAction::Refuse);
+        assert_eq!(resolve(p, DropTarget::Source), DropAction::Cancel);
     }
 }

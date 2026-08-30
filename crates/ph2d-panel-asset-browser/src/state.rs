@@ -28,6 +28,50 @@ thread_local! {
     /// `apply_event` daria duas respostas sempre que o filtro mudasse entre o quadro que pintou e
     /// o clique que chegou.
     static PAINTED: RefCell<Vec<ph2d_asset_index::AssetRef>> = const { RefCell::new(Vec::new()) };
+    /// A taxonomia do quadro corrente — ver [`set_current_catalogs`].
+    static CATALOGS: RefCell<ph2d_asset_index::CatalogTree> =
+        RefCell::new(ph2d_asset_index::CatalogTree::new());
+    /// Os catálogos que a coluna pintou, na ordem em que os pintou. ⚠️ **Pintar e despachar leem a
+    /// MESMA lista** — a mesma lei do [`PAINTED`] dos cartões.
+    static PAINTED_ROWS: RefCell<Vec<CatalogPick>> = const { RefCell::new(Vec::new()) };
+}
+
+/// ⭐ **Qual LINHA da coluna está escolhida** — e são três, como o filtro.
+///
+/// ⚠️ **Ela guarda o ID escolhido, não o escopo expandido.** A expansão (o catálogo *e os
+/// descendentes dele*) é derivada da árvore a cada quadro: guardá-la aqui seria uma segunda
+/// resposta que envelhece no instante em que alguém cria um filho.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum CatalogPick {
+    /// Sem filtro.
+    #[default]
+    All,
+    /// Os que não estão em catálogo nenhum.
+    Unassigned,
+    /// Um catálogo, e os descendentes dele.
+    One(ph2d_asset_index::CatalogId),
+}
+
+pub(crate) fn set_painted_rows(rows: Vec<CatalogPick>) {
+    PAINTED_ROWS.with(|c| *c.borrow_mut() = rows);
+}
+
+/// A linha que a coluna desenhou no índice `i` deste quadro.
+pub(crate) fn painted_row_at(i: usize) -> Option<CatalogPick> {
+    PAINTED_ROWS.with(|c| c.borrow().get(i).copied())
+}
+
+/// ⭐⭐ **A TAXONOMIA do quadro** (wave A3) — publicada pelo shell, como o índice.
+///
+/// ⚠️ **Ela é do PROJECTO e não do painel**, e por isso não vive no [`AssetBrowserState`]: viaja no
+/// `.ph2dproj`. O painel guarda só *qual linha está escolhida*, que é vista.
+pub fn set_current_catalogs(tree: ph2d_asset_index::CatalogTree) {
+    CATALOGS.with(|c| *c.borrow_mut() = tree);
+}
+
+/// Lê a taxonomia publicada.
+pub(crate) fn with_catalogs<R>(f: impl FnOnce(&ph2d_asset_index::CatalogTree) -> R) -> R {
+    CATALOGS.with(|c| f(&c.borrow()))
 }
 
 /// **O shell publica o índice do quadro.** Chamado uma vez por quadro, antes do paint.
@@ -120,6 +164,11 @@ pub struct AssetBrowserState {
     pub kind: Option<AssetKind>,
     /// O lado do cartão, em px. O slider escreve-o.
     pub cell_px: f32,
+    /// ⭐ A coluna de catálogos está aberta? O botão *só-grade* (o que sobrou da decisão D2)
+    /// escreve isto.
+    pub show_catalogs: bool,
+    /// Que linha da coluna está escolhida.
+    pub pick: CatalogPick,
 }
 
 /// Lado mínimo de um cartão — abaixo disto o nome deixa de caber numa linha, e um cartão sem nome
@@ -138,6 +187,10 @@ impl Default for AssetBrowserState {
             sort: SortBy::Name,
             kind: None,
             cell_px: CELL_DEFAULT_PX,
+            // ⚠️ **Aberta por omissão**: uma taxonomia que ninguém vê é uma taxonomia que ninguém
+            // usa, e o gesto de a fechar é um clique.
+            show_catalogs: true,
+            pick: CatalogPick::All,
         }
     }
 }
@@ -208,4 +261,16 @@ pub fn probe_first_texture() -> Option<[u8; 32]> {
             ph2d_asset_index::AssetRef::Component { .. } => None,
         })
     })
+}
+
+/// ⭐⭐ **Que linha de catálogo é este id** — a porta que a queda de um cartão usa.
+///
+/// ⚠️ **Ela lê o que a COLUNA PINTOU neste quadro**, não uma tabela de ids: o id é posicional na
+/// lista visível, e recalcular a lista aqui daria duas respostas sempre que a taxonomia mudasse
+/// entre o quadro que pintou e a mão que largou. Mesma lei do `payload_at` dos cartões.
+#[must_use]
+pub fn catalog_row_pick(id: ph2d_a11y::NodeId) -> Option<CatalogPick> {
+    let i = (0..ph2d_editor_core::ids::MAX_CATALOG_ROWS)
+        .find(|i| ph2d_editor_core::ids::catalog_row_id(*i) == id)?;
+    painted_row_at(i)
 }

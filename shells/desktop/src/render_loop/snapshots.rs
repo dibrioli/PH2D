@@ -137,6 +137,8 @@ pub(super) fn publish(
     camera: &Camera2d,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    // ⭐ A taxonomia da biblioteca (wave A3) — publicada ao painel.
+    catalogs: &ph2d_asset_index::CatalogTree,
     // As FOLHAS hand-packed da sessao, para a linha Storage nomear a regiao em vez de
     // mostrar dois indices crus (plano `docs/Sprite_projeto/17` §8).
     sheets: &BTreeMap<u32, ph2d_sprite_sheet::AuthoredSheet>,
@@ -1055,12 +1057,16 @@ pub(super) fn publish(
     // ⭐⭐ **O ÍNDICE DE ASSETS** (plano `docs/Components/07`, wave A2) — a junção das duas fontes,
     // publicada para o navegador. ⚠️ Só com o painel ABERTO: é uma travessia do mundo, e pagá-la
     // com o painel fechado é trabalho que ninguém lê.
+    // ⭐⭐ A TAXONOMIA (wave A3) — publicada como o índice, e pela mesma razão: o painel não pode
+    // ser a segunda fonte de verdade sobre o que existe.
+    ph2d_panel_asset_browser::set_current_catalogs(catalogs.clone());
     crate::asset_index_build::publish_for_frame(
         sim,
         asset_db,
         // ⭐⭐ Ele já chegava a esta função — o que faltava era chegar ao índice. É o mapa que
         // separa *«o artista trouxe isto»* de *«o boot pôs isto no `AssetDb`»*.
         atlas_asset_map,
+        catalogs,
         hero.is_panel_visible(ph2d_panel_asset_browser::PANEL_ID),
     );
     // ⭐⭐⭐ **A seção COMPONENT** (ADR-0164 / F5) — o que esta cópia tem de diferente da receita.

@@ -125,6 +125,35 @@ impl WidgetStore {
         self.panel_rects.insert(panel, rect);
     }
 
+    /// ⭐⭐ **Publica uma SUB-REGIÃO rolável** — uma região dentro de um painel com rolagem própria
+    /// (a coluna de catálogos do navegador de assets é a primeira).
+    ///
+    /// ⚠️ **Ela usa as MESMAS tabelas de rolagem** (`panel_scroll`/`panel_content_h`/
+    /// `panel_visible_h`), que aceitam qualquer `NodeId` — o que este slot acrescenta é *onde ela
+    /// está*, para a roda a poder encontrar **antes** do `panel_at`. ⛔ Sem isto a roda sobre ela
+    /// rolaria o painel que a contém, e o polegar dela arrastaria certo enquanto a roda mentia.
+    ///
+    /// ⚠️ **Quem a publica tem de a LIMPAR** quando ela deixa de existir ([`Self::clear_sub_scroll_region`]) —
+    /// o mesmo contrato do `panel_rect`, e pela mesma razão: uma região fantasma continua a comer a
+    /// roda no sítio onde ela esteve.
+    pub fn set_sub_scroll_region(&mut self, id: NodeId, rect: Rect) {
+        self.sub_scroll_rects.insert(id, rect);
+    }
+
+    /// Tira uma sub-região do mapa — ver [`Self::set_sub_scroll_region`].
+    pub fn clear_sub_scroll_region(&mut self, id: NodeId) {
+        self.sub_scroll_rects.remove(&id);
+    }
+
+    /// A sub-região rolável sob este ponto, se houver.
+    #[must_use]
+    pub fn sub_scroll_region_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        self.sub_scroll_rects
+            .iter()
+            .find(|(_, r)| r.contains(x, y))
+            .map(|(id, _)| *id)
+    }
+
     /// Read the published rect of a panel. Returns `None` when no
     /// painter has registered it this frame.
     pub fn panel_rect(&self, panel: NodeId) -> Option<Rect> {

@@ -65,7 +65,7 @@ que ela também é a decisão **de UI**, e não só de armazenamento.
 | # | Decisão | A lei ([`06 §2`](06_pesquisa_o_navegador_como_interface.md)) |
 |---|---|---|
 | D1 | **Duas buscas**: uma filtra a árvore de catálogos, outra a grade | Lei 1 — o dock do Godot é o único com dock **estreito**, como o nosso, e é o único que as separa |
-| D2 | **Layout dividido na vertical** por omissão (catálogos em cima, grade em baixo) + botão para **só-grade** | `DisplayMode` do Godot, reduzido a dois: `HSPLIT` só faz sentido com largura que não temos |
+| D2 | ~~**Layout dividido na vertical** (catálogos em cima, grade em baixo)~~ ⇒ **coluna à ESQUERDA**, colapsável | ⛔ **A premissa dissolveu — ver §10** |
 | D3 | **Slider** de tamanho de miniatura, não presets | `thumbnail_size_slider` `[SRC]` |
 | D4 | **Favoritos DENTRO da árvore**, como uma raiz irmã | Lei 4, ramo barato (Godot) — ⛔ painel próprio (Unreal) custa superfície que um dock estreito não tem |
 | D5 | **Catálogo: duplo-clique renomeia · arrastar reparenteia · escolher mostra ele E os filhos** | Blender Asset Browser `[DOC]` |
@@ -239,3 +239,42 @@ faixa de arrasto faz o gate novo sangrar.
 - ⏳ **Imagens de 16 bits ficam com a cor neutra** — a média delas pede a descodificação inteira, e
   pagá-la por um quadrado de 24 px é o oposto do que a cache existe para fazer. Declarado no `_` do
   `swatch_for`.
+
+<a id="10"></a>
+## §10 — ⛔ A decisão **D2 foi revertida, com a medição ao lado** (2026-08-30)
+
+> ⚠️ Esta seção existe porque o §0.0 do `CLAUDE.md` a exige: *«quem move o número que tornava algo
+> inalcançável tem de reconferir a nota»*. A D2 escolheu o **split vertical** com um motivo
+> explícito — *«`HSPLIT` só faz sentido com largura que não temos»* —, e essa premissa era sobre um
+> **dock estreito**. O navegador não nasceu num dock: ele nasceu **flutuante, mais largo que alto e
+> redimensionável** (`default_rect` = 420×520, mínimo 300 — [`paint.rs`](../../crates/ph2d-panel-asset-browser/src/paint.rs)).
+
+### A medição
+
+Com `pad = 8`, `gap = 6` e a fórmula que a grade já usa
+(`cols = ⌊(inner_w + gap) / (cell + gap)⌋`):
+
+| largura do painel | coluna | `inner_w` | colunas de cartão @ `cell = 84` |
+|---|---|---|---|
+| **420** (omissão) | 0 | 404 | 4 |
+| **420** | **140** | 264 | **3** |
+| 300 (piso do `default_rect`) | 140 | 144 | 1 |
+| 220 (`PANEL_MIN_W_PX`) | 140 | 64 | ⛔ **1, com o cartão CORTADO** |
+
+⇒ à largura de omissão a coluna custa **uma** coluna de cartões, e não a viabilidade do painel.
+
+### ⛔ E o `cols` tem um defeito que a coluna torna alcançável
+
+`(...).floor().max(1.0)` nunca devolve zero: ele devolve **um**, e um cartão de 84–160 px num vão
+de 64 px **não reflui — é cortado pelo recorte**. O defeito já lá estava; a coluna é que o põe ao
+alcance de um redimensionamento normal.
+
+⇒ **a largura da coluna é DERIVADA, não escolhida**: ela é o mínimo entre a largura nominal e o que
+sobra depois de a grade guardar **um cartão inteiro**, e colapsa a zero quando nem isso cabe.
+
+### O que fica da D2
+
+⭐ O **botão para só-grade** fica, e é ele que colapsa a coluna — ele deixou de ser um *display
+mode* e passou a ser o interruptor da coluna. ⛔ O split **vertical** não fica: uma árvore de
+catálogos é uma lista **vertical**, e uma faixa horizontal desperdiça a largura e mata a altura
+que a lista precisa.

@@ -664,6 +664,12 @@ pub enum EditorAction {
     /// a `HierInstantiate` da `AssetInstantiate`: aqui chega uma `row`, que só o shell resolve em
     /// entidade; ali chega o endereço do asset.
     HierRemoveFromLibrary { row: ph2d_a11y::NodeId },
+    /// ⭐⭐ **UM VERBO DE CATÁLOGO** (plano 07, wave A3).
+    ///
+    /// ⚠️ **O id é um `u128` CRU, e não o `CatalogId`:** este barramento é chrome, e ele não
+    /// conhece o modelo de assets — a mesma cerca que fez o [`Self::AssetCardVerb`] carregar um
+    /// `DragPayload` em vez de um `AssetRef`. Quem o interpreta é o shell.
+    AssetCatalogVerb(CatalogVerb),
     AssetCardVerb {
         /// O endereço do asset no vocabulário de chrome — ver
         /// [`crate::interaction::drag_payload::DragPayload`], que já existia para o dizer sem esta
@@ -681,7 +687,7 @@ pub use super::action_bus_queue::ActionBus;
 /// ⚠️ Os **vocabulários** que as acções carregam vivem no irmão [`super::action_bus_kinds`] e são
 /// re-exportados aqui: quem escreve `action_bus::TransportCmd` continua a escrevê-lo. Ver o
 /// cabeçalho de lá para o porquê do corte.
-pub use super::action_bus_kinds::{AssetCardAction, SelectModifier, TransportCmd};
+pub use super::action_bus_kinds::{AssetCardAction, CatalogVerb, SelectModifier, TransportCmd};
 
 #[cfg(test)]
 #[path = "action_bus_tests.rs"]

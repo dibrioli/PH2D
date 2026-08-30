@@ -31,6 +31,8 @@ pub mod ids;
 mod paint;
 /// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
 /// [`paint`], ver o cabeçalho de lá.
+/// ⭐⭐ A COLUNA DE CATÁLOGOS (wave A3) — irmão por assunto do [`paint`].
+mod paint_catalog;
 mod paint_thumb;
 mod populate;
 pub mod state;
@@ -41,8 +43,9 @@ pub const PANEL_ID: &str = "asset_browser";
 
 pub use paint::{default_rect, probe_query};
 pub use state::{
-    AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, last_content_h, last_visible_h,
-    payload_at, probe_first_texture, probe_index_summary, set_current_index,
+    AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, catalog_row_pick,
+    last_content_h, last_visible_h, payload_at, probe_first_texture, probe_index_summary,
+    set_current_catalogs, set_current_index,
 };
 
 use ph2d_a11y::NodeId;

@@ -245,6 +245,9 @@ ph2d-asset = { path = "../../crates/ph2d-asset" }
 # a real artifact to render — no ISPC / committed binary fixture. Pure
 # read+write codec crate, no GPU / cycle.
 ph2d-asset-ktx2 = { path = "../../crates/ph2d-asset-ktx2" }
+# ⭐⭐ A JUNÇÃO das duas fontes de asset (plano `docs/Components/07`, wave A1/A2) — crate FOLHA:
+# vocabulário + consulta, sem ECS, sem `AssetDb`, sem UI. Quem a preenche é `asset_index_build`.
+ph2d-asset-index = { path = "../../crates/ph2d-asset-index" }
 ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-input = { path = "../../crates/ph2d-input" }
 ph2d-editor = { path = "../../crates/ph2d-editor" }

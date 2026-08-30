@@ -4821,6 +4821,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-asset-index"
+version = "0.0.0"
+
+[[package]]
 name = "ph2d-asset-ktx2"
 version = "0.0.0"
 dependencies = [
@@ -5319,6 +5323,7 @@ dependencies = [
  "ph2d-anim",
  "ph2d-aseprite",
  "ph2d-asset",
+ "ph2d-asset-index",
  "ph2d-asset-ktx2",
  "ph2d-audio",
  "ph2d-audio-decode",

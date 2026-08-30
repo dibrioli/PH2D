@@ -51,6 +51,9 @@ mod ase_import;
 /// A cena de smoke do import do `.ase` (`PH2D_ASE_SMOKE=1`) — ela ESCREVE o ficheiro e larga-o
 /// pela porta do produto, para o smoke não precisar do Aseprite instalado.
 mod ase_smoke;
+/// ⭐⭐ **A junção das duas fontes de asset** (plano `docs/Components/07`, wave A2) — o único
+/// sítio que conhece o mundo E o `AssetDb`, e por isso o único que responde «que assets existem?».
+mod asset_index_build;
 mod atlas_loader;
 mod attribute_demo_smoke;
 mod audio;

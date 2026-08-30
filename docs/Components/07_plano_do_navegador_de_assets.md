@@ -209,6 +209,21 @@ primeiro é a doença que o painel do Motion pagou: um cartão rolado para fora 
 com uma `row` da Hierarquia; uma receita está **escondida** dela por construção, logo não tem `row`.
 A variante nova endereça pelo `StableId` e chama a **mesma** `instance_verbs::drain`.
 
+### §9.2-bis — O que a **AUDITORIA antes do smoke** achou (regra do Enio, 30/08)
+
+⚠️ Os quatro passavam por **todos** os 12 gates de costura que a linha já tinha. *A costura que
+faltava não era o clique — era o **tipo do registo** e o **espaço dos ids**.*
+
+| # | O defeito | Por que nenhum gate o via |
+|---|---|---|
+| 1 | ⛔⛔ A faixa de arrasto e a alça registadas como **`Button`** ⇒ **o painel abria e não se movia nem redimensionava** | o despacho de um painel flutuante não passa pelo `Click`: ele lê `InteractiveState::BlenderHit { parent, kind }` no `pointer_down` |
+| 2 | ⛔⛔ O polegar da barra **não registado** ⇒ **inagarrável** — e o comentário que eu escrevi dizia que a ausência era a lei | sem entrada no store o `is_focusable` é falso e o `pointer_down` nunca semeia o arrasto |
+| 3 | ⛔ As células com **`register`** (que SUBSTITUI) em vez de `register_if_absent` | o `state: Normal` de cada quadro apagaria o `Pressed` do anterior |
+| 4 | ⛔⛔ O gémeo de **runtime** do `hash_node_id` com o **primo errado** (`0x1000_0000_01b3`) ⇒ os ids das células caíam noutro espaço e o hit-test **nunca os resolveria** | era a **terceira cópia** da mesma lei no repositório; a cura foi promovê-la a **porta** (`ph2d_tool_registry::hash_node_id_runtime`), e a cópia do `flip.rs` colapsou nela |
+
+⇒ **+3 gates de censo de REGISTO** (o tipo, não o clique), com prova de mutação: repor o `Button` na
+faixa de arrasto faz o gate novo sangrar.
+
 ### §9.3 — O que ficou, com o motivo
 
 - ⏳ **A3, os catálogos.** É uma etapa própria com o próprio smoke (*criar um catálogo, arrastar um

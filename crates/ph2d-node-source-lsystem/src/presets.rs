@@ -155,7 +155,7 @@ impl Reads {
 ///
 /// ⇒ o sítio de pedir uma folha num refinador é a gramática do artista, e o painel **diz** quando
 /// o nome está posto e a letra não existe (`motion_lsystem_gen::unanswered_slots`).
-const TREE_WITH_LEAVES: &str = "A(s) -> F(s)![+A(s*0.7)J][-A(s*0.7)J]";
+const TREE_WITH_LEAVES: &str = "A(s) -> F(s)[J]![+A(s*0.7)][-A(s*0.7)]";
 
 /// ⚠️ **O ÍNDICE `CUSTOM` é o último, e ele não é um molde** — é *"nenhum destes"*.
 ///
@@ -181,7 +181,7 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Fern",
         axiom: "A(step)",
-        rules: "A(s) -> F(s)[+B(s*0.55)J]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)J]B(s*0.8)",
+        rules: "A(s) -> F(s)[J][+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[J][-B(s*0.72)]B(s*0.8)",
         angle: 25.0,
         generations: 5.0,
         step: 0.456,
@@ -214,9 +214,9 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Wild",
         axiom: "A(step)",
-        rules: "A(s) -> (0.4) F(s)![+A(s*0.72)J][-A(s*0.72)J] ; \
-                A(s) -> (0.35) F(s)![+A(s*0.66)J]-A(s*0.78) ; \
-                A(s) -> (0.25) F(s)!F(s*0.8)[+A(s*0.6)J]",
+        rules: "A(s) -> (0.4) F(s)[J]![+A(s*0.72)][-A(s*0.72)] ; \
+                A(s) -> (0.35) F(s)[J]![+A(s*0.66)]-A(s*0.78) ; \
+                A(s) -> (0.25) F(s)[J]!F(s*0.8)[+A(s*0.6)]",
         angle: 25.0,
         generations: 5.0,
         step: 0.478,

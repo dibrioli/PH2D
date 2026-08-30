@@ -276,13 +276,18 @@ fn the_two_geometry_modes_turn_a_leaf_the_same_way() {
     );
 }
 
-/// ⭐⭐⭐ **A FOLHA NASCE NA PONTA E CRESCE** — as duas outras queixas de 2026-08-30 (*"não
-/// crescem, elas aparecem"* e *"aparecem em cada segmento"*), que são UMA grandeza em falta.
+/// ⭐⭐⭐ **A FOLHA NASCE NA PONTA, CRESCE, E FICA** — as duas queixas de 2026-08-30 sobre o
+/// tamanho, e a correcção que o smoke seguinte impôs.
+///
+/// A 1.ª lei era um cruza-fade e Enio matou-a em duas palavras: *"a cada segmento a folha
+/// cresce e diminui. bem bizarro"*. ⇒ a lei é a IDADE, **monótona**: a colheita nova abre com
+/// a fracção da geração, e toda a mais velha fica cheia.
 ///
 /// ⚠️ **As três afirmações são independentes e todas necessárias:**
-/// 1. numa geração inteira só as marcas da ÚLTIMA geração se vêem (`2^g`, não `2(2^g−1)`);
-/// 2. elas estão no tamanho cheio (senão «só as pontas» viria de encolher tudo);
-/// 3. a meio de uma geração o tamanho é o do cruza-fade, e a soma dos dois pesos é `1`.
+/// 1. numa geração INTEIRA nenhuma folha está a meio (uma planta parada não tem folhas
+///    encolhidas nem a crescer);
+/// 2. a meio de uma geração **só a colheita nova** está a abrir;
+/// 3. o total **nunca encolhe** com o crescimento — é isto que separa esta lei da anterior.
 #[test]
 fn a_leaf_is_born_at_the_tip_and_grows_into_it() {
     let leaf_sizes = |gens: f32| -> Vec<f32> {
@@ -298,36 +303,69 @@ fn a_leaf_is_born_at_the_tip_and_grows_into_it() {
     };
     // O objecto publicado mede `2.0` de largura (ver `publish_object`).
     const FULL: f32 = 2.0;
-    // 1+2. Geração INTEIRA: exactamente as pontas, no tamanho cheio.
-    for (g, tips) in [(4.0f32, 16usize), (5.0, 32)] {
+    // 1. Geração INTEIRA: toda folha está madura.
+    for g in [4.0f32, 5.0] {
         let v = leaf_sizes(g);
-        assert_eq!(
-            v.len(),
-            tips,
-            "g={g}: {} folhas para {tips} pontas — as velhas voltaram a aparecer em cada \
-             segmento",
-            v.len()
-        );
+        assert!(!v.is_empty(), "g={g}: nenhuma folha");
         for s in &v {
-            assert!((s - FULL).abs() < 1e-4, "g={g}: folha a {s} e nao a {FULL}");
+            assert!(
+                (s - FULL).abs() < 1e-4,
+                "g={g}: numa planta parada uma folha esta' a {s} e nao a {FULL}"
+            );
         }
     }
-    // 3. A MEIO: 32 novas a meio e 16 velhas a meio, e nada mais.
+    // 2. A MEIO: as velhas cheias, e a colheita nova a meio — e as duas populações existem.
     let v = leaf_sizes(4.5);
-    assert_eq!(v.len(), 48, "o cruza-fade tem de mostrar as duas geracoes");
-    for s in &v {
-        assert!(
-            (s - FULL * 0.5).abs() < 1e-3,
-            "a meio da geracao toda folha esta' a meio; esta esta' a {s}"
-        );
-    }
-    // ⚠️ **E é CONTÍNUO na virada** — a soma dos tamanhos não pode saltar. `1/64` antes e
-    // depois do inteiro: a área total de folha muda menos de 2 %.
-    let sum = |g: f32| leaf_sizes(g).iter().sum::<f32>();
-    let (before, after) = (sum(5.0 - 1.0 / 64.0), sum(5.0));
+    let novas = v.iter().filter(|s| (**s - FULL * 0.5).abs() < 1e-3).count();
+    let velhas = v.iter().filter(|s| (**s - FULL).abs() < 1e-4).count();
+    assert_eq!(
+        novas + velhas,
+        v.len(),
+        "a meio da geracao so' ha' duas alturas de folha: {v:?}"
+    );
     assert!(
-        (before - after).abs() / after < 0.02,
-        "a virada de geracao SALTA: {before} -> {after}"
+        novas > 0 && velhas > 0,
+        "a meio tem de haver folhas novas A ABRIR e velhas JA' CHEIAS: {novas}/{velhas}"
+    );
+    // 3. ⛔⛔ **NUNCA ENCOLHE** — a afirmação que a lei anterior violava a cada geração.
+    let mut anterior = 0.0f32;
+    let mut g = 1.0f32;
+    while g <= 5.0 {
+        let total: f32 = leaf_sizes(g).iter().sum();
+        assert!(
+            total >= anterior - 1e-3,
+            "a folhagem ENCOLHEU a g={g}: {anterior} -> {total}"
+        );
+        anterior = total;
+        g += 0.25;
+    }
+    assert!(anterior > 0.0, "a varredura nunca chegou a ver uma folha");
+}
+
+/// ⛔⛔ **E DUAS FOLHAS NÃO SE EMPILHAM** — *"elas aparecem em cada segmento"*, a metade que era
+/// do MOLDE e não da lei: `62` marcas em `30` sítios, folhas idênticas uma sobre a outra.
+///
+/// ⚠️ **Aqui a régua tem de ser a POSIÇÃO DA INSTÂNCIA**, não a do esqueleto: é o que o artista
+/// vê, e é o que sobrevive a qualquer mudança de como a membrana escolhe as âncoras.
+#[test]
+fn no_two_leaves_are_drawn_on_top_of_each_other() {
+    let (mut state, n) = factory_plant_with_leaf(5.0, false);
+    let key = key_of(&mut state, n);
+    publish(&mut state, 0.0);
+    let inst = instances_of(&state, &key);
+    let mut sitios: Vec<(i64, i64)> = inst
+        .iter()
+        .map(|i| ((i.world_pos[0] * 1e4) as i64, (i.world_pos[1] * 1e4) as i64))
+        .collect();
+    let total = sitios.len();
+    assert!(total > 8, "so' {total} folhas");
+    sitios.sort_unstable();
+    sitios.dedup();
+    assert_eq!(
+        total,
+        sitios.len(),
+        "{total} folhas em {} sitios — elas empilham",
+        sitios.len()
     );
 }
 

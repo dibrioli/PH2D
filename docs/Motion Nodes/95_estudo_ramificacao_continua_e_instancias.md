@@ -230,31 +230,43 @@ artista e a que o modo `Segments` publica. ⛔ **A escolha só é observável em
 — no default as duas colunas trazem o mesmo número para uma marca, e a mutação SOBREVIVE; o
 gate `the_orient_param_reaches_the_leaf` é o que a torna load-bearing.
 
-### 6.2 — «não crescem» e «em cada segmento» são UMA grandeza em falta
+### 6.2 — «não crescem» e «em cada segmento» eram DUAS coisas, e a 1.ª cura errou o preço
 
-Uma marca nunca é reescrita ⇒ ela **acumula**: a `g = 5` a árvore de fábrica tem `62` marcas
-(`2+4+8+16+32`), uma no fim de cada segmento que a planta já teve. Desenhá-las todas do mesmo
-tamanho é, literalmente, *"uma folha em cada segmento"*.
+A 1.ª leitura foi *«é uma grandeza em falta»*: uma marca nunca é reescrita, logo **acumula**, e
+desenhá-las todas do mesmo tamanho seria «uma folha em cada segmento». A cura foi um
+**cruza-fade** — peso `f` à geração mais nova, `1 − f` à anterior — para que uma planta parada
+mostrasse só as pontas.
 
-⭐⭐ A lei é um **cruza-fade entre duas gerações**, e sai do que o esqueleto já sabe (`gen`) mais
-o que a tartaruga já recebe (`youngest`): peso `f` para a geração mais nova, `1 − f` para a
-anterior, `0` para as outras (`turtle::mark_grow`, coluna nova `mark_grow`).
+⛔⛔ **O smoke seguinte matou-a em duas palavras** (Enio, mesmo dia): *"a cada segmento a folha
+cresce e diminui. bem bizarro"*. E ele tem razão: com aquela lei **cada folha é um pulso** —
+nasce, cresce, e encolhe até sumir quando o ramo seguinte brota dela.
 
-| `Generations` | o que se desenha |
+⚠️ **As duas coisas não cabem na mesma lei:** *«só as pontas»* e *«uma folha não encolhe»* são
+incompatíveis, porque **uma ponta VIRA interior quando a planta cresce**.
+
+⇒ a lei passa a ser a **IDADE, monótona**: a colheita nova abre com a fracção da geração, e
+toda a mais velha fica **cheia** (`turtle::mark_grow`). Ela sobe e nunca desce.
+
+| `Generations` | o que se desenha (molde `Tree`) |
 |---|---|
-| `4,0` | **16** folhas (as pontas da geração 4), tamanho `2,00` |
-| `4,25` | 32 novas a `0,50` + 16 velhas a `1,50` |
-| `4,5` | 48, todas a `1,00` |
-| `4,9` | 32 a `1,80` + 16 a `0,20` |
-| `5,0` | **32** folhas (as pontas), tamanho `2,00` |
+| `4,0` | 15 folhas, todas cheias |
+| `4,5` | as 15 velhas cheias + 16 novas a meio |
+| `5,0` | 31 folhas, todas cheias |
 
-⭐ A soma dos dois pesos é `1` em todo instante ⇒ a virada de geração é **contínua**, e numa
-geração inteira sobram exactamente as pontas, cheias. ⛔ **Nada disto precisou de mudar a
-gramática**, e é por isso que a acumulação deixou de ser só um custo: *é ela que carrega a
-metade que desvanece.*
+⭐⭐ **E a outra metade da queixa era do MOLDE, não da lei** — medida, e eu não a tinha medido:
+a gramática de fábrica era `A(s) -> F(s)![+A(s*0.7)J][-A(s*0.7)J]`, com o `J` **depois** da
+sub-árvore inteira. Ao sair dela a tartaruga está de volta ao fim do `F`, onde as marcas de
+todas as gerações que a envolvem também caem ⇒ **62 marcas em 30 sítios** (`2,07×`), folhas
+idênticas empilhadas.
 
-⚠️ O `Segments` continua a publicar o esqueleto **CRU** (o contrato do `rig.*`); o peso viaja
-como coluna, e quem quiser filtrar tem o `motion.cull`/`field.index_range`.
+⇒ o `J` passa a vir **logo a seguir ao segmento** (`F(s)[J]!…`): `31` marcas em `31` sítios,
+`1,00×`. ⚠️ **Uma contagem de marcas não vê um empilhamento** — o que o vê é contar os
+**SÍTIOS**, e nenhuma régua desta linha o fazia.
+
+⚠️ **ONDE a folha vive é da GRAMÁTICA**, que é o desenho do nó desde que ele existe. Um `J` a
+seguir ao segmento dá uma folha por segmento (os moldes desta casa); um `J -> ` (sucessor
+vazio) apaga as velhas e dá **só as pontas** — ao preço de elas sumirem de repente, que é a
+mesma dor de cima. O `Segments` continua a publicar o esqueleto **CRU** (contrato do `rig.*`).
 
 ### 6.3 — A alfa: o lowering do Motion cravava `premultiplied: 0.0`
 
@@ -279,6 +291,7 @@ adivinhar mudaria os pixels de todo objecto Flip com base num palpite.
 | Âncora de folha nos moldes que REFINAM (`Bush`, `Weed`) e nas curvas (`Koch`, `Dragon`) | Um `J` acumula e num refinador toda a silhueta renasce ⇒ folhas pelo tronco, não nas pontas; numa curva não há ponta. O sítio de a pedir é a gramática do artista, e o painel **diz** quando o nome está posto e a letra falta |
 | Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
+| O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

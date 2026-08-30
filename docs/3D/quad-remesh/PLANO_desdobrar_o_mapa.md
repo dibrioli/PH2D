@@ -180,3 +180,42 @@ cegueira de mediana que este módulo pagou quatro vezes.*
   <https://www.graphics.rwth-aachen.de/media/papers/ebck2013_1.pdf>
 - Bracci, Tarini, Pietroni, Livesu, Cignoni — *Towards a robust and portable pipeline for quad
   meshing* (2023) — <https://www.sciencedirect.com/science/article/pii/S0097849323000341>
+
+---
+
+## §6 — ⭐⭐⭐ O PASSO 1 FOI FEITO: o SoG falha, e falha SÓ no ombro
+
+Medido em 30/08 na peça do artista (`Detail 0,85`), distância de cada canto singular ao ponto
+inteiro mais próximo:
+
+| `r / Rmax` | cantos singulares | **p50** | máx | a meia célula |
+|---|---|---|---|---|
+| `[0,00 · 0,50)` | `635` | ⭐ **`0,0000`** | `0,4745` | `20` |
+| `[0,50 · 0,75)` | `327` | ⭐ **`0,0000`** | `0,4951` | `24` |
+| ⛔⛔ **`[0,75 · 0,90)`** | `33` | ⛔ **`0,1040`** | `0,3152` | `0` |
+| `[0,90 · 1,00]` | `23` | ⭐ **`0,0000`** | ⭐ **`0,0000`** | `0` |
+
+⭐⭐⭐ **O ombro é a ÚNICA casca cujas singularidades saem sistematicamente FORA da grade.** Todas
+as outras têm mediana **exactamente zero**, e a casca da **ponta** está **perfeita** (`máx 0,0000`).
+
+⇒ **O mesmo bocado de `577` triângulos falha as DUAS propriedades independentes:**
+
+| propriedade | ombro `[0,75 · 0,90)` | resto da peça |
+|---|---|---|
+| **det+** (sem dobras) | ⛔ `3,12 %` | `0,14 %`–`0,75 %` |
+| **SoG** (singularidade na grade) | ⛔ `p50 0,1040` | `p50 0,0000` |
+
+### ⭐⭐ E as duas são SEPARÁVEIS — há evidência, não suposição
+
+A casca `[0,00 · 0,50)` tem `54` dobras (`0,754 %`) e mediana de SoG **`0`**. ⇒ **dobra não implica
+singularidade fora da grade.** *São dois defeitos, e o ombro tem os dois.*
+
+⚠️ **O que isto NÃO diz:** qual vem primeiro. As singularidades podem sair da grade **porque** o
+mapa ali está dobrado, ou o mapa pode dobrar **porque** elas não assentaram. A ordem só se decide
+curando uma e re-medindo a outra — e é por isso que a cura do SoG (fixar as coordenadas das
+singularidades conhecidas no problema) vale a pena **antes** do desemaranhador: ela é mais barata e
+o resultado dela **discrimina**.
+
+⚠️ **Nota lateral, e é da literatura:** os `44` cantos a **meia célula** nas duas cascas do corpo
+são o modo de falha que o *paper* nomeia explicitamente (uma singularidade a `+½` não produz quad
+nenhum). Eles são minoria ali — mas existem, e ninguém os tinha visto.

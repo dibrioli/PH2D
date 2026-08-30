@@ -230,6 +230,55 @@ fn does_the_field_wake_up_at_a_thin_tip() {
             positivos[b] += 1;
         }
     }
+    // ⭐⭐⭐ **E O «SoG»: as SINGULARIDADES CAEM EM PONTOS INTEIROS DA GRADE?**
+    //
+    // ⛔⛔ A literatura dá **três** propriedades a um mapa destes (`PLANO_desdobrar_o_mapa.md`
+    // §1): **GP** (costura por rotação de 90° e translação inteira — temos por construção),
+    // **det+** (sem dobras — medido acima, e não temos) e **SoG** (*singularity on grid*).
+    // ⚠️ **O SoG nunca foi medido nesta casa**, e ele é a causa nomeada do defeito de 29/08: a
+    // optimização, para baixar a distorção, converte um índice numa combinação, e essas
+    // combinações **geram vértices de valência 1 e 2** — que foram os `19` doublets, todos em
+    // pontas finas. *Curámos o sintoma sem nunca medir a propriedade.*
+    //
+    // ⚠️ **A distância é ao inteiro mais próximo, por CANTO** — um vértice de costura tem
+    // coordenadas diferentes em cartas diferentes, e o SoG exige que **todas** sejam inteiras.
+    let mut sog: [Vec<f64>; 4] = Default::default();
+    let mut meio: [usize; 4] = [0; 4];
+    for (t, w) in tri_idx.iter().zip(uv.iter()) {
+        for (canto, &v) in t.iter().enumerate() {
+            if index.get(v as usize).copied().unwrap_or(0) == 0 {
+                continue;
+            }
+            let Some(b) = band_of(radius(&pos[v as usize]) / rmax.max(f32::MIN_POSITIVE)) else {
+                continue;
+            };
+            let d = w[canto]
+                .iter()
+                .fold(0.0f64, |acc, x| acc.max((x - x.round()).abs()));
+            sog[b].push(d);
+            // ⚠️ **Meia célula é o modo de falha que a literatura nomeia** — uma singularidade a
+            // `+½` não produz quad nenhum, e lê-se como «quase inteira» numa média.
+            if (d - 0.5).abs() < 0.05 {
+                meio[b] += 1;
+            }
+        }
+    }
+    eprintln!("  SoG -- distancia da SINGULARIDADE ao ponto inteiro (0 = na grade):");
+    for (b, (lo, hi)) in BANDS.iter().enumerate() {
+        if sog[b].is_empty() {
+            continue;
+        }
+        let mut v = sog[b].clone();
+        v.sort_by(f64::total_cmp);
+        let p50 = v[v.len() / 2];
+        eprintln!(
+            "  [{lo:.2},{hi:.2}) {:6} canto(s) singular(es)  p50 {p50:.4}  max {:.4}  a meia celula: {}",
+            v.len(),
+            v[v.len() - 1],
+            meio[b]
+        );
+    }
+
     // ⚠️ **As DUAS contagens são impressas** — a dobra é a MINORIA, e uma convenção de sinal
     // invertida leria «tudo dobrado» com toda a confiança do mundo.
     eprintln!("  DOBRAS DO MAPA por casca (a dobra e' a MINORIA; as duas contagens saem):");

@@ -83,6 +83,21 @@ fn source_shape(scene: &VecScene, host: VecPathId, source: &PatternSource) -> Op
     scene.paths().iter().find(|p| p.id == *id).cloned()
 }
 
+/// ⭐⭐⭐ **A FORMA que este padrão nomeia como arte deixou de existir?** (plano 33, W11.)
+///
+/// ⚠️ **Pergunta pela MESMA porta que assa** ([`source_shape`]), e não por um `scene.path(id)`
+/// escrito à mão ao lado. Duas respostas à mesma pergunta divergem no primeiro ajuste — e esta já
+/// divergiria hoje: a porta recusa também a **auto-referência** (`id == host`), que é igualmente um
+/// padrão sem arte utilizável, e que uma consulta directa daria como presente.
+///
+/// ⚠️ **Só a fonte-FORMA responde `true`.** Uma fonte-IMAGEM que não resolve pode estar apenas a
+/// carregar — os pixels dela viajam no ficheiro desde a W8, e a ausência é transitória por
+/// construção. *Um aviso permanente sobre um estado transitório ensina o artista a ignorar avisos.*
+#[must_use]
+pub(crate) fn art_is_missing(scene: &VecScene, host: VecPathId, source: &PatternSource) -> bool {
+    matches!(source, PatternSource::Shape(_)) && source_shape(scene, host, source).is_none()
+}
+
 /// Os ladrilhos de padrão da cena, assados e memoizados.
 #[derive(Default)]
 pub(crate) struct TexturePatternLive {
@@ -259,3 +274,9 @@ fn art_of(
 #[cfg(test)]
 #[path = "texture_pattern_live_tests.rs"]
 mod tests;
+
+/// ⭐ **Os gates do vínculo MORTO** (plano 33, W11), num irmão — o corte é por responsabilidade:
+/// o [`tests`] mede o memo do assado, este mede o que acontece quando a arte deixa de existir.
+#[cfg(test)]
+#[path = "texture_pattern_art_missing_tests.rs"]
+mod art_missing_tests;

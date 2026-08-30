@@ -167,6 +167,8 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
         mode: 0,
         // A referência é um ladrilho que FECHA — a dica de costura tem gate próprio.
         wrap_seam_visible: false,
+        // E cuja arte EXISTE — o aviso de arte apagada tem gate próprio.
+        art_missing: false,
     }
 }
 
@@ -446,6 +448,80 @@ fn the_seam_hint_shows_only_where_it_has_a_subject() {
     assert!(
         (altura(2, true) - altura(2, false)).abs() < 0.5,
         "o CLAMP mostrou o aviso - ali ha' UMA copia e junta nenhuma"
+    );
+    state::set_current_texture_pattern(0, None);
+}
+
+/// ⭐⭐⭐ **A ARTE APAGADA tem nome no painel** (plano 33, W11).
+///
+/// Sem esta linha, apagar a forma que serve de arte faz a estampa voltar a **cor chapada** — que é
+/// exactamente o que um preenchimento sólido correcto parece —, e a secção sobe **inteira e
+/// normal** por cima de um vínculo morto: reticulado, tamanho, vão e rotação a oferecerem-se, e
+/// nenhum deles com um ladrilho para arrumar.
+///
+/// ⚠️ **É o desenho que a `line/Vector` já usa para a instância cujo mestre sumiu** (*"main
+/// missing"*, uma FRASE e não um botão) — a diferença é que a estampa não tinha nenhum, porque o
+/// `PatternSource` não sabe dizer *"sem arte"*.
+///
+/// # ⚠️ O oráculo é a GEOMETRIA
+///
+/// Uma dica é texto e não regista hit-rect, logo `painted_rect` não a vê. O que se afirma é o que
+/// ela **desloca**. E as duas metades importam: ela tem de **aparecer** quando a arte sumiu, e tem
+/// de **calar** quando ela está lá — um aviso que fica ligado é um aviso que se aprende a ignorar.
+#[test]
+fn the_missing_art_hint_names_the_dead_link() {
+    let altura = |sumiu: bool| -> f32 {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(0);
+        r.art_missing = sumiu;
+        state::set_current_texture_pattern(0, Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let _ = host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
+        );
+        ph2d_panel_vector::last_content_h()
+    };
+    let calado = altura(false);
+    let falando = altura(true);
+    assert!(
+        falando > calado + 1.0,
+        "o aviso de arte apagada nao DESLOCOU nada ({falando} contra {calado}) - a estampa volta a \
+         cor chapada e o painel nao tem uma palavra a dizer sobre isso"
+    );
+    state::set_current_texture_pattern(0, None);
+}
+
+/// ⚠️ **O aviso fica ACIMA dos dois botões que o resolvem** (plano 33, W11).
+///
+/// *Source…* e *Use Shape…* são a reparação. Ler o problema imediatamente acima do gesto que o
+/// resolve é o que separa um aviso útil de uma queixa — ⛔ no fim da secção, o artista teria de
+/// procurar. O oráculo é a posição do primeiro botão de arte: com o aviso ligado ele **desce**.
+#[test]
+fn the_missing_art_hint_sits_above_the_buttons_that_fix_it() {
+    let topo_do_botao = |sumiu: bool| -> f32 {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(0);
+        r.art_missing = sumiu;
+        state::set_current_texture_pattern(0, Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
+        )
+        .expect("o botao da arte e' pintado")
+        .y
+    };
+    let sem = topo_do_botao(false);
+    let com = topo_do_botao(true);
+    assert!(
+        com > sem + 1.0,
+        "o botao `Source...` nao desceu ({com} contra {sem}) - o aviso nao esta' ACIMA dele, e o \
+         artista le^ o problema depois de ja' ter passado pelo gesto que o resolve"
     );
     state::set_current_texture_pattern(0, None);
 }

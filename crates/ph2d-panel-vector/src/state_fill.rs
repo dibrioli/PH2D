@@ -81,6 +81,25 @@ pub struct TexturePatternRow {
     /// *um zero de «não medido» e um de «perfeito» são o mesmo byte*, e aqui os dois têm de levar
     /// à mesma acção: **calar**. Um aviso sobre um ladrilho que não existe é ruído.
     pub wrap_seam_visible: bool,
+    /// ⭐⭐⭐ **A FORMA que este padrão usa como arte foi APAGADA.**
+    ///
+    /// Sem isto, apagar a forma-fonte faz a estampa voltar a **cor chapada** — e a cor chapada é
+    /// exactamente o que um preenchimento sólido correcto parece. *O artista perde a autoria e o
+    /// app não tem uma palavra a dizer sobre isso.* ⚠️ E o `PatternSource` **não tem variante
+    /// vazia**: ao contrário do pincel (cujo `art` é um `Option` e cujo botão já diz *"Pick
+    /// Shape…"*), uma estampa não consegue exprimir *"sem arte"* — a secção sobe inteira e normal
+    /// por cima de um vínculo morto.
+    ///
+    /// ⚠️ **Só a fonte-FORMA responde aqui, e a restrição é a decisão.** Uma fonte-IMAGEM que não
+    /// resolve pode estar apenas **a carregar** — os pixels dela viajam no ficheiro desde a W8, e a
+    /// ausência é transitória por construção. *Um aviso permanente sobre um estado transitório
+    /// ensina o artista a ignorar avisos.*
+    ///
+    /// ⚠️ O estrago é **recuperável enquanto a sessão dura**: o `VecPathId` é um `u64` guardado
+    /// dentro da `VecScene`, que o undo repõe **verbatim** — desfazer o apagar devolve a forma com
+    /// o MESMO id e o vínculo cura-se sozinho (há gate). O que não se recupera é apagar, **gravar**
+    /// e só reparar depois.
+    pub art_missing: bool,
 }
 
 /// Publica a lei do padrão da tinta `slot` (`None` esconde a secção dela).

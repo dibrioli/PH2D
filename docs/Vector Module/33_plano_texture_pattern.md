@@ -1091,3 +1091,98 @@ acrescentar um terceiro leitor de padrão.
 
 *É a família do `edge_max` global e do `χ` cego à almofada, um nível acima: a régua media uma
 consequência do desenho de ontem em vez da propriedade que tem de valer amanhã.*
+
+---
+
+## §W11 — **A ARTE QUE SUMIU tem nome** (2026-08-30)
+
+### §W11.1 — O defeito, medido ponta a ponta
+
+A arte de uma estampa pode ser **outra forma do documento** (`PatternSource::Shape(id)`, W7) — é
+isso que a torna viva: editar a forma re-assa o ladrilho. Apagar essa forma:
+
+1. `remove_path` é um `Vec::remove` e **não olha para mais nenhum caminho** — nada varre a cena à
+   procura de quem a nomeia, nada limpa, nada avisa;
+2. `source_shape` deixa de resolver ⇒ o `bake_one` sai **antes** do `seen.insert`, então a varredura
+   do memo **despeja também o ladrilho antigo**;
+3. sem ladrilho, o preenchimento cai na `fallback` — **uma cor chapada**, que é exactamente o que um
+   preenchimento sólido correcto parece;
+4. o painel não tem uma palavra a dizer: o `TexturePatternRow` não carregava nada sobre a fonte, e a
+   secção sobe **inteira e normal** — reticulado, tamanho, vão e rotação a oferecerem-se, nenhum
+   deles com um ladrilho para arrumar;
+5. ⛔ e **não sobrevive ao ficheiro**: o `SavedPatternArt` guarda pixels indexados por `AssetId`, e o
+   colector tem `if let PatternSource::Image(id)` **sem `else`** — a fonte-FORMA fica de fora com a
+   razão escrita ao lado (*"ela É o documento, e o documento já viaja"*), que é verdade **exactamente
+   enquanto a forma existir**.
+
+⇒ apagar, gravar, reabrir: a estampa volta chapada **para sempre**, e o `u64` no ficheiro aponta
+para nada. *É a mesma frase que o `project_texture_pattern.rs` escreveu para o caso da IMAGEM — «a
+arte não some por um defeito; some porque o app abriu, mentiu e salvou» — com o sujeito trocado.*
+
+### §W11.2 — ⭐ O que LIMITA o estrago, e porque isso decidiu a cura
+
+O `VecPathId` é um `u64` guardado **dentro** da `VecScene`, e o `ProjectState` leva a cena inteira
+como dado ⇒ o undo repõe-na **verbatim, com os ids originais**. Desfazer o apagar devolve a forma
+com o MESMO id e o vínculo **cura-se sozinho**. Há gate (`the_art_link_survives_the_round_trip_that_undo_uses`),
+e ele não é decorativo: se algum dia o restore passar a re-atribuir ids (basta um `push_path` nesse
+caminho), o estrago deixa de ser recuperável e o aviso deixa de ser cura suficiente.
+
+⇒ o dano real é *apagar, **gravar**, e só reparar depois*. Isso é o que escolhe **avisar** em vez de
+recusar o apagar (o artista não pode ficar impedido de apagar a própria forma) ou de limpar o
+vínculo (destruiria a autoria do reticulado sem que ninguém pedisse).
+
+### §W11.3 — A cura, e o precedente que ela segue
+
+A `line/Vector` **já tem** este desenho, para a instância cujo mestre sumiu: o produtor NOMEIA os
+órfãos (`instance_live::orphans`) e o painel diz *"main missing"* — uma **frase**, não um botão,
+porque não há nada a accionar naquele ponto. A estampa não tinha nenhum, e a razão é do modelo: o
+**`PatternSource` não tem variante vazia**. Um pincel tem (`art: Option<..>`), e por isso a casa já
+decidiu, com a lei escrita, que *"um id que aponta para uma forma apagada é um pincel sem arte"* —
+o rótulo do botão volta a *"Pick Shape…"* e diz o estado sozinho. Uma estampa não consegue exprimir
+isso.
+
+- **`texture_pattern_live::art_is_missing`** — pura, e pergunta pela **porta que assa**
+  (`source_shape`), não por um `scene.path(id)` escrito ao lado. ⚠️ E a diferença já morde hoje: a
+  porta recusa também a **auto-referência**, que é igualmente uma estampa sem arte utilizável e que
+  uma consulta directa daria como presente.
+- **`TexturePatternRow::art_missing`** — publicado por essa porta.
+- **A dica no painel**, `hint_line`, **acima dos dois botões que a resolvem** (*Source…* e *Use
+  Shape…*). ⛔ No fim da secção o artista leria o problema depois de já ter passado pelo gesto que o
+  cura — e há gate sobre a **posição**, não só sobre a presença.
+
+⚠️ **A fonte-IMAGEM nunca acusa**, e a restrição é a decisão: os pixels dela viajam no ficheiro
+desde a W8, então uma ausência é **transitória** (a carregar). *Um aviso permanente sobre um estado
+transitório ensina o artista a ignorar avisos.*
+
+### §W11.4 — Os gates
+
+- `a_deleted_source_shape_is_reported_as_missing_art` — as **quatro** respostas: viva · id morto ·
+  **auto-referência** (a que uma consulta directa erraria) · imagem (cala).
+- `the_art_link_survives_the_round_trip_that_undo_uses` — clone (undo) **e** postcard (ficheiro).
+- `the_missing_art_hint_names_the_dead_link` e `..._sits_above_the_buttons_that_fix_it` — o oráculo
+  é a **geometria** (uma dica é texto e não regista hit-rect).
+- `this_scene_dresses_a_shape_in_another_shape` — a cena `=76` tem de continuar a vestir uma forma
+  com outra, senão o gesto do smoke fica sem sujeito. Gate de fonte **com descascador de
+  comentários e o controlo dele**.
+- **4 mutações, 4 mortas**: o aviso nunca pintado · o aviso que pinta mas não avança o `y` (fica por
+  baixo dos botões) · a arte nunca dada como apagada · a consulta directa em vez da porta.
+
+### §W11.5 — ⏳ O que fica ABERTO, nomeado
+
+- **O pincel não persiste a arte de forma nenhuma** — não existe análogo do `project_texture_pattern`
+  para o `BrushStroke::art`. Hoje isso é coerente (a arte é o documento, e o documento viaja), e
+  parte-se pelo mesmo mecanismo: apagar a forma-fonte, gravar, reabrir ⇒ linha chapada. ⚠️ O pincel
+  **não** ganhou aviso nesta wave **de propósito**: a casa já decidiu que ali um id morto *é* «sem
+  arte», e o botão diz-lo. Reabrir isso é mexer numa decisão escrita, não fechar um buraco.
+- **Ninguém avisa no momento do APAGAR.** O aviso é do painel da forma que veste, então só se lê ao
+  seleccioná-la. Um aviso no gesto (*"2 formas usam esta como arte"*) é produto, e o `undo` cobre o
+  caso imediato.
+
+### §W11.6 — ⛔ Recusas MEDIDAS
+
+| o que | porque não | onde |
+|---|---|---|
+| recusar o apagar | o artista não pode ficar impedido de apagar a própria forma | §W11.2 |
+| limpar o vínculo no apagar | destrói o reticulado autorado sem ninguém pedir; e o undo já cobre | §W11.2 |
+| avisar também na fonte-IMAGEM | a ausência lá é **transitória** (a carregar) | §W11.3 |
+| dar ao pincel o mesmo aviso | contradiz a lei escrita de que ali um id morto **é** «sem arte» | §W11.5 |

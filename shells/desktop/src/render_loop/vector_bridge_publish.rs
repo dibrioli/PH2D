@@ -286,6 +286,14 @@ pub(super) fn publish(
                         wrap_seam_visible: tiles
                             .get(&(sel, ps))
                             .is_some_and(|t| ph2d_vec_pattern::seam_is_visible(t.wrap_seam)),
+                        // ⭐⭐⭐ *"A arte ainda existe?"* é uma pergunta sobre a CENA, não sobre o
+                        // campo — a mesma lei que o `BrushRow::has_art` já obedece. E vai pela
+                        // porta que ASSA, não por uma consulta escrita aqui.
+                        art_missing: crate::texture_pattern_live::art_is_missing(
+                            scene,
+                            sel,
+                            &pat.source,
+                        ),
                     }
                 }),
             );

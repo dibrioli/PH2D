@@ -49,6 +49,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.stroke.present" => "Stroke",
         "panel.vector.texpat.lock" => "Lock Aspect",
+        // ⭐⭐⭐ A forma-fonte foi APAGADA (plano 33 W11). ⚠️ A frase diz o que ACONTECEU e o que a
+        // estampa esta' a fazer agora — "the art was deleted" sozinho deixaria o artista sem saber
+        // porque' a forma ficou de uma cor so'. Os dois botoes de reparacao ficam logo abaixo.
+        "panel.vector.texpat.art_missing.hint" => {
+            "The shape this pattern used as art was deleted, so it is painting its fallback \
+             colour. Undo, or pick art again below."
+        }
         // ⭐⭐⭐ O app MEDIU o salto do ladrilho na volta (plano 33 W10) e diz o que fazer. ⚠️ A
         // frase nomeia o REMEDIO, e o remedio esta' no chip imediatamente acima dela — uma dica que
         // so' descreve o defeito deixa o artista a saber que algo esta' mal e sem gesto nenhum.

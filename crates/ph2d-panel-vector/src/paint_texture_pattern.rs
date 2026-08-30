@@ -71,6 +71,8 @@ impl BodyCtx<'_> {
             return y;
         }
         let kid = |k| kid(slot, k);
+        // ⭐⭐⭐ **A ARTE SUMIU** — dito ANTES dos dois botões que a repõem. Ver [`Self::missing_art_hint`].
+        y = self.missing_art_hint(p.art_missing, y);
         // A ARTE — trocar a imagem sem trocar a lei. ⚠️ O mesmo botão que o chip *Pattern* aciona
         // quando a forma ainda não tem padrão: uma porta, dois gatilhos.
         y = self.action_button(kid(ids::TexPatKnob::Source), "Source...", y);
@@ -248,6 +250,29 @@ impl BodyCtx<'_> {
     /// - `Clamp` (`2`) — há **uma** cópia e não há junta nenhuma ⇒ cala.
     ///
     /// ⛔ Um aviso que aparece no modo que o cura ensinaria o artista a ignorá-lo.
+    /// ⭐⭐⭐ **A forma que servia de arte foi apagada, e o painel diz-lo** (plano 33, W11).
+    ///
+    /// # Porque isto existe
+    ///
+    /// Sem ela a estampa volta a **cor chapada** — indistinguível de um preenchimento sólido que
+    /// alguém escolheu de propósito. A secção sobe inteira, com reticulado, tamanho, vão e rotação
+    /// a oferecerem-se, e **nenhum deles tem efeito**: não há ladrilho para arrumar.
+    ///
+    /// ⚠️ **Ela vem ANTES dos dois botões de arte, e é por isso que fica no topo.** *Source…* e
+    /// *Use Shape…* são a reparação; ler o problema imediatamente acima do gesto que o resolve é o
+    /// que separa um aviso útil de uma queixa. ⛔ Pô-la no fim mandaria o artista procurar.
+    ///
+    /// ⚠️ Um pincel na mesma situação **não** ganha aviso: lá o `art` é um `Option`, e a casa já
+    /// decidiu que *"um id que aponta para uma forma apagada é um pincel sem arte"* — o rótulo do
+    /// botão muda para *"Pick Shape…"* e diz o estado sozinho. Uma estampa não tem essa saída,
+    /// porque o `PatternSource` **não tem variante vazia**.
+    fn missing_art_hint(&mut self, sumiu: bool, y: f32) -> f32 {
+        if sumiu {
+            return self.hint_line(tr("panel.vector.texpat.art_missing.hint"), y);
+        }
+        y
+    }
+
     fn texpat_seam_hint(&mut self, mode: u8, visivel: bool, y: f32) -> f32 {
         if mode == 0 && visivel {
             return self.hint_line(tr("panel.vector.texpat.seam.hint"), y);

@@ -424,5 +424,19 @@ pub(crate) fn route(app: &mut crate::App, f: u32, level: u32) -> bool {
         crate::bucket_smoke::frame(app, f);
         return true;
     }
+    // ⭐⭐⭐ O NAVEGADOR DE ASSETS DIRIGIDO PELO PONTEIRO (=83, plano 07 etapa C). ⚠️ Ela é a única
+    // cena deste roteador que não mostra nada ao artista: ela **imprime**. O que ela mede é a
+    // metade que nenhum gate do painel alcança — o hit-index, o `is_focusable`, a precedência do
+    // botão direito e o nascimento do `Click`.
+    // ⚠️⚠️ **`83`, CONTADO na integração de 2026-09-04 — a linha escreveu `78`.** A
+    // `line/Vector` integrou primeiro e levou `78`–`82` (quinas · opacidade · Trim · Soldar ·
+    // Balde). ⛔ *O número da cena de smoke conta-se LENDO o roteador, nunca uma nota* — e as
+    // duas linhas terem escrito o mesmo literal é a colisão que funde **muda**: o gate
+    // `no_two_*_scenes_claim_the_same_level` mede o PISO, então duas cenas com o mesmo número
+    // passam por ele sem o acordar, e uma delas fica inalcançável.
+    if level == 83 {
+        crate::asset_menu_smoke::frame(app, f);
+        return true;
+    }
     false
 }

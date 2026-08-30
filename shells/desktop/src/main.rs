@@ -65,6 +65,9 @@ mod asset_drop_apply;
 /// ⭐⭐ **A junção das duas fontes de asset** (plano `docs/Components/07`, wave A2) — o único
 /// sítio que conhece o mundo E o `AssetDb`, e por isso o único que responde «que assets existem?».
 mod asset_index_build;
+/// ⭐⭐⭐ **O navegador de assets DIRIGIDO PELO PONTEIRO** (`PH2D_BUILD_SMOKE=78`) — o buraco que a
+/// auditoria da etapa B nomeou: nenhum gate do painel aperta o botão de verdade.
+mod asset_menu_smoke;
 mod atlas_loader;
 mod attribute_demo_smoke;
 mod audio;

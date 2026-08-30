@@ -132,6 +132,28 @@ impl crate::App {
         );
     }
 
+    /// ⭐ **O botão DIREITO, num sítio.** É o gesto que abre todo menu de contexto deste app, e
+    /// até 2026-08-30 nenhum roteiro auto-dirigido o exercia — os menus eram testados por `Click`
+    /// sintético, que passa por cima da própria abertura.
+    ///
+    /// ⚠️ **Down e Up, os dois** — o `pointer_down_menus` abre no `Down`, e é o `Up` que estaciona
+    /// o pedido no `last_context_menu` de onde o `apply_event` o lê. Só o `Down` deixaria o menu
+    /// aberto e o painel sem sujeito.
+    pub(crate) fn smoke_secondary_click(&mut self, x: f32, y: f32) {
+        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
+            f64::from(x),
+            f64::from(y),
+        ));
+        self.on_mouse_input(
+            winit::event::ElementState::Pressed,
+            winit::event::MouseButton::Right,
+        );
+        self.on_mouse_input(
+            winit::event::ElementState::Released,
+            winit::event::MouseButton::Right,
+        );
+    }
+
     // (`smoke_click_screen` — down+up no MESMO frame — foi removido de propósito: um
     // clique humano tem Down e Up em frames SEPARADOS, e o atalho não contém as corridas
     // que um clique real contém; todo roteiro clica por `smoke_pointer_down` + `_up`.)

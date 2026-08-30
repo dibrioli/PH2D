@@ -172,6 +172,79 @@ impl CenterSplit {
     }
 }
 
+/// Quais colunas laterais estão **abertas** neste quadro — a única coisa que o layout não
+/// consegue derivar de si mesmo.
+///
+/// ⚠️ **Um painel fechado não ocupa coluna**, e a [`HeroLayout::draw_area`] tem de crescer para
+/// dentro dela: reservar a faixa de um painel que não está lá poria a régua da esquerda a
+/// flutuar no meio do desenho, e não a reservar quando ele ESTÁ lá devolve o defeito que a
+/// área existe para curar. O sítio que sabe a resposta é o mesmo que constrói o layout
+/// (`screens/hero/paint.rs`), e é lá que a pergunta é feita.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct DockSides {
+    /// A coluna da ESQUERDA — a Hierarchy, ou o Inspector sob `mirrored`.
+    pub left: bool,
+    /// A coluna da DIREITA — o Inspector, ou a Hierarchy sob `mirrored`.
+    pub right: bool,
+}
+
+/// As chaves de visibilidade dos painéis que partilham a **coluna da DIREITA** — todos
+/// desenham no mesmo rect ([`HeroLayout::inspector`], de que os outros quatro são aliases), e a
+/// coluna está ocupada se **algum** deles estiver visível.
+///
+/// ⚠️ **Um alias novo que não venha para esta lista deixaria a área de desenho crescer para
+/// dentro de um painel que está lá** — e o defeito reapareceria só naquela ferramenta. Há gate a
+/// contar os dois lados (`the_dock_column_census_matches_the_layout_aliases`): o nome do campo
+/// **é** a chave de visibilidade, então a lista é conferível contra o próprio construtor.
+pub const RIGHT_DOCK_PANELS: [&str; 5] = [
+    "inspector",
+    "bgremoval",
+    "padding",
+    "painter_sidebar",
+    "painter_layers",
+];
+
+/// A chave da **coluna da ESQUERDA**. Uma só, hoje.
+pub const LEFT_DOCK_PANELS: [&str; 1] = ["hierarchy"];
+
+impl DockSides {
+    /// As duas colunas abertas — o estado do mockup de referência, e o que os construtores
+    /// que **não perguntam** assumem (`for_viewport` e irmãos, usados por fixtures e testes de
+    /// geometria de chrome, que pintam os dois painéis).
+    pub const BOTH: Self = Self {
+        left: true,
+        right: true,
+    };
+    /// Nenhuma coluna aberta — a área de desenho vai do trilho à borda direita.
+    pub const NONE: Self = Self {
+        left: false,
+        right: false,
+    };
+
+    /// **Pergunta ao hospedeiro quais colunas estão ocupadas** — a porta única, e o sítio onde
+    /// a inversão do `mirrored` mora.
+    ///
+    /// ⚠️ **Sob `mirrored` as colunas TROCAM de painel** (o construtor faz o mesmo com os `x`),
+    /// e é essa a metade que se escreve ao contrário sem o compilador reclamar: `left` aqui
+    /// significa *a coluna da esquerda*, nunca *a Hierarchy*.
+    #[must_use]
+    pub fn resolve(mirrored: bool, visible: impl Fn(&str) -> bool) -> Self {
+        let hierarchy = LEFT_DOCK_PANELS.iter().any(|k| visible(k));
+        let inspector = RIGHT_DOCK_PANELS.iter().any(|k| visible(k));
+        if mirrored {
+            Self {
+                left: inspector,
+                right: hierarchy,
+            }
+        } else {
+            Self {
+                left: hierarchy,
+                right: inspector,
+            }
+        }
+    }
+}
+
 /// Pre-computed sub-region rects for one frame. Built once per
 /// frame from a viewport rect — cheap.
 #[derive(Copy, Clone, Debug)]
@@ -207,7 +280,42 @@ pub struct HeroLayout {
     pub bottom_hud: Rect,
     /// Visible canvas region (between rail/inspector on the left
     /// and hierarchy on the right, between TopBar and HUD vertically).
+    ///
+    /// ⚠️ **O doc acima descreve um layout ANCORADO e o código implementa full-bleed** — este
+    /// rect É a viewport inteira, e os painéis flutuam por cima dele. A contradição é
+    /// pré-existente e fica NOMEADA aqui até a docagem (A2) a resolver; quem quer a área em
+    /// que o desenho de facto se vê usa [`Self::draw_area`].
     pub canvas: Rect,
+    /// ⭐⭐ **A ÁREA de desenho — o que sobra da janela depois de o chrome DOCADO tirar a sua
+    /// faixa**, e o hospedeiro das duas réguas.
+    ///
+    /// É a primeira peça do modelo de áreas (`docs/UI_New_and_Simple/spec/01_modelo_de_areas.md`
+    /// §4, decisão D5 do Enio): *regiões são IRMÃS numa fila, nunca camadas empilhadas.* A régua
+    /// e o trilho deixam de partilhar a origem `(0, 0)` da janela e passam a ocupar faixas
+    /// disjuntas — e é por isso que o defeito desaparece **por construção**, sem uma verificação
+    /// a defendê-lo: duas regiões não se tapam porque não partilham coordenada.
+    ///
+    /// | | tapado por chrome docado |
+    /// |---|---:|
+    /// | régua da esquerda ancorada em `canvas` (até 2026-08-30) | **87,8 %** — o trilho cobre-a inteira |
+    /// | régua de cima ancorada em `canvas` | **29,4 %** — a barra de topo |
+    /// | as duas ancoradas em `draw_area` | **0,0 %** |
+    ///
+    /// (medição em `docs/UI_New_and_Simple/medicoes/02_a_area_tapada.md`, alvo 1366 × 1024 =
+    /// iPad Pro 12,9", que é o viewport de referência dos tokens.)
+    ///
+    /// ⚠️⚠️ **A PROJECÇÃO NÃO MUDA, e é isso que torna a cura barata.** O
+    /// [`crate::grid::world_bounds`] deriva de `window_w`/`window_h`, nunca deste rect — o rect
+    /// só decide **onde a faixa é desenhada** e quais traços entram nela (`ruler::in_band` já
+    /// filtrava). ⇒ um traço marcado em 100 continua a cair no mesmo pixel de tela; ele apenas
+    /// deixa de o fazer debaixo do trilho. *Uma régua que se mudasse e levasse a projecção
+    /// consigo passaria a apontar para outro sítio, que é pior do que estar tapada.*
+    ///
+    /// ⛔ **Não é (ainda) o rect da CENA.** O sub-rectângulo da cena é ancorado em `(0, 0)` por
+    /// construção em toda a cadeia (`CenterSplit::scene_viewport` devolve `[0, 0, w, h·t]` e
+    /// todo consumidor lê só as DIMS) — dar-lhe uma ORIGEM é a obra da docagem (A2), e está
+    /// nomeada com esse preço. Aqui a cena continua full-bleed, por baixo das réguas.
+    pub draw_area: Rect,
     /// Scene viewport sub-rect (Motion Nodes M0.T4). Equals the full
     /// [`Self::canvas`] with no split; the top slice (`Horizontal`) or left
     /// slice (`Vertical`) of the center band when the Motion tool splits it.
@@ -285,6 +393,23 @@ impl HeroLayout {
         mirrored: bool,
         rail_w: f32,
         split: CenterSplit,
+    ) -> Self {
+        Self::for_viewport_docked(viewport, mirrored, rail_w, split, DockSides::BOTH)
+    }
+
+    /// O construtor que também sabe **quais colunas laterais estão abertas** — a única entrada
+    /// que consegue resolver a [`Self::draw_area`] correctamente.
+    ///
+    /// ⚠️ Todos os outros construtores delegam aqui com [`DockSides::BOTH`], que é o estado do
+    /// mockup de referência. O caminho de produção (`screens/hero/paint.rs`) pergunta ao
+    /// `is_panel_visible`, e há gate a exigi-lo — reservar a coluna de um painel fechado põe a
+    /// régua da esquerda a flutuar no meio do desenho.
+    pub fn for_viewport_docked(
+        viewport: Rect,
+        mirrored: bool,
+        rail_w: f32,
+        split: CenterSplit,
+        docks: DockSides,
     ) -> Self {
         let top_bar = Rect::new(
             viewport.x + EDGE_PAD,
@@ -374,6 +499,23 @@ impl HeroLayout {
         };
         let timeline_x = left_col_right + EDGE_PAD;
         let timeline_w = (right_col_left - EDGE_PAD - timeline_x).max(0.0);
+        // ⭐⭐ **A ÁREA de desenho** (D5) — as regiões são IRMÃS numa fila, e é por não
+        // partilharem coordenada que nada aqui pode tapar nada. Horizontalmente ela começa
+        // depois da coluna da esquerda (o trilho, mais o painel **se estiver aberto**) e acaba
+        // antes da coluna da direita; verticalmente é a banda de chrome, que já exclui a barra
+        // de topo e o HUD. ⚠️ Uma coluna fechada não é reservada: a área cresce para dentro
+        // dela, senão a régua da esquerda ficaria a flutuar sobre o desenho.
+        let area_x0 = if docks.left {
+            left_col_right + EDGE_PAD
+        } else {
+            viewport.x + rail_w
+        };
+        let area_x1 = if docks.right {
+            right_col_left - EDGE_PAD
+        } else {
+            viewport.x + viewport.w
+        };
+        let draw_area = Rect::new(area_x0, chrome_top, (area_x1 - area_x0).max(0.0), chrome_h);
         let timeline = Rect::new(
             timeline_x,
             (chrome_bot - TIMELINE_DOCK_H).max(chrome_top),
@@ -404,6 +546,7 @@ impl HeroLayout {
             hierarchy,
             bottom_hud,
             canvas,
+            draw_area,
             center_viewport,
             motion_graph,
             motion_timeline_slot,

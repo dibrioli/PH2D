@@ -511,17 +511,28 @@ fn the_ruler_is_painted_with_the_canvas_the_layout_resolved() {
         .rfind("if hero.rulers_live()")
         .expect("o desenho pergunta a PORTA ÚNICA, não uma condição própria");
     assert!(
-        head[block..].contains("canvas: layout.canvas,"),
-        "a régua recebe o canvas RESOLVIDO pelo layout, não o de fachada do `grid.view`"
+        head[block..].contains("canvas: layout.draw_area,"),
+        "a régua recebe a ÁREA DE DESENHO resolvida pelo layout, não o retângulo de fachada do \
+         `grid.view`"
+    );
+    // ⛔ E, desde 2026-08-30, **não** o `layout.canvas`: ele é a viewport inteira, e ancorar a
+    // régua nele devolve os dois defeitos de uma vez — 87,8 % da régua esquerda tapada pelo
+    // trilho, e o gesto da guia a roubar o clique dos 6 px de cima da barra (ele é geométrico e
+    // corre antes do hit-test de chrome). A lei e os dois controlos vivem em
+    // `ph2d-editor-core/tests/the_rulers_never_share_a_pixel_with_docked_chrome.rs`.
+    assert!(
+        !head[block..].contains("canvas: layout.canvas,"),
+        "a régua voltou a ser ancorada na viewport inteira — o trilho tapa-a e ela rouba o \
+         clique da barra de topo"
     );
     assert!(
         head[block..].contains("hero.grid.snap_state.active_origin()"),
         "o zero da régua É a origem da grade — um número, dois consumidores"
     );
     assert!(
-        src.contains("hero.last_canvas = layout.canvas;"),
-        "o canvas resolvido é publicado para quem trata ponteiro; sem isto o gesto da régua \
-         teria de espelhar a aritmética do layout"
+        src.contains("hero.last_canvas = layout.draw_area;"),
+        "a área de desenho resolvida é publicada para quem trata ponteiro; sem isto o gesto da \
+         régua teria de espelhar a aritmética do layout — e pintar e agarrar divergiriam"
     );
 }
 

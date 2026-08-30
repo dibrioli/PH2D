@@ -121,11 +121,18 @@ pub fn paint_hero_screen(
     // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
     // this is identical to the legacy layout there; the Motion bridge sets a split
     // while its tool is active.
-    let mut layout = HeroLayout::for_viewport_split(
+    // **Quais colunas laterais estão ocupadas** — a área de desenho (e com ela as réguas) cresce
+    // para dentro de uma coluna fechada. É o mesmo padrão do `dock_timeline_into_motion` logo
+    // abaixo: o layout é uma função pura do que lhe dizem, e ESTE é o sítio que sabe.
+    let docks = crate::screens::layout::DockSides::resolve(hero.view.ui_mirrored, |k| {
+        hero.is_panel_visible(k)
+    });
+    let mut layout = HeroLayout::for_viewport_docked(
         viewport,
         hero.view.ui_mirrored,
         rail_w,
         hero.view.center_split,
+        docks,
     );
     // **The timeline docks INTO the Motion workspace** (W4.T4). Only when both are on screen:
     // otherwise the graph keeps its full band and the timeline keeps its own dock. The condition
@@ -248,17 +255,29 @@ pub fn paint_hero_screen(
         }
         crate::grid_snap::render::paint(scene, &view, &state_for_paint, hero.theme);
     }
-    // O canvas que ESTE paint resolveu, para quem trata ponteiro (o gesto da régua) ler o
-    // mesmo retângulo — o irmão do `last_viewport`, e pelo mesmo motivo.
-    hero.last_canvas = layout.canvas;
+    // O rect que ESTE paint resolveu para as RÉGUAS, para quem trata ponteiro (o gesto da guia)
+    // ler o mesmo retângulo — o irmão do `last_viewport`, e pelo mesmo motivo.
+    //
+    // ⚠️⚠️ **É a `draw_area`, não o `canvas`** (2026-08-30). O gesto da guia é geométrico e corre
+    // ANTES do hit-test de chrome (`input_dispatch.rs`, com um `return` quando acerta), e a régua
+    // não está no `HitIndex` — enquanto isto foi a viewport inteira, um press nos 6 px de cima de
+    // qualquer botão da barra ou nos 3 px da esquerda de um chip do trilho **nascia uma guia em
+    // vez de carregar no botão**. Pintar e agarrar leem a MESMA fonte, que é o que impede a
+    // metade visível e a metade do dedo de divergirem.
+    hero.last_canvas = layout.draw_area;
     // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
     // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
     // O zero é a origem da GRADE — um número, dois consumidores.
     if hero.rulers_live()
         && let Some(view) = hero.grid.view
     {
+        // ⭐ **A ÁREA de desenho, e não o canvas** — é o que faz as réguas deixarem de partilhar
+        // coordenada com o trilho e com a barra (D5). ⚠️ A PROJEÇÃO não se mexe: ela deriva de
+        // `window_w`/`window_h`, nunca deste rect, então um traço marcado em 100 continua a cair
+        // no mesmo pixel — só deixa de o fazer debaixo do chrome (`ruler::in_band` já filtrava os
+        // traços que caem fora da faixa).
         let view = crate::grid::GridView {
-            canvas: layout.canvas,
+            canvas: layout.draw_area,
             ..view
         };
         let origin = hero.grid.snap_state.active_origin();

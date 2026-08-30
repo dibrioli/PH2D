@@ -24,6 +24,17 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // eixo a peça chega **naquele ponto da pilha**, e um `Array` antes dela muda essa resposta.
     // ⚠️ A lei de cada passo é a do [`crate::bounds::step_mod`], e não uma segunda cópia dela.
     let mut ball = local;
+    // ⛔⛔⛔ **O DIVISOR DE UM PASSO MEDE-SE CONTRA A CAIXA QUE A MARCHA PERCORRE** — e ela é a do
+    // **FIM** da pilha, não a corrente (2026-08-30, e eu aprendi isto três vezes no mesmo dia).
+    //
+    // O recorte da marcha é a AABB da bola final (`Scene::clip`), e um modificador **posterior** pode
+    // aumentá-la: o campo de um passo anterior passa a ser avaliado mais longe do que o bordo dele
+    // dizia. Medido: `[Taper, Array]` lia `‖∇f‖ = 1,0572` **dentro do recorte** — e não é artefacto
+    // de grelha, porque o número **não muda** de `ε = 1e-3` para `1e-5`.
+    //
+    // ⛔⛔ **E não é a bola do FIM, é o ENVELOPE**: a repetição radial re-centra no eixo, logo a
+    // pilha não é monótona — com a do fim, `[Taper, Radial]` foi a `730,5`.
+    let final_ball = crate::bounds::envelope(local, mods);
     // ⭐⭐⭐ **O DIVISOR ACUMULA E APLICA-SE UMA VEZ, NO FIM** (2026-08-30) — e isto é uma CURA.
     //
     // ⛔ Enquanto cada deformador dividia na hora, ele mudava a **unidade** do campo, e todo número
@@ -39,6 +50,9 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // `min`/`max` preservam Lipschitz, então o tecto da pilha inteira continua a ser o produto dos
     // `σ` — e o número que o artista escreveu volta a valer o que diz.
     let mut divisor = 1.0f64;
+    // ⛔⛔ **Já passou um DEFORMADOR DE ESPAÇO por aqui?** — a pergunta que a repetição radial tem de
+    // fazer, e que ela não podia fazer sozinha. Ver [`radial`].
+    let mut deformado = false;
     for m in mods {
         acc = match *m {
             // ⭐ A casca inteira: o módulo de uma distância É a distância à mesma superfície vista
@@ -53,8 +67,8 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             // cerca que caiu.
             Unary::MirrorY => acc.remap_xyz(Tree::x(), Tree::y().abs(), Tree::z()),
             Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
-            Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
-            Unary::Radial { count } => radial(&acc, count),
+            Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing), deformado),
+            Unary::Radial { count } => radial(&acc, count, deformado),
             Unary::Taper { slope } => taper(&acc, f64::from(slope)),
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
             // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
@@ -70,8 +84,26 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 f64::from(upper),
                 f64::from(falloff),
             ),
+            Unary::Bend {
+                turns,
+                lower,
+                upper,
+                falloff,
+            } => bend(
+                &acc,
+                bend_curvature(turns, ball),
+                f64::from(lower),
+                f64::from(upper),
+                f64::from(falloff),
+                // A MESMA extensão que o divisor lê — ver [`step_divisor`].
+                bend_reach(crate::bounds::step_mod(ball, *m)),
+            ),
         };
-        divisor *= step_divisor(*m, ball);
+        divisor *= step_divisor(*m, final_ball);
+        deformado |= matches!(
+            m,
+            Unary::Twist { .. } | Unary::Bend { .. } | Unary::Taper { .. }
+        );
         ball = crate::bounds::step_mod(ball, *m);
     }
     if divisor == 1.0 {
@@ -92,12 +124,27 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
 ///
 /// ⚠️ **A bola é a de ANTES deste passo**, como no [`crate::bounds::step_mod`]: é dela que a torção
 /// tira o alcance do eixo.
+/// ⚠️ **A `ball` é a do FIM da pilha**, e não a de antes deste passo — ver a nota na [`stacked`].
 pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
     match m {
-        Unary::Taper { slope } => taper_divisor(f64::from(slope)),
+        // ⚠️ **A extensão é a de DEPOIS do passo**, como na dobra: o avaliador é preso à AABB da bola
+        // já inclinada, e ela é maior. Ler a de antes deixava `[Array, Taper]` em `1,1438`.
+        Unary::Taper { slope } => taper_divisor(f64::from(slope), taper_reach(ball)),
         Unary::Twist { turns, .. } => {
             let k = f64::from(turns) * std::f64::consts::TAU;
             twist_sigma(k.abs() * axis_reach(ball).abs())
+        }
+        // ⭐ `σ = max(1, ρ/Rr) = max(1, 1/(1 − κ·W))` — o lado de DENTRO da dobra comprime-se no
+        // espaço material, e é lá que o campo estica. A saturação da curvatura garante `κ·W < 1`.
+        Unary::Bend { turns, .. } => {
+            let k = bend_curvature(turns, ball);
+            // ⛔⛔ **A extensão é a de DEPOIS da dobra, e ler a de antes foi um vermelho medido.**
+            // O avaliador é preso à AABB da bola **já dobrada** (`Scene::clip`), e ela é maior: com
+            // `0,05` voltas o alcance vai de `0,736` para `1,64`, e o tecto verdadeiro de `ρ/Rr`
+            // sobe de `1,30` para `2,06`. *Um divisor calculado numa caixa mais pequena do que a que
+            // o raio percorre é um divisor pequeno de mais — e pequeno de mais fura.*
+            let w = bend_reach(ball);
+            (1.0 / (1.0 - (k.abs() * w).min(BEND_FOLD_MARGIN))).max(1.0)
         }
         // Os outros são exactos: eles lêem o campo, não o remodelam.
         Unary::Shell { .. }
@@ -108,6 +155,91 @@ pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
         | Unary::Array { .. }
         | Unary::Radial { .. } => 1.0,
     }
+}
+
+/// ⭐⭐⭐ **A CURVATURA que a dobra de facto aplica, já SATURADA na parede da peça.**
+///
+/// ⛔ **A parede é do DOCUMENTO, não uma escolha:** acima de `κ·W = 1` (com `W` a meia-largura na
+/// direcção do centro do arco) a matéria dobra-se sobre si própria, o mapa deixa de ser injectivo e
+/// o campo devolve lixo **nos dois sentidos** — fura e deixa fantasma. Só quem vê a peça pode
+/// impô-la, e é por isso que ela mora aqui e não num `MAX_*`: *uma vara fina aguenta muito mais
+/// dobra do que um bloco atarracado, e um teto escrito à mão seria o caminho lento a mandar no
+/// rápido.*
+///
+/// ⚠️ **Satura, não recusa** — é a lei da porta deste módulo (o `set_dim` do prisma já a paga).
+pub(crate) fn bend_curvature(turns: f32, ball: crate::bounds::Ball) -> f64 {
+    let k = f64::from(turns) * std::f64::consts::TAU;
+    let w = bend_reach(ball);
+    if w <= 0.0 || !w.is_finite() {
+        return k;
+    }
+    let tecto = BEND_FOLD_MARGIN / w;
+    k.clamp(-tecto, tecto)
+}
+
+/// Quão longe a peça chega na direcção em que a dobra a comprime (o `X` local).
+pub(crate) fn bend_reach(b: crate::bounds::Ball) -> f64 {
+    f64::from(b.center[0].abs() + b.radius.max(0.0))
+}
+
+/// Quanto da parede do vinco a dobra pode usar.
+///
+/// ⚠️ **Não é um épsilon de gosto:** em `κ·W = 1` o lado de dentro colapsa no centro do arco e o
+/// divisor `1/(1−κW)` vai a infinito. Nove décimos deixa a dobra ir bem além do que um artista pede
+/// (um `U` fechado) e mantém o divisor abaixo de `10`.
+const BEND_FOLD_MARGIN: f64 = 0.9;
+
+/// ⭐⭐⭐ **A DOBRA** — o eixo `Z` curva-se no plano `XZ`, com curvatura `κ`.
+///
+/// Mapa inverso, com `ρ = 1/κ` e o centro do arco em `(ρ, 0, 0)`:
+///
+/// ```text
+/// a = ρ − X ;  b = banda(Z) ;  Rr = ‖(a, b)‖
+/// x = ρ − Rr ;  z = atan2(b, a)·ρ ;  y = Y
+/// ```
+///
+/// ⚠️ **A banda entra no `b`, e não no `z` de saída**: é ela que faz a dobra agir só num troço, e
+/// fora dele o resto da peça segue **recto** em vez de continuar a curvar.
+///
+/// ⚠️ **As duas linhas do bloco 2×2 do jacobiano são ORTOGONAIS**, com normas `1` e `ρ/Rr` — logo os
+/// valores singulares são exactamente `{1, ρ/Rr, 1}` e o tecto é `max(1, ρ/Rr)`. *Ao contrário da
+/// torção, a esticadela é anisotrópica, e por isso nenhuma correcção escalar a torna exacta.*
+fn bend(inner: &Tree, k: f64, lower: f64, upper: f64, falloff: f64, reach: f64) -> Tree {
+    if k == 0.0 || !k.is_finite() || !(lower.is_finite() && upper.is_finite()) {
+        // ⭐ **IDENTIDADE AO BIT** — e aqui ela é obrigatória por mais uma razão: `κ = 0` dá
+        // `ρ = ∞`, e a conta abaixo seria `0/0`.
+        return inner.clone();
+    }
+    // ⛔⛔ **O SINAL, e ele custou um vermelho:** com `κ < 0` o centro do arco fica em `ρ < 0`, e as
+    // DUAS contas trocam de sentido — `ρ − Rr` manda o ponto para `−6,4` em vez de `0`, e o
+    // `atan2(0, negativo)` devolve `π` em vez de `0`. A peça **desaparecia** ao dobrar para um dos
+    // lados, e só para um. *Quem escreve «e sabe para que lado» num gate é quem o apanha.*
+    //
+    // ⇒ dobra-se sempre para `+X` sobre o eixo **espelhado**, e espelha-se de volta: para `κ > 0` é
+    // a identidade, e para `κ < 0` é a mesma conta na peça reflectida.
+    let s = if k < 0.0 { -1.0 } else { 1.0 };
+    let rho = (1.0 / k).abs();
+    let banda = soft_clamp(
+        &Tree::z(),
+        lower.min(upper),
+        upper.max(lower),
+        falloff.max(0.0),
+    );
+    let a = Tree::constant(rho) - Tree::x() * Tree::constant(s);
+    // ⛔⛔ **O PISO DO RAIO, e ele é obrigatório** — a lei do [`TAPER_FLOOR`], pela mesma razão.
+    //
+    // A bola de bordo **cresce** com a dobra, e a marcha é presa à AABB dela: o recorte passa a
+    // conter o **centro do arco**, onde `Rr → 0` e `σ = ρ/Rr → ∞`. Sem o piso, o campo devolve lixo
+    // ali e o gradiente estoura — medido `‖∇f‖ = 1,0983` já **dentro** da caixa de recorte.
+    //
+    // ⭐ O piso é a parede da própria peça (`ρ − W`): dentro dela a conta é exacta, e além dela a
+    // secção fica **congelada**, que é uma forma e não um defeito. Com ele o tecto passa a valer em
+    // TODO o recorte, por maior que a caixa fique.
+    let piso = (rho - reach.abs()).max(rho * (1.0 - BEND_FOLD_MARGIN));
+    let rr = crate::ops::safe_sqrt(a.clone().square() + banda.clone().square()).max(piso);
+    let x = (Tree::constant(rho) - rr) * Tree::constant(s);
+    let z = banda.atan2(a) * Tree::constant(rho);
+    inner.remap_xyz(x, Tree::y(), z)
 }
 
 /// Quão longe do **eixo Z local** a peça chega — o `R` de que a torção tira o divisor.
@@ -152,12 +284,29 @@ fn taper(inner: &Tree, slope: f64) -> Tree {
 }
 
 /// Por quanto a inclinação divide — ver [`TAPER_SAFETY`] e o doc do [`taper`].
-pub(crate) fn taper_divisor(slope: f64) -> f64 {
+///
+/// ⛔⛔ **O `alcance` entrou em 2026-08-30, e ele faltava desde a W18.** A tabela que escolheu o
+/// `TAPER_SAFETY` foi medida numa peça **centrada e de tamanho um**; o termo que ela corrige cresce
+/// com a distância ao eixo `Y` (é `x·s/k²` que reentra no gradiente), logo uma peça larga — ou uma
+/// **matriz** antes da inclinação — passa por cima dele. Medido: `[Array, Taper]` dava
+/// `‖∇f‖ = 1,5049` **dentro da caixa de recorte**, alcançável em dois cliques.
+///
+/// ⚠️ **`max(1, alcance)`**: nunca menos do que a tabela original concedeu, senão a cura tornaria
+/// uma peça pequena MENOS segura do que ela é hoje.
+pub(crate) fn taper_divisor(slope: f64, alcance: f64) -> f64 {
     if slope == 0.0 || !slope.is_finite() {
         1.0
     } else {
-        1.0 + TAPER_SAFETY * slope.abs()
+        TAPER_SAFETY.mul_add(slope.abs() * alcance.abs().max(1.0), 1.0)
     }
+}
+
+/// Quão longe do **eixo Y** a peça chega — a inclinação escala `x` e `z` em torno dele.
+///
+/// ⚠️ Irmão do [`axis_reach`], e num eixo diferente: cada modificador nomeia o seu, que é a lei que
+/// as primitivas deste módulo já seguem.
+pub(crate) fn taper_reach(b: crate::bounds::Ball) -> f64 {
+    f64::from(b.center[0].hypot(b.center[2]) + b.radius.max(0.0))
 }
 
 /// O menor fator de secção que a inclinação admite — ver [`taper`].
@@ -332,7 +481,7 @@ pub(crate) fn twist_with(inner: &Tree, k: f64, safety: f64) -> Tree {
 /// ⚠️ **No eixo (`x = y = 0`) não há ângulo**, e é por isso que a conta não divide por `r`: ela
 /// reconstrói o ponto por `r·cos θ'` / `r·sin θ'`, e em `r = 0` isso é a origem — a resposta certa,
 /// sem caso especial e sem `NaN`.
-fn radial(inner: &Tree, count: u32) -> Tree {
+fn radial(inner: &Tree, count: u32, deformado: bool) -> Tree {
     if count <= 1 {
         return inner.clone();
     }
@@ -344,11 +493,33 @@ fn radial(inner: &Tree, count: u32) -> Tree {
     // A fatia vizinha é a do lado para onde o ponto pende — mesma lei da linear.
     let toward = theta.clone() / d.clone() - raw.clone();
     let other = raw.clone() + toward.compare(Tree::constant(0.0));
+    let raw_mais = raw.clone() + Tree::constant(1.0);
     let wedge = |k: Tree| {
         let t = theta.clone() - d.clone() * k;
         inner.remap_xyz(r.clone() * t.clone().cos(), r.clone() * t.sin(), Tree::z())
     };
-    wedge(raw).min(wedge(other))
+    let duas = wedge(raw.clone()).min(wedge(other));
+    if !deformado {
+        // ⭐ **Byte-idêntico para toda peça sem deformador** — que é o caso de omissão.
+        return duas;
+    }
+    // ⛔⛔ **A TERCEIRA fatia, e ela existe por um defeito MEDIDO** (auditoria de 2026-08-30).
+    //
+    // As duas fatias bastam enquanto a forma é a mesma vista de qualquer lado. Um deformador de
+    // espaço **antes** da repetição roda a secção para fora da própria fatia e torna-a **quiral**: a
+    // vizinha do lado `y < 0` é a `−60°` e a do lado `y > 0` é a `+60°`, e numa forma quiral essas
+    // duas não são a mesma coisa. O `min` de duas salta.
+    //
+    // Medido em dois cliques do artista (defaults de nascimento, `Twist` e depois `Radial`):
+    // `‖∇f‖ = 40,0064` **dentro da caixa de recorte**, com o campo a saltar de `0,0035` para
+    // `0,0207` entre dois pontos a `0,0005` um do outro — e `21` pixels a mudar quando o passo é
+    // dividido por oito. ⚠️ **E é família:** `[Taper, Radial]` dá `37,3158`, e isso é dívida desde a
+    // W18.
+    //
+    // ⚠️ **Só quando um deformador passou**: a terceira fatia custa mais uma cópia da forma na
+    // árvore, e cobrá-la a quem não a precisa seria o caminho lento a mandar no rápido.
+    duas.min(wedge(raw - Tree::constant(1.0)))
+        .min(wedge(raw_mais))
 }
 
 /// ⭐ **A matriz linear**: `count` cópias espaçadas de `spacing` no X, **sem N cópias da árvore**.
@@ -368,7 +539,7 @@ fn radial(inner: &Tree, count: u32) -> Tree {
 /// subárvore e devolve a distância exata enquanto a forma couber em **1,5 células**. ⛔ Acima disso
 /// o bound volta, e a cura é olhar três — que é o dobro do custo por um caso que o nascimento da
 /// matriz (espaçamento = 2× a peça) já põe fora de alcance.
-fn array(inner: &Tree, count: u32, spacing: f64) -> Tree {
+fn array(inner: &Tree, count: u32, spacing: f64, deformado: bool) -> Tree {
     if count <= 1 || spacing <= 0.0 || !spacing.is_finite() {
         return inner.clone();
     }
@@ -383,6 +554,26 @@ fn array(inner: &Tree, count: u32, spacing: f64) -> Tree {
     let neighbour = (k.clone() + toward.compare(Tree::constant(0.0)))
         .max(Tree::constant(0.0))
         .min(Tree::constant(last));
+    let neighbour_mais = k.clone() + Tree::constant(1.0);
     let cell = |idx: Tree| inner.remap_xyz(Tree::x() - s.clone() * idx, Tree::y(), Tree::z());
-    cell(k).min(cell(neighbour))
+    let duas = cell(k.clone()).min(cell(neighbour));
+    if !deformado {
+        // ⭐ **Byte-idêntico para toda peça sem deformador** — que é o caso de omissão.
+        return duas;
+    }
+    // ⛔ **A TERCEIRA célula, pela MESMA razão da terceira fatia do [`radial`]** (2026-08-30): a lei
+    // das duas células é exacta enquanto a forma cabe em ~1,5 delas, e um deformador antes da matriz
+    // alarga a pegada. Medido: `[Taper, Array]` dava `‖∇f‖ = 1,0572` dentro da caixa de recorte.
+    //
+    // ⚠️ *Achar uma metade de uma família é motivo para procurar as outras* — e a outra era esta.
+    duas.min(cell(
+        (k - Tree::constant(1.0))
+            .max(Tree::constant(0.0))
+            .min(Tree::constant(last)),
+    ))
+    .min(cell(
+        (neighbour_mais)
+            .max(Tree::constant(0.0))
+            .min(Tree::constant(last)),
+    ))
 }

@@ -221,11 +221,12 @@ pub fn field_shrink(doc: &FieldDoc, reg: &crate::hybrid::Registry) -> f32 {
     let balls = crate::bounds::local_balls(doc, reg);
     let mut pior = 1.0f64;
     for (i, node) in doc.nodes().iter().enumerate() {
-        let mut ball = balls[i].unwrap_or(crate::bounds::Ball::EMPTY);
+        let local = balls[i].unwrap_or(crate::bounds::Ball::EMPTY);
+        // ⚠️ A MESMA bola que a `stacked` usa — o ENVELOPE da pilha. Ver a nota lá.
+        let fim = crate::bounds::envelope(local, &node.mods);
         let mut aqui = 1.0f64;
         for m in &node.mods {
-            aqui *= crate::stack::step_divisor(*m, ball);
-            ball = crate::bounds::step_mod(ball, *m);
+            aqui *= crate::stack::step_divisor(*m, fim);
         }
         pior = pior.max(aqui);
     }

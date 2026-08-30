@@ -130,6 +130,27 @@ pub enum Unary {
         /// salta é a **curvatura**, e é ela que o olho lê como quina.
         falloff: f32,
     },
+    /// ⭐⭐⭐ **Dobra**: o eixo **Z local** curva-se no plano XZ, `turns` voltas por unidade de
+    /// comprimento, e só entre `lower` e `upper`.
+    ///
+    /// ⚠️ **A MESMA forma do [`Unary::Twist`], de propósito** — mesmo eixo, mesmas unidades, mesma
+    /// banda, mesmo ombro. Os dois deformadores são um par, e um par que se lê igual aprende-se de
+    /// uma vez; dois vocabulários para duas coisas irmãs é o que faz o artista testar cada slider
+    /// para descobrir o que ele faz.
+    ///
+    /// ⚠️ **Voltas por unidade é a CURVATURA** (`κ = turns·2π`): a uma volta por unidade, o eixo
+    /// fecha um círculo completo em uma unidade de comprimento.
+    ///
+    /// ⛔ **Ela tem uma PAREDE que a torção não tem, e é do documento:** acima de `κ·W = 1` (com `W`
+    /// a meia-largura na direcção do centro do arco) a matéria dobra-se sobre si própria, o mapa
+    /// deixa de ser injectivo e o campo devolve lixo nos dois sentidos. O operador **satura** ali —
+    /// coage em vez de recusar, que é a lei da porta deste módulo.
+    Bend {
+        turns: f32,
+        lower: f32,
+        upper: f32,
+        falloff: f32,
+    },
 }
 
 /// Quantas cópias uma matriz consegue ter.
@@ -243,6 +264,34 @@ impl Unary {
                     span: Span::FromZero,
                 },
             ],
+            // ⚠️ **As mesmas quatro linhas da torção, na mesma ordem** — ver o doc da variante.
+            Unary::Bend {
+                turns,
+                lower,
+                upper,
+                falloff,
+            } => vec![
+                crate::Dim {
+                    key: "field.mod.turns",
+                    value: turns,
+                    span: Span::Walls(MAX_BEND_TURNS),
+                },
+                crate::Dim {
+                    key: "field.mod.from",
+                    value: lower,
+                    span: Span::Free,
+                },
+                crate::Dim {
+                    key: "field.mod.to",
+                    value: upper,
+                    span: Span::Free,
+                },
+                crate::Dim {
+                    key: "field.mod.falloff",
+                    value: falloff,
+                    span: Span::FromZero,
+                },
+            ],
         }
     }
 
@@ -294,6 +343,21 @@ impl Unary {
             }
             // ⚠️ **Zero é legítimo**: é o corte duro, e é o estado de onde o ombro se arrasta.
             (Unary::Twist { falloff, .. }, 3) => {
+                *falloff = value.max(0.0);
+            }
+            // ⚠️ **A dobra escreve pela MESMA lei da torção**, linha a linha — ver o doc dela.
+            (Unary::Bend { turns, .. }, 0) => {
+                *turns = value.clamp(-MAX_BEND_TURNS, MAX_BEND_TURNS);
+            }
+            (Unary::Bend { lower, upper, .. }, 1) => {
+                *lower = value;
+                *upper = upper.max(value);
+            }
+            (Unary::Bend { lower, upper, .. }, 2) => {
+                *upper = value;
+                *lower = lower.min(value);
+            }
+            (Unary::Bend { falloff, .. }, 3) => {
                 *falloff = value.max(0.0);
             }
             // ⚠️ **A banda COAGE em vez de recusar**, e as duas pontas são simétricas na lei: quem
@@ -366,6 +430,15 @@ impl Unary {
                 upper: fraction(TWIST_BIRTH_SPAN),
                 falloff: fraction(TWIST_BIRTH_FALLOFF),
             },
+            // ⚠️ **Nasce dobrada e com a banda a cobrir a peça**, pela razão da torção: um chip que
+            // não muda um pixel lê-se como morto. O valor é menor porque uma dobra é visível em
+            // **qualquer** forma — ela curva o eixo, e não depende da simetria da secção.
+            UnaryKind::Bend => Unary::Bend {
+                turns: BEND_BIRTH_TURNS,
+                lower: -fraction(TWIST_BIRTH_SPAN),
+                upper: fraction(TWIST_BIRTH_SPAN),
+                falloff: fraction(TWIST_BIRTH_FALLOFF),
+            },
         }
     }
 
@@ -382,6 +455,7 @@ impl Unary {
             Unary::Taper { .. } => UnaryKind::Taper,
             Unary::Radial { .. } => UnaryKind::Radial,
             Unary::Twist { .. } => UnaryKind::Twist,
+            Unary::Bend { .. } => UnaryKind::Bend,
         }
     }
 }
@@ -468,6 +542,25 @@ const TWIST_BIRTH_SPAN: f32 = 4.0;
 /// número só começa a valer quando o artista aperta o `From`/`To`, e aí ele já tem o slider.
 const TWIST_BIRTH_FALLOFF: f32 = 2.0;
 
+/// **Até onde a dobra vai**, em voltas por unidade de comprimento.
+///
+/// ⚠️ **Este é o teto do SLIDER, e não a parede.** A parede de verdade é do **documento** e depende
+/// da peça: acima de `κ·W = 1` (com `W` a meia-largura na direcção do centro do arco) a matéria
+/// dobra-se sobre si própria e o mapa deixa de ser injectivo. O operador satura ali, porque só ele
+/// vê a peça — *um teto escrito aqui seria o caminho mais lento a definir o teto do rápido: uma vara
+/// fina aguenta muito mais dobra do que um bloco atarracado.*
+///
+/// ⚠️ E há um segundo teto, da **representação**: meia volta por unidade sobre uma peça de duas
+/// unidades já fecha o círculo, e além disso o `atan2` do mapa inverso enrola.
+pub const MAX_BEND_TURNS: f32 = 0.5;
+
+/// Com quantas voltas por unidade uma dobra nasce.
+///
+/// ⚠️ **Menor que a da torção**, e a razão é medida: uma dobra é visível em **qualquer** forma (ela
+/// curva o eixo, e não depende da simetria da secção), enquanto a torção precisa de uma secção
+/// assimétrica para se ler.
+const BEND_BIRTH_TURNS: f32 = 0.10;
+
 /// A **natureza** de um modificador, sem o número dele — o que um botão nomeia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnaryKind {
@@ -480,6 +573,7 @@ pub enum UnaryKind {
     MirrorY,
     MirrorZ,
     Twist,
+    Bend,
 }
 
 impl UnaryKind {
@@ -490,7 +584,7 @@ impl UnaryKind {
     /// esta linha **compilava limpo** e deixava o modificador **inalcançável** (sem chip, sem slot,
     /// sem clique). Quem a prova completa é o `every_modifier_kind_is_in_the_list`, com o
     /// [`UnaryKind::index`] exaustivo ao lado.
-    pub const ALL: [UnaryKind; 9] = [
+    pub const ALL: [UnaryKind; 10] = [
         UnaryKind::Shell,
         UnaryKind::Offset,
         UnaryKind::Mirror,
@@ -500,6 +594,7 @@ impl UnaryKind {
         UnaryKind::Radial,
         UnaryKind::Taper,
         UnaryKind::Twist,
+        UnaryKind::Bend,
     ];
 
     /// A chave i18n do botão que o acrescenta.
@@ -515,6 +610,7 @@ impl UnaryKind {
             UnaryKind::Radial => "panel.model3d.mod.radial",
             UnaryKind::Taper => "panel.model3d.mod.taper",
             UnaryKind::Twist => "panel.model3d.mod.twist",
+            UnaryKind::Bend => "panel.model3d.mod.bend",
         }
     }
 
@@ -536,6 +632,7 @@ impl UnaryKind {
             UnaryKind::Radial => 6,
             UnaryKind::Taper => 7,
             UnaryKind::Twist => 8,
+            UnaryKind::Bend => 9,
         }
     }
 }

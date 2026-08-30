@@ -138,6 +138,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⚠️ "Twist" e não "Torsion": a palavra do artista é a do gesto (Blender, 3ds Max, Houdini e
         // ZBrush chamam-lhe todos Twist), e a de engenharia nomeia a tensão, não a forma.
         "panel.model3d.mod.twist" => "Twist",
+        // ⚠️ "Bend" e não "Curve": *curve* nesta casa já é a curva do editor vetorial e a rampa do
+        // falloff do Painter. As quatro referências (Blender, 3ds Max, Houdini, ZBrush) dizem Bend.
+        "panel.model3d.mod.bend" => "Bend",
         // ⭐ A porta de SAÍDA, por resolução. ⚠️ Os rótulos dizem o NÍVEL e não o número de
         // triângulos: o número depende da peça, e prometê-lo no botão seria uma promessa que só o
         // resultado pode fazer — é o toast que o diz, depois de sair.

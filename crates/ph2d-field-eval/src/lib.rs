@@ -453,8 +453,10 @@ fn remaps_coordinates(m: &Unary) -> bool {
         | Unary::Array { .. }
         | Unary::Radial { .. }
         | Unary::Taper { .. }
-        // ⚠️ A torção remapeia o domínio: uma especialização que errasse a pré-imagem **fura**.
-        | Unary::Twist { .. } => true,
+        // ⚠️ Os dois deformadores remapeiam o domínio: uma especialização que errasse a pré-imagem
+        // **fura**.
+        | Unary::Twist { .. }
+        | Unary::Bend { .. } => true,
     }
 }
 

@@ -10,13 +10,48 @@ use ph2d_nodegraph::attr::Column;
 use ph2d_nodegraph::cook::Cook;
 use ph2d_nodegraph::value::CookValue;
 
+/// **A cena, com as plantas em `Segments`** — o modo que emite OSSOS.
+///
+/// ⚠️⚠️ **Não é afrouxar o gate: é medir a lei onde ela vive.** Desde 2026-08-30 o default do nó
+/// é `Branches` (ordem do Enio), e nesse modo a geometria é construída pela SHELL e chega pelo
+/// canal externo — um `Cook::new()` cru, como o destes gates, não tem quem publique, e o stream
+/// vem VAZIO. As leis que este ficheiro afirma (*a espessura varia da raiz à ponta*, *a planta
+/// cresce com o relógio*, *as duas estocásticas não são gémeas*) são sobre o **esqueleto**, e a
+/// fita é DERIVADA dele: medir o esqueleto é medir a entrada da fita, não outra coisa.
+///
+/// ⚠️ **A CENA continua no default** — é o que o Enio vê. Quem quiser afirmar o que ela desenha
+/// em `Branches` mede a MEMBRANA (`render_loop::motion_lsystem_gen`), que é onde a geometria
+/// nasce e onde há gates a prová-lo.
+fn build_demo_as_skeleton(
+    doc: &mut MotionDoc,
+    reg: &NodeRegistry,
+) -> Option<Vec<ph2d_nodegraph::graph::NodeId>> {
+    let sinks = build_lsystem_demo_document(doc, reg)?;
+    let plants: Vec<_> = doc
+        .graph
+        .nodes()
+        .iter()
+        .filter(|n| n.type_name == ph2d_node_source_lsystem::MANIFEST.name)
+        .map(|n| n.id)
+        .collect();
+    assert!(!plants.is_empty(), "a cena tem de ter plantas");
+    for id in plants {
+        doc.graph.set_param(
+            id,
+            ph2d_node_source_lsystem::param::GEOMETRY,
+            ph2d_node_source_lsystem::GEOMETRY_SEGMENTS as f32,
+        );
+    }
+    Some(sinks)
+}
+
 /// Coze o documento da cena e devolve a nuvem de posições de cada planta.
 /// As nuvens de posições no instante `t`.
 fn plants_at(t: f64) -> Vec<Vec<[f32; 2]>> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let sinks = build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     let mut cook = Cook::new();
     sinks
         .iter()
@@ -36,7 +71,7 @@ fn plants() -> Vec<Vec<[f32; 2]>> {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let sinks = build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     assert_eq!(sinks.len(), PLANTS.len(), "uma sink por planta");
     let mut cook = Cook::new();
     sinks
@@ -155,7 +190,7 @@ fn the_trunk_is_thicker_than_the_twigs_all_the_way_to_the_sink() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let sinks = build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     let mut cook = Cook::new();
     let CookValue::Instances(st) = &cook.cook(&doc.graph, &reg, sinks[0], 0.0).expect("coze")[0]
     else {
@@ -190,7 +225,7 @@ fn only_the_fifth_plant_moves_with_the_clock() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    let sinks = build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    let sinks = build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     // ⚠️ **UM cozinhador para toda a varredura, e é a régua do APP.** Um `Cook::new()` por
     // instante nunca devolve nada de velho — foi essa a cegueira que deixou o `motion.sub_uv`
     // congelado passar por todos os gates (2026-08-28). Aqui a planta 5 tem de andar com o
@@ -271,7 +306,7 @@ fn scene_graph() -> ph2d_nodegraph::graph::Graph {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     doc.graph
 }
 
@@ -356,7 +391,7 @@ fn the_guided_plant_draws_exactly_what_the_factory_grammar_draws() {
     let mut reg = NodeRegistry::new();
     ph2d_node_registry_init::register_all_nodes(&mut reg).expect("os nos registam");
     let mut doc = MotionDoc::default();
-    build_lsystem_demo_document(&mut doc, &reg).expect("a cena monta");
+    build_demo_as_skeleton(&mut doc, &reg).expect("a cena monta");
     let node = lsystem_nodes(&doc.graph)[k];
 
     // O lado GUIADO é a cena, cozida como o app a coze.

@@ -499,6 +499,14 @@ fn the_dock_overflow_is_named_not_discovered() {
         // O terceiro, 2026-08-24: uma lista PLANA que passou por 16 px (meia linha) ao ganhar
         // a cor e a rotação próprias. Sem `ParamGroup`, nenhuma dobra o alcança.
         ("source.shape", 680.0),
+        // O quarto, 2026-08-30: passou por **11 px** — menos de meia linha — ao ganhar o
+        // selector `Geometry` (`Segments` / `Branches`, doc 95). ⚠️ **É o mais barato de
+        // curar dos quatro e o único que se cura sem produto**: este nó TEM `ParamGroup`s, e
+        // dobrar por omissão qualquer uma das três abertas o traz para dentro do corpo. Não se
+        // dobrou nenhuma porque escolher QUAL é decisão de quem vê o painel: as três (*Shape*,
+        // *Grammar*, *Growth*) são a primeira coisa que um artista mexe, e esconder uma para
+        // ganhar 11 px trocaria uma rolagem de um dedo por um clique em todo arranque.
+        ("source.lsystem", 675.0),
     ];
     let body = inspector_body_h();
     let census = height_census();

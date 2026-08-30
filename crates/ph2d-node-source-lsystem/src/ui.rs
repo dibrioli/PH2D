@@ -23,6 +23,21 @@ pub(crate) static PARAM_HARD_MAX: &[ph2d_node_registry::ParamHardMax] =
     }];
 
 pub(crate) static PARAM_HINTS: &[ParamUiHint] = &[
+    // ⭐ **A GEOMETRIA vem primeiro de todas** — ela decide o que a planta É na tela: uma
+    // pilha de ossos (`Segments`, o que este nó sempre emitiu, e o que os cinco `rig.*`
+    // consomem) ou uma fita contínua por ramo (`Branches`, o que as quatro referências fazem).
+    // ⚠️ Acima do `Mode` de propósito: aquele escolhe de onde vem a GRAMÁTICA, este escolhe o
+    // que se vê — e a segunda pergunta é a que o artista faz primeiro.
+    ParamUiHint {
+        param: param::GEOMETRY,
+        label: "Geometry",
+        min: 0.0,
+        max: (GEOMETRY_LABELS.len() - 1) as f32,
+        step: 1.0,
+        widget: ParamWidget::Enum {
+            labels: GEOMETRY_LABELS,
+        },
+    },
     // ⚠️ **O MODO vem antes de tudo** — ele decide qual metade do painel existe.
     ParamUiHint {
         param: param::MODE,
@@ -313,6 +328,9 @@ pub(crate) static PRESETS_READING_LENGTH_SCALE: &[i32] = &[PRESET_CUSTOM as i32]
 /// (`split_into_sections`), e o controle que decide o que as seções contêm não pode viver
 /// dentro de uma delas — muito menos dentro de uma que nasça fechada.
 pub(crate) static PARAM_GROUPS: &[ph2d_node_registry::ParamGroup] = &[
+    // ⚠️ Na secção da FORMA, e no topo dela: *o que a planta é na tela* é a mesma família de
+    // pergunta que *quantos ramos* e *que ângulo* — e não a de *de onde vem a gramática*.
+    ph2d_node_registry::ParamGroup::new(param::GEOMETRY, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::BRANCHES, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::SEGMENTS, "Shape"),
     ph2d_node_registry::ParamGroup::new(param::ANGLE, "Shape"),

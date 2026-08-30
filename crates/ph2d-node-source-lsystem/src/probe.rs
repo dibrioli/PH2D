@@ -166,6 +166,11 @@ fn probe_params(generations: f32, overrides: &[(&str, f32)]) -> Params {
         continuous_angle: manifest_default(param::CONTINUOUS_ANGLE),
         step_scale: manifest_default(param::STEP_SCALE),
         growth: manifest_default(param::GROWTH),
+        // ⚠️ **`Segments`, e NÃO o default do manifesto** — pela mesma razão que o `mode` acima:
+        // as sondas medem a CADEIA (contagens, larguras, a razão de expansão), e em `Branches` o
+        // nó devolve fitas. Uma porta de sonda que abrisse no modo novo passaria a medir outra
+        // coisa, com todos os gates verdes.
+        geometry: GEOMETRY_SEGMENTS as f32,
     };
     for (n, v) in overrides {
         match *n {

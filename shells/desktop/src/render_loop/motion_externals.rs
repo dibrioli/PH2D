@@ -42,6 +42,10 @@ pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
     super::motion_audio_gen::publish(motion, seconds);
     // A TABELA — função do FICHEIRO e de mais nada, então não recebe o relógio (doc 63 §6).
     super::motion_table_gen::publish(motion);
+    // ⭐ As FITAS do L-System (doc 95) — recebe o relógio pela mesma razão que a forma e o
+    // texto: um param conduzido por fio só tem valor num INSTANTE, e a chave de conteúdo é
+    // cunhada dos params.
+    super::motion_lsystem_gen::publish(motion, seconds);
     // ⚠️ **E VARRE o que ninguém pediu neste quadro** — depois das três, nunca no meio:
     // a forma e o texto internam no MESMO store, e varrer entre elas apagaria as
     // geometrias que a seguinte ainda ia pedir. Um param de forma conduzido por um

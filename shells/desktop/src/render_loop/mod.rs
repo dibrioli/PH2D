@@ -319,6 +319,7 @@ pub(crate) mod motion_glow_layer;
 /// ADR-0154: the shell half of `source.shape` — build each shape's `VecPath` from
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.
+pub(crate) mod motion_lsystem_gen;
 pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_table_gen;
 pub(crate) mod motion_text_gen;

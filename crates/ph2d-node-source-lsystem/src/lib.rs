@@ -65,10 +65,14 @@ mod grammar;
 /// **A LEI DO CRESCIMENTO** — a remapagem do `Growth` e a razão que a ancora (HR-18).
 mod growth;
 mod hash;
+/// **OS NÚMEROS DO PAINEL** — o que o nó lê antes de fazer o que faz (HR-18).
+mod params;
 /// **OS MOLDES** — a tabela e o que cada um exige (HR-18).
 mod presets;
 /// **AS PORTAS DE SONDA** — por onde um gate ou uma bancada alcança o produto (HR-18).
 mod probe;
+/// **A PORTA DAS FITAS** — o vocabulário do modo `Branches` e o contrato com a shell (HR-18).
+mod ribbons;
 pub mod shape;
 mod trig;
 mod turtle;
@@ -76,8 +80,12 @@ mod turtle;
 mod ui;
 
 use growth::{growth_generations, measure_ratio};
+use params::Params;
 pub use presets::*;
 pub use probe::*;
+// ⚠️ Re-exportado sob o nome de sempre: `ph2d_node_source_lsystem::ribbon_key` continua a
+// resolver, então o corte por LOC não mudou o endereço de ninguém.
+pub use ribbons::*;
 use ui::{PARAM_GATES, PARAM_GROUPS, PARAM_HARD_MAX, PARAM_HINTS, PARAM_UNITS};
 
 use ph2d_node_registry::{
@@ -276,6 +284,20 @@ pub const MANIFEST: NodeManifest = NodeManifest {
             name: param::GROWTH,
             default: 1.0,
         },
+        // ⚠️ **O default é `Branches`, e é ORDEM DO DONO** (Enio, 2026-08-30: *"comece e
+        // coloque como a opção padrão"*). A lei da casa — *tudo o que é novo shipa
+        // desligado* — cede a uma decisão explícita dele, como já cedeu quando o motor novo
+        // de retopologia virou o caminho de omissão (§5 do `CLAUDE.md`).
+        //
+        // ⚠️ **O NÚMERO gravado continua a ser `0 = Segments`.** Um documento salvo guarda o
+        // índice, então a variante antiga tem de ficar onde estava; o que muda é o valor que
+        // um nó NOVO nasce com. Um documento salvo ANTES desta wave não tem override para
+        // este param ⇒ lê o default ⇒ passa a desenhar em fitas. É o que o dono pediu, e é
+        // seguro aqui porque não há projetos gravados (decisão dele, 26/08).
+        ParamSpec {
+            name: param::GEOMETRY,
+            default: GEOMETRY_BRANCHES as f32,
+        },
     ],
     lowerings: &[LoweringKind::Cpu],
 };
@@ -305,6 +327,7 @@ pub mod param {
     pub const CONTINUOUS_ANGLE: &str = "continuous_angle";
     pub const STEP_SCALE: &str = "step_scale";
     pub const GROWTH: &str = "growth";
+    pub const GEOMETRY: &str = "geometry";
 }
 
 /// **O modo GUIADO** — os sliders de forma mandam, e a gramática é derivada deles.
@@ -368,103 +391,22 @@ impl NodeOp for SourceLSystem {
         let p = Params::read(ctx);
         let axiom_src = ctx.text_param(AXIOM_PARAM).unwrap_or_default().to_string();
         let rules_src = ctx.text_param(RULES_PARAM).unwrap_or_default().to_string();
+        // ⭐ **O modo RAMOS lê a geometria que a shell construiu** (a lei do `source.shape`): um
+        // nó não alcança a biblioteca vetorial, e é essa cerca que deixa o cook memoizar e
+        // repetir ao bit. Sem externo publicado o stream é VAZIO — nada desenha, e nada estoura;
+        // é o quadro entre o artista ligar o modo e a shell publicar.
+        if p.ribbons() {
+            // ⚠️ **A chave lê pelo `ctx.param`, NÃO pelo `Params::by_name`** — aquele resolve a
+            // escada inteira e este é um `match` que devolve `0` para o que não lista (o
+            // `preset`, por exemplo). Um `0` de «não listado» na chave do nó, contra o valor real
+            // na chave da shell, daria duas chaves e uma planta invisível **sem erro nenhum**.
+            let key = ribbon_key(|n| ctx.param(n), &axiom_src, &rules_src);
+            let out = ctx.external(&key).clone();
+            ctx.emit(out);
+            return;
+        }
         let out = build(&axiom_src, &rules_src, &p);
         ctx.emit(out);
-    }
-}
-
-/// Os dez números do painel, lidos uma vez.
-#[derive(Clone, Copy)]
-struct Params {
-    generations: f32,
-    angle: f32,
-    step: f32,
-    width: f32,
-    width_scale: f32,
-    length_scale: f32,
-    root_angle: f32,
-    tropism: f32,
-    tropism_angle: f32,
-    seed: f32,
-    orient: f32,
-    mode: f32,
-    branches: f32,
-    segments: f32,
-    variation: f32,
-    bend: f32,
-    continuous_length: f32,
-    continuous_angle: f32,
-    step_scale: f32,
-    growth: f32,
-}
-
-impl Params {
-    /// **Os sliders mandam?** — a pergunta que decide de onde vem a gramática.
-    fn guided(&self) -> bool {
-        self.mode.round() as i32 != MODE_GRAMMAR
-    }
-
-    /// Os números de forma, na cara que o [`shape`] pede.
-    fn shape(&self) -> shape::Shape {
-        shape::Shape {
-            branches: self.branches,
-            segments: self.segments,
-            variation: self.variation,
-            bend: self.bend,
-        }
-    }
-
-    fn read(ctx: &EvalCtx<'_>) -> Self {
-        Self {
-            generations: ctx.param(param::GENERATIONS),
-            angle: ctx.param(param::ANGLE),
-            step: ctx.param(param::STEP),
-            width: ctx.param(param::WIDTH),
-            width_scale: ctx.param(param::WIDTH_SCALE),
-            length_scale: ctx.param(param::LENGTH_SCALE),
-            root_angle: ctx.param(param::ROOT_ANGLE),
-            tropism: ctx.param(param::TROPISM),
-            tropism_angle: ctx.param(param::TROPISM_ANGLE),
-            seed: ctx.param(param::SEED),
-            orient: ctx.param(param::ORIENT),
-            mode: ctx.param(param::MODE),
-            branches: ctx.param(param::BRANCHES),
-            segments: ctx.param(param::SEGMENTS),
-            variation: ctx.param(param::VARIATION),
-            bend: ctx.param(param::BEND),
-            continuous_length: ctx.param(param::CONTINUOUS_LENGTH),
-            continuous_angle: ctx.param(param::CONTINUOUS_ANGLE),
-            step_scale: ctx.param(param::STEP_SCALE),
-            growth: ctx.param(param::GROWTH),
-        }
-    }
-
-    /// O valor de um param pelo NOME — a ponte que deixa uma expressão da gramática ler o
-    /// painel (`F(step*0.5)`). Um nome desconhecido é `0`, como em toda expressão da casa.
-    fn by_name(&self, n: &str) -> f32 {
-        match n {
-            param::GENERATIONS => self.generations,
-            param::ANGLE => self.angle,
-            param::STEP => self.step,
-            param::WIDTH => self.width,
-            param::WIDTH_SCALE => self.width_scale,
-            param::LENGTH_SCALE => self.length_scale,
-            param::ROOT_ANGLE => self.root_angle,
-            param::TROPISM => self.tropism,
-            param::TROPISM_ANGLE => self.tropism_angle,
-            param::SEED => self.seed,
-            param::ORIENT => self.orient,
-            param::MODE => self.mode,
-            param::BRANCHES => self.branches,
-            param::SEGMENTS => self.segments,
-            param::VARIATION => self.variation,
-            param::BEND => self.bend,
-            param::CONTINUOUS_LENGTH => self.continuous_length,
-            param::CONTINUOUS_ANGLE => self.continuous_angle,
-            param::STEP_SCALE => self.step_scale,
-            param::GROWTH => self.growth,
-            _ => 0.0,
-        }
     }
 }
 

@@ -64,6 +64,17 @@ fn both_sides(axiom: &str, rules: &str, generations: f32) -> (Stream, Stream) {
         ph2d_node_source_lsystem::param::MODE,
         ph2d_node_source_lsystem::MODE_GRAMMAR as f32,
     );
+    // ⚠️⚠️ **E DECLARA A GEOMETRIA, pela MESMA razão** — auditoria de 2026-08-30. O default do
+    // nó passou a ser `Branches`, e nesse modo a geometria é construída pela SHELL e chega pelo
+    // canal externo: um `Cook` cru como o deste ficheiro não tem quem publique, e o stream vem
+    // VAZIO. Este ficheiro afirma o contrato do ESQUELETO (`source.lsystem -> rig.fk` é a
+    // identidade ao bit), que é sobre os OSSOS — e a fita é derivada deles. *Um default que
+    // muda faz uma fixtura calada medir outra coisa, e é a segunda vez que morde aqui.*
+    g.set_param(
+        l,
+        ph2d_node_source_lsystem::param::GEOMETRY,
+        ph2d_node_source_lsystem::GEOMETRY_SEGMENTS as f32,
+    );
     g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, axiom);
     g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, rules);
     g.set_param(l, ph2d_node_source_lsystem::param::GENERATIONS, generations);
@@ -202,6 +213,17 @@ fn growth_orientation_is_not_a_skeleton_and_that_is_the_trade() {
         l,
         ph2d_node_source_lsystem::param::MODE,
         ph2d_node_source_lsystem::MODE_GRAMMAR as f32,
+    );
+    // ⚠️⚠️ **E DECLARA A GEOMETRIA, pela MESMA razão** — auditoria de 2026-08-30. O default do
+    // nó passou a ser `Branches`, e nesse modo a geometria é construída pela SHELL e chega pelo
+    // canal externo: um `Cook` cru como o deste ficheiro não tem quem publique, e o stream vem
+    // VAZIO. Este ficheiro afirma o contrato do ESQUELETO (`source.lsystem -> rig.fk` é a
+    // identidade ao bit), que é sobre os OSSOS — e a fita é derivada deles. *Um default que
+    // muda faz uma fixtura calada medir outra coisa, e é a segunda vez que morde aqui.*
+    g.set_param(
+        l,
+        ph2d_node_source_lsystem::param::GEOMETRY,
+        ph2d_node_source_lsystem::GEOMETRY_SEGMENTS as f32,
     );
     g.set_text_param(l, ph2d_node_source_lsystem::AXIOM_PARAM, "F");
     g.set_text_param(l, ph2d_node_source_lsystem::RULES_PARAM, "F -> F[+F]F[-F]F");

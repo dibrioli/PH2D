@@ -52,6 +52,11 @@ const MEMBRANES: &[&str] = &[
     "motion_text_gen.rs",
     "motion_audio_gen.rs",
     "motion_bridge_objects_shift.rs",
+    // ⭐ **A quinta, nascida em 2026-08-30** — as fitas do `source.lsystem` no modo `Branches`
+    // (doc 95). Entra aqui pelo mesmo motivo que as outras: ela cunha uma chave de CONTEÚDO dos
+    // params de um nó, e uma chave cunhada do valor estático não encontra a que o nó procura
+    // quando um fio conduz aquele param — a planta desaparece **em silêncio**.
+    "motion_lsystem_gen.rs",
 ];
 
 /// Os arquivos de produto do `render_loop` (os `*_tests.rs` ficam de fora: um teste pode

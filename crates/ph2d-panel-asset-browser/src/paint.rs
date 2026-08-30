@@ -74,6 +74,11 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         // Limpeza simétrica do rect: sem ela o `panel_at` continua a devolver este painel depois
         // de fechado, e a roda do rato de um painel por baixo vai parar a um painel invisível.
         ctx.host.store_mut().clear_panel_rect(ids::ASSET_PANEL);
+        // ⛔ E os cartões deixam de existir para o despachante — senão um `Down` no sítio onde o
+        // painel ESTAVA arrancaria um arrasto de um cartão que já ninguém pinta.
+        ctx.host
+            .store_mut()
+            .set_asset_cell_ids(std::collections::BTreeSet::new());
         crate::state::set_painted(Vec::new());
         return;
     }
@@ -385,6 +390,15 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     ctx.host.hit_index_mut().pop_clip();
     ctx.scene.pop_layer();
 
+    // ⭐⭐ **Os cartões dizem-se ao despachante** (etapa B): o `pointer_down` precisa de responder
+    // *«este id é um cartão?»* sem conhecer este painel — o mesmo idioma do
+    // `set_hierarchy_row_ids`, e pela mesma razão (quantos existem só se sabe em runtime).
+    //
+    // ⚠️ **Só os que foram PINTADOS**, e é o que impede um cartão rolado para fora de arrancar um
+    // arrasto: a lista é a mesma que o `set_painted` recebe.
+    let cell_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
+        (0..keys.len()).map(ids::asset_cell_id).collect();
+    ctx.host.store_mut().set_asset_cell_ids(cell_ids);
     crate::state::set_painted(keys);
     crate::state::set_last_content_h(content_h);
     crate::state::set_last_visible_h(body_h);

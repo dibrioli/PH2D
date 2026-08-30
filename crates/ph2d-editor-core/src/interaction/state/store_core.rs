@@ -6,6 +6,9 @@ impl WidgetStore {
     /// time. Hot-path operations (`get`/`get_mut`) never allocate.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
+            asset_drag: None,
+            asset_drag_origin: (0.0, 0.0),
+            asset_cell_ids: std::collections::BTreeSet::new(),
             states: BTreeMap::new(),
             focus_order: Vec::with_capacity(capacity),
             hot_id: None,

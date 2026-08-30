@@ -24,6 +24,9 @@
 //! in [`style`]; stable `NodeId`s in [`ids`]. Hardcoded mockup content
 //! stays in [`fixture`] until a pilot project picks the entity model.
 
+/// ⭐⭐ **O fantasma do arrasto** — o primeiro deste editor a seguir o cursor (plano
+/// `docs/Components/07`, B4).
+mod asset_drag_ghost;
 pub mod bottom_hud;
 pub mod canvas;
 pub mod chrome;

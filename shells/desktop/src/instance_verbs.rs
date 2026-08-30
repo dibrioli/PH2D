@@ -450,6 +450,10 @@ pub(crate) fn drain(
                     if let Some(id) = sim.world().get::<StableId>(entity).map(|s| s.0) {
                         cascade(sim, inst, id, place_step);
                     }
+                    // ⭐ **A cópia que acabou de nascer é o que o artista quer na mão** — e é ela
+                    // que a QUEDA precisa de reposicionar (a pose escreve-se depois do verbo, que
+                    // é o precedente do `cascade` logo acima).
+                    *select_out = Some(inst.to_bits());
                     // ⚠️ **O toast diz QUAL das duas** — os dois itens do menu ficam um debaixo do
                     // outro e a diferença entre eles só se vê no gesto SEGUINTE (pintar, mover um
                     // nó). Uma confirmação igual para os dois deixaria o artista sem saber qual

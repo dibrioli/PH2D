@@ -665,6 +665,13 @@ pub enum EditorAction {
     AssetInstantiate {
         /// O `StableId` da raiz da receita.
         stable_id: u64,
+        /// ⭐⭐ **ONDE**, em coordenadas de MUNDO — `None` = na cascata de sempre.
+        ///
+        /// ⚠️ **É o MESMO verbo do duplo-clique**, e a única diferença é esta: um duplo-clique não
+        /// aponta para lado nenhum (a cascata é a resposta honesta), e uma **queda** aponta. Uma
+        /// segunda variante para o arrasto daria dois caminhos para instanciar, e eles divergiriam
+        /// no dia em que o verbo ganhasse um passo.
+        at: Option<[f32; 2]>,
     },
 }
 

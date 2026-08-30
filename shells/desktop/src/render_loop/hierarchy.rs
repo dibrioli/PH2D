@@ -61,7 +61,7 @@ pub(super) fn dispatch(
     // `instance_verbs::drain`: a lei de instanciar continua com um dono só. O que muda é o
     // SUJEITO — o navegador endereça a receita pela identidade, e não por uma linha que ela nem
     // tem (uma receita está escondida da Hierarquia por construção).
-    instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb)>,
+    instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb, Option<[f32; 2]>)>,
     delete_row: Option<NodeId>,
     hierarchy_row_click: Option<NodeId>,
     hierarchy_select_intent: Option<HierarchySelectIntent>,
@@ -283,7 +283,7 @@ pub(super) fn dispatch(
     }
     // ⭐ O gémeo por `StableId`. ⚠️ **Ele corre DEPOIS do irmão e os dois não podem estar armados
     // ao mesmo tempo** — um quadro tem um gesto.
-    if let Some((stable_id, verb)) = instance_verb_stable_id
+    if let Some((stable_id, verb, _at)) = instance_verb_stable_id
         && let Some(entity_bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id)
         && crate::instance_verbs::drain(
             verb,
@@ -308,6 +308,21 @@ pub(super) fn dispatch(
         )
     {
         title_dirty = true;
+    }
+    // ⭐⭐ **A QUEDA põe a cópia ONDE a mão largou** (etapa B). ⚠️ Depois do verbo, e não dentro
+    // dele: o `instantiate_master` copia o `Transform` da receita verbatim de propósito — uma prova
+    // de mutação já matou uma versão que o reescrevia lá dentro.
+    //
+    // ⛔ A pose é LOCAL: sob uma receita com pai escalado, o ponto chega escalado. É a mesma cerca
+    // que o `duplicate_subtree` já declara, e curá-la pede a inversa do mundo do pai — wave própria.
+    if let Some((_, _, Some(world))) = instance_verb_stable_id
+        && let Some(bits) = verb_select
+        && let Some(mut t) = sim
+            .world_mut()
+            .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(bits))
+    {
+        t.translation.x = world[0];
+        t.translation.y = world[1];
     }
     // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
     // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).

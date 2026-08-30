@@ -658,4 +658,14 @@ pub fn paint_hero_screen(
     if let Some((paths, cursor)) = hero.dragging_files.as_ref() {
         paint_drop_overlay(&layout, paths, *cursor, scene, text_system, hero.theme);
     }
+    // ⭐⭐ **O que vai na mão** (plano `docs/Components/07`, B4) — o PRIMEIRO fantasma deste editor
+    // a seguir o cursor. Por cima de tudo, inclusive do aviso de largar ficheiro: os dois nunca
+    // coexistem (um é arrasto interno, o outro é do sistema operativo), e a ordem torna isso
+    // observável se algum dia coexistirem.
+    super::asset_drag_ghost::paint_asset_drag_ghost(
+        hero.store.asset_drag(),
+        scene,
+        text_system,
+        hero.theme,
+    );
 }

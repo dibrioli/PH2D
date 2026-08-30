@@ -2903,6 +2903,12 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // ⭐ **O arrasto da biblioteca anda AQUI**, e não no `on_mouse_input` — é a mesma doutrina
+        // das guias logo abaixo: um arrasto em curso responde ao movimento, não ao botão.
+        {
+            let (x, y) = self.last_pointer;
+            self.asset_drag_move(x, y);
+        }
         // ⭐ **O PIE MENU acende pela DIRECÇÃO** (estudo de UI viva, E4) — aqui, no movimento, e não
         // no frame: o menu tem de responder ao gesto em curso, e um acender que espera o quadro
         // seguinte é um menu que a mão sente como pesado. No-op sem menu aberto.
@@ -3304,6 +3310,28 @@ impl App {
 
     pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
         self.any_input_this_frame = true;
+        // ⭐⭐⭐ **O ARRASTO DA BIBLIOTECA** (plano `docs/Components/07`, etapa B).
+        //
+        // ⚠️ **O `Down` vem cedo e NÃO consome**: enquanto o limiar não for passado isto ainda é um
+        // clique, e o clique do cartão tem de chegar ao painel como sempre (ele escolhe; o
+        // duplo-clique instancia).
+        //
+        // ⚠️ **O `Up` consome, e só quando o gesto foi de facto um arrasto.** Sem isso o mesmo
+        // gesto largaria o asset na tela **e** contaria como clique no cartão.
+        if button == MouseButton::Left {
+            match state {
+                ElementState::Pressed => {
+                    let (x, y) = self.last_pointer;
+                    self.asset_drag_down(x, y);
+                }
+                ElementState::Released => {
+                    let (x, y) = self.last_pointer;
+                    if self.asset_drag_up(x, y) {
+                        return;
+                    }
+                }
+            }
+        }
         // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
         // early-returns e uma mão que sobrevive ao release fica colada no cursor
         // para sempre; e vale para qualquer botão, porque uma mão não é um

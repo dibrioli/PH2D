@@ -28,6 +28,7 @@ mod kinds;
 mod radial_ops;
 pub use kinds::{InteractiveState, NamedPalette};
 
+mod asset_drag_ops;
 mod graph_ops;
 mod number_scrub;
 mod panel_ops;
@@ -465,6 +466,13 @@ pub struct WidgetStore {
     /// threshold; cleared on Up (with reorder applied) or on Up at
     /// the original position (treated as a regular click).
     pub(super) hierarchy_drag: Option<HierarchyDragState>,
+    /// ⭐⭐ **O arrasto que SAI do painel** (plano `docs/Components/07`, etapa B) — ver
+    /// [`super::asset_drag_ops`]. `None` = nenhum em curso.
+    pub(super) asset_drag: Option<crate::interaction::drag_payload::InFlightDrag>,
+    /// Onde o `Down` do arrasto de asset aconteceu — o ponto contra o qual o limiar é medido.
+    pub(super) asset_drag_origin: (f32, f32),
+    /// Os ids dos cartões que o navegador de assets pinta agora, republicados por quadro.
+    pub(super) asset_cell_ids: std::collections::BTreeSet<NodeId>,
     /// M14.6B: every NodeId currently displayed as a hierarchy row.
     /// Painter republishes the set each frame (fixture + live
     /// modes). Dispatch reads this to decide "this Down is on a

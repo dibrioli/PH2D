@@ -79,8 +79,11 @@ pub(crate) fn apply_event(
         // um navegador que age ao primeiro toque não deixa ninguém percorrer.
         WidgetEvent::DoubleClick(id) => match cell_target_of(id) {
             Some(AssetRef::Component { stable_id }) => {
-                host.bus_mut()
-                    .push(EditorAction::AssetInstantiate { stable_id });
+                host.bus_mut().push(EditorAction::AssetInstantiate {
+                    stable_id,
+                    // ⚠️ Um duplo-clique não aponta para lado nenhum — a cascata é a resposta.
+                    at: None,
+                });
                 EventOutcome::Consumed
             }
             // ⛔ **Uma textura NÃO se instancia**, e o silêncio aqui é declarado: pôr uma imagem na

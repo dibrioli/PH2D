@@ -79,6 +79,27 @@ pub fn probe_set_painted(keys: Vec<ph2d_asset_index::AssetRef>) {
     set_painted(keys);
 }
 
+/// ⭐ **A carga que o cartão `index` arrasta** — a ponte entre o endereço da biblioteca
+/// ([`ph2d_asset_index::AssetRef`]) e o que atravessa o painel
+/// ([`ph2d_editor_core::interaction::drag_payload::DragPayload`]).
+///
+/// ⚠️ **Os dois tipos existem de propósito e esta é a única conversão.** O `AssetRef` é o endereço
+/// da BIBLIOTECA; o `DragPayload` é fundação de chrome e não pode conhecer o modelo de assets
+/// (senão a UI passa a depender dele). Aqui — na crate que conhece os dois — eles encontram-se uma
+/// vez.
+#[must_use]
+pub fn payload_at(
+    index: usize,
+) -> Option<ph2d_editor_core::interaction::drag_payload::DragPayload> {
+    use ph2d_editor_core::interaction::drag_payload::DragPayload;
+    match painted_at(index)? {
+        ph2d_asset_index::AssetRef::Component { stable_id } => {
+            Some(DragPayload::Prefab { stable_id })
+        }
+        ph2d_asset_index::AssetRef::Texture { asset } => Some(DragPayload::Image { asset }),
+    }
+}
+
 /// O asset que a célula `index` desenhou neste quadro.
 pub(crate) fn painted_at(index: usize) -> Option<ph2d_asset_index::AssetRef> {
     PAINTED.with(|c| c.borrow().get(index).copied())

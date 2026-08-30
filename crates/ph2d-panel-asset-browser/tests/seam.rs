@@ -155,7 +155,11 @@ fn a_double_click_on_a_component_card_pushes_the_instantiate_action() {
     );
     let pushed: Vec<EditorAction> = host.bus().iter().cloned().collect();
     assert!(
-        pushed.contains(&EditorAction::AssetInstantiate { stable_id: 77 }),
+        pushed.contains(&EditorAction::AssetInstantiate {
+            stable_id: 77,
+            // ⚠️ `None` — um duplo-clique nao aponta para lado nenhum; a QUEDA e' que aponta.
+            at: None
+        }),
         "o duplo-clique nao pediu para instanciar: {pushed:?}"
     );
 }

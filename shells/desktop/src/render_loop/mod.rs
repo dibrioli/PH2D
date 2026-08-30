@@ -3125,7 +3125,11 @@ impl crate::App {
             // exclusivos por construção: o menu fecha ao primeiro clique.
             let mut instance_verb_row: Option<(NodeId, crate::instance_verbs::Verb)> = None;
             // ⭐ O mesmo verbo, endereçado por `StableId` — o canal do navegador de assets.
-            let mut instance_verb_stable_id: Option<(u64, crate::instance_verbs::Verb)> = None;
+            let mut instance_verb_stable_id: Option<(
+                u64,
+                crate::instance_verbs::Verb,
+                Option<[f32; 2]>,
+            )> = None;
             let mut delete_row: Option<NodeId> = None;
             // Enio 2026-05-27: right-click → Merge Sprites in Hierarchy.
             // Carries the clicked row's `NodeId` (the merged sprite
@@ -4368,9 +4372,12 @@ impl crate::App {
                     // linhas, e uma receita está **escondida** da Hierarquia por construção — não
                     // há `row` que a endereçe. A resolução `StableId → Entity` acontece na fase
                     // da hierarquia, onde o `sim` está emprestado.
-                    EditorAction::AssetInstantiate { stable_id } => {
-                        instance_verb_stable_id
-                            .get_or_insert((stable_id, crate::instance_verbs::Verb::Place));
+                    EditorAction::AssetInstantiate { stable_id, at } => {
+                        instance_verb_stable_id.get_or_insert((
+                            stable_id,
+                            crate::instance_verbs::Verb::Place,
+                            at,
+                        ));
                     }
                     EditorAction::HierInstantiateLinked { row } => {
                         instance_verb_row

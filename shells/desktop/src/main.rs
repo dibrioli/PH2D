@@ -51,6 +51,14 @@ mod ase_import;
 /// A cena de smoke do import do `.ase` (`PH2D_ASE_SMOKE=1`) — ela ESCREVE o ficheiro e larga-o
 /// pela porta do produto, para o smoke não precisar do Aseprite instalado.
 mod ase_smoke;
+/// ⭐⭐⭐ **O arrasto da biblioteca, ligado ao ponteiro** (plano `docs/Components/07`, etapa B) —
+/// a fiação `Down`/`Move`/`Up`. ⚠️ A LEI da queda vive no `asset_drop`, e é pura.
+mod asset_drag_wire;
+/// ⭐⭐⭐ **A lei da QUEDA** (plano `docs/Components/07`, etapa B) — o que acontece ao largar um
+/// asset, e onde a recusa é exprimível. ⚠️ Pura: ela não toca no mundo.
+mod asset_drop;
+/// ⭐⭐ **O braço da queda** — as três acções, cada uma pela porta que já existe. ⛔ Sem decisões.
+mod asset_drop_apply;
 /// ⭐⭐ **A junção das duas fontes de asset** (plano `docs/Components/07`, wave A2) — o único
 /// sítio que conhece o mundo E o `AssetDb`, e por isso o único que responde «que assets existem?».
 mod asset_index_build;

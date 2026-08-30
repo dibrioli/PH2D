@@ -562,3 +562,42 @@ defeito são o mesmo problema visto de dois lados.*
 ⇒ **A wave seguinte tem alvo e régua:** levar a torção `p99` da casca `[0,75 · 0,90)` de `169°` ao
 nível do corpo (`~35°`), com a contagem de faces das cascas exteriores ao lado — ⛔ e **não** a
 mediana global, que já está em `1,1°` e não tem para onde melhorar.
+
+---
+
+## §8-terdecies — ⭐⭐⭐ O CAMPO ACORDA NA PONTA — medido, e isso fecha a pergunta da licença
+
+A espec do alvo (`SPEC_feicoes_finas.md` §2.4) nomeia a **única** defesa que a referência tem
+contra amputar uma ponta, e ela é **indirecta**: *um espinho geometricamente significativo cria
+singularidades no campo; o traçado parte o retalho ali; a ponta ganha fronteira própria e, com
+ela, contagem própria de quads.* ⚠️ E os autores dizem o resto: **se o campo não acordar, a
+referência degrada-se exactamente como nós.**
+
+⇒ A espec pede (§6.2 item 5) que se meça isso **antes** de tocar em densidade. Medido agora
+(`does_the_field_wake_up_at_a_thin_tip`, peça do artista):
+
+| `r / Rmax` | verts | ⭐ singulares | faces | arestas-parede | patches |
+|---|---|---|---|---|---|
+| **`Detail 0,85`** | | | | | |
+| `[0,00 · 0,50)` | `3 570` | `104` | `7 162` | `1 300` | `126` |
+| `[0,50 · 0,75)` | `7 000` | `53` | `13 979` | `1 628` | `112` |
+| `[0,75 · 0,90)` | `290` | `6` | `577` | `92` | `13` |
+| ⭐ `[0,90 · 1,00]` | `69` | ⭐ **`4`** | `136` | `31` | ⭐ **`5`** |
+| **`Detail 0,50`** | | | | | |
+| ⭐ `[0,90 · 1,00]` | `9` | ⭐ **`3`** | `17` | `4` | ⭐ **`2`** |
+
+⭐⭐⭐ **O campo VÊ a ponta, e o traçado PARTE o retalho ali — nas duas densidades.** A ponta
+**não** cai dentro de um retalho grande, que é o modo de falha que a referência declara.
+
+⇒ ⛔⛔ **CONSEQUÊNCIA PARA A PERGUNTA DE LICENÇA (Enio, 30/08):** o mecanismo em que a defesa da
+referência assenta **já funciona aqui**. *Ter o código deles não curaria a foto do ombro* — eles
+não têm protecção de ponta nenhuma nem régua de fidelidade nenhuma (§8-septies), e a defesa que
+têm é esta, que nós já temos a disparar. **A decisão de abrir os algoritmos vale por outras
+razões; ela não é a cura deste defeito.**
+
+⇒ ⭐ **E o diagnóstico aperta:** com o campo a acordar e o retalho a ser partido, o defeito do
+ombro (torção `p99` de `169°`, uma gravata — §8-duodecies) nasce **a jusante** do campo e do
+traçado. Os suspeitos que restam são o **mapa** (G3/G5) e o **acabamento**, sobre um retalho que
+está correctamente isolado mas é geometricamente extremo (um cone com `~14` faces por retalho na
+casca exterior). ⏳ **A próxima medição é a das DOBRAS DO MAPA por casca radial** — o relatório já
+conta `27` dobras na peça inteira e ninguém sabe onde elas estão.

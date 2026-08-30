@@ -25,6 +25,10 @@ mod rulers;
 #[path = "sculpt3d_photo_button.rs"]
 mod button;
 
+/// ⭐⭐⭐ **O CAMPO ACORDA NA PONTA?** — irmã pela mesma razão: ver [`field_wakes`].
+#[path = "sculpt3d_photo_field_wakes.rs"]
+mod field_wakes;
+
 use rulers::{
     census, holes, islands, local, orientation_and_density, relief_density, spiked_ball, tips,
 };

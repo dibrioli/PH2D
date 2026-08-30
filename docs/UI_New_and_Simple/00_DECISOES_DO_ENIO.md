@@ -262,11 +262,56 @@ estado do app, ela é inalcançável por **tudo** — undo por-componente, persi
 qualquer pergunta do tipo *«que objectos existem?»*. ⭐ O molde da cura já existe: o
 `PaintedDoc(u32)` é a ponte do Painter e carrega **só a identidade estável**.
 
-⏳ **E fica uma decisão sua, que esta linha NÃO toma:** para o item 2, a Timeline **aprende** o
-segundo vocabulário (barato, e o app fica com duas noções de pose para sempre) ou o `Transform`
-**sobe para 3D** (foundational profundo — é o componente mais carregado do repo e a física 2D fala
-`Vec2`). ⛔ **Sem contar quantos sítios leem `Transform`, escolher entre as duas é escolher em vez
-de contar** (`CLAUDE.md` §0.0). Não medido.
+✅ **E a decisão que eu devolvia aqui foi RESOLVIDA pela D9 — a resposta é «nenhuma das duas».**
+Ver abaixo.
+
+---
+
+## D9 — **A engine é 2.5D**: canvas 2D em pixels, objectos 3D desenhados sobre ele
+
+> **Enio, 2026-08-30:** *"Essa engine será uma engine 2.5d mais 2d que 3d. O canvas no runtime será
+> 2d e a unidade principal é o pixel. Mas objetos 3d serão desenhados sobre o canvas 2d e esses
+> objetos existirão e serão animados em 3d… a riqueza do volume, da luz e da textura 3d se movendo,
+> contudo, em canvas 2d. Então para objetos 3d teremos todas as coordenadas 3d (pos, rot e scale,
+> além de deformações e animações)."*
+
+⭐⭐⭐ **Isto corrige a moldura que eu tinha posto na D8.** Eu apresentei «duas noções de pose» como
+um preço a pagar pela saída barata. Com a engine 2.5D **por desenho**, duas noções de pose **é a
+arquitectura**:
+
+| | pose | unidade |
+|---|---|---|
+| objecto **2D** | `Vec2` + um ângulo + `Vec2` de escala | **pixel** |
+| objecto **3D** | três eixos de posição · rotação nos três · escala · **deformação** | a sua |
+
+⇒ ⛔ **O `Transform` NÃO sobe para 3D.** Ele descreve o canvas, e o canvas é 2D em pixels — que é o
+que esta decisão fixa. ⭐ **E a medição que eu ofereci (contar os leitores do `Transform`) fica
+CANCELADA**: ela era a régua de uma opção que deixou de existir. *Uma medição só vale enquanto a
+pergunta que ela responde continua a ser a pergunta.*
+
+⭐⭐ **Não é rumo novo — é a articulação do que o Sculpt já faz:** *"as mesmas quatro lâmpadas que
+iluminam a tinta do Painter, resolvidas pela mesma função (`ph2d-light`)"*, e a razão de existir do
+módulo é **a malha DOAR a normal** para a tinta 2D chapada sair acesa pela forma. A sobreposição
+já existe e já compõe no mesmo alvo *"sem tocar no compositor 2D"*.
+
+⛔ **O que falta é o OBJECTO.** Medido: os dois módulos 3D tomam a **janela inteira**
+(`viewport_of(size)` = largura × altura; `Rect::new(0, 0, win_w, win_h)`) — hoje o 3D é um **modo de
+edição em ecrã cheio**, não uma coisa com lugar e tamanho no canvas.
+
+⭐⭐ **A consequência de desenho: um objecto 3D carrega DUAS poses**, e não é conflito — são duas
+perguntas. *«Onde na página?»* (2D, pixels — o `Transform` continua a servir) e *«como está
+virado?»* (3D). É o modelo de uma camada 3D numa composição 2D.
+
+⚠️ **E isto arruma a Timeline sem contradição:** o `PropKind` ganha **canais 3D gateados ao tipo do
+objecto** — exactamente a lei da D6 (*os canais dependem do tipo*, como os modos). Os 13 canais 2D
+ficam onde estão.
+
+⏳ **O que a D9 ABRE, e não estava na mesa** (detalhe em
+[`pesquisa/06_a_engine_e_2_5d.md §6`](pesquisa/06_a_engine_e_2_5d.md)): um objecto 3D pode ficar
+**entre** duas camadas 2D ou só por cima? · qual é a unidade do espaço 3D e como se converte em
+pixel (há **três** réguas hoje e ninguém as ligou) · **«deformações»** é *skinning*, *shape keys*
+ou *lattice* — três obras diferentes, ⛔ nomeadas e não desenhadas · uma câmera 3D por objecto ou
+uma da cena?
 
 ---
 

@@ -45,6 +45,7 @@ E três defeitos concretos, com foto:
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |
 | ⭐ **Modo vs Layout vs Ferramenta — os TRÊS eixos** | [`pesquisa/04_modo_layout_e_ferramenta.md`](pesquisa/04_modo_layout_e_ferramenta.md) |
 | **«Pintar sobre vetor» — metade já existe** | [`pesquisa/05_pintar_sobre_vetor.md`](pesquisa/05_pintar_sobre_vetor.md) |
+| ⭐⭐ **A engine é 2.5D — e o que isso resolve** | [`pesquisa/06_a_engine_e_2_5d.md`](pesquisa/06_a_engine_e_2_5d.md) |
 | **Baixar as referências numa máquina nova** | `bash fetch-referencias.sh` |
 
 ## ⚠️ `referencias/` é gitignorada — e isso é a decisão, não um esquecimento
@@ -78,12 +79,13 @@ O resumo que decide o que podemos fazer:
 
 ## Estado (2026-08-30)
 
-✅ **Etapa 1 fechada** e **oito decisões tomadas pelo Enio**
+✅ **Etapa 1 fechada** e **nove decisões tomadas pelo Enio**
 ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)): painéis **ancorados com flutuação
 declarada** · comandos em **barra global + cabeçalho por área** · **Layouts por tarefa** (e
 ⚠️ **Modos são per-objecto** — D3 corrigida por ele) · **encaixes fixos** · **a régua entra na
 área de desenho** · a **tabela de modos por tipo de objecto** (D6, com o Flip a ganhar `Draw`
-próprio) · os **8 Layouts** (D7) · e **as timelines em todos os modos** (D8).
+próprio) · os **8 Layouts** (D7) · **as timelines em todos os modos** (D8) · e ⭐⭐ **a engine é 2.5D**
+(D9): canvas 2D em pixels, com objectos 3D desenhados sobre ele.
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
 - **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da
@@ -98,11 +100,15 @@ orçamento medido — **94,4 % de tela com os lados recolhidos**, contra ⛔ **4
 que não é melhor do que hoje**.
 
 ⏳ **Próximo — as três que ficaram, e as três são do Enio:**
-1. **Pose 2D ou 3D?** A Timeline aprende um segundo vocabulário, ou o `Transform` sobe para 3D?
-   ⛔ **Não medido** quantos sítios leem `Transform` — sem esse número não há escolha honesta.
+1. ⭐ **O 3D vira OBJECTO.** A D9 fixou que ele tem lugar e tamanho no canvas 2D; hoje os dois
+   módulos 3D tomam a **janela inteira**. E a escultura tem de virar objecto da cena **antes**
+   de qualquer coisa a alcançar.
 2. **Como partir o `DrawMode`** nos dois eixos (2 modos + 12 ferramentas achatados em 14 variantes
    vivas, com gates).
 3. **A ordem de migração** — 2 073 ids e 25 painéis.
+
+⚠️ *A pergunta «pose 2D ou 3D?» que estava aqui foi **respondida pela D9** — e a medição que eu
+oferecia para a decidir ficou cancelada com ela.*
 
 ## O que esta etapa NÃO fez
 

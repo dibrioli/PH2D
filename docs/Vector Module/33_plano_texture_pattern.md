@@ -833,3 +833,109 @@ Cena (`texture_pattern_smoke.rs`, 2): as duas do §W8.1.
 | curar o tijolo no `period()` (`max(2)`) | esconde o defeito: o `1` deixaria de significar algo, e a causa (nascer fora da faixa do painel) fica |
 | recusar o SAVE quando um asset falta | o artista perderia o trabalho da sessão para proteger arte já perdida (§W8.2) |
 | dar a `PatternSource` uma variante vazia para curar o ponteiro morto | grava um estado que o modelo recusa representar — a lei do `StrokePaint` sem gradiente (§W8.4) |
+
+---
+
+## §W9 — **O PAINEL MOSTRA O QUE O DOCUMENTO DIZ** (2026-08-30)
+
+### §W9.1 — O defeito
+
+As secções *Pattern* e *Brush* liam o `WidgetStore` **primeiro e sempre**:
+
+```rust
+let denom = self.store.number_value(id).unwrap_or(p.offset_denom);
+let track = self.store.slider(id).map_or_else(|| denom_track(p.offset_denom), |(_, v)| v);
+```
+
+⚠️ **O `unwrap_or` nunca disparava.** `WidgetStore::number_value`/`slider` devolvem `Some` para
+**todo** widget registado, e o `populate_*` regista todos ⇒ o valor que a shell publicou a partir do
+documento era lido e **deitado fora**. Isso vale para **22 pares slider+chip** (9 do padrão × 2
+slots + 4 do pincel).
+
+**O sintoma:** escolher uma forma com *Offset 1/4* depois de outra com *1/2* mostra **1/2** — o
+painel afirma um valor que o documento não tem, e o primeiro toque em qualquer controlo escreve esse
+valor alheio na forma nova. ⚠️ A cena `=76` tem sete formas com padrões diferentes: o defeito é
+alcançável ao segundo clique.
+
+### §W9.2 — ⭐⭐⭐ A auditoria REFUTOU o primeiro desenho, e o refutador já vivia nesta crate
+
+A cura óbvia é **re-semear** o store a partir do documento a cada quadro — é o que as secções de
+Transform/Vertex/Z-Index/Connector fazem. Foi o que construí primeiro, com um `Seeder` que carregava
+as **duas guardas** (foco na caixa, arrasto no slider).
+
+⛔ **O censo dos precedentes achou uma TERCEIRA forma, viva na secção de FILTROS desta mesma crate**,
+com a razão escrita no doc dela: *"é o que faz o slider mostrar o filtro da forma no instante em que
+ela é selecionada — **sem um «mirror» que re-semeie o store** — e ainda seguir o dedo durante o
+arrasto"*.
+
+**A inversão é estritamente melhor, por três razões medidas:**
+
+| | re-semear | **inverter a leitura** |
+|---|---|---|
+| escritas ao store | uma por controlo por quadro | **nenhuma** |
+| guardas | duas, e **diferentes por tipo de controlo** | por **construção** |
+| valor fora da faixa registada do widget | ⛔ possível (um `offset_denom = 1` de um ficheiro antigo cai fora do `2..=8` do slider) | impossível — nada é escrito |
+
+⇒ o `Seeder` foi **deitado fora**, e a lei da secção de filtros foi promovida a **porta**
+(`paint_sections::{live_track, live_number}`), usada agora pelas **três** secções.
+*Uma lei escrita num módulo só ainda não é uma lei — só uma PORTA é.*
+
+### §W9.3 — As duas guardas NÃO são a mesma, e é isso que a lei carrega
+
+| controlo | a guarda | sem ela |
+|---|---|---|
+| caixa numérica | **FOCO** | apaga a tecla que o artista acabou de premir |
+| slider | **ARRASTO** | briga com o dedo; a alça salta para trás |
+
+⛔ **Trocá-las é um defeito silencioso:** arrastar um slider **não dá foco** ao widget, e digitar
+**não** põe nada em `Dragging`. Um slider guardado por foco continua a ser semeado durante o
+arrasto; uma caixa guardada por arrasto é reescrita a cada tecla. Há gate com esse nome
+(`the_two_guards_are_not_interchangeable`), e a mutação que as troca mata-o.
+
+### §W9.4 — ⚠️ A RÉGUA teve de ser deitada fora e refeita
+
+A 1.ª versão dos gates media **o store** depois de uma pintura — porque a 1.ª versão da cura era a
+re-semeadura. Quando a cura passou a ser a inversão (que **não escreve nada**), a régua ficou a medir
+um campo que a cura não toca e **reprovou produto correcto**.
+
+*Uma régua desenhada para uma cura não mede a lei; mede aquela cura.* É a 5.ª vez que esta linha
+paga essa lição em duas jornadas.
+
+### §W9.5 — Os gates e as provas
+
+**6 gates.** A lei (`paint_sections_live_tests.rs`, 4, unitários e puros — um `BodyCtx` exige uma
+`VectorScene` e um `TextSystem`, e a lei não precisa de nenhum):
+`the_document_wins_when_no_hand_is_on_the_control` · `the_hand_wins_while_it_is_on_the_control` ·
+`the_two_guards_are_not_interchangeable` · `an_unregistered_control_falls_back_to_the_document`.
+
+A adopção (`tests/architecture_sections_read_the_document.rs`, 2): um gate **de fonte**, porque o que
+a lei decide é o *texto e a posição da alça* que o painel desenha, e nenhum arnês deste repo lê texto
+pintado. ⚠️ Ele **descasca comentários antes de medir** — sem isso, documentar a cura reprova o
+portão, porque o doc-comment que explica o defeito **cita** a linha que o causava. E tem controlo do
+próprio descascador: *um filtro que casa zero imprime aprovado*.
+
+**Quatro provas de mutação, quatro mortes**, controlo verde: o slider a deixar o store vencer sempre
+· o chip idem · **as duas guardas trocadas** · a secção do padrão a voltar a ler o store pela porta
+de trás.
+
+### §W9.6 — O que a auditoria achou e NÃO foi curado aqui
+
+- ⏳ **Divergências de valor por omissão**, achadas no censo: o `Rotation` do pincel é semeado no
+  store com display `1.0` e o documento nasce a `0.0` (o literal `1.0` é o default certo para
+  `scale` e `spacing`, que são multiplicadores, e errado para graus); e o `Width`/`Height` do padrão
+  é semeado a `1.0` enquanto a autoria real deriva o tamanho da bbox da forma
+  (`min(lado)/3`) — **8 widgets a mentir desde o primeiro quadro**, nos dois slots.
+  ⭐ **A inversão desta wave torna-os inofensivos no caminho normal** (o documento vence), mas eles
+  continuam a ser o valor mostrado enquanto não há forma seleccionada.
+- ⏳ **`gap[1]` é inalcançável**: o documento tem `gap: [f64; 2]` e a row publicada é um escalar
+  (`pat.gap[0]`). O eixo Y do vão não tem controlo — assimétrico face ao `size`, que tem os dois.
+- ⏳ **O `angle` publicado não é normalizado** (`pat.angle.to_degrees()` cru) contra uma faixa
+  registada de `0..=360`.
+
+⛔ **Recusas MEDIDAS desta wave**
+
+| recusa | mecanismo |
+|---|---|
+| re-semear o store por quadro (o `Seeder` de duas guardas) | escreve todo quadro, exige guarda por tipo, e pode escrever fora da faixa registada do widget — a inversão dispensa as três (§W9.2) |
+| gate comportamental para a adopção | mediria o store, que é o campo que a cura deixou de tocar; foi assim que a 1.ª régua reprovou produto correcto (§W9.4) |
+| acrescentar `focus()` ao `ph2d-ui-testkit` | construído para o desenho abandonado e revertido: sem a re-semeadura, nada o consome |

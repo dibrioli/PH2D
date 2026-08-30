@@ -89,11 +89,8 @@ impl BodyCtx<'_> {
                 0,
             ),
         ] {
-            let v = self.store.number_value(nid).unwrap_or(valor);
-            let track = self
-                .store
-                .slider(sid)
-                .map_or_else(|| unipolar(valor, faixa), |(_, t)| t);
+            let v = self.live_number(nid, valor);
+            let track = self.live_track(sid, unipolar(valor, faixa));
             let txt = if fmt == 0 {
                 format!("{v:.0}")
             } else {
@@ -103,14 +100,11 @@ impl BodyCtx<'_> {
         }
 
         // O **Offset** é BIPOLAR: negativo põe a arte do outro lado da linha.
-        let off = self
-            .store
-            .number_value(ids::VECTOR_BRUSH_OFFSET_NUM)
-            .unwrap_or(b.offset);
-        let track = self
-            .store
-            .slider(ids::VECTOR_BRUSH_OFFSET)
-            .map_or_else(|| bipolar(b.offset, BRUSH_OFFSET_MAX), |(_, t)| t);
+        let off = self.live_number(ids::VECTOR_BRUSH_OFFSET_NUM, b.offset);
+        let track = self.live_track(
+            ids::VECTOR_BRUSH_OFFSET,
+            bipolar(b.offset, BRUSH_OFFSET_MAX),
+        );
         y = self.slider_row(
             "Offset",
             ids::VECTOR_BRUSH_OFFSET,

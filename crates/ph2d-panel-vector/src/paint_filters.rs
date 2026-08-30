@@ -30,29 +30,12 @@ use crate::state::filters::{
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::widget::{
-    Card, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, SliderState, paint_card,
-    paint_dropdown_chip, paint_icon_button,
+    Card, Dropdown, DropdownOption, IconButtonStyle, IconGlyph, paint_card, paint_dropdown_chip,
+    paint_icon_button,
 };
 
 /// O lado de um botão de ícone do cabeçalho.
 const ICON_PX: f32 = 22.0; // LITERAL-PX-OK: lado do glifo, espelha o do card de Effects
-
-/// A posição do trilho a pintar: **o valor de arrasto do store SÓ enquanto o slider está sendo
-/// arrastado**, senão o track derivado do estado PUBLICADO (que reflete o componente via o
-/// publish do frame). É o que faz o slider mostrar o filtro da forma no instante em que ela é
-/// selecionada — sem um "mirror" que re-semeie o store — e ainda seguir o dedo durante o arrasto:
-/// no release, o drain do mesmo frame já atualizou o componente, o publish o leu, e o estado
-/// vence de novo.
-fn live_track(
-    store: &ph2d_editor_core::interaction::WidgetStore,
-    id: ph2d_a11y::NodeId,
-    from_state: f32,
-) -> f32 {
-    match store.slider(id) {
-        Some((SliderState::Dragging, v)) => v,
-        _ => from_state,
-    }
-}
 
 impl BodyCtx<'_> {
     /// Seção **FILTERS**.
@@ -311,7 +294,7 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> f32 {
         let (slider, chip) = (ids::filter_radius_id(row), ids::filter_radius_num_id(row));
-        let track = live_track(self.store, slider, (fx.radius / FILTER_RADIUS_MAX) as f32);
+        let track = self.live_track(slider, (fx.radius / FILTER_RADIUS_MAX) as f32);
         self.slider_row(
             label,
             slider,
@@ -336,7 +319,7 @@ impl BodyCtx<'_> {
     ) -> f32 {
         let (size, detail, seed) = labels;
         let s_ids = (ids::filter_scale_id(row), ids::filter_scale_num_id(row));
-        let track = live_track(self.store, s_ids.0, (fx.scale / FILTER_SCALE_MAX) as f32);
+        let track = self.live_track(s_ids.0, (fx.scale / FILTER_SCALE_MAX) as f32);
         let mut py = self.slider_row(
             size,
             s_ids.0,
@@ -351,15 +334,11 @@ impl BodyCtx<'_> {
         // desenha "4".
         let d_ids = (ids::filter_detail_id(row), ids::filter_detail_num_id(row));
         let d = f64::from(fx.detail).max(1.0);
-        let d_track = live_track(
-            self.store,
-            d_ids.0,
-            ((d - 1.0) / (FILTER_DETAIL_MAX - 1.0)) as f32,
-        );
+        let d_track = self.live_track(d_ids.0, ((d - 1.0) / (FILTER_DETAIL_MAX - 1.0)) as f32);
         py = self.slider_row(detail, d_ids.0, d_ids.1, d_track, d, &format!("{d:.0}"), py);
         let k_ids = (ids::filter_seed_id(row), ids::filter_seed_num_id(row));
         let k = f64::from(fx.seed);
-        let k_track = live_track(self.store, k_ids.0, (k / FILTER_SEED_MAX) as f32);
+        let k_track = self.live_track(k_ids.0, (k / FILTER_SEED_MAX) as f32);
         self.slider_row(seed, k_ids.0, k_ids.1, k_track, k, &format!("{k:.0}"), py)
     }
 
@@ -370,7 +349,7 @@ impl BodyCtx<'_> {
     fn filter_grow_row(&mut self, row: usize, fx: &fst::FilterRowView, label: &str, y: f32) -> f32 {
         let (slider, chip) = (ids::filter_grow_id(row), ids::filter_grow_num_id(row));
         let t = ((fx.grow + FILTER_GROW_MAX) / (2.0 * FILTER_GROW_MAX)) as f32;
-        let track = live_track(self.store, slider, t);
+        let track = self.live_track(slider, t);
         self.slider_row(
             label,
             slider,
@@ -398,7 +377,7 @@ impl BodyCtx<'_> {
         let mut py = y;
         let h_ids = (ids::filter_hue_id(row), ids::filter_hue_num_id(row));
         let h_t = ((fx.hue + FILTER_HUE_MAX) / (2.0 * FILTER_HUE_MAX)) as f32;
-        let h_track = live_track(self.store, h_ids.0, h_t);
+        let h_track = self.live_track(h_ids.0, h_t);
         py = self.slider_row(
             hue_l,
             h_ids.0,
@@ -421,7 +400,7 @@ impl BodyCtx<'_> {
             ),
         ] {
             let t = ((value + FILTER_ADJUST_MAX) / (2.0 * FILTER_ADJUST_MAX)) as f32;
-            let track = live_track(self.store, ids2.0, t);
+            let track = self.live_track(ids2.0, t);
             py = self.slider_row(
                 label,
                 ids2.0,
@@ -438,7 +417,7 @@ impl BodyCtx<'_> {
     /// **Opacity** — a intensidade do degrau, presente em todo degrau.
     fn filter_opacity_row(&mut self, row: usize, fx: &fst::FilterRowView, y: f32) -> f32 {
         let (slider, chip) = (ids::filter_opacity_id(row), ids::filter_opacity_num_id(row));
-        let track = live_track(self.store, slider, fx.opacity as f32);
+        let track = self.live_track(slider, fx.opacity as f32);
         self.slider_row(
             "Opacity",
             slider,
@@ -461,7 +440,7 @@ impl BodyCtx<'_> {
         y: f32,
     ) -> f32 {
         let from_state = ((stored + FILTER_OFFSET_MAX) / (2.0 * FILTER_OFFSET_MAX)) as f32;
-        let track = live_track(self.store, slider, from_state);
+        let track = self.live_track(slider, from_state);
         self.slider_row(
             label,
             slider,

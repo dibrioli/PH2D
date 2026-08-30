@@ -107,14 +107,8 @@ impl BodyCtx<'_> {
         // **fixo** em meio passo (é isso que a torna colmeia): oferecê-lo ali seria um knob que o
         // modelo ignora.
         if repete && matches!(p.kind, 1 | 2) {
-            let denom = self
-                .store
-                .number_value(kid(ids::TexPatKnob::OffsetNum))
-                .unwrap_or(p.offset_denom);
-            let track = self
-                .store
-                .slider(kid(ids::TexPatKnob::Offset))
-                .map_or_else(|| denom_track(p.offset_denom), |(_, v)| v);
+            let denom = self.live_number(kid(ids::TexPatKnob::OffsetNum), p.offset_denom);
+            let track = self.live_track(kid(ids::TexPatKnob::Offset), denom_track(p.offset_denom));
             y = self.slider_row(
                 "Offset",
                 kid(ids::TexPatKnob::Offset),
@@ -149,11 +143,8 @@ impl BodyCtx<'_> {
                     kid(ids::TexPatKnob::HeightNum),
                 ),
             ] {
-                let v = self.store.number_value(nid).unwrap_or(p.size[axis]);
-                let track = self
-                    .store
-                    .slider(sid)
-                    .map_or_else(|| size_track(p.size[axis]), |(_, t)| t);
+                let v = self.live_number(nid, p.size[axis]);
+                let track = self.live_track(sid, size_track(p.size[axis]));
                 y = self.slider_row(label, sid, nid, track, v, &format!("{v:.2}"), y);
             }
             // ⚠️ O cadeado vem DEPOIS dos dois números que ele liga — ele descreve o que acontece
@@ -167,14 +158,8 @@ impl BodyCtx<'_> {
             );
 
             // O VÃO — bipolar; negativo é a sobreposição.
-            let gap = self
-                .store
-                .number_value(kid(ids::TexPatKnob::GapNum))
-                .unwrap_or(p.gap);
-            let gap_track = self
-                .store
-                .slider(kid(ids::TexPatKnob::Gap))
-                .map_or_else(|| gap_track(p.gap), |(_, v)| v);
+            let gap = self.live_number(kid(ids::TexPatKnob::GapNum), p.gap);
+            let gap_track = self.live_track(kid(ids::TexPatKnob::Gap), gap_track(p.gap));
             y = self.slider_row(
                 "Gap",
                 kid(ids::TexPatKnob::Gap),
@@ -210,11 +195,8 @@ impl BodyCtx<'_> {
                     kid(ids::TexPatKnob::ShiftYNum),
                 ),
             ] {
-                let pct = self.store.number_value(nid).unwrap_or(p.shift_pct[axis]);
-                let track = self
-                    .store
-                    .slider(sid)
-                    .map_or_else(|| shift_track(p.shift_pct[axis]), |(_, v)| v);
+                let pct = self.live_number(nid, p.shift_pct[axis]);
+                let track = self.live_track(sid, shift_track(p.shift_pct[axis]));
                 y = self.slider_row(label, sid, nid, track, pct, &format!("{pct:.0}%"), y);
             }
         }
@@ -222,14 +204,8 @@ impl BodyCtx<'_> {
         // O ÂNGULO do PADRÃO (não o da forma). ⚠️ Ele vale em TODOS os modos: no `Clamp` roda a
         // cópia enquadrada.
 
-        let angle = self
-            .store
-            .number_value(kid(ids::TexPatKnob::AngleNum))
-            .unwrap_or(p.angle_deg);
-        let angle_track = self
-            .store
-            .slider(kid(ids::TexPatKnob::Angle))
-            .map_or_else(|| angle_track(p.angle_deg), |(_, v)| v);
+        let angle = self.live_number(kid(ids::TexPatKnob::AngleNum), p.angle_deg);
+        let angle_track = self.live_track(kid(ids::TexPatKnob::Angle), angle_track(p.angle_deg));
         y = self.slider_row(
             "Angle",
             kid(ids::TexPatKnob::Angle),

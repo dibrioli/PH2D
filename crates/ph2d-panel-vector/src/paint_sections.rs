@@ -131,7 +131,63 @@ mod expand;
 #[path = "paint_sections_stroke.rs"]
 mod stroke;
 
+/// A metade PURA do [`BodyCtx::live_track`] — sem cena, sem texto, sem painel. É ela que os gates
+/// dirigem: um `BodyCtx` exige uma `VectorScene` e um `TextSystem`, e a LEI não precisa de nenhum.
+pub(crate) fn live_track(store: &WidgetStore, id: ph2d_a11y::NodeId, from_doc: f32) -> f32 {
+    match store.slider(id) {
+        Some((ph2d_editor_core::widget::SliderState::Dragging, v)) => v,
+        _ => from_doc,
+    }
+}
+
+/// A metade PURA do [`BodyCtx::live_number`], pela mesma razão.
+pub(crate) fn live_number(store: &WidgetStore, id: ph2d_a11y::NodeId, from_doc: f64) -> f64 {
+    if store.focus_id() == Some(id) {
+        store.number_value(id).unwrap_or(from_doc)
+    } else {
+        from_doc
+    }
+}
+
 impl BodyCtx<'_> {
+    /// ⭐⭐⭐ **A PISTA que um slider desenha: a do DOCUMENTO, salvo enquanto o dedo a arrasta.**
+    ///
+    /// # A lei, e por que ela é uma inversão e não um espelho
+    ///
+    /// A alternativa óbvia — **re-semear** o store a partir do documento a cada quadro — é a que as
+    /// secções de Transform/Vertex/Connector usam para os campos NUMÉRICOS, e é a errada aqui: ela
+    /// escreve todo quadro, exige uma guarda **diferente por tipo de controlo** (foco na caixa,
+    /// arrasto no slider) e pode escrever no store um valor **fora da faixa registada** do widget.
+    /// Esta lei não escreve nada: *o store só vence enquanto a mão está no controlo.*
+    ///
+    /// ⚠️ **Ela já vivia nesta crate, privada, na secção de FILTROS** — com a razão escrita:
+    /// *"é o que faz o slider mostrar o filtro da forma no instante em que ela é selecionada — sem
+    /// um «mirror» que re-semeie o store — e ainda seguir o dedo durante o arrasto"*. Estava numa
+    /// função privada de um módulo, e as secções *Pattern* e *Brush* nasceram sem ela: elas liam o
+    /// store **primeiro e sempre**, e o `unwrap_or(documento)` era código morto, porque
+    /// `WidgetStore::slider` devolve `Some` para todo widget registado.
+    /// *Uma lei escrita num módulo só ainda não é uma lei — só uma PORTA é.*
+    ///
+    /// O sintoma que isso produzia: escolher uma forma com *Offset 1/4* depois de outra com *1/2*
+    /// mostrava **1/2**, e o primeiro toque escrevia esse número alheio na forma nova.
+    pub(crate) fn live_track(&self, id: ph2d_a11y::NodeId, from_doc: f32) -> f32 {
+        live_track(self.store, id, from_doc)
+    }
+
+    /// ⭐⭐ **O NÚMERO que um chip mostra: o do DOCUMENTO, salvo enquanto o artista o digita.**
+    ///
+    /// A metade irmã do [`Self::live_track`], e a guarda **não é a mesma**: o arrasto de um slider
+    /// **não dá foco** ao widget, e digitar não põe nada em `Dragging`. Trocá-las é um defeito
+    /// silencioso — uma caixa guardada por arrasto é reescrita a cada tecla, e um slider guardado
+    /// por foco é reescrito debaixo do dedo.
+    ///
+    /// ⚠️ **O `NumberInput` é dono do próprio buffer enquanto tem foco**; fora dele, quem manda é o
+    /// documento. O atraso de um quadro entre largar e ver o valor novo é o mesmo que os campos do
+    /// Transform já declaram aceitável (*"1-frame post-commit lag, ok"*).
+    pub(crate) fn live_number(&self, id: ph2d_a11y::NodeId, from_doc: f64) -> f64 {
+        live_number(self.store, id, from_doc)
+    }
+
     /// O cabeçalho CANÔNICO de seção (`docs/UI_Padrao/components/section_header.md`:
     /// "TODA seção usa `paint_section_header`" · "TODA seção é colapsável"). Chevron +
     /// rótulo em MAIÚSCULAS; o clique DOBRA a seção. Retorna `(y, collapsed)` — o caller
@@ -490,3 +546,7 @@ impl BodyCtx<'_> {
         self.compound_row(y)
     }
 }
+
+#[cfg(test)]
+#[path = "paint_sections_live_tests.rs"]
+mod live_tests;

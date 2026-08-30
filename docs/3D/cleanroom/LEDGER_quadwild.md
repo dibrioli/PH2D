@@ -1147,3 +1147,79 @@ uma linha de doc-comment e é do Implementador.
 | natureza | ⚠️ **descritiva**, não prescritiva — ela responde a UMA pergunta e o §6 dela separa o que é nosso do que é do alvo |
 | auditoria R-pré | ⏳ **PENDENTE** — não é condição de abrir wave (a espec não manda construir nada), mas é condição de **importar** qualquer recomendação do §6.2 dela |
 
+
+---
+
+## ⭐⭐ ADENDO-E nº3 — TRIAGEM DE LICENÇA E ARQUITECTURA DE DISTRIBUIÇÃO (2026-08-30)
+
+> ⚠️ **Este adendo NÃO é sobre algoritmo.** Ele é o §2 da skill executado sobre uma pergunta
+> do **dono do produto**, e o produto dele é
+> [`TRIAGEM_licenca_e_distribuicao.md`](TRIAGEM_licenca_e_distribuicao.md).
+
+| campo | valor |
+|---|---|
+| papel | **E** (subagente da janela `7499b0f4-218e-489b-879b-1e5a1c8b851f`, `line/quadextract`) |
+| data | 2026-08-30 |
+| gatilho | pergunta do Enio: *«Poderíamos fazer como Rive, que deixou os algoritmos OpenSource mas o editor fechado, de modo que possamos usar os códigos opensource sem restrição?»* |
+| o que foi lido | ⛔ **zero fonte lido para entender método.** Só: ficheiros de licença e banners de 16 componentes · READMEs e `CMakeLists.txt` (dependência, não algoritmo) · o **nosso** `cmake.log` · GPLv3 integral · MPL-2.0 §3.3 · GPL FAQ (7 anchors) · 12 `Cargo.toml` + `deny.toml` · ADR-0162 / ADR-0167 / TRIAGEM / LEDGER · páginas públicas de licença e de conformidade |
+| natureza | **descritiva e jurídica**; ⛔ nenhuma recomendação de construir nada |
+| ⚠️ ressalva | *não somos advogados* — cada afirmação marcada **[FACTO LIDO]** ou **[INTERPRETAÇÃO CORRENTE]**, e o §7.3 lista o que exige parecer humano |
+
+### §E3.1 — ⭐⭐⭐ Os três achados que mudam o registo
+
+| nº | achado | consequência |
+|---|---|---|
+| 1 | ⛔ **A premissa da pergunta é falsa:** abrir código próprio não concede direito nenhum sobre copyleft alheio (GPLv3 §5(c), verbatim) | a resposta ao dono tem de dizer isto por escrito, antes de qualquer plano |
+| 2 | ⭐⭐ **A afirmação do ADR-0167 sobre o emparelhamento está CONFIRMADA na metade que descreve aquela biblioteca (é T4, indistribuível) e REFUTADA na que decidiria:** o remalhador de produção **não depende dela** — `OFF` por omissão em dois níveis, os autores publicam a linha de compilação com ela desligada, e o **nosso** `cmake.log:108` diz *«building WITHOUT»* | ⇒ nenhuma fase está bloqueada por falta de emparelhamento livre; a biblioteca de grafos que já está na árvore (**Boost SL 1.0**) traz o emparelhamento de peso máximo para grafos gerais |
+| 3 | ⭐⭐⭐ **A alínea T1(d) — escrever aos autores — NUNCA foi tentada**, e o convite está **publicado**: a biblioteca de extracção do grupo universitário que assina o *paper* declara, na página oficial, GPLv3 **mais** *«Commercial licensing under negotiable terms is available upon request»*, com endereço | ⇒ existe uma porta a **custo de um e-mail** que pode tornar a obra inteira desnecessária. A skill manda percorrê-la **antes** da obra (§2.T1) |
+
+### §E3.2 — Correcções de facto ao que a casa afirmava
+
+| onde | afirmava | medido em 30/08 |
+|---|---|---|
+| `TRIAGEM_quad_remesh.md` §2.1 · ADR-0167 (alternativas) | a implementação de referência do emparelhamento é *«o solver exato que a nossa quantização nomeia como a cura»*, e é T4 | ✅ T4 correcto · ⚠️ mas ela é **uma** implementação daquela cura e é a **única** indisponível; e **não está no grafo de dependências** do que corremos |
+| `LEDGER` §tabela de 24/08 | `blossom5-cmake` — *«licença própria a conferir»* · `lpsolve` — *«a conferir, tipicamente LGPL»* · `quadretopology` — *«sem licença»* | ✅ **conferidos os três**: wrapper **Unlicense** com o algoritmo **fora do repositório** (descarregado no build) · **LGPL** declarada no README do submódulo · **sem licença nem banner**, herda a GPL-3.0 do umbrella (ambiguidade **nomeada**) |
+| a biblioteca permissiva (2º oráculo) | *«MPL-2.0, conferida em cabeçalho»* | ✅ **123 de 145** cabeçalhos com banner + declaração na documentação oficial · ⛔ **NÃO existe `LICENSE` na raiz do repositório** — ponta solta a confirmar com o autor antes de qualquer porte |
+| `deny.toml` | — | ⚠️ **Boost SL 1.0 não está na lista de aceites** (entra hoje só por excepção nomeada para uma crate) ⇒ adoptar uma dependência Boost custa uma linha, de propósito |
+
+### §E3.3 — ⭐ O facto arquitectural (medido no `Cargo.toml`, não desejado)
+
+As **10 crates** da cadeia de retopologia (`ph2d-mesh` · `-remesh-iso` · `-crossfield` ·
+`-quantize` · `-trace` · `-gridmap` · `-quadextract` · `-quadfill` · `-quadflow` ·
+`-quadchain`) dependem **umas das outras e de mais nada** — terceiros: `rayon`, `serde`,
+`dhat` (dev). ⛔ **Zero** dependência do editor, do ECS, do `wgpu`, dos tokens, da i18n.
+⇒ **um split «algoritmos abertos / editor fechado» é aqui um acto de EMPACOTAMENTO, não uma
+refactoração** — o corte foi pago pelo ADR-0075.
+
+### §E3.4 — ⛔ A recusa que fecha a pergunta de licença
+
+**Uma crate aberta não pode, ao mesmo tempo, (i) ser ligada por um editor fechado e (ii)
+absorver código copyleft alheio.** GPLv3 §5(c): a licença aplica-se *«to the whole of the
+work, and all its parts, regardless of how they are packaged»* e *«gives no permission to
+license the work in any other way»*. ⭐ **A única forma de ter as duas é ter DOIS ARTEFACTOS**
+— a crate permissiva/MPL que o editor **liga**, e um executável GPL separado que ele
+**invoca**. ⇒ é a arquitectura de processo separado (§4 da triagem), alcançada pelo outro lado.
+
+### §E3.5 — ⚠️ O que isto faz ao ADR-0167 (e o que NÃO faz)
+
+O ADR-0167 recusou o porte T0½ com **três** razões. Só a **primeira** é de licença
+(*«obrigação de publicar arquivos no subsistema mais valioso»*) e ela **dissolve-se** se o
+dono aceitar publicar. ⛔ As outras duas — *«herda falhas em 3 de 7 peças nossas»* e
+*«descarta a cadeia que já temos»* — são **medições**, e ficam de pé.
+⇒ ⛔ **a premissa moveu-se; o veredito NÃO segue.** Reabrir aquela decisão exige a medição,
+não esta triagem. ⚠️ E fica a ironia: **a MPL-2.0 nunca exigiu publicar o EDITOR** (§3.3
+dela permite a *Larger Work* sob termos à escolha) — o que o dono agora oferece é **mais** do
+que aquele porte alguma vez precisou.
+
+### §E3.6 — Sweep (§7.1) deste adendo
+
+| alvo | resultado |
+|---|---|
+| `TRIAGEM_licenca_e_distribuicao.md` | ✅ **✓ limpo, exit 0** (94 entradas) |
+| o texto do REPORT final (gravado em `~/Referencias/draft/`) | ✅ **✓ limpo, exit 0** |
+| ⚠️ estado pré-existente da árvore | inalterado — os 4 hits conhecidos (`LEDGER` × 1, `TRIAGEM_quad_remesh` × 3) continuam lá, ⛔-marcados e negados ao Implementador desde o §R-pré2.3 |
+
+### §E3.7 — Incidentes
+
+⭐ **Nenhum.** Nenhum fonte de alvo foi lido para entender método; nenhum identificador
+interno, trecho ou wording de alvo entrou no documento nem no report (sweep verde nos dois).

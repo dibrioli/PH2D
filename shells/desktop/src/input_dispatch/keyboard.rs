@@ -252,7 +252,7 @@ impl App {
         // ADR-0114 W6 — Edit Mode do Flip: Delete/Backspace apaga os TRAÇOS selecionados.
         //
         // **E CONSOME a tecla** (o `return`), que é o ponto: o objeto Flip continua
-        // selecionado como ENTIDADE, e o caminho genérico de Delete apaga a entidade
+        // selecionado como ENTIDADE, e a cadeia da Hierarquia apaga a entidade
         // selecionada. Sem o consumo, apagar um traço apagaria o desenho inteiro junto —
         // uma tecla, dois efeitos, e o segundo é catastrófico. (Mesmo padrão do bloco
         // vetorial logo abaixo, que consome pelo mesmo motivo.)
@@ -515,7 +515,7 @@ impl App {
         }
 
         // **A cadeia do DELETE no Painter** — âncora → figura → falloff, e a ORDEM é a feature
-        // (`keyboard_painter`). Corta ANTES do hero, cujo caminho genérico apagaria a ENTIDADE.
+        // (`keyboard_painter`). Corta ANTES da Hierarquia, cujo `Delete` apagaria a ENTIDADE.
         if self.painter_delete_chain(state, physical_key) {
             return;
         }
@@ -523,6 +523,20 @@ impl App {
         // **O clipboard da SELEÇÃO do Painter** (Ctrl+X/C/V/A/D, Ctrl+Shift+I) — modo-exclusivo, então
         // não disputa o Ctrl+A do vetor nem o Ctrl+C do grafo (`keyboard_painter`).
         if self.painter_selection_clipboard_chain(state, physical_key) {
+            return;
+        }
+
+        // ⭐⭐⭐ **A HIERARQUIA: `Delete` apaga a selecção, `Ctrl/Cmd+D` duplica-a** (report do Enio,
+        // 2026-08-30 — `keyboard_hierarchy`).
+        //
+        // ⛔ **O «caminho genérico do hero» que os comentários acima invocam NÃO EXISTE** — o
+        // `KEY_DELETE` do dispatcher vira `GraphKey::Delete`, e o único consumidor dele na árvore é
+        // o painel do grafo de motion. Apagar um objeto só era possível pelo menu de contexto.
+        //
+        // ⚠️ Ela entra AQUI — depois de toda cadeia específica e antes do encaminhamento ao widget
+        // focado — e é gateada ao ponteiro estar sobre o painel: sem isso roubaria o `Delete` do
+        // traço do Flip, do nó de curva, da figura do Painter, da key da timeline e do nó do grafo.
+        if self.hierarchy_key_chain(state, repeat, physical_key) {
             return;
         }
 

@@ -6,7 +6,7 @@
 //! falloff é o dono restante. É a divisão que o Illustrator faz com *duas ferramentas* (seta branca ×
 //! seta preta) — aqui é uma tecla, então a ordem é o que a expressa.
 //!
-//! ⚠️ **A cadeia inteira corta ANTES do hero**, cujo caminho genérico de Delete apaga a **ENTIDADE**:
+//! ⚠️ **A cadeia inteira corta ANTES da Hierarquia**, cujo `Delete` apaga a **ENTIDADE**:
 //! sem o degrau da figura, um Delete com uma figura viva na tela levava o sprite inteiro, com a arte
 //! dentro.
 //!
@@ -41,7 +41,7 @@ impl crate::App {
         }
 
         // Painter: Delete/Backspace apaga a FIGURA em mãos — a última selecionada. Depois do delete de
-        // ÂNCORA acima (o alvo mais específico vence) e ANTES do falloff + do caminho genérico do hero,
+        // ÂNCORA acima (o alvo mais específico vence) e ANTES do falloff + da cadeia da Hierarquia,
         // que apagaria a ENTIDADE (o sprite inteiro) com uma figura viva na tela.
         if state == ElementState::Pressed
             && matches!(
@@ -162,7 +162,11 @@ impl crate::App {
     /// ordem é o que a expressa.
     ///
     /// ⚠️ **E ele fecha um buraco que existia antes:** sem esta rota, um Delete com figura viva caía no
-    /// caminho genérico do hero e apagava a **ENTIDADE** — o sprite inteiro, com a arte dentro.
+    /// cadeia da Hierarquia e apagava a **ENTIDADE** — o sprite inteiro, com a arte dentro.
+    ///
+    /// ⚠️ **Até 2026-08-30 essa frase era FALSA** — nenhuma tecla apagava a entidade, e a rota que
+    /// ela invocava nunca existiu (`keyboard_hierarchy`). *Um comentário que descreve um caminho
+    /// ausente faz cada leitor seguinte assumir que a metade que falta já está feita.*
     pub(crate) fn painter_delete_active_shape(&mut self) -> bool {
         self.painter_tool_mut()
             .is_some_and(ph2d_tool_painter::PainterTool::delete_active_shape)

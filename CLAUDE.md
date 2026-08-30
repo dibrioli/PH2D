@@ -147,6 +147,29 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [ADR-0168](docs/architecture/decisions/0168-the-stack-rises-to-its-ceilings-and-four-dependencies-stay-behind-on-purpose.md)
   + [registo](docs/Atualizar%20Stack/04_registro.md). ⚠️ **Antes de responder «dá para atualizar X?»,
   corra `bash scripts/stack-audit.sh --tetos`** — o `ship.sh` já o imprime antes do veredito de push.
+- ⛔⛔ **UM CONTROLO MORTO tem DUAS espécies que nenhuma sonda deste repo apanha** (caça de
+  2026-08-30: **34 mortos** sobre **~504 controlos** seguidos até ao efeito, registo em
+  [§19](docs/Atualizar%20Stack/04_registro.md)). ⚠️ **O passo que um `grep` não vê é o terceiro:**
+  *o painel escreve onde · quem lê · **o leitor DECIDE, ou entrega a alguém que descarta?***
+  - **O dreno de UM BRAÇO SÓ** — não é um clique sem handler; é um handler cujo `if let` não cobre
+    a variante. Seis famílias de widget morrem de uma vez, e a acusação **sobrevive a todo gate de
+    registo**.
+  - **O consumidor que PROJECTA o valor fora** — o fio está completo, o valor chega ao solver, e a
+    matemática descarta-o. *Nenhuma sonda de «quem lê este campo?» o vê: ele **é** lido.*
+  ⚠️ **E cinco dos mortos têm a mesma forma: a lente do PAINEL é mais larga que a do CONSUMIDOR** —
+  o painel pergunta *«há uma moldura?»* onde o consumidor pergunta *«qual **direcção**?»*. Em três
+  deles a regra certa **já estava escrita no mesmo ficheiro**, para o controlo vizinho.
+  ⛔ **Nenhum instrumento do repo pergunta se o VALOR chega a um consumidor**: o
+  `architecture_panel_wiring_parity` mede *focalizabilidade*, e os `seam_*` provam que o clique
+  **chega à ferramenta**, nunca que a escrita dela chega a um efeito.
+  ⭐ O único painel **42/42 limpo** é o gerado por **tabela** — *um painel derivado de uma tabela
+  não tem onde esconder um knob morto.*
+- ⛔⛔ **Uma cena de smoke que ensina o CONTRÁRIO do que acontece é pior que uma cena ausente** — a
+  ausente não é acreditada. Medido em 2026-08-30: a `=15` prometia que a bola sem CCD atravessa a
+  parede, e as duas paravam **no mesmo sítio** desde a `rapier` 0.35 (que varre contra cenário
+  **fixo** de graça). ⚠️ **O doc da biblioteca já estava corrigido; a CENA é que não foi** — quando
+  um comportamento muda, o smoke que o demonstra é o **último** sítio a ser lembrado e o **primeiro**
+  que o Enio lê (§0.8).
 - **Integrar não é aprovar.** Smoke é do Enio; integrar e shipar só por ordem explícita dele (§0.7).
 - ⚠️ **O TRACKER também é roteador — e mandar a narrativa para ele só REALOCOU a doença.** A regra
   «uma linha no §5» funcionou para o `CLAUDE.md` e criou o `HANDOFF_line_physics.md` a **710 KB**,
@@ -450,7 +473,9 @@ A memória agora é **versionada no repo** em [`project-memory/`](project-memory
   [auditoria 09](docs/Physics/09_auditoria_engines.md) e ⚠️ **nenhum é trabalho pendente** (dois foram **recusados por
   medição**, um é arquitetura com *não agora* escrito, um está fora da fila) — *um ❌ «recusado com motivo» e um ❌
   «ninguém fez» leem igual numa tabela* · o buraco real contra o referencial é *obstacle actions: climbing* (plano 08 §4.8).
-  **Smokes:** `PH2D_PHYSICS_SMOKE=<n>` (⚠️ **`=84` não existe, de propósito**).
+  **Smokes:** `PH2D_PHYSICS_SMOKE=<n>` (⚠️ **`=84` não existe, de propósito**; ⚠️ **a `=15` tem as
+  paredes CINEMÁTICAS desde 30/08 e isso é load-bearing** — com paredes estáticas as duas bolas
+  param no mesmo sítio desde a `rapier` 0.35, e a cena passa a ensinar o contrário do que diz).
   **Ler:** [`docs/Physics/`](docs/Physics/) · tracker [`HANDOFF_line_physics.md`](docs/Physics/handoffs/HANDOFF_line_physics.md) ·
   [`00_plano_waves.md`](docs/Physics/00_plano_waves.md) · [`BUGS_physics.md`](docs/Physics/BUGS_physics.md) ·
   [handoffs](docs/Physics/handoffs/README.md) · [história](docs/archive/estado-2026-08-18/physics.md)

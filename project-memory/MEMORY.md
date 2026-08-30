@@ -23,6 +23,7 @@
 - [«checksum» vermelho: o agente AGE, não escala](feedback_a_red_checksum_is_acted_on_by_the_agent_not_escalated.md)
 - [Handoff promete UMA linha no §5 e entrega 89 — meça o diff](feedback_a_handoff_can_promise_one_line_in_the_router_and_ship_eighty_nine.md)
 - [Estilo](feedback_communication_style.md) + [simplicidade](feedback_communication_simplicity.md) — ao Enio curto, sem jargão (§0.8)
+- [Knob morto: 2 espécies que gate nenhum apanha — siga o TERCEIRO passo](feedback_a_dead_knob_has_two_species_no_probe_catches.md) · [smoke que ensina o CONTRÁRIO é pior que ausente](feedback_a_smoke_scene_that_teaches_the_opposite_is_worse_than_no_scene.md)
 - [«Difícil de ajustar» = bug de DESIGN](feedback_ergonomics_verdict_is_a_design_bug.md)
 - [Faixa tirada do objecto que o botão substitui = não idempotente](feedback_a_knob_whose_range_is_derived_from_the_object_it_rewrites_is_not_idempotent.md)
 - [Knob por-passo é ALVO](feedback_a_knob_consumed_as_a_per_step_rate_is_a_target_not_a_rate.md) · [remédio novo = contagem dupla](feedback_a_new_remedy_makes_the_old_one_double_counting.md) · [param inerte: grepe o consumidor](feedback_a_parameter_that_changes_nothing_is_discarded_downstream.md)

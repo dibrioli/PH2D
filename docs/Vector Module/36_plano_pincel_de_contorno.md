@@ -493,3 +493,135 @@ um buraco **conhecido** como se fosse um defeito.
 
 ⚠️ E a **sexta** foi a que sobreviveu (§10.4) — ela não está nesta tabela porque não há gate: o que
 ela mediu foi que a guarda não tinha sujeito, e a resposta foi apagar a guarda.
+
+---
+
+## §11 — W5: **AS QUINAS** — o plano (2026-08-30)
+
+> Ordem do Enio: *"vamos lá, comece"*. ⚠️ Etapa **complexa** ⇒ ela é **auditada antes** de eu
+> oferecer o smoke (regra nova do Enio, 30/08).
+
+### §11.1 — ⭐⭐⭐ A MEDIÇÃO veio primeiro, e ela REESCREVEU o problema
+
+Eu ia desenhar «ladrilhos de quina à Illustrator». A sonda
+(`measure_how_far_a_corner_throws_the_copies_off_the_guide`, `ph2d-vec-scene`) diz outra coisa.
+
+| arte (largura) | círculo de igual perímetro | quadrado 7×7 | **buracos** | desvio pior no quadrado |
+|---:|---:|---:|---:|---:|
+| 1,0 | 28 cópias | 28 | **0** | 1,41× a meia-altura |
+| 1,3 | 22 | 20 | **2** | 1,00× |
+| 1,7 | 16 | 16 | **0** | 1,00× |
+| 2,0 | 14 | 12 | **2** | 1,00× |
+
+E a varredura por **razão lado/arte** — o regime da queixa nº 1 dos fóruns do Illustrator
+(*"apliquei o pincel a um rectângulo pequeno e os lados sobrepõem-se nas quinas"*):
+
+| lado | lado/arte | cópias | **buracos** | desvio pior |
+|---:|---:|---:|---:|---:|
+| 2,0 | 1,5 | 4 | **2** | 1,00× |
+| 3,0 | 2,3 | 8 | **1** | 1,00× |
+| 5,0 | 3,8 | 14 | **1** | 1,00× |
+| 7,0 | 5,4 | 20 | **2** | 1,00× |
+| 12,0 | 9,2 | 36 | **1** | 1,64× |
+| 20,0 | 15,4 | 60 | **2** | 1,63× |
+
+⇒ **O defeito dominante é a AUSÊNCIA, não o excesso.** Há `1`–`2` cópias em falta em **todo**
+tamanho testado, e o desvio das que ficam mal se mexe (`1,00×`–`1,64×` de meia-altura). *O pincel
+não «salta» a quina: ele não a desenha.*
+
+⚠️⚠️ **E a 1.ª RÉGUA era cega a isso.** Ela percorria as cópias **emitidas** e media o desvio de
+cada uma — e o que uma quina faz hoje é **não emitir**. *Uma régua que percorre o que existe não vê
+o que faltou* — a mesma família do balde que ninguém enche e se lê como perfeito.
+
+⚠️ **E a 1.ª FIXTURA dizia que estava tudo bem** (arte `1,0` ⇒ avanço `1,0` ⇒ as quinas em `7·14·21·28`
+caem exactamente ENTRE duas cópias, `0` buracos). *A fixtura mais azarada possível é a que aprova.*
+
+### §11.2 — ⭐⭐⭐ O MECANISMO, e ele NÃO é «a quina não tem tangente»
+
+A cadeia, medida ponta a ponta:
+
+```
+ArcPath::frame_at(s)  ->  tangent_at(seg, t)  ->  None   (cúspide)
+GlyphFrame::on_path   ->  None
+pattern_along         ->  `continue`  ⇒  a cópia é PULADA
+```
+
+E a causa da cúspide é **uma degenerescência de parametrização, não uma quina**:
+
+- `deriv(c, 0) = 3·(P1 − P0)`;
+- `VecVertex::corner(p)` põe `in_handle = out_handle = anchor` ⇒ num segmento entre duas quinas
+  **`P1 = P0` e `P2 = P3`**;
+- ⇒ `B'(0) = B'(1) = 0`, e `tangent_at` devolve `None` **nas duas pontas de todo segmento recto**.
+
+⭐⭐ **A direcção EXISTE ali** — é uma recta. O que não existe é a *velocidade*. ⇒ uma parte do buraco
+de hoje é um **falso positivo de cúspide**, e a cura é a padrão: quando `B'(t) = 0`, cair para a
+**derivada seguinte** (`B''`, depois `B'''`), que para `P1=P0, P2=P3` devolve exactamente a direcção
+da corda.
+
+⚠️⚠️ **Isto é `ph2d-arclen`, uma crate-folha com CINCO consumidores** (Trim · Repeater ·
+Pattern Along Path · texto em caminho · Zig Zag). Curar ali cura os cinco — e por isso a mudança é
+**foundational** e leva gate próprio + prova de mutação, não um remendo local no pincel.
+
+⇒ **O trabalho parte em DUAS metades que não se confundem:**
+
+| | o quê | onde |
+|---|---|---|
+| **A — a cúspide FALSA** | `B'(t) = 0` numa recta: a direcção existe e é a corda | `ph2d-arclen` (foundational) |
+| **B — a quina VERDADEIRA** | a tangente **salta** pelo ângulo de viragem; nenhuma cópia rígida cobre os dois lados | `ph2d-vec-scene` (o pincel) |
+
+⛔ **A ordem é A → B, e não é preferência:** enquanto o A não fecha, toda medição do B mistura
+buracos de degenerescência com buracos de viragem, e a tabela do B seria sobre as duas coisas.
+
+### §11.3 — O DESENHO da metade B, e a palavra já existe nesta casa
+
+⭐⭐ **A quina de um pincel é uma JUNÇÃO** — e o `StrokeSpec` já carrega
+`join: LineJoin { Miter, Round, Bevel }`, que o pincel **ignora hoje** (zero ocorrências de `join`
+em `brush_stroke.rs` / `pattern_path.rs`). *O desenho pedido já é lei na outra metade do app.*
+
+E os quatro modos automáticos do Illustrator mapeiam-se quase um a um
+([Peachpit](https://www.peachpit.com/articles/article.aspx?p=2979069&seqNum=16) ·
+[Tiny Tutorials](https://tinytutorials.wordpress.com/2014/06/02/illustrator-cc-automatic-corner-generation/)):
+
+| Illustrator | o que faz à arte | a nossa palavra |
+|---|---|---|
+| **Auto-Sliced** | fatia o ladrilho na diagonal, as metades juntam-se **como um miter** | `Miter` |
+| **Auto-Centered** | estica o ladrilho **à volta** da quina, centrado nela | `Round` |
+| **Auto-Between** | uma cópia de cada lado **entra até** à quina (deixa emenda visível) | `Bevel` |
+| **Auto-Overlap** | copia e **sobrepõe** na quina | é o que fazemos hoje, e é o que se vê mal |
+
+⚠️ **A escolha ainda NÃO está feita** — a tabela acima é o mapa, não a decisão. Os quatro entram
+**medidos lado a lado** com a régua do §11.1 (buracos · desvio · sobreposição) antes de um ser o
+default, e é isso que a W5 vai produzir.
+
+⛔ **O que a W5 NÃO faz:** os **cinco ladrilhos autorados** do Illustrator (side · outer · inner ·
+start · end). A referência declara-os *"a stumbling block"* e os fóruns dela dizem porquê — *"é
+impossível criar ladrilhos de quina à mão que casem com os laterais"*, *"os ladrilhos de quina são
+grandes demais para objectos pequenos"*, e a receita que os utilizadores experientes dão é
+**abandonar o pattern brush** e refazer o efeito com *Outline Stroke* + *Roughen*
+([Adobe Community](https://community.adobe.com/t5/illustrator/pattern-brush-side-and-top-overlapping-at-corners-how-to-fix/td-p/9739376)).
+⇒ *a barra a bater é baixa, e o caminho deles não é o que se copia.*
+
+### §11.4 — Onde encosta
+
+| | |
+|---|---|
+| **Contrato congelado (§6)** | **nenhum** — `ph2d-arclen` e `ph2d-vec-scene` não são gateadas por `architecture_*_contract_surface` |
+| **Schema** | **nenhum** se a quina for lida do `join` que já existe e já persiste; ⚠️ um enum NOVO de modo de quina no `BrushStroke` custaria `VEC_SCENE` + `PROJECT` + a tripla |
+| **UI** | ⚠️ a decidir depois da medição — se o `join` responder, são **zero** controlos novos |
+
+### §11.5 — Os gates, red-first
+
+1. `a_straight_segment_has_a_direction_at_its_endpoints` (`ph2d-arclen`) — a metade A, com o
+   controlo de que uma cúspide **verdadeira** continua a devolver `None`.
+2. `a_square_gets_the_same_number_of_copies_as_a_circle_of_equal_perimeter` — a régua do §11.1
+   promovida a gate: **zero buracos**.
+3. `the_corner_law_is_the_join_the_stroke_already_declares` — se a medição escolher o `join`.
+4. A fixtura contém o fenómeno: um quadrado **e** o círculo de igual perímetro, com a arte cuja
+   largura **não** divide o lado.
+
+### §11.6 — O smoke
+
+Cena **`=78`** (⛔ o número **conta-se** no `build_smoke_router.rs` na altura, nunca desta nota):
+um **quadrado**, uma **estrela** e uma forma de **bicos** desenhados com pincel, ao lado das curvas
+suaves da `=77` — e a régua do Enio é a mais simples que há: *a linha dá a volta inteira sem
+buracos nas quinas*.

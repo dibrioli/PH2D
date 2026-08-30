@@ -81,7 +81,11 @@ pub enum CatalogScope {
 }
 
 /// A taxonomia inteira: os catálogos e a que catálogo cada asset pertence.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+///
+/// ⚠️ **A `revision` fica FORA do `PartialEq`** — ela é uma chave de CACHE, nunca identidade. Duas
+/// árvores com o mesmo conteúdo são iguais mesmo tendo chegado lá por caminhos diferentes, que é o
+/// que faz um `restore` de undo não registar um passo espúrio contra a árvore que o produziu.
+#[derive(Clone, Debug, Default, Eq)]
 pub struct CatalogTree {
     /// Ordenados por caminho — é a ordem em que a UI os desenha, e é o que torna a árvore
     /// derivável por uma passagem só.
@@ -91,6 +95,23 @@ pub struct CatalogTree {
     /// De onde sai o próximo id. ⚠️ Monotónico e **nunca reutilizado**: um id reciclado faria os
     /// assets de um catálogo apagado reaparecerem dentro do seguinte.
     next_id: u128,
+    /// ⭐⭐ **Sobe a cada mutação — e é SÓ uma chave de cache.**
+    ///
+    /// ⛔ Ela não entra no `PartialEq` e não é identidade: quem decide se duas taxonomias são a
+    /// mesma são os **bytes**. O que ela compra é não re-codificar a árvore por quadro — medido em
+    /// 2026-08-30: `collect` custa **4,8 % de um quadro** a 50 catálogos e 2 000 atribuições, e
+    /// **28 %** a 200/10 000, e a captura do undo corre em todo quadro com input.
+    revision: u64,
+}
+
+impl PartialEq for CatalogTree {
+    /// ⚠️ **Conteúdo, nunca `revision`** — ver o campo. O `next_id` entra porque ele decide o
+    /// próximo gesto: duas árvores que desenham igual e dão ids diferentes não são a mesma.
+    fn eq(&self, other: &Self) -> bool {
+        self.catalogs == other.catalogs
+            && self.assignments == other.assignments
+            && self.next_id == other.next_id
+    }
 }
 
 impl CatalogTree {
@@ -101,7 +122,22 @@ impl CatalogTree {
             catalogs: Vec::new(),
             assignments: BTreeMap::new(),
             next_id: 1,
+            revision: 0,
         }
+    }
+
+    /// A porta ÚNICA do bump. ⚠️ Chamada onde a mutação de facto aconteceu — um `create` que
+    /// encontra o caminho ou um `rename` que recusa **não** movem a revisão, senão a cache
+    /// re-codificaria a árvore por um gesto que não a mudou.
+    fn touch(&mut self) {
+        self.revision = self.revision.wrapping_add(1);
+    }
+
+    /// ⭐ **A revisão desta árvore** — sobe a cada mutação. Ver o campo: é chave de cache, e quem
+    /// a lê é quem quer saber *«preciso de re-codificar?»*, nunca *«são a mesma?»*.
+    #[must_use]
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     /// Os catálogos, ordenados por caminho.
@@ -147,6 +183,7 @@ impl CatalogTree {
                 None => {
                     let id = CatalogId(self.next_id);
                     self.next_id += 1;
+                    self.revision = self.revision.wrapping_add(1);
                     self.catalogs.push(Catalog {
                         id,
                         path: prefix.clone(),
@@ -182,6 +219,7 @@ impl CatalogTree {
         if new_path == old {
             return true;
         }
+        self.touch();
         // ⚠️ **Só o próprio e os DESCENDENTES**, e a fronteira é o separador: sem ele, renomear
         // `"Hero"` reescreveria `"Heroine"` — um prefixo de texto não é um prefixo de caminho.
         let child_prefix = format!("{old}{SEP}");
@@ -211,6 +249,7 @@ impl CatalogTree {
             .filter(|c| c.path == path || c.path.starts_with(&child_prefix))
             .map(|c| c.id)
             .collect();
+        self.touch();
         self.catalogs.retain(|c| !doomed.contains(&c.id));
         self.assignments.retain(|_, v| !doomed.contains(v));
     }
@@ -218,14 +257,16 @@ impl CatalogTree {
     /// Põe um asset num catálogo. ⚠️ **Um asset está em UM catálogo** (a escolha do Blender):
     /// atribuir tira-o do anterior sem gesto nenhum, porque a chave é o asset.
     pub fn assign(&mut self, asset: AssetRef, catalog: CatalogId) {
-        if self.get(catalog).is_some() {
-            self.assignments.insert(asset, catalog);
+        if self.get(catalog).is_some() && self.assignments.insert(asset, catalog) != Some(catalog) {
+            self.touch();
         }
     }
 
     /// Tira um asset de qualquer catálogo.
     pub fn unassign(&mut self, asset: &AssetRef) {
-        self.assignments.remove(asset);
+        if self.assignments.remove(asset).is_some() {
+            self.touch();
+        }
     }
 
     /// A que catálogo este asset pertence.
@@ -280,6 +321,7 @@ impl CatalogTree {
             catalogs,
             assignments,
             next_id,
+            revision: 0,
         };
         sort_as_a_tree(&mut t.catalogs);
         t

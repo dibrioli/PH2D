@@ -192,10 +192,15 @@ pub(crate) fn drain(
                 // saída que manda mudar um conjunto vazio.
                 crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest(id));
                 toasts.push(Toast::success("Removed from library"));
-                // ⚠️ **`false`, e é de propósito:** a biblioteca é memória de SESSÃO, não documento
-                // — nada no `ProjectState` mudou, e marcar isto como edição poria um passo de undo
-                // sobre um gesto que o undo não desfaz.
-                return false;
+                // ⭐⭐ **`true` desde 2026-08-30, e a inversão é o pedido do Enio** (*«deveria ter
+                // undo/redo no painel inclusive em del»*). A 1.ª versão devolvia `false` com o
+                // motivo *«a biblioteca é memória de SESSÃO e o undo não desfaz isto»* — e era
+                // verdade: o gesto era **irreversível**, porque uma imagem sem utilizadores não
+                // tem quem a re-lembre no quadro seguinte.
+                //
+                // ⇒ hoje o `forget` é uma **lápide** que viaja no `ProjectState`
+                // ([`crate::project_library`]), logo isto É uma edição do documento.
+                return true;
             }
             // ⚠️ **Com utilizadores a recusa CONTINUA certa**, e o número é o corpo dela: tirar a
             // imagem deixaria aqueles objectos sem pixels, e não há saída sem perda. *O que estava

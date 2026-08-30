@@ -396,10 +396,16 @@ impl crate::App {
         // a fonte de cada `Paint::Pattern` do documento nomeia. Sem isto, toda forma com padrão
         // reabriria a pintar a cor de recurso.
         self.install_texture_pattern_art(pattern_art);
-        // ⭐⭐ A taxonomia da biblioteca (plano 07, A3). ⚠️ Um blob ilegível abre VAZIO e diz — ver
-        // `project_catalogs::restore`.
+        // ⭐⭐ A BIBLIOTECA (plano 07, A3 + o undo de 2026-08-30) — a taxonomia e as imagens que o
+        // artista mandou sair. ⚠️ Ela vem de **dentro do `state`**, que é a unidade do undo: um
+        // campo próprio no ficheiro seria a segunda resposta à mesma pergunta. Um blob ilegível
+        // abre VAZIO e diz — ver `project_catalogs::restore`.
+        //
+        // ⛔ **E a cache é invalidada aqui também**: a árvore foi substituída por baixo, e a
+        // revisão da nova nasce em `0`.
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.catalogs = crate::project_catalogs::restore(&file.catalogs);
+            gfx.catalogs = crate::project_library::apply(&file.state.library);
+            gfx.library_cache.invalidate();
         }
         // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez
         // e os N sprites dela reatam a textura partilhada + o retangulo da regiao.

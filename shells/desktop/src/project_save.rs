@@ -127,12 +127,10 @@ impl crate::App {
                 .map(|h| h.input_map.clone())
                 .unwrap_or_default(),
             pattern_art,
-            // ⭐⭐ A taxonomia da biblioteca (plano 07, A3) — blob auto-versionado.
-            catalogs: self
-                .gfx
-                .as_ref()
-                .map(|g| crate::project_catalogs::collect(&g.catalogs))
-                .unwrap_or_default(),
+            // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
+            // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
+            // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem
+            // ninguém decidir qual.
         };
         let bytes = match postcard::to_allocvec(&(PROJECT_SCHEMA, &file)) {
             Ok(b) => b,

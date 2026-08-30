@@ -1200,6 +1200,7 @@ impl crate::App {
             undo_capture_cache: _,
             // O alvo do `+` do Inspector (F3) — usado no fim deste mesmo quadro, ver abaixo.
             component_palette_target,
+            library_cache: _library_cache,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

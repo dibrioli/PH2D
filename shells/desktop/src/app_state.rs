@@ -317,10 +317,15 @@ pub(crate) struct AppGfx {
     /// catálogo cada asset pertence.
     ///
     /// ⚠️ **Ela é do PROJECTO, e não da sessão** (ao contrário da `TextureLibrary`, que é memória
-    /// de conteúdo): viaja no `.ph2dproj` pelo blob auto-versionado do
-    /// [`crate::project_catalogs`]. ⛔ E **fora do `ProjectState`**, com a consequência declarada —
-    /// um gesto de catálogo não se desfaz com Ctrl+Z, a mesma dívida que o Input Map ship-ou.
+    /// de conteúdo): viaja no `.ph2dproj` **dentro do `ProjectState`**, pelo blob auto-versionado
+    /// do [`crate::project_catalogs`] que o [`crate::project_library`] compõe.
+    ///
+    /// ⭐ **E por isso ela DESFAZ** (Enio, 2026-08-30). ⚠️ Quem a codifica é a
+    /// [`AppGfx::library_cache`] ao lado — codificá-la por quadro custava até 28 % de um quadro.
     pub(crate) catalogs: ph2d_asset_index::CatalogTree,
+    /// ⭐ A cache que impede a taxonomia de ser re-codificada por quadro — ver
+    /// [`crate::project_library::LibraryCache`], com a tabela da medição.
+    pub(crate) library_cache: crate::project_library::LibraryCache,
     /// M14.A: editor → SimWorld mutation pipeline. Populated at boot
     /// with the canonical Transform / Name / Visibility / RootOrder
     /// type registrations via `register_ecs_components`; future crates

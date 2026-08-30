@@ -413,6 +413,62 @@ forma barata de descobrir o que ele já sabia.*
   para baixo cola o campo ao bordo inferior em vez de o atirar para o topo. **O doc é que foi
   corrigido.**
 
+### §11.6 — ⭐⭐⭐ **A BIBLIOTECA DESFAZ** (Enio, 2026-08-30: *«deveria ter undo/redo no painel inclusive em del»*)
+
+#### A nota que a mantinha fora estava errada no MECANISMO
+
+O §11.4 declarava a dívida assim: *«a taxonomia é do PROJECTO e não do `ProjectState`, então estes
+verbos não produzem passo de undo»*, e o `project_catalogs` justificava-a com *«metê-la na captura
+faria toda renomeação de gaveta reescrever o snapshot do mundo inteiro»*.
+
+⛔ **Isso é falso desde a F2** — a captura do mundo é **incremental** e custa o tamanho da edição.
+O custo real é outro, e agora está medido (`measure_catalog_capture_cost`):
+
+| catálogos | atribuições | bytes | `collect` | % de um quadro de 16,7 ms |
+|---|---|---|---|---|
+| 4 | 20 | 827 | 8,9 µs | 0,05 % |
+| 20 | 200 | 7 502 | 87,8 µs | 0,53 % |
+| 50 | 2 000 | 71 132 | 802 µs | **4,8 %** |
+| 200 | 10 000 | 358 514 | 4 680 µs | **28 %** |
+
+⇒ o caro era **codificar por quadro**, e a captura corre em todo quadro com input. ⭐ A cura é a
+cache por revisão — codifica-se **uma vez por mutação** —, não ficar de fora.
+*Uma dívida justificada por um mecanismo que não é o verdadeiro sobrevive a quem a podia pagar.*
+
+#### As DUAS metades, porque «del» tem dois significados neste painel
+
+| Gesto | Onde vivia | Era desfazível? |
+|---|---|---|
+| catálogo *New / Rename / Delete*, e arrastar para uma gaveta | `CatalogTree`, **ao lado** do `ProjectState` | ❌ |
+| *Remove from Library* num **prefab** | dissolve o mestre ⇒ mundo | ✅ já era |
+| *Remove from Library* numa **imagem** | `TextureLibrary` (memória de sessão) | ❌ **e era irreversível** |
+
+⛔⛔ **O segundo caso era pior do que «não desfaz»:** a biblioteca é reconstruída do mundo a cada
+quadro e uma imagem **sem utilizadores não tem quem a re-lembre**, então esquecê-la era para
+sempre. ⇒ hoje `forget` põe uma **lápide** em vez de apagar a entrada: o `build` filtra-a, e
+desfazer é tirar a marca — *a entrada está lá para poder voltar.*
+
+⚠️ **E trazer de volta pela porta da frente LEVANTA a lápide**: re-importar a mesma imagem (mesmos
+bytes ⇒ mesmo blake3) devolveria, sem isso, um asset **invisível para sempre** e sem gesto nenhum
+que o explicasse. *Um «traz isto» explícito ganha a um «tira isto» antigo.*
+
+#### ⚠️ A revisão é chave de CACHE e **nunca** identidade
+
+Uma árvore restaurada nasce com revisão `0` e a original tem `N`. Se a revisão contasse para a
+igualdade, **todo undo registaria um passo espúrio** no quadro seguinte e o Ctrl+Z seguinte não iria
+a lado nenhum. ⇒ o `PartialEq` do `CatalogTree` é escrito à mão sobre o **conteúdo**, e há gate
+(`a_restored_tree_encodes_to_the_same_bytes`). ⛔ E a cache é **invalidada** em todo sítio onde a
+árvore é substituída por baixo (undo · `Open Project`) — a colisão de revisão ali é o caso
+**normal**, não o raro.
+
+#### `PROJECT_SCHEMA` 104 → 105, e este degrau **não é aditivo**
+
+A taxonomia **saiu** do `ProjectFile` e **entrou** no `ProjectState`. ⚠️ Manter as duas era a
+alternativa, e seria a segunda resposta à mesma pergunta com o load a escolher qual acreditar. Um
+campo saiu do meio de uma estrutura e outro entrou no meio da outra ⇒ os bytes de um v104 passam a
+**significar outra coisa**, e o postcard lê torto e cala-se. É o degrau mais perigoso desta escada
+desde o 102.
+
 #### ⏳ O que fica NOMEADO e não curado
 
 Quando o dreno **recusa** o nome (vazio ou com `/`), o campo já fechou e **o texto escrito

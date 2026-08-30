@@ -530,6 +530,7 @@ mod project_catalogs;
 /// **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo
 /// (Enio, 2026-08-23). Até aqui o `Ctrl+S` escrevia sempre no mesmo caminho.
 mod project_io;
+mod project_library;
 mod project_migrate;
 /// A migração v97 → v98 (o corte da `Sprite`) — irmã por assunto, não por cap: ela é uma
 /// travessia do snapshot, e a v95 é um espelho do ficheiro.

@@ -93,6 +93,7 @@ impl Frame {
             &FlipDoc::new(),
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
+            &crate::project_library::LibraryDoc::default(),
             &self.reg,
             &mut self.undo_cache,
         )

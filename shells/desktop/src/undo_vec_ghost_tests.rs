@@ -71,6 +71,7 @@ fn take(
         &ph2d_flip::FlipDoc::new(),
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
         r,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     )

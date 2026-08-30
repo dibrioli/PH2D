@@ -471,4 +471,21 @@
 /// `CATALOG_DOC_VERSION`. É o precedente do `timeline`, do `sculpt` e do `pattern_art`.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 (*«não há projetos salvos»*).
-pub(crate) const PROJECT_SCHEMA: u32 = 112;
+///
+/// # 105 — a biblioteca MUDA-SE para dentro do undo (Enio, 2026-08-30)
+///
+/// *«deveria ter undo/redo no painel inclusive em del»*. ⇒ a taxonomia sai do `ProjectFile` e
+/// passa a viver no **`ProjectState`**, que é a unidade que o Ctrl+Z restaura, acompanhada das
+/// **lápides** — as imagens que o artista mandou sair da biblioteca.
+///
+/// ⛔⛔ **Este degrau NÃO é aditivo, e é por isso que ele é o mais perigoso desta escada desde o
+/// 102.** Um campo saiu do meio do `ProjectFile` e outro entrou no meio do `ProjectState`: os
+/// bytes de um v104 não desaparecem, eles passam a **significar outra coisa**. Postcard é
+/// posicional e leria a taxonomia velha como se fosse outro campo, **sem erro nenhum**.
+///
+/// ⚠️ **Duas respostas à mesma pergunta era a alternativa**, e é o que o número compra: manter o
+/// campo no ficheiro *e* no estado deixaria o load a escolher qual acreditar.
+///
+/// ⚠️ **A versão do blob continua a mandar na taxonomia**: o `CATALOG_DOC_VERSION` mora dentro dos
+/// bytes, então acrescentar-lhe um campo continua a custar zero aqui.
+pub(crate) const PROJECT_SCHEMA: u32 = 113;

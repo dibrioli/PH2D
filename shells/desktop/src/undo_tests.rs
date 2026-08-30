@@ -38,6 +38,7 @@ fn capture(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> Proje
         &FlipDoc::new(),
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
         reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     )
@@ -121,6 +122,7 @@ fn push_undo_then_undo_redo_alternate() {
         flip: FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
+        library: crate::project_library::LibraryDoc::default(),
     };
     stack.push_undo(s0.clone());
     assert!(stack.can_undo() && !stack.can_redo());
@@ -195,6 +197,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
             &flip,
             &ph2d_guides::GuideSet::default(),
             &ph2d_ui_state::StateSets::default(),
+            &crate::project_library::LibraryDoc::default(),
             &reg,
             &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
         )
@@ -217,6 +220,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &rflip,
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     );
@@ -227,6 +231,7 @@ fn flip_survives_capture_restore_and_rebuilds_bridge() {
         &rflip,
         &ph2d_guides::GuideSet::default(),
         &ph2d_ui_state::StateSets::default(),
+        &crate::project_library::LibraryDoc::default(),
         &reg,
         &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
     );
@@ -391,5 +396,169 @@ fn editing_an_effect_param_is_its_own_undo_step() {
         restored,
         Some(with_fx.paths()[0].effects[0].effect.get(pi)),
         "o restore não devolveu o parâmetro ao valor anterior"
+    );
+}
+
+// ── ⭐⭐⭐ A BIBLIOTECA DESFAZ (Enio, 2026-08-30) ────────────────────────────────────────────────
+
+/// Captura com uma biblioteca escolhida — o irmão do [`capture`] acima.
+fn capture_with_library(
+    sim: &mut SimWorld,
+    vec: &VecScene,
+    reg: &ComponentRegistry,
+    library: &crate::project_library::LibraryDoc,
+) -> ProjectState {
+    ProjectState::capture(
+        &crate::preview_drive::PreviewDrive::default(),
+        sim,
+        vec,
+        &FlipDoc::new(),
+        &ph2d_guides::GuideSet::default(),
+        &ph2d_ui_state::StateSets::default(),
+        library,
+        reg,
+        &mut ph2d_ecs::scene::incremental::CaptureCache::new(),
+    )
+}
+
+/// ⭐⭐⭐ **APAGAR UMA GAVETA DESFAZ-SE** — o pedido do Enio, na régua que ele usaria.
+///
+/// ⚠️ **A régua é a ÁRVORE inteira, não uma contagem**: um undo que devolvesse os catálogos e
+/// perdesse as atribuições passaria numa contagem, e o artista veria as gavetas de volta e vazias.
+///
+/// **Mutação que deve sangrar:** apagar o campo `library` do `ProjectState::capture`.
+#[test]
+fn deleting_a_catalog_is_undone_with_its_contents() {
+    use ph2d_asset_index::{AssetRef, CatalogTree};
+
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let mut tree = CatalogTree::new();
+    let heroes = tree.create("Personagens/Herois");
+    tree.assign(AssetRef::Component { stable_id: 7 }, heroes);
+    tree.assign(AssetRef::Texture { asset: [4; 32] }, heroes);
+
+    let mut cache = crate::project_library::LibraryCache::default();
+    let before = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+
+    // O gesto: apagar a gaveta.
+    tree.delete(heroes);
+    assert!(
+        tree.catalogs()
+            .iter()
+            .all(|c| c.path != "Personagens/Herois")
+    );
+
+    // Ctrl+Z.
+    let back = crate::project_library::apply(&before.library);
+    assert_eq!(
+        back.catalogs().len(),
+        2,
+        "o undo não devolveu a gaveta e o pai dela"
+    );
+    assert_eq!(
+        back.catalog_of(&AssetRef::Component { stable_id: 7 }),
+        Some(heroes),
+        "a gaveta voltou VAZIA — o undo devolveu os catálogos e perdeu o que estava dentro"
+    );
+    assert_eq!(
+        back.catalog_of(&AssetRef::Texture { asset: [4; 32] }),
+        Some(heroes)
+    );
+}
+
+/// ⭐⭐⭐ **TIRAR UMA IMAGEM DA BIBLIOTECA DESFAZ-SE** — o *«inclusive em del»* do pedido.
+///
+/// ⛔ Antes disto o gesto era **irreversível**: a biblioteca é reconstruída do mundo a cada quadro
+/// e uma imagem sem utilizadores não tem quem a re-lembre, então esquecê-la era para sempre.
+///
+/// **Mutação que deve sangrar:** fazer o `forget` voltar a `entries.remove(&id)`.
+#[test]
+fn removing_an_image_from_the_library_is_undone() {
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    crate::asset_index_build::set_forgotten_textures(&[]);
+
+    let mut cache = crate::project_library::LibraryCache::default();
+    let tree = ph2d_asset_index::CatalogTree::new();
+    let before = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    assert!(before.library.forgotten.is_empty());
+
+    // O gesto: `Remove from Library` sobre uma imagem sem utilizadores.
+    crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest([7; 32]));
+    assert_eq!(
+        crate::asset_index_build::forgotten_textures(),
+        vec![[7; 32]],
+        "a lápide não foi posta"
+    );
+
+    // Ctrl+Z.
+    let _ = crate::project_library::apply(&before.library);
+    assert!(
+        crate::asset_index_build::forgotten_textures().is_empty(),
+        "a imagem não voltou — o gesto continua irreversível"
+    );
+    crate::asset_index_build::set_forgotten_textures(&[]);
+}
+
+/// ⛔⛔ **E o mesmo estado capturado duas vezes NÃO regista passo.**
+///
+/// ⚠️ É a lei que a captura por DIFF exige, e a que uma biblioteca mal desenhada partiria: se o
+/// `collect` não fosse determinístico, ou se a `revision` entrasse no `PartialEq`, todo quadro com
+/// input viraria um passo de undo e o Ctrl+Z gastar-se-ia a desfazer nada.
+///
+/// **Mutação que deve sangrar:** pôr `revision` no `PartialEq` do `CatalogTree` — não a apanha
+/// directamente, mas a irmã abaixo apanha.
+#[test]
+fn capturing_the_same_library_twice_is_not_a_step() {
+    use ph2d_asset_index::{AssetRef, CatalogTree};
+
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let mut tree = CatalogTree::new();
+    let c = tree.create("A/B");
+    tree.assign(AssetRef::Texture { asset: [1; 32] }, c);
+    let mut cache = crate::project_library::LibraryCache::default();
+
+    let a = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    let b = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    assert_eq!(
+        a.library, b.library,
+        "duas capturas do mesmo estado diferem"
+    );
+}
+
+/// ⭐⭐ **E uma árvore RESTAURADA volta a codificar-se nos MESMOS bytes.**
+///
+/// ⚠️ Esta é a metade que a `revision` podia partir: a árvore restaurada nasce com revisão `0` e a
+/// original tem `N`. Se a revisão fosse identidade, o quadro seguinte a um undo registaria um passo
+/// espúrio — e o Ctrl+Z seguinte não iria a lado nenhum.
+///
+/// **Mutação que deve sangrar:** derivar `PartialEq` no `CatalogTree` (a revisão volta a contar).
+#[test]
+fn a_restored_tree_encodes_to_the_same_bytes() {
+    use ph2d_asset_index::{AssetRef, CatalogTree};
+
+    let mut tree = CatalogTree::new();
+    let c = tree.create("A/B");
+    tree.assign(AssetRef::Texture { asset: [1; 32] }, c);
+    tree.rename(c, "C");
+    assert!(tree.revision() > 0, "a fixtura precisa de uma revisão > 0");
+
+    let mut cache = crate::project_library::LibraryCache::default();
+    let doc = cache.doc(&tree).clone();
+    let back = crate::project_library::apply(&doc);
+    assert_eq!(
+        back.revision(),
+        0,
+        "a fixtura mede o caso em que elas diferem"
+    );
+    assert_eq!(back, tree, "a árvore restaurada não é igual à original");
+
+    let mut cache2 = crate::project_library::LibraryCache::default();
+    assert_eq!(
+        cache2.doc(&back).catalogs,
+        doc.catalogs,
+        "a árvore restaurada codifica-se noutros bytes — todo undo registaria um passo espúrio"
     );
 }

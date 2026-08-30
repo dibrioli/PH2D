@@ -50,6 +50,13 @@ pub(crate) struct ProjectState {
     /// que elas: **gravar um estado tem de desfazer**. Ele é uma edição do documento, não uma
     /// preferência de vista.
     pub(crate) ui_states: ph2d_ui_state::StateSets,
+    /// ⭐⭐⭐ **A BIBLIOTECA** — a taxonomia e o que o artista mandou sair dela (Enio, 2026-08-30:
+    /// *«deveria ter undo/redo no painel inclusive em del»*). Plain data, como as guias e os
+    /// estados de UI, e aqui pelo mesmo motivo que eles: **criar uma gaveta é autoria**.
+    ///
+    /// ⚠️ Ela é BYTES com uma cache por revisão, e o porquê está medido em
+    /// [`crate::project_library`]: codificá-la por quadro custava até 28 % de um quadro.
+    pub(crate) library: crate::project_library::LibraryDoc,
 }
 
 impl ProjectState {
@@ -64,8 +71,8 @@ impl ProjectState {
     /// ([`crate::preview_drive`]). Sem condução nenhuma (`PreviewDrive::default()`, o caso normal)
     /// o custo é zero e o resultado é byte-a-byte o de antes.
     ///
-    /// ⚠️ Nove argumentos, e eles são **nove fatos independentes** — o ledger, o mundo, as três
-    /// geometrias, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
+    /// ⚠️ Dez argumentos, e eles são **dez fatos independentes** — o ledger, o mundo, as três
+    /// geometrias, a biblioteca, o registro e o scratch. Agrupá-los num struct só para agradar ao lint criaria
     /// um tipo cuja única razão de existir é a contagem, e todo chamador passaria a montá-lo.
     #[allow(clippy::too_many_arguments)]
     #[must_use]
@@ -76,6 +83,7 @@ impl ProjectState {
         flip: &FlipDoc,
         guides: &ph2d_guides::GuideSet,
         ui_states: &ph2d_ui_state::StateSets,
+        library: &crate::project_library::LibraryDoc,
         registry: &ComponentRegistry,
         cache: &mut ph2d_ecs::scene::incremental::CaptureCache,
     ) -> Self {
@@ -106,6 +114,9 @@ impl ProjectState {
             flip: flip.clone(),
             guides: guides.clone(),
             ui_states: ui_states.clone(),
+            // ⚠️ **Um `clone` de bytes já codificados, e é isso que o torna barato** — quem
+            // codifica é a `LibraryCache`, uma vez por mutação da árvore.
+            library: library.clone(),
         }
     }
 
@@ -266,6 +277,10 @@ impl crate::App {
         // isso que os dois podem estar vivos ao mesmo tempo.
         let drive = &self.preview_drive;
         let gfx = self.gfx.as_mut()?;
+        // ⚠️ **A biblioteca é codificada AQUI, e a cache é que a torna barata** — ver
+        // [`crate::project_library`]: sem ela isto custava até 28 % de um quadro, em todo quadro
+        // com input.
+        let library = gfx.library_cache.doc(&gfx.catalogs).clone();
         Some(ProjectState::capture(
             drive,
             &mut gfx.sim,
@@ -273,6 +288,7 @@ impl crate::App {
             &gfx.flip,
             &gfx.guides,
             &gfx.ui_states,
+            &library,
             &gfx.component_registry,
             &mut gfx.undo_capture_cache,
         ))
@@ -319,12 +335,19 @@ impl crate::App {
         gfx.ui_states = state.ui_states.clone();
         // ⭐ A seleção 3D volta com os bits NOVOS, depois de o mundo ter sido reconstruído.
         let field_back = field_selection_back(gfx.sim.world_mut(), &was_field);
+        // ⭐⭐⭐ **A biblioteca volta** — a taxonomia e as lápides (Enio, 2026-08-30).
+        //
+        // ⛔ **E a cache TEM de ser invalidada**, senão o quadro seguinte devolveria os bytes
+        // antigos: a revisão é por-árvore e a restaurada nasce em `0`, então colidir com a que a
+        // cache já viu é o caso NORMAL, não o raro.
+        gfx.catalogs = crate::project_library::apply(&state.library);
+        gfx.library_cache.invalidate();
         if let Some(hero) = gfx.hero_screen.as_mut() {
-            hero.gizmo.clear_all_selection();
-            for bits in field_back {
-                hero.gizmo.add_to_selection(bits);
-            }
+        hero.gizmo.clear_all_selection();
+        for bits in field_back {
+            hero.gizmo.add_to_selection(bits);
         }
+    }
         self.vec_entities = map;
         self.flip_entities = flip_map;
         self.vec_sel = crate::vec_selection::VecSelSync::default();

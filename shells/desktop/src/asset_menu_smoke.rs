@@ -105,6 +105,13 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
         85 => right_click_catalog_row(app),
         88 => click_menu_row(app, ph2d_editor::ids::CTX_MENU_CATALOG_DELETE, "Delete"),
         91 => report_catalogs(app, "depois de apagar"),
+        // ⭐⭐⭐ **E o Ctrl+Z devolve a gaveta** (Enio, 2026-08-30). ⚠️ Um quadro entre apagar e
+        // desfazer: o passo de undo nasce do DIFF do quadro seguinte, e desfazer no mesmo quadro
+        // mediria o baseline em vez do passo.
+        94 => undo(app),
+        97 => report_catalogs(app, "depois do Ctrl+Z"),
+        100 => redo(app),
+        103 => report_catalogs(app, "depois do Ctrl+Shift+Z"),
         _ => {}
     }
 }
@@ -524,4 +531,16 @@ fn report_catalogs(_app: &mut crate::App, when: &str) {
         .collect::<Vec<_>>()
         .join(", ");
     eprintln!("[catalog] {when}: {text}");
+}
+
+/// Ctrl+Z — pelo teclado, que é o gesto do artista.
+fn undo(app: &mut crate::App) {
+    app.smoke_undo(false);
+    eprintln!("[catalog] f=94 Ctrl+Z");
+}
+
+/// Ctrl+Shift+Z.
+fn redo(app: &mut crate::App) {
+    app.smoke_undo(true);
+    eprintln!("[catalog] f=100 Ctrl+Shift+Z");
 }

@@ -541,6 +541,7 @@ pub(crate) fn build_initial_state(
         next_baked_form: 1,  // idem: 0 fica livre como "nenhum"
         atlas_asset_map: BTreeMap::new(),
         catalogs: ph2d_asset_index::CatalogTree::new(),
+        library_cache: crate::project_library::LibraryCache::default(),
         component_registry: build_component_registry(),
         editor_queue: EditorCommandQueue::new(),
         transform_type_id: stable_type_id("ph2d::ecs::Transform"),

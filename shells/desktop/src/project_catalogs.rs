@@ -8,11 +8,19 @@
 //! divisão que o `input_map` declara — o que é do jogo vai no `.ph2dproj`, o que é do jogador vai
 //! em `~/.ph2d/`.
 //!
-//! ⛔ **E não vai no `ProjectState`**, que é a unidade do undo. Ela viaja **ao lado** dele, como o
-//! `motion`, a `timeline`, o `physics` e o `input_map` — ⚠️ com a consequência declarada: **um
-//! gesto de catálogo não se desfaz com Ctrl+Z**. É a mesma dívida que o Input Map ship-ou, e a
-//! alternativa (metê-la na captura do undo) faria toda renomeação de gaveta reescrever o snapshot
-//! do mundo inteiro.
+//! ⭐⭐⭐ **E ela VAI no `ProjectState` desde 2026-08-30** (pedido do Enio: *«deveria ter
+//! undo/redo no painel inclusive em del»*) — dentro do [`crate::project_library`], que é quem a
+//! compõe com as lápides.
+//!
+//! ⛔⛔ **A nota que aqui esteve estava ERRADA no mecanismo**, e vale a pena guardar porquê: ela
+//! dizia que metê-la na captura *«faria toda renomeação de gaveta reescrever o snapshot do mundo
+//! inteiro»*. Falso desde a F2 — a captura do mundo é **incremental** e custa o tamanho da edição.
+//! O custo real era **codificar a taxonomia por quadro**, que a medição pôs em 4,8 % de um quadro
+//! a 50 catálogos e **28 %** a 200/10 000; a cura é a cache por revisão, e não ficar de fora.
+//! *Uma dívida justificada por um mecanismo que não é o verdadeiro sobrevive a quem a podia pagar.*
+//!
+//! ⚠️ Este módulo continua a ser só o **formato** (bytes ⇄ árvore); quem decide onde ele mora é o
+//! `project_library`.
 //!
 //! # O blob carrega a PRÓPRIA versão
 //!

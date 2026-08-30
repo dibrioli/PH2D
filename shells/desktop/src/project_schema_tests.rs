@@ -465,7 +465,11 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // PROJECT 111→112: a TAXONOMIA da biblioteca de assets (plano 07, A3). O `ProjectFile`
         // ganhou `catalogs: Vec<u8>` -- blob auto-versionado, campo APENDADO, do lado aditivo da
         // regra. O `FlipDoc` e a `VecScene` nao se mexeram, entao so' o 1.º numero sobe.
-        (112, 13, 18),
+        // PROJECT 112→113: a BIBLIOTECA muda-se para dentro do undo (Enio, 30/08). A taxonomia
+        // SAIU do `ProjectFile` e entrou no `ProjectState`, com as lapides ao lado. ⛔ NAO e'
+        // aditivo: um campo saiu do meio de uma estrutura e outro entrou no meio da outra, entao
+        // os bytes de um v104 passam a significar outra coisa -- postcard le' torto e cala-se.
+        (113, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

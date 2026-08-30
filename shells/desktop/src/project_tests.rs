@@ -34,6 +34,7 @@ pub(super) fn empty_state() -> ProjectState {
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
+        library: crate::project_library::LibraryDoc::default(),
     }
 }
 
@@ -331,6 +332,7 @@ fn the_ui_states_travel_in_the_file() {
         flip: ph2d_flip::FlipDoc::new(),
         guides: ph2d_guides::GuideSet::default(),
         ui_states: states.clone(),
+        library: crate::project_library::LibraryDoc::default(),
     };
     let bytes = postcard::to_allocvec(&state).unwrap();
     let back: ProjectState = postcard::from_bytes(&bytes).unwrap();
@@ -376,6 +378,7 @@ fn project_file_round_trips_through_postcard() {
         flip,
         guides: ph2d_guides::GuideSet::default(),
         ui_states: ph2d_ui_state::StateSets::default(),
+        library: crate::project_library::LibraryDoc::default(),
     };
     // O grafo de Motion viaja como TEXTO canônico — a forma real que o `MotionDoc`
     // serializa (doc 56), não uma string inventada: se o formato mudar, o teste viaja
@@ -405,7 +408,6 @@ fn project_file_round_trips_through_postcard() {
         // exactamente assim que uma mutacao sobreviveu a 10.503 testes na auditoria de 23/08.
         input_map: super::input_map_tests::authored_input_map(),
         pattern_art: Vec::new(),
-        catalogs: Vec::new(),
     };
     let bytes = postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).unwrap();
     let (ver, back): (u32, ProjectFile) = postcard::from_bytes(&bytes).unwrap();

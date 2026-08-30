@@ -65,6 +65,7 @@ thread_local! {
     static LIBRARY: RefCell<TextureLibrary> = const {
         RefCell::new(TextureLibrary {
             entries: BTreeMap::new(),
+            forgotten: std::collections::BTreeSet::new(),
         })
     };
 }
@@ -301,6 +302,37 @@ pub(crate) fn forget_texture(id: AssetId) {
     LIBRARY.with(|lib| lib.borrow_mut().forget(id));
 }
 
+/// ⭐⭐⭐ **O que o artista mandou SAIR** — e é isto que o undo desfaz (Enio, 2026-08-30:
+/// *«deveria ter undo/redo no painel inclusive em del»*).
+///
+/// ⚠️ **A lápide é AUTORIA, a biblioteca é memória.** A `TextureLibrary` é reconstruída do mundo a
+/// cada quadro, então ela não pode guardar uma DECISÃO — o quadro seguinte apagá-la-ia. O que se
+/// guarda é *«esta imagem foi mandada sair»*, e essa frase viaja no `ProjectState`, que é a unidade
+/// que o Ctrl+Z restaura.
+///
+/// ⛔ **Sem isto o gesto era irreversível**: a imagem sem utilizadores não tem quem a re-lembre no
+/// quadro seguinte (o laço só vê entidades vivas), então esquecê-la era para sempre.
+#[must_use]
+pub(crate) fn forgotten_textures() -> Vec<[u8; 32]> {
+    LIBRARY.with(|lib| {
+        lib.borrow()
+            .forgotten
+            .iter()
+            .map(|a| *a.as_bytes())
+            .collect()
+    })
+}
+
+/// A porta de volta: o undo repõe o conjunto inteiro.
+///
+/// ⚠️ **Conjunto inteiro e não «acrescenta»** — desfazer uma remoção tem de tirar a lápide, e um
+/// `insert` só saberia pôr.
+pub(crate) fn set_forgotten_textures(ids: &[[u8; 32]]) {
+    LIBRARY.with(|lib| {
+        lib.borrow_mut().forgotten = ids.iter().map(|d| AssetId::from_digest(*d)).collect();
+    });
+}
+
 /// ⭐ **A memória da biblioteca de texturas** — o que o artista trouxe, por CONTEÚDO.
 ///
 /// ⚠️ Ela é da SESSÃO e não do projecto, e o que a torna correcta é a chave ser o blake3 dos
@@ -309,27 +341,49 @@ pub(crate) fn forget_texture(id: AssetId) {
 #[derive(Default)]
 pub(crate) struct TextureLibrary {
     entries: BTreeMap<AssetId, AssetEntry>,
+    /// ⭐⭐ **As LÁPIDES** — o que o artista mandou sair. Ver [`forgotten_textures`].
+    ///
+    /// ⚠️ **Uma lápide, e não um `remove`**: a entrada fica, e é o `build` que a filtra. É isso que
+    /// torna o gesto reversível — desfazer é tirar a lápide, e a entrada está lá para voltar.
+    forgotten: std::collections::BTreeSet<AssetId>,
 }
 
 impl TextureLibrary {
     /// Regista (ou actualiza) uma textura. ⚠️ **Nunca remove** — ver o bloco acima.
     fn remember(&mut self, id: AssetId, entry: AssetEntry) {
+        // ⭐⭐ **Trazer de volta pela porta da frente LEVANTA a lápide.** Sem isto, re-importar a
+        // mesma imagem (mesmos bytes ⇒ mesmo blake3) devolveria um asset **invisível para sempre**,
+        // e o artista não teria gesto nenhum para o explicar. *Um «traz isto» explícito ganha a um
+        // «tira isto» antigo.*
+        self.forgotten.remove(&id);
         self.entries.insert(id, entry);
     }
 
     /// Esquece uma textura — ver [`forget_texture`], que é a porta.
+    ///
+    /// ⚠️ **Marca, não apaga** (2026-08-30): a entrada tem de sobreviver para o undo a poder
+    /// devolver. Quem a esconde é o [`TextureLibrary::entries`].
     fn forget(&mut self, id: AssetId) {
-        self.entries.remove(&id);
+        self.forgotten.insert(id);
     }
 
+    /// As entradas VIVAS — as com lápide não saem daqui.
     fn entries(&self) -> impl Iterator<Item = &AssetEntry> {
-        self.entries.values()
+        self.entries
+            .iter()
+            .filter(|(id, _)| !self.forgotten.contains(id))
+            .map(|(_, e)| e)
     }
 
-    /// Quantas texturas a biblioteca conhece — para os gates.
+    /// Quantas texturas a biblioteca MOSTRA — para os gates.
+    ///
+    /// ⚠️ **As com lápide não contam, e a distinção nasceu com elas** (2026-08-30): desde que
+    /// esquecer é marcar em vez de apagar, `entries.len()` passou a responder *«quantas guardo»* e
+    /// a pergunta dos gates é *«quantas o artista vê»*. As duas leem-se igual e divergem
+    /// exactamente no caso que interessa. ⇒ ela conta pelo mesmo iterador que o `build` consome.
     #[cfg(test)]
     fn len(&self) -> usize {
-        self.entries.len()
+        self.entries().count()
     }
 }
 

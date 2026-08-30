@@ -9388,12 +9388,19 @@ impl crate::App {
                 )
                 .map(|(rgba, w, h, _)| (w, h, rgba))
             };
+            // ⭐⭐⭐ **A POSE dos membros entra pela MESMA fonte que o assado lê** (report do Enio,
+            // 2026-08-30: *"ao mover os objetos do grupo que serve como shape, a pattern não
+            // atualiza em tempo real"*). O `bake_rgba_many` acima recebe o `vec_xf`; a chave do memo
+            // tem de o ler também, senão ela é cega ao gesto — a geometria de um `VecPath` é LOCAL
+            // (ADR-0110) e mover um membro não lhe toca um byte.
+            let pose_of = |id| vec_xf.get(&id).copied().unwrap_or_default();
             self.texture_pattern_live.recook(
                 vec_scene,
                 asset_db,
                 ph2d_editor::image_quality_for(hero.project.image_filter),
                 &mut bake_shape,
                 &object_of,
+                &pose_of,
             );
             self.fx_live.recook(
                 vec_scene,

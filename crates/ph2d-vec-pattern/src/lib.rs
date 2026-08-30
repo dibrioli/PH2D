@@ -61,9 +61,16 @@ pub enum TileKind {
     /// A colmeia: `BrickRow` com meio passo **mais** a lei do espaçamento
     /// ([`HEX_ROW_RATIO`]) que põe os seis vizinhos à mesma distância.
     ///
-    /// ⚠️ O ASSADO de um `Hex` é byte-idêntico ao de um `BrickRow` com `offset_denom = 2` — a
-    /// diferença dele vive na COLOCAÇÃO (o período vertical é derivado do horizontal), não nos
-    /// pixels. É por isso que a lei mora numa função só, [`hex_row_period`].
+    /// ⛔⛔ **NÃO é verdade que o assado de um `Hex` seja byte-idêntico ao de um `BrickRow`** — esta
+    /// linha dizia-o e foi **medida falsa** em 2026-08-30, pela porta do produto. Dada a MESMA
+    /// [`TileLaw`] ela é verdadeira, e é essa a leitura que a escreveu; mas quem constrói a lei é
+    /// `PatternFill::law`, e é lá que as duas divergem: sobre a mesma arte `96x96`, o `BrickRow` dá
+    /// `gap_px [0,0]` e um ladrilho `96x192` com o motivo **intacto**, e o `Hex` dá `gap_px [0,−13]`
+    /// e um ladrilho `96x166` com **21 % do motivo reescrito pela cópia vizinha**.
+    ///
+    /// ⚠️ *Uma afirmação sobre uma função é verdadeira dos argumentos dela e falsa do produto, se
+    /// for outro sítio que escolhe os argumentos.* A sobreposição é a colmeia a fazer as linhas
+    /// **encaixarem** ([`hex_row_period`]) — é a definição dela, não um defeito.
     Hex,
 }
 

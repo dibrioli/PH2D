@@ -28,14 +28,20 @@
 /// desfasado a meio passo à mesma distância. É o que separa uma colmeia de um tijolo.
 pub const HEX_ROW_RATIO: f64 = 0.866_025_403_784_438_6;
 
-/// O período VERTICAL de uma colmeia, derivado do horizontal.
+/// O período VERTICAL de uma colmeia: o passo da linha **apertado** por [`HEX_ROW_RATIO`].
 ///
 /// ⭐ **A colmeia não tem assado próprio** — ela assa byte-a-byte como um tijolo por linha de meio
 /// passo. O que a faz colmeia é esta função, e é por isso que a lei mora **num sítio só**: escrita
 /// duas vezes, o desenho ficaria num instante e o espaçamento noutro.
+///
+/// ⛔⛔ **O ARGUMENTO É O PASSO DA LINHA, nunca o da coluna** (report do Enio, 2026-08-30). O
+/// parâmetro chamava-se `col_period` e o único chamador passava-lhe o passo horizontal: numa célula
+/// quadrada dá no mesmo, e numa célula alta o passo vertical colapsa para `0,866 ×` a **largura**,
+/// com sobreposição medida de **56 % da altura** e a cópia vizinha a reescrever metade do motivo.
+/// *Um nome de parâmetro é um contrato, e este estava a pedir o eixo errado.*
 #[must_use]
-pub fn hex_row_period(col_period: f64) -> f64 {
-    col_period * HEX_ROW_RATIO
+pub fn hex_row_period(row_period: f64) -> f64 {
+    row_period * HEX_ROW_RATIO
 }
 
 /// O vão do artista (**mundo**) convertido para pixels da arte.

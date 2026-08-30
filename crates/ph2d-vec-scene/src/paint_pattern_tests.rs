@@ -54,22 +54,78 @@ fn the_paint_enum_does_not_grow_when_pattern_lands() {
     );
 }
 
-/// ⭐⭐ **A colmeia DERIVA o passo vertical, e o `gap[1]` autorado é ignorado nela.**
+/// ⛔⛔ **A COLMEIA APERTA O EIXO DELA, e o `gap[1]` autorado CONTA** (report do Enio, 2026-08-30,
+/// com foto: *"veja o que acontece no modo Hex: as posições dos objetos no grupo mudaram e o z
+/// order tb"*).
 ///
-/// Dois sítios a decidir o mesmo passo dariam um desenho num instante e um espaçamento noutro.
-/// Aqui a lei vive na [`PatternFill::period`], e este gate mede que ela **manda** — mexer no vão
-/// vertical de uma colmeia não pode mover coisa nenhuma.
+/// # O que este gate substitui, e porquê
+///
+/// A redacção anterior chamava-se `the_hex_period_is_derived_and_the_authored_y_gap_is_ignored` e
+/// afirmava as **duas metades erradas**: que o passo da linha saía do passo da COLUNA, e que o vão
+/// vertical do artista era inerte. A primeira é um defeito medido; a segunda é o que tirava ao
+/// artista a única saída dele.
+///
+/// ⚠️ *Ele passava, e o produto estava errado* — porque numa célula **quadrada** as duas leis são o
+/// mesmo número, e a fixtura ([`fill`], `size = [10, 20]`)... não era quadrada, e o gate mediu na
+/// mesma a lei que o código escolheu em vez da lei que a colmeia é. *Uma régua que afirma o que o
+/// código faz confirma a escolha, não a lei.*
+///
+/// # A lei, e a régua que a mede
+///
+/// A colmeia encaixa as linhas apertando o passo por `√3/2`. ⇒ a **fracção** de sobreposição é
+/// `1 − √3/2 = 13,4 %` **em todo aspecto de célula** — é isso que é invariante, e é isso que a lei
+/// velha partia: com `size = [w, 2w]` ela dava `0,866·w` de passo para uma arte de `2w` de altura,
+/// ou seja **56 % de sobreposição** (medido pela porta do produto, 30/08).
 #[test]
-fn the_hex_period_is_derived_and_the_authored_y_gap_is_ignored() {
+fn the_hex_squeezes_its_own_axis_by_the_same_fraction_at_every_aspect() {
+    let sobra = 1.0 - ph2d_vec_pattern::HEX_ROW_RATIO;
+    // ⭐ A régua é a FRACÇÃO, e ela tem de ser a mesma nos cinco aspectos. Sob a lei anterior esta
+    // coluna ia de `-73 %` (célula larga: a colmeia ABRIA um vão) a `+56 %` (célula alta).
+    for size in [
+        [10.0, 5.0],
+        [10.0, 6.67],
+        [10.0, 10.0],
+        [6.67, 10.0],
+        [5.0, 10.0],
+    ] {
+        let mut f = fill();
+        f.kind = TileKind::Hex;
+        f.size = size;
+        f.gap = [0.0, 0.0];
+        let p = f.period();
+        let frac = (size[1] - p[1]) / size[1];
+        assert!(
+            (frac - sobra).abs() < 1e-12,
+            "a colmeia sobrepoe {:.1}% da altura em {size:?} e deveria sobrepor sempre {:.1}% - o \
+             passo esta' a sair do eixo errado",
+            frac * 100.0,
+            sobra * 100.0
+        );
+    }
+    // ⭐⭐ **O VÃO VERTICAL É A SAÍDA DO ARTISTA**: sem ele, o encaixe de 13,4 % é obrigatório e não
+    // há controlo nenhum que o abra. Um vão que compense a sobreposição encosta as linhas.
     let mut f = fill();
     f.kind = TileKind::Hex;
+    f.size = [10.0, 10.0];
     f.gap = [0.0, 0.0];
-    let base = f.period();
-    f.gap = [0.0, 999.0];
-    assert_eq!(base, f.period(), "a colmeia leu o vao vertical autorado");
+    let apertado = f.period()[1];
+    f.gap = [0.0, 10.0 * sobra / ph2d_vec_pattern::HEX_ROW_RATIO];
     assert!(
-        (base[1] - base[0] * ph2d_vec_pattern::HEX_ROW_RATIO).abs() < 1e-12,
-        "o passo vertical da colmeia nao e' o derivado"
+        (f.period()[1] - 10.0).abs() < 1e-9,
+        "o vao vertical nao abriu as linhas da colmeia: {} contra 10,0 - o artista fica sem saida",
+        f.period()[1]
+    );
+    assert!(apertado < 10.0, "o controlo apertado nao apertava nada");
+    // ⚠️ **CONTROLO DE NÃO-REGRESSÃO:** numa célula QUADRADA com vão zero a lei nova é byte-idêntica
+    // à antiga (`√3/2 × largura`). É o que garante que esta wave não mexeu no caso comum.
+    let mut q = fill();
+    q.kind = TileKind::Hex;
+    q.size = [10.0, 10.0];
+    q.gap = [0.0, 0.0];
+    assert_eq!(
+        q.period()[1],
+        ph2d_vec_pattern::hex_row_period(q.size[0] + q.gap[0]),
+        "a celula quadrada deixou de concordar com a lei antiga"
     );
     // Controlo: numa grade o vão vertical MANDA — senão este gate estaria a medir uma função morta.
     let mut g = fill();

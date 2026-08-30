@@ -29,7 +29,7 @@
 
 use ph2d_asset::AssetDb;
 use ph2d_vec_render::{PatternSlot, PatternTile, PatternTiles};
-use ph2d_vec_scene::{Paint, PatternSource, VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{Paint, PatternSource, VecPath, VecPathId, VecScene, Xform};
 use ph2d_vector::{ImageQuality, StableImage};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -63,6 +63,23 @@ struct Key {
     /// `(pilha, w, h)` e a forma não entrava nela, então mudar a cor do fill de uma forma filtrada
     /// não mudava a tela"*).
     shape: Vec<VecPath>,
+    /// ⭐⭐⭐ **A POSE DOS MEMBROS, e ela NÃO está no [`VecPath`]** (report do Enio, 2026-08-30:
+    /// *"ao mover os objetos do grupo que serve como shape, a pattern não atualiza em tempo real"*).
+    ///
+    /// Desde o [ADR-0110](../../../docs/architecture/decisions/0110-vector-nodes-are-ecs-entities-one-hierarchy.md)
+    /// a geometria guardada num `VecPath` é **local**, e quem a põe no mundo é o [`Xform`] que a
+    /// shell publica por quadro. ⇒ uma chave feita só de `VecPath`s é **cega ao gesto de mover**: o
+    /// membro anda na tela e o ladrilho fica com o desenho de antes, **para sempre** — a chave nunca
+    /// mais difere. *Um memo cuja chave não contém tudo o que o assado lê não é um memo: é um
+    /// congelamento.*
+    ///
+    /// ⚠️ **NORMALIZADA pela translação COMUM**, e isso é a lei do assado, não uma optimização: o
+    /// [`crate::motion_object_bake::bake_rgba_many`] põe a caixa da UNIÃO na origem do ladrilho, e
+    /// por isso arrastar o conjunto inteiro devolve o mesmo desenho — o que muda o ladrilho é um
+    /// membro mexer-se **em relação aos outros**. ⛔ Sem a normalização, arrastar o grupo re-assaria
+    /// (render + readback de GPU) a **cada quadro**, que é exactamente a razão pela qual o `origin`
+    /// e o `angle` também ficam de fora desta chave.
+    pose: Vec<[f64; 6]>,
 }
 
 /// A ARTE que uma fonte nomeia, no que ela tem de identidade — a metade PURA da resolução.
@@ -102,6 +119,32 @@ fn source_shape(
     membros
         .iter()
         .filter_map(|m| scene.paths().iter().find(|p| p.id == *m).cloned())
+        .collect()
+}
+
+/// **ONDE cada membro da arte se senta**, na forma em que isso é identidade do ladrilho.
+///
+/// A metade que falta à [`source_shape`]: ela responde *quais* caminhos, esta responde *onde*. As
+/// duas juntas são a arte de um grupo, e é isso que a [`Key`] guarda — ver o campo [`Key::pose`]
+/// para o mecanismo e para o porquê da normalização.
+///
+/// ⚠️ **A âncora é o PRIMEIRO membro, e a ordem dele é a do documento** (a [`source_shape`] devolve
+/// por z). Uma âncora tirada do centroide mudaria ao entrar ou sair um membro, e faria toda a lista
+/// diferir de uma vez por uma coisa que não é sobre pose nenhuma.
+///
+/// ⚠️ Só a **translação** se normaliza. A parte linear (`a,b,c,d`) entra crua de propósito: rodar ou
+/// escalar o grupo **muda** o desenho do ladrilho, e tem de re-assar.
+#[must_use]
+fn art_pose(art: &[VecPath], pose_of: &dyn Fn(VecPathId) -> Xform) -> Vec<[f64; 6]> {
+    let ancora = art.first().map_or([0.0, 0.0], |p| {
+        let Xform([_, _, _, _, e, f]) = pose_of(p.id);
+        [e, f]
+    });
+    art.iter()
+        .map(|p| {
+            let Xform([a, b, c, d, e, f]) = pose_of(p.id);
+            [a, b, c, d, e - ancora[0], f - ancora[1]]
+        })
         .collect()
 }
 
@@ -156,6 +199,7 @@ impl TexturePatternLive {
         quality: ImageQuality,
         bake_shape: &mut dyn FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)>,
         object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
+        pose_of: &dyn Fn(VecPathId) -> Xform,
     ) {
         let mut seen = BTreeSet::new();
         for path in scene.paths() {
@@ -174,7 +218,8 @@ impl TexturePatternLive {
                 .map(|pat| (PatternSlot::Stroke, pat));
             for (slot, pat) in da_forma.into_iter().chain(do_traco) {
                 self.bake_one(
-                    scene, assets, quality, bake_shape, object_of, &mut seen, path.id, slot, pat,
+                    scene, assets, quality, bake_shape, object_of, pose_of, &mut seen, path.id,
+                    slot, pat,
                 );
             }
         }
@@ -195,6 +240,7 @@ impl TexturePatternLive {
         quality: ImageQuality,
         bake_shape: &mut dyn FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)>,
         object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
+        pose_of: &dyn Fn(VecPathId) -> Xform,
         seen: &mut BTreeSet<(VecPathId, PatternSlot)>,
         id: VecPathId,
         slot: PatternSlot,
@@ -212,6 +258,7 @@ impl TexturePatternLive {
             offset_denom: pat.offset_denom,
             size: pat.size,
             gap: pat.gap,
+            pose: art_pose(&shape, pose_of),
             shape,
         };
         let slot_key = (id, slot);
@@ -304,6 +351,12 @@ fn art_of(
 #[cfg(test)]
 #[path = "texture_pattern_live_tests.rs"]
 mod tests;
+// ⚠️ **Irmão por RESPONSABILIDADE, não por tamanho** — o de cima mede o MEMO, este mede o que é
+// próprio de a arte vir do DOCUMENTO (ciclo, re-assado ao editar, pose dos membros de um grupo). O
+// corte foi imposto pelo tecto de LOC, mas a linha dele é o assunto: um gate novo sabe onde nasce.
+#[cfg(test)]
+#[path = "texture_pattern_live_shape_tests.rs"]
+mod shape_tests;
 
 /// ⭐ **Os gates do vínculo MORTO** (plano 33, W11), num irmão — o corte é por responsabilidade:
 /// o [`tests`] mede o memo do assado, este mede o que acontece quando a arte deixa de existir.

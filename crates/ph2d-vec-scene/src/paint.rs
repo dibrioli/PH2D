@@ -242,18 +242,44 @@ impl PatternFill {
 
     /// **O passo da repetição, em mundo** — `arte + vão`, com UMA excepção.
     ///
-    /// ⭐ **A colmeia deriva o passo vertical do horizontal** ([`hex_row_period`], `√3/2`): é o único
-    /// valor que põe os seis vizinhos à mesma distância, e é o que separa uma colmeia de um tijolo.
-    /// ⚠️ Nessa lei o `gap[1]` autorado é **ignorado** — não há dois sítios a decidir o mesmo passo.
+    /// ⭐ **A colmeia aperta o passo vertical por `√3/2`** ([`hex_row_period`]): é o único quociente
+    /// que põe os seis vizinhos à mesma distância, e é o que separa uma colmeia de um tijolo.
+    ///
+    /// ⛔⛔ **E ele aperta o passo do EIXO DELE, não o do outro** (report do Enio, 2026-08-30, com
+    /// foto: *"veja o que acontece no modo Hex: as posições dos objetos no grupo mudaram e o z order
+    /// tb"*).
+    ///
+    /// A 1.ª redacção fazia `hex_row_period(x)` — o passo da linha derivado do passo da **COLUNA**.
+    /// Numa célula **quadrada** os dois coincidem, e é por isso que ninguém o viu; numa célula alta
+    /// o passo vertical colapsa para `0,866 ×` a **LARGURA** e ignora a altura inteira. Medido pela
+    /// porta do produto, com arte `48x96` e `size` a seguir o aspecto dela: `gap_px[1] = −54`, ou
+    /// seja **56,2 % da altura em sobreposição**, com a cópia vizinha a reescrever **51 % dos texels
+    /// do motivo** — e, como ela está deslocada meio passo na horizontal, a forma intrusa aparece
+    /// também **ao lado**. *Isso lê-se exactamente como "as posições mudaram e o z também".*
+    ///
+    /// ⭐ Com a lei sobre o eixo próprio, a sobreposição é `13,4 %` em **todo** aspecto — que é o que
+    /// a colmeia É: as linhas encaixam. Um motivo inscrito (redondo) não se toca; um que preenche a
+    /// caixa até à borda cruza-se com o vizinho, e isso é a definição, não um defeito.
+    ///
+    /// ⭐⭐ **E o `gap[1]` autorado passa a CONTAR**, que é o que dá ao artista a saída. Ele estava
+    /// inerte **por gate**, com o argumento de que *"não há dois sítios a decidir o mesmo passo"* —
+    /// e continua a não haver: a lei é uma só (`√3/2 ×`), o que mudou é **o que ela aperta**.
+    /// ⛔ Sem isto, o encaixe de `13,4 %` é obrigatório e não há controlo nenhum que o abra.
+    ///
+    /// ⚠️ **Uma célula quadrada com vão zero é BYTE-IDÊNTICA** à lei anterior (`x == size[1]`), e há
+    /// gate. O que muda é toda célula não-quadrada — de errado para certo.
     #[must_use]
     pub fn period(&self) -> [f64; 2] {
         let x = self.size[0] + self.gap[0];
-        let y = if matches!(self.kind, TileKind::Hex) {
-            hex_row_period(x)
-        } else {
-            self.size[1] + self.gap[1]
-        };
-        [x, y]
+        let y = self.size[1] + self.gap[1];
+        [
+            x,
+            if matches!(self.kind, TileKind::Hex) {
+                hex_row_period(y)
+            } else {
+                y
+            },
+        ]
     }
 
     /// A lei ASSADA, em pixels da arte — a porta única de mundo para pixel.

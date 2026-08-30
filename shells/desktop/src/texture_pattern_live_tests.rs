@@ -28,6 +28,15 @@ fn scene_with(fill: PatternFill) -> (VecScene, VecPathId) {
     (scene, id)
 }
 
+/// A expansão de objecto num mundo **sem ECS**: cada caminho é o próprio objecto.
+///
+/// ⚠️ É a resposta honesta aqui, e não um atalho: a pertença a um grupo vive na árvore de
+/// entidades, que estes gates não constroem. O caso do GRUPO tem gates próprios, com a expansão a
+/// sério.
+fn solo() -> impl Fn(VecPathId) -> Vec<VecPathId> {
+    |id| vec![id]
+}
+
 /// O assador de FORMA que devolve nada — o caminho de quem só tem fontes de imagem.
 fn no_shape() -> impl FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)> {
     |_| None
@@ -49,7 +58,7 @@ fn a_loaded_image_becomes_a_tile() {
         Rgba8::new(1, 2, 3, 255),
     ));
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     let tile = live
         .tiles()
         .get(&(path, ph2d_vec_render::PatternSlot::Fill))
@@ -69,7 +78,7 @@ fn an_unresolved_source_produces_no_tile() {
         Rgba8::new(1, 2, 3, 255),
     ));
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert!(
         live.tiles()
             .get(&(path, ph2d_vec_render::PatternSlot::Fill))
@@ -81,7 +90,7 @@ fn an_unresolved_source_produces_no_tile() {
         [4.0, 4.0],
         Rgba8::new(1, 2, 3, 255),
     ));
-    live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert!(
         live.tiles()
             .get(&(path2, ph2d_vec_render::PatternSlot::Fill))
@@ -103,11 +112,11 @@ fn recooking_an_unchanged_pattern_keeps_the_same_handle() {
         Rgba8::new(1, 2, 3, 255),
     ));
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     let first = live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)]
         .image
         .clone();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     let second = &live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)].image;
     assert_eq!(
         first.width(),
@@ -123,7 +132,7 @@ fn recooking_an_unchanged_pattern_keeps_the_same_handle() {
     f2.kind = TileKind::BrickRow;
     f2.offset_denom = 3;
     let (scene2, path2) = scene_with(f2);
-    live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene2, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert_eq!(
         live.tiles()[&(path2, ph2d_vec_render::PatternSlot::Fill)].tile_px,
         [4, 12],
@@ -143,8 +152,8 @@ fn changing_the_filter_does_not_rebake() {
         Rgba8::new(1, 2, 3, 255),
     ));
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
-    live.recook(&scene, &db, ImageQuality::Low, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
+    live.recook(&scene, &db, ImageQuality::Low, &mut no_shape(), &solo());
     let t = &live.tiles()[&(path, ph2d_vec_render::PatternSlot::Fill)];
     assert_eq!(t.quality, ImageQuality::Low, "o filtro tem de acompanhar");
     assert_eq!(t.tile_px, [4, 4]);
@@ -161,13 +170,13 @@ fn a_shape_that_loses_its_pattern_loses_its_tile() {
         Rgba8::new(1, 2, 3, 255),
     ));
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert!(
         live.tiles()
             .contains_key(&(path, ph2d_vec_render::PatternSlot::Fill))
     );
     scene.path_mut(path).unwrap().fill = Some(Paint::solid(Rgba8::new(9, 9, 9, 255)));
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert!(
         live.tiles().is_empty(),
         "o ladrilho sobreviveu ao padrao que o pediu"
@@ -194,7 +203,7 @@ fn a_tile_too_big_for_the_atlas_is_scaled_and_still_shows() {
     f.offset_denom = 3; // 3 x (MAX/2) passaria do tecto
     let (scene, path) = scene_with(f);
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     let tile = live
         .tiles()
         .get(&(path, ph2d_vec_render::PatternSlot::Fill))
@@ -236,7 +245,7 @@ fn a_pattern_whose_source_is_itself_is_refused() {
         Some((2u32, 2, vec![9u8; 2 * 2 * 4]))
     };
     let mut live = TexturePatternLive::default();
-    live.recook(&ciclo, &db, ImageQuality::Medium, &mut bake);
+    live.recook(&ciclo, &db, ImageQuality::Medium, &mut bake, &solo());
     assert!(
         !assou,
         "o assador foi chamado para uma forma que e' a propria fonte"
@@ -259,7 +268,7 @@ fn a_pattern_whose_source_is_itself_is_refused() {
         p.source = PatternSource::Shape(outra);
     }
     let mut bake2 = |_| Some((2u32, 2, vec![9u8; 2 * 2 * 4]));
-    live.recook(&ciclo, &db, ImageQuality::Medium, &mut bake2);
+    live.recook(&ciclo, &db, ImageQuality::Medium, &mut bake2, &solo());
     assert!(
         live.tiles()
             .get(&(id, ph2d_vec_render::PatternSlot::Fill))
@@ -303,8 +312,8 @@ fn editing_the_source_shape_rebakes_the_tile() {
             n += 1;
             Some((2u32, 2, vec![9u8; 2 * 2 * 4]))
         };
-        live.recook(&scene, &db, ImageQuality::Medium, &mut bake);
-        live.recook(&scene, &db, ImageQuality::Medium, &mut bake);
+        live.recook(&scene, &db, ImageQuality::Medium, &mut bake, &solo());
+        live.recook(&scene, &db, ImageQuality::Medium, &mut bake, &solo());
     }
     assert_eq!(n, 1, "o memo re-assou o que nao mudou");
     assert!(
@@ -320,7 +329,7 @@ fn editing_the_source_shape_rebakes_the_tile() {
             n += 1;
             Some((2u32, 2, vec![9u8; 2 * 2 * 4]))
         };
-        live.recook(&scene, &db, ImageQuality::Medium, &mut bake);
+        live.recook(&scene, &db, ImageQuality::Medium, &mut bake, &solo());
     }
     assert_eq!(
         n, 2,
@@ -362,7 +371,7 @@ fn a_shape_can_have_a_pattern_on_fill_and_stroke_at_once() {
     scene.path_mut(id).expect("a forma").stroke = Some(s);
 
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
 
     let f = live
         .tiles()
@@ -379,7 +388,7 @@ fn a_shape_can_have_a_pattern_on_fill_and_stroke_at_once() {
 
     // ⚠️ E a varredura desmarca por SLOT: tirar o padrão do traço não pode levar o do preenchimento.
     scene.path_mut(id).expect("a forma").stroke = None;
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     assert!(live.tiles().contains_key(&(id, PatternSlot::Fill)));
     assert!(
         !live.tiles().contains_key(&(id, PatternSlot::Stroke)),
@@ -449,7 +458,7 @@ fn measure_the_baked_tile_of_each_paint() {
         ..VecPath::default()
     });
     let mut live = TexturePatternLive::default();
-    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape());
+    live.recook(&scene, &db, ImageQuality::Medium, &mut no_shape(), &solo());
     println!(
         "\n  forma de {BOX} unidades, traco de {:.4}",
         (BOX / 6.0) * 1.2

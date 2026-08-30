@@ -101,19 +101,80 @@ uma tabela é duas respostas à mesma pergunta, e a que envelhece é sempre a es
 - **5 mutações, 5 mortas**: o sujeito sempre-a-selecção · o clique fora que deixa de orientar · a
   linha não registada (shipa morta sob o dedo) · a linha fora do menu · o par na ordem trocada.
 
-## §8 — ⏳ ABERTO, e é a razão pela qual o Enio pediu isto
+## §8 — ✅ **O GRUPO É A ARTE DE UMA ESTAMPA** (report do Enio no smoke, mesmo dia)
 
-**Um grupo ainda NÃO pode ser a arte de um padrão.** A medição diz porquê e quanto custa:
+> *"Selecionar o grupo como shape de pattern não funcionou."*
 
-- ⛔ **O modelo é o bloqueio**: `PatternSource::Shape(VecPathId)` endereça **geometria**, e um grupo
-  **não tem `VecPathId`** — ele nasce `(Transform, Name, RootOrder)` e mais nada.
-- ⭐ **A saída barata existe e não mexe no schema**: manter o id a ser um `VecPathId` e passar a
-  **resolvê-lo como OBJECTO** (o grupo a que o caminho pertence, se houver) — que é a lei de selecção
-  que o app já tem. ⚠️ Muda a aparência de documentos gravados que apontem para um caminho agrupado;
-  hoje isso é inconsequente (não há projectos gravados), e a mudança é a **pretendida**.
-- O **assado** é uma dobra de bbox + um laço — a receita já existe em `fx_live::cook_batch`.
-- A **guarda de ciclo** tem de passar de *"o anfitrião não é a arte"* para *"o anfitrião não é
-  MEMBRO do objecto da arte"*.
-- ⚠️ E o composto herda a cerca já declarada do assador (`PatternTiles::new()`): um membro que ele
-  próprio tenha estampa assa **chapado** — o mesmo limite de hoje, mas `N` membros tornam-no `N`
-  vezes mais provável de ser visto.
+### §8.1 — ⭐ A saída que não mexe no schema
+
+`PatternSource::Shape(VecPathId)` endereça **geometria**, e um grupo não tem `VecPathId` — ele nasce
+`(Transform, Name, RootOrder)` e mais nada. ⛔ As saídas óbvias eram todas caras: uma variante nova
+(schema), um id de entidade (que o undo respawna com bits novos), um nome (heurística).
+
+⭐⭐ A que shipa **não toca no formato**: o id continua a ser o de um CAMINHO, e o que muda é a
+**resolução** — ele passa a nomear o **OBJECTO** a que aquele caminho pertence, pela porta
+`object_selection_for`, que é a mesma que decide o que um clique no canvas apanha (*"um grupo entra
+e sai da selecção INTEIRO"*). Nenhuma variante, nenhum degrau de migração, nenhum id novo gravado.
+
+⚠️ Isto **muda o desenho** de um documento que aponte para um caminho que hoje esteja agrupado — e é
+a mudança pretendida. Hoje é inconsequente (não há projectos gravados).
+
+### §8.2 — As três costuras
+
+- **O assado** — `motion_object_bake::bake_rgba_many`: a caixa é a **união** das dos membros e o
+  desenho é um laço sobre eles **na mesma cena de rascunho**. É a receita que o `fx_live::cook_batch`
+  já usava para assar um lote num render só. O `bake_rgba` de um id passa a delegar aqui — *uma
+  porta, nunca uma reimplementação*, que é a lei que o doc dele já declarava.
+- **O memo** — a chave passa de `Option<VecPath>` para `Vec<VecPath>`: **editar qualquer membro**
+  re-assa. ⚠️ Com o caminho clicado sozinho, mexer no IRMÃO deixava a tela parada — o defeito exacto
+  que o `FxKey` da crate irmã documenta.
+- **O ciclo** — a recusa passou de **igualdade** (`id == host`) para **pertença**
+  (`membros.contains(&host)`). ⚠️ Com um grupo, o anfitrião pode ser um MEMBRO da arte: assá-la
+  exigiria desenhá-lo, desenhá-lo exigiria o ladrilho. *O sintoma não seria um desenho errado —
+  seria o app a parar.*
+
+### §8.3 — ⚠️ A pose do grupo, e a metade que ela obriga
+
+> *"O gizmo do objeto pai deveria nascer na posição entre os filhos, mas nasceu no zero do mundo."*
+
+Um grupo não desenha nada, então **a pose dele é o gizmo dele** — e `Transform::default()` punha-a
+em `(0,0)`, muitas vezes fora do ecrã, com **girar** o grupo a acontecer em torno do nada.
+
+⇒ ele nasce na **média das poses** dos membros (a âncora que o artista já arrasta em cada objecto;
+⛔ não o centro das caixas de desenho, que exigiria resolver geometria e **mudaria** quando um filho
+fosse editado sem se ter movido).
+
+⚠️⚠️ **E isso obriga a DUAS compensações, nenhuma das quais existia** — enquanto o grupo nascia na
+origem as duas eram somar zero: agrupar subtrai o centro a cada membro (senão agrupar **move** o
+desenho), e desagrupar devolve-o (senão dissolver move-o de volta ao contrário). *Uma cura num
+sentido que não é aplicada no inverso é meia cura*, e o inverso aqui é o gesto com que o artista
+confere o primeiro.
+
+### §8.4 — ⭐⭐⭐ Um defeito que o gate apanhou antes do smoke
+
+`ungroup_entities` exigia `t != e`: só dissolvia o grupo de quem estivesse **dentro** dele. Isso
+bastava enquanto o único chamador era o `Ctrl+Shift+G`, que passa CAMINHOS — o verbo novo passa a
+**selecção**, e depois de agrupar a selecção **é o grupo** ⇒ *Ungroup* logo a seguir a *Group* era
+um no-op que dizia *"nada na selecção está dentro de um grupo"*. **O gesto mais natural era o único
+que não funcionava.**
+
+⚠️ E a cura não podia ser apagar a condição: um grupo **aninhado** tem por ancestral de topo o de
+FORA, e subir cegamente dissolveria o pai. ⇒ *quem já é um grupo responde por si; quem não é, sobe.*
+
+### §8.5 — Os gates
+
+- `an_art_that_is_a_group_resolves_to_all_of_its_members_in_z_order`
+- `a_shape_inside_the_group_it_wears_is_refused` (o ciclo, nas duas metades: a resolução e o aviso)
+- `editing_any_member_of_the_group_changes_what_the_memo_sees` (a promessa de que o padrão é vivo)
+- `a_group_bakes_into_one_tile_with_both_members_in_it` (`#[ignore]`, GPU) — ⚠️ a régua é a **tinta
+  nos dois extremos**, e não a largura: uma caixa larga com um membro só passaria numa medida de
+  largura, e o artista veria metade do grupo e um vazio do tamanho da outra metade.
+- os cinco da POSE: nasce entre os filhos · agrupar não move · desagrupar não move · aninhar não
+  move · dissolver o aninhado dissolve o **clicado**.
+- **8 mutações, 8 mortas.**
+
+### §8.6 — ⏳ O que fica
+
+⚠️ O composto herda a cerca já declarada do assador (`PatternTiles::new()`): um membro que ele
+próprio tenha estampa assa **chapado**. É o mesmo limite de hoje para uma arte de um caminho só, mas
+`N` membros tornam-no `N` vezes mais provável de ser visto.

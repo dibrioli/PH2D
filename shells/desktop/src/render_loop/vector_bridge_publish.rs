@@ -293,6 +293,17 @@ pub(super) fn publish(
                             scene,
                             sel,
                             &pat.source,
+                            // ⚠️ A MESMA expansão que o assado usa — a arte é um OBJECTO, e um
+                            // grupo resolve-se pela árvore. Perguntar aqui só pelo caminho daria
+                            // "arte apagada" a toda estampa vestida por um grupo.
+                            &|id| {
+                                crate::vec_entities::object_selection_for(
+                                    sim,
+                                    scene,
+                                    vec_entities,
+                                    id,
+                                )
+                            },
                         ),
                     }
                 }),

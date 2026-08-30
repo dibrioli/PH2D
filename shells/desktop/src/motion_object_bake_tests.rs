@@ -265,3 +265,80 @@ fn the_baked_tile_is_upright() {
              top >= bottom means the tile baked upside down"
     );
 }
+
+/// ⭐⭐⭐ **UM GRUPO ASSA COMO UM SÓ LADRILHO** (Enio, 2026-08-30: *"assim o grupo poderia ser usado
+/// como pattern"*), na GPU de verdade.
+///
+/// Duas formas afastadas assam num ladrilho cuja caixa é a **união** das duas, e **as duas
+/// desenham** nele. As duas metades importam e falham por razões diferentes:
+/// - sem a união da caixa, o ladrilho tem a largura de UMA forma e o grupo sai cortado;
+/// - sem o laço de desenho, a caixa é larga e o segundo membro **não aparece** — um ladrilho com
+///   metade do grupo e um vazio do tamanho da outra metade.
+///
+/// ⚠️ A régua é a TINTA em cada extremo, e não a largura sozinha: uma caixa larga com um membro só
+/// passaria numa medida de largura.
+#[test]
+#[ignore = "needs a GPU adapter; run with --ignored"]
+fn a_group_bakes_into_one_tile_with_both_members_in_it() {
+    let Ok(gpu) = GpuContext::new(GpuContext::default_instance(), None) else {
+        eprintln!("no GPU adapter; skipping a_group_bakes_into_one_tile_with_both_members_in_it");
+        return;
+    };
+    let quadrado = |x: f64, cor: ph2d_vec_scene::Rgba8| VecPath {
+        verts: [[x, -0.5], [x + 1.0, -0.5], [x + 1.0, 0.5], [x, 0.5]]
+            .map(ph2d_vec_scene::VecVertex::corner)
+            .to_vec(),
+        closed: true,
+        fill: Some(ph2d_vec_scene::Paint::solid(cor)),
+        ..VecPath::default()
+    };
+    let mut scene = VecScene::new();
+    let a = scene.push_path(quadrado(0.0, ph2d_vec_scene::Rgba8::new(255, 0, 0, 255)));
+    // ⚠️ Um VÃO entre os dois: sem ele a união é indistinguível de um rectângulo esticado.
+    let b = scene.push_path(quadrado(3.0, ph2d_vec_scene::Rgba8::new(0, 0, 255, 255)));
+    let xforms = VecXforms::default();
+    let live: LiveGeometry = LiveGeometry::new();
+    let mut scratch: Option<VelloPass> = None;
+
+    let so_um = bake_rgba(
+        &mut scratch,
+        &scene,
+        &xforms,
+        &live,
+        a,
+        &gpu,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+    )
+    .expect("um membro assa");
+    let (rgba, w, h, _) = super::bake_rgba_many(
+        &mut scratch,
+        &scene,
+        &xforms,
+        &live,
+        &[a, b],
+        &gpu,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+    )
+    .expect("o grupo assa");
+
+    assert!(
+        w > so_um.1 * 2,
+        "o ladrilho do grupo tem {w} px e o de um membro so' tem {} - a caixa nao e' a UNIAO, e o \
+         grupo sai cortado",
+        so_um.1
+    );
+    // A tinta nos dois extremos: a fatia esquerda e a direita, a meia altura.
+    let opaco_em = |fx: f32| -> bool {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let x = ((w as f32 - 1.0) * fx) as u32;
+        let y = h / 2;
+        let o = ((y * w + x) * 4) as usize;
+        rgba.get(o + 3).is_some_and(|a| *a > 128)
+    };
+    assert!(opaco_em(0.02), "o membro da ESQUERDA nao esta' no ladrilho");
+    assert!(
+        opaco_em(0.98),
+        "o membro da DIREITA nao esta' no ladrilho - a caixa cresceu e o laco de desenho nao \
+         desenhou o segundo: o grupo sai com metade e um vazio do tamanho da outra"
+    );
+}

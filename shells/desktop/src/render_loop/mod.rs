@@ -9364,13 +9364,20 @@ impl crate::App {
             // ⭐ O assador de FORMA (W7) entra INJECTADO: ele é render + readback, e cablá-lo no
             // memo poria uma `GpuContext` na assinatura e tornaria todo gate dele dependente de uma
             // placa. Aqui ele é a porta única `motion_object_bake::bake_rgba`.
+            // ⭐⭐⭐ **A arte de uma estampa e' um OBJECTO, e um objecto pode ser um GRUPO**
+            // (Enio, 2026-08-30). O `object_selection_for` e' a MESMA porta que o clique no canvas
+            // usa para decidir o que uma seleccao apanha — *"um grupo entra e sai da seleccao
+            // INTEIRO"* —, e ela devolve os caminhos pela ordem do documento, que e' a de z.
+            let object_of = |id| {
+                crate::vec_entities::object_selection_for(sim, vec_scene, &self.vec_entities, id)
+            };
             let mut bake_shape = |id| {
-                crate::motion_object_bake::bake_rgba(
+                crate::motion_object_bake::bake_rgba_many(
                     &mut self.texture_pattern_scratch,
                     vec_scene,
                     &vec_xf,
                     &vec_live,
-                    id,
+                    &object_of(id),
                     surface.gpu(),
                     surface.format(),
                 )
@@ -9381,6 +9388,7 @@ impl crate::App {
                 asset_db,
                 ph2d_editor::image_quality_for(hero.project.image_filter),
                 &mut bake_shape,
+                &object_of,
             );
             self.fx_live.recook(
                 vec_scene,

@@ -428,37 +428,75 @@ pub(crate) fn bake_rgba(
     gpu: &GpuContext,
     surface_format: wgpu::TextureFormat,
 ) -> Option<(Vec<u8>, u32, u32, [f32; 2])> {
+    bake_rgba_many(scratch, scene, xforms, live, &[id], gpu, surface_format)
+}
+
+/// ⭐⭐⭐ **O mesmo assado, para um OBJECTO INTEIRO** (Enio, 2026-08-30: *"assim o grupo poderia ser
+/// usado como pattern"*).
+///
+/// Um grupo não é um caminho — ele é **N** caminhos que se desenham juntos. Este é o
+/// [`bake_rgba`] com a caixa a ser a **união** das dos membros e o desenho a ser um laço sobre eles
+/// **na mesma cena de rascunho**, que é exactamente a receita que o `fx_live::cook_batch` já usa
+/// para assar um lote num render só.
+///
+/// ⚠️ **A ORDEM dos ids é a ordem de z**, e quem a fornece é o chamador (o `object_selection_for`
+/// devolve-a pela ordem do documento). Uma ordem de travessia em profundidade poria o filho errado
+/// por cima, e o defeito só se veria em arte com sobreposição.
+///
+/// ⚠️ Um id que não resolve **não derruba o assado** — ele não contribui para a caixa nem desenha.
+/// Recusar tudo faria um único membro apagado apagar a estampa inteira.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn bake_rgba_many(
+    scratch: &mut Option<VelloPass>,
+    scene: &VecScene,
+    xforms: &VecXforms,
+    live: &LiveGeometry,
+    ids: &[VecPathId],
+    gpu: &GpuContext,
+    surface_format: wgpu::TextureFormat,
+) -> Option<(Vec<u8>, u32, u32, [f32; 2])> {
     let camera = bake_camera();
-    let (x0, y0, x1, y1) = ph2d_vec_render::path_screen_bounds(scene, xforms, live, id, camera)?;
+    // A união das caixas — a mesma dobra que o `path_bounds` já faz por dentro de cada caminho.
+    let mut caixa: Option<(f64, f64, f64, f64)> = None;
+    for &id in ids {
+        if let Some(b) = ph2d_vec_render::path_screen_bounds(scene, xforms, live, id, camera) {
+            caixa = Some(caixa.map_or(b, |a: (f64, f64, f64, f64)| {
+                (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
+            }));
+        }
+    }
+    let (x0, y0, x1, y1) = caixa?;
     let wpx = ((x1 - x0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
     let hpx = ((y1 - y0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
 
-    // Encode the one path, translated so its bbox min corner (the top-left under
+    // Encode the paths, translated so the bbox min corner (the top-left under
     // the Y-flipped camera) lands at the tile origin (0,0) = row 0 = screen-top.
     let mut scratch_scene = VectorScene::new();
-    // ⚠️⚠️ **UM OBJECTO DE MOTION ASSADO DE UMA FORMA COM PADRÃO leva a `fallback`, e é DECLARADO.**
-    // Este assado alimenta o oleoduto do Motion, que não tem o mapa de ladrilhos do quadro em mãos —
-    // a MESMA fronteira da rota de instância (`instance.rs`), e pela mesma razão. ⛔ Não é *"não
-    // deu"*: inventar um mapa aqui seria adivinhar de onde ele vem.
-    ph2d_vec_render::draw_path_isolated(
-        scene,
-        xforms,
-        live,
-        &ph2d_vec_render::PatternTiles::new(),
-        // ⭐⭐ **O PINCEL, ao contrário do padrão, É RESOLÚVEL AQUI** (plano 36, W3) — e a
-        // assimetria é real, não um descuido: o ladrilho de um padrão precisa do assado (arte
-        // descodificada, reticulado composto), que vive fora desta função; a arte de um pincel é
-        // **geometria da mesma cena** que este assado já recebe. ⇒ o padrão leva a `fallback`
-        // declarada acima, e o pincel leva as cópias de verdade.
-        //
-        // ⚠️ *Herdar a limitação do vizinho por simetria seria inventá-la* — a mesma lição que o
-        // encaixe por contorno deu na W2.
-        &crate::brush_live::resolve(scene),
-        id,
-        camera,
-        Affine::translate((-x0, -y0)),
-        &mut scratch_scene,
-    );
+    for &id in ids {
+        // ⚠️⚠️ **UM OBJECTO DE MOTION ASSADO DE UMA FORMA COM PADRÃO leva a `fallback`, e é DECLARADO.**
+        // Este assado alimenta o oleoduto do Motion, que não tem o mapa de ladrilhos do quadro em mãos —
+        // a MESMA fronteira da rota de instância (`instance.rs`), e pela mesma razão. ⛔ Não é *"não
+        // deu"*: inventar um mapa aqui seria adivinhar de onde ele vem.
+        ph2d_vec_render::draw_path_isolated(
+            scene,
+            xforms,
+            live,
+            &ph2d_vec_render::PatternTiles::new(),
+            // ⭐⭐ **O PINCEL, ao contrário do padrão, É RESOLÚVEL AQUI** (plano 36, W3) — e a
+            // assimetria é real, não um descuido: o ladrilho de um padrão precisa do assado (arte
+            // descodificada, reticulado composto), que vive fora desta função; a arte de um pincel é
+            // **geometria da mesma cena** que este assado já recebe. ⇒ o padrão leva a `fallback`
+            // declarada acima, e o pincel leva as cópias de verdade.
+            //
+            // ⚠️ *Herdar a limitação do vizinho por simetria seria inventá-la* — a mesma lição que o
+            // encaixe por contorno deu na W2.
+            &crate::brush_live::resolve(scene),
+            id,
+            camera,
+            Affine::translate((-x0, -y0)),
+            &mut scratch_scene,
+        );
+    }
 
     // Render offscreen (a dedicated scratch pass, reused + resized across bakes)
     // and read the tightly-packed straight RGBA8 back.

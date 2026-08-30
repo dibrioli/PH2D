@@ -62,7 +62,7 @@ struct Key {
     /// mudaria a tela — o defeito EXACTO que o `FxKey` da crate irmã documenta (*"a chave era
     /// `(pilha, w, h)` e a forma não entrava nela, então mudar a cor do fill de uma forma filtrada
     /// não mudava a tela"*).
-    shape: Option<VecPath>,
+    shape: Vec<VecPath>,
 }
 
 /// A ARTE que uma fonte nomeia, no que ela tem de identidade — a metade PURA da resolução.
@@ -70,17 +70,39 @@ struct Key {
 /// ⚠️ Extraída da que assa porque assar precisa de GPU e **isto não**: é aqui que vive a recusa do
 /// ciclo, e ela tem gate.
 #[must_use]
-fn source_shape(scene: &VecScene, host: VecPathId, source: &PatternSource) -> Option<VecPath> {
+fn source_shape(
+    scene: &VecScene,
+    host: VecPathId,
+    source: &PatternSource,
+    object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
+) -> Vec<VecPath> {
     let PatternSource::Shape(id) = source else {
-        return None;
+        return Vec::new();
     };
-    // ⛔⛔ **UMA FORMA NÃO PODE SER O PRÓPRIO PADRÃO.** Assá-la exigiria desenhá-la, desenhá-la
-    // exigiria o ladrilho, e o ladrilho exigiria assá-la. ⚠️ E o sintoma não seria um erro: seria o
-    // app a parar, ou um ladrilho de uma versão anterior de si mesmo a cada quadro.
-    if *id == host {
-        return None;
+    // ⭐⭐⭐ **UM GRUPO PODE SER A ARTE** (Enio, 2026-08-30: *"assim o grupo poderia ser usado como
+    // pattern"*).
+    //
+    // O documento endereça a arte por um `VecPathId` — e um grupo **não tem um**: ele nasce
+    // `(Transform, Name, RootOrder)` e mais nada. ⇒ o id continua a ser o de um CAMINHO, e o que
+    // muda é a **resolução**: ele passa a nomear o OBJECTO a que aquele caminho pertence, que é
+    // exactamente a lei de selecção que o app já tem (*"um grupo entra e sai da selecção INTEIRO"*).
+    //
+    // ⭐ E é por isso que **o schema não se mexe**: nenhuma variante nova, nenhum id de entidade
+    // gravado (que o undo respawna com bits novos), nenhum degrau de migração.
+    let membros = object_of(*id);
+    // ⛔⛔ **A RECUSA DO CICLO passou a ser sobre PERTENÇA, não sobre igualdade.** Antes bastava
+    // `id == host`; com um grupo, o anfitrião pode ser **um membro** da arte — e aí assá-la exigiria
+    // desenhá-lo, desenhá-lo exigiria o ladrilho, e o ladrilho exigiria assá-la. ⚠️ O sintoma não
+    // seria um erro: seria o app a parar.
+    if membros.contains(&host) {
+        return Vec::new();
     }
-    scene.paths().iter().find(|p| p.id == *id).cloned()
+    // ⚠️ **A ORDEM é a do documento** (o `object_of` devolve-a por z), e ela vira a ordem de
+    // desenho do assado: uma travessia em profundidade poria o membro errado por cima.
+    membros
+        .iter()
+        .filter_map(|m| scene.paths().iter().find(|p| p.id == *m).cloned())
+        .collect()
 }
 
 /// ⭐⭐⭐ **A FORMA que este padrão nomeia como arte deixou de existir?** (plano 33, W11.)
@@ -94,8 +116,14 @@ fn source_shape(scene: &VecScene, host: VecPathId, source: &PatternSource) -> Op
 /// carregar — os pixels dela viajam no ficheiro desde a W8, e a ausência é transitória por
 /// construção. *Um aviso permanente sobre um estado transitório ensina o artista a ignorar avisos.*
 #[must_use]
-pub(crate) fn art_is_missing(scene: &VecScene, host: VecPathId, source: &PatternSource) -> bool {
-    matches!(source, PatternSource::Shape(_)) && source_shape(scene, host, source).is_none()
+pub(crate) fn art_is_missing(
+    scene: &VecScene,
+    host: VecPathId,
+    source: &PatternSource,
+    object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
+) -> bool {
+    matches!(source, PatternSource::Shape(_))
+        && source_shape(scene, host, source, object_of).is_empty()
 }
 
 /// Os ladrilhos de padrão da cena, assados e memoizados.
@@ -127,6 +155,7 @@ impl TexturePatternLive {
         assets: &AssetDb,
         quality: ImageQuality,
         bake_shape: &mut dyn FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)>,
+        object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
     ) {
         let mut seen = BTreeSet::new();
         for path in scene.paths() {
@@ -145,7 +174,7 @@ impl TexturePatternLive {
                 .map(|pat| (PatternSlot::Stroke, pat));
             for (slot, pat) in da_forma.into_iter().chain(do_traco) {
                 self.bake_one(
-                    scene, assets, quality, bake_shape, &mut seen, path.id, slot, pat,
+                    scene, assets, quality, bake_shape, object_of, &mut seen, path.id, slot, pat,
                 );
             }
         }
@@ -165,15 +194,16 @@ impl TexturePatternLive {
         assets: &AssetDb,
         quality: ImageQuality,
         bake_shape: &mut dyn FnMut(VecPathId) -> Option<(u32, u32, Vec<u8>)>,
+        object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
         seen: &mut BTreeSet<(VecPathId, PatternSlot)>,
         id: VecPathId,
         slot: PatternSlot,
         pat: &ph2d_vec_scene::PatternFill,
     ) {
-        let shape = source_shape(scene, id, &pat.source);
+        let shape = source_shape(scene, id, &pat.source, object_of);
         // ⚠️ Uma fonte-FORMA que não resolve (inexistente, ou a própria forma) nunca chega ao
         // assador: a recusa é PURA e mora na `source_shape`.
-        if matches!(pat.source, PatternSource::Shape(_)) && shape.is_none() {
+        if matches!(pat.source, PatternSource::Shape(_)) && shape.is_empty() {
             return;
         }
         let key = Key {
@@ -195,7 +225,7 @@ impl TexturePatternLive {
             }
             return;
         }
-        let Some((aw, ah, px)) = art_of(&pat.source, assets, key.shape.is_some(), bake_shape)
+        let Some((aw, ah, px)) = art_of(&pat.source, assets, !key.shape.is_empty(), bake_shape)
         else {
             // A arte ainda não carregou: a entrada fica de fora e a tinta pinta a `fallback` —
             // desenho certo, não desistência. ⚠️ E a chave NÃO se grava, senão o próximo quadro

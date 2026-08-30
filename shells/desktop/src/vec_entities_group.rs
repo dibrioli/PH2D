@@ -44,9 +44,26 @@ pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) 
         return None;
     }
     let order = next_root_order(sim);
+    // ⭐⭐⭐ **O GRUPO NASCE ENTRE OS FILHOS, e não na origem do mundo** (report do Enio,
+    // 2026-08-30: *"o gizmo do objeto pai deveria nascer na posição entre os filhos, mas nasceu no
+    // zero do mundo"*).
+    //
+    // Um grupo não desenha nada, então o gizmo dele **é** a pose dele. Com `Transform::default()`
+    // essa pose era `(0, 0)` — o artista agrupava duas formas ao pé uma da outra e a alça aparecia
+    // longe, muitas vezes fora do ecrã. ⚠️ E não é só estética: **arrastar** e **girar** o grupo
+    // usam essa pose, então girar acontecia em torno de um ponto que não tem nada a ver com o
+    // conteúdo.
+    let centro = centro_dos_membros(sim, &tops);
     let group = sim
         .world_mut()
-        .spawn((Transform::default(), Name::new(name), RootOrder(order)))
+        .spawn((
+            Transform {
+                translation: centro,
+                ..Transform::default()
+            },
+            Name::new(name),
+            RootOrder(order),
+        ))
         .id();
     // `Children` preserva a ordem de inserção → os membros entram na ordem de z.
     for t in tops {
@@ -54,8 +71,42 @@ pub(crate) fn group_entities(sim: &mut SimWorld, members: &[u64], name: String) 
             e.remove::<RootOrder>();
             e.insert(ChildOf(group));
         }
+        // ⚠️⚠️ **A COMPENSAÇÃO, e sem ela agrupar MOVIA tudo.** Um topo é uma raiz, logo o
+        // `translation` dele **é** a posição no mundo; depois do `ChildOf` ele passa a ser LOCAL ao
+        // grupo. Como o grupo nasce sem rotação nem escala, a composição é uma soma pura — subtrair
+        // o centro devolve exactamente a mesma posição no mundo. *Um verbo de organização que
+        // desloca o desenho não é um verbo de organização.*
+        if let Some(mut tr) = sim.world_mut().get_mut::<Transform>(t) {
+            tr.translation -= centro;
+        }
     }
     Some(group.to_bits())
+}
+
+/// O ponto **entre** os membros: a média das poses de topo deles.
+///
+/// ⚠️ **A média das POSES, e não o centro das caixas de desenho.** A pose é a âncora que o artista
+/// já vê e arrasta em cada objecto, existe para sprite, forma e objecto vazio por igual, e não
+/// precisa de resolver geometria nenhuma — o centro da caixa exigiria o documento vectorial, e
+/// daria um ponto que **muda** quando um filho é editado sem se ter movido.
+///
+/// Um membro sem `Transform` não entra na conta (ele também não é propagado).
+fn centro_dos_membros(sim: &SimWorld, tops: &[Entity]) -> ph2d_core::Vec2 {
+    let mut soma = ph2d_core::Vec2::ZERO;
+    let mut n = 0u32;
+    for &t in tops {
+        if let Some(tr) = sim.world().get::<Transform>(t) {
+            soma += tr.translation;
+            n += 1;
+        }
+    }
+    if n == 0 {
+        return ph2d_core::Vec2::ZERO;
+    }
+    #[allow(clippy::cast_precision_loss)] // n <= contagem de objectos de topo da cena
+    {
+        soma / n as f32
+    }
 }
 
 /// Dissolve os grupos de topo tocados por `members`. Um "grupo" aqui é o que a
@@ -69,20 +120,47 @@ pub(crate) fn ungroup_entities(sim: &mut SimWorld, members: &[u64]) -> usize {
         if sim.world().get_entity(e).is_err() {
             continue;
         }
-        let t = top_ancestor(sim, e);
-        if t != e && !tops.contains(&t) && is_plain_group(sim, t) {
-            tops.push(t);
+        // ⭐⭐⭐ **O PRÓPRIO GRUPO conta, e não contava** — achado por gate, 2026-08-30.
+        //
+        // A condição era `t != e`, ou seja: só dissolvia o grupo de quem estivesse **dentro** dele.
+        // Isso bastava enquanto o único chamador era o `Ctrl+Shift+G`, que passa CAMINHOS; o verbo
+        // da Hierarquia passa a **selecção**, e depois de agrupar a selecção **é o grupo** ⇒
+        // *Ungroup* logo a seguir a *Group* era um no-op que dizia *"nada na selecção está dentro
+        // de um grupo"*. O gesto mais natural do artista era o único que não funcionava.
+        //
+        // ⚠️ **E não basta apagar o `t != e`:** um grupo ANINHADO tem por ancestral de topo o grupo
+        // de FORA, então subir dissolveria o pai em vez do que foi clicado. ⇒ quem já é um grupo
+        // responde por si; quem não é, sobe.
+        let alvo = if is_plain_group(sim, e) {
+            e
+        } else {
+            top_ancestor(sim, e)
+        };
+        if !tops.contains(&alvo) && is_plain_group(sim, alvo) {
+            tops.push(alvo);
         }
     }
     let mut order = next_root_order(sim);
     for g in &tops {
         let parent = sim.world().get::<ChildOf>(*g).map(|c| c.parent());
+        // ⚠️⚠️ **A METADE INVERSA DA COMPENSAÇÃO, e ela é obrigatória desde que o grupo nasce
+        // CENTRADO.** Enquanto o grupo estava sempre na origem isto era somar zero e ninguém dava
+        // por ele; com a pose no meio dos filhos, dissolver sem a devolver deslocaria o desenho
+        // inteiro de `-centro`. *Uma cura num sentido que não é aplicada no inverso é meia cura*, e
+        // o inverso aqui é o gesto que o artista usa para verificar o primeiro.
+        let pose = sim
+            .world()
+            .get::<Transform>(*g)
+            .map_or(ph2d_core::Vec2::ZERO, |t| t.translation);
         let kids: Vec<Entity> = sim
             .world()
             .get::<ph2d_ecs::Children>(*g)
             .map(|c| c.iter().copied().collect())
             .unwrap_or_default();
         for k in kids {
+            if let Some(mut tr) = sim.world_mut().get_mut::<Transform>(k) {
+                tr.translation += pose;
+            }
             if let Ok(mut e) = sim.world_mut().get_entity_mut(k) {
                 match parent {
                     Some(p) => {
@@ -112,3 +190,7 @@ fn is_plain_group(sim: &SimWorld, e: Entity) -> bool {
         && w.get::<ph2d_ecs::Children>(e)
             .is_some_and(|c| !c.is_empty())
 }
+
+#[cfg(test)]
+#[path = "vec_entities_group_tests.rs"]
+mod tests;

@@ -463,4 +463,17 @@ pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
         ));
     }
     eprintln!("   {tag}: ARESTA-EQUIVALENTE por casca radial:{linha}");
+    // ⭐⭐⭐ **A RAZÃO PONTA/CORPO, num número só** — a coluna que o report do
+    // artista pede, e a única com alvo DERIVADO: a saída do QRemeshify que ele
+    // aprovou mede `0,59`, e a nossa de 30/08 media `1,18`.
+    //
+    // ⚠️ **Pela porta partilhada** ([`ph2d_quadfill::tip_body_ratio`]) — a mesma
+    // que mede o PEDIDO do campo de passo. Recalcular aqui daria dois números que
+    // ninguém pode dividir um pelo outro.
+    let raiz_area: Vec<f32> = faces.iter().map(|f| area(f).sqrt()).collect();
+    let (razao, amostra) = ph2d_quadfill::tip_body_ratio(&cent, &raiz_area);
+    eprintln!(
+        "   {tag}: ENTREGA razao ponta/corpo {razao:.3}  (alvo derivado do oraculo \
+         aprovado: 0,59 · <1 afina na ponta, >1 engrossa) [amostra da ponta: {amostra} faces]"
+    );
 }

@@ -97,6 +97,38 @@ pub(super) fn sizing_field(work: &Mesh, target: f32, adaptive: f32) -> Vec<f32> 
     // colapsa os dois extremos da banda no mesmo número e o campo sai constante ao bit.
     let field = ph2d_quadflow::ScaleField::adaptive_graded(work, target, adaptive);
     let mut per_vertex: Vec<f32> = (0..work.vert_count()).map(|v| field.at(v)).collect();
+    // ⭐⭐⭐ **O ALISAMENTO CORRE ANTES DA CONTAGEM, e a ordem é load-bearing.**
+    //
+    // ⛔⛔ A 1.ª versão alisava DEPOIS de `pred` estar calculado, e o gate
+    // `a_densidade_segue_a_curvatura_sem_mudar_a_contagem` apanhou-o: o factor de
+    // renormalização descrevia o campo **anterior** ao alisamento, e a contagem
+    // prevista saía `−3,1 %` fora (a barra é `2 %`). *Normalizar por um número
+    // medido sobre um campo que já não existe é normalizar para nada.*
+    let rounds = std::env::var("PH2D_SIZING_SMOOTH")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(SIZING_SMOOTH_ROUNDS);
+    {
+        let (cru, amostra) = ph2d_quadfill::tip_body_ratio(work.positions(), &per_vertex);
+        eprintln!(
+            "[sculpt3d] densidade adaptativa {adaptive:.2}: PEDE CRU razao ponta/corpo \
+             {cru:.3} (amostra da ponta: {amostra} vertices)"
+        );
+    }
+    smooth_in_log(work, &mut per_vertex, rounds);
+    // ⚠️ **A 2.ª leitura, DEPOIS do alisamento** — e a 1.ª versão desta varredura não a
+    // tinha: o print corria **antes** de `smooth_in_log`, então as quatro corridas do
+    // knob imprimiram o MESMO `0,486` e não havia como dizer se o alisamento sequer
+    // mexia no pedido. *Uma sonda posta antes do passo que ela devia medir mede o passo
+    // anterior.* ⭐ E com ela veio o achado: `48` rondas movem o pedido `3 %`, logo o
+    // pedido **nunca foi de alta frequência** e alisar não é o que move a densidade.
+    {
+        let (pedido, amostra) = ph2d_quadfill::tip_body_ratio(work.positions(), &per_vertex);
+        eprintln!(
+            "[sculpt3d] densidade adaptativa {adaptive:.2}: apos {rounds} ronda(s) PEDE \
+             {pedido:.3} (amostra da ponta: {amostra} vertices)"
+        );
+    }
     // ⭐ A contagem que o campo prevê, sobre a mesma área que o alvo escalar prevê.
     let pos = work.positions();
     let (mut pred, mut area) = (0.0f64, 0.0f64);
@@ -154,4 +186,97 @@ pub(super) fn sizing_field(work: &Mesh, target: f32, adaptive: f32) -> Vec<f32> 
         }
     }
     per_vertex
+}
+
+/// ⭐ **Quantas rondas de alisamento o pedido leva** — ver [`smooth_in_log`].
+///
+/// # A varredura que escolheu o `8` (peça do artista, `Detail 0,85`, `Follow Curvature = 1`)
+///
+/// | rondas | quads | razão ponta/corpo | faces na ponta | `>60°` | envies. p99 |
+/// |---|---|---|---|---|---|
+/// | *(knob desligado)* | `9 188` | ⛔ `1,533` | `82` | `2` | `21,6` |
+/// | `0` | `8 033` | `1,144` | `118` | ⛔ **`8`** | `29,2` |
+/// | `4` | `7 869` | `1,057` | `139` | `2` | `25,1` |
+/// | ⭐ **`8`** | `7 602` | **`1,044`** | **`134`** | ⭐ **`0`** | `22,8` |
+/// | `16` | `7 598` | `1,101` | `124` | `1` | `25,0` |
+/// | `48` | `7 824` | ⛔ `1,271` | `99` | `1` | `23,8` |
+///
+/// ⚠️ **O alisamento NÃO é o que move a densidade** — ver [`smooth_in_log`]. O que ele
+/// compra é a **forma**: as faces com canto pior que `60°` caem de `8` para `0`, ficando
+/// melhores que a linha de base. *A adaptação passa a ser de graça em qualidade.*
+///
+/// ⛔ **Acima de `16` ele começa a desfazer a própria adaptação** (`1,271` a `48`): o
+/// pedido é uma prescrição sobre a peça inteira, e difundi-la demais mistura a ponta com
+/// o corpo. `PH2D_SIZING_SMOOTH=<n>` bissecta.
+pub(super) const SIZING_SMOOTH_ROUNDS: usize = 8;
+
+/// ⭐⭐⭐ **ALISA O PEDIDO, em LOG** — e ele é a resposta a uma medição, não uma opção.
+///
+/// # ⛔⛔ O que a medição de 2026-08-30 disse
+///
+/// Com a mesma lei ([`ph2d_quadfill::tip_body_ratio`]) nos dois lados, na peça do
+/// artista a `Detail 0,85`: o campo **PEDE** `0,486` (a ponta com metade do tamanho
+/// do corpo — melhor até que o `0,59` do remalhador que ele aprovou) e a cadeia
+/// **ENTREGA `1,144`** — mais grossa na ponta. *O pedido não é fraco: ele é
+/// descartado, e com o sinal invertido.*
+///
+/// # ⭐ O mecanismo, e porque a cura é ALISAR
+///
+/// O G3 resolve `min ‖∇f − R/h‖²`, cuja condição de óptimo é a equação de Poisson
+/// `Δf = ∇·(R/h)`. ⇒ **o que chega à saída é a divergência do alvo, passada por um
+/// inverso do Laplaciano** — um operador de **passa-baixo**. Um `h` que salta de
+/// vértice para vértice tem a energia toda nas frequências que esse inverso
+/// atenua, e sai de lá quase plano; um `h` **suave** atravessa.
+///
+/// ⚠️ **Em LOG e não linear.** A grandeza que a cadeia consome é uma *razão* de
+/// tamanhos (a ponta é *metade* do corpo, não *menos 0,02*), e a média aritmética
+/// de razões enviesa para o maior. *Alisar `h` faria a ponta subir mais depressa do
+/// que o corpo desce.*
+///
+/// ⚠️ **A média é UMBRELLA (vizinhos por aresta), não cotangente.** O peso
+/// cotangente é o certo para difundir uma quantidade sobre a *superfície*; aqui o
+/// que se difunde é uma **prescrição**, e um peso que depende da forma dos
+/// triângulos faria o pedido mudar com a triangulação que o F1 calhou de dar.
+///
+/// ⛔ **Não confundir com a suavização do campo de DIRECÇÕES**, construída e não
+/// adoptada em 28/08 (handoff §8-sexies): aquela alisa para onde a grade aponta,
+/// esta aliza *quão fina* ela é. Grandezas diferentes, medições diferentes.
+pub(super) fn smooth_in_log(mesh: &Mesh, per_vertex: &mut [f32], rounds: usize) {
+    if rounds == 0 || per_vertex.is_empty() {
+        return;
+    }
+    // Vizinhança por aresta, construída uma vez.
+    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); per_vertex.len()];
+    for f in mesh.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
+            if a < nbr.len() && b < nbr.len() {
+                nbr[a].push(v[(k + 1) % v.len()]);
+                nbr[b].push(v[k]);
+            }
+        }
+    }
+    let mut log: Vec<f32> = per_vertex.iter().map(|h| h.max(1.0e-9).ln()).collect();
+    let mut next = log.clone();
+    for _ in 0..rounds {
+        for (i, ns) in nbr.iter().enumerate() {
+            if ns.is_empty() {
+                continue;
+            }
+            let mut s = 0.0f32;
+            for &j in ns {
+                s += log[j as usize];
+            }
+            #[allow(clippy::cast_precision_loss)]
+            let mean = s / ns.len() as f32;
+            // ⚠️ **Meio passo** (`½`), como no Laplaciano do resto da casa: um passo
+            // inteiro sobre uma umbrella não é contractivo e pode oscilar.
+            next[i] = 0.5f32.mul_add(mean - log[i], log[i]);
+        }
+        std::mem::swap(&mut log, &mut next);
+    }
+    for (h, l) in per_vertex.iter_mut().zip(log) {
+        *h = l.exp();
+    }
 }

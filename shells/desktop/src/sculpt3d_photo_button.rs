@@ -176,6 +176,7 @@ fn the_artists_piece_through_the_button() {
     census("SAIDA", &out);
     islands("SAIDA", &out);
     local_shape("SAIDA", &out);
+    super::orientation_and_density("SAIDA", &out);
     relief_density("SAIDA", &out);
     // ⭐ **`PH2D_DUMP=<ficheiro>` escreve a saída** — é o que permite medir a SECÇÃO do
     // espinho fora daqui, com a mesma régua que comparou as três malhas do artista.

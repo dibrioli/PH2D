@@ -316,3 +316,108 @@ fn a_densidade_segue_a_curvatura_sem_mudar_a_contagem() {
         100.0 * (adapted / uniform - 1.0)
     );
 }
+
+/// ⭐⭐⭐ **O ALISAMENTO DO PEDIDO É EM LOG, e o gate é a MÉDIA GEOMÉTRICA.**
+///
+/// ⛔⛔ **É a única asserção que distingue as duas leis.** Um campo de duas metades
+/// `{1, 4}` difundido até assentar converge para `2` se a média for **geométrica**
+/// (log) e para `2,5` se for **aritmética** (linear) — e as duas passam em qualquer
+/// gate que só olhe «o campo ficou mais uniforme».
+///
+/// ⚠️ **Por que log é a lei certa:** a grandeza que a cadeia consome é uma *razão*
+/// de tamanhos (*«a ponta é METADE do corpo»*), não uma diferença. Alisar em linear
+/// enviesa para o maior — a ponta subiria mais depressa do que o corpo desce, que é
+/// o contrário do que o report do artista pede.
+#[test]
+fn o_alisamento_do_pedido_e_geometrico_e_nao_aritmetico() {
+    // Um quadrado de 4 vértices: dois valem `1` e dois valem `4`.
+    let mesh = ph2d_mesh::Mesh::from_parts(
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ],
+        vec![ph2d_mesh::Face::quad(0, 1, 2, 3)],
+    )
+    .expect("a fixtura e' construida aqui");
+
+    let mut h = vec![1.0f32, 1.0, 4.0, 4.0];
+    super::target::smooth_in_log(&mesh, &mut h, 200);
+
+    let geo = 2.0f32; // √(1×4)
+    let arit = 2.5f32; // (1+4)/2
+    for v in &h {
+        assert!(
+            (v - geo).abs() < 0.05,
+            "o campo assentou em {v:.3}; a media GEOMETRICA e' {geo} e a ARITMETICA {arit} \
+             -- se ele assentar na aritmetica, o alisamento deixou de ser em log"
+        );
+    }
+    assert!(
+        (h[0] - arit).abs() > 0.4,
+        "⛔ o CONTROLO: o valor tem de ficar LONGE da media aritmetica, senao este gate \
+         nao distingue as duas leis"
+    );
+}
+
+/// ⚠️ **Zero rondas é um no-op BYTE-IDÊNTICO** — a metade que mantém
+/// `PH2D_SIZING_SMOOTH=0` a ser uma bissecção honesta.
+#[test]
+fn zero_rondas_de_alisamento_nao_mexe_no_pedido() {
+    let mesh = ph2d_mesh::shapes::uv_sphere(12, 8, 1.0);
+    let antes: Vec<f32> = (0..mesh.vert_count())
+        .map(|i| 0.01f32.mul_add(i as f32, 0.05))
+        .collect();
+    let mut depois = antes.clone();
+    super::target::smooth_in_log(&mesh, &mut depois, 0);
+    assert_eq!(
+        antes.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        depois.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        "zero rondas tem de devolver os MESMOS BITS"
+    );
+}
+
+/// ⭐⭐⭐ **O MEIO-PASSO É O QUE FAZ O ALISAMENTO CONVERGIR** — e este gate nasceu de
+/// uma mutação que sobreviveu.
+///
+/// ⛔⛔ **A fixtura tem de ALTERNAR com a bipartição do grafo.** O anel de vértices
+/// de um quad é um ciclo de comprimento `4`, que é **bipartido**: `{0, 2}` de um
+/// lado, `{1, 3}` do outro. Um passo INTEIRO de Jacobi (`v ← média dos vizinhos`)
+/// troca os dois lados a cada ronda e **oscila para sempre**; o meio-passo
+/// (`v ← v + ½(média − v)`) contrai.
+///
+/// ⚠️ **O gate irmão, com `{1, 1, 4, 4}`, NÃO distingue os dois** — ali a partição
+/// dos valores não coincide com a do grafo e o passo inteiro também converge. *Foi
+/// exactamente essa mutação que sobreviveu, e a cura é a fixtura, não a lei.*
+#[test]
+fn o_alisamento_converge_mesmo_quando_o_pedido_alterna() {
+    let mesh = ph2d_mesh::Mesh::from_parts(
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ],
+        vec![ph2d_mesh::Face::quad(0, 1, 2, 3)],
+    )
+    .expect("a fixtura e' construida aqui");
+
+    // ⚠️ Os valores alternam AO LONGO DO ANEL — é isso que arma a oscilação.
+    let mut h = vec![1.0f32, 4.0, 1.0, 4.0];
+    super::target::smooth_in_log(&mesh, &mut h, 200);
+
+    let span =
+        h.iter().copied().fold(f32::MIN, f32::max) / h.iter().copied().fold(f32::MAX, f32::min);
+    assert!(
+        span < 1.01,
+        "⛔ o campo NAO assentou: ele ainda varia {span:.3}x depois de 200 rondas ({h:?}) \
+         -- um passo INTEIRO sobre um grafo bipartido troca os dois lados para sempre"
+    );
+    for v in &h {
+        assert!(
+            (v - 2.0).abs() < 0.05,
+            "assentou em {v:.3} e a media geometrica de 1 e 4 e' 2,0"
+        );
+    }
+}

@@ -356,3 +356,57 @@ fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
 #[cfg(test)]
 #[path = "local_tests.rs"]
 mod tests;
+
+/// ⭐⭐⭐ **A RAZÃO PONTA/CORPO de um campo escalar sobre pontos** — a lei que
+/// responde *«a ponta é mais fina que o corpo?»*, e ela tem **dois** consumidores
+/// de propósito.
+///
+/// ⚠️⚠️ **É a mesma pergunta feita ao PEDIDO e à ENTREGA**, e é por isso que ela
+/// vive numa porta: o campo de passo que a cadeia *pede* é um valor por **vértice
+/// da malha de trabalho**, e o que ela *entrega* é a raiz da área por **face da
+/// saída** — domínios diferentes, lei igual. *Medi-los com duas funções daria dois
+/// números que ninguém pode dividir um pelo outro.*
+///
+/// ⚠️ **O «corpo» é a casca MAIS POVOADA, nunca uma escolhida.** Numa bola de
+/// espinhos as cascas do meio têm milhares de pontos e a de fora dezenas; dividir
+/// por uma casca fixa mede a forma da peça em vez da densidade.
+///
+/// Devolve `(razão, quantos pontos na casca da ponta)` — ⚠️ **a contagem vai
+/// junto**: uma mediana de 12 amostras não é uma medição, e sem o denominador ao
+/// lado ninguém sabe distinguir as duas.
+#[must_use]
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub fn tip_body_ratio(points: &[[f32; 3]], values: &[f32]) -> (f32, usize) {
+    const SHELLS: usize = 5;
+    if points.is_empty() || points.len() != values.len() {
+        return (0.0, 0);
+    }
+    let mut c = [0.0f64; 3];
+    for p in points {
+        for k in 0..3 {
+            c[k] += f64::from(p[k]);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let n = points.len() as f64;
+    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let d: Vec<f32> = points.iter().map(|p| dist(*p, mid)).collect();
+    let far = d.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
+
+    let mut shells: Vec<Vec<f32>> = vec![Vec::new(); SHELLS];
+    for (i, v) in values.iter().enumerate() {
+        #[allow(clippy::cast_precision_loss)]
+        let s = ((d[i] / far) * SHELLS as f32)
+            .floor()
+            .min((SHELLS - 1) as f32) as usize;
+        shells[s].push(*v);
+    }
+    for s in &mut shells {
+        s.sort_by(f32::total_cmp);
+    }
+    let med = |s: &Vec<f32>| if s.is_empty() { 0.0 } else { s[s.len() / 2] };
+    let body = shells.iter().max_by_key(|s| s.len()).map_or(0.0, med);
+    let tip = med(&shells[SHELLS - 1]);
+    let ratio = if body > 1.0e-9 { tip / body } else { 0.0 };
+    (ratio, shells[SHELLS - 1].len())
+}

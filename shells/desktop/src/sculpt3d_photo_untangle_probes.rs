@@ -78,14 +78,32 @@ pub(super) fn seam_free_probe(
         "  COSTURA LIVRE (descida projectada): dobras {antes} -> {depois}  |  curva {curva:?}  |  {:.0} ms",
         relogio.elapsed().as_secs_f64() * 1000.0
     );
+    // ⛔⛔ **O VEREDITO LÊ A CURVA, e não só o último número** — e a 1.ª redacção disto lia só
+    // o último, com um limiar de metade: sobre `120 → 66` ela imprimia *«a obra grande está
+    // condenada»*, que é **mais do que esta sonda mede**.
+    //
+    // ⚠️ **O que ela de facto mede é uma APROXIMAÇÃO da obra grande**, e uma aproximação com um
+    // defeito conhecido: a costura entra por **projecção** (`derive` empurra o valor da cópia
+    // RAIZ para as outras), logo **todo o trabalho que a descida fez nas cópias não-raiz é
+    // deitado fora a cada ronda**. *A projecção luta com a descida* — e é isso que uma curva
+    // que estabiliza e depois **oscila** diz.
+    //
+    // ⇒ ⛔ **Um planalto com oscilação não condena a obra grande; condena ESTE instrumento.**
+    // A obra grande exprime a energia **nas variáveis livres** do `ClosureSystem` — a costura
+    // por **eliminação**, não por projecção —, e aí a descida nunca produz um estado que a
+    // restrição tenha de desfazer.
+    let oscila = curva.windows(2).filter(|w| w[1] > w[0]).count();
     eprintln!(
         "  ⇒ {}",
         if depois == 0 {
             "⭐⭐⭐ ZERA: a liberdade da costura CHEGA, e a obra grande tem sujeito"
-        } else if depois < antes / 2 {
-            "⚠️ desce muito mas nao zera -- a obra grande ajuda e nao resolve"
+        } else if oscila >= 2 {
+            "⚠️ PLANALTO COM OSCILACAO: a projeccao luta com a descida (o `derive` deita fora o \
+             trabalho das copias nao-raiz) -- INCONCLUSIVO sobre a obra grande, que elimina em \
+             vez de projectar"
         } else {
-            "⛔ NAO desce: a liberdade da costura NAO chega, e a obra grande esta' condenada"
+            "⚠️ desce e para, sem oscilar -- o limite pode ser da liberdade, e ai' a obra grande \
+             ajuda sem resolver"
         }
     );
 }

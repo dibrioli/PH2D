@@ -393,3 +393,39 @@ de variáveis** do `ClosureSystem` (que é o que preserva a `GP`). ⚠️ **É a
 troca uma relaxação linear por uma descida não-linear na fase mais central da cadeia. ⛔ E o preço
 tem de ser medido contra o relógio do artista **antes** de shipar — o passe de `§9` já mostrou que
 `+56 %` é fácil de gastar.
+
+---
+
+## §11 — ⚠️ A VIABILIDADE DA OBRA GRANDE: INCONCLUSIVA, e o instrumento é o culpado
+
+O §10 concluiu que a injectividade tem de ser propriedade do **objectivo**, sobre as variáveis que
+a costura deixa livres. ⭐ **Antes de reescrever o G3, a pergunta era se essa liberdade CHEGA** —
+a lei de *medir se a cura tem sujeito antes de a construir*.
+
+**A sonda** (`seam_free_probe`): resolver o contínuo, depois alternar *descida sem NADA preso* com
+`derive` de todas as classes — a costura por **projecção**. Peça do artista, `Detail 0,85`:
+
+```
+dobras 120 -> 66   |   curva [90, 65, 68, 68, 65, 66, 69, 68, 76, 71, 68, 66]   |   102 ms
+```
+
+⭐ **Cai `45 %` em DUAS rondas e depois OSCILA** — `65`, `76`, `71`, `68`, `66`… Mais iterações não
+compram nada.
+
+### ⛔⛔ E o veredito que eu tinha escrito na sonda EXCEDIA o que ela mede
+
+A 1.ª redacção lia só o último número contra um limiar de metade e imprimia *«a obra grande está
+condenada»*. ⛔ **Isso é mais do que esta sonda pode dizer**, e a curva prova-o: um planalto **com
+oscilação** não é um limite da liberdade — é o **instrumento a lutar consigo próprio**.
+
+⚠️ **O mecanismo, e é da construção da sonda:** a costura entra por **projecção**, e o `derive`
+empurra o valor da cópia **RAIZ** para todas as outras ⇒ **todo o trabalho que a descida fez nas
+cópias não-raiz é deitado fora a cada ronda.** *A descida desfaz e a projecção refaz, para sempre.*
+
+⇒ ⭐⭐ **A obra grande não é isto.** Ela exprime a energia **nas variáveis livres** do
+`ClosureSystem` — a costura por **eliminação**, não por projecção —, e aí a descida **nunca produz
+um estado que a restrição tenha de desfazer**. *A sonda mediu um espantalho da obra, não a obra.*
+
+⇒ ⏳ **A viabilidade continua por decidir**, e o instrumento que a decide é a própria obra. ⚠️ O
+que esta medição compra é o **limite inferior**: mesmo com a costura a lutar, `45 %` das dobras do
+contínuo cedem em `102 ms`. *Não é uma promessa; é um piso.*

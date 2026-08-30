@@ -77,11 +77,12 @@ O resumo que decide o que podemos fazer:
 
 ## Estado (2026-08-30)
 
-✅ **Etapa 1 fechada** e **cinco decisões tomadas pelo Enio**
+✅ **Etapa 1 fechada** e **seis decisões tomadas pelo Enio**
 ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)): painéis **ancorados com flutuação
 declarada** · comandos em **barra global + cabeçalho por área** · **Layouts por tarefa** (e
 ⚠️ **Modos são per-objecto** — D3 corrigida por ele) · **encaixes fixos** · **a régua entra na
-área de desenho**.
+área de desenho** · e a **tabela de modos por tipo de objecto** (D6), com o Flip a ganhar `Draw`
+próprio.
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
 - **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da

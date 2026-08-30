@@ -409,17 +409,41 @@ fn paint_axis(
         }
         let label = label_text(t.world - o, step, display);
         // O rótulo cabe na parte da faixa que os traços não usam.
-        let cell = if horizontal {
-            Rect::new(
+        if horizontal {
+            let cell = Rect::new(
                 t.screen - MIN_LABEL_PX * 0.5,
                 band.y,
                 MIN_LABEL_PX,
                 band.h - len,
-            )
+            );
+            paint_text_centered(text_system, scene, &label, cell, LABEL_PX, text);
         } else {
-            Rect::new(band.x, t.screen - band.w * 0.5, band.w - len, band.w)
-        };
-        paint_text_centered(text_system, scene, &label, cell, LABEL_PX, text);
+            // ⭐⭐ **O rótulo da régua VERTICAL é RODADO** (Enio, 2026-08-30, com a foto do GIMP
+            // ao lado: *«na régua vertical veja que os números ficam na vertical — é o único
+            // jeito de não provocar problemas de espaçamento»*).
+            //
+            // ⚠️ **E é aritmética, não gosto.** A faixa tem [`RULER_PX`] = 20 px de largura, e o
+            // traço maior come `MAJOR_TICK_FRAC` dela — sobram **9 px** para o número. Deitado,
+            // um `-400` mede ~20 px e não cabe: ou transborda para o desenho ou é cortado. De
+            // pé, os 9 px são a ALTURA de um glifo de 9 px, e o comprimento do número corre ao
+            // longo da régua, onde há espaço de sobra (o passo mínimo entre rótulos é
+            // [`MIN_LABEL_PX`] = 56).
+            //
+            // ⚠️ A âncora é o canto **inferior**-esquerdo da caixa rodada — daí somar meia
+            // largura do texto ao `y` para o centrar no traço. É a mesma lei que o sub-rótulo do
+            // trilho usa, e a mesma porta ([`crate::paint_text::paint_text_rotated_ccw`]).
+            let text_w = text_system.prefix_width(&label, LABEL_PX);
+            crate::paint::paint_text_rotated_ccw(
+                text_system,
+                scene,
+                &label,
+                band.x + (band.w - len - LABEL_PX) * 0.5,
+                t.screen + text_w * 0.5,
+                LABEL_PX,
+                band.h,
+                text,
+            );
+        }
     }
 }
 

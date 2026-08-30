@@ -467,13 +467,17 @@ impl HeroLayout {
         //
         // ⚠️ Uma coluna VAZIA não é reservada — a área cresce para dentro dela; uma OCUPADA é,
         // seja quem for que lá esteja. Quem responde é o `DockSides::from_published`.
+        // ⚠️ **A área ENCOSTA na coluna** (Enio, 2026-08-30, com seta: *«a régua deve ficar
+        // colada na hierarquia, e a nossa tem um espaço ruim»*). O `EDGE_PAD` que aqui estava era
+        // o último dos quatro espaços mortos — e o pior, porque a régua nasce na borda da área e
+        // o buraco ficava entre ela e o painel, onde salta à vista.
         let area_x0 = if docks.left {
-            left_col_right + EDGE_PAD
+            left_col_right
         } else {
             viewport.x + rail_w
         };
         let area_x1 = if docks.right {
-            right_col_left - EDGE_PAD
+            right_col_left
         } else {
             viewport.x + viewport.w
         };

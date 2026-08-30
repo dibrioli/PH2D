@@ -165,6 +165,8 @@ fn row(kind: u8) -> ph2d_panel_vector::TexturePatternRow {
         angle_deg: 0.0,
         shift_pct: [0.0, 0.0],
         mode: 0,
+        // A referência é um ladrilho que FECHA — a dica de costura tem gate próprio.
+        wrap_seam_visible: false,
     }
 }
 
@@ -390,4 +392,60 @@ fn the_lock_checkbox_is_fed_by_the_published_state() {
         "a caixa deixou de ser alimentada pelo estado publicado tal e qual - ela passa a mentir \
          sobre o cadeado, e nenhum gate de alcance o ve^"
     );
+}
+
+/// ⭐⭐⭐ **O AVISO DE COSTURA aparece, e SÓ onde ele tem sujeito** (plano 33, W10).
+///
+/// Um ladrilho cujo salto na volta passa o joelho medido mostra uma aresta dura em cada fronteira.
+/// O app tem os bytes, mediu-o no assado, e diz-lo — com o remédio ao lado.
+///
+/// # ⚠️ O oráculo é a GEOMETRIA, e não um id
+///
+/// Uma dica é **texto**: ela não regista hit-rect nenhum (é a lei do `label_line`, e o
+/// `architecture_panel_wiring_parity` está certo em não exigir nada dela — não há o que registar).
+/// Logo o `painted_rect` **não a vê**. O que se afirma é o que ela **desloca**: a altura do
+/// conteúdo do painel. É o mesmo oráculo que o aviso da §11 do Sprite usa.
+///
+/// # As três metades
+///
+/// - `Tile` + salto visível ⇒ **fala** (o conteúdo cresce);
+/// - `Tile` sem salto ⇒ cala;
+/// - `Mirror` ⇒ cala **mesmo com salto**, porque ele fecha a junta por construção — e é ele o
+///   remédio que a frase aponta. ⛔ Um aviso que aparece no modo que o cura ensina a ignorá-lo.
+/// - `Clamp` ⇒ cala (uma cópia só, não há junta). ⚠️ Ele esconde outras fileiras, então a linha
+///   de base dele é **a dele próprio** — comparar com a do `Tile` mediria os knobs escondidos.
+#[test]
+fn the_seam_hint_shows_only_where_it_has_a_subject() {
+    let altura = |mode: u8, visivel: bool| -> f32 {
+        state::set_current_fill(Some(FillKind::Pattern), None);
+        let mut r = row(0);
+        r.mode = mode;
+        r.wrap_seam_visible = visivel;
+        state::set_current_texture_pattern(0, Some(r));
+        let mut host = MockPanelHost::with_panel::<VectorPanel>();
+        let mut st = VectorPanelState;
+        let _ = host.painted_rect::<VectorPanel>(
+            &mut st,
+            VIEWPORT,
+            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
+        );
+        ph2d_panel_vector::last_content_h()
+    };
+    let calado = altura(0, false);
+    let falando = altura(0, true);
+    assert!(
+        falando > calado + 1.0,
+        "o aviso de costura nao DESLOCOU nada ({falando} contra {calado}) - ele nao esta' a ser \
+         pintado, e o artista fica com uma aresta dura em cada fronteira sem saber porque'"
+    );
+    assert!(
+        (altura(1, true) - calado).abs() < 0.5,
+        "o MIRROR mostrou o aviso - ele fecha a junta por construcao, e avisar no modo que cura \
+         ensina o artista a ignorar o aviso"
+    );
+    assert!(
+        (altura(2, true) - altura(2, false)).abs() < 0.5,
+        "o CLAMP mostrou o aviso - ali ha' UMA copia e junta nenhuma"
+    );
+    state::set_current_texture_pattern(0, None);
 }

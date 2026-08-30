@@ -97,12 +97,35 @@ fn each_paint_publishes_its_own_law() {
         publish.contains("ph2d_panel_vector::set_current_texture_pattern(\n                slot,"),
         "a lei do padrao deixou de ser publicada POR TINTA"
     );
-    assert_eq!(
-        publish
-            .matches("crate::texture_pattern_edit::pattern_at(")
-            .count(),
-        2,
-        "as duas tintas tem de ser lidas pela MESMA porta, uma vez cada"
+    // ⛔⛔ **ESTE GATE CONTAVA `2` E REPROVOU CÓDIGO CERTO** (plano 33, W10, 2026-08-30).
+    //
+    // A lei é *"as duas tintas são lidas pela MESMA porta"*. A redacção anterior media-a contando
+    // **duas** chamadas a `pattern_at(` — uma por tinta —, e isso confundia a lei com o ARRANJO:
+    // quando a publicação virou um laço sobre `[(0, Fill), (1, Stroke)]`, a porta passou a ser
+    // chamada **uma vez para as duas**, que é estritamente mais forte, e o gate ficou vermelho
+    // sobre uma melhoria. *Um gate textual que conta ocorrências reprova toda desduplicação
+    // legítima.*
+    //
+    // ⇒ o que se afirma agora são as duas metades que a lei de facto tem:
+    // **as duas tintas estão cobertas**, e **não há uma terceira rota**.
+    for tinta in [
+        "ph2d_vec_render::PatternSlot::Fill",
+        "ph2d_vec_render::PatternSlot::Stroke",
+    ] {
+        assert!(
+            publish.contains(tinta),
+            "a publicacao da lei do padrao deixou de nomear `{tinta}` - uma das duas tintas parou \
+             de ser lida, e a seccao dela fica a mostrar o que sobrou do quadro anterior"
+        );
+    }
+    let portas = publish
+        .matches("crate::texture_pattern_edit::pattern_at(")
+        .count();
+    assert!(
+        (1..=2).contains(&portas),
+        "`pattern_at` e' chamada {portas} vezes - uma (o laco sobre as duas tintas) ou duas (uma \
+         por tinta) sao o desenho; mais do que isso e' uma terceira rota a ler padrao, e duas \
+         rotas divergem no primeiro ajuste"
     );
 }
 

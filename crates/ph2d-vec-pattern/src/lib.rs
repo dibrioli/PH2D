@@ -28,14 +28,18 @@
 
 mod bake;
 mod place;
+mod seam;
 
 #[cfg(test)]
 mod bake_tests;
 #[cfg(test)]
 mod place_tests;
+#[cfg(test)]
+mod seam_tests;
 
 pub use bake::{BakeError, MAX_TILE_EDGE_PX, Tile, bake};
 pub use place::{HEX_ROW_RATIO, gap_px_from_world, hex_row_period, placement};
+pub use seam::{SEAM_VISIBLE, seam_is_visible, tiles_cleanly, wrap_seam};
 
 use serde::{Deserialize, Serialize};
 

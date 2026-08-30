@@ -202,6 +202,11 @@ impl TexturePatternLive {
                 return;
             }
         };
+        // ⭐⭐ **O salto na volta mede-se AQUI, uma vez** (plano 33 W10) — no assado, antes de os
+        // bytes irem para o `StableImage`. É o único sítio do quadro em que eles existem em CPU, e
+        // é memoizado com o resto: recalcular por quadro seria varrer o perímetro de todo ladrilho
+        // da cena para responder sempre a mesma coisa.
+        let wrap_seam = ph2d_vec_pattern::wrap_seam(&tile);
         let Some(image) = StableImage::from_rgba(Arc::new(tile.rgba), tile.width, tile.height)
         else {
             self.tiles.remove(&slot_key);
@@ -215,6 +220,7 @@ impl TexturePatternLive {
                 cells: tile.cells,
                 tile_px: [tile.width, tile.height],
                 quality,
+                wrap_seam,
             },
         );
         self.keys.insert(slot_key, key);

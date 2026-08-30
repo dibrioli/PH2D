@@ -9,7 +9,7 @@
 //! arquivo ao teto.
 
 use super::paint_sections::{BodyCtx, LABEL_COL_W};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::{paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::showcase::{paint_section_separator, read_number_input};
 use ph2d_editor_core::widget::{
     Button, ButtonKind, Checkbox, CheckboxValue, ColorSwatch, NumberInput, SwatchSize,
@@ -163,6 +163,34 @@ impl BodyCtx<'_> {
             resolve(ColorToken::Text2, self.theme),
         );
         y + self.row_h + Spacing::Xs.px()
+    }
+
+    /// **Uma DICA** — uma frase esmaecida que explica algo que o app mediu, e que pode quebrar em
+    /// mais de uma linha.
+    ///
+    /// ⚠️⚠️ **É `paint_text_block` e não `paint_text`, e a diferença é um defeito que outro painel
+    /// já pagou** (smoke do Enio sobre o 9-slice, 2026-08-22): uma dica é uma FRASE, e numa coluna
+    /// estreita ela quebra — avançar a altura de UMA linha escreve a fileira seguinte por cima
+    /// dela. É por isso que a `label_line` (um readout curto, de uma linha) não serve aqui.
+    ///
+    /// ⚠️ `Text3` e não `Text2`: o `ColorToken` diz-se *"tertiary/hints"*, e uma dica não pode
+    /// competir com os rótulos dos controlos que ela comenta. ⛔ E **não** é `Warn` — o app está
+    /// correcto e o padrão desenha o que foi pedido; o que se comenta é a ARTE.
+    pub(crate) fn hint_line(&mut self, text: &str, y: f32) -> f32 {
+        let font = TypeToken::Sm.px();
+        let usado = paint_text_block(
+            self.text_system,
+            self.scene,
+            text,
+            self.inner_x,
+            y + (self.row_h - font) * 0.5,
+            font,
+            self.inner_w,
+            resolve(ColorToken::Text3, self.theme),
+        );
+        // O piso é a altura de uma row: uma dica de uma linha ocupa o que uma linha sempre ocupou,
+        // e só o excedente da quebra é acrescentado.
+        y + (self.row_h - font).mul_add(0.5, usado).max(self.row_h) + Spacing::Xs.px()
     }
 
     /// **O mesmo readout, num RECT dado, e sem avançar o `y`** — para quando a linha partilha a

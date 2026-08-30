@@ -248,6 +248,7 @@ fn a_tile_replaces_the_fallback_and_without_one_the_encode_is_the_solids() {
             cells: [1, 1],
             tile_px: [1, 1],
             quality: ImageQuality::Medium,
+            wrap_seam: 0,
         },
     );
     let c = run(&pat, &tiles);
@@ -339,6 +340,7 @@ fn a_patterned_shape_still_draws_its_stroke() {
         cells: [1, 1],
         tile_px: [1, 1],
         quality: ImageQuality::Medium,
+        wrap_seam: 0,
     };
     assert_eq!(draw(pat(), Some(&t)), 2, "COM ladrilho, o traco sumiu");
 }
@@ -395,6 +397,7 @@ fn the_isolated_rasterisation_honours_the_pattern_tile() {
             cells: [1, 1],
             tile_px: [1, 1],
             quality: ImageQuality::Medium,
+            wrap_seam: 0,
         },
     );
     assert_ne!(

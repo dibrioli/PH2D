@@ -70,6 +70,17 @@ pub struct TexturePatternRow {
     pub shift_pct: [f64; 2],
     /// `0` Tile · `1` Mirror · `2` Clamp.
     pub mode: u8,
+    /// ⭐⭐⭐ **A junta deste ladrilho consigo próprio VÊ-SE?** (plano 33, W10.)
+    ///
+    /// Medido no assado por [`ph2d_vec_pattern::wrap_seam`] contra o joelho `SEAM_VISIBLE`, que
+    /// saiu de uma varredura na GPU. Acima dele o artista tem **uma aresta dura em cada fronteira**
+    /// — não é o filtro, é a arte, e ela repete-se de propósito.
+    ///
+    /// ⚠️⚠️ **`false` quer dizer «não há nada a dizer», e NUNCA «está provado que fecha».** Um
+    /// ladrilho que ainda não assou (a arte a carregar, a forma-fonte apagada) também dá `false` —
+    /// *um zero de «não medido» e um de «perfeito» são o mesmo byte*, e aqui os dois têm de levar
+    /// à mesma acção: **calar**. Um aviso sobre um ladrilho que não existe é ruído.
+    pub wrap_seam_visible: bool,
 }
 
 /// Publica a lei do padrão da tinta `slot` (`None` esconde a secção dela).

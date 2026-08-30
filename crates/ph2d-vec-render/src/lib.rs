@@ -188,6 +188,16 @@ pub struct PatternTile {
     /// ⚠️ Ele vem de fora porque esta crate não conhece as preferências do app — a mesma razão pela
     /// qual o `draw_image_rgba` já o recebe em vez de o adivinhar.
     pub quality: ph2d_vector::ImageQuality,
+    /// ⭐⭐⭐ **O SALTO deste ladrilho na volta** ([`ph2d_vec_pattern::wrap_seam`], plano 33 W10) — o
+    /// maior degrau que aparece quando ele encosta numa cópia de si mesmo. `0` = fecha exactamente.
+    ///
+    /// ⚠️ **Mede-se no ASSADO, não na arte**, e a diferença é o produto: um vão positivo separa as
+    /// cópias com espaço transparente, então a mesma arte que não encaixa colada **encaixa** com vão.
+    /// A pergunta do artista é sobre o que ele vê, e o que ele vê é o ladrilho.
+    ///
+    /// ⚠️ Viaja aqui porque é medido **uma vez**, no assado — e o assado é memoizado. Recalculá-lo
+    /// por quadro seria varrer o perímetro de todo ladrilho da cena para responder à mesma coisa.
+    pub wrap_seam: u8,
 }
 
 /// ⭐ **QUAL das duas tintas de uma forma** este ladrilho serve (plano 35, wave B).

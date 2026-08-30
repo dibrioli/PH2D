@@ -49,6 +49,10 @@ pub(super) fn publish(
     snap: crate::vec_snap::VecSnapSettings,
     // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
     texpat_lock: bool,
+    // ⭐ Os ladrilhos ASSADOS deste quadro — só para ler o salto de cada um na volta (W10). A
+    // consulta vive aqui, e não na shell, porque é aqui que o `slot` e a forma selecionada já
+    // estão emparelhados: resolvê-la lá acima duplicaria esse par.
+    tiles: &ph2d_vec_render::PatternTiles,
 ) {
     // ── 5. Sync swatch colours (seeds the picker on open) + Opacity sliders
     //    (so a picker alpha shows on the panel) + publish. ──────────────────
@@ -244,32 +248,17 @@ pub(super) fn publish(
         // dizia qual era; o artista mexia num knob e via o outro sujeito mudar. Com duas secções, o
         // sujeito está no id do controlo — e a preferência de sessão que os coagia deixou de
         // existir, com a classe inteira de defeitos que ela trazia.
-        for (slot, pat) in [
-            (
-                0,
-                pen.selected()
-                    .and_then(|sel| {
-                        crate::texture_pattern_edit::pattern_at(
-                            scene,
-                            sel,
-                            ph2d_vec_render::PatternSlot::Fill,
-                        )
-                    })
-                    .cloned(),
-            ),
-            (
-                1,
-                pen.selected()
-                    .and_then(|sel| {
-                        crate::texture_pattern_edit::pattern_at(
-                            scene,
-                            sel,
-                            ph2d_vec_render::PatternSlot::Stroke,
-                        )
-                    })
-                    .cloned(),
-            ),
+        // ⚠️ O `PatternSlot` viaja NA TUPLA, ao lado do índice. Derivá-lo de `slot` mais abaixo
+        // (`if slot == 0 { Fill } else { Stroke }`) seria a segunda resposta à mesma pergunta, e a
+        // que envelhece é sempre a que está longe da lista.
+        for (slot, ps) in [
+            (0, ph2d_vec_render::PatternSlot::Fill),
+            (1, ph2d_vec_render::PatternSlot::Stroke),
         ] {
+            let pat = pen
+                .selected()
+                .and_then(|sel| crate::texture_pattern_edit::pattern_at(scene, sel, ps))
+                .cloned();
             ph2d_panel_vector::set_current_texture_pattern(
                 slot,
                 pen.selected().zip(pat.as_ref()).map(|(sel, pat)| {
@@ -287,6 +276,16 @@ pub(super) fn publish(
                             .path_bbox(sel)
                             .map_or([0.0, 0.0], |(lo, _)| pat.shift(lo).map(|s| s * 100.0)),
                         mode: crate::texture_pattern_edit::mode_index(pat.mode),
+                        // ⭐⭐ **O ladrilho ASSADO é que responde, nunca a arte** (W10): a mesma
+                        // arte que não encaixa colada **encaixa** com um vão positivo, porque o
+                        // que encosta passa a ser espaço transparente. A pergunta do artista é
+                        // sobre o que ele vê.
+                        //
+                        // ⚠️ Sem ladrilho assado (arte a carregar, fonte apagada) a resposta é
+                        // `false` = **calar** — ver o doc do campo.
+                        wrap_seam_visible: tiles
+                            .get(&(sel, ps))
+                            .is_some_and(|t| ph2d_vec_pattern::seam_is_visible(t.wrap_seam)),
                     }
                 }),
             );

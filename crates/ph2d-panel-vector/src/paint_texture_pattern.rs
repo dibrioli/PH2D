@@ -227,7 +227,32 @@ impl BodyCtx<'_> {
                 )
             })
             .collect();
-        self.segmented("Repeat", &modes, y)
+        let y = self.segmented("Repeat", &modes, y);
+        self.texpat_seam_hint(p.mode, p.wrap_seam_visible, y)
+    }
+
+    /// ⭐⭐⭐ **O app MEDIU que esta arte não encaixa consigo própria, e diz-lo** (plano 33, W10).
+    ///
+    /// # Porque isto existe
+    ///
+    /// Um ladrilho cujo salto na volta passa o joelho medido mostra **uma aresta dura em cada
+    /// fronteira**. O artista vê-a e não tem como saber que a causa é a arte, nem que o remédio
+    /// está no chip mesmo acima. *Uma ferramenta que ignora em silêncio é pior que uma que recusa.*
+    ///
+    /// # ⚠️ Porque só no `Tile`
+    ///
+    /// A dica fica **debaixo do controlo que a resolve**, e só quando ela tem sujeito:
+    /// - `Tile` (`0`) — as cópias encostam cruas ⇒ o salto vê-se ⇒ **fala**;
+    /// - `Mirror` (`1`) — cada repetição é o espelho da anterior, então a junta **fecha por
+    ///   construção** (medido: salto `0`, costura `0`) ⇒ cala, e é ele o remédio que a frase aponta;
+    /// - `Clamp` (`2`) — há **uma** cópia e não há junta nenhuma ⇒ cala.
+    ///
+    /// ⛔ Um aviso que aparece no modo que o cura ensinaria o artista a ignorá-lo.
+    fn texpat_seam_hint(&mut self, mode: u8, visivel: bool, y: f32) -> f32 {
+        if mode == 0 && visivel {
+            return self.hint_line(tr("panel.vector.texpat.seam.hint"), y);
+        }
+        y
     }
 }
 

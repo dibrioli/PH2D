@@ -45,6 +45,7 @@ fn tile_de_teste() -> crate::PatternTile {
         cells: [1, 1],
         tile_px: [1, 1],
         quality: ImageQuality::Medium,
+        wrap_seam: 0,
     }
 }
 

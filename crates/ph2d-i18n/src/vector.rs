@@ -49,6 +49,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.stroke.present" => "Stroke",
         "panel.vector.texpat.lock" => "Lock Aspect",
+        // ⭐⭐⭐ O app MEDIU o salto do ladrilho na volta (plano 33 W10) e diz o que fazer. ⚠️ A
+        // frase nomeia o REMEDIO, e o remedio esta' no chip imediatamente acima dela — uma dica que
+        // so' descreve o defeito deixa o artista a saber que algo esta' mal e sem gesto nenhum.
+        "panel.vector.texpat.seam.hint" => {
+            "This art does not tile seamlessly - its edges do not match. Use Mirror, or add Gap."
+        }
         "panel.vector.frame.clip.off" => "Off",
         "panel.vector.frame.clip.on" => "On",
         "panel.vector.frame.panel" => "Show as Panel",

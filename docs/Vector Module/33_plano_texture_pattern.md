@@ -939,3 +939,155 @@ de trás.
 | re-semear o store por quadro (o `Seeder` de duas guardas) | escreve todo quadro, exige guarda por tipo, e pode escrever fora da faixa registada do widget — a inversão dispensa as três (§W9.2) |
 | gate comportamental para a adopção | mediria o store, que é o campo que a cura deixou de tocar; foi assim que a 1.ª régua reprovou produto correcto (§W9.4) |
 | acrescentar `focus()` ao `ph2d-ui-testkit` | construído para o desenho abandonado e revertido: sem a re-semeadura, nada o consome |
+
+---
+
+## §W10 — **A COSTURA DO LADRILHO: uma acusação ao renderer que a medição virou do avesso** (2026-08-30)
+
+### §W10.1 — A acusação, e porque ela era plausível
+
+A subida do stack (2026-08-29) trocou o `ImageQuality::High` do Vello de *bilinear disfarçado* por
+um **Mitchell a sério** (16 taps, `±1.5` texels). Uma nota no `fill_path_image` dizia, desde antes
+disso, que em `Extend::Repeat` o filtro **grampeia na fronteira do ladrilho em vez de dar a volta**,
+com *"o artefacto é meio texel"*. Como o `image_quality_for` manda `Smooth -> High` e as estampas
+são desenhadas com ele, a conclusão parecia óbvia: **a banda errada em cada fronteira triplicou, no
+caminho de omissão do produto, e ninguém mediu.**
+
+A acusação sobre o mecanismo está **certa**, e é deliberada do Vello: o atlas dele empacota as
+imagens **encostadas, sem folga** (`vello_encoding-0.8.0/src/image_cache.rs`,
+`atlas.allocate(size2(w, h))` — zero padding), então sem o grampo um tap leria a imagem **vizinha**.
+⇒ dentro do vello 0.10 **não há como fazer o amostrador dar a volta**, e não há gutter possível:
+qualquer folga acrescentada ao ladrilho entra no `extents` e passa a fazer parte do **período**.
+
+### §W10.2 — O oráculo, e porque ele não é um modelo do shader
+
+⛔ Reimplementar o `bicubic_sample` em Rust mediria **o port**, não o renderer.
+
+A régua é a **própria periodicidade**: uma arte periódica de período `P`, assada como um ladrilho de
+`P` px e como um de `4P` px, produz a **MESMA imagem infinita** — os dois buffers têm os mesmos
+bytes, repetidos, e há `assert` a prová-lo. Logo, em toda coluna *interior* ao ladrilho largo, o
+largo dá a resposta **certa**; e é exactamente aí que o estreito tem as suas costuras.
+⇒ `|estreito − largo|` naquelas colunas **é** o defeito, em níveis de 8 bits, medido pela GPU real.
+Sonda: [`pattern_seam_probe.rs`](../../shells/desktop/src/pattern_seam_probe.rs).
+
+### §W10.3 — ⛔⛔⛔ **A RÉGUA errou DUAS vezes antes de o algoritmo ser tocado**
+
+1. **A 1.ª fixtura foi uma cosenoide, e mediu ZERO em toda a grelha.** `cos` tem derivada **nula**
+   em `x = 0` — a arte era maximamente **lisa exactamente na fronteira**, que é o único sítio onde o
+   defeito vive. *Uma fixtura sem o fenómeno lê-se como cura.* A onda quadrada põe o maior degrau
+   possível na costura, e o defeito apareceu na primeira corrida. Há **controlo** agora: a sonda
+   afirma que a primeira e a última coluna da arte diferem, senão pára.
+2. **A varredura do interior tinha meio texel de FASE, e ela dominava o erro.** A arte era gerada
+   com o valor do texel na **borda esquerda** e o amostrador põe-no no **centro** — erros médios de
+   `38` níveis que não eram filtro nenhum. Com a fase corrigida, a leitura **inverteu-se**: o `High`
+   passou de *"igual ao Medium"* para **melhor** (`20` contra `29` níveis de pior caso a 4
+   texels/período). *Uma régua com deslocamento sistemático esconde precisamente o efeito que ela
+   existe para medir* — e a 1.ª leitura teria justificado a cura errada.
+
+### §W10.4 — As três curas medidas e **REFUTADAS**
+
+| cura | mecanismo | veredito |
+|---|---|---|
+| **gutter no ladrilho** | o `Repeat` embrulha sobre o `extents` inteiro | ⛔ impossível: a folga vira **período** |
+| **`k` períodos por ladrilho** | a costura passa a ser `k×` mais rara | ⛔ reduz a **frequência**, não o defeito; paga `k²` de atlas |
+| **`Medium` em vez de `High`** | o kernel bilinear só alcança `±0.5` texel | ⛔ **mesmo pico** |
+
+⛔ **A refutação do `Medium` é a que interessa**, e ela vem de um controlo que quase não foi feito.
+A 1.ª tabela mediu `Medium` a **`0`** níveis na escala `1×` — e isso é verdade **só no alinhamento
+inteiro**, onde o bilinear cai exactamente sobre um texel e não interpola nada. Varrendo o
+deslocamento de sub-pixel, que é o que um `pan` faz o tempo todo:
+
+| escala | filtro | `0.000 px` | `0.125` | `0.250` | `0.375` | `0.500` |
+|---|---|---|---|---|---|---|
+| `1×` | Medium | **0** | 27 | 54 | 81 | **107** |
+| `1×` | High | 12 | 29 | 52 | 79 | **107** |
+| `2×` | Medium | 54 | 67 | 81 | 94 | **107** |
+| `2×` | High | 52 | 65 | 79 | 93 | **107** |
+
+⇒ os dois chegam ao **mesmo** pico; o `Medium` só estreita a banda de ~3 texels para ~1, e paga
+fidelidade de ampliação. *Uma vantagem que só existe num ponto de medida zero não é uma vantagem.*
+
+### §W10.5 — ⭐⭐⭐ A LEI: **o grampo custa o salto do PRÓPRIO ladrilho, e quase nada além disso**
+
+| ladrilho | salto dele na volta | costura medida (High, 4×, 0,5 px) |
+|---|---|---|
+| ruído cru | `236` | `100` níveis, 22 colunas |
+| ruído **espelhado** | `0` | `7` níveis, 6 colunas |
+| onda quadrada crua | `215` | `107` níveis, 22 colunas |
+| onda quadrada **espelhada** | `0` | **`0`** |
+
+E por arte que o produto de facto assa:
+
+| arte | pior desvio |
+|---|---|
+| motivo com **caixa justa** (uma FORMA assada) | **`0`** |
+| textura de **bordo a bordo** (uma imagem) | `73` |
+
+⇒ **um ladrilho que fecha não tem costura de amostrador em qualidade nenhuma.** Um motivo assado de
+uma forma tem a caixa justa, logo cobertura **zero** nos quatro lados: não há o que o kernel possa
+alcançar. O defeito pertence inteiramente à **arte de bordo a bordo que não foi feita para
+repetir** — e aí o artista já vê uma **aresta dura**, muito maior que a banda do filtro.
+
+*⇒ não havia regressão de renderer a curar. O que faltava era o produto DIZER.*
+
+### §W10.6 — O que shipa
+
+- **`ph2d_vec_pattern::wrap_seam(&Tile)`** — o maior degrau quando o ladrilho encosta numa cópia de
+  si mesmo, nos dois eixos. ⚠️ Em alfa **pré-multiplicado**: todo PNG com transparência carrega RGB
+  arbitrário debaixo de alfa zero, e em RGB reto duas bordas **invisíveis** com lixo diferente
+  acusariam um salto que ninguém vê — e **todo motivo com bbox justa** seria acusado.
+- **`SEAM_VISIBLE = 16`**, com a varredura ao lado: a **largura** da banda salta de `6` para `14`
+  colunas entre `16` e `32`. Abaixo do joelho o defeito é uma linha; acima é uma faixa. ⛔ Não é um
+  número escolhido — o recurso é a **percepção**.
+- **`seam_is_visible(u8)`** — a comparação numa porta só, porque tem dois chamadores em crates
+  diferentes (o veredito local e a shell, que só tem o número).
+- **`PatternTile::wrap_seam`** — medido **uma vez, no assado**, e memoizado com ele. ⚠️ Mede-se no
+  **ladrilho** e não na arte: a mesma arte que não encaixa colada **encaixa** com um vão positivo,
+  porque o que encosta passa a ser espaço transparente.
+- **A dica no painel** (`BodyCtx::hint_line`, a afordância que faltava nesta crate) — debaixo do
+  chip *Repeat*, e **só no `Tile`**: o `Mirror` fecha a junta por construção e é o remédio que a
+  frase aponta, o `Clamp` tem uma cópia só. ⛔ *Um aviso que aparece no modo que o cura ensina o
+  artista a ignorá-lo.*
+  ⚠️ `paint_text_block` e não `paint_text` — uma dica é uma FRASE e quebra numa coluna estreita; o
+  9-slice já pagou esse defeito em 22/08 (a fileira seguinte era escrita por cima).
+- **A nota do `fill_path_image` corrigida.** Ela estava certa no mecanismo e **errada no sujeito** —
+  enquadrava a costura como propriedade do FILTRO. Foi ela que abriu esta investigação, e ia abrir a
+  próxima.
+
+### §W10.7 — Os gates
+
+- `seam_tests.rs` (8, puros): as duas juntas separadamente · a pré-multiplicação por duas rotas (o
+  motivo de bbox justa, e duas bordas transparentes com RGB oposto) · o joelho · o degrau nu.
+  **4 mutações, 4 mortas** (apagar cada junta · RGB reto · o joelho exclusivo).
+- `the_seam_hint_shows_only_where_it_has_a_subject` — ⚠️ **o oráculo é a GEOMETRIA, não um id**: uma
+  dica é texto e não regista hit-rect, logo `painted_rect` não a vê; o que se afirma é o que ela
+  **desloca** (`last_content_h`). **3 mutações, 3 mortas.**
+- `the_seam_costs_the_tiles_own_gap_and_nothing_else` (`#[ignore]`, GPU) — a lei, com o **controlo
+  primeiro**: sem uma costura medida no ladrilho que NÃO fecha, a metade de baixo aprovar-se-ia
+  sozinha.
+- `this_scenes_art_does_not_tile_and_that_is_what_the_hint_needs` — a arte da cena `=76` salta
+  **255** níveis (o máximo). ⚠️ Sem este gate alguém a "arrumaria" e o smoke do aviso ficaria mudo.
+
+### §W10.8 — ⛔ Recusas MEDIDAS
+
+| o que | porque não | onde |
+|---|---|---|
+| gutter/bleed no ladrilho | a folga entra no `extents` e vira **período** | §W10.4 |
+| `k` períodos por ladrilho | reduz a frequência, não o defeito; `k²` de atlas | §W10.4 |
+| `Medium` para as estampas | **mesmo pico** sob meio pixel de pan; paga ampliação | §W10.4 |
+| escolher o filtro por ladrilho | idem — o pico não muda, e a régua que o sugeria era a de alinhamento inteiro | §W10.4 |
+
+### §W10.9 — ⛔⛔ **Um gate TEXTUAL que conta ocorrências reprova toda desduplicação legítima**
+
+O `each_paint_publishes_its_own_law` afirmava a lei *"as duas tintas são lidas pela MESMA porta"*
+contando **duas** chamadas a `pattern_at(` — uma por tinta. Quando a publicação virou um laço sobre
+`[(0, Fill), (1, Stroke)]`, a porta passou a ser chamada **uma vez para as duas** — estritamente
+mais forte — e o gate ficou **vermelho sobre uma melhoria**.
+
+⇒ ele confundia a **lei** com o **arranjo**. A redacção nova afirma as duas metades que a lei de
+facto tem: *as duas tintas estão cobertas* (as duas variantes nomeadas) e *não há uma terceira rota*
+(a contagem tem tecto, não valor exacto). **2 mutações, 2 mortas** — apagar a tinta do traço, e
+acrescentar um terceiro leitor de padrão.
+
+*É a família do `edge_max` global e do `χ` cego à almofada, um nível acima: a régua media uma
+consequência do desenho de ontem em vez da propriedade que tem de valer amanhã.*

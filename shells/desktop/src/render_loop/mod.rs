@@ -7243,6 +7243,7 @@ impl crate::App {
                 self.vec_pivot_edit,
                 self.vec_snap,
                 self.texpat_lock_aspect,
+                self.texture_pattern_live.tiles(),
             );
             // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois
             // publicar**, a mesma ordem do `resize_box` — publicar antes deixaria a caixa a mostrar

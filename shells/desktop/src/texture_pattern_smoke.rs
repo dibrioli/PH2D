@@ -526,3 +526,34 @@ mod lattice_tests {
         }
     }
 }
+
+/// ⭐⭐⭐ **A ARTE DESTA CENA NÃO ENCAIXA CONSIGO PRÓPRIA — e é ISSO que a torna o smoke do aviso**
+/// (plano 33, W10).
+///
+/// A dica de costura do painel só tem sujeito quando o ladrilho salta na volta. Esta arte salta —
+/// a barra laranja do topo encosta no fundo branco/azul, e a meia-diagonal encosta no vazio — e o
+/// salto não foi escolhido para isso: ele já lá estava desde a W5, porque a arte foi desenhada
+/// **assimétrica nos dois eixos** para denunciar rotação e espelho.
+///
+/// ⚠️ **Sem este gate a cena podia ficar muda sem ninguém dar por isso.** Alguém a "arrumar" —
+/// fechar a diagonal, uniformizar a barra — apagaria o aviso do smoke e o próximo leitor concluiria
+/// que a feature não funciona. *Uma cena de smoke que deixa de conter o fenómeno aprova a ausência
+/// dele.*
+#[cfg(test)]
+mod seam_hint_tests {
+    use super::{ART, art_rgba};
+
+    #[test]
+    fn this_scenes_art_does_not_tile_and_that_is_what_the_hint_needs() {
+        let t = ph2d_vec_pattern::bake(&art_rgba(), ART, ART, &ph2d_vec_pattern::TileLaw::grid())
+            .expect("a grade encostada assa");
+        let salto = ph2d_vec_pattern::wrap_seam(&t);
+        assert!(
+            ph2d_vec_pattern::seam_is_visible(salto),
+            "a arte da cena passou a ENCAIXAR (salto {salto}, joelho {}) - o aviso de costura \
+             deixou de ter sujeito e o smoke dele ficou mudo",
+            ph2d_vec_pattern::SEAM_VISIBLE
+        );
+        println!("salto da arte da cena =76: {salto} niveis");
+    }
+}

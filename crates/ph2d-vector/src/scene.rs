@@ -290,9 +290,40 @@ impl VectorScene {
     /// pixel muda qual texel o vizinho-mais-próximo escolhe, então uma pré-visualização de arte de
     /// pixel pode aparecer deslocada **uma coluna inteira**.
     ///
-    /// Continua a valer: `Medium` para o caso liso e `Low` para arte de pixel — que é também o
-    /// único modo **sem costura**, porque em `Repeat` o filtro bilinear grampeia na fronteira do
-    /// ladrilho em vez de dar a volta, e o artefacto é meio texel.
+    /// # ⛔⛔⛔ A COSTURA do `Repeat` — a nota antiga estava certa no mecanismo e ERRADA no sujeito
+    ///
+    /// Esta linha dizia: *"`Low` é o único modo **sem costura**, porque em `Repeat` o filtro
+    /// bilinear grampeia na fronteira do ladrilho em vez de dar a volta, e o artefacto é meio
+    /// texel"*. O grampo existe mesmo — e é **deliberado do Vello**: o atlas dele empacota as
+    /// imagens **encostadas, sem folga** (`vello_encoding::image_cache`, `atlas.allocate(size2(w,
+    /// h))`), então sem o grampo um tap leria a imagem VIZINHA.
+    ///
+    /// ⭐⭐⭐ **O que a nota não dizia é que o custo do grampo é uma propriedade do LADRILHO, não do
+    /// filtro.** Medido em 2026-08-30 na GPU, com um oráculo por periodicidade (a mesma arte assada
+    /// com o período e com 4x o período — as duas produzem a MESMA imagem infinita, então o ladrilho
+    /// largo dá a resposta certa exactamente onde o estreito tem costura):
+    ///
+    /// | ladrilho | salto dele na volta | costura medida |
+    /// |---|---|---|
+    /// | ruído cru | `236` | `100` níveis |
+    /// | ruído **espelhado** | `0` | `7` |
+    /// | onda quadrada crua | `215` | `107` |
+    /// | onda quadrada **espelhada** | `0` | **`0`** |
+    ///
+    /// ⇒ **um ladrilho que fecha não tem costura em qualidade nenhuma.** Um motivo assado de uma
+    /// FORMA tem a caixa justa (cobertura zero nos quatro lados) e mede **`0`**; quem tem o defeito
+    /// é a arte de bordo a bordo que não foi feita para repetir — e aí o artista já vê uma **aresta
+    /// dura**, muito maior que a banda do filtro. O painel diz-lo agora
+    /// ([`ph2d_vec_pattern::wrap_seam`]).
+    ///
+    /// ⛔ **E baixar para `Medium` foi medido e REFUTADO:** sob meio pixel de deslocamento — que é o
+    /// que um `pan` faz o tempo todo — `Medium` e `High` chegam ao **mesmo** pico (`107`); o
+    /// `Medium` só estreita a banda de ~3 texels para ~1, e paga fidelidade de ampliação (pior no
+    /// interior em `20` contra `29` níveis a 4 texels/período). *O `0` que o `Medium` marca a 1:1
+    /// existe só no alinhamento inteiro, que é medida zero na prática.*
+    ///
+    /// Continua a valer: `Medium` para o caso liso e `Low` para arte de pixel — e o `Low` é o único
+    /// **exactamente** sem costura, porque o vizinho-mais-próximo não tem tap para grampear.
     #[allow(clippy::too_many_arguments)]
     pub fn fill_path_image(
         &mut self,

@@ -360,6 +360,11 @@ mod pan_diag;
 /// **Pattern Along Path** — o cozimento vivo do `VecPatternPath` (plano 23), irmão do `offset_live`.
 mod pattern_live;
 mod pattern_path_smoke;
+/// ⛔⛔ **A MEDIÇÃO da costura do ladrilho** (plano 33, W10) — o amostrador do Vello grampeia os
+/// taps na fronteira do ladrilho em vez de dar a volta, e o `High` do vello 0.9+ triplicou a banda.
+#[cfg(test)]
+#[path = "pattern_seam_probe.rs"]
+mod pattern_seam_probe;
 mod pencil_smoke;
 mod physics_smoke;
 mod physics_smoke_authoring;

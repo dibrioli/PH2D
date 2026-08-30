@@ -17,7 +17,7 @@ ph2d-render = { path = "../ph2d-render" }
 
 [dev-dependencies]
 ph2d-node-registry-init = { path = "../ph2d-node-registry-init" }  # o sweep do naga DERIVA o registry em vez de o enumerar
-# naga (same major as wgpu 28) — parse + validate every generated compute
+# naga (same major as wgpu 29) — parse + validate every generated compute
 # module at `cargo test` time, no device needed (mirrors sprite_wgsl_valid).
 naga = { version = "29.0.4", features = ["wgsl-in"] }
 # The parity gates cook a REAL motion chain on both paths.

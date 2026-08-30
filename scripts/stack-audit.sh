@@ -231,9 +231,39 @@ if not ONLY_CEIL:
                 print(f"  {n}: {err}")
 
 if not ONLY_MAJOR:
-    hdr(f"⚠️  TETOS — o mais novo NÃO é alcançável ({len(ceilings)})")
-    if not ceilings:
+    # ⛔ **Um teto que a rede não respondeu SOME em silêncio, e o cabeçalho conta
+    # sem ele.** O `ceilings` só admite quem tem `lv` (a versão mais nova
+    # publicada); uma consulta falhada devolve `lv = None` e a crate é saltada
+    # pelo `continue` acima — então o número entre parênteses lê-se como *«esta é
+    # a resposta»* quando pode ser *«não consegui perguntar»*. É o mesmo byte
+    # para duas coisas, e foi apanhado ao ver a MESMA corrida dar 6 e 7.
+    # ⇒ Quem está sob vigilância e ficou sem dados é NOMEADO aqui, sempre.
+    # ⚠️ **A vigilância NÃO se filtra por `CEIL_WATCH`** — foi a 1.ª tentativa, e a
+    # prova de mutação (bloquear a rede) matou-a: o `CEIL_WATCH` é ele próprio
+    # DERIVADO das respostas do índice (`deps_of` lê o `allrows`), então sem rede
+    # ele nasce **vazio** e o filtro não casa com ninguém — a cura ficava muda
+    # exactamente no caso que devia gritar.
+    # ⇒ O sinal honesto é toda crate que não pôde ser consultada: sem ela não se
+    # sabe sequer *quem vigiar*, logo o inventário inteiro está incompleto.
+    mudas = sorted(
+        (n, err or 'sem resposta')
+        for n, reqs, lv, gap, mine, err in rows
+        if not lv
+    )
+    suf = f" — ⚠️ {len(mudas)} por medir" if mudas else ""
+    hdr(f"⚠️  TETOS — o mais novo NÃO é alcançável ({len(ceilings)}){suf}")
+    if mudas:
+        print(f"  ⛔ {len(mudas)} crate(s) NÃO puderam ser consultadas — o número acima está INCOMPLETO.")
+        print("     Sem elas não se sabe sequer QUEM segura quem, logo um teto pode estar a faltar.")
+        for n, err in mudas[:8]:
+            print(f"      · {n}: {err}")
+        if len(mudas) > 8:
+            print(f"      · … e mais {len(mudas) - 8}")
+        print()
+    if not ceilings and not mudas:
         print("  nenhum: toda dependência pode ir ao topo.")
+    elif not ceilings:
+        print("  nenhum ENTRE AS QUE RESPONDERAM.")
     for n, reqs, lv, ok, blockers in sorted(ceilings):
         print(f"  {n}: temos {'/'.join(reqs)} · topo {lv} · {W}dá para usar {ok}{RESET}")
         for h, hv, rq in blockers:

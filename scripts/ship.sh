@@ -103,6 +103,28 @@ else
         env CARGO_INCREMENTAL=0 cargo test --workspace --profile ci-test
 fi
 
+# ── inventário de TETOS (informativo — NUNCA reprova) ────────────────────
+# ⚠️ **Isto NÃO é um `run`, e a diferença é o ponto.** O `stack-audit.sh` sai `0`
+# sempre — é uma sonda, não um portão —, então um `✓`/`✗` diria apenas «correu»
+# e escondia a única coisa que interessa: **o que ele produziu**. É a memória
+# `feedback_an_automatic_tools_exit_code_says_nothing_about_what_it_produced`
+# (medida 3× num dia), e é por isso que a saída vai INTEIRA para o ecrã.
+#
+# ⚠️ E nunca pode reprovar: o ship não pode ficar vermelho porque o mundo
+# publicou uma versão nova, nem porque a rede caiu.
+#
+# Por que AQUI: é o instante em que a pergunta importa — mesmo antes do
+# «safe to push». Um teto responde *«o mais recente possível ≠ o mais
+# recente»*, e quem for subir uma dependência amanhã lê esta lista hoje.
+printf '\n\033[1m── tetos de dependência (informativo, não reprova) ──\033[0m\n'
+_tetos="$(timeout 90 bash scripts/stack-audit.sh --tetos 2>/dev/null || true)"
+if [ -n "$_tetos" ]; then
+    printf '%s\n' "$_tetos" | sed 's/^/  /'
+else
+    printf '  (sem rede, ou 90 s esgotados — o inventário não foi lido desta vez)\n'
+    printf '  para o ver:  bash scripts/stack-audit.sh --tetos\n'
+fi
+
 # ── summary ─────────────────────────────────────────────────────────────
 printf '\n\033[1m── ship.sh summary ──\033[0m\n'
 for r in "${results[@]}"; do printf '  %s\n' "$r"; done

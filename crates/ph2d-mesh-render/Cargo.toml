@@ -25,7 +25,7 @@ ph2d-light = { path = "../ph2d-light" }
 # Mat4/Vec3 da camera. `glam` ja e a algebra desta casa (`ph2d-core`,
 # `ph2d-vector-doc`); uma Mat4 escrita a mao aqui seria a segunda resposta.
 glam = "0.30"
-# wgpu 28 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render.
+# wgpu 29 em lockstep com ph2d-render/ph2d-gpu/ph2d-flip-render (teto: ADR-0168).
 wgpu = "29.0.4"
 # O DECODER DOS MATCAPS. Os nove PNGs de `assets/matcaps/` sao `include_bytes!`,
 # e alguem tem de transforma-los em texels -- ver `src/matcap.rs`.

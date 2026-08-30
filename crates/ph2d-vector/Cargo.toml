@@ -13,9 +13,11 @@ authors.workspace = true
 # Vello — Linebender's GPU vector renderer (currently 0.x; alpha-
 # quality per the M11 plan note "Vello em alpha — risco aceito,
 # ADR-0004 a escrever quando aparecer regressão").
-# Pinned to 0.8 (which tracks wgpu 28). The whole workspace is on
-# wgpu 28 to align with Vello — bumped from 29 in the M11 widget-
-# paint PR; downgrade rationale documented in the same commit.
+# Pinned to 0.10 (which tracks wgpu 29). ⚠️ Este bloco dizia o CONTRARIO ate'
+# 2026-08-29, e a historia importa: a M11 baixou o wgpu de 29 para 28 para
+# alinhar com o vello 0.8. Isso INVERTEU-SE — o vello 0.10 pede `wgpu ^29.0.3`,
+# e hoje o que existe e' um TETO: o `wgpu 30.0.1` esta' publicado e e'
+# inalcancavel enquanto o vello nao subir. Decisao e mecanismo: ADR-0168.
 # kurbo + peniko reach our public API via `vello::kurbo` /
 # `vello::peniko` re-exports — declaring them as direct deps would
 # risk version skew (o vello 0.10 traz peniko 0.6.1 e kurbo 0.13 — conte-os no

@@ -10,7 +10,7 @@ authors.workspace = true
 [lib]
 
 # `ph2d-imageio-svg` — SVG **parse-only** validator + (deferred)
-# vector decode + export (W3.T5). W3.T5 ships `usvg = "0.43"` parse
+# vector decode + export (W3.T5). A W3.T5 entregou `usvg = "0.43"`; hoje e' 0.48 — parse
 # (resolves <use>, <style>, gradients into a flat tree) — the tree
 # is dropped and the importer returns
 # `DecodedImage::Vector(VectorDoc::default())`. The vector body

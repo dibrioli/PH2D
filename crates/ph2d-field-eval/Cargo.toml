@@ -30,7 +30,7 @@ ph2d-mesh = { path = "../ph2d-mesh" }
 # `wgpu` — os quatro medidos na W0.
 #
 # ⚠️ `default-features = false`: o default dela traz `gui`, `rhai` e `raster`,
-# que são do app-demo do autor, e `wgpu`, que colidiria com o lockstep 28 da
+# que são do app-demo do autor, e `wgpu`, que colidiria com o lockstep 29 da
 # casa. Fica **só** `jit`.
 #
 # ⚠️ **O `mesh` SAIU na W20**, e não por arrumação: o extrator dela reprovou duas

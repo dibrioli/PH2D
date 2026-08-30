@@ -24,6 +24,21 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     // eixo a peça chega **naquele ponto da pilha**, e um `Array` antes dela muda essa resposta.
     // ⚠️ A lei de cada passo é a do [`crate::bounds::step_mod`], e não uma segunda cópia dela.
     let mut ball = local;
+    // ⭐⭐⭐ **O DIVISOR ACUMULA E APLICA-SE UMA VEZ, NO FIM** (2026-08-30) — e isto é uma CURA.
+    //
+    // ⛔ Enquanto cada deformador dividia na hora, ele mudava a **unidade** do campo, e todo número
+    // GEOMÉTRICO a jusante atravessava a conversão sem saber: `|f/L| − t/2` cruza zero onde
+    // `|f| = L·t/2`, ⇒ **parede `L·t`**. Medido (`measure_the_wall_after_a_warp`, parede pedida
+    // `0,060`): `Taper 1,0 + Shell` entregava **`0,180`** — `1 + 2·declive` exacto —, e
+    // `Twist 1,0 + Shell` entregava **`0,337`**, `5,62×`.
+    //
+    // ⚠️ **É defeito PRÉ-EXISTENTE**: a inclinação carrega-o desde a W18, e o filete e o afastamento
+    // depois dela erram pelo mesmo factor. A torção só o tornou grande.
+    //
+    // ⭐ Dividir no fim é correcto **e** mais apertado: o `Shell` (`|f|−t`), o `Offset` (`f−d`) e o
+    // `min`/`max` preservam Lipschitz, então o tecto da pilha inteira continua a ser o produto dos
+    // `σ` — e o número que o artista escreveu volta a valer o que diz.
+    let mut divisor = 1.0f64;
     for m in mods {
         acc = match *m {
             // ⭐ A casca inteira: o módulo de uma distância É a distância à mesma superfície vista
@@ -40,24 +55,31 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
             Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing)),
             Unary::Radial { count } => radial(&acc, count),
-            Unary::Taper { slope } => taper(&acc, f64::from(slope)),
+            Unary::Taper { slope } => {
+                divisor *= taper_divisor(f64::from(slope));
+                taper(&acc, f64::from(slope))
+            }
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
             // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
             Unary::Twist {
                 turns,
                 lower,
                 upper,
-            } => twist(
-                &acc,
-                f64::from(turns) * std::f64::consts::TAU,
-                f64::from(lower),
-                f64::from(upper),
-                axis_reach(ball),
-            ),
+            } => {
+                let k = f64::from(turns) * std::f64::consts::TAU;
+                divisor *= twist_sigma(k.abs() * axis_reach(ball).abs());
+                twist(&acc, k, f64::from(lower), f64::from(upper))
+            }
         };
         ball = crate::bounds::step_mod(ball, *m);
     }
-    acc
+    if divisor == 1.0 {
+        // ⭐ **IDENTIDADE AO BIT** numa pilha sem deformador — a divisão por `1,0` seria exacta em
+        // `f64`, mas a árvore ganharia um nó, e o gate de forma da fita mede a árvore.
+        acc
+    } else {
+        acc / Tree::constant(divisor)
+    }
 }
 
 /// Quão longe do **eixo Z local** a peça chega — o `R` de que a torção tira o divisor.
@@ -96,7 +118,18 @@ fn taper(inner: &Tree, slope: f64) -> Tree {
     }
     let k = (Tree::constant(1.0) + Tree::y() * Tree::constant(slope)).max(TAPER_FLOOR);
     let shrunk = inner.remap_xyz(Tree::x() / k.clone(), Tree::y(), Tree::z() / k.clone());
-    shrunk * k / Tree::constant(1.0 + TAPER_SAFETY * slope.abs())
+    // ⚠️ **A divisão saiu daqui e é feita UMA vez no fim da pilha** — ver [`stacked`], e a medição
+    // que a obrigou. O factor continua a ser este, e continua a ser dele.
+    shrunk * k
+}
+
+/// Por quanto a inclinação divide — ver [`TAPER_SAFETY`] e o doc do [`taper`].
+pub(crate) fn taper_divisor(slope: f64) -> f64 {
+    if slope == 0.0 || !slope.is_finite() {
+        1.0
+    } else {
+        1.0 + TAPER_SAFETY * slope.abs()
+    }
 }
 
 /// O menor fator de secção que a inclinação admite — ver [`taper`].
@@ -166,7 +199,7 @@ const TAPER_SAFETY: f64 = 2.0;
 /// ser medido porque a escala varia com `y` **dentro** da conta; aqui a álgebra fecha e a medição só
 /// confirma. *Uma constante ajustada é o que se escreve quando a demonstração não fecha — e quando
 /// ela fecha, escrevê-la à mesma seria esconder que fechou.*
-pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64, reach: f64) -> Tree {
+pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64) -> Tree {
     if k == 0.0 || !k.is_finite() || !(lower.is_finite() && upper.is_finite()) {
         // ⭐ **IDENTIDADE AO BIT** — sem o curto-circuito a árvore ganharia `cos(0)`/`sin(0)` e o
         // valor mudaria por arredondamento em toda peça já gravada.
@@ -184,7 +217,8 @@ pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64, reach: f64) ->
         x * s + y * c,
         Tree::z(),
     );
-    untwisted / Tree::constant(twist_sigma(k.abs() * reach.abs()))
+    // ⚠️ **Sem dividir**: o divisor é acumulado e aplicado uma vez no fim da pilha — ver [`stacked`].
+    untwisted
 }
 
 /// O tecto espectral do jacobiano do mapa inverso da torção, em `t = k·r`. Ver [`twist`].

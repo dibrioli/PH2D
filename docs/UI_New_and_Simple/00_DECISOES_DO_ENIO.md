@@ -206,10 +206,67 @@ ordem de pintura deixa de ser a resposta, porque deixa de haver sobreposição.*
    assado de **sentido único** (para exportar); este tem de ser **durável e reversível**, senão
    assar o vetor mata o vetor. *Substrato partilhado não implica trabalho partilhado.*
 
-### ⏳ Os Layouts continuam por fechar
+---
 
-Proposta da linha, **ainda não confirmada por ele**: *Desenho 2D · Modelagem 3D · Animação · Nós ·
-Código · Runtime*. Os três exemplos que ele deu foram *Editor 2D · Editor de Texto · Runtime*.
+## D7 — A lista de LAYOUTS: **oito**
+
+> Proposta da linha com seis, corrigida pelo Enio em 2026-08-30: *"Desenho 2D e Vetor são dois"* e
+> *"o Flip merece layout próprio"*. ⇒ **8**.
+
+| Layout | a tela vem arrumada para |
+|---|---|
+| **Desenho 2D** | pintar — canvas grande, camadas, pincéis |
+| **Vetor** | ⭐ desenho vetorial — **separado do raster, por decisão dele** |
+| **Flip** | ⭐ animação quadro-a-quadro — **layout próprio, além do modo `Draw`** |
+| **Modelagem 3D** | modelar e esculpir — vista 3D, hierarquia, propriedades |
+| **Animação** | ⚠️ ver a nota abaixo |
+| **Nós** | o grafo no centro, com pré-visualização |
+| **Código** | o editor de texto, com saída e erros |
+| **Runtime** | correr o jogo, sem chrome de edição |
+
+⚠️ **A D8 muda o que «Animação» significa.** Se as timelines funcionam em **todos** os layouts,
+então este não é o layout onde se pode animar — é o layout onde a **ênfase** é o tempo (timeline
+grande, canvas pequeno). ⛔ *É uma distinção de proporção, não de capacidade,* e tem de ser escrita
+assim ou alguém a implementa como um modo exclusivo.
+
+⚠️ **Oito abas cabem na barra** — o Blender ship-a 10 por omissão e mais 6 opcionais.
+
+---
+
+## D8 — **As timelines funcionam em TODOS os modos de criação, 2D e 3D**
+
+> **Enio, 2026-08-30:** *"As timelines existentes devem funcionar com todos os modos de criação 2d
+> e 3d."*
+
+⭐ **No modelo de áreas isto é uma linha:** a Timeline é uma **área** que pode ocupar o encaixe
+`BOTTOM` em **qualquer** Layout, e liga-se ao que está **seleccionado**. *A área é do Layout; o
+conteúdo é da selecção.* ⛔ Uma timeline que só existisse no Layout *Animação* repetiria o erro dos
+9 toggles de módulo — um sistema alcançável a partir de um sítio só.
+
+⚠️⚠️ **Mas a medição diz que o pedido são TRÊS trabalhos, com preços muito diferentes**
+([`medicoes/04_o_alcance_das_timelines.md`](medicoes/04_o_alcance_das_timelines.md)):
+
+| # | alvo | estado |
+|---|---|---|
+| 1 | **2D** (sprite · vetor · Flip · física) | ✅ **funciona hoje** — 13 propriedades vivas |
+| 2 | **3D Modeling** (SDF) | ⏳ o objecto **está** na hierarquia, com pose própria; falta a Timeline aprender o **segundo vocabulário** |
+| 3 | **3D / Sculpt** | ⛔⛔ **não é uma entidade** — vive num campo do app. Nada na cena a alcança |
+
+⭐⭐⭐ **E a causa raiz não é da Timeline: o `Transform` da cena é 2D** (`Vec2` + um `f32` de
+rotação). Ela anima exactamente o que existe para animar. Os 3D guardam a pose noutro sítio —
+o Model num componente próprio (`FieldPose { Xform }`, com `[f32;3]` e quaternião), e o Sculpt
+**em lado nenhum do mundo** (`grep -rn 'Sculpt' crates/ph2d-ecs/` devolve **zero**).
+
+⛔ **O item 3 é pré-requisito, não uma parte do item 3:** enquanto a escultura for um campo do
+estado do app, ela é inalcançável por **tudo** — undo por-componente, persistência, instâncias, e
+qualquer pergunta do tipo *«que objectos existem?»*. ⭐ O molde da cura já existe: o
+`PaintedDoc(u32)` é a ponte do Painter e carrega **só a identidade estável**.
+
+⏳ **E fica uma decisão sua, que esta linha NÃO toma:** para o item 2, a Timeline **aprende** o
+segundo vocabulário (barato, e o app fica com duas noções de pose para sempre) ou o `Transform`
+**sobe para 3D** (foundational profundo — é o componente mais carregado do repo e a física 2D fala
+`Vec2`). ⛔ **Sem contar quantos sítios leem `Transform`, escolher entre as duas é escolher em vez
+de contar** (`CLAUDE.md` §0.0). Não medido.
 
 ---
 

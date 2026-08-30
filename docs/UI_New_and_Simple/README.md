@@ -39,6 +39,7 @@ E três defeitos concretos, com foto:
 | **Quanto de UI nós temos, medido** (tokens, ids, painéis, LOC) | [`medicoes/01_o_estado_medido.md`](medicoes/01_o_estado_medido.md) |
 | **Quanto do canvas o chrome tapa** — a foto 1 em número | [`medicoes/02_a_area_tapada.md`](medicoes/02_a_area_tapada.md) |
 | **Quantas cores precisamos mesmo** | [`medicoes/03_o_censo_de_cor.md`](medicoes/03_o_censo_de_cor.md) |
+| ⭐ **O que as timelines alcançam — e por que o 3D fica de fora** | [`medicoes/04_o_alcance_das_timelines.md`](medicoes/04_o_alcance_das_timelines.md) |
 | **O que a subida Vello 0.8→0.10 / wgpu 28→29 / parley 0.6→0.11 abriu** | [`pesquisa/01_o_que_a_subida_abriu.md`](pesquisa/01_o_que_a_subida_abriu.md) |
 | **Que referências existem, com a licença de cada uma** | [`pesquisa/02_referencias_e_licenca.md`](pesquisa/02_referencias_e_licenca.md) |
 | **O diagnóstico das 3 fotos + os princípios que o explicam** | [`pesquisa/03_diagnostico_e_principios.md`](pesquisa/03_diagnostico_e_principios.md) |
@@ -77,12 +78,12 @@ O resumo que decide o que podemos fazer:
 
 ## Estado (2026-08-30)
 
-✅ **Etapa 1 fechada** e **seis decisões tomadas pelo Enio**
+✅ **Etapa 1 fechada** e **oito decisões tomadas pelo Enio**
 ([`00_DECISOES_DO_ENIO.md`](00_DECISOES_DO_ENIO.md)): painéis **ancorados com flutuação
 declarada** · comandos em **barra global + cabeçalho por área** · **Layouts por tarefa** (e
 ⚠️ **Modos são per-objecto** — D3 corrigida por ele) · **encaixes fixos** · **a régua entra na
-área de desenho** · e a **tabela de modos por tipo de objecto** (D6), com o Flip a ganhar `Draw`
-próprio.
+área de desenho** · a **tabela de modos por tipo de objecto** (D6, com o Flip a ganhar `Draw`
+próprio) · os **8 Layouts** (D7) · e **as timelines em todos os modos** (D8).
 
 Os dois pré-requisitos que o §6 do estado nomeava **foram medidos**:
 - **51,0 % do canvas é chrome** no viewport de referência — que é o **iPad Pro 12,9"**. A régua da

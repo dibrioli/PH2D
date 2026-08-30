@@ -2019,7 +2019,7 @@ fn the_angle_round_trip_lands_back_on_the_same_bits() {
             assert_eq!(
                 back.to_bits(),
                 rad.to_bits(),
-                "{unit:?}: {rad} → {shown} → {back} não voltou aos mesmos bits"
+                "{unit:?}: {rad} -> {shown} -> {back} nao voltou aos mesmos bits"
             );
         }
     }
@@ -2046,5 +2046,123 @@ fn the_two_angle_units_actually_disagree() {
     assert!(
         (as_deg - as_rad).abs() > 1.0,
         "as duas unidades têm de DISCORDAR, senão o selector é decorativo"
+    );
+}
+
+/// ⛔⛔ **TODO submenu que ESCOLHE um valor tem de dizer qual está escolhido.**
+///
+/// # Por que existe (Enio, 2026-08-30, e o defeito era meu)
+///
+/// A unidade de ângulo shipou com as sete pontas fiadas — id, registo, linha, variante,
+/// handler, dispatch, campo — e **sem a oitava**: `id_is_currently_selected`. O menu
+/// abria, o clique gravava, e **nenhuma das duas opções aparecia marcada**. Não havia
+/// como ver em que unidade se estava sem abrir o Inspector e comparar números.
+///
+/// ⚠️ **É uma família própria, e nenhum gate deste repo a via:** o
+/// `architecture_panel_wiring_parity` mede *focalizabilidade*, e os `seam_*` provam que o
+/// clique **chega**. Nenhum pergunta se o painel **mostra o estado que acabou de
+/// escrever**. *Fiar o clique não é fiar o ESTADO.*
+///
+/// # A régua
+///
+/// Com o estado de fábrica, cada submenu de escolha tem de ter **pelo menos uma** linha
+/// marcada. ⭐ **«Pelo menos uma» e não «exactamente uma»**, e a razão está escrita no
+/// próprio `id_is_currently_selected`: o submenu de **Motion** acende DUAS de propósito —
+/// o carácter é um rádio e o *reduced motion* é um toggle independente, e
+/// *«Expressivo + reduced» tem de conseguir acender as duas ao mesmo tempo*.
+///
+/// ⚠️ **O `PPM` cabe na régua por sorte do default**, e vale dizê-lo: o valor de fábrica
+/// (100) **é** um dos cinco presets, então uma linha acende. Com um `pixels_per_meter`
+/// fora dos presets — que a UI permite — nenhuma acenderia, e isso está **certo**: marcar
+/// um preset que não é o valor seria mentir.
+#[test]
+fn every_choice_submenu_marks_the_active_pick() {
+    use crate::interaction::ContextMenuKind as K;
+    // As que ESCOLHEM um valor. ⚠️ A lista é explícita porque a alternativa — filtrar
+    // pelo nome da variante — não é exprimível, e um `_ => true` cego poria aqui os
+    // menus de AÇÃO (File/Open), onde não há nada para marcar.
+    const ESCOLHEM: &[K] = &[
+        K::ThemeSelector,
+        K::SettingsPpmSubmenu,
+        K::SettingsUnitSubmenu,
+        K::SettingsAngleSubmenu,
+        K::SettingsFilterSubmenu,
+        K::SettingsDisplaySubmenu,
+        K::SettingsTextSubmenu,
+        K::SettingsMotionSubmenu,
+    ];
+    let store = crate::interaction::WidgetStore::default();
+    let project = crate::project::ProjectSettings::default();
+    let motion = crate::motion::UiMotion::default();
+    let theme = ph2d_tokens::Theme::default();
+
+    let mut mudos = Vec::new();
+    for kind in ESCOLHEM {
+        let rows = crate::screens::hero::menu_rows::menu_rows(*kind);
+        assert!(
+            !rows.is_empty(),
+            "{kind:?} está na lista de escolha e não tem linhas"
+        );
+        let marcadas = rows
+            .iter()
+            .filter(|(id, _, _)| {
+                crate::screens::hero::context_menu_overlay::id_is_currently_selected(
+                    *id, theme, &store, &project, &motion,
+                )
+            })
+            .count();
+        if marcadas == 0 {
+            mudos.push(format!("{kind:?}"));
+        }
+    }
+    assert!(
+        mudos.is_empty(),
+        "submenu(s) de escolha que NÃO marcam o valor activo: {mudos:?}\n\
+         cura: acrescentar o braço em `id_is_currently_selected` — o menu grava o valor \
+         e não o mostra, que é a família que este gate existe para apanhar"
+    );
+}
+
+/// ⛔ **O censo da lista acima** — sem ele, um submenu de escolha NOVO nasce fora da régua
+/// e o gate de cima fica verde sobre ele.
+///
+/// ⚠️ É a lei do `CLAUDE.md` §5.0: *ao criar uma tolerância, escreva no mesmo commit o
+/// teste que pergunta se o alvo ainda existe*. Aqui a "tolerância" é o conjunto que
+/// **fica de fora**, e a pergunta é: *toda variante `Settings*Submenu` foi classificada?*
+#[test]
+fn every_settings_submenu_is_classified_as_choice_or_action() {
+    use crate::interaction::ContextMenuKind as K;
+    // As que NÃO escolhem — cada uma com o motivo, e a lista tem de esgotar o resto.
+    const NAO_ESCOLHEM: &[(K, &str)] = &[(
+        K::SettingsMenu,
+        "é o menu-mãe: só abre cascatas, não guarda valor. ⚠️ A linha `Input Map…` que ele \
+         contém também não escolhe nada — ela abre uma JANELA, e por isso nem sequer tem \
+         variante de `ContextMenuKind` para classificar aqui",
+    )];
+    let classificadas: Vec<K> = [
+        K::ThemeSelector,
+        K::SettingsPpmSubmenu,
+        K::SettingsUnitSubmenu,
+        K::SettingsAngleSubmenu,
+        K::SettingsFilterSubmenu,
+        K::SettingsDisplaySubmenu,
+        K::SettingsTextSubmenu,
+        K::SettingsMotionSubmenu,
+    ]
+    .into_iter()
+    .chain(NAO_ESCOLHEM.iter().map(|(k, _)| *k))
+    .collect();
+
+    let esquecidas: Vec<String> = K::ALL
+        .iter()
+        .filter(|k| format!("{k:?}").starts_with("Settings"))
+        .filter(|k| !classificadas.contains(k))
+        .map(|k| format!("{k:?}"))
+        .collect();
+    assert!(
+        esquecidas.is_empty(),
+        "variante(s) `Settings*` sem classificação: {esquecidas:?}\n\
+         cura: pô-la na lista de ESCOLHEM (e então ela tem de marcar o valor activo) ou \
+         na de NÃO_ESCOLHEM, com o motivo escrito"
     );
 }

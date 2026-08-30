@@ -64,7 +64,7 @@ pub(super) fn id_is_currently_selected(
     project: &crate::project::ProjectSettings,
     motion: &crate::motion::UiMotion,
 ) -> bool {
-    use crate::project::{DisplayUnit, ImageFilterMode};
+    use crate::project::{DisplayAngle, DisplayUnit, ImageFilterMode};
     use crate::widget::RailButtonSize;
     let theme_id = match theme {
         Theme::Forge => ids::CTX_MENU_THEME_FORGE,
@@ -110,6 +110,18 @@ pub(super) fn id_is_currently_selected(
         DisplayUnit::Pixels => ids::CTX_MENU_UNIT_PIXELS,
     };
     if id == unit_id {
+        return true;
+    }
+    // Angle unit — a irmã do `display_unit` acima (Enio, 2026-08-30). ⚠️ **Esta linha faltou na
+    // 1.ª entrega da feature**, e o defeito é da família que este ficheiro existe para curar: o
+    // menu abria, o clique funcionava e o valor gravava — mas **nenhuma das duas opções aparecia
+    // marcada**, então não havia como ver em que unidade se estava sem abrir o Inspector e
+    // comparar. *Fiar o clique não é fiar o ESTADO.*
+    let angle_id = match project.display_angle {
+        DisplayAngle::Degrees => ids::CTX_MENU_ANGLE_DEGREES,
+        DisplayAngle::Radians => ids::CTX_MENU_ANGLE_RADIANS,
+    };
+    if id == angle_id {
         return true;
     }
     let filter_id = match project.image_filter {

@@ -2337,7 +2337,13 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
         ),
         (
             "matriz radial",
-            one(bx.clone(), vec![Unary::Radial { count: 7 }]),
+            one(
+                bx.clone(),
+                vec![Unary::Radial {
+                    count: 7,
+                    joint: ph2d_field::Joint::SHARP,
+                }],
+            ),
         ),
         (
             "inclinação",

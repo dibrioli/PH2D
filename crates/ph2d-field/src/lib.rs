@@ -30,13 +30,14 @@
 pub mod blend;
 pub mod dims;
 pub mod mods;
+pub mod mods_dims;
 /// ⭐ O que uma forma **é** — ver [`primitive`].
 pub mod primitive;
 pub mod profile;
 pub mod radius;
 pub mod xform;
 
-pub use blend::{Blend, Character};
+pub use blend::{Blend, Character, Joint};
 pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
 // ⚠️ **O `pub use` é o que mantém `ph2d_field::Primitive`** — cortar um arquivo não pode custar uma
@@ -116,8 +117,18 @@ use serde::{Deserialize, Serialize};
 /// `mods: Vec::new()`, e um vetor vazio custa um byte independentemente de quantas variantes o `enum`
 /// tem — *um golden que não instancia a coisa nova não a defende*.
 ///
+/// v14: a [`Unary::Array`] e a [`Unary::Radial`] ganharam a **junta entre as cópias**
+/// ([`Joint`], pedido do Enio em 2026-08-30). São campos novos em variantes existentes, e postcard
+/// é **posicional** — um documento v13 leria a contagem seguinte como o chanfro.
+///
+/// ⭐⭐⭐ **E é o primeiro degrau desta escada que um golden DEFENDE.** Os três anteriores (v11, v12,
+/// v13) passaram os dois goldens de forma a verde, porque as duas fixturas deles têm
+/// `mods: Vec::new()` — a nota do v11 abaixo já o dizia, e ninguém tinha construído o instrumento.
+/// Ele existe agora: `the_shape_of_a_saved_modifier_stack_is_pinned`, com a fixtura **derivada** de
+/// [`UnaryKind::ALL`], para que um modificador novo entre nela sozinho.
+///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 13;
+pub const FIELD_DOC_VERSION: u32 = 14;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

@@ -37,7 +37,7 @@
 //!
 //! [ADR-0132]: ../../../docs/architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md
 
-use crate::{FieldError, Span};
+use crate::Joint;
 use serde::{Deserialize, Serialize};
 
 /// Um modificador aplicado ao campo de um nó, **depois** do que ele é e **antes** da pose dele.
@@ -62,7 +62,14 @@ pub enum Unary {
     /// **Matriz linear**: `count` cópias espaçadas de `spacing` ao longo do **X local**.
     ///
     /// ⚠️ Mesmo eixo, mesma razão do [`Unary::Mirror`].
-    Array { count: u32, spacing: f32 },
+    ///
+    /// ⭐⭐⭐ **O `joint` é a costura ENTRE as cópias** (Enio, 2026-08-30) — ver [`Joint`], e ver
+    /// [`Unary::Radial`] para a lei que ele obriga.
+    Array {
+        count: u32,
+        spacing: f32,
+        joint: Joint,
+    },
     /// **Inclinação (draft/taper)**: a secção transversal cresce ou encolhe ao longo do **Y local**,
     /// à razão de `slope` por unidade de altura.
     ///
@@ -75,7 +82,17 @@ pub enum Unary {
     /// a peça**: o [`crate::Primitive::Cylinder`] aponta em Z, e uma coroa de parafusos à volta de
     /// um flange gira em torno do eixo dele. Cada modificador nomeia o seu eixo e diz porquê, que é
     /// o que as primitivas já fazem (o cilindro é Z, o torno é Y, e cada um tem a razão escrita).
-    Radial { count: u32 },
+    ///
+    /// ⭐⭐⭐ **O `joint` é a costura ENTRE as cópias** (Enio, 2026-08-30: *«em radial e outros
+    /// modificadores que geram cópias da mesma peça não temos nem filet nem chamfer para a união
+    /// entre as peças»*).
+    ///
+    /// ⛔⛔ **Ele obriga uma lei que o `min` não precisava, e ela está medida:** a repetição avalia
+    /// **duas** cópias e junta-as, e nas pontas de uma matriz (o `clamp`) e no centro exacto de uma
+    /// fatia (o `compare` que devolve `0`) as duas avaliações são a **mesma** cópia. O `min` é
+    /// idempotente e não se importa; uma mistura **não é**, e a superfície move-se. A cura é o
+    /// `ph2d_field_eval::ops_joint::union_between_copies`, que só mistura onde elas são distintas.
+    Radial { count: u32, joint: Joint },
     /// **Espelho** no plano `y = 0` do nó. Ver [`Unary::MirrorZ`] para a razão de existir.
     MirrorY,
     /// **Espelho** no plano `z = 0` do nó.
@@ -172,215 +189,29 @@ impl Unary {
         self.kind().key()
     }
 
-    /// ⭐ **Os números deste modificador**, na ordem em que o painel os mostra.
+    /// ⭐⭐⭐ **A JUNTA DESTE MODIFICADOR** — [`Joint::SHARP`] para quem não gera cópias.
     ///
-    /// ⚠️ **Vários, e não um** — foi o que a matriz forçou, e é a forma certa: uma matriz tem
-    /// quantas cópias **e** que espaçamento, e enfiá-las em dois modificadores separados seria
-    /// partir uma coisa em duas para caber num campo. É a mesma forma que [`crate::dims`] já usa
-    /// para uma primitiva — *um vocabulário, não dois*.
+    /// ⚠️ **Lista FECHADA de propósito**: um modificador novo é **erro de compilação** aqui, e quem
+    /// o escrever tem de dizer se ele costura alguma coisa. Foi assim que o
+    /// [`crate::fillet_inflates`] apanhou o filete do cone, e é a mesma pergunta um nível acima — o
+    /// leitor é o `ph2d_field_eval::gradient_bound`, e a resposta errada **fura a peça**.
     ///
-    /// Um modificador **sem números** (o espelho) devolve vazio, e o painel não pinta linha nenhuma
-    /// para ele: o chip aceso já diz tudo o que há para dizer.
+    /// ⛔ O **espelho** fica de fora, e não é esquecimento: a costura dele é o plano onde as duas
+    /// cópias **coincidem** em vez de se encontrarem, e uma mistura ali engorda uma forma que
+    /// atravessa o plano sem vinco nenhum. É outra pergunta, e ela precisa de medição própria.
     #[must_use]
-    pub fn dims(self) -> Vec<crate::Dim> {
+    pub fn joint(self) -> Joint {
         match self {
-            Unary::Shell { thickness } => vec![crate::Dim {
-                key: "field.mod.thickness",
-                value: thickness,
-                // Sem parede: uma casca mais grossa do que a peça deixa de ser oca, o que é uma
-                // forma legítima e não um erro. O alcance útil é o da vista.
-                span: Span::Positive,
-            }],
-            // ⚠️ **Simétrica**, e é metade da razão de o afastamento existir: encolher é o gesto de
-            // folga de encaixe. Uma faixa só positiva mataria metade da ferramenta.
-            Unary::Offset { distance } => vec![crate::Dim {
-                key: "field.mod.distance",
-                value: distance,
-                span: Span::Free,
-            }],
-            Unary::Mirror | Unary::MirrorY | Unary::MirrorZ => Vec::new(),
-            Unary::Array { count, spacing } => vec![
-                crate::Dim {
-                    key: "field.mod.count",
-                    value: count as f32,
-                    span: Span::Count {
-                        min: 1,
-                        max: MAX_ARRAY_COUNT,
-                    },
-                },
-                crate::Dim {
-                    key: "field.mod.spacing",
-                    value: spacing,
-                    span: Span::Positive,
-                },
-            ],
-            // ⚠️ **Sem espaçamento**: numa coroa o espaçamento é o próprio ângulo, e ele já está
-            // dito pela contagem (`2π/n`). Um segundo número aqui seria uma forma de pedir uma
-            // coroa incompleta — que é outra feature, com outro nome.
-            Unary::Taper { slope } => vec![crate::Dim {
-                key: "field.mod.slope",
-                value: slope,
-                // ⚠️ Uma parede dos **dois** lados: inclinar para dentro e para fora são os dois
-                // gestos, e o teto é do CUSTO da marcha (ver `MAX_TAPER_SLOPE`).
-                span: Span::Walls(MAX_TAPER_SLOPE),
-            }],
-            Unary::Radial { count } => vec![crate::Dim {
-                key: "field.mod.count",
-                value: count as f32,
-                span: Span::Count {
-                    min: 1,
-                    max: MAX_ARRAY_COUNT,
-                },
-            }],
-            // ⚠️ **Os dois sentidos** (como a inclinação): torcer para um lado e para o outro são os
-            // dois gestos, e o teto é do CUSTO da marcha — ver [`MAX_TWIST_TURNS`].
-            // ⚠️ E os limites são **posições** (`Span::Free`): a origem não é um canto do mundo.
-            Unary::Twist {
-                turns,
-                lower,
-                upper,
-                falloff,
-            } => vec![
-                crate::Dim {
-                    key: "field.mod.turns",
-                    value: turns,
-                    span: Span::Walls(MAX_TWIST_TURNS),
-                },
-                crate::Dim {
-                    key: "field.mod.from",
-                    value: lower,
-                    span: Span::Free,
-                },
-                crate::Dim {
-                    key: "field.mod.to",
-                    value: upper,
-                    span: Span::Free,
-                },
-                // ⚠️ **`FromZero` e não `Positive`**: o zero é uma resposta (o corte duro), e não
-                // uma recusa — é a mesma cerca que o cone fechado já usa.
-                crate::Dim {
-                    key: "field.mod.falloff",
-                    value: falloff,
-                    span: Span::FromZero,
-                },
-            ],
-            // ⚠️ **As mesmas quatro linhas da torção, na mesma ordem** — ver o doc da variante.
-            Unary::Bend {
-                turns,
-                lower,
-                upper,
-                falloff,
-            } => vec![
-                crate::Dim {
-                    key: "field.mod.turns",
-                    value: turns,
-                    span: Span::Walls(MAX_BEND_TURNS),
-                },
-                crate::Dim {
-                    key: "field.mod.from",
-                    value: lower,
-                    span: Span::Free,
-                },
-                crate::Dim {
-                    key: "field.mod.to",
-                    value: upper,
-                    span: Span::Free,
-                },
-                crate::Dim {
-                    key: "field.mod.falloff",
-                    value: falloff,
-                    span: Span::FromZero,
-                },
-            ],
+            Unary::Array { joint, .. } | Unary::Radial { joint, .. } => joint,
+            Unary::Shell { .. }
+            | Unary::Offset { .. }
+            | Unary::Mirror
+            | Unary::MirrorY
+            | Unary::MirrorZ
+            | Unary::Taper { .. }
+            | Unary::Twist { .. }
+            | Unary::Bend { .. } => Joint::SHARP,
         }
-    }
-
-    /// ⭐ **Escreve um dos números**, ou recusa — a porta única.
-    ///
-    /// # Errors
-    /// [`FieldError::NonPositive`] para um valor não-finito, para um índice que não é deste
-    /// modificador, e para os números cujo zero não quer dizer nada (uma casca sem parede não é uma
-    /// casca; uma matriz de espaçamento zero é N cópias no mesmo sítio).
-    pub fn set_dim(&mut self, node: u32, field: u8, value: f32) -> Result<(), FieldError> {
-        let bad = |what: &'static str| FieldError::NonPositive { node, what };
-        if !value.is_finite() {
-            return Err(bad("mod"));
-        }
-        match (&mut *self, field) {
-            (Unary::Shell { thickness }, 0) => {
-                if value <= 0.0 {
-                    return Err(bad("thickness"));
-                }
-                *thickness = value;
-            }
-            // ⚠️ **Zero é legítimo aqui**: um afastamento de zero é o campo intacto, e é o ponto por
-            // onde o número passa ao ir de encolher para crescer. Recusá-lo faria o slider ter um
-            // buraco no meio.
-            (Unary::Offset { distance }, 0) => *distance = value,
-            (Unary::Array { count, .. }, 0) => {
-                // ⚠️ **O documento é quem arredonda.** O painel mostra um inteiro porque a faixa diz
-                // que ele é um (`Span::Count`), mas quem garante é esta linha — um valor fracionário
-                // que chegasse por outra porta viraria `count` na mesma, e não meia cópia.
-                if value < 1.0 {
-                    return Err(bad("count"));
-                }
-                *count = (value.round() as u32).min(MAX_ARRAY_COUNT);
-            }
-            (Unary::Array { spacing, .. }, 1) => {
-                if value <= 0.0 {
-                    return Err(bad("spacing"));
-                }
-                *spacing = value;
-            }
-            (Unary::Taper { slope }, 0) => {
-                *slope = value.clamp(-MAX_TAPER_SLOPE, MAX_TAPER_SLOPE);
-            }
-            // ⚠️ **Aceita zero e negativo**: a faixa é dos dois lados e o zero é a peça intacta.
-            // Recusar aqui faria o `FieldDoc::new` recusar a PEÇA INTEIRA quando o documento se
-            // revalida — a armadilha que o `Offset` já nomeia acima.
-            (Unary::Twist { turns, .. }, 0) => {
-                *turns = value.clamp(-MAX_TWIST_TURNS, MAX_TWIST_TURNS);
-            }
-            // ⚠️ **Zero é legítimo**: é o corte duro, e é o estado de onde o ombro se arrasta.
-            (Unary::Twist { falloff, .. }, 3) => {
-                *falloff = value.max(0.0);
-            }
-            // ⚠️ **A dobra escreve pela MESMA lei da torção**, linha a linha — ver o doc dela.
-            (Unary::Bend { turns, .. }, 0) => {
-                *turns = value.clamp(-MAX_BEND_TURNS, MAX_BEND_TURNS);
-            }
-            (Unary::Bend { lower, upper, .. }, 1) => {
-                *lower = value;
-                *upper = upper.max(value);
-            }
-            (Unary::Bend { lower, upper, .. }, 2) => {
-                *upper = value;
-                *lower = lower.min(value);
-            }
-            (Unary::Bend { falloff, .. }, 3) => {
-                *falloff = value.max(0.0);
-            }
-            // ⚠️ **A banda COAGE em vez de recusar**, e as duas pontas são simétricas na lei: quem
-            // escreve um `from` acima do `to` empurra o outro, em vez de ver o número saltar para
-            // trás debaixo do dedo. *Uma porta que recusa uma ordem legítima ensina o artista a não
-            // usar o controle.*
-            (Unary::Twist { lower, upper, .. }, 1) => {
-                *lower = value;
-                *upper = upper.max(value);
-            }
-            (Unary::Twist { lower, upper, .. }, 2) => {
-                *upper = value;
-                *lower = lower.min(value);
-            }
-            (Unary::Radial { count }, 0) => {
-                if value < 1.0 {
-                    return Err(bad("count"));
-                }
-                *count = (value.round() as u32).min(MAX_ARRAY_COUNT);
-            }
-            _ => return Err(bad("mod")),
-        }
-        Ok(())
     }
 
     /// **Um modificador novo, no ponto NEUTRO da sua natureza.**
@@ -406,16 +237,24 @@ impl Unary {
             // encostadas — que é onde o artista começa a afastá-las. Um espaçamento menor do que a
             // peça faria as cópias nascerem sobrepostas, e a lei do campo tem um bound aí (ver
             // `ph2d_field_eval`).
+            // ⚠️ **A junta nasce VIVA (`Joint::SHARP`)**, e ela é a excepção à lei que a torção
+            // nomeia abaixo — *um controle que não muda um pixel lê-se como morto*. Aqui o
+            // modificador **já** muda pixels (ele faz as cópias); a junta é o segundo número, e um
+            // valor de nascimento faria toda peça já autorada mudar de forma ao ser reaberta.
             UnaryKind::Array => Unary::Array {
                 count: 2,
                 spacing: fraction(ARRAY_BIRTH_SPAN),
+                joint: Joint::SHARP,
             },
             // ⚠️ **Seis, e não dois.** Numa coroa, duas cópias a 180° leem-se como um espelho e não
             // como uma coroa — o gesto não se explica sozinho. Seis é o menor número em que a
             // circularidade é imediata, e é o que uma flange de verdade costuma ter.
             // Zero é o ponto neutro: a peça intacta, e o sítio de onde se começa a arrastar.
             UnaryKind::Taper => Unary::Taper { slope: 0.0 },
-            UnaryKind::Radial => Unary::Radial { count: 6 },
+            UnaryKind::Radial => Unary::Radial {
+                count: 6,
+                joint: Joint::SHARP,
+            },
             // ⚠️ **Nasce TORCIDA, e não em zero.** O `Offset` e a inclinação nascem no ponto neutro
             // porque «sem afastamento» e «sem saída de molde» são estados que o artista quer ter;
             // «sem torção» é o modificador a não fazer nada — e um chip que não muda um pixel lê-se

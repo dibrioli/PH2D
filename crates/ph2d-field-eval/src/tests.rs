@@ -960,6 +960,7 @@ fn an_array_of_n_is_exactly_the_union_of_n_translated_copies() {
         vec![Unary::Array {
             count: n,
             spacing: s,
+            joint: ph2d_field::Joint::SHARP,
         }],
     );
     let copies = {
@@ -1002,6 +1003,7 @@ fn the_array_stops_at_the_count_instead_of_repeating_forever() {
         vec![Unary::Array {
             count: n,
             spacing: s as f32,
+            joint: ph2d_field::Joint::SHARP,
         }],
     );
     let f = Field::new(&doc);
@@ -1057,6 +1059,7 @@ fn an_off_centre_shape_still_measures_to_the_nearest_copy() {
                 mods: vec![Unary::Array {
                     count: n,
                     spacing: s,
+                    joint: ph2d_field::Joint::SHARP,
                 }],
                 verb: None,
             },
@@ -1169,7 +1172,10 @@ fn a_radial_array_of_n_is_exactly_the_union_of_n_rotated_copies() {
                     op: Op::Union(Blend::Sharp),
                     children: vec![NodeId(0)],
                 },
-                mods: vec![Unary::Radial { count: n }],
+                mods: vec![Unary::Radial {
+                    count: n,
+                    joint: ph2d_field::Joint::SHARP,
+                }],
                 verb: None,
             },
         ],
@@ -1229,7 +1235,10 @@ fn the_radial_axis_answers_instead_of_producing_a_nan() {
                     op: Op::Union(Blend::Sharp),
                     children: vec![NodeId(0)],
                 },
-                mods: vec![Unary::Radial { count: 8 }],
+                mods: vec![Unary::Radial {
+                    count: 8,
+                    joint: ph2d_field::Joint::SHARP,
+                }],
                 verb: None,
             },
         ],
@@ -2410,6 +2419,7 @@ fn the_specialised_document_agrees_inside_its_region() {
             nodes[0].mods = vec![Unary::Array {
                 count: 3,
                 spacing: 0.6,
+                joint: ph2d_field::Joint::SHARP,
             }];
             d = FieldDoc::new(nodes, NodeId(0)).expect("a matriz");
             d
@@ -2843,10 +2853,20 @@ fn the_table_of_who_inflates_the_gradient() {
                 Unary::Array {
                     count: 3,
                     spacing: 0.5,
+                    joint: ph2d_field::Joint::SHARP,
                 },
             ),
         ),
-        ("Radial 5", modded(bx.clone(), Unary::Radial { count: 5 })),
+        (
+            "Radial 5",
+            modded(
+                bx.clone(),
+                Unary::Radial {
+                    count: 5,
+                    joint: ph2d_field::Joint::SHARP,
+                },
+            ),
+        ),
         ("Taper 0,3", modded(bx.clone(), Unary::Taper { slope: 0.3 })),
         (
             "escala 0,4",
@@ -2914,7 +2934,13 @@ fn the_table_of_the_gradient_across_the_parameter() {
             .map(|c| {
                 (
                     format!("{c}"),
-                    modded(bx.clone(), Unary::Radial { count: c }),
+                    modded(
+                        bx.clone(),
+                        Unary::Radial {
+                            count: c,
+                            joint: ph2d_field::Joint::SHARP,
+                        },
+                    ),
                 )
             })
             .collect(),
@@ -2931,6 +2957,7 @@ fn the_table_of_the_gradient_across_the_parameter() {
                         Unary::Array {
                             count: 4,
                             spacing: s,
+                            joint: ph2d_field::Joint::SHARP,
                         },
                     ),
                 )
@@ -3130,7 +3157,13 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
     for c in [2u32, 3, 5, 8, 16, 64] {
         cases.push((
             format!("Radial {c}"),
-            modded(bx.clone(), Unary::Radial { count: c }),
+            modded(
+                bx.clone(),
+                Unary::Radial {
+                    count: c,
+                    joint: ph2d_field::Joint::SHARP,
+                },
+            ),
         ));
     }
     for sp in [0.1f32, 0.3, 0.5, 1.0] {
@@ -3141,6 +3174,7 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
                 Unary::Array {
                     count: 4,
                     spacing: sp,
+                    joint: ph2d_field::Joint::SHARP,
                 },
             ),
         ));
@@ -4530,12 +4564,19 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
         ("Offset 0,1", ph2d_field::Unary::Offset { distance: 0.1 }),
         ("Taper 1,0", ph2d_field::Unary::Taper { slope: 1.0 }),
         ("Mirror", ph2d_field::Unary::Mirror),
-        ("Radial 5", ph2d_field::Unary::Radial { count: 5 }),
+        (
+            "Radial 5",
+            ph2d_field::Unary::Radial {
+                count: 5,
+                joint: ph2d_field::Joint::SHARP,
+            },
+        ),
         (
             "Array 0,5",
             ph2d_field::Unary::Array {
                 count: 3,
                 spacing: 0.5,
+                joint: ph2d_field::Joint::SHARP,
             },
         ),
     ] {

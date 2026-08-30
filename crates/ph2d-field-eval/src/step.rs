@@ -123,68 +123,87 @@ pub fn gradient_bound(doc: &FieldDoc) -> f32 {
     // A arena tem os filhos ANTES dos pais, então uma passagem para a frente basta.
     let mut sq = vec![1.0f32; doc.nodes().len()];
     for (i, node) in doc.nodes().iter().enumerate() {
-        sq[i] = match &node.kind {
-            // ⭐⭐⭐ **UMA PRIMITIVA TAMBÉM PODE INFLAR — e esta linha valia `1` para todas até à
-            // W103.**
-            //
-            // ⛔ O filete do cone, do prisma, da cunha e da estrela é uma **interseção arredondada**
-            // (é a única saída quando as paredes não são ortogonais), e ela infla exactamente como a
-            // junta entre duas formas: medido `‖∇f‖ = 1,1943` num cone de declive `0,47`. Enquanto
-            // aquele filete era **inerte** — e era, até àquela wave — a linha estava certa por
-            // acidente; no dia em que ele passou a fazer alguma coisa, ela passou a mentir.
-            //
-            // ⚠️ A pergunta atravessa a porta do documento ([`ph2d_field::fillet_inflates`]) para a
-            // lista ficar num sítio só.
-            NodeKind::Leaf(p) => {
-                if ph2d_field::fillet_inflates(p) {
-                    2.0
-                } else {
-                    1.0
-                }
-            }
-            // Ver o doc da função: `√2` de tecto, com `30 %` de folga sobre o medido.
-            NodeKind::Sampled { .. } => 2.0,
-            // ⭐⭐⭐ **A DOBRA, com o verbo EFECTIVO de cada filho** (2026-08-29 — o report do Enio).
-            //
-            // ⛔ Esta pergunta era `op.blend()`, a mistura DO GRUPO, e isso deixou de ser a única
-            // que existe na W97. Com o verbo em cada forma e o raio de junção com ele (W98), o
-            // filete de cada passo sai de `fold_verb(parent, filho.verb)` — que é exactamente o que
-            // o [`crate::combine_trees`] lê ao construir a árvore.
-            //
-            // ⇒ com o grupo em `Sharp` e cada filho a trazer o seu `Exact`, o tecto lia `1`, o passo
-            // ficava em `1,0`, e o raio **atravessava** a superfície: medido `passo 1,0000 ×
-            // ‖∇f‖ 1,1717 = 1,17` com duas esferas e junta `0,05`. O sintoma que o Enio viu é o que
-            // um furo dependente da direcção **é**: *«ao rotacionar, as áreas do joint mudam de
-            // aspecto»*.
-            //
-            // ⚠️ **É o verbo EFECTIVO e não um dos dois lados**: ler só `node.verb` trocaria o
-            // defeito pelo simétrico (o grupo com filete e os filhos calados voltaria a ler zero), e
-            // somar todos os filhos sempre que o GRUPO arredonda castigaria a peça em que metade das
-            // juntas foi pedida viva — o caminho lento a definir o teto do rápido (§0).
-            //
-            // ⚠️ **O primeiro filho SEMEIA e o verbo dele não é perguntado** — `n` filhos são `n−1`
-            // passos de dobra. É a mesma lei do `fold_verb`, e escrevê-la aqui outra vez seria a
-            // segunda cópia; por isso a pergunta atravessa a **porta** dele.
-            NodeKind::Combine { op, children } => {
-                let mut acc: Option<f32> = None;
-                for c in children {
-                    let child = sq.get(c.0 as usize).copied().unwrap_or(1.0);
-                    let Some(a) = acc else {
-                        acc = Some(child);
-                        continue;
-                    };
-                    let verb = doc.node(*c).and_then(|n| n.verb);
-                    acc = Some(if inflates(ph2d_field::fold_verb(*op, verb).blend()) {
-                        // ⭐ **Cauchy–Schwarz**: os quadrados somam-se. Ver o doc da função.
-                        a + child
+        // ⭐⭐⭐ **A PILHA DE MODIFICADORES ENTRA NA CONTA DESDE 2026-08-30** — e até aqui a nota
+        // abaixo declarava o contrário, com medição a apoiá-la: *«`Shell`, `Offset`, `Mirror`,
+        // `Array`, `Radial`, `Taper` lêem `1,000` por cima de um exacto»*.
+        //
+        // ⛔⛔ **A costura entre CÓPIAS tornou essa frase falsa.** Uma repetição com junta é uma
+        // união arredondada como qualquer outra, e ela infla pelo mesmo mecanismo: medido
+        // `1,0848` a raio `0,08` e `1,1897` a `0,16` (`spike_join_between_copies`), abaixo do `√2`
+        // que este balde paga. *Uma lei que se declara medida envelhece no dia em que alguém
+        // acrescenta um produtor novo do mesmo efeito* (§0.0).
+        //
+        // ⚠️ **Os quadrados somam-se, como na dobra**: a junta mistura duas avaliações da MESMA
+        // subárvore, logo `L² + L² = 2L²`. Duas repetições com junta empilhadas dão `4`, e o tecto
+        // fica em `2` — conservador, e pela mesma demonstração de Cauchy–Schwarz.
+        let peso_dos_mods = node
+            .mods
+            .iter()
+            .filter(|m| !m.joint().is_sharp())
+            .fold(1.0f32, |acc, _| acc * 2.0);
+        sq[i] = peso_dos_mods
+            * match &node.kind {
+                // ⭐⭐⭐ **UMA PRIMITIVA TAMBÉM PODE INFLAR — e esta linha valia `1` para todas até à
+                // W103.**
+                //
+                // ⛔ O filete do cone, do prisma, da cunha e da estrela é uma **interseção arredondada**
+                // (é a única saída quando as paredes não são ortogonais), e ela infla exactamente como a
+                // junta entre duas formas: medido `‖∇f‖ = 1,1943` num cone de declive `0,47`. Enquanto
+                // aquele filete era **inerte** — e era, até àquela wave — a linha estava certa por
+                // acidente; no dia em que ele passou a fazer alguma coisa, ela passou a mentir.
+                //
+                // ⚠️ A pergunta atravessa a porta do documento ([`ph2d_field::fillet_inflates`]) para a
+                // lista ficar num sítio só.
+                NodeKind::Leaf(p) => {
+                    if ph2d_field::fillet_inflates(p) {
+                        2.0
                     } else {
-                        // Uma junta viva é um `min`, e o gradiente dele é o de um dos dois.
-                        a.max(child)
-                    });
+                        1.0
+                    }
                 }
-                acc.unwrap_or(1.0)
-            }
-        };
+                // Ver o doc da função: `√2` de tecto, com `30 %` de folga sobre o medido.
+                NodeKind::Sampled { .. } => 2.0,
+                // ⭐⭐⭐ **A DOBRA, com o verbo EFECTIVO de cada filho** (2026-08-29 — o report do Enio).
+                //
+                // ⛔ Esta pergunta era `op.blend()`, a mistura DO GRUPO, e isso deixou de ser a única
+                // que existe na W97. Com o verbo em cada forma e o raio de junção com ele (W98), o
+                // filete de cada passo sai de `fold_verb(parent, filho.verb)` — que é exactamente o que
+                // o [`crate::combine_trees`] lê ao construir a árvore.
+                //
+                // ⇒ com o grupo em `Sharp` e cada filho a trazer o seu `Exact`, o tecto lia `1`, o passo
+                // ficava em `1,0`, e o raio **atravessava** a superfície: medido `passo 1,0000 ×
+                // ‖∇f‖ 1,1717 = 1,17` com duas esferas e junta `0,05`. O sintoma que o Enio viu é o que
+                // um furo dependente da direcção **é**: *«ao rotacionar, as áreas do joint mudam de
+                // aspecto»*.
+                //
+                // ⚠️ **É o verbo EFECTIVO e não um dos dois lados**: ler só `node.verb` trocaria o
+                // defeito pelo simétrico (o grupo com filete e os filhos calados voltaria a ler zero), e
+                // somar todos os filhos sempre que o GRUPO arredonda castigaria a peça em que metade das
+                // juntas foi pedida viva — o caminho lento a definir o teto do rápido (§0).
+                //
+                // ⚠️ **O primeiro filho SEMEIA e o verbo dele não é perguntado** — `n` filhos são `n−1`
+                // passos de dobra. É a mesma lei do `fold_verb`, e escrevê-la aqui outra vez seria a
+                // segunda cópia; por isso a pergunta atravessa a **porta** dele.
+                NodeKind::Combine { op, children } => {
+                    let mut acc: Option<f32> = None;
+                    for c in children {
+                        let child = sq.get(c.0 as usize).copied().unwrap_or(1.0);
+                        let Some(a) = acc else {
+                            acc = Some(child);
+                            continue;
+                        };
+                        let verb = doc.node(*c).and_then(|n| n.verb);
+                        acc = Some(if inflates(ph2d_field::fold_verb(*op, verb).blend()) {
+                            // ⭐ **Cauchy–Schwarz**: os quadrados somam-se. Ver o doc da função.
+                            a + child
+                        } else {
+                            // Uma junta viva é um `min`, e o gradiente dele é o de um dos dois.
+                            a.max(child)
+                        });
+                    }
+                    acc.unwrap_or(1.0)
+                }
+            };
     }
     // ⚠️ Os modificadores (`Shell`, `Offset`, `Mirror`, `Array`, `Radial`, `Taper`) não entram, e
     // isso é **medido**: os cinco primeiros lêem `1,000` por cima de um exacto e o `Taper` **desce**

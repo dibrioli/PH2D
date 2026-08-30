@@ -20,6 +20,7 @@ pub mod bounds;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;
+pub mod ops_joint;
 pub mod ops_plates;
 pub mod ops_solids;
 pub mod profile;

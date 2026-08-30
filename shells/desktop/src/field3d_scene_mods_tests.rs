@@ -176,8 +176,13 @@ fn a_modifier_can_have_several_numbers_or_none_at_all() {
         vec![
             Param::Mod { slot: 1, field: 0 },
             Param::Mod { slot: 1, field: 1 },
+            // ⭐ **Os dois números da COSTURA entre as cópias** (Enio, 2026-08-30), e eles vêm no
+            // FIM da lista de propósito: o índice `field` é posicional, então inserir no meio
+            // renumeraria os que já existem e um arrasto em curso passaria a escrever noutro campo.
+            Param::Mod { slot: 1, field: 2 },
+            Param::Mod { slot: 1, field: 3 },
         ],
-        "a matriz põe DUAS linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
+        "a matriz põe QUATRO linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
     );
 }
 

@@ -149,3 +149,64 @@ impl Character {
         }
     }
 }
+
+/// ⭐⭐⭐ **UMA JUNTA — o chanfro E o filete, nesta ordem** (Enio, 2026-08-30).
+///
+/// > *«Poderíamos ter os 2, com chamfer antes de fillet para a possibilidade de arredondar as
+/// > bordas geradas por chamfer»*
+///
+/// # Por que DOIS números, e não o carácter que já existe
+///
+/// A fileira de chips ([`Character`]) escolhe **um** carácter de cada vez, e é a forma certa para a
+/// junta de um grupo: ali a pergunta é *«que forma tem esta mistura?»*. Aqui a pergunta é outra —
+/// *«corta a quina, e depois arredonda o que o corte deixou?»* —, e ela **não se exprime** com um
+/// carácter só: um chanfro seguido de filete tem três superfícies onde havia uma aresta.
+///
+/// ⭐ E os dois números medem a **mesma coisa que os chips medem**: o recuo ao longo de cada face
+/// (ver [`Blend::Chamfer`]). Trocar um pelo outro não muda o tamanho da peça.
+///
+/// # ⚠️ A ORDEM é a do CAD, e é a que o pedido nomeia
+///
+/// O chanfro corta primeiro. As duas arestas que ele cria (face↔chanfro, dos dois lados) é que o
+/// filete arredonda. ⛔ Ao contrário — filetar e depois chanfrar — o corte comeria o arco, e o
+/// segundo número apagaria o primeiro.
+///
+/// # ⚠️ Zero é o estado de nascimento, e ele tem de ser BYTE-IDÊNTICO
+///
+/// `Joint::SHARP` avalia pelo caminho de sempre — nem um nó a mais na árvore. É o que permite dar
+/// esta junta a modificadores que já existem sem mexer numa peça já autorada.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Joint {
+    /// O recuo do corte reto a 45°, ao longo de cada uma das duas faces.
+    pub chamfer: f32,
+    /// O raio do arco que arredonda o que sobrou — as arestas do chanfro, ou a quina viva se
+    /// `chamfer` for zero.
+    pub fillet: f32,
+}
+
+impl Joint {
+    /// A aresta viva: os dois números a zero.
+    pub const SHARP: Self = Self {
+        chamfer: 0.0,
+        fillet: 0.0,
+    };
+
+    /// **Esta junta faz alguma coisa?** — a pergunta que escolhe entre o caminho de sempre e o novo.
+    ///
+    /// ⚠️ Um número **negativo** conta como viva: ele não é alcançável pelo painel (a faixa é
+    /// positiva) e um ficheiro corrompido não pode fazer a árvore crescer.
+    #[must_use]
+    pub fn is_sharp(self) -> bool {
+        !(self.chamfer > 0.0 || self.fillet > 0.0)
+    }
+
+    /// Até onde esta junta ACRESCENTA material, medido da quina para fora.
+    ///
+    /// ⚠️ **É o que o bordo da peça tem de crescer** — uma junta enche o vinco entre duas cópias, e
+    /// um bordo que não a conte recorta a peça na marcha e na exportação. Os dois recuos somam-se
+    /// porque o filete age sobre o que o chanfro deixou.
+    #[must_use]
+    pub fn reach(self) -> f32 {
+        self.chamfer.max(0.0) + self.fillet.max(0.0)
+    }
+}

@@ -414,4 +414,19 @@
 /// longe da causa.
 ///
 /// ⛔ Sem degrau de migração, pela mesma decisão do Enio de 26/08 (*"não há projetos salvos"*).
-pub(crate) const PROJECT_SCHEMA: u32 = 108;
+///
+/// # 108 -> 109 — a JUNTA entre as cópias de uma repetição (pedido do Enio, 2026-08-30)
+///
+/// A `ph2d_field::Unary::Array` e a `::Radial` ganharam um `Joint { chamfer, fillet }`, e o
+/// `FIELD_DOC_VERSION` subiu **13 -> 14**. ⚠️ **Este número sobe por arrasto, e o caminho é o que
+/// engana:** o doc do `FIELD_DOC_VERSION` diz que *"nada persiste um `FieldDoc`"* e isso é
+/// literalmente verdade — mas a pilha de modificadores viaja, byte a byte e **posicionalmente**,
+/// dentro do blob do componente `ph2d_field_ecs::FieldMods`, que está no `WorldSnapshot`.
+///
+/// ⛔⛔ **E NENHUM GATE LIGA OS DOIS NÚMEROS.** A tripla de `project_schema_tests` vigia
+/// `PROJECT_SCHEMA × FLIP_SCHEMA_VERSION × VEC_SCENE_SCHEMA_VERSION`; o `FIELD_DOC_VERSION` não está
+/// lá. Quem mexer numa `Primitive` ou num `Unary` tem de subir os dois **à mão**, e o instrumento
+/// que o avisa é o `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field`.
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v103 é **recusado em voz alta**.
+pub(crate) const PROJECT_SCHEMA: u32 = 109;

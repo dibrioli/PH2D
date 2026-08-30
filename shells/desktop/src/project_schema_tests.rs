@@ -443,7 +443,15 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // um componente viaja num `ComponentBlob` opaco, chaveado por nome (o caso do 99 e do 100).
         // PROJECT 107→108: as ANCORAS do preenchimento (plano 40 §11). O `VecBucketFill` ganhou um
         // campo APENDADO, e a tripla continua a nao ver -- pela mesma razao do 107.
-        (108, 13, 18),
+        // PROJECT 108→109: a JUNTA entre as copias de uma repeticao (pedido do Enio, 2026-08-30).
+        // A `ph2d_field::Unary::Array` e a `::Radial` ganharam um `Joint { chamfer, fillet }`.
+        // ⚠️ **Os DOIS numeros ao lado ficam onde estavam, e este e' o mesmo cego do 99 e do 100**:
+        // a pilha de modificadores viaja dentro do `ComponentBlob` do `ph2d_field_ecs::FieldMods`,
+        // que para esta tripla e' um `Vec<u8>` opaco. Quem defende os bytes de la' e' o
+        // `ph2d_field::tests::the_shape_of_a_saved_modifier_stack_is_pinned` -- construido no mesmo
+        // commit, porque os degraus v11/v12/v13 do `FIELD_DOC_VERSION` passaram os goldens a VERDE.
+        // ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+        (109, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

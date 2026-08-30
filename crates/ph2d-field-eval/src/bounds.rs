@@ -276,19 +276,34 @@ pub fn step_mod(b: Ball, m: Unary) -> Ball {
             })
         }
         // A matriz linear anda ao longo do X local.
-        Unary::Array { count, spacing } => {
+        Unary::Array {
+            count,
+            spacing,
+            joint,
+        } => {
             let span = f32::from(u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX))
                 * spacing.abs();
             Ball {
                 center: [b.center[0] + span * 0.5, b.center[1], b.center[2]],
-                radius: b.radius + span * 0.5,
+                // ⭐ **A junta ACRESCENTA material no vinco** — um bordo que não a conte recorta a
+                // peça na marcha e na exportação, que é o defeito que a inclinação já custou a esta
+                // linha em 2026-08-30. Ver [`ph2d_field::Joint::reach`].
+                radius: b.radius + span * 0.5 + joint.reach(),
             }
         }
         // ⭐ **A torção varre em torno do Z local, e a bola dela é a MESMA da matriz radial** — cada
         // fatia de `z` é uma rotação em torno da origem, logo `‖(x,y)‖` e `z` são preservados. Uma
         // bola já centrada no eixo fica **inalterada ao bit**; uma descentrada varre o círculo que o
         // centro descreve. *Não se escreve lei nova: aponta-se para a que existe.*
-        Unary::Radial { .. } | Unary::Twist { .. } => {
+        Unary::Radial { joint, .. } => {
+            let arm = b.center[0].hypot(b.center[1]);
+            Ball {
+                center: [0.0, 0.0, b.center[2]],
+                // ⭐ Pela razão da matriz acima — a costura entre as cópias enche o vinco.
+                radius: arm + b.radius + joint.reach(),
+            }
+        }
+        Unary::Twist { .. } => {
             let arm = b.center[0].hypot(b.center[1]);
             Ball {
                 center: [0.0, 0.0, b.center[2]],

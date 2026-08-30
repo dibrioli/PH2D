@@ -34,8 +34,12 @@ fn vivo(k: UnaryKind) -> Unary {
         UnaryKind::Array => Unary::Array {
             count: 3,
             spacing: 0.5,
+            joint: ph2d_field::Joint::SHARP,
         },
-        UnaryKind::Radial => Unary::Radial { count: 6 },
+        UnaryKind::Radial => Unary::Radial {
+            count: 6,
+            joint: ph2d_field::Joint::SHARP,
+        },
         UnaryKind::Taper => Unary::Taper { slope: 0.6 },
         UnaryKind::Twist => Unary::Twist {
             turns: 0.35,

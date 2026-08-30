@@ -203,6 +203,52 @@ fn the_shape_of_a_saved_field_is_pinned() {
     assert_eq!(back, doc, "ida e volta tem de devolver o mesmo documento");
 }
 
+/// ⭐⭐⭐ **O GOLDEN QUE FALTAVA — a forma serializada da PILHA DE MODIFICADORES** (2026-08-30).
+///
+/// # ⛔ Ele existe porque o buraco estava ESCRITO e sem instrumento
+///
+/// O doc do degrau **v11** do [`crate::FIELD_DOC_VERSION`] diz, com todas as letras:
+///
+/// > *«E o golden de forma NÃO o teria apanhado: a fixtura dele tem `mods: Vec::new()`, e um vetor
+/// > vazio custa um byte independentemente de quantas variantes o `enum` tem — um golden que não
+/// > instancia a coisa nova não a defende.»*
+///
+/// ⇒ os degraus **v11, v12 e v13** (a torção, o ombro dela, a dobra) passaram os dois goldens de
+/// forma a **verde**, e a v14 (a junta entre cópias) passaria também. *Uma regra sem instrumento é
+/// uma nota que envelhece*, e esta envelheceu por três degraus.
+///
+/// # ⚠️ A fixtura é DERIVADA de [`UnaryKind::ALL`]
+///
+/// Um modificador novo entra aqui **sozinho** e move o número — que é a diferença entre um gate e
+/// uma lista escrita à mão. ⛔ Uma fixtura com os modificadores nomeados um a um teria exactamente o
+/// mesmo ponto cego, um nível acima.
+///
+/// ⚠️ **O número depende dos valores de NASCIMENTO**, e só por um canal: em postcard um `u32` é
+/// varint, então uma contagem de nascimento que passasse de `127` custaria um byte a mais. Os `f32`
+/// são fixos em 4 bytes, logo mexer num valor de nascimento **não** move este golden.
+#[test]
+fn the_shape_of_a_saved_modifier_stack_is_pinned() {
+    let stack: Vec<crate::Unary> = crate::UnaryKind::ALL
+        .iter()
+        .map(|k| crate::Unary::born(*k, 1.0))
+        .collect();
+    let bytes = postcard::to_allocvec(&stack).expect("serializa");
+    assert_eq!(
+        bytes.len(),
+        // ⚠️ MEDIDO na criação do gate (2026-08-30), não adivinhado — ver a nota do
+        // `the_shape_of_a_saved_field_is_pinned` sobre o que re-pinar aqui significa.
+        //
+        // ⭐ **A junta entre cópias vale 16 destes bytes** — `Joint { chamfer, fillet }` são dois
+        // `f32` fixos, na [`crate::Unary::Array`] e na [`crate::Unary::Radial`]. Apagá-la deste
+        // arquivo leva o número a `61`, e é essa a mutação que prova que o gate a defende.
+        77,
+        "a forma serializada de um modificador mudou — suba FIELD_DOC_VERSION, \
+         e suba o PROJECT_SCHEMA porque a pilha viaja no blob de `FieldMods`"
+    );
+    let back: Vec<crate::Unary> = postcard::from_bytes(&bytes).expect("desserializa");
+    assert_eq!(back, stack, "ida e volta tem de devolver a mesma pilha");
+}
+
 /// A serialização é **determinística**: os mesmos dados dão os mesmos bytes.
 /// É o que o undo por snapshot exige — ele compara BYTES, e um serializador instável faria todo
 /// quadro virar um passo espúrio de undo (o bug que o `canonicalize()` do shell já pagou).

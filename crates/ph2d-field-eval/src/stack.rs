@@ -67,8 +67,12 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             // cerca que caiu.
             Unary::MirrorY => acc.remap_xyz(Tree::x(), Tree::y().abs(), Tree::z()),
             Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
-            Unary::Array { count, spacing } => array(&acc, count, f64::from(spacing), deformado),
-            Unary::Radial { count } => radial(&acc, count, deformado),
+            Unary::Array {
+                count,
+                spacing,
+                joint,
+            } => array(&acc, count, f64::from(spacing), joint, deformado),
+            Unary::Radial { count, joint } => radial(&acc, count, joint, deformado),
             Unary::Taper { slope } => taper(&acc, f64::from(slope)),
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
             // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
@@ -481,7 +485,7 @@ pub(crate) fn twist_with(inner: &Tree, k: f64, safety: f64) -> Tree {
 /// ⚠️ **No eixo (`x = y = 0`) não há ângulo**, e é por isso que a conta não divide por `r`: ela
 /// reconstrói o ponto por `r·cos θ'` / `r·sin θ'`, e em `r = 0` isso é a origem — a resposta certa,
 /// sem caso especial e sem `NaN`.
-fn radial(inner: &Tree, count: u32, deformado: bool) -> Tree {
+fn radial(inner: &Tree, count: u32, joint: ph2d_field::Joint, deformado: bool) -> Tree {
     if count <= 1 {
         return inner.clone();
     }
@@ -498,7 +502,16 @@ fn radial(inner: &Tree, count: u32, deformado: bool) -> Tree {
         let t = theta.clone() - d.clone() * k;
         inner.remap_xyz(r.clone() * t.clone().cos(), r.clone() * t.sin(), Tree::z())
     };
-    let duas = wedge(raw.clone()).min(wedge(other));
+    // ⛔⛔ **No CENTRO EXACTO de uma fatia o `compare` devolve `0`**, e ali a "vizinha" é a própria
+    // cópia. Com `min` isso é inofensivo; com a junta ligada a superfície move-se, e o centro de uma
+    // fatia é precisamente onde a superfície daquela cópia passa. O portão é o mesmo da matriz.
+    let distinta = crate::ops_joint::distinct_copies(&raw, &other);
+    let duas = crate::ops_joint::union_between_copies(
+        &wedge(raw.clone()),
+        &wedge(other),
+        joint,
+        &distinta,
+    );
     if !deformado {
         // ⭐ **Byte-idêntico para toda peça sem deformador** — que é o caso de omissão.
         return duas;
@@ -539,7 +552,13 @@ fn radial(inner: &Tree, count: u32, deformado: bool) -> Tree {
 /// subárvore e devolve a distância exata enquanto a forma couber em **1,5 células**. ⛔ Acima disso
 /// o bound volta, e a cura é olhar três — que é o dobro do custo por um caso que o nascimento da
 /// matriz (espaçamento = 2× a peça) já põe fora de alcance.
-fn array(inner: &Tree, count: u32, spacing: f64, deformado: bool) -> Tree {
+fn array(
+    inner: &Tree,
+    count: u32,
+    spacing: f64,
+    joint: ph2d_field::Joint,
+    deformado: bool,
+) -> Tree {
     if count <= 1 || spacing <= 0.0 || !spacing.is_finite() {
         return inner.clone();
     }
@@ -556,7 +575,16 @@ fn array(inner: &Tree, count: u32, spacing: f64, deformado: bool) -> Tree {
         .min(Tree::constant(last));
     let neighbour_mais = k.clone() + Tree::constant(1.0);
     let cell = |idx: Tree| inner.remap_xyz(Tree::x() - s.clone() * idx, Tree::y(), Tree::z());
-    let duas = cell(k.clone()).min(cell(neighbour));
+    // ⛔⛔ **NAS PONTAS DA MATRIZ o `clamp` devolve a PRÓPRIA célula** (e no centro de uma célula o
+    // `compare` faz o mesmo), e uma mistura de uma cópia consigo mesma move a superfície
+    // (`blend(a, a) ≠ a`). O portão é `|vizinha − própria|` — ver [`crate::ops_joint`].
+    let distinta = crate::ops_joint::distinct_copies(&k, &neighbour);
+    let duas = crate::ops_joint::union_between_copies(
+        &cell(k.clone()),
+        &cell(neighbour),
+        joint,
+        &distinta,
+    );
     if !deformado {
         // ⭐ **Byte-idêntico para toda peça sem deformador** — que é o caso de omissão.
         return duas;

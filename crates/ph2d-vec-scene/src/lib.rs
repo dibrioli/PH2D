@@ -36,6 +36,13 @@ mod paint;
 #[cfg(test)]
 #[path = "paint_pattern_tests.rs"]
 mod paint_pattern_tests;
+// ⚠️ **Irmão por RESPONSABILIDADE, não por tamanho** — o de cima mede o DADO (tamanho do `Paint`,
+// período da colmeia, serialização); este mede o padrão sob a POSE da forma. O corte foi imposto
+// pelo tecto de LOC, mas a linha do corte é o assunto: os dois ficheiros respondem perguntas
+// diferentes, e um gate novo sabe em qual dos dois nasce.
+#[cfg(test)]
+#[path = "paint_pattern_pose_tests.rs"]
+mod paint_pattern_pose_tests;
 pub use paint::{GradientPoint, GradientStop, Paint, PatternFill, PatternSource, Rgba8};
 // ⚠️ Re-exportados da folha `ph2d-vec-pattern`: o vocabulário de ladrilho é PARTE do documento, e
 // quem lê um `Paint::Pattern` não deve ter de declarar a folha para o entender.

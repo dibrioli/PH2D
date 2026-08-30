@@ -219,6 +219,24 @@ pub(crate) fn apply(
     }
 }
 
+/// ⭐⭐⭐ **O ÂNGULO COMO O PAINEL O MOSTRA** — em graus, dentro de `0..360` (auditoria 2026-08-30).
+///
+/// O `angle` do documento **ACUMULA**: o `transform_fill_geometry` faz `pat.angle += atan2(..)` a
+/// cada rotação, sem dar a volta, e isso é o que torna rodar uma forma duas vezes o mesmo que rodar
+/// pela soma. ⇒ ele sai de `0..360` por uso ordinário.
+///
+/// ⛔ **O painel não pode mostrar isso cru.** O slider e o campo numérico estão registados em
+/// `0..=360` e **os dois coagem** — o slider encostava num extremo (visualmente igual a `0`) e o
+/// número mostrava `400`, os dois a discordar no ecrã, e o primeiro toque em qualquer um SALTAVA o
+/// padrão. *Um campo que a casa chama de saída de emergência e que coage não é saída nenhuma.*
+///
+/// ⚠️ A cura é do PAINEL e não do modelo — e é exactamente a que o gradiente linear já faz na mesma
+/// função de publicação.
+#[must_use]
+pub(crate) fn panel_angle_deg(radians: f64) -> f64 {
+    radians.to_degrees().rem_euclid(360.0)
+}
+
 #[cfg(test)]
 #[path = "texture_pattern_edit_tests.rs"]
 mod tests;

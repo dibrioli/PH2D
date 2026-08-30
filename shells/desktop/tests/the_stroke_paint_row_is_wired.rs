@@ -157,3 +157,46 @@ fn every_pattern_write_takes_its_subject_from_the_control_that_was_touched() {
         "o dreno da lei deixou de carregar o sujeito com o comando"
     );
 }
+
+/// ⛔⛔ **O CADEADO É POR TINTA, e era UM SÓ para as duas** (auditoria de 2026-08-30).
+///
+/// O painel pintava duas caixas independentes, a shell resolvia o slot uma linha acima **e depois
+/// deitava-o fora**: ligar o cadeado da estampa do preenchimento mexia no da estampa do traço.
+/// É a espécie 2 do CLAUDE.md §5.0 — *o fio está completo, o slot chega ao leitor, e o leitor
+/// projecta-o fora* —, e é exactamente o defeito que a wave F existiu para matar.
+///
+/// # ⚠️ Porque um gate de FONTE, e o que ele acrescenta ao tipo
+///
+/// O campo passou a ser `[bool; 2]`, e **o tipo já impede o defeito original**: ele não cabe onde
+/// se esperava um `bool`. O que o tipo **não** impede é alguém escrever `texpat_lock[0]` nos dois
+/// sítios — o mesmo defeito com mais caracteres. Este gate afirma o que sobra: a leitura é
+/// **indexada pelo slot**.
+///
+/// ⚠️ Ele DESCASCA comentários: o doc que explica o defeito cita a linha que o causava.
+#[test]
+fn the_aspect_lock_is_read_per_slot_not_shared() {
+    let publish = code("render_loop/vector_bridge_publish.rs");
+    let codigo: String = publish
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        !codigo.contains("lock_aspect: texpat_lock,"),
+        "o cadeado voltou a ser publicado SEM indice - as duas seccoes passam a partilhar um \
+         cadeado, e ligar o de uma desliga o da outra"
+    );
+    assert!(
+        codigo.contains("lock_aspect: texpat_lock[slot"),
+        "o cadeado deixou de ser indexado pelo SLOT - um indice literal e' o mesmo defeito com \
+         mais caracteres"
+    );
+    // ⭐ E o CONTROLO do descascador, sem o qual um bug nele aprovaria qualquer coisa.
+    let so_comentario = "// lock_aspect: texpat_lock,\nlet x = 1;";
+    let limpo: String = so_comentario
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(limpo.contains("let x = 1;") && !limpo.contains("lock_aspect"));
+}

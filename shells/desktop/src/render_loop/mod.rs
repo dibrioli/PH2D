@@ -3777,7 +3777,14 @@ impl crate::App {
                                     K::PickShape => pending_texpat_pick = Some(slot),
                                     // ⭐ O CADEADO é estado de SESSÃO (o gesto, não o padrão): o
                                     // clique inverte-o aqui e nada toca no documento.
-                                    K::Lock => self.texpat_lock_aspect = !self.texpat_lock_aspect,
+                                    // ⚠️ Indexado pelo SLOT: as duas tintas têm cadeados
+                                    // independentes, e partilhá-los era o defeito.
+                                    K::Lock => {
+                                        let i = usize::from(
+                                            slot == ph2d_vec_render::PatternSlot::Stroke,
+                                        );
+                                        self.texpat_lock_aspect[i] = !self.texpat_lock_aspect[i];
+                                    }
                                     _ => {}
                                 }
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
@@ -3960,19 +3967,17 @@ impl crate::App {
                                 } else {
                                     ph2d_vec_render::PatternSlot::Fill
                                 };
+                                // ⚠️ O cadeado é da TINTA que este controlo serve, e não do painel.
+                                let cadeado = self.texpat_lock_aspect[slot.min(1)];
                                 let cmd = match knob {
                                     // UM eixo do tamanho + o CADEADO da sessão, que decide se o
                                     // outro eixo vem junto.
                                     K::Width => Some(crate::texture_pattern_edit::TexPatCmd::Axis(
-                                        0,
-                                        *v,
-                                        self.texpat_lock_aspect,
+                                        0, *v, cadeado,
                                     )),
                                     K::Height => {
                                         Some(crate::texture_pattern_edit::TexPatCmd::Axis(
-                                            1,
-                                            *v,
-                                            self.texpat_lock_aspect,
+                                            1, *v, cadeado,
                                         ))
                                     }
                                     K::Gap => Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v)),

@@ -48,7 +48,7 @@ pub(super) fn publish(
     pivot_edit: bool,
     snap: crate::vec_snap::VecSnapSettings,
     // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
-    texpat_lock: bool,
+    texpat_lock: [bool; 2],
     // ⭐ Os ladrilhos ASSADOS deste quadro — só para ler o salto de cada um na volta (W10). A
     // consulta vive aqui, e não na shell, porque é aqui que o `slot` e a forma selecionada já
     // estão emparelhados: resolvê-la lá acima duplicaria esse par.
@@ -266,9 +266,28 @@ pub(super) fn publish(
                         kind: crate::texture_pattern_edit::tile_index(pat.kind),
                         offset_denom: f64::from(pat.offset_denom.max(1)),
                         size: pat.size,
-                        lock_aspect: texpat_lock,
+                        // ⚠️ O cadeado da TINTA deste slot — partilhá-lo fazia ligar o de
+                        // uma secção desligar o da outra.
+                        lock_aspect: texpat_lock[slot.min(1)],
                         gap: pat.gap[0],
-                        angle_deg: pat.angle.to_degrees(),
+                        // ⭐⭐⭐ **NORMALIZADO, e o vizinho de cima já o fazia** (auditoria de
+                        // 2026-08-30). O `angle` do documento **ACUMULA**: o
+                        // `transform_fill_geometry` faz `pat.angle += atan2(..)` a cada rotação, sem
+                        // dar a volta. ⇒ rodar uma forma estampada duas vezes leva-o para fora de
+                        // `0..360`, que é a faixa registada do slider **e do campo numérico**.
+                        //
+                        // ⛔ O que se via: o slider **encostava** num extremo (visualmente igual a
+                        // `0` ou a `360`) enquanto o número mostrava `400` — os dois controlos a
+                        // discordar no ecrã —, e o primeiro toque em qualquer um deles **saltava** o
+                        // padrão, porque ambos coagem para a faixa. *O campo numérico é a saída de
+                        // emergência da casa, e aqui ele não era saída nenhuma.*
+                        //
+                        // ⚠️ A cura é do PAINEL, não do modelo: o ângulo do documento pode continuar
+                        // a acumular (é o que torna a rotação associativa), e o que tem de ser
+                        // verdade é que o painel **diga o mesmo que o desenho**. ⭐ É literalmente o
+                        // que o gradiente linear já faz 40 linhas acima neste ficheiro — *duas
+                        // respostas à mesma pergunta, e só uma delas tinha sido escrita*.
+                        angle_deg: crate::texture_pattern_edit::panel_angle_deg(pat.angle),
                         // ⚠️ A fase mede-se do canto da CAIXA da forma — a MESMA base que a
                         // escrita usa (`TexPatCmd::Shift`). Sem uma caixa não há fase, e `0` é a
                         // resposta honesta: é onde o padrão nasce.

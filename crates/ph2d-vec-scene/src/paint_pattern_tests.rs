@@ -125,65 +125,6 @@ fn fading_a_pattern_dims_the_pattern_not_just_its_fallback() {
     assert_eq!(p.fallback.a, 128, "a cor de recurso desce junto");
 }
 
-/// ⭐⭐ **O padrão CONSERVA A ORIENTAÇÃO quando a forma roda** — e é o único preenchimento desta
-/// casa que o faz.
-///
-/// O gradiente radial não pode: um radial do peniko **é circular** e não tem onde guardar um
-/// ângulo, e é por isso que o `transform_fill_geometry` lhe passa um `radius_scale` médio. O padrão
-/// tem o campo, então a sonda do afim (as imagens dos dois eixos unitários) dá-lhe a resposta exacta.
-#[test]
-fn rotating_the_shape_rotates_the_pattern_with_it() {
-    let (mut scene, id) = scene_with_pattern(fill());
-    let quarter = std::f64::consts::FRAC_PI_2;
-    assert!(scene.rotate_path_by(id, quarter, [0.0, 0.0]));
-    let Some(Paint::Pattern(p)) = &scene.paths()[0].fill else {
-        panic!("especie trocada")
-    };
-    assert!(
-        (p.angle - quarter).abs() < 1e-9,
-        "o padrao nao rodou com a forma: {}",
-        p.angle
-    );
-    assert!(
-        (p.size[0] - 10.0).abs() < 1e-9 && (p.size[1] - 20.0).abs() < 1e-9,
-        "uma rotacao nao pode mudar o tamanho do ladrilho: {:?}",
-        p.size
-    );
-}
-
-/// **Escalar a forma escala o ladrilho, POR EIXO** — e a escala não-uniforme é o fenómeno que a
-/// fixtura tinha de conter (plano 33 §5.1).
-#[test]
-fn scaling_the_shape_scales_the_tile_per_axis() {
-    let (mut scene, id) = scene_with_pattern(fill());
-    assert!(scene.scale_path(id, 3.0, 0.5, [0.0, 0.0]));
-    let Some(Paint::Pattern(p)) = &scene.paths()[0].fill else {
-        panic!("especie trocada")
-    };
-    assert!(
-        (p.size[0] - 30.0).abs() < 1e-9 && (p.size[1] - 10.0).abs() < 1e-9,
-        "o ladrilho nao seguiu a escala por eixo: {:?}",
-        p.size
-    );
-    assert!(
-        p.angle.abs() < 1e-9,
-        "uma escala positiva nao pode rodar o padrao"
-    );
-}
-
-/// **Mover a forma move o padrão com ela** — a lei que o `paint.rs` já escreveu para os gradientes,
-/// e o oposto do defeito da origem-da-régua do Illustrator.
-#[test]
-fn moving_the_shape_moves_the_pattern_with_it() {
-    let (mut scene, id) = scene_with_pattern(fill());
-    assert!(scene.translate_path(id, 7.0, -3.0));
-    let Some(Paint::Pattern(p)) = &scene.paths()[0].fill else {
-        panic!("especie trocada")
-    };
-    assert_eq!(p.origin, [7.0, -3.0]);
-    assert!(p.angle.abs() < 1e-9 && (p.size[0] - 10.0).abs() < 1e-9);
-}
-
 /// **A cor representativa de um padrão é a `fallback`** — uma resposta EXACTA, e não uma
 /// aproximação: é literalmente a cor que ele pinta enquanto o ladrilho não resolve.
 #[test]

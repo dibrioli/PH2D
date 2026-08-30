@@ -80,17 +80,32 @@ impl BodyCtx<'_> {
         // duas mãos que a casa já tem: aperta, e o clique seguinte no canvas escolhe.
         y = self.action_button(kid(ids::TexPatKnob::PickShape), "Use Shape...", y);
 
-        // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
+        // ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27) — e a lei é do
+        // PARÂMETRO, nunca do modo.
         //
-        // No `Clamp` há **uma** cópia, enquadrada na forma: o reticulado, o desfasamento, o tamanho
-        // e o vão não têm quem os leia. Mostrá-los seria oferecer quatro knobs mortos — o defeito
-        // que o [doc 90](../../../docs/Motion%20Nodes/90_caca_aos_knobs_mortos.md) catalogou
-        // dezanove vezes, e que já custou a esta secção o Offset na colmeia.
+        // ⛔⛔ **A 1.ª redacção escondia CINCO no `Clamp` e só UM deles é morto lá** (auditoria de
+        // 2026-08-30). Ela dizia *"o reticulado, o desfasamento, o tamanho e o vão não têm quem os
+        // leia"*, e quatro dessas afirmações são falsas — o `mode` **não entra na chave do assado**,
+        // então o ladrilho é assado com o reticulado inteiro também no `Clamp`:
         //
-        // ⚠️ **Esconder NÃO é apagar**: a lei fica no documento e volta inteira ao sair do `Clamp`
-        // — é o par da decisão de o enquadramento ser DERIVADO e nunca escrito.
+        // - **`size`** — a RAZÃO entre os eixos decide o enquadramento (`placement_in` calcula
+        //   `s = max(caixa/size)` e depois `framed = size * s`). Com o cadeado LIGADO o factor
+        //   cancela e ele é de facto inerte; com ele DESLIGADO, `size` é o único knob que escolhe o
+        //   aspecto da cópia enquadrada — e era exactamente aí que ele estava escondido. O gate
+        //   `clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law` já o afirmava.
+        // - **`gap` / `kind` / `offset_denom`** — entram no assado (`cell_px`, `cells`), e o
+        //   `placement_in` consome `cells` e `tile_px`. Um vão positivo encolhe a arte dentro do
+        //   rectângulo enquadrado e rodeia-a de transparente, que o `Extend::Pad` depois esborrata
+        //   — *o report «clamp deixa tudo em branco» outra vez*, e sem knob para o desfazer.
+        //
+        // ⇒ só a **FASE** (`Shift`) é genuinamente morta aqui: o `placement_in` passa o canto da
+        // caixa (`lo`) e **nunca** `self.origin`.
+        //
+        // ⚠️ *Um gate que esconde por MODO esconde por associação; a pergunta é sempre por
+        // PARÂMETRO.* Esconder um knob vivo é o mesmo defeito de mostrar um morto, com o sinal
+        // trocado: o artista vê o desenho mudar e não tem o controlo que o mudou.
         let repete = p.mode != 2;
-        if repete {
+        {
             // O RETICULADO.
             let tiles: Vec<(ph2d_a11y::NodeId, &str, bool)> = TILES
                 .iter()
@@ -108,7 +123,7 @@ impl BodyCtx<'_> {
         // O DESFASAMENTO — só com Brick/Column. ⚠️ Na grade ele não tem sentido, e na COLMEIA ele é
         // **fixo** em meio passo (é isso que a torna colmeia): oferecê-lo ali seria um knob que o
         // modelo ignora.
-        if repete && matches!(p.kind, 1 | 2) {
+        if matches!(p.kind, 1 | 2) {
             let denom = self.live_number(kid(ids::TexPatKnob::OffsetNum), p.offset_denom);
             let track = self.live_track(kid(ids::TexPatKnob::Offset), denom_track(p.offset_denom));
             y = self.slider_row(
@@ -123,7 +138,7 @@ impl BodyCtx<'_> {
         }
 
         // O TAMANHO e o VÃO — os dois só existem enquanto o padrão REPETE.
-        if repete {
+        {
             // ⭐⭐ O TAMANHO, **os DOIS eixos** (Enio, 2026-08-27: poder achatar a arte de
             // propósito). Era um número só — o lado maior, com o aspecto sempre preservado.
             //

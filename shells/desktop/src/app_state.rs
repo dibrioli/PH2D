@@ -1523,7 +1523,17 @@ pub(crate) struct App {
     /// ao aspecto da imagem desfaria o achatamento que o artista acabou de autorar.
     ///
     /// Nasce **ligado**: é o comportamento que a secção tinha antes de os dois eixos existirem.
-    pub(crate) texpat_lock_aspect: bool,
+    ///
+    /// ⛔⛔ **UM POR TINTA, e era UM SÓ para as duas** (auditoria de 2026-08-30). O painel pintava
+    /// duas caixas independentes — `kid(0, Lock)` e `kid(1, Lock)` —, a shell resolvia o slot uma
+    /// linha acima **e depois deitava-o fora**: ligar o cadeado da estampa do preenchimento
+    /// mexia no da estampa do traço, e vice-versa.
+    ///
+    /// ⚠️ *É exactamente o defeito que a wave F existiu para matar* (*"um alvo escondido num chip
+    /// faz o artista mexer num knob e ver o outro sujeito mudar"*): a UI foi duplicada, e **este
+    /// pedaço de estado não foi**. É a espécie 2 do §5.0 — o fio está completo, o slot chega ao
+    /// leitor, e o leitor **projecta-o fora**.
+    pub(crate) texpat_lock_aspect: [bool; 2],
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.

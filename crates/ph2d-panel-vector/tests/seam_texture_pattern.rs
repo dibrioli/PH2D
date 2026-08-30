@@ -270,13 +270,28 @@ fn the_offset_row_only_shows_for_brick_and_column() {
     state::set_current_texture_pattern(0, None);
 }
 
-/// ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27).
+/// ⭐⭐ **UM PARÂMETRO QUE O MODO NÃO USA NÃO APARECE** (Enio, 2026-08-27) — e a pergunta é sempre
+/// por PARÂMETRO, nunca por modo.
 ///
-/// No `Clamp` há **uma** cópia, enquadrada na forma: o reticulado, o desfasamento, o tamanho e o vão
-/// não têm quem os leia. ⚠️ E a metade da PRESENÇA importa tanto quanto a da ausência: eles têm de
-/// **voltar** ao sair do modo, porque esconder não é apagar — a lei fica no documento.
+/// ⛔⛔ **A 1.ª redacção deste gate escondia CINCO knobs no `Clamp` e só UM deles é morto lá**
+/// (auditoria de 2026-08-30). Ela afirmava, com estas palavras, que *"o reticulado, o desfasamento,
+/// o tamanho e o vão não têm quem os leia"* — e quatro dessas afirmações são falsas, porque o
+/// `mode` **não entra na chave do assado**: o ladrilho é assado com o reticulado inteiro também no
+/// `Clamp`, e o `placement_in` consome `cells` e `tile_px`.
+///
+/// - **`size`** — a RAZÃO entre os eixos decide o enquadramento. Com o cadeado ligado o factor
+///   cancela; com ele **desligado**, `size` é o único knob que escolhe o aspecto da cópia — e o
+///   gate `clamp_frames_the_copy_over_the_shape_without_touching_the_authored_law` já o afirmava,
+///   na crate ao lado. *Dois gates da mesma casa diziam coisas opostas.*
+/// - **`gap` / `kind` / `offset_denom`** — entram no assado; um vão positivo rodeia a arte de
+///   transparente que o `Extend::Pad` esborrata, e não havia knob para o desfazer.
+///
+/// ⇒ só a **FASE** é morta no `Clamp`: o `placement_in` passa o canto da caixa e nunca `origin`.
+///
+/// ⚠️ *Esconder um knob VIVO é o mesmo defeito de mostrar um MORTO, com o sinal trocado* — o
+/// artista vê o desenho mudar e não tem o controlo que o mudou.
 #[test]
-fn the_clamp_mode_hides_every_knob_it_does_not_read() {
+fn the_clamp_mode_hides_only_the_phase_which_is_the_one_it_does_not_read() {
     let visible = |mode: u8, id| {
         state::set_current_fill(Some(FillKind::Pattern), None);
         let mut r = row(1); // Brick: com desfasamento, para o Offset ter direito a aparecer
@@ -287,69 +302,41 @@ fn the_clamp_mode_hides_every_knob_it_does_not_read() {
         host.painted_rect::<VectorPanel>(&mut st, VIEWPORT, id)
             .is_some()
     };
-    let mortos = [
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Tile(0)),
-            "o reticulado",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Offset),
-            "o desfasamento",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Width),
-            "a largura",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Height),
-            "a altura",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Lock),
-            "o cadeado",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Gap),
-            "o vao",
-        ),
-        // ⚠️ A fase entra nesta lista pela MESMA razão que o tamanho: no `Clamp` a colocação é
-        // DERIVADA (uma cópia enquadrada na forma), e `origin` não tem quem o leia.
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::ShiftX),
-            "o Shift X",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::ShiftY),
-            "o Shift Y",
-        ),
-    ];
-    for (id, what) in mortos {
-        assert!(!visible(2, id), "o Clamp mostra {what}, que ele nao le^");
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    use ph2d_panel_vector::texture_pattern::kid;
+
+    // A FASE — e só ela — some no `Clamp`, e VOLTA fora dele (esconder não é apagar).
+    for (id, what) in [
+        (kid(0, K::ShiftX), "o Shift X"),
+        (kid(0, K::ShiftY), "o Shift Y"),
+    ] {
+        assert!(
+            !visible(2, id),
+            "o Clamp mostra {what}, e ali a colocacao e' DERIVADA da caixa da forma"
+        );
         assert!(visible(0, id), "{what} nao VOLTOU fora do Clamp");
     }
-    // E o que o Clamp LE^ continua lá — senão o modo ficaria sem controlo nenhum.
+
+    // ⭐ Tudo o resto o `Clamp` LÊ, e por isso continua alcançável em TODOS os modos.
     for (id, what) in [
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Source),
-            "a arte",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(
-                0,
-                ph2d_panel_vector::ids::TexPatKnob::PickShape,
-            ),
-            "a forma como arte",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Angle),
-            "o angulo",
-        ),
-        (
-            ph2d_panel_vector::texture_pattern::kid(0, ph2d_panel_vector::ids::TexPatKnob::Mode(0)),
-            "os modos",
-        ),
+        (kid(0, K::Tile(0)), "o reticulado"),
+        (kid(0, K::Offset), "o desfasamento"),
+        (kid(0, K::Width), "a largura"),
+        (kid(0, K::Height), "a altura"),
+        (kid(0, K::Lock), "o cadeado"),
+        (kid(0, K::Gap), "o vao"),
+        (kid(0, K::Source), "a arte"),
+        (kid(0, K::PickShape), "a forma como arte"),
+        (kid(0, K::Angle), "o angulo"),
+        (kid(0, K::Mode(0)), "os modos"),
     ] {
-        assert!(visible(2, id), "o Clamp escondeu {what}, que ele USA");
+        for modo in [0u8, 1, 2] {
+            assert!(
+                visible(modo, id),
+                "o modo {modo} escondeu {what}, que ele USA - o artista ve^ o desenho mudar e nao \
+                 tem o controlo que o mudou"
+            );
+        }
     }
     state::set_current_texture_pattern(0, None);
 }

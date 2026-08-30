@@ -1100,7 +1100,7 @@ impl App {
             vec_grad_drag: None,
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os
             // dois eixos existirem (plano 33, W10).
-            texpat_lock_aspect: true,
+            texpat_lock_aspect: [true, true],
             vec_grad_selected: None,
             vec_clipboard: None,
             vec_pivot_edit: false,

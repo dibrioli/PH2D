@@ -507,3 +507,58 @@ fn changing_the_art_honours_the_subject_too() {
         "trocar a arte do traco trocou tambem a do preenchimento"
     );
 }
+
+/// ⭐⭐⭐ **O PAINEL DIZ O MESMO QUE O DESENHO, mesmo com o ângulo a acumular** (auditoria de
+/// 2026-08-30).
+///
+/// # O defeito
+///
+/// O `angle` do documento **acumula**: o `transform_fill_geometry` faz `pat.angle += atan2(..)` a
+/// cada rotação, sem dar a volta — e isso é o que torna rodar duas vezes o mesmo que rodar pela
+/// soma. ⇒ ele sai de `0..360` por **uso ordinário**.
+///
+/// ⛔ O slider e o campo numérico estão registados em `0..=360` e **os dois coagem**: o slider
+/// encostava num extremo (visualmente igual a `0`) enquanto o número mostrava `400` — os dois a
+/// discordar no ecrã —, e o primeiro toque em qualquer um deles **SALTAVA** o padrão.
+///
+/// ⚠️ O gradiente linear, na MESMA função de publicação, já normalizava. *Duas respostas à mesma
+/// pergunta, e só uma delas tinha sido escrita.*
+#[test]
+fn the_panel_reads_the_same_angle_the_drawing_shows() {
+    use std::f64::consts::TAU;
+    for (rad, esperado, o_que) in [
+        (0.0, 0.0, "zero"),
+        (TAU * 0.25, 90.0, "um quarto"),
+        // ⭐ O caso do defeito: duas voltas e um quarto acumuladas.
+        (TAU * 2.25, 90.0, "duas voltas e um quarto"),
+        // ⭐ E o NEGATIVO, que o `atan2` produz metade das vezes.
+        (-TAU * 0.25, 270.0, "um quarto NEGATIVO"),
+    ] {
+        let v = super::panel_angle_deg(rad);
+        assert!(
+            (v - esperado).abs() < 1e-9,
+            "{o_que}: o painel mostraria {v} e o desenho mostra {esperado} - fora de `0..360` o \
+             slider encosta e o numero discorda dele, e o primeiro toque SALTA o padrao"
+        );
+        assert!(
+            (0.0..360.0).contains(&v),
+            "{o_que}: {v} esta' fora da faixa REGISTADA dos dois controlos"
+        );
+    }
+}
+
+/// ⚠️ **E a ida-e-volta fecha:** o que o painel mostra, escrito de volta, dá o mesmo ângulo.
+///
+/// A escrita é `deg.to_radians()` (`TexPatCmd::Angle`), e sem esta folha a normalização podia
+/// deslocar o padrão de propósito — *normalizar a LEITURA não pode mudar o que a ESCRITA significa*.
+#[test]
+fn what_the_panel_shows_writes_back_to_the_same_angle() {
+    for graus in [0.0_f64, 37.5, 180.0, 359.9] {
+        let ida = graus.to_radians();
+        let volta = super::panel_angle_deg(ida);
+        assert!(
+            (volta - graus).abs() < 1e-9,
+            "{graus} deg foi e voltou como {volta} - a leitura e a escrita discordam"
+        );
+    }
+}

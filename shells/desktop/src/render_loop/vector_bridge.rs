@@ -136,7 +136,7 @@ pub(super) fn dispatch(
     snap: crate::vec_snap::VecSnapSettings,
     // ⭐ O CADEADO de proporção do padrão (plano 33 W10). Ele é da SESSÃO — descreve o gesto,
     // não o padrão —, então mora na shell e só atravessa aqui para o painel o desenhar.
-    texpat_lock: bool,
+    texpat_lock: [bool; 2],
     // ⭐ Os ladrilhos assados deste quadro (plano 33 W10) — atravessam só para o painel poder
     // dizer que uma arte **não encaixa consigo própria**. Passa o MAPA e não um `bool` por tinta
     // pela mesma razão que o `snap` passa o conjunto: o par (forma, tinta) resolve-se lá dentro,

@@ -332,6 +332,19 @@ impl StrokeSpec {
         self.paint.brush()
     }
 
+    /// O irmão **mutável** do [`Self::pattern`].
+    ///
+    /// ⚠️ Ele nasceu porque a lei que faz um padrão **cavalgar a pose da forma** estava escrita só
+    /// para o preenchimento: rodar ou escalar uma forma cujo CONTORNO tem estampa deixava-a para
+    /// trás (o ângulo, o tamanho e a origem ficavam onde estavam). *Uma lei escrita para uma das
+    /// duas tintas não é uma lei — é um acidente que ainda não foi encontrado.*
+    pub fn pattern_mut(&mut self) -> Option<&mut crate::PatternFill> {
+        match &mut self.paint {
+            StrokePaint::Solid(_) | StrokePaint::Brush(_) => None,
+            StrokePaint::Pattern(p) => Some(p),
+        }
+    }
+
     /// **Esta faixa precisa ser RECORTADA contra o interior da forma?**
     ///
     /// Porta única do *"tem alinhamento a executar aqui?"*: a booleana pergunta antes de montar a

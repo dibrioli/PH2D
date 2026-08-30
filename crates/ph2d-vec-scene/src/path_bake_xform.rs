@@ -6,7 +6,7 @@
 //! offset): os operandos vêm de entidades com `Transform` distintos, e um resultado só pode viver
 //! num frame.
 
-use crate::{Paint, VecPath};
+use crate::{Paint, StrokeSpec, VecPath};
 
 /// **Assa** o afim `x` na geometria de `path`: âncoras, handles e a geometria do
 /// gradiente passam a estar no frame de destino.
@@ -66,27 +66,45 @@ pub(crate) fn transform_fill_geometry(
                 p.pos = f(p.pos);
             }
         }
-        // ⭐⭐ **O padrão SONDA o afim, e por isso é o único preenchimento desta casa que conserva a
-        // ORIENTAÇÃO.** As imagens dos dois eixos unitários dizem tudo: o ângulo do eixo x é a
-        // rotação, e o comprimento de cada imagem é a escala NAQUELE eixo. É exacto para qualquer
-        // afim, e melhor do que o `radius_scale` médio que o gradiente radial recebe — não por
-        // esmero, mas porque um radial do peniko **é circular** e não tem onde guardar um ângulo,
-        // enquanto o padrão tem.
-        //
-        // ⚠️ **Um espelho vira uma meia-volta**, e a aproximação é nomeada: `atan2` de um eixo
-        // invertido dá `π`, e o `PatternFill` não tem campo de reflexão onde guardar a diferença.
-        Some(Paint::Pattern(pat)) => {
-            let o = f(pat.origin);
-            let ax = f([pat.origin[0] + 1.0, pat.origin[1]]);
-            let ay = f([pat.origin[0], pat.origin[1] + 1.0]);
-            let (dx, dy) = ([ax[0] - o[0], ax[1] - o[1]], [ay[0] - o[0], ay[1] - o[1]]);
-            pat.angle += dx[1].atan2(dx[0]);
-            pat.size = [
-                pat.size[0] * dx[0].hypot(dx[1]),
-                pat.size[1] * dy[0].hypot(dy[1]),
-            ];
-            pat.origin = o;
-        }
+        // A lei do padrão vive na [`transform_pattern`] — ela tem DOIS chamadores.
+        Some(Paint::Pattern(pat)) => transform_pattern(pat, &f),
         Some(Paint::Solid(_)) | None => {}
     }
+    // ⭐⭐⭐ **E A ESTAMPA DO CONTORNO TAMBÉM** (auditoria de 2026-08-30).
+    //
+    // ⛔ A lei acima estava escrita **só para o preenchimento**: este `match` lê `path.fill` e mais
+    // nada. ⇒ rodar ou escalar uma forma cujo CONTORNO tem estampa deixava-a exactamente onde
+    // estava — o ângulo, o tamanho e a origem dela não seguiam a forma —, enquanto a do
+    // preenchimento seguia. Uma forma com as DUAS tintas estampadas rodava com metade do desenho.
+    //
+    // ⚠️ *Uma lei escrita para uma das duas tintas não é uma lei — é um acidente que ainda não foi
+    // encontrado.* É a terceira vez que esta linha paga a mesma conta (o colector do ficheiro e o
+    // memo do assado foram as outras duas), e as três tinham a mesma forma: código que diz `fill` e
+    // devia dizer *tinta*.
+    if let Some(pat) = path.stroke.as_mut().and_then(StrokeSpec::pattern_mut) {
+        transform_pattern(pat, &f);
+    }
+}
+
+/// A pose de UM padrão sob o afim `f` — a lei que as duas tintas partilham.
+///
+/// ⭐⭐ **O padrão SONDA o afim, e por isso é o único preenchimento desta casa que conserva a
+/// ORIENTAÇÃO.** As imagens dos dois eixos unitários dizem tudo: o ângulo do eixo x é a rotação, e o
+/// comprimento de cada imagem é a escala NAQUELE eixo. É exacto para qualquer afim, e melhor do que
+/// o `radius_scale` médio que o gradiente radial recebe — não por esmero, mas porque um radial do
+/// peniko **é circular** e não tem onde guardar um ângulo, enquanto o padrão tem.
+///
+/// ⚠️ **Um espelho vira uma meia-volta**, e a aproximação é nomeada: `atan2` de um eixo invertido
+/// dá `π`, e o `PatternFill` não tem campo de reflexão onde guardar a diferença.
+fn transform_pattern(pat: &mut crate::PatternFill, f: &impl Fn([f64; 2]) -> [f64; 2]) {
+    let o = f(pat.origin);
+    let ax = f([pat.origin[0] + 1.0, pat.origin[1]]);
+    let ay = f([pat.origin[0], pat.origin[1] + 1.0]);
+    let (dx, dy) = ([ax[0] - o[0], ax[1] - o[1]], [ay[0] - o[0], ay[1] - o[1]]);
+    pat.angle += dx[1].atan2(dx[0]);
+    pat.size = [
+        pat.size[0] * dx[0].hypot(dx[1]),
+        pat.size[1] * dy[0].hypot(dy[1]),
+    ];
+    pat.origin = o;
 }

@@ -15,7 +15,62 @@ use ph2d_field::{NodeKind, Op};
 
 /// Quantas cenas o roteador promete. ⚠️ **Sobe com o `match`**, e a nota do `main.rs` e a do
 /// `field3d_smoke.rs` sobem com ela — as três dizem a mesma coisa e o gate abaixo prende-as.
-const CENAS: u32 = 10;
+///
+/// ⛔⛔ **ELE ESTAVA EM `10` COM O ROTEADOR EM `13`** (achado 2026-08-30): as cenas 11, 12 e 13
+/// nasceram e **nenhum gate deste ficheiro lhes tocou** — nem o «constrói», nem o «não é a cena 1
+/// disfarçada», nem o do documento válido. *Uma catraca escrita à mão ao lado de um `match` que
+/// cresce é uma promessa que envelhece na wave seguinte.*
+///
+/// ⭐ E ele deixou de ser só uma declaração: o `the_router_has_exactly_this_many_scenes` **prova-o**
+/// pelas duas pontas — a cena `CENAS` tem de ser dela própria, e a `CENAS + 1` tem de cair no `_`.
+const CENAS: u32 = 14;
+
+/// ⭐⭐⭐ **A CONTAGEM PROVA-SE, e não se declara** — as duas pontas.
+///
+/// ⚠️ O roteador é um `match` com um braço `_` que devolve a cena 1, então não há como **derivar** a
+/// contagem dele. O que há é uma cerca de dois lados: a última cena tem de ser **dela própria** (ou
+/// a contagem está alta) e a seguinte tem de cair no `_` (ou está baixa, e há cenas por gatear).
+#[test]
+fn the_router_has_exactly_this_many_scenes() {
+    let um = crate::field3d_smoke::scene(1);
+    assert_ne!(
+        crate::field3d_smoke::scene(CENAS),
+        um,
+        "a cena {CENAS} cai no `_` — o `CENAS` está alto, e ele promete cenas que o `match` não tem"
+    );
+    assert_eq!(
+        crate::field3d_smoke::scene(CENAS + 1),
+        um,
+        "a cena {} NÃO cai no `_` — o roteador tem mais cenas do que o `CENAS` diz, e todos os \
+         gates deste ficheiro param antes delas",
+        CENAS + 1
+    );
+}
+
+/// ⭐⭐⭐ **NENHUMA CENA PERDE NADA AO VIRAR OBJETOS** — o caminho que o smoke de facto toma.
+///
+/// ⚠️ **É por aqui que o report de 2026-08-30 entrou:** o `scene()` devolve um documento, o app
+/// **explode-o em objetos** (`spawn_doc`) e **cozinha-os de volta** a cada quadro. O `spawn_doc`
+/// escrevia dois dos quatro componentes que o `cook` lê ⇒ a cena 14 chegava à tela **sem as
+/// torções**, e a foto do Enio eram três barras idênticas.
+///
+/// ⛔ O gate irmão desta crate (`a_document_survives_becoming_objects`) prova a travessia numa peça
+/// construída à mão; este prova-a **em todas as cenas que o produto oferece**, que é onde ela falhou.
+#[test]
+fn every_smoke_scene_survives_becoming_objects() {
+    for n in 1..=CENAS {
+        let antes = crate::field3d_smoke::scene(n);
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let root = ph2d_field_ecs::spawn_doc(sim.world_mut(), &antes, "peça");
+        let depois = ph2d_field_ecs::cook(sim.world(), root)
+            .unwrap_or_else(|| panic!("a cena {n} não é uma peça"))
+            .unwrap_or_else(|e| panic!("a cena {n} não sobreviveu: {e:?}"));
+        assert_eq!(
+            antes, depois,
+            "a cena {n} perde alguma coisa ao virar objetos — e o que se vê na tela é o DEPOIS"
+        );
+    }
+}
 
 /// ⭐ **Todas as cenas do roteador CONSTROEM**, e nenhuma é a cena 1 disfarçada.
 ///

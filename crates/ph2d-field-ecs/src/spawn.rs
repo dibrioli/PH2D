@@ -7,7 +7,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::world::World;
 use ph2d_field::{FieldDoc, NodeId, NodeKind, NodeShape, Op, Primitive};
 
-use crate::{FieldNode, FieldObject, FieldPose};
+use crate::{FieldMods, FieldNode, FieldObject, FieldPose, FieldVerb};
 
 /// **O nome que a Hierarquia mostra**, derivado do que o nó é.
 ///
@@ -98,6 +98,33 @@ pub fn spawn_doc(world: &mut World, doc: &FieldDoc, root_name: &str) -> Entity {
                 FieldPose { xform: node.xform },
             ))
             .id();
+        // ⛔⛔⛔ **A PILHA E O VERBO ficavam para trás, EM SILÊNCIO** (report do Enio, 2026-08-30:
+        // *«nada torcido»*, com a foto de três barras idênticas).
+        //
+        // O [`crate::cook`] lê **quatro** componentes — `FieldNode`, `FieldPose`, `FieldMods` e
+        // `FieldVerb` — e esta função escrevia **dois**. Um documento que chegasse com modificadores
+        // (uma cena de smoke, uma peça importada) via-os desaparecer no instante em que virava
+        // objetos, sem uma palavra, e a tela mostrava a forma **crua**.
+        //
+        // ⚠️ **Não era um defeito da torção**: a casca, o afastamento, os espelhos, as matrizes e a
+        // inclinação caíam pela mesma porta desde que o `FieldMods` existe. Nenhuma cena de smoke
+        // trazia modificadores, e por isso ninguém o viu.
+        //
+        // ⚠️ **A ausência do componente É a resposta** nos dois casos (uma pilha vazia · um verbo
+        // herdado), então escrevê-los sempre poria bytes em todo save por nada — ver o doc do
+        // [`crate::FieldMods`]. Por isso os dois entram **só quando têm o que dizer**.
+        //
+        // ⭐ Quem prova que a lista está completa é o `a_document_survives_becoming_objects`: ele faz
+        // o ciclo `doc → spawn_doc → cook → doc` e exige **igualdade**. *Uma lista de componentes
+        // escrita à mão ao lado de outra que os lê é duas respostas à mesma pergunta.*
+        if !node.mods.is_empty() {
+            world.entity_mut(e).insert(FieldMods {
+                stack: node.mods.clone(),
+            });
+        }
+        if let Some(op) = node.verb {
+            world.entity_mut(e).insert(FieldVerb { op });
+        }
         spawned[i] = Some(e);
     }
 

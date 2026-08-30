@@ -78,7 +78,7 @@ pub(crate) fn paint(state: &mut AssetBrowserState, ctx: &mut PaintCtx) {
         // painel ESTAVA arrancaria um arrasto de um cartão que já ninguém pinta.
         ctx.host
             .store_mut()
-            .set_asset_cell_ids(std::collections::BTreeSet::new());
+            .set_asset_cells(std::collections::BTreeMap::new());
         crate::state::set_painted(Vec::new());
         return;
     }
@@ -340,6 +340,9 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
         );
     }
 
+    // Os cartões que este quadro de facto pinta — enchido pelo laço, e por isso honesto.
+    let mut painted_cells: std::collections::BTreeMap<ph2d_a11y::NodeId, usize> =
+        std::collections::BTreeMap::new();
     for (i, (name, detail, swatch)) in cards.iter().enumerate() {
         let col = i % cols;
         let row = i / cols;
@@ -350,6 +353,7 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
             continue;
         }
         let id = ids::asset_cell_id(i);
+        painted_cells.insert(id, i);
         // ⛔⛔ **`register_if_absent`, e não `register` — a auditoria apanhou-me a usar o segundo.**
         // O `register` SUBSTITUI sempre, então o `state: Normal` deste quadro apagaria o `Pressed`
         // que o `pointer_down` escreveu no quadro anterior: o cartão ficaria a piscar e o clique a
@@ -394,11 +398,11 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     // *«este id é um cartão?»* sem conhecer este painel — o mesmo idioma do
     // `set_hierarchy_row_ids`, e pela mesma razão (quantos existem só se sabe em runtime).
     //
-    // ⚠️ **Só os que foram PINTADOS**, e é o que impede um cartão rolado para fora de arrancar um
-    // arrasto: a lista é a mesma que o `set_painted` recebe.
-    let cell_ids: std::collections::BTreeSet<ph2d_a11y::NodeId> =
-        (0..keys.len()).map(ids::asset_cell_id).collect();
-    ctx.host.store_mut().set_asset_cell_ids(cell_ids);
+    // ⛔ **Só os que foram DE FACTO pintados**, e a 1.ª versão dizia isso e fazia outra coisa: ela
+    // publicava `0..keys.len()`, que inclui os cartões que o laço acima **saltou** por estarem
+    // rolados para fora do corpo. Hoje o laço enche `painted_cells`, então a lista é o que ela diz
+    // ser. *Um comentário que nomeia uma propriedade que o código não tem é a próxima armadilha.*
+    ctx.host.store_mut().set_asset_cells(painted_cells);
     crate::state::set_painted(keys);
     crate::state::set_last_content_h(content_h);
     crate::state::set_last_visible_h(body_h);

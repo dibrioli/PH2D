@@ -99,11 +99,21 @@ impl crate::App {
             self.toast_drop_failed();
             return;
         };
+        // ⚠️ **Os dois travões que toda conversão px→mundo deste shell aplica** — e a 1.ª versão
+        // desta era a **única** de oito que não os aplicava. Um `ppm` a zero dá tamanho `inf`; um
+        // `ppm` grande com uma imagem pequena dá uma sprite abaixo do mínimo que o resto do código
+        // assume não poder existir.
         let ppm = gfx
             .hero_screen
             .as_ref()
-            .map_or(100.0, |h| h.project.pixels_per_meter);
-        let world_size = [img.width as f32 / ppm, img.height as f32 / ppm];
+            .map_or(ph2d_editor::project::DEFAULT_PIXELS_PER_METER, |h| {
+                h.project.pixels_per_meter
+            })
+            .max(crate::EPS_PIXELS_PER_METER);
+        let world_size = [
+            (img.width as f32 / ppm).max(crate::MIN_SPRITE_SIZE),
+            (img.height as f32 / ppm).max(crate::MIN_SPRITE_SIZE),
+        ];
         let (_, bits) = crate::image_import::spawn_sprite(
             &mut gfx.sim,
             crate::image_import::PackedSource::Individual {

@@ -23,14 +23,23 @@ impl WidgetStore {
     /// [`WidgetStore::set_hierarchy_row_ids`], e pela mesma razão: quantos cartões existem só se
     /// sabe em runtime, e o `pointer_down` precisa de responder *«este id é um cartão?»* sem
     /// conhecer o painel.
-    pub fn set_asset_cell_ids(&mut self, ids: std::collections::BTreeSet<NodeId>) {
-        self.asset_cell_ids = ids;
+    /// ⚠️ **É um MAPA `id → índice`, e não um conjunto.** Quem sabe o índice de um cartão é quem o
+    /// pintou; a 1.ª versão publicava só os ids e o despachante re-derivava o índice varrendo 512
+    /// hashes **por cada clique do rato em qualquer sítio do app**.
+    pub fn set_asset_cells(&mut self, cells: std::collections::BTreeMap<NodeId, usize>) {
+        self.asset_cells = cells;
     }
 
     /// `id` é um cartão do navegador de assets neste quadro?
     #[must_use]
     pub fn is_asset_cell(&self, id: NodeId) -> bool {
-        self.asset_cell_ids.contains(&id)
+        self.asset_cells.contains_key(&id)
+    }
+
+    /// O índice do cartão `id` na grade — `None` se ele não é um cartão pintado agora.
+    #[must_use]
+    pub fn asset_cell_index(&self, id: NodeId) -> Option<usize> {
+        self.asset_cells.get(&id).copied()
     }
 
     /// Começa um arrasto de asset — **ainda não armado**, porque isto ainda pode ser um clique.
@@ -124,9 +133,14 @@ mod tests {
             !s.is_asset_cell(a),
             "nada e' cartao antes de alguem o dizer"
         );
-        s.set_asset_cell_ids([a].into_iter().collect());
+        s.set_asset_cells([(a, 7)].into_iter().collect());
         assert!(s.is_asset_cell(a));
-        s.set_asset_cell_ids(std::collections::BTreeSet::new());
+        assert_eq!(
+            s.asset_cell_index(a),
+            Some(7),
+            "o indice tem de vir do painel"
+        );
+        s.set_asset_cells(std::collections::BTreeMap::new());
         assert!(
             !s.is_asset_cell(a),
             "o painel fechou e o cartao continua a existir"

@@ -250,9 +250,15 @@ pub(super) fn dispatch(
     }
     // ⭐ **Os outros verbos de instância** (ADR-0164 / F4.5) — o dreno mora com eles, pela razão
     // do *Revert*: é sobre INSTÂNCIAS, e não sobre a mecânica das linhas.
-    // ⭐ Para onde a selecção vai depois de um verbo de instância — hoje só o *Make Component* a
-    // move (ver o doc de `instance_verbs::drain`).
+    // ⭐ Para onde a selecção vai depois de um verbo de instância.
+    //
+    // ⚠️ **DOIS slots, e não um.** Os dois drenos (o endereçado por LINHA e o endereçado por
+    // `StableId`) escreviam no mesmo — e a escrita da pose da queda lia esse único enquanto o
+    // guarda perguntava pelo slot do `StableId`. Se os dois estivessem armados no mesmo quadro e o
+    // segundo saísse cedo, o ponto de queda aterrava na entidade que o PRIMEIRO criou.
+    // *Um comentário a afirmar que dois não coexistem não é uma cerca.*
     let mut verb_select: Option<u64> = None;
+    let mut drop_select: Option<u64> = None;
     if let Some((row, verb)) = instance_verb_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -283,6 +289,14 @@ pub(super) fn dispatch(
     }
     // ⭐ O gémeo por `StableId`. ⚠️ **Ele corre DEPOIS do irmão e os dois não podem estar armados
     // ao mesmo tempo** — um quadro tem um gesto.
+    // ⛔ **Uma queda que não achou a receita DIZ que não achou.** O `if let` abaixo curto-circuita
+    // quando o `StableId` já não existe (a receita foi apagada entre o `Down` e o `Up`), e sem esta
+    // linha o gesto acabava em silêncio total — o artista conclui que colocou.
+    if let Some((stable_id, _, _)) = instance_verb_stable_id
+        && crate::instance_verbs::entity_for_stable_id(sim, stable_id).is_none()
+    {
+        toasts.push(Toast::warning("That prefab is no longer in the project"));
+    }
     if let Some((stable_id, verb, _at)) = instance_verb_stable_id
         && let Some(entity_bits) = crate::instance_verbs::entity_for_stable_id(sim, stable_id)
         && crate::instance_verbs::drain(
@@ -304,7 +318,7 @@ pub(super) fn dispatch(
                 );
                 [dx as f32, dy as f32]
             },
-            &mut verb_select,
+            &mut drop_select,
         )
     {
         title_dirty = true;
@@ -316,7 +330,7 @@ pub(super) fn dispatch(
     // ⛔ A pose é LOCAL: sob uma receita com pai escalado, o ponto chega escalado. É a mesma cerca
     // que o `duplicate_subtree` já declara, e curá-la pede a inversa do mundo do pai — wave própria.
     if let Some((_, _, Some(world))) = instance_verb_stable_id
-        && let Some(bits) = verb_select
+        && let Some(bits) = drop_select
         && let Some(mut t) = sim
             .world_mut()
             .get_mut::<Transform>(ph2d_ecs::Entity::from_bits(bits))
@@ -326,7 +340,7 @@ pub(super) fn dispatch(
     }
     // ⭐⭐ **A selecção segue a CÓPIA.** Sem isto, o gesto seguinte do artista acerta na receita
     // invisível — que é o mecanismo dos dois reports de 30/08 (apagar e esconder).
-    if let Some(bits) = verb_select {
+    if let Some(bits) = verb_select.or(drop_select) {
         hero.gizmo.replace_selection(Some(bits));
     }
     if add_root {

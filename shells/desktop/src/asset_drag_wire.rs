@@ -29,16 +29,22 @@ impl crate::App {
         let Some(hero) = gfx.hero_screen.as_mut() else {
             return;
         };
+        // ⛔ **Um `Down` novo apaga um arrasto preso.** Se o `Up` nunca chegou (alt-tab com o botão
+        // em baixo, um grab do sistema), o arrasto ficava armado para sempre — o fantasma seguia o
+        // cursor e o **clique seguinte, em qualquer sítio, executava a queda**. A casa já tinha o
+        // precedente uma linha ao lado: o `Focused(false)` existe porque *«o `Up` de uma tecla
+        // presa nunca chega quando a janela vai embora»*, e o mesmo é verdade de um botão.
+        hero.store.end_asset_drag();
         let Some(id) = hero.hit_index.hit(x, y) else {
             return;
         };
         if !hero.store.is_asset_cell(id) {
             return;
         }
-        // O índice do cartão dentro da grade — a mesma tabela que o pintou.
-        let Some(index) = (0..ph2d_editor::ids::MAX_ASSET_CELLS)
-            .find(|i| ph2d_editor::ids::asset_cell_id(*i) == id)
-        else {
+        // ⚠️ **O índice vem do MAPA que o painel publicou**, e não de re-derivar 512 hashes por
+        // cada clique do rato em qualquer sítio do app (o que a 1.ª versão fazia). Quem sabe o
+        // índice é quem o pintou.
+        let Some(index) = hero.store.asset_cell_index(id) else {
             return;
         };
         let Some(payload) = ph2d_panel_asset_browser::payload_at(index) else {
@@ -74,13 +80,18 @@ impl crate::App {
         if !drag.armed {
             return false;
         }
-        // ⚠️ **A pergunta «estou sobre chrome?» é a MESMA que o clique faz** (`panel_at`), e não
-        // uma segunda: um alvo que discordasse do clique aceitaria quedas em cima de um painel.
         // ⭐ **Voltar ao painel de onde saiu é DESISTIR**, e desistir é calado.
         let panel = hero.store.panel_at(x, y);
+        // ⛔⛔ **A pergunta «estou sobre a TELA?» tem DUAS metades, e a 1.ª versão só fazia uma.**
+        // O doc que aqui estava dizia *«é a MESMA que o clique faz»* e citava `panel_at` — mas o
+        // clique pergunta `panel_at(..).is_none() && hit_index.hit(..).is_none()`. O `panel_at` só
+        // conhece os 28 painéis que publicam rect; o **rail de ferramentas**, a **barra de cima**,
+        // o HUD e os menus registam só rect de acerto. ⇒ largar sobre a barra de cima caía no ramo
+        // do canvas e **re-texturava a sprite escondida por trás dela**, em silêncio.
+        let on_canvas = panel.is_none() && hero.hit_index.hit(x, y).is_none();
         let target = if panel == Some(ph2d_editor::ids::ASSET_PANEL) {
             DropTarget::Source
-        } else if panel.is_some() {
+        } else if !on_canvas {
             DropTarget::Chrome
         } else {
             let world = gfx.camera.screen_to_world((x, y), gfx.surface.size());

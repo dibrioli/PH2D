@@ -93,11 +93,16 @@ impl DropAction {
     }
 }
 
-/// ⭐ **A LEI.** Pura, total, e sem um `_` no `match`.
+/// ⭐ **A LEI.** Pura e total.
 ///
-/// ⚠️ **Exaustiva de propósito:** uma carga nova (`DragPayload`) ou um alvo novo (`DropTarget`)
-/// tem de vir aqui escolher o que faz. Um `_ => Refuse` faria a próxima família nascer **muda**,
-/// que é o modo de falha que este plano nomeia desde o §8.
+/// ⚠️ **Exaustiva no que importa:** os dois braços de `Canvas` casam a carga **por variante**, então
+/// um `DragPayload` novo é **erro de compilação** aqui — que é a propriedade que interessa. Os dois
+/// `_` que existem são sobre o ALVO (`Source`, `Chrome`), onde a carga de facto não muda a
+/// resposta: desistir é desistir e recusar é recusar, venha o que vier.
+///
+/// ⛔ A 1.ª redacção deste doc dizia *«sem um `_` no match»* — e havia dois. *Uma afirmação sobre a
+/// forma do código envelhece no primeiro braço que alguém acrescenta; a que vale é sobre a
+/// PROPRIEDADE.*
 #[must_use]
 pub(crate) fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
     match (payload, target) {

@@ -3345,9 +3345,19 @@ impl App {
                 }
                 ElementState::Released => {
                     let (x, y) = self.last_pointer;
-                    if self.asset_drag_up(x, y) {
-                        return;
-                    }
+                    // ⛔⛔ **E ele NÃO consome, e a 1.ª versão consumia.** Um `return` aqui salta o
+                    // resto deste handler — e com ele o `held_button = None` e, mais abaixo, o
+                    // `forward_to_hero` que é o **único** sítio do app que faz `set_active(None)`.
+                    // Consequências medidas na auditoria: o cartão fica preso em `Pressed`, o
+                    // widget activo aponta para ele para sempre, e o `post_frame_undo` recusa-se a
+                    // registar um passo enquanto `held_button.is_some()` ⇒ **a queda não era
+                    // desfazível** até ao clique seguinte.
+                    //
+                    // ⚠️ **E não há nada a suprimir:** o `Click` que o despachante emite a seguir
+                    // cai num cartão, e o `apply_event` do navegador **não tem braço para
+                    // `Click(cartão)`** — só para `DoubleClick`. *Suprimir um evento inofensivo
+                    // custou quatro fugas de estado.*
+                    self.asset_drag_up(x, y);
                 }
             }
         }

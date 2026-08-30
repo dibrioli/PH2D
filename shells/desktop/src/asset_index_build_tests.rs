@@ -393,3 +393,50 @@ fn an_imported_atlas_sprite_is_in_the_library_and_a_boot_one_is_not() {
         "a do átlas de demonstração NÃO pode estar — ninguém a trouxe"
     );
 }
+
+/// ⭐⭐⭐ **UMA TEXTURA QUE NINGUÉM USA PODE SAIR DA BIBLIOTECA — e uma usada VOLTA.**
+///
+/// ⛔ Report do Enio (2026-08-30, 2.ª ronda): *«uma sprite que foi deletada do canvas não consegui
+/// deletar do painel»*. A biblioteca lembra por conteúdo e nunca subtrai sozinha (a cura de um
+/// report anterior, e continua certa) — e não tinha porta de saída nenhuma.
+///
+/// ⚠️ **As DUAS metades num gate só, e é isso que impede a cura de virar «esquece sempre»:** com a
+/// entidade ainda no mundo, o `build` seguinte **repõe** a entrada. *Esquecer é dizer «ninguém a
+/// usa», e o mundo é quem confirma.*
+///
+/// **Mutação que deve sangrar:** fazer o `forget` não remover nada (a 1.ª metade), ou o `build`
+/// deixar de repor o que tem entidade (a 2.ª).
+#[test]
+fn a_texture_nobody_uses_can_leave_the_library_and_a_used_one_comes_back() {
+    let db = AssetDb::new();
+    let tex = db.insert_image_rgba8(2, 2, vec![3u8; 16]);
+    let mut sim = SimWorld::new();
+    let e = sim
+        .world_mut()
+        .spawn((
+            Transform::IDENTITY,
+            Name::new("OnCanvas"),
+            StableId(1),
+            SpritePixels(tex),
+        ))
+        .id();
+    let mut cache = CardArt::new();
+    let mut lib = TextureLibrary::default();
+    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    assert_eq!(lib.len(), 1, "a textura entrou pela sprite");
+
+    // (a) COM a entidade viva, esquecer não pega — o `build` repõe.
+    lib.forget(tex);
+    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    assert_eq!(
+        lib.len(),
+        1,
+        "uma textura que uma entidade ainda referencia VOLTA — senão o gesto mentiria"
+    );
+
+    // (b) Sem a entidade, ela sai e FICA fora.
+    sim.world_mut().despawn(e);
+    lib.forget(tex);
+    let _ = build(&mut sim, &db, &no_atlas(), &mut cache, &mut lib);
+    assert_eq!(lib.len(), 0, "ninguém a usa: ela tem de poder sair");
+}

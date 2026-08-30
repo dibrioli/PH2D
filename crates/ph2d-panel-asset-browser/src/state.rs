@@ -198,3 +198,14 @@ pub fn probe_index_summary() -> (usize, String) {
         )
     })
 }
+
+/// **Só para os roteiros de smoke:** o endereço da primeira textura do índice publicado.
+#[must_use]
+pub fn probe_first_texture() -> Option<[u8; 32]> {
+    with_index(|ix| {
+        ix.entries().iter().find_map(|e| match e.key {
+            ph2d_asset_index::AssetRef::Texture { asset } => Some(asset),
+            ph2d_asset_index::AssetRef::Component { .. } => None,
+        })
+    })
+}

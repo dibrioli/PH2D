@@ -292,14 +292,34 @@ pub(crate) fn build(
     // a usava apagava o asset. *Uma biblioteca que perde o que o artista trouxe não é uma
     // biblioteca.*
     //
-    // ⛔ E a memória é **união, nunca subtracção**: o que entrou fica até alguém o mandar sair. A
-    // porta de remover é wave própria — hoje não existe, e uma remoção automática é exactamente o
-    // que este report recusa.
+    // ⛔ E a memória é **união, nunca subtracção AUTOMÁTICA**: o que entrou fica até alguém o mandar
+    // sair. ⭐ A porta de o mandar sair é o [`forget_texture`], e ela nasceu do report seguinte do
+    // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
     for entry in remembered.entries() {
         index.push(entry.clone());
     }
 
     index
+}
+
+/// ⭐⭐⭐ **TIRAR UMA TEXTURA DA BIBLIOTECA** — a porta que a memória declarava não existir.
+///
+/// ⛔⛔ Report do Enio (2026-08-30, 2.ª ronda): *«uma sprite que foi deletada do canvas não
+/// consegui deletar do painel»*. A biblioteca lembra por CONTEÚDO e nunca subtrai sozinha — que é
+/// a cura de um report anterior e continua certa —, e o único gesto de saída **recusava**: com a
+/// sprite apagada o `Select users` conta `0`, e a recusa dizia literalmente *«esta imagem está na
+/// biblioteca porque 0 objecto(s) a usam — mude esses para a tirar»*. ⇒ **beco sem saída**: uma
+/// frase que manda mudar um conjunto vazio.
+///
+/// ⚠️ **A recusa continua CERTA quando há utilizadores** — tirar a imagem deixaria aqueles
+/// objectos sem pixels, e não há saída sem perda. O que estava errado era aplicá-la ao caso em que
+/// **não há ninguém a perder nada**.
+///
+/// ⚠️ **Ela é estável por construção:** o `build` reconstrói o índice a partir da verdade, então
+/// uma textura que ainda tenha entidade a referenciá-la volta no quadro seguinte — e é isso que
+/// impede este gesto de mentir. *Esquecer é dizer «ninguém a usa», e o mundo é quem confirma.*
+pub(crate) fn forget_texture(id: AssetId) {
+    LIBRARY.with(|lib| lib.borrow_mut().forget(id));
 }
 
 /// ⭐ **A memória da biblioteca de texturas** — o que o artista trouxe, por CONTEÚDO.
@@ -316,6 +336,11 @@ impl TextureLibrary {
     /// Regista (ou actualiza) uma textura. ⚠️ **Nunca remove** — ver o bloco acima.
     fn remember(&mut self, id: AssetId, entry: AssetEntry) {
         self.entries.insert(id, entry);
+    }
+
+    /// Esquece uma textura — ver [`forget_texture`], que é a porta.
+    fn forget(&mut self, id: AssetId) {
+        self.entries.remove(&id);
     }
 
     fn entries(&self) -> impl Iterator<Item = &AssetEntry> {

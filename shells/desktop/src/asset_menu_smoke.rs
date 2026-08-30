@@ -72,6 +72,13 @@ pub(crate) fn frame(app: &mut crate::App, f: u32) {
             "Remove from Library",
         ),
         52 => report_removed(app),
+        // ⚠️ **Depois dos passos do menu, e não no meio deles.** Na 1.ª versão a reprodução corria
+        // antes e apagava a cópia que o `Select users` ia contar — *um passo que perturba o que o
+        // passo seguinte mede transforma o instrumento num falso acusador.*
+        55 => repro(app),
+        57 => repro_after(app),
+        59 => remove_the_unused_image(app),
+        61 => repro_after(app),
         _ => {}
     }
 }
@@ -289,4 +296,86 @@ fn report_removed(app: &mut crate::App) {
          (esperado: nao)",
         if still { "⚠️ SIM" } else { "nao" }
     );
+}
+
+// ── ⛔ REPRODUÇÃO dos dois reports de 2026-08-30 (segunda ronda) ────────────────────────────────
+
+/// **Report 1:** *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
+/// **Report 2:** *«um prefab com cópia no canvas foi deletado do painel»*.
+///
+/// Os dois são o MESMO gesto — apagar da CENA — com resultados opostos na biblioteca. Este passo
+/// mede os dois lado a lado, porque uma explicação que não os cobre aos dois é meia explicação.
+pub(crate) fn repro(app: &mut crate::App) {
+    let want_master = MASTER.with(std::cell::Cell::get);
+    let (n0, k0) = ph2d_panel_asset_browser::probe_index_summary();
+    eprintln!("[repro] antes de apagar: {n0} asset(s) — {k0}");
+
+    let Some(gfx) = app.gfx.as_mut() else {
+        return;
+    };
+    // (a) apagar a CÓPIA do prefab — como o `HierDelete` faz (despawn com cascata).
+    let copy = {
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query::<(ph2d_ecs::Entity, &ph2d_ecs::InstanceOf)>();
+        q.iter(gfx.sim.world())
+            .find(|(_, l)| l.master == want_master)
+            .map(|(e, _)| e)
+    };
+    if let Some(c) = copy {
+        gfx.sim.world_mut().despawn(c);
+        eprintln!("[repro] cópia do prefab APAGADA da cena");
+    } else {
+        eprintln!("[repro] ⚠️ não achei a cópia do prefab");
+    }
+    // (b) apagar a SPRITE da imagem nova.
+    let canvas = {
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query::<(ph2d_ecs::Entity, &ph2d_ecs::Name)>();
+        q.iter(gfx.sim.world())
+            .find(|(_, n)| n.0.starts_with("Canvas"))
+            .map(|(e, _)| e)
+    };
+    if let Some(c) = canvas {
+        gfx.sim.world_mut().despawn(c);
+        eprintln!("[repro] sprite da imagem APAGADA da cena");
+    }
+    // A receita ainda existe no mundo?
+    let alive = {
+        let mut q = gfx
+            .sim
+            .world_mut()
+            .query_filtered::<&ph2d_ecs::StableId, bevy_ecs::prelude::With<ph2d_ecs::MasterRoot>>();
+        q.iter(gfx.sim.world()).any(|s| s.0 == want_master)
+    };
+    eprintln!("[repro] a receita {want_master} continua no MUNDO: {alive}");
+}
+
+/// ⭐⭐⭐ **Tira do painel a imagem cuja sprite foi apagada** — a cura do report, pela porta do
+/// produto (o mesmo `AssetCardVerb` que o item do menu levanta).
+///
+/// ⚠️ Ele encena o caso EXACTO do report: a sprite já não existe, então o `Select users` conta `0`
+/// e a 1.ª versão respondia *«mude esses 0 objectos para a tirar»*.
+fn remove_the_unused_image(app: &mut crate::App) {
+    let Some(id) = ph2d_panel_asset_browser::probe_first_texture() else {
+        eprintln!("[repro] ⚠️ não há textura na biblioteca para tirar");
+        return;
+    };
+    if let Some(hero) = app.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+        hero.bus
+            .push(ph2d_editor::action_bus::EditorAction::AssetCardVerb {
+                asset: ph2d_editor::interaction::drag_payload::DragPayload::Image { asset: id },
+                verb: ph2d_editor::action_bus::AssetCardAction::RemoveFromLibrary,
+            });
+        eprintln!("[repro] `Remove from Library` pedido para a imagem sem utilizadores");
+    }
+}
+
+/// O que a biblioteca passou a ter, um quadro depois.
+pub(crate) fn repro_after(_app: &mut crate::App) {
+    let (n, k) = ph2d_panel_asset_browser::probe_index_summary();
+    eprintln!("[repro] DEPOIS de apagar: {n} asset(s) — {k}");
 }

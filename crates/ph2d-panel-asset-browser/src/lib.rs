@@ -42,7 +42,7 @@ pub const PANEL_ID: &str = "asset_browser";
 pub use paint::{default_rect, probe_query};
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, last_content_h, last_visible_h,
-    payload_at, probe_index_summary, set_current_index,
+    payload_at, probe_first_texture, probe_index_summary, set_current_index,
 };
 
 use ph2d_a11y::NodeId;

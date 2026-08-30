@@ -181,9 +181,25 @@ pub(crate) fn drain(
                 select_out,
             )
         }
-        (AssetCardAction::RemoveFromLibrary, DragPayload::Image { .. }) => {
-            // ⚠️ O número é o corpo da recusa — ver o cabeçalho do módulo.
+        (AssetCardAction::RemoveFromLibrary, DragPayload::Image { asset: id }) => {
             let n = users_of(sim, asset, atlas_assets).len();
+            if n == 0 {
+                // ⭐⭐⭐ **NINGUÉM a usa ⇒ ela SAI** (report do Enio, 2026-08-30, 2.ª ronda:
+                // *«uma sprite que foi deletada do canvas não consegui deletar do painel»*).
+                //
+                // ⛔ A 1.ª versão recusava sempre, e com a sprite apagada a frase virava *«está na
+                // biblioteca porque 0 objecto(s) a usam — mude esses para a tirar»*: um beco sem
+                // saída que manda mudar um conjunto vazio.
+                crate::asset_index_build::forget_texture(ph2d_asset::AssetId::from_digest(id));
+                toasts.push(Toast::success("Removed from library"));
+                // ⚠️ **`false`, e é de propósito:** a biblioteca é memória de SESSÃO, não documento
+                // — nada no `ProjectState` mudou, e marcar isto como edição poria um passo de undo
+                // sobre um gesto que o undo não desfaz.
+                return false;
+            }
+            // ⚠️ **Com utilizadores a recusa CONTINUA certa**, e o número é o corpo dela: tirar a
+            // imagem deixaria aqueles objectos sem pixels, e não há saída sem perda. *O que estava
+            // errado era aplicar esta frase ao caso em que ninguém tem nada a perder.*
             toasts.push(Toast::info(format!(
                 "This image is in the library because {n} object(s) use it \u{2014} change those to remove it"
             )));

@@ -104,6 +104,9 @@ use serde::{Deserialize, Serialize};
 /// v10: o [`Primitive::TorusArc`] ganhou `round`. É campo novo numa variante, e postcard é
 /// **posicional**: um documento v9 leria o ângulo dele como filete.
 ///
+/// v12: o [`Unary::Twist`] ganhou o `falloff` — o ombro da banda. É campo novo numa variante, e
+/// postcard é **posicional**, então o degrau sobe mesmo tendo a variante nascido no degrau anterior.
+///
 /// v11: entrou o [`Unary::Twist`] — o primeiro modificador novo desde os dois espelhos. É variante
 /// **acrescentada no fim** do `enum Unary`, nenhum índice existente se move, e o degrau sobe pela lei
 /// do módulo, como o v9. ⚠️ **E o golden de forma NÃO o teria apanhado**: a fixtura dele tem
@@ -111,7 +114,7 @@ use serde::{Deserialize, Serialize};
 /// tem — *um golden que não instancia a coisa nova não a defende*.
 ///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 11;
+pub const FIELD_DOC_VERSION: u32 = 12;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

@@ -117,7 +117,19 @@ pub enum Unary {
     /// ⚠️ **É o SEGUNDO operador que não devolve uma distância exata** — ver [`ph2d_field_eval`],
     /// onde o divisor que o torna conservador está medido, e onde a medição **refutou a forma dele**,
     /// não apenas a constante.
-    Twist { turns: f32, lower: f32, upper: f32 },
+    Twist {
+        turns: f32,
+        lower: f32,
+        upper: f32,
+        /// ⭐ **A meia-largura do OMBRO** — quanto a transição no fim da banda é amaciada, em
+        /// unidades locais. `0` é o corte duro.
+        ///
+        /// ⚠️ **Ele existe por um report** (Enio, 2026-08-30: *«muito dura a transição»*), e a
+        /// medição diz porquê: com o corte duro, o giro da normal salta de `0,0` para
+        /// `157,3 °/unidade` de um lado ao outro do fim da banda. A normal é contínua ali — o que
+        /// salta é a **curvatura**, e é ela que o olho lê como quina.
+        falloff: f32,
+    },
 }
 
 /// Quantas cópias uma matriz consegue ter.
@@ -206,6 +218,7 @@ impl Unary {
                 turns,
                 lower,
                 upper,
+                falloff,
             } => vec![
                 crate::Dim {
                     key: "field.mod.turns",
@@ -221,6 +234,13 @@ impl Unary {
                     key: "field.mod.to",
                     value: upper,
                     span: Span::Free,
+                },
+                // ⚠️ **`FromZero` e não `Positive`**: o zero é uma resposta (o corte duro), e não
+                // uma recusa — é a mesma cerca que o cone fechado já usa.
+                crate::Dim {
+                    key: "field.mod.falloff",
+                    value: falloff,
+                    span: Span::FromZero,
                 },
             ],
         }
@@ -271,6 +291,10 @@ impl Unary {
             // revalida — a armadilha que o `Offset` já nomeia acima.
             (Unary::Twist { turns, .. }, 0) => {
                 *turns = value.clamp(-MAX_TWIST_TURNS, MAX_TWIST_TURNS);
+            }
+            // ⚠️ **Zero é legítimo**: é o corte duro, e é o estado de onde o ombro se arrasta.
+            (Unary::Twist { falloff, .. }, 3) => {
+                *falloff = value.max(0.0);
             }
             // ⚠️ **A banda COAGE em vez de recusar**, e as duas pontas são simétricas na lei: quem
             // escreve um `from` acima do `to` empurra o outro, em vez de ver o número saltar para
@@ -340,6 +364,7 @@ impl Unary {
                 turns: TWIST_BIRTH_TURNS,
                 lower: -fraction(TWIST_BIRTH_SPAN),
                 upper: fraction(TWIST_BIRTH_SPAN),
+                falloff: fraction(TWIST_BIRTH_FALLOFF),
             },
         }
     }
@@ -426,6 +451,22 @@ const TWIST_BIRTH_TURNS: f32 = 0.25;
 /// ⚠️ **Larga de propósito**: uma banda que nasça estreita torce uma fatia e deixa o resto rígido —
 /// o chip volta a parecer morto, que é exactamente o que o [`TWIST_BIRTH_TURNS`] existe para evitar.
 const TWIST_BIRTH_SPAN: f32 = 4.0;
+
+/// Que fração da menor peça o OMBRO de uma torção nova mede.
+///
+/// ⚠️ **Nasce macio, e não duro**, pelo report que o criou (Enio, 2026-08-30: *«muito dura a
+/// transição»*): um corte duro é o que o artista vê como quina, e o ponto neutro de um controle é
+/// onde ele começa a arrastar — aqui, a partir de suave.
+///
+/// O número sai da medição do giro da normal (`measure_the_band_shoulder`): numa barra de
+/// meia-altura `0,62` o joelho está num ombro de `0,22`, e a menor meia-medida dela é `0,11`.
+///
+/// ⚠️ **A escala honesta seria a extensão no EIXO DA TORÇÃO, e o `born` não a vê**: ele recebe o
+/// [`crate::characteristic_size`], que é a **menor** meia-medida da peça — numa barra chata, a
+/// espessura. *A limitação fica escrita em vez de disfarçada*, e ela é pequena na prática: a banda
+/// nasce a cobrir a peça inteira, então no primeiro quadro **não há ombro dentro dela** — este
+/// número só começa a valer quando o artista aperta o `From`/`To`, e aí ele já tem o slider.
+const TWIST_BIRTH_FALLOFF: f32 = 2.0;
 
 /// A **natureza** de um modificador, sem o número dele — o que um botão nomeia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

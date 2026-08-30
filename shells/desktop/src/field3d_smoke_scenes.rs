@@ -750,6 +750,8 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             turns: 0.35,
                             lower: -9.0,
                             upper: 9.0,
+                            // A banda cobre a peça inteira: não há ombro dentro dela para amaciar.
+                            falloff: 0.0,
                         }],
                     ),
                     // ⭐ A BANDA: abaixo de `z = 0` a coluna fica intacta, e acima do topo dela o
@@ -761,6 +763,9 @@ pub(crate) fn scene(n: u32) -> FieldDoc {
                             turns: 0.35,
                             lower: 0.0,
                             upper: 9.0,
+                            // ⭐ **O OMBRO** — o report do Enio (*«muito dura a transição»*): sem
+                            // ele o giro da normal salta de `0,0` para `157,3 °/un` no fim da banda.
+                            falloff: 0.22,
                         }],
                     ),
                     combine(

@@ -43,6 +43,7 @@ fn peca_completa(com_mods: bool) -> FieldDoc {
                 turns: 0.35,
                 lower: -1.0,
                 upper: 1.0,
+                falloff: 0.0,
             },
         ];
         b.mods = vec![Unary::Shell { thickness: 0.04 }];

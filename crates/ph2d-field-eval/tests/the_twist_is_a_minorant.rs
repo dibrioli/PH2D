@@ -51,6 +51,7 @@ fn torcida(turns: f32, lower: f32, upper: f32) -> FieldDoc {
             turns,
             lower,
             upper,
+            falloff: 0.0,
         });
     }
     FieldDoc::new(vec![n], NodeId(0)).expect("peça")
@@ -183,6 +184,7 @@ fn a_twist_of_zero_is_the_piece_untouched() {
         turns: 0.0,
         lower: -1.0,
         upper: 1.0,
+        falloff: 0.0,
     });
     let neutra = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
     let (a, b) = (Field::new(&limpa), Field::new(&neutra));

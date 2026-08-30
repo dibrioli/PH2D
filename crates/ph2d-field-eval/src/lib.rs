@@ -42,7 +42,8 @@ pub fn probe_twist(tree: &Tree, k: f64, safety: f64) -> Tree {
 #[doc(hidden)]
 #[must_use]
 pub fn probe_twist_band(tree: &Tree, k: f64, lower: f64, upper: f64, reach: f64) -> Tree {
-    stack::twist(tree, k, lower, upper) / Tree::constant(stack::twist_sigma(k.abs() * reach.abs()))
+    stack::twist(tree, k, lower, upper, 0.0)
+        / Tree::constant(stack::twist_sigma(k.abs() * reach.abs()))
 }
 
 /// O tecto espectral da torção — ver `stack::twist`.

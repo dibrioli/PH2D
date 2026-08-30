@@ -163,6 +163,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // nomeiam a cerca; aqui nomeia-se o intervalo, que é o que a linha mostra.)
         "field.mod.from" => "From",
         "field.mod.to" => "To",
+        // ⚠️ "Falloff" e não "Smooth": a palavra nomeia o que ela FAZ ao fim da banda (o efeito
+        // decai), e é a que o Houdini e o Blender usam para a mesma coisa. "Smooth" já é o nome de
+        // um verbo de escultura nesta casa.
+        "field.mod.falloff" => "Falloff",
         // Ações sobre o objeto escolhido.
         "panel.model3d.act.duplicate" => "Duplicate",
         "panel.model3d.act.delete" => "Delete",

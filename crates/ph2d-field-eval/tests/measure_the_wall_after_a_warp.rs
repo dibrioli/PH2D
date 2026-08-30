@@ -87,6 +87,7 @@ fn the_wall_measures_the_number_that_was_written() {
                     turns,
                     lower: -9.0,
                     upper: 9.0,
+                    falloff: 0.0,
                 },
                 Unary::Shell { thickness: T },
             ],
@@ -121,6 +122,7 @@ fn measure_the_wall_after_a_warp() {
                 turns,
                 lower: -9.0,
                 upper: 9.0,
+                falloff: 0.0,
             },
             Unary::Shell { thickness: T },
         ]));

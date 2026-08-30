@@ -65,10 +65,17 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 turns,
                 lower,
                 upper,
+                falloff,
             } => {
                 let k = f64::from(turns) * std::f64::consts::TAU;
                 divisor *= twist_sigma(k.abs() * axis_reach(ball).abs());
-                twist(&acc, k, f64::from(lower), f64::from(upper))
+                twist(
+                    &acc,
+                    k,
+                    f64::from(lower),
+                    f64::from(upper),
+                    f64::from(falloff),
+                )
             }
         };
         ball = crate::bounds::step_mod(ball, *m);
@@ -199,7 +206,46 @@ const TAPER_SAFETY: f64 = 2.0;
 /// ser medido porque a escala varia com `y` **dentro** da conta; aqui a álgebra fecha e a medição só
 /// confirma. *Uma constante ajustada é o que se escreve quando a demonstração não fecha — e quando
 /// ela fecha, escrevê-la à mesma seria esconder que fechou.*
-pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64) -> Tree {
+/// ⭐⭐⭐ **O OMBRO da banda** — um `clamp` cujas quinas são arredondadas, com meia-largura `w`.
+///
+/// # ⛔ O report que o obrigou
+///
+/// Enio, 2026-08-30, com a seta na dobra: *«smoke ok mas muito dura a transição»*.
+///
+/// ⚠️ **E a régua não era a normal.** Medida atravessando o fim da banda, ela é **contínua**
+/// (`0,787°` a um passo de `0,005`, exactamente proporcional ao passo ⇒ sem salto). O que salta é a
+/// **CURVATURA**: o giro da normal por unidade de altura passa de `0,0` para `157,3 °/un` de um
+/// lado ao outro. *É a mesma lei que a junção tangente deste repo já pagou — G1 sem ser G2 —, e o
+/// que o olho lê como quina é a taxa, não o ângulo.*
+///
+/// # A conta, e por que ela é de graça
+///
+/// `soft_clamp = smin(smax(z, lo, w), hi, w)` com o `smin`/`smax` polinomial. A derivada de cada um
+/// vive em `[0, 1]` (`1 − h/2` de um lado, `h/2` do outro), logo o **declive nunca passa de 1** e o
+/// tecto `σ` da torção **não se mexe** — o ombro não custa um passo de marcha.
+///
+/// ⚠️ **A meia-largura é limitada a metade da banda**: acima disso os dois ombros misturam-se e o
+/// `smin`/`smax` come o meio da rampa, que é o operador a mentir sobre o ângulo total.
+fn soft_clamp(z: &Tree, lo: f64, hi: f64, w: f64) -> Tree {
+    let meia = (hi - lo).abs() * 0.5;
+    let w = w.min(meia);
+    if w <= 0.0 || !w.is_finite() {
+        return z.clone().max(lo).min(hi);
+    }
+    let suave = |a: Tree, b: f64, cima: bool| {
+        let d = (a.clone() - Tree::constant(b)).abs();
+        let h = (Tree::constant(w) - d).max(0.0) * Tree::constant(1.0 / w);
+        let corda = h.square() * Tree::constant(w * 0.25);
+        if cima {
+            a.max(b) + corda
+        } else {
+            a.min(b) - corda
+        }
+    };
+    suave(suave(z.clone(), lo, true), hi, false)
+}
+
+pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64, falloff: f64) -> Tree {
     if k == 0.0 || !k.is_finite() || !(lower.is_finite() && upper.is_finite()) {
         // ⭐ **IDENTIDADE AO BIT** — sem o curto-circuito a árvore ganharia `cos(0)`/`sin(0)` e o
         // valor mudaria por arredondamento em toda peça já gravada.
@@ -208,7 +254,12 @@ pub(crate) fn twist(inner: &Tree, k: f64, lower: f64, upper: f64) -> Tree {
     // ⚠️ **A BANDA é um `clamp` do `z` que entra no ÂNGULO**, e não um corte no campo: fora dela a
     // peça roda como corpo rígido (o ângulo congela), que é o que as quatro referências fazem. Um
     // corte no campo partiria a peça em três sólidos.
-    let banda = Tree::z().max(lower.min(upper)).min(upper.max(lower));
+    let banda = soft_clamp(
+        &Tree::z(),
+        lower.min(upper),
+        upper.max(lower),
+        falloff.max(0.0),
+    );
     let angle = banda * Tree::constant(-k);
     let (c, s) = (angle.clone().cos(), angle.sin());
     let (x, y) = (Tree::x(), Tree::y());

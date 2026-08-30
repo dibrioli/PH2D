@@ -20,6 +20,8 @@ pub mod bounds;
 pub mod extract;
 pub mod hybrid;
 pub mod ops;
+pub mod ops_plates;
+pub mod ops_solids;
 pub mod profile;
 /// ⭐⭐ O perfil como CONSULTA (W56) — a cura do custo linear nas arestas.
 pub mod profile_index;

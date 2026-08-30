@@ -48,11 +48,11 @@ pub(crate) fn safe_sqrt(s: Tree) -> Tree {
     s.max(LENGTH_FLOOR).sqrt()
 }
 
-fn length2(x: &Tree, y: &Tree) -> Tree {
+pub(crate) fn length2(x: &Tree, y: &Tree) -> Tree {
     safe_sqrt(x.square() + y.square())
 }
 
-fn length3(x: &Tree, y: &Tree, z: &Tree) -> Tree {
+pub(crate) fn length3(x: &Tree, y: &Tree, z: &Tree) -> Tree {
     safe_sqrt(x.square() + y.square() + z.square())
 }
 
@@ -78,7 +78,7 @@ pub fn offset(a: &Tree, r: f64) -> Tree {
 /// uma segunda fórmula de caixa: dobrar por `abs` é uma isometria por peça, então a distância no
 /// espaço dobrado É a distância às quatro cópias espelhadas — desde que a caixa fique inteira do
 /// lado positivo, que é o que a parede da espessura garante.
-fn box_at(px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]) -> Tree {
+pub(crate) fn box_at(px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]) -> Tree {
     let qx = px.abs() - Tree::constant(h[0]);
     let qy = py.abs() - Tree::constant(h[1]);
     let qz = pz.abs() - Tree::constant(h[2]);
@@ -87,7 +87,7 @@ fn box_at(px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]) -> Tree {
     outside + inside
 }
 
-fn box_raw(hx: f64, hy: f64, hz: f64) -> Tree {
+pub(crate) fn box_raw(hx: f64, hy: f64, hz: f64) -> Tree {
     box_at(&Tree::x(), &Tree::y(), &Tree::z(), [hx, hy, hz])
 }
 
@@ -103,7 +103,7 @@ pub fn sd_sphere(radius: f64) -> Tree {
     length3(&Tree::x(), &Tree::y(), &Tree::z()) - Tree::constant(radius)
 }
 
-fn cylinder_raw(radius: f64, half_height: f64) -> Tree {
+pub(crate) fn cylinder_raw(radius: f64, half_height: f64) -> Tree {
     let radial = length2(&Tree::x(), &Tree::y()) - Tree::constant(radius);
     let axial = Tree::z().abs() - Tree::constant(half_height);
     let outside = length2(&radial.max(0.0), &axial.max(0.0));
@@ -192,7 +192,7 @@ pub fn sd_torus(major: f64, minor: f64) -> Tree {
 /// ⚠️ E a mistura alargada **cabe**: ela estende-se `comp·r` do vértice ao longo das duas arestas, e
 /// na estrela `2,29·r + r < |u|` (o comprimento da aresta) com folga de `1,5×` no filete máximo —
 /// o `star_round_limit`, que já é mais apertado, garante-o.
-fn sharp_corner_radius(alpha: f64, r: f64) -> f64 {
+pub(crate) fn sharp_corner_radius(alpha: f64, r: f64) -> f64 {
     const RIGHT: f64 = 1.0 - FRAC_1_SQRT_2;
     if !(1.0e-6..std::f64::consts::FRAC_PI_2).contains(&alpha) {
         return r;
@@ -241,7 +241,7 @@ fn sharp_corner_radius(alpha: f64, r: f64) -> f64 {
 /// distância EXATA e deslocar».*
 ///
 /// `walls` são as meias-fatias já **normalizadas** (gradiente unitário); `half_height` é a laje em Z.
-fn slab_and_walls(walls: &Tree, half_height: f64, round: f64) -> Tree {
+pub(crate) fn slab_and_walls(walls: &Tree, half_height: f64, round: f64) -> Tree {
     let slab = Tree::z().abs() - Tree::constant(half_height);
     intersection(&slab, walls, Blended::Exact(round))
 }
@@ -250,7 +250,7 @@ fn slab_and_walls(walls: &Tree, half_height: f64, round: f64) -> Tree {
 ///
 /// `radial` é a coordenada radial da secção (o `length2(x,y)` de um cone, o `|x|` de uma parede
 /// plana), e a reta vai de `bottom` em `z = −h` a `top` em `z = +h`.
-fn tapered_wall(radial: &Tree, bottom: f64, top: f64, half_height: f64) -> Tree {
+pub(crate) fn tapered_wall(radial: &Tree, bottom: f64, top: f64, half_height: f64) -> Tree {
     let a = (bottom + top) * 0.5;
     let m = (top - bottom) / (2.0 * half_height);
     (radial.clone() - Tree::constant(a) - Tree::z() * Tree::constant(m))
@@ -395,7 +395,7 @@ pub fn sd_torus_arc(major: f64, minor: f64, angle: f64, round: f64) -> Tree {
 ///
 /// ⚠️ A normal é **unitária** — é o que faz o `max` das quatro de um quadrilátero continuar
 /// 1-Lipschitz, e é a diferença entre uma distância e um número que só tem o sinal certo.
-fn half_plane(a: [f64; 2], b: [f64; 2]) -> Tree {
+pub(crate) fn half_plane(a: [f64; 2], b: [f64; 2]) -> Tree {
     let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
     let len = (dx * dx + dy * dy).sqrt();
     // Degenerada não chega aqui: o documento recusa `inner >= outer`, e `points >= 3`.

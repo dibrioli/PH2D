@@ -10,7 +10,7 @@ use ph2d_editor_core::paint::{paint_icon, paint_text, paint_text_block, rect_to_
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonState, ColorSwatch, IconButtonStyle, IconGlyph, SwatchSize, TOKENS_SCROLLBAR_ID,
@@ -52,8 +52,6 @@ pub(crate) fn paint(state: &mut TokensPanelState, ctx: &mut PaintCtx) {
     ctx.host.store_mut().set_panel_rect(ids::TOKENS_PANEL, rect);
 
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
     {
         let _hit_index = ctx.host.hit_index_mut();
     }

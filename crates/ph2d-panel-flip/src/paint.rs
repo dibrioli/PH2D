@@ -16,8 +16,7 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
-    panel_close_button_rect,
+    paint_panel_surface, paint_panel_title, panel_close_button_rect,
 };
 use ph2d_editor_core::widget::{
     FLIP_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, SCROLLBAR_W, paint_scrollbar, scrollbar_is_needed,
@@ -45,8 +44,6 @@ pub(crate) fn paint(state: &mut FlipPanelState, ctx: &mut PaintCtx) {
 
     // Dark-glass surface + corner accents — identical chrome to the Inspector.
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared Inspector ids — the right dock
     // slot is shared, so the resize delta persists across tool switches).

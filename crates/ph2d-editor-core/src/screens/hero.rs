@@ -250,6 +250,13 @@ pub struct HeroScreen {
     /// onde as faixas de régua estão — duas respostas para *onde fica o canvas?*, que divergem
     /// no dia em que um painel muda de largura.
     pub last_canvas: Rect,
+    /// ⭐ **O layout que o último quadro resolveu** — para quem trata PONTEIRO ler os mesmos rects
+    /// que o desenho usou, em vez de os re-derivar.
+    ///
+    /// ⚠️ É o irmão do [`Self::last_canvas`] e existe pelo mesmo motivo, uma escala acima: o
+    /// ponteiro corre **fora** do quadro, e espelhar a aritmética do layout na shell é como um
+    /// pixel de costura acaba por ter dois donos. `None` até o primeiro `paint_hero_screen`.
+    pub last_layout: Option<crate::screens::layout::HeroLayout>,
     /// Pending Painter Falloff handle from the right-click menu (`HandleType` wire u8 `0`=Auto/`1`=Vector);
     /// `.take()`n by the shell onto the selected point.
     pub pending_falloff_point_handle: Option<u8>,
@@ -361,6 +368,7 @@ impl HeroScreen {
             stats: BottomHudStats::default(),
             last_viewport: Rect::new(0.0, 0.0, 0.0, 0.0),
             last_canvas: Rect::new(0.0, 0.0, 0.0, 0.0),
+            last_layout: None,
             pending_falloff_point_handle: None,
             pending_curve_point_handle: None,
             pending_motion_path_handle: None,

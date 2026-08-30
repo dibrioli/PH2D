@@ -119,14 +119,23 @@ pub fn paint_hero_screen(
     // shifts Inspector/Hierarchy x-positions accordingly.
     // ⭐ **As medidas do chrome legado, ou ZERO.** *«Sem chrome legado»* não é um modo que o
     // layout conheça — são duas bandas a zero, e a aritmética dele é a de sempre.
-    let (rail_w, top_bar_h) = if hero.view.legacy_chrome {
-        (
-            hero.store.rail_button_size().rail_width_px(),
-            crate::screens::layout::TOPBAR_H,
-        )
-    } else {
-        (0.0, 0.0)
+    let mut bands = crate::screens::layout::ChromeBands {
+        // ⭐ As larguras das colunas são AUTORADAS — o artista arrasta a borda interior delas
+        // (`DOCK_SEAM_PX`), e o valor vive no `WidgetStore` como qualquer outra escolha de chrome.
+        left_dock_w: hero
+            .store
+            .dock_width(crate::screens::layout::DockSide::Left),
+        right_dock_w: hero
+            .store
+            .dock_width(crate::screens::layout::DockSide::Right),
+        ..crate::screens::layout::ChromeBands::DEFAULT
     };
+    if hero.view.legacy_chrome {
+        bands.rail_w = hero.store.rail_button_size().rail_width_px();
+    } else {
+        bands.rail_w = 0.0;
+        bands.top_bar_h = 0.0;
+    }
     // Motion Nodes M0.T4: `center_split` is `None` for every non-Motion tool, so
     // this is identical to the legacy layout there; the Motion bridge sets a split
     // while its tool is active.
@@ -142,8 +151,7 @@ pub fn paint_hero_screen(
     let probe = HeroLayout::for_viewport_bands(
         viewport,
         hero.view.ui_mirrored,
-        rail_w,
-        top_bar_h,
+        bands,
         hero.view.center_split,
         crate::screens::layout::DockSides::BOTH,
     );
@@ -153,8 +161,7 @@ pub fn paint_hero_screen(
     let mut layout = HeroLayout::for_viewport_bands(
         viewport,
         hero.view.ui_mirrored,
-        rail_w,
-        top_bar_h,
+        bands,
         hero.view.center_split,
         docks,
     );
@@ -252,6 +259,9 @@ pub fn paint_hero_screen(
     // vez de carregar no botão**. Pintar e agarrar leem a MESMA fonte, que é o que impede a
     // metade visível e a metade do dedo de divergirem.
     hero.last_canvas = layout.draw_area;
+    // E o layout INTEIRO, para o gesto de largura das colunas ler os mesmos rects (ver o
+    // doc do campo).
+    hero.last_layout = Some(layout);
     // **As RÉGUAS** (plano 25 §9, a W6.2), por cima da grade e por baixo de tudo o mais: elas
     // são chrome de borda, e a arte passa por baixo delas como passa por baixo do Inspector.
     // O zero é a origem da GRADE — um número, dois consumidores.

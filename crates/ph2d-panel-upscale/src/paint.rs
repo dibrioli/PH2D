@@ -24,8 +24,8 @@ use crate::{UpscalePanel, ids};
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title, paint_segmented_group_adaptive,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
+    paint_segmented_group_adaptive,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, UPSCALE_SCROLLBAR_ID, paint_button, paint_scrollbar,
@@ -60,8 +60,6 @@ pub(crate) fn paint(_state: &mut UpscalePanelState, ctx: &mut PaintCtx) {
     // Inspector / Bg Removal / Padding panels. BL gripper paintado
     // pra dar affordance ao BL resize handle (Enio 2026-05-26).
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared with Inspector).
     {

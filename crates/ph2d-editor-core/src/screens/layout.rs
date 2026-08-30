@@ -187,6 +187,7 @@ impl CenterSplit {
 ///
 /// Re-exportado aqui porque o `HeroLayout` o recebe por argumento e todo chamador o importa
 /// junto com ele; o tipo mudou de ficheiro, não de dono.
+pub use crate::screens::dock_seam::{ChromeBands, DOCK_SEAM_PX, DockSide};
 pub use crate::screens::dock_sides::DockSides;
 
 /// Pre-computed sub-region rects for one frame. Built once per
@@ -260,6 +261,10 @@ pub struct HeroLayout {
     /// todo consumidor lê só as DIMS) — dar-lhe uma ORIGEM é a obra da docagem (A2), e está
     /// nomeada com esse preço. Aqui a cena continua full-bleed, por baixo das réguas.
     pub draw_area: Rect,
+    /// ⚠️ **Quais colunas estavam OCUPADAS quando este layout foi construído.** O rect de uma
+    /// coluna existe sempre (a geometria não depende do estado); o que depende é haver alguém lá.
+    /// Sem isto, `dock_seam` oferecia agarre numa coluna vazia — chrome vivo e invisível.
+    pub docks: DockSides,
     /// Scene viewport sub-rect (Motion Nodes M0.T4). Equals the full
     /// [`Self::canvas`] with no split; the top slice (`Horizontal`) or left
     /// slice (`Vertical`) of the center band when the Motion tool splits it.
@@ -355,7 +360,16 @@ impl HeroLayout {
         split: CenterSplit,
         docks: DockSides,
     ) -> Self {
-        Self::for_viewport_bands(viewport, mirrored, rail_w, TOPBAR_H, split, docks)
+        Self::for_viewport_bands(
+            viewport,
+            mirrored,
+            ChromeBands {
+                rail_w,
+                ..ChromeBands::DEFAULT
+            },
+            split,
+            docks,
+        )
     }
 
     /// ⭐⭐ **O construtor que recebe as BANDAS por medida, e não por modo** (2026-08-30).
@@ -368,11 +382,16 @@ impl HeroLayout {
     pub fn for_viewport_bands(
         viewport: Rect,
         mirrored: bool,
-        rail_w: f32,
-        top_bar_h: f32,
+        bands: ChromeBands,
         split: CenterSplit,
         docks: DockSides,
     ) -> Self {
+        let ChromeBands {
+            rail_w,
+            top_bar_h,
+            left_dock_w,
+            right_dock_w,
+        } = bands;
         // ⭐⭐ **A BARRA DE TOPO É FLUSH e a BANDA vai até ao fundo** (Enio, 2026-08-30, com
         // quatro setas na foto: *«muitos espaços em todos os lugares»*). Ela era inset em
         // `EDGE_PAD` e a banda de chrome perdia `TOPBAR_GAP` por cima e a reserva do HUD por
@@ -391,12 +410,20 @@ impl HeroLayout {
         // flutuar. ⚠️ **Só ESTA das quatro utilizações do `EDGE_PAD` mudou** — ele continua a
         // separar a barra de topo da borda, a afastar o timeline e a dar o respiro entre a coluna
         // e a área de desenho. Zerá-lo global seriam quatro decisões numa.
-        let (hierarchy_x, inspector_x) = if mirrored {
-            (viewport.x + viewport.w - HIERARCHY_W, viewport.x + rail_w)
+        // ⚠️ **A largura segue o LADO, não o painel** — sob espelho a Hierarchy muda-se para a
+        // coluna da direita e herda a largura DELA. Escrever `hierarchy_w` seria a inversão que o
+        // compilador não vê, e o `side_columns()` existe pelo mesmo motivo.
+        let (hier_w, insp_w) = if mirrored {
+            (right_dock_w, left_dock_w)
         } else {
-            (viewport.x + rail_w, viewport.x + viewport.w - INSPECTOR_W)
+            (left_dock_w, right_dock_w)
         };
-        let inspector = Rect::new(inspector_x, chrome_top, INSPECTOR_W, chrome_h);
+        let (hierarchy_x, inspector_x) = if mirrored {
+            (viewport.x + viewport.w - hier_w, viewport.x + rail_w)
+        } else {
+            (viewport.x + rail_w, viewport.x + viewport.w - insp_w)
+        };
+        let inspector = Rect::new(inspector_x, chrome_top, insp_w, chrome_h);
         // Bg Removal panel shares the Inspector's right-dock x/width;
         // it replaces the Inspector visually while the tool is active.
         let bgremoval = inspector;
@@ -408,7 +435,7 @@ impl HeroLayout {
         // Painter layers panel shares the Inspector's right-dock geometry
         // too (W3.T3.4 plan §6, mirror do painter_sidebar).
         let painter_layers = inspector;
-        let hierarchy = Rect::new(hierarchy_x, chrome_top, HIERARCHY_W, chrome_h);
+        let hierarchy = Rect::new(hierarchy_x, chrome_top, hier_w, chrome_h);
         let canvas = Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
         // Center split (M0.T4): partition the chrome band (chrome_top..chrome_bot,
         // full width — panels float over it) into the scene sub-rect and the graph
@@ -452,9 +479,9 @@ impl HeroLayout {
         // side chrome columns (so it never overlaps Inspector/Hierarchy), floating
         // over the scene's lower edge. Side columns swap under `mirrored`.
         let (left_col_right, right_col_left) = if mirrored {
-            (inspector_x + INSPECTOR_W, hierarchy_x)
+            (inspector_x + insp_w, hierarchy_x)
         } else {
-            (hierarchy_x + HIERARCHY_W, inspector_x)
+            (hierarchy_x + hier_w, inspector_x)
         };
         let timeline_x = left_col_right + EDGE_PAD;
         let timeline_w = (right_col_left - EDGE_PAD - timeline_x).max(0.0);
@@ -513,6 +540,7 @@ impl HeroLayout {
             bottom_hud,
             canvas,
             draw_area,
+            docks,
             center_viewport,
             motion_graph,
             motion_timeline_slot,
@@ -552,22 +580,6 @@ impl HeroLayout {
             h,
         );
         self.timeline = self.motion_timeline_slot;
-    }
-
-    /// **As duas colunas laterais, ORDENADAS POR `x`** — `(esquerda, direita)`.
-    ///
-    /// ⚠️ **Existe para o `mirrored` não ser uma inversão escrita à mão em cada chamador.** Sob
-    /// espelho a Hierarchy vai para a direita e o dock de *takeover* para a esquerda; pedir
-    /// *«o rect da Hierarchy»* e chamar-lhe *«a coluna da esquerda»* é a forma exacta do erro
-    /// que o compilador não vê. Aqui a resposta vem da **posição**, que é o que a pergunta
-    /// significa.
-    #[must_use]
-    pub fn side_columns(&self) -> (Rect, Rect) {
-        if self.hierarchy.x <= self.inspector.x {
-            (self.hierarchy, self.inspector)
-        } else {
-            (self.inspector, self.hierarchy)
-        }
     }
 
     /// **Uma faixa docada no FUNDO come a altura da área de desenho** — e sem isto a régua da

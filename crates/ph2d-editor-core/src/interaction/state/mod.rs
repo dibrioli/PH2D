@@ -447,6 +447,10 @@ pub struct WidgetStore {
     /// ([`crate::screens::hero`]) read this to pick the chip edge
     /// and rail column width.
     pub(super) rail_button_size: crate::widget::RailButtonSize,
+    /// Largura AUTORADA de cada coluna docada (`None` = a de fábrica). Ver
+    /// [`WidgetStore::dock_width`].
+    pub(super) dock_w_left: Option<f32>,
+    pub(super) dock_w_right: Option<f32>,
     /// Cached present-mode (VSync ON vs OFF). Source of truth still
     /// lives in the shell (it owns the swap chain), but the core
     /// mirrors the last value the user picked in Settings → Display

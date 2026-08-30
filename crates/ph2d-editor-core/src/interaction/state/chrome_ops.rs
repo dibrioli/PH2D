@@ -639,6 +639,38 @@ impl WidgetStore {
 
     /// Current rail-button size preset (Small / Medium / Large) — set
     /// from the Themes menu (2026-05-24).
+    /// **A largura AUTORADA de uma coluna docada** — a de fábrica até alguém arrastar a borda.
+    ///
+    /// ⚠️ Clampada na PORTA e não em cada leitor: uma coluna que possa encolher a zero ou comer a
+    /// janela é estado inalcançável de volta (não sobra borda para agarrar).
+    pub fn dock_width(&self, side: crate::screens::layout::DockSide) -> f32 {
+        use crate::screens::layout::{ChromeBands, DockSide};
+        let stored = match side {
+            DockSide::Left => self.dock_w_left,
+            DockSide::Right => self.dock_w_right,
+        };
+        let base = match side {
+            DockSide::Left => ChromeBands::DEFAULT.left_dock_w,
+            DockSide::Right => ChromeBands::DEFAULT.right_dock_w,
+        };
+        crate::math::safe_clamp(stored.unwrap_or(base), Self::DOCK_W_MIN, Self::DOCK_W_MAX)
+    }
+
+    /// Escreve a largura de uma coluna, já clampada.
+    pub fn set_dock_width(&mut self, side: crate::screens::layout::DockSide, w: f32) {
+        let w = crate::math::safe_clamp(w, Self::DOCK_W_MIN, Self::DOCK_W_MAX);
+        match side {
+            crate::screens::layout::DockSide::Left => self.dock_w_left = Some(w),
+            crate::screens::layout::DockSide::Right => self.dock_w_right = Some(w),
+        }
+    }
+
+    /// ⚠️ **O mínimo é o do painel** (`PANEL_MIN_W_PX`, 220) — abaixo dele o cabeçalho e uma linha
+    /// deixam de caber juntos. O máximo é medido pelo mesmo critério do `clamp_panel_rect`: 70 % de
+    /// uma janela de referência, para uma coluna nunca comer a área de desenho inteira.
+    const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
+    const DOCK_W_MAX: f32 = 720.0; // LITERAL-PX-OK: teto de largura de coluna docada
+
     pub fn rail_button_size(&self) -> crate::widget::RailButtonSize {
         self.rail_button_size
     }

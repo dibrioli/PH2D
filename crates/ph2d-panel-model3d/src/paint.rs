@@ -7,7 +7,7 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::paint_segmented_group_adaptive;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_surface, paint_panel_title,
+    paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     MODEL3D_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
@@ -86,7 +86,6 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         .store_mut()
         .set_panel_rect(ids::MODEL3D_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
     {}
 
     let title_size = paint_panel_title(

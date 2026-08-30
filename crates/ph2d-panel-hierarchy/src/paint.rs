@@ -21,8 +21,7 @@ use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::hero::fixture;
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_surface,
-    paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     self, HIERARCHY_SCROLLBAR_ID, SCROLLBAR_W, TextInput, TextInputState,
@@ -409,8 +408,6 @@ fn paint_hierarchy_body(
         }
     }
     scene.pop_layer();
-    paint_panel_corner_dot(rect, scene, theme);
-    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
     // ⛔ **As três alças saíram (2026-08-30)** — esta coluna é ANCORADA. Elas eram
     // re-registadas aqui, no fim do quadro, para ganharem o z-order ao corpo; sem braço que as
     // consuma, re-registá-las seria pintar chrome morto sob o dedo.

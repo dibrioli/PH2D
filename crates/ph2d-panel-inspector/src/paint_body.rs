@@ -109,8 +109,6 @@ pub(crate) fn close_body(
     // popover pinta-se fora da ordem das seções.
     crate::paint_frame_shared::paint_deferred_popovers(scene, text_system, theme, hit_index);
     scene.pop_layer();
-    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot(rect, scene, theme);
-    ph2d_editor_core::widget::panel_chrome::paint_panel_corner_dot_bl(rect, scene, theme);
     close_frame_hits(hit_index, rect);
 }
 

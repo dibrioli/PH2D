@@ -146,6 +146,7 @@ mod cursor_pos;
 mod cut_smoke;
 /// `PH2D_DITHER_SMOKE` — as faixas e a cura, lado a lado (plano `docs/Sprite_projeto/18` W6.1).
 mod dither_smoke;
+mod dock_resize;
 /// O canal da **DOAÇÃO de forma** para a tinta do Painter — plano de normais + o tamanho do canvas.
 /// Sem `cfg`, de propósito: o que atravessa é `Vec<f32>`, nunca um tipo do módulo 3D.
 mod donated_form;
@@ -909,6 +910,7 @@ impl App {
             }
         }
         Self {
+            dock_seam_drag: None,
             window: None,
             host: None,
             gfx: None,

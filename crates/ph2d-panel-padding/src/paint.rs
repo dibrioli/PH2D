@@ -29,7 +29,7 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     Button, ButtonKind, ButtonState, PADDING_SCROLLBAR_ID, paint_button, paint_scrollbar,
@@ -62,8 +62,6 @@ pub(crate) fn paint(_state: &mut PaddingPanelState, ctx: &mut PaintCtx) {
     // Inspector / Bg Removal panels. BL gripper paintado pra dar
     // affordance ao BL resize handle (Enio 2026-05-26).
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles. Reuse Inspector IDs because
     // image-tool panels share the right dock slot — the resize delta

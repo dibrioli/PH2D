@@ -30,8 +30,7 @@ use crate::{ColorEqualizationPanel, ColorEqualizationPanelState, ids};
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
-    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_corner_dot, paint_panel_corner_dot_bl,
-    paint_panel_surface, paint_panel_title,
+    PANEL_HEAD_PAD, PANEL_TITLE_BASELINE, paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     COLOR_EQUALIZATION_SCROLLBAR_ID, Dropdown, DropdownState, paint_dropdown_popover_in_viewport,
@@ -59,10 +58,8 @@ pub(crate) fn paint(_state: &mut ColorEqualizationPanelState, ctx: &mut PaintCtx
 
     ctx.host.store_mut().set_panel_rect(ids::CEQ_PANEL, rect);
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
     // BL resize gripper dot — sem isso o usuário não vê affordance
     // do BL handle (que já é hit-registrado abaixo). Enio 2026-05-26.
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Dock-slot drag + resize handles (shared with Inspector).
     {}

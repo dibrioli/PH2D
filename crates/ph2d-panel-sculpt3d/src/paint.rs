@@ -7,7 +7,7 @@ use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
-    paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
+    paint_panel_surface, paint_panel_title,
 };
 use ph2d_editor_core::widget::{
     SCULPT3D_SCROLLBAR_ID, paint_scrollbar, paint_slider_with_chip_layout_adaptive,
@@ -60,8 +60,6 @@ pub(crate) fn paint(_state: &mut Sculpt3dPanelState, ctx: &mut PaintCtx) {
         .set_panel_rect(ids::SCULPT3D_PANEL, rect);
 
     paint_panel_surface(rect, ctx.scene, theme);
-    paint_panel_corner_dot(rect, ctx.scene, theme);
-    paint_panel_corner_dot_bl(rect, ctx.scene, theme);
 
     // Alças de arraste + resize do slot do dock. Reusam os ids do Inspector
     // porque o slot da direita é compartilhado — o delta de resize deve

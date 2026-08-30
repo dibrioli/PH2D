@@ -1582,6 +1582,11 @@ impl App {
                     icon
                 } else if let Some(icon) = self.timeline_resize_cursor(h) {
                     icon
+                } else if let Some(icon) =
+                    self.dock_seam_cursor(self.last_pointer.0, self.last_pointer.1)
+                {
+                    // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
+                    icon
                 } else {
                     CursorIcon::Default
                 }
@@ -2903,6 +2908,17 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // ⚠️ **A ORDEM destes dois foi decidida na integracao de 2026-09-04**, e nao
+        // e' arbitraria: o da BORDA tem `return` e uma guarda estreita (so' responde com
+        // `dock_seam_drag` armado), logo so' toma o quadro quando ha' um redimensionamento
+        // a serio -- e nesse quadro nao pode existir arrasto de biblioteca. Invertidos, o
+        // da biblioteca correria em todo quadro de um resize.
+        // ⭐ **O arrasto da BORDA de uma coluna** — dono do ponteiro até o Up, como todo arrasto
+        // desta shell. Vem cedo pelo mesmo motivo que o Down dele.
+        if self.dock_seam_move(self.last_pointer.0) {
+            return;
+        }
+
         // ⭐ **O arrasto da biblioteca anda AQUI**, e não no `on_mouse_input` — é a mesma doutrina
         // das guias logo abaixo: um arrasto em curso responde ao movimento, não ao botão.
         {
@@ -3596,6 +3612,19 @@ impl App {
         // ⚠️ E o Up **não é gateado no Primary**, pelo mesmo motivo que abre o `on_mouse_input`
         // com o release da mão: um arrasto que sobrevive ao release fica colado no cursor para
         // sempre, e um botão secundário não é um modificador de gesto.
+        // ⭐ **A BORDA DA COLUNA redimensiona** (Enio, 2026-08-30). Vem antes de tudo pelo mesmo
+        // motivo que o gesto da guia: a costura vive DENTRO da coluna, por cima do corpo do
+        // painel — sem a precedência, o painel come o press e a borda fica inerte.
+        if kind == PointerKind::Up && self.dock_seam_up() {
+            return;
+        }
+        if kind == PointerKind::Down
+            && mapped_button == ph2d_host::PointerButton::Primary
+            && !menu_open_before
+            && self.dock_seam_down(evt.x, evt.y)
+        {
+            return;
+        }
         if kind == PointerKind::Up && self.guide_pointer_up(evt.x, evt.y) {
             return;
         }

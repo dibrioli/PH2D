@@ -475,6 +475,9 @@ pub(crate) struct HeroLive {
 }
 
 pub(crate) struct App {
+    /// Qual coluna docada está a ser redimensionada pelo arrasto da borda (`None` = nenhuma).
+    /// Ver [`crate::dock_resize`].
+    pub(crate) dock_seam_drag: crate::dock_resize::DockSeamDrag,
     /// A sessão de **Blend** aberta (as duas fontes + o escape + os passos produzidos).
     /// É ela que faz o *Rotate Match* re-rodar na hora, em vez de o artista ter de desfazer e
     /// adivinhar (`crate::vec_blend`).

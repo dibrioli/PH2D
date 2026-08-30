@@ -26,8 +26,8 @@
 
 #![forbid(unsafe_code)]
 
-pub mod ids;
 mod event;
+pub mod ids;
 mod paint;
 mod populate;
 pub mod state;

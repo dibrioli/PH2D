@@ -45,6 +45,27 @@ pub const fn hash_node_id(s: &'static str) -> NodeId {
     NodeId(hash)
 }
 
+/// **O gémeo de RUNTIME do [`hash_node_id`]** — a mesma FNV-1a, para um slug que só existe em
+/// tempo de execução (o índice de uma célula, de uma linha, de um chip derivado).
+///
+/// ⚠️ **Ela vive AQUI porque já foi copiada duas vezes**, e a terceira cópia — escrita à mão nesta
+/// jornada — teve o **primo errado** (`0x1000_0000_01b3` em vez de `0x0000_0100_0000_01b3`): os
+/// ids derivados caíam noutro espaço e o hit-test nunca os resolveria. O gate da própria cópia
+/// apanhou-o, e a cura de fundo é não haver cópia. *Uma lei escrita em dois sítios ainda não é uma
+/// lei — só uma PORTA é.*
+#[must_use]
+pub fn hash_node_id_runtime(s: &str) -> NodeId {
+    let mut hash: u64 = FNV_OFFSET_BASIS_64;
+    for &b in s.as_bytes() {
+        hash ^= b as u64;
+        hash = hash.wrapping_mul(FNV_PRIME_64);
+    }
+    if hash == 0 {
+        hash = 1;
+    }
+    NodeId(hash)
+}
+
 /// Reports a hash collision between two tool ids that resolve to the
 /// same [`NodeId`]. Returned by [`detect_collisions`].
 #[derive(Debug, Clone, PartialEq, Eq)]

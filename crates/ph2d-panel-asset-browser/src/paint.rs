@@ -20,8 +20,8 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEADER_CLOSE_RESERVE, PANEL_HEADER_H_DEFAULT, PANEL_TITLE_BASELINE, clamp_panel_rect,
-    panel_drag_handle_rect, panel_resize_handle_rect_bl, paint_panel_corner_dot,
-    paint_panel_surface, paint_panel_title,
+    paint_panel_corner_dot, paint_panel_surface, paint_panel_title, panel_drag_handle_rect,
+    panel_resize_handle_rect_bl,
 };
 use ph2d_editor_core::widget::{
     ASSET_BROWSER_SCROLLBAR_ID, Button, ButtonKind, Slider, SliderOrientation, TextInput,
@@ -238,7 +238,12 @@ fn paint_chip_row(
 ) -> f32 {
     let theme = ctx.host.theme();
     let step = (w + gap()) / count as f32;
-    for (i, id) in table.iter().copied().enumerate().take(count.min(table.len())) {
+    for (i, id) in table
+        .iter()
+        .copied()
+        .enumerate()
+        .take(count.min(table.len()))
+    {
         let r = Rect::new(x + step * i as f32, y, step - gap(), row_h);
         let mut b = Button::new(id, label(i));
         b.kind = if selected(i) {
@@ -291,7 +296,9 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     });
 
     let cell = state.cell_px;
-    let label_h = TypeToken::Sm.px() * 2.4; // LITERAL-PX-OK: duas linhas de rótulo por cartão
+    // A faixa do rótulo: **as duas linhas que o cartão desenha**, derivadas dos mesmos tokens que
+    // as pintam (`paint_card`) — não de um múltiplo escolhido à mão.
+    let label_h = TypeToken::Sm.px() + Spacing::Xxs.px() + TypeToken::Xs.px() + Spacing::Xs.px();
     let card_h = cell + label_h;
     let inner_w = rect.w - pad() * 2.0;
     let cols = ((inner_w + gap()) / (cell + gap())).floor().max(1.0) as usize;
@@ -349,7 +356,16 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
                 state: ph2d_editor_core::widget::ButtonState::Normal,
             },
         );
-        paint_card(ctx, theme, id, Rect::new(cx, cy, cell, card_h), cell, name, detail, *swatch);
+        paint_card(
+            ctx,
+            theme,
+            id,
+            Rect::new(cx, cy, cell, card_h),
+            cell,
+            name,
+            detail,
+            *swatch,
+        );
     }
 
     if beyond > 0 {
@@ -444,14 +460,18 @@ fn paint_card(
             theme,
         ),
     );
-    let font = TypeToken::Sm.px();
+    // ⚠️ **As duas linhas do rótulo saem de TOKENS, não de múltiplos do tamanho da fonte.** A 1.ª
+    // versão usava `font * 1.2` para o avanço e `font * 0.85` para o detalhe, e o gate dos números
+    // mágicos apanhou-a: um múltiplo escolhido à mão não segue a escala tipográfica quando ela
+    // mudar.
+    let name_y = thumb.y + thumb.h + Spacing::Xs.px();
     paint_text(
         ctx.text_system,
         ctx.scene,
         name,
         rect.x,
-        thumb.y + thumb.h + Spacing::Xs.px(),
-        font,
+        name_y,
+        TypeToken::Sm.px(),
         rect.w,
         resolve(ColorToken::Text1, theme),
     );
@@ -460,8 +480,8 @@ fn paint_card(
         ctx.scene,
         detail,
         rect.x,
-        thumb.y + thumb.h + Spacing::Xs.px() + font * 1.2,
-        font * 0.85,
+        name_y + TypeToken::Sm.px() + Spacing::Xxs.px(),
+        TypeToken::Xs.px(),
         rect.w,
         resolve(ColorToken::Text2, theme),
     );

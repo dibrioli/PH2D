@@ -96,7 +96,9 @@ pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache
         let mut deps: Vec<AssetRef> = pieces
             .iter()
             .filter_map(|&p| sim.world().get::<SpritePixels>(p).map(|sp| sp.0))
-            .map(|id| AssetRef::Texture { asset: *id.as_bytes() })
+            .map(|id| AssetRef::Texture {
+                asset: *id.as_bytes(),
+            })
             .collect();
         deps.sort_unstable();
         deps.dedup();
@@ -126,9 +128,10 @@ pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache
         let Some(id) = db.id_for_path(&path) else {
             continue;
         };
-        let name = path
-            .file_name()
-            .map_or_else(|| id.to_hex()[..12].to_string(), |n| n.to_string_lossy().into_owned());
+        let name = path.file_name().map_or_else(
+            || id.to_hex()[..12].to_string(),
+            |n| n.to_string_lossy().into_owned(),
+        );
         index.push(texture_entry(db, id, name, swatches));
     }
 
@@ -147,7 +150,12 @@ pub(crate) fn build(sim: &mut SimWorld, db: &AssetDb, swatches: &mut SwatchCache
     loose.dedup_by_key(|(_, _, id)| *id);
 
     for (_, entity, id) in loose {
-        if index.get(&AssetRef::Texture { asset: *id.as_bytes() }).is_some() {
+        if index
+            .get(&AssetRef::Texture {
+                asset: *id.as_bytes(),
+            })
+            .is_some()
+        {
             continue;
         }
         let name = sim
@@ -175,7 +183,12 @@ fn texture_entry(
     name: String,
     swatches: &mut SwatchCache,
 ) -> AssetEntry {
-    let mut entry = AssetEntry::new(AssetRef::Texture { asset: *id.as_bytes() }, name);
+    let mut entry = AssetEntry::new(
+        AssetRef::Texture {
+            asset: *id.as_bytes(),
+        },
+        name,
+    );
     if let Some((w, h)) = dimensions(db, id) {
         entry.detail = format!("{w}x{h}");
     }
@@ -301,7 +314,12 @@ mod tests {
         let id = db.insert_image_rgba8(4, 4, pixels);
         let root = sim
             .world_mut()
-            .spawn((Transform::IDENTITY, Name::new("Ragdoll"), MasterRoot, StableId(1)))
+            .spawn((
+                Transform::IDENTITY,
+                Name::new("Ragdoll"),
+                MasterRoot,
+                StableId(1),
+            ))
             .id();
         sim.world_mut().spawn((
             Transform::IDENTITY,
@@ -333,7 +351,9 @@ mod tests {
         let (mut sim, id) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
         let index = build(&mut sim, &db, &mut cache);
-        let tex = AssetRef::Texture { asset: *id.as_bytes() };
+        let tex = AssetRef::Texture {
+            asset: *id.as_bytes(),
+        };
         let owners: Vec<&str> = index.owners(&tex).iter().map(|e| e.name.as_str()).collect();
         assert_eq!(owners, vec!["Ragdoll"]);
     }
@@ -345,7 +365,12 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
-        assert_eq!(build(&mut sim, &db, &mut cache).counts().get(&AssetKind::Component), Some(&1));
+        assert_eq!(
+            build(&mut sim, &db, &mut cache)
+                .counts()
+                .get(&AssetKind::Component),
+            Some(&1)
+        );
         let root = {
             let mut q = sim
                 .world_mut()
@@ -368,7 +393,10 @@ mod tests {
         let mut cache = SwatchCache::new();
         let rgba = swatch_for(&db, id, &mut cache).expect("uma imagem rgba8 tem cor");
         assert!(rgba[0] > 200, "vermelho esperado, veio {rgba:?}");
-        assert!(rgba[1] < 40 && rgba[2] < 40, "sem outros canais, veio {rgba:?}");
+        assert!(
+            rgba[1] < 40 && rgba[2] < 40,
+            "sem outros canais, veio {rgba:?}"
+        );
     }
 
     /// A cor calcula-se **uma vez por conteúdo** — a cache é chaveada pelo `AssetId`, e é isso que
@@ -391,8 +419,16 @@ mod tests {
         let db = AssetDb::new();
         let (mut sim, _) = world_with_one_component(&db);
         let mut cache = SwatchCache::new();
-        let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache).entries().iter().map(|e| e.key).collect();
-        let b: Vec<AssetRef> = build(&mut sim, &db, &mut cache).entries().iter().map(|e| e.key).collect();
+        let a: Vec<AssetRef> = build(&mut sim, &db, &mut cache)
+            .entries()
+            .iter()
+            .map(|e| e.key)
+            .collect();
+        let b: Vec<AssetRef> = build(&mut sim, &db, &mut cache)
+            .entries()
+            .iter()
+            .map(|e| e.key)
+            .collect();
         assert_eq!(a, b);
     }
 }

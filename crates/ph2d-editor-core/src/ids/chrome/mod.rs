@@ -16,12 +16,12 @@
 // parent `ids` module.
 use super::{NodeId, hash_node_id};
 
-/// **Os ids do painel AUTORADO** (plano UI/UX W8b.2) — o painel que o artista desenhou,
-/// vivo. As rows nao existem em tempo de escrita: os ids delas sao derivados da CHAVE.
-mod authored;
 /// **Os ids do NAVEGADOR DE ASSETS** (plano `docs/Components/07`) — a grade, as buscas e os
 /// chips. A porta de entrada e' o `TOPBAR_RIGHT_ASSETS`, que ja' existia e nao despachava nada.
 mod asset_browser;
+/// **Os ids do painel AUTORADO** (plano UI/UX W8b.2) — o painel que o artista desenhou,
+/// vivo. As rows nao existem em tempo de escrita: os ids delas sao derivados da CHAVE.
+mod authored;
 mod bgremoval;
 mod flip;
 mod image_tools;
@@ -95,8 +95,8 @@ mod vector_widget;
 mod vector_width;
 mod wet_tuning;
 
-pub use authored::*;
 pub use asset_browser::*;
+pub use authored::*;
 pub use bgremoval::*;
 pub use flip::*;
 pub use image_tools::*;

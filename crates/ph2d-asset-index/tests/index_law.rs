@@ -81,7 +81,11 @@ fn every_sort_is_a_total_order_even_when_two_assets_share_a_name() {
         let mut sorted = a.clone();
         sorted.sort_unstable();
         sorted.dedup();
-        assert_eq!(sorted.len(), a.len(), "{sort:?} perdeu ou duplicou entradas");
+        assert_eq!(
+            sorted.len(),
+            a.len(),
+            "{sort:?} perdeu ou duplicou entradas"
+        );
     }
 }
 

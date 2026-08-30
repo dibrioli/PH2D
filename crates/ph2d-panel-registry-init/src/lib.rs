@@ -218,6 +218,11 @@ mod tests {
         {
             n += 1;
         }
+        // ⭐ O navegador de assets (plano `docs/Components/07`).
+        #[cfg(feature = "panel-asset-browser")]
+        {
+            n += 1;
+        }
         n
     };
 

@@ -47,6 +47,13 @@ const BASELINE: &[(&str, usize)] = &[
     // for chrome fields (name input, search) — replaced when Fluent
     // runtime ships. Path key is `<crate>/src/<rel>`.
     ("ph2d-panel-hierarchy/src/paint.rs", 1),
+    // O `placeholder` da busca do NAVEGADOR DE ASSETS (plano `docs/Components/07`, wave A5).
+    // ⚠️ Mesma forma e mesma dívida do irmão da Hierarquia, uma linha acima — é literalmente o
+    // mesmo widget a fazer o mesmo trabalho no painel ao lado —, e cai com ele quando o `t!(…)`
+    // shipar. ⛔ E ele fica VISÍVEL de propósito: passar a string por um argumento faria a
+    // contagem cair para 0 sem tirar o literal do binário, que é a isenção silenciosa que as
+    // duas notas abaixo já nomeiam.
+    ("ph2d-panel-asset-browser/src/paint.rs", 1),
     // The entity-name TextInput placeholder ("Name…"). Moved from
     // sections.rs to sections/identity.rs in the §T2.1 per-section split;
     // i18n migration tracked separately (replaced when Fluent ships).

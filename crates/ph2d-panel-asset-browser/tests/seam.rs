@@ -62,8 +62,8 @@ fn a_closed_panel_ignores_its_own_chips() {
     let mut host = MockPanelHost::with_panel::<AssetBrowserPanel>();
     let mut st = AssetBrowserState::default();
     let before = st.sort;
-    let out =
-        host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_SORT[2]));
+    let out = host
+        .apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_SORT[2]));
     assert_eq!(out, EventOutcome::Ignored);
     assert_eq!(st.sort, before, "um painel fechado mudou de ordenacao");
 }
@@ -74,8 +74,10 @@ fn the_sort_chips_reach_the_state() {
     let (mut host, mut st) = open_host();
     assert_eq!(st.sort, SortBy::Name, "o default mudou; o alvo seria vazio");
     for (i, want) in SortBy::ALL.iter().enumerate() {
-        let out = host
-            .apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_SORT[i]));
+        let out = host.apply_panel_event::<AssetBrowserPanel>(
+            &mut st,
+            WidgetEvent::Click(ids::ASSET_SORT[i]),
+        );
         assert_eq!(out, EventOutcome::Consumed, "chip de ordenacao {i} morto");
         assert_eq!(st.sort, *want, "chip {i} escreveu a ordenacao errada");
     }
@@ -115,15 +117,20 @@ fn the_kind_row_covers_every_family_the_model_declares() {
 fn the_size_slider_reaches_the_state_and_the_law_round_trips() {
     let (mut host, mut st) = open_host();
     host.store_mut().set_slider_value(ids::ASSET_SIZE, 1.0);
-    let out = host
-        .apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::ValueChanged(ids::ASSET_SIZE));
+    let out = host.apply_panel_event::<AssetBrowserPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(ids::ASSET_SIZE),
+    );
     assert_eq!(out, EventOutcome::Consumed, "o slider de tamanho e' mudo");
     assert!(
         (st.cell_px - ph2d_panel_asset_browser::CELL_MAX_PX).abs() < 1e-3,
         "o slider no maximo nao deu o cartao maximo: {}",
         st.cell_px
     );
-    assert!((st.size_slider_value() - 1.0).abs() < 1e-3, "a volta perdeu-se");
+    assert!(
+        (st.size_slider_value() - 1.0).abs() < 1e-3,
+        "a volta perdeu-se"
+    );
     st.set_size_from_slider(0.0);
     assert!((st.cell_px - ph2d_panel_asset_browser::CELL_MIN_PX).abs() < 1e-3);
 }
@@ -141,7 +148,11 @@ fn a_double_click_on_a_component_card_pushes_the_instantiate_action() {
         &mut st,
         WidgetEvent::DoubleClick(ids::asset_cell_id(0)),
     );
-    assert_eq!(out, EventOutcome::Consumed, "o cartao esta' morto sob o dedo");
+    assert_eq!(
+        out,
+        EventOutcome::Consumed,
+        "o cartao esta' morto sob o dedo"
+    );
     let pushed: Vec<EditorAction> = host.bus().iter().cloned().collect();
     assert!(
         pushed.contains(&EditorAction::AssetInstantiate { stable_id: 77 }),
@@ -186,14 +197,20 @@ fn the_search_narrows_what_the_grid_would_paint() {
         AssetRef::Component { stable_id: 1 },
         "Ragdoll",
     ));
-    ix.push(AssetEntry::new(AssetRef::Texture { asset: [2; 32] }, "brick.png"));
+    ix.push(AssetEntry::new(
+        AssetRef::Texture { asset: [2; 32] },
+        "brick.png",
+    ));
     let all = ph2d_panel_asset_browser::probe_query(&ix, &Query::default());
     assert_eq!(all.len(), 2);
     let q = Query {
         text: "brick".into(),
         ..Default::default()
     };
-    assert_eq!(ph2d_panel_asset_browser::probe_query(&ix, &q), vec!["brick.png"]);
+    assert_eq!(
+        ph2d_panel_asset_browser::probe_query(&ix, &q),
+        vec!["brick.png"]
+    );
 }
 
 /// Mudar o filtro **volta ao topo** — senão a rolagem aponta para uma linha que a lista nova não
@@ -205,7 +222,9 @@ fn changing_the_filter_returns_the_grid_to_the_top() {
         .set_panel_scroll(ph2d_editor_core::ids::ASSET_PANEL, 240.0);
     host.apply_panel_event::<AssetBrowserPanel>(&mut st, WidgetEvent::Click(ids::ASSET_KIND[1]));
     assert!(
-        host.store().panel_scroll(ph2d_editor_core::ids::ASSET_PANEL) < f32::EPSILON,
+        host.store()
+            .panel_scroll(ph2d_editor_core::ids::ASSET_PANEL)
+            < f32::EPSILON,
         "a rolagem ficou onde estava"
     );
 }
@@ -262,12 +281,10 @@ fn the_scrollbar_thumb_is_registered_so_the_drag_can_start() {
 #[test]
 fn the_scrollbar_thumb_maps_back_to_this_panel() {
     let host = MockPanelHost::with_panel::<AssetBrowserPanel>();
-    let (_, _) = host
-        .store()
-        .scrollbar_visual_for(
-            ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
-            Some(ph2d_editor_core::ids::ASSET_PANEL),
-        );
+    let (_, _) = host.store().scrollbar_visual_for(
+        ph2d_editor_core::widget::ASSET_BROWSER_SCROLLBAR_ID,
+        Some(ph2d_editor_core::ids::ASSET_PANEL),
+    );
     // A prova real é o mapa do despachante, alcançado pelo `scrollbar_visual` de UM argumento:
     // ele pergunta ao `scrollbar_panel_for_id`, e um id ausente dali devolve o par de repouso
     // mesmo com o painel a rolar.

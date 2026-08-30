@@ -236,17 +236,11 @@ pub const FLIP_LAYER_RENAME_INPUT: NodeId = hash_node_id("flip.layer.rename_inpu
 /// known at runtime). Kept flip-local (isolation, ADR-0114) — its agreement with
 /// `hash_node_id` is pinned by the test at the bottom of this module.
 fn flip_fnv_node_id(s: &str) -> NodeId {
-    const FNV_OFFSET_BASIS_64: u64 = 0xcbf2_9ce4_8422_2325;
-    const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
-    let mut hash: u64 = FNV_OFFSET_BASIS_64;
-    for &b in s.as_bytes() {
-        hash ^= b as u64;
-        hash = hash.wrapping_mul(FNV_PRIME_64);
-    }
-    if hash == 0 {
-        hash = 1; // reserve NodeId(0) = a11y root, mirror of hash_node_id
-    }
-    NodeId(hash)
+    // ⚠️ **A cópia à mão que aqui esteve virou a PORTA** (2026-08-30): a terceira cópia desta lei,
+    // escrita noutro ficheiro na mesma semana, saiu com o primo errado e os ids caíam noutro
+    // espaço. O gate abaixo (`runtime_hasher_matches_const_hash_node_id`) continua a valer, e a
+    // troca é byte a byte — as duas eram literalmente o mesmo código.
+    ph2d_tool_registry::hash_node_id_runtime(s)
 }
 
 /// Which control on a Flip layers-panel row a runtime id addresses. The layer id

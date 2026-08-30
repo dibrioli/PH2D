@@ -39,6 +39,6 @@ pub use icon_handle::IconHandle;
 pub use manifest::{
     BezPath, ClusterId, HandlerFn, LabelKey, McpExposure, Role, ToolHandler, ToolId, ToolManifest,
 };
-pub use node_id::{CollisionError, detect_collisions, hash_node_id};
+pub use node_id::{CollisionError, detect_collisions, hash_node_id, hash_node_id_runtime};
 pub use runtime::{BuildError, Registry};
 pub use zone::Zone;

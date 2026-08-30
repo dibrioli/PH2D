@@ -69,15 +69,14 @@ pub fn asset_cell_id(index: usize) -> NodeId {
     asset_fnv_node_id(&format!("asset_browser.cell.{index}"))
 }
 
-/// O gémeo de runtime do `hash_node_id` — a MESMA FNV-1a, para que os ids derivados vivam no mesmo
-/// espaço dos `const` acima. Há gate a compará-los.
+/// O gémeo de runtime do `hash_node_id`, **a PORTA e não uma cópia**
+/// ([`ph2d_tool_registry::hash_node_id_runtime`]).
+///
+/// ⚠️ **A cópia à mão que aqui esteve tinha o PRIMO errado** (`0x1000_0000_01b3` em vez de
+/// `0x0000_0100_0000_01b3`) — os ids das células caíam noutro espaço e o hit-test nunca os
+/// resolveria. O gate abaixo apanhou-o; a cura foi promover a lei a porta única.
 fn asset_fnv_node_id(slug: &str) -> NodeId {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in slug.as_bytes() {
-        hash ^= u64::from(*b);
-        hash = hash.wrapping_mul(0x1000_0000_01b3);
-    }
-    NodeId(hash)
+    ph2d_tool_registry::hash_node_id_runtime(slug)
 }
 
 #[cfg(test)]

@@ -320,6 +320,10 @@ pub(crate) mod motion_glow_layer;
 /// its node params, publish it into the cook, and draw the cooked instances as
 /// live GPU vector into the shared vector scene.
 pub(crate) mod motion_lsystem_gen;
+pub(crate) mod motion_lsystem_leaves;
+#[cfg(test)]
+#[path = "motion_lsystem_testkit.rs"]
+pub(crate) mod motion_lsystem_testkit;
 pub(crate) mod motion_shape_gen;
 pub(crate) mod motion_table_gen;
 pub(crate) mod motion_text_gen;

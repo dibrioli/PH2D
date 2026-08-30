@@ -23,6 +23,7 @@ pub(super) fn sprite_tile(spr: &Sprite, look: Appearance<'_>) -> Option<Stream> 
         spr.collapsed_tint(),
         uv_rect,
         texture_id,
+        spr.premultiplied,
     ))
 }
 

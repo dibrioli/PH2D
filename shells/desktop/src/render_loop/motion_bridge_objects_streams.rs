@@ -20,6 +20,7 @@ pub(crate) fn appearance_tile(
     tint: [f32; 4],
     uv_rect: [f32; 4],
     texture_id: u32,
+    premultiplied: bool,
 ) -> Stream {
     Stream::new(1)
         .with("P", Column::Vec2(vec![[0.0, 0.0]]))
@@ -28,6 +29,18 @@ pub(crate) fn appearance_tile(
         .with("uv_rect", Column::Vec4(vec![uv_rect]))
         // A small integer id, exact in f32; the lowering reads it back.
         .with("texture_id", Column::Scalar(vec![texture_id as f32]))
+        // ⛔⛔ **A BANDEIRA DA ALFA VIAJA** — report do Enio (2026-08-30): *"o Alpha usado
+        // escurece as bordas da pintura (diferente da sprite)"*. O lowering pré-multiplicava
+        // toda instância do Motion (`premultiplied: 0.0` literal), e um documento PINTADO sobe
+        // **já premultiplicado** ⇒ `RGB·α²` ⇒ borda escura. O caminho normal da sprite lê
+        // [`ph2d_render::Sprite::premultiplied`]; agora esta rota também.
+        //
+        // ⚠️ **PARÂMETRO, não um default:** ele é uma pergunta que só o produtor sabe
+        // responder, e um default aqui seria a mesma mentira noutro sítio.
+        .with(
+            "premultiplied",
+            Column::Scalar(vec![f32::from(u8::from(premultiplied))]),
+        )
 }
 
 /// The one-instance appearance stream for a LIVE VECTOR (a `source.object` that

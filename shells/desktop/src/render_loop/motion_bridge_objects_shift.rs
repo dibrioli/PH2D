@@ -51,6 +51,9 @@ pub(crate) fn publish_shifted(motion: &mut MotionState, seconds: f64) {
                     [1.0, 1.0, 1.0, 1.0],
                     [0.0, 0.0, 1.0, 1.0],
                     tile.texture_id,
+                    // ⏳ **NÃO MEDIDO, e por isso fica como estava** — ver o gémeo em
+                    // `motion_bridge_objects.rs`: o `FlipTile` não carrega bandeira de alfa.
+                    false,
                 ),
             );
         }

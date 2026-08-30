@@ -186,6 +186,11 @@ pub(super) fn publish(
                 [1.0, 1.0, 1.0, 1.0],
                 [0.0, 0.0, 1.0, 1.0],
                 tile.texture_id,
+                // ⏳ **NÃO MEDIDO, e por isso fica como estava.** O `FlipTile` não carrega
+                // bandeira de alfa, e adivinhar mudaria os pixels de todo objecto Flip com
+                // base num palpite. O gatilho para a medir é o primeiro report de borda
+                // escura num Flip — o da sprite pintada está curado acima.
+                false,
             ),
         );
     }

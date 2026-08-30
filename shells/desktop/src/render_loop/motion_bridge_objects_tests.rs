@@ -14,7 +14,13 @@ fn the_membrane_publishes_exactly_the_columns_the_sink_reads() {
     // read side cannot diverge (the two-doors bug this repo hunts). A DUMMY
     // texture_id 7 that is neither the atlas sentinel (0) nor a size/tint
     // value, so a lowering that ignored the column could not pass.
-    let tile = appearance_tile([2.0, 3.0], [1.0, 0.0, 0.0, 1.0], [0.1, 0.2, 0.3, 0.4], 7);
+    let tile = appearance_tile(
+        [2.0, 3.0],
+        [1.0, 0.0, 0.0, 1.0],
+        [0.1, 0.2, 0.3, 0.4],
+        7,
+        false,
+    );
     let inst = ph2d_eval_motion::lower_to_instances(&tile);
     assert_eq!(inst.len(), 1);
     assert_eq!(inst[0].texture_id, 7, "which texture");

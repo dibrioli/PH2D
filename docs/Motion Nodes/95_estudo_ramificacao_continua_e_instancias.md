@@ -206,6 +206,69 @@ lixo, apagado.
 
 ---
 
+## §6 — O 2.º smoke de 30/08: três queixas, três causas distintas
+
+> *"as folhas não crescem, elas aparecem e sem rotação [relativa] ao galho. Elas não nascem e
+> crescem na ponta dos galhos, elas aparecem em cada segmento. O Alpha usado escurece as bordas
+> da pintura (diferente da sprite)."*
+
+⚠️ **Nenhuma das três era a que eu teria adivinhado**, e as três saíram de uma sonda só
+(`P`, `rot`, `size`, `gen` de cada âncora, ao longo de `g = 4 → 5`).
+
+### 6.1 — A rotação: uma coluna com o NOME errado
+
+A membrana publicava o ângulo numa coluna chamada **`rotation`**. A convenção de instâncias do
+Motion (`ph2d-eval-motion`) chama-lhe **`rot`**, em GRAUS.
+
+⛔ *Um nome de coluna errado não dá erro nenhum:* a coluna é ignorada, o default é a identidade,
+e a folha desenha-se a direito. ⇒ **o gate tem de perguntar ao CONSUMIDOR** — ele baixa a
+corrente com `lower_to_instances_onto` e mede a `basis` da instância. Uma leitura da coluna
+publicada passaria com o bug lá dentro, e passou durante um bloco inteiro.
+
+⚠️ **E a fonte mudou de `wrot` para `rot`**, que é a coluna que honra o param `Orient` do
+artista e a que o modo `Segments` publica. ⛔ **A escolha só é observável em `Orient = Local`**
+— no default as duas colunas trazem o mesmo número para uma marca, e a mutação SOBREVIVE; o
+gate `the_orient_param_reaches_the_leaf` é o que a torna load-bearing.
+
+### 6.2 — «não crescem» e «em cada segmento» são UMA grandeza em falta
+
+Uma marca nunca é reescrita ⇒ ela **acumula**: a `g = 5` a árvore de fábrica tem `62` marcas
+(`2+4+8+16+32`), uma no fim de cada segmento que a planta já teve. Desenhá-las todas do mesmo
+tamanho é, literalmente, *"uma folha em cada segmento"*.
+
+⭐⭐ A lei é um **cruza-fade entre duas gerações**, e sai do que o esqueleto já sabe (`gen`) mais
+o que a tartaruga já recebe (`youngest`): peso `f` para a geração mais nova, `1 − f` para a
+anterior, `0` para as outras (`turtle::mark_grow`, coluna nova `mark_grow`).
+
+| `Generations` | o que se desenha |
+|---|---|
+| `4,0` | **16** folhas (as pontas da geração 4), tamanho `2,00` |
+| `4,25` | 32 novas a `0,50` + 16 velhas a `1,50` |
+| `4,5` | 48, todas a `1,00` |
+| `4,9` | 32 a `1,80` + 16 a `0,20` |
+| `5,0` | **32** folhas (as pontas), tamanho `2,00` |
+
+⭐ A soma dos dois pesos é `1` em todo instante ⇒ a virada de geração é **contínua**, e numa
+geração inteira sobram exactamente as pontas, cheias. ⛔ **Nada disto precisou de mudar a
+gramática**, e é por isso que a acumulação deixou de ser só um custo: *é ela que carrega a
+metade que desvanece.*
+
+⚠️ O `Segments` continua a publicar o esqueleto **CRU** (o contrato do `rig.*`); o peso viaja
+como coluna, e quem quiser filtrar tem o `motion.cull`/`field.index_range`.
+
+### 6.3 — A alfa: o lowering do Motion cravava `premultiplied: 0.0`
+
+Para **toda** instância que o Motion emite — não só a folha. Um documento pintado sobe **já
+premultiplicado** (há assert a dizê-lo em `project_painter.rs`), e o fragmento pré-multiplicava
+outra vez ⇒ `RGB·α²`: invisível no interior opaco, **escuro na borda anti-aliased**.
+
+A bandeira passa a viajar da `Sprite` até à instância (`appearance_tile` ganhou o parâmetro,
+coluna `premultiplied`, ausente ⇒ `0` ⇒ byte-idêntico). ⏳ **Os dois bakes de Flip ficam a
+`false` como hoje, e a pergunta fica NOMEADA**: o `FlipTile` não carrega bandeira de alfa, e
+adivinhar mudaria os pixels de todo objecto Flip com base num palpite.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |

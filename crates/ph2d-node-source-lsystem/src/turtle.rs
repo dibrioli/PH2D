@@ -161,6 +161,47 @@ impl Out {
     }
 }
 
+/// **QUANTO uma marca já ABRIU** — `0` = ainda não nasceu · `1` = madura.
+///
+/// ⛔⛔ **A lei que o report do Enio de 2026-08-30 pediu:** *"as folhas não crescem, elas
+/// aparecem"* e *"elas não nascem e crescem na ponta dos galhos; aparecem em cada segmento"*.
+/// As duas queixas são **uma** grandeza em falta, e não duas features.
+///
+/// Uma marca (`J`/`K`/`M`) **nunca é reescrita**, logo ela ACUMULA: a `g = 5` a árvore de
+/// fábrica tem `62` marcas — `2 + 4 + 8 + 16 + 32`, uma no fim de cada segmento que a planta
+/// já teve. Desenhá-las todas com o mesmo tamanho é literalmente *"uma folha em cada
+/// segmento"*, e é o que se via.
+///
+/// ⭐⭐ **A lei é um CRUZA-FADE entre duas gerações, e ela sai de graça do que o esqueleto já
+/// sabe** (`gen`) mais o que a tartaruga já recebe (`youngest`):
+///
+/// | quem | peso | porquê |
+/// |---|---|---|
+/// | nascida na geração mais nova `Y` | `f` | ela está a abrir agora — **nasce e cresce** |
+/// | nascida em `Y − 1` | `1 − f` | o ramo novo brota DELA: ela deixa de ser ponta |
+/// | mais velha | `0` | há muito que não é ponta |
+///
+/// ⇒ com `f = 1` (geração inteira, uma planta parada) sobram **exactamente as marcas da
+/// última geração, no tamanho cheio**: as pontas, que é o que ele pediu. E a soma sobre as
+/// duas gerações é `1` em todo instante, então a virada de geração é **contínua** — no
+/// momento em que `f` chega a `1`, o `Y` de então vira o `Y − 1` de agora com peso `1 − 0`.
+///
+/// ⚠️ **Só marcas.** Um osso não desaparece por envelhecer, e devolver-lhe outra coisa que
+/// `1` apagaria a planta.
+pub(crate) fn mark_grow(sym: u8, born: u16, youngest: (u16, f32)) -> f32 {
+    if !matches!(sym, b'J' | b'K' | b'M') {
+        return 1.0;
+    }
+    let (y, f) = youngest;
+    if born == y {
+        f
+    } else if born + 1 == y {
+        1.0 - f
+    } else {
+        0.0
+    }
+}
+
 /// **Os símbolos que fazem nascer um OSSO** — os que de facto desenham um segmento, e os únicos
 /// cuja idade decide se há crescimento para mostrar. Um `[`, um `+` ou um `!` da geração nova não
 /// são um rebento.
@@ -513,6 +554,18 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
         // última é o que separa uma folha (`J`) de um tronco (`F`) para o `motion.cull` e
         // para o `field.index_range`, sem uma paleta dentro da gramática.
         .with("depth", Column::Scalar(out.depth))
+        // ⭐ **O peso de abertura de cada marca** — ver [`mark_grow`]. Coluna NOVA: quem não
+        // a lê fica byte-idêntico, e ela é `1` para tudo o que não é marca.
+        .with(
+            "mark_grow",
+            Column::Scalar(
+                out.sym
+                    .iter()
+                    .zip(out.born.iter())
+                    .map(|(s, b)| mark_grow(*s as i32 as u8, *b as u16, set.youngest))
+                    .collect::<Vec<_>>(),
+            ),
+        )
         .with("gen", Column::Scalar(out.born))
         .with("sym", Column::Scalar(out.sym))
         .with(

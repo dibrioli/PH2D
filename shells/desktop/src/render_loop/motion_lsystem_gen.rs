@@ -24,6 +24,9 @@ use ph2d_node_source_lsystem as ls;
 use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
+use super::motion_lsystem_leaves::{
+    Job, anchors_of, plant_and_leaves, say_if_the_letter_is_missing,
+};
 use crate::motion_state::MotionState;
 
 // ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
@@ -82,7 +85,7 @@ pub(crate) fn ribbons_built() -> usize {
 }
 
 /// Uma coluna `Vec2` do esqueleto, ou vazia.
-fn v2(s: &Stream, name: &str) -> Vec<[f32; 2]> {
+pub(crate) fn v2(s: &Stream, name: &str) -> Vec<[f32; 2]> {
     match s.get(name) {
         Some(Column::Vec2(v)) => v.clone(),
         _ => Vec::new(),
@@ -90,7 +93,7 @@ fn v2(s: &Stream, name: &str) -> Vec<[f32; 2]> {
 }
 
 /// Uma coluna escalar do esqueleto, ou vazia.
-fn v1(s: &Stream, name: &str) -> Vec<f32> {
+pub(crate) fn v1(s: &Stream, name: &str) -> Vec<f32> {
     match s.get(name) {
         Some(Column::Scalar(v)) => v.clone(),
         _ => Vec::new(),
@@ -287,177 +290,6 @@ fn plant_geometry(branches: &[ls::branch::Branch], origin: [f32; 2]) -> Option<V
         fill_rule: ph2d_vec_scene::FillRule::NonZero,
         ..VecPath::default()
     })
-}
-
-/// **Uma âncora de instância** — onde uma letra `J`/`K`/`M` pousou.
-///
-/// ⚠️ Ela leva o ÂNGULO, e não só a posição: o doc da tartaruga diz porquê — *"uma marca não
-/// tem osso, mas TEM direcção: ela aponta como o ramo em que pousou"*. Uma folha que ignorasse
-/// isso ficaria toda virada para o mesmo lado numa planta que se abre em leque.
-struct Anchor {
-    p: [f32; 2],
-    rot: f32,
-    /// O índice em [`ls::LEAF_SYMBOLS`] — `0` = `J`, `1` = `K`, `2` = `M`.
-    slot: usize,
-}
-
-/// As âncoras que as três letras plantaram, lidas do esqueleto.
-fn anchors_of(sk: &Stream) -> Vec<Anchor> {
-    let (p, sym, rot) = (v2(sk, "P"), v1(sk, "sym"), v1(sk, "wrot"));
-    p.iter()
-        .zip(sym.iter())
-        .enumerate()
-        .filter_map(|(i, (pos, s))| {
-            let byte = *s as i32 as u8;
-            let slot = ls::LEAF_SYMBOLS.iter().position(|k| *k == byte)?;
-            Some(Anchor {
-                p: *pos,
-                rot: rot.get(i).copied().unwrap_or(0.0),
-                slot,
-            })
-        })
-        .collect()
-}
-
-/// **A aparência de um objecto**, na ordem `(size, tint, uv_rect, texture_id)`.
-type Look = ([f32; 2], [f32; 4], [f32; 4], f32);
-
-/// **O trabalho de uma planta**, já resolvido: `(chave, ramos, âncoras, os três nomes)`.
-type Job = (String, Vec<ls::branch::Branch>, Vec<Anchor>, [String; 3]);
-
-/// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id)`.
-///
-/// ⭐⭐ **Lida do canal externo, e não resolvida outra vez.** O `publish_objects` já pôs a
-/// aparência de cada objecto da cena sob o NOME dele (`render_loop/mod.rs:7317`), e esta
-/// membrana corre depois (`:7341`) — *a ordem é o que torna isto uma leitura em vez de uma
-/// segunda resolução a divergir da primeira*.
-///
-/// `None` quando o nome está vazio, quando ninguém publicou aquele nome, ou quando o que ele
-/// nomeia não é uma sprite. ⚠️ **Não adivinha e não falha**: a folha simplesmente não nasce, e
-/// o quadro seguinte tenta de novo — um nome pode ser escrito antes de a forma existir.
-fn named_appearance(cook: &ph2d_nodegraph::cook::Cook, name: &str) -> Option<Look> {
-    // ⚠️ **Atalho, NÃO uma guarda de correcção** — e a mutação que o apagou SOBREVIVEU, o que
-    // é a resposta certa: ninguém publica sob a chave vazia, então a busca abaixo já devolveria
-    // `None`. Fica porque poupa uma busca no mapa por slot vazio por planta por quadro, e o
-    // caso comum é os três estarem vazios. *Um `if` que a mutação não mata ou é redundante ou é
-    // não-medido; este é o primeiro, e está escrito.*
-    if name.is_empty() {
-        return None;
-    }
-    let st = &cook.externals().get(name)?.value;
-    let first4 = |c: &str| match st.get(c) {
-        Some(Column::Vec4(v)) => v.first().copied(),
-        _ => None,
-    };
-    Some((
-        match st.get("size") {
-            Some(Column::Vec2(v)) => v.first().copied().unwrap_or([1.0, 1.0]),
-            _ => [1.0, 1.0],
-        },
-        first4("tint").unwrap_or([1.0, 1.0, 1.0, 1.0]),
-        first4("uv_rect")?,
-        match st.get("texture_id") {
-            Some(Column::Scalar(v)) => v.first().copied().unwrap_or(0.0),
-            _ => 0.0,
-        },
-    ))
-}
-
-// **O QUE JÁ FOI DITO** — para o aviso sair uma vez, e não sessenta vezes por segundo.
-//
-// ⚠️ Por thread e por `(chave, slot)`: a chave é de CONTEÚDO, então mudar a gramática dá uma
-// chave nova e o aviso volta a poder sair — que é exactamente quando ele interessa.
-thread_local! {
-    static SAID: std::cell::RefCell<std::collections::BTreeSet<String>> =
-        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
-}
-
-/// **A METADE PURA da pergunta** — quais slots têm nome e não têm onde nascer.
-///
-/// ⚠️ Ela existe separada porque a outra metade **escreve no `stderr`**, e um gate não lê o
-/// `stderr` de outro processo: *a lei tem de ser alcançável de um teste, ou o que se prova é o
-/// canal e não a decisão.*
-fn unanswered_slots(names: &[String; 3], anchors: &[Anchor]) -> Vec<usize> {
-    (0..names.len())
-        .filter(|&s| !names[s].is_empty() && !anchors.iter().any(|a| a.slot == s))
-        .collect()
-}
-
-/// **DIZ quando um nome está posto e a gramática não tem a letra.**
-///
-/// ⛔⛔ Report do Enio (2026-08-30): *"só apareceu em seu exemplo, ao trocar o tipo de árvore não
-/// aparece mais"*. Os moldes de planta passaram a trazer o `J`, mas **uma gramática escrita pelo
-/// artista pode não ter letra nenhuma** — e aí o campo fica cheio, nada desenha, e não há como
-/// saber porquê. *Um controlo com valor lá dentro e efeito nenhum é a pior espécie de morto: ele
-/// parece ligado.*
-///
-/// ⚠️ **Diz a CURA, não só o sintoma** — a letra que falta é a informação que resolve.
-fn say_if_the_letter_is_missing(key: &str, names: &[String; 3], anchors: &[Anchor]) {
-    for slot in unanswered_slots(names, anchors) {
-        let name = &names[slot];
-        let once = format!("{key} slot {slot}");
-        let fresh = SAID.with(|s| s.borrow_mut().insert(once));
-        if fresh {
-            eprintln!(
-                "[lsystem] «{name}» esta' no slot {letra}, mas a gramatica nao emite nenhum \
-                 `{letra}` — acrescente um (ex.: `[{letra}]` no fim de um ramo) ou o objecto nao \
-                 tem onde nascer",
-                letra = ls::LEAF_SYMBOLS[slot] as char
-            );
-        }
-    }
-}
-
-/// **A planta MAIS as folhas, num stream só.**
-///
-/// ⚠️ **Mídia MISTA na mesma corrente, e o lowering já a sabe rotear:** uma linha com
-/// `geometry_id > 0` vai ao passe VECTORIAL (a planta), e as outras são quads amostrados do
-/// atlas (as folhas). Publicá-las em correntes separadas obrigaria o artista a juntá-las com um
-/// `motion.combine` para as mover como uma planta só.
-fn plant_and_leaves(
-    origin: [f32; 2],
-    handle: u32,
-    anchors: &[Anchor],
-    names: &[String; 3],
-    cook: &ph2d_nodegraph::cook::Cook,
-) -> Stream {
-    let looks: Vec<_> = names.iter().map(|n| named_appearance(cook, n)).collect();
-    // A planta é a linha `0`; cada âncora com objecto RESOLVIDO acrescenta uma.
-    let mut p = vec![origin];
-    let mut size = vec![[1.0f32, 1.0]];
-    let mut rot = vec![0.0f32];
-    let mut geom = vec![handle as f32];
-    let mut tint = vec![[1.0f32, 1.0, 1.0, 1.0]];
-    let mut uv = vec![[0.0f32, 0.0, 1.0, 1.0]];
-    let mut tex = vec![0.0f32];
-    for a in anchors {
-        let Some((sz, tn, rect, tid)) = looks[a.slot] else {
-            continue;
-        };
-        p.push(a.p);
-        size.push(sz);
-        rot.push(a.rot);
-        // ⚠️ `0` = SEM geometria vectorial ⇒ a linha vai pelo caminho do quad. É a mesma
-        // convenção que o `source.object` usa para separar um vector vivo de uma sprite.
-        geom.push(0.0);
-        tint.push(tn);
-        uv.push(rect);
-        tex.push(tid);
-    }
-    let n = p.len();
-    Stream::new(n)
-        .with("P", Column::Vec2(p))
-        .with("size", Column::Vec2(size))
-        .with("rotation", Column::Scalar(rot))
-        .with("geometry_id", Column::Scalar(geom))
-        .with("tint", Column::Vec4(tint))
-        .with("uv_rect", Column::Vec4(uv))
-        .with("texture_id", Column::Scalar(tex))
-        .with(
-            "Index",
-            Column::Scalar((0..n).map(|i| i as f32).collect::<Vec<_>>()),
-        )
-        .with("Count", Column::Scalar(vec![n as f32; n]))
 }
 
 /// **Publica as fitas** de cada `source.lsystem` em modo `Branches`.

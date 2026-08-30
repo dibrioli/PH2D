@@ -47,6 +47,7 @@ fn seed_raw(m: &mut crate::motion_state::MotionState, named: &str, texture_id: u
             [1.0, 1.0, 1.0, 1.0],
             [0.0, 0.0, 1.0, 1.0],
             texture_id,
+            false,
         ),
     );
 }

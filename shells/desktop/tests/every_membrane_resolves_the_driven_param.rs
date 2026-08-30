@@ -59,15 +59,56 @@ const MEMBRANES: &[&str] = &[
     "motion_lsystem_gen.rs",
 ];
 
-/// Os arquivos de produto do `render_loop` (os `*_tests.rs` ficam de fora: um teste pode
-/// construir um estado à mão sem ser uma membrana).
+/// Os arquivos de PRODUTO do `render_loop`.
+///
+/// ⚠️ **O que fica de fora é o que só existe sob `cfg(test)`**, e a regra é decidida no
+/// [`mod.rs`](../src/render_loop/mod.rs), não por sufixo: um `#[cfg(test)] mod` é o registo
+/// autoritativo, e um arnês de teste pode chamar a porta das membranas sem ser uma (foi o que
+/// aconteceu em 2026-08-30, quando o `motion_lsystem_testkit.rs` nasceu de um corte de LOC e o
+/// censo passou a contar SETE ladders para seis membranas).
+///
+/// ⛔ **Um sufixo NÃO servia:** `*_tests.rs` já ficava de fora por convenção, mas o arnês não é
+/// um `_tests.rs`, e alargar a lista de sufixos deixaria a próxima peça test-only fora do radar
+/// outra vez. *A pergunta é «isto compila no binário?», e quem a responde é o `mod`.*
 fn product_files() -> Vec<(String, String)> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let modrs = std::fs::read_to_string(dir.join("mod.rs")).expect("o mod.rs existe");
+    let test_only: Vec<String> = modrs
+        .split("#[cfg(test)]")
+        .skip(1)
+        .filter_map(|bloco| {
+            // ⛔⛔ **O `#[cfg(test)]` também se põe sobre uma `fn`**, e a 1.ª redacção desta
+            // varredura não o sabia: ela procurava o primeiro `;` depois do atributo, e uma
+            // `fn` de teste cujo corpo não tem `;` empurrava a busca para o `mod` SEGUINTE —
+            // que era a `motion_audio_gen`, uma membrana a sério, calada por acidente.
+            // *Uma varredura textual tem de conhecer TODAS as formas do que analisa.*
+            //
+            // ⇒ o item que vem depois do atributo tem de ser um `mod`: salta-se qualquer
+            // atributo (`#[path = "…"]`, guardando o caminho) e a visibilidade, e o que sobra
+            // tem de começar por `mod `.
+            let mut resto = bloco.trim_start();
+            let mut caminho = None;
+            while let Some(sem_attr) = resto.strip_prefix("#[") {
+                let (attr, depois) = sem_attr.split_once(']')?;
+                if let Some(i) = attr.find("path = \"") {
+                    caminho = attr[i + 8..].split('"').next().map(str::to_string);
+                }
+                resto = depois.trim_start();
+            }
+            for vis in ["pub(crate) ", "pub(super) ", "pub "] {
+                if let Some(r) = resto.strip_prefix(vis) {
+                    resto = r.trim_start();
+                }
+            }
+            let nome = resto.strip_prefix("mod ")?;
+            caminho.or_else(|| Some(format!("{}.rs", nome.split(';').next()?.trim())))
+        })
+        .collect();
     let mut out = Vec::new();
     for e in std::fs::read_dir(&dir).expect("o render_loop existe") {
         let p = e.expect("entrada").path();
         let name = p.file_name().expect("nome").to_string_lossy().to_string();
-        if !name.ends_with(".rs") || name.ends_with("_tests.rs") {
+        if !name.ends_with(".rs") || name.ends_with("_tests.rs") || test_only.contains(&name) {
             continue;
         }
         out.push((name, std::fs::read_to_string(&p).expect("le")));

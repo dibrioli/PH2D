@@ -85,6 +85,23 @@ pub fn lower_to_instances_onto(
     // exact in f32); the saturating `as u32` guards a non-finite/negative
     // column value to `0` rather than trusting the producer.
     let tex = stream.get("texture_id");
+    // ⛔⛔ **A ALFA DA FONTE, e a ausência dela ESCURECIA as bordas** — report do Enio
+    // (2026-08-30): *"o Alpha usado escurece as bordas da pintura (diferente da sprite)"*.
+    //
+    // Este campo era o literal `0.0`, ou seja *«a textura é alfa DIRETA»*, para toda
+    // instância que o Motion emite. O caminho normal da sprite põe-no de
+    // [`Sprite::premultiplied`], e um documento PINTADO sobe **premultiplicado** (há
+    // assert a dizê-lo em `project_painter.rs`). ⇒ o fragmento pré-multiplicava outra vez,
+    // dando `RGB·α²`: invisível no interior opaco e **escuro na borda anti-aliased**, que é
+    // exactamente o que se vê.
+    //
+    // ⚠️ **Coluna, não um campo do `SinkStyle`:** a bandeira é da TEXTURA, e uma corrente
+    // pode carregar sprites de várias texturas (mídia mista) — pô-la no sink daria uma
+    // resposta por corrente a uma pergunta por linha.
+    //
+    // ⚠️ **Ausente ⇒ `0.0`**, que é o literal que aqui estava ⇒ toda corrente que não a
+    // escreve fica **byte-idêntica**.
+    let premul = stream.get("premultiplied");
     // doc 89, folha 17: the sink's blend mode, packed into `flip_uv` bits 5-7 —
     // the encoding a sprite's `BlendMode` already rides in, so the renderer keys
     // its draw runs on it with zero ABI cost. Hoisted OUT of `make`: it is one
@@ -145,7 +162,7 @@ pub fn lower_to_instances_onto(
             atlas_uv: vec4_at(uv_rect, i, default_uv_rect),
             tint: vec4_at(tint, i, [1.0, 1.0, 1.0, 1.0]),
             basis: [cos_r, sin_r, -sin_r, cos_r],
-            premultiplied: 0.0,
+            premultiplied: scalar_at(premul, i, 0.0),
             // doc 89, folha 17: o PIVÔ. A conversão fracção→metros vive numa função
             // só (`SinkStyle::anchor_for`) porque as duas rotas têm de a fazer igual,
             // e ela multiplica pelo tamanho DESTA linha — um stream tem um `size` por

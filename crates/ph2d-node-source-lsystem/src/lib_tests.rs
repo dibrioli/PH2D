@@ -591,36 +591,3 @@ fn the_derived_grammar_still_grows_continuously_with_a_fractional_generation() {
          crescimento: {hs:?}"
     );
 }
-
-/// ⭐⭐ **AS TRÊS LETRAS SÃO MESMO ÂNCORAS** — o contrato entre [`LEAF_PARAMS`] e o alfabeto.
-///
-/// ⚠️ **O emparelhamento por índice é compile-enforced** (dois arrays de `3`), mas isso não diz
-/// que as letras EXISTEM: um `LEAF_SYMBOLS` com um `b'Q'` compilaria, o painel ofereceria o
-/// campo, e o artista escreveria um nome que nunca planta nada. *Uma lista bem-formada não é
-/// uma lista verdadeira.*
-///
-/// A régua é o produto: uma gramática que emite a letra tem de devolver um elemento com aquele
-/// `sym`, e ele NÃO pode ter osso (uma âncora é uma marca, não um segmento).
-#[test]
-fn every_leaf_letter_is_an_anchor_the_turtle_actually_emits() {
-    for (i, letter) in LEAF_SYMBOLS.iter().enumerate() {
-        let src = format!("F[{}]", *letter as char);
-        let s = probe_build(&src, "F -> F", 1.0, &[]);
-        let syms = scal(&s, "sym");
-        let lens = scal(&s, "len");
-        let at = syms
-            .iter()
-            .position(|v| *v as i32 as u8 == *letter)
-            .unwrap_or_else(|| {
-                panic!(
-                    "a letra {} ({}) do param `{}` não produz elemento nenhum: {syms:?}",
-                    *letter as char, letter, LEAF_PARAMS[i]
-                )
-            });
-        assert_eq!(
-            lens[at], 0.0,
-            "a marca {} tem de ser uma ÂNCORA (comprimento zero), e veio com osso",
-            *letter as char
-        );
-    }
-}

@@ -10,6 +10,13 @@ use crate::solve::SolveReport;
 /// O que o arredondamento mediu de si próprio.
 #[derive(Debug, Clone, Default)]
 pub struct RoundReport {
+    /// ⭐⭐⭐ **O QUE O PASSE DE DESEMARANHAMENTO FEZ** — ver
+    /// [`crate::untangle_pass::untangle_patches`].
+    ///
+    /// ⚠️ **`before == 0` quer dizer «o mapa contínuo já saiu sem dobras»**, e não «não
+    /// medido»: o passe corre sempre (salvo `PH2D_GRIDMAP_UNTANGLE=0`) e conta antes de
+    /// decidir se mexe.
+    pub untangled: crate::untangle_pass::UntangleReport,
     /// Quantas componentes inteiras foram pregadas.
     pub pinned: usize,
     /// ⭐⭐⭐ **Quantas fecharam no degrau 1** (Gauss–Seidel local). *É a régua que

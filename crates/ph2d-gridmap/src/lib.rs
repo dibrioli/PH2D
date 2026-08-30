@@ -65,6 +65,9 @@ pub mod marks;
 pub mod round;
 pub mod solve;
 /// ⭐⭐⭐ **A COSTURA SOLDADA** — a restrição entra por eliminação — ver o módulo.
+/// ⭐⭐⭐ **O PASSE DE DESEMARANHAMENTO** — desfaz as dobras do mapa contínuo — ver
+/// [`untangle_pass`].
+pub mod untangle_pass;
 pub mod weld;
 /// ⭐⭐⭐ **OS FECHOS PLANOS** — o sistema linear das translações — ver o módulo.
 pub mod weld_flat;
@@ -85,6 +88,7 @@ pub use gauge::{Gauge, GaugeReport};
 pub use marks::{MarkReport, arc_marks};
 pub use round::{RoundOptions, RoundReport, round_to_integers};
 pub use solve::{GridMap, SolveReport, Step, rounded_shifts, solve, solve_pinned, solve_with};
+pub use untangle_pass::{UntangleReport, untangle_patches};
 pub use weld::{Closure, SeamResidual, Weld, WeldReport, seam_residual, weld};
 pub use weld_flat::{ClosureSystem, FlatReport, Var};
 pub use weld_round::{arcline_enabled, round_welded, welded_enabled};

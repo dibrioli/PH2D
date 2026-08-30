@@ -595,6 +595,21 @@ pub fn round_welded(
         w.derive(&mut map, c);
     }
 
+    // ⭐⭐⭐ **DESEMARANHAR — DEPOIS da escada, com os INTEIROS presos.**
+    //
+    // ⛔⛔ **A 1.ª redacção corria-o ANTES, e a medição matou-a** (2026-08-30, peça do artista):
+    // desemaranhar o mapa contínuo desfaz `62,4 %` das dobras dele, e a escada **re-dobra** —
+    // e re-dobra MAIS partindo de um mapa desemaranhado (`149 → 169` dobras no mapa final).
+    // *Uma restrição imposta numa fase e não na seguinte não é uma restrição; é um ponto de
+    // partida* — a mesma lei que o §23.18 desta crate já tinha escrito, noutro assunto.
+    //
+    // ⇒ Aqui, com as imagens inteiras **presas** (e a fronteira de cada retalho também), o
+    // passe não pode desfazer nem o arredondamento nem a costura: ele só move o que ficou
+    // livre. Ver [`crate::untangle_pass`].
+    if crate::untangle_pass::enabled() {
+        rep.untangled = crate::untangle_pass::untangle_patches(mesh, cut, &mut map);
+    }
+
     crate::solve::measure(&a, cut, combed, &map, step.h, &mut solve_rep);
     rep.seam_after = (solve_rep.seam_p50, solve_rep.seam_max);
     rep.seam = seam_residual(&w, &map);

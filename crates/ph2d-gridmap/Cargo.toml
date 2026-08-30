@@ -29,6 +29,10 @@ authors.workspace = true
 ph2d-mesh = { path = "../ph2d-mesh" }
 ph2d-crossfield = { path = "../ph2d-crossfield" }
 ph2d-trace = { path = "../ph2d-trace" }
+# ⭐⭐⭐ O DESEMARANHADOR. Ele corre sobre o mapa CONTINUO, antes do arredondamento --
+# desfazer dobras DEPOIS tiraria as imagens pregadas dos pontos inteiros. Ver
+# `untangle_pass.rs` e `docs/3D/quad-remesh/PLANO_desdobrar_o_mapa.md`.
+ph2d-untangle = { path = "../ph2d-untangle" }
 
 [dev-dependencies]
 ph2d-remesh-iso = { path = "../ph2d-remesh-iso" }

@@ -29,3 +29,15 @@ pub const CTX_MENU_ASSET_SELECT_USERS: NodeId = hash_node_id("ctx_menu_asset_sel
 /// dissolve-se, **ou** ela volta à cena por ser a última cópia — vive em
 /// `shells/desktop/src/instance_unmake.rs`.
 pub const CTX_MENU_ASSET_REMOVE: NodeId = hash_node_id("ctx_menu_asset_remove");
+
+/// ⭐⭐ **Tirar da biblioteca, a partir da HIERARQUIA** — o mesmo verbo, o outro sujeito.
+///
+/// ⚠️ **Ele existe porque o `Verb::Unmake` já aceita os dois** (a receita e uma cópia dela), e sem
+/// este item essa metade era **inalcançável**: o único produtor era o cartão do navegador, cujo
+/// sujeito é sempre a raiz da receita. A auditoria de 2026-08-30 apanhou-o — *um gate que chama a
+/// função directamente fabrica um alcance que a UI não tem*.
+///
+/// ⚠️ ⛔ Id PRÓPRIO, e não o do cartão: a tabela do menu da Hierarquia despacha por `row` e a do
+/// cartão por `cell`. Partilhar o id faria o guarda de um painel consumir o pedido do outro.
+pub const CTX_MENU_HIER_REMOVE_FROM_LIBRARY: NodeId =
+    hash_node_id("ctx_menu_hier_remove_from_library");

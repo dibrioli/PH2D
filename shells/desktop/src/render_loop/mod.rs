@@ -4405,6 +4405,12 @@ impl crate::App {
                     EditorAction::HierDetach { row } => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Detach));
                     }
+                    // ⭐⭐ *Remove from Library* pela linha da Hierarquia — o MESMO verbo do cartão,
+                    // com o outro sujeito. Ele resolve a receita a partir de uma cópia
+                    // (`instance_unmake::recipe_root_of`), que é o que torna esta porta útil.
+                    EditorAction::HierRemoveFromLibrary { row } => {
+                        instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Unmake));
+                    }
                     EditorAction::HierApplyToMaster { row } => {
                         instance_verb_row.get_or_insert((row, crate::instance_verbs::Verb::Apply));
                     }

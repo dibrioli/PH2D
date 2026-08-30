@@ -375,6 +375,15 @@ const PANEL_A11Y_DELEGATE_OK: &[(&str, &str)] = &[
         "ph2d-panel-inspector/src/paint.rs",
         "orquestrador puro desde a F5; a moldura vive no `paint_body.rs` e cada secao emite o a11y dela",
     ),
+    // ⚠️ **A miniatura de um cartão não é um WIDGET — ela é o CORPO de um.** O cartão inteiro é o
+    // alvo do gesto (`paint_card` regista o rect e o `InteractiveState::Button`), e esta função só
+    // desenha pixels dentro dele: ela **não regista hit-rect nenhum** e não tem estado próprio.
+    // ⛔ Dar-lhe semântica de a11y criaria um segundo nó focável por cima do cartão, e o leitor de
+    // ecrã anunciaria duas coisas onde o artista vê uma.
+    (
+        "ph2d-panel-asset-browser/src/paint_thumb.rs",
+        "corpo do cartao, nao widget: pinta dentro do rect que o `paint_card` ja' registou, sem hit-rect nem estado proprios",
+    ),
     (
         "ph2d-panel-vector/src/paint_brush.rs",
         "a seccao BRUSH (plano 36 W4) pinta SO' por `slider_row`/`checkbox_row`/`action_button` do proprio painel, que delegam nos primitivos canonicos e registam o hit — nao ha' widget nem semantica propria aqui. ⚠️ A irma `paint_texture_pattern.rs` passa este gate por COINCIDENCIA (nomeia `ph2d_a11y::NodeId` numa assinatura de helper), nao por fiar a11y: a delegacao das duas e' a mesma, e esta e' a declaracao honesta dela",

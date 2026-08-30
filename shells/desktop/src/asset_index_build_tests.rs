@@ -6,8 +6,6 @@
 //! 5.ª ocorrência registada desta família — *uma suíte com filtro não é a suíte*.
 
 use super::*;
-
-use super::*;
 use ph2d_asset_index::AssetKind;
 use ph2d_ecs::{ChildOf, Transform};
 
@@ -131,9 +129,11 @@ fn the_thumbnail_is_reduced_once_and_hands_back_the_same_arc() {
     let db = AssetDb::new();
     let id = db.insert_image_rgba8(2, 2, vec![9u8; 16]);
     let mut cache = CardArt::new();
-    let a = thumb_for(&db, id, &mut cache).expect("a miniatura sai de 2x2");
+    let mut budget = THUMB_BUDGET_PX;
+    let a = thumb_for(&db, id, &mut cache, &mut budget).expect("a miniatura sai de 2x2");
     assert_eq!(cache.thumbs.len(), 1);
-    let b = thumb_for(&db, id, &mut cache).expect("a segunda leitura acerta na memória");
+    let b =
+        thumb_for(&db, id, &mut cache, &mut budget).expect("a segunda leitura acerta na memória");
     assert_eq!(cache.thumbs.len(), 1, "a segunda leitura nao recalcula");
     assert!(
         std::sync::Arc::ptr_eq(&a.rgba, &b.rgba),
@@ -293,5 +293,39 @@ fn deleting_the_copy_leaves_the_recipe_in_the_panel() {
             .get(&AssetKind::Component),
         Some(&1),
         "apagar a copia tirou a receita do painel"
+    );
+}
+
+/// ⭐⭐ **O orçamento do quadro TRAVA a rajada, e o acerto na memória NÃO o gasta.**
+///
+/// ⛔ A auditoria de 2026-08-30 apanhou a tabela do custo sem tecto: `12,079 ms` para uma textura
+/// de 4096², num laço sem orçamento, na thread que desenha — dez texturas grandes ⇒ ~120 ms de
+/// congelamento **ao abrir o painel**, porque é aí que a biblioteca inteira é reduzida de uma vez.
+///
+/// **Mutação que deve sangrar:** apagar o `if *budget == 0 { return None; }`.
+#[test]
+fn the_frame_budget_stops_the_burst_and_a_cache_hit_does_not_spend_it() {
+    let db = AssetDb::new();
+    let big = 1200u32; // 1,44 M px — três destas passam o orçamento de 4 M
+    let a = db.insert_image_rgba8(big, big, vec![7u8; (big as usize) * (big as usize) * 4]);
+    let b = db.insert_image_rgba8(big, big, vec![8u8; (big as usize) * (big as usize) * 4]);
+    let c = db.insert_image_rgba8(big, big, vec![9u8; (big as usize) * (big as usize) * 4]);
+    let d = db.insert_image_rgba8(big, big, vec![10u8; (big as usize) * (big as usize) * 4]);
+    let mut cache = CardArt::new();
+    let mut budget = THUMB_BUDGET_PX;
+    let got: Vec<bool> = [a, b, c, d]
+        .iter()
+        .map(|id| thumb_for(&db, *id, &mut cache, &mut budget).is_some())
+        .collect();
+    assert_eq!(
+        got,
+        vec![true, true, true, false],
+        "o orçamento tem de deixar passar o que cabe e travar o resto — {got:?}"
+    );
+    // ⚠️ A metade que impede a cura de partir o caso comum: com o orçamento a zero, uma miniatura
+    // JÁ REDUZIDA continua a sair. Sem isto o painel deixaria de mostrar o que já tem.
+    assert!(
+        thumb_for(&db, a, &mut cache, &mut budget).is_some(),
+        "um acerto na memória não pode ser travado pelo orçamento"
     );
 }

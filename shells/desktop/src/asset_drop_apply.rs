@@ -16,27 +16,25 @@ use ph2d_render::premul::{AlphaMode, SpriteImage};
 impl crate::App {
     /// Os pixels de um asset, na forma que as portas do app consomem.
     ///
-    /// ⚠️ `None` para um id que o `AssetDb` não tem, ou que não é uma imagem de 8 bits — e o
-    /// chamador **diz** que não deu, em vez de a queda evaporar.
+    /// ⚠️ `None` para um id que o `AssetDb` não tem, ou que não é uma imagem — e o chamador
+    /// **diz** que não deu, em vez de a queda evaporar.
     fn image_of(&self, asset: [u8; 32]) -> Option<SpriteImage> {
         let gfx = self.gfx.as_ref()?;
         let a = gfx.asset_db.get(&AssetId::from_digest(asset))?;
-        match &*a {
-            ph2d_asset::Asset::ImageRgba8 {
-                width,
-                height,
-                pixels,
-            } => Some(SpriteImage {
-                width: *width,
-                height: *height,
-                pixels: pixels.to_vec(),
-                // ⚠️ **`Straight`** — é o que o `AssetDb` guarda para uma imagem importada, e é o
-                // que o `insert_image_rgba8` recebeu. Declarar `Premultiplied` aqui escureceria
-                // toda borda macia, e o modo de falha seria visual e mudo.
-                alpha: AlphaMode::Straight,
-            }),
-            _ => None,
-        }
+        // ⭐ **Pela PORTA** (`image_rgba8`) — o `ph2d_asset::Asset` é `#[non_exhaustive]`, e um
+        // `match` na variante de 8 bits aceitava uma imagem de 16 **em silêncio**: a queda
+        // evaporava sobre um ficheiro perfeitamente válido, sem erro nenhum. A porta converte (e
+        // não copia quando já é de 8 bits).
+        let (width, height, pixels) = a.image_rgba8()?;
+        Some(SpriteImage {
+            width,
+            height,
+            pixels: pixels.into_owned(),
+            // ⚠️ **`Straight`** — é o que o `AssetDb` guarda para uma imagem importada, e é o que o
+            // `insert_image_rgba8` recebeu. Declarar `Premultiplied` aqui escureceria toda borda
+            // macia, e o modo de falha seria visual e mudo.
+            alpha: AlphaMode::Straight,
+        })
     }
 
     /// **A sprite passa a mostrar esta imagem.**

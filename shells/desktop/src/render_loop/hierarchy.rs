@@ -365,7 +365,6 @@ pub(super) fn dispatch(
     if let Some(bits) = verb_select.or(drop_select).or(card_select) {
         hero.gizmo.replace_selection(Some(bits));
     }
-    super::hierarchy_asset_verbs::prune_dead_selection(hero, sim);
     if add_root {
         let bits = super::hierarchy_add_root::spawn_empty_root(sim);
         hero.gizmo.replace_selection(Some(bits));

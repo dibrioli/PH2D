@@ -64,7 +64,7 @@ pub(super) fn draw_lower_bands(
     gpu: &ph2d_gpu::GpuContext,
     plan: &FramePlan,
     clear: wgpu::Color,
-    mut g: BandGear<'_>,
+    g: BandGear<'_>,
 ) {
     if plan.degraded {
         // ⛔ Acima do tecto de faixas — a ordem da Fase 1, e ela DIZ.
@@ -144,7 +144,7 @@ pub(super) struct UpperGear<'a> {
 
 /// As faixas **ACIMA** da última faixa de sprites — ela cola essa última faixa (que o tonemap
 /// acabou de produzir) e depois o vetor que fica por cima dela.
-pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, mut g: UpperGear<'_>) {
+pub(super) fn draw_upper_bands(gpu: &ph2d_gpu::GpuContext, plan: &FramePlan, g: UpperGear<'_>) {
     g.band_blit.blit(
         gpu,
         g.world_rt.blend_view(),

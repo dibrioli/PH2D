@@ -51,6 +51,7 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_INSTANTIATE
         || id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED
         || id == ids::CTX_MENU_HIER_DETACH
+        || id == ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY
         || id == ids::CTX_MENU_HIER_APPLY_TO_MASTER
         || id == ids::CTX_MENU_HIER_DELETE
         || id == ids::CTX_MENU_HIER_RENAME
@@ -96,6 +97,12 @@ fn try_context_menu_row(
         } else if id == ids::CTX_MENU_HIER_INSTANTIATE_LINKED {
             host.bus_mut()
                 .push(EditorAction::HierInstantiateLinked { row });
+        } else if id == ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY {
+            // ⭐⭐ A metade do `Verb::Unmake` que era INALCANÇÁVEL até 2026-08-30: ele já aceitava uma
+            // cópia como sujeito, e o único produtor era o cartão do navegador, que endereça sempre a
+            // receita. Ver `ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY`.
+            host.bus_mut()
+                .push(EditorAction::HierRemoveFromLibrary { row });
         } else if id == ids::CTX_MENU_HIER_DETACH {
             host.bus_mut().push(EditorAction::HierDetach { row });
         } else if id == ids::CTX_MENU_HIER_APPLY_TO_MASTER {

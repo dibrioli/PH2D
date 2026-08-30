@@ -63,31 +63,17 @@ pub(super) fn drain_card_verb(
     card_select
 }
 
-/// ⭐⭐⭐ **A selecção nunca guarda bits de uma entidade que já não existe.**
-///
-/// ⚠️ **Isto não é defensivo — é a metade que o `Remove from Library` obriga a escrever.** Ele é o
-/// **primeiro** verbo desta família que APAGA entidades (os outros marcam, copiam ou desligam
-/// elos), e uma receita que estivesse seleccionada — pelo modo de edição de mestre — deixaria o
-/// gizmo a desenhar à volta de bits mortos. ⛔ O `HierDelete` cura o caso dele à mão, linha a
-/// linha, e por isso a cura não estava disponível para mais ninguém.
-pub(super) fn prune_dead_selection(hero: &mut HeroScreen, sim: &SimWorld) {
-    let dead: Vec<u64> = hero
-        .gizmo
-        .iter_selected()
-        .filter(|bits| {
-            sim.world()
-                .get_entity(ph2d_ecs::Entity::from_bits(*bits))
-                .is_err()
-        })
-        .collect();
-    if dead.is_empty() {
-        return;
-    }
-    if hero.gizmo.selection.is_some_and(|s| dead.contains(&s)) {
-        hero.gizmo.selection = None;
-    }
-    hero.gizmo.extra_selection.retain(|b| !dead.contains(b));
-    if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
-        hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
-    }
-}
+// ⛔⛔ **A PODA DE SELECÇÃO MORTA SAIU DAQUI, e a nota que a justificava era FALSA.**
+//
+// Ela dizia: *«o `HierDelete` cura o caso dele à mão, linha a linha, e por isso a cura não estava
+// disponível para mais ninguém»*. A auditoria de 2026-08-30 mostrou o contrário — a lei **já tem
+// porta**, [`super::gizmo_prune::prune_dead`], chamada uma vez por quadro de dentro do
+// `snapshots::publish`.
+//
+// ⚠️ E o bloco novo era **inerte para o fim que declarava**: o `publish` corre ANTES do
+// `hierarchy::dispatch` no mesmo quadro, e o pintor do gizmo lê a `view` (não a `selection`), que
+// àquela altura já estava construída. Ele não impedia um pixel — só criava, até ao fim do quadro,
+// um estado com `selection == None` e `view == Some(..)`, que é exactamente a divergência que a
+// porta existente foi escrita para não produzir (ela corre antes das vistas, de propósito).
+//
+// ⇒ *escrevi a guarda certa, no sítio errado, sobre uma lei que já existia.*

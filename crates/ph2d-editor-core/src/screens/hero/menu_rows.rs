@@ -271,6 +271,11 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
                 None,
             ),
             (ids::CTX_MENU_HIER_DETACH, "Detach from Master", None),
+            (
+                ids::CTX_MENU_HIER_REMOVE_FROM_LIBRARY,
+                "Remove from Library",
+                None,
+            ),
             (ids::CTX_MENU_HIER_DELETE, "Delete", None),
         ],
         // ⭐⭐ **O cartão da biblioteca** (plano 07, etapa C). Três itens, na ordem do gesto:

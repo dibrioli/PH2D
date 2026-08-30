@@ -14,9 +14,7 @@
 //! [doc 04 §112-119]: https://github.com/dibrioli/PH2D/blob/main/docs/Components/04_decisao_arquitetura.md
 
 use ph2d_ecs::scene::ComponentRegistry;
-use ph2d_ecs::{
-    Children, Entity, InstanceOf, MasterRoot, Name, ObjectInstance, SimWorld, StableId,
-};
+use ph2d_ecs::{Entity, InstanceOf, MasterRoot, Name, ObjectInstance, SimWorld, StableId};
 
 /// **Por que um verbo de instância foi recusado.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

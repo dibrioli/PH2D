@@ -38,6 +38,28 @@ use std::collections::BTreeMap;
 /// conteúdo**, não uma vez por quadro.
 const SWATCH_SAMPLES: usize = 4096;
 
+/// ⭐⭐⭐ **Quantos pixels de FONTE a redução de miniaturas pode consumir num quadro.**
+///
+/// ⛔⛔ **A auditoria de 2026-08-30 apanhou uma tabela sem tecto** (§0.0 ao contrário): o custo da
+/// redução estava medido — `12,079 ms` para uma textura de 4096² — e o laço que a chama não tinha
+/// orçamento nenhum. A afirmação que dispensava o tecto (*«custa isso uma vez, no quadro em que a
+/// imagem entra — o mesmo em que ela já foi descodificada»*) é verdade para uma **importação
+/// nova** e **falsa** para a abertura do painel, onde a biblioteca INTEIRA é reduzida de uma vez.
+/// Dez texturas grandes ⇒ ~120 ms de congelamento ao abrir *Assets*.
+///
+/// # O número
+///
+/// A tabela dá `16,8 M` px em `12,079 ms` ⇒ **~0,72 ns/px**. `4 M` px ⇒ **~2,9 ms**, que é 17% de
+/// um quadro de 60 fps — o mesmo tipo de fatia que o resto do quadro tolera.
+///
+/// ⚠️ **O recurso é o RELÓGIO, e a unidade é o pixel da fonte** porque é dele que o custo depende
+/// (não do número de texturas: uma de 4096² custa 44× uma de 512²).
+///
+/// ⚠️ **A primeira redução de cada quadro corre SEMPRE**, mesmo que sozinha estoure o orçamento —
+/// senão uma textura acima do tecto nunca teria miniatura, e o cartão dela ficaria colorido para
+/// sempre sem ninguém saber porquê.
+const THUMB_BUDGET_PX: u64 = 4_000_000;
+
 /// ⭐ **A memória do que um cartão DESENHA**, chaveada por CONTEÚDO — o que a torna reutilizável
 /// entre quadros, entre entidades e depois de um undo.
 ///
@@ -109,6 +131,8 @@ pub(crate) fn build(
     remembered: &mut TextureLibrary,
 ) -> AssetIndex {
     let mut index = AssetIndex::new();
+    // O orçamento é POR QUADRO — ver [`THUMB_BUDGET_PX`].
+    let mut budget = THUMB_BUDGET_PX;
 
     // ── Fonte 1: os COMPONENTES ────────────────────────────────────────────────────────────────
     //
@@ -145,11 +169,19 @@ pub(crate) fn build(
 
         let mut entry = AssetEntry::new(AssetRef::Component { stable_id }, name);
         entry.detail = piece_count_label(pieces.len());
-        // ⚠️ A cor de um componente é a da PRIMEIRA textura que ele usa, e é uma escolha de
-        // produto declarada: uma receita sem pixels nenhuns fica com a cor neutra do construtor,
-        // que é honesto — *ela não tem cor*.
-        if let Some(&AssetRef::Texture { asset }) = deps.first()
-            && let Some(rgba) = swatch_for(db, AssetId::from_digest(asset), swatches)
+        // ⭐⭐ **A cor e a miniatura de um Prefab saem da MESMA peça** (auditoria de 2026-08-30,
+        // achado nº 2).
+        //
+        // ⛔ A 1.ª versão tirava a cor de `deps.first()` — o **menor digest blake3**, que não tem
+        // relação nenhuma com o que o artista vê — e a miniatura da peça maior. Num prefab de duas
+        // peças com texturas diferentes, o fundo que transparece pela alfa da miniatura era a cor
+        // média de **outra** textura, e o doc do pintor afirmava que era a mesma.
+        //
+        // ⚠️ Uma receita sem pixels nenhuns fica com a cor neutra do construtor, e isso é honesto:
+        // *ela não tem cor*.
+        let face = largest_piece_texture(sim, &pieces);
+        if let Some(id) = face
+            && let Some(rgba) = swatch_for(db, id, swatches)
         {
             entry.swatch = rgba;
         }
@@ -168,8 +200,7 @@ pub(crate) fn build(
         // ⚠️ **Maior por ÁREA do `Sprite`, com desempate pelo `StableId`** — sem o desempate, duas
         // peças do mesmo tamanho fariam o cartão trocar de imagem entre quadros ao sabor da ordem
         // de arquétipo.
-        entry.thumb =
-            largest_piece_texture(sim, &pieces).and_then(|id| thumb_for(db, id, swatches));
+        entry.thumb = face.and_then(|id| thumb_for(db, id, swatches, &mut budget));
         entry.deps = deps;
         index.push(entry);
     }
@@ -210,7 +241,7 @@ pub(crate) fn build(
             .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
             .or_else(|| sim.world().get::<Name>(entity).map(|n| n.0.clone()))
             .unwrap_or_else(|| id.to_hex()[..12].to_string());
-        remembered.remember(id, texture_entry(db, id, name, swatches));
+        remembered.remember(id, texture_entry(db, id, name, swatches, &mut budget));
     }
 
     // ⭐⭐ **E a BIBLIOTECA LEMBRA.** Report do Enio, 2026-08-30: *«ao deletar o objeto do canvas, o
@@ -267,7 +298,13 @@ fn piece_count_label(n: usize) -> String {
     }
 }
 
-fn texture_entry(db: &AssetDb, id: AssetId, name: String, swatches: &mut CardArt) -> AssetEntry {
+fn texture_entry(
+    db: &AssetDb,
+    id: AssetId,
+    name: String,
+    swatches: &mut CardArt,
+    budget: &mut u64,
+) -> AssetEntry {
     let mut entry = AssetEntry::new(
         AssetRef::Texture {
             asset: *id.as_bytes(),
@@ -280,7 +317,7 @@ fn texture_entry(db: &AssetDb, id: AssetId, name: String, swatches: &mut CardArt
     if let Some(rgba) = swatch_for(db, id, swatches) {
         entry.swatch = rgba;
     }
-    entry.thumb = thumb_for(db, id, swatches);
+    entry.thumb = thumb_for(db, id, swatches, budget);
     entry
 }
 
@@ -298,11 +335,10 @@ fn subtree(sim: &SimWorld, root: Entity) -> Vec<Entity> {
 }
 
 fn dimensions(db: &AssetDb, id: AssetId) -> Option<(u32, u32)> {
-    match &*db.get(&id)? {
-        ph2d_asset::Asset::ImageRgba8 { width, height, .. }
-        | ph2d_asset::Asset::ImageRgba16 { width, height, .. } => Some((*width, *height)),
-        _ => None,
-    }
+    // ⚠️ **Pela PORTA, e não por um `match` na variante.** O `ph2d_asset::Asset` é
+    // `#[non_exhaustive]`: um `match` aceita uma imagem de 16 bits **em silêncio** e o compilador
+    // não avisa — o sintoma seria o `128x128` a sumir do cartão, sem erro nenhum.
+    db.get(&id)?.image_dimensions()
 }
 
 /// A cor do cartão, com memória por conteúdo.
@@ -311,19 +347,12 @@ fn swatch_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<[u8; 4]>
         return Some(*hit);
     }
     let asset = db.get(&id)?;
-    let rgba = match &*asset {
-        ph2d_asset::Asset::ImageRgba8 {
-            width,
-            height,
-            pixels,
-        } => mean_rgba8(*width, *height, pixels)?,
-        // ⚠️ O ramo de 16 bits fica de fora com motivo nomeado: os pixels são meio-float LINEAR, e
-        // a média deles precisa da conversão inversa que o `Asset::image_rgba8` já faz — pagar uma
-        // descodificação inteira por um quadrado de 24 px é o oposto do que a cache existe para
-        // fazer. Uma imagem de 16 bits fica com a cor neutra até a A6 desenhar a miniatura a
-        // sério. *`#[non_exhaustive]` obriga o ramo `_`, então esta ausência é DECLARADA aqui.*
-        _ => return None,
-    };
+    // ⭐ **Pela PORTA** (`image_rgba8`), que cobre as DUAS variantes — e isso **fecha a dívida** que
+    // a 1.ª versão declarava aqui (*«uma imagem de 16 bits fica com a cor neutra»*). ⚠️ Numa imagem
+    // de 8 bits ela devolve `Cow::Borrowed`, então o caminho comum não copia um byte; só a de 16
+    // bits paga a conversão, e paga-a **uma vez por conteúdo** graças à memória.
+    let (w, h, pixels) = asset.image_rgba8()?;
+    let rgba = mean_rgba8(w, h, &pixels)?;
     cache.swatches.insert(id, rgba);
     Some(rgba)
 }
@@ -334,7 +363,10 @@ fn swatch_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<[u8; 4]>
 /// candidata num prefab que só tenha essa, e devolver `None` ali daria um cartão cinzento sobre um
 /// asset que tem imagem.
 fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
-    let mut best: Option<(u64, u64, AssetId)> = None; // (área em ulps, id de desempate, textura)
+    // `(área em micro-unidades, id de desempate, textura)`. ⚠️ O cast `f64 -> u64` **satura** em
+    // Rust, então duas peças acima de ~1,8e13 empatam no topo — e o desempate resolve-o. E
+    // `f64::max(NaN, 0.0) == 0.0`, então uma `size` inválida pontua zero em vez de estourar.
+    let mut best: Option<(u64, u64, AssetId)> = None;
     for &p in pieces {
         let Some(px) = sim.world().get::<SpritePixels>(p) else {
             continue;
@@ -367,9 +399,14 @@ fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
 /// ⚠️ **Devolve sempre o MESMO `Arc` para o mesmo conteúdo** — é isso que deixa o painel decidir
 /// em `O(1)` que a imagem não mudou e não reconstruir a textura de GPU. ⛔ Um `Arc` novo por quadro
 /// faria o `vello` reenviar cada cartão ao atlas **todo o quadro**.
-fn thumb_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<Thumb> {
+fn thumb_for(db: &AssetDb, id: AssetId, cache: &mut CardArt, budget: &mut u64) -> Option<Thumb> {
     if let Some(hit) = cache.thumbs.get(&id) {
         return Some(hit.clone());
+    }
+    // ⚠️ **Um acerto na memória NÃO gasta orçamento** — o teste é só para quem vai de facto
+    // reduzir. Cobrar o acerto faria o painel parar de mostrar miniaturas que já existem.
+    if *budget == 0 {
+        return None;
     }
     let asset = db.get(&id)?;
     // ⚠️ **Aqui a porta é a `image_rgba8`, e não o `match` que a cor usa** — ela cobre as DUAS
@@ -381,6 +418,10 @@ fn thumb_for(db: &AssetDb, id: AssetId, cache: &mut CardArt) -> Option<Thumb> {
     if w == 0 || h == 0 || pixels.len() < (w as usize) * (h as usize) * 4 {
         return None;
     }
+    // ⚠️ A conta é subtraída ANTES: a primeira redução do quadro corre sempre (`budget` chegou
+    // aqui > 0), e depois dela o orçamento pode ficar a zero — que é exactamente o que se quer
+    // quando uma só textura vale o quadro inteiro.
+    *budget = budget.saturating_sub(u64::from(w) * u64::from(h));
     let (rgba, tw, th) = crate::thumbnail::reduce(&pixels, w, h);
     let thumb = Thumb { rgba, w: tw, h: th };
     cache.thumbs.insert(id, thumb.clone());

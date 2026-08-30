@@ -37,23 +37,47 @@ use ph2d_editor::interaction::drag_payload::DragPayload;
 pub(crate) fn users_of(sim: &mut SimWorld, asset: DragPayload) -> Vec<u64> {
     let mut out: Vec<(u64, u64)> = match asset {
         DragPayload::Prefab { stable_id } => {
-            let mut q = sim.world_mut().query::<(Entity, &InstanceOf, &StableId)>();
+            let mut q = sim.world_mut().query::<(Entity, &InstanceOf)>();
             q.iter(sim.world())
-                .filter(|(_, link, _)| link.master == stable_id)
-                .map(|(e, _, sid)| (sid.0, e.to_bits()))
-                .collect()
+                .filter(|(_, link)| link.master == stable_id)
+                .map(|(e, _)| e)
+                .collect::<Vec<_>>()
         }
         DragPayload::Image { asset } => {
             let wanted = ph2d_asset::AssetId::from_digest(asset);
-            let mut q = sim
-                .world_mut()
-                .query::<(Entity, &SpritePixels, &StableId)>();
+            let mut q = sim.world_mut().query::<(Entity, &SpritePixels)>();
             q.iter(sim.world())
-                .filter(|(_, px, _)| px.0 == wanted)
-                .map(|(e, _, sid)| (sid.0, e.to_bits()))
-                .collect()
+                .filter(|(_, px)| px.0 == wanted)
+                .map(|(e, _)| e)
+                .collect::<Vec<_>>()
         }
-    };
+    }
+    .into_iter()
+    // ⛔⛔ **UMA PEÇA DE RECEITA NÃO É UM UTILIZADOR** (auditoria de 2026-08-30, achado nº 1).
+    //
+    // As peças de uma receita carregam `SpritePixels` como qualquer outra, então a varredura crua
+    // contava-as — e elas **não estão na cena**: o extract salta-as e a Hierarquia não lhes dá
+    // linha. Consequência medida: com uma imagem usada só por uma receita, o `Select users` dizia
+    // *«Selected 1 object(s)»* e **nada acendia**. É a espécie *«o consumidor que PROJECTA o valor
+    // fora»* do §5.0 — o fio estava completo e o consumidor descartava.
+    //
+    // ⚠️ **A pergunta tem UMA porta nesta casa** ([`crate::render_loop::off_canvas`]), e ela é a
+    // mesma que o extract e a lista da Hierarquia consomem. ⛔ Escrever aqui um segundo predicado
+    // seria a lei em dois sítios — e o segundo envelheceria no dia em que o modo de edição de
+    // mestre mudasse.
+    .filter(|&e| !crate::render_loop::off_canvas::is_unedited_recipe(sim.world(), e))
+    // A ordem é do `StableId` e não da consulta: a primeira da lista vira a selecção primária, e a
+    // ordem de arquétipo do `bevy_ecs` faria o gizmo aterrar noutro objecto entre corridas.
+    // ⚠️ **`map_or(u64::MAX, …)` e não `&StableId` na consulta:** uma entidade nascida no mesmo
+    // quadro ainda não tem id (o `assign_missing_stable_ids` corre uma vez por quadro), e exigi-lo
+    // fá-la-ia desaparecer da resposta **em silêncio**.
+    .map(|e| {
+        (
+            sim.world().get::<StableId>(e).map_or(u64::MAX, |s| s.0),
+            e.to_bits(),
+        )
+    })
+    .collect();
     out.sort_unstable();
     out.into_iter().map(|(_, bits)| bits).collect()
 }
@@ -153,3 +177,7 @@ pub(crate) fn drain(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "asset_card_verbs_tests.rs"]
+mod tests;

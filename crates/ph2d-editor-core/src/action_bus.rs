@@ -658,6 +658,12 @@ pub enum EditorAction {
     /// que é exactamente a doença que a tabela plana deste menu existe para evitar. ⇒ o painel
     /// **transporta** o par (endereço, verbo) e quem **decide e fala** é o shell, que é o único
     /// lado que sabe quantos objectos usam aquela imagem.
+    /// ⭐⭐ **Tirar da biblioteca, a partir de uma LINHA da Hierarquia** (etapa C).
+    ///
+    /// ⚠️ **Não é a [`Self::AssetCardVerb`], e a diferença é o SUJEITO** — a mesma razão que separa
+    /// a `HierInstantiate` da `AssetInstantiate`: aqui chega uma `row`, que só o shell resolve em
+    /// entidade; ali chega o endereço do asset.
+    HierRemoveFromLibrary { row: ph2d_a11y::NodeId },
     AssetCardVerb {
         /// O endereço do asset no vocabulário de chrome — ver
         /// [`crate::interaction::drag_payload::DragPayload`], que já existia para o dizer sem esta

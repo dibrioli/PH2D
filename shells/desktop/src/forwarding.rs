@@ -369,6 +369,11 @@ pub fn cursor_over_hero_panel(gfx: Option<&AppGfx>, x: f32, y: f32) -> bool {
         // roda sobre ele **orbitava a peça** em vez de rolar a lista — a quarta das quatro edições
         // que o `scrollable_panels_intercept_the_wheel` nomeia, e a única que não falha alto.
         || inside(MODEL3D_PANEL)
+        // ⛔⛔ **O navegador de ASSETS** (achado do portão de fecho, 2026-08-30). Ele publica um
+        // polegar de barra desde a etapa A e **não** interceptava a roda: rolar a grade dava ZOOM
+        // na câmera por baixo. O gate `every_scrollable_panel_intercepts_the_wheel` vive em
+        // `shells/desktop/tests/` e o portão desta linha corria `--bins`, que não lhe toca.
+        || inside(ph2d_editor::ids::ASSET_PANEL)
         || inside(MOTION_PARAMS_PANEL)
         || inside(HIER_PANEL)
         || inside(GAL_PANEL)

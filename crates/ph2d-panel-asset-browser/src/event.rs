@@ -112,11 +112,19 @@ pub(crate) fn apply_event(
             else {
                 return EventOutcome::Ignored;
             };
-            // ⚠️ **A janela de obsolescência fecha AQUI, e em voz alta.** O menu abriu no `Down` e
-            // este `Click` é posterior; se a grade mudou de conteúdo no meio, a célula já não
-            // desenha asset nenhum — e o `None` **não** se trata como *«nada a fazer»*, senão o
-            // artista conclui que o item está partido. O shell é quem fala, então o silêncio aqui
-            // é o `Ignored` de um menu que já não tem sujeito.
+            // ⚠️ **A janela de obsolescência fecha AQUI.** O menu abriu no `Down` e este `Click`
+            // é posterior; se a grade mudou de conteúdo no meio, a célula já não desenha asset
+            // nenhum, e agir sobre a célula seguinte apagaria o prefab errado.
+            //
+            // ⛔⛔ **E o `None` é SILENCIOSO — a 1.ª redacção desta nota prometia o contrário** e a
+            // auditoria de 2026-08-30 apanhou-a: ela dizia *«o `None` não se trata como nada a
+            // fazer, o shell é quem fala»*, e o shell nunca é informado, portanto ninguém fala. O
+            // gémeo exacto — uma queda cujo `StableId` desapareceu entre o `Down` e o `Up` — FALA,
+            // em `render_loop/hierarchy.rs` (*«That prefab is no longer in the project»*).
+            //
+            // ⏳ **Fica NOMEADO e não curado:** o `AssetCardVerb` carrega um endereço, e um menu
+            // sem sujeito não tem endereço nenhum para carregar. Dizê-lo pede uma acção própria —
+            // e a janela em que isto acontece é a de um artista a rolar a grade com o menu aberto.
             match cell_target_of(cell) {
                 Some(AssetRef::Component { stable_id }) => {
                     host.bus_mut().push(EditorAction::AssetCardVerb {

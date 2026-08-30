@@ -408,6 +408,7 @@ fn paint_grid(state: &AssetBrowserState, ctx: &mut PaintCtx, rect: Rect, body_to
     // publicava `0..keys.len()`, que inclui os cartões que o laço acima **saltou** por estarem
     // rolados para fora do corpo. Hoje o laço enche `painted_cells`, então a lista é o que ela diz
     // ser. *Um comentário que nomeia uma propriedade que o código não tem é a próxima armadilha.*
+    crate::paint_thumb::retain_painted(&keys);
     ctx.host.store_mut().set_asset_cells(painted_cells);
     crate::state::set_painted(keys);
     crate::state::set_last_content_h(content_h);
@@ -476,7 +477,7 @@ fn paint_card(
     // imagem com alfa mostra o fundo dela, que é a cor dominante do próprio asset, e não um
     // xadrez nem um cinzento de chrome.
     if let Some(t) = thumb_img {
-        paint_thumb(ctx, key, t, thumb, inset);
+        crate::paint_thumb::paint_thumb(ctx, key, t, thumb, inset);
     }
     ph2d_editor_core::paint::stroke_rounded_rect(
         ctx.scene,
@@ -535,65 +536,4 @@ pub fn probe_query(index: &ph2d_asset_index::AssetIndex, q: &Query) -> Vec<Strin
         .iter()
         .map(|e: &&AssetEntry| e.name.clone())
         .collect()
-}
-
-// ── ⭐⭐ O MEMO DE TEXTURA DAS MINIATURAS (wave A6) ──────────────────────────────────────────────
-
-thread_local! {
-    /// `AssetRef → (os bytes que a construíram, a textura estável)`.
-    ///
-    /// ⛔⛔ **Sem isto o navegador reenviaria CADA cartão ao atlas do `vello`, TODO o quadro.** O
-    /// `draw_image_rgba` faz `Blob::new(rgba.clone())` em cada chamada e o `vello` indexa o cache
-    /// por `data.id()` — com o tecto de 512 células a 96² isso é ~18 MB de upload + repack por
-    /// quadro. O `StableImage` guarda o id, e é o que faz o cache dele acertar.
-    ///
-    /// ⚠️ **A chave da revalidação é a IDENTIDADE do `Arc`**, não os bytes: o `Thumb` compara em
-    /// `O(1)` por `ptr_eq`, e quem produz uma miniatura nova produz um `Arc` novo (a junção
-    /// garante-o guardando o `Arc` na memória por conteúdo). ⛔ Mutar um `Arc` em sítio manteria o
-    /// id da `Blob` e o atlas serviria os pixels velhos, **sem erro nenhum**.
-    static THUMB_TEX: std::cell::RefCell<
-        std::collections::BTreeMap<ph2d_asset_index::AssetRef, (ph2d_asset_index::Thumb, ph2d_vector::StableImage)>,
-    > = const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
-}
-
-/// Desenha a miniatura dentro do quadrado do cartão, **aspecto preservado e centrada**.
-///
-/// ⚠️ **Nunca esticada:** uma tira 8:1 esticada num quadrado lê-se como outra forma, e a miniatura
-/// existe precisamente para se reconhecer a forma.
-fn paint_thumb(
-    ctx: &mut PaintCtx,
-    key: ph2d_asset_index::AssetRef,
-    thumb: &ph2d_asset_index::Thumb,
-    square: Rect,
-    inset: f32,
-) {
-    let img = THUMB_TEX.with(|c| {
-        let mut c = c.borrow_mut();
-        if let Some((cached, img)) = c.get(&key)
-            && cached == thumb
-        {
-            return Some(img.clone());
-        }
-        let img = ph2d_vector::StableImage::from_rgba(thumb.rgba.clone(), thumb.w, thumb.h)?;
-        c.insert(key, (thumb.clone(), img.clone()));
-        Some(img)
-    });
-    let Some(img) = img else { return };
-
-    let (bw, bh) = (
-        (square.w - inset * 2.0).max(0.0),
-        (square.h - inset * 2.0).max(0.0),
-    );
-    let (tw, th) = (thumb.w.max(1) as f32, thumb.h.max(1) as f32);
-    let s = (bw / tw).min(bh / th).max(0.0);
-    let (dw, dh) = (tw * s, th * s);
-    let x0 = f64::from(square.x + inset + (bw - dw) * 0.5);
-    let y0 = f64::from(square.y + inset + (bh - dh) * 0.5);
-    ctx.scene.draw_stable_image(
-        &img,
-        (x0, y0, x0 + f64::from(dw), y0 + f64::from(dh)),
-        // Bilinear: uma miniatura é um render encolhido, e suavizar entre texels lê-se melhor que
-        // o `Nearest` que uma MEDIÇÃO (um espectrograma) quereria.
-        ph2d_vector::ImageQuality::Medium,
-    );
 }

@@ -29,6 +29,9 @@
 mod event;
 pub mod ids;
 mod paint;
+/// ⭐⭐ A miniatura de um cartão e o memo de textura que ela obriga — irmão por assunto do
+/// [`paint`], ver o cabeçalho de lá.
+mod paint_thumb;
 mod populate;
 pub mod state;
 

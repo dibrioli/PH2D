@@ -122,16 +122,21 @@ fn removing_a_prefab_with_no_copies_brings_it_back_to_the_canvas() {
 fn no_copy_is_left_pointing_at_a_recipe_that_stopped_being_one() {
     let (mut sim, master, master_id) = library_with(2);
     let _ = unmake_master(&mut sim, master).expect("a receita existe");
-    // Nem para esta receita…
     assert_eq!(links_to(&mut sim, master_id), 0);
-    // …nem para nenhuma: o `detach` limpa o elo de toda a sub-árvore da cópia.
-    let mut q = sim.world_mut().query::<&InstanceOf>();
-    let survivors = q.iter(sim.world()).count();
-    assert_eq!(
-        survivors, 0,
-        "as peças de dentro das cópias também soltaram o elo"
-    );
 }
+
+// ⛔⛔ **A 1.ª versão deste gate varria o MUNDO INTEIRO** (`q.iter().count() == 0`, *«as peças de
+// dentro das cópias também soltaram o elo»*), e a auditoria de 2026-08-30 mostrou que ele
+// **consagrava um defeito**: num mundo com um SEGUNDO prefab instanciado dentro de uma cópia do
+// primeiro, aquela barra **exigiria** que os elos alheios morressem.
+//
+// ⚠️ E eles morrem mesmo — é a lei pré-existente do `detach`, que percorre a sub-árvore e tira
+// `InstanceOf` de tudo o que o tenha lá dentro. O que esta wave acrescentou foi um verbo de
+// **arrumação de biblioteca** a disparar essa demolição, sem que o nome o anuncie. A cura de fundo
+// é a F5 (aninhamento de receitas), que é a mesma fronteira que o `VerbRefusal::InsideAnInstance`
+// já declara; o que se corrige aqui é a RÉGUA, para ela deixar de pedir o comportamento errado.
+//
+// ⇒ a barra é `links_to(master_id) == 0`: *nenhuma cópia DESTA receita continua a apontar para ela*.
 
 /// ⭐ **O verbo aceita os DOIS sujeitos** — a receita e uma cópia dela.
 ///

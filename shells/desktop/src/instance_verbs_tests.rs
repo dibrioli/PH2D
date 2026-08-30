@@ -4,36 +4,14 @@
 //! passou a ter, o que as outras cópias receberam. Um gate que contasse chamadas ficaria verde
 //! sobre um verbo que faz a coisa errada.
 
-use super::{VerbRefusal, detach};
+use super::VerbRefusal;
 use crate::instance_smoke::{spawn_master, spawn_ragdoll_scene};
 use crate::instance_sync::{MasterEcho, sync_instances};
-use ph2d_ecs::{
-    Children, Entity, InstanceOf, MasterRoot, Name, ObjectInstance, SimWorld, Transform, Visibility,
-};
+use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, Transform, Visibility};
 use ph2d_physics_ecs::PhysicsBridge;
 
 fn reg() -> ph2d_ecs::scene::ComponentRegistry {
     crate::init::build_component_registry()
-}
-
-/// ⚠️ **Sem documentos vetoriais** — ver `crate::instance_sync_docs` para os que têm.
-fn apply(
-    sim: &mut SimWorld,
-    r: &ph2d_ecs::scene::ComponentRegistry,
-    echo: &mut MasterEcho,
-    clicked: Entity,
-) -> Result<usize, VerbRefusal> {
-    let (mut sc, mut mp) = crate::instance_docs::empty_docs();
-    super::apply_to_master(
-        sim,
-        r,
-        echo,
-        clicked,
-        &mut crate::instance_docs::OwnedDocs {
-            vec_scene: &mut sc,
-            vec_entities: &mut mp,
-        },
-    )
 }
 
 /// ⚠️ **Sem documentos vetoriais** — estes gates são de sprites/física. Os do documento vivem em

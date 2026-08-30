@@ -217,6 +217,11 @@ impl Sculpt3dScene {
             // ⚠️ **`0` é um FACTO**: o F5 monta patch a patch, não extrai isolinhas.
             mirrored: 0,
             doublets: 0,
+            // ⚠️ O motor LOCAL não mede pontas: ele não é o caminho de omissão, e uma
+            // coluna a zero num relatório lê-se como «nenhuma cortada».
+            tips_cut: 0,
+            tips_total: 0,
+            tips_worst_pct: 0.0,
             aligned,
             // ⚠️ **`false` aqui é um FACTO, não «não sei»:** este caminho corre a
             // tentativa alinhada e só cai para a lisa se ela **RECUSAR** — nunca por
@@ -391,7 +396,7 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
     format!(
         "[sculpt3d] retopologia: {} vertices, {} quads e {} nao-quads ({:.1}% quads), \
          {} irregulares, aresta mediana {} do alvo e a mais longa {}, com quad de {:.4} \
-         em {:.0} ms{}{}{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
+         em {:.0} ms{}{}{}{}{}{}, forma: aspecto {:.2}/{:.1} e enviesamento {:.0}/{:.0} graus{}",
         r.verts,
         r.quads,
         r.non_quads,
@@ -449,6 +454,27 @@ pub(in crate::sculpt3d) fn retopo_line(r: &QuadRemeshReport) -> String {
             String::new()
         } else {
             format!(" -- {} mordida(s) dissolvida(s)", r.doublets)
+        },
+        // ⭐⭐⭐ **AS PONTAS AMPUTADAS** — ver `QuadRemeshReport::tips_cut`.
+        //
+        // ⛔⛔ **É a única linha do relatório que o artista não podia derivar de nenhuma
+        // outra.** A amputação sai com casca fechada, quads bonitos e `χ = 2`; o alcance
+        // global é um extremo ÚNICO e uma ponta que sobrevive esconde outra cortada.
+        // *Ele descobria-a fotografando o ecrã — três vezes.*
+        //
+        // ⚠️ **E ela diz o QUE FAZER**, porque a causa é resolução e não defeito: a célula
+        // da grade ficou mais grossa que a ponta. Medido na peça dele (`t003`): a `Detail
+        // 0,50` as duas pontas mais longas perdem `20 %`, e a `0,85` com o `Follow
+        // Curvature` a mesma peça devolve a maior a **`−0,2 %`**. *Sem esta frase, subir o
+        // `Detail` é um palpite que ninguém tem razão para dar.*
+        if r.tips_cut == 0 {
+            String::new()
+        } else {
+            format!(
+                " -- ⚠️ {} de {} ponta(s) AMPUTADA(S) (a pior {:.0} %); suba o `Detail` \
+                 ou ligue o `Follow Curvature`",
+                r.tips_cut, r.tips_total, r.tips_worst_pct
+            )
         },
         // ⭐⭐ **QUAL CAMPO correu.** A cadeia global tenta o campo
         // ALINHADO ao relevo e cai para o só-suavidade quando o

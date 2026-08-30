@@ -77,7 +77,10 @@ pub use finish_extract::{
     EXTRACT_MAX_ROUNDS, EXTRACT_RELIEF_PULL, EXTRACT_SETTLE, FinishReport, finish_extracted,
     finish_extracted_with,
 };
-pub use local::{FaceLocal, LocalShape, QuadKind, local_shape, local_shape_of, tip_body_ratio};
+pub use local::{
+    FaceLocal, LocalShape, QuadKind, TipSurvival, local_shape, local_shape_of, tip_body_ratio,
+    tip_survival,
+};
 pub use quality::{
     Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint,
 };

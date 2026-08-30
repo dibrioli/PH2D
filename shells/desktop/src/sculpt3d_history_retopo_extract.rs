@@ -477,6 +477,10 @@ impl Sculpt3dScene {
             (relief_won, (out, e, _shift_frac_max, shape))
         };
 
+        // ⭐⭐⭐ **A PONTA, uma a uma** — ver [`ph2d_quadfill::tip_survival`]. Contra a
+        // `reference` (a escultura que entrou), **não** a `work`: o artista compara com o
+        // que ele esculpiu, e a fase zero já é parte da cadeia que se está a julgar.
+        let tips = ph2d_quadfill::tip_survival(&reference, &out);
         let (edge_median, edge_max) = edges(&out);
         let report = QuadRemeshReport {
             verts: out.vert_count(),
@@ -499,6 +503,9 @@ impl Sculpt3dScene {
             // ⚠️ **A soma das DUAS metades**: as que a extracção não emitiu e as que a
             // reparação da entrada dissolveu. *O artista vê uma mordida, não duas fases.*
             doublets: e.doublets + bitten,
+            tips_cut: tips.cut,
+            tips_total: tips.total,
+            tips_worst_pct: tips.worst_pct,
             // ⭐⭐⭐ **`aligned` diz QUAL CAMPO produziu esta malha** — é o sentido que o
             // `retopo_line` lhe dá. ⛔ Até 2026-08-26 este caminho punha aqui a
             // **exactidão do arredondamento** (`shift_frac_max == 0.0`), que é outra

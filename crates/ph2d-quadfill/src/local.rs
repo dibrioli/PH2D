@@ -418,3 +418,107 @@ pub fn tip_body_ratio(points: &[[f32; 3]], values: &[f32]) -> (f32, usize) {
     let ratio = if body > 1.0e-9 { tip / body } else { 0.0 };
     (ratio, shells[SHELLS - 1].len())
 }
+
+/// **QUANTAS PONTAS A CADEIA CORTOU** — ver [`tip_survival`].
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TipSurvival {
+    /// Quantos ápices perderam mais que [`TIP_CUT_PCT`] do alcance deles.
+    pub cut: usize,
+    /// Quantos ápices foram medidos.
+    pub total: usize,
+    /// A pior perda, em percentagem (negativa).
+    pub worst_pct: f32,
+}
+
+/// ⚠️ **A barra do que conta como CORTE.** Abaixo disto é reamostragem: a saída tem
+/// outros vértices e a função de suporte cai um pouco só por a superfície ser
+/// poliédrica. ⭐ Medido: as pontas **intactas** da peça do artista medem `−0,0 %` a
+/// `−0,4 %`, e as **cortadas** medem `−5 %` a `−22 %`. *Há uma ordem de grandeza entre
+/// as duas populações, e a barra vive nela.*
+pub const TIP_CUT_PCT: f32 = -2.0;
+
+/// ⭐⭐⭐ **UMA MEDIÇÃO POR PONTA** — e ela existe porque uma foto tinha uma seta VERDE
+/// e uma VERMELHA na **mesma** peça (Enio, 2026-08-30).
+///
+/// ⛔⛔ **O alcance global não podia ver isso:** ele é a distância **máxima** ao
+/// centroide, *um único extremo*. Uma ponta que sobrevive esconde outra cortada — e na
+/// peça dele o alcance dizia `−16,2 %` enquanto **dez** das doze pontas estavam
+/// intactas a `−0,1 %` e **duas** tinham perdido `20 %`.
+///
+/// # ⭐ Como uma ponta é achada
+///
+/// Um **ápice** é um vértice cujo raio ao centroide é maior que o de todos os vizinhos
+/// — um máximo local no grafo da superfície. ⚠️ *Não é um limiar de raio*: numa peça com
+/// espinhos de comprimentos diferentes, um limiar apanharia dois vértices do mais longo
+/// e nenhum do mais curto.
+///
+/// # ⭐⭐ E a comparação é a FUNÇÃO DE SUPORTE
+///
+/// Para cada direcção de ápice `d`, mede-se `max(v · d)` na entrada e na saída — *até
+/// onde a peça vai para aquele lado*. ⚠️ **Sobrevive à malha ser outra:** os vértices
+/// não se correspondem entre entrada e saída, as **direcções** sim.
+#[must_use]
+pub fn tip_survival(input: &Mesh, output: &Mesh) -> TipSurvival {
+    const FLOOR: f32 = 0.55;
+    const MAX_TIPS: usize = 12;
+    let pos = input.positions();
+    if pos.is_empty() || output.positions().is_empty() {
+        return TipSurvival::default();
+    }
+    let mut c = [0.0f64; 3];
+    for p in pos {
+        for k in 0..3 {
+            c[k] += f64::from(p[k]);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let n = pos.len() as f64;
+    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let r: Vec<f32> = pos.iter().map(|p| dist(*p, mid)).collect();
+    let far = r.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
+
+    let mut nbr: Vec<Vec<u32>> = vec![Vec::new(); pos.len()];
+    for f in input.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
+            nbr[a].push(v[(k + 1) % v.len()]);
+            nbr[b].push(v[k]);
+        }
+    }
+    let mut apex: Vec<usize> = (0..pos.len())
+        .filter(|&i| r[i] >= FLOOR * far)
+        .filter(|&i| nbr[i].iter().all(|&j| r[j as usize] <= r[i]))
+        .collect();
+    apex.sort_by(|&a, &b| r[b].total_cmp(&r[a]));
+
+    let support = |m: &Mesh, d: [f32; 3]| -> f32 {
+        m.positions()
+            .iter()
+            .map(|p| {
+                let q = sub(*p, mid);
+                dot(q, d)
+            })
+            .fold(f32::MIN, f32::max)
+    };
+    let mut s = TipSurvival::default();
+    for &i in apex.iter().take(MAX_TIPS) {
+        let len = r[i].max(1.0e-9);
+        let d = [
+            (pos[i][0] - mid[0]) / len,
+            (pos[i][1] - mid[1]) / len,
+            (pos[i][2] - mid[2]) / len,
+        ];
+        let (a, b) = (support(input, d), support(output, d));
+        if a.abs() <= 1.0e-9 {
+            continue;
+        }
+        let pct = 100.0 * (b / a - 1.0);
+        s.total += 1;
+        s.worst_pct = s.worst_pct.min(pct);
+        if pct < TIP_CUT_PCT {
+            s.cut += 1;
+        }
+    }
+    s
+}

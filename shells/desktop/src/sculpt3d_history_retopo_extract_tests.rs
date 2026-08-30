@@ -485,3 +485,74 @@ fn o_campo_adaptativo_recua_quando_abre_a_malha() {
          exactamente quando a adaptativa era melhor"
     );
 }
+
+/// ⭐⭐⭐ **O BOTÃO DIZ QUANDO AMPUTOU** — e esta é a única coluna do relatório que o
+/// artista não consegue derivar de nenhuma outra.
+///
+/// ⛔⛔ **Foto do Enio, 2026-08-30: uma seta VERDE e uma VERMELHA na mesma peça.** A
+/// amputação sai com casca fechada, `χ = 2`, `100 %` de quads e quads bonitos; o
+/// alcance global é um **extremo único**, e na peça dele ele lia `−16,2 %` enquanto
+/// **dez** das doze pontas estavam a `−0,1 %` e **duas** tinham perdido `20 %`.
+/// *Ele descobria-a fotografando o ecrã — três vezes.*
+///
+/// ⚠️ **E a frase tem de dizer O QUE FAZER:** a causa é resolução (a célula ficou mais
+/// grossa que a ponta), e o `Detail` que a cura não se anuncia sozinho.
+#[test]
+fn a_linha_do_artista_nomeia_as_pontas_amputadas() {
+    let base = crate::sculpt3d::history::remesh::QuadRemeshReport {
+        verts: 100,
+        quads: 100,
+        non_quads: 0,
+        edge: 0.1,
+        ms: 1.0,
+        holes: 0,
+        irregular: 0,
+        edge_median_ratio: 1.0,
+        edge_max_ratio: 1.0,
+        edge_max_span: 0.0,
+        shape: ph2d_quadfill::QuadShape {
+            aspect_p50: 1.0,
+            skew_p50: 1.0,
+            ..ph2d_quadfill::QuadShape::default()
+        },
+        aligned: true,
+        measured: true,
+        mirrored: 0,
+        doublets: 0,
+        folded: 0,
+        tips_cut: 0,
+        tips_total: 12,
+        tips_worst_pct: -0.4,
+    };
+    let calada = crate::sculpt3d::history::retopo_global::retopo_line(&base);
+    assert!(
+        !calada.to_lowercase().contains("amputad"),
+        "⛔ sem ponta cortada a linha tem de ser CALADA, senao a palavra perde o peso: {calada}"
+    );
+
+    let acusa = crate::sculpt3d::history::retopo_global::retopo_line(
+        &crate::sculpt3d::history::remesh::QuadRemeshReport {
+            tips_cut: 2,
+            // ⚠️ Valor SEM ambiguidade de arredondamento: a linha imprime com `{:.0}`, e
+            // `−21,5` sai `−22` — a 1.ª versão deste gate procurava `−21` e reprovou.
+            tips_worst_pct: -21.0,
+            ..base
+        },
+    );
+    assert!(
+        acusa.contains("AMPUTADA"),
+        "⛔ com 2 pontas cortadas a linha tem de o DIZER: {acusa}"
+    );
+    // ⚠️ **O DENOMINADOR e a PIOR PERDA vão junto** — «2 amputadas» significa coisas
+    // opostas se a peça tem 2 pontas ou 12, e `−3 %` não é o mesmo report que `−21 %`.
+    assert!(
+        acusa.contains("de 12") && acusa.contains("-21"),
+        "⛔ a frase tem de trazer o denominador e a pior perda: {acusa}"
+    );
+    // ⭐ **E tem de dizer O QUE FAZER.** A causa é resolução, e sem isto o artista
+    // recebe um diagnóstico sem acção.
+    assert!(
+        acusa.contains("Detail") && acusa.contains("Follow Curvature"),
+        "⛔ a frase tem de nomear as duas alavancas: {acusa}"
+    );
+}

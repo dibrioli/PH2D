@@ -485,3 +485,110 @@ pub(super) fn orientation_and_density(tag: &str, mesh: &ph2d_mesh::Mesh) {
         );
     }
 }
+
+/// ⭐⭐⭐ **UMA MEDIÇÃO POR PONTA** — a régua que a foto de 2026-08-30 exigiu.
+///
+/// ⛔⛔⛔ **A foto tinha uma seta VERDE e uma VERMELHA na mesma peça:** *«algumas
+/// pontas boas, algumas pontas ruins, amputadas»*. ⚠️ **E o ALCANCE não podia ver
+/// isso:** ele é a distância **máxima** ao centroide — um único extremo global. *Uma
+/// ponta que sobrevive esconde outra que foi cortada,* e é a terceira vez que esta
+/// linha paga a mesma forma (o `edge_max` cego ao quad de `0,02 × 0,30`, o `χ` cego
+/// à almofada).
+///
+/// # ⭐ Como as pontas são achadas, e por que assim
+///
+/// Um **ápice** é um vértice cujo raio ao centroide é maior que o de **todos** os
+/// vizinhos — um máximo local no grafo da superfície. ⚠️ *Não é um limiar de raio*:
+/// numa peça com espinhos de comprimentos diferentes, um limiar apanharia dois
+/// vértices do espinho mais longo e nenhum do mais curto.
+///
+/// # ⭐⭐ E a comparação é a FUNÇÃO DE SUPORTE, não a distância
+///
+/// Para cada direcção de ápice `d`, mede-se `max(v · d)` na entrada e na saída. *É
+/// exactamente «até onde a peça vai para aquele lado»*, e sobrevive à malha ser
+/// outra: os vértices não se correspondem, as direcções sim.
+pub(super) fn tips(tag: &str, entrada: &ph2d_mesh::Mesh, saida: &ph2d_mesh::Mesh) {
+    let pos = entrada.positions();
+    let mut c = [0.0f64; 3];
+    for p in pos {
+        for k in 0..3 {
+            c[k] += f64::from(p[k]);
+        }
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let n = pos.len().max(1) as f64;
+    let mid = [(c[0] / n) as f32, (c[1] / n) as f32, (c[2] / n) as f32];
+    let raio = |p: &[f32; 3]| -> f32 {
+        let d = [p[0] - mid[0], p[1] - mid[1], p[2] - mid[2]];
+        d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt()
+    };
+
+    let mut viz: Vec<Vec<u32>> = vec![Vec::new(); pos.len()];
+    for f in entrada.faces() {
+        let v = f.verts();
+        for k in 0..v.len() {
+            let (a, b) = (v[k] as usize, v[(k + 1) % v.len()] as usize);
+            viz[a].push(v[(k + 1) % v.len()]);
+            viz[b].push(v[k]);
+        }
+    }
+    let r: Vec<f32> = pos.iter().map(raio).collect();
+    let maior = r.iter().copied().fold(0.0f32, f32::max).max(1.0e-9);
+    // ⚠️ **O piso existe para não chamar «ponta» a cada bossa do corpo.** Ele é uma
+    // fracção do maior raio, e vai impresso — *um limiar que não aparece no relatório
+    // é um número que ninguém pode contestar.*
+    const PISO: f32 = 0.55;
+    let mut apices: Vec<usize> = (0..pos.len())
+        .filter(|&i| r[i] >= PISO * maior)
+        .filter(|&i| viz[i].iter().all(|&j| r[j as usize] <= r[i]))
+        .collect();
+    apices.sort_by(|&a, &b| r[b].total_cmp(&r[a]));
+
+    let suporte = |m: &ph2d_mesh::Mesh, d: [f32; 3]| -> f32 {
+        m.positions()
+            .iter()
+            .map(|p| {
+                let q = [p[0] - mid[0], p[1] - mid[1], p[2] - mid[2]];
+                q[0].mul_add(d[0], q[1].mul_add(d[1], q[2] * d[2]))
+            })
+            .fold(f32::MIN, f32::max)
+    };
+
+    eprintln!(
+        "   {tag}: PONTAS — {} apice(s) acima de {:.0} % do raio maximo",
+        apices.len(),
+        PISO * 100.0
+    );
+    let mut cortadas = 0usize;
+    let mut pior = 0.0f32;
+    for (k, &i) in apices.iter().take(12).enumerate() {
+        let p = pos[i];
+        let len = r[i].max(1.0e-9);
+        let d = [
+            (p[0] - mid[0]) / len,
+            (p[1] - mid[1]) / len,
+            (p[2] - mid[2]) / len,
+        ];
+        let (a, b) = (suporte(entrada, d), suporte(saida, d));
+        let perda = if a.abs() > 1.0e-9 {
+            100.0 * (b / a - 1.0)
+        } else {
+            0.0
+        };
+        // ⚠️ **`−2 %` é ruído de reamostragem, não amputação** — a saída tem outros
+        // vértices e o suporte cai um pouco só por a superfície ser poliédrica.
+        if perda < -2.0 {
+            cortadas += 1;
+        }
+        pior = pior.min(perda);
+        eprintln!(
+            "      ponta {k}: raio {:.3} · suporte {a:.4} -> {b:.4} ({perda:+.1} %){}",
+            r[i],
+            if perda < -2.0 { "  ⛔ CORTADA" } else { "" }
+        );
+    }
+    eprintln!(
+        "   {tag}: PONTAS — {cortadas} de {} cortada(s), a pior {pior:+.1} %",
+        apices.len().min(12)
+    );
+}

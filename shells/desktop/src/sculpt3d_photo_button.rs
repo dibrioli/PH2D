@@ -107,6 +107,10 @@ fn the_artists_piece_through_the_button() {
             target / ph2d_quadflow::mean_edge(&work),
         );
         census("F1", &work);
+        // ⭐⭐⭐ **A MESMA régua na FASE ZERO** — é o corte que diz se a ponta morre
+        // no remalhador ou a jusante dele. *Sem os dois lados, «a cadeia amputa» é uma
+        // acusação sem endereço.*
+        super::tips("F1", &piece, &work);
         islands("F1", &work);
     }
     // ⭐⭐⭐ **QUAL das duas portas** — o painel tem um dropdown, e o `Global` é o de
@@ -177,6 +181,10 @@ fn the_artists_piece_through_the_button() {
     islands("SAIDA", &out);
     local_shape("SAIDA", &out);
     super::orientation_and_density("SAIDA", &out);
+    // ⭐⭐⭐ **UMA MEDIÇÃO POR PONTA** — a régua que a foto de 30/08 exigiu (seta VERDE
+    // e seta VERMELHA na mesma peça). O ALCANCE é um extremo GLOBAL e não a vê.
+    super::tips("SAIDA", &piece, &out);
+
     relief_density("SAIDA", &out);
     // ⭐ **`PH2D_DUMP=<ficheiro>` escreve a saída** — é o que permite medir a SECÇÃO do
     // espinho fora daqui, com a mesma régua que comparou as três malhas do artista.

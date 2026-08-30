@@ -248,6 +248,82 @@ da terceira tentativa, e é **de graça** com o knob desligado ou com a saída j
 ⚠️ **E ela NÃO descasca comentários:** documentar a cura no ficheiro do produto com esse token
 deixa o gate vermelho sobre código correcto. *Nesse dia a cura é descascar, não afrouxar.*
 
+## §8-quinquies — ⭐⭐⭐ «ALGUMAS PONTAS BOAS, ALGUMAS AMPUTADAS» (Enio, 30/08, seta VERDE e VERMELHA)
+
+A foto tinha **duas setas na mesma peça**, e isso derruba a régua do alcance: ela é a distância
+**máxima** ao centroide — *um único extremo global*. **Uma ponta que sobrevive esconde outra
+cortada.** É a terceira vez que esta linha paga a mesma forma (o `edge_max` cego ao quad de
+`0,02 × 0,30`; o `χ` cego à almofada).
+
+### ⭐ A régua nova: `ph2d_quadfill::tip_survival`
+
+Um **ápice** é um vértice cujo raio ao centroide é maior que o de **todos** os vizinhos (máximo
+local no grafo). ⚠️ *Não é um limiar de raio*: numa peça com espinhos de comprimentos diferentes,
+um limiar apanha dois vértices do mais longo e nenhum do mais curto.
+
+A comparação é a **função de suporte**: para cada direcção de ápice `d`, `max(v · d)` na entrada
+contra a saída. ⚠️ **Sobrevive à malha ser outra** — os vértices não se correspondem, as direcções
+sim.
+
+### ⛔⛔ E o primeiro número já refutou a hipótese que estava escrita
+
+Na peça `sculpt_t003.obj`, `Detail 0,50`:
+
+| | ponta 0 (`r = 1,95`) | ponta 1 (`r = 1,79`) | pontas 2–11 |
+|---|---|---|---|
+| **fase zero (F1)** | ⭐ `−0,2 %` | `−5,4 %` | — |
+| **saída final** | ⛔ `−20,0 %` | ⛔ `−21,5 %` | `−0,4 %` a `−0,0 %` |
+
+⇒ **a fase zero entrega a ponta mais longa INTACTA e a cadeia a jusante come `20 %`.** A nota do
+`CLAUDE.md` §5 que atribui a amputação à fase zero está **refutada para estas pontas**.
+
+⭐ E o alcance global lia `−16,2 %` enquanto **dez das doze** pontas estavam a `−0,1 %`.
+
+### ⭐⭐ A causa é RESOLUÇÃO, e a combinação que a resolve está medida
+
+| config | ponta 0 | ponta 1 | cortadas | `χ` / bordo |
+|---|---|---|---|---|
+| `Detail 0,50` · knob `0` | ⛔ `−20,0 %` | ⛔ `−21,5 %` | `2` | `2 / 0` |
+| `Detail 0,50` · knob `1` | ⛔ `−20,6 %` | ⛔ `−22,7 %` | `2` | `2 / 0` |
+| `Detail 0,85` · knob `0` | `−5,0 %` | ⛔ `−14,8 %` | `2` | ⛔ `1 / 4` |
+| ⭐ **`Detail 0,85` · knob `1`** | ⭐ **`−0,2 %`** | `−6,4 %` | **`1`** | ⭐ **`2 / 0`** |
+
+⇒ **a célula da grade tem de caber na ponta.** A `Detail 0,50` o alvo é `0,100` e a ponta é muito
+mais fina — *nenhum knob a salva ali*. A `0,85` (alvo `0,038`) com o campo adaptativo a ponta mais
+longa sai **praticamente intacta** e a topologia é a **melhor das quatro**.
+
+⚠️ **E a guarda de §8-quater comporta-se como desenhada:** a `0,50` ela recua (a saída é a mesma do
+knob desligado) e a `0,85` ela mantém o ganho — porque ali o campo adaptativo é melhor em **todas**
+as colunas.
+
+### ⭐⭐⭐ O que ficou no PRODUTO: o botão diz quando amputou
+
+`QuadRemeshReport::{tips_cut, tips_total, tips_worst_pct}`, e a linha do log:
+
+```
+ -- ⚠️ 2 de 12 ponta(s) AMPUTADA(S) (a pior -22 %); suba o `Detail` ou ligue o `Follow Curvature`
+```
+
+⛔⛔ **É a única coluna do relatório que o artista não conseguia derivar de nenhuma outra.** A
+amputação sai com casca fechada, `χ = 2`, `100 %` de quads e quads bonitos — *ele descobria-a
+fotografando o ecrã, três vezes*.
+
+⚠️ **E ela diz o QUE FAZER**, porque a causa é resolução e não defeito. *Sem a frase, subir o
+`Detail` é um palpite que ninguém tem razão para dar.*
+
+### Gates novos (todos provados por mutação)
+
+| gate | o que morre sem ele |
+|---|---|
+| `a_linha_do_artista_nomeia_as_pontas_amputadas` | a linha desaparece · perde o denominador e a acção |
+| `uma_ponta_cortada_distingue_se_de_uma_reamostrada` | a barra `TIP_CUT_PCT` a `0` ou a `−50` · o suporte a comparar a entrada consigo mesma |
+
+⚠️ **O 2.º gate nasceu de uma mutação que SOBREVIVEU:** o gate da linha constrói a contagem à mão,
+então ele **não exercita a barra**. *Um gate sobre o relatório não é um gate sobre a régua.*
+
+⚠️ E o 1.º reprovou primeiro por **arredondamento**: `−21,5` imprime `−22` com `{:.0}`, e a fixtura
+procurava `−21`. A fixtura passou a usar um valor sem ambiguidade.
+
 ## §9 — Ponto cego novo na ferramenta do laço interno
 
 `scripts/cargo-check-narrow.sh` corre `cargo check -p` **sem `--all-targets`** ⇒ não compila

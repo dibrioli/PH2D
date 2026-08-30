@@ -388,6 +388,10 @@ fn the_report_carries_the_shape_of_every_quad() {
     );
     // ⭐ E ela chega à linha que o artista lê.
     let line = crate::sculpt3d::history::remesh::QuadRemeshReport {
+        // ⚠️ Fixtura da linha do log — as pontas não são o que este gate mede.
+        tips_cut: 0,
+        tips_total: 0,
+        tips_worst_pct: 0.0,
         verts: 0,
         quads: r.quads,
         non_quads: r.non_quads,

@@ -122,6 +122,25 @@ pub(in crate::sculpt3d) struct QuadRemeshReport {
     /// vértice preso entre duas faces é a **mordida** que o artista fotografou nas pontas, e
     /// ela realimenta-se: a saída com doublets, ao voltar a entrar, parte a fase zero.
     pub doublets: usize,
+
+    /// ⭐⭐⭐ **QUANTAS PONTAS A CADEIA CORTOU** — ver [`ph2d_quadfill::tip_survival`].
+    ///
+    /// ⛔⛔ **Ela existe por uma foto com uma seta VERDE e uma VERMELHA na mesma peça**
+    /// (Enio, 2026-08-30): *«algumas pontas boas, algumas ruins, amputadas»*. O alcance
+    /// global é um **extremo único** e não podia dizer isso — na peça dele ele lia
+    /// `−16,2 %` enquanto **dez** das doze pontas estavam a `−0,1 %` e **duas** tinham
+    /// perdido `20 %`.
+    ///
+    /// ⚠️ **E o artista não tinha como saber.** A amputação é a célula da grade a ser
+    /// mais grossa que a ponta — *resolução, não defeito* —, e o `Detail` que a cura não
+    /// se anuncia. ⇒ **o botão passa a dizê-lo**, que é a diferença entre uma ferramenta
+    /// que falha em silêncio e uma que explica.
+    pub tips_cut: usize,
+    /// Quantas pontas foram medidas — o **denominador**, sem o qual `tips_cut` não é
+    /// interpretável.
+    pub tips_total: usize,
+    /// A pior perda, em percentagem (negativa).
+    pub tips_worst_pct: f32,
     /// ⭐⭐ **O campo desta corrida obedeceu ao RELEVO?**
     ///
     /// ⛔ **Ele existe porque a cadeia global tem uma REDE**, e uma rede silenciosa
@@ -274,6 +293,10 @@ impl Sculpt3dScene {
             // dobra de mapa que possa gerar uma almofada.
             mirrored: 0,
             doublets: 0,
+            // ⚠️ Este backend não mede pontas — ver o doc do campo.
+            tips_cut: 0,
+            tips_total: 0,
+            tips_worst_pct: 0.0,
         };
         let previous =
             core::mem::replace(self.mesh_mut().ok_or(RemeshRefusal::EmptyScene)?, q.mesh);

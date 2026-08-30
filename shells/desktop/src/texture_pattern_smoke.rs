@@ -134,7 +134,15 @@ fn lei(
         Rgba8::new(fallback[0], fallback[1], fallback[2], 255),
     );
     f.kind = kind;
-    f.offset_denom = 2;
+    // ⛔⛔ **O `f.offset_denom = 2` SAIU DAQUI, e a remoção é a metade que importa** (2026-08-30).
+    //
+    // Esta cena punha-o à mão, e o produto nascia com `1` — então ela demonstrava tijolos e
+    // colmeias a ladrilhar **sobre um produto em que os chips *Brick* e *Column* eram inertes**.
+    // *Uma cena de smoke que compensa o defeito do produto aprova-o*, e esta esteve verde durante
+    // toda a vida da feature.
+    //
+    // ⇒ o valor vem agora do construtor (`PatternFill::new`), que é o que a autoria real usa. A
+    // cena passa a ser o **detector** do defeito em vez do véu dele.
     f.mode = mode;
     // ⛔ O canto da FORMA — ver [`canto`]. Sem isto a cena mede um objecto que o produto nunca
     // produz, porque a autoria real ancora na forma (`default_placement`).
@@ -374,7 +382,16 @@ fn select_hero(app: &mut crate::App) {
          (Solid | Pattern) e a seccao Pattern ganha, no topo, a fileira **Target** \
          (Fill | Stroke) -- e' ela que diz qual dos dois os knobs abaixo estao a editar. Na 1a \
          forma o Target NAO aparece, porque com um alvo so' nao ha' escolha. Engrosse o contorno \
-         com a barra Width: a faixa engrossa e o MOTIVO nao muda de tamanho."
+         com a barra Width: a faixa engrossa e o MOTIVO nao muda de tamanho. \
+         ⭐⭐⭐ NOVO (30/08) -- OS CHIPS *TILE* ESTAVAM MORTOS: selecione qualquer forma com padrao \
+         e, na seccao Pattern, percorra os quatro chips de Tile (Grid | Brick | Column | Hex). Os \
+         QUATRO tem de mudar o desenho: Brick desfasa as LINHAS meia celula, Column desfasa as \
+         COLUNAS, Hex poe os seis vizinhos a' mesma distancia. Ate' hoje o Brick e o Column davam \
+         exactamente a mesma coisa que o Grid. E a fileira **Offset** logo abaixo (1/2 .. 1/8) tem \
+         de mudar o tamanho do desfasamento. \
+         ⭐⭐ E DEPOIS GRAVE: Ficheiro > Save As..., feche o programa, abra-o e carregue o ficheiro. \
+         Tudo tem de voltar exactamente como estava -- as estampas com a arte delas, nao uma cor \
+         chapada."
     );
 }
 
@@ -433,5 +450,79 @@ mod tests {
             "o construtor deixou de nascer na origem do mundo - este gate perdeu o sujeito"
         );
         assert_ne!(c, [0.0, 0.0], "a fixtura tem de estar LONGE da origem");
+    }
+}
+
+#[cfg(test)]
+mod lattice_tests {
+    use super::{BOX, lei};
+    use ph2d_vec_pattern::{PatternMode, TileKind};
+    use ph2d_vec_scene::{PatternFill, PatternSource, Rgba8, VecPathId};
+
+    fn fonte() -> PatternSource {
+        PatternSource::Shape(VecPathId::from(1u64))
+    }
+
+    fn da_cena(kind: TileKind) -> PatternFill {
+        lei(
+            fonte(),
+            kind,
+            PatternMode::Tile,
+            [1, 2, 3],
+            BOX / 3.0,
+            [0.0, 0.0],
+        )
+    }
+
+    /// ⛔⛔⛔ **A CENA NÃO COMPENSA O PRODUTO** — o gate que faltava, e a ausência dele custou a
+    /// vida inteira de uma feature.
+    ///
+    /// Esta cena escrevia `f.offset_denom = 2` à mão, e o construtor do produto nascia com `1`.
+    /// ⇒ ela demonstrava tijolos e colmeias a ladrilhar **sobre um produto em que os chips *Brick*
+    /// e *Column* eram inertes** — o artista carregava neles e via uma grade. A cena esteve verde
+    /// o tempo todo, porque não tinha gate nenhum.
+    ///
+    /// ⚠️ **A lei geral:** uma cena de smoke tem de nascer no estado em que o artista a
+    /// encontraria. Já custou um report do Enio uma vez (as formas desta mesma cena nasciam **sem
+    /// contorno**, e a secção *Stroke* ficava inerte só aqui); esta é a segunda ocorrência no MESMO
+    /// ficheiro, com o sujeito trocado.
+    #[test]
+    fn the_scene_does_not_hand_set_what_the_constructor_decides() {
+        let cru = PatternFill::new(fonte(), [1.0, 1.0], Rgba8::new(1, 2, 3, 255));
+        for kind in [
+            TileKind::Grid,
+            TileKind::BrickRow,
+            TileKind::BrickCol,
+            TileKind::Hex,
+        ] {
+            assert_eq!(
+                da_cena(kind).offset_denom,
+                cru.offset_denom,
+                "{kind:?}: a cena escreve um desfasamento que o produto nao escreve - ela esta' a \
+                 compensar o construtor, e um chip morto passaria por ela"
+            );
+        }
+    }
+
+    /// ⭐⭐⭐ **OS QUATRO RETICULADOS DESTA CENA LADRILHAM DE FACTO** — a régua sobre a lei ASSADA.
+    ///
+    /// A grade é uma célula por construção; os outros três **têm** de precisar de mais do que uma,
+    /// senão são uma grade com outro nome. É esta linha que apanha o defeito se ele voltar por
+    /// qualquer caminho (um construtor mudado, um `period()` mudado, uma cena mudada).
+    #[test]
+    fn every_lattice_in_this_scene_actually_tiles() {
+        let px = [16u32, 16];
+        assert_eq!(
+            da_cena(TileKind::Grid).law(px).cells(),
+            [1, 1],
+            "a grade deixou de ser o neutro"
+        );
+        for kind in [TileKind::BrickRow, TileKind::BrickCol, TileKind::Hex] {
+            let cells = da_cena(kind).law(px).cells();
+            assert!(
+                cells[0] * cells[1] > 1,
+                "{kind:?} assa {cells:?} - e' uma grade com outro nome, e o chip nao muda um pixel"
+            );
+        }
     }
 }

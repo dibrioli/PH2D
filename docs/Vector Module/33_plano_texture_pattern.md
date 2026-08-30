@@ -693,3 +693,143 @@ custaria um degrau da escada.
    anterior não há razão a preservar, e `[v, v]` é o único par que satisfaz *"a razão de antes"*.
 3. **O `VECTOR_TEXPAT_SIZE` continua definido no `editor-core`** (o bloco de ids é append-only) e
    deixou de ser re-exportado pelo painel — é assim que um id morre sem partir o hash de ninguém.
+
+---
+
+## §W8 — **O FICHEIRO NÃO ABRE A MENTIR · O TIJOLO NASCE VIVO** (2026-08-30)
+
+Dois defeitos achados por auditoria dirigida, de famílias diferentes, curados na mesma wave porque
+partilham o mesmo sujeito: **o que o produto de facto entrega quando ninguém está a olhar**.
+
+### §W8.1 — O tijolo nascia MORTO, e a cena de smoke escondia-o
+
+⛔⛔⛔ **Dois dos quatro reticulados não faziam nada.** A cadeia é aritmética, e cada elo estava
+correcto:
+
+| elo | valor |
+|---|---|
+| `PatternFill::new` nascia com | `offset_denom: 1` |
+| `TileLaw::period()` para os tijolos é | `offset_denom.max(1)` ⇒ **`1`** |
+| `cells()` com `n = 1` é | `[1, 1]` |
+| ⇒ o ladrilho assado | **byte-idêntico ao da grade** |
+
+O artista carregava em *Brick* ou *Column* e via uma grade. ⚠️ **A `Hex` escapava porque o braço
+dela devolve `2` sem olhar o campo** — é isso que fazia o defeito parecer impossível: dos quatro
+chips, dois funcionavam.
+
+⚠️⚠️ **E o painel não o podia curar:** a faixa do slider do *Offset* é `2..=8`
+(`TEXPAT_DENOM_MIN`), logo o `1` do documento era **inalcançável pelo controlo**; e a fileira pinta
+`"1/{denom}"` a partir do valor semeado no *store*, nunca do documento. *O artista lia «1/2», via
+uma grade, e não tinha gesto nenhum que o tirasse de lá.*
+
+⛔⛔⛔ **E a cena `=76` COMPENSAVA o produto:** ela escrevia `f.offset_denom = 2` à mão. ⇒ ela
+demonstrava tijolos e colmeias a ladrilhar sobre um produto em que os chips eram inertes, e esteve
+**verde durante toda a vida da feature** — porque não tinha gate nenhum. *Uma cena de smoke que
+compensa o defeito do produto aprova-o.*
+
+**A cura é uma linha** — o nascimento passa a `2`, o desfasamento clássico de meio tijolo —, e o
+número não é escolhido: é **a faixa que o painel exprime**. ⭐ Inerte para a grade e para a colmeia
+(o `period()` das duas não lê o campo), e há gate a exigi-lo — sem essa metade, uma cura que
+mudasse a grade passaria.
+
+⭐ **E a cena `=76` passou a ser o DETECTOR**: a compensação saiu, e dois gates novos vivem lá
+(`the_scene_does_not_hand_set_what_the_constructor_decides`,
+`every_lattice_in_this_scene_actually_tiles`). A prova é a mutação nº 2: reverter o construtor mata
+um gate **da cena**.
+
+⛔ **A cura no `period()` foi tentada e é o sítio errado** (mutação nº 5): pôr `max(2)` lá faria o
+valor `1` deixar de significar coisa nenhuma para um tijolo, e esconderia o defeito em vez de o
+curar — o problema não era a aritmética, era **nascer fora do que o painel exprime**.
+
+### §W8.2 — O ficheiro abria a mentir, e o save seguinte tornava-o permanente
+
+⛔⛔ **A arte dos padrões era o ÚNICO blob com versão própria que não obedecia à lei da recusa.** A
+timeline e a escultura fazem o load inteiro ser **RECUSADO** quando o documento delas é ilegível,
+com a razão escrita no `project_load.rs`: *"a animação não some por um bug — some porque o app
+abriu, mentiu e salvou"*. A arte respondia com um `eprintln!` e seguia.
+
+**A cadeia completa, ponta a ponta:**
+
+1. o blob degrada (versão futura, bytes corrompidos) ⇒ o restore ignorava;
+2. a fonte de cada estampa deixa de resolver ⇒ toda forma com padrão pinta a cor de recurso;
+3. o toast diz **"Project loaded"**;
+4. o Ctrl+S seguinte **salta em silêncio** o `AssetId` que já não está no `AssetDb` (dois `continue`
+   mudos no coletor) ⇒ o ficheiro é reescrito **sem os pixels**;
+5. a arte deixou de existir no disco, com o documento bem-formado.
+
+**A cura tem três metades:**
+
+- ⭐ **descodificar ANTES de mutar a sessão** (`decode_texture_pattern_art`, puro) e **RECUSAR** —
+  na mesma janela em que a timeline e a escultura recusam, e pela mesma frase;
+- ⭐⭐ **o TIPO passa a ser a defesa**: `install_texture_pattern_art` recebe `Vec<SavedPatternArt>`
+  em vez de `&[u8]` ⇒ **o caminho não-descodificado deixa de existir**, e quem quiser ignorar o erro
+  tem de escrever um `unwrap_or_default()` visível. *Uma lei imposta pelo tipo não precisa de um
+  gate a lembrá-la* — mas tem um, de ponta a ponta, porque o `project_load_from` é dirigível sem
+  janela;
+- os dois `continue` do coletor passam a **falar**, com o id. ⛔ **Recusar o SAVE seria pior** — o
+  artista perderia o trabalho da sessão para proteger uma arte que já estava perdida.
+
+⭐ **E isto fecha um buraco de FUTURO de graça:** o `PATTERN_ART_DOC_VERSION` vive fora da escada do
+`PROJECT_SCHEMA` de propósito, e o preço era que no dia em que ele subisse um ficheiro anterior
+abriria **sem a arte**. Com a recusa, o preço desaparece.
+
+### §W8.3 — Os gates e as provas
+
+**11 gates novos.** Motor/documento (`paint_pattern_tests.rs`, 3):
+`a_pattern_born_as_a_brick_actually_tiles_as_one` ·
+`the_grid_and_the_hex_are_untouched_by_where_the_offset_is_born` (o controlo) ·
+`the_offset_is_born_inside_the_range_the_panel_can_express`.
+Ficheiro (`project_texture_pattern_tests.rs`, 4 + `project_tests.rs`, 2):
+`an_illegible_pattern_art_blob_refuses_the_load_it_is_not_ignored` ·
+`an_unknown_pattern_art_version_is_refused_too` ·
+`a_project_with_no_patterns_at_all_still_opens` (controlo) ·
+`the_decoder_reads_back_exactly_what_the_collector_writes` ·
+`unreadable_pattern_art_refuses_the_whole_file_and_leaves_the_session_alone` (**ponta a ponta**) ·
+`a_well_formed_pattern_art_blob_still_opens_the_file` (controlo).
+Cena (`texture_pattern_smoke.rs`, 2): as duas do §W8.1.
+
+**Seis provas de mutação, seis mortes**, controlo verde em cada uma:
+
+| mutação | matou |
+|---|---|
+| o padrão volta a nascer com `offset_denom = 1` | 2 (documento) |
+| o mesmo, medido pela **cena `=76`** | 1 — *ela virou detector* |
+| um blob ilegível volta a ser ignorado | 1 |
+| uma versão desconhecida volta a ser aceite | 1 |
+| o `period()` do tijolo passa a ignorar o campo (a cura no sítio errado) | 1 |
+| **o LOAD volta a ignorar** em vez de recusar (ponta a ponta) | 1 |
+
+⚠️ **O controlo do filtro apanhou-se a si próprio uma vez:** a 6.ª mutação casou `0×` porque o
+`cargo fmt` tinha reformatado o bloco entre a escrita e a corrida. *Um filtro que casa zero imprime
+«SOBREVIVEU» sem o `assert` de contagem.*
+
+### §W8.4 — O que ficou ABERTO, nomeado (não é recusa)
+
+- ⏳ **O ponteiro de arte MORTO** (apagar a forma-fonte deixa `art: Some(id_inexistente)` /
+  `PatternSource::Shape(id_inexistente)`, que grava e recarrega em silêncio; a forma volta sólida).
+  ⚠️ **A cura não é simétrica e é isso que a torna uma wave própria:** um pincel tem
+  `art: Option<..>`, com um estado vazio legítimo; um **padrão não tem** — `PatternSource` não tem
+  variante vazia, e inventar uma seria gravar um estado que o modelo recusa representar. ⇒ as saídas
+  são *limpar* (destrói a autoria do ladrilho), *recusar a eliminação* (o artista não pode apagar a
+  própria forma) ou *dizer* — e a terceira precisa de um censo (`orphan_art_refs`) que ainda não
+  existe.
+- ⏳ **O painel não RE-SEMEIA o store a partir do documento** nas secções *Pattern* e *Brush* (as
+  outras secções têm essa fase; estas duas não estão nela). Sintoma: escolher uma forma com
+  *Offset 1/4* depois de outra com *1/2* mostra o valor da anterior. É a metade que ainda deixa o
+  painel e o documento darem duas respostas à mesma pergunta.
+- ⏳ **A costura de meio texel do `Repeat`, em `ImageQuality::High`.** A `vello 0.9` tornou o `High`
+  bicúbico a sério (Mitchell, 16 amostras) e o produto já lá chega (o ladrilho honra o ajuste global
+  *Smooth*). ⚠️ **Lido no `fine.wgsl` da 0.10** (não medido em pixels): o `Repeat` **continua a
+  grampear** na fronteira em vez de dar a volta — e o bicúbico grampeia sobre `±1,5` texels contra
+  os `±0,5` do bilinear, logo a banda errada em cada fronteira de ladrilho é **3× mais larga** do
+  que era. *É uma regressão que a subida do stack introduziu na feature desta linha, e ninguém a
+  mediu.* ⛔ O gutter não cura (entra no `extents` e alarga o padrão); a saída nomeada continua a ser
+  assar o ladrilho no tamanho em que é mostrado.
+
+⛔ **Recusas MEDIDAS desta wave**
+
+| recusa | mecanismo |
+|---|---|
+| curar o tijolo no `period()` (`max(2)`) | esconde o defeito: o `1` deixaria de significar algo, e a causa (nascer fora da faixa do painel) fica |
+| recusar o SAVE quando um asset falta | o artista perderia o trabalho da sessão para proteger arte já perdida (§W8.2) |
+| dar a `PatternSource` uma variante vazia para curar o ponteiro morto | grava um estado que o modelo recusa representar — a lei do `StrokePaint` sem gradiente (§W8.4) |

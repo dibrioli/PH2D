@@ -146,3 +146,81 @@ fn the_same_art_in_both_paints_costs_one_entry() {
         "a mesma arte foi embutida duas vezes"
     );
 }
+
+// ───────────── a LEITURA do blob: a lei da recusa (plano 33, W8) ─────────────
+
+/// ⭐⭐⭐ **UM BLOB ILEGÍVEL RECUSA O LOAD — ele não é «ignorado»** (2026-08-30).
+///
+/// ⚠️ **A lei já estava escrita neste ficheiro-irmão, palavra por palavra**, para a TIMELINE
+/// ([`crate::project_load`]): *"abrir sem ela seria a pior das opções: a cena aparece, parece
+/// certa, … e o próximo Ctrl+S grava esse vazio POR CIMA do arquivo. A animação não some por um
+/// bug — some porque o app abriu, mentiu e salvou"*. A escultura obedece-lhe. A arte dos padrões
+/// era **o único blob com versão própria que não obedecia**: um `eprintln!` e o load seguia.
+///
+/// O sintoma exacto que isso produz: o projecto abre, toda forma com estampa pinta a cor de
+/// recurso, o toast diz *"Project loaded"* — e o Ctrl+S seguinte reescreve o ficheiro **sem** os
+/// pixels, porque o coletor salta o `AssetId` que já não está no `AssetDb`. *A arte não some por um
+/// defeito; some porque o app abriu, mentiu e salvou.*
+#[test]
+fn an_illegible_pattern_art_blob_refuses_the_load_it_is_not_ignored() {
+    let lixo = vec![0xFFu8; 32];
+    assert!(
+        super::decode_texture_pattern_art(&lixo).is_err(),
+        "um blob ilegivel foi aceite - o projecto abre a mentir e o proximo save apaga a arte"
+    );
+}
+
+/// ⭐⭐ **UMA VERSÃO DESCONHECIDA RECUSA PELA MESMA LEI** — e é isto que fecha um buraco de FUTURO.
+///
+/// ⚠️ O `PATTERN_ART_DOC_VERSION` vive **fora** da escada do `PROJECT_SCHEMA` de propósito (é o que
+/// faz um campo novo aqui dentro não bumpar o schema do projecto). O preço era: no dia em que ele
+/// subisse, um ficheiro anterior não seria *recusado* — seria aberto **sem a arte**, e cairia no
+/// mesmo save destrutivo. Com a recusa, o preço desaparece.
+#[test]
+fn an_unknown_pattern_art_version_is_refused_too() {
+    let futuro =
+        postcard::to_allocvec(&(9_999u32, Vec::<super::SavedPatternArt>::new())).expect("encode");
+    assert!(
+        super::decode_texture_pattern_art(&futuro).is_err(),
+        "uma versao futura foi aberta sem a arte - o buraco de futuro continua la'"
+    );
+}
+
+/// ⭐⭐ **CONTROLO: um projecto SEM padrão nenhum abre.** Sem esta linha a lei da recusa fecharia a
+/// porta a todo ficheiro do repo — o blob vazio é o caso normal, não um erro.
+#[test]
+fn a_project_with_no_patterns_at_all_still_opens() {
+    assert!(
+        super::decode_texture_pattern_art(&[])
+            .expect("um blob vazio nao e' erro")
+            .is_empty()
+    );
+}
+
+/// ⭐⭐ **O DESCODIFICADOR LÊ O QUE O COLETOR ESCREVEU** — o round-trip que não existia.
+///
+/// ⚠️ **O caminho de LEITURA dos pixels nunca tinha sido medido**: ele exigia um `AppGfx` com uma
+/// surface de janela real, e a única metade gateada era a da escrita (`art_ids_named_by`). Partir a
+/// leitura em *descodificar* (puro) e *instalar* (precisa do `AssetDb`) é o que a torna alcançável
+/// — a mesma cirurgia que a escrita já tinha sofrido, e pela mesma razão.
+#[test]
+fn the_decoder_reads_back_exactly_what_the_collector_writes() {
+    let (w, h) = (4u32, 3u32);
+    let px = art(w, h);
+    let id = AssetDb::new().insert_image_rgba8(w, h, px.clone());
+    let escrito = postcard::to_allocvec(&(
+        super::PATTERN_ART_DOC_VERSION,
+        vec![super::SavedPatternArt {
+            id,
+            width: w,
+            height: h,
+            rgba: px.clone(),
+        }],
+    ))
+    .expect("encode");
+    let lido = super::decode_texture_pattern_art(&escrito).expect("o proprio formato le-se");
+    assert_eq!(lido.len(), 1);
+    assert_eq!(lido[0].id, id, "o id nao sobreviveu ao round-trip");
+    assert_eq!((lido[0].width, lido[0].height), (w, h));
+    assert_eq!(lido[0].rgba, px, "os pixels nao sobreviveram");
+}

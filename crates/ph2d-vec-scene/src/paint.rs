@@ -212,7 +212,24 @@ impl PatternFill {
         Self {
             source,
             kind: TileKind::Grid,
-            offset_denom: 1,
+            // ⭐⭐⭐ **`2`, e não `1`** (2026-08-30) — o desfasamento clássico de meio tijolo.
+            //
+            // ⛔⛔ **Com `1` aqui, DOIS dos quatro reticulados nasciam MORTOS.** A cadeia é
+            // aritmética: `TileLaw::period()` devolve `offset_denom.max(1)` para os tijolos ⇒ `1`
+            // ⇒ `cells() = [1, 1]` ⇒ o ladrilho assado sai **byte-idêntico ao da grade**. O artista
+            // carregava em *Brick* ou *Column* e via uma grade.
+            //
+            // ⚠️ **A `Hex` escapava porque o braço dela devolve `2` sem olhar este campo** — é isso
+            // que fazia o defeito parecer impossível: dos quatro chips, dois funcionavam.
+            //
+            // ⚠️ **E o painel não o podia curar:** a faixa do slider do *Offset* é `2..=8`
+            // (`TEXPAT_DENOM_MIN`), logo o `1` era **inalcançável pelo controlo** — estado que o
+            // artista não tinha gesto para desfazer. *Um modelo que nasce fora do que o painel
+            // exprime produz estado inalcançável.*
+            //
+            // ⭐ **Inerte para a grade e para a colmeia**, e há gate a exigi-lo: o `period()` das
+            // duas não lê este campo, então a mudança não move um pixel delas.
+            offset_denom: 2,
             size,
             gap: [0.0, 0.0],
             origin: [0.0, 0.0],

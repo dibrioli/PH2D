@@ -37,41 +37,11 @@ pub(super) fn empty_state() -> ProjectState {
     }
 }
 
-/// Grava um arquivo de projeto em `path` com o esquema `schema`. Passar
-/// `PROJECT_SCHEMA` produz um arquivo que o loader ACEITA; qualquer outro número
-/// produz um que ele RECUSA — os dois caminhos que os gates abaixo separam.
-///
-/// `timeline` são os bytes do `TimelineDoc` (vazio = projeto sem animação).
-fn write_project_with(path: &std::path::Path, schema: u32, timeline: Vec<u8>) {
-    write_project_full(path, schema, timeline, Vec::new());
-}
-
-/// O mesmo, com os bytes da ESCULTURA — o 8º campo do arquivo (v52).
-fn write_project_full(path: &std::path::Path, schema: u32, timeline: Vec<u8>, sculpt: Vec<u8>) {
-    let file = ProjectFile {
-        state: empty_state(),
-        assets: Vec::new(),
-        painted: Vec::new(),
-        motion: String::new(),
-        timeline,
-        physics: Default::default(),
-        tokens: Vec::new(),
-        settings: crate::project_settings::collect(Default::default()),
-        sculpt,
-        baked_forms: Vec::new(),
-        player_tape: ph2d_physics_ecs::TapeWire::default(),
-        sprite_pixels: Vec::new(),
-        stable_id_counter: ph2d_ecs::StableId::FIRST,
-        input_map: ph2d_input::InputMap::new(),
-        pattern_art: Vec::new(),
-    };
-    let bytes = postcard::to_allocvec(&(schema, &file)).expect("serializa");
-    std::fs::write(path, bytes).expect("grava o arquivo de projeto");
-}
-
-fn write_project(path: &std::path::Path, schema: u32) {
-    write_project_with(path, schema, Vec::new());
-}
+/// **O ESCRITOR de arquivo das suítes** — filho (`#[path]`) pelo teto de LOC do HR-18, cortado por
+/// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
+#[path = "project_test_writer.rs"]
+mod writer;
+use writer::{write_project, write_project_art, write_project_full, write_project_with};
 
 /// O documento de uma animação: uma track em `hero`, com o `wire_id` (a identidade do objeto)
 /// carimbado como o save carimba. Devolve os bytes que o arquivo de projeto carregaria.
@@ -566,6 +536,12 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
         "e nada da animação do arquivo entrou pela metade"
     );
 }
+
+/// **A ARTE DOS PADRÕES no arquivo** (plano 33, W8) — filho (`#[path]`) pelo teto
+/// de LOC do HR-18, e FILHO pela razão exacta dos três abaixo: as fixtures desta
+/// suíte (`headless_app`, `write_project_art`, `tmp_path`) são as portas dele.
+#[path = "project_pattern_art_tests.rs"]
+mod pattern_art;
 
 /// **O que um load faz com a ESCULTURA** — filho (`#[path]`) pelo teto de LOC do
 /// HR-18, e FILHO e não irmão porque as fixtures desta suíte (`headless_app`,

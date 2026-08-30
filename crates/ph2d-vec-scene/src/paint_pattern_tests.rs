@@ -587,3 +587,85 @@ fn a_colour_token_on_a_patterned_stroke_replaces_the_paint() {
     assert!(s.pattern().is_none(), "o padrao sobreviveu ao token");
     assert_eq!(s.color(), tok);
 }
+
+// ───────────── o TIJOLO nasce MORTO (2026-08-30) ─────────────
+
+/// ⭐⭐⭐ **UM PADRÃO QUE NASCE TIJOLO TEM DE LADRILHAR COMO UM TIJOLO.**
+///
+/// ⛔⛔ **Dois dos quatro reticulados estavam MORTOS AO NASCER**, e a cadeia é aritmética:
+/// [`PatternFill::new`] nascia com `offset_denom = 1`, e a
+/// [`ph2d_vec_pattern::TileLaw::period`] devolve `offset_denom.max(1)` para os tijolos ⇒ `1` ⇒
+/// `cells() = [1, 1]` ⇒ **o ladrilho assado sai byte-idêntico ao da grade**. O artista carrega em
+/// *Brick* e vê uma grade.
+///
+/// ⚠️ **A `Hex` escapava porque o braço dela devolve `2` sem olhar o campo** — é isso que fazia o
+/// defeito parecer impossível: dos quatro chips, dois funcionavam.
+///
+/// ⚠️⚠️ **E o painel não o podia curar: a faixa do slider do *Offset* começa em `2`**
+/// (`TEXPAT_DENOM_MIN`), então o `1` que o documento tinha era **inalcançável pelo controlo** —
+/// e a fileira pintava `"1/2"` a partir do valor semeado no store, não do documento. *O artista
+/// lia «1/2», via uma grade, e não tinha gesto nenhum que o tirasse de lá.*
+///
+/// ⛔⛔⛔ **E a cena de smoke ESCONDIA-O**: a `=76` põe `f.offset_denom = 2` à mão, então ela
+/// demonstrava tijolos e colmeias a funcionar sobre um produto em que o chip era inerte. *Uma cena
+/// que compensa o defeito do produto aprova-o.*
+#[test]
+fn a_pattern_born_as_a_brick_actually_tiles_as_one() {
+    let px = [16u32, 16];
+    for kind in [TileKind::BrickRow, TileKind::BrickCol] {
+        let mut p = PatternFill::new(src(), [1.0, 1.0], Rgba8::new(0, 0, 0, 255));
+        p.kind = kind;
+        let lei = p.law(px);
+        assert!(
+            lei.period() > 1,
+            "{kind:?} nasce com periodo {} - o ladrilho e' byte-identico ao da grade e o chip nao \
+             muda um pixel",
+            lei.period()
+        );
+        assert_ne!(
+            lei.cells(),
+            [1, 1],
+            "{kind:?} nasce a assar UMA celula - e' uma grade com outro nome"
+        );
+    }
+}
+
+/// ⭐⭐ **CONTROLO: a GRADE continua a ser uma célula, e a COLMEIA continua a ser duas.**
+///
+/// ⚠️ É a metade que impede a cura de ser *"pôr tudo a 2"*: o `offset_denom` é **inerte** nos dois
+/// reticulados que não desfasam (o `period()` deles não o lê), então mudar o nascimento não pode
+/// mexer num pixel deles. Sem esta linha, uma cura que mudasse a grade passaria.
+#[test]
+fn the_grid_and_the_hex_are_untouched_by_where_the_offset_is_born() {
+    let px = [16u32, 16];
+    let base = PatternFill::new(src(), [1.0, 1.0], Rgba8::new(0, 0, 0, 255));
+    for (kind, esperado) in [(TileKind::Grid, [1u32, 1]), (TileKind::Hex, [1, 2])] {
+        let mut p = base.clone();
+        p.kind = kind;
+        assert_eq!(p.law(px).cells(), esperado, "{kind:?} mudou de ladrilho");
+        // E mexer no campo continua a não os tocar.
+        let mut outro = p.clone();
+        outro.offset_denom = 7;
+        assert_eq!(
+            outro.law(px).cells(),
+            esperado,
+            "{kind:?} passou a ler o campo"
+        );
+    }
+}
+
+/// ⚠️ **O valor em que ele nasce tem de estar DENTRO do que o painel exprime.**
+///
+/// O slider do *Offset* vai de `2` a `8` (`ph2d-panel-vector`, `TEXPAT_DENOM_MIN`/`MAX`), e um
+/// documento que nasce fora dessa faixa é **estado inalcançável**: o controlo não o mostra e não o
+/// pode devolver. *Um modelo que aceita o que o painel não exprime produz estado que o artista não
+/// consegue desfazer* — a mesma lei que o `ANIM_TAGS_MAX` da §11 do Sprite já pagou.
+#[test]
+fn the_offset_is_born_inside_the_range_the_panel_can_express() {
+    let d = PatternFill::new(src(), [1.0, 1.0], Rgba8::new(0, 0, 0, 255)).offset_denom;
+    assert!(
+        (2..=8).contains(&d),
+        "o padrao nasce com offset_denom = {d}, fora da faixa 2..=8 do slider - o artista nao tem \
+         gesto que o alcance"
+    );
+}

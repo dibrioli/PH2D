@@ -152,6 +152,28 @@ impl crate::App {
                 return;
             }
         };
+        // **E A ARTE DOS PADRÕES, pela MESMA lei** (plano 33, 2026-08-30). Era o **único** blob com
+        // versão própria que não a obedecia: um `eprintln!` e o load seguia.
+        //
+        // ⚠️ **O resto da cadeia é idêntico ao da timeline, com o sujeito trocado:** a fonte de cada
+        // estampa deixa de resolver, toda forma com padrão pinta a cor de recurso, o toast diz
+        // *"Project loaded"* — e o Ctrl+S seguinte reescreve o ficheiro **sem** os pixels, porque o
+        // coletor salta o `AssetId` que já não está no `AssetDb`. *A arte não some por um bug; some
+        // porque o app abriu, mentiu e salvou.*
+        //
+        // ⚠️ Descodificada AQUI (antes de qualquer mutação da sessão) e **instalada** lá em baixo,
+        // pela mesma razão que a escultura: instalar precisa do `AssetDb`, descodificar não.
+        let pattern_art =
+            match crate::project_texture_pattern::decode_texture_pattern_art(&file.pattern_art) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("[proj] arte de padrao ilegivel — load RECUSADO: {e}");
+                    self.toast(format!(
+                        "Project refused: its pattern artwork is from another version ({e})"
+                    ));
+                    return;
+                }
+            };
         // **E A ESCULTURA, pela MESMA lei** (ADR-0150 W8.3): um documento que este
         // binário não sabe ler faz o load inteiro ser RECUSADO. Abrir sem ela mostraria
         // a cena, pareceria certo, e o próximo Ctrl+S gravaria o vazio por cima — a obra
@@ -373,7 +395,7 @@ impl crate::App {
         // A ARTE DOS PADRÕES (plano 33 W4) — devolvida ao `AssetDb` **sob o mesmo id**, que é o que
         // a fonte de cada `Paint::Pattern` do documento nomeia. Sem isto, toda forma com padrão
         // reabriria a pintar a cor de recurso.
-        self.restore_texture_pattern_art(&file.pattern_art);
+        self.install_texture_pattern_art(pattern_art);
         // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez
         // e os N sprites dela reatam a textura partilhada + o retangulo da regiao.
         self.restore_sprite_sheets(sprite_sheets);

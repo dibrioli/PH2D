@@ -38,7 +38,7 @@ virou **código**.
 | 16 | `810c1abd4` | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
 | 17 | `eb2013fc5` | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
 | 18 | `165d6a096` | ⛔⛔ **UMA TABELA para a verdade de cada módulo** — e o `if` com um lado morto (§13) |
-| 19 | *(a seguir)* | ⭐ **A FUGA DO GIZMO ficou inerte** — a `D1` cumprida sem apagar a lei (§14) |
+| 19 | `9bda8e3de` | ⭐ **A FUGA DO GIZMO ficou inerte** — a `D1` cumprida sem apagar a lei (§14) |
 
 ---
 

@@ -190,7 +190,23 @@ pub fn tip_deviation(input: &Mesh, output: &Mesh, target: f32) -> TipDeviation {
             .iter()
             .filter(|t| t.iter().any(|q| dist(a, *q) <= radius + RADIUS * target))
             .collect();
+        // ⛔⛔⛔ **NENHUMA FACE PERTO DO ÁPICE É O PIOR CASO, NÃO UM «SALTAR».**
+        //
+        // ⚠️ **A 1.ª redacção desta função fazia `continue` aqui**, e o defeito mordeu no mesmo
+        // dia: uma ponta comida **por inteiro** deixa de ter superfície na vizinhança do
+        // ápice, saía da contagem, e o relatório dizia `0 de 3 acima da barra` sobre uma peça
+        // com um espinho amputado em **`−46,6 %`**. *É a família do balde vazio — «não medido»
+        // e «perfeito» são o mesmo byte —, e desta vez fui eu que a construí.*
+        //
+        // ⚠️ **O valor que se regista é o RAIO da busca** (`RADIUS` quads): não é a distância
+        // verdadeira, é o piso do que se sabe — *«mais longe do que eu olhei»*. Ele é maior que
+        // [`TIP_DEVIATION_MAX`] por construção, logo a ponta conta como partida.
         if near.is_empty() {
+            out.tips += 1;
+            out.over += 1;
+            out.p50 = out.p50.max(RADIUS);
+            out.p90 = out.p90.max(RADIUS);
+            out.max = out.max.max(RADIUS);
             continue;
         }
         let mut ds: Vec<f32> = pos
@@ -202,6 +218,10 @@ pub fn tip_deviation(input: &Mesh, output: &Mesh, target: f32) -> TipDeviation {
                     / target
             })
             .collect();
+        // ⚠️ **A entrada não tem vértice nenhum a menos de `3` quads do próprio ápice** —
+        // acontece numa malha muito mais grosseira que o alvo. Aí não há o que medir, e a
+        // ponta **não conta**: ⛔ ao contrário do caso acima, aqui é a ENTRADA que não dá
+        // amostra, e inventar uma acusação a partir disso mediria a fixtura, não a saída.
         if ds.is_empty() {
             continue;
         }

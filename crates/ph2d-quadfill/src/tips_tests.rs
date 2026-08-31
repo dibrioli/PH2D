@@ -222,6 +222,40 @@ fn um_bico_amputado_e_acusado_e_o_intacto_nao() {
     assert_eq!(cortado.over, 1, "{cortado:?}");
 }
 
+/// ⭐⭐⭐ **GATE — uma ponta comida POR INTEIRO é o pior caso, não um «não medido».**
+///
+/// ⛔⛔⛔ **É o gate de um defeito que esta régua teve no dia em que nasceu.** Quando a saída
+/// não tem superfície nenhuma junto do ápice, não há amostra — e a 1.ª redacção **saltava** a
+/// ponta. Resultado medido no produto: um relatório a dizer `0 de 3 pontas acima da barra`
+/// sobre uma peça com um espinho amputado em **`−46,6 %`**, e o selector a escolher
+/// exactamente essa candidata porque a régua a dava por limpa.
+///
+/// ⚠️ *É a família do balde vazio: «não medido» e «perfeito» são o mesmo byte.* A diferença é
+/// que aqui o balde vazio **é** o defeito máximo, e não uma ausência de informação.
+#[test]
+fn uma_ponta_comida_por_inteiro_e_o_pior_caso() {
+    let entrada = cone(false);
+    // ⚠️ Um alvo pequeno faz o raio de busca (`3 × alvo`) não alcançar a tampa do cone
+    // cortado — é assim que se encena «não há saída nenhuma junto do ápice».
+    let alvo = 0.05;
+    let d = tip_deviation(&entrada, &cone(true), alvo);
+    assert!(
+        d.over >= 1,
+        "⛔ um espinho AMPUTADO tem de contar como partido: {d:?}"
+    );
+    assert!(
+        d.max > TIP_DEVIATION_MAX,
+        "⛔ e o desvio registado tem de passar a barra: {d:?}"
+    );
+    // ⛔ O CONTROLE: com a saída IGUAL à entrada o mesmo alvo pequeno não acusa nada — senão
+    // este gate estaria a medir o raio de busca, e não a amputação.
+    let igual = tip_deviation(&entrada, &entrada, alvo);
+    assert_eq!(
+        igual.over, 0,
+        "CONTROLO: a saida identica nao pode acusar com o mesmo alvo: {igual:?}"
+    );
+}
+
 /// ⭐⭐ **GATE — a régua é ADIMENSIONAL no passo da grade.**
 ///
 /// ⚠️ Sem esta propriedade a régua não pode ser comparada entre densidades, e foi

@@ -1172,3 +1172,106 @@ o `pointer_down` do `field3d` sem a pergunta · a porta velha a renascer no `for
 - **`cursor_over_hero_panel` continua a ser uma lista de ids de painel escrita à mão**, com três
   gates a apontar-lhe. Ela já não está no caminho da cena 3D (a porta única usa `panel_at`), mas é
   a mesma espécie — e a wave que a apagar deve ler o §17.1 primeiro.
+
+---
+
+## §18 — ⭐⭐⭐ O ARTISTA MOVE UM PAINEL: a posição deixa de ser constante (entrega 23)
+
+Commit `aa07ef132`. A decisão **D4** entregue como gesto — a metade que o §16.8 tinha nomeado como
+*«não existe: o `ALLOWED_SLOTS` já descreve para onde ele poderia ir, falta o gesto»*.
+
+### §18.1 — O gesto, e onde a D1 muda de natureza
+
+Arrastar a aba de um painel para outra coluna move-o. Um **toque** continua a trocar de aba; a
+distância percorrida separa os dois.
+
+⭐⭐ **E aqui a D1 deixa de ser uma verificação:**
+
+> *«O erro não é detectado, é **inexprimível**.»*
+
+Um encaixe que o painel não permite **não é oferecido** — não se pinta, não se testa, não existe
+para aquele gesto. ⛔ A alternativa (aceitar a largada e depois recusá-la) é a forma que o Enio
+nomeou como errada: *o artista faz o gesto, vê a resposta e não sabe porquê.*
+
+E as declarações passam a **dizer alguma coisa**:
+
+| painel | declara | porquê |
+|---|---|---|
+| coluna de propriedades | `SIDES` | a faixa de baixo tem 240 px; uma lista ali fica com duas linhas |
+| **tira** (Flip, timeline) | `BOTTOM` | numa coluna de 304 px ela mostraria dois quadros |
+| grafo do Motion | `CENTER` | ele **é** o centro (§16.3) |
+
+### §18.2 — ⛔⛔ O refactor que o gesto OBRIGOU: `PaintCtx::slot`
+
+Mover o painel mudava **quem o contava** e não **onde ele pintava** — porque cada painel lia um
+campo do layout **com o nome de outro painel**:
+
+`layout.inspector` · `layout.hierarchy` · `layout.padding` · `layout.bgremoval` ·
+`layout.painter_sidebar` · `layout.painter_layers` · `layout.timeline` · `layout.flip_strip`
+
+**Oito nomes para a mesma pergunta** — *onde é que eu fico?* —, cada um com o nome do painel que ali
+morava quando a posição era fixa. ⚠️ Enquanto ela era constante, lia-se bem. No dia em que o artista
+**move** um painel, um campo chamado `inspector` lido pelo painel de Física deixa de poder estar
+certo.
+
+⇒ **21 crates convertidas para `ctx.slot`**, uma linha cada. ⚠️ Um painel que **flutua** também o
+lê: para ele é a posição de **nascimento**, e o encaixe que ele declara é a resposta mais
+significativa que existe.
+
+### §18.3 — ⛔⛔ Duas coisas que a MEDIÇÃO refutou, as duas escritas por mim com confiança
+
+**1. A supressão do clique.** Eu escrevi *«uma aba arrastada não é uma aba clicada»* com um
+comentário a explicar o cenário — e **a mutação que a apagava SOBREVIVEU**. Ao olhar: o cenário já
+estava coberto, porque o `apply_click` só dispara com `still_hot`, isto é com a largada **dentro** do
+rect da aba onde o dedo desceu; arrastar para outra coluna nunca produziu clique nenhum.
+
+⚠️ O que a supressão de facto fazia era **matar o empurrão**: o limiar são poucos pixels e um dedo
+que carrega mexe-se sempre um pouco ⇒ trocar de aba passava a **depender da firmeza da mão**, que é
+a pior espécie de defeito de interface. O gate `a_five_pixel_nudge_on_a_tab_still_switches_it`
+nasceu **vermelho** com ela. *Código inerte com um comentário confiante é pior que código ausente.*
+
+**2. `SlotSet::ANY_DOCK` no arnês.** Ele contém as **duas metades** de cada coluna, e a lei do
+`slot_rects` é *«a metade só existe quando a irmã está ocupada»* ⇒ pedir `ANY_DOCK` **parte a coluna
+ao meio**. Medido: o corpo do painel do Motion caiu para **346 px** e **26 nós** passaram a
+«transbordar» sem uma linha de produto se mexer. *Um conjunto de ocupação não é uma lista de sítios
+possíveis: é quem lá está.*
+
+### §18.4 — O limiar tem consequência, e ela não é o resultado do gesto
+
+A primeira ronda de mutação deixou-o **sobreviver**: largar sobre o próprio encaixe é um no-op, logo
+apagá-lo não muda estado nenhum. ⭐ O que ele decide é **o que se vê**: sem ele, pousar o dedo numa
+aba acende as colunas todas e apaga-as ao levantar — *um piscar que nenhuma asserção de estado final
+apanha*. Gate `a_still_press_on_a_tab_never_lights_the_drop_zones`, com o controlo da metade
+positiva (passado o limiar, elas **têm** de acender).
+
+### §18.5 — Verificação
+
+| portão | resultado |
+|---|---|
+| `ph2d-editor-core` | **1344** ✓ |
+| `ph2d-host-desktop` | **4765** ✓ |
+| `ph2d-panel-registry-init` | 13 alvos, **0** falhas |
+| `cargo check --workspace --all-targets` · clippy `--workspace --all-targets` · fmt | limpo |
+
+⚠️ O `paint.rs` bateu **703/700** e o corte foi por responsabilidade: `hero/panel_walk.rs` —
+*quais painéis pintam este quadro, e onde*.
+
+**Oito mutações mortas** com controlo. ⭐ **Duas sobreviveram, e as duas mandaram mudar o PRODUTO,
+não o gate** (§18.3.1 e §18.4).
+
+### §18.6 — ⏳ O que fica nomeado
+
+- ⛔ **A arrumação NÃO sobrevive ao fecho do app.** O mapa de excepções vive no `WidgetStore`, que
+  não é gravado. A D4 diz que *«um layout é `{encaixe → [painéis], posição das divisórias}`»* e é
+  **trivialmente serializável** — o sítio natural é o `~/.ph2d/prefs.txt`, que já é lido e escrito.
+  Wave própria, pequena.
+- **A ordem das abas dentro de um encaixe** é a ordem z, logo muda ao trocar de aba. Reordenar por
+  arrasto (o que o Godot faz) é outra wave.
+- **As metades de coluna** (`LeftBottom` / `RightBottom`) continuam sem ocupante possível: nenhum
+  painel as declara sozinhas, e `SIDES` inclui-as, então uma largada na metade de baixo resolve
+  para ela — mas como a irmã não está ocupada, a lei devolve a coluna inteira e o resultado
+  vê-se igual. ⚠️ *Isto é o modelo a funcionar, não um bug* — mas é a próxima coisa que alguém vai
+  achar estranha.
+- **A largura da coluna não muda com o conteúdo**: mover um painel largo para uma coluna estreita
+  dá-lhe a largura da coluna. A D4 promete arrastar a **divisória**, e isso já existe
+  (`DOCK_SEAM_PX`).

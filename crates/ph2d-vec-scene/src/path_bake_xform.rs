@@ -28,7 +28,7 @@ pub fn bake_xform(path: &mut VecPath, x: &crate::Xform) {
         v.in_handle = f(v.in_handle);
         v.out_handle = f(v.out_handle);
     });
-    transform_fill_geometry(path, f, x.mean_scale());
+    transform_fill_geometry(path, f, x.mean_scale(), x);
 }
 
 /// Aplica a transformação de ponto `f` (a MESMA das âncoras) à geometria world-space
@@ -48,9 +48,26 @@ pub(crate) fn transform_fill_geometry(
     path: &mut VecPath,
     f: impl Fn([f64; 2]) -> [f64; 2],
     radius_scale: f64,
+    x: &crate::Xform,
 ) {
     if radius_scale != 1.0 {
         path.for_each_vert_mut(|v| v.corner_radius *= radius_scale);
+    }
+    // ⛔⛔⛔ **A LARGURA DO TRAÇO É O TERCEIRO COMPRIMENTO, e ficou de fora da lista** — report do
+    // Enio de 2026-08-30 (*"a proporção muda no stroke (estica/achata o tile)"*).
+    //
+    // ⚠️⚠️ **O doc acima PREVIU este defeito, palavra por palavra:** *"se os dois comprimentos
+    // vivessem em funções separadas, o próximo op novo escalaria um e esqueceria o outro"*. A
+    // largura nunca esteve em função nenhuma — medido: sob um `scale_path` UNIFORME de `2×` o
+    // ladrilho da estampa duplicava (`4,0 × 2,0`) e a banda ficava em `1,0000`.
+    //
+    // ⚠️ **E ela tem a lei da CANETA, não a do CAMINHO**: `√|det|` (a média geométrica), que é a
+    // decisão do dono no bug #27 — *"quando engrossa, engrossa por igual nos dois eixos"*. Sob
+    // `(3, 1)` as duas médias dão `2,000` e `1,732`, e usar a do caminho poria a banda e o motivo
+    // outra vez em desacordo, um passo mais subtil.
+    let caneta = x.uniform_scale();
+    if let Some(s) = path.stroke.as_mut() {
+        s.width *= caneta;
     }
     match &mut path.fill {
         Some(Paint::Linear { start, end, .. }) => {
@@ -81,8 +98,18 @@ pub(crate) fn transform_fill_geometry(
     // encontrado.* É a terceira vez que esta linha paga a mesma conta (o colector do ficheiro e o
     // memo do assado foram as outras duas), e as três tinham a mesma forma: código que diz `fill` e
     // devia dizer *tinta*.
+    // ⛔⛔ **A ESTAMPA DO TRAÇO SEGUE A CANETA, não a forma** (report de 2026-08-30).
+    //
+    // O preenchimento estica com a forma — é a lei dele, e está certa. Um traço **não estica**: a
+    // caneta é uniformizada por `√|det|` desde o bug #27. ⇒ com a lei do preenchimento aqui, o
+    // motivo esticava dentro de uma banda que não esticava. Medido: com `(3, 1)`, o ladrilho ia a
+    // um aspecto **3,00×** o autorado enquanto a banda ficava redonda.
+    //
+    // ⚠️ **A conta é a MESMA função** — o que muda é o afim que ela recebe: a parte CONFORME, que
+    // devolve um afim já conforme **ao bit** (logo o caminho comum não se mexe).
     if let Some(pat) = path.stroke.as_mut().and_then(StrokeSpec::pattern_mut) {
-        transform_pattern(pat, &f);
+        let u = x.uniform_part();
+        transform_pattern(pat, &|p| u.apply(p));
     }
 }
 

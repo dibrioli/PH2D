@@ -59,6 +59,14 @@ impl VecScene {
             v.out_handle[a] = twice_center - v.out_handle[a];
         });
         // The gradient geometry mirrors with the shape (only the flipped axis).
+        // ⚠️ O MESMO espelho, como afim: a `transform_fill_geometry` precisa dele para os
+        // comprimentos (o `√|det|` de uma reflexão é `1`, logo a caneta não se mexe) e para a
+        // estampa do traço. *Uma closure não diz a um comprimento o que lhe aconteceu.*
+        let espelho = if a == 0 {
+            crate::Xform([-1.0, 0.0, 0.0, 1.0, twice_center, 0.0])
+        } else {
+            crate::Xform([1.0, 0.0, 0.0, -1.0, 0.0, twice_center])
+        };
         transform_fill_geometry(
             path,
             |mut p| {
@@ -66,6 +74,7 @@ impl VecScene {
                 p
             },
             1.0,
+            &espelho,
         );
         true
     }
@@ -105,7 +114,12 @@ impl VecScene {
             v.out_handle = rot(v.out_handle);
         });
         // Gradient geometry rotates with the shape (about the same pivot).
-        transform_fill_geometry(path, rot, 1.0);
+        // ⚠️ O MESMO giro, como afim — ver o espelho acima. `√|det| = 1`: a caneta não se mexe.
+        let giro = match dir {
+            Rotate90::Cw => crate::Xform([0.0, 1.0, -1.0, 0.0, cx + cy, cy - cx]),
+            Rotate90::Ccw => crate::Xform([0.0, -1.0, 1.0, 0.0, cx - cy, cy + cx]),
+        };
+        transform_fill_geometry(path, rot, 1.0, &giro);
         true
     }
 
@@ -514,7 +528,13 @@ impl VecScene {
             v.in_handle = [v.in_handle[0] + dx, v.in_handle[1] + dy];
             v.out_handle = [v.out_handle[0] + dx, v.out_handle[1] + dy];
         });
-        transform_fill_geometry(path, |p| [p[0] + dx, p[1] + dy], 1.0);
+        // ⚠️ Translação pura: `√|det| = 1`, e a parte conforme é ela própria — nada de escalar.
+        transform_fill_geometry(
+            path,
+            |p| [p[0] + dx, p[1] + dy],
+            1.0,
+            &crate::Xform([1.0, 0.0, 0.0, 1.0, dx, dy]),
+        );
         true
     }
 
@@ -538,7 +558,19 @@ impl VecScene {
         // Gradient geometry scales with the shape; the radial radius by the mean
         // axis factor (peniko radials are circular, so non-uniform scale is
         // approximated rather than made elliptical).
-        transform_fill_geometry(path, s, (sx.abs() + sy.abs()) * 0.5);
+        // ⭐⭐⭐ **E É POR AQUI QUE O REPORT DE 30/08 ENTRA** — os campos **W** e **H** da secção
+        // Transform chamam este op com um eixo só (`scale_path(sx, 1.0)`), e a alça de aresta da
+        // moldura também. O afim vai agora INTEIRO à porta dos comprimentos: a caneta e a estampa
+        // do traço têm de o ver para não discordarem da banda.
+        let escala = crate::Xform([
+            sx,
+            0.0,
+            0.0,
+            sy,
+            pivot[0] * (1.0 - sx),
+            pivot[1] * (1.0 - sy),
+        ]);
+        transform_fill_geometry(path, s, (sx.abs() + sy.abs()) * 0.5, &escala);
         true
     }
 
@@ -562,7 +594,16 @@ impl VecScene {
         // Gradient geometry rotates with the shape about the SAME pivot — so the
         // fill stays locked to the shape and never "breathes" (the Transform R
         // field case the user hit).
-        transform_fill_geometry(path, rot, 1.0);
+        // ⚠️ O MESMO giro, como afim. `√|det| = 1`: uma rotação não mexe na caneta.
+        let giro = crate::Xform([
+            c,
+            s,
+            -s,
+            c,
+            pivot[0] - pivot[0] * c + pivot[1] * s,
+            pivot[1] - pivot[0] * s - pivot[1] * c,
+        ]);
+        transform_fill_geometry(path, rot, 1.0, &giro);
         true
     }
 

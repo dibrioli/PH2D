@@ -102,6 +102,40 @@ impl Xform {
         (sx + sy) * 0.5
     }
 
+    /// **O FATOR UNIFORME EQUIVALENTE de uma CANETA**, `√|det|` — a média GEOMÉTRICA.
+    ///
+    /// ⚠️⚠️ **Não é a [`Self::mean_scale`], e a diferença importa**: aquela é a média
+    /// ARITMÉTICA `(sx+sy)/2` e serve os comprimentos do CAMINHO (o raio de quina, o gradiente
+    /// radial); esta serve os comprimentos da CANETA, e é a lei que o dono do produto escolheu no
+    /// bug #27 (*"quando engrossa, engrossa por igual nos dois eixos"*) — *para escala uniforme é a
+    /// própria escala, e é invariante à rotação*. Sob `(3, 1)` elas dão `2,000` e `1,732`.
+    #[must_use]
+    pub fn uniform_scale(&self) -> f64 {
+        let [a, b, c, d, _, _] = self.0;
+        (a * d - b * c).abs().sqrt()
+    }
+
+    /// ⭐⭐⭐ **A PARTE CONFORME de um afim** — a mesma rotação (ou reflexão) com a escala
+    /// UNIFORMIZADA por [`Self::uniform_scale`], e a translação intacta.
+    ///
+    /// ⚠️ **Um afim que já é conforme volta AO BIT** — é isso que faz o caminho comum não mudar um
+    /// pixel, e há gate. Só a parte que estica desigualmente é removida.
+    ///
+    /// É a decomposição polar: a rotação mais próxima é `atan2(b − c, a + d)`, e uma reflexão
+    /// (`det < 0`) mede-se sobre a matriz já des-espelhada para não virar uma rotação de meia volta.
+    #[must_use]
+    pub fn uniform_part(&self) -> Self {
+        let [a, b, c, d, e, f] = self.0;
+        let det = a * d - b * c;
+        let k = det.abs().sqrt();
+        if k <= f64::MIN_POSITIVE {
+            return Self([0.0, 0.0, 0.0, 0.0, e, f]);
+        }
+        let s = if det < 0.0 { -1.0 } else { 1.0 };
+        let (sin, cos) = (b - c * s).atan2(a + d * s).sin_cos();
+        Self([k * cos, k * sin, -k * sin * s, k * cos * s, e, f])
+    }
+
     #[must_use]
     pub fn is_identity(&self) -> bool {
         *self == Self::IDENTITY

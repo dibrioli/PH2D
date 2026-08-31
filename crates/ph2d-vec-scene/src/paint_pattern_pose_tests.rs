@@ -84,71 +84,101 @@ fn moving_the_shape_moves_the_pattern_with_it() {
     assert!(p.angle.abs() < 1e-9 && (p.size[0] - 10.0).abs() < 1e-9);
 }
 
-/// ⭐⭐⭐ **A ESTAMPA DO CONTORNO cavalga a pose igual à do preenchimento** (auditoria de
-/// 2026-08-30).
+/// ⭐⭐⭐ **A ESTAMPA DO CONTORNO cavalga a CANETA; a do preenchimento cavalga a FORMA** — e as duas
+/// leis coincidem **ao bit** em todo afim conforme.
 ///
-/// ⛔ A lei do padrão estava escrita **só para `path.fill`**: rodar ou escalar uma forma cujo
-/// CONTORNO tem estampa deixava-a exactamente onde estava, enquanto a do preenchimento seguia. Uma
-/// forma com as **duas** tintas estampadas rodava com metade do desenho.
+/// # O que esta redacção substitui, e porquê
 ///
-/// ⚠️ **A régua compara as DUAS tintas na MESMA forma, e é isso que a torna um oráculo.** Afirmar
-/// só o ângulo do traço mediria a minha aritmética; afirmar que ele é **igual ao do preenchimento**
-/// mede a propriedade — *as duas tintas são a mesma lei* — e continua a valer se a lei mudar.
+/// A anterior chamava-se `..._exactly_like_the_fills` e exigia igualdade **em todo afim**. Ela
+/// curou o defeito de que a estampa do traço não seguia a forma de todo — e escreveu de mais:
+/// report do Enio de 2026-08-30, **"funciona, mas a proporção muda no stroke (estica/achata o
+/// tile)"**.
+///
+/// ⚠️ **Duas leis colidiam dentro do mesmo traço.** A estampa herdava o afim CRU (a lei do
+/// preenchimento, *"o padrão está colado à forma"*) e a faixa herdava o `√|det|` (a lei da caneta,
+/// decisão do dono no bug #27, *"quando engrossa, engrossa por igual nos dois eixos"*). ⇒ uma banda
+/// que não esticou com um motivo que esticou. Medido: sob `(3, 1)` o ladrilho ia a **3,00×** o
+/// aspecto autorado enquanto a banda ficava redonda.
+///
+/// # A régua tem DUAS metades, e a de cima é a que protege o caso comum
+///
+/// ⭐ **Conforme ⇒ as duas tintas concordam ao bit.** É o que garante que rodar, transladar ou
+/// escalar por igual não muda um pixel — a esmagadora maioria dos gestos.
+///
+/// ⛔ **Não-conforme ⇒ o traço NÃO acompanha o esticão**, e a divergência tem sentido: o aspecto do
+/// ladrilho do traço fica no autorado, o do preenchimento estica. *Sem a metade de baixo, uma
+/// redacção que uniformizasse os DOIS passaria — e o preenchimento tem de esticar.*
 #[test]
-fn the_strokes_pattern_rides_the_pose_exactly_like_the_fills() {
-    let mut scene = VecScene::default();
-    let id = scene.push_path(VecPath {
-        verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
-            .map(VecVertex::corner)
-            .to_vec(),
-        closed: true,
-        fill: Some(Paint::Pattern(Box::new(fill()))),
-        stroke: Some({
-            let mut s = crate::StrokeSpec::new(crate::Rgba8::new(9, 9, 9, 255), 1.0);
-            s.paint = crate::StrokePaint::Pattern(Box::new(fill()));
-            s
-        }),
-        ..VecPath::default()
-    });
-
-    let quarter = std::f64::consts::FRAC_PI_2;
-    assert!(scene.rotate_path_by(id, quarter, [0.0, 0.0]));
-    assert!(scene.scale_path(id, 3.0, 0.5, [0.0, 0.0]));
-
-    let path = &scene.paths()[0];
-    let Some(Paint::Pattern(do_fill)) = &path.fill else {
-        panic!("o preenchimento trocou de especie")
+fn the_strokes_pattern_follows_the_pen_and_the_fills_follows_the_shape() {
+    let forma = |scene: &mut VecScene| {
+        scene.push_path(VecPath {
+            verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
+                .map(VecVertex::corner)
+                .to_vec(),
+            closed: true,
+            fill: Some(Paint::Pattern(Box::new(fill()))),
+            stroke: Some({
+                let mut s = crate::StrokeSpec::new(crate::Rgba8::new(9, 9, 9, 255), 1.0);
+                s.paint = crate::StrokePaint::Pattern(Box::new(fill()));
+                s
+            }),
+            ..VecPath::default()
+        })
     };
-    let do_traco = path
-        .stroke
-        .as_ref()
-        .and_then(crate::StrokeSpec::pattern)
-        .expect("o traco continua estampado");
+    let tintas = |scene: &VecScene| {
+        let path = &scene.paths()[0];
+        let Some(Paint::Pattern(f)) = &path.fill else {
+            panic!("o preenchimento trocou de especie")
+        };
+        let s = path
+            .stroke
+            .as_ref()
+            .and_then(crate::StrokeSpec::pattern)
+            .expect("o traco continua estampado");
+        (f.clone(), s.clone(), path.stroke.as_ref().unwrap().width)
+    };
+    let aut = fill().size;
+    let asp = |s: [f64; 2]| s[0] / s[1];
 
-    assert!(
-        (do_traco.angle - do_fill.angle).abs() < 1e-12,
-        "o angulo do traco ({}) ficou para tras do preenchimento ({}) - a estampa do contorno nao \
-         seguiu a forma",
-        do_traco.angle,
-        do_fill.angle
+    // ⭐ METADE DE CIMA — conforme (rotação + escala UNIFORME): concordam AO BIT.
+    let mut a = VecScene::default();
+    let id = forma(&mut a);
+    assert!(a.rotate_path_by(id, std::f64::consts::FRAC_PI_2, [0.0, 0.0]));
+    assert!(a.scale_path(id, 3.0, 3.0, [0.0, 0.0]));
+    let (f, s, w) = tintas(&a);
+    assert_eq!(
+        (s.angle, s.size, s.origin),
+        (f.angle, f.size, f.origin),
+        "sob um afim CONFORME as duas tintas divergiram - o caso comum mudou"
     );
     assert!(
-        (do_traco.size[0] - do_fill.size[0]).abs() < 1e-12
-            && (do_traco.size[1] - do_fill.size[1]).abs() < 1e-12,
-        "o tamanho do ladrilho do traco {:?} divergiu do preenchimento {:?}",
-        do_traco.size,
-        do_fill.size
+        (w - 3.0).abs() < 1e-12,
+        "a largura do traco nao acompanhou a escala uniforme: {w} contra 3,0 - o ladrilho triplicou \
+         e a banda ficou parada"
+    );
+
+    // ⛔ METADE DE BAIXO — NÃO-conforme `(3, 1)`: o preenchimento estica, o traço NÃO.
+    let mut b = VecScene::default();
+    let id = forma(&mut b);
+    assert!(b.scale_path(id, 3.0, 1.0, [0.0, 0.0]));
+    let (f, s, w) = tintas(&b);
+    assert!(
+        (asp(f.size) / asp(aut) - 3.0).abs() < 1e-9,
+        "o PREENCHIMENTO devia esticar 3x o aspecto e foi a {:.4}x - ele esta' colado a' forma",
+        asp(f.size) / asp(aut)
     );
     assert!(
-        (do_traco.origin[0] - do_fill.origin[0]).abs() < 1e-12
-            && (do_traco.origin[1] - do_fill.origin[1]).abs() < 1e-12,
-        "a origem do traco {:?} divergiu do preenchimento {:?}",
-        do_traco.origin,
-        do_fill.origin
+        (asp(s.size) - asp(aut)).abs() < 1e-9,
+        "o TRACO esticou o ladrilho ({:.4} contra o autorado {:.4}) - e' o report de 30/08: a banda \
+         nao estica e o motivo dentro dela estica",
+        asp(s.size),
+        asp(aut)
     );
-    // ⚠️ E o CONTROLO: a pose de facto mudou. Sem isto, duas estampas paradas passariam iguais.
+    // ⭐ E a banda e o motivo movem-se pelo MESMO factor — que é a lei inteira.
+    let k = 3.0f64.sqrt();
     assert!(
-        (do_fill.angle - quarter).abs() > 1e-12 || do_fill.size[0] > 10.0,
-        "a pose nao se mexeu - o gate compara duas coisas paradas e aprova-se sozinho"
+        (w - k).abs() < 1e-12 && (s.size[0] / aut[0] - k).abs() < 1e-9,
+        "a banda ({w}) e o ladrilho ({}) discordaram - os dois tem de seguir o sqrt(|det|) = {k}",
+        s.size[0] / aut[0]
     );
 }

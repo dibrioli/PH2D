@@ -28,10 +28,15 @@ use ph2d_vec_scene::{Paint, PatternSource, Rgba8, VecPathId, VecScene};
 /// vira textura de grão e o artista não vê o que escolheu. Três mostra o motivo E a repetição.
 const DEFAULT_TILES_ACROSS: f64 = 3.0;
 
-/// A fonte a usar quando o artista escolhe *Pattern* na forma `sel`.
+/// A fonte a usar quando o artista escolhe *Pattern* na tinta `slot` da forma `sel`.
 ///
-/// - a forma **já** tem padrão -> a fonte dele (trocar de chip e voltar não perde a arte);
+/// - a tinta **já** tem padrão -> a fonte dele (o chip não deita fora a arte que lá está);
 /// - senão -> [`PatternSource::None`]: o padrão nasce **sem arte escolhida**.
+///
+/// ⚠️ **Ela é POR TINTA** — e a pergunta *"esta tinta tem padrão?"* vai pela porta que as duas já
+/// partilham ([`crate::texture_pattern_edit::pattern_at`]), nunca por um `path.fill` escrito aqui.
+/// A 1.ª redacção lia só o preenchimento, e por isso **o traço nem sequer chamava esta função**: ele
+/// ia direto ao diálogo (report do Enio, 2026-08-30: *"e para Stroke?"*).
 ///
 /// # ⛔⛔ Ela ABRIA O DIÁLOGO DE IMAGEM, e isso decidia pelo artista
 ///
@@ -57,11 +62,13 @@ const DEFAULT_TILES_ACROSS: f64 = 3.0;
 /// ⚠️ **Funções livres sobre `&AssetDb`, e não métodos de `App`, e a razão é o EMPRÉSTIMO:** no
 /// quadro, o `self.gfx` está mutavelmente emprestado desde o topo e vive até ao fim — um `&mut
 /// self` aqui não compila. Quem chama passa o `asset_db` que já tem desestruturado.
-pub(crate) fn source_for(scene: &VecScene, sel: VecPathId) -> Option<PatternSource> {
-    if let Some(Paint::Pattern(p)) = scene.path(sel).and_then(|p| p.fill.as_ref()) {
-        return Some(p.source);
-    }
-    Some(PatternSource::None)
+pub(crate) fn source_for(
+    scene: &VecScene,
+    sel: VecPathId,
+    slot: ph2d_vec_render::PatternSlot,
+) -> Option<PatternSource> {
+    crate::texture_pattern_edit::pattern_at(scene, sel, slot)
+        .map_or(Some(PatternSource::None), |p| Some(p.source))
 }
 
 /// **Abre o diálogo, SEMPRE** — a porta do botão *Source…*, que existe para TROCAR a arte.

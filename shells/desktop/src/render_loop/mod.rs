@@ -7081,7 +7081,11 @@ impl crate::App {
                 let mut pattern = None;
                 if kind == crate::input_dispatch::VecFillKind::Pattern
                     && let Some(sel) = self.vec_pen.selected()
-                    && let Some(source) = crate::texture_pattern_pick::source_for(vec_scene, sel)
+                    && let Some(source) = crate::texture_pattern_pick::source_for(
+                        vec_scene,
+                        sel,
+                        ph2d_vec_render::PatternSlot::Fill,
+                    )
                 {
                     let (size, origin) = crate::texture_pattern_pick::default_placement(
                         asset_db, vec_scene, sel, &source,
@@ -7107,9 +7111,24 @@ impl crate::App {
             // traço por ter fechado um diálogo seria o pior dos dois mundos.
             if let Some(kind) = pending_vec_stroke_kind {
                 let mut pattern = None;
+                // ⭐⭐⭐ **E O TRAÇO PELA MESMA PORTA** (report do Enio, 2026-08-30: *"e para
+                // Stroke?"*). Ele ia direto ao `pick_source`, que abre SEMPRE o diálogo de imagem —
+                // o mesmo defeito do preenchimento, e ainda mais cru, porque nem passava pela porta
+                // que decide.
+                //
+                // ⚠️⚠️ **A lei já estava escrita neste ficheiro, um braço acima, para o PINCEL:**
+                // *"`art: None` é legítimo por TIPO — um pincel sem arte escolhida desenha a
+                // `fallback`, e a arte entra depois pelo gesto de duas mãos. Exigi-la aqui faria o
+                // chip abrir um diálogo de ficheiro, que é precisamente o que o plano 36 recusa."*
+                // O braço `Pattern` não a herdou porque o `PatternSource` não tinha variante vazia —
+                // e desde 30/08 tem. *A regra certa estava no mesmo `match`, para o vizinho.*
                 if kind == ph2d_panel_vector::StrokePaintKind::Pattern
                     && let Some(sel) = self.vec_pen.selected()
-                    && let Some(source) = crate::texture_pattern_pick::pick_source(asset_db)
+                    && let Some(source) = crate::texture_pattern_pick::source_for(
+                        vec_scene,
+                        sel,
+                        ph2d_vec_render::PatternSlot::Stroke,
+                    )
                 {
                     // ⚠️ **A colocação sai da MESMA porta do preenchimento** — o tamanho preserva o
                     // aspecto da arte e o canto é o da FORMA, nunca a origem do mundo. Uma segunda

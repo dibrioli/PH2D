@@ -57,23 +57,48 @@ fn the_stroke_paint_row_is_wired_at_all_four_sites() {
     }
 }
 
-/// ⭐⭐ **Escolher *Pattern* num traço sem padrão ABRE A PORTA DA ARTE** — a 4ª condição da costura
+/// ⭐⭐ **Escolher *Pattern* num traço sem padrão LEVA A ALGUM LUGAR** — a 4ª condição da costura
 /// (*a sequência tem de levar a algum lugar*).
 ///
 /// ⛔ Sem isto o chip acende, o traço fica sem padrão nenhum, e o artista conclui que o app está
 /// avariado. É **exactamente** o defeito que o chip do preenchimento já recebeu de report três
-/// vezes, e que o `texture_pattern_pick` foi criado para eliminar.
+/// vezes.
+///
+/// # ⛔⛔ E "algum lugar" DEIXOU DE SER O DIÁLOGO DE IMAGEM (report do Enio, 2026-08-30: *"e para
+/// Stroke?"*)
+///
+/// A redacção anterior deste gate afirmava que o dreno chamava `pick_source` — o diálogo de
+/// ficheiro — e **passava**, sobre o defeito: o traço era empurrado para a arte-imagem, e a
+/// arte-forma ficava atrás dela. *Um gate da 4ª condição mede que a sequência leva a algum lugar, e
+/// não verifica QUAL — foi por isso que ele nunca acusou o desvio.*
+///
+/// ⇒ o que se afirma agora é o destino certo: o chip decide pela porta que **as duas tintas**
+/// partilham (`source_for`), com o **slot do traço**, e a colocação continua a sair da porta única
+/// do preenchimento.
+///
+/// ⚠️ O fonte vem **sem comentários**: a prosa acima cita `pick_source`, que é precisamente a agulha
+/// que este gate proíbe aqui.
 #[test]
-fn choosing_pattern_on_a_bare_stroke_opens_the_art_door() {
+fn choosing_pattern_on_a_bare_stroke_leads_somewhere_and_it_is_not_the_image_dialog() {
     let render = code("render_loop/mod.rs");
     let dreno = render
         .find("crate::vec_stroke_paint::set_kind(")
         .expect("o dreno existe");
     let janela = &render[dreno.saturating_sub(1200)..dreno];
     assert!(
-        janela.contains("crate::texture_pattern_pick::pick_source("),
-        "o dreno da tinta do traco nao abre o dialogo da arte - escolher Pattern nao leva a lugar \
-         nenhum"
+        janela.contains("crate::texture_pattern_pick::source_for("),
+        "o chip do traco nao decide pela porta que as duas tintas partilham - uma segunda lei de \
+         nascimento diverge da do preenchimento no primeiro ajuste"
+    );
+    assert!(
+        janela.contains("ph2d_vec_render::PatternSlot::Stroke"),
+        "a porta e' chamada sem o SLOT do traco - ela responderia pelo PREENCHIMENTO, e vestir um \
+         deles passaria a responder pelo outro"
+    );
+    assert!(
+        !janela.contains("crate::texture_pattern_pick::pick_source("),
+        "o chip do traco voltou a abrir o dialogo de imagem - e' o report de 30/08: a arte-forma \
+         fica atras da arte-imagem, alcancavel so' depois de escolher uma imagem que se deita fora"
     );
     assert!(
         janela.contains("crate::texture_pattern_pick::default_placement("),

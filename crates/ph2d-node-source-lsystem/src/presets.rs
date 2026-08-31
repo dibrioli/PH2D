@@ -209,27 +209,27 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Bush",
         axiom: "F",
-        rules: "F -> F[+F]F[-F]F",
+        rules: "F -> F[+F][J]F[-F]F",
         angle: 25.7,
         generations: 4.0,
         step: 0.022,
         width: 0.007,
-        reads: Reads::of("F -> F[+F]F[-F]F"),
-        // Bush: sem marca nenhuma — o molde nao leva folha.
-        leaf_first_level: 1.0,
+        reads: Reads::of("F -> F[+F][J]F[-F]F"),
+        // Bush: com o `[J]` sao 121 marcas em `1..5`; a `3` sobram 96 e nenhuma no caule.
+        leaf_first_level: 3.0,
     },
     // ABOP fig. 1.24d — 20°.
     Preset {
         label: "Weed",
         axiom: "X",
-        rules: "X -> F[+X]F[-X]+X ; F -> FF",
+        rules: "X -> F[+X][J]F[-X]+X ; F -> FF",
         angle: 20.0,
         generations: 5.0,
         step: 0.029,
         width: 0.009,
-        reads: Reads::of("X -> F[+X]F[-X]+X ; F -> FF"),
-        // Weed: idem.
-        leaf_first_level: 1.0,
+        reads: Reads::of("X -> F[+X][J]F[-X]+X ; F -> FF"),
+        // Weed: idem — 121 marcas em `1..5`.
+        leaf_first_level: 3.0,
     },
     Preset {
         label: "Wild",
@@ -250,26 +250,28 @@ pub const PRESETS: &[Preset] = &[
     Preset {
         label: "Koch",
         axiom: "F",
-        rules: "F -> F+F-F-F+F",
+        rules: "F -> F[J]+F-F-F+F",
         angle: 90.0,
         generations: 4.0,
         step: 0.022,
         width: 0.007,
-        reads: Reads::of("F -> F+F-F-F+F"),
-        // Koch: uma curva nao tem folha.
+        reads: Reads::of("F -> F[J]+F-F-F+F"),
+        // Koch: ⚠️ as 156 marcas estao TODAS na profundidade 1 — uma curva nao tem tronco,
+        // logo o `First Level` nao tem por onde discriminar. `1` mostra-as todas, que e' a
+        // unica resposta honesta: quem escreve um nome numa curva quer decoracao, nao copa.
         leaf_first_level: 1.0,
     },
     // ⚠️ A curva do dragão: 90°, e só se lê como dragão a partir de ~10 iterações.
     Preset {
         label: "Dragon",
         axiom: "F",
-        rules: "F -> F+G ; G -> F-G",
+        rules: "F -> F[J]+G ; G -> F-G",
         angle: 90.0,
         generations: 12.0,
         step: 0.019,
         width: 0.006,
-        reads: Reads::of("F -> F+G ; G -> F-G"),
-        // Dragon: idem.
+        reads: Reads::of("F -> F[J]+G ; G -> F-G"),
+        // Dragon: idem (512 marcas, todas na profundidade 1).
         leaf_first_level: 1.0,
     },
     // ⚠️ O `[+F(s*0.35)J]` e não o `[+J]` da 1.ª redacção: uma MARCA lê o osso do PAI e não o

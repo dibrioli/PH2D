@@ -436,9 +436,27 @@ Aqui isso quer dizer: a folha vira um quad `VecPath` com `Paint::Pattern` +
 internado no mesmo store da planta e desenhado na mesma passagem. ⇒ o `Leaves In Front` passa a
 valer para **qualquer** folha, com um só aspecto.
 
-⛔ **E é uma wave com espec própria, não um remate:** falta o encanamento do `AssetId` até à
-membrana (a corrente publicada leva `uv_rect`+`texture_id`, que são de GPU) e o preço do assador
-de padrão por folha, que não está medido.
+⛔ **E é uma wave com espec própria, não um remate.** Medido em 2026-08-30, depois de o dono
+pedir *"faça o que for o padrão ouro"* — as DUAS rotas param na MESMA peça em falta:
+
+| rota | o que falta |
+|---|---|
+| **carta com padrão** (`Paint::Pattern` + `PatternSource::Image`) | (a) o `AssetId` da folha na membrana; (b) o passe vectorial do Motion **não tem o mapa de ladrilhos do quadro** — e isso é uma cerca DECLARADA e GATEADA por outra linha (`a_motion_instance_of_a_patterned_shape_paints_the_fallback`, `ph2d-vec-render/src/instance.rs`) |
+| **imagem na cena Vello** (`draw_image_rgba_premultiplied_transformed`) | os **pixels em CPU** da folha |
+
+⇒ **a peça em falta é a mesma:** neste app um sprite é identificado por um handle de GPU
+(`SpriteSource::{Atlas, Individual, Ktx2}`), e **nada leva os pixels dele de volta à CPU**, que é
+onde o passe vectorial é codificado. O único mapa que existe é `AssetId → texture_id`, construído
+no CARREGAMENTO (`project_sprite_pixels.rs`), não um mapa vivo ao contrário.
+
+⇒ a wave é *«um objecto nomeado carrega a identidade de CONTEÚDO da arte dele»*, e ela mora no
+oleoduto de objectos/assets — não no L-System. ⛔ **E a rota do TILE tem um segundo dono:** mexer
+naquela cerca é acto de quem a escreveu.
+
+⛔⛔ **E uma terceira saída foi considerada e REJEITADA:** assar a PLANTA numa tile e desenhá-la
+no passe dos sprites (aí a ordem das linhas resolve tudo). Ela funciona e **desfoca a árvore** —
+um knob que silenciosamente troca a nitidez da planta por uma folha à frente não é uma escolha
+que o artista possa fazer sem ver o preço.
 
 ⛔⛔ **A saída INTERMÉDIA foi medida e REJEITADA:** desenhar só as folhas da frente como imagens
 na cena Vello (o `draw_image_rgba_premultiplied_transformed` existe) poria **metade da copa
@@ -477,6 +495,43 @@ passar vazia.
 
 ---
 
+## §11 — *"vários dos presets não produzem folhas"*: a minha recusa estava errada
+
+Enio, 2026-08-30. Eram **quatro de oito** — `Bush`, `Weed`, `Koch`, `Dragon` — por uma decisão
+minha, registada neste doc como recusa medida: *«num refinador toda a silhueta renasce e as
+folhas espalham-se pelo tronco; numa curva não há ponta»*.
+
+⛔ **A medição desmentiu-a**, e o que a dissolveu foi trabalho meu de duas horas antes: o
+`First Level` e a lei monótona da idade não existiam quando escrevi aquela recusa.
+
+| molde | com o `[J]` no sítio certo |
+|---|---|
+| `Bush` · `Weed` | **121** marcas, profundidades `1..5`; a `First Level = 3` sobram `96` e nenhuma no caule |
+| `Koch` | `156` marcas, **todas na profundidade 1** |
+| `Dragon` | `512` marcas, todas na profundidade 1 |
+
+⇒ os oito moldes passam a emitir. ⚠️ Nas curvas o `First Level` **não tem por onde
+discriminar** (uma curva não tem tronco), então elas trazem `1` e mostram todas: *quem escreve
+um nome numa curva quer decoração, e a resposta honesta a «não produz folhas» não é explicar
+porquê — é produzir.*
+
+### 11.1 — ⚠️ E a régua do empilhamento acusava a FIGURA, não a colocação
+
+A curva do **Dragão toca-se a si própria** (é o que uma curva que ladrilha o plano faz): `2048`
+marcas em `1324` sítios, sem nada empilhado por culpa da colocação. O gate reprovou.
+
+⇒ a chave passa a incluir o **PAI**: o que ele acusa é o empilhamento que a COLOCAÇÃO faz —
+duas marcas do mesmo pai no mesmo sítio, que foi o defeito de `F(s)![+A J][-A J]` — e não dois
+ramos diferentes que a figura leva ao mesmo ponto. *Uma régua que não separa a geometria da
+figura da colocação acusa a figura.* Provado: com o `J` antigo de volta, ela ainda diz
+`62 marcas em 30 sítios`.
+
+⚠️ **E não havia nada a afirmar que um molde produz folhas** — `no_preset_silences_its_own_leaves`
+media só que o molde não se apagava a si próprio, e um molde SEM marcas passava por `continue`.
+Hoje ele exige que os oito emitam, e o controlo conta os oito.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -484,7 +539,6 @@ passar vazia.
 | Emitir a fita como quads no próprio interpretador | Separa-se esqueleto de superfície nas quatro referências; e o varrimento serve também os cinco `rig.*` (doc 92 §2 item 8) |
 | Portas de geometria `J`/`K`/`M` à la Houdini | O nó tem `inputs: &[]` e a casa nomeia objectos por **nome** (`fx.glow`, `motion.path`), com chips já alcançáveis no painel. Portas seriam um segundo idioma |
 | Tabela de «objeto por fase de crescimento» | A fase é a regra que dispara; a letra é o objecto. Nenhuma das quatro referências tem tabela de fase — e nós já emitimos `gen` para quem quiser filtrar |
-| Âncora de folha nos moldes que REFINAM (`Bush`, `Weed`) e nas curvas (`Koch`, `Dragon`) | Um `J` acumula e num refinador toda a silhueta renasce ⇒ folhas pelo tronco, não nas pontas; numa curva não há ponta. O sítio de a pedir é a gramática do artista, e o painel **diz** quando o nome está posto e a letra falta |
 | Âncora no `DEFAULT_RULES` | Ele é o oráculo do modo guiado (gate compara os dois ao bit) e o default de fábrica — obrigaria a pôr a âncora na derivação guiada e a pagar ~3× a contagem em toda planta que nunca terá folha |
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |

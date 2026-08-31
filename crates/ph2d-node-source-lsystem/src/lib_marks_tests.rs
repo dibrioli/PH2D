@@ -198,9 +198,25 @@ fn no_two_leaves_land_on_the_same_spot() {
             Some(Column::Vec2(v)) => v.clone(),
             _ => panic!("sem P"),
         };
-        let mut sitios: Vec<(i64, i64)> = (0..sym.len())
+        // ⛔⛔ **A CHAVE INCLUI O PAI, e a razão é a curva do DRAGÃO:** ela toca-se a si
+        // própria (é isso que uma curva que ladrilha o plano faz), então duas marcas de ramos
+        // DIFERENTES caem no mesmo ponto — `2048` marcas em `1324` sítios — sem que nada esteja
+        // empilhado por culpa da colocação.
+        //
+        // ⇒ o que este gate acusa é o empilhamento QUE EU FAÇO: duas marcas do MESMO pai no
+        // mesmo sítio, que foi o defeito de `A(s) -> F(s)![+A J][-A J]` (o `J` depois da
+        // sub-árvore volta ao pé do pai, e as gerações que a envolvem caem todas ali).
+        // *Uma régua que não separa a geometria da figura da colocação acusa a figura.*
+        let parent = scal(&s, "parent");
+        let mut sitios: Vec<(i64, i64, i64)> = (0..sym.len())
             .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)))
-            .map(|i| ((pos[i][0] * 1e4) as i64, (pos[i][1] * 1e4) as i64))
+            .map(|i| {
+                (
+                    parent[i] as i64,
+                    (pos[i][0] * 1e4) as i64,
+                    (pos[i][1] * 1e4) as i64,
+                )
+            })
             .collect();
         let marcas = sitios.len();
         sitios.sort_unstable();
@@ -426,10 +442,21 @@ fn no_preset_silences_its_own_leaves() {
         let marcas: Vec<usize> = (0..sym.len())
             .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)))
             .collect();
-        // Um molde sem marca nenhuma (as curvas, os refinadores) não tem o que mostrar.
-        if marcas.is_empty() {
-            continue;
-        }
+        // ⛔⛔ **TODO molde emite marcas** — report do Enio (2026-08-30): *"vários dos
+        // presets não produzem folhas"*. Eram QUATRO de oito (`Bush`, `Weed`, `Koch`,
+        // `Dragon`), por uma decisão minha que a medição desmentiu: com o `[J]` no sítio certo
+        // o `Bush` e o `Weed` dão `121` marcas bem distribuídas por `1..5`, e são plantas.
+        //
+        // ⚠️ **As curvas (`Koch`, `Dragon`) também a levam**, e o `First Level` delas é `1`
+        // porque as marcas estão TODAS na profundidade `1`: uma curva não tem tronco, logo o
+        // nível não tem por onde discriminar. *Quem escreve um nome numa curva quer decoração,
+        // e a resposta honesta a «não produz folhas» não é explicar porquê — é produzir.*
+        assert!(
+            !marcas.is_empty(),
+            "{}: o molde nao emite marca nenhuma, entao escrever um nome em «Leaf (J)» nao \
+             planta nada e nada na tela o diz",
+            p.label
+        );
         com_marcas += 1;
         let vivas = marcas.iter().filter(|&&i| grow[i] > 0.0).count();
         assert!(
@@ -440,9 +467,11 @@ fn no_preset_silences_its_own_leaves() {
             p.leaf_first_level
         );
     }
-    // ⚠️ **O CONTROLE**: se um dia nenhum molde tiver marcas, o laço acima passa vazio.
-    assert!(
-        com_marcas >= 4,
-        "so' {com_marcas} moldes com marcas — o gate ficou sem sujeito"
+    // ⚠️ **O CONTROLE**: o laço tem de ter visto TODOS os moldes.
+    assert_eq!(
+        com_marcas,
+        PRESETS.len(),
+        "o gate tem de cobrir os {} moldes",
+        PRESETS.len()
     );
 }

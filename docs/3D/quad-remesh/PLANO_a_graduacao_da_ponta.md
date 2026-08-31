@@ -1033,3 +1033,64 @@ os A/B de candidatas — mede uma amostra de uma lotaria, e a barra de qualquer 
 ⚠️ **E isso reabre, com honestidade, tudo o que esta linha mediu por A/B de uma corrida só.**
 As diferenças de `2`–`8 %` que decidiram constantes podem ser ruído desta família. *A
 prioridade deixa de ser a ponta: é a REPETIBILIDADE.*
+
+---
+
+# ⭐⭐⭐ PARTE VII — «o remesh deve funcionar perfeitamente em qualquer lugar» (Enio, 31/08)
+
+## §53 — A ordem, e o que ela muda na prioridade
+
+Veredito do dono sobre a §49: **não há contorno**. ⇒ a invariância deixa de ser um achado e
+passa a ser requisito, e vem **à frente** da ponta.
+
+## §54 — ⭐⭐⭐ A PRIMEIRA CAUSA, LOCALIZADA E CURADA
+
+⛔⛔ **A §51 declarou esta cura REFUTADA, e a declaração é que estava errada.** Ela foi medida
+**através do botão inteiro**, onde o ruído a jusante a afoga. Isolada na crate, em `12 s`, ela
+é inequívoca — `uv_sphere(96, 144)`, a mesma malha só transladada em `x`:
+
+| | `0` | `½` | `1` | `2` | dispersão |
+|---|---|---|---|---|---|
+| ⛔ chave de mundo | `2 633` | `2 712` | `2 679` | `2 586` | **`4,9 %`** |
+| ⭐ ancorada na peça | `2 687` | `2 687` | `2 687` | `2 687` | **`0,0 %`** |
+| ⚠️ sem graduação (controlo) | `2 608` | `2 608` | `2 608` | `2 608` | `0,0 %` |
+
+⭐ **O controlo é a metade que localiza:** sem campo o remalhador **já era** invariante ⇒ o
+defeito era do campo, e não do laço. `SizingGrid` indexava por `p / cell` — coordenada de
+**mundo** —, e como cada balde guarda o mínimo e o `at` lê o mínimo de 27, um deslocamento
+muda que região herda a finura de uma agulha.
+
+⚠️ **O canto MÍNIMO da caixa e não o centroide:** o centroide dos vértices é propriedade da
+amostragem — é o defeito que a `reach` pagou no mesmo dia (§35).
+
+## §55 — ⛔⛔ DUAS MUTAÇÕES SOBREVIVERAM, e a razão é uma lei
+
+Mudar **só** a construção (ou **só** a consulta) faz as chaves nunca casarem, o `at` cai no
+`fallback` constante e o campo **morre** — *e um campo morto é perfeitamente invariante.* O
+gate passava.
+
+⇒ o gate ganhou a segunda metade: **a graduação tem de MUDAR a malha**. E o filtro de mutação
+ganhou o seu próprio controlo: **os dois sítios de uma vez**, senão a mutação não reproduz o
+código antigo. *Meia mutação testa uma terceira coisa que nunca existiu.*
+
+## §56 — ⏳ O QUE FICA ABERTO, sem enfeite
+
+⛔ **O botão ainda NÃO é invariante na peça do dono:** com a grelha curada, as seis posições
+dão `1 841` · `1 841` · `1 889` · `1 797` · `1 902` · `1 861` vértices de fase zero. A cura
+tirou uma causa; **sobra a amplificação**.
+
+⭐ O mecanismo está nomeado e é o mesmo da §50: o remalhador é **iterativo**, `p − origem`
+perde bits quando a peça está longe, e **um** bit muda uma decisão de corte que cascateia. Na
+esfera lisa isso não aparece (o campo é constante); numa peça com agulhas e `ADAPT_RATIO = 16`
+o campo tem gradientes fortes e há fronteiras por toda a parte.
+
+⇒ **A obra seguinte tem duas frentes, por esta ordem:**
+
+1. ⭐⭐⭐ **Tirar o CLIFF do campo.** O `at` devolve o mínimo de 27 baldes — uma função em
+   **degrau**. Um campo contínuo (mistura pesada pela distância em vez de `min` duro) faz uma
+   perturbação de `10⁻⁷` mudar o alvo em `10⁻⁷` em vez de saltar para o valor do vizinho.
+   ⚠️ **Com uma cerca:** o `min` existe para ser conservador (nunca mais grosso que o vizinho
+   mais fino), e um contínuo ingénuo perde isso **exactamente na agulha** — é preciso um
+   *soft-min*, e a barra é a régua por ponta que já existe.
+2. **O gate de sensibilidade do §52 sobre o BOTÃO**, não só sobre a crate — com a peça do dono
+   e as seis posições, e a barra em *pontas cortadas*, não em contagem de vértices.

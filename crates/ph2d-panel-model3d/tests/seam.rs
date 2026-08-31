@@ -42,6 +42,7 @@ fn scene_with_one_union() {
             live: true,
             integral: false,
             section: None,
+            choices: &[],
             // Faixa de 0,4 — o número que o gate abaixo usa para distinguir a escala da linha de
             // uma escala fixa.
             bound: Bound::Soft(0.4),
@@ -211,6 +212,7 @@ fn every_row_gets_its_own_band_none_stacked_on_another() {
             live: true,
             integral: false,
             section: None,
+            choices: &[],
             bound: Bound::Hard(0.22),
         })
         .collect();
@@ -560,6 +562,7 @@ fn scene_with_one_position_row() {
             live: true,
             integral: false,
             section: None,
+            choices: &[],
             bound: Bound::Soft(CEILING),
         }],
         views: Vec::new(),
@@ -750,6 +753,7 @@ fn an_inert_row_registers_nothing_to_click() {
         live,
         integral: false,
         section: None,
+        choices: &[],
         bound: Bound::Wrap(180.0),
     };
     let mut host = MockPanelHost::with_panel::<Model3dPanel>();
@@ -801,6 +805,7 @@ fn an_inert_row_does_not_dispatch_even_if_an_event_arrives() {
             live: false,
             integral: false,
             section: None,
+            choices: &[],
             bound: Bound::Wrap(180.0),
         }],
         views: Vec::new(),
@@ -1163,4 +1168,107 @@ fn a_click_on_a_character_chip_dispatches_that_slot_and_never_the_verb() {
         drain_intents().is_empty(),
         "um slot fora da fileira do carácter despachou uma intenção"
     );
+}
+
+/// A cena com uma linha de **escolha** — o eixo de um modificador (Enio, 2026-08-31).
+///
+/// ⚠️ **O valor de nascimento é `2` (Z) e não `0`**, e é de propósito: com a escolha no primeiro
+/// botão, um despacho que ignorasse a célula e mandasse sempre `0` passaria por acidente. *Uma
+/// fixtura cujo valor é o que o defeito produziria não mede nada.*
+fn scene_with_one_choice_row() {
+    publish(ModelSnapshot {
+        modes: Vec::new(),
+        frames: Vec::new(),
+        adds: Vec::new(),
+        ops: Vec::new(),
+        verbs: Vec::new(),
+        verb_subject: None,
+        characters: Vec::new(),
+        mods: Vec::new(),
+        exports: Vec::new(),
+        acts: Vec::new(),
+        rows: vec![ParamRow {
+            entity: THE_UNION,
+            param: ph2d_field::Param::Mod { slot: 0, field: 4 },
+            key: "field.mod.axis",
+            value: 2.0,
+            lo: 0.0,
+            live: true,
+            integral: true,
+            section: None,
+            choices: &ph2d_field::Axis::KEYS,
+            bound: Bound::Hard(2.0),
+        }],
+        views: Vec::new(),
+        camera: Vec::new(),
+        isolated: None,
+        node_count: 1,
+        last_trace_ms: 0.0,
+    });
+}
+
+/// ⭐⭐⭐ **UM CLIQUE NO BOTÃO DO EIXO CHEGA AO DOCUMENTO** — a costura inteira, sem app.
+///
+/// ⛔⛔ **É a segunda espécie de controlo morto do `CLAUDE.md` §5.0**: o botão pode ser pintado,
+/// registado no índice de acerto e **mudo sob o dedo** se o `event.rs` não tiver o braço dele — e
+/// nenhum gate de registo vê isso. O que o vê é o gesto a sério, que é o que este ficheiro corre.
+///
+/// ⚠️ **O botão premido é o do MEIO (`Y`), e não o primeiro**: com a célula `0` um despacho que
+/// ignorasse qual botão foi premido passaria.
+#[test]
+fn a_click_on_an_axis_button_reaches_the_document() {
+    scene_with_one_choice_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    let _ = drain_intents();
+
+    let botao = ids::model3d_choice_button(0, 1);
+    // ⛔ **O CONTROLE**: um botão que a pintura não registou não é alcançável por dedo nenhum, e o
+    // clique abaixo passaria por um caminho que o artista não tem.
+    assert!(
+        host.hit_index_mut().rect_for(botao).is_some(),
+        "o botão do eixo não está no índice de acerto — ele é invisível ao ponteiro"
+    );
+
+    let saida = host.apply_panel_event::<Model3dPanel>(&mut panel_state, WidgetEvent::Click(botao));
+    assert_eq!(
+        saida,
+        EventOutcome::Consumed,
+        "o painel tem de consumir o clique no botão do eixo"
+    );
+    let intents = drain_intents();
+    assert_eq!(
+        intents,
+        vec![ModelIntent::SetParam {
+            entity: THE_UNION,
+            param: ph2d_field::Param::Mod { slot: 0, field: 4 },
+            value: 1.0,
+        }],
+        "o clique no botão do MEIO tem de despachar o índice `1` (Y) na entidade e no campo da linha"
+    );
+}
+
+/// ⭐ **A linha de escolha NÃO regista o slider da linha** — as duas formas são exclusivas.
+///
+/// ⚠️ *O mesmo facto em dois controlos é duas verdades que podem discordar* — e aqui a discordância
+/// seria visível: o slider mapeia a POSIÇÃO do dedo na trilha, e com três valores ele daria `Y`
+/// para metade do curso do `X`.
+#[test]
+fn a_choice_row_paints_no_slider_to_grab() {
+    scene_with_one_choice_row();
+    let mut host = MockPanelHost::with_panel::<Model3dPanel>();
+    host.set_panel_visible(Model3dPanel::ID, true);
+    let mut panel_state = Model3dPanelState;
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1280.0, 800.0);
+    let _ = host.paint::<Model3dPanel>(&mut panel_state, viewport);
+    for id in [ids::model3d_radius_slider(0), ids::model3d_radius_chip(0)] {
+        assert!(
+            host.hit_index_mut().rect_for(id).is_none(),
+            "uma linha de escolha registou o controlo de número da linha — há dois controlos para \
+             o mesmo facto"
+        );
+    }
 }

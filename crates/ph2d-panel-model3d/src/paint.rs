@@ -11,8 +11,7 @@ use ph2d_editor_core::widget::panel_chrome::{
     panel_drag_handle_rect,
 };
 use ph2d_editor_core::widget::{
-    MODEL3D_SCROLLBAR_ID, NUMBER_INPUT_MIN_W_PX, paint_scrollbar,
-    paint_slider_with_chip_layout_adaptive, scrollbar_is_needed, scrollbar_thumb_rect,
+    MODEL3D_SCROLLBAR_ID, paint_scrollbar, scrollbar_is_needed, scrollbar_thumb_rect,
     scrollbar_track_rect,
 };
 use ph2d_editor_core::zones::Rect;
@@ -20,7 +19,7 @@ use ph2d_field::Bound;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, TypeToken};
 
-use crate::state::{self, Model3dPanelState, ParamRow};
+use crate::state::{self, Model3dPanelState};
 use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 
 /// ⭐⭐ **O tecto de uma linha SEM parede, para efeito de DIGITAÇÃO.**
@@ -28,10 +27,10 @@ use crate::{Model3dPanel, populate::MAX_MODES, populate::MAX_ROWS};
 /// ⚠️ Ele não é uma parede nova: é um número grande o bastante para nunca ser a resposta a um gesto
 /// real, e finito para o campo continuar a ter uma faixa (o stepper e o piso saem dela). *Um tecto
 /// que só existe para não haver tecto tem de dizê-lo.*
-const TETO_DIGITAVEL: f64 = 1.0e6;
+pub(crate) const TETO_DIGITAVEL: f64 = 1.0e6;
 
 /// A goteira do rótulo. Os rótulos aqui são o **tipo do nó** ("Union", "Cylinder"), não uma frase.
-const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
+pub(crate) const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter width)
 
 /// Em quantos passos o arrasto atravessa o curso de uma linha.
 ///
@@ -39,7 +38,7 @@ const LABEL_COL_W: f32 = 72.0; // LITERAL-PX-OK: panel grid metric (label gutter
 /// de 0,02 e fino demais num ângulo de 360 de curso. ⭐ É daqui que sai o passo, e é o passo que
 /// decide quantas casas a linha mostra ([`decimals_for_step`]) — os dois números têm de vir da mesma
 /// fonte, senão a tela deixa de acompanhar o arrasto sem que nada pareça errado.
-const STEPS_ACROSS_THE_RANGE: f32 = 100.0; // LITERAL-PX-OK: granularidade de arrasto, não métrica de design
+pub(crate) const STEPS_ACROSS_THE_RANGE: f32 = 100.0; // LITERAL-PX-OK: granularidade de arrasto, não métrica de design
 
 /// ⭐ **Quantas casas decimais uma linha mostra — DERIVADO do passo do arrasto dela.**
 ///
@@ -64,7 +63,7 @@ const STEPS_ACROSS_THE_RANGE: f32 = 100.0; // LITERAL-PX-OK: granularidade de ar
 /// então a sexta casa (1e-6) é a **última** que ainda distingue dois valores de verdade — a sétima
 /// escreveria ruído do tipo, não da peça. Abaixo disso o passo não é representável, e um campo mais
 /// largo não o traria de volta.
-fn decimals_for_step(step: f32) -> usize {
+pub(crate) fn decimals_for_step(step: f32) -> usize {
     if !step.is_finite() || step <= 0.0 {
         return 1;
     }
@@ -214,7 +213,7 @@ pub(crate) fn paint(_state: &mut Model3dPanelState, ctx: &mut PaintCtx) {
         if let Some(key) = row.section {
             y = paint_section(ctx, tr(key), x, w, y);
         }
-        y = paint_row(ctx, row, slot as u32, x, w, y);
+        y = crate::paint_rows::paint_row(ctx, row, slot as u32, x, w, y);
     }
     y = paint_footer(ctx, &snapshot, x, w, y);
     // ⚠️ O `+ scroll` desfaz o deslocamento: a altura do conteúdo é do CONTEÚDO, e não de onde ele
@@ -308,173 +307,6 @@ fn paint_chips(
     y + used + Spacing::Sm.px()
 }
 
-/// Uma linha: rótulo do tipo do nó + slider + campo numérico. Devolve o **y seguinte**.
-///
-/// ⚠️ **DEVOLVE O Y SEGUINTE, e o helper que ela chama devolve a ALTURA USADA.** As duas convenções
-/// existem no mesmo repo e a confusão entre elas foi um smoke reprovado (Enio, 2026-08-19: *"o
-/// painel apresenta apenas um slider"*): com `y = paint_row(...)`, a segunda linha ia parar em
-/// `y = 28` **absoluto** — dentro do título, fora do recorte — e as três seguintes com ela. O painel
-/// mostrava uma linha e o modelo parecia ter encolhido.
-///
-/// ⭐ Neste arquivo **toda** função de pintura devolve o y seguinte. Uma convenção por arquivo, dita
-/// aqui: misturar as duas é como o erro entrou.
-fn paint_row(ctx: &mut PaintCtx, row: &ParamRow, slot: u32, x: f32, w: f32, y: f32) -> f32 {
-    // ⭐ **Uma linha que não pode agir não é pintada como se pudesse** — ver [`ParamRow::live`]. Ela
-    // sai daqui como facto e **não regista nada** no índice de acerto, então não há slider a agarrar
-    // nem campo a receber texto: é a mesma lei do [`paint_note`], neste mesmo arquivo.
-    if !row.live {
-        return paint_fact(ctx, row, x, w, y);
-    }
-    let theme = ctx.host.theme();
-    let scene = &mut *ctx.scene;
-    let text_system = &mut *ctx.text_system;
-    // ⚠️ **O id vem da POSIÇÃO da linha, nunca da entidade.** O `populate` corre antes de a peça
-    // existir e cunha a família às cegas (ver `MAX_ROWS`); os bits de uma entidade não cabem numa
-    // família de 64. A entidade viaja no intent, que é onde ela importa.
-    let slider = ids::model3d_radius_slider(slot);
-    let chip = ids::model3d_radius_chip(slot);
-    // ⚠️ **DUAS pontas, e o piso não é zero em toda linha.** Uma posição vai para os dois lados da
-    // origem e um ângulo para os dois lados do zero; escrever `0.0` aqui — como esta função fazia —
-    // era o que tornava um número negativo indigitável, em silêncio (ver `ParamRow::lo`).
-    let lo = row.lo;
-    let hi = row.bound.value();
-    // Uma faixa degenerada continua a ter de dar um mapeamento invertível: sem isto, `scale = 0`
-    // produziria ±inf ao espelhar o campo no slider.
-    let scale = (hi - lo).max(f32::MIN_POSITIVE);
-
-    // ⚠️ **A faixa real é escrita por LINHA, todo quadro.** O teto de um raio é do nó — a caixa
-    // aceita menos do que o cilindro —, e o par slider↔campo foi ligado em 0..1 no `populate`
-    // justamente porque a escala não era conhecida lá.
-    //
-    // ⚠️ Sem `set_number_range` o campo deriva o passo do arrasto do TEXTO do buffer e escorrega
-    // ~50 unidades por pixel (a nota que o painel de aquarela deixou: digitar continua a funcionar,
-    // o que esconde o defeito).
-    // ⚠️ **Numa linha inteira o passo é 1**, e não um centésimo do curso: meia cópia não existe, e um
-    // passo fracionário faria o arrasto percorrer valores que a escrita depois arredonda — o número
-    // a saltar debaixo do dedo sem que nada esteja errado.
-    let step = if row.integral {
-        1.0
-    } else {
-        scale / STEPS_ACROSS_THE_RANGE
-    };
-    {
-        let store = ctx.host.store_mut();
-        store.link_slider_number_mapped(slider, chip, scale, lo);
-        // ⭐⭐⭐ **UMA PAREDE CLAMPA; UMA SUGESTÃO NÃO** (auditoria de 2026-08-30, achado F4).
-        //
-        // ⛔ As duas viravam a mesma faixa, e o campo numérico clampava as duas. Medido: numa linha
-        // de tecto `Soft(1,0)`, digitar `5.0` escrevia **`1.0`** — e o `Soft` é, por definição, *o
-        // alcance do GESTO que a vista escolheu*, não um facto da peça. ⇒ com uma peça pequena era
-        // **impossível digitar** uma largura maior, e o único caminho era arrastar até ao fim e
-        // esperar que o alcance crescesse — isto é, usar o laço que o report do Enio é.
-        //
-        // ⚠️ **Com o tecto aberto, o arrasto precisa de uma escala própria**: sem o `rate` ele seria
-        // uma proporção sobre um intervalo que não termina, e um pixel andaria milhares. O `rate` é
-        // o **mesmo passo** que o stepper usa, e vence o alcance no `pointer_move` — é a combinação
-        // que o doc do `set_number_drag_rate` chama de certa.
-        //
-        // ⭐ E é aqui que a distinção do [`Bound`] ganha o consumidor que o doc do
-        // [`bound_is_wall`] esperava.
-        let parede = bound_is_wall(row.bound);
-        let teto = if parede {
-            f64::from(hi)
-        } else {
-            TETO_DIGITAVEL
-        };
-        store.set_number_range(chip, f64::from(lo), teto, f64::from(step));
-        if parede {
-            store.clear_number_drag_rate(chip);
-        } else {
-            store.set_number_drag_rate(chip, f64::from(step));
-        }
-        // ⭐⭐⭐ **O VALOR DO CAMPO SEMEIA-SE DO DOCUMENTO, TODO QUADRO** (auditoria de 2026-08-30,
-        // achado F2) — a mesma lei que a trilha do slider já seguia, e que o campo nunca teve.
-        //
-        // ⛔ O `populate` regista o chip com `0.0` e nada o corrigia: a pintura só **desenha** o
-        // número (recebe-o por argumento). E o arrasto do campo é **incremental** — ele lê a base do
-        // store, não do documento. ⇒ o **primeiro** arrasto de qualquer campo partia de `0`:
-        // medido, com o documento em `0,80`, os dois primeiros gestos despachavam `SetParam { value:
-        // 0.0 }`. Numa posição isso atira o objecto para a origem; numa largura despacha um zero que
-        // a porta recusa, e o número salta e volta.
-        //
-        // ⚠️ **A porta preserva a edição em curso**: ela não reescreve o buffer com o campo em foco
-        // nem a âncora de rollback durante um arrasto (ver `set_number_value`). *Semear todo quadro
-        // é o que mantém o controlo honesto quando o valor muda de outro lado* — um desfazer, um
-        // ficheiro aberto, o gizmo.
-        store.set_number_value(chip, f64::from(row.value));
-    }
-
-    let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    // A verdade é o documento; a posição guardada é só o que o arrasto deixou para trás. Semear a
-    // trilha a partir do valor todo quadro é o que mantém o controle honesto quando o raio muda de
-    // outro lado — um desfazer, um arquivo aberto, uma segunda linha.
-    let track = ((row.value - lo) / scale).clamp(0.0, 1.0);
-    let display = f64::from(row.value);
-    let decimals = if row.integral {
-        0
-    } else {
-        decimals_for_step(step)
-    };
-    let text = format!("{display:.decimals$}");
-
-    let used = paint_slider_with_chip_layout_adaptive(
-        Rect::new(x, y, w, ROW_H_PX),
-        tr(row.key),
-        track,
-        display,
-        Some(&text),
-        slider,
-        chip,
-        LABEL_COL_W,
-        NUMBER_INPUT_MIN_W_PX,
-        store,
-        hit_index,
-        scene,
-        text_system,
-        theme,
-    );
-    y + used + Spacing::Xs.px()
-}
-
-/// ⭐ **Uma linha como FACTO**: o rótulo e o número, em texto apagado, sem controle nenhum.
-///
-/// ⚠️ **Nada é registado no índice de acerto**, e é essa a metade que importa: um slider desenhado
-/// «desligado» mas ainda agarrável despacharia uma edição que a escrita depois recusa — e o artista
-/// veria o número saltar e voltar. Aqui não há o que agarrar, e o gate
-/// `an_inert_row_registers_nothing_to_click` mede exatamente isso.
-///
-/// ⚠️ Ela ocupa **a mesma altura** de uma linha viva: atravessar a trava não pode fazer o painel
-/// saltar de tamanho debaixo do cursor.
-fn paint_fact(ctx: &mut PaintCtx, row: &ParamRow, x: f32, w: f32, y: f32) -> f32 {
-    let font = TypeToken::Sm.px();
-    let theme = ctx.host.theme();
-    let dim = resolve(ColorToken::Text2, theme);
-    let baseline = y + (ROW_H_PX - font) * 0.5;
-    paint_text_block(
-        ctx.text_system,
-        ctx.scene,
-        tr(row.key),
-        x,
-        baseline,
-        font,
-        LABEL_COL_W,
-        dim,
-    );
-    // O número fica na goteira do valor, como numa linha viva — o olho percorre a coluna sem saltar.
-    let text = format!("{:.d$}", f64::from(row.value), d = decimals_for_step(1.0));
-    paint_text_block(
-        ctx.text_system,
-        ctx.scene,
-        &text,
-        x + LABEL_COL_W,
-        baseline,
-        font,
-        (w - LABEL_COL_W).max(0.0),
-        dim,
-    );
-    y + ROW_H_PX + Spacing::Xs.px()
-}
-
 /// Texto puro — um fato, não um controle. Sem hit-index: uma affordance que ele não pode honrar
 /// seria pior do que nenhuma.
 /// ⭐⭐⭐ **O cabeçalho de uma secção de números** — o nome de quem é dono das linhas abaixo.
@@ -558,7 +390,7 @@ fn paint_footer(ctx: &mut PaintCtx, snap: &state::ModelSnapshot, x: f32, w: f32,
 ///
 /// ⚠️ Falta ainda **desenhar** a diferença (uma parede e uma sugestão não se pintam igual); isso é
 /// outra wave.
-fn bound_is_wall(b: Bound) -> bool {
+pub(crate) fn bound_is_wall(b: Bound) -> bool {
     matches!(b, Bound::Hard(_))
 }
 

@@ -148,7 +148,7 @@ fn removing_the_last_modifier_removes_the_component_too() {
 /// ⭐ **Um modificador pode ter VÁRIOS números — ou nenhum.**
 ///
 /// ⚠️ É o que a matriz forçou, e o gate mede as duas pontas na mesma corrida: o espelho não põe
-/// linha nenhuma (o chip aceso já diz tudo), e a matriz põe duas. Um gate só sobre a matriz passaria
+/// linha nenhuma (o chip aceso já diz tudo), e a matriz põe cinco. Um gate só sobre a matriz passaria
 /// com um `flat_map` que inventasse uma linha vazia para o espelho.
 #[test]
 fn a_modifier_can_have_several_numbers_or_none_at_all() {
@@ -182,8 +182,11 @@ fn a_modifier_can_have_several_numbers_or_none_at_all() {
             // renumeraria os que já existem e um arrasto em curso passaria a escrever noutro campo.
             Param::Mod { slot: 1, field: 2 },
             Param::Mod { slot: 1, field: 3 },
+            // ⭐ **O EIXO** (Enio, 2026-08-31), e ele vem depois da costura pela MESMA razão: o
+            // último da lista é o único sítio onde acrescentar não renumera ninguém.
+            Param::Mod { slot: 1, field: 4 },
         ],
-        "a matriz põe QUATRO linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
+        "a matriz põe CINCO linhas, e no slot 1 — o espelho continua a ocupar o slot 0"
     );
 }
 

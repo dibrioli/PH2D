@@ -26,6 +26,8 @@ fn vara(turns: f32, lower: f32, upper: f32) -> FieldDoc {
             lower,
             upper,
             falloff: 0.0,
+
+            axis: ph2d_field::mods::BEND_AXIS,
         });
     }
     FieldDoc::new(vec![n], NodeId(0)).expect("peça")
@@ -138,6 +140,8 @@ fn a_bend_of_zero_is_the_piece_untouched() {
         lower: -1.0,
         upper: 1.0,
         falloff: 0.5,
+
+        axis: ph2d_field::mods::BEND_AXIS,
     });
     let neutra = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
     let (a, b) = (Field::new(&limpa), Field::new(&neutra));
@@ -175,6 +179,8 @@ fn asking_for_more_bend_than_the_piece_allows_saturates_instead_of_breaking() {
         lower: -9.0,
         upper: 9.0,
         falloff: 0.0,
+
+        axis: ph2d_field::mods::BEND_AXIS,
     });
     let doc = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
     let f = Field::new(&doc);

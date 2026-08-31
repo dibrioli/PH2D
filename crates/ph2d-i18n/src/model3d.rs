@@ -170,6 +170,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // decai), e é a que o Houdini e o Blender usam para a mesma coisa. "Smooth" já é o nome de
         // um verbo de escultura nesta casa.
         "field.mod.falloff" => "Falloff",
+        // ⭐⭐⭐ **A DIRECÇÃO em que o modificador age** (Enio, 2026-08-31). ⚠️ **"Axis" e não
+        // "Direction"**: as quatro referências (Blender *Deform Axis*, 3ds Max *Bend Axis*, Houdini,
+        // ZBrush) dizem eixo, e *direction* nesta casa já é o sentido de um gradiente.
+        "field.mod.axis" => "Axis",
+        // ⚠️ Uma letra só, e é de propósito: a fileira tem três botões numa linha de painel, e o
+        // artista lê X/Y/Z de relance. Os nomes por extenso não cabem e não acrescentam nada.
+        "field.axis.x" => "X",
+        "field.axis.y" => "Y",
+        "field.axis.z" => "Z",
         // ⭐⭐ A junta ENTRE as cópias que uma repetição gera (Enio, 2026-08-30). ⚠️ **"Seam" e não
         // "Joint"**: o painel já diz "Joint" para o raio de junção de uma forma com as IRMÃS dela
         // (`field.dim.joint`), e a mesma palavra em duas fileiras da mesma coluna faria o artista

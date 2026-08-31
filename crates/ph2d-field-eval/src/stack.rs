@@ -71,13 +71,26 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
             // cerca que caiu.
             Unary::MirrorY => acc.remap_xyz(Tree::x(), Tree::y().abs(), Tree::z()),
             Unary::MirrorZ => acc.remap_xyz(Tree::x(), Tree::y(), Tree::z().abs()),
+            // ⭐⭐⭐ **A LEI É A DE SEMPRE; O EIXO ENTRA POR FORA** — ver [`conjugado`], e note que
+            // para o eixo de omissão ele é a **identidade ao bit**.
             Unary::Array {
                 count,
                 spacing,
                 joint,
-            } => array(&acc, count, f64::from(spacing), joint, deformado),
-            Unary::Radial { count, joint } => radial(&acc, count, joint, deformado),
-            Unary::Taper { slope } => taper(&acc, f64::from(slope)),
+                axis,
+            } => conjugado(&acc, axis, ph2d_field::mods::ARRAY_AXIS, |t| {
+                array(t, count, f64::from(spacing), joint, deformado)
+            }),
+            Unary::Radial { count, joint, axis } => {
+                conjugado(&acc, axis, ph2d_field::mods::RADIAL_AXIS, |t| {
+                    radial(t, count, joint, deformado)
+                })
+            }
+            Unary::Taper { slope, axis } => {
+                conjugado(&acc, axis, ph2d_field::mods::TAPER_AXIS, |t| {
+                    taper(t, f64::from(slope))
+                })
+            }
             // ⚠️ O `reach` é lido do bordo **antes** deste passo — é o pior raio-xy que o avaliador
             // toca, e é o que o lema do minorante pede (o máximo no SEGMENTO, e `r` é convexo).
             Unary::Twist {
@@ -85,29 +98,43 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
                 lower,
                 upper,
                 falloff,
-            } => twist(
-                &acc,
-                f64::from(turns) * std::f64::consts::TAU,
-                f64::from(lower),
-                f64::from(upper),
-                f64::from(falloff),
-            ),
+                axis,
+            } => conjugado(&acc, axis, ph2d_field::mods::TWIST_AXIS, |t| {
+                twist(
+                    t,
+                    f64::from(turns) * std::f64::consts::TAU,
+                    f64::from(lower),
+                    f64::from(upper),
+                    f64::from(falloff),
+                )
+            }),
             Unary::Bend {
                 turns,
                 lower,
                 upper,
                 falloff,
-            } => bend(
-                &acc,
-                // ⛔ **A parede da dobra mede-se contra o ENVELOPE**, que é a caixa que a marcha
-                // percorre — ver [`bend_curvature`]. Com a bola local, `[Bend]` sozinha rasgava.
-                bend_curvature(turns, ball),
-                f64::from(lower),
-                f64::from(upper),
-                f64::from(falloff),
-                // A MESMA extensão que o divisor lê — ver [`step_divisor`].
-                bend_reach(crate::bounds::step_mod(ball, *m)),
-            ),
+                axis,
+            } => {
+                // ⛔⛔ **A BOLA TAMBÉM SE CONJUGA.** A parede e o alcance da dobra lêem
+                // `center[0]`/`center[2]` — coordenadas **canónicas**. Com a bola do mundo, escolher
+                // Y daria a parede medida no eixo errado, e uma parede pequena de menos **fura**.
+                let s = axis.shift_to(ph2d_field::mods::BEND_AXIS);
+                let canon = ball.to_canonical(s);
+                let depois = crate::bounds::step_mod(ball, *m).to_canonical(s);
+                conjugado(&acc, axis, ph2d_field::mods::BEND_AXIS, |t| {
+                    bend(
+                        t,
+                        // ⛔ **A parede da dobra mede-se contra o ENVELOPE**, que é a caixa que a
+                        // marcha percorre — ver [`bend_curvature`].
+                        bend_curvature(turns, canon),
+                        f64::from(lower),
+                        f64::from(upper),
+                        f64::from(falloff),
+                        // A MESMA extensão que o divisor lê — ver [`step_divisor`].
+                        bend_reach(depois),
+                    )
+                })
+            }
         };
         divisor *= step_divisor(*m, final_ball);
         deformado |= matches!(
@@ -125,6 +152,46 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
     }
 }
 
+/// ⭐⭐⭐ **A LEI DE UM MODIFICADOR NOUTRO EIXO** — conjugação, e não um operador por eixo.
+///
+/// Cada modificador tem **uma** lei, escrita no eixo canónico dele ([`ph2d_field::mods::ARRAY_AXIS`]
+/// e irmãos). O eixo que o artista escolhe entra por fora:
+///
+/// ```text
+/// f_A = P⁻¹ ∘ f_canónico ∘ P
+/// ```
+///
+/// com `P` a levar o eixo escolhido ao canónico. Como todos estes operadores são **remapeamentos do
+/// domínio** (`remap_xyz`), isto é literalmente dois remapeamentos a mais — e para `A` igual ao
+/// canónico é a **identidade ao bit** (nem um nó a mais na árvore), que é o que faz toda peça já
+/// autorada continuar a mesma.
+///
+/// ⛔⛔ **`P` é CÍCLICA, nunca uma troca de dois eixos** — ver [`ph2d_field::Axis`]. Uma troca tem
+/// determinante `−1`: ela espelha a peça, e uma torção espelhada **gira ao contrário**.
+///
+/// ⚠️ **O valor do campo não é tocado**, e é isso que torna isto barato: uma permutação de
+/// coordenadas é uma isometria, logo não há divisor a pagar — ao contrário da inclinação, que
+/// deforma.
+fn conjugado(
+    inner: &Tree,
+    de: ph2d_field::Axis,
+    para: ph2d_field::Axis,
+    f: impl FnOnce(&Tree) -> Tree,
+) -> Tree {
+    let s = de.shift_to(para);
+    if s == 0 {
+        // ⭐ **IDENTIDADE AO BIT** no eixo de omissão — a mesma cerca do `divisor == 1.0` na
+        // [`stacked`], e pela mesma razão: a árvore ganharia nós e todo golden mudaria de valor.
+        return f(inner);
+    }
+    let c = [Tree::x(), Tree::y(), Tree::z()];
+    let leva = |i: usize| c[i % 3].clone();
+    // `P⁻¹` na entrada, `P` na saída — ver [`ph2d_field::Axis::to_canonical`], que é a MESMA
+    // permutação aplicada ao centro da bola de bordo.
+    let dentro = inner.remap_xyz(leva(s), leva(1 + s), leva(2 + s));
+    f(&dentro).remap_xyz(leva(3 - s), leva(4 - s), leva(5 - s))
+}
+
 /// ⭐⭐⭐ **POR QUANTO UM MODIFICADOR ENCOLHE O CAMPO** — a lei, num sítio só.
 ///
 /// Um deformador de espaço devolve um **minorante** da distância, e o preço é este número: o campo
@@ -136,10 +203,15 @@ pub(crate) fn stacked(inner: &Tree, mods: &[Unary], local: crate::bounds::Ball) 
 /// tira o alcance do eixo.
 /// ⚠️ **A `ball` é a do FIM da pilha**, e não a de antes deste passo — ver a nota na [`stacked`].
 pub(crate) fn step_divisor(m: Unary, ball: crate::bounds::Ball) -> f64 {
+    // ⛔⛔ **A BOLA LÊ-SE NO REFERENCIAL CANÓNICO DO MODIFICADOR** (Enio, 2026-08-31) — os três
+    // `*_reach` abaixo lêem `center[0]`/`center[1]`/`center[2]` **por índice**, e um índice lido no
+    // eixo errado dá um `R` pequeno de menos ⇒ um divisor pequeno de menos ⇒ o campo **fura**.
+    // A permutação é a MESMA da [`conjugado`] e da [`crate::bounds::step_mod`].
+    let ball = ball.to_canonical(crate::bounds::axis_shift_of(m));
     match m {
         // ⚠️ **A extensão é a de DEPOIS do passo**, como na dobra: o avaliador é preso à AABB da bola
         // já inclinada, e ela é maior. Ler a de antes deixava `[Array, Taper]` em `1,1438`.
-        Unary::Taper { slope } => taper_divisor(f64::from(slope), taper_reach(ball)),
+        Unary::Taper { slope, .. } => taper_divisor(f64::from(slope), taper_reach(ball)),
         Unary::Twist { turns, .. } => {
             let k = f64::from(turns) * std::f64::consts::TAU;
             twist_sigma(k.abs() * axis_reach(ball).abs())

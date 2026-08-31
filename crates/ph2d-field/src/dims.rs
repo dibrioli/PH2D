@@ -155,6 +155,20 @@ pub enum Span {
     /// eixo, então esta faixa é honesta e cobre sempre a peça — mas naquela chapa ela sobra `15×`.
     /// Fechar isso pede uma caixa alinhada aos eixos, que hoje não existe em `ph2d-field-eval`.
     Along,
+    /// ⭐⭐⭐ **UMA ESCOLHA ENTRE N NOMES** — não um número que o artista tenha de decifrar.
+    ///
+    /// A linha carrega o **índice** escolhido (`0..n−1`) e esta faixa carrega as **chaves i18n** dos
+    /// nomes, na mesma ordem. O painel pinta uma fileira de botões, e o índice do que for premido é
+    /// o valor que a porta recebe.
+    ///
+    /// # ⛔ Por que não um número inteiro com um rótulo
+    ///
+    /// Uma [`Span::Count`] daria a mesma faixa e um slider: *«Axis: 1»*. ⚠️ *Um controlo que obriga
+    /// o artista a decifrar o valor não oferece o que o gesto faz* — é a lei que este módulo já
+    /// aplica ao [`Span::Locked`] e à faixa da banda.
+    ///
+    /// ⚠️ **As chaves, e nunca os rótulos** (HR-15): quem traduz é o painel.
+    Choice(&'static [&'static str]),
     /// **Periódica**: um ângulo. As pontas são `±half` e são a própria **representação** — nem o
     /// documento nem a vista têm voto, e um número além delas não é recusado, é renomeado.
     Turn(f32),

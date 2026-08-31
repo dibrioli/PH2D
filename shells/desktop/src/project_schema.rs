@@ -439,4 +439,21 @@
 /// dos v11-v13 do `FIELD_DOC_VERSION` — as fixturas deles instanciam primitivas.
 ///
 /// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08.
-pub(crate) const PROJECT_SCHEMA: u32 = 110;
+/// # 110 -> 111 — o EIXO de cada modificador com direcção (pedido do Enio, 2026-08-31)
+///
+/// A `ph2d_field::Unary::Array`, `::Taper`, `::Radial`, `::Twist` e `::Bend` ganharam um
+/// `axis: Axis`, e o `FIELD_DOC_VERSION` subiu **15 -> 16**. ⚠️ Sobe por arrasto pelo mesmo caminho
+/// do 104: a pilha de modificadores viaja, posicionalmente, dentro do blob do componente
+/// `ph2d_field_ecs::FieldMods`.
+///
+/// ⭐ **Do lado ADITIVO da regra**: o campo é o **último** de cada variante, então os índices
+/// anteriores não se mexem e o eixo de nascimento é o que cada modificador já usava
+/// (`ph2d_field::mods::ARRAY_AXIS` e irmãos) ⇒ o comportamento de toda peça é o de antes, **ao
+/// bit**.
+///
+/// ⭐ **E o `the_shape_of_a_saved_modifier_stack_is_pinned` apanhou-o** — `77 -> 82`, um byte por
+/// modificador —, que é exactamente o instrumento que o degrau 104 diz existir para este caso.
+/// *A nota do 104 previu este dia e nomeou a ferramenta certa.*
+///
+/// ⛔ **Sem degrau de migração**, pela decisão do Enio de 26/08 — um v105 é **recusado em voz alta**.
+pub(crate) const PROJECT_SCHEMA: u32 = 111;

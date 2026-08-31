@@ -954,7 +954,10 @@ fn measure_taper_frame_cost() {
             vec![Node {
                 xform: Xform::IDENTITY,
                 kind: NodeKind::Leaf(Primitive::Sphere { radius: 0.4 }),
-                mods: vec![Unary::Taper { slope }],
+                mods: vec![Unary::Taper {
+                    slope,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                }],
                 verb: None,
             }],
             NodeId(0),
@@ -2367,12 +2370,20 @@ fn the_full_march_step_draws_the_same_piece_as_the_short_one() {
                 vec![Unary::Radial {
                     count: 7,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 }],
             ),
         ),
         (
             "inclinação",
-            one(bx.clone(), vec![Unary::Taper { slope: 1.5 }]),
+            one(
+                bx.clone(),
+                vec![Unary::Taper {
+                    slope: 1.5,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                }],
+            ),
         ),
         ("união viva", two(Op::Union(Blend::Sharp))),
         ("subtracção viva", two(Op::Difference(Blend::Sharp))),

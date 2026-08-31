@@ -27,6 +27,7 @@
 //!
 //! [ADR-0161]: ../../../docs/architecture/decisions/0161-3d-modeling-is-an-implicit-field-tree-and-what-the-artist-sees-is-the-traced-field.md
 
+pub mod axis;
 pub mod blend;
 pub mod dims;
 pub mod dims_scale;
@@ -38,6 +39,7 @@ pub mod profile;
 pub mod radius;
 pub mod xform;
 
+pub use axis::Axis;
 pub use blend::{Blend, Character, Joint};
 pub use dims::{Dim, Param, Span, clamp_round, dims, scale_primitive, set_dim};
 pub use mods::{Unary, UnaryKind};
@@ -139,7 +141,18 @@ use serde::{Deserialize, Serialize};
 /// **modificadores** — que é o buraco que a v14 fechou.
 ///
 /// [`CLAUDE.md §5.0`]: ../../../CLAUDE.md
-pub const FIELD_DOC_VERSION: u32 = 15;
+/// v16: os **cinco modificadores com direcção** ([`Unary::Array`], [`Unary::Taper`],
+/// [`Unary::Radial`], [`Unary::Twist`], [`Unary::Bend`]) ganharam o **eixo** ([`Axis`]) — Enio,
+/// 2026-08-31: *«o efeito está atuando num eixo diferente do desejado»*. É campo novo **no fim** de
+/// cada variante, e o valor de nascimento é o eixo que cada um já usava
+/// ([`mods::ARRAY_AXIS`] e irmãos) ⇒ toda peça já autorada lê-se **ao bit** como antes.
+///
+/// ⛔ **O espelho fica de fora e a ausência é a decisão:** ele já tem os três eixos, como três
+/// variantes ([`Unary::Mirror`] / [`Unary::MirrorY`] / [`Unary::MirrorZ`]) — a escolha do Enio em
+/// 2026-08-26. Colapsá-las num campo apagaria **duas variantes do meio** do enum, e o postcard é
+/// posicional: toda peça gravada passaria a ler-se como outra coisa, **em silêncio**. A `Shell` e o
+/// `Offset` ficam de fora por não terem direcção nenhuma.
+pub const FIELD_DOC_VERSION: u32 = 16;
 
 /// Índice de um nó na arena.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

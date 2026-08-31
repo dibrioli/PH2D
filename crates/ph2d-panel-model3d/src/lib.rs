@@ -27,6 +27,8 @@ pub mod state;
 
 mod event;
 mod paint;
+/// As três formas de uma linha do painel — ver [`paint_rows`].
+mod paint_rows;
 mod populate;
 
 pub use populate::{MAX_MODES, MAX_ROWS};

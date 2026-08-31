@@ -312,6 +312,7 @@ pub(crate) fn cena_14() -> Result<FieldDoc, ph2d_field::FieldError> {
                     upper: 9.0,
                     // A banda cobre a peça inteira: não há ombro dentro dela para amaciar.
                     falloff: 0.0,
+                    axis: ph2d_field::mods::TWIST_AXIS,
                 }],
             ),
             // ⭐ A BANDA: abaixo de `z = 0` a coluna fica intacta, e acima do topo dela o
@@ -326,6 +327,7 @@ pub(crate) fn cena_14() -> Result<FieldDoc, ph2d_field::FieldError> {
                     // ⭐ **O OMBRO** — o report do Enio (*«muito dura a transição»*): sem
                     // ele o giro da normal salta de `0,0` para `157,3 °/un` no fim da banda.
                     falloff: 0.22,
+                    axis: ph2d_field::mods::TWIST_AXIS,
                 }],
             ),
             combine(

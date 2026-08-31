@@ -976,6 +976,8 @@ fn an_array_of_n_is_exactly_the_union_of_n_translated_copies() {
             count: n,
             spacing: s,
             joint: ph2d_field::Joint::SHARP,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         }],
     );
     let copies = {
@@ -1019,6 +1021,8 @@ fn the_array_stops_at_the_count_instead_of_repeating_forever() {
             count: n,
             spacing: s as f32,
             joint: ph2d_field::Joint::SHARP,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         }],
     );
     let f = Field::new(&doc);
@@ -1075,6 +1079,8 @@ fn an_off_centre_shape_still_measures_to_the_nearest_copy() {
                     count: n,
                     spacing: s,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::ARRAY_AXIS,
                 }],
                 verb: None,
             },
@@ -1190,6 +1196,8 @@ fn a_radial_array_of_n_is_exactly_the_union_of_n_rotated_copies() {
                 mods: vec![Unary::Radial {
                     count: n,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 }],
                 verb: None,
             },
@@ -1253,6 +1261,8 @@ fn the_radial_axis_answers_instead_of_producing_a_nan() {
                 mods: vec![Unary::Radial {
                     count: 8,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 }],
                 verb: None,
             },
@@ -1279,7 +1289,13 @@ fn measure_taper_cost() {
     use ph2d_field::Unary;
     println!("declive | max ‖∇f‖ | min ‖∇f‖ (= fração do passo)");
     for slope in [0.0f32, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0] {
-        let doc = shelled(0.4, vec![Unary::Taper { slope }]);
+        let doc = shelled(
+            0.4,
+            vec![Unary::Taper {
+                slope,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            }],
+        );
         let f = Field::new(&doc);
         let (mut hi, mut lo) = (0.0f64, f64::INFINITY);
         for i in 0..25 {
@@ -1313,7 +1329,13 @@ fn measure_taper_cost() {
 fn the_taper_never_overestimates_the_distance() {
     use ph2d_field::{Unary, mods::MAX_TAPER_SLOPE};
     for slope in [0.1f32, 0.25, 0.5, MAX_TAPER_SLOPE] {
-        let doc = shelled(0.4, vec![Unary::Taper { slope }]);
+        let doc = shelled(
+            0.4,
+            vec![Unary::Taper {
+                slope,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            }],
+        );
         let f = Field::new(&doc);
         let mut worst = 0.0f64;
         for i in 0..17 {
@@ -1346,7 +1368,13 @@ fn the_taper_narrows_one_way_and_widens_the_other() {
     let r = 0.4f64;
     // A largura da secção a uma altura: o `x` onde o campo cruza zero.
     let width_at = |slope: f32, y: f64| -> f64 {
-        let doc = shelled(r as f32, vec![Unary::Taper { slope }]);
+        let doc = shelled(
+            r as f32,
+            vec![Unary::Taper {
+                slope,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            }],
+        );
         let f = Field::new(&doc);
         let (mut lo, mut hi) = (0.0f64, 3.0f64);
         for _ in 0..40 {
@@ -2450,6 +2478,8 @@ fn the_specialised_document_agrees_inside_its_region() {
                 count: 3,
                 spacing: 0.6,
                 joint: ph2d_field::Joint::SHARP,
+
+                axis: ph2d_field::mods::ARRAY_AXIS,
             }];
             d = FieldDoc::new(nodes, NodeId(0)).expect("a matriz");
             d
@@ -2895,6 +2925,8 @@ fn the_table_of_who_inflates_the_gradient() {
                     count: 3,
                     spacing: 0.5,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::ARRAY_AXIS,
                 },
             ),
         ),
@@ -2905,10 +2937,21 @@ fn the_table_of_who_inflates_the_gradient() {
                 Unary::Radial {
                     count: 5,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 },
             ),
         ),
-        ("Taper 0,3", modded(bx.clone(), Unary::Taper { slope: 0.3 })),
+        (
+            "Taper 0,3",
+            modded(
+                bx.clone(),
+                Unary::Taper {
+                    slope: 0.3,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                },
+            ),
+        ),
         (
             "escala 0,4",
             FieldDoc::new(
@@ -2964,7 +3007,13 @@ fn the_table_of_the_gradient_across_the_parameter() {
             .map(|s| {
                 (
                     format!("{s}"),
-                    modded(bx.clone(), Unary::Taper { slope: s }),
+                    modded(
+                        bx.clone(),
+                        Unary::Taper {
+                            slope: s,
+                            axis: ph2d_field::mods::TAPER_AXIS,
+                        },
+                    ),
                 )
             })
             .collect(),
@@ -2981,6 +3030,8 @@ fn the_table_of_the_gradient_across_the_parameter() {
                         Unary::Radial {
                             count: c,
                             joint: ph2d_field::Joint::SHARP,
+
+                            axis: ph2d_field::mods::RADIAL_AXIS,
                         },
                     ),
                 )
@@ -3000,6 +3051,8 @@ fn the_table_of_the_gradient_across_the_parameter() {
                             count: 4,
                             spacing: s,
                             joint: ph2d_field::Joint::SHARP,
+
+                            axis: ph2d_field::mods::ARRAY_AXIS,
                         },
                     ),
                 )
@@ -3198,7 +3251,13 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
     for s in [0.0f32, 0.2, 0.5, 1.0, 2.0, 4.0] {
         cases.push((
             format!("Taper {s}"),
-            modded(bx.clone(), Unary::Taper { slope: s }),
+            modded(
+                bx.clone(),
+                Unary::Taper {
+                    slope: s,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                },
+            ),
         ));
     }
     for c in [2u32, 3, 5, 8, 16, 64] {
@@ -3209,6 +3268,8 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
                 Unary::Radial {
                     count: c,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 },
             ),
         ));
@@ -3222,6 +3283,8 @@ fn the_step_times_the_worst_gradient_never_exceeds_one() {
                     count: 4,
                     spacing: sp,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::ARRAY_AXIS,
                 },
             ),
         ));
@@ -4622,13 +4685,21 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
     for (mn, m) in [
         ("Shell 0,05", ph2d_field::Unary::Shell { thickness: 0.05 }),
         ("Offset 0,1", ph2d_field::Unary::Offset { distance: 0.1 }),
-        ("Taper 1,0", ph2d_field::Unary::Taper { slope: 1.0 }),
+        (
+            "Taper 1,0",
+            ph2d_field::Unary::Taper {
+                slope: 1.0,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            },
+        ),
         ("Mirror", ph2d_field::Unary::Mirror),
         (
             "Radial 5",
             ph2d_field::Unary::Radial {
                 count: 5,
                 joint: ph2d_field::Joint::SHARP,
+
+                axis: ph2d_field::mods::RADIAL_AXIS,
             },
         ),
         (
@@ -4637,6 +4708,8 @@ fn composition_cases() -> Vec<(String, FieldDoc)> {
                 count: 3,
                 spacing: 0.5,
                 joint: ph2d_field::Joint::SHARP,
+
+                axis: ph2d_field::mods::ARRAY_AXIS,
             },
         ),
     ] {

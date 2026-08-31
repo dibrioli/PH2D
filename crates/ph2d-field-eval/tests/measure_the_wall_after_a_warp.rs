@@ -77,7 +77,13 @@ fn the_wall_measures_the_number_that_was_written() {
     for slope in [0.25f32, 0.5, 1.0] {
         confere(
             "Taper + Shell",
-            vec![Unary::Taper { slope }, Unary::Shell { thickness: T }],
+            vec![
+                Unary::Taper {
+                    slope,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                },
+                Unary::Shell { thickness: T },
+            ],
         );
     }
     for turns in [0.25f32, 0.5, 1.0] {
@@ -89,6 +95,8 @@ fn the_wall_measures_the_number_that_was_written() {
                     lower: -9.0,
                     upper: 9.0,
                     falloff: 0.0,
+
+                    axis: ph2d_field::mods::TWIST_AXIS,
                 },
                 Unary::Shell { thickness: T },
             ],
@@ -109,7 +117,10 @@ fn measure_the_wall_after_a_warp() {
     println!("\nsem deformador     : parede {limpa:.5} (pedida {T})");
     for slope in [0.25f32, 0.5, 1.0] {
         let p = parede(&caixa(vec![
-            Unary::Taper { slope },
+            Unary::Taper {
+                slope,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            },
             Unary::Shell { thickness: T },
         ]));
         println!(
@@ -124,6 +135,8 @@ fn measure_the_wall_after_a_warp() {
                 lower: -9.0,
                 upper: 9.0,
                 falloff: 0.0,
+
+                axis: ph2d_field::mods::TWIST_AXIS,
             },
             Unary::Shell { thickness: T },
         ]));

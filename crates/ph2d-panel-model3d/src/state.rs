@@ -91,6 +91,17 @@ pub struct ParamRow {
     /// sintoma lê-se exactamente como uma feature partida: ele arrasta o que julga ser o da torção,
     /// vê outra coisa mudar, e conclui que a torção não funciona.
     pub section: Option<&'static str>,
+    /// ⭐⭐⭐ **OS NOMES DE UMA ESCOLHA** — vazio ⇒ a linha é um número (Enio, 2026-08-31).
+    ///
+    /// Quando não é vazio, o valor da linha é o **índice** escolhido e estas são as chaves i18n dos
+    /// nomes, na ordem. O painel pinta uma fileira de botões em vez de um slider, e o índice do que
+    /// for premido é o que o intent leva.
+    ///
+    /// ⚠️ **Chaves, nunca rótulos** (HR-15) — a mesma lei do [`ParamRow::key`].
+    ///
+    /// ⛔ **Ela substitui o slider, não o acompanha:** um eixo com slider *e* botões seria o mesmo
+    /// facto em dois controlos, e os dois podem discordar. Ver [`ph2d_field::Span::Choice`].
+    pub choices: &'static [&'static str],
 }
 
 /// Um verbo que o gizmo oferece: a chave i18n do rótulo, e se ele é o ativo.

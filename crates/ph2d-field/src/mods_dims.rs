@@ -61,6 +61,22 @@ fn set_joint(joint: &mut Joint, field: u8, value: f32) {
     }
 }
 
+/// ⭐⭐⭐ **A LINHA DO EIXO** — a mesma em todos os modificadores que a têm (Enio, 2026-08-31).
+///
+/// ⚠️ **Uma função, cinco modificadores** — a mesma razão da [`joint_dims`]: cinco cópias da mesma
+/// escada acabariam a discordar sobre o que o índice `1` quer dizer.
+///
+/// ⚠️ **Ela vai no FIM da lista**, e isso é load-bearing pela razão que a [`joint_dims`] já nomeia:
+/// o índice `field` de um [`crate::Param::Mod`] é **posicional**, então acrescentar no fim é seguro
+/// e inserir no meio renumera — um arrasto em curso passaria a escrever noutro campo.
+fn axis_dim(axis: crate::Axis) -> crate::Dim {
+    crate::Dim {
+        key: "field.mod.axis",
+        value: f32::from(axis.index()),
+        span: Span::Choice(&crate::Axis::KEYS),
+    }
+}
+
 impl Unary {
     /// ⭐ **Os números deste modificador**, na ordem em que o painel os mostra.
     ///
@@ -93,6 +109,7 @@ impl Unary {
                 count,
                 spacing,
                 joint,
+                axis,
             } => {
                 let mut linhas = vec![
                     crate::Dim {
@@ -110,19 +127,23 @@ impl Unary {
                     },
                 ];
                 linhas.extend(joint_dims(joint));
+                linhas.push(axis_dim(axis));
                 linhas
             }
             // ⚠️ **Sem espaçamento**: numa coroa o espaçamento é o próprio ângulo, e ele já está
             // dito pela contagem (`2π/n`). Um segundo número aqui seria uma forma de pedir uma
             // coroa incompleta — que é outra feature, com outro nome.
-            Unary::Taper { slope } => vec![crate::Dim {
-                key: "field.mod.slope",
-                value: slope,
-                // ⚠️ Uma parede dos **dois** lados: inclinar para dentro e para fora são os dois
-                // gestos, e o teto é do CUSTO da marcha (ver `MAX_TAPER_SLOPE`).
-                span: Span::Walls(MAX_TAPER_SLOPE),
-            }],
-            Unary::Radial { count, joint } => {
+            Unary::Taper { slope, axis } => vec![
+                crate::Dim {
+                    key: "field.mod.slope",
+                    value: slope,
+                    // ⚠️ Uma parede dos **dois** lados: inclinar para dentro e para fora são os dois
+                    // gestos, e o teto é do CUSTO da marcha (ver `MAX_TAPER_SLOPE`).
+                    span: Span::Walls(MAX_TAPER_SLOPE),
+                },
+                axis_dim(axis),
+            ],
+            Unary::Radial { count, joint, axis } => {
                 let mut linhas = vec![crate::Dim {
                     key: "field.mod.count",
                     value: count as f32,
@@ -132,6 +153,7 @@ impl Unary {
                     },
                 }];
                 linhas.extend(joint_dims(joint));
+                linhas.push(axis_dim(axis));
                 linhas
             }
             // ⚠️ **Os dois sentidos** (como a inclinação): torcer para um lado e para o outro são os
@@ -142,6 +164,7 @@ impl Unary {
                 lower,
                 upper,
                 falloff,
+                axis,
             } => vec![
                 crate::Dim {
                     key: "field.mod.turns",
@@ -165,6 +188,7 @@ impl Unary {
                     value: falloff,
                     span: Span::FromZero,
                 },
+                axis_dim(axis),
             ],
             // ⚠️ **As mesmas quatro linhas da torção, na mesma ordem** — ver o doc da variante.
             Unary::Bend {
@@ -172,6 +196,7 @@ impl Unary {
                 lower,
                 upper,
                 falloff,
+                axis,
             } => vec![
                 crate::Dim {
                     key: "field.mod.turns",
@@ -193,6 +218,7 @@ impl Unary {
                     value: falloff,
                     span: Span::FromZero,
                 },
+                axis_dim(axis),
             ],
         }
     }
@@ -234,7 +260,7 @@ impl Unary {
                 }
                 *spacing = value;
             }
-            (Unary::Taper { slope }, 0) => {
+            (Unary::Taper { slope, .. }, 0) => {
                 *slope = value.clamp(-MAX_TAPER_SLOPE, MAX_TAPER_SLOPE);
             }
             // ⚠️ **Aceita zero e negativo**: a faixa é dos dois lados e o zero é a peça intacta.
@@ -285,6 +311,17 @@ impl Unary {
             //
             // ⚠️ **Zero é legítimo e é o estado de nascimento** (a costura viva), pela razão que o
             // `Offset` acima já nomeia: recusá-lo faria o slider ter um buraco na ponta de baixo.
+            // ⭐⭐⭐ **O EIXO, nos cinco modificadores que o têm** (Enio, 2026-08-31) — o índice é
+            // sempre o ÚLTIMO da lista daquele modificador, que é onde a [`axis_dim`] o põe.
+            //
+            // ⚠️ **COAGE em vez de recusar** — a lei da porta deste módulo, e aqui ela é obrigatória
+            // pela razão que o `Offset` já nomeia: recusar faria o `FieldDoc::new` recusar a PEÇA
+            // inteira ao revalidar.
+            (Unary::Array { axis, .. }, 4)
+            | (Unary::Taper { axis, .. }, 1)
+            | (Unary::Radial { axis, .. }, 3)
+            | (Unary::Twist { axis, .. }, 4)
+            | (Unary::Bend { axis, .. }, 4) => *axis = crate::Axis::from_index(value),
             (Unary::Array { joint, .. }, 2 | 3) => set_joint(joint, field - 2, value),
             (Unary::Radial { joint, .. }, 1 | 2) => set_joint(joint, field - 1, value),
             _ => return Err(bad("mod")),

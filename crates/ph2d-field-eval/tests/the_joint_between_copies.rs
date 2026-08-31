@@ -71,10 +71,14 @@ fn a_sharp_seam_costs_nothing() {
             count: 4,
             spacing: S,
             joint: Joint::SHARP,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         }],
         vec![Unary::Radial {
             count: 6,
             joint: Joint::SHARP,
+
+            axis: ph2d_field::mods::RADIAL_AXIS,
         }],
     ] {
         let doc = com_mods(mods.clone());
@@ -116,6 +120,8 @@ fn the_seam_bites_the_crease_of_an_array() {
                 count: 2,
                 spacing: S,
                 joint,
+
+                axis: ph2d_field::mods::ARRAY_AXIS,
             }])),
             f64::from(S) * 0.5,
         )
@@ -168,7 +174,11 @@ fn the_seam_bites_the_crease_of_a_radial_crown() {
                 children: vec![NodeId(0)],
             },
         );
-        grupo.mods = vec![Unary::Radial { count: 6, joint }];
+        grupo.mods = vec![Unary::Radial {
+            count: 6,
+            joint,
+            axis: ph2d_field::mods::RADIAL_AXIS,
+        }];
         campo(&FieldDoc::new(vec![filho, grupo], NodeId(1)).expect("a coroa"))
     };
     // A costura entre a cópia `0` (em `θ = 0`) e a `1` (em `θ = 60°`) fica na bissectriz, `θ = 30°`.
@@ -213,6 +223,8 @@ fn the_seam_does_not_move_the_face_of_an_end_copy() {
         count: 3,
         spacing: S,
         joint: Joint::SHARP,
+
+        axis: ph2d_field::mods::ARRAY_AXIS,
     }]));
     let com = campo(&com_mods(vec![Unary::Array {
         count: 3,
@@ -221,6 +233,8 @@ fn the_seam_does_not_move_the_face_of_an_end_copy() {
             chamfer: 0.06,
             fillet: 0.06,
         },
+
+        axis: ph2d_field::mods::ARRAY_AXIS,
     }]));
     // A face de FORA da primeira cópia: caminhamos de dentro dela para `−x`.
     let borda = |f: &Field| {
@@ -269,6 +283,8 @@ fn the_seam_does_not_move_the_surface_at_a_cell_centre() {
             count: 4,
             spacing: S,
             joint,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         }]));
         // O centro da célula 1 é `x = S`. A superfície acima dele é o topo daquela esfera.
         let y = superficie_y(&f, f64::from(S)).expect("a cópia 1 existe");
@@ -318,7 +334,11 @@ fn the_seam_does_not_move_the_surface_at_a_wedge_centre() {
                 children: vec![NodeId(0)],
             },
         );
-        grupo.mods = vec![Unary::Radial { count: 5, joint }];
+        grupo.mods = vec![Unary::Radial {
+            count: 5,
+            joint,
+            axis: ph2d_field::mods::RADIAL_AXIS,
+        }];
         campo(&FieldDoc::new(vec![filho, grupo], NodeId(1)).expect("a coroa"))
     };
     // ⚠️ **A medição tem de ser EM `θ = 0`**, e a 1.ª redacção não era: ela subia em `y` a partir de
@@ -361,6 +381,8 @@ fn the_two_cell_law_never_overestimates_with_a_seam() {
             count: 4,
             spacing: S,
             joint,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         }]));
         // O oráculo: quatro esferas em união, cada uma no lugar dela, com a MESMA junta.
         let mut nodes = Vec::new();
@@ -414,6 +436,8 @@ fn the_march_step_pays_for_the_seam() {
     let vivo = com_mods(vec![Unary::Radial {
         count: 6,
         joint: Joint::SHARP,
+
+        axis: ph2d_field::mods::RADIAL_AXIS,
     }]);
     let costurado = com_mods(vec![Unary::Radial {
         count: 6,
@@ -421,6 +445,8 @@ fn the_march_step_pays_for_the_seam() {
             chamfer: 0.0,
             fillet: 0.05,
         },
+
+        axis: ph2d_field::mods::RADIAL_AXIS,
     }]);
     let (a, b) = (
         ph2d_field_eval::safe_march_step(&vivo),
@@ -453,6 +479,8 @@ fn the_bounding_ball_grows_with_the_seam() {
                 count: 3,
                 spacing: S,
                 joint,
+
+                axis: ph2d_field::mods::ARRAY_AXIS,
             }]),
             &reg,
         )

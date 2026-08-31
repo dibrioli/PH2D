@@ -25,6 +25,14 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 /// passar disto, o rodapé diz — e aí o número muda com uma medição atrás.*
 pub const MAX_ROWS: usize = 64;
 
+/// Quantos botões uma linha de **escolha** pode oferecer.
+///
+/// ⚠️ **É um limite de REGISTO, e a mesma natureza do [`MAX_ROWS`]**: o `populate` corre antes de a
+/// peça existir e cunha a família às cegas. Hoje o único consumidor é o eixo, que tem **três**
+/// ([`ph2d_field::Axis::ALL`]); a folga de um é para a escolha seguinte não obrigar a mexer aqui, e
+/// o gate `every_choice_row_fits_the_registered_family` afirma que ninguém a estourou.
+pub const MAX_CHOICES: u32 = 4;
+
 /// Quantos verbos (e quantos referenciais) um seletor consegue mostrar.
 ///
 /// ⚠️ Mesma natureza do [`MAX_ROWS`]: é um limite de **registro**, porque o `populate` corre antes
@@ -111,6 +119,17 @@ pub fn populate(store: &mut WidgetStore) {
         // `paint`: o teto de um raio é do NÓ (a caixa aceita menos que o cilindro), e uma escala
         // fixa aqui seria a mesma faixa para todos.
         store.link_slider_number_mapped(slider, chip, 1.0, 0.0);
+        // ⭐ **A fileira de escolha da mesma linha** — ver [`ParamRow::choices`]. Só uma das duas
+        // formas é pintada por quadro, mas as duas são registadas às cegas aqui pela razão que o
+        // topo deste arquivo dá: o `populate` corre **antes** de a peça existir.
+        for cell in 0..MAX_CHOICES {
+            store.register(
+                ids::model3d_choice_button(node, cell),
+                InteractiveState::Button {
+                    state: ButtonState::Normal,
+                },
+            );
+        }
     }
     store.register(
         ids::MODEL3D_CLOSE,

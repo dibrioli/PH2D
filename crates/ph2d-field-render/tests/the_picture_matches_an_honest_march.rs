@@ -276,10 +276,15 @@ fn the_deformed_rosette_agrees_with_an_honest_march() {
             chamfer: 0.0,
         },
         vec![
-            Unary::Taper { slope: 0.6 },
+            Unary::Taper {
+                slope: 0.6,
+                axis: ph2d_field::mods::TAPER_AXIS,
+            },
             Unary::Radial {
                 count: 6,
                 joint: ph2d_field::Joint::SHARP,
+
+                axis: ph2d_field::mods::RADIAL_AXIS,
             },
         ],
     );
@@ -339,6 +344,8 @@ fn the_bend_draws_what_an_honest_march_draws() {
                 lower: -2.0,
                 upper: 2.0,
                 falloff: 0.1,
+
+                axis: ph2d_field::mods::BEND_AXIS,
             }],
         );
         let (mal, medidos, pior) = disagreeing_pixels_of(&doc, &yaws(), 12.0);
@@ -407,6 +414,8 @@ fn the_band_of_the_bend_draws_what_an_honest_march_draws() {
                     lower: lo,
                     upper: up,
                     falloff: fall,
+
+                    axis: ph2d_field::mods::BEND_AXIS,
                 }],
             );
             let (faltam, oraculo) = pixels_the_product_misses(&doc, &vistas);

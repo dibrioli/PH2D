@@ -80,7 +80,11 @@ pub(crate) fn cena_16() -> Result<FieldDoc, ph2d_field::FieldError> {
                 children: vec![NodeId(filho)],
             },
         );
-        g.mods = vec![ph2d_field::Unary::Radial { count: 8, joint }];
+        g.mods = vec![ph2d_field::Unary::Radial {
+            count: 8,
+            joint,
+            axis: ph2d_field::mods::RADIAL_AXIS,
+        }];
         g
     };
     let tubo = || {

@@ -24,6 +24,18 @@ fn slot_of(id: ph2d_a11y::NodeId) -> Option<(usize, bool)> {
     })
 }
 
+/// De que **linha e botão** de uma fileira de escolha é este id, se for de alguma.
+///
+/// ⚠️ **Uma varredura sobre as duas dimensões da família**, pela razão do [`slot_of`]: um `NodeId` é
+/// um hash de nome e hash não se inverte. `64 × 4` corre uma vez por evento, não por quadro.
+fn choice_of(id: ph2d_a11y::NodeId) -> Option<(usize, u32)> {
+    (0..MAX_ROWS as u32).find_map(|linha| {
+        (0..crate::populate::MAX_CHOICES)
+            .find(|&cell| id == ids::model3d_choice_button(linha, cell))
+            .map(|cell| (linha as usize, cell))
+    })
+}
+
 /// De que **posição** de um seletor é este id, se for de algum.
 ///
 /// ⚠️ O seletor viaja como parâmetro: os dois (verbo e referencial) têm famílias de id próprias, e
@@ -84,6 +96,30 @@ pub(crate) fn apply_event(
             }
             None => false,
         },
+        // ⭐⭐⭐ **A FILEIRA DE ESCOLHA DE UMA LINHA** — o eixo de um modificador (Enio,
+        // 2026-08-31). ⚠️ Ela despacha o **mesmo** `SetParam` que o slider da linha: para a porta do
+        // documento uma escolha é um número, e o que muda é só o controlo que o produz.
+        WidgetEvent::Click(id) if choice_of(id).is_some() => {
+            let (slot, cell) = choice_of(id).unwrap_or((0, 0));
+            let snap = state::current();
+            match snap.rows.get(slot) {
+                // ⚠️ **Uma linha inerte não despacha**, e um id cuja linha deste quadro não é uma
+                // escolha também não: a família está registada às cegas para `MAX_ROWS × MAX_CHOICES`
+                // (ver `populate`), então um clique num id que o retrato não pintou é alcançável.
+                Some(row) if row.live && (cell as usize) < row.choices.len() => {
+                    state::push_intent(ModelIntent::SetParam {
+                        entity: row.entity,
+                        param: row.param,
+                        // ⭐ **O ÍNDICE do botão é o valor** — ver `ph2d_field::Span::Choice`. Sem
+                        // trilha, sem faixa: a posição no ecrã não entra na conta, e é isso que
+                        // separa uma escolha de um slider de três posições.
+                        value: cell as f32,
+                    });
+                    true
+                }
+                _ => false,
+            }
+        }
         // ⭐ Os dois seletores. ⚠️ A POSIÇÃO é o que viaja: o painel não conhece os enums do
         // gizmo, e uma cópia deles aqui seria uma segunda contagem a envelhecer.
         WidgetEvent::Click(id) if slot_in(id, ids::model3d_mode_button).is_some() => {

@@ -35,23 +35,34 @@ fn vivo(k: UnaryKind) -> Unary {
             count: 3,
             spacing: 0.5,
             joint: ph2d_field::Joint::SHARP,
+
+            axis: ph2d_field::mods::ARRAY_AXIS,
         },
         UnaryKind::Radial => Unary::Radial {
             count: 6,
             joint: ph2d_field::Joint::SHARP,
+
+            axis: ph2d_field::mods::RADIAL_AXIS,
         },
-        UnaryKind::Taper => Unary::Taper { slope: 0.6 },
+        UnaryKind::Taper => Unary::Taper {
+            slope: 0.6,
+            axis: ph2d_field::mods::TAPER_AXIS,
+        },
         UnaryKind::Twist => Unary::Twist {
             turns: 0.35,
             lower: -2.0,
             upper: 2.0,
             falloff: 0.1,
+
+            axis: ph2d_field::mods::TWIST_AXIS,
         },
         UnaryKind::Bend => Unary::Bend {
             turns: 0.12,
             lower: -2.0,
             upper: 2.0,
             falloff: 0.1,
+
+            axis: ph2d_field::mods::BEND_AXIS,
         },
     }
 }
@@ -184,6 +195,8 @@ fn every_modifier_alone_keeps_the_field_marchable() {
                     count,
                     spacing: 0.5,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::ARRAY_AXIS,
                 })
                 .collect(),
             UnaryKind::Radial => [2u32, 6, 12, 64]
@@ -191,11 +204,16 @@ fn every_modifier_alone_keeps_the_field_marchable() {
                 .map(|&count| Unary::Radial {
                     count,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 })
                 .collect(),
             UnaryKind::Taper => [0.1f32, 0.6, 1.2, 2.0]
                 .iter()
-                .map(|&slope| Unary::Taper { slope })
+                .map(|&slope| Unary::Taper {
+                    slope,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                })
                 .collect(),
             UnaryKind::Twist => [0.05f32, 0.35, 1.0, 2.0]
                 .iter()
@@ -204,6 +222,8 @@ fn every_modifier_alone_keeps_the_field_marchable() {
                     lower: -2.0,
                     upper: 2.0,
                     falloff: 0.1,
+
+                    axis: ph2d_field::mods::TWIST_AXIS,
                 })
                 .collect(),
             UnaryKind::Bend => [0.05f32, 0.12, 0.25, 0.5, 1.0]
@@ -213,6 +233,8 @@ fn every_modifier_alone_keeps_the_field_marchable() {
                     lower: -2.0,
                     upper: 2.0,
                     falloff: 0.1,
+
+                    axis: ph2d_field::mods::BEND_AXIS,
                 })
                 .collect(),
         };
@@ -278,7 +300,13 @@ fn the_radial_repetition_holds_over_every_count() {
     let mut obsoletas = Vec::new();
     for count in [3u32, 4, 5, 6, 7, 8, 10, 12, 16, 24, 32, 48, 64] {
         for (nome, def) in [
-            ("Taper 0,6", Unary::Taper { slope: 0.6 }),
+            (
+                "Taper 0,6",
+                Unary::Taper {
+                    slope: 0.6,
+                    axis: ph2d_field::mods::TAPER_AXIS,
+                },
+            ),
             (
                 "Twist",
                 Unary::Twist {
@@ -286,6 +314,8 @@ fn the_radial_repetition_holds_over_every_count() {
                     lower: -2.0,
                     upper: 2.0,
                     falloff: 0.1,
+
+                    axis: ph2d_field::mods::TWIST_AXIS,
                 },
             ),
             (
@@ -295,6 +325,8 @@ fn the_radial_repetition_holds_over_every_count() {
                     lower: -2.0,
                     upper: 2.0,
                     falloff: 0.1,
+
+                    axis: ph2d_field::mods::BEND_AXIS,
                 },
             ),
         ] {
@@ -303,6 +335,8 @@ fn the_radial_repetition_holds_over_every_count() {
                 Unary::Radial {
                     count,
                     joint: ph2d_field::Joint::SHARP,
+
+                    axis: ph2d_field::mods::RADIAL_AXIS,
                 },
             ]);
             let g = worst_gradient(&doc, GRELHA);

@@ -456,7 +456,13 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // `Primitive` viaja dentro do `ComponentBlob` do `FieldNode`, que para esta tripla e' opaco.
         // Quem a defende sao os dois goldens de forma da `ph2d-field` (151→159 e 86→90).
         // ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
-        (110, 13, 18),
+        // PROJECT 110→111: o EIXO de cada modificador com direccao (pedido do Enio, 2026-08-31).
+        // A `Unary::Array`, `::Taper`, `::Radial`, `::Twist` e `::Bend` ganharam um `axis: Axis`.
+        // ⚠️ Mesmo cego dos degraus 99/100/104/105: a pilha viaja dentro do `ComponentBlob` do
+        // `FieldMods`, que para esta tripla e' opaco. Quem a defende e' o
+        // `the_shape_of_a_saved_modifier_stack_is_pinned` da `ph2d-field` (77→82, um byte por
+        // modificador). ⛔ SEM degrau de migracao, por decisao do Enio (26/08).
+        (111, 13, 18),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

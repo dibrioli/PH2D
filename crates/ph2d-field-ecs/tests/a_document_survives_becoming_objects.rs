@@ -45,6 +45,8 @@ fn peca_completa(com_mods: bool) -> FieldDoc {
                 lower: -1.0,
                 upper: 1.0,
                 falloff: 0.0,
+
+                axis: ph2d_field::mods::TWIST_AXIS,
             },
         ];
         b.mods = vec![Unary::Shell { thickness: 0.04 }];

@@ -121,6 +121,17 @@ pub fn model3d_view_travel(generation: u32) -> NodeId {
     fnv_node_id_runtime(&format!("model3d.view.travel.{generation}"))
 }
 
+/// ⭐⭐⭐ **UM BOTÃO DE ESCOLHA** de uma linha de painel — a fileira `X / Y / Z` do eixo de um
+/// modificador (Enio, 2026-08-31).
+///
+/// ⚠️ **`cell` é a posição do botão DENTRO da linha**, e `row` é a linha. Os dois num id só porque
+/// um `NodeId` é um hash de nome: cunhar `row` e `cell` no nome é o que os mantém distintos sem uma
+/// convenção implícita entre duas crates.
+#[must_use]
+pub fn model3d_choice_button(row: u32, cell: u32) -> NodeId {
+    fnv_node_id_runtime(&format!("model3d.choice.{row}.{cell}"))
+}
+
 /// O **slider do raio** do nó `node` da arena.
 #[must_use]
 pub fn model3d_radius_slider(node: u32) -> NodeId {

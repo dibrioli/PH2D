@@ -40,6 +40,29 @@ impl Ball {
         radius: 0.0,
     };
 
+    /// ⭐⭐⭐ **A MESMA BOLA, vista do referencial CANÓNICO de um modificador** (Enio, 2026-08-31).
+    ///
+    /// ⚠️ Uma bola é uma **esfera**: levá-la a outro eixo é exactamente permutar as coordenadas do
+    /// centro. *Não há lei nova a escrever* — é a mesma permutação que a
+    /// [`ph2d_field_eval::stack`] aplica à árvore, e escrevê-la duas vezes seria pedir que as duas
+    /// discordassem.
+    #[must_use]
+    pub fn to_canonical(self, s: usize) -> Self {
+        Ball {
+            center: ph2d_field::Axis::to_canonical(self.center, s),
+            ..self
+        }
+    }
+
+    /// O caminho de volta da [`Self::to_canonical`].
+    #[must_use]
+    pub fn from_canonical(self, s: usize) -> Self {
+        Ball {
+            center: ph2d_field::Axis::from_canonical(self.center, s),
+            ..self
+        }
+    }
+
     /// A caixa alinhada aos eixos que a contém — o que a grade do extrator precisa.
     #[must_use]
     pub fn aabb(self) -> ([f32; 3], [f32; 3]) {
@@ -249,6 +272,40 @@ pub fn envelope(ball: Ball, mods: &[Unary]) -> Ball {
 /// alguém acrescentar um modificador.*
 #[must_use]
 pub fn step_mod(b: Ball, m: Unary) -> Ball {
+    // ⭐⭐⭐ **A LEI ESTÁ ESCRITA NO EIXO CANÓNICO; O EIXO ESCOLHIDO ENTRA POR FORA** (Enio,
+    // 2026-08-31) — a mesma conjugação que a `stack::conjugado` aplica à árvore, e **a mesma
+    // permutação**. Escrever a lei uma vez por eixo daria três sítios onde um índice errado
+    // devolve uma caixa que **corta a peça** em silêncio, que é o modo de falha que o topo deste
+    // ficheiro diz que nunca pode acontecer.
+    let s = axis_shift_of(m);
+    if s == 0 {
+        return canonical_step(b, m);
+    }
+    canonical_step(b.to_canonical(s), m).from_canonical(s)
+}
+
+/// De quantos passos a lei de `m` tem de rodar para o eixo escolhido cair no canónico dela.
+///
+/// ⚠️ **`0` para quem não tem eixo** — a casca e o afastamento são isotrópicos, e o espelho tem os
+/// três eixos como três variantes (ver [`ph2d_field::FIELD_DOC_VERSION`], v16).
+pub(crate) fn axis_shift_of(m: Unary) -> usize {
+    use ph2d_field::mods::{ARRAY_AXIS, BEND_AXIS, RADIAL_AXIS, TAPER_AXIS, TWIST_AXIS};
+    match m {
+        Unary::Array { axis, .. } => axis.shift_to(ARRAY_AXIS),
+        Unary::Taper { axis, .. } => axis.shift_to(TAPER_AXIS),
+        Unary::Radial { axis, .. } => axis.shift_to(RADIAL_AXIS),
+        Unary::Twist { axis, .. } => axis.shift_to(TWIST_AXIS),
+        Unary::Bend { axis, .. } => axis.shift_to(BEND_AXIS),
+        Unary::Shell { .. }
+        | Unary::Offset { .. }
+        | Unary::Mirror
+        | Unary::MirrorY
+        | Unary::MirrorZ => 0,
+    }
+}
+
+/// A lei de cada modificador, **no eixo canónico dele** — ver [`step_mod`], que é a porta.
+fn canonical_step(b: Ball, m: Unary) -> Ball {
     match m {
         // A parede é centrada na superfície: metade cresce para fora.
         Unary::Shell { thickness } => Ball {
@@ -280,6 +337,7 @@ pub fn step_mod(b: Ball, m: Unary) -> Ball {
             count,
             spacing,
             joint,
+            ..
         } => {
             let span = f32::from(u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX))
                 * spacing.abs();
@@ -326,7 +384,7 @@ pub fn step_mod(b: Ball, m: Unary) -> Ball {
         // A lei: o maior factor na bola é `k_max = 1 + |s|·(|c_y| + r)`; o raio cresce por ele e o
         // centro **afasta-se** por `(k_max − 1)` vezes a distância dele ao eixo `Y`. Conservadora nos
         // dois termos, que é a assimetria declarada deste ficheiro.
-        Unary::Taper { slope } => {
+        Unary::Taper { slope, .. } => {
             if slope == 0.0 || !slope.is_finite() {
                 return b;
             }

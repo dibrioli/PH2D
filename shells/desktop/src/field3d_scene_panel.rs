@@ -255,6 +255,9 @@ pub(crate) fn param_rows(
                 // aresta. ⚠️ O mapeamento é o mesmo da `Wall`; o que muda é do outro lado, na porta
                 // de escrita, que agora aceita o zero que este slider sempre ofereceu.
                 Span::WallFromZero(w) => (0.0, Bound::Hard(w)),
+                // ⭐ **Uma ESCOLHA**: as pontas são a lista, e são do DOCUMENTO — um índice fora
+                // dela não é um gesto que a vista possa oferecer. `Hard`, logo digitar clampa.
+                Span::Choice(nomes) => (0.0, Bound::Hard(nomes.len().saturating_sub(1) as f32)),
             };
             ph2d_panel_model3d::ParamRow {
                 entity: e.to_bits(),
@@ -264,8 +267,14 @@ pub(crate) fn param_rows(
                 lo,
                 bound,
                 live: d.span != Span::Locked,
-                integral: matches!(d.span, Span::Count { .. }),
+                // ⚠️ **Uma escolha também é inteira** — meio eixo não existe, e sem isto o passo
+                // do arrasto e as casas decimais seriam os de um número contínuo.
+                integral: matches!(d.span, Span::Count { .. } | Span::Choice(_)),
                 section: secao(param),
+                choices: match d.span {
+                    Span::Choice(nomes) => nomes,
+                    _ => &[],
+                },
             }
         })
         .collect()

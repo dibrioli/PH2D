@@ -29,6 +29,8 @@ fn barra(turns: f32) -> FieldDoc {
             lower: -9.0,
             upper: 9.0,
             falloff: 0.0,
+
+            axis: ph2d_field::mods::TWIST_AXIS,
         });
     }
     FieldDoc::new(vec![n], NodeId(0)).expect("peça")

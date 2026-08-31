@@ -37,7 +37,7 @@
 //!
 //! [ADR-0132]: ../../../docs/architecture/decisions/0132-vector-live-path-effects-are-a-per-path-stack-not-a-node-graph.md
 
-use crate::Joint;
+use crate::{Axis, Joint};
 use serde::{Deserialize, Serialize};
 
 /// Um modificador aplicado ao campo de um nó, **depois** do que ele é e **antes** da pose dele.
@@ -69,13 +69,27 @@ pub enum Unary {
         count: u32,
         spacing: f32,
         joint: Joint,
+        /// ⭐⭐⭐ **EM QUE EIXO** — report do Enio, 2026-08-31. Ver [`crate::Axis`].
+        ///
+        /// ⚠️ **O ÚLTIMO campo da variante, e isso é load-bearing**: o documento serializa por
+        /// POSIÇÃO, então um campo no meio mudaria o significado dos bytes de toda peça já gravada.
+        /// *Append-only é o que faz uma extensão não ser uma migração.*
+        axis: Axis,
     },
     /// **Inclinação (draft/taper)**: a secção transversal cresce ou encolhe ao longo do **Y local**,
     /// à razão de `slope` por unidade de altura.
     ///
     /// ⚠️ **É o primeiro modificador deste módulo que NÃO devolve uma distância exata.** Ver o doc
     /// do módulo e [`ph2d_field_eval`], onde o preço está medido.
-    Taper { slope: f32 },
+    Taper {
+        slope: f32,
+        /// ⭐⭐⭐ **EM QUE EIXO** — report do Enio, 2026-08-31. Ver [`crate::Axis`].
+        ///
+        /// ⚠️ **O ÚLTIMO campo da variante, e isso é load-bearing**: o documento serializa por
+        /// POSIÇÃO, então um campo no meio mudaria o significado dos bytes de toda peça já gravada.
+        /// *Append-only é o que faz uma extensão não ser uma migração.*
+        axis: Axis,
+    },
     /// **Matriz radial**: `count` cópias em círculo, em torno do **Z local**.
     ///
     /// ⚠️ **Z, e não X** — e o critério não é a coerência com os irmãos acima, é a **coerência com
@@ -92,7 +106,16 @@ pub enum Unary {
     /// fatia (o `compare` que devolve `0`) as duas avaliações são a **mesma** cópia. O `min` é
     /// idempotente e não se importa; uma mistura **não é**, e a superfície move-se. A cura é o
     /// `ph2d_field_eval::ops_joint::union_between_copies`, que só mistura onde elas são distintas.
-    Radial { count: u32, joint: Joint },
+    Radial {
+        count: u32,
+        joint: Joint,
+        /// ⭐⭐⭐ **EM QUE EIXO** — report do Enio, 2026-08-31. Ver [`crate::Axis`].
+        ///
+        /// ⚠️ **O ÚLTIMO campo da variante, e isso é load-bearing**: o documento serializa por
+        /// POSIÇÃO, então um campo no meio mudaria o significado dos bytes de toda peça já gravada.
+        /// *Append-only é o que faz uma extensão não ser uma migração.*
+        axis: Axis,
+    },
     /// **Espelho** no plano `y = 0` do nó. Ver [`Unary::MirrorZ`] para a razão de existir.
     MirrorY,
     /// **Espelho** no plano `z = 0` do nó.
@@ -146,6 +169,12 @@ pub enum Unary {
         /// `157,3 °/unidade` de um lado ao outro do fim da banda. A normal é contínua ali — o que
         /// salta é a **curvatura**, e é ela que o olho lê como quina.
         falloff: f32,
+        /// ⭐⭐⭐ **EM QUE EIXO** — report do Enio, 2026-08-31. Ver [`crate::Axis`].
+        ///
+        /// ⚠️ **O ÚLTIMO campo da variante, e isso é load-bearing**: o documento serializa por
+        /// POSIÇÃO, então um campo no meio mudaria o significado dos bytes de toda peça já gravada.
+        /// *Append-only é o que faz uma extensão não ser uma migração.*
+        axis: Axis,
     },
     /// ⭐⭐⭐ **Dobra**: o eixo **Z local** curva-se no plano XZ, `turns` voltas por unidade de
     /// comprimento, e só entre `lower` e `upper`.
@@ -167,8 +196,35 @@ pub enum Unary {
         lower: f32,
         upper: f32,
         falloff: f32,
+        /// ⭐⭐⭐ **EM QUE EIXO** — report do Enio, 2026-08-31. Ver [`crate::Axis`].
+        ///
+        /// ⚠️ **O ÚLTIMO campo da variante, e isso é load-bearing**: o documento serializa por
+        /// POSIÇÃO, então um campo no meio mudaria o significado dos bytes de toda peça já gravada.
+        /// *Append-only é o que faz uma extensão não ser uma migração.*
+        axis: Axis,
     },
 }
+
+/// ⭐⭐⭐ **O EIXO CANÓNICO DE CADA MODIFICADOR** — aquele em que a lei dele está escrita, e o que
+/// ele usava antes de o eixo ser escolhível (Enio, 2026-08-31).
+///
+/// ⚠️ **Eles são o eixo de NASCIMENTO e o eixo CANÓNICO ao mesmo tempo**, e as duas coisas têm de
+/// ser o mesmo número: o de nascimento faz toda peça já gravada ler-se ao bit como antes, e o
+/// canónico é o referencial em que `ph2d_field_eval` conjuga. *Escritos em dois sítios, um dia
+/// divergiriam e o eixo de omissão passaria a rodar a peça.*
+///
+/// ⚠️ **E eles NÃO são todos iguais, o que é a razão de existirem por nome:** a matriz anda em X, a
+/// inclinação escala ao longo de Y, e a coroa, a torção e a dobra usam Z. Cada um tem a razão
+/// escrita na variante.
+pub const ARRAY_AXIS: Axis = Axis::X;
+/// Ver [`ARRAY_AXIS`]. A secção escala ao longo do **Y**.
+pub const TAPER_AXIS: Axis = Axis::Y;
+/// Ver [`ARRAY_AXIS`]. As cópias giram em torno do **Z**.
+pub const RADIAL_AXIS: Axis = Axis::Z;
+/// Ver [`ARRAY_AXIS`]. A peça roda em torno do **Z**.
+pub const TWIST_AXIS: Axis = Axis::Z;
+/// Ver [`ARRAY_AXIS`]. O eixo **Z** é o que se curva.
+pub const BEND_AXIS: Axis = Axis::Z;
 
 /// Quantas cópias uma matriz consegue ter.
 ///
@@ -241,19 +297,27 @@ impl Unary {
             // nomeia abaixo — *um controle que não muda um pixel lê-se como morto*. Aqui o
             // modificador **já** muda pixels (ele faz as cópias); a junta é o segundo número, e um
             // valor de nascimento faria toda peça já autorada mudar de forma ao ser reaberta.
+            // ⭐⭐⭐ **O eixo de NASCIMENTO é o que este modificador sempre teve** — e isso é a
+            // metade que faz a feature não ser uma migração: toda peça já gravada lê-se com o
+            // comportamento de antes, ao bit. Ver [`crate::Axis`].
             UnaryKind::Array => Unary::Array {
                 count: 2,
                 spacing: fraction(ARRAY_BIRTH_SPAN),
                 joint: Joint::SHARP,
+                axis: ARRAY_AXIS,
             },
             // ⚠️ **Seis, e não dois.** Numa coroa, duas cópias a 180° leem-se como um espelho e não
             // como uma coroa — o gesto não se explica sozinho. Seis é o menor número em que a
             // circularidade é imediata, e é o que uma flange de verdade costuma ter.
             // Zero é o ponto neutro: a peça intacta, e o sítio de onde se começa a arrastar.
-            UnaryKind::Taper => Unary::Taper { slope: 0.0 },
+            UnaryKind::Taper => Unary::Taper {
+                slope: 0.0,
+                axis: TAPER_AXIS,
+            },
             UnaryKind::Radial => Unary::Radial {
                 count: 6,
                 joint: Joint::SHARP,
+                axis: RADIAL_AXIS,
             },
             // ⚠️ **Nasce TORCIDA, e não em zero.** O `Offset` e a inclinação nascem no ponto neutro
             // porque «sem afastamento» e «sem saída de molde» são estados que o artista quer ter;
@@ -268,6 +332,7 @@ impl Unary {
                 lower: -fraction(TWIST_BIRTH_SPAN),
                 upper: fraction(TWIST_BIRTH_SPAN),
                 falloff: fraction(TWIST_BIRTH_FALLOFF),
+                axis: TWIST_AXIS,
             },
             // ⚠️ **Nasce dobrada e com a banda a cobrir a peça**, pela razão da torção: um chip que
             // não muda um pixel lê-se como morto. O valor é menor porque uma dobra é visível em
@@ -277,6 +342,7 @@ impl Unary {
                 lower: -fraction(TWIST_BIRTH_SPAN),
                 upper: fraction(TWIST_BIRTH_SPAN),
                 falloff: fraction(TWIST_BIRTH_FALLOFF),
+                axis: BEND_AXIS,
             },
         }
     }

@@ -86,6 +86,8 @@ fn the_ball_contains_every_point_the_field_calls_solid() {
                         count: 4,
                         spacing: 0.9,
                         joint: ph2d_field::Joint::SHARP,
+
+                        axis: ph2d_field::mods::ARRAY_AXIS,
                     },
                 ],
                 verb: None,

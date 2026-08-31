@@ -53,6 +53,8 @@ fn torcida(turns: f32, lower: f32, upper: f32) -> FieldDoc {
             lower,
             upper,
             falloff: 0.0,
+
+            axis: ph2d_field::mods::TWIST_AXIS,
         });
     }
     FieldDoc::new(vec![n], NodeId(0)).expect("peça")
@@ -187,6 +189,8 @@ fn a_twist_of_zero_is_the_piece_untouched() {
         lower: -1.0,
         upper: 1.0,
         falloff: 0.0,
+
+        axis: ph2d_field::mods::TWIST_AXIS,
     });
     let neutra = FieldDoc::new(vec![n], NodeId(0)).expect("peça");
     let (a, b) = (Field::new(&limpa), Field::new(&neutra));

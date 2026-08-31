@@ -248,7 +248,11 @@ fn the_shape_of_a_saved_modifier_stack_is_pinned() {
         // ⭐ **A junta entre cópias vale 16 destes bytes** — `Joint { chamfer, fillet }` são dois
         // `f32` fixos, na [`crate::Unary::Array`] e na [`crate::Unary::Radial`]. Apagá-la deste
         // arquivo leva o número a `61`, e é essa a mutação que prova que o gate a defende.
-        77,
+        // ⭐ **`82` desde 2026-08-31** (era `77`): os **cinco** modificadores com direcção
+        // ganharam o eixo (`Axis`, v16). Um `enum` de três variantes sem payload custa **1 byte**
+        // em postcard, e cinco deles são exactamente os `5` que o número subiu — *a conta fecha, e
+        // é por isso que ela se escreve aqui em vez de se copiar o número que o teste imprimiu.*
+        82,
         "a forma serializada de um modificador mudou — suba FIELD_DOC_VERSION, \
          e suba o PROJECT_SCHEMA porque a pilha viaja no blob de `FieldMods`"
     );

@@ -7087,9 +7087,35 @@ impl crate::App {
                         ph2d_vec_render::PatternSlot::Fill,
                     )
                 {
-                    let (size, origin) = crate::texture_pattern_pick::default_placement(
-                        asset_db, vec_scene, sel, &source,
+                    // ⭐ **A ARTE mede-se pela porta que ASSA** — e o mapa de afins e a geometria
+                    // viva são os do quadro anterior, que é o que os seis sítios de pick desta
+                    // shell já consomem: a forma que o artista acabou de apontar já lá está.
+                    //
+                    // ⏳ **MEDIDO e não curado** (auditoria de 2026-08-30): quando a forma JÁ tem
+                    // padrão, o `apply_vec_set_fill_kind` preserva-o e descarta este `size` inteiro
+                    // — é a forma do *«consumidor que projecta o valor fora»*. ⛔ Um guarda aqui
+                    // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
+                    // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
+                    // silêncio. O custo é **por clique**, não por quadro.
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let arte = crate::texture_pattern_pick::art_dims(
+                        asset_db,
+                        vec_scene,
+                        &xf,
+                        &self.vec_live_drawn,
+                        sel,
+                        &source,
+                        &|id| {
+                            crate::vec_entities::object_selection_for(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                id,
+                            )
+                        },
                     );
+                    let (size, origin) =
+                        crate::texture_pattern_pick::default_placement(vec_scene, sel, arte);
                     pattern = Some((source, size, origin));
                 }
                 crate::input_dispatch::apply_vec_set_fill_kind(
@@ -7133,9 +7159,35 @@ impl crate::App {
                     // ⚠️ **A colocação sai da MESMA porta do preenchimento** — o tamanho preserva o
                     // aspecto da arte e o canto é o da FORMA, nunca a origem do mundo. Uma segunda
                     // lei de nascimento aqui reabriria o report do `Clamp` em branco.
-                    let (size, origin) = crate::texture_pattern_pick::default_placement(
-                        asset_db, vec_scene, sel, &source,
+                    // ⭐ **A ARTE mede-se pela porta que ASSA** — e o mapa de afins e a geometria
+                    // viva são os do quadro anterior, que é o que os seis sítios de pick desta
+                    // shell já consomem: a forma que o artista acabou de apontar já lá está.
+                    //
+                    // ⏳ **MEDIDO e não curado** (auditoria de 2026-08-30): quando a forma JÁ tem
+                    // padrão, o `apply_vec_set_fill_kind` preserva-o e descarta este `size` inteiro
+                    // — é a forma do *«consumidor que projecta o valor fora»*. ⛔ Um guarda aqui
+                    // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
+                    // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
+                    // silêncio. O custo é **por clique**, não por quadro.
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let arte = crate::texture_pattern_pick::art_dims(
+                        asset_db,
+                        vec_scene,
+                        &xf,
+                        &self.vec_live_drawn,
+                        sel,
+                        &source,
+                        &|id| {
+                            crate::vec_entities::object_selection_for(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                id,
+                            )
+                        },
                     );
+                    let (size, origin) =
+                        crate::texture_pattern_pick::default_placement(vec_scene, sel, arte);
                     pattern = Some((source, size, origin));
                 }
                 crate::vec_stroke_paint::set_kind(
@@ -7156,9 +7208,35 @@ impl crate::App {
                 if let Some(source) = crate::texture_pattern_pick::pick_source(asset_db) {
                     // ⭐ **O tamanho a adoptar SE a forma ainda não tinha arte** — quem decide é o
                     // `apply`; aqui só se MEDE, porque é aqui que o `AssetDb` está. Ver a variante.
-                    let (size, _) = crate::texture_pattern_pick::default_placement(
-                        asset_db, vec_scene, sel, &source,
+                    // ⭐ **A ARTE mede-se pela porta que ASSA** — e o mapa de afins e a geometria
+                    // viva são os do quadro anterior, que é o que os seis sítios de pick desta
+                    // shell já consomem: a forma que o artista acabou de apontar já lá está.
+                    //
+                    // ⏳ **MEDIDO e não curado** (auditoria de 2026-08-30): quando a forma JÁ tem
+                    // padrão, o `apply_vec_set_fill_kind` preserva-o e descarta este `size` inteiro
+                    // — é a forma do *«consumidor que projecta o valor fora»*. ⛔ Um guarda aqui
+                    // codificaria um facto sobre **outra** função (*"o `source_for` só devolve
+                    // não-`None` quando o slot já era padrão"*), e é essa acoplagem que diverge em
+                    // silêncio. O custo é **por clique**, não por quadro.
+                    let xf = crate::vec_transform::build(sim, &self.vec_entities);
+                    let arte = crate::texture_pattern_pick::art_dims(
+                        asset_db,
+                        vec_scene,
+                        &xf,
+                        &self.vec_live_drawn,
+                        sel,
+                        &source,
+                        &|id| {
+                            crate::vec_entities::object_selection_for(
+                                sim,
+                                vec_scene,
+                                &self.vec_entities,
+                                id,
+                            )
+                        },
                     );
+                    let (size, _) =
+                        crate::texture_pattern_pick::default_placement(vec_scene, sel, arte);
                     pending_texpat = Some((
                         slot,
                         crate::texture_pattern_edit::TexPatCmd::Source(source, size),

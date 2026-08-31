@@ -368,7 +368,7 @@ fn select_present(
 /// and the sprite renderer displays texture row 0 at screen-TOP, so without the
 /// `-BAKE_DPI` the baked star points DOWN (the smoke report: *"a estrela no grid
 /// fica de cabeça para baixo"*). Named so the upright-tile gate can pin the flip.
-fn bake_camera() -> Affine {
+pub(crate) fn bake_camera() -> Affine {
     Affine::scale_non_uniform(BAKE_DPI, -BAKE_DPI)
 }
 
@@ -456,18 +456,13 @@ pub(crate) fn bake_rgba_many(
     surface_format: wgpu::TextureFormat,
 ) -> Option<(Vec<u8>, u32, u32, [f32; 2])> {
     let camera = bake_camera();
-    // A união das caixas — a mesma dobra que o `path_bounds` já faz por dentro de cada caminho.
-    let mut caixa: Option<(f64, f64, f64, f64)> = None;
-    for &id in ids {
-        if let Some(b) = ph2d_vec_render::path_screen_bounds(scene, xforms, live, id, camera) {
-            caixa = Some(caixa.map_or(b, |a: (f64, f64, f64, f64)| {
-                (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
-            }));
-        }
-    }
-    let (x0, y0, x1, y1) = caixa?;
-    let wpx = ((x1 - x0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
-    let hpx = ((y1 - y0).ceil() as u32).clamp(1, MAX_TILE_SIDE);
+    // ⭐ **UMA travessia da geometria, não duas** — o `bake_fit` devolve a caixa, os pixels e a
+    // escala de uma vez. A redacção anterior chamava o `union_box` e depois o `bake_dims`, que o
+    // chama outra vez: o grupo era percorrido **duas** vezes por assado, num caminho que este memo
+    // mede em `1,047 ms`.
+    let fit = crate::motion_object_bake_dims::bake_fit(scene, xforms, live, ids)?;
+    let [wpx, hpx] = fit.px;
+    let (x0, y0) = (fit.caixa.0, fit.caixa.1);
 
     // Encode the paths, translated so the bbox min corner (the top-left under
     // the Y-flipped camera) lands at the tile origin (0,0) = row 0 = screen-top.
@@ -493,7 +488,13 @@ pub(crate) fn bake_rgba_many(
             &crate::brush_live::resolve(scene),
             id,
             camera,
-            Affine::translate((-x0, -y0)),
+            // ⭐⭐ **A ESCALA DO TECTO entra aqui**, e é o que faz o doc do `MAX_TILE_SIDE` deixar
+            // de mentir: acima dele o assado passa a ser **reamostrado**, não recortado. Com uma
+            // translação pura o artista via um canto da arte, sem mensagem nenhuma — e, pior, os
+            // dois eixos saturavam no mesmo número e a razão colapsava para `1,000`, que é o
+            // quadrado do report de 30/08 a voltar. ⚠️ `escala == 1.0` no caminho comum, e aí isto
+            // é a translação de sempre, ao bit.
+            Affine::scale(fit.escala) * Affine::translate((-x0, -y0)),
             &mut scratch_scene,
         );
     }
@@ -512,10 +513,10 @@ pub(crate) fn bake_rgba_many(
         return None;
     }
     rgba.truncate(want);
-    let size = [
-        (x1 - x0) as f32 / BAKE_DPI as f32,
-        (y1 - y0) as f32 / BAKE_DPI as f32,
-    ];
+    // ⚠️ O tamanho de MUNDO sai da caixa, **não** dos pixels: acima do tecto os pixels encolhem e o
+    // desenho fica do mesmo tamanho. Uma porta ([`crate::motion_object_bake_dims::world_size`]),
+    // porque quem sabe o que a escala do tecto significa é quem a aplicou.
+    let size = crate::motion_object_bake_dims::world_size(fit.caixa);
     Some((rgba, wpx, hpx, size))
 }
 

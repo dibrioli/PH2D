@@ -102,7 +102,8 @@ fn changing_the_art_honours_the_subject_too() {
         &mut h,
         id,
         PatternSlot::Stroke,
-        PatternSource::Shape(77)
+        PatternSource::Shape(77),
+        [77.0, 77.0],
     ));
     assert_eq!(
         pattern_at(&scene, id, PatternSlot::Stroke).map(|p| p.source),

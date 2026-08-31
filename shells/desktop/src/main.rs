@@ -333,6 +333,8 @@ mod motion_flip_bake;
 mod motion_fx_smoke;
 mod motion_node_path_smoke;
 mod motion_object_bake;
+/// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
+mod motion_object_bake_dims;
 mod motion_object_smoke;
 mod motion_path_smoke;
 /// O tile de uma forma PARAMÉTRICA (`source.shape`) — irmão do `motion_object_bake`,

@@ -143,28 +143,66 @@ pub(crate) fn pick_source(assets: &AssetDb) -> Option<PatternSource> {
 /// TRANSFORM (o padrão anda com a forma) e reproduzi a metade do NASCIMENTO.
 #[must_use]
 pub(crate) fn default_placement(
-    assets: &AssetDb,
     scene: &VecScene,
     sel: VecPathId,
-    source: &PatternSource,
+    art: Option<[u32; 2]>,
 ) -> ([f64; 2], [f64; 2]) {
     let (lo, hi) = scene.path_bbox(sel).unwrap_or(([0.0, 0.0], [1.0, 1.0]));
     let target =
         ((hi[0] - lo[0]).abs().min((hi[1] - lo[1]).abs()) / DEFAULT_TILES_ACROSS).max(f64::EPSILON);
-    let art = art_dims(assets, source).unwrap_or([1, 1]);
+    let art = art.unwrap_or([1, 1]);
     let (aw, ah) = (f64::from(art[0].max(1)), f64::from(art[1].max(1)));
     let s = target / aw.max(ah);
     ([aw * s, ah * s], lo)
 }
 
-/// As dimensões em pixels da arte de uma fonte (`None` se ela ainda não resolve).
-fn art_dims(assets: &AssetDb, source: &PatternSource) -> Option<[u32; 2]> {
-    let PatternSource::Image(id) = source else {
-        return None;
-    };
-    let asset = assets.get(id)?;
-    let (w, h, _) = asset.image_rgba8()?;
-    Some([w, h])
+/// **As dimensões em pixels da arte de uma fonte** — a porta ÚNICA de *"que tamanho tem esta arte?"*,
+/// e ela responde pelas **duas** espécies. `None` = ainda não resolve (ou não há arte escolhida).
+///
+/// ⛔⛔ **Ela só sabia medir IMAGENS** (report do Enio, 2026-08-30: um grupo alto virava um padrão
+/// achatado). Uma fonte-FORMA caía no `unwrap_or([1, 1])` do [`default_placement`], que é um
+/// **quadrado** — então toda estampa vestida por uma forma ou um grupo nascia com o aspecto errado,
+/// e o artista lia isso como *"a ferramenta deformou o meu desenho"*.
+///
+/// ⭐⭐ **E a resposta não precisa de GPU** — a minha nota do dia anterior dizia que as dimensões de
+/// um grupo *"exigem o assado de GPU"*, e isso era falso no ponto que decidia o preço: a caixa é
+/// geometria em CPU, e o assado já a calculava e deitava fora. *Uma ausência afirmada sem olhar a
+/// API é um palpite com cara de medição.*
+///
+/// ⚠️ **Pela MESMA porta que ASSA** ([`crate::motion_object_bake_dims::bake_dims`]) e com a **MESMA
+/// expansão de objecto** que o memo usa: uma segunda conta daria um aspecto ao ladrilho e outro à
+/// colocação, e a arte sairia esticada por uma razão que nenhuma das duas fórmulas mostra sozinha.
+#[must_use]
+pub(crate) fn art_dims(
+    assets: &AssetDb,
+    scene: &VecScene,
+    xforms: &ph2d_vec_scene::VecXforms,
+    live: &ph2d_vec_render::LiveGeometry,
+    host: VecPathId,
+    source: &PatternSource,
+    object_of: &dyn Fn(ph2d_vec_scene::VecPathId) -> Vec<ph2d_vec_scene::VecPathId>,
+) -> Option<[u32; 2]> {
+    match source {
+        PatternSource::Image(id) => {
+            let asset = assets.get(id)?;
+            let (w, h, _) = asset.image_rgba8()?;
+            Some([w, h])
+        }
+        // ⛔⛔ **A RECUSA DE CICLO é a MESMA do assado** (`art_members`), e ela é obrigatória aqui:
+        // esta porta alimenta o `set_source`, que **consome** a lei *"adopta o tamanho só quando
+        // não havia arte"*. Medir uma arte que o desenho vai recusar gravaria um `size` errado
+        // **para sempre** — a arte seguinte, já válida, não voltaria a re-derivá-lo.
+        PatternSource::Shape(id) => {
+            let membros = crate::texture_pattern_live::art_members(host, *id, object_of);
+            if membros.is_empty() {
+                return None;
+            }
+            crate::motion_object_bake_dims::bake_dims(scene, xforms, live, &membros)
+        }
+        // Sem arte escolhida não há tamanho a medir — e o quadrado do `default_placement` é o
+        // marcador certo: ele é substituído quando a arte chega (`TexPatCmd::Source`/`set_source`).
+        PatternSource::None => None,
+    }
 }
 
 /// A cor de recurso de um padrão novo: a que a forma já pintava.

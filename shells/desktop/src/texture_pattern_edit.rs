@@ -159,6 +159,7 @@ pub(crate) fn set_source(
     host: ph2d_vec_scene::VecPathId,
     slot: PatternSlot,
     source: PatternSource,
+    size: [f64; 2],
 ) -> bool {
     let Some(cur) = pattern_at(scene, host, slot) else {
         return false;
@@ -167,6 +168,13 @@ pub(crate) fn set_source(
         return false;
     }
     let mut next = cur.clone();
+    // ⚠️ **A MESMA lei do [`TexPatCmd::Source`], porque são as DUAS portas do mesmo gesto:** um
+    // `size` escolhido quando a arte ainda não existia é um marcador, não uma escolha. Escrita só
+    // ali, ela não seria uma lei — seria uma metade, e o gesto de duas mãos (que é como uma FORMA
+    // vira arte) cairia precisamente na metade de fora.
+    if next.source == PatternSource::None {
+        next.size = size;
+    }
     next.source = source;
     let pre = scene.clone();
     if write_pattern(scene, host, slot, next) {

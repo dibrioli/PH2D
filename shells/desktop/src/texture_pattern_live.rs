@@ -86,6 +86,36 @@ struct Key {
 ///
 /// ⚠️ Extraída da que assa porque assar precisa de GPU e **isto não**: é aqui que vive a recusa do
 /// ciclo, e ela tem gate.
+/// ⭐⭐⭐ **OS MEMBROS que a arte de `host` de facto tem** — vazio quando o pedido é um CICLO.
+///
+/// # Porque a recusa mora aqui, e não em cada leitor
+///
+/// A recusa é sobre **PERTENÇA**, não sobre igualdade: com um grupo, o anfitrião pode ser **um
+/// membro** da arte — e aí assá-la exigiria desenhá-lo, desenhá-lo exigiria o ladrilho, e o ladrilho
+/// exigiria assá-la. ⚠️ O sintoma não seria um erro: seria o app a parar.
+///
+/// ⛔⛔ **E ela tinha DOIS leitores e só um a obedecia** (auditoria de 2026-08-30). A porta que
+/// **mede** a arte (`texture_pattern_pick::art_dims`) nem recebia o `host`, então media na mesma —
+/// e o dano não era só uma medida errada: o `set_source` **consome** a lei *"adopta o tamanho só
+/// quando não havia arte"*, então o `size` errado ficava **permanente**, porque a arte seguinte, já
+/// válida, não voltaria a re-derivá-lo. *Uma recusa que um dos leitores não vê é uma recusa que
+/// queima a decisão do outro.*
+///
+/// ⚠️ O guarda do canvas (`input_dispatch`) só barra `guide == host` — clicar um **irmão do mesmo
+/// grupo** passa por ele. É por isso que a recusa tem de viver aqui.
+#[must_use]
+pub(crate) fn art_members(
+    host: VecPathId,
+    art: VecPathId,
+    object_of: &dyn Fn(VecPathId) -> Vec<VecPathId>,
+) -> Vec<VecPathId> {
+    let membros = object_of(art);
+    if membros.contains(&host) {
+        return Vec::new();
+    }
+    membros
+}
+
 #[must_use]
 fn source_shape(
     scene: &VecScene,
@@ -106,14 +136,11 @@ fn source_shape(
     //
     // ⭐ E é por isso que **o schema não se mexe**: nenhuma variante nova, nenhum id de entidade
     // gravado (que o undo respawna com bits novos), nenhum degrau de migração.
-    let membros = object_of(*id);
+    let membros = art_members(host, *id, object_of);
     // ⛔⛔ **A RECUSA DO CICLO passou a ser sobre PERTENÇA, não sobre igualdade.** Antes bastava
     // `id == host`; com um grupo, o anfitrião pode ser **um membro** da arte — e aí assá-la exigiria
     // desenhá-lo, desenhá-lo exigiria o ladrilho, e o ladrilho exigiria assá-la. ⚠️ O sintoma não
     // seria um erro: seria o app a parar.
-    if membros.contains(&host) {
-        return Vec::new();
-    }
     // ⚠️ **A ORDEM é a do documento** (o `object_of` devolve-a por z), e ela vira a ordem de
     // desenho do assado: uma travessia em profundidade poria o membro errado por cima.
     membros

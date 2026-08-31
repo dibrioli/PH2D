@@ -82,10 +82,22 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
     // compila, inverte o gesto inteiro (o padrão passa a viver na forma que se clicou, e a arte a
     // ser a que estava selecionada) — e **nenhum** gate de comportamento a via, porque a shell não
     // é alcançável de um teste. *Uma afirmação que só um gate de fonte alcança precisa desse gate.*
-    let arm = d
-        .find("PathPick::TexturePatternArt(host, slot) =>")
-        .expect("o braco existe");
-    let corpo = &d[arm..arm + 380];
+    // ⛔⛔ **A JANELA É O BRAÇO, e era uma CONSTANTE DE 380 BYTES.**
+    //
+    // Ela media *distância no fonte* e não a lei que defende: quando o braço ganhou a medição da
+    // arte (2026-08-30), o `set_source(` passou de `+90` para `+1410` bytes e este gate ficou
+    // **vermelho sobre produto correcto**, a acusar *"o picker escreve numa forma que nao e' a
+    // CAPTURADA"*. ⇒ o corpo passa a ser delimitado pelo **braço seguinte**, e cresce com ele.
+    //
+    // ⚠️⚠️ **E ele esteve vermelho sem ser visto**, porque o filtro por NOME do inner loop
+    // (`cargo test -p ph2d-host-desktop --bins <filtro>`) **não alcança `shells/desktop/tests/`** —
+    // é a família que o `CLAUDE.md` §5.1 já registou, e mordeu outra vez.
+    let needle = "PathPick::TexturePatternArt(host, slot) =>";
+    let arm = d.find(needle).expect("o braco existe");
+    let fim = d[arm + needle.len()..]
+        .find("PathPick::")
+        .map_or(d.len(), |o| arm + needle.len() + o);
+    let corpo = &d[arm..fim];
     assert!(
         corpo.contains("set_source(") && corpo.contains("host,"),
         "o picker escreve numa forma que nao e' a CAPTURADA - o gesto de duas maos inverte-se"
@@ -96,6 +108,38 @@ fn the_shape_art_picker_is_wired_from_the_button_to_the_link() {
         corpo.contains("slot,"),
         "o picker escreve numa tinta que nao e' a CAPTURADA no arm"
     );
+    // ⭐⭐⭐ **E A ARTE É MEDIDA COMO UM OBJECTO, COM A POSE** (report do Enio, 2026-08-30: um grupo
+    // alto nascia achatado).
+    //
+    // ⚠️ **Estas linhas existem porque três mutações SOBREVIVIAM** à auditoria desta wave: as
+    // portas puras (`art_dims`, `set_source`) têm gates próprios, mas eles passam os **seus**
+    // fechos — um `object_of` escrito à mão e um `VecXforms::default()`. ⇒ trocar aqui a expansão
+    // por `&|id| vec![id]` faz o grupo colapsar num membro e **o report volta inteiro**, com os
+    // dois gates de unidade verdes. *Um gate de porta pura não mede o fio que a alimenta.*
+    //
+    // Os números da auditoria, no mesmo grupo `1 x 3`: sem a expansão a razão vai de `3,000` para
+    // `1,000` (o quadrado do report); sem a pose, um grupo rodado 45° mede `1,000` e um escalado
+    // `3x` em X mede `1,000`.
+    for (agulha, o_que) in [
+        (
+            "crate::texture_pattern_pick::art_dims(",
+            "a arte nao e' MEDIDA - o padrao herda um quadrado",
+        ),
+        (
+            "crate::vec_entities::object_selection_for(",
+            "a arte nao e' expandida como OBJECTO - um grupo colapsa no caminho clicado",
+        ),
+        (
+            "crate::vec_transform::build(",
+            "a arte e' medida SEM a pose - um grupo rodado ou escalado mede outra coisa",
+        ),
+        (
+            "crate::texture_pattern_pick::default_placement(",
+            "o tamanho nao sai da porta unica de colocacao",
+        ),
+    ] {
+        assert!(corpo.contains(agulha), "{o_que} (`{agulha}` saiu do braco)");
+    }
 }
 
 /// ⛔⛔ **AS ALÇAS DE CANVAS DO PADRÃO NÃO VOLTAM SEM ORDEM** (Enio, 2026-08-27).

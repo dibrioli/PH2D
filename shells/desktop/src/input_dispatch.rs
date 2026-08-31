@@ -2334,12 +2334,39 @@ impl App {
             // acima já barra o ciclo — e a `source_shape` do memo barra-o outra vez, porque o
             // documento pode chegar lá por outro caminho (um save, um replay).
             crate::vec_pick::PathPick::TexturePatternArt(host, slot) => {
+                // ⭐⭐⭐ **A FORMA ESCOLHIDA TRAZ O TAMANHO DELA** (report do Enio, 2026-08-30: um
+                // grupo alto virava um padrão achatado). O padrão nasceu sem arte, logo com um
+                // `size` QUADRADO — e um quadrado não é uma escolha, é um marcador.
+                //
+                // ⚠️ Pela porta que ASSA (`art_dims` -> `bake_dims`) e com a MESMA expansão de
+                // objecto, senão o ladrilho tem um aspecto e a colocação tem outro.
+                let fonte = ph2d_vec_scene::PatternSource::Shape(guide);
+                let xf = crate::vec_transform::build(&gfx.sim, &self.vec_entities);
+                let arte = crate::texture_pattern_pick::art_dims(
+                    &gfx.asset_db,
+                    &gfx.vec_scene,
+                    &xf,
+                    &self.vec_live_drawn,
+                    host,
+                    &fonte,
+                    &|id| {
+                        crate::vec_entities::object_selection_for(
+                            &gfx.sim,
+                            &gfx.vec_scene,
+                            &self.vec_entities,
+                            id,
+                        )
+                    },
+                );
+                let (size, _) =
+                    crate::texture_pattern_pick::default_placement(&gfx.vec_scene, host, arte);
                 crate::texture_pattern_edit::set_source(
                     &mut gfx.vec_scene,
                     &mut self.vec_history,
                     host,
                     slot,
-                    ph2d_vec_scene::PatternSource::Shape(guide),
+                    fonte,
+                    size,
                 )
             }
             // ⭐⭐⭐ **A ARTE de um PINCEL** (plano 36, W4): a fonte é a forma COM o pincel, o clicado

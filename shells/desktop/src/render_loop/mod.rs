@@ -321,6 +321,7 @@ pub(crate) mod motion_glow_layer;
 /// live GPU vector into the shared vector scene.
 pub(crate) mod motion_lsystem_gen;
 pub(crate) mod motion_lsystem_leaves;
+pub(crate) mod motion_lsystem_rows;
 #[cfg(test)]
 #[path = "motion_lsystem_testkit.rs"]
 pub(crate) mod motion_lsystem_testkit;
@@ -10043,9 +10044,17 @@ impl crate::App {
             // sprites (Fase 1: vector over sprite), aligned with the Motion sprites
             // by the same `cam_affine`.
             if motion_tool_active {
+                // ⭐⭐⭐ **A ARTE dos quads do passe vectorial** (a terceira média): resolvida
+                // aqui porque é aqui que o `renderer` e a GPU estão em mão, e memoizada em
+                // [`crate::motion_leaf_images`] porque cada leitura PARA a GPU.
+                let (gpu, atlas, individual) =
+                    (surface.gpu(), renderer.atlas(), renderer.individual());
+                let cache = &mut self.motion_leaf_images;
+                let mut art = |tex: u32, uv: [f32; 4]| cache.art(gpu, atlas, individual, tex, uv);
                 motion_shape_gen::encode(
                     &motion.pump.vector_instances,
                     &motion.shape_store,
+                    &mut art,
                     cam_affine,
                     vector_scene,
                 );

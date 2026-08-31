@@ -290,33 +290,6 @@ fn a_leaf_is_born_at_the_tip_and_grows_into_it() {
     assert!(anterior > 0.0, "a varredura nunca chegou a ver uma folha");
 }
 
-/// ⛔⛔ **E DUAS FOLHAS NÃO SE EMPILHAM** — *"elas aparecem em cada segmento"*, a metade que era
-/// do MOLDE e não da lei: `62` marcas em `30` sítios, folhas idênticas uma sobre a outra.
-///
-/// ⚠️ **Aqui a régua tem de ser a POSIÇÃO DA INSTÂNCIA**, não a do esqueleto: é o que o artista
-/// vê, e é o que sobrevive a qualquer mudança de como a membrana escolhe as âncoras.
-#[test]
-fn no_two_leaves_are_drawn_on_top_of_each_other() {
-    let (mut state, n) = factory_plant_with_leaf(5.0, false);
-    let key = key_of(&mut state, n);
-    publish(&mut state, 0.0);
-    let inst = instances_of(&state, &key);
-    let mut sitios: Vec<(i64, i64)> = inst
-        .iter()
-        .map(|i| ((i.world_pos[0] * 1e4) as i64, (i.world_pos[1] * 1e4) as i64))
-        .collect();
-    let total = sitios.len();
-    assert!(total > 8, "so' {total} folhas");
-    sitios.sort_unstable();
-    sitios.dedup();
-    assert_eq!(
-        total,
-        sitios.len(),
-        "{total} folhas em {} sitios — elas empilham",
-        sitios.len()
-    );
-}
-
 /// ⭐⭐ **A BANDEIRA DE ALFA DA FONTE CHEGA À INSTÂNCIA** — report do Enio (2026-08-30): *"o
 /// Alpha usado escurece as bordas da pintura (diferente da sprite)"*.
 ///
@@ -379,46 +352,6 @@ fn the_orient_param_reaches_the_leaf() {
         vec![0],
         "em Local a folha nao vira nada em relacao ao ramo"
     );
-}
-
-/// ⭐⭐⭐ **A FRACÇÃO «À FRENTE» É A ORDEM DAS LINHAS** — report do Enio (2026-08-30): *"não temos
-/// a opção de escolher quantas folhas são desenhadas na frente ou atrás dos galhos"*.
-///
-/// ⚠️ **A afirmação tem de ser sobre a POSIÇÃO da planta na lista**, e não sobre uma contagem:
-/// a passagem vectorial desenha as linhas por ordem, então o que decide o z é quantas folhas
-/// ficam DEPOIS da linha da planta. Um gate que contasse folhas passaria com todas atrás.
-#[test]
-fn the_front_fraction_puts_leaves_after_the_plant_in_the_row_order() {
-    let leaves_after_plant = |front: f32| -> (usize, usize) {
-        let (mut state, n) = factory_plant_with_leaf(5.0, false);
-        state.doc.graph.set_param(n, ls::param::LEAF_FRONT, front);
-        // ⚠️ **Uma FORMA desenhada**, não uma imagem: uma sprite desenha-se sempre antes do
-        // vector (declarado: «Fase 1: vector over sprite»), e nenhuma ordem a move.
-        publish_vector_object(&mut state, "folha", 77);
-        let key = key_of(&mut state, n);
-        publish(&mut state, 0.0);
-        let geom = column_v1(&state, &key, "geometry_id");
-        let plant = geom
-            .iter()
-            .position(|g| *g > 0.0 && *g != 77.0)
-            .expect("a planta");
-        let depois = geom.iter().skip(plant + 1).filter(|g| **g == 77.0).count();
-        let antes = geom.iter().take(plant).filter(|g| **g == 77.0).count();
-        (antes, depois)
-    };
-    let (antes0, depois0) = leaves_after_plant(0.0);
-    assert!(antes0 > 0, "com 0 as folhas ficam todas atras da planta");
-    assert_eq!(depois0, 0, "com 0 nenhuma folha pode ficar a' frente");
-    let (antes1, depois1) = leaves_after_plant(1.0);
-    assert_eq!(antes1, 0, "com 1 nenhuma folha fica atras");
-    assert_eq!(depois1, antes0, "com 1 todas passam para a frente");
-    // ⚠️ **E o meio é MISTO** — uma lei que só respondesse nos extremos seria um interruptor.
-    let (antes, depois) = leaves_after_plant(0.5);
-    assert!(
-        antes > 0 && depois > 0,
-        "a meio tem de haver folhas dos DOIS lados: {antes} atras, {depois} a' frente"
-    );
-    assert_eq!(antes + depois, antes0, "nenhuma folha se perdeu no caminho");
 }
 
 /// ⭐⭐⭐ **A FOLHA FORA DO TINT — E SÓ DO TINT.**

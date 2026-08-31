@@ -1685,6 +1685,10 @@ pub(crate) struct App {
     /// `VecPathId` → entidade ECS que o representa na Hierarquia (ADR-0110). O
     /// invariante "um path ⟺ uma entidade" é mantido por `vec_entities::sync`.
     pub(crate) vec_entities: crate::vec_entities::VecEntityMap,
+    /// ⭐ **A arte, em CPU, dos quads que o Motion desenha na cena vectorial** — a memória da
+    /// terceira média (ver [`crate::motion_leaf_images`]). Vive aqui porque toda leitura PARA a
+    /// GPU, e ela tem de sobreviver ao quadro.
+    pub(crate) motion_leaf_images: crate::motion_leaf_images::LeafImages,
     /// `FlipObjectId` → entidade ECS que o representa na Hierarquia (ADR-0114). O
     /// invariante "um objeto ⟺ uma entidade" é mantido por `flip_entities::sync`.
     pub(crate) flip_entities: crate::flip_entities::FlipEntityMap,

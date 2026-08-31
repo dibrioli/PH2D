@@ -291,6 +291,9 @@ fn the_named_group_predicate_matches_the_group_walk() {
 fn lod_vi(gid: u32, x: f32) -> VectorInstance {
     VectorInstance {
         geometry_id: gid,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: [x, 0.0],
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0],
@@ -343,6 +346,9 @@ fn a_high_count_geometry_becomes_tiles_a_low_count_one_stays_crisp() {
 fn the_lod_tile_lands_exactly_where_the_crisp_vector_would() {
     let vi = VectorInstance {
         geometry_id: 9,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: [3.5, -2.0],
         size: [2.0, 0.5],
         basis: [0.0, 1.0, -1.0, 0.0], // a 90° rotation — carried, not dropped

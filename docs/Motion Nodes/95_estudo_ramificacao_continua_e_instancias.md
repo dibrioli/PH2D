@@ -425,43 +425,51 @@ Reconferido no fonte da versão instalada: `Renderer::render_to_texture` continu
 `TextureFormat::Rgba8Unorm` + `STORAGE_BINDING`/`COPY_SRC`. **O alvo HDR continua fora do
 alcance dele.** A separação não é uma escolha nossa: é a biblioteca.
 
-### 9.3 — O padrão-ouro é FOLHA COMO CARTA, e ele tem endereço
+### 9.3 — ⭐⭐⭐ O padrão-ouro: uma TERCEIRA MÉDIA — e ela existe (2026-08-30)
 
-O que SpeedTree, o *Sapling* do Blender e todo gerador de vegetação sério fazem: **uma folha é
-geometria com textura** (um *card*), não um sprite separado — e é exactamente por isso que ela
-se intercala com os ramos sem uma segunda passagem.
+Enio, depois de eu lhe dar as três saídas com o preço: *"faça o que for o padrão ouro, o estado
+da arte"* e, mais tarde, *"nada de armengos"*.
 
-Aqui isso quer dizer: a folha vira um quad `VecPath` com `Paint::Pattern` +
-`PatternSource::Image(AssetId)` (as duas peças **já existem**, do plano 33 da `line/Vector`),
-internado no mesmo store da planta e desenhado na mesma passagem. ⇒ o `Leaves In Front` passa a
-valer para **qualquer** folha, com um só aspecto.
+⛔ **O que bloqueava:** um quadro desenha os sprites no passe 1 (alvo `Rgba16Float` HDR), faz o
+tonemap, e só então desenha **todo o vector** (chrome + documento) na cena Vello. ⇒ todo vector
+fica por cima de todo sprite, **por construção**.
 
-⛔ **E é uma wave com espec própria, não um remate.** Medido em 2026-08-30, depois de o dono
-pedir *"faça o que for o padrão ouro"* — as DUAS rotas param na MESMA peça em falta:
+⭐ **A medição que destravou tudo — o tonemap desta casa é PASSAGEM PURA para conteúdo de 8
+bits** (`tonemap.wgsl`, com o gate `tonemap_descent_gpu` a medi-la **byte-exacta**). ⇒ mover uma
+sprite do passe HDR para a camada LDR **não muda um pixel dela**. *É isso, e só isso, que separa
+esta cura de um remendo.*
 
-| rota | o que falta |
+⇒ **a terceira média:** uma linha da corrente passa a poder ser um **quad texturado desenhado na
+cena vectorial**. Com o `Leaves In Front` acima de `0`, a copa inteira desenha-se ali — a mesma
+camada em que a planta vive — e a ordem das linhas manda.
+
+| peça | onde |
 |---|---|
-| **carta com padrão** (`Paint::Pattern` + `PatternSource::Image`) | (a) o `AssetId` da folha na membrana; (b) o passe vectorial do Motion **não tem o mapa de ladrilhos do quadro** — e isso é uma cerca DECLARADA e GATEADA por outra linha (`a_motion_instance_of_a_patterned_shape_paints_the_fallback`, `ph2d-vec-render/src/instance.rs`) |
-| **imagem na cena Vello** (`draw_image_rgba_premultiplied_transformed`) | os **pixels em CPU** da folha |
+| a coluna que decide a média, lida pelos **dois** lowerings | `ph2d_eval_motion::{VECTOR_PASS_COLUMN, row_medium}` |
+| a `VectorInstance` carrega textura + região + alfa | `ph2d-eval-motion/src/lower.rs` |
+| os pixels, em CPU, memoizados por `(textura, região)` | `motion_leaf_images.rs` |
+| o desenho, **intercalado** com o lote das formas | `motion_shape_gen::encode` |
+| a membrana a marcar a copa | `motion_lsystem_rows.rs` |
 
-⇒ **a peça em falta é a mesma:** neste app um sprite é identificado por um handle de GPU
-(`SpriteSource::{Atlas, Individual, Ktx2}`), e **nada leva os pixels dele de volta à CPU**, que é
-onde o passe vectorial é codificado. O único mapa que existe é `AssetId → texture_id`, construído
-no CARREGAMENTO (`project_sprite_pixels.rs`), não um mapa vivo ao contrário.
+⭐ **Nenhuma peça foundational foi precisa:** `IndividualTextureStore::readback_rgba8` e
+`TextureAtlas::readback_mip` **já existiam**, e o `ExternalResource` do Vello (que ligaria uma
+textura de GPU e dispensaria a leitura) é interno ao crate — verificado no fonte do 0.10.
 
-⇒ a wave é *«um objecto nomeado carrega a identidade de CONTEÚDO da arte dele»*, e ela mora no
-oleoduto de objectos/assets — não no L-System. ⛔ **E a rota do TILE tem um segundo dono:** mexer
-naquela cerca é acto de quem a escreveu.
+⚠️ **Vão TODAS as folhas daquela planta, não só as da frente.** Dividir a copa entre os dois
+passes deixaria as duas metades a depender do tonemap ser uma no-op — um invariante que uma wave
+futura pode quebrar. *Uma copa, um caminho.*
 
-⛔⛔ **E uma terceira saída foi considerada e REJEITADA:** assar a PLANTA numa tile e desenhá-la
-no passe dos sprites (aí a ordem das linhas resolve tudo). Ela funciona e **desfoca a árvore** —
-um knob que silenciosamente troca a nitidez da planta por uma folha à frente não é uma escolha
-que o artista possa fazer sem ver o preço.
+⚠️ **A afirmação que os gates protegem é «cada linha desenha-se EXACTAMENTE uma vez»**: uma média
+nova é uma oportunidade para uma linha sair duas vezes (pelos dois lowerings) ou nenhuma, e
+nenhuma das duas se vê num teste que só conte instâncias de um lado. A mutação que faz o lowering
+de sprites ignorar a média mata o gate.
 
-⛔⛔ **A saída INTERMÉDIA foi medida e REJEITADA:** desenhar só as folhas da frente como imagens
-na cena Vello (o `draw_image_rgba_premultiplied_transformed` existe) poria **metade da copa
-depois do tonemap e metade antes** — as duas metades da mesma folhagem com cores diferentes. Uma
-cura que introduz uma inconsistência visível não é a cura.
+⚠️ **O lote das formas sobrevive:** o `encode` acumula formas consecutivas e só as despeja quando
+uma imagem as interrompe — sem imagem nenhuma é **uma** chamada com tudo, byte-idêntica.
+
+⛔⛔ **E a saída que foi medida e REJEITADA:** assar a PLANTA numa tile e desenhá-la no passe dos
+sprites resolve a ordem e **desfoca a árvore**. Um knob que troca a nitidez da planta em silêncio
+não é uma escolha que o artista possa fazer sem ver o preço.
 
 ---
 

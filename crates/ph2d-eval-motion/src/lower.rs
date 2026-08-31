@@ -203,24 +203,28 @@ pub fn lower_to_instances_onto(
     // here — a shape is never ALSO stamped as a shared-atlas quad. No such
     // column ⇒ the original `0..n` lowering, VERBATIM ⇒ byte-identical for every
     // pre-shape graph (the whole point of a convention column).
-    match stream.get("geometry_id") {
-        None => {
-            if n >= PAR_THRESHOLD {
-                out.par_extend((0..n).into_par_iter().map(make));
-            } else {
-                out.extend((0..n).map(make));
-            }
+    //
+    // ⭐⭐ **E desde 2026-08-30 há uma TERCEIRA média**: uma linha de sprite que o produtor
+    // marcou para o passe VECTORIAL (um quad texturado desenhado na cena Vello, para poder
+    // ficar por CIMA de uma forma). A pergunta é UMA — [`row_medium`] — e os dois lowerings
+    // lêem-na, senão a mesma linha desenhava-se duas vezes ou nenhuma.
+    if stream.get("geometry_id").is_none() && stream.get(VECTOR_PASS_COLUMN).is_none() {
+        // Nenhuma das duas colunas ⇒ o lowering original, VERBATIM ⇒ byte-idêntico para todo
+        // grafo anterior à convenção.
+        if n >= PAR_THRESHOLD {
+            out.par_extend((0..n).into_par_iter().map(make));
+        } else {
+            out.extend((0..n).map(make));
         }
-        Some(geo) => {
-            // `filter` preserves order ⇒ the surviving sprite rows are
-            // byte-identical to what the pre-shape lowering produced for them.
-            let is_sprite = move |&i: &usize| scalar_at(Some(geo), i, 0.0) <= 0.5;
-            if n >= PAR_THRESHOLD {
-                out.par_extend((0..n).into_par_iter().filter(is_sprite).map(make));
-            } else {
-                out.extend((0..n).filter(is_sprite).map(make));
-            }
-        }
+        return;
+    }
+    // `filter` preserves order ⇒ the surviving sprite rows are byte-identical to what the
+    // pre-shape lowering produced for them.
+    let is_sprite = |&i: &usize| row_medium(stream, i) == RowMedium::Sprite;
+    if n >= PAR_THRESHOLD {
+        out.par_extend((0..n).into_par_iter().filter(is_sprite).map(make));
+    } else {
+        out.extend((0..n).filter(is_sprite).map(make));
     }
 }
 
@@ -237,6 +241,25 @@ pub struct VectorInstance {
     pub size: [f32; 2],
     pub basis: [f32; 4],
     pub tint: [f32; 4],
+    /// ⭐⭐⭐ **A TEXTURA, quando esta instância é um QUAD e não uma forma** — a terceira média
+    /// (2026-08-30).
+    ///
+    /// ⛔⛔ **Por que ela existe:** a casa desenha os sprites no passe 1 (alvo HDR) e o vector no
+    /// passe 3 (a cena Vello), então **todo vector fica por cima de todo sprite** e uma folha
+    /// que é uma IMAGEM nunca podia ficar à frente dos galhos. Report do Enio, três vezes.
+    ///
+    /// ⚠️ **E não custa cor**, o que é o que torna isto honesto e não um remendo: o tonemap
+    /// desta casa é **passagem pura** para conteúdo de 8 bits (`tonemap.wgsl`, com o gate
+    /// `tonemap_descent_gpu` a medi-la byte-exacta), logo mudar uma sprite do passe HDR para a
+    /// camada LDR **não muda um pixel** dela.
+    ///
+    /// `0` = esta instância é uma FORMA (`geometry_id > 0`); qualquer outro valor é o id da
+    /// textura que este quad amostra, com [`Self::atlas_uv`] a dizer que região.
+    pub texture_id: u32,
+    /// A região `(u0, v0, u1, v1)` que o quad amostra — só se lê com `texture_id > 0`.
+    pub atlas_uv: [f32; 4],
+    /// `1` = a textura já está premultiplicada (a mesma bandeira da sprite).
+    pub premultiplied: f32,
     /// **O PIVÔ, em metros locais** — o gémeo exacto do `RenderInstance::anchor`
     /// (veredito do Enio, 2026-08-25: *«o sistema deve ser compatível com todos os tipos
     /// de objetos»*).
@@ -258,30 +281,77 @@ pub struct VectorInstance {
 /// sprites ⇒ skipped. **Appends** (the pump clears once), so a graph with no
 /// shapes leaves `out` empty ⇒ byte-identical. Serial: shapes are a handful, and
 /// the cost is the per-shape Vello encode downstream, not this gather.
+/// **A COLUNA QUE DECIDE A MÉDIA de uma linha** — e ela tem de ser lida pelos DOIS lowerings.
+///
+/// ⛔⛔ Sem uma resposta só, uma linha seria desenhada **duas vezes** (por ambos) ou **nenhuma**.
+/// Por isso os dois braços saem da mesma função: [`row_medium`].
+pub const VECTOR_PASS_COLUMN: &str = "vector_pass";
+
+/// **A média de uma linha**, respondida uma vez para os dois lowerings.
+///
+/// | resposta | quem desenha |
+/// |---|---|
+/// | `Shape` | o passe VECTORIAL, pela geometria internada |
+/// | `VectorQuad` | o passe VECTORIAL, como quad texturado (a terceira média) |
+/// | `Sprite` | o passe de SPRITES |
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowMedium {
+    Shape,
+    VectorQuad,
+    Sprite,
+}
+
+/// ⚠️ **A ordem das perguntas é a lei:** uma linha com geometria é uma FORMA, tenha ou não a
+/// bandeira — a bandeira só decide o destino de uma linha que seria sprite.
+#[must_use]
+pub fn row_medium(stream: &Stream, i: usize) -> RowMedium {
+    if scalar_at(stream.get("geometry_id"), i, 0.0) > 0.5 {
+        RowMedium::Shape
+    } else if scalar_at(stream.get(VECTOR_PASS_COLUMN), i, 0.0) > 0.5 {
+        RowMedium::VectorQuad
+    } else {
+        RowMedium::Sprite
+    }
+}
+
 pub fn lower_to_vector_instances_onto(
     stream: &Stream,
     style: SinkStyle,
     out: &mut Vec<VectorInstance>,
 ) {
-    let Some(geo) = stream.get("geometry_id") else {
-        return; // no shapes in this stream
-    };
+    // ⚠️ **A saída cedo desapareceu de propósito:** uma corrente sem `geometry_id` pode ainda
+    // ter quads no passe vectorial (a terceira média), e o [`row_medium`] é quem decide.
     let n = stream.count();
     let p = stream.get("P");
     let size = stream.get("size");
     let rot = stream.get("rot");
     let tint = stream.get("tint");
+    let tex = stream.get("texture_id");
+    let uv = stream.get("uv_rect");
+    let premul = stream.get("premultiplied");
     for i in 0..n {
-        let id = scalar_at(Some(geo), i, 0.0);
-        if id <= 0.5 {
-            continue; // a sprite row — lowered by `lower_to_instances_onto`
+        let medium = row_medium(stream, i);
+        if medium == RowMedium::Sprite {
+            continue; // lowered by `lower_to_instances_onto`
         }
+        let id = scalar_at(stream.get("geometry_id"), i, 0.0);
         // Same degrees→basis edge conversion as the sprite lowering (the `rot`
         // column is the app's one authored-angle unit).
         let (sin_r, cos_r) = scalar_at(rot, i, 0.0).to_radians().sin_cos();
         let sz = vec2_at(size, i, [1.0, 1.0]);
         out.push(VectorInstance {
-            geometry_id: id as u32,
+            geometry_id: if medium == RowMedium::Shape {
+                id as u32
+            } else {
+                0
+            },
+            texture_id: if medium == RowMedium::VectorQuad {
+                scalar_at(tex, i, 0.0).max(0.0) as u32
+            } else {
+                0
+            },
+            atlas_uv: vec4_at(uv, i, [0.0, 0.0, 1.0, 1.0]),
+            premultiplied: scalar_at(premul, i, 0.0),
             world_pos: vec2_at(p, i, [0.0, 0.0]),
             size: sz,
             basis: [cos_r, sin_r, -sin_r, cos_r],

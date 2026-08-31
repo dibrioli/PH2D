@@ -370,6 +370,9 @@ fn a_vector_row_gets_the_geometric_half_of_the_style_and_declares_the_rest() {
     let fields = {
         let crate::VectorInstance {
             geometry_id: _,
+            texture_id: _,
+            atlas_uv: _,
+            premultiplied: _,
             world_pos: _,
             size: _,
             basis: _,

@@ -444,16 +444,77 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
 pub(crate) fn encode(
     insts: &[VectorInstance],
     store: &VecPathStore,
+    art: &mut dyn FnMut(u32, [f32; 4]) -> Option<crate::motion_leaf_images::Art>,
     cam: Affine,
     scene: &mut VectorScene,
 ) {
-    ph2d_vec_render::draw_shared_instances(
-        insts
-            .iter()
-            .map(|inst| (inst.geometry_id, instance_pose(inst, cam), inst.tint)),
-        |handle| store.get(handle),
-        scene,
-    );
+    // ⭐⭐⭐ **A TERCEIRA MÉDIA, e a ORDEM é o ponto** (report do Enio, 2026-08-30, três vezes:
+    // *"Leaves in front ainda não funciona quando a folha é IMG"*).
+    //
+    // Uma instância com `texture_id > 0`… ou com `geometry_id == 0` e textura, é um **quad
+    // texturado desenhado NESTA cena** — a mesma em que a planta vive —, e por isso ela pode
+    // ficar por cima de uma forma. O que decide é a ORDEM das linhas, como em toda esta lista.
+    //
+    // ⚠️ **As formas continuam a ir em LOTE** (o cache de tesselação por quadro que o
+    // `draw_shared_instances` guarda): só uma imagem no meio o quebra, e o lote recomeça a
+    // seguir. Sem imagem nenhuma, isto é **uma** chamada com tudo — byte-idêntico ao que havia.
+    let mut lote: Vec<(u32, Affine, [f32; 4])> = Vec::new();
+    let despeja = |lote: &mut Vec<(u32, Affine, [f32; 4])>, scene: &mut VectorScene| {
+        if lote.is_empty() {
+            return;
+        }
+        ph2d_vec_render::draw_shared_instances(lote.drain(..), |h| store.get(h), scene);
+    };
+    for inst in insts {
+        if inst.geometry_id > 0 {
+            lote.push((inst.geometry_id, instance_pose(inst, cam), inst.tint));
+            continue;
+        }
+        // ⚠️ **A arte pode não resolver** (a textura já não existe, o formato é recusado) — e aí
+        // a linha simplesmente não desenha, que é o mesmo que a membrana faz com um nome que
+        // ninguém publicou. ⛔ Desenhar um rectângulo de substituição seria inventar arte.
+        let Some((w, h, rgba)) = art(inst.texture_id, inst.atlas_uv) else {
+            continue;
+        };
+        despeja(&mut lote, scene);
+        draw_quad(inst, &rgba, w, h, cam, scene);
+    }
+    despeja(&mut lote, scene);
+}
+
+/// **Um quad texturado na cena vectorial** — a pose é a MESMA função das formas
+/// ([`instance_pose`]), e é isso que mantém as duas médias alinhadas ao pixel.
+///
+/// ⚠️ **A imagem desenha-se em coordenadas de PIXEL e a pose leva-a ao mundo**, então o
+/// transform compõe `pose · escala(1/w, 1/h) · translação(−w/2, −h/2)`: o quad de uma instância
+/// é `[−½, ½]²` no local, como o da sprite.
+fn draw_quad(
+    inst: &VectorInstance,
+    rgba: &std::sync::Arc<Vec<u8>>,
+    w: u32,
+    h: u32,
+    cam: Affine,
+    scene: &mut VectorScene,
+) {
+    if w == 0 || h == 0 {
+        return;
+    }
+    let t = instance_pose(inst, cam)
+        * Affine::scale_non_uniform(1.0 / f64::from(w), 1.0 / f64::from(h))
+        * Affine::translate((-f64::from(w) / 2.0, -f64::from(h) / 2.0));
+    // ⚠️ **A alfa da FONTE decide a porta**, como no lowering de sprites: uma textura já
+    // premultiplicada entra pela porta que NÃO volta a multiplicar.
+    if inst.premultiplied > 0.5 {
+        scene.draw_image_rgba_premultiplied_transformed(
+            rgba,
+            w,
+            h,
+            t,
+            ph2d_vector::ImageQuality::Medium,
+        );
+    } else {
+        scene.draw_image_rgba_transformed(rgba, w, h, t, ph2d_vector::ImageQuality::Medium);
+    }
 }
 
 /// **A pose de mundo de uma instância vectorial**, com a câmera já aplicada.

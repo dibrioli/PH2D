@@ -260,11 +260,8 @@ impl crate::App {
             // ANTES de todo vector, por construcao do quadro. Ver [`super::motion_object_smoke_leaf`].
             12 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
-                gfx.vec_scene.push_path(leaf::leaf_shape());
-            }
-            12 if f == 6 => {
-                let map = self.vec_entities.clone();
-                leaf::run(self.gfx.as_mut().expect("gfx"), &map);
+                leaf::spawn_leaf_sprite(&mut gfx.sim);
+                leaf::run(gfx);
             }
             11 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");

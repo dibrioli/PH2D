@@ -371,6 +371,7 @@ mod motion_delay_smoke;
 mod motion_demo_legend;
 mod motion_flip_bake;
 mod motion_fx_smoke;
+mod motion_leaf_images;
 mod motion_node_path_smoke;
 mod motion_object_bake;
 /// Irmão do acima por RESPONSABILIDADE: ele produz pixels (GPU), este diz quantos (CPU).
@@ -1210,6 +1211,7 @@ impl App {
             vec_bucket_new: Vec::new(),
             vec_shape_armed_target: None,
             vec_entities: Default::default(),
+            motion_leaf_images: Default::default(),
             flip_entities: Default::default(),
             vec_sel: Default::default(),
             frame_ms_ewma: 16.7, // ~60 Hz baseline so the first

@@ -19,7 +19,7 @@ use ph2d_node_source_lsystem as ls;
 /// ser exacto — uma feature nova não pode mexer um bit no que já shipou.
 #[test]
 fn the_leaf_has_a_final_size_and_two_jitters() {
-    use crate::render_loop::motion_lsystem_leaves::LeafLook;
+    use crate::render_loop::motion_lsystem_rows::LeafLook;
     let neutro = LeafLook {
         front: 0.0,
         keep_own_colour: true,

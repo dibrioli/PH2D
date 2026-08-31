@@ -8,6 +8,9 @@ use crate::motion_shape_bake::ShapeBake;
 fn vi(geometry_id: u32, x: f32) -> VectorInstance {
     VectorInstance {
         geometry_id,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: [x, 0.0],
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0],

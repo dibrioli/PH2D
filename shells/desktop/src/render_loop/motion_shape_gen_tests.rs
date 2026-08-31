@@ -134,6 +134,9 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
 
     let inst = ph2d_eval_motion::VectorInstance {
         geometry_id: 99,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: [0.0, 0.0],
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0],
@@ -141,7 +144,13 @@ fn an_unpublished_handle_is_none_and_encodes_without_panic() {
         anchor: [0.0, 0.0],
     };
     let mut scene = ph2d_vector::VectorScene::new();
-    encode(&[inst], &store, ph2d_vector::Affine::IDENTITY, &mut scene);
+    encode(
+        &[inst],
+        &store,
+        &mut |_, _| None,
+        ph2d_vector::Affine::IDENTITY,
+        &mut scene,
+    );
     // Reaching here without a panic IS the assertion.
 }
 
@@ -301,6 +310,9 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
     let handle = store.push(star);
     let inst = ph2d_eval_motion::VectorInstance {
         geometry_id: handle,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: [0.0, 0.0],
         size: [1.0, 1.0],
         basis: [1.0, 0.0, 0.0, 1.0], // identity rotation
@@ -311,7 +323,7 @@ fn a_live_document_vector_renders_its_authored_fill_not_the_tint() {
     let (w, h) = (64u32, 64u32);
     let cam = ph2d_vector::Affine::translate((32.0, 32.0)) * ph2d_vector::Affine::scale(50.0);
     let mut scene = ph2d_vector::VectorScene::new();
-    encode(&[inst], &store, cam, &mut scene);
+    encode(&[inst], &store, &mut |_, _| None, cam, &mut scene);
 
     let mut pass =
         ph2d_render::VelloPass::new(&gpu, wgpu::TextureFormat::Rgba8UnormSrgb, (w, h)).unwrap();
@@ -417,6 +429,9 @@ fn the_pivot_rides_before_the_basis_on_the_vector_route() {
         // encodamos uma peça e perguntamos onde a origem local dela aterra.
         let inst = VectorInstance {
             geometry_id: 1,
+            texture_id: 0,
+            atlas_uv: [0.0, 0.0, 1.0, 1.0],
+            premultiplied: 0.0,
             world_pos: [10.0, 0.0],
             size: [2.0, 2.0],
             basis,

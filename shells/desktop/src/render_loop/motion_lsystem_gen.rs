@@ -25,10 +25,10 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 use super::motion_lsystem_leaves::{
-    Job, anchors_of, plant_and_leaves, say_if_a_wire_drives_an_inert_param,
-    say_if_the_leaf_cannot_go_in_front, say_if_the_letter_is_missing,
-    say_if_the_level_hid_every_leaf,
+    Job, anchors_of, say_if_a_wire_drives_an_inert_param, say_if_the_leaf_cannot_go_in_front,
+    say_if_the_letter_is_missing, say_if_the_level_hid_every_leaf,
 };
+use super::motion_lsystem_rows::plant_and_leaves;
 use crate::motion_state::MotionState;
 
 // ⛔⛔ **O TECTO `MAX_RIBBONS = 4096` FOI REMOVIDO — ele não era de recurso nenhum.**
@@ -363,7 +363,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             anchors,
             names,
             get(ls::param::LEAF_FIRST_LEVEL),
-            super::motion_lsystem_leaves::LeafLook {
+            super::motion_lsystem_rows::LeafLook {
                 front: get(ls::param::LEAF_FRONT),
                 keep_own_colour: get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
                 size: get(ls::param::LEAF_SIZE),

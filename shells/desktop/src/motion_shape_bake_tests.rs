@@ -11,6 +11,9 @@ use super::*;
 fn vi(pos: [f32; 2], basis: [f32; 4], size: [f32; 2]) -> VectorInstance {
     VectorInstance {
         geometry_id: 1,
+        texture_id: 0,
+        atlas_uv: [0.0, 0.0, 1.0, 1.0],
+        premultiplied: 0.0,
         world_pos: pos,
         size,
         basis,

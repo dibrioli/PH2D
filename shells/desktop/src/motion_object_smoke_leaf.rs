@@ -21,30 +21,26 @@
 //! ⚠️ **A dança de dois frames é a do `=2`**: a forma entra no frame 3, e a ENTIDADE dela — que
 //! é onde o nome mora — só existe depois do `vec_entities::sync`, no frame 6.
 
-use super::art::name_vector_entity_as;
+use ph2d_ecs::{Name, Transform};
 use ph2d_node_source_lsystem as ls;
-use ph2d_vec_scene::{Paint, Rgba8, VecPath};
+use ph2d_render::Sprite;
 
 /// O nome que o campo *Leaf (J)* vai oferecer.
 pub(super) const LEAF: &str = "Leaf";
 
-/// **A ARTE DA FOLHA** — uma gota, e não uma estrela: a forma tem de se ler como folha à
-/// primeira vista, senão a cena prova a ordem de desenho e não a feature.
-pub(super) fn leaf_shape() -> VecPath {
-    let mut p = ph2d_vec_scene::ellipse([0.0, 0.0], 0.26, 0.14);
-    p.fill = Some(Paint::solid(Rgba8::new(90, 200, 90, 255)));
-    p.stroke = Some(ph2d_vec_scene::StrokeSpec::new(
-        Rgba8::new(30, 90, 30, 255),
-        0.012,
+/// ⭐⭐⭐ **A folha é uma IMAGEM, de propósito** — é o caso que o report nomeia (*"Leaves in
+/// front ainda não funciona quando a folha é IMG"*), e o que a terceira média destrava. Uma
+/// folha DESENHADA sempre pôde ir à frente; ela não prova nada aqui.
+pub(super) fn spawn_leaf_sprite(sim: &mut ph2d_ecs::SimWorld) {
+    sim.world_mut().spawn((
+        Transform::from_translation(ph2d_core::Vec2::new(0.0, 0.0)),
+        Sprite::atlas(super::DEMO_TILE_KEY, [0.5, 0.5], [1.0, 1.0, 1.0, 1.0]),
+        Name::new(LEAF),
     ));
-    p
 }
 
 /// Monta a planta com a folha nomeada e METADE das folhas à frente.
-pub(super) fn run(gfx: &mut crate::AppGfx, map: &crate::vec_entities::VecEntityMap) {
-    if !name_vector_entity_as(&mut gfx.sim, map, LEAF) {
-        return;
-    }
+pub(super) fn run(gfx: &mut crate::AppGfx) {
     let g = &mut gfx.motion.doc.graph;
     let l = g.add_node(ls::MANIFEST.name);
     g.set_param(l, ls::param::MODE, ls::MODE_GRAMMAR as f32);
@@ -92,8 +88,9 @@ pub(super) fn run(gfx: &mut crate::AppGfx, map: &crate::vec_entities::VecEntityM
   · «Leaf Size» / «Size Jitter» / «Position Jitter» / «Leaf Spread» mudam o tamanho, a
     variacao entre folhas, o quanto elas se desencostam do ramo e o quanto viram.
 
-  ⚠️ ESTA CENA USA UMA FOLHA DESENHADA, E E' POR ISSO QUE O «IN FRONT» FUNCIONA. Com uma
-  folha que seja uma IMAGEM ele nao tem efeito nenhum: o programa desenha todas as imagens
-  ANTES de todo o desenho vectorial, e nao ha' ordem que mude isso."
+  ⭐ A FOLHA AQUI E' UMA IMAGEM, e e' esse o ponto: ate' 2026-08-30 uma imagem NUNCA podia
+  ficar a' frente de um galho, porque o programa desenha todas as imagens ANTES de todo o
+  desenho vectorial. Com o knob acima de 0 a copa passa a desenhar-se na mesma camada da
+  arvore, e ai' a ordem manda -- sem perder nitidez e sem mudar uma cor."
     );
 }

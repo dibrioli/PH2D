@@ -114,12 +114,21 @@ fn readings(
 
 /// Os params que esta régua NÃO alcança: a shell é que os lê, e o `build` não os vê.
 ///
-/// ⚠️ **Declarados, não deduzidos de um erro** — [`ls::probe_param_prints`] estouraria neles.
-/// A cerca deles é o `geometry`, que já está gateado.
+/// ⚠️ **A cerca deles é o `geometry`** — em `Segments` a membrana sai por `continue` e nenhum
+/// deles tem consumidor, então os cinco são gateados por `GEOMETRY = Branches`.
+///
+/// ⛔⛔ **O `LEAF_EFFECTS` SAIU desta lista em 2026-08-31** (doc 96 §4.3): ele dá **2** saídas
+/// distintas — a tartaruga escreve o `TINT_MASK_COLUMN` no próprio esqueleto —, logo o nó
+/// **lê-o** e ele nunca foi «shell-side». Estar aqui tirava-o da população do instrumento mais
+/// forte da crate, que é exactamente onde um knob morto se esconde.
+///
+/// ⚠️ **E a justificação que aqui estava — *«a sonda estouraria neles»* — era falsa em três dos
+/// seis.** Ela agora é RE-MEDIDA por
+/// [`every_shell_side_exemption_still_describes_a_param_the_build_cannot_read`]:
+/// *uma catraca sem censo de obsolescência não desce, vira licença*.
 const SHELL_SIDE: &[&str] = &[
     ls::param::TIP_TAPER,
     ls::param::LEAF_FRONT,
-    ls::param::LEAF_EFFECTS,
     ls::param::LEAF_SIZE,
     ls::param::LEAF_SIZE_JITTER,
     ls::param::LEAF_POS_JITTER,
@@ -435,4 +444,146 @@ fn the_guided_grammar_hides_exactly_the_knobs_it_cannot_read() {
         acusados.is_empty(),
         "no modo GUIADO o painel discorda da gramática que o próprio app derivou: {acusados:#?}"
     );
+}
+
+/// ⛔⛔⛔ **A ISENÇÃO `SHELL_SIDE` PRESTA CONTAS** — as três afirmações dela, re-medidas.
+///
+/// # Por que este gate existe
+///
+/// Auditoria de seis lentes, 2026-08-31 (doc 96 §4.3). A lista de saltos deste ficheiro
+/// justifica-se com três frases, e **duas estavam erradas para parte da população que isentam**:
+///
+/// 1. *«o `build` não os vê»* — o `leaf_effects` dá **2** saídas distintas: a tartaruga escreve
+///    o `TINT_MASK_COLUMN`, logo ele **é** lido pelo nó e não é «shell-side» de todo;
+/// 2. *«[`ls::probe_param_prints`] estouraria neles»* — **três não estouram**;
+/// 3. *«a cerca deles é o `geometry`, que já está gateado»* — verdade só para o `tip_taper`.
+///
+/// ⚠️⚠️ *Uma catraca sem censo de obsolescência não desce: ela vira licença* (`CLAUDE.md` §5.0).
+/// Uma lista de isenções cuja justificação nunca se volta a medir é o sítio onde um knob morto
+/// se esconde do instrumento mais forte da crate — e foi exactamente o que aconteceu.
+///
+/// ⇒ cada nome aqui tem de continuar a merecer o salto, e a prova é executada.
+#[test]
+fn every_shell_side_exemption_still_describes_a_param_the_build_cannot_read() {
+    let reg = registry();
+    let hints = reg.param_ui(ls::MANIFEST.id).expect("hints");
+    let gates = reg.param_gates(ls::MANIFEST.id).expect("gates");
+    let p = &ls::PRESETS[0];
+
+    let mut queixas: Vec<String> = Vec::new();
+    for name in SHELL_SIDE {
+        // (a) O `build` de facto não o lê? — `probe_param_prints` estoura nos que a porta de
+        // sonda não conhece, e isso conta como «não alcançável», que é a mesma resposta.
+        let hint = hints
+            .iter()
+            .find(|h| h.param == *name)
+            .unwrap_or_else(|| panic!("`{name}` está isento e nem sequer é pintado"));
+        let def = ls::MANIFEST
+            .params
+            .iter()
+            .find(|s| s.name == *name)
+            .map_or(0.0, |s| s.default);
+        let vals = samples(hint, def);
+        let lido = std::panic::catch_unwind(|| {
+            ls::probe_param_prints(p.axiom, p.rules, p.generations, &frame(p), name, &vals)
+        });
+        if let Ok(n) = lido
+            && n > 1
+        {
+            queixas.push(format!(
+                "`{name}` está em SHELL_SIDE e o `build` LÊ-O ({n} saídas distintas) — ele \
+                 pertence à população medida, não à lista de saltos"
+            ));
+        }
+        // (b) A cerca declarada existe? Um param que a régua não alcança tem de ser fechado por
+        // OUTRA coisa, senão ele é simplesmente um knob sem nenhum instrumento em cima.
+        let cercado = gates
+            .iter()
+            .any(|g| g.param == *name && g.when == ls::param::GEOMETRY);
+        if !cercado {
+            queixas.push(format!(
+                "`{name}` está isento com a nota «a cerca deles é o `geometry`» e NÃO tem gate \
+                 de `geometry` — em `Segments` a membrana sai por `continue` e ele é pintado \
+                 sobre nada"
+            ));
+        }
+    }
+    // ⚠️ O controlo do próprio censo: uma lista vazia passaria calada.
+    assert!(
+        SHELL_SIDE.len() >= 4,
+        "a lista de saltos encolheu para {} — re-confira se ela ainda descreve alguma coisa",
+        SHELL_SIDE.len()
+    );
+    queixas.sort();
+    assert!(
+        queixas.is_empty(),
+        "a lista `SHELL_SIDE` deixou de descrever o produto: {queixas:#?}"
+    );
+}
+
+/// ⛔⛔ **A CERCA DA GEOMETRIA NÃO ESCONDE NENHUM KNOB QUE O ESQUELETO LEIA** — a metade
+/// simétrica, e sem ela a outra é meia lei.
+///
+/// # Por que ela é obrigatória
+///
+/// O censo irmão exige que todo param de [`SHELL_SIDE`] TENHA cerca de `geometry`. Sozinho, ele
+/// aprova pôr a cerca em qualquer param — inclusive num que o nó lê. Medido: a mutação que muda
+/// a cerca do `Leaf Pos Jitter` para o `Leaf Effects` mata o censo irmão, mas **pelo motivo
+/// errado** (o `Pos Jitter` ficou sem cerca), e o `Leaf Effects` — que a tartaruga escreve no
+/// esqueleto — passaria a estar escondido em `Segments` sem ninguém reparar.
+///
+/// ⚠️⚠️ **Quatro dos oito knobs da secção *Leaves* estão VIVOS em `Segments`** — o
+/// `leaf_effects` (escreve o `TINT_MASK_COLUMN`), o `leaf_first_level`, o `leaf_angle` e o
+/// `leaf_spread` (o `mark_grow` e o `rot`). *Esconder a secção inteira apagaria quatro controlos
+/// vivos para curar quatro mortos*, e é essa a recusa que este gate torna executável.
+#[test]
+fn the_geometry_fence_never_hides_a_knob_the_skeleton_reads() {
+    let reg = registry();
+    let hints = reg.param_ui(ls::MANIFEST.id).expect("hints");
+    let gates = reg.param_gates(ls::MANIFEST.id).expect("gates");
+    let p = &ls::PRESETS[0];
+
+    // O enquadramento do molde, mas em `Segments` — o modo em que a cerca esconde.
+    let mut seg: Vec<(&'static str, f32)> = frame(p);
+    seg.retain(|(k, _)| *k != ls::param::GEOMETRY);
+    seg.push((ls::param::GEOMETRY, ls::GEOMETRY_SEGMENTS as f32));
+
+    let mut queixas: Vec<String> = Vec::new();
+    let mut medidos = 0usize;
+    for spec in ls::MANIFEST.params {
+        let name = spec.name;
+        if STRUCTURAL.contains(&name) {
+            continue;
+        }
+        let escondido = gates
+            .iter()
+            .any(|g| g.param == name && g.when == ls::param::GEOMETRY);
+        if !escondido {
+            continue;
+        }
+        let Some(hint) = hints.iter().find(|h| h.param == name) else {
+            continue;
+        };
+        medidos += 1;
+        let vals = samples(hint, spec.default);
+        // ⚠️ `catch_unwind`: os que a porta de sonda não conhece não são alcançáveis pelo nó, o
+        // que é precisamente a resposta que os justifica.
+        let lido = std::panic::catch_unwind(|| {
+            ls::probe_param_prints(p.axiom, p.rules, p.generations, &seg, name, &vals)
+        });
+        if let Ok(n) = lido
+            && n > 1
+        {
+            queixas.push(format!(
+                "`{name}` é escondido pela cerca da GEOMETRIA e o esqueleto LÊ-O em `Segments` \
+                 ({n} saídas distintas) — a cerca está a apagar um controlo vivo"
+            ));
+        }
+    }
+    assert!(
+        medidos >= 5,
+        "só {medidos} params gateados por `geometry` — a cerca encolheu ou o filtro partiu"
+    );
+    queixas.sort();
+    assert!(queixas.is_empty(), "{queixas:#?}");
 }

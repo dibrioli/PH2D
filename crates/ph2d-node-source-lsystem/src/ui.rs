@@ -398,6 +398,40 @@ pub(crate) static PARAM_GATES: &[ph2d_node_registry::ParamGate] = &[
         when: param::GEOMETRY,
         values: &[GEOMETRY_BRANCHES],
     },
+    // ⛔⛔⛔ **OS QUATRO QUE A MEMBRANA NUNCA LÊ EM `Segments`** (doc 96 §1.3).
+    //
+    // `motion_lsystem_gen::publish` sai por `continue` para todo nó cujo `geometry != Branches`,
+    // e o `LeafLook` — construído a jusante desse `continue` — é o **único** leitor destes
+    // quatro. Medido: 9 moldes × 4 params = **36 células, 36 inertes**, e os quatro pintados.
+    //
+    // ⚠️⚠️ **A cura é QUATRO gates e ⛔ NUNCA esconder a secção *Leaves*:** os outros quatro
+    // knobs dela (`leaf_effects`, `leaf_first_level`, `leaf_angle`, `leaf_spread`) estão
+    // **VIVOS** em `Segments` — a tartaruga escreve-os no próprio esqueleto. *Esconder a secção
+    // apagaria quatro controlos vivos para curar quatro mortos.*
+    //
+    // ⚠️ E a leitura que torna isto pior do que parece: em `Segments` os três campos
+    // *Leaf (J/K/M)* já estão escondidos (correctamente), logo a secção mostrava **oito knobs e
+    // nenhuma forma de nomear uma folha** — a porta de entrada gateada e os knobs dela não.
+    ph2d_node_registry::ParamGate {
+        param: param::LEAF_FRONT,
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::LEAF_SIZE,
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::LEAF_SIZE_JITTER,
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
+    ph2d_node_registry::ParamGate {
+        param: param::LEAF_POS_JITTER,
+        when: param::GEOMETRY,
+        values: &[GEOMETRY_BRANCHES],
+    },
     ph2d_node_registry::ParamGate {
         param: AXIOM_PARAM,
         when: param::MODE,

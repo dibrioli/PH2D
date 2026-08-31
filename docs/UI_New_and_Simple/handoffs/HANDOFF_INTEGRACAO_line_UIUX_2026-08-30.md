@@ -1064,3 +1064,111 @@ e a aba diz "Tokens"`.
   pessoa a ler um `content_h` velho vai querer saber porquê.
 - **Duas barras de título empilhadas**: a fila de abas fica por cima de um painel que ainda pinta o
   próprio cabeçalho. Não é defeito de mecanismo — é decisão de desenho de quem vê.
+
+---
+
+## §17 — ⛔⛔⛔ «COM O MODEL TUDO VIRA CANVAS»: havia DUAS portas para a mesma pergunta (entrega 22)
+
+Commit `b03f96817`. Report do Enio no smoke da entrega 21: *«quando coloco Model, não consigo mais
+clicar nos menus superiores nem nas abas. É como se tudo fosse canvas.»*
+
+### §17.1 — A causa não era o módulo 3D
+
+| porta para *«isto é moldura ou desenho?»* | como responde | quem perguntava |
+|---|---|---|
+| `chrome_hit::pointer_over_chrome` | o **índice de acerto** — o que o chrome pintou neste quadro | todo o resto do app |
+| ~~`forwarding::cursor_over_hero_chrome`~~ | uma **lista de 4 ids de fundo escrita à mão** | só o `field3d` e o `sculpt3d` |
+
+Os dois módulos 3D correm **antes** do despacho de chrome (`input_dispatch.rs`) e reclamam o gesto;
+a guarda deles era a lista. Quando a barra de pills saiu (§10) e a barra de menus (§11), a fila de
+ferramentas (§12) e as abas (§16) entraram:
+
+| entrada da lista | estado em 30/08 |
+|---|---|
+| `RAIL_BACKDROP` | **viva** — a fila de ferramentas reusa o id (por isso ela continuava a funcionar) |
+| `TOPBAR_LEFT_BACKDROP` · `TOPBAR_RIGHT_BACKDROP` · `TOPBAR_IMAGE_TOOLS_BACKDROP` | **mortas** — a barra legada só é pintada sob `F9` |
+| `MENUBAR_BACKDROP` · a fila de **abas** | **descobertas** — nasceram fora da lista |
+
+⇒ o clique na barra de menus e nas abas ia para a cena 3D, que o consumia e voltava.
+
+### §17.2 — ⭐ A cura foi APAGAR a segunda porta
+
+Completá-la funcionaria no dia em que fosse escrita e voltaria a apodrecer na wave seguinte — que é
+literalmente o que aconteceu. Os **quatro** pontos de chamada (`field3d`/`sculpt3d` × `down`/`wheel`)
+passam a `chrome_hit::pointer_over_chrome`, e `cursor_over_hero_chrome` + `hero_chrome_backdrop_at`
+foram **removidos**.
+
+⭐⭐ A porta única é estritamente melhor em três eixos:
+
+1. **Não apodrece** — pergunta ao índice, que é escrito por quem pinta; uma faixa nova fica coberta
+   no dia em que é pintada.
+2. **Cobre painéis por `panel_at`**, os rects publicados, em vez de uma lista de ids de painel.
+3. **Sabe excluir o GIZMO** (desenhado *sobre* a obra, e por isso não é moldura) — subtileza que o
+   `chrome_hit` documenta e que uma regra de *«o índice reclamou ⇒ é UI»* estragaria, carvando zonas
+   mortas onde o artista mais pinta.
+
+⭐ E curou de borla o **irmão** que um doc-comment do `field3d` nomeava como *«um irmão por curar,
+que não é desta linha»*: o `sculpt3d` tinha exactamente a mesma forma. *Uma nota não cura; uma porta
+cura.*
+
+### §17.3 — ⛔⛔ O gate que existia para isto falhou EM SILÊNCIO, por duas razões
+
+`every_chrome_backdrop_is_known_to_the_scene` existe **exactamente** para recusar um `*_BACKDROP`
+novo que nasça fora da lista. O `MENUBAR_BACKDROP` nasceu fora dela na mesma semana e o gate não se
+mexeu:
+
+1. ⚠️ **Ele varria UM SUBDIRETÓRIO** (`crates/ph2d-editor-core/src/ids/chrome/`) e o id novo foi
+   escrito em `ids/menubar.rs`, **uma casa acima**. *Um gate que varre um diretório afirma sobre o
+   diretório, não sobre o repo.*
+2. ⚠️ **O piso `found >= 4` não o salvou:** ele foi satisfeito pelos quatro fundos **legados**, que
+   continuam *declarados* mesmo já não sendo pintados por ninguém. *Um piso contado sobre
+   DECLARAÇÕES não nota que as declarações deixaram de ter consumidor.*
+
+⇒ hoje a varredura é da **árvore inteira** de ids (com um controlo sobre `files.len()`), o piso
+subiu, e a lista **mudou de dono**: ela é a dos obstáculos que o gizmo de navegação contorna (W50),
+não a porta da cena.
+
+### §17.4 — Os gates novos, nas DUAS metades da costura
+
+| gate | onde | o que afirma |
+|---|---|---|
+| `the_app_frame_is_reachable_by_the_hit_index` | `ph2d-panel-registry-init` (VIVO) | a barra de menus, a fila de ferramentas, a fila de abas e as duas colunas — **mais cada título e cada aba, um a um, no próprio centro** — respondem *moldura* |
+| `the_scene_asks_the_one_chrome_door` | `shells/desktop` (FONTE) | as **quatro** portas de cena perguntam à porta única · a porta velha não renasce · o `pointer_up` **não** pergunta |
+
+⚠️ **As duas metades são precisas:** a viva afirma que **há o que recusar**, a de fonte que **alguém
+pergunta**. Uma sozinha fica verde com a outra partida.
+
+⛔ **E a 1.ª versão do gate de fonte perguntava ao FICHEIRO — uma mutação SOBREVIVEU.** Apagar a
+pergunta do `field3d_pointer_down` deixava-o verde, porque o `field3d_wheel`, no mesmo ficheiro,
+ainda a fazia. Hoje ele pergunta **por função**. *É a mesma lição que o
+`the_sculpt_gesture_is_wired` já tinha pago, no ficheiro ao lado, com a mesma forma* — e ela voltou
+porque eu escrevi um gate novo em vez de olhar para o vizinho.
+
+### §17.5 — E uma catraca DESCEU sozinha
+
+O `MENUBAR_BACKDROP` estava em `NO_CONSUMER_PENDING` (`the_painted_control_reaches_a_consumer`) como
+*«termina por AUSÊNCIA»* — verdade no dia em que foi escrita. Ao entrar em `CHROME_BACKDROPS` ele
+ganhou um consumidor **positivo** (o gizmo contorna o rect dele), e a **metade de obsolescência**
+acusou a linha no mesmo dia. *A dívida foi paga por uma wave que não estava a olhar para ela* — e
+sem essa metade a catraca guardaria para sempre uma nota que já não descreve nada.
+
+### §17.6 — Verificação
+
+| portão | resultado |
+|---|---|
+| `ph2d-host-desktop` | **4765** ✓ · 266 ignorados |
+| `ph2d-editor-core` | **1344** ✓ · 16 ignorados |
+| `ph2d-panel-registry-init` | 12 alvos, **0** falhas |
+| `cargo check --workspace --all-targets` · clippy · fmt | limpo |
+
+**Quatro mutações MORTAS**, com controlo: o fundo do menu não registado · as abas não registadas ·
+o `pointer_down` do `field3d` sem a pergunta · a porta velha a renascer no `forwarding`.
+
+### §17.7 — ⏳ O que fica nomeado
+
+- **O HUD do fundo flutua DENTRO da área de desenho** e não regista rect no estado medido — se
+  algum dia registar, a porta única cobre-o automaticamente. Fica escrito porque era a única
+  superfície que a lista antiga também não cobria, e ninguém tinha reparado.
+- **`cursor_over_hero_panel` continua a ser uma lista de ids de painel escrita à mão**, com três
+  gates a apontar-lhe. Ela já não está no caminho da cena 3D (a porta única usa `panel_at`), mas é
+  a mesma espécie — e a wave que a apagar deve ler o §17.1 primeiro.

@@ -82,8 +82,8 @@ pub use finish_extract::{
     finish_extracted_with,
 };
 pub use local::{
-    FaceLocal, LocalShape, QuadKind, TipSurvival, local_shape, local_shape_of, tip_body_ratio,
-    tip_survival,
+    FaceLocal, LocalShape, QuadKind, TIP_CUT_PCT, TipSurvival, local_shape, local_shape_of,
+    tip_body_ratio, tip_survival,
 };
 pub use quality::{
     Hint, detail_lost, folded_against, folded_by_neighbours, follows_relief, surface_hint,

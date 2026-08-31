@@ -96,6 +96,35 @@ pub(super) fn worse(
     if a_bow != b_bow {
         return a_bow > b_bow;
     }
+    // ⭐⭐⭐ **A AMPUTAÇÃO — e ela vem ANTES da forma, porque é o que o dono fotografou.**
+    //
+    // ⛔⛔⛔ **Medida em 2026-08-31, e é a razão de esta chave existir:** numa varredura do teto
+    // de graduação da fase zero, a célula `ADAPT_RATIO = 8` entregou uma fase zero **perfeita**
+    // (`0` de `4` pontas cortadas, pior `−0,5 %`) e a **saída** cortou a ponta mais longa em
+    // ⛔ **`−43 %`**. As duas candidatas estavam limpas na topologia, e o `worse` escolheu a que
+    // comia o espinho — *porque nada aqui olhava para o alcance.*
+    //
+    // ⚠️ **Sem referência, de propósito:** as duas candidatas vêm da MESMA entrada, logo o
+    // alcance de uma contra a outra já é a comparação certa. *Pedir a malha de entrada aqui
+    // seria mudar a assinatura para medir o que a diferença já diz.*
+    //
+    // ⚠️ **A banda é MEDIDA e é do repo** ([`ph2d_quadfill::TIP_CUT_PCT`], `−2 %`), cujo doc
+    // mostra **uma ordem de grandeza** entre pontas intactas (`−0,0 %`..`−0,4 %`) e cortadas
+    // (`−5 %`..`−22 %`). ⛔ Sem banda, o ruído de reamostragem decidiria a escolha.
+    //
+    // ⛔ **Depois dos FUROS e antes da forma:** um espinho cortado ao meio é mais visível que
+    // uma face com canto pior que `60°`, e menos que um buraco — *que foi a queixa mais antiga
+    // dele.*
+    {
+        let (a_reach, b_reach) = (reach(a_mesh), reach(b_mesh));
+        let banda = 1.0 + ph2d_quadfill::TIP_CUT_PCT / 100.0;
+        if b_reach > 1.0e-9 && a_reach < b_reach * banda {
+            return true;
+        }
+        if a_reach > 1.0e-9 && b_reach < a_reach * banda {
+            return false;
+        }
+    }
     if a_over60 != b_over60 {
         return a_over60 > b_over60;
     }
@@ -138,6 +167,28 @@ pub(super) fn worse(
         }
     }
     a_skew.total_cmp(&b_skew) == core::cmp::Ordering::Greater
+}
+
+/// ⭐ **O ALCANCE de uma malha** — a distância máxima ao centroide.
+///
+/// ⚠️ É a única régua desta linha que vê **amputação**: uma ponta cortada sai com a casca
+/// fechada, quads bonitos e `χ` exacta. ⛔ *Ela é um extremo GLOBAL* — não diz **quantas**
+/// pontas morreram, e é por isso que o diagnóstico usa o suporte por ponta. Aqui, entre duas
+/// candidatas da mesma entrada, o extremo é exactamente a comparação certa.
+fn reach(mesh: &Mesh) -> f32 {
+    let pos = mesh.positions();
+    #[allow(clippy::cast_precision_loss)]
+    let n = pos.len().max(1) as f32;
+    let mut c = [0.0f32; 3];
+    for q in pos {
+        for k in 0..3 {
+            c[k] += q[k] / n;
+        }
+    }
+    pos.iter().fold(0.0f32, |acc, q| {
+        let d = [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
+        acc.max(d[0].mul_add(d[0], d[1].mul_add(d[1], d[2] * d[2])).sqrt())
+    })
 }
 
 /// ⚠️ **A chave da ponta está ligada?** — `PH2D_RETOPO_TIPKEY=0` desliga.

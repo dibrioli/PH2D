@@ -221,3 +221,99 @@ fn a_ponta_decide_depois_das_faces_ruins_e_antes_do_enviesamento() {
         "⛔ a ponta decide ANTES do enviesamento mediano -- e' a inversao inteira da wave"
     );
 }
+
+/// **DUAS NUVENS IGUAIS, uma com a ponta ENCURTADA** — a fixtura da amputação.
+///
+/// ⚠️ **Tudo o resto empata por construção** (mesma contagem de quads soltos ⇒ mesmos furos,
+/// mesmas peças, zero gravatas): *se as chaves da frente diferissem, o gate mediria uma delas.*
+fn nuvem_com_ponta_a(distancia: f32) -> Mesh {
+    let mut verts: Vec<[f32; 3]> = Vec::new();
+    let mut faces: Vec<Face> = Vec::new();
+    let quad = |cx: f32, verts: &mut Vec<[f32; 3]>, faces: &mut Vec<Face>| {
+        let b = u32::try_from(verts.len()).expect("a fixtura e' pequena");
+        verts.push([cx, 0.0, 0.0]);
+        verts.push([cx + 1.0, 0.0, 0.0]);
+        verts.push([cx + 1.0, 1.0, 0.0]);
+        verts.push([cx, 1.0, 0.0]);
+        faces.push(Face::quad(b, b + 1, b + 2, b + 3));
+    };
+    for k in 0..8 {
+        #[expect(clippy::cast_precision_loss, reason = "k <= 8 nesta fixtura")]
+        let cx = k as f32 * 2.0;
+        quad(cx, &mut verts, &mut faces);
+    }
+    for k in 0..4 {
+        #[expect(clippy::cast_precision_loss, reason = "k <= 4 nesta fixtura")]
+        let cx = distancia + k as f32 * 2.0;
+        quad(cx, &mut verts, &mut faces);
+    }
+    Mesh::from_parts(verts, faces).expect("a fixtura e' construida aqui")
+}
+
+/// ⭐⭐⭐ **GATE — a candidata AMPUTADA perde, mesmo com a forma melhor.**
+///
+/// ⛔⛔⛔ **Medido em 2026-08-31 e é a razão desta chave:** numa varredura do teto de graduação
+/// da fase zero, a célula `ADAPT_RATIO = 8` entregou uma fase zero **perfeita** (`0` de `4`
+/// pontas cortadas) e a **saída** cortou a ponta mais longa em **`−43 %`**. As duas candidatas
+/// estavam limpas na topologia e o `worse` escolheu a que comia o espinho, *porque nada olhava
+/// para o alcance*.
+#[test]
+fn a_candidata_amputada_perde_mesmo_com_a_forma_melhor() {
+    let inteira = nuvem_com_ponta_a(100.0);
+    let cortada = nuvem_com_ponta_a(60.0);
+    // ⚠️ **O CONTROLE:** as chaves da frente TÊM de empatar.
+    assert_eq!(super::open_edges(&inteira), super::open_edges(&cortada));
+    assert_eq!(super::components(&inteira), super::components(&cortada));
+    assert_eq!(super::bowties(&inteira), super::bowties(&cortada));
+    // A forma da amputada é dada PERFEITA e a da inteira PÉSSIMA: só o alcance pode decidir.
+    assert!(
+        super::worse(&cortada, 0, 0.0, &inteira, 999, 89.0),
+        "⛔ a candidata AMPUTADA tem de perder -- e' o espinho que o dono fotografou"
+    );
+    assert!(
+        !super::worse(&inteira, 999, 89.0, &cortada, 0, 0.0),
+        "⛔ e a relacao tem de ser ANTI-SIMETRICA"
+    );
+}
+
+/// ⭐⭐ **GATE — a BANDA impede que o ruído de reamostragem decida.**
+///
+/// ⛔ Duas candidatas cujo alcance difere por menos que [`ph2d_quadfill::TIP_CUT_PCT`] **não**
+/// são amputação: a saída tem outros vértices e o suporte cai um pouco só por a superfície ser
+/// poliédrica. *Sem banda, esta chave engoliria todas as que vêm depois dela.*
+#[test]
+fn uma_diferenca_de_alcance_dentro_da_banda_nao_decide() {
+    let a = nuvem_com_ponta_a(100.0);
+    // `0,5 %` mais curta -- dentro da banda de `2 %`.
+    let b = nuvem_com_ponta_a(99.5);
+    assert!(
+        super::worse(&a, 9, 0.0, &b, 2, 0.0),
+        "⛔ dentro da banda quem decide e' a chave seguinte (as faces `>60°`)"
+    );
+    assert!(
+        !super::worse(&b, 2, 0.0, &a, 9, 0.0),
+        "⛔ e no sentido contrario tambem"
+    );
+}
+
+/// ⭐⭐ **GATE — os FUROS continuam a ganhar da amputação.**
+#[test]
+fn a_amputacao_nunca_ganha_de_um_furo() {
+    let cortada_fechada = {
+        let (cv, cf) = cubo(0.0);
+        Mesh::from_parts(
+            cv,
+            cf.into_iter()
+                .map(|q| Face::quad(q[0], q[1], q[2], q[3]))
+                .collect(),
+        )
+        .expect("a fixtura e' construida aqui")
+    };
+    let inteira_furada = nuvem_com_ponta_a(100.0);
+    assert_eq!(super::open_edges(&cortada_fechada), 0);
+    assert!(super::open_edges(&inteira_furada) > 0);
+    assert!(
+        super::worse(&inteira_furada, 0, 0.0, &cortada_fechada, 999, 89.0),
+        "⛔ o FURO decide antes da amputacao -- foi a queixa mais antiga do dono"
+    );
+}

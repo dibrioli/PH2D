@@ -1094,3 +1094,61 @@ o campo tem gradientes fortes e há fronteiras por toda a parte.
    *soft-min*, e a barra é a régua por ponta que já existe.
 2. **O gate de sensibilidade do §52 sobre o BOTÃO**, não só sobre a crate — com a peça do dono
    e as seis posições, e a barra em *pontas cortadas*, não em contagem de vértices.
+
+## §57 — ⭐⭐⭐ O CAMPO ESTÁ ILIBADO, e a sonda que o disse custa 30 segundos
+
+`o_campo_e_invariante_nos_mesmos_sitios` constrói a grelha na peça e na mesma peça deslocada,
+e lê o `at` nos vértices correspondentes — **sem o remalhador pelo meio**:
+
+| | pior desvio relativo | sítios que diferem acima de `10⁻⁶` |
+|---|---|---|
+| `x = ½`, `1`, `2` | `~2·10⁻⁷` | ⭐ **`0` de `13 682`** |
+| `x = 16` | `1,5·10⁻⁶` | `19` de `13 682` |
+
+⇒ **depois da ancoragem, o campo é invariante à precisão da máquina.** O que sobra na saída é
+o **laço** a amplificar `10⁻⁷`: uma decisão de corte exactamente no limiar muda de lado, e a
+partir daí os índices são todos outros.
+
+⭐ **E o controlo prova que a amplificação precisa de um campo VARIÁVEL:** com o campo
+constante (`graded = false`) o mesmo laço, na mesma peça, é bit-estável nas quatro posições.
+
+## §58 — ⛔⛔⛔ TIRAR O CLIFF DO CAMPO: construído, MEDIDO e REVERTIDO
+
+A §56 mandava tornar o campo contínuo. Foi feito, em três passos, cada um medido:
+
+| passo | dispersão do F1 (esfera 96×144) | o que aconteceu |
+|---|---|---|
+| planalto + rampa, 1 representante por balde | `4,4 %` | ⛔ pior: *qual* vértice representa a célula é um degrau na **construção** |
+| **todas** as amostras, sem escolha | `3,0 %` | melhor, ainda não fecha |
+| + alvo **quantizado** em `64` degraus | `1,4 %` | melhor, ainda não fecha |
+
+⛔⛔ **E o produto PIOROU, que é o que decide.** No botão, `Detail 0,75 · Curvature 1`, nas
+seis posições: a origem foi de **`0` de `4`** pontas cortadas para **`1` de `4`**, e uma
+célula deu **`−40,8 %`**. A fase zero encolheu de `~1 841` para `1 695`–`1 807` vértices.
+
+⭐⭐⭐ **O achado é o mecanismo:** *o `min` duro das 27 células não era um acidente — é ele que
+ALIMENTA a agulha.* Ele espalha o valor mais fino por toda a vizinhança sem o diluir; qualquer
+mistura suave, por melhor que seja a continuidade, entrega **menos** resolução exactamente
+onde a ponta precisa dela. ⇒ *a estabilidade e a ponta pediram coisas opostas, e a ponta é o
+que o dono vê.*
+
+⚠️ **Revertido.** Fica a **primeira** cura (a ancoragem da grelha, §54), que é ganho sem
+troca, e a sonda do campo.
+
+## §59 — ⏳ O QUE FICA, com a régua certa desta vez
+
+⛔ **A régua desta obra não pode ser a contagem de vértices.** `2 645` contra `2 681` (`1,4 %`)
+não é o que o dono vê; `0` de `4` contra `2` de `4` pontas cortadas é. A §52 pedia um gate de
+sensibilidade — ele tem de ser sobre a **qualidade**, e sobre o **botão**.
+
+⇒ a obra seguinte tem duas frentes e uma delas já tem mecanismo:
+
+1. ⭐⭐ **Estabilizar o LAÇO, não o campo.** O campo já é invariante; o que vira é uma decisão
+   de corte no limiar. As saídas clássicas — histerese na banda de split/collapse, ou uma
+   ordem de visita derivada do conteúdo em vez do índice — **não foram tentadas**, e são o
+   sítio certo agora que o campo está ilibado.
+2. ⏳ **O gate de sensibilidade sobre o botão**, com a barra em *pontas cortadas*.
+
+⛔ **E uma cerca nova, medida:** qualquer cura que suavize o campo tem de mostrar a **régua
+por ponta**, não a dispersão — foi a dispersão que fez a cura de §58 parecer progresso
+enquanto ela destruía o bico.

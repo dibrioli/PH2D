@@ -547,3 +547,116 @@ a pior ponta mudou de identidade.* ⇒ é a mesma lição que fez esta linha con
    (`ALPHA`) e o alvo do quad na **área/contagem**. *Um espinho longo infla a diagonal, logo uma
    peça com espinhos recebe uma malha de trabalho mais grossa precisamente por ter espinhos.*
    ⛔ Igualar as duas âncoras (`PH2D_F1_TARGET=1`) está medido e **recusado** (§21).
+
+---
+
+# ⭐⭐⭐ PARTE III — «uma apenas foi amputada, a menos densa em faces» (Enio, 31/08)
+
+## §28 — O report, e por que ele é um DIAGNÓSTICO e não uma queixa
+
+*«Melhor resultado até agora, uma ponta bem comprida com bom resultado. Mas um mistério: dentre
+várias pontas uma apenas foi amputada (a menos densa em faces).»* — três fotos, a terceira um
+grande plano do **funil**: quads grandes e irregulares a fechar num buraco, com a escultura
+original a aparecer por baixo.
+
+⭐⭐ **A observação dele é o mecanismo:** *a que morreu é a que ficou com a grelha grossa*. Isso
+distingue as duas leituras possíveis (a graduação falhou **ali**, contra a cadeia falhou ao
+acaso) e aponta a uma **saturação**, não a um erro aleatório.
+
+## §29 — ⛔⛔⛔ O TETO DA GRADUAÇÃO, e ele não foi medido para este consumidor
+
+```rust
+let h = target * (median / κ).clamp(1.0 / ADAPT_RATIO, 1.0);   // ADAPT_RATIO = 4
+```
+
+⚠️ **O `4` é emprestado**, e o doc dele di-lo: *«é a mesma cerca de gradação que a
+`ph2d_quadflow::MAX_ADAPTIVE_RATIO` declara noutra crate — duas células cujas escalas diferem por
+mais do que isto deixam de ter aresta comum»*. ⛔ **Essa cerca responde a outra pergunta:** ela é
+sobre a **grade de quads** transitar sem rasgar. O consumidor aqui é um **remalhador de
+triângulos**, que não tem essa restrição.
+
+⇒ ⭐ É o `§0.0` do `CLAUDE.md`: *um limite legítimo diz de que recurso ele é.* Este diz de um
+recurso de **outro** subsistema.
+
+### A aritmética que fecha com a observação dele
+
+O alvo da fase zero é `ALPHA × diagonal ≈ 0,11`, logo o mais fino que a grelha alcança é
+`0,11 / 4 ≈ 0,029`. Uma agulha de raio local **abaixo disso** satura: *a partir dali, uma agulha
+mais fina recebe exactamente a mesma grelha que uma mais grossa.*
+
+| raio local da ponta | quads a dar a volta ao tubo (`2πr / h`) |
+|---|---|
+| `0,037` (a maior agulha da peça) | `≈ 7` — sobrevive |
+| `0,020` | `≈ 3,8` — ⛔ colapsa |
+
+⇒ **É a assinatura exacta de «uma apenas foi amputada, a menos densa em faces».**
+
+## §30 — ⭐⭐ E subir o teto agora é BARATO, porque a renormalização já lá está
+
+Antes desta jornada, subir o teto **multiplicava** a malha de trabalho (o campo só afinava).
+⭐ Com o orçamento renormalizado (`√(N_previsto/N_pedido)`), subir o teto **não acrescenta faces:
+move-as** — mais orçamento para as agulhas, menos para o corpo chapado.
+
+⇒ *A wave anterior é o que torna esta pergunta respondível.* Varredura a correr:
+`ADAPT_RATIO ∈ {4, 8, 16, 32}`, com a coluna nova **`NO PISO %`** (quantos vértices batem no
+teto) ao lado das pontas cortadas.
+
+## §31 — ⭐⭐⭐ A varredura do teto, e o SEGUNDO achado que ela devolveu
+
+`_base_sculpt.obj`, `Detail 0,85`, com a coluna nova **`NO PISO %`** (vértices que batem no teto):
+
+| `ADAPT_RATIO` | `NO PISO` (1.ª ronda → pico) | pontas cortadas no F1 | pontas cortadas na SAÍDA | alcance |
+|---|---|---|---|---|
+| ⛔ **`4`** (o que shipa) | **`8,5 %` → `14,3 %`** | `1/4`, pior `−2,6 %` | `1/4`, pior `−5,9 %` | `−7,3 %` |
+| ⚠️ `8` | `2,6 %` | ⭐ `0/4`, pior `−0,5 %` | ⛔ `1/4`, pior **`−43,0 %`** | ⛔ `−37,8 %` |
+| ⭐⭐⭐ **`16`** | ⭐ `0,2 %` | ⭐ `0/4`, pior `−0,5 %` | ⭐⭐⭐ **`0/4`**, pior **`−0,4 %`** | ⭐ `−6,5 %` |
+| `32` | `0,0 %` | `0/4`, pior `−0,7 %` | `2/4`, pior `−2,9 %` | `−6,1 %` |
+
+⭐⭐ **A saturação existe e é grande:** com `4`, entre `8,5 %` e `14,3 %` dos vértices batem no
+teto — *a partir dali uma agulha mais fina recebe exactamente a mesma grelha que uma mais grossa*.
+Com `16` ela desaparece (`0,2 %`) e a saída fica com **zero** pontas cortadas.
+
+### ⛔⛔⛔ E a linha do `8` é o segundo achado: o SELECTOR podia escolher a candidata amputada
+
+Com a fase zero **perfeita** (`0/4` cortadas, pior `−0,5 %`) a saída cortou a ponta mais longa em
+**`−43 %`** — porque a corrida trocou de vencedora (*campo liso* em vez de *alinhado*) e as duas
+estavam limpas na topologia. ⇒ **o `worse` não tinha chave de amputação**, e a `−43 %` é a prova.
+
+⭐ Ela existe agora, **entre as gravatas e as faces `>60°`**, com a banda **medida e do repo**
+(`ph2d_quadfill::TIP_CUT_PCT = −2 %`, cujo doc mostra uma ordem de grandeza entre pontas intactas
+e cortadas). ⛔ **Nunca à frente dos furos.** ⚠️ Sem referência, de propósito: as duas candidatas
+vêm da mesma entrada, logo o alcance de uma contra a outra já é a comparação certa.
+
+⇒ ⚠️ **A varredura de uma peça só não escolhe um número** (o `8` prova que a curva não é monótona:
+ela mede a selecção, não só a graduação). A escolha do teto corre em **quatro** peças, já com a
+chave de amputação a proteger a escolha.
+
+## §32 — ⭐⭐⭐ A escolha do teto, em QUATRO peças e já com a chave de amputação
+
+| peça (`Detail 0,85`) | teto `4` | teto **`16`** |
+|---|---|---|
+| ⭐ `_base_sculpt` | `1/4`, pior `−5,9 %` | ⭐⭐⭐ **`0/4`**, pior **`−0,4 %`** |
+| `sculpt_antes` | `3/6`, pior `−23,2 %` | ⭐ `2/6`, pior **`−18,9 %`** |
+| ⭐⭐ agulha `σ=0,07` | `6/6`, pior `−36,4 %` | `6/6`, pior **`−11,2 %`** |
+| `σ=0,14` | `1/6`, pior `−2,0 %` | `1/6`, pior `−2,1 %` |
+
+⭐⭐ **Melhor ou igual nas quatro**, e a topologia é **idêntica** nas oito células (`χ = 2`, zero
+bordo, zero não-manifold, valência máxima `5`–`6`). ⇒ `ADAPT_RATIO = 4 → 16`.
+
+⛔ **Subi-lo só é barato porque a renormalização já lá está:** sem ela, `16×` de refinamento
+local **multiplicaria** a malha de trabalho; com ela o orçamento é o mesmo e só **muda de sítio**.
+*A wave anterior é o que torna esta respondível.*
+
+## §33 — ⚠️ E o que a chave de amputação MUDA, dito com honestidade
+
+Ela maximiza o **ALCANCE**, que é a distância da ponta **mais longa**. ⇒ ela protege o espinho
+grande — que é o caso `−43 %` que a fez existir — e ⛔ **não protege os outros**: na
+`sculpt_antes` ela troca *«uma ponta cortada a `−25,1 %`»* por *«três cortadas, a pior a
+`−23,2 %`»*, porque a segunda tem mais alcance.
+
+⚠️ **É a mesma limitação que esta linha já nomeou três vezes: um extremo global não conta
+quantas.** Uma chave **por ponta** precisaria da malha de ENTRADA dentro do `worse` — hoje ele
+recebe só as duas candidatas —, e isso é uma mudança de assinatura com o seu próprio preço.
+
+⇒ ⏳ **Fica NOMEADO**, e a régua já existe (`ph2d_quadfill::tip_survival`, que conta pontas
+cortadas contra uma referência).

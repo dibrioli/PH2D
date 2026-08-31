@@ -1248,3 +1248,64 @@ juntas, por LOC e por responsabilidade).
    dar a volta ao tubo.
 3. ⏳ **O `ALVO/F1` continua em `0,30`–`0,42`.** Igualar as âncoras (`PH2D_F1_TARGET=1`) está
    medido e **recusado**: na `sculpt_antes` troca `4` arestas de bordo por **`46`**.
+
+---
+
+# ⭐⭐⭐ PARTE III — «uma apenas foi amputada, a menos densa em faces» (Enio, 31/08)
+
+## §8-sextricies — A observação dele É o mecanismo
+
+*«Melhor resultado até agora, uma ponta bem comprida com bom resultado. Mas um mistério: dentre
+várias pontas uma apenas foi amputada (a menos densa em faces).»*
+
+⭐⭐ *A que morreu é a que ficou com a grelha grossa* — isso distingue **saturação** de **acaso**, e
+aponta a um teto.
+
+## §8-septentricies — ⛔⛔⛔ O TETO DA GRADUAÇÃO era EMPRESTADO
+
+```rust
+let h = target * (median / κ).clamp(1.0 / ADAPT_RATIO, 1.0);   // ADAPT_RATIO = 4
+```
+
+⚠️ O doc dele dizia: *«é a mesma cerca de gradação que a `ph2d_quadflow::MAX_ADAPTIVE_RATIO`
+declara noutra crate»*. ⛔ **Aquela cerca é sobre a GRADE DE QUADS transitar sem rasgar**; o
+consumidor aqui é um **remalhador de triângulos**, que não tem essa restrição. ⇒ *um limite
+legítimo diz de que recurso ele é, e este dizia de um recurso de outro subsistema* (§0.0).
+
+**A aritmética fecha com a observação:** alvo da fase zero `0,105` ⇒ piso `0,026`; uma agulha mais
+fina satura, e *a partir dali recebe exactamente a mesma grelha que uma mais grossa*. Medido:
+**`8,5 %` a `14,3 %`** dos vértices no piso.
+
+| `ADAPT_RATIO` | NO PISO | `_base_sculpt` | `sculpt_antes` | `σ=0,07` | `σ=0,14` |
+|---|---|---|---|---|---|
+| ⛔ `4` | `8,5`–`14,3 %` | `1/4` pior `−5,9 %` | `3/6` pior `−23,2 %` | `6/6` pior `−36,4 %` | `1/6` pior `−2,0 %` |
+| ⚠️ `8` | `2,6 %` | ⛔ `1/4` pior **`−43,0 %`** | — | — | — |
+| ⭐⭐⭐ **`16`** | ⭐ `0,2 %` | ⭐ **`0/4`** pior **`−0,4 %`** | ⭐ `2/6` pior **`−18,9 %`** | ⭐ `6/6` pior **`−11,2 %`** | `1/6` pior `−2,1 %` |
+| `32` | `0,0 %` | `2/4` pior `−2,9 %` | — | — | — |
+
+⭐⭐ **`16` é melhor ou igual nas quatro peças**, com topologia **idêntica** nas oito células
+(`χ = 2`, zero bordo, zero não-manifold). ⛔ **E subi-lo só é barato porque a renormalização já lá
+está** — sem ela, `16×` de refinamento local multiplicaria a malha; com ela o orçamento é o mesmo
+e só muda de sítio.
+
+## §8-duodequadragies — ⭐⭐⭐ E a linha do `8` devolveu o SEGUNDO defeito: o selector podia escolher a amputada
+
+Com a fase zero **perfeita** (`0/4` cortadas, pior `−0,5 %`) a saída cortou a ponta mais longa em
+**`−43 %`**: a corrida trocou de vencedora (*campo liso* em vez de *alinhado*), as duas estavam
+limpas na topologia, e **nada no `worse` olhava para o alcance**.
+
+⇒ ⭐ **Chave de amputação**, entre as gravatas e as faces `>60°`:
+- **sem referência**, de propósito — as duas candidatas vêm da mesma entrada, logo o alcance de
+  uma contra a outra já é a comparação certa;
+- **banda medida e do repo** (`ph2d_quadfill::TIP_CUT_PCT = −2 %`, cujo doc mostra uma ordem de
+  grandeza entre pontas intactas e cortadas) — ⛔ sem banda, o ruído de reamostragem decidiria;
+- ⛔ **nunca à frente dos furos.**
+
+Mutações: apagar o bloco mata `a_candidata_amputada_perde_mesmo_com_a_forma_melhor`; apagar a
+banda mata `uma_diferenca_de_alcance_dentro_da_banda_nao_decide`.
+
+⚠️ **O que ela NÃO faz, dito com honestidade:** ela maximiza o alcance, que é a ponta **mais
+longa** — protege o espinho grande e **não** os outros. Na `sculpt_antes` ela troca *«uma cortada a
+`−25,1 %`»* por *«três cortadas, a pior a `−23,2 %`»*. ⇒ *um extremo global não conta quantas*, e
+uma chave **por ponta** precisaria da malha de entrada dentro do `worse`. ⏳ Nomeado; a régua já
+existe (`ph2d_quadfill::tip_survival`).

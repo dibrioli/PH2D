@@ -952,3 +952,84 @@ tê-la: no app, **`Ctrl+Shift+E`** escreve a escultura num ficheiro
 ⚠️ **A lição não é «a hipótese estava errada» — é que ela era barata de medir e cara de
 acreditar.** Uma régua com piso *é* uma população escolhida, e este repo já pagou isso
 quatro vezes; a diferença é que desta vez a suspeita foi medida antes de virar cura.
+
+---
+
+# ⭐⭐⭐ PARTE VI — A PEÇA DELE, e o defeito que ela expôs (2026-08-31, `_remesh_sculpt.obj`)
+
+## §48 — O report REPRODUZ, e a diferença não era a peça: era ONDE ela está
+
+O dono entregou a saída (`_remesh_sculpt.obj`) e disse que a entrada é a mesma
+`_base_sculpt.obj` que eu já tinha. ⭐ **A saída dele veio noutro referencial** — `0,582×` o
+tamanho e ancorada em `x ≈ 2`. Alinhada, as réguas dizem:
+
+| | pior de 42 pontas |
+|---|---|
+| ponta **3** (raio `1,8014`) | ⛔ suporte **`−3,9 %`** · desvio `p50` **`2,82`** |
+| as outras 41 | `≤ 0,4 %` · `≤ 0,18` |
+
+⇒ o report é **verdadeiro** e a minha medição também era: *nós não estávamos a correr a mesma
+coisa.*
+
+⭐ **A causa do referencial está no importador:** `sculpt3d_import::IMPORT_SPAN = 2.0`
+normaliza o tamanho e **ancora a peça fora da origem**. A sonda alimenta o ficheiro cru,
+centrado; o artista alimenta a peça ancorada.
+
+## §49 — ⛔⛔⛔ A MESMA MALHA, SÓ DESLOCADA, DÁ OUTRA RETOPOLOGIA
+
+`_base_sculpt.obj` normalizada (`2,0` de vão), `Detail 0,75 · Curvature 1`, **só translada em
+`x`**:
+
+| `x` | quads | pontas cortadas | pior | desvio `p50` |
+|---|---|---|---|---|
+| `0` | `5 703` | ⭐ `0` de `4` | `−0,5 %` | `0,17` |
+| `0,5` | `5 528` | `0` de `4` | `−0,3 %` | `0,12` |
+| `1` | `5 432` | `1` de `4` | `−4,2 %` | `3,27` |
+| `2` | `5 301` | ⛔ `2` de `4` | `−6,3 %` | `2,18` |
+| `4` | `5 344` | ⛔ `2` de `4` | `−6,0 %` | `3,86` |
+| `16` | `5 669` | `0` de `4` | `−0,6 %` | `0,14` |
+
+⛔ **Não é precisão de `f32`:** a `16` volta a ficar limpa. Não é monótono, não é gradual — é
+uma decisão discreta a mudar de lado.
+⭐ **A fase zero está limpa nas seis** (`0/4`, pior `−0,9 %`), logo a sensibilidade não é dela
+sozinha — mas ela **também** muda (`1 797`–`1 902` vértices nas seis posições).
+
+## §50 — ⛔⛔⛔ E É PIOR: O DEFEITO É CAÓTICO NOS ÚLTIMOS BITS, não «translação»
+
+Canonicalizar a pose na porta (correr a cadeia sempre com a peça na origem e devolver a saída
+ao sítio) foi **construído e medido**. As seis entradas passam a diferir **só no arredondamento
+de `f32`** — `(p − c) + c` não devolve `p` bit a bit — e o resultado foi:
+
+| | quads | pontas cortadas |
+|---|---|---|
+| `x = 0` | `5 703` | `0` de `4` |
+| ⛔ `x = 0,5` | `4 142` | `3` de `4`, pior **`−77,6 %`** |
+| ⛔ `x = 1` | `3 950` | `4` de `4`, pior `−77,5 %` |
+| ⛔ `x = 2` | `4 435` | `4` de `4`, pior **`−105 %`** |
+
+⭐⭐⭐ **Uma perturbação de `~10⁻⁷` relativos muda a saída inteira, e pode destruí-la.** O tempo
+também explode (`15 s → 172 s`). ⇒ *o que a §49 mediu não é uma dependência da POSIÇÃO: é
+sensibilidade caótica a qualquer perturbação da entrada, e a posição é só a que o artista
+consegue mexer sem querer.*
+
+⛔ **A canonicalização foi REVERTIDA** — ela não pode remover uma perturbação que ela própria
+introduz, e piorava o produto.
+
+## §51 — ⛔ As duas curas tentadas, medidas e recusadas
+
+1. **Ancorar a grelha de densidade da fase zero na caixa da peça** (`SizingGrid::key_of` divide
+   a coordenada de **mundo** pela célula, logo os baldes movem-se com a peça). Construída,
+   medida: o F1 **continuou** a mudar com a posição (`1 841`–`1 902` vértices) e o caso da
+   origem **piorou** de `0/4` para `1/4`. *A hipótese estava errada.* Revertida.
+2. **Canonicalizar a pose na porta** — §50. Revertida.
+
+## §52 — ⇒ O que a próxima janela tem de construir PRIMEIRO
+
+⭐⭐⭐ **Um gate de SENSIBILIDADE, antes de qualquer cura:** perturbar a entrada em `1` ULP (ou
+transladá-la) e exigir que a saída fique dentro de uma barra — contagem de quads, pontas
+cortadas, `χ`. ⛔ *Sem ele, toda medição desta linha — as sete densidades, as quatro esquinas,
+os A/B de candidatas — mede uma amostra de uma lotaria, e a barra de qualquer cura é ruído.*
+
+⚠️ **E isso reabre, com honestidade, tudo o que esta linha mediu por A/B de uma corrida só.**
+As diferenças de `2`–`8 %` que decidiram constantes podem ser ruído desta família. *A
+prioridade deixa de ser a ponta: é a REPETIBILIDADE.*

@@ -24,9 +24,12 @@ fn factory() -> Shape {
 /// alcançável por sliders.
 #[test]
 fn the_guided_default_is_the_binary_tree_written_with_the_house_symbols() {
+    // ⚠️ O `[J]` entrou em 2026-08-30 (report: *"em custom não funciona"* — a gramática
+    // derivada não tinha onde plantar folha). Ele muda **junto** com o `DEFAULT_RULES`, e é o
+    // gate `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` que os prende.
     assert_eq!(
         rules(&factory()),
-        "A(s) -> F(s)![+A(s*length_scale)][-A(s*length_scale)]"
+        "A(s) -> F(s)[J]![+A(s*length_scale)][-A(s*length_scale)]"
     );
 }
 
@@ -75,8 +78,14 @@ fn the_branch_count_is_the_number_of_shoots_in_the_successor() {
             n as usize,
             "n = {n}: {r}"
         );
-        assert_eq!(r.matches('[').count(), n as usize, "n = {n}: {r}");
-        assert_eq!(r.matches(']').count(), n as usize, "n = {n}: {r}");
+        // ⚠️ **Conta os parênteses de RAMO, não todos** — a âncora de folha (`[J]`) também é
+        // um par, e contá-la aqui faria este gate medir duas coisas ao mesmo tempo. O que ele
+        // afirma é *«há um par por rebento»*.
+        // ⚠️ O rebento do MEIO não leva viragem (`[A(...)]`), então contar `[+`/`[-` perderia-o:
+        // o que separa um rebento de uma âncora é ela ser `[J]`.
+        let ramos = r.matches('[').count() - r.matches("[J]").count();
+        assert_eq!(ramos, n as usize, "n = {n}: {r}");
+        assert_eq!(r.matches(']').count(), n as usize + 1, "n = {n}: {r}");
     }
 }
 
@@ -88,7 +97,10 @@ fn the_branch_count_is_the_number_of_shoots_in_the_successor() {
 #[test]
 fn a_single_shoot_carries_no_brackets_at_all() {
     let r = rules(&sh(1.0, 1.0, 0.0, 0.0));
-    assert_eq!(r, "A(s) -> F(s)!A(s*length_scale)");
+    // ⚠️ **O `[J]` não é um rebento** — ele fecha no mesmo módulo e não empurra estado por
+    // geração nenhuma. O que este gate proíbe é o `[A(...)]` de um filho só.
+    assert!(!r.contains("[+") && !r.contains("[-"), "{r}");
+    assert_eq!(r, "A(s) -> F(s)[J]!A(s*length_scale)");
 }
 
 /// **Os dois ramos de fora usam o símbolo NU** — que é `+(angle)` por definição da tartaruga.

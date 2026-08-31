@@ -532,6 +532,52 @@ Hoje ele exige que os oito emitam, e o controlo conta os oito.
 
 ---
 
+## §12 — *"em custom não funciona"* e *"falta fluidez no Dragon"*: um é defeito, o outro é a figura
+
+### 12.1 — ⛔ Um nó tirado da PALETA não tinha onde plantar folha
+
+O `Custom` é *"nenhum destes"* e **não escreve texto nenhum** — logo ele herda o que lá estava. E
+o que lá está num nó recém-dropado é a gramática do modo **GUIADO**, derivada dos sliders… **sem
+`J` nenhum**. A gramática de FÁBRICA (`DEFAULT_RULES`) também não o tinha.
+
+⇒ escrever um nome em *Leaf (J)* naquele estado não plantava nada. *A feature era inalcançável
+do estado em que o nó nasce* — e eu tinha deixado o `DEFAULT_RULES` de fora **de propósito**, em
+2026-08-30 de manhã, para não pagar o preço em toda planta sem folha.
+
+⚠️ **As duas mudam JUNTAS** — o gate `the_guided_plant_draws_exactly_what_the_factory_grammar_draws`
+compara-as ao bit, e é essa comparação que prova que os sliders não são uma segunda planta
+parecida.
+
+⚠️ **O preço, medido:** `32 → 63` elementos a `g = 5` e `256 → 511` a `g = 8` (**~2×**), com o
+relógio no ruído. A alternativa mediu-se no report.
+
+⚠️ **E três gates da forma cravavam o texto antigo** — foram corrigidos **pela intenção**, não
+pelo literal: *«um ramo não leva parênteses»* passa a proibir `[+`/`[-` (uma âncora fecha no
+mesmo módulo e não empurra estado), e *«um par por rebento»* passa a descontar os `[J]`. *Um
+gate que conta delimitadores tem de saber quais são os DELE.*
+
+### 12.2 — ⭐ O Dragon: a motricidade é CONTÍNUA; o que oscila é a figura
+
+Enio: *"ainda temos falta de total fluidez no crescimento de algumas plantas como dragon"*. Ele
+tem razão sobre o que vê, e a medição diz o que é.
+
+| medida | resultado |
+|---|---|
+| altura nas gerações INTEIRAS `1..10` | **monótona**, `0,02 → 0,59`, zero recuos ⇒ a figura cresce |
+| maior degrau com `40` amostras | `0,2237` (13% da subida) — contra 3–5% em todos os outros moldes |
+| com `160` amostras | `0,0655` |
+| com `640` amostras | `0,0165` |
+
+⭐⭐ **O degrau encolhe ~4× quando a amostragem afina 4×** — essa é a assinatura de **movimento
+contínuo**. Uma descontinuidade **não encolhe**. ⇒ não há salto a curar: o que se vê é a curva a
+**dobrar-se**, e a extensão dela oscilar enquanto as juntas abrem de `0°` a `90°` é o que um
+dragão faz. Aos `640` pontos há `57` «recuos» — uma oscilação fina, não quatro trancos.
+
+⛔ **Curá-la seria mentir sobre a figura.** O que a distingue dos outros moldes é a VELOCIDADE no
+instante mais rápido (~3×), e isso é a mesma geometria.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -547,6 +593,8 @@ Hoje ele exige que os oito emitam, e o controlo conta os oito.
 | Um `First Level` único para todos os moldes | ⛔ **Esvaziava o `Sprig`** (10 marcas, todas na profundidade 1). O molde carrega o seu, como os outros quatro números de enquadramento |
 | Folhas da frente como imagem na cena Vello | ⛔ Poria metade da copa DEPOIS do tonemap e metade antes — as duas metades da mesma folhagem com cores diferentes |
 | Desenhar o vector do documento na passagem HDR das sprites | ⛔ **Re-medido no `vello` 0.10** (a nota citava o 0.8): o `render_to_texture` exige `Rgba8Unorm`; o alvo HDR está fora do alcance da biblioteca |
+| «Curar» a oscilação do Dragon | ⛔ Medido: a motricidade é CONTÍNUA (o degrau encolhe ~4× quando a amostragem afina 4×, que é a assinatura de movimento e não de salto), e as gerações inteiras são monótonas. O que oscila é a EXTENSÃO da figura enquanto as juntas abrem — curá-la seria mentir sobre a curva |
+| Deixar o `DEFAULT_RULES` sem âncora para poupar ~2× elementos | ⛔ Revertido no mesmo dia: a poupança tornava a feature **inalcançável do estado em que o nó nasce** (*"em custom não funciona"*) |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

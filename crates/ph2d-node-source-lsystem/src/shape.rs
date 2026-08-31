@@ -151,6 +151,18 @@ fn body(sh: &Shape, mul: f32) -> String {
             s.push_str("+(bend)");
         }
     }
+    // ⭐⭐ **A ÂNCORA DE FOLHA, e ela vem ANTES do `!`** — report do Enio (2026-08-30): *"em
+    // custom não funciona"*. A gramática derivada não tinha `J` nenhum, então **um nó tirado da
+    // paleta não tinha onde plantar folha** — e o modo guiado é o que ele traz de fábrica.
+    //
+    // ⚠️ **Ela e o [`crate::DEFAULT_RULES`] mudam JUNTOS**: o gate
+    // `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` compara os dois AO BIT, e
+    // é essa comparação que prova que os sliders não são uma segunda planta parecida.
+    //
+    // ⚠️ **O preço está medido e é ~2× elementos** (`32 → 63` a `g = 5`; `256 → 511` a `g = 8`),
+    // com o relógio no ruído. Ele paga-se em toda planta, tenha folha ou não — e a alternativa
+    // media-se no report: *a feature era inalcançável do estado em que o nó nasce.*
+    s.push_str("[J]");
     // ⚠️ **O `!` vem DEPOIS do desenho**: ele afina a espessura para o que vem a seguir, e
     // pô-lo antes faria o tronco nascer já fino. É a mesma ordem da gramática de fábrica.
     s.push('!');

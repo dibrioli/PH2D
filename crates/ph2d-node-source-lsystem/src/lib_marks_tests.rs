@@ -475,3 +475,59 @@ fn no_preset_silences_its_own_leaves() {
         PRESETS.len()
     );
 }
+
+/// ⭐⭐⭐ **UM NÓ TIRADO DA PALETA TEM ONDE PLANTAR UMA FOLHA** — report do Enio (2026-08-30):
+/// *"em custom não funciona"*.
+///
+/// A gramática de fábrica e a derivada pelo modo GUIADO (que é o modo em que o nó nasce) não
+/// tinham `J` nenhum ⇒ escrever um nome em *Leaf (J)* num nó recém-dropado não plantava nada, e
+/// o `Custom` — que é *"nenhum destes"* e não escreve texto — herdava o mesmo vazio.
+///
+/// ⚠️ **As DUAS têm de a ter, e juntas:** o gate
+/// `the_guided_plant_draws_exactly_what_the_factory_grammar_draws` compara-as ao bit, e é essa
+/// comparação que prova que os sliders não são uma segunda planta parecida.
+///
+/// ⚠️ **O preço está MEDIDO: ~2× elementos** (`32 → 63` a `g = 5`; `256 → 511` a `g = 8`), com o
+/// relógio no ruído. Ele paga-se em toda planta, tenha folha ou não — e a alternativa mediu-se
+/// no report: *a feature era inalcançável do estado em que o nó nasce.*
+#[test]
+fn a_node_from_the_palette_has_somewhere_to_plant_a_leaf() {
+    let marcas = |axiom: &str, rules: &str| -> usize {
+        let s = probe_build(axiom, rules, 5.0, &[]);
+        let sym = scal(&s, "sym");
+        (0..sym.len())
+            .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)))
+            .count()
+    };
+    // 1. A gramática de FÁBRICA.
+    assert!(
+        marcas(DEFAULT_AXIOM, DEFAULT_RULES) > 8,
+        "a gramatica de fabrica nao emite marcas"
+    );
+    // 2. A DERIVADA pelo modo guiado, na forma de fábrica e em toda a faixa de ramos.
+    for b in 1..=4u32 {
+        let g = crate::shape::rules(&crate::shape::Shape {
+            branches: b as f32,
+            segments: 1.0,
+            variation: 0.0,
+            bend: 0.0,
+        });
+        assert!(
+            marcas(crate::shape::AXIOM, &g) > 4,
+            "o guiado com {b} ramo(s) nao emite marcas: {g}"
+        );
+    }
+    // ⚠️ **E o CONTROLE que liga as duas metades:** com a forma de fábrica as duas gramáticas
+    // têm de emitir o MESMO número de marcas — é a mesma planta escrita de duas maneiras.
+    let g = crate::shape::rules(&crate::shape::Shape {
+        branches: 2.0,
+        segments: 1.0,
+        variation: 0.0,
+        bend: 0.0,
+    });
+    assert_eq!(
+        marcas(crate::shape::AXIOM, &g),
+        marcas(DEFAULT_AXIOM, DEFAULT_RULES),
+        "as duas rotas para a MESMA planta emitem contagens diferentes de marca"
+    );
+}

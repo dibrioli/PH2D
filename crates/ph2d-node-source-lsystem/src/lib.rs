@@ -214,7 +214,7 @@ pub const DEFAULT_AXIOM: &str = "A(step)";
 /// para os filhos (depois do tronco, para o tronco sair cheio), e o `0.7` faz a altura
 /// somar `s/(1−0.7) ≈ 3,3·step` em vez de crescer sem limite. É o exemplo mínimo que exibe as
 /// três coisas que este nó tem e um gerador de pontos não tem: parâmetro, espessura, e árvore.
-pub const DEFAULT_RULES: &str = "A(s) -> F(s)![+A(s*0.7)][-A(s*0.7)]";
+pub const DEFAULT_RULES: &str = "A(s) -> F(s)[J]![+A(s*0.7)][-A(s*0.7)]";
 
 /// Quantas gerações derivar, e quanto da mais nova já cresceu.
 ///

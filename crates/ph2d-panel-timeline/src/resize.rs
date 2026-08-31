@@ -3,9 +3,12 @@
 //! camera) under the HR-18 panel LOC cap.
 //!
 //! All three share one shape: capture the value and the pointer at Begin, apply
-//! the delta to THAT on every Update, and let `paint` clamp the result. Applying
+//! the delta to THAT on every Update, and let the port clamp the result. Applying
 //! deltas to the live value instead would accumulate rounding across a slow drag.
 //! None of them raise intents — none is undoable.
+//!
+//! ⚠️ **A terceira deixou de escrever um rect e passou a escrever uma MEDIDA** (2026-08-31) — ver
+//! [`apply_resize`].
 
 use ph2d_editor_core::interaction::{GesturePhase, TimelineGesture};
 use ph2d_editor_core::zones::Rect;
@@ -41,27 +44,48 @@ pub(crate) fn apply_graph_resize(state: &mut TimelinePanelState, g: TimelineGest
     }
 }
 
-/// Edge/corner drag: move the set edges by the pointer delta from Begin. Deltas
-/// apply to the rect captured at Begin, so a slow drag never accumulates drift.
+/// ⭐⭐ **A COSTURA DO TOPO: arrastar a borda muda a ALTURA DA BANDA, nunca solta o painel dela.**
+///
+/// Enio, 2026-08-31, com foto e duas setas: *«em nodes, arrastar a timeline na vertical deve
+/// ajustar o canvas dos nós e não deixar espaços vazios nem sobrepor os nodes»*.
+///
+/// ⛔⛔ **O que ele arrastava não era uma banda — era o painel a soltar-se dela.** Esta função
+/// escrevia `state.rect`, um rect LIVRE, e a partir do primeiro arrasto o painel deixava de ler a
+/// faixa que o layout lhe dava: daí o espaço vazio por cima dele (a faixa ficava onde estava, o
+/// painel foi-se embora) e a sobreposição no sentido contrário. *Uma borda de painel docado que
+/// devolve um rect livre é um painel que deixa de estar docado quando se lhe toca.*
+///
+/// ⇒ hoje ela escreve **a medida** (`WidgetStore::set_dock_bottom_h`), como a borda interior de
+/// uma coluna. Quem partilha a banda — o grafo de nós, via `HeroLayout::dock_timeline_into_motion`
+/// — segue **por construção**, e não por uma segunda conta que possa discordar.
+///
+/// ⚠️ **Só o TOPO agarra**, e as outras três bordas desapareceram (ver `geom::resize_grips`): numa
+/// faixa docada elas são inexprimíveis — os lados são as costuras das colunas, e o fundo é a borda
+/// da janela.
+///
+/// ⚠️ A altura sai da captura do Begin, e não do valor vivo: aplicar deltas ao vivo acumula
+/// arredondamento ao longo de um arrasto lento (é a lei das outras duas funções deste ficheiro).
 pub(crate) fn apply_resize(
     state: &mut TimelinePanelState,
+    store: &mut ph2d_editor_core::interaction::WidgetStore,
     rect: Rect,
-    viewport: Rect,
     edges: u8,
     g: TimelineGesture,
 ) {
+    if edges & geom::EDGE_T == 0 {
+        return; // uma borda que já não existe; ver o doc acima
+    }
     match g.phase {
         GesturePhase::Begin => {
             state.resize = Some(ResizeDrag {
-                edges,
-                start_rect: rect,
-                start_pointer: (g.x, g.y),
+                start_h: rect.h,
+                start_y: g.y,
             });
         }
         GesturePhase::Update => {
             if let Some(d) = state.resize {
-                let (dx, dy) = (g.x - d.start_pointer.0, g.y - d.start_pointer.1);
-                state.rect = Some(geom::resized(d.start_rect, d.edges, dx, dy, viewport));
+                // Puxar para CIMA (dy negativo) faz a faixa crescer — ela está ancorada no fundo.
+                store.set_dock_bottom_h(d.start_h - (g.y - d.start_y));
             }
         }
         _ => state.resize = None,
@@ -73,8 +97,6 @@ mod tests {
     use super::*;
     use ph2d_editor_core::interaction::{GestureMods, TimelineHitKind};
     use ph2d_host::PointerButton;
-
-    const VP: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
 
     fn drag(button: PointerButton, phase: GesturePhase, x: f32, y: f32) -> TimelineGesture {
         TimelineGesture {
@@ -163,47 +185,113 @@ mod tests {
         assert!(clamp_graph_h(10_000.0) < 10_000.0, "and never unbounded");
     }
 
+    /// ⭐⭐ **A costura do topo escreve a MEDIDA da banda** — e a medida é a única coisa que ela
+    /// escreve (o painel não tem rect próprio desde 2026-08-31).
     #[test]
-    fn dragging_the_top_edge_resizes_from_the_rect_captured_at_begin() {
+    fn dragging_the_top_edge_writes_the_band_height_captured_at_begin() {
         let mut st = TimelinePanelState::default();
-        let start = Rect::new(100.0, 600.0, 800.0, 240.0);
+        let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+        let band = Rect::new(100.0, 600.0, 800.0, 240.0);
         let g = |phase, y| drag(PointerButton::Primary, phase, 400.0, y);
 
+        assert_eq!(
+            store.dock_bottom_h_choice(),
+            None,
+            "controlo: já havia uma escolha e o gate mediria a de outro"
+        );
         apply_resize(
             &mut st,
-            start,
-            VP,
+            &mut store,
+            band,
             geom::EDGE_T,
             g(GesturePhase::Begin, 600.0),
         );
         apply_resize(
             &mut st,
-            start,
-            VP,
+            &mut store,
+            band,
             geom::EDGE_T,
             g(GesturePhase::Update, 550.0),
         );
-        let r = st.rect.expect("resized");
-        assert_eq!((r.y, r.h), (550.0, 290.0), "grew upward");
+        assert_eq!(store.dock_bottom_h(), 290.0, "puxar para cima faz crescer");
 
-        // A second Update still measures from Begin, not from the live rect.
+        // Um segundo Update mede a partir do Begin, nunca do valor vivo.
         apply_resize(
             &mut st,
-            start,
-            VP,
+            &mut store,
+            band,
             geom::EDGE_T,
             g(GesturePhase::Update, 500.0),
         );
-        let r = st.rect.expect("resized");
-        assert_eq!((r.y, r.h), (500.0, 340.0), "no drift accumulation");
+        assert_eq!(store.dock_bottom_h(), 340.0, "sem acumular arredondamento");
 
         apply_resize(
             &mut st,
-            start,
-            VP,
+            &mut store,
+            band,
             geom::EDGE_T,
             g(GesturePhase::End, 500.0),
         );
         assert!(st.resize.is_none());
+    }
+
+    /// ⛔ **As outras três bordas já não existem, e uma que chegue é ignorada.**
+    #[test]
+    fn no_other_edge_moves_the_band() {
+        let mut st = TimelinePanelState::default();
+        let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+        let band = Rect::new(100.0, 600.0, 800.0, 240.0);
+        // ⚠️ Vindos do editor-core, e não do `geom`: este painel já não os re-exporta (ele não os
+        // oferece), e o gate mede exactamente isso — uma borda que chegue de fora é ignorada.
+        use ph2d_editor_core::interaction::{TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R};
+        for edges in [TIMELINE_EDGE_B, TIMELINE_EDGE_L, TIMELINE_EDGE_R] {
+            apply_resize(
+                &mut st,
+                &mut store,
+                band,
+                edges,
+                drag(PointerButton::Primary, GesturePhase::Begin, 400.0, 600.0),
+            );
+            apply_resize(
+                &mut st,
+                &mut store,
+                band,
+                edges,
+                drag(PointerButton::Primary, GesturePhase::Update, 400.0, 400.0),
+            );
+        }
+        assert_eq!(
+            store.dock_bottom_h_choice(),
+            None,
+            "uma borda que já não é oferecida moveu a banda"
+        );
+    }
+
+    /// ⭐ **E a faixa tem piso** — abaixo dele não sobra borda para a agarrar de volta.
+    #[test]
+    fn the_band_never_shrinks_past_its_floor() {
+        let mut st = TimelinePanelState::default();
+        let mut store = ph2d_editor_core::interaction::WidgetStore::default();
+        let band = Rect::new(100.0, 600.0, 800.0, 240.0);
+        apply_resize(
+            &mut st,
+            &mut store,
+            band,
+            geom::EDGE_T,
+            drag(PointerButton::Primary, GesturePhase::Begin, 400.0, 600.0),
+        );
+        apply_resize(
+            &mut st,
+            &mut store,
+            band,
+            geom::EDGE_T,
+            drag(PointerButton::Primary, GesturePhase::Update, 400.0, 5000.0),
+        );
+        assert!(
+            store.dock_bottom_h() >= geom::MIN_H,
+            "a faixa encolheu para {} — abaixo de {} o cabeçalho e o transporte não cabem",
+            store.dock_bottom_h(),
+            geom::MIN_H
+        );
     }
 }

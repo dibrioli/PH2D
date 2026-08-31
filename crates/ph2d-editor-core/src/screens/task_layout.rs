@@ -128,18 +128,27 @@ impl TaskLayout {
             // se faz sem ela. Uma tarefa que a dispensasse seria o Runtime, que é um dos dois
             // bloqueados.
             //
-            // ⚠️⚠️ **O `inspector` NÃO está em nenhum, e a ausência é a decisão.** Ele tem dois
-            // donos: seis pontes escrevem-no na BORDA de uma tomada (`insert("inspector",
-            // !active)` — o painel da ferramenta substitui-o visualmente), e o layout escreve-o na
-            // pintura. Como as pontes correm depois, o que o layout dissesse era desmentido no
-            // quadro seguinte em exactamente as transições que interessam. *Um campo com dois
-            // escritores e uma ordem fixa tem um dono só — e não é quem escreve primeiro.*
+            // ⚠️⚠️ **O `inspector` está nos layouts cuja ferramenta NÃO o toma, e em mais
+            // nenhum** (Enio, 2026-08-31: *«em animate o inspector está sendo escondido; por
+            // padrão deve ficar visível»*).
+            //
+            // ⛔ A 1.ª redacção desta wave tirou-o de TODOS, com o argumento de que ele tem dois
+            // escritores — e **fechou-o em toda parte**, porque nesta função *não nomear é fechar*.
+            // *«O layout não o comanda» e «o layout comanda-o fechado» são a mesma linha de
+            // código, e só a segunda é o que acontece.*
+            //
+            // ⇒ a lei é derivável: seis pontes escrevem `insert("inspector", !active)` — a tomada
+            // de conta, em que o painel da ferramenta o **substitui** na coluna. Um layout cuja
+            // ferramenta faz isso não o pode nomear (seria desmentido no quadro seguinte); um cujo
+            // dono do canvas não a faz — o pintor, o `move`, o modelador — **tem** de o nomear,
+            // senão ele fecha e não há quem o reabra. Gate: `a_layout_names_the_inspector_exactly_
+            // when_its_canvas_owner_does_not_take_it_over`.
             Self::Drawing2d => LayoutSpec {
                 title: "Draw",
                 wire: "drawing_2d",
                 // ⚠️ O `painter_layers` vem COM a ferramenta (`painter_bridge`), e por isso não se
                 // nomeia aqui — ver o cabeçalho.
-                open: &["hierarchy"],
+                open: &["hierarchy", "inspector"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("painter"),
             },
@@ -162,14 +171,14 @@ impl TaskLayout {
                 wire: "modeling_3d",
                 // ⚠️ Abrir o painel **é** entrar no modo (`set_armed_by_panel`) — por isso ele é do
                 // layout, e a ferramenta em mãos é largada pela lei do `field3d_mode`, no shell.
-                open: &["hierarchy", "model3d"],
+                open: &["hierarchy", "inspector", "model3d"],
                 slots: &[],
                 canvas: CanvasOwner::Model3d,
             },
             Self::Animation => LayoutSpec {
                 title: "Animate",
                 wire: "animation",
-                open: &["hierarchy", "timeline"],
+                open: &["hierarchy", "inspector", "timeline"],
                 slots: &[],
                 canvas: CanvasOwner::Tool("move"),
             },

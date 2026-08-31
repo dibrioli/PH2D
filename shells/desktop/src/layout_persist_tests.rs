@@ -11,6 +11,7 @@ fn sample() -> Layout {
         ],
         dock_w_left: Some(280.0),
         dock_w_right: Some(320.5),
+        dock_h_bottom: Some(196.0),
     }
 }
 
@@ -133,6 +134,7 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
                 // Um painel que não existe nesta build.
                 ("um_painel_de_2030".into(), Slot::RightTop),
             ],
+            dock_h_bottom: None,
             dock_w_left: Some(281.0),
             dock_w_right: None,
         },
@@ -178,6 +180,7 @@ fn what_is_installed_is_what_gets_written_back() {
         slots: vec![("audio_mixer".into(), Slot::LeftTop)],
         dock_w_left: Some(281.0),
         dock_w_right: Some(333.0),
+        dock_h_bottom: Some(210.0),
     };
     install(&mut hero, &before);
     assert_eq!(current(&hero), before, "a volta ao ficheiro perdeu algo");

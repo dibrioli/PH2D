@@ -27,6 +27,9 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
         right_dock_w: hero
             .store
             .dock_width(crate::screens::layout::DockSide::Right),
+        // ⭐ E a faixa do FUNDO é a irmã vertical delas — a costura do topo do timeline escreve-a,
+        // e quem partilha a banda (o grafo de nós) segue por construção.
+        bottom_dock_h: hero.store.dock_bottom_h(),
         ..crate::screens::layout::ChromeBands::DEFAULT
     };
     if hero.view.legacy_chrome {
@@ -105,11 +108,15 @@ pub(super) fn frame_layout(hero: &HeroScreen, viewport: Rect) -> HeroLayout {
     // `timeline` nasce exactamente no `area_x0` e ocupa 240 px no fundo da banda, então a régua
     // da esquerda corria por baixo dele. Depois do `dock_timeline_into_motion`, de propósito —
     // ele MOVE o rect do timeline, e reservar antes reservaria o sítio errado.
-    if hero.is_panel_visible(super::PANEL_TIMELINE) {
+    // ⭐⭐ **UMA banda, uma reserva** (2026-08-31). O timeline e a tira do Flip declaram o MESMO
+    // encaixe (`Bottom`) e pintam a MESMA banda — desde as abas de encaixe, só um deles está à
+    // frente de cada vez. ⛔ Havia aqui duas reservas com rects diferentes, e a da tira usava um
+    // rect (`layout.flip_strip`, 132 px) que ela **já não pintava**: a área ficava reservada até
+    // 132 px do fundo e a tira ocupava 240, deixando **147 528 px²** de painel por cima do
+    // desenho. *Reservar a geometria que um painel declarava, em vez da que ele pinta, é reservar
+    // o sítio errado com toda a confiança.*
+    if hero.is_panel_visible(super::PANEL_TIMELINE) || hero.is_panel_visible("flip_frames") {
         layout.reserve_bottom_strip(layout.timeline);
-    }
-    if hero.is_panel_visible("flip_frames") {
-        layout.reserve_bottom_strip(layout.flip_strip);
     }
     // ⭐⭐ **E as ABAS saem do encaixe, por último.** Depois da docagem do timeline e das faixas do
     // fundo, de propósito: os dois MOVEM rects, e reservar antes reservaria sobre a geometria

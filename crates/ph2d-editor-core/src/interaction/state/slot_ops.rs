@@ -68,6 +68,7 @@ impl WidgetStore {
         self.reset_panel_slots();
         self.dock_w_left = None;
         self.dock_w_right = None;
+        self.dock_h_bottom = None;
     }
 
     /// Só os encaixes. ⚠️ **A largura fica**, e a distinção é o que trocar de layout precisa: ela é

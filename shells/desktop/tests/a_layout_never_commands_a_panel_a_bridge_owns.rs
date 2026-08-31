@@ -176,28 +176,87 @@ fn no_layout_opens_a_panel_that_a_tool_bridge_owns() {
     );
 }
 
-/// ⚠️ **E o `inspector` continua fora da tabela, por outro motivo** — ele tem DOIS escritores com
-/// uma ordem fixa.
+/// ⭐⭐⭐ **O `inspector` está nos layouts cuja ferramenta NÃO o toma, e em mais nenhum.**
 ///
-/// ⛔ Seis pontes escrevem-no na borda de uma tomada (`insert("inspector", !active)`) **depois** de
-/// o layout ter pintado. ⇒ o que o layout dissesse sobre ele era desmentido em exactamente as
-/// transições que interessam — foi assim que a foto do Enio de 31/08 mostrou as abas
-/// *Inspector | Vector* num layout que declarava o inspector aberto e a ponte declarava fechado.
-/// *Um campo com dois escritores e uma ordem fixa tem um dono só, e não é quem escreve primeiro.*
+/// > Enio, 2026-08-31: *«em animate o inspector está sendo escondido. Por padrão deve ficar
+/// > visível.»*
+///
+/// ⛔⛔ **A 1.ª redacção desta wave tirou-o de TODOS os layouts** com o argumento de que ele tem
+/// dois escritores — e **fechou-o em toda parte**, porque no `layout_switch::apply` *não nomear é
+/// fechar*: a lista é absoluta sobre o registry inteiro. *«O layout não o comanda» e «o layout
+/// comanda-o fechado» são a mesma linha de código, e só a segunda é o que acontece.*
+///
+/// ⭐ A lei é **derivável dos dois lados**: uma ponte `<tool>_bridge.rs` que escreva
+/// `insert("inspector", !…)` é a ferramenta `<tool>` a **substituir** o inspector na coluna. Um
+/// layout cujo dono do canvas faz isso não o pode nomear; um cujo dono não a faz **tem** de o
+/// nomear, senão ele fecha e não há quem o reabra.
 #[test]
-fn no_layout_claims_the_inspector_because_the_takeover_owns_it() {
-    let nudgers = writes();
+fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_over() {
+    use ph2d_editor::screens::task_layout::CanvasOwner;
+    let takeover = tools_that_take_over_the_inspector();
+    // Controlo: sem censo a lei aprovaria qualquer tabela.
     assert!(
-        nudgers
-            .get("inspector")
-            .is_some_and(|v| v.iter().any(|s| s.starts_with('!'))),
-        "controlo: nenhuma ponte faz a tomada de conta do inspector — esta lei ficou obsoleta e a \
-         tabela pode voltar a nomeá-lo"
+        takeover.len() >= 4,
+        "controlo: só {} ferramentas tomam o inspector ({takeover:?}) — a varredura partiu-se",
+        takeover.len()
     );
-    for l in TaskLayout::ALL {
+    for known in ["motion", "vector", "flip"] {
         assert!(
-            !l.spec().open.contains(&"inspector"),
-            "{l:?} declara o inspector, e a ponte da ferramenta desmente-o um quadro depois"
+            takeover.iter().any(|t| t == known),
+            "controlo: a ponte do `{known}` faz a tomada de conta e o censo não a vê: {takeover:?}"
         );
     }
+
+    let mut named = 0usize;
+    for l in ph2d_editor::screens::task_layout::TaskLayout::ALL {
+        let names = l.spec().open.contains(&"inspector");
+        let taken = match l.spec().canvas {
+            CanvasOwner::Tool(id) => takeover.iter().any(|t| t == id),
+            // O modelador não é uma ferramenta e não tem ponte a substituir o inspector.
+            CanvasOwner::Model3d => false,
+        };
+        assert_eq!(
+            names,
+            !taken,
+            "{l:?}: a ferramenta dele {} o inspector e o layout {}-o — {}",
+            if taken { "TOMA" } else { "não toma" },
+            if names { "nomeia" } else { "não nomeia" },
+            if taken {
+                "a ponte desmente-o um quadro depois"
+            } else {
+                "e por isso ele fecha e ninguém o reabre (o report do Enio de 31/08)"
+            }
+        );
+        named += usize::from(names);
+    }
+    assert!(
+        named >= 3,
+        "só {named} layouts mostram o inspector — ele voltou a ser fechado em toda parte"
+    );
+}
+
+/// As ferramentas cujas pontes **substituem** o inspector — derivadas do nome do ficheiro da
+/// ponte (`<tool>_bridge.rs`), que é a convenção deste directório.
+fn tools_that_take_over_the_inspector() -> Vec<String> {
+    let mut out = Vec::new();
+    let mut files: Vec<_> = fs::read_dir(BRIDGE_DIR)
+        .expect("a pasta das pontes existe")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .collect();
+    files.sort();
+    for f in files {
+        let Some(name) = f.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let Some(tool) = name.strip_suffix("_bridge") else {
+            continue;
+        };
+        let src = fs::read_to_string(&f).unwrap_or_default();
+        let flat = src.replace('\n', " ").replace(" .", ".");
+        if flat.contains("panel_visibility.insert(\"inspector\", !") {
+            out.push(tool.to_string());
+        }
+    }
+    out
 }

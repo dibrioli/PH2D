@@ -34,6 +34,13 @@ pub struct PaintCtx<'a> {
     /// eram **oito nomes para a mesma pergunta** — *onde é que eu fico?* — cada um com o nome do
     /// painel que ali morava quando a posição era fixa.
     ///
+    /// ⚠️⚠️ **E os campos substituídos têm de MORRER, não ficar por perto.** O `layout.flip_strip`
+    /// sobreviveu à conversão como um rect que ninguém pintava — e a **reserva** da área de desenho
+    /// continuou a lê-lo: ela reservava 132 px enquanto a tira ocupava 240, deixando
+    /// **147 528 px²** de painel por cima do desenho durante uma entrega inteira (2026-08-31).
+    /// *Um campo de geometria que perdeu o pintor ainda tem leitores, e todos eles passam a
+    /// responder pelo sítio errado.*
+    ///
     /// ⚠️ Enquanto a posição era uma constante isso lia-se bem. No dia em que o artista passa a
     /// **mover** um painel, um campo chamado `inspector` lido pelo painel de Física deixa de poder
     /// estar certo: mover a Física mudava quem a **contava** e não onde ela **pintava**.

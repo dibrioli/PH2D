@@ -294,7 +294,7 @@ fn the_bottom_strip_reservation_is_wired_and_runs_after_the_motion_dock() {
              dele (20 x 240 px2 no viewport de referencia)",
         );
     let flip = hero_paint
-        .find("layout.reserve_bottom_strip(layout.flip_strip);")
+        .find("layout.reserve_bottom_strip(layout.timeline);")
         .expect("a tira do Flip nao e' reservada — o irmao do timeline");
     assert!(
         timeline > dock && flip > dock,

@@ -26,10 +26,10 @@ pub(crate) const MIN_H: f32 = 120.0; // LITERAL-PX-OK: min panel height
 
 // Resize edge bitmask. Named in editor-core so the shell can pick the matching
 // double-arrow cursor; the resize itself stays entirely here.
-pub(crate) use ph2d_editor_core::interaction::{
-    TIMELINE_EDGE_B as EDGE_B, TIMELINE_EDGE_L as EDGE_L, TIMELINE_EDGE_R as EDGE_R,
-    TIMELINE_EDGE_T as EDGE_T,
-};
+// ⛔ **As outras três saíram em 2026-08-31** com os agarres delas: numa faixa docada os lados são
+// as costuras das colunas e o fundo é a borda da janela. Elas continuam a existir no editor-core
+// (o cursor sabe desenhá-las); o que já não existe é este painel a oferecê-las.
+pub(crate) use ph2d_editor_core::interaction::TIMELINE_EDGE_T as EDGE_T;
 
 /// The resolved sub-rects of one frame's dope sheet.
 #[derive(Clone, Copy, Debug)]
@@ -308,71 +308,23 @@ pub(crate) fn row_bands<'a>(
 
 /// The eight resize grippers as `(id, edges, rect)`, outermost-last so the
 /// corners win the hit-test over the edges they overlap.
-pub(crate) fn resize_grips(rect: Rect) -> [(ph2d_a11y::NodeId, u8, Rect); 8] {
-    let (x, y, w, h) = (rect.x, rect.y, rect.w, rect.h);
-    let r = x + w;
-    let b = y + h;
-    [
-        // Edges first (lower priority).
-        (ids::TIMELINE_RESIZE_L, EDGE_L, Rect::new(x, y, GRIP, h)),
-        (
-            ids::TIMELINE_RESIZE_R,
-            EDGE_R,
-            Rect::new(r - GRIP, y, GRIP, h),
-        ),
-        (ids::TIMELINE_RESIZE_T, EDGE_T, Rect::new(x, y, w, GRIP)),
-        (
-            ids::TIMELINE_RESIZE_B,
-            EDGE_B,
-            Rect::new(x, b - GRIP, w, GRIP),
-        ),
-        // Corners last (registered on top).
-        (
-            ids::TIMELINE_RESIZE_TL,
-            EDGE_T | EDGE_L,
-            Rect::new(x, y, GRIP, GRIP),
-        ),
-        (
-            ids::TIMELINE_RESIZE_TR,
-            EDGE_T | EDGE_R,
-            Rect::new(r - GRIP, y, GRIP, GRIP),
-        ),
-        (
-            ids::TIMELINE_RESIZE_BL,
-            EDGE_B | EDGE_L,
-            Rect::new(x, b - GRIP, GRIP, GRIP),
-        ),
-        (
-            ids::TIMELINE_RESIZE_BR,
-            EDGE_B | EDGE_R,
-            Rect::new(r - GRIP, b - GRIP, GRIP, GRIP),
-        ),
-    ]
+pub(crate) fn resize_grips(rect: Rect) -> [(ph2d_a11y::NodeId, u8, Rect); 1] {
+    // ⭐⭐ **UMA borda só: o TOPO** (Enio, 2026-08-31). As outras três eram inexprimíveis numa
+    // faixa docada — os lados são as costuras das COLUNAS (`dock_seam`) e o fundo é a borda da
+    // janela —, e enquanto existiram elas soltavam o painel da banda dele. Ver
+    // `resize::apply_resize`.
+    [(
+        ids::TIMELINE_RESIZE_T,
+        EDGE_T,
+        Rect::new(rect.x, rect.y, rect.w, GRIP),
+    )]
 }
 
-/// Apply a resize drag to `start`: each set edge moves by the pointer delta.
-/// Never smaller than [`MIN_W`]×[`MIN_H`], never outside `viewport`.
-pub(crate) fn resized(start: Rect, edges: u8, dx: f32, dy: f32, viewport: Rect) -> Rect {
-    let (mut x, mut y, mut w, mut h) = (start.x, start.y, start.w, start.h);
-    if edges & EDGE_L != 0 {
-        // Growing left must not shrink past MIN_W, so clamp the delta first.
-        let dx = dx.min(w - MIN_W);
-        x += dx;
-        w -= dx;
-    }
-    if edges & EDGE_R != 0 {
-        w = (w + dx).max(MIN_W);
-    }
-    if edges & EDGE_T != 0 {
-        let dy = dy.min(h - MIN_H);
-        y += dy;
-        h -= dy;
-    }
-    if edges & EDGE_B != 0 {
-        h = (h + dy).max(MIN_H);
-    }
-    clamp_to(Rect::new(x, y, w.max(MIN_W), h.max(MIN_H)), viewport)
-}
+// ⛔ **`resized` MORREU em 2026-08-31.** Ela movia um rect por bordas e cantos — e uma faixa
+// DOCADA não se move: o topo dela é uma costura que escreve a ALTURA da banda
+// (`resize::apply_resize`), e os lados e o fundo pertencem às colunas e à janela. *Uma função que
+// só sobrevivia nos próprios testes é a última prova de que a capacidade que ela servia foi
+// retirada.*
 
 /// Keep `rect` inside `viewport` (size first, then position).
 pub(crate) fn clamp_to(rect: Rect, viewport: Rect) -> Rect {

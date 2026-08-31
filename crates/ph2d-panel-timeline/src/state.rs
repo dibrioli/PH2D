@@ -208,22 +208,25 @@ pub struct TimelinePanelState {
     /// diamonds. Set by `interact` at End, consumed by `paint` the SAME frame —
     /// only `paint` knows the row geometry a key's `y` depends on.
     pub box_commit: Option<BoxDrag>,
-    /// User-resized panel rect. `None` = use the docked rect from the layout.
-    pub rect: Option<Rect>,
-    /// In-progress edge/corner resize drag.
+    /// ⛔ **O rect livre MORREU em 2026-08-31** (report do Enio: *«não deixar espaços vazios nem
+    /// sobrepor os nodes»*). O painel lê SEMPRE a faixa que o layout lhe dá; o que o arrasto muda
+    /// é a **altura** dela (`WidgetStore::set_dock_bottom_h`), e quem partilha a banda segue por
+    /// construção. Ver `resize::apply_resize`.
+    ///
+    /// ⚠️ *Um campo `Option<Rect>` aqui era a segunda ideia de «onde o timeline está», e ganhava
+    /// à do layout a partir do primeiro toque na borda.*
+    /// In-progress top-edge (band height) drag.
     pub resize: Option<ResizeDrag>,
 }
 
-/// An in-progress resize: which edges move, and the rect + pointer at Begin.
+/// Um arrasto da costura do topo: a altura da banda e o ponteiro no Begin.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ResizeDrag {
-    /// Bitmask of the edges being dragged (`geom::EDGE_*`).
-    pub edges: u8,
-    /// The panel rect when the drag began (deltas apply to THIS, not to the
-    /// live rect, so a slow drag never accumulates rounding).
-    pub start_rect: Rect,
-    /// The pointer position when the drag began.
-    pub start_pointer: (f32, f32),
+    /// A altura da banda quando o arrasto começou (os deltas aplicam-se a ESTA, nunca à viva, para
+    /// um arrasto lento não acumular arredondamento).
+    pub start_h: f32,
+    /// O `y` do ponteiro quando o arrasto começou.
+    pub start_y: f32,
 }
 
 /// An in-progress bézier-handle drag. The pointer is recorded in global px; the
@@ -292,7 +295,6 @@ impl Default for TimelinePanelState {
             clip_rename: None,
             box_drag: None,
             box_commit: None,
-            rect: None,
             resize: None,
         }
     }

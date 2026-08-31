@@ -79,8 +79,8 @@ impl HeroLayout {
             rt,
             rb,
             // ⚠️ **A faixa de baixo é a do TIMELINE, e não uma banda nova.** Ela já é a geometria
-            // do encaixe inferior — entre as duas colunas, ancorada no fundo — e o `flip_strip` é
-            // a mesma faixa mais baixa. Inventar uma terceira poria dois donos na mesma fila.
+            // do encaixe inferior — entre as duas colunas, ancorada no fundo. Inventar uma
+            // terceira poria dois donos na mesma fila.
             self.timeline,
             self.draw_area,
         ])
@@ -142,7 +142,7 @@ impl HeroLayout {
     /// ⚠️ **Um campo novo de painel docado tem de entrar aqui**, e o gate
     /// `every_docked_layout_rect_is_pushed_by_a_tab_bar` reprova se ficar de fora: ele compara esta
     /// lista com os rects que os painéis de facto publicam.
-    fn docked_rects_mut(&mut self) -> [&mut Rect; 8] {
+    fn docked_rects_mut(&mut self) -> [&mut Rect; 7] {
         [
             &mut self.inspector,
             &mut self.bgremoval,
@@ -151,7 +151,6 @@ impl HeroLayout {
             &mut self.painter_layers,
             &mut self.hierarchy,
             &mut self.timeline,
-            &mut self.flip_strip,
         ]
     }
 }

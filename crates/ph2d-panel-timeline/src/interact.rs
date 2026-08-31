@@ -46,7 +46,6 @@ pub(crate) fn process(
     ctx: &mut PaintCtx,
     rect: Rect,
     time_x: f32,
-    viewport: Rect,
     snap: &TimelineViewSnapshot,
 ) {
     // Drop last frame's committed-move preview: by now the shell has applied the
@@ -67,7 +66,7 @@ pub(crate) fn process(
     for g in gestures {
         // Resize grippers own the gesture whatever the button.
         if let TimelineHitKind::ResizeEdge { edges } = g.kind {
-            resize::apply_resize(state, rect, viewport, edges, g);
+            resize::apply_resize(state, ctx.host.store_mut(), rect, edges, g);
             continue;
         }
         match g.button {

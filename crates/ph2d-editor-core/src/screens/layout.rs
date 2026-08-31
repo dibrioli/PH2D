@@ -172,33 +172,41 @@ pub struct HeroLayout {
     /// **zero-altura** onde o encaixe tem menos de dois ocupantes, que é o estado de omissão do
     /// app. Escrita por [`Self::reserve_slot_tabs`]; ver `screens::hero::slot_tabs`.
     pub slot_tabs: [Rect; 6],
-    /// Flip frame-strip slot (ADR-0114 W3) — a low bottom-docked band spanning the
-    /// same column as the timeline. Painted only while the `flip` tool is active
-    /// (`panel_visible("flip_frames")`, bridge-driven). Height [`FLIP_STRIP_H`].
-    pub flip_strip: Rect,
 }
 
 /// Default docked height of the general timeline panel (px).
 pub const TIMELINE_DOCK_H: f32 = 240.0; // LITERAL-PX-OK: timeline dock default height
 
-/// The timeline's height when it docks **inside the Motion workspace** (W4.T4) — shorter than its
-/// free-standing dock, because it is sharing a band with the node graph and the graph is the thing
-/// the artist came for.
+/// ⛔ **`MOTION_TIMELINE_H` MORREU em 2026-08-31, e a morte é a cura.** Ela dizia que o timeline é
+/// *«mais baixo dentro do Motion, porque o grafo é aquilo a que o artista veio»* — e era uma
+/// SEGUNDA altura ao lado da faixa docada. No dia em que a do fundo passou a ser autorada (o topo
+/// dela é uma costura), a segunda tornava o arrasto do artista invisível dentro do Motion:
+/// *arrastava-se a borda e a banda não mexia, porque quem mandava ali era uma constante.*
 ///
-/// Under Motion the dope-sheet is mostly empty anyway: its tracks bind to ECS **objects**, and a
-/// Motion parameter is not one (keyframing them is deferred). What the artist actually needs here
-/// is the **transport, the ruler and the scrub** — the graph cooks on the playhead's tick — and
-/// that fits.
-pub const MOTION_TIMELINE_H: f32 = 200.0; // LITERAL-PX-OK: timeline height inside the Motion split
+/// ⇒ hoje [`HeroLayout::dock_timeline_into_motion`] lê `self.timeline.h`, que **já é** a altura
+/// autorada. *A faixa tem UMA altura; docá-la dentro do split não pode inventar outra.*
+///
+/// ⭐⭐ **O tecto pertence ao GRAFO, e é o mesmo piso de uma faixa docada** — nunca uma fracção.
+///
+/// ⛔⛔ **A fracção (`0,45` do grafo) matava METADE do gesto que o Enio pediu.** Ela dava, no alvo
+/// de referência, um tecto de `450 × 0,45 ≈ 202` px — **abaixo dos `240` de omissão da faixa**. ⇒
+/// a costura nascia **já no tecto**: arrastar para BAIXO funcionava e arrastar para CIMA era
+/// inerte, e nada na tela dizia porquê. *Um limite que corta o valor de fábrica não é um limite:
+/// é metade do controlo desligada de origem.*
+///
+/// ⚠️ Hoje o que se defende é o **hospedeiro**: o grafo nunca fica com menos do que
+/// [`crate::interaction::WidgetStore::dock_bottom_h`] aceita para uma faixa (o mesmo `120` px
+/// abaixo do qual um dock deixa de ser usável). No alvo de referência isso dá `330` de tecto e
+/// `120` de piso — **os dois lados do arrasto vivos**, com a de fábrica a `240` no meio.
+const MOTION_GRAPH_MIN_H: f32 = 120.0; // LITERAL-PX-OK: = o piso de uma faixa docada (`DOCK_H_MIN`)
 
-/// …but never more than this much of the graph. On a short window a fixed 200 px would leave the
-/// node editor a sliver, and a dock that eats its host is a dock nobody wants.
-const MOTION_TIMELINE_MAX_FRAC: f32 = 0.45; // LITERAL-PX-OK: a FRACTION of the graph, not a design token
-
-/// Docked height of the Flip frame strip (px): title + toolbar row + the cells
-/// row. It is a STRIP (one layer's cells), not a dope-sheet — the multi-layer
-/// view is the global timeline's job (W6, deferred).
-pub const FLIP_STRIP_H: f32 = 132.0; // LITERAL-PX-OK: Flip frame strip dock height
+// ⛔⛔ **`flip_strip` e `FLIP_STRIP_H` MORRERAM em 2026-08-31.** A tira do Flip declara o encaixe
+// `Bottom` e pinta em `ctx.slot` — a MESMA banda do timeline —, então este rect de 132 px era uma
+// segunda geometria que ninguém pintava e que só a **reserva** da área de desenho ainda lia. ⇒ a
+// área ficava reservada até `y = 892` e a tira pintava desde `784`: **147 528 px² de painel por
+// cima do desenho**, invisíveis a todos os gates porque a `ph2d-panel-registry-init` não liga a
+// feature `flip_frames` nas features de omissão dela. *Um rect que ninguém pinta não é uma reserva:
+// é a resposta errada à pergunta «onde é que este painel está».*
 
 impl HeroLayout {
     pub fn for_viewport(viewport: Rect) -> Self {
@@ -279,6 +287,7 @@ impl HeroLayout {
             left_dock_w,
             right_dock_w,
             tool_bar_h,
+            bottom_dock_h,
         } = bands;
         // ⭐⭐ **A BARRA DE TOPO É FLUSH e a BANDA vai até ao fundo** (Enio, 2026-08-30, com
         // quatro setas na foto: *«muitos espaços em todos os lugares»*). Ela era inset em
@@ -439,24 +448,18 @@ impl HeroLayout {
             area_w,
             (chrome_h - tool_bar.h).max(0.0),
         );
+        // ⭐ A altura é a AUTORADA (a costura do topo escreve-a), apertada contra a banda de
+        // chrome — numa janela baixa a faixa não pode ser mais alta do que o sítio onde vive.
+        let band_h = bottom_dock_h.min(chrome_h);
         let timeline = Rect::new(
             timeline_x,
-            (chrome_bot - TIMELINE_DOCK_H).max(chrome_top),
+            (chrome_bot - band_h).max(chrome_top),
             timeline_w,
-            TIMELINE_DOCK_H.min(chrome_h),
+            band_h,
         );
         // Flip frame strip (ADR-0114 W3): a BAIXA faixa inferior do Flip — a tira de
         // quadros da camada ativa + transporte. Compartilha a coluna do timeline
         // (mesma largura, entre as colunas de chrome), mas é MUITO mais baixa: é uma
-        // tira, não um dope-sheet. Só é pintada com a tool Flip ativa; quando o
-        // timeline global está aberto, o painel se empilha ACIMA dele (o offset é
-        // decidido no `paint`, que é quem sabe da visibilidade).
-        let flip_strip = Rect::new(
-            timeline_x,
-            (chrome_bot - FLIP_STRIP_H).max(chrome_top),
-            timeline_w,
-            FLIP_STRIP_H.min(chrome_h),
-        );
         Self {
             viewport,
             top_bar,
@@ -476,7 +479,6 @@ impl HeroLayout {
             motion_graph,
             motion_timeline_slot,
             timeline,
-            flip_strip,
             // ⚠️ Sem ocupação nenhuma não há abas: quem as reserva é `reserve_slot_tabs`, que só
             // o hero chama — os construtores públicos devolvem a geometria SEM abas, de propósito.
             slot_tabs: [Rect::new(0.0, 0.0, 0.0, 0.0); 6],
@@ -505,7 +507,14 @@ impl HeroLayout {
         if self.motion_graph.h <= 0.0 || self.motion_graph.w <= 0.0 {
             return; // no Motion split on screen: the timeline keeps its own dock
         }
-        let h = MOTION_TIMELINE_H.min(self.motion_graph.h * MOTION_TIMELINE_MAX_FRAC);
+        // ⭐ A altura AUTORADA da faixa (ver o `MOTION_TIMELINE_MAX_FRAC`) — nunca uma constante
+        // própria, senão o arrasto do artista fica invisível aqui dentro.
+        // ⭐ A altura AUTORADA da faixa, com o **grafo** a guardar o piso dele — ver
+        // `MOTION_GRAPH_MIN_H`. ⛔ Nunca uma constante própria, senão o arrasto fica invisível.
+        let h = self
+            .timeline
+            .h
+            .min((self.motion_graph.h - MOTION_GRAPH_MIN_H).max(0.0));
         self.motion_graph.h -= h;
         self.motion_timeline_slot = Rect::new(
             self.motion_graph.x,
@@ -525,7 +534,7 @@ impl HeroLayout {
     /// `TIMELINE_DOCK_H = 240` de altura no fundo da banda. Com os dois docks abertos ele
     /// partilhava **4 800 px² (20 × 240)** com a régua da esquerda — a mesma família de defeito
     /// que a wave existe para curar, num dock que o próprio ficheiro chama de *«General timeline
-    /// dock»*. O `flip_strip` é o irmão dele.
+    /// dock»*.
     ///
     /// ⚠️ Idempotente e inerte para uma faixa vazia ou que já esteja abaixo da área. Chame-a uma
     /// vez por faixa **visível** — quem sabe da visibilidade é o `screens/hero/paint.rs`, como no

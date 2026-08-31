@@ -466,6 +466,10 @@ pub struct WidgetStore {
     /// [`WidgetStore::dock_width`].
     pub(super) dock_w_left: Option<f32>,
     pub(super) dock_w_right: Option<f32>,
+    /// ⭐ Altura AUTORADA da faixa do FUNDO (`None` = a de fábrica). Ver
+    /// [`WidgetStore::dock_bottom_h`] — o irmão vertical das duas de cima, e o que faz a costura
+    /// do topo do timeline redimensionar a BANDA em vez de soltar o painel dela.
+    pub(super) dock_h_bottom: Option<f32>,
     /// Cached present-mode (VSync ON vs OFF). Source of truth still
     /// lives in the shell (it owns the swap chain), but the core
     /// mirrors the last value the user picked in Settings → Display

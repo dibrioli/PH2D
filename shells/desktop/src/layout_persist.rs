@@ -49,6 +49,9 @@ pub struct Layout {
     pub slots: Vec<(String, Slot)>,
     pub dock_w_left: Option<f32>,
     pub dock_w_right: Option<f32>,
+    /// ⭐ A altura AUTORADA da faixa do fundo — a irmã VERTICAL das duas de cima (a costura do
+    /// topo do timeline escreve-a). Ver `WidgetStore::dock_bottom_h`.
+    pub dock_h_bottom: Option<f32>,
 }
 
 /// ⭐⭐ **O FICHEIRO INTEIRO** — qual layout está activo, e a arrumação de cada um.
@@ -134,6 +137,9 @@ pub fn serialize_section(l: &Layout) -> String {
     if let Some(w) = l.dock_w_right {
         let _ = writeln!(s, "dock_w_right={w}");
     }
+    if let Some(h) = l.dock_h_bottom {
+        let _ = writeln!(s, "dock_h_bottom={h}");
+    }
     for id in &l.open {
         let _ = writeln!(s, "open.{id}=1");
     }
@@ -180,6 +186,7 @@ pub fn parse(text: &str) -> Layout {
         match key {
             "dock_w_left" => l.dock_w_left = value.parse().ok(),
             "dock_w_right" => l.dock_w_right = value.parse().ok(),
+            "dock_h_bottom" => l.dock_h_bottom = value.parse().ok(),
             _ => {
                 if let Some(id) = key.strip_prefix("slot.")
                     && let Some(slot) = Slot::from_wire(value)
@@ -249,7 +256,7 @@ pub fn hash(l: &Layout) -> u64 {
     }
     // ⚠️ As larguras entram pelos BITS do `f32`, não por um arredondamento: arrastar a divisória
     // meio pixel é uma mudança que o artista fez, e um hash que a ignorasse gravaria com atraso.
-    for w in [l.dock_w_left, l.dock_w_right] {
+    for w in [l.dock_w_left, l.dock_w_right, l.dock_h_bottom] {
         for &b in &w.unwrap_or(f32::NAN).to_bits().to_le_bytes() {
             feed(b);
         }
@@ -324,6 +331,7 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
         // escolha — e ela existe só quando difere do que o layout daria sozinho.
         dock_w_left: hero.store.dock_width_choice(DockSide::Left),
         dock_w_right: hero.store.dock_width_choice(DockSide::Right),
+        dock_h_bottom: hero.store.dock_bottom_h_choice(),
     }
 }
 
@@ -376,6 +384,9 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
     }
     if let Some(w) = l.dock_w_right {
         hero.store.set_dock_width(DockSide::Right, w);
+    }
+    if let Some(h) = l.dock_h_bottom {
+        hero.store.set_dock_bottom_h(h);
     }
 }
 

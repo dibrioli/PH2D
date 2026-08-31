@@ -253,7 +253,7 @@ fn rounding_the_subrect_never_moves_the_divider_by_more_than_a_pixel() {
 //
 // | região | o defeito | o que se via |
 // |---|---|---|
-// | `timeline` / `flip_strip` | 20 px a MENOS de cada lado (o `EDGE_PAD` que o `area_x0` perdeu em 30/08 e ela não) | um buraco entre o painel e a faixa |
+// | `timeline` (a banda `Bottom`) | 20 px a MENOS de cada lado (o `EDGE_PAD` que o `area_x0` perdeu em 30/08 e ela não) | um buraco entre o painel e a faixa |
 // | `motion_graph` / `center_viewport` | a janela INTEIRA em vez da área | a banda do grafo por cima do fundo das duas colunas |
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -273,20 +273,21 @@ fn the_bottom_strip_touches_both_columns() {
         "controlo: as colunas não estão reservadas ({x0}..{x1} numa janela de {})",
         l.viewport.w
     );
-    for (name, r) in [("timeline", l.timeline), ("flip_strip", l.flip_strip)] {
-        assert!(
-            approx(r.x, x0),
-            "{name} começa em {} e a coluna acaba em {x0} — {} px de buraco",
-            r.x,
-            r.x - x0
-        );
-        assert!(
-            approx(r.x + r.w, x1),
-            "{name} acaba em {} e a outra coluna começa em {x1} — {} px de buraco",
-            r.x + r.w,
-            x1 - (r.x + r.w)
-        );
-    }
+    // ⚠️ UMA faixa, e é a do encaixe `Bottom`: o `flip_strip` era a segunda e morreu em 31/08
+    // (ver o `layout.rs`) — quem lá pinta hoje pinta nesta.
+    let r = l.timeline;
+    assert!(
+        approx(r.x, x0),
+        "a faixa do fundo começa em {} e a coluna acaba em {x0} — {} px de buraco",
+        r.x,
+        r.x - x0
+    );
+    assert!(
+        approx(r.x + r.w, x1),
+        "a faixa do fundo acaba em {} e a outra coluna começa em {x1} — {} px de buraco",
+        r.x + r.w,
+        x1 - (r.x + r.w)
+    );
 }
 
 /// ⭐⭐ **A banda do grafo NÃO partilha um pixel com nenhuma coluna** — nas duas orientações.
@@ -351,4 +352,120 @@ fn the_timeline_docked_into_motion_keeps_the_column() {
     l.dock_timeline_into_motion();
     assert!(l.timeline.h > 1.0, "controlo: a docagem não carvou nada");
     assert!(approx(l.timeline.x, x0) && approx(l.timeline.x + l.timeline.w, x1));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **ARRASTAR A TIMELINE AJUSTA O CANVAS DOS NÓS** (Enio, 2026-08-31, com foto e duas setas:
+// *«em nodes, arrastar a timeline na vertical deve ajustar o canvas dos nós e não deixar espaços
+// vazios nem sobrepor os nodes»*).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// O layout de uma banda de nós com a altura de faixa `h` autorada.
+fn nodes_with_band(h: f32) -> HeroLayout {
+    let bands = ChromeBands {
+        bottom_dock_h: h,
+        ..ChromeBands::DEFAULT
+    };
+    let mut l = HeroLayout::for_viewport_bands(
+        vp(),
+        false,
+        bands,
+        CenterSplit::Horizontal { t: 0.55 },
+        DockSides::BOTH,
+    );
+    l.dock_timeline_into_motion();
+    l
+}
+
+/// ⭐⭐ **O grafo e a faixa LADRILHAM a banda** — sem folga e sem sobreposição.
+#[test]
+fn the_graph_and_the_timeline_tile_the_band_with_no_gap_and_no_overlap() {
+    for h in [140.0, 200.0, 260.0] {
+        let l = nodes_with_band(h);
+        assert!(
+            l.motion_graph.h > 1.0 && l.timeline.h > 1.0,
+            "controlo: com {h} px de faixa uma das duas ficou vazia e o gate mediria o nada"
+        );
+        assert!(
+            approx(l.motion_graph.y + l.motion_graph.h, l.timeline.y),
+            "com {h} px de faixa sobra {} px entre o fim do grafo e o topo da timeline",
+            l.timeline.y - (l.motion_graph.y + l.motion_graph.h)
+        );
+        assert!(
+            approx(l.timeline.y + l.timeline.h, l.viewport.y + l.viewport.h),
+            "a faixa não encosta no fundo da janela"
+        );
+        assert!(
+            approx(l.motion_graph.x, l.timeline.x) && approx(l.motion_graph.w, l.timeline.w),
+            "as duas não partilham a coluna"
+        );
+    }
+}
+
+/// ⭐⭐⭐ **E puxar a costura DEVOLVE altura ao grafo** — é o pedido, medido.
+///
+/// ⛔ Antes de 2026-08-31 a docagem no Motion lia uma constante própria (`MOTION_TIMELINE_H`), e
+/// por isso o arrasto do artista era **invisível ali dentro**: a faixa não mexia e o grafo também
+/// não. *Uma segunda altura ao lado da autorada é a primeira a ganhar, e a que ninguém escolheu.*
+#[test]
+fn dragging_the_seam_moves_height_from_the_graph_to_the_timeline() {
+    let small = nodes_with_band(140.0);
+    let big = nodes_with_band(260.0);
+    assert!(
+        big.timeline.h > small.timeline.h + 1.0,
+        "a faixa autorada não cresceu ({} para {})",
+        small.timeline.h,
+        big.timeline.h
+    );
+    assert!(
+        big.motion_graph.h < small.motion_graph.h - 1.0,
+        "a faixa cresceu e o grafo não encolheu — alguém está a sobrepor-se"
+    );
+    // E a soma é invariante: a banda é a mesma, só a divisória se mexeu.
+    assert!(approx(
+        small.motion_graph.h + small.timeline.h,
+        big.motion_graph.h + big.timeline.h
+    ));
+}
+
+/// ⛔ **O tecto continua a ser do GRAFO** — uma faixa não come o hospedeiro.
+#[test]
+fn the_timeline_never_eats_more_than_its_share_of_the_graph() {
+    let l = nodes_with_band(5_000.0);
+    assert!(
+        l.motion_graph.h > 0.0,
+        "a faixa comeu o grafo inteiro — o editor de nós virou uma fita"
+    );
+    assert!(
+        l.timeline.h < l.motion_graph.h + l.timeline.h,
+        "a faixa é a banda toda"
+    );
+}
+
+/// ⭐⭐⭐ **A costura tem curso nos DOIS sentidos a partir da altura de fábrica.**
+///
+/// ⛔⛔ Este gate nasceu de uma leitura que quase shipou: o tecto era `0,45 × o grafo` — `202` px
+/// no alvo de referência — e a faixa nasce com `240`. ⇒ ela nascia **já no tecto**, e arrastar
+/// para cima não fazia nada, sem nada na tela a dizer porquê. *Um limite que corta o valor de
+/// fábrica desliga metade do controlo de origem.*
+#[test]
+fn the_seam_has_travel_in_both_directions_from_the_factory_height() {
+    let base = nodes_with_band(TIMELINE_DOCK_H);
+    let taller = nodes_with_band(TIMELINE_DOCK_H + 60.0);
+    let shorter = nodes_with_band(TIMELINE_DOCK_H - 60.0);
+    assert!(
+        taller.timeline.h > base.timeline.h + 1.0,
+        "puxar para CIMA a partir da altura de fábrica não move nada ({} px, tecto atingido)",
+        base.timeline.h
+    );
+    assert!(
+        shorter.timeline.h < base.timeline.h - 1.0,
+        "puxar para BAIXO a partir da altura de fábrica não move nada"
+    );
+    // …e a de fábrica chega inteira: ela não é cortada por tecto nenhum.
+    assert!(
+        approx(base.timeline.h, TIMELINE_DOCK_H),
+        "a altura de fábrica ({TIMELINE_DOCK_H}) chega ao ecrã como {}",
+        base.timeline.h
+    );
 }

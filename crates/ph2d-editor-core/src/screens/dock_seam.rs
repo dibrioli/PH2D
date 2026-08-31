@@ -6,7 +6,7 @@
 //! coluna se redimensiona?»* — uma pergunta sobre um GESTO, e o único sítio deste módulo que
 //! precisa de saber que existe um ponteiro.
 
-use super::layout::{HIERARCHY_W, HeroLayout, INSPECTOR_W, TOPBAR_H};
+use super::layout::{HIERARCHY_W, HeroLayout, INSPECTOR_W, TIMELINE_DOCK_H, TOPBAR_H};
 use crate::zones::Rect;
 
 /// **As MEDIDAS do chrome deste quadro** — larguras e alturas, nunca modos.
@@ -34,6 +34,12 @@ pub struct ChromeBands {
     /// viewport. É a spec §4: a toolbar é uma REGIÃO da área, irmã da régua, e por isso vive entre
     /// as colunas em vez de atravessar o ecrã.
     pub tool_bar_h: f32,
+    /// ⭐ Altura da **faixa do fundo** (o timeline, ou a tira do Flip por baixo dele).
+    ///
+    /// ⚠️ Ela é AUTORADA como as duas colunas (`WidgetStore::dock_bottom_h`) — o topo dela é uma
+    /// costura, e quem partilha a banda segue. ⛔ Não é um interruptor: a faixa só é **desenhada**
+    /// se o painel dela estiver visível, e essa pergunta é do `hero/paint.rs`.
+    pub bottom_dock_h: f32,
 }
 
 impl ChromeBands {
@@ -47,6 +53,7 @@ impl ChromeBands {
         // tem o trilho VERTICAL. A fila horizontal é o chrome de produção, e quem a mede é o
         // `hero/paint.rs` — ela depende do preset de tamanho do chip, que é autorado.
         tool_bar_h: 0.0,
+        bottom_dock_h: TIMELINE_DOCK_H,
     };
 }
 

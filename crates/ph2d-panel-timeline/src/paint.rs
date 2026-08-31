@@ -117,15 +117,20 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     }
 
     // Pass 1: drain this frame's wheel + gestures against the rect we start with.
-    let rect0 = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
+    // ⭐ **A faixa é a do layout, sempre.** O arrasto do topo mudou a ALTURA dela (uma medida
+    // autorada), nunca o rect — ver `resize::apply_resize`.
+    let rect0 = geom::clamp_to(docked, viewport);
     // The label column's floor depends on what it HOLDS — which is what the TAB
     // shows: a lane row carries controls a track row does not (`geom::min_label_w`).
     let min_label = geom::min_label_w(&snapshot, state.tab);
     let time_x0 = geom::time_x(rect0, state.label_w, min_label);
-    crate::interact::process(state, ctx, rect0, time_x0, viewport, &snapshot);
+    crate::interact::process(state, ctx, rect0, time_x0, &snapshot);
 
     // Pass 2: a resize may have just moved the panel — paint from the new rect.
-    let rect = geom::clamp_to(state.rect.unwrap_or(docked), viewport);
+    // Pass 2: o arrasto escreveu a medida, mas o `ctx.slot` deste quadro já estava calculado — a
+    // banda nova aparece no quadro seguinte, como toda medida de chrome autorada (é a mesma
+    // latência de um quadro da largura das colunas).
+    let rect = rect0;
     ctx.host
         .store_mut()
         .set_panel_rect(ids::TIMELINE_PANEL, rect);

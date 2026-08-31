@@ -6,47 +6,9 @@
 
 use super::*;
 
-const VP: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
-
-#[test]
-fn dragging_the_top_edge_up_grows_the_panel_upward() {
-    let start = Rect::new(100.0, 600.0, 800.0, 240.0);
-    let out = resized(start, EDGE_T, 0.0, -100.0, VP);
-    assert_eq!((out.y, out.h), (500.0, 340.0), "top moved up, bottom fixed");
-    assert_eq!((out.x, out.w), (100.0, 800.0), "x untouched");
-}
-
-#[test]
-fn dragging_a_corner_moves_both_axes() {
-    let start = Rect::new(100.0, 600.0, 800.0, 240.0);
-    let out = resized(start, EDGE_T | EDGE_L, 50.0, -40.0, VP);
-    assert_eq!((out.x, out.w), (150.0, 750.0));
-    assert_eq!((out.y, out.h), (560.0, 280.0));
-}
-
-#[test]
-fn a_resize_never_goes_below_the_minimum() {
-    let start = Rect::new(100.0, 600.0, 400.0, 200.0);
-    // Drag the left edge far right: width floors at MIN_W and x stops with it.
-    let out = resized(start, EDGE_L, 10_000.0, 0.0, VP);
-    assert_eq!(out.w, MIN_W);
-    assert_eq!(
-        out.x,
-        100.0 + (400.0 - MIN_W),
-        "x stopped where MIN_W begins"
-    );
-    // Drag the top edge far down: height floors at MIN_H.
-    let out = resized(start, EDGE_T, 0.0, 10_000.0, VP);
-    assert_eq!(out.h, MIN_H);
-}
-
-#[test]
-fn a_resize_stays_inside_the_viewport() {
-    let start = Rect::new(1500.0, 800.0, 400.0, 200.0);
-    let out = resized(start, EDGE_R | EDGE_B, 500.0, 500.0, VP);
-    assert!(out.x + out.w <= VP.w + f32::EPSILON);
-    assert!(out.y + out.h <= VP.h + f32::EPSILON);
-}
+// ⛔ Os quatro gates do `resized` (bordas, cantos, mínimos, viewport) morreram com ela em
+// 2026-08-31 — ver o doc dela no `geom.rs`. O piso da faixa é gateado onde ele passou a viver:
+// `resize::the_band_never_shrinks_past_its_floor`.
 
 const K: Tab = Tab::Keys;
 const A: Tab = Tab::Arrange;
@@ -174,15 +136,21 @@ fn the_gutter_keeps_the_splitter_off_the_first_keyframe() {
     );
 }
 
+/// ⭐⭐ **UMA borda só, e é o TOPO** (Enio, 2026-08-31).
+///
+/// ⛔ O gate que aqui estava (`corners_are_registered_after_the_edges_they_overlap`) ordenava
+/// **oito** agarres — quatro bordas e quatro cantos — e não podia sobreviver: numa faixa DOCADA os
+/// lados são as costuras das colunas e o fundo é a borda da janela, então as outras sete eram
+/// gestos que soltavam o painel da banda dele. *Ordenar agarres que não deviam existir é o gate a
+/// defender o desenho errado.*
 #[test]
-fn corners_are_registered_after_the_edges_they_overlap() {
+fn the_only_grip_is_the_top_seam() {
     let grips = resize_grips(Rect::new(0.0, 0.0, 100.0, 100.0));
-    let corner_start = grips.iter().position(|(_, e, _)| e.count_ones() == 2);
-    let last_edge = grips.iter().rposition(|(_, e, _)| e.count_ones() == 1);
-    assert!(
-        corner_start.unwrap() > last_edge.unwrap(),
-        "corners last = on top"
-    );
+    assert_eq!(grips.len(), 1, "a faixa docada tem UMA costura");
+    let (_, edges, r) = grips[0];
+    assert_eq!(edges, EDGE_T);
+    assert_eq!((r.x, r.y, r.w), (0.0, 0.0, 100.0), "ela atravessa o topo");
+    assert!(r.h > 0.0 && r.h < 100.0, "e é uma faixa fina, não o painel");
 }
 
 /// **A column has a minimum because of what lives in it.** With lanes on

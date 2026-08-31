@@ -94,6 +94,7 @@ impl WidgetStore {
             rail_button_size: crate::widget::RailButtonSize::default(),
             dock_w_left: None,
             dock_w_right: None,
+            dock_h_bottom: None,
             present_vsync: true,
             hierarchy_order: Vec::new(),
             hierarchy_parent: BTreeMap::new(),

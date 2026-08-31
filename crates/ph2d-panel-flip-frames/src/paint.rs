@@ -1,14 +1,15 @@
 //! Paint da tira: chrome + barra de ferramentas + as células.
 //!
-//! O rect vem do slot `layout.flip_strip` (faixa inferior). Se o **timeline
-//! global** estiver aberto, a tira sobe uma altura de dock: as duas são faixas
-//! inferiores e não podem se sobrepor — quem sabe da visibilidade é o paint, não o
-//! layout (que é geometria pura).
+//! ⭐ **O rect É `ctx.slot`** — a banda do encaixe `Bottom`, e nada mais.
+//!
+//! ⛔ Esta nota dizia que a tira *«sobe uma altura de dock quando o timeline global está aberto,
+//! porque as duas são faixas inferiores e não podem se sobrepor»*. As duas metades dissolveram: o
+//! timeline e a tira declaram o **mesmo encaixe**, e dois painéis no mesmo encaixe são **abas**
+//! desde a entrega 21 — nunca duas faixas ao mesmo tempo. Ver o corpo do `paint`.
 
 use crate::state::{self, FlipStripState};
 use crate::{FlipFramesPanel, ids};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::screens::layout::TIMELINE_DOCK_H;
 use ph2d_editor_core::widget::panel_chrome::{
     PANEL_HEAD_PAD, PANEL_HEADER_CLOSE_RESERVE, PANEL_TITLE_BASELINE, paint_panel_close_button,
     paint_panel_corner_dot, paint_panel_corner_dot_bl, paint_panel_surface, paint_panel_title,
@@ -27,30 +28,29 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     let snap = state::current_flip_strip();
     let theme = ctx.host.theme();
 
-    // A tira empilha ACIMA do timeline global quando ele está aberto.
+    // ⭐⭐ **A TIRA É A BANDA** (2026-08-31). ⛔ Ela empilhava-se ACIMA do timeline
+    // (`base.y - TIMELINE_DOCK_H - grow`) e **crescia para fora** da faixa que lhe foi dada —
+    // 292 px numa banda de 240, começando 52 px acima dela.
+    //
+    // ⚠️ **Duas coisas dissolveram por baixo dela e a nota não foi reconferida:**
+    //
+    // 1. **Empilhar deixou de ser o modelo.** O timeline e esta tira declaram o MESMO encaixe
+    //    (`Slot::Bottom`), e desde as abas de encaixe dois painéis no mesmo sítio são **abas** —
+    //    só um está à frente de cada vez, e `ctx.slot` já desconta a faixa de abas. *O `lift`
+    //    resolvia uma sobreposição que já não pode acontecer.*
+    // 2. **A altura da banda passou a ser AUTORADA** (a costura do topo do timeline), então o
+    //    `TIMELINE_DOCK_H` que o `lift` somava era uma constante a descrever um número que o
+    //    artista move.
+    //
+    // ⇒ o rect É `ctx.slot`. Uma faixa docada que se pinta maior do que a banda não é uma faixa
+    // com mais conteúdo: é um painel por cima do desenho, que é a foto 2 da **D1**.
     let base: Rect = ctx.slot;
-    let lift = if ctx.host.panel_visible("timeline") {
-        TIMELINE_DOCK_H + Spacing::Sm.px()
-    } else {
-        0.0
-    };
-    // A barra QUEBRA em linhas quando a janela é estreita — e a tira CRESCE para
-    // caber, em vez de espremer as células (ou, como antes, esconder controles).
-    // A altura tem de ser conhecida ANTES de pintar a superfície, então mede-se
-    // pelo mesmo plano que a barra vai pintar.
+    // A barra QUEBRA em linhas quando a janela é estreita. ⚠️ O plano dela continua a ser medido
+    // (as linhas decidem onde as células começam, mais abaixo) — o que mudou é que ele já não pode
+    // fazer a tira **transbordar**: quem quiser mais espaço arrasta a costura do topo da banda.
     let bar_w = (base.w - PANEL_HEAD_PAD * 2.0).max(0.0);
     let bar_rows = crate::toolbar_plan::rows(Rect::new(0.0, 0.0, bar_w, ROW_H_PX), ROW_H_PX, &snap);
-    // A tira cresce pela barra que quebrou em linhas E pela faixa reservada da régua de
-    // scrub — assim os frames mantêm a altura de sempre (a régua ganha espaço PRÓPRIO no
-    // topo, não roubado das células). Enio 2026-07-14.
-    let grow = crate::toolbar_plan::bar_height(bar_rows, ROW_H_PX) - ROW_H_PX
-        + crate::paint_cells::scrub_reserved_h();
-    let rect = Rect::new(
-        base.x,
-        (base.y - lift - grow).max(0.0),
-        base.w,
-        base.h + grow,
-    );
+    let rect = base;
 
     ctx.host
         .store_mut()
@@ -86,8 +86,7 @@ pub(crate) fn paint(state: &mut FlipStripState, ctx: &mut PaintCtx) {
     let y = rect.y + PANEL_TITLE_BASELINE + title_size + Spacing::Sm.px();
 
     // Barra de ferramentas (transporte / ghost / autoria / chaves / tween / ciclo).
-    // `bar` é a PRIMEIRA linha; as demais descem a partir dela, dentro do `grow`
-    // que a tira já reservou.
+    // `bar` é a PRIMEIRA linha; as demais descem a partir dela, dentro da banda.
     let bar = Rect::new(inner_x, y, inner_w, ROW_H_PX);
     let pending_cycle = crate::paint_toolbar::paint(ctx, theme, bar, &snap);
 

@@ -58,3 +58,60 @@ impl WidgetStore {
     const DOCK_W_MIN: f32 = ph2d_tokens::PANEL_MIN_W_PX;
     const DOCK_W_MAX: f32 = 720.0; // LITERAL-PX-OK: teto de largura de coluna docada
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ⭐⭐ **A FAIXA DO FUNDO** — o irmão VERTICAL das duas colunas (Enio, 2026-08-31: *«em nodes,
+// arrastar a timeline na vertical deve ajustar o canvas dos nós e não deixar espaços vazios nem
+// sobrepor os nodes»*).
+//
+// ⛔⛔ **O que ele arrastava não era uma banda: era o painel a SOLTAR-SE dela.** A costura do
+// timeline escrevia um rect livre (`TimelinePanelState::rect`), e a partir daí o painel ignorava a
+// faixa que o layout lhe dava — daí o espaço vazio por cima dele na foto, e a sobreposição no
+// outro sentido. *Uma borda de painel docado que devolve um rect livre é um painel que deixa de
+// estar docado quando se lhe toca.*
+//
+// ⇒ o topo da faixa passa a ser uma **costura**, exactamente como a borda interior de uma coluna:
+// ela escreve uma MEDIDA, e quem partilha a banda (o grafo de nós, por `dock_timeline_into_motion`)
+// segue por construção.
+// ─────────────────────────────────────────────────────────────────────────────
+
+impl WidgetStore {
+    /// **A altura AUTORADA da faixa do fundo** — a de fábrica até alguém arrastar o topo dela.
+    ///
+    /// ⚠️ Clampada na PORTA, pela mesma razão da [`Self::dock_width`]: uma faixa que possa encolher
+    /// a zero não deixa borda para agarrar de volta.
+    #[must_use]
+    pub fn dock_bottom_h(&self) -> f32 {
+        crate::math::safe_clamp(
+            self.dock_h_bottom
+                .unwrap_or(crate::screens::layout::TIMELINE_DOCK_H),
+            Self::DOCK_H_MIN,
+            Self::DOCK_H_MAX,
+        )
+    }
+
+    /// ⭐ **A ESCOLHA do artista, ou `None`** — o irmão de [`Self::dock_bottom_h`]. A distinção
+    /// decide o que se GRAVA; ver [`Self::dock_width_choice`].
+    #[must_use]
+    pub fn dock_bottom_h_choice(&self) -> Option<f32> {
+        self.dock_h_bottom
+    }
+
+    /// Escreve a altura da faixa do fundo, já clampada.
+    pub fn set_dock_bottom_h(&mut self, h: f32) {
+        self.dock_h_bottom = Some(crate::math::safe_clamp(
+            h,
+            Self::DOCK_H_MIN,
+            Self::DOCK_H_MAX,
+        ));
+    }
+
+    /// ⚠️ **O mínimo é o do painel do timeline** (`geom::MIN_H`, privado dele): abaixo de 120 px o
+    /// cabeçalho, a fila de transporte e a régua deixam de caber juntos. ⛔ O número está aqui e
+    /// não lá porque quem clampa é a PORTA da medida, e a faixa pode um dia ter outro inquilino —
+    /// mas os dois têm de concordar, e há gate a exigi-lo.
+    const DOCK_H_MIN: f32 = 120.0; // LITERAL-PX-OK: piso da faixa do fundo (= `timeline::geom::MIN_H`)
+    /// ⚠️ O tecto é o mesmo critério da largura de coluna: uma faixa nunca come a área de desenho
+    /// inteira. Numa janela baixa o layout aperta-o ainda mais contra a banda de chrome.
+    const DOCK_H_MAX: f32 = 720.0; // LITERAL-PX-OK: tecto da faixa do fundo
+}

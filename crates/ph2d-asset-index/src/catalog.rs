@@ -83,8 +83,15 @@ pub enum CatalogScope {
 /// A taxonomia inteira: os catálogos e a que catálogo cada asset pertence.
 ///
 /// ⚠️ **A `revision` fica FORA do `PartialEq`** — ela é uma chave de CACHE, nunca identidade. Duas
-/// árvores com o mesmo conteúdo são iguais mesmo tendo chegado lá por caminhos diferentes, que é o
-/// que faz um `restore` de undo não registar um passo espúrio contra a árvore que o produziu.
+/// árvores com o mesmo conteúdo são iguais mesmo tendo chegado lá por caminhos diferentes.
+///
+/// ⛔ **E a 1.ª redacção justificava isto com um mecanismo FALSO** (auditoria de 2026-08-30): ela
+/// dizia que, com a revisão a contar, *«todo undo registaria um passo espúrio»*. Não — **nenhum
+/// código de produto compara duas árvores**; o diff do undo compara os **bytes** do blob, e o
+/// `collect` nunca serializa a revisão. Quem protege o undo é `collect(restore(b)) == b`.
+/// ⇒ o `PartialEq` à mão continua certo (a revisão **não é** identidade), mas quem o lê tem de
+/// saber que o diff não passa por aqui. *Uma nota que promete o mecanismo errado manda a próxima
+/// LLM procurar o defeito no sítio errado.*
 #[derive(Clone, Debug, Default, Eq)]
 pub struct CatalogTree {
     /// Ordenados por caminho — é a ordem em que a UI os desenha, e é o que torna a árvore
@@ -126,9 +133,12 @@ impl CatalogTree {
         }
     }
 
-    /// A porta ÚNICA do bump. ⚠️ Chamada onde a mutação de facto aconteceu — um `create` que
-    /// encontra o caminho ou um `rename` que recusa **não** movem a revisão, senão a cache
-    /// re-codificaria a árvore por um gesto que não a mudou.
+    /// O bump. ⚠️ Chamado onde a mutação de facto aconteceu — um `create` que encontra o caminho
+    /// ou um `rename` que recusa **não** movem a revisão, senão a cache re-codificaria a árvore por
+    /// um gesto que não a mudou.
+    ///
+    /// ⚠️ **NÃO é a porta única, e dizê-lo era falso**: o `create` bumpa **inline**, dentro do laço
+    /// que empurra cada ancestral, porque só ali se sabe que um nó nasceu de facto.
     fn touch(&mut self) {
         self.revision = self.revision.wrapping_add(1);
     }
@@ -138,6 +148,12 @@ impl CatalogTree {
     #[must_use]
     pub fn revision(&self) -> u64 {
         self.revision
+    }
+
+    /// ⭐ **De onde sai o próximo id.** Ele é gravado, e não derivado — ver [`Self::restore`].
+    #[must_use]
+    pub fn next_id(&self) -> u128 {
+        self.next_id
     }
 
     /// Os catálogos, ordenados por caminho.
@@ -315,8 +331,16 @@ impl CatalogTree {
     /// **Restaura de bytes já lidos** (a porta do shell). ⚠️ O `next_id` é empurrado para além de
     /// tudo o que chegou: um ficheiro gravado com ids altos não pode fazer o próximo gesto sentar-se
     /// em cima de um catálogo existente. É o mesmo contrato do `next_import_cell`.
-    pub fn restore(catalogs: Vec<Catalog>, assignments: BTreeMap<AssetRef, CatalogId>) -> Self {
-        let next_id = catalogs.iter().map(|c| c.id.0).max().unwrap_or(0) + 1;
+    pub fn restore(
+        catalogs: Vec<Catalog>,
+        assignments: BTreeMap<AssetRef, CatalogId>,
+        saved_next_id: u128,
+    ) -> Self {
+        // ⛔⛔ **O MAIOR dos dois, e o `saved_next_id` é quem manda quando ele existe** (auditoria
+        // de 2026-08-30). Derivá-lo só de `max(id) + 1` **recicla** o id de um catálogo apagado:
+        // gravar `A`(1) e `B`(2), apagar o `B`, reler ⇒ o catálogo seguinte nasce com o id `2`. O
+        // `max` fica como **piso** para um blob de uma versão que não o trazia.
+        let next_id = saved_next_id.max(catalogs.iter().map(|c| c.id.0).max().unwrap_or(0) + 1);
         let mut t = Self {
             catalogs,
             assignments,

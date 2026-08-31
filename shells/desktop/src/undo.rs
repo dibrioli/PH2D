@@ -309,6 +309,9 @@ impl crate::App {
     /// `sync_selection` do frame seguinte re-deriva os bits do mapa reconstruído. Nada de bits mortos
     /// atravessa — que era o perigo real que o zeramento defendia.
     pub(crate) fn apply_project(&mut self, state: &ProjectState) {
+        // ⛔ **As lápides ANTES da guarda do `gfx`** — elas vivem num global, e deixá-las dentro
+        // dela fazia um restauro sem GPU manter as da sessão anterior. Ver `project_library`.
+        crate::project_library::apply_forgotten(&state.library);
         // ANTES do restore: o que o artista tinha selecionado, em ids ESTÁVEIS.
         let was_selected = self.vec_pen.selected_paths().to_vec();
         let Some(gfx) = self.gfx.as_mut() else {
@@ -340,7 +343,7 @@ impl crate::App {
         // ⛔ **E a cache TEM de ser invalidada**, senão o quadro seguinte devolveria os bytes
         // antigos: a revisão é por-árvore e a restaurada nasce em `0`, então colidir com a que a
         // cache já viu é o caso NORMAL, não o raro.
-        gfx.catalogs = crate::project_library::apply(&state.library);
+        gfx.catalogs = crate::project_library::apply_catalogs(&state.library);
         gfx.library_cache.invalidate();
         if let Some(hero) = gfx.hero_screen.as_mut() {
         hero.gizmo.clear_all_selection();

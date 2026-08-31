@@ -165,10 +165,37 @@ fn a_restored_tree_never_hands_out_an_id_it_already_has() {
             path: "Velho".into(),
         }],
         std::collections::BTreeMap::new(),
+        // ⚠️ Um blob que não trazia o número (a v1 do formato): o `max` é o piso.
+        0,
     );
     let novo = t.create("Novo");
     assert_ne!(novo, CatalogId(42), "o id novo colidiu com o carregado");
     assert_eq!(t.catalogs().len(), 2);
+}
+
+/// ⛔⛔ **O `next_id` GRAVADO ganha ao derivado — e é isso que impede um id RECICLADO.**
+///
+/// ⚠️ Achado da auditoria de 2026-08-30: derivar `max(id) + 1` devolve o id de um catálogo
+/// **apagado**. Gravar `A`(1) e `B`(2), apagar o `B` ⇒ `max` diz `2`, e o catálogo seguinte
+/// herdava o endereço do que morreu. *E o doc do campo prometia o contrário.*
+///
+/// **Mutação que deve sangrar:** ignorar o `saved_next_id` e derivar só do `max`.
+#[test]
+fn a_saved_next_id_beats_the_derived_one_so_no_id_is_ever_recycled() {
+    let mut t = CatalogTree::restore(
+        vec![Catalog {
+            id: CatalogId(1),
+            path: "A".into(),
+        }],
+        std::collections::BTreeMap::new(),
+        // O `B`(2) foi apagado antes de gravar: o maior id VIVO é `1`, e o próximo é `3`.
+        3,
+    );
+    assert_eq!(
+        t.create("Novo"),
+        CatalogId(3),
+        "o id foi RECICLADO — o catálogo novo herdou o endereço de um apagado"
+    );
 }
 
 /// ⭐⭐⭐ **UM PAI VEM IMEDIATAMENTE ANTES DOS FILHOS DELE** — e um irmão nunca se mete no meio.

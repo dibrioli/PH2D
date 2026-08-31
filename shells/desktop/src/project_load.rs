@@ -70,26 +70,19 @@ impl crate::App {
             // escolheu, com o Enio, não congelar um `ProjectFileV97` (*"não há projetos salvos"*).
             // Sem tipo congelado não existe forma honesta de ler aqueles bytes. O `v95` continua a
             // subir a escada inteira, porque o tipo dele **está** congelado.
-            98 => match postcard::from_bytes::<(u32, ProjectFile)>(&bytes) {
-                Ok((_, mut f)) => {
-                    let r = crate::project_migrate_sprite::split_sprite_blobs(&mut f.state.world);
-                    eprintln!(
-                        "[proj] migrado v98 -> v{PROJECT_SCHEMA} ({} sprites partidas, {} componentes anexados, {} ilegiveis)",
-                        r.sprites, r.components, r.unreadable
-                    );
-                    self.toast(format!(
-                        "Project migrated from format 98 to {PROJECT_SCHEMA}"
-                    ));
-                    (f, None)
-                }
-                Err(e) => {
-                    eprintln!("[proj] v98 ilegivel: {e}");
-                    self.toast(format!(
-                        "Project refused: format 98 file is unreadable ({e})"
-                    ));
-                    return;
-                }
-            },
+            // ⛔⛔ **O braço `98` MORREU em 2026-08-30, e a razão é a mesma que matou o `97`.**
+            //
+            // Ele lia os bytes com o tipo **VIVO**, e a premissa era *«a forma do ficheiro é a
+            // mesma»*. O degrau `105` partiu-a de uma maneira que o `104` não partia: a biblioteca
+            // entrou como **último campo do `ProjectState`**, que é o **primeiro campo do
+            // `ProjectFile`** ⇒ no fluxo de bytes ela cai **no MEIO**. Um campo apendado no fim
+            // fazia o postcard chegar ao fim dos bytes e **recusar em voz alta**; um campo no meio
+            // faz-lhe ler *lixo bem-formado*.
+            //
+            // ⇒ um v98 cai no `_ =>` e é **recusado com o número na frase**, que é a decisão que a
+            // `line/Vector` já tomou para o v97 e que o Enio confirmou (*«não há projetos
+            // salvos»*). ⚠️ Quem um dia precisar dele **congela um `ProjectFileV98` primeiro** —
+            // sem tipo congelado não há forma honesta de ler aqueles bytes.
             95 => {
                 match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV95)>(&bytes)
                 {
@@ -403,8 +396,11 @@ impl crate::App {
         //
         // ⛔ **E a cache é invalidada aqui também**: a árvore foi substituída por baixo, e a
         // revisão da nova nasce em `0`.
+        // ⛔ As lápides são GLOBAIS: fora da guarda, senão um load sem GPU herda as do projecto
+        // anterior (auditoria de 2026-08-30).
+        crate::project_library::apply_forgotten(&file.state.library);
         if let Some(gfx) = self.gfx.as_mut() {
-            gfx.catalogs = crate::project_library::apply(&file.state.library);
+            gfx.catalogs = crate::project_library::apply_catalogs(&file.state.library);
             gfx.library_cache.invalidate();
         }
         // As FOLHAS hand-packed, pelo mesmo motivo e na mesma janela: uma folha sobe UMA vez

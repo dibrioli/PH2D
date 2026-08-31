@@ -228,6 +228,11 @@ mod assets;
 #[path = "project_tests.rs"]
 mod tests;
 
+/// O que a BIBLIOTECA deve ao arquivo — irmão pelo tecto de LOC (HR-18).
+#[cfg(test)]
+#[path = "project_library_file_tests.rs"]
+mod library_file_tests;
+
 /// **As settings FORA do `ProjectState` atravessam o arquivo** — irmão de `tests`,
 /// cortado por assunto quando o pai bateu o cap de LOC.
 #[cfg(test)]

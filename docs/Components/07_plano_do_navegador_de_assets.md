@@ -469,6 +469,58 @@ campo saiu do meio de uma estrutura e outro entrou no meio da outra ⇒ os bytes
 **significar outra coisa**, e o postcard lê torto e cala-se. É o degrau mais perigoso desta escada
 desde o 102.
 
+### §11.7 — A auditoria do undo (2026-08-30) — **4 defeitos, 3 gates coincidentes, todos fechados**
+
+#### No PRODUTO
+
+| # | Achado | Mecanismo | Cura |
+|---|---|---|---|
+| **A2** | ⛔⛔ o `next_id` **não sobrevivia ao round-trip** ⇒ ids RECICLADOS | `collect` não o gravava e o `restore` derivava `max(id)+1`, que devolve o id de um catálogo **apagado**. ⚠️ Só ficou alcançável quando o undo passou a substituir a árvore a meio da sessão: a escolha da coluna é **vista** e sobrevive ao Ctrl+Z ⇒ passaria a apontar, em silêncio, para um catálogo criado depois | o número **viaja no blob** (`CATALOG_DOC_VERSION` 1→2); o `max` fica como piso |
+| **A5** | ⛔⛔ o laço de render **levantava a lápide** | `remember` limpava a marca e corre **por quadro**: tirar a imagem, fechar o painel, re-importar, reabrir ⇒ a lápide caía **sem gesto**, e um Ctrl+Z a repô-la era desfeito no quadro seguinte — *o Ctrl+Z não pegava e queimava um passo* | a decisão sai da escrita e vai para a **leitura**: quem o mundo usa AGORA ganha à lápide, que é a regra que a recusa do verbo já usava |
+| **A6** | um load **sem GPU** herdava as lápides do projecto anterior | `apply` fazia duas coisas — escrevia um global **e** devolvia a árvore —, e o valor de retorno prendia a chamada dentro do `if let Some(gfx)` | partida em `apply_forgotten` (global, fora da guarda) e `apply_catalogs` |
+| **A7** | o braço `98 =>` do load podia ler **torto** | ele lê os bytes com o tipo **VIVO**; a v104 apendava no fim (falha limpa, *«fim do buffer»*), a v105 pôs um campo **no meio** | o braço **morreu** — um v98 é recusado com o número na frase, a decisão que a `line/Vector` já tomou para o v97 |
+
+#### Nos GATES — três passavam por coincidência
+
+| # | Gate | Porque era verde |
+|---|---|---|
+| **A1** | *nenhum* | ⛔⛔ **a lei-título — «esquecer MARCA, não apaga» — não tinha gate**: um `forget` que marcasse **e** apagasse sobrevivia à suíte inteira, e o produto voltava a ser irreversível. O gate vizinho passava igual com o `forget` ANTIGO: ele mede o que se **vê**, e a lápide e o `remove` escondem exactamente o mesmo ⇒ a régua nova é a diferença entre `len()` (*«quantas mostro»*) e `stored_len()` (*«quantas posso devolver»*) |
+| **A2** | `a_restored_tree_encodes_to_the_same_bytes` | a fixtura **nunca apagava** um catálogo, e sem um id morto o `max(id)+1` calha certo |
+| **A4** | `the_cache_re_encodes_on_a_change_and_only_then` | as asserções eram sobre os **bytes de saída** e o `collect` é determinístico ⇒ apagar a guarda deixava-o verde com a cache a codificar por quadro. *A lei que paga o desenho inteiro não tinha instrumento* ⇒ contador `probe_encodes()` |
+
+Mais: o round-trip pelo **ficheiro** punha uma `LibraryDoc` **vazia** (o irmão do
+`the_ui_states_travel_in_the_file` nasceu agora, populado), e a invalidação da cache era obrigação
+manual sem censo ⇒ gate de árvore `every_site_that_replaces_the_catalog_tree_invalidates_the_cache`.
+
+⚠️ **E o censo obrigou a RENOMEAR um campo:** `LibraryDoc.catalogs` (bytes) colidia com
+`AppGfx.catalogs` (a árvore viva), e o gate textual acusava a cache. ⛔ Ensinar-lhe a excepção seria
+pedir-lhe que adivinhasse a diferença ⇒ `catalog_bytes`. *Duas coisas diferentes com o mesmo nome
+são um gate cego à espera de acontecer.*
+
+#### ⚠️ Uma justificação minha estava **mecanicamente falsa**
+
+O commit dizia que, com a revisão a contar para a igualdade, *«todo undo registaria um passo
+espúrio»*. **Não**: nenhum código de produto compara duas árvores — o diff compara os **bytes**, e o
+`collect` nunca serializa a revisão. O `PartialEq` à mão continua certo (a revisão não é
+identidade), mas quem o lê tem de saber que o diff não passa por ali. *Uma nota que promete o
+mecanismo errado manda a próxima LLM procurar o defeito no sítio errado.*
+
+#### O que a auditoria mediu e **ILIBOU**
+
+O passo nasce e é **UM** (o `Click` sai no `Up`, o `held_button` já voltou a `None`, o dreno corre
+antes do `post_frame_undo`) · o **save** lê pela mesma porta e grava a taxonomia certa · os dois
+sítios que substituem a árvore invalidam · um **v104 é recusado em voz alta**, com o número na
+frase · e nenhum `&mut self` do `CatalogTree` muta sem bump.
+
+#### ⏳ Aberto e NOMEADO
+
+- **`count_in` conta as lápides**: a linha do catálogo diz `N` e a grade desenha `N−1` para uma
+  imagem removida mas ainda atribuída. Pré-existente (o `forget` antigo também não desatribuía).
+- **Residência**: a medição responde ao **relógio** de codificar, não à **memória** de guardar —
+  `UNDO_CAP = 256` × o blob inteiro por passo. Nomeado, não medido.
+- **A costura `App`**: os gates chamam `capture` e `apply_*` **directamente**; o caminho pelo `App`
+  (cache → captura → passo → restauro) só existe no smoke `=78`.
+
 #### ⏳ O que fica NOMEADO e não curado
 
 Quando o dreno **recusa** o nome (vazio ou com `/`), o campo já fechou e **o texto escrito

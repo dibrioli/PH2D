@@ -245,6 +245,10 @@ pub(crate) fn build(
     };
     loose.dedup_by_key(|(_, _, id)| *id);
 
+    // ⭐⭐ **Quem o mundo usa AGORA** — a lista que faz uma lápide ceder sem ninguém editar o
+    // documento (ver [`TextureLibrary::entries`]).
+    let live: std::collections::BTreeSet<AssetId> = loose.iter().map(|(_, _, id)| *id).collect();
+
     for (_, entity, id) in loose {
         // ⚠️ O nome de FICHEIRO ganha ao da entidade quando ele existe — é o que o artista
         // reconhece. O `AssetDb` continua a ser consultado; o que mudou é que ele já não decide
@@ -270,7 +274,7 @@ pub(crate) fn build(
     // ⛔ E a memória é **união, nunca subtracção AUTOMÁTICA**: o que entrou fica até alguém o mandar
     // sair. ⭐ A porta de o mandar sair é o [`forget_texture`], e ela nasceu do report seguinte do
     // Enio — *«uma sprite que foi deletada do canvas não consegui deletar do painel»*.
-    for entry in remembered.entries() {
+    for entry in remembered.entries(&live) {
         let mut e = entry.clone();
         // ⚠️ **O catálogo NÃO é lembrado com a entrada, e é de propósito:** a `TextureLibrary` é
         // memória de SESSÃO e a taxonomia é do PROJECTO. Guardá-lo no clone faria a atribuição
@@ -351,11 +355,6 @@ pub(crate) struct TextureLibrary {
 impl TextureLibrary {
     /// Regista (ou actualiza) uma textura. ⚠️ **Nunca remove** — ver o bloco acima.
     fn remember(&mut self, id: AssetId, entry: AssetEntry) {
-        // ⭐⭐ **Trazer de volta pela porta da frente LEVANTA a lápide.** Sem isto, re-importar a
-        // mesma imagem (mesmos bytes ⇒ mesmo blake3) devolveria um asset **invisível para sempre**,
-        // e o artista não teria gesto nenhum para o explicar. *Um «traz isto» explícito ganha a um
-        // «tira isto» antigo.*
-        self.forgotten.remove(&id);
         self.entries.insert(id, entry);
     }
 
@@ -367,11 +366,26 @@ impl TextureLibrary {
         self.forgotten.insert(id);
     }
 
-    /// As entradas VIVAS — as com lápide não saem daqui.
-    fn entries(&self) -> impl Iterator<Item = &AssetEntry> {
+    /// ⭐⭐⭐ **As entradas VIVAS** — as com lápide não saem daqui, **excepto as que o mundo usa
+    /// AGORA**.
+    ///
+    /// ⛔⛔ A excepção é o que impede o laço de render de editar o documento (auditoria de
+    /// 2026-08-30). A 1.ª versão levantava a lápide dentro do `remember`, que corre **por quadro**
+    /// — e a sequência era alcançável: tirar a imagem da biblioteca, **fechar** o painel,
+    /// re-importar os mesmos bytes, reabrir ⇒ a lápide caía **sem gesto nenhum**, o quadro seguinte
+    /// registava um passo espúrio, e um Ctrl+Z a repô-la era **desfeito no quadro a seguir**.
+    /// *O Ctrl+Z não pegava e queimava um passo.*
+    ///
+    /// ⚠️ **A regra passa a ser a mesma que a recusa do verbo já usa**: uma imagem que alguém usa
+    /// nunca está escondida — o `Remove from Library` recusa-a, e aqui ela ganha à lápide sem
+    /// ninguém escrever no documento. `live` são os ids que o mundo referenciou **neste quadro**.
+    fn entries<'a>(
+        &'a self,
+        live: &'a std::collections::BTreeSet<AssetId>,
+    ) -> impl Iterator<Item = &'a AssetEntry> {
         self.entries
             .iter()
-            .filter(|(id, _)| !self.forgotten.contains(id))
+            .filter(|(id, _)| !self.forgotten.contains(id) || live.contains(id))
             .map(|(_, e)| e)
     }
 
@@ -383,7 +397,18 @@ impl TextureLibrary {
     /// exactamente no caso que interessa. ⇒ ela conta pelo mesmo iterador que o `build` consome.
     #[cfg(test)]
     fn len(&self) -> usize {
-        self.entries().count()
+        self.entries(&std::collections::BTreeSet::new()).count()
+    }
+
+    /// **Só para os gates:** quantas entradas ela GUARDA, lápides incluídas.
+    ///
+    /// ⚠️ Ela existe porque a lei-título desta wave — *«esquecer MARCA, não apaga»* — não tinha
+    /// instrumento (auditoria de 2026-08-30): um `forget` que marcasse **e** apagasse passava na
+    /// suíte inteira, e o produto voltava a ser irreversível. `len()` conta o que se VÊ; esta conta
+    /// o que se pode DEVOLVER, e é a diferença entre as duas que prova a lápide.
+    #[cfg(test)]
+    fn stored_len(&self) -> usize {
+        self.entries.len()
     }
 }
 
@@ -499,3 +524,8 @@ fn largest_piece_texture(sim: &SimWorld, pieces: &[Entity]) -> Option<AssetId> {
 #[cfg(test)]
 #[path = "asset_index_build_tests.rs"]
 mod tests;
+
+/// Os gates da LÁPIDE — irmão pelo tecto de LOC (HR-18); o corte é por responsabilidade.
+#[cfg(test)]
+#[path = "asset_index_build_library_tests.rs"]
+mod library_tests;

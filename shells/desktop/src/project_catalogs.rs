@@ -42,7 +42,20 @@ use ph2d_asset_index::{AssetRef, Catalog, CatalogId, CatalogTree};
 use std::collections::BTreeMap;
 
 /// A versão do blob. ⚠️ Ela mora **dentro** dos bytes — ver o cabeçalho.
-const CATALOG_DOC_VERSION: u32 = 1;
+///
+/// # 2 — o `next_id` viaja (auditoria de 2026-08-30)
+///
+/// ⛔⛔ **A v1 não o gravava, e o `restore` derivava-o como `max(id) + 1`** — o que RECICLA o id de
+/// um catálogo apagado. Medido: criar `A`(1) e `B`(2), apagar `B`, gravar e reler ⇒ o catálogo
+/// seguinte nasce com o id **2**, que era o do `B`. ⚠️ E o doc do campo prometia o contrário
+/// (*«monotónico e nunca reutilizado: um id reciclado faria os assets de um catálogo apagado
+/// reaparecerem dentro do seguinte»*) — duas afirmações sobre o mesmo facto, em desacordo.
+///
+/// ⚠️ **Só ficou alcançável quando o undo passou a substituir a árvore a meio da sessão**: antes só
+/// o `Open Project` o fazia, e ali o painel é re-derivado inteiro. Hoje a escolha da coluna
+/// (`CatalogPick::One`) é VISTA e sobrevive ao Ctrl+Z — logo ela passaria a apontar, em silêncio,
+/// para um catálogo criado depois.
+const CATALOG_DOC_VERSION: u32 = 2;
 
 /// Um catálogo, no fio.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -115,7 +128,8 @@ pub(crate) fn collect(tree: &CatalogTree) -> Vec<u8> {
         .iter()
         .map(|(a, c)| SavedAssignment::of(a, *c))
         .collect();
-    postcard::to_allocvec(&(CATALOG_DOC_VERSION, catalogs, assignments)).unwrap_or_default()
+    postcard::to_allocvec(&(CATALOG_DOC_VERSION, catalogs, assignments, tree.next_id()))
+        .unwrap_or_default()
 }
 
 /// **A taxonomia que estes bytes descrevem.**
@@ -127,8 +141,8 @@ pub(crate) fn restore(blob: &[u8]) -> CatalogTree {
     if blob.is_empty() {
         return CatalogTree::new();
     }
-    let Ok((ver, catalogs, assignments)) =
-        postcard::from_bytes::<(u32, Vec<SavedCatalog>, Vec<SavedAssignment>)>(blob)
+    let Ok((ver, catalogs, assignments, next_id)) =
+        postcard::from_bytes::<(u32, Vec<SavedCatalog>, Vec<SavedAssignment>, u128)>(blob)
     else {
         eprintln!("[proj] catalogos: blob ilegivel, a biblioteca abre sem taxonomia");
         return CatalogTree::new();
@@ -149,6 +163,7 @@ pub(crate) fn restore(blob: &[u8]) -> CatalogTree {
             .iter()
             .filter_map(SavedAssignment::to_pair)
             .collect::<BTreeMap<_, _>>(),
+        next_id,
     )
 }
 

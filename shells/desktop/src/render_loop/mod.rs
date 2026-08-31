@@ -1200,7 +1200,11 @@ impl crate::App {
             undo_capture_cache: _,
             // O alvo do `+` do Inspector (F3) — usado no fim deste mesmo quadro, ver abaixo.
             component_palette_target,
-            library_cache: _library_cache,
+            // ⚠️ **CONSIDERADO e deixado de fora**: a cache da biblioteca é lida no
+            // `capture_project_state`, que corre depois deste bloco e pega o `gfx` inteiro. Aqui
+            // ela não tem consumidor — e o `_` diz isso, ao contrário de um binding nomeado que
+            // parece um esquecimento.
+            library_cache: _,
         } = gfx;
         let Some(host) = self.host.as_ref() else {
             return;

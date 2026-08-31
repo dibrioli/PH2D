@@ -1,6 +1,6 @@
 //! Os gates do documento da biblioteca ([`super`]).
 
-use super::{LibraryCache, LibraryDoc, apply};
+use super::{LibraryCache, LibraryDoc, apply_catalogs, apply_forgotten};
 use ph2d_asset_index::{AssetRef, CatalogTree};
 
 /// ⭐⭐⭐ **A cache re-codifica quando a árvore muda, e NÃO quando ela não muda.**
@@ -16,21 +16,33 @@ fn the_cache_re_encodes_on_a_change_and_only_then() {
     let a = tree.create("Personagens");
     let mut cache = LibraryCache::default();
 
-    let first = cache.doc(&tree).catalogs.clone();
+    let first = cache.doc(&tree).catalog_bytes.clone();
     assert!(!first.is_empty());
-    // Sem mutação, os MESMOS bytes e sem re-codificar — o oráculo do «sem re-codificar» é a
-    // revisão, que é o que a cache lê.
+    assert_eq!(cache.probe_encodes(), 1);
+
+    // ⛔⛔ **O oráculo é a CONTAGEM DE CODIFICAÇÕES, não os bytes de saída.** A 1.ª versão deste
+    // gate afirmava sobre os bytes — e o `collect` é determinístico, logo apagar a guarda da cache
+    // deixava-o **verde** com ela a re-codificar por quadro, que é exactamente a regressão que ele
+    // existe para apanhar. *Um oráculo que a mutação não move não é um oráculo.*
     let rev = tree.revision();
-    assert_eq!(cache.doc(&tree).catalogs, first);
+    for _ in 0..5 {
+        assert_eq!(cache.doc(&tree).catalog_bytes, first);
+    }
+    assert_eq!(
+        cache.probe_encodes(),
+        1,
+        "a cache re-codificou sem a árvore mudar — a taxonomia volta a custar por quadro"
+    );
     assert_eq!(tree.revision(), rev, "ler a cache mexeu na árvore");
 
     tree.rename(a, "Herois");
     assert_ne!(tree.revision(), rev, "renomear não moveu a revisão");
     assert_ne!(
-        cache.doc(&tree).catalogs,
+        cache.doc(&tree).catalog_bytes,
         first,
         "a árvore mudou e a cache devolveu os bytes velhos"
     );
+    assert_eq!(cache.probe_encodes(), 2, "a mutação não fez codificar");
 }
 
 /// ⛔⛔ **Uma árvore SUBSTITUÍDA por baixo invalida a cache — e a colisão de revisão é o caso
@@ -46,7 +58,7 @@ fn replacing_the_tree_underneath_needs_the_cache_invalidated() {
     let mut cache = LibraryCache::default();
     let mut old = CatalogTree::new();
     old.create("Antiga");
-    let old_bytes = cache.doc(&old).catalogs.clone();
+    let old_bytes = cache.doc(&old).catalog_bytes.clone();
 
     // Uma árvore diferente com a MESMA revisão — o que um `restore` produz.
     let mut new = CatalogTree::new();
@@ -58,7 +70,7 @@ fn replacing_the_tree_underneath_needs_the_cache_invalidated() {
     );
     cache.invalidate();
     assert_ne!(
-        cache.doc(&new).catalogs,
+        cache.doc(&new).catalog_bytes,
         old_bytes,
         "a cache devolveu a taxonomia antiga depois de a árvore ser substituída"
     );
@@ -78,7 +90,8 @@ fn the_document_round_trips_both_halves() {
 
     // Apaga tudo, e devolve pelo documento.
     crate::asset_index_build::set_forgotten_textures(&[]);
-    let back = apply(&doc);
+    apply_forgotten(&doc);
+    let back = apply_catalogs(&doc);
     assert_eq!(back, tree, "a taxonomia não voltou igual");
     assert_eq!(
         crate::asset_index_build::forgotten_textures(),
@@ -92,7 +105,8 @@ fn the_document_round_trips_both_halves() {
 /// projecto novo nasce.
 #[test]
 fn an_empty_document_is_an_empty_library() {
-    let back = apply(&LibraryDoc::default());
+    apply_forgotten(&LibraryDoc::default());
+    let back = apply_catalogs(&LibraryDoc::default());
     assert_eq!(back, CatalogTree::new());
     assert!(crate::asset_index_build::forgotten_textures().is_empty());
 }

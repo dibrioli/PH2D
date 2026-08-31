@@ -450,7 +450,10 @@ fn deleting_a_catalog_is_undone_with_its_contents() {
     );
 
     // Ctrl+Z.
-    let back = crate::project_library::apply(&before.library);
+    let back = {
+        crate::project_library::apply_forgotten(&before.library);
+        crate::project_library::apply_catalogs(&before.library)
+    };
     assert_eq!(
         back.catalogs().len(),
         2,
@@ -493,7 +496,10 @@ fn removing_an_image_from_the_library_is_undone() {
     );
 
     // Ctrl+Z.
-    let _ = crate::project_library::apply(&before.library);
+    let _ = {
+        crate::project_library::apply_forgotten(&before.library);
+        crate::project_library::apply_catalogs(&before.library)
+    };
     assert!(
         crate::asset_index_build::forgotten_textures().is_empty(),
         "a imagem não voltou — o gesto continua irreversível"
@@ -543,22 +549,36 @@ fn a_restored_tree_encodes_to_the_same_bytes() {
     let c = tree.create("A/B");
     tree.assign(AssetRef::Texture { asset: [1; 32] }, c);
     tree.rename(c, "C");
+    // ⛔⛔ **O DELETE é o que faltava a esta fixtura** (auditoria de 2026-08-30). Sem um catálogo
+    // apagado, o `next_id` derivado de `max(id) + 1` calha certo e o gate afirmava o round-trip
+    // **sem nunca o pôr à prova** — a mutação que o volta a derivar SOBREVIVIA. Com o delete, o id
+    // seguinte era RECICLADO: apagar o `Z`(3) e o próximo nascia com o `3` outra vez.
+    let doomed = tree.create("Z");
+    tree.delete(doomed);
     assert!(tree.revision() > 0, "a fixtura precisa de uma revisão > 0");
 
     let mut cache = crate::project_library::LibraryCache::default();
     let doc = cache.doc(&tree).clone();
-    let back = crate::project_library::apply(&doc);
+    let back = {
+        crate::project_library::apply_forgotten(&doc);
+        crate::project_library::apply_catalogs(&doc)
+    };
     assert_eq!(
         back.revision(),
         0,
         "a fixtura mede o caso em que elas diferem"
     );
     assert_eq!(back, tree, "a árvore restaurada não é igual à original");
+    assert_eq!(
+        back.next_id(),
+        tree.next_id(),
+        "o próximo id foi RECICLADO — um catálogo novo herdaria o id de um apagado"
+    );
 
     let mut cache2 = crate::project_library::LibraryCache::default();
     assert_eq!(
-        cache2.doc(&back).catalogs,
-        doc.catalogs,
+        cache2.doc(&back).catalog_bytes,
+        doc.catalog_bytes,
         "a árvore restaurada codifica-se noutros bytes — todo undo registaria um passo espúrio"
     );
 }

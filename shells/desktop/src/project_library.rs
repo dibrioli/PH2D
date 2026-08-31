@@ -38,11 +38,17 @@ use ph2d_asset_index::CatalogTree;
 pub(crate) struct LibraryDoc {
     /// A taxonomia, no blob versionado do [`crate::project_catalogs`].
     ///
+    /// ⚠️ **`catalog_bytes`, e não `catalogs`, de propósito** (auditoria de 2026-08-30): o campo
+    /// vizinho do `AppGfx` chama-se `catalogs` e é a **árvore viva**. Com o mesmo nome, o censo que
+    /// exige `invalidate()` em quem substitui a árvore acusava esta cache — e ensinar-lhe a
+    /// excepção seria pedir a um gate que adivinhasse a diferença. *Duas coisas diferentes com o
+    /// mesmo nome são um gate cego à espera de acontecer.*
+    ///
     /// ⚠️ **Bytes e não a árvore**: a `CatalogTree` vive numa crate-folha **sem serde**, de
     /// propósito (o `AssetRef` é tipo de runtime, e o formato do ficheiro não pode herdar o layout
     /// dele). O blob carrega a própria versão, então a taxonomia evolui sem mover o
     /// `PROJECT_SCHEMA`.
-    pub(crate) catalogs: Vec<u8>,
+    pub(crate) catalog_bytes: Vec<u8>,
     /// ⭐ As imagens que o artista mandou SAIR da biblioteca — ver
     /// [`crate::asset_index_build::forgotten_textures`].
     ///
@@ -57,6 +63,14 @@ pub(crate) struct LibraryCache {
     /// A revisão da árvore de que estes bytes saíram. ⚠️ `None` = nunca codificada.
     rev: Option<u64>,
     doc: LibraryDoc,
+    /// ⭐ Quantas vezes ela CODIFICOU — o instrumento da lei desta cache.
+    ///
+    /// ⛔⛔ Sem ele o gate do *«e só então»* não media nada (auditoria de 2026-08-30): as
+    /// asserções eram todas sobre os **bytes de saída**, e o `collect` é determinístico, logo
+    /// apagar a guarda deixava o teste **verde** com a cache a re-codificar por quadro. *A lei que
+    /// paga o desenho inteiro não tinha instrumento.*
+    #[cfg(test)]
+    encodes: u32,
 }
 
 impl LibraryCache {
@@ -67,7 +81,11 @@ impl LibraryCache {
     pub(crate) fn doc(&mut self, tree: &CatalogTree) -> &LibraryDoc {
         if self.rev != Some(tree.revision()) {
             self.rev = Some(tree.revision());
-            self.doc.catalogs = crate::project_catalogs::collect(tree);
+            self.doc.catalog_bytes = crate::project_catalogs::collect(tree);
+            #[cfg(test)]
+            {
+                self.encodes += 1;
+            }
         }
         self.doc.forgotten = crate::asset_index_build::forgotten_textures();
         &self.doc
@@ -81,15 +99,32 @@ impl LibraryCache {
     pub(crate) fn invalidate(&mut self) {
         self.rev = None;
     }
+
+    /// **Só para os gates:** quantas vezes ela codificou. Ver o campo.
+    #[cfg(test)]
+    pub(crate) fn probe_encodes(&self) -> u32 {
+        self.encodes
+    }
 }
 
-/// ⭐ **Aplica um documento restaurado** — a outra metade do undo.
+/// ⭐ **A metade GLOBAL do restauro** — as lápides, que vivem num `thread_local`.
 ///
-/// ⚠️ Ela devolve a árvore em vez de a escrever: quem a possui é o `App`, e uma função que
-/// escrevesse num campo global teria de conhecer a estrutura dele.
-pub(crate) fn apply(doc: &LibraryDoc) -> CatalogTree {
+/// ⛔⛔ **Ela é uma função à parte de propósito** (auditoria de 2026-08-30). Enquanto as duas
+/// metades vinham juntas, o valor de retorno obrigava a chamada a viver dentro do `if let
+/// Some(gfx)` dos dois chamadores — e **sem `gfx` (headless, ou a GPU ainda por subir) abrir um
+/// projecto B deixava as lápides do A vivas.** *Uma função que devolve um valor e escreve num
+/// global é governada pela guarda do valor.*
+pub(crate) fn apply_forgotten(doc: &LibraryDoc) {
     crate::asset_index_build::set_forgotten_textures(&doc.forgotten);
-    crate::project_catalogs::restore(&doc.catalogs)
+}
+
+/// ⭐ **A taxonomia restaurada** — a metade que tem dono.
+///
+/// ⚠️ Ela devolve a árvore em vez de a escrever: quem a possui é o `AppGfx`, e uma função que
+/// escrevesse no campo teria de conhecer a estrutura dele.
+#[must_use]
+pub(crate) fn apply_catalogs(doc: &LibraryDoc) -> CatalogTree {
+    crate::project_catalogs::restore(&doc.catalog_bytes)
 }
 
 #[cfg(test)]

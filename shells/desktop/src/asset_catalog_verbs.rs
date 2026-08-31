@@ -41,9 +41,13 @@ fn free_path(tree: &CatalogTree, parent: Option<CatalogId>) -> String {
 
 /// ⭐ **O dreno.** Devolve `true` quando a taxonomia mudou.
 ///
-/// ⚠️ **Ela é do PROJECTO e não do `ProjectState`**, então isto **não** produz um passo de undo —
-/// a dívida está declarada no `project_catalogs`. O que devolver `true` compra é o título a marcar
-/// o projecto como sujo, que é o que faz o Ctrl+S ter o que gravar.
+/// ⭐⭐ **E isto PRODUZ um passo de undo desde 2026-08-30** — a taxonomia mudou-se para dentro do
+/// `ProjectState` a pedido do Enio (*«deveria ter undo/redo no painel inclusive em del»*), e o
+/// passo nasce do **diff** do quadro, não deste `bool`.
+///
+/// ⚠️ **O `true` continua a servir para outra coisa**: ele marca o título como sujo, que é o que
+/// faz o Ctrl+S ter o que gravar. ⛔ *Ler este valor como «é isto que torna o gesto desfazível»
+/// seria confundir dois mecanismos* — o undo não lhe pergunta nada.
 pub(crate) fn drain(
     verb: &CatalogVerb,
     tree: &mut CatalogTree,

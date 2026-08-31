@@ -25,8 +25,9 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 use super::motion_lsystem_leaves::{
-    Job, anchors_of, say_if_a_wire_drives_an_inert_param, say_if_the_leaf_cannot_go_in_front,
-    say_if_the_letter_is_missing, say_if_the_level_hid_every_leaf,
+    Anchor, Job, anchors_of, say_if_a_wire_drives_an_inert_param,
+    say_if_the_leaf_cannot_go_in_front, say_if_the_letter_is_missing,
+    say_if_the_level_hid_every_leaf,
 };
 use super::motion_lsystem_rows::plant_and_leaves;
 use crate::motion_state::MotionState;
@@ -75,6 +76,17 @@ use crate::motion_state::MotionState;
 // então a contagem por thread é a mesma que a de processo — sem a corrida.
 thread_local! {
     static RIBBONS_BUILT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    /// ⭐⭐⭐ **Quantas vezes a planta foi DERIVADA** — a metade que o irmão acima não vê.
+    ///
+    /// O [`RIBBONS_BUILT`] mede o **segundo** passo (o varrimento booleano que faz a fita), e é
+    /// esse que o memo do `shape_store` protege. Mas antes dele corre a **derivação** — a
+    /// reescrita da gramática mais o `branches()` que a varre —, e até 2026-08-31 ela corria
+    /// **incondicionalmente, todo quadro**, com o memo a ser consultado 74 linhas depois.
+    ///
+    /// ⚠️ *Um gate que mede a segunda metade de um trabalho fica verde sobre a primeira.* O
+    /// `republishing_an_unchanged_plant_builds_no_geometry_and_survives_the_sweep` estava certo,
+    /// bem escrito, e cego a `1,244 ms` por quadro numa planta de 19 532 elementos.
+    static PLANTS_DERIVED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// Quantas fitas o processo já construiu (ver [`RIBBONS_BUILT`]).
@@ -84,6 +96,77 @@ thread_local! {
 #[cfg(test)]
 pub(crate) fn ribbons_built() -> usize {
     RIBBONS_BUILT.with(std::cell::Cell::get)
+}
+
+/// Quantas plantas o processo já derivou (ver [`PLANTS_DERIVED`]).
+#[cfg(test)]
+pub(crate) fn plants_derived() -> usize {
+    PLANTS_DERIVED.with(std::cell::Cell::get)
+}
+
+/// O que a DERIVAÇÃO produz e os passos seguintes consomem todo quadro.
+pub(crate) struct Derived {
+    /// A origem da planta — o primeiro ponto do primeiro ramo.
+    pub(crate) origin: [f32; 2],
+    /// As marcas que as letras plantaram.
+    pub(crate) anchors: Vec<Anchor>,
+}
+
+/// ⭐⭐⭐ **O MEMO DA DERIVAÇÃO** — a metade que faltava ao memo da geometria.
+///
+/// # Por que ele tem de existir
+///
+/// O `shape_store` memoiza a **fita** (o varrimento booleano). Mas a derivação produz mais duas
+/// coisas que os passos seguintes consomem **todo quadro**: a **origem** (a pose de que a
+/// geometria é local) e as **âncoras** (onde as folhas nascem). Sem elas guardadas, saltar a
+/// derivação num acerto perde-as — e era por isso que ela corria incondicionalmente.
+///
+/// ⚠️ **A aparência da folha muda sem a geometria mudar** (`Leaf Size`, os dois sorteios, o
+/// `Leaves In Front`), então as âncoras têm mesmo de estar disponíveis a cada quadro. O que não
+/// tem de acontecer a cada quadro é **recalculá-las**.
+///
+/// ⚠️⚠️ **Varrido em LOCKSTEP com o `shape_store`**, e não à parte: *um cache cuja chave pode
+/// mudar a 60 Hz não é um cache — é uma fuga com memória* (o doc do `VecPathStore`, escrito
+/// sobre um `wgpu OOM` medido no quadro 19706). Com o `Generations` animado a chave é nova todo
+/// quadro, então sem varredura esta tabela cresceria uma entrada por quadro, para sempre.
+///
+/// ⚠️ **O `handle_for` é a AUTORIDADE, nunca esta tabela.** Se o store perdeu a geometria, o que
+/// aqui está já não descreve nada — e a resposta é re-derivar, não servir uma âncora órfã.
+#[derive(Default)]
+pub(crate) struct PlantMemo {
+    by_key: std::collections::BTreeMap<String, Derived>,
+    /// As chaves PEDIDAS neste quadro — o que a [`Self::sweep`] preserva.
+    live: std::collections::BTreeSet<String>,
+}
+
+impl PlantMemo {
+    /// **Marca a chave como viva e diz se ela já cá estava** — a metade de consulta.
+    pub(crate) fn touch(&mut self, key: &str) -> bool {
+        self.live.insert(key.to_owned());
+        self.by_key.contains_key(key)
+    }
+
+    pub(crate) fn get(&self, key: &str) -> Option<&Derived> {
+        self.by_key.get(key)
+    }
+
+    pub(crate) fn put(&mut self, key: String, origin: [f32; 2], anchors: Vec<Anchor>) {
+        self.live.insert(key.clone());
+        self.by_key.insert(key, Derived { origin, anchors });
+    }
+
+    /// **Esquece o que ninguém pediu neste quadro.** Chamada ao lado da varredura do
+    /// `shape_store`, no mesmo sítio e pela mesma razão.
+    pub(crate) fn sweep(&mut self) {
+        self.by_key.retain(|k, _| self.live.contains(k));
+        self.live.clear();
+    }
+
+    /// Quantas derivações o memo guarda — a sonda de que a varredura precisa.
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.by_key.len()
+    }
 }
 
 /// Uma coluna `Vec2` do esqueleto, ou vazia.
@@ -324,19 +407,6 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         // ⚠️ A chave sai da MESMA função que o `eval` chama — dois nomes divergiriam e a planta
         // desapareceria sem erro nenhum.
         let key = ls::ribbon_key(get, &axiom, &rules);
-        let sk = ls::skeleton(&axiom, &rules, get);
-        let bs = ls::branch::branches(
-            &v2(&sk, "P"),
-            &v1(&sk, "parent"),
-            &v2(&sk, "size"),
-            &v1(&sk, "sym"),
-            // ⭐ O afinamento da ponta vem do PAINEL, e chega aqui pela mesma escada resolvida
-            // que cunha a chave — senão a fita seria construída com um valor e memoizada com
-            // outro.
-            get(ls::param::TIP_TAPER),
-        );
-        // ⭐ As ÂNCORAS que as letras plantaram, e os três nomes que dizem o quê.
-        let anchors = anchors_of(&sk);
         let names = [
             text(ls::LEAF_PARAMS[0]),
             text(ls::LEAF_PARAMS[1]),
@@ -359,8 +429,12 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         say_if_a_wire_drives_an_inert_param(&key, &driven, get(ls::param::TROPISM));
         jobs.push((
             key,
-            bs,
-            anchors,
+            axiom,
+            rules,
+            // ⚠️ **A escada resolvida viaja com o trabalho** — a derivação (se for preciso
+            // fazê-la) tem de correr com EXACTAMENTE os números que cunharam a chave, senão a
+            // fita seria construída com um valor e memoizada com outro.
+            resolved.clone(),
             names,
             get(ls::param::LEAF_FIRST_LEVEL),
             super::motion_lsystem_rows::LeafLook {
@@ -373,41 +447,34 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         ));
     }
 
-    for (key, bs, anchors, names, first_level, look_law) in jobs {
-        let used = &bs[..];
-        // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
-        // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
-        // sítios diferentes partilham UMA geometria.
-        let Some(origin) = used.first().and_then(|b| b.points.first().copied()) else {
-            motion.pump.cook.set_external(key, Stream::new(0));
-            continue;
-        };
-        // ⛔⛔ **PERGUNTAR ANTES DE CONSTRUIR — e a 1.ª redacção fazia o contrário.**
+    for (key, axiom, rules, resolved, names, first_level, look_law) in jobs {
+        let get = |name: &str| resolved.get(name).copied().unwrap_or(0.0);
+        // ⛔⛔⛔ **PERGUNTAR ANTES DE DERIVAR — e até 2026-08-31 as duas metades divergiam.**
         //
-        // Report do Enio (2026-08-30): *"ficamos com 4 fps"*. Ela chamava o construtor e só
-        // depois entregava o resultado ao `intern`, que **não** o teria chamado com a chave já
-        // internada. O memo estava lá, correcto, e **nunca era usado**: cada quadro re-corria o
-        // varrimento booleano de todos os ramos de todas as plantas (medido: **3 124 fitas por
-        // quadro** só na fixtura do gate).
+        // A 1.ª cura desta função (report *"ficamos com 4 fps"*, 30/08) moveu a pergunta para
+        // ANTES do **varrimento booleano**, e ficou certa nessa metade. Mas a **derivação** — a
+        // reescrita da gramática mais o `branches()` que a percorre — continuava a correr
+        // incondicionalmente, aqui em cima, e o `handle_for` era consultado 74 linhas depois,
+        // com a resposta já paga.
         //
-        // ⚠️ *Um `intern(chave, || construir())` só poupa se o `construir` for PREGUIÇOSO;
-        // passar-lhe um valor já construído é escrever o memo e pagar na mesma.* O
-        // `source.shape` sempre fez `intern(&key, || build_shape_path(&p))` — a diferença está
-        // inteira no `||`.
+        // ⚠️ **Medido (doc 96 §2.1, load `0,26`, mediana, mesmo processo):** uma planta PARADA
+        // de 19 532 elementos deitava fora **`1,244 ms` por quadro** — e cresce linearmente com
+        // a planta, para sempre. O modo `Segments` é plano em `0,001 ms` em qualquer tamanho,
+        // porque ali quem memoiza é o cook, e o nó é `Effect::Pure` **exactamente para isso**.
         //
-        // ⚠️ O `handle_for` é a metade de CONSULTA e **marca a chave como viva** (o doc dele diz
-        // porquê): sem isso a varredura do fim do quadro apagaria exactamente as geometrias que
-        // estão a ser desenhadas, e a reconstrução voltava por outra porta.
-        let handle = match motion.shape_store.handle_for(&key) {
+        // ⚠️ **O `handle_for` é a AUTORIDADE das duas tabelas** (e marca a chave viva, o que
+        // impede a varredura do fim do quadro de apagar o que está a ser desenhado). Se o store
+        // perdeu a geometria, o que o [`PlantMemo`] guarda já não descreve nada ⇒ re-derivar,
+        // nunca servir uma âncora órfã.
+        let cached = motion.lsystem_memo.touch(&key);
+        let handle = match motion.shape_store.handle_for(&key).filter(|_| cached) {
             Some(h) => Some(h),
-            None => {
-                plant_geometry(used, origin).map(|path| motion.shape_store.intern(&key, || path))
-            }
+            None => derive_and_intern(motion, &key, &axiom, &rules, &get),
         };
-        let stream = match handle {
-            Some(h) => {
-                say_if_the_letter_is_missing(&key, &names, &anchors);
-                say_if_the_level_hid_every_leaf(&key, &names, &anchors, first_level);
+        let stream = match (handle, motion.lsystem_memo.get(&key)) {
+            (Some(h), Some(d)) => {
+                say_if_the_letter_is_missing(&key, &names, &d.anchors);
+                say_if_the_level_hid_every_leaf(&key, &names, &d.anchors, first_level);
                 say_if_the_leaf_cannot_go_in_front(
                     &key,
                     &names,
@@ -416,12 +483,50 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
                     }),
                     look_law.front,
                 );
-                plant_and_leaves(origin, h, &anchors, &names, &motion.pump.cook, look_law)
+                plant_and_leaves(d.origin, h, &d.anchors, &names, &motion.pump.cook, look_law)
             }
-            None => Stream::new(0),
+            _ => Stream::new(0),
         };
         motion.pump.cook.set_external(key, stream);
     }
+}
+
+/// **A DERIVAÇÃO, uma vez** — o caminho caro, chamado só quando o memo não responde.
+///
+/// Devolve o handle da geometria e deixa no [`PlantMemo`] o que os passos seguintes consomem
+/// todo quadro (a origem e as âncoras).
+///
+/// ⚠️ **A origem é o primeiro ponto do primeiro ramo**, e a geometria inteira é local a ela: a
+/// pose viaja na instância, como em toda a casa, e duas plantas iguais em sítios diferentes
+/// partilham UMA geometria.
+///
+/// ⚠️ *Um `intern(chave, || construir())` só poupa se o `construir` for PREGUIÇOSO* — passar-lhe
+/// um valor já construído é escrever o memo e pagar na mesma. A diferença está inteira no `||`.
+fn derive_and_intern(
+    motion: &mut MotionState,
+    key: &str,
+    axiom: &str,
+    rules: &str,
+    get: &impl Fn(&str) -> f32,
+) -> Option<u32> {
+    PLANTS_DERIVED.with(|c| c.set(c.get() + 1));
+    let sk = ls::skeleton(axiom, rules, get);
+    let bs = ls::branch::branches(
+        &v2(&sk, "P"),
+        &v1(&sk, "parent"),
+        &v2(&sk, "size"),
+        &v1(&sk, "sym"),
+        // ⭐ O afinamento da ponta vem do PAINEL, e chega aqui pela mesma escada resolvida que
+        // cunha a chave — senão a fita seria construída com um valor e memoizada com outro.
+        get(ls::param::TIP_TAPER),
+    );
+    let origin = bs.first().and_then(|b| b.points.first().copied())?;
+    let path = plant_geometry(&bs, origin)?;
+    let h = motion.shape_store.intern(key, || path);
+    motion
+        .lsystem_memo
+        .put(key.to_owned(), origin, anchors_of(&sk));
+    Some(h)
 }
 
 #[cfg(test)]

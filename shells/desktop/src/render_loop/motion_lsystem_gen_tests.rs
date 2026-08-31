@@ -283,3 +283,151 @@ fn no_wedge_is_left_uncovered_where_a_branch_meets_its_parent() {
         joints.len() * 16
     );
 }
+
+/// ⛔⛔⛔ **UMA PLANTA PARADA DERIVA UMA VEZ, E NO QUADRO SEGUINTE NÃO DERIVA NADA** — o achado
+/// nº 1 da auditoria de seis lentes (2026-08-31, [doc 96](../../../../docs/Motion%20Nodes/96_auditoria_do_lsystem_2026-08-31.md) §2.1).
+///
+/// # O que o irmão acima não podia ver
+///
+/// `republishing_an_unchanged_plant_builds_no_geometry_and_survives_the_sweep` mede
+/// [`super::ribbons_built`] — o **varrimento booleano** que faz a fita, que é o segundo passo e
+/// o único que o memo do `shape_store` protegia. Antes dele corre a **derivação**: a reescrita
+/// da gramática (`ls::skeleton`) mais o `ls::branch::branches` que a percorre.
+///
+/// ⚠️⚠️ **Essa metade corria incondicionalmente, todo quadro**, e o memo só era consultado 74
+/// linhas depois. Medido com a máquina calma (load `0,26`, mediana, mesmo processo), na
+/// gramática do Bush:
+///
+/// | gerações | elementos | `skeleton` | `branches` | **por quadro, deitado fora** |
+/// |---|---|---|---|---|
+/// | 4 | 782 | 0,024 | 0,028 | 0,052 ms |
+/// | 5 | 3 907 | 0,148 | 0,162 | 0,310 ms |
+/// | 6 | 19 532 | 0,594 | 0,650 | **1,244 ms** |
+///
+/// ⭐ O modo `Segments` é **plano em ~0,001 ms em qualquer tamanho** — é o memo do cook a
+/// acertar, e o nó é `Effect::Pure` **exactamente para isso**. *A razão não tem tecto: ela é o
+/// tamanho da planta.*
+///
+/// ⚠️ **A régua é uma CONTAGEM, pela mesma razão que a do irmão:** um gate de relógio entra na
+/// família de flakes de recurso sob fan-out (`CLAUDE.md` §5.0). *Se nada mudou, nada se derivou.*
+#[test]
+fn a_static_plant_derives_once_and_the_next_frame_derives_nothing() {
+    let (mut state, _n) = plant(ls::GEOMETRY_BRANCHES);
+
+    let before = super::plants_derived();
+    publish(&mut state, 0.0);
+    let first = super::plants_derived() - before;
+    assert!(
+        first > 0,
+        "a 1.ª publicação tem de DERIVAR a planta — senão este gate não mede nada"
+    );
+    let _ = state.shape_store.sweep();
+
+    let before_second = super::plants_derived();
+    publish(&mut state, 0.0);
+    let second = super::plants_derived() - before_second;
+    assert_eq!(
+        second, 0,
+        "a 2.ª publicação da MESMA planta DERIVOU-A outra vez ({second} contra {first} na 1.ª) \
+         — o trabalho é feito e o memo só é consultado depois, com a resposta já lá"
+    );
+}
+
+/// ⛔⛔ **O MEMO DA DERIVAÇÃO NÃO CRESCE COM O RELÓGIO** — a segunda metade do achado nº 1.
+///
+/// A cura do irmão acima acrescentou uma **segunda tabela** endereçada pela mesma chave de
+/// conteúdo. E a chave inclui o `Generations` **pelos bits**, então com o slider a ser arrastado
+/// ela é nova todo quadro.
+///
+/// ⚠️⚠️ *Um cache cuja chave pode mudar a 60 Hz não é um cache — é uma fuga com memória.* A
+/// frase é do doc do `VecPathStore`, e foi escrita sobre um `wgpu OOM` medido no **quadro
+/// 19706** da cena `=76`. Uma tabela nova sob a mesma chave herda o mesmo risco no mesmo dia em
+/// que nasce — e a única defesa é a varredura correr sobre as DUAS.
+///
+/// ⚠️ **A régua é o TAMANHO da tabela depois de N quadros**, não o tempo: determinística, e diz
+/// exactamente o que se quer saber.
+#[test]
+fn the_derivation_memo_is_swept_and_does_not_grow_with_the_clock() {
+    let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+
+    // Vinte quadros, cada um com um `Generations` DIFERENTE — o que um arrasto faz.
+    //
+    // ⚠️⚠️ **Pela porta do PRODUTO (`publish_all`), e não chamando `sweep()` aqui.** A 1.ª
+    // redacção deste gate corria `publish` e depois varria à mão as duas tabelas — e a mutação
+    // que APAGA a varredura do produto **sobreviveu**, porque o teste fazia o trabalho que
+    // devia estar a auditar. *A lei tinha gate; a ENTREGA não* — que é exactamente o defeito
+    // que a auditoria de hoje achou no `tip_taper` (doc 96 §4.3), repetido por mim no mesmo dia.
+    for k in 0..20 {
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::GENERATIONS, 3.0 + k as f32 * 0.05);
+        crate::render_loop::motion_externals::publish_all(&mut state, 0.0);
+        assert!(
+            state.lsystem_memo.len() <= 1,
+            "depois de {} quadro(s) com chaves diferentes o memo guarda {} derivações — a \
+             varredura não o alcança, e ele cresce uma entrada por quadro para sempre",
+            k + 1,
+            state.lsystem_memo.len()
+        );
+    }
+    // ⚠️ O controlo do próprio gate: uma tabela que nunca guardasse nada também passaria o
+    // `<= 1` acima, e não estaria a memoizar coisa nenhuma.
+    assert_eq!(
+        state.lsystem_memo.len(),
+        1,
+        "e a derivação do último quadro TEM de estar lá — senão o memo não memoiza nada"
+    );
+}
+
+/// ⛔⛔ **O `handle_for` É A AUTORIDADE — uma âncora órfã nunca é servida.**
+///
+/// A cura do achado nº 1 pôs DUAS tabelas sob a mesma chave de conteúdo: a geometria (no
+/// `shape_store`) e a derivação (no `PlantMemo`). Elas nascem e são varridas juntas — mas *"são
+/// varridas juntas"* é uma afirmação sobre código, e este gate é o que a torna falsificável.
+///
+/// # O caso que ele encena
+///
+/// O memo perde a entrada e o store fica com a geometria. Se a membrana acreditasse no memo, ela
+/// saltava a derivação (o store TEM o handle), ia buscar a origem e as âncoras a uma tabela
+/// vazia, e **publicava uma corrente vazia** — a planta desaparecia, com a geometria intacta a
+/// dois passos de distância.
+///
+/// ⚠️ **A guarda certa é a mais barata**: perguntar às duas e re-derivar se discordarem. Sem
+/// este gate ela é código defensivo que nenhuma mutação mata — *e código defensivo que ninguém
+/// pode falsificar é indistinguível de código morto.*
+#[test]
+fn a_memo_that_lost_its_derivation_is_re_derived_and_not_served_empty() {
+    let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+    publish(&mut state, 0.0);
+    let key = key_of(&mut state, n);
+    let cheia = published(&state, &key).unwrap_or(0);
+    assert!(cheia > 0, "a 1.ª publicação tem de dar uma planta");
+    let geometrias = state.shape_store.len();
+
+    // A dessincronia: o memo esquece, o store lembra. (Duas varreduras sem ninguém pedir a
+    // chave esvaziam o memo; o store não é varrido.)
+    // ⚠️ DUAS: a primeira PRESERVA (o `publish` marcou a chave viva) e limpa a lista de vivos;
+    // a segunda é que a deita fora. É a mesma escada do `VecPathStore`.
+    state.lsystem_memo.sweep();
+    state.lsystem_memo.sweep();
+    assert_eq!(state.lsystem_memo.len(), 0, "o memo tem de ficar vazio");
+    assert_eq!(
+        state.shape_store.len(),
+        geometrias,
+        "e o store tem de MANTER a geometria — senão não há dessincronia para medir"
+    );
+
+    publish(&mut state, 0.0);
+    assert_eq!(
+        published(&state, &key).unwrap_or(0),
+        cheia,
+        "a planta saiu VAZIA (ou diferente) depois de o memo perder a derivação — a membrana \
+         acreditou numa tabela que o `handle_for` já não confirma"
+    );
+    assert_eq!(
+        state.lsystem_memo.len(),
+        1,
+        "e a derivação tem de estar de volta"
+    );
+}

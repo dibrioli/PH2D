@@ -52,6 +52,10 @@ pub(crate) fn publish_all(motion: &mut MotionState, seconds: f64) {
     // relógio muda a chave de conteúdo a 60 Hz, e sem esta linha o store cresce uma
     // entrada por quadro (ver `VecPathStore::sweep`, e o OOM que a escreveu).
     let _dropped = motion.shape_store.sweep();
+    // ⚠️ **E o memo da DERIVAÇÃO do L-System, no MESMO sítio** — ele guarda a origem e as
+    // âncoras sob a mesma chave de conteúdo, então tem de viver e morrer com a geometria.
+    // Varrê-lo noutro ponto do quadro deixaria uma das duas tabelas a descrever a outra.
+    motion.lsystem_memo.sweep();
 }
 
 /// **Os params de `node` que um FIO conduz, já resolvidos** (doc 58) — vazio no caso comum.

@@ -302,6 +302,9 @@ pub(crate) struct MotionState {
     /// looks it up to draw the shape live. Kept across frames — a static shape
     /// builds once.
     pub(crate) shape_store: crate::render_loop::motion_shape_gen::VecPathStore,
+    /// ⭐ O memo da DERIVAÇÃO do L-System — irmão do `shape_store`, varrido no mesmo sítio.
+    /// Ver `motion_lsystem_gen::PlantMemo` para porque ele é uma tabela à parte.
+    pub(crate) lsystem_memo: crate::render_loop::motion_lsystem_gen::PlantMemo,
     /// As analises de audio vivas (`audio.bands`) — a FFT roda AQUI, uma vez por
     /// `(arquivo, analise)`, e nunca dentro do cook (doc 63 §6).
     pub(crate) band_cache: crate::render_loop::motion_audio_gen::BandCache,
@@ -420,6 +423,7 @@ impl MotionState {
             flip_object_bake: crate::motion_flip_bake::FlipObjectBake::default(),
             // ADR-0154: empty until the publish pass interns a `source.shape`.
             shape_store: crate::render_loop::motion_shape_gen::VecPathStore::default(),
+            lsystem_memo: crate::render_loop::motion_lsystem_gen::PlantMemo::default(),
             band_cache: crate::render_loop::motion_audio_gen::BandCache::default(),
             table_cache: crate::render_loop::motion_table_gen::TableCache::default(),
             // ADR-0155: the node-help system is ON by default; the toolbar chip toggles it.

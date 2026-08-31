@@ -94,10 +94,16 @@ pub(crate) fn anchors_of(sk: &Stream) -> Vec<Anchor> {
 pub(crate) type Look = ([f32; 2], [f32; 4], [f32; 4], f32, f32, f32);
 
 /// **O trabalho de uma planta**, já resolvido: `(chave, ramos, âncoras, os três nomes)`.
+/// ⚠️ **Ele carrega o que é BARATO, e o meio de fazer o caro se for preciso** — a chave, a
+/// gramática e a escada resolvida. Até 2026-08-31 carregava os ramos e as âncoras **já
+/// derivados**, o que obrigava a derivação a correr antes de alguém perguntar ao memo se ela
+/// era precisa (doc 96 §2.1).
 pub(crate) type Job = (
     String,
-    Vec<ls::branch::Branch>,
-    Vec<Anchor>,
+    // O axioma e as regras, e os params já resolvidos com que a chave foi cunhada.
+    String,
+    String,
+    std::collections::BTreeMap<&'static str, f32>,
     [String; 3],
     // O 1.º nível com folha, e o resto do aspecto delas.
     f32,

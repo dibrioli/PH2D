@@ -431,3 +431,70 @@ fn a_memo_that_lost_its_derivation_is_re_derived_and_not_served_empty() {
         "e a derivação tem de estar de volta"
     );
 }
+
+/// ⛔⛔⛔ **O AFINAMENTO QUE O PAINEL ESCREVE É O QUE A FITA RECEBE** — a ENTREGA, não a lei.
+///
+/// # O buraco que este gate fecha
+///
+/// Auditoria de seis lentes, doc 96 §4.3. A **lei** do afinamento tinha gate desde que nasceu
+/// (`branch_tests::the_tip_tapers_by_exactly_what_was_asked_and_zero_changes_nothing`, que chama
+/// `branches(..., taper)` **directamente**). A **entrega** não tinha nenhum: substituir
+/// `get(ls::param::TIP_TAPER)` por `0.0` no sítio onde a membrana constrói a fita e **os 57
+/// testes de `lsystem` nos bins passavam**.
+///
+/// ⚠️⚠️ *Nenhum instrumento deste repo pergunta se o VALOR chega ao consumidor* (`CLAUDE.md`
+/// §5.0) — e este param escapava por duas portas ao mesmo tempo: o censo do nó isenta-o por nome
+/// (`SHELL_SIDE`, porque o `build` de facto não o lê) e a shell não o nomeava em teste nenhum.
+/// *A lei tinha gate; a entrega não.*
+///
+/// # A régua: MONÓTONA, e não «diferente»
+///
+/// Três publicações pela porta do produto (`0` · `0,5` · `1`), e a **área** do contorno tem de
+/// **encolher** — afinar a ponta tira material, e é isso que o artista vê.
+///
+/// ⚠️⚠️ **A 1.ª redacção afirmava só que as duas pontas da faixa dão geometrias DIFERENTES, e a
+/// mutação que entrega o valor INVERTIDO sobreviveu**: *uma desigualdade aceita um intervalo
+/// inteiro; só um oráculo aceita uma resposta*. A direcção é o que separa «o valor chega» de «o
+/// valor chega certo».
+///
+/// ⚠️ Comparar as CHAVES não serviria em nenhuma das versões: elas diferem sempre (o
+/// `ribbon_key` mistura todos os params), inclusive quando o valor é deitado fora a caminho.
+#[test]
+fn the_taper_the_panel_writes_is_the_taper_the_ribbon_gets() {
+    /// A área do contorno pelo laço da lançadeira — o sinal não importa, o tamanho sim.
+    fn area(path: &ph2d_vec_scene::VecPath) -> f64 {
+        let v = &path.verts;
+        let mut a = 0.0;
+        for i in 0..v.len() {
+            let (p, q) = (v[i].anchor, v[(i + 1) % v.len()].anchor);
+            a += p[0] * q[1] - q[0] * p[1];
+        }
+        a.abs() * 0.5
+    }
+
+    let mut areas = Vec::new();
+    for taper in [0.0f32, 0.5, 1.0] {
+        let (mut state, n) = plant(ls::GEOMETRY_BRANCHES);
+        state.doc.graph.set_param(n, ls::param::TIP_TAPER, taper);
+        publish(&mut state, 0.0);
+        let key = key_of(&mut state, n);
+        let h = state
+            .shape_store
+            .handle_for(&key)
+            .expect("a planta tem de ter geometria internada");
+        let path = state.shape_store.get(h).expect("o handle resolve");
+        assert!(
+            path.verts.len() > 3,
+            "taper {taper}: a planta tem de ter geometria de verdade"
+        );
+        areas.push((taper, area(path)));
+    }
+    for w in areas.windows(2) {
+        let ((t0, a0), (t1, a1)) = (w[0], w[1]);
+        assert!(
+            a1 < a0,
+            "`Tip Taper` de {t0} para {t1} não ENCOLHEU o contorno ({a0:.5} → {a1:.5}) — ou o \
+             valor do painel não chega à fita, ou chega ao contrário. Todas: {areas:?}"
+        );
+    }
+}

@@ -90,27 +90,98 @@ fn only_the_lsystem_rules_box_can_carry_a_complaint() {
     // acusação — ela não é uma gramática, e o parser dela é outro.
     let mut motion = MotionState::new();
     let e = motion.doc.graph.add_node("motion.expression");
-    ph2d_panel_motion_graph::set_graph_selection(vec![e.0]);
-    let Some(snap) = build_params_snapshot(&motion, ProjectSettings::default()) else {
-        panic!("o motion.expression tem snapshot");
-    };
-    let textos: Vec<_> = snap
-        .rows
-        .iter()
-        .filter_map(|r| match r {
-            ParamRow::Text(t) => Some(t),
-            _ => None,
-        })
-        .collect();
-    assert!(
-        !textos.is_empty(),
-        "o motion.expression tem de ter uma row de texto — senão este gate não mede nada"
-    );
-    for t in textos {
+    // ⛔⛔ **A CAIXA TEM DE TER TEXTO, e a 1.ª redacção deixava-a VAZIA** (doc 96 §4.1). Com
+    // texto vazio a porta sai em `queixas.first()?` → `None` **independentemente das guardas**,
+    // e as três remoções (só o tipo · só o param · ambas) ficavam **verdes**. *Um controlo de
+    // filtro sobre a população certa não garante que a população carregue o fenómeno.*
+    //
+    // ⚠️ O fenómeno é real e medido: `grammar_complaints("sin(t)*2")` devolve **1** queixa
+    // (`NoArrow`) — uma fórmula qualquer lê-se como uma gramática partida. E os **axiomas dos
+    // oito moldes** são acusados 8/8, o que torna a metade `param != RULES_PARAM` load-bearing:
+    // sem ela, uma linha vermelha FALSA aparece debaixo da caixa *Axiom* em todo estado normal.
+    for t in ["sin(t)*2", "A(step)", "x", "0"] {
+        motion.doc.graph.set_text_param(e, "expr", t);
         assert_eq!(
-            t.problem, None,
-            "`{}` de outro nó não pode herdar a queixa do L-System",
-            t.name
+            ph2d_node_source_lsystem::grammar_complaints(t).len(),
+            1,
+            "a fixtura tem de conter o FENÓMENO: `{t}` tem de ser acusado por quem lê gramáticas"
         );
+        ph2d_panel_motion_graph::set_graph_selection(vec![e.0]);
+        let snap = build_params_snapshot(&motion, ProjectSettings::default())
+            .expect("o motion.expression tem snapshot");
+        for row in &snap.rows {
+            if let ParamRow::Text(tr) = row {
+                assert_eq!(
+                    tr.problem, None,
+                    "`{}` de outro nó herdou a queixa do L-System com o texto `{t}`",
+                    tr.name
+                );
+            }
+        }
     }
+    // ⭐⭐ **A CAIXA `axiom` DO PRÓPRIO L-SYSTEM** — a metade que faltava, e a que mata a
+    // mutação do NOME DO PARAM. Os axiomas dos oito moldes lêem-se como gramáticas partidas
+    // (`8/8` acusados por `grammar_complaints`), então sem a guarda `param != RULES_PARAM` uma
+    // linha vermelha **FALSA** aparecia debaixo do *Axiom* em todo estado normal — e o
+    // `apply_lsystem_preset` e o `bake_lsystem_grammar` escrevem sempre um axioma.
+    let n = lsystem_with(&mut motion, ls::PRESETS[0].rules);
+    motion
+        .doc
+        .graph
+        .set_text_param(n, ls::AXIOM_PARAM, ls::PRESETS[0].axiom);
+    assert_eq!(
+        ph2d_node_source_lsystem::grammar_complaints(ls::PRESETS[0].axiom).len(),
+        1,
+        "a fixtura tem de conter o fenómeno: um AXIOMA lê-se como gramática partida"
+    );
+    ph2d_panel_motion_graph::set_graph_selection(vec![n.0]);
+    let snap = build_params_snapshot(&motion, ProjectSettings::default()).expect("snapshot");
+    for row in &snap.rows {
+        if let ParamRow::Text(t) = row
+            && t.name == ls::AXIOM_PARAM
+        {
+            assert_eq!(
+                t.problem, None,
+                "a caixa `Axiom` do L-System ganhou uma queixa — ela não é uma lista de regras"
+            );
+        }
+    }
+
+    // ⚠️ **E a guarda do TIPO DE NÓ é DEFENSIVA, não falsificável hoje** — e isso diz-se em vez
+    // de se fingir: **nenhum outro nó da casa tem um param chamado `rules`** (conferido por
+    // varredura), então removê-la não muda nada enquanto isso for verdade. O que este laço faz é
+    // tornar a afirmação tão forte quanto a população permite — e não-vazia no dia em que outro
+    // nó ganhar aquele nome.
+    let tipos: Vec<&'static str> = motion
+        .registry
+        .manifests()
+        .map(|m| m.name)
+        .filter(|n| *n != ls::MANIFEST.name)
+        .collect();
+    let mut com_texto = 0usize;
+    for ty in tipos {
+        let id = motion.doc.graph.add_node(ty);
+        motion
+            .doc
+            .graph
+            .set_text_param(id, ls::RULES_PARAM, "A(s) -> (40%) F(s)");
+        ph2d_panel_motion_graph::set_graph_selection(vec![id.0]);
+        let Some(snap) = build_params_snapshot(&motion, ProjectSettings::default()) else {
+            continue;
+        };
+        for row in &snap.rows {
+            if let ParamRow::Text(t) = row {
+                com_texto += 1;
+                assert_eq!(
+                    t.problem, None,
+                    "`{ty}::{}` herdou a queixa do L-System",
+                    t.name
+                );
+            }
+        }
+    }
+    assert!(
+        com_texto > 0,
+        "nenhum outro nó da casa tem row de texto — o laço acima não mediu nada"
+    );
 }

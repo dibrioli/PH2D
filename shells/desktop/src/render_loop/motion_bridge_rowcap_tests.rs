@@ -29,6 +29,31 @@ fn row_census() -> Vec<(&'static str, usize)> {
         .into_iter()
         .map(|ty| {
             let node = motion.doc.graph.add_node(ty);
+            // ⛔⛔ **ACORDA OS GATES DE LIMIAR ANTES DE CONTAR** (doc 96 §4.5).
+            //
+            // Um `ParamGateAbove` esconde enquanto a grandeza que o decide está em zero — e um
+            // nó recém-criado tem TODOS os params no default. O censo media logo a seguir ao
+            // `add_node` e por isso contava o `source.lsystem` em **32** linhas; **um gesto de
+            // slider** (`Tropism` fora do zero) revela a 33.ª, que é o `MAX_PARAM_ROWS`
+            // **exacto**. ⇒ a folga real era **ZERO** e o censo reportava `1`.
+            //
+            // ⚠️ *Um censo que mede o estado de fábrica mede o painel mais MAGRO que aquele nó
+            // consegue ter* — e o teto existe para o mais GORDO. Empurrar cada `when` de limiar
+            // um passo acima do limiar é o que torna a contagem a do pior caso alcançável.
+            for g in motion
+                .registry
+                .param_gates_above(
+                    motion
+                        .doc
+                        .graph
+                        .node(node)
+                        .map_or_else(|| unreachable!("acabou de ser criado"), |i| i.type_id()),
+                )
+                .into_iter()
+                .flatten()
+            {
+                motion.doc.graph.set_param(node, g.when, g.above + 1.0);
+            }
             ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
             let n = build_params_snapshot(&motion, ProjectSettings::default())
                 .map_or(0, |s| s.rows.len());
@@ -312,4 +337,72 @@ fn the_oscillator_offers_only_the_time_ruler_it_uses() {
         "o seletor sumiu em BPM"
     );
     ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+}
+
+/// ⛔⛔ **O CENSO MEDE O PAINEL MAIS GORDO QUE UM GESTO ALCANÇA, e não o de fábrica.**
+///
+/// Auditoria de seis lentes, doc 96 §4.5. O [`row_census`] media logo a seguir ao `add_node`, e
+/// ali **todos** os params estão no default — logo todo `ParamGateAbove` está a esconder. O
+/// `source.lsystem` contava **32** linhas; **um gesto de slider** (`Tropism` fora do zero)
+/// revelava a 33.ª, que era o `MAX_PARAM_ROWS` **exacto**: a folga real era **zero** e o censo
+/// reportava `1`.
+///
+/// ⚠️⚠️ **E o defeito seguinte seria SILENCIOSO:** o `.take(MAX_PARAM_ROWS)` do pintor descarta
+/// a linha excedente sem dizer nada, e o gate que devia acusar mede o estado de fábrica — onde
+/// ela ainda cabe.
+///
+/// ⚠️ **Sem este gate, a cura do censo é infalsificável:** acordar os limiares mudou o número
+/// (`30 → 31`) e nenhuma asserção dependia dele. *Uma correcção que nenhum gate lê é uma
+/// declaração com um número mais bonito.*
+#[test]
+fn the_census_measures_the_fattest_panel_a_gesture_can_reach() {
+    let mut motion = MotionState::new();
+    let ty = ph2d_node_source_lsystem::MANIFEST.name;
+    let id = ph2d_node_source_lsystem::MANIFEST.id;
+    let acima = motion
+        .registry
+        .param_gates_above(id)
+        .into_iter()
+        .flatten()
+        .count();
+    // ⚠️ O controlo do próprio gate: sem um gate de limiar não há nada para acordar, e ele
+    // passaria a medir duas vezes a mesma coisa.
+    assert!(
+        acima > 0,
+        "`{ty}` deixou de ter gates de limiar — este gate perdeu o sujeito, escolha outro nó"
+    );
+
+    let contar = |motion: &mut MotionState, acordar: bool| {
+        let node = motion.doc.graph.add_node(ty);
+        if acordar {
+            for g in motion
+                .registry
+                .param_gates_above(id)
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+            {
+                motion.doc.graph.set_param(node, g.when, g.above + 1.0);
+            }
+        }
+        ph2d_panel_motion_graph::set_graph_selection(vec![node.0]);
+        build_params_snapshot(motion, ProjectSettings::default()).map_or(0, |s| s.rows.len())
+    };
+    let fabrica = contar(&mut motion, false);
+    let gesto = contar(&mut motion, true);
+    ph2d_panel_motion_graph::set_graph_selection(Vec::new());
+    assert!(
+        gesto > fabrica,
+        "acordar os {acima} limiar(es) de `{ty}` não revelou linha nenhuma ({fabrica} contra \
+         {gesto}) — o censo está a medir o painel de fábrica, que é o mais MAGRO"
+    );
+    // E o censo do produto tem de reportar o número GORDO, não o magro.
+    let do_censo = row_census()
+        .into_iter()
+        .find(|(n, _)| *n == ty)
+        .map_or(0, |(_, n)| n);
+    assert_eq!(
+        do_censo, gesto,
+        "o censo reporta {do_censo} e o pior caso alcançável é {gesto}"
+    );
 }

@@ -21,6 +21,12 @@ mod measure;
 #[path = "sculpt3d_photo_rulers.rs"]
 mod rulers;
 
+/// **A ASSINATURA DA PEÇA** — irmã pelo teto de LOC da shell (HR-18, 600), cortada por
+/// RESPONSABILIDADE: as [`rulers`] perguntam *«esta malha é boa?»*, o [`piece`] responde à
+/// pergunta anterior — *«estas duas malhas são a mesma peça?»*.
+#[path = "sculpt3d_photo_piece.rs"]
+mod piece;
+
 /// **AS SONDAS DA PORTA DO PRODUTO** — irmã pela mesma razão: ver [`button`].
 #[path = "sculpt3d_photo_button.rs"]
 mod button;
@@ -29,6 +35,7 @@ mod button;
 #[path = "sculpt3d_photo_field_wakes.rs"]
 mod field_wakes;
 
+use piece::piece_signature;
 use rulers::{
     census, holes, islands, local, orientation_and_density, relief_density, spiked_ball, tips,
 };

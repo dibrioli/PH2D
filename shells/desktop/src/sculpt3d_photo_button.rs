@@ -74,7 +74,13 @@ fn the_artists_piece_through_the_button() {
     // ⭐⭐ **O CONTROLO vem ANTES de acusar a cadeia** — se a entrada já é aberta ou
     // não-manifold, o que sai dela não foi a cadeia que abriu.
     census("ENTRADA", &piece);
+    super::piece_signature("ENTRADA", &piece);
     islands("ENTRADA", &piece);
+    // ⭐⭐⭐ **A `ENTREGA` NOS TRÊS PONTOS DA CADEIA** — o corte que o §8-octodecies pediu.
+    // A coluna já existia e só era impressa na **saída**, então ela dizia *que* a graduação
+    // da ponta se perde e nunca *onde*. ⛔ Com um número só, «a fase zero é a culpada» é um
+    // palpite com endereço; com os três (`ENTRADA` → `F1` → `SAIDA`) é uma medição.
+    super::orientation_and_density("ENTRADA", &piece);
 
     let mut scene = crate::sculpt3d::Sculpt3dScene::new(&gpu.device, piece.clone(), 1.0);
     scene.viewport = (900, 700);
@@ -112,6 +118,11 @@ fn the_artists_piece_through_the_button() {
         // acusação sem endereço.*
         super::tips("F1", &piece, &work);
         islands("F1", &work);
+        // ⭐⭐⭐ **O SEGUNDO dos três pontos.** ⚠️ A `ENTREGA` é uma razão entre medianas de
+        // aresta-equivalente, logo ela é **adimensional** e comparável entre malhas de
+        // densidades diferentes — é por isso que ela pode ser lida antes e depois de um
+        // remalhador que muda a contagem de faces em ordens de grandeza.
+        super::orientation_and_density("F1", &work);
     }
     // ⭐⭐⭐ **QUAL das duas portas** — o painel tem um dropdown, e o `Global` é o de
     // omissão ([`ph2d_panel_sculpt3d::state::RetopoMode`]). ⛔ `PH2D_PROBE_LOCAL=1` corre a
@@ -346,6 +357,10 @@ fn the_local_ruler_across_files() {
         // quads menores, e um quad menor cobre menos curvatura — comparar a torção
         // de duas densidades diferentes sem a dizer é a armadilha de 28/08.
         eprintln!("   {} verts {} faces", mesh.vert_count(), mesh.face_count());
+        // ⭐⭐⭐ **QUE PEÇA É ESTA** — ver [`super::piece_signature`]. ⛔ Sem esta linha a
+        // tabela do §8-octodecies pôs quatro malhas numa coluna só e **três eram peças
+        // diferentes**. *Uma régua que compara ficheiros deve dizer se eles são comparáveis.*
+        super::piece_signature("  ", &mesh);
         super::census("   ", &mesh);
         super::local("  ", &mesh);
         super::orientation_and_density("  ", &mesh);

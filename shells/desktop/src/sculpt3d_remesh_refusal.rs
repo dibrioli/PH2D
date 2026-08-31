@@ -90,6 +90,18 @@ pub(in crate::sculpt3d) enum RemeshRefusal {
         /// Quantos a escultura tinha.
         was: usize,
     },
+    /// ⛔⛔⛔ **A TENTATIVA ESTOUROU** — um `panic` apanhado pela rede do botão.
+    ///
+    /// ⛔ **Até 2026-08-30 este caso era devolvido como [`Self::TooCoarseToResolve`]**, e o
+    /// artista lia *«a malha é grossa demais para uma grade de quads: subdivida antes»* —
+    /// **uma frase sobre a peça dele para um defeito nosso**, que o manda fazer exactamente
+    /// a coisa que não ajuda. *Reproduzido com `PH2D_ISO_ADAPT=1` na peça dele: um estouro
+    /// em `ph2d-gridmap`.*
+    ///
+    /// ⚠️ **Caso próprio pela mesma lei que partiu o `Option` original em casos nomeados:**
+    /// a `ph2d-quadchain` já distinguia (`Verdict::Panicked`) e **esta porta não** — *duas
+    /// portas para o mesmo botão, e só uma sabia dizer o que tinha acontecido.*
+    Panicked,
 }
 
 impl RemeshRefusal {
@@ -107,6 +119,13 @@ impl RemeshRefusal {
                  acima e' subdivisao dela -- ACHATE a pilha antes",
             ),
             Self::EmptyScene => String::from("nao' reconstroi: nao ha' peca na cena"),
+            // ⚠️ **A mensagem NÃO manda o artista mexer na peça** — ver [`Self::Panicked`].
+            // *Um defeito nosso não se conserta subdividindo a escultura dele*, e a frase
+            // anterior (a do `TooCoarseToResolve`) dizia exactamente isso.
+            Self::Panicked => String::from(
+                "a retopologia falhou por um defeito NOSSO e a escultura fica como esta': \
+                 tente outro Detail -- e se puder, guarde a peca e avise",
+            ),
             Self::Engine(e) => format!(
                 "nao' reconstroi, e a escultura fica como esta': {e} -- tente outra resolucao"
             ),
@@ -181,7 +200,13 @@ impl RemeshRefusal {
             | Self::Quantize(_)
             | Self::Fill(_)
             | Self::Extract(_)
-            | Self::Shattered { .. } => false,
+            | Self::Shattered { .. }
+            // ⚠️ **`false`, e a razão é o SÍTIO da rede:** o `catch_unwind` que produz esta
+            // variante vive na cadeia de extracção
+            // ([`crate::sculpt3d::history::retopo_extract`]); o remesh por voxels não tem
+            // rede nenhuma e um estouro lá derrubaria a janela. *Se alguém lhe puser uma,
+            // esta linha é o sítio onde tem de mudar.*
+            | Self::Panicked => false,
         }
     }
 }

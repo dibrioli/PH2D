@@ -196,7 +196,7 @@ impl Sculpt3dScene {
                 ph2d_crossfield::solve_miq_aligned(dual, ph2d_crossfield::Rounding::default(), w)
             };
             let layout = ph2d_trace::trace_patches(&work, dual, &field);
-            let (cut, _) = ph2d_gridmap::cut_along_patches(&work, &layout);
+            let (cut, cut_rep) = ph2d_gridmap::cut_along_patches(&work, &layout);
             let (combed, _) = ph2d_gridmap::comb_patches(&work, &layout, &cut);
 
             // ⭐ As singularidades saem do CAMPO — o índice por-vértice é um facto dele, e
@@ -280,6 +280,10 @@ impl Sculpt3dScene {
             let out = out;
 
             let shape = ph2d_quadfill::quad_shape(&out);
+            // ⭐⭐⭐ **CADA CANDIDATA DIZ O QUE É** — ver [`rulers::log_candidate`], que
+            // mora ao lado do [`worse`] de propósito: *o registo que explica uma escolha
+            // tem de ler as mesmas grandezas que a fazem.*
+            rulers::log_candidate(w, features, adaptive, &out, &shape, &round, &cut_rep);
             Ok((out, e, round.shift_frac_max, shape))
         };
 
@@ -328,7 +332,11 @@ impl Sculpt3dScene {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 attempt(w, features, adaptive)
             }))
-            .unwrap_or(Err(RemeshRefusal::TooCoarseToResolve))
+            // ⛔ **`Panicked` e não `TooCoarseToResolve`** — ver o doc da variante. A frase da
+            // outra manda o artista **subdividir a escultura**, que é a cura de um problema
+            // que ele não tem. *Um estouro e uma malha grossa demais não se parecem em nada,
+            // e liam-se iguais.*
+            .unwrap_or(Err(RemeshRefusal::Panicked))
         };
         let (aligned, smooth) = if std::env::var("PH2D_RETOPO_SERIAL").as_deref() == Ok("1") {
             (

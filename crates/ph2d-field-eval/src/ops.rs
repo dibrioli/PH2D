@@ -107,22 +107,25 @@ pub(crate) fn box_with_edge(
             round,
         );
     }
-    // ⭐⭐⭐ **ENCOLHER, CHANFRAR, DESLOCAR** — a mesma receita do filete, com o chanfro no meio.
+    // ⭐⭐⭐ **A CAIXA E OS TRÊS PLANOS, MISTURADOS DE UMA VEZ.**
     //
-    // ⛔ A 1.ª versão desta wave misturava: `intersection(f, plano, Exact(round))`, três vezes
-    // encaixadas. Isso **fura a peça**, e o número denuncia o mecanismo — medido `‖∇f‖ = 1,7306`
-    // numa caixa, que é `√3`: a lei de Cauchy–Schwarz do [`crate::gradient_bound`] com os filetes
-    // encaixados a somar **um quadrado cada**. Com o passo em `1/√2` o produto dava `1,2237`, e
-    // acima de `1` a marcha atravessa a superfície — *é isso que «a aparência da aresta muda ao
-    // rotacionar» é*.
+    // ⛔⛔ **Esta nota já descreveu «encolher, chanfrar, deslocar», e essa construção foi RETIRADA
+    // pelo report do Enio de 2026-08-30** (*«não funcionou, o fillet só muda a posição do
+    // chamfer»*): deslocar um semiespaço dá **outro semiespaço**, sem canto para arredondar — a lei
+    // que a W104 já tinha medido neste mesmo módulo. Medido: com o chanfro em `0,12`, o giro da
+    // normal na quina ficava **cravado em `45,000°`** para qualquer filete, e só a posição
+    // deslizava.
     //
-    // ⭐ Aqui não há mistura nenhuma: a fonte encolhe `round`, os planos do chanfro cortam a fonte
-    // **encolhida**, e o deslocamento repõe tudo. Um `max` de funções 1-Lipschitz é 1-Lipschitz, e
-    // o `− round` é uma constante ⇒ **`‖∇f‖ = 1`, e a marcha anda o passo cheio.**
+    // ⭐ A mistura é a única forma de arredondar as quinas que o chanfro cria, e as quatro
+    // superfícies entram **ao mesmo tempo** (ver [`crate::ops_bool::intersection_round_n`]) em vez
+    // de duas a duas encaixadas — o que mantém o tecto de Cauchy–Schwarz em `√(activas)` em vez de
+    // o fazer crescer com o comprimento da corrente.
     //
-    // ⚠️ E a geometria é a que o pedido descreve: crescer o sólido chanfrado por uma bola de raio
-    // `round` arredonda **todas** as arestas que ele tem — as de face↔chanfro e as de
-    // chanfro↔chanfro —, que é literalmente *«arredondar as bordas geradas por chamfer»*.
+    // ⚠️ **E ela INFLA o campo**, que é o preço declarado: quem paga é o divisor da aresta, dentro
+    // do [`crate::primitive_tree::primitive`], com o orçamento da marcha a subir pelo
+    // [`crate::field_shrink`]. ⛔ *O divisor tem de estar na porta ÚNICA* — quando ele viveu numa
+    // das duas rotas de compilação, o traçado marchava o campo cru e a peça saía com facetas
+    // escuras que mudavam ao rodar.
     let q = [
         px.abs() - Tree::constant(half[0]),
         py.abs() - Tree::constant(half[1]),

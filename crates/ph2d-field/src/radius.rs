@@ -572,19 +572,25 @@ pub fn edge_shrink(p: &Primitive) -> f32 {
 pub fn fillet_inflates(p: &Primitive) -> bool {
     let (r, c) = (round_of(p), chamfer_of(p));
     match p {
-        // ⭐ **As QUATRO exactas**: a fonte encolhe e o deslocamento repõe, com o `length` do canto a
-        // fazer o arredondamento de verdade — e as peças delas são **ortogonais** (as três lajes de
-        // uma caixa, a parede e a tampa de um cilindro).
+        // ⭐ **As QUATRO de peças ORTOGONAIS** (as três lajes de uma caixa, a parede e a tampa de um
+        // cilindro). Sem chanfro elas arredondam por **encolher-e-deslocar** e o campo é
+        // exactamente `1`-Lipschitz — é o caminho de omissão, e é intocado.
         //
-        // ⭐⭐⭐ **NEM o chanfro NEM o par as inflam** — medido `1,0000` nas quatro colunas do censo
-        // (viva · só filete · só chanfro · o par), a `ε = 1e-5`.
+        // ⛔⛔ **COM chanfro elas misturam como toda a gente, e INFLAM** — esta nota já disse o
+        // contrário («`1,0000` nas quatro colunas»), e isso descrevia a construção
+        // *encolher-chanfrar-deslocar* que o report do Enio de 2026-08-30 **retirou** (ela não
+        // arredondava: deslocar um semiespaço dá outro semiespaço).
         //
-        // ⛔ **A 1.ª versão desta wave dizia que o par inflava, e isso era um defeito da CONSTRUÇÃO,
-        // não uma propriedade da forma:** ela misturava (`intersection(f, plano, Exact(round))`,
-        // encaixado), e cada nível encaixado soma um quadrado na lei de Cauchy–Schwarz — medido
-        // `‖∇f‖ = 1,7306` numa caixa, que é `√3`. Com **encolher-chanfrar-deslocar** não há mistura
-        // nenhuma, e um `max` de 1-Lipschitz é 1-Lipschitz. *O preço não era da feature: era de como
-        // ela estava escrita.*
+        // ⚠️ **O que este `false` responde não é «não infla»: é «infla POUCO»** — o bastante para o
+        // divisor `2` do [`edge_shrink`] chegar. Medido perto da superfície, com os dois recuos a
+        // meio do limite (`‖∇f‖` do campo **cru**, isto é, já multiplicado de volta pelo divisor):
+        //
+        // | forma | cru | dividido por `2` |
+        // |---|---:|---:|
+        // | caixa | `1,574` | `0,787` |
+        // | cilindro | `1,398` | `0,699` |
+        // | moldura | `1,594` | `0,797` |
+        //
         // ⚠️ **A gaiola entra aqui**: ela é a união de três caixas, cada uma pela receita da caixa,
         // e o `min` de uma união não infla.
         Primitive::Box { .. }

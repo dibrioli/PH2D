@@ -5918,20 +5918,26 @@ fn the_eviction_drops_half_and_the_cache_never_grows_past_its_ceiling() {
 /// silhueta por amostragem, mas um raio esgotado é sempre um defeito — ele significa que o
 /// orçamento não chegou.
 ///
-/// # ⛔⛔ UMA MUTAÇÃO SOBREVIVE A ESTE GATE, e ela está aqui escrita em vez de escondida
+/// # ⭐ A MUTAÇÃO QUE AQUI SE DIZIA SOBREVIVENTE MORREU — e a razão de ela ter sobrevivido é a lição
 ///
-/// Apagar a **segunda** metade da cura — o orçamento do `field_shrink` — deixa este gate **verde**,
-/// em toda fixtura que se conseguiu construir: `192²` e `1024²`, dezasseis ângulos, câmera perto e
-/// longe. A razão é aritmética: o divisor da aresta é `4`, a marcha tem `MAX_STEPS = 400`, e nenhuma
-/// destas formas precisa de mais do que isso mesmo com o campo quatro vezes mais curto.
+/// Esta secção declarava, honestamente, que apagar o orçamento do `field_shrink` deixava o gate
+/// verde em toda fixtura construível. ⛔ **Ela sobrevivia porque a cura que ela defendia nunca
+/// chegava ao produto:** o divisor da aresta estava escrito só no `compile_with`, e o traçado
+/// compila pelo `hybrid::Builder` — logo o campo do render não estava dividido, o orçamento não
+/// tinha nada a compensar, e apagá-lo não mudava um pixel.
 ///
-/// ⇒ **o orçamento fica por CONSTRUÇÃO e não por medição**, e a distinção é a honesta: ele é a mesma
-/// arquitectura que a torção e a dobra usam, onde ela **foi** medida a morder (`18` raios esgotados
-/// e `336` pixels de fundo, numa barra a uma volta por unidade). Aqui não morde — ainda.
+/// Com o divisor na porta única (`ph2d_field_eval::primitive_tree::primitive`), medido em
+/// 2026-08-30: trocar `scene.shrink` por `1.0` no orçamento faz este gate **reprovar**. *Uma
+/// mutação que sobrevive pode estar a dizer que o código mutado é inerte — e inerte não é o mesmo
+/// que redundante.*
 ///
-/// ⚠️ **O que ESTE gate de facto defende é a primeira metade** (o divisor): apagá-la mata o
-/// `every_shape_marches_safely_with_both_recesses_on`. *Um gate que se diz a defender duas coisas e
-/// só defende uma é pior do que um que declara qual.*
+/// # ⚠️ O que ESTE gate NÃO defende, e continua a não defender
+///
+/// Apagar o **divisor** deixa-o verde (medido). O defeito que ele deixa passar não abre buraco: ele
+/// pinta facetas escuras no interior, porque o raio aterra fundo dentro e o gradiente ali é outro.
+/// Quem o apanha são o `every_shape_marches_safely_with_both_recesses_on` (o número) e o
+/// `the_picture_matches_an_honest_march` (a imagem). *Um gate que declara qual metade defende é
+/// melhor do que um que diz defender as duas.*
 #[test]
 fn a_shape_with_both_recesses_draws_whole_and_strands_no_ray() {
     use ph2d_field::{Node, NodeId, NodeKind, Primitive, Xform};

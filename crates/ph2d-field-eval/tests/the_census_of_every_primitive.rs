@@ -765,12 +765,14 @@ fn every_shape_marches_safely_with_both_recesses_on() {
     );
 }
 
-/// ⭐⭐ **E as QUATRO EXACTAS andam o passo CHEIO com os dois recuos** — a caixa, o cilindro, a
-/// extrusão e a moldura.
+/// ⭐⭐ **E as QUATRO de peças ORTOGONAIS andam o passo CHEIO com os dois recuos** — a caixa, o
+/// cilindro, a extrusão e a moldura.
 ///
-/// ⚠️ **A 1.ª versão desta wave dizia o contrário e tinha um gate a afirmá-lo**, porque a construção
-/// misturada de facto inflava. *Um gate verde pode pinar um defeito*: aquele estava a defender o
-/// preço de uma escrita errada como se fosse uma propriedade da forma.
+/// ⚠️ **O passo cheio não quer dizer que o campo delas não infla** — com chanfro ele infla
+/// (`1,40`–`1,59` no cru, medido; ver `ph2d_field::fillet_inflates`). Quem o traz de volta abaixo
+/// de `1` é o divisor `2` do `edge_shrink`, e é sobre o campo **já dividido** que o
+/// [`ph2d_field_eval::safe_march_step`] responde. *O que este gate defende é o par
+/// divisor+tecto ficar consistente, e não uma propriedade da forma.*
 #[test]
 fn the_four_exact_shapes_keep_the_full_step_with_both_recesses() {
     let caixa = |round: f32, chamfer: f32| Primitive::Box {
@@ -782,7 +784,7 @@ fn the_four_exact_shapes_keep_the_full_step_with_both_recesses() {
         let passo = ph2d_field_eval::safe_march_step(&doc_of(caixa(r, c)));
         assert!(
             (passo - 1.0).abs() < 1e-6,
-            "filete {r} + chanfro {c}: a caixa arredonda por DESLOCAMENTO nos dois casos e tem de \
+            "filete {r} + chanfro {c}: o campo dividido da caixa fica abaixo de `1` e ela tem de \
              andar o passo cheio, andou {passo}"
         );
     }
@@ -1034,5 +1036,101 @@ fn scaling_a_shape_scales_both_recesses() {
     assert!(
         paradas.is_empty(),
         "estes recuos não acompanharam a escala da forma: {paradas:?}"
+    );
+}
+
+/// ⭐⭐⭐ **AS DUAS PORTAS QUE BAIXAM UM DOCUMENTO ENTREGAM O MESMO CAMPO** — o gate estrutural que
+/// faltava, e o report do Enio de 2026-08-30 pagou-o.
+///
+/// # ⛔⛔ O defeito: uma cura escrita numa das duas rotas
+///
+/// Este módulo tem **duas** rotas de um [`FieldDoc`] para uma árvore, e elas duplicam a linha que
+/// baixa uma FOLHA:
+///
+/// - [`ph2d_field_eval::compile_with`] — as sondas, os gates, e **todo este arquivo**;
+/// - `hybrid::Builder` (por [`Hybrid::new`]) — **o produto**, porque só ele sabe o que é uma
+///   escultura.
+///
+/// O divisor da aresta (`ph2d_field::edge_shrink`) foi escrito só na primeira. Medido no mesmo raio
+/// e na mesma caixa: o campo do traçado vinha **`8×`** o dos gates. A marcha andava o passo cheio
+/// sobre o campo cru, atravessava a superfície, e **catorze gates deste arquivo ficavam verdes**
+/// porque mediam a rota que a produção não corre. *O que o Enio viu foram facetas escuras que
+/// mudavam ao rodar; o que os números diziam era `passo × ‖∇f‖ ≤ 0,80`.*
+///
+/// ⇒ hoje o divisor mora DENTRO da única função que baixa uma primitiva, e este gate é o que
+/// impede a próxima rota de o esquecer: ele não sabe o que é um divisor, **ele pergunta se as duas
+/// portas concordam**.
+///
+/// ⚠️ **A tolerância é relativa e existe porque as duas portas correm em precisões diferentes**
+/// (o `Field` é o interpretador `f64`, o `Hybrid` é o JIT `f32`) — ⛔ não porque se espere
+/// divergência de FÓRMULA. O pior desvio relativo MEDIDO nas 20 formas é `3,68e-8`, e a barra
+/// está `2 700×` acima dele: um factor esquecido é uma divergência de **100 %**, não de um ULP.
+#[test]
+fn the_two_doors_lower_a_leaf_the_same_way() {
+    let reg = ph2d_field_eval::hybrid::Registry::new();
+    let mut pior = 0.0f64;
+    let mut testadas = 0;
+    let mut divergem = Vec::new();
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let Some(limite) = ph2d_field::round_limit(&base) else {
+            continue;
+        };
+        let meio = limite * 0.5;
+        let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
+            let mut p = p.clone();
+            let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
+            ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
+            Some(p)
+        };
+        let Some(par) = escreve(&base, "field.dim.round", meio)
+            .and_then(|p| escreve(&p, "field.dim.chamfer", meio))
+        else {
+            continue;
+        };
+        testadas += 1;
+        let doc = doc_of(par);
+        let sondas = Field::new(&doc);
+        let mut produto = ph2d_field_eval::hybrid::Hybrid::new(&doc, &reg);
+        // Uma grelha grosseira que cobre a peça e o espaço à volta dela — o defeito que este gate
+        // caça é um FACTOR, e um factor aparece em todo ponto onde o campo não é zero.
+        let (mut xs, mut ys, mut zs) = (Vec::new(), Vec::new(), Vec::new());
+        let at = |t: usize| -1.1 + 2.2 * (t as f32 + 0.5) / 11.0;
+        for i in 0..11 {
+            for j in 0..11 {
+                for l in 0..11 {
+                    xs.push(at(i));
+                    ys.push(at(j));
+                    zs.push(at(l));
+                }
+            }
+        }
+        let saida = produto.eval(&xs, &ys, &zs).expect("o produto avalia");
+        for n in 0..xs.len() {
+            let a = sondas.at(f64::from(xs[n]), f64::from(ys[n]), f64::from(zs[n]));
+            let b = f64::from(saida[n]);
+            if !a.is_finite() || !b.is_finite() {
+                continue;
+            }
+            let rel = (a - b).abs() / (1.0 + a.abs());
+            if rel > pior {
+                pior = rel;
+            }
+            if rel > 1.0e-4 {
+                divergem.push(format!("{k:?} rel {rel:.6} ({a:.6} contra {b:.6})"));
+                break;
+            }
+        }
+    }
+    assert!(
+        testadas >= 20,
+        "só {testadas} formas com aresta — a lista derivada partiu-se"
+    );
+    assert!(
+        divergem.is_empty(),
+        "as duas portas discordam (pior relativo {pior:.3e}): {divergem:?} — uma delas baixa a \
+         folha por outra receita, e é a do PRODUTO que o artista vê"
     );
 }

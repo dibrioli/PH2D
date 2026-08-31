@@ -17,7 +17,37 @@ use ph2d_field::Primitive;
 
 use crate::{ops, ops_plates, ops_solids, profile};
 
+/// ⭐⭐⭐ **A ÚNICA porta que baixa uma [`Primitive`] a uma árvore** — e o divisor da aresta mora
+/// AQUI, dentro dela.
+///
+/// # ⛔⛔ Ele nasceu de um report do Enio (2026-08-30): *«piorou os artefatos ao rotacionar»*
+///
+/// O divisor tinha sido escrito no `compile_with` do `lib.rs`, que é **uma** das duas rotas que
+/// baixam um documento — a outra é o [`crate::hybrid::Builder`], e **é ela que a produção usa**.
+/// Medido no mesmo raio, na mesma caixa: o campo do avaliador do traçado vinha **`8×`** o do
+/// avaliador das sondas, que é exactamente o divisor que ele não aplicava.
+///
+/// ⇒ a marcha andava o passo **cheio** sobre o campo **cru**, o orçamento subia por um encolhimento
+/// que não existia, e **todos os gates ficavam verdes** — porque eles mediam pela porta das sondas.
+/// *Uma cura escrita numa das duas rotas não é uma cura: é uma medição que passa a mentir.*
+///
+/// ⚠️ **É por isso que o divisor desceu para dentro desta função** e não ficou em nenhuma das duas
+/// rotas: *uma lei escrita em dois sítios ainda não é uma lei — só uma PORTA é.* Uma terceira rota
+/// que baixe uma primitiva tem de passar por aqui, porque não há outra forma de o fazer.
 pub(crate) fn primitive(p: &Primitive) -> Tree {
+    let d = f64::from(ph2d_field::edge_shrink(p));
+    // ⚠️ **Sem recuo nenhum o divisor é `1` e a árvore fica IDÊNTICA, sem um nó a mais** — a
+    // esmagadora maioria das peças. *A cerca fica no lado perigoso.*
+    if d > 1.0 {
+        primitive_raw(p) / Tree::constant(d)
+    } else {
+        primitive_raw(p)
+    }
+}
+
+/// A fórmula crua de cada forma, sem o divisor. ⛔ **Chamada por [`primitive`] e mais ninguém** —
+/// ver o doc dela.
+fn primitive_raw(p: &Primitive) -> Tree {
     match *p {
         Primitive::Box {
             half,

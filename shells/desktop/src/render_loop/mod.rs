@@ -10685,8 +10685,23 @@ impl crate::App {
                 // para alguém esquecer. Um painel flutuante no meio do canvas não move o gizmo — a
                 // lei só conta quem toca a **aresta** da área.
                 obstacles.extend(hero.store.panel_rects());
-                let area =
-                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h);
+                // ⭐⭐ **A ÁREA é a de DESENHO, não a janela** (2026-08-30). Ela era o viewport
+                // inteiro, e por isso as colunas docadas tocavam-lhe a aresta e **empurravam** o
+                // gizmo — o remédio do sintoma que a D1 manda retirar quando os painéis passam a
+                // ser regiões irmãs. Com a área certa, uma coluna docada deixa de a alcançar e a
+                // fuga fica **inerte por construção**, sem uma linha de lei mudar.
+                //
+                // ⚠️ **A fuga FICA**, e não por preguiça: o que ainda a alcança são as janelas que
+                // declaram flutuar (Grid Snap, galeria) — e a lei dela já diz que só conta quem
+                // toca a **aresta**. Apagá-la deixaria o gizmo por baixo de uma dessas.
+                //
+                // ⚠️ `last_canvas` **é** a `HeroLayout::draw_area` publicada pelo quadro anterior
+                // (ver `screens/hero/paint.rs`); no primeiro quadro ela é degenerada, e aí vale a
+                // janela — que é o comportamento de sempre.
+                let area = crate::field3d_navball::area_for(
+                    hero,
+                    ph2d_editor::zones::Rect::new(viewport.x, viewport.y, viewport.w, viewport.h),
+                );
                 crate::field3d_smoke::note_safe(crate::field3d_navball::safe_corner(
                     area, &obstacles,
                 ));

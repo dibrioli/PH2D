@@ -38,6 +38,7 @@ virou **código**.
 | 16 | `810c1abd4` | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
 | 17 | `eb2013fc5` | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
 | 18 | `165d6a096` | ⛔⛔ **UMA TABELA para a verdade de cada módulo** — e o `if` com um lado morto (§13) |
+| 19 | *(a seguir)* | ⭐ **A FUGA DO GIZMO ficou inerte** — a `D1` cumprida sem apagar a lei (§14) |
 
 ---
 
@@ -811,4 +812,38 @@ crate), e o espelho na shell.
 
 ⭐ *A lista de pendentes desceu de nove para zero no mesmo dia em que nasceu — e as sete que saíram
 não foram curadas: foram medidas no sítio certo.*
+
+---
+
+## §14 — ⭐ A FUGA DO GIZMO ficou INERTE, e a lei ficou (entrega 19)
+
+A **D1** manda retirar a fuga do gizmo de navegação no mesmo trabalho que ancora os painéis:
+*«ela é o remédio do sintoma; com os painéis fora da vista passaria a fugir de uma moldura que já
+não a alcança»*. O `00_DECISOES_DO_ENIO.md` chama-lhe **remédio duplo**.
+
+### §14.1 — A cura não foi apagar a lei: foi dar-lhe a ÁREA CERTA
+
+`field3d_navball::safe_corner` recebia **o viewport inteiro**, que as colunas docadas tocam — por
+isso elas empurravam o gizmo. Hoje ela recebe a `HeroLayout::draw_area`, que **começa depois delas**:
+uma coluna docada deixa de a alcançar e a fuga fica **inerte por construção**, sem uma linha de lei
+mudar.
+
+⛔ **A lei FICA, e não por preguiça:** o que ainda a alcança são as janelas que **declaram flutuar**
+(Grid Snap, galeria de widgets), e a lei dela já diz que só conta quem toca a **aresta**. Apagá-la
+deixaria o gizmo por baixo de uma dessas. ⇒ *a D1 pede que a fuga deixe de ser necessária para o
+chrome docado, não que o app perca a defesa contra o que flutua* — e há gate para os dois lados.
+
+### §14.2 — ⛔⛔ E o meu 1.º gate era do lado errado da costura, medido
+
+O gate que escrevi passava a área **à mão** ao `safe_corner` e afirmava que as colunas não a movem.
+Ele ficou verde — e a mutação que devolve **o viewport** ao produto **SOBREVIVEU**.
+
+*Um gate sobre a LEI não é um gate sobre quem a ALIMENTA.* É a mesma família do
+`the_chrome_swallows_the_click_it_was_given` (§12.2), que afirmava que todo consumidor **pergunta** e
+nunca que alguém **responde** — e a segunda vez que ela morde nesta linha.
+
+⇒ a decisão *«qual área?»* saiu do laço de render para `field3d_navball::area_for`, que é uma função
+com dois gates e duas mutações mortas. ⚠️ E o gate da lei ficou **com controlo**: os mesmos
+rectângulos, medidos contra a área ANTIGA, **têm** de mover o gizmo — senão o teste passaria com a
+lei apagada, com a área a zero, ou com obstáculos que não tocam nada.
 

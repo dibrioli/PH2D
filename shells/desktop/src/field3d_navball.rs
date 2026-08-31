@@ -97,6 +97,33 @@ pub(crate) struct Ball {
 ///
 /// ⚠️ Os retângulos chegam do shell (`hero.store.panel_rect` e o índice de acerto da moldura), que é
 /// quem os conhece; aqui é lei pura, que um gate dirige sem janela nenhuma.
+/// ⭐⭐ **QUAL área o gizmo habita** — a de DESENHO, e não a janela.
+///
+/// ⛔ Ela era o viewport inteiro, e por isso as colunas **docadas** tocavam-lhe a aresta e
+/// empurravam o gizmo: o remédio do sintoma que a **D1** manda retirar quando os painéis passam a
+/// ser regiões irmãs. Com a área certa, uma coluna docada deixa de a alcançar e a fuga fica
+/// **inerte por construção** — sem uma linha de lei mudar.
+///
+/// ⚠️ **Isto é uma FUNÇÃO e não três linhas no laço de render, para poder ser medida.** A 1.ª
+/// versão vivia inline: o gate media a lei (`safe_corner`) com a área passada à mão e a mutação
+/// que devolvia a área ANTIGA ao produto **sobreviveu**. *Um gate sobre a lei não é um gate sobre
+/// quem a alimenta.*
+///
+/// ⚠️ `last_canvas` **é** a [`ph2d_editor::screens::layout::HeroLayout::draw_area`] publicada pelo
+/// quadro anterior; no primeiro quadro ela é degenerada, e aí vale a janela — o comportamento de
+/// sempre.
+pub(crate) fn area_for(
+    hero: &ph2d_editor::screens::hero::HeroScreen,
+    viewport: EditorRect,
+) -> EditorRect {
+    let published = hero.last_canvas;
+    if published.w > 0.0 && published.h > 0.0 {
+        EditorRect::new(published.x, published.y, published.w, published.h)
+    } else {
+        viewport
+    }
+}
+
 pub(crate) fn safe_corner(area: EditorRect, obstacles: &[EditorRect]) -> EditorRect {
     // A caixa que o widget ocupa, com a folga dele — é ela que tem de ficar livre.
     let side = 2.0f32.mul_add(NAV_R_PX + BALL_R_PX, 2.0 * NAV_MARGIN_PX);

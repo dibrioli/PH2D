@@ -293,3 +293,97 @@ fn the_order_of_the_obstacles_does_not_matter() {
         centre_in(a, safe_corner(a, &[bar, panel])),
     );
 }
+
+/// ⭐⭐ **UMA COLUNA DOCADA JÁ NÃO EMPURRA O GIZMO** — a fuga ficou inerte por construção.
+///
+/// A **D1** manda retirar a fuga quando os painéis passam a ser regiões irmãs: *«ela é o remédio do
+/// sintoma; com os painéis fora da vista passaria a fugir de uma moldura que já não a alcança»*.
+///
+/// ⚠️ **A cura não foi apagar a lei — foi dar-lhe a ÁREA CERTA.** Ela recebia o viewport inteiro,
+/// que as colunas docadas tocam; hoje recebe a `HeroLayout::draw_area`, que **começa depois delas**.
+/// A lei fica, porque o que ainda a alcança são as janelas que declaram flutuar (Grid Snap,
+/// galeria), e sem ela o gizmo ficaria por baixo de uma dessas.
+///
+/// ⛔ **O controlo é a metade que importa:** os MESMOS obstáculos, medidos contra a área ANTIGA,
+/// **têm** de mover o gizmo. Sem ele este teste passaria com a lei apagada, com a área a zero, ou
+/// com obstáculos que não tocam nada — três formas de medir coisa nenhuma.
+#[test]
+fn a_docked_column_no_longer_pushes_the_gizmo() {
+    // A geometria REAL do quadro, e não rectângulos inventados.
+    let viewport = ph2d_editor::zones::Rect::new(0.0, 0.0, 1366.0, 1024.0);
+    let layout = ph2d_editor::screens::layout::HeroLayout::for_viewport_bands(
+        viewport,
+        false,
+        ph2d_editor::screens::layout::ChromeBands {
+            rail_w: 0.0,
+            top_bar_h: 28.0,
+            ..ph2d_editor::screens::layout::ChromeBands::DEFAULT
+        },
+        ph2d_editor::screens::layout::CenterSplit::None,
+        ph2d_editor::screens::layout::DockSides::BOTH,
+    );
+    let to_editor = |r: ph2d_editor::zones::Rect| EditorRect::new(r.x, r.y, r.w, r.h);
+    let columns = [to_editor(layout.hierarchy), to_editor(layout.inspector)];
+    let draw = to_editor(layout.draw_area);
+
+    let free_now = safe_corner(draw, &columns);
+    assert_eq!(
+        centre_in(draw, free_now),
+        centre_in(draw, safe_corner(draw, &[])),
+        "uma coluna DOCADA continua a empurrar o gizmo — a fuga virou remédio duplo"
+    );
+
+    // ⛔ O CONTROLO: a área de antes (a janela inteira) É empurrada pelos mesmos rectângulos.
+    let whole = to_editor(viewport);
+    assert_ne!(
+        centre_in(whole, safe_corner(whole, &columns)),
+        centre_in(whole, safe_corner(whole, &[])),
+        "o controlo caiu: nem a área ANTIGA é movida por estas colunas, então o teste acima não \
+         mede a cura"
+    );
+}
+
+/// **E uma janela FLUTUANTE encostada à direita continua a empurrar** — é para isso que a lei fica.
+#[test]
+fn a_floating_window_on_the_edge_still_pushes() {
+    let a = area();
+    let floating = EditorRect::new(a.w - 240.0, 0.0, 240.0, 320.0);
+    assert_ne!(
+        centre_in(a, safe_corner(a, &[floating])),
+        centre_in(a, safe_corner(a, &[])),
+        "a fuga deixou de funcionar para quem DECLARA flutuar — apagá-la era isto"
+    );
+}
+
+/// ⭐⭐ **E a ÁREA que o produto entrega é a de DESENHO** — o gate sobre quem ALIMENTA a lei.
+///
+/// ⛔⛔ **Sem ele, a mutação que devolve a janela ao produto SOBREVIVE.** Foi medido: os dois gates
+/// acima passam a lei à mão, então eles ficam verdes com o produto a alimentar o rectângulo errado.
+/// *Um gate sobre a lei não é um gate sobre quem a alimenta* — a mesma família do
+/// `the_chrome_swallows_the_click_it_was_given`, que afirmava que todos PERGUNTAM e nunca que
+/// alguém RESPONDE.
+#[test]
+fn the_product_feeds_the_gizmo_the_drawing_area() {
+    let viewport = EditorRect::new(0.0, 0.0, 1366.0, 1024.0);
+    let mut hero =
+        ph2d_editor::screens::hero::HeroScreen::new(ph2d_editor::screens::hero::ids::NodeId(1));
+
+    // (a) com um quadro publicado, a área é a DE DESENHO.
+    let drawing = ph2d_editor::zones::Rect::new(308.0, 28.0, 754.0, 996.0);
+    hero.last_canvas = drawing;
+    let got = super::area_for(&hero, viewport);
+    assert_eq!(
+        (got.x, got.y, got.w, got.h),
+        (drawing.x, drawing.y, drawing.w, drawing.h),
+        "o gizmo recebeu a janela em vez da área de desenho — a fuga volta a ser remédio duplo"
+    );
+
+    // (b) no PRIMEIRO quadro ainda não há área publicada, e aí vale a janela.
+    hero.last_canvas = ph2d_editor::zones::Rect::new(0.0, 0.0, 0.0, 0.0);
+    let got = super::area_for(&hero, viewport);
+    assert_eq!(
+        (got.w, got.h),
+        (viewport.w, viewport.h),
+        "sem quadro publicado o gizmo ficou com uma área degenerada — ele sai da janela"
+    );
+}

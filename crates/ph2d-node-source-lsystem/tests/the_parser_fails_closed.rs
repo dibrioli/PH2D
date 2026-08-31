@@ -137,3 +137,45 @@ fn the_variation_slider_does_not_invert_at_its_own_maximum() {
          v = 0,995 ({w_near:.4}) — o extremo do slider inverte"
     );
 }
+
+/// ⛔⛔⛔ **UMA GRAMÁTICA PATOLÓGICA RECUSA — ELA NÃO DERRUBA O EDITOR.**
+///
+/// Auditoria de seis lentes, 2026-08-31 (doc 96 §3.1). O parser de expressões desta casa é
+/// descida recursiva sem tecto, e `~7 000` parênteses num argumento davam
+/// `fatal runtime error: stack overflow, aborting` — **exit 134**, sem desenrolar.
+///
+/// ⚠️⚠️ **Cabia num paste e cabia num `.ph2dproj`:** `14 KB` de texto num text param, e **abrir
+/// o ficheiro matava o editor a cada tentativa**. Não havia como o recuperar.
+///
+/// ⚠️ **A cura vive no `ph2d-expr-parse`** (`MAX_DEPTH`, com a tabela de bytes-por-nível medida
+/// lá), porque o parser é **partilhado** — o `motion.expression` e a timeline entram pela mesma
+/// porta. Este gate é a metade da COSTURA: que a cura chega a este nó, pelo caminho do produto.
+///
+/// ⚠️ **Se a guarda desaparecer, este teste não FALHA — ele aborta o binário de teste.** É essa
+/// a assinatura do defeito, e é por isso que a régua tem de correr o input em vez de o deduzir.
+#[test]
+fn a_pathological_grammar_is_refused_and_never_aborts_the_process() {
+    for n in [7_000usize, 20_000, 100_000] {
+        let rules = format!("A(s) -> F({}1{})", "(".repeat(n), ")".repeat(n));
+        // Volta? Então não abortou — que é a afirmação inteira.
+        let s = ls::probe_build(ls::DEFAULT_AXIOM, &rules, 3.0, &[]);
+        assert!(
+            s.count() >= 1,
+            "{n} parênteses: a derivação tem de VOLTAR (com o axioma, ao menos)"
+        );
+    }
+    // A condição é a outra porta, e ela falha FECHADA: a regra é descartada com queixa.
+    let cond = format!(
+        "A(s) : {}1{} -> F(s)",
+        "(".repeat(50_000),
+        ")".repeat(50_000)
+    );
+    assert_eq!(
+        ls::grammar_complaints(&cond).len(),
+        1,
+        "uma condição funda demais tem de descartar a regra e DIZER porquê"
+    );
+    // E o `-` encadeado, que recursa sem parênteses nenhuns.
+    let unary = format!("A(s) -> F({}1)", "-".repeat(80_000));
+    assert!(ls::probe_build(ls::DEFAULT_AXIOM, &unary, 3.0, &[]).count() >= 1);
+}

@@ -128,9 +128,46 @@ fn lex(src: &str) -> Result<Vec<Tok>, String> {
 }
 
 /// A recursive-descent parser over the token stream.
+/// ⛔⛔⛔ **QUANTO UMA EXPRESSÃO PODE ANINHAR — e o recurso é a PILHA.**
+///
+/// Este parser é descida recursiva, e o [`Expr`] é uma cadeia de `Box`: cada `(` desce um nível
+/// em `primary → expr → or → … → unary → primary`, e a árvore que sai é percorrida pelo `eval`
+/// **e pelo `Drop`** com a mesma profundidade. Sem teto, o processo **aborta** — não devolve
+/// `Err`, não desenrola: `fatal runtime error: stack overflow`, e a janela do editor morre.
+///
+/// ⚠️⚠️ **Isso cabia num paste, e cabia num ficheiro de projeto:** `14 KB` de parênteses num
+/// text param, e **abrir o `.ph2dproj` mata o editor para sempre** (auditoria de seis lentes,
+/// doc 96 §3.1).
+///
+/// # A medição
+///
+/// O consumo é **linear e constante** — bissectado em subprocessos, uma thread por tamanho de
+/// pilha:
+///
+/// | pilha | aborta em | bytes por nível |
+/// |---|---|---|
+/// | 512 KiB | 409 | 1 282 |
+/// | 1 MiB | 824 | 1 273 |
+/// | **2 MiB** (a omissão de uma thread Rust) | **1 653** | 1 269 |
+/// | 8 MiB (a thread principal) | 6 615 | 1 268 |
+///
+/// ⇒ **`256` níveis custam `325 KB` de pilha**: `6,4×` de margem na thread mais pequena em que
+/// isto corre de facto, e ~25× mais aninhamento do que qualquer expressão que alguém escreva
+/// (as do ABOP — `s*0.7`, `n < 6` — aninham menos de cinco).
+///
+/// ⚠️ **Ele conta NÍVEIS DE DESCIDA ABERTOS, e a expressão de topo é um deles** — logo o máximo
+/// de parênteses aninhados é `MAX_DEPTH − 1`. Os dois lados dessa fronteira estão afirmados em
+/// `depth_tests`, de propósito: sem isso alguém arredonda a constante e move-a sem reparar.
+///
+/// ⚠️ **O teto é do PARSER, e é isso que basta:** ele é o único produtor de [`Expr`] nesta casa,
+/// então limitar o que ele constrói limita também o que o `eval` e o `Drop` percorrem.
+pub const MAX_DEPTH: u32 = 256;
+
 struct Parser {
     toks: Vec<Tok>,
     pos: usize,
+    /// Quantos níveis de descida recursiva estão abertos — ver [`MAX_DEPTH`].
+    depth: u32,
 }
 
 impl Parser {
@@ -153,9 +190,32 @@ impl Parser {
         }
     }
 
+    /// **Abre um nível de descida, ou recusa.** ⚠️ Uma porta só para as duas recursões
+    /// (`expr` por cada `(`, `unary` por cada `-` encadeado): contá-las no mesmo número é
+    /// conservador de propósito — um frame de `unary` é mais barato que a cadeia inteira, então
+    /// o orçamento medido para a cadeia serve os dois com folga.
+    fn enter(&mut self) -> Result<(), String> {
+        self.depth += 1;
+        if self.depth > MAX_DEPTH {
+            // ⚠️ **`Err`, e não um abort** — é essa a diferença que este teto compra. Quem
+            // chama já sabe descartar uma expressão que não compila.
+            return Err(format!(
+                "expression nests deeper than {MAX_DEPTH} levels (the stack is the limit:                  ~1 270 bytes per level)"
+            ));
+        }
+        Ok(())
+    }
+
+    fn leave(&mut self) {
+        self.depth = self.depth.saturating_sub(1);
+    }
+
     // expr := or
     fn expr(&mut self) -> Result<Expr, String> {
-        self.or()
+        self.enter()?;
+        let e = self.or();
+        self.leave();
+        e
     }
 
     fn or(&mut self) -> Result<Expr, String> {
@@ -224,7 +284,10 @@ impl Parser {
     fn unary(&mut self) -> Result<Expr, String> {
         if self.peek() == Some(&Tok::Minus) {
             self.pos += 1;
-            return Ok(Expr::Unary(UnaryOp::Neg, Box::new(self.unary()?)));
+            self.enter()?;
+            let inner = self.unary();
+            self.leave();
+            return Ok(Expr::Unary(UnaryOp::Neg, Box::new(inner?)));
         }
         self.primary()
     }
@@ -430,7 +493,11 @@ fn make_call(name: &str, args: Vec<Expr>) -> Result<Expr, String> {
 /// Parse `src` into an [`Expr`], or an error message.
 pub fn parse(src: &str) -> Result<Expr, String> {
     let toks = lex(src)?;
-    let mut p = Parser { toks, pos: 0 };
+    let mut p = Parser {
+        toks,
+        pos: 0,
+        depth: 0,
+    };
     let e = p.expr()?;
     if p.pos != p.toks.len() {
         return Err(format!("trailing tokens from {:?}", p.peek()));
@@ -547,3 +614,7 @@ mod tests {
         assert!(parse("wiggle(2, 20, 2, 0.5, 1)").is_err(), "at most 4 args");
     }
 }
+
+#[cfg(test)]
+#[path = "depth_tests.rs"]
+mod depth_tests;

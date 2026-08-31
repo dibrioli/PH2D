@@ -163,8 +163,20 @@ pub(crate) fn make_master(
     // nome antigo passa a resolver para a cópia — que é o objeto que continua na cena.
     if let Some(base_id) = base_link {
         let base_name = master_named(sim, base_id).unwrap_or_else(|| "Prefab".to_string());
-        let vname =
-            crate::name_unique::unique_name_excluding(sim, &format!("{base_name} Variant"), entity);
+        // ⭐⭐⭐ **Uma variante nasce com um VALOR próprio** (report do Enio, 2026-08-31:
+        // *«Variant deveria ser Size. Nos botões deveríamos ter Small e Big»*).
+        //
+        // Enquanto ela herdava `<base> Variant`, as duas receitas declaravam a MESMA combinação, o
+        // eixo ficava com uma resposta só e caía — e o cartão descia ao modo plano, a mostrar
+        // NOMES. *O app criava uma versão nova e não lhe dava o que a torna uma versão.*
+        //
+        // ⚠️ **O sufixo `Variant` FICA para quem não declara propriedades** — é o idioma do Unity,
+        // e continua a ser a resposta certa para uma família sem chaves. A lei escolhe qual dos
+        // dois: ver [`variant_name`].
+        let taken = crate::instance_verbs_walk::master_names(sim);
+        let vname = ph2d_editor::screens::hero::variant_axes::variant_name(&base_name, &taken)
+            .unwrap_or_else(|| format!("{base_name} Variant"));
+        let vname = crate::name_unique::unique_name_excluding(sim, &vname, entity);
         sim.world_mut().entity_mut(entity).insert(Name::new(vname));
         if let Some(original) = original_name {
             let cname = crate::name_unique::unique_name_excluding(sim, &original, instance);
@@ -329,30 +341,6 @@ fn cascade(sim: &mut SimWorld, instance: Entity, master_id: u64, step: [f32; 2])
     }
 }
 
-/// ⭐⭐ **A RECEITA que esta linha representa** — ela própria, se for uma; a de que é cópia, se for
-/// uma cópia; ela própria (para o verbo recusar com voz) se não for nem uma coisa nem outra.
-///
-/// ⚠️ **Uma porta, e não uma escada em cada chamador**: a resolução `cópia -> receita` é a mesma
-/// travessia que o *Apply*, o *Revert* e o *Detach* já fazem (`instance_root_of`), e escrevê-la
-/// outra vez daria duas respostas a *«de que receita esta linha é?»*.
-fn master_subject(sim: &mut SimWorld, clicked: Entity) -> Entity {
-    if sim.world().get::<ph2d_ecs::MasterRoot>(clicked).is_some() {
-        return clicked;
-    }
-    let Some(root) = crate::instance_verbs::instance_root_of(sim, clicked) else {
-        return clicked;
-    };
-    let Some(master_id) = sim
-        .world()
-        .get::<ph2d_ecs::InstanceOf>(root)
-        .map(|l| l.master)
-    else {
-        return clicked;
-    };
-    crate::instance_verbs_walk::entity_for_stable_id(sim, master_id)
-        .map_or(clicked, Entity::from_bits)
-}
-
 /// **Qual dos verbos o menu pediu.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Verb {
@@ -486,7 +474,7 @@ pub(crate) fn drain(
             // RECEITA — só que agora ele sabe achá-la a partir de uma cópia dela, que é a mesma
             // resolução que os outros quatro verbos já faziam (`instance_root_of`). ⛔ Uma linha
             // que não é nem receita nem cópia continua a recusar, com a mesma voz.
-            let subject = master_subject(sim, entity);
+            let subject = crate::instance_verbs_walk::master_subject(sim, entity);
             let parent = sim.world().get::<ph2d_ecs::ChildOf>(subject).map(|c| c.0);
             match crate::instantiate::instantiate_master(sim, registry, subject, parent, docs, link)
             {

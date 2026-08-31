@@ -34,18 +34,21 @@ pub struct InspectorPropertiesInfo {
     pub rows: Vec<super::variant_axes::VariantAxis>,
     /// O que a tabela de ids não endereça — **escrito**, nunca truncado em silêncio.
     pub beyond: usize,
-    /// ⭐⭐⭐ **DE QUEM são estas propriedades** — o nome curto do componente, quando o objecto é
-    /// uma cópia. `None` quando elas são do próprio objecto.
+    /// ⭐⭐⭐ **O NOME DO OBJECTO SELECIONADO**, como a Hierarquia o mostra — o título do cartão.
     ///
-    /// # ⛔⛔ O cartão contradizia o nome que o artista tinha acabado de escrever
+    /// # ⚠️ Este campo já significou o CONTRÁRIO, e a decisão é do dono
     ///
-    /// Report do Enio com foto (2026-08-31): ele renomeou uma **cópia** para `Canvas{Size=Big}` e
-    /// o cartão continuou a dizer `Size  Small`. **O cartão estava certo** — uma propriedade é do
-    /// COMPONENTE, e a cópia herda-a — mas na tela liam-se, um por cima do outro, um nome a dizer
-    /// `Big` e uma linha a dizer `Small`, sem nada a explicar a diferença.
+    /// A 1.ª versão punha aqui o nome do **componente** — a fonte das propriedades — para explicar
+    /// por que o cartão diz `Small` sobre uma cópia que o artista renomeou para `Big`. Enio
+    /// (2026-08-31): *«Properties of "Nome do objeto na Hierarquia"»*.
     ///
-    /// ⚠️ *Um valor que discorda do que o artista escreveu tem de dizer de onde vem.* ⛔ A
-    /// alternativa — passar a ler o nome da cópia — quebraria a lei que faz os chips funcionarem
-    /// (a família compara nomes de RECEITAS) e daria a cada cópia uma verdade própria.
+    /// ⛔ **A pergunta que aquela versão respondia continua sem resposta na tela**, e ficou
+    /// nomeada: uma cópia cujo nome declara `{Size=Big}` mostra as propriedades do componente
+    /// (`Small`), porque uma propriedade é do COMPONENTE. ⚠️ Na prática ela quase não se atinge
+    /// desde que uma variante nasce com valor próprio (`variant_axes::variant_name`) — o artista
+    /// deixa de precisar de escrever chaves numa cópia para criar uma versão.
+    ///
+    /// ⚠️ **É o nome CURTO** (`display_name`): um título com as chaves lá dentro é a frase
+    /// comprida que o report de 2026-08-30 recusou.
     pub source_name: Option<String>,
 }

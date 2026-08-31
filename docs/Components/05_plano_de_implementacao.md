@@ -1290,7 +1290,45 @@ falham sozinhas, cada uma no caso da outra:**
 
 ⇒ o `flat_axis` tenta o **curto** e só cai no longo quando ele de facto **colide**. *A informação
 que decide — «estes dois são iguais?» — só existe onde os membros estão todos à mão; uma função que
-olha um nome de cada vez não pode responder.* Na família do fluxo: `Casa` e `Casa Variant`.
+olha um nome de cada vez não pode responder.*
+
+### ⭐⭐⭐ O 6.º report — *«Faça as coisas direito!»* e a causa estava no GESTO, não no cartão
+
+> *«Properties of "Nome do objeto na Hierarquia". Variant deveria ser Size. Nos botões deveríamos
+> ter Small e Big. SE Há botões, as label sobre a propriedade podem ser retiradas.»*
+
+Ele estava a olhar para `Variant: [Canvas] [Canvas Variant]` com um `Size  Small` de texto por
+baixo — duas fileiras, nenhuma útil.
+
+⛔⛔⛔ **A causa não é o cartão: é o `make_master`.** O *Make Prefab* sobre uma cópia dava à variante
+o nome `<base> Variant`, então as **duas** receitas declaravam `{Size=Small}`. Com valores iguais o
+eixo `Size` tem uma resposta só, cai (*«um eixo com um valor só não é uma pergunta»*), e a família
+desce ao **modo plano** — que mostra NOMES. *O app criava uma versão nova e não lhe dava o que a
+torna uma versão.*
+
+⭐⭐ **A variante nasce com o valor SEGUINTE na 1.ª chave** (`variant_axes::variant_name`):
+`Casa {Size=Small}` faz `Casa {Size=Small 2}` — a lei do Figma, que numera o valor ao duplicar uma
+variante. ⚠️ **O sufixo `Variant` FICA para famílias sem chaves** (o idioma do Unity), e a lei é que
+escolhe qual dos dois.
+
+⚠️ **A unicidade compara COMBINAÇÕES, não nomes:** duas receitas com nomes diferentes e a mesma
+combinação voltariam a colapsar o eixo, que é o defeito de origem.
+
+E as três queixas caem de uma vez, sem uma linha de pintor:
+
+| a queixa | porque cai |
+|---|---|
+| *«Variant deveria ser Size»* | com valores distintos o `multi_axis` produz o eixo, e o modo plano não é alcançado |
+| *«nos botões, Small e Big»* | os chips do eixo são **valores**, nunca nomes de receita |
+| *«se há botões, tire o texto»* | o `rows_for` já salta a chave declarada que **um eixo cobre** — a fileira de texto existia porque o eixo tinha caído |
+
+Medido (`PH2D_BUILD_SMOKE=80`, passo 4): `Variant: Casa [Casa Variant]` → **`Size: Small [Small 2]`**;
+e no passo 5, com a variante renomeada, `Size: Small [Big]`.
+
+⭐ **E o título passa a nomear o objecto SELECIONADO**, como a Hierarquia o mostra. ⚠️ A versão
+anterior punha ali o nome do COMPONENTE (a fonte das propriedades) para explicar por que o cartão
+dizia `Small` sobre uma cópia renomeada para `Big`; ele pediu o outro. *Um título que nomeia uma
+coisa que não está seleccionada faz o artista procurar onde ela está.*
 
 ---
 

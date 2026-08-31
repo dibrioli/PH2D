@@ -23,15 +23,6 @@ use ph2d_editor_core::screens::hero::InspectorInstanceInfo;
 /// A margem de dentro do cartão — o que separa o texto da borda dele.
 const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PAD do corpo
 
-/// ⭐ **A altura que este texto vai de facto ocupar**, nunca menos que uma linha.
-///
-/// ⚠️ **`max(line)`, e não a medida crua:** o `paint_text` desenha a partir do topo e o cartão
-/// espaça em `line`; uma frase curta que medisse menos encolheria o ritmo das linhas seguintes.
-fn text_h(text_system: &mut TextSystem, text: &str, font_size: f32, max_w: f32, line: f32) -> f32 {
-    let h = text_system.layout(text, font_size, max_w).height();
-    h.max(line)
-}
-
 /// Pinta o cartão. Devolve o `y` de baixo.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_instance_card(
@@ -62,8 +53,8 @@ pub(crate) fn paint_instance_card(
     //
     // ⚠️ As linhas dos componentes overridados ficam na conta: elas são NOMES do catálogo, curtos
     // por construção — e medir cada uma custaria um layout por quadro por linha.
-    let head_h = text_h(text_system, &info.provenance(), font, tw_probe, line)
-        + text_h(text_system, &info.summary(), small, tw_probe, line);
+    let head_h = super::text_h(text_system, &info.provenance(), font, tw_probe, line)
+        + super::text_h(text_system, &info.summary(), small, tw_probe, line);
     let rows = info.overridden.len() + usize::from(info.orphans > 0);
     let card_h = CARD_PAD * 2.0 + head_h + line * rows as f32;
     let card = Rect::new(x, y, w, card_h);
@@ -93,7 +84,7 @@ pub(crate) fn paint_instance_card(
     );
     // ⚠️ **O avanço é o MEDIDO** — ver a nota da altura: um `+= line` fixo aqui é exactamente o que
     // punha o resumo por cima da 2.ª linha da proveniência.
-    ty += text_h(text_system, &info.provenance(), font, tw, line);
+    ty += super::text_h(text_system, &info.provenance(), font, tw, line);
     paint_text(
         text_system,
         scene,
@@ -104,7 +95,7 @@ pub(crate) fn paint_instance_card(
         tw,
         resolve(ColorToken::Text2, theme),
     );
-    ty += text_h(text_system, &info.summary(), small, tw, line);
+    ty += super::text_h(text_system, &info.summary(), small, tw, line);
 
     // ⚠️ **Uma linha por componente overridado, pelo NOME que o `+` usa.** Sem elas o artista sabe
     // que «alguma coisa» está diferente e não sabe o quê — que é metade do defeito.

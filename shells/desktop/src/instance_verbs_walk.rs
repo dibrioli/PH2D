@@ -9,7 +9,7 @@
 //! do FIM, onde ninguém escreve. O `drain` cresce por acrescento de braço **no meio**, e movê-lo
 //! poria toda linha paralela que acrescenta um verbo em conflito textual com esta.
 
-use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, SimWorld, StableId};
+use ph2d_ecs::{Children, Entity, InstanceOf, MasterRoot, Name, SimWorld, StableId};
 
 /// `StableId → entidade`, do mundo inteiro.
 pub(crate) fn stable_index(sim: &mut SimWorld) -> std::collections::BTreeMap<u64, Entity> {
@@ -78,4 +78,32 @@ pub(crate) fn subtree(sim: &SimWorld, root: Entity) -> Vec<Entity> {
         }
     }
     out
+}
+
+/// Os `Name` de todas as receitas vivas — o que a [`variant_name`] precisa para não repetir uma
+/// combinação que já existe.
+pub(crate) fn master_names(sim: &mut SimWorld) -> Vec<String> {
+    let mut q = sim
+        .world_mut()
+        .query_filtered::<&Name, bevy_ecs::prelude::With<MasterRoot>>();
+    q.iter(sim.world()).map(|n| n.0.clone()).collect()
+}
+
+/// ⭐⭐ **A RECEITA que esta linha representa** — ela própria, se for uma; a de que é cópia, se for
+/// uma cópia; ela própria (para o verbo recusar com voz) se não for nem uma coisa nem outra.
+///
+/// ⚠️ **Uma porta, e não uma escada em cada chamador**: a resolução `cópia -> receita` é a mesma
+/// travessia que o *Apply*, o *Revert* e o *Detach* já fazem (`instance_root_of`), e escrevê-la
+/// outra vez daria duas respostas a *«de que receita esta linha é?»*.
+pub(crate) fn master_subject(sim: &mut SimWorld, clicked: Entity) -> Entity {
+    if sim.world().get::<MasterRoot>(clicked).is_some() {
+        return clicked;
+    }
+    let Some(root) = instance_root_of(sim, clicked) else {
+        return clicked;
+    };
+    let Some(master_id) = sim.world().get::<InstanceOf>(root).map(|l| l.master) else {
+        return clicked;
+    };
+    entity_for_stable_id(sim, master_id).map_or(clicked, Entity::from_bits)
 }

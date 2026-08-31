@@ -66,6 +66,20 @@ pub fn display_name(name: &str) -> String {
     // dele: `Casa {Size=Small, State=Idle} (1)` desenhava-se `Casa`, **comendo o `(1)`**. Duas
     // cópias ficavam com a mesma linha, e o número que as distinguia era exactamente o que se
     // perdia. *Cortar por um delimitador de abertura assume que ele é o fim da linha.*
+    // ⛔⛔⛔ **SÓ SE CORTA O QUE SE SABE LER** (auditoria de 2026-08-31, achado A1).
+    //
+    // O corte era incondicional e o selo só conta o que o [`parse_combo`] aceita ⇒ um nome como
+    // `Fx {glow}` (ou `Casa {Size=` a meio da digitação, que o `TextChanged` faz passar por aqui a
+    // cada tecla) desenhava-se **`Fx`**, sem selo: *o texto do artista desaparecia da Hierarquia
+    // sem nada a dizer que desaparecera*. E o doc do [`row_label`] afirma o contrário três linhas
+    // abaixo — *«esconder sem dizer é pior que mostrar comprido»*.
+    //
+    // ⚠️ **Duas funções, um facto, respostas opostas:** o [`chip_label`] já resolvia o mesmo caso
+    // ao contrário (sem `}` devolve o nome inteiro). A lei que as junta é esta: *o que não é uma
+    // combinação não é uma propriedade, e portanto não se esconde.*
+    if parse_combo(name).is_none() {
+        return name.to_string();
+    }
     let Some((head, rest)) = name.split_once('{') else {
         return name.to_string();
     };
@@ -339,6 +353,27 @@ pub fn rows_for(
         if axes.iter().any(|a| a.name == row.name) {
             continue;
         }
+        // ⛔⛔ **E no modo PLANO a chave pode já estar dita DENTRO do chip** (auditoria de
+        // 2026-08-31, achado A5).
+        //
+        // O dedup acima compara NOMES de fileira, e o eixo plano tem nome **vazio** por decisão
+        // (HR-15: quem o chama `Variant` é o painel) ⇒ ele nunca casa — justamente no modo em que
+        // os chips **são** as combinações. O artista lia
+        // `Variant: [Size=Small] [Size=Small 2]` e, uma linha abaixo, `Size  Small`.
+        //
+        // ⚠️ **A comparação é pelo TEXTO do chip**, e não por uma bandeira de modo: o rótulo plano
+        // só carrega a combinação quando os nomes curtos colidem, e é exactamente aí que a
+        // repetição existe. *Não se diz duas vezes a mesma coisa; e quando o chip diz outra, a
+        // fileira declarada continua a informar.*
+        let said = format!("{}={}", row.name, row.options[0].label);
+        if axes
+            .iter()
+            .filter(|a| a.name.is_empty())
+            .flat_map(|a| a.options.iter())
+            .any(|o| o.label.contains(&said))
+        {
+            continue;
+        }
         // ⚠️ **O teto é o da TABELA DE IDS** e vale para as duas espécies de fileira: uma fileira de
         // texto não regista chips, mas conta para a altura do cartão e para a ordem — e um cartão
         // que cresce sem limite é a parede que os eixos existem para evitar.
@@ -374,6 +409,68 @@ pub fn declared_axes(name: &str) -> Vec<VariantAxis> {
             })
             .collect()
     })
+}
+
+/// ⭐⭐⭐ **O NOME DE UMA VARIANTE NOVA** — com um valor DISTINTO na primeira propriedade.
+///
+/// # ⛔⛔⛔ Uma variante sem valor próprio não é uma pergunta (report do Enio, 2026-08-31)
+///
+/// *«Variant deveria ser Size. Nos botões deveríamos ter Small e Big.»* — e ele estava a olhar
+/// para `Variant: [Canvas] [Canvas Variant]`.
+///
+/// A causa não é o cartão: o gesto *Make Prefab* sobre uma cópia dava à variante o nome
+/// `<base> Variant`, então as **duas** receitas declaravam `{Size=Small}`. Com valores iguais o
+/// eixo `Size` tem uma resposta só, cai, e a família desce ao modo plano — que mostra NOMES, que é
+/// exactamente o que ele viu. *O app criava uma versão nova e não lhe dava o que a torna uma
+/// versão.*
+///
+/// ⇒ a variante nasce com o valor **seguinte** na 1.ª chave: `Casa {Size=Small}` faz
+/// `Casa {Size=Small 2}`, e a fileira passa a ser `Size: [Small] Small 2` — **uma pergunta, com
+/// dois valores**, à espera de que o artista chame `Big` ao segundo. É a lei do Figma, que numera
+/// o valor ao duplicar uma variante.
+///
+/// ⚠️ **`None` quando a base não declara nada** — aí o chamador mantém o sufixo `Variant`, que é o
+/// idioma do Unity e continua a ser a resposta certa para uma família sem propriedades.
+///
+/// `taken` são os nomes das receitas que já existem; a escolha é a primeira que **nenhuma delas
+/// declara**. ⚠️ A comparação é pela COMBINAÇÃO, não pelo nome: duas receitas com nomes diferentes
+/// e a mesma combinação voltariam a colapsar o eixo, que é o defeito de origem.
+#[must_use]
+pub fn variant_name(base: &str, taken: &[String]) -> Option<String> {
+    let combo = parse_combo(base)?;
+    let (key, value) = combo.first()?.clone();
+    let used: Vec<Vec<(String, String)>> = taken.iter().filter_map(|n| parse_combo(n)).collect();
+    // ⚠️ Começa em `2` — o primeiro é o que já lá está, e `Small 1` diria que existe um `Small 0`.
+    //
+    // ⚠️ **O tecto é uma cerca, não um limite de produto** (auditoria de 2026-08-31, achado A7):
+    // esgotá-lo devolve `None`, e o chamador cai no sufixo `Variant` — que é **o nome que colapsa
+    // o eixo**, ou seja o defeito de origem, em silêncio. Com `999` são precisas mil variantes da
+    // mesma base para lá chegar; a fronteira fica nomeada em vez de escondida.
+    (2..=999).find_map(|n| {
+        let candidate = format!("{value} {n}");
+        let combo: Vec<(String, String)> = combo
+            .iter()
+            .map(|(k, v)| {
+                if *k == key {
+                    (k.clone(), candidate.clone())
+                } else {
+                    (k.clone(), v.clone())
+                }
+            })
+            .collect();
+        (!used.contains(&combo)).then(|| rename_combo(base, &combo))
+    })
+}
+
+/// O mesmo nome, com a combinação substituída — o de fora das chaves fica intacto.
+fn rename_combo(base: &str, combo: &[(String, String)]) -> String {
+    let head = base.split_once('{').map_or("", |(h, _)| h);
+    let tail = base
+        .split_once('{')
+        .and_then(|(_, r)| r.split_once('}'))
+        .map_or("", |(_, t)| t);
+    let inner: Vec<String> = combo.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    format!("{head}{{{}}}{tail}", inner.join(", "))
 }
 
 /// ⭐ **O rótulo de um chip do modo PLANO** — o que distingue esta versão das irmãs.

@@ -118,3 +118,23 @@ pub(crate) fn section_header(store: &WidgetStore, id: NodeId, label: &str) -> Se
         .collapsible(!store.is_collapsed(id))
         .open_t(store.section_open_live(id))
 }
+
+/// ⭐⭐ **A altura que este texto vai de facto ocupar**, nunca menos que uma linha.
+///
+/// ⚠️ **Ela mora aqui porque tem DOIS cartões** (auditoria de 2026-08-31, achado A2): o de
+/// instância mediu-a e o de propriedades ficou a contar linhas — e o título dele é
+/// `Properties of "<nome do artista>"`, que quebra pela mesma razão. *Uma cura escrita num dos
+/// dois irmãos deixa o outro a repetir o defeito, e foi o que aconteceu em duas horas.*
+///
+/// ⚠️ **`max(line)`, e não a medida crua:** o `paint_text` desenha a partir do topo e o cartão
+/// espaça em `line`; uma frase curta que medisse menos encolheria o ritmo das linhas seguintes.
+pub(crate) fn text_h(
+    text_system: &mut TextSystem,
+    text: &str,
+    font_size: f32,
+    max_w: f32,
+    line: f32,
+) -> f32 {
+    let h = text_system.layout(text, font_size, max_w).height();
+    h.max(line)
+}

@@ -39,12 +39,27 @@ const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PA
 /// não existe*. ⏳ Ele migra com os irmãos deste ficheiro quando o Fluent chegar.
 const FLAT_AXIS_LABEL: &str = "Variant";
 
-/// O título do cartão.
+/// O título do cartão — a palavra, sem o nome.
 ///
 /// ⚠️ **Ele existe por causa do caso que motivou o cartão**: num objecto solto não há cartão de
 /// instância acima, e duas linhas soltas a dizer `Size  Small` não dizem de onde vêm. *O artista
 /// escreveu as chaves no NOME — o cartão tem de o ligar de volta ao que ele escreveu.*
+///
+/// ⚠️ **Quem lhe acrescenta o nome é o [`card_title`]**, e o nome é o do objecto SELECIONADO
+/// (Enio, 2026-08-31) — ver o doc de `InspectorPropertiesInfo::source_name`, que também guarda a
+/// decisão anterior e por que ela virou.
 const CARD_TITLE: &str = "Properties";
+
+/// ⭐ **A frase do título** — uma porta, porque a ALTURA e o DESENHO têm de ler a mesma.
+///
+/// ⚠️ Enquanto ela estava escrita no meio do pintor, medir era impossível sem a repetir — e duas
+/// cópias de uma frase são duas frases no dia em que uma mudar.
+fn card_title(info: &InspectorPropertiesInfo) -> String {
+    match info.source_name.as_deref() {
+        Some(n) => format!("{CARD_TITLE} of \u{201c}{n}\u{201d}"),
+        None => CARD_TITLE.to_string(),
+    }
+}
 
 /// Pinta o cartão. Devolve o `y` de baixo.
 #[allow(clippy::too_many_arguments)]
@@ -67,8 +82,20 @@ pub(crate) fn paint_properties_card(
     // pintor salta o que passa do teto, e uma altura que contasse o vector inteiro deixaria um vão
     // vazio no fim do cartão.
     let painted = info.rows.len().min(ids::MAX_INSTANCE_AXES);
-    let rows = 1 + painted + usize::from(info.beyond > 0);
-    let card_h = CARD_PAD * 2.0 + line * rows as f32;
+    let rows = painted + usize::from(info.beyond > 0);
+    // ⛔⛔ **O TÍTULO é MEDIDO, não contado** (auditoria de 2026-08-31, achado A2). Ele carrega o
+    // nome que o artista escreveu (`Properties of "…"`) e quebra quando não cabe — e a 1.ª fileira
+    // de propriedade era pintada por cima da 2.ª linha dele. É o mesmo defeito que o cartão irmão
+    // curou duas horas antes: *uma cura escrita num dos dois irmãos deixa o outro a repeti-la.*
+    let title = card_title(info);
+    let title_h = super::text_h(
+        text_system,
+        &title,
+        small,
+        (w - CARD_PAD * 2.0).max(0.0),
+        line,
+    );
+    let card_h = CARD_PAD * 2.0 + title_h + line * rows as f32;
     fill_rounded_rect(
         scene,
         Rect::new(x, y, w, card_h),
@@ -79,13 +106,6 @@ pub(crate) fn paint_properties_card(
     let tx = x + CARD_PAD;
     let tw = (w - CARD_PAD * 2.0).max(0.0);
     let mut ty = y + CARD_PAD;
-    // ⭐⭐⭐ **O título NOMEIA a fonte quando ela não é o próprio objecto** — ver o doc de
-    // `InspectorPropertiesInfo::source_name`. Sem isto, uma cópia renomeada mostra um nome a dizer
-    // `Big` e uma linha a dizer `Small`, sem nada a explicar a diferença.
-    let title = match info.source_name.as_deref() {
-        Some(n) => format!("{CARD_TITLE} of \u{201c}{n}\u{201d}"),
-        None => CARD_TITLE.to_string(),
-    };
     paint_text(
         text_system,
         scene,
@@ -96,7 +116,7 @@ pub(crate) fn paint_properties_card(
         tw,
         resolve(ColorToken::Text2, theme),
     );
-    ty += line;
+    ty += title_h;
 
     for (a, ax) in info.rows.iter().enumerate() {
         let Some(row_ids) = ids::INSP_INSTANCE_AXIS_OPTION.get(a) else {
@@ -146,7 +166,22 @@ pub(crate) fn paint_properties_card(
             };
             let host = Rect::new(chips_x + (cw + gap) * i as f32, ty, cw, line);
             hit_index.register(id, host);
-            let button = Button::new(id, v.label.clone())
+            // ⛔⛔ **O rótulo cabe no chip, ou é CORTADO** (auditoria de 2026-08-31, achado A3).
+            //
+            // O `MAX_INSTANCE_AXIS_VALUES = 8` é um tecto de **tabela de ids**, e o recurso que se
+            // esgota primeiro é outro: a LARGURA. Medido na aritmética do painel — `304 px` de
+            // Inspector menos as margens dão `tw ≈ 268`, o rótulo do eixo leva `72`, e oito chips
+            // com `4` de intervalo ficam a **≈ 21 px cada** para um texto de `13 px`. O
+            // `paint_button` centra com `max_width = rect.w`, logo o rótulo **quebra dentro do
+            // botão** e o `y` centrado fica negativo sobre uma fileira de `17 px` ⇒ sangra para as
+            // vizinhas. *É o mesmo «labels emboladas» do report, um eixo abaixo.*
+            //
+            // ⚠️ **Cortar não substitui medir o tecto** — ele continua a ser de ids, e a largura
+            // continua a ser o recurso a apertar quando alguém quiser mais de 8. Isto garante só
+            // que o cartão nunca desenha por cima de si próprio.
+            let label = ph2d_editor_core::text_elide::elide(text_system, &v.label, font, cw)
+                .unwrap_or_else(|| v.label.clone());
+            let button = Button::new(id, label)
                 // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira
                 // mostra as opções e esconde a resposta.
                 .kind(if v.current {

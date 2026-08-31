@@ -114,18 +114,24 @@ fn the_declaration_is_read_from_the_master_not_from_the_copy() {
     assert_ne!(info.root_bits, 0);
 }
 
-/// ⭐⭐⭐ **O cartão diz DE QUEM são as propriedades quando não são do próprio objecto.**
+/// ⭐⭐⭐ **O título nomeia o objecto SELECIONADO, como a Hierarquia o mostra.**
 ///
-/// Report do Enio com foto (2026-08-31): ele renomeou uma **cópia** para `Canvas{Size=Big}` e o
-/// cartão continuou a dizer `Size  Small`. O cartão estava certo — a propriedade é do componente —
-/// mas na tela liam-se um nome a dizer `Big` e uma linha a dizer `Small`, sem nada entre os dois.
+/// # ⚠️ Este gate mudou de lado, e a decisão é do dono
 ///
-/// ⚠️ **E num objecto SOLTO ele fica calado**: nomear a fonte ali seria dizer-lhe o nome dele
-/// próprio.
+/// A versão anterior afirmava o CONTRÁRIO — que o título nomeia o **componente**, a fonte das
+/// propriedades — para explicar por que o cartão diz `Small` sobre uma cópia que o artista
+/// renomeou para `Big`. Enio (2026-08-31): *«Properties of "Nome do objeto na Hierarquia"»*.
+///
+/// ⛔ **Um gate que sobrevive a uma decisão revertida transforma-a em regressão silenciosa** — ele
+/// ficaria vermelho sobre o produto CERTO, e a reacção seguinte seria desfazer o que o dono pediu.
+/// *Quando a decisão vira, o gate vira com ela — e diz que virou.*
+///
+/// ⚠️ E o nome é o **curto**, o mesmo que a linha da Hierarquia mostra: um título que trouxesse as
+/// chaves seria a frase comprida que o report anterior já tinha recusado.
 ///
 /// (Mutação: `source_name` fixo em `None` ⇒ RED.)
 #[test]
-fn the_card_names_whose_properties_these_are() {
+fn the_card_title_names_the_selected_object_as_the_hierarchy_shows_it() {
     let mut sim = SimWorld::new();
     let r = crate::init::build_component_registry();
     let master = sim
@@ -157,21 +163,21 @@ fn the_card_names_whose_properties_these_are() {
         crate::instantiate::ArtLink::Own,
     )
     .expect("instanciou");
-    // O gesto do report: renomear a CÓPIA.
     sim.world_mut()
         .entity_mut(copy)
-        .insert(Name::new("Canvas {Size=Big}"));
+        .insert(Name::new("Canvas {Size=Big} (2)"));
     let info = super::build_properties_info(&mut sim, Some(copy.to_bits())).expect("o cartao");
     assert_eq!(
         info.source_name.as_deref(),
-        Some("Canvas"),
-        "o cartao nao diz de quem sao as propriedades — e o nome da copia contradi-lo na tela"
+        Some("Canvas (2)"),
+        "o titulo nao nomeia o objecto seleccionado como a Hierarquia o mostra"
     );
-    // ⛔ E a fonte é o nome CURTO, nunca o cru com chaves.
+    // ⛔ E sem as chaves — o nome CURTO, nunca o cru.
     assert!(!info.source_name.unwrap().contains('{'));
 
-    // ⛔ Num objecto solto, calado.
+    // ⚠️ **E num objecto SOLTO ele também nomeia** — o cartão é sempre sobre quem está
+    // seleccionado, e não há aqui um caso «sem nome».
     let lone = spawn_named(&mut sim, "Muro {Size=Small}");
     let lone_info = super::build_properties_info(&mut sim, Some(lone.to_bits())).expect("cartao");
-    assert!(lone_info.source_name.is_none());
+    assert_eq!(lone_info.source_name.as_deref(), Some("Muro"));
 }

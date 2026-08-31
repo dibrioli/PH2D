@@ -67,12 +67,31 @@ pub(crate) fn open_body(
         crate::paint_head::paint_panel_head(rect, scene, text_system, theme, hit_index, store);
     let content_bottom = rect.y + rect.h - Spacing::Xs.px();
     let scroll_y = store.panel_scroll(ids::INSP_PANEL).max(0.0);
-    scene.push_clip(&ph2d_vector::Rect::new(
-        rect.x as f64,
-        content_top as f64,
-        (rect.x + rect.w) as f64,
-        content_bottom as f64,
-    ));
+    // ⏳⏳ **ABERTO, MEDIDO E NÃO CURADO: o `HitIndex` deste painel NÃO é recortado**
+    // (auditoria de 2026-08-31, achado A4).
+    //
+    // O `push_clip` acima recorta o DESENHO. O gémeo no `HitIndex` — `hit_index.push_clip(banda)`
+    // — não existe, então tudo o que sai do corpo continua **registado** onde ninguém o vê: com
+    // `body_top_y = content_top − scroll_y`, rolar leva os hit-rects para a faixa do TÍTULO, e o
+    // clique deles passa a valer ali. É a costura que o `ph2d-panel-motion-params` pagou
+    // (CLAUDE.md §5.0: *«uma banda, dois consumidores»*).
+    //
+    // ⛔⛔ **Ela foi IMPLEMENTADA duas vezes e REVERTIDA as duas, com o preço contado:**
+    //
+    // | tentativa | resultado |
+    // |---|---|
+    // | recorte simétrico (topo + fundo) | **7** gates vermelhos (`seam_joint`, `seam_physics`) |
+    // | só o topo (a cerca no lado perigoso) | **8** vermelhos, outro conjunto |
+    //
+    // ⚠️ **O que a medição revela é maior que o defeito:** aqueles gates pintam num viewport alto,
+    // o painel recebe a altura dele, e as secções de baixo caem **fora** do corpo visível — onde
+    // eles as clicam. *Eles provam cliques em widgets que o artista não vê, e são verdes hoje
+    // porque o painel tem exactamente este defeito: o defeito e os gates seguram-se um ao outro.*
+    //
+    // ⇒ curá-lo é reescrever aqueles gates para **rolar antes de clicar**, e isso é uma wave — não
+    // um remendo no fim de outra. ⛔ A segunda tentativa (só o topo) reprovou um conjunto
+    // DIFERENTE da primeira, o que diz que o mecanismo ainda não está compreendido: shipar
+    // qualquer das duas seria trocar um defeito que ninguém reportou por um que não sei nomear.
     let scrollbar_reserve = ph2d_editor_core::widget::SCROLLBAR_W + Spacing::Sm.px();
     ph2d_editor_core::widget::showcase::LAST_BODY_TOP_SCREEN_Y
         .with(|c| c.set(content_top + Spacing::Xs.px()));

@@ -71,7 +71,15 @@ pub fn paint_text_elided(
 /// The longest `<prefix>…` of `text` that measures within `max_width`, or `None`
 /// when not even the ellipsis fits. Binary search over char boundaries, so a
 /// multi-byte name is never cut mid-glyph.
-fn elide(
+///
+/// ⭐ **Pública desde 2026-08-31** (auditoria, achado A3): quem desenha o próprio texto chama o
+/// [`paint_text_elided`], mas um **`Button`** faz a sua própria centragem — ele precisa da STRING
+/// já cortada. ⛔ A alternativa era um segundo cortador ao lado deste, e *duas leis de corte
+/// discordam no dia em que uma aprender a contar um glifo que a outra não conta*.
+///
+/// ⚠️ Devolve `None` quando nem as reticências cabem — o chamador decide se pinta nada ou o cru.
+#[must_use]
+pub fn elide(
     text_system: &mut TextSystem,
     text: &str,
     font_size: f32,

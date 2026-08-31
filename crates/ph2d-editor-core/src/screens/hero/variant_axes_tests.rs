@@ -377,9 +377,31 @@ fn the_badge_counts_the_hidden_definitions() {
     // aprende a ignorar.
     assert_eq!(hidden_count("Casa"), 0);
     assert_eq!(row_label("Casa"), "Casa");
-    // ⚠️ E um nome que **não parseia** não promete nada: `{}` vazio, ou um lado em falta.
-    assert_eq!(row_label("Casa {}"), "Casa");
-    assert_eq!(row_label("Casa {Size=}"), "Casa");
+    // ⛔⛔⛔ **E um nome que NÃO PARSEIA sai INTEIRO** (auditoria de 2026-08-31, achado A1).
+    //
+    // ⚠️ **Esta asserção estava ao contrário, e afirmava o defeito como correcto.** O corte era
+    // incondicional e o selo só conta o que o `parse_combo` aceita ⇒ `Fx {glow}` desenhava-se
+    // `Fx`, **sem selo**: o texto do artista sumia da linha sem nada a dizer que sumira — que é
+    // exactamente o que o doc do `row_label` promete não fazer, três linhas acima.
+    //
+    // *Um oráculo que codifica o defeito não é uma fixtura fraca: nenhuma mutação o mata, porque
+    // ele já é a mutação.*
+    for unreadable in [
+        "Casa {}",
+        "Casa {Size=}",
+        "Fx {glow}",
+        "Casa {Size=Small, Size=Big}",
+    ] {
+        assert_eq!(
+            row_label(unreadable),
+            unreadable,
+            "o que não é uma combinação não é uma propriedade, e não se esconde"
+        );
+        assert_eq!(hidden_count(unreadable), 0);
+    }
+    // ⚠️ E um nome a meio da digitação passa por aqui a cada tecla (o `TextChanged` do campo de
+    // nome dispara por letra) — `Casa {Size=` não pode piscar o nome do artista para fora da lista.
+    assert_eq!(row_label("Casa {Size="), "Casa {Size=");
 }
 
 /// ⭐⭐⭐ **UM OBJECTO SOLTO MOSTRA O QUE DECLARA** — o report do Enio de 2026-08-31.
@@ -525,4 +547,68 @@ fn the_flat_chip_grows_only_when_the_short_name_collides() {
         "o curto colidia e o chip tinha de crescer"
     );
     assert_ne!(seen[0], seen[1]);
+}
+
+/// ⭐⭐⭐ **UMA VARIANTE NASCE COM UM VALOR PRÓPRIO** — report do Enio, 2026-08-31:
+/// *«Variant deveria ser Size. Nos botões deveríamos ter Small e Big.»*
+///
+/// Enquanto ela herdava `<base> Variant`, as duas receitas declaravam a MESMA combinação, o eixo
+/// `Size` ficava com uma resposta só e caía, e a família descia ao modo plano — a mostrar NOMES.
+///
+/// **Mutação que deve sangrar:** `variant_name` devolver `None` sempre.
+#[test]
+fn a_new_variant_is_born_with_a_value_of_its_own() {
+    use super::variant_name;
+    assert_eq!(
+        variant_name("Casa {Size=Small}", &["Casa {Size=Small}".into()]),
+        Some("Casa {Size=Small 2}".into())
+    );
+    // ⚠️ **Só a PRIMEIRA chave muda** — as outras são a identidade que a variante herda.
+    assert_eq!(
+        variant_name(
+            "Casa {Size=Small, State=Idle}",
+            &["Casa {Size=Small, State=Idle}".into()]
+        ),
+        Some("Casa {Size=Small 2, State=Idle}".into())
+    );
+    // ⛔ **Sem chaves não há valor a numerar** — o chamador mantém o sufixo `Variant` do Unity.
+    assert_eq!(variant_name("Badge", &[]), None);
+}
+
+/// ⛔⛔ **E ela não repete uma combinação que já existe** — senão o eixo volta a colapsar, que é o
+/// defeito de origem.
+///
+/// ⚠️ **A comparação é pela COMBINAÇÃO, não pelo nome**: duas receitas chamadas de forma diferente
+/// e a declarar o mesmo `{Size=Small 2}` fariam o `Size` cair na mesma.
+///
+/// **Mutação que deve sangrar:** ignorar `taken`.
+#[test]
+fn a_new_variant_never_repeats_a_combination_that_exists() {
+    use super::variant_name;
+    let taken = vec![
+        "Casa {Size=Small}".to_string(),
+        // ⚠️ Nome DIFERENTE, combinação já usada — é isto que o gate mede.
+        "Outra {Size=Small 2}".to_string(),
+    ];
+    assert_eq!(
+        variant_name("Casa {Size=Small}", &taken),
+        Some("Casa {Size=Small 3}".into())
+    );
+}
+
+/// ⭐⭐ **E o resultado é uma PERGUNTA de verdade** — a metade que liga a lei ao que o artista vê.
+///
+/// ⚠️ Sem ela, os dois gates acima provam um `format!` e não o produto: o que interessa é que a
+/// família resultante deixa de cair no modo plano.
+#[test]
+fn the_born_variant_makes_the_axis_a_real_question() {
+    use super::{rows_for, variant_name};
+    let base = "Casa {Size=Small}";
+    let variant = variant_name(base, &[base.to_string()]).expect("a variante");
+    let members = [m(1, base), m(2, &variant)];
+    let (rows, _) = rows_for(&members, 1, base);
+    assert_eq!(rows.len(), 1, "devia ser UMA fileira, a do eixo: {rows:?}");
+    assert_eq!(rows[0].name, "Size", "a fileira caiu no modo plano");
+    assert_eq!(labels(&rows[0]), vec!["Small", "Small 2"]);
+    assert!(rows[0].options[0].current);
 }

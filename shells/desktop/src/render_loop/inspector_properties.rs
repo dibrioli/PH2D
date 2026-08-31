@@ -59,10 +59,18 @@ pub(super) fn build_properties_info(
         root_bits: root.map_or(0, Entity::to_bits),
         rows,
         beyond,
-        // ⚠️ **Só quando NÃO é do próprio objecto** — ver o doc do campo. Num objecto solto a
-        // declaração é dele, e nomear a fonte seria dizer-lhe o nome dele próprio.
-        source_name: root_master
-            .map(|_| ph2d_editor::screens::hero::variant_axes::display_name(&declared_by)),
+        // ⭐⭐⭐ **O nome do objecto SELECIONADO, como a Hierarquia o mostra** (report do Enio,
+        // 2026-08-31: *«Properties of "Nome do objeto na Hierarquia"»*).
+        //
+        // ⚠️ **A 1.ª versão punha aqui o nome do COMPONENTE** — a fonte das propriedades — para
+        // explicar por que o cartão dizia `Small` sobre uma cópia renomeada para `Big`. Ele pediu
+        // o outro: o cartão é sobre o objecto que está seleccionado, e o nome tem de ser o mesmo
+        // que ele lê na lista. *Um título que nomeia uma coisa que não está seleccionada faz o
+        // artista procurar onde ela está.*
+        source_name: sim
+            .world()
+            .get::<ph2d_ecs::Name>(entity)
+            .map(|n| ph2d_editor::screens::hero::variant_axes::display_name(&n.0)),
     })
 }
 

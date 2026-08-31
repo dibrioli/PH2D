@@ -588,6 +588,8 @@ mod transform_family_smoke;
 mod transport;
 /// A cena de smoke do Twist (o remoinho + o Falloff a modulá-lo) — irmão de `build_smoke`.
 mod twist_smoke;
+/// A metade do CHROME da poeira de impacto — a lei vive na `ph2d-editor-core`.
+mod ui_burst_paint;
 /// ⭐ O smoke da UI VIVA (`PH2D_UI_MOTION_SMOKE`) — o carácter e a corda.
 mod ui_motion_smoke;
 /// A cena de smoke da **HIERARQUIA** de estados (`PH2D_BUILD_SMOKE=64`) — irmã de `build_smoke`.
@@ -900,6 +902,7 @@ impl App {
             last_pointer: (0.0, 0.0),
             hovered_object: None,
             pending_ui_sound: None,
+            ui_burst: ph2d_editor::motion_burst::BurstField::default(),
             hover_outline: Vec::new(),
             dragging: None,
             title_dirty: true,

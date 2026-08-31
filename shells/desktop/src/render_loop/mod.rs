@@ -1200,6 +1200,11 @@ impl crate::App {
         let ui_dt = crate::modal::chrome_dt(wall_dt, crate::modal::take_stall());
 
         zen.tick();
+        // ⚠️ **A poeira anda no relógio do CHROME** (`ui_dt`), e não no do quadro: um diálogo modal
+        // congela o laço, e uma faísca não pode envelhecer enquanto nada é desenhado — a mesma lei
+        // que o `crate::modal` já impõe aos toasts.
+        #[allow(clippy::cast_possible_truncation)]
+        self.ui_burst.tick(ui_dt as f32);
         // ⚠️ **A UI VIVA anda aqui, com o MESMO relógio dos toasts** — um segundo `Instant::now()`
         // para o chrome seria a segunda resposta a *"quanto durou o último quadro?"*, e a que o
         // artista vê seria a errada. O `ui_dt` **não** é esse segundo relógio: é o `wall_dt` com a
@@ -11808,6 +11813,14 @@ impl crate::App {
             toasts.paint(vector_scene, &mut paint_ctx);
             jobs.paint_below(toasts.len(), vector_scene, &mut paint_ctx);
         }
+
+        // ⭐⭐⭐ **A POEIRA DE IMPACTO** (estudo de UI viva, D2) — por CIMA de tudo, porque ela é a
+        // confirmação do gesto que acabou de acontecer e nada do chrome a deve tapar.
+        //
+        // ⚠️ **Fora do `if` acima de propósito**: aquele ramo é o do modo com chrome completo, e uma
+        // faísca é confirmação de um gesto que existe nos dois. ⛔ Uma cópia dentro de cada ramo
+        // seria a segunda lei a manter em sincronia com a primeira.
+        crate::ui_burst_paint::paint(&self.ui_burst, vector_scene);
 
         // Paint + present + title — extracted to `present.rs` sibling
         // method (Wave 3.2 stage A). Re-acquires self.gfx + self.host

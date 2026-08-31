@@ -37,6 +37,11 @@ pub mod pattern;
 mod pattern_stroke_tests;
 #[cfg(test)]
 mod pattern_tests;
+/// Os gates da estampa do traço sob a POSE da entidade — irmão do [`pattern_stroke_tests`] pelo
+/// teto de LOC, e o corte é por SUJEITO: ali a estampa é a tinta de uma faixa, aqui é o que lhe
+/// acontece quando a forma tem um `Transform` não-uniforme.
+#[cfg(test)]
+mod stroke_pattern_pose_tests;
 pub use gradient::{GradHandle, drag_gradient_handle, draw_gradient_handles, hit_gradient_handle};
 
 /// **O recorte da moldura** (plano UI/UX W0) — irmão pelo teto de LOC, e a única peça que sabe que

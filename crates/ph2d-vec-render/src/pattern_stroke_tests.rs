@@ -168,8 +168,14 @@ fn a_patterned_stroke_pushes_no_clip_layer() {
 ///
 /// O Vello compõe `transform * brush_transform`. No caminho rápido (afim conforme) a geometria é
 /// local e o afim é o `transform` ⇒ a colocação local chega certa. No caminho não-conforme a
-/// geometria **já foi levada à tela** e o afim que chega ao Vello é `IDENTITY` ⇒ sem pré-compor, o
-/// padrão ficaria no espaço LOCAL sobre uma geometria de TELA: encolhido no canto do mundo.
+/// geometria **já foi levada à tela** e o afim que chega ao Vello é `IDENTITY` ⇒ sem alguém
+/// responder por esse espaço, o padrão ficaria no espaço LOCAL sobre uma geometria de TELA:
+/// encolhido no canto do mundo.
+///
+/// ⚠️ **Quem responde é a `PatternFrame`** desde a cura do ITEM B — antes dela era uma
+/// pré-composição pelo `transform` dentro do `stroke_uniform_image`, e era ela que esticava o
+/// ladrilho. *O que este gate mede continua a ser o mesmo: que o padrão NÃO fica em espaço local.*
+/// O aspecto e a posição são o assunto do [`super::stroke_pattern_pose_tests`].
 ///
 /// ⭐ A régua é a IGUALDADE dos afins que chegam ao encoding — não uma imagem, não um relógio.
 #[test]

@@ -29,8 +29,9 @@ pub(super) fn texpat_slider_event(
                 crate::TEXPAT_SIZE_MIN,
             )
         })),
-        // Gap: BIPOLAR, `0.5` = encostado. Negativo é a SOBREPOSIÇÃO.
-        K::Gap => Some(forward_track(host, id, 0.5, |t| {
+        // Gap X/Y: BIPOLAR, `0.5` = encostado. Negativo é a SOBREPOSIÇÃO.
+        // ⛔ O `GapY` faltava aqui e caía no `_ => None`: arrastar não produzia valor nenhum.
+        K::Gap | K::GapY => Some(forward_track(host, id, 0.5, |t| {
             t.mul_add(2.0 * crate::TEXPAT_GAP_MAX, -crate::TEXPAT_GAP_MAX)
         })),
         // Angle: UNIPOLAR `0..360` — o repouso é `0`, na PONTA do curso (ao contrário da Rotation

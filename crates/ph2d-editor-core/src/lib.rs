@@ -51,6 +51,9 @@ pub mod math;
 /// o carácter é uma PORTA, o chamador declara o `Role` e nunca uma duração, e um mapa vazio pinta
 /// exactamente o que o app pintava antes desta wave.
 pub mod motion;
+/// A poeira de impacto do chrome (estudo de UI viva, D2) — irmã do [`motion`], e a primeira
+/// consumidora do `Role::Decoration`, que foi reservado e nunca teve uma.
+pub mod motion_burst;
 pub mod paint;
 /// Batched paint primitives (many shapes, one draw call) — see the module docs.
 pub mod paint_batch;

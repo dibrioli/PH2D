@@ -602,6 +602,11 @@ pub(crate) struct App {
     /// ⚠️ **Um só por quadro, de propósito:** dois sons no mesmo quadro são um clique duplo que
     /// ninguém deu — e a `Option` torna isso inexprimível.
     pub(crate) pending_ui_sound: Option<crate::ui_sound::UiSound>,
+    /// ⭐ **A poeira de impacto do chrome** (estudo de UI viva, D2) — a lei vive na crate-folha
+    /// [`ph2d_editor::motion_burst`]; aqui só o estado do quadro.
+    ///
+    /// ⚠️ A cerca **não** está aqui: ela é a do `Role::Decoration`, e mora na porta que emite.
+    pub(crate) ui_burst: ph2d_editor::motion_burst::BurstField,
     /// **O que o contorno de proveniência desenha neste quadro**, em MUNDO — resolvido no mesmo
     /// instante que o [`Self::hovered_object`], e vazio quando nada é apontado.
     ///

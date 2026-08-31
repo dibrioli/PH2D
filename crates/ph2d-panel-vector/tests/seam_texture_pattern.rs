@@ -12,6 +12,7 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -690,4 +691,71 @@ fn a_pattern_with_no_art_yet_offers_both_doors_and_says_a_different_sentence() {
         ph2d_i18n::tr("panel.vector.texpat.art_missing.hint"),
         "os dois estados da arte dizem a MESMA frase - um deles esta' a mentir ao artista"
     );
+}
+
+/// ⛔⛔⛔ **TODO SLIDER DESTA SECÇÃO CHEGA AO BARRAMENTO QUANDO É ARRASTADO** — e o gate irmão media
+/// só que ele é PINTADO.
+///
+/// # O defeito que este gate nasce a fechar
+///
+/// Report do Enio (2026-08-30), minutos depois de a wave do vão de dois eixos shipar: *"o checkbox
+/// Link Gaps não funciona. Arrastar Gap Y não move o slider."*
+///
+/// Um controlo desta secção vive em **TRÊS** tabelas, e o doc do `event_texpat` já o dizia — *"os
+/// mapas são os MESMOS que o `populate` dá ao chip numérico e que o `paint` usa para o track — a
+/// fronteira única"*. Eu preenchi **uma** (a que pinta): sem o `populate` o slider não tem track
+/// nem faixa, e sem o braço no `event_texpat` o arrasto cai no `_ => None`.
+///
+/// ⚠️⚠️ **E o gate irmão (`every_pattern_section_control_is_reachable_and_reaches_the_bus`)
+/// PASSOU** — ele mede que o id é pintado e registado, e isso era verdade. *Um controlo pintado,
+/// registado e sem conversor é a espécie 2 do `CLAUDE.md` §5.0: o fio está completo e ninguém lê o
+/// que ele escreve.*
+///
+/// ⇒ a régua é o **braço do `event.rs`**, pelo idioma canónico deste painel
+/// (`set_slider_value` + `ValueChanged`), e não o rectângulo pintado.
+#[test]
+fn every_pattern_slider_reaches_the_bus_when_it_is_dragged() {
+    use ph2d_panel_vector::ids::TexPatKnob as K;
+    const SLIDERS: [K; 8] = [
+        K::Width,
+        K::Height,
+        K::Gap,
+        K::GapY,
+        K::Angle,
+        K::ShiftX,
+        K::ShiftY,
+        K::Offset,
+    ];
+    let mut vistos = 0;
+    for slot in 0..ph2d_panel_vector::ids::TEXPAT_SLOTS {
+        for k in SLIDERS {
+            state::set_current_fill(Some(FillKind::Pattern), None);
+            state::set_stroke_present(Some(true));
+            state::set_stroke_paint_kind(Some(ph2d_panel_vector::StrokePaintKind::Pattern));
+            state::set_current_texture_pattern(slot, Some(row(0)));
+            let id = ph2d_panel_vector::texture_pattern::kid(slot, k);
+            let mut host = MockPanelHost::with_panel::<VectorPanel>();
+            let mut st = VectorPanelState;
+            host.set_slider_value(id, 0.85);
+            let outcome =
+                host.apply_panel_event::<VectorPanel>(&mut st, WidgetEvent::ValueChanged(id));
+            assert_eq!(
+                outcome,
+                EventOutcome::Consumed,
+                "{k:?} do slot {slot}: o painel IGNOROU um arrasto real - falta o braco no \
+                 `event_texpat` (ou o `populate` nao lhe deu track/faixa)"
+            );
+            vistos += 1;
+        }
+    }
+    // ⚠️ CONTROLO: sem um piso, uma lista vazia passaria com zero.
+    assert_eq!(vistos, SLIDERS.len() * ph2d_panel_vector::ids::TEXPAT_SLOTS);
+    // ⛔ E a lista acima é uma 2.ª cópia dos sliders: ela tem de continuar a ser um SUBCONJUNTO do
+    // `ALL`, senão um knob renomeado deixa este gate a medir um id que já não existe.
+    for k in SLIDERS {
+        assert!(
+            K::ALL.contains(&k),
+            "{k:?} saiu do `TexPatKnob::ALL` - esta lista ficou a medir um controlo fantasma"
+        );
+    }
 }

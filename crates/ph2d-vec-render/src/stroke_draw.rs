@@ -11,7 +11,7 @@
 use std::borrow::Cow;
 
 use ph2d_vec_scene::{StrokePiece, VecPath};
-use ph2d_vector::{Affine, Brush, Fill, Shape, Stroke, VectorScene};
+use ph2d_vector::{Affine, Brush, Fill, Stroke, VectorScene};
 
 use crate::{PathTess, PatternTile, build_bezpath, color, kurbo_stroke, pattern, stroke_uniform};
 
@@ -71,10 +71,17 @@ pub(crate) fn draw_stroke_with(
         // pode existir numa forma sem `fill` nenhum, e ali `fill_bp` é `None`.
         let pat_tile = s.pattern().zip(tile);
         if let Some((pat, t)) = pat_tile {
-            let placement = pat.placement_in(t.cells, t.tile_px, {
-                let b = bp.bounding_box();
-                ([b.x0, b.y0], [b.x1, b.y1])
-            });
+            // ⭐⭐⭐ **A ESTAMPA DO TRAÇO NÃO ESTICA** (ITEM B) — sob um `Transform` de entidade
+            // não-uniforme o ladrilho ia a **3,0000×** o aspecto autorado, dentro de uma banda que
+            // não esticou (a caneta é `√|det|` desde o bug #27). A [`PatternFrame`] parte o afim em
+            // *esticão* + *conforme*: a colocação calcula-se na forma DES-ESTICADA e volta à tela
+            // pela parte conforme, o que preserva a posição ao mesmo tempo que uniformiza a escala.
+            //
+            // ⚠️ **A caixa tem de sair da moldura, não do `bp` local** — no `Clamp` é ela que
+            // enquadra a única cópia, e medi-la no espaço errado desloca o ladrilho `(1,268,
+            // −2,196)` e deixa a forma por pintar. *Um gate que só olhasse o aspecto aprovaria isso.*
+            let frame = stroke_uniform::PatternFrame::of(transform, pat.origin);
+            let placement = pat.placement_in(t.cells, t.tile_px, frame.box_of(bp));
             let ext = pattern::extend_of(pat.mode);
             for piece in ph2d_vec_scene::stroke_plan(path, s) {
                 // ⚠️ Só a FAIXA recebe o padrão. Uma ponta de seta é um preenchimento sólido, e o
@@ -132,7 +139,7 @@ pub(crate) fn draw_stroke_with(
                     &kurbo_stroke(s, own.or(tess.dash)),
                     transform,
                     &t.image,
-                    Affine::new(placement),
+                    frame.brush_for(Affine::new(placement)),
                     ext,
                     ext,
                     t.quality,

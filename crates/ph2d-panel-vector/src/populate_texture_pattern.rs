@@ -96,7 +96,7 @@ pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
         for k in K::ALL {
             if matches!(
                 k,
-                K::Source | K::PickShape | K::Lock | K::Tile(_) | K::Mode(_)
+                K::Source | K::PickShape | K::Lock | K::GapLink | K::Tile(_) | K::Mode(_)
             ) {
                 button(store, kid(k));
             }
@@ -137,6 +137,25 @@ pub(super) fn populate_texture_pattern(store: &mut WidgetStore) {
         );
         store.set_number_range(
             kid(K::GapNum),
+            -crate::TEXPAT_GAP_MAX,
+            crate::TEXPAT_GAP_MAX,
+            TEXPAT_GAP_STEP,
+        );
+        // ⛔⛔ **O EIXO Y ESTAVA AQUI EM FALTA, e o report foi imediato** (Enio, 2026-08-30:
+        // *"arrastar Gap Y não move o slider"*). Sem o `slider_chip` ele não tem TRACK, e sem o
+        // `set_number_range` o campo não tem faixa: o controlo é pintado, é registado, atravessa o
+        // gate de alcance — e o dedo não escreve nada.
+        slider_chip(
+            store,
+            kid(K::GapY),
+            kid(K::GapYNum),
+            crate::paint_sections::texture_pattern::gap_track(0.0),
+            0.0,
+            (2.0 * crate::TEXPAT_GAP_MAX) as f32,
+            -crate::TEXPAT_GAP_MAX as f32,
+        );
+        store.set_number_range(
+            kid(K::GapYNum),
             -crate::TEXPAT_GAP_MAX,
             crate::TEXPAT_GAP_MAX,
             TEXPAT_GAP_STEP,

@@ -121,10 +121,17 @@ fn build(app: &mut crate::App) {
         hero.gizmo.add_to_selection(copy.to_bits());
     }
     eprintln!("[axes] f=3 cena — base StableId={base_id}, 4 versões «Casa {{…}}», cópia escolhida");
-    // ⭐ O que a HIERARQUIA mostra de cada uma — a metade que o report do Enio nomeia.
-    let shown =
-        ph2d_editor::screens::hero::variant_axes::display_name("Casa {Size=Small, State=Idle}");
-    eprintln!("[axes] f=3 a hierarquia mostra «{shown}» (esperado: «Casa», não o nome inteiro)");
+    // ⭐ O que a HIERARQUIA mostra — a metade que os dois reports do Enio nomeiam. ⚠️ Ela lê o
+    // rótulo pela MESMA porta que o pintor da linha usa; uma conta paralela aqui mediria esta
+    // função em vez do produto.
+    for full in [
+        "Casa {Size=Small, State=Idle}",
+        "Casa {Size=Small, State=Idle} (1)",
+        "Casa",
+    ] {
+        let shown = ph2d_editor::screens::hero::variant_axes::row_label(full);
+        eprintln!("[axes] f=3 a hierarquia mostra «{shown}»   (nome: «{full}»)");
+    }
 }
 
 /// O que o cartão OFERECE agora — lido do modelo que ele pinta.

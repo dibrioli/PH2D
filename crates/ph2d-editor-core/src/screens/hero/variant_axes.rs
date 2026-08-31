@@ -59,10 +59,62 @@ pub struct VariantAxis {
 /// campo, e a hierarquia mostra só ele. ⭐ E resolvem uma ambiguidade que o Figma tem: um objecto
 /// legitimamente chamado `A=B` era lido como eixo, e agora não é.
 #[must_use]
-pub fn display_name(name: &str) -> &str {
-    match name.split_once('{') {
-        Some((head, _)) => head.trim_end(),
-        None => name,
+pub fn display_name(name: &str) -> String {
+    // ⛔⛔ **Tira o VÃO das chaves, e guarda os DOIS lados** (report do Enio com foto, 2026-08-30).
+    //
+    // A 1.ª versão cortava a partir do `{` — e o sufixo de cópia que o app acrescenta vem **depois**
+    // dele: `Casa {Size=Small, State=Idle} (1)` desenhava-se `Casa`, **comendo o `(1)`**. Duas
+    // cópias ficavam com a mesma linha, e o número que as distinguia era exactamente o que se
+    // perdia. *Cortar por um delimitador de abertura assume que ele é o fim da linha.*
+    let Some((head, rest)) = name.split_once('{') else {
+        return name.to_string();
+    };
+    let tail = rest.split_once('}').map_or("", |(_, t)| t);
+    let mut out = String::with_capacity(name.len());
+    out.push_str(head.trim_end());
+    let tail = tail.trim();
+    if !tail.is_empty() {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(tail);
+    }
+    out
+}
+
+/// ⭐⭐ **Quantas propriedades este nome esconde** — o número do selo `*²`.
+///
+/// ⚠️ Ele conta as **definições**, não as versões: `Casa {Size=Small, State=Idle}` tem duas coisas
+/// escondidas, e é isso que o selo promete. `0` quando não há chaves ou o que está dentro delas não
+/// é uma combinação.
+#[must_use]
+pub fn hidden_count(name: &str) -> usize {
+    parse_combo(name).map_or(0, |c| c.len())
+}
+
+/// Os algarismos sobrescritos de `n`.
+fn superscript(n: usize) -> String {
+    const DIGITS: [char; 10] = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    n.to_string()
+        .chars()
+        .filter_map(|c| c.to_digit(10))
+        .map(|d| DIGITS[d as usize])
+        .collect()
+}
+
+/// ⭐⭐⭐ **O RÓTULO da linha da hierarquia** — o nome curto mais o selo do que ficou escondido.
+///
+/// `Casa {Size=Small, State=Idle} (1)` → `Casa (1) *²`.
+///
+/// ⚠️ **O selo existe porque o corte esconde informação**, e esconder sem dizer é pior que mostrar
+/// comprido: sem ele, duas linhas com propriedades diferentes e o mesmo nome comum leem-se como
+/// duplicados de um erro. *O `*²` não diz QUAIS — diz que há duas, e onde ir ver.*
+#[must_use]
+pub fn row_label(name: &str) -> String {
+    let base = display_name(name);
+    match hidden_count(name) {
+        0 => base,
+        n => format!("{base} *{}", superscript(n)),
     }
 }
 

@@ -1065,10 +1065,25 @@ renomeação a editar as chaves (ela semeia do `Name` da entidade, não da linha
 encontrar por valor de propriedade. ⛔ Nenhum dos 9 sítios que constroem uma linha da Hierarquia
 mudou — *o que se guarda é a autoria; o que se mostra é uma leitura dela*.
 
-⏳ **Aberto, com o custo à vista:** quatro versões da mesma casa desenham-se **`Casa`** nas quatro
-linhas, e a hierarquia não as distingue. O Figma resolve-o com o contêiner. As duas saídas baratas
-— um selo com a contagem (`Casa *³`, a ideia do Enio) ou mostrar **o que difere** (`Casa · Small,
-Idle`) — estão desenhadas e **não** implementadas: decisão dele, adiada.
+### O 2.º report, com foto — **o selo, e o `(1)` que eu comia**
+
+⛔⛔ **O sufixo de CÓPIA vem DEPOIS das chaves, e eu cortava a partir do `{`.** O app acrescenta
+`(1)`, `(2)` … para desempatar nomes, e `Casa {Size=Small, State=Idle} (1)` desenhava-se **`Casa`**:
+duas cópias ficavam com a linha idêntica, e o número que as distinguia era exactamente o que se
+perdia. *Cortar por um delimitador de ABERTURA assume que ele é o fim da linha.* ⇒ tira-se o **vão**
+das chaves e guardam-se os dois lados: `Casa (1)`.
+
+⭐ **E o selo entrou**: `Casa (1) *²`. Ele conta **definições**, não versões — é o que o pedido diz
+(*«sendo o número a quantidade de definições»*), e é a única coisa honesta que um número sozinho
+pode prometer. ⚠️ Sem propriedades **não há selo**: um marcador permanentemente aceso é ruído que o
+artista aprende a ignorar.
+
+⚠️ **Eu tinha lido «vamos esquecer a tag» como o selo**, e era o `Tag=City` do exemplo. O report
+seguinte corrigiu-me em uma linha — *e é o argumento para o smoke existir*.
+
+⏳ **Fica aberto:** o selo diz **quantas**, não **quais** — quatro versões da mesma casa continuam a
+ler-se `Casa *²` nas quatro linhas. O Figma resolve-o com o contêiner; a saída barata aqui é mostrar
+**o que difere** (`Casa · Small, Idle`), desenhada e não implementada.
 
 ---
 

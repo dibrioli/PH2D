@@ -339,3 +339,46 @@ fn the_common_name_never_becomes_an_axis() {
     assert_eq!(axes[0].name, "Size");
     assert_eq!(labels(&axes[0]), ["Small", "Big"]);
 }
+
+/// ⛔⛔ **O sufixo de CÓPIA sobrevive ao corte** — report do Enio com foto (2026-08-30).
+///
+/// O app acrescenta `(1)`, `(2)` … para desempatar nomes, e esse sufixo vem **depois** das chaves.
+/// A 1.ª versão cortava a partir do `{` e comia-o: duas cópias ficavam com a mesma linha, e o
+/// número que as distinguia era exactamente o que se perdia.
+///
+/// **Mutação que deve sangrar:** voltar a `name.split_once('{').0`.
+#[test]
+fn the_copy_suffix_survives_the_cut() {
+    use super::display_name;
+    assert_eq!(
+        display_name("Casa {Size=Small, State=Idle} (1)"),
+        "Casa (1)"
+    );
+    assert_eq!(display_name("Casa {Size=Big} (12)"), "Casa (12)");
+    // ⚠️ E sem sufixo nada é acrescentado — nem um espaço no fim, que o realce de busca mediria.
+    assert_eq!(display_name("Casa {Size=Big}"), "Casa");
+}
+
+/// ⭐⭐ **O selo diz QUANTAS propriedades ficaram escondidas.**
+///
+/// ⚠️ Ele conta **definições**, não versões — é o que o pedido diz (*«sendo o número a quantidade
+/// de definições»*), e é a única coisa honesta que um número sozinho pode prometer.
+///
+/// **Mutação que deve sangrar:** devolver `base` sem o selo.
+#[test]
+fn the_badge_counts_the_hidden_definitions() {
+    use super::{hidden_count, row_label};
+    assert_eq!(hidden_count("Casa {Size=Small, State=Idle}"), 2);
+    assert_eq!(row_label("Casa {Size=Small, State=Idle}"), "Casa *²");
+    assert_eq!(
+        row_label("Casa {Size=Small, State=Idle, Tag=City} (1)"),
+        "Casa (1) *³"
+    );
+    // ⛔ Sem propriedades **não há selo** — um marcador permanentemente aceso é ruído que o artista
+    // aprende a ignorar.
+    assert_eq!(hidden_count("Casa"), 0);
+    assert_eq!(row_label("Casa"), "Casa");
+    // ⚠️ E um nome que **não parseia** não promete nada: `{}` vazio, ou um lado em falta.
+    assert_eq!(row_label("Casa {}"), "Casa");
+    assert_eq!(row_label("Casa {Size=}"), "Casa");
+}

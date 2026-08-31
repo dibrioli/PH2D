@@ -179,8 +179,7 @@ pub(crate) fn paint_properties_card(
             // ⚠️ **Cortar não substitui medir o tecto** — ele continua a ser de ids, e a largura
             // continua a ser o recurso a apertar quando alguém quiser mais de 8. Isto garante só
             // que o cartão nunca desenha por cima de si próprio.
-            let label = ph2d_editor_core::text_elide::elide(text_system, &v.label, font, cw)
-                .unwrap_or_else(|| v.label.clone());
+            let label = ph2d_editor_core::text_elide::fit(text_system, &v.label, font, cw);
             let button = Button::new(id, label)
                 // ⚠️ A vigente é `Accent` — é o **estado**, e não uma decoração: sem ela a fileira
                 // mostra as opções e esconde a resposta.

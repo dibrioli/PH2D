@@ -72,14 +72,19 @@ pub fn paint_text_elided(
 /// when not even the ellipsis fits. Binary search over char boundaries, so a
 /// multi-byte name is never cut mid-glyph.
 ///
-/// ⭐ **Pública desde 2026-08-31** (auditoria, achado A3): quem desenha o próprio texto chama o
-/// [`paint_text_elided`], mas um **`Button`** faz a sua própria centragem — ele precisa da STRING
-/// já cortada. ⛔ A alternativa era um segundo cortador ao lado deste, e *duas leis de corte
-/// discordam no dia em que uma aprender a contar um glifo que a outra não conta*.
+/// ⛔⛔⛔ **PRIVADA, e o contrato é «eu já sei que não cabe»** — ela **nunca** devolve o texto
+/// inteiro: os limites da busca binária param no início do ÚLTIMO carácter, então até uma string
+/// que caiba folgada sai com um carácter a menos e reticências.
 ///
-/// ⚠️ Devolve `None` quando nem as reticências cabem — o chamador decide se pinta nada ou o cru.
+/// Report do Enio com foto (2026-08-31): *«Mudei o size mas o nome do Botão não atualiza»* — os
+/// dois chips liam-se `Smal …` e `Small …`, indistinguíveis, sobre valores `Small` e `Small 2` que
+/// cabiam com folga num chip **medido a 88,7 px**. Eu tinha-a tornado pública e chamado sem a
+/// guarda que o [`paint_text_elided`] faz três linhas acima. *Um helper privado carrega a
+/// pré-condição do único chamador que ele tinha; publicá-lo sem a publicar é publicar meia função.*
+///
+/// ⇒ quem precisa da STRING chama o [`fit`], que faz a guarda.
 #[must_use]
-pub fn elide(
+fn elide(
     text_system: &mut TextSystem,
     text: &str,
     font_size: f32,
@@ -103,9 +108,48 @@ pub fn elide(
     Some(format!("{}{ELLIPSIS}", &text[..bounds[lo]]))
 }
 
+/// ⭐⭐ **O texto que cabe em `max_width`** — ele próprio quando cabe, `<prefixo>…` quando não.
+///
+/// É o [`paint_text_elided`] sem o pincel: quem faz a própria centragem (um `Button`) precisa da
+/// string, não do desenho. ⚠️ **A guarda do «cabe» é a razão de esta porta existir** — ver o doc do
+/// [`elide`], que sem ela corta sempre.
+///
+/// ⛔ Quando nem as reticências cabem devolve o texto **cru**: um rótulo cortado a zero é um botão
+/// mudo, e é melhor transbordar visivelmente do que desaparecer.
+#[must_use]
+pub fn fit(text_system: &mut TextSystem, text: &str, font_size: f32, max_width: f32) -> String {
+    if text_system.prefix_width(text, font_size) <= max_width {
+        return text.to_string();
+    }
+    elide(text_system, text, font_size, max_width).unwrap_or_else(|| text.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⛔⛔⛔ **O que CABE sai VERBATIM** — o defeito do report de 2026-08-31.
+    ///
+    /// O `elide` **nunca** devolve o texto inteiro (os limites param no início do último carácter),
+    /// e eu chamei-o sem guarda: `Small` saía `Smal …` e `Small 2` saía `Small …` — dois chips
+    /// indistinguíveis sobre valores que cabiam com folga.
+    ///
+    /// ⚠️ **O gate irmão não podia apanhá-lo:** ele mede com `budget = full * 0.6`, isto é, uma
+    /// fixtura em que o texto **nunca** cabe. *Uma fixtura sem o fenómeno mede silêncio.*
+    #[test]
+    fn what_fits_comes_back_untouched() {
+        let mut text = TextSystem::without_system_fonts();
+        let label = "Small 2";
+        let full = text.prefix_width(label, 13.0);
+        assert_eq!(fit(&mut text, label, 13.0, full + 1.0), label);
+        assert_eq!(fit(&mut text, label, 13.0, full * 4.0), label);
+        // ⚠️ E o que NÃO cabe continua a ser cortado — a guarda não pode desligar o corte.
+        let cut = fit(&mut text, label, 13.0, full * 0.5);
+        assert!(cut.ends_with(ELLIPSIS), "{cut:?}");
+        assert!(label.starts_with(cut.trim_end_matches(ELLIPSIS)), "{cut:?}");
+        // ⛔ E quando nem as reticências cabem, o CRU — nunca uma string vazia.
+        assert_eq!(fit(&mut text, label, 13.0, 0.5), label);
+    }
 
     #[test]
     fn elide_trims_to_the_widest_prefix_that_fits() {

@@ -1230,3 +1230,114 @@ fn the_fillet_leaves_no_curvature_ridge() {
         "a maior quebra de curvatura medida foi {maior:.3} — a sonda deixou de medir"
     );
 }
+
+/// ⭐⭐⭐ **O CHANFRO NÃO PODE PIORAR UMA ARESTA** — o 3.º report do Enio sobre esta feature
+/// (2026-08-30, com foto): *«algumas arestas não arredondam no prisma»*.
+///
+/// # A régua, e por que ela é uma RAZÃO
+///
+/// Pedir *«o filete arredonda»* em graus absolutos não funciona: uma ponta de estrela e uma quina de
+/// caixa começam em sítios diferentes, e uma barra única ou branqueia a caixa ou reprova a estrela.
+/// O que o artista de facto diz é **«com chanfro fica pior do que sem»** — e isso é a razão entre o
+/// pior giro da normal com os dois recuos e o mesmo filete sozinho.
+///
+/// ⚠️ **A régua é o GIRO DA NORMAL, e não o volume** — um chanfro deslocado tira o mesmo volume que
+/// um arredondado. É a mesma lição que o 2.º report já tinha cobrado.
+///
+/// # ⛔⛔ A CATRACA, com censo de obsolescência
+///
+/// Doze formas ainda pioram, e o mecanismo está nomeado: o `walls` que elas entregam ao
+/// [`ph2d_field_eval::ops`] é o **perfil 2D composto** delas, e uma mistura que recebe uma composta
+/// herda a costura interna dela (ver `ops_joint::intersection_joint_n`). Curá-las é decompor cada
+/// perfil, uma a uma.
+///
+/// ⚠️ **A lista só ENCOLHE, e o gate reprova se uma entrada ficar obsoleta** — se a forma passar a
+/// caber na barra, ou se a razão piorar além do registado. *Uma catraca sem censo de obsolescência
+/// vira licença.*
+#[test]
+fn the_chamfer_never_makes_an_edge_worse_than_the_fillet_alone() {
+    /// A folga sobre o filete sozinho. As quatro formas curadas medem `0,85`–`1,12`.
+    const BARRA: f64 = 1.30;
+    /// Abaixo disto o giro é ruído de amostragem e a razão deixa de significar alguma coisa.
+    const PISO_GRAUS: f64 = 3.0;
+    /// ⛔ **Só encolhe.** `(forma, razão MEDIDA em 2026-08-30)` — o mecanismo está no doc acima.
+    const TOLERADOS: &[(&str, f64)] = &[
+        ("Cone", 2.41),
+        ("Wedge", 3.98),
+        ("TorusArc", 5.33),
+        ("Octahedron", 9.18),
+        ("HollowDome", 1.81),
+        ("Gear", 2.27),
+        ("Cross", 9.31),
+        ("Moon", 1.40),
+        ("Drop", 1.46),
+        ("Trapezoid", 3.56),
+        ("Vesica", 3.59),
+    ];
+    let mut piores = Vec::new();
+    let mut obsoletos = Vec::new();
+    let mut medidas = 0;
+    for k in PrimitiveKind::ALL {
+        let Some(base) = representative(k) else {
+            continue;
+        };
+        let Some(limite) = ph2d_field::round_limit(&base) else {
+            continue;
+        };
+        let meio = limite * 0.5;
+        let escreve = |p: &Primitive, chave: &str, v: f32| -> Option<Primitive> {
+            let mut p = p.clone();
+            let i = ph2d_field::dims(&p).iter().position(|d| d.key == chave)?;
+            ph2d_field::set_dim(&mut p, 0, i, v).ok()?;
+            Some(p)
+        };
+        let Some(so_filete) = escreve(&base, "field.dim.round", meio) else {
+            continue;
+        };
+        let Some(par) = escreve(&so_filete, "field.dim.chamfer", meio) else {
+            continue;
+        };
+        let pior = |p: &Primitive| {
+            traverse(p, 2048, 6)
+                .0
+                .iter()
+                .map(|(_, a)| *a)
+                .fold(0.0f64, f64::max)
+        };
+        medidas += 1;
+        let (a, b) = (pior(&so_filete), pior(&par));
+        let razao = b / a.max(1.0e-9);
+        let nome = format!("{k:?}");
+        let cabe = b <= PISO_GRAUS || razao <= BARRA;
+        match TOLERADOS.iter().find(|(n, _)| *n == nome) {
+            Some((_, registada)) => {
+                if cabe {
+                    obsoletos.push(format!("{nome} cabe na barra agora ({razao:.2}x)"));
+                } else if razao > registada * 1.10 {
+                    piores.push(format!(
+                        "{nome} piorou: {razao:.2}x contra as {registada:.2}x registadas"
+                    ));
+                }
+            }
+            None => {
+                if !cabe {
+                    piores.push(format!(
+                        "{nome}: {a:.1}° só com filete e {b:.1}° com chanfro ({razao:.2}x)"
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        medidas >= 20,
+        "só {medidas} formas com aresta — a lista derivada de `PrimitiveKind::ALL` partiu-se"
+    );
+    assert!(
+        piores.is_empty(),
+        "o chanfro piorou arestas que ele não pode piorar: {piores:?}"
+    );
+    assert!(
+        obsoletos.is_empty(),
+        "APAGUE estas linhas de `TOLERADOS` — elas já não descrevem nada: {obsoletos:?}"
+    );
+}

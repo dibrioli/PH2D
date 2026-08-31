@@ -123,6 +123,44 @@ pub fn union_joint(a: &Tree, b: &Tree, e: Edge) -> Tree {
     ops::union_round_n(&[a.clone(), b.clone(), plano], fillet)
 }
 
+/// ⭐⭐⭐ **AS PEÇAS DE UM SÓLIDO E OS CHANFROS DAS ARESTAS QUE ELAS FORMAM, NUMA MISTURA SÓ.**
+///
+/// # ⛔⛔ Ela nasceu do 3.º report do Enio sobre esta feature (2026-08-30): *«algumas arestas não arredondam no prisma»*
+///
+/// A [`intersection_joint`] mistura **duas** superfícies. Quando um sólido é feito em etapas — as
+/// paredes de um prisma primeiro, o aro depois —, a segunda mistura recebe a **primeira já
+/// composta**, e aí ela herda a costura interna dessa composta e põe-na na superfície visível.
+///
+/// ⚠️ **É a mesma família do defeito que o `intersection_round_n` já curava um nível acima** (duas
+/// misturas encaixadas), e a cura é a mesma: *tudo entra ao mesmo tempo.*
+///
+/// Medido, pior giro da normal com os dois recuos a metade do limite, contra o mesmo filete sem
+/// chanfro:
+///
+/// | forma | só filete | antes | depois |
+/// |---|---:|---:|---:|
+/// | caixa | `1,8°` | `29,1°` | **`2,1°`** |
+/// | cilindro | `1,5°` | `19,0°` | **`1,3°`** |
+/// | prisma | `4,2°` | `21,1°` | **`4,5°`** |
+/// | moldura | `7,6°` | `31,2°` | **`7,7°`** |
+///
+/// # ⚠️ As duas coisas que uma leitura rápida entende ao contrário
+///
+/// 1. **Mais peças NÃO é sempre melhor.** A mistura encolhe o sólido `≈ r(√k − 1)` com `k` peças
+///    **activas**, então separar uma dobra cujos dois lados estão activos ao mesmo tempo come
+///    material a dobrar — foi assim que a moldura ficou com **`0` de `64 000`** células dentro. Por
+///    isso o [`crate::ops::box_with_edge`] só separa a dobra quando `chanfro + filete < 2·meia`.
+/// 2. **O tecto de `‖∇f‖` é `√(activas)`, não `√(total)`** — um prisma hexagonal entrega `19` peças
+///    e mede `0,6951` depois do divisor, **abaixo** do `1,0852` que a composição encaixada media.
+///    *Uma mistura de dezanove que nunca tem mais de três activas é mais barata que duas encaixadas.*
+pub fn intersection_joint_n(corpo: &[Tree], arestas: &[(Tree, Tree)], e: Edge) -> Tree {
+    let mut pecas: Vec<Tree> = corpo.to_vec();
+    for (a, b) in arestas {
+        pecas.push(corte(a, b, e.chamfer, Sentido::Interseccao));
+    }
+    ops::intersection_round_n(&pecas, e.round)
+}
+
 /// De que lado o corte a 45° recua — o único sinal que separa as duas leis acima.
 #[derive(Clone, Copy)]
 enum Sentido {

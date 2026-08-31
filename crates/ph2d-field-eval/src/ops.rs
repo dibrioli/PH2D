@@ -28,6 +28,9 @@ pub use crate::ops_bool::{
     union_round_n, union_sharp, union_smooth,
 };
 
+// ⚠️ A mesma lei: a caixa mudou-se para o [`crate::ops_box`] e os chamadores não mexeram.
+pub use crate::ops_box::{sd_box, sd_box_frame};
+
 /// `−a`: o complemento do sólido.
 pub fn neg(a: &Tree) -> Tree {
     Tree::constant(0.0) - a.clone()
@@ -41,105 +44,6 @@ pub fn neg(a: &Tree) -> Tree {
 /// abaixo fazem, e é a receita canônica.
 pub fn offset(a: &Tree, r: f64) -> Tree {
     a.clone() - Tree::constant(r)
-}
-
-/// A caixa de meias-extensões `h` **em coordenadas dadas** — a fórmula do IQ, com as três
-/// coordenadas como argumento em vez de `x`/`y`/`z`.
-///
-/// ⭐ É isso que deixa o [`sd_box_frame`] escrever uma viga **no espaço dobrado** (`|y|`, `|z|`) sem
-/// uma segunda fórmula de caixa: dobrar por `abs` é uma isometria por peça, então a distância no
-/// espaço dobrado É a distância às quatro cópias espelhadas — desde que a caixa fique inteira do
-/// lado positivo, que é o que a parede da espessura garante.
-pub(crate) fn box_at(px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]) -> Tree {
-    let qx = px.abs() - Tree::constant(h[0]);
-    let qy = py.abs() - Tree::constant(h[1]);
-    let qz = pz.abs() - Tree::constant(h[2]);
-    let outside = length3(&qx.max(0.0), &qy.max(0.0), &qz.max(0.0));
-    let inside = qx.max(qy.clone()).max(qz.clone()).min(0.0);
-    outside + inside
-}
-
-/// Caixa de meias-extensões `half`, arestas **chanfradas** em `chamfer` e depois arredondadas em
-/// `round`, **do tamanho pedido**.
-///
-/// # ⭐⭐⭐ Por que a caixa precisa de conta própria, e as chapas não
-///
-/// A aresta de uma chapa é a junta de **duas** peças (a laje e a parede), e o
-/// [`slab_and_walls`] já as tem à mão. A caixa é a intersecção de **três** lajes, e a fórmula do IQ
-/// entrega-a como uma norma só — as peças já não existem lá dentro.
-///
-/// ⛔ **E o chanfro NÃO é recuperável de uma distância euclidiana**: o filete é a dilatação pela
-/// bola de `L²` (`f − r`) e o chanfro é a dilatação pelo octaedro de `L¹`, que a norma não sabe
-/// desfazer. ⇒ ele entra como **três planos a 45°**, um por par de eixos, que é o que um chanfro de
-/// caixa geometricamente **é**.
-///
-/// ⭐ O plano do par `(i, j)` é `(q_i + q_j + c)·√½` com `q = |p| − half`. No canto ele vale
-/// `c/√2 > 0` (o canto é cortado) e a `c` de distância da quina vale **zero** — logo o recuo
-/// entregue é exactamente o pedido, em cada uma das duas faces. Os oito vértices saem como facetas
-/// triangulares, onde três planos se encontram, sem uma linha a mais.
-pub fn sd_box(half: [f64; 3], round: f64, chamfer: f64) -> Tree {
-    box_with_edge(&Tree::x(), &Tree::y(), &Tree::z(), half, round, chamfer)
-}
-
-/// A caixa **em coordenadas dadas**, com os dois recuos da aresta — a irmã do [`box_at`] que sabe
-/// chanfrar.
-///
-/// ⭐ **Uma porta, dois leitores**: a [`sd_box`] e as três vigas do [`sd_box_frame`]. ⛔ Uma segunda
-/// cópia desta receita divergiria no dia em que o chanfro mudasse, e só uma das duas formas o notaria
-/// — que é exactamente o que a nota do [`crate::ops_plates::rect_round`] já descreve para o filete.
-pub(crate) fn box_with_edge(
-    px: &Tree,
-    py: &Tree,
-    pz: &Tree,
-    half: [f64; 3],
-    round: f64,
-    chamfer: f64,
-) -> Tree {
-    if chamfer <= 0.0 {
-        // ⭐ **O caminho de sempre, ao bit** — encolher a fonte e deslocar a superfície.
-        return offset(
-            &box_at(
-                px,
-                py,
-                pz,
-                [half[0] - round, half[1] - round, half[2] - round],
-            ),
-            round,
-        );
-    }
-    // ⭐⭐⭐ **A CAIXA E OS TRÊS PLANOS, MISTURADOS DE UMA VEZ.**
-    //
-    // ⛔⛔ **Esta nota já descreveu «encolher, chanfrar, deslocar», e essa construção foi RETIRADA
-    // pelo report do Enio de 2026-08-30** (*«não funcionou, o fillet só muda a posição do
-    // chamfer»*): deslocar um semiespaço dá **outro semiespaço**, sem canto para arredondar — a lei
-    // que a W104 já tinha medido neste mesmo módulo. Medido: com o chanfro em `0,12`, o giro da
-    // normal na quina ficava **cravado em `45,000°`** para qualquer filete, e só a posição
-    // deslizava.
-    //
-    // ⭐ A mistura é a única forma de arredondar as quinas que o chanfro cria, e as quatro
-    // superfícies entram **ao mesmo tempo** (ver [`crate::ops_bool::intersection_round_n`]) em vez
-    // de duas a duas encaixadas — o que mantém o tecto de Cauchy–Schwarz em `√(activas)` em vez de
-    // o fazer crescer com o comprimento da corrente.
-    //
-    // ⚠️ **E ela INFLA o campo**, que é o preço declarado: quem paga é o divisor da aresta, dentro
-    // do [`crate::primitive_tree::primitive`], com o orçamento da marcha a subir pelo
-    // [`crate::field_shrink`]. ⛔ *O divisor tem de estar na porta ÚNICA* — quando ele viveu numa
-    // das duas rotas de compilação, o traçado marchava o campo cru e a peça saía com facetas
-    // escuras que mudavam ao rodar.
-    let q = [
-        px.abs() - Tree::constant(half[0]),
-        py.abs() - Tree::constant(half[1]),
-        pz.abs() - Tree::constant(half[2]),
-    ];
-    // ⭐ **A caixa e os TRÊS planos, arredondados de uma vez** — ver a nota da
-    // [`crate::ops_bool::intersection_round_n`] para as duas construções recusadas antes desta.
-    let mut pecas = vec![box_at(px, py, pz, half)];
-    for (i, j) in [(0, 1), (1, 2), (0, 2)] {
-        pecas.push(
-            (q[i].clone() + q[j].clone() + Tree::constant(chamfer)) * Tree::constant(FRAC_1_SQRT_2),
-        );
-    }
-    intersection_round_n(&pecas, round)
 }
 
 pub fn sd_sphere(radius: f64) -> Tree {
@@ -163,8 +67,11 @@ pub fn sd_cylinder(radius: f64, half_height: f64, round: f64, chamfer: f64) -> T
     // ⭐ O aro de um cilindro E' a junta de DUAS peças — a parede e a tampa —, e é exactamente a
     // mesma forma que o [`slab_and_walls`] usa para a família das chapas.
     let parede = length2(&Tree::x(), &Tree::y()) - Tree::constant(radius);
-    let laje = Tree::z().abs() - Tree::constant(half_height);
-    crate::ops_joint::intersection_joint(&parede, &laje, crate::ops_joint::Edge { round, chamfer })
+    slab_and_walls(
+        &parede,
+        half_height,
+        crate::ops_joint::Edge { round, chamfer },
+    )
 }
 
 /// Toro no plano XY.
@@ -302,7 +209,24 @@ pub(crate) fn slab_and_walls(walls: &Tree, half_height: f64, e: crate::ops_joint
     // treze formas desta família **de uma vez**, sem uma linha em cada construtor.
     //
     // ⚠️ **Com `chamfer = 0` isto é o caminho de sempre, ao bit** — ver [`crate::ops_joint`].
-    crate::ops_joint::intersection_joint(&slab, walls, e)
+    if e.chamfer <= 0.0 {
+        return crate::ops_joint::intersection_joint(&slab, walls, e);
+    }
+    // ⭐ **As DUAS tampas com SINAL, e não o `|z| − h` dobrado** — a dobra tem um vinco em `z = 0`
+    // que o plano do chanfro carrega para a superfície quando o filete lá chega: era isso que
+    // punha uma costura no EQUADOR de um cilindro (`19,0°`, contra `1,5°` só com filete).
+    let tampa = [
+        Tree::z() - Tree::constant(half_height),
+        -Tree::z() - Tree::constant(half_height),
+    ];
+    crate::ops_joint::intersection_joint_n(
+        &[tampa[0].clone(), tampa[1].clone(), walls.clone()],
+        &[
+            (tampa[0].clone(), walls.clone()),
+            (tampa[1].clone(), walls.clone()),
+        ],
+        e,
+    )
 }
 
 /// A meia-fatia da parede inclinada de um cone, **normalizada**: `(ρ − a − m·z)/√(1+m²)`.
@@ -400,9 +324,35 @@ pub fn sd_prism(
         ));
     }
     let walls = walls.unwrap_or_else(|| Tree::constant(0.0));
-    slab_and_walls(
-        &walls,
-        half_height,
+    if chamfer <= 0.0 {
+        return slab_and_walls(
+            &walls,
+            half_height,
+            crate::ops_joint::Edge { round, chamfer },
+        );
+    }
+    // ⭐⭐⭐ **AS PAREDES, AS TAMPAS E TODOS OS CHANFROS NUMA MISTURA SÓ** — ver
+    // [`crate::ops_joint::intersection_joint_n`]. Fechar as paredes primeiro e o aro depois fazia a
+    // mistura do aro receber a composta das paredes, e ela punha a costura lateral **em cima do
+    // aro**: medido `21,1°` de giro da normal contra `4,2°` só com filete, todos os pontos duros no
+    // aro a `~12°` de uma quina lateral. Com tudo junto: **`4,5°`**.
+    let tampa = [
+        Tree::z() - Tree::constant(half_height),
+        -Tree::z() - Tree::constant(half_height),
+    ];
+    let paredes: Vec<Tree> = (0..n).map(parede).collect();
+    let mut arestas: Vec<(Tree, Tree)> = Vec::new();
+    for i in 0..paredes.len() {
+        arestas.push((paredes[i].clone(), paredes[(i + 1) % paredes.len()].clone()));
+        for t in &tampa {
+            arestas.push((paredes[i].clone(), t.clone()));
+        }
+    }
+    let mut corpo = paredes;
+    corpo.extend(tampa);
+    crate::ops_joint::intersection_joint_n(
+        &corpo,
+        &arestas,
         crate::ops_joint::Edge { round, chamfer },
     )
 }
@@ -595,55 +545,6 @@ pub fn sd_star(
         half_height,
         crate::ops_joint::Edge { round, chamfer },
     )
-}
-
-/// ⭐⭐ **A gaiola de uma caixa** — as 12 arestas de secção quadrada, em **três** vigas dobradas.
-///
-/// ⭐ Cada família de quatro vigas paralelas é **uma** caixa no espaço dobrado por `abs` nos dois
-/// eixos perpendiculares a ela ([`box_at`]) — 3 caixas em vez de 12, e a distância é a mesma porque
-/// o reflexo é uma isometria. ⚠️ A dobra só é exata com a caixa inteira do lado positivo, o que
-/// pede `thickness <= min(half)`; o documento recusa acima disso.
-///
-/// ⚠️ **As vigas SOBREPÕEM-SE nos oito cantos** (um cubo de lado `thickness − 2·round`), então o
-/// `min` não tem costura de campo — ver a nota do [`sd_star`], que teve de a construir de propósito.
-pub fn sd_box_frame(half: [f64; 3], thickness: f64, round: f64, chamfer: f64) -> Tree {
-    // ⚠️ **A LINHA DE CENTRO da viga não se mexe com o filete**: encolher a moldura de `round` baixa
-    // a meia-extensão e a meia-espessura na mesma medida, e os dois `round` cancelam-se em
-    // `half − thickness/2`. É isso que faz a viga dilatada voltar à espessura pedida.
-    let e = thickness * 0.5;
-    let c = [
-        half[0] - thickness * 0.5,
-        half[1] - thickness * 0.5,
-        half[2] - thickness * 0.5,
-    ];
-    let (ax, ay, az) = (Tree::x().abs(), Tree::y().abs(), Tree::z().abs());
-    let fold = |a: &Tree, k: f64| a.clone() - Tree::constant(k);
-    // ⭐ **As três vigas são CAIXAS, e passam pela porta delas** ([`box_with_edge`]) — é isso que dá
-    // chanfro à moldura sem uma segunda cópia da receita. ⚠️ Com `chamfer = 0` cada viga recai no
-    // caminho de sempre (encolher e deslocar), e a moldura sai **ao bit** como antes.
-    let viga =
-        |px: &Tree, py: &Tree, pz: &Tree, h: [f64; 3]| box_with_edge(px, py, pz, h, round, chamfer);
-    let beams = [
-        viga(
-            &Tree::x(),
-            &fold(&ay, c[1]),
-            &fold(&az, c[2]),
-            [half[0], e, e],
-        ),
-        viga(
-            &fold(&ax, c[0]),
-            &Tree::y(),
-            &fold(&az, c[2]),
-            [e, half[1], e],
-        ),
-        viga(
-            &fold(&ax, c[0]),
-            &fold(&ay, c[1]),
-            &Tree::z(),
-            [e, e, half[2]],
-        ),
-    ];
-    beams[0].clone().min(beams[1].clone()).min(beams[2].clone())
 }
 
 /// ⭐⭐⭐ **Elipsóide** — a esfera unitária no espaço escalado, **remedida pelo menor semi-eixo**.

@@ -246,19 +246,34 @@ fn representative(k: PrimitiveKind) -> Option<Primitive> {
 /// ⚠️ **Recebe o [`Field`], e não a primitiva**, e é isso que deixa o controle abaixo medir-se pelo
 /// **mesmo** instrumento: uma sonda testada com um campo que ela própria não produz é uma sonda
 /// cujo controle não controla nada.
+/// ⛔⛔ **A GRELHA GROSSA sozinha mede a forma ONDE ELA É LISA** (2026-08-30, o 2.º report do Enio).
+///
+/// `30³` sobre `[−1,2; 1,2]` dá células de `0,08`, e um recuo é uma casca de `~0,1` em volta das
+/// arestas: a varredura passa por cima dela. A segunda passagem é **fina e só perto da superfície**,
+/// que é onde a marcha de facto decide. Medido na caixa com os dois recuos: a grossa lê `0,79`, a
+/// fina lê `0,85`.
 fn worst_gradient(f: &Field, e: f64, steps: usize) -> f64 {
     let mut worst = 0.0f64;
-    for i in 0..steps {
-        for j in 0..steps {
-            for k in 0..steps {
-                let at = |t: usize| -e + 2.0 * e * (t as f64 + 0.5) / steps as f64;
-                let g = f.gradient_norm(at(i), at(j), at(k), 1.0e-4);
-                if g.is_finite() {
-                    worst = worst.max(g);
+    let mut varre = |e: f64, steps: usize, banda: Option<f64>| {
+        let at = |t: usize| -e + 2.0 * e * (t as f64 + 0.5) / steps as f64;
+        for i in 0..steps {
+            for j in 0..steps {
+                for k in 0..steps {
+                    let (x, y, z) = (at(i), at(j), at(k));
+                    if banda.is_some_and(|b| f.at(x, y, z).abs() > b) {
+                        continue;
+                    }
+                    let g = f.gradient_norm(x, y, z, 1.0e-4);
+                    if g.is_finite() {
+                        worst = worst.max(g);
+                    }
                 }
             }
         }
-    }
+    };
+    varre(e, steps, None);
+    // ⭐ A casca: `0,022` de célula, contra os `0,08` da grossa.
+    varre(0.85, 78, Some(0.03));
     worst
 }
 

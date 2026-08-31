@@ -21,6 +21,7 @@ pub mod extract;
 pub mod hybrid;
 pub mod ops;
 pub mod ops_bool;
+pub mod ops_box;
 pub mod ops_joint;
 pub(crate) mod ops_norm;
 pub mod ops_plates;

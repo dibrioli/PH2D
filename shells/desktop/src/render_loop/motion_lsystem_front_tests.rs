@@ -76,21 +76,6 @@ fn the_front_fraction_puts_leaves_after_the_plant_in_the_row_order() {
     );
     assert_eq!(antes + depois, antes0, "nenhuma folha se perdeu no caminho");
 }
-/// **As instâncias vectoriais desta corrente**, na ordem em que o passe as desenha.
-fn vector_instances_of(
-    state: &crate::motion_state::MotionState,
-    key: &str,
-) -> Vec<ph2d_eval_motion::VectorInstance> {
-    let mut out = Vec::new();
-    if let Some(e) = state.pump.cook.externals().get(key) {
-        ph2d_eval_motion::lower_to_vector_instances_onto(
-            &e.value,
-            ph2d_render::SinkStyle::PLAIN,
-            &mut out,
-        );
-    }
-    out
-}
 /// ⭐⭐⭐ **UMA FOLHA QUE É IMAGEM VAI À FRENTE DOS GALHOS** — report do Enio (2026-08-30), três
 /// vezes, e a última: *"busque o estado da arte, nada de armengos"*.
 ///

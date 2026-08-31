@@ -26,6 +26,10 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
         size: 1.0,
         size_jitter: 0.0,
         pos_jitter: 0.0,
+        // ⚠️ Fixa nestas fixturas de propósito: aqui a pergunta é *«a lei varia entre
+        // MARCAS?»*, e é a marca que percorre `0..64`. Que a semente também mova os sorteios
+        // é a pergunta do gate irmão, na costura (`re_rolling_the_seed_moves_the_leaves`).
+        seed: 0,
     };
     // 1. ⛔ **O neutro é a identidade AO BIT.**
     for i in 0..64 {
@@ -241,4 +245,142 @@ fn a_leaf_that_already_existed_keeps_its_size_as_the_plant_grows() {
         comuns >= 8,
         "so' {comuns} folhas em comum entre as duas gerações"
     );
+}
+
+/// ⛔⛔⛔ **RE-SORTEAR A SEMENTE MEXE AS FOLHAS** — o alcance que uma isenção já invocava e que
+/// não existia.
+///
+/// # O defeito
+///
+/// Auditoria de seis lentes, doc 96 §4.4. Os dois sorteios de folha e o lado (frente/trás) saíam
+/// só de `hash01_lane(marca, lane)`, onde a marca é a IDENTIDADE `(geração, ordinal)`. ⇒ o botão
+/// *re-roll* do `Seed` e o número dele **não mudavam uma folha**: os três sorteios eram
+/// irreroláveis, e o `Leaf Spread` (que a tartaruga semeia) era o único que respondia.
+///
+/// ⚠️⚠️ **E a isenção do `Seed` no censo do nó invocava exactamente este alcance:** *«ele é
+/// também semeado pelo `Leaf Size Jitter` e pelo `Leaf Pos Jitter`, que a SHELL lê»*. Era essa
+/// frase que o mantinha visível apesar de dormir em 8 dos 9 moldes — **e ela não tinha leitor**.
+/// *Uma promessa que justifica uma decisão tem de ter quem a leia.*
+///
+/// # A régua
+///
+/// Duas sementes, tudo o resto igual, pela porta do produto — e as três respostas têm de mexer.
+/// ⚠️ **A identidade da marca continua a mandar dentro de UMA semente** (é o que faz uma folha
+/// que já existia não saltar de tamanho quando a planta cresce, o gate irmão acima); o que a
+/// semente muda é o SORTEIO INTEIRO, de uma vez.
+#[test]
+fn re_rolling_the_seed_moves_the_leaves() {
+    let publicar = |seed: f32| -> (Vec<f32>, Vec<[f32; 2]>, Vec<f32>) {
+        let (mut state, n) = factory_plant_with_leaf(5.0, false);
+        state.doc.graph.set_param(n, ls::param::SEED, seed);
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::LEAF_SIZE_JITTER, 0.8);
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::LEAF_POS_JITTER, 0.8);
+        // ⚠️ **`Leaves In Front` fica em ZERO de propósito.** Acima de zero a TERCEIRA MÉDIA
+        // manda a copa inteira para o passe do vector, e o `instances_of` — que lê o passe das
+        // sprites — devolve **zero folhas**. A 1.ª redacção deste gate punha `0,5` e media uma
+        // lista vazia: *uma fixtura que não contém o fenómeno passa a acusar a régua.*
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        let inst = instances_of(&state, &key);
+        (
+            inst.iter().map(|i| i.size[0]).collect(),
+            inst.iter().map(|i| i.world_pos).collect(),
+            inst.iter().map(|i| i.world_pos[1]).collect(),
+        )
+    };
+    let (t1, p1, o1) = publicar(1.0);
+    let (t2, p2, o2) = publicar(7.0);
+    assert!(t1.len() > 8, "só {} folhas — fixtura fraca", t1.len());
+    assert_eq!(t1.len(), t2.len(), "a semente não pode mudar a CONTAGEM");
+
+    let difere = |a: &[f32], b: &[f32]| {
+        a.iter()
+            .zip(b)
+            .filter(|(x, y)| (*x - *y).abs() > 1e-5)
+            .count()
+    };
+    assert!(
+        difere(&t1, &t2) * 2 >= t1.len(),
+        "o `Size Jitter` não seguiu a semente: só {} de {} folhas mudaram de tamanho",
+        difere(&t1, &t2),
+        t1.len()
+    );
+    let mexeu = p1
+        .iter()
+        .zip(&p2)
+        .filter(|(a, b)| ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2)).sqrt() > 1e-5)
+        .count();
+    assert!(
+        mexeu * 2 >= p1.len(),
+        "o `Position Jitter` não seguiu a semente: só {mexeu} de {} folhas se mexeram",
+        p1.len()
+    );
+    assert!(
+        difere(&o1, &o2) > 0,
+        "nada na disposição mudou com a semente"
+    );
+
+    // ⚠️ E a metade oposta: a MESMA semente reproduz ao bit. Sem ela, «mexeu» seria satisfeito
+    // por não-determinismo, que é o defeito oposto e igualmente mau.
+    let (t1b, p1b, _) = publicar(1.0);
+    assert_eq!(
+        t1.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
+        t1b.iter().map(|f| f.to_bits()).collect::<Vec<_>>(),
+        "a mesma semente tem de reproduzir os tamanhos AO BIT"
+    );
+    assert_eq!(p1, p1b, "e as posições também");
+}
+
+/// ⛔⛔ **E O LADO (frente/trás) TAMBÉM SEGUE A SEMENTE** — a terceira resposta, que o gate
+/// irmão não podia medir.
+///
+/// ⚠️ Ele mantém `Leaves In Front` em **zero** de propósito (acima disso a copa muda de passe e
+/// o leitor de sprites devolve lista vazia), e por isso a mutação que tira a semente do sorteio
+/// do LADO **sobrevivia lá**. A pergunta pede a fracção a meio e o leitor do passe vectorial.
+///
+/// ⚠️ **A régua é QUAIS folhas ficam à frente, não QUANTAS:** a fracção é a mesma nas duas
+/// sementes por construção, então contar não distinguiria nada. O que muda é a partição.
+#[test]
+fn re_rolling_the_seed_changes_which_leaves_go_in_front() {
+    let particao = |seed: f32| -> Vec<bool> {
+        let (mut state, n) = factory_plant_with_leaf(5.0, false);
+        state.doc.graph.set_param(n, ls::param::SEED, seed);
+        state.doc.graph.set_param(n, ls::param::LEAF_FRONT, 0.5);
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        // A planta é a única linha com geometria; as folhas são as outras, e a posição delas
+        // relativamente a ela é o LADO.
+        let v = vector_instances_of(&state, &key);
+        let planta = v
+            .iter()
+            .position(|i| i.geometry_id > 0)
+            .expect("a planta tem de estar no passe vectorial");
+        v.iter()
+            .enumerate()
+            .filter(|(_, i)| i.geometry_id == 0)
+            .map(|(k, _)| k > planta)
+            .collect()
+    };
+    let a = particao(1.0);
+    let b = particao(7.0);
+    assert!(a.len() > 8, "só {} folhas — fixtura fraca", a.len());
+    assert_eq!(a.len(), b.len(), "a semente não pode mudar a contagem");
+    let a_frente = a.iter().filter(|x| **x).count();
+    assert!(
+        a_frente > 0 && a_frente < a.len(),
+        "a fracção 0,5 tem de partir a copa em dois ({a_frente} de {})",
+        a.len()
+    );
+    let trocaram = a.iter().zip(&b).filter(|(x, y)| x != y).count();
+    assert!(
+        trocaram > 0,
+        "nenhuma folha trocou de lado com outra semente — o sorteio do LADO não é semeado"
+    );
+    assert_eq!(a, particao(1.0), "e a mesma semente reproduz a partição");
 }

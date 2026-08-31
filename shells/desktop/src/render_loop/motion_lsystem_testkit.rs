@@ -155,3 +155,29 @@ pub(crate) fn publish_vector_object(state: &mut MotionState, name: &str, geometr
         super::motion_bridge::appearance_vector([2.0, 3.0], [1.0, 1.0, 1.0, 1.0], geometry_id),
     );
 }
+
+/// **As instâncias VECTORIAIS desta corrente**, na ordem em que o passe as desenha — irmã de
+/// [`instances_of`], que lê o passe das sprites.
+///
+/// ⚠️ **Ela mudou-se para o testkit em 2026-08-31**, quando um segundo ficheiro de gates
+/// precisou dela: um leitor privado de um ficheiro obriga o seguinte a reimplementá-lo, e aí os
+/// dois medem coisas parecidas em vez da mesma. *Duas leituras da mesma corrente têm de sair da
+/// mesma porta.*
+///
+/// ⚠️ **Desde a TERCEIRA MÉDIA os dois leitores são obrigatórios em par:** com
+/// `Leaves In Front > 0` a copa inteira sai do passe das sprites e entra neste, e um teste que
+/// só leia um dos dois mede uma lista vazia e acusa a própria régua.
+pub(crate) fn vector_instances_of(
+    state: &MotionState,
+    key: &str,
+) -> Vec<ph2d_eval_motion::VectorInstance> {
+    let mut out = Vec::new();
+    if let Some(e) = state.pump.cook.externals().get(key) {
+        ph2d_eval_motion::lower_to_vector_instances_onto(
+            &e.value,
+            ph2d_render::SinkStyle::PLAIN,
+            &mut out,
+        );
+    }
+    out
+}

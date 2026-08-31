@@ -128,7 +128,7 @@ pub(crate) fn plant_and_leaves(
         };
         if gid <= 0.0 && !quad {
             sprites.push(row);
-        } else if is_in_front(a.seed, front) {
+        } else if is_in_front(a.seed, front, look_law.seed) {
             frente.push(row);
         } else {
             atras.push(row);
@@ -204,8 +204,11 @@ pub(crate) fn plant_and_leaves(
 /// a frente e o fundo, e a árvore piscaria enquanto cresce.
 ///
 /// ⚠️ `0` e `1` são exactos nas duas pontas: `hash ∈ [0, 1)`, logo `< 0` nunca e `< 1` sempre.
-fn is_in_front(seed: u32, front: f32) -> bool {
-    hash01(seed) < front
+fn is_in_front(mark: u32, front: f32, seed: u32) -> bool {
+    // ⚠️ **A MESMA lei dos outros três sorteios** (`hash01_lane`, lane `0`) — a 1.ª redacção
+    // desta cura misturava a semente com um XOR próprio aqui, o que era uma segunda maneira de
+    // responder à mesma pergunta a viver a três linhas da primeira.
+    hash01_lane(mark, 0, seed) < front
 }
 
 /// **O TAMANHO E O EMPURRÃO de cada folha** — o que o painel pede, resolvido por marca.
@@ -229,6 +232,22 @@ pub(crate) struct LeafLook {
     pub(crate) size: f32,
     pub(crate) size_jitter: f32,
     pub(crate) pos_jitter: f32,
+    /// ⭐⭐⭐ **A SEMENTE, e ela faltava** — auditoria de seis lentes, doc 96 §4.4.
+    ///
+    /// Os dois sorteios de folha e o lado (frente/trás) saíam só de `hash01_lane(i, lane)`, onde
+    /// `i` é a IDENTIDADE da marca. ⇒ o botão *re-roll* do `Seed` e o número dele **não mudavam
+    /// uma folha**: os três sorteios eram irreroláveis.
+    ///
+    /// ⚠️⚠️ **E a isenção do `Seed` no censo do nó invocava exactamente este alcance** — *«ele é
+    /// também semeado pelo `Leaf Size Jitter` e pelo `Leaf Pos Jitter`»*. A promessa que
+    /// justificava não o esconder **não tinha leitor**.
+    ///
+    /// ⚠️ **`to_bits()`, e não `abs() as u32`** — é a lei que a casa já usa para a FOLHA (o
+    /// `Leaf Spread`, em `turtle.rs`), e usar a outra aqui poria uma terceira identidade sob o
+    /// mesmo nome. ⛔ A divergência entre as duas leis do `seed` (a da folha e a da escolha
+    /// estocástica) fica **NOMEADA** e não curada aqui: unificá-las muda a figura do molde
+    /// `Wild`, e isso é decisão de produto (doc 96 §B2).
+    pub(crate) seed: u32,
 }
 
 impl LeafLook {
@@ -242,30 +261,26 @@ impl LeafLook {
             self.size
         } else {
             // `±jitter/2` em torno de `1`, logo `jitter = 1` dá de metade ao dobro.
-            self.size * (1.0 + (hash01_lane(i, 1) - 0.5) * self.size_jitter)
+            self.size * (1.0 + (hash01_lane(i, 1, self.seed) - 0.5) * self.size_jitter)
         };
         let shove = if self.pos_jitter == 0.0 {
             [0.0, 0.0]
         } else {
             [
-                (hash01_lane(i, 2) - 0.5) * self.pos_jitter,
-                (hash01_lane(i, 3) - 0.5) * self.pos_jitter,
+                (hash01_lane(i, 2, self.seed) - 0.5) * self.pos_jitter,
+                (hash01_lane(i, 3, self.seed) - 0.5) * self.pos_jitter,
             ]
         };
         (scale, shove)
     }
 }
 
-/// `[0, 1)` a partir de um índice — o mesmo avalanche splitmix que o resto da casa usa.
-fn hash01(i: u32) -> f32 {
-    hash01_lane(i, 0)
-}
-
 /// O mesmo, numa LANE — sorteios distintos para perguntas distintas sobre a mesma marca.
-fn hash01_lane(i: u32, lane: u32) -> f32 {
+fn hash01_lane(i: u32, lane: u32, seed: u32) -> f32 {
     let mut h = i
         .wrapping_mul(0x9e37_79b9)
         .wrapping_add(lane.wrapping_mul(0xc2b2_ae35))
+        .wrapping_add(seed.wrapping_mul(0x27d4_eb2f))
         .wrapping_add(0x1eaf_1eaf);
     h ^= h >> 16;
     h = h.wrapping_mul(0x7feb_352d);

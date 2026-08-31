@@ -278,9 +278,18 @@ fn every_inert_knob_is_explained_and_no_explanation_has_gone_stale() {
 /// | `tropism` | 1 de 9 | vivo em 8 ⇒ isento (no `Sprig` a cadeia persistente é exactamente vertical, logo anti-paralela ao puxão) |
 ///
 /// ⛔ **E é por isso que a cura do `seed` NÃO é um limiar sobre o `Leaf Spread`**, que é o único
-/// despertador que esta régua vê: ele é também semeado pelo `Leaf Size Jitter` e pelo
-/// `Leaf Pos Jitter`, que a SHELL lê e o `build` não — um limiar sobre um dos três apagaria o
-/// knob para quem usasse os outros dois. *Uma isenção medida é mais barata que um gate errado.*
+/// despertador que esta régua vê: ele é também semeado pelo `Leaf Size Jitter`, pelo
+/// `Leaf Pos Jitter` e pelo sorteio do LADO, que a SHELL lê e o `build` não — um limiar sobre um
+/// dos quatro apagaria o knob para quem usasse os outros três. *Uma isenção medida é mais barata
+/// que um gate errado.*
+///
+/// ⚠️⚠️ **Esta frase era FALSA quando foi escrita, e agora tem leitor.** Até 2026-08-31 os três
+/// sorteios da shell saíam só da identidade da marca: o botão *re-roll* e o número do `Seed`
+/// **não mudavam uma folha**, e a promessa que mantinha o knob visível não era verificada em
+/// lado nenhum (doc 96 §4.4). Hoje ela é gateada na costura, do lado da shell —
+/// `re_rolling_the_seed_moves_the_leaves` e
+/// `re_rolling_the_seed_changes_which_leaves_go_in_front`. *Uma promessa que justifica uma
+/// decisão tem de ter quem a leia.*
 #[test]
 fn no_knob_is_dead_across_the_whole_corpus_unless_something_hides_it() {
     let reg = registry();

@@ -447,6 +447,36 @@ cura que introduz uma inconsistência visível não é a cura.
 
 ---
 
+## §10 — *"algumas aparecem já grandes"*: a IDENTIDADE de uma folha não é o índice dela
+
+> Enio, 2026-08-30: *"ficou muito bom, mas nem todas as folhas crescem, algumas aparecem já
+> grandes"*.
+
+⭐ **A lei do crescimento estava certa** — medida: varrendo `g` de `1` a `6`, **zero** folhas
+recebem um primeiro peso acima de `0,5`. Todas nascem pequenas.
+
+⛔⛔ **O defeito era o SORTEIO, e a causa é a identidade.** O tamanho (e o lado frente/trás)
+saíam do **índice da âncora na lista** — e ao crescer, a planta **insere marcas no MEIO** (a
+travessia é em profundidade). ⇒ o índice de uma folha que já existia MUDA, ela recebe outro
+número, e **salta de tamanho**. O mesmo valia para o `Leaves In Front`: as folhas trocavam de
+lado sozinhas enquanto a planta crescia.
+
+⭐ A cura é uma identidade **estável**: o par `(geração, ordinal dentro dela)`. E ele é estável
+pela razão que faz a planta crescer — *as gerações velhas não se reescrevem, logo a ordem
+relativa das marcas de uma geração não muda quando outra nasce*.
+
+⚠️⚠️ **E a primeira sonda desta caça inventou o defeito ao medi-lo:** ela identificava a folha
+pela POSIÇÃO e acusou **209 saltos de 420** — mas a marca da geração mais nova **move-se**
+enquanto o ramo dela estica, então cada passo do varrimento contava «uma folha nova». Com a
+identidade certa, `0` de `42`. *A régua que se usa para procurar um defeito pode fabricá-lo* —
+e é a quarta vez nesta jornada que a régua mordeu antes do produto.
+
+⚠️ O gate compara os retratos de `g = 4` e `g = 5` **só nas folhas cujas gerações já pararam de
+crescer** (as que estão no mesmo sítio nos dois), com o controlo que impede a comparação de
+passar vazia.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |

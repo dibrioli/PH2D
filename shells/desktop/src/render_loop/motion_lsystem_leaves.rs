@@ -40,6 +40,10 @@ pub(crate) struct Anchor {
     /// plano de gerações. Aqui ela é um multiplicador do tamanho: *nasce pequena na ponta e
     /// cresce*, e a marca da geração anterior encolhe pelo complemento.
     pub(crate) grow: f32,
+    /// **A identidade ESTÁVEL da marca** — `(geração, ordinal dentro dela)`, dobrada num
+    /// número. É dela que saem os sorteios e o lado (frente/trás), e **não** do índice na
+    /// lista: ao crescer, a planta insere marcas no meio e o índice de uma folha antiga muda.
+    pub(crate) seed: u32,
     /// O índice em [`ls::LEAF_SYMBOLS`] — `0` = `J`, `1` = `K`, `2` = `M`.
     pub(crate) slot: usize,
 }
@@ -47,23 +51,39 @@ pub(crate) struct Anchor {
 /// As âncoras que as três letras plantaram, lidas do esqueleto.
 pub(crate) fn anchors_of(sk: &Stream) -> Vec<Anchor> {
     let (p, sym, rot) = (v2(sk, "P"), v1(sk, "sym"), v1(sk, "rot"));
-    let grow = v1(sk, "mark_grow");
-    p.iter()
-        .zip(sym.iter())
-        .enumerate()
-        .filter_map(|(i, (pos, s))| {
-            let byte = *s as i32 as u8;
-            let slot = ls::LEAF_SYMBOLS.iter().position(|k| *k == byte)?;
-            Some(Anchor {
-                p: *pos,
-                rot: rot.get(i).copied().unwrap_or(0.0),
-                // ⚠️ **Ausente ⇒ `1`**, o valor maduro: uma coluna que não existe não pode
-                // apagar a folha de um esqueleto vindo de outra rota.
-                grow: grow.get(i).copied().unwrap_or(1.0),
-                slot,
-            })
-        })
-        .collect()
+    let (grow, born) = (v1(sk, "mark_grow"), v1(sk, "gen"));
+    let mut por_geracao: std::collections::BTreeMap<i32, u32> = std::collections::BTreeMap::new();
+    let mut out = Vec::new();
+    for (i, (pos, s)) in p.iter().zip(sym.iter()).enumerate() {
+        let byte = *s as i32 as u8;
+        let Some(slot) = ls::LEAF_SYMBOLS.iter().position(|k| *k == byte) else {
+            continue;
+        };
+        // ⛔⛔ **A IDENTIDADE DE UMA MARCA NÃO É O ÍNDICE DELA NA LISTA** — report do Enio
+        // (2026-08-30): *"nem todas as folhas crescem, algumas aparecem já grandes"*.
+        //
+        // Ao crescer, a planta **insere marcas no MEIO** (a travessia é em profundidade), então
+        // o índice de uma folha que já existia MUDA. Com o sorteio a sair do índice, a mesma
+        // folha ganhava um tamanho novo — e a que estava pequena saltava para grande. O mesmo
+        // valia para o `Leaves In Front`: as folhas trocavam de lado enquanto a planta crescia.
+        //
+        // ⭐ **O par `(geração, ordinal dentro dela)` é estável**, e é estável pela razão que
+        // faz a planta crescer: as gerações velhas não se reescrevem, logo a ordem relativa das
+        // marcas de uma geração não muda quando outra nasce.
+        let g = born.get(i).copied().unwrap_or(0.0) as i32;
+        let n = por_geracao.entry(g).or_insert(0);
+        *n += 1;
+        out.push(Anchor {
+            p: *pos,
+            rot: rot.get(i).copied().unwrap_or(0.0),
+            // ⚠️ **Ausente ⇒ `1`**, o valor maduro: uma coluna que não existe não pode
+            // apagar a folha de um esqueleto vindo de outra rota.
+            grow: grow.get(i).copied().unwrap_or(1.0),
+            seed: (g as u32).wrapping_mul(0x0001_0001).wrapping_add(*n),
+            slot,
+        });
+    }
+    out
 }
 
 /// **A aparência de um objecto**, na ordem
@@ -357,7 +377,7 @@ pub(crate) fn plant_and_leaves(
     // linhas a move. Uma folha-VECTOR vive na mesma passagem que a planta, e ali quem manda é a
     // ordem: as de trás vêm antes da linha da planta, as da frente depois.
     let (mut atras, mut frente, mut sprites) = (Vec::new(), Vec::new(), Vec::new());
-    for (i, a) in anchors.iter().enumerate() {
+    for a in anchors {
         let Some((sz, tn, rect, tid, pm, gid)) = looks[a.slot] else {
             continue;
         };
@@ -367,7 +387,7 @@ pub(crate) fn plant_and_leaves(
             continue;
         }
         // ⭐ **O tamanho final e os dois sorteios** (report do Enio, 2026-08-30).
-        let (scale, shove) = look_law.at(i);
+        let (scale, shove) = look_law.at(a.seed);
         let sized = [sz[0] * a.grow * scale, sz[1] * a.grow * scale];
         let row = Row {
             // ⚠️ **O empurrão é em FRACÇÃO do tamanho da folha**, e não em unidades de mundo:
@@ -395,7 +415,7 @@ pub(crate) fn plant_and_leaves(
         };
         if gid <= 0.0 {
             sprites.push(row);
-        } else if is_in_front(i, front) {
+        } else if is_in_front(a.seed, front) {
             frente.push(row);
         } else {
             atras.push(row);
@@ -458,8 +478,8 @@ pub(crate) fn plant_and_leaves(
 /// a frente e o fundo, e a árvore piscaria enquanto cresce.
 ///
 /// ⚠️ `0` e `1` são exactos nas duas pontas: `hash ∈ [0, 1)`, logo `< 0` nunca e `< 1` sempre.
-fn is_in_front(index: usize, front: f32) -> bool {
-    hash01(index) < front
+fn is_in_front(seed: u32, front: f32) -> bool {
+    hash01(seed) < front
 }
 
 /// **O TAMANHO E O EMPURRÃO de cada folha** — o que o painel pede, resolvido por marca.
@@ -491,7 +511,7 @@ impl LeafLook {
     /// ⚠️ **Três LANES do mesmo hash, e não três chamadas iguais:** com uma lane só, o tamanho
     /// e o empurrão de uma folha seriam o MESMO número — as maiores todas para o mesmo lado,
     /// que é um padrão visível e não um sorteio.
-    pub(crate) fn at(self, i: usize) -> (f32, [f32; 2]) {
+    pub(crate) fn at(self, i: u32) -> (f32, [f32; 2]) {
         let scale = if self.size_jitter == 0.0 {
             self.size
         } else {
@@ -511,13 +531,13 @@ impl LeafLook {
 }
 
 /// `[0, 1)` a partir de um índice — o mesmo avalanche splitmix que o resto da casa usa.
-fn hash01(i: usize) -> f32 {
+fn hash01(i: u32) -> f32 {
     hash01_lane(i, 0)
 }
 
 /// O mesmo, numa LANE — sorteios distintos para perguntas distintas sobre a mesma marca.
-fn hash01_lane(i: usize, lane: u32) -> f32 {
-    let mut h = (i as u32)
+fn hash01_lane(i: u32, lane: u32) -> f32 {
+    let mut h = i
         .wrapping_mul(0x9e37_79b9)
         .wrapping_add(lane.wrapping_mul(0xc2b2_ae35))
         .wrapping_add(0x1eaf_1eaf);

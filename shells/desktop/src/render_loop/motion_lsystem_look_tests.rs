@@ -29,7 +29,7 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
     };
     // 1. ⛔ **O neutro é a identidade AO BIT.**
     for i in 0..64 {
-        let (s, d) = neutro.at(i);
+        let (s, d) = neutro.at(i as u32);
         assert_eq!(
             s.to_bits(),
             1.0f32.to_bits(),
@@ -44,7 +44,7 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
     };
     for i in 0..64 {
         assert_eq!(
-            dobro.at(i).0,
+            dobro.at(i as u32).0,
             2.0,
             "sem jitter todas as folhas tem o mesmo tamanho"
         );
@@ -55,7 +55,7 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
         size_jitter: 0.4,
         ..neutro
     };
-    let tamanhos: Vec<f32> = (0..64).map(|i| variado.at(i).0).collect();
+    let tamanhos: Vec<f32> = (0..64).map(|i| variado.at(i as u32).0).collect();
     let (mn, mx) = tamanhos
         .iter()
         .fold((f32::MAX, f32::MIN), |(a, b), s| (a.min(*s), b.max(*s)));
@@ -65,14 +65,18 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
     );
     assert!(mx - mn > 0.2, "as folhas nao variaram entre si: {mn}..{mx}");
     for (i, t) in tamanhos.iter().enumerate() {
-        assert_eq!(variado.at(i).0.to_bits(), t.to_bits(), "o sorteio reproduz");
+        assert_eq!(
+            variado.at(i as u32).0.to_bits(),
+            t.to_bits(),
+            "o sorteio reproduz"
+        );
     }
     // 4. O `Position Jitter` empurra, dentro de meia folha, nos DOIS eixos.
     let empurrado = LeafLook {
         pos_jitter: 1.0,
         ..neutro
     };
-    let ds: Vec<[f32; 2]> = (0..64).map(|i| empurrado.at(i).1).collect();
+    let ds: Vec<[f32; 2]> = (0..64).map(|i| empurrado.at(i as u32).1).collect();
     assert!(
         ds.iter()
             .all(|d| d[0].abs() <= 0.5 + 1e-5 && d[1].abs() <= 0.5 + 1e-5),
@@ -93,8 +97,9 @@ fn the_leaf_has_a_final_size_and_two_jitters() {
         pos_jitter: 1.0,
         ..neutro
     };
-    let (xs, ys): (Vec<f32>, Vec<f32>) =
-        (0..256).map(|i| (ambos.at(i).0, ambos.at(i).1[0])).unzip();
+    let (xs, ys): (Vec<f32>, Vec<f32>) = (0..256)
+        .map(|i| (ambos.at(i as u32).0, ambos.at(i as u32).1[0]))
+        .unzip();
     let (mx_, my) = (
         xs.iter().sum::<f32>() / xs.len() as f32,
         ys.iter().sum::<f32>() / ys.len() as f32,
@@ -179,5 +184,61 @@ fn the_membrane_applies_the_size_and_the_jitters() {
         mexidas * 4 >= pos_base.len() * 3,
         "so' {mexidas} de {} folhas se mexeram",
         pos_base.len()
+    );
+}
+
+/// ⛔⛔⛔ **UMA FOLHA QUE JÁ EXISTIA NÃO MUDA DE TAMANHO QUANDO A PLANTA CRESCE** — report do
+/// Enio (2026-08-30): *"nem todas as folhas crescem, algumas aparecem já grandes"*.
+///
+/// A causa era a IDENTIDADE: o sorteio saía do **índice da âncora na lista**, e ao crescer a
+/// planta insere marcas **no meio** (a travessia é em profundidade) ⇒ o índice de uma folha
+/// antiga muda, ela recebe outro número, e salta de tamanho. O mesmo valia para o lado
+/// (frente/trás): as folhas trocavam de lado sozinhas enquanto a planta crescia.
+///
+/// ⚠️ **A régua identifica a folha pelo que NÃO muda** — a posição dela, para as gerações que
+/// já pararam de crescer. *A 1.ª sonda desta caça usou a posição para TODAS as folhas e
+/// inventou 209 saltos de 420: a marca da geração mais nova move-se enquanto o ramo estica.*
+#[test]
+fn a_leaf_that_already_existed_keeps_its_size_as_the_plant_grows() {
+    let colher = |gens: f32| -> Vec<([i64; 2], i64)> {
+        let (mut state, n) = factory_plant_with_leaf(gens, false);
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::LEAF_SIZE_JITTER, 0.8);
+        state
+            .doc
+            .graph
+            .set_param(n, ls::param::LEAF_POS_JITTER, 0.0);
+        let key = key_of(&mut state, n);
+        publish(&mut state, 0.0);
+        instances_of(&state, &key)
+            .iter()
+            .map(|i| {
+                (
+                    [(i.world_pos[0] * 1e3) as i64, (i.world_pos[1] * 1e3) as i64],
+                    (i.size[0] * 1e3) as i64,
+                )
+            })
+            .collect()
+    };
+    // As gerações 3 e 4 já pararam de crescer em `g = 5`, então as folhas delas estão no
+    // mesmo sítio nos dois retratos — e é por elas que se compara.
+    let antes: std::collections::BTreeMap<[i64; 2], i64> = colher(4.0).into_iter().collect();
+    let depois: std::collections::BTreeMap<[i64; 2], i64> = colher(5.0).into_iter().collect();
+    let mut comuns = 0;
+    for (p, tamanho) in &antes {
+        let Some(agora) = depois.get(p) else { continue };
+        comuns += 1;
+        assert_eq!(
+            tamanho, agora,
+            "a folha em {p:?} mudou de tamanho quando a planta cresceu — o sorteio voltou a \
+             sair do INDICE"
+        );
+    }
+    // ⚠️ **O CONTROLE**: sem folhas em comum a comparação acima passa vazia.
+    assert!(
+        comuns >= 8,
+        "so' {comuns} folhas em comum entre as duas gerações"
     );
 }

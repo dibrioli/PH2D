@@ -31,6 +31,7 @@ fn a_letter_with_a_name_and_no_anchor_is_reported() {
         p: [0.0, 0.0],
         rot: 0.0,
         grow: 1.0,
+        seed: 0,
         slot,
     };
     let names = |a: &str, b: &str, c: &str| [a.to_string(), b.to_string(), c.to_string()];
@@ -112,6 +113,7 @@ fn a_first_level_that_hides_every_leaf_is_reported() {
         p: [0.0, 0.0],
         rot: 0.0,
         grow,
+        seed: 0,
         slot,
     };
     let nomes = |a: &str| [a.to_string(), String::new(), String::new()];

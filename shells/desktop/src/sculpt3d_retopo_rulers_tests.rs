@@ -490,8 +490,9 @@ fn a_ordem_das_chaves_e_furos_pecas_gravatas_forma() {
 /// ⭐⭐ **E isto é estritamente melhor que uma RECUSA:** as candidatas extra passam todas pelo
 /// `worse`, logo *só vencem onde são melhores* — se todas saírem cruzadas ainda se entrega a
 /// menos má. *Uma recusa absoluta transformaria um defeito raro numa ferramenta inutilizável*, e
-/// a prova de corpus que a justificaria ainda não existe (medido: `0` gravatas em `5` corridas
-/// sobre `3` peças — evidência a favor, não prova).
+/// a prova de corpus que a justificaria **não existe — ela foi medida e diz o CONTRÁRIO**: toda
+/// malha retopologizada da pasta do dono tem faces cruzadas, incluindo `Sculpt_Blender.obj`, a
+/// saída que ele **aprovou** (`1` em `8 291`). *Um veto teria recusado a malha que ele elogiou.*
 #[test]
 fn a_face_em_oito_arma_outra_tentativa() {
     let boa = um_quad(false);
@@ -567,4 +568,21 @@ fn os_dois_sitios_que_armam_perguntam_pela_mesma_porta() {
         2,
         "⛔ o descascador comeu o codigo -- a assercao de cima ficaria vacua"
     );
+}
+
+/// ⭐⭐⭐ **GATE — a RAZÃO de a guarda não ser um veto continua escrita ao lado dela.**
+///
+/// ⛔⛔ **Sem isto, «promover a guarda a recusa» lê-se como uma melhoria óbvia** — e ela foi
+/// **medida e refutada** em 2026-08-30: as três malhas retopologizadas da pasta do dono têm faces
+/// cruzadas, `Sculpt_Blender.obj` (a que ele aprovou) incluída. *Um default sem razão escrita é um
+/// default que o próximo inverte.*
+#[test]
+fn a_razao_de_nao_ser_veto_esta_ao_lado_da_guarda() {
+    let src = include_str!("sculpt3d_retopo_rulers.rs");
+    for agulha in ["Sculpt_Blender.obj", "sculpt_t003.obj", "8 291", "APROVOU"] {
+        assert!(
+            src.contains(agulha),
+            "⛔ a refutacao do veto perdeu {agulha} -- alguem vai propo-lo outra vez"
+        );
+    }
 }

@@ -818,3 +818,73 @@ pai **partiu gates noutro ficheiro** (o `mod tests` irmão chamava-o por `super:
 apontá-lo ao dono (`super::rulers::open_edges`) — **nunca** reter um `use` morto para um teste o
 alcançar, nem calar o aviso. *Um import que só existe para um teste chegar a um nome é um fio
 entre dois ficheiros que ninguém vê.*
+
+---
+
+## §8-septendecies — ⛔⛔⛔ O VETO SOBRE GRAVATAS: MEDIDO E REFUTADO (o item §8-sexdecies.3 FECHA)
+
+O §8-sexdecies.3 deixou aberto *«se o caminho de omissão der `0` em todas as peças da bancada, a
+guarda passa de ordinal a recusa»*. ⭐ **A pergunta certa não era essa, e a resposta é NÃO.**
+
+Medido com `the_local_ruler_across_files` sobre os ficheiros do próprio dono:
+
+| ficheiro | faces | irreg. | **gravatas** | o que é |
+|---|---|---|---|---|
+| `Sculpt_Blender.obj` | `8 291` | `86` | ⛔ **`1`** | ⭐⭐⭐ **a saída que ele APROVOU** (*«preserva as pontas»*) |
+| `sculpt_Depois.obj` | `15 426` | `48` | ⛔ **`1`** | outra retopologia dele |
+| `sculpt_t003.obj` | `20 235` | `39` | ⛔ **`2`** | ⭐ **a ENTRADA dele no nosso botão** |
+| a nossa saída (`d=0,85`) | `9 598` | `40` | ⭐ **`0`** | — |
+
+⭐⭐⭐ **Um veto absoluto teria RECUSADO a malha que o dono elogiou.** ⇒ *«uma face cruzada é
+inaceitável» é uma barra que a ferramenta de referência não cumpre* — e a nossa saída, nesta
+coluna, é **mais limpa que as três**.
+
+⇒ A guarda fica **ordinal + a armar tentativa**, e agora com prova em vez de cautela. ⛔ **Não
+volte a propor o veto** sem medir de novo estes três ficheiros: a lei foi verificada contra o que
+o dono ACEITA, que é o único denominador honesto que existe aqui.
+
+⚠️ **E isto explica porque a arma quase nunca dispara:** a nossa saída tem `0`, logo o custo do
+passe extra é pago só no caso raro. *Uma rede que raramente se arma é barata; um veto que
+raramente acerta é caro.*
+
+---
+
+## §8-octodecies — ⭐⭐⭐ AS PONTAS: o botão RECEBE a densidade certa e DEVOLVE-A AO CONTRÁRIO
+
+Report aberto do dono (29/08): *«buracos nas pontas, faces emboladas nas pontas»* e (28/08) *«as
+pontas finas perdem detalhe»*. ⭐ **Ele tem número, alvo e DIREÇÃO**, na coluna `ENTREGA` que já
+existia e que já nomeia o alvo (`0,59`, derivado do oráculo aprovado):
+
+| malha | razão ponta/corpo | aresta por casca radial (dentro → ponta) |
+|---|---|---|
+| ⭐ `Sculpt_Blender.obj` (**aprovado**) | **`0,580`** | `0,0547 → 0,0450 → 0,0439 → 0,0261` (**afina `−52 %`**) |
+| ⭐ `sculpt_t003.obj` (**a entrada dele**) | `0,675` | `0,0275 → 0,0265 → 0,0310 → 0,0179` (**afina `−35 %`**) |
+| `sculpt_Depois.obj` | `1,145` | `0,0306 → 0,0316 → 0,0301 → 0,0361` (plano) |
+| ⛔ **a nossa saída** (`d=0,85`) | ⛔ **`1,300`** | `0,0390 → 0,0416 → 0,0506` (⛔ **engrossa `+30 %`**) |
+
+⭐⭐⭐ **As duas curvas correm em SENTIDOS OPOSTOS.** Não é *«a nossa grade é uniforme»* — é
+**anti-adaptativa**: os quads crescem em direcção à ponta enquanto os da referência encolhem. A
+razão erra o alvo por **`2,2×`**.
+
+⭐⭐ **E o reenquadramento que esta medição compra:** a peça que o dono mete no botão **já tem a
+densidade certa nas pontas** (`0,675`, quase o alvo `0,59`). ⇒ *o trabalho não é inventar
+adaptação do nada — é parar de deitar fora a que CHEGA.* ⚠️ A fase zero (`ph2d-remesh-iso`)
+remalha **isotropicamente por construção**, logo ela é o primeiro suspeito com endereço, e a
+informação morre lá antes de qualquer fase a jusante a poder usar.
+
+⛔⛔ **NÃO confundir com as duas recusas medidas que já existem, que respondem a OUTRA pergunta:**
+- o `Follow Curvature` (`ScaleField` adaptativo no G3) foi construído e **não adoptado** — ele
+  move o expoente `7 %` e paga `15 %` da contagem e o dobro das faces `>60°`, porque *o G3 resolve
+  um mapa escalar cujo gradiente alvo com `h` variável deixa de ser integrável* (§8-quater).
+- «o F1 tem de seguir o alvo» foi **REFUTADA** (`PH2D_F1_TARGET=1`: `χ = 1`, `4` bordo, `123`
+  dobras contra `χ = 2`, `0`, `21`).
+
+⇒ ⏳ **O que fica NOMEADO para a próxima janela:** *preservar* a graduação que a entrada traz é uma
+terceira coisa, distinta de ambas — nenhuma das duas recusas a mediu. A régua para saber quando
+está feito **já existe e já tem o alvo escrito**: a coluna `ENTREGA razao ponta/corpo`, com `0,59`
+do oráculo aprovado e `1,300` de hoje.
+
+⚠️ **E uma cautela sobre a régua da PONTA que esta corrida expõe:** o `LOCAL na PONTA` conta
+`0`–`3` faces nas nossas saídas (`0/101`, `1/427`, `3/272`, `1/196`, `3/208`). *Uma razão tirada de
+`3` contra `1` não é `3×`, é ruído* — a coluna que decide aqui é a `ENTREGA`, que tem centenas de
+faces de cada lado, não a contagem de defeitos.

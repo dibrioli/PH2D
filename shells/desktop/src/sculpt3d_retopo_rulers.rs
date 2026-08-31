@@ -188,9 +188,16 @@ pub(super) fn boundary_edges(mesh: &Mesh) -> usize {
 /// candidatas extra entram todas pelo mesmo [`worse`], logo *só vencem onde são melhores*. Se
 /// **todas** as tentativas saírem cruzadas, ainda se escolhe a menos má e o artista recebe
 /// alguma coisa. *Uma recusa absoluta transformaria um defeito raro numa ferramenta inutilizável,
-/// e a prova de corpus que a justificaria ainda não existe* — medido em `5` corridas (3 peças ×
-/// 3 níveis, `1 353`..`9 598` quads): **`0` gravatas em todas**, o que é evidência a favor e não
-/// prova.
+/// e a prova de corpus que a justificaria não existe* — medido em `5` corridas (3 peças × 3
+/// níveis, `1 353`..`9 598` quads): **`0` gravatas em todas**.
+///
+/// ⛔⛔⛔ **E o VETO está MEDIDO E REFUTADO (30/08), com o único denominador honesto que existe:
+/// os ficheiros do próprio dono.** Toda malha retopologizada da pasta dele tem faces cruzadas —
+/// `Sculpt_Blender.obj`, a saída que ele **APROVOU** (*«preserva as pontas»*), tem `1` em
+/// `8 291` faces; `sculpt_Depois.obj` tem `1`; e `sculpt_t003.obj`, a **entrada** dele no nosso
+/// botão, tem `2`. ⇒ *«uma face cruzada é inaceitável» é uma barra que a ferramenta de
+/// referência não cumpre*, e um veto teria recusado a malha que ele elogiou. ⛔ **Não volte a
+/// propô-lo sem re-medir esses três ficheiros.**
 pub(super) fn still_broken(mesh: &Mesh) -> bool {
     open_edges(mesh) > 0 || bowties(mesh) > 0
 }

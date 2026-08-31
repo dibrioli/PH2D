@@ -860,3 +860,67 @@ mas isso é **raciocínio**, não uma medição, e vai escrito assim.
 
 **Provas de mutação (3, todas mortas):** a chave decide ao contrário · a guarda da amostra
 vazia desaparece · a chave desaparece.
+
+---
+
+# ⭐⭐⭐ PARTE V — «tenho usado Detail e Curvature no MÁXIMO» (Enio, 2026-08-31)
+
+## §43 — ⛔⛔⛔ A VARREDURA INTEIRA DA PARTE IV CORREU COM `Curvature 0`
+
+O dono disse, ao devolver o smoke: *«em todos os testes tenho usado Detail e Curvature no
+máximo»*. ⛔ **As sete densidades da §36 correram com `PH2D_ADAPT` no default da sonda, que é
+`0,0`** — a posição que ele nunca usa. *Uma varredura de sete células mediu um programa que o
+dono não corre.*
+
+⚠️ **É a família de §0.0 e das recusas medidas:** a sonda tem os seus próprios defaults, e um
+default de sonda que não é o default do produto — nem a posição do dono — produz uma tabela
+plausível sobre outra configuração.
+
+## §44 — A tabela nas quatro esquinas (`_base_sculpt.obj`, a peça que ele exportou a 30/08)
+
+| `Detail` | `Curvature` | quads | pontas cortadas | pior | **desvio `p50`** |
+|---|---|---|---|---|---|
+| `1,00` | `1,0` | `21 735` | `0` de `4` | `−0,2 %` | `0,22` |
+| `0,75` | `1,0` | `5 554` | `0` de `4` | `−0,3 %` | ⭐ `0,14` |
+| `0,75` | `0,0` | `5 625` | `0` de `4` | `−0,8 %` | `0,26` |
+| `1,00` | `0,0` | `22 345` | `0` de `4` | `−0,9 %` | `0,41` |
+
+⭐ **O `Curvature 1` MELHORA as pontas nas duas densidades** (`0,26 → 0,14` e `0,41 → 0,22`),
+que é exactamente o que o knob promete.
+
+⛔⛔ **E o `Detail 0,75 · Curvature 1` — a célula em que ele reporta uma ponta amputada — sai
+LIMPA aqui.** *Não reproduzo o report na peça que tenho.*
+
+## §45 — ⭐⭐⭐ O QUE A TABELA DAS CANDIDATAS DIZ, e é um aviso
+
+Em **todas as quatro** células, uma das duas candidatas amputa e a outra não — e quem escolhe
+a boa é a chave dos **furos**, não a das pontas:
+
+| célula | candidata `w = 0,000` | candidata `w = 0,030` |
+|---|---|---|
+| `1,00 · 1,0` | bordo `10` · desvio **`2,86`** (`1` acima) | bordo `0` · desvio `0,22` (`0`) |
+| `0,75 · 1,0` | bordo `8` · desvio **`3,57`** (`1` acima) | bordo `0` · desvio `0,14` (`0`) |
+| `0,75 · 0,0` | bordo `4` · desvio **`4,16`** (`1` acima) | bordo `0` · desvio `0,26` (`0`) |
+| `1,00 · 0,0` | bordo `10` · desvio **`3,78`** (`1` acima) | bordo `0` · desvio `0,41` (`0`) |
+
+⚠️ **A candidata que amputa é sempre a do campo LISO, e ela traz sempre bordo.** ⇒ hoje o
+resultado bom sai porque as duas coisas andam juntas — *e a margem é um acaso da peça, não um
+desenho*. Se numa escultura o campo liso fechar a casca (`bordo 0`), quem decide passa a ser a
+chave das pontas — que **só existe desde este commit**.
+
+⇒ ⭐⭐ **Hipótese com endereço para o report do `0,75`:** ele correu o binário **anterior** à
+troca da chave (a régua velha era o alcance, contaminado pelo centroide por vértice, e ela
+*prefere* a candidata que come a ponta — §35). ⛔ É hipótese e vai escrita como tal: só o
+re-smoke no binário de hoje, ou a peça dele, a confirma.
+
+## §46 — ⛔ E o caminho tinha uma AFIRMAÇÃO FALSA a apanhar quem investigasse
+
+`RetopoMode::uses_adaptive()` dizia *«só o motor local consome a densidade adaptativa»* — e o
+`Follow Curvature` chega **aos dois** desde 2026-08-21 (o comentário no sítio da chamada
+di-lo). ⚠️ Ela **não tinha um único leitor**, nem existia o aviso de painel que o doc dela
+descrevia. ⇒ apagada, com o motivo no lugar dela.
+
+⚠️ **É a espécie ÓRFÃ e não a MORTA**, e as curas são opostas. O perigo aqui não era o código:
+era o **texto** — quem greppasse o nome lia *«o `Curvature` é inerte no motor de omissão»* e
+concluía o contrário do que o produto faz. *Uma afirmação falsa que ninguém executa continua a
+ser lida.*

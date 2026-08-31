@@ -116,10 +116,17 @@ impl RetopoMode {
         }
     }
 
-    /// **Este motor consome a densidade adaptativa?** ⚠️ Só o local — e é por isso
-    /// que o painel avisa quando o knob não é zero no outro.
-    #[must_use]
-    pub fn uses_adaptive(self) -> bool {
-        matches!(self, Self::Local)
-    }
+    // ⛔⛔⛔ **`uses_adaptive` FOI APAGADA em 2026-08-31, e não por limpeza cosmética: ela
+    // MENTIA.** Dizia *«este motor consome a densidade adaptativa? só o local — e é por isso
+    // que o painel avisa quando o knob não é zero no outro»*, e o `Follow Curvature` chega
+    // **aos dois** motores desde 2026-08-21 (o comentário no sítio da chamada, em
+    // `sculpt3d_panel.rs`, já o dizia). ⚠️ **E ela não tinha UM leitor** — nem o aviso que o
+    // doc dela descrevia existia.
+    //
+    // ⚠️ **É a espécie ÓRFÃ, não a MORTA** (memória `an_orphan_id_and_a_dead_knob…`): a cura
+    // de um órfão é apagar, a de um knob morto é ligar o braço — e tratá-las ao contrário
+    // constrói consumidor para um controlo que não existe. ⛔ O perigo aqui era o texto: quem
+    // greppasse `uses_adaptive` lia *«o `Curvature` é inerte no motor de omissão»* e concluía
+    // o contrário do que o produto faz. *Uma afirmação falsa que ninguém executa continua a
+    // ser lida.*
 }

@@ -106,6 +106,12 @@ impl Panel for TimelinePanel {
     const ID: &'static str = "timeline";
     const NODE_ID: NodeId = ph2d_editor_core::ids::TIMELINE_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    /// ⭐ **DECLARA que flutua** (D1): faixa com rect PRÓPRIO (o dock de baixo), que o artista move — ver `CLAUDE.md` §5.
+    ///
+    /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate
+    /// `a_docked_panel_never_reaches_the_drawing_area` impede-a de mentir nos dois sentidos —
+    /// quem não declara **não pode** publicar um rect sobre a área de desenho.
+    const CAN_FLOAT: bool = true;
 
     fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

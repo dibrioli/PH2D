@@ -47,6 +47,12 @@ impl Panel for GridSnapPanel {
     const ID: &'static str = "grid_snap";
     const NODE_ID: NodeId = ph2d_editor_core::ids::GS_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE com arrasto próprio — o artista põe-na onde a grelha lhe interessa.
+    ///
+    /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate
+    /// `a_docked_panel_never_reaches_the_drawing_area` impede-a de mentir nos dois sentidos —
+    /// quem não declara **não pode** publicar um rect sobre a área de desenho.
+    const CAN_FLOAT: bool = true;
 
     fn paint(state: &mut GridSnapPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

@@ -39,6 +39,30 @@ pub trait Panel: Sized + 'static {
     /// Default `visible` value when the host doesn't supply one.
     const DEFAULT_VISIBLE: bool;
 
+    /// ⭐⭐ **ONDE ESTE PAINEL PODE ESTAR** (decisão **D1**).
+    ///
+    /// O default é [`SlotSet::ANY_DOCK`] — as duas colunas e a faixa de baixo, **nunca o centro**.
+    /// Um painel de propriedades que declare `SlotSet::RIGHT` **não consegue** ser posto sobre a
+    /// viewport: não há valor que o exprima. *É um `Constraint`, não uma verificação.*
+    ///
+    /// ⚠️ **Tem default para os 24 painéis não terem de mudar todos no mesmo commit** — quem
+    /// precisa de ser mais estreito que o default declara-o.
+    const ALLOWED_SLOTS: crate::screens::slot::SlotSet = crate::screens::slot::SlotSet::ANY_DOCK;
+
+    /// Onde ele nasce. ⚠️ Tem de estar dentro de [`Self::ALLOWED_SLOTS`], e há gate.
+    const DEFAULT_SLOT: crate::screens::slot::Slot = crate::screens::slot::Slot::RightTop;
+
+    /// ⭐⭐ **Ele pode sair para uma janela própria?** (decisão **D1**.)
+    ///
+    /// ⛔ **`false` por omissão, e é a metade que importa:** um painel que não flutua **nunca**
+    /// publica um rect por cima da área de desenho, e há gate a medi-lo sobre o quadro real
+    /// (`ph2d-panel-registry-init/tests/a_docked_panel_never_reaches_the_drawing_area.rs`).
+    ///
+    /// ⚠️ **Declarar `true` é declarar que o artista o ARRASTA** — o Grid Snap, a galeria de
+    /// widgets e o `authored` têm rect próprio com clamp na crate deles, e é por isso que eles o
+    /// declaram. *A declaração descreve o que o painel FAZ, e o gate impede-a de mentir.*
+    const CAN_FLOAT: bool = false;
+
     /// Paint the panel for one frame. State + host are typed; the
     /// orchestrator dispatches through `ErasedPanel` which downcasts
     /// once at install.

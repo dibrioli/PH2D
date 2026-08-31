@@ -39,6 +39,7 @@ virou **código**.
 | 17 | `eb2013fc5` | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
 | 18 | `165d6a096` | ⛔⛔ **UMA TABELA para a verdade de cada módulo** — e o `if` com um lado morto (§13) |
 | 19 | `9bda8e3de` | ⭐ **A FUGA DO GIZMO ficou inerte** — a `D1` cumprida sem apagar a lei (§14) |
+| 20 | *(a seguir)* | ⭐⭐ **OS SEIS ENCAIXES e a declaração de cada painel** — a `D1` como tipo (§15) |
 
 ---
 
@@ -846,4 +847,56 @@ nunca que alguém **responde** — e a segunda vez que ela morde nesta linha.
 com dois gates e duas mutações mortas. ⚠️ E o gate da lei ficou **com controlo**: os mesmos
 rectângulos, medidos contra a área ANTIGA, **têm** de mover o gizmo — senão o teste passaria com a
 lei apagada, com a área a zero, ou com obstáculos que não tocam nada.
+
+---
+
+## §15 — ⭐⭐ OS SEIS ENCAIXES: a D1 deixa de ser prosa e passa a ser um TIPO (entrega 20)
+
+É a obra **`A`/`E`** do [`spec/02`](../spec/02_o_que_falta_para_comecar.md), na fatia que o §7 dela
+recomenda: *os seis encaixes + o descritor de painel + o gate que prova que um painel de
+propriedades **não consegue** ser posto sobre a viewport*.
+
+### §15.1 — O vocabulário
+
+`screens::slot::{Slot, SlotSet}` — **seis** encaixes (`LeftTop`/`LeftBottom`/`RightTop`/
+`RightBottom`/`Bottom`/`Center`), e o número é **derivado**: os 12 do Godot são duas colunas por
+lado = **89,6 %** da largura do alvo de 1366 (spec §2). `SlotSet` é um bitset porque tem de viver
+numa **constante associada** de trait.
+
+O `Panel` ganha três constantes **com default**, para os 24 painéis não mudarem no mesmo commit:
+`ALLOWED_SLOTS` (default `ANY_DOCK`, ⛔ **nunca o centro**), `DEFAULT_SLOT`, `CAN_FLOAT` (default
+`false`).
+
+### §15.2 — ⭐ A declaração foi MEDIDA antes de escrita
+
+Uma sonda pintou o quadro com **todos** os painéis abertos e leu os rects publicados:
+
+| resultado | painéis |
+|---|---|
+| `overlap = 0` com a área de desenho | 14 (inspector, hierarchy, physics, tokens, vector, model3d, mixer, …) |
+| `overlap > 0`, e **declaram** flutuar | `grid_snap` · `widget_gallery` · `authored` |
+| `overlap > 0` e **não** declaram | ⛔ **`audio_editor`** |
+
+⇒ `CAN_FLOAT = true` foi escrito nos **cinco** que de facto se arrastam (os três acima + o
+`wet_tuning` e a `timeline`, que têm rect próprio com clamp na crate deles).
+
+### §15.3 — ⛔ O gate achou UM violador, e ele é uma decisão de modelo
+
+O `audio_editor` encaixa-se **a oeste do Inspector** (`insp.x − 240 − gap`) para poder estar aberto
+ao lado do Audio Mixer, que ocupa a coluna. Isso é uma **segunda coluna da direita** — e a spec §2
+recusa-a por aritmética. ⇒ a cura é a **regra 1** do modelo (*`n > 1` num encaixe são **abas***), que
+é wave própria. Fica na catraca `REACHES_PENDING`, **com o mecanismo**, e a metade de baixo do gate
+recusa a entrada no dia em que ela deixar de descrever algo.
+
+### §15.4 — ⚠️ E o gate obrigou a nomear uma propriedade do DESENHO
+
+`DockSides::from_published` lê os rects do quadro **anterior**: no 1.º quadro nenhuma coluna está
+reservada e a área de desenho ocupa a **largura toda** (medido: `x=0, w=1366` no primeiro,
+`x=308, w=754` do segundo em diante). ⇒ um gate de um quadro só mediria o estado transitório e
+acusaria toda a gente — ele pinta **três** e afirma que a área assentou antes de medir.
+
+⚠️ **Isto é também um facto de produto**, agora nomeado: no quadro em que um painel lateral aparece,
+a régua e a fila de ferramentas ocupam a largura toda e encolhem no quadro seguinte. Um piscar de
+16 ms que ninguém reportou — mas que fica escrito, porque é a próxima coisa que alguém vai ver e não
+saber explicar.
 

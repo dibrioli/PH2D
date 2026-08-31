@@ -45,6 +45,12 @@ impl Panel for WetTuningPanel {
     /// Closed until the Wet Paint section's Tuning checkbox opens it (the
     /// bridge mirrors the tool's authored flag every frame).
     const DEFAULT_VISIBLE: bool = false;
+    /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE de afinação, com rect próprio.
+    ///
+    /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate
+    /// `a_docked_panel_never_reaches_the_drawing_area` impede-a de mentir nos dois sentidos —
+    /// quem não declara **não pode** publicar um rect sobre a área de desenho.
+    const CAN_FLOAT: bool = true;
 
     fn paint(state: &mut Self::State, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

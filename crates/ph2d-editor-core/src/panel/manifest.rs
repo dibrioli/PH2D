@@ -27,6 +27,12 @@ pub struct PanelManifest {
     pub id: &'static str,
     pub panel_node_id: NodeId,
     pub default_visible: bool,
+    /// ⭐ Onde este painel PODE estar (D1) — ver [`Panel::ALLOWED_SLOTS`].
+    pub allowed_slots: crate::screens::slot::SlotSet,
+    /// Onde ele nasce — ver [`Panel::DEFAULT_SLOT`].
+    pub default_slot: crate::screens::slot::Slot,
+    /// Se ele pode sair para janela própria (D1) — ver [`Panel::CAN_FLOAT`].
+    pub can_float: bool,
     pub paint_fn: ErasedPaintFn,
     pub apply_event_fn: ErasedApplyEventFn,
     pub populate_fn: PopulateFn,
@@ -41,6 +47,9 @@ impl PanelManifest {
             id: P::ID,
             panel_node_id: P::NODE_ID,
             default_visible: P::DEFAULT_VISIBLE,
+            allowed_slots: P::ALLOWED_SLOTS,
+            default_slot: P::DEFAULT_SLOT,
+            can_float: P::CAN_FLOAT,
             paint_fn: paint_dispatch::<P>,
             apply_event_fn: apply_event_dispatch::<P>,
             populate_fn: P::populate,

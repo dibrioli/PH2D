@@ -99,3 +99,5 @@ panel-widget-gallery = ["dep:ph2d-panel-widget-gallery"]
 [dev-dependencies]
 # Wave 10 / Etapa 4.1 — staleness gate uses the codegen library.
 ph2d-panel-sync = { path = "../../tools/ph2d-panel-sync" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-vector = { path = "../ph2d-vector" }

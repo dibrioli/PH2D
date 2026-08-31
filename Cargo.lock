@@ -7344,6 +7344,8 @@ dependencies = [
  "ph2d-panel-vector",
  "ph2d-panel-wet-tuning",
  "ph2d-panel-widget-gallery",
+ "ph2d-text",
+ "ph2d-vector",
 ]
 
 [[package]]

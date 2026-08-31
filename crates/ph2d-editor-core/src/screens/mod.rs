@@ -17,6 +17,7 @@ pub mod dock_seam;
 pub mod dock_sides;
 pub mod hero;
 pub mod layout;
+pub mod slot;
 
 pub use hero::{
     AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen,

@@ -42,6 +42,12 @@ impl Panel for WidgetGalleryPanel {
     const ID: &'static str = "widget_gallery";
     const NODE_ID: NodeId = ids::GAL_PANEL;
     const DEFAULT_VISIBLE: bool = false;
+    /// ⭐ **DECLARA que flutua** (D1): janela FLUTUANTE com arrasto próprio (a galeria é uma referência, não um dock).
+    ///
+    /// ⚠️ A declaração descreve o que este painel **FAZ**, e o gate
+    /// `a_docked_panel_never_reaches_the_drawing_area` impede-a de mentir nos dois sentidos —
+    /// quem não declara **não pode** publicar um rect sobre a área de desenho.
+    const CAN_FLOAT: bool = true;
 
     fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

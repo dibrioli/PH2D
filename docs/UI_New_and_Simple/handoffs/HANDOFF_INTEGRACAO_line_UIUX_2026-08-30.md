@@ -1363,3 +1363,94 @@ não falha nada e passa a descrever o vizinho errado.*
   por layout), e o que falta é o **selector** — que é a decisão D3 e wave própria.
 - **A ordem das abas** continua a ser a ordem z e não é gravada: reabrir o app mostra os ocupantes na
   ordem do registry, com o último raiz à frente.
+
+---
+
+## §20 — ⛔⛔⛔ «VOLTOU AO ZERO»: eram TRÊS defeitos, e o detector estava no caminho errado (entrega 25)
+
+Commit `a93463605`. Report do Enio no smoke da entrega 24: *«não funcionou. Voltou ao zero.
+Precisamos da opção de resetar. Coloque nas opções de Theme.»*
+
+### §20.1 — ⭐ A medição desmentiu o sintoma antes de qualquer cura
+
+O ficheiro dele **existia e estava certo**:
+
+```
+# PH2D layout
+slot.audio_mixer=left_top
+```
+
+E uma sonda que reproduz o arranque exacto (registry → `HeroScreen::new` → `install(load())` →
+pintar → abrir o Mixer) mostrou-o a desenhar em `x = 0` — a coluna da **esquerda**, onde ele o
+deixou. ⇒ *a persistência da posição nunca esteve partida*, e curá-la teria sido trabalho sobre o
+sítio errado.
+
+⚠️ Duas coisas na mesma leitura contavam a história inteira: o `slot` **estava** lá e o
+`dock_w_left` **não** — e ele tinha arrastado a borda.
+
+### §20.2 — ⛔⛔ Defeito 1: guardar ONDE sem guardar SE é indistinguível de não guardar nada
+
+O painel que ele moveu **nasce fechado** (`DEFAULT_VISIBLE = false`). Ao reabrir o app, a posição
+estava restaurada e **não havia nada no ecrã a mostrá-la**.
+
+⇒ **`open.<painel>=1`** entra na arrumação, com a mesma lei dos encaixes: guarda-se a **diferença**
+do que o painel declara, logo uma entrada **inverte** o default (abre o que nasce fechado, **fecha o
+que nasce aberto**) e um painel novo não precisa de migração.
+
+### §20.3 — ⛔⛔⛔ Defeito 2: o detector estava no caminho de um GESTO
+
+Ele vivia no `forward_to_hero`, ao lado dos outros dois inquilinos da persistência — e **os dois
+gestos que arrumam o app não passam por lá**:
+
+| gesto | por que escapava |
+|---|---|
+| arrastar a **borda** de uma coluna | `dock_seam_move` / `dock_seam_up` fazem `return` no `input_dispatch` |
+| largar uma **aba** noutro encaixe | é resolvido **dentro** do `paint`, depois do hook |
+
+⇒ a largura da coluna dele **nunca foi gravada**. A detecção mudou-se para o **quadro** (depois do
+`paint_hero_screen`) e para o módulo que é dono do facto (`layout_persist::save_if_changed`).
+
+> *Um detector no caminho de um gesto só vê os gestos que passam por ele; o quadro vê todos, porque
+> é onde o estado assenta.*
+
+⚠️ **Os outros dois inquilinos FICAM no hook, e está certo:** a escolha de paleta e a de carácter são
+cliques que atravessam o hero. O gate leva o controlo que impede alguém de os arrastar consigo.
+
+### §20.4 — ⭐ Defeito 3 (o pedido): o RESET, onde ele o pediu
+
+*View → Theme… → **Reset Panel Layout***. Repõe **as três** coisas de uma vez — o encaixe de cada
+painel, quais estão abertos, e a largura das colunas.
+
+⛔ **Repor duas de três não é repor:** o artista clica, vê o ecrã mudar e conclui que funcionou, e o
+terço que ficou morde-o mais tarde **sem ligação com o gesto que o deixou**.
+
+⚠️ **Ele não apaga o ficheiro, e não precisa:** o gravado é uma **projecção** do que o app tem agora,
+e o detector do quadro grava a projecção vazia sozinho. *Apagar seria um segundo caminho para o
+mesmo facto, e o dia em que os dois discordassem seria silencioso.*
+
+⚠️ E o `MENUBAR_VIEW_RESET_LAYOUT` **não entra no `MODULE_TRUTHS`**: ele é um **verbo**, não um
+estado — não tem marca de «ligado», e clicá-lo duas vezes é o mesmo que uma.
+
+### §20.5 — ⚠️ O gate da costura apanhou a MINHA mudança de sítio
+
+Ao mover a detecção, `the_arrangement_is_written_when_it_changes` ficou **vermelho** — ele afirmava
+o **endereço** (*está no `forwarding.rs`*). ⭐ Foi reescrito para afirmar o **mecanismo**:
+*está no quadro* **e** *não está no hook*, com a tabela dos dois gestos que escapavam colada ao
+doc-comment. *Um gate que afirma um endereço tem de ser reescrito quando o endereço muda; um que
+afirma o mecanismo sobrevive à mudança e continua a defender a razão.*
+
+### §20.6 — Verificação
+
+`ph2d-editor-core` **1345** ✓ · `ph2d-host-desktop` **4779** ✓ · `ph2d-panel-registry-init` 0 falhas ·
+`check` e `clippy --workspace --all-targets` limpos · fmt.
+
+**Cinco mutações mortas** com controlo: o reset esquecer a visibilidade · o reset esquecer a largura ·
+a linha do menu deixar de despachar · os painéis abertos saírem da projecção · o `install` deixar de
+repor a visibilidade.
+
+### §20.7 — ⏳ O que fica nomeado
+
+- **Quem fica à frente quando dois painéis abrem no mesmo quadro** resolve-se por **ordem do
+  registry**, que é arbitrária. No arranque isso decide qual aba o artista vê primeiro. Uma ordem
+  autorada (a última à frente, gravada) é wave pequena e ainda não existe.
+- **A ordem das abas** continua a ser a ordem z e não viaja no ficheiro.

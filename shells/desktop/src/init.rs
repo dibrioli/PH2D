@@ -406,7 +406,7 @@ pub(crate) fn build_initial_state(
         // que encaixe e a largura das colunas. ⚠️ Antes do primeiro quadro, pela mesma razão das
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
         // saltar para a do artista no seguinte.
-        crate::layout_persist::install(&mut hero, &crate::layout_persist::load());
+        crate::layout_persist::install_saved(&mut hero, &crate::layout_persist::load());
         Some(hero)
     } else {
         None

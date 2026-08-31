@@ -28,6 +28,7 @@
 //! escrita — o ficheiro pode ser mais velho que a regra.*
 
 use ph2d_editor::screens::slot::Slot;
+use ph2d_editor::screens::task_layout::TaskLayout;
 use std::path::PathBuf;
 
 /// A arrumação que viaja: **quais painéis estão abertos**, as excepções de encaixe e as duas
@@ -50,17 +51,83 @@ pub struct Layout {
     pub dock_w_right: Option<f32>,
 }
 
+/// ⭐⭐ **O FICHEIRO INTEIRO** — qual layout está activo, e a arrumação de cada um.
+///
+/// > *«um layout é `{encaixe → [painéis], posição das divisórias}`»* — D4
+///
+/// ⚠️ **Uma arrumação POR LAYOUT, e é o que a D7 obriga:** o artista que alarga a coluna no *Vector*
+/// não a quer alargada no *Animate*. Um layout sem secção no ficheiro fica com a arrumação **de
+/// fábrica** que a tabela dele declara — logo um layout novo não precisa de migração.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Saved {
+    /// O layout activo, ou `None` (⇒ o de omissão).
+    pub active: Option<TaskLayout>,
+    /// A arrumação de cada layout que o artista mexeu, pela chave dele.
+    pub per_layout: std::collections::BTreeMap<String, Layout>,
+}
+
 /// `~/.ph2d/layout.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
 fn layout_file() -> Option<PathBuf> {
     let home = std::env::var_os("HOME")?;
     Some(PathBuf::from(home).join(".ph2d").join("layout.txt"))
 }
 
-/// Serializa para `chave=valor`. Inverso de [`parse`].
+/// Serializa o ficheiro inteiro. Inverso de [`parse`].
 #[must_use]
-pub fn serialize(l: &Layout) -> String {
+pub fn serialize_saved(v: &Saved) -> String {
     use std::fmt::Write as _;
     let mut s = String::from("# PH2D layout\n");
+    if let Some(a) = v.active {
+        let _ = writeln!(s, "active={}", a.spec().wire);
+    }
+    for (key, l) in &v.per_layout {
+        let _ = writeln!(s, "\n[{key}]");
+        s.push_str(&serialize_section(l));
+    }
+    s
+}
+
+/// Lê o ficheiro inteiro. **Toda linha que não se entende é saltada.**
+#[must_use]
+pub fn parse_saved(text: &str) -> Saved {
+    let mut v = Saved::default();
+    let mut section: Option<String> = None;
+    let mut body = String::new();
+    let flush = |section: &mut Option<String>, body: &mut String, v: &mut Saved| {
+        if let Some(key) = section.take() {
+            v.per_layout.insert(key, parse(body));
+        }
+        body.clear();
+    };
+    for line in text.lines() {
+        let t = line.trim();
+        if let Some(rest) = t.strip_prefix('[')
+            && let Some(key) = rest.strip_suffix(']')
+        {
+            flush(&mut section, &mut body, &mut v);
+            section = Some(key.to_string());
+            continue;
+        }
+        if section.is_none() {
+            if let Some((k, val)) = t.split_once('=')
+                && k.trim() == "active"
+            {
+                v.active = TaskLayout::from_wire(val.trim());
+            }
+            continue;
+        }
+        body.push_str(line);
+        body.push('\n');
+    }
+    flush(&mut section, &mut body, &mut v);
+    v
+}
+
+/// Serializa **uma** arrumação (o corpo de uma secção).
+#[must_use]
+pub fn serialize_section(l: &Layout) -> String {
+    use std::fmt::Write as _;
+    let mut s = String::new();
     if let Some(w) = l.dock_w_left {
         let _ = writeln!(s, "dock_w_left={w}");
     }
@@ -74,6 +141,26 @@ pub fn serialize(l: &Layout) -> String {
         let _ = writeln!(s, "slot.{id}={}", slot.wire());
     }
     s
+}
+
+/// O hash do ficheiro inteiro — o espelho de [`save_if_changed`].
+#[must_use]
+pub fn hash_saved(v: &Saved) -> u64 {
+    let mut h = v.active.map_or(0u64, |a| hash_str(a.spec().wire));
+    for (key, l) in &v.per_layout {
+        h ^= hash_str(key).rotate_left(17) ^ hash(l).rotate_left(31);
+    }
+    h
+}
+
+fn hash_str(s: &str) -> u64 {
+    const PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in s.as_bytes() {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(PRIME);
+    }
+    h
 }
 
 /// Lê o formato `chave=valor`. **Toda linha que não se entende é saltada** — comentário, lixo,
@@ -113,24 +200,24 @@ pub fn parse(text: &str) -> Layout {
 }
 
 /// Serializa + escreve. Um erro de IO é registado, nunca fatal.
-pub fn save(l: &Layout) {
+pub fn save(v: &Saved) {
     let Some(path) = layout_file() else {
         return;
     };
     if let Some(dir) = path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
-    if let Err(e) = std::fs::write(&path, serialize(l)) {
+    if let Err(e) = std::fs::write(&path, serialize_saved(v)) {
         eprintln!("[ph2d] layout save: {e}");
     }
 }
 
 /// Lê + parseia. Vazio com o ficheiro ausente / ilegível / malformado.
 #[must_use]
-pub fn load() -> Layout {
+pub fn load() -> Saved {
     layout_file()
         .and_then(|p| std::fs::read_to_string(p).ok())
-        .map(|t| parse(&t))
+        .map(|t| parse_saved(&t))
         .unwrap_or_default()
 }
 
@@ -168,6 +255,27 @@ pub fn hash(l: &Layout) -> u64 {
         }
     }
     h
+}
+
+/// ⭐⭐ **A COMPOSIÇÃO do ficheiro** — pura, para ser gateada sem tocar no disco.
+///
+/// ⛔⛔ **A arrumação dos OUTROS layouts tem de sobreviver.** O que se observa por quadro é a
+/// arrumação do layout **activo**; escrever só isso apagaria as secções de todos os outros na
+/// primeira gravação da sessão — o artista arruma o *Vector*, muda para o *Animate*, e perde o que
+/// fez no primeiro. É para isso que existe o espelho `SAVED`.
+///
+/// ⚠️ **E é uma função com nome pela lição do [`should_save`]:** ela viveu dentro do hook, e uma
+/// mutação que a partia SOBREVIVEU — *uma decisão dentro de um hook é uma afirmação que ninguém
+/// pode contradizer.*
+pub fn compose(saved: &mut Saved, active: TaskLayout, now: Layout, factory: bool) {
+    saved.active = Some(active);
+    if factory {
+        // ⚠️ Um layout devolvido ao de fábrica **perde a secção**, e não fica com uma vazia: é isso
+        // que o deixa receber uma mudança futura na tabela de fábrica.
+        saved.per_layout.remove(active.spec().wire);
+    } else {
+        saved.per_layout.insert(active.spec().wire.to_string(), now);
+    }
 }
 
 /// ⭐ **Grava?** — a decisão, pura, para ser gateada sem tocar no disco.
@@ -219,6 +327,22 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
     }
 }
 
+/// ⭐⭐ **Instala o FICHEIRO INTEIRO** — o layout activo e a arrumação dele. Chamado ANTES do
+/// primeiro quadro.
+///
+/// ⚠️ **Pela ordem certa:** primeiro o layout (que arruma a tela de fábrica), depois a arrumação
+/// gravada por cima. Ao contrário, o layout apagaria o que o artista tinha feito.
+pub fn install_saved(hero: &mut ph2d_editor::HeroScreen, v: &Saved) {
+    let active = v.active.unwrap_or_default();
+    ph2d_editor::screens::hero::layout_switch::apply(hero, active);
+    // ⭐ E o espelho arranca com o que está no disco, para o detector do quadro não reescrever o
+    // ficheiro no arranque de toda sessão.
+    SAVED.with(|c| *c.borrow_mut() = v.clone());
+    if let Some(l) = v.per_layout.get(active.spec().wire) {
+        install(hero, l);
+    }
+}
+
 /// ⭐ **Instala uma arrumação gravada.** Chamado ANTES do primeiro quadro.
 ///
 /// ⛔ Um encaixe que o painel já não permite é **saltado**, e o painel fica onde ele declara — ver
@@ -266,17 +390,30 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
 /// ⚠️ O custo é uma projecção por quadro: `n` consultas a um `BTreeMap` (só os painéis com
 /// excepção, que é **zero** enquanto o artista não arrumar nada) mais um FNV sobre ela.
 pub fn save_if_changed(hero: &ph2d_editor::HeroScreen) {
+    let active = hero.store.active_layout();
     let now = current(hero);
-    let h = hash(&now);
+    // ⚠️ **A arrumação de fábrica não se grava.** Um layout que o artista não mexeu não tem secção,
+    // e é isso que faz uma mudança futura na tabela chegar a ele — quem tem secção fica preso ao que
+    // gravou, e é o que se quer, mas só para quem de facto mexeu.
+    let factory = now == Layout::default();
+    let composed = SAVED.with(|c| {
+        let mut v = c.borrow_mut();
+        compose(&mut v, active, now, factory);
+        v.clone()
+    });
+    let h = hash_saved(&composed);
     let previous = LAST_LAYOUT_HASH.with(|c| c.replace(Some(h)));
     if should_save(previous, h) {
-        save(&now);
+        save(&composed);
     }
 }
 
 thread_local! {
-    /// Último hash da arrumação observada. `None` = ainda não observada nesta sessão.
+    /// Último hash do ficheiro observado. `None` = ainda não observado nesta sessão.
     static LAST_LAYOUT_HASH: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+    /// ⭐ **O que está no disco**, semeado no arranque e actualizado a cada gravação. Sem ele, a
+    /// arrumação dos OUTROS layouts seria apagada na primeira escrita desta sessão.
+    static SAVED: std::cell::RefCell<Saved> = std::cell::RefCell::new(Saved::default());
 }
 
 #[cfg(test)]

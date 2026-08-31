@@ -320,6 +320,23 @@ pub fn paint_menu_bar(
         paint_text_centered(text_system, scene, title, r, TypeToken::Sm.px(), fg);
         hit_index.register(id, r);
     }
+    // ⭐⭐⭐ **AS ABAS DE LAYOUT ocupam o vazio à direita** (decisões D7 e D3) — ver `layout_tabs`.
+    // ⚠️ Depois dos títulos e com o `menus_end_x` deles: as abas recusam-se a pintar se não
+    // couberem sem os tocar.
+    let menus_end_x = menu_rects(bar, text_system)
+        .iter()
+        .map(|(_, _, r)| r.x + r.w)
+        .fold(bar.x, f32::max);
+    super::layout_tabs::paint(
+        bar,
+        menus_end_x,
+        store.active_layout(),
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+    );
 }
 
 /// ⛔⛔ **O clique numa linha destes menus FECHA o menu antes de qualquer um agir** — e tem de

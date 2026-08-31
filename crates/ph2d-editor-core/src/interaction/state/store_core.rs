@@ -40,6 +40,7 @@ impl WidgetStore {
             panel_slot: std::collections::BTreeMap::new(),
             tab_drag: None,
             tab_drop: None,
+            active_layout: crate::screens::task_layout::TaskLayout::default(),
             pending_clipboard_copy: None,
             pending_clipboard_paste: None,
             current_scene_name: String::from("Level_01"),

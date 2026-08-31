@@ -17,7 +17,7 @@ fn sample() -> Layout {
 #[test]
 fn a_layout_survives_the_round_trip() {
     let l = sample();
-    assert_eq!(parse(&serialize(&l)), l);
+    assert_eq!(parse(&serialize_section(&l)), l);
 }
 
 /// ⭐ **O hash muda com CADA campo** — senão a gravação perde uma metade em silêncio.
@@ -254,4 +254,109 @@ fn the_open_list_and_the_slot_list_do_not_collide_in_the_hash() {
     let mut c = a.clone();
     c.open.push("y".into());
     assert_ne!(hash(&c), hash(&a), "abrir um painel não moveu o hash");
+}
+
+/// ⭐⭐ **O ficheiro inteiro: o layout activo e uma arrumação POR layout.**
+#[test]
+fn the_whole_file_survives_the_round_trip_with_one_arrangement_per_layout() {
+    use ph2d_editor::screens::task_layout::TaskLayout;
+    let mut v = Saved {
+        active: Some(TaskLayout::Vector),
+        ..Saved::default()
+    };
+    v.per_layout.insert(
+        "vector".into(),
+        Layout {
+            open: vec!["vector".into()],
+            dock_w_left: Some(280.0),
+            ..Layout::default()
+        },
+    );
+    v.per_layout.insert(
+        "animation".into(),
+        Layout {
+            slots: vec![("timeline".into(), Slot::Bottom)],
+            ..Layout::default()
+        },
+    );
+    assert_eq!(parse_saved(&serialize_saved(&v)), v);
+}
+
+/// ⛔⛔ **A arrumação de um layout NÃO vaza para outro.**
+#[test]
+fn one_layouts_arrangement_never_leaks_into_another() {
+    let text = "\
+active=vector
+
+[vector]
+dock_w_left=280
+
+[animation]
+open.timeline=1
+";
+    let v = parse_saved(text);
+    assert_eq!(v.per_layout["vector"].dock_w_left, Some(280.0));
+    assert!(
+        v.per_layout["animation"].dock_w_left.is_none(),
+        "a largura do *Vector* apareceu no *Animate* — as secções fundiram-se"
+    );
+    assert_eq!(v.per_layout["animation"].open, vec!["timeline".to_string()]);
+    assert!(v.per_layout["vector"].open.is_empty());
+}
+
+/// ⚠️ **Um layout que o artista nunca mexeu não tem secção** — e é isso que o deixa receber uma
+/// mudança futura na tabela de fábrica.
+#[test]
+fn a_layout_nobody_touched_has_no_section() {
+    let v = parse_saved("active=vector\n");
+    assert!(v.per_layout.is_empty());
+    assert_eq!(serialize_saved(&v).lines().count(), 2);
+}
+
+/// ⛔ **Um layout desconhecido cai no de omissão**, e não estraga o resto do ficheiro.
+#[test]
+fn an_unknown_active_layout_falls_back_without_poisoning_the_file() {
+    let v = parse_saved("active=um_layout_de_2030\n\n[vector]\nopen.vector=1\n");
+    assert_eq!(v.active, None, "um layout desconhecido virou o activo");
+    assert_eq!(v.per_layout["vector"].open, vec!["vector".to_string()]);
+}
+
+/// ⛔⛔ **A arrumação dos OUTROS layouts sobrevive a uma gravação.**
+///
+/// ⚠️ Este gate nasceu de uma **mutação sobrevivente**: apagar o mapa antes de escrever deixava a
+/// suíte verde, porque nada exercitava a composição com **dois** layouts. O artista arruma o
+/// *Vector*, muda para o *Animate*, e perde o que fez no primeiro.
+#[test]
+fn composing_keeps_what_the_other_layouts_had() {
+    use ph2d_editor::screens::task_layout::TaskLayout;
+    let mut saved = Saved::default();
+    saved.per_layout.insert(
+        "vector".into(),
+        Layout {
+            open: vec!["vector".into()],
+            ..Layout::default()
+        },
+    );
+
+    let animate = Layout {
+        open: vec!["timeline".into()],
+        ..Layout::default()
+    };
+    compose(&mut saved, TaskLayout::Animation, animate.clone(), false);
+
+    assert_eq!(saved.active, Some(TaskLayout::Animation));
+    assert_eq!(saved.per_layout["animation"], animate);
+    assert_eq!(
+        saved.per_layout["vector"].open,
+        vec!["vector".to_string()],
+        "gravar o *Animate* apagou o que o artista fez no *Vector*"
+    );
+
+    // ⭐ E um layout devolvido ao de fábrica PERDE a secção, em vez de ficar com uma vazia.
+    compose(&mut saved, TaskLayout::Animation, Layout::default(), true);
+    assert!(
+        !saved.per_layout.contains_key("animation"),
+        "um layout reposto ficou com uma secção vazia — ele deixa de receber a tabela de fábrica"
+    );
+    assert!(saved.per_layout.contains_key("vector"));
 }

@@ -25,12 +25,12 @@ fn src(path: &str) -> String {
 fn the_arrangement_is_installed_before_the_first_frame() {
     let init = src("src/init.rs");
     assert!(
-        init.contains("layout_persist::install("),
-        "ninguém instala a arrumação gravada no arranque — o artista arruma o app e perde tudo ao \
-         fechar"
+        init.contains("layout_persist::install_saved("),
+        "ninguém instala o ficheiro no arranque — o artista arruma o app, escolhe uma tarefa, e \
+         perde as duas ao fechar"
     );
     let (at_install, at_first_frame) = (
-        init.find("layout_persist::install(")
+        init.find("layout_persist::install_saved(")
             .expect("a chamada existe"),
         // O hero é devolvido ao fim do bloco de arranque; instalar depois disso é tarde.
         init.find("Some(hero)").unwrap_or(usize::MAX),

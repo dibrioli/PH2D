@@ -19,6 +19,7 @@ pub mod hero;
 pub mod layout;
 pub mod slot;
 pub mod slot_layout;
+pub mod task_layout;
 
 pub use hero::{
     AnchorFieldEdit, AnimFieldEdit, BlendFieldEdit, BottomHudStats, EMISSIVE_MAX_UI, HeroScreen,

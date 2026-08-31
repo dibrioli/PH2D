@@ -65,9 +65,27 @@ impl WidgetStore {
     /// ⭐ **Apaga as excepções** — o encaixe de cada painel e a largura de cada coluna voltam ao
     /// que o produto declara. Ver `slot_tabs::reset`, que é a porta do produto.
     pub fn reset_panel_layout(&mut self) {
-        self.panel_slot.clear();
+        self.reset_panel_slots();
         self.dock_w_left = None;
         self.dock_w_right = None;
+    }
+
+    /// Só os encaixes. ⚠️ **A largura fica**, e a distinção é o que trocar de layout precisa: ela é
+    /// a medida da MÃO de quem usa o ecrã, não da tarefa — ver `hero::layout_switch`.
+    pub fn reset_panel_slots(&mut self) {
+        self.panel_slot.clear();
+    }
+
+    /// **Qual layout por tarefa está activo** (decisão D7).
+    #[must_use]
+    pub fn active_layout(&self) -> crate::screens::task_layout::TaskLayout {
+        self.active_layout
+    }
+
+    /// Escreve-o. ⚠️ A porta do produto é `hero::layout_switch::apply`, que também arruma a tela —
+    /// escrever só isto deixaria a barra a dizer uma coisa e o ecrã a mostrar outra.
+    pub fn set_active_layout(&mut self, layout: crate::screens::task_layout::TaskLayout) {
+        self.active_layout = layout;
     }
 
     /// O dedo desceu sobre a aba de `panel`, em `(x, y)`.

@@ -195,6 +195,8 @@ pub struct WidgetStore {
     /// Onde uma aba foi largada, à espera de quem saiba julgar: o hero tem o layout e o
     /// `ALLOWED_SLOTS`, o store não tem nenhum dos dois.
     pub(super) tab_drop: Option<(NodeId, (f32, f32))>,
+    /// ⭐ **O layout por tarefa activo** (D7) — qual aba da barra de cima está escolhida.
+    pub(super) active_layout: crate::screens::task_layout::TaskLayout,
     /// Clipboard outbox — set by Cmd+C/X handlers; shell drains each
     /// frame via `take_clipboard_copy` and writes to the OS
     /// clipboard. `String` rather than a reference so the data lives

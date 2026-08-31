@@ -8,6 +8,7 @@
 //! |---|---|---|
 //! | as linhas do menu *Window* | `TOPBAR_AUDIO_MIXER`, … | o painel consome o clique e **o menu nunca fecha** |
 //! | as **abas** de um encaixe | derivados de `Panel::NODE_ID` | o clique cai no painel de baixo em vez de o levantar |
+//! | as **abas de LAYOUT** | derivados de `TaskLayout` | o clique cai no painel por baixo da barra |
 //!
 //! ⚠️ **Um fecho escrito num handler de `chrome/` ficaria morto** precisamente nos treze ids do
 //! menu *Window*, que é onde ele mais importa.
@@ -20,6 +21,11 @@ use crate::interaction::WidgetEvent;
 pub(super) fn run(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     // Uma linha da barra de menus fecha o menu (mas não consome: quem age é o dono do id).
     super::menu_bar::close_on_row_click(hero, event);
-    // Uma aba levanta o painel dela, e isso é tudo o que uma aba faz.
+    // ⭐ Uma aba de LAYOUT arruma a tela para a tarefa (D7). Antes da aba de painel: os dois ids
+    // são derivados e nenhum handler de chrome os alcança.
+    if super::layout_tabs::apply_event(hero, event) {
+        return true;
+    }
+    // Uma aba de painel levanta o painel dela, e isso é tudo o que uma aba faz.
     super::slot_tabs::apply_event(hero, event)
 }

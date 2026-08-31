@@ -455,6 +455,27 @@ const TWIST_BIRTH_FALLOFF: f32 = 2.0;
 /// vê a peça — *um teto escrito aqui seria o caminho mais lento a definir o teto do rápido: uma vara
 /// fina aguenta muito mais dobra do que um bloco atarracado.*
 ///
+/// # ⛔⛔⛔ E ESTE NÚMERO NÃO É O QUE MANDA — perguntas do Enio, 2026-08-31
+///
+/// *«Porque o máximo é 0.5? Porque não 1?»* — porque **não faz diferença nenhuma**, e é isso que
+/// está errado. Medido na chapa da foto dele (`0,400 × 0,997 × 0,063`, banda de `1,0`): a parede
+/// satura em `0,2662` voltas/unidade, então `0,375`, `0,5`, `1` e `2` entregam **exactamente o
+/// mesmo arco**. ⇒ **`47 %` do curso do slider é inerte**, e no topo o número mente por `1,9×`.
+/// Subir este teto para `1` só tornaria a zona morta maior.
+///
+/// ⛔ **A razão ESCRITA abaixo — a representação — também não binda**: o `atan2` enrola quando o
+/// **arco total** passa de uma volta, e o arco é `κ × comprimento da banda`. Este número limita uma
+/// **taxa**, então numa banda curta ele nunca lá chega e numa longa ele já passou. *Um limite
+/// escrito na grandeza errada não é um limite: é um número.*
+///
+/// ⭐ **Quem manda é o `W` da parede, e ele é a grandeza errada:** `bend_reach` lê o **raio da bola
+/// de bordo**, e numa chapa alta e fina esse raio é a **altura** (`0,4985`) quando o que a parede
+/// quer é a meia-extensão na direcção em que a dobra deflecte (a espessura, `0,0315`) — **`17×`**.
+/// ⛔ E não é uma linha de conserto: a `bounds::Ball` é uma **esfera**, não tem eixos, e a marcha é
+/// presa à AABB dela. A cura é um bordo **alinhado aos eixos**, e ela paga duas dívidas de uma vez
+/// (esta e a faixa de [`crate::Span::Along`]). Wave própria; a catraca que a espera é o
+/// `ph2d_field_eval::the_turns_slider_has_a_dead_top`.
+///
 /// ⚠️ E há um segundo teto, da **representação**: meia volta por unidade sobre uma peça de duas
 /// unidades já fecha o círculo, e além disso o `atan2` do mapa inverso enrola.
 pub const MAX_BEND_TURNS: f32 = 0.5;

@@ -272,41 +272,26 @@ pub(crate) fn say_if_the_level_hid_every_leaf(
     }
 }
 
-/// **DIZ quando o artista pede folhas à frente e o objecto não pode ir lá.**
-///
-/// ⛔⛔ A casa desenha os **sprites antes do vector** (declarado em `mod.rs`: *«Fase 1: vector
-/// over sprite»*), então uma folha que é uma IMAGEM fica sempre atrás dos galhos e nenhuma
-/// ordem de linhas a move. Uma folha que é uma FORMA DESENHADA vive na mesma passagem que a
-/// planta, e aí a fracção manda.
-///
-/// ⚠️ **Sem isto o `Leaves In Front` seria um knob morto no caso comum** — o artista mexe-o,
-/// nada acontece, e não há nada na tela que explique porquê.
-pub(crate) fn say_if_the_leaf_cannot_go_in_front(
-    key: &str,
-    names: &[String; 3],
-    looks: &[Option<Look>; 3],
-    front: f32,
-) {
-    if front <= 0.0 {
-        return;
-    }
-    for (slot, look) in looks.iter().enumerate() {
-        // Só acusa o que EXISTE e é sprite: um slot vazio já é dito pelo aviso da letra.
-        let Some((.., gid)) = look else { continue };
-        if *gid > 0.0 {
-            continue;
-        }
-        let once = format!("{key} front {slot}");
-        if SAID.with(|s| s.borrow_mut().insert(once)) {
-            eprintln!(
-                "[lsystem] «{}» e' uma IMAGEM, e as imagens desenham-se sempre ATRAS dos galhos \
-                 — o «Leaves In Front» so' alcanca uma FORMA desenhada. Desenhe a folha com a \
-                 caneta e nomeie-a, ou deixe o knob em 0",
-                names[slot]
-            );
-        }
-    }
-}
+// ⛔⛔⛔ **`say_if_the_leaf_cannot_go_in_front` FOI APAGADO em 2026-08-31** — a premissa dele
+// dissolveu e ele passou a acusar exactamente o caso que o produto suporta (auditoria de seis
+// lentes, doc 96 §1.4).
+//
+// Ele dizia: *«"X" e' uma IMAGEM, e as imagens desenham-se sempre ATRAS dos galhos — deixe o
+// knob em 0»*. Era verdade até à **terceira média**: hoje `motion_lsystem_rows` põe a copa
+// inteira no passe vectorial quando `front > 0` (`let quad = gid <= 0.0 && front > 0.0`), e o
+// gate `an_image_leaf_can_be_drawn_in_front_of_the_branches` afirma-o. *Um aviso e um gate a
+// dizer o CONTRÁRIO um do outro sobre o mesmo caso, os dois verdes.*
+//
+// ⚠️ **Ele era o único dos quatro `say_*` SEM gate** — e não por esquecimento: os outros três
+// têm a lei numa função PURA (`unanswered_slots`, `hides_every_leaf`, o predicado do fio) e é
+// ela que se mede; este tinha a decisão embutida no laço, onde nenhum teste lhe chega.
+// *A régua da família é a DECISÃO, não o canal — e uma decisão que não sai para uma função é
+// uma decisão que ninguém pode contradizer.*
+//
+// ⛔ **Fica UM silêncio nomeado, e ele é OUTRO:** se a arte da folha não resolver, o
+// `motion_shape_gen::encode` salta a linha (*«a arte pode não resolver … a linha simplesmente
+// não desenha»*) e nada o diz. Isso é do lado do RENDER, não da membrana, e por isso não cabia
+// nesta função nem se cura apagando-a.
 
 /// **DIZ quando um nome está posto e a gramática não tem a letra.**
 ///

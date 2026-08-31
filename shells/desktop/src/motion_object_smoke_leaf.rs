@@ -14,9 +14,15 @@
 //! **0.10** (o stack subiu em 29/08): o `render_to_texture` continua a exigir `Rgba8Unorm`, e o
 //! alvo HDR está fora do alcance da biblioteca. *Não é uma escolha nossa.*
 //!
-//! ⇒ o `Leaves In Front` só tem sujeito quando a folha é uma **FORMA DESENHADA** — que é o
-//! padrão-ouro da indústria para folhagem (uma folha é um *card* de geometria, não um sprite à
-//! parte, e é por isso que ela se intercala com os ramos). Esta cena põe uma na mão dele.
+//! ⛔⛔ **E a conclusão que aqui estava CAIU no mesmo dia em que foi escrita** (auditoria de
+//! seis lentes, doc 96 §1.4). Ela dizia *«o `Leaves In Front` só tem sujeito quando a folha é
+//! uma FORMA DESENHADA»* — verdade enquanto a copa era desenhada como sprite, e falsa desde a
+//! **terceira média**: com o knob acima de `0` a copa inteira passa a ser desenhada como
+//! **quads texturados na camada do vector**, e ali a ordem manda. *O facto da tabela acima
+//! continua verdadeiro; o que ele implicava é que deixou de ser.*
+//!
+//! ⇒ esta cena põe na mão dele exactamente o caso que o report nomeia — uma folha que é
+//! **IMAGEM** —, porque uma folha desenhada sempre pôde ir à frente e não prova nada aqui.
 //!
 //! ⚠️ **A dança de dois frames é a do `=2`**: a forma entra no frame 3, e a ENTIDADE dela — que
 //! é onde o nome mora — só existe depois do `vec_entities::sync`, no frame 6.
@@ -78,7 +84,7 @@ pub(super) fn run(gfx: &mut crate::AppGfx) {
     gfx.motion.sinks.push(out);
     let _ = gfx.tools.set_active(&ph2d_editor::ToolId::new("motion"));
     eprintln!(
-        "[motion.obj smoke =12] UMA ARVORE COM FOLHAS DESENHADAS.
+        "[motion.obj smoke =12] UMA ARVORE COM FOLHAS QUE SAO IMAGENS.
 
   Clique na planta e abra a seccao «Leaves» no painel.
 
@@ -93,4 +99,47 @@ pub(super) fn run(gfx: &mut crate::AppGfx) {
   desenho vectorial. Com o knob acima de 0 a copa passa a desenhar-se na mesma camada da
   arvore, e ai' a ordem manda -- sem perder nitidez e sem mudar uma cor."
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_render::Sprite;
+
+    /// ⛔⛔⛔ **A CENA TEM DE PLANTAR UMA IMAGEM** — senão ela deixa de provar o que existe para
+    /// provar, e nada acusa.
+    ///
+    /// # Por que este gate existe
+    ///
+    /// Auditoria de seis lentes, doc 96 §1.4. Esta cena tinha **quatro** textos a dizer que uma
+    /// folha-imagem nunca vai à frente dos galhos — a afirmação que a terceira média tornou
+    /// falsa —, e o produto fazia o contrário. *Uma cena de smoke que ensina o CONTRÁRIO do que
+    /// acontece é pior que uma cena ausente: a ausente não é acreditada* (`CLAUDE.md` §5.0).
+    ///
+    /// ⚠️ **Corrigir a prosa não impede a próxima deriva.** O que a impede é amarrar a cena ao
+    /// caso que ela demonstra: se alguém trocar a folha por uma FORMA DESENHADA, a cena passa a
+    /// mostrar algo que **sempre** funcionou, o report deixa de estar coberto, e a prosa
+    /// antiga volta a ser verdade por acidente.
+    ///
+    /// ⚠️ A régua é o COMPONENTE, não o nome: uma folha desenhada chega por outro caminho
+    /// (`VecPathRef` + `geometry_id > 0`) e não tem `Sprite`.
+    #[test]
+    fn the_scene_plants_an_image_leaf_because_that_is_the_case_it_proves() {
+        let mut sim = ph2d_ecs::SimWorld::default();
+        super::spawn_leaf_sprite(&mut sim);
+        let w = sim.world_mut();
+        let mut q = w.query::<(&ph2d_ecs::Name, &Sprite)>();
+        let achadas: Vec<String> = q
+            .iter(w)
+            .filter(|(n, _)| n.as_str() == super::LEAF)
+            .map(|(n, _)| n.as_str().to_owned())
+            .collect();
+        assert_eq!(
+            achadas.len(),
+            1,
+            "a cena `=12` tem de plantar EXACTAMENTE uma folha chamada «{}» e que seja uma \
+             IMAGEM (um `Sprite`) — sem isso ela demonstra o caso que já funcionava antes da \
+             terceira média, e o report do Enio fica descoberto",
+            super::LEAF
+        );
+    }
 }

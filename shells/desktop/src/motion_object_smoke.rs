@@ -199,7 +199,12 @@ static FRAME: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0
 
 /// O modo: `0` off · `1` sprite (A1) · `2` vetor (A2) · `3` Flip (A3) · `4` grupo
 /// (A4) · `5` A WAVE (objeto vetor + oscillator GPU) · `8` a POSE do objeto · `9` o
-/// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV).
+/// ESTILO DO SINK (doc 89 folha 17) · `11` o RITMO (os *holds* do sub-UV) · `12` a
+/// FOLHA À FRENTE dos galhos (a terceira média — ver `motion_object_smoke_leaf`).
+///
+/// ⚠️ **O `12` faltava nesta lista** — a cena existia e o roteador dela não a nomeava
+/// (auditoria de seis lentes, doc 96 §1.4). *Uma cena que o roteador não nomeia é encontrada
+/// por `grep`, não alcançada por leitura.*
 fn mode() -> u32 {
     static M: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
     *M.get_or_init(|| {
@@ -255,9 +260,13 @@ impl crate::App {
             // O RITMO (`=11`): dois flipbooks, o mesmo `speed`, e só um com poses seguras.
             // ⚠️ A arte é a MESMA da `=9` — quatro quadrantes de cores distintas — porque é a
             // única fixtura desta casa em que uma célula de sub-UV é inconfundível.
-            // ⭐⭐ **=12 — A FOLHA A' FRENTE DOS GALHOS** (report do Enio, 2026-08-30). A
-            // `=108` nao pode mostrar isto: la' as folhas sao IMAGENS, e todo sprite desenha
-            // ANTES de todo vector, por construcao do quadro. Ver [`super::motion_object_smoke_leaf`].
+            // ⭐⭐ **=12 — A FOLHA A' FRENTE DOS GALHOS** (report do Enio, 2026-08-30). A folha
+            // desta cena e' uma IMAGEM de proposito: e' o caso que o report nomeia, e o que a
+            // TERCEIRA MEDIA destrava. ⚠️ **A razao que aqui estava escrita caiu** (doc 96 §1.4):
+            // ela dizia que a `=108` nao podia mostrar isto *porque todo sprite desenha antes de
+            // todo vector* -- verdade sobre os passes, e ja' nao sobre a folha, que com
+            // `front > 0` passa a ser um quad no passe do vector.
+            // Ver [`super::motion_object_smoke_leaf`].
             12 if f == 3 => {
                 let gfx = self.gfx.as_mut().expect("gfx");
                 leaf::spawn_leaf_sprite(&mut gfx.sim);

@@ -25,8 +25,7 @@ use ph2d_nodegraph::attr::{Column, Stream};
 use ph2d_vec_scene::{VecPath, VecVertex};
 
 use super::motion_lsystem_leaves::{
-    Anchor, Job, anchors_of, say_if_a_wire_drives_an_inert_param,
-    say_if_the_leaf_cannot_go_in_front, say_if_the_letter_is_missing,
+    Anchor, Job, anchors_of, say_if_a_wire_drives_an_inert_param, say_if_the_letter_is_missing,
     say_if_the_level_hid_every_leaf,
 };
 use super::motion_lsystem_rows::plant_and_leaves;
@@ -475,14 +474,10 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             (Some(h), Some(d)) => {
                 say_if_the_letter_is_missing(&key, &names, &d.anchors);
                 say_if_the_level_hid_every_leaf(&key, &names, &d.anchors, first_level);
-                say_if_the_leaf_cannot_go_in_front(
-                    &key,
-                    &names,
-                    &core::array::from_fn(|i| {
-                        super::motion_lsystem_leaves::named_appearance(&motion.pump.cook, &names[i])
-                    }),
-                    look_law.front,
-                );
+                // ⛔ O 4.º `say_*` foi APAGADO — ver a nota em `motion_lsystem_leaves`. Com ele
+                // saem também as **três** consultas de aparência que ele forçava (um
+                // `array::from_fn` de `named_appearance`) e que o `plant_and_leaves` logo a
+                // seguir refazia: seis por planta por quadro, três delas deitadas fora.
                 plant_and_leaves(d.origin, h, &d.anchors, &names, &motion.pump.cook, look_law)
             }
             _ => Stream::new(0),

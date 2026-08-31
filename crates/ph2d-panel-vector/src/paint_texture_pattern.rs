@@ -137,56 +137,10 @@ impl BodyCtx<'_> {
             );
         }
 
-        // O TAMANHO e o VÃO — os dois só existem enquanto o padrão REPETE.
-        {
-            // ⭐⭐ O TAMANHO, **os DOIS eixos** (Enio, 2026-08-27: poder achatar a arte de
-            // propósito). Era um número só — o lado maior, com o aspecto sempre preservado.
-            //
-            // ⚠️ **A protecção não desapareceu, mudou de lei imposta para gesto escolhido**: o
-            // cadeado nasce LIGADO, e com ele mexer num eixo leva o outro pelo mesmo factor. Ele
-            // preserva a razão **ACTUAL** e não a natural da arte — voltar ao aspecto da imagem
-            // desfaria o achatamento que o artista acabou de autorar.
-            for (axis, label, sid, nid) in [
-                (
-                    0usize,
-                    "Width",
-                    kid(ids::TexPatKnob::Width),
-                    kid(ids::TexPatKnob::WidthNum),
-                ),
-                (
-                    1,
-                    "Height",
-                    kid(ids::TexPatKnob::Height),
-                    kid(ids::TexPatKnob::HeightNum),
-                ),
-            ] {
-                let v = self.live_number(nid, p.size[axis]);
-                let track = self.live_track(sid, size_track(p.size[axis]));
-                y = self.slider_row(label, sid, nid, track, v, &format!("{v:.2}"), y);
-            }
-            // ⚠️ O cadeado vem DEPOIS dos dois números que ele liga — ele descreve o que acontece
-            // *àquelas duas linhas*, e um controlo que descreve o que está acima dele lê-se onde
-            // está.
-            y = self.checkbox_row(
-                kid(ids::TexPatKnob::Lock),
-                tr("panel.vector.texpat.lock"),
-                p.lock_aspect,
-                y,
-            );
-
-            // O VÃO — bipolar; negativo é a sobreposição.
-            let gap = self.live_number(kid(ids::TexPatKnob::GapNum), p.gap);
-            let gap_track = self.live_track(kid(ids::TexPatKnob::Gap), gap_track(p.gap));
-            y = self.slider_row(
-                "Gap",
-                kid(ids::TexPatKnob::Gap),
-                kid(ids::TexPatKnob::GapNum),
-                gap_track,
-                gap,
-                &format!("{gap:.2}"),
-                y,
-            );
-        }
+        // O TAMANHO e o VÃO — os dois só existem enquanto o padrão REPETE. Ver
+        // [`Self::size_and_gap_rows`]: são **quatro** sliders e **dois** elos, e o corte por
+        // responsabilidade é o que mantém esta função sob o tecto de 200 LOC.
+        y = self.size_and_gap_rows(&p, slot, y);
 
         // ⭐ A POSIÇÃO — onde, dentro de uma repetição, a arte começa.
         //
@@ -289,6 +243,94 @@ impl BodyCtx<'_> {
     /// ⚠️ As duas frases não são cosmética: *"escolha a arte"* convida, *"a arte foi apagada"*
     /// alarma. Dizer a segunda a quem acabou de carregar no chip seria acusar o artista de um
     /// estrago que ele não fez.
+    /// **O TAMANHO e o VÃO de uma cópia** — quatro sliders e dois elos, cortados desta secção
+    /// pelo tecto de 200 LOC por função.
+    ///
+    /// ⚠️ O corte é por RESPONSABILIDADE e não por linha: estas seis fileiras respondem a UMA
+    /// pergunta — *quão grande é uma cópia e quanto espaço fica entre elas* —, e os dois elos que
+    /// as acompanham têm leis DIFERENTES (razão para o tamanho, mesmo número para o vão), o que só
+    /// se lê com as duas ao lado uma da outra.
+    fn size_and_gap_rows(
+        &mut self,
+        p: &crate::state::TexturePatternRow,
+        slot: usize,
+        mut y: f32,
+    ) -> f32 {
+        let kid = |k| kid(slot, k);
+
+        // ⭐⭐ O TAMANHO, **os DOIS eixos** (Enio, 2026-08-27: poder achatar a arte de
+        // propósito). Era um número só — o lado maior, com o aspecto sempre preservado.
+        //
+        // ⚠️ **A protecção não desapareceu, mudou de lei imposta para gesto escolhido**: o
+        // cadeado nasce LIGADO, e com ele mexer num eixo leva o outro pelo mesmo factor. Ele
+        // preserva a razão **ACTUAL** e não a natural da arte — voltar ao aspecto da imagem
+        // desfaria o achatamento que o artista acabou de autorar.
+        for (axis, label, sid, nid) in [
+            (
+                0usize,
+                "Width",
+                kid(ids::TexPatKnob::Width),
+                kid(ids::TexPatKnob::WidthNum),
+            ),
+            (
+                1,
+                "Height",
+                kid(ids::TexPatKnob::Height),
+                kid(ids::TexPatKnob::HeightNum),
+            ),
+        ] {
+            let v = self.live_number(nid, p.size[axis]);
+            let track = self.live_track(sid, size_track(p.size[axis]));
+            y = self.slider_row(label, sid, nid, track, v, &format!("{v:.2}"), y);
+        }
+        // ⚠️ O cadeado vem DEPOIS dos dois números que ele liga — ele descreve o que acontece
+        // *àquelas duas linhas*, e um controlo que descreve o que está acima dele lê-se onde
+        // está.
+        y = self.checkbox_row(
+            kid(ids::TexPatKnob::Lock),
+            tr("panel.vector.texpat.lock"),
+            p.lock_aspect,
+            y,
+        );
+
+        // ⭐⭐ O VÃO, **os DOIS eixos** (report do Enio, 2026-08-30) — bipolar; negativo é a
+        // sobreposição.
+        //
+        // ⚠️ **Era um número só, e a colmeia tornou isso load-bearing**: desde que o passo
+        // vertical do favo lê o `gap[1]`, abrir as FILEIRAS é a única saída do encaixe de
+        // `13,4 %` — e com um controlo só ela abria também as COLUNAS.
+        //
+        // ⚠️ **O elo é *"o mesmo número"*, e não a razão do cadeado acima.** Um vão nasce em
+        // `0`, e uma razão sobre zero não significa nada; *"o mesmo número"* é exactamente o
+        // comportamento que existia com um controlo só, o que faz o elo ligado ser o de sempre.
+        for (axis, label, sid, nid) in [
+            (
+                0usize,
+                "Gap X",
+                kid(ids::TexPatKnob::Gap),
+                kid(ids::TexPatKnob::GapNum),
+            ),
+            (
+                1,
+                "Gap Y",
+                kid(ids::TexPatKnob::GapY),
+                kid(ids::TexPatKnob::GapYNum),
+            ),
+        ] {
+            let v = self.live_number(nid, p.gap[axis]);
+            let track = self.live_track(sid, gap_track(p.gap[axis]));
+            y = self.slider_row(label, sid, nid, track, v, &format!("{v:.2}"), y);
+        }
+        // ⚠️ Depois dos dois que ele liga, pela mesma lei do cadeado do tamanho.
+        y = self.checkbox_row(
+            kid(ids::TexPatKnob::GapLink),
+            tr("panel.vector.texpat.gap_link"),
+            p.link_gap,
+            y,
+        );
+        y
+    }
+
     fn missing_art_hint(&mut self, art: crate::state::PatternArt, y: f32) -> f32 {
         match art {
             crate::state::PatternArt::Ready => y,

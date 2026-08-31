@@ -72,10 +72,25 @@ pub enum TexPatKnob {
     /// ⭐ **Lock Aspect** — mexer num eixo leva o outro. Preserva a razão ACTUAL, não a natural da
     /// arte, e por isso descreve o GESTO: ele vive na sessão e **não viaja no ficheiro**.
     Lock,
-    /// **Gap** — o vão acrescentado (negativo = sobreposição).
+    /// **Gap X** — o vão acrescentado no eixo X (negativo = sobreposição).
+    ///
+    /// ⚠️ O nome do ID continua `Gap` de propósito: ele é a chave de hash (`texpat_id` faz
+    /// `format!("{knob:?}")`), e renomeá-lo mudaria o id de um controlo que já existe.
     Gap,
     /// O campo numérico gémeo do [`Self::Gap`].
     GapNum,
+    /// ⭐ **Gap Y** — o vão no eixo Y, o irmão que faltava (report do Enio, 2026-08-30: abrir as
+    /// fileiras de uma colmeia afastava também as colunas).
+    GapY,
+    /// O campo numérico gémeo do [`Self::GapY`].
+    GapYNum,
+    /// ⭐ **Link Gaps** — mexer num vão leva o outro ao MESMO número.
+    ///
+    /// ⚠️ **Não é a lei do [`Self::Lock`], e a diferença é o zero.** O cadeado do tamanho preserva a
+    /// RAZÃO actual; um vão nasce em `0`, e uma razão sobre zero não tem sentido nenhum. ⇒ aqui o
+    /// elo é *"o mesmo número"*, que é exactamente o comportamento que existia quando o vão era um
+    /// controlo só. Ele descreve o GESTO, vive na sessão e **não viaja no ficheiro**.
+    GapLink,
     /// **Angle** — a rotação do padrão, em graus.
     Angle,
     /// O campo numérico gémeo do [`Self::Angle`].
@@ -96,7 +111,7 @@ impl TexPatKnob {
     /// ⚠️ É esta lista que o `populate` regista e que o roteamento percorre para resolver um id de
     /// volta em `(slot, knob)`. Uma variante fora daqui nasce **pintada e morta** — a lacuna que
     /// esta casa já pagou com 36 células de física e dez chips do Painter.
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 27] = [
         Self::Source,
         Self::PickShape,
         Self::Tile(0),
@@ -112,6 +127,9 @@ impl TexPatKnob {
         Self::Lock,
         Self::Gap,
         Self::GapNum,
+        Self::GapY,
+        Self::GapYNum,
+        Self::GapLink,
         Self::ShiftX,
         Self::ShiftXNum,
         Self::ShiftY,

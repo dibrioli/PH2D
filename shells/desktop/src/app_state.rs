@@ -1536,6 +1536,11 @@ pub(crate) struct App {
     /// pedaço de estado não foi**. É a espécie 2 do §5.0 — o fio está completo, o slot chega ao
     /// leitor, e o leitor **projecta-o fora**.
     pub(crate) texpat_lock_aspect: [bool; 2],
+    /// ⭐ **Os dois vãos do padrão andam juntos?** — POR SLOT, pela mesma lei do cadeado acima.
+    ///
+    /// ⚠️ Nasce LIGADO: com o elo ligado o controlo comporta-se **exactamente** como o vão único
+    /// que existia antes de 2026-08-30, então quem nunca o desligar não vê diferença nenhuma.
+    pub(crate) texpat_gap_link: [bool; 2],
     pub(crate) vec_grad_drag: Option<ph2d_vec_render::GradHandle>,
     /// The selected gradient handle (drives the overlay highlight + the Remove-
     /// point / Influence / Jitter targets, via [`GradHandle::point`]). `None` = none.

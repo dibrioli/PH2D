@@ -49,6 +49,7 @@ pub(super) fn publish(
     snap: crate::vec_snap::VecSnapSettings,
     // O cadeado de proporção do padrão — estado de SESSÃO da shell (ver `dispatch`).
     texpat_lock: [bool; 2],
+    texpat_gap_link: [bool; 2],
     // ⭐ Os ladrilhos ASSADOS deste quadro — só para ler o salto de cada um na volta (W10). A
     // consulta vive aqui, e não na shell, porque é aqui que o `slot` e a forma selecionada já
     // estão emparelhados: resolvê-la lá acima duplicaria esse par.
@@ -269,7 +270,11 @@ pub(super) fn publish(
                         // ⚠️ O cadeado da TINTA deste slot — partilhá-lo fazia ligar o de
                         // uma secção desligar o da outra.
                         lock_aspect: texpat_lock[slot.min(1)],
-                        gap: pat.gap[0],
+                        gap: pat.gap,
+                        // ⚠️ O elo é do GESTO e vive na sessão, POR SLOT — a mesma lei (e o mesmo
+                        // defeito curado) do cadeado de aspecto: um só para as duas secções fazia
+                        // ligar o de uma desligar o da outra.
+                        link_gap: texpat_gap_link[slot.min(1)],
                         // ⭐⭐⭐ **NORMALIZADO, e o vizinho de cima já o fazia** (auditoria de
                         // 2026-08-30). O `angle` do documento **ACUMULA**: o
                         // `transform_fill_geometry` faz `pat.angle += atan2(..)` a cada rotação, sem

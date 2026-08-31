@@ -49,6 +49,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.vector.transform.resize_box" => "Resize Box",
         "panel.vector.stroke.present" => "Stroke",
         "panel.vector.texpat.lock" => "Lock Aspect",
+        "panel.vector.texpat.gap_link" => "Link Gaps",
         // ⭐⭐⭐ A forma-fonte foi APAGADA (plano 33 W11). ⚠️ A frase diz o que ACONTECEU e o que a
         // estampa esta' a fazer agora — "the art was deleted" sozinho deixaria o artista sem saber
         // porque' a forma ficou de uma cor so'. Os dois botoes de reparacao ficam logo abaixo.

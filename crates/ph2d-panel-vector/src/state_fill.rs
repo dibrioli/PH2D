@@ -60,7 +60,14 @@ pub struct TexturePatternRow {
     /// ficheiro**. Um cadeado gravado seria estado que descreve como alguém estava a editar.
     pub lock_aspect: bool,
     /// O vão acrescentado, em unidades de mundo. Negativo = sobreposição.
-    pub gap: f64,
+    /// O vão dos DOIS eixos (negativo = sobreposição).
+    ///
+    /// ⛔⛔ **Era um número só, e isso tornou-se load-bearing na colmeia** (report do Enio,
+    /// 2026-08-30): desde que o passo vertical do favo passou a ler o `gap[1]`, abrir as fileiras
+    /// era a única saída do encaixe de `13,4 %` — e ela abria também as colunas.
+    pub gap: [f64; 2],
+    /// ⭐ **Os dois vãos andam juntos?** — o estado do elo, que é do GESTO e não do documento.
+    pub link_gap: bool,
     /// A rotação do padrão, em graus.
     pub angle_deg: f64,
     /// **A fase dentro de UMA repetição**, em percentagem, ao longo dos eixos do PADRÃO.

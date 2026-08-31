@@ -3,7 +3,7 @@
 use super::*;
 use ph2d_vec_scene::{Rgba8, VecPath, VecPathId, VecVertex};
 
-fn scene_with(f: PatternFill) -> (VecScene, ph2d_vec_edit::PenTool, VecPathId) {
+pub(super) fn scene_with(f: PatternFill) -> (VecScene, ph2d_vec_edit::PenTool, VecPathId) {
     let mut scene = VecScene::default();
     let id = scene.push_path(VecPath {
         verts: [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]]
@@ -30,7 +30,7 @@ pub(super) fn fill() -> PatternFill {
     f
 }
 
-fn pattern_of(scene: &VecScene, id: VecPathId) -> PatternFill {
+pub(super) fn pattern_of(scene: &VecScene, id: VecPathId) -> PatternFill {
     match scene.path(id).and_then(|p| p.fill.as_ref()) {
         Some(Paint::Pattern(p)) => (**p).clone(),
         _ => panic!("a forma deixou de ter padrao"),
@@ -464,118 +464,96 @@ fn what_the_panel_shows_writes_back_to_the_same_angle() {
     }
 }
 
-/// ⭐⭐⭐ **ESCOLHER A ARTE PELA PRIMEIRA VEZ ADOPTA O TAMANHO DELA; TROCÁ-LA PRESERVA O DO ARTISTA.**
+/// ⭐⭐⭐ **O VÃO TEM DOIS EIXOS, e o ELO é o comportamento de sempre** (report do Enio, 2026-08-30).
 ///
-/// # Porque a lei tem de existir, e porque tem DUAS metades
+/// # Porque isto deixou de ser cosmética
 ///
-/// Desde 2026-08-30 o chip *Pattern* não escolhe a arte (report do Enio), e o padrão nasce com
-/// [`PatternSource::None`]. Nesse instante o `default_placement` **não tem aspecto nenhum para
-/// preservar** — ele não sabe o que vai ser a arte — e devolve um quadrado. ⇒ sem a 1.ª metade,
-/// escolher a seguir uma imagem `400x100` pintá-la-ia **esticada 4:1**.
+/// O vão era **um número para os dois eixos**, e isso tornou-se load-bearing na mesma jornada: desde
+/// que o passo vertical da colmeia passou a ler o `gap[1]`, abrir as **fileiras** do favo é a única
+/// saída do encaixe de `13,4 %` — e com um controlo só ela abria também as **colunas**.
 ///
-/// ⛔ E sem a 2.ª metade a cura seria pior que o defeito: trocar a arte de um padrão já ajustado
-/// deitaria fora o tamanho que o artista autorou, **em todas as trocas seguintes**.
+/// # ⚠️ O elo NÃO é o cadeado do tamanho, e a diferença é o ZERO
 ///
-/// ⚠️ *Uma metade sozinha aprova o defeito que a outra mede* — é por isso que as duas estão no
-/// mesmo gate, sobre a MESMA forma.
+/// O cadeado de aspecto preserva a **razão** actual. Um vão nasce em `0`, e uma razão sobre zero não
+/// significa nada. ⇒ aqui o elo é *"o mesmo número"* — que é **exactamente** o que o controlo único
+/// fazia, e é por isso que o elo LIGADO é o comportamento de sempre, ao bit.
+///
+/// ⚠️ **As duas metades são o controlo uma da outra**: sem a de cima, um elo que nunca ligasse
+/// passaria a de baixo; sem a de baixo, um elo que ligasse SEMPRE passaria a de cima — e era esse o
+/// defeito.
 #[test]
-fn the_first_art_brings_its_size_and_a_swap_keeps_the_authored_one() {
-    let mut nascida = fill();
-    nascida.source = PatternSource::None;
-    nascida.size = [4.0, 4.0]; // o quadrado do nascimento: um marcador, não uma escolha
-    let (mut scene, pen, id) = scene_with(nascida);
-
-    // 1. A PRIMEIRA arte traz o tamanho dela.
-    apply(
-        &mut scene,
-        &mut ph2d_vec_edit::History::default(),
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Source(PatternSource::Shape(VecPathId::default()), [8.0, 2.0]),
-    );
+fn the_gap_has_two_axes_and_the_link_is_the_old_behaviour_exactly() {
+    let (mut scene, pen, id) = scene_with(fill());
+    let aplica = |scene: &mut VecScene, cmd| {
+        apply(
+            scene,
+            &mut ph2d_vec_edit::History::default(),
+            &pen,
+            PatternSlot::Fill,
+            cmd,
+        );
+    };
+    // ⭐ LIGADO: mexer num eixo leva o outro ao MESMO número — o controlo único de sempre.
+    aplica(&mut scene, TexPatCmd::Gap(1, 7.0, true));
     assert_eq!(
-        pattern_of(&scene, id).size,
-        [8.0, 2.0],
-        "a primeira arte nao trouxe o tamanho dela - uma imagem 4:1 nasceria esticada num quadrado"
+        pattern_of(&scene, id).gap,
+        [7.0, 7.0],
+        "com o elo LIGADO os dois vaos tem de ficar iguais - e' o comportamento que existia antes"
     );
-
-    // 2. ⚠️ Agora o tamanho E' autorado. O artista ajusta-o…
-    apply(
-        &mut scene,
-        &mut ph2d_vec_edit::History::default(),
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Axis(0, 5.0, false),
-    );
-    let autorado = pattern_of(&scene, id).size;
-    assert_ne!(autorado, [8.0, 2.0], "o controlo nao ajustou nada");
-
-    // 3. …e TROCAR a arte preserva-o, mesmo com outro tamanho a ser oferecido.
-    apply(
-        &mut scene,
-        &mut ph2d_vec_edit::History::default(),
-        &pen,
-        PatternSlot::Fill,
-        TexPatCmd::Source(
-            PatternSource::Image(ph2d_asset::AssetId::from_bytes(b"outra")),
-            [1.0, 99.0],
-        ),
-    );
+    // ⭐⭐ DESLIGADO: o eixo Y abre SOZINHO — é isto que o favo de mel precisava.
+    aplica(&mut scene, TexPatCmd::Gap(1, 3.0, false));
     assert_eq!(
-        pattern_of(&scene, id).size,
-        autorado,
-        "trocar a arte reescreveu o tamanho AUTORADO - o ajuste do artista morre a cada troca"
+        pattern_of(&scene, id).gap,
+        [7.0, 3.0],
+        "com o elo DESLIGADO abrir as fileiras abriu tambem as colunas - e' o report de 30/08"
+    );
+    // E o eixo X também, sem tocar no Y.
+    aplica(&mut scene, TexPatCmd::Gap(0, -2.0, false));
+    assert_eq!(pattern_of(&scene, id).gap, [-2.0, 3.0]);
+    // ⚠️ CONTROLO: um eixo fora de alcance não escreve nada — senão um índice novo escreveria em
+    // silêncio no primeiro elemento.
+    aplica(&mut scene, TexPatCmd::Gap(9, 99.0, false));
+    assert_eq!(
+        pattern_of(&scene, id).gap,
+        [-2.0, 3.0],
+        "um eixo fora de alcance escreveu"
     );
 }
 
-/// ⭐⭐⭐ **A SEGUNDA PORTA DA ARTE OBEDECE À MESMA LEI** — o gesto de duas mãos (`Use Shape…`).
+/// ⭐⭐ **E O VÃO VERTICAL ABRE AS FILEIRAS DA COLMEIA** — a razão de existir desta wave.
 ///
-/// # Porque este gate existe ao lado do irmão, e não dentro dele
-///
-/// A lei *"um `size` escolhido antes de a arte existir é um marcador"* nasceu no
-/// [`TexPatCmd::Source`] — o botão *Source…*, que é a porta da IMAGEM. Mas uma **forma** vira arte
-/// por outro caminho: o [`set_source`], chamado do pick de canvas. ⛔ Escrita só num lado, ela
-/// deixaria de fora exactamente o caso do report (um GRUPO como arte), porque um grupo **só** entra
-/// por aqui.
-///
-/// *Uma lei escrita num sítio ainda não é uma lei — só uma porta é. E quando há duas portas, é
-/// preciso um gate em cada uma.*
+/// ⚠️ A régua é o **período**, que é a lei que o desenho lê ([`ph2d_vec_scene::PatternFill::period`]),
+/// e não um número que eu escreva: com o vão vertical no valor que compensa o aperto de `√3/2`, as
+/// fileiras encostam. ⛔ E o eixo X tem de ficar onde estava — era isso que o controlo único não
+/// conseguia.
 #[test]
-fn the_two_handed_pick_adopts_the_art_size_only_when_there_was_no_art() {
-    let mut nascida = fill();
-    nascida.source = PatternSource::None;
-    nascida.size = [4.0, 4.0]; // o quadrado do nascimento
-    let (mut scene, _, id) = scene_with(nascida);
-    let mut h = ph2d_vec_edit::History::default();
-
-    // 1. A primeira arte, escolhida no canvas, traz a proporção dela.
-    assert!(set_source(
+fn opening_the_hex_rows_no_longer_opens_its_columns() {
+    let mut f = fill();
+    f.kind = ph2d_vec_pattern::TileKind::Hex;
+    f.size = [10.0, 10.0];
+    f.gap = [0.0, 0.0];
+    let (mut scene, pen, id) = scene_with(f);
+    let antes = pattern_of(&scene, id).period();
+    // O vão que compensa exactamente o aperto do favo.
+    let abre = 10.0 * (1.0 / ph2d_vec_pattern::HEX_ROW_RATIO - 1.0);
+    apply(
         &mut scene,
-        &mut h,
-        id,
+        &mut ph2d_vec_edit::History::default(),
+        &pen,
         PatternSlot::Fill,
-        PatternSource::Shape(ph2d_vec_scene::VecPathId::default()),
-        [2.0, 6.0],
-    ));
-    assert_eq!(
-        pattern_of(&scene, id).size,
-        [2.0, 6.0],
-        "o gesto de duas maos nao adoptou a proporcao da forma escolhida - um grupo alto continua a \
-         nascer achatado, que e' o report de 30/08"
+        TexPatCmd::Gap(1, abre, false),
     );
-
-    // 2. ⚠️ Agora o tamanho É autorado, e trocar a arte preserva-o.
-    assert!(set_source(
-        &mut scene,
-        &mut h,
-        id,
-        PatternSlot::Fill,
-        PatternSource::Image(ph2d_asset::AssetId::from_bytes(b"outra")),
-        [99.0, 1.0],
-    ));
-    assert_eq!(
-        pattern_of(&scene, id).size,
-        [2.0, 6.0],
-        "trocar a arte reescreveu o tamanho AUTORADO - o ajuste do artista morre a cada troca"
+    let depois = pattern_of(&scene, id).period();
+    assert!(
+        (depois[1] - 10.0).abs() < 1e-9,
+        "as fileiras nao encostaram: passo {} contra 10,0",
+        depois[1]
     );
+    assert!(
+        (depois[0] - antes[0]).abs() < 1e-12,
+        "abrir as FILEIRAS mexeu nas COLUNAS ({} -> {}) - e' exactamente o report",
+        antes[0],
+        depois[0]
+    );
+    assert!(antes[1] < 10.0, "o controlo: o favo apertava mesmo");
 }

@@ -87,8 +87,12 @@ pub(crate) enum TexPatCmd {
     /// rotação já tinham slider; a posição não tinha nenhum, e sem isto retirar as alças teria
     /// tirado ao artista uma coisa que ele fazia.
     Shift(u8, f64),
-    /// O vão acrescentado, em unidades de mundo (negativo = sobreposição).
-    Gap(f64),
+    /// UM eixo do vão (`0` = X, `1` = Y), em unidades de mundo (negativo = sobreposição), e se o
+    /// **elo** leva o outro ao mesmo número.
+    ///
+    /// ⛔ Era um número só para os dois eixos, e isso virou load-bearing quando o passo vertical da
+    /// colmeia passou a ler o `gap[1]`: abrir as fileiras do favo abria também as colunas.
+    Gap(u8, f64, bool),
     /// A rotação do padrão, em graus.
     Angle(f64),
     /// Trocar a ARTE, mantendo a lei — **e o tamanho a adoptar se ainda não havia arte nenhuma**.
@@ -226,7 +230,18 @@ pub(crate) fn apply(
                 next.set_shift_axis(lo, usize::from(axis), pct / 100.0);
             }
         }
-        TexPatCmd::Gap(v) => next.gap = [v, v],
+        // ⭐⭐ **UM eixo do vão, e o ELO decide se o outro vem** (report do Enio, 2026-08-30).
+        //
+        // ⚠️ **O elo é *"o mesmo número"*, não a razão do cadeado do tamanho.** Um vão nasce em `0`,
+        // e preservar uma razão sobre zero não significa nada; *"o mesmo número"* é exactamente o
+        // que o controlo único fazia, o que torna o elo ligado o comportamento de sempre — ao bit.
+        TexPatCmd::Gap(axis, v, link) => {
+            if link {
+                next.gap = [v, v];
+            } else if let Some(g) = next.gap.get_mut(usize::from(axis)) {
+                *g = v;
+            }
+        }
         TexPatCmd::Angle(deg) => next.angle = deg.to_radians(),
         TexPatCmd::Source(s, tamanho) => {
             if next.source == PatternSource::None {
@@ -269,6 +284,10 @@ mod tests;
 #[cfg(test)]
 #[path = "texture_pattern_edit_subject_tests.rs"]
 mod subject_tests;
+// ⚠️ O terceiro irmão: a ENTRADA da arte (as duas portas, e o tamanho que ela traz).
+#[cfg(test)]
+#[path = "texture_pattern_edit_art_tests.rs"]
+mod art_tests;
 
 thread_local! {
     /// A última forma descrita — o log é por EVENTO, e mudar de selecção é o evento.

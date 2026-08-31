@@ -3785,6 +3785,13 @@ impl crate::App {
                                         );
                                         self.texpat_lock_aspect[i] = !self.texpat_lock_aspect[i];
                                     }
+                                    // ⭐ O elo dos VÃOS — mesmo desenho, mesmo índice por slot.
+                                    K::GapLink => {
+                                        let i = usize::from(
+                                            slot == ph2d_vec_render::PatternSlot::Stroke,
+                                        );
+                                        self.texpat_gap_link[i] = !self.texpat_gap_link[i];
+                                    }
                                     _ => {}
                                 }
                             } else if *id == ph2d_editor::ids::VECTOR_GRAD_ADD_POINT {
@@ -3980,7 +3987,18 @@ impl crate::App {
                                             1, *v, cadeado,
                                         ))
                                     }
-                                    K::Gap => Some(crate::texture_pattern_edit::TexPatCmd::Gap(*v)),
+                                    // ⭐ UM eixo do VÃO + o ELO da sessão, que decide se o outro
+                                    // vem junto — o mesmo desenho do cadeado logo acima.
+                                    K::Gap => Some(crate::texture_pattern_edit::TexPatCmd::Gap(
+                                        0,
+                                        *v,
+                                        self.texpat_gap_link[slot.min(1)],
+                                    )),
+                                    K::GapY => Some(crate::texture_pattern_edit::TexPatCmd::Gap(
+                                        1,
+                                        *v,
+                                        self.texpat_gap_link[slot.min(1)],
+                                    )),
                                     // A FASE dentro de uma repetição, em %.
                                     K::ShiftX => {
                                         Some(crate::texture_pattern_edit::TexPatCmd::Shift(0, *v))
@@ -7361,6 +7379,7 @@ impl crate::App {
                 self.vec_pivot_edit,
                 self.vec_snap,
                 self.texpat_lock_aspect,
+                self.texpat_gap_link,
                 self.texture_pattern_live.tiles(),
             );
             // ⭐ **Stroke** (plano 34): dar/tirar o traço da forma selecionada. **Honrar e só depois

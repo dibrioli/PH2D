@@ -576,28 +576,50 @@ fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
 /// em falta — é um `if` com um lado morto.* Fica NOMEADO aqui; a cura é uma wave de quem for dono
 /// dos toggles de módulo, e a verdade de cada um vive num sítio diferente (visibilidade de painel
 /// para uns, ferramenta activa para outros).
-const MARK_STUCK_PENDING: &[&str] = &[
-    "Vector",
-    "Motion Nodes",
-    "Flip",
-    "Sculpt 3D",
-    "Model 3D",
-    "Audio Mixer",
-    "Audio Editor",
-    "Widget Gallery",
-    "Grid Settings",
-];
-
+/// ⛔⛔⛔ **CENSO: a marca de uma linha de alternância tem de MEXER quando ela é clicada.**
+///
+/// `row_is_marked_by_button_state` diz *quais* linhas mostram estado; **este** diz que o estado
+/// mudou. Uma linha cujo handler flipa um campo e nunca publica a marca fica em *«desligado»* para
+/// sempre, e o menu mente com a cara de quem funciona.
+///
+/// ⛔⛔ **A causa que ele apanhou era maior que uma marca.** Ninguém escrevia o `ButtonState` dos
+/// pills de módulo (o laço da shell só percorre os clusters do registry de ferramentas), e o
+/// `chrome::vector_toggle` **lia** esse estado para escolher entre *activar* e *cancelar*: preso em
+/// `Normal`, o segundo clique reactivava. ⇒ a cura foi a tabela `menu_bar::MODULE_TRUTHS`, que
+/// pergunta a verdade **onde ela vive**.
+///
+/// ⚠️ **O que esta CRATE não consegue conduzir é DERIVADO, não uma lista:**
+///
+/// | verdade | porque não se mede aqui |
+/// |---|---|
+/// | `Tool(_)` | o clique empurra `ActivateTool` para o **barramento**, e quem o drena é a shell |
+/// | `ShellOwned` | o `sculpt3d` não tem flag — a verdade dele é *«há barro no ecrã»* |
+/// | clique **não consumido** | o handler vive numa **crate de painel** (mixer, editor de áudio, galeria, grelha) |
+///
+/// ⇒ os quatro do último caso têm o gate deles em
+/// `ph2d-panel-registry-init/tests/the_window_menu_reaches_every_module.rs`, que é a crate mais
+/// barata que os vê. *Um gate escrito de uma camada deixa a outra por medir.*
 #[test]
 fn clicking_a_toggle_row_moves_its_mark() {
+    use ph2d_editor_core::screens::hero::menu_bar::ModuleTruth;
     use ph2d_editor_core::widget::ButtonState;
     let mut stuck = Vec::new();
     let mut moved = Vec::new();
     for (id, label, _) in menu_rows(ContextMenuKind::MenuBarWindow) {
+        let truth = menu_bar::MODULE_TRUTHS
+            .iter()
+            .find(|(mid, _)| mid == id)
+            .map(|(_, t)| *t)
+            .unwrap_or_else(|| panic!("{label}: linha do menu Window fora da tabela de verdades"));
+        if matches!(truth, ModuleTruth::Tool(_) | ModuleTruth::ShellOwned) {
+            continue; // conduzido pela shell — ver a tabela do doc
+        }
         let mut h = hero();
         menu_bar::publish_toggle_state(&mut h);
         let before = matches!(h.store.button_state(*id), Some(ButtonState::Pressed));
-        let _ = h.apply_event(WidgetEvent::Click(*id));
+        if !h.apply_event(WidgetEvent::Click(*id)) {
+            continue; // despachado por uma crate de painel — o gate dele mora lá
+        }
         menu_bar::publish_toggle_state(&mut h);
         let after = matches!(h.store.button_state(*id), Some(ButtonState::Pressed));
         if before == after {
@@ -606,28 +628,71 @@ fn clicking_a_toggle_row_moves_its_mark() {
             moved.push(*label);
         }
     }
-    let new_stuck: Vec<&str> = stuck
-        .iter()
-        .copied()
-        .filter(|l| !MARK_STUCK_PENDING.contains(l))
-        .collect();
     assert!(
-        new_stuck.is_empty(),
-        "linhas NOVAS cuja marca não mexe depois do clique — o menu mente: {new_stuck:?}"
-    );
-    // ⭐ A metade que impede a lista de virar licença.
-    let cured: Vec<&str> = MARK_STUCK_PENDING
-        .iter()
-        .copied()
-        .filter(|l| moved.contains(l))
-        .collect();
-    assert!(
-        cured.is_empty(),
-        "estas já mexem e continuam na lista de pendentes — apague-as: {cured:?}"
+        stuck.is_empty(),
+        "linhas cuja marca não mexe depois do clique — o menu mente: {stuck:?}"
     );
     assert!(
-        !moved.is_empty(),
-        "NENHUMA linha mexeu: o controlo positivo caiu, e a lista de pendentes passaria a \
-         esconder uma regressão total"
+        moved.len() >= 4,
+        "só {} linhas mediram: o controlo positivo caiu e o gate passaria a não medir nada \
+         ({moved:?})",
+        moved.len()
     );
+}
+
+/// ⛔⛔⛔ **O RAMO *cancelar* dos três activadores de ferramenta VOLTOU A EXISTIR.**
+///
+/// `vector_toggle`/`motion_toggle`/`flip_toggle` escolhem entre `ActivateTool` e `CancelActiveTool`
+/// lendo *«a minha ferramenta está activa?»*. Enquanto a pergunta era `store.button_state(id)` —
+/// que **ninguém escrevia** — a resposta era sempre *não*: o segundo clique **reactivava**, e o
+/// artista não tinha como desligar o módulo pelo menu.
+///
+/// ⚠️ **A metade da shell é dela**: quem espelha a ferramenta activa para
+/// `ImageEditState::active_tool_id` é o `render_loop`. Aqui prova-se a **DECISÃO**, semeando o
+/// espelho — que é exactamente a fronteira desta crate.
+///
+/// *Mutação que sangra:* `module_is_on` a devolver `None`/`false`, ou um braço a voltar ao
+/// `button_state`.
+#[test]
+fn the_tool_toggles_can_cancel_and_not_only_activate() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    for (id, tool) in [
+        (ids::TOPBAR_VECTOR, "vector"),
+        (ids::TOPBAR_MOTION, "motion"),
+        (ids::TOPBAR_FLIP, "flip"),
+    ] {
+        // (a) desligada ⇒ o clique ACTIVA.
+        let mut h = hero();
+        h.image_edit.active_tool_id = None;
+        assert!(h.apply_event(WidgetEvent::Click(id)));
+        let acts: Vec<_> = h.bus.drain().collect();
+        assert!(
+            acts.iter()
+                .any(|a| matches!(a, EditorAction::ActivateTool { tool_id } if *tool_id == tool)),
+            "{tool}: com a ferramenta desligada o clique tinha de ACTIVAR, veio {acts:?}"
+        );
+
+        // (b) ligada ⇒ o MESMO clique CANCELA. Era este ramo que estava morto.
+        let mut h = hero();
+        h.image_edit.active_tool_id = Some(tool);
+        assert!(h.apply_event(WidgetEvent::Click(id)));
+        let acts: Vec<_> = h.bus.drain().collect();
+        assert!(
+            acts.iter()
+                .any(|a| matches!(a, EditorAction::CancelActiveTool)),
+            "{tool}: com a ferramenta ACTIVA o clique tinha de CANCELAR, veio {acts:?} — o ramo \
+             está morto outra vez"
+        );
+
+        // (c) e a marca segue o espelho, nos dois sentidos.
+        let mut h = hero();
+        h.image_edit.active_tool_id = Some(tool);
+        assert_eq!(menu_bar::module_is_on(&h, id), Some(true));
+        h.image_edit.active_tool_id = Some("something_else");
+        assert_eq!(
+            menu_bar::module_is_on(&h, id),
+            Some(false),
+            "{tool}: a marca acende com a ferramenta de OUTRO módulo"
+        );
+    }
 }

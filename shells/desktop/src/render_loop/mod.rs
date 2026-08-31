@@ -5143,13 +5143,23 @@ impl crate::App {
             // `&'static str` literal the `ActivateTool { tool_id: "painter" }`
             // action already uses. Gated on `mode_on` (no image tool is
             // reachable with Image Tools off).
-            hero.image_edit.active_tool_id = tools
-                .active()
-                .filter(|_| hero.image_edit.mode_on)
-                .and_then(|t| match t.id().0.as_str() {
-                    "painter" => Some("painter"),
-                    _ => None,
-                });
+            // ⛔⛔ **O espelho passou a servir TODA ferramenta, e a lista à mão morreu.** Ele
+            // internava contra um `match` de **um** literal (`"painter"`) e filtrava por
+            // `mode_on` — o que era verdade enquanto o único leitor era o trilho do Painter.
+            // Deixou de ser em 2026-08-30: os toggles de `vector`/`motion`/`flip` precisam de
+            // saber se a ferramenta DELES está activa para escolher entre activar e cancelar, e
+            // com o espelho cego eles liam sempre *«não está»* — o segundo clique reactivava.
+            //
+            // ⭐ A internagem vem do **registry**: os `manifest.id` já são `&'static str`, então
+            // procurar o manifesto cujo id bate com o id vivo devolve o `&'static` certo sem
+            // alocar e **sem lista escrita à mão** — uma ferramenta nova entra sozinha.
+            //
+            // ⚠️ **E o filtro `mode_on` saiu**: ele pertence a quem pergunta pelo Painter, e
+            // `offers::rail_shows_painter_tools` já o exige (`mode_on && == Some("painter")`).
+            // Aqui ele apagava a resposta para as ferramentas que não são de imagem.
+            let live = tools.active().map(|t| t.id());
+            hero.image_edit.active_tool_id =
+                crate::active_tool_mirror::intern_active_tool(live.as_ref().map(|i| i.0.as_str()));
             // Reconcile Image Tools pill ButtonState ↔ active tool. Each pill
             // whose manifest id matches `tools.active()` is forced to Pressed;
             // pills holding a stale Pressed (tool no longer active) drop back

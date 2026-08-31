@@ -136,14 +136,10 @@ pub fn populate(store: &mut WidgetStore) {
 /// módulos e os dois painéis) já têm o `ButtonState` mantido por quem as despacha — só esta não
 /// tinha ninguém a publicá-la.
 pub fn publish_toggle_state(hero: &mut super::HeroScreen) {
-    // ⚠️ **Duas linhas cuja verdade vive no `HeroScreen`, não no `Store`.** As outras onze do menu
-    // *Window* são publicadas por quem as despacha (ou não são — ver o censo em
-    // `clicking_a_toggle_row_moves_its_mark`, que nomeia as pré-existentes).
-    let pairs = [
-        (ids::MENUBAR_VIEW_RULERS, hero.view.rulers_visible),
-        (ids::TOPBAR_IMAGE_TOOLS, hero.image_edit.mode_on),
-    ];
-    for (id, on) in pairs {
+    for (id, truth) in MODULE_TRUTHS {
+        let Some(on) = truth.resolve(hero) else {
+            continue; // o dono é outro — ver `ModuleTruth::ShellOwned`
+        };
         if let Some(InteractiveState::Button { state }) = hero.store.get_mut(id) {
             *state = if on {
                 ButtonState::Pressed
@@ -154,21 +150,96 @@ pub fn publish_toggle_state(hero: &mut super::HeroScreen) {
     }
 }
 
+/// ⭐⭐ **ONDE VIVE A VERDADE de cada linha de alternância** — a tabela que substituiu treze
+/// respostas espalhadas, das quais **dez não existiam**.
+///
+/// ⛔⛔ **O defeito que ela cura tinha duas caras, e a segunda é a cara.** Medido em 2026-08-30:
+/// ninguém escrevia o `ButtonState` dos pills de módulo — o laço de reconciliação da shell só
+/// percorre os clusters `image_tools` e `vector_tools` do registry, e um pill de módulo não está em
+/// cluster nenhum (`hash_node_id("topbar_vector")` ≠ `hash_node_id("vector")`).
+///
+/// 1. **a marca não aparecia** — o menu *Window* dizia o mesmo com o Vector aberto e fechado;
+/// 2. ⚠️ **e o `chrome::vector_toggle` LIA esse estado para escolher a direcção** (activar ou
+///    cancelar). Preso em `Normal`, o segundo clique voltava a activar. *Um estado que ninguém
+///    escreve e alguém lê não é uma marca em falta: é um `if` com um lado morto.*
+///
+/// ⭐ **Uma tabela, dois consumidores:** a marca do menu ([`publish_toggle_state`]) e a direcção do
+/// toggle ([`module_is_on`]). Escrever a verdade duas vezes era como as duas se separaram.
+#[derive(Copy, Clone, Debug)]
+pub enum ModuleTruth {
+    /// A visibilidade de um painel registado.
+    Panel(&'static str),
+    /// A ferramenta activa, pelo id do manifesto que a shell espelha em
+    /// `ImageEditState::active_tool_id`.
+    Tool(&'static str),
+    /// O modo das ferramentas de imagem (`ImageEditState::mode_on`).
+    ImageMode,
+    /// O interruptor das réguas (`ViewState::rulers_visible`).
+    Rulers,
+    /// ⚠️ **Quem publica é a SHELL, e não escrevemos por cima.** O `sculpt3d` não tem flag: a
+    /// verdade dele é *«há barro no ecrã»*, que só a shell vê (`sculpt3d_mode::sync`), e o
+    /// doc-comment do handler explica porque ler o estado do botão ali daria a resposta errada
+    /// entre uma tecla `D` e o sync seguinte.
+    ShellOwned,
+}
+
+impl ModuleTruth {
+    /// `None` quando o dono é outro.
+    #[must_use]
+    pub fn resolve(self, hero: &super::HeroScreen) -> Option<bool> {
+        Some(match self {
+            Self::Panel(name) => hero.is_panel_visible(name),
+            Self::Tool(id) => hero.image_edit.active_tool_id == Some(id),
+            Self::ImageMode => hero.image_edit.mode_on,
+            Self::Rulers => hero.view.rulers_visible,
+            Self::ShellOwned => return None,
+        })
+    }
+}
+
+/// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
+/// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 16] = [
+    (ids::TOPBAR_VECTOR, ModuleTruth::Tool("vector")),
+    (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
+    (ids::TOPBAR_FLIP, ModuleTruth::Tool("flip")),
+    (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
+    (ids::TOPBAR_SCULPT3D, ModuleTruth::ShellOwned),
+    (ids::TOPBAR_MODEL3D, ModuleTruth::Panel("model3d")),
+    (ids::TOPBAR_IMAGE_TOOLS, ModuleTruth::ImageMode),
+    (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
+    (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),
+    (ids::TOPBAR_TOKENS, ModuleTruth::Panel("tokens")),
+    (ids::TOPBAR_AUTHORED, ModuleTruth::Panel("authored")),
+    (
+        ids::TOPBAR_WIDGET_GALLERY,
+        ModuleTruth::Panel("widget_gallery"),
+    ),
+    (ids::TOPBAR_GRID_SETTINGS, ModuleTruth::Panel("grid_snap")),
+    (ids::RAIL_SHOW_HIERARCHY, ModuleTruth::Panel("hierarchy")),
+    (ids::RAIL_SHOW_INSPECTOR, ModuleTruth::Panel("inspector")),
+    (ids::MENUBAR_VIEW_RULERS, ModuleTruth::Rulers),
+];
+
+/// ⭐ **Este módulo está LIGADO?** — a pergunta que um toggle faz para escolher a direcção.
+///
+/// ⛔ Os três activadores de ferramenta (`vector`, `motion`, `flip`) perguntavam ao
+/// `store.button_state(…)`, que **ninguém escrevia** ⇒ o ramo *cancelar* nunca corria.
+#[must_use]
+pub fn module_is_on(hero: &super::HeroScreen, id: NodeId) -> Option<bool> {
+    MODULE_TRUTHS
+        .iter()
+        .find(|(mid, _)| *mid == id)
+        .and_then(|(_, truth)| truth.resolve(hero))
+}
+
 /// **Esta linha mostra o próprio estado pelo `ButtonState`?**
 ///
 /// ⭐ A lista dos módulos é **derivada** da tabela do menu *Window* — um módulo novo entra sozinho.
 /// As três nomeadas são as de fora dela.
 #[must_use]
 pub fn row_is_marked_by_button_state(id: NodeId) -> bool {
-    if id == ids::RAIL_SHOW_HIERARCHY
-        || id == ids::RAIL_SHOW_INSPECTOR
-        || id == ids::MENUBAR_VIEW_RULERS
-    {
-        return true;
-    }
-    super::menu_rows::menu_rows(ContextMenuKind::MenuBarWindow)
-        .iter()
-        .any(|(rid, ..)| *rid == id)
+    MODULE_TRUTHS.iter().any(|(mid, _)| *mid == id)
 }
 
 /// ⭐ **A PORTA** — onde cada título fica, medido contra o texto real.

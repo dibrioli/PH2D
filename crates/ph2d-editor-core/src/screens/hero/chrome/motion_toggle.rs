@@ -11,21 +11,22 @@
 
 use crate::action_bus::EditorAction;
 use crate::ids;
-use crate::interaction::{InteractiveState, WidgetEvent};
+use crate::interaction::WidgetEvent;
 use crate::screens::hero::HeroScreen;
-use crate::widget::ButtonState;
 
 pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let WidgetEvent::Click(id) = event else {
         return false;
     };
     if id == ids::TOPBAR_MOTION {
-        let currently_active = matches!(
-            hero.store.get(ids::TOPBAR_MOTION),
-            Some(InteractiveState::Button {
-                state: ButtonState::Pressed,
-            })
-        );
+        // ⛔⛔ **A pergunta é à VERDADE, não ao `ButtonState`.** Ela era
+        // `store.get(ids::TOPBAR_MOTION) == Pressed` — e **ninguém escrevia esse estado**: o laço de
+        // reconciliação da shell só percorre os clusters do registry de ferramentas, e um pill de
+        // módulo não está em cluster nenhum. ⇒ `currently_active` era **sempre falso** e o ramo
+        // *cancelar* nunca corria: o segundo clique voltava a activar.
+        // *Um estado que ninguém escreve e alguém lê é um `if` com um lado morto.*
+        let currently_active =
+            crate::screens::hero::menu_bar::module_is_on(hero, ids::TOPBAR_MOTION).unwrap_or(false);
         if currently_active {
             hero.bus.push(EditorAction::CancelActiveTool);
         } else {

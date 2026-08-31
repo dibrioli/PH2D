@@ -37,6 +37,7 @@
 //!   `ph2d.input` Luau snapshot is a follow-up.
 //! - **M11** Vello text/widget overlay — needs surface-sharing pass.
 
+mod active_tool_mirror;
 mod adapter_smoke;
 mod align_live;
 mod align_smoke;

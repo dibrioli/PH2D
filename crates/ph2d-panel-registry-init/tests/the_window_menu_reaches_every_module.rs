@@ -109,3 +109,36 @@ fn visibility_census(h: &HeroScreen) -> Vec<(&'static str, bool)> {
     });
     out
 }
+
+/// ⭐ **E a MARCA das quatro mexe** — a metade que a `editor-core` não consegue conduzir.
+///
+/// ⚠️ Lá o clique nestas quatro não é consumido (o handler vive na crate do painel), então o censo
+/// de lá salta-as **por derivação**, não por uma lista. Aqui elas são as únicas que interessam.
+///
+/// *«Fiar o clique não é fiar o ESTADO»* — a lei que o `context_menu_overlay` documenta, e que a
+/// primeira versão da barra de menus repetiu dezasseis vezes.
+#[test]
+fn the_four_panel_rows_move_their_mark_too() {
+    use ph2d_editor_core::screens::hero::menu_bar;
+    use ph2d_editor_core::widget::ButtonState;
+    for id in [
+        ph2d_editor_core::ids::TOPBAR_AUDIO_MIXER,
+        ph2d_editor_core::ids::TOPBAR_AUDIO_EDITOR,
+        ph2d_editor_core::ids::TOPBAR_WIDGET_GALLERY,
+        ph2d_editor_core::ids::TOPBAR_GRID_SETTINGS,
+    ] {
+        let mut h = hero();
+        menu_bar::publish_toggle_state(&mut h);
+        let before = matches!(h.store.button_state(id), Some(ButtonState::Pressed));
+        assert!(
+            h.apply_event(WidgetEvent::Click(id)),
+            "{id:?}: não consumida"
+        );
+        menu_bar::publish_toggle_state(&mut h);
+        let after = matches!(h.store.button_state(id), Some(ButtonState::Pressed));
+        assert_ne!(
+            before, after,
+            "{id:?}: o painel abriu e a marca do menu ficou parada — o menu mente"
+        );
+    }
+}

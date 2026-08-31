@@ -37,6 +37,7 @@ virou **código**.
 | 15 | `d15640c62` | ⭐⭐ **A BARRA DE MENUS** — *File · Edit · View · Window*, e ela **realoja** verbos (§10) |
 | 16 | `810c1abd4` | ⭐⭐ **A FILA DE FERRAMENTAS** — os chips do trilho deitados por cima da área (§11) |
 | 17 | `eb2013fc5` | ⛔⛔⛔ **A AUDITORIA achou SETE defeitos, e o dominante era meu** (§12) |
+| 18 | *(a seguir)* | ⛔⛔ **UMA TABELA para a verdade de cada módulo** — e o `if` com um lado morto (§13) |
 
 ---
 
@@ -708,12 +709,9 @@ decidir a direcção — *activar* ou *cancelar*. Com ele preso em `Normal`, o s
 activar em vez de desligar. *Um estado que ninguém escreve e alguém lê não é uma marca em falta: é
 um `if` com um lado morto.*
 
-⛔ **NÃO curado** — é uma wave de quem for dono dos toggles de módulo, e a verdade de cada um vive
-num sítio diferente (visibilidade de painel para uns, ferramenta activa para outros). Fica com
-endereço no censo `clicking_a_toggle_row_moves_its_mark`, que tem as **três** metades: as novas
-reprovam, as pendentes estão nomeadas, e uma pendente que passe a mexer **tem de sair da lista**.
-⭐ Duas foram curadas por serem locais: a **régua** e o **Image Tools**, cuja verdade vive no
-`HeroScreen` e é publicada por `publish_toggle_state`.
+✅ **CURADO na entrega 18 — ver §13.** A cura é uma tabela (`menu_bar::MODULE_TRUTHS`) que pergunta
+a verdade de cada módulo **onde ela vive**, com dois consumidores: a marca do menu e a **direcção**
+do toggle.
 
 ### §12.6 — ⛔ O gate do relógio da UI ficou a medir código que a `F9` esconde
 
@@ -748,4 +746,69 @@ pelo gate dele, e a cura (`tool_section`) é a certa.
 | `the_hero_paint_docks_the_timeline_into_motion` tem um `hero_sources()` **local e não-recursivo** ao lado do partilhado e recursivo | duas respostas a uma pergunta, um commit de idade; falha alto, logo é incómodo e não buraco |
 | `TOPBAR_RIGHT_LAYERS`/`_ASSETS`/`_SCRIPT` mortos e `TOPBAR_PLAY_TOGGLE` órfão | **pré-existentes**, agora com endereço no censo do §12.4 |
 | `cluster_painter::paint_topbar_rail_chip` continua cópia verbatim da matriz de tinta | com o `RailAxis` passa a ser dispensável; é chrome legado a caminho de sair |
+
+---
+
+## §13 — ⛔⛔ A VERDADE DE CADA MÓDULO passa a ter UMA tabela (entrega 18)
+
+A §12.5-bis nomeou o defeito e deixou-o aberto. Ele fechou.
+
+### §13.1 — O defeito tinha duas caras, e a segunda é a cara
+
+Ninguém escrevia o `ButtonState` dos pills de módulo: o laço de reconciliação da shell só percorre
+os clusters `image_tools` e `vector_tools` do **registry de ferramentas**, e um pill de módulo não
+está em cluster nenhum (`hash_node_id("topbar_vector")` ≠ `hash_node_id("vector")`).
+
+1. **a marca não aparecia** — o menu *Window* dizia o mesmo com o Vector aberto e fechado;
+2. ⚠️ **e o `chrome::vector_toggle` LIA esse estado para escolher a direcção.** Preso em `Normal`,
+   `currently_active` era **sempre falso**: o segundo clique voltava a **activar** em vez de
+   desligar, e não havia como fechar o módulo pelo menu.
+
+*Um estado que ninguém escreve e alguém lê não é uma marca em falta: é um `if` com um lado morto.*
+
+### §13.2 — A cura: `menu_bar::MODULE_TRUTHS`, e a verdade perguntada ONDE ELA VIVE
+
+| variante | o que responde | quem a usa |
+|---|---|---|
+| `Panel(nome)` | `is_panel_visible` | physics · model3d · tokens · authored · áudio×2 · galeria · grelha · hierarquia · inspector |
+| `Tool(id)` | `image_edit.active_tool_id` | vector · motion · flip |
+| `ImageMode` | `image_edit.mode_on` | Image Tools |
+| `Rulers` | `view.rulers_visible` | a régua |
+| `ShellOwned` | ⚠️ ninguém aqui | sculpt3d — a verdade dele é *«há barro no ecrã»*, e só a shell a vê |
+
+⭐ **Uma tabela, DOIS consumidores:** a marca do menu (`publish_toggle_state`) e a **direcção** do
+toggle (`module_is_on`). Escrever a verdade duas vezes é como as duas se separaram.
+
+### §13.3 — ⛔ E o ESPELHO da shell servia UMA ferramenta
+
+`ImageEditState::active_tool_id` internava contra um `match` de **um** literal (`"painter"`) e
+filtrava por `mode_on`. ⇒ os três `Tool(_)` liam sempre *«não está activa»*.
+
+⭐ Hoje a internagem vem do **registry** (`manifests()`), sem lista à mão e sem alocar — uma
+ferramenta nova entra sozinha —, e o filtro `mode_on` saiu (ele pertence a quem pergunta pelo
+Painter, e `rail_shows_painter_tools` já o exige).
+
+⚠️⚠️ **E ele estava a TRÊS LINHAS dentro de um closure do `render_loop`, onde nada o media:** um
+`grep -rn active_tool_id shells/desktop/` devolvia **um** ficheiro, o próprio. Foi extraído para
+`active_tool_mirror.rs` **para poder ser gateado** — 2 gates, 2 mutações mortas, com controlo a
+confirmar que o filtro casa testes.
+
+### §13.4 — ⚠️ O censo teve de saber o que a CRATE dele não consegue conduzir
+
+A 1.ª redacção acusou **nove** linhas de mentir. Sete não mentiam: a `editor-core` é que não as
+alcança.
+
+| verdade | porque não se mede lá |
+|---|---|
+| `Tool(_)` | o clique empurra `ActivateTool` para o **barramento**; quem drena é a shell |
+| `ShellOwned` | não há flag a conduzir |
+| clique **não consumido** | o handler vive numa **crate de painel** |
+
+⇒ a exclusão é **derivada da tabela e do valor de retorno**, não uma lista escrita à mão, e as
+metades que faltam moram onde correm: as quatro de painel em `ph2d-panel-registry-init`, a
+**decisão** dos três `Tool(_)` na própria `editor-core` (semeando o espelho, que é a fronteira da
+crate), e o espelho na shell.
+
+⭐ *A lista de pendentes desceu de nove para zero no mesmo dia em que nasceu — e as sete que saíram
+não foram curadas: foram medidas no sítio certo.*
 

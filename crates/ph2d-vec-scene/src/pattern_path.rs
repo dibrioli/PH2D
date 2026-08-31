@@ -372,6 +372,15 @@ pub fn pattern_along_in(
     // são finitos; `k_lo` nunca é NaN (o `.max(0.0)` o garante). Um `<` cru basta e é claro.
     // O limite superior é o FIM do trecho: `min(end_offset, total)` — o `end_offset` default é
     // `INFINITY`, então o `min` o reduz ao `total` (a curva inteira) sem um caso especial.
+    // ⛔ **UM MOTIVO SEM VÉRTICES não emite nada** (auditoria de 2026-08-30). Ele emitia uma cópia
+    // VAZIA por posição — medido: num grupo com um membro degenerado, `20` caminhos sem um único
+    // vértice entregues ao renderer ao lado dos `20` bons, **100 % de desperdício**. A guarda vive
+    // aqui, no emissor, porque *uma cópia de nada é nada* nos dois consumidores (o pincel e o
+    // *Pattern Along Path*), e o `art_at_height` a montante só recusa quando o CONJUNTO é
+    // degenerado — um membro vazio ao lado de um bom passa por ele.
+    if motif.verts_all().next().is_none() {
+        return Vec::new();
+    }
     let hi_bound = spec.end_offset.min(total);
     let k_lo = (-spec.start_offset * inv).ceil().max(0.0);
     let k_hi = ((hi_bound - spec.start_offset) * inv - 1.0 + FIT_EPS).floor();

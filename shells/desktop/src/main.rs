@@ -77,6 +77,11 @@ mod bool_smoke;
 /// corre por quadro, e criar ali vestiria toda forma selecionada sem ninguém pedir.
 mod brush_corner_smoke;
 mod brush_live;
+/// SONDA (`--ignored`): o RELOGIO do `brush_live::resolve` por quadro — a acusacao
+/// `O(P x G)` sem memo que o handoff de `59a80bd6e` deixou aberta SEM relogio.
+#[cfg(test)]
+#[path = "brush_live_cost_probe.rs"]
+mod brush_live_cost_probe;
 mod brush_smoke;
 mod buffer_smoke;
 mod build_smoke;
@@ -1084,6 +1089,7 @@ impl App {
             pattern_live: crate::pattern_live::PatternLive::default(),
             fx_live: crate::fx_live::FxLive::default(),
             texture_pattern_live: crate::texture_pattern_live::TexturePatternLive::default(),
+            brush_live: crate::brush_live::BrushLive::default(),
             texture_pattern_scratch: None,
             fx_silhouette: crate::fx_silhouette::FxSilhouette::default(),
             vec_expand_knobs: (0, 2),

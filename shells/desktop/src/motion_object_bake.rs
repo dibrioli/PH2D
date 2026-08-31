@@ -518,7 +518,7 @@ pub(crate) fn bake_rgba_many(
             //
             // Medido: com um grupo de 2, a vista emitia `160` cópias e o assado `80`, de uma cor só.
             // *Uma fronteira declarada sem se medir se ela existe é uma fronteira inventada.*
-            &crate::brush_live::resolve(scene, object_of),
+            &crate::brush_live::resolve(scene, object_of, xforms),
             id,
             camera,
             // ⭐⭐ **A ESCALA DO TECTO entra aqui**, e é o que faz o doc do `MAX_TILE_SIDE` deixar

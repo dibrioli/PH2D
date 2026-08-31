@@ -157,3 +157,119 @@ fn the_group_shares_one_copy_budget_it_does_not_multiply_it() {
         );
     }
 }
+
+/// ⚠️⚠️ **O QUE A AUDITORIA MEDIU E NENHUM GATE GUARDAVA** (2026-08-30).
+///
+/// Os dois gates acima medem a disposição, as tintas e o orçamento. A auditoria mediu mais **cinco**
+/// composições com grupo — tracejado, quinas, rotação, espelho e opacidade —, achou-as todas
+/// CERTAS, e nenhuma tinha gate. *Uma medição que ninguém encoda é uma nota que envelhece: a
+/// próxima wave parte-a e a suíte não diz nada.*
+///
+/// ⚠️ **A régua é o EMPARELHAMENTO**: seja qual for o corte que a guia impõe (um traço, uma quina),
+/// os membros do grupo têm de o atravessar **juntos**. Um número desemparelhado significa que um
+/// membro caiu num corte em que o outro entrou — o grupo deixou de ser uma unidade.
+#[test]
+fn a_group_survives_dashes_corners_rotation_flip_and_opacity_as_one_unit() {
+    let membro = |cy: f64, a: u8| {
+        let mut p = crate::rectangle([-0.5, cy - 0.5], [0.5, cy + 0.5]);
+        p.fill = Some(crate::Paint::solid(crate::Rgba8::new(10, 20, 30, a)));
+        p
+    };
+    // ⚠️ Alfas AUTORADOS diferentes: é o que prova que cada membro escala o SEU, e não um comum.
+    let grupo = [membro(1.5, 200), membro(-1.5, 100)];
+    let pincel = |dash: bool, rot: f64, flip: bool, alfa: u8| {
+        let mut s = crate::StrokeSpec::new(crate::Rgba8::new(0, 0, 0, 255), 2.0);
+        s.paint = crate::StrokePaint::Brush(Box::new(crate::BrushStroke {
+            art: Some(crate::VecPathId::default()),
+            spacing: 1.0,
+            rotation_deg: rot,
+            flip,
+            fallback: crate::Rgba8::new(0, 0, 0, alfa),
+            ..crate::BrushStroke::default()
+        }));
+        if dash {
+            s.dash = Some((4.0, 2.0));
+        }
+        s
+    };
+    let por_membro = |copias: &[crate::VecPath]| -> [usize; 2] {
+        let n = |a: u8| {
+            copias
+                .iter()
+                .filter(|c| {
+                    c.fill
+                        .as_ref()
+                        .map(crate::Paint::primary_color)
+                        .is_some_and(|x| x.a == a)
+                })
+                .count()
+        };
+        [n(200), n(100)]
+    };
+
+    // ⛔ As guias trazem o fenómeno: a recta não corta, o quadrado tem QUINAS, o círculo é fechado.
+    for (nome, guia) in [
+        ("recta", crate::line([0.0, 0.0], [60.0, 0.0])),
+        ("quadrado", crate::rectangle([0.0, 0.0], [20.0, 20.0])),
+        ("circulo", crate::ellipse([0.0, 0.0], 10.0, 10.0)),
+    ] {
+        for (caso, dash, rot, flip) in [
+            ("liso", false, 0.0, false),
+            ("tracejado", true, 0.0, false),
+            ("rodado", false, 30.0, false),
+            ("espelhado", false, 0.0, true),
+        ] {
+            let mut g = guia.clone();
+            let s = pincel(dash, rot, flip, 255);
+            g.stroke = Some(s.clone());
+            let c = crate::brush_along_path(&g, &grupo, &s);
+            let [a, b] = por_membro(&c);
+            assert!(a > 0, "{nome}/{caso}: o grupo nao emitiu nada");
+            assert_eq!(
+                a, b,
+                "{nome}/{caso}: os membros DESEMPARELHARAM ({a} contra {b}) - um caiu num corte em \
+                 que o outro entrou, e o grupo deixou de ser uma unidade"
+            );
+        }
+    }
+
+    // ⭐ **A OPACIDADE é POR MEMBRO**: cada um escala o alfa que o artista lhe deu, e não um comum.
+    // Medido pela auditoria: com o pincel a `128`, os autorados `200` e `100` saem `[100, 50]`.
+    let mut g = crate::line([0.0, 0.0], [60.0, 0.0]);
+    let s = pincel(false, 0.0, false, 128);
+    g.stroke = Some(s.clone());
+    let c = crate::brush_along_path(&g, &grupo, &s);
+    let alfas: Vec<u8> = c
+        .iter()
+        .filter_map(|p| p.fill.as_ref().map(|f| crate::Paint::primary_color(f).a))
+        .collect();
+    assert!(
+        alfas.contains(&100) && alfas.contains(&50),
+        "a opacidade do pincel nao escalou o alfa de CADA membro: {:?} - um alfa comum apagaria a \
+         transparencia que o artista autorou por forma",
+        {
+            let mut u = alfas.clone();
+            u.sort_unstable();
+            u.dedup();
+            u
+        }
+    );
+
+    // ⛔ **E UM MEMBRO SEM GEOMETRIA não emite caminhos vazios** — 100% de desperdicio entregue ao
+    // renderer, medido pela auditoria.
+    let com_vazio = [
+        grupo[0].clone(),
+        crate::VecPath::default(),
+        grupo[1].clone(),
+    ];
+    let c2 = crate::brush_along_path(&g, &com_vazio, &s);
+    assert!(
+        c2.iter().all(|p| p.verts_all().next().is_some()),
+        "o grupo emitiu copias SEM UM VERTICE - o membro degenerado passou pelo emissor"
+    );
+    assert_eq!(
+        por_membro(&c2),
+        por_membro(&c),
+        "o membro vazio mudou a contagem dos que TEM geometria"
+    );
+}

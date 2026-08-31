@@ -5756,8 +5756,8 @@ impl crate::App {
             if pending_brush_pick && let Some(host) = self.vec_pen.selected() {
                 self.vec_path_pick = Some(crate::vec_pick::PathPick::BrushArt(host));
                 eprintln!(
-                    "[ph2d-vec] brush: pick armado -- clique na FORMA que vai ser a arte do \
-                     contorno (vazio = desiste)"
+                    "[ph2d-vec] brush: pick armado -- clique na FORMA ou no GRUPO que vai ser a \
+                     arte do contorno (vazio = desiste)"
                 );
             }
             if let Some(slot) = pending_texpat_pick
@@ -5765,8 +5765,8 @@ impl crate::App {
             {
                 self.vec_path_pick = Some(crate::vec_pick::PathPick::TexturePatternArt(host, slot));
                 eprintln!(
-                    "[ph2d-vec] texture pattern: pick armado -- clique na FORMA que vai ser a arte \
-                     (vazio = desiste)"
+                    "[ph2d-vec] texture pattern: pick armado -- clique na FORMA ou no GRUPO que \
+                     vai ser a arte (vazio = desiste)"
                 );
             }
             if pending_pp_pick && let Some(motif) = self.vec_pen.selected() {
@@ -9701,14 +9701,22 @@ impl crate::App {
                 // ⭐ **A arte dos PINCÉIS deste quadro** (plano 36, W3) — resolvida aqui pela
                 // mesma razão que o ladrilho do padrão o é: a crate de desenho não alcança a cena,
                 // e o guarda de ciclo tem de viver onde se pode medir.
-                &crate::brush_live::resolve(vec_scene, &|id| {
-                    crate::vec_entities::object_selection_for(
-                        sim,
-                        vec_scene,
-                        &self.vec_entities,
-                        id,
-                    )
-                }),
+                // ⭐⭐⭐ **MEMOIZADA** (medido 2026-08-30): sem memo, `50` pincéis com grupos de
+                // `16` e arte de geometria viva custam **14,28 ms — 85,5% de um quadro**, e um
+                // pincel só já custa `1,80%`. O `cooked()` é 95–98% disso. A chave contém as cinco
+                // coisas que a resolução lê, a POSE incluída.
+                self.brush_live.resolve(
+                    vec_scene,
+                    &|id| {
+                        crate::vec_entities::object_selection_for(
+                            sim,
+                            vec_scene,
+                            &self.vec_entities,
+                            id,
+                        )
+                    },
+                    &vec_xf,
+                ),
                 cam_affine,
                 vector_scene,
             );

@@ -169,9 +169,11 @@ impl FxLive {
             // ⭐ **A arte dos pincéis, UMA vez por re-cook** — e com a expansão de objecto, que só
             // aqui é alcançável (o `cook_batch` não recebe o mundo). Resolvê-la por LOTE seria a
             // mesma resposta N vezes.
-            let brushes = crate::brush_live::resolve(scene, &|id| {
-                crate::vec_entities::object_selection_for(sim, scene, map, id)
-            });
+            let brushes = crate::brush_live::resolve(
+                scene,
+                &|id| crate::vec_entities::object_selection_for(sim, scene, map, id),
+                xforms,
+            );
             for batch in crate::fx_atlas::pack(&sizes, MAX_FX_SIDE) {
                 if self.cook_batch(
                     gpu,

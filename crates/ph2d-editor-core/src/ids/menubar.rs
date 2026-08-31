@@ -67,3 +67,16 @@ pub const MENUBAR_FILE_SCENES: NodeId = hash_node_id("menubar_file_scenes");
 /// vetor. Desde que as réguas valem em todos os modos (Enio, 2026-08-30) esse sítio deixou de
 /// fazer sentido como o único — a régua é chrome de canvas, e o menu *View* é a casa dela.
 pub const MENUBAR_VIEW_RULERS: NodeId = hash_node_id("menubar_view_rulers");
+
+/// ⭐⭐ **REPOR A ARRUMAÇÃO** — devolve cada painel ao encaixe que ele declara, as colunas à largura
+/// de fábrica, e apaga o ficheiro `~/.ph2d/layout.txt`.
+///
+/// > *«Precisamos da opção de resetar. Coloque nas opções de Theme.»* — Enio, 2026-08-30
+///
+/// ⚠️ **Vive no menu do LOOK e não num painel de preferências**, porque foi onde ele o pediu — e a
+/// razão é boa: o que aquele menu já contém (tema, cantos, tamanho dos botões, espelhar a UI) é
+/// exactamente a mesma categoria de facto — *como o app se parece e se arruma*.
+///
+/// ⛔ **É um VERBO, não um estado:** ele não tem marca de «ligado» e clicá-lo duas vezes é o mesmo
+/// que uma. Por isso não entra no `MODULE_TRUTHS`, que é a tabela dos alternadores.
+pub const MENUBAR_VIEW_RESET_LAYOUT: NodeId = hash_node_id("menubar_view_reset_layout");

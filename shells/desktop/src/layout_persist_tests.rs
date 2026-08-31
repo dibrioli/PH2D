@@ -4,6 +4,7 @@ use super::*;
 
 fn sample() -> Layout {
     Layout {
+        open: vec!["audio_mixer".into()],
         slots: vec![
             ("audio_mixer".into(), Slot::LeftTop),
             ("physics".into(), Slot::RightBottom),
@@ -123,6 +124,7 @@ fn a_saved_arrangement_comes_back_but_a_forbidden_slot_does_not() {
     install(
         &mut hero,
         &Layout {
+            open: vec!["audio_mixer".into(), "um_painel_de_2030".into()],
             slots: vec![
                 // Legal: uma coluna de propriedades aceita as duas colunas.
                 ("audio_mixer".into(), Slot::LeftTop),
@@ -172,10 +174,84 @@ fn what_is_installed_is_what_gets_written_back() {
     );
 
     let before = Layout {
+        open: vec!["audio_mixer".into()],
         slots: vec![("audio_mixer".into(), Slot::LeftTop)],
         dock_w_left: Some(281.0),
         dock_w_right: Some(333.0),
     };
     install(&mut hero, &before);
     assert_eq!(current(&hero), before, "a volta ao ficheiro perdeu algo");
+}
+
+/// ⭐⭐⭐ **QUAIS PAINÉIS ESTAVAM ABERTOS volta também** — a metade que faltava.
+///
+/// ⛔ Sem ela a arrumação era **indistinguível de nenhuma**: a posição voltava certa e o painel que
+/// o artista tinha movido nascia FECHADO, então o ecrã ao reabrir era o de fábrica. Foi exactamente
+/// o que o 1.º smoke reportou (*«não funcionou. Voltou ao zero»*) — e o ficheiro estava certo.
+#[test]
+fn which_panels_were_open_comes_back_too() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(3));
+    assert!(
+        !hero.is_panel_visible("audio_mixer"),
+        "controlo: o mixer já nasce aberto e o gate mediria o default"
+    );
+    assert!(
+        hero.is_panel_visible("inspector"),
+        "controlo: o inspector já nasce fechado e a outra metade não seria medida"
+    );
+
+    install(
+        &mut hero,
+        &Layout {
+            // ⚠️ A lista guarda a DIFERENÇA: uma entrada INVERTE o que o painel declara.
+            open: vec!["audio_mixer".into(), "inspector".into()],
+            ..Layout::default()
+        },
+    );
+    assert!(
+        hero.is_panel_visible("audio_mixer"),
+        "um painel que o artista tinha aberto voltou fechado"
+    );
+    assert!(
+        !hero.is_panel_visible("inspector"),
+        "um painel que o artista tinha FECHADO voltou aberto — a lista só sabe abrir"
+    );
+}
+
+/// ⚠️ **E a projecção grava a mesma diferença** — senão a volta perde-se na escrita.
+#[test]
+fn the_projection_writes_only_the_difference_from_what_each_panel_declares() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = ph2d_editor::HeroScreen::new(ph2d_editor::NodeId(4));
+    assert_eq!(
+        current(&hero).open,
+        Vec::<String>::new(),
+        "um app que ninguém abriu nem fechou já tem painéis a gravar"
+    );
+    hero.panel_visibility.insert("audio_mixer", true);
+    assert_eq!(current(&hero).open, vec!["audio_mixer".to_string()]);
+    hero.panel_visibility.insert("audio_mixer", false);
+    assert_eq!(
+        current(&hero).open,
+        Vec::<String>::new(),
+        "fechar de volta deixou o painel na lista — o ficheiro cresce e nunca encolhe"
+    );
+}
+
+/// ⛔ **As duas listas não se confundem no hash.**
+#[test]
+fn the_open_list_and_the_slot_list_do_not_collide_in_the_hash() {
+    let a = Layout {
+        open: vec!["x".into()],
+        ..Layout::default()
+    };
+    let b = Layout {
+        slots: vec![("x".into(), Slot::LeftTop)],
+        ..Layout::default()
+    };
+    assert_ne!(hash(&a), hash(&b));
+    let mut c = a.clone();
+    c.open.push("y".into());
+    assert_ne!(hash(&c), hash(&a), "abrir um painel não moveu o hash");
 }

@@ -396,6 +396,34 @@ pub fn resolve_tab_drop(hero: &mut HeroScreen) {
     // desistir. ⛔ Nenhuma mensagem — um aviso por cada gesto abandonado seria ruído.
 }
 
+/// ⭐⭐ **REPÕE A ARRUMAÇÃO DE FÁBRICA** — a porta do *Reset Panel Layout*.
+///
+/// > *«Precisamos da opção de resetar.»* — Enio, 2026-08-30
+///
+/// As **três** coisas que uma arrumação é, e as três têm de voltar juntas:
+///
+/// | o que volta | de onde |
+/// |---|---|
+/// | onde cada painel está | as excepções de encaixe apagadas ⇒ vale o `DEFAULT_SLOT` |
+/// | quais estão abertos | vale o `DEFAULT_VISIBLE` |
+/// | a largura das colunas | as escolhas apagadas ⇒ vale o `ChromeBands::DEFAULT` |
+///
+/// ⛔ **Repor duas de três não é repor**: o artista clica, vê o ecrã mudar, e conclui que funcionou
+/// — e o terço que ficou volta a mordê-lo mais tarde, sem ligação com o gesto que o deixou.
+///
+/// ⚠️ **Ele não toca no ficheiro.** O que está gravado é uma **projecção** do que o app tem agora, e
+/// o detector do quadro grava a projecção vazia sozinho. *Apagar o ficheiro aqui seria um segundo
+/// caminho para o mesmo facto.*
+pub fn reset(hero: &mut HeroScreen) {
+    hero.store.reset_panel_layout();
+    crate::panel::with_registry_opt(|reg| {
+        for p in reg.panels() {
+            hero.panel_visibility
+                .insert(p.manifest.id, p.manifest.default_visible);
+        }
+    });
+}
+
 /// Pinta as zonas de largada e a etiqueta que segue o dedo. No-op sem arrasto em curso.
 #[allow(clippy::too_many_arguments)]
 pub fn paint_drag_overlay(

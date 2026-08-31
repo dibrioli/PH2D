@@ -10838,6 +10838,15 @@ impl crate::App {
             // Frame profiler: panel/chrome Vello encode (includes the painter panel's Paper preview).
             let hero_t0 = frame_prof_on().then(Instant::now);
             paint_hero_screen(hero, viewport, vector_scene, paint_ctx.text);
+            // ⭐⭐ **A ARRUMAÇÃO é detectada no QUADRO, não no hook de ponteiro** (decisão D4).
+            //
+            // ⛔⛔ Ela viveu no `forward_to_hero` durante uma entrega, com os outros dois
+            // inquilinos da persistência — e **não funcionava para a largura da coluna**: o
+            // arrasto da borda faz `return` no Move E no Up (`input_dispatch`), então nunca
+            // alcançava o detector. O mesmo valia para a largada de uma aba, que é resolvida
+            // DENTRO do `paint`. *Um detector no caminho de um gesto só vê os gestos que passam
+            // por ele; o quadro vê todos, porque é onde o estado assenta.*
+            crate::layout_persist::save_if_changed(hero);
             if let Some(t0) = hero_t0 {
                 FRAME_PROF_HERO_US.with(|c| c.set(t0.elapsed().as_micros() as u64));
             }

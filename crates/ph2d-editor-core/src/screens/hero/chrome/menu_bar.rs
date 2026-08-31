@@ -35,6 +35,16 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         ContextMenuKind::ThemeSelector
     } else if id == ids::MENUBAR_FILE_SCENES {
         ContextMenuKind::SceneList
+    } else if id == ids::MENUBAR_VIEW_RESET_LAYOUT {
+        // ⭐⭐ **Repor a arrumação** (Enio, 2026-08-30). Ver [`super::super::slot_tabs::reset`].
+        //
+        // ⚠️ **Não apaga o ficheiro, e não precisa:** a arrumação gravada é uma **projecção** do
+        // que o app tem agora, e o detector do quadro grava a projecção vazia por si. *Apagar o
+        // ficheiro seria um segundo caminho para o mesmo facto, e o dia em que os dois
+        // discordassem seria silencioso.*
+        super::super::slot_tabs::reset(hero);
+        hero.store.close_context_menu();
+        return true;
     } else if id == ids::MENUBAR_VIEW_RULERS {
         // ⚠️ **A régua é estado do HERO, não da ferramenta** — o mesmo campo que a caixa do painel
         // do vetor mexe. Duas portas, um valor.

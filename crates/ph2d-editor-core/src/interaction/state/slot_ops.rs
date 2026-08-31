@@ -62,6 +62,14 @@ impl WidgetStore {
         self.panel_slot.insert(panel, slot);
     }
 
+    /// ⭐ **Apaga as excepções** — o encaixe de cada painel e a largura de cada coluna voltam ao
+    /// que o produto declara. Ver `slot_tabs::reset`, que é a porta do produto.
+    pub fn reset_panel_layout(&mut self) {
+        self.panel_slot.clear();
+        self.dock_w_left = None;
+        self.dock_w_right = None;
+    }
+
     /// O dedo desceu sobre a aba de `panel`, em `(x, y)`.
     pub fn begin_tab_drag(&mut self, panel: NodeId, x: f32, y: f32) {
         self.tab_drag = Some(TabDragAnchor {

@@ -30,9 +30,20 @@
 use ph2d_editor::screens::slot::Slot;
 use std::path::PathBuf;
 
-/// A arrumação que viaja: as excepções de encaixe (por `Panel::ID`) e as duas larguras.
+/// A arrumação que viaja: **quais painéis estão abertos**, as excepções de encaixe e as duas
+/// larguras.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Layout {
+    /// ⭐⭐ **Os painéis ABERTOS** — ordenado pelo id.
+    ///
+    /// ⛔⛔ **Isto faltava, e foi por isso que o 1.º smoke leu como *«voltou ao zero»***: a posição
+    /// era guardada e restaurada correctamente, e o painel que o artista tinha movido **nasce
+    /// fechado** ⇒ ao reabrir o app não havia nada no ecrã a mostrá-lo. *Uma arrumação que guarda
+    /// ONDE sem guardar SE é indistinguível de nenhuma arrumação.*
+    ///
+    /// ⚠️ **Só os que diferem do `DEFAULT_VISIBLE`**, pela razão dos encaixes: um painel que nasce
+    /// amanhã abre como ele próprio declara, sem uma linha de migração.
+    pub open: Vec<String>,
     /// `(Panel::ID, encaixe)`, ordenado pelo id — a ordem é o que torna o hash estável.
     pub slots: Vec<(String, Slot)>,
     pub dock_w_left: Option<f32>,
@@ -55,6 +66,9 @@ pub fn serialize(l: &Layout) -> String {
     }
     if let Some(w) = l.dock_w_right {
         let _ = writeln!(s, "dock_w_right={w}");
+    }
+    for id in &l.open {
+        let _ = writeln!(s, "open.{id}=1");
     }
     for (id, slot) in &l.slots {
         let _ = writeln!(s, "slot.{id}={}", slot.wire());
@@ -84,10 +98,16 @@ pub fn parse(text: &str) -> Layout {
                     && let Some(slot) = Slot::from_wire(value)
                 {
                     l.slots.push((id.to_string(), slot));
+                } else if let Some(id) = key.strip_prefix("open.")
+                    && value == "1"
+                {
+                    l.open.push(id.to_string());
                 }
             }
         }
     }
+    l.open.sort();
+    l.open.dedup();
     l.slots.sort();
     l
 }
@@ -123,6 +143,13 @@ pub fn hash(l: &Layout) -> u64 {
         h ^= u64::from(b);
         h = h.wrapping_mul(PRIME);
     };
+    for id in &l.open {
+        for &b in id.as_bytes() {
+            feed(b);
+        }
+        feed(0);
+    }
+    feed(0xff); // fronteira entre as duas listas: `open` e `slots` não se confundem
     for (id, slot) in &l.slots {
         for &b in id.as_bytes() {
             feed(b);
@@ -166,15 +193,23 @@ pub fn should_save(previous: Option<u64>, now: u64) -> bool {
 pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
     use ph2d_editor::screens::layout::DockSide;
     let mut slots: Vec<(String, Slot)> = Vec::new();
+    let mut open: Vec<String> = Vec::new();
     ph2d_editor::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
-            if let Some(s) = hero.store.panel_slot(p.manifest.panel_node_id) {
-                slots.push((p.manifest.id.to_string(), s));
+            let m = &p.manifest;
+            if let Some(s) = hero.store.panel_slot(m.panel_node_id) {
+                slots.push((m.id.to_string(), s));
+            }
+            // ⚠️ Só a DIFERENÇA do que o painel declara — ver `Layout::open`.
+            if hero.is_panel_visible(m.id) != m.default_visible {
+                open.push(m.id.to_string());
             }
         }
     });
     slots.sort();
+    open.sort();
     Layout {
+        open,
         slots,
         // ⚠️ `dock_width` devolve sempre um número (o default quando ninguém arrastou), então
         // gravá-lo directamente escreveria o default como se fosse uma escolha. O que se grava é a
@@ -190,7 +225,15 @@ pub fn current(hero: &ph2d_editor::HeroScreen) -> Layout {
 /// o cabeçalho do módulo.
 pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
     use ph2d_editor::screens::layout::DockSide;
+    let mut to_open: Vec<(&'static str, bool)> = Vec::new();
     ph2d_editor::panel::with_registry_opt(|reg| {
+        // ⭐ **Quais painéis estavam abertos.** A lista guarda a DIFERENÇA, então uma entrada
+        // inverte o que o painel declara — abre o que nasce fechado e fecha o que nasce aberto.
+        for p in reg.panels() {
+            if l.open.iter().any(|id| id == p.manifest.id) {
+                to_open.push((p.manifest.id, !p.manifest.default_visible));
+            }
+        }
         for (id, slot) in &l.slots {
             let Some(p) = reg.panels().iter().find(|p| p.manifest.id == id.as_str()) else {
                 continue; // um painel que já não existe nesta build
@@ -201,12 +244,39 @@ pub fn install(hero: &mut ph2d_editor::HeroScreen, l: &Layout) {
             hero.store.set_panel_slot(p.manifest.panel_node_id, *slot);
         }
     });
+    for (id, visible) in to_open {
+        hero.panel_visibility.insert(id, visible);
+    }
     if let Some(w) = l.dock_w_left {
         hero.store.set_dock_width(DockSide::Left, w);
     }
     if let Some(w) = l.dock_w_right {
         hero.store.set_dock_width(DockSide::Right, w);
     }
+}
+
+/// ⭐⭐ **GRAVA se mudou** — chamado **no QUADRO**, depois do `paint_hero_screen`.
+///
+/// ⛔⛔ **Ele viveu no hook de ponteiro (`forward_to_hero`) durante uma entrega, ao lado dos outros
+/// dois inquilinos da persistência, e NÃO FUNCIONAVA para a largura da coluna.** O arrasto da borda
+/// faz `return` no Move **e** no Up (`input_dispatch`), então nunca chegava lá; e a largada de uma
+/// aba é resolvida **dentro** do `paint`, depois do hook. *Um detector no caminho de um gesto só vê
+/// os gestos que passam por ele; o quadro vê todos, porque é onde o estado assenta.*
+///
+/// ⚠️ O custo é uma projecção por quadro: `n` consultas a um `BTreeMap` (só os painéis com
+/// excepção, que é **zero** enquanto o artista não arrumar nada) mais um FNV sobre ela.
+pub fn save_if_changed(hero: &ph2d_editor::HeroScreen) {
+    let now = current(hero);
+    let h = hash(&now);
+    let previous = LAST_LAYOUT_HASH.with(|c| c.replace(Some(h)));
+    if should_save(previous, h) {
+        save(&now);
+    }
+}
+
+thread_local! {
+    /// Último hash da arrumação observada. `None` = ainda não observada nesta sessão.
+    static LAST_LAYOUT_HASH: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
 }
 
 #[cfg(test)]

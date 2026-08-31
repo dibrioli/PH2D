@@ -84,6 +84,9 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [(NodeId, &'static str, Opti
             (ids::CTX_MENU_RAIL_SIZE_LARGE, "— Rail Buttons: Large", None),
             (ids::CTX_MENU_MIRROR_UI, "— Mirror UI", None),
             (ids::CTX_MENU_SHOW_STATS, "— Show Statistics", None),
+            // ⭐ **Repor a arrumação** (Enio, 2026-08-30). ⚠️ Um VERBO no meio de estados: o `—` que
+            // os outros levam marca *«isto é um sub-estado do Look»*, e este não é um estado.
+            (ids::MENUBAR_VIEW_RESET_LAYOUT, "Reset Panel Layout", None),
             // "Show Grid" removed — Grid Settings panel now owns the
             // grid visibility toggle (Display section "Show grid").
         ],

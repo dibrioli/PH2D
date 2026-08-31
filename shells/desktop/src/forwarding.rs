@@ -95,8 +95,6 @@ pub fn forward_to_hero(
     // Idem para as preferências de UI (carácter da UI viva + reduced motion): a escolha é um clique
     // numa row do pill Settings → Motion, logo este mesmo hook de ponteiro apanha-a.
     persist::prefs_if_changed(hero);
-    // ⭐ E a ARRUMAÇÃO (decisão D4): que painel está em que encaixe, e a largura das colunas.
-    persist::layout_if_changed(hero);
     reparent
 }
 

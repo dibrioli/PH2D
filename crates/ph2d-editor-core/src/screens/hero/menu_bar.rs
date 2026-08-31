@@ -75,12 +75,13 @@ pub const MENUS: [(NodeId, &str, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 5] = [
+pub const OWN_ROWS: [NodeId; 6] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
     ids::MENUBAR_VIEW_THEME,
     ids::MENUBAR_VIEW_RULERS,
+    ids::MENUBAR_VIEW_RESET_LAYOUT,
 ];
 
 /// Padding horizontal de cada título dentro do seu alvo.

@@ -52,7 +52,7 @@ mod rulers;
 // (`super::rulers::open_edges`), nunca reter aqui um `use` morto nem calar o aviso. *Um import
 // que só existe para um teste o alcançar é uma dependência invisível entre dois ficheiros.*
 use rulers::{boundary_edges, edges, irregular, span, still_broken, worse};
-use target::{f1_follows_target, sizing_field};
+use target::sizing_field;
 
 impl Sculpt3dScene {
     /// **A RETOPOLOGIA POR MAPA DE GRADE INTEIRA.** Devolve o mesmo
@@ -94,15 +94,9 @@ impl Sculpt3dScene {
         // *Foi isto que ele fotografou e chamou de «pontas com baixa resolução».*
         let target = ph2d_quadflow::edge_for_detail_by_count(&reference, detail);
 
-        // ⭐⭐⭐ **A FASE ZERO SEGUE O ALVO** — ver [`f1_follows_target`].
-        let work = if f1_follows_target() {
-            ph2d_quadchain::phase_zero(&reference, target)
-        } else {
-            let mut w = reference.clone();
-            ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
-            w.triangulate();
-            w
-        };
+        // ⭐⭐⭐ **A FASE ZERO** — as duas decisões dela (seguir o alvo, e graduar a
+        // densidade) vivem no [`target`], com as tabelas medidas ao lado.
+        let work = target::phase_zero(&reference, target);
 
         // ── F2 + F3 + G1 + G2.
         let mut dual = ph2d_crossfield::Dual::build(&work);

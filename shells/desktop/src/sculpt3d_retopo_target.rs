@@ -281,3 +281,48 @@ pub(super) fn smooth_in_log(mesh: &Mesh, per_vertex: &mut [f32], rounds: usize) 
         *h = l.exp();
     }
 }
+
+/// ⭐⭐⭐ **A FASE ZERO DO BOTÃO** — as duas decisões dela, num sítio só.
+///
+/// Ela mora aqui e não no chamador porque as duas são sobre **o alvo da malha de trabalho**,
+/// que é o assunto deste módulo: *seguir o alvo do quad* ([`f1_follows_target`], medida e
+/// **recusada**) e *graduar a densidade dentro do orçamento*
+/// ([`ph2d_remesh_iso::remesh_isotropic_graded`]).
+///
+/// # ⭐⭐⭐ A GRADUAÇÃO, medida em 2026-08-31 pela régua POR PONTA
+///
+/// ⛔ *O ALCANCE é um extremo global e esconde uma ponta cortada atrás de outra que
+/// sobreviveu* — na `sculpt_antes` ele piora enquanto as pontas cortadas caem de `3` para `1`.
+///
+/// | peça (`Detail 0,85`) | pontas cortadas | furos na saída | alcance |
+/// |---|---|---|---|
+/// | `espinhos:6 σ=0,30` | `0/6` → `0/6` | `0` → `0` | `+2,8 %` → `+1,8 %` |
+/// | ⭐ `espinhos:6 σ=0,14` | **`5/6` → `0/6`** | `0` → `0` | `+3,7 %` → `+0,3 %` |
+/// | ⭐⭐⭐ `espinhos:6 σ=0,07` | pior `−20,5 %` → **`−7,6 %`** | ⛔ `4` → ⭐ **`0`** | `−15,5 %` → ⭐ **`−3,5 %`** |
+/// | ⭐⭐ `_base_sculpt` | `3/4` pior `−41,2 %` → **`−8,4 %`** | `0` → `0` | ⭐⭐ `−41,8 %` → **`−11,1 %`** |
+/// | ⭐ `sculpt_antes` | **`3/6` → `1/6`** | ⭐ `4` → **`0`** | ⚠️ `−13,6 %` → `−16,8 %` |
+///
+/// ⭐ **Cinco de cinco melhoram ou empatam nas pontas cortadas E nos furos**, e a agulha mais
+/// fina — que saía com `χ = 1` e `4` arestas de bordo — passa a **fechar**. Preço: `+7 %` a
+/// `+15 %` de faces na malha de trabalho, contra os `7`–`8×` da versão que só afinava.
+///
+/// ⛔⛔ **A escolha é DAQUI, e não de uma env lida dentro do remalhador.** A 1.ª versão desta
+/// wave lia `PH2D_ISO_ADAPT` dentro do laço, logo alcançava **todos** os chamadores — e o gate
+/// `the_ear_does_not_ship_an_edge_across_the_piece`, que corre o motor **legado**, reprovou.
+/// *O doc do `remesh_with` já escrevia a lei que essa versão violava: «por argumento e não por
+/// variável de ambiente — uma bandeira global é uma corrida escrita à mão».*
+///
+/// ⚠️ `PH2D_ISO_ADAPT=0` volta ao remalhador uniforme, para bissecar.
+pub(super) fn phase_zero(reference: &Mesh, target: f32) -> Mesh {
+    if f1_follows_target() {
+        return ph2d_quadchain::phase_zero(reference, target);
+    }
+    let mut w = reference.clone();
+    if ph2d_remesh_iso::adaptive_on() {
+        ph2d_remesh_iso::remesh_isotropic_graded(&mut w, ph2d_remesh_iso::ALPHA);
+    } else {
+        ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
+    }
+    w.triangulate();
+    w
+}

@@ -89,13 +89,33 @@ fn the_artists_piece_through_the_button() {
     // as duas grandezas nunca tinham sido impressas na mesma linha.
     {
         let reference = scene.mesh().clone();
-        let target = ph2d_quadflow::edge_for_detail_with(
-            &reference,
-            detail,
-            ph2d_quadflow::GLOBAL_FLOOR_IN_INPUT_EDGES,
-        );
-        let mut work = reference.clone();
-        ph2d_remesh_iso::remesh_isotropic(&mut work, ph2d_remesh_iso::ALPHA);
+        // ⛔⛔ **`edge_for_detail_by_count` e NÃO `edge_for_detail_with`** — o produto trocou
+        // de lei em 2026-08-28 (a faixa passou a ser CONTADA e ancorada na ÁREA, porque o
+        // piso da outra é a aresta média da malha da cena e o botão deixava de ser
+        // idempotente) e esta sonda ficou com a lei velha. *Medido 2026-08-31: ela imprimia
+        // `0,03861` enquanto o botão usava `0,03961` — uma sonda que calcula o alvo por
+        // outra lei mede outro programa.*
+        let target = ph2d_quadflow::edge_for_detail_by_count(&reference, detail);
+        // ⛔⛔⛔ **E a fase zero tem de ser A DO PRODUTO.** Este bloco chamava sempre o
+        // `remesh_isotropic(ALPHA)`, logo com `PH2D_F1_TARGET=1` a linha `F1` saía
+        // **idêntica** à do controlo e o relatório dizia que a env era inerte quando ela
+        // estava a mudar a saída. *Um diagnóstico que não corre o caminho que o produto
+        // corre acusa o sítio errado.* ⚠️ O `PH2D_ISO_ADAPT` já era honrado por acidente:
+        // ele é lido **dentro** do `remesh_isotropic`.
+        let mut work = if std::env::var("PH2D_F1_TARGET").as_deref() == Ok("1") {
+            ph2d_quadchain::phase_zero(&reference, target)
+        } else {
+            let mut w = reference.clone();
+            // ⚠️ **Espelha a escolha do produto** (a porta graduada, ver
+            // [`ph2d_remesh_iso::remesh_isotropic_graded`]) — uma sonda que remalha de outra
+            // maneira mede outro programa.
+            if ph2d_remesh_iso::adaptive_on() {
+                ph2d_remesh_iso::remesh_isotropic_graded(&mut w, ph2d_remesh_iso::ALPHA);
+            } else {
+                ph2d_remesh_iso::remesh_isotropic(&mut w, ph2d_remesh_iso::ALPHA);
+            }
+            w
+        };
         work.triangulate();
         eprintln!(
             "   CENA: {} verts {} faces | aresta media {:.5} | alvo do slider {:.5}",

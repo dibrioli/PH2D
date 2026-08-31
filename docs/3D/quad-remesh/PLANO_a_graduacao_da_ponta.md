@@ -340,3 +340,210 @@ que o dono nunca nomeou em report nenhum.
 
 ⇒ **A chave nasce LIGADA.** `PH2D_RETOPO_TIPKEY=0` devolve o comportamento anterior, para o A/B
 ser dele.
+
+---
+
+# ⛔⛔⛔ PARTE II — A AMPUTAÇÃO (report do dono, 31/08: *«vamos corrigir as pontas»*)
+
+## §17 — ONDE a ponta morre, medido ponta a ponta
+
+`_base_sculpt.obj` (a escultura mais recente do dono), `Detail 0,85`. A régua é o **suporte
+por ponta** (`tips`), que mede cada ápice em separado — ⛔ o ALCANCE é um extremo global e
+esconde uma ponta cortada atrás de outra que sobreviveu.
+
+| | fase zero (F1) | saída |
+|---|---|---|
+| ⛔ **o que shipa** | `3` de `4` cortadas · pior **`−6,9 %`** | `3` de `4` · pior ⛔ **`−41,2 %`** |
+| ⭐ `PH2D_ISO_ADAPT=1` | ⭐⭐⭐ **`0` de `4`** · pior `−0,2 %` | `1` de `4` · pior `−4,9 %` |
+
+⭐ **Alcance final: `−41,8 %` contra `−6,3 %`.**
+
+## §18 — ⭐⭐⭐ E a causa está NUMA RAZÃO QUE JÁ ERA IMPRESSA: `ALVO/F1 = 0,34×`
+
+| | aresta média | |
+|---|---|---|
+| a malha de trabalho que o F1 entrega | `0,1146` | |
+| ⭐ o alvo de quad que o slider pede | `0,0386` | **`2,97×` mais fino** |
+
+⛔⛔⛔ **A cadeia é obrigada a produzir quads TRÊS VEZES mais finos que os triângulos que
+ela lê.** Uma ponta cujo raio local é menor que `0,1146` **não sobrevive ao passe de
+colapso**, e morre antes de o campo cruzado existir.
+
+⚠️ **E não é uma propriedade desta peça: é sistémica.** A `sculpt_antes.obj` no mesmo
+`Detail 0,85` mede `ALVO/F1 = 0,41×`. *As duas metades do botão são ancoradas em coisas
+diferentes:*
+
+- o **F1** remalha para [`ph2d_remesh_iso::ALPHA`] `× diagonal da caixa` — uma fracção do
+  **bounding box**, que **não sabe nada do slider**;
+- o **alvo do quad** sai de `edge_for_detail_by_count`, ancorado na **ÁREA** e numa
+  **contagem** — a lei que a wave de 28/08 escolheu precisamente por o bounding box não
+  servir.
+
+⇒ ⭐⭐ **A âncora da fase zero é a que ficou para trás naquela wave.** ⚠️ E ela é
+auto-derrotante numa peça com espinhos: *um espinho longo infla a diagonal, logo uma peça
+com espinhos recebe uma malha de trabalho MAIS GROSSA precisamente por ter espinhos.*
+
+## §19 — ⚠️ A recusa que tem de ser RECONFERIDA antes de qualquer cura
+
+`PH2D_F1_TARGET=1` (a fase zero segue o alvo) está registada como **REFUTADA** — e a
+medição correu na **fixtura sintética** `espinhos:6`, não nas peças do dono. *Uma refutação
+vale sobre a fixtura em que correu*, e esta linha pagou essa lição duas vezes em 30/08.
+
+⇒ **A reconferência corre primeiro.** Só depois se desenha cura nenhuma.
+
+## §20 — ⛔⛔ A RECONFERÊNCIA, e um defeito na PRÓPRIA SONDA que ela expôs
+
+Com `PH2D_F1_TARGET=1` a linha `F1` do relatório saiu **idêntica** à do controlo — e a env
+estava a mudar a saída. ⛔ **O bloco de diagnóstico da fase zero não corria o caminho do
+produto:** ele chamava sempre `remesh_isotropic(ALPHA)`.
+
+⚠️ **E havia uma segunda divergência no mesmo bloco:** ele calculava o alvo do slider por
+`edge_for_detail_with` enquanto o produto usa `edge_for_detail_by_count` desde 28/08 —
+imprimia `0,03861` onde o botão usava `0,03961`.
+
+⇒ *Uma sonda que calcula por outra lei mede outro programa.* As duas estão curadas; a linha
+`F1` passa a seguir a env, e o alvo passa a ser o do produto.
+
+## §21 — A tabela da reconferência (as linhas `F1` do controlo, as de saída válidas)
+
+`Detail 0,85`, os dois modos contra o que shipa:
+
+| peça | | alcance | `χ` · bordo · não-manif. | pontas cortadas |
+|---|---|---|---|---|
+| `_base_sculpt` | ⛔ o que shipa | ⛔ `−41,8 %` | ⭐ `2` · `0` · `0` | `3` de `4`, pior `−41,2 %` |
+| | `PH2D_F1_TARGET=1` | `−9,4 %` | `−1` · `24` · `4` | `3` de `4`, pior `−14,4 %` |
+| | ⭐ `PH2D_ISO_ADAPT=1` | ⭐ **`−6,3 %`** | `0` · `8` · `1` | ⭐ **`1` de `4`**, pior `−4,9 %` |
+| `sculpt_antes` | ⛔ o que shipa | `−13,6 %` | ⭐ `1` · `4` · `0` | `3` de `6`, pior `−34,0 %` |
+| | `PH2D_F1_TARGET=1` | `−11,0 %` | ⛔ `−5` · `46` · `2` | `3` de `6`, pior `−23,5 %` |
+| | `PH2D_ISO_ADAPT=1` | — | ⛔ `−7` · `62` · `2` | — |
+
+⭐⭐ **A recusa do `PH2D_F1_TARGET` HOLDS na `sculpt_antes`** (troca `4` bordo por `46` para
+ganhar `2,6` pontos de alcance) — e na `_base_sculpt` ela é uma **troca**, não uma recusa.
+
+⭐⭐⭐ **E a graduada bate a uniforme-fina nas DUAS colunas** na `_base_sculpt`: melhor alcance
+(`−6,3` contra `−9,4`) **e** melhor topologia (`8` bordo contra `24`), com contagens de malha
+de trabalho parecidas (`21 038` contra `~27 000`). ⇒ *não é «quantas faces»: é se a malha de
+trabalho está adaptada à forma.* A que fica grossa onde a forma é chapada é a que o campo
+cruzado sabe ler.
+
+⇒ **A cura tem a forma que a §5 desenhou:** graduar **sem inflar** — banda simétrica mais
+renormalização da contagem. Na `sculpt_antes` a grelha adaptativa entregava `ALVO/F1 = 1,28×`
+(uma malha de trabalho **mais fina que os quads**, `33 156` faces); com o orçamento reposto ela
+tem de aterrar na contagem que a cadeia já digere.
+
+## §22 — ⭐⭐⭐ A RENORMALIZAÇÃO: a topologia fica PERFEITA, e a amputação muda de dono
+
+Construída em 31/08 ([`SizingGrid::build`](../../../crates/ph2d-remesh-iso/src/sizing.rs)):
+banda **simétrica** (`[alvo/√R, alvo·√R]`) mais o factor `√(N_previsto/N_pedido)` medido
+**pela própria grelha** (o `at()` leva o mínimo dos 27 vizinhos, logo normalizar o campo por
+vértice e consultar a grelha deixaria a inflação de pé).
+
+`Detail 0,85`:
+
+| peça | | malha F1 | pontas cortadas no F1 | saída | alcance |
+|---|---|---|---|---|---|
+| `_base_sculpt` | o que shipa | `3 036` | `3` de `4`, pior `−6,9 %` | `χ 2` · `0` bordo | ⛔ `−41,8 %` |
+| | ⭐ **graduada + renorm.** | `3 544` (**`+17 %`**) | ⭐ `1` de `4`, pior `−4,2 %` | ⭐ `χ 2` · `0` · `>60 = 0` | `−26,0 %` |
+| | graduada **sem** renorm. | ⛔ `21 038` (`7×`) | `0` de `4` | ⛔ `χ 0` · `8` bordo · `1` n-m | ⭐ `−6,3 %` |
+| `sculpt_antes` | o que shipa | `3 982` | `2` de `6`, pior `−11,5 %` | `χ 1` · `4` bordo | `−13,6 %` |
+| | ⭐ **graduada + renorm.** | `4 578` (**`+15 %`**) | ⭐ `2` de `6`, pior **`−3,9 %`** | ⭐⭐ `χ 2` · **`0`** · `>60 = 0` | `−13,8 %` |
+| | graduada **sem** renorm. | ⛔ `33 156` (`8,3×`) | — | ⛔ `χ −7` · `62` bordo | — |
+
+⭐⭐⭐ **A renormalização faz exactamente o que prometia:** o orçamento fica (`+15/17 %` em vez
+de `7`–`8×`) e **a avaria de topologia desaparece** — na `sculpt_antes` a saída fica *melhor
+que a linha de base* (`4` bordo → `0`, `χ 1` → `2`, `>60` → `0`).
+
+⛔⛔ **Mas o alcance final só melhora em metade do caminho** (`−41,8 % → −26,0 %`) e na outra
+peça fica **plano**. ⇒ *com o mesmo orçamento, graduar não chega:* `3 544` faces não seguram
+uma agulha **e** o corpo.
+
+⭐⭐ **E a medição separa os dois efeitos, que estavam colados:**
+
+| | topologia | pontas |
+|---|---|---|
+| **graduar** (a mesma contagem) | ⭐ melhora | melhora metade |
+| **orçamento** (mais faces) | ⛔ piora | ⭐ salva |
+
+⇒ ⚠️ **Graduar COMPRA margem de topologia.** É por isso que a célula seguinte — a fase zero no
+**alvo do quad** *e* graduada dentro desse orçamento — é a que falta correr: ela pede o
+orçamento que salva a ponta, com a graduação que paga a topologia.
+
+## §23 — ⭐⭐⭐ A célula `(1,1)`: o F1 fica PERFEITO e a saída ainda corta ⇒ o amputador MUDOU DE DONO
+
+Fase zero no **alvo do quad** (`PH2D_F1_TARGET=1`) **e** graduada dentro desse orçamento:
+
+| peça | malha F1 | `ALVO/F1` | pontas cortadas no **F1** | saída | alcance |
+|---|---|---|---|---|---|
+| `_base_sculpt` | `22 960` | ⭐ `0,99×` | ⭐⭐⭐ **`0` de `4`**, pior `−0,2 %` | `χ 1` · `6` bordo · `3` n-m | ⭐ **`−9,0 %`** |
+| `sculpt_antes` | `23 202` | ⭐ `0,99×` | ⭐ `1` de `6`, pior `−3,5 %` | ⛔ `χ −2` · `10` bordo · `2` n-m | `−14,3 %` |
+
+⭐⭐⭐ **A fase zero deixa de cortar e a SAÍDA ainda corta `2` de `4` a `−23,6 %`.** ⇒ *a
+amputação que sobra nasce a jusante do F1* — no campo, no traçado ou no mapa.
+
+⚠️ **E parte dela é RESOLUÇÃO, não defeito:** a `_base_sculpt` tem uma agulha de raio local
+`≈ 0,037` e o quad pedido a `Detail 0,85` mede `0,0399`. *Uma grade de quads tão grossos como o
+raio do tubo não o pode envolver* — `2π·0,037 / 0,04 ≈ 5,8` quads à volta, que é o limite.
+⇒ **há uma parte desta perda que só sobe com o `Detail`**, e dizê-lo é honesto, não desistir.
+
+## §24 — O quadro completo, julgado pela ordem do próprio `worse` (furos primeiro)
+
+| peça | configuração | furos | alcance |
+|---|---|---|---|
+| `_base_sculpt` | hoje | ⭐ `0` | ⛔ `−41,8 %` |
+| | ⭐ **graduada + renorm.** | ⭐ `0` | `−26,0 %` |
+| | no alvo do quad | `6` | ⭐ `−9,0 %` |
+| `sculpt_antes` | hoje | `4` | `−13,6 %` |
+| | ⭐ **graduada + renorm.** | ⭐⭐ **`0`** | `−13,8 %` |
+| | no alvo do quad | ⛔ `10` | `−14,3 %` |
+
+⇒ ⭐⭐⭐ **A graduada renormalizada é a ÚNICA que nunca piora a chave da frente**, e é melhor ou
+igual à linha de base em **todas** as colunas das duas peças. *A do alvo do quad compra a ponta
+com buracos, e buracos foram a queixa do dono três vezes.*
+
+## §25 — ⛔ A BANDA SIMÉTRICA foi construída, MEDIDA e REVERTIDA
+
+A mutação que a apagava **sobreviveu aos dois gates**: com a renormalização por cima, o factor
+sai `> 1` e empurra tudo para cima do alvo — *o tecto deixa de ser observável no intervalo*.
+⇒ **Ela teve de ganhar o lugar com um A/B ponta a ponta**, e perdeu:
+
+| peça | banda simétrica | ⭐ tecto `1` (o original) |
+|---|---|---|
+| `_base_sculpt` | `3/4` cortadas, pior `−24,3 %` · alcance `−26,0 %` | ⭐ `3/4`, pior **`−8,4 %`** · **`−11,1 %`** |
+| `sculpt_antes` | `2/6`, pior `−24,3 %` · `−13,8 %` | ⭐ **`1/6`**, pior `−25,1 %` · `−16,8 %` |
+
+⇒ **Fica só a renormalização.** ⚠️ *Uma mutação que sobrevive pode ser código inerte — ou, como
+aqui, código que faz a coisa errada e que a régua certa recusa.*
+
+## §26 — ⭐⭐⭐ A varredura FINAL, com o código que fica
+
+| `σ` | pontas cortadas na fase zero | furos na saída | alcance |
+|---|---|---|---|
+| `0,30` | `0/6` → `0/6` | `0` → `0` | `+2,8 %` → `+1,8 %` |
+| ⭐ `0,14` | **`5/6` → `0/6`** | `0` → `0` | `+3,7 %` → `+0,3 %` |
+| ⭐⭐⭐ `0,07` | `6/6` pior `−20,5 %` → **`−7,6 %`** | ⛔ `4` → ⭐ **`0`** | `−15,5 %` → ⭐ **`−3,5 %`** |
+| ⭐⭐ `_base_sculpt` | `3/4` pior `−41,2 %` → **`−8,4 %`** | `0` → `0` | ⭐⭐ `−41,8 %` → **`−11,1 %`** |
+| ⭐ `sculpt_antes` | **`3/6` → `1/6`** | ⭐ `4` → **`0`** | ⚠️ `−13,6 %` → `−16,8 %` |
+
+⭐⭐⭐ **Cinco de cinco melhoram ou empatam nas pontas cortadas E nos furos**, e a agulha mais
+fina — que saía com `χ = 1` e `4` arestas de bordo — passa a **fechar**.
+
+⚠️ **A única coluna que piora numa peça é o ALCANCE da `sculpt_antes`**, e a régua por ponta diz
+o contrário na mesma corrida (`3` cortadas → `1`): *um máximo global move-se com a pior ponta, e
+a pior ponta mudou de identidade.* ⇒ é a mesma lição que fez esta linha construir o `tips`.
+
+⇒ ⭐ **A porta nasce LIGADA** (`PH2D_ISO_ADAPT=0` desliga).
+
+## §27 — O que fica ABERTO
+
+1. ⏳ **A forma final não é um interruptor global.** A fase zero graduada devia ser mais uma
+   **candidata** da corrida do botão, com o `worse` a decidir por peça — e para isso o `worse`
+   precisa de uma chave de **amputação**, que ele não tem. ⚠️ A banda medida para ela já existe
+   e é do repo: `ph2d_quadfill::TIP_CUT_PCT = −2 %`, cujo doc mostra uma **ordem de grandeza**
+   entre pontas intactas (`−0,0 %`..`−0,4 %`) e cortadas (`−5 %`..`−22 %`).
+2. ⏳ **A amputação que sobra nasce a JUSANTE do F1** (§23): com a fase zero perfeita a saída
+   ainda corta `2` de `4`. Parte disso é **resolução** — na `_base_sculpt` a agulha tem raio
+   local `≈ 0,037` e o quad pedido mede `0,0399`.
+3. ⏳ **O `ALVO/F1` continua em `0,30`–`0,42`**: a fase zero é ancorada na **diagonal da caixa**
+   (`ALPHA`) e o alvo do quad na **área/contagem**. *Um espinho longo infla a diagonal, logo uma
+   peça com espinhos recebe uma malha de trabalho mais grossa precisamente por ter espinhos.*
+   ⛔ Igualar as duas âncoras (`PH2D_F1_TARGET=1`) está medido e **recusado** (§21).

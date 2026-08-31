@@ -1144,3 +1144,107 @@ resolvido por excepção** — os três foram cortados por **responsabilidade**:
 
 ⚠️ E o `crates/ph2d-gridmap/src/cut.rs` bateu no tecto de `700` da workspace: **o doc do campo
 novo foi comprimido**, não o código.
+
+---
+
+# ⭐⭐⭐ PARTE II — A AMPUTAÇÃO (Enio, 31/08: *«resultado melhor. vamos corrigir as pontas»*)
+
+## §8-duodetricies — ONDE a ponta morre, e a razão que estava à vista
+
+A régua é o **suporte por ponta** (`tips`), e não o ALCANCE: *este é um extremo global e esconde
+uma ponta cortada atrás de outra que sobreviveu.* Na `_base_sculpt.obj`, `Detail 0,85`:
+
+| | fase zero (F1) | saída |
+|---|---|---|
+| ⛔ o que shipava | `3` de `4` cortadas, pior `−6,9 %` | `3` de `4`, pior ⛔ **`−41,2 %`** |
+
+⭐⭐⭐ **E a causa estava numa razão que o relatório já imprimia: `ALVO/F1 = 0,34×`.** A malha de
+trabalho tem aresta `0,1146` e o quad pedido mede `0,0386` — *a cadeia é obrigada a produzir quads
+**três vezes mais finos** que os triângulos que ela lê*, e uma ponta cujo raio local é menor que
+`0,1146` não sobrevive ao passe de colapso.
+
+⚠️ **Sistémico, não desta peça:** a `sculpt_antes` mede `0,41×`. *As duas metades do botão são
+ancoradas em coisas diferentes* — o F1 em `ALPHA × diagonal da caixa`, o quad em `área/contagem`
+(`edge_for_detail_by_count`, a lei que a wave de 28/08 escolheu **por o bounding box não servir**).
+⇒ ⚠️ **auto-derrotante:** um espinho longo infla a diagonal, logo uma peça com espinhos recebe uma
+malha de trabalho **mais grossa por ter espinhos**.
+
+## §8-unetricies — ⛔⛔ E DOIS defeitos na PRÓPRIA SONDA, que a reconferência expôs
+
+Com `PH2D_F1_TARGET=1` a linha `F1` do relatório saía **idêntica** à do controlo, com a env a mudar
+a saída: o bloco de diagnóstico chamava sempre `remesh_isotropic(ALPHA)`. E calculava o alvo do
+slider por `edge_for_detail_with` enquanto o produto usa `edge_for_detail_by_count` desde 28/08
+(`0,03861` contra `0,03961`). ⇒ *uma sonda que não corre o caminho do produto acusa o sítio errado,
+e uma que calcula por outra lei mede outro programa.* As duas estão curadas.
+
+## §8-duoetricies — ⭐⭐⭐ A CURA: a grelha por sítio deixa de INFLAR e passa a REDISTRIBUIR
+
+A `SizingGrid` do F1 só afinava (tecto `1`) ⇒ ela **acrescentava** trabalho: `3 982 → 33 156` faces
+(`8,3×`). ⚠️ **É essa inflação — e não a graduação — que a jusante não digere**, e é o que as TRÊS
+recusas desta fase têm em comum (`PH2D_ISO_ADAPT`, `PH2D_ISO_FACING`, `PH2D_F1_TARGET`).
+
+⇒ `SizingGrid::count_factor` escala o campo por `√(N_previsto / N_pedido)`, **medido pela própria
+grelha** (o `at()` leva o mínimo dos 27 vizinhos, logo normalizar o campo por vértice e consultar a
+grelha deixaria a inflação de pé). É a lei que a irmã um nível acima já tem e já é gateada.
+
+**Medido, `Detail 0,85`, pela régua por ponta:**
+
+| peça | pontas cortadas (desl. → lig.) | furos na saída | alcance |
+|---|---|---|---|
+| `espinhos:6 σ=0,30` | `0/6` → `0/6` | `0` → `0` | `+2,8 %` → `+1,8 %` |
+| ⭐ `espinhos:6 σ=0,14` | **`5/6` → `0/6`** | `0` → `0` | `+3,7 %` → `+0,3 %` |
+| ⭐⭐⭐ `espinhos:6 σ=0,07` | `6/6` pior `−20,5 %` → **`−7,6 %`** | ⛔ `4` → ⭐ **`0`** | `−15,5 %` → ⭐ **`−3,5 %`** |
+| ⭐⭐ `_base_sculpt` | `3/4` pior `−41,2 %` → **`−8,4 %`** | `0` → `0` | ⭐⭐ `−41,8 %` → **`−11,1 %`** |
+| ⭐ `sculpt_antes` | **`3/6` → `1/6`** | ⭐ `4` → **`0`** | ⚠️ `−13,6 %` → `−16,8 %` |
+
+⭐⭐⭐ **Cinco de cinco melhoram ou empatam nas pontas cortadas E nos furos**, e a agulha mais fina
+— que saía com `χ = 1` e `4` arestas de bordo — passa a **fechar**. Preço: `+7 %` a `+15 %` de
+faces na malha de trabalho, contra os `7`–`8×` de antes.
+
+⚠️ **A única coluna que piora numa peça é o ALCANCE da `sculpt_antes`**, e a régua por ponta diz o
+contrário na mesma corrida (`3` cortadas → `1`): *um máximo global move-se com a pior ponta, e a
+pior ponta mudou de identidade.*
+
+⇒ **A porta passa a nascer LIGADA** (`PH2D_ISO_ADAPT=0` desliga), e a tabela de recusa que estava
+no doc dela **descrevia um comportamento que já não existe**.
+
+## §8-teretricies — ⛔ E uma BANDA SIMÉTRICA foi construída, MEDIDA e REVERTIDA no mesmo dia
+
+A ideia era `[alvo/√R, alvo·√R]` em vez do tecto `1`. ⛔ **A mutação que a apagava sobreviveu aos
+DOIS gates** — com a renormalização por cima, o factor sai `> 1` e empurra tudo para cima do alvo,
+logo *o tecto deixa de ser observável no intervalo*.
+
+⇒ Ela teve de ganhar o lugar com um A/B ponta a ponta, e **perdeu**: pela régua por ponta o tecto
+`1` é melhor nas duas peças do dono (`_base_sculpt` pior corte `−24,3 % → −8,4 %`; `sculpt_antes`
+`2/6 → 1/6` cortadas). ⚠️ *Uma mutação que sobrevive pode ser código inerte — ou, como aqui, código
+que faz a coisa errada e que a régua certa recusa.*
+
+## §8-quatertricies — ⛔⛔ E o PORTÃO DE FECHO apanhou a wave a escapar para o motor LEGADO
+
+A 1.ª versão lia `PH2D_ISO_ADAPT` **dentro** do `remesh_with`, logo a graduação alcançava
+**todos** os chamadores. ⇒ `the_ear_does_not_ship_an_edge_across_the_piece` reprovou: esse gate
+corre o motor **legado** (preenchimento por patch, o `Fast` do menu) e a orelha passou a shipar
+uma aresta a atravessar a peça.
+
+⭐⭐ **E o doc do `remesh_with` já escrevia a lei que a 1.ª versão violava:** *«por argumento e não
+por variável de ambiente: os testes desta crate correm em paralelo no mesmo processo… uma bandeira
+global é uma corrida escrita à mão»*.
+
+⇒ A graduação passa a ser uma **porta separada**
+([`ph2d_remesh_iso::remesh_isotropic_graded`]), o `remesh_isotropic` fica **byte-idêntico** ao que
+sempre foi, e **quem grada é quem chama** — hoje só a fase zero da cadeia de extracção
+([`sculpt3d_retopo_target::phase_zero`], onde as duas decisões da fase zero passaram a morar
+juntas, por LOC e por responsabilidade).
+
+## §8-quinquetricies — O que fica ABERTO, com endereço
+
+1. ⏳ **A forma final não é um interruptor global.** A fase zero graduada devia ser mais uma
+   **candidata** da corrida, com o `worse` a decidir por peça — e o `worse` **não tem chave de
+   amputação**. ⭐ A banda para ela já existe e é do repo: `ph2d_quadfill::TIP_CUT_PCT = −2 %`,
+   cujo doc mostra uma **ordem de grandeza** entre pontas intactas e cortadas.
+2. ⏳ **A amputação que sobra nasce a JUSANTE do F1:** com `PH2D_F1_TARGET=1` a fase zero corta
+   `0` de `4` e a saída ainda corta `2` de `4`. ⚠️ Parte é **resolução** — a agulha da
+   `_base_sculpt` tem raio local `≈ 0,037` e o quad pedido mede `0,0399`, o que dá `≈ 5,8` quads a
+   dar a volta ao tubo.
+3. ⏳ **O `ALVO/F1` continua em `0,30`–`0,42`.** Igualar as âncoras (`PH2D_F1_TARGET=1`) está
+   medido e **recusado**: na `sculpt_antes` troca `4` arestas de bordo por **`46`**.

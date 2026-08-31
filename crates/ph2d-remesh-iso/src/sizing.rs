@@ -80,14 +80,42 @@ impl SizingGrid {
         let mut want: std::collections::BTreeMap<(i32, i32, i32), f32> =
             std::collections::BTreeMap::new();
         let pos = mesh.positions();
+        let mut per_vertex: Vec<f32> = Vec::with_capacity(pos.len());
         for (v, p) in pos.iter().enumerate() {
             let k = curv.get(v).copied().unwrap_or(0.0).abs().max(1.0e-9);
             let h = target * (median / k).clamp(1.0 / ADAPT_RATIO, 1.0);
+            per_vertex.push(h);
             let key = Self::key_of(*p, cell);
             let slot = want.entry(key).or_insert(h);
             if h < *slot {
                 *slot = h;
             }
+        }
+        // ⭐⭐⭐ **QUANTOS VÉRTICES BATEM NO PISO** — a coluna que o report de 31/08 exigiu
+        // (*«dentre várias pontas uma apenas foi amputada, a menos densa em faces»*).
+        //
+        // ⛔ Um vértice **saturado** é um sítio onde a forma pediu mais resolução do que o
+        // [`ADAPT_RATIO`] permite: a partir dali, *uma agulha mais fina recebe exactamente a
+        // mesma grelha que uma mais grossa*. É a assinatura de uma ponta que morre enquanto as
+        // irmãs vivem. ⚠️ `PH2D_ISO_LOG=1` imprime; ela não muda saída nenhuma.
+        if std::env::var("PH2D_ISO_LOG").as_deref() == Ok("1") {
+            let piso = target / ADAPT_RATIO;
+            #[allow(clippy::cast_precision_loss)]
+            let n = pos.len().max(1) as f32;
+            #[allow(clippy::cast_precision_loss)]
+            let sat = per_vertex.iter().filter(|h| **h <= piso * 1.000_01).count() as f32;
+            let (mut lo, mut hi) = (f32::INFINITY, 0.0f32);
+            for h in &per_vertex {
+                lo = lo.min(*h);
+                hi = hi.max(*h);
+            }
+            eprintln!(
+                "[iso] grelha: alvo {target:.5} · piso {piso:.5} · h {lo:.5}..{hi:.5} · \
+                 NO PISO {:.1} % ({} de {})",
+                100.0 * sat / n,
+                sat as usize,
+                pos.len(),
+            );
         }
         let mut grid = Self {
             cell,
@@ -232,11 +260,40 @@ pub fn adaptive_on() -> bool {
 
 /// ⭐ **Quantas vezes o alvo pode encolher onde a forma aperta.**
 ///
-/// ⚠️ **É a mesma cerca de gradação que a [`ph2d_quadflow::MAX_ADAPTIVE_RATIO`] declara**
-/// noutra crate (*duas células cujas escalas diferem por mais do que isto deixam de ter
-/// aresta comum*), e o número aqui é o mesmo `4` — a agulha recebe até `4×` mais resolução
-/// linear que o corpo.
-const ADAPT_RATIO: f32 = 4.0;
+/// # ⛔⛔⛔ O `4` era EMPRESTADO, e respondia a outra pergunta
+///
+/// Até 2026-08-31 este número era `4`, *«a mesma cerca de gradação que a
+/// `ph2d_quadflow::MAX_ADAPTIVE_RATIO` declara noutra crate»*. ⚠️ **Aquela cerca é sobre a
+/// GRADE DE QUADS transitar sem rasgar** (*duas células cujas escalas diferem por mais do que
+/// isto deixam de ter aresta comum*); o consumidor aqui é um **remalhador de triângulos**, que
+/// não tem essa restrição. ⇒ *um limite legítimo diz de que recurso ele é, e este dizia de um
+/// recurso de outro subsistema* (`CLAUDE.md` §0.0).
+///
+/// # ⭐⭐⭐ O report que o mediu (Enio, 31/08)
+///
+/// *«Dentre várias pontas uma apenas foi amputada — a menos densa em faces.»* ⭐⭐ **A
+/// observação dele é o mecanismo:** com o alvo da fase zero em `0,105`, o piso é `0,105/4 ≈
+/// 0,026`, e uma agulha mais fina que isso **satura** — *a partir dali ela recebe exactamente a
+/// mesma grelha que uma mais grossa.* Medido na peça dele: entre `8,5 %` e `14,3 %` dos
+/// vértices batiam no piso.
+///
+/// | `ADAPT_RATIO` | vértices NO PISO | `_base_sculpt` | `sculpt_antes` | `σ=0,07` | `σ=0,14` |
+/// |---|---|---|---|---|---|
+/// | ⛔ `4` | `8,5 %`–`14,3 %` | `1/4` pior `−5,9 %` | `3/6` pior `−23,2 %` | `6/6` pior `−36,4 %` | `1/6` pior `−2,0 %` |
+/// | ⚠️ `8` | `2,6 %` | ⛔ `1/4` pior **`−43,0 %`** | — | — | — |
+/// | ⭐⭐⭐ **`16`** | ⭐ `0,2 %` | ⭐ **`0/4`** pior **`−0,4 %`** | ⭐ `2/6` pior **`−18,9 %`** | ⭐ `6/6` pior **`−11,2 %`** | `1/6` pior `−2,1 %` |
+/// | `32` | `0,0 %` | `2/4` pior `−2,9 %` | — | — | — |
+///
+/// ⭐⭐ **O `16` é melhor ou igual nas QUATRO peças**, e a topologia é idêntica em todas as
+/// células (`χ = 2`, zero bordo, zero não-manifold). ⛔ **Subi-lo é barato só porque a
+/// renormalização já lá está**: sem ela, `16×` de refinamento local **multiplicaria** a malha;
+/// com ela, o orçamento é o mesmo e só **muda de sítio**.
+///
+/// ⚠️⚠️ **E a linha do `8` é o outro achado:** com a fase zero **perfeita** a saída cortou a
+/// ponta mais longa em `−43 %`, porque a corrida trocou de vencedora e o `worse` não tinha
+/// **chave de amputação**. *A curva não é monótona — ela mede a selecção, não só a graduação*,
+/// e é por isso que a escolha correu em quatro peças e só depois de a chave existir.
+const ADAPT_RATIO: f32 = 16.0;
 
 /// ⭐⭐⭐ **A reprojecção exige que o pé CONCORDE com a normal** — ver o uso.
 ///

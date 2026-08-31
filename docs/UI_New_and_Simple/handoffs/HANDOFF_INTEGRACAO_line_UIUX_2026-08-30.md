@@ -909,3 +909,158 @@ a régua e a fila de ferramentas ocupam a largura toda e encolhem no quadro segu
 16 ms que ninguém reportou — mas que fica escrito, porque é a próxima coisa que alguém vai ver e não
 saber explicar.
 
+
+---
+
+## §16 — ⭐⭐⭐ AS ABAS: `n > 1` num encaixe partilham a coluna (entrega 21)
+
+Commit `405408c31`. A **regra 1** do modelo de áreas (`spec/01_modelo_de_areas.md` §2), que o §15
+tinha deixado nomeada como *«a wave seguinte natural»*.
+
+### §16.1 — O defeito medido, e o que a medição achou por baixo dele
+
+O `audio_editor` encaixava-se **a oeste** do Inspector (`insp.x − 240 − gap`) para poder estar
+aberto ao lado do `audio_mixer` — uma **segunda coluna da direita**, que a spec recusa por
+aritmética (duas colunas por lado = **89,6 %** de 1366). Ele publicava **168 480 px²** sobre a área
+de desenho, e era a única entrada da catraca do gate da D1.
+
+⚠️⚠️ **E ele não era o único a partilhar a coluna — era o único a fazê-lo às escondidas.** Medido
+em 2026-08-30 com tudo aberto:
+
+| rect publicado | quantos painéis |
+|---|---:|
+| `(1062, 28, 304, 996)` — a coluna da direita, ao pixel | **13** |
+| `(0, 28, 308, 996)` — a coluna da esquerda | 1 |
+| `(322, 784, 726, 240)` — a faixa de baixo | 1 |
+| rect próprio (declaram `CAN_FLOAT`) | 3 |
+
+Os treze não colidiam **por convenção** (só um está visível de cada vez, conduzido pela ferramenta
+activa) e **nada no repo o afirmava**. ⇒ *as abas não introduzem a partilha: elas tornam visível a
+que já existia, e dão-lhe um gesto.*
+
+### §16.2 — ⭐ A selecção NÃO é estado novo
+
+A aba escolhida é **o ocupante mais ao topo da ordem z**, e clicar numa aba é `bump_panel_z` — o
+mesmo verbo que clicar dentro do painel já usava. Guardar *«qual aba está escolhida»* ao lado da
+ordem z seria a segunda resposta à mesma pergunta, e as duas divergiriam no primeiro clique que uma
+delas não visse.
+
+⚠️ **Isso obrigou a ordem z a ser reconciliada com a visibilidade** (`slot_tabs::reconcile_z`), e as
+**duas** metades são obrigatórias:
+
+| metade | sem ela |
+|---|---|
+| **poda** (esquece quem já não está em cena) | fechar e reabrir devolve o painel à posição velha — atrás de uma aba que ninguém tocou |
+| **acrescento** (quem apareceu vai ao topo) | um painel acabado de abrir nem entra na ordem, e o `PANEL_Z_ORDER_FALLBACK` põe-no no fundo |
+
+⭐ De borla: **abrir um painel flutuante passa a levantá-lo**, o que antes não acontecia.
+
+### §16.3 — ⛔ O `DEFAULT_SLOT` era decoração, e TRÊS painéis mentiam
+
+Ele nasceu na entrega 20 **com default `RightTop`**. Medido: **20 dos 21** painéis herdavam-no, e
+três mentiam — `hierarchy` publica a coluna da **esquerda**, `timeline` e `flip_frames` a faixa de
+**baixo**. *Uma declaração que ninguém confronta com a realidade é decoração*, e ela só passou a
+custar quando as abas começaram a derivar dela quem divide o quê.
+
+⇒ o default **morreu** (cada painel declara), e o gate `the_slot_a_panel_declares_is_where_it_paints`
+confronta a declaração com o rect publicado.
+
+⚠️ **E o `motion_graph` É o centro.** Ele parte a área de desenho em duas regiões **irmãs**
+(`CenterSplit`) — literalmente o que a decisão **D5** diz que uma região é. A regra do gate era
+*«ninguém declara o CENTER»* e estava **errada por omissão**; hoje é *«quem declara o centro declara
+SÓ o centro»* mais *«no máximo um reclamante»*. Ele declarava `RightTop` só porque havia default, e
+as abas iriam lê-lo como ocupante da coluna da direita, onde ele nunca esteve.
+
+### §16.4 — A geometria: os seis encaixes passam a ter RECT
+
+- **`HeroLayout::slot_rects(occupied)`** — a metade de uma coluna só existe quando a **irmã** está
+  ocupada. Dividir uma coluna com um ocupante só tirar-lhe-ia metade da altura por uma razão que não
+  existe. ⛔ Deriva de `side_columns()` (ordenado por `x`): ler `layout.hierarchy` **pelo nome** daria
+  os encaixes espelhados em silêncio sob `ui_mirrored`.
+- **`HeroLayout::reserve_slot_tabs(counts, h)`** — a faixa sai do encaixe e o que estava debaixo dela
+  **desce**. ⛔ A regra é **derivada** (*todo rect docado que TOCA a faixa começa onde ela acaba*) e
+  não uma lista de campos: são **cinco** campos que são o mesmo rect da coluna da direita
+  (`inspector`, `bgremoval`, `padding`, `painter_sidebar`, `painter_layers`), e uma sexta futura
+  desenharia **por baixo** das abas sem nenhum gate a ver (o rect publicado continua dentro da coluna).
+  ⚠️ O `flip_strip`, que é baixo e vive no fundo da faixa inferior, **não** é empurrado — e está certo:
+  ele nunca esteve debaixo das abas.
+- **`Panel::TITLE`, sem default** + gate `the_tab_and_the_menu_call_a_panel_the_same_thing`, conduzido
+  pela tabela `MODULE_TRUTHS` que a entrega 18 criou. Um derivado do `ID` daria *"Tokens"*,
+  *"Sculpt3d"* e *"Grid Snap"* onde o menu *Window* diz *"Design Tokens"*, *"Sculpt 3D"* e
+  *"Grid Settings"*: **três divergências à nascença**, sem uma linha de erro.
+- **`tab_node_id` = XOR com um sal.** A aba e o painel são controlos diferentes com rects diferentes,
+  e o `HitIndex` mapeia `id → rect`: o mesmo id faria o segundo apagar o primeiro. ⚠️ XOR é uma
+  **bijecção**, logo o derivado não pode criar colisão que o espaço de ids de painel já não tivesse —
+  *uma segunda função de hash, sim, poderia*.
+- **`MIN_TAB_W = 64`** é o piso de **legibilidade**, não de layout: com sete ocupantes numa coluna de
+  304 px cada aba teria 43 px. Abaixo do piso as abas **transbordam**, e as que não cabem continuam
+  alcançáveis pelo menu *Window* — que é onde um painel sempre se abriu.
+
+### §16.5 — ⛔⛔ Duas leis que a implementação cobrou
+
+**1. `with_registry_opt`, nunca `with_registry_ref`.** O `pre_populate` corre dentro do
+`HeroScreen::new`, e nem toda a gente que constrói um hero instalou o registry de painéis — na
+própria `ph2d-editor-core` o `test_support::ensure_panel_registry` é um `{}`. A variante `_ref` faz
+`panic!`, e **12 testes de chrome desta crate morreram** (paleta de comandos, modais de fill e de
+onion) — nenhum deles tem a ver com painéis. *Uma leitura obrigatória de um recurso opcional
+transforma um serviço em requisito, e quem paga é quem nunca o pediu.*
+
+**2. ⚠️⚠️ A feature nova ESVAZIOU a população de dois gates meus.** O gate da D1 pintava *«tudo
+aberto»* e lia os rects publicados — e com abas **doze dos treze** ocupantes da coluna deixam de
+publicar. A varredura passou de **18 medidos para 2**, e o gate **continuaria verde**. Foi o controlo
+`measured >= 10` que o disse, escrito na entrega 20 por outra razão.
+
+⇒ os dois gates passam a medir **um painel de cada vez** (abrir só ele, pintar, ler). *Um gate cuja
+população uma feature nova esvazia passa a medir nada, sem uma linha de erro* — e o único aviso
+possível é um controlo de população escrito antes.
+
+### §16.6 — A catraca DESCEU
+
+`REACHES_PENDING` do gate da D1 fica **vazia**. ⭐ E desceu porque a **metade de obsolescência** a
+acusou primeiro (`audio_editor (já não publica rect)`) — a metade que a `CLAUDE.md` §5.0 exige, e
+que aqui pagou o custo dela pela primeira vez nesta linha.
+
+### §16.7 — Verificação
+
+| portão | resultado |
+|---|---|
+| `ph2d-editor-core` | **1344** ✓ · 16 ignorados |
+| `ph2d-panel-registry-init` | 11 alvos, **0** falhas |
+| `ph2d-host-desktop` | **4763** ✓ · 266 ignorados |
+| `cargo check --workspace --all-targets` | limpo |
+| clippy `--all-targets` (6 crates do diff) | limpo |
+| `fmt` · tecto de LOC · gates de doc | ✓ |
+
+⚠️ **O `hero.rs` bateu em `701/700`** e o corte foi por **responsabilidade**, não por folga:
+`hero/pre_dispatch.rs` — *o que corre antes do registry de painéis, e por que essa ordem é
+load-bearing* (as linhas do menu *Window* e as abas têm ids que um painel consome).
+
+**Seis mutações MORTAS**, cada uma com controlo no próprio filtro:
+
+| mutação | gate que a matou |
+|---|---|
+| `hidden_by_tabs` devolve vazio | `the_mixer_and_the_editor_share_one_column_as_two_tabs` |
+| a reserva de abas não empurra ninguém | `every_docked_layout_rect_is_pushed_by_a_tab_bar` |
+| clicar numa aba não levanta o painel | `clicking_a_tab_changes_which_panel_draws` |
+| o painel de tokens volta ao nome derivado | `the_tab_and_the_menu_call_a_panel_the_same_thing` |
+| a hierarquia volta a declarar a coluna da direita | `the_slot_a_panel_declares_is_where_it_paints` |
+| a ordem z deixa de ser reconciliada | `the_mixer_and_the_editor_share_one_column_as_two_tabs` |
+
+⚠️ **O controlo apanhou um `NÃO COMPILA` transiente** na 1.ª corrida de um dos alvos — o que tornaria
+a 4.ª «morte» indistinguível de um erro de compilação. Ela foi **re-verificada isolada**, com dois
+controlos verdes antes e a mensagem de falha a nomear exactamente `tokens: o menu diz "Design Tokens"
+e a aba diz "Tokens"`.
+
+### §16.8 — ⏳ O que esta entrega deixa nomeado
+
+- **Arrastar um painel de um encaixe para outro** não existe: `ALLOWED_SLOTS` já descreve para onde
+  ele PODERIA ir, e `DEFAULT_SLOT` é hoje a resposta final. O gesto é wave própria.
+- **A ordem das abas** é a ordem z, logo ela muda quando se troca de aba. Reordenar por arrasto (o
+  que o Godot faz) é outra wave.
+- **As metades de coluna (`LeftBottom` / `RightBottom`) não têm ocupante nenhum** — a lei está
+  escrita e gateada, e nada a exercita no produto até um painel as declarar.
+- **Um painel escondido por aba não corre o `paint_fn`**, logo não publica `content_h` nem clampa
+  scroll nesse quadro. É o que «não visível» sempre significou; fica nomeado porque a próxima
+  pessoa a ler um `content_h` velho vai querer saber porquê.
+- **Duas barras de título empilhadas**: a fila de abas fica por cima de um painel que ainda pinta o
+  próprio cabeçalho. Não é defeito de mecanismo — é decisão de desenho de quem vê.

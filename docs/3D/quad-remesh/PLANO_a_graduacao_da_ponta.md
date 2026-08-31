@@ -924,3 +924,31 @@ descrevia. ⇒ apagada, com o motivo no lugar dela.
 era o **texto** — quem greppasse o nome lia *«o `Curvature` é inerte no motor de omissão»* e
 concluía o contrário do que o produto faz. *Uma afirmação falsa que ninguém executa continua a
 ser lida.*
+
+## §47 — ⛔⛔ A HIPÓTESE DO PISO FOI CONSTRUÍDA, MEDIDA E REFUTADA
+
+Ao ver a foto (uma bola com um espinho longo e vários curtos, a seta num **curto**), a
+hipótese óbvia era a régua: `apices` tem um piso de `0,55 × raio máximo`, e nesta peça o
+espinho longo mede `3,0959` ⇒ o corte fica em `1,70` e **só `4` de `42`** máximos locais
+entram na conta. *A ponta apontada seria invisível a todas as réguas desta linha.*
+
+⛔ **Medido, e é falso.** Todos os **42** máximos locais de `_base_sculpt.obj`, a
+`Detail 0,75 · Curvature 1`, sem piso nenhum:
+
+| | pior de 42 |
+|---|---|
+| suporte | **`−0,9 %`** (a barra do corte é `−2 %`) |
+| desvio `p50` | **`0,21`** (a barra é `1,0`) |
+| desvio `p90` | `0,42` |
+
+*Nenhuma ponta desta peça é amputada nesta configuração — nem as que o piso escondia.*
+
+⇒ ⭐⭐ **A peça que o dono está a testar não é a que ele exportou a 30/08.** As duas
+hipóteses de §45 ficam ambas de pé; a que sobra é *outra escultura*, e o passo seguinte é
+tê-la: no app, **`Ctrl+Shift+E`** escreve a escultura num ficheiro
+([`sculpt3d_export.rs`](../../../shells/desktop/src/sculpt3d_export.rs), o par do
+`Ctrl+Shift+O`).
+
+⚠️ **A lição não é «a hipótese estava errada» — é que ela era barata de medir e cara de
+acreditar.** Uma régua com piso *é* uma população escolhida, e este repo já pagou isso
+quatro vezes; a diferença é que desta vez a suspeita foi medida antes de virar cura.

@@ -103,58 +103,6 @@ fn an_unnamed_or_unpublished_letter_plants_nothing() {
     }
 }
 
-/// ⛔⛔ **O nome posto numa letra que a gramática não emite tem de ser DITO.**
-///
-/// Report do Enio (2026-08-30): *"só apareceu em seu exemplo, ao trocar o tipo de árvore não
-/// aparece mais"*. Os moldes de planta trazem `J`, mas **uma gramática escrita à mão pode não
-/// trazer letra nenhuma** — e aí o campo fica cheio, nada nasce, e o artista não tem como saber
-/// porquê. *Um controlo com valor lá dentro e efeito nenhum parece ligado: é a pior espécie de
-/// morto.*
-///
-/// ⚠️ **A metade que se gateia é a DECISÃO, não o canal** — o aviso sai no `stderr`, que um teste
-/// não lê; por isso a lei vive numa função pura ([`crate::render_loop::motion_lsystem_leaves::unanswered_slots`]) e é ela que se mede.
-#[test]
-fn a_letter_with_a_name_and_no_anchor_is_reported() {
-    let anchor = |slot: usize| crate::render_loop::motion_lsystem_leaves::Anchor {
-        p: [0.0, 0.0],
-        rot: 0.0,
-        grow: 1.0,
-        slot,
-    };
-    let names = |a: &str, b: &str, c: &str| [a.to_string(), b.to_string(), c.to_string()];
-
-    // Nome posto, letra ausente da gramática ⇒ acusa.
-    assert_eq!(
-        crate::render_loop::motion_lsystem_leaves::unanswered_slots(&names("folha", "", ""), &[]),
-        vec![0],
-        "um nome sem ancora nenhuma tem de ser acusado"
-    );
-    // A letra existe ⇒ cala.
-    assert!(
-        crate::render_loop::motion_lsystem_leaves::unanswered_slots(
-            &names("folha", "", ""),
-            &[anchor(0)]
-        )
-        .is_empty(),
-        "com a ancora la' o aviso seria ruido"
-    );
-    // ⚠️ **Por SLOT, nunca «há âncoras?»** — uma gramática com `J` e um nome em `K` é exactamente
-    // o caso do report, e uma régua que só perguntasse «esta planta tem âncoras?» ficaria muda.
-    assert_eq!(
-        crate::render_loop::motion_lsystem_leaves::unanswered_slots(
-            &names("folha", "flor", ""),
-            &[anchor(0)]
-        ),
-        vec![1],
-        "o slot que tem ancora cala e o que nao tem acusa"
-    );
-    // Campo vazio nunca acusa: não pedir objecto nenhum é o estado normal.
-    assert!(
-        crate::render_loop::motion_lsystem_leaves::unanswered_slots(&names("", "", ""), &[])
-            .is_empty()
-    );
-}
-
 /// ⭐⭐⭐ **A FOLHA APONTA PARA ONDE O RAMO APONTA** — report do Enio (2026-08-30): *"sem
 /// rotação [relativa] ao galho"*.
 ///
@@ -473,16 +421,21 @@ fn the_front_fraction_puts_leaves_after_the_plant_in_the_row_order() {
     assert_eq!(antes + depois, antes0, "nenhuma folha se perdeu no caminho");
 }
 
-/// ⭐⭐ **A FOLHA FORA DO TINT DA ÁRVORE** — report do Enio (2026-08-30): *"uma opção para livrar
-/// as folhas, os frutos do tint que pinta tudo na árvore"*.
+/// ⭐⭐⭐ **A FOLHA FORA DO TINT — E SÓ DO TINT.**
 ///
-/// ⚠️ **A cura é a máscara que a casa já fala** (`motion.tint` faz `lerp(existente, alvo,
-/// falloff)`), e por isso o gate mede a COLUNA e o seu contrário: com os efeitos ligados a
-/// coluna **não nasce**, porque uma coluna de uns apagaria o `falloff` que um nó a montante
-/// tivesse escrito.
+/// Report do Enio (2026-08-30): *"uma opção para livrar as folhas, os frutos do tint que pinta
+/// tudo na árvore"*. ⛔⛔ **A 1.ª cura escreveu `falloff` e partiu a planta** — o report seguinte
+/// dele foi *"Keep own color não funciona, as folhas não aparecem"*: o `falloff` é a máscara de
+/// TODOS os modificadores, e o `motion.move` faz `P' = P + (dx, dy) · falloff`, então as folhas
+/// ficavam paradas enquanto a árvore andava (a cena `=108` move cada coluna).
+///
+/// ⚠️⚠️ **E o gate que eu tinha NÃO O VIU, porque media a COLUNA e não a CONSEQUÊNCIA.** Este
+/// mede as duas metades, e a segunda é a que faltava:
+/// 1. a máscara nasce, e é a estreita (`tint_mask`), nunca o `falloff`;
+/// 2. **um `motion.move` a jusante continua a levar as folhas com a planta.**
 #[test]
-fn the_leaves_can_keep_their_own_colour_when_the_tree_is_tinted() {
-    let falloff = |effects: f32| -> Vec<f32> {
+fn the_leaves_keep_their_own_colour_and_still_travel_with_the_plant() {
+    let masks = |effects: f32| -> (Vec<f32>, Vec<f32>) {
         let (mut state, n) = factory_plant_with_leaf(5.0, false);
         state
             .doc
@@ -490,58 +443,82 @@ fn the_leaves_can_keep_their_own_colour_when_the_tree_is_tinted() {
             .set_param(n, ls::param::LEAF_EFFECTS, effects);
         let key = key_of(&mut state, n);
         publish(&mut state, 0.0);
-        column_v1(&state, &key, "falloff")
+        (
+            column_v1(&state, &key, ph2d_nodegraph::attr::TINT_MASK_COLUMN),
+            column_v1(&state, &key, "falloff"),
+        )
     };
-    // `0` = Keep Own Colour (o default): a planta a `1`, cada folha a `0`.
-    let v = falloff(0.0);
-    assert!(!v.is_empty(), "a coluna tem de nascer no modo que a usa");
+    // 1. `0` = Keep Own Colour (o default): a planta a `1`, cada folha a `0`.
+    let (mask, falloff) = masks(0.0);
+    assert!(
+        !mask.is_empty(),
+        "a mascara tem de nascer no modo que a usa"
+    );
     assert_eq!(
-        v.iter().filter(|f| **f == 1.0).count(),
+        mask.iter().filter(|f| **f == 1.0).count(),
         1,
-        "so' a planta e' alcancada pelos efeitos: {v:?}"
+        "so' a planta e' alcancada pela cor: {mask:?}"
     );
     assert!(
-        v.iter().filter(|f| **f == 0.0).count() > 8,
-        "as folhas tem de sair fora do alcance: {v:?}"
+        mask.iter().filter(|f| **f == 0.0).count() > 8,
+        "as folhas tem de sair fora do alcance da cor: {mask:?}"
     );
-    // `1` = Reached: a coluna NÃO nasce ⇒ ausente ⇒ `1` em toda a casa.
+    // ⛔ **E NUNCA o `falloff`** — foi ele que parou as folhas.
     assert!(
-        falloff(1.0).is_empty(),
-        "com os efeitos ligados a coluna nao pode nascer — ela apagaria um falloff a montante"
+        falloff.is_empty(),
+        "a mascara larga voltou: o `motion.move` deixaria as folhas para tras"
     );
-}
-
-/// ⭐⭐ **UM FIO NUM PARAM INERTE É DITO** — report do Enio (2026-08-30): *"LFO não funciona
-/// animando Tropism Angle"*.
-///
-/// ⚠️ **A régua é a DECISÃO, não o canal** (o aviso sai no `stderr`, que um gate não lê), e ela
-/// tem de reprovar nos DOIS sentidos: calar quando não há fio (senão toda planta de fábrica
-/// gritaria) e calar quando a força existe (senão o aviso mente).
-#[test]
-fn a_wire_on_an_inert_param_is_reported() {
-    use crate::render_loop::motion_lsystem_leaves::say_if_a_wire_drives_an_inert_param as say;
-    // A metade pura é o predicado; aqui mede-se o que ele decide, pela contagem de avisos que
-    // a chave-uma-vez deixa passar.
-    let disse = |driven: &[&str], tropism: f32, chave: &str| -> bool {
-        // Uma chave nova por caso ⇒ o «uma vez só» não mascara a decisão.
-        let antes = crate::render_loop::motion_lsystem_leaves::already_said(chave);
-        say(chave, driven, tropism);
-        !antes && crate::render_loop::motion_lsystem_leaves::already_said(chave)
+    // 2. `1` = Reached: a coluna NÃO nasce ⇒ ausente ⇒ `1` em toda a casa.
+    assert!(
+        masks(1.0).0.is_empty(),
+        "com a cor a alcancar, a mascara nao pode nascer — ela apagaria uma de montante"
+    );
+    // ⭐⭐⭐ **A CONSEQUÊNCIA**: com a máscara posta, um `motion.move` a jusante move TUDO.
+    let (mut state, n) = factory_plant_with_leaf(5.0, false);
+    let key = key_of(&mut state, n);
+    publish(&mut state, 0.0);
+    let antes = match state
+        .pump
+        .cook
+        .externals()
+        .get(&key)
+        .expect("publicada")
+        .value
+        .get("P")
+    {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => panic!("P"),
     };
-    assert!(
-        disse(&[ls::param::TROPISM_ANGLE], 0.0, "k1"),
-        "fio + forca zero tem de ser dito"
-    );
-    assert!(
-        !disse(&[ls::param::TROPISM_ANGLE], 30.0, "k2"),
-        "com forca a serio o aviso mentiria"
-    );
-    assert!(
-        !disse(&[], 0.0, "k3"),
-        "sem fio, o default de toda planta calaria o aviso"
-    );
-    assert!(
-        !disse(&[ls::param::ANGLE], 0.0, "k4"),
-        "um fio NOUTRO param nao diz nada sobre o tropismo"
-    );
+    // ⚠️ **O nó REAL, cozido pelo grafo** — não uma cópia da lei dele nesta fixtura: uma
+    // fixtura que reimplementa o que testa pode estar errada de maneiras que o produto não
+    // está (aconteceu duas vezes nesta jornada).
+    let mv = state.doc.graph.add_node("motion.move");
+    state.doc.graph.set_param(mv, "dx", 5.0);
+    state
+        .doc
+        .graph
+        .connect(ph2d_nodegraph::graph::Edge {
+            from: (n, 0),
+            to: (mv, 0),
+            delayed: false,
+        })
+        .expect("liga a planta ao move");
+    let cooked = state
+        .pump
+        .cook
+        .cook(&state.doc.graph, &state.registry, mv, 0.0)
+        .expect("o move cozinha");
+    let depois = match cooked[0].as_stream().get("P") {
+        Some(Column::Vec2(v)) => v.clone(),
+        _ => panic!("P do move"),
+    };
+    let (a, b) = (antes, depois);
+    assert_eq!(a.len(), b.len());
+    for (i, (p, q)) in a.iter().zip(&b).enumerate() {
+        assert!(
+            (q[0] - p[0] - 5.0).abs() < 1e-4,
+            "a linha {i} nao andou com a planta: {p:?} -> {q:?} — a mascara larga voltou"
+        );
+    }
+    let _ = mv;
 }

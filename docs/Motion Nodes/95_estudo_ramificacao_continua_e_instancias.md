@@ -345,6 +345,52 @@ produzia número nenhum. *Uma sonda que não move o número não prova que o pro
 
 ---
 
+## §8 — O 4.º smoke: *"as folhas não aparecem"* — e o `falloff` era o canal ERRADO
+
+> *"Keep own color não funciona, as folhas não aparecem"* · *"Leaves in front não funciona, nada
+> muda"*
+
+⛔⛔ **A minha cura do tint estava errada de ESPÉCIE.** Eu tinha escrito `falloff = 0` nas linhas
+de folha porque o `motion.tint` faz `lerp(existente, alvo, falloff)`. Mas o `falloff` é a máscara
+de **todos** os modificadores desta casa — e o `motion.move` faz `P' = P + (dx, dy) · falloff`.
+
+⇒ na cena `=108`, que move cada coluna com um `motion.move`, **as folhas ficavam paradas
+enquanto a árvore andava**. Elas não desapareciam: ficavam noutro sítio, longe da planta a que
+pertenciam. *O canal que escolhi era muito mais largo do que a pergunta que fiz.*
+
+⭐ A cura é uma coluna **própria** — `attr::TINT_MASK_COLUMN`, multiplicativa com o `falloff` no
+`motion.tint`, ausente ⇒ `1` ⇒ byte-idêntica. É o molde do `falloff_y` (que só o
+`motion.falloff(Mask Channel)` escreve e só o `motion.scale(Separate Y Mask)` lê), mas declarada
+**numa porta só**: dois lados a escrever a mesma string à mão são duas leis à espera de divergir.
+
+⚠️⚠️ **E o gate que eu tinha NÃO O VIU, porque media a COLUNA e não a CONSEQUÊNCIA.** Ele
+afirmava *«a máscara nasce com `0` nas folhas»* — o que era verdade — e nada sobre o que um nó a
+jusante faz com ela. O gate novo coze um **`motion.move` a sério** e mede que as folhas andam
+com a planta; a mutação que repõe o `falloff` mata-o.
+
+### 8.1 — E o `First Level` esvaziava um molde inteiro
+
+Medido: as `10` marcas do `Sprig` estão **todas na profundidade `1`** — ali o `J` vive num ramo
+lateral de primeiro nível (`[+F(s*0.35)J]`) enquanto no `Tree` ele vive no eixo. Com o default
+único de `3`, aquele molde ficava com **zero** folhas.
+
+⇒ **o molde carrega o SEU número** (`Preset::leaf_first_level`), como já carregava ângulo,
+gerações, passo e espessura. ⚠️ *A profundidade de encaixe significa coisas diferentes em
+gramáticas diferentes, então um número só não a atravessa.*
+
+⛔⛔ **E a mutação que repunha o `3` no `Sprig` SOBREVIVEU a toda a suíte** — não havia nada a
+dizer que um molde com marcas tem de mostrar pelo menos uma. É o gate
+`no_preset_silences_its_own_leaves`, com o controlo que impede o laço de passar vazio.
+
+### 8.2 — O silêncio era metade da causa dos DOIS reports
+
+Uma gramática cujas marcas vivem todas abaixo do nível mínimo fica sem folha nenhuma, e nada na
+tela o diz — e sem folhas, o `Leaves In Front` também *"não muda nada"*. ⇒ o app **diz**
+(`say_if_the_level_hid_every_leaf`), e cala nos três casos vizinhos para não virar ruído por
+quadro.
+
+---
+
 ## ⛔ Recusas MEDIDAS (deste estudo)
 
 | Item | Motivo |
@@ -357,6 +403,8 @@ produzia número nenhum. *Uma sonda que não move o número não prova que o pro
 | Terminar a recursão para não acumular (`A(s) : s <= k -> F(s)J`) | Medido: **muda a planta** — `64` elementos em vez de `256` a `g = 8`. Não é a mesma planta com folhas |
 | O cruza-fade entre duas gerações (peso `f` / `1 − f`) | Comprava «só as pontas» numa planta parada e fazia **cada folha encolher até sumir** durante o crescimento — *«só as pontas» e «uma folha não encolhe» não cabem na mesma lei, porque uma ponta vira interior*. Veredito do Enio: *«bem bizarro»* |
 | Esconder o `Tropism Angle` quando o `Tropism` é `0` | O `ParamGate` da casa compara com uma lista de INTEIROS e a condição é *«diferente de zero»* num slider contínuo; e a linha desapareceria no estado de FÁBRICA, que é onde o artista estava quando reportou. A cura é o app DIZER, e só quando há fio |
+| Usar o `falloff` para livrar as folhas do tint | ⛔ **PARTIU a planta**: o `falloff` é a máscara de TODOS os modificadores, e o `motion.move` faz `P' = P + (dx, dy) · falloff` ⇒ as folhas ficavam paradas enquanto a árvore andava. A cura é uma coluna própria (`attr::TINT_MASK_COLUMN`) |
+| Um `First Level` único para todos os moldes | ⛔ **Esvaziava o `Sprig`** (10 marcas, todas na profundidade 1). O molde carrega o seu, como os outros quatro números de enquadramento |
 | Filtrar `sym` com `motion.cull` | Ele só faz *Fraction* e *Falloff*; a rota por atributo pede 6-7 nós e o código ASCII da letra |
 
 ---

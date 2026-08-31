@@ -361,3 +361,88 @@ fn a_leaf_has_a_turn_of_its_own() {
         assert_eq!(a.to_bits(), b.to_bits(), "o sorteio tem de reproduzir");
     }
 }
+
+#[test]
+#[ignore = "sonda"]
+fn probe_demo_fern_depths() {
+    let casos = [
+        (
+            "demo FERN",
+            "A(s)",
+            "A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[J][-B(s*0.72)]B(s*0.8)",
+        ),
+        ("preset Fern", PRESETS[1].axiom, PRESETS[1].rules),
+        ("preset Tree", PRESETS[0].axiom, PRESETS[0].rules),
+        ("preset Wild", PRESETS[4].axiom, PRESETS[4].rules),
+        ("preset Sprig", PRESETS[7].axiom, PRESETS[7].rules),
+    ];
+    for (nome, axiom, rules) in casos {
+        let s = probe_build(axiom, rules, 5.0, &[(param::LEAF_FIRST_LEVEL, 1.0)]);
+        let (sym, depth) = (scal(&s, "sym"), scal(&s, "depth"));
+        let mut hist: std::collections::BTreeMap<i64, usize> = Default::default();
+        for i in 0..sym.len() {
+            if crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)) {
+                *hist.entry(depth[i] as i64).or_default() += 1;
+            }
+        }
+        let visiveis: usize = hist.iter().filter(|(d, _)| **d >= 3).map(|(_, n)| n).sum();
+        let total: usize = hist.values().sum();
+        println!(
+            "{nome:<12} por profundidade {hist:?} — com First Level=3 sobram {visiveis} de {total}"
+        );
+    }
+}
+
+/// ⛔⛔⛔ **UM MOLDE NÃO PODE ESVAZIAR-SE COM O PRÓPRIO `First Level`.**
+///
+/// Report do Enio (2026-08-30, depois de eu shipar o knob): *"as folhas não aparecem"*. Um
+/// default único de `3` — o que a árvore de fábrica pede — deixava o `Sprig` com **zero** de
+/// `10` marcas, porque ali o `J` vive num ramo lateral de primeiro nível enquanto no `Tree` ele
+/// vive no eixo. *A profundidade de encaixe significa coisas diferentes em gramáticas
+/// diferentes.*
+///
+/// ⚠️ **E a mutação que repunha o `3` no `Sprig` SOBREVIVEU a toda a suíte** — não havia nada a
+/// dizer que um molde com marcas tem de mostrar pelo menos uma. É esse o buraco que este gate
+/// fecha, e ele mede o molde **com o número que o molde carrega**.
+#[test]
+fn no_preset_silences_its_own_leaves() {
+    let mut com_marcas = 0;
+    for p in PRESETS {
+        let s = probe_build(
+            p.axiom,
+            p.rules,
+            p.generations,
+            &[
+                (param::ANGLE, p.angle),
+                (param::STEP, p.step),
+                (param::LEAF_FIRST_LEVEL, p.leaf_first_level),
+            ],
+        );
+        let sym = scal(&s, "sym");
+        let grow = match s.get("mark_grow") {
+            Some(Column::Scalar(v)) => v.clone(),
+            _ => panic!("sem `mark_grow`"),
+        };
+        let marcas: Vec<usize> = (0..sym.len())
+            .filter(|&i| crate::LEAF_SYMBOLS.contains(&(sym[i] as i32 as u8)))
+            .collect();
+        // Um molde sem marca nenhuma (as curvas, os refinadores) não tem o que mostrar.
+        if marcas.is_empty() {
+            continue;
+        }
+        com_marcas += 1;
+        let vivas = marcas.iter().filter(|&&i| grow[i] > 0.0).count();
+        assert!(
+            vivas > 0,
+            "{}: tem {} marca(s) e o proprio First Level ({}) apaga TODAS",
+            p.label,
+            marcas.len(),
+            p.leaf_first_level
+        );
+    }
+    // ⚠️ **O CONTROLE**: se um dia nenhum molde tiver marcas, o laço acima passa vazio.
+    assert!(
+        com_marcas >= 4,
+        "so' {com_marcas} moldes com marcas — o gate ficou sem sujeito"
+    );
+}

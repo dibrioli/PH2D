@@ -75,6 +75,23 @@ pub const SIZE_IDENTITY: [f32; 2] = [1.0, 1.0];
 /// letter in 30 crates is churn without a gate — but anything NEW reads it from here.)
 pub const VALUE_COLUMN: &str = "v";
 
+/// ⭐⭐ **A MÁSCARA QUE SÓ A COR LÊ** — report do Enio (2026-08-30): *"uma opção para livrar as
+/// folhas, os frutos do tint que pinta tudo na árvore"*.
+///
+/// ⛔⛔ **A 1.ª cura usou o `falloff` e PARTIU a planta.** O `falloff` é a máscara de **todos**
+/// os modificadores desta casa — o `motion.move` faz `P' = P + (dx, dy) · falloff` —, então pôr
+/// `0` numas linhas para as livrar do TINT deixava-as **paradas enquanto o resto se movia**.
+/// *O canal escolhido era muito mais largo do que a pergunta feita.*
+///
+/// ⇒ uma coluna própria: quem a escreve diz *«a cor não alcança esta linha»* e mais nada. Ela
+/// é multiplicativa com o `falloff` no `motion.tint`, e **ausente ⇒ `1`** ⇒ toda corrente que
+/// não a escreve é byte-idêntica.
+///
+/// ⚠️ **Declarada AQUI, e não em cada crate**, ao contrário do `falloff_y` (que vive em duas
+/// cópias privadas): dois lados que escrevem a mesma string à mão são duas leis à espera de
+/// divergir, e esta nasce com dois lados no mesmo dia.
+pub const TINT_MASK_COLUMN: &str = "tint_mask";
+
 /// As colunas de **ESCRITURAÇÃO** — aquelas cuja máquina de estado de um nó a
 /// jusante lê, e que por isso um escritor genérico não pode sobrescrever.
 ///

@@ -78,6 +78,18 @@ pub struct Preset {
     /// `Width Scale`; uma sem `"` ignora o `Length Scale`. O painel esconde o que o molde não
     /// lê, em vez de o pintar inerte.
     pub reads: Reads,
+    /// ⭐⭐ **O primeiro NÍVEL de ramo com folha, POR MOLDE** — e ele tinha de ser por molde.
+    ///
+    /// ⛔⛔ Um default único de `3` (o que a árvore de fábrica pede — ver
+    /// [`param::LEAF_FIRST_LEVEL`]) **esvaziava o `Sprig`**: medido, as `10` marcas dele estão
+    /// TODAS na profundidade `1`, porque ali o `J` vive num ramo lateral de primeiro nível
+    /// (`[+F(s*0.35)J]`) enquanto no `Tree` ele vive no eixo. *A profundidade de encaixe
+    /// significa coisas diferentes em gramáticas diferentes, então um número só não a
+    /// atravessa.*
+    ///
+    /// ⚠️ É o mesmo padrão dos outros quatro números de enquadramento (ângulo · gerações ·
+    /// passo · espessura): **o molde carrega o seu**, e trocar de molde escreve-o.
+    pub leaf_first_level: f32,
 }
 
 /// Os símbolos de interpretação que uma gramática contém — e portanto os knobs que ela honra.
@@ -177,6 +189,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.658,
         width: 0.212,
         reads: Reads::of(DEFAULT_RULES),
+        // Tree: as marcas estao em `1..5` (`1 · 2 · 4 · 8 · 16`) e as duas setas da foto do Enio apontam para os niveis `1` e `2`.
+        leaf_first_level: 3.0,
     },
     Preset {
         label: "Fern",
@@ -187,6 +201,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.456,
         width: 0.147,
         reads: Reads::of("A(s) -> F(s)[+B(s*0.55)]!A(s*0.87) ; B(s) -> F(s)[-B(s*0.72)]B(s*0.8)"),
+        // Fern: marcas em `2..5`; a `3` sobram 16 de 26 e nenhuma no caule.
+        leaf_first_level: 3.0,
     },
     // ABOP fig. 1.24: o arbusto clássico lê-se a **4** gerações (a 5 são 3 126 módulos), e o
     // ângulo do livro é 25,7°.
@@ -199,6 +215,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.022,
         width: 0.007,
         reads: Reads::of("F -> F[+F]F[-F]F"),
+        // Bush: sem marca nenhuma — o molde nao leva folha.
+        leaf_first_level: 1.0,
     },
     // ABOP fig. 1.24d — 20°.
     Preset {
@@ -210,6 +228,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.029,
         width: 0.009,
         reads: Reads::of("X -> F[+X]F[-X]+X ; F -> FF"),
+        // Weed: idem.
+        leaf_first_level: 1.0,
     },
     Preset {
         label: "Wild",
@@ -222,6 +242,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.478,
         width: 0.154,
         reads: Reads::of("A(s) -> (0.4) F(s)![+A(s*0.72)][-A(s*0.72)]"),
+        // Wild: marcas em `1..5`; a `3` sobram 12 de 18.
+        leaf_first_level: 3.0,
     },
     // ⚠️ A ilha de Koch quadrática é **90° por definição** — a 25 ela não é a figura, é um
     // risco. Foi o que o dono do produto viu.
@@ -234,6 +256,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.022,
         width: 0.007,
         reads: Reads::of("F -> F+F-F-F+F"),
+        // Koch: uma curva nao tem folha.
+        leaf_first_level: 1.0,
     },
     // ⚠️ A curva do dragão: 90°, e só se lê como dragão a partir de ~10 iterações.
     Preset {
@@ -245,6 +269,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.019,
         width: 0.006,
         reads: Reads::of("F -> F+G ; G -> F-G"),
+        // Dragon: idem.
+        leaf_first_level: 1.0,
     },
     // ⚠️ O `[+F(s*0.35)J]` e não o `[+J]` da 1.ª redacção: uma MARCA lê o osso do PAI e não o
     // rumo da tartaruga (`turtle.rs`, com gate), então `[+J][-J]` punha as duas folhas
@@ -259,6 +285,8 @@ pub const PRESETS: &[Preset] = &[
         step: 0.524,
         width: 0.168,
         reads: Reads::of("A(s) -> F(s)[+F(s*0.35)J][-F(s*0.35)J]!A(s*0.8) ; J -> J"),
+        // Sprig: ⛔ MEDIDO: as 10 marcas dele estao TODAS na profundidade 1 (o `J` vive num ramo lateral de 1.o nivel), entao um `3` esvaziava-o.
+        leaf_first_level: 1.0,
     },
 ];
 

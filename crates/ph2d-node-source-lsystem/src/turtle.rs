@@ -606,19 +606,21 @@ pub(crate) fn walk(chain: &[Module], set: &Setup) -> Stream {
     // ⭐⭐ **A FOLHA FORA DO TINT DA ÁRVORE** — report do Enio (2026-08-30): *"uma opção para
     // livrar as folhas, os frutos do tint que pinta tudo na árvore"*.
     //
-    // ⚠️ **Não é um canal novo: é o que a casa inteira já fala.** O `motion.tint` faz
-    // `lerp(existente, alvo, falloff)`, então `falloff = 0` numa linha **mantém a cor que ela
-    // tem** — e o mesmo vale para todo nó que honre essa máscara.
+    // ⛔⛔ **A 1.ª cura escrevia `falloff` e PARTIU a planta** (2.º report dele, no mesmo dia:
+    // *"Keep own color não funciona, as folhas não aparecem"*): o `falloff` é a máscara de
+    // TODOS os modificadores desta casa — o `motion.move` faz `P' = P + (dx, dy) · falloff` —,
+    // então as folhas ficavam PARADAS enquanto a planta se movia. *O canal era muito mais
+    // largo do que a pergunta.* ⇒ [`attr::TINT_MASK_COLUMN`], que só a cor lê.
     //
     // ⚠️ **Com `Reached` a coluna NÃO NASCE**, e não é economia: uma coluna de uns é uma
-    // resposta a uma pergunta que ninguém fez, e ela apagaria um `falloff` que um nó a
+    // resposta a uma pergunta que ninguém fez, e ela apagaria uma máscara que um nó a
     // montante tivesse escrito. Ausente ⇒ `1` em toda a casa ⇒ byte-idêntico.
     let stream = Stream::new(n);
     let stream = if set.leaf_effects {
         stream
     } else {
         stream.with(
-            "falloff",
+            ph2d_nodegraph::attr::TINT_MASK_COLUMN,
             Column::Scalar(
                 out.sym
                     .iter()

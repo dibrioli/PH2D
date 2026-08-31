@@ -27,6 +27,7 @@ use ph2d_vec_scene::{VecPath, VecVertex};
 use super::motion_lsystem_leaves::{
     Job, anchors_of, plant_and_leaves, say_if_a_wire_drives_an_inert_param,
     say_if_the_leaf_cannot_go_in_front, say_if_the_letter_is_missing,
+    say_if_the_level_hid_every_leaf,
 };
 use crate::motion_state::MotionState;
 
@@ -363,10 +364,11 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
             names,
             get(ls::param::LEAF_FRONT),
             get(ls::param::LEAF_EFFECTS).round() as i32 == 0,
+            get(ls::param::LEAF_FIRST_LEVEL),
         ));
     }
 
-    for (key, bs, anchors, names, front, keep_own_colour) in jobs {
+    for (key, bs, anchors, names, front, keep_own_colour, first_level) in jobs {
         let used = &bs[..];
         // ⚠️ **A origem da planta é o primeiro ponto do primeiro ramo**, e a geometria inteira é
         // local a ela: a pose viaja na instância, como em toda a casa, e duas plantas iguais em
@@ -400,6 +402,7 @@ pub(crate) fn publish(motion: &mut MotionState, seconds: f64) {
         let stream = match handle {
             Some(h) => {
                 say_if_the_letter_is_missing(&key, &names, &anchors);
+                say_if_the_level_hid_every_leaf(&key, &names, &anchors, first_level);
                 say_if_the_leaf_cannot_go_in_front(
                     &key,
                     &names,

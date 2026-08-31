@@ -210,6 +210,17 @@ pub(in crate::render_loop::motion_bridge) fn apply_lsystem_preset(
         (ph2d_node_source_lsystem::param::GENERATIONS, p.generations),
         (ph2d_node_source_lsystem::param::STEP, p.step),
         (ph2d_node_source_lsystem::param::WIDTH, p.width),
+        // ⭐⭐ **O QUINTO, desde 2026-08-30** — o nível de ramo a partir do qual nascem folhas.
+        //
+        // ⛔⛔ Um default único de `3` **esvaziava o `Sprig`**: medido, as `10` marcas dele
+        // estão TODAS na profundidade `1` (ali o `J` vive num ramo lateral de primeiro nível,
+        // enquanto no `Tree` ele vive no eixo). *A profundidade de encaixe significa coisas
+        // diferentes em gramáticas diferentes, então um número só não a atravessa* — e é
+        // exactamente por isso que os outros quatro já viviam na tabela.
+        (
+            ph2d_node_source_lsystem::param::LEAF_FIRST_LEVEL,
+            p.leaf_first_level,
+        ),
     ] {
         motion.doc.graph.set_param(nid, name, v);
     }

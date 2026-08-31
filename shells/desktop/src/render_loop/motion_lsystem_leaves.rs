@@ -79,9 +79,10 @@ pub(crate) type Job = (
     Vec<ls::branch::Branch>,
     Vec<Anchor>,
     [String; 3],
-    // A fracção desenhada à frente dos galhos, e `true` = as folhas mantêm a cor delas.
+    // A fracção à frente dos galhos · `true` = as folhas mantêm a cor · o 1.º nível com folha.
     f32,
     bool,
+    f32,
 );
 
 /// A aparência que um objecto NOMEADO publicou — `(size, tint, uv_rect, texture_id, premul)`.
@@ -169,7 +170,7 @@ pub(crate) fn unanswered_slots(names: &[String; 3], anchors: &[Anchor]) -> Vec<u
 /// **Este aviso já saiu?** — a metade que torna a decisão mensurável de um teste.
 #[cfg(test)]
 pub(crate) fn already_said(key: &str) -> bool {
-    SAID.with(|s| s.borrow().contains(&format!("{key} inert tropism")))
+    SAID.with(|s| s.borrow().contains(key))
 }
 
 /// **DIZ quando um FIO conduz um param que outro param mantém inerte.**
@@ -203,6 +204,43 @@ pub(crate) fn say_if_a_wire_drives_an_inert_param(key: &str, driven: &[&str], tr
              Suba o «Tropism». (E um `value.lfo` nasce com amplitude 1, que neste param e' UM \
              GRAU: suba a amplitude tambem.)"
         );
+    }
+}
+
+/// **DIZ quando o `First Level` apagou TODAS as folhas de uma letra.**
+///
+/// ⛔⛔ Report do Enio (2026-08-30, depois de eu shipar o knob): *"Keep own color não funciona,
+/// as folhas não aparecem"* e *"Leaves in front não funciona, nada muda"* — **dois reports, e o
+/// silêncio é metade da causa dos dois**. Uma gramática cujas marcas vivem todas abaixo do
+/// nível mínimo fica sem folha nenhuma, e não há nada na tela que o diga.
+///
+/// ⚠️ **A cerca de fundo é o molde carregar o SEU número** (`Preset::leaf_first_level`, medido
+/// por molde). Esta mensagem é para a gramática que o **artista** escreve, onde não há tabela
+/// que o saiba por ele.
+pub(crate) fn say_if_the_level_hid_every_leaf(
+    key: &str,
+    names: &[String; 3],
+    anchors: &[Anchor],
+    first_level: f32,
+) {
+    for (slot, name) in names.iter().enumerate() {
+        let mine: Vec<&Anchor> = anchors.iter().filter(|a| a.slot == slot).collect();
+        // Sem nome ou sem âncora, quem fala é o aviso da letra — este seria ruído por cima.
+        if name.is_empty() || mine.is_empty() {
+            continue;
+        }
+        if mine.iter().any(|a| a.grow > GROW_FLOOR) {
+            continue;
+        }
+        let once = format!("{key} level {slot}");
+        if SAID.with(|s| s.borrow_mut().insert(once)) {
+            eprintln!(
+                "[lsystem] «{name}» tem {} marca(s) na gramatica e NENHUMA se desenha: o «First \
+                 Level» esta' em {first_level:.0} e todas elas nascem mais perto da raiz do que \
+                 isso. Baixe o «First Level»",
+                mine.len()
+            );
+        }
     }
 }
 
@@ -299,7 +337,7 @@ pub(crate) fn plant_and_leaves(
         uv: [f32; 4],
         tex: f32,
         premul: f32,
-        falloff: f32,
+        tint_mask: f32,
     }
     let plant = Row {
         p: origin,
@@ -310,7 +348,7 @@ pub(crate) fn plant_and_leaves(
         uv: [0.0, 0.0, 1.0, 1.0],
         tex: 0.0,
         premul: 0.0,
-        falloff: 1.0,
+        tint_mask: 1.0,
     };
     // ⭐⭐ **TRÊS BALDES, e a ordem entre eles É o z** — report do Enio (2026-08-30): *"não temos
     // a opção de escolher quantas folhas são desenhadas na frente ou atrás dos galhos"*.
@@ -340,9 +378,15 @@ pub(crate) fn plant_and_leaves(
             uv: rect,
             tex: tid,
             premul: pm,
-            // ⭐ **A folha fora do tint da árvore** — `0` faz todo nó que honre a máscara
-            // (`motion.tint` faz `lerp(existente, alvo, falloff)`) deixá-la com a cor que tem.
-            falloff: f32::from(!keep_own_colour),
+            // ⭐⭐ **A folha fora do TINT da árvore, e só do tint.**
+            //
+            // ⛔⛔ **A 1.ª cura escrevia `falloff` e PARTIU a planta** (report do Enio,
+            // 2026-08-30: *"Keep own color não funciona, as folhas não aparecem"*): o
+            // `falloff` é a máscara de TODOS os modificadores, e o `motion.move` faz
+            // `P' = P + (dx, dy) · falloff` — as folhas ficavam PARADAS enquanto a planta se
+            // movia, e a cena `=108` move cada coluna. *O canal que escolhi era muito mais
+            // largo do que a pergunta que fiz.*
+            tint_mask: f32::from(!keep_own_colour),
         };
         if gid <= 0.0 {
             sprites.push(row);
@@ -356,7 +400,7 @@ pub(crate) fn plant_and_leaves(
     let mut p = Vec::with_capacity(n);
     let (mut size, mut rot, mut geom) = (Vec::new(), Vec::new(), Vec::new());
     let (mut tint, mut uv, mut tex) = (Vec::new(), Vec::new(), Vec::new());
-    let (mut premul, mut falloff) = (Vec::new(), Vec::new());
+    let (mut premul, mut tint_mask) = (Vec::new(), Vec::new());
     for r in atras
         .into_iter()
         .chain(std::iter::once(plant))
@@ -371,7 +415,7 @@ pub(crate) fn plant_and_leaves(
         uv.push(r.uv);
         tex.push(r.tex);
         premul.push(r.premul);
-        falloff.push(r.falloff);
+        tint_mask.push(r.tint_mask);
     }
     let stream = Stream::new(n)
         .with("P", Column::Vec2(p))
@@ -390,10 +434,13 @@ pub(crate) fn plant_and_leaves(
         )
         .with("Count", Column::Scalar(vec![n as f32; n]));
     // ⚠️ **A coluna só nasce quando ela DIZ alguma coisa.** Uma coluna de uns responderia a uma
-    // pergunta que ninguém fez e apagaria um `falloff` que um nó a montante tivesse escrito —
+    // pergunta que ninguém fez e apagaria uma máscara que um nó a montante tivesse escrito —
     // ausente ⇒ `1` em toda a casa ⇒ byte-idêntico ao que havia antes deste param.
     if keep_own_colour {
-        stream.with("falloff", Column::Scalar(falloff))
+        stream.with(
+            ph2d_nodegraph::attr::TINT_MASK_COLUMN,
+            Column::Scalar(tint_mask),
+        )
     } else {
         stream
     }
@@ -426,3 +473,7 @@ fn hash01(i: usize) -> f32 {
 #[cfg(test)]
 #[path = "motion_lsystem_leaves_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "motion_lsystem_says_tests.rs"]
+mod says_tests;

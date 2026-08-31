@@ -119,8 +119,13 @@ fn picking_a_preset_writes_both_text_boxes() {
 /// a **25°** (ela é `90` por definição) e a **1 291 unidades de mundo** numa coluna de ~4.
 /// *Um molde não é uma gramática: é uma gramática MAIS o enquadramento em que ela se lê.*
 ///
-/// ⚠️ **Os quatro, um a um** — um gate que verificasse só «alguma coisa mudou» ficaria verde
-/// com três deles por escrever.
+/// ⚠️ **Os CINCO, um a um** — um gate que verificasse só «alguma coisa mudou» ficaria verde
+/// com quatro deles por escrever.
+///
+/// ⛔⛔ **O quinto entrou em 2026-08-30 e a razão é medida:** um `First Level` único de `3`
+/// (o que a árvore de fábrica pede) **esvaziava o `Sprig`** — as `10` marcas dele estão todas
+/// na profundidade `1`. *A profundidade de encaixe significa coisas diferentes em gramáticas
+/// diferentes.*
 #[test]
 fn picking_a_preset_also_writes_the_framing_it_needs() {
     let mut motion = MotionState::new();
@@ -132,6 +137,7 @@ fn picking_a_preset_also_writes_the_framing_it_needs() {
             (ls::param::GENERATIONS, p.generations),
             (ls::param::STEP, p.step),
             (ls::param::WIDTH, p.width),
+            (ls::param::LEAF_FIRST_LEVEL, p.leaf_first_level),
         ] {
             assert_eq!(
                 param_value(&motion, n, name),

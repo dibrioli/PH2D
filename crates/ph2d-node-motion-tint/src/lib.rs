@@ -189,7 +189,14 @@ fn blended(existing: [f32; 4], target: [f32; 4], mode: BlendMode) -> [f32; 4] {
 
 /// The multiplicative `falloff` weight for instance `i` (absent → `1.0`).
 fn falloff_at(stream: &Stream, i: usize) -> f32 {
-    match stream.get("falloff") {
+    weight_at(stream, "falloff", i) * weight_at(stream, ph2d_nodegraph::attr::TINT_MASK_COLUMN, i)
+}
+
+// A máscara que só a cor lê vive no vocabulário partilhado: `attr::TINT_MASK_COLUMN`.
+
+/// O peso escalar de uma coluna nomeada em `i` (ausente ou curta → `1.0`).
+fn weight_at(stream: &Stream, name: &str, i: usize) -> f32 {
+    match stream.get(name) {
         Some(Column::Scalar(v)) => v.get(i).copied().unwrap_or(1.0),
         _ => 1.0,
     }
